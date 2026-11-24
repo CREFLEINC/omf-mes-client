@@ -9,12 +9,12 @@ export const traceTree = {
   material: {
     title: '자재 기준 생산 추적',
     scanLabel: 'LOT 번호',
-    scanPlaceholder: '자재 관리 LOT, 입하 LOT, 공급사 LOT 번호 스캔',
+    scanPlaceholder: '자재 LOT, 입하 LOT, 공급사 LOT',
     partner: '공급사',
     partnerPicker: '공급사 선택',
     partnerCode: '공급사 코드',
     partnerName: '공급사명',
-    partnerRequired: '공급사를 고르세요',
+    partnerRequired: '공급사를 선택하세요',
     period: '입하일',
     recentDate: '최근 투입',
     conditionDate: '입하일',
@@ -22,7 +22,7 @@ export const traceTree = {
     conditionFoot: '입하일 최근 순으로 100개씩 불러옵니다. 아직 투입되지 않은 LOT 도 나옵니다.',
     conditionEmptyHint: '공급사나 입하일을 바꿔 보세요.',
     pickHint:
-      '고른 LOT 이 투입된 W/O, 만들어진 생산 LOT(반제품이면 그다음 단계까지), 출하된 고객과 남은 재고를 계보로 펼칩니다. 번호를 스캔하면 그 LOT 이 목록에 들어가 바로 열립니다.',
+      '선택한 LOT 이 투입된 W/O, 만들어진 생산 LOT(반제품이면 그다음 단계까지), 출하된 고객과 남은 재고를 계보로 펼칩니다. 번호를 스캔하면 그 LOT 이 목록에 들어가 바로 열립니다.',
     notFoundHint: '이 공장의 자재 관리 LOT, 입하 LOT, 공급사 LOT 번호인지 확인하세요.',
     otherTitle: '제품 LOT 번호입니다',
     otherBody: '제품에서 원인 자재를 찾으려면 제품 기준 역추적에서 여세요.',
@@ -36,12 +36,12 @@ export const traceTree = {
   product: {
     title: '제품 기준 역추적',
     scanLabel: '번호',
-    scanPlaceholder: '제품 LOT, 출하번호, 시리얼 번호 스캔',
+    scanPlaceholder: '제품 LOT, 출하번호, 시리얼',
     partner: '고객',
     partnerPicker: '고객 선택',
     partnerCode: '고객 코드',
     partnerName: '고객명',
-    partnerRequired: '고객을 고르세요',
+    partnerRequired: '고객을 선택하세요',
     period: '출하일',
     recentDate: '기준일',
     conditionDate: '출하일',
@@ -49,7 +49,7 @@ export const traceTree = {
     conditionFoot: '출하 완료분의 배분 제품 LOT 을 출하일 최근 순으로 100개씩 보입니다.',
     conditionEmptyHint: '고객이나 출하일을 바꿔 보세요.',
     pickHint:
-      '고른 제품 LOT 을 만든 W/O, 투입된 자재(반제품이면 그 자재까지), 입하 LOT 과 공급사, IQC 결과를 거슬러 올라갑니다. 제품 LOT, 출하번호, 시리얼 번호를 스캔해도 됩니다.',
+      '선택한 제품 LOT 을 만든 W/O, 투입된 자재(반제품이면 그 자재까지), 입하 LOT 과 공급사, IQC 결과를 거슬러 올라갑니다. 제품 LOT, 출하번호, 시리얼 번호를 스캔해도 됩니다.',
     notFoundHint: '출하 완료된 출하번호, 이 공장의 제품 LOT, 시리얼 번호인지 확인하세요.',
     otherTitle: '자재 LOT 번호입니다',
     otherBody: '자재가 어디로 갔는지 보려면 자재 기준 생산 추적에서 여세요.',
@@ -67,8 +67,8 @@ export const traceTree = {
   export: '엑셀 내보내기',
   periodPlaceholder: '시작일 ~ 종료일',
   period: {
-    required: '기간 시작일을 고르세요',
-    invalid: '기간을 yyyy-MM-dd 로 고르세요',
+    required: '기간 시작일을 선택하세요',
+    invalid: '기간을 yyyy-MM-dd 로 선택하세요',
     reversed: '종료일이 시작일보다 앞섭니다',
     tooLong: '기간은 366일까지 고를 수 있습니다',
   },
@@ -82,9 +82,12 @@ export const traceTree = {
     count: (count: number): string => num(count),
     scanCount: (count: number, cap: number): string => `${num(count)} / ${num(cap)}`,
     ofTotal: (loaded: number, total: number): string => `${num(total)}개 중 ${num(loaded)}개`,
-    more: (remaining: number): string => `더 보기 (${num(remaining)}개 남음)`,
+    more: (next: number, remaining: number): string =>
+      next < remaining
+        ? `${num(next)}개 더 보기 (남은 ${num(remaining)}개)`
+        : `나머지 ${num(remaining)}개 보기`,
     scanFoot:
-      '스캔 순서대로 쌓입니다. 이미 있는 LOT 을 다시 스캔하면 더하지 않고 그 LOT 을 고릅니다. [최근 목록으로]를 누르면 비워집니다.',
+      '스캔 순서대로 쌓입니다. 이미 있는 LOT 을 다시 스캔하면 더하지 않고 그 LOT 을 선택합니다. [최근 목록으로]를 누르면 비워집니다.',
     columns: {
       lotItem: 'LOT 번호, 품목',
       lotNo: 'LOT 번호',
@@ -110,9 +113,11 @@ export const traceTree = {
   },
   scan: {
     added: (kind: string, label: string, count: number, selected: boolean): string =>
-      `${kind} ${label} — LOT ${num(count)}개를 더${selected ? '해 골랐' : '했'}습니다`,
+      selected
+        ? `${kind} ${label} — LOT ${num(count)}개를 목록에 넣고 선택했습니다`
+        : `${kind} ${label} — LOT ${num(count)}개를 목록에 넣었습니다`,
     existing: (kind: string, label: string): string =>
-      `${kind} ${label} — 이미 목록에 있어 골랐습니다`,
+      `${kind} ${label} — 이미 목록에 있어 선택했습니다`,
     notFoundTitle: '찾을 수 없는 번호입니다',
     fullTitle: (cap: number): string => `목록이 가득 찼습니다 (${num(cap)}개)`,
     fullBody: (label: string, skipped: number): string =>
@@ -122,8 +127,8 @@ export const traceTree = {
     dismiss: '알림 닫기',
   },
   detail: {
-    pane: '고른 LOT',
-    pickTitle: '왼쪽 목록에서 LOT 을 고르세요',
+    pane: '선택한 LOT',
+    pickTitle: '왼쪽 목록에서 LOT 을 선택하세요',
     base: '조회 기준',
     serial: (serialNo: string): string => `시리얼 ${serialNo}`,
     loading: '계보를 불러오는 중',
@@ -131,7 +136,7 @@ export const traceTree = {
     loadFailedDescription: '잠시 뒤 다시 시도하세요.',
     retry: '다시 시도',
     notFoundTitle: '없는 LOT 입니다',
-    notFound: 'LOT 이 지워졌거나 다른 공장의 LOT 입니다. 목록에서 다른 LOT 을 고르세요.',
+    notFound: 'LOT 이 지워졌거나 다른 공장의 LOT 입니다. 목록에서 다른 LOT 을 선택하세요.',
     forbiddenTitle: '이 화면을 볼 권한이 없습니다',
     partialTitle: '더 있습니다 — 일부만 보입니다',
     partialBody: (lotCap: number): string =>
@@ -146,7 +151,7 @@ export const traceTree = {
     item: '품목',
     shipment: '출하',
     workOrders: 'W/O',
-    endLots: '마지막 생산 LOT',
+    endLots: '영향 제품 LOT',
     shipments: '출하된 LOT',
     shipmentsValue: (lots: number, customers: number): string =>
       `${num(lots)}개, 고객 ${num(customers)}곳`,
@@ -157,16 +162,23 @@ export const traceTree = {
     lots: '연관 LOT',
     none: '없음',
     moreShipments: (count: number): string => `외 ${num(count)}건`,
+    count: (count: number): string => num(count),
   },
   tree: {
     title: 'LOT 계보',
     caption: 'LOT 계보',
     expandAll: '전체 펼치기',
-    collapseAll: '모두 접기',
-    expandAllBlocked: '항목이 200개를 넘어 쓸 수 없습니다',
+    collapseAll: '전체 접기',
+    expandAllBlocked: '항목이 200개를 넘어 [전체 펼치기]를 쓸 수 없습니다.',
     bigNote:
       '항목이 많아 일부 단계만 펼쳤습니다. 같은 종류가 20개를 넘으면 묶음으로 접고, 펼치면 50개씩 보입니다.',
-    columns: { lineage: 'LOT 계보', item: '품목', qty: '수량', at: '일시', status: '상태' },
+    columns: {
+      lineage: '단계 · 번호', // ui-check-ignore: C-13 총괄 용어 결정(2026-11-24) — 계보 첫 칸 머리
+      item: '품목',
+      qty: '수량',
+      at: '일시',
+      status: '상태',
+    },
     stages: {
       MATERIAL_LOT: '자재 LOT',
       SPLIT_LOT: '분할 LOT',
@@ -185,12 +197,14 @@ export const traceTree = {
     },
     bundle: (kind: string, count: number): string => `${kind} ${num(count)}개`,
     more: (next: number, remaining: number): string =>
-      `더 보기 (${num(next)}개, ${num(remaining)}개 남음)`,
+      next < remaining
+        ? `${num(next)}개 더 보기 (남은 ${num(remaining)}개)`
+        : `나머지 ${num(remaining)}개 보기`,
     expand: (label: string): string => `${label} 펼치기`,
     collapse: (label: string): string => `${label} 접기`,
     duplicate: '중복 — 위와 같음',
     cycle: '순환 참조 — 전개 중단',
-    located: '고른 최종 LOT',
+    located: '선택한 최종 LOT',
     openLot: (lotNo: string): string => `${lotNo} 목록에 더해 열기`,
     consumed: (qty: string): string => `투입 ${qty}`,
     produced: (qty: string): string => `실적 ${qty}`,
@@ -199,7 +213,7 @@ export const traceTree = {
     splitNote: (goodsIssueNo: string, lineNo: number | null): string =>
       lineNo === null
         ? `부분 출고 분할 ${goodsIssueNo}`
-        : `부분 출고 분할 ${goodsIssueNo} 라인 ${String(lineNo)}`,
+        : `부분 출고 분할 ${goodsIssueNo} ${String(lineNo)}행`,
     separatedNote: '생산 LOT 분리',
     materialNote: (parts: string): string => parts,
     supplierLotNote: (no: string): string => `공급사 LOT ${no}`,
@@ -208,12 +222,12 @@ export const traceTree = {
   },
   end: {
     caption: (title: string): string => title,
-    locateHint: '줄을 고르면 계보에서 그 LOT 까지 펼칩니다',
+    locateHint: '줄을 선택하면 계보에서 그 LOT 까지 펼칩니다',
     openRow: (lotNo: string): string => `${lotNo} 계보에서 찾기`,
     forward: {
       lotNo: '제품 LOT, 품목',
       itemName: '품목명',
-      fate: '행방',
+      fate: '현황',
       destination: '고객, 출하번호, 창고 위치',
       shippedAt: '출하일',
       qty: '수량',
@@ -230,9 +244,9 @@ export const traceTree = {
       qty: '투입량',
     },
     fates: {
-      SHIPPED: '출하됨',
+      SHIPPED: '출하',
       IN_STOCK: '재고',
-      PARTIAL: '일부 출하',
+      PARTIAL: '출하·재고', // ui-check-ignore: C-13 엑셀 「최종 LOT」 시트 값과 같은 글(총괄 결정)
       CONSUMED_OUT: '소진',
       VOIDED: '폐기',
     },
@@ -251,6 +265,7 @@ export const traceTree = {
       `LOT 이 ${num(cap)}개를 넘어 내보낼 수 없습니다. 조건을 좁히세요.`,
     tooLargeTitle: 'LOT 이 너무 많습니다 — 조건을 좁히세요',
     tooLarge: '계보 줄이 100,000줄을 넘어 파일을 만들지 않았습니다.',
+    tooLargeScanTitle: 'LOT 이 너무 많습니다 — 대상 LOT 을 줄이세요',
     failedTitle: '파일을 만들지 못했습니다',
     empty: '내보낼 LOT 이 없습니다',
   },

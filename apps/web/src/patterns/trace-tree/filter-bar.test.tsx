@@ -23,9 +23,6 @@ const setup = (props: Partial<TraceFilterBarProps> = {}) => {
   renderWithProviders(
     <TraceFilterBar
       direction="FORWARD"
-      plants={[{ plantId: 1, plantCode: 'PL01', plantName: '공장 A' }]}
-      plantId={1}
-      onPlantChange={vi.fn()}
       scanning={false}
       onScan={onScan}
       condition={null}
@@ -96,10 +93,5 @@ describe('조건 줄(FR-004·FR-013·FR-024)', () => {
     const { onReset } = setup({ canReset: true });
     await userEvent.click(screen.getByRole('button', { name: t.backToRecent }));
     expect(onReset).toHaveBeenCalledTimes(1);
-  });
-
-  it('공장이 하나면 공장 칸을 두지 않는다', () => {
-    setup();
-    expect(screen.queryByLabelText(t.plant)).toBeNull();
   });
 });

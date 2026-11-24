@@ -12,6 +12,8 @@ import type { ReactNode } from 'react';
 
 import { useColumnWidths } from '../column-resize';
 import { PaneListHead, type PaneCollapse } from '../po-board';
+import { ApiRequestError } from '../request';
+import { LIST_PAGE_SIZE } from './queries';
 import { SelectableTable } from '../selectable-table';
 import { SCAN_CAP, type ListEntry, type ListMode } from './lot-list-state';
 import { TraceLotCell, lotStatusTone, shortDateTime } from './cells';
@@ -111,7 +113,7 @@ export const TraceLotList = ({
     {
       key: 'status',
       header: t.list.columns.status,
-      width: '64px',
+      width: '84px',
       render: (entry) => (
         <Chip variant="status" size="sm" status={lotStatusTone(entry.row.lot.statusCode)}>
           {statusName(entry.row.lot.statusCode)}
@@ -145,7 +147,11 @@ export const TraceLotList = ({
 
   return (
     <>
-      <PaneListHead title={title} collapse={collapse} className="trace-tree-list-head">
+      <PaneListHead title="" collapse={collapse} className="trace-tree-list-head">
+        {/* 조건 목록의 제목(상대 · 기간)은 길 수 있어 줄을 접어 다 보이고, 전체는 마우스를 올려도 보인다. */}
+        <h2 className="pane-title trace-tree-list-title" title={title}>
+          {title}
+        </h2>
         {status === 'ready' && (
           <Chip variant="status" size="sm" status="idle">
             {count}
@@ -190,7 +196,10 @@ export const TraceLotList = ({
                 disabled={condition.loadingMore}
                 onClick={condition.onMore}
               >
-                {t.list.more(condition.total - entries.length)}
+                {t.list.more(
+                  Math.min(LIST_PAGE_SIZE, condition.total - entries.length),
+                  condition.total - entries.length,
+                )}
               </Button>
             </div>
           )}
@@ -201,17 +210,30 @@ export const TraceLotList = ({
   );
 };
 
-/** 목록 실패 — 다시 시도. */
-export const TraceListFailure = ({ onRetry }: { onRetry: () => void }) => (
-  <AlertBanner
-    variant="error"
-    title={t.list.loadFailed}
-    action={
-      <Button size="sm" variant="outlined" onClick={onRetry}>
-        {messages.common.retry}
-      </Button>
-    }
-  >
-    {t.list.loadFailedDescription}
-  </AlertBanner>
-);
+/** 목록 실패 — 권한 없음(403)은 권한 안내(다시 시도 없음), 그 밖은 다시 시도. */
+export const TraceListFailure = ({
+  error,
+  direction,
+  onRetry,
+}: {
+  error: unknown;
+  direction: TraceDirection;
+  onRetry: () => void;
+}) =>
+  error instanceof ApiRequestError && error.httpStatus === 403 ? (
+    <AlertBanner variant="warning" title={t.detail.forbiddenTitle}>
+      {(direction === 'FORWARD' ? t.material : t.product).forbidden}
+    </AlertBanner>
+  ) : (
+    <AlertBanner
+      variant="error"
+      title={t.list.loadFailed}
+      action={
+        <Button size="sm" variant="outlined" onClick={onRetry}>
+          {messages.common.retry}
+        </Button>
+      }
+    >
+      {t.list.loadFailedDescription}
+    </AlertBanner>
+  );

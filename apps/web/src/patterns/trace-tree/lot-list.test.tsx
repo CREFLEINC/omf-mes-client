@@ -132,7 +132,7 @@ describe('LOT 목록(FR-025)', () => {
     expect(
       screen.getByText(t.material.conditionDate, { selector: 'th *, th' }),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: t.list.more(50) }));
+    await userEvent.click(screen.getByRole('button', { name: t.list.more(50, 50) }));
     expect(onMore).toHaveBeenCalledTimes(1);
   });
 

@@ -3,20 +3,14 @@ import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import { ReferenceField, type ReferenceSource } from '../reference-picker';
-import { Select } from '../select';
 import type { ListCondition } from './lot-list-state';
 import { validatePeriod, type Period } from './period';
-import type { TracePlant } from './queries';
 import type { TraceDirection } from './types';
 
 const t = messages.traceTree;
 
 export interface TraceFilterBarProps {
   direction: TraceDirection;
-  /** 계정 범위의 공장. 둘 이상일 때만 칸을 둔다(C-12 조직 단위 — 하나뿐이면 칸 없음). */
-  plants: readonly TracePlant[];
-  plantId: number | null;
-  onPlantChange: (plantId: number) => void;
   /** 번호 풀기를 부르는 중. */
   scanning: boolean;
   /** 번호 하나(앞뒤 공백 뺌)를 스캔한 것으로 다룬다. */
@@ -41,9 +35,6 @@ export interface TraceFilterBarProps {
  */
 export const TraceFilterBar = ({
   direction,
-  plants,
-  plantId,
-  onPlantChange,
   scanning,
   onScan,
   condition,
@@ -95,22 +86,6 @@ export const TraceFilterBar = ({
 
   return (
     <div className="filter-bar trace-tree-filter" role="search" aria-label={t.filterPane}>
-      {plants.length > 1 && (
-        <div className="field-cell filter-field-sm">
-          <span className="field-label">{t.plant}</span>
-          <Select
-            aria-label={t.plant}
-            value={plantId === null ? null : String(plantId)}
-            options={plants.map((plant) => ({
-              value: String(plant.plantId),
-              label: named(plant.plantName, plant.plantCode),
-            }))}
-            onChange={(value) => {
-              if (value !== null) onPlantChange(Number(value));
-            }}
-          />
-        </div>
-      )}
       <div className="field-cell trace-tree-filter-scan">
         <SearchInput
           ref={scanRef}

@@ -39746,9 +39746,9 @@ body:has(
 }
 
 .trace-tree-filter-scan {
-  flex: 1 1 180px;
-  max-width: 380px;
-  min-width: 180px;
+  flex: 1 1 260px;
+  max-width: 400px;
+  min-width: 260px;
 }
 
 /* 조건 줄을 1440 폭에서 한 줄에(시안 2판) — 상대 · 기간 칸은 「보통」보다 조금 좁게 정한다. */
@@ -39759,7 +39759,7 @@ body:has(
 }
 
 .trace-tree-filter-partner {
-  width: 170px;
+  width: 220px;
 }
 
 .trace-tree-filter-period {
@@ -39949,6 +39949,21 @@ body:has(
   overflow-x: auto;
 }
 
+/*
+ * 1440 에서도 다섯 칸이 상세 창 안에 다 서게 표 폭을 창에 맞춘다(시안 2판) — 계보 칸이 남는 폭을 쓰고, 깊은 줄의 번호는
+ * 말줄임(전체 번호는 마우스를 올리면 보인다).
+ */
+.trace-tree-table table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.trace-tree-table td,
+.trace-tree-table th {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* C-16 — 계보 표의 칸은 한 줄(수량 · 일시가 칸 폭 때문에 접히지 않게). */
 .trace-tree-table :is(th, td) {
   white-space: nowrap;
@@ -39960,7 +39975,7 @@ body:has(
   align-items: center;
   gap: var(--space-1);
   min-width: 0;
-  padding-left: calc(var(--trace-depth, 0) * 20px);
+  padding-left: calc(var(--trace-depth, 0) * 14px);
   white-space: nowrap;
 }
 
@@ -40064,7 +40079,15 @@ body:has(
 
 /* 최종 LOT 표 머리 — 묶은 칸 이름(「공급사, 공급사 LOT」 등)이 잘리지 않게 두 줄까지. */
 .inspection-queue-table.trace-tree-end-rows thead th,
-.inspection-queue-table.trace-tree-end-rows thead th * {
+.inspection-queue-table.trace-tree-end-rows thead th *,
+.inspection-queue-table.trace-tree-list-rows thead th,
+.inspection-queue-table.trace-tree-list-rows thead th * {
+  white-space: normal;
+}
+
+.trace-tree-list-head > .trace-tree-list-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
   white-space: normal;
 }
 
@@ -40074,9 +40097,7 @@ body:has(
 }
 
 .trace-tree-lot-sub {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
+  display: block;
   min-width: 0;
   overflow: hidden;
   font: var(--type-body-sm);
@@ -40085,8 +40106,15 @@ body:has(
   white-space: nowrap;
 }
 
+/* 들어온 번호 칩 — 품목이 읽히게 보조 줄의 반까지만 쓰고 넘치면 말줄임. */
 .trace-tree-source {
-  flex: 0 0 auto;
+  display: inline-block;
+  max-width: 50%;
+  margin-right: var(--space-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
   padding: 0 var(--space-1);
   border-radius: var(--radius-sm);
   background: var(--surface-container-high);
@@ -40102,3 +40130,14 @@ body:has(
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
+/* 공장 고르기(계정 범위 공장이 둘 이상일 때) — 화면 머리 단추 줄, 고른 공장 이름이 읽히는 폭. */
+.trace-tree-plant {
+  display: inline-block;
+  width: 240px;
+}
+
+.trace-tree-plant > * {
+  width: 100%;
+}
+

@@ -1,5 +1,5 @@
 import { AlertBanner, Button, Dialog, Icon } from '@crefle/web-ui';
-import { messages } from '@omf-mes/i18n';
+import { activeLocale, messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
 import { useApiClient } from '../api-context';
@@ -80,6 +80,8 @@ export const useTraceExportRun = (
     const body = {
       plantId,
       lotIds: plan.lotIds,
+      /* 파일 문구 · LOT 상태 이름을 화면 언어로(서버 `language`). */
+      language: activeLocale(),
       ...(Object.keys(plan.serialNos).length === 0 ? {} : { serialNos: plan.serialNos }),
     };
     const { data, response } = await runRequestWithResponse(() =>
@@ -101,6 +103,8 @@ export interface TraceExportButtonProps {
   total: number | null;
   run: (plan: ExportPlan) => Promise<void>;
   isTooLarge?: (error: unknown) => boolean;
+  /** 스캔 목록이면 422 안내가 「대상 LOT 을 줄이세요」, 조건·최근 목록이면 「조건을 좁히세요」. */
+  scanMode?: boolean;
 }
 
 type Failure = { kind: 'tooLarge' } | { kind: 'other'; message: string };
@@ -111,6 +115,7 @@ export const TraceExportButton = ({
   total,
   run,
   isTooLarge = isExportTooLarge,
+  scanMode = false,
 }: TraceExportButtonProps) => {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -190,7 +195,10 @@ export const TraceExportButton = ({
           }
         >
           {failure.kind === 'tooLarge' ? (
-            <AlertBanner variant="warning" title={t.exporting.tooLargeTitle}>
+            <AlertBanner
+              variant="warning"
+              title={scanMode ? t.exporting.tooLargeScanTitle : t.exporting.tooLargeTitle}
+            >
               {t.exporting.tooLarge}
             </AlertBanner>
           ) : (

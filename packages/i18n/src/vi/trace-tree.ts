@@ -9,15 +9,15 @@ export const traceTree: Translated<typeof ko.traceTree> = {
   material: {
     title: 'Truy vết sản xuất theo vật tư',
     scanLabel: 'Số LOT',
-    scanPlaceholder: 'Quét số LOT quản lý vật tư, LOT nhập hàng, LOT nhà cung cấp',
+    scanPlaceholder: 'LOT vật tư, LOT nhập hàng, LOT NCC',
     partner: 'Nhà cung cấp',
     partnerPicker: 'Chọn nhà cung cấp',
     partnerCode: 'Mã nhà cung cấp',
     partnerName: 'Tên nhà cung cấp',
     partnerRequired: 'Hãy chọn nhà cung cấp',
     period: 'Ngày nhập hàng',
-    recentDate: 'Đưa vào gần nhất',
-    conditionDate: 'Ngày nhập hàng',
+    recentDate: 'Đưa vào',
+    conditionDate: 'Ngày nhập',
     recentFoot: 'LOT chưa đưa vào sản xuất: hãy quét số hoặc tìm theo nhà cung cấp.',
     conditionFoot:
       'Tải 100 LOT mỗi lần theo ngày nhập hàng mới nhất. Cả LOT chưa đưa vào sản xuất cũng hiện ra.',
@@ -38,7 +38,7 @@ export const traceTree: Translated<typeof ko.traceTree> = {
   product: {
     title: 'Truy vết ngược theo sản phẩm',
     scanLabel: 'Số',
-    scanPlaceholder: 'Quét LOT sản phẩm, số xuất hàng, số sê-ri',
+    scanPlaceholder: 'LOT sản phẩm, số xuất hàng, sê-ri',
     partner: 'Khách hàng',
     partnerPicker: 'Chọn khách hàng',
     partnerCode: 'Mã khách hàng',
@@ -46,7 +46,7 @@ export const traceTree: Translated<typeof ko.traceTree> = {
     partnerRequired: 'Hãy chọn khách hàng',
     period: 'Ngày xuất hàng',
     recentDate: 'Ngày chuẩn',
-    conditionDate: 'Ngày xuất hàng',
+    conditionDate: 'Ngày xuất',
     recentFoot: 'LOT bán thành phẩm chưa nhập kho: hãy quét số.',
     conditionFoot:
       'Hiển thị 100 LOT sản phẩm đã phân bổ cho lần xuất đã hoàn tất, theo ngày xuất mới nhất.',
@@ -86,7 +86,10 @@ export const traceTree: Translated<typeof ko.traceTree> = {
     count: (count: number): string => num(count),
     scanCount: (count: number, cap: number): string => `${num(count)} / ${num(cap)}`,
     ofTotal: (loaded: number, total: number): string => `${num(loaded)} / ${num(total)}`,
-    more: (remaining: number): string => `Xem thêm (còn ${num(remaining)})`,
+    more: (next: number, remaining: number): string =>
+      next < remaining
+        ? `Xem thêm ${num(next)} (còn ${num(remaining)})`
+        : `Xem ${num(remaining)} còn lại`,
     scanFoot:
       'Xếp theo thứ tự quét. Quét lại LOT đã có thì không thêm mà chọn LOT đó. Nhấn [Về danh sách gần đây] để xóa.',
     columns: {
@@ -119,7 +122,9 @@ export const traceTree: Translated<typeof ko.traceTree> = {
   },
   scan: {
     added: (kind: string, label: string, count: number, selected: boolean): string =>
-      `${kind} ${label} — đã thêm ${num(count)} LOT${selected ? ' và chọn' : ''}`,
+      selected
+        ? `${kind} ${label} — đã thêm ${num(count)} LOT vào danh sách và chọn`
+        : `${kind} ${label} — đã thêm ${num(count)} LOT vào danh sách`,
     existing: (kind: string, label: string): string =>
       `${kind} ${label} — đã có trong danh sách nên đã chọn`,
     notFoundTitle: 'Không tìm thấy số này',
@@ -155,7 +160,7 @@ export const traceTree: Translated<typeof ko.traceTree> = {
     item: 'Mặt hàng',
     shipment: 'Xuất hàng',
     workOrders: 'W/O',
-    endLots: 'LOT sản xuất cuối',
+    endLots: 'LOT sản phẩm bị ảnh hưởng',
     shipments: 'LOT đã xuất',
     shipmentsValue: (lots: number, customers: number): string =>
       `${num(lots)} LOT, ${num(customers)} khách hàng`,
@@ -166,17 +171,18 @@ export const traceTree: Translated<typeof ko.traceTree> = {
     lots: 'LOT liên quan',
     none: 'Không có',
     moreShipments: (count: number): string => `và ${num(count)} lần khác`,
+    count: (count: number): string => num(count),
   },
   tree: {
     title: 'Phả hệ LOT',
     caption: 'Phả hệ LOT',
     expandAll: 'Mở rộng tất cả',
     collapseAll: 'Thu gọn tất cả',
-    expandAllBlocked: 'Không dùng được vì quá 200 mục',
+    expandAllBlocked: 'Quá 200 mục nên không dùng được [Mở rộng tất cả].',
     bigNote:
       'Vì nhiều mục nên chỉ mở một số cấp. Cùng loại quá 20 mục thì gộp thành nhóm, mở ra mỗi lần 50 mục.',
     columns: {
-      lineage: 'Phả hệ LOT',
+      lineage: 'Công đoạn, số',
       item: 'Mặt hàng',
       qty: 'Số lượng',
       at: 'Thời điểm',
@@ -200,7 +206,9 @@ export const traceTree: Translated<typeof ko.traceTree> = {
     },
     bundle: (kind: string, count: number): string => `${num(count)} ${kind}`,
     more: (next: number, remaining: number): string =>
-      `Xem thêm (${num(next)}, còn ${num(remaining)})`,
+      next < remaining
+        ? `Xem thêm ${num(next)} (còn ${num(remaining)})`
+        : `Xem ${num(remaining)} còn lại`,
     expand: (label: string): string => `Mở rộng ${label}`,
     collapse: (label: string): string => `Thu gọn ${label}`,
     duplicate: 'Trùng — giống phía trên',
@@ -228,7 +236,7 @@ export const traceTree: Translated<typeof ko.traceTree> = {
     forward: {
       lotNo: 'LOT sản phẩm, mặt hàng',
       itemName: 'Tên mặt hàng',
-      fate: 'Nơi đến',
+      fate: 'Hiện trạng',
       destination: 'Khách hàng, số xuất hàng, kho và vị trí',
       shippedAt: 'Ngày xuất',
       qty: 'Số lượng',
@@ -245,9 +253,9 @@ export const traceTree: Translated<typeof ko.traceTree> = {
       qty: 'Lượng đưa vào',
     },
     fates: {
-      SHIPPED: 'Đã xuất',
+      SHIPPED: 'Xuất hàng',
       IN_STOCK: 'Tồn kho',
-      PARTIAL: 'Xuất một phần',
+      PARTIAL: 'Xuất hàng, tồn kho',
       CONSUMED_OUT: 'Đã dùng hết',
       VOIDED: 'Hủy bỏ',
     },
@@ -266,6 +274,7 @@ export const traceTree: Translated<typeof ko.traceTree> = {
       `Quá ${num(cap)} LOT nên không xuất được. Hãy thu hẹp điều kiện.`,
     tooLargeTitle: 'Quá nhiều LOT — hãy thu hẹp điều kiện',
     tooLarge: 'Phả hệ vượt quá 100.000 dòng nên không tạo tệp.',
+    tooLargeScanTitle: 'Quá nhiều LOT — hãy giảm số LOT',
     failedTitle: 'Không tạo được tệp',
     empty: 'Không có LOT để xuất',
   },

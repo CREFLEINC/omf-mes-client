@@ -292,7 +292,7 @@ export const TraceTreeTable = ({
     {
       key: 'item',
       header: t.columns.item,
-      width: '20%',
+      width: '14%',
       render: (row) => {
         if (row.type !== 'node') return '';
         const item = itemOf(row.line);
@@ -306,7 +306,7 @@ export const TraceTreeTable = ({
     {
       key: 'qty',
       header: t.columns.qty,
-      width: '128px',
+      width: '100px',
       align: 'end',
       render: (row) =>
         row.type === 'node'
@@ -318,13 +318,13 @@ export const TraceTreeTable = ({
     {
       key: 'at',
       header: t.columns.at,
-      width: '120px',
+      width: '116px',
       render: (row) => (row.type === 'node' ? atOf(row.line) : ''),
     },
     {
       key: 'status',
       header: t.columns.status,
-      width: '104px',
+      width: '96px',
       render: (row) => (row.type === 'node' ? <StatusCell line={row.line} names={names} /> : ''),
     },
   ];

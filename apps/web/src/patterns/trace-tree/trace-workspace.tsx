@@ -1,13 +1,16 @@
 import { AlertBanner, Breadcrumb, Button, EmptyState, Icon, SkeletonText } from '@crefle/web-ui';
-import { messages } from '@omf-mes/i18n';
-import { useQueryClient } from '@tanstack/react-query';
+import { messages, named } from '@omf-mes/i18n';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../api-context';
 import { plantToday } from '../plant-time';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../po-board';
-import { ApiRequestError } from '../request';
+import { ApiRequestError, runRequest } from '../request';
+import { Select } from '../select';
+import { useSession } from '../session';
+import { toWebAccess } from '../web-access';
 import { ScreenHeader } from '../screen-header';
 import {
   PaneHeightSplitter,
@@ -17,7 +20,7 @@ import {
 import { TraceExportButton, useTraceExportRun } from './export';
 import { TraceFilterBar } from './filter-bar';
 import { buildLineage, firstView, locate, type LineageStage, type TreeView } from './graph-rows';
-import { traceLotHref } from './href';
+import { traceLotHref, tracePathOf } from './href';
 import {
   SCAN_CAP,
   applyScan,
@@ -94,10 +97,13 @@ const NoticeBanner = ({
   notice,
   direction,
   onOpenOther,
+  canOpenOther,
   onDismiss,
 }: {
   notice: ScanNotice;
   direction: TraceDirection;
+  /** 반대쪽 화면 권한이 있을 때만 [그 화면에서 열기]를 둔다. */
+  canOpenOther: boolean;
   onOpenOther: (lotId: number) => void;
   onDismiss: () => void;
 }) => {
@@ -137,14 +143,16 @@ const NoticeBanner = ({
           onDismiss={onDismiss}
           dismissLabel={t.scan.dismiss}
           action={
-            <Button
-              size="sm"
-              variant="outlined"
-              leadingIcon={<Icon name="open_in_new" size={18} />}
-              onClick={() => onOpenOther(notice.lotId)}
-            >
-              {words.otherOpen}
-            </Button>
+            canOpenOther ? (
+              <Button
+                size="sm"
+                variant="outlined"
+                leadingIcon={<Icon name="open_in_new" size={18} />}
+                onClick={() => onOpenOther(notice.lotId)}
+              >
+                {words.otherOpen}
+              </Button>
+            ) : undefined
           }
         >
           {words.otherBody}
@@ -231,12 +239,47 @@ export const TraceWorkspace = ({ direction, renderSummary, renderEnd }: TraceWor
   const plants = useTracePlants();
   const plantList = plants.data ?? [];
   const askedPlant = positive(searchParams.get('plant'));
-  const plantId =
-    plantList.find((plant) => plant.plantId === askedPlant)?.plantId ??
-    plantList[0]?.plantId ??
-    null;
-
   const lotId = positive(searchParams.get('lot'));
+  /*
+   * 공장이 주소에 없는데 LOT 이 있으면(옛 주소 · LOT 상세 창 [생산 이력 조회]) 그 LOT 의 공장으로 연다 — 여러 공장 계정이
+   * 첫 공장으로 열어 「없는 LOT」이 되지 않게(FR-017·018 · SC-005). 공장이 하나뿐이면 묻지 않는다.
+   */
+  const needsLotPlant = lotId !== null && askedPlant === null && plantList.length > 1;
+  const lotHead = useQuery({
+    queryKey: traceTreeKeys.lot(lotId ?? 0),
+    enabled: needsLotPlant,
+    retry: false,
+    queryFn: async () =>
+      (
+        await runRequest(() =>
+          client.GET('/trace/lots/{lotId}', { params: { path: { lotId: lotId ?? 0 } } }),
+        )
+      ).lot,
+  });
+  const scoped = (id: number | undefined) =>
+    plantList.find((plant) => plant.plantId === id)?.plantId;
+  const plantId =
+    scoped(askedPlant ?? undefined) ??
+    (needsLotPlant
+      ? lotHead.isPending
+        ? null
+        : (scoped(lotHead.data?.plantId) ?? plantList[0]?.plantId ?? null)
+      : (plantList[0]?.plantId ?? null));
+  /** 주소에 남길 공장 — 고른 공장, 여러 공장 계정이면 지금 공장. */
+  const plantParam =
+    askedPlant !== null
+      ? String(askedPlant)
+      : plantList.length > 1 && plantId !== null
+        ? String(plantId)
+        : null;
+  /* 알아낸 공장을 주소에 남긴다 — LOT 을 풀어도 목록이 첫 공장으로 바뀌지 않게. */
+  useEffect(() => {
+    if (!needsLotPlant || plantId === null) return;
+    const params = new URLSearchParams(searchParams);
+    params.set('plant', String(plantId));
+    setSearchParams(params, { replace: true });
+  }, [needsLotPlant, plantId, searchParams, setSearchParams]);
+
   const serialNo = searchParams.get('serial');
   const urlCondition = useMemo(() => readCondition(searchParams), [searchParams]);
   const [list, setList] = useState<LotListState>(() =>
@@ -277,7 +320,7 @@ export const TraceWorkspace = ({ direction, renderSummary, renderEnd }: TraceWor
     replace = false,
   ) => {
     const params = new URLSearchParams();
-    if (askedPlant !== null) params.set('plant', String(askedPlant));
+    if (plantParam !== null) params.set('plant', plantParam);
     const condition = next.condition === undefined ? urlCondition : next.condition;
     if (condition !== null) {
       params.set('partner', String(condition.partnerId));
@@ -331,6 +374,8 @@ export const TraceWorkspace = ({ direction, renderSummary, renderEnd }: TraceWor
    * 같은 LOT 을 두 번 풀지 않는다.
    */
   const resolving = useRef<string | null>(null);
+  /** 풀기 차례 — [최근 목록으로]가 늘려, 그 전에 시작한 풀기의 결과를 버린다. */
+  const resolveTurn = useRef(0);
   const urlQ = searchParams.get('q');
   const inList = lotId !== null && entries.some((entry) => entry.row.lot.lotId === lotId);
   useEffect(() => {
@@ -345,10 +390,15 @@ export const TraceWorkspace = ({ direction, renderSummary, renderEnd }: TraceWor
       void scan(urlQ.trim(), true);
       return;
     }
-    if (lotId === null || inList) return;
+    if (lotId === null) {
+      resolving.current = null;
+      return;
+    }
+    if (inList) return;
     const key = `lot:${String(lotId)}:${serialNo ?? ''}`;
     if (resolving.current === key) return;
     resolving.current = key;
+    const turn = resolveTurn.current;
     void (async () => {
       try {
         const q = serialNo ?? (await fetchLotNo(client, lotId));
@@ -357,9 +407,10 @@ export const TraceWorkspace = ({ direction, renderSummary, renderEnd }: TraceWor
         const only = matches
           .map((match) => ({ ...match, lots: match.lots.filter((row) => row.lot.lotId === lotId) }))
           .filter((match) => match.lots.length > 0);
+        if (turn !== resolveTurn.current) return;
         absorb(list, only, true);
       } catch {
-        setNotice({ kind: 'notFound' });
+        if (turn === resolveTurn.current) setNotice({ kind: 'notFound' });
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 주소의 LOT·번호와 공장이 바뀔 때만 푼다
@@ -378,16 +429,28 @@ export const TraceWorkspace = ({ direction, renderSummary, renderEnd }: TraceWor
   }, [lineage]);
 
   const run = useTraceExportRun(direction, plantId);
+  const { session } = useSession();
+  const canOpenOther = toWebAccess(session?.permissions).allows(
+    tracePathOf(direction === 'FORWARD' ? 'BACKWARD' : 'FORWARD'),
+  );
+  const shownPlant = plantList.find((plant) => plant.plantId === plantId);
+  const plantLabel =
+    shownPlant === undefined ? '' : named(shownPlant.plantName, shownPlant.plantCode);
   const split = usePaneSplit(`omf-mes:trace-tree:${direction}:split`, 0.38);
   const layout = useSplitOrientation(`omf-mes:trace-tree:${direction}:split-orientation`);
   const { splitRef, aboveRef } = useFitToViewport();
 
+  /**
+   * [최근 목록으로](FR-024) — 스캔 목록 · 조건 · 고른 LOT 을 지운다. 주소에 남은 LOT 을 아직 읽는 차례에 다시 풀어 목록에
+   * 넣지 않게, 그 LOT 은 「이미 푼 것」으로 두고 진행 중인 풀기는 버린다(주소에서 LOT 이 빠지면 표시를 푼다).
+   */
   const reset = () => {
     setList(initialListState);
     setNotice(null);
-    resolving.current = null;
+    resolveTurn.current += 1;
+    resolving.current = lotId === null ? null : `lot:${String(lotId)}:${serialNo ?? ''}`;
     const params = new URLSearchParams();
-    if (askedPlant !== null) params.set('plant', String(askedPlant));
+    if (plantParam !== null) params.set('plant', plantParam);
     setSearchParams(params);
     void queryClient.invalidateQueries({ queryKey: traceTreeKeys.recent(direction, plantId ?? 0) });
   };
@@ -487,8 +550,28 @@ export const TraceWorkspace = ({ direction, renderSummary, renderEnd }: TraceWor
         }
         actions={
           <>
+            {plantList.length > 1 && (
+              <span className="trace-tree-plant" title={plantLabel}>
+                <Select
+                  aria-label={t.plant}
+                  value={plantId === null ? null : String(plantId)}
+                  options={plantList.map((plant) => ({
+                    value: String(plant.plantId),
+                    label: named(plant.plantName, plant.plantCode),
+                  }))}
+                  onChange={(value) => {
+                    if (value === null) return;
+                    setList(initialListState);
+                    setNotice(null);
+                    resolveTurn.current += 1;
+                    setSearchParams(new URLSearchParams({ plant: String(value) }));
+                  }}
+                />
+              </span>
+            )}
             <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
             <TraceExportButton
+              scanMode={list.mode === 'SCAN'}
               direction={direction}
               entries={entries}
               total={list.mode === 'CONDITION' ? conditionTotal : null}
@@ -500,13 +583,6 @@ export const TraceWorkspace = ({ direction, renderSummary, renderEnd }: TraceWor
       <section ref={aboveRef} className="pane trace-tree-filter-pane" aria-label={t.filterPane}>
         <TraceFilterBar
           direction={direction}
-          plants={plantList}
-          plantId={plantId}
-          onPlantChange={(next) => {
-            setList(initialListState);
-            setNotice(null);
-            setSearchParams(new URLSearchParams({ plant: String(next) }));
-          }}
           scanning={scanning}
           onScan={(q) => void scan(q)}
           condition={list.mode === 'CONDITION' ? list.condition : null}
@@ -522,6 +598,7 @@ export const TraceWorkspace = ({ direction, renderSummary, renderEnd }: TraceWor
             notice={notice}
             direction={direction}
             onDismiss={() => setNotice(null)}
+            canOpenOther={canOpenOther}
             onOpenOther={(other) =>
               void navigate(traceLotHref(direction === 'FORWARD' ? 'BACKWARD' : 'FORWARD', other))
             }
@@ -544,6 +621,8 @@ export const TraceWorkspace = ({ direction, renderSummary, renderEnd }: TraceWor
             status={listStatus}
             error={
               <TraceListFailure
+                error={list.mode === 'CONDITION' ? conditionQuery.error : recent.error}
+                direction={direction}
                 onRetry={() =>
                   void (list.mode === 'CONDITION' ? conditionQuery.refetch() : recent.refetch())
                 }
