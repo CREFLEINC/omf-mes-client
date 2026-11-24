@@ -25,7 +25,9 @@ import { MaterialIssueRequestScreen } from '../screens/material-issue-request/sc
 import { MaterialIssueStatusScreen } from '../screens/material-issue-status/screen';
 import { ProductionWarehouseReplenishmentScreen } from '../screens/production-warehouse-replenishment/screen';
 import { WorkOrderProgressScreen } from '../screens/work-order-progress/screen';
-import { LotTraceScreen } from '../screens/lot-trace/screen';
+import { LotTraceLegacyRedirect } from '../screens/material-trace/legacy-redirect';
+import { MaterialTraceScreen } from '../screens/material-trace/screen';
+import { ProductTraceScreen } from '../screens/product-trace/screen';
 import { OverReceiptSplitRedirect } from '../screens/inbound-schedule/register-redirect';
 import { InboundExcessScreen } from '../screens/inbound-schedule/excess-screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
@@ -97,11 +99,6 @@ import { SupplierReturnScreen } from '../screens/supplier-return/screen';
 import { UsersRolesScreen } from '../screens/users-roles/screen';
 import { WarehouseLayoutScreen } from '../screens/warehouse-layout/screen';
 import { WarehouseLocationScreen } from '../screens/warehouse-location/screen';
-
-/** LOT 생산 이력 조회의 권한 안내는 사용자와 역할 메뉴를 사이드바의 이름 그대로 가리킨다. 그리는 순간의 언어로 만든다. */
-const LotTraceRoute = () => (
-  <LotTraceScreen permissionMenuPath={navMenuPath('/system/users-roles')} />
-);
 
 /** 작업지시 목록(W-02-01)의 권한 안내도 같은 메뉴를 가리킨다. */
 const ProductionOrderRoute = () => (
@@ -406,10 +403,13 @@ export const appRouter = createBrowserRouter([
        */
       { path: 'production/work-order-progress', element: <WorkOrderProgressScreen /> },
       /*
-       * W-02-09 — 진행을 본 뒤 그 LOT이 어디서 와서 어디로 갔는지 본다. 조회 자리라 진행현황 바로 뒤다.
-       * 자재 LOT, 제품 LOT, 입출고 현황은 화면 안 탭이다(`?tab=`).
+       * W-02-13 자재 기준 생산 추적 · W-02-14 제품 기준 역추적(피처 015) — 진행을 본 뒤 그 LOT 이 어디로 갔는지(정방향),
+       * 제품에 무엇이 들어왔는지(역방향) 본다. 조회 자리라 진행현황 바로 뒤다.
        */
-      { path: 'production/lot-trace', element: <LotTraceRoute /> },
+      { path: 'production/material-trace', element: <MaterialTraceScreen /> },
+      { path: 'production/product-trace', element: <ProductTraceScreen /> },
+      /* W-02-09 LOT 생산 이력 조회의 옛 주소 — LOT 종류에 맞는 새 화면으로 넘긴다(피처 015 FR-018). */
+      { path: 'production/lot-trace', element: <LotTraceLegacyRedirect /> },
       /*
        * W-03-01 — Lot Status 계열의 첫 화면이므로 품질관리 섹션을 연다.
        * 계약의 /quality/**와 주소 앞머리가 같지만 근거는 사이드바 업무 섹션이다.

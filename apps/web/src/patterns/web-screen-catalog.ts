@@ -232,8 +232,9 @@ export const WEB_SCREENS: readonly WebScreen[] = [
     code: 'W-02-08',
     name: 'W/O 진행현황 조회(생산 실적 집계 포함)',
   },
-  /* 서버 권한 키 W-02-09 「LOT 생산 이력 조회」. */
-  { path: '/production/lot-trace', code: 'W-02-09', name: 'LOT 생산 이력 조회' },
+  /* 피처 015 — W-02-09 「LOT 생산 이력 조회」를 둘로 나눴다(옛 주소는 넘기기만 한다). */
+  { path: '/production/material-trace', code: 'W-02-13', name: '자재 기준 생산 추적' },
+  { path: '/production/product-trace', code: 'W-02-14', name: '제품 기준 역추적' },
 
   /* ── 품질관리 ─────────────────────────────────────────────────────────── */
   {
