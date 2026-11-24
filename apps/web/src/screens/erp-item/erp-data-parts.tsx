@@ -181,10 +181,11 @@ export const ErpDetailFields = ({
 }) => (
   <div className="erp-data-detail">
     {title !== undefined && <h2 className="pane-title">{title}</h2>}
-    <dl className="erp-data-detail-fields">
+    {/* 검사 조회·판정 요약 상자와 같은 모양 — 이름 위 · 값 아래 쌍이 가로로 흐른다(사용자 지시 2026-11-24). */}
+    <dl className="parts-iqc-facts iqc-inbound-facts erp-data-detail-fields">
       {fields.map((field) => (
-        <div key={field.key}>
-          <dt>{field.label}</dt>
+        <div className="parts-iqc-fact" key={field.key}>
+          <dt className="field-label">{field.label}</dt>
           <dd>{field.value}</dd>
         </div>
       ))}

@@ -46,73 +46,75 @@ export const CreatedFilter = ({ applied, today, onApply }: CreatedFilterProps) =
   const reason = isBlank ? null : validatePeriod(draft, t.created.reasons);
 
   return (
-    <form
-      className="filter-bar erp-send-created"
-      aria-label={t.created.label}
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!isBlank && reason === null) onApply(draft);
-      }}
-    >
-      <div className="field-cell">
-        <label className="field-label" htmlFor={`${fieldId}-range`}>
-          {t.created.label}
-        </label>
-        <Select
-          id={`${fieldId}-range`}
-          value={choice}
-          options={[
-            { value: 'all', label: t.created.all },
-            { value: 'week', label: t.created.week },
-            { value: 'month', label: t.created.month },
-            { value: 'custom', label: t.created.custom },
-          ]}
-          onChange={(value) => {
-            const next = value as CreatedChoice;
-            setChoice(next);
-            if (next === 'all') onApply(null);
-            else if (next !== 'custom') onApply(presetPeriod(next, today));
+    /* 등록일 조건은 조회 상자로 감싼다(사용자 지시 2026-11-24 「박스 입혀」). */
+    <div className="pane po-board-filter erp-send-created-box">
+      <form
+        className="filter-bar erp-send-created"
+        aria-label={t.created.label}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!isBlank && reason === null) onApply(draft);
+        }}
+      >
+        <div className="field-cell">
+          <label className="field-label" htmlFor={`${fieldId}-range`}>
+            {t.created.label}
+          </label>
+          <Select
+            id={`${fieldId}-range`}
+            value={choice}
+            options={[
+              { value: 'all', label: t.created.all },
+              { value: 'week', label: t.created.week },
+              { value: 'month', label: t.created.month },
+              { value: 'custom', label: t.created.custom },
+            ]}
+            onChange={(value) => {
+              const next = value as CreatedChoice;
+              setChoice(next);
+              if (next === 'all') onApply(null);
+              else if (next !== 'custom') onApply(presetPeriod(next, today));
+            }}
+          />
+        </div>
+        {/* 시작일 · 종료일 · 조회는 늘 보인다 — 고른 기간이 날짜 칸에 채워지고, 날짜를 고치면 「직접 지정」이 된다. */}
+        <TextField
+          id={`${fieldId}-from`}
+          type="date"
+          label={t.created.from}
+          value={draft.from}
+          onChange={(event) => {
+            setChoice('custom');
+            setDraft((current) => ({ ...current, from: event.target.value }));
           }}
         />
-      </div>
-      {choice === 'custom' && (
-        <>
-          <TextField
-            id={`${fieldId}-from`}
-            type="date"
-            label={t.created.from}
-            value={draft.from}
-            onChange={(event) => {
-              setDraft((current) => ({ ...current, from: event.target.value }));
-            }}
-          />
-          <TextField
-            id={`${fieldId}-to`}
-            type="date"
-            label={t.created.to}
-            value={draft.to}
-            onChange={(event) => {
-              setDraft((current) => ({ ...current, to: event.target.value }));
-            }}
-          />
-          <div className="field-cell field-cell-unlabeled">
-            <div className="filter-actions">
-              <Button
-                type="submit"
-                disabled={isBlank || reason !== null}
-                aria-describedby={reason === null ? undefined : reasonId}
-              >
-                {messages.common.search}
-              </Button>
-            </div>
-            {reason !== null && (
-              <span id={reasonId} className="field-note">
-                {reason}
-              </span>
-            )}
+        <TextField
+          id={`${fieldId}-to`}
+          type="date"
+          label={t.created.to}
+          value={draft.to}
+          onChange={(event) => {
+            setChoice('custom');
+            setDraft((current) => ({ ...current, to: event.target.value }));
+          }}
+        />
+        <div className="field-cell field-cell-unlabeled">
+          <div className="filter-actions">
+            <Button
+              type="submit"
+              disabled={isBlank || reason !== null}
+              aria-describedby={reason === null ? undefined : reasonId}
+            >
+              {messages.common.search}
+            </Button>
           </div>
-        </>
-      )}
-    </form>
+          {reason !== null && (
+            <span id={reasonId} className="field-note">
+              {reason}
+            </span>
+          )}
+        </div>
+      </form>
+    </div>
   );
 };

@@ -285,9 +285,10 @@ describe('ErpOutboundScreen — 송신 예정 목록', () => {
     const { requests } = renderScreen([settingsRoute, messagesRoute()], '?item=GOODS_RECEIPT');
 
     await pendingPane().findByText('SAMPLE-GR-0001');
-    /* 등록일은 선택칸 하나 — 처음은 「전체」, 날짜 칸은 「직접 지정」일 때만(사용자 지시 2026-11-24). */
+    /* 등록일 선택칸 · 시작일 · 종료일 · 조회는 늘 보인다 — 처음은 「전체」, 날짜 칸은 비어 있다(사용자 지시 2026-11-24). */
     expect(pendingPane().getByRole('combobox', { name: '등록일' })).toHaveTextContent('전체');
-    expect(pendingPane().queryByLabelText('시작일')).toBeNull();
+    expect(pendingPane().getByLabelText('시작일')).toHaveValue('');
+    expect(pendingPane().getByLabelText('종료일')).toHaveValue('');
     const last = pendingListRequests(requests).at(-1);
     expect(last?.searchParams.get('createdFrom')).toMatch(/^2000-01-01T00:00:00[+-]\d{2}:\d{2}$/);
     expect(last?.searchParams.get('createdTo')).toMatch(/^\d{4}-\d{2}-\d{2}T23:59:59/);

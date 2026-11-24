@@ -113,6 +113,7 @@ const references: StubRoute[] = [
             itemName: '합성 모품목',
             itemTypeCode: 'FINISHED',
             baseUomId: 8101,
+            erpSpec: 'SYN-SPEC',
             isActive: true,
           },
         ],
@@ -158,6 +159,9 @@ const subComponentsRoute = componentsOf(502, [
   component({ bomComponentId: 9101, bomId: 502, componentItemId: 7201, requiredQty: 3 }),
 ]);
 
+/** 머리글 글자 — 열 순서 손잡이 아이콘 이름은 뺀다. */
+const headerText = (header: HTMLElement) => header.textContent?.replace(/drag_indicator$/, '');
+
 const tree = () => within(screen.getByRole('region', { name: t.panes.components }));
 
 const renderScreen = (routes: StubRoute[], search = '') => {
@@ -193,6 +197,26 @@ describe('ErpBomScreen', () => {
     expect(urls().some((url) => url.pathname === BOMS_PATH)).toBe(false);
     // 읽기 전용 안내 문구는 두지 않는다.
     expect(screen.queryByText(/고칠 수 없습니다/)).not.toBeInTheDocument();
+  });
+
+  it('목록은 상세의 품목 칸 중 목록 응답에 있는 값을 열로 낸다 — 적용 기간은 없다(사용자 지시 2026-11-24)', async () => {
+    renderScreen([]);
+
+    const list = screen.getByRole('region', { name: t.panes.parents });
+    await within(list).findByText('SYN-PARENT');
+    expect(within(list).getAllByRole('columnheader').map(headerText)).toEqual([
+      t.parent.itemCode,
+      t.parent.itemName,
+      t.parent.itemType,
+      t.parent.spec,
+      t.parent.baseUom,
+    ]);
+    expect(within(list).queryByRole('columnheader', { name: t.parent.effective })).toBeNull();
+    const cells = Array.from(
+      within(list).getAllByRole('row')[1]?.querySelectorAll('td') ?? [],
+      (cell) => cell.textContent,
+    );
+    expect(cells).toEqual(['SYN-PARENT', '합성 모품목', '제품', 'SYN-SPEC', 'SYN-EA']);
   });
 
   it('품목코드 · 품목명 검색어를 목록 조건으로 싣는다', async () => {
@@ -274,7 +298,7 @@ describe('ErpBomScreen', () => {
     expect(within(facts).getByText('SYN-BOM')).toBeInTheDocument();
     expect(within(facts).getByText('1 SYN-EA')).toBeInTheDocument();
     expect(await within(facts).findByText('SYN-PARENT')).toHaveClass('bom-tree-code');
-    // 상세 칸은 품목명 · 품목 코드 순(사용자 지시 2026-11-24) — 나머지 순서는 그대로.
+    // 상세 칸은 품목명 · 품목코드 순(사용자 지시 2026-11-24) — 나머지 순서는 그대로.
     expect(
       Array.from(facts.querySelectorAll('dt'), (term) => term.textContent).slice(0, 3),
     ).toEqual([t.parent.itemName, t.parent.itemCode, t.parent.itemType]);
@@ -283,7 +307,13 @@ describe('ErpBomScreen', () => {
     expect(tree().getByText('1,000 SYN-EA')).toBeInTheDocument();
     expect(tree().getByText('5%')).toBeInTheDocument();
 
+    // 품목코드 · 품목명은 두 칸 — 하이라키 칸에 코드, 옆 칸에 이름(사용자 지시 2026-11-24).
+    expect(tree().getAllByRole('columnheader').slice(0, 2).map(headerText)).toEqual([
+      t.parent.itemCode,
+      t.parent.itemName,
+    ]);
     const rows = tree().getAllByRole('row').slice(1);
+    expect(rows[1]?.querySelectorAll('td')[1]?.textContent).toBe('합성 자품목 1');
     // 뿌리는 모품목, 그 아래 순번 1 이 먼저 선다(서버 순서와 무관).
     expect(rows[0]).toHaveTextContent('SYN-PARENT');
     expect(rows[1]).toHaveTextContent('SYN-CHILD-1');

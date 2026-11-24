@@ -42,8 +42,7 @@ import type { Bom } from './types';
 const t = messages.erpBom;
 
 /** 필수 여부 — 「필수 · 선택」(「예 · 아니오」가 어색하다 — 사용자 지시 2026-11-24). */
-const mandatoryLabel = (value: boolean): string =>
-  value ? t.values.mandatory : t.values.optional;
+const mandatoryLabel = (value: boolean): string => (value ? t.values.mandatory : t.values.optional);
 
 const formatQty = (qty: number, uom: string): string => `${qty.toLocaleString()} ${uom}`;
 
@@ -213,12 +212,13 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
 
   const columns: Column<BomTreeRow>[] = [
     /*
-     * 폭을 주지 않는 유일한 열 — 들여 쓴 품목 이름이 남는 폭을 다 쓴다. 칸 안은 왼쪽 정렬(app.css `.bom-tree-table`)이라
-     * 단계마다 들여 쓴 자리 · 연결선이 줄마다 같은 세로선에 선다.
+     * 폭을 주지 않는 유일한 열 — 들여 쓴 품목코드가 남는 폭을 다 쓴다. 칸 안은 왼쪽 정렬(app.css `.bom-tree-table`)이라
+     * 단계마다 들여 쓴 자리 · 연결선이 줄마다 같은 세로선에 선다. 품목명은 옆 칸에 따로 둔다(사용자 지시 2026-11-24) —
+     * 이 칸은 펼침 단추 이름에 쓰려고 이름도 넘기고, 보이는 이름은 app.css `.bom-tree-split` 이 감춘다.
      */
     {
       key: 'item',
-      header: t.tree.item,
+      header: t.parent.itemCode,
       render: (row) => {
         const item = itemOf(row.itemId);
         return (
@@ -231,6 +231,16 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
             onRetry={retryFailed}
           />
         );
+      },
+    },
+    {
+      key: 'itemName',
+      header: t.parent.itemName,
+      width: '180px',
+      render: (row) => {
+        const item = itemOf(row.itemId);
+        /* 받기 전 · 못 받음은 코드 칸이 그 사정을 낸다 — 여기는 비운다. */
+        return item.code === null ? t.values.empty : <OneLine text={item.name} />;
       },
     },
     {
@@ -264,7 +274,7 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
   return (
     <ErpListTable
       label={t.panes.components}
-      className="bom-tree-table"
+      className="bom-tree-table bom-tree-split"
       storageKey="omf-mes:erp-bom:columns:tree"
       columns={columns}
       rows={rows}
@@ -289,7 +299,7 @@ const ParentFacts = ({ item, bom }: ParentFactsProps) => {
   const uomNameOf = useUomNames();
   const detail = item.item;
   const itemFacts = [
-    /* 품목명 · 품목 코드 순(사용자 지시 2026-11-24). */
+    /* 품목명 · 품목코드 순(사용자 지시 2026-11-24). */
     { key: 'name', label: t.parent.itemName, value: detail?.itemName ?? t.values.empty },
     {
       key: 'code',
@@ -393,6 +403,22 @@ export const ErpBomScreen = () => {
       width: '96px',
       render: (row) => typeNameOf(row.itemTypeCode),
     },
+    /*
+     * 상세의 품목 칸 중 목록 응답(`/mdm/items`)에 있는 값만 — 규격 · 기본 단위(사용자 지시 2026-11-24). BOM 코드 · 개정 번호 ·
+     * 상태 · 기준 수량은 BOM 헤더 조회(줄마다 따로 부름)에만 있어 목록에 두지 않는다.
+     */
+    {
+      key: 'erpSpec',
+      header: t.parent.spec,
+      width: '160px',
+      render: (row) => <OneLine text={orEmptyText(row.erpSpec)} />,
+    },
+    {
+      key: 'baseUomId',
+      header: t.parent.baseUom,
+      width: '96px',
+      render: (row) => uomNameOf(row.baseUomId),
+    },
   ];
 
   const listContent = (): ReactNode => {
@@ -413,6 +439,7 @@ export const ErpBomScreen = () => {
           label={t.panes.parents}
           storageKey="omf-mes:erp-bom:columns:parents"
           columns={parentColumns}
+          scrollX
           rows={parentRows}
           getRowId={(row) => String(row.itemId)}
           pick={{

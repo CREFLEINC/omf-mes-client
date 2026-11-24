@@ -38,7 +38,6 @@ export const erpBom: Translated<typeof ko.erpBom> = {
   tree: {
     depthLimit: 'Không mở thêm các cấp sâu hơn',
     retry: (label: string): string => `Tải lại cấu trúc con của ${label}`,
-    item: 'Mặt hàng',
     expand: (label: string): string => `Mở ${label}`,
     collapse: (label: string): string => `Thu gọn ${label}`,
     loading: 'Đang tải',

@@ -8,7 +8,7 @@ export const erpBom = {
     hasBom: 'BOM이 있는 품목',
     itemType: '품목 유형 선택',
     q: '품목 검색',
-    qPlaceholder: '품목 코드 또는 품목명을 입력하세요',
+    qPlaceholder: '품목코드 또는 품목명을 입력하세요',
   },
   panes: {
     parents: '상위 품목 목록',
@@ -18,7 +18,7 @@ export const erpBom = {
   /** 모품목 상세 — 하이라키 위 한 줄(품목 칸 · 그 BOM 칸). */
   parent: {
     label: '상위 품목 상세',
-    itemCode: '품목 코드',
+    itemCode: '품목코드',
     itemName: '품목명',
     itemType: '품목 유형',
     spec: '규격',
@@ -40,7 +40,6 @@ export const erpBom = {
     /** 깊이 한도(20단계)에 닿아 더 펴지 않는다. */
     depthLimit: '더 깊은 단계는 펴지 않습니다',
     retry: (label: string): string => `${label} 하위 구성 다시 불러오기`,
-    item: '품목',
     expand: (label: string): string => `${label} 펼치기`,
     collapse: (label: string): string => `${label} 접기`,
     loading: '불러오는 중',

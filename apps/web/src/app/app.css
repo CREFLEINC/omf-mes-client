@@ -5883,7 +5883,7 @@ dialog.routing-history-dialog {
 }
 
 .lot-status-transition-table table {
-  min-width: 48rem;
+  min-width: 42rem;
 }
 
 /* 해제할 보류 표는 카드 폭에 맞춘다 — 공용 최소 폭(48rem)을 풀어 네 열이 다 보이게(점검 2026-11-02). */
@@ -9729,7 +9729,7 @@ dialog.routing-history-dialog {
 }
 
 .wide-table.downtime-summary-table table {
-  min-width: 48rem;
+  min-width: 42rem;
 }
 
 .downtime-summary-pane > .form-actions {
@@ -31805,7 +31805,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded='true'])
 
 /* 좁은 폭(1280)에서도 표는 짓누르지 않고 표 상자 안에서 가로로 민다(screens/W-01-01.md 「좁은 폭」). */
 .wide-table.iqc-inbound-table table {
-  min-width: 48rem;
+  min-width: 42rem;
 }
 
 .iqc-inbound-table td {
@@ -32928,7 +32928,7 @@ ul.iqc-inbound-superseded {
   text-align: right;
 }
 .erp-wo-multi-orders table {
-  min-width: 48rem;
+  min-width: 42rem;
 }
 .erp-wo-multi-orders td {
   overflow-wrap: anywhere;
@@ -34750,7 +34750,7 @@ body:has(
   overflow-wrap: anywhere;
 }
 .erp-wo-terminal-table table {
-  min-width: 48rem;
+  min-width: 42rem;
   table-layout: auto;
 }
 .erp-wo-terminal-table td,
@@ -39144,7 +39144,11 @@ body:has(
   white-space: nowrap;
 }
 
-/* 상세 — 고른 줄의 모든 칸을 「이름 : 값」 두 열로. 값은 고칠 수 없다. */
+/*
+ * 상세 — 고른 줄의 모든 칸을 「이름 : 값」 읽기 전용으로. 값은 고칠 수 없다.
+ * 모양은 검사 조회·판정 요약 상자(`.parts-iqc-facts.iqc-inbound-facts`)와 같다 — 둥근 테두리 상자 안에 이름(흐린 작은 글) 위 ·
+ * 값 아래 쌍이 가로로 흐르고 넘치면 다음 줄로, 쌍 사이 세로선(사용자 지시 2026-11-24).
+ */
 .erp-data-detail {
   display: flex;
   flex-direction: column;
@@ -39156,35 +39160,18 @@ body:has(
   margin: 0;
 }
 
-.erp-data-detail-fields {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  margin: 0;
-  border-top: 1px solid var(--outline-variant);
+/*
+ * 한 줄 쌍 수 — 쌍마다 최소 폭(12rem · 상자 폭의 21%)을 두어 넓은 상세(상하 배치 · 목록 접기)는 4쌍쯤, 좁은 상세(좌우 배치)는
+ * 2쌍쯤으로 준다. 긴 값(설명 등)은 말줄임 대신 칸 안에서 줄바꿈.
+ */
+.erp-data-detail-fields > .parts-iqc-fact,
+.erp-data-detail-fields > .parts-iqc-fact:first-child {
+  min-width: min(100%, max(12rem, 21%));
 }
 
-.erp-data-detail-fields > div {
-  display: contents;
-}
-
-.erp-data-detail-fields dt,
-.erp-data-detail-fields dd {
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--outline-variant);
+.erp-data-detail-fields > .parts-iqc-fact > dd {
+  white-space: normal;
   overflow-wrap: anywhere;
-}
-
-.erp-data-detail-fields dt {
-  min-width: 8rem;
-  background: var(--surface-container-low);
-  color: var(--on-surface-variant);
-  font: var(--type-body-sm);
-}
-
-.erp-data-detail-fields dd {
-  color: var(--on-surface);
-  font: var(--type-body-sm);
 }
 
 /* 상세 안의 하위 표(라인 · 코드 값 등) — 제목 줄 + 열 조절 표 + 쪽 넘김. */
@@ -39636,8 +39623,8 @@ body:has(
   margin: var(--space-2) 0 0;
 }
 
-/* 생성일 조건 — 둘레 상자 없이 소제목 아래 한 줄. 표와의 간격은 상자 줄 간격이 맡는다(사용자 지시 2026-11-24). */
-.erp-outbound-detail > .erp-send-created {
+/* 등록일 조건 — 조회 상자로 감싼 한 줄(사용자 지시 2026-11-24 「박스 입혀」). 표와의 간격은 상자 줄 간격이 맡는다. */
+.erp-send-created-box > .erp-send-created {
   margin-bottom: 0;
 }
 
@@ -39907,11 +39894,6 @@ body:has(
 /* 「조건 더보기」로 펼친 둘째 줄 — 첫 줄과 사이를 띄운다. */
 .erp-po-more > .filter-bar {
   margin-top: 12px;
-
-/* ERP 연동 현황·이력 — 품목 · 거래처 탭은 상세 칸 없이 목록이 폭 전체를 쓴다(ERP 수신 탭과 같은 한 칸 · 사용자 지시 2026-11-24). */
-.list-detail-split.erp-data-list-only-split {
-  grid-template-columns: minmax(0, 1fr);
-}
 }
 
 /*
@@ -39924,4 +39906,50 @@ body:has(
 
 .erp-data-sub > .erp-data-list.bom-tree-table {
   min-width: 36rem;
+}
+
+/* ERP 연동 현황·이력 — 품목 · 거래처 탭은 상세 칸 없이 목록이 폭 전체를 쓴다(ERP 수신 탭과 같은 한 칸 · 사용자 지시 2026-11-24). */
+.list-detail-split.erp-data-list-only-split {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/*
+ * ERP BOM 구성품 표 — 품목코드 · 품목명을 두 칸으로(사용자 지시 2026-11-24). 하이라키 칸은 펼침 단추 이름에 쓰려고 이름도
+ * 받지만, 보이는 이름은 옆 「품목명」 칸이 내므로 코드 뒤 「· 이름」을 감춘다(받기 전 · 못 받음 문구는 코드가 없어 그대로 보인다).
+ * 칸이 하나 늘어 표 최소 폭도 그만큼 넓힌다.
+ */
+.erp-data-list.bom-tree-split .bom-tree-cell > .bom-tree-code + .po-board-one-line {
+  display: none;
+}
+
+.erp-data-sub > .erp-data-list.bom-tree-table.bom-tree-split {
+  min-width: 42rem;
+}
+
+/* ERP 수주 · ERP W/O — 조회 칸 폭(구매발주 탭과 같다 · 사용자 지시 2026-11-24). 선택칸(고객사 · 품목 · 상태)은 같은 폭,
+   일자는 흐린 문구 「수주일을 선택하세요」 · 「계획 시작일을 선택하세요」 길이만큼만(고르면 기간 길이를 따른다). */
+.erp-so-select-field,
+.erp-wo-select-field {
+  flex: 0 0 auto;
+  width: 176px;
+}
+
+.erp-so-select-field > :not(label),
+.erp-so-select-field > * > button,
+.erp-wo-select-field > :not(label),
+.erp-wo-select-field > * > button {
+  width: 100%;
+  min-width: 0;
+}
+
+.erp-so-period-field,
+.erp-wo-period-field {
+  flex: 0 0 auto;
+  width: max-content;
+}
+
+/* 「조건 더보기」로 펼친 둘째 줄 — 첫 줄과 사이를 띄운다. */
+.erp-so-more > .filter-bar,
+.erp-wo-more > .filter-bar {
+  margin-top: 12px;
 }
