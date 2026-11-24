@@ -2,7 +2,7 @@ import { Button, Chip, Icon, Table, type Column } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, type CSSProperties } from 'react';
 
-import { lotStatusTone, shortDateTime } from './cells';
+import { iqcTone, lotStatusTone, shortDateTime } from './cells';
 import {
   closeBundle,
   collapseAll,
@@ -149,7 +149,7 @@ const StatusCell = ({ line, names }: { line: LineageLine; names: TraceNames }) =
   const judgment = node.inboundLot?.iqcJudgmentCode ?? null;
   if (judgment !== null) {
     return (
-      <Chip variant="status" size="sm" status={judgment === 'PASS' ? 'success' : 'warning'}>
+      <Chip variant="status" size="sm" status={iqcTone(judgment)}>
         {t.iqc(names.iqc(judgment))}
       </Chip>
     );

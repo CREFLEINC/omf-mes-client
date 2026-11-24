@@ -57,6 +57,10 @@ export const lotStatusTone = (statusCode: string): 'success' | 'warning' | 'erro
   return 'idle';
 };
 
+/** IQC 종합 판정 칩 색 — 코드 사전 `INSPECTION_RESULT_OVERALL_JUDGMENT`(합격 ACCEPTED · 불합격 REJECTED · 보류 HELD). */
+export const iqcTone = (code: string): 'success' | 'error' | 'warning' =>
+  code === 'ACCEPTED' ? 'success' : code === 'REJECTED' ? 'error' : 'warning';
+
 /**
  * 짧은 일시(공장 시각) — 올해면 해를 빼고 「MM-DD HH:mm」, 다른 해면 「YYYY-MM-DD」. `dateOnly` 면 날짜만.
  * 날짜만 있는 값(`YYYY-MM-DD`)은 그대로 해만 줄인다. 읽을 수 없는 값은 받은 글자 그대로.
