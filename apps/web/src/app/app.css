@@ -17232,7 +17232,7 @@ dialog.layout-editor-dialog {
 }
 
 /* 단말 등록 창(사용자 시안 2026-11-20 · #333) — 가운데 정렬 안내 · QR · 복사, 구분선 아래 발급 · 만료 일시. */
-.terminal-map-token-dialog [class*='_body_'] {
+.terminal-map-token-panel {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -17246,7 +17246,7 @@ dialog.layout-editor-dialog {
   text-align: center;
 }
 
-.terminal-map-token-dialog .token-figure {
+.terminal-map-token-panel .token-figure {
   padding: var(--space-2) 0;
 }
 
@@ -17267,7 +17267,7 @@ dialog.layout-editor-dialog {
   border-top: 1px solid var(--outline-variant);
 }
 
-.terminal-map-token-dialog .terminal-map-notice {
+.terminal-map-token-panel .terminal-map-notice {
   align-self: stretch;
 }
 
@@ -17402,13 +17402,6 @@ dialog.layout-editor-dialog {
   max-width: none;
 }
 
-/* 등록·수정 폼의 [취소][저장] 줄 — 단말 정보 카드 바닥글과 같은 구분선·간격(--space-4). */
-.form-actions.terminal-map-form-actions {
-  margin-top: var(--space-4);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--outline-variant);
-}
-
 /* 단말 정보 — IQC 입하 정보와 같은 모양(테두리 상자 · 칸 사이 세로선 · 사용자 지시 2026-11-20 · #333). 모양은 `.parts-iqc-facts` 를 그대로 쓴다. */
 .terminal-map-info {
   margin: 0;
@@ -17441,27 +17434,285 @@ dialog.layout-editor-dialog {
   width: 14rem;
 }
 
-/* 단말 추가 · 수정 팝업(사용자 시안 2026-11-20 · #333) — 제목 아래 구분선, 두 열. */
-/* 창고 칸 안내 라벨이 한 줄로 들어가는 폭 — 기본 큰 팝업(720px)에서는 두 줄로 접혀 옆 칸과 입력칸 윗선이 어긋난다. */
+/*
+ * 단말 추가 · 수정 팝업(시안 A · 사용자 결정 2026-11-24) — 회색 머리 띠 · 흰 본문 · 연회색 바닥 띠.
+ * 셋이 바탕색으로 갈린다. 빨강은 [등록] · [저장]과 고른 유형 카드에만 쓴다.
+ */
 dialog.terminal-map-form-dialog {
   width: fit-content;
   max-width: min(60rem, calc(100vw - 2rem));
 }
 
+.terminal-map-form-dialog [class*='_panel_'] {
+  background: var(--surface);
+}
+
 .terminal-map-form-dialog [class*='_header_'] {
+  align-items: center;
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface-container-high);
   border-bottom: 1px solid var(--outline-variant);
-  margin-bottom: var(--space-4);
 }
 
+.terminal-map-form-dialog [class*='_header_'] > [class*='_title_'] {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 700;
+}
+
+/* 제목 앞 단말 아이콘 — 글자로 넣지 않고 그림으로(낭독기는 제목만 읽는다). */
+.terminal-map-form-dialog [class*='_header_'] > [class*='_title_']::before {
+  content: 'tablet_android';
+  font-family: 'Material Symbols Rounded';
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--on-surface-variant);
+  speak: never;
+}
+
+.terminal-map-form-dialog [class*='_body_'] {
+  padding-top: var(--space-5);
+  color: var(--on-surface);
+}
+
+.terminal-map-form-dialog [class*='_footer_'] {
+  align-items: center;
+  background: var(--surface-container-low);
+}
+
+/* 흰 본문 위 입력칸도 흰 바탕 — 회색 판 시절의 옅은 바탕을 걷는다. */
+.terminal-map-form-dialog .terminal-map-form :is(input, button[role='combobox']),
+.terminal-map-form-dialog .terminal-map-form [class*='_field_']:has(> input) {
+  background: var(--surface);
+}
+
+/* 두 열 — 유형 카드 · 창고 안내는 한 줄을 다 쓴다. 칸은 처음부터 자리를 지켜 팝업 크기가 바뀌지 않는다. */
 .terminal-map-form.form-grid {
-  /* 오른쪽 열(운영 상태 · 설비 · 창고)이 다 비어 있으면 폭을 차지하지 않는다 — 처음 뜬 창은 좁게(#333). */
-  grid-template-columns: 17rem auto;
-  column-gap: 0;
+  grid-template-columns: repeat(2, 17rem);
+  column-gap: var(--space-5);
 }
 
-/* 열 사이는 오른쪽 칸이 있을 때만 띄운다 — 빈 오른쪽 열이 왼쪽 칸을 한쪽으로 밀지 않게(가운데 정렬 · #333). */
-.terminal-map-form > :nth-child(even):not(.terminal-map-form-spacer) {
-  margin-left: var(--space-5);
+.terminal-map-form > .terminal-map-form-full {
+  grid-column: 1 / -1;
+}
+
+/* 단말 유형 — 펼친 카드 셋(POP · PDA · 추적 시스템 연동). 칸 폭(17rem) 규칙을 벗어나 두 열을 다 쓴다. */
+.terminal-map-form .field-cell.terminal-map-type-field > .terminal-map-type-options {
+  width: auto;
+  max-width: none;
+}
+
+.terminal-map-type-field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.terminal-map-type-field > .field-label {
+  padding: 0;
+}
+
+.terminal-map-type-options {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* 카드는 같은 폭으로 나눠 갖는다 — 둘이면 둘로, 펼치면 셋으로. */
+.terminal-map-type-options > .terminal-map-type-option {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.terminal-map-type-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 3.5rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--on-surface-variant);
+  cursor: pointer;
+}
+
+.terminal-map-type-option:hover {
+  border-color: var(--outline);
+}
+
+/* [더보기] — 카드가 아니라 카드 줄 오른쪽 끝의 작은 글자 단추. */
+.terminal-map-type-options > .terminal-map-type-more {
+  flex: none;
+  align-self: center;
+}
+
+.terminal-map-type-option > input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.terminal-map-type-option:has(> input:focus-visible) {
+  box-shadow: var(--focus-ring);
+}
+
+.terminal-map-type-option[data-checked='true'] {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+  background: color-mix(in srgb, var(--primary-container) 35%, var(--surface));
+  color: var(--primary);
+}
+
+.terminal-map-type-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.terminal-map-type-name {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  color: var(--on-surface);
+}
+
+.terminal-map-type-hint {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-variant);
+}
+
+/* 단말 코드 라벨 옆 「자동」 — 유형으로 채운 값 그대로일 때만. */
+.terminal-map-auto-mark {
+  margin-left: var(--space-2);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+/* 단계 표시 — 머리 띠 바로 아래, 팝업 폭을 다 쓴다. */
+.terminal-map-steps {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: calc(var(--space-5) * -1) calc(var(--space-5) * -1) var(--space-5);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--outline-variant);
+  list-style: none;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  color: var(--on-surface-variant);
+}
+
+.terminal-map-steps > li {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.terminal-map-steps > li:last-child {
+  flex: none;
+}
+
+/* 단계 사이 선 — 다음 단계까지 남은 폭을 채운다. */
+.terminal-map-steps > li:not(:last-child)::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  margin-left: var(--space-2);
+  background: var(--outline-variant);
+}
+
+.terminal-map-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+  font: var(--type-label-sm);
+  font-weight: 700;
+}
+
+.terminal-map-steps > li[data-state='current'] {
+  color: var(--on-surface);
+  font-weight: 700;
+}
+
+.terminal-map-steps > li[data-state='current'] > .terminal-map-step-number {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.terminal-map-steps > li[data-state='skip'] {
+  color: var(--outline);
+}
+
+.terminal-map-step-skip {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+.terminal-map-steps > li[data-state='done'] > .terminal-map-step-number {
+  background: var(--on-surface-variant);
+  color: var(--surface);
+}
+
+/* 공정 기능 단계 — 표가 여덟 칸이라 팝업을 넓힌다. */
+dialog.terminal-map-wizard:has(.terminal-map-matrix) {
+  width: min(66rem, calc(100vw - 2rem));
+  max-width: min(66rem, calc(100vw - 2rem));
+}
+
+/* 바닥글 왼쪽 — 첫 단계의 코드 잠금 안내 · 둘째 단계의 [이전]. */
+.terminal-map-wizard [class*='_footer_'] > .terminal-map-wizard-footnote {
+  margin: 0 auto 0 0;
+  padding: 2px var(--space-2);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+.terminal-map-wizard [class*='_footer_'] > .terminal-map-wizard-back {
+  margin-right: auto;
+}
+
+/* 수정 창의 사용 중지 · 재개 — 본문 맨 아래, 칸들과 구분선으로 가른다. */
+.terminal-map-edit-danger {
+  display: flex;
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.terminal-map-wizard-note {
+  margin: 0 0 var(--space-3);
+}
+
+/* 기기 연결 단계 — 등록 완료 한 줄, 아래 QR. */
+.terminal-map-wizard-done {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--semantic-success-container);
+  color: var(--on-semantic-success-container);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.terminal-map-wizard .terminal-map-token-panel {
+  min-width: 30rem;
 }
 
 /* 입력 · 선택 · 찾기 칸은 값 길이만큼만(사용자 지시 2026-11-20 · #333) — 칸 이름 줄(안내 라벨)은 열 폭을 그대로 쓴다. */
@@ -17486,16 +17737,6 @@ dialog.terminal-map-form-dialog {
   font: var(--type-body-lg);
   letter-spacing: var(--type-body-lg-tracking);
   font-weight: 500;
-}
-
-/* 창고 칸 아래 기준 안내 — 칸 폭에 갇히지 않고 한 줄로. */
-.terminal-map-form > .terminal-map-warehouse-note {
-  grid-column: 1 / -1;
-  justify-self: start;
-  margin: calc(var(--space-2) * -1) 0 0;
-  padding: 2px var(--space-2);
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
 }
 
 /* 「(선택)」 · 「*」 — 라벨과 띄운다(라벨 줄이 flex 라 앞 공백이 접힌다). */

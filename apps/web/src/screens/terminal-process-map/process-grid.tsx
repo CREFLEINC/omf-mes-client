@@ -18,6 +18,8 @@ export interface ProcessGridProps {
   onRemove: (processId: number) => void;
   /** 공정이 없을 때 표 안에 낼 빈 상태. */
   empty?: ReactNode;
+  /** 공정 열 폭 — 넓은 자리(단말 추가 창)에서는 공정 이름이 잘리지 않게 넓힌다. */
+  processWidth?: string;
 }
 
 /**
@@ -37,13 +39,14 @@ export const ProcessGrid = ({
   onToggleRow,
   onRemove,
   empty,
+  processWidth = '128px',
 }: ProcessGridProps) => {
   /* 시안(사용자 지시 2026-11-20 · #333) — 공정 | 모든 기능 | 기능 여덟 칸 | 휴지통. */
   const columns: Column<ProcessRowView>[] = [
     {
       key: 'process',
       header: t.grid.process,
-      width: '128px',
+      width: processWidth,
       render: (row) => {
         const error = rowErrors.get(row.processId);
         return error === undefined ? (
