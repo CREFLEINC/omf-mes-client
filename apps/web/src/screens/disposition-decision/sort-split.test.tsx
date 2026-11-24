@@ -121,6 +121,21 @@ describe('W-03-10 선별', () => {
     expect(document.querySelector('.disposition-result')).toBeNull();
   });
 
+  it('#354 선별을 고르자마자 양품 · 불량 수량이 값으로 채워지고, LOT 을 다 풀면 전부 양품으로 돌아간다', async () => {
+    const { user } = renderSort({});
+    await screen.findByText('SAMPLE-ML|0003');
+
+    await user.click(screen.getByRole('radio', { name: '선별' }));
+    expect(screen.getByLabelText(t.sort.goodQty)).toHaveValue('3000');
+    expect(screen.getByLabelText(t.sort.defectQty)).toHaveValue('0');
+
+    await user.click(screen.getByRole('checkbox', { name: 'SAMPLE-ML|0003' }));
+    expect(screen.getByLabelText(t.sort.defectQty)).toHaveValue('1000');
+    await user.click(screen.getByRole('checkbox', { name: 'SAMPLE-ML|0003' }));
+    expect(screen.getByLabelText(t.sort.goodQty)).toHaveValue('3000');
+    expect(screen.getByLabelText(t.sort.defectQty)).toHaveValue('0');
+  });
+
   it('US7-2 전부 고르면 막는다 — 원래 입하 LOT 에 하나 이상 남아야 한다. 하나도 안 골라도 저장할 수 없다', async () => {
     const { user } = renderSort();
     await screen.findByText('SAMPLE-ML|0003');

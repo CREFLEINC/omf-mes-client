@@ -16,7 +16,7 @@ import {
 } from './decision-form';
 import { dispositionTypeLabel, type DispositionOption } from './disposition-codes';
 import type { DispositionLookup } from './lookups';
-import { SortSplitPane } from './sort-split-pane';
+import { SortSplitPane, sortQtyValues } from './sort-split-pane';
 import { formatQty, type NonconformanceLotRow } from './types';
 
 /**
@@ -112,7 +112,18 @@ export const DecisionFormPane = ({
   const validToId = useId();
   const todayText = toBusinessDate(today ?? new Date());
   const isConcession = value.dispositionTypeCode === CONCESSION;
-  const pickType = (code: string): void => onChange(withDispositionType(value, code, todayText));
+  /*
+   * 선별을 고르면 양품 · 불량 수량 칸을 고른 LOT 대로 바로 채운다(아직 안 골랐으면 전부 양품 · 불량 0 · omf-all-around#354 사용자 지시).
+   * 선별에서 벗어나면 두 칸을 비운다 — 다른 유형에선 보이지도 보내지도 않는 값이다.
+   */
+  const pickType = (code: string): void => {
+    const next = withDispositionType(value, code, todayText);
+    onChange(
+      code === SORT
+        ? { ...next, ...sortQtyValues(lots, next.sortLotIds) }
+        : { ...next, goodQty: '', defectQty: '' },
+    );
+  };
   const isLocked = lockReason !== undefined;
   const reasonMissing = value.reason.trim() === '';
   const isSort = value.dispositionTypeCode === SORT;

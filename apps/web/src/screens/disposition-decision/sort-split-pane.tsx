@@ -17,6 +17,23 @@ export const sumQty = (lots: readonly NonconformanceLotRow[]): number =>
   lots.reduce((sum, lot) => sum + (lot.affectedQty ?? 0), 0);
 
 /**
+ * 고른 대로의 양품 · 불량 수량 «값» — 고르지 않은 LOT 합이 양품, 고른 LOT 합이 불량이다. 하나도 고르지 않았으면 전부 양품 · 불량 0
+ * (선별을 고르자마자 칸이 채워져 있게 · omf-all-around#354 사용자 지시).
+ */
+export const sortQtyValues = (
+  lots: readonly NonconformanceLotRow[],
+  sortLotIds: readonly number[],
+): { goodQty: string; defectQty: string } => {
+  const picked = new Set(sortLotIds);
+  const text = (rows: readonly NonconformanceLotRow[]): string =>
+    String(Math.round(sumQty(rows) * 1e6) / 1e6);
+  return {
+    goodQty: text(lots.filter((lot) => !picked.has(lot.lotId))),
+    defectQty: text(lots.filter((lot) => picked.has(lot.lotId))),
+  };
+};
+
+/**
  * 요약에서 LOT 을 부르는 이름 — 끝 번호로 부르되, 끝 번호가 겹치는 LOT 이 있으면 헷갈리지 않게 전체 번호로(#352 사용자 지시).
  * 저장 후 처리 상자와 판정 확인 팝업이 같은 이름을 쓴다.
  */
@@ -73,21 +90,13 @@ export const SortSplitPane = ({
 
   /*
    * LOT 을 고르거나 풀 때마다 양품 · 불량 수량 칸에 고른 대로의 합을 «값으로» 채운다 — 사용자가 그대로 고쳐 쓸 수 있다(#352 사용자 지시).
-   * 하나도 고르지 않으면 칸을 비운다.
+   * 하나도 고르지 않으면 전부 양품 · 불량 0 으로(#354 사용자 지시).
    */
   const toggle = (lotId: number, checked: boolean): void => {
     const sortLotIds = checked
       ? [...value.sortLotIds, lotId]
       : value.sortLotIds.filter((id) => id !== lotId);
-    const picked = new Set(sortLotIds);
-    const qtyText = (rows: readonly NonconformanceLotRow[]): string =>
-      sortLotIds.length === 0 ? '' : String(Math.round(sumQty(rows) * 1e6) / 1e6);
-    onChange({
-      ...value,
-      sortLotIds,
-      goodQty: qtyText(lots.filter((lot) => !picked.has(lot.lotId))),
-      defectQty: qtyText(lots.filter((lot) => picked.has(lot.lotId))),
-    });
+    onChange({ ...value, sortLotIds, ...sortQtyValues(lots, sortLotIds) });
   };
 
   return (
