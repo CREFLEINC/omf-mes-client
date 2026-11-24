@@ -1,4 +1,4 @@
-import { Button, type Column, EmptyState, Icon, SkeletonText, Table } from '@crefle/web-ui';
+import { Button, Chip, type Column, EmptyState, Icon, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -12,6 +12,13 @@ import type { PageView } from './pagination';
 import type { RouteView } from './types';
 
 const t = messages.approvalRoute;
+
+/** 사용 유무 라벨 — 목록 · 기본 정보 카드가 같은 모양을 쓴다(사용자 지시 2026-11-24). */
+export const ActiveChip = ({ isActive }: { isActive: boolean }) => (
+  <Chip variant="status" size="sm" status={isActive ? 'success' : 'idle'}>
+    {isActive ? t.values.active : t.values.inactive}
+  </Chip>
+);
 
 /**
  * 좌 칸 표의 열 폭.
@@ -128,8 +135,8 @@ export const RouteListPane = ({
       align: 'center',
       header: t.fields.status,
       width: ROUTE_COLUMN_WIDTH.status,
-      /* 비활성 표현을 배지로 그리지 않는다 — 설치본의 배지에는 비활성 변형이 없다. */
-      render: (row) => (row.isActive ? t.values.active : t.values.inactive),
+      /* 사용 · 미사용 라벨(사용자 지시 2026-11-24) — 사용은 초록, 미사용은 회색. */
+      render: (row) => <ActiveChip isActive={row.isActive} />,
     },
   ];
   /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(단말 관리 목록과 같다 · omf-all-around#358). */

@@ -1,4 +1,4 @@
-import { Button, TextField } from '@crefle/web-ui';
+import { Button, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
@@ -7,19 +7,12 @@ import { InfoTip } from '../../patterns/info-tip';
 import { approvalTypeLabelOf, codeNote, codePlaceholder } from './code-options';
 import { DisabledAction } from './disabled-action';
 import { FieldLabel } from './field-label';
+import { ActiveChip } from './route-list-pane';
 import type { RouteFormMode } from './route-validation';
 import { SelectField } from './select-field';
 import type { RouteFormValues, RouteView, SelectOption } from './types';
 
 const t = messages.approvalRoute;
-
-interface SummaryItem {
-  key: string;
-  label: string;
-  value: ReactNode;
-  /** 라벨 옆 ⓘ 에 띄울 규칙(관리웹 정리 시안 A). */
-  info?: string;
-}
 
 export interface RouteFormPaneProps {
   mode: RouteFormMode;
@@ -116,7 +109,8 @@ export const RouteFormPane = ({
   const maxValueId = useId();
 
   const isCreate = mode === 'create';
-  const saveLabel = isCreate ? t.actions.submitCreate : messages.common.save;
+  /* 이 화면에는 저장이 둘이라 무엇을 저장하는지 적는다(사용자 지시 2026-11-24). */
+  const saveLabel = isCreate ? t.actions.submitCreate : t.actions.saveRoute;
 
   /**
    * 「선택 없음」이 곧 **전 사업부 공통**이다 — 특별한 값이 아니라 값이 없는 것이다.
@@ -131,48 +125,26 @@ export const RouteFormPane = ({
   const isBusinessUnitEmpty = values.businessUnitId === '';
   const isValueRangeEmpty = values.minValue.trim() === '' && values.maxValue.trim() === '';
 
-  /** 읽기 표기 — **서버가 준 사실만**이다. 등록에는 아직 어느 것도 없다. */
-  const summary: SummaryItem[] =
-    route === null
-      ? []
-      : [
-          {
-            key: 'approvalTypeCode',
-            label: t.fields.approvalTypeCode,
-            value: approvalTypeLabelOf(route.approvalTypeCode),
-            /* 수정에서 승인 유형을 못 바꾸는 까닭은 칸 아래가 아니라 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */
-            info: t.notes.approvalTypeFixed,
-          },
-          {
-            key: 'status',
-            label: t.fields.status,
-            value: route.isActive ? t.values.active : t.values.inactive,
-          },
-          {
-            key: 'stepCount',
-            label: t.fields.stepCount,
-            value: route.stepCount === 0 ? t.values.noSteps : String(route.stepCount),
-          },
-        ];
-
   return (
     /* 고른 결재선이면 이름은 바깥 상세 칸이 갖는다 — 새 결재선일 때만 이 상자가 「새 결재선」 구획이 된다(#350 리뷰). */
     <section className="pane" aria-label={isCreate ? t.panes.create : undefined}>
       {banner}
 
-      {summary.length > 0 && (
-        /* 입력칸이 없는 값이라 폼이 아니라 **값 표기**로 낸다(배치 규범 3). */
-        <dl className="filter-bar">
-          {summary.map((item) => (
-            <div className="field-cell" key={item.key}>
-              <dt className="field-label">
-                {item.label}
-                {item.info !== undefined && <InfoTip text={item.info} />}
-              </dt>
-              <dd>{item.value}</dd>
-            </div>
-          ))}
-        </dl>
+      {route !== null && (
+        /*
+         * 결재선 기본 정보 카드(사용자 지시 2026-11-24) — 제목 아래 한 줄에 승인 유형과 사용 유무. 승인 유형은 입력칸이
+         * 없는 값이라 표기로 낸다. 단계 수는 결재 단계 카드 제목 옆으로 옮겼다(표와 같은 기준으로 센다).
+         */
+        <div className="approval-route-head">
+          <h2 className="pane-title">{t.panes.basicInfo}</h2>
+          <p className="approval-route-head-line">
+            <span className="info-label">
+              {approvalTypeLabelOf(route.approvalTypeCode)}
+              <InfoTip text={t.notes.approvalTypeFixed} />
+            </span>
+            <ActiveChip isActive={route.isActive} />
+          </p>
+        </div>
       )}
 
       <div className="form-grid">
@@ -210,46 +182,54 @@ export const RouteFormPane = ({
           }}
         />
 
-        <div className="field-cell">
-          {/* 값 구간이 결재선을 고르지 않는다는 사실은 하한 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
-          <FieldLabel
-            htmlFor={minValueId}
-            label={t.fields.minValue}
-            info={t.notes.valueRangeUnused}
-          />
-          <TextField
-            id={minValueId}
-            value={values.minValue}
-            /* 숫자 자판을 띄우되 형식 판정은 화면이 한다 — 브라우저마다 허용 글자가 다르다. */
-            inputMode="decimal"
-            error={fieldErrors.minValue}
-            disabled={isLocked}
-            onChange={(event) => {
-              onChange({ minValue: event.target.value });
-            }}
-          />
-        </div>
-
-        <div className="field-cell">
-          <FieldLabel htmlFor={maxValueId} label={t.fields.maxValue} />
-          <TextField
-            id={maxValueId}
-            value={values.maxValue}
-            inputMode="decimal"
-            error={fieldErrors.maxValue}
-            disabled={isLocked}
-            onChange={(event) => {
-              onChange({ maxValue: event.target.value });
-            }}
-          />
-        </div>
+        {/* 하한 · 상한은 한 묶음(사용자 지시 2026-11-24) — 수량인지 금액인지 계약이 정하지 않아 「값 범위」로 둔다. */}
+        <fieldset className="approval-route-range">
+          <legend className="field-label info-label">
+            {t.fields.valueRange}
+            <InfoTip text={t.notes.valueRangeUnused} />
+          </legend>
+          <div className="approval-route-range-row">
+            <div className="field-cell">
+              <FieldLabel htmlFor={minValueId} label={t.fields.minValue} />
+              <TextField
+                id={minValueId}
+                value={values.minValue}
+                /* 숫자 자판을 띄우되 형식 판정은 화면이 한다 — 브라우저마다 허용 글자가 다르다. */
+                inputMode="decimal"
+                error={fieldErrors.minValue}
+                disabled={isLocked}
+                onChange={(event) => {
+                  onChange({ minValue: event.target.value });
+                }}
+              />
+            </div>
+            <span className="approval-route-range-sep" aria-hidden>
+              ~
+            </span>
+            <div className="field-cell">
+              <FieldLabel htmlFor={maxValueId} label={t.fields.maxValue} />
+              <TextField
+                id={maxValueId}
+                value={values.maxValue}
+                inputMode="decimal"
+                error={fieldErrors.maxValue}
+                disabled={isLocked}
+                onChange={(event) => {
+                  onChange({ maxValue: event.target.value });
+                }}
+              />
+            </div>
+          </div>
+        </fieldset>
       </div>
 
       {isBusinessUnitEmpty && <p className="field-note">{t.notes.businessUnitEmpty}</p>}
       {isValueRangeEmpty && <p className="field-note">{t.notes.valueRangeEmpty}</p>}
 
+      {/* 진행 중인 요청 안내는 입력란 아래 카드 너비 전체(사용자 지시 2026-11-24). */}
       {route !== null && (
-        <p className="field-note">
+        <p className="iqc-inspection-action-note approval-route-progress-note" data-tone="info">
+          <Icon name="info" size={14} aria-hidden />
           {route.inProgressCount === 0
             ? t.notes.inProgressNone
             : t.notes.inProgressSome(route.inProgressCount)}
@@ -315,6 +295,11 @@ export const RouteFormPane = ({
          */}
         {saveDisabledReason === null ? (
           <Button variant="filled" loading={isLocked} disabled={isLocked} onClick={onSave}>
+            {saveLabel}
+          </Button>
+        ) : saveDisabledReason === t.actionReasons.saveNoChanges ? (
+          /* 고친 것이 없을 때는 꺼진 단추로만 — 「고친 내용이 없습니다」를 되풀이하지 않는다(사용자 지시 2026-11-24). */
+          <Button variant="filled" disabled>
             {saveLabel}
           </Button>
         ) : (

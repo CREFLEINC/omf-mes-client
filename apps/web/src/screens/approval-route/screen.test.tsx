@@ -397,7 +397,7 @@ const waitForList = async (): Promise<void> => {
 
 const waitForForm = async (): Promise<HTMLElement> => screen.findByLabelText(t.fields.minValue);
 
-const saveButton = (): HTMLElement => screen.getByRole('button', { name: messages.common.save });
+const saveButton = (): HTMLElement => screen.getByRole('button', { name: t.actions.saveRoute });
 
 /** 값 구간 하한을 고쳐 폼을 더럽힌다. 「고친 것이 없다」 잠금을 푸는 가장 짧은 길이다. */
 const dirtyForm = async (user: ReturnType<typeof userEvent.setup>, text = '7'): Promise<void> => {
@@ -845,7 +845,9 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
     const pane = await screen.findByRole('region', { name: t.panes.steps });
 
     // 선행 단언 — 선택지가 실제로 서 있어야 「표식이 없다」가 뜻을 갖는다.
-    expect(within(pane).getByRole('combobox', { name: t.fields.approver })).toBeInTheDocument();
+    expect(
+      within(pane).getByRole('combobox', { name: t.fields.approverSelect }),
+    ).toBeInTheDocument();
     expect(screen.queryByText(t.notes.approverListTruncated)).not.toBeInTheDocument();
   });
 
@@ -1443,16 +1445,16 @@ describe('ApprovalRouteScreen — 수정 저장', () => {
     });
     expect(screen.getByLabelText(t.fields.maxValue)).toHaveValue('999');
     // 다시 세웠으므로 고친 것이 없는 상태다.
-    expect(screen.getByRole('button', { name: messages.common.save })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.saveRoute })).toBeDisabled();
   });
 
-  it('고친 것이 없으면 저장이 잠기고 사유가 보인다', async () => {
+  it('고친 것이 없으면 저장이 잠기고 같은 안내를 되풀이하지 않는다', async () => {
     renderScreen(allRoutes(), SELECTED);
 
     await waitForForm();
 
     expect(saveButton()).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.saveNoChanges)).toBeInTheDocument();
+    expect(screen.queryByText(t.actionReasons.saveNoChanges)).toBeNull();
   });
 
   /**
@@ -2547,7 +2549,7 @@ const addStep = async (
 ): Promise<void> => {
   const pane = await stepPane();
 
-  await user.click(within(pane).getByRole('combobox', { name: t.fields.approver }));
+  await user.click(within(pane).getByRole('combobox', { name: t.fields.approverSelect }));
   await user.click(screen.getByRole('option', { name: label }));
   await user.click(addStepButton());
 };
@@ -2947,11 +2949,11 @@ describe('ApprovalRouteScreen — 단계 초안 수명', () => {
 
     const pane = await stepPane();
 
-    await user.click(within(pane).getByRole('combobox', { name: t.fields.approver }));
+    await user.click(within(pane).getByRole('combobox', { name: t.fields.approverSelect }));
     await user.click(screen.getByRole('option', { name: APPROVER_OPTION_LABEL }));
 
     // 선행 단언 — 실제로 골라져 있어야 「사라졌다」가 뜻을 갖는다.
-    expect(within(pane).getByRole('combobox', { name: t.fields.approver })).toHaveTextContent(
+    expect(within(pane).getByRole('combobox', { name: t.fields.approverSelect })).toHaveTextContent(
       APPROVER_OPTION_LABEL,
     );
 
@@ -2962,7 +2964,7 @@ describe('ApprovalRouteScreen — 단계 초안 수명', () => {
 
     expect(
       within(screen.getByRole('region', { name: t.panes.steps })).getByRole('combobox', {
-        name: t.fields.approver,
+        name: t.fields.approverSelect,
       }),
     ).not.toHaveTextContent(APPROVER_OPTION_LABEL);
   });
@@ -3105,7 +3107,7 @@ describe('ApprovalRouteScreen — 단계 저장이 나가는 중', () => {
     /* 첫째 겹 — 이 구획에서 눈에 보이는 것들이 닫혔다. */
     expect(saveStepsButton()).toBeDisabled();
     expect(screen.getByRole('button', { name: t.actions.removeStep(1) })).toBeDisabled();
-    expect(screen.getByRole('combobox', { name: t.fields.approver })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: t.fields.approverSelect })).toBeDisabled();
 
     await user.click(saveStepsButton());
 

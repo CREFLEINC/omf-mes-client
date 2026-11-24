@@ -16,6 +16,7 @@ import type { Translated } from './translated';
  */
 export const approvalRoute: Translated<typeof ko.approvalRoute> = {
   panes: {
+    basicInfo: 'Thông tin cơ bản luồng phê duyệt',
     list: 'Danh sách luồng phê duyệt',
     detail: 'Luồng đã chọn',
     create: 'Luồng phê duyệt mới',
@@ -33,8 +34,11 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     stepNo: 'Thứ tự',
     approver: 'Người phê duyệt',
     approverStatus: 'Trạng thái',
-    stepRowActions: 'Xóa',
+    stepRowActions: 'Quản lý',
     approverType: 'Loại người phê duyệt',
+    approverSelect: 'Chọn người phê duyệt',
+    approverPlaceholder: 'Hãy chọn người phê duyệt',
+    valueRange: 'Khoảng giá trị',
     q: 'Tìm loại phê duyệt',
   },
   actions: {
@@ -51,6 +55,9 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
       `Chọn ${approvalTypeCode} · ${businessUnitLabel}`,
     addStep: 'Thêm bước',
     removeStep: (stepNo: number): string => `Xóa bước thứ ${String(stepNo)}`,
+    moveUp: 'Di chuyển lên',
+    moveDown: 'Di chuyển xuống',
+    saveRoute: 'Lưu thông tin cơ bản',
     /** 「저장」이 아니라 무엇을 저장하는지 적는다 — 이 화면에는 저장이 둘이다. */
     saveSteps: 'Lưu bước phê duyệt',
   },
@@ -61,6 +68,8 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
   },
   filters: {
     all: 'Tất cả',
+    activeGroup: 'Trạng thái sử dụng',
+    activeOnly: 'Đang dùng',
     approvalTypeSelect: 'Chọn loại phê duyệt',
     businessUnitSelect: 'Chọn đơn vị kinh doanh',
     qPlaceholder: 'Nhập loại phê duyệt',
@@ -76,7 +85,7 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
   },
   empty: {
     noResultTitle: 'Không có luồng phê duyệt khớp điều kiện',
-    noResultDescription: 'Hãy bớt điều kiện hoặc bật «Gồm cả mục ngừng dùng» rồi tra cứu lại.',
+    noResultDescription: 'Hãy bớt điều kiện hoặc chọn «Tất cả» ở hàng trên rồi tra cứu lại.',
     beyondLastTitle: 'Trang này không có kết quả',
     beyondLastDescription: 'Hãy về trang đầu.',
     noSelectionTitle: 'Hãy chọn luồng phê duyệt.',
@@ -98,6 +107,7 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     allBusinessUnits: 'Chung mọi đơn vị kinh doanh',
     active: 'Đang dùng',
     inactive: 'Không dùng',
+    stepCountOf: (count: number): string => `${String(count)} bước`,
     noSteps: 'Không có bước',
     /** ⛔ 승인자 번호를 대신 내지 않는다 — 한 번 화면에 서면 그것이 식별자로 읽힌다. */
     approverUnknown: 'Không xác nhận được thông tin người phê duyệt',

@@ -9,6 +9,8 @@
  */
 export const approvalRoute = {
   panes: {
+    /** 고른 결재선 위 카드 제목(사용자 지시 2026-11-24). */
+    basicInfo: '결재선 기본 정보',
     list: '결재선 목록',
     detail: '고른 결재선',
     /** 등록 폼은 고른 결재선과 **다른 구획**이다 — 이름이 같으면 어느 쪽을 고치는지 가릴 수 없다. */
@@ -23,25 +25,30 @@ export const approvalRoute = {
      * 고른 결재선의 그 자리가 곧 입력칸이라, 같은 값을 읽기용으로 한 번 더 그리면
      * 어느 쪽이 정본인지 흐려진다.
      */
-    minValue: '값 구간 하한',
-    maxValue: '값 구간 상한',
+    minValue: '하한',
+    maxValue: '상한',
     /** 목록 열 이름. 폼의 「사용 여부」와 달리 한 낱말이라야 64px 칸에서 접히지 않는다. */
-    status: '사용',
+    status: '사용 유무',
     stepCount: '단계',
     inProgressCount: '진행 중',
     stepNo: '순서',
-    approver: '승인자',
+    approver: '결재자',
     approverStatus: '상태',
     /**
      * 단계 표의 삭제 열 이름. 열 이름을 「작업」으로 두지 않는다 —
      * 이 열에 서는 것이 삭제 하나뿐이라 무엇을 하는 열인지 그대로 적는 편이 짧고 정확하다.
      */
-    stepRowActions: '삭제',
+    stepRowActions: '관리',
     /**
      * 추가 줄의 승인자 구분 선택칸. 1차에는 「사용자」만 고를 수 있고 나머지는 잠긴 채 보인다 —
      * 감추면 사용자는 역할·부서 결재가 **없는 기능**이라고 읽는다(`omf-mes#69`).
      */
-    approverType: '승인자 구분',
+    approverType: '결재자 유형',
+    /** 추가 줄 결재자 선택칸 이름(사용자 지시 2026-11-24). */
+    approverSelect: '결재자 선택',
+    approverPlaceholder: '결재자를 선택하세요',
+    /** 하한 · 상한 묶음 이름(사용자 지시 2026-11-24) — 수량인지 금액인지 계약이 정하지 않아 「값」으로 둔다. */
+    valueRange: '값 범위',
     q: '승인 유형 검색',
   },
   actions: {
@@ -77,6 +84,11 @@ export const approvalRoute = {
      * 이동 뒤 라이브 안내가 맥락을 준다) **이 버튼은 우리가 이름을 정하므로 순서를 담는다.**
      */
     removeStep: (stepNo: number): string => `${String(stepNo)}번째 단계 삭제`,
+    /** 관리 열 단추 이름(사용자 지시 2026-11-24). */
+    moveUp: '위로 이동',
+    moveDown: '아래로 이동',
+    /** 기본 정보 카드의 저장(사용자 지시 2026-11-24) — 「결재 단계 저장」과 갈라 적는다. */
+    saveRoute: '기본 정보 저장',
     /** 단계 치환. 「저장」이 아니라 무엇을 저장하는지 적는다 — 이 화면에는 저장이 둘이다. */
     saveSteps: '결재 단계 저장',
   },
@@ -87,6 +99,9 @@ export const approvalRoute = {
   },
   filters: {
     all: '전체',
+    /** 위 줄 사용 유무 라벨(사용자 지시 2026-11-24). 서버 조건이 「사용 중만」 하나라 「미사용만」은 없다. */
+    activeGroup: '사용 유무',
+    activeOnly: '사용',
     /* 조회 상자 칸 이름 · 흐린 문구(#358). 목록 열 · 등록 폼은 `fields` 이름 그대로. */
     approvalTypeSelect: '승인 유형 선택',
     businessUnitSelect: '사업부 선택',
@@ -105,7 +120,7 @@ export const approvalRoute = {
   /** 빈 상태는 **네 갈래**다. 사용자가 할 조치가 서로 다르다(완료 조건 C15). */
   empty: {
     noResultTitle: '조건에 맞는 결재선이 없습니다',
-    noResultDescription: '조건을 줄이거나 「미사용 포함」을 켠 뒤 다시 조회하세요.',
+    noResultDescription: '조건을 줄이거나 위 줄 「전체」를 누른 뒤 다시 조회하세요.',
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
     noSelectionTitle: '결재선을 선택하세요.',
@@ -141,15 +156,17 @@ export const approvalRoute = {
      * 자료가 빠진 것으로 읽혀 정반대가 된다. 참조 조회가 실패해도 이 뜻은 흔들리지 않는다.
      */
     allBusinessUnits: '전 사업부 공통',
-    active: '사용 중',
-    inactive: '사용 안 함',
+    active: '사용',
+    inactive: '미사용',
+    /** 결재 단계 제목 옆 단계 수(사용자 지시 2026-11-24). */
+    stepCountOf: (count: number): string => `${String(count)}단계`,
     /** 단계가 0인 결재선. 색이 아니라 글자로 낸다. */
     noSteps: '단계 없음',
     /**
      * 계약이 승인자 이름을 필수로 두지 않았다. **번호를 대신 내지 않는다** —
      * 내부 번호는 사용자가 쓰지 않는 값이고, 한 번 화면에 서면 그것이 식별자로 읽힌다.
      */
-    approverUnknown: '승인자 정보를 확인할 수 없습니다',
+    approverUnknown: '결재자 정보를 확인할 수 없습니다',
     approverActive: '사용 중',
     approverInactive: '사용 중지됨',
     /**
@@ -175,24 +192,24 @@ export const approvalRoute = {
      * 이 자리의 고유 정보는 **건수**다.
      */
     inProgressSome: (count: number): string =>
-      `진행 중인 요청 ${String(count)}건이 있습니다. 이 요청들은 지금의 결재선으로 끝납니다.`,
+      `진행 중인 요청 ${String(count)}건은 기존 결재선으로 계속 처리됩니다.`,
     inProgressNone: '진행 중인 요청이 없습니다.',
     /**
      * 단계 구획 제목 옆 ⓘ 의 규칙(전체 교체와 함께 넷). 성공 알림에 붙이지 않는다 — 알림은 사라지고,
      * 이 셋은 결재선을 보는 내내 참인 사실이다.
      */
-    stepGuideApproverAbsent: '승인자가 자리를 비우면 그 단계에서 요청이 멈춥니다.',
+    stepGuideApproverAbsent: '결재자가 자리를 비우면 그 단계에서 요청이 멈춥니다.',
     stepGuideNotRetroactive: '결재선을 고쳐도 진행 중인 요청에는 반영되지 않습니다.',
     stepGuideRejectResubmit:
       '진행 중인 요청에 바뀐 결재선을 태우려면 반려한 뒤 다시 상신해야 합니다.',
     /** 승인자가 사용 중지 상태다. 색에만 기대지 않도록 글자로 함께 낸다. */
-    approverInactiveWarning: '이 승인자는 사용 중지 상태입니다 — 결재가 멈춥니다.',
+    approverInactiveWarning: '이 결재자는 사용 중지 상태입니다 — 결재가 멈춥니다.',
     /**
      * 같은 승인자가 두 단계에 서 있다. **막지 않는다** — 같은 사람이 다른 자격으로 두 번
      * 결재하는 것은 업무상 정당할 수 있고, 계약도 이슈도 그것을 금지하지 않았다.
      * 화면이 없는 규칙을 지어내는 대신 **보이기만 한다.**
      */
-    approverDuplicateWarning: '같은 승인자가 다른 단계에도 있습니다. 그대로 저장할 수 있습니다.',
+    approverDuplicateWarning: '같은 결재자가 다른 단계에도 있습니다. 그대로 저장할 수 있습니다.',
     /**
      * 이 저장이 **전체 교체**라는 사실. 단계 구획 제목 옆 ⓘ 에 둔다 —
      * 계약에 개별 추가·삭제 경로가 없어 보내는 배열이 곧 최종 순서 전체다.
@@ -203,14 +220,14 @@ export const approvalRoute = {
      * 물리 모델에 없다는 것이 계약의 근거다. **선택지를 감추지 않고 잠근 채** 라벨 옆 ⓘ 로
      * 무엇을 고를 수 있는지만 말한다 — 「1차에서 열지 않는다」는 개발 사정이라 뺐다(관리웹 정리 시안 A).
      */
-    approverTypePending: '승인자는 사용자만 고를 수 있습니다.',
+    approverTypePending: '결재자는 사용자만 고를 수 있습니다.',
     /**
      * 승인자 선택지가 잘렸다. 밝히지 않으면 사용자는 **불완전한 목록을 완전한 것으로 읽고**
      * 찾는 사람이 없으면 「그런 사용자가 없다」로 결론짓는다.
      */
     approverListTruncated:
-      '승인자 선택지가 앞쪽 일부만 보입니다. 찾는 사람이 없으면 담당자에게 알려 주세요.',
-    approverListFailed: '승인자 선택지를 불러오지 못했습니다.',
+      '결재자 선택지가 앞쪽 일부만 보입니다. 찾는 사람이 없으면 담당자에게 알려 주세요.',
+    approverListFailed: '결재자 선택지를 불러오지 못했습니다.',
     /**
      * 수정 폼에 승인 유형 입력칸이 없는 이유. 계약의 수정 본문에 그 키가 아예 없다 —
      * 밝히지 않으면 「왜 이 칸만 못 고치나」가 결함으로 읽힌다. 승인 유형 라벨 옆 ⓘ.
@@ -287,14 +304,14 @@ export const approvalRoute = {
      * 지어낼 수 없으므로 **그 행을 지우고 다시 넣어야** 전체 교체가 성립한다.
      */
     stepSaveApproverMissing:
-      '승인자를 확인할 수 없는 단계가 있습니다. 그 단계를 지우고 다시 넣으세요.',
+      '결재자를 확인할 수 없는 단계가 있습니다. 그 단계를 지우고 다시 넣으세요.',
     stepSaveNoChanges: '고친 단계가 없습니다.',
-    stepAddNoApprover: '승인자를 고르세요.',
+    stepAddNoApprover: '결재자를 고르세요.',
     /**
      * 마지막 한 단계는 지울 수 없다. 저장 잠금(단계 0)보다 **한 걸음 앞선 방어**다 —
      * 지운 뒤에 「저장할 수 없다」고 말하면 사용자는 이미 화면에서 그것을 잃은 뒤다.
      */
-    stepRemoveLast: '단계가 하나뿐이라 지울 수 없습니다.',
+    stepRemoveLast: '결재 단계는 최소 1개가 필요합니다.',
   },
   dialog: {
     /**

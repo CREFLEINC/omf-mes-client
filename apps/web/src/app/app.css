@@ -12306,8 +12306,9 @@ a.erp-send-chips:focus-visible {
 /* 검색창은 흐린 문구(「아이디 또는 이름을 입력하세요」)가 다 보이는 폭만 — 남는 폭까지 늘리지 않는다(사용자 지시 2026-11-20). */
 /* 소속 부서 — 「전체」·부서 이름이 들어가는 만큼만(사용자 지시 2026-11-20 · #333). */
 .users-roles-filter-row > .users-roles-department-select {
-  flex: 0 0 12rem;
-  width: 12rem;
+  /* 좁음(160px) — 사용자 지시 2026-11-24. */
+  flex: 0 0 10rem;
+  width: 10rem;
 }
 
 /* 고르개 상자가 칸을 꽉 채운다 — 글자만큼 줄면 칸 오른쪽이 빈다. */
@@ -39647,4 +39648,97 @@ body:has(
   inset-inline-end: var(--space-3);
   top: 50%;
   transform: translateY(-50%);
+}
+
+/* 결재선 정의 조회 상자 — 사업부 칸은 좁음(160px · 사용자 지시 2026-11-24). */
+.filter-bar.approval-route-filter > .field-cell.approval-route-business-unit {
+  flex: 0 0 10rem;
+  width: 10rem;
+}
+
+.filter-bar.approval-route-filter > .field-cell.approval-route-business-unit > :not(.field-label) {
+  width: 100%;
+  min-width: 0;
+}
+
+/* 결재선 기본 정보 카드(사용자 지시 2026-11-24) — 제목 아래 한 줄에 승인 유형 · 사용 유무. */
+.approval-route-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.approval-route-head-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+/* 하한 · 상한 한 묶음 — 좁아지면 상한이 아래로 접힌다. */
+.approval-route-range {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.approval-route-range > legend {
+  margin-bottom: var(--space-1);
+  padding: 0;
+}
+
+.approval-route-range-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.approval-route-range-row > .field-cell {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.approval-route-range-sep {
+  padding-bottom: var(--space-3);
+  color: var(--on-surface-variant);
+}
+
+.pane > .iqc-inspection-action-note.approval-route-progress-note {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin-top: var(--space-3);
+}
+
+/* 결재 단계 카드 — 제목 옆 단계 수, 관리 열 단추, 추가 줄. */
+.approval-route-step-count {
+  margin-left: var(--space-2);
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+}
+
+.approval-route-step-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.filter-bar.approval-route-step-add {
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+}
+
+.filter-bar.approval-route-step-add > .approval-route-approver-field {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.filter-bar.approval-route-step-add
+  > .approval-route-approver-field
+  > :not(.field-label, .field-note) {
+  width: 100%;
 }

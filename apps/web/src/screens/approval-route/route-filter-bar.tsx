@@ -1,8 +1,9 @@
-import { Button, Checkbox, SearchInput } from '@crefle/web-ui';
+import { Button, Chip, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState, type ReactNode } from 'react';
 
 import { hasChangedFilters } from '../../patterns/filter-more';
+import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import {
   FIT_PLACEHOLDER_CLASS,
   useFitPlaceholderWidth,
@@ -40,7 +41,7 @@ export interface RouteFilterBarProps {
  * **조건 칩을 두지 않는다**(C-6). 네 조건이 모두 조건 줄에 보여 칩으로 겹쳐 적을 것이 없다 —
  * 한 줄에 들어가 「조건 더보기」로 접을 것도 없다. 「초기화」는 바뀐 것이 있을 때만 보인다.
  *
- * **「미사용 포함」이 화면 어휘다.** 계약 파라미터(`activeOnly`)는 방향이 반대이고 기본값이
+ * **「미사용 포함」은 위 줄 「사용 유무」 라벨(`ActiveFilterChips`)이 맡는다(사용자 지시 2026-11-24).** 계약 파라미터(`activeOnly`)는 방향이 반대이고 기본값이
  * 없지만, 그것은 계약의 사정이며 뒤집는 자리는 `filters.ts` 한 곳이다.
  *
  * **승인 유형 선택지는 고정 OpenAPI가 닫은 enum을 그대로 쓴다.** 비어 있는
@@ -117,6 +118,8 @@ export const RouteFilterBar = ({
     <div className="filter-bar approval-route-filter">
       <SelectField
         label={t.filters.approvalTypeSelect}
+        /* 승인 유형은 열한 개뿐이라 검색칸 없이 펼치기만 한다(사용자 지시 2026-11-24). */
+        searchable={false}
         options={typeOptions}
         value={filters.approvalTypeCode}
         note={codeNote(approvalTypeOptions)}
@@ -130,8 +133,9 @@ export const RouteFilterBar = ({
        * 규범 3-2 — 선택칸이 「코드 · 이름」을 고른다. 최소 폭을 주지 않으면
        * 선택지 목록이 트리거 폭에 갇혀 잘리고, 무엇을 고르는지 읽을 수 없다.
        */}
+      {/* 사업부 칸은 좁음(160px · 사용자 지시 2026-11-24) — 넓은 칸(`wide`)을 뺐다. */}
       <SelectField
-        wide
+        className="approval-route-business-unit"
         label={t.filters.businessUnitSelect}
         options={withAll(businessUnitOptions)}
         value={filters.businessUnitId}
@@ -155,18 +159,6 @@ export const RouteFilterBar = ({
         clearLabel={messages.common.clear}
       />
 
-      <div className="field-cell field-cell-unlabeled">
-        <Checkbox
-          checked={filters.includeInactive}
-          onChange={(event) => {
-            const { checked } = event.target;
-            setFilters((prev) => ({ ...prev, includeInactive: checked }));
-          }}
-        >
-          {messages.common.includeInactive}
-        </Checkbox>
-      </div>
-
       {/*
        * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1).
        * 조건 없이도 조회가 열려 있다 — 이 화면은 들어오자마자 결재선을 보여야 한다.
@@ -189,4 +181,41 @@ export const RouteFilterBar = ({
       </div>
     </div>
   );
+};
+
+export interface ActiveFilterChipsProps {
+  includeInactive: boolean;
+  onChange: (includeInactive: boolean) => void;
+}
+
+/**
+ * 사용 유무 라벨 「전체 · 사용」을 위 줄에 낸다(사용자 지시 2026-11-24) — 누르는 즉시 건다. 계약 조건이 「사용 중만」
+ * (`activeOnly`) 하나라 「미사용만」은 고를 수 없다.
+ */
+export const ActiveFilterChips = ({ includeInactive, onChange }: ActiveFilterChipsProps) => {
+  const target = useHubActionsTarget();
+  const options = [
+    { value: true, label: t.filters.all },
+    { value: false, label: t.filters.activeOnly },
+  ];
+  const group = (
+    <div className="inspection-hub-counts" role="group" aria-label={t.filters.activeGroup}>
+      {options.map((option) => (
+        <Chip
+          key={option.label}
+          variant="filter"
+          size="sm"
+          selected={includeInactive === option.value}
+          aria-pressed={includeInactive === option.value}
+          onSelectedChange={() => {
+            onChange(option.value);
+          }}
+        >
+          {option.label}
+        </Chip>
+      ))}
+    </div>
+  );
+
+  return target === null ? group : <HubActions target={target}>{group}</HubActions>;
 };

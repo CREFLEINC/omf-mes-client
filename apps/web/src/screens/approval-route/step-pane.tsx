@@ -28,7 +28,8 @@ const t = messages.approvalRoute;
 export const STEP_COLUMN_WIDTH = {
   stepNo: '64px',
   approverStatus: '96px',
-  rowActions: '88px',
+  /* 위로 · 아래로 · 삭제 세 단추(사용자 지시 2026-11-24). */
+  rowActions: '128px',
 } as const;
 
 /**
@@ -162,24 +163,46 @@ export const StepPane = ({
       key: 'rowActions',
       header: t.fields.stepRowActions,
       width: STEP_COLUMN_WIDTH.rowActions,
+      align: 'center',
+      /* 순서 이동과 삭제를 「관리」 열에 모은다(사용자 지시 2026-11-24). 이동은 디자인 시스템 열 대신 이 단추가 맡는다. */
       render: (step, index) => (
-        <IconButton
-          icon="delete"
-          size="sm"
-          aria-label={t.actions.removeStep(index + 1)}
-          /*
-           * 마지막 한 단계는 지울 수 없다. 사유는 이 버튼의 접근 설명으로 잇는다 —
-           * 비활성 컨트롤은 포커스를 받지 못해 툴팁만으로는 닿을 수 없다(배치 규범 4).
-           */
-          disabled={isLocked || removeDisabledReason !== null}
-          aria-describedby={removeDisabledReason === null ? undefined : removeReasonId}
-          onClick={() => {
-            /* 누르는 자리가 스스로 한 번 더 본다 — 버튼의 잠금만 믿지 않는다. */
-            if (removeDisabledReason !== null) return;
+        <span className="approval-route-step-actions">
+          <IconButton
+            icon="arrow_upward"
+            size="sm"
+            aria-label={t.actions.moveUp}
+            disabled={isLocked || index === 0}
+            onClick={() => {
+              onReorder(index, index - 1);
+            }}
+          />
+          <IconButton
+            icon="arrow_downward"
+            size="sm"
+            aria-label={t.actions.moveDown}
+            disabled={isLocked || index === (drafts?.length ?? 0) - 1}
+            onClick={() => {
+              onReorder(index, index + 1);
+            }}
+          />
+          <IconButton
+            icon="delete"
+            size="sm"
+            aria-label={t.actions.removeStep(index + 1)}
+            /*
+             * 마지막 한 단계는 지울 수 없다. 사유는 이 버튼의 접근 설명으로 잇는다 —
+             * 비활성 컨트롤은 포커스를 받지 못해 툴팁만으로는 닿을 수 없다(배치 규범 4).
+             */
+            disabled={isLocked || removeDisabledReason !== null}
+            aria-describedby={removeDisabledReason === null ? undefined : removeReasonId}
+            onClick={() => {
+              /* 누르는 자리가 스스로 한 번 더 본다 — 버튼의 잠금만 믿지 않는다. */
+              if (removeDisabledReason !== null) return;
 
-            onRemove(step.draftId);
-          }}
-        />
+              onRemove(step.draftId);
+            }}
+          />
+        </span>
       ),
     },
   ];
@@ -206,8 +229,6 @@ export const StepPane = ({
          * 전송 중에는 이 열 자체를 내지 않는다 — 디자인 시스템에 「이동만 비활성」 스위치가 없고,
          * 눌러도 아무 일이 없는 버튼을 남기는 것보다 없는 편이 정직하다.
          */
-        reorderable={!isLocked}
-        onRowReorder={onReorder}
         empty={
           <EmptyState
             size="sm"
@@ -235,6 +256,10 @@ export const StepPane = ({
       <h2 className="pane-title info-label">
         {t.panes.steps}
         <InfoTip text={STEP_RULES} />
+        {/* 단계 수는 표와 같은 기준(지금 보이는 줄 수)으로 센다(사용자 지시 2026-11-24). */}
+        {drafts !== null && drafts.length > 0 && (
+          <span className="approval-route-step-count">{t.values.stepCountOf(drafts.length)}</span>
+        )}
       </h2>
       <div className="banner-slot">{banner}</div>
 
@@ -255,9 +280,10 @@ export const StepPane = ({
       )}
 
       {drafts !== null && (
-        <div className="filter-bar">
+        /* 결재자 유형 · 결재자 선택 · 단계 추가를 한 줄로(사용자 지시 2026-11-24) — 좁으면 읽는 순서대로 접힌다. */
+        <div className="filter-bar approval-route-step-add">
           {/*
-           * 승인자 구분 — 1차에는 사용자만 열린다. **잠긴 선택지를 감추지 않는다**(`omf-mes#69`).
+           * 결재자 유형 — 1차에는 사용자만 열린다. **잠긴 선택지를 감추지 않는다**(`omf-mes#69`).
            * 값이 하나뿐이라 고를 것이 없지만, 그 사실을 보이는 것이 이 칸의 일이다. 「사용자만 고를 수
            * 있다」는 칸 아래가 아니라 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A).
            *
@@ -278,7 +304,9 @@ export const StepPane = ({
           />
 
           <SelectField
-            label={t.fields.approver}
+            className="approval-route-approver-field"
+            label={t.fields.approverSelect}
+            placeholder={t.fields.approverPlaceholder}
             options={approverOptions}
             value={approverValue}
             note={approverNote}
@@ -286,15 +314,16 @@ export const StepPane = ({
             onChange={setApproverValue}
           />
 
-          {addDisabledReason === null ? (
-            <div className="field-cell">
-              <Button variant="outlined" disabled={isLocked} onClick={handleAdd}>
-                {t.actions.addStep}
-              </Button>
-            </div>
-          ) : (
-            <DisabledAction label={t.actions.addStep} reason={addDisabledReason} />
-          )}
+          {/* 결재자를 고르기 전에는 꺼진 단추로만 — 칸의 「결재자를 선택하세요」가 이미 말한다. */}
+          <div className="field-cell field-cell-unlabeled">
+            <Button
+              variant="outlined"
+              disabled={isLocked || addDisabledReason !== null}
+              onClick={handleAdd}
+            >
+              {t.actions.addStep}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -302,6 +331,11 @@ export const StepPane = ({
         <div className="form-actions">
           {saveDisabledReason === null ? (
             <Button variant="filled" loading={isLocked} disabled={isLocked} onClick={onSave}>
+              {t.actions.saveSteps}
+            </Button>
+          ) : saveDisabledReason === t.actionReasons.stepSaveNoChanges ? (
+            /* 고친 단계가 없을 때는 꺼진 단추로만 — 같은 안내를 되풀이하지 않는다(사용자 지시 2026-11-24). */
+            <Button variant="filled" disabled>
               {t.actions.saveSteps}
             </Button>
           ) : (

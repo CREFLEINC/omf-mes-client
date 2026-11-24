@@ -49,7 +49,7 @@ import {
   useRouteSteps,
   type StepListResponse,
 } from './queries';
-import { RouteFilterBar } from './route-filter-bar';
+import { ActiveFilterChips, RouteFilterBar } from './route-filter-bar';
 import { RouteFormPane } from './route-form-pane';
 import { RouteListPane } from './route-list-pane';
 import {
@@ -1112,6 +1112,15 @@ export const ApprovalRouteScreen = () => {
       {/* 화면 제목 줄은 두지 않는다 — 조회 조건 · 목록 · 상세 통일 배치(검사 조회·판정과 같다 · #350). */}
       <ListDetailWorkspace
         storageKey="omf-mes:approval-route"
+        /* 사용 유무 라벨은 위 줄 오른쪽(「⋯」 옆 · 사용자 지시 2026-11-24). */
+        toolbar={
+          <ActiveFilterChips
+            includeInactive={filters.includeInactive}
+            onChange={(includeInactive) => {
+              handleSearch({ ...filters, includeInactive });
+            }}
+          />
+        }
         /* 배치는 늘 보이는 단추 둘(「좌우 배치」 · 「상하 배치」) — 단말 관리와 같다(omf-all-around#358). */
         filter={{
           label: messages.common.paneList.filter,

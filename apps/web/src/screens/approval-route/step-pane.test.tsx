@@ -193,11 +193,24 @@ describe('StepPane — 순서 이동', () => {
   });
 
   /** 전송 중에는 열 자체를 내지 않는다 — 눌러도 아무 일이 없는 버튼을 남기는 것보다 정직하다. */
-  it('전송 중에는 이동 열을 내지 않는다', () => {
+  it('전송 중에는 이동 버튼이 모두 잠긴다', () => {
     renderPane({ isLocked: true });
 
-    expect(screen.queryByRole('button', { name: '위로 이동' })).toBeNull();
-    expect(screen.queryByRole('button', { name: '아래로 이동' })).toBeNull();
+    for (const button of [
+      ...screen.getAllByRole('button', { name: '위로 이동' }),
+      ...screen.getAllByRole('button', { name: '아래로 이동' }),
+    ]) {
+      expect(button).toBeDisabled();
+    }
+  });
+
+  /* 단계 수는 표와 같은 기준으로 카드 제목 옆에 낸다(사용자 지시 2026-11-24). */
+  it('카드 제목 옆에 표의 줄 수만큼 「N단계」를 낸다', () => {
+    renderPane();
+
+    expect(screen.getByRole('heading', { name: /결재 단계/ })).toHaveTextContent(
+      t.values.stepCountOf(stepDraftFixtures.length),
+    );
   });
 });
 
@@ -281,7 +294,7 @@ describe('StepPane — 추가 줄', () => {
     renderPane();
 
     const table = screen.getByRole('table');
-    const combobox = screen.getByRole('combobox', { name: t.fields.approver });
+    const combobox = screen.getByRole('combobox', { name: t.fields.approverSelect });
 
     // 선행 단언 — 표와 선택칸이 둘 다 있어야 「표 밖이다」가 뜻을 갖는다.
     expect(table).toBeInTheDocument();
@@ -299,7 +312,7 @@ describe('StepPane — 추가 줄', () => {
     const user = userEvent.setup();
 
     renderPane({ onAdd });
-    await user.click(screen.getByRole('combobox', { name: t.fields.approver }));
+    await user.click(screen.getByRole('combobox', { name: t.fields.approverSelect }));
     await user.click(screen.getByRole('option', { name: APPROVER_OPTION_LABEL }));
     await user.click(screen.getByRole('button', { name: t.actions.addStep }));
 
@@ -310,22 +323,23 @@ describe('StepPane — 추가 줄', () => {
     const user = userEvent.setup();
 
     renderPane();
-    await user.click(screen.getByRole('combobox', { name: t.fields.approver }));
+    await user.click(screen.getByRole('combobox', { name: t.fields.approverSelect }));
     await user.click(screen.getByRole('option', { name: APPROVER_OPTION_LABEL }));
     await user.click(screen.getByRole('button', { name: t.actions.addStep }));
 
-    expect(screen.getByRole('combobox', { name: t.fields.approver })).not.toHaveTextContent(
+    expect(screen.getByRole('combobox', { name: t.fields.approverSelect })).not.toHaveTextContent(
       APPROVER_OPTION_LABEL,
     );
   });
 
-  it('승인자를 고르지 않으면 추가가 잠기고 사유가 그 버튼의 설명이 된다', () => {
+  /* 결재자 칸의 「결재자를 선택하세요」가 이미 말하므로 사유 글 없이 꺼진 단추만 둔다(사용자 지시 2026-11-24). */
+  it('결재자를 고르지 않으면 추가가 잠긴다', () => {
     renderPane();
 
-    const button = screen.getByRole('button', { name: t.actions.addStep });
-
-    expect(button).toBeDisabled();
-    expect(button).toHaveAccessibleDescription(t.actionReasons.stepAddNoApprover);
+    expect(screen.getByRole('button', { name: t.actions.addStep })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: t.fields.approverSelect })).toHaveTextContent(
+      t.fields.approverPlaceholder,
+    );
   });
 
   it('승인자 목록이 잘리면 그 사실을 밝힌다', () => {
@@ -337,7 +351,7 @@ describe('StepPane — 추가 줄', () => {
   it('전송 중에는 추가 줄이 잠긴다', () => {
     renderPane({ isLocked: true });
 
-    expect(screen.getByRole('combobox', { name: t.fields.approver })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: t.fields.approverSelect })).toBeDisabled();
   });
 });
 

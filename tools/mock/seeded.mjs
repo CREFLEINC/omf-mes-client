@@ -1984,6 +1984,82 @@ on('GET', '/planning/production-orders', (_p, query) => {
   );
 });
 
+/*
+ * 사용자 · 부서 목록(#358 확인용) — 계약 예시는 한 줄에 「전체 137건」이라 화면이 선택 목록이 잘렸다고 안내했다
+ * (「선택 목록이 일부만 표시됩니다」). 실제 건수와 맞는 목록을 세운다.
+ */
+const DEPT_BASE = {
+  departmentId: 1001,
+  departmentCode: 'DEPT-P1',
+  departmentName: '생산1팀',
+  nameKo: '표시명',
+  nameVi: 'Ten hien thi',
+  parentDepartmentId: 1001,
+  businessUnitId: 1001,
+  isActive: true,
+  sourceSystemCode: 'ERP',
+  productionWarehouseCount: 2,
+};
+const MOCK_DEPARTMENTS = [
+  [1001, 'DEPT-P1', '생산1팀'],
+  [1002, 'DEPT-P2', '생산2팀'],
+  [1003, 'DEPT-QC', '품질팀'],
+  [1004, 'DEPT-PU', '구매팀'],
+  [1005, 'DEPT-LG', '물류팀'],
+].map(([departmentId, departmentCode, departmentName]) => ({
+  ...DEPT_BASE,
+  departmentId,
+  departmentCode,
+  departmentName,
+  nameKo: departmentName,
+  parentDepartmentId: null,
+}));
+on('GET', '/mdm/departments', (_p, query) => page(MOCK_DEPARTMENTS, query));
+const USER_BASE = {
+  appUserId: 1001,
+  loginId: 'hong.gd',
+  userName: '표시명',
+  departmentId: 1001,
+  email: '문자열',
+  phoneNumber: '84912345678',
+  statusCode: 'ACTIVE',
+  isActive: true,
+};
+const MOCK_USERS = [
+  [1001, 'hong.gd', '홍길동', 1001, 'EMPLOYED'],
+  [1002, 'kim.qc', '김품질', 1003, 'EMPLOYED'],
+  [1003, 'lee.pu', '이구매', 1004, 'EMPLOYED'],
+  [1004, 'park.lg', '박물류', 1005, 'EMPLOYED'],
+  [1005, 'choi.p2', '최생산', 1002, 'ON_LEAVE'],
+  [1006, 'jung.old', '정퇴사', 1001, 'RESIGNED'],
+].map(([appUserId, loginId, userName, departmentId, statusCode]) => ({
+  ...USER_BASE,
+  appUserId,
+  loginId,
+  userName,
+  departmentId,
+  email: `${loginId}@example.com`,
+  statusCode,
+  isActive: statusCode !== 'RESIGNED',
+}));
+on('GET', '/app/users', (_p, query) => {
+  const needle = (query.get('q') ?? '').trim().toLowerCase();
+  const dept = Number(query.get('departmentId') ?? 0);
+  const status = query.get('statusCode') ?? '';
+  return page(
+    MOCK_USERS.filter(
+      (row) =>
+        (needle === '' ||
+          row.loginId.toLowerCase().includes(needle) ||
+          row.userName.includes(needle)) &&
+        (dept === 0 || row.departmentId === dept) &&
+        (status === '' || row.statusCode === status) &&
+        (bool(query, 'includeInactive') === true || row.isActive),
+    ),
+    query,
+  );
+});
+
 on('GET', '/mdm/code-values', (_p, query) => {
   const group = query.get('codeGroupCode') ?? '';
   const values = state.codeValues[group] ?? [];

@@ -60,10 +60,13 @@ describe('RouteFilterBar — 모아서 적용', () => {
     expect(onSearch).toHaveBeenCalledWith({ ...DEFAULT_FILTERS, businessUnitId: '9101' });
   });
 
-  it('「미사용 포함」을 켜면 조회에 함께 실린다', async () => {
-    const { onSearch, user } = renderBar();
+  /* 「미사용 포함」은 위 줄 사용 유무 라벨이 맡는다 — 조회를 눌러도 걸린 값을 그대로 싣는다(사용자 지시 2026-11-24). */
+  it('조회는 걸려 있는 사용 유무를 그대로 싣는다', async () => {
+    const { onSearch, user } = renderBar({
+      appliedFilters: { ...DEFAULT_FILTERS, includeInactive: true },
+    });
 
-    await user.click(screen.getByRole('checkbox', { name: messages.common.includeInactive }));
+    expect(screen.queryByRole('checkbox', { name: messages.common.includeInactive })).toBeNull();
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     expect(onSearch).toHaveBeenCalledWith({ ...DEFAULT_FILTERS, includeInactive: true });
@@ -183,7 +186,6 @@ describe('RouteFilterBar — 조건 칩', () => {
 
     /* 선행 단언 — 조건이 칸에 서 있어야 「칩이 없다」가 뜻을 갖는다. */
     expect(screen.getByLabelText(t.fields.q)).toHaveValue('SAMPLE');
-    expect(screen.getByRole('checkbox', { name: messages.common.includeInactive })).toBeChecked();
     expect(screen.queryByRole('button', { name: /조건 제거$/ })).not.toBeInTheDocument();
   });
 });

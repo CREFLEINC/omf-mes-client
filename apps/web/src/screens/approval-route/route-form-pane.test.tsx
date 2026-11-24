@@ -41,12 +41,13 @@ const renderPane = (overrides: Partial<RouteFormPaneProps> = {}) => {
 };
 
 describe('RouteFormPane — 읽기 표기', () => {
-  it('승인 유형·사용 여부·단계 수를 낸다', () => {
+  /* 단계 수는 결재 단계 카드 제목 옆으로 옮겼다(사용자 지시 2026-11-24). */
+  it('제목 아래 한 줄에 승인 유형과 사용 유무를 낸다', () => {
     renderPane();
 
+    expect(screen.getByRole('heading', { name: t.panes.basicInfo })).toBeInTheDocument();
     expect(screen.getByText('폐기 출고')).toBeInTheDocument();
     expect(screen.getByText(t.values.active)).toBeInTheDocument();
-    expect(screen.getByText('2')).toBeInTheDocument();
   });
 
   /**
@@ -59,12 +60,6 @@ describe('RouteFormPane — 읽기 표기', () => {
     expect(screen.getByRole('button', { name: t.notes.approvalTypeFixed })).toBeInTheDocument();
     expect(screen.queryByText(t.notes.approvalTypeFixed)).toBeNull();
     expect(screen.queryByLabelText(t.fields.approvalTypeCode)).toBeNull();
-  });
-
-  it('단계가 0이면 표식을 낸다', () => {
-    renderPane({ route: allUnits });
-
-    expect(screen.getByText(t.values.noSteps)).toBeInTheDocument();
   });
 
   it('미사용 결재선은 그 사실을 낸다', () => {
@@ -201,7 +196,7 @@ describe('RouteFormPane — 입력칸', () => {
 
     expect(screen.getByLabelText(t.fields.minValue)).toBeDisabled();
     expect(screen.getByLabelText(t.fields.maxValue)).toBeDisabled();
-    expect(screen.getByRole('button', { name: messages.common.save })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.saveRoute })).toBeDisabled();
     expect(screen.getByRole('button', { name: messages.common.cancel })).toBeDisabled();
     expect(screen.getByRole('button', { name: messages.common.deactivate })).toBeDisabled();
   });
@@ -231,7 +226,7 @@ describe('RouteFormPane — 등록 폼', () => {
     renderPane(createProps);
 
     expect(screen.getByRole('button', { name: t.actions.submitCreate })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: messages.common.save })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.actions.saveRoute })).toBeNull();
   });
 
   /** 등록 중에는 사용 전환할 대상이 아직 없다 — 자원이 만들어지지 않았다. */
@@ -252,17 +247,25 @@ describe('RouteFormPane — 등록 폼', () => {
 
 describe('RouteFormPane — 저장이 막힌 자리', () => {
   it('사유가 있으면 저장 버튼이 잠기고 사유가 보인다', () => {
+    renderPane({ saveDisabledReason: t.actionReasons.duplicateActive });
+
+    expect(screen.getByRole('button', { name: t.actions.saveRoute })).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.duplicateActive)).toBeInTheDocument();
+  });
+
+  /* 고친 것이 없을 때는 꺼진 단추로만 — 같은 안내를 되풀이하지 않는다(사용자 지시 2026-11-24). */
+  it('고친 것이 없으면 저장 버튼만 잠기고 사유 글은 내지 않는다', () => {
     renderPane({ saveDisabledReason: t.actionReasons.saveNoChanges });
 
-    expect(screen.getByRole('button', { name: messages.common.save })).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.saveNoChanges)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.actions.saveRoute })).toBeDisabled();
+    expect(screen.queryByText(t.actionReasons.saveNoChanges)).toBeNull();
   });
 
   it('사유가 없으면 저장 버튼이 열린다', async () => {
     const user = userEvent.setup();
     const { props } = renderPane();
 
-    await user.click(screen.getByRole('button', { name: messages.common.save }));
+    await user.click(screen.getByRole('button', { name: t.actions.saveRoute }));
 
     expect(props.onSave).toHaveBeenCalledTimes(1);
   });
@@ -293,7 +296,7 @@ describe('RouteFormPane — 저장이 막힌 자리', () => {
     renderPane({ duplicateUnknownNote: t.notes.duplicateUnknown });
 
     expect(screen.getByText(t.notes.duplicateUnknown)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: messages.common.save })).toBeEnabled();
+    expect(screen.getByRole('button', { name: t.actions.saveRoute })).toBeEnabled();
   });
 });
 
