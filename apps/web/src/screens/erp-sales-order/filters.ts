@@ -96,6 +96,13 @@ export const toSelectionSearchParams = (
   return next;
 };
 
+/** 고른 건을 푼 주소 — 조건 · 쪽은 그대로 둔다. */
+export const toClearedSelectionSearchParams = (current: URLSearchParams): URLSearchParams => {
+  const next = new URLSearchParams(current);
+  next.delete('sel');
+  return next;
+};
+
 /** 숫자로 읽히지 않는 식별자는 보내지 않는다 — 서버가 400 으로 목록 전체를 막는다. */
 const toId = (value: string): number | undefined => {
   const id = Number(value);

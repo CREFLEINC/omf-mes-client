@@ -33,6 +33,8 @@ export interface ErpProductionOrderListPaneProps extends ErpProductionOrderNames
   isBeyondLast: boolean;
   selectedId: number | null;
   onSelect: (row: ErpProductionOrder) => void;
+  /** 고른 줄을 다시 누르면 고르기를 푼다. */
+  onUnselect: () => void;
 }
 
 /**
@@ -45,6 +47,7 @@ export const ErpProductionOrderListPane = ({
   isBeyondLast,
   selectedId,
   onSelect,
+  onUnselect,
   ...names
 }: ErpProductionOrderListPaneProps) => {
   const columns: Column<ErpProductionOrder>[] = [
@@ -100,6 +103,7 @@ export const ErpProductionOrderListPane = ({
       pick={{
         currentId: selectedId === null ? null : String(selectedId),
         onPick: onSelect,
+        onUnpick: onUnselect,
       }}
       empty={
         <EmptyState size="sm" live title={isBeyondLast ? t.empty.beyondTitle : t.empty.title} />

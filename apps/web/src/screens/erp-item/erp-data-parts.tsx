@@ -47,6 +47,8 @@ export interface ErpListTableProps<T> {
   pick?: {
     currentId: string | null;
     onPick: (row: T) => void;
+    /** 이미 고른 줄을 다시 누르면 부른다 — 고르기를 푼다. 없으면 `onPick` 을 다시 부른다. */
+    onUnpick?: () => void;
     columnKey?: string;
   };
   empty?: ReactNode;
@@ -89,7 +91,8 @@ export const ErpListTable = <T,>({
                       className="users-roles-row-pick"
                       aria-current={pick.currentId === id ? 'true' : undefined}
                       onClick={() => {
-                        pick.onPick(row);
+                        if (pick.currentId === id && pick.onUnpick !== undefined) pick.onUnpick();
+                        else pick.onPick(row);
                       }}
                     >
                       {column.render?.(row, index) ?? cellText(row, column.key)}

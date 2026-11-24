@@ -156,6 +156,32 @@ describe('InboundExcessScreen — 초과분 발주 연결 탭', () => {
     expect(within(detailPane()).getByRole('button', { name: te.actions.link })).toBeEnabled();
   });
 
+  it('고른 초과분 · 후보 줄을 다시 누르면 고르기를 푼다', async () => {
+    const user = renderTab([
+      excessListRoute([excessFixture(), excessFixture({ inboundReceiptLineId: 9412, lineNo: 2 })]),
+      candidatesRoute([
+        candidateFixture(),
+        candidateFixture({ purchaseOrderLineId: 7302, lineNo: 2 }),
+      ]),
+    ]);
+
+    const excess = await within(listPane()).findByRole('button', {
+      name: te.pickExcess('SAMPLE-IR-0001', 2),
+    });
+    await user.click(excess);
+    const line = await within(detailPane()).findByRole('button', {
+      name: te.pickLine('SAMPLE-PO-0001', 2),
+    });
+    await user.click(line);
+    expect(within(detailPane()).getByRole('button', { name: te.actions.link })).toBeEnabled();
+
+    await user.click(line);
+    expect(await within(detailPane()).findByText(te.blocked.noLine)).toBeInTheDocument();
+
+    await user.click(excess);
+    expect(await within(detailPane()).findByText(te.blocked.noExcess)).toBeInTheDocument();
+  });
+
   it('목록은 입하번호 열 없이 품목코드 · 품목명을 따로 세운다 — 입하번호는 고른 초과분 머리에 선다', async () => {
     renderTab([excessListRoute([excessFixture()]), candidatesRoute([])]);
 

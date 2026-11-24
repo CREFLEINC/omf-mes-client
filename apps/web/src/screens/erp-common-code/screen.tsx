@@ -394,6 +394,9 @@ export const ErpCommonCodeScreen = () => {
                   // 그룹을 바꾸면 코드값 조건을 비운다 — 앞 그룹의 검색어가 새 그룹을 빈 결과로 만든다.
                   setSearchParams(toSearchParams(row.groupCode, EMPTY_FILTERS, 1, size));
                 },
+                onUnpick: () => {
+                  setSearchParams(toSearchParams(null, EMPTY_FILTERS, 1, size));
+                },
               }}
               empty={
                 <EmptyState

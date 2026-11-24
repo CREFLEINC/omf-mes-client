@@ -588,7 +588,10 @@ export const ShippingUnitScreen = () => {
             className={puCx('pu-item', item.shippingUnitId === doneUnitId && 'is-selected')}
             aria-pressed={item.shippingUnitId === doneUnitId}
             onClick={() => {
-              setDoneUnitId(item.shippingUnitId);
+              /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+              setDoneUnitId((current) =>
+                current === item.shippingUnitId ? null : item.shippingUnitId,
+              );
             }}
           >
             <div className="pu-item-top">

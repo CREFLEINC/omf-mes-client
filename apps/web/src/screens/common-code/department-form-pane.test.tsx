@@ -139,10 +139,12 @@ describe('DepartmentFormPane — 액션', () => {
       deactivateDisabledReason: '사용 중지는 이미 미사용인 부서에 다시 할 수 없습니다.',
     });
 
-    expect(screen.getByRole('button', { name: '사용 중지' })).toBeDisabled();
-    expect(
-      screen.getByText('사용 중지는 이미 미사용인 부서에 다시 할 수 없습니다.'),
-    ).toBeInTheDocument();
+    const button = screen.getByRole('button', { name: '사용 중지' });
+    expect(button).toBeDisabled();
+    /* 제목 줄 작은 버튼 — 사유는 버튼 설명(마우스를 올리면 보임)으로 붙는다(2026-11-24). */
+    expect(button).toHaveAccessibleDescription(
+      '사용 중지는 이미 미사용인 부서에 다시 할 수 없습니다.',
+    );
   });
 
   it('고친 것이 없으면 저장을 누를 수 없다', () => {

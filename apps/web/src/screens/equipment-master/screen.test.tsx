@@ -461,6 +461,23 @@ describe('EquipmentMasterScreen', () => {
     });
   });
 
+  it('고른 그룹을 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await user.click(await screen.findByRole('button', { name: 'GRP-A-01' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'GRP-A-01' })).toHaveAttribute(
+        'aria-current',
+        'true',
+      );
+    });
+    await user.click(screen.getByRole('button', { name: 'GRP-A-01' }));
+
+    expect(await screen.findByText(t.empty.groupNotSelected)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'GRP-A-01' })).not.toHaveAttribute('aria-current');
+  });
+
   /* 아직 상세 페인이 없다 — 무엇을 해야 하는지 빈 자리 문구로 밝힌다. */
   it('그룹을 고르기 전에는 우측이 무엇을 기다리는지 밝힌다', async () => {
     renderScreen();

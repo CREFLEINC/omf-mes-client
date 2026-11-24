@@ -1,4 +1,4 @@
-import { Button, TextField } from '@crefle/web-ui';
+import { Button, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
@@ -151,6 +151,27 @@ export const DepartmentFormPane = ({
 
   return (
     <section className="pane" aria-label={t.panes.departmentForm}>
+      {/*
+       * 사용자 관리 상세와 같은 머리 — 제목 줄 오른쪽에 「사용 중지」(사용자 지시 2026-11-24). 폼 값 저장과 따로 서버에
+       * 바로 나가는 작업이라 아래 「취소 · 저장」과 떨어져 선다. 등록 폼에는 두지 않는다.
+       */}
+      <div className="pane-heading-row users-roles-heading">
+        <h3 className="pane-title">{t.panes.departmentForm}</h3>
+        {mode === 'edit' && (
+          <div className="users-roles-account-actions">
+            <Button
+              variant="outlined"
+              size="sm"
+              disabled={deactivateDisabledReason !== null}
+              title={deactivateDisabledReason ?? undefined}
+              leadingIcon={<Icon name="block" size={18} />}
+              onClick={onDeactivate}
+            >
+              {messages.common.deactivate}
+            </Button>
+          </div>
+        )}
+      </div>
       {banner}
 
       <div className="form-grid">
@@ -208,25 +229,6 @@ export const DepartmentFormPane = ({
       {productionWarehouses}
 
       <div className="form-actions">
-        {/*
-         * 등록 폼에는 사용 중지 자리를 두지 않는다 — 아직 없는 자원이라
-         * 「언젠가 풀린다」가 아니라 애초에 해당하지 않는 액션이다.
-         */}
-        {mode === 'edit' &&
-          (deactivateDisabledReason === null ? (
-            <div className="field-cell form-actions-secondary">
-              <Button variant="outlined" onClick={onDeactivate}>
-                {messages.common.deactivate}
-              </Button>
-            </div>
-          ) : (
-            <DisabledAction
-              label={messages.common.deactivate}
-              reason={deactivateDisabledReason}
-              className="form-actions-secondary"
-            />
-          ))}
-
         {/*
          * 등록에서 「취소」는 **폼을 닫는 것**이라 고친 것이 없어도 눌러야 한다.
          * 수정에서는 **기준값으로 되돌리는 것**이라 고친 것이 있을 때만 의미가 있다.

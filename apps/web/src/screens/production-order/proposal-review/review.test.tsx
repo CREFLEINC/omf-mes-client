@@ -233,6 +233,16 @@ describe('제안 검토 화면', () => {
     const detail = screen.getByRole('region', { name: `${secondNo} 제안 상세` });
     expect(list.compareDocumentPosition(detail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+  it('고른 ERP W/O 줄을 한 번 더 누르면 상세 선택이 풀린다', async () => {
+    const user = userEvent.setup();
+    renderReview();
+    await user.click(screen.getByRole('row', { name: `${secondNo} 상세` }));
+    expect(screen.getByRole('region', { name: `${secondNo} 제안 상세` })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('row', { name: `${secondNo} 상세` }));
+    expect(screen.queryByRole('region', { name: `${secondNo} 제안 상세` })).toBeNull();
+    expect(screen.getByText('검토할 ERP W/O를 선택하세요')).toBeInTheDocument();
+  });
   it('4M 보완하면 확정 선택이 해제되고 보기 전환에도 값을 유지한다', async () => {
     const user = userEvent.setup();
     renderReview();

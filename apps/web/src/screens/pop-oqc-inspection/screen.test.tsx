@@ -108,6 +108,21 @@ describe('PopOqcInspectionScreen (P-04-06)', () => {
     ).toBe('COMPLETED');
   });
 
+  it('고른 의뢰를 한 번 더 누르면 선택이 풀리고 오른쪽이 안내로 돌아간다', async () => {
+    const user = userEvent.setup();
+    renderScreen('900028');
+    await openWaitingRequest(user);
+    const row = screen.getByRole('button', {
+      name: pop.queue.selectRow(waitingRequest.inspectionRequestNo),
+    });
+    expect(row).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(row);
+    expect(row).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByLabelText(pop.result.fields.accepted)).toBeNull();
+    expect(screen.getByText(pop.detail.nothingSelectedTitle)).toBeInTheDocument();
+  });
+
   it('판정을 단추로 고르고, 저장에 사번 헤더를 싣는다', async () => {
     const user = userEvent.setup();
     const { saves } = renderScreen('900028');

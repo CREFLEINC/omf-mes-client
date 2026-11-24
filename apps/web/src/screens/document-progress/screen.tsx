@@ -461,13 +461,16 @@ export const DocumentProgressScreen = () => {
   };
 
   /**
-   * 문서 고르기(수명 표 3행). 입고 관리 표처럼 줄을 누르면 고르고, 이미 고른 줄은 그대로 둔다.
+   * 문서 고르기(수명 표 3행). 줄을 누르면 고르고, 이미 고른 줄을 다시 누르면 고르기를 푼다(사용자 지시 2026-11-24).
    *
    * **보이는 줄을 바꾸지 않는다** — 조건·쪽을 그대로 두고 `sel`만 넣는다. 고를 때 첫 쪽으로
    * 튀면 사용자가 3쪽에서 고른 문서의 상세를 보는 동안 목록은 1쪽이 된다.
    */
   const selectDocument = (documentId: number): void => {
-    if (documentId === selection?.documentId) return;
+    if (documentId === selection?.documentId) {
+      applySearchParams(withoutSelection(toSearchParams(filters, page)));
+      return;
+    }
 
     applySearchParams(withSelection(toSearchParams(filters, page), documentId));
   };

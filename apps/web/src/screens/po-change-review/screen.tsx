@@ -132,7 +132,7 @@ export const PoChangeReviewScreen = () => {
                 </AlertBanner>
               ) : null
             }
-            onSelect={setSelectedId}
+            onSelect={(id) => setSelectedId((prev) => (prev === id ? null : id))}
           />
         </section>
         <ListCollapseTab collapse={listCollapse} />

@@ -309,6 +309,9 @@ export const WarehouseLayoutScreen = () => {
                     isPlaced={(locationId) => hasMarker(markers, locationId)}
                     selectedLocationId={selectedLocation}
                     onPick={pickLocation}
+                    onUnpick={() => {
+                      setSelectedLocation(null);
+                    }}
                     expandedIds={expandedIds}
                     onExpandedChange={(ids) => {
                       setExpansion((prev) => (prev === null ? prev : { ...prev, ids }));

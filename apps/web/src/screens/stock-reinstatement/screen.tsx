@@ -295,7 +295,9 @@ export const StockReinstatementScreen = () => {
     if (row.lotId === null) return;
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
-      next.set('decision', String(row.dispositionDecisionId));
+      /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+      if (row.dispositionDecisionId === selectedId) next.delete('decision');
+      else next.set('decision', String(row.dispositionDecisionId));
       return next;
     });
   };

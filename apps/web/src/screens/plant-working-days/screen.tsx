@@ -70,6 +70,14 @@ interface Row {
  * 운영 정책 `WEEKLY_WORKING_DAYS` 의 「그날부터 적용」 행으로 남는다(R-10). 머리 · 안내 배너 · 저장 규칙은
  * W-CO-14 를 따른다.
  */
+type DaysFilter = 'all' | '5' | '6';
+
+const DAYS_FILTERS: { value: DaysFilter; label: string }[] = [
+  { value: 'all', label: t.daysFilter.all },
+  { value: '5', label: t.daysFilter.five },
+  { value: '6', label: t.daysFilter.six },
+];
+
 export const PlantWorkingDaysScreen = () => {
   const toast = useToast();
   const { session } = useSession();
@@ -81,6 +89,7 @@ export const PlantWorkingDaysScreen = () => {
   const [search, setSearch] = useState('');
   const searchRef = useFitPlaceholderWidth(w.searchPlaceholder);
   const [keyword, setKeyword] = useState('');
+  const [daysFilter, setDaysFilter] = useState<DaysFilter>('all');
 
   const save = useSaveWorkingDays(policies.data, () => {
     setEdits(new Map());
@@ -215,7 +224,9 @@ export const PlantWorkingDaysScreen = () => {
   const fit = useFitColumns(resizable.columns);
   const needle = keyword.trim().toLowerCase();
   const shownRows = rows.filter(
-    (row) => needle === '' || row.plant.plantName.toLowerCase().includes(needle),
+    (row) =>
+      (needle === '' || row.plant.plantName.toLowerCase().includes(needle)) &&
+      (daysFilter === 'all' || String(row.saved) === daysFilter),
   );
   /* 공장은 한 번에 다 받는 작은 목록이라 화면 안에서 쪽을 나눈다. */
   const plantPage = useClientPage(shownRows);
@@ -277,7 +288,33 @@ export const PlantWorkingDaysScreen = () => {
 
   return (
     <div className="plant-working-days-workspace">
-      <LeaveGuard when={isDirty} discardTitle={t.discard.title} discardBody={t.discard.body} />
+      {/* 저장 안 한 변경 창은 사용자 관리 화면과 같은 모양 · 문구(사용자 지시 2026-11-24). */}
+      <LeaveGuard
+        when={isDirty}
+        discardTitle={t.discard.title}
+        discardBody={t.discard.body}
+        stayLabel={t.discard.keep}
+        leaveLabel={t.discard.confirm}
+        showCloseButton={false}
+        size="sm"
+      />
+      {/* 주간 근무일 라벨 — 위 줄 오른쪽, 누르는 즉시 거른다(저장된 값 기준 · 사용자 지시 2026-11-24). */}
+      <div className="list-detail-toolbar">
+        <div className="inspection-hub-counts" role="group" aria-label={t.daysFilter.group}>
+          {DAYS_FILTERS.map((option) => (
+            <Chip
+              key={option.value}
+              variant="filter"
+              size="sm"
+              selected={daysFilter === option.value}
+              aria-pressed={daysFilter === option.value}
+              onSelectedChange={() => setDaysFilter(option.value)}
+            >
+              {option.label}
+            </Chip>
+          ))}
+        </div>
+      </div>
       {/*
        * 머리글(경로 · 화면 이름)은 두지 않는다 — 사이드바가 위치를 말한다(단말 관리와 같은 틀 · #358).
        * 사용자 지시: 상세 상자가 없다 — 조회 조건 상자 + 목록 상자 하나. 나눌 상세가 없어 배치 단추 · 목록 접기도 두지 않는다.

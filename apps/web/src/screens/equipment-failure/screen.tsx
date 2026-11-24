@@ -200,7 +200,8 @@ export const EquipmentFailureScreen = () => {
                   isLoading={list.isPending}
                   isBeyondLast={pageView.isBeyondLast}
                   onSelect={(breakdownId) => {
-                    apply(filters, page, breakdownId);
+                    /* 고른 줄을 다시 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+                    apply(filters, page, breakdownId === selectedId ? null : breakdownId);
                   }}
                   onFirstPage={() => {
                     apply(filters);

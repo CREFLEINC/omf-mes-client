@@ -4,7 +4,6 @@ import {
   EmptyState,
   Icon,
   SearchInput,
-  Select,
   SkeletonText,
   type Column,
 } from '@crefle/web-ui';
@@ -23,6 +22,7 @@ import {
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { OneLine } from '../../patterns/po-board';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
+import { Select } from '../../patterns/select';
 import { PageNav } from '../../patterns/page-nav';
 import { documentNoOf } from '../integration-sync/message-labels';
 import { formatDateTime } from '../integration-sync/message-status';
@@ -63,6 +63,8 @@ interface ItemTableProps {
   counts: OutboundCounts;
   selectedCode: string | null;
   onSelect: (code: string) => void;
+  /** 고른 항목을 다시 누르면 고르기를 푼다. */
+  onUnselect: () => void;
 }
 
 /** 조회 조건 — 상태 · 송신 항목 이름. 화면 안에서만 거른다(서버 요청은 그대로 · #358). */
@@ -88,7 +90,7 @@ const matchesFilters = (item: OutboundItem, filters: OutboundFilters): boolean =
 };
 
 /** 왼쪽 — 송신 항목 다섯. 줄 어디를 눌러도 고른다(입고 관리의 발주 목록과 같다). */
-const ItemTable = ({ items, counts, selectedCode, onSelect }: ItemTableProps) => {
+const ItemTable = ({ items, counts, selectedCode, onSelect, onUnselect }: ItemTableProps) => {
   const columns: Column<OutboundItem>[] = [
     {
       key: 'outboundItemName',
@@ -154,6 +156,7 @@ const ItemTable = ({ items, counts, selectedCode, onSelect }: ItemTableProps) =>
         onPick: (item) => {
           onSelect(item.outboundItemCode);
         },
+        onUnpick: onUnselect,
       }}
     />
   );
@@ -215,6 +218,9 @@ const PendingTable = ({ rows }: { rows: IntegrationMessageRow[] }) => {
         onPick: (row) => {
           setPickedId(String(row.integrationMessageId));
         },
+        onUnpick: () => {
+          setPickedId(null);
+        },
       }}
     />
   );
@@ -242,8 +248,11 @@ export const ErpOutboundScreen = () => {
   /* 송신 항목은 다 받는 작은 목록이라 화면에서 쪽을 나눈다(#358). */
   const itemPage = useClientPage(shownItems);
   const requestedCode = searchParams.get('item');
+  /* 고른 항목을 다시 눌러 푼 상태는 빈 `item` 으로 둔다 — 그때는 첫 항목으로 되돌리지 않는다. */
   const selected =
-    itemRows.find((item) => item.outboundItemCode === requestedCode) ?? itemRows[0] ?? null;
+    requestedCode === ''
+      ? null
+      : (itemRows.find((item) => item.outboundItemCode === requestedCode) ?? itemRows[0] ?? null);
   const page = readPage(searchParams.get('page'));
   /*
    * 송신 예정은 늘 전체 기간으로 본다 — 생성일 조건 칸은 두지 않는다(사용자 지시 2026-11-24). 서버는 기간 없는 조회를
@@ -266,6 +275,9 @@ export const ErpOutboundScreen = () => {
   /** 항목을 고르면 쪽은 처음으로. */
   const select = (code: string): void => {
     setSearchParams(new URLSearchParams({ item: code }));
+  };
+  const unselect = (): void => {
+    setSearchParams(new URLSearchParams({ item: '' }));
   };
   const changePage = (nextPage: number): void => {
     const next = new URLSearchParams(searchParams);
@@ -415,6 +427,7 @@ export const ErpOutboundScreen = () => {
                 counts={counts}
                 selectedCode={selected?.outboundItemCode ?? null}
                 onSelect={select}
+                onUnselect={unselect}
               />
             </div>
             <PageNav {...itemPage.nav} buttonSize="md" />

@@ -20,6 +20,8 @@ export interface MessageTableProps {
   isBeyondLast: boolean;
   onFirstPage: () => void;
   onOpenDetail: (id: number) => void;
+  /** 열린 줄을 다시 누르면 상세를 닫는다. */
+  onCloseDetail: () => void;
   /** 오른쪽에 상세가 열린 메시지 — 그 줄을 칠한다(입고 관리의 고른 발주와 같다). */
   openedId?: number | null;
   onRetry: (row: IntegrationMessageRow) => void;
@@ -56,6 +58,7 @@ export const MessageTable = ({
   isBeyondLast,
   onFirstPage,
   onOpenDetail,
+  onCloseDetail,
   openedId = null,
   onRetry,
   retryingId,
@@ -202,6 +205,7 @@ export const MessageTable = ({
         onPick: (row) => {
           onOpenDetail(row.integrationMessageId);
         },
+        onUnpick: onCloseDetail,
       }}
       /*
        * 화면이 선택을 거르지 않는다. 「재처리 가능한 것만 남기게」 걸러 보면

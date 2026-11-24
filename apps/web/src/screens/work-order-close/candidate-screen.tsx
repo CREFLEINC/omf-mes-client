@@ -573,7 +573,14 @@ export const WorkOrderCloseCandidateScreen = () => {
           loadError={loadError}
           page={page}
           variant={correctionMode ? 'correction' : 'close'}
-          onSelect={(workOrderId) => dispatch({ type: 'SELECT', workOrderId })}
+          onSelect={(workOrderId) =>
+            /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+            dispatch(
+              workOrderId === state.selectedWorkOrderId
+                ? { type: 'CLEAR_SELECTION' }
+                : { type: 'SELECT', workOrderId },
+            )
+          }
           onChangePage={(nextPage) => dispatch({ type: 'CHANGE_PAGE', page: nextPage })}
         />
         <ListCollapseTab collapse={listCollapse} />

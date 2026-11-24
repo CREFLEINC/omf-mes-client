@@ -179,6 +179,19 @@ describe('마감 후 생산실적 정정', () => {
     expect(writes[0]?.body).not.toHaveProperty('grade');
   });
 
+  it('고른 실적 줄을 한 번 더 누르면 선택이 풀리고 [정정]이 잠긴다', async () => {
+    renderWorkspace(() => jsonResponse(productionResult, { status: 201 }), []);
+    const user = userEvent.setup();
+    const row = await screen.findByRole('button', { name: t.actions.select(3) });
+    await user.click(row);
+    expect(row).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByRole('button', { name: t.actions.correct })).toBeEnabled();
+
+    await user.click(row);
+    expect(row).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('button', { name: t.actions.correct })).toBeDisabled();
+  });
+
   it('화면 단위 400 뒤에만 승인 사유를 받아 별도 상신한다', async () => {
     const writes: RecordedWrite[] = [];
     renderWorkspace(

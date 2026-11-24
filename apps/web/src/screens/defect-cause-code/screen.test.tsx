@@ -382,6 +382,21 @@ describe('DefectCauseCodeScreen — 2계층 표시', () => {
     expect(screen.getByRole('button', { name: 'DF-11' })).toHaveAttribute('aria-current', 'true');
   });
 
+  it('고른 코드를 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
+    const { user } = renderScreen([
+      defectOptionsRoute(),
+      defectListRoute(),
+      defectDetailRoute(defectCodeFixtures[1]),
+    ]);
+
+    await user.click(await screen.findByRole('button', { name: 'DF-11' }));
+    await user.click(screen.getByRole('button', { name: 'DF-11' }));
+
+    expect(currentLocation()).not.toContain('sel=');
+    expect(screen.getByRole('button', { name: 'DF-11' })).not.toHaveAttribute('aria-current');
+    expect(await screen.findByText('코드를 선택하세요')).toBeInTheDocument();
+  });
+
   it('고르기 전에는 우측이 선택 안내를 낸다', async () => {
     renderScreen([defectListRoute()]);
     await screen.findByRole('button', { name: 'DF-10' });

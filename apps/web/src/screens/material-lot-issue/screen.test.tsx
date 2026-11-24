@@ -422,6 +422,16 @@ describe('W-01-14 자재 관리 LOT 발행', () => {
     expect(await rowOf('SYN-CAP')).toBeInTheDocument();
   });
 
+  it('고른 줄을 다시 누르면 고르기를 풀고 오른쪽이 「고르세요」로 돌아간다', async () => {
+    const { user } = setup();
+    await openDetail(user, 'SYN-CAP');
+
+    await user.click(await rowOf('SYN-CAP'));
+
+    const pane = await screen.findByRole('region', { name: t.detail.label });
+    expect(await within(pane).findByText(t.detail.choose)).toBeInTheDocument();
+  });
+
   it('US1-8 상세 창은 대기 · 폐기 자재 관리 LOT 와 만든 곳을 보이고 라벨 단추가 없다', async () => {
     const { user } = setup();
     const detail = await openDetail(user, 'SYN-CAP');

@@ -413,6 +413,18 @@ describe('ErpPurchaseOrderScreen', () => {
     expect(within(detailPane).queryByText('SYN-EPO-901')).not.toBeInTheDocument();
   });
 
+  it('고른 건을 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
+    const { fetch } = recordingFetch(normalRoutes);
+    renderWithProviders(<ErpPurchaseOrderScreen />, { fetch, route: '/?sel=901' });
+    const user = userEvent.setup();
+
+    const detailPane = await screen.findByRole('region', { name: t.panes.detail });
+    await within(detailPane).findByText('SYN-PO-901');
+    await user.click(screen.getByRole('button', { name: 'SYN-PO-901' }));
+
+    expect(await within(detailPane).findByText(t.empty.notSelectedTitle)).toBeInTheDocument();
+  });
+
   it('ERP 칸이 null 이면 「-」, 이름을 못 찾은 코드는 원본, 취소된 라인은 취소 표지와 시각을 보인다', async () => {
     const bare = {
       ...header,

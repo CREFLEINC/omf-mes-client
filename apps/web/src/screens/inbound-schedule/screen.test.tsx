@@ -710,6 +710,23 @@ describe('InboundScheduleScreen — 두 표', () => {
     expect(within(linesPane()).getByText('SAMPLE-PO-0002')).toBeInTheDocument();
   });
 
+  it('고른 발주 줄을 다시 누르면 고르기를 풀고 오른쪽이 「고르세요」로 돌아간다', async () => {
+    const { user } = renderScreen([listRoute(), linesRoute(), ...lookupRoutes()]);
+
+    await screen.findByText('SAMPLE-PO-0002');
+    await user.click(within(rowOf('SAMPLE-PO-0002')).getByText('합성 공급사 다'));
+    await waitFor(() => {
+      expect(currentLocation()).toContain('po=7102');
+    });
+
+    await user.click(within(rowOf('SAMPLE-PO-0002')).getByText('합성 공급사 다'));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('po=7102');
+    });
+    expect(within(linesPane()).getByText(t.empty.noOrderTitle)).toBeInTheDocument();
+  });
+
   it('왼쪽 표는 상태·납기·발주번호·진행·공급사명·미입고 품목이다', async () => {
     renderScreen([listRoute(), ...lookupRoutes()]);
 

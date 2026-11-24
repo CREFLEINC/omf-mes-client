@@ -412,6 +412,22 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
 
     expect(screen.getByRole('button', { name: 'WH-02' })).toHaveAttribute('aria-current', 'true');
   });
+
+  it('고른 창고를 한 번 더 누르면 선택이 풀리고 선택 안내로 돌아간다', async () => {
+    const { user } = renderScreen([
+      warehouseListRoute(),
+      warehouseDetailRoute(warehouseFixtures[1]!),
+      locationListRoute([]),
+      ...lookupRoutes(),
+    ]);
+
+    await user.click(await screen.findByRole('button', { name: 'WH-02' }));
+    expect(screen.getByRole('button', { name: 'WH-02' })).toHaveAttribute('aria-current', 'true');
+
+    await user.click(screen.getByRole('button', { name: 'WH-02' }));
+    expect(screen.getByRole('button', { name: 'WH-02' })).not.toHaveAttribute('aria-current');
+    expect(await screen.findByText('창고를 먼저 선택하세요')).toBeInTheDocument();
+  });
 });
 
 describe('WarehouseLocationScreen — 창고 상세 조회', () => {

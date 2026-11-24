@@ -305,6 +305,33 @@ describe('ErpOutboundScreen — 송신 예정 목록', () => {
     expect(pick).toHaveAttribute('aria-current', 'true');
   });
 
+  it('고른 송신 대기 줄을 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
+    const { user } = renderScreen([settingsRoute, messagesRoute()], '?item=GOODS_RECEIPT');
+
+    await pendingPane().findByText('SAMPLE-GR-0001');
+    const pick = pendingPane().getByRole('button', { name: 'SAMPLE-GR-0001 선택' });
+    await user.click(pick);
+    expect(pick).toHaveAttribute('aria-current', 'true');
+    await user.click(pick);
+
+    expect(pick).not.toHaveAttribute('aria-current');
+  });
+
+  it('고른 송신 항목을 다시 누르면 선택이 풀리고 첫 항목으로 되돌아가지 않는다(사용자 지시 2026-11-24)', async () => {
+    const { user } = renderScreen([settingsRoute, messagesRoute()], '?item=GOODS_RECEIPT');
+
+    await pendingPane().findByText('SAMPLE-GR-0001');
+    await user.click(itemsPane().getByRole('button', { name: '입고 (G/R) 선택' }));
+
+    expect(await screen.findByText('송신 항목을 선택하세요.')).toBeInTheDocument();
+    expect(itemsPane().getByRole('button', { name: '입고 (G/R) 선택' })).not.toHaveAttribute(
+      'aria-current',
+    );
+    expect(itemsPane().getByRole('button', { name: '생산 실적 선택' })).not.toHaveAttribute(
+      'aria-current',
+    );
+  });
+
   it('송신이 없는 항목(반품)은 목록을 부르지 않고 그 사실만 말한다', async () => {
     const { requests } = renderScreen([settingsRoute, messagesRoute()], '?item=RETURN');
 

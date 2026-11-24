@@ -1084,7 +1084,7 @@ describe('ItemExtendedAttrsScreen — 품목 선택 변경 (§5.4 3행)', () => 
     expect(screen.getByRole('button', { name: '저장' })).toBeEnabled();
   });
 
-  it('같은 품목을 다시 눌러도 주소가 달라지지 않는다', async () => {
+  it('고친 것이 없으면 같은 품목을 다시 눌러 고르기를 푼다', async () => {
     const { history, user } = renderScreen(
       [itemListRoute(), itemDetailRoute(), uomsRoute()],
       '?item=1001',
@@ -1094,7 +1094,7 @@ describe('ItemExtendedAttrsScreen — 품목 선택 변경 (§5.4 3행)', () => 
 
     await user.click(screen.getByRole('button', { name: 'SYN-ITEM-01 선택' }));
 
-    expect(history.search()).toBe('?item=1001');
+    expect(history.search()).toBe('');
   });
 
   /*

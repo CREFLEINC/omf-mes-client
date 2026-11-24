@@ -275,6 +275,23 @@ describe('ErpProductionOrderScreen', () => {
     expect(screen.queryAllByRole('link')).toHaveLength(0);
   });
 
+  it('고른 줄을 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
+    const { fetch } = recordingFetch(normalRoutes);
+    renderWithProviders(<ErpProductionOrderScreen />, { fetch });
+    const user = userEvent.setup();
+
+    const row = await findRow('SYN-EWO-901');
+    const detail = screen.getByRole('region', { name: t.panes.detail });
+    await user.click(within(row).getByText('SYN-EWO-901'));
+    expect(within(detail).queryByText(t.empty.pickTitle)).not.toBeInTheDocument();
+    await user.click(within(row).getByText('SYN-EWO-901'));
+
+    expect(within(detail).getByText(t.empty.pickTitle)).toBeInTheDocument();
+    expect(within(row).getByRole('button', { name: 'SYN-EWO-901' })).not.toHaveAttribute(
+      'aria-current',
+    );
+  });
+
   it('조회 조건을 고쳐 조회하면 새 조건으로 부른다 — 초기화는 바뀐 것이 생겨야 나타난다', async () => {
     const { fetch, requests } = recordingFetch(normalRoutes);
     renderWithProviders(<ErpProductionOrderScreen />, { fetch });

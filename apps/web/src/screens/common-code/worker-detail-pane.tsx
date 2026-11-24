@@ -1,6 +1,6 @@
-import { AlertBanner } from '@crefle/web-ui';
+import { Chip, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 
 import type { LookupSource } from '../../patterns/lookup-display';
 import { lookupLabel } from './code-options';
@@ -16,7 +16,7 @@ export interface WorkerDetailPaneProps {
 }
 
 /** 라벨과 값 한 쌍. **폼 컨트롤이 아니다** — 잠긴 입력칸은 「언젠가 열린다」는 뜻이 된다. */
-const ValueField = ({ label, value }: { label: string; value: string }) => {
+const ValueField = ({ label, value }: { label: string; value: ReactNode }) => {
   const labelId = useId();
 
   return (
@@ -24,7 +24,7 @@ const ValueField = ({ label, value }: { label: string; value: string }) => {
       <span className="field-label" id={labelId}>
         {label}
       </span>
-      <p aria-labelledby={labelId}>{value}</p>
+      <div aria-labelledby={labelId}>{value}</div>
     </div>
   );
 };
@@ -52,9 +52,18 @@ export const WorkerDetailPane = ({
   departments,
 }: WorkerDetailPaneProps) => (
   <section className="pane" aria-label={t.panes.workerDetail}>
-    <div className="banner-slot">
-      <AlertBanner variant="info">{t.worker.readOnlyNotice}</AlertBanner>
+    {/* 사용자 관리 상세와 같은 머리(제목 줄) · 정보 안내 한 줄(사용자 지시 2026-11-24). */}
+    <div className="pane-heading-row users-roles-heading">
+      <h3 className="pane-title">{t.panes.workerDetail}</h3>
     </div>
+    <p
+      className="iqc-inspection-action-note common-code-readonly-note"
+      data-tone="info"
+      role="note"
+    >
+      <Icon name="info" size={16} aria-hidden />
+      {t.worker.readOnlyNotice}
+    </p>
 
     <div className="form-grid">
       <ValueField label={t.worker.fields.workerNo} value={orEmptyMark(worker.workerNo)} />
@@ -72,14 +81,24 @@ export const WorkerDetailPane = ({
       <ValueField
         label={t.worker.fields.appUser}
         value={
-          worker.appUserId === null || worker.appUserId === undefined
-            ? t.worker.values.appUserNotLinked
-            : t.worker.values.appUserLinked
+          worker.appUserId === null || worker.appUserId === undefined ? (
+            <Chip variant="status" size="sm" status="idle">
+              {t.worker.values.appUserNotLinked}
+            </Chip>
+          ) : (
+            <Chip variant="status" size="sm" status="success">
+              {t.worker.values.appUserLinked}
+            </Chip>
+          )
         }
       />
       <ValueField
         label={t.worker.fields.isActive}
-        value={worker.isActive ? t.worker.values.active : t.worker.values.inactive}
+        value={
+          <Chip variant="status" size="sm" status={worker.isActive ? 'success' : 'idle'}>
+            {worker.isActive ? t.worker.values.active : t.worker.values.inactive}
+          </Chip>
+        }
       />
     </div>
   </section>

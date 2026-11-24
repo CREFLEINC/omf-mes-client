@@ -200,7 +200,8 @@ export const DispatchHistoryScreen = () => {
           rows={items}
           selectedId={selected}
           eventName={eventName}
-          onSelect={(id) => go(page, id)}
+          /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+          onSelect={(id) => go(page, id === selected ? null : id)}
         />
         {/* 공용 쪽 넘김(#358). 쪽 크기는 서버 요청 그대로(50건 고정)라 크기 고르기는 두지 않는다. */}
         <PageNav meta={meta} buttonSize="md" onChangePage={(next) => go(next, null)} />

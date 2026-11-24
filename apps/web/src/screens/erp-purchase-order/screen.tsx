@@ -21,6 +21,7 @@ import {
   readSize,
   toListQuery,
   toSearchParams,
+  toClearedSelectionSearchParams,
   toSelectionSearchParams,
 } from './filters';
 import { ErpPurchaseOrderListPane } from './list-pane';
@@ -135,6 +136,7 @@ export const ErpPurchaseOrderScreen = () => {
             supplierNameOf={suppliers.nameOf}
             statusNameOf={status.nameOf}
             onSelect={(id) => setSearchParams(toSelectionSearchParams(searchParams, id))}
+            onUnselect={() => setSearchParams(toClearedSelectionSearchParams(searchParams))}
             onChangePage={(nextPage) => setSearchParams(toSearchParams(filters, nextPage, size))}
             onChangeSize={(nextSize) => setSearchParams(toSearchParams(filters, 1, nextSize))}
           />

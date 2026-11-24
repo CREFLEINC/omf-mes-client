@@ -413,6 +413,9 @@ export const ErpBomScreen = () => {
             onPick: (row) => {
               setSearchParams(toSearchParams(filters, page, row.itemId, size));
             },
+            onUnpick: () => {
+              setSearchParams(toSearchParams(filters, page, null, size));
+            },
           }}
           empty={
             <EmptyState

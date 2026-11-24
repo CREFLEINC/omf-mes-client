@@ -372,14 +372,17 @@ const RoutingWorkspace = () => {
     confirmedMoveRef.current = false;
   }, [location.key]);
 
-  /** 품목을 바꾸면 Rev 선택을 지운다 — 다른 품목의 Rev를 가리키면 안 된다. */
+  /**
+   * 품목을 바꾸면 Rev 선택을 지운다 — 다른 품목의 Rev를 가리키면 안 된다.
+   * 고른 품목을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24).
+   */
   const handleSelectItem = (itemId: number) => {
-    if (itemId === selectedItemId) return;
+    const next = itemId === selectedItemId ? null : String(itemId);
     guardMove(() => {
       resetHeaderEditing();
       resetOperationEditing();
       resetTransition();
-      updateParams({ item: String(itemId), rev: null });
+      updateParams({ item: next, rev: null });
     });
   };
 

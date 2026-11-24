@@ -300,6 +300,18 @@ describe('ErpSalesOrderScreen', () => {
     expect(within(await rowOf('SYN-SO-802')).getByText(t.values.missing)).toBeInTheDocument();
   });
 
+  it('고른 건을 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
+    const { fetch } = recordingFetch(normalRoutes);
+    renderWithProviders(<ErpSalesOrderScreen />, { fetch, route: '/?sel=801' });
+    const user = userEvent.setup();
+
+    const detailPane = await screen.findByRole('region', { name: t.panes.detail });
+    await within(detailPane).findByText('SYN-SO-801');
+    await user.click(screen.getByRole('button', { name: 'SYN-SO-801' }));
+
+    expect(await within(detailPane).findByText(t.empty.notSelectedTitle)).toBeInTheDocument();
+  });
+
   it('상세에 라인이 없으면 빈 라인 안내를 낸다', async () => {
     const { fetch } = recordingFetch([
       ...references,

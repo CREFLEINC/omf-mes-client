@@ -476,7 +476,10 @@ export const ProposalReview = ({
                   rows={pageRows}
                   getRowId={(row) => row.id}
                   activeId={active}
-                  onActivate={(row) => setActive(row.id)}
+                  onActivate={(row) =>
+                    /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+                    setActive((current) => (current === row.id ? '' : row.id))
+                  }
                   rowLabel={(row) => `${row.number} 상세`}
                 />
                 <PageNav

@@ -1338,8 +1338,12 @@ export const EquipmentMasterScreen = () => {
     expandedIds,
     onToggleExpand: handleToggleExpand,
     selectedGroupId,
+    /* 고른 줄을 다시 누르면 고르기를 푼다(사용자 지시 2026-11-24) — 고치던 것이 있으면 같은 확인을 지난다. */
     onSelect: (equipmentGroupId) =>
-      navigateWithDraftGuard({ grp: String(equipmentGroupId), mode: null }),
+      navigateWithDraftGuard({
+        grp: equipmentGroupId === selectedGroupId ? null : String(equipmentGroupId),
+        mode: null,
+      }),
     onAddGroup: handleAddGroup,
     loadError: groupList.isError ? (
       <LoadErrorBanner

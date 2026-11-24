@@ -675,8 +675,16 @@ export const ApprovalRouteScreen = () => {
     applyUserNavigation(toSearchParams(filters, 1, nextSize));
   };
 
+  /** 고른 줄을 다시 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
   const handleSelect = (approvalRouteId: number): void => {
-    applyUserNavigation(toSelectionSearchParams(filters, page, approvalRouteId, size));
+    applyUserNavigation(
+      toSelectionSearchParams(
+        filters,
+        page,
+        approvalRouteId === selectedRouteId ? null : approvalRouteId,
+        size,
+      ),
+    );
   };
 
   const handleCreate = (): void => {

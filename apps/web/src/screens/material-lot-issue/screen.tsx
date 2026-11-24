@@ -260,6 +260,7 @@ export const MaterialLotIssueScreen = () => {
             label: (group) => tl.open(group.supplierName, `${group.itemCode} ${group.itemName}`),
             currentId: openKey,
             onPick: (group) => update({ open: groupKey(group) }),
+            onUnpick: () => update({ open: null }),
           }}
         />
       </>

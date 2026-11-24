@@ -751,6 +751,18 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
     expect(locationText()).toContain('ar=9001');
   });
 
+  it('고른 결재선을 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await waitForList();
+    await user.click(selectRouteButton('폐기 출고', BUSINESS_UNIT_LABEL));
+    await screen.findByRole('region', { name: t.panes.steps });
+    await user.click(selectRouteButton('폐기 출고', BUSINESS_UNIT_LABEL));
+
+    expect(await screen.findByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+    expect(locationText()).not.toContain('ar=');
+  });
+
   it('고르기는 조건과 쪽을 건드리지 않는다', async () => {
     const { user } = renderScreen(
       allRoutes([listRoute(routeFixtures, { page: 2, total: 45 })]),

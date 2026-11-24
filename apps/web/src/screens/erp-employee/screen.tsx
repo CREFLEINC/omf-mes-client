@@ -291,6 +291,9 @@ export const ErpEmployeeScreen = () => {
                 onPick: (row) => {
                   setSelectedId(String(row.workerId));
                 },
+                onUnpick: () => {
+                  setSelectedId(null);
+                },
               }}
               empty={emptySlot}
             />

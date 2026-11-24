@@ -472,4 +472,22 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
       await screen.findByRole('region', { name: t.panes.setting('긴급 W/O') }),
     ).toBeInTheDocument();
   });
+
+  it('고른 작업을 다시 누르면 고르기를 푼다 — 저장하지 않은 변경이 있으면 먼저 확인한다', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    const pane = await openType(user, '적치');
+    await user.click(pane.getByRole('switch', { name: t.fields.enabled }));
+    await user.click(screen.getByRole('button', { name: '적치' }));
+
+    expect(await screen.findByText(t.state.unsavedBody)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.actions.discard }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('region', { name: t.panes.setting('적치') }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole('button', { name: '적치' })).not.toHaveAttribute('aria-current');
+  });
 });

@@ -250,6 +250,11 @@ export const LotHistory = () => {
           rows={rows}
           activeKey={line}
           onOpen={(row) => {
+            /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). 목록과 조건은 그대로다. */
+            if (rowKeyOf(row) === line) {
+              setSearchParams(toSearchParams(filters));
+              return;
+            }
             const first = row.lots[0];
             if (first !== undefined) choose(rowKeyOf(row), first.lotId);
           }}

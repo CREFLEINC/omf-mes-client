@@ -1007,8 +1007,8 @@ describe('고른 문서의 상세', () => {
     expect(await screen.findByText(t.empty.noSelectionTitle)).toBeInTheDocument();
   });
 
-  /* 입고 관리 표처럼 고른 줄을 다시 눌러도 그대로다 — 오른쪽이 닫히지 않는다. */
-  it('고른 줄을 다시 눌러도 선택이 그대로다', async () => {
+  /* 고른 줄을 다시 누르면 고르기가 풀린다(사용자 지시 2026-11-24) — 오른쪽은 「고르라」 안내로 돌아간다. */
+  it('고른 줄을 다시 누르면 선택이 풀린다', async () => {
     fillDocumentTypes();
     const { user } = renderScreen([listRoute(), detailRoute()], `?ty=${SELECTABLE_TYPE}&sel=9001`);
 
@@ -1016,8 +1016,8 @@ describe('고른 문서의 상세', () => {
 
     await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0001') }));
 
-    expect(locationOf()).toContain('sel=9001');
-    expect(screen.getByRole('table', { name: t.steps.caption })).toBeInTheDocument();
+    expect(locationOf()).not.toContain('sel=');
+    expect(await screen.findByText(t.empty.noSelectionTitle)).toBeInTheDocument();
   });
 
   /**

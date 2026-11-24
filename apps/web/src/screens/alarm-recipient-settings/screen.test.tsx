@@ -488,6 +488,18 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     ).toBeInTheDocument();
   });
 
+  it('고른 이벤트를 다시 누르면 선택이 풀리고 상세는 안내로 돌아간다(사용자 지시 2026-11-24)', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    await openEvent(user, '생산 마감');
+    await user.click(screen.getByRole('button', { name: '생산 마감' }));
+
+    expect(await screen.findByText(t.workspace.selectEventTitle)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '생산 마감' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('button', { name: '생산 실행' })).not.toHaveAttribute('aria-current');
+  });
+
   it('되돌리기는 마지막으로 읽은 값으로 돌린다', async () => {
     const user = userEvent.setup();
     setup();

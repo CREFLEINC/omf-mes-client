@@ -277,7 +277,7 @@ export const ZaloConnectionScreen = () => {
           type="button"
           className="users-roles-row-pick"
           aria-current={row.key === selectedKey ? 'true' : undefined}
-          onClick={() => setSelectedKey(row.key)}
+          onClick={() => setSelectedKey((prev) => (prev === row.key ? null : row.key))}
         >
           {row.name}
         </button>

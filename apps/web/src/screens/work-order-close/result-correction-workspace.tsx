@@ -364,7 +364,13 @@ export const WorkOrderResultCorrectionWorkspace = ({
           className="link-cell"
           aria-label={t.actions.select(row.resultSequence)}
           aria-current={selectedId === row.productionResultId ? true : undefined}
-          onClick={() => setSelectedId(row.productionResultId)}
+          onClick={() => {
+            /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+            if (selectedId === row.productionResultId) {
+              setSelectedId(null);
+              setEditing(false);
+            } else setSelectedId(row.productionResultId);
+          }}
         >
           {row.resultSequence}
         </button>

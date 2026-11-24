@@ -106,6 +106,9 @@ export const ErpProductionOrderScreen = () => {
               onSelect={(row) => {
                 setSelectedId(row.productionOrderId);
               }}
+              onUnselect={() => {
+                setSelectedId(null);
+              }}
               {...names}
             />
             {!list.isPending && (

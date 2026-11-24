@@ -282,6 +282,9 @@ export const ErpItemScreen = () => {
                 onPick: (row) => {
                   setSelectedId(String(row.itemId));
                 },
+                onUnpick: () => {
+                  setSelectedId(null);
+                },
               }}
               empty={emptySlot}
             />

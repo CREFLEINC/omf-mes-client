@@ -251,6 +251,18 @@ describe('ErpBomScreen', () => {
     );
   });
 
+  it('고른 모품목 줄을 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
+    const { user } = renderScreen([bomsRoute(), componentsRoute], '?item=7001');
+
+    const list = screen.getByRole('region', { name: t.panes.parents });
+    await user.click(await within(list).findByRole('button', { name: 'SYN-PARENT' }));
+
+    expect(await screen.findByText(t.empty.noParentTitle)).toBeInTheDocument();
+    expect(within(list).getByRole('button', { name: 'SYN-PARENT' })).not.toHaveAttribute(
+      'aria-current',
+    );
+  });
+
   it('기본 BOM 의 하이라키를 연다 — 모품목 아래로 자품목을 순번대로, ERP 원본 열만', async () => {
     const { requests } = renderScreen([bomsRoute(), componentsRoute], '?item=7001');
 

@@ -130,6 +130,18 @@ describe('ErpItemScreen', () => {
     expect(screen.queryByRole('button', { name: /저장|수정|등록|삭제/ })).not.toBeInTheDocument();
   });
 
+  it('고른 품목을 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
+    const { user } = renderScreen([listRoute()]);
+
+    const table = await screen.findByRole('table');
+    const detail = screen.getByRole('region', { name: t.panes.detail });
+    await user.click(within(table).getByText('SYN-ITEM-001'));
+    expect(within(detail).queryByText(t.empty.pickTitle)).not.toBeInTheDocument();
+    await user.click(within(table).getByText('SYN-ITEM-001'));
+
+    expect(within(detail).getByText(t.empty.pickTitle)).toBeInTheDocument();
+  });
+
   it('주소의 품목유형과 검색어·미사용 포함을 조회 조건으로 싣는다', async () => {
     const { urls, user } = renderScreen([listRoute()], '?type=FINISHED');
     await screen.findByText('합성 품목 B');

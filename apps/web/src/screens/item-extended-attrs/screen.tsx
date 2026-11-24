@@ -579,6 +579,17 @@ export const ItemExtendedAttrsScreen = () => {
     });
   };
 
+  /**
+   * 고른 품목을 다시 누르면 고르기를 푼다 — 주소에서 `item` 만 뺀다.
+   * 저장하지 않은 입력이 있으면 풀지 않는다 — 이 화면에는 확인 창이 없어 입력이 조용히 사라진다.
+   */
+  const handleClearItem = () => {
+    if (isDirty || isBuMapDirty || isUomConversionDirty || isExternalCodeDirty) return;
+    patchSearchParams((next) => {
+      next.delete(ITEM_KEY);
+    });
+  };
+
   /** 주소의 보기를 옮긴다. 같은 품목의 다른 면이므로 선택과 초안은 비우지 않는다. */
   const changeTab = (value: string) => {
     patchSearchParams((next) => {
@@ -976,6 +987,7 @@ export const ItemExtendedAttrsScreen = () => {
               onChangePage={changePage}
               selectedItemId={selectedItemId}
               onSelect={handleSelectItem}
+              onClearSelection={handleClearItem}
               itemTypeOptions={itemTypes.data}
               loadError={
                 itemList.isError ? (

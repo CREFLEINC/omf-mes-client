@@ -909,6 +909,22 @@ describe('Lot Status 화면 shell', () => {
     expect(within(row).getByText('SAMPLE-LOT-Z')).toHaveAttribute('aria-current', 'true');
   });
 
+  it('고른 LOT 줄을 다시 누르면 선택을 푼다', async () => {
+    const rows = [{ ...statusRow, lotId: 401, lotNo: 'SAMPLE-LOT-Z' }];
+    renderScreen('/quality/lot-status?lotType=SAMPLE_MATERIAL', 'ready', [
+      ...qualityRoutes(200, 200, rows, 1),
+      ...detailRoutes(),
+    ]);
+    const user = userEvent.setup();
+    const table = await screen.findByRole('table', { name: 'LOT 현황' });
+    const row = await within(table).findByRole('row', { name: /SAMPLE-LOT-Z/ });
+
+    await user.click(within(row).getAllByRole('cell')[2]!);
+    await waitFor(() => expect(locationSearch().get('lot')).toBe('401'));
+    await user.click(within(row).getAllByRole('cell')[2]!);
+    await waitFor(() => expect(locationSearch().get('lot')).toBeNull());
+  });
+
   it('세 열만 서버 정렬하고 정렬 변경 시 첫 쪽으로 돌아간다', async () => {
     const rows = [
       { ...statusRow, lotId: 401, lotNo: 'SAMPLE-LOT-Z' },

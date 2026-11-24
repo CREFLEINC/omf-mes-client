@@ -298,6 +298,9 @@ export const ErpPartnerScreen = () => {
                 onPick: (row) => {
                   setSelectedId(String(row.partnerId));
                 },
+                onUnpick: () => {
+                  setSelectedId(null);
+                },
               }}
               empty={emptySlot}
             />

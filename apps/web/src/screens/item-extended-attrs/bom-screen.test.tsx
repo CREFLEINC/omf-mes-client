@@ -224,6 +224,16 @@ describe('ItemBomScreen — 모품목 목록', () => {
     /* 기본 BOM 은 2002 — 사실 칸에 그 코드가 선다. */
     expect(await screen.findByText('SYN-BOM-02')).toBeInTheDocument();
   });
+
+  it('고른 줄을 다시 누르면 고르기를 풀고 주소에서 뺀다', async () => {
+    const { user } = renderScreen('?item=1001&rev=2001');
+
+    await user.click(await screen.findByRole('button', { name: 'SYN-ITEM-01 선택' }));
+
+    await waitFor(() => {
+      expect(probeSearch).toBe('');
+    });
+  });
 });
 
 describe('ItemBomScreen — 하이라키', () => {

@@ -175,7 +175,9 @@ const section = () => within(screen.getByRole('region', { name: t.title }));
 const linkedTable = async () => within(await screen.findByRole('table', { name: t.tableLabel }));
 
 const saveButton = () =>
-  within(screen.getByRole('region', { name: '부서 정보' })).getByRole('button', { name: '저장' });
+  within(screen.getByRole('region', { name: '부서 상세 정보' })).getByRole('button', {
+    name: '저장',
+  });
 
 describe('W-06-06 생산 창고 구획', () => {
   it('US8-1 연결한 생산 창고를 공장과 창고로 보이고 「재고 보기」가 W-01-07 을 그 창고 조건으로 연다', async () => {
@@ -276,9 +278,12 @@ describe('W-06-06 생산 창고 구획', () => {
     const { user, writes } = setup({ linked: [7001] });
     await linkedTable();
 
-    const name = within(screen.getByRole('region', { name: '부서 정보' })).getByRole('textbox', {
-      name: /부서명/,
-    });
+    const name = within(screen.getByRole('region', { name: '부서 상세 정보' })).getByRole(
+      'textbox',
+      {
+        name: /부서명/,
+      },
+    );
     await user.clear(name);
     await user.type(name, '합성 부서 가');
     await user.click(section().getByRole('button', { name: `+ ${t.add}` }));

@@ -87,6 +87,18 @@ describe('ErpEmployeeScreen', () => {
     expect(screen.queryByRole('button', { name: /저장|등록|삭제/ })).not.toBeInTheDocument();
   });
 
+  it('고른 사원을 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
+    const { user } = renderScreen([listRoute()]);
+
+    const table = await screen.findByRole('table');
+    const detail = screen.getByRole('region', { name: '사원 상세' });
+    await user.click(within(table).getByText('SAMPLE-001'));
+    expect(within(detail).getByText('ACTIVE')).toBeInTheDocument();
+    await user.click(within(table).getByText('SAMPLE-001'));
+
+    expect(within(detail).getByText('사원을 선택하세요.')).toBeInTheDocument();
+  });
+
   it('검색어와 재직 상태 라벨 「전체」(퇴사자 포함)를 조회 조건으로 싣는다', async () => {
     const { urls, user } = renderScreen([listRoute()]);
     await screen.findByText('예시 사원 B');

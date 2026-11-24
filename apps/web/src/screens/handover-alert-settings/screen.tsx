@@ -98,6 +98,9 @@ interface Move {
   type: string;
 }
 
+/** 고른 작업을 풀었다는 `type` 값 — 첫 작업을 저절로 다시 고르지 않는다. */
+const TYPE_CLEARED = 'none';
+
 /**
  * W-CO-14 인계작업 알림 설정 — 공장 × 인계 작업 종류(피처 002, omf-all-around#190).
  *
@@ -123,9 +126,11 @@ export const HandoverAlertSettingsScreen = () => {
       : (plants.data?.[0]?.plantId ?? null);
   const typeParam = searchParams.get('type');
   const selectedCode =
-    types.data?.some((type) => type.alertTypeCode === typeParam) === true
-      ? typeParam
-      : (types.data?.[0]?.alertTypeCode ?? null);
+    typeParam === TYPE_CLEARED
+      ? null
+      : types.data?.some((type) => type.alertTypeCode === typeParam) === true
+        ? typeParam
+        : (types.data?.[0]?.alertTypeCode ?? null);
   const selectedType = types.data?.find((type) => type.alertTypeCode === selectedCode);
 
   const summary = useSettingSummary(plantId);
@@ -218,8 +223,12 @@ export const HandoverAlertSettingsScreen = () => {
           className="handover-type-button"
           aria-current={type.alertTypeCode === selectedCode ? 'true' : undefined}
           onClick={() => {
-            if (plantId === null || type.alertTypeCode === selectedCode) return;
-            requestMove({ plant: String(plantId), type: type.alertTypeCode });
+            if (plantId === null) return;
+            /* 고른 작업을 다시 누르면 고르기를 푼다 — 저장하지 않은 수정이 있으면 같은 확인 창을 거친다. */
+            requestMove({
+              plant: String(plantId),
+              type: type.alertTypeCode === selectedCode ? TYPE_CLEARED : type.alertTypeCode,
+            });
           }}
         >
           {typeName(type)}
@@ -521,8 +530,9 @@ export const HandoverAlertSettingsScreen = () => {
             value={plantId === null ? '' : String(plantId)}
             placeholder={t.fields.plantPlaceholder}
             onChange={(value) => {
-              if (value === String(plantId) || selectedCode === null) return;
-              requestMove({ plant: value, type: selectedCode });
+              if (value === String(plantId)) return;
+              if (selectedCode === null && typeParam !== TYPE_CLEARED) return;
+              requestMove({ plant: value, type: selectedCode ?? TYPE_CLEARED });
             }}
           />
         )}

@@ -605,6 +605,15 @@ export const CommonCodeScreen = () => {
 
   const handleSelectCodeGroup = (codeGroupId: number) => {
     resetCodeGroupEditing();
+    /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24 · 모든 목록 같은 동작). */
+    if (codeGroupId === selectedCodeGroupId) {
+      patchSearchParams((next) => {
+        next.delete('grp');
+        next.delete('val');
+        next.delete('vpage');
+      });
+      return;
+    }
     selectCodeGroup(codeGroupId);
   };
 
@@ -643,6 +652,11 @@ export const CommonCodeScreen = () => {
 
   const selectCodeValue = (codeValueId: number) => {
     patchSearchParams((next) => {
+      /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24 · 모든 목록 같은 동작). */
+      if (next.get('val') === String(codeValueId)) {
+        next.delete('val');
+        return;
+      }
       next.set('val', String(codeValueId));
       clearCodeValueCreating(next);
     });
@@ -1050,6 +1064,13 @@ export const CommonCodeScreen = () => {
 
   const handleSelectDepartmentRow = (departmentId: number) => {
     resetDepartmentEditing();
+    /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24 · 모든 목록 같은 동작). */
+    if (departmentId === selectedDepartmentId) {
+      patchSearchParams((next) => {
+        next.delete('dep');
+      });
+      return;
+    }
     handleSelectDepartment(departmentId);
   };
 
@@ -1294,7 +1315,9 @@ export const CommonCodeScreen = () => {
     resetQualificationEditing();
 
     patchSearchParams((next) => {
-      next.set('wkr', String(workerId));
+      /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24 · 모든 목록 같은 동작). */
+      if (workerId === selectedWorkerId) next.delete('wkr');
+      else next.set('wkr', String(workerId));
     });
   };
 
@@ -1548,7 +1571,9 @@ export const CommonCodeScreen = () => {
     resetPartnerRoleEditing();
 
     patchSearchParams((next) => {
-      next.set(PARTNER_SELECT_KEY, String(partnerId));
+      /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24 · 모든 목록 같은 동작). */
+      if (partnerId === selectedPartnerId) next.delete(PARTNER_SELECT_KEY);
+      else next.set(PARTNER_SELECT_KEY, String(partnerId));
     });
   };
 
@@ -1840,18 +1865,24 @@ export const CommonCodeScreen = () => {
                 <div className="pane-stack">
                   {renderCodeGroupFormPane()}
 
-                  <CodeValueSection
-                    codeGroupId={selectedCodeGroupId}
-                    selectedCodeValueId={selectedCodeValueId}
-                    onSelectCodeValue={selectCodeValue}
-                    isCreating={isCreatingCodeValue}
-                    onOpenCreate={openCodeValueCreate}
-                    onCloseCreate={closeCodeValueCreate}
-                    includeInactive={codeValueIncludeInactive}
-                    onIncludeInactiveChange={changeCodeValueIncludeInactive}
-                    page={codeValuePage}
-                    onPageChange={changeCodeValuePage}
-                  />
+                  {/*
+                   * 코드그룹을 고르기 전에는 코드값 구획을 두지 않는다 — 빈 안내 하나만(사용자 관리와 같다 · 사용자 지시
+                   * 2026-11-24). 종전에는 「먼저 고르세요」 안내가 구획마다 겹쳐 섰다.
+                   */}
+                  {selectedCodeGroupId !== null && (
+                    <CodeValueSection
+                      codeGroupId={selectedCodeGroupId}
+                      selectedCodeValueId={selectedCodeValueId}
+                      onSelectCodeValue={selectCodeValue}
+                      isCreating={isCreatingCodeValue}
+                      onOpenCreate={openCodeValueCreate}
+                      onCloseCreate={closeCodeValueCreate}
+                      includeInactive={codeValueIncludeInactive}
+                      onIncludeInactiveChange={changeCodeValueIncludeInactive}
+                      page={codeValuePage}
+                      onPageChange={changeCodeValuePage}
+                    />
+                  )}
                 </div>
               </>
             ),

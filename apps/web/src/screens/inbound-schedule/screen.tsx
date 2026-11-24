@@ -78,6 +78,8 @@ const EMPTY_ROWS: PurchaseOrderSummary[] = [];
 const EMPTY_LINES: InboundScheduleLine[] = [];
 const NO_ITEM_IDS: readonly number[] = [];
 const NO_EXCESSES: UnallocatedLine[] = [];
+/** 고른 발주를 풀었다는 `po` 값 — 결과가 하나뿐이어도 저절로 고르지 않는다. */
+const PO_CLEARED = 'none';
 
 /** 왼쪽 표 한 쪽 20줄(사용자 지시 2026-10-20). 서버 기본(50)보다 작게 실어 보낸다 — 상한은 200. */
 export const LIST_PAGE_SIZE = 20;
@@ -204,7 +206,7 @@ export const InboundScheduleScreen = () => {
   const poParam = Number(searchParams.get('po') ?? '');
   const selectedOrder =
     rows.find((row) => row.purchaseOrderId === poParam) ??
-    (rows.length === 1 ? (rows[0] ?? null) : null);
+    (rows.length === 1 && searchParams.get('po') !== PO_CLEARED ? (rows[0] ?? null) : null);
   const lines = usePurchaseOrderLines(selectedOrder?.purchaseOrderId ?? null);
 
   /*
@@ -290,6 +292,13 @@ export const InboundScheduleScreen = () => {
   const selectOrder = (purchaseOrderId: number): void => {
     const next = toSearchParams(period, filters, page, fallbackPeriod);
     next.set('po', String(purchaseOrderId));
+    setSearchParams(next);
+  };
+
+  /** 고른 발주를 다시 누르면 고르기를 푼다 — 결과가 하나뿐일 때 저절로 다시 고르지 않게 `po` 를 비운 표시로 둔다. */
+  const clearOrder = (): void => {
+    const next = toSearchParams(period, filters, page, fallbackPeriod);
+    next.set('po', PO_CLEARED);
     setSearchParams(next);
   };
 
@@ -388,6 +397,7 @@ export const InboundScheduleScreen = () => {
                 today={today}
                 selectedId={selectedOrder?.purchaseOrderId ?? null}
                 onSelect={selectOrder}
+                onClearSelection={clearOrder}
                 onFirstPage={() => {
                   applyQuery(period, filters);
                 }}

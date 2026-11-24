@@ -584,7 +584,12 @@ export const LotStatusHistoryScreen = ({ fixedMode }: { fixedMode?: ScreenMode }
         onPageChange={changePage}
         pageSize={pageSize}
         onPageSizeChange={(size) => setSearchParams((current) => withLotPageSize(current, size))}
-        onSelectLot={(lotId) => setSearchParams((current) => withSelectedLot(current, lotId))}
+        /* 고른 줄을 다시 누르면 선택을 푼다. */
+        onSelectLot={(lotId) =>
+          setSearchParams((current) =>
+            withSelectedLot(current, lotId === selectedLotId ? null : lotId),
+          )
+        }
       />
     ) : (
       <HistoryMode

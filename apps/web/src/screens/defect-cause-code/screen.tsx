@@ -456,7 +456,8 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       processLabelOf={processLabelOf}
       onSelect={(id) => {
         setIsEditOpen(false);
-        updateParams({ sel: String(id), mode: null, as: null });
+        /* 고른 줄을 다시 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+        updateParams({ sel: id === selectedId ? null : String(id), mode: null, as: null });
       }}
       loadError={
         list.isError ? (

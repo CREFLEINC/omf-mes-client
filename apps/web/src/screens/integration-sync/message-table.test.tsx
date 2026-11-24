@@ -10,6 +10,7 @@ const NOW = new Date('2026-08-06T12:00:00+09:00');
 const renderTable = (props: Partial<Parameters<typeof MessageTable>[0]> = {}) => {
   const onFirstPage = vi.fn();
   const onOpenDetail = vi.fn();
+  const onCloseDetail = vi.fn();
   const onRetry = vi.fn();
   const onSelectionChange = vi.fn();
   render(
@@ -20,6 +21,7 @@ const renderTable = (props: Partial<Parameters<typeof MessageTable>[0]> = {}) =>
       isBeyondLast={false}
       onFirstPage={onFirstPage}
       onOpenDetail={onOpenDetail}
+      onCloseDetail={onCloseDetail}
       onRetry={onRetry}
       retryingId={null}
       selectedIds={[]}
@@ -29,7 +31,14 @@ const renderTable = (props: Partial<Parameters<typeof MessageTable>[0]> = {}) =>
     />,
   );
 
-  return { onFirstPage, onOpenDetail, onRetry, onSelectionChange, user: userEvent.setup() };
+  return {
+    onFirstPage,
+    onOpenDetail,
+    onCloseDetail,
+    onRetry,
+    onSelectionChange,
+    user: userEvent.setup(),
+  };
 };
 
 describe('MessageTable', () => {
@@ -99,6 +108,15 @@ describe('MessageTable', () => {
     await user.click(screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 상세 열기' }));
 
     expect(onOpenDetail).toHaveBeenCalledWith(9001);
+  });
+
+  it('열린 줄을 다시 누르면 상세를 닫는다', async () => {
+    const { onOpenDetail, onCloseDetail, user } = renderTable({ openedId: 9001 });
+
+    await user.click(screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 상세 열기' }));
+
+    expect(onCloseDetail).toHaveBeenCalledTimes(1);
+    expect(onOpenDetail).not.toHaveBeenCalled();
   });
 
   it('재처리 버튼은 상태와 무관하게 언제나 누를 수 있다', async () => {

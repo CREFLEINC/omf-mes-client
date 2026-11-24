@@ -111,6 +111,20 @@ describe('ZaloConnectionScreen', () => {
     ).toBeInTheDocument();
   });
 
+  it('고른 템플릿을 한 번 더 누르면 선택이 풀린다', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    await openTemplate(user, '생산 중단');
+    const row = screen.getByRole('button', { name: '생산 중단' });
+    expect(row).toHaveAttribute('aria-current', 'true');
+
+    await user.click(row);
+    expect(row).not.toHaveAttribute('aria-current');
+    expect(screen.queryByRole('textbox', { name: t.fields.templateId })).toBeNull();
+    expect(screen.getByText(t.workspace.selectTitle)).toBeInTheDocument();
+  });
+
   it('초기화는 검색어가 처음 값(빈칸)과 다를 때만 보이고, 누르면 다시 숨는다(#358)', async () => {
     const user = userEvent.setup();
     setup();

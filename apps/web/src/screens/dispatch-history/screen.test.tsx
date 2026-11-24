@@ -327,6 +327,20 @@ describe('DispatchHistoryScreen', () => {
     expect(row).toHaveAttribute('aria-selected', 'true');
   });
 
+  it('고른 행을 한 번 더 누르면 선택이 풀리고 상세 상자가 닫힌다', async () => {
+    const user = userEvent.setup();
+    setup({ dispatches: [dispatch(9001), dispatch(9002, { targetLabel: 'WO-20261021-002' })] });
+
+    await user.click(await dispatchPane().findByText('WO-20261021-002'));
+    await screen.findByRole('region', { name: 'WO-20261021-002' });
+    const row = dispatchPane().getByText('WO-20261021-002').closest('tr') as HTMLElement;
+    expect(row).toHaveAttribute('aria-selected', 'true');
+
+    await user.click(dispatchPane().getByText('WO-20261021-002'));
+    await waitFor(() => expect(row).not.toHaveAttribute('aria-selected', 'true'));
+    expect(screen.queryByRole('region', { name: 'WO-20261021-002' })).toBeNull();
+  });
+
   it('주소의 selected 로 열면 상세 상자가 그 건으로 열리고 행이 선택으로 보인다', async () => {
     setup({ route: `${ROUTE}&selected=9001` });
 

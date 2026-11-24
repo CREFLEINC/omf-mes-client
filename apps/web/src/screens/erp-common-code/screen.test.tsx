@@ -135,6 +135,17 @@ describe('ErpCommonCodeScreen', () => {
     expect(request?.searchParams.has('codeGroupId')).toBe(false);
   });
 
+  it('고른 그룹을 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
+    const { user } = renderScreen([groupsRoute(), valuesRoute()]);
+
+    await user.click(await screen.findByRole('button', { name: 'PUR_GROUP' }));
+    await screen.findByRole('region', { name: '코드값' });
+    await user.click(screen.getByRole('button', { name: 'PUR_GROUP' }));
+
+    expect(await screen.findByText('코드 그룹을 선택하세요.')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '코드값' })).not.toBeInTheDocument();
+  });
+
   it('검색어와 미사용 포함을 코드값 조건으로 싣는다', async () => {
     const { urls, user } = renderScreen([groupsRoute(), valuesRoute()], '?group=UNIT');
     await screen.findByText('예시 값 B');

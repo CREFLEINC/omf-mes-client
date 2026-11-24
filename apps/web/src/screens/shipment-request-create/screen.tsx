@@ -236,7 +236,9 @@ export const ShipmentRequestCreateScreen = () => {
   useEffect(() => {
     if (onlyBusinessUnit === '' || header.businessUnitId !== '') return;
 
-    setHeader((prev) => (prev.businessUnitId === '' ? { ...prev, businessUnitId: onlyBusinessUnit } : prev));
+    setHeader((prev) =>
+      prev.businessUnitId === '' ? { ...prev, businessUnitId: onlyBusinessUnit } : prev,
+    );
   }, [onlyBusinessUnit, header.businessUnitId, targetSignature]);
 
   const isStandalone = target.kind === 'standalone';
@@ -432,8 +434,15 @@ export const ShipmentRequestCreateScreen = () => {
   };
 
   const selectSalesOrder = (salesOrderId: number): void => {
+    /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
     setSearchParams(
-      toSearchParams(filters, page, { kind: 'order', salesOrderId, mode: 'fromOrder' }),
+      toSearchParams(
+        filters,
+        page,
+        salesOrderId === targetSalesOrderId
+          ? { kind: 'none' }
+          : { kind: 'order', salesOrderId, mode: 'fromOrder' },
+      ),
     );
   };
 
@@ -452,7 +461,10 @@ export const ShipmentRequestCreateScreen = () => {
       : [
           {
             label: t.lineTable.warehouseGroup(businessUnitName),
-            options: selectableWarehouses.map((entry) => ({ value: entry.value, label: entry.label })),
+            options: selectableWarehouses.map((entry) => ({
+              value: entry.value,
+              label: entry.label,
+            })),
           },
         ];
 

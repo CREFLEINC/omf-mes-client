@@ -227,6 +227,11 @@ export const IntegrationSyncScreen = () => {
     setSearchParams(next);
   };
 
+  /* 열린 줄을 다시 누르면 상세를 닫는다(`sel` 을 뺀다). 체크는 건드리지 않는다. */
+  const closeDetail = () => {
+    setSearchParams(toSearchParams(period, filters, page, size));
+  };
+
   /*
    * 갱신된 목록에서 고른 행이 사라지면 그 식별자를 뺀다. 남겨 두면 「선택 N건」이 실제와 어긋나고
    * 확인 창의 건수와도 갈린다(「선택 3건」인데 「선택한 2건을 다시 보낼까요?」).
@@ -445,6 +450,7 @@ export const IntegrationSyncScreen = () => {
                     applyQuery(period, filters);
                   }}
                   onOpenDetail={openDetail}
+                  onCloseDetail={closeDetail}
                   openedId={selectedId}
                   onRetry={(row) => {
                     retryWrite.reset();

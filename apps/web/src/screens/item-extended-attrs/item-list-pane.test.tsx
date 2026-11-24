@@ -14,6 +14,7 @@ const pageView = (page = 1, total = itemFixtures.length, shown = itemFixtures.le
 const renderPane = (overrides: Partial<Parameters<typeof ItemListPane>[0]> = {}) => {
   const onApplyFilters = vi.fn<(next: ItemFilters) => void>();
   const onSelect = vi.fn<(itemId: number) => void>();
+  const onClearSelection = vi.fn<() => void>();
   const onChangePage = vi.fn<(page: number) => void>();
 
   const props = {
@@ -25,6 +26,7 @@ const renderPane = (overrides: Partial<Parameters<typeof ItemListPane>[0]> = {})
     onChangePage,
     selectedItemId: null,
     onSelect,
+    onClearSelection,
     loadError: null,
     ...overrides,
   };
@@ -43,7 +45,7 @@ const renderPane = (overrides: Partial<Parameters<typeof ItemListPane>[0]> = {})
     </>,
   );
 
-  return { onApplyFilters, onSelect, onChangePage, user: userEvent.setup() };
+  return { onApplyFilters, onSelect, onClearSelection, onChangePage, user: userEvent.setup() };
 };
 
 describe('ItemListPane — 목록', () => {
@@ -88,6 +90,15 @@ describe('ItemListPane — 목록', () => {
       'aria-current',
       'true',
     );
+  });
+
+  it('고른 줄을 다시 누르면 고르기를 푼다', async () => {
+    const { onSelect, onClearSelection, user } = renderPane({ selectedItemId: 1001 });
+
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-01 선택' }));
+
+    expect(onClearSelection).toHaveBeenCalledTimes(1);
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   /* 좁은 좌 페인에서 열 하나를 더 두면 이름 열이 짓눌린다 — 이름 뒤 접미로 붙인다. */

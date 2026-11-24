@@ -151,6 +151,18 @@ describe('ErpPartnerScreen', () => {
     expect(urls.some((url) => url.pathname === `${LIST_PATH}/7001`)).toBe(false);
   });
 
+  it('고른 거래처를 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
+    const { user } = renderScreen([listRoute(), rolesRoute]);
+
+    const detail = await screen.findByRole('region', { name: '거래처 상세' });
+    const table = await screen.findByRole('table');
+    await user.click(await within(table).findByText('예시 거래처 B'));
+    expect(within(detail).queryByText('거래처를 선택하세요.')).not.toBeInTheDocument();
+    await user.click(within(table).getByText('예시 거래처 B'));
+
+    expect(within(detail).getByText('거래처를 선택하세요.')).toBeInTheDocument();
+  });
+
   it('결과가 없으면 빈 상태를 낸다', async () => {
     renderScreen([listRoute([])]);
 

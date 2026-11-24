@@ -20,6 +20,8 @@ export interface ErpSalesOrderListPaneProps {
   /** 수주 상태(공통코드 `SALES_ORDER_STATUS` · 서버 장부 P-68) */
   statusNameOf: (code: string) => string;
   onSelect: (salesOrderId: number) => void;
+  /** 고른 줄을 다시 누르면 고르기를 푼다. */
+  onUnselect: () => void;
   onChangePage: (page: number) => void;
   onChangeSize: (size: ListPageSize) => void;
 }
@@ -36,6 +38,7 @@ export const ErpSalesOrderListPane = ({
   partnerNameOf,
   statusNameOf,
   onSelect,
+  onUnselect,
   onChangePage,
   onChangeSize,
 }: ErpSalesOrderListPaneProps) => {
@@ -88,6 +91,7 @@ export const ErpSalesOrderListPane = ({
           onPick: (row) => {
             onSelect(row.salesOrderId);
           },
+          onUnpick: onUnselect,
         }}
         empty={
           <EmptyState size="sm" live title={isBeyondLast ? t.empty.beyondTitle : t.empty.title} />

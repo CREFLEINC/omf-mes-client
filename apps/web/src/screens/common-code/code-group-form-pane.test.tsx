@@ -142,7 +142,8 @@ describe('CodeGroupFormPane — 액션', () => {
   });
 
   /* 배치 규범 4 — 비활성 컨트롤은 포커스를 받지 못해 사유를 시각으로만 두면 닿을 수 없다. */
-  it('사용 중지가 막히면 사유가 보이고 버튼에 이어진다', () => {
+  /* 사용자 관리처럼 제목 줄 오른쪽 작은 버튼 — 사유는 버튼 설명(마우스를 올리면 보임)으로 붙는다(2026-11-24). */
+  it('사용 중지가 막히면 비활성이고 사유가 버튼 설명으로 붙는다', () => {
     renderPane({
       deactivateDisabledReason: '사용 중지는 이미 미사용인 코드그룹에 다시 할 수 없습니다.',
     });
@@ -150,9 +151,7 @@ describe('CodeGroupFormPane — 액션', () => {
     const button = screen.getByRole('button', { name: '사용 중지' });
     expect(button).toBeDisabled();
 
-    const noteId = button.getAttribute('aria-describedby');
-    expect(noteId).not.toBeNull();
-    expect(document.getElementById(noteId as string)).toHaveTextContent(
+    expect(button).toHaveAccessibleDescription(
       '사용 중지는 이미 미사용인 코드그룹에 다시 할 수 없습니다.',
     );
   });

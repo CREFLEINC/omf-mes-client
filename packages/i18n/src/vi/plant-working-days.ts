@@ -8,7 +8,7 @@ import type { Translated } from './translated';
  */
 export const plantWorkingDays: Translated<typeof ko.plantWorkingDays> = {
   description:
-    'Số ngày làm việc trong tuần của từng nhà máy, dùng để tính ngày xuất kho (1 ngày làm việc trước ngày sản xuất). Chỉ bỏ qua cuối tuần — không dùng ngày lễ và lịch làm việc. Nhà máy chưa thiết lập được tính theo 5 ngày/tuần.',
+    'Ngày xuất kho được xác định là ngày làm việc ngay trước ngày sản xuất, theo các ngày làm việc trong tuần của từng nhà máy. Không loại trừ riêng ngày lễ. Nhà máy chưa thiết lập áp dụng chuẩn làm việc 5 ngày/tuần.',
   tableLabel: 'Ngày làm việc theo nhà máy',
   columns: {
     plant: 'Nhà máy',
@@ -45,8 +45,16 @@ export const plantWorkingDays: Translated<typeof ko.plantWorkingDays> = {
     noPlants: 'Không có nhà máy để thiết lập.',
   },
   discard: {
-    title: 'Có thay đổi chưa lưu',
-    body: 'Nếu chuyển đi bây giờ, ngày làm việc đã đổi sẽ không được lưu và bị mất. Để giữ lại, nhấn «Tiếp tục chỉnh sửa» rồi lưu.',
+    title: 'Thay đổi chưa lưu',
+    body: 'Nếu rời đi mà không lưu, các thay đổi sẽ bị mất.',
+    keep: 'Tiếp tục chỉnh sửa',
+    confirm: 'Rời đi không lưu',
+  },
+  daysFilter: {
+    group: 'Ngày làm việc trong tuần',
+    all: 'Tất cả',
+    five: '5 ngày/tuần',
+    six: '6 ngày/tuần',
   },
   workspace: {
     filter: 'Điều kiện tra cứu',

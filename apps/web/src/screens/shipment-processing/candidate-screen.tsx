@@ -310,7 +310,12 @@ export const ShipmentProcessingCandidateScreen = () => {
         loadError={loadError}
         page={page}
         onSelect={(shipmentRequestId) => {
-          dispatch({ type: 'SELECT', shipmentRequestId });
+          /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+          dispatch(
+            shipmentRequestId === state.selectedShipmentRequestId
+              ? { type: 'CLEAR_SELECTION' }
+              : { type: 'SELECT', shipmentRequestId },
+          );
         }}
         onChangePage={(nextPage) => {
           dispatch({ type: 'CHANGE_PAGE', page: nextPage });

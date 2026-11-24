@@ -224,6 +224,19 @@ describe('W-05-07 — 설비를 고르면', () => {
     ).not.toHaveAttribute('aria-current');
   });
 
+  it('고른 설비를 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
+    renderScreen();
+    await pickFirstEquipment();
+
+    const chosen = await screen.findByRole('button', {
+      name: t.equipment.selectLabel('EQ-101', '가상 성형기 1호'),
+    });
+    await waitFor(() => expect(chosen).toHaveAttribute('aria-current', 'true'));
+    await userEvent.setup().click(chosen);
+
+    await waitFor(() => expect(chosen).not.toHaveAttribute('aria-current'));
+  });
+
   it('고른 설비를 페인 머리에 남긴다', async () => {
     renderScreen();
     await pickFirstEquipment();

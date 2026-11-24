@@ -93,8 +93,11 @@ export const AlarmRecipientSettingsScreen = () => {
   const events = useEvents();
   const departmentId = parseId(searchParams.get('department'));
   const eventParam = searchParams.get('event');
-  const selectedCode =
-    events.data?.some((event) => event.eventCode === eventParam) === true
+  /* 고른 이벤트를 다시 눌러 푼 상태는 빈 `event` 로 둔다 — 그때는 첫 이벤트로 되돌리지 않는다. */
+  const isEventCleared = eventParam === '';
+  const selectedCode = isEventCleared
+    ? null
+    : events.data?.some((event) => event.eventCode === eventParam) === true
       ? eventParam
       : (events.data?.[0]?.eventCode ?? null);
   const selectedEvent = events.data?.find((event) => event.eventCode === selectedCode);
@@ -151,6 +154,8 @@ export const AlarmRecipientSettingsScreen = () => {
   const go = (move: Move): void => {
     setInlineError(null);
     replace.reset();
+    /* 고르기를 풀면 고치던 내용은 버린다 — 남겨 두면 다음 이벤트를 누를 때 버릴지 또 묻는다. */
+    if (move.event === '') setDraft(baseline);
     /* 초기화 — 부서를 고르기 전 처음 주소로(#358). */
     if (move.department === '') setSearchParams({});
     else
@@ -200,8 +205,11 @@ export const AlarmRecipientSettingsScreen = () => {
           size="sm"
           aria-current={event.eventCode === selectedCode ? 'true' : undefined}
           onClick={() => {
-            if (departmentId === null || event.eventCode === selectedCode) return;
-            requestMove({ department: String(departmentId), event: event.eventCode });
+            if (departmentId === null) return;
+            requestMove({
+              department: String(departmentId),
+              event: event.eventCode === selectedCode ? '' : event.eventCode,
+            });
           }}
         >
           {eventLabel(event, event.eventCode)}
@@ -441,7 +449,7 @@ export const AlarmRecipientSettingsScreen = () => {
               <Icon name="notifications" size={20} />
             </span>
           }
-          title={departmentId === null ? w.selectEventTitle : t.state.noEvents}
+          title={departmentId === null || isEventCleared ? w.selectEventTitle : t.state.noEvents}
           description={w.selectEvent}
         />
       );

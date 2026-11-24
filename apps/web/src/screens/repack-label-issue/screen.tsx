@@ -484,7 +484,9 @@ export const RepackLabelIssueScreen = () => {
               disabled={isSubmitting}
               onSelect={(row) => {
                 setScanError(null);
-                selectHandlingUnit(row);
+                /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+                if (row.handlingUnitId === selectedHandlingUnitId) clearSelection();
+                else selectHandlingUnit(row);
               }}
               onRetry={() => {
                 void listQuery.refetch();

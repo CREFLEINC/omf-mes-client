@@ -141,6 +141,8 @@ export interface ItemListPaneProps {
   onChangePage: (page: number) => void;
   selectedItemId: number | null;
   onSelect: (itemId: number) => void;
+  /** 고른 줄을 다시 누르면 고르기를 푼다. */
+  onClearSelection: () => void;
   loadError: ReactNode;
   itemTypeOptions?: ItemTypeOption[];
 }
@@ -162,6 +164,7 @@ export const ItemListPane = ({
   onChangePage,
   selectedItemId,
   onSelect,
+  onClearSelection,
   loadError,
   itemTypeOptions = NO_ITEM_TYPES,
 }: ItemListPaneProps) => {
@@ -261,6 +264,7 @@ export const ItemListPane = ({
           onPick: (row) => {
             onSelect(row.itemId);
           },
+          onUnpick: onClearSelection,
         }}
         empty={emptySlot}
       />

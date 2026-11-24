@@ -797,6 +797,9 @@ export const ItemBomScreen = () => {
             onPick: (row) => {
               setSearchParams(toSearchParams(filters, page, row.itemId));
             },
+            onUnpick: () => {
+              setSearchParams(toSearchParams(filters, page));
+            },
           }}
           empty={
             <EmptyState
