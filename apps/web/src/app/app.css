@@ -27054,6 +27054,11 @@ body.col-reordering * {
   transform: translateY(-50%);
 }
 
+/* 위 transform 이 DS 의 내림차순 뒤집기(rotate 180deg)를 덮어 내림차순도 ▲ 로 보였다 — 뒤집기를 함께 건다(#357). */
+.inspection-queue-table thead th[data-align="center"][aria-sort="descending"] > button > svg {
+  transform: translateY(-50%) rotate(180deg);
+}
+
 /* 시리얼이 없는 줄의 「미등록」은 칸 가운데(사용자 지시 2026-10-26) — 번호가 있으면 왼쪽 그대로다. */
 .inspection-queue-table td .oqc-inspection-queue-unregistered {
   display: block;

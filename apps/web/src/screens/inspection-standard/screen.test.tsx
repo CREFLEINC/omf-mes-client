@@ -4064,6 +4064,8 @@ describe('InspectionStandardScreen — 품목 검사 수준(#357)', () => {
     expect(JSON.parse(puts[0]?.body ?? '{}')).toMatchObject({
       inspectionLevelCode: 'TIGHTENED',
       inspectionLevelReason: '고객 클레임',
+      /* 창에서 본 수준의 판 — 그 사이 다른 사람이 바꿨으면 서버가 409 로 막는다. */
+      inspectionLevelVersionNo: 3,
     });
     expect(levelWrites(requests)).toHaveLength(0);
     expect(screen.queryByRole('region', { name: '기준 정보' })).not.toBeInTheDocument();
@@ -4108,7 +4110,10 @@ describe('InspectionStandardScreen — 품목 검사 수준(#357)', () => {
 
     await screen.findByText('저장했습니다');
     const put = requests.find((r) => r.method === 'PUT' && r.url.pathname === PLAN_DETAIL_PATH);
-    expect(JSON.parse(put?.body ?? '{}')).toMatchObject({ inspectionLevelCode: 'REDUCED' });
+    expect(JSON.parse(put?.body ?? '{}')).toMatchObject({
+      inspectionLevelCode: 'REDUCED',
+      inspectionLevelVersionNo: null,
+    });
     expect(levelWrites(requests)).toHaveLength(0);
   });
 
@@ -4138,7 +4143,9 @@ describe('InspectionStandardScreen — 품목 검사 수준(#357)', () => {
     await user.click(within(planForm()).getByRole('button', { name: '저장' }));
 
     expect(
-      await within(planForm()).findByText('검사 수준은 품목이 있는 IQC 검사 기준에서만 정할 수 있습니다.'),
+      await within(planForm()).findByText(
+        '검사 수준은 품목이 있는 IQC 검사 기준에서만 정할 수 있습니다.',
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByText('저장했습니다')).not.toBeInTheDocument();
   });

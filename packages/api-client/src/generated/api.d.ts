@@ -49485,6 +49485,11 @@ export interface components {
       inspectionLevelCode?: 'NONE' | 'REDUCED' | 'NORMAL' | 'TIGHTENED';
       /** @description 검사 수준 변경 사유(선택) — 이력에 남는다. 근거: omf-all-around#357 */
       inspectionLevelReason?: string | null;
+      /**
+       * @description 창을 열 때 본 품목 검사 수준의 versionNo — 미지정 품목이면 null. 지금 판과 다르면 409 VERSION_CONFLICT(기본 정보도 저장 안 됨). 생략 = 견주지 않음. 근거: omf-all-around#357
+       * @example 3
+       */
+      inspectionLevelVersionNo?: number | null;
     };
     InspectionPlanDetailResponse: {
       inspectionPlan: components['schemas']['InspectionPlan'];

@@ -171,7 +171,8 @@ const hubText = messages.common.inspectionHub;
 /** 「기본 정보 수정」 저장 — 바꾼 검사 수준이 있으면 같은 요청에 싣는다. */
 interface PlanSave {
   values: PlanFormValues;
-  level: LevelDraft | null;
+  /** 수준을 바꿨을 때만 — `versionNo` 는 창에서 본 수준의 판(미지정이면 null). 그 사이 바뀌었으면 서버가 409 로 막는다. */
+  level: (LevelDraft & { versionNo: number | null }) | null;
 }
 
 interface PlanFormState {
@@ -493,6 +494,7 @@ export const InspectionStandardScreen = () => {
             ? {}
             : {
                 inspectionLevelCode: level.level,
+                inspectionLevelVersionNo: level.versionNo,
                 ...(level.reason === '' ? {} : { inspectionLevelReason: level.reason }),
               }),
         },
@@ -1412,7 +1414,12 @@ export const InspectionStandardScreen = () => {
     // 화면에서 잡히는 오류는 서버로 보내지 않는다.
     if (Object.keys(errors).length > 0) return;
 
-    planWrite.write({ values: formState.values, level: isLevelDirty ? activeLevelDraft : null });
+    planWrite.write({
+      values: formState.values,
+      level: isLevelDirty
+        ? { ...activeLevelDraft, versionNo: currentLevel.data?.versionNo ?? null }
+        : null,
+    });
   };
 
   const handleSaveCreate = () => {
@@ -1845,9 +1852,7 @@ export const InspectionStandardScreen = () => {
             const plan = planDetail.data.inspectionPlan;
             const itemId = plan.itemId ?? null;
             if (plan.inspectionTypeCode !== 'IQC' || itemId === null) return undefined;
-            return (
-              <ItemLevelFact key={itemId} itemId={itemId} />
-            );
+            return <ItemLevelFact key={itemId} itemId={itemId} />;
           })()}
           routingRevision={routingOptions.revisions.find(
             (revision) =>
@@ -2516,7 +2521,11 @@ export const InspectionStandardScreen = () => {
             onChange={(usage) => applyFilters(withUsage(filters, usage))}
             inline
           />
-          <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} inline />
+          <SplitOrientationToggle
+            orientation={layout.orientation}
+            onChange={layout.change}
+            inline
+          />
         </div>
       )}
 
