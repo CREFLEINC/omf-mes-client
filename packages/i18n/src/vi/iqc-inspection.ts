@@ -283,7 +283,6 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     requiredMark: 'Bắt buộc',
     judgmentNames: { ACCEPTED: 'Đạt', REJECTED: 'Không đạt' } as Record<string, string>,
     filterLabel: 'Lọc theo đánh giá',
-    filterAll: 'Tất cả',
     sampleOf: (sampleNo: number): string => `Lần ${String(sampleNo)}`,
     booleanTrue: 'OK',
     booleanFalse: 'NG',

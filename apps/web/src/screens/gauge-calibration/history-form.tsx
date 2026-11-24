@@ -91,6 +91,7 @@ export const HistoryForm = ({
           error={errors.equipment}
           placeholder={t.form.selectPlaceholder}
           wide
+          required
           onChange={(value) => {
             set({ equipment: value });
           }}
@@ -105,13 +106,14 @@ export const HistoryForm = ({
           placeholder={t.form.selectPlaceholder}
           disabled={PLACEHOLDER_HISTORY_TYPES.length === 0}
           wide
+          required
           onChange={(value) => {
             set({ historyTypeCode: value });
           }}
         />
 
         <div className="field-cell">
-          <FieldLabel htmlFor={performedOnId} label={t.form.performedOn} />
+          <FieldLabel htmlFor={performedOnId} label={t.form.performedOn} required />
           <DatePicker
             id={performedOnId}
             mode="single"
@@ -141,6 +143,7 @@ export const HistoryForm = ({
           placeholder={t.form.selectPlaceholder}
           disabled={resultBlocked}
           wide
+          required
           onChange={(value) => {
             set({ resultCode: value });
           }}

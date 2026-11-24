@@ -175,7 +175,8 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
       shipment: 'Xuất hàng',
     },
     facts: {
-      item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       lotStatus: 'Trạng thái LOT',
       receivedQty: 'Số lượng nhập kho',
       goodQty: 'Số lượng đạt',

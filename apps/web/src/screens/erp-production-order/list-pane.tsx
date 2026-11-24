@@ -2,6 +2,7 @@ import { Chip, type Column, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { OneLine } from '../../patterns/po-board';
+import { splitCodeName } from '../../patterns/split-code-name';
 import { ErpDetailFields, ErpListTable, ErpPickEmpty } from '../erp-item/erp-data-parts';
 import { displayOr, formatQty, reworkLabel } from './format';
 import { ProgressChip } from './progress';
@@ -53,11 +54,22 @@ export const ErpProductionOrderListPane = ({
   const hasDueDate = rows.some((row) => row.dueDate !== undefined && row.dueDate !== '');
   const columns: Column<ErpProductionOrder>[] = [
     { key: 'productionOrderNo', header: t.fields.productionOrderNo, width: '152px' },
+    /* 품목코드 · 품목명은 두 열(사용자 지시 2026-11-24 — 구매발주 상세 품목 표와 같은 모양). */
     {
       key: 'itemId',
-      header: t.fields.item,
-      width: '200px',
-      render: (row) => <OneLine text={names.itemNameOf(row.itemId)} />,
+      header: t.fields.itemCode,
+      width: '120px',
+      render: (row) => (
+        <OneLine text={splitCodeName(names.itemNameOf(row.itemId), t.values.missing).code} />
+      ),
+    },
+    {
+      key: 'itemName',
+      header: t.fields.itemName,
+      width: '160px',
+      render: (row) => (
+        <OneLine text={splitCodeName(names.itemNameOf(row.itemId), t.values.missing).name} />
+      ),
     },
     {
       key: 'orderQty',
@@ -167,7 +179,16 @@ export const ErpProductionOrderDetail = ({
       title={t.panes.detail}
       fields={[
         { key: 'no', label: t.fields.productionOrderNo, value: row.productionOrderNo },
-        { key: 'item', label: t.fields.item, value: names.itemNameOf(row.itemId) },
+        {
+          key: 'itemCode',
+          label: t.fields.itemCode,
+          value: splitCodeName(names.itemNameOf(row.itemId), t.values.missing).code,
+        },
+        {
+          key: 'itemName',
+          label: t.fields.itemName,
+          value: splitCodeName(names.itemNameOf(row.itemId), t.values.missing).name,
+        },
         {
           key: 'qty',
           label: t.fields.orderQty,

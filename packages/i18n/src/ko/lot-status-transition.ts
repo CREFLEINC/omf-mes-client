@@ -56,7 +56,8 @@ export const lotStatusTransition = {
     title: 'LOT 상태 변경',
     identity: '선택 LOT 식별',
     lotNo: 'LOT 번호',
-    item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     /* 시안 글자 그대로(사용자 2026-11-02). */
     latestTransition: '최근 변경',
     latestReason: '변경 사유',

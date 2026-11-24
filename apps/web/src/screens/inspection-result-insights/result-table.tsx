@@ -6,6 +6,7 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { lookupDisplayLabelWithInactive, type LookupSource } from '../../patterns/lookup-display';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { splitCodeName } from '../../patterns/split-code-name';
 import type { InspectionResultTreeRow } from './reinspection-chain';
 import { useItemNames } from './item-names';
 import { useUomCodeOf } from './uoms';
@@ -56,6 +57,14 @@ export const ResultTable = ({
 }: ResultTableProps) => {
   const uomCodeOf = useUomCodeOf();
   const itemNames = useItemNames(rows.map((row) => row.result.itemId));
+  /* 품목코드 · 품목명 두 칸 — 단건으로 못 받으면 조회 조건 목록의 「코드 · 이름」을 나눈다. */
+  const itemPartsOf = (row: InspectionResultTreeRow): { code: string; name: string } => {
+    const named =
+      row.result.itemId === undefined ? undefined : itemNames.get(row.result.itemId);
+    return named === undefined
+      ? splitCodeName(lookupDisplayLabelWithInactive(labels.item, row.result.itemId), EMPTY)
+      : { code: named.code, name: named.name };
+  };
   const columns: Column<InspectionResultTreeRow>[] = [
     {
       key: 'inspectionRequestNo',
@@ -85,12 +94,17 @@ export const ResultTable = ({
     },
     {
       key: 'item',
-      header: t.columns.item,
+      header: t.columns.itemCode,
       align: 'start',
-      width: '220px',
-      render: (row) =>
-        (row.result.itemId === undefined ? undefined : itemNames.get(row.result.itemId)?.label) ??
-        lookupDisplayLabelWithInactive(labels.item, row.result.itemId),
+      width: '110px',
+      render: (row) => itemPartsOf(row).code,
+    },
+    {
+      key: 'itemName',
+      header: t.columns.itemName,
+      align: 'start',
+      width: '150px',
+      render: (row) => itemPartsOf(row).name,
     },
     {
       key: 'lotNo',

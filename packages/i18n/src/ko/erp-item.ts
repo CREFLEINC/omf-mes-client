@@ -30,8 +30,6 @@ export const erpItem = {
   },
   values: {
     empty: '—',
-    active: '사용',
-    inactive: '미사용',
   },
   actions: {
     goFirstPage: '첫 쪽으로',

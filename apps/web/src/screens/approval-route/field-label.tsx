@@ -27,7 +27,11 @@ export const FieldLabel = ({ htmlFor, label, required = false, info }: FieldLabe
   const fieldLabel = (
     <span className="field-label">
       <label htmlFor={htmlFor}>{label}</label>
-      {required && <span aria-hidden="true"> *</span>}
+      {required && (
+        <span className="required-mark" aria-hidden="true">
+          {' *'}
+        </span>
+      )}
     </span>
   );
 

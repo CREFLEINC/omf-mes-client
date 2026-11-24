@@ -10,6 +10,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
+import { UsageName } from '../../patterns/usage-chip';
 import { hasDuplicateDisplayOrder, sortForDisplay } from './code-value-order';
 import type { CodeValue } from './code-value-types';
 import type { PageView } from './pagination';
@@ -94,7 +95,7 @@ export const CodeValueListPane = ({
     {
       key: 'codeName',
       header: t.fields.codeName,
-      render: (row) => (row.isActive ? row.codeName : `${row.codeName}${t.values.inactiveSuffix}`),
+      render: (row) => <UsageName isActive={row.isActive}>{row.codeName}</UsageName>,
     },
     {
       key: 'displayOrder',

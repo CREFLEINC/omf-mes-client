@@ -151,7 +151,8 @@ export const materialIssueRequest: Translated<typeof ko.materialIssueRequest> = 
       'Có vật tư không có kho sản xuất còn tồn nên không yêu cầu được. Hãy bổ sung kho sản xuất rồi yêu cầu.',
     tableLabel: 'Mặt hàng vượt',
     columns: {
-      item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       warehouse: 'Kho sản xuất',
       requested: 'Yêu cầu',
       free: 'Số còn lại',

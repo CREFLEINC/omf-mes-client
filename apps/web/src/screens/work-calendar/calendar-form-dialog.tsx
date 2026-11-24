@@ -2,6 +2,7 @@ import { Button, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import { CodeLockTextField } from '../../patterns/master';
 import type { ActionAvailability } from './retire-actions';
 import type { CalendarFormValues } from './types';
 
@@ -70,13 +71,12 @@ export const CalendarFormDialog = ({
       <div className="form-grid dialog-scroll">
         {banner}
 
-        <TextField
+        <CodeLockTextField
+          lockReason={codeLockReason}
           label={t.fields.calendarCode}
           required
           value={values.calendarCode}
           onChange={(event) => onChange({ calendarCode: event.target.value })}
-          disabled={codeLockReason !== null}
-          disabledReason={codeLockReason ?? undefined}
           error={fieldErrors.calendarCode}
         />
 

@@ -96,7 +96,7 @@ describe('StepPane — 단계 표', () => {
 
     const row = rowOf('합성 승인자2 · 합성부서 나');
 
-    expect(within(row).getByText(t.values.approverInactive)).toBeInTheDocument();
+    expect(within(row).getByText(messages.common.usage.inactive)).toBeInTheDocument();
     expect(within(row).getByText(t.notes.approverInactiveWarning)).toBeInTheDocument();
   });
 
@@ -105,7 +105,7 @@ describe('StepPane — 단계 표', () => {
 
     const row = rowOf('합성 승인자1 · 합성부서 가');
 
-    expect(within(row).getByText(t.values.approverActive)).toBeInTheDocument();
+    expect(within(row).getByText(messages.common.usage.active)).toBeInTheDocument();
     expect(within(row).queryByText(t.notes.approverInactiveWarning)).not.toBeInTheDocument();
   });
 });

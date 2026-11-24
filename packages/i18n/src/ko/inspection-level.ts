@@ -17,8 +17,7 @@ export const inspectionLevel = {
     /** 조건 줄의 「전체」 — 좁히지 않는다는 뜻이다(빈 값과 같은 자리). */
     all: '전체',
     level: '검사 수준',
-    levelAll: '전체',
-    levelCount: (label: string, count: number): string => `${label} ${String(count)}`,
+    levelCount: (label: string, count: number): string => `${label} ${String(count)}건`,
     add: '품목 추가',
     empty: '검사 수준을 지정한 품목이 없습니다.',
     emptyHint: '「품목 추가」로 검사 수준을 지정하세요.',
@@ -48,6 +47,8 @@ export const inspectionLevel = {
     addTitle: '검사 수준 지정',
     changeTitle: '검사 수준 변경',
     item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     pickItem: '품목 찾기',
     pickConfirm: '선택',
     noItem: '품목을 선택하세요.',

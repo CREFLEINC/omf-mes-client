@@ -264,7 +264,8 @@ export const stocktaking = {
    */
   lineTable: {
     lineNo: '줄번호',
-    item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     lot: '자재 LOT',
     systemQty: '장부 수량',
     countedQty: '실물 수량',

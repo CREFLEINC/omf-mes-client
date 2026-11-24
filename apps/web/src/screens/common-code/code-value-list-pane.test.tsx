@@ -54,10 +54,14 @@ describe('CodeValueListPane — 목록 표시', () => {
     expect(codeCells()).toEqual(['SYN-CV-02', 'SYN-CV-03', 'SYN-CV-01']);
   });
 
-  it('미사용 행은 열을 늘리지 않고 이름 뒤 접미로 알린다', () => {
+  it('미사용 행은 열을 늘리지 않고 이름 옆 「미사용」 라벨로 알린다', () => {
     renderPane();
 
-    expect(screen.getByText('합성 코드값 C (미사용)')).toBeInTheDocument();
+    expect(
+      within(screen.getByText('합성 코드값 C').closest('.usage-name') as HTMLElement).getByText(
+        '미사용',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('유효기간을 한 칸에 담고, 없는 쪽은 지어내지 않는다', () => {

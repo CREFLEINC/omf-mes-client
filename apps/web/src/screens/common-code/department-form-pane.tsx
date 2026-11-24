@@ -2,6 +2,7 @@ import { Button, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
+import { CodeLockLabel } from '../../patterns/master';
 import { DisabledAction } from './disabled-action';
 import { FieldLabel } from './field-label';
 import { SelectField } from './select-field';
@@ -180,13 +181,16 @@ export const DepartmentFormPane = ({
          * 검증이 필수로 막는 칸에 표시가 없으면 저장을 눌러야 필수임을 알게 된다.
          */}
         <div className="field-cell">
-          <FieldLabel htmlFor={codeId} label={t.department.fields.departmentCode} required />
+          {/* 잠긴 코드는 사유 문장 대신 칸 이름 오른쪽 「변경 불가」 라벨(사용자 지시 2026-11-24). */}
+          <CodeLockLabel reason={codeLockReason} reasonId={`${codeId}-lock`}>
+            <FieldLabel htmlFor={codeId} label={t.department.fields.departmentCode} required />
+          </CodeLockLabel>
           <TextField
             id={codeId}
             value={values.departmentCode}
             onChange={(event) => onChange({ departmentCode: event.target.value })}
             disabled={codeLockReason !== null}
-            disabledReason={codeLockReason}
+            aria-describedby={codeLockReason === null ? undefined : `${codeId}-lock`}
             error={fieldErrors.departmentCode}
             aria-required
           />

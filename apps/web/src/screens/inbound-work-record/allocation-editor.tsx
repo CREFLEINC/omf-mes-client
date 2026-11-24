@@ -175,6 +175,11 @@ export const AllocationSection = ({
               </th>
               <th scope="col" className="is-number">
                 {td.matchColumns.thisMatch}
+                {values !== null && (
+                  <span className="required-mark" aria-hidden="true">
+                    {' *'}
+                  </span>
+                )}
               </th>
               <th scope="col" className="is-number">
                 {td.matchColumns.tolerance}
@@ -226,6 +231,7 @@ export const AllocationSection = ({
                         size="sm"
                         className="iwr-qty-input"
                         aria-label={te.qtyLabel(lineLabel(candidate))}
+                        aria-required="true"
                         inputMode="decimal"
                         aria-invalid={badLines.has(id) ? true : undefined}
                         value={values[id] ?? ''}

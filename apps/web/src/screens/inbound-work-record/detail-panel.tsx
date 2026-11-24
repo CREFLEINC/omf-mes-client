@@ -46,10 +46,12 @@ const Facts = ({ detail }: { detail: WorkRecordDetail }) => {
       <dd>
         {detail.supplierName} <span className="iwr-code">{detail.supplierCode}</span>
       </dd>
-      <dt>{td.item}</dt>
+      <dt>{td.itemCode}</dt>
       <dd>
-        <span className="iwr-code">{detail.itemCode}</span> {detail.itemName}
+        <span className="iwr-code">{detail.itemCode}</span>
       </dd>
+      <dt>{td.itemName}</dt>
+      <dd>{detail.itemName}</dd>
       <dt>{td.receivingDate}</dt>
       <dd>{detail.receivingDate}</dd>
       <dt>{td.receiptClosed}</dt>

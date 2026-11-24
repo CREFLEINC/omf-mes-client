@@ -144,7 +144,10 @@ describe('ErpProductionOrderScreen', () => {
     expect(url?.searchParams.get('q')).toBe('SYN');
     expect(url?.searchParams.has('dueDateFrom')).toBe(false);
 
-    expect(await cells.findByText('SYN-ITEM · 합성 품목')).toBeInTheDocument();
+    /* 품목코드 · 품목명은 두 열(사용자 지시 2026-11-24). */
+    expect((await cells.findAllByText('SYN-ITEM')).length).toBeGreaterThan(0);
+    expect(cells.getAllByText('합성 품목').length).toBeGreaterThan(0);
+    expect(cells.queryByText('SYN-ITEM · 합성 품목')).toBeNull();
     expect(await cells.findByText('1,200 SYN-EA')).toBeInTheDocument();
     expect(cells.getByText('2026-10-08')).toBeInTheDocument();
     expect(await cells.findByText('합성 수정됨')).toBeInTheDocument();
@@ -162,6 +165,8 @@ describe('ErpProductionOrderScreen', () => {
     expect(await detail.findByText('SYN-SL1 · 합성 창고')).toBeInTheDocument();
     expect(detail.getByText('아니오')).toBeInTheDocument();
     expect(detail.getByText('1,200 SYN-EA')).toBeInTheDocument();
+    expect(detail.getByText('SYN-ITEM')).toBeInTheDocument();
+    expect(detail.getByText('합성 품목')).toBeInTheDocument();
     /* 상세는 목록 응답만 쓴다 — 한 건 요청도, 참조(사업부·공장)도 부르지 않는다. */
     expect(requests.some((r) => new URL(r.url).pathname.startsWith(`${LIST_PATH}/`))).toBe(false);
     expect(requests.some((r) => exact(r, '/mdm/business-units'))).toBe(false);

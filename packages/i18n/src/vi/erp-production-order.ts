@@ -10,6 +10,8 @@ export const erpProductionOrder: Translated<typeof ko.erpProductionOrder> = {
   fields: {
     productionOrderNo: 'Số ERP W/O',
     item: 'Mặt hàng',
+    itemCode: 'Mã mặt hàng',
+    itemName: 'Tên mặt hàng',
     orderQty: 'Số lượng chỉ thị',
     plannedStartDate: 'Ngày bắt đầu kế hoạch',
     dueDate: 'Hạn giao',

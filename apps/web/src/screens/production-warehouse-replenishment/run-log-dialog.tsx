@@ -61,7 +61,8 @@ export const RunLogDialog = ({ warehouseName, runs, onClose }: RunLogDialogProps
                 <table className="replenishment-table" aria-label={tl.linesLabel(when)}>
                   <thead>
                     <tr>
-                      <th scope="col">{tl.columns.item}</th>
+                      <th scope="col">{tl.columns.itemCode}</th>
+                      <th scope="col">{tl.columns.itemName}</th>
                       <th scope="col">{tl.columns.result}</th>
                       <th scope="col" className="is-number">
                         {tl.columns.usable}
@@ -78,10 +79,8 @@ export const RunLogDialog = ({ warehouseName, runs, onClose }: RunLogDialogProps
                   <tbody>
                     {run.lines.map((line) => (
                       <tr key={line.itemId}>
-                        <td className="is-wrap">
-                          <span className="replenishment-code">{line.itemCode}</span>{' '}
-                          {line.itemName}
-                        </td>
+                        <td className="replenishment-code">{line.itemCode}</td>
+                        <td className="is-wrap">{line.itemName}</td>
                         <td>{tl.results[line.resultCode]}</td>
                         <td className="is-number">{formatQty(line.usableQty)}</td>
                         <td className="is-number">

@@ -976,6 +976,7 @@ export const ProposalReview = ({
                                   <div className="proposal-plan-line">
                                     <ReferenceField
                                       label="생산 라인"
+                                      required
                                       wrapValue
                                       placeholder="생산 라인 선택"
                                       valueLabel={
@@ -1028,6 +1029,7 @@ export const ProposalReview = ({
                                   <div className="proposal-plan-routing">
                                     <ReferenceField
                                       label="Routing"
+                                      required
                                       wrapValue
                                       valueLabel={plan.routing || ''}
                                       placeholder="Routing 선택"

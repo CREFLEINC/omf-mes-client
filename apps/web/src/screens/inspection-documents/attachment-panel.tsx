@@ -567,14 +567,12 @@ export const AttachmentPanel = ({
               {/* 유형 칩은 찾기 칸 아래 줄(사용자 지시 2026-10-27 · #185). */}
               <FilterChips
                 label={t.kindLabel}
-                options={[null, ...FILE_KINDS].map((option) => ({
+                options={FILE_KINDS.map((option) => ({
                   value: option,
-                  label: t.kinds[option ?? 'all'],
+                  label: t.kinds[option],
                 }))}
                 value={kind}
-                countOf={(option) =>
-                  option === null ? all.length : all.filter((row) => kindOf(row) === option).length
-                }
+                countOf={(option) => all.filter((row) => kindOf(row) === option).length}
                 onChange={(next) => setKind(next as FileKind | null)}
               />
             </>

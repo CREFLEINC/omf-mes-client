@@ -24,6 +24,8 @@ export const supplierItemDefault = {
   columns: {
     supplier: '공급사',
     item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     baseUom: '기본 단위',
     packageUom: '패키징 단위',
     qtyPerPackage: '패키징 수량 (기본 단위)',
@@ -49,6 +51,8 @@ export const supplierItemDefault = {
     editTitle: '기본 정보 수정',
     supplier: '공급사',
     item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     pick: '고르세요',
     baseUom: '기본 단위',
     storage: (uomCode: string, qty: string, baseUomCode: string) =>

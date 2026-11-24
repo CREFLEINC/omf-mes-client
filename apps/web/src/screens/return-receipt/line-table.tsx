@@ -2,6 +2,7 @@ import { Button, type Column, Table, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
+import { splitCodeName } from '../../patterns/split-code-name';
 import type { LineDraft } from './line-draft';
 import type { ItemNameLookup } from './lookups';
 import { formatQty } from './types';
@@ -33,12 +34,23 @@ export const LineTable = ({
   onChangeQty,
   onRemove,
 }: LineTableProps) => {
+  /** 품목코드 · 품목명 두 칸(사용자 지시 2026-11-24). 못 푼 안내는 품목코드 칸에 둔다. */
+  const itemCodeNameOf = (row: LineDraft): { code: string; name: string } =>
+    splitCodeName(
+      lookupDisplayLabel(items.of(row.source.itemId), row.source.itemId),
+      messages.common.reference.empty,
+    );
+
   const columns: Column<LineDraft>[] = [
     {
       key: 'item',
-      header: t.fields.item,
-      render: (row) =>
-        row.source.itemCode ?? lookupDisplayLabel(items.of(row.source.itemId), row.source.itemId),
+      header: t.fields.itemCode,
+      render: (row) => row.source.itemCode ?? itemCodeNameOf(row).code,
+    },
+    {
+      key: 'itemName',
+      header: t.fields.itemName,
+      render: (row) => itemCodeNameOf(row).name,
     },
     { key: 'lot', header: t.fields.lotNo, render: (row) => row.source.lotNo },
     {
@@ -51,7 +63,15 @@ export const LineTable = ({
     },
     {
       key: 'return',
-      header: t.fields.returnQty,
+      /* 한 줄 이상 반품 수량이 있어야 등록된다(잠금 noQty) — 열 제목에 필수 표시. */
+      header: (
+        <>
+          {t.fields.returnQty}
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </>
+      ),
       width: '160px',
       render: (row) => (
         <TextField

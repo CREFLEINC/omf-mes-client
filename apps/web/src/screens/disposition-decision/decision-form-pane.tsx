@@ -265,12 +265,12 @@ export const DecisionFormPane = ({
           aria-label={t.concession.requestHeading}
         >
           <div className="field-cell">
-            <label className="field-label" htmlFor={validFromId}>
-              {t.concession.validFrom}
+            <span className="field-label">
+              <label htmlFor={validFromId}>{t.concession.validFrom}</label>
               <span className="required-mark" aria-hidden="true">
                 {' *'}
               </span>
-            </label>
+            </span>
             <DatePicker
               id={validFromId}
               value={value.validFrom === '' ? null : value.validFrom}

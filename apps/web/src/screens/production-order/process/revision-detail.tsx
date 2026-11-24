@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { AlertBanner, Button, Dialog, IconButton, SkeletonText } from '@crefle/web-ui';
 import { useApiClient } from '../../../patterns/api-context';
 import { runRequest } from '../../../patterns/request';
-import { useProductionOrderItemNames } from '../item-lookups';
+import { useItemCodeNames, useProductionOrderItemNames } from '../item-lookups';
 import { useUomReferenceLookup } from '../reference-lookups';
 import { useRoutingOperations, useRoutingDetail } from '../../routing/queries';
 import {
@@ -50,10 +50,13 @@ export const BomContents = ({ id, plain = false }: { id: number; plain?: boolean
         client.GET('/planning/boms/{bomId}/components', { params: { path: { bomId: id } } }),
       ),
   });
-  const names = useProductionOrderItemNames([
+  const itemIds = [
     ...(rows.data?.items ?? []).map((row) => row.componentItemId),
     ...(header.data?.bom.parentItemId ? [header.data.bom.parentItemId] : []),
-  ]);
+  ];
+  const names = useProductionOrderItemNames(itemIds);
+  /* 품목코드 · 품목명을 두 칸으로 나눠 보인다(사용자 지시 2026-11-24) — 같은 품목 상세 캐시를 쓴다. */
+  const items = useItemCodeNames(itemIds);
   const operations = useRoutingOperationOptions(
     header.data?.bom.parentItemId ?? null,
     (rows.data?.items ?? []).some((row) => row.routingOperationId != null),
@@ -107,12 +110,13 @@ export const BomContents = ({ id, plain = false }: { id: number; plain?: boolean
           </strong>
         </div>
         {rows.data.items.length ? (
-          <div className="erp-wo-revision-table erp-wo-plain-materials">
+          <div className="erp-wo-revision-table erp-wo-plain-materials erp-wo-split-item">
             <table>
               <caption className="visually-hidden">자재별 필요 수량</caption>
               <thead>
                 <tr>
-                  <th>자재</th>
+                  <th>품목코드</th>
+                  <th>품목명</th>
                   <th>필요 수량</th>
                   <th>필수 여부</th>
                 </tr>
@@ -122,9 +126,11 @@ export const BomContents = ({ id, plain = false }: { id: number; plain?: boolean
                   .sort((a, b) => a.sequenceNo - b.sequenceNo)
                   .map((row) => (
                     <tr key={row.bomComponentId}>
-                      <td data-label="자재">
-                        {names.items.find((item) => item.itemId === row.componentItemId)?.label ??
-                          '자재 정보 확인 중'}
+                      <td data-label="품목코드">
+                        {items.get(row.componentItemId)?.itemCode ?? '자재 정보 확인 중'}
+                      </td>
+                      <td data-label="품목명">
+                        {items.get(row.componentItemId)?.itemName ?? '—'}
                       </td>
                       <td data-label="필요 수량">
                         <strong>
@@ -211,10 +217,10 @@ export const BomContents = ({ id, plain = false }: { id: number; plain?: boolean
         <Properties
           values={[
             [
-              '모품목 · MES 품목 연결',
-              names.items.find((item) => item.itemId === bom.parentItemId)?.label ??
-                '품목 정보 확인 필요',
+              '모품목코드',
+              items.get(bom.parentItemId)?.itemCode ?? '품목 정보 확인 필요',
             ],
+            ['모품목명', items.get(bom.parentItemId)?.itemName ?? '—'],
             ['공통 기준 수량', `${bom.baseQty} ${unit(bom.baseUomId)}`],
             ['개정 상태', statusLabel(bom.statusCode)],
             ['기본 개정', flag(bom.isDefault)],
@@ -226,12 +232,12 @@ export const BomContents = ({ id, plain = false }: { id: number; plain?: boolean
       {!rows.data.items.length ? (
         <p>등록된 구성 자재가 없습니다.</p>
       ) : (
-        <div className="erp-wo-revision-table">
+        <div className="erp-wo-revision-table erp-wo-split-item">
           <table>
             <caption>ERP 수신 정보와 MES 적용 정보</caption>
             <thead>
               <tr>
-                {['ERP 수신 · 품목 연결', 'MES 환산 소요량', 'MES 추가 속성'].map((label) => (
+                {['ERP 수신 · 품목코드', '품목명', 'MES 환산 소요량', 'MES 추가 속성'].map((label) => (
                   <th key={label}>{label}</th>
                 ))}
               </tr>
@@ -241,16 +247,18 @@ export const BomContents = ({ id, plain = false }: { id: number; plain?: boolean
                 .sort((a, b) => a.sequenceNo - b.sequenceNo)
                 .map((row) => {
                   const name = names.items.find((item) => item.itemId === row.componentItemId);
+                  const item = items.get(row.componentItemId);
                   return (
                     <tr key={row.bomComponentId}>
-                      <td data-label="ERP 수신 · 품목 연결" className="erp-wo-revision-material">
+                      <td data-label="ERP 수신 · 품목코드" className="erp-wo-revision-material">
                         <p className="field-note">
                           ERP 자품목 순번:{' '}
                           {row.erpChildItemSeq == null ? '보관값 없음' : row.erpChildItemSeq}
                         </p>
-                        {name?.label ??
+                        {item?.itemCode ??
                           (name?.status === 'loading' ? '자재 조회 중' : '자재 정보 확인 필요')}
                       </td>
+                      <td data-label="품목명">{item?.itemName ?? '—'}</td>
                       <td data-label="MES 환산 소요량" className="erp-wo-revision-quantity">
                         <strong>{row.requiredQty}</strong> {unit(row.uomId)}
                         <p className="field-note">

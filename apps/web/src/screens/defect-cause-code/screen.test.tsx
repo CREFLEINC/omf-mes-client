@@ -969,9 +969,13 @@ describe('DefectCauseCodeScreen — 상세 조회', () => {
 
     await openEdit();
     expect(await screen.findByLabelText('불량코드')).toBeDisabled();
-    expect(
-      screen.getByText('지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
+      'title',
+      '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
+    );
+    expect(screen.getByLabelText('불량코드')).toHaveAccessibleDescription(
+      '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
+    );
   });
 
   it('codeEditable이 참이면 코드 입력이 열려 있다', async () => {

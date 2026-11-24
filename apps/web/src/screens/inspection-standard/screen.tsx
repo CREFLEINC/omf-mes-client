@@ -109,7 +109,6 @@ import {
   useInspectionPlanVersionDetail,
   useInspectionPlanVersionList,
   useCodeValueOptions,
-  useItemNameLabels,
   useItemNameParts,
   useEquipmentOptions,
   useItemOptions,
@@ -1410,7 +1409,6 @@ export const InspectionStandardScreen = () => {
 
   /* 목록 · 상세 머리의 품목 이름 — 보이는 품목만 상세로 푼다(#196). */
   const itemIds = [...plans.map((plan) => plan.itemId), planDetail.data?.inspectionPlan.itemId];
-  const itemLabelOf = useItemNameLabels(itemIds);
   const itemPartsOf = useItemNameParts(itemIds);
   const routingDisabledReason = activeItemId === null ? t.actionReasons.routingNeedsItem : null;
 
@@ -1799,7 +1797,6 @@ export const InspectionStandardScreen = () => {
       setPlanFieldErrors({});
       setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
     };
-    const itemLabel = itemLabelOf(planDetail.data.inspectionPlan.itemId);
 
     /*
      * 검사 기준 상세 카드(omf-all-around#196) — 머리(기준 · 상태 · 기본 정보 수정) / 버전 고르기 / 버전 요약 · 탭.
@@ -1809,7 +1806,7 @@ export const InspectionStandardScreen = () => {
       <section className="pane inspection-standard-detail-card" aria-label={t.detail.title}>
         <PlanDetailHead
           plan={planDetail.data.inspectionPlan}
-          itemLabel={itemLabel}
+          itemParts={itemPartsOf(planDetail.data.inspectionPlan.itemId)}
           routingRevision={routingOptions.revisions.find(
             (revision) =>
               revision.routingId === String(planDetail.data.inspectionPlan.routingId ?? ''),

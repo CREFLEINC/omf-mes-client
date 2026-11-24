@@ -40,7 +40,8 @@ export const productDisposalRequest = {
     selectRow: (lotNo: string): string => `${lotNo} 선택`,
     fields: {
       lotNo: 'LOT',
-      item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       qty: '수량',
       nonconformanceNo: '부적합',
       disposition: '처분',

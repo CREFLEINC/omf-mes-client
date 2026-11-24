@@ -117,10 +117,11 @@ describe('buildBalanceColumns — 보기마다의 열 구성', () => {
    * 붙는다** — 다른 두 보기의 줄은 LOT을 가리키지 않아 고를 대상이 없다.
    */
   /* FR-035 — LOT별 보기에 「입하 LOT」 열이 더해져 열한 열에서 열두 열이 됐다. */
-  it('품목별은 아홉 열, 위치별은 열 열, LOT별은 열두 열이다', () => {
-    expect(buildBalanceColumns({ view: 'item', ...LOOKUPS, ...SELECTION })).toHaveLength(9);
-    expect(buildBalanceColumns({ view: 'location', ...LOOKUPS, ...SELECTION })).toHaveLength(10);
-    expect(buildBalanceColumns({ view: 'lot', ...LOOKUPS, ...SELECTION })).toHaveLength(12);
+  /* 품목이 품목코드 · 품목명 두 열로 나뉘어 보기마다 한 열씩 늘었다(사용자 지시 2026-11-24). */
+  it('품목별은 열 열, 위치별은 열한 열, LOT별은 열세 열이다', () => {
+    expect(buildBalanceColumns({ view: 'item', ...LOOKUPS, ...SELECTION })).toHaveLength(10);
+    expect(buildBalanceColumns({ view: 'location', ...LOOKUPS, ...SELECTION })).toHaveLength(11);
+    expect(buildBalanceColumns({ view: 'lot', ...LOOKUPS, ...SELECTION })).toHaveLength(13);
   });
 
   /*
@@ -146,17 +147,20 @@ describe('buildBalanceColumns — 보기마다의 열 구성', () => {
 
   /* 주 식별자 열이다. 「코드 · 이름」이 한 줄에 들어가지 않으면 표를 훑을 수 없다. */
   it('축 열이 「코드 · 이름」을 담는 폭 이상이다', () => {
-    const axisKeys: Record<ViewAxis, string[]> = {
-      item: ['itemCode'],
-      lot: ['itemCode'],
-      location: ['locationCode', 'itemCode'],
+    /* 품목은 품목코드 · 품목명 두 열로 나눴다(사용자 지시 2026-11-24) — 두 열 합으로 잰다. */
+    const axisKeys: Record<ViewAxis, string[][]> = {
+      item: [['itemCode', 'itemName']],
+      lot: [['itemCode', 'itemName']],
+      location: [['locationCode'], ['itemCode', 'itemName']],
     };
 
     for (const view of VIEW_AXES) {
       const columns = buildBalanceColumns({ view, ...LOOKUPS, ...SELECTION });
 
-      for (const key of axisKeys[view]) {
-        expect(widthOf(columns, key)).toBeGreaterThanOrEqual(CODE_NAME_COLUMN_PX);
+      for (const keys of axisKeys[view]) {
+        const width = keys.reduce((sum, key) => sum + widthOf(columns, key), 0);
+
+        expect(width).toBeGreaterThanOrEqual(CODE_NAME_COLUMN_PX);
       }
     }
   });
@@ -184,14 +188,18 @@ describe('BalanceTable — 정렬 가능한 열', () => {
   it('품목별에서는 품목·보유·가용에만 정렬 버튼이 붙는다', () => {
     renderTable({ view: 'item' });
 
-    expect(sortableHeaderNames()).toEqual([t.table.item, t.table.onHandQty, t.table.availableQty]);
+    expect(sortableHeaderNames()).toEqual([
+      t.table.itemCode,
+      t.table.onHandQty,
+      t.table.availableQty,
+    ]);
   });
 
   it('LOT별에서는 품목·LOT·보유·가용에만 붙는다', () => {
     renderTable({ view: 'lot', rows: lotViewFixtures });
 
     expect(sortableHeaderNames()).toEqual([
-      t.table.item,
+      t.table.itemCode,
       t.table.lot,
       t.table.onHandQty,
       t.table.availableQty,
@@ -203,7 +211,7 @@ describe('BalanceTable — 정렬 가능한 열', () => {
 
     expect(sortableHeaderNames()).toEqual([
       t.table.location,
-      t.table.item,
+      t.table.itemCode,
       t.table.onHandQty,
       t.table.availableQty,
     ]);
@@ -308,7 +316,9 @@ describe('BalanceTable — 참조 값 표기', () => {
   it('참조가 오면 이름으로 보인다', () => {
     renderTable({ view: 'item' });
 
-    expect(within(table()).getAllByText('SAMPLE-ITEM-01 · 합성 품목 가')).not.toHaveLength(0);
+    /* 품목코드 · 품목명 두 칸으로 나눠 보인다(사용자 지시 2026-11-24). */
+    expect(within(table()).getAllByText('SAMPLE-ITEM-01')).not.toHaveLength(0);
+    expect(within(table()).getAllByText('합성 품목 가')).not.toHaveLength(0);
   });
 
   /*
@@ -370,8 +380,11 @@ describe('BalanceTable — 참조 값 표기', () => {
       ]),
     });
 
-    expect(table()).toHaveTextContent('A5C1M50101 · PI SENSOR-SG2A241');
-    expect(table()).toHaveTextContent('B7D2N60202 · 합성 품목 나');
+    /* 품목코드 · 품목명 두 칸으로 나눠 보인다(사용자 지시 2026-11-24). */
+    expect(screen.getByText('A5C1M50101')).toBeInTheDocument();
+    expect(screen.getByText('PI SENSOR-SG2A241')).toBeInTheDocument();
+    expect(screen.getByText('B7D2N60202')).toBeInTheDocument();
+    expect(screen.getByText('합성 품목 나')).toBeInTheDocument();
     expect(table()).not.toHaveTextContent(t.values.unknown);
   });
 
@@ -386,7 +399,7 @@ describe('BalanceTable — 참조 값 표기', () => {
       ]),
     });
 
-    expect(table()).toHaveTextContent('A5C1M50101 · PI SENSOR-SG2A241');
+    expect(screen.getByText('PI SENSOR-SG2A241')).toBeInTheDocument();
     expect(table()).toHaveTextContent(t.values.referenceFailed);
   });
 
@@ -404,7 +417,7 @@ describe('BalanceTable — 참조 값 표기', () => {
       },
     });
 
-    expect(within(table()).getAllByText('SAMPLE-ITEM-01 · 합성 품목 가')).not.toHaveLength(0);
+    expect(within(table()).getAllByText('합성 품목 가')).not.toHaveLength(0);
     expect(table()).not.toHaveTextContent(t.values.inactiveSuffix.trim());
   });
 

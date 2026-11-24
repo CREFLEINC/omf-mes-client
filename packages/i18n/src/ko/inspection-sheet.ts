@@ -49,6 +49,8 @@ export const inspectionSheet = {
   columns: {
     serialNo: '시리얼 번호',
     model: '모델',
+    modelCode: '모델코드',
+    modelName: '모델명',
     lotNo: '생산 LOT 번호',
     workOrder: '작업지시',
     progress: '검사 완료',
@@ -93,7 +95,8 @@ export const inspectionSheet = {
       waitInspection: '공정 검사를 모두 마치면 승인할 수 있습니다.',
     },
     serialNo: '시리얼 번호',
-    model: '모델',
+    modelCode: '모델코드',
+    modelName: '모델명',
     lot: '생산 LOT 번호',
     workOrder: '작업지시',
     layout: '양식',
@@ -125,7 +128,13 @@ export const inspectionSheet = {
     fourMNote:
       '이 시리얼을 만들 때 쓰던 4M 변경품 자재입니다(투입 시각 기준 추정). 계보 기록 이전 작업지시는 작업지시 단위입니다.',
     fourMNone: '투입된 변경 자재가 없습니다.',
-    fourMColumns: { changeType: '변경 유형', item: '자재', lot: '자재 LOT 번호', remarks: '비고' },
+    fourMColumns: {
+      changeType: '변경 유형',
+      itemCode: '자재코드',
+      itemName: '자재명',
+      lot: '자재 LOT 번호',
+      remarks: '비고',
+    },
     steps: '공정별 검사',
     stepsCaption: '공정별 검사와 서명',
     stepColumns: {

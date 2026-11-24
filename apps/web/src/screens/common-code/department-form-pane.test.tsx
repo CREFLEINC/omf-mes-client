@@ -75,13 +75,18 @@ describe('DepartmentFormPane — 코드 잠금', () => {
    * 판정의 주인은 서버가 준 편집 가능 여부다 — 화면이 스스로 잠그지 않는다.
    * 상위가 만든 사유를 그대로 받아 붙인다.
    */
-  it('잠금 사유가 있으면 부서코드 칸이 잠기고 사유가 붙는다', () => {
+  /* 사유 문장 대신 부서코드 이름 오른쪽 「변경 불가」 라벨 — 문장은 마우스 · 화면 읽기로(사용자 지시 2026-11-24). */
+  it('잠금 사유가 있으면 부서코드 칸이 잠기고 「변경 불가」 라벨에 사유가 붙는다', () => {
     renderPane({ codeLockReason: '이 코드는 다른 자료가 참조 중이라 고칠 수 없습니다.' });
 
     expect(screen.getByLabelText('부서코드')).toBeDisabled();
-    expect(
-      screen.getByText('이 코드는 다른 자료가 참조 중이라 고칠 수 없습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
+      'title',
+      '이 코드는 다른 자료가 참조 중이라 고칠 수 없습니다.',
+    );
+    expect(screen.getByLabelText('부서코드')).toHaveAccessibleDescription(
+      '이 코드는 다른 자료가 참조 중이라 고칠 수 없습니다.',
+    );
   });
 
   /* 잠기는 것은 코드 칸뿐이다 — 서버가 잠그지 않은 칸까지 화면이 잠그면 안 된다. */

@@ -171,12 +171,13 @@ describe('W-05-07 수집 채널 매핑 — 첫 조회', () => {
     ).toBeInTheDocument();
   });
 
-  /** 사용 여부는 칸이 아니라 이름에 붙는 표식이다 — 좁은 페인에 칸을 더 두지 않는다. */
-  it('미사용 설비는 이름에 표식이 붙는다', async () => {
+  /** 사용 여부는 칸이 아니라 이름 옆 「미사용」 라벨이다 — 좁은 페인에 칸을 더 두지 않는다(#358). */
+  it('미사용 설비는 이름 옆에 「미사용」 라벨이 붙는다', async () => {
     renderScreen();
 
+    const name = await within(equipmentPane()).findByText('가상 검사기 1호');
     expect(
-      await within(equipmentPane()).findByText(`가상 검사기 1호${t.values.inactiveSuffix}`),
+      within(name.closest('.usage-name') as HTMLElement).getByText('미사용'),
     ).toBeInTheDocument();
   });
 

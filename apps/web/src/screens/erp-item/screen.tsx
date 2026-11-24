@@ -1,12 +1,4 @@
-import {
-  Button,
-  Checkbox,
-  Chip,
-  type Column,
-  EmptyState,
-  SkeletonText,
-  TextField,
-} from '@crefle/web-ui';
+import { Button, Checkbox, type Column, EmptyState, SkeletonText, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
@@ -20,6 +12,7 @@ import { OneLine, useFitToViewport } from '../../patterns/po-board';
 import { PAGE_SIZES, PageNav, type PageSize } from '../../patterns/page-nav';
 import { Select } from '../../patterns/select';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
+import { UsageChip } from '../../patterns/usage-chip';
 import { ErpFilterActions, ErpListTable } from './erp-data-parts';
 import { type ErpItemListQuery, useErpItemList, useItemTypeLookup, useUomLookup } from './queries';
 import type { ErpItem, SelectOption } from './types';
@@ -29,15 +22,6 @@ const t = messages.erpItem;
 /** 값이 없는 칸은 비워 두지 않는다 — 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
 const orEmpty = (value: string | number | null | undefined): ReactNode =>
   value === null || value === undefined || value === '' ? t.values.empty : String(value);
-
-const activeLabel = (isActive: boolean): string => (isActive ? t.values.active : t.values.inactive);
-
-/** 사용 여부 상태 라벨 — 공통코드 탭과 같은 모양(사용자 지시 2026-11-24). */
-const ActiveChip = ({ isActive }: { isActive: boolean }) => (
-  <Chip variant="status" size="sm" status={isActive ? 'success' : 'idle'}>
-    {activeLabel(isActive)}
-  </Chip>
-);
 
 /** 주소의 조건. 조건은 전부 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다. */
 interface Filters {
@@ -237,7 +221,7 @@ export const ErpItemScreen = () => {
       key: 'isActive',
       header: t.table.isActive,
       width: '72px',
-      render: (row) => <ActiveChip isActive={row.isActive} />,
+      render: (row) => <UsageChip isActive={row.isActive} />,
     },
   ];
 

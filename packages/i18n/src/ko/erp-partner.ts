@@ -35,8 +35,6 @@ export const erpPartner = {
   values: {
     all: '전체',
     empty: '—',
-    active: '사용',
-    inactive: '미사용',
     rolesLoading: '불러오는 중',
     rolesFailed: '불러오지 못함',
     roleSeparator: ', ',

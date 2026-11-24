@@ -82,7 +82,8 @@ export const ShortageView = ({ data, isPending, isError, error, onRetry }: Short
         <thead>
           <tr>
             <th scope="col">{t.shortage.columns.warehouse}</th>
-            <th scope="col">{t.shortage.columns.item}</th>
+            <th scope="col">{t.shortage.columns.itemCode}</th>
+            <th scope="col">{t.shortage.columns.itemName}</th>
             <th scope="col">{t.shortage.columns.available}</th>
             <th scope="col">{t.shortage.columns.planned}</th>
             <th scope="col">{t.shortage.columns.shortage}</th>
@@ -92,7 +93,7 @@ export const ShortageView = ({ data, isPending, isError, error, onRetry }: Short
         <tbody>
           {unsourced.length > 0 && (
             <tr className="material-issue-status-group">
-              <th scope="rowgroup" colSpan={6}>
+              <th scope="rowgroup" colSpan={7}>
                 {/* 묶음의 뜻과 할 일은 제목 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
                 <span className="material-issue-status-title">
                   <strong>{t.shortage.unsourcedTitle}</strong>
@@ -106,8 +107,9 @@ export const ShortageView = ({ data, isPending, isError, error, onRetry }: Short
             <tr key={`u-${String(row.unsourcedShortageId)}`}>
               <td>{t.shortage.none}</td>
               <td>
-                <span className="material-issue-status-code">{row.itemCode}</span> {row.itemName}
+                <span className="material-issue-status-code">{row.itemCode}</span>
               </td>
+              <td>{row.itemName}</td>
               <td>0</td>
               <td>—</td>
               <td>
@@ -147,7 +149,7 @@ export const ShortageView = ({ data, isPending, isError, error, onRetry }: Short
           ))}
           {rows.length > 0 && (
             <tr className="material-issue-status-group">
-              <th scope="rowgroup" colSpan={6}>
+              <th scope="rowgroup" colSpan={7}>
                 <strong>{t.shortage.warehouseGroup}</strong>{' '}
                 <span className="field-note">{t.shortage.warehouseGroupCount(rows.length)}</span>
               </th>
@@ -157,8 +159,9 @@ export const ShortageView = ({ data, isPending, isError, error, onRetry }: Short
             <tr key={`${String(row.sourceWarehouseId)}-${String(row.itemId)}`}>
               <td>{row.sourceWarehouseName ?? String(row.sourceWarehouseId)}</td>
               <td>
-                <span className="material-issue-status-code">{row.itemCode}</span> {row.itemName}
+                <span className="material-issue-status-code">{row.itemCode}</span>
               </td>
+              <td>{row.itemName}</td>
               <td>{formatQty(row.availableQty)}</td>
               <td>{formatQty(row.plannedQty)}</td>
               <td>
@@ -228,7 +231,7 @@ export const ShortageView = ({ data, isPending, isError, error, onRetry }: Short
           ))}
           {unsourced.length === 0 && rows.length === 0 && (
             <tr>
-              <td colSpan={6}>{t.shortage.empty}</td>
+              <td colSpan={7}>{t.shortage.empty}</td>
             </tr>
           )}
         </tbody>

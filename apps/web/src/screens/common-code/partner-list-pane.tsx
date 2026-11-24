@@ -20,6 +20,7 @@ import {
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
+import { UsageName } from '../../patterns/usage-chip';
 import { hasAnyPartnerFilter, LIST_PAGE_SIZES, type ListPageSize } from './filters';
 import type { PageView } from './pagination';
 import type { Partner, PartnerFilters } from './types';
@@ -119,8 +120,7 @@ export const PartnerListPane = ({
       key: 'partnerName',
       align: 'center',
       header: t.partner.fields.partnerName,
-      render: (row) =>
-        row.isActive ? row.partnerName : `${row.partnerName}${t.values.inactiveSuffix}`,
+      render: (row) => <UsageName isActive={row.isActive}>{row.partnerName}</UsageName>,
     },
   ];
   /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(단말 관리 목록과 같다 · omf-all-around#358). */

@@ -99,6 +99,7 @@ export const PqcJudgmentFields = ({
       </span>
       <Select
         id={judgmentId}
+        aria-required
         options={judgmentOptions}
         value={judgment}
         placeholder={

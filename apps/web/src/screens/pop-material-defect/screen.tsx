@@ -29,6 +29,7 @@ import {
   puToast,
 } from '../../patterns/pop-uniform';
 import { runRequest, toApiError } from '../../patterns/request';
+import { splitCodeName } from '../../patterns/split-code-name';
 import { useWorkerSession } from '../../patterns/worker-session';
 import {
   EMPTY_DEFECT_CODE,
@@ -372,7 +373,14 @@ export const PopMaterialDefectScreen = () => {
               <PuKv
                 items={[
                   { label: t.lot.label, value: lot.lotNo },
-                  { label: t.lot.item, value: lot.itemLabel ?? '-' },
+                  {
+                    label: t.lot.itemCode,
+                    value: splitCodeName(lot.itemLabel ?? '-', '-').code,
+                  },
+                  {
+                    label: t.lot.itemName,
+                    value: splitCodeName(lot.itemLabel ?? '-', '-').name,
+                  },
                 ]}
               />
             )}

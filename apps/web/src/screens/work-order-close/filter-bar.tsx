@@ -162,9 +162,12 @@ export const WorkOrderCloseFilterBar = ({
           />
         </div>
         <div className="field-cell wide-select">
-          <label className="field-label" htmlFor={statusId}>
-            {t.status}
-          </label>
+          <span className="field-label">
+            <label htmlFor={statusId}>{t.status}</label>
+            <span className="required-mark" aria-hidden="true">
+              {' *'}
+            </span>
+          </span>
           <Select
             aria-describedby={statusReason === null ? undefined : statusNoteId}
             aria-required

@@ -73,20 +73,9 @@ export const WebSummary = ({ detail, planVersion, uomCode }: WebSummaryProps) =>
       value: workOrder.data?.workOrderNo ?? empty,
       emphasized: true,
     },
-    {
-      key: 'item',
-      label: t.item,
-      /* IQC 상세와 같게 — 코드 옆에 이름을 한 줄로(사용자 지시 2026-11-16 · #274). */
-      value: (
-        <>
-          {itemCode ?? itemName ?? empty}
-          {itemCode !== undefined && itemName !== undefined && (
-            <span className="parts-iqc-fact-sub">{itemName}</span>
-          )}
-        </>
-      ),
-      emphasized: true,
-    },
+    /* 품목은 코드 · 이름 두 칸(품목 표기 분리). */
+    { key: 'item', label: t.itemCode, value: itemCode ?? empty, emphasized: true },
+    { key: 'itemName', label: t.itemName, value: itemName ?? empty, emphasized: true },
     { key: 'qty', label: t.targetQty, value: targetQty, emphasized: true },
     { key: 'type', label: t.inspectionType, value: t.inspectionTypeName },
     {

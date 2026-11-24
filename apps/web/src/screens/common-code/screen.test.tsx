@@ -736,9 +736,13 @@ describe('CommonCodeScreen — 코드그룹 상세 (C14·C15·C19)', () => {
     );
 
     expect(await screen.findByLabelText('그룹코드')).toBeDisabled();
-    expect(
-      screen.getByText('지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
+      'title',
+      '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
+    );
+    expect(screen.getByLabelText('그룹코드')).toHaveAccessibleDescription(
+      '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
+    );
   });
 
   it('codeEditable이 참이면 그룹코드를 고칠 수 있다', async () => {

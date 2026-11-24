@@ -20,7 +20,8 @@ export const stockReinstatement = {
     productionLot: '생산 LOT',
     /** 목록 머리 — 제품·자재 LOT 이 함께 나온다(처분 유형과 LOT 종류는 따로 움직인다). */
     anyLot: 'LOT',
-    item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     qty: '수량',
     disposition: '처분',
     decidedAt: '판정일시',

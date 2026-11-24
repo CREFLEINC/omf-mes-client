@@ -228,9 +228,10 @@ describe('W-06-25 공급사·품목 기본 정보', () => {
     const { gets } = setup();
 
     const cap = (await rowOf('SYN-CAP')).getAllByRole('cell').map((cell) => cell.textContent);
-    expect(cap.slice(0, 8)).toEqual([
+    expect(cap.slice(0, 9)).toEqual([
       '합성 공급사 가 SYN-S1',
-      'SYN-CAP 합성 캡',
+      'SYN-CAP',
+      '합성 캡',
       'EA',
       '봉지',
       '100 EA',
@@ -239,7 +240,7 @@ describe('W-06-25 공급사·품목 기본 정보', () => {
       '11-11 09:02, 합성 관리자',
     ]);
     const resin = (await rowOf('SYN-RES')).getAllByRole('cell').map((cell) => cell.textContent);
-    expect(resin.slice(3, 7)).toEqual([t.values.noPackage, t.values.none, '25 KG', '25 KG']);
+    expect(resin.slice(4, 8)).toEqual([t.values.noPackage, t.values.none, '25 KG', '25 KG']);
 
     expect(screen.getByText(t.count(2))).toBeInTheDocument();
     /* 공장 단위 — 「공장 공통」이 아니라 지금 공장(screens/W-06-25.md 시안과 다른 점). */

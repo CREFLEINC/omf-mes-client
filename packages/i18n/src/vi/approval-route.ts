@@ -111,8 +111,6 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     noSteps: 'Không có bước',
     /** ⛔ 승인자 번호를 대신 내지 않는다 — 한 번 화면에 서면 그것이 식별자로 읽힌다. */
     approverUnknown: 'Không xác nhận được thông tin người phê duyệt',
-    approverActive: 'Đang dùng',
-    approverInactive: 'Đã ngừng sử dụng',
     approverTypeUser: 'Người dùng',
     approverTypeRole: 'Vai trò',
     approverTypeDepartment: 'Phòng ban',

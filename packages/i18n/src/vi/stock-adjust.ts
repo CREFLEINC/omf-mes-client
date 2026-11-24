@@ -105,7 +105,8 @@ export const stockAdjust: Translated<typeof ko.stockAdjust> = {
   },
   historyLineTable: {
     lineNo: 'Dòng',
-    item: 'Mặt hàng',
+    itemCode: 'Mã mặt hàng',
+    itemName: 'Tên mặt hàng',
     lot: 'LOT vật tư',
     bookQty: 'Sổ sách',
     actualQty: 'Thực tế',

@@ -87,8 +87,11 @@ const isGet = (request: Request, pathname: string): boolean =>
   request.method === 'GET' && new URL(request.url).pathname === pathname;
 
 /** 조준 조회는 목록과 같은 경로를 쓰되 `size` 상수를 싣는다. */
+/** 위 줄 「사용」 라벨의 건수 조회(`size=1`)는 조준 조회가 아니다(사용자 지시 2026-11-24). */
+const isProbeQuery = (params: URLSearchParams): boolean =>
+  params.has('size') && params.get('size') !== '1';
 const isProbe = (request: Request): boolean =>
-  isGet(request, ROUTES_PATH) && new URL(request.url).searchParams.has('size');
+  isGet(request, ROUTES_PATH) && isProbeQuery(new URL(request.url).searchParams);
 
 const listBody = (items: unknown[]) => ({
   items,

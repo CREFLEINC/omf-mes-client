@@ -414,4 +414,44 @@ describe('W-CO-15 공장 근무일 설정', () => {
       '이후 만드는 출고 요청부터 적용됩니다',
     );
   });
+
+  /* 위 줄 주간 근무일 라벨 — 「전체」 없이 「이름 N건」, 0건 감춤, 다시 누르면 전체(사용자 지시 2026-11-24). */
+  it('근무일 라벨은 건수를 붙이고 0건은 감추며, 고른 라벨을 다시 누르면 전체로 돌아간다', async () => {
+    const { user } = setup({
+      policies: [
+        {
+          operationPolicyId: 61,
+          policyCode: WEEKLY,
+          plantId: 8401,
+          valueNumeric: 6,
+          effectiveFrom: '2026-10-15',
+        },
+      ],
+    });
+    const rows = async () => (await table()).getAllByRole('row').slice(1);
+    const group = within(screen.getByRole('group', { name: t.daysFilter.group }));
+
+    expect(await group.findByRole('button', { name: '주 6일제 1건' })).toBeInTheDocument();
+    expect(group.getByRole('button', { name: '주 5일제 1건' })).toBeInTheDocument();
+    expect(group.queryByRole('button', { name: /전체/ })).toBeNull();
+
+    await user.click(group.getByRole('button', { name: '주 6일제 1건' }));
+    await waitFor(async () => expect(await rows()).toHaveLength(1));
+    expect(group.getByRole('button', { name: '주 6일제 1건' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    await user.click(group.getByRole('button', { name: '주 6일제 1건' }));
+    await waitFor(async () => expect(await rows()).toHaveLength(2));
+  });
+
+  it('0건인 근무일 라벨은 감춘다', async () => {
+    setup();
+    await table();
+    const group = within(screen.getByRole('group', { name: t.daysFilter.group }));
+
+    expect(await group.findByRole('button', { name: '주 5일제 2건' })).toBeInTheDocument();
+    expect(group.queryByRole('button', { name: /주 6일제/ })).toBeNull();
+  });
 });

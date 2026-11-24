@@ -160,6 +160,7 @@ export const MessageFilterBar = ({
       <div className="filter-bar integration-sync-filter">
         <TextField
           type="date"
+          required
           label={t.fields.periodFrom}
           value={period.from}
           onChange={(event) => {
@@ -168,6 +169,7 @@ export const MessageFilterBar = ({
         />
         <TextField
           type="date"
+          required
           label={t.fields.periodTo}
           value={period.to}
           onChange={(event) => {

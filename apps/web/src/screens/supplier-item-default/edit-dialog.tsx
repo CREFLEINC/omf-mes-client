@@ -266,10 +266,13 @@ export const EditDialog = ({
               {row.supplierName}{' '}
               <span className="supplier-item-default-code">{row.supplierCode}</span>
             </dd>
-            <dt>{td.item}</dt>
+            {/* 품목코드 · 품목명은 두 칸(사용자 지시 2026-11-24). */}
+            <dt>{td.itemCode}</dt>
             <dd>
-              <span className="supplier-item-default-code">{row.itemCode}</span> {row.itemName}
+              <span className="supplier-item-default-code">{row.itemCode}</span>
             </dd>
+            <dt>{td.itemName}</dt>
+            <dd>{row.itemName}</dd>
           </dl>
         )}
         <dl className="supplier-item-default-head">
@@ -299,6 +302,7 @@ export const EditDialog = ({
           label={td.qtyPerPackage}
           inputMode="decimal"
           value={draft.qtyPerPackage}
+          required={hasPackage}
           disabled={!hasPackage}
           helperText={td.qtyPerPackageHelp(baseUomCode)}
           aria-invalid={problem?.kind === 'qtyPerPackage' && touched}

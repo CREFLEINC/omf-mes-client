@@ -199,14 +199,6 @@ export const toolMaster = {
     cycleRequired: '판정 기준에 날짜를 넣었으면 주기 간격과 단위를 함께 입력하세요.',
     intervalPositiveInteger: '주기 간격은 1 이상의 정수로 입력하세요.',
   },
-  values: {
-    /**
-     * ⭐ 미사용 표식은 **칸이 아니라 이름에 붙는다.** 목록에 칸을 하나 더 두면 표가 하한을
-     * 넘겨 짓눌리는데(`docs/layout-conventions.md`), 「미사용 포함」을 켰을 때 어느 것이
-     * 미사용인지는 **반드시 보여야 한다** — 보이지 않으면 그 조건이 아무 뜻도 갖지 못한다.
-     */
-    inactiveSuffix: ' (미사용)',
-  },
   /**
    * ⭐ 타수를 세 모양으로 그린다.
    *

@@ -532,6 +532,8 @@ export const erpWorkOrderFlow = {
       selectPrompt: '작업지시를 선택하세요.',
       orderNo: 'ERP W/O',
       item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       planDate: '계획일',
       line: '생산 라인',
       empty: '배포할 작업지시가 없습니다.',

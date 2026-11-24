@@ -126,7 +126,14 @@ export const AdjustLineTable = ({
   const columns: Column<AdjustLineRow>[] = [
     {
       key: 'location',
-      header: t.lineTable.location,
+      header: (
+        <>
+          {t.lineTable.location}
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </>
+      ),
       width: '152px',
       render: (row, rowIndex) =>
         isInherited(row) ? (
@@ -152,7 +159,14 @@ export const AdjustLineTable = ({
     },
     {
       key: 'item',
-      header: t.lineTable.item,
+      header: (
+        <>
+          {t.lineTable.item}
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </>
+      ),
       /*
        * **품목과 단위가 한 칸에 산다.** 단위 열을 따로 두면 세 수량 열 사이에 끼어 「장부 ·
        * 실물 · 차이」가 끊기고, 그 셋이 한눈에 짝지어 읽히는 것이 이 화면의 요점이다.
@@ -256,7 +270,14 @@ export const AdjustLineTable = ({
     },
     {
       key: 'adjustmentQty',
-      header: t.lineTable.adjustmentQty,
+      header: (
+        <>
+          {t.lineTable.adjustmentQty}
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </>
+      ),
       width: '152px',
       /*
        * **이 표의 유일한 입력칸이다.** `type="number"`를 쓰지 않는다 — 브라우저가 「-」만 친
@@ -269,6 +290,7 @@ export const AdjustLineTable = ({
             fullWidth
             inputMode="decimal"
             aria-label={t.lineTable.adjustmentQtyLabel(rowIndex + 1)}
+            aria-required="true"
             value={row.draft.adjustmentQtyText}
             disabled={isLocked}
             error={errorOf(row, 'adjustmentQty')}

@@ -12,6 +12,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
+import { UsageName } from '../../patterns/usage-chip';
 import { ORPHAN_GROUP_KEY, groupKeyOf, hasDeepHierarchy } from './department-hierarchy';
 import { useFitColumns } from '../../patterns/column-fit';
 import { hasChangedFilters } from '../../patterns/filter-more';
@@ -143,8 +144,7 @@ export const DepartmentListPane = ({
       key: 'departmentName',
       align: 'center',
       header: t.department.fields.departmentName,
-      render: (row) =>
-        row.isActive ? row.departmentName : `${row.departmentName}${t.values.inactiveSuffix}`,
+      render: (row) => <UsageName isActive={row.isActive}>{row.departmentName}</UsageName>,
     },
     /* 003 · US8 — 연결한 생산 창고 수. 서버가 칸을 싣지 않았을 때만 「—」. */
     {

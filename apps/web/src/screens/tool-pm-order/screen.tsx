@@ -431,7 +431,7 @@ export const ToolPmOrderScreen = () => {
 
         <div className="form-grid tool-pm-order-form-grid">
           <div className="field-cell">
-            <FieldLabel htmlFor={plannedId} label={t.form.plannedDate} />
+            <FieldLabel htmlFor={plannedId} label={t.form.plannedDate} required />
             <DatePicker
               id={plannedId}
               mode="single"
@@ -456,6 +456,7 @@ export const ToolPmOrderScreen = () => {
             error={errors.assignee}
             placeholder={t.form.selectPlaceholder}
             wide
+            required
             onChange={(value) => {
               setDraft((prev) => ({ ...prev, assignee: value }));
             }}
@@ -489,7 +490,13 @@ export const ToolPmOrderScreen = () => {
           </div>
         </div>
 
-        <h3>{t.form.items}</h3>
+        <h3>
+          {t.form.items}
+          {/* 항목이 하나도 없으면 발행이 막힌다 — 필수 표시. */}
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </h3>
         {/* ⭐ 툴은 항목 마스터가 없어 이름을 직접 적는다. */}
         <p className="pane-lead">{t.form.itemsFreeInput}</p>
 
@@ -499,9 +506,11 @@ export const ToolPmOrderScreen = () => {
               <FieldLabel
                 htmlFor={`${item.key}-name`}
                 label={`${t.form.itemName} ${String(index + 1)}`}
+                required
               />
               <TextField
                 id={`${item.key}-name`}
+                aria-required="true"
                 value={item.name}
                 onChange={(event) => {
                   const next = event.target.value;

@@ -11,6 +11,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { UsageName } from '../../patterns/usage-chip';
 import { countUnmapped, isUnmapped, unmappedScopeNote, visibleChannels } from './channel-notes';
 import {
   countWarnings,
@@ -20,7 +21,6 @@ import {
   warningRowText,
   warningSummaryLines,
 } from './mapping-state';
-import { withInactiveSuffix } from './options';
 import { scopeLines } from './scope';
 import type { ChannelFilters, CollectionChannel, Equipment } from './types';
 
@@ -108,9 +108,11 @@ export const ChannelPane = ({
        * 이름이 곧 여는 손잡이다 — 줄마다 「수정」 단추를 세우면 표가 조작으로 덮인다.
        */
       render: (row) => (
-        <button type="button" className="link-cell" onClick={() => onEdit(row)}>
-          {withInactiveSuffix(row.channelKey, row.isActive)}
-        </button>
+        <UsageName isActive={row.isActive}>
+          <button type="button" className="link-cell" onClick={() => onEdit(row)}>
+            {row.channelKey}
+          </button>
+        </UsageName>
       ),
     },
     {

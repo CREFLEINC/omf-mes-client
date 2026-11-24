@@ -16,6 +16,7 @@ import { OneLine } from '../../patterns/po-board';
 import { PAGE_SIZES, PageNav, type PageSize } from '../../patterns/page-nav';
 import { Select } from '../../patterns/select';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
+import { UsageChip } from '../../patterns/usage-chip';
 import {
   ERP_DATA_ORIENTATION_KEY,
   ErpDetailFields,
@@ -34,7 +35,6 @@ import {
   useItemSummaries,
   useParentItems,
   useItemTypeNames,
-  useStatusNames,
   useUomNames,
 } from './queries';
 import type { Bom } from './types';
@@ -295,7 +295,6 @@ interface ParentFactsProps {
  */
 const ParentFacts = ({ item, bom }: ParentFactsProps) => {
   const typeNameOf = useItemTypeNames();
-  const statusNameOf = useStatusNames();
   const uomNameOf = useUomNames();
   const detail = item.item;
   const itemFacts = [
@@ -328,7 +327,15 @@ const ParentFacts = ({ item, bom }: ParentFactsProps) => {
       : [
           { key: 'bom', label: t.parent.bomCode, value: bom.bomCode },
           { key: 'rev', label: t.parent.bomVersion, value: String(bom.bomVersion) },
-          { key: 'status', label: t.parent.status, value: statusNameOf(bom.statusCode) },
+          /*
+           * 상태는 「사용 / 미사용」 라벨로(사용자 지시 2026-11-24 「전반적인 화면의 상태는 사용/미사용」) — 확정(CONFIRMED) ·
+           * 사용 중(ACTIVE)은 사용, 그 밖(작성중 · 폐기 · 사용 종료)은 미사용.
+           */
+          {
+            key: 'status',
+            label: t.parent.status,
+            value: <UsageChip isActive={IN_USE_STATUSES.has(bom.statusCode)} />,
+          },
           {
             key: 'effective',
             label: t.parent.effective,
@@ -344,6 +351,9 @@ const ParentFacts = ({ item, bom }: ParentFactsProps) => {
 
   return <ErpDetailFields title={t.parent.label} fields={[...itemFacts, ...bomFacts]} />;
 };
+
+/** 「사용」으로 보는 BOM 상태 — 계약의 확정(CONFIRMED) · 목 자료의 사용 중(ACTIVE). */
+const IN_USE_STATUSES: ReadonlySet<string> = new Set(['CONFIRMED', 'ACTIVE']);
 
 const orEmptyText = (value: string | null | undefined): string =>
   value === null || value === undefined || value === '' ? t.values.empty : value;

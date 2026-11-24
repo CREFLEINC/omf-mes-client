@@ -96,7 +96,14 @@ describe('GroupFormPane', () => {
     renderPane({ codeLockReason: '이미 3건에서 사용 중입니다.' });
 
     expect(screen.getByRole('textbox', { name: /그룹코드/ })).toBeDisabled();
-    expect(screen.getByText('이미 3건에서 사용 중입니다.')).toBeInTheDocument();
+    /* 사유 문장 대신 칸 이름 오른쪽 「변경 불가」 라벨 — 문장은 마우스 · 화면 읽기로(사용자 지시 2026-11-24). */
+    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
+      'title',
+      '이미 3건에서 사용 중입니다.',
+    );
+    expect(screen.getByRole('textbox', { name: /그룹코드/ })).toHaveAccessibleDescription(
+      '이미 3건에서 사용 중입니다.',
+    );
   });
 
   it('잠금 사유가 없으면 코드 칸이 열려 있다', () => {
@@ -168,7 +175,7 @@ describe('GroupFormPane', () => {
   it('사용 여부는 폼 컨트롤이 아니라 값으로 보인다', () => {
     renderPane({ isActive: false });
 
-    expect(screen.getByText(t.values.inactive)).toBeInTheDocument();
+    expect(screen.getByText(messages.common.usage.inactive)).toBeInTheDocument();
     expect(screen.queryByRole('switch', { name: t.fields.isActive })).toBeNull();
   });
 

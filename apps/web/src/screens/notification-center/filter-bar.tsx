@@ -62,9 +62,13 @@ export const NotificationFilterBar = ({
        * 화면이 막는 것은 다른 층이다.
        */}
       <div className="field-cell">
-        <label className="field-label" htmlFor={periodId}>
-          {t.fields.period}
-        </label>
+        {/* 기간은 계약상 필수 조회 조건 — 빨간 * 는 `<label>` 밖(접근 이름 그대로). */}
+        <span className="field-label">
+          <label htmlFor={periodId}>{t.fields.period}</label>
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </span>
         <DatePicker
           id={periodId}
           mode="range"

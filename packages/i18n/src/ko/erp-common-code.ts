@@ -40,9 +40,10 @@ export const erpCommonCode = {
   },
   display: {
     empty: '—',
-    all: '전체',
     active: '사용',
     inactive: '미사용',
+    /** 위 줄 사용 여부 라벨의 건수(사용자 지시 2026-11-24). */
+    withCount: (label: string, count: number): string => `${label} ${String(count)}건`,
   },
   actions: {
     goFirstPage: '첫 쪽으로',

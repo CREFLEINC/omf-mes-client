@@ -1485,7 +1485,7 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     /* 칩 줄 맨 앞에 라벨 발행 대기가 선다. */
     const chips = screen.getByRole('group', { name: t.stage.label });
     expect(within(chips).getAllByRole('button')[0]).toHaveTextContent(
-      t.stage.groupCount(t.stage.group.LABEL, 1),
+      t.stage.chipCount(t.stage.group.LABEL, 1),
     );
   });
 
@@ -1675,8 +1675,8 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     const { requests, user } = renderScreen(progressRoutes(), '');
 
     const chips = await screen.findByRole('group', { name: t.stage.label });
-    expect(chips).toHaveTextContent(t.stage.groupCount(t.stage.group.RECEIPT, 5));
-    expect(chips).toHaveTextContent(t.stage.groupCount(t.stage.group.HELD, 2));
+    expect(chips).toHaveTextContent(t.stage.chipCount(t.stage.group.RECEIPT, 5));
+    expect(chips).toHaveTextContent(t.stage.chipCount(t.stage.group.HELD, 2));
     /* 앞선 서버는 라벨 발행 대기를 세지 않는다 — 그 칩만 빠진다. */
     expect(chips).not.toHaveTextContent(t.stage.group.LABEL);
 

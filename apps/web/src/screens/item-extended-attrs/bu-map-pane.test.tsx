@@ -64,7 +64,9 @@ describe('BuMapPane — 표시', () => {
 
     const row = rowOf('SYN-ITEM-02');
     expect(within(row).getByText('SYN-BU-01 · 합성 사업부 A')).toBeInTheDocument();
-    expect(within(row).getByText('SYN-ITEM-02 · 합성 품목 B')).toBeInTheDocument();
+    /* 대상 품목은 품목코드 · 품목명 두 칸(사용자 지시 2026-11-24). */
+    expect(within(row).getByText('SYN-ITEM-02')).toBeInTheDocument();
+    expect(within(row).getByText('합성 품목 B')).toBeInTheDocument();
     expect(screen.queryByText('5001')).not.toBeInTheDocument();
     expect(screen.queryByText('1002')).not.toBeInTheDocument();
   });

@@ -150,7 +150,6 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
       receiptNo: 'Số nhập hàng',
       receiptDate: 'Ngày nhập hàng',
       supplier: 'Nhà cung cấp',
-      item: 'Mặt hàng',
       itemCode: 'Mã mặt hàng',
       itemName: 'Tên mặt hàng',
       lot: 'LOT',
@@ -209,6 +208,7 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
       PUTAWAY: 'Chờ xếp kho',
     },
     groupCount: (label: string, count: number): string => `${label} ${String(count)}`,
+    chipCount: (label: string, count: number): string => `${label} ${String(count)}`,
     filterOn: (label: string): string => `Chỉ xem đơn ${label}`,
     filterOff: (label: string): string => `Bỏ điều kiện ${label}`,
     code: {

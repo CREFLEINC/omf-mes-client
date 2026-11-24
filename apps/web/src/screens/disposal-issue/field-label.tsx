@@ -2,6 +2,8 @@ export interface FieldLabelProps {
   /** 이 라벨이 가리키는 컨트롤의 id */
   htmlFor: string;
   label: string;
+  /** 필수 칸 — 라벨 밖에 빨간 *(접근 이름은 그대로). */
+  required?: boolean;
 }
 
 /**
@@ -12,13 +14,17 @@ export interface FieldLabelProps {
  * `htmlFor`로 잇는다. `.field-label`이 내장 라벨과 같은 토큰을 쓰므로 두 방식이 같은 줄에
  * 있어도 라벨 층이 어긋나지 않는다.
  *
- * **필수 표시를 두지 않는다** — 이 회차에서 이 부품이 붙는 자리는 조회 조건뿐이라 필수 조건이
- * 없다. 필수 입력은 폐기 정보와 함께 생긴다.
+ * 필수 칸(폐기 정보)은 `required` 로 라벨 밖에 빨간 * 를 둔다(사용자 지시 2026-11-24).
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const FieldLabel = ({ htmlFor, label }: FieldLabelProps) => (
+export const FieldLabel = ({ htmlFor, label, required = false }: FieldLabelProps) => (
   <span className="field-label">
     <label htmlFor={htmlFor}>{label}</label>
+    {required && (
+      <span className="required-mark" aria-hidden="true">
+        {' *'}
+      </span>
+    )}
   </span>
 );

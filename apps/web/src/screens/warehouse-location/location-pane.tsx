@@ -1,6 +1,5 @@
 import {
   Button,
-  Chip,
   type Column,
   EmptyState,
   Icon,
@@ -21,6 +20,7 @@ import {
   levelNameOf,
 } from '../../patterns/location-tree-cell';
 import { OneLine } from '../../patterns/po-board';
+import { UsageChip } from '../../patterns/usage-chip';
 import { AliasInlineEdit } from './alias-inline-edit';
 import type { LocationViewMode } from './leaf-rows';
 import type { Location } from './types';
@@ -230,11 +230,7 @@ export const LocationPane = ({
       /* 창고 목록과 같은 상태 칩(omf-all-around#17). */
       align: 'center',
       width: '90px',
-      render: (row) => (
-        <Chip size="sm" status={row.location.isActive ? 'success' : 'idle'}>
-          {row.location.isActive ? t.values.active : t.values.inactive}
-        </Chip>
-      ),
+      render: (row) => <UsageChip isActive={row.location.isActive} />,
     },
   ];
 

@@ -174,7 +174,8 @@ export const lotTrace = {
       shipment: '출하',
     },
     facts: {
-      item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       lotStatus: 'LOT 상태',
       receivedQty: '입고 수량',
       goodQty: '양품 수량',

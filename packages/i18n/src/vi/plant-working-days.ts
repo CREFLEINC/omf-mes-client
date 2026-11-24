@@ -52,7 +52,6 @@ export const plantWorkingDays: Translated<typeof ko.plantWorkingDays> = {
   },
   daysFilter: {
     group: 'Ngày làm việc trong tuần',
-    all: 'Tất cả',
     five: '5 ngày/tuần',
     six: '6 ngày/tuần',
   },

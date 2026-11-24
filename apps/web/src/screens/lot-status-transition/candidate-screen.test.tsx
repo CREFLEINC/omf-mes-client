@@ -297,11 +297,12 @@ describe('Lot Status 전이 후보', () => {
     const { urls, user } = renderScreen([listRoute()]);
     await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' });
     const chips = screen.getByRole('group', { name: '현재 상태' });
-    expect(await within(chips).findByRole('button', { name: /^전체\s*5$/ })).toHaveAttribute(
+    expect(await within(chips).findByRole('button', { name: /^정상\s*3건$/ })).toHaveAttribute(
       'aria-pressed',
-      'true',
+      'false',
     );
-    expect(within(chips).getByRole('button', { name: /^정상\s*3$/ })).toBeVisible();
+    /* 「전체」 단추는 두지 않는다(사용자 지시 2026-11-24). */
+    expect(within(chips).queryByRole('button', { name: /^전체/ })).toBeNull();
     const defaultBounds = toTransitionPeriodBounds(
       defaultTransitionPeriod(new Date()),
       -new Date().getTimezoneOffset(),
@@ -309,19 +310,24 @@ describe('Lot Status 전이 후보', () => {
     expect(summaryRequests(urls)).toHaveLength(1);
     expect(Object.fromEntries(summaryRequests(urls)[0]!.searchParams)).toEqual(defaultBounds);
 
-    await user.click(within(chips).getByRole('button', { name: /^정상\s*3$/ }));
+    await user.click(within(chips).getByRole('button', { name: /^정상\s*3건$/ }));
     await waitFor(() => expect(lotRequests(urls)).toHaveLength(2));
     expect(Object.fromEntries(lotRequests(urls)[1]!.searchParams)).toEqual({
       ...defaultBounds,
       lotStatusCode: 'NORMAL',
       size: '20',
     });
-    expect(within(chips).getByRole('button', { name: /^정상\s*3$/ })).toHaveAttribute(
+    expect(within(chips).getByRole('button', { name: /^정상\s*3건$/ })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
     /* 칩만 바꾸면 건수 요약은 다시 부르지 않는다. */
     expect(summaryRequests(urls)).toHaveLength(1);
+
+    /* 고른 단추를 다시 누르면 상태 조건이 풀린다. */
+    await user.click(within(chips).getByRole('button', { name: /^정상\s*3건$/ }));
+    await waitFor(() => expect(lotRequests(urls)).toHaveLength(3));
+    expect(lotRequests(urls)[2]!.searchParams.has('lotStatusCode')).toBe(false);
   });
 
   it('필터 초안을 조회·초기화하고 요청에 heldOnly를 보내지 않는다', async () => {
@@ -392,13 +398,14 @@ describe('Lot Status 전이 후보', () => {
       within(box)
         .getAllByRole('term')
         .map((node) => node.textContent),
-    ).toEqual(['품목', '최근 변경', '변경 사유']);
-    /* 품목은 코드 아래 이름 두 줄 · 최근 전이는 공장 시각(UTC+7) — omf-all-around#20 */
-    expect([valueOf(box, '품목'), valueOf(box, '최근 변경'), valueOf(box, '변경 사유')]).toEqual([
-      'SYN-ITEM-A합성 자재',
-      '2026-08-21 10:34',
-      'SYN-REASON-A',
-    ]);
+    ).toEqual(['품목코드', '품목명', '최근 변경', '변경 사유']);
+    /* 품목은 품목코드 · 품목명 두 칸(품목 표기 분리) · 최근 전이는 공장 시각(UTC+7) — omf-all-around#20 */
+    expect([
+      valueOf(box, '품목코드'),
+      valueOf(box, '품목명'),
+      valueOf(box, '최근 변경'),
+      valueOf(box, '변경 사유'),
+    ]).toEqual(['SYN-ITEM-A', '합성 자재', '2026-08-21 10:34', 'SYN-REASON-A']);
     const preparation = await within(card).findByRole('group', { name: '상태 전이 준비' });
     /* 현재 상태는 LOT 상자 칩으로만 — 아래에 따로 두지 않는다(사용자 2026-11-02). */
     expect(within(preparation).queryByText('현재 상태')).toBeNull();

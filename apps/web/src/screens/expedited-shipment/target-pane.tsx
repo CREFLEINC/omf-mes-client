@@ -95,6 +95,7 @@ export const TargetPane = ({
             htmlFor={periodId}
             label={t.target.fields.requestedShipDate}
             info={t.target.periodNote}
+            required
           />
           <DatePicker
             id={periodId}
@@ -122,7 +123,12 @@ export const TargetPane = ({
         <>
           <div className="field-cell wide-select">
             {/* 품목이 맞는 지시만 보인다는 사실은 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
-            <InfoLabel htmlFor={selectId} label={t.target.label} info={t.target.filteredByItem} />
+            <InfoLabel
+              htmlFor={selectId}
+              label={t.target.label}
+              info={t.target.filteredByItem}
+              required
+            />
             <Select
               id={selectId}
               options={options}
@@ -160,20 +166,25 @@ export const TargetPane = ({
           <div className="field-cell">
             {/* 넣을 수 있는 범위(두 상한)는 라벨 옆 ⓘ 로, 칸 아래에는 틀렸을 때만 오류를 적는다(관리웹 정리 시안 A). */}
             {limits === null ? (
-              <label className="field-label" htmlFor={qtyId}>
-                {t.target.fields.qty}
-              </label>
+              <span className="field-label">
+                <label htmlFor={qtyId}>{t.target.fields.qty}</label>
+                <span className="required-mark" aria-hidden="true">
+                  {' *'}
+                </span>
+              </span>
             ) : (
               <InfoLabel
                 htmlFor={qtyId}
                 label={t.target.fields.qty}
                 info={t.qty.limitNote(formatQty(limits.lotQty), formatQty(limits.remainingQty))}
+                required
               />
             )}
             <TextField
               id={qtyId}
               value={qty}
               inputMode="decimal"
+              aria-required="true"
               aria-describedby={hasQtyError ? qtyNoteId : undefined}
               aria-invalid={hasQtyError}
               onChange={(event) => onChangeQty(event.target.value)}

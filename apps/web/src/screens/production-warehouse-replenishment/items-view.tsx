@@ -146,7 +146,8 @@ export const ItemsView = ({
             <thead>
               <tr>
                 <th scope="col">{ti.columns.productionWarehouse}</th>
-                <th scope="col">{ti.columns.item}</th>
+                <th scope="col">{ti.columns.itemCode}</th>
+                <th scope="col">{ti.columns.itemName}</th>
                 <th scope="col" className="is-number">
                   {ti.columns.point}
                 </th>
@@ -179,7 +180,7 @@ export const ItemsView = ({
                   onClick={() => setEditing(row)}
                 >
                   <td>{row.productionWarehouseName}</td>
-                  <td className="is-wrap">
+                  <td>
                     <button
                       type="button"
                       className="link-cell"
@@ -188,9 +189,10 @@ export const ItemsView = ({
                         setEditing(row);
                       }}
                     >
-                      <span className="replenishment-code">{row.itemCode}</span> {row.itemName}
+                      <span className="replenishment-code">{row.itemCode}</span>
                     </button>
                   </td>
+                  <td className="is-wrap">{row.itemName}</td>
                   <td className="is-number">{formatQty(row.reorderPointQty)}</td>
                   <td className="is-number">{formatQty(row.targetQty)}</td>
                   <td>{row.uomCode}</td>

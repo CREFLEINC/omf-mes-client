@@ -114,7 +114,7 @@ describe('WarehouseListPane', () => {
     expect(screen.getByRole('columnheader', { name: '창고 코드' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: '창고명' })).toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: '명칭' })).not.toBeInTheDocument();
-    expect(screen.getAllByText('사용 중').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('사용', { exact: true }).length).toBeGreaterThan(0);
   });
 });
 

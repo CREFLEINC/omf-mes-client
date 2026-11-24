@@ -86,12 +86,20 @@ export const StepEditor = ({ step, readOnly, errors, onChange }: StepEditorProps
   const columns: Column<ItemDraft>[] = [
     {
       key: 'code',
-      header: t.editor.itemCode,
+      header: (
+        <>
+          {t.editor.itemCode}
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </>
+      ),
       /* 항목 번호는 30자까지 — 「PROCESS_1-1」 정도가 잘리지 않는 폭(#208). */
       width: '140px',
       render: (item) => (
         <TextField
           aria-label={t.editor.itemCode}
+          aria-required="true"
           value={item.checkItemCode}
           maxLength={30}
           disabled={readOnly}
@@ -102,10 +110,18 @@ export const StepEditor = ({ step, readOnly, errors, onChange }: StepEditorProps
     },
     {
       key: 'nameKo',
-      header: t.editor.itemNameKo,
+      header: (
+        <>
+          {t.editor.itemNameKo}
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </>
+      ),
       render: (item) => (
         <TextArea
           aria-label={t.editor.itemNameKo}
+          aria-required="true"
           value={item.nameKo}
           rows={1}
           maxRows={6}
@@ -220,6 +236,7 @@ export const StepEditor = ({ step, readOnly, errors, onChange }: StepEditorProps
             <TextField
               label={t.editor.stepNameKo}
               aria-label={`${stepLabel} ${t.editor.stepNameKo}`}
+              required
               value={step.nameKo}
               maxLength={100}
               disabled={readOnly}

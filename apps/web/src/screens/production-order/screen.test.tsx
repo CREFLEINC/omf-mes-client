@@ -317,7 +317,7 @@ describe('작업지시 목록 작업함', () => {
     expect(requests.some((request) => path(request) === '/production/work-orders')).toBe(false);
   });
 
-  it('조건 칩은 「전체」가 맨 앞이고 처리 순서대로 서며, 보이는 묶음 이름 없이 접근명을 갖는다(C-17)', async () => {
+  it('조건 칩은 「전체」 없이 처리 순서대로 서며, 보이는 묶음 이름 없이 접근명을 갖는다(C-17)', async () => {
     render({
       orders: [
         REVIEW,
@@ -337,7 +337,6 @@ describe('작업지시 목록 작업함', () => {
           .filter((button) => button.hasAttribute('aria-pressed'))
           .map((chip) => chip.textContent),
       ).toEqual([
-        expect.stringMatching(/^전체 /),
         expect.stringMatching(new RegExp(`^${t.status.BEFORE_PLAN} `)),
         expect.stringMatching(new RegExp(`^${t.status.ACTION_REQUIRED} `)),
         expect.stringMatching(new RegExp(`^${t.status.RELEASE_PENDING} `)),
@@ -348,7 +347,7 @@ describe('작업지시 목록 작업함', () => {
     expect(within(group).queryByText('생산계획 자동 전개', { exact: true })).toBeNull();
   });
 
-  it('0 건으로 센 상태 칩은 세우지 않는다 — 「전체」는 0 이어도 남는다', async () => {
+  it('0 건으로 센 상태 칩은 세우지 않는다 — 「전체」 칩은 두지 않는다', async () => {
     render({ orders: [REVIEW] });
 
     const group = await screen.findByRole('group', { name: t.counts.label });
@@ -358,10 +357,7 @@ describe('작업지시 목록 작업함', () => {
           .getAllByRole('button')
           .filter((button) => button.hasAttribute('aria-pressed'))
           .map((chip) => chip.textContent),
-      ).toEqual([
-        expect.stringMatching(/^전체 /),
-        expect.stringMatching(new RegExp(`^${t.status.ACTION_REQUIRED} `)),
-      ]),
+      ).toEqual([expect.stringMatching(new RegExp(`^${t.status.ACTION_REQUIRED} `))]),
     );
   });
 
@@ -404,6 +400,18 @@ describe('작업지시 목록 작업함', () => {
         expect(query.get('dueDateFrom')).toBe('2026-10-01');
         expect(query.get('dueDateTo')).toBe('2026-10-31');
       }
+
+      /* 고른 칩을 다시 누르면 전체로 돌아간다(「전체」 칩 없음 · 사용자 지시 2026-11-24). */
+      const chip = within(group).getByRole('button', {
+        name: new RegExp(`^${t.status[state]}(?: |$)`),
+      });
+      await waitFor(() => expect(chip).toHaveAttribute('aria-pressed', 'true'));
+      await user.click(chip);
+      await waitFor(() =>
+        expect(
+          within(group).getByRole('button', { name: new RegExp(`^${t.status[state]}(?: |$)`) }),
+        ).toHaveAttribute('aria-pressed', 'false'),
+      );
     },
   );
 
@@ -576,7 +584,6 @@ describe('작업지시 목록 작업함', () => {
           .filter((button) => button.hasAttribute('aria-pressed'))
           .map((chip) => chip.textContent),
       ).toEqual([
-        t.counts.allName,
         t.status.BEFORE_PLAN,
         t.status.ACTION_REQUIRED,
         t.status.RELEASE_PENDING,

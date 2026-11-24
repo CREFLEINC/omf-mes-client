@@ -293,7 +293,8 @@ export const disposalIssue = {
    */
   lineTable: {
     select: '선택',
-    item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     lot: '자재 LOT',
     location: '위치',
     receiptQty: '입고 수량',
@@ -763,7 +764,8 @@ export const disposalIssue = {
    * 수량 표기에 붙인다(W-01-03이 세운 처리).
    */
   issueLineTable: {
-    item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     lot: '자재 LOT',
     location: '위치',
     issueQty: '폐기 수량',

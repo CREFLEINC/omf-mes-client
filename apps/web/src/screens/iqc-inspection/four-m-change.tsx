@@ -164,6 +164,7 @@ export const FourMChange = ({ draft, onChange, disabled }: FourMChangeProps) => 
           {/* 여러 줄 — Enter 는 줄바꿈이다(바깥 저장 폼으로 넘어가 임시 저장되지 않게 · 사용자 지시 2026-10-28 · #197). */}
           <TextArea
             id={remarksId}
+            aria-required="true"
             fullWidth
             rows={3}
             placeholder={t.remarksPlaceholder}

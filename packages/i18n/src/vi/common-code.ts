@@ -98,7 +98,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
   },
   values: {
     empty: '—',
-    inactiveSuffix: ' (ngừng dùng)',
     /* 내부 식별자를 그대로 내지 않는다 — 보이면 자료로 읽힌다. */
     unknown: 'Không rõ',
   },
@@ -226,8 +225,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       /* 계정 연결은 연결 여부만 낸다 — 내부 식별자를 그대로 내면 사용자가 쓸 수 없다. */
       appUserLinked: 'Đã liên kết',
       appUserNotLinked: 'Chưa liên kết',
-      active: 'Đang dùng',
-      inactive: 'Ngừng dùng',
     },
     empty: {
       noneTitle: 'Chưa đăng ký công nhân',
@@ -310,10 +307,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       country: 'Quốc gia',
       erpPartnerCode: 'Mã ERP',
       isActive: 'Trạng thái sử dụng',
-    },
-    values: {
-      active: 'Đang dùng',
-      inactive: 'Ngừng dùng',
     },
     empty: {
       noneTitle: 'Chưa đăng ký đối tác',
@@ -416,7 +409,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       /** 한쪽만 있는 것도 계약이 허용한다 — 없는 쪽을 지어내지 않는다. */
       period: (from: string, to: string): string => `${from} ~ ${to}`,
       empty: '—',
-      inactiveSuffix: ' (ngừng dùng)',
     },
     validation: {
       required: 'Đây là mục bắt buộc.',

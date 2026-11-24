@@ -31,7 +31,7 @@ export const ReasonPane = ({ value, error, showError, onChange }: ReasonPaneProp
   return (
     <section className="pane" aria-label={messages.expeditedShipment.panes.reason}>
       <h2>{messages.expeditedShipment.panes.reason}</h2>
-      <InfoLabel htmlFor={reasonId} label={t.label} info={t.help} />
+      <InfoLabel htmlFor={reasonId} label={t.label} info={t.help} required />
       <TextArea
         id={reasonId}
         value={value}

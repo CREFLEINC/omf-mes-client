@@ -19,6 +19,7 @@ import {
   useFilterMore,
 } from '../../patterns/filter-more';
 
+import { UsageChip } from '../../patterns/usage-chip';
 import { type CodeOption, codeNote, defaultEquipmentFilters, statusLabel } from './code-options';
 import { SelectField } from './select-field';
 import type { Equipment, EquipmentFilters } from './types';
@@ -191,7 +192,7 @@ export const EquipmentListPane = ({
     {
       key: 'isActive',
       header: t.fields.isActive,
-      render: (row) => (row.isActive ? t.values.active : t.values.inactive),
+      render: (row) => <UsageChip isActive={row.isActive} />,
     },
     {
       key: 'inspection',

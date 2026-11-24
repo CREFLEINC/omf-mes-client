@@ -4,11 +4,21 @@ import type { ReactNode } from 'react';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
+import { UsageChip } from '../../patterns/usage-chip';
 import { useUserNames, useVersionHistory } from './queries';
 import type { CompareLabels } from './version-compare';
-import { toHistoryRow, type HistoryRow } from './version-history';
+import { toHistoryRow, type HistoryChange, type HistoryRow } from './version-history';
 
 const t = messages.inspectionStandard;
+const usage = messages.common.usage;
+
+/** 사용 여부 칸의 전/후 값은 「사용 / 미사용」 라벨로 — 그 밖의 값은 글자 그대로(사용자 지시 2026-11-24 · #358). */
+const valueOf = (change: HistoryChange, value: string | undefined): ReactNode =>
+  change.usage === true && (value === usage.active || value === usage.inactive) ? (
+    <UsageChip isActive={value === usage.active} />
+  ) : (
+    value
+  );
 
 export interface VersionHistoryTableProps {
   inspectionPlanVersionId: number;
@@ -76,9 +86,11 @@ export const VersionHistoryTable = ({
                 <span className="inspection-standard-history-label">{change.label}</span>
                 {change.note === undefined ? (
                   <span className="inspection-standard-history-value">
-                    {change.before}
+                    {valueOf(change, change.before)}
                     <Icon name="arrow_forward" size={14} aria-label="→" />
-                    <span className="inspection-standard-history-after">{change.after}</span>
+                    <span className="inspection-standard-history-after">
+                      {valueOf(change, change.after)}
+                    </span>
                   </span>
                 ) : (
                   <span className="inspection-standard-history-note" data-tone={change.note}>

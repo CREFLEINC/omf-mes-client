@@ -203,7 +203,6 @@ const HistoryTable = ({
         <FilterChips
           label={t.filterLabel}
           options={[
-            { value: null, label: t.filterAll },
             ...Object.keys(JUDGMENT_TONE).map((code) => ({
               value: code,
               label: judgmentLabelOf(code),
@@ -211,9 +210,7 @@ const HistoryTable = ({
             { value: OTHER_FILTER, label: t.filterOther },
           ]}
           value={judgmentFilter}
-          countOf={(code) =>
-            code === null ? keyed.length : keyed.filter((row) => filterKeyOf(row) === code).length
-          }
+          countOf={(code) => keyed.filter((row) => filterKeyOf(row) === code).length}
           onChange={setJudgmentFilter}
         />
       )}

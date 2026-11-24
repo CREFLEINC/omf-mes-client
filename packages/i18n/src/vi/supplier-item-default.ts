@@ -22,6 +22,8 @@ export const supplierItemDefault: Translated<typeof ko.supplierItemDefault> = {
   columns: {
     supplier: 'Nhà cung cấp',
     item: 'Mặt hàng',
+    itemCode: 'Mã mặt hàng',
+    itemName: 'Tên mặt hàng',
     baseUom: 'Đơn vị cơ sở',
     packageUom: 'Đơn vị đóng gói',
     qtyPerPackage: 'Số lượng mỗi kiện (đơn vị cơ sở)',
@@ -47,6 +49,8 @@ export const supplierItemDefault: Translated<typeof ko.supplierItemDefault> = {
     editTitle: 'Sửa thông tin mặc định',
     supplier: 'Nhà cung cấp',
     item: 'Mặt hàng',
+    itemCode: 'Mã mặt hàng',
+    itemName: 'Tên mặt hàng',
     pick: 'Hãy chọn',
     baseUom: 'Đơn vị cơ sở',
     storage: (uomCode: string, qty: string, baseUomCode: string) =>

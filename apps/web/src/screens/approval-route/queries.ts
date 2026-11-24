@@ -32,6 +32,7 @@ export const routeKeys = {
   all: ['approval-routes'] as const,
   list: (filters: RouteFilters, page: number, size: ListPageSize | null = null) =>
     ['approval-routes', 'list', filters, page, size] as const,
+  activeCount: (filters: RouteFilters) => ['approval-routes', 'active-count', filters] as const,
   detail: (approvalRouteId: number) => ['approval-routes', 'detail', approvalRouteId] as const,
   steps: (approvalRouteId: number) => ['approval-routes', 'steps', approvalRouteId] as const,
   duplicateProbe: (approvalTypeCode: string) =>
@@ -78,6 +79,25 @@ export const useRouteList = (
         }),
       ),
   });
+};
+
+/**
+ * 위 줄 「사용」 라벨의 건수 — 지금 조건에서 사용 중인 결재선 수(사용자 지시 2026-11-24). 한 줄만 받아 쪽 정보의 전체
+ * 건수를 쓴다. 쓰기 뒤에는 `routeKeys.all` 무효화로 다시 센다.
+ */
+export const useRouteActiveCount = (filters: RouteFilters): number | undefined => {
+  const { client } = useApiClient();
+  const counted = { ...filters, includeInactive: false };
+
+  return useQuery({
+    queryKey: routeKeys.activeCount(counted),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/app/approval-routes', {
+          params: { query: { ...toRouteListQuery(counted, 1), size: 1 } },
+        }),
+      ).then((response) => response.page.total),
+  }).data;
 };
 
 /**

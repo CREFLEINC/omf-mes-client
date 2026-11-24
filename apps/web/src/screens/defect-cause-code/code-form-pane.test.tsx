@@ -109,16 +109,21 @@ describe('CodeFormPane — 대분류 경고', () => {
 });
 
 describe('CodeFormPane — 잠금과 사유', () => {
-  it('코드가 잠기면 입력이 비활성이고 사유가 보인다', () => {
+  /* 사유 문장 대신 코드 이름 오른쪽 「변경 불가」 라벨 — 문장은 마우스 · 화면 읽기로(사용자 지시 2026-11-24). */
+  it('코드가 잠기면 입력이 비활성이고 「변경 불가」 라벨에 사유가 붙는다', () => {
     renderPane({
       mode: 'edit',
       codeLockReason: '이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.',
     });
 
     expect(screen.getByLabelText('불량코드')).toBeDisabled();
-    expect(
-      screen.getByText('이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
+      'title',
+      '이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.',
+    );
+    expect(screen.getByLabelText('불량코드')).toHaveAccessibleDescription(
+      '이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.',
+    );
   });
 
   /* 배치 규범 4 — 비활성 컨트롤은 포커스를 받지 못해 사유를 DOM 텍스트로 내야 닿을 수 있다. */
@@ -169,7 +174,8 @@ describe('CodeFormPane — 저장·취소', () => {
 });
 
 describe('CodeFormPane — 잠긴 코드 (#209 시안)', () => {
-  it('잠긴 코드는 필수 표시 없이 자물쇠와 정보 안내 한 줄로 낸다', () => {
+  /* 정보 안내 한 줄은 「변경 불가」 라벨로 바뀌었다(사용자 지시 2026-11-24) — 자물쇠는 그대로다. */
+  it('잠긴 코드는 필수 표시 없이 자물쇠와 「변경 불가」 라벨로 낸다', () => {
     renderPane({
       mode: 'edit',
       codeLockReason: '이 코드는 이미 다른 기록에서 쓰이고 있어서 바꿀 수 없습니다.',
@@ -178,10 +184,13 @@ describe('CodeFormPane — 잠긴 코드 (#209 시안)', () => {
     const code = screen.getByLabelText('불량코드');
     expect(code).toBeDisabled();
     expect(code).not.toHaveAttribute('aria-required', 'true');
-    expect(
-      screen.getByText('이 코드는 이미 다른 기록에서 쓰이고 있어서 바꿀 수 없습니다.'),
-    ).toBeInTheDocument();
-    expect(code).toHaveAttribute('aria-describedby');
+    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
+      'title',
+      '이 코드는 이미 다른 기록에서 쓰이고 있어서 바꿀 수 없습니다.',
+    );
+    expect(code).toHaveAccessibleDescription(
+      '이 코드는 이미 다른 기록에서 쓰이고 있어서 바꿀 수 없습니다.',
+    );
   });
 
   it('상위가 잠기면 대분류 임시 목록 안내를 내지 않는다', () => {

@@ -6,11 +6,11 @@ import type { PlanFilters } from './types';
 
 const t = messages.inspectionStandard.filters;
 
-/** 사용 여부로 거르기 — 전체(미사용 포함) · 사용(기본) · 미사용만. */
+/** 사용 여부로 거르기 — 전체(미사용 포함 · 라벨 없음) · 사용(기본) · 미사용만. */
 export type PlanUsage = 'all' | 'active' | 'inactive';
 
-const OPTIONS: readonly { value: PlanUsage; label: string }[] = [
-  { value: 'all', label: t.usageAll },
+/* 「전체」 라벨은 두지 않는다 — 고른 라벨을 다시 누르면 전체로 돌아간다(사용자 지시 2026-11-24). */
+const OPTIONS: readonly { value: Exclude<PlanUsage, 'all'>; label: string }[] = [
   { value: 'active', label: t.usageActive },
   { value: 'inactive', label: t.usageInactive },
 ];
@@ -33,7 +33,8 @@ export interface UsageChipsProps {
 
 /**
  * 탭 줄 오른쪽, 좌우 · 상하 배치 단추 왼쪽에 서는 사용 여부 칩(사용자 지시 · #208).
- * 하나만 고른다 — 고른 칩을 다시 눌러도 풀리지 않는다(셋 중 하나는 늘 켜져 있다).
+ * 「전체」 없이 「사용 N건 · 미사용 N건」 — 고른 라벨을 다시 누르면 전체(미사용 포함)로 풀린다. 0건 라벨은 감춘다(고른 라벨은
+ * 남긴다 · 사용자 지시 2026-11-24).
  * 탭 묶음 밖(탭 막대가 없는 화면 · 화면만 그린 시험)에서는 자리가 없어 그리지 않는다.
  */
 export const UsageChips = ({ counts, value, onChange }: UsageChipsProps) => {
@@ -43,7 +44,9 @@ export const UsageChips = ({ counts, value, onChange }: UsageChipsProps) => {
   return (
     <HubActions target={target}>
       <div className="inspection-hub-counts" role="group" aria-label={t.usageLabel}>
-        {OPTIONS.map((option) => (
+        {OPTIONS.filter(
+          (option) => value === option.value || counts === null || counts[option.value] !== 0,
+        ).map((option) => (
           <Chip
             key={option.value}
             variant="filter"
@@ -51,7 +54,7 @@ export const UsageChips = ({ counts, value, onChange }: UsageChipsProps) => {
             selected={value === option.value}
             aria-pressed={value === option.value}
             onSelectedChange={() => {
-              if (value !== option.value) onChange(option.value);
+              onChange(value === option.value ? 'all' : option.value);
             }}
           >
             {counts === null ? option.label : t.usageCount(option.label, counts[option.value])}

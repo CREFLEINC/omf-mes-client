@@ -304,11 +304,11 @@ const InspectionSheetTemplateScreenBody = ({
     {
       key: 'model',
       align: 'center',
-      header: t.columns.model,
-      /* 폭을 정하지 않는다 — 남는 폭을 모델 열이 맡는다(검사 기준 탭과 같다 · #208). */
+      header: t.columns.itemCode,
+      width: '140px',
       render: (row) => (
         /*
-         * 「코드 이름」 한 줄 — 두 줄이던 칸을 한 줄로 줄여 행 높이를 다른 탭과 맞춘다(#208).
+         * 품목코드 칸 — 품목명은 옆 칸으로 나눈다(품목 표기 분리).
          * 단추는 키보드·화면 낭독기가 줄을 고르는 길이고, 고른 줄 표시(`aria-current`)가 여기 실린다.
          */
         <button
@@ -328,9 +328,15 @@ const InspectionSheetTemplateScreenBody = ({
           }}
         >
           <span className="inspection-sheet-template-open-code">{row.itemCode}</span>
-          <span className="inspection-sheet-template-muted">{row.itemName}</span>
         </button>
       ),
+    },
+    {
+      key: 'itemName',
+      align: 'center',
+      header: t.columns.itemName,
+      /* 폭을 정하지 않는다 — 남는 폭을 품목명 열이 맡는다(검사 기준 탭과 같다 · #208). */
+      render: (row) => <span title={row.itemName}>{row.itemName}</span>,
     },
     {
       key: 'layout',

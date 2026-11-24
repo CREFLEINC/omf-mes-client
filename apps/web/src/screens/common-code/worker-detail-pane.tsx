@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
 import type { LookupSource } from '../../patterns/lookup-display';
+import { UsageChip } from '../../patterns/usage-chip';
 import { lookupLabel } from './code-options';
 import type { LookupEntry, Worker } from './types';
 
@@ -94,11 +95,7 @@ export const WorkerDetailPane = ({
       />
       <ValueField
         label={t.worker.fields.isActive}
-        value={
-          <Chip variant="status" size="sm" status={worker.isActive ? 'success' : 'idle'}>
-            {worker.isActive ? t.worker.values.active : t.worker.values.inactive}
-          </Chip>
-        }
+        value={<UsageChip isActive={worker.isActive} />}
       />
     </div>
   </section>

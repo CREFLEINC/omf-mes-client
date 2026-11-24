@@ -153,7 +153,8 @@ export const materialIssueRequest = {
       '재고 있는 생산 창고가 없는 자재가 있어 요청할 수 없습니다. 생산 창고를 채운 뒤 요청하세요.',
     tableLabel: '넘는 품목',
     columns: {
-      item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       warehouse: '생산 창고',
       requested: '요청',
       free: '남은 수량',

@@ -2,6 +2,7 @@ import { type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { splitCodeName } from '../../patterns/split-code-name';
 import { PageNav } from '../work-order/page-nav';
 import type { WorkOrderPageView } from '../work-order/pagination';
 
@@ -64,7 +65,17 @@ export const WorkOrderCloseCandidateListPane = ({
         </button>
       ),
     },
-    { key: 'item', header: t.fields.item, render: (row) => itemLabel(row.itemLabel) },
+    /* 품목코드 · 품목명은 두 열(사용자 지시 2026-11-24). */
+    {
+      key: 'item',
+      header: t.fields.itemCode,
+      render: (row) => splitCodeName(itemLabel(row.itemLabel), t.values.unknown).code,
+    },
+    {
+      key: 'itemName',
+      header: t.fields.itemName,
+      render: (row) => splitCodeName(itemLabel(row.itemLabel), t.values.unknown).name,
+    },
     { key: 'statusLabel', header: t.fields.status },
     { key: 'quantityLabel', header: t.fields.quantity, align: 'end' },
     { key: 'goodQtyLabel', header: t.fields.goodQty, align: 'end' },

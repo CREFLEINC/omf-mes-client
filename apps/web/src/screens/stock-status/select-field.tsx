@@ -34,16 +34,11 @@ import type { SelectOption } from './types';
  *
  * **이탈 조건**: 규범 3-2와 같다 — `design-system-v2-webui#62`(목록이 가장 긴 항목만큼
  * 넓어진다)가 반영되면 이 갈래와 `.wide-select`를 **함께** 걷어낸다. 임시 우회다.
+ *
+ * 2026-11-24 — DS 목록이 가장 긴 항목만큼 넓어져(#62) `codeName` 의 18.5rem 하한을 걷었다. 조회 줄 선택칸은 전 화면
+ * 같은 폭(176px · `app.css` 「조회 줄의 선택칸 폭」, 사용자 지시)이고, 긴 값은 칸 안에서 말줄임이다.
  */
 export type SelectOptionWidth = 'code' | 'codeName';
-
-/**
- * `codeName` 갈래의 최소 폭. **`app.css`가 아니라 여기 둔다** —
- * `.wide-select`(13rem)는 여러 화면이 함께 쓰는 공통 값이라 이 화면 하나 때문에 올리면
- * 다른 화면의 줄이 이유 없이 일찍 넘어간다(`docs/layout-conventions.md`가 `.wide-table`에서
- * 같은 판단을 내렸다 — 「값을 올리면 그 화면 하나 때문에 …」).
- */
-const CODE_NAME_MIN_WIDTH = '18.5rem';
 
 export interface SelectFieldProps {
   label: string;
@@ -63,6 +58,8 @@ export interface SelectFieldProps {
    * (말줄임). 「조건 더보기」 안의 칸은 종전대로 `optionWidth` 를 쓴다.
    */
   fixedWidth?: boolean;
+  /** 비우면 조회가 잠기는 칸 — 라벨 옆 빨간 *. */
+  required?: boolean;
 }
 
 /**
@@ -88,6 +85,7 @@ export const SelectField = ({
   placeholder,
   optionWidth,
   fixedWidth = false,
+  required = false,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
@@ -109,17 +107,15 @@ export const SelectField = ({
       className={
         fixedWidth ? 'field-cell filter-field-md' : isWide ? 'field-cell wide-select' : 'field-cell'
       }
-      style={
-        !fixedWidth && optionWidth === 'codeName' ? { minWidth: CODE_NAME_MIN_WIDTH } : undefined
-      }
     >
-      <FieldLabel htmlFor={id} label={label} />
+      <FieldLabel htmlFor={id} label={label} required={required} />
       <Select
         id={id}
         options={options}
         value={value === '' && !hasEmptyOption ? null : value}
         onChange={onChange}
         placeholder={placeholder}
+        aria-required={required || undefined}
         aria-describedby={note === undefined ? undefined : noteId}
       />
       {note !== undefined && (
@@ -154,10 +150,7 @@ export const ItemSelectField = ({
   const hasEmptyOption = leadingOptions?.some((option) => option.value === '') ?? false;
 
   return (
-    <div
-      className={fixedWidth ? 'field-cell filter-field-md' : 'field-cell wide-select'}
-      style={fixedWidth ? undefined : { minWidth: CODE_NAME_MIN_WIDTH }}
-    >
+    <div className={fixedWidth ? 'field-cell filter-field-md' : 'field-cell wide-select'}>
       <FieldLabel htmlFor={id} label={label} />
       <ItemSelect
         id={id}

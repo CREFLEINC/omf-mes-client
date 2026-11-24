@@ -447,8 +447,12 @@ export const InboundExcessScreen = () => {
               <dd>{orEmpty(selectedExcess.supplierName)}</dd>
             </div>
             <div>
-              <dt>{t.table.item}</dt>
-              <dd>{`${selectedExcess.itemCode} · ${selectedExcess.itemName}`}</dd>
+              <dt>{t.table.itemCode}</dt>
+              <dd>{selectedExcess.itemCode}</dd>
+            </div>
+            <div>
+              <dt>{t.table.itemName}</dt>
+              <dd>{selectedExcess.itemName}</dd>
             </div>
             <div>
               <dt>{t.table.excessQty}</dt>

@@ -157,7 +157,22 @@ export const ReleaseMaterials = ({
                 <AdjustableNativeTable
                   storageKey="omf-release-materials"
                   className="erp-wo-final-table"
-                  labels={['자재 코드', '자재명', 'BOM 소요량', '출고 기준 소요량', '환산 비율']}
+                  labels={[
+                    '자재 코드',
+                    '자재명',
+                    'BOM 소요량',
+                    '출고 기준 소요량',
+                    rows.some(({ row }) => row.confirmationRequired && editableRate(row)) ? (
+                      <>
+                        환산 비율
+                        <span className="required-mark" aria-hidden="true">
+                          {' *'}
+                        </span>
+                      </>
+                    ) : (
+                      '환산 비율'
+                    ),
+                  ]}
                   widths={[135, 195, 110, 135, 260]}
                 >
                   <tbody>
@@ -194,6 +209,7 @@ export const ReleaseMaterials = ({
                                       size="sm"
                                       inputMode="decimal"
                                       aria-label={`${target.workOrderNo} ${row.itemCode} 환산 비율`}
+                                      aria-required={row.confirmationRequired || undefined}
                                       value={choice.rate ?? String(row.conversionRate ?? '')}
                                       disabled={disabled}
                                       aria-invalid={choice.rate !== null && rate === null}

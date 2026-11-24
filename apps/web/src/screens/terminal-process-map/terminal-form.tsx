@@ -130,6 +130,7 @@ export const TerminalForm = ({
           {isNew ? (
             <TextField
               id={codeId}
+              aria-required="true"
               value={draft.terminalCode}
               error={errors.terminalCode ?? fieldErrors.terminalCode}
               onChange={(event) => {

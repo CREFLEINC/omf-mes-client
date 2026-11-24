@@ -23,6 +23,8 @@ export const dispositionRequest: Translated<typeof ko.dispositionRequest> = {
     keyword: 'Từ khóa',
     lotNo: 'LOT',
     item: 'Mặt hàng',
+    itemCode: 'Mã mặt hàng',
+    itemName: 'Tên mặt hàng',
     qty: 'Số lượng',
     uom: 'Đơn vị',
     receiptNo: 'Số nhập kho',

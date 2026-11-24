@@ -116,16 +116,33 @@ describe('ErpCommonCodeScreen', () => {
   });
 
   /* 사용 여부 라벨 「전체 · 사용 · 미사용」 — 받은 그룹 안에서 화면이 거른다(사용자 지시 2026-11-24). */
-  it('사용 여부 라벨로 코드그룹 목록을 거른다', async () => {
-    const { user } = renderScreen([groupsRoute()]);
+  it('사용 여부 라벨(「전체」 없이 건수)로 코드그룹 목록을 거르고, 다시 누르면 전체로 돌아간다', async () => {
+    const { user } = renderScreen([
+      groupsRoute([
+        group(),
+        group({ codeGroupId: 502, groupCode: 'UNIT', groupName: '예시 단위', isActive: false }),
+      ]),
+    ]);
     await screen.findByRole('button', { name: 'PUR_GROUP' });
 
     const chips = screen.getByRole('group', { name: '사용 여부' });
-    await user.click(within(chips).getByText('미사용', { exact: true }));
+    expect(within(chips).queryByText(/전체/)).not.toBeInTheDocument();
+    await user.click(within(chips).getByRole('button', { name: '미사용 1건' }));
     expect(screen.queryByRole('button', { name: 'PUR_GROUP' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'UNIT' })).toBeInTheDocument();
 
-    await user.click(within(chips).getByText('전체', { exact: true }));
+    await user.click(within(chips).getByRole('button', { name: '미사용 1건' }));
     expect(screen.getByRole('button', { name: 'PUR_GROUP' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'UNIT' })).toBeInTheDocument();
+  });
+
+  it('0건인 사용 여부 라벨은 감춘다', async () => {
+    renderScreen([groupsRoute()]);
+    await screen.findByRole('button', { name: 'PUR_GROUP' });
+
+    const chips = screen.getByRole('group', { name: '사용 여부' });
+    expect(within(chips).getByRole('button', { name: '사용 2건' })).toBeInTheDocument();
+    expect(within(chips).queryByRole('button', { name: /미사용/ })).not.toBeInTheDocument();
   });
 
   it('그룹을 누르면 상세에 그룹 칸을 내고 그룹 코드로 코드값을 조회해 그린다', async () => {

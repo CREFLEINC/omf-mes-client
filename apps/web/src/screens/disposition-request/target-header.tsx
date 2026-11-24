@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
+import { splitCodeName } from '../../patterns/split-code-name';
 import { sourceCodeLabel, stageLabel } from './codes';
 import { LoadErrorBanner } from './load-error';
 import type { RequestLookup } from './lookups';
@@ -55,8 +56,12 @@ export const TargetHeader = ({ row, detail, uoms, onRetry }: TargetHeaderProps):
           <dd>{row.lotNo}</dd>
         </div>
         <div className="field-cell">
-          <dt className="field-label">{t.fields.item}</dt>
-          <dd>{row.itemText}</dd>
+          <dt className="field-label">{t.fields.itemCode}</dt>
+          <dd>{splitCodeName(row.itemText, t.values.notAvailable).code}</dd>
+        </div>
+        <div className="field-cell">
+          <dt className="field-label">{t.fields.itemName}</dt>
+          <dd>{splitCodeName(row.itemText, t.values.notAvailable).name}</dd>
         </div>
         <div className="field-cell">
           <dt className="field-label">{t.fields.qty}</dt>

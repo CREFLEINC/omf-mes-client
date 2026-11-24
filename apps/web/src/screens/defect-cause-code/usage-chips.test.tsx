@@ -18,7 +18,7 @@ const renderWithSlot = (value: 'all' | 'active' | 'inactive') => {
 };
 
 describe('UsageChips (#209)', () => {
-  it('건수를 받으면 칩마다 「이름 건수」로 낸다', async () => {
+  it('건수를 받으면 「전체」 없이 칩마다 「이름 N건」으로 낸다', async () => {
     render(
       <>
         <div id={HUB_ACTIONS_ID} />
@@ -26,19 +26,45 @@ describe('UsageChips (#209)', () => {
       </>,
     );
 
-    expect(await screen.findByRole('button', { name: '전체 9' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '사용 7' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '미사용 2' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: '사용 7건' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '미사용 2건' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /전체/ })).not.toBeInTheDocument();
   });
 
-  it('전체 · 사용 · 미사용 칩을 내고 지금 고른 칩이 눌린 상태다', async () => {
+  it('0건 칩은 감추고, 고른 칩은 0건이어도 남긴다', async () => {
+    const { rerender } = render(
+      <>
+        <div id={HUB_ACTIONS_ID} />
+        <UsageChips counts={{ all: 7, active: 7, inactive: 0 }} value="active" onChange={vi.fn()} />
+      </>,
+    );
+
+    expect(await screen.findByRole('button', { name: '사용 7건' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /미사용/ })).not.toBeInTheDocument();
+
+    rerender(
+      <>
+        <div id={HUB_ACTIONS_ID} />
+        <UsageChips
+          counts={{ all: 7, active: 7, inactive: 0 }}
+          value="inactive"
+          onChange={vi.fn()}
+        />
+      </>,
+    );
+    expect(await screen.findByRole('button', { name: '미사용 0건' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  it('사용 · 미사용 칩을 내고 지금 고른 칩이 눌린 상태다', async () => {
     renderWithSlot('active');
 
     expect(await screen.findByRole('button', { name: '사용' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
-    expect(screen.getByRole('button', { name: '전체' })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button', { name: '미사용' })).toHaveAttribute('aria-pressed', 'false');
   });
 
@@ -50,12 +76,12 @@ describe('UsageChips (#209)', () => {
     expect(onChange).toHaveBeenCalledWith('inactive');
   });
 
-  it('고른 칩을 다시 눌러도 풀리지 않는다', async () => {
-    const { onChange, user } = renderWithSlot('all');
+  it('고른 칩을 다시 누르면 전체로 풀린다', async () => {
+    const { onChange, user } = renderWithSlot('active');
 
-    await user.click(await screen.findByRole('button', { name: '전체' }));
+    await user.click(await screen.findByRole('button', { name: '사용' }));
 
-    expect(onChange).not.toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalledWith('all');
   });
 
   it('탭 줄 자리가 없으면 그리지 않는다', () => {

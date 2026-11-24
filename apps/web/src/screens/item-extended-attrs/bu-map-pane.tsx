@@ -2,6 +2,7 @@ import { Button, type Column, EmptyState, IconButton, SkeletonText, Table } from
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { splitCodeName } from '../../patterns/split-code-name';
 import type { BuMapDraft } from './bu-map-draft';
 import { lookupLabel } from './options';
 import type { LookupEntry } from './types';
@@ -96,9 +97,9 @@ export const BuMapPane = ({
     )} · ${itemLabel(draft.toItemId)} · ${orEmptyMark(draft.effectiveFrom)}`;
 
   /*
-   * 지정 폭의 합은 **576px**(140+140+200+96)이라 `.wide-table`의 최소 폭(58rem = 928px)
-   * 안에 들어간다 — 「대상 품목」만 폭을 지정하지 않고 남는 폭을 흡수한다.
-   * 값이 「코드 · 이름」이라 가장 길고, 접혀도 읽히는 칸이다.
+   * 지정 폭의 합은 **716px**(140+140+140+200+96)이라 `.wide-table`의 최소 폭(58rem = 928px)
+   * 안에 들어간다 — 「대상 품목명」만 폭을 지정하지 않고 남는 폭을 흡수한다.
+   * 대상 품목은 품목코드 · 품목명 두 칸이다(사용자 지시 2026-11-24).
    */
   const columns: Column<BuMapDraft>[] = [
     {
@@ -115,8 +116,14 @@ export const BuMapPane = ({
     },
     {
       key: 'toItemId',
-      header: t.fields.toItem,
-      render: (row) => itemLabel(row.toItemId),
+      header: t.fields.toItemCode,
+      width: '140px',
+      render: (row) => splitCodeName(itemLabel(row.toItemId), shared.values.empty).code,
+    },
+    {
+      key: 'toItemName',
+      header: t.fields.toItemName,
+      render: (row) => splitCodeName(itemLabel(row.toItemId), shared.values.empty).name,
     },
     {
       key: 'validPeriod',

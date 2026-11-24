@@ -19,6 +19,7 @@ import {
   useFilterMore,
 } from '../../patterns/filter-more';
 import type { LookupSource } from '../../patterns/lookup-display';
+import { UsageName } from '../../patterns/usage-chip';
 import {
   SORT_OPTIONS,
   type CodeOption,
@@ -175,11 +176,12 @@ export const useToolListPane = ({
   );
 
   /**
-   * 이름 칸. **미사용이면 표식을 붙인다** — 「미사용 포함」을 켜면 그 조건이 무엇을 데려왔는지
-   * 알 수 있어야 하고, 칸을 하나 더 두면 표가 하한을 넘긴다(`docs/layout-conventions.md`).
+   * 이름 칸. **미사용이면 이름 옆에 「미사용」 라벨을 붙인다**(#358) — 「미사용 포함」을 켜면 그 조건이 무엇을
+   * 데려왔는지 알 수 있어야 하고, 칸을 하나 더 두면 표가 하한을 넘긴다(`docs/layout-conventions.md`).
    */
-  const nameCell = (row: Mold): ReactNode =>
-    row.isActive ? row.moldName : `${row.moldName}${t.values.inactiveSuffix}`;
+  const nameCell = (row: Mold): ReactNode => (
+    <UsageName isActive={row.isActive}>{row.moldName}</UsageName>
+  );
 
   /**
    * 수치 칸 하나. **값이 아니라 «값이 없는 사유»면 흐린 글자로** 세운다 — 실제 수치가 먼저 읽히게.

@@ -191,6 +191,7 @@ export const ResultPane = ({
             <TextField
               fullWidth
               label={t.submit.reason}
+              required
               value={reason}
               placeholder={t.submit.reasonPlaceholder}
               disabled={phase === 'submitting'}

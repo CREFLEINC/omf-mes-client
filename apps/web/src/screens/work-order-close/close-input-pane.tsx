@@ -57,7 +57,12 @@ export const WorkOrderCloseInputPane = ({
       </div>
       {completionJudgment === 'UNDER' ? (
         <fieldset className="field-cell">
-          <legend className="field-label">{t.remainder.legend}</legend>
+          <legend className="field-label">
+            {t.remainder.legend}
+            <span className="required-mark" aria-hidden="true">
+              {' *'}
+            </span>
+          </legend>
           <div className="check-group">
             {/* 이월 W/O 가 저절로 서지 않는다는 것은 「이월」 바로 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
             <span className="work-order-close-option-info">
@@ -99,9 +104,12 @@ export const WorkOrderCloseInputPane = ({
       ) : null}
       {completionJudgment !== 'NORMAL' ? (
         <div className="field-cell">
-          <label className="field-label" htmlFor={reasonId}>
-            {t.reason.label}
-          </label>
+          <span className="field-label">
+            <label htmlFor={reasonId}>{t.reason.label}</label>
+            <span className="required-mark" aria-hidden="true">
+              {' *'}
+            </span>
+          </span>
           <Select
             aria-describedby={reasonNote === null ? undefined : reasonNoteId}
             aria-required

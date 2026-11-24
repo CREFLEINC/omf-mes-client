@@ -81,13 +81,18 @@ describe('CodeGroupFormPane — 필드', () => {
 });
 
 describe('CodeGroupFormPane — 코드 잠금', () => {
-  it('잠금 사유가 있으면 그룹코드 칸이 잠기고 사유가 보인다', () => {
+  /* 사유 문장 대신 그룹코드 이름 오른쪽 「변경 불가」 라벨 — 문장은 마우스 · 화면 읽기로(사용자 지시 2026-11-24). */
+  it('잠금 사유가 있으면 그룹코드 칸이 잠기고 「변경 불가」 라벨에 사유가 붙는다', () => {
     renderPane({ codeLockReason: '이미 다른 자료에서 사용 중이라 코드를 바꿀 수 없습니다.' });
 
     expect(screen.getByLabelText('그룹코드')).toBeDisabled();
-    expect(
-      screen.getByText('이미 다른 자료에서 사용 중이라 코드를 바꿀 수 없습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
+      'title',
+      '이미 다른 자료에서 사용 중이라 코드를 바꿀 수 없습니다.',
+    );
+    expect(screen.getByLabelText('그룹코드')).toHaveAccessibleDescription(
+      '이미 다른 자료에서 사용 중이라 코드를 바꿀 수 없습니다.',
+    );
   });
 
   it('잠금 사유가 없으면 그룹코드를 고칠 수 있다', () => {

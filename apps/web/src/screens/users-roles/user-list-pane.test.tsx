@@ -152,10 +152,14 @@ describe('UserListPane 표', () => {
     expect(screen.queryByText('SYN-STATUS-A')).not.toBeInTheDocument();
   });
 
-  it('미사용 행에 「미사용」 표식이 붙는다', () => {
+  it('미사용 행은 이름 옆에 「미사용」 라벨이 붙는다', () => {
     renderPane();
 
-    expect(screen.getByText('합성 사용자 C (미사용)')).toBeInTheDocument();
+    expect(
+      within(screen.getByText('합성 사용자 C').closest('.usage-name') as HTMLElement).getByText(
+        '미사용',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText('합성 사용자 A')).toBeInTheDocument();
   });
 });

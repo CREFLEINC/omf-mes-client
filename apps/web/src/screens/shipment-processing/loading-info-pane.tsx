@@ -221,6 +221,9 @@ export const LoadingInfoPane = ({
         <div className="field-cell">
           <span className="field-label">
             <label htmlFor="shipment-processing-warehouse">{t.fields.warehouse}</label>
+            <span className="required-mark" aria-hidden="true">
+              {' *'}
+            </span>
           </span>
           <Select
             id="shipment-processing-warehouse"

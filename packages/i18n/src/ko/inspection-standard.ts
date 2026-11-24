@@ -84,7 +84,8 @@ export const inspectionStandard = {
      * 확정·사용 중지 버전에서는 검사 항목도 잠긴다. 여러 컨트롤(추가·수정·삭제·순서 이동·저장)이
      * 공유하는 안내라 컨트롤 이름이 아니라 무엇에 대한 안내인지로 시작한다(배치 규범 4의 이탈 조건).
      */
-    versionLocked: '검사 항목은 작성중 버전에서만 고칠 수 있습니다. 바꾸려면 「신규 버전 발행」을 누르세요.',
+    versionLocked:
+      '검사 항목은 작성중 버전에서만 고칠 수 있습니다. 바꾸려면 「신규 버전 발행」을 누르세요.',
     /*
      * 항목을 저장하면 버전 정보도 다시 불러온다 — 그때 저장하지 않은 버전 편집이
      * 서버 값으로 되돌아간다. 조용히 잃지 않도록 먼저 막는다.
@@ -235,10 +236,9 @@ export const inspectionStandard = {
     unapprovedOnly: '미승인',
     chipRemoveUnapproved: '미승인 조건 제거',
     usageLabel: '사용 여부',
-    usageAll: '전체',
     usageActive: '사용',
     usageInactive: '미사용',
-    usageCount: (label: string, count: number): string => `${label} ${String(count)}`,
+    usageCount: (label: string, count: number): string => `${label} ${String(count)}건`,
     /* 품목 조건 — 검사 조회·판정의 품목 검색과 같은 모양(#196). */
     item: '품목 검색',
     itemPlaceholder: '품목을 입력하세요',

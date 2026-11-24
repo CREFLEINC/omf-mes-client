@@ -282,6 +282,7 @@ export const PlanSplitDialog = ({
               containerClassName="erp-wo-split-input"
               size="md"
               label="분할 후 계획 건수"
+              required={method !== 'fixed'}
               aria-label="분할 후 계획 건수"
               inputMode="numeric"
               value={count}
@@ -314,6 +315,7 @@ export const PlanSplitDialog = ({
                 disabled={calendarBusy}
                 size="md"
                 label={`계획당 생산량 (${unit})`}
+                required
                 aria-label="계획당 생산량"
                 inputMode="decimal"
                 value={per}
@@ -342,12 +344,18 @@ export const PlanSplitDialog = ({
             </div>
             <div className="erp-wo-split-period-actions">
               <div className="field-cell">
-                <span className="field-label">편성 시작일</span>
+                <span className="field-label">
+                  편성 시작일
+                  <span className="required-mark" aria-hidden="true">
+                    {' *'}
+                  </span>
+                </span>
                 <DatePicker
                   min={plantToday()}
                   disabled={calendarBusy}
                   size="md"
                   aria-label="편성 시작일"
+                  aria-required="true"
                   value={start}
                   onChange={(value) => {
                     setStart(value);
@@ -415,8 +423,18 @@ export const PlanSplitDialog = ({
               <thead>
                 <tr>
                   <th>순번</th>
-                  <th>생산량 ({unit})</th>
-                  <th>계획일</th>
+                  <th>
+                    생산량 ({unit})
+                    <span className="required-mark" aria-hidden="true">
+                      {' *'}
+                    </span>
+                  </th>
+                  <th>
+                    계획일
+                    <span className="required-mark" aria-hidden="true">
+                      {' *'}
+                    </span>
+                  </th>
                   <th>근무 구분</th>
                   <th>
                     <span className="visually-hidden">삭제</span>
@@ -445,6 +463,7 @@ export const PlanSplitDialog = ({
                           disabled={calendarBusy}
                           inputMode="decimal"
                           aria-label={day ? `${day.date} 휴일 생산량` : `계획 ${i + 1} 생산량`}
+                          aria-required="true"
                           value={part.plannedQty}
                           onChange={(event) =>
                             day
@@ -466,6 +485,7 @@ export const PlanSplitDialog = ({
                           size="md"
                           disabled={calendarBusy}
                           aria-label={day ? `${day.date} 휴일 계획일` : `계획 ${i + 1} 계획일`}
+                          aria-required="true"
                           value={part.planDate}
                           onChange={(planDate) =>
                             day

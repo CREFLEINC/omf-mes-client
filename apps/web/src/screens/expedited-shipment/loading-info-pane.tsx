@@ -112,7 +112,7 @@ export const LoadingInfoPane = ({
       )}
       {warehouse.kind === 'AMBIGUOUS' && (
         <div className="field-cell wide-select">
-          <InfoLabel htmlFor={warehouseId} label={t.warehouse} info={t.warehouseNote} />
+          <InfoLabel htmlFor={warehouseId} label={t.warehouse} info={t.warehouseNote} required />
           <Select
             id={warehouseId}
             options={warehouse.options.map((option) => ({

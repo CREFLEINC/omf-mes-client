@@ -89,7 +89,8 @@ export const LotTable = ({
         <tr>
           <th scope="col">{tl.columns.inboundLot}</th>
           <th scope="col">{tl.columns.supplier}</th>
-          <th scope="col">{tl.columns.item}</th>
+          <th scope="col">{tl.columns.itemCode}</th>
+          <th scope="col">{tl.columns.itemName}</th>
           <th scope="col">{tl.columns.receivingDate}</th>
           <th scope="col" className="is-number">
             {tl.columns.lotCount}
@@ -129,8 +130,10 @@ export const LotTable = ({
               </td>
               <td>{lot.supplierName}</td>
               <td>
+                <span className="iwr-code">{lot.itemCode}</span>
+              </td>
+              <td>
                 <span className="iwr-item">
-                  <span className="iwr-code">{lot.itemCode}</span>
                   <OneLine text={lot.itemName} />
                 </span>
               </td>

@@ -166,7 +166,15 @@ const StepForm = ({ step, disabled, isSaving, onSave }: StepFormProps) => {
       )}
 
       <div className="inspection-sheet-entry-judgment" role="group" aria-label={t.first}>
-        <span className="field-label">{t.first}</span>
+        <span className="field-label">
+          <span>{t.first}</span>
+          {/* 항목이 없는 단계는 사람이 골라야 저장된다(`t.blocked.first`) — 그때만 필수 표시. */}
+          {step.items.length === 0 && (
+            <span className="required-mark" aria-hidden="true">
+              {' *'}
+            </span>
+          )}
+        </span>
         {/* 항목 판정으로 정해진다는 사실은 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
         {step.items.length > 0 && <InfoTip text={t.firstFromItems} />}
         {step.items.length === 0 ? (

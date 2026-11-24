@@ -157,7 +157,7 @@ export const useItemSummaries = (itemIds: readonly number[]): ((itemId: number) 
 export const labelOf = (summary: ItemSummary): string =>
   summary.code === null ? summary.name : `${summary.code} · ${summary.name}`;
 
-/** 코드값 이름 — 품목 유형(ITEM_TYPE) · BOM 상태(MASTER_VERSION_STATUS). 중지된 값도 받는다(ERP 수신본). */
+/** 코드값 이름 — 품목 유형(ITEM_TYPE). 중지된 값도 받는다(ERP 수신본). */
 const useCodeNames = (codeGroupCode: string): NameOf => {
   const { client } = useApiClient();
   const query = useQuery({
@@ -175,7 +175,6 @@ const useCodeNames = (codeGroupCode: string): NameOf => {
 };
 
 export const useItemTypeNames = (): NameOf => useCodeNames('ITEM_TYPE');
-export const useStatusNames = (): NameOf => useCodeNames('MASTER_VERSION_STATUS');
 
 /** 모품목 목록의 조건 — 품목코드 · 품목명 검색어와 유형(제품 · 반제품). */
 export interface ParentItemQuery {

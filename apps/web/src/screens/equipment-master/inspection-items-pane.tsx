@@ -3,11 +3,11 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { InfoTip } from '../../patterns/info-tip';
+import { UsageChip } from '../../patterns/usage-chip';
 import { cycleText } from './inspection-assignment';
 import type { InspectionItemAssignment } from './types';
 
 const t = messages.equipmentMaster.inspection;
-const tv = messages.equipmentMaster.values;
 
 export interface InspectionItemsPaneProps {
   assignments: InspectionItemAssignment[];
@@ -59,7 +59,7 @@ export const InspectionItemsPane = ({
       key: 'isActive',
       header: t.fields.activation,
       width: '84px',
-      render: (row) => (row.isActive ? tv.active : tv.inactive),
+      render: (row) => <UsageChip isActive={row.isActive} />,
     },
   ];
 

@@ -78,13 +78,14 @@ export const OrderForm = ({
           error={errors.target}
           placeholder={t.form.itemPlaceholder}
           wide
+          required
           onChange={(value) => {
             set({ target: value });
           }}
         />
 
         <div className="field-cell">
-          <FieldLabel htmlFor={plannedId} label={t.form.plannedDate} />
+          <FieldLabel htmlFor={plannedId} label={t.form.plannedDate} required />
           <DatePicker
             id={plannedId}
             mode="single"
@@ -110,6 +111,7 @@ export const OrderForm = ({
           error={errors.assignee}
           placeholder={t.form.itemPlaceholder}
           wide
+          required
           onChange={(value) => {
             set({ assignee: value });
           }}
@@ -173,6 +175,8 @@ export const OrderForm = ({
           error={errors.itemIds}
           placeholder={t.form.itemPlaceholder}
           wide
+          /* 항목을 하나도 담지 않으면 발행이 막힌다. */
+          required
           onChange={setItemToAdd}
         />
         <div className="field-cell field-cell-unlabeled maintenance-order-item-actions">

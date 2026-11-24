@@ -684,7 +684,12 @@ export const DistributionControls = ({
                           </div>
                           <div className="erp-wo-segment-fields">
                             <div className="field-cell erp-wo-segment-date erp-wo-distribution-period">
-                              <span className="field-label">분배 기간</span>
+                              <span className="field-label">
+                                분배 기간
+                                <span className="required-mark" aria-hidden="true">
+                                  {' *'}
+                                </span>
+                              </span>
                               <DistributionPeriodPicker
                                 label={`조건 ${index + 1} 분배 기간`}
                                 value={[row.start, row.end]}
@@ -693,7 +698,12 @@ export const DistributionControls = ({
                               />
                             </div>
                             <div className="field-cell erp-wo-segment-line">
-                              <span className="field-label">생산 라인</span>
+                              <span className="field-label">
+                                생산 라인
+                                <span className="required-mark" aria-hidden="true">
+                                  {' *'}
+                                </span>
+                              </span>
                               <DistributionLinePicker
                                 label={`조건 ${index + 1} 생산 라인`}
                                 lines={target?.lines ?? []}
@@ -743,6 +753,7 @@ export const DistributionControls = ({
                                 size="md"
                                 className="erp-wo-segment-quantity"
                                 label={`분배 수량 (${target?.unit ?? ''})`}
+                                required
                                 aria-label={`조건 ${index + 1} 수량`}
                                 value={row.quantity}
                                 inputMode="decimal"

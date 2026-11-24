@@ -63,9 +63,10 @@ export const NoticeForm = ({
 
       <div className="form-grid">
         <div className="field-cell form-grid-full">
-          <FieldLabel htmlFor={titleId} label={t.form.title} />
+          <FieldLabel htmlFor={titleId} label={t.form.title} required />
           <TextField
             id={titleId}
+            aria-required="true"
             value={draft.title}
             maxLength={200}
             error={errors.title ?? fieldErrors.title}
@@ -76,9 +77,10 @@ export const NoticeForm = ({
         </div>
 
         <div className="field-cell form-grid-full">
-          <FieldLabel htmlFor={bodyId} label={t.form.body} />
+          <FieldLabel htmlFor={bodyId} label={t.form.body} required />
           <TextArea
             id={bodyId}
+            aria-required="true"
             value={draft.body}
             rows={6}
             fullWidth
@@ -90,7 +92,7 @@ export const NoticeForm = ({
         </div>
 
         <div className="field-cell">
-          <FieldLabel htmlFor={startId} label={t.form.startDate} />
+          <FieldLabel htmlFor={startId} label={t.form.startDate} required />
           <DatePicker
             id={startId}
             mode="single"
@@ -109,7 +111,7 @@ export const NoticeForm = ({
 
         <div className="field-cell">
           {/* 게시 상태를 정하는 필수 날짜라는 사실은 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
-          <FieldLabel htmlFor={endId} label={t.form.endDate} info={t.form.endDateNote} />
+          <FieldLabel htmlFor={endId} label={t.form.endDate} info={t.form.endDateNote} required />
           <DatePicker
             id={endId}
             mode="single"
@@ -127,6 +129,7 @@ export const NoticeForm = ({
         </div>
 
         <SelectField
+          required
           label={t.form.scope}
           options={scopeOptions()}
           value={draft.scopeCode}
@@ -145,6 +148,7 @@ export const NoticeForm = ({
         />
 
         <SelectField
+          required={wantsWorkOrder}
           label={t.form.workOrder}
           options={workOrders.entries.map((entry) => ({
             value: entry.value,

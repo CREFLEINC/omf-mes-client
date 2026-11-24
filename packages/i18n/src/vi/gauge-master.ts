@@ -105,8 +105,6 @@ export const gaugeMaster: Translated<typeof ko.gaugeMaster> = {
     isActive: 'Sử dụng',
   },
   values: {
-    active: 'Đang sử dụng',
-    inactive: 'Ngừng dùng',
     inactiveSuffix: ' (ngừng dùng)',
   },
   /**

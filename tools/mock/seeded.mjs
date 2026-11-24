@@ -1860,7 +1860,8 @@ on('GET', '/mdm/code-groups', (_p, query) => {
       groupCode,
       groupName: ERP_GROUP_NAMES[groupCode] ?? groupCode,
       description: null,
-      isActive: true,
+      /* 공통코드 조회 (ERP) 의 「사용 N건 · 미사용 N건」 라벨을 볼 수 있게 한 그룹은 미사용(#358 · 2026-11-24). */
+      isActive: groupCode !== 'SALE_GROUP',
     }))
     .filter(
       (group) =>

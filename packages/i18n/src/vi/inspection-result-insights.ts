@@ -62,6 +62,8 @@ export const inspectionResultInsights: Translated<typeof ko.inspectionResultInsi
       inspectionRequestNo: 'Số yêu cầu',
       inspectionType: 'Loại kiểm tra',
       item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       lotNo: 'LOT',
       quantities: 'Kiểm tra/Đạt/Không đạt',
       judgment: 'Đánh giá tổng hợp',

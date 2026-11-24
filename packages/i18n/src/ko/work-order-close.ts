@@ -48,6 +48,8 @@ export const workOrderClose = {
     fields: {
       workOrderNo: 'W/O 번호',
       item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       status: '상태',
       quantity: '지시 수량',
       goodQty: '양품',

@@ -61,6 +61,8 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     fields: {
       workOrderNo: 'Số W/O',
       item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       status: 'Trạng thái',
       quantity: 'Số lượng lệnh',
       goodQty: 'Đạt',

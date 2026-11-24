@@ -158,6 +158,7 @@ export const TemplateBasicFields = ({
               ) : (
                 <Select
                   id={ids.bu}
+                  aria-required
                   options={scopeOptions}
                   value={String(values.businessUnitId ?? '')}
                   onChange={(value) => onChange({ businessUnitId: Number(value) })}
@@ -173,6 +174,7 @@ export const TemplateBasicFields = ({
               </span>
               <Select
                 id={ids.layout}
+                aria-required
                 options={(['OP', 'PP'] as const).map((code) => ({
                   value: code,
                   label: t.layouts[code] ?? code,

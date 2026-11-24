@@ -47,7 +47,8 @@ import {
   type CandidateQuery,
 } from './queries';
 import {
-  displayItem,
+  displayItemCode,
+  displayItemName,
   remainingDays,
   isConcession,
   lotLabelOf,
@@ -119,6 +120,8 @@ interface SelectFieldProps {
   error?: string;
   note?: string;
   disabled?: boolean;
+  /** 필수 칸 — 이름 옆 빨간 `*`(라벨 밖 · 접근 이름에 섞지 않는다). */
+  required?: boolean;
   onChange: (value: string) => void;
 }
 
@@ -129,6 +132,7 @@ const SelectField = ({
   error,
   note,
   disabled,
+  required = false,
   onChange,
 }: SelectFieldProps) => {
   const id = useId();
@@ -137,9 +141,14 @@ const SelectField = ({
   const hasEmptyOption = options.some((option) => option.value === '');
   return (
     <div className="field-cell">
-      <label className="field-label" htmlFor={id}>
-        {label}
-      </label>
+      <span className="field-label">
+        <label htmlFor={id}>{label}</label>
+        {required && (
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        )}
+      </span>
       <Select
         id={id}
         value={value === '' && !hasEmptyOption ? null : value}
@@ -415,7 +424,8 @@ export const StockReinstatementScreen = () => {
         </button>
       ),
     },
-    { key: 'item', header: t.fields.item, render: displayItem },
+    { key: 'item', header: t.fields.itemCode, render: (row) => displayItemCode(row) },
+    { key: 'itemName', header: t.fields.itemName, render: (row) => displayItemName(row) },
     {
       key: 'qty',
       header: t.fields.qty,
@@ -579,8 +589,12 @@ export const StockReinstatementScreen = () => {
                   <dd>{selected.lotNo}</dd>
                 </div>
                 <div>
-                  <dt>{t.fields.item}</dt>
-                  <dd>{displayItem(selected)}</dd>
+                  <dt>{t.fields.itemCode}</dt>
+                  <dd>{displayItemCode(selected)}</dd>
+                </div>
+                <div>
+                  <dt>{t.fields.itemName}</dt>
+                  <dd>{displayItemName(selected)}</dd>
                 </div>
                 <div>
                   <dt>{t.fields.qty}</dt>
@@ -644,6 +658,7 @@ export const StockReinstatementScreen = () => {
                 <div className="form-grid stock-reinstatement-form">
                   <SelectField
                     label={t.fields.targetWarehouse}
+                    required
                     value={draft.toWarehouseId}
                     options={targetWarehouses}
                     error={
@@ -669,6 +684,7 @@ export const StockReinstatementScreen = () => {
                   {locationRequired && (
                     <SelectField
                       label={t.fields.targetLocation}
+                      required
                       value={draft.toLocationId}
                       options={locationOptions}
                       error={errors.toLocationId ?? reinstate.fieldErrors.toLocationId}
@@ -680,6 +696,7 @@ export const StockReinstatementScreen = () => {
                   {!concession && (
                     <SelectField
                       label={t.fields.hold}
+                      required
                       value={draft.lotHoldId}
                       options={holdOptions}
                       error={errors.lotHoldId ?? reinstate.fieldErrors.lotHoldId}
@@ -691,6 +708,7 @@ export const StockReinstatementScreen = () => {
                   <div className="field-cell">
                     <TextField
                       label={t.fields.qty}
+                      required
                       type="number"
                       min={1}
                       max={maxQty ?? undefined}
@@ -706,6 +724,7 @@ export const StockReinstatementScreen = () => {
                   {!concession && (
                     <SelectField
                       label={t.fields.releaseReason}
+                      required
                       value={draft.releaseReasonCode}
                       options={lookups.data?.releaseReasons ?? []}
                       note={lookups.isPending ? t.form.releaseReasonUnavailable : undefined}

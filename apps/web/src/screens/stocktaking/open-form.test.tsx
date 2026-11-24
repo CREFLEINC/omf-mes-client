@@ -74,16 +74,16 @@ describe('OpenForm — 개시 입력 칸', () => {
   });
 
   /*
-   * **필수 표시(*)를 붙이지 않는다.** 넷 중 셋이 필수라 표시가 거의 모든 칸에 붙어 뜻을
-   * 잃는다 — 무엇이 모자라는지는 「실사 개시」 옆의 사유 한 줄이 **한 번에 하나씩** 가리킨다.
+   * 필수 칸(유형 · 창고 · 계획일)은 라벨 밖에 빨간 * 를 둔다(사용자 지시 2026-11-24 — 필수 입력란은 빨간 *).
+   * 별은 라벨 밖이라 접근 이름은 그대로다.
    */
-  it('라벨에 필수 표시를 붙이지 않는다', () => {
+  it('필수 칸 셋에 빨간 필수 표시를 붙이고, 접근 이름은 그대로다', () => {
     const { container } = renderForm();
 
-    /* 짝 방향 — 라벨은 실제로 넷 다 있다(아무것도 안 그려서 통과하는 것이 아니다). */
     expect(screen.getByLabelText(t.fields.countType)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.fields.warehouse)).toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.plannedDate)).toBeInTheDocument();
-    expect(container.textContent ?? '').not.toContain('*');
+    expect(container.textContent ?? '').toContain('*');
   });
 
   it('초안의 값이 그대로 보인다', () => {

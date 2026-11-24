@@ -95,18 +95,15 @@ describe('CodeValueFormPane — 필드', () => {
 });
 
 describe('CodeValueFormPane — 코드 잠금', () => {
-  it('잠금 사유가 있으면 코드 칸이 잠기고 사유가 보인다', () => {
-    renderPane({
-      codeLockReason:
-        '이 코드를 참조하는 자료의 수를 확인할 수 없어 코드를 잠급니다. 변경이 필요하면 담당자에게 문의하세요.',
-    });
+  /* 사유 문장 대신 코드 이름 오른쪽 「변경 불가」 라벨 — 문장은 마우스 · 화면 읽기로(사용자 지시 2026-11-24). */
+  it('잠금 사유가 있으면 코드 칸이 잠기고 「변경 불가」 라벨에 사유가 붙는다', () => {
+    const reason =
+      '이 코드를 참조하는 자료의 수를 확인할 수 없어 코드를 잠급니다. 변경이 필요하면 담당자에게 문의하세요.';
+    renderPane({ codeLockReason: reason });
 
     expect(screen.getByLabelText('코드')).toBeDisabled();
-    expect(
-      screen.getByText(
-        '이 코드를 참조하는 자료의 수를 확인할 수 없어 코드를 잠급니다. 변경이 필요하면 담당자에게 문의하세요.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute('title', reason);
+    expect(screen.getByLabelText('코드')).toHaveAccessibleDescription(reason);
   });
 
   /* 아직 참조할 자료가 없다 — 등록에서 잠그면 코드를 넣을 수 없다. */

@@ -85,6 +85,7 @@ export const ExpansionPane = ({
 
           <Select
             aria-label={t.revisionLabel}
+            aria-required="true"
             placeholder={t.revisionLabel}
             value={selectedRoutingId === null ? null : String(selectedRoutingId)}
             onChange={(value) => {

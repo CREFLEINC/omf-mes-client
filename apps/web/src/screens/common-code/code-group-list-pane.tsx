@@ -21,6 +21,7 @@ import {
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
+import { UsageName } from '../../patterns/usage-chip';
 import { hasAnyFilter, LIST_PAGE_SIZES, type ListPageSize } from './filters';
 import type { PageView } from './pagination';
 import type { CodeGroup, CodeGroupFilters } from './types';
@@ -119,8 +120,7 @@ export const CodeGroupListPane = ({
       key: 'groupName',
       align: 'center',
       header: t.codeGroup.fields.groupName,
-      render: (row) =>
-        row.isActive ? row.groupName : `${row.groupName}${t.values.inactiveSuffix}`,
+      render: (row) => <UsageName isActive={row.isActive}>{row.groupName}</UsageName>,
     },
   ];
   /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(단말 관리 목록과 같다 · omf-all-around#358). */

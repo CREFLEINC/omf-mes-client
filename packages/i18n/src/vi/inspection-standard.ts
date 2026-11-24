@@ -208,7 +208,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     unapprovedOnly: 'Chưa phê duyệt',
     chipRemoveUnapproved: 'Bỏ điều kiện chưa phê duyệt',
     usageLabel: 'Sử dụng',
-    usageAll: 'Tất cả',
     usageActive: 'Đang dùng',
     usageInactive: 'Ngừng dùng',
     usageCount: (label: string, count: number): string => `${label} ${String(count)}`,

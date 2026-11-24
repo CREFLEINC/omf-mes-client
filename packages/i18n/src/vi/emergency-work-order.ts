@@ -51,6 +51,8 @@ export const emergencyWorkOrder: Translated<typeof ko.emergencyWorkOrder> = {
   form: {
     title: 'Thông tin phát hành',
     item: 'Mặt hàng',
+    itemCode: 'Mã mặt hàng',
+    itemName: 'Tên mặt hàng',
     orderQty: 'Số lượng',
     plannedEnd: 'Ngày giao',
     reason: 'Lý do phát hành',

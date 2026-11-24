@@ -681,6 +681,8 @@ export const DispositionDecisionScreen = ({
           >
             {statusOptions.map((option, index) => {
               const isActive = filters.statusCode === option.value;
+              /* 0건 칩은 감춘다 — 걸린 칩은 남겨 풀 수 있게(사용자 지시 2026-11-24). */
+              if (statusTotals[index] === 0 && !isActive) return null;
               return (
                 <Chip
                   key={option.value}
@@ -705,6 +707,7 @@ export const DispositionDecisionScreen = ({
           >
             {historyTypeOptions.map((option, index) => {
               const isActive = historyFilters.dispositionTypeCode === option.value;
+              if (historyTypeTotals[index] === 0 && !isActive) return null;
               return (
                 <Chip
                   key={option.value}

@@ -90,6 +90,7 @@ export const ReturnForm = ({
    */
   const codeField = (key: ReturnCodeKey, label: string) => (
     <SelectField
+      required
       label={label}
       options={codeOptions[key]}
       value={values.codes[key]}
@@ -112,6 +113,7 @@ export const ReturnForm = ({
          */}
         <SelectField
           wide
+          required
           label={t.fields.supplier}
           options={supplierOptions}
           value={values.supplier}
@@ -132,6 +134,7 @@ export const ReturnForm = ({
             htmlFor={issuedDateId}
             label={t.fields.issuedDate}
             info={t.notes.businessDateDerived}
+            required
           />
           <DatePicker
             id={issuedDateId}
@@ -157,6 +160,7 @@ export const ReturnForm = ({
           <TextField
             type="time"
             label={t.fields.issuedTime}
+            required
             value={values.issuedTime}
             disabled={isLocked}
             aria-invalid={issuedError !== undefined}

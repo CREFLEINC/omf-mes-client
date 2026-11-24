@@ -19,6 +19,7 @@ import {
   useFilterMore,
 } from '../../patterns/filter-more';
 import type { LookupSource } from '../../patterns/lookup-display';
+import { UsageChip } from '../../patterns/usage-chip';
 import { CalibrationBadge } from './calibration-badge';
 import { judgeCalibration } from './calibration-status';
 import { type CodeOption, codeLabel, defaultGaugeFilters, lookupLabel } from './code-options';
@@ -207,7 +208,7 @@ export const GaugeListPane = ({
     {
       key: 'isActive',
       header: t.fields.isActive,
-      render: (row) => (row.isActive ? t.values.active : t.values.inactive),
+      render: (row) => <UsageChip isActive={row.isActive} />,
     },
   ];
 

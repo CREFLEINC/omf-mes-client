@@ -31,7 +31,8 @@ export const expeditedShipment = {
     loadFailed: '생산 완료분 목록을 불러오지 못했습니다',
     fields: {
       lotNo: 'LOT',
-      item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       qty: '수량',
       status: 'Lot Status',
     },

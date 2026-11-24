@@ -26,6 +26,8 @@ export interface SelectFieldProps {
    * 고장 난 것으로 읽는다(배치 규범 4).
    */
   disabled?: boolean;
+  /** 필수 칸 — 라벨 밖에 빨간 * 를 둔다. 검증은 화면이 따로 한다. */
+  required?: boolean;
 }
 
 /**
@@ -51,6 +53,7 @@ export const SelectField = ({
   placeholder,
   wide = false,
   disabled = false,
+  required = false,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
@@ -60,7 +63,7 @@ export const SelectField = ({
 
   return (
     <div className={wide ? 'field-cell wide-select' : 'field-cell'}>
-      <FieldLabel htmlFor={id} label={label} />
+      <FieldLabel htmlFor={id} label={label} required={required} />
       <Select
         id={id}
         options={options}

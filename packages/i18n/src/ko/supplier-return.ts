@@ -228,7 +228,8 @@ export const supplierReturn = {
   /** 라인 표의 머리글과 칸 문구. 폭의 근거는 screens/supplier-return/gr-line-table.tsx에 있다. */
   lineTable: {
     select: '선택',
-    item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     lot: '자재 LOT',
     location: '위치',
     receiptQty: '입고 수량',

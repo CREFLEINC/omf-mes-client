@@ -173,7 +173,9 @@ export const partsIqcInspection = {
     requestNo: '의뢰번호',
     /** 생략 건은 진행할 검사가 없어 첫 탭 이름을 「검사 상세」로(사용자 정정 2026-11-23 · #353). */
     detailTab: '검사 상세',
-    item: '품목',
+    /** 품목은 품목코드 · 품목명 두 칸으로 나눠 보인다(품목 표기 분리). */
+    itemCode: '품목코드',
+    itemName: '품목명',
     titlePqc: 'PQC 공정검사',
     titleOqc: 'OQC 출하검사',
   },

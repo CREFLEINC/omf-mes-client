@@ -638,7 +638,8 @@ export const ProcessWorkspace = ({
       plantId={order.plantId ?? undefined}
       lines={readOnly ? toReleaseLines(allWorkOrders.data ?? [], {}, defaultLots) : releaseLines}
       orderNo={order.productionOrderNo}
-      itemLabel={item === undefined ? undefined : named(item.itemName, item.itemCode)}
+      itemCode={item?.itemCode}
+      itemName={item?.itemName}
       planDateOf={(planId) =>
         planFacts.find((entry) => entry.productionPlanId === planId)?.planDate ?? null
       }

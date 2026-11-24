@@ -60,7 +60,8 @@ export const stockStatus: Translated<typeof ko.stockStatus> = {
     transactionLines: 'Đang tải các dòng giao dịch',
   },
   table: {
-    item: 'Mặt hàng',
+    itemCode: 'Mã mặt hàng',
+    itemName: 'Tên mặt hàng',
     lot: 'LOT',
     location: 'Vị trí',
     onHandQty: 'Hiện có',
@@ -190,7 +191,8 @@ export const stockStatus: Translated<typeof ko.stockStatus> = {
     },
     lines: {
       title: 'Dòng giao dịch',
-      item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       lot: 'LOT',
       qty: 'Số lượng',
       uom: 'Đơn vị',

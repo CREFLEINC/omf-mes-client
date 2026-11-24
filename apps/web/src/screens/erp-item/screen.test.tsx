@@ -115,10 +115,10 @@ describe('ErpItemScreen', () => {
     expect(within(table).getByText('SYN_UNNAMED')).toBeInTheDocument();
     expect(within(table).getByText('8999')).toBeInTheDocument();
     // 사용 여부는 상태 라벨로 낸다(사용자 지시 2026-11-24).
-    expect(within(table).getByText(t.values.inactive).parentElement?.className).toMatch(
-      /status-idle/,
-    );
-    expect(within(table).getByText(t.values.active).parentElement?.className).toMatch(
+    expect(
+      within(table).getByText(messages.common.usage.inactive).parentElement?.className,
+    ).toMatch(/status-idle/);
+    expect(within(table).getByText(messages.common.usage.active).parentElement?.className).toMatch(
       /status-success/,
     );
     // 규격 · 품목 그룹은 목록에도 있다(사용자 지시 2026-11-24). 값이 없으면 「—」.

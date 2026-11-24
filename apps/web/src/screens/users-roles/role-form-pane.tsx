@@ -2,7 +2,7 @@ import { Button, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
-import { codeLockMessage, type Editability } from '../../patterns/master';
+import { CodeLockLabel, codeLockMessage, type Editability } from '../../patterns/master';
 import { DisabledAction } from './disabled-action';
 import { FieldLabel } from './field-label';
 import { requiredEmptyClass } from './required-empty';
@@ -127,17 +127,10 @@ export const RoleFormPane = ({
          */}
         <div className="field-cell">
           <div className="users-roles-label-row">
-            <FieldLabel htmlFor={roleCodeId} label={t.role.fields.roleCode} required />
-            {codeLockNote !== null && (
-              <p
-                id={codeLockNoteId}
-                className="iqc-inspection-action-note users-roles-scope-hint"
-                data-tone="info"
-              >
-                <Icon name="info" size={14} aria-hidden />
-                {codeLockNote}
-              </p>
-            )}
+            {/* 잠금 사유는 문장 대신 「변경 불가」 라벨 — 문장은 라벨 위 마우스 · 화면 읽기(사용자 지시 2026-11-24). */}
+            <CodeLockLabel reason={codeLockNote} reasonId={codeLockNoteId}>
+              <FieldLabel htmlFor={roleCodeId} label={t.role.fields.roleCode} required />
+            </CodeLockLabel>
           </div>
           <TextField
             id={roleCodeId}

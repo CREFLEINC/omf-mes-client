@@ -122,6 +122,7 @@ export const WorkerConnectDialog = ({ appUserId, onClose }: WorkerConnectDialogP
           <TextField
             ref={inputRef}
             id={inputId}
+            aria-required="true"
             fullWidth
             autoFocus
             placeholder={t.inputPlaceholder}

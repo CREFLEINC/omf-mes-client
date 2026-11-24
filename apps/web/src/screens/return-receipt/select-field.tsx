@@ -56,10 +56,15 @@ export const SelectField = ({
     .filter((part): part is string => part !== undefined)
     .join(' ');
   const labelNode = (
-    <label className="field-label" htmlFor={id}>
-      {label}
-      {required && <span aria-hidden="true"> *</span>}
-    </label>
+    <span className="field-label">
+      <label htmlFor={id}>{label}</label>
+      {/* 필수 표시는 라벨 밖 — 칸 이름에 `*` 가 섞이지 않게 한다. */}
+      {required && (
+        <span className="required-mark" aria-hidden="true">
+          {' *'}
+        </span>
+      )}
+    </span>
   );
 
   return (

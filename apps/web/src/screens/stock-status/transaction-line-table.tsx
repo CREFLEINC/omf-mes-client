@@ -2,6 +2,7 @@ import { Button, type Column, EmptyState, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { splitCodeName } from '../../patterns/split-code-name';
 import { describeReference, toReference, type ReferenceSource } from './lookups';
 import type { TransactionLineView } from './types';
 
@@ -13,18 +14,19 @@ const t = messages.stockStatus;
  *
  * | 열 | 폭 | 근거 |
  * | --- | ---: | --- |
- * | 품목 | **200px** | 이 표의 축 열이다. 「코드 · 이름」이 한 줄에 들어가야 훑을 수 있다 |
+ * | 품목코드 · 품목명 | **120px · 160px** | 이 표의 축 열이다. 두 열로 나눈다(사용자 지시 2026-11-24) |
  * | LOT | 144px | 잔액 표와 같다 — `LOT-2026-000045` 15자 + 셀 여백 |
  * | 수량 | 96px | 여섯 자리 수 + 우측 정렬 여백 |
  * | 단위 | 96px | 단위 코드만 낸다 |
  * | 출발·도착 창고·위치 | 각 **200px** | 넷 다 「코드 · 이름」이라 축 열과 같은 폭이 든다 |
  *
- * 합은 **1,336px**이다. `.wide-table` 하한(928px)을 넘으므로 각 열이 선언한 폭 그대로
+ * 합은 **1,416px**이다. `.wide-table` 하한(928px)을 넘으므로 각 열이 선언한 폭 그대로
  * 렌더되고, 모자란 폭은 디자인 시스템의 `overflow-x` 상자가 가로 스크롤로 처리한다.
  * 이동 전후를 한 줄에서 견주는 것이 이 표의 목적이라 넷을 줄여 짓누를 수 없다.
  */
 const WIDTH = {
-  item: '200px',
+  itemCode: '120px',
+  itemName: '160px',
   lot: '144px',
   qty: '96px',
   uom: '96px',
@@ -94,13 +96,24 @@ export const buildLineColumns = ({
       ? t.values.empty
       : describeReference(toReference(warehouseLookup, warehouseId));
 
+  const itemCodeNameOf = (line: TransactionLineView): { code: string; name: string } =>
+    splitCodeName(
+      describeReference(toReference(itemNames.get(line.itemId) ?? itemLookup, line.itemId)),
+      t.values.empty,
+    );
+
   return [
     {
       key: 'item',
-      header: t.history.lines.item,
-      width: WIDTH.item,
-      render: (line) =>
-        describeReference(toReference(itemNames.get(line.itemId) ?? itemLookup, line.itemId)),
+      header: t.history.lines.itemCode,
+      width: WIDTH.itemCode,
+      render: (line) => itemCodeNameOf(line).code,
+    },
+    {
+      key: 'itemName',
+      header: t.history.lines.itemName,
+      width: WIDTH.itemName,
+      render: (line) => itemCodeNameOf(line).name,
     },
     {
       key: 'lot',

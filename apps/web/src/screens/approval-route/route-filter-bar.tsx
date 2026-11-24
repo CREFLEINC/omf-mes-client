@@ -185,35 +185,40 @@ export const RouteFilterBar = ({
 
 export interface ActiveFilterChipsProps {
   includeInactive: boolean;
+  /** 지금 조건에서 사용 중인 결재선 수. 받기 전이면 이름만 낸다. */
+  activeCount: number | undefined;
   onChange: (includeInactive: boolean) => void;
 }
 
 /**
- * 사용 유무 라벨 「전체 · 사용」을 위 줄에 낸다(사용자 지시 2026-11-24) — 누르는 즉시 건다. 계약 조건이 「사용 중만」
- * (`activeOnly`) 하나라 「미사용만」은 고를 수 없다.
+ * 사용 유무 라벨 「사용 N건」을 위 줄에 낸다(사용자 지시 2026-11-24) — 누르는 즉시 건다. 계약 조건이 「사용 중만」
+ * (`activeOnly`) 하나라 「미사용만」은 고를 수 없다. 「전체」 라벨은 두지 않는다 — 고른 「사용」을 다시 누르면 전체(미사용
+ * 포함)로 풀린다. 0건이면 감춘다(고른 동안은 남긴다).
  */
-export const ActiveFilterChips = ({ includeInactive, onChange }: ActiveFilterChipsProps) => {
+export const ActiveFilterChips = ({
+  includeInactive,
+  activeCount,
+  onChange,
+}: ActiveFilterChipsProps) => {
   const target = useHubActionsTarget();
-  const options = [
-    { value: true, label: t.filters.all },
-    { value: false, label: t.filters.activeOnly },
-  ];
+  const isActiveOnly = !includeInactive;
   const group = (
     <div className="inspection-hub-counts" role="group" aria-label={t.filters.activeGroup}>
-      {options.map((option) => (
+      {(isActiveOnly || activeCount !== 0) && (
         <Chip
-          key={option.label}
           variant="filter"
           size="sm"
-          selected={includeInactive === option.value}
-          aria-pressed={includeInactive === option.value}
+          selected={isActiveOnly}
+          aria-pressed={isActiveOnly}
           onSelectedChange={() => {
-            onChange(option.value);
+            onChange(isActiveOnly);
           }}
         >
-          {option.label}
+          {activeCount === undefined
+            ? t.filters.activeOnly
+            : messages.common.inspectionHub.count(t.filters.activeOnly, activeCount)}
         </Chip>
-      ))}
+      )}
     </div>
   );
 

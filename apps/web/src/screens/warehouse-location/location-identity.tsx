@@ -1,9 +1,10 @@
-import { Chip, Icon, IconButton, TextField } from '@crefle/web-ui';
+import { Icon, IconButton, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId, useState } from 'react';
 
 import { levelIconOf, levelNameOf } from '../../patterns/location-tree-cell';
 import { Select } from '../../patterns/select';
+import { UsageChip } from '../../patterns/usage-chip';
 import type { Location } from './types';
 
 const t = messages.warehouseLocation;
@@ -73,11 +74,7 @@ export const IdentityHeader = ({
       {(chips !== undefined || isActive !== undefined) && (
         <div className="location-identity-chips">
           {chips}
-          {isActive !== undefined && (
-            <Chip size="sm" status={isActive ? 'success' : 'idle'}>
-              {isActive ? t.values.active : t.values.inactive}
-            </Chip>
-          )}
+          {isActive !== undefined && <UsageChip isActive={isActive} />}
         </div>
       )}
     </div>
@@ -99,6 +96,8 @@ export const LocationIdentity = ({ subject, code, alias, isActive }: LocationIde
 export interface LocationFact {
   label: string;
   value: string;
+  /** 비우면 저장이 막히는 값 — 이름 옆에 빨간 *(이름 밖이라 접근 이름은 그대로). */
+  required?: boolean | undefined;
   error?: string | undefined;
   /** 저장 전에 바꾼 값이면 참 — 이름 옆에 점을 찍는다. */
   changed?: boolean | undefined;
@@ -217,7 +216,14 @@ export const LocationFacts = ({ facts }: { facts: readonly LocationFact[] }) => 
               fact.changed === true ? 'location-facts-row is-changed' : 'location-facts-row'
             }
           >
-            <dt id={id}>{fact.label}</dt>
+            <dt>
+              <span id={id}>{fact.label}</span>
+              {fact.required === true && (
+                <span className="required-mark" aria-hidden="true">
+                  {' *'}
+                </span>
+              )}
+            </dt>
             <dd>
               {fact.control !== undefined ? (
                 fact.control

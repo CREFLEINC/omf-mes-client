@@ -1033,9 +1033,13 @@ describe('InspectionStandardScreen — 기준 상세 조회', () => {
 
     expect(await findPlanField('기준코드')).toBeDisabled();
     expect(screen.getByLabelText('기준명')).toBeEnabled();
-    expect(
-      screen.getByText('지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
+      'title',
+      '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
+    );
+    expect(await findPlanField('기준코드')).toHaveAccessibleDescription(
+      '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
+    );
   });
 
   /*
@@ -1344,7 +1348,8 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
       '?plan=3002',
     );
 
-    await screen.findByText(/\(SYN-ITEM-01\)/);
+    /* 상세 머리의 품목코드 칸(품목 표기 분리) — 품목 상세가 풀린 뒤 단추를 누른다. */
+    await screen.findAllByText('SYN-ITEM-01');
     await user.click(await screen.findByRole('button', { name: '라우팅 조회' }));
 
     expect(router?.state.location.pathname).toBe('/master-data/routing');
@@ -3973,13 +3978,14 @@ describe('InspectionStandardScreen — 상세 표시 순서(#256)', () => {
   };
 
   /* 승인 · 사용 칩을 이 상자로 옮기고 칸 이름을 「~ 여부」로(사용자 지시 · #258). */
-  it('기준 상세는 검사 유형 · 품목 · 기준명 · 기준코드 · 기본 생략 여부 · 승인 여부 · 사용 여부 순서다', async () => {
+  it('기준 상세는 검사 유형 · 품목코드 · 품목명 · 기준명 · 기준코드 · 기본 생략 여부 · 승인 여부 · 사용 여부 순서다', async () => {
     renderSelectedVersion();
     await awaitVersionForm();
 
-    expect(labelsIn('.inspection-standard-plan-facts').slice(0, 7)).toEqual([
+    expect(labelsIn('.inspection-standard-plan-facts').slice(0, 8)).toEqual([
       t.fields.inspectionType,
-      t.fields.item,
+      t.listColumns.itemCode,
+      t.listColumns.itemName,
       t.fields.inspectionPlanName,
       t.fields.inspectionPlanCode,
       t.detail.defaultSkipLabel,

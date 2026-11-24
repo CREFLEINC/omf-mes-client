@@ -1,4 +1,4 @@
-import { Button, Card, TextField } from '@crefle/web-ui';
+import { Button, Card, Field, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router';
@@ -182,28 +182,39 @@ export const LoginScreen = () => {
 
           <form onSubmit={handleSubmit}>
             <div className="login-fields">
-              <TextField
-                label={t.fields.loginId}
-                value={draft.loginId}
-                /* 계약 상한을 칸이 직접 막는다 — 넘겨 친 값이 요청에 실릴 자리를 만들지 않는다. */
-                maxLength={LOGIN_ID_MAX_LENGTH}
-                autoComplete="username"
-                fullWidth
-                onChange={(event) => {
-                  changeDraft({ loginId: event.target.value });
-                }}
-              />
+              {/* 폼 안이라 native required 대신 Field 가 빨간 * 를 그린다(검증·제출 동작 그대로). */}
+              <Field label={t.fields.loginId} required fullWidth>
+                {({ controlId }) => (
+                  <TextField
+                    id={controlId}
+                    aria-required="true"
+                    value={draft.loginId}
+                    /* 계약 상한을 칸이 직접 막는다 — 넘겨 친 값이 요청에 실릴 자리를 만들지 않는다. */
+                    maxLength={LOGIN_ID_MAX_LENGTH}
+                    autoComplete="username"
+                    fullWidth
+                    onChange={(event) => {
+                      changeDraft({ loginId: event.target.value });
+                    }}
+                  />
+                )}
+              </Field>
 
-              <TextField
-                label={t.fields.password}
-                type="password"
-                value={draft.password}
-                autoComplete="current-password"
-                fullWidth
-                onChange={(event) => {
-                  changeDraft({ password: event.target.value });
-                }}
-              />
+              <Field label={t.fields.password} required fullWidth>
+                {({ controlId }) => (
+                  <TextField
+                    id={controlId}
+                    aria-required="true"
+                    type="password"
+                    value={draft.password}
+                    autoComplete="current-password"
+                    fullWidth
+                    onChange={(event) => {
+                      changeDraft({ password: event.target.value });
+                    }}
+                  />
+                )}
+              </Field>
             </div>
 
             {/*

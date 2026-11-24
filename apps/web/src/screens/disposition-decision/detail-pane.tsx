@@ -8,14 +8,12 @@ import { InfoTip } from '../../patterns/info-tip';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
+import { splitCodeName } from '../../patterns/split-code-name';
 import { iqcResultLabel, IqcMatchChips } from './iqc-match';
 import type { DispositionLookup } from './lookups';
 import { NonconformanceLinkButton } from './nonconformance-link-button';
 import { SeverityBadge } from './severity-badge';
 import type { NonconformanceDetailView, NonconformanceLotRow } from './types';
-
-/** 품목 표시명 「코드 · 이름」의 구분자(lookups.ts). */
-const ITEM_LABEL_SEPARATOR = ' · '; // ui-check-ignore: C-13 표시명 구분자(lookups.ts 「코드 · 이름」)
 
 /** 선별로 새로 생긴 부적합(#352). */
 export interface DerivedNonconformance {
@@ -151,18 +149,11 @@ export const DetailPane = ({
    * PQC 검사 기본 정보(W-03-11 · #135)와 같은 짜임 — 상자 하나에 칸을 흘려 놓고, 판정에 바로 쓰는 값(번호 · 품목 · 수량 둘)을
    * 앞에 굵게, 나머지(사유 · 출처)는 보통 글씨로 잇는다(omf-all-around#275).
    */
-  /* 품목 표시명 「코드 · 이름」을 PQC 처럼 이름 위 · 코드 아래로 나눠 보인다(글 내용은 그대로). */
-  const itemLabel = lookupDisplayLabel(items, view.itemId);
-  const [itemCode, ...itemNameParts] = itemLabel.split(ITEM_LABEL_SEPARATOR);
-  const itemValue: ReactNode =
-    itemNameParts.length === 0 ? (
-      itemLabel
-    ) : (
-      <span className="disposition-detail-item">
-        <span>{itemNameParts.join(ITEM_LABEL_SEPARATOR)}</span>
-        <span className="disposition-detail-item-code">{itemCode}</span>
-      </span>
-    );
+  /* 품목 표시명 「코드 · 이름」을 품목코드 · 품목명 두 칸으로 나눈다(품목 표기 분리). 못 풀면 안내는 코드 칸에. */
+  const itemParts = splitCodeName(
+    lookupDisplayLabel(items, view.itemId),
+    messages.common.reference.empty,
+  );
   /** [이름, 값, 굵게?, 이름 옆 ⓘ 말풍선 글?] */
   const facts: [string, ReactNode, boolean?, string?][] = [
     [
@@ -173,7 +164,8 @@ export const DetailPane = ({
       </span>,
       true,
     ],
-    [t.fields.item, itemValue, true],
+    [t.fields.itemCode, itemParts.code, true],
+    [t.fields.itemName, itemParts.name, true],
     [t.detail.affectedQty, `${view.affectedQtyText}${unit}`, true],
     ...(isInbound && remainingText !== undefined
       ? [[t.fields.remainingQty, remainingText, true] as [string, ReactNode, boolean]]

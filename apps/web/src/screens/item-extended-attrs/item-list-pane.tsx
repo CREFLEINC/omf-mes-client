@@ -6,6 +6,7 @@ import { BoardTable } from '../../patterns/board-table';
 import { hasChangedFilters } from '../../patterns/filter-more';
 import { OneLine } from '../../patterns/po-board';
 import { Select } from '../../patterns/select';
+import { UsageName } from '../../patterns/usage-chip';
 import { EMPTY_ITEM_FILTERS, hasAnyFilter } from './filters';
 import type { ItemTypeOption } from './item-queries';
 import { codeValueName } from './options';
@@ -180,7 +181,9 @@ export const ItemListPane = ({
       key: 'itemName',
       header: t.origin.fields.itemName,
       render: (row) => (
-        <OneLine text={row.isActive ? row.itemName : `${row.itemName}${t.values.inactiveSuffix}`} />
+        <UsageName isActive={row.isActive}>
+          <OneLine text={row.itemName} />
+        </UsageName>
       ),
     },
     {

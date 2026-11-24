@@ -219,8 +219,10 @@ export const ZaloConnectionScreen = () => {
 
     return (
       <div className="zalo-secret">
+        {/* [바꾸기]로 연 칸은 비우면 저장을 막는다(secretRequired) — 필수. */}
         <TextField
           label={label}
+          required
           type="password"
           autoComplete="new-password"
           value={value}
@@ -568,6 +570,7 @@ export const ZaloConnectionScreen = () => {
         <section className="pane zalo-template-common" aria-label={t.fields.paramMaxLength}>
           <TextField
             label={`${t.fields.paramMaxLength} (${t.values.charUnit})`}
+            required
             inputMode="numeric"
             value={values.paramMaxLength}
             onChange={(event) => change({ paramMaxLength: event.target.value })}

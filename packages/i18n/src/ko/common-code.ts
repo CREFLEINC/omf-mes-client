@@ -124,11 +124,6 @@ export const commonCode = {
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
     empty: '—',
     /*
-     * 좁은 좌 페인에서 「사용 여부」 열을 따로 두면 이름 열이 짓눌린다 —
-     * 이름 뒤 접미로 붙여 열을 늘리지 않는다.
-     */
-    inactiveSuffix: ' (미사용)',
-    /*
      * 값은 있는데 그 번호를 선택 목록에서 찾지 못했다. **번호를 그대로 내지 않는다** —
      * 내부 식별자라 사용자가 쓸 수 없고, 보이면 자료로 읽힌다.
      */
@@ -304,8 +299,6 @@ export const commonCode = {
        */
       appUserLinked: '연결됨',
       appUserNotLinked: '연결 안 됨',
-      active: '사용 중',
-      inactive: '미사용',
     },
     empty: {
       noneTitle: '등록된 작업자가 없습니다',
@@ -411,10 +404,6 @@ export const commonCode = {
       country: '국가',
       erpPartnerCode: 'ERP 코드',
       isActive: '사용 여부',
-    },
-    values: {
-      active: '사용 중',
-      inactive: '미사용',
     },
     empty: {
       noneTitle: '등록된 거래처가 없습니다',
@@ -574,8 +563,6 @@ export const commonCode = {
       period: (from: string, to: string): string => `${from} ~ ${to}`,
       /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
       empty: '—',
-      /** 좁은 칸에서 「사용 여부」 열을 따로 두면 이름 열이 짓눌린다 — 이름 뒤 접미로 붙인다. */
-      inactiveSuffix: ' (미사용)',
     },
     validation: {
       required: '필수 입력 항목입니다.',

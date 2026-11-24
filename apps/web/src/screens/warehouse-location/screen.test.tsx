@@ -3463,7 +3463,7 @@ describe('WarehouseLocationScreen — 창고 정보 (안 A)', () => {
     const form = await screen.findByRole('region', { name: '창고 정보' });
     expect(await within(form).findByLabelText('창고 코드')).toHaveTextContent('WH-01');
     expect(within(form).getByLabelText('창고명')).toHaveTextContent('1공장 자재창고');
-    expect(within(form).getByText('사용 중')).toBeInTheDocument();
+    expect(within(form).getByText('사용', { exact: true })).toBeInTheDocument();
     expect(within(form).getByRole('switch', { name: '외부 창고' })).not.toBeChecked();
     expect(form.querySelector('.location-identity')?.textContent ?? '').not.toContain('외부 창고');
   });

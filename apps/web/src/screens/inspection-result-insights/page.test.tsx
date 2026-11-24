@@ -130,7 +130,9 @@ describe('검사실적·검사결과 공개 페이지 셸', () => {
     expect(await screen.findByText('이름을 불러오지 못했습니다')).toBeVisible();
     expect(screen.queryByText('101')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '실패한 조건 다시 시도' }));
-    expect(await screen.findByText('ITEM-101 · 합성 품목 (미사용)')).toBeVisible();
+    /* 목록 품목은 품목코드 · 품목명 두 칸(품목 표기 분리). */
+    expect(await screen.findByText('합성 품목 (미사용)')).toBeVisible();
+    expect(screen.getByText('ITEM-101')).toBeVisible();
     /* 잘린 조회 조건 목록 안내 배너는 두지 않는다(사용자 지시 · omf-all-around#217). */
     expect(screen.queryByText('조회 조건 목록 일부만 표시됩니다.')).not.toBeInTheDocument();
     expect(itemRequests).toBe(2);

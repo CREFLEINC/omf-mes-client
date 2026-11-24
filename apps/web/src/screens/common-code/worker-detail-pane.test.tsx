@@ -144,7 +144,7 @@ describe('WorkerDetailPane — 값 표기', () => {
 
   it('사용 여부를 값으로 낸다', () => {
     renderPane();
-    expect(screen.getByText('사용 중')).toBeInTheDocument();
+    expect(screen.getByText('사용', { exact: true })).toBeInTheDocument();
   });
 
   it('미사용 작업자는 미사용으로 낸다', () => {

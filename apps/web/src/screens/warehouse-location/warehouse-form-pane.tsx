@@ -5,6 +5,7 @@ import { useId, useState } from 'react';
 
 import { InfoTip } from '../../patterns/info-tip';
 import { LOCATION_LEVEL_CODES } from '../../patterns/location-level';
+import { CodeLockTextField } from '../../patterns/master';
 import { levelIconOf, levelNameOf } from '../../patterns/location-tree-cell';
 import { Select } from '../../patterns/select';
 import {
@@ -226,13 +227,12 @@ const WarehouseCreateFields = ({
         onChange={(value) => onChange({ plantId: value })}
         error={fieldErrors.plantId}
       />
-      <TextField
+      <CodeLockTextField
+        lockReason={codeLockReason}
         label={t.fields.warehouseCode}
         required
         value={values.warehouseCode}
         onChange={(event) => onChange({ warehouseCode: event.target.value })}
-        disabled={codeLockReason !== null}
-        disabledReason={codeLockReason}
         error={fieldErrors.warehouseCode}
       />
       <TextField
@@ -441,6 +441,7 @@ export const WarehouseFormPane = ({
     {
       label: t.fields.businessUnit,
       value: labelOf(lookups.businessUnits, values.businessUnitId),
+      required: true,
       error: fieldErrors.businessUnitId,
       changed: changed('businessUnitId'),
       edit: {
@@ -451,6 +452,7 @@ export const WarehouseFormPane = ({
     {
       label: t.fields.warehouseType,
       value: labelOf(lookups.warehouseTypes, values.warehouseTypeCode),
+      required: true,
       error: fieldErrors.warehouseTypeCode,
       changed: changed('warehouseTypeCode'),
       edit: {

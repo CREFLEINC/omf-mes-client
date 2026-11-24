@@ -9,6 +9,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 
 import { InfoTip } from '../../patterns/info-tip';
+import { splitCodeName } from '../../patterns/split-code-name';
 
 import type { PeriodInput } from './period';
 import type { WorkOrderRow } from './row-view';
@@ -93,7 +94,17 @@ export const WorkOrderTable = ({
         </Button>
       ),
     },
-    { key: 'itemId', header: t.columns.itemId, render: (row) => itemLabel(row.itemIdText) },
+    /* 품목코드 · 품목명은 두 열(사용자 지시 2026-11-24). */
+    {
+      key: 'itemId',
+      header: t.columns.itemCode,
+      render: (row) => splitCodeName(itemLabel(row.itemIdText), t.blank).code,
+    },
+    {
+      key: 'itemName',
+      header: t.columns.itemName,
+      render: (row) => splitCodeName(itemLabel(row.itemIdText), t.blank).name,
+    },
     {
       key: 'orderQty',
       header: t.columns.orderQty,

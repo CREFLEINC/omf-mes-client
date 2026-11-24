@@ -30,6 +30,8 @@ export const dispositionRequest = {
     keyword: '검색어',
     lotNo: 'LOT',
     item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     qty: '수량',
     uom: '단위',
     receiptNo: '입고번호',

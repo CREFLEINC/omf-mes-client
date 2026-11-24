@@ -97,6 +97,8 @@ export const ItemAttrsPane = ({
         {
           id: shelfLifeManagedId,
           label: t.attrs.fields.shelfLifeManaged,
+          /* 켜면 옆 일수 칸이 필수다(조건부 필수 A-2) — 그때만 * 를 단다. */
+          required: values.shelfLifeManaged,
           /* 켜야 일수를 넣는다 — 스위치 옆에 일수 칸이 나타난다(꺼져 있으면 칸이 없다 · 저장 때 비워 보낸다). */
           control: (
             <>

@@ -2,6 +2,7 @@ import { AlertBanner, Button, Checkbox, Chip, SkeletonText } from '@crefle/web-u
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
+import { UsageChip } from '../../patterns/usage-chip';
 import { DisabledAction } from './disabled-action';
 import type { PartnerRoleChoice } from './partner-role-draft';
 import type { Partner } from './types';
@@ -54,7 +55,7 @@ const orEmptyMark = (value: string | null | undefined): string =>
  * 지역 부품이라 여기서 자기 사본을 갖는다 — 한 자리로 모으는 것은 그 파일까지 건드리는
  * 별건의 정리이고, 이 회차의 목적(거래처 역할 편집)에 섞지 않는다.
  */
-const ValueField = ({ label, value }: { label: string; value: string }) => {
+const ValueField = ({ label, value }: { label: string; value: ReactNode }) => {
   const labelId = useId();
 
   return (
@@ -245,7 +246,7 @@ export const PartnerRolePane = ({
           />
           <ValueField
             label={t.partner.fields.isActive}
-            value={partner.isActive ? t.partner.values.active : t.partner.values.inactive}
+            value={<UsageChip isActive={partner.isActive} />}
           />
         </div>
       </section>

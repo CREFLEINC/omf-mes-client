@@ -146,16 +146,18 @@ describe('PlanPane — 표시', () => {
 });
 
 describe('PlanPane — 잠금과 사유', () => {
-  /* 잠금 사유는 칸 이름 오른쪽에 짧게 둔다(사용자 지시 2026-11-04). */
-  it('코드 잠금 사유는 그 칸 이름 오른쪽에 붙고 다른 칸은 열려 있다', () => {
+  /* 잠금 사유는 문장 대신 칸 이름 오른쪽 「변경 불가」 라벨 — 문장은 마우스 · 화면 읽기로(사용자 지시 2026-11-24). */
+  it('코드 잠금은 그 칸 이름 오른쪽 「변경 불가」 라벨로 붙고 다른 칸은 열려 있다', () => {
     renderPane({ codeLockReason: '지금은 코드를 바꿀 수 없습니다.' });
 
     const code = screen.getByLabelText('기준코드');
     expect(code).toBeDisabled();
     expect(screen.getByLabelText('기준명')).toBeEnabled();
-    const hint = screen.getByText('지금은 코드를 바꿀 수 없습니다.');
-    expect(hint).toHaveClass('inspection-standard-label-hint');
-    expect(code).toHaveAttribute('aria-describedby', hint.id);
+    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
+      'title',
+      '지금은 코드를 바꿀 수 없습니다.',
+    );
+    expect(code).toHaveAccessibleDescription('지금은 코드를 바꿀 수 없습니다.');
   });
 
   /* 품목을 고르기 전에는 라우팅 칸도 안내 문구도 두지 않는다(사용자 지시 2026-11-05). */

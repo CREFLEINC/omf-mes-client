@@ -513,16 +513,13 @@ const ProductionLotGroup = ({
         <div className="lot-trace-group-head">
           <Facts
             items={[
+              /* 품목은 품목코드 · 품목명 두 칸(품목 표기 분리). */
+              { key: 'item', label: c.facts.itemCode, value: <Mono>{lot.item.code}</Mono> },
               {
-                key: 'item',
-                label: c.facts.item,
+                key: 'itemName',
+                label: c.facts.itemName,
                 wide: true,
-                value: (
-                  <Ellipsis
-                    text={named(lot.item.name, lot.item.code)}
-                    title={named(lot.item.name, lot.item.code)}
-                  />
-                ),
+                value: <Ellipsis text={lot.item.name} title={lot.item.name} />,
               },
               {
                 key: 'wo',
@@ -908,11 +905,13 @@ const DetailFrame = ({
       <Facts
         compact
         items={[
+          /* 품목은 품목코드 · 품목명 두 칸(품목 표기 분리). */
+          { key: 'item', label: c.facts.itemCode, value: <Mono>{head.item.code}</Mono> },
           {
-            key: 'item',
-            label: c.facts.item,
+            key: 'itemName',
+            label: c.facts.itemName,
             wide: true,
-            value: <Ellipsis text={named(head.item.name, head.item.code)} />,
+            value: <Ellipsis text={head.item.name} />,
           },
           ...impact,
         ]}

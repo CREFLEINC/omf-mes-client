@@ -268,10 +268,11 @@ describe('W-04-10 제품 폐기 요청 — 화면', () => {
    * 목록 첫 쪽(계약 기본 50건)으로 풀던 때는 그 쪽 밖의 품목이 전부 「알 수 없음」으로 섰고,
    * 그 문구는 *값이 잘못됐다*는 뜻이라 사용자에게 정반대로 읽혔다(G-9).
    */
-  it('대상 표의 품목을 「코드 · 이름」으로 낸다', async () => {
+  it('대상 표의 품목을 품목코드 · 품목명 두 칸으로 낸다', async () => {
     openScreen();
 
-    expect(await screen.findByText('FG-501 · 합성 완제품 가')).toBeInTheDocument();
+    expect(await screen.findByText('합성 완제품 가')).toBeInTheDocument();
+    expect(screen.getByText('FG-501')).toBeInTheDocument();
     /* 짝 방향 — 이름 자리가 「알 수 없음」으로 남지 않는다. */
     expect(screen.queryByText(messages.common.reference.unknown)).not.toBeInTheDocument();
   });

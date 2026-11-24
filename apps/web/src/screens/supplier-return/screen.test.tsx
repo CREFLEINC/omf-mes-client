@@ -144,6 +144,9 @@ const LINES_PATH_MARKER_QTY = 777;
 const WAREHOUSE_LABEL = 'SAMPLE-WH-01 · 합성 창고 가';
 const ITEM_LABEL = 'SAMPLE-ITEM-01 · 합성 품목 가';
 const ITEM_LABEL_B = 'SAMPLE-ITEM-02 · 합성 품목 나';
+/* 라인 표는 품목코드 · 품목명을 두 열로 나눠 보인다(사용자 지시 2026-11-24). */
+const ITEM_NAME = '합성 품목 가';
+const ITEM_NAME_B = '합성 품목 나';
 const UOM_LABEL = 'SAMPLE-EA · 합성 단위 개';
 const LOCATION_LABEL = 'SAMPLE-LOC-A1 · 합성 열 가1';
 
@@ -661,7 +664,7 @@ const openReceipt = async (
   goodsReceiptNo = 'GR-2026-900001',
 ): Promise<void> => {
   await selectReceipt(user, goodsReceiptNo);
-  await screen.findAllByText(ITEM_LABEL);
+  await screen.findAllByText(ITEM_NAME);
 };
 
 /**
@@ -751,7 +754,7 @@ const setupReadyToSubmit = async (
    * 도로 푼다. 아래 구획이 열린 신호(참조 이름이 풀린 것)를 두 길에서 똑같이 기다린다.
    */
   if (search.includes(`${SELECTION_KEYS.goodsReceipt}=`)) {
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
   } else {
     await screen.findByText('GR-2026-900001');
     await openReceipt(rendered.user);
@@ -845,7 +848,7 @@ describe('SupplierReturnScreen — 첫 진입 조회', () => {
 
     await screen.findByText('GR-2026-900001');
     await selectReceipt(user, 'GR-2026-900001');
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(requestsTo(requests, ISSUES_PATH)).toHaveLength(0);
     expect(requests.map((request) => request.method)).toEqual(requests.map(() => 'GET'));
@@ -1055,7 +1058,7 @@ describe('SupplierReturnScreen — 수명 표', () => {
   it('고른 전표를 다시 누르면 풀린다', async () => {
     const { user } = renderScreen(allRoutes(), '?gr=9001');
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
     await user.click(screen.getByRole('button', { name: t.actions.deselectRow('GR-2026-900001') }));
 
     await waitFor(() => {
@@ -1089,7 +1092,7 @@ describe('SupplierReturnScreen — 전표를 고른 뒤', () => {
 
     await screen.findByText('GR-2026-900001');
     await selectReceipt(user, 'GR-2026-900001');
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(1);
     expect(within(lineTable()).getAllByRole('row')).toHaveLength(
@@ -1106,7 +1109,7 @@ describe('SupplierReturnScreen — 전표를 고른 뒤', () => {
 
     await screen.findByText('GR-2026-900001');
     await selectReceipt(user, 'GR-2026-900001');
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(requestsTo(requests, LINES_PATH)).toHaveLength(0);
     /* 짝 방향 — 그 경로에만 있는 수량이 화면 어디에도 없다. */
@@ -1258,7 +1261,7 @@ describe('SupplierReturnScreen — 전표를 고른 뒤', () => {
     await screen.findByText('GR-2026-900001');
     await selectReceipt(user, 'GR-2026-900001');
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(screen.getAllByText(WAREHOUSE_LABEL).length).toBeGreaterThan(0);
     expect(screen.getByText(t.lineTable.receiptQtyPair(100, UOM_LABEL))).toBeInTheDocument();
@@ -1281,7 +1284,7 @@ describe('SupplierReturnScreen — 전표를 고른 뒤', () => {
 
     release();
 
-    expect(await screen.findAllByText(ITEM_LABEL)).toHaveLength(2);
+    expect(await screen.findAllByText(ITEM_NAME)).toHaveLength(2);
   });
 
   /**
@@ -1302,11 +1305,11 @@ describe('SupplierReturnScreen — 전표를 고른 뒤', () => {
     await selectReceipt(user, 'GR-2026-900001');
 
     await waitFor(() => {
-      expect(screen.getAllByText(ITEM_LABEL).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(ITEM_NAME).length).toBeGreaterThan(0);
     });
 
     /* 그 줄의 이름만 사라진다 — 다른 줄의 이름은 그대로다. */
-    expect(screen.queryByText(ITEM_LABEL_B)).not.toBeInTheDocument();
+    expect(screen.queryByText(ITEM_NAME_B)).not.toBeInTheDocument();
     expect(screen.getAllByText(t.values.unknown).length).toBeGreaterThan(0);
     /* 404는 다시 불러도 같은 답이라 복구 수단을 세우지 않는다. */
     expect(screen.queryByText(t.reasons.lineReferencesFailed)).not.toBeInTheDocument();
@@ -1346,7 +1349,7 @@ describe('SupplierReturnScreen — 전표를 고른 뒤', () => {
     expect(screen.queryByText(t.filters.lookupTruncated)).not.toBeInTheDocument();
 
     await selectReceipt(user, 'GR-2026-900001');
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(screen.queryByText(t.reasons.lineReferencesTruncated)).not.toBeInTheDocument();
   });
@@ -1507,7 +1510,7 @@ describe('SupplierReturnScreen — 다시 조회', () => {
   it('조건·쪽·고른 전표를 바꾸지 않는다', async () => {
     const { user } = renderScreen(allRoutes([changingListRoute()]), '?q=GR&page=2&gr=9001');
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
     await refresh(user);
 
     expect(currentLocation()).toBe(`${ROUTE}?q=GR&page=2&gr=9001`);
@@ -2136,7 +2139,7 @@ describe('SupplierReturnScreen — 줄 선택과 반품 수량', () => {
     await user.click(selectBox(1));
     await user.type(qtyBox(1), '10');
 
-    expect(screen.getAllByText(ITEM_LABEL).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(ITEM_NAME).length).toBeGreaterThan(0);
     expectNoInternalIds();
   });
 });
@@ -2234,7 +2237,7 @@ describe('SupplierReturnScreen — 줄 초안의 수명', () => {
     await screen.findByText(t.empty.noLinesTitle);
 
     await selectReceipt(user, 'GR-2026-900001');
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(qtyBox(1)).toHaveValue('');
     expect(selectBox(1)).not.toBeChecked();
@@ -2247,7 +2250,7 @@ describe('SupplierReturnScreen — 줄 초안의 수명', () => {
   it('주소로 대상을 바꿔도 초안이 비워진다', async () => {
     const { user } = renderScreen(allRoutes(), '?gr=9001', '?gr=9002');
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     await user.click(selectBox(1));
     await user.type(qtyBox(1), '10');
@@ -2256,7 +2259,7 @@ describe('SupplierReturnScreen — 줄 초안의 수명', () => {
     await screen.findByText(t.empty.noLinesTitle);
 
     await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900001') }));
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(qtyBox(1)).toHaveValue('');
     expect(selectBox(1)).not.toBeChecked();
@@ -2266,7 +2269,7 @@ describe('SupplierReturnScreen — 줄 초안의 수명', () => {
   it('조건을 바꾸면 초안이 비워진다', async () => {
     const { user } = renderScreen(allRoutes(), '?gr=9001');
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     await user.click(selectBox(1));
     await user.type(qtyBox(1), '10');
@@ -2277,7 +2280,7 @@ describe('SupplierReturnScreen — 줄 초안의 수명', () => {
     await screen.findByText(t.empty.noSelectionTitle);
 
     await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900001') }));
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(qtyBox(1)).toHaveValue('');
     expect(selectBox(1)).not.toBeChecked();
@@ -2582,7 +2585,7 @@ describe('SupplierReturnScreen — 확인 창', () => {
       '?gr=9001',
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
     /* 상한(120) 안이지만 **한 번 줄면 넘는** 수량이다 — 그 사이가 이 잣대의 자리다. */
     await pickLine(user, 1, '115');
     await fillReturnForm(user);
@@ -3221,7 +3224,7 @@ describe('SupplierReturnScreen — 대상이 바뀔 때 두 초안', () => {
     const { user } = await moveToOtherReceipt();
 
     await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900001') }));
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(selectBox(1)).not.toBeChecked();
     expect(qtyBox(1)).toHaveValue('');
@@ -3471,7 +3474,7 @@ describe('SupplierReturnScreen — 서버 필드 오류의 자리', () => {
     });
 
     await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900001') }));
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     /* 짝 방향 — 되돌아온 것이 실제로 그 전표다. */
     expect(currentLocation()).toContain('gr=9001');
@@ -3560,7 +3563,7 @@ describe('SupplierReturnScreen — 전송 중 주소가 바뀌면', () => {
 
     /* 되돌아가도 남의 결과가 되살아나지 않는다 — 그 반품의 결과를 볼 자리는 이미 없다. */
     await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900001') }));
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
   });
@@ -3632,7 +3635,7 @@ describe('SupplierReturnScreen — 전송 중 주소가 바뀌면', () => {
     expect(screen.queryByText(messages.httpError.forbidden)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900001') }));
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     /* 짝 방향 — 되돌아온 것이 실제로 그 전표다(화면이 열려 있다). */
     expect(currentLocation()).toContain('gr=9001');

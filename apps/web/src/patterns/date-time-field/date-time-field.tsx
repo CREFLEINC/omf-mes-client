@@ -17,6 +17,8 @@ export interface DateTimeFieldProps {
   minDate?: string;
   disabled?: boolean;
   invalid?: boolean;
+  /** 필수 칸이면 이름 옆 빨간 *(`.required-mark`, 라벨 밖이라 접근 이름은 그대로). 표시만 하고 검증은 부르는 쪽이 한다. */
+  required?: boolean;
   'aria-describedby'?: string;
   onChange: (value: string) => void;
 }
@@ -34,6 +36,7 @@ export const DateTimeField = ({
   minDate,
   disabled = false,
   invalid = false,
+  required = false,
   'aria-describedby': describedBy,
   onChange,
 }: DateTimeFieldProps) => {
@@ -44,9 +47,18 @@ export const DateTimeField = ({
 
   return (
     <div className="field-cell date-time-field">
-      <label className="field-label" htmlFor={id}>
-        {label}
-      </label>
+      {required ? (
+        <span className="field-label">
+          <label htmlFor={id}>{label}</label>
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </span>
+      ) : (
+        <label className="field-label" htmlFor={id}>
+          {label}
+        </label>
+      )}
       <div className="date-time-field-controls">
         <DatePicker
           min={minDate}

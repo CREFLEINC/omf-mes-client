@@ -358,10 +358,13 @@ const BomTreeTable = ({ bom, uoms, processes, onEdit }: BomTreeTableProps) => {
   };
 
   const columns: Column<BomTreeRow>[] = [
-    /* 폭을 주지 않는 유일한 열 — 들여 쓴 품목 이름이 남는 폭을 다 쓴다. */
+    /*
+     * 폭을 주지 않는 유일한 열 — 들여 쓴 품목코드가 남는 폭을 다 쓴다. 품목명은 옆 칸에 따로 둔다(사용자 지시 2026-11-24 ·
+     * ERP BOM 과 같은 모양) — 이 칸은 펼침 단추 이름에 쓰려고 이름도 넘기고, 보이는 이름은 app.css `.bom-tree-split` 이 감춘다.
+     */
     {
       key: 'item',
-      header: tb.columns.item,
+      header: t.origin.fields.itemCode,
       render: (row) => {
         const item = itemOf(row.itemId);
         return (
@@ -374,6 +377,16 @@ const BomTreeTable = ({ bom, uoms, processes, onEdit }: BomTreeTableProps) => {
             onRetry={retryFailed}
           />
         );
+      },
+    },
+    {
+      key: 'itemName',
+      header: t.origin.fields.itemName,
+      width: '180px',
+      render: (row) => {
+        const item = itemOf(row.itemId);
+        /* 받기 전 · 못 받음은 코드 칸이 그 사정을 낸다 — 여기는 비운다. */
+        return item.code === null ? t.values.empty : <OneLine text={item.name} />;
       },
     },
     {
@@ -466,9 +479,9 @@ const BomTreeTable = ({ bom, uoms, processes, onEdit }: BomTreeTableProps) => {
   return (
     <BoardTable
       label={t.component.paneTitle}
-      className="bom-tree-table"
+      className="bom-tree-table bom-tree-split"
       widthKey="omf-mes:item-boms:columns:tree"
-      minWidth="58rem"
+      minWidth="69rem"
       columns={columns}
       rows={rows}
       getRowId={(row) => row.key}

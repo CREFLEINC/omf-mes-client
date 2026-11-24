@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { Select } from '../../patterns/select';
+import { splitCodeName } from '../../patterns/split-code-name';
 import { codePlaceholder } from './code-options';
 import type { LineRowView } from './line-replace-request';
 import {
@@ -57,15 +58,15 @@ const describeQty = (qty: number | null, uomName: string): string =>
  * | 열 | 폭 | 근거 |
  * | --- | ---: | --- |
  * | 줄번호 | 64px | 두 자리 수 + 우측정렬 여백 |
- * | **품목** | **미지정** | 「코드 · 이름」을 담고 남는 폭을 흡수한다 |
+ * | 품목코드 | 120px | 품목코드(사용자 지시 2026-11-24 — 품목코드 · 품목명을 두 열로 나눈다) |
+ * | **품목명** | **미지정** | 이름을 담고 남는 폭을 흡수한다 |
  * | 자재 LOT | 152px | LOT 번호 + 4갈래 표기 |
  * | 장부 수량 | 112px | 수 + 단위 표기 · **블라인드에서 빠진다** |
  * | 실물 수량 | 136px | `sm` 입력칸 + 단위 표기 + 인라인 오류 |
  * | 차이 | 96px | 부호 있는 수 + 낡음 표식 · **블라인드에서 빠진다** |
  * | 차이 사유 | 184px | `sm` 선택칸(자리표시 문구가 들어간다) |
- * | **지정 폭 합** | **744px** | 블라인드에서는 536px |
- * | 흡수 열 예산 | 184px | 「코드 · 이름」이 접히지 않고 읽히는 하한 |
- * | **합** | **928px** | `58rem`에 정확히 맞는다 |
+ * | **지정 폭 합** | **864px** | 블라인드에서는 656px |
+ * | 흡수 열(품목명) | 64px | `58rem`(928px) 하한에서 받는 폭 — 표가 넓으면 더 받는다 |
  *
  * **장부와 차이가 함께 빠지는 것이 요점이다**(감지기 M30). 차이만 보여도
  * **실물 − 차이 = 장부**로 역산되어 블라인드가 무의미해진다 — 한쪽만 감추면 감춘 뜻이 없다.
@@ -89,6 +90,8 @@ export const buildCountLineColumns = ({
 }: CountLineColumnsInput): Column<LineRowView>[] => {
   const uomNameOf = (row: LineRowView): string =>
     describeReference(toReference(uomLookup, row.line.uomId));
+  const itemCodeNameOf = (itemId: number): { code: string; name: string } =>
+    splitCodeName(describeReference(itemNames.of(itemId)), t.values.empty);
 
   const systemQtyColumn: Column<LineRowView> = {
     key: 'systemQty',
@@ -126,12 +129,19 @@ export const buildCountLineColumns = ({
     },
     {
       key: 'item',
-      header: t.lineTable.item,
+      header: t.lineTable.itemCode,
+      width: '120px',
       /*
        * **번호를 문자열로 바꾸는 자리가 없다**(#44). 이름으로 풀 수 없는 세 갈래(미도착·목록에
        * 없음·실패)는 전부 문구로 갈리며, 어느 갈래에도 원시 번호가 담기지 않는다.
+       * 못 푼 안내는 품목코드 칸에, 품목명 칸은 빈 값 표시(`splitCodeName`).
        */
-      render: (row) => describeReference(itemNames.of(row.line.itemId)),
+      render: (row) => itemCodeNameOf(row.line.itemId).code,
+    },
+    {
+      key: 'itemName',
+      header: t.lineTable.itemName,
+      render: (row) => itemCodeNameOf(row.line.itemId).name,
     },
     {
       key: 'lot',
@@ -151,7 +161,14 @@ export const buildCountLineColumns = ({
     ...(isBlind ? [] : [systemQtyColumn]),
     {
       key: 'countedQty',
-      header: t.lineTable.countedQty,
+      header: (
+        <>
+          {t.lineTable.countedQty}
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </>
+      ),
       width: '136px',
       /*
        * **표 안의 입력칸.** 보이는 라벨을 둘 자리가 없어 `aria-label`로 준다(배치 규범 3의
@@ -167,6 +184,7 @@ export const buildCountLineColumns = ({
           fullWidth
           inputMode="decimal"
           aria-label={t.lineTable.countedQtyLabel(row.line.lineNo)}
+          aria-required="true"
           value={row.qtyText}
           disabled={isLocked}
           error={row.qty.kind === 'invalid' ? row.qty.message : undefined}

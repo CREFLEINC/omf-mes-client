@@ -97,8 +97,11 @@ const isGet = (request: Request, pathname: string): boolean =>
  *
  * 두 조회를 갈라 세어야 「목록을 1회 불렀다」와 「조준 조회가 1회 나갔다」가 서로를 가리지 않는다.
  */
+/** 위 줄 「사용」 라벨의 건수 조회(`size=1`)는 조준 조회가 아니다(사용자 지시 2026-11-24). */
+const isProbeQuery = (params: URLSearchParams): boolean =>
+  params.has('size') && params.get('size') !== '1';
 const isProbe = (request: Request): boolean =>
-  isGet(request, ROUTES_PATH) && new URL(request.url).searchParams.has('size');
+  isGet(request, ROUTES_PATH) && isProbeQuery(new URL(request.url).searchParams);
 
 const listBody = (
   items: unknown[],
@@ -152,7 +155,7 @@ const listRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   );
 const probeRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requests.filter(
-    (request) => request.url.pathname === ROUTES_PATH && request.url.searchParams.has('size'),
+    (request) => request.url.pathname === ROUTES_PATH && isProbeQuery(request.url.searchParams),
   );
 /** 쓰기로 나간 요청 전부. **경로를 가리지 않고 센다** — 잘못된 경로로 나간 쓰기도 잡아야 한다. */
 const writeRequests = (requests: RecordedRequest[]): RecordedRequest[] =>

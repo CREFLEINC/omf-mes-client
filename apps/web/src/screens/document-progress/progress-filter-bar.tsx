@@ -149,6 +149,7 @@ export const ProgressFilterBar = ({
       <div className="filter-bar">
         {/* 유형은 「전체」로 조회할 수 없다 — 「전체」를 두지 않고 하나를 고르게 한다. */}
         <SelectField
+          required
           label={t.fields.documentType}
           options={documentTypeOptions}
           value={filters.documentType}

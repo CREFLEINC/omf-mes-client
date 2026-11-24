@@ -167,11 +167,18 @@ export const ReceiveDialog = ({ arrival, onClose, onStale }: ReceiveDialogProps)
           <table className="replenishment-table" aria-label={tr.linesLabel}>
             <thead>
               <tr>
-                <th scope="col">{tr.columns.itemLot}</th>
+                <th scope="col">{tr.columns.itemCode}</th>
+                <th scope="col">{tr.columns.itemName}</th>
+                <th scope="col">{tr.columns.lot}</th>
                 <th scope="col" className="is-number">
                   {tr.columns.issued}
                 </th>
-                <th scope="col">{tr.columns.received}</th>
+                <th scope="col">
+                  {tr.columns.received}
+                  <span className="required-mark" aria-hidden="true">
+                    {' *'}
+                  </span>
+                </th>
                 <th scope="col">{tr.columns.reason}</th>
               </tr>
             </thead>
@@ -186,16 +193,16 @@ export const ReceiveDialog = ({ arrival, onClose, onStale }: ReceiveDialogProps)
               return (
                 <tbody key={line.goodsIssueLineId} className="replenishment-line">
                   <tr>
-                    <td className="is-wrap">
-                      <span className="replenishment-code">{line.itemCode}</span>{' '}
-                      {`${line.itemName}, ${line.lotNo}`}
-                    </td>
+                    <td className="replenishment-code">{line.itemCode}</td>
+                    <td className="is-wrap">{line.itemName}</td>
+                    <td className="replenishment-code">{line.lotNo}</td>
                     <td className="is-number">{qtyWithUom(line.issueQty, line.uomCode)}</td>
                     <td>
                       <TextField
                         size="sm"
                         inputMode="decimal"
                         aria-label={tr.receivedLabel(labelOf(line))}
+                        aria-required="true"
                         value={draft.received}
                         onChange={(event) =>
                           update(line.goodsIssueLineId, { received: event.target.value })
@@ -216,7 +223,7 @@ export const ReceiveDialog = ({ arrival, onClose, onStale }: ReceiveDialogProps)
                   </tr>
                   {(diff > 0 || problem !== null) && (
                     <tr className="replenishment-note-row">
-                      <td colSpan={4}>
+                      <td colSpan={6}>
                         {diff > 0 && (
                           <span className="replenishment-cap is-info">
                             {tr.diff(qtyWithUom(diff, line.uomCode))}

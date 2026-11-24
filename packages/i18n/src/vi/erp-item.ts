@@ -29,8 +29,6 @@ export const erpItem: Translated<typeof ko.erpItem> = {
   },
   values: {
     empty: '—',
-    active: 'Sử dụng',
-    inactive: 'Ngừng sử dụng',
   },
   actions: {
     goFirstPage: 'Về trang đầu',

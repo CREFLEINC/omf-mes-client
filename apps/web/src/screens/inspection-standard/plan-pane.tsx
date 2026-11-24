@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useId } from 'react';
 
 import { ItemSelect } from '../../patterns/item-select';
+import { CodeLockLabel } from '../../patterns/master';
 
 import { INSPECTION_TYPE_OPTIONS, ensureOption } from './code-options';
 import { FieldLabel } from './field-label';
@@ -205,12 +206,14 @@ export const PlanPane = ({
           )}
 
           <div className="field-cell">
-            <FieldLabel
-              htmlFor={codeId}
-              label={t.fields.inspectionPlanCode}
-              required={!isCodeLocked && mode !== 'create'}
-              {...(codeLockReason !== null ? { hint: codeLockReason, hintId: codeLockNoteId } : {})}
-            />
+            {/* 잠금 사유는 문장 대신 칸 이름 오른쪽 「변경 불가」 라벨 — 문장은 라벨 위 마우스 · 화면 읽기(사용자 지시 2026-11-24). */}
+            <CodeLockLabel reason={codeLockReason} reasonId={codeLockNoteId}>
+              <FieldLabel
+                htmlFor={codeId}
+                label={t.fields.inspectionPlanCode}
+                required={!isCodeLocked && mode !== 'create'}
+              />
+            </CodeLockLabel>
             <TextField
               id={codeId}
               value={values.inspectionPlanCode}

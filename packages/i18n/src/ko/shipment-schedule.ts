@@ -195,7 +195,8 @@ export const shipmentSchedule = {
     lines: '라인',
     lineColumns: {
       lineNo: '라인',
-      item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       inspection: '출하 검사',
       requested: '요청',
       target: '목표',

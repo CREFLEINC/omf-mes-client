@@ -264,7 +264,9 @@ export interface ReleaseStepProps {
   reviewPlans?: ReleaseReviewPlan[];
   lines: ReleaseLine[] | undefined;
   orderNo?: string;
-  itemLabel?: string;
+  /** 품목코드 · 품목명은 두 칸으로 보인다(사용자 지시 2026-11-24). */
+  itemCode?: string;
+  itemName?: string;
   planDateOf?: (planId: number) => string | null;
   lineNameOf?: (lineId: number | null) => string;
   uomLabelOf: (uomId: number) => string;
@@ -288,7 +290,8 @@ export const ReleaseStep = ({
   reviewPlans,
   lines,
   orderNo,
-  itemLabel,
+  itemCode,
+  itemName,
   planDateOf,
   lineNameOf,
   uomLabelOf,
@@ -531,8 +534,12 @@ export const ReleaseStep = ({
                         <td>{orderNo ?? '—'}</td>
                       </tr>
                       <tr>
-                        <th scope="row">{t.item}</th>
-                        <td>{itemLabel ?? '—'}</td>
+                        <th scope="row">{t.itemCode}</th>
+                        <td>{itemCode ?? '—'}</td>
+                      </tr>
+                      <tr>
+                        <th scope="row">{t.itemName}</th>
+                        <td>{itemName ?? '—'}</td>
                       </tr>
                       <tr>
                         <th scope="row">{t.columns.operation}</th>

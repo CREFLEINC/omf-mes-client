@@ -67,6 +67,26 @@ describe('toHistoryRow', () => {
     ]);
   });
 
+  /* 「자동 판정 사용 여부」는 예/아니요가 아니라 사용/미사용 라벨이다 — 필수 여부는 예/아니요 그대로(#358). */
+  it('자동 판정 사용 여부는 「사용 / 미사용」으로, 필수 여부는 「예 / 아니요」로 낸다', () => {
+    const row = toHistoryRow(
+      event({
+        beforeValue: {
+          items: [{ inspectionItemCode: 'LEN', automaticJudgment: true, requiredFlag: true }],
+        },
+        afterValue: {
+          items: [{ inspectionItemCode: 'LEN', automaticJudgment: false, requiredFlag: false }],
+        },
+      }),
+      labels,
+    );
+
+    expect(row.changes).toEqual([
+      { label: 'LEN · 자동 판정 사용 여부', before: '사용', after: '미사용', usage: true },
+      { label: 'LEN · 필수 검사 항목 여부', before: '예', after: '아니요' },
+    ]);
+  });
+
   it('상태 전이 · 발행 · 작성 취소를 가른다', () => {
     expect(
       toHistoryRow(

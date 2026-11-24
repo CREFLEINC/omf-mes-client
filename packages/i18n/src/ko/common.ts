@@ -25,6 +25,8 @@ export const common = {
   selectLoading: '불러오는 중…',
   selectLoadFailed: '목록을 불러오지 못했습니다',
   deactivate: '사용 중지',
+  /** 쓰는지 여부 라벨 — 관리웹 모든 화면이 「사용 / 미사용」 한 가지로 쓴다(사용자 지시 2026-11-24 · `patterns/usage-chip.tsx`). */
+  usage: { active: '사용', inactive: '미사용' },
   saved: '저장했습니다',
   created: '등록했습니다',
   retry: '다시 시도',
@@ -46,7 +48,8 @@ export const common = {
     notice:
       '이 화면은 OA 사업부 전용입니다. 로그인 계정의 공장 범위에 OA 공장이 없습니다. 필요하면 시스템 관리자에게 공장 범위를 요청하세요.',
     /** OA·부품 공장을 모두 가진 계정이 맨 위에서 「부품」을 고른 때(omf-all-around#336). */
-    partsModeNotice: '이 화면은 OA 사업부 전용입니다. 맨 위에서 「OA 사업부」를 고르면 볼 수 있습니다.',
+    partsModeNotice:
+      '이 화면은 OA 사업부 전용입니다. 맨 위에서 「OA 사업부」를 고르면 볼 수 있습니다.',
   },
   /** OA·부품 공장을 모두 가진 계정의 동작 고르기 — 상단 바(omf-all-around#336). */
   plantMode: {
@@ -125,7 +128,7 @@ export const common = {
     requested: '대기',
     inProgress: '진행',
     completed: '완료',
-    count: (label: string, count: number): string => `${label} ${String(count)}`,
+    count: (label: string, count: number): string => `${label} ${String(count)}건`,
     filterOn: (label: string): string => `${label} 의뢰만 보기`,
     filterOff: (label: string): string => `${label} 거르기 해제`,
     pendingOnly: '대기·진행만 보기', // ui-check-ignore: C-13 사용자 지시 문구(2026-10-26 · #185)

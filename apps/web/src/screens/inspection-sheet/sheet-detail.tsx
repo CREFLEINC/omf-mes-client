@@ -285,9 +285,15 @@ export const SheetDetail = ({
     },
     {
       key: 'item',
-      header: d.fourMColumns.item,
+      header: d.fourMColumns.itemCode,
       align: 'center',
-      render: (change) => `${change.itemName} (${change.itemCode})`,
+      render: (change) => change.itemCode,
+    },
+    {
+      key: 'itemName',
+      header: d.fourMColumns.itemName,
+      align: 'center',
+      render: (change) => change.itemName,
     },
     {
       key: 'lot',
@@ -377,7 +383,8 @@ export const SheetDetail = ({
           <FactsBox
             facts={[
               [d.serialNo, sheet.serialNo],
-              [d.model, `${sheet.itemName} (${sheet.itemCode})`],
+              [d.modelCode, sheet.itemCode],
+              [d.modelName, sheet.itemName],
               [d.lot, sheet.lotNo],
               [d.workOrder, sheet.workOrderNo ?? d.none],
               [

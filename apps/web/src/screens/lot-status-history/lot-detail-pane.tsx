@@ -16,6 +16,7 @@ import { useItemNameSources } from './reference-options';
 import { useUomCodeOf, withUom } from './uoms';
 import { InfoTip } from '../../patterns/info-tip';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { splitCodeName } from '../../patterns/split-code-name';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
 import { LOT_TRACE_PATH, lotTraceHref } from '../lot-trace/trace-filters';
@@ -110,6 +111,8 @@ export const LotDetailPane = ({
     isError: false,
     isLoading: true,
   };
+  /* 품목 표시명 「코드 · 이름」을 품목코드 · 품목명 두 칸으로 나눈다(품목 표기 분리). */
+  const itemParts = splitCodeName(lookupDisplayLabelWithInactive(itemSource, itemId), EMPTY);
   const retry = (
     <Button
       variant="outlined"
@@ -194,11 +197,9 @@ export const LotDetailPane = ({
                   )}
                 </span>,
               ],
-              [
-                'wide',
-                t.detail.fields.item,
-                lookupDisplayLabelWithInactive(itemSource, detail.data.itemId),
-              ],
+              /* 품목은 품목코드 · 품목명 두 칸(품목 표기 분리). 못 풀면 안내는 코드 칸에. */
+              ['short', t.detail.fields.itemCode, itemParts.code],
+              ['wide', t.detail.fields.itemName, itemParts.name],
               [
                 'short',
                 t.detail.fields.status,

@@ -102,7 +102,8 @@ export const materialIssueStatus = {
     } as Record<string, string>,
     lines: {
       label: '요청 품목',
-      item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       requested: '요청',
       picked: '집음',
       issued: '출고',
@@ -216,7 +217,8 @@ export const materialIssueStatus = {
     tableLabel: '생산 창고 부족',
     columns: {
       warehouse: '생산 창고',
-      item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       available: '가용',
       planned: '출고 예정',
       shortage: '부족',

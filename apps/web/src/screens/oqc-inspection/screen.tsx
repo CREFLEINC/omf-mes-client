@@ -9,7 +9,7 @@ import {
   Tabs,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { InspectionGuideNotice } from '../../patterns/inspection-guide';
@@ -846,17 +846,7 @@ export const OqcInspectionScreen = () => {
         inspectionRequestId={selectedId}
         itemParts={itemNames.partsOf(detail.data.itemId)}
         skippedTabs={historyTabItems}
-        itemLabel={((): ReactNode => {
-          const parts = itemNames.partsOf(detail.data.itemId);
-          return parts === null ? (
-            itemNames.labelOf(detail.data.itemId)
-          ) : (
-            <>
-              {parts.code}
-              <span className="parts-iqc-fact-sub">{parts.name}</span>
-            </>
-          );
-        })()}
+        itemLabel={itemNames.labelOf(detail.data.itemId)}
         uomCode={uomCode}
       />
     ) : (

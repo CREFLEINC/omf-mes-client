@@ -240,9 +240,24 @@ export const RequestView = ({
         <table className="replenishment-table" aria-label={tr.title}>
           <thead>
             <tr>
-              <th scope="col">{tr.columns.item}</th>
-              <th scope="col">{tr.columns.source}</th>
-              <th scope="col">{tr.columns.qty}</th>
+              <th scope="col">
+                {tr.columns.item}
+                <span className="required-mark" aria-hidden="true">
+                  {' *'}
+                </span>
+              </th>
+              <th scope="col">
+                {tr.columns.source}
+                <span className="required-mark" aria-hidden="true">
+                  {' *'}
+                </span>
+              </th>
+              <th scope="col">
+                {tr.columns.qty}
+                <span className="required-mark" aria-hidden="true">
+                  {' *'}
+                </span>
+              </th>
               <th scope="col">{tr.columns.uom}</th>
               <th scope="col" className="is-number">
                 {tr.columns.usable}
@@ -305,6 +320,7 @@ export const RequestView = ({
                       size="sm"
                       inputMode="decimal"
                       aria-label={tr.qtyLabel(row)}
+                      aria-required="true"
                       value={line.qty}
                       onChange={(event) => update(line.key, { qty: event.target.value })}
                     />

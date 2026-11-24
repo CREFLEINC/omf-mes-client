@@ -905,11 +905,17 @@ export const PlanStep = ({
               <div className="erp-wo-plan-edit-fields">
                 {' '}
                 <div className="field-cell">
-                  <label className="field-label">{t.columns.planDate}</label>
+                  <span className="field-label">
+                    <label>{t.columns.planDate}</label>
+                    <span className="required-mark" aria-hidden="true">
+                      {' *'}
+                    </span>
+                  </span>
                   <DatePicker
                     min={plantToday()}
                     size="md"
                     aria-label={t.fieldLabel(nameOf(selected), t.columns.planDate)}
+                    aria-required="true"
                     value={selected.draft.planDate || null}
                     invalid={errorText(selected.errors, 'planDate') !== undefined}
                     disabled={editDisabled}
@@ -943,6 +949,7 @@ export const PlanStep = ({
                   containerClassName="erp-wo-plan-quantity-field"
                   size="md"
                   label={t.columns.plannedQty}
+                  required
                   aria-label={t.fieldLabel(nameOf(selected), t.columns.plannedQty)}
                   inputMode="decimal"
                   helperText={rowUomLabelOf ? `단위 ${unitOf(selected)}` : undefined}

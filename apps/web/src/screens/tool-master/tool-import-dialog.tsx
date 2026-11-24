@@ -125,6 +125,7 @@ export const ToolImportDialog = ({
           emptyText={t.fileNone}
           accept={ACCEPT}
           disabled={isSaving}
+          required
           /* ⭐ 마스터 행만 생기고 라벨은 나가지 않는다(스펙 §6) — 파일 칸 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */
           info={t.noLabelNote}
           onSelect={onSelectFile}

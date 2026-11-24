@@ -82,10 +82,12 @@ export const ProductionLotInputs = ({
               rows={inputs.data.items}
               getRowId={(row) => String(row.lotId)}
               columns={[
+                /* 자재는 코드 · 이름 두 칸(품목 표기 분리). */
+                { key: 'item', header: t.inputs.columns.itemCode, render: (row) => row.itemCode },
                 {
-                  key: 'item',
-                  header: t.inputs.columns.item,
-                  render: (row) => `${row.itemName} (${row.itemCode})`,
+                  key: 'itemName',
+                  header: t.inputs.columns.itemName,
+                  render: (row) => row.itemName,
                 },
                 { key: 'lot', header: t.inputs.columns.lot, render: (row) => row.lotNo },
                 {

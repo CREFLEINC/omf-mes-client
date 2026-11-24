@@ -81,6 +81,8 @@ export const workOrderProgress = {
     columns: {
       workOrderNo: 'W/O 번호',
       itemId: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       orderQty: '지시',
       goodQty: '양품',
       defectQty: '불량',

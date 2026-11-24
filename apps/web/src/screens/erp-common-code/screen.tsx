@@ -57,40 +57,44 @@ const ActiveChip = ({ isActive }: { isActive: boolean }) => (
 /** 코드그룹 목록의 사용 여부 거르기 — 받은 그룹 안에서 화면이 거른다(서버 조회는 그대로). */
 type ActiveFilter = 'all' | 'active' | 'inactive';
 
-const ACTIVE_FILTERS: readonly ActiveFilter[] = ['all', 'active', 'inactive'];
+/* 「전체」 라벨은 두지 않는다 — 고른 라벨을 다시 누르면 전체로 돌아간다(사용자 지시 2026-11-24). */
+const ACTIVE_FILTERS: readonly Exclude<ActiveFilter, 'all'>[] = ['active', 'inactive'];
 
 /**
- * 사용 여부 라벨 「전체 · 사용 · 미사용」을 탭 줄 위 오른쪽에 낸다(사용자 지시 2026-11-24) — 누르는 즉시 건다.
- * 사원 탭의 「전체 · 재직」과 같은 자리 · 모양이다.
+ * 사용 여부 라벨 「사용 N건 · 미사용 N건」을 탭 줄 위 오른쪽에 낸다(사용자 지시 2026-11-24) — 누르는 즉시 건다.
+ * 건수는 지금 그룹 검색어에 맞는 받은 그룹에서 센다. 0건 라벨은 감추고(고른 라벨은 남긴다), 받기 전에는 이름만 낸다.
  */
 const ActiveFilterChips = ({
   value,
+  counts,
   onChange,
 }: {
   value: ActiveFilter;
+  counts: Record<Exclude<ActiveFilter, 'all'>, number> | null;
   onChange: (next: ActiveFilter) => void;
 }) => {
   const target = useHubActionsTarget();
   const group = (
     <div className="inspection-hub-counts" role="group" aria-label={t.groups.isActive}>
-      {ACTIVE_FILTERS.map((option) => (
-        <Chip
-          key={option}
-          variant="filter"
-          size="sm"
-          selected={value === option}
-          aria-pressed={value === option}
-          onSelectedChange={() => {
-            onChange(option);
-          }}
-        >
-          {option === 'all'
-            ? t.display.all
-            : option === 'active'
-              ? t.display.active
-              : t.display.inactive}
-        </Chip>
-      ))}
+      {ACTIVE_FILTERS.filter(
+        (option) => value === option || counts === null || counts[option] !== 0,
+      ).map((option) => {
+        const label = option === 'active' ? t.display.active : t.display.inactive;
+        return (
+          <Chip
+            key={option}
+            variant="filter"
+            size="sm"
+            selected={value === option}
+            aria-pressed={value === option}
+            onSelectedChange={() => {
+              onChange(value === option ? 'all' : option);
+            }}
+          >
+            {counts === null ? label : t.display.withCount(label, counts[option])}
+          </Chip>
+        );
+      })}
     </div>
   );
 
@@ -380,11 +384,17 @@ export const ErpCommonCodeScreen = () => {
   const groups = useErpCodeGroups();
   const allGroups = groups.data ?? NO_GROUPS;
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>('all');
-  const shownGroups = allGroups.filter(
-    (row) =>
-      matchesGroup(row, appliedGroupSearch) &&
-      (activeFilter === 'all' || row.isActive === (activeFilter === 'active')),
+  const searchedGroups = allGroups.filter((row) => matchesGroup(row, appliedGroupSearch));
+  const shownGroups = searchedGroups.filter(
+    (row) => activeFilter === 'all' || row.isActive === (activeFilter === 'active'),
   );
+  const activeCounts =
+    groups.data === undefined
+      ? null
+      : {
+          active: searchedGroups.filter((row) => row.isActive).length,
+          inactive: searchedGroups.filter((row) => !row.isActive).length,
+        };
   const groupPage = useClientPage(shownGroups);
   const selected = allGroups.find((row) => row.groupCode === group) ?? null;
 
@@ -451,7 +461,11 @@ export const ErpCommonCodeScreen = () => {
         content: (
           <>
             {/* 탭 줄 위 「⋯」 왼쪽으로 옮겨진다 — 목록을 불러오기 전에 세워 사원 탭과 같은 순서가 되게 한다. */}
-            <ActiveFilterChips value={activeFilter} onChange={setActiveFilter} />
+            <ActiveFilterChips
+              value={activeFilter}
+              counts={activeCounts}
+              onChange={setActiveFilter}
+            />
             {groups.isError ? (
               <LoadErrorBanner error={groups.error} onRetry={() => void groups.refetch()} />
             ) : groups.isPending ? (

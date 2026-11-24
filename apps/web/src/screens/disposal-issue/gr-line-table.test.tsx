@@ -34,7 +34,9 @@ const LINE_A = 9401;
 const LINE_B = 9402;
 const LINE_C = 9403;
 
-const ITEM_LABEL = 'SAMPLE-ITEM-01 · 합성 자재 가';
+/* 품목은 품목코드 · 품목명 두 열로 나눠 보인다(사용자 지시 2026-11-24). */
+const ITEM_CODE = 'SAMPLE-ITEM-01';
+const ITEM_NAME = '합성 자재 가';
 const UOM_LABEL = 'SAMPLE-UOM-EA · 합성 낱개';
 const LOCATION_LABEL = 'SAMPLE-LOC-01 · 합성 적치 가';
 
@@ -189,10 +191,11 @@ const selectBox = (ordinal: number): HTMLElement =>
 describe('buildGrLineColumns — 열 폭', () => {
   const columns = buildGrLineColumns(columnInput());
 
-  it('열이 일곱이다', () => {
+  it('열이 여덟이다', () => {
     expect(columns.map((column) => column.key)).toEqual([
       'select',
       'item',
+      'itemName',
       'lot',
       'location',
       'receiptQty',
@@ -211,9 +214,9 @@ describe('buildGrLineColumns — 열 폭', () => {
       0,
     );
 
-    expect(fixed).toBe(720);
-    /* 흡수 열이 실제로 받는 폭이 예산(184px)보다 넓어야 「코드 · 이름」이 접히지 않는다. */
-    expect(LINE_TABLE_MIN_WIDTH_PX - fixed).toBe(208);
+    expect(fixed).toBe(840);
+    /* 품목코드 열(120px)을 떼어 낸 뒤 흡수 열(품목명)이 표 하한에서 받는 폭. */
+    expect(LINE_TABLE_MIN_WIDTH_PX - fixed).toBe(88);
   });
 });
 
@@ -225,7 +228,12 @@ describe('GrLineTable — 이름과 값', () => {
   it('품목·LOT·보유 수량 열이 있다', () => {
     renderTable();
 
-    for (const header of [t.lineTable.item, t.lineTable.lot, t.lineTable.onHandQty]) {
+    for (const header of [
+      t.lineTable.itemCode,
+      t.lineTable.itemName,
+      t.lineTable.lot,
+      t.lineTable.onHandQty,
+    ]) {
       expect(screen.getByRole('columnheader', { name: header })).toBeInTheDocument();
     }
   });
@@ -233,7 +241,8 @@ describe('GrLineTable — 이름과 값', () => {
   it('참조 넷을 이름으로 푼다', () => {
     renderTable();
 
-    expect(screen.getAllByText(ITEM_LABEL).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(ITEM_CODE).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(ITEM_NAME).length).toBeGreaterThan(0);
     expect(screen.getByText('SAMPLE-LOT-0001')).toBeInTheDocument();
     expect(screen.getAllByText(LOCATION_LABEL).length).toBeGreaterThan(0);
     expect(screen.getByText(t.lineTable.receiptQtyPair(100, UOM_LABEL))).toBeInTheDocument();
@@ -253,13 +262,13 @@ describe('GrLineTable — 이름과 값', () => {
 
     expect(screen.getAllByText(message).length).toBeGreaterThan(0);
     /* 짝 방향 — 정상 갈래의 이름은 그 자리에 없다. */
-    expect(screen.queryByText(ITEM_LABEL)).not.toBeInTheDocument();
+    expect(screen.queryByText(ITEM_NAME)).not.toBeInTheDocument();
   });
 
   it('정상 갈래는 이름을 낸다', () => {
     renderTable();
 
-    expect(screen.getAllByText(ITEM_LABEL).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(ITEM_NAME).length).toBeGreaterThan(0);
     for (const message of [t.values.referenceLoading, t.values.referenceFailed]) {
       expect(screen.queryByText(message)).not.toBeInTheDocument();
     }

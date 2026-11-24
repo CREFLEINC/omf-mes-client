@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -46,10 +46,14 @@ describe('CodeGroupListPane — 목록 표시', () => {
   });
 
   /* 좁은 좌 페인에서 「사용 여부」 열을 더 두면 이름 열이 짓눌린다(결정 11). */
-  it('미사용 행은 열을 늘리지 않고 이름 뒤 접미로 알린다', () => {
+  it('미사용 행은 열을 늘리지 않고 이름 옆 「미사용」 라벨로 알린다', () => {
     renderPane();
 
-    expect(screen.getByText('합성 코드그룹 C (미사용)')).toBeInTheDocument();
+    expect(
+      within(screen.getByText('합성 코드그룹 C').closest('.usage-name') as HTMLElement).getByText(
+        '미사용',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText('합성 코드그룹 A')).toBeInTheDocument();
   });
 

@@ -155,7 +155,8 @@ describe('WorkOrderTable', () => {
     });
 
     it.each([
-      ['품목', t.columns.itemId],
+      ['품목코드', t.columns.itemCode],
+      ['품목명', t.columns.itemName],
       ['지시', t.columns.orderQty],
       ['양품', t.columns.goodQty],
       ['계획 종료', t.columns.plannedEndAt],

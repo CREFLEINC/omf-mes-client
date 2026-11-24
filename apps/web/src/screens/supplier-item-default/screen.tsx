@@ -94,15 +94,13 @@ export const SupplierItemDefaultScreen = () => {
         </span>
       ),
     },
+    /* 품목코드 · 품목명은 두 열(사용자 지시 2026-11-24). */
     {
       key: 'item',
-      header: t.columns.item,
-      render: (row) => (
-        <span className="supplier-item-default-cell">
-          <span className="supplier-item-default-code">{row.itemCode}</span> {row.itemName}
-        </span>
-      ),
+      header: t.columns.itemCode,
+      render: (row) => <span className="supplier-item-default-code">{row.itemCode}</span>,
     },
+    { key: 'itemName', header: t.columns.itemName, render: (row) => row.itemName },
     { key: 'uom', header: t.columns.baseUom, render: (row) => row.uomCode },
     {
       key: 'package',

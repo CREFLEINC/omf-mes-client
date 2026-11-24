@@ -41,7 +41,7 @@ export const inspectionDocuments = {
   search: '파일명 검색',
   searchPlaceholder: '파일명을 입력하세요',
   kindLabel: '파일 유형',
-  kinds: { all: '전체', image: '이미지', pdf: 'PDF', excel: '엑셀', word: '워드', other: '기타' },
+  kinds: { image: '이미지', pdf: 'PDF', excel: '엑셀', word: '워드', other: '기타' },
   /* 미리보기(#185). */
   preview: (fileName: string): string => `${fileName} 미리보기`,
   previewLoading: '파일을 불러오는 중입니다.',

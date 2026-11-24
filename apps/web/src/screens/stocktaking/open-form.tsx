@@ -74,6 +74,7 @@ export const OpenForm = ({
          * 무엇을 확인했는지 맞춰 보기 어렵다.
          */}
         <SelectField
+          required
           label={t.fields.countType}
           options={countTypeOptions}
           value={draft.countType}
@@ -89,6 +90,7 @@ export const OpenForm = ({
          */}
         <SelectField
           wide
+          required
           label={t.fields.warehouse}
           options={warehouseOptions}
           value={draft.warehouse}
@@ -102,6 +104,7 @@ export const OpenForm = ({
         <TextField
           type="date"
           label={t.fields.plannedDate}
+          required
           value={draft.plannedDate}
           error={fieldErrors[OPEN_FIELD_NAMES.plannedDate]}
           disabled={isLocked}

@@ -223,6 +223,7 @@ export const MaintenanceResultScreen = () => {
             error={errors.target ?? create.fieldErrors.targetId}
             placeholder={t.form.selectPlaceholder}
             wide
+            required
             onChange={(value) => {
               set({ target: value });
             }}
@@ -241,7 +242,7 @@ export const MaintenanceResultScreen = () => {
           />
 
           <div className="field-cell">
-            <FieldLabel htmlFor={startedId} label={t.form.startedAt} />
+            <FieldLabel htmlFor={startedId} label={t.form.startedAt} required />
             <DatePicker
               id={startedId}
               mode="single"
@@ -278,9 +279,10 @@ export const MaintenanceResultScreen = () => {
           </div>
 
           <div className="field-cell form-grid-full">
-            <FieldLabel htmlFor={noteId} label={t.form.resultNote} />
+            <FieldLabel htmlFor={noteId} label={t.form.resultNote} required />
             <TextField
               id={noteId}
+              aria-required="true"
               value={draft.resultNote}
               error={errors.resultNote ?? create.fieldErrors.resultNote}
               onChange={(event) => {
@@ -318,15 +320,22 @@ export const MaintenanceResultScreen = () => {
             placeholder={t.form.selectPlaceholder}
             disabled={draft.isOutsourced}
             wide
+            /* 자체 수행이면 수행자, 외주면 업체가 필수다(짝 제약). */
+            required={!draft.isOutsourced}
             onChange={(value) => {
               set({ performer: value });
             }}
           />
 
           <div className="field-cell">
-            <FieldLabel htmlFor={vendorId} label={t.form.vendorName} />
+            <FieldLabel
+              htmlFor={vendorId}
+              label={t.form.vendorName}
+              required={draft.isOutsourced}
+            />
             <TextField
               id={vendorId}
+              aria-required={draft.isOutsourced ? 'true' : undefined}
               value={draft.vendorName}
               disabled={!draft.isOutsourced}
               error={errors.vendorName ?? create.fieldErrors.outsourceVendorName}
@@ -396,9 +405,10 @@ export const MaintenanceResultScreen = () => {
               <span>{part.partName}</span>
             </div>
             <div className="field-cell">
-              <FieldLabel htmlFor={`${part.key}-qty`} label={t.form.usedQty} />
+              <FieldLabel htmlFor={`${part.key}-qty`} label={t.form.usedQty} required />
               <TextField
                 id={`${part.key}-qty`}
+                aria-required="true"
                 value={part.usedQty}
                 inputMode="decimal"
                 onChange={(event) => {

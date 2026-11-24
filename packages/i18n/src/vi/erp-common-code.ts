@@ -36,9 +36,9 @@ export const erpCommonCode: Translated<typeof ko.erpCommonCode> = {
   },
   display: {
     empty: '—',
-    all: 'Tất cả',
     active: 'Sử dụng',
     inactive: 'Ngừng sử dụng',
+    withCount: (label: string, count: number): string => `${label} ${String(count)}`,
   },
   actions: {
     goFirstPage: 'Về trang đầu',

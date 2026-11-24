@@ -33,8 +33,6 @@ export const erpPartner: Translated<typeof ko.erpPartner> = {
   values: {
     all: 'Tất cả',
     empty: '—',
-    active: 'Sử dụng',
-    inactive: 'Ngừng sử dụng',
     rolesLoading: 'Đang tải',
     rolesFailed: 'Không tải được',
     roleSeparator: ', ',

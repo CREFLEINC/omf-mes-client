@@ -208,13 +208,12 @@ export const FilterBar = ({
         }}
       >
         <div className="field-cell filter-field-lg">
-          <label className="field-label" htmlFor={periodId}>
-            {t.period}
+          <span className="field-label">
+            <label htmlFor={periodId}>{t.period}</label>
             <span className="required-mark" aria-hidden="true">
-              {' '}
-              *
+              {' *'}
             </span>
-          </label>
+          </span>
           <DatePicker
             id={periodId}
             mode="range"

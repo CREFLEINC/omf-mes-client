@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
+import { splitCodeName } from '../../patterns/split-code-name';
 import type { ItemNameLookup } from './lookups';
 import { formatDateTime, type DisposalTarget } from './types';
 
@@ -51,6 +52,14 @@ export const TargetList = ({
   onToggleAll,
 }: TargetListProps) => {
   const chosen = new Set(selected);
+  /** 품목코드 · 품목명 두 칸(사용자 지시 2026-11-24). 못 푼 안내는 품목코드 칸에 둔다. */
+  const itemCodeNameOf = (row: DisposalTarget): { code: string; name: string } =>
+    splitCodeName(
+      row.itemId === null
+        ? messages.common.reference.unknown
+        : lookupDisplayLabel(items.of(row.itemId), row.itemId),
+      messages.common.reference.empty,
+    );
 
   const columns: Column<DisposalTarget>[] = [
     {
@@ -78,11 +87,13 @@ export const TargetList = ({
     },
     {
       key: 'item',
-      header: t.targets.fields.item,
-      render: (row) =>
-        row.itemId === null
-          ? messages.common.reference.unknown
-          : lookupDisplayLabel(items.of(row.itemId), row.itemId),
+      header: t.targets.fields.itemCode,
+      render: (row) => itemCodeNameOf(row).code,
+    },
+    {
+      key: 'itemName',
+      header: t.targets.fields.itemName,
+      render: (row) => itemCodeNameOf(row).name,
     },
     {
       key: 'qty',

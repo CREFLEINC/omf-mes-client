@@ -29,6 +29,8 @@ export interface SelectFieldProps {
    * 보조 문구와 함께 있으면 둘 다 접근 이름에 이어진다 — 하나만 이으면 나머지가 조용히 사라진다.
    */
   error?: string;
+  /** 필수 칸 — 라벨 옆 빨간 *. 검증은 부르는 쪽이 한다. */
+  required?: boolean;
 }
 
 /**
@@ -55,6 +57,7 @@ export const SelectField = ({
   wide = false,
   disabled = false,
   error,
+  required = false,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
@@ -72,7 +75,7 @@ export const SelectField = ({
 
   return (
     <div className={wide ? 'field-cell wide-select' : 'field-cell'}>
-      <FieldLabel htmlFor={id} label={label} />
+      <FieldLabel htmlFor={id} label={label} required={required} />
       <Select
         id={id}
         options={options}
@@ -81,6 +84,7 @@ export const SelectField = ({
         placeholder={placeholder}
         disabled={disabled}
         invalid={error !== undefined}
+        aria-required={required || undefined}
         aria-describedby={describedBy === '' ? undefined : describedBy}
       />
       {note !== undefined && (

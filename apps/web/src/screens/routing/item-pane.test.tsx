@@ -187,13 +187,14 @@ describe('ItemPane', () => {
     renderPane({ appliedFilters: { ...NO_FILTERS, latestStatus: 'CONFIRMED' } });
 
     expect(screen.queryByRole('button', { name: /^전체/ })).not.toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: '작성중 1' })).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: '확정 2' })).toHaveAttribute(
+    expect(await screen.findByRole('button', { name: '작성중 1건' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: '확정 2건' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
-    expect(await screen.findByRole('button', { name: '폐기 0' })).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: '미등록 4' })).toBeInTheDocument();
+    /* 0건 칩은 감춘다(사용자 지시 2026-11-24). */
+    expect(screen.queryByRole('button', { name: /^폐기/ })).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: '미등록 4건' })).toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: '공정 경로 미등록' })).not.toBeInTheDocument();
   });
 

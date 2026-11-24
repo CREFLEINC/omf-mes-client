@@ -49,10 +49,14 @@ describe('WorkerListPane — 목록 표시', () => {
     ).toEqual(['사번', '성명']);
   });
 
-  it('미사용 행은 열을 늘리지 않고 이름 뒤 접미로 알린다', () => {
+  it('미사용 행은 열을 늘리지 않고 이름 옆 「미사용」 라벨로 알린다', () => {
     renderPane();
 
-    expect(screen.getByText('합성 작업자 C (미사용)')).toBeInTheDocument();
+    expect(
+      within(screen.getByText('합성 작업자 C').closest('.usage-name') as HTMLElement).getByText(
+        '미사용',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('사번을 누르면 그 작업자 번호를 알린다', async () => {

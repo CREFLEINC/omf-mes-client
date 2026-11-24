@@ -363,8 +363,16 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
         <table className="material-issue-status-lines" aria-label={t.detail.lines.label}>
           <thead>
             <tr>
-              <th scope="col">{t.detail.lines.item}</th>
-              <th scope="col">{t.detail.lines.requested}</th>
+              <th scope="col">{t.detail.lines.itemCode}</th>
+              <th scope="col">{t.detail.lines.itemName}</th>
+              <th scope="col">
+                {t.detail.lines.requested}
+                {scope !== 'none' && (
+                  <span className="required-mark" aria-hidden="true">
+                    {' *'}
+                  </span>
+                )}
+              </th>
               <th scope="col">{t.detail.lines.picked}</th>
               <th scope="col">{t.detail.lines.issued}</th>
               <th scope="col">{t.detail.lines.outstanding}</th>
@@ -376,8 +384,8 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
               <tr key={line.materialIssueRequestLineId}>
                 <td>
                   <span className="material-issue-status-code">{itemText(line)}</span>
-                  <span>{line.itemName}</span>
                 </td>
+                <td>{line.itemName}</td>
                 <td>
                   {scope === 'none' ? (
                     formatQty(line.requestedQty)
@@ -386,6 +394,7 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
                       size="sm"
                       inputMode="decimal"
                       aria-label={t.detail.lines.qtyLabel(itemText(line))}
+                      aria-required="true"
                       value={qty.get(line.materialIssueRequestLineId) ?? ''}
                       onChange={(event) => {
                         update.reset();

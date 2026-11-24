@@ -18,6 +18,7 @@ export const common: Translated<typeof ko.common> = {
   selectLoading: 'Đang tải…',
   selectLoadFailed: 'Không tải được danh sách',
   deactivate: 'Ngừng sử dụng',
+  usage: { active: 'Sử dụng', inactive: 'Không sử dụng' },
   saved: 'Đã lưu',
   created: 'Đã đăng ký',
   retry: 'Thử lại',

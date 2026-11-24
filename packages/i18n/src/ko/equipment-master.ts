@@ -56,8 +56,7 @@ export const equipmentMaster = {
      * ⚠ 시드가 아직 들어가지 않아 값 목록이 빌 수 있다(설계 `omf-mes#182`).
      * 그때 감추지 않고 비활성 + 사유로 둔다(G-2) — 목록이 들어오면 이 잠금은 저절로 풀린다.
      */
-    disposeUnavailable:
-      '등록된 자산 상태가 없어 폐기할 수 없습니다.',
+    disposeUnavailable: '등록된 자산 상태가 없어 폐기할 수 없습니다.',
     deactivateNeedsCleanForm:
       '사용 중지는 저장하지 않은 변경이 있으면 쓸 수 없습니다. 먼저 저장하거나 취소하세요.',
   },
@@ -128,8 +127,7 @@ export const equipmentMaster = {
     /** 소속 설비는 그대로 남는다 — 그룹이 목록에서 빠질 뿐이다. */
     members: (count: number): string =>
       `이 그룹에 설비 ${count}대가 소속돼 있습니다. 소속은 그대로 남고, 새로 고를 때만 이 그룹이 목록에서 빠집니다.`,
-    notReversibleHere:
-      '삭제되지는 않습니다. 다시 켜려면 담당자에게 요청하세요.',
+    notReversibleHere: '삭제되지는 않습니다. 다시 켜려면 담당자에게 요청하세요.',
     confirm: '사용 중지',
   },
   form: {
@@ -211,8 +209,6 @@ export const equipmentMaster = {
     WORK_AREA: '작업구역',
   },
   values: {
-    active: '사용 중',
-    inactive: '미사용',
     noParent: '없음 (최상위)',
     /** 미사용 항목을 선택지에 남길 때 라벨 뒤에 붙인다. */
     inactiveSuffix: ' (미사용)',

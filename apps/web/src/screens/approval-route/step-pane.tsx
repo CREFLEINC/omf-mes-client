@@ -4,6 +4,7 @@ import { useId, useState, type ReactNode } from 'react';
 
 import { InfoTip } from '../../patterns/info-tip';
 
+import { UsageChip } from '../../patterns/usage-chip';
 import type { ApproverOption } from './approver-options';
 import { DisabledAction } from './disabled-action';
 import { describeApprover } from './lookups';
@@ -156,8 +157,7 @@ export const StepPane = ({
       key: 'approverStatus',
       header: t.fields.approverStatus,
       width: STEP_COLUMN_WIDTH.approverStatus,
-      render: (step) =>
-        step.approverIsActive ? t.values.approverActive : t.values.approverInactive,
+      render: (step) => <UsageChip isActive={step.approverIsActive} />,
     },
     {
       key: 'rowActions',
@@ -305,6 +305,7 @@ export const StepPane = ({
 
           <SelectField
             className="approval-route-approver-field"
+            required
             label={t.fields.approverSelect}
             placeholder={t.fields.approverPlaceholder}
             options={approverOptions}

@@ -86,9 +86,20 @@ export const IssueFormPane = ({
 
       <div className="emergency-work-order-form-grid">
         {/* 고른 결과를 «읽는 값»으로 그린다 — 입력칸처럼 보이면 여기서도 고칠 수 있다고 읽는다. */}
-        <div className="field-cell emergency-work-order-form-item" data-empty={item === null}>
-          <span className="field-label">{t.item}</span>
-          <strong>{item === null ? '—' : `${item.itemCode} · ${item.itemName}`}</strong>
+        {/* 품목코드 · 품목명은 두 칸(사용자 지시 2026-11-24). */}
+        <div
+          className="field-cell emergency-work-order-form-item emergency-work-order-form-item-half"
+          data-empty={item === null}
+        >
+          <span className="field-label">{t.itemCode}</span>
+          <strong>{item === null ? '—' : item.itemCode}</strong>
+        </div>
+        <div
+          className="field-cell emergency-work-order-form-item emergency-work-order-form-item-half"
+          data-empty={item === null}
+        >
+          <span className="field-label">{t.itemName}</span>
+          <strong>{item === null ? '—' : item.itemName}</strong>
         </div>
 
         {/*

@@ -103,7 +103,14 @@ export const LineTable = ({
   const columns: Column<MaterialIssueLineDraft>[] = [
     {
       key: 'item',
-      header: t.lineTable.item,
+      header: (
+        <>
+          {t.lineTable.item}
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </>
+      ),
       render: (row, rowIndex) => (
         <div className="field-cell">
           {row.origin === 'shortage' ? (
@@ -222,7 +229,14 @@ export const LineTable = ({
         ] satisfies Column<MaterialIssueLineDraft>[])),
     {
       key: 'uom',
-      header: t.lineTable.uom,
+      header: (
+        <>
+          {t.lineTable.uom}
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </>
+      ),
       width: WIDTH.uom,
       render: (row, rowIndex) =>
         row.origin === 'shortage' ? (

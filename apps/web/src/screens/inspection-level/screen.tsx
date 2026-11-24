@@ -62,8 +62,9 @@ const LevelChip = ({ code }: { code: string | null }) =>
   );
 
 /**
- * 검사 수준 칩 — 전체 · 무검사 · 수월 · 보통 · 엄격, 칩마다 품목 수(사용자 지시 · #208).
- * 하나만 고른다 — 고른 칩을 다시 눌러도 풀리지 않는다. 탭 묶음 밖에서는 자리가 없어 그리지 않는다.
+ * 검사 수준 칩 — 무검사 · 수월 · 보통 · 엄격, 칩마다 품목 수(사용자 지시 · #208).
+ * 「전체」 라벨은 두지 않는다 — 고른 칩을 다시 누르면 전체로 풀리고, 0건 칩은 감춘다(고른 칩은 남긴다 · 사용자 지시 2026-11-24).
+ * 탭 묶음 밖에서는 자리가 없어 그리지 않는다.
  */
 const LevelFilterChips = ({
   counts,
@@ -76,10 +77,9 @@ const LevelFilterChips = ({
 }) => {
   const target = useHubActionsTarget();
   if (target === null) return null;
-  const options: { value: InspectionLevelCode | ''; label: string }[] = [
-    { value: '', label: t.list.levelAll },
-    ...LEVEL_CODES.map((code) => ({ value: code, label: levelName(code) })),
-  ];
+  const options = LEVEL_CODES.map((code) => ({ value: code, label: levelName(code) })).filter(
+    (option) => value === option.value || counts === null || counts[option.value] !== 0,
+  );
 
   return (
     <HubActions target={target}>
@@ -92,7 +92,7 @@ const LevelFilterChips = ({
             selected={value === option.value}
             aria-pressed={value === option.value}
             onSelectedChange={() => {
-              if (value !== option.value) onChange(option.value);
+              onChange(value === option.value ? '' : option.value);
             }}
           >
             {counts === null ? option.label : t.list.levelCount(option.label, counts[option.value])}

@@ -173,6 +173,8 @@ export const BulkCreateDialog = ({
       <TextField
         id={info?.id}
         label={info === undefined ? label : undefined}
+        required={info === undefined && !disabled}
+        aria-required={info !== undefined && !disabled ? 'true' : undefined}
         inputMode="numeric"
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -185,7 +187,7 @@ export const BulkCreateDialog = ({
 
     return (
       <div className="bulk-create-info-field">
-        <InfoLabel htmlFor={info.id} label={label} info={info.text} />
+        <InfoLabel htmlFor={info.id} label={label} info={info.text} required={!disabled} />
         {field}
       </div>
     );
@@ -240,7 +242,12 @@ export const BulkCreateDialog = ({
 
         {mode === 'existingZones' && (
           <fieldset className="bulk-create-zones">
-            <legend>{b.pickZones}</legend>
+            <legend>
+              <span>{b.pickZones}</span>
+              <span className="required-mark" aria-hidden="true">
+                {' *'}
+              </span>
+            </legend>
             {userZones.length === 0 && <p className="field-note">{b.noZones}</p>}
             {userZones.map((zone) => {
               const isBlocked = blocked.has(zone.locationId);

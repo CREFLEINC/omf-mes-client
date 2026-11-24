@@ -104,7 +104,7 @@ export const LevelDialog = ({
         <div className="form-grid inspection-level-form">
           <div className="field-cell">
             <span className="field-label">
-              {t.dialog.item}
+              {canPick ? t.dialog.item : t.dialog.itemCode}
               {/* 고를 수 있을 때만 필수 표시 — 검사 기준 탭과 같은 빨간 `*`(#208). */}
               {canPick && <RequiredMark />}
             </span>
@@ -127,12 +127,17 @@ export const LevelDialog = ({
               </div>
             ) : (
               /* 품목은 이 창의 대상이라 값을 한 단계 크게(#133). 품목 코드는 제목에 되풀이하지 않는다. */
-              <p className="inspection-level-form-item">
-                {item === null ? '—' : `${item.itemCode} · ${item.itemName}`}
-              </p>
+              <p className="inspection-level-form-item">{item === null ? '—' : item.itemCode}</p>
             )}
             {shown.itemId && <span className="field-error">{shown.itemId}</span>}
           </div>
+          {/* 고친 · 미리 정한 품목은 품목코드 · 품목명 두 칸으로 나눠 보인다(품목 표기 분리). */}
+          {!canPick && (
+            <div className="field-cell">
+              <span className="field-label">{t.dialog.itemName}</span>
+              <p className="inspection-level-form-item">{item === null ? '—' : item.itemName}</p>
+            </div>
+          )}
 
           <div className="field-cell">
             <span className="field-label">

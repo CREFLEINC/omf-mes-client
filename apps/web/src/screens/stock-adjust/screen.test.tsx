@@ -6026,7 +6026,8 @@ describe('StockAdjustScreen — 이력 상세', () => {
 
     expect(headers).toEqual([
       t.historyLineTable.lineNo,
-      t.historyLineTable.item,
+      t.historyLineTable.itemCode,
+      t.historyLineTable.itemName,
       t.historyLineTable.lot,
       t.historyLineTable.bookQty,
       t.historyLineTable.actualQty,
@@ -6037,9 +6038,9 @@ describe('StockAdjustScreen — 이력 상세', () => {
       .getAllByRole('cell')
       .map((cell) => cell.textContent ?? '');
 
-    expect(cells[5]).toContain('-20');
-    expect(cells[3]).toBe(t.values.empty);
+    expect(cells[6]).toContain('-20');
     expect(cells[4]).toBe(t.values.empty);
+    expect(cells[5]).toBe(t.values.empty);
   });
 
   it('고른 전표가 주소에 실린다 — 새로고침해도 같은 전표가 열린다', async () => {

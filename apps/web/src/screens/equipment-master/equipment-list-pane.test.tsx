@@ -237,7 +237,7 @@ describe('EquipmentListPane', () => {
   it('미사용 설비도 표식과 함께 보인다', () => {
     renderPane({ items: [makeEquipment(2003, 'EQ-03', { isActive: false })] });
 
-    expect(screen.getByText(t.values.inactive)).toBeInTheDocument();
+    expect(screen.getByText(messages.common.usage.inactive)).toBeInTheDocument();
   });
 
   /* 수명주기 액션은 수정 창에 모여 있다 — 목록 줄에는 두지 않는다. */

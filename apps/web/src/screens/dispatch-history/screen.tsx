@@ -282,9 +282,13 @@ export const DispatchHistoryScreen = () => {
     <>
       <div className="filter-bar notify-filter-row">
         <div className="field-cell">
-          <label className="field-label" htmlFor={`${fieldId}-period`}>
-            {t.filters.period}
-          </label>
+          {/* 기간이 비면 조회를 막는다(필수 조회 조건) — 빨간 * 는 `<label>` 밖(접근 이름 그대로). */}
+          <span className="field-label">
+            <label htmlFor={`${fieldId}-period`}>{t.filters.period}</label>
+            <span className="required-mark" aria-hidden="true">
+              {' *'}
+            </span>
+          </span>
           <DatePicker
             id={`${fieldId}-period`}
             mode="range"

@@ -30,7 +30,7 @@ export const approvalRoute = {
     /** 목록 열 이름. 폼의 「사용 여부」와 달리 한 낱말이라야 64px 칸에서 접히지 않는다. */
     status: '사용 유무',
     stepCount: '단계',
-    inProgressCount: '진행 중',
+    inProgressCount: '진행',
     stepNo: '순서',
     approver: '결재자',
     approverStatus: '상태',
@@ -167,8 +167,6 @@ export const approvalRoute = {
      * 내부 번호는 사용자가 쓰지 않는 값이고, 한 번 화면에 서면 그것이 식별자로 읽힌다.
      */
     approverUnknown: '결재자 정보를 확인할 수 없습니다',
-    approverActive: '사용 중',
-    approverInactive: '사용 중지됨',
     /**
      * 승인자 구분의 이름. **계약 enum 값의 뜻을 옮긴 것이지 화면이 지어낸 코드가 아니다** —
      * 승인 유형과 마찬가지로 계약이 값과 뜻을 함께 못 박았다.

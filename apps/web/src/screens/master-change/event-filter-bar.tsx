@@ -197,9 +197,13 @@ export const EventFilterBar = ({
          * 조회 조건의 정본은 주소다. 컨트롤이 막는 것과 화면이 막는 것은 다른 층이다.
          */}
         <div className="field-cell">
-          <label className="field-label" htmlFor={periodId}>
-            {t.fields.period}
-          </label>
+          {/* 기간이 비면 조회가 막힌다(조회 필수) — 라벨 밖에 빨간 * 를 둔다. */}
+          <span className="field-label">
+            <label htmlFor={periodId}>{t.fields.period}</label>
+            <span className="required-mark" aria-hidden="true">
+              {' *'}
+            </span>
+          </span>
           <DatePicker
             id={periodId}
             mode="range"

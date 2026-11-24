@@ -77,7 +77,13 @@ export const SearchPane = ({
         />
         <div className="field-cell">
           {/* 기간을 비울 수 없다는 규칙은 라벨 옆 ⓘ 로, 칸 아래에는 막혔을 때만 이유를 적는다(관리웹 정리 시안 A). */}
-          <InfoLabel htmlFor={periodId} label={t.fields.shipDate} info={t.search.periodRequired} />
+          {/* 기간은 비우면 조회를 막는다 — 조회 필수 표시. */}
+          <InfoLabel
+            htmlFor={periodId}
+            label={t.fields.shipDate}
+            info={t.search.periodRequired}
+            required
+          />
           <DatePicker
             id={periodId}
             mode="range"

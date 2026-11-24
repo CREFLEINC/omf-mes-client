@@ -39,7 +39,6 @@ export const inspectionSheetTemplate = {
     chipRemoveLayout: 'Bỏ điều kiện mẫu',
     chipRemoveStatus: 'Bỏ điều kiện trạng thái',
     usageLabel: 'Sử dụng',
-    usageAll: 'Tất cả',
     usageActive: 'Đang dùng',
     usageInactive: 'Ngừng dùng',
     usageCount: (label: string, count: number): string => `${label} ${String(count)}`,
@@ -56,7 +55,8 @@ export const inspectionSheetTemplate = {
   },
 
   columns: {
-    model: 'Mặt hàng',
+    itemCode: 'Mã mặt hàng',
+    itemName: 'Tên mặt hàng',
     version: 'Phiên bản',
     layout: 'Mẫu',
     status: 'Trạng thái',
@@ -112,6 +112,8 @@ export const inspectionSheetTemplate = {
     readOnly: 'Phiên bản đã xác nhận hoặc ngừng dùng không sửa được.',
     basicSection: 'Thông tin cơ bản',
     model: 'Mặt hàng',
+    subjectItemCode: 'Mã mặt hàng',
+    subjectItemName: 'Tên mặt hàng',
     pickModel: 'Chọn mặt hàng',
     pickConfirm: 'Chọn',
     pickLotConfirm: 'Chọn vật tư này',

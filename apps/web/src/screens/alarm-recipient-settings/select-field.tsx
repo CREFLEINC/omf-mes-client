@@ -12,6 +12,8 @@ export interface SelectFieldProps {
   note?: string;
   placeholder: string;
   disabled?: boolean;
+  /** 빨간 필수 표시(`required-mark`) — 라벨 밖이라 접근 이름은 그대로다. */
+  required?: boolean;
 }
 
 export const SelectField = ({
@@ -23,6 +25,7 @@ export const SelectField = ({
   note,
   placeholder,
   disabled = false,
+  required = false,
 }: SelectFieldProps) => {
   const id = useId();
   const errorId = `${id}-error`;
@@ -32,6 +35,11 @@ export const SelectField = ({
     <div className="field-cell wide-select">
       <span className="field-label">
         <label htmlFor={id}>{label}</label>
+        {required && (
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        )}
       </span>
       <Select
         id={id}
@@ -40,6 +48,7 @@ export const SelectField = ({
         onChange={onChange}
         placeholder={placeholder}
         disabled={disabled}
+        aria-required={required || undefined}
         invalid={error !== undefined}
         aria-describedby={
           [error === undefined ? null : errorId, note === undefined ? null : noteId]

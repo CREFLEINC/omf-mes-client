@@ -101,11 +101,15 @@ describe('ItemListPane — 목록', () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
-  /* 좁은 좌 페인에서 열 하나를 더 두면 이름 열이 짓눌린다 — 이름 뒤 접미로 붙인다. */
-  it('미사용 품목은 이름 뒤에 표식을 붙인다', () => {
+  /* 좁은 좌 페인에서 열 하나를 더 두면 이름 열이 짓눌린다 — 이름 옆 라벨로 붙인다(#358). */
+  it('미사용 품목은 이름 옆에 「미사용」 라벨을 붙인다', () => {
     renderPane();
 
-    expect(screen.getByText('합성 품목 C (미사용)')).toBeInTheDocument();
+    expect(
+      within(screen.getByText('합성 품목 C').closest('.usage-name') as HTMLElement).getByText(
+        '미사용',
+      ),
+    ).toBeInTheDocument();
   });
 });
 

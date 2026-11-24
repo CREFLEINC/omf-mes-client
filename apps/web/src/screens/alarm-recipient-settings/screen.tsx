@@ -474,6 +474,7 @@ export const AlarmRecipientSettingsScreen = () => {
           <EmptyState size="sm" title={t.state.noDepartments} />
         ) : (
           <SelectField
+            required
             label={t.fields.department}
             options={departmentOptions}
             value={departmentId === null ? '' : String(departmentId)}

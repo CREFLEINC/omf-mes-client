@@ -45,6 +45,7 @@ import {
   routeKeys,
   useDuplicateProbe,
   useRouteDetail,
+  useRouteActiveCount,
   useRouteList,
   useRouteSteps,
   type StepListResponse,
@@ -242,6 +243,7 @@ export const ApprovalRouteScreen = () => {
   const isCreating = readIsCreating(searchParams);
 
   const list = useRouteList(filters, page, size);
+  const activeCount = useRouteActiveCount(filters);
   const detail = useRouteDetail(selectedRouteId);
   const steps = useRouteSteps(selectedRouteId);
   const businessUnits = useBusinessUnitLookup();
@@ -1124,6 +1126,7 @@ export const ApprovalRouteScreen = () => {
         toolbar={
           <ActiveFilterChips
             includeInactive={filters.includeInactive}
+            activeCount={activeCount}
             onChange={(includeInactive) => {
               handleSearch({ ...filters, includeInactive });
             }}

@@ -20,6 +20,7 @@ import {
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
+import { UsageName } from '../../patterns/usage-chip';
 import { EMPTY_SCOPED_FILTERS } from './department-list-pane';
 import { hasAnyScopedFilter, LIST_PAGE_SIZES, type ListPageSize } from './filters';
 import type { PageView } from './pagination';
@@ -113,8 +114,7 @@ export const WorkerListPane = ({
       key: 'workerName',
       align: 'center',
       header: t.worker.fields.workerName,
-      render: (row) =>
-        row.isActive ? row.workerName : `${row.workerName}${t.values.inactiveSuffix}`,
+      render: (row) => <UsageName isActive={row.isActive}>{row.workerName}</UsageName>,
     },
   ];
   /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(단말 관리 목록과 같다 · omf-all-around#358). */

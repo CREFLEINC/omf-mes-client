@@ -268,10 +268,14 @@ const BatchForm = ({
               </span>
             </div>
             <div>
-              <span className="pu-label">{t.item}</span>
+              <span className="pu-label">{t.itemCode}</span>
               <span className="mll-batch-pair-value">
-                <b>{group.itemCode}</b> {group.itemName}
+                <b>{group.itemCode}</b>
               </span>
+            </div>
+            <div>
+              <span className="pu-label">{t.itemName}</span>
+              <span className="mll-batch-pair-value">{group.itemName}</span>
             </div>
           </div>
           {/* 출처 칩은 창 머리 오른쪽(제목 줄)에 세운다(사용자 지시 2026-11-19) — 자리는 `uniform.css`. */}

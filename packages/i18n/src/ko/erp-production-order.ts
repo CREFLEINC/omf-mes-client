@@ -12,6 +12,8 @@ export const erpProductionOrder = {
   fields: {
     productionOrderNo: 'ERP W/O 번호',
     item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     orderQty: '지시 수량',
     plannedStartDate: '계획 시작일',
     dueDate: '납기일',

@@ -103,11 +103,19 @@ export const useShipmentRequestDetail = (shipmentRequestId: number | null) => {
 };
 
 /**
- * 피처 010 — 상세 창 · 인쇄의 품목 표기(「코드 이름」). 지시서 라인은 품목 번호만 실어 번호로
+ * 피처 010 — 상세 창 · 인쇄의 품목 표기. 지시서 라인은 품목 번호만 실어 번호로
  * 하나씩 푼다(`GET /mdm/items/{itemId}`). 같은 품목은 한 번만 묻는다. 못 풀면 `null` — 화면이
- * 번호를 대신 적는다.
+ * 번호를 대신 적는다. 코드 · 이름을 따로 돌려준다 — 상세 라인 표는 품목코드 · 품목명 두 칸으로
+ * 나눠 보이고(사용자 지시 2026-11-24), 인쇄는 종전처럼 「코드 이름」으로 잇는다.
  */
-export const useItemLabels = (itemIds: readonly number[]): ((itemId: number) => string | null) => {
+export interface ItemCodeName {
+  code: string;
+  name: string;
+}
+
+export const useItemLabels = (
+  itemIds: readonly number[],
+): ((itemId: number) => ItemCodeName | null) => {
   const { client } = useApiClient();
   const uniqueIds = [...new Set(itemIds)];
 
@@ -118,12 +126,12 @@ export const useItemLabels = (itemIds: readonly number[]): ((itemId: number) => 
         const data = await runRequest(() =>
           client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }),
         );
-        return `${data.item.itemCode} ${data.item.itemName}`;
+        return { code: data.item.itemCode, name: data.item.itemName };
       },
     })),
   });
 
-  const labels = new Map<number, string>();
+  const labels = new Map<number, ItemCodeName>();
   uniqueIds.forEach((itemId, index) => {
     const label = results[index]?.data;
     if (label !== undefined) labels.set(itemId, label);

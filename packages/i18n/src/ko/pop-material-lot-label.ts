@@ -234,7 +234,8 @@ export const popMaterialLotLabel = {
     title: '자재 관리 LOT 생성',
     close: '닫기',
     supplier: '공급사',
-    item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     /** 기본값을 어디서 채웠나(US1-1 · US1-3). */
     source: {
       default: '기본 정보에서 가져옴',

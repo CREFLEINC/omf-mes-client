@@ -25,7 +25,8 @@ export const productDisposalRequest: Translated<typeof ko.productDisposalRequest
     selectRow: (lotNo: string): string => `Chọn ${lotNo}`,
     fields: {
       lotNo: 'LOT',
-      item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       qty: 'Số lượng',
       nonconformanceNo: 'Điểm không phù hợp',
       disposition: 'Quyết định xử lý',

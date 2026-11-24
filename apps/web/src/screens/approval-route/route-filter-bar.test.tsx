@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { toApprovalTypeOptions } from './code-options';
 import { DEFAULT_FILTERS } from './filters';
 import { BUSINESS_UNIT_LABEL } from './fixtures';
-import { RouteFilterBar, type RouteFilterBarProps } from './route-filter-bar';
+import { ActiveFilterChips, RouteFilterBar, type RouteFilterBarProps } from './route-filter-bar';
 
 const t = messages.approvalRoute;
 
@@ -187,5 +187,37 @@ describe('RouteFilterBar — 조건 칩', () => {
     /* 선행 단언 — 조건이 칸에 서 있어야 「칩이 없다」가 뜻을 갖는다. */
     expect(screen.getByLabelText(t.fields.q)).toHaveValue('SAMPLE');
     expect(screen.queryByRole('button', { name: /조건 제거$/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('ActiveFilterChips — 위 줄 사용 유무 라벨(사용자 지시 2026-11-24)', () => {
+  it('「전체」 없이 「사용 N건」만 내고, 고른 「사용」을 다시 누르면 전체(미사용 포함)로 푼다', async () => {
+    const onChange = vi.fn();
+    render(<ActiveFilterChips includeInactive={false} activeCount={4} onChange={onChange} />);
+
+    const chip = screen.getByRole('button', { name: '사용 4건' });
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('button', { name: /전체/ })).not.toBeInTheDocument();
+
+    await userEvent.setup().click(chip);
+    expect(onChange).toHaveBeenCalledWith(true);
+  });
+
+  it('전체일 때 누르면 사용만으로 건다', async () => {
+    const onChange = vi.fn();
+    render(<ActiveFilterChips includeInactive activeCount={4} onChange={onChange} />);
+
+    await userEvent.setup().click(screen.getByRole('button', { name: '사용 4건' }));
+    expect(onChange).toHaveBeenCalledWith(false);
+  });
+
+  it('0건이면 감추고, 고른 동안은 남긴다', () => {
+    const { rerender } = render(
+      <ActiveFilterChips includeInactive activeCount={0} onChange={vi.fn()} />,
+    );
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+
+    rerender(<ActiveFilterChips includeInactive={false} activeCount={0} onChange={vi.fn()} />);
+    expect(screen.getByRole('button', { name: '사용 0건' })).toBeInTheDocument();
   });
 });

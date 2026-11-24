@@ -107,7 +107,7 @@ describe('PartnerRolePane — 기본 정보는 고칠 수 없다 (결정 12)', (
 
   it('사용 여부를 값으로 낸다', () => {
     renderPane();
-    expect(within(detailPane()).getByLabelText('사용 여부')).toHaveTextContent('사용 중');
+    expect(within(detailPane()).getByLabelText('사용 여부')).toHaveTextContent('사용');
   });
 
   it('미사용 거래처는 미사용으로 낸다', () => {

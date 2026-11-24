@@ -1114,7 +1114,9 @@ describe('WorkOrderCloseCandidateScreen', () => {
     expect(
       api.urls.find((url) => url.pathname === paths.uoms)?.searchParams.get('includeInactive'),
     ).toBe('true');
-    expect(await screen.findByText('SYN-ITEM · Synthetic Item')).toBeVisible();
+    /* 품목코드 · 품목명은 두 열(사용자 지시 2026-11-24). */
+    expect(await screen.findByText('Synthetic Item')).toBeVisible();
+    expect(screen.getByText('SYN-ITEM')).toBeVisible();
     expect(screen.getByText('12.5 SYN-EA · Synthetic Each')).toBeVisible();
     expect(screen.queryByText('910001')).not.toBeInTheDocument();
     expect(screen.queryByText('920001')).not.toBeInTheDocument();

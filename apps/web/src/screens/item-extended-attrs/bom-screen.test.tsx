@@ -245,6 +245,15 @@ describe('ItemBomScreen — 하이라키', () => {
     await waitFor(() => {
       expect(within(table).getByText('SYN-ITEM-02')).toBeInTheDocument();
     });
+    /* 품목코드 · 품목명은 두 칸 — 하이라키 칸에 코드, 옆 칸에 이름(사용자 지시 2026-11-24 · ERP BOM 과 같은 모양). */
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .slice(0, 2)
+        .map((header) => header.textContent?.replace(/drag_indicator$/, '')),
+    ).toEqual(['품목코드', '품목명']);
+    const itemRow = within(table).getByText('SYN-ITEM-02').closest('tr');
+    expect(itemRow?.querySelectorAll('td')[1]?.textContent).toBe('합성 품목 B');
     /* 손실률은 「BOM 조회 (ERP)」와 같이 퍼센트로. */
     expect(within(table).getByText('5%')).toBeInTheDocument();
     /* 확장 표시는 켜진 것만 칩으로. */

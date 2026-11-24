@@ -157,7 +157,8 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
   },
   lineTable: {
     select: 'Chọn',
-    item: 'Mặt hàng',
+    itemCode: 'Mã mặt hàng',
+    itemName: 'Tên mặt hàng',
     lot: 'LOT vật tư',
     location: 'Vị trí',
     receiptQty: 'Số lượng nhập kho',
@@ -335,7 +336,8 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
     select: 'Chọn',
   },
   issueLineTable: {
-    item: 'Mặt hàng',
+    itemCode: 'Mã mặt hàng',
+    itemName: 'Tên mặt hàng',
     lot: 'LOT vật tư',
     location: 'Vị trí',
     issueQty: 'Số lượng hủy',

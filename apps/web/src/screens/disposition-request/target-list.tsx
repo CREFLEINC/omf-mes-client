@@ -2,6 +2,7 @@ import { Button, Chip, type Column, EmptyState, SkeletonText, Table } from '@cre
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { splitCodeName } from '../../patterns/split-code-name';
 import { sourceCodeLabel, stageLabel } from './codes';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
@@ -47,7 +48,16 @@ export const TargetList = ({
         </button>
       ),
     },
-    { key: 'item', header: t.fields.item, render: (row) => row.itemText },
+    {
+      key: 'item',
+      header: t.fields.itemCode,
+      render: (row) => splitCodeName(row.itemText, t.values.notAvailable).code,
+    },
+    {
+      key: 'itemName',
+      header: t.fields.itemName,
+      render: (row) => splitCodeName(row.itemText, t.values.notAvailable).name,
+    },
     { key: 'qty', header: t.fields.qty, align: 'end', render: (row) => row.qtyText },
     {
       key: 'source',

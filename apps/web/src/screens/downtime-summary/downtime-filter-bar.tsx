@@ -124,7 +124,7 @@ export const DowntimeFilterBar = ({
     <>
       <div className="filter-bar downtime-summary-filter">
         <div className="field-cell">
-          <FieldLabel htmlFor={periodId} label={t.filters.period} />
+          <FieldLabel htmlFor={periodId} label={t.filters.period} required />
           {/* 기간은 **한 컨트롤**이다 — `mode="range"` 하나가 두 값을 준다. */}
           <DatePicker
             id={periodId}

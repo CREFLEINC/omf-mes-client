@@ -295,6 +295,5 @@ export const collectionChannel = {
   values: {
     active: '사용 중',
     inactive: '미사용',
-    inactiveSuffix: ' (미사용)',
   },
 } as const;

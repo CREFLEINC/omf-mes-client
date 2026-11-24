@@ -118,7 +118,8 @@ export const stocktaking: Translated<typeof ko.stocktaking> = {
   },
   lineTable: {
     lineNo: 'Số dòng',
-    item: 'Mặt hàng',
+    itemCode: 'Mã mặt hàng',
+    itemName: 'Tên mặt hàng',
     lot: 'LOT vật tư',
     systemQty: 'Số lượng sổ sách',
     countedQty: 'Số lượng thực tế',

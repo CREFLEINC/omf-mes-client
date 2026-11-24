@@ -23,6 +23,8 @@ export const returnReceipt = {
     items: '품목',
     lots: '원 LOT',
     item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     lotNo: '원 LOT',
     shippedQty: '출하',
     returnQty: '반품',

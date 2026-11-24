@@ -72,8 +72,8 @@ interface Row {
  */
 type DaysFilter = 'all' | '5' | '6';
 
-const DAYS_FILTERS: { value: DaysFilter; label: string }[] = [
-  { value: 'all', label: t.daysFilter.all },
+/* 「전체」 라벨은 두지 않는다 — 고른 라벨을 다시 누르면 전체로 돌아간다(사용자 지시 2026-11-24). */
+const DAYS_FILTERS: { value: Exclude<DaysFilter, 'all'>; label: string }[] = [
   { value: '5', label: t.daysFilter.five },
   { value: '6', label: t.daysFilter.six },
 ];
@@ -223,11 +223,16 @@ export const PlantWorkingDaysScreen = () => {
   const resizable = useColumnWidths('omf-mes:plant-working-days:columns', orderedColumns);
   const fit = useFitColumns(resizable.columns);
   const needle = keyword.trim().toLowerCase();
-  const shownRows = rows.filter(
-    (row) =>
-      (needle === '' || row.plant.plantName.toLowerCase().includes(needle)) &&
-      (daysFilter === 'all' || String(row.saved) === daysFilter),
+  const keywordRows = rows.filter(
+    (row) => needle === '' || row.plant.plantName.toLowerCase().includes(needle),
   );
+  const shownRows = keywordRows.filter(
+    (row) => daysFilter === 'all' || String(row.saved) === daysFilter,
+  );
+  /* 라벨 건수 — 지금 검색어에 맞는 공장 중 저장된 값이 그 근무일인 수(사용자 지시 2026-11-24). 다 받기 전에는 세지 않는다. */
+  const isReady = !plants.isPending && !policies.isPending && !plants.isError && !policies.isError;
+  const daysCountOf = (value: Exclude<DaysFilter, 'all'>): number =>
+    keywordRows.filter((row) => String(row.saved) === value).length;
   /* 공장은 한 번에 다 받는 작은 목록이라 화면 안에서 쪽을 나눈다. */
   const plantPage = useClientPage(shownRows);
 
@@ -298,19 +303,28 @@ export const PlantWorkingDaysScreen = () => {
         showCloseButton={false}
         size="sm"
       />
-      {/* 주간 근무일 라벨 — 위 줄 오른쪽, 누르는 즉시 거른다(저장된 값 기준 · 사용자 지시 2026-11-24). */}
+      {/*
+       * 주간 근무일 라벨 — 위 줄 오른쪽, 누르는 즉시 거른다(저장된 값 기준 · 사용자 지시 2026-11-24). 「이름 N건」, 0건 라벨은
+       * 감추고(고른 라벨은 남긴다) 고른 라벨을 다시 누르면 전체로 돌아간다. 목록을 받기 전에는 이름만.
+       */}
       <div className="list-detail-toolbar">
         <div className="inspection-hub-counts" role="group" aria-label={t.daysFilter.group}>
-          {DAYS_FILTERS.map((option) => (
+          {DAYS_FILTERS.filter(
+            (option) => !isReady || daysFilter === option.value || daysCountOf(option.value) > 0,
+          ).map((option) => (
             <Chip
               key={option.value}
               variant="filter"
               size="sm"
               selected={daysFilter === option.value}
               aria-pressed={daysFilter === option.value}
-              onSelectedChange={() => setDaysFilter(option.value)}
+              onSelectedChange={() =>
+                setDaysFilter(daysFilter === option.value ? 'all' : option.value)
+              }
             >
-              {option.label}
+              {isReady
+                ? messages.common.inspectionHub.count(option.label, daysCountOf(option.value))
+                : option.label}
             </Chip>
           ))}
         </div>

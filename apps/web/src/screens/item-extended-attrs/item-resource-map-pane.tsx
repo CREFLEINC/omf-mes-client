@@ -3,6 +3,7 @@ import type { ItemResourceMap } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { UsageChip } from '../../patterns/usage-chip';
 import { SelectField } from './select-field';
 import type { SelectOption } from './types';
 
@@ -104,7 +105,7 @@ export const ItemResourceMapPane = ({
       key: 'isActive',
       header: t.fields.isActive,
       width: '88px',
-      render: (row) => (row.isActive ? t.values.active : t.values.inactive),
+      render: (row) => <UsageChip isActive={row.isActive} />,
     },
     {
       key: 'remarks',

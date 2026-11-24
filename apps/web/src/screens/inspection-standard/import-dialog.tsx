@@ -216,7 +216,7 @@ export const ImportDialog = ({
          */}
         <div className="form-grid-full inspection-standard-import-files">
           <div className="inspection-standard-import-files-label">
-            <FieldLabel htmlFor={inputId} label={t.fileLabel} />
+            <FieldLabel htmlFor={inputId} label={t.fileLabel} required />
             {/* 받는 형식은 칸 이름 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
             <InfoTip text={t.fileHint} />
           </div>

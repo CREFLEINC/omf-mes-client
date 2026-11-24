@@ -2023,9 +2023,11 @@ describe('ItemExtendedAttrsScreen — 대상 품목 이름 (결정 12)', () => {
   it('대상 품목을 번호가 아니라 이름으로 낸다', async () => {
     renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
 
-    await findBuMapPane();
+    const pane = await findBuMapPane();
 
-    expect(await screen.findByText('SYN-ITEM-02 · 합성 품목 B')).toBeInTheDocument();
+    /* 대상 품목은 품목코드 · 품목명 두 칸(사용자 지시 2026-11-24). */
+    expect(await within(pane).findByText('합성 품목 B')).toBeInTheDocument();
+    expect(within(pane).getByText('SYN-ITEM-02')).toBeInTheDocument();
     expect(screen.queryByText('1002')).not.toBeInTheDocument();
   });
 
@@ -2033,10 +2035,10 @@ describe('ItemExtendedAttrsScreen — 대상 품목 이름 (결정 12)', () => {
   it('이름을 얻지 못한 행만 「알 수 없음」이다', async () => {
     renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
 
-    await findBuMapPane();
+    const pane = await findBuMapPane();
 
     expect(await screen.findByText('알 수 없음')).toBeInTheDocument();
-    expect(screen.getByText('SYN-ITEM-02 · 합성 품목 B')).toBeInTheDocument();
+    expect(within(pane).getByText('합성 품목 B')).toBeInTheDocument();
     expect(screen.queryByText('9001')).not.toBeInTheDocument();
   });
 
@@ -2047,8 +2049,8 @@ describe('ItemExtendedAttrsScreen — 대상 품목 이름 (결정 12)', () => {
   it('같은 품목을 여러 번 받지 않는다', async () => {
     const { requests } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
 
-    await findBuMapPane();
-    await screen.findByText('SYN-ITEM-02 · 합성 품목 B');
+    const pane = await findBuMapPane();
+    await within(pane).findByText('합성 품목 B');
 
     expect(requestsTo(requests, `${ITEMS_PATH}/1002`)).toHaveLength(1);
   });
@@ -2874,7 +2876,7 @@ describe('ItemExtendedAttrsScreen — 사업부 매핑은 중복을 막지 않�
      * 두 줄이 **같은 값**을 내는지로 잰다.
      */
     expect(buMapRowCount(pane)).toBe(2);
-    expect(within(pane).getAllByText('SYN-ITEM-02 · 합성 품목 B')).toHaveLength(2);
+    expect(within(pane).getAllByText('합성 품목 B')).toHaveLength(2);
     expect(within(pane).getAllByText('2026-01-01 ~ 2026-12-31')).toHaveLength(2);
 
     await user.click(within(pane).getAllByRole('button', { name: /매핑 삭제$/ })[0]!);

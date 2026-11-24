@@ -2,6 +2,7 @@ import { Button, Checkbox, Chip, type Column, EmptyState, Table, TextField } fro
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import { splitCodeName } from '../../patterns/split-code-name';
 import {
   describeReference,
   isLotHeld,
@@ -36,7 +37,7 @@ export interface GrLineColumnsInput {
 }
 
 /**
- * 입고 라인 표의 열 구성 — **일곱이고 그중 둘이 입력칸이다.**
+ * 입고 라인 표의 열 구성 — **여덟이고 그중 둘이 입력칸이다.**
  *
  * **단위 열을 따로 두지 않고 수량 표기에 붙인다**(「100 SAMPLE-EA」 — W-01-03이 세운 처리).
  * 열로 만들면 폭이 130px 더 드는데, 단위는 수량을 읽는 순간에만 필요하다.
@@ -47,15 +48,14 @@ export interface GrLineColumnsInput {
  * | 열 | 폭 | 근거 |
  * | --- | ---: | --- |
  * | 선택 | 56px | `Checkbox` 하나(머리글은 「선택」) |
- * | **품목** | **미지정** | 「코드 · 이름」을 담고 남는 폭을 흡수한다(예산 184px) |
+ * | 품목코드 | 120px | 품목코드(사용자 지시 2026-11-24 — 품목코드 · 품목명을 두 열로 나눈다) |
+ * | **품목명** | **미지정** | 이름을 담고 남는 폭을 흡수한다 |
  * | 자재 LOT | 168px | LOT 번호 15자 113px + 4갈래 표기 + **보류 표식** |
  * | 위치 | 136px | 「코드 · 이름」 |
  * | 입고 수량 | 104px | 수 + 단위 표기 |
  * | 보유 수량 | 120px | 수 + 단위 표기 · **「확인하지 못함」** 표식 |
  * | **반품 수량** | 136px | `sm` `TextField` + 인라인 오류 + **잠금 사유** |
- * | **지정 폭 합** | **720px** | |
- * | 흡수 열 예산 | 184px | 「코드 · 이름」이 접히지 않고 읽히는 하한 |
- * | **합** | **904px** | `58rem`(928px) 안에 들어간다 — 24px 여유 |
+ * | **지정 폭 합** | **840px** | 흡수 열(품목명)은 `58rem`(928px) 하한에서 88px을 받는다 |
  *
  * **잠금 사유가 반품 수량 칸에 붙는 이유**: 선택 열은 체크박스 하나 폭(56px)이라 문장이 들어갈
  * 자리가 없다. 사유는 넓은 칸에 한 번만 그리고, **선택칸과 수량칸이 함께**
@@ -83,6 +83,8 @@ export const buildGrLineColumns = ({
   const reasonIdOf = (row: ReturnLineRow): string => `${reasonIdPrefix}-${String(row.ordinal)}`;
   const uomNameOf = (row: ReturnLineRow): string =>
     describeReference(toReference(uomLookup, row.line.uomId));
+  const itemCodeNameOf = (itemId: number): { code: string; name: string } =>
+    splitCodeName(describeReference(itemNames.of(itemId)), messages.common.reference.empty);
 
   return [
     {
@@ -112,8 +114,14 @@ export const buildGrLineColumns = ({
     },
     {
       key: 'item',
-      header: t.lineTable.item,
-      render: (row) => describeReference(itemNames.of(row.line.itemId)),
+      header: t.lineTable.itemCode,
+      width: '120px',
+      render: (row) => itemCodeNameOf(row.line.itemId).code,
+    },
+    {
+      key: 'itemName',
+      header: t.lineTable.itemName,
+      render: (row) => itemCodeNameOf(row.line.itemId).name,
     },
     {
       key: 'lot',
@@ -166,7 +174,14 @@ export const buildGrLineColumns = ({
     },
     {
       key: 'returnQty',
-      header: t.lineTable.returnQty,
+      header: (
+        <>
+          {t.lineTable.returnQty}
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </>
+      ),
       width: '136px',
       /*
        * **표 안의 입력칸.** 보이는 라벨을 둘 자리가 없어 `aria-label`로 준다(배치 규범 3의
@@ -183,6 +198,7 @@ export const buildGrLineColumns = ({
               fullWidth
               inputMode="decimal"
               aria-label={t.lineTable.returnQtyLabel(row.ordinal)}
+              aria-required={row.isSelected ? 'true' : undefined}
               aria-describedby={blocked ? reasonIdOf(row) : undefined}
               value={row.qtyText}
               disabled={blocked || isLocked}
@@ -325,9 +341,7 @@ export const GrLineTable = ({
       {/* 무엇이 나갈지 표 바로 아래에서 읽힌다 — 확인 창에서 처음 보게 하지 않는다. */}
       <p className="field-note">{summary()}</p>
 
-      {selection.ready.kind === 'blocked' && (
-        <p className="field-note">{selection.ready.reason}</p>
-      )}
+      {selection.ready.kind === 'blocked' && <p className="field-note">{selection.ready.reason}</p>}
 
       {hasHeldLot && <p className="field-note">{t.notes.lotHold}</p>}
 

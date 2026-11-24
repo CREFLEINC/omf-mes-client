@@ -83,7 +83,9 @@ describe('HeaderPane', () => {
     /* 유효 시작일 · 종료일은 입력받지 않는다(#231). */
     expect(screen.queryByLabelText('유효시작')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('유효종료')).not.toBeInTheDocument();
-    expect(screen.getByText('ITM-001 · 하우징 커버')).toBeInTheDocument();
+    /* 품목코드 · 품목명은 두 칸(사용자 지시 2026-11-24). */
+    expect(screen.getByText('ITM-001')).toBeInTheDocument();
+    expect(screen.getByText('하우징 커버')).toBeInTheDocument();
     expect(screen.getByText('Rev 3')).toBeInTheDocument();
     expect(screen.getByText('작성중')).toBeInTheDocument();
   });

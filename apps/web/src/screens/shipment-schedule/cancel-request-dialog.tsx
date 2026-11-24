@@ -103,7 +103,7 @@ export const CancelRequestDialog = ({
           </ul>
         </>
       )}
-      <InfoLabel htmlFor={reasonId} label={t.reasonLabel} info={t.reasonHelp} />
+      <InfoLabel htmlFor={reasonId} label={t.reasonLabel} info={t.reasonHelp} required />
       <TextArea
         id={reasonId}
         value={reason}

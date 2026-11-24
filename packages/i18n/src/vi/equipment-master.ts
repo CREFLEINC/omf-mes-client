@@ -163,8 +163,6 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
     WORK_AREA: 'Khu vực làm việc',
   },
   values: {
-    active: 'Đang sử dụng',
-    inactive: 'Ngừng dùng',
     noParent: 'Không có (cấp cao nhất)',
     inactiveSuffix: ' (ngừng dùng)',
     parentCycleSuffix: ' (vòng lặp — hãy chọn giá trị khác)',

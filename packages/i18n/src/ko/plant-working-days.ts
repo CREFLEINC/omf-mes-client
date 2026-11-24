@@ -53,7 +53,6 @@ export const plantWorkingDays = {
   /** 위 줄 주간 근무일 라벨(사용자 지시 2026-11-24) — 저장된 값으로 거른다. */
   daysFilter: {
     group: '주간 근무일',
-    all: '전체',
     five: '주 5일제',
     six: '주 6일제',
   },

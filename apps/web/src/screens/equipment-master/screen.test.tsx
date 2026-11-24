@@ -753,7 +753,13 @@ describe('EquipmentMasterScreen — 그룹 등록·수정', () => {
     const nameInput = await openGroup(user);
 
     expect(form().getByRole('textbox', { name: new RegExp(t.fields.groupCode) })).toBeDisabled();
-    expect(form().getByText(messages.editability.referenced(3))).toBeInTheDocument();
+    expect(form().getByText(messages.editability.badge).closest('[title]')).toHaveAttribute(
+      'title',
+      messages.editability.referenced(3),
+    );
+    expect(
+      form().getByRole('textbox', { name: new RegExp(t.fields.groupCode) }),
+    ).toHaveAccessibleDescription(messages.editability.referenced(3));
 
     await user.clear(nameInput);
     await user.type(nameInput, '프레스 구역');
@@ -1356,7 +1362,7 @@ describe('EquipmentMasterScreen — 그룹 사용 중지', () => {
 
     await waitFor(
       () => {
-        expect(form().getByText(t.values.inactive)).toBeInTheDocument();
+        expect(form().getByText(messages.common.usage.inactive)).toBeInTheDocument();
       },
       { timeout: 3000 },
     );
@@ -1378,7 +1384,7 @@ describe('EquipmentMasterScreen — 그룹 사용 중지', () => {
     await openGroup(user);
 
     expect(form().queryByRole('button', { name: messages.common.deactivate })).toBeNull();
-    expect(form().getByText(t.values.inactive)).toBeInTheDocument();
+    expect(form().getByText(messages.common.usage.inactive)).toBeInTheDocument();
   });
 });
 
@@ -2184,7 +2190,12 @@ describe('EquipmentMasterScreen — 설비 등록·수정', () => {
     expect(
       equipmentForm().getByRole('textbox', { name: new RegExp(t.fields.equipmentCode) }),
     ).toBeDisabled();
-    expect(equipmentForm().getByText(messages.editability.referenced(3))).toBeInTheDocument();
+    expect(
+      equipmentForm().getByText(messages.editability.badge).closest('[title]'),
+    ).toHaveAttribute('title', messages.editability.referenced(3));
+    expect(
+      equipmentForm().getByRole('textbox', { name: new RegExp(t.fields.equipmentCode) }),
+    ).toHaveAccessibleDescription(messages.editability.referenced(3));
   });
 
   /*
@@ -2204,7 +2215,12 @@ describe('EquipmentMasterScreen — 설비 등록·수정', () => {
     expect(
       equipmentForm().getByRole('textbox', { name: new RegExp(t.fields.equipmentCode) }),
     ).toBeDisabled();
-    expect(equipmentForm().getByText(t.actionReasons.codeLockUnknown)).toBeInTheDocument();
+    expect(
+      equipmentForm().getByText(messages.editability.badge).closest('[title]'),
+    ).toHaveAttribute('title', t.actionReasons.codeLockUnknown);
+    expect(
+      equipmentForm().getByRole('textbox', { name: new RegExp(t.fields.equipmentCode) }),
+    ).toHaveAccessibleDescription(t.actionReasons.codeLockUnknown);
     expect(await equipmentForm().findByText(messages.httpError.loadTitle)).toBeInTheDocument();
   });
 
