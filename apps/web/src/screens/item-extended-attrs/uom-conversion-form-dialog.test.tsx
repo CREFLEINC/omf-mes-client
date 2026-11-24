@@ -49,9 +49,7 @@ describe('UomConversionFormDialog — 확인은 저장이 아니다', () => {
   it('창 안에 표에만 반영된다는 안내가 있다', () => {
     renderDialog();
 
-    expect(
-      screen.getByText('확인한 뒤 「저장」을 눌러야 저장됩니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('확인한 뒤 「저장」을 눌러야 저장됩니다.')).toBeInTheDocument();
   });
 
   it('확인을 누르면 고친 줄을 바깥에 알린다', async () => {

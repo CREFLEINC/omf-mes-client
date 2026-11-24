@@ -54,6 +54,15 @@ export interface LabelMedia {
   offsetMm: number;
   speed: number;
   density: number;
+  /**
+   * 이형지(밑종이) 가로폭(mm). 있으면 `SIZE` 가로로 이것을 보낸다. `null` 이면 라벨 가로(`widthMm`)와 같다.
+   *
+   * ⭐ 현장 라벨은 80 × 40 이고 이형지는 82.6 이다(양쪽 1.3 mm 씩, 2026-11-24 사용자 확인). 드라이버의
+   *    82.6 × 39.9 는 이형지를 포함한 폭이었고, 좌표는 그 값을 `SIZE` 로 보낸 채 실기에서 맞췄다.
+   *    `DIRECTION 1`(180° 돌려 찍기)에서는 `SIZE` 가로가 그림이 놓이는 자리를 정한다 — 라벨 폭 80 만 보내면
+   *    그림이 옆으로 밀린다. 그래서 라벨 크기와 이형지 폭을 따로 받는다.
+   */
+  linerWidthMm: number | null;
 }
 
 export const readLabelMedia = (): LabelMedia => ({
@@ -64,7 +73,12 @@ export const readLabelMedia = (): LabelMedia => ({
   offsetMm: numberFromEnv('POP_LABEL_OFFSET_MM', 0),
   speed: numberFromEnv('POP_LABEL_SPEED', 4),
   density: numberFromEnv('POP_LABEL_DENSITY', 8),
+  linerWidthMm: null,
 });
+
+/** 보낼 대지 줄 — 가로는 이형지 폭이 있으면 그것(`linerWidthMm`), 없으면 라벨 가로. */
+const sizeLine = (media: LabelMedia): string =>
+  `SIZE ${String(media.linerWidthMm ?? media.widthMm)} mm,${String(media.heightMm)} mm`;
 
 /** 장을 가르는 표시. 연속지는 「가를 것이 없다」이므로 0 으로 적는다. */
 const separator = (media: LabelMedia): string => {
@@ -149,7 +163,7 @@ export const applyLabelMedia = (commands: string, media: LabelMedia): string => 
   });
 
   const header = [
-    `SIZE ${String(media.widthMm)} mm,${String(media.heightMm)} mm`,
+    sizeLine(media),
     separator(media),
     `SPEED ${String(media.speed)}`,
     `DENSITY ${String(media.density)}`,
@@ -183,12 +197,7 @@ export const applyLabelMedia = (commands: string, media: LabelMedia): string => 
  * 라벨 한두 장을 밀어 보며 경계를 재고 그 값을 기억한다. 라벨지를 갈아 끼운 뒤 한 번 돌린다.
  */
 export const calibrationCommands = (media: LabelMedia): string =>
-  [
-    `SIZE ${String(media.widthMm)} mm,${String(media.heightMm)} mm`,
-    separator(media),
-    'GAPDETECT',
-    '',
-  ].join('\r\n');
+  [sizeLine(media), separator(media), 'GAPDETECT', ''].join('\r\n');
 
 /**
  * **Windows 드라이버에 설정된 용지 크기**를 읽는 스크립트.
@@ -220,8 +229,9 @@ export const buildMediaProbeScript = (deviceName?: string): string =>
 /**
  * 라벨 명령이 **스스로 적은 크기**(첫 `SIZE <w> mm,<h> mm`). 없거나 읽을 수 없으면 `null`.
  *
- * ⭐ 용지 크기는 명시적으로 정한 값을 쓴다(사용자 지시 2026-11-23) — 단말 환경값이 먼저, 그다음 라벨이 적은
- *   크기다. 드라이버에 묻는 것(`buildMediaProbeScript`)은 둘 다 없을 때만 — 묻는 데 장마다 1초 남짓 걸렸다.
+ * ⚠ **드라이버 값보다 앞세우지 않는다.** 라벨 좌표는 9월부터 줄곧 «드라이버가 알려 준 크기»를 `SIZE` 로 보낸
+ *   채로 실기에서 맞췄다(`lot-label-tspl.ts` 여백 주석). 라벨이 적은 `SIZE` 를 먼저 쓰게 했더니 현장에서
+ *   그리는 자리가 전부 틀어졌다(2026-11-24). 드라이버에 묻지 못했을 때만 쓴다.
  */
 export const declaredLabelSize = (
   commands: string,
@@ -239,6 +249,33 @@ export const declaredLabelSize = (
 /** 단말 환경값으로 크기를 못 박았는가 — 그러면 라벨이 적은 크기도 드라이버 값도 덮지 않는다. */
 export const isLabelSizePinned = (): boolean =>
   process.env.POP_LABEL_WIDTH_MM !== undefined || process.env.POP_LABEL_HEIGHT_MM !== undefined;
+
+/**
+ * 드라이버가 알려 준 용지 크기 기억 — 프린터마다 `ttlMs` 동안. 묻는 데 작업마다 1초 남짓 걸렸다(현장 실측 2026-11-23).
+ *
+ * ⚠ 못 물어본 것(`null`)도 기억한다 — 같은 프린터에 다시 물어도 같은 데서 막혀 시간만 쓴다.
+ * ⚠ 인쇄가 실패하면 부르는 쪽이 `forget` 한다 — 현장에서 라벨지 · 프린터 설정을 바꿨을 수 있다.
+ */
+export const createMediaMemory = (ttlMs: number, now: () => number = Date.now) => {
+  const known = new Map<
+    string,
+    { at: number; size: { widthMm: number; heightMm: number } | null }
+  >();
+
+  return {
+    recall: (device: string): { widthMm: number; heightMm: number } | null | undefined => {
+      const entry = known.get(device);
+
+      return entry !== undefined && now() - entry.at < ttlMs ? entry.size : undefined;
+    },
+    remember: (device: string, size: { widthMm: number; heightMm: number } | null): void => {
+      known.set(device, { at: now(), size });
+    },
+    forget: (): void => {
+      known.clear();
+    },
+  };
+};
 
 /** 1/100 인치를 mm 로. 소수점 한 자리까지 — 프린터가 그 이상 가리지 못한다. */
 const toMillimetres = (hundredthsOfInch: number): number =>

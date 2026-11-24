@@ -9,8 +9,12 @@ import type { SelectOption } from './types';
 const t = messages.itemExtendedAttrs.component;
 
 export interface BomComponentFormDialogProps {
-  /** 어느 줄을 고치는지. 표에서 창으로 넘어와도 대상이 흐려지지 않게 제목에 담는다 */
-  rowName: string;
+  /**
+   * 어느 구성품을 고치는지 — 제목 아래 줄에 코드(굵게) · 품목명으로 둔다(시안 A, 사용자 결정 2026-11-24). 표에서 창으로
+   * 넘어와도 대상이 흐려지지 않는다. 코드를 모르면 이름만.
+   */
+  itemCode: string | null;
+  itemName: string;
   loadError: ReactNode;
   /**
    * 상세가 도착하기 전에는 `null`이다 — 빈 폼을 보이면 사용자가 그것을 자료로 읽는다.
@@ -52,7 +56,8 @@ export interface BomComponentFormDialogProps {
  * 없는 제약을 흉내 내면 서버가 허용하는 값을 화면이 막는다(결정 7).
  */
 export const BomComponentFormDialog = ({
-  rowName,
+  itemCode,
+  itemName,
   loadError,
   values,
   onChange,
@@ -138,7 +143,17 @@ export const BomComponentFormDialog = ({
       open
       onClose={onClose}
       size="md"
-      title={t.dialog.title(rowName)}
+      /* 머리 · 바닥은 판의 회색 띠, 내용만 흰 바탕 — 머리와 내용을 가른다(app.css `.bom-component-dialog`). */
+      className="bom-component-dialog"
+      title={
+        <span className="bom-component-dialog__title">
+          <span>{t.dialog.title}</span>
+          <span className="bom-component-dialog__item">
+            {itemCode === null ? null : <b>{itemCode}</b>}
+            <span>{itemName}</span>
+          </span>
+        </span>
+      }
       footer={
         <>
           <Button variant="outlined" onClick={onClose}>

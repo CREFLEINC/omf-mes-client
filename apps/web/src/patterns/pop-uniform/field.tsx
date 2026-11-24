@@ -258,7 +258,8 @@ export const PuScanField = ({
 
 /**
  * [직접 입력] 창: 칸 하나 + [취소] · [확인]. 숫자만 넣는 칸(사번 등)은 키패드를,
- * 그 밖의 칸은 칸 아래에 글자판(`PuTextKeyboard`)을 함께 보인다(사용자 지시 2026-11-19 · 단말에 실물 자판이 없다).
+ * 그 밖의 칸은 글자판(`PuTextKeyboard`)을 함께 보인다(사용자 지시 2026-11-19 · 단말에 실물 자판이 없다).
+ * 둘 다 창 밖 화면 아래 판에 띄운다 — 창 크기는 어느 쪽이든 같다(사용자 지시 2026-11-24 · `PuDialog` `keyboard`).
  * 창에는 제목이 없다 — 칸 · 글자판(키패드) · 단추만 보인다(사용자 지시 2026-11-19 「모든 직접 입력 팝업의
  * 타이틀을 없애고」). 칸 안 흐린 안내는 「출하번호를 입력하세요」, 창을 읽어 주는 이름은 「출하번호 입력」이다.
  * 찾기 창(`search`)은 단추가 [검색]이다.
@@ -296,7 +297,23 @@ export const PuManualDialog = ({
     <PuDialog
       ariaLabel={t.scan.manualTitle(label)}
       onClose={onClose}
-      wide={!keypad}
+      keyboard={
+        keypad ? (
+          <PuKeypad
+            targetLabel={label}
+            showTarget={false}
+            decimal={false}
+            onKey={(key) => {
+              setValue((prev) => applyKeypadKey(prev, key, { decimal: false }));
+            }}
+            onClearAll={() => {
+              setValue('');
+            }}
+          />
+        ) : (
+          <PuTextKeyboard value={value} onChange={setValue} />
+        )
+      }
       footer={
         <>
           <PuButton onClick={onClose}>{t.dialog.cancel}</PuButton>
@@ -325,30 +342,6 @@ export const PuManualDialog = ({
           }
         }}
       />
-      {!keypad && (
-        /* 글자판의 빈 곳을 눌러도 칸에서 초점이 빠지지 않게 한다(Enter 로 확인이 그대로 된다). */
-        <div
-          className="pu-manual-kbd"
-          onMouseDown={(event) => {
-            event.preventDefault();
-          }}
-        >
-          <PuTextKeyboard value={value} onChange={setValue} />
-        </div>
-      )}
-      {keypad && (
-        <PuKeypad
-          targetLabel={label}
-          showTarget={false}
-          decimal={false}
-          onKey={(key) => {
-            setValue((prev) => applyKeypadKey(prev, key, { decimal: false }));
-          }}
-          onClearAll={() => {
-            setValue('');
-          }}
-        />
-      )}
     </PuDialog>
   );
 };

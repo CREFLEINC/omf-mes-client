@@ -14,6 +14,11 @@ export interface PagedSelectFieldProps {
   queryKey: readonly unknown[];
   fetchPage: (query: string, page: number) => Promise<SelectPage>;
   error?: string;
+  /**
+   * 있으면 칸을 잠그고 이 사유를 칸 안에 보인다(「공장 먼저 선택」 · 「POP 단말만」).
+   * 잠긴 칸은 값 대신 사유만 — 사유 없는 잠금은 고장으로 읽힌다(배치 규범 4).
+   */
+  disabledLabel?: string;
   /** 칸 아래 안내(창고 기준 안내 등) */
   children?: ReactNode;
   onChange: (value: string, label: string) => void;
@@ -34,6 +39,7 @@ export const PagedSelectField = forwardRef<HTMLButtonElement, PagedSelectFieldPr
       queryKey,
       fetchPage,
       error,
+      disabledLabel,
       children,
       onChange,
     },
@@ -48,14 +54,19 @@ export const PagedSelectField = forwardRef<HTMLButtonElement, PagedSelectFieldPr
         <PagedSelect
           ref={ref}
           id={id}
-          value={value}
-          placeholder={emptyLabel}
+          value={disabledLabel === undefined ? value : null}
+          placeholder={disabledLabel ?? emptyLabel}
+          disabled={disabledLabel !== undefined}
           invalid={error !== undefined}
           aria-describedby={error === undefined ? undefined : errorId}
           queryKey={queryKey}
           fetchPage={fetchPage}
-          leadingOptions={[{ value: '', label: emptyLabel }]}
-          selectedOption={value === '' ? null : { value, label: valueLabel || value }}
+          leadingOptions={disabledLabel === undefined ? [{ value: '', label: emptyLabel }] : []}
+          selectedOption={
+            value === '' || disabledLabel !== undefined
+              ? null
+              : { value, label: valueLabel || value }
+          }
           onOptionChange={(option) => {
             onChange(option.value, option.value === '' ? '' : option.label);
           }}

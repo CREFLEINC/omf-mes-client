@@ -958,7 +958,10 @@ describe('FR-015 일괄 출력 — 장수만큼 차례대로', () => {
       const preview = await screen.findByRole('dialog', { name: t.preview.title });
       await user.click(within(preview).getByRole('button', { name: t.preview.print(10) }));
       await waitFor(() => expect(printedIds(sent)).toHaveLength(10 * round));
-      await user.click(await screen.findByRole('button', { name: t.bar.confirm }));
+      /* 다 나왔으면 [확인]을 기다리지 않는다(사용자 지시 2026-11-24, #1764). */
+      await waitFor(() =>
+        expect(screen.queryByRole('button', { name: t.bar.confirm })).not.toBeInTheDocument(),
+      );
     }
 
     const ids = printedIds(sent);

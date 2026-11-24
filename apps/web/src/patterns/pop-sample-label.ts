@@ -1,19 +1,10 @@
-import { renditionShell } from '../../patterns/pop-print';
+import { renditionShell } from './pop-print';
 
-import {
-  buildMaterialLotLabel,
-  type MaterialLotLabelFields,
-} from '../../patterns/label/lot-label-tspl';
-
-declare global {
-  interface Window {
-    /** 셸 진단(Ctrl+Alt+P)이 부르는 견본 인쇄. POP 진입점이 심는다(`app/pop-main.tsx`). */
-    __popPrintSampleLotLabel?: () => Promise<string>;
-  }
-}
+import { buildMaterialLotLabel, type MaterialLotLabelFields } from './label/lot-label-tspl';
 
 /**
- * 셸 진단(Ctrl+Alt+P · 80 × 30)이 찍는 **견본 자재 LOT 라벨.**
+ * 라벨지 설정 창의 [견본 인쇄](톱니 설정 → 라벨지 설정 · 80 × 30)가 찍는 **견본 자재 LOT 라벨.**
+ * 숨은 단축키(Ctrl+Alt+P)였던 것을 창의 단추로 옮겼다(사용자 지시 2026-11-24).
  *
  * ⭐ **실제 발행과 같은 길로 보낸다**(사용자 지시 2026-09-15). 서식은 실제 발행과 같은 배치
  *   (`layoutMaterialLotLabel` — 2026-10-24 개편안 · omf-all-around#184), 보내는 곳은
@@ -36,8 +27,11 @@ export const SAMPLE_LOT_LABEL: MaterialLotLabelFields = {
   receipt: 'RCV 2026-01-01',
 };
 
-/** 셸이 부른다. 셸 통로가 없으면 던진다 — 부른 쪽이 사유를 상자로 보인다. */
-export const printSampleLotLabel = async (): Promise<string> => {
+/**
+ * 견본 한 장. 셸 통로가 없으면 던진다 — 부른 쪽이 사유를 알린다.
+ * `printerName` 은 화면이 고른 프린터 — 발행 화면과 같은 프린터로 보낸다(없으면 셸 기본).
+ */
+export const printSampleLotLabel = async (printerName?: string | null): Promise<string> => {
   const shell = renditionShell();
 
   if (shell === null) throw new Error('셸 인쇄 통로가 없습니다.');
@@ -47,5 +41,6 @@ export const printSampleLotLabel = async (): Promise<string> => {
     'lot-sample',
     new Date().toISOString(),
     'tspl',
+    printerName ?? undefined,
   );
 };

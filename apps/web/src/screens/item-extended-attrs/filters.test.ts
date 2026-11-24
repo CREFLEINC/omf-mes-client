@@ -10,14 +10,7 @@ import {
   toItemListQuery,
   toSearchParams,
 } from './filters';
-import {
-  DEFAULT_SUBSIDIARY_TAB_ID,
-  DEFAULT_TAB_ID,
-  SUBSIDIARY_TAB_KEY,
-  TAB_KEY,
-  resolveSubsidiaryTab,
-  resolveTab,
-} from './tabs';
+import { DEFAULT_TAB_ID, TAB_KEY, resolveTab } from './tabs';
 import type { ItemFilters } from './types';
 
 const params = (search: string): URLSearchParams => new URLSearchParams(search);
@@ -98,16 +91,13 @@ describe('readSelectedId', () => {
 
 describe('toSearchParams', () => {
   it('빈 조건은 키 자체를 두지 않는다', () => {
-    expect(
-      toSearchParams(DEFAULT_TAB_ID, DEFAULT_SUBSIDIARY_TAB_ID, EMPTY_ITEM_FILTERS, 1).toString(),
-    ).toBe('');
+    expect(toSearchParams(DEFAULT_TAB_ID, EMPTY_ITEM_FILTERS, 1).toString()).toBe('');
   });
 
   it('걸린 조건만 주소에 남는다', () => {
     expect(
       toSearchParams(
         DEFAULT_TAB_ID,
-        DEFAULT_SUBSIDIARY_TAB_ID,
         { q: 'SYN', itemType: '', includeInactive: true, iqc: '' },
         3,
       ).toString(),
@@ -115,20 +105,13 @@ describe('toSearchParams', () => {
   });
 
   it('IQC 대상은 걸렸을 때만 소문자로 쓴다', () => {
-    expect(
-      toSearchParams(
-        DEFAULT_TAB_ID,
-        DEFAULT_SUBSIDIARY_TAB_ID,
-        { ...EMPTY_ITEM_FILTERS, iqc: 'N' },
-        1,
-      ).toString(),
-    ).toBe('iqc=n');
+    expect(toSearchParams(DEFAULT_TAB_ID, { ...EMPTY_ITEM_FILTERS, iqc: 'N' }, 1).toString()).toBe(
+      'iqc=n',
+    );
   });
 
   it('처음 품목유형(원자재)은 주소에 쓰지 않는다', () => {
-    expect(
-      toSearchParams(DEFAULT_TAB_ID, DEFAULT_SUBSIDIARY_TAB_ID, EMPTY_ITEM_FILTERS, 1).toString(),
-    ).toBe('');
+    expect(toSearchParams(DEFAULT_TAB_ID, EMPTY_ITEM_FILTERS, 1).toString()).toBe('');
   });
 
   /* 선택은 조건이 아니다 — 보이는 행이 달라지면 선택이 자연히 사라져야 한다. */
@@ -136,7 +119,6 @@ describe('toSearchParams', () => {
     expect(
       toSearchParams(
         DEFAULT_TAB_ID,
-        DEFAULT_SUBSIDIARY_TAB_ID,
         { q: 'SYN', itemType: '', includeInactive: false, iqc: '' },
         2,
       ).has(ITEM_KEY),
@@ -144,16 +126,10 @@ describe('toSearchParams', () => {
   });
 
   /* 「빈 조건·기본값은 키 자체를 두지 않는다」를 탭에도 그대로 적용한다. */
-  it('기본 탭·기본 하위 탭은 주소에 쓰지 않는다', () => {
-    const written = toSearchParams(
-      DEFAULT_TAB_ID,
-      DEFAULT_SUBSIDIARY_TAB_ID,
-      EMPTY_ITEM_FILTERS,
-      1,
-    );
+  it('기본 탭은 주소에 쓰지 않는다', () => {
+    const written = toSearchParams(DEFAULT_TAB_ID, EMPTY_ITEM_FILTERS, 1);
 
     expect(written.has(TAB_KEY)).toBe(false);
-    expect(written.has(SUBSIDIARY_TAB_KEY)).toBe(false);
   });
 
   /*
@@ -162,25 +138,10 @@ describe('toSearchParams', () => {
    */
   it('기본이 아닌 탭은 조건이 바뀌어도 남는다', () => {
     expect(
-      toSearchParams(
-        'sub',
-        DEFAULT_SUBSIDIARY_TAB_ID,
-        { q: 'SYN', itemType: '', includeInactive: false, iqc: '' },
-        1,
-      ).get(TAB_KEY),
-    ).toBe('sub');
-  });
-
-  /* 하위 탭도 같은 규칙이다 — 층이 다르다고 규칙을 달리하면 주소가 두 가지 말을 한다. */
-  it('기본이 아닌 하위 탭도 조건이 바뀌어도 남는다', () => {
-    expect(
-      toSearchParams(
-        'sub',
-        'ext',
-        { q: 'SYN', itemType: '', includeInactive: false, iqc: '' },
-        1,
-      ).get(SUBSIDIARY_TAB_KEY),
-    ).toBe('ext');
+      toSearchParams('res', { q: 'SYN', itemType: '', includeInactive: false, iqc: '' }, 1).get(
+        TAB_KEY,
+      ),
+    ).toBe('res');
   });
 });
 
@@ -197,26 +158,18 @@ describe('주소 왕복 (M13)', () => {
   ];
 
   it.each(cases)('$filters / $page 쪽이 왕복해도 같다', ({ filters, page }) => {
-    const written = toSearchParams(DEFAULT_TAB_ID, DEFAULT_SUBSIDIARY_TAB_ID, filters, page);
+    const written = toSearchParams(DEFAULT_TAB_ID, filters, page);
 
     expect(readItemFilters(written)).toEqual(filters);
     expect(readPage(written)).toBe(page);
     expect(resolveTab(written.get(TAB_KEY)).id).toBe(DEFAULT_TAB_ID);
-    expect(resolveSubsidiaryTab(written.get(SUBSIDIARY_TAB_KEY)).id).toBe(
-      DEFAULT_SUBSIDIARY_TAB_ID,
-    );
   });
 
   /* 기본이 아닌 탭 조합도 왕복해야 한다 — 기본값만 왕복하면 규칙의 절반만 검사된다. */
-  it.each([
-    { tab: 'sub', sub: 'bu' },
-    { tab: 'sub', sub: 'uom' },
-    { tab: 'sub', sub: 'ext' },
-  ] as const)('탭 $tab / 하위 탭 $sub 가 왕복해도 같다', ({ tab, sub }) => {
-    const written = toSearchParams(tab, sub, EMPTY_ITEM_FILTERS, 1);
+  it.each(['uom', 'res'] as const)('탭 %s 가 왕복해도 같다', (tab) => {
+    const written = toSearchParams(tab, EMPTY_ITEM_FILTERS, 1);
 
     expect(resolveTab(written.get(TAB_KEY)).id).toBe(tab);
-    expect(resolveSubsidiaryTab(written.get(SUBSIDIARY_TAB_KEY)).id).toBe(sub);
   });
 });
 
