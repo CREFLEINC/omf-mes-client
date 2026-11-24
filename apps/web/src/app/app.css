@@ -39474,25 +39474,38 @@ body:has(
   overflow-y: auto;
 }
 
-/* 목록 제목 줄 오른쪽 — 선택 건수 · 일괄 동작을 「목록 접기」 앞에 한 줄로(ListDetailWorkspace `list.actions` · #358). */
-.list-detail-list-actions {
+/* 연동 현황·이력(#358) — 조회 조건 상자 + 목록 상자 하나. 상세는 창으로 뜬다(좌우/상하 배치 없음). */
+.integration-sync-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.integration-sync-workspace > .integration-sync-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: 18rem;
+  margin: 0;
+}
+
+/* 목록 제목 줄 오른쪽 — 선택 건수 · [일괄 재처리]. */
+.integration-sync-list-actions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   margin-left: auto;
 }
 
-.list-detail-list-actions + .po-board-list-collapse {
-  margin-left: 0;
-}
-
-.list-detail-list-selection {
+.integration-sync-list-selection {
   font: var(--type-body-sm);
   color: var(--on-surface-variant);
   white-space: nowrap;
 }
 
-/* 연동 현황·이력 상세(#358) — 머리 줄(문서 번호 · 상태 · 재처리) → 송수신 · 연동 항목 → 오류 내용 → 두 열. */
+/* 상세 창 본문 — 상태 배지(처리 중이면 「언제부터」) → 정보 상자. */
 .integration-sync-detail {
   display: grid;
   gap: var(--space-4);
@@ -39502,27 +39515,10 @@ body:has(
 
 .integration-sync-detail-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
-}
-
-.integration-sync-detail-head > .pane-title {
-  min-width: 0;
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.integration-sync-detail-head > :not(.pane-title) {
-  flex: 0 0 auto;
-}
-
-.integration-sync-detail-retry {
-  margin-left: auto;
-}
-
-.integration-sync-detail-note {
-  margin: calc(var(--space-2) * -1) 0 0;
 }
 
 /* 정보 상자 — 두 열(연동 항목 | 재시도 횟수, 일시 칸들), 오류 내용은 상자 전체 폭(검사 조회·판정과 같은 모양 · #358). */

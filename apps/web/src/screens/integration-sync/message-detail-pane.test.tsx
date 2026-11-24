@@ -1,13 +1,11 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
-import userEvent from '@testing-library/user-event';
+import { describe, expect, it } from 'vitest';
 
 import { messageRow } from './fixtures';
 import { MessageDetailPane } from './message-detail-pane';
 import type { MessageDetailView } from './types';
 
 const NOW = new Date('2026-08-06T12:00:00+09:00');
-const onRetry = vi.fn();
 
 const renderPane = (props: Partial<Parameters<typeof MessageDetailPane>[0]> = {}) => {
   render(
@@ -16,8 +14,6 @@ const renderPane = (props: Partial<Parameters<typeof MessageDetailPane>[0]> = {}
       isLoading={false}
       loadError={null}
       now={NOW}
-      onRetry={onRetry}
-      isRetrying={false}
       {...props}
     />,
   );
@@ -45,8 +41,7 @@ describe('MessageDetailPane — 항목', () => {
       }),
     });
 
-    // 머리 줄: 문서 번호 · 배지, 처리 중 보조 줄, 정보 상자 첫 칸에 연동 항목과 그 아래 송수신(#358).
-    expect(screen.getByRole('heading', { name: 'SAMPLE-KEY-0001' })).toBeInTheDocument();
+    // 배지 · 처리 중 보조 줄, 정보 상자 첫 칸에 연동 항목과 송수신(#358). 문서 번호는 창 제목이 단다.
     expect(fieldValue('연동 항목')).toBe('IF-SAMPLE-A수신');
     expect(screen.getByText('2026-08-04 09:20부터 처리 중')).toBeInTheDocument();
     expect(fieldValue('전송 일시')).toBe('2026-08-04 07:13');
@@ -142,27 +137,5 @@ describe('MessageDetailPane — 불러오는 중과 실패', () => {
     expect(screen.getByText('불러오지 못했습니다')).toBeInTheDocument();
     expect(screen.queryByText('방향')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '전송 내용 보기' })).not.toBeInTheDocument();
-  });
-});
-
-describe('MessageDetailPane — 재처리', () => {
-  it('재처리 단추는 상태와 무관하게 언제나 누를 수 있다', async () => {
-    // 실서버의 상태 어휘를 화면이 모른다. 「실패일 때만」으로 막으면 어휘가 다른 서버에서 전부 죽는다.
-    onRetry.mockClear();
-    renderPane({ view: messageRow({ statusCode: 'ERROR', lockedBy: 'sync-worker-01' }) });
-
-    const button = screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' });
-    expect(button).toBeEnabled();
-    await userEvent.setup().click(button);
-
-    expect(onRetry).toHaveBeenCalledWith(expect.objectContaining({ integrationMessageId: 9001 }));
-  });
-
-  it('보내는 중이면 단추가 진행 중으로 잠긴다', () => {
-    renderPane({ isRetrying: true });
-
-    expect(
-      screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' }),
-    ).toBeDisabled();
   });
 });
