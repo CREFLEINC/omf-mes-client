@@ -18,13 +18,13 @@ export const erpCommonCode: Translated<typeof ko.erpCommonCode> = {
   },
   values: {
     label: 'Giá trị mã',
-    labelOf: (groupCode: string): string => `Giá trị mã ${groupCode}`,
+    labelOf: (groupName: string): string => `Giá trị mã của ${groupName}`,
     filterLabel: 'Điều kiện tra cứu giá trị mã',
     code: 'Mã',
     codeName: 'Tên mã',
     displayOrder: 'Thứ tự hiển thị',
-    effectiveFrom: 'Hiệu lực từ',
-    effectiveTo: 'Hiệu lực đến',
+    effectivePeriod: 'Thời hạn hiệu lực',
+    period: (from: string, to: string): string => `${from} ~ ${to}`,
     isActive: 'Sử dụng',
   },
   fields: {
@@ -36,6 +36,7 @@ export const erpCommonCode: Translated<typeof ko.erpCommonCode> = {
   },
   display: {
     empty: '—',
+    all: 'Tất cả',
     active: 'Sử dụng',
     inactive: 'Ngừng sử dụng',
   },

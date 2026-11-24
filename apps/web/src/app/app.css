@@ -39880,3 +39880,8 @@ body:has(
   justify-self: start;
   margin-bottom: var(--space-3);
 }
+
+/* ERP 공통코드 — 코드값 검색 줄을 조회 조건 상자처럼 감싼다(사용자 지시 2026-11-24). */
+.erp-code-value-filter > .filter-bar {
+  margin-bottom: 0;
+}

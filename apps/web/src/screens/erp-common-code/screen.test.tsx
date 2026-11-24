@@ -115,6 +115,19 @@ describe('ErpCommonCodeScreen', () => {
     expect(urls.filter((url) => url.pathname === GROUPS_PATH)).toHaveLength(2);
   });
 
+  /* 사용 여부 라벨 「전체 · 사용 · 미사용」 — 받은 그룹 안에서 화면이 거른다(사용자 지시 2026-11-24). */
+  it('사용 여부 라벨로 코드그룹 목록을 거른다', async () => {
+    const { user } = renderScreen([groupsRoute()]);
+    await screen.findByRole('button', { name: 'PUR_GROUP' });
+
+    const chips = screen.getByRole('group', { name: '사용 여부' });
+    await user.click(within(chips).getByText('미사용', { exact: true }));
+    expect(screen.queryByRole('button', { name: 'PUR_GROUP' })).not.toBeInTheDocument();
+
+    await user.click(within(chips).getByText('전체', { exact: true }));
+    expect(screen.getByRole('button', { name: 'PUR_GROUP' })).toBeInTheDocument();
+  });
+
   it('그룹을 누르면 상세에 그룹 칸을 내고 그룹 코드로 코드값을 조회해 그린다', async () => {
     const { urls, user } = renderScreen([groupsRoute(), valuesRoute()]);
 

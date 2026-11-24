@@ -19,13 +19,15 @@ export const erpCommonCode = {
   },
   values: {
     label: '코드값',
-    labelOf: (groupCode: string): string => `${groupCode} 코드값`,
+    /** 그룹명으로 — 「원가 유형의 코드값」(사용자 지시 2026-11-24). */
+    labelOf: (groupName: string): string => `${groupName}의 코드값`,
     filterLabel: '코드값 조회 조건',
     code: '코드',
     codeName: '코드명',
     displayOrder: '정렬 순서',
-    effectiveFrom: '유효 시작일',
-    effectiveTo: '유효 종료일',
+    /** 유효기간 한 칸 — 공통코드 화면과 같은 이름 · 표기(사용자 지시 2026-11-24). */
+    effectivePeriod: '유효기간',
+    period: (from: string, to: string): string => `${from} ~ ${to}`,
     isActive: '사용 여부',
   },
   fields: {
@@ -38,6 +40,7 @@ export const erpCommonCode = {
   },
   display: {
     empty: '—',
+    all: '전체',
     active: '사용',
     inactive: '미사용',
   },
