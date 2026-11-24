@@ -179,8 +179,7 @@ export const useSaveShipmentResult = (
             },
           },
           ...workerHeaders,
-          /* 관리웹 결과 서랍이 검사일시를 고칠 수 있다 — 고침에도 싣는다(omf-all-around#356). */
-          body: { ...toShipmentResultUpdateBody(variables), inspectedAt: variables.inspectedAt },
+          body: toShipmentResultUpdateBody(variables),
         });
       }
       return client.POST('/quality/inspection-results', {

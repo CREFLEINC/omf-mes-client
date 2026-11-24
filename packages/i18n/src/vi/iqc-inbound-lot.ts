@@ -148,7 +148,6 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
         'Kết quả này thay đổi đánh giá Không đạt hoặc Giữ lại. Hãy chọn lý do kiểm tra lại',
     },
     alsoMatched: (seqNos: string) => `Cũng liên kết với kết quả ${seqNos}`,
-    judgmentRequired: 'Hãy chọn đánh giá.',
     cancel: 'Hủy',
     save: 'Gửi',
     discardBody: 'Nội dung đã nhập sẽ mất. Đóng?',

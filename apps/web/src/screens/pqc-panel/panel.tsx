@@ -182,8 +182,11 @@ export const PqcPanel = ({
     round: number;
   } | null>(null);
   const [drawerDirty, setDrawerDirty] = useState(false);
+  /* 저장 응답 효과가 «어느 창이 열려 있었나»를 읽는 자리 — 그리는 중에는 쓰지 않고 효과에서 맞춘다. */
   const webDrawerRef = useRef(webDrawer);
-  webDrawerRef.current = webDrawer;
+  useEffect(() => {
+    webDrawerRef.current = webDrawer;
+  }, [webDrawer]);
   const reportedDirty = variant === 'web' ? drawerDirty : dirty;
   useEffect(() => {
     onDirtyChange?.(reportedDirty);
@@ -257,12 +260,8 @@ export const PqcPanel = ({
     setDirty(false);
     setShowErrors(false);
     setJudgment('');
-    /* 관리웹 새 회차는 합격 수량에 총 검사 수량을 넣어 둔다(IQC 와 같다 · 사용자 지시 2026-11-09). */
-    setDraft(
-      variant === 'web' && storedInspectedQty > 0
-        ? { ...EMPTY_QUANTITY_DRAFT, accepted: String(storedInspectedQty) }
-        : EMPTY_QUANTITY_DRAFT,
-    );
+    /* 관리웹 새 회차의 합격 수량 기본값(총 검사 수량)은 결과 창이 넣는다(omf-all-around#356). */
+    setDraft(EMPTY_QUANTITY_DRAFT);
     setDisposition(null);
     setPadField(null);
     clearRejection();
@@ -273,7 +272,7 @@ export const PqcPanel = ({
     /* 초기화가 다시 돌면(재마운트 · StrictMode 재실행) 작성중 회차도 다시 되살린다 — 아래 복원이 이 표시를 본다. */
     restoredKey.current = null;
     measurementsRestoredKey.current = null;
-  }, [inspectionRequestId, storedInspectedQty, clearRejection, variant]);
+  }, [inspectionRequestId, storedInspectedQty, clearRejection]);
 
   /*
    * 작성중 회차를 칸에 되살린다. ⭐ 위 초기화 «뒤»에 선다 — 의뢰 상세가 늦게 와 초기화가 다시 돌아도 저장된 값이
@@ -370,11 +369,6 @@ export const PqcPanel = ({
    * 저장된 회차를 다 읽기 전에는 잠근다(리뷰 M1) — 덜 읽은 칸으로 저장하면 서버가 그 회차를 덮어 저장된 값이 사라진다.
    * 실적 수는 모르면(조회 전·실패) 막지 않는다 — 서버가 같은 규칙으로 막는다.
    */
-  /*
-   * 실적이 없으면 서버가 저장·확정을 받지 않는다 — 관리웹은 입력 칸도 다 잠가 헛입력을 막는다(#135).
-   * ⚠ POP(split)은 이번 범위가 아니다 — 종전대로 둔다.
-   */
-  const isInputLocked = isConfirmed || (variant === 'web' && producedQty === 0);
   const roundLoadFailed =
     latestRoundQuery.isError || (savedRound !== null && savedMeasurements.isError);
   const roundLoading =

@@ -538,15 +538,12 @@ export const oqcInspection = {
       selectAll: '전부 선택',
       selectNone: '전부 해제',
       alsoMatched: (seqNos: string): string => `${seqNos}회차에도 매칭됨`,
-      matchRequired: '피킹 LOT 을 1개 이상 고르세요',
       judgmentHeading: '판정',
-      judgmentRequired: '판정을 고르세요',
       reasonHeading: '재검 사유',
       reasonHelp: '이 결과가 아래 피킹 LOT 의 판정을 바꿉니다. 재검 사유를 고르세요.',
       reasonLine: (lotNo: string, seqNo: number, before: string, after: string): string =>
         `LOT ${lotNo}: ${String(seqNo)}회차 ${before} → 이 회차 ${after}`,
       reasonPlaceholder: '재검 사유 선택',
-      reasonRequired: '재검 사유를 고르세요',
       reasonLoadFailed: '재검 사유 목록을 불러오지 못했습니다.',
       ruleErrors: {
         MATCHED_LOT_REQUIRED: '피킹 LOT 을 1개 이상 고르세요',
@@ -555,7 +552,6 @@ export const oqcInspection = {
       },
       cancel: '취소',
       save: '제출',
-      saving: '저장 중…',
       /** 사용자 지시 2026-11-24 · omf-all-around#356 — IQC 와 같은 한 문장. */
       added: '검사 결과를 제출하였습니다.',
       updated: (seqNo: number): string => `${String(seqNo)}회차 검사 결과를 고쳤습니다.`,

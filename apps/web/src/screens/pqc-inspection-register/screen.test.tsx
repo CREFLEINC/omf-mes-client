@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import { HUB_ACTIONS_ID } from '../../patterns/hub-actions';
 import { SessionProvider } from '../../patterns/session';
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
 import { PqcInspectionRegisterScreen } from './screen';
@@ -298,6 +299,35 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     await user.click(screen.getByRole('checkbox', { name: t.queue.pendingOnly }));
     await waitFor(() => expect(queueQueries.at(-1)?.get('pendingOnly')).toBe('true'));
     expect(queueQueries.at(-1)?.get('overallJudgmentCode')).toBeNull();
+  });
+
+  it('「대기」 칩을 건 채 종합 판정을 고르면 칩을 푼다 — 판정은 확정 건에만 있다(#356)', async () => {
+    /* 칩은 탭 막대 자리에만 선다 — 시험에서 그 자리를 세운다. */
+    const slot = document.createElement('div');
+    slot.id = HUB_ACTIONS_ID;
+    document.body.append(slot);
+    try {
+      const user = userEvent.setup();
+      const { queueQueries } = renderScreen();
+      await screen.findByText(REQUEST.inspectionRequestNo);
+      /* 건수 칩의 조회(한 줄짜리)는 빼고 목록 조회만 본다. */
+      const lastListQuery = () => queueQueries.filter((query) => query.get('size') !== '1').at(-1);
+      const hub = messages.common.inspectionHub;
+
+      await user.click(await screen.findByRole('button', { name: hub.filterOn(hub.requested) }));
+      await waitFor(() => expect(lastListQuery()?.get('statusCode')).toBe('REQUESTED'));
+
+      await user.click(screen.getByRole('combobox', { name: hub.judgmentFilter }));
+      await user.click(await screen.findByRole('option', { name: '합격' }));
+      await waitFor(() => expect(lastListQuery()?.get('overallJudgmentCode')).toBe('ACCEPTED'));
+      expect(lastListQuery()?.get('statusCode')).toBeNull();
+      expect(screen.getByRole('button', { name: hub.filterOn(hub.requested) })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      );
+    } finally {
+      slot.remove();
+    }
   });
 
   it('「초기화」는 처음 연 상태에서는 없고, 바꾼 것이 생기면 나타난다(C-6)', async () => {

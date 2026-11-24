@@ -87,7 +87,6 @@ import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
 import {
   checkRowCount,
   countOf,
-  defectsFromMeasured,
   emptyForm,
   historyReducer,
   numberOf,
@@ -100,14 +99,17 @@ import {
 } from './form-state';
 import {
   acceptanceOf,
-  judgeDimension,
   kindOf,
   rejectedQtyOf,
   serverExpectedOf,
   suggestedJudgmentOf,
-  type ItemJudgment,
 } from './judgment';
 import { DispositionBox } from '../disposition-decision/disposition-box';
+import {
+  judgmentInputOf as sharedJudgmentInputOf,
+  measurementsOf as sharedMeasurementsOf,
+  restoreMeasured,
+} from './measurement-inputs';
 import { isManualDimension, ItemNameCell, MeasurementTable, rowStateOf } from './measurement-table';
 import {
   partsIqcKeys,
@@ -816,35 +818,10 @@ const InspectionForm = (props: FormProps) => {
     const form = emptyForm(saved === null ? plantNowLocal() : `${saved.date}T${saved.time}`);
     form.visualInspectedQty = draft === null ? defaultQty : String(draft.inspectedQty);
     form.remarks = draft?.remarks ?? '';
-    for (const m of draft?.measured ?? []) {
-      const spec = specs.find((s) => s.inspectionItemSpecId === m.inspectionItemSpecId);
-      if (spec === undefined) continue;
-      const kind = kindOf(spec);
-      if (kind === 'dimension' && m.numericValue != null) {
-        const row = [...(form.values[spec.inspectionItemSpecId] ?? [])];
-        row[m.sampleNo - 1] = String(m.numericValue);
-        form.values[spec.inspectionItemSpecId] = row;
-        if (
-          isManualDimension(spec) &&
-          (m.judgmentCode === 'ACCEPTED' || m.judgmentCode === 'REJECTED')
-        )
-          form.checks[spec.inspectionItemSpecId] = m.judgmentCode;
-      } else if (kind === 'check') {
-        /* 텍스트 항목은 적은 글과 판정으로 남는다(#247). */
-        if (m.textValue != null) form.texts[spec.inspectionItemSpecId] = m.textValue;
-        if (m.booleanValue != null)
-          form.checks[spec.inspectionItemSpecId] = m.booleanValue ? 'ACCEPTED' : 'REJECTED';
-        else if (m.judgmentCode === 'ACCEPTED' || m.judgmentCode === 'REJECTED')
-          form.checks[spec.inspectionItemSpecId] = m.judgmentCode;
-        /* AQL 은 찾은 불량 수만큼 불량 시료 줄로 남는다 — 줄 수가 불량 수다(omf-all-around#264). */
-        const defects =
-          aqlPlan === null
-            ? undefined
-            : defectsFromMeasured(draft?.measured ?? [], spec.inspectionItemSpecId);
-        if (defects !== undefined) form.defects[spec.inspectionItemSpecId] = defects;
-      }
-    }
-    return form;
+    return restoreMeasured(form, specs, draft?.measured ?? [], {
+      aqlDefects: aqlPlan !== null,
+      keepRejected: false,
+    });
   }, [draft, specs, defaultQty, aqlPlan]);
 
   /* 결과 드로어는 LOT 매칭도 같은 기록에 쌓는다 — [되돌리기]가 LOT 바꿈부터 되돌린다(omf-all-around#356). */
@@ -896,32 +873,13 @@ const InspectionForm = (props: FormProps) => {
   const inspectedTime = inspectedTimeRaw.slice(0, 5);
   const changeInspectedAt = (date: string, time: string) =>
     change({ ...form, inspectedAt: date === '' ? '' : `${date}T${time === '' ? '00:00' : time}` });
-  const judgmentInputOf = (f: PartsIqcForm) => {
-    /* 자동 판정이 꺼진 항목은 고른 OK/NG 가 그 항목의 판정이다 — NG 면 불량 1(기타 검사 항목과 같다 · #247 클릭 점검). */
-    const dims = dimensions.map((item) => {
-      if (isManualDimension(item)) {
-        const picked = f.checks[item.inspectionItemSpecId] ?? null;
-        return { judgment: picked, outCount: picked === 'REJECTED' ? 1 : 0 };
-      }
-      return judgeDimension(
-        Array.from({ length: item.measurementCount }, (_, i) =>
-          numberOf(f.values[item.inspectionItemSpecId]?.[i]),
-        ),
-        item,
-        versionAcceptance,
-      );
-    });
-    return {
+  /* 자동 판정이 꺼진 항목은 고른 OK/NG 가 그 항목의 판정이다 — NG 면 불량 1(기타 검사 항목과 같다 · #247 클릭 점검). */
+  const judgmentInputOf = (f: PartsIqcForm) =>
+    sharedJudgmentInputOf(f, { dimensions, checkItems }, versionAcceptance, {
       inspectedQty: countOf(f.visualInspectedQty),
-      dimensions: dims,
-      checks: checkItems.map((item): ItemJudgment => f.checks[item.inspectionItemSpecId] ?? null),
       checkDefects: checkItems.map((item) => defectsOf(f, item)),
-      /* 필수 항목만 다 적으면 자동 판정 · 종합 판정이 채워진다(#247 · 사용자 지시 2026-11-10). */
-      requiredDimensions: dimensions.map((item) => item.requiredFlag),
-      requiredChecks: checkItems.map((item) => item.requiredFlag),
       aqlAcceptance: aqlPlan?.acceptanceNumber ?? null,
-    };
-  };
+    });
   /* 임시 저장 때 자동 판정과 다르게 고른 판정이면 그대로 되살린다(#247). */
   const [chosen, setChosen] = useState<string | null>(() => {
     const stored = draft?.overallJudgmentCode ?? '';
@@ -1020,59 +978,14 @@ const InspectionForm = (props: FormProps) => {
   const needsReason = overall !== null && expected !== null && overall !== expected;
   const maxN = Math.max(0, ...dimensions.map((d) => d.measurementCount));
 
-  const measurementsOf = (): SubmitVariables['measurements'] => {
-    const measuredAt = toOffset(form.inspectedAt);
-    const out: SubmitVariables['measurements'] = [];
-    dimensions.forEach((item) => {
-      const picked = isManualDimension(item)
-        ? (form.checks[item.inspectionItemSpecId] ?? null)
-        : null;
-      for (let i = 0; i < item.measurementCount; i += 1) {
-        const value = numberOf(form.values[item.inspectionItemSpecId]?.[i]);
-        if (value === null) continue;
-        const lower = item.lowerLimit ?? -Infinity;
-        const upper = item.upperLimit ?? Infinity;
-        out.push({
-          inspectionItemSpecId: item.inspectionItemSpecId,
-          sampleNo: i + 1,
-          numericValue: value,
-          /* 자동 판정이 꺼진 항목은 고른 판정을 시료마다 싣는다. */
-          judgmentCode: picked ?? (value < lower || value > upper ? 'REJECTED' : 'ACCEPTED'),
-          measuredAt,
-        });
-      }
-    });
-    const bool = (item: ItemSpec, ok: boolean, sampleNo: number) =>
-      out.push({
-        inspectionItemSpecId: item.inspectionItemSpecId,
-        sampleNo,
-        booleanValue: ok,
-        judgmentCode: ok ? 'ACCEPTED' : 'REJECTED',
-        measuredAt,
-      });
-    checkItems.forEach((item) => {
-      const j = form.checks[item.inspectionItemSpecId];
-      if (j == null) return;
-      /* AQL 은 찾은 불량 수만큼 불량 시료 줄을 싣는다 — 다시 열 때 줄 수로 불량 수를 되살린다(omf-all-around#264). */
-      const rows = checkRowCount(j, defectsOf(form, item), aqlPlan !== null);
-      for (let sampleNo = 1; sampleNo <= rows; sampleNo += 1) {
-        if (item.dataTypeCode !== 'TEXT') {
-          bool(item, j === 'ACCEPTED', sampleNo);
-          continue;
-        }
-        /* 텍스트 항목은 적은 글을 싣는다 — 글이 없으면 판정만(#247 · 사용자 지시 2026-11-10). */
-        const text = sampleNo === 1 ? (form.texts[item.inspectionItemSpecId] ?? '').trim() : '';
-        out.push({
-          inspectionItemSpecId: item.inspectionItemSpecId,
-          sampleNo,
-          ...(text === '' ? {} : { textValue: text }),
-          judgmentCode: j,
-          measuredAt,
-        });
-      }
-    });
-    return out;
-  };
+  /* AQL 은 찾은 불량 수만큼 불량 시료 줄을 싣는다 — 다시 열 때 줄 수로 불량 수를 되살린다(omf-all-around#264). */
+  const measurementsOf = (): SubmitVariables['measurements'] =>
+    sharedMeasurementsOf(
+      form,
+      { dimensions, checkItems },
+      toOffset(form.inspectedAt),
+      (item, judgment) => checkRowCount(judgment, defectsOf(form, item), aqlPlan !== null),
+    );
 
   const blocked =
     props.inspector === null ||

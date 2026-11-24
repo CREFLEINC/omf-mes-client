@@ -170,6 +170,17 @@ describe('종합 판정 필터(omf-all-around#356)', () => {
     expect(withJudgmentFilter(EMPTY_FILTERS, null).pendingOnly).toBe(true);
   });
 
+  it('판정을 고르면 「대기」 · 「진행」 칩을 푼다 — 「완료」 칩은 둔다', () => {
+    const withChip = (statusCode: 'REQUESTED' | 'IN_PROGRESS' | 'COMPLETED') =>
+      withJudgmentFilter({ ...EMPTY_FILTERS, statusCode }, 'ACCEPTED').statusCode;
+    expect(withChip('REQUESTED')).toBeNull();
+    expect(withChip('IN_PROGRESS')).toBeNull();
+    expect(withChip('COMPLETED')).toBe('COMPLETED');
+    expect(withJudgmentFilter({ ...EMPTY_FILTERS, statusCode: 'REQUESTED' }, null).statusCode).toBe(
+      'REQUESTED',
+    );
+  });
+
   it('판정을 건 채 「대기·진행만 보기」를 다시 켜거나 대기 · 진행 칩을 누르면 판정을 푼다 — 완료 칩은 둔다', () => {
     const picked = withJudgmentFilter(EMPTY_FILTERS, 'ACCEPTED');
     expect(withDraft(picked, { ...picked, pendingOnly: true })).toMatchObject({

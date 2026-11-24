@@ -182,7 +182,6 @@ export const iqcInboundLot = {
         '이 결과가 불합격이나 보류 판정을 바꿉니다. 재검 사유를 고르세요',
     },
     alsoMatched: (seqNos: string) => `${seqNos}회차에도 매칭됨`,
-    judgmentRequired: '판정을 고르세요.',
     cancel: '취소',
     /** 사용자 지시 2026-11-16 · #274 — 「저장」에서 정정. */
     save: '제출',

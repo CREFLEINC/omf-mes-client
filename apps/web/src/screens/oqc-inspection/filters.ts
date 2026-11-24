@@ -137,17 +137,22 @@ export const EMPTY_FILTERS: QueueFilters = {
 /**
  * 종합 판정을 건다(omf-all-around#356). 판정은 확정된 의뢰에만 있어 **「대기·진행만 보기」를 함께 끈다** — 켜 둔 채면
  * 서버가 두 조건을 AND 로 묶어 늘 빈 목록이다(「완료」 칩과 같은 이유). 끈 것이 체크칸에 그대로 보인다.
+ * 같은 이유로 **「대기」 · 「진행」 칩도 푼다** — 「완료」 칩은 그대로 둔다.
  */
 export const withJudgmentFilter = <
   F extends StatusFilters & { overallJudgmentCode: string | null },
 >(
   filters: F,
   overallJudgmentCode: string | null,
-): F => ({
-  ...filters,
-  overallJudgmentCode,
-  pendingOnly: overallJudgmentCode === null ? filters.pendingOnly : false,
-});
+): F =>
+  overallJudgmentCode === null
+    ? { ...filters, overallJudgmentCode }
+    : {
+        ...filters,
+        overallJudgmentCode,
+        pendingOnly: false,
+        statusCode: filters.statusCode === COMPLETED ? filters.statusCode : null,
+      };
 
 /** 종합 판정 조건을 푼다 — 판정은 확정된 의뢰에만 있어 대기 · 진행과 함께 걸면 늘 빈 목록이다(omf-all-around#356). */
 const withoutJudgment = <F extends object>(filters: F): F =>

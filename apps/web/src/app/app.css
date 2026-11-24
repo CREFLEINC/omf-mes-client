@@ -32371,7 +32371,10 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   min-height: calc(var(--dialog-max-h, 100dvh) - var(--space-5));
 }
 
-.iqc-inbound-drawer .pqc-web-drawer > :nth-last-child(2) {
+.iqc-inbound-drawer .pqc-web-drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
   margin-bottom: var(--space-6);
 }
 

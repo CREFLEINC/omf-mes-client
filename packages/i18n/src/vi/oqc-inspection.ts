@@ -380,16 +380,13 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
       selectAll: 'Chọn tất cả',
       selectNone: 'Bỏ chọn tất cả',
       alsoMatched: (seqNos: string): string => `Cũng liên kết với lần ${seqNos}`,
-      matchRequired: 'Hãy chọn ít nhất 1 LOT đã lấy',
       judgmentHeading: 'Phán định',
-      judgmentRequired: 'Hãy chọn phán định',
       reasonHeading: 'Lý do kiểm tra lại',
       reasonHelp:
         'Kết quả này thay đổi phán định của các LOT đã lấy bên dưới. Hãy chọn lý do kiểm tra lại.',
       reasonLine: (lotNo: string, seqNo: number, before: string, after: string): string =>
         `LOT ${lotNo}: lần ${String(seqNo)} ${before} → lần này ${after}`,
       reasonPlaceholder: 'Chọn lý do kiểm tra lại',
-      reasonRequired: 'Hãy chọn lý do kiểm tra lại',
       reasonLoadFailed: 'Không tải được danh sách lý do kiểm tra lại.',
       ruleErrors: {
         MATCHED_LOT_REQUIRED: 'Hãy chọn ít nhất 1 LOT đã lấy',
@@ -398,7 +395,6 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
       },
       cancel: 'Hủy',
       save: 'Gửi',
-      saving: 'Đang lưu…',
       added: 'Đã nộp kết quả kiểm tra.',
       updated: (seqNo: number): string => `Đã sửa kết quả kiểm tra lần ${String(seqNo)}.`,
       loading: 'Đang tải kết quả',

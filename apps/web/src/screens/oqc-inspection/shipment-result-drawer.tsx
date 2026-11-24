@@ -38,15 +38,18 @@ import {
 } from '../parts-iqc-inspection/form-state';
 import { PlanNote, TIME_LABELS } from '../parts-iqc-inspection/inspection-detail';
 import {
-  judgeDimension,
   kindOf,
   rejectedQtyOf,
   suggestedJudgmentOf,
-  type ItemJudgment,
   type JudgmentInput,
 } from '../parts-iqc-inspection/judgment';
 import { overriddenLotsOf } from '../parts-iqc-inspection/lot-judgment';
 import { LotMatchField } from '../parts-iqc-inspection/lot-match-field';
+import {
+  judgmentInputOf as sharedJudgmentInputOf,
+  measurementsOf as sharedMeasurementsOf,
+  restoreMeasured,
+} from '../parts-iqc-inspection/measurement-inputs';
 import { isManualDimension, MeasurementTable } from '../parts-iqc-inspection/measurement-table';
 import { DrawingImages, PlanDialog } from '../parts-iqc-inspection/plan-dialog';
 import { useDrawings, useInspectionPlan, usePlanVersion } from '../parts-iqc-inspection/queries';
@@ -218,32 +221,6 @@ export const ShipmentResultDrawer = (props: ShipmentResultDrawerProps) => {
   );
 };
 
-/** 저장된 측정치를 IQC 양식 값으로 되살린다 — 수치는 시료 칸, 그 밖은 OK/NG(불합격 줄이 하나라도 있으면 NG) · 적은 글. */
-const formOf = (inspectedAt: string, specs: readonly ItemSpec[], measured: readonly Measured[]) => {
-  const form = emptyForm(inspectedAt);
-  for (const m of measured) {
-    const spec = specs.find((each) => each.inspectionItemSpecId === m.inspectionItemSpecId);
-    if (spec === undefined) continue;
-    const id = spec.inspectionItemSpecId;
-    const picked: ItemJudgment =
-      m.judgmentCode === 'ACCEPTED' || m.judgmentCode === 'REJECTED' ? m.judgmentCode : null;
-    if (kindOf(spec) === 'dimension') {
-      if (m.numericValue == null) continue;
-      const row = [...(form.values[id] ?? [])];
-      row[m.sampleNo - 1] = String(m.numericValue);
-      form.values[id] = row;
-      if (isManualDimension(spec) && picked !== null && form.checks[id] !== 'REJECTED')
-        form.checks[id] = picked;
-      continue;
-    }
-    if (m.textValue != null && (form.texts[id] ?? '') === '') form.texts[id] = m.textValue;
-    const judged: ItemJudgment =
-      m.booleanValue != null ? (m.booleanValue ? 'ACCEPTED' : 'REJECTED') : picked;
-    if (judged !== null && form.checks[id] !== 'REJECTED') form.checks[id] = judged;
-  }
-  return form;
-};
-
 interface FormProps extends ShipmentResultDrawerProps {
   version: PlanVersion | null;
   specs: ItemSpec[];
@@ -305,34 +282,22 @@ const ShipmentResultForm = ({
   const qtyOf = (lotIds: readonly number[]): number =>
     lots.filter((lot) => lotIds.includes(lot.lotId)).reduce((sum, lot) => sum + lot.lotQty, 0);
 
-  const judgmentInputOf = (f: PartsIqcForm, qty: number): JudgmentInput => ({
-    inspectedQty: qty > 0 ? qty : null,
-    dimensions: dimensions.map((item) => {
-      if (isManualDimension(item)) {
-        const picked = f.checks[item.inspectionItemSpecId] ?? null;
-        return { judgment: picked, outCount: picked === 'REJECTED' ? 1 : 0 };
-      }
-      return judgeDimension(
-        Array.from({ length: item.measurementCount }, (_, i) =>
-          numberOf(f.values[item.inspectionItemSpecId]?.[i]),
-        ),
-        item,
-        versionAcceptance,
-      );
-    }),
-    checks: checkItems.map((item): ItemJudgment => f.checks[item.inspectionItemSpecId] ?? null),
-    checkDefects: checkItems.map(() => null),
-    requiredDimensions: dimensions.map((item) => item.requiredFlag),
-    requiredChecks: checkItems.map((item) => item.requiredFlag),
-    aqlAcceptance: null,
-  });
+  /* IQC 결과 양식과 같은 자동 판정 입력 — 출하 OQC 는 AQL 불량 수가 없다. */
+  const judgmentInputOf = (f: PartsIqcForm, qty: number): JudgmentInput =>
+    sharedJudgmentInputOf(f, { dimensions, checkItems }, versionAcceptance, {
+      inspectedQty: qty > 0 ? qty : null,
+      checkDefects: checkItems.map(() => null),
+      aqlAcceptance: null,
+    });
 
   const [initial] = useState((): PartsIqcForm => {
     const saved = toPlantDateTimeParts(editing?.inspectedAt ?? null);
-    return formOf(
-      saved === null ? plantNowLocal() : `${saved.date}T${saved.time}`,
+    /* 저장된 측정치를 IQC 양식 값으로 되살린다 — 불합격 줄이 하나라도 있으면 NG, 적은 글은 처음 것. */
+    return restoreMeasured(
+      emptyForm(saved === null ? plantNowLocal() : `${saved.date}T${saved.time}`),
       specs,
       measured,
+      { aqlDefects: false, keepRejected: true },
     );
   });
   /* 피킹 LOT 매칭도 같은 되돌리기 기록에 쌓는다 — [되돌리기]가 LOT 바꿈부터 되돌린다(IQC 와 같다 · omf-all-around#356). */
@@ -405,50 +370,8 @@ const ShipmentResultForm = ({
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 
   /* 측정치 — IQC 결과 서랍과 같은 값으로 싣는다(수치는 시료마다, 그 밖은 판정한 항목 한 줄). */
-  const measurementsOf = (measuredAt: string): MeasurementInput[] => {
-    const out: MeasurementInput[] = [];
-    dimensions.forEach((item) => {
-      const picked = isManualDimension(item)
-        ? (form.checks[item.inspectionItemSpecId] ?? null)
-        : null;
-      for (let i = 0; i < item.measurementCount; i += 1) {
-        const value = numberOf(form.values[item.inspectionItemSpecId]?.[i]);
-        if (value === null) continue;
-        const lower = item.lowerLimit ?? -Infinity;
-        const upper = item.upperLimit ?? Infinity;
-        out.push({
-          inspectionItemSpecId: item.inspectionItemSpecId,
-          sampleNo: i + 1,
-          numericValue: value,
-          judgmentCode: picked ?? (value < lower || value > upper ? 'REJECTED' : 'ACCEPTED'),
-          measuredAt,
-        });
-      }
-    });
-    checkItems.forEach((item) => {
-      const judgment = form.checks[item.inspectionItemSpecId];
-      if (judgment == null) return;
-      if (item.dataTypeCode !== 'TEXT') {
-        out.push({
-          inspectionItemSpecId: item.inspectionItemSpecId,
-          sampleNo: 1,
-          booleanValue: judgment === 'ACCEPTED',
-          judgmentCode: judgment,
-          measuredAt,
-        });
-        return;
-      }
-      const text = (form.texts[item.inspectionItemSpecId] ?? '').trim();
-      out.push({
-        inspectionItemSpecId: item.inspectionItemSpecId,
-        sampleNo: 1,
-        ...(text === '' ? {} : { textValue: text }),
-        judgmentCode: judgment,
-        measuredAt,
-      });
-    });
-    return out;
-  };
+  const measurementsOf = (measuredAt: string): MeasurementInput[] =>
+    sharedMeasurementsOf(form, { dimensions, checkItems }, measuredAt);
 
   /* 필수 칸(피킹 LOT 매칭 · 검사일시 · 검사 수량 · 종합 판정 · 재검 사유 · 측정 판정)이 다 차야 [제출]이 눌린다(#356). */
   const blocked =

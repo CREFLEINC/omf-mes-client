@@ -13,6 +13,7 @@ import {
 import { useSession } from '../../patterns/session';
 import { TimeField, type TimeFieldLabels } from '../../patterns/time-field';
 import { PlanViewLauncher } from '../iqc-inspection/plan-view-launcher';
+import { historyReducer, startHistory, type FormHistory } from '../parts-iqc-inspection/form-state';
 import type { CodeOption } from '../pqc-inspection/code-options';
 import { toConfirmBlockedReason } from '../pqc-inspection/confirm-gate';
 import { EMPTY_COVERAGE_DRAFT } from '../pqc-inspection/coverage';
@@ -54,8 +55,6 @@ const empty = tPqc.emptyValue;
 
 /** 닫힘 움직임 길이 — CSS `.iqc-inbound-drawer.is-closing` 과 같은 값(IQC 결과 창과 같다). */
 const CLOSE_MS = 240;
-/** 되돌리기 칸 수 — IQC 결과 창과 같다. */
-const HISTORY_LIMIT = 200;
 
 const TIME_LABELS: TimeFieldLabels = {
   field: tIqc.lot.inspectedTime,
@@ -75,12 +74,6 @@ interface DrawerForm {
   judgment: string;
   disposition: DispositionState;
   remarks: string;
-}
-
-interface History {
-  past: DrawerForm[];
-  present: DrawerForm;
-  future: DrawerForm[];
 }
 
 const toOffset = (local: string): string => `${local}:00${PLANT_UTC_OFFSET}`;
@@ -172,7 +165,8 @@ export const PqcWebResultDrawer = ({
   /* 검사 수량은 입력받지 않는다 — 고칠 때는 그 회차의 값, 더할 때는 의뢰 수량(종전 그대로 · #197). */
   const inspectedQty = editing === null ? target.targetQty : editing.inspectedQty;
 
-  const [history, setHistory] = useState<History>({ past: [], present: initial, future: [] });
+  /* 되돌리기 · 다시 실행은 IQC 결과 창과 같은 칸 쌓기(`historyReducer`)다 — 여기서는 한 입력 묶음만 더한다. */
+  const [history, setHistory] = useState<FormHistory<DrawerForm>>(() => startHistory(initial));
   const form = history.present;
   /*
    * 한 번의 입력이 여러 값을 바꾸면(수량 → 자동 판정) 되돌리기 한 칸으로 묶는다. 묶음 표시는 갱신 함수 «밖»에서 정한다 —
@@ -189,31 +183,12 @@ export const PqcWebResultDrawer = ({
     }
     setHistory((current) => {
       const next = update(current.present);
-      if (next === current.present) return current;
-      if (coalesce) return { ...current, present: next };
-      return {
-        past: [...current.past, current.present].slice(-HISTORY_LIMIT),
-        present: next,
-        future: [],
-      };
+      if (!coalesce) return historyReducer(current, { type: 'change', next });
+      return next === current.present ? current : { ...current, present: next };
     });
   };
-  const undo = (): void =>
-    setHistory((current) => {
-      const previous = current.past.at(-1);
-      if (previous === undefined) return current;
-      return {
-        past: current.past.slice(0, -1),
-        present: previous,
-        future: [current.present, ...current.future],
-      };
-    });
-  const redo = (): void =>
-    setHistory((current) => {
-      const [next, ...rest] = current.future;
-      if (next === undefined) return current;
-      return { past: [...current.past, current.present], present: next, future: rest };
-    });
+  const undo = (): void => setHistory((current) => historyReducer(current, { type: 'undo' }));
+  const redo = (): void => setHistory((current) => historyReducer(current, { type: 'redo' }));
 
   const dirty = JSON.stringify(form) !== JSON.stringify(initial);
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
@@ -407,105 +382,108 @@ export const PqcWebResultDrawer = ({
             ))}
           </dl>
 
-          <PqcWebSteps
-            rows={rows}
-            drafts={form.drafts}
-            onValueChange={changeValue}
-            onItemJudgmentChange={changeItemJudgment}
-            itemJudgmentOptions={itemJudgmentOptions}
-            uomCodeOf={uomCodeOf}
-            itemsLoading={itemsLoading}
-            inspectionPlanVersionId={planVersionId}
-            inspectedQty={inspectedQty}
-            inspectionRound={null}
-            uomCode={uomCode}
-            draft={form.draft}
-            onChange={changeDraft}
-            fieldErrors={fieldErrors}
-            showErrors
-            judgmentOptions={judgmentOptions}
-            judgment={form.judgment}
-            onJudgmentChange={(code) => change((current) => ({ ...current, judgment: code }))}
-            disposition={form.disposition}
-            onDispositionChange={(choice) =>
-              change((current) => ({ ...current, disposition: choice }))
-            }
-            isLocked={false}
-            infoTop={
-              <>
-                <h4>{t.drawer.infoBox}</h4>
-                {/* 받은 값 — 작업지시 · 의뢰 · 총 검사량 · 의뢰 일시(IQC 의 LOT 정보 자리). */}
-                <dl className="parts-iqc-kv">
-                  <div>
-                    <dt>{t.summary.workOrder}</dt>
-                    <dd>{workOrder.data?.workOrderNo ?? empty}</dd>
+          {/* 창 본문 — 아래 단추 줄과의 여백을 이 묶음이 쥔다(단추 줄은 창 맨 아래로 내려간다). */}
+          <div className="pqc-web-drawer-body">
+            <PqcWebSteps
+              rows={rows}
+              drafts={form.drafts}
+              onValueChange={changeValue}
+              onItemJudgmentChange={changeItemJudgment}
+              itemJudgmentOptions={itemJudgmentOptions}
+              uomCodeOf={uomCodeOf}
+              itemsLoading={itemsLoading}
+              inspectionPlanVersionId={planVersionId}
+              inspectedQty={inspectedQty}
+              inspectionRound={null}
+              uomCode={uomCode}
+              draft={form.draft}
+              onChange={changeDraft}
+              fieldErrors={fieldErrors}
+              showErrors
+              judgmentOptions={judgmentOptions}
+              judgment={form.judgment}
+              onJudgmentChange={(code) => change((current) => ({ ...current, judgment: code }))}
+              disposition={form.disposition}
+              onDispositionChange={(choice) =>
+                change((current) => ({ ...current, disposition: choice }))
+              }
+              isLocked={false}
+              infoTop={
+                <>
+                  <h4>{t.drawer.infoBox}</h4>
+                  {/* 받은 값 — 작업지시 · 의뢰 · 총 검사량 · 의뢰 일시(IQC 의 LOT 정보 자리). */}
+                  <dl className="parts-iqc-kv">
+                    <div>
+                      <dt>{t.summary.workOrder}</dt>
+                      <dd>{workOrder.data?.workOrderNo ?? empty}</dd>
+                    </div>
+                    <div>
+                      <dt>{t.summary.inspectionRequestNo}</dt>
+                      <dd>{target.inspectionRequestNo}</dd>
+                    </div>
+                    <div>
+                      <dt>{t.summary.targetQty}</dt>
+                      <dd>{targetQty}</dd>
+                    </div>
+                    <div>
+                      <dt>{t.summary.requestedAt}</dt>
+                      <dd>{formatPlantDateTime(target.requestedAt) ?? target.requestedAt}</dd>
+                    </div>
+                  </dl>
+                </>
+              }
+              inspectedAtField={
+                <div className="field-cell date-time-field">
+                  <label className="field-label" htmlFor={inspectedAtId}>
+                    {tIqc.lot.inspectedAt}
+                    <span className="required-mark" aria-hidden="true">
+                      {' *'}
+                    </span>
+                  </label>
+                  <div className="date-time-field-controls">
+                    <DatePicker
+                      id={inspectedAtId}
+                      value={inspectedDate === '' ? null : inspectedDate}
+                      onChange={(next) => changeInspectedAt(next, inspectedTime)}
+                    />
+                    <TimeField
+                      labels={TIME_LABELS}
+                      hour={inspectedTime.slice(0, 2)}
+                      minute={inspectedTime.slice(3, 5)}
+                      disabled={false}
+                      invalid={false}
+                      onChange={(hour, minute) =>
+                        changeInspectedAt(inspectedDate, `${hour}:${minute}`)
+                      }
+                    />
                   </div>
-                  <div>
-                    <dt>{t.summary.inspectionRequestNo}</dt>
-                    <dd>{target.inspectionRequestNo}</dd>
-                  </div>
-                  <div>
-                    <dt>{t.summary.targetQty}</dt>
-                    <dd>{targetQty}</dd>
-                  </div>
-                  <div>
-                    <dt>{t.summary.requestedAt}</dt>
-                    <dd>{formatPlantDateTime(target.requestedAt) ?? target.requestedAt}</dd>
-                  </div>
-                </dl>
-              </>
-            }
-            inspectedAtField={
-              <div className="field-cell date-time-field">
-                <label className="field-label" htmlFor={inspectedAtId}>
-                  {tIqc.lot.inspectedAt}
-                  <span className="required-mark" aria-hidden="true">
-                    {' *'}
-                  </span>
-                </label>
-                <div className="date-time-field-controls">
-                  <DatePicker
-                    id={inspectedAtId}
-                    value={inspectedDate === '' ? null : inspectedDate}
-                    onChange={(next) => changeInspectedAt(next, inspectedTime)}
-                  />
-                  <TimeField
-                    labels={TIME_LABELS}
-                    hour={inspectedTime.slice(0, 2)}
-                    minute={inspectedTime.slice(3, 5)}
-                    disabled={false}
-                    invalid={false}
-                    onChange={(hour, minute) =>
-                      changeInspectedAt(inspectedDate, `${hour}:${minute}`)
-                    }
-                  />
                 </div>
-              </div>
-            }
-            judgmentBelow={
-              planVersionId === null ? (
-                /* 검사기준이 없을 때만 「검사 내용」 칸 — 종전 그대로(#135). */
-                <div className="field-cell pqc-web-remarks-field">
-                  <span className="field-label">
-                    <label htmlFor={remarksId}>{tPqc.noStandard.remarks}</label>
-                    <span className="pqc-web-label-hint">{t.noStandardNote}</span>
-                  </span>
-                  <TextField
-                    id={remarksId}
-                    fullWidth
-                    placeholder={t.remarksPlaceholder}
-                    value={form.remarks}
-                    onChange={(event) => {
-                      const remarks = event.target.value;
-                      change((current) => ({ ...current, remarks }));
-                    }}
-                  />
-                </div>
-              ) : undefined
-            }
-          />
+              }
+              judgmentBelow={
+                planVersionId === null ? (
+                  /* 검사기준이 없을 때만 「검사 내용」 칸 — 종전 그대로(#135). */
+                  <div className="field-cell pqc-web-remarks-field">
+                    <span className="field-label">
+                      <label htmlFor={remarksId}>{tPqc.noStandard.remarks}</label>
+                      <span className="pqc-web-label-hint">{t.noStandardNote}</span>
+                    </span>
+                    <TextField
+                      id={remarksId}
+                      fullWidth
+                      placeholder={t.remarksPlaceholder}
+                      value={form.remarks}
+                      onChange={(event) => {
+                        const remarks = event.target.value;
+                        change((current) => ({ ...current, remarks }));
+                      }}
+                    />
+                  </div>
+                ) : undefined
+              }
+            />
 
-          <SaveErrorBanner error={saveError} />
+            <SaveErrorBanner error={saveError} />
+          </div>
 
           {/* 아래 줄 — 왼쪽 되돌리기 · 다시 실행, 오른쪽 비우기 · 취소 · 제출(IQC 결과 창과 같다). */}
           <div className="parts-iqc-footer parts-iqc-drawer-footer">
