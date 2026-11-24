@@ -39649,6 +39649,21 @@ body:has(
   margin: var(--space-2) 0 0;
 }
 
+/* 생성일 조건 — 둘레 상자 없이 소제목 아래 한 줄. 표와의 간격은 상자 줄 간격이 맡는다(사용자 지시 2026-11-24). */
+.erp-outbound-detail > .erp-send-created {
+  margin-bottom: 0;
+}
+
+/* 송신 중지 제한 안내 — 파란 한 줄은 글 길이만큼만(사용자 지시 2026-11-24). */
+.erp-outbound-detail > .erp-outbound-lock-note {
+  justify-self: start;
+}
+
+/* 송신 대기 목록 아래 「총 N건」은 소제목 「송신 대기 목록 (N건)」과 겹쳐 걷는다(사용자 지시 2026-11-24). */
+.erp-outbound-detail .page-nav-total {
+  display: none;
+}
+
 /* 정보 상자 첫 칸의 문서 번호 — 제목 글자 크기, 기본 여백은 없앤다. */
 .integration-sync-facts .parts-iqc-fact-key {
   margin: 0;

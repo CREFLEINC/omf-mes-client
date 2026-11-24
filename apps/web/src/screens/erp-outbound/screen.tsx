@@ -27,10 +27,11 @@ import { PageNav } from '../../patterns/page-nav';
 import { documentNoOf } from '../integration-sync/message-labels';
 import { formatDateTime } from '../integration-sync/message-status';
 import { toPageView } from '../integration-sync/pagination';
-import { toPeriodQuery } from '../integration-sync/period';
+import { toPeriodQuery, type PeriodInput } from '../integration-sync/period';
 import { ERP_LINK_ORIENTATION_KEY } from '../integration-sync/erp-link-layout';
 import type { IntegrationMessageRow } from '../integration-sync/types';
-import { formatDate } from './created-period';
+import { CreatedFilter } from './created-filter';
+import { formatDate, readCreatedPeriod } from './created-period';
 import { MESSAGE_STATUS, type OutboundItem } from './outbound-items';
 import {
   useOutboundCounts,
@@ -98,6 +99,13 @@ const ItemTable = ({ items, counts, selectedCode, onSelect, onUnselect }: ItemTa
       align: 'center',
       /* 고르는 단추 자리(`BoardTable` 의 `pick`). */
       render: (item) => item.outboundItemName,
+    },
+    /* 언제 보내는가 — 상세와 같은 서버 글을 목록에서도 본다(사용자 지시 2026-11-24). 길면 한 줄로 줄이고 올리면 전문. */
+    {
+      key: 'sendTiming',
+      header: t.table.sendTiming,
+      align: 'center',
+      render: (item) => <OneLine text={item.sendTimingNote ?? t.values.empty} />,
     },
     {
       key: 'enabled',
@@ -255,26 +263,47 @@ export const ErpOutboundScreen = () => {
       : (itemRows.find((item) => item.outboundItemCode === requestedCode) ?? itemRows[0] ?? null);
   const page = readPage(searchParams.get('page'));
   /*
-   * 송신 예정은 늘 전체 기간으로 본다 — 생성일 조건 칸은 두지 않는다(사용자 지시 2026-11-24). 서버는 기간 없는 조회를
-   * 받지 않으므로(계약 `createdFrom` · `createdTo` 필수) 「아주 오래전 ~ 오늘」을 실어 보낸다. 「오늘」은 그릴 때마다
-   * 다시 잰다 — 목록이 15초마다 다시 그려지므로 자정을 넘겨 켜 둔 화면에서도 오늘까지로 걸린다.
+   * 생성일 조건 — 주소의 `from` · `to`(날짜). 없으면 「전체」다(사용자 지시 2026-11-24 · 칸 되살림, 둘레 상자는 두지 않는다).
+   * 서버는 기간 없는 조회를 받지 않으므로(계약 `createdFrom` · `createdTo` 필수) 「전체」는 「아주 오래전 ~ 오늘」로 실어
+   * 보낸다 — 종전 「전체」에서 조회 오류가 나던 까닭이다. 「오늘」은 그릴 때마다 다시 잰다(15초마다 다시 그려져 자정을
+   * 넘겨 켜 둔 화면에서도 오늘까지로 걸린다).
    */
+  const created = readCreatedPeriod(searchParams);
   const today = new Date();
-  const allPeriod = toPeriodQuery(
-    { from: PENDING_FROM, to: formatDate(today) },
+  const pendingPeriod = toPeriodQuery(
+    created ?? { from: PENDING_FROM, to: formatDate(today) },
     -today.getTimezoneOffset(),
   );
 
-  const pending = usePendingMessages(selected?.interfaceCode ?? null, page, allPeriod);
+  const pending = usePendingMessages(selected?.interfaceCode ?? null, page, pendingPeriod);
   const pendingRows = pending.data?.items ?? [];
   const pageView = toPageView(
     pending.data?.page ?? { page, size: 0, total: 0 },
     pendingRows.length,
   );
 
-  /** 항목을 고르면 쪽은 처음으로. */
+  /** 항목을 고르면 쪽은 처음으로. 생성일 조건은 남긴다 — 같은 기간으로 다른 항목을 본다. */
   const select = (code: string): void => {
-    setSearchParams(new URLSearchParams({ item: code }));
+    const next = new URLSearchParams({ item: code });
+    if (created !== null) {
+      next.set('from', created.from);
+      next.set('to', created.to);
+    }
+    setSearchParams(next);
+  };
+  /** 생성일 조건을 바꾸면 쪽은 처음으로. */
+  const applyCreated = (period: PeriodInput | null): void => {
+    const next = new URLSearchParams(searchParams);
+    if (selected !== null) next.set('item', selected.outboundItemCode);
+    next.delete('page');
+    if (period === null) {
+      next.delete('from');
+      next.delete('to');
+    } else {
+      next.set('from', period.from);
+      next.set('to', period.to);
+    }
+    setSearchParams(next);
   };
   const unselect = (): void => {
     setSearchParams(new URLSearchParams({ item: '' }));
@@ -497,20 +526,31 @@ export const ErpOutboundScreen = () => {
                     )}
                   </dd>
                 </div>
-                {/* 끌 수 없는 항목은 화면이 정한 한 문장으로 알린다 — 서버 까닭 글에는 내부 근거가 섞여 있다(사용자 지시 2026-11-24). */}
-                {selected.locked && (
-                  <div className="parts-iqc-fact">
-                    <dt className="field-label">{t.table.lockReason}</dt>
-                    <dd>{t.lockedNote}</dd>
-                  </div>
-                )}
               </dl>
+              {/*
+               * 끌 수 없는 항목은 화면이 정한 한 문장으로 알린다 — 서버 까닭 글에는 내부 근거가 섞여 있다. 정보 상자의 칸이 아니라
+               * 다른 화면과 같은 파란 안내 한 줄로 둔다(사용자 지시 2026-11-24).
+               */}
+              {selected.locked && (
+                <p
+                  className="iqc-inspection-action-note erp-outbound-lock-note"
+                  data-tone="info"
+                  role="note"
+                >
+                  <Icon name="info" size={16} aria-hidden />
+                  {t.lockedNote}
+                </p>
+              )}
               {/* 송신 예정 — 제목 줄에 건수, 아직 보내지 않은 건의 표(#358). */}
               <h3 className="pane-title erp-outbound-pending-title">
                 {selected.interfaceCode !== null && pendingCount !== undefined
                   ? t.pendingTitle(pendingCount)
                   : t.panes.pending}
               </h3>
+              {/* 생성일 조건 — 둘레 상자 없이 제목 아래 한 줄(사용자 지시 2026-11-24). */}
+              {selected.interfaceCode !== null && (
+                <CreatedFilter applied={created} today={today} onApply={applyCreated} />
+              )}
               {pendingSlot()}
             </div>
           ),

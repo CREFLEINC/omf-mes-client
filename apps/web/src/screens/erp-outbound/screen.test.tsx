@@ -156,7 +156,7 @@ describe('ErpOutboundScreen — 송신 항목', () => {
         within(itemRow('입고 (G/R)'))
           .getAllByRole('cell')
           .map((c) => c.textContent),
-      ).toEqual(['입고 (G/R)', '켜짐', '2건', '1건']);
+      ).toEqual(['입고 (G/R)', '—', '켜짐', '2건', '1건']);
     });
     expect(within(itemRow('생산 실적')).getByText('필수')).toBeInTheDocument();
     expect(within(itemRow('출하 (PGI)')).getByText('꺼짐')).toBeInTheDocument();
@@ -164,7 +164,7 @@ describe('ErpOutboundScreen — 송신 항목', () => {
       within(itemRow('반품'))
         .getAllByRole('cell')
         .map((c) => c.textContent),
-    ).toEqual(['반품', '켜짐', '—', '—']);
+    ).toEqual(['반품', '—', '켜짐', '—', '—']);
   });
 
   it('건수는 송신 항목 설정에 실려 오는 서버 값이다 — 메시지 목록을 따로 세지 않는다', async () => {
@@ -281,15 +281,37 @@ describe('ErpOutboundScreen — 송신 예정 목록', () => {
     expect(list?.searchParams.get('directionCode')).toBe('OUTBOUND');
   });
 
-  it('송신 예정은 생성일 칸 없이 늘 전체 기간(2000-01-01 ~ 오늘)으로 부른다 — 서버는 기간을 꼭 받는다(#358)', async () => {
+  it('생성일 「전체」면 송신 대기를 전체 기간(2000-01-01 ~ 오늘)으로 부른다 — 서버는 기간을 꼭 받는다(#358)', async () => {
     const { requests } = renderScreen([settingsRoute, messagesRoute()], '?item=GOODS_RECEIPT');
 
     await pendingPane().findByText('SAMPLE-GR-0001');
-    expect(pendingPane().queryByLabelText('시작일')).toBeNull();
-    expect(pendingPane().queryByRole('button', { name: '최근 1주일' })).toBeNull();
+    /* 생성일 칸은 되살렸다 — 둘레 상자 없이 소제목 아래 한 줄(사용자 지시 2026-11-24). */
+    expect(pendingPane().getByLabelText('시작일')).toBeInTheDocument();
+    expect(pendingPane().getByRole('button', { name: '전체' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
     const last = pendingListRequests(requests).at(-1);
     expect(last?.searchParams.get('createdFrom')).toMatch(/^2000-01-01T00:00:00[+-]\d{2}:\d{2}$/);
     expect(last?.searchParams.get('createdTo')).toMatch(/^\d{4}-\d{2}-\d{2}T23:59:59/);
+  });
+
+  it('생성일 날짜 두 칸으로 조회하면 그 기간을 실어 부르고 주소에 남긴다', async () => {
+    const { requests, user } = renderScreen(
+      [settingsRoute, messagesRoute()],
+      '?item=GOODS_RECEIPT',
+    );
+
+    await pendingPane().findByText('SAMPLE-GR-0001');
+    await user.type(pendingPane().getByLabelText('시작일'), '2026-11-01');
+    await user.type(pendingPane().getByLabelText('종료일'), '2026-11-24');
+    await user.click(pendingPane().getByRole('button', { name: '조회' }));
+
+    await waitFor(() => {
+      const last = pendingListRequests(requests).at(-1);
+      expect(last?.searchParams.get('createdFrom')).toMatch(/^2026-11-01T00:00:00/);
+      expect(last?.searchParams.get('createdTo')).toMatch(/^2026-11-24T23:59:59/);
+    });
   });
 
   it('송신 대기 줄은 어디를 눌러도 고르고, 문서 번호는 링크가 아니다(사용자 지시 2026-11-24)', async () => {
