@@ -31909,29 +31909,42 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 }
 
 /*
- * PQC 결과 창 — 검사일시 · 합격량 · 불합격량 · 보류량 한 줄(사용자 지시 2026-11-24 · omf-all-around#356). 수량 칸은
- * IQC 「검사 수량」 칸과 같은 보통 입력 칸 모양으로(큰 숫자 · 옅은 면 대신), 숫자 색(합격 초록 · 불합격 빨강 · 보류 노랑)은 그대로.
+ * PQC 결과 창 — 검사일시 · 합격량 · 불합격량 · 보류량 한 줄(사용자 지시 2026-11-24 · omf-all-around#356). 위 받은 값
+ * (작업지시 · 의뢰번호 · 총 검사량 · 의뢰 일시)과 같은 네 칸 격자에 칸마다 하나씩 맞춰 세운다 — 수량 줄 묶음은 풀어 격자에
+ * 바로 놓고, 「전체 N EA 중」은 넷째 칸 오른쪽 끝. 수량 칸은 보통 입력 칸 모양, 숫자 색(합격 초록 · 불합격 빨강 · 보류 노랑)은 그대로.
  */
 .pqc-web-inspected-row {
-  grid-template-columns: max-content minmax(0, 1fr);
-  column-gap: var(--space-8);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.pqc-web-inspected-row .iqc-inspection-qty-line {
-  align-items: flex-end;
-  flex-wrap: nowrap;
+@media (min-width: 1024px) {
+  .iqc-inbound-drawer .pqc-web-inspected-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .iqc-inbound-drawer .pqc-web-inspected-row .iqc-inspection-qty-input[data-kind="held"] {
+    grid-column: 4;
+    grid-row: 1;
+  }
+
+  .iqc-inbound-drawer .pqc-web-inspected-row .iqc-inspection-qty-status {
+    grid-column: 4;
+    grid-row: 1;
+    justify-self: end;
+  }
 }
 
-.pqc-web-inspected-row .iqc-inspection-qty-group[data-group="manual"] {
-  flex: 0 0 auto;
-}
-
+.pqc-web-inspected-row .iqc-inspection-qty-body,
+.pqc-web-inspected-row .iqc-inspection-qty-line,
+.pqc-web-inspected-row .iqc-inspection-qty-group,
 .pqc-web-inspected-row .iqc-inspection-qty-group-fields {
-  grid-template-columns: repeat(3, 6.5rem);
+  display: contents;
 }
 
 .pqc-web-inspected-row .iqc-inspection-qty-input {
   gap: 0;
+  justify-self: start;
+  width: 7rem;
 }
 
 .pqc-web-inspected-row .iqc-inspection-qty-input input {
@@ -31947,6 +31960,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 
 .pqc-web-inspected-row .iqc-inspection-qty-status {
   display: flex;
+  align-self: end;
   align-items: center;
   gap: var(--space-1);
   min-height: 2.5rem;
