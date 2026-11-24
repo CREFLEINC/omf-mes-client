@@ -39517,28 +39517,25 @@ body:has(
   flex: 0 0 auto;
 }
 
-.integration-sync-detail-note {
-  display: block;
-  margin-top: var(--space-1);
-}
-
 .integration-sync-detail-retry {
   margin-left: auto;
 }
 
-.integration-sync-detail-sub {
+.integration-sync-detail-note {
   margin: calc(var(--space-2) * -1) 0 0;
-  font: var(--type-body-md);
-  color: var(--on-surface-variant);
 }
 
-.integration-sync-detail-error > span:last-child {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.integration-sync-detail-grid {
+/* 정보 상자 — 두 열(연동 항목 | 재시도 횟수, 일시 칸들), 오류 내용은 상자 전체 폭(검사 조회·판정과 같은 모양 · #358). */
+.iqc-inbound-facts.integration-sync-facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3) var(--space-4);
+}
+
+.iqc-inbound-facts.integration-sync-facts > .integration-sync-fact-wide {
+  grid-column: 1 / -1;
+}
+
+.iqc-inbound-facts.integration-sync-facts > .integration-sync-fact-wide > dd {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }

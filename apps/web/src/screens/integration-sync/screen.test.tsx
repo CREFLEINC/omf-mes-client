@@ -324,7 +324,7 @@ describe('IntegrationSyncScreen — 목록 표시', () => {
       await screen.findByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0003 상세 열기' }),
     );
 
-    const cell = (await screen.findByText('다음 재시도 일시')).closest('.field-cell');
+    const cell = (await screen.findByText('다음 재시도 일시')).closest('.parts-iqc-fact');
     expect(cell?.textContent).toBe('다음 재시도 일시2099-12-31 21:30');
   });
 });

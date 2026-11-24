@@ -38,16 +38,16 @@ const isScheduled = (value: string | null | undefined, now: Date): boolean => {
 };
 
 /**
- * 아래 두 열 칸(#358) — 발생일시 · 전송 일시 · 완료 일시 · 재시도 횟수.
+ * 정보 상자의 두 열 칸(#358) — 재시도 횟수 · 발생일시 · 전송 일시 · 완료 일시.
  * 「다음 재시도 일시」는 재시도가 예정돼 있을 때만 덧붙인다. 처리 중이면 머리 줄 배지 옆에 「언제부터 처리 중」이 선다.
  */
 const toItems = (view: MessageDetailView, now: Date): DetailItem[] => {
   const availableAt = formatDateTime(view.availableAt);
   const items: DetailItem[] = [
+    { label: t.detail.retryCount, value: String(view.retryCount) },
     { label: t.table.createdAt, value: orEmptyMark(formatDateTime(view.createdAt)) },
     { label: t.detail.sentAt, value: orEmptyMark(formatDateTime(view.sentAt)) },
     { label: t.detail.completedAt, value: orEmptyMark(formatDateTime(view.completedAt)) },
-    { label: t.detail.retryCount, value: String(view.retryCount) },
   ];
   if (availableAt !== null && isScheduled(view.availableAt, now)) {
     items.push({ label: t.detail.availableAt, value: availableAt });
@@ -57,7 +57,7 @@ const toItems = (view: MessageDetailView, now: Date): DetailItem[] => {
 
 /**
  * 상세 — 목록 오른쪽 구획(사용자 지시 2026-10-27). 짜임(#358):
- * 머리 줄 「문서 번호 · 상태 배지 … [재처리]」 → 「송수신 · 연동 항목」 → 오류 내용(구획 전체 폭) → 일시 · 횟수 두 열.
+ * 머리 줄 「문서 번호 · 상태 배지 … [재처리]」 → 정보 상자(연동 항목 · 송수신, 일시 · 횟수 두 열, 오류 내용은 상자 전체 폭).
  *
  * **재처리는 상태 코드로도 `lockedBy`로도 막지 않는다.** 실서버의 상태 어휘를 화면이 모르므로 「실패일 때만」으로 막으면
  * 어휘가 다른 서버에서 버튼이 전부 죽는다. 판정은 서버 몫이다(400 NOT_RETRYABLE · 409 workerLease).
@@ -104,30 +104,34 @@ export const MessageDetailPane = ({
           {t.actions.retry}
         </Button>
       </div>
-      <p className="integration-sync-detail-sub">
-        {directionName(view.directionCode)} · {interfaceName(view.interfaceCode)}
-        {/*
-         * 「언제부터 처리 중」 — 목록은 배지만 두고 이 줄은 여기서 본다(#358). 처리를 시작한 시각만 낸다(「잠금이 오래됐다」
-         * 같은 판정은 하지 않는다). 자동 재시도 예정은 아래 「다음 재시도 일시」 칸이 말한다.
-         */}
-        {(view.lockedBy ?? '') !== '' && status.note !== null && (
-          <span className="field-note integration-sync-detail-note">{status.note}</span>
-        )}
-      </p>
+      {/*
+       * 「언제부터 처리 중」 — 목록은 배지만 두고 이 줄은 여기서 본다(#358). 처리를 시작한 시각만 낸다(「잠금이 오래됐다」
+       * 같은 판정은 하지 않는다). 자동 재시도 예정은 아래 「다음 재시도 일시」 칸이 말한다.
+       */}
+      {(view.lockedBy ?? '') !== '' && status.note !== null && (
+        <p className="field-note integration-sync-detail-note">{status.note}</p>
+      )}
 
-      <div className="field-cell integration-sync-detail-error">
-        <span className="field-label">{t.table.lastErrorMessage}</span>
-        <span>{orEmptyMark(view.lastErrorMessage ?? null)}</span>
-      </div>
-
-      <div className="integration-sync-detail-grid">
+      {/* 정보 상자 — 검사 조회·판정 · 단말 관리와 같은 모양(테두리 상자 · 칸 사이 세로선 · #358). */}
+      <dl className="parts-iqc-facts iqc-inbound-facts integration-sync-facts">
+        <div className="parts-iqc-fact">
+          <dt className="field-label">{t.table.interfaceCode}</dt>
+          <dd className="parts-iqc-fact-key">
+            {interfaceName(view.interfaceCode)}
+            <span className="parts-iqc-fact-sub">{directionName(view.directionCode)}</span>
+          </dd>
+        </div>
         {toItems(view, now).map((item) => (
-          <div className="field-cell" key={item.label}>
-            <span className="field-label">{item.label}</span>
-            <span>{item.value}</span>
+          <div className="parts-iqc-fact" key={item.label}>
+            <dt className="field-label">{item.label}</dt>
+            <dd>{item.value}</dd>
           </div>
         ))}
-      </div>
+        <div className="parts-iqc-fact integration-sync-fact-wide">
+          <dt className="field-label">{t.table.lastErrorMessage}</dt>
+          <dd>{orEmptyMark(view.lastErrorMessage ?? null)}</dd>
+        </div>
+      </dl>
     </div>
   );
 };

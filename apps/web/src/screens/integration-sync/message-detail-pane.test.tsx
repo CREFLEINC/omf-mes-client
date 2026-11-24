@@ -25,7 +25,7 @@ const renderPane = (props: Partial<Parameters<typeof MessageDetailPane>[0]> = {}
 
 /** 라벨이 붙은 칸의 값만 읽는다. 「—」가 여럿이라 화면 전체에서 찾으면 어느 칸인지 알 수 없다. */
 const fieldValue = (label: string): string => {
-  const cell = screen.getByText(label).closest('.field-cell');
+  const cell = screen.getByText(label).closest('.parts-iqc-fact');
 
   return (cell?.textContent ?? '').replace(label, '');
 };
@@ -45,9 +45,9 @@ describe('MessageDetailPane — 항목', () => {
       }),
     });
 
-    // 머리 줄: 문서 번호 · 배지 · 처리 중 보조 줄, 그 아래 「송수신 · 연동 항목」(#358).
+    // 머리 줄: 문서 번호 · 배지, 처리 중 보조 줄, 정보 상자 첫 칸에 연동 항목과 그 아래 송수신(#358).
     expect(screen.getByRole('heading', { name: 'SAMPLE-KEY-0001' })).toBeInTheDocument();
-    expect(screen.getByText('수신 · IF-SAMPLE-A')).toBeInTheDocument();
+    expect(fieldValue('연동 항목')).toBe('IF-SAMPLE-A수신');
     expect(screen.getByText('2026-08-04 09:20부터 처리 중')).toBeInTheDocument();
     expect(fieldValue('전송 일시')).toBe('2026-08-04 07:13');
     expect(fieldValue('완료 일시')).toBe('2026-08-04 07:15');
