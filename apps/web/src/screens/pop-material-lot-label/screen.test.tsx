@@ -366,7 +366,7 @@ describe('FR-010 세 칸 · FR-011 공급사 칸 → 품목 표 — 서버 쪽 �
 });
 
 describe('US1 · US2 미출력 탭 — 고르면 이미 만들어져 있다', () => {
-  it('US1-1 US1-6 US2-1 고르면 미출력 탭을 이 쪽 크기로 부르고, 차례 · P/O 라인 · 만든 방식 칸으로 선다', async () => {
+  it('US1-1 US1-6 US2-1 고르면 미출력 탭을 이 쪽 크기로 부르고, 차례 · 만든 방식 칸으로 선다(P/O 라인은 보이지 않음 — T058)', async () => {
     const user = userEvent.setup();
     const { sent } = renderLabelScreen(withShare(37));
 
@@ -386,7 +386,7 @@ describe('US1 · US2 미출력 탭 — 고르면 이미 만들어져 있다', ()
     expect(within(rows[0] as HTMLElement).getAllByRole('cell')[1]).toHaveTextContent('1');
     expect(rows[0]).toHaveTextContent(tp.mode.MANUAL);
     expect(rows[2]).toHaveTextContent(tp.mode.AUTO);
-    expect(rows[2]).toHaveTextContent(tp.poLine('SYN-PO-07', 1));
+    expect(rows[2]).not.toHaveTextContent('SYN-PO-07');
     expect(rows[2]).toHaveTextContent('롤 10 × 10');
     expect(rows[2]).toHaveTextContent('100 EA');
   });
@@ -406,19 +406,41 @@ describe('US1 · US2 미출력 탭 — 고르면 이미 만들어져 있다', ()
     /* 말줄임 없이 번호 전체 — 칸(품목 · 수량 · 날짜 · 공급사 · 일련) 넷 사이마다 <wbr>. */
     expect(lotCell.querySelector('.mll-lotno')?.textContent).toBe(lotNo);
     expect(lotCell.querySelectorAll('wbr')).toHaveLength(lotNo.split('|').length - 1);
-    for (const name of ['mll-pkgcol', 'mll-pocol', 'mll-modecol']) {
+    for (const name of ['mll-pkgcol', 'mll-modecol']) {
       expect(table.querySelectorAll(`th.${name}`)).toHaveLength(1);
       expect(table.querySelectorAll(`td.${name}`).length).toBeGreaterThan(0);
     }
   });
 
-  it('FR-010 세 칸 1100px 이하 규칙 — LOT 번호 칸은 접고, 포장 · P/O 는 두 줄, 머리 줄은 겹치지 않게 접는다', () => {
+  it('T058 P/O 라인은 POP 에 보이지 않는다 — 탭 넷 모두 「P/O 라인」 칸이 없다(데이터는 「나머지」 판별에만)', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen(withShare(37));
+
+    await pickPair(user);
+    await waitFor(() => expect(checkboxes().length).toBeGreaterThan(0));
+
+    for (const tab of ['UNPRINTED', 'PRINTED', 'RECEIVED', 'VOIDED'] as const) {
+      if (tab !== 'UNPRINTED') {
+        await user.click(
+          screen.getByRole('tab', { name: (name) => name.startsWith(tp.tabs[tab]) }),
+        );
+      }
+      const table = await screen.findByRole('group', { name: tp.tabs[tab] });
+      expect(within(table).queryByRole('columnheader', { name: tp.columns.po })).toBeNull();
+      expect(table).not.toHaveTextContent('SYN-PO-07');
+      expect(table.querySelector('.mll-pocol')).toBeNull();
+    }
+  });
+
+  it('FR-010 세 칸 1100px 이하 규칙 — LOT 번호 칸은 접고, 포장은 두 줄, 머리 줄은 겹치지 않게 접는다', () => {
     const css = readFileSync(resolve(__dirname, 'uniform.css'), 'utf8');
     const narrow = css.slice(css.lastIndexOf('@media (max-width: 1100px)'));
 
     expect(narrow).toMatch(/td\.mll-lotcol \{[^}]*white-space: normal/u);
     expect(narrow).toMatch(/th\.mll-lotcol \{[^}]*word-break: keep-all/u);
-    expect(narrow).toMatch(/td\.mll-pocol \{[^}]*white-space: normal/u);
+    expect(narrow).toMatch(/td\.mll-pkgcol \{[^}]*white-space: normal/u);
+    /* T058 P/O 칸이 없으니 그 규칙도 없다. */
+    expect(css).not.toMatch(/mll-pocol|mll-po-sep/u);
     expect(narrow).toMatch(/td\.mll-actcol > \.pu-btn/u);
     expect(narrow).toMatch(/\.mll-right > \.pu-card-head \{[^}]*flex-wrap: wrap/u);
     expect(narrow).toMatch(/\.mll-head-value \{[^}]*text-overflow: ellipsis/u);

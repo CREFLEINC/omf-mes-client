@@ -8,9 +8,6 @@ import { PuChip, PuIcon, puCx, type PuChipTone } from '../../patterns/pop-unifor
 import { rowStatusOf, type BatchSnapshot, type RowStatus } from './batch-view';
 import { isVoided, isWaiting, type LabelLot } from './types';
 
-/** P/O 번호와 라인 사이 — 「PO-2611-007 · 1」. */
-const PO_DOT = '·'; // ui-check-ignore: C-13 설계 확정 형식(specs 014 screens/P-01-01 「P/O · 라인」)
-
 /**
  * 자재 관리 LOT 번호 — `|` 뒤마다 줄바꿈 자리(`<wbr>`)를 둔다. 넓은 화면은 한 줄, 1100px 이하 좁은 상세 칸에서는
  * 칸(품목 · 수량 · 날짜 · 공급사 · 일련) 단위로 두 줄에 걸쳐 끝까지 읽힌다(말줄임 없음). 글자 자체는 그대로다.
@@ -38,10 +35,12 @@ const tp = messages.popMaterialLotLabel.precreate;
 /**
  * 탭마다 무엇을 보이는가(피처 014 · 시안 P0101 ③ · ⑧ · ⑨ · screens/P-01-01.md 「표시 항목」).
  *
- * - `UNPRINTED` 미출력 — 선택 · 차례 · 번호 · 재고량 · 포장 · P/O 라인 · 만든 방식(· [수정])
- * - `PRINTED` 출력됨(입하 전) — 선택 · 번호 · 재고량 · 포장 · P/O 라인 · 만든 방식 · 출력 횟수 · 최근 출력일시
- * - `RECEIVED` 입하된 LOT — 선택 · 번호 · 재고량 · 포장 · P/O 라인 · 공급사 LOT 번호 · LOT 상태 · 입하 일시 · 출력 횟수
- * - `VOIDED` 폐기 LOT — 번호 · 재고량 · 포장 · P/O 라인 · 만든 방식 · LOT 상태 · 폐기 일시 · 출력 횟수(고를 수 없음)
+ * - `UNPRINTED` 미출력 — 선택 · 차례 · 번호 · 재고량 · 포장 · 만든 방식(· [수정])
+ * - `PRINTED` 출력됨(입하 전) — 선택 · 번호 · 재고량 · 포장 · 만든 방식 · 출력 횟수 · 최근 출력일시
+ * - `RECEIVED` 입하된 LOT — 선택 · 번호 · 재고량 · 포장 · 공급사 LOT 번호 · LOT 상태 · 입하 일시 · 출력 횟수
+ * - `VOIDED` 폐기 LOT — 번호 · 재고량 · 포장 · 만든 방식 · LOT 상태 · 폐기 일시 · 출력 횟수(고를 수 없음)
+ * ⭐ P/O 라인은 보이지 않는다(T058 · 사용자 2026-11-24) — 현장은 P/O 번호로 식별하지 않고, 자동 LOT 의 P/O 라인은
+ *    중복 생성 방지용 몫 기록일 뿐 실제 배정은 입하 마감 때 정해진다. 데이터는 「나머지」 판별(`remainderLotIds`)에만 쓴다.
  * ⭐ 칸마다 값 하나(사용자 지시 2026-11-19) — 두 줄 묶음 칸은 두지 않는다.
  * ⭐ 발행 중 · 결과 확인 전에는 맨 끝에 결과 칸이 선다(체크 대신 결과 표식이 제자리에 붙는다).
  * ⭐ 줄 어디를 눌러도 고른다 — 첫 칸의 체크 단추가 읽어 주는 도구의 이름(번호·수량)을 갖는다.
@@ -196,21 +195,6 @@ export const LabelTable = ({
   const remainders =
     tab === 'UNPRINTED' ? remainderLotIds(lots, defaultLotQty, hasMoreAfter) : new Set<number>();
   const hasAction = rowAction !== undefined && !showResults;
-  /* 「PO-2611-007 · 1」 — 1100px 이하는 띄어쓰기를 접어 「PO-2611-007·1」(screens/P-01-01.md 상태·예외). */
-  const poText = (lot: LabelLot): ReactNode => {
-    if (lot.purchaseOrderLine === null || lot.purchaseOrderLine === undefined) return t.none;
-
-    /* 번호 · 줄은 한 덩어리 — 번호 안 「-」에서 접히지 않는다(T054). */
-    return (
-      <span className="mll-keep">
-        {lot.purchaseOrderLine.purchaseOrderNo}
-        <span className="mll-po-sep"> </span>
-        {PO_DOT}
-        <span className="mll-po-sep"> </span>
-        {lot.purchaseOrderLine.lineNo}
-      </span>
-    );
-  };
   /* 「롤 10 × 10」 — 좁으면 단위명과 곱 사이에서만 접는다(× 앞뒤는 붙임, 긴 단위명은 한 줄 말줄임 · T054). 글자는 formatPackage 와 같다. */
   const packageCell = (lot: LabelLot): ReactNode => {
     if (lot.package === null) return t.noPackage;
@@ -255,7 +239,6 @@ export const LabelTable = ({
               </th>
               <th className="num fit">{t.columns.qty}</th>
               <th className="fit mll-pkgcol">{t.columns.package}</th>
-              <th className="fit mll-pocol">{tp.columns.po}</th>
               {tab === 'RECEIVED' ? (
                 <>
                   <th className="mll-slotcol" title={t.columns.supplierLot}>
@@ -364,7 +347,6 @@ export const LabelTable = ({
                   <td className="fit mll-pkgcol" title={packageText}>
                     {packageCell(lot)}
                   </td>
-                  <td className="fit mll-pocol">{poText(lot)}</td>
                   {tab === 'RECEIVED' ? (
                     <>
                       <td className="mll-slotcol" title={lot.supplierLotNo ?? undefined}>

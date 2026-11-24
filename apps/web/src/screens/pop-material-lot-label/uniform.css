@@ -768,11 +768,6 @@
   .pu-cols.list.mll-cols3:has(> .is-folded:first-child) {
     grid-template-columns: 56px 260px minmax(0, 1fr);
   }
-
-  /* 상세 표 P/O · 라인을 「PO-2611-007·1」로 줄인다(screens/P-01-01.md 상태·예외). */
-  .mll-table .mll-po-sep {
-    display: none;
-  }
 }
 
 /* 라벨 미리보기 — 80 × 30 mm 비율 그대로, 창 폭에 맞춰 키운다(사용자 지시 2026-11-23). */
@@ -878,7 +873,7 @@
  * 1100px 이하 상세 칸(세 칸 · 총괄 확인 2026-11-24) — 상세 칸 폭이 약 550px 로 준다.
  * ① LOT 번호가 가장 중요하다: 말줄임 대신 `|` 뒤에서 두 줄로 접어 끝까지 읽히게 하고, 남는 폭을 모두 갖는다.
  *    머리 글은 낱말 단위로만 접는다(「자재 관리 LOT / 번호」).
- * ② 포장 · P/O · 만든 방식은 글자를 줄이고 두 줄을 허용하며, [수정] 단추는 작게 — 가로로 넘치지 않는다.
+ * ② 포장 · 만든 방식은 글자를 줄이고 두 줄을 허용하며, [수정] 단추는 작게 — 가로로 넘치지 않는다.
  * ③ 머리 줄: 이름표 칸들을 두 줄로 접고(값은 말줄임), 단추 줄은 그 아래로 — 글자가 겹치지 않는다.
  */
 @media (max-width: 1100px) {
@@ -897,16 +892,14 @@
   }
 
   .mll-right .mll-table.mll-table .pu-table th.mll-pkgcol,
-  .mll-right .mll-table.mll-table .pu-table th.mll-pocol,
   .mll-right .mll-table.mll-table .pu-table th.mll-modecol {
     white-space: normal;
     word-break: keep-all;
     line-height: 15px;
   }
 
-  /* 포장은 단위명 | 곱 두 줄까지, P/O 는 한 덩어리(T054) — 줄이 3~4줄로 높아지지 않는다. */
-  .mll-right .mll-table.mll-table .pu-table td.mll-pkgcol,
-  .mll-right .mll-table.mll-table .pu-table td.mll-pocol {
+  /* 포장은 단위명 | 곱 두 줄까지(T054) — 줄이 3~4줄로 높아지지 않는다. */
+  .mll-right .mll-table.mll-table .pu-table td.mll-pkgcol {
     max-width: none;
     white-space: normal;
     font-size: 12px;
