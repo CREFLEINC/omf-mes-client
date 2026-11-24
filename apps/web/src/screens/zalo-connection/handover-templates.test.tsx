@@ -102,41 +102,65 @@ const setup = (data: Connection) => {
   return { writes };
 };
 
-const handoverCard = () => within(screen.getByRole('region', { name: t.handover.title }));
+/* 조회 조건 · 목록 · 상세 통일 배치(#358) — 템플릿은 목록에서 골라 상세에서 고친다. 이름 검색으로 찾아 고른다. */
+const openTemplate = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
+  const search = await screen.findByRole('searchbox', { name: t.workspace.search });
+  await user.clear(search);
+  await user.type(search, name);
+  await user.click(screen.getByRole('button', { name: t.workspace.apply }));
+  await user.click(await screen.findByRole('button', { name }));
+  return screen.findByRole('textbox', { name: t.fields.templateId(name) });
+};
 
 describe('ZaloConnectionScreen — 인계 작업 템플릿(피처 002)', () => {
-  it('FR-022 기존 6종 칸은 그대로이고 그 아래 별도 카드에 인계 11칸이 업무 흐름 순서로 선다', async () => {
+  it('FR-022 이벤트 6종 뒤에 인계 11종이 업무 흐름 순서로 한 목록에 서고, 고르면 ID · 파라미터 · 안내가 상세에 선다', async () => {
+    const user = userEvent.setup();
     setup(connection([{ alertTypeCode: 'MATERIAL_PICKING_REQUESTED', templateId: '200002' }]));
 
-    expect(
-      await screen.findByRole('textbox', { name: t.fields.templateId('생산 실행') }),
-    ).toHaveValue('TPL01');
-    expect(screen.getAllByRole('button', { name: /파라미터 복사$/ })).toHaveLength(6);
-
-    const card = await waitFor(() => handoverCard());
-    expect(card.getByRole('button', { name: t.handover.notice })).toBeInTheDocument();
-    const boxes = await card.findAllByRole('textbox');
-    expect(boxes).toHaveLength(11);
-    await waitFor(() => {
-      expect(boxes.map((box) => box.getAttribute('aria-label'))).toEqual(
-        HANDOVER_ALERT_ORDER.map((code) => t.fields.templateId(HANDOVER_NAMES[code] ?? code)),
+    const list = within(await screen.findByRole('region', { name: t.workspace.list }));
+    const names = async (): Promise<string[]> =>
+      (await list.findAllByRole('row')).slice(1).map((row) => {
+        const cells = within(row).getAllByRole('cell');
+        return `${cells[0]?.textContent ?? ''}|${cells[1]?.textContent ?? ''}`;
+      });
+    /* 한 쪽 10건 — 둘째 쪽까지 이어 본다. */
+    const firstPage = await waitFor(async () => {
+      const found = await names();
+      expect(found).toHaveLength(10);
+      expect(found[6]).toBe(
+        `${t.workspace.kinds.handover}|${HANDOVER_NAMES[HANDOVER_ALERT_ORDER[0] ?? ''] ?? ''}`,
       );
+      return found;
     });
-    expect(card.getByRole('textbox', { name: t.fields.templateId('자재 출고 피킹') })).toHaveValue(
-      '200002',
-    );
+    await user.click(list.getByRole('button', { name: messages.screenPatterns.pageNav.next }));
+    const secondPage = await waitFor(async () => {
+      const found = await names();
+      expect(found).toHaveLength(7);
+      return found;
+    });
+    expect([...firstPage, ...secondPage]).toEqual([
+      ...NAMES.map((name) => `${t.workspace.kinds.event}|${name}`),
+      ...HANDOVER_ALERT_ORDER.map(
+        (code) => `${t.workspace.kinds.handover}|${HANDOVER_NAMES[code] ?? code}`,
+      ),
+    ]);
+
+    expect(await openTemplate(user, '자재 출고 피킹')).toHaveValue('200002');
+    expect(screen.getByText(t.handover.notice)).toBeInTheDocument();
+    await openTemplate(user, 'IQC 수입검사');
     expect(
-      card.getByText(`${t.fields.params}: receipt_no, lot_count, supplier, event_time`),
+      screen.getByText(`${t.fields.params}: receipt_no, lot_count, supplier, event_time`),
     ).toBeInTheDocument();
-    expect(card.getAllByRole('button', { name: /템플릿 파라미터 이름 복사$/ })).toHaveLength(11);
+    expect(
+      screen.getByRole('button', { name: t.handover.copyFor('IQC 수입검사') }),
+    ).toBeInTheDocument();
   });
 
   it('FR-022 저장하면 기존 templates 6종과 handoverTemplates 11종을 함께 싣는다', async () => {
     const user = userEvent.setup();
     const { writes } = setup(connection([]));
 
-    const card = await waitFor(() => handoverCard());
-    const putaway = await card.findByRole('textbox', { name: t.fields.templateId('적치') });
+    const putaway = await openTemplate(user, '적치');
     await user.type(putaway, 'H0001');
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
@@ -162,20 +186,24 @@ describe('ZaloConnectionScreen — 인계 작업 템플릿(피처 002)', () => {
     const user = userEvent.setup();
     const { writes } = setup(connection([]));
 
-    const card = await waitFor(() => handoverCard());
-    await user.type(await card.findByRole('textbox', { name: t.fields.templateId('적치') }), 'H-1');
+    await user.type(await openTemplate(user, '적치'), 'H-1');
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
-    expect(await card.findByText(t.errors.templateId)).toBeInTheDocument();
+    expect(await screen.findByText(t.errors.templateId)).toBeInTheDocument();
+    /* 목록의 그 줄에도 「확인 필요」가 선다 — 다른 템플릿을 보고 있어도 오류 자리를 찾는다. */
+    expect(screen.getByText(t.workspace.hasError)).toBeInTheDocument();
     expect(writes).toHaveLength(0);
   });
 
-  it('서버가 인계 칸을 아직 싣지 않아도(병합 전) 빈 칸 11개로 보인다', async () => {
+  it('서버가 인계 칸을 아직 싣지 않아도(병합 전) 인계 11종이 빈 칸으로 선다', async () => {
+    const user = userEvent.setup();
     setup(connection());
 
-    const card = await waitFor(() => handoverCard());
-    const boxes = await card.findAllByRole('textbox');
-    expect(boxes).toHaveLength(11);
-    for (const box of boxes) expect(box).toHaveValue('');
+    const list = within(await screen.findByRole('region', { name: t.workspace.list }));
+    expect((await list.findAllByText(t.values.none)).length).toBeGreaterThan(0);
+    expect(
+      await screen.findByText(`${String(6 + HANDOVER_ALERT_ORDER.length)}건`),
+    ).toBeInTheDocument();
+    expect(await openTemplate(user, '적치')).toHaveValue('');
   });
 });

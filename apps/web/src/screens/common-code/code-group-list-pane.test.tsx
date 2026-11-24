@@ -20,7 +20,9 @@ const renderPane = (overrides: Partial<Parameters<typeof CodeGroupListPane>[0]> 
       appliedFilters={EMPTY_CODE_GROUP_FILTERS}
       onApplyFilters={onApplyFilters}
       pageView={toPageView({ page: 1, size: 50, total: 3 }, 3)}
+      pageMeta={{ page: 1, size: 50, total: 3 }}
       onChangePage={onChangePage}
+      onChangePageSize={vi.fn()}
       selectedCodeGroupId={null}
       onSelect={onSelect}
       isCreating={false}
@@ -37,7 +39,9 @@ describe('CodeGroupListPane — 목록 표시', () => {
   it('그룹코드·그룹명 두 열만 낸다', () => {
     renderPane();
 
-    const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
+    const headers = screen
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent?.replace('drag_indicator', ''));
     expect(headers).toEqual(['그룹코드', '그룹명']);
   });
 
@@ -200,6 +204,7 @@ describe('CodeGroupListPane — 쪽 이동', () => {
   it('다음을 누르면 다음 쪽을 알린다', async () => {
     const { onChangePage, user } = renderPane({
       pageView: toPageView({ page: 2, size: 50, total: 240 }, 50),
+      pageMeta: { page: 2, size: 50, total: 240 },
     });
 
     await user.click(screen.getByRole('button', { name: '다음' }));

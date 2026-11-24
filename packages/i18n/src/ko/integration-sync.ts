@@ -142,8 +142,9 @@ export const integrationSync = {
    */
   detail: {
     title: '연계 메시지 상세',
-    /** 오른쪽 구획 — 아직 고르지 않았을 때. */
-    pick: '목록에서 메시지를 고르세요',
+    /** 오른쪽 구획 — 아직 고르지 않았을 때(단말 관리와 같은 제목 + 설명 한 줄 · #358). */
+    pick: '연계 메시지를 선택하세요.',
+    pickDescription: '선택한 메시지의 처리 상태와 오류 내용을 확인할 수 있습니다.',
     openAction: (title: string): string => `${title} 상세 열기`,
     retryCount: '재시도 횟수',
     availableAt: '다음 시도',

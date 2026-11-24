@@ -429,6 +429,7 @@ export const CodeValueSection = ({
         includeInactive={includeInactive}
         onIncludeInactiveChange={handleIncludeInactiveChange}
         pageView={pageView}
+        pageMeta={list.data?.page ?? null}
         onChangePage={handlePageChange}
         selectedCodeValueId={selectedCodeValueId}
         onSelect={handleSelect}

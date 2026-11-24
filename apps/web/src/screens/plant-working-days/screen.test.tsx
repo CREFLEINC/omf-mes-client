@@ -168,9 +168,28 @@ describe('W-CO-15 공장 근무일 설정', () => {
 
     const title = screen.getByRole('heading', { level: 2 });
 
-    expect(title).toHaveTextContent(t.tableLabel);
+    /* 목록 상자 제목 줄 「공장 목록 N건」(#358) — 머리글(h1)은 없다. */
+    expect(title).toHaveTextContent(t.workspace.list);
     expect(within(title).getByRole('button', { name: t.description })).toBeInTheDocument();
     expect(screen.queryByText(t.description)).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+    expect(screen.getByText('2건')).toBeInTheDocument();
+  });
+
+  it('공장 이름 검색은 화면 안에서 거르고 [초기화]로 다시 모두 보인다(#358)', async () => {
+    const user = userEvent.setup();
+    setup();
+    const rows = async () => (await table()).getAllByRole('row').slice(1);
+
+    expect(await rows()).toHaveLength(2);
+    /* 초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */
+    expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
+    await user.type(screen.getByRole('searchbox', { name: t.workspace.search }), '2공장');
+    await user.click(screen.getByRole('button', { name: t.workspace.apply }));
+    await waitFor(async () => expect(await rows()).toHaveLength(1));
+    await user.click(screen.getByRole('button', { name: t.workspace.clear }));
+    await waitFor(async () => expect(await rows()).toHaveLength(2));
+    expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
   });
 
   it('US7-3 6 으로 바꾸면 바뀐 줄 표시 · 예시를 다시 세고, 저장하면 오늘부터 적용 행을 더한 뒤 다시 열어도 6', async () => {

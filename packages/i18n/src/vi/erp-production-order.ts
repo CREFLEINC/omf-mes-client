@@ -23,6 +23,7 @@ export const erpProductionOrder: Translated<typeof ko.erpProductionOrder> = {
   panes: {
     filters: 'Điều kiện tra cứu ERP W/O',
     list: 'Danh sách ERP W/O',
+    detail: 'Chi tiết ERP W/O',
   },
   filters: {
     all: 'Tất cả',
@@ -30,11 +31,6 @@ export const erpProductionOrder: Translated<typeof ko.erpProductionOrder> = {
     itemClear: 'Xóa mặt hàng',
     itemPick: 'Chọn',
     chip: (label: string, value: string): string => `${label}: ${value}`,
-  },
-  actions: {
-    firstPage: 'Trang đầu',
-    prevPage: 'Trước',
-    nextPage: 'Sau',
   },
   progress: {
     group: 'Điều kiện tiến độ',
@@ -61,14 +57,10 @@ export const erpProductionOrder: Translated<typeof ko.erpProductionOrder> = {
   empty: {
     title: 'Không có ERP W/O phù hợp điều kiện',
     beyondTitle: 'Trang này không có ERP W/O',
+    pickTitle: 'Hãy chọn ERP W/O.',
+    pickDescription: 'Chọn ERP W/O trong danh sách để xem mọi trường nhận từ ERP.',
   },
   loading: 'Đang tải ERP W/O',
   listLoadFailedTitle: 'Không tải được danh sách ERP W/O',
   loadFailedDescription: 'Hãy thử lại sau giây lát. Nếu vẫn lỗi, hãy liên hệ quản trị viên.',
-  page: {
-    label: 'Chuyển trang ERP W/O',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / Tổng ${String(total)}`,
-    total: (total: number): string => `Tổng ${String(total)}`,
-  },
 };

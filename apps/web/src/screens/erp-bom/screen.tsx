@@ -1,19 +1,24 @@
-import { Button, Checkbox, type Column, EmptyState, SkeletonText, TextField } from '@crefle/web-ui';
+import { Checkbox, type Column, EmptyState, SkeletonText, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { BoardFrame } from '../../patterns/board-frame';
-import { BoardTable } from '../../patterns/board-table';
 import { pickBom, useBomTree, type BomTreeRoot, type BomTreeRow } from '../../patterns/bom-tree';
 import { BomTreeCell } from '../../patterns/bom-tree-cell';
 import { hasChangedFilters } from '../../patterns/filter-more';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { OneLine } from '../../patterns/po-board';
+import { PAGE_SIZES, PageNav, type PageSize } from '../../patterns/page-nav';
 import { Select } from '../../patterns/select';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
-import { PageNav } from '../integration-sync/page-nav';
-import { toPageView } from '../integration-sync/pagination';
+import {
+  ERP_DATA_ORIENTATION_KEY,
+  ErpDetailFields,
+  ErpFilterActions,
+  ErpListTable,
+  ErpPickEmpty,
+} from '../erp-item/erp-data-parts';
 import {
   ERP_BOM_TREE,
   erpBomKeys,
@@ -68,13 +73,25 @@ const readFilters = (params: URLSearchParams): Filters => {
   };
 };
 
-const toSearchParams = (filters: Filters, page = 1, item: number | null = null) => {
+/** 쪽 크기 — 고른 적이 없으면 `null`(종전 크기 그대로). */
+const readSize = (params: URLSearchParams): PageSize | null => {
+  const size = Number(params.get('size') ?? '');
+  return PAGE_SIZES.find((option) => option === size) ?? null;
+};
+
+const toSearchParams = (
+  filters: Filters,
+  page = 1,
+  item: number | null = null,
+  size: PageSize | null = null,
+) => {
   const next = new URLSearchParams();
   if (filters.q !== '') next.set('q', filters.q);
   if (filters.type !== DEFAULT_PARENT_TYPE) next.set('type', filters.type);
   if (!filters.hasBom) next.set('bom', 'all');
   if (page > 1) next.set('page', String(page));
   if (item !== null) next.set('item', String(item));
+  if (size !== null) next.set('size', String(size));
   return next;
 };
 
@@ -103,11 +120,12 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
     setQ('');
     onReset();
   };
+
   const isChanged = hasChangedFilters(DEFAULT_FILTERS, { ...applied, q }, applied);
 
   return (
     <form
-      className="filter-bar"
+      className="filter-bar erp-data-filter-row"
       onSubmit={(event) => {
         event.preventDefault();
         onSearch({ ...applied, q: q.trim() });
@@ -143,16 +161,7 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
           setQ(event.target.value);
         }}
       />
-      <div className="field-cell field-cell-unlabeled">
-        <div className="filter-actions">
-          <Button type="submit">{messages.common.search}</Button>
-          {isChanged && (
-            <Button variant="outlined" onClick={reset}>
-              {messages.common.reset}
-            </Button>
-          )}
-        </div>
-      </div>
+      <ErpFilterActions onReset={reset} showReset={isChanged} />
     </form>
   );
 };
@@ -237,11 +246,10 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
   ];
 
   return (
-    <BoardTable
+    <ErpListTable
       label={t.panes.components}
       className="bom-tree-table"
-      widthKey="omf-mes:erp-bom:columns:tree"
-      minWidth="38rem"
+      storageKey="omf-mes:erp-bom:columns:tree"
       columns={columns}
       rows={rows}
       getRowId={(row) => row.key}
@@ -251,20 +259,25 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
 
 interface ParentFactsProps {
   item: ItemSummary;
-  bom: Bom;
+  /** 그 품목의 BOM — 받는 중이거나 없으면 `null`(품목 칸만 낸다). */
+  bom: Bom | null;
 }
 
 /**
- * 모품목 상세(사용자 지시 2026-10-27 「모품목 상세 정보는 표시해줘야지」) — 품목 칸과 그 BOM 칸을 하이라키 위에 한 줄로.
- * 입고 관리 라인 머리의 사실 칸과 같은 모양이다.
+ * 모품목 상세(사용자 지시 2026-10-27 「모품목 상세 정보는 표시해줘야지」) — 품목 칸과 그 BOM 칸을 「이름 : 값」으로
+ * 하이라키 위에 낸다(omf-all-around#358).
  */
 const ParentFacts = ({ item, bom }: ParentFactsProps) => {
   const typeNameOf = useItemTypeNames();
   const statusNameOf = useStatusNames();
   const uomNameOf = useUomNames();
   const detail = item.item;
-  const facts = [
-    { key: 'code', label: t.parent.itemCode, value: item.code ?? item.name, strong: true },
+  const itemFacts = [
+    {
+      key: 'code',
+      label: t.parent.itemCode,
+      value: <span className="bom-tree-code">{item.code ?? item.name}</span>,
+    },
     { key: 'name', label: t.parent.itemName, value: detail?.itemName ?? t.values.empty },
     {
       key: 'type',
@@ -281,32 +294,28 @@ const ParentFacts = ({ item, bom }: ParentFactsProps) => {
       label: t.parent.baseUom,
       value: detail === null ? t.values.empty : uomNameOf(detail.baseUomId),
     },
-    { key: 'bom', label: t.parent.bomCode, value: bom.bomCode },
-    { key: 'rev', label: t.parent.bomVersion, value: String(bom.bomVersion) },
-    { key: 'status', label: t.parent.status, value: statusNameOf(bom.statusCode) },
-    {
-      key: 'effective',
-      label: t.parent.effective,
-      /* 끝이 없는 BOM 은 「~ —」로 — 끝이 비면 잘린 값처럼 보인다. */
-      value: t.parent.effectiveRange(bom.effectiveFrom, bom.effectiveTo ?? t.values.empty),
-    },
-    {
-      key: 'baseQty',
-      label: t.parent.baseQty,
-      value: formatQty(bom.baseQty, uomNameOf(bom.baseUomId)),
-    },
   ];
+  const bomFacts =
+    bom === null
+      ? []
+      : [
+          { key: 'bom', label: t.parent.bomCode, value: bom.bomCode },
+          { key: 'rev', label: t.parent.bomVersion, value: String(bom.bomVersion) },
+          { key: 'status', label: t.parent.status, value: statusNameOf(bom.statusCode) },
+          {
+            key: 'effective',
+            label: t.parent.effective,
+            /* 끝이 없는 BOM 은 「~ —」로 — 끝이 비면 잘린 값처럼 보인다. */
+            value: t.parent.effectiveRange(bom.effectiveFrom, bom.effectiveTo ?? t.values.empty),
+          },
+          {
+            key: 'baseQty',
+            label: t.parent.baseQty,
+            value: formatQty(bom.baseQty, uomNameOf(bom.baseUomId)),
+          },
+        ];
 
-  return (
-    <dl className="po-board-order-facts bom-parent-facts" aria-label={t.parent.label}>
-      {facts.map((fact) => (
-        <div key={fact.key}>
-          <dt>{fact.label}</dt>
-          <dd className={fact.strong === true ? 'bom-tree-code' : undefined}>{fact.value}</dd>
-        </div>
-      ))}
-    </dl>
-  );
+  return <ErpDetailFields title={t.parent.label} fields={[...itemFacts, ...bomFacts]} />;
 };
 
 const orEmptyText = (value: string | null | undefined): string =>
@@ -326,6 +335,7 @@ export const ErpBomScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = readFilters(searchParams);
   const page = readId(searchParams.get('page')) ?? 1;
+  const size = readSize(searchParams);
   const parentItemId = readId(searchParams.get('item'));
 
   const parents = useParentItems({
@@ -333,12 +343,12 @@ export const ErpBomScreen = () => {
     ...(filters.hasBom ? { hasBom: true } : {}),
     ...(filters.q === '' ? {} : { q: filters.q }),
     ...(page > 1 ? { page } : {}),
+    ...(size === null ? {} : { size }),
   });
   const parentRows = parents.data?.items ?? [];
-  const pageView = toPageView(
-    parents.data?.page ?? { page, size: PARENT_PAGE_SIZE, total: 0 },
-    parentRows.length,
-  );
+  const meta = parents.data?.page ?? { page, size: size ?? PARENT_PAGE_SIZE, total: 0 };
+  const isBeyondLast =
+    meta.total > 0 && meta.page > Math.ceil(meta.total / (meta.size > 0 ? meta.size : 1));
 
   const list = useBomList(parentItemId === null ? null : { parentItemId });
   const uomNameOf = useUomNames();
@@ -347,7 +357,7 @@ export const ErpBomScreen = () => {
   const bom = pickBom(list.data ?? EMPTY_BOMS) ?? null;
 
   const parentColumns: Column<ParentRow>[] = [
-    /* 고르는 단추 자리(`BoardTable` 의 `pick`) — 품목코드는 굵게. */
+    /* 고르는 단추 자리 — 품목코드는 굵게. */
     {
       key: 'itemCode',
       header: t.parent.itemCode,
@@ -357,12 +367,13 @@ export const ErpBomScreen = () => {
     {
       key: 'itemName',
       header: t.parent.itemName,
+      width: '200px',
       render: (row) => <OneLine text={row.itemName} />,
     },
     {
       key: 'itemTypeCode',
       header: t.parent.itemType,
-      width: '72px',
+      width: '96px',
       render: (row) => typeNameOf(row.itemTypeCode),
     },
   ];
@@ -381,41 +392,42 @@ export const ErpBomScreen = () => {
     }
     return (
       <>
-        <BoardTable
+        <ErpListTable
           label={t.panes.parents}
-          widthKey="omf-mes:erp-bom:columns:parents"
-          minWidth="26rem"
+          storageKey="omf-mes:erp-bom:columns:parents"
           columns={parentColumns}
           rows={parentRows}
           getRowId={(row) => String(row.itemId)}
           pick={{
             columnKey: 'itemCode',
-            label: (row) => t.pickParent(row.itemCode),
             currentId: parentItemId === null ? null : String(parentItemId),
             onPick: (row) => {
-              setSearchParams(toSearchParams(filters, page, row.itemId));
+              setSearchParams(toSearchParams(filters, page, row.itemId, size));
             },
           }}
           empty={
             <EmptyState
               size="sm"
               live
-              title={pageView.isBeyondLast ? t.empty.parentsBeyondLast : t.empty.noParentsTitle}
+              title={isBeyondLast ? t.empty.parentsBeyondLast : t.empty.noParentsTitle}
             />
           }
         />
         <PageNav
-          view={pageView}
-          onChange={(next) => {
-            setSearchParams(toSearchParams(filters, next, parentItemId));
+          meta={meta}
+          buttonSize="md"
+          onChangePage={(next) => {
+            setSearchParams(toSearchParams(filters, next, parentItemId, size));
+          }}
+          onChangeSize={(next) => {
+            setSearchParams(toSearchParams(filters, 1, parentItemId, next));
           }}
         />
       </>
     );
   };
 
-  const detailContent = (): ReactNode => {
-    if (parentItemId === null) return <EmptyState size="sm" title={t.empty.noParentTitle} />;
+  const treeContent = (): ReactNode => {
     if (list.isError) {
       return <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />;
     }
@@ -430,40 +442,62 @@ export const ErpBomScreen = () => {
 
     /* 모품목을 바꾸면 접은 줄을 잊는다 — 다른 BOM 의 경로다. */
     return (
-      <>
-        <ParentFacts item={parentOf(bom.parentItemId)} bom={bom} />
-        <BomTreePane
-          key={bom.bomId}
-          root={{ itemId: bom.parentItemId, bomId: bom.bomId }}
-          uomNameOf={uomNameOf}
+      <BomTreePane
+        key={bom.bomId}
+        root={{ itemId: bom.parentItemId, bomId: bom.bomId }}
+        uomNameOf={uomNameOf}
+      />
+    );
+  };
+
+  const detailContent = (): ReactNode => {
+    if (parentItemId === null) {
+      return (
+        <ErpPickEmpty
+          icon="account_tree"
+          title={t.empty.noParentTitle}
+          description={t.empty.noParentDescription}
         />
-      </>
+      );
+    }
+    return (
+      <div className="erp-data-detail">
+        <ParentFacts item={parentOf(parentItemId)} bom={bom} />
+        <section className="erp-data-sub" aria-label={t.panes.components}>
+          <div className="erp-data-sub-head">
+            <h2 className="pane-title">{t.panes.components}</h2>
+          </div>
+          {treeContent()}
+        </section>
+      </div>
     );
   };
 
   return (
-    <BoardFrame
-      splitKey="omf-mes:erp-bom:split"
-      initialRatio={0.35}
-      splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
-      above={{
+    <ListDetailWorkspace
+      storageKey="omf-mes:erp-bom"
+      orientationKey={ERP_DATA_ORIENTATION_KEY}
+      filter={{
         label: t.panes.filter,
         content: (
-          <div className="pane po-board-filter">
-            <FilterBar
-              applied={filters}
-              onSearch={(next) => {
-                setSearchParams(toSearchParams(next));
-              }}
-              onReset={() => {
-                setSearchParams(toSearchParams(DEFAULT_FILTERS));
-              }}
-            />
-          </div>
+          <FilterBar
+            applied={filters}
+            onSearch={(next) => {
+              setSearchParams(toSearchParams(next, 1, null, size));
+            }}
+            onReset={() => {
+              setSearchParams(toSearchParams(DEFAULT_FILTERS, 1, null, size));
+            }}
+          />
         ),
       }}
-      list={{ label: t.panes.parents, count: parents.data?.page.total, content: listContent() }}
-      detail={{ label: t.panes.components, scroll: false, content: detailContent() }}
+      list={{
+        label: t.panes.parents,
+        title: t.panes.parents,
+        count: parents.data?.page.total,
+        content: listContent(),
+      }}
+      detail={{ label: t.parent.label, content: detailContent() }}
     />
   );
 };

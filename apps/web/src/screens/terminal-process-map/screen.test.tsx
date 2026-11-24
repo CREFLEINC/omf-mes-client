@@ -140,7 +140,7 @@ describe('TerminalProcessMapScreen 표시', () => {
 });
 
 describe('TerminalProcessMapScreen 조회 조건', () => {
-  it('초기화는 늘 보이고, 누르면 치던 검색어와 걸린 조건을 비운다', async () => {
+  it('초기화는 조건이 처음 값과 다를 때만 보이고, 누르면 치던 검색어와 걸린 조건을 비운다', async () => {
     const user = userEvent.setup();
     renderScreen('/system/terminal-process-map?includeInactive=1');
     await screen.findByRole('button', { name: 'SYN-TERM-01' });
@@ -152,20 +152,30 @@ describe('TerminalProcessMapScreen 조회 조건', () => {
 
     expect(search).toHaveValue('');
     expect(screen.getByRole('checkbox', { name: t.filters.includeInactive })).not.toBeChecked();
+    expect(screen.queryByRole('button', { name: t.filters.clear })).toBeNull();
+  });
+
+  it('조건이 처음 그대로면 초기화가 없고, 검색어를 치면 나타난다', async () => {
+    const user = userEvent.setup();
+    renderScreen('/system/terminal-process-map');
+    await screen.findByRole('button', { name: 'SYN-TERM-01' });
+    expect(screen.queryByRole('button', { name: t.filters.clear })).toBeNull();
+
+    await user.type(screen.getByPlaceholderText(t.filters.searchPlaceholder), 'SYN');
     expect(screen.getByRole('button', { name: t.filters.clear })).toBeInTheDocument();
   });
 
-  it('좌우 · 상하 배치 단추가 조회 줄에 늘 보이고, 상하를 누르면 위아래로 쌓인다', async () => {
+  it('위 줄 「⋯」 에서 상하 배치를 고르면 위아래로 쌓인다', async () => {
     const user = userEvent.setup();
     renderScreen();
     await screen.findByRole('button', { name: 'SYN-TERM-01' });
 
+    await user.click(screen.getByRole('button', { name: messages.common.shell.moreActions }));
     const stacked = screen.getByRole('button', {
       name: messages.common.inspectionHub.layoutStacked,
     });
     await user.click(stacked);
 
-    expect(stacked).toHaveAttribute('aria-pressed', 'true');
     expect(document.querySelector('.po-board-split.is-stacked')).not.toBeNull();
   });
 

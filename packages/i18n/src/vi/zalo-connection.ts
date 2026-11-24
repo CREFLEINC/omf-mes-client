@@ -3,9 +3,6 @@ import type { Translated } from './translated';
 
 /** W-CO-12 알림 연결 설정. 사이드바 라벨(`nav-tree.ts`)과 제목 글자가 같아야 한다. */
 export const zaloConnection: Translated<typeof ko.zaloConnection> = {
-  title: 'Thiết lập kết nối thông báo',
-  subtitle: 'Thông tin kết nối Zalo',
-  breadcrumbRoot: 'Quản trị hệ thống',
   panes: {
     status: 'Trạng thái kết nối',
     connection: 'Thông tin kết nối',
@@ -62,5 +59,23 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
     secretTooLong: (max: number): string => `Không được quá ${String(max)} ký tự.`,
     paramMaxLength: 'Hãy nhập số nguyên từ 20 đến 400.',
     templateId: 'ID mẫu tin gồm 1–40 chữ cái tiếng Anh hoặc chữ số, hoặc để trống.',
+  },
+  workspace: {
+    filter: 'Điều kiện tra cứu',
+    search: 'Tìm tên mẫu',
+    searchPlaceholder: 'Nhập tên mẫu',
+    apply: 'Tra cứu',
+    clear: 'Đặt lại',
+    list: 'Danh sách mẫu',
+    kind: 'Loại',
+    name: 'Mẫu',
+    templateId: 'ID mẫu',
+    kinds: { event: 'Sự kiện', handover: 'Công việc bàn giao' },
+    empty: 'Không có mẫu phù hợp với điều kiện.',
+    hasError: 'Cần kiểm tra',
+    selectTitle: 'Hãy chọn mẫu.',
+    select: 'Có thể nhập ID mẫu và sao chép tên tham số của mẫu đã chọn.',
+    saveNote:
+      'ID mẫu được lưu cùng thông tin kết nối khi bấm [Lưu] ở phần thông tin kết nối phía trên.',
   },
 };

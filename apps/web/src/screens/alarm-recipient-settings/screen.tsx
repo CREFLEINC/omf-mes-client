@@ -1,11 +1,10 @@
 import {
   AlertBanner,
-  Breadcrumb,
   Button,
   Chip,
   Dialog,
   EmptyState,
-  PageHeader,
+  Icon,
   Skeleton,
   Switch,
   Table,
@@ -17,8 +16,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
+import { useClientPage } from '../../patterns/client-page';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { InfoTip } from '../../patterns/info-tip';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
+import { PageNav } from '../../patterns/page-nav';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
@@ -46,6 +51,7 @@ import { SelectField } from './select-field';
 import type { NotificationEvent, SettingDraft, SettingSummaryItem } from './types';
 
 const t = messages.alarmRecipientSettings;
+const w = t.workspace;
 const ZALO_CONNECTION_PATH = '/notification/zalo-connection';
 
 /** 아직 한 번도 저장하지 않은 행의 요약 — 서버의 미설정 기본값과 같다(끔·끔·0). */
@@ -131,9 +137,12 @@ export const AlarmRecipientSettingsScreen = () => {
   const go = (move: Move): void => {
     setInlineError(null);
     replace.reset();
-    setSearchParams(
-      move.event === null ? { department: move.department } : { ...move, event: move.event },
-    );
+    /* 초기화 — 부서를 고르기 전 처음 주소로(#358). */
+    if (move.department === '') setSearchParams({});
+    else
+      setSearchParams(
+        move.event === null ? { department: move.department } : { ...move, event: move.event },
+      );
   };
 
   const requestMove = (move: Move): void => {
@@ -215,6 +224,16 @@ export const AlarmRecipientSettingsScreen = () => {
       },
     },
   ];
+
+  /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(단말 관리와 같다 · #358). */
+  const orderedColumns = useColumnOrder(
+    'omf-mes:alarm-recipient-settings:columns:order',
+    eventColumns,
+  );
+  const resizable = useColumnWidths('omf-mes:alarm-recipient-settings:columns', orderedColumns);
+  const fit = useFitColumns(resizable.columns);
+  /* 이벤트는 한 번에 다 받는 작은 목록이라 화면 안에서 쪽을 나눈다. */
+  const eventPage = useClientPage(departmentId === null ? [] : (events.data ?? []));
 
   const departmentOptions =
     departments.data?.items.map((item) => ({
@@ -359,80 +378,74 @@ export const AlarmRecipientSettingsScreen = () => {
     );
   };
 
-  const workspace = () => {
-    if (departmentId === null) {
-      return <EmptyState size="sm" title={t.state.selectDepartment} />;
+  const eventList = () => {
+    if (departmentId === null) return <EmptyState size="sm" title={t.state.selectDepartment} />;
+    if (events.isError || summary.isError) {
+      return loadError(events.error ?? summary.error, () => {
+        void events.refetch();
+        void summary.refetch();
+      });
     }
+    if (events.isPending || summary.isPending) return <Skeleton variant="rect" height="12rem" />;
 
     return (
-      <div className="two-pane alarm-recipient-layout">
-        <section className="pane alarm-recipient-pane" aria-labelledby="alarm-events-title">
-          <h2 id="alarm-events-title" className="pane-title">
-            {t.panes.events}
-          </h2>
-          {events.isError || summary.isError ? (
-            loadError(events.error ?? summary.error, () => {
-              void events.refetch();
-              void summary.refetch();
-            })
-          ) : events.isPending || summary.isPending ? (
-            <Skeleton variant="rect" height="12rem" />
-          ) : (
-            <Table
-              columns={eventColumns}
-              rows={events.data}
-              getRowId={(event) => event.eventCode}
-              density="compact"
-              /* 표 이름은 바로 위 패널 제목이 맡는다 — 캡션을 또 두면 「이벤트」가 두 번 보인다. */
-              aria-labelledby="alarm-events-title"
-              empty={<EmptyState size="sm" title={t.state.noEvents} />}
-            />
-          )}
-        </section>
-
-        <section className="pane alarm-recipient-pane" aria-labelledby="alarm-setting-title">
-          <h2 id="alarm-setting-title" className="pane-title">
-            {t.panes.setting(eventLabel(selectedEvent, selectedCode ?? ''))}
-          </h2>
-          {selectedCode === null ? (
-            <EmptyState size="sm" title={t.state.noEvents} />
-          ) : (
-            settingBody()
-          )}
-        </section>
-      </div>
+      <>
+        {/* 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 이벤트 단추로 넘긴다(단말 관리와 같다). */}
+        <div
+          ref={fit.ref}
+          className="inspection-queue-table notify-list-table"
+          style={resizable.style}
+          onClick={(event) => {
+            const target = event.target;
+            if (!(target instanceof Element)) return;
+            if (target.closest('button, a, input, select, textarea') !== null) return;
+            target.closest('tbody tr')?.querySelector<HTMLButtonElement>('td button')?.click();
+          }}
+        >
+          <Table
+            columns={fit.columns}
+            rows={eventPage.rows}
+            getRowId={(event) => event.eventCode}
+            density="compact"
+            aria-label={t.panes.events}
+            empty={<EmptyState size="sm" title={t.state.noEvents} />}
+          />
+        </div>
+        <PageNav {...eventPage.nav} buttonSize="md" />
+      </>
     );
   };
 
-  return (
+  const settingPane = () => {
+    if (departmentId === null || selectedCode === null) {
+      return (
+        <EmptyState
+          size="sm"
+          className="users-roles-pick-empty"
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="notifications" size={20} />
+            </span>
+          }
+          title={departmentId === null ? w.selectEventTitle : t.state.noEvents}
+          description={w.selectEvent}
+        />
+      );
+    }
+
+    return (
+      <>
+        <h2 className="pane-title notify-detail-title">
+          {t.panes.setting(eventLabel(selectedEvent, selectedCode))}
+        </h2>
+        {settingBody()}
+      </>
+    );
+  };
+
+  const filter = (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-
-      {/* 연결이 없어도 Switch 는 켤 수 있다 — 지금은 알림센터로만 간다는 사실만 밝힌다. */}
-      {summary.data !== undefined && summary.data.zaloStatus !== 'ACTIVE' && (
-        <div className="banner-slot">
-          <AlertBanner
-            variant="warning"
-            action={
-              canOpenConnection ? (
-                <Link to={ZALO_CONNECTION_PATH}>{t.actions.openConnection}</Link>
-              ) : undefined
-            }
-          >
-            {t.state.zaloNotActive}
-          </AlertBanner>
-        </div>
-      )}
-
-      <div className="alarm-department-bar">
+      <div className="filter-bar notify-filter-row">
         {departments.isError ? (
           loadError(departments.error, () => void departments.refetch())
         ) : departments.data !== undefined && departments.data.items.length === 0 ? (
@@ -451,9 +464,70 @@ export const AlarmRecipientSettingsScreen = () => {
             }}
           />
         )}
+        {/* 부서는 고르는 즉시 적용한다. [조회]는 그 부서의 목록을 다시 부르고, [초기화]는 부서를 고르기 전으로 —
+            부서가 골라져 있을 때만 보인다(#358). */}
+        <div className="filter-actions field-cell-unlabeled">
+          <Button
+            onClick={() => {
+              void departments.refetch();
+              if (departmentId === null) return;
+              void events.refetch();
+              void summary.refetch();
+            }}
+          >
+            {w.apply}
+          </Button>
+          {departmentId !== null && (
+            <Button
+              variant="outlined"
+              onClick={() => {
+                requestMove({ department: '', event: null });
+              }}
+            >
+              {w.clear}
+            </Button>
+          )}
+        </div>
       </div>
 
-      {workspace()}
+      {/* 연결이 없어도 Switch 는 켤 수 있다 — 지금은 알림센터로만 간다는 사실만 밝힌다. 진짜 경고라 노란색 그대로. */}
+      {summary.data !== undefined && summary.data.zaloStatus !== 'ACTIVE' && (
+        <div className="banner-slot">
+          <AlertBanner
+            variant="warning"
+            action={
+              canOpenConnection ? (
+                <Link to={ZALO_CONNECTION_PATH}>{t.actions.openConnection}</Link>
+              ) : undefined
+            }
+          >
+            {t.state.zaloNotActive}
+          </AlertBanner>
+        </div>
+      )}
+    </>
+  );
+
+  return (
+    <>
+      {/* 머리글(경로 · 화면 이름)은 두지 않는다 — 사이드바가 위치를 말한다(단말 관리와 같은 틀 · #358). */}
+      <ListDetailWorkspace
+        storageKey="omf-mes:alarm-recipient-settings"
+        filter={{ label: w.filter, content: filter }}
+        list={{
+          label: w.list,
+          title: w.list,
+          count: departmentId === null ? undefined : events.data?.length,
+          content: eventList(),
+        }}
+        detail={{
+          label:
+            departmentId === null || selectedCode === null
+              ? w.selectEventTitle
+              : t.panes.setting(eventLabel(selectedEvent, selectedCode)),
+          content: settingPane(),
+        }}
+      />
 
       <Dialog
         open={pendingMove !== null}

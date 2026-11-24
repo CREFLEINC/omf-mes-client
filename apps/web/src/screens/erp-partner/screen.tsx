@@ -3,12 +3,19 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { BoardFrame } from '../../patterns/board-frame';
-import { BoardTable } from '../../patterns/board-table';
 import { hasChangedFilters } from '../../patterns/filter-more';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { OneLine } from '../../patterns/po-board';
+import { PAGE_SIZES, PageNav, type PageSize } from '../../patterns/page-nav';
 import { Select } from '../../patterns/select';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
+import {
+  ERP_DATA_ORIENTATION_KEY,
+  ErpDetailFields,
+  ErpFilterActions,
+  ErpListTable,
+  ErpPickEmpty,
+} from '../erp-item/erp-data-parts';
 import {
   type Partner,
   type PartnerListQuery,
@@ -60,20 +67,28 @@ const readPage = (params: URLSearchParams): number => {
   return Number.isInteger(page) && page > 1 ? page : 1;
 };
 
-const toSearchParams = (filters: Filters, page = 1) => {
+/** 쪽 크기 — 고른 적이 없으면 `null`(서버 기본값). */
+const readSize = (params: URLSearchParams): PageSize | null => {
+  const size = Number(params.get('size') ?? '');
+  return PAGE_SIZES.find((option) => option === size) ?? null;
+};
+
+const toSearchParams = (filters: Filters, page = 1, size: PageSize | null = null) => {
   const next = new URLSearchParams();
   if (filters.q !== '') next.set('q', filters.q);
   if (filters.role !== '') next.set('role', filters.role);
   if (filters.includeInactive) next.set('inactive', '1');
   if (page > 1) next.set('page', String(page));
+  if (size !== null) next.set('size', String(size));
   return next;
 };
 
-const toListQuery = (filters: Filters, page: number): PartnerListQuery => ({
+const toListQuery = (filters: Filters, page: number, size: PageSize | null): PartnerListQuery => ({
   ...(filters.q !== '' ? { q: filters.q } : {}),
   ...(filters.role !== '' ? { roleTypeCode: filters.role } : {}),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
+  ...(size !== null ? { size } : {}),
 });
 
 const ROLE_OPTIONS = [
@@ -106,11 +121,12 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
     setDraft(EMPTY_FILTERS);
     onReset();
   };
+
   const isChanged = hasChangedFilters(EMPTY_FILTERS, draft, applied);
 
   return (
     <form
-      className="filter-bar"
+      className="filter-bar erp-data-filter-row"
       onSubmit={(event) => {
         event.preventDefault();
         onSearch({ ...draft, q: draft.q.trim() });
@@ -147,74 +163,56 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
           {t.fields.includeInactive}
         </Checkbox>
       </div>
-      <div className="field-cell field-cell-unlabeled">
-        <div className="filter-actions">
-          <Button type="submit">{messages.common.search}</Button>
-          {isChanged && (
-            <Button variant="outlined" onClick={reset}>
-              {messages.common.reset}
-            </Button>
-          )}
-        </div>
-      </div>
+      <ErpFilterActions onReset={reset} showReset={isChanged} />
     </form>
   );
 };
 
+const EMPTY_ROWS: Partner[] = [];
+
 /**
  * 거래처 조회 (ERP). ERP 가 보낸 거래처와 역할(공급사·고객사…)을 읽기만 한다 — 쓰기 조작이 없다.
  *
- * 입고 관리 짜임이다(사용자 지시 2026-10-27): 위에 조회 조건, 아래에 거래처 목록 한 구획. 상세는 두지 않는다 — 상세가
- * 목록 줄과 같은 내용이라(사용자 지시 2026-10-27) 줄을 고르는 일도 없다. 조건·쪽을 전부 주소에 둔다. 역할은 목록
- * 응답에 없어 보이는 행마다 따로 조회한다(`usePartnerRoles`).
+ * 조회 조건 · 목록 | 상세 통일 배치(omf-all-around#358): 목록은 식별 칸만, 고른 거래처의 모든 칸은 오른쪽 상세에
+ * 「이름 : 값」으로 보인다(같은 응답만 쓴다 — 상세 요청을 따로 보내지 않는다). 조건·쪽을 전부 주소에 둔다. 역할은 목록
+ * 응답에 없어 보이는 행마다 따로 조회한다(`usePartnerRoles` · 종전 그대로).
  */
 export const ErpPartnerScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const filters = readFilters(searchParams);
   const page = readPage(searchParams);
+  const size = readSize(searchParams);
 
-  const list = usePartnerList(toListQuery(filters, page));
-  const rows = list.data?.items ?? [];
+  const list = usePartnerList(toListQuery(filters, page, size));
+  const rows = list.data?.items ?? EMPTY_ROWS;
   const roles = usePartnerRoles(rows.map((row) => row.partnerId));
-  const meta = list.data?.page ?? { page, size: 0, total: 0 };
+  const meta = list.data?.page ?? { page, size: size ?? 0, total: 0 };
+  const selected = rows.find((row) => String(row.partnerId) === selectedId) ?? null;
 
   // 서버가 준 쪽을 정본으로 쓴다. size가 0이면 나눗셈이 무한대가 되므로 하한을 둔다.
-  const size = meta.size > 0 ? meta.size : 1;
   const shownPage = meta.page > 0 ? meta.page : 1;
-  const totalPages = Math.ceil(meta.total / size);
-  const start = (shownPage - 1) * size + 1;
+  const totalPages = Math.ceil(meta.total / (meta.size > 0 ? meta.size : 1));
   const isBeyondLast = meta.total > 0 && shownPage > totalPages;
 
   /** 조건·쪽을 주소로 옮긴다 — 주소가 바뀌면 목록을 다시 조회한다. */
-  const applyQuery = (nextFilters: Filters, nextPage = 1) => {
-    setSearchParams(toSearchParams(nextFilters, nextPage));
+  const applyQuery = (nextFilters: Filters, nextPage = 1, nextSize = size) => {
+    setSearchParams(toSearchParams(nextFilters, nextPage, nextSize));
   };
 
   const columns: Column<Partner>[] = [
     { key: 'partnerCode', header: t.table.partnerCode, width: '120px' },
-    /* 남는 폭을 이 열이 다 받는다 — 폭을 주지 않는 열은 이것 하나다. */
     {
       key: 'partnerName',
       header: t.table.partnerName,
+      width: '180px',
       render: (row) => <OneLine text={row.partnerName} />,
-    },
-    {
-      key: 'erpPartnerCode',
-      header: t.table.erpPartnerCode,
-      width: '140px',
-      render: (row) => orEmpty(row.erpPartnerCode),
-    },
-    {
-      key: 'countryCode',
-      header: t.table.countryCode,
-      width: '72px',
-      render: (row) => orEmpty(row.countryCode),
     },
     {
       key: 'roles',
       header: t.table.roles,
-      width: '180px',
+      width: '160px',
       render: (row) => <OneLine text={rolesText(roles.get(row.partnerId))} />,
     },
     {
@@ -246,8 +244,10 @@ export const ErpPartnerScreen = () => {
   );
 
   return (
-    <BoardFrame
-      above={{
+    <ListDetailWorkspace
+      storageKey="omf-mes:erp-partner"
+      orientationKey={ERP_DATA_ORIENTATION_KEY}
+      filter={{
         label: t.panes.filter,
         content: (
           <>
@@ -255,22 +255,22 @@ export const ErpPartnerScreen = () => {
               <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
             )}
             {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-            <div className="pane po-board-filter">
-              <FilterBar
-                applied={filters}
-                onSearch={(next) => {
-                  applyQuery(next);
-                }}
-                onReset={() => {
-                  applyQuery(EMPTY_FILTERS);
-                }}
-              />
-            </div>
+            <FilterBar
+              applied={filters}
+              onSearch={(next) => {
+                applyQuery(next);
+              }}
+              onReset={() => {
+                applyQuery(EMPTY_FILTERS);
+              }}
+            />
           </>
         ),
       }}
       list={{
         label: t.panes.list,
+        title: t.panes.list,
+        count: list.data?.page.total,
         /* 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「없습니다」로 보이면 안 된다. */
         content: list.isError ? null : list.isPending ? (
           <div role="status" aria-label={t.loading.list}>
@@ -278,44 +278,67 @@ export const ErpPartnerScreen = () => {
           </div>
         ) : (
           <>
-            <BoardTable
+            <ErpListTable
               label={t.panes.list}
-              widthKey="omf-mes:erp-partner:columns:partners"
-              minWidth="47rem"
+              storageKey="omf-mes:erp-partner:columns:partners"
               columns={columns}
               rows={rows}
               getRowId={(row) => String(row.partnerId)}
+              pick={{
+                currentId: selectedId,
+                onPick: (row) => {
+                  setSelectedId(String(row.partnerId));
+                },
+              }}
               empty={emptySlot}
             />
-            <nav className="form-actions" aria-label={t.pageNav.label}>
-              <p className="field-note form-actions-secondary">
-                {rows.length > 0
-                  ? t.pageNav.range(start, start + rows.length - 1, meta.total)
-                  : t.pageNav.totalOnly(meta.total)}
-              </p>
-              <Button
-                variant="outlined"
-                size="sm"
-                disabled={shownPage <= 1}
-                onClick={() => {
-                  applyQuery(filters, shownPage - 1);
-                }}
-              >
-                {t.actions.prevPage}
-              </Button>
-              <Button
-                variant="outlined"
-                size="sm"
-                disabled={shownPage >= totalPages}
-                onClick={() => {
-                  applyQuery(filters, shownPage + 1);
-                }}
-              >
-                {t.actions.nextPage}
-              </Button>
-            </nav>
+            <PageNav
+              meta={meta}
+              buttonSize="md"
+              onChangePage={(nextPage) => {
+                applyQuery(filters, nextPage);
+              }}
+              onChangeSize={(nextSize) => {
+                applyQuery(filters, 1, nextSize);
+              }}
+            />
           </>
         ),
+      }}
+      detail={{
+        label: t.panes.detail,
+        content:
+          selected === null ? (
+            <ErpPickEmpty
+              icon="handshake"
+              title={t.empty.pickTitle}
+              description={t.empty.pickDescription}
+            />
+          ) : (
+            <ErpDetailFields
+              title={t.panes.detail}
+              fields={[
+                { key: 'partnerCode', label: t.table.partnerCode, value: selected.partnerCode },
+                { key: 'partnerName', label: t.table.partnerName, value: selected.partnerName },
+                {
+                  key: 'erpPartnerCode',
+                  label: t.table.erpPartnerCode,
+                  value: orEmpty(selected.erpPartnerCode),
+                },
+                {
+                  key: 'countryCode',
+                  label: t.table.countryCode,
+                  value: orEmpty(selected.countryCode),
+                },
+                {
+                  key: 'roles',
+                  label: t.table.roles,
+                  value: rolesText(roles.get(selected.partnerId)),
+                },
+                { key: 'isActive', label: t.table.isActive, value: activeLabel(selected.isActive) },
+              ]}
+            />
+          ),
       }}
     />
   );

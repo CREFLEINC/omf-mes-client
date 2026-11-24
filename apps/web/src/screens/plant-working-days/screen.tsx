@@ -1,12 +1,11 @@
 import {
   AlertBanner,
-  Breadcrumb,
   Button,
   Chip,
   EmptyState,
-  PageHeader,
   Radio,
   RadioGroup,
+  SearchInput,
   Skeleton,
   Table,
   useToast,
@@ -16,8 +15,14 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { useClientPage } from '../../patterns/client-page';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useColumnWidths } from '../../patterns/column-resize';
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
+import { PageNav } from '../../patterns/page-nav';
 import { useSession } from '../../patterns/session';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { LeaveGuard } from '../routing/leave-guard';
@@ -36,6 +41,7 @@ import {
 type Plant = components['schemas']['Plant'];
 
 const t = messages.plantWorkingDays;
+const w = t.workspace;
 const NO_SCOPES: readonly DataScope[] = [];
 
 /** `YYYY-MM-DD` → `MM-DD`. */
@@ -66,6 +72,9 @@ export const PlantWorkingDaysScreen = () => {
   const policies = useWorkingDayPolicies();
   /** 공장별로 고친 값. 저장한 값과 같으면 지운다. */
   const [edits, setEdits] = useState<ReadonlyMap<number, WeeklyWorkingDays>>(new Map());
+  /* 공장 이름 검색 — 화면 안에서만 거른다(#358). 저장은 거른 것과 무관하게 바뀐 공장 전부다(종전과 같다). */
+  const [search, setSearch] = useState('');
+  const [keyword, setKeyword] = useState('');
 
   const save = useSaveWorkingDays(policies.data, () => {
     setEdits(new Map());
@@ -122,6 +131,7 @@ export const PlantWorkingDaysScreen = () => {
   const columns: Column<Row>[] = [
     {
       key: 'plant',
+      width: '180px',
       header: t.columns.plant,
       render: (row) => {
         const dirty = isChanged(row);
@@ -146,6 +156,8 @@ export const PlantWorkingDaysScreen = () => {
     },
     {
       key: 'days',
+      /* 주 5일제 · 주 6일제 고르개가 잘리지 않는 폭(#358 — 열 폭 끌기를 단 뒤 기본 폭). */
+      width: '340px',
       header: t.columns.days,
       render: (row) => (
         <RadioGroup
@@ -162,6 +174,7 @@ export const PlantWorkingDaysScreen = () => {
     },
     {
       key: 'off',
+      width: '110px',
       header: t.columns.off,
       render: (row) =>
         offDays(valueOf(row))
@@ -182,11 +195,23 @@ export const PlantWorkingDaysScreen = () => {
     },
     {
       key: 'lastChanged',
+      width: '140px',
       header: t.columns.lastChanged,
       render: (row) =>
         row.since === null ? t.values.none : t.values.lastChanged(monthDay(row.since)),
     },
   ];
+
+  /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(단말 관리와 같다 · #358). */
+  const orderedColumns = useColumnOrder('omf-mes:plant-working-days:columns:order', columns);
+  const resizable = useColumnWidths('omf-mes:plant-working-days:columns', orderedColumns);
+  const fit = useFitColumns(resizable.columns);
+  const needle = keyword.trim().toLowerCase();
+  const shownRows = rows.filter(
+    (row) => needle === '' || row.plant.plantName.toLowerCase().includes(needle),
+  );
+  /* 공장은 한 번에 다 받는 작은 목록이라 화면 안에서 쪽을 나눈다. */
+  const plantPage = useClientPage(shownRows);
 
   const loadError = (error: unknown, onRetry: () => void) => (
     <LoadErrorAlert error={error} onRetry={onRetry} />
@@ -216,60 +241,109 @@ export const PlantWorkingDaysScreen = () => {
         ) : (
           <SaveErrorBanner error={save.error} />
         )}
-        <Table
-          columns={columns}
-          rows={rows}
-          getRowId={(row) => String(row.plant.plantId)}
-          className="plant-working-days-table"
-          aria-label={t.tableLabel}
-        />
-        <div className="form-actions">
-          <Button variant="outlined" disabled={!isDirty || save.isSaving} onClick={revert}>
-            {t.actions.revert}
-          </Button>
-          <Button
-            disabled={!isDirty || save.isSaving}
-            loading={save.isSaving}
-            onClick={() =>
-              save.write(
-                rows.filter(isChanged).map((row) => ({
-                  plantId: row.plant.plantId,
-                  days: valueOf(row),
-                  today: row.today,
-                })),
-              )
-            }
-          >
-            {t.actions.save}
-          </Button>
+        <div
+          ref={fit.ref}
+          className="inspection-queue-table plant-working-days-list"
+          style={resizable.style}
+        >
+          <Table
+            columns={fit.columns}
+            rows={plantPage.rows}
+            getRowId={(row) => String(row.plant.plantId)}
+            className="plant-working-days-table"
+            aria-label={t.tableLabel}
+            empty={<EmptyState size="sm" title={w.empty} />}
+          />
         </div>
+        <PageNav {...plantPage.nav} buttonSize="md" />
       </>
     );
   };
 
+  /* 표가 설 때만 건수 · 되돌리기 · 저장을 단다(종전: 표 아래 단추도 표가 설 때만). */
+  const canSave =
+    !plants.isError &&
+    !policies.isError &&
+    !plants.isPending &&
+    !policies.isPending &&
+    rows.length > 0;
+
   return (
-    <>
+    <div className="plant-working-days-workspace">
       <LeaveGuard when={isDirty} discardTitle={t.discard.title} discardBody={t.discard.body} />
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
+      {/*
+       * 머리글(경로 · 화면 이름)은 두지 않는다 — 사이드바가 위치를 말한다(단말 관리와 같은 틀 · #358).
+       * 사용자 지시: 상세 상자가 없다 — 조회 조건 상자 + 목록 상자 하나. 나눌 상세가 없어 배치 단추 · 목록 접기도 두지 않는다.
+       */}
+      <section className="pane po-board-filter list-detail-filter" aria-label={w.filter}>
+        <div className="filter-bar notify-filter-row">
+          <SearchInput
+            containerClassName="notify-search-input"
+            label={w.search}
+            value={search}
+            placeholder={w.searchPlaceholder}
+            onChange={(event) => setSearch(event.target.value)}
+            onSearch={(value) => setKeyword(value)}
+            clearLabel={messages.common.clear}
           />
-        }
-      />
-      <section className="pane plant-working-days-pane" aria-label={t.tableLabel}>
+          <div className="filter-actions field-cell-unlabeled">
+            <Button onClick={() => setKeyword(search)}>{w.apply}</Button>
+            {/* 초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */}
+            {hasChangedFilters({ q: '' }, { q: search }, { q: keyword }) && (
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setSearch('');
+                  setKeyword('');
+                }}
+              >
+                {w.clear}
+              </Button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="pane plant-working-days-pane" aria-label={w.list}>
         {/*
-         * 주간 근무일이 무엇을 세는 값인지 — 머리 아래 설명 줄 대신 구획 제목 옆 ⓘ(관리웹 정리 시안 A).
-         * 표 머리에 두면 표의 가로 넘김 상자가 툴팁을 자른다.
+         * 제목 줄 「공장 목록 N건」 — 주간 근무일이 무엇을 세는 값인지는 제목 옆 ⓘ(관리웹 정리 시안 A).
+         * 되돌리기 · 저장은 제목 줄 오른쪽 끝(저장 범위 · 동작은 종전과 같다: 바뀐 공장 전부).
          */}
-        <h2 className="pane-title info-label">
-          {t.tableLabel}
-          <InfoTip text={t.description} />
-        </h2>
+        <div className="po-board-list-head plant-working-days-head">
+          <h2 className="pane-title info-label">
+            {w.list}
+            <InfoTip text={t.description} />
+          </h2>
+          {canSave && (
+            <span className="po-board-list-count">
+              {messages.common.paneList.count(shownRows.length)}
+            </span>
+          )}
+          {canSave && (
+            <div className="form-actions plant-working-days-actions">
+              <Button variant="outlined" disabled={!isDirty || save.isSaving} onClick={revert}>
+                {t.actions.revert}
+              </Button>
+              <Button
+                disabled={!isDirty || save.isSaving}
+                loading={save.isSaving}
+                onClick={() =>
+                  save.write(
+                    rows.filter(isChanged).map((row) => ({
+                      plantId: row.plant.plantId,
+                      days: valueOf(row),
+                      today: row.today,
+                    })),
+                  )
+                }
+              >
+                {t.actions.save}
+              </Button>
+            </div>
+          )}
+        </div>
         {body()}
       </section>
-    </>
+    </div>
   );
 };

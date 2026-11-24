@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { BoardTable } from '../../patterns/board-table';
+import { useColumnOrder } from '../../patterns/column-grip-order';
 import { OneLine } from '../../patterns/po-board';
 import { directionName, documentNoOf, interfaceName, messageTitleOf } from './message-labels';
 import { formatDateTime, toStatusView } from './message-status';
@@ -67,7 +68,8 @@ export const MessageTable = ({
     {
       key: 'directionCode',
       header: t.table.direction,
-      width: '64px',
+      /* 머리칸 끌기 손잡이 몫만큼 넓힌다(#358) — 64px 이면 「구분」이 잘린다. */
+      width: '80px',
       render: (row) => directionName(row.directionCode),
     },
     {
@@ -100,7 +102,7 @@ export const MessageTable = ({
         );
       },
     },
-    { key: 'retryCount', header: t.table.retryCount, align: 'end', width: '64px' },
+    { key: 'retryCount', header: t.table.retryCount, align: 'end', width: '88px' },
     {
       key: 'createdAt',
       header: t.table.createdAt,
@@ -138,6 +140,8 @@ export const MessageTable = ({
       ),
     },
   ];
+  /* 열 순서는 머리칸 손잡이로 바꾸고 브라우저에 남는다(단말 관리와 같다 · #358). 폭은 `BoardTable` 이 맡는다. */
+  const ordered = useColumnOrder('omf-mes:integration-sync:columns:messages:order', columns);
 
   if (isLoading) {
     return (
@@ -177,7 +181,7 @@ export const MessageTable = ({
       label={t.panes.list}
       widthKey="omf-mes:integration-sync:columns:messages"
       minWidth="60rem"
-      columns={columns}
+      columns={ordered}
       rows={rows}
       /*
        * 반드시 준다. 미지정이면 인덱스가 식별자가 되어 쪽이 바뀔 때

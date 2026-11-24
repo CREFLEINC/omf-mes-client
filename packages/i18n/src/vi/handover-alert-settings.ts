@@ -8,8 +8,6 @@ import type { Translated } from './translated';
  * 긴 작업 이름은 표가 두 줄로 접는다(시안 WCO14-States 상태 C).
  */
 export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> = {
-  title: 'Thiết lập thông báo công việc bàn giao',
-  breadcrumbRoot: 'Quản trị hệ thống',
   intro:
     'Ban đầu tất cả đều tắt. Bật Zalo sẽ làm tăng lượng tin Zalo của khách hàng (phí và hạn mức ngày).',
   panes: {
@@ -124,5 +122,15 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
       when: 'Khi xử lý xuất hàng trên web quản trị tạo phiếu xuất',
       where: 'POP › Đóng gói xuất hàng',
     },
+  },
+  workspace: {
+    filter: 'Điều kiện tra cứu',
+    list: 'Danh sách công việc bàn giao',
+    search: 'Tìm tên công việc',
+    searchPlaceholder: 'Nhập tên công việc',
+    apply: 'Tra cứu',
+    clear: 'Đặt lại',
+    selectTypeTitle: 'Hãy chọn công việc bàn giao.',
+    selectType: 'Có thể thiết lập nhận thông báo, Zalo và người phụ trách cho công việc đã chọn.',
   },
 };

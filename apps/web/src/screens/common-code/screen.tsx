@@ -1,4 +1,4 @@
-import { AlertBanner, EmptyState, SkeletonText, useToast } from '@crefle/web-ui';
+import { AlertBanner, EmptyState, Icon, SkeletonText, useToast } from '@crefle/web-ui';
 import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
@@ -63,6 +63,8 @@ import {
   readPartnerFilters,
   readScopedFilters,
   readSelectedId,
+  readSize,
+  type ListPageSize,
   toPartnerSearchParams,
   toScopedSearchParams,
   toSearchParams,
@@ -249,6 +251,8 @@ export const CommonCodeScreen = () => {
     [searchParams],
   );
   const page = readPage(searchParams);
+  /* 목록 쪽 크기 — 고르지 않았으면 `null`(서버 기본값 · 주소 · 요청에 싣지 않는다 · omf-all-around#358). */
+  const size = readSize(searchParams);
 
   const isCreatingCodeGroup = isCodeTab && searchParams.get('new') === 'group';
   const selectedParam = isCodeTab ? readSelectedId(searchParams, 'grp') : null;
@@ -269,7 +273,7 @@ export const CommonCodeScreen = () => {
   currentCodeGroupIdRef.current = selectedCodeGroupId;
   isCreatingCodeGroupRef.current = isCreatingCodeGroup;
 
-  const codeGroupList = useCodeGroupList(filters, page, isCodeTab);
+  const codeGroupList = useCodeGroupList(filters, page, size, isCodeTab);
   const codeGroups = codeGroupList.data?.items ?? [];
 
   /*
@@ -585,12 +589,18 @@ export const CommonCodeScreen = () => {
    */
   const applyFilters = (next: CodeGroupFilters) => {
     resetCodeGroupEditing();
-    setSearchParams(toSearchParams(tab.id, next, 1));
+    setSearchParams(toSearchParams(tab.id, next, 1, size));
   };
 
   const changeCodeGroupPage = (nextPage: number) => {
     resetCodeGroupEditing();
-    setSearchParams(toSearchParams(tab.id, filters, nextPage));
+    setSearchParams(toSearchParams(tab.id, filters, nextPage, size));
+  };
+
+  /** 쪽 크기를 바꾸면 첫 쪽으로 간다 — 쪽을 옮길 때와 같이 선택도 함께 비운다. */
+  const changeCodeGroupPageSize = (nextSize: ListPageSize) => {
+    resetCodeGroupEditing();
+    setSearchParams(toSearchParams(tab.id, filters, 1, nextSize));
   };
 
   const handleSelectCodeGroup = (codeGroupId: number) => {
@@ -704,7 +714,7 @@ export const CommonCodeScreen = () => {
   currentDepartmentIdRef.current = selectedDepartmentId;
   isCreatingDepartmentRef.current = isCreatingDepartment;
 
-  const departmentList = useDepartmentList(departmentFilters, page, isOrgTab);
+  const departmentList = useDepartmentList(departmentFilters, page, size, isOrgTab);
 
   /*
    * 계약 표현을 화면 표현으로 옮기며 **자기참조를 여기서 한 번만 접는다** —
@@ -1021,13 +1031,20 @@ export const CommonCodeScreen = () => {
 
   const applyDepartmentFilters = (next: ScopedFilters) => {
     resetDepartmentEditing();
-    setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.businessUnit, next, 1));
+    setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.businessUnit, next, 1, size));
   };
 
   const changeDepartmentPage = (nextPage: number) => {
     resetDepartmentEditing();
     setSearchParams(
-      toScopedSearchParams(tab.id, SCOPE_KEYS.businessUnit, departmentFilters, nextPage),
+      toScopedSearchParams(tab.id, SCOPE_KEYS.businessUnit, departmentFilters, nextPage, size),
+    );
+  };
+
+  const changeDepartmentPageSize = (nextSize: ListPageSize) => {
+    resetDepartmentEditing();
+    setSearchParams(
+      toScopedSearchParams(tab.id, SCOPE_KEYS.businessUnit, departmentFilters, 1, nextSize),
     );
   };
 
@@ -1119,7 +1136,7 @@ export const CommonCodeScreen = () => {
 
   const selectedWorkerId = isWorkerTab ? readSelectedId(searchParams, 'wkr') : null;
 
-  const workerList = useWorkerList(workerFilters, page, isWorkerTab);
+  const workerList = useWorkerList(workerFilters, page, size, isWorkerTab);
   const workers = workerList.data?.items ?? [];
 
   const workerPageView = toPageView(
@@ -1283,12 +1300,21 @@ export const CommonCodeScreen = () => {
 
   const applyWorkerFilters = (next: ScopedFilters) => {
     resetQualificationEditing();
-    setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.department, next, 1));
+    setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.department, next, 1, size));
   };
 
   const changeWorkerPage = (nextPage: number) => {
     resetQualificationEditing();
-    setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.department, workerFilters, nextPage));
+    setSearchParams(
+      toScopedSearchParams(tab.id, SCOPE_KEYS.department, workerFilters, nextPage, size),
+    );
+  };
+
+  const changeWorkerPageSize = (nextSize: ListPageSize) => {
+    resetQualificationEditing();
+    setSearchParams(
+      toScopedSearchParams(tab.id, SCOPE_KEYS.department, workerFilters, 1, nextSize),
+    );
   };
 
   const changeQualificationDrafts = (
@@ -1320,7 +1346,7 @@ export const CommonCodeScreen = () => {
 
   const selectedPartnerId = isPartnerTab ? readSelectedId(searchParams, PARTNER_SELECT_KEY) : null;
 
-  const partnerList = usePartnerList(partnerFilters, page, isPartnerTab);
+  const partnerList = usePartnerList(partnerFilters, page, size, isPartnerTab);
   const partners = partnerList.data?.items ?? [];
 
   const partnerPageView = toPageView(
@@ -1528,12 +1554,17 @@ export const CommonCodeScreen = () => {
 
   const applyPartnerFilters = (next: PartnerFilters) => {
     resetPartnerRoleEditing();
-    setSearchParams(toPartnerSearchParams(tab.id, next, 1));
+    setSearchParams(toPartnerSearchParams(tab.id, next, 1, size));
   };
 
   const changePartnerPage = (nextPage: number) => {
     resetPartnerRoleEditing();
-    setSearchParams(toPartnerSearchParams(tab.id, partnerFilters, nextPage));
+    setSearchParams(toPartnerSearchParams(tab.id, partnerFilters, nextPage, size));
+  };
+
+  const changePartnerPageSize = (nextSize: ListPageSize) => {
+    resetPartnerRoleEditing();
+    setSearchParams(toPartnerSearchParams(tab.id, partnerFilters, 1, nextSize));
   };
 
   const togglePartnerRoleChoice = (roleTypeCode: string) => {
@@ -1681,7 +1712,18 @@ export const CommonCodeScreen = () => {
       /* 다른 탭(부서 · 작업자 · 거래처)처럼 상자 안에 안내를 둔다(#350). */
       return (
         <section className="pane" aria-label={t.panes.codeGroupForm}>
-          <EmptyState size="sm" title={t.codeGroup.empty.notSelected} />
+          {/* 단말 관리의 빈 상세와 같은 모양 — 원 안 아이콘 · 제목 · 설명 한 줄(omf-all-around#358). */}
+          <EmptyState
+            size="sm"
+            className="users-roles-pick-empty"
+            icon={
+              <span className="inspection-standard-empty-icon">
+                <Icon name="category" size={20} />
+              </span>
+            }
+            title={t.codeGroup.empty.notSelected}
+            description={t.codeGroup.empty.notSelectedDescription}
+          />
         </section>
       );
     }
@@ -1758,7 +1800,9 @@ export const CommonCodeScreen = () => {
       appliedFilters={filters}
       onApplyFilters={applyFilters}
       pageView={codeGroupPageView}
+      pageMeta={codeGroupList.data?.page ?? null}
       onChangePage={changeCodeGroupPage}
+      onChangePageSize={changeCodeGroupPageSize}
       selectedCodeGroupId={selectedCodeGroupId}
       onSelect={handleSelectCodeGroup}
       isCreating={isCreatingCodeGroup}
@@ -1775,6 +1819,7 @@ export const CommonCodeScreen = () => {
         <ListDetailWorkspace
           storageKey="omf-mes:common-code:code"
           orientationKey={ORIENTATION_KEY}
+          /* 배치는 늘 보이는 단추 둘(「좌우 배치」 · 「상하 배치」) — 단말 관리와 같다(omf-all-around#358). */
           filter={{ label: messages.common.paneList.filter, content: filter }}
           list={{
             label: t.panes.codeGroup,
@@ -1782,9 +1827,10 @@ export const CommonCodeScreen = () => {
             count: codeGroupList.data?.page.total,
             content: list,
           }}
+          /* 상세는 상자 하나 — 안의 구획은 테두리 없이 구분선으로 잇는다(단말 관리와 같다 · omf-all-around#358). */
           detail={{
             label: t.panes.detail,
-            bare: true,
+            className: 'common-code-detail',
             content: (
               <>
                 {/*
@@ -1897,7 +1943,18 @@ export const CommonCodeScreen = () => {
     if (selectedDepartmentId === null) {
       return (
         <section className="pane" aria-label={t.panes.departmentForm}>
-          <EmptyState size="sm" title={t.department.empty.notSelected} />
+          {/* 단말 관리의 빈 상세와 같은 모양 — 원 안 아이콘 · 제목 · 설명 한 줄(omf-all-around#358). */}
+          <EmptyState
+            size="sm"
+            className="users-roles-pick-empty"
+            icon={
+              <span className="inspection-standard-empty-icon">
+                <Icon name="apartment" size={20} />
+              </span>
+            }
+            title={t.department.empty.notSelected}
+            description={t.department.empty.notSelectedDescription}
+          />
         </section>
       );
     }
@@ -2005,7 +2062,9 @@ export const CommonCodeScreen = () => {
        */
       optionsNotice={renderOptionsNotice([businessUnitOptions])}
       pageView={departmentPageView}
+      pageMeta={departmentList.data?.page ?? null}
       onChangePage={changeDepartmentPage}
+      onChangePageSize={changeDepartmentPageSize}
       selectedDepartmentId={selectedDepartmentId}
       onSelect={handleSelectDepartmentRow}
       isCreating={isCreatingDepartment}
@@ -2022,6 +2081,7 @@ export const CommonCodeScreen = () => {
         <ListDetailWorkspace
           storageKey="omf-mes:common-code:org"
           orientationKey={ORIENTATION_KEY}
+          /* 배치는 늘 보이는 단추 둘(「좌우 배치」 · 「상하 배치」) — 단말 관리와 같다(omf-all-around#358). */
           filter={{ label: messages.common.paneList.filter, content: filter }}
           list={{
             label: t.panes.department,
@@ -2029,9 +2089,10 @@ export const CommonCodeScreen = () => {
             count: departmentList.data?.page.total,
             content: list,
           }}
+          /* 상세는 상자 하나 — 안의 구획은 테두리 없이 구분선으로 잇는다(단말 관리와 같다 · omf-all-around#358). */
           detail={{
             label: t.panes.detail,
-            bare: true,
+            className: 'common-code-detail',
             content: renderDepartmentFormPane(),
           }}
         />
@@ -2047,7 +2108,18 @@ export const CommonCodeScreen = () => {
     if (selectedWorkerId === null) {
       return (
         <section className="pane" aria-label={t.panes.workerDetail}>
-          <EmptyState size="sm" title={t.worker.empty.notSelected} />
+          {/* 단말 관리의 빈 상세와 같은 모양 — 원 안 아이콘 · 제목 · 설명 한 줄(omf-all-around#358). */}
+          <EmptyState
+            size="sm"
+            className="users-roles-pick-empty"
+            icon={
+              <span className="inspection-standard-empty-icon">
+                <Icon name="badge" size={20} />
+              </span>
+            }
+            title={t.worker.empty.notSelected}
+            description={t.worker.empty.notSelectedDescription}
+          />
         </section>
       );
     }
@@ -2089,7 +2161,9 @@ export const CommonCodeScreen = () => {
       departmentOptions={selectableOptions(workerDepartmentOptions, workerFilters.scopeId)}
       optionsNotice={renderOptionsNotice([workerDepartmentOptions])}
       pageView={workerPageView}
+      pageMeta={workerList.data?.page ?? null}
       onChangePage={changeWorkerPage}
+      onChangePageSize={changeWorkerPageSize}
       selectedWorkerId={selectedWorkerId}
       onSelect={handleSelectWorker}
       loadError={
@@ -2101,6 +2175,7 @@ export const CommonCodeScreen = () => {
         <ListDetailWorkspace
           storageKey="omf-mes:common-code:worker"
           orientationKey={ORIENTATION_KEY}
+          /* 배치는 늘 보이는 단추 둘(「좌우 배치」 · 「상하 배치」) — 단말 관리와 같다(omf-all-around#358). */
           filter={{ label: messages.common.paneList.filter, content: filter }}
           list={{
             label: t.panes.worker,
@@ -2108,9 +2183,10 @@ export const CommonCodeScreen = () => {
             count: workerList.data?.page.total,
             content: list,
           }}
+          /* 상세는 상자 하나 — 안의 구획은 테두리 없이 구분선으로 잇는다(단말 관리와 같다 · omf-all-around#358). */
           detail={{
             label: t.panes.detail,
-            bare: true,
+            className: 'common-code-detail',
             content: (
               <div className="pane-stack">
                 {renderWorkerDetailPane()}
@@ -2182,7 +2258,18 @@ export const CommonCodeScreen = () => {
     if (selectedPartnerId === null) {
       return (
         <section className="pane" aria-label={t.panes.partnerRoles}>
-          <EmptyState size="sm" title={t.partner.empty.notSelected} />
+          {/* 단말 관리의 빈 상세와 같은 모양 — 원 안 아이콘 · 제목 · 설명 한 줄(omf-all-around#358). */}
+          <EmptyState
+            size="sm"
+            className="users-roles-pick-empty"
+            icon={
+              <span className="inspection-standard-empty-icon">
+                <Icon name="handshake" size={20} />
+              </span>
+            }
+            title={t.partner.empty.notSelected}
+            description={t.partner.empty.notSelectedDescription}
+          />
         </section>
       );
     }
@@ -2283,7 +2370,9 @@ export const CommonCodeScreen = () => {
       appliedFilters={partnerFilters}
       onApplyFilters={applyPartnerFilters}
       pageView={partnerPageView}
+      pageMeta={partnerList.data?.page ?? null}
       onChangePage={changePartnerPage}
+      onChangePageSize={changePartnerPageSize}
       selectedPartnerId={selectedPartnerId}
       onSelect={handleSelectPartner}
       loadError={
@@ -2295,6 +2384,7 @@ export const CommonCodeScreen = () => {
         <ListDetailWorkspace
           storageKey="omf-mes:common-code:partner"
           orientationKey={ORIENTATION_KEY}
+          /* 배치는 늘 보이는 단추 둘(「좌우 배치」 · 「상하 배치」) — 단말 관리와 같다(omf-all-around#358). */
           filter={{ label: messages.common.paneList.filter, content: filter }}
           list={{
             label: t.panes.partner,
@@ -2302,9 +2392,10 @@ export const CommonCodeScreen = () => {
             count: partnerList.data?.page.total,
             content: list,
           }}
+          /* 상세는 상자 하나 — 안의 구획은 테두리 없이 구분선으로 잇는다(단말 관리와 같다 · omf-all-around#358). */
           detail={{
             label: t.panes.detail,
-            bare: true,
+            className: 'common-code-detail',
             content: <div className="pane-stack">{renderPartnerRolePane()}</div>,
           }}
         />

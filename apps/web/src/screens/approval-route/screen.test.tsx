@@ -545,7 +545,7 @@ describe('ApprovalRouteScreen — 조회 조건', () => {
     );
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+    await user.click(screen.getByRole('button', { name: messages.screenPatterns.pageNav.next }));
 
     await waitFor(() => {
       expect(locationText()).toContain('page=2');
@@ -669,8 +669,11 @@ describe('ApprovalRouteScreen — 목록', () => {
 
     await waitForList();
 
-    expect(screen.getByText('1–3 / 전체 45건')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.actions.prevPage })).toBeDisabled();
+    /* 공용 쪽 이동(「총 N건 · 처음 · 이전 · n/N · 다음 · 마지막」 · #358) — 서버가 준 1쪽으로 읽힌다. */
+    expect(screen.getByText(messages.screenPatterns.pageNav.position(1, 3))).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: messages.screenPatterns.pageNav.prev }),
+    ).toBeDisabled();
   });
 
   it('참조 목록이 잘리면 그 사실을 밝힌다', async () => {
@@ -1072,118 +1075,6 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
   });
 });
 
-describe('ApprovalRouteScreen — 다시 조회', () => {
-  it('목록만이 아니라 상세와 단계도 함께 부른다', async () => {
-    const { requests, user } = renderScreen(allRoutes(), SELECTED);
-
-    await screen.findByRole('region', { name: t.panes.steps });
-
-    const before = {
-      list: listRequests(requests).length,
-      detail: detailRequests(requests).length,
-      steps: stepsRequests(requests).length,
-    };
-
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-
-    await waitFor(() => {
-      expect(listRequests(requests).length).toBe(before.list + 1);
-    });
-    await waitFor(() => {
-      expect(detailRequests(requests).length).toBe(before.detail + 1);
-    });
-    await waitFor(() => {
-      expect(stepsRequests(requests).length).toBe(before.steps + 1);
-    });
-  });
-
-  /**
-   * **참조도 함께 다시 부른다.**
-   *
-   * 사업부 참조가 실패하면 조건 줄에 「선택지를 불러오지 못했습니다」가 서고 목록의 사업부
-   * 칸이 「이름을 불러오지 못했습니다」로 바뀌는데, 그 안내에는 재시도 버튼이 없다.
-   * 「다시 조회」의 이 한 줄이 **참조 실패의 유일한 복구 경로**다.
-   */
-  it('사업부 참조도 함께 다시 부른다', async () => {
-    const { requests, user } = renderScreen(allRoutes());
-
-    await waitForList();
-
-    const before = requests.filter(
-      (request) => request.url.pathname === BUSINESS_UNITS_PATH,
-    ).length;
-
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-
-    await waitFor(() => {
-      expect(
-        requests.filter((request) => request.url.pathname === BUSINESS_UNITS_PATH).length,
-      ).toBe(before + 1);
-    });
-  });
-
-  /**
-   * **승인자 선택지도 참조다.** 사람이 들고 나는 동안 낡는데, 이 목록에는 재시도 버튼이 없다 —
-   * 「다시 조회」가 그 복구 경로다. 결재선을 고른 뒤에만 부르므로 그 안에서 잰다.
-   */
-  it('승인자 선택지도 함께 다시 부른다', async () => {
-    const { requests, user } = renderScreen(allRoutes(), SELECTED);
-
-    await screen.findByRole('region', { name: t.panes.steps });
-
-    const usersCount = (): number =>
-      requests.filter((request) => request.url.pathname === USERS_PATH).length;
-
-    // 선행 단언 — 고른 뒤 한 번은 이미 나갔어야 「한 번 더 나갔다」가 뜻을 갖는다.
-    await waitFor(() => {
-      expect(usersCount()).toBe(1);
-    });
-
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-
-    await waitFor(() => {
-      expect(usersCount()).toBe(2);
-    });
-  });
-
-  it('참조가 실패해도 「다시 조회」로 이름을 되살릴 수 있다', async () => {
-    // 짝 방향 — 복구 경로가 실제로 이름을 되살리는지까지 잰다.
-    let hasFailed = false;
-    const flakyBusinessUnits: StubRoute = {
-      match: (request) => isGet(request, BUSINESS_UNITS_PATH),
-      respond: () => {
-        if (hasFailed) return jsonResponse(listBody(businessUnitFixtures));
-        hasFailed = true;
-
-        return jsonResponse({ message: '' }, { status: 500 });
-      },
-    };
-
-    const { user } = renderScreen(allRoutes([flakyBusinessUnits]));
-
-    await waitForList();
-    expect(await screen.findByText(t.filters.lookupFailed)).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-
-    expect(await screen.findByText(BUSINESS_UNIT_LABEL)).toBeInTheDocument();
-    expect(screen.queryByText(t.filters.lookupFailed)).not.toBeInTheDocument();
-  });
-
-  it('고르지 않았으면 상세·단계를 부르지 않는다', async () => {
-    const { requests, user } = renderScreen(allRoutes());
-
-    await waitForList();
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-
-    await waitFor(() => {
-      expect(listRequests(requests).length).toBe(2);
-    });
-    expect(detailRequests(requests)).toHaveLength(0);
-    expect(stepsRequests(requests)).toHaveLength(0);
-  });
-});
-
 describe('ApprovalRouteScreen — 빈 상태와 실패', () => {
   it('빈 상태 네 갈래가 서로 다른 안내를 낸다', async () => {
     const titles = new Set([
@@ -1275,7 +1166,8 @@ describe('ApprovalRouteScreen — 이 회차의 경계', () => {
     const { requests, user } = renderScreen(allRoutes(), SELECTED);
 
     await screen.findByRole('region', { name: t.panes.steps });
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    /* 조건을 바꿔 조회해야 목록 요청이 새로 나간다 — 같은 조건의 조회는 주소가 그대로라 다시 부르지 않는다. */
+    await user.type(screen.getByLabelText(t.fields.q), 'SAMPLE');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
     await waitFor(() => {
       expect(listRequests(requests).length).toBeGreaterThan(1);
@@ -2243,60 +2135,6 @@ describe('ApprovalRouteScreen — 배너 매임과 초안 수명', () => {
     expect(screen.getByText(messages.conflict.user)).toBeInTheDocument();
   });
 
-  /**
-   * **렌더마다·응답마다 지워지지도 않는다.** 정리 effect의 의존성에 응답을 넣거나 배열을
-   * 비우면 배너가 서자마자 사라져 사용자가 이유를 볼 수 없다.
-   *
-   * **응답이 실제로 달라져야 이 감지기가 뜻을 갖는다.** 같은 값을 돌려주면 캐시가 객체
-   * 동일성을 지켜 주어(구조 공유) 「응답을 의존성에 넣었다」는 오류가 드러나지 않는다.
-   */
-  it('실패 배너가 다른 응답이 도착해도 남는다', async () => {
-    let hits = 0;
-    const changingDetail: StubRoute = {
-      match: (request) => request.method === 'GET' && isDetailPath(new URL(request.url).pathname),
-      respond: () => {
-        hits += 1;
-
-        return jsonResponse(
-          { ...routeFixtures[0], inProgressCount: hits },
-          { headers: { ETag: `token-${String(hits)}` } },
-        );
-      },
-    };
-
-    const { user } = await failThenSelect([changingDetail]);
-
-    const beforeHits = hits;
-
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-
-    /* 상세가 **다른 값**으로 다시 도착한 것을 먼저 확인한다. */
-    await waitFor(() => {
-      expect(hits).toBeGreaterThan(beforeHits);
-    });
-    await waitFor(() => {
-      expect(screen.getByText(t.notes.inProgressSome(hits))).toBeInTheDocument();
-    });
-
-    expect(screen.getByText(messages.conflict.user)).toBeInTheDocument();
-  });
-
-  /**
-   * **#43** — 초안은 응답 객체가 아니라 **대상 키**에 매여 있다. 응답 배열이나 파생 객체에
-   * 매면 목록이 갱신될 때마다 치던 값이 사라진다.
-   */
-  it('폼 초안이 응답 도착에 되돌아가지 않는다', async () => {
-    const { user } = renderScreen(allRoutes(), SELECTED);
-
-    await dirtyForm(user, '77');
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-
-    await waitFor(() => {
-      expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('77');
-    });
-    expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('77');
-  });
-
   /** 대상이 바뀌면 초안은 새 대상의 값으로 다시 선다 — 앞 결재선의 값이 남으면 안 된다. */
   it('대상이 바뀌면 초안이 새 결재선의 값으로 다시 선다', async () => {
     const { user } = renderScreen(allRoutes([detailRoute(routeFixtures[2])]), SELECTED);
@@ -2493,54 +2331,6 @@ describe('ApprovalRouteScreen — 전송 중 바깥 주소 이동', () => {
 });
 
 describe('ApprovalRouteScreen — 확인 창이 열린 사이 상태가 뒤집히면', () => {
-  /**
-   * **열린 창의 뜻은 열 때 정해지고, 대상의 상태는 그 뒤에도 바뀐다.**
-   *
-   * 「다시 조회」는 잠기지 않고 다른 사람이 먼저 상태를 바꿀 수도 있다. 그때 폼의 액션은
-   * 반대쪽으로 바뀌지만 **열린 창의 뜻은 그대로**라, 확인하면 이미 꺼진 것에 `:deactivate`가,
-   * 이미 켜진 것에 `:activate`가 나간다 — 뒤엣것은 계약이 400으로 막아 **사용자가 이유를 알
-   * 수 없는 거절**이 된다.
-   */
-  it('끄기 창이 열린 사이 이미 꺼졌으면 보내지 않고 창을 닫는다', async () => {
-    let flipped = false;
-    const flippingDetail: StubRoute = {
-      match: (request) => request.method === 'GET' && isDetailPath(new URL(request.url).pathname),
-      respond: () => {
-        const body = flipped ? { ...routeFixtures[0], isActive: false } : routeFixtures[0];
-
-        flipped = true;
-
-        return jsonResponse(body, { headers: { ETag: 'token-0' } });
-      },
-    };
-
-    const { requests, user } = renderScreen(
-      allRoutes([
-        flippingDetail,
-        probeRoute(),
-        activationRoute('deactivate', { ...routeFixtures[0], isActive: false }),
-      ]),
-      SELECTED,
-    );
-
-    await waitForForm();
-    await user.click(screen.getByRole('button', { name: messages.common.deactivate }));
-    expect(activationDialog()).toBeInTheDocument();
-
-    /* 창이 열린 채 상세가 다시 온다 — 그 사이 다른 사람이 이미 껐다. */
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-    await screen.findByRole('button', { name: t.actions.activate });
-
-    await user.click(
-      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
-    );
-
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).toBeNull();
-    });
-    expect(writeRequests(requests)).toHaveLength(0);
-  });
-
   /** 짝 방향 — 상태가 그대로면 확인이 그대로 나간다. 안 그러면 「아무것도 안 보낸다」와 같아진다. */
   it('상태가 그대로면 확인이 요청을 보낸다', async () => {
     const { requests, user } = renderScreen(
@@ -3104,79 +2894,6 @@ describe('ApprovalRouteScreen — 단계 치환 저장', () => {
 });
 
 describe('ApprovalRouteScreen — 단계 초안 수명', () => {
-  /**
-   * **응답 도착이 초안을 되돌리면 「고치던 순서가 사라진다」가 재현된다.** 초안은 응답 객체가
-   * 아니라 대상 키에 매여 있다.
-   */
-  it('다시 조회로 단계가 다시 와도 고친 순서가 남는다', async () => {
-    const { requests, user } = renderScreen(allRoutes(), SELECTED);
-
-    await stepPane();
-    await user.click(screen.getAllByRole('button', { name: '아래로 이동' })[0] as HTMLElement);
-
-    const before = stepsRequests(requests).length;
-
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-    await waitFor(() => {
-      expect(stepsRequests(requests).length).toBeGreaterThan(before);
-    });
-
-    expect(
-      within(stepRows()[1] as HTMLElement).getByText('합성 승인자2 · 합성부서 나'),
-    ).toBeInTheDocument();
-  });
-
-  /**
-   * **서버가 다른 내용을 준 재조회에도 되돌아가지 않는다.**
-   *
-   * 앞 감지기는 **같은 내용**의 재조회까지만 문다 — 캐시가 구조 공유로 객체 동일성을 지켜
-   * 주기 때문에, 응답을 의존성 삼아 초안을 다시 세우는 형태(현실에서 가장 흔한 오류)가
-   * 그 잣대를 그대로 지나간다. **내용이 실제로 달라진 재조회**로 재야 그 형태가 붙잡힌다.
-   */
-  it('서버가 다른 단계를 준 재조회도 고치던 순서를 덮지 않는다', async () => {
-    let stepHits = 0;
-    const changingSteps: StubRoute = {
-      match: (request) => request.method === 'GET' && isStepsPath(new URL(request.url).pathname),
-      respond: () => {
-        stepHits += 1;
-
-        /* 두 번째부터는 **한 줄만** 준다 — 초안을 덮으면 표가 1줄로 줄어 곧바로 드러난다. */
-        return jsonResponse({ items: stepHits === 1 ? stepFixtures : [stepFixtures[0]] });
-      },
-    };
-    let detailHits = 0;
-    const changingDetail: StubRoute = {
-      match: (request) => request.method === 'GET' && isDetailPath(new URL(request.url).pathname),
-      respond: () => {
-        detailHits += 1;
-
-        return jsonResponse(
-          { ...routeFixtures[0], inProgressCount: detailHits },
-          { headers: { ETag: `token-${String(detailHits)}` } },
-        );
-      },
-    };
-
-    const { user } = renderScreen(allRoutes([changingSteps, changingDetail]), SELECTED);
-
-    await stepPane();
-    await user.click(screen.getAllByRole('button', { name: '아래로 이동' })[0] as HTMLElement);
-
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-
-    /* 선행 단언 — 다시 조회가 실제로 끝났고 서버가 **다른 자료**를 줬다. */
-    await waitFor(() => {
-      expect(screen.getByText(t.notes.inProgressSome(detailHits))).toBeInTheDocument();
-    });
-    expect(stepHits).toBeGreaterThan(1);
-
-    /* 그런데도 고치던 순서가 그대로다 — 초안은 응답이 아니라 대상 키에 매여 있다. */
-    expect(stepRows()).toHaveLength(stepFixtures.length + 1);
-    expect(
-      within(stepRows()[1] as HTMLElement).getByText('합성 승인자2 · 합성부서 나'),
-    ).toBeInTheDocument();
-  });
-
   /** 폼과 단계는 **다른 오퍼레이션**이다 — 한쪽을 고치는 중에 다른 쪽이 되돌아가면 안 된다. */
   it('폼을 고쳐도 단계 초안이 그대로다', async () => {
     const { user } = renderScreen(allRoutes(), SELECTED);

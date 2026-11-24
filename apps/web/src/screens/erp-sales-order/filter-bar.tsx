@@ -38,7 +38,7 @@ export interface ErpSalesOrderFilterBarProps {
  * **보이는 칸은 셋이다**(C-6) — 수주일 · 고객사 · 수주번호. 칸 폭은 C-19 고정 폭이라 값을 넣어도 그대로다 — 기간 · 고객사는
  * 보통, 수주번호는 좁음이다(보통 셋에 조회 · 초기화 · 조건 더보기를 더하면 1280 에서 한 줄을 넘는다).
  * 진행 · 상태 · 미편성만은 「조건 더보기」에 접고, 접힌 칸에 걸린 조건은 칩으로만 알린다. 「초기화」는 바뀐 것이 있을
- * 때만 보인다.
+ * 때만 보인다. [조회][초기화][조건 더보기]는 줄 오른쪽 끝(#358).
  */
 export const ErpSalesOrderFilterBar = ({
   appliedFilters,
@@ -104,7 +104,7 @@ export const ErpSalesOrderFilterBar = ({
 
   return (
     <>
-      <div className="filter-bar">
+      <div className="filter-bar erp-data-filter-row">
         {/*
          * 기간은 **한 컨트롤**이다(C-12 — 브라우저 날짜 칸을 쓰지 않는다). 컴포넌트가 완결된 쌍만, 그것도
          * 시작 ≤ 종료로만 내보내 이 칸을 거친 역전은 생기지 않는다. 주소 키(`from`·`to`)와 요청 파라미터는 그대로다.
@@ -150,16 +150,15 @@ export const ErpSalesOrderFilterBar = ({
           clearLabel={messages.common.clear}
           containerClassName="filter-field-sm erp-order-search"
         />
-        <div className="field-cell field-cell-unlabeled">
-          <div className="filter-actions">
-            <Button onClick={search}>{messages.common.search}</Button>
-            {isChanged && (
-              <Button variant="outlined" onClick={reset}>
-                {messages.common.reset}
-              </Button>
-            )}
-            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
-          </div>
+        {/* 조회 · 초기화 · 조건 더보기는 줄 오른쪽 끝(단말 관리와 같다 · #358). 초기화는 바뀐 것이 있을 때만. */}
+        <div className="filter-actions field-cell-unlabeled">
+          <Button onClick={search}>{messages.common.search}</Button>
+          {isChanged && (
+            <Button variant="outlined" onClick={reset}>
+              {messages.common.reset}
+            </Button>
+          )}
+          <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
         </div>
       </div>
 

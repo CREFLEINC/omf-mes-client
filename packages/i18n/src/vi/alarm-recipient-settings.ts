@@ -12,8 +12,6 @@ import type { Translated } from './translated';
  * 가는 것은 알림이다 — 용어집이 가른 두 말을 그대로 지킨다.
  */
 export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings> = {
-  title: 'Thiết lập người nhận thông báo',
-  breadcrumbRoot: 'Quản trị hệ thống',
   panes: {
     events: 'Sự kiện',
     setting: (eventName: string): string => `Thiết lập: ${eventName}`,
@@ -90,5 +88,14 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     loginId: 'Tên đăng nhập',
     department: 'Phòng ban',
     phone: 'Số điện thoại',
+  },
+  workspace: {
+    filter: 'Điều kiện tra cứu',
+    list: 'Danh sách sự kiện',
+    apply: 'Tra cứu',
+    clear: 'Đặt lại',
+    selectEventTitle: 'Hãy chọn sự kiện.',
+    selectEvent:
+      'Chọn phòng ban rồi bấm vào sự kiện để thiết lập nhận thông báo, Zalo và người nhận.',
   },
 };

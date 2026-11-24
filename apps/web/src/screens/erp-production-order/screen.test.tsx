@@ -123,8 +123,9 @@ const findRow = async (orderNo: string): Promise<HTMLElement> => {
 };
 
 describe('ErpProductionOrderScreen', () => {
-  it('주소의 조건을 계약 밖 질의까지 실어 목록을 부르고, 값을 이름으로 풀어 보인다', async () => {
+  it('주소의 조건을 계약 밖 질의까지 실어 목록을 부르고, 값을 이름으로 풀어 목록 · 상세에 보인다', async () => {
     const { fetch, requests } = recordingFetch(normalRoutes);
+    const user = userEvent.setup();
     renderWithProviders(<ErpProductionOrderScreen />, {
       fetch,
       route: '/?status=UPDATED&item=7101&from=2026-10-01&to=2026-10-31&q=SYN',
@@ -142,14 +143,19 @@ describe('ErpProductionOrderScreen', () => {
     expect(await cells.findByText('SYN-ITEM · 합성 품목')).toBeInTheDocument();
     expect(await cells.findByText('1,200 SYN-EA')).toBeInTheDocument();
     expect(cells.getByText('2026-10-08')).toBeInTheDocument();
-    expect(cells.getByText('010')).toBeInTheDocument();
-    expect(await cells.findByText('SYN-SL1 · 합성 창고')).toBeInTheDocument();
-    expect(cells.getByText('아니오')).toBeInTheDocument();
     expect(await cells.findByText('합성 수정됨')).toBeInTheDocument();
-    /* ERP W/O 는 납기가 비어 온다 — 늘 빈 열을 세우지 않는다. */
+    /* 목록은 식별 열만 — 공정번호 · 창고 · 재작업 · 납기는 상세에 있다. */
     const listPane = screen.getByRole('region', { name: t.panes.list });
     expect(within(listPane).queryByRole('columnheader', { name: t.fields.dueDate })).toBeNull();
-    /* 상세가 없다 — 한 건도, 상세에만 쓰던 참조(사업부·공장)도 부르지 않는다. */
+    expect(cells.queryByText('010')).toBeNull();
+
+    await user.click(cells.getByText('SYN-EWO-901'));
+    const detail = within(screen.getByRole('region', { name: t.panes.detail }));
+    expect(detail.getByText('010')).toBeInTheDocument();
+    expect(await detail.findByText('SYN-SL1 · 합성 창고')).toBeInTheDocument();
+    expect(detail.getByText('아니오')).toBeInTheDocument();
+    expect(detail.getByText('1,200 SYN-EA')).toBeInTheDocument();
+    /* 상세는 목록 응답만 쓴다 — 한 건 요청도, 참조(사업부·공장)도 부르지 않는다. */
     expect(requests.some((r) => new URL(r.url).pathname.startsWith(`${LIST_PATH}/`))).toBe(false);
     expect(requests.some((r) => exact(r, '/mdm/business-units'))).toBe(false);
     expect(requests.some((r) => exact(r, '/mdm/plants'))).toBe(false);
@@ -158,10 +164,15 @@ describe('ErpProductionOrderScreen', () => {
   it('비어 온 칸은 표시 기호로 낸다', async () => {
     const { fetch } = recordingFetch(normalRoutes);
     renderWithProviders(<ErpProductionOrderScreen />, { fetch });
+    const user = userEvent.setup();
 
-    const row = within(await findRow('SYN-EWO-902'));
-    /* 계획 시작일·공정번호·창고·재작업·진행 다섯이 빠진 행. */
-    expect(row.getAllByText(t.values.missing)).toHaveLength(5);
+    const row = await findRow('SYN-EWO-902');
+    /* 목록 — 계획 시작일 · 진행 둘이 빠진 행. */
+    expect(within(row).getAllByText(t.values.missing)).toHaveLength(2);
+    /* 상세 — 계획 시작일 · 납기 · 공정번호 · 창고 · 재작업 · 진행 여섯. */
+    await user.click(within(row).getByText('SYN-EWO-902'));
+    const detail = within(screen.getByRole('region', { name: t.panes.detail }));
+    expect(detail.getAllByText(t.values.missing)).toHaveLength(6);
   });
 
   it('진행 열은 생산 진행을 표지로 보인다', async () => {
@@ -236,7 +247,7 @@ describe('ErpProductionOrderScreen', () => {
     expect(screen.queryByRole('button', { name: removeProgress })).toBeNull();
   });
 
-  it('상세 구획 없이 목록 한 구획만 서고, 줄을 눌러도 상세를 부르지 않으며, 쓰기·계획으로 가는 길이 없다', async () => {
+  it('줄을 누르면 상세 상자에 그 W/O 를 내되 상세 요청을 따로 보내지 않고, 쓰기·계획으로 가는 길이 없다', async () => {
     const { fetch, requests } = recordingFetch(normalRoutes);
     /* 예전 주소의 고른 건(`sel`)도 읽지 않는다. */
     renderWithProviders(<ErpProductionOrderScreen />, { fetch, route: '/?sel=901' });
@@ -245,14 +256,15 @@ describe('ErpProductionOrderScreen', () => {
     /* 읽기 전용 안내 문구는 두지 않는다 — 쓰기 조작이 없는 것으로 충분하다. */
     expect(screen.queryByText(/고칠 수 없습니다/)).not.toBeInTheDocument();
     const row = await findRow('SYN-EWO-901');
-    await user.click(within(row).getByText('SYN-EWO-901'));
+    const detail = screen.getByRole('region', { name: t.panes.detail });
+    expect(within(detail).getByText(t.empty.pickTitle)).toBeInTheDocument();
 
-    expect(screen.getByRole('region', { name: t.panes.list })).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: /상세/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('separator')).not.toBeInTheDocument();
-    /* 고르는 단추도, 고른 줄 표지도 없다. */
-    expect(within(row).queryByRole('button')).not.toBeInTheDocument();
-    expect(row.querySelector('[aria-current]')).toBeNull();
+    await user.click(within(row).getByText('SYN-EWO-901'));
+    expect(within(row).getByRole('button', { name: 'SYN-EWO-901' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(within(detail).getByText('SYN-EWO-901')).toBeInTheDocument();
     expect(requests.some((r) => new URL(r.url).pathname.startsWith(`${LIST_PATH}/`))).toBe(false);
 
     expect(requests.every((request) => request.method === 'GET')).toBe(true);
@@ -319,6 +331,19 @@ describe('ErpProductionOrderScreen', () => {
     expect(listUrls(requests).at(-1)?.searchParams.has('statusCode')).toBe(false);
     expect(listUrls(requests).at(-1)?.searchParams.get('q')).toBe('SYN');
     expect(screen.queryByRole('button', { name: removeStatus })).toBeNull();
+  });
+
+  it('쪽 크기는 처음 25 를 싣고, 주소에 고른 크기가 있으면 그 크기를 서버에 그대로 싣는다', async () => {
+    const first = recordingFetch(normalRoutes);
+    const { unmount } = renderWithProviders(<ErpProductionOrderScreen />, { fetch: first.fetch });
+    await findRow('SYN-EWO-901');
+    expect(listUrls(first.requests)[0]?.searchParams.get('size')).toBe('25');
+    unmount();
+
+    const chosen = recordingFetch(normalRoutes);
+    renderWithProviders(<ErpProductionOrderScreen />, { fetch: chosen.fetch, route: '/?size=50' });
+    await findRow('SYN-EWO-901');
+    expect(listUrls(chosen.requests)[0]?.searchParams.get('size')).toBe('50');
   });
 
   it('목록 실패를 빈 결과로 바꾸지 않는다', async () => {

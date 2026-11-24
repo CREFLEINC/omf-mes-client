@@ -9,13 +9,6 @@ export const erpBom = {
     itemType: '유형',
     q: '품목코드·품목명',
   },
-  /** 두 구획 사이 끌기 막대(키보드 ←·→ 로도 움직인다). */
-  splitter: '끌어서 모품목 목록·BOM 폭 조절',
-  /** 막대 위쪽 끝의 단추 — 모품목 목록을 왼쪽으로 완전히 접고 편다. */
-  listCollapse: '모품목 목록 접기',
-  listExpand: '모품목 목록 펼치기',
-  /** 줄 단추의 접근 이름 — 품목코드를 담는다. */
-  pickParent: (itemCode: string): string => `${itemCode} 선택`,
   panes: {
     parents: '모품목 목록',
     filter: '조회 조건',
@@ -69,7 +62,8 @@ export const erpBom = {
   empty: {
     parentsBeyondLast: '이 쪽에는 모품목이 없습니다',
     noParentsTitle: '조건에 맞는 모품목이 없습니다',
-    noParentTitle: '모품목을 고르세요',
+    noParentTitle: '모품목을 선택하세요.',
+    noParentDescription: '목록에서 모품목을 고르면 품목 · BOM 정보와 구성품을 볼 수 있습니다.',
     noBomTitle: '이 품목에는 BOM 이 없습니다',
   },
 } as const;

@@ -8,6 +8,7 @@ export const erpPartner: Translated<typeof ko.erpPartner> = {
   panes: {
     filter: 'Điều kiện tra cứu',
     list: 'Danh sách đối tác',
+    detail: 'Chi tiết đối tác',
   },
   fields: {
     q: 'Mã·Tên đối tác',
@@ -39,15 +40,7 @@ export const erpPartner: Translated<typeof ko.erpPartner> = {
     roleSeparator: ', ',
   },
   actions: {
-    prevPage: 'Trước',
-    nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
-  },
-  pageNav: {
-    label: 'Chuyển trang',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / Tổng ${String(total)}`,
-    totalOnly: (total: number): string => `Tổng ${String(total)}`,
   },
   loading: {
     list: 'Đang tải danh sách đối tác',
@@ -55,5 +48,7 @@ export const erpPartner: Translated<typeof ko.erpPartner> = {
   empty: {
     noResultTitle: 'Không có đối tác phù hợp',
     beyondLastTitle: 'Trang này không có đối tác',
+    pickTitle: 'Hãy chọn đối tác.',
+    pickDescription: 'Chọn đối tác trong danh sách để xem mọi trường nhận từ ERP.',
   },
 };

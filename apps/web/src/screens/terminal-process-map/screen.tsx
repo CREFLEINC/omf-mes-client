@@ -18,6 +18,7 @@ import { useSearchParams } from 'react-router';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { SaveErrorBanner } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
 import {
@@ -26,7 +27,11 @@ import {
   useFitToViewport,
   usePaneSplit,
 } from '../../patterns/po-board';
-import { PaneHeightSplitter, useSplitOrientation } from '../../patterns/split-orientation';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import {
   EMPTY_FILTERS,
   LIST_PAGE_SIZES,
@@ -50,7 +55,6 @@ import {
   type GridDraft,
 } from './grid-draft';
 import { ActiveChips } from './active-chips';
-import { LayoutToggle } from './layout-toggle';
 import { LoadErrorBanner } from './load-error-banner';
 import {
   codeSelectOptions,
@@ -742,7 +746,7 @@ export const TerminalProcessMapScreen = () => {
             });
           }}
         />
-        <LayoutToggle orientation={layout.orientation} onChange={layout.change} />
+        <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} inline />
       </div>
 
       <div className="users-roles-workspace">
@@ -823,7 +827,7 @@ export const TerminalProcessMapScreen = () => {
                 {t.filters.includeInactive}
               </Checkbox>
             </div>
-            {/* 조회와 초기화는 짝이라 함께 둔다. 초기화는 늘 보인다(사용자 지시 2026-11-20 · #333). */}
+            {/* 조회와 초기화는 짝이라 함께 둔다. 초기화는 조건이 처음 값과 다를 때만 보인다 — 쪽 · 쪽 크기는 조건이 아니다(#358). */}
             <div className="filter-actions field-cell-unlabeled">
               <Button
                 onClick={() => {
@@ -834,19 +838,25 @@ export const TerminalProcessMapScreen = () => {
               >
                 {t.filters.apply}
               </Button>
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  leaveSafely(() => {
-                    setSearch('');
-                    setSearchParams(
-                      toSearchParams({ ...EMPTY_FILTERS, size: filters.size }, selectedId),
-                    );
-                  });
-                }}
-              >
-                {t.filters.clear}
-              </Button>
+              {hasChangedFilters(
+                { ...EMPTY_FILTERS, page: filters.page, size: filters.size },
+                { ...filters, q: search },
+                filters,
+              ) && (
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    leaveSafely(() => {
+                      setSearch('');
+                      setSearchParams(
+                        toSearchParams({ ...EMPTY_FILTERS, size: filters.size }, selectedId),
+                      );
+                    });
+                  }}
+                >
+                  {t.filters.clear}
+                </Button>
+              )}
             </div>
             <Button
               className="users-roles-add-user"

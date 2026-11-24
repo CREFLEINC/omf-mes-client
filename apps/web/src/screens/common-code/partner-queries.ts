@@ -2,7 +2,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest, toApiError } from '../../patterns/request';
-import { toPartnerListQuery } from './filters';
+import { toPartnerListQuery, type ListPageSize } from './filters';
 import type { PartnerRoleRow } from './partner-role-draft';
 import type { PageMeta, Partner, PartnerFilters } from './types';
 
@@ -37,8 +37,8 @@ export interface PartnerListResponse {
  * 다시 낸다. 필요해지는 회차에 그 소비처와 함께 만든다.
  */
 export const partnerKeys = {
-  list: (filters: PartnerFilters, page: number) =>
-    ['common-code-partners', 'list', filters, page] as const,
+  list: (filters: PartnerFilters, page: number, size: ListPageSize | null = null) =>
+    ['common-code-partners', 'list', filters, page, size] as const,
   detail: (partnerId: number) => ['common-code-partners', 'detail', partnerId] as const,
   roles: (partnerId: number) => ['common-code-partners', 'roles', partnerId] as const,
 };
@@ -64,12 +64,13 @@ export const partnerRolesPath = (partnerId: number): string =>
 export const usePartnerList = (
   filters: PartnerFilters,
   page: number,
+  size: ListPageSize | null,
   enabled: boolean,
 ): UseQueryResult<PartnerListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: partnerKeys.list(filters, page),
+    queryKey: partnerKeys.list(filters, page, size),
     /*
      * 다른 탭에 있는 동안에는 조회하지 않는다. 주소 키(`q`·`inactive`·`page`)를 탭이
      * 공유하므로 손으로 고친 주소에서 「부서를 찾던 말」로 거래처를 조회하는 일이 생긴다.
@@ -77,7 +78,7 @@ export const usePartnerList = (
     enabled,
     queryFn: () =>
       runRequest(() =>
-        client.GET('/mdm/partners', { params: { query: toPartnerListQuery(filters, page) } }),
+        client.GET('/mdm/partners', { params: { query: toPartnerListQuery(filters, page, size) } }),
       ),
   });
 };

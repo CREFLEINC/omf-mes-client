@@ -14,6 +14,25 @@ export const erpInbound = {
     receiveOn: '수신 켜짐',
     receiveOff: '수신 꺼짐',
   },
+  /** 조회 상자 — 표 이름으로 화면 안에서 거른다(서버 요청은 그대로 · #358). */
+  filters: {
+    label: '조회 조건',
+    search: '표 검색',
+    searchPlaceholder: '표 이름을 입력하세요',
+  },
+  /** 목록 상자 | 상세 상자(#358). */
+  panes: {
+    list: '받는 표 목록',
+    detail: '받는 표 상세',
+  },
+  /** 상세 상자 — 고른 표의 마지막 읽기 결과와 「지금 읽기」. */
+  detail: {
+    pick: '받는 표를 선택하세요.',
+    pickDescription: '선택한 표의 마지막 읽기 결과를 확인하고 지금 읽기를 요청할 수 있습니다.',
+    pickRow: (name: string): string => `${name} 선택`,
+  },
+  /** 이름 검색에 맞는 표가 없을 때. */
+  noMatch: '조건에 맞는 표가 없습니다',
   table: {
     label: 'ERP 수신 표',
     name: '표',

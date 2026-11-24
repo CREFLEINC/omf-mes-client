@@ -59,8 +59,8 @@ const listRoute = (items: Worker[] = ROWS, total = items.length): StubRoute => (
 });
 
 describe('ErpEmployeeScreen', () => {
-  it('목록을 그리고 비어 있는 값은 표시 기호로 낸다', async () => {
-    renderScreen([listRoute()]);
+  it('목록을 그리고, 고른 사원의 모든 칸을 상세에 내며 비어 있는 값은 표시 기호로 낸다', async () => {
+    const { urls, user } = renderScreen([listRoute()]);
 
     const table = await screen.findByRole('table');
     expect(within(table).getByText('SAMPLE-001')).toBeInTheDocument();
@@ -68,11 +68,21 @@ describe('ErpEmployeeScreen', () => {
     expect(within(table).getByText('퇴사')).toBeInTheDocument();
     // 두 행 모두 부서가 비어 있다.
     expect(within(table).getAllByText('—')).toHaveLength(2);
-    // 한국어·베트남어 명칭 열은 두지 않는다.
-    expect(within(table).queryByText('한국어 명칭')).not.toBeInTheDocument();
-    expect(within(table).queryByText('베트남어 명칭')).not.toBeInTheDocument();
-    expect(within(table).queryByText('Nhan vien A')).not.toBeInTheDocument();
-    expect(screen.getByText('1–2 / 전체 2건')).toBeInTheDocument();
+    // 한국어·베트남어 명칭은 두지 않는다.
+    expect(screen.queryByText('Nhan vien A')).not.toBeInTheDocument();
+    expect(screen.getByText('총 2건')).toBeInTheDocument();
+
+    const detail = screen.getByRole('region', { name: '사원 상세' });
+    expect(within(detail).getByText('사원을 선택하세요.')).toBeInTheDocument();
+
+    await user.click(within(table).getByText('SAMPLE-001'));
+    expect(within(detail).getByText('ACTIVE')).toBeInTheDocument();
+    expect(within(detail).getByText('11')).toBeInTheDocument();
+    expect(within(detail).getByText('21')).toBeInTheDocument();
+    expect(within(detail).getByText('—')).toBeInTheDocument();
+    expect(screen.queryByText('Nhan vien A')).not.toBeInTheDocument();
+    // 상세는 목록 응답만 쓴다 — 상세 요청을 보내지 않는다.
+    expect(urls.some((url) => url.pathname.startsWith(`${LIST_PATH}/`))).toBe(false);
     // 쓰기 조작이 없다.
     expect(screen.queryByRole('button', { name: /저장|등록|삭제/ })).not.toBeInTheDocument();
   });
@@ -92,19 +102,19 @@ describe('ErpEmployeeScreen', () => {
       const last = urls.filter((url) => url.pathname === LIST_PATH).at(-1);
       expect(last?.searchParams.get('q')).toBe('SAMPLE');
       expect(last?.searchParams.get('includeInactive')).toBe('true');
+      expect(last?.searchParams.has('size')).toBe(false);
     });
   });
 
-  it('상세 구획 없이 목록 한 구획만 서고, 줄을 눌러도 상세를 부르지 않는다', async () => {
-    const { urls, user } = renderScreen([listRoute()]);
+  it('다음 쪽은 page 를 서버에 싣는다', async () => {
+    const { urls, user } = renderScreen([listRoute(ROWS, 120)]);
+    await screen.findByText('예시 사원 B');
 
-    await user.click(await screen.findByText('SAMPLE-001'));
-
-    expect(screen.getByRole('region', { name: '사원 목록' })).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: '사원 상세' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /상세 보기/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('separator')).not.toBeInTheDocument();
-    expect(urls.some((url) => url.pathname.startsWith(`${LIST_PATH}/`))).toBe(false);
+    await user.click(screen.getByRole('button', { name: '다음' }));
+    await waitFor(() => {
+      const last = urls.filter((url) => url.pathname === LIST_PATH).at(-1);
+      expect(last?.searchParams.get('page')).toBe('2');
+    });
   });
 
   it('결과가 없으면 빈 상태를 낸다', async () => {

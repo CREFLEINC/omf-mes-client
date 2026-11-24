@@ -1,6 +1,9 @@
 import { Chip, EmptyState, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { SelectableTable } from '../../patterns/selectable-table';
 import type { Dispatch } from './types';
@@ -23,7 +26,7 @@ export const resultLabel = (row: Dispatch): string => {
   );
 };
 
-/** 이벤트 처리 결과 표. 행을 누르면 그 건의 Zalo 상세 드로어가 열린다(C-1·T-W-A). */
+/** 이벤트 처리 결과 표. 행을 누르면 그 건의 Zalo 상세가 오른쪽 상세 상자에 선다(#358). */
 export const DispatchTable = ({ rows, selectedId, eventName, onSelect }: DispatchTableProps) => {
   const columns: Column<Dispatch>[] = [
     {
@@ -57,15 +60,22 @@ export const DispatchTable = ({ rows, selectedId, eventName, onSelect }: Dispatc
     },
   ];
 
+  /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(단말 관리와 같다 · #358). */
+  const ordered = useColumnOrder('omf-mes:dispatch-history:columns:order', columns);
+  const resizable = useColumnWidths('omf-mes:dispatch-history:columns', ordered);
+  const fit = useFitColumns(resizable.columns);
+
   return (
-    <SelectableTable
-      columns={columns}
-      rows={rows}
-      getRowId={(row) => String(row.notificationEventId)}
-      activeId={selectedId === null ? null : String(selectedId)}
-      onActivate={(row) => onSelect(row.notificationEventId)}
-      caption={t.panes.dispatches}
-      empty={<EmptyState size="sm" title={t.state.empty} />}
-    />
+    <div ref={fit.ref} className="inspection-queue-table notify-list-table" style={resizable.style}>
+      <SelectableTable
+        columns={fit.columns}
+        rows={rows}
+        getRowId={(row) => String(row.notificationEventId)}
+        activeId={selectedId === null ? null : String(selectedId)}
+        onActivate={(row) => onSelect(row.notificationEventId)}
+        caption={t.panes.dispatches}
+        empty={<EmptyState size="sm" title={t.state.empty} />}
+      />
+    </div>
   );
 };

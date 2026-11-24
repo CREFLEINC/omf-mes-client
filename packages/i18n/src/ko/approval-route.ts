@@ -45,11 +45,7 @@ export const approvalRoute = {
     q: '승인 유형 검색',
   },
   actions: {
-    prevPage: '이전',
-    nextPage: '다음',
     goFirstPage: '첫 쪽으로',
-    /** 목록·상세·단계를 **함께** 다시 부른다. 목록만 부르면 갱신된 값과 낡은 값이 섞인다. */
-    reload: '다시 조회',
     /** 등록 폼을 여는 자리. 「추가」가 아니라 무엇을 만드는지 적는다 — 화면에 만들 것이 둘이다(결재선·단계). */
     create: '새 결재선',
     /** 등록의 주 액션. 수정의 「저장」과 갈라 적는다 — 없던 것이 생기는 일이다. */
@@ -94,7 +90,7 @@ export const approvalRoute = {
     lookupTruncated: '선택지가 앞쪽 일부만 보입니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
     lookupFailed: '선택지를 불러오지 못했습니다.',
   },
-  /** 쪽 이동. 번호 목록을 두지 않는 근거는 screens/approval-route/page-nav.tsx에 있다. */
+  /** 쪽 이동 범위 문구(빈 상태 판정 · `pagination.ts`). 쪽 이동 줄은 공용 `PageNav` 를 쓴다(#358). */
   pageNav: {
     label: '쪽 이동',
     range: (start: number, end: number, total: number): string =>
@@ -108,8 +104,8 @@ export const approvalRoute = {
     noResultDescription: '조건을 줄이거나 「미사용 포함」을 켠 뒤 다시 조회하세요.',
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
-    noSelectionTitle: '결재선을 고르면 내용과 결재 단계가 보입니다',
-    noSelectionDescription: '왼쪽 목록에서 승인 유형을 누르세요.',
+    noSelectionTitle: '결재선을 선택하세요.',
+    noSelectionDescription: '선택한 결재선의 내용과 결재 단계가 표시됩니다.',
     /*
      * 상세가 404다. **주소에 남은 결재선 번호를 화면이 스스로 정리한다** — 남겨 두면
      * 오른쪽 구획이 없는 결재선을 가리킨 채 주소만 남는다(수명 표 **5행**).
@@ -244,7 +240,7 @@ export const approvalRoute = {
      * 전 갈래에 붙이면 확실한 것까지 불확실하게 만든다.
      */
     networkUnconfirmed:
-      '요청이 전달됐는지 확인할 수 없습니다. 다시 저장하기 전에 「다시 조회」로 결과를 확인하세요.',
+      '요청이 전달됐는지 확인할 수 없습니다. 다시 저장하기 전에 [조회]로 결과를 확인하세요.',
   },
   /** 보내기 전에 화면이 잡는 것. 서버가 잡는 것과 겹쳐도 지우지 않는다 — 목적이 다르다. */
   validation: {

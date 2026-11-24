@@ -24,6 +24,8 @@ import {
   readFilters,
   readPage,
   readSelectedRouteId,
+  readSize,
+  type ListPageSize,
   toCreateSearchParams,
   toSearchParams,
   toSelectionSearchParams,
@@ -160,7 +162,6 @@ interface StepDraftState {
  * | 7 | 폼 입력 | 유지 | 유지 | 유지 | 유지 | 바뀐다 | **유지** | 유지 | **유지** | 유지 |
  * | 8 | **단계 추가·삭제·순서 이동** | 유지 | 유지 | 유지 | 유지 | **유지** | 바뀐다 | 유지 | 유지 | **유지** |
  * | 9 | 목록·상세·단계·참조 **응답 도착** | 유지 | 유지 | 유지 | 유지 | **건드리지 않는다** | **건드리지 않는다** | 유지 | 유지 | 유지 |
- * | 10 | **다시 조회**(새로고침) | 유지 | 유지 | 유지 | 유지 | **유지** | **유지** | 유지 | 유지 | 유지 |
  * | 11 | **폼 저장 성공(수정)** | 유지 | 유지 | 유지 | 끈다 | **서버 응답으로 다시 세운다** | 유지 | 닫혀 있다 | 비운다 | 유지 |
  * | 12 | **폼 저장 성공(등록)** | 유지 | 유지 | **새 번호를 넣는다** | **끈다** | 새 대상에서 다시 세운다 | **새 대상에서 세운다** | 닫혀 있다 | 비운다 | 비운다 |
  * | 13 | 폼 저장 실패 | 유지 | 유지 | 유지 | 유지 | **유지** | 유지 | 닫혀 있다 | **세운다** | 유지 |
@@ -235,10 +236,12 @@ export const ApprovalRouteScreen = () => {
 
   const filters = useMemo(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
+  /* 쪽 크기 — 고르지 않았으면 `null`(서버 기본값 · 주소 · 요청에 싣지 않는다 · omf-all-around#358). */
+  const size = readSize(searchParams);
   const selectedRouteId = readSelectedRouteId(searchParams);
   const isCreating = readIsCreating(searchParams);
 
-  const list = useRouteList(filters, page);
+  const list = useRouteList(filters, page, size);
   const detail = useRouteDetail(selectedRouteId);
   const steps = useRouteSteps(selectedRouteId);
   const businessUnits = useBusinessUnitLookup();
@@ -249,7 +252,7 @@ export const ApprovalRouteScreen = () => {
    * 404 안내가 매인 대상. **조건·쪽의 서명**이며, 그것이 바뀌면 안내가 가리킬 것이 없다.
    * 조작마다 따로 지우면 뒤로가기·주소 직접 편집이 그 길을 지나지 않아 안내가 살아남는다.
    */
-  const listContextKey = toSearchParams(filters, page).toString();
+  const listContextKey = toSearchParams(filters, page, size).toString();
   const [missingContextKey, setMissingContextKey] = useState<string | null>(null);
 
   const detailError = detail.isError ? toApiError(detail.error) : null;
@@ -422,27 +425,6 @@ export const ApprovalRouteScreen = () => {
     setSearchParams(next);
   };
 
-  /**
-   * 다시 조회 — **목록만 부르지 않는다.**
-   *
-   * 목록만 다시 부르면 갱신된 목록 값과 낡은 상세·단계가 한 화면에 섞인다.
-   * 고르지 않았으면 상세·단계는 부를 대상이 없다 — **읽는 자리에서 판정한다.**
-   *
-   * **조준 조회는 여기서 부르지 않는다.** 그것은 보이는 자료가 아니라 저장 직전의 판정이고,
-   * 모든 쓰기가 성공 뒤 `routeKeys.all`을 무효화하므로 저장과 저장 사이에 낡지 않는다.
-   */
-  const handleReload = (): void => {
-    void list.refetch();
-    businessUnits.refetch();
-
-    if (selectedRouteId !== null) {
-      void detail.refetch();
-      void steps.refetch();
-      /* 승인자 후보도 참조다 — 사람이 들고 나는 동안 낡는다. 고른 뒤에만 부르므로 여기 안이다. */
-      approvers.refetch();
-    }
-  };
-
   const reloadDetail = (): void => {
     void detail.refetch();
   };
@@ -505,7 +487,7 @@ export const ApprovalRouteScreen = () => {
        * 아니다 — 보내는 사이에 사용자가 다른 데로 갔더라도 그 자원은 여전히 사용 중이고
        * 단계가 0이라 상신을 막는다. 옮겨 가지 않으면 그것을 아는 사람이 없다.
        */
-      applySearchParams(toSelectionSearchParams(filters, page, saved.approvalRouteId));
+      applySearchParams(toSelectionSearchParams(filters, page, saved.approvalRouteId, size));
       toast.show({ variant: 'success', description: messages.common.created });
     },
   });
@@ -681,24 +663,29 @@ export const ApprovalRouteScreen = () => {
 
   const handleSearch = (next: RouteFilters): void => {
     // 조건·쪽·선택을 **한 patch로** 갱신한다. 나누면 그 사이에 어느 쪽도 아닌 한 프레임이 생긴다.
-    applyUserNavigation(toSearchParams(next, 1));
+    applyUserNavigation(toSearchParams(next, 1, size));
   };
 
   const handleChangePage = (nextPage: number): void => {
-    applyUserNavigation(toSearchParams(filters, nextPage));
+    applyUserNavigation(toSearchParams(filters, nextPage, size));
+  };
+
+  /** 쪽 크기를 바꾸면 첫 쪽으로 간다 — 조건과 같이 보이는 줄이 바뀌므로 선택도 함께 비운다. */
+  const handleChangePageSize = (nextSize: ListPageSize): void => {
+    applyUserNavigation(toSearchParams(filters, 1, nextSize));
   };
 
   const handleSelect = (approvalRouteId: number): void => {
-    applyUserNavigation(toSelectionSearchParams(filters, page, approvalRouteId));
+    applyUserNavigation(toSelectionSearchParams(filters, page, approvalRouteId, size));
   };
 
   const handleCreate = (): void => {
-    applyUserNavigation(toCreateSearchParams(filters, page));
+    applyUserNavigation(toCreateSearchParams(filters, page, size));
   };
 
   /** 등록 폼을 닫는다. 선택 자리도 등록 표시도 함께 비운다 — 두 자리는 하나의 자리다. */
   const closeCreateForm = (): void => {
-    applyUserNavigation(toSelectionSearchParams(filters, page, null));
+    applyUserNavigation(toSelectionSearchParams(filters, page, null, size));
   };
 
   /**
@@ -904,7 +891,7 @@ export const ApprovalRouteScreen = () => {
    *
    * 창이 열려 있는 동안 세 가지가 달라질 수 있다 — 대상이 **사라지고**(주소가 바뀐다),
    * 켜기의 **잠금 사유가 생기고**(조준 조회가 늦게 도착한다), 대상의 **사용 여부가 뒤집힌다**
-   * (「다시 조회」는 잠기지 않고, 다른 사람이 먼저 바꿀 수도 있다). 셋 다 보내지 않고 창을 닫는다.
+   * (다른 사람이 먼저 바꿀 수도 있다). 셋 다 보내지 않고 창을 닫는다.
    *
    * 사용 여부가 뒤집힌 자리를 보지 않으면 **이미 꺼진 것에 `:deactivate`가, 이미 켜진 것에
    * `:activate`가** 나간다 — 뒤엣것은 계약이 400으로 막아 사용자가 이유를 알 수 없는 거절을 받는다.
@@ -1047,8 +1034,15 @@ export const ApprovalRouteScreen = () => {
     if (selectedRouteId === null) {
       return (
         <section className="pane">
+          {/* 단말 관리의 빈 상세와 같은 모양 — 원 안 아이콘 · 제목 · 설명 한 줄(omf-all-around#358). */}
           <EmptyState
             size="sm"
+            className="users-roles-pick-empty"
+            icon={
+              <span className="inspection-standard-empty-icon">
+                <Icon name="account_tree" size={20} />
+              </span>
+            }
             title={t.empty.noSelectionTitle}
             description={t.empty.noSelectionDescription}
           />
@@ -1118,6 +1112,7 @@ export const ApprovalRouteScreen = () => {
       {/* 화면 제목 줄은 두지 않는다 — 조회 조건 · 목록 · 상세 통일 배치(검사 조회·판정과 같다 · #350). */}
       <ListDetailWorkspace
         storageKey="omf-mes:approval-route"
+        /* 배치는 늘 보이는 단추 둘(「좌우 배치」 · 「상하 배치」) — 단말 관리와 같다(omf-all-around#358). */
         filter={{
           label: messages.common.paneList.filter,
           content: (
@@ -1131,18 +1126,13 @@ export const ApprovalRouteScreen = () => {
                 handleSearch(DEFAULT_FILTERS);
               }}
               actions={
-                <>
-                  <Button variant="outlined" onClick={handleReload}>
-                    {t.actions.reload}
-                  </Button>
-                  <Button
-                    leadingIcon={<Icon name="add" size={18} />}
-                    disabled={isLocked}
-                    onClick={handleCreate}
-                  >
-                    {t.actions.create}
-                  </Button>
-                </>
+                <Button
+                  leadingIcon={<Icon name="add" size={18} />}
+                  disabled={isLocked}
+                  onClick={handleCreate}
+                >
+                  {t.actions.create}
+                </Button>
               }
             />
           ),
@@ -1157,7 +1147,9 @@ export const ApprovalRouteScreen = () => {
               routes={routes}
               isLoading={list.isPending}
               pageView={pageView}
+              pageMeta={list.data?.page ?? null}
               onChangePage={handleChangePage}
+              onChangePageSize={handleChangePageSize}
               selectedRouteId={selectedRouteId}
               onSelect={handleSelect}
               businessUnitLabel={businessUnitLabelOf}
@@ -1175,7 +1167,12 @@ export const ApprovalRouteScreen = () => {
           ),
         }}
         /* 상세 칸 껍데기가 「고른 결재선」 구획 이름을 갖는다 — 안쪽 상자에는 같은 이름을 겹쳐 달지 않는다(#350 리뷰). */
-        detail={{ label: t.panes.detail, content: detailSlot(), bare: true }}
+        detail={{
+          label: t.panes.detail,
+          content: detailSlot(),
+          bare: true,
+          className: 'approval-route-detail',
+        }}
       />
 
       {/*

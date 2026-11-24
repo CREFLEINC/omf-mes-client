@@ -184,7 +184,8 @@ const setup = (options: SetupOptions = {}) => {
   return { ...view, writes, summaryQueries };
 };
 
-const typesPane = () => within(screen.getByRole('region', { name: t.panes.types }));
+/* 조회 조건 · 목록 · 상세 통일 배치(#358) — 목록 상자 이름은 「인계 작업 목록」. */
+const typesPane = () => within(screen.getByRole('region', { name: t.workspace.list }));
 const settingPane = (name: string) =>
   within(screen.getByRole('region', { name: t.panes.setting(name) }));
 
@@ -226,8 +227,8 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     const user = userEvent.setup();
     setup();
 
-    /* 발송량 안내는 「인계 작업」 제목 옆 ⓘ 의 설명이다(관리웹 정리 시안 A). */
-    expect(await screen.findByRole('button', { name: t.intro })).toBeInTheDocument();
+    /* 발송량 안내는 조회 상자 안 파란 안내 한 줄이다(#358). */
+    expect(await screen.findByText(t.intro)).toBeInTheDocument();
     const pane = await openType(user, '자재 출고 피킹');
     expect(pane.getByText(t.types.MATERIAL_PICKING_REQUESTED.when)).toBeInTheDocument();
     expect(pane.getByText(t.types.MATERIAL_PICKING_REQUESTED.where)).toBeInTheDocument();
@@ -247,6 +248,14 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
       ],
     });
 
+    /* 11종이면 둘째 쪽으로 넘어간다 — 작업 이름 검색으로 거른다(화면 안 거르기 · #358). */
+    const search = await screen.findByRole('searchbox', { name: t.workspace.search });
+    /* 초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */
+    expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
+    await user.type(search, '적치 대기');
+    expect(screen.getByRole('button', { name: t.workspace.clear })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.workspace.apply }));
+    await waitFor(() => expect(typesPane().getAllByRole('row')).toHaveLength(2));
     const pane = await openType(user, '적치 대기');
     expect(pane.getByText(t.types.PUTAWAY_PENDING.when)).toBeInTheDocument();
     expect(pane.getByText(t.types.PUTAWAY_PENDING.where)).toBeInTheDocument();

@@ -366,3 +366,47 @@ describe('ErpOutboundScreen — 송신 예정 목록', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('ErpOutboundScreen — 조회 상자 · 배치(#358)', () => {
+  it('송신 항목 이름으로 화면 안에서 거르고, 초기화하면 다 보인다 — 서버 요청은 그대로다', async () => {
+    const { requests, user } = renderScreen([settingsRoute, messagesRoute()]);
+    await itemsPane().findByRole('button', { name: '입고 (G/R) 선택' });
+    const settingsCalls = requests.filter((url) => url.pathname === SETTINGS_PATH).length;
+    // 초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다.
+    expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
+
+    await user.type(screen.getByRole('searchbox', { name: '송신 항목 검색' }), '입고');
+    await user.click(
+      within(screen.getByRole('region', { name: '조회 조건' })).getByRole('button', {
+        name: '조회',
+      }),
+    );
+
+    expect(itemsPane().getByRole('button', { name: '입고 (G/R) 선택' })).toBeInTheDocument();
+    expect(itemsPane().queryByRole('button', { name: '반품 선택' })).toBeNull();
+    expect(itemsPane().getByText('총 1건')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '초기화' }));
+
+    expect(itemsPane().getByRole('button', { name: '반품 선택' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
+    expect(requests.filter((url) => url.pathname === SETTINGS_PATH)).toHaveLength(settingsCalls);
+  });
+
+  it('맞는 항목이 없으면 목록 자리에 빈 안내를 낸다', async () => {
+    const { user } = renderScreen([settingsRoute, messagesRoute()]);
+    await itemsPane().findByRole('button', { name: '입고 (G/R) 선택' });
+
+    await user.type(screen.getByRole('searchbox', { name: '송신 항목 검색' }), '없는 이름{Enter}');
+
+    expect(itemsPane().getByText('조건에 맞는 송신 항목이 없습니다')).toBeInTheDocument();
+  });
+
+  it('탭 줄 오른쪽에 배치 「⋯」 메뉴가 선다', async () => {
+    renderScreen([settingsRoute, messagesRoute()]);
+    await itemsPane().findByRole('button', { name: '입고 (G/R) 선택' });
+
+    const hub = within(screen.getByTestId('hub-actions'));
+    expect(hub.getByRole('button', { name: '더보기' })).toBeInTheDocument();
+  });
+});

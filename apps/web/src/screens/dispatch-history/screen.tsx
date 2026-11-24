@@ -1,10 +1,9 @@
 import {
   AlertBanner,
-  Breadcrumb,
   Button,
   DatePicker,
   EmptyState,
-  PageHeader,
+  Icon,
   Skeleton,
   type SelectItems,
 } from '@crefle/web-ui';
@@ -12,9 +11,15 @@ import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { DetailDrawer } from '../../patterns/detail-drawer';
-import { FilterMoreButton, HiddenFilterChips, useFilterMore } from '../../patterns/filter-more';
+import {
+  FilterMoreButton,
+  HiddenFilterChips,
+  hasChangedFilters,
+  useFilterMore,
+} from '../../patterns/filter-more';
 import { handoverTypeName, useHandoverAlertTypes } from '../../patterns/handover-alert-types';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
+import { PageNav } from '../../patterns/page-nav';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
 import { Select } from '../../patterns/select';
@@ -22,6 +27,7 @@ import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { DeliveryTable, toDeliveryView } from './delivery-table';
 import { DispatchTable } from './dispatch-table';
 import {
+  EMPTY_FILTERS,
   readFilters,
   readPage,
   readPeriod,
@@ -34,14 +40,15 @@ import { defaultPeriod, toPeriodQuery, validatePeriod, type PeriodInput } from '
 import { PAGE_SIZE, useDeliveries, useDepartments, useDispatches, useEvents } from './queries';
 
 const t = messages.dispatchHistory;
+const w = t.workspace;
 
 /**
  * W-CO-13 알림 발송 이력 — 이벤트 처리 결과(알림/건너뜀과 사유)와 수신자별 Zalo 결과.
- * 조건은 주소가 든다. 행을 고르면 그 건의 Zalo 발송 상세가 오른쪽 드로어로 열린다
- * (T-W-A·C-2, omf-all-around#183). 목록 아래에 붙이면 50행 아래로 밀려 누른 자리에서 보이지 않는다.
+ * 조건은 주소가 든다. 행을 고르면 그 건의 Zalo 발송 상세가 오른쪽 상세 상자에 선다
+ * (조회 조건 · 목록 · 상세 통일 배치 · omf-all-around#358 — 종전 드로어 #183 자리).
  *
  * **보이는 조건은 셋이다**(C-6) — 기간 · 이벤트 · 결과. 부서는 「조건 더보기」에 접고, 걸려 있으면
- * 칩으로 알린다. 초기화 단추는 없다 — 기간이 늘 차 있는 화면이다.
+ * 칩으로 알린다. [초기화]는 처음 연 때처럼 기본 7일 · 조건 없음으로 되돌려 다시 조회한다(#358).
  */
 export const DispatchHistoryScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -111,6 +118,21 @@ export const DispatchHistoryScreen = () => {
     setSearchParams(toSearchParams(period, filters));
   };
 
+  /* 처음 연 때와 같은 조건 — 기본 7일 · 조건 없음(#358). */
+  const reset = (): void => {
+    const seeded = defaultPeriod(new Date());
+    setPeriod(seeded);
+    setFilters(EMPTY_FILTERS);
+    setSearchParams(toSearchParams(seeded, EMPTY_FILTERS));
+  };
+
+  /* 초기화는 처음 값(기본 7일 · 조건 없음)과 달라진 것이 있을 때만 보인다 — 편집 중 값이나 조회에 쓰인 값. */
+  const isChanged = hasChangedFilters(
+    { ...defaultPeriod(new Date()), ...EMPTY_FILTERS },
+    { ...period, ...filters },
+    { ...applied, ...appliedFilters },
+  );
+
   const go = (nextPage: number, nextSelected: number | null): void => {
     setSearchParams(toSearchParams(applied, appliedFilters, nextPage, nextSelected));
   };
@@ -172,7 +194,6 @@ export const DispatchHistoryScreen = () => {
     if (dispatches.data === undefined) return <Skeleton variant="rect" height="12rem" />;
 
     const { items, page: meta } = dispatches.data;
-    const totalPages = Math.max(1, Math.ceil(meta.total / meta.size));
     return (
       <>
         <DispatchTable
@@ -181,27 +202,8 @@ export const DispatchHistoryScreen = () => {
           eventName={eventName}
           onSelect={(id) => go(page, id)}
         />
-        {totalPages > 1 && (
-          <div className="dispatch-pages">
-            <Button
-              variant="text"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => go(page - 1, null)}
-            >
-              {t.actions.prevPage}
-            </Button>
-            <span>{t.state.pageOf(page, totalPages)}</span>
-            <Button
-              variant="text"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => go(page + 1, null)}
-            >
-              {t.actions.nextPage}
-            </Button>
-          </div>
-        )}
+        {/* 공용 쪽 넘김(#358). 쪽 크기는 서버 요청 그대로(50건 고정)라 크기 고르기는 두지 않는다. */}
+        <PageNav meta={meta} buttonSize="md" onChangePage={(next) => go(next, null)} />
       </>
     );
   };
@@ -229,7 +231,7 @@ export const DispatchHistoryScreen = () => {
   };
 
   /*
-   * ⭐ **드로어 머리에 대상을 둔다.** 드로어가 목록을 덮으므로 어느 건의 상세인지 머리가 말해야 한다.
+   * ⭐ **상세 머리에 대상을 둔다.** 어느 건의 상세인지 머리가 말해야 한다(종전 드로어 머리 그대로).
    * 목록의 행이 정본이고, 주소로 바로 열어 그 쪽에 행이 없으면 발송 건이 든 같은 값을 쓴다.
    */
   const selectedHead = (): { target: string; summary: string } | null => {
@@ -241,36 +243,43 @@ export const DispatchHistoryScreen = () => {
     return { target: row.targetLabel ?? '—', summary: `${eventName(row.eventCode)}, ${at}` };
   };
 
-  const deliveryDrawer = (): ReactNode => {
-    if (selected === null) return null;
+  const deliveryDetail = (): ReactNode => {
+    if (selected === null) {
+      return (
+        <EmptyState
+          size="sm"
+          className="users-roles-pick-empty"
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="send" size={20} />
+            </span>
+          }
+          title={w.selectTitle}
+          description={w.select}
+        />
+      );
+    }
     const head = selectedHead();
     return (
-      <DetailDrawer
-        title={head?.target ?? t.panes.deliveries}
-        summary={head?.summary}
-        onClose={() => go(page, null)}
-        className="dispatch-detail-drawer"
-      >
+      <div className="dispatch-detail">
+        <div className="dispatch-detail-head">
+          <h2 className="pane-title">{head?.target ?? t.panes.deliveries}</h2>
+          {head !== null && <span className="dispatch-detail-summary">{head.summary}</span>}
+        </div>
         {/* 이름은 구획에 싣고 보이는 제목은 표 caption 하나로 둔다 — 같은 글이 두 번 서지 않게. */}
-        <section aria-label={t.panes.deliveries}>{deliverySlot()}</section>
-      </DetailDrawer>
+        {/* 머리를 아직 못 풀면 바깥 상자 이름이 「Zalo 발송 상세」라 안쪽 구획 이름을 겹쳐 달지 않는다. */}
+        {head === null ? (
+          <div>{deliverySlot()}</div>
+        ) : (
+          <section aria-label={t.panes.deliveries}>{deliverySlot()}</section>
+        )}
+      </div>
     );
   };
 
-  return (
+  const filter = (
     <>
-      <PageHeader
-        title={t.title}
-        description={t.description}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-
-      <div className="filter-bar">
+      <div className="filter-bar notify-filter-row">
         <div className="field-cell">
           <label className="field-label" htmlFor={`${fieldId}-period`}>
             {t.filters.period}
@@ -315,22 +324,26 @@ export const DispatchHistoryScreen = () => {
           ],
           (value) => setFilters((prev) => ({ ...prev, result: value })),
         )}
-        <div className="field-cell field-cell-unlabeled">
-          <div className="filter-actions">
-            <Button
-              disabled={draftReason !== null}
-              aria-describedby={draftReason === null ? undefined : periodReasonId}
-              onClick={search}
-            >
-              {t.filters.search}
+        {/* [조회][초기화][조건 더보기] 순으로 오른쪽 끝에 함께 선다(#358). */}
+        <div className="filter-actions field-cell-unlabeled">
+          <Button
+            disabled={draftReason !== null}
+            aria-describedby={draftReason === null ? undefined : periodReasonId}
+            onClick={search}
+          >
+            {t.filters.search}
+          </Button>
+          {isChanged && (
+            <Button variant="outlined" onClick={reset}>
+              {w.clear}
             </Button>
-            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
-          </div>
+          )}
+          <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
         </div>
       </div>
 
       {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
-      <div id={more.id} hidden={!more.isOpen}>
+      <div id={more.id} hidden={!more.isOpen} className="dispatch-filter-more">
         <div className="filter-bar">
           {selectField(
             'department',
@@ -343,15 +356,27 @@ export const DispatchHistoryScreen = () => {
       </div>
 
       <HiddenFilterChips open={more.isOpen} chips={hiddenChips} onRemove={removeDepartment} />
-
-      <section className="pane dispatch-pane" aria-labelledby="dispatch-title">
-        <h2 id="dispatch-title" className="pane-title">
-          {t.panes.dispatches}
-        </h2>
-        {dispatchSlot()}
-      </section>
-
-      {deliveryDrawer()}
     </>
+  );
+
+  const head = selected === null ? null : selectedHead();
+
+  return (
+    /* 머리글(경로 · 화면 이름)은 두지 않는다 — 사이드바가 위치를 말한다(단말 관리와 같은 틀 · #358). */
+    <ListDetailWorkspace
+      storageKey="omf-mes:dispatch-history"
+      initialRatio={0.55}
+      filter={{ label: w.filter, content: filter }}
+      list={{
+        label: w.list,
+        title: w.list,
+        count: periodReason === null ? dispatches.data?.page.total : undefined,
+        content: dispatchSlot(),
+      }}
+      detail={{
+        label: selected === null ? w.selectTitle : (head?.target ?? t.panes.deliveries),
+        content: deliveryDetail(),
+      }}
+    />
   );
 };

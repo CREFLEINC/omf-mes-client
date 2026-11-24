@@ -28,6 +28,8 @@ export interface CodeValueListQuery {
   includeInactive?: boolean;
   /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
   page?: number;
+  /** 쪽 크기를 고른 때만 싣는다 — 고르지 않으면 서버 기본값. */
+  size?: number;
 }
 
 export const erpCodeKeys = {

@@ -20,6 +20,7 @@ const renderPane = (overrides: Partial<Parameters<typeof CodeValueListPane>[0]> 
       includeInactive
       onIncludeInactiveChange={onIncludeInactiveChange}
       pageView={toPageView({ page: 1, size: 50, total: 3 }, 3)}
+      pageMeta={{ page: 1, size: 50, total: 3 }}
       onChangePage={onChangePage}
       selectedCodeValueId={null}
       onSelect={onSelect}
@@ -196,12 +197,13 @@ describe('CodeValueListPane — 조건과 쪽', () => {
   it('쪽 이동에 코드값 전용 접근 이름이 붙는다', () => {
     renderPane();
 
-    expect(screen.getByRole('navigation', { name: '코드값 쪽 이동' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: '코드값 쪽 이동' })).toBeInTheDocument();
   });
 
   it('다음을 누르면 다음 쪽을 알린다', async () => {
     const { onChangePage, user } = renderPane({
       pageView: toPageView({ page: 1, size: 2, total: 10 }, 2),
+      pageMeta: { page: 1, size: 2, total: 10 },
     });
 
     await user.click(screen.getByRole('button', { name: '다음' }));

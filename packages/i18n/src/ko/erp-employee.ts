@@ -9,6 +9,7 @@ export const erpEmployee = {
   panes: {
     filter: '조회 조건',
     list: '사원 목록',
+    detail: '사원 상세',
   },
   fields: {
     q: '사번·성명',
@@ -17,6 +18,7 @@ export const erpEmployee = {
   table: {
     workerNo: '사번',
     workerName: '성명',
+    businessUnitId: '사업장',
     plantId: '공장',
     departmentId: '부서',
     statusCode: 'ERP 상태',
@@ -28,15 +30,7 @@ export const erpEmployee = {
     inactive: '퇴사',
   },
   actions: {
-    prevPage: '이전',
-    nextPage: '다음',
     goFirstPage: '첫 쪽으로',
-  },
-  pageNav: {
-    label: '쪽 이동',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
-    totalOnly: (total: number): string => `전체 ${String(total)}건`,
   },
   loading: {
     list: '사원 목록을 불러오는 중',
@@ -44,5 +38,7 @@ export const erpEmployee = {
   empty: {
     noResultTitle: '조건에 맞는 사원이 없습니다',
     beyondLastTitle: '이 쪽에는 사원이 없습니다',
+    pickTitle: '사원을 선택하세요.',
+    pickDescription: '목록에서 사원을 고르면 ERP 에서 받은 모든 칸을 볼 수 있습니다.',
   },
 } as const;

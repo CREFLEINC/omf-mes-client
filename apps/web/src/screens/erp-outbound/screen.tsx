@@ -1,16 +1,29 @@
-import { Button, Chip, EmptyState, SkeletonText, type Column } from '@crefle/web-ui';
+import {
+  Button,
+  Chip,
+  EmptyState,
+  Icon,
+  SearchInput,
+  SkeletonText,
+  type Column,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
 import { BoardTable } from '../../patterns/board-table';
-import { BoardFrame } from '../../patterns/board-frame';
+import { useClientPage } from '../../patterns/client-page';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { hasChangedFilters } from '../../patterns/filter-more';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { OneLine } from '../../patterns/po-board';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
+import { PageNav } from '../../patterns/page-nav';
 import { documentNoOf, messageTitleOf } from '../integration-sync/message-labels';
 import { formatDateTime } from '../integration-sync/message-status';
-import { PageNav } from '../integration-sync/page-nav';
 import { toPageView } from '../integration-sync/pagination';
 import { toPeriodQuery, type PeriodInput } from '../integration-sync/period';
+import { ERP_LINK_ORIENTATION_KEY } from '../integration-sync/erp-link-layout';
 import type { IntegrationMessageRow } from '../integration-sync/types';
 import { CreatedFilter } from './created-filter';
 import { readCreatedPeriod } from './created-period';
@@ -48,6 +61,10 @@ interface ItemTableProps {
   onSelect: (code: string) => void;
 }
 
+/** 송신 항목 이름 검색 — 화면 안에서만 거른다(서버 요청은 그대로 · #358). 앞뒤 빈칸 · 대소문자는 가리지 않는다. */
+const matchesName = (item: OutboundItem, query: string): boolean =>
+  item.outboundItemName.toLowerCase().includes(query.trim().toLowerCase());
+
 /** 왼쪽 — 송신 항목 다섯. 줄 어디를 눌러도 고른다(입고 관리의 발주 목록과 같다). */
 const ItemTable = ({ items, counts, selectedCode, onSelect }: ItemTableProps) => {
   const columns: Column<OutboundItem>[] = [
@@ -60,7 +77,7 @@ const ItemTable = ({ items, counts, selectedCode, onSelect }: ItemTableProps) =>
     {
       key: 'enabled',
       header: t.table.send,
-      width: '72px',
+      width: '80px',
       render: (item) => (
         <Chip variant="status" size="sm" status={item.enabled ? 'success' : 'idle'}>
           {item.locked ? t.send.required : item.enabled ? t.send.on : t.send.off}
@@ -70,7 +87,7 @@ const ItemTable = ({ items, counts, selectedCode, onSelect }: ItemTableProps) =>
     {
       key: 'pending',
       header: t.table.pending,
-      width: '64px',
+      width: '72px',
       align: 'end',
       render: (item) =>
         countText(
@@ -83,7 +100,7 @@ const ItemTable = ({ items, counts, selectedCode, onSelect }: ItemTableProps) =>
     {
       key: 'failed',
       header: t.table.failed,
-      width: '64px',
+      width: '72px',
       align: 'end',
       render: (item) =>
         countText(
@@ -94,15 +111,18 @@ const ItemTable = ({ items, counts, selectedCode, onSelect }: ItemTableProps) =>
         ),
     },
   ];
+  /* 열 순서는 머리칸 손잡이로 바꾸고 브라우저에 남는다(단말 관리와 같다 · #358). 폭은 `BoardTable` 이 맡는다. */
+  const ordered = useColumnOrder('omf-mes:erp-outbound:columns:items:order', columns);
 
   return (
     <BoardTable
       label={t.panes.items}
       widthKey="omf-mes:erp-outbound:columns:items"
       minWidth="22rem"
-      columns={columns}
+      columns={ordered}
       rows={[...items]}
       getRowId={(item) => item.outboundItemCode}
+      empty={<EmptyState size="sm" live title={t.empty.noMatch} />}
       pick={{
         columnKey: 'outboundItemName',
         label: (item) => t.pickRow(item.outboundItemName),
@@ -183,6 +203,12 @@ export const ErpOutboundScreen = () => {
   const items = useOutboundItems();
   const counts = useOutboundCounts();
   const itemRows = items.data ?? [];
+  /* 이름 검색 — 치는 값(`search`)과 [조회]로 건 값(`query`). 주소에 두지 않는다(화면 안 거르기 · #358). */
+  const [search, setSearch] = useState('');
+  const [query, setQuery] = useState('');
+  const shownItems = itemRows.filter((item) => matchesName(item, query));
+  /* 송신 항목은 다 받는 작은 목록이라 화면에서 쪽을 나눈다(#358). */
+  const itemPage = useClientPage(shownItems);
   const requestedCode = searchParams.get('item');
   const selected =
     itemRows.find((item) => item.outboundItemCode === requestedCode) ?? itemRows[0] ?? null;
@@ -239,7 +265,7 @@ export const ErpOutboundScreen = () => {
   };
 
   const pendingSlot = () => {
-    if (selected === null) return <EmptyState size="sm" title={t.empty.pickItem} />;
+    if (selected === null) return null;
     if (selected.interfaceCode === null) {
       return <EmptyState size="sm" title={t.empty.noInterface} />;
     }
@@ -281,7 +307,10 @@ export const ErpOutboundScreen = () => {
     return (
       <>
         <PendingTable rows={pendingRows} />
-        <PageNav view={pageView} onChange={changePage} />
+        {/* 공용 쪽 넘김(#358) — 쪽은 서버에 그대로 넘긴다. 쪽 크기는 요청 인자를 바꾸지 않게 두지 않는다. */}
+        {pending.data !== undefined && (
+          <PageNav meta={pending.data.page} buttonSize="md" onChangePage={changePage} />
+        )}
       </>
     );
   };
@@ -289,44 +318,102 @@ export const ErpOutboundScreen = () => {
   const pendingCount = pending.data?.page.total;
 
   return (
-    <>
-      <ErpSendChips />
-
-      <BoardFrame
-        splitKey="omf-mes:erp-outbound:split"
-        initialRatio={0.35}
-        splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
-        list={{
-          label: t.panes.items,
-          count: items.data?.length,
-          content: items.isError ? (
-            <LoadErrorBanner error={items.error} onRetry={() => void items.refetch()} />
-          ) : items.isPending ? (
-            <div role="status" aria-label={t.loading.items}>
-              <SkeletonText lines={5} />
-            </div>
-          ) : (
-            <ItemTable
-              items={itemRows}
-              counts={counts}
-              selectedCode={selected?.outboundItemCode ?? null}
-              onSelect={select}
+    <ListDetailWorkspace
+      storageKey="omf-mes:erp-outbound"
+      orientationKey={ERP_LINK_ORIENTATION_KEY}
+      /* 목록 아래 공용 쪽 넘김(처음 ~ 마지막)이 한 줄에 들어가는 폭(#358 — 종전 0.35). */
+      initialRatio={0.42}
+      toolbar={<ErpSendChips />}
+      filter={{
+        label: t.filters.label,
+        content: (
+          /* 조건이 없던 화면 — 송신 항목 이름 검색 하나 + [조회][초기화](단말 관리와 같다 · #358).
+             초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */
+          <div className="filter-bar erp-link-filter">
+            <SearchInput
+              containerClassName="erp-link-search-input"
+              label={t.filters.search}
+              value={search}
+              placeholder={t.filters.searchPlaceholder}
+              onChange={(event) => {
+                setSearch(event.target.value);
+              }}
+              onSearch={(value) => {
+                setQuery(value);
+              }}
+              clearLabel={messages.common.clear}
             />
-          ),
-        }}
-        detail={{
-          label: t.panes.pending,
-          scroll: false,
-          content: (
-            <>
-              {selected !== null && (
-                <h2 className="pane-title">
-                  {selected.interfaceCode !== null && pendingCount !== undefined
-                    ? t.pendingTitle(selected.outboundItemName, pendingCount)
-                    : selected.outboundItemName}
-                </h2>
+            <div className="filter-actions field-cell-unlabeled">
+              <Button
+                onClick={() => {
+                  setQuery(search);
+                }}
+              >
+                {messages.common.search}
+              </Button>
+              {hasChangedFilters({ q: '' }, { q: search }, { q: query }) && (
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    setSearch('');
+                    setQuery('');
+                  }}
+                >
+                  {messages.common.reset}
+                </Button>
               )}
-              {selected?.interfaceCode != null && (
+            </div>
+          </div>
+        ),
+      }}
+      list={{
+        label: t.panes.items,
+        title: t.panes.list,
+        count: items.data === undefined ? undefined : shownItems.length,
+        content: items.isError ? (
+          <LoadErrorBanner error={items.error} onRetry={() => void items.refetch()} />
+        ) : items.isPending ? (
+          <div role="status" aria-label={t.loading.items}>
+            <SkeletonText lines={5} />
+          </div>
+        ) : (
+          <>
+            <div className="erp-link-list-body">
+              <ItemTable
+                items={itemPage.rows}
+                counts={counts}
+                selectedCode={selected?.outboundItemCode ?? null}
+                onSelect={select}
+              />
+            </div>
+            <PageNav {...itemPage.nav} buttonSize="md" />
+          </>
+        ),
+      }}
+      detail={{
+        label: t.panes.pending,
+        content:
+          selected === null ? (
+            /* 고른 항목이 없을 때 — 단말 관리와 같은 빈 상태(#358). */
+            <EmptyState
+              size="sm"
+              className="users-roles-pick-empty"
+              icon={
+                <span className="inspection-standard-empty-icon">
+                  <Icon name="upload" size={20} />
+                </span>
+              }
+              title={t.empty.pickItem}
+              description={t.empty.pickItemDescription}
+            />
+          ) : (
+            <>
+              <h2 className="pane-title">
+                {selected.interfaceCode !== null && pendingCount !== undefined
+                  ? t.pendingTitle(selected.outboundItemName, pendingCount)
+                  : selected.outboundItemName}
+              </h2>
+              {selected.interfaceCode !== null && (
                 <div className="po-board-filter">
                   <CreatedFilter applied={created} today={today} onApply={applyCreated} />
                 </div>
@@ -334,8 +421,7 @@ export const ErpOutboundScreen = () => {
               {pendingSlot()}
             </>
           ),
-        }}
-      />
-    </>
+      }}
+    />
   );
 };

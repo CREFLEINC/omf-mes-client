@@ -1,8 +1,5 @@
 /** W-CO-12 알림 연결 설정 — Zalo 연결 정보와 이벤트별 템플릿(001 신설, 결정 #20). */
 export const zaloConnection = {
-  title: '알림 연결 설정',
-  subtitle: 'Zalo 연결 정보',
-  breadcrumbRoot: '시스템 관리',
   panes: { status: '연결 상태', connection: '연결 정보', templates: '이벤트별 템플릿' },
   status: {
     ACTIVE: '정상',
@@ -58,5 +55,24 @@ export const zaloConnection = {
     secretTooLong: (max: number): string => `${String(max)}자를 넘을 수 없습니다.`,
     paramMaxLength: '20~400 사이의 정수를 입력하세요.',
     templateId: '템플릿 ID는 영문·숫자 1~40자이거나 비워 둡니다.',
+  },
+  /** 조회 조건 · 연결 정보 · 템플릿 목록 · 상세 통일 배치(omf-all-around#358). */
+  workspace: {
+    filter: '조회 조건',
+    search: '템플릿 이름 검색',
+    searchPlaceholder: '템플릿 이름을 입력하세요',
+    apply: '조회',
+    clear: '초기화',
+    list: '템플릿 목록',
+    kind: '구분',
+    name: '템플릿',
+    templateId: '템플릿 ID',
+    kinds: { event: '이벤트', handover: '인계 작업' },
+    empty: '조건에 맞는 템플릿이 없습니다.',
+    hasError: '확인 필요',
+    selectTitle: '템플릿을 선택하세요.',
+    select: '고른 템플릿의 템플릿 ID 를 넣고 파라미터 이름을 복사할 수 있습니다.',
+    /** 템플릿 ID 는 위 연결 정보의 [저장]으로 함께 저장된다 — 저장 범위는 종전과 같다. */
+    saveNote: '템플릿 ID 는 위 연결 정보의 [저장]을 누르면 연결 정보와 함께 저장됩니다.',
   },
 } as const;

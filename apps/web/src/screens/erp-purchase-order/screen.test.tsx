@@ -157,7 +157,7 @@ describe('ErpPurchaseOrderScreen', () => {
     });
     const user = userEvent.setup();
 
-    const select = await screen.findByRole('button', { name: t.actions.select('SYN-PO-901') });
+    const select = await screen.findByRole('button', { name: 'SYN-PO-901' });
     const listUrl = requests
       .map((request) => new URL(request.url))
       .find((url) => url.pathname === '/logistics/purchase-orders');
@@ -185,9 +185,8 @@ describe('ErpPurchaseOrderScreen', () => {
     expect(await within(listPane).findByText('합성 등록')).toBeInTheDocument();
     /* ERP 발주번호는 P/O 번호와 겹쳐 보이지 않는다. */
     expect(within(listPane).queryByText('SYN-EPO-901')).not.toBeInTheDocument();
-    /* ERP 원본 코드는 공통코드 이름으로(서버 #737 · P-67). */
-    expect(await within(listPane).findByText('합성 발주유형')).toBeInTheDocument();
-    expect(await within(listPane).findByText('합성 구매그룹')).toBeInTheDocument();
+    /* 발주 유형 · 구매그룹 · 공장은 목록에 두지 않고 상세에서 본다(#358). */
+    expect(within(listPane).queryByText('합성 구매그룹')).not.toBeInTheDocument();
     const codeGroups = requests
       .map((request) => new URL(request.url))
       .filter((url) => url.pathname === '/mdm/code-values');
@@ -230,7 +229,7 @@ describe('ErpPurchaseOrderScreen', () => {
     );
     const user = userEvent.setup();
 
-    await screen.findByRole('button', { name: t.actions.select('SYN-PO-901') });
+    await screen.findByRole('button', { name: 'SYN-PO-901' });
     const first = listUrls(requests)[0];
     expect(first?.searchParams.has('progress')).toBe(false);
     expect(first?.searchParams.has('openOnly')).toBe(false);
@@ -279,7 +278,7 @@ describe('ErpPurchaseOrderScreen', () => {
     const removeOf = (label: string) =>
       screen.queryByRole('button', { name: messages.common.filterMore.remove(label) });
 
-    await screen.findByRole('button', { name: t.actions.select('SYN-PO-901') });
+    await screen.findByRole('button', { name: 'SYN-PO-901' });
     for (const label of [t.fields.plant, t.fields.status, t.fields.orderType]) {
       expect(screen.queryByRole('combobox', { name: label })).toBeNull();
     }
@@ -325,7 +324,7 @@ describe('ErpPurchaseOrderScreen', () => {
     );
     const user = userEvent.setup();
 
-    await screen.findByRole('button', { name: t.actions.select('SYN-PO-901') });
+    await screen.findByRole('button', { name: 'SYN-PO-901' });
     await pickRange(user, screen.getByLabelText(t.fields.orderDate), '2026-10-01', '2026-10-15');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
@@ -349,7 +348,7 @@ describe('ErpPurchaseOrderScreen', () => {
     const user = userEvent.setup();
     const removeProgress = messages.common.filterMore.remove(t.fields.progress);
 
-    await screen.findByRole('button', { name: t.actions.select('SYN-PO-901') });
+    await screen.findByRole('button', { name: 'SYN-PO-901' });
     expect(screen.queryByRole('group', { name: t.progress.group })).toBeNull();
     expect(screen.getByText(t.filters.chip(t.fields.progress, t.progress.done))).toBeVisible();
 
@@ -386,9 +385,7 @@ describe('ErpPurchaseOrderScreen', () => {
       await within(listPane).findByRole('columnheader', { name: t.fields.progress }),
     ).toBeInTheDocument();
     const rowOf = async (orderNo: string) =>
-      (await within(listPane).findByRole('button', { name: t.actions.select(orderNo) })).closest(
-        'tr',
-      ) as HTMLElement;
+      (await within(listPane).findByRole('button', { name: orderNo })).closest('tr') as HTMLElement;
     expect(
       within(await rowOf('SYN-PO-901')).getByText(t.progress.status.PARTIAL),
     ).toBeInTheDocument();
@@ -441,8 +438,6 @@ describe('ErpPurchaseOrderScreen', () => {
     expect(valueOf(t.fields.orderType)).toBe(t.values.missing);
     expect(valueOf(t.fields.ioType)).toBe(t.values.missing);
     await waitFor(() => expect(valueOf(t.fields.purchaseGroup)).toBe('SYN-PG-RETIRED'));
-    const listPane = screen.getByRole('region', { name: t.panes.list });
-    expect(within(listPane).getByText('SYN-PG-RETIRED')).toBeInTheDocument();
   });
 
   it('ERP 칸이 없는 응답(#737 이전)도 「-」로 보인다', async () => {

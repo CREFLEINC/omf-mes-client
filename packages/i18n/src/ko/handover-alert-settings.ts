@@ -4,9 +4,6 @@
  * 이 파일은 「언제」·「처리」 안내만 든다.
  */
 export const handoverAlertSettings = {
-  /* 설계 W-CO-14·사이드바와 같은 글자다. */
-  title: '인계작업 알림 설정',
-  breadcrumbRoot: '시스템 관리',
   intro:
     '처음에는 모두 꺼져 있습니다. Zalo 를 켜면 고객사 Zalo 발송량(요금과 일일 한도)이 늘어납니다.',
   panes: {
@@ -132,5 +129,16 @@ export const handoverAlertSettings = {
       when: '관리웹 출하 처리로 출하가 생길 때',
       where: 'POP › 출하 포장',
     },
+  },
+  /** 조회 조건 · 목록 · 상세 통일 배치(omf-all-around#358). */
+  workspace: {
+    filter: '조회 조건',
+    list: '인계 작업 목록',
+    search: '작업 이름 검색',
+    searchPlaceholder: '작업 이름을 입력하세요',
+    apply: '조회',
+    clear: '초기화',
+    selectTypeTitle: '인계 작업을 선택하세요.',
+    selectType: '고른 작업의 알림 받기 · Zalo · 담당자를 정할 수 있습니다.',
   },
 } as const;

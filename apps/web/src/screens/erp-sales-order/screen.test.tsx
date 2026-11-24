@@ -156,7 +156,7 @@ describe('ErpSalesOrderScreen', () => {
     });
     const user = userEvent.setup();
 
-    const select = await screen.findByRole('button', { name: t.actions.select('SYN-SO-801') });
+    const select = await screen.findByRole('button', { name: 'SYN-SO-801' });
     const listUrl = requests
       .map((request) => new URL(request.url))
       .find((url) => url.pathname === '/logistics/sales-orders');
@@ -171,10 +171,9 @@ describe('ErpSalesOrderScreen', () => {
     /* ERP 원번호·납품처는 수주번호·고객사와 겹쳐 보이지 않는다. */
     expect(within(listPane).queryByText('SYN-ERP-SO-801')).not.toBeInTheDocument();
     expect(within(listPane).queryByText('SYN-SHIP · 합성 납품처')).not.toBeInTheDocument();
-    /* 상태·ERP 원본 코드는 공통코드 이름으로(서버 장부 P-67 · P-68). */
+    /* 상태는 공통코드 이름으로(서버 장부 P-68). 수주 유형 · 영업그룹은 목록에 두지 않고 상세에서 본다(#358). */
     expect(await within(listPane).findByText('수신')).toBeInTheDocument();
-    expect(await within(listPane).findByText('합성 수주유형')).toBeInTheDocument();
-    expect(await within(listPane).findByText('합성 영업그룹')).toBeInTheDocument();
+    expect(within(listPane).queryByText('합성 영업그룹')).not.toBeInTheDocument();
     const codeGroups = requests
       .map((request) => new URL(request.url))
       .filter((url) => url.pathname === '/mdm/code-values');
@@ -219,7 +218,7 @@ describe('ErpSalesOrderScreen', () => {
     );
     const user = userEvent.setup();
 
-    await screen.findByRole('button', { name: t.actions.select('SYN-SO-801') });
+    await screen.findByRole('button', { name: 'SYN-SO-801' });
     expect(listUrls(requests)[0]?.searchParams.has('progress')).toBe(false);
     /* 진행은 「조건 더보기」 안에 있다. */
     await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
@@ -259,7 +258,7 @@ describe('ErpSalesOrderScreen', () => {
     const user = userEvent.setup();
     const removeProgress = messages.common.filterMore.remove(t.fields.progress);
 
-    await screen.findByRole('button', { name: t.actions.select('SYN-SO-801') });
+    await screen.findByRole('button', { name: 'SYN-SO-801' });
     expect(screen.queryByRole('group', { name: t.progress.group })).toBeNull();
     expect(screen.getByText(t.filters.chip(t.fields.progress, t.progress.done))).toBeVisible();
 
@@ -291,9 +290,7 @@ describe('ErpSalesOrderScreen', () => {
       await within(listPane).findByRole('columnheader', { name: t.fields.progress }),
     ).toBeInTheDocument();
     const rowOf = async (orderNo: string) =>
-      (await within(listPane).findByRole('button', { name: t.actions.select(orderNo) })).closest(
-        'tr',
-      ) as HTMLElement;
+      (await within(listPane).findByRole('button', { name: orderNo })).closest('tr') as HTMLElement;
     expect(
       within(await rowOf('SYN-SO-801')).getByText(t.progress.status.COMPLETED),
     ).toBeInTheDocument();
@@ -323,7 +320,7 @@ describe('ErpSalesOrderScreen', () => {
     renderWithProviders(<ErpSalesOrderScreen />, { fetch, route: '/?status=RECEIVED' });
     const user = userEvent.setup();
 
-    await screen.findByRole('button', { name: t.actions.select('SYN-SO-801') });
+    await screen.findByRole('button', { name: 'SYN-SO-801' });
     const listUrls = () =>
       requests
         .map((request) => new URL(request.url))
@@ -360,7 +357,7 @@ describe('ErpSalesOrderScreen', () => {
     const removeOf = (label: string) =>
       screen.queryByRole('button', { name: messages.common.filterMore.remove(label) });
 
-    await screen.findByRole('button', { name: t.actions.select('SYN-SO-801') });
+    await screen.findByRole('button', { name: 'SYN-SO-801' });
     /* 코드가 아니라 선택지 이름으로. 보이는 칸(고객사)은 칩으로 겹쳐 적지 않는다. */
     expect(await screen.findByText(t.filters.chip(t.fields.status, '수신'))).toBeVisible();
     expect(removeOf(t.fields.unassignedOnly)).toBeVisible();
@@ -393,7 +390,7 @@ describe('ErpSalesOrderScreen', () => {
     );
     const user = userEvent.setup();
 
-    await screen.findByRole('button', { name: t.actions.select('SYN-SO-801') });
+    await screen.findByRole('button', { name: 'SYN-SO-801' });
     await pickRange(user, screen.getByLabelText(t.fields.orderDate), '2026-10-01', '2026-10-15');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
@@ -410,7 +407,7 @@ describe('ErpSalesOrderScreen', () => {
     renderWithProviders(<ErpSalesOrderScreen />, { fetch });
     const user = userEvent.setup();
 
-    await screen.findByRole('button', { name: t.actions.select('SYN-SO-801') });
+    await screen.findByRole('button', { name: 'SYN-SO-801' });
     expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
 
     const q = screen.getByRole('searchbox', { name: t.fields.q });
@@ -470,5 +467,22 @@ describe('ErpSalesOrderScreen', () => {
 
     await waitFor(() => expect(screen.getByText(t.listLoadFailedTitle)).toBeInTheDocument());
     expect(screen.queryByText(t.empty.title)).not.toBeInTheDocument();
+  });
+
+  it('쪽 크기는 처음 25 이고, 고르면 주소 size 와 목록 요청 size 로 싣는다', async () => {
+    const { fetch, requests } = recordingFetch(normalRoutes);
+    renderWithProviders(<ErpSalesOrderScreen />, { fetch });
+    const user = userEvent.setup();
+
+    await screen.findByRole('button', { name: 'SYN-SO-801' });
+    expect(listUrls(requests)[0]?.searchParams.get('size')).toBe('25');
+
+    await user.click(
+      screen.getByRole('combobox', { name: messages.screenPatterns.pageNav.pageSize }),
+    );
+    await user.click(
+      screen.getByRole('option', { name: messages.screenPatterns.pageNav.pageSizeOption(50) }),
+    );
+    await waitFor(() => expect(listUrls(requests).at(-1)?.searchParams.get('size')).toBe('50'));
   });
 });

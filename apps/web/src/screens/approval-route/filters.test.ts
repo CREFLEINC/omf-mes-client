@@ -6,6 +6,7 @@ import {
   readFilters,
   readPage,
   readSelectedRouteId,
+  readSize,
   toCreateSearchParams,
   toRouteListQuery,
   toSearchParams,
@@ -229,8 +230,27 @@ describe('toRouteListQuery', () => {
     expect(toRouteListQuery(filters(), 2).page).toBe(2);
   });
 
-  it('쪽 크기를 싣지 않는다', () => {
+  it('쪽 크기를 고르지 않았으면 싣지 않는다', () => {
     // 서버 기본값을 쓴다 — 화면이 정한 크기를 심으면 그것이 계약처럼 굳는다.
     expect(Object.keys(toRouteListQuery(filters(), 2))).not.toContain('size');
+  });
+
+  it('사용자가 고른 쪽 크기는 싣는다(#358)', () => {
+    expect(toRouteListQuery(filters(), 1, 10).size).toBe(10);
+  });
+});
+
+describe('쪽 크기(#358)', () => {
+  it('주소에 고른 크기만 남기고, 선택지 밖 값은 고르지 않은 것으로 본다', () => {
+    expect(toSearchParams(filters(), 1).has('size')).toBe(false);
+    expect(toSearchParams(filters(), 1, 20).get('size')).toBe('20');
+    expect(readSize(new URLSearchParams('size=20'))).toBe(20);
+    expect(readSize(new URLSearchParams('size=7'))).toBeNull();
+    expect(readSize(new URLSearchParams())).toBeNull();
+  });
+
+  it('선택 · 등록 주소도 쪽 크기를 이어 간다', () => {
+    expect(toSelectionSearchParams(filters(), 1, 9001, 10).get('size')).toBe('10');
+    expect(toCreateSearchParams(filters(), 1, 50).get('size')).toBe('50');
   });
 });

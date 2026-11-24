@@ -18,7 +18,9 @@ const baseProps = (
     { page: 1, size: 50, total: partnerFixtures.length },
     partnerFixtures.length,
   ),
+  pageMeta: { page: 1, size: 50, total: partnerFixtures.length },
   onChangePage: vi.fn<(page: number) => void>(),
+  onChangePageSize: vi.fn(),
   selectedPartnerId: null,
   onSelect: vi.fn<(partnerId: number) => void>(),
   loadError: null,
@@ -36,7 +38,9 @@ describe('PartnerListPane — 목록 표시', () => {
   it('거래처코드·거래처명 두 열만 낸다', () => {
     renderPane();
 
-    const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
+    const headers = screen
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent?.replace('drag_indicator', ''));
     expect(headers).toEqual(['거래처코드', '거래처명']);
   });
 
@@ -213,6 +217,7 @@ describe('PartnerListPane — 쪽 이동', () => {
   it('다음을 누르면 다음 쪽을 알린다', async () => {
     const { onChangePage, user } = renderPane({
       pageView: toPageView({ page: 2, size: 50, total: 240 }, 50),
+      pageMeta: { page: 2, size: 50, total: 240 },
     });
 
     await user.click(screen.getByRole('button', { name: '다음' }));
@@ -238,8 +243,10 @@ describe('PartnerListPane — 만들 수 없는 것', () => {
       'SAMPLE-PTNR-A',
       'SAMPLE-PTNR-B',
       'SAMPLE-PTNR-C',
+      '처음',
       '이전',
       '다음',
+      '마지막',
     ]);
   });
 });

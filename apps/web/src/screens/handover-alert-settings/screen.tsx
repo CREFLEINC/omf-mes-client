@@ -1,11 +1,11 @@
 import {
   AlertBanner,
-  Breadcrumb,
   Button,
   Chip,
   Dialog,
   EmptyState,
-  PageHeader,
+  Icon,
+  SearchInput,
   Skeleton,
   Switch,
   Table,
@@ -22,8 +22,15 @@ import {
   useHandoverAlertTypes,
   type HandoverAlertCode,
 } from '../../patterns/handover-alert-types';
+import { useClientPage } from '../../patterns/client-page';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useColumnWidths } from '../../patterns/column-resize';
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { InfoTip } from '../../patterns/info-tip';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
+import { PageNav } from '../../patterns/page-nav';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
@@ -56,6 +63,7 @@ import {
 } from './types';
 
 const t = messages.handoverAlertSettings;
+const w = t.workspace;
 const ZALO_CONNECTION_PATH = '/notification/zalo-connection';
 const NO_SCOPES: readonly DataScope[] = [];
 
@@ -124,6 +132,9 @@ export const HandoverAlertSettingsScreen = () => {
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pendingMove, setPendingMove] = useState<Move | null>(null);
+  /* 작업 이름 검색 — 화면 안에서만 거른다(서버 요청은 그대로 · #358). 입력 중인 글과 [조회]로 건 글을 따로 든다. */
+  const [search, setSearch] = useState('');
+  const [keyword, setKeyword] = useState('');
 
   /* 고른 자리를 URL 에 적어 둔다 — 새로고침해도 같은 행이 열린다. */
   useEffect(() => {
@@ -247,6 +258,23 @@ export const HandoverAlertSettingsScreen = () => {
       },
     },
   ];
+
+  /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(단말 관리와 같다 · #358). */
+  const orderedColumns = useColumnOrder(
+    'omf-mes:handover-alert-settings:columns:order',
+    typeColumns,
+  );
+  const resizable = useColumnWidths('omf-mes:handover-alert-settings:columns', orderedColumns);
+  const fit = useFitColumns(resizable.columns);
+  const needle = keyword.trim().toLowerCase();
+  const shownTypes =
+    plantId === null
+      ? []
+      : (types.data ?? []).filter(
+          (type) => needle === '' || typeName(type).toLowerCase().includes(needle),
+        );
+  /* 인계 작업은 한 번에 다 받는 작은 목록이라 화면 안에서 쪽을 나눈다. */
+  const typePage = useClientPage(shownTypes);
 
   const plantOptions =
     plants.data?.map((plant) => ({
@@ -409,66 +437,123 @@ export const HandoverAlertSettingsScreen = () => {
     );
   };
 
-  const workspace = () => {
+  const typeList = () => {
     if (plants.isError) return loadError(plants.error, () => void plants.refetch());
     if (plants.isPending) return <Skeleton variant="rect" height="12rem" />;
     if (plantId === null) return <EmptyState size="sm" title={t.state.noPlants} />;
+    if (types.isError || summary.isError) {
+      return loadError(types.error ?? summary.error, () => {
+        void types.refetch();
+        void summary.refetch();
+      });
+    }
+    if (types.isPending || summary.isPending) return <Skeleton variant="rect" height="12rem" />;
 
     return (
-      <div className="two-pane alarm-recipient-layout">
-        <section className="pane alarm-recipient-pane" aria-labelledby="handover-types-title">
-          {/*
-           * 처음엔 모두 꺼져 있고 Zalo 를 켜면 발송량이 는다는 안내는 제목 옆 ⓘ 로(관리웹 정리 시안 A).
-           * ⓘ 를 제목 밖에 둔다 — 이 제목이 구획 · 표의 이름이라 문장이 이름에 섞이면 안 된다.
-           */}
-          <div className="info-label">
-            <h2 id="handover-types-title" className="pane-title">
-              {t.panes.types}
-            </h2>
-            <InfoTip text={t.intro} />
-          </div>
-          {types.isError || summary.isError ? (
-            loadError(types.error ?? summary.error, () => {
-              void types.refetch();
-              void summary.refetch();
-            })
-          ) : types.isPending || summary.isPending ? (
-            <Skeleton variant="rect" height="12rem" />
-          ) : (
-            <Table
-              columns={typeColumns}
-              rows={types.data}
-              getRowId={(type) => type.alertTypeCode}
-              density="compact"
-              className="handover-type-table"
-              aria-labelledby="handover-types-title"
-              empty={<EmptyState size="sm" title={t.state.noTypes} />}
-            />
-          )}
-        </section>
-
-        <section className="pane alarm-recipient-pane" aria-labelledby="handover-setting-title">
-          <h2 id="handover-setting-title" className="pane-title">
-            {t.panes.setting(typeName(selectedType))}
-          </h2>
-          {selectedCode === null ? <EmptyState size="sm" title={t.state.noTypes} /> : settingBody()}
-        </section>
-      </div>
+      <>
+        {/* 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 작업 단추로 넘긴다(단말 관리와 같다). */}
+        <div
+          ref={fit.ref}
+          className="inspection-queue-table notify-list-table"
+          style={resizable.style}
+          onClick={(event) => {
+            const target = event.target;
+            if (!(target instanceof Element)) return;
+            if (target.closest('button, a, input, select, textarea') !== null) return;
+            target.closest('tbody tr')?.querySelector<HTMLButtonElement>('td button')?.click();
+          }}
+        >
+          <Table
+            columns={fit.columns}
+            rows={typePage.rows}
+            getRowId={(type) => type.alertTypeCode}
+            density="compact"
+            className="handover-type-table"
+            aria-label={t.panes.types}
+            empty={<EmptyState size="sm" title={t.state.noTypes} />}
+          />
+        </div>
+        <PageNav {...typePage.nav} buttonSize="md" />
+      </>
     );
   };
 
-  return (
-    <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
+  const settingPane = () => {
+    if (plantId === null || selectedCode === null) {
+      return (
+        <EmptyState
+          size="sm"
+          className="users-roles-pick-empty"
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="notifications" size={20} />
+            </span>
+          }
+          title={w.selectTypeTitle}
+          description={w.selectType}
+        />
+      );
+    }
 
+    return (
+      <>
+        <h2 className="pane-title notify-detail-title">
+          {t.panes.setting(typeName(selectedType))}
+        </h2>
+        {settingBody()}
+      </>
+    );
+  };
+
+  const filter = (
+    <>
+      <div className="filter-bar notify-filter-row">
+        {/* US2-6 — 고를 공장이 하나뿐이면 칸을 두지 않는다. 공장은 고르는 즉시 적용한다. */}
+        {(plants.data?.length ?? 0) > 1 && (
+          <SelectField
+            label={t.fields.plant}
+            options={plantOptions}
+            value={plantId === null ? '' : String(plantId)}
+            placeholder={t.fields.plant}
+            onChange={(value) => {
+              if (value === String(plantId) || selectedCode === null) return;
+              requestMove({ plant: value, type: selectedCode });
+            }}
+          />
+        )}
+        <SearchInput
+          containerClassName="notify-search-input"
+          label={w.search}
+          value={search}
+          placeholder={w.searchPlaceholder}
+          onChange={(event) => setSearch(event.target.value)}
+          onSearch={(value) => setKeyword(value)}
+          clearLabel={messages.common.clear}
+        />
+        <div className="filter-actions field-cell-unlabeled">
+          <Button onClick={() => setKeyword(search)}>{w.apply}</Button>
+          {/* 초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */}
+          {hasChangedFilters({ q: '' }, { q: search }, { q: keyword }) && (
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setSearch('');
+                setKeyword('');
+              }}
+            >
+              {w.clear}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* 처음엔 모두 꺼져 있고 Zalo 를 켜면 발송량이 는다는 안내(관리웹 정리 시안 A의 ⓘ) — 파란 안내 한 줄(#358). */}
+      <p className="iqc-inspection-action-note notify-filter-note" data-tone="info" role="note">
+        <Icon name="info" size={16} aria-hidden />
+        {t.intro}
+      </p>
+
+      {/* 연결이 없다는 진짜 경고라 노란색 그대로 둔다(#358). */}
       {summary.data?.zaloStatus !== undefined && summary.data.zaloStatus !== 'ACTIVE' && (
         <div className="banner-slot">
           <AlertBanner
@@ -483,25 +568,29 @@ export const HandoverAlertSettingsScreen = () => {
           </AlertBanner>
         </div>
       )}
+    </>
+  );
 
-      {(plants.data?.length ?? 0) > 1 && (
-        <div className="handover-top">
-          <div className="alarm-department-bar">
-            <SelectField
-              label={t.fields.plant}
-              options={plantOptions}
-              value={plantId === null ? '' : String(plantId)}
-              placeholder={t.fields.plant}
-              onChange={(value) => {
-                if (value === String(plantId) || selectedCode === null) return;
-                requestMove({ plant: value, type: selectedCode });
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {workspace()}
+  return (
+    <>
+      {/* 머리글(경로 · 화면 이름)은 두지 않는다 — 사이드바가 위치를 말한다(단말 관리와 같은 틀 · #358). */}
+      <ListDetailWorkspace
+        storageKey="omf-mes:handover-alert-settings"
+        filter={{ label: w.filter, content: filter }}
+        list={{
+          label: w.list,
+          title: w.list,
+          count: plantId === null || types.data === undefined ? undefined : shownTypes.length,
+          content: typeList(),
+        }}
+        detail={{
+          label:
+            plantId === null || selectedCode === null
+              ? w.selectTypeTitle
+              : t.panes.setting(typeName(selectedType)),
+          content: settingPane(),
+        }}
+      />
 
       <Dialog
         open={pendingMove !== null}

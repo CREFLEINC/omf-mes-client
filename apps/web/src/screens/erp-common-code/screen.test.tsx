@@ -83,14 +83,12 @@ describe('ErpCommonCodeScreen', () => {
   it('ERP 분류 그룹만 그리고 MES 그룹은 감춘다', async () => {
     const { urls } = renderScreen([groupsRoute()]);
 
-    expect(
-      await screen.findByRole('button', { name: 'PUR_GROUP 코드값 보기' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'UNIT 코드값 보기' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'PUR_GROUP' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'UNIT' })).toBeInTheDocument();
     expect(screen.queryByText('ITEM_TYPE')).not.toBeInTheDocument();
-    // 그룹 수는 목록 제목 줄의 건수로 한 번만 선다(#350) — 표 아래 「N개 그룹」은 걷었다.
+    // 그룹 수는 목록 제목 줄의 건수로 선다(#350).
     expect(screen.getByText('2건')).toBeInTheDocument();
-    expect(screen.getByText('코드 그룹을 고르세요')).toBeInTheDocument();
+    expect(screen.getByText('코드 그룹을 선택하세요.')).toBeInTheDocument();
 
     // 미사용 그룹도 받는다 — 꺼진 ERP 그룹이 사라지지 않게.
     const request = urls.find((url) => url.pathname === GROUPS_PATH);
@@ -113,21 +111,21 @@ describe('ErpCommonCodeScreen', () => {
       },
     ]);
 
-    expect(
-      await screen.findByRole('button', { name: 'PUR_GROUP 코드값 보기' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'PUR_GROUP' })).toBeInTheDocument();
     expect(urls.filter((url) => url.pathname === GROUPS_PATH)).toHaveLength(2);
   });
 
-  it('그룹을 누르면 그룹 코드로 코드값을 조회해 그린다', async () => {
+  it('그룹을 누르면 상세에 그룹 칸을 내고 그룹 코드로 코드값을 조회해 그린다', async () => {
     const { urls, user } = renderScreen([groupsRoute(), valuesRoute()]);
 
-    await user.click(await screen.findByRole('button', { name: 'PUR_GROUP 코드값 보기' }));
+    await user.click(await screen.findByRole('button', { name: 'PUR_GROUP' }));
 
+    const detail = screen.getByRole('region', { name: '코드 그룹 상세' });
+    expect(within(detail).getByText('예시 구매그룹')).toBeInTheDocument();
     const pane = await screen.findByRole('region', { name: '코드값' });
     expect(await within(pane).findByText('예시 값 B')).toBeInTheDocument();
     expect(within(pane).getByText('미사용')).toBeInTheDocument();
-    expect(within(pane).getByText('1–2 / 전체 2건')).toBeInTheDocument();
+    expect(within(pane).getByText('총 2건')).toBeInTheDocument();
     // 한국어·베트남어 명칭 열은 두지 않는다 — 코드명과 겹친다.
     expect(within(pane).queryByText('한국어 명칭')).not.toBeInTheDocument();
     expect(within(pane).queryByText('베트남어 명칭')).not.toBeInTheDocument();
@@ -140,13 +138,14 @@ describe('ErpCommonCodeScreen', () => {
   it('검색어와 미사용 포함을 코드값 조건으로 싣는다', async () => {
     const { urls, user } = renderScreen([groupsRoute(), valuesRoute()], '?group=UNIT');
     await screen.findByText('예시 값 B');
+    const form = screen.getByRole('form', { name: '코드값 조회 조건' });
     // 초기화는 바뀐 것이 있을 때만 보인다 — 고른 그룹은 조건이 아니다.
-    expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
+    expect(within(form).queryByRole('button', { name: '초기화' })).toBeNull();
 
-    await user.type(screen.getByLabelText('코드·코드명'), 'SAMPLE');
-    expect(screen.getByRole('button', { name: '초기화' })).toBeInTheDocument();
-    await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
-    await user.click(screen.getByRole('button', { name: '조회' }));
+    await user.type(within(form).getByLabelText('코드·코드명'), 'SAMPLE');
+    expect(within(form).getByRole('button', { name: '초기화' })).toBeInTheDocument();
+    await user.click(within(form).getByRole('checkbox', { name: '미사용 포함' }));
+    await user.click(within(form).getByRole('button', { name: '조회' }));
 
     await waitFor(() => {
       const last = urls.filter((url) => url.pathname === VALUES_PATH).at(-1);
@@ -156,11 +155,29 @@ describe('ErpCommonCodeScreen', () => {
     });
   });
 
+  it('위 그룹 검색은 화면 안에서만 거르고 서버에 다시 묻지 않는다', async () => {
+    const { urls, user } = renderScreen([groupsRoute()]);
+    await screen.findByRole('button', { name: 'PUR_GROUP' });
+    const before = urls.length;
+    // 그룹 검색 초기화도 검색어가 처음 값(빈칸)과 다를 때만 보인다.
+    expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
+
+    await user.type(screen.getByLabelText('그룹 코드·그룹명'), '단위');
+    await user.click(screen.getAllByRole('button', { name: '조회' })[0]!);
+    expect(screen.queryByRole('button', { name: 'PUR_GROUP' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'UNIT' })).toBeInTheDocument();
+
+    await user.click(screen.getAllByRole('button', { name: '초기화' })[0]!);
+    expect(screen.getByRole('button', { name: 'PUR_GROUP' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
+    expect(urls.length).toBe(before);
+  });
+
   it('주소의 그룹이 ERP 분류가 아니면 코드값을 조회하지 않는다', async () => {
     const { urls } = renderScreen([groupsRoute()], '?group=ITEM_TYPE');
-    await screen.findByRole('button', { name: 'PUR_GROUP 코드값 보기' });
+    await screen.findByRole('button', { name: 'PUR_GROUP' });
 
-    expect(screen.getByText('코드 그룹을 고르세요')).toBeInTheDocument();
+    expect(screen.getByText('코드 그룹을 선택하세요.')).toBeInTheDocument();
     expect(urls.some((url) => url.pathname === VALUES_PATH)).toBe(false);
   });
 

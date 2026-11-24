@@ -28,11 +28,6 @@ export const erpSalesOrder = {
     storageLocation: '창고',
     cancelled: '취소',
   },
-  /** 두 구획 사이 끌기 막대(키보드 ←·→ 로도 움직인다). */
-  splitter: '끌어서 목록·상세 폭 조절',
-  /** 막대 위쪽 끝의 단추 — 목록을 왼쪽으로 완전히 접고 편다. */
-  listCollapse: '수주 목록 접기',
-  listExpand: '수주 목록 펼치기',
   panes: {
     filters: '수주정보 조회 조건',
     list: '수주 목록',
@@ -43,12 +38,6 @@ export const erpSalesOrder = {
     all: '전체',
     /** 「조건 더보기」에 접힌 조건의 칩 — 「상태: 반려」처럼 칸 이름과 값을 한 줄로. */
     chip: (label: string, value: string): string => `${label}: ${value}`,
-  },
-  actions: {
-    select: (orderNo: string): string => `${orderNo} 선택`,
-    firstPage: '첫 쪽',
-    prevPage: '이전',
-    nextPage: '다음',
   },
   /**
    * 진행 — 출하가 다 됐는가(사용자 지시 2026-10-28). 조건 단추와 목록 열이 같은 낱말을 쓴다.
@@ -77,17 +66,12 @@ export const erpSalesOrder = {
   empty: {
     title: '조건에 맞는 수주가 없습니다',
     beyondTitle: '이 쪽에는 수주가 없습니다',
-    notSelectedTitle: '수주를 고르세요',
+    notSelectedTitle: '수주를 선택하세요.',
+    notSelectedDescription: '목록에서 수주를 고르면 머리 정보와 라인을 볼 수 있습니다.',
     linesTitle: '라인이 없습니다',
   },
   loading: '수주를 불러오는 중',
   listLoadFailedTitle: '수주 목록을 불러오지 못했습니다',
   detailLoadFailedTitle: '수주 상세를 불러오지 못했습니다',
   loadFailedDescription: '잠시 후 다시 시도하세요. 계속되면 관리자에게 문의하세요.',
-  page: {
-    label: '수주 쪽 이동',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
-    total: (total: number): string => `전체 ${String(total)}건`,
-  },
 } as const;

@@ -246,7 +246,8 @@ describe('IntegrationSyncScreen — 목록 표시', () => {
     const table = messageList().getByRole('table');
     const headers = within(table)
       .getAllByRole('columnheader')
-      .map((cell) => cell.textContent);
+      /* 열 순서 끌기 손잡이(아이콘 글자 `drag_indicator`)는 빼고 이름만 본다(#358). */
+      .map((cell) => cell.textContent?.replace('drag_indicator', ''));
 
     // 첫 칸은 디자인 시스템이 렌더하는 선택 열이라 머리글 글자가 없다.
     expect(headers).toEqual([
@@ -466,13 +467,45 @@ describe('IntegrationSyncScreen — 쪽 이동', () => {
     expect(requestsTo(requests, LIST_PATH)[0]?.url.searchParams.has('page')).toBe(false);
   });
 
-  it('지금 위치를 받은 건수와 전체 건수로 계산해 낸다', async () => {
+  it('지금 쪽 / 전체 쪽과 전체 건수를 낸다(공용 쪽 넘김 · #358)', async () => {
     renderScreen(
       [listRoute(messageRowFixtures, { page: 3, size: 3, total: 10 })],
       `${PERIOD}&page=3`,
     );
 
-    expect(await screen.findByText('7–9 / 전체 10건')).toBeInTheDocument();
+    expect(await screen.findByText('3 / 4')).toBeInTheDocument();
+    expect(screen.getByText('총 10건')).toBeInTheDocument();
+  });
+
+  it('처음 · 마지막으로 한 번에 옮긴다', async () => {
+    const { requests, user } = renderScreen(
+      [listRoute(messageRowFixtures, { page: 2, size: 3, total: 10 })],
+      `${PERIOD}&page=2`,
+    );
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    await user.click(screen.getByRole('button', { name: '마지막' }));
+    expect(currentLocation()).toContain('page=4');
+    expect(narrowedRequests(requests).at(-1)?.url.searchParams.get('page')).toBe('4');
+
+    await user.click(screen.getByRole('button', { name: '처음' }));
+    expect(currentLocation()).not.toContain('page=');
+  });
+
+  it('쪽 크기를 고르면 첫 쪽으로 가고 크기가 주소와 요청에 실린다 — 고르기 전에는 싣지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [listRoute(messageRowFixtures, { page: 2, size: 20, total: 60 })],
+      `${PERIOD}&page=2`,
+    );
+    await screen.findByText('SAMPLE-KEY-0001');
+    expect(requestsTo(requests, LIST_PATH)[0]?.url.searchParams.has('size')).toBe(false);
+
+    await user.click(screen.getByRole('combobox', { name: '페이지 크기' }));
+    await user.click(screen.getByRole('option', { name: '50건' }));
+
+    expect(currentLocation()).toContain('size=50');
+    expect(currentLocation()).not.toContain('page=');
+    expect(requestsTo(requests, LIST_PATH).at(-1)?.url.searchParams.get('size')).toBe('50');
   });
 
   it('마지막 쪽에서는 다음이 잠긴다', async () => {
@@ -498,7 +531,7 @@ describe('IntegrationSyncScreen — 쪽 이동', () => {
   it('0건이면 전체 0건이 보이고 양쪽 이동이 다 잠긴다', async () => {
     renderScreen([listRoute([], { page: 1, size: 50, total: 0 })], PERIOD);
 
-    expect(await screen.findByText('전체 0건')).toBeInTheDocument();
+    expect(await screen.findByText('총 0건')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '이전' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '다음' })).toBeDisabled();
   });
@@ -583,7 +616,7 @@ describe('IntegrationSyncScreen — 상세', () => {
     renderScreen([listRoute(), detailRoute()], PERIOD);
     await screen.findByText('SAMPLE-KEY-0001');
 
-    expect(detailPane().getByText('목록에서 메시지를 고르세요')).toBeInTheDocument();
+    expect(detailPane().getByText('연계 메시지를 선택하세요.')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
@@ -671,7 +704,7 @@ describe('IntegrationSyncScreen — 상세', () => {
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(currentLocation()).not.toContain('sel=');
-    expect(detailPane().getByText('목록에서 메시지를 고르세요')).toBeInTheDocument();
+    expect(detailPane().getByText('연계 메시지를 선택하세요.')).toBeInTheDocument();
   });
 });
 

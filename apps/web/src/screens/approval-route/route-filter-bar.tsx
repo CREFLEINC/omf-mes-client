@@ -108,7 +108,7 @@ export const RouteFilterBar = ({
   const isChanged = hasChangedFilters(DEFAULT_FILTERS, filters, appliedFilters);
 
   return (
-    <div className="filter-bar">
+    <div className="filter-bar approval-route-filter">
       <SelectField
         label={t.fields.approvalTypeCode}
         options={typeOptions}

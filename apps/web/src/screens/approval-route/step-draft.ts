@@ -122,7 +122,7 @@ export const removeStepDraft = (drafts: readonly StepDraft[], draftId: string): 
  *
  * **마지막 한 단계는 지울 수 없다.** 저장 잠금(단계 0)보다 한 걸음 앞선 방어다 — 지운 뒤에
  * 「저장할 수 없다」고 말하면 사용자는 이미 화면에서 그것을 잃은 뒤이고, 되돌리려면
- * 「다시 조회」로 통째로 버려야 한다.
+ * 다시 불러와 통째로 버려야 한다.
  */
 export const stepRemoveBlockedReason = (draftCount: number): string | null =>
   draftCount <= 1 ? t.actionReasons.stepRemoveLast : null;

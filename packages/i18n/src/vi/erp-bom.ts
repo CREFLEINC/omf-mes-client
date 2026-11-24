@@ -10,10 +10,6 @@ export const erpBom: Translated<typeof ko.erpBom> = {
     itemType: 'Loại',
     q: 'Mã·tên mặt hàng',
   },
-  splitter: 'Kéo để điều chỉnh độ rộng danh sách mặt hàng cha·BOM',
-  listCollapse: 'Thu gọn danh sách mặt hàng cha',
-  listExpand: 'Mở danh sách mặt hàng cha',
-  pickParent: (itemCode: string): string => `Chọn ${itemCode}`,
   panes: {
     parents: 'Danh sách mặt hàng cha',
     filter: 'Điều kiện tra cứu',
@@ -63,7 +59,9 @@ export const erpBom: Translated<typeof ko.erpBom> = {
   empty: {
     parentsBeyondLast: 'Trang này không có mặt hàng cha',
     noParentsTitle: 'Không có mặt hàng cha phù hợp',
-    noParentTitle: 'Hãy chọn mặt hàng cha',
+    noParentTitle: 'Hãy chọn mặt hàng cha.',
+    noParentDescription:
+      'Chọn mặt hàng cha trong danh sách để xem thông tin mặt hàng · BOM và linh kiện.',
     noBomTitle: 'Mặt hàng này không có BOM',
   },
 };

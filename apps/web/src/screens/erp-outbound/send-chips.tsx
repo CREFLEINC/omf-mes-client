@@ -22,6 +22,7 @@ export const ERP_OUTBOUND_PATH = '/master-data/erp-outbound';
  *
  * `linkToTab` 이면 칩 묶음이 ERP 송신 탭으로 가는 링크다(연동 현황·이력). 건수를 아직 받지 못했거나 권한이 없으면
  * 건수 칩을 세우지 않는다 — 0 으로 보이면 보낼 것이 없는 줄 안다. 켜짐을 모르면(옛 서버) 켜짐 칩을 세우지 않는다.
+ * **0건인 건수 칩은 세우지 않는다**(#358) — 누르는 거르기가 아니라 걸려 있을 일이 없다. 세울 칩이 하나도 없으면 자리도 두지 않는다.
  */
 export const ErpSendChips = ({ linkToTab = false }: { linkToTab?: boolean }) => {
   const target = useHubActionsTarget();
@@ -37,8 +38,10 @@ export const ErpSendChips = ({ linkToTab = false }: { linkToTab?: boolean }) => 
   const pending = counts.total(MESSAGE_STATUS.pending);
   const failed = counts.total(MESSAGE_STATUS.failed);
   const hasCounts = pending !== undefined && failed !== undefined;
+  const showPending = hasCounts && pending > 0;
+  const showFailed = hasCounts && failed > 0;
 
-  if (target === null || (!hasCounts && sendEnabled === null)) return null;
+  if (target === null || (!showPending && !showFailed && sendEnabled === null)) return null;
 
   const chips = (
     <>
@@ -47,15 +50,15 @@ export const ErpSendChips = ({ linkToTab = false }: { linkToTab?: boolean }) => 
           {sendEnabled ? t.chips.sendOn : t.chips.sendOff}
         </Chip>
       )}
-      {hasCounts && (
-        <>
-          <Chip variant="status" size="sm" status={pending > 0 ? 'info' : 'idle'}>
-            {t.chips.pending(pending)}
-          </Chip>
-          <Chip variant="status" size="sm" status={failed > 0 ? 'error' : 'idle'}>
-            {t.chips.failed(failed)}
-          </Chip>
-        </>
+      {showPending && (
+        <Chip variant="status" size="sm" status="info">
+          {t.chips.pending(pending)}
+        </Chip>
+      )}
+      {showFailed && (
+        <Chip variant="status" size="sm" status="error">
+          {t.chips.failed(failed)}
+        </Chip>
       )}
     </>
   );

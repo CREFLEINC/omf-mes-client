@@ -6,23 +6,21 @@
 export const erpCommonCode = {
   title: '공통코드 조회 (ERP)',
   breadcrumbRoot: '시스템 관리',
-  /** 두 구획 사이 끌기 막대(키보드 ←·→ 로도 움직인다). */
-  splitter: '끌어서 그룹·코드값 폭 조절',
-  /** 막대 위쪽 끝의 단추 — 그룹 목록을 왼쪽으로 완전히 접고 편다. */
-  listCollapse: 'ERP 코드 그룹 접기',
-  listExpand: 'ERP 코드 그룹 펼치기',
+  panes: {
+    filter: '조회 조건',
+    detail: '코드 그룹 상세',
+  },
   groups: {
-    label: 'ERP 코드 그룹',
+    label: 'ERP 코드 그룹 목록',
     groupCode: '그룹 코드',
     groupName: '그룹명',
     description: '설명',
     isActive: '사용',
-    openAction: (groupCode: string): string => `${groupCode} 코드값 보기`,
   },
   values: {
     label: '코드값',
     labelOf: (groupCode: string): string => `${groupCode} 코드값`,
-    selectHint: '코드 그룹을 고르세요',
+    filterLabel: '코드값 조회 조건',
     code: '코드',
     codeName: '코드명',
     displayOrder: '표시 순서',
@@ -31,6 +29,7 @@ export const erpCommonCode = {
     isActive: '사용',
   },
   fields: {
+    groupSearch: '그룹 코드·그룹명',
     q: '코드·코드명',
     includeInactive: '미사용 포함',
   },
@@ -40,15 +39,7 @@ export const erpCommonCode = {
     inactive: '미사용',
   },
   actions: {
-    prevPage: '이전',
-    nextPage: '다음',
     goFirstPage: '첫 쪽으로',
-  },
-  pageNav: {
-    label: '쪽 이동',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
-    totalOnly: (total: number): string => `전체 ${String(total)}건`,
   },
   loading: {
     groups: 'ERP 코드 그룹을 불러오는 중',
@@ -58,5 +49,8 @@ export const erpCommonCode = {
     noGroupsTitle: 'ERP 에서 받은 코드 그룹이 없습니다',
     noValuesTitle: '조건에 맞는 코드값이 없습니다',
     beyondLastTitle: '이 쪽에는 코드값이 없습니다',
+    noMatchTitle: '조건에 맞는 코드 그룹이 없습니다',
+    pickTitle: '코드 그룹을 선택하세요.',
+    pickDescription: '목록에서 코드 그룹을 고르면 그 그룹의 정보와 코드값을 볼 수 있습니다.',
   },
 } as const;

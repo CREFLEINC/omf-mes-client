@@ -2,7 +2,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { toRouteListQuery, type ApprovalTypeCode } from './filters';
+import { toRouteListQuery, type ApprovalTypeCode, type ListPageSize } from './filters';
 import type { ApprovalRoute, ApprovalRouteStep, PageMeta, RouteFilters } from './types';
 
 /**
@@ -30,8 +30,8 @@ export const routeKeys = {
    * 조준 조회도 이 아래에 있어 저장 뒤 판정이 낡은 채로 남지 않는다.
    */
   all: ['approval-routes'] as const,
-  list: (filters: RouteFilters, page: number) =>
-    ['approval-routes', 'list', filters, page] as const,
+  list: (filters: RouteFilters, page: number, size: ListPageSize | null = null) =>
+    ['approval-routes', 'list', filters, page, size] as const,
   detail: (approvalRouteId: number) => ['approval-routes', 'detail', approvalRouteId] as const,
   steps: (approvalRouteId: number) => ['approval-routes', 'steps', approvalRouteId] as const,
   duplicateProbe: (approvalTypeCode: string) =>
@@ -65,14 +65,17 @@ export const DUPLICATE_PROBE_SIZE = 100;
 export const useRouteList = (
   filters: RouteFilters,
   page: number,
+  size: ListPageSize | null = null,
 ): UseQueryResult<RouteListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: routeKeys.list(filters, page),
+    queryKey: routeKeys.list(filters, page, size),
     queryFn: () =>
       runRequest(() =>
-        client.GET('/app/approval-routes', { params: { query: toRouteListQuery(filters, page) } }),
+        client.GET('/app/approval-routes', {
+          params: { query: toRouteListQuery(filters, page, size) },
+        }),
       ),
   });
 };

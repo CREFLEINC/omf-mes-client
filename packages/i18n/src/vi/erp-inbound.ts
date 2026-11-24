@@ -10,6 +10,21 @@ export const erpInbound: Translated<typeof ko.erpInbound> = {
     receiveOn: 'Nhận: bật',
     receiveOff: 'Nhận: tắt',
   },
+  filters: {
+    label: 'Điều kiện tra cứu',
+    search: 'Tìm bảng',
+    searchPlaceholder: 'Nhập tên bảng',
+  },
+  panes: {
+    list: 'Danh sách bảng nhận',
+    detail: 'Chi tiết bảng nhận',
+  },
+  detail: {
+    pick: 'Hãy chọn một bảng nhận.',
+    pickDescription: 'Có thể xem kết quả đọc lần cuối của bảng đã chọn và yêu cầu Đọc ngay.',
+    pickRow: (name: string): string => `Chọn ${name}`,
+  },
+  noMatch: 'Không có bảng phù hợp điều kiện',
   table: {
     label: 'Bảng nhận ERP',
     name: 'Bảng',

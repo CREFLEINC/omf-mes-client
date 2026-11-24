@@ -9,7 +9,13 @@ export const erpOutbound: Translated<typeof ko.erpOutbound> = {
   title: 'Gửi ERP',
   panes: {
     items: 'Hạng mục gửi',
+    list: 'Danh sách hạng mục gửi',
     pending: 'Chờ gửi',
+  },
+  filters: {
+    label: 'Điều kiện tra cứu',
+    search: 'Tìm hạng mục gửi',
+    searchPlaceholder: 'Nhập tên hạng mục gửi',
   },
   splitter: 'Kéo để điều chỉnh độ rộng hạng mục gửi·chờ gửi',
   listCollapse: 'Thu gọn hạng mục gửi',
@@ -34,7 +40,9 @@ export const erpOutbound: Translated<typeof ko.erpOutbound> = {
   pendingTitle: (name: string, count: number): string => `${name} · chờ gửi ${String(count)}`,
   openMessage: (title: string): string => `Mở chi tiết ${title}`,
   empty: {
-    pickItem: 'Hãy chọn hạng mục gửi',
+    pickItem: 'Hãy chọn hạng mục gửi.',
+    pickItemDescription: 'Có thể xem các bản tin chờ gửi của hạng mục đã chọn.',
+    noMatch: 'Không có hạng mục gửi phù hợp điều kiện',
     noInterface: 'Hạng mục này chưa gửi sang ERP',
     noPending: 'Không có bản tin chờ gửi',
     beyondLast: 'Trang này không có bản tin chờ gửi',

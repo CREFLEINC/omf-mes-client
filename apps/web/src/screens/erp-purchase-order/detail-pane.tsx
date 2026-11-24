@@ -2,9 +2,11 @@ import { AlertBanner, Chip, type Column, EmptyState, SkeletonText } from '@crefl
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { BoardTable } from '../../patterns/board-table';
+import { useClientPage, type TabPageSize } from '../../patterns/client-page';
+import { PageNav } from '../../patterns/page-nav';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { OneLine } from '../../patterns/po-board';
+import { ErpDetailFields, ErpListTable, ErpPickEmpty } from '../erp-item/erp-data-parts';
 
 import { formatCustomsClearance } from './customs-clearance';
 import { isForeignOrder, type PurchaseOrderDetail, type PurchaseOrderLine } from './types';
@@ -70,10 +72,11 @@ export const ErpPurchaseOrderDetailPane = ({
 }: ErpPurchaseOrderDetailPaneProps) => {
   if (state.kind === 'idle') {
     return (
-      <>
-        <h2 className="pane-title">{t.panes.detail}</h2>
-        <EmptyState size="sm" title={t.empty.notSelectedTitle} />
-      </>
+      <ErpPickEmpty
+        icon="shopping_cart"
+        title={t.empty.notSelectedTitle}
+        description={t.empty.notSelectedDescription}
+      />
     );
   }
 
@@ -121,30 +124,31 @@ export const ErpPurchaseOrderDetailPane = ({
 
   /* 잔량은 서버가 내리지 않는다 — 발주에서 입하를 뺀 값을 표시로만 보인다(0 아래로 내리지 않는다). */
   const columns: Column<PurchaseOrderLine>[] = [
-    { key: 'lineNo', header: t.fields.lineNo, width: '56px', align: 'end' },
+    { key: 'lineNo', header: t.fields.lineNo, width: '72px', align: 'end' },
     {
       key: 'itemId',
       header: t.fields.item,
+      width: '200px',
       render: (row) => <OneLine text={itemNameOf(row.itemId)} />,
     },
     {
       key: 'orderedQty',
       header: t.fields.orderedQty,
-      width: '88px',
+      width: '104px',
       align: 'end',
       render: (row) => formatQty(row.orderedQty),
     },
     {
       key: 'receivedQty',
       header: t.fields.receivedQty,
-      width: '88px',
+      width: '104px',
       align: 'end',
       render: (row) => formatQty(row.receivedQty),
     },
     {
       key: 'remainingQty',
       header: t.fields.remainingQty,
-      width: '88px',
+      width: '104px',
       align: 'end',
       render: (row) => formatQty(Math.max(0, row.orderedQty - row.receivedQty)),
     },
@@ -188,37 +192,43 @@ export const ErpPurchaseOrderDetailPane = ({
     },
   ];
 
-  /*
-   * 화면 틀(`BoardFrame`)의 오른쪽 구획 내용 — 머리 사실 칸(입고 관리 라인 머리와 같은 모양) 다음 라인 표. 구획이 통째로
-   * 스크롤한다.
-   */
+  /* 머리 칸은 「이름 : 값」, 그 아래 라인 표(열 조절 · 화면 안 쪽 넘김 · #358). 상자가 통째로 스크롤한다. */
   return (
-    <>
-      <h2 className="pane-title">{t.panes.detail}</h2>
-      <dl className="po-board-order-facts">
-        {fields.map((field) => (
-          <div key={field.key}>
-            <dt>{field.label}</dt>
-            <dd>{field.value}</dd>
-          </div>
-        ))}
-      </dl>
-      <section className="board-frame-sub" aria-label={t.panes.lines}>
-        <div className="erp-po-lines-head">
-          <h2 className="pane-title">{t.panes.lines}</h2>
-          {linesAction}
-        </div>
-        <BoardTable
+    <div className="erp-data-detail">
+      <ErpDetailFields title={t.panes.detail} fields={fields} />
+      <Lines columns={columns} rows={lines} linesAction={linesAction} />
+    </div>
+  );
+};
+
+/** 라인 표 — 다 받은 라인을 화면에서 쪽으로 나눈다. 고른 건이 바뀌면 상자가 새로 서므로 첫 쪽부터다. */
+const Lines = ({
+  columns,
+  rows,
+  linesAction,
+}: {
+  columns: Column<PurchaseOrderLine>[];
+  rows: PurchaseOrderLine[];
+  linesAction: ReactNode;
+}) => {
+  const paged = useClientPage(rows);
+  return (
+    <section className="erp-data-sub" aria-label={t.panes.lines}>
+      <div className="erp-data-sub-head">
+        <h2 className="pane-title">{t.panes.lines}</h2>
+        {linesAction}
+      </div>
+      <div className="erp-data-sub-scroll">
+        <ErpListTable
           label={t.panes.lines}
-          widthKey="omf-mes:erp-purchase-order:columns:lines"
-          minWidth="60rem"
+          storageKey="omf-mes:erp-purchase-order:columns:lines"
           columns={columns}
-          rows={lines}
+          rows={paged.rows}
           getRowId={(row) => String(row.purchaseOrderLineId)}
-          sort={null}
           empty={<EmptyState size="sm" title={t.empty.linesTitle} />}
         />
-      </section>
-    </>
+      </div>
+      <PageNav<TabPageSize> {...paged.nav} buttonSize="md" />
+    </section>
   );
 };

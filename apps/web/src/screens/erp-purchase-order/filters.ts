@@ -62,6 +62,16 @@ export const readPage = (params: URLSearchParams): number => {
   return Number.isSafeInteger(page) && page > 0 ? page : 1;
 };
 
+/** 목록 쪽 크기 선택지 — 처음 값(25)은 종전 고정 크기 그대로다. */
+export const LIST_PAGE_SIZES = [25, 50, 100] as const;
+export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
+
+/** 고른 쪽 크기. 고른 적이 없거나 선택지에 없으면 `null`(처음 값 25). */
+export const readSize = (params: URLSearchParams): ListPageSize | null => {
+  const size = Number(params.get('size'));
+  return LIST_PAGE_SIZES.find((option) => option === size) ?? null;
+};
+
 export const readSelectedId = (params: URLSearchParams): number | null => {
   const id = Number(params.get('sel'));
   return Number.isSafeInteger(id) && id > 0 ? id : null;
@@ -71,7 +81,11 @@ export const readSelectedId = (params: URLSearchParams): number | null => {
  * 조건·쪽을 주소로 옮긴다. **조건이 바뀌면 고른 건을 놓는다** — 새 결과에 그 건이 없을 수 있다.
  * 빈 값은 적지 않아 주소가 짧게 남는다.
  */
-export const toSearchParams = (filters: PurchaseOrderFilters, page: number): URLSearchParams => {
+export const toSearchParams = (
+  filters: PurchaseOrderFilters,
+  page: number,
+  size: ListPageSize | null = null,
+): URLSearchParams => {
   const params = new URLSearchParams();
   TEXT_KEYS.forEach((key) => {
     const value = filters[key].trim();
@@ -81,6 +95,7 @@ export const toSearchParams = (filters: PurchaseOrderFilters, page: number): URL
   if (orderType !== '') params.set(ORDER_TYPE_KEY, orderType);
   if (filters.progress !== 'all') params.set('progress', filters.progress);
   if (page > 1) params.set('page', String(page));
+  if (size !== null) params.set('size', String(size));
   return params;
 };
 
@@ -128,8 +143,9 @@ export const LIST_PAGE_SIZE = 25;
 export const toListQuery = (
   filters: PurchaseOrderFilters,
   page: number,
+  size: ListPageSize | null = null,
 ): PurchaseOrderListQuery => {
-  const query: PurchaseOrderListQuery = { page, size: LIST_PAGE_SIZE };
+  const query: PurchaseOrderListQuery = { page, size: size ?? LIST_PAGE_SIZE };
   const q = filters.q.trim();
   if (q !== '') query.q = q;
   const supplierId = toId(filters.supplier);

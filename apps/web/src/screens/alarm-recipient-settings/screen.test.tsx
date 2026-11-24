@@ -179,7 +179,8 @@ const setup = (options: SetupOptions = {}) => {
   return { ...view, writes, candidateQueries };
 };
 
-const eventsPane = () => within(screen.getByRole('region', { name: t.panes.events }));
+/* 조회 조건 · 목록 · 상세 통일 배치(#358) — 목록 상자 이름은 「이벤트 목록」. */
+const eventsPane = () => within(screen.getByRole('region', { name: t.workspace.list }));
 const settingPane = (eventName: string) =>
   within(screen.getByRole('region', { name: t.panes.setting(eventName) }));
 
@@ -193,7 +194,22 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     setup({ route: '/notification/recipient-settings' });
 
     expect(await screen.findByText(t.state.selectDepartment)).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: t.panes.events })).toBeNull();
+    expect(screen.queryByRole('table', { name: t.panes.events })).toBeNull();
+    /* 상세 상자는 기준 화면과 같은 빈 상태(#358). */
+    expect(screen.getByText(t.workspace.selectEventTitle)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+    /* 초기화는 부서가 골라져 있을 때만 보인다(#358). */
+    expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
+  });
+
+  it('부서가 골라져 있으면 초기화가 보이고, 누르면 부서를 고르기 전으로 돌아가 다시 숨는다(#358)', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    await user.click(await screen.findByRole('button', { name: t.workspace.clear }));
+
+    expect(await screen.findByText(t.state.selectDepartment)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
   });
 
   it('US4-1 부서를 고르면 그 부서의 6개 이벤트 요약이 보이고 URL 에 남는다', async () => {
@@ -443,7 +459,7 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
   it('Zalo 연결이 ACTIVE 면 배너가 없다', async () => {
     setup();
 
-    await screen.findByRole('region', { name: t.panes.events });
+    await screen.findByRole('region', { name: t.workspace.list });
     await waitFor(() => expect(eventsPane().getAllByRole('row')).toHaveLength(7));
     expect(screen.queryByText(t.state.zaloNotActive)).toBeNull();
   });

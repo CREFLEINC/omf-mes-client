@@ -30,9 +30,6 @@ export const erpPurchaseOrder: Translated<typeof ko.erpPurchaseOrder> = {
     customsClearance: 'Số thông quan',
     q: 'Số đơn mua',
   },
-  splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
-  listCollapse: 'Thu gọn danh sách đơn mua hàng',
-  listExpand: 'Mở danh sách đơn mua hàng',
   panes: {
     filters: 'Điều kiện tra cứu đơn mua hàng',
     list: 'Danh sách đơn mua hàng',
@@ -42,12 +39,6 @@ export const erpPurchaseOrder: Translated<typeof ko.erpPurchaseOrder> = {
   filters: {
     all: 'Tất cả',
     chip: (label: string, value: string): string => `${label}: ${value}`,
-  },
-  actions: {
-    select: (orderNo: string): string => `Chọn ${orderNo}`,
-    firstPage: 'Trang đầu',
-    prevPage: 'Trước',
-    nextPage: 'Sau',
   },
   progress: {
     group: 'Điều kiện tiến độ',
@@ -86,17 +77,12 @@ export const erpPurchaseOrder: Translated<typeof ko.erpPurchaseOrder> = {
   empty: {
     title: 'Không có đơn mua hàng phù hợp điều kiện',
     beyondTitle: 'Trang này không có đơn mua hàng',
-    notSelectedTitle: 'Hãy chọn một đơn mua hàng',
+    notSelectedTitle: 'Hãy chọn đơn mua hàng.',
+    notSelectedDescription: 'Chọn đơn mua hàng trong danh sách để xem thông tin chung và các dòng.',
     linesTitle: 'Không có dòng',
   },
   loading: 'Đang tải đơn mua hàng',
   listLoadFailedTitle: 'Không tải được danh sách đơn mua hàng',
   detailLoadFailedTitle: 'Không tải được chi tiết đơn mua hàng',
   loadFailedDescription: 'Hãy thử lại sau. Nếu vẫn lỗi, hãy liên hệ quản trị viên.',
-  page: {
-    label: 'Chuyển trang đơn mua hàng',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / tổng ${String(total)}`,
-    total: (total: number): string => `Tổng ${String(total)}`,
-  },
 };

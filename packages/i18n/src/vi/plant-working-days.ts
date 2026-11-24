@@ -7,8 +7,6 @@ import type { Translated } from './translated';
  * ⚠ **화면 이름은 사이드바와 글자가 같아야 한다** — `apps/web/src/app/nav-tree.ts` 의 `labelVi`.
  */
 export const plantWorkingDays: Translated<typeof ko.plantWorkingDays> = {
-  title: 'Thiết lập ngày làm việc nhà máy',
-  breadcrumbRoot: 'Quản trị hệ thống',
   description:
     'Số ngày làm việc trong tuần của từng nhà máy, dùng để tính ngày xuất kho (1 ngày làm việc trước ngày sản xuất). Chỉ bỏ qua cuối tuần — không dùng ngày lễ và lịch làm việc. Nhà máy chưa thiết lập được tính theo 5 ngày/tuần.',
   tableLabel: 'Ngày làm việc theo nhà máy',
@@ -49,5 +47,14 @@ export const plantWorkingDays: Translated<typeof ko.plantWorkingDays> = {
   discard: {
     title: 'Có thay đổi chưa lưu',
     body: 'Nếu chuyển đi bây giờ, ngày làm việc đã đổi sẽ không được lưu và bị mất. Để giữ lại, nhấn «Tiếp tục chỉnh sửa» rồi lưu.',
+  },
+  workspace: {
+    filter: 'Điều kiện tra cứu',
+    list: 'Danh sách nhà máy',
+    search: 'Tìm tên nhà máy',
+    searchPlaceholder: 'Nhập tên nhà máy',
+    apply: 'Tra cứu',
+    clear: 'Đặt lại',
+    empty: 'Không có nhà máy phù hợp với điều kiện.',
   },
 };

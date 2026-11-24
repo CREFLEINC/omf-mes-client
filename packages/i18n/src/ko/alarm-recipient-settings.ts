@@ -3,9 +3,6 @@
  * 수신자는 개인 지정만 남았고 미리보기는 없앴다(결정 #19).
  */
 export const alarmRecipientSettings = {
-  /* 설계 W-CO-11·사이드바와 같은 글자다. */
-  title: '알림 수신자 설정',
-  breadcrumbRoot: '시스템 관리',
   panes: { events: '이벤트', setting: (eventName: string): string => `설정: ${eventName}` },
   fields: {
     department: '부서',
@@ -83,5 +80,14 @@ export const alarmRecipientSettings = {
     loginId: '로그인 ID',
     department: '부서',
     phone: '전화번호',
+  },
+  /** 조회 조건 · 목록 · 상세 통일 배치(omf-all-around#358). */
+  workspace: {
+    filter: '조회 조건',
+    list: '이벤트 목록',
+    apply: '조회',
+    clear: '초기화',
+    selectEventTitle: '이벤트를 선택하세요.',
+    selectEvent: '부서를 고르고 이벤트를 누르면 알림 받기 · Zalo · 수신자를 정할 수 있습니다.',
   },
 } as const;

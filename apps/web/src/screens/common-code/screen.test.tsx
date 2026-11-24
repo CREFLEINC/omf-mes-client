@@ -612,7 +612,8 @@ describe('CommonCodeScreen — 쪽 이동 (C7·C8)', () => {
   it('전체가 0건이면 범위를 지어내지 않는다', async () => {
     renderScreen([codeGroupListRoute([], { page: 1, size: 50, total: 0 })]);
 
-    expect(await screen.findByText('전체 0건')).toBeInTheDocument();
+    /* 공용 쪽 이동(#358)은 범위 대신 총 건수만 낸다. */
+    expect(await screen.findByText('총 0건')).toBeInTheDocument();
   });
 
   /* C8 — 쪽을 옮기면 선택이 사라진다. 보이는 행이 달라지기 때문이다. */
@@ -629,9 +630,7 @@ describe('CommonCodeScreen — 쪽 이동 (C7·C8)', () => {
     await user.click(within(codeGroupPane()).getByRole('button', { name: '다음' }));
 
     // 선택이 남아 있었다면 상세 조회가 이어졌을 것이다 — 스텁에 없는 요청은 하네스가 던진다.
-    expect(
-      await screen.findByText('좌측에서 코드그룹을 고르면 여기에 그 그룹의 정보가 보입니다'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('코드그룹을 선택하세요.')).toBeInTheDocument();
     expect(codeGroupRequests(requests).at(-1)?.url.searchParams.get('page')).toBe('2');
   });
 });
@@ -651,9 +650,7 @@ describe('CommonCodeScreen — 조건 변경과 선택 (C6·C11)', () => {
     const last = codeGroupRequests(requests).at(-1);
     expect(last?.url.searchParams.has('page')).toBe(false);
     expect(last?.url.searchParams.get('q')).toBe('SYN');
-    expect(
-      await screen.findByText('좌측에서 코드그룹을 고르면 여기에 그 그룹의 정보가 보입니다'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('코드그룹을 선택하세요.')).toBeInTheDocument();
   });
 
   /* C11 */
@@ -672,9 +669,7 @@ describe('CommonCodeScreen — 조건 변경과 선택 (C6·C11)', () => {
   it('고르기 전에는 우 칸이 선택 전 안내를 낸다', async () => {
     renderScreen([codeGroupListRoute()]);
 
-    expect(
-      await screen.findByText('좌측에서 코드그룹을 고르면 여기에 그 그룹의 정보가 보입니다'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('코드그룹을 선택하세요.')).toBeInTheDocument();
   });
 });
 
@@ -4620,9 +4615,7 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
 
     const dialog = await openEditDialog(user);
 
-    expect(
-      within(dialog).getByText('확인한 뒤 「저장」을 눌러야 저장됩니다.'),
-    ).toBeInTheDocument();
+    expect(within(dialog).getByText('확인한 뒤 「저장」을 눌러야 저장됩니다.')).toBeInTheDocument();
   });
 
   /* 창은 열 때만 마운트한다 — 닫힌 창을 남기면 지난 값이 살아 있다. */
@@ -5593,9 +5586,7 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
     renderScreen(partnerRoutes(), '?tab=partner');
     await screen.findByRole('button', { name: 'SAMPLE-PTNR-A' });
 
-    expect(
-      screen.getByText('좌측에서 거래처를 고르면 여기에 그 거래처의 역할이 보입니다'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('거래처를 선택하세요.')).toBeInTheDocument();
   });
 
   /*
@@ -6853,7 +6844,7 @@ describe('CommonCodeScreen — 저장 실패와 초안 수명 (C32·C34)', () =>
     await user.click(roleCheckbox('공급사'));
     await user.click(within(filterPane()).getByRole('checkbox', { name: '미사용 포함' }));
 
-    await screen.findByText('좌측에서 거래처를 고르면 여기에 그 거래처의 역할이 보입니다');
+    await screen.findByText('거래처를 선택하세요.');
     expect(screen.queryByRole('checkbox', { name: '공급사' })).not.toBeInTheDocument();
   });
 });

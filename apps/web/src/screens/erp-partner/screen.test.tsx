@@ -94,14 +94,14 @@ describe('ErpPartnerScreen', () => {
     expect(await within(rowA).findByText('고객사, 공급사')).toBeInTheDocument();
 
     const rowB = rowOf(screen.getByText('예시 거래처 B'));
-    // ERP 코드·국가·역할이 모두 비어 있다.
-    expect(await within(rowB).findAllByText('—')).toHaveLength(3);
+    // 역할이 비어 있다(ERP 코드·국가는 상세에만 있다).
+    expect(await within(rowB).findAllByText('—')).toHaveLength(1);
     expect(within(rowB).getByText('미사용')).toBeInTheDocument();
 
     const rowC = rowOf(screen.getByText('예시 거래처 C'));
     expect(await within(rowC).findByText('불러오지 못함')).toBeInTheDocument();
 
-    expect(screen.getByText('1–3 / 전체 3건')).toBeInTheDocument();
+    expect(screen.getByText('총 3건')).toBeInTheDocument();
     // 쓰기 조작이 없다.
     expect(screen.queryByRole('button', { name: /저장|등록|삭제/ })).not.toBeInTheDocument();
   });
@@ -135,15 +135,18 @@ describe('ErpPartnerScreen', () => {
     expect(first?.searchParams.has('roleTypeCode')).toBe(false);
   });
 
-  it('상세 구획 없이 목록 한 구획만 서고, 줄을 눌러도 상세를 부르지 않는다', async () => {
+  it('줄을 고르면 그 거래처의 모든 칸을 상세에 내고, 거래처 한 건 조회는 부르지 않는다', async () => {
     const { urls, user } = renderScreen([listRoute(), rolesRoute]);
 
-    await user.click(await screen.findByText('예시 거래처 A'));
+    const detail = await screen.findByRole('region', { name: '거래처 상세' });
+    expect(within(detail).getByText('거래처를 선택하세요.')).toBeInTheDocument();
 
-    expect(screen.getByRole('region', { name: '거래처 목록' })).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: '거래처 상세' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /상세 보기/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('separator')).not.toBeInTheDocument();
+    await user.click(await screen.findByText('예시 거래처 B'));
+    // ERP 코드·국가·역할이 모두 비어 있다.
+    expect(await within(detail).findAllByText('—')).toHaveLength(3);
+
+    await user.click(screen.getByText('예시 거래처 A'));
+    expect(await within(detail).findByText('고객사, 공급사')).toBeInTheDocument();
     // 행마다 역할만 부르고, 거래처 한 건 조회는 나가지 않는다.
     expect(urls.some((url) => url.pathname === `${LIST_PATH}/7001`)).toBe(false);
   });

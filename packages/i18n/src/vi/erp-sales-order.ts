@@ -28,9 +28,6 @@ export const erpSalesOrder: Translated<typeof ko.erpSalesOrder> = {
     storageLocation: 'Kho',
     cancelled: 'Hủy',
   },
-  splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
-  listCollapse: 'Thu gọn danh sách đơn bán hàng',
-  listExpand: 'Mở danh sách đơn bán hàng',
   panes: {
     filters: 'Điều kiện tra cứu đơn bán hàng',
     list: 'Danh sách đơn bán hàng',
@@ -40,12 +37,6 @@ export const erpSalesOrder: Translated<typeof ko.erpSalesOrder> = {
   filters: {
     all: 'Tất cả',
     chip: (label: string, value: string): string => `${label}: ${value}`,
-  },
-  actions: {
-    select: (orderNo: string): string => `Chọn ${orderNo}`,
-    firstPage: 'Trang đầu',
-    prevPage: 'Trước',
-    nextPage: 'Sau',
   },
   progress: {
     group: 'Điều kiện tiến độ',
@@ -70,17 +61,12 @@ export const erpSalesOrder: Translated<typeof ko.erpSalesOrder> = {
   empty: {
     title: 'Không có đơn bán hàng phù hợp điều kiện',
     beyondTitle: 'Trang này không có đơn bán hàng',
-    notSelectedTitle: 'Hãy chọn một đơn bán hàng',
+    notSelectedTitle: 'Hãy chọn đơn bán hàng.',
+    notSelectedDescription: 'Chọn đơn bán hàng trong danh sách để xem thông tin chung và các dòng.',
     linesTitle: 'Không có dòng',
   },
   loading: 'Đang tải đơn bán hàng',
   listLoadFailedTitle: 'Không tải được danh sách đơn bán hàng',
   detailLoadFailedTitle: 'Không tải được chi tiết đơn bán hàng',
   loadFailedDescription: 'Hãy thử lại sau. Nếu vẫn lỗi, hãy liên hệ quản trị viên.',
-  page: {
-    label: 'Chuyển trang đơn bán hàng',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / tổng ${String(total)}`,
-    total: (total: number): string => `Tổng ${String(total)}`,
-  },
 };

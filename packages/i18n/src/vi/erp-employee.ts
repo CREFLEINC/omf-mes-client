@@ -8,6 +8,7 @@ export const erpEmployee: Translated<typeof ko.erpEmployee> = {
   panes: {
     filter: 'Điều kiện tra cứu',
     list: 'Danh sách nhân viên',
+    detail: 'Chi tiết nhân viên',
   },
   fields: {
     q: 'Mã NV·Họ tên',
@@ -16,6 +17,7 @@ export const erpEmployee: Translated<typeof ko.erpEmployee> = {
   table: {
     workerNo: 'Mã NV',
     workerName: 'Họ tên',
+    businessUnitId: 'Đơn vị kinh doanh',
     plantId: 'Nhà máy',
     departmentId: 'Bộ phận',
     statusCode: 'Trạng thái ERP',
@@ -27,15 +29,7 @@ export const erpEmployee: Translated<typeof ko.erpEmployee> = {
     inactive: 'Đã nghỉ việc',
   },
   actions: {
-    prevPage: 'Trước',
-    nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
-  },
-  pageNav: {
-    label: 'Chuyển trang',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / Tổng ${String(total)}`,
-    totalOnly: (total: number): string => `Tổng ${String(total)}`,
   },
   loading: {
     list: 'Đang tải danh sách nhân viên',
@@ -43,5 +37,7 @@ export const erpEmployee: Translated<typeof ko.erpEmployee> = {
   empty: {
     noResultTitle: 'Không có nhân viên phù hợp',
     beyondLastTitle: 'Trang này không có nhân viên',
+    pickTitle: 'Hãy chọn nhân viên.',
+    pickDescription: 'Chọn nhân viên trong danh sách để xem mọi trường nhận từ ERP.',
   },
 };

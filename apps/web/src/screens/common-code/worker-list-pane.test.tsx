@@ -25,7 +25,9 @@ const renderPane = (overrides: Partial<Parameters<typeof WorkerListPane>[0]> = {
         { page: 1, size: 50, total: workerFixtures.length },
         workerFixtures.length,
       )}
+      pageMeta={{ page: 1, size: 50, total: workerFixtures.length }}
       onChangePage={onChangePage}
+      onChangePageSize={vi.fn()}
       selectedWorkerId={null}
       onSelect={onSelect}
       loadError={null}
@@ -40,10 +42,11 @@ describe('WorkerListPane — 목록 표시', () => {
   it('사번·성명 두 열만 낸다', () => {
     renderPane();
 
-    expect(screen.getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual([
-      '사번',
-      '성명',
-    ]);
+    expect(
+      screen
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent?.replace('drag_indicator', '')),
+    ).toEqual(['사번', '성명']);
   });
 
   it('미사용 행은 열을 늘리지 않고 이름 뒤 접미로 알린다', () => {

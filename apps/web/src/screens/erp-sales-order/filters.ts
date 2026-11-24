@@ -51,6 +51,16 @@ export const readPage = (params: URLSearchParams): number => {
   return Number.isSafeInteger(page) && page > 0 ? page : 1;
 };
 
+/** 목록 쪽 크기 선택지 — 처음 값(25)은 종전 고정 크기 그대로다. */
+export const LIST_PAGE_SIZES = [25, 50, 100] as const;
+export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
+
+/** 고른 쪽 크기. 고른 적이 없거나 선택지에 없으면 `null`(처음 값 25). */
+export const readSize = (params: URLSearchParams): ListPageSize | null => {
+  const size = Number(params.get('size'));
+  return LIST_PAGE_SIZES.find((option) => option === size) ?? null;
+};
+
 export const readSelectedId = (params: URLSearchParams): number | null => {
   const id = Number(params.get('sel'));
   return Number.isSafeInteger(id) && id > 0 ? id : null;
@@ -59,7 +69,11 @@ export const readSelectedId = (params: URLSearchParams): number | null => {
 /**
  * 조건·쪽을 주소로 옮긴다. **조건이 바뀌면 고른 건을 놓는다** — 새 결과에 그 건이 없을 수 있다.
  */
-export const toSearchParams = (filters: SalesOrderFilters, page: number): URLSearchParams => {
+export const toSearchParams = (
+  filters: SalesOrderFilters,
+  page: number,
+  size: ListPageSize | null = null,
+): URLSearchParams => {
   const params = new URLSearchParams();
   TEXT_KEYS.forEach((key) => {
     const value = filters[key].trim();
@@ -68,6 +82,7 @@ export const toSearchParams = (filters: SalesOrderFilters, page: number): URLSea
   if (filters.unassignedOnly) params.set('unassigned', '1');
   if (filters.progress !== 'all') params.set('progress', filters.progress);
   if (page > 1) params.set('page', String(page));
+  if (size !== null) params.set('size', String(size));
   return params;
 };
 
@@ -106,8 +121,12 @@ export interface SalesOrderListQuery {
 export const LIST_PAGE_SIZE = 25;
 
 /** 주소의 조건을 계약의 쿼리로 옮긴다. 빈 조건은 싣지 않는다. */
-export const toListQuery = (filters: SalesOrderFilters, page: number): SalesOrderListQuery => {
-  const query: SalesOrderListQuery = { page, size: LIST_PAGE_SIZE };
+export const toListQuery = (
+  filters: SalesOrderFilters,
+  page: number,
+  size: ListPageSize | null = null,
+): SalesOrderListQuery => {
+  const query: SalesOrderListQuery = { page, size: size ?? LIST_PAGE_SIZE };
   const q = filters.q.trim();
   if (q !== '') query.q = q;
   const customerId = toId(filters.customer);

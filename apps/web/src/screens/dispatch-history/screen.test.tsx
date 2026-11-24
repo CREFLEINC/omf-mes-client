@@ -118,7 +118,8 @@ const setup = (
   return { dispatchQueries, deliveryQueries };
 };
 
-const dispatchPane = () => within(screen.getByRole('region', { name: t.panes.dispatches }));
+/* 조회 조건 · 목록 · 상세 통일 배치(#358) — 목록 상자 「처리 결과 목록」, 상세 상자는 고른 건의 대상 이름. */
+const dispatchPane = () => within(screen.getByRole('region', { name: t.workspace.list }));
 const deliveryPane = () => within(screen.getByRole('region', { name: t.panes.deliveries }));
 
 describe('period', () => {
@@ -273,9 +274,10 @@ describe('DispatchHistoryScreen', () => {
       ],
     });
 
-    /* 고르기 전에는 드로어가 없다 — 목록 아래에 안내 자리도 두지 않는다(C-2). */
+    /* 고르기 전에는 상세 상자가 「알림 건을 선택하세요.」 빈 상태다(#358). */
     await dispatchPane().findByText('WO-20261021-001');
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByText(t.workspace.selectTitle)).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.panes.deliveries })).toBeNull();
     await user.click(dispatchPane().getByText('WO-20261021-001'));
 
     await waitFor(() =>
@@ -311,30 +313,53 @@ describe('DispatchHistoryScreen', () => {
     expect(deliveryPane().getByText('수신자 3')).toBeInTheDocument();
   });
 
-  /** T-W-A — 드로어가 목록을 덮으므로 머리가 어느 건의 상세인지 말해야 한다(omf-all-around#183). */
-  it('행을 고르면 오른쪽 드로어 머리에 대상·이벤트·발생 시각을 보이고 행을 선택으로 표시한다', async () => {
+  /** 상세 머리가 어느 건의 상세인지 말한다(종전 드로어 머리 · #183 → 상세 상자 · #358). */
+  it('행을 고르면 오른쪽 상세 상자 머리에 대상·이벤트·발생 시각을 보이고 행을 선택으로 표시한다', async () => {
     const user = userEvent.setup();
     setup({ dispatches: [dispatch(9001), dispatch(9002, { targetLabel: 'WO-20261021-002' })] });
 
     await user.click(await dispatchPane().findByText('WO-20261021-002'));
 
-    const drawer = await screen.findByRole('dialog', { name: 'WO-20261021-002' });
-    expect(within(drawer).getByText(/생산 마감, /)).toBeInTheDocument();
+    const detail = await screen.findByRole('region', { name: 'WO-20261021-002' });
+    expect(within(detail).getByRole('heading', { name: 'WO-20261021-002' })).toBeInTheDocument();
+    expect(within(detail).getByText(/생산 마감, /)).toBeInTheDocument();
     const row = dispatchPane().getByText('WO-20261021-002').closest('tr') as HTMLElement;
     expect(row).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('주소의 selected 로 열면 드로어가 열린 채로 오고, 닫으면 선택이 풀린다', async () => {
-    const user = userEvent.setup();
+  it('주소의 selected 로 열면 상세 상자가 그 건으로 열리고 행이 선택으로 보인다', async () => {
     setup({ route: `${ROUTE}&selected=9001` });
 
-    const drawer = await screen.findByRole('dialog', { name: 'WO-20261021-001' });
-    await within(drawer).findByText('수신자 1');
-    await user.click(within(drawer).getByRole('button', { name: /닫기|close/i }));
+    const detail = await screen.findByRole('region', { name: 'WO-20261021-001' });
+    await within(detail).findByText('수신자 1');
+    const row = (await dispatchPane().findByText('WO-20261021-001')).closest('tr') as HTMLElement;
+    expect(row).toHaveAttribute('aria-selected', 'true');
+  });
 
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    const row = dispatchPane().getByText('WO-20261021-001').closest('tr') as HTMLElement;
-    expect(row).not.toHaveAttribute('aria-selected', 'true');
+  it('[초기화]는 기본 7일 · 조건 없음으로 되돌려 다시 조회한다(#358)', async () => {
+    const user = userEvent.setup();
+    const { dispatchQueries } = setup({ route: `${ROUTE}&result=SKIPPED` });
+
+    await dispatchPane().findByText('WO-20261021-001');
+    expect((dispatchQueries.at(-1) as URL).searchParams.get('status')).toBe('SKIPPED');
+    await user.click(screen.getByRole('button', { name: t.workspace.clear }));
+
+    await waitFor(() =>
+      expect((dispatchQueries.at(-1) as URL).searchParams.get('status')).toBeNull(),
+    );
+    /* 처음 값으로 돌아왔으니 초기화는 다시 숨는다. */
+    expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
+  });
+
+  it('[초기화]는 처음 값(기본 7일 · 조건 없음)이면 없고, 조회 단추 오른쪽에 조건 더보기가 선다(#358)', async () => {
+    setup({ route: '/notification/dispatch-history' });
+
+    await dispatchPane().findByText('WO-20261021-001');
+    expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
+    const search = screen.getByRole('button', { name: t.filters.search });
+    const more = screen.getByRole('button', { name: messages.common.filterMore.open });
+    expect(search.parentElement).toBe(more.parentElement);
+    expect(search.compareDocumentPosition(more) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('결과가 없으면 빈 안내를 보인다', async () => {

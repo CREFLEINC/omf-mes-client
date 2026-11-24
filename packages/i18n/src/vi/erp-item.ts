@@ -8,6 +8,7 @@ export const erpItem: Translated<typeof ko.erpItem> = {
   panes: {
     filter: 'Điều kiện tra cứu',
     list: 'Danh sách mặt hàng',
+    detail: 'Chi tiết mặt hàng',
   },
   fields: {
     q: 'Mã·Tên mặt hàng',
@@ -32,15 +33,7 @@ export const erpItem: Translated<typeof ko.erpItem> = {
     inactive: 'Ngừng sử dụng',
   },
   actions: {
-    prevPage: 'Trước',
-    nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
-  },
-  pageNav: {
-    label: 'Chuyển trang',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / Tổng ${String(total)}`,
-    totalOnly: (total: number): string => `Tổng ${String(total)}`,
   },
   loading: {
     list: 'Đang tải danh sách mặt hàng',
@@ -48,5 +41,7 @@ export const erpItem: Translated<typeof ko.erpItem> = {
   empty: {
     noResultTitle: 'Không có mặt hàng phù hợp',
     beyondLastTitle: 'Trang này không có mặt hàng',
+    pickTitle: 'Hãy chọn mặt hàng.',
+    pickDescription: 'Chọn mặt hàng trong danh sách để xem mọi trường nhận từ ERP.',
   },
 };

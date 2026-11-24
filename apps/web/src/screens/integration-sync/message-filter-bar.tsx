@@ -53,6 +53,7 @@ export interface MessageFilterBarProps {
  *
  * **보이는 칸은 셋이다**(C-6) — 기간 · 항목 · 상태. 구분 · 재시도 횟수는 「조건 더보기」에 접고,
  * 접힌 조건이 걸려 있으면 칩으로만 알린다. 「초기화」는 바뀐 것이 있을 때만 보인다.
+ * [조회][초기화][조건 더보기]는 줄 오른쪽 끝에 함께 선다(단말 관리와 같다 · #358).
  */
 export const MessageFilterBar = ({
   appliedPeriod,
@@ -177,11 +178,11 @@ export const MessageFilterBar = ({
         {codeSelects.map(renderCodeSelect)}
 
         {/*
-         * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶고(배치 규범 2-1), 비활성 사유는 그 아래에 둔다.
+         * 조회와 초기화는 짝이라 함께 줄 오른쪽 끝에 두고(단말 관리와 같다 · #358), 비활성 사유는 그 아래에 둔다.
          * 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더해 aria-describedby로 잇는다 —
          * 비활성 컨트롤은 포커스를 받지 못해 툴팁만으로는 키보드·보조기술 사용자가 닿을 수 없다.
          */}
-        <div className="field-cell field-cell-unlabeled">
+        <div className="field-cell field-cell-unlabeled integration-sync-filter-actions">
           <div className="filter-actions">
             <Button
               disabled={searchReason !== null}

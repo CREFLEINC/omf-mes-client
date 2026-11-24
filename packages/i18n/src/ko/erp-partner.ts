@@ -10,6 +10,7 @@ export const erpPartner = {
   panes: {
     filter: '조회 조건',
     list: '거래처 목록',
+    detail: '거래처 상세',
   },
   fields: {
     q: '거래처 코드·명',
@@ -41,15 +42,7 @@ export const erpPartner = {
     roleSeparator: ', ',
   },
   actions: {
-    prevPage: '이전',
-    nextPage: '다음',
     goFirstPage: '첫 쪽으로',
-  },
-  pageNav: {
-    label: '쪽 이동',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
-    totalOnly: (total: number): string => `전체 ${String(total)}건`,
   },
   loading: {
     list: '거래처 목록을 불러오는 중',
@@ -57,5 +50,7 @@ export const erpPartner = {
   empty: {
     noResultTitle: '조건에 맞는 거래처가 없습니다',
     beyondLastTitle: '이 쪽에는 거래처가 없습니다',
+    pickTitle: '거래처를 선택하세요.',
+    pickDescription: '목록에서 거래처를 고르면 ERP 에서 받은 모든 칸을 볼 수 있습니다.',
   },
 } as const;

@@ -120,7 +120,8 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
   /** 상세. 전송 내용은 구획만 두고 값을 그리지 않는다 — 열람 범위가 정해지지 않았다. */
   detail: {
     title: 'Chi tiết bản tin liên kết',
-    pick: 'Hãy chọn một bản tin trong danh sách',
+    pick: 'Hãy chọn một bản tin liên kết.',
+    pickDescription: 'Có thể xem trạng thái xử lý và nội dung lỗi của bản tin đã chọn.',
     openAction: (title: string): string => `Mở chi tiết ${title}`,
     retryCount: 'Số lần thử lại',
     availableAt: 'Lần thử tiếp theo',

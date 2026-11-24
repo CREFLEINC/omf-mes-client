@@ -4,6 +4,7 @@ import {
   Checkbox,
   type Column,
   EmptyState,
+  Icon,
   SearchInput,
   SkeletonText,
   Table,
@@ -11,9 +12,12 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
+import { useFitColumns } from '../../patterns/column-fit';
 import { hasChangedFilters } from '../../patterns/filter-more';
-import { hasAnyFilter } from './filters';
-import { PageNav } from './page-nav';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useColumnWidths } from '../../patterns/column-resize';
+import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
+import { hasAnyFilter, LIST_PAGE_SIZES, type ListPageSize } from './filters';
 import type { PageView } from './pagination';
 import type { CodeGroup, CodeGroupFilters } from './types';
 
@@ -30,7 +34,11 @@ export interface CodeGroupListPaneProps {
   /** 조회 버튼·Enter·칩 제거·초기화가 호출한다. 쪽은 늘 1로 돌아간다 */
   onApplyFilters: (next: CodeGroupFilters) => void;
   pageView: PageView;
+  /** 서버가 준 쪽 정보. 받기 전 · 실패면 `null` — 셀 것이 없으면 쪽 이동을 그리지 않는다. */
+  pageMeta: PageNavMeta | null;
   onChangePage: (page: number) => void;
+  /** 쪽 크기(10 · 20 · 50) — 바꾸면 첫 쪽으로 간다(단말 관리와 같다 · omf-all-around#358). */
+  onChangePageSize: (size: ListPageSize) => void;
   selectedCodeGroupId: number | null;
   onSelect: (codeGroupId: number) => void;
   /** 등록 폼이 이미 열려 있으면 참. 같은 폼을 두 번 열지 않는다 */
@@ -63,7 +71,9 @@ export const CodeGroupListPane = ({
   appliedFilters,
   onApplyFilters,
   pageView,
+  pageMeta,
   onChangePage,
+  onChangePageSize,
   selectedCodeGroupId,
   onSelect,
   isCreating,
@@ -82,15 +92,17 @@ export const CodeGroupListPane = ({
     setDraft({ q: appliedQ, includeInactive: appliedIncludeInactive });
   }, [appliedQ, appliedIncludeInactive]);
 
-  const columns: Column<CodeGroup>[] = [
+  /* 머리글과 칸은 가운데 — 단말 관리 목록과 같다(omf-all-around#358). */
+  const baseColumns: Column<CodeGroup>[] = [
     {
       key: 'groupCode',
+      align: 'center',
       header: t.codeGroup.fields.groupCode,
       width: '160px',
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className="users-roles-row-pick"
           aria-current={row.codeGroupId === selectedCodeGroupId ? 'true' : undefined}
           onClick={() => onSelect(row.codeGroupId)}
         >
@@ -100,11 +112,16 @@ export const CodeGroupListPane = ({
     },
     {
       key: 'groupName',
+      align: 'center',
       header: t.codeGroup.fields.groupName,
       render: (row) =>
         row.isActive ? row.groupName : `${row.groupName}${t.values.inactiveSuffix}`,
     },
   ];
+  /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(단말 관리 목록과 같다 · omf-all-around#358). */
+  const ordered = useColumnOrder('omf-mes:common-code:columns:code-groups:order', baseColumns);
+  const resizable = useColumnWidths('omf-mes:common-code:columns:code-groups', ordered);
+  const fit = useFitColumns(resizable.columns);
 
   /**
    * 빈 상태는 세 갈래다 — **셋을 뭉치면 사실과 다른 안내가 된다.**
@@ -122,6 +139,11 @@ export const CodeGroupListPane = ({
         <EmptyState
           size="sm"
           live
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="last_page" size={20} />
+            </span>
+          }
           title={t.empty.beyondLastTitle}
           description={t.empty.beyondLastDescription}
           action={
@@ -138,6 +160,11 @@ export const CodeGroupListPane = ({
         <EmptyState
           size="sm"
           live
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="search_off" size={20} />
+            </span>
+          }
           title={t.codeGroup.empty.noMatchTitle}
           description={t.codeGroup.empty.noMatchDescription}
           action={
@@ -153,6 +180,11 @@ export const CodeGroupListPane = ({
       <EmptyState
         size="sm"
         live
+        icon={
+          <span className="inspection-standard-empty-icon">
+            <Icon name="folder_open" size={20} />
+          </span>
+        }
         title={t.codeGroup.empty.noneTitle}
         description={t.codeGroup.empty.noneDescription}
       />
@@ -172,16 +204,29 @@ export const CodeGroupListPane = ({
     }
 
     return (
-      <>
+      /* 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 단추로 넘긴다(단말 관리와 같다). */
+      <div
+        ref={fit.ref}
+        className="users-roles-list inspection-queue-table"
+        style={resizable.style}
+        onClick={(event) => {
+          const target = event.target;
+          if (!(target instanceof Element)) return;
+          if (target.closest('button, a, input, select, textarea') !== null) return;
+          target
+            .closest('tbody tr')
+            ?.querySelector<HTMLButtonElement>('.users-roles-row-pick')
+            ?.click();
+        }}
+      >
         <Table
           density="compact"
-          columns={columns}
+          columns={fit.columns}
           rows={codeGroups}
           getRowId={(row) => String(row.codeGroupId)}
           empty={emptySlot}
         />
-        <PageNav view={pageView} onChange={onChangePage} />
-      </>
+      </div>
     );
   };
 
@@ -191,7 +236,7 @@ export const CodeGroupListPane = ({
   const filter = (
     <>
       {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-      <div className="filter-bar">
+      <div className="filter-bar common-code-filter">
         <SearchInput
           label={t.filters.codeGroupSearchLabel}
           placeholder={t.filters.codeGroupSearchPlaceholder}
@@ -231,7 +276,11 @@ export const CodeGroupListPane = ({
             </Button>
           )}
           <span className="inspection-standard-filter-divider" aria-hidden />
-          <Button variant="outlined" disabled={isCreating} onClick={onAddCodeGroup}>
+          <Button
+            leadingIcon={<Icon name="add" size={18} />}
+            disabled={isCreating}
+            onClick={onAddCodeGroup}
+          >
             {t.actions.addCodeGroup}
           </Button>
         </div>
@@ -239,7 +288,20 @@ export const CodeGroupListPane = ({
     </>
   );
 
-  const list = listSlot();
+  const list = (
+    <>
+      <div className="users-roles-list-body">{listSlot()}</div>
+      {pageMeta !== null && (loadError === null || loadError === undefined) && (
+        <PageNav<ListPageSize>
+          meta={pageMeta}
+          sizes={LIST_PAGE_SIZES}
+          buttonSize="md"
+          onChangePage={onChangePage}
+          onChangeSize={onChangePageSize}
+        />
+      )}
+    </>
+  );
 
   if (layout !== undefined) return layout({ filter, list });
 

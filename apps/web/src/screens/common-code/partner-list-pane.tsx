@@ -3,6 +3,7 @@ import {
   Checkbox,
   type Column,
   EmptyState,
+  Icon,
   SearchInput,
   SkeletonText,
   Table,
@@ -10,9 +11,12 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
+import { useFitColumns } from '../../patterns/column-fit';
 import { hasChangedFilters } from '../../patterns/filter-more';
-import { hasAnyPartnerFilter } from './filters';
-import { PageNav } from './page-nav';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useColumnWidths } from '../../patterns/column-resize';
+import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
+import { hasAnyPartnerFilter, LIST_PAGE_SIZES, type ListPageSize } from './filters';
 import type { PageView } from './pagination';
 import type { Partner, PartnerFilters } from './types';
 
@@ -29,7 +33,11 @@ export interface PartnerListPaneProps {
   /** 조회 버튼·Enter·초기화가 호출한다. 쪽은 늘 1로 돌아간다 */
   onApplyFilters: (next: PartnerFilters) => void;
   pageView: PageView;
+  /** 서버가 준 쪽 정보. 받기 전 · 실패면 `null` — 셀 것이 없으면 쪽 이동을 그리지 않는다. */
+  pageMeta: PageNavMeta | null;
   onChangePage: (page: number) => void;
+  /** 쪽 크기(10 · 20 · 50) — 바꾸면 첫 쪽으로 간다(단말 관리와 같다 · omf-all-around#358). */
+  onChangePageSize: (size: ListPageSize) => void;
   selectedPartnerId: number | null;
   onSelect: (partnerId: number) => void;
   /**
@@ -65,7 +73,9 @@ export const PartnerListPane = ({
   appliedFilters,
   onApplyFilters,
   pageView,
+  pageMeta,
   onChangePage,
+  onChangePageSize,
   selectedPartnerId,
   onSelect,
   loadError,
@@ -82,15 +92,17 @@ export const PartnerListPane = ({
     setDraft({ q: appliedQ, includeInactive: appliedIncludeInactive });
   }, [appliedQ, appliedIncludeInactive]);
 
-  const columns: Column<Partner>[] = [
+  /* 머리글과 칸은 가운데 — 단말 관리 목록과 같다(omf-all-around#358). */
+  const baseColumns: Column<Partner>[] = [
     {
       key: 'partnerCode',
+      align: 'center',
       header: t.partner.fields.partnerCode,
       width: '160px',
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className="users-roles-row-pick"
           aria-current={row.partnerId === selectedPartnerId ? 'true' : undefined}
           onClick={() => onSelect(row.partnerId)}
         >
@@ -100,11 +112,16 @@ export const PartnerListPane = ({
     },
     {
       key: 'partnerName',
+      align: 'center',
       header: t.partner.fields.partnerName,
       render: (row) =>
         row.isActive ? row.partnerName : `${row.partnerName}${t.values.inactiveSuffix}`,
     },
   ];
+  /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(단말 관리 목록과 같다 · omf-all-around#358). */
+  const ordered = useColumnOrder('omf-mes:common-code:columns:partners:order', baseColumns);
+  const resizable = useColumnWidths('omf-mes:common-code:columns:partners', ordered);
+  const fit = useFitColumns(resizable.columns);
 
   /**
    * 빈 상태는 세 갈래다 — **셋을 뭉치면 사실과 다른 안내가 된다.**
@@ -120,6 +137,11 @@ export const PartnerListPane = ({
         <EmptyState
           size="sm"
           live
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="last_page" size={20} />
+            </span>
+          }
           title={t.empty.beyondLastTitle}
           description={t.empty.beyondLastDescription}
           action={
@@ -136,6 +158,11 @@ export const PartnerListPane = ({
         <EmptyState
           size="sm"
           live
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="search_off" size={20} />
+            </span>
+          }
           title={t.partner.empty.noMatchTitle}
           description={t.partner.empty.noMatchDescription}
           action={
@@ -151,6 +178,11 @@ export const PartnerListPane = ({
       <EmptyState
         size="sm"
         live
+        icon={
+          <span className="inspection-standard-empty-icon">
+            <Icon name="handshake" size={20} />
+          </span>
+        }
         title={t.partner.empty.noneTitle}
         description={t.partner.empty.noneDescription}
       />
@@ -170,10 +202,24 @@ export const PartnerListPane = ({
     }
 
     return (
-      <>
+      /* 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 단추로 넘긴다(단말 관리와 같다). */
+      <div
+        ref={fit.ref}
+        className="users-roles-list inspection-queue-table"
+        style={resizable.style}
+        onClick={(event) => {
+          const target = event.target;
+          if (!(target instanceof Element)) return;
+          if (target.closest('button, a, input, select, textarea') !== null) return;
+          target
+            .closest('tbody tr')
+            ?.querySelector<HTMLButtonElement>('.users-roles-row-pick')
+            ?.click();
+        }}
+      >
         <Table
           density="compact"
-          columns={columns}
+          columns={fit.columns}
           rows={partners}
           /*
            * 행 식별자를 주지 않으면 인덱스가 React key가 되어, 앞 줄이 사라질 때
@@ -182,8 +228,7 @@ export const PartnerListPane = ({
           getRowId={(row) => String(row.partnerId)}
           empty={emptySlot}
         />
-        <PageNav view={pageView} onChange={onChangePage} />
-      </>
+      </div>
     );
   };
 
@@ -193,7 +238,7 @@ export const PartnerListPane = ({
   const filter = (
     <>
       {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-      <div className="filter-bar">
+      <div className="filter-bar common-code-filter">
         <SearchInput
           label={t.filters.partnerSearchLabel}
           placeholder={t.filters.partnerSearchPlaceholder}
@@ -234,7 +279,20 @@ export const PartnerListPane = ({
     </>
   );
 
-  const list = listSlot();
+  const list = (
+    <>
+      <div className="users-roles-list-body">{listSlot()}</div>
+      {pageMeta !== null && (loadError === null || loadError === undefined) && (
+        <PageNav<ListPageSize>
+          meta={pageMeta}
+          sizes={LIST_PAGE_SIZES}
+          buttonSize="md"
+          onChangePage={onChangePage}
+          onChangeSize={onChangePageSize}
+        />
+      )}
+    </>
+  );
 
   if (layout !== undefined) return layout({ filter, list });
 

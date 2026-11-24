@@ -9,9 +9,9 @@ import {
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
 import { hasDuplicateDisplayOrder, sortForDisplay } from './code-value-order';
 import type { CodeValue } from './code-value-types';
-import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 
 const t = messages.commonCode.codeValue;
@@ -24,6 +24,8 @@ export interface CodeValueListPaneProps {
   includeInactive: boolean;
   onIncludeInactiveChange: (includeInactive: boolean) => void;
   pageView: PageView;
+  /** 서버가 준 쪽 정보. 받기 전 · 실패면 `null` — 셀 것이 없으면 쪽 이동을 그리지 않는다. */
+  pageMeta: PageNavMeta | null;
   onChangePage: (page: number) => void;
   selectedCodeValueId: number | null;
   onSelect: (codeValueId: number) => void;
@@ -64,6 +66,7 @@ export const CodeValueListPane = ({
   includeInactive,
   onIncludeInactiveChange,
   pageView,
+  pageMeta,
   onChangePage,
   selectedCodeValueId,
   onSelect,
@@ -167,7 +170,12 @@ export const CodeValueListPane = ({
             empty={emptySlot}
           />
         </div>
-        <PageNav view={pageView} onChange={onChangePage} label={t.pageNavLabel} />
+        {/* 공용 쪽 이동(#358). 한 화면에 쪽 이동이 둘이라 묶음 이름으로 어느 목록의 이동인지 가른다. */}
+        {pageMeta !== null && (
+          <div role="group" aria-label={t.pageNavLabel}>
+            <PageNav meta={pageMeta} buttonSize="md" onChangePage={onChangePage} />
+          </div>
+        )}
       </>
     );
   };

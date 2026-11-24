@@ -24,6 +24,7 @@ const URL_KEYS = {
   includeInactive: 'inactive',
   q: 'q',
   page: 'page',
+  size: 'size',
   selected: 'ar',
   create: 'new',
 } as const;
@@ -69,6 +70,17 @@ export const readPage = (params: URLSearchParams): number => {
 };
 
 /**
+ * 목록 아래 쪽 크기 선택지(사용자 역할 권한 관리 · 단말 관리와 같다 · omf-all-around#358).
+ * 고르지 않았으면(`null`) 주소에도 요청에도 싣지 않는다 — 서버 기본값을 그대로 쓴다.
+ */
+export const LIST_PAGE_SIZES = [10, 20, 50] as const;
+export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
+
+/** 주소가 고른 쪽 크기. 선택지 밖의 값은 고르지 않은 것으로 본다. */
+export const readSize = (params: URLSearchParams): ListPageSize | null =>
+  LIST_PAGE_SIZES.find((size) => String(size) === params.get(URL_KEYS.size)) ?? null;
+
+/**
  * 등록 폼이 열려 있는가. **값이 켜짐 표시일 때만 참이다** —
  * 값을 느슨하게 받으면 「어떤 표기가 정본인가」가 흐려진다.
  */
@@ -100,7 +112,11 @@ const keywordOf = (q: string): string => q.trim();
  * 이 함수의 결과로 주소를 통째로 갈아 끼우면 선택이 자연히 사라진다 —
  * 목록에 없는 결재선의 상세가 오른쪽에 남으면 그것이 어디서 왔는지 알 수 없다.
  */
-export const toSearchParams = (filters: RouteFilters, page: number): URLSearchParams => {
+export const toSearchParams = (
+  filters: RouteFilters,
+  page: number,
+  size: ListPageSize | null = null,
+): URLSearchParams => {
   const next = new URLSearchParams();
   const keyword = keywordOf(filters.q);
 
@@ -110,6 +126,7 @@ export const toSearchParams = (filters: RouteFilters, page: number): URLSearchPa
   if (keyword !== '') next.set(URL_KEYS.q, keyword);
   if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
   if (page > 1) next.set(URL_KEYS.page, String(page));
+  if (size !== null) next.set(URL_KEYS.size, String(size));
 
   return next;
 };
@@ -127,8 +144,9 @@ export const toSelectionSearchParams = (
   filters: RouteFilters,
   page: number,
   approvalRouteId: number | null,
+  size: ListPageSize | null = null,
 ): URLSearchParams => {
-  const next = toSearchParams(filters, page);
+  const next = toSearchParams(filters, page, size);
 
   if (approvalRouteId !== null) next.set(URL_KEYS.selected, String(approvalRouteId));
 
@@ -144,8 +162,12 @@ export const toSelectionSearchParams = (
  *
  * 조건과 쪽은 그대로 둔다 — 등록 폼을 여는 것은 왼쪽 목록에 보이는 행을 바꾸지 않는다.
  */
-export const toCreateSearchParams = (filters: RouteFilters, page: number): URLSearchParams => {
-  const next = toSearchParams(filters, page);
+export const toCreateSearchParams = (
+  filters: RouteFilters,
+  page: number,
+  size: ListPageSize | null = null,
+): URLSearchParams => {
+  const next = toSearchParams(filters, page, size);
 
   next.set(URL_KEYS.create, ON);
 
@@ -174,7 +196,8 @@ export const withoutSelection = (params: URLSearchParams): URLSearchParams => {
  * **`activeOnly`는 선택이 아니다.** 계약에 기본값이 없어 생략하면 서버가 무엇을 내리는지
  * 정해져 있지 않다 — 「보내지 않음」이라는 상태를 만들지 않는다.
  *
- * **`size`가 없다.** 서버 기본값을 쓴다. 화면이 정한 크기를 심으면 그것이 계약처럼 굳는다.
+ * **`size`는 사용자가 쪽 크기를 골랐을 때만 싣는다.** 고르지 않으면 서버 기본값을 쓴다 — 화면이 정한 크기를
+ * 심으면 그것이 계약처럼 굳는다.
  */
 type ListQueryParams = NonNullable<paths['/app/approval-routes']['get']['parameters']['query']>;
 
@@ -187,6 +210,7 @@ export interface RouteListQuery {
   activeOnly: boolean;
   q?: string;
   page?: number;
+  size?: number;
 }
 
 /**
@@ -195,7 +219,11 @@ export interface RouteListQuery {
  * **「미사용 포함」과 `activeOnly`는 방향이 반대다.** 뒤집는 자리는 여기 한 곳이다 —
  * 화면 어휘를 다른 화면과 맞추면서(꺼짐 = 유효한 것만) 계약의 사정을 한 줄에 가둔다.
  */
-export const toRouteListQuery = (filters: RouteFilters, page: number): RouteListQuery => {
+export const toRouteListQuery = (
+  filters: RouteFilters,
+  page: number,
+  size: ListPageSize | null = null,
+): RouteListQuery => {
   const keyword = keywordOf(filters.q);
 
   return {
@@ -207,5 +235,6 @@ export const toRouteListQuery = (filters: RouteFilters, page: number): RouteList
     activeOnly: !filters.includeInactive,
     ...(keyword === '' ? {} : { q: keyword }),
     ...(page > 1 ? { page } : {}),
+    ...(size === null ? {} : { size }),
   };
 };

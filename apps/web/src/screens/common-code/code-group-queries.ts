@@ -3,7 +3,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { toCodeGroupListQuery } from './filters';
+import { toCodeGroupListQuery, type ListPageSize } from './filters';
 import type { CodeGroup, CodeGroupFilters, PageMeta } from './types';
 
 type CodeGroupDetailResponse = components['schemas']['CodeGroupDetailResponse'];
@@ -26,8 +26,8 @@ export interface CodeGroupListResponse {
  */
 export const codeGroupKeys = {
   all: ['common-code-groups'] as const,
-  list: (filters: CodeGroupFilters, page: number) =>
-    ['common-code-groups', 'list', filters, page] as const,
+  list: (filters: CodeGroupFilters, page: number, size: ListPageSize | null = null) =>
+    ['common-code-groups', 'list', filters, page, size] as const,
   detail: (codeGroupId: number) => ['common-code-groups', 'detail', codeGroupId] as const,
 };
 
@@ -40,12 +40,13 @@ export const codeGroupKeys = {
 export const useCodeGroupList = (
   filters: CodeGroupFilters,
   page: number,
+  size: ListPageSize | null,
   enabled: boolean,
 ): UseQueryResult<CodeGroupListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: codeGroupKeys.list(filters, page),
+    queryKey: codeGroupKeys.list(filters, page, size),
     /*
      * 다른 탭에 있는 동안에는 조회하지 않는다. 보이지 않는 목록을 받아 둘 이유가 없고,
      * 주소 키(`q`·`inactive`·`page`)를 탭이 공유하므로 손으로 고친 주소에서
@@ -54,7 +55,9 @@ export const useCodeGroupList = (
     enabled,
     queryFn: () =>
       runRequest(() =>
-        client.GET('/mdm/code-groups', { params: { query: toCodeGroupListQuery(filters, page) } }),
+        client.GET('/mdm/code-groups', {
+          params: { query: toCodeGroupListQuery(filters, page, size) },
+        }),
       ),
   });
 };

@@ -32,8 +32,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
     detail: 'Chi tiết',
   },
   actions: {
-    prevPage: 'Trước',
-    nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
     addCodeGroup: 'Thêm nhóm',
     addDepartment: 'Thêm phòng ban',
@@ -116,7 +114,8 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       noMatchTitle: 'Không có nhóm mã khớp điều kiện',
       noMatchDescription: 'Hãy giảm bớt hoặc đặt lại điều kiện rồi tra cứu lại.',
       /* 코드값 구획이 같은 자리에서 «먼저 고르세요»를 내므로 여기는 무엇이 채워지는지로 말한다. */
-      notSelected: 'Chọn nhóm mã ở bên trái thì thông tin của nhóm đó hiện ở đây',
+      notSelected: 'Hãy chọn nhóm mã.',
+      notSelectedDescription: 'Thông tin và giá trị mã của nhóm đã chọn sẽ hiển thị.',
     },
     validation: {
       required: 'Đây là mục bắt buộc.',
@@ -157,7 +156,8 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       noneDescription: 'Hãy đăng ký phòng ban đầu tiên bằng «Thêm phòng ban».',
       noMatchTitle: 'Không có phòng ban khớp điều kiện',
       noMatchDescription: 'Hãy giảm bớt hoặc đặt lại điều kiện rồi tra cứu lại.',
-      notSelected: 'Chọn phòng ban ở bên trái thì thông tin của phòng ban đó hiện ở đây',
+      notSelected: 'Hãy chọn phòng ban.',
+      notSelectedDescription: 'Thông tin và kho sản xuất của phòng ban đã chọn sẽ hiển thị.',
     },
     actionReasons: {
       /* 목록에 자기 하나뿐이면 상위로 고를 대상이 없다 — 감추지 않고 사유를 밝힌다. */
@@ -234,7 +234,9 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       noneDescription: 'Công nhân được nhận về từ hệ thống ngoài. Hãy kiểm tra hệ thống gốc.',
       noMatchTitle: 'Không có công nhân khớp điều kiện',
       noMatchDescription: 'Hãy giảm bớt hoặc đặt lại điều kiện rồi tra cứu lại.',
-      notSelected: 'Chọn công nhân ở bên trái thì thông tin của công nhân đó hiện ở đây',
+      notSelected: 'Hãy chọn công nhân.',
+      notSelectedDescription:
+        'Thông tin và chứng chỉ · chứng nhận của công nhân đã chọn sẽ hiển thị.',
     },
   },
   /** 자격·인증 — 이 화면에서 편집 가능한 유일한 작업자 자료. 저장은 전체 치환이다. */
@@ -319,7 +321,8 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       noneDescription: 'Đối tác được nhận về từ hệ thống ngoài. Hãy kiểm tra hệ thống gốc.',
       noMatchTitle: 'Không có đối tác khớp điều kiện',
       noMatchDescription: 'Hãy giảm bớt hoặc đặt lại điều kiện rồi tra cứu lại.',
-      notSelected: 'Chọn đối tác ở bên trái thì vai trò của đối tác đó hiện ở đây',
+      notSelected: 'Hãy chọn đối tác.',
+      notSelectedDescription: 'Thông tin và vai trò của đối tác đã chọn sẽ hiển thị.',
       /* 못 불러온 것과 없는 것은 할 수 있는 조치가 다르다 — 재시도가 아니라 다시 고르기로 안내한다. */
       notFoundTitle: 'Không tìm thấy đối tác đã chọn',
       notFoundDescription:

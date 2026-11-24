@@ -27,6 +27,8 @@ export type MessageListQuery = PeriodQuery &
   MessageFilterQuery & {
     /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
     page?: number;
+    /** 쪽 크기를 고른 적이 있을 때만 싣는다 — 없으면 서버 기본값(#358). */
+    size?: number;
   };
 
 export const messageKeys = {

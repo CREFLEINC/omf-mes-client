@@ -4,8 +4,7 @@
  * ⚠ 용어 — 이 화면의 대상은 「ERP W/O」다. P/O(구매오더)·W/O(MES 작업지시)와 다르다.
  * 생산오더·제조오더·작업지시라고 부르지 않는다(서버 CONTEXT.md).
  *
- * 상세는 두지 않는다 — 상세가 목록 줄과 겹쳐 두지 않는다(사용자 지시 2026-10-27). 목록 한 구획뿐이라 고르기
- * 문구도 없다.
+ * 목록은 식별 열만, 고른 W/O 의 모든 칸은 오른쪽 상세에 「이름 : 값」으로 보인다(omf-all-around#358).
  */
 export const erpProductionOrder = {
   title: 'ERP W/O 조회',
@@ -26,6 +25,7 @@ export const erpProductionOrder = {
   panes: {
     filters: 'ERP W/O 조회 조건',
     list: 'ERP W/O 목록',
+    detail: 'ERP W/O 상세',
   },
   filters: {
     all: '전체',
@@ -34,11 +34,6 @@ export const erpProductionOrder = {
     itemPick: '고르기',
     /** 「조건 더보기」에 접힌 조건의 칩 — 「상태: 반려」처럼 칸 이름과 값을 한 줄로. */
     chip: (label: string, value: string): string => `${label}: ${value}`,
-  },
-  actions: {
-    firstPage: '첫 쪽',
-    prevPage: '이전',
-    nextPage: '다음',
   },
   /**
    * 진행 — 이 W/O 에서 펼친 MES 작업지시가 다 닫혔는가(사용자 지시 2026-10-28). 조건 단추와 목록 열이 같은 낱말을 쓴다.
@@ -69,14 +64,10 @@ export const erpProductionOrder = {
   empty: {
     title: '조건에 맞는 ERP W/O 가 없습니다',
     beyondTitle: '이 쪽에는 ERP W/O 가 없습니다',
+    pickTitle: 'ERP W/O 를 선택하세요.',
+    pickDescription: '목록에서 ERP W/O 를 고르면 ERP 에서 받은 모든 칸을 볼 수 있습니다.',
   },
   loading: 'ERP W/O 를 불러오는 중',
   listLoadFailedTitle: 'ERP W/O 목록을 불러오지 못했습니다',
   loadFailedDescription: '잠시 후 다시 시도하세요. 계속되면 관리자에게 문의하세요.',
-  page: {
-    label: 'ERP W/O 쪽 이동',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
-    total: (total: number): string => `전체 ${String(total)}건`,
-  },
 } as const;

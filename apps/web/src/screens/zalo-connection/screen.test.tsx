@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -82,20 +82,48 @@ const setup = (
   return { writes };
 };
 
+/* 조회 조건 · 목록 · 상세 통일 배치(#358) — 템플릿은 목록에서 골라 상세에서 고친다. 이름 검색으로 찾아 고른다. */
+const openTemplate = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
+  const search = await screen.findByRole('searchbox', { name: t.workspace.search });
+  await user.clear(search);
+  await user.type(search, name);
+  await user.click(screen.getByRole('button', { name: t.workspace.apply }));
+  await user.click(await screen.findByRole('button', { name }));
+  return screen.findByRole('textbox', { name: t.fields.templateId(name) });
+};
+
 describe('ZaloConnectionScreen', () => {
-  it('제목 아래 부제와 상태 Chip, 이벤트 6행의 템플릿 파라미터를 보인다', async () => {
+  it('머리글 없이 상태 Chip 과 템플릿 목록을 보이고, 고른 템플릿의 ID 칸 · 파라미터 · 복사가 상세에 선다', async () => {
+    const user = userEvent.setup();
     setup();
 
-    expect(await screen.findByRole('heading', { level: 1, name: t.title })).toBeInTheDocument();
-    expect(screen.getByText(t.subtitle)).toBeInTheDocument();
     expect(await screen.findByText(t.status.ACTIVE)).toBeInTheDocument();
-    expect(
-      await screen.findByRole('textbox', { name: t.fields.templateId('생산 중단') }),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+    /* 이벤트 6종 + 인계 작업 템플릿이 한 목록에 선다. */
+    const list = within(await screen.findByRole('region', { name: t.workspace.list }));
+    expect(await list.findAllByText(t.workspace.kinds.event)).toHaveLength(6);
+    expect(screen.getByText(t.workspace.selectTitle)).toBeInTheDocument();
+
+    expect(await openTemplate(user, '생산 중단')).toBeInTheDocument();
     expect(
       screen.getByText(`${t.fields.params}: line, work_order, event_time, reason`),
     ).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /파라미터 복사$/ })).toHaveLength(6);
+    expect(
+      screen.getByRole('button', { name: t.actions.copyFor('생산 중단') }),
+    ).toBeInTheDocument();
+  });
+
+  it('초기화는 검색어가 처음 값(빈칸)과 다를 때만 보이고, 누르면 다시 숨는다(#358)', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    const search = await screen.findByRole('searchbox', { name: t.workspace.search });
+    expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
+    await user.type(search, '생산 중단');
+    await user.click(screen.getByRole('button', { name: t.workspace.clear }));
+
+    expect(search).toHaveValue('');
+    expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
   });
 
   it('US7-1 비밀값은 다시 보이지 않고 「등록됨」으로만 보인다', async () => {
@@ -109,7 +137,7 @@ describe('ZaloConnectionScreen', () => {
     const user = userEvent.setup();
     const { writes } = setup();
 
-    const template = await screen.findByRole('textbox', { name: t.fields.templateId('생산 마감') });
+    const template = await openTemplate(user, '생산 마감');
     await user.type(template, 'TPL04');
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
@@ -244,8 +272,6 @@ describe('ZaloConnectionScreen', () => {
     expect(screen.queryByText(t.status.NOT_CONFIGURED)).toBeNull();
     expect(screen.getAllByText(t.values.registered)).toHaveLength(2);
     expect(screen.getByRole('textbox', { name: t.fields.appId })).toHaveValue('123');
-    expect(screen.getByRole('textbox', { name: t.fields.templateId('생산 실행') })).toHaveValue(
-      '100',
-    );
+    expect(await openTemplate(user, '생산 실행')).toHaveValue('100');
   });
 });

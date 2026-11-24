@@ -182,6 +182,8 @@ export interface ParentItemQuery {
   q?: string;
   itemTypeCode: string;
   page?: number;
+  /** 쪽 크기를 고른 때만 — 없으면 종전 크기(PARENT_PAGE_SIZE). */
+  size?: number;
   /** BOM 이 있는 품목만(사용자 지시 2026-10-28 · 서버 #848 · 장부 P-130). */
   hasBom?: boolean;
 }
@@ -206,7 +208,7 @@ export const useParentItems = (query: ParentItemQuery) => {
         ...query,
         itemTypeCode: [query.itemTypeCode],
         includeInactive: true,
-        size: PARENT_PAGE_SIZE,
+        size: query.size ?? PARENT_PAGE_SIZE,
       };
       return runRequest(() => client.GET('/mdm/items', { params: { query: params } }));
     },

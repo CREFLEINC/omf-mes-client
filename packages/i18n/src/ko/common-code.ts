@@ -29,8 +29,6 @@ export const commonCode = {
     detail: '상세',
   },
   actions: {
-    prevPage: '이전',
-    nextPage: '다음',
     goFirstPage: '첫 쪽으로',
     addCodeGroup: '그룹 추가',
     addDepartment: '부서 추가',
@@ -151,7 +149,8 @@ export const commonCode = {
        * 코드값 구획도 같은 자리에서 「먼저 고르세요」를 낸다 — 같은 문장을 두 번 쌓으면
        * 무엇을 하라는 안내인지 오히려 흐려진다. 이 구획은 무엇이 채워지는지로 말한다.
        */
-      notSelected: '좌측에서 코드그룹을 고르면 여기에 그 그룹의 정보가 보입니다',
+      notSelected: '코드그룹을 선택하세요.',
+      notSelectedDescription: '선택한 코드그룹의 정보와 코드값이 표시됩니다.',
     },
     validation: {
       required: '필수 입력 항목입니다.',
@@ -207,7 +206,8 @@ export const commonCode = {
       noneDescription: '「부서 추가」로 첫 부서를 등록하세요.',
       noMatchTitle: '조건에 맞는 부서가 없습니다',
       noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
-      notSelected: '좌측에서 부서를 고르면 여기에 그 부서의 정보가 보입니다',
+      notSelected: '부서를 선택하세요.',
+      notSelectedDescription: '선택한 부서의 정보와 생산 창고가 표시됩니다.',
     },
     actionReasons: {
       /* 목록에 자기 하나뿐이면 상위로 고를 대상이 없다 — 감추지 않고 사유를 밝힌다. */
@@ -312,7 +312,8 @@ export const commonCode = {
       noneDescription: '작업자는 외부 시스템에서 받아 옵니다. 원본 시스템을 확인하세요.',
       noMatchTitle: '조건에 맞는 작업자가 없습니다',
       noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
-      notSelected: '좌측에서 작업자를 고르면 여기에 그 작업자의 정보가 보입니다',
+      notSelected: '작업자를 선택하세요.',
+      notSelectedDescription: '선택한 작업자의 정보와 자격 · 인증이 표시됩니다.',
     },
   },
   /**
@@ -421,7 +422,8 @@ export const commonCode = {
       noneDescription: '거래처는 외부 시스템에서 받아 옵니다. 원본 시스템을 확인하세요.',
       noMatchTitle: '조건에 맞는 거래처가 없습니다',
       noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
-      notSelected: '좌측에서 거래처를 고르면 여기에 그 거래처의 역할이 보입니다',
+      notSelected: '거래처를 선택하세요.',
+      notSelectedDescription: '선택한 거래처의 정보와 역할이 표시됩니다.',
       /*
        * 단건 조회가 **없다**고 답한 경우. 다시 시도해도 나타나지 않으므로 재시도를 권하지 않고
        * 다시 고르기로 안내한다 — 못 불러온 것과 없는 것은 할 수 있는 조치가 다르다.
@@ -461,8 +463,7 @@ export const commonCode = {
      * 그것을 실은 요청을 만들 수 없다. 해제되면 이 화면에는 다시 붙일 수단이 없으므로
      * 그 비대칭을 미리 밝힌다.
      */
-    unknownNote:
-      '목록에 없는 역할은 저장할 때 빠집니다. 빠진 역할은 여기서 다시 붙일 수 없습니다.',
+    unknownNote: '목록에 없는 역할은 저장할 때 빠집니다. 빠진 역할은 여기서 다시 붙일 수 없습니다.',
     /*
      * 잠금 토큰을 얻지 못해 저장이 멈춘 경우 — **이 자원에서만 공통 문구를 쓰지 않는다.**
      *

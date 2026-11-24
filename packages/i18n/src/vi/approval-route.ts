@@ -38,10 +38,7 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     q: 'Tìm loại phê duyệt',
   },
   actions: {
-    prevPage: 'Trước',
-    nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
-    reload: 'Tra cứu lại',
     create: 'Luồng phê duyệt mới',
     /** 등록의 주 액션. 수정의 「저장」과 갈라 적는다 — 없던 것이 생기는 일이다. */
     submitCreate: 'Đăng ký',
@@ -79,8 +76,8 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     noResultDescription: 'Hãy bớt điều kiện hoặc bật «Gồm cả mục ngừng dùng» rồi tra cứu lại.',
     beyondLastTitle: 'Trang này không có kết quả',
     beyondLastDescription: 'Hãy về trang đầu.',
-    noSelectionTitle: 'Chọn luồng phê duyệt thì sẽ thấy nội dung và bước phê duyệt',
-    noSelectionDescription: 'Hãy bấm loại phê duyệt ở danh sách bên trái.',
+    noSelectionTitle: 'Hãy chọn luồng phê duyệt.',
+    noSelectionDescription: 'Nội dung và các bước phê duyệt của luồng đã chọn sẽ hiển thị.',
     notFoundTitle: 'Không tìm thấy luồng phê duyệt đã chọn',
     notFoundDescription: 'Đã bị xóa hoặc số trên địa chỉ sai. Hãy chọn lại từ danh sách bên trái.',
     /** ⭐ 등록 직후가 늘 이 상태다 — 사실만 적지 않고 **무엇을 하면 열리는지**까지 적는다. */
@@ -133,7 +130,7 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
       'Chưa xác nhận được có luồng phê duyệt nào đang dùng cùng loại phê duyệt · đơn vị kinh doanh hay không. Vẫn lưu được và máy chủ sẽ kiểm tra lại.',
     /** ⭐ 응답이 오지 않은 요청은 **실패가 아니다** — 다시 보내면 같은 것이 둘 생길 수 있다. */
     networkUnconfirmed:
-      'Không xác nhận được yêu cầu đã tới nơi hay chưa. Trước khi lưu lại hãy bấm «Tra cứu lại» để xem kết quả.',
+      'Không xác nhận được yêu cầu đã tới nơi hay chưa. Trước khi lưu lại hãy bấm «Tìm» để xem kết quả.',
   },
   validation: {
     approvalTypeRequired: 'Hãy chọn loại phê duyệt.',

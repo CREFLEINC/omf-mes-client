@@ -239,12 +239,13 @@ describe('ErpBomScreen', () => {
   it('모품목 줄을 누르면 오른쪽에 그 품목의 BOM 하이라키를 연다', async () => {
     const { urls, user } = renderScreen([bomsRoute(), componentsRoute]);
 
-    await user.click(await screen.findByRole('button', { name: t.pickParent('SYN-PARENT') }));
+    const list = screen.getByRole('region', { name: t.panes.parents });
+    await user.click(await within(list).findByRole('button', { name: 'SYN-PARENT' }));
 
     expect(await tree().findByText('SYN-CHILD-1')).toBeInTheDocument();
     const boms = urls().find((url) => url.pathname === BOMS_PATH);
     expect(boms?.searchParams.get('parentItemId')).toBe('7001');
-    expect(screen.getByRole('button', { name: t.pickParent('SYN-PARENT') })).toHaveAttribute(
+    expect(within(list).getByRole('button', { name: 'SYN-PARENT' })).toHaveAttribute(
       'aria-current',
       'true',
     );
@@ -255,7 +256,9 @@ describe('ErpBomScreen', () => {
 
     expect(await tree().findByText('SYN-CHILD-1')).toBeInTheDocument();
     // 하이라키 위에 모품목 상세 — 품목 칸과 그 BOM 칸. 품목코드는 굵게.
-    const facts = screen.getByLabelText(t.parent.label);
+    const facts = screen
+      .getByRole('region', { name: t.parent.label })
+      .querySelector<HTMLElement>('.erp-data-detail-fields') as HTMLElement;
     expect(within(facts).getByText('SYN-BOM')).toBeInTheDocument();
     expect(within(facts).getByText('1 SYN-EA')).toBeInTheDocument();
     expect(await within(facts).findByText('SYN-PARENT')).toHaveClass('bom-tree-code');

@@ -4,6 +4,7 @@ import {
   Checkbox,
   type Column,
   EmptyState,
+  Icon,
   SearchInput,
   SkeletonText,
   Table,
@@ -12,9 +13,12 @@ import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
 import { ORPHAN_GROUP_KEY, groupKeyOf, hasDeepHierarchy } from './department-hierarchy';
+import { useFitColumns } from '../../patterns/column-fit';
 import { hasChangedFilters } from '../../patterns/filter-more';
-import { hasAnyScopedFilter } from './filters';
-import { PageNav } from './page-nav';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useColumnWidths } from '../../patterns/column-resize';
+import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
+import { hasAnyScopedFilter, LIST_PAGE_SIZES, type ListPageSize } from './filters';
 import type { PageView } from './pagination';
 import { SelectField } from './select-field';
 import type { DepartmentRow, ScopedFilters, SelectOption } from './types';
@@ -38,7 +42,11 @@ export interface DepartmentListPaneProps {
   /** 선택 목록이 잘렸거나 실패했다는 안내 슬롯 */
   optionsNotice: ReactNode;
   pageView: PageView;
+  /** 서버가 준 쪽 정보. 받기 전 · 실패면 `null` — 셀 것이 없으면 쪽 이동을 그리지 않는다. */
+  pageMeta: PageNavMeta | null;
   onChangePage: (page: number) => void;
+  /** 쪽 크기(10 · 20 · 50) — 바꾸면 첫 쪽으로 간다(단말 관리와 같다 · omf-all-around#358). */
+  onChangePageSize: (size: ListPageSize) => void;
   selectedDepartmentId: number | null;
   onSelect: (departmentId: number) => void;
   /** 등록 폼이 이미 열려 있으면 참. 같은 폼을 두 번 열지 않는다 */
@@ -74,7 +82,9 @@ export const DepartmentListPane = ({
   businessUnitOptions,
   optionsNotice,
   pageView,
+  pageMeta,
   onChangePage,
+  onChangePageSize,
   selectedDepartmentId,
   onSelect,
   isCreating,
@@ -106,15 +116,17 @@ export const DepartmentListPane = ({
       : t.department.values.groupHeader(head.departmentCode, head.departmentName);
   };
 
-  const columns: Column<DepartmentRow>[] = [
+  /* 머리글과 칸은 가운데 — 단말 관리 목록과 같다(omf-all-around#358). */
+  const baseColumns: Column<DepartmentRow>[] = [
     {
       key: 'departmentCode',
+      align: 'center',
       header: t.department.fields.departmentCode,
       width: '160px',
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className="users-roles-row-pick"
           aria-current={row.departmentId === selectedDepartmentId ? 'true' : undefined}
           onClick={() => onSelect(row.departmentId)}
         >
@@ -124,6 +136,7 @@ export const DepartmentListPane = ({
     },
     {
       key: 'departmentName',
+      align: 'center',
       header: t.department.fields.departmentName,
       render: (row) =>
         row.isActive ? row.departmentName : `${row.departmentName}${t.values.inactiveSuffix}`,
@@ -131,8 +144,8 @@ export const DepartmentListPane = ({
     /* 003 · US8 — 연결한 생산 창고 수. 서버가 칸을 싣지 않았을 때만 「—」. */
     {
       key: 'productionWarehouseCount',
+      align: 'center',
       header: t.department.productionWarehouses.countColumn,
-      align: 'end',
       width: '96px',
       render: (row) =>
         row.productionWarehouseCount === undefined
@@ -140,6 +153,10 @@ export const DepartmentListPane = ({
           : String(row.productionWarehouseCount),
     },
   ];
+  /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(단말 관리 목록과 같다 · omf-all-around#358). */
+  const ordered = useColumnOrder('omf-mes:common-code:columns:departments:order', baseColumns);
+  const resizable = useColumnWidths('omf-mes:common-code:columns:departments', ordered);
+  const fit = useFitColumns(resizable.columns);
 
   /**
    * 빈 상태는 세 갈래다 — **셋을 뭉치면 사실과 다른 안내가 된다.**
@@ -151,6 +168,11 @@ export const DepartmentListPane = ({
         <EmptyState
           size="sm"
           live
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="last_page" size={20} />
+            </span>
+          }
           title={t.empty.beyondLastTitle}
           description={t.empty.beyondLastDescription}
           action={
@@ -167,6 +189,11 @@ export const DepartmentListPane = ({
         <EmptyState
           size="sm"
           live
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="search_off" size={20} />
+            </span>
+          }
           title={t.department.empty.noMatchTitle}
           description={t.department.empty.noMatchDescription}
           action={
@@ -182,6 +209,11 @@ export const DepartmentListPane = ({
       <EmptyState
         size="sm"
         live
+        icon={
+          <span className="inspection-standard-empty-icon">
+            <Icon name="apartment" size={20} />
+          </span>
+        }
         title={t.department.empty.noneTitle}
         description={t.department.empty.noneDescription}
       />
@@ -201,10 +233,24 @@ export const DepartmentListPane = ({
     }
 
     return (
-      <>
+      /* 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 단추로 넘긴다(단말 관리와 같다). */
+      <div
+        ref={fit.ref}
+        className="users-roles-list inspection-queue-table"
+        style={resizable.style}
+        onClick={(event) => {
+          const target = event.target;
+          if (!(target instanceof Element)) return;
+          if (target.closest('button, a, input, select, textarea') !== null) return;
+          target
+            .closest('tbody tr')
+            ?.querySelector<HTMLButtonElement>('.users-roles-row-pick')
+            ?.click();
+        }}
+      >
         <Table
           density="compact"
-          columns={columns}
+          columns={fit.columns}
           rows={rows}
           getRowId={(row) => String(row.departmentId)}
           // 행 순서 재배치 기능은 쓰지 않는다 — 계층 그룹과 병용하면 조용히 무시된다.
@@ -212,8 +258,7 @@ export const DepartmentListPane = ({
           renderGroupHeader={(groupKey) => groupLabel(groupKey)}
           empty={emptySlot}
         />
-        <PageNav view={pageView} onChange={onChangePage} />
-      </>
+      </div>
     );
   };
 
@@ -225,7 +270,7 @@ export const DepartmentListPane = ({
       {optionsNotice}
 
       {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-      <div className="filter-bar">
+      <div className="filter-bar common-code-filter">
         <SearchInput
           label={t.filters.departmentSearchLabel}
           placeholder={t.filters.departmentSearchPlaceholder}
@@ -278,7 +323,11 @@ export const DepartmentListPane = ({
             </Button>
           )}
           <span className="inspection-standard-filter-divider" aria-hidden />
-          <Button variant="outlined" disabled={isCreating} onClick={onAddDepartment}>
+          <Button
+            leadingIcon={<Icon name="add" size={18} />}
+            disabled={isCreating}
+            onClick={onAddDepartment}
+          >
             {t.actions.addDepartment}
           </Button>
         </div>
@@ -298,7 +347,16 @@ export const DepartmentListPane = ({
         </div>
       )}
 
-      {listSlot()}
+      <div className="users-roles-list-body">{listSlot()}</div>
+      {pageMeta !== null && (loadError === null || loadError === undefined) && (
+        <PageNav<ListPageSize>
+          meta={pageMeta}
+          sizes={LIST_PAGE_SIZES}
+          buttonSize="md"
+          onChangePage={onChangePage}
+          onChangeSize={onChangePageSize}
+        />
+      )}
     </>
   );
 

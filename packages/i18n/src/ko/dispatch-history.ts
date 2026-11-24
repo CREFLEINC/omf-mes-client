@@ -1,8 +1,5 @@
 /** W-CO-13 알림 발송 이력 — 이벤트 처리 결과와 수신자별 Zalo 결과(001 신설, 결정 #20). */
 export const dispatchHistory = {
-  title: '알림 발송 이력',
-  breadcrumbRoot: '시스템 관리',
-  description: '이벤트마다 알림이 갔는지, 안 갔다면 왜인지, 수신자별 Zalo 결과를 봅니다.',
   panes: { dispatches: '이벤트 처리 결과', deliveries: 'Zalo 발송 상세' },
   filters: {
     period: '기간',
@@ -58,11 +55,18 @@ export const dispatchHistory = {
   state: {
     empty: '조건에 맞는 알림이 없습니다',
     deliveriesEmpty: 'Zalo 발송 건이 없습니다',
-    pageOf: (page: number, totalPages: number): string => `${String(page)} / ${String(totalPages)}`,
   },
   errors: {
     periodRequired: '기간을 입력하세요.',
     periodReversed: '종료일이 시작일보다 앞설 수 없습니다.',
     periodTooLong: '기간은 31일까지 조회할 수 있습니다',
+  },
+  /** 조회 조건 · 목록 · 상세 통일 배치(omf-all-around#358). */
+  workspace: {
+    filter: '조회 조건',
+    list: '처리 결과 목록',
+    clear: '초기화',
+    selectTitle: '알림 건을 선택하세요.',
+    select: '고른 건의 수신자별 Zalo 발송 결과를 볼 수 있습니다.',
   },
 } as const;
