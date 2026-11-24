@@ -39501,54 +39501,25 @@ body:has(
   overflow-y: auto;
 }
 
-/* 연동 현황·이력(#358) — 조회 조건 상자 + 목록 상자 하나. 상세는 창으로 뜬다(좌우/상하 배치 없음). */
-.integration-sync-workspace {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-  min-width: 0;
-}
-
-.integration-sync-workspace > .integration-sync-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  box-sizing: border-box;
-  /* 창 바닥에서 멈춘다(창 크기를 따른다) — `--split-top` 은 이 상자의 창 안 윗변(useFitToViewport). */
-  height: calc(100dvh - var(--split-top, 20rem) - var(--space-6));
-  min-width: 0;
-  min-height: 18rem;
-  margin: 0;
-  overflow: hidden;
-}
-
-/* 표만 안에서 구르고(머리줄 고정) 쪽 넘김은 상자 바닥에 남는다. */
-.integration-sync-list > .erp-link-list-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-}
-
-.integration-sync-list > .page-nav {
-  flex: 0 0 auto;
-  flex-wrap: wrap;
-}
-
-/* 목록 제목 줄 오른쪽 — 선택 건수 · [일괄 재처리]. */
-.integration-sync-list-actions {
+/* 목록 제목 줄 오른쪽 — 선택 건수 · 일괄 동작을 「목록 접기」 앞에 한 줄로(ListDetailWorkspace `list.actions` · #358). */
+.list-detail-list-actions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   margin-left: auto;
 }
 
-.integration-sync-list-selection {
+.list-detail-list-actions + .po-board-list-collapse {
+  margin-left: 0;
+}
+
+.list-detail-list-selection {
   font: var(--type-body-sm);
   color: var(--on-surface-variant);
   white-space: nowrap;
 }
 
-/* 상세 창 본문 — 상태 배지(처리 중이면 「언제부터」) → 정보 상자. */
+/* 연동 현황·이력 상세(#358) — 머리 줄(문서 번호 · 상태) → 오류 내용(있을 때만) → 연동 정보 → 처리 일시. */
 .integration-sync-detail {
   display: grid;
   gap: var(--space-4);
@@ -39564,19 +39535,65 @@ body:has(
   min-width: 0;
 }
 
-/* 정보 상자 — 두 열(연동 항목 | 재시도 횟수, 일시 칸들), 오류 내용은 상자 전체 폭(검사 조회·판정과 같은 모양 · #358). */
-.iqc-inbound-facts.integration-sync-facts {
+.integration-sync-detail-head > .pane-title {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 오류 내용 — 전체 폭, 오류 색 테두리 상자. */
+.integration-sync-detail-error {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--semantic-error);
+  border-radius: var(--radius-md, 12px);
+  background: var(--semantic-error-container);
 }
 
-.iqc-inbound-facts.integration-sync-facts > .integration-sync-fact-wide {
-  grid-column: 1 / -1;
-}
-
-.iqc-inbound-facts.integration-sync-facts > .integration-sync-fact-wide > dd {
+.integration-sync-detail-error > p {
+  margin: 0;
+  color: var(--semantic-error-text);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/* 정보 상자 한 줄 — 세 칸(연동 항목 · 송수신 구분 · 재시도 횟수 / 발생 → 전송 → 완료), 칸이 넘치면 다음 줄로. */
+.iqc-inbound-facts.integration-sync-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  margin: 0;
+}
+
+/* 칸이 좁아도 일시를 「…」로 자르지 않고 줄을 바꿔 다 보인다. */
+.iqc-inbound-facts.integration-sync-facts dd {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+/* 일괄 재처리 확인 창의 덧붙임 한 줄(부분 처리 안내). */
+.integration-sync-confirm-note {
+  margin: 0;
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+
+/* 재처리 확인 창의 대상 줄 — 「문서 번호 [GR-…]」 · 「대상 [N건]」. */
+.integration-sync-confirm-target {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+}
+
+.integration-sync-confirm-chip {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-high);
+  font: var(--type-body-md);
 }
 
 /*
@@ -39584,7 +39601,7 @@ body:has(
  * 다른 메뉴가 같이 쓰는 목록 · 상세 틀은 건드리지 않도록 이 화면들의 목록 자리만 고른다.
  */
 :is(
-    .integration-sync-workspace,
+    .list-detail-list.integration-sync-list,
     .users-roles-workspace,
     .plant-working-days-workspace,
     .list-detail-list:has(> .erp-link-list-body),
@@ -39599,7 +39616,7 @@ body:has(
 }
 
 :is(
-    .integration-sync-workspace,
+    .list-detail-list.integration-sync-list,
     .users-roles-workspace,
     .plant-working-days-workspace,
     .list-detail-list:has(> .erp-link-list-body),
@@ -39613,4 +39630,25 @@ body:has(
   > :is(div, span, button) {
   justify-content: center;
   text-align: center;
+}
+
+/* 머리글 글자를 칸 한가운데로 — 끌기 손잡이(안 보일 때도 자리를 차지한다)를 글자 흐름에서 빼 칸 오른쪽 끝에 띄운다(#358). */
+:is(
+    .list-detail-list.integration-sync-list,
+    .users-roles-workspace,
+    .plant-working-days-workspace,
+    .list-detail-list:has(> .erp-link-list-body),
+    .approval-route-list,
+    .notify-list-table,
+    .erp-data-list,
+    .common-code-tab-panel .list-detail-list
+  )
+  table
+  th
+  .col-head
+  > .col-grip {
+  position: absolute;
+  inset-inline-end: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
 }

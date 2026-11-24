@@ -36,7 +36,7 @@ export const CreatedFilter = ({ applied, today, onApply }: CreatedFilterProps) =
   const active = presetOf(applied, today);
   /* 칸이 둘 다 비어 있으면 조회 단추를 잠그고, 하나만 찼거나 거꾸로면 그 사유를 낸다. */
   const isBlank = draft.from === '' && draft.to === '';
-  const reason = isBlank ? null : validatePeriod(draft);
+  const reason = isBlank ? null : validatePeriod(draft, t.created.reasons);
 
   return (
     <form

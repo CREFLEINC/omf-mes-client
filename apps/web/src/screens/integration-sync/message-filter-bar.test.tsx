@@ -14,7 +14,6 @@ interface BarOptions {
   filters?: MessageFilters;
   statusOptions?: string[];
   interfaceOptions?: string[];
-  directionOptions?: string[];
 }
 
 interface FilterChangeCase {
@@ -28,8 +27,7 @@ interface FilterChangeCase {
 const FILTER_CHANGE_CASES: FilterChangeCase[] = [
   { key: 'status', label: '상태 선택', value: 'FAILED', shown: '실패' },
   { key: 'iface', label: '연동 항목 선택', value: 'IF-GR-SEND', shown: '입고 (G/R)' },
-  { key: 'direction', label: '송수신 구분 선택', value: 'OUTBOUND', shown: '송신' },
-  { key: 'retryMin', label: '재시도 횟수(이상)', value: '5', shown: '5' },
+  { key: 'retryMin', label: '최소 재시도 횟수', value: '5', shown: '5' },
 ];
 
 const renderBar = ({
@@ -37,7 +35,6 @@ const renderBar = ({
   filters = EMPTY_FILTERS,
   statusOptions = [],
   interfaceOptions = [],
-  directionOptions = [],
 }: BarOptions = {}) => {
   const onSearch = vi.fn();
   const onRemoveFilter = vi.fn();
@@ -49,7 +46,6 @@ const renderBar = ({
       appliedFilters={nextFilters}
       statusOptions={statusOptions}
       interfaceOptions={interfaceOptions}
-      directionOptions={directionOptions}
       onSearch={onSearch}
       onRemoveFilter={onRemoveFilter}
       onReset={onReset}
@@ -94,12 +90,12 @@ describe('MessageFilterBar — 기간', () => {
     await user.clear(screen.getByLabelText('발생일 종료'));
     await user.type(screen.getByLabelText('발생일 종료'), '2026-08-10');
     await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
-    await user.type(screen.getByLabelText('재시도 횟수(이상)'), '3');
+    await user.type(screen.getByLabelText('최소 재시도 횟수'), '3');
 
     rerenderWithApplied({ ...APPLIED }, { ...EMPTY_FILTERS });
 
     expect(screen.getByLabelText('발생일 종료')).toHaveValue('2026-08-10');
-    expect(screen.getByLabelText('재시도 횟수(이상)')).toHaveValue(3);
+    expect(screen.getByLabelText('최소 재시도 횟수')).toHaveValue(3);
   });
 
   it.each([
@@ -178,7 +174,7 @@ describe('MessageFilterBar — 조건 4종', () => {
   it('선택칸마다 눈에 보이는 라벨이 붙는다', () => {
     renderBar();
 
-    for (const label of ['송수신 구분 선택', '연동 항목 선택', '상태 선택', '재시도 횟수(이상)']) {
+    for (const label of ['연동 항목 선택', '상태 선택', '최소 재시도 횟수']) {
       expect(screen.getByLabelText(label)).toBeInTheDocument();
     }
     // 대상 유형 칸은 두지 않는다 — 값이 시스템 코드라 읽을 수 없고 항목과 짝이다.
@@ -197,7 +193,6 @@ describe('MessageFilterBar — 조건 4종', () => {
       const { rerenderWithApplied } = renderBar({
         statusOptions: ['FAILED'],
         interfaceOptions: ['IF-GR-SEND'],
-        directionOptions: ['OUTBOUND'],
       });
 
       rerenderWithApplied({ ...APPLIED }, { ...EMPTY_FILTERS, [key]: value });
@@ -215,20 +210,20 @@ describe('MessageFilterBar — 조건 4종', () => {
     const { onSearch, user } = renderBar();
 
     await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
-    await user.type(screen.getByLabelText('재시도 횟수(이상)'), '3');
+    await user.type(screen.getByLabelText('최소 재시도 횟수'), '3');
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(onSearch).toHaveBeenCalledWith(APPLIED, { ...EMPTY_FILTERS, retryMin: '3' });
   });
 
-  it('접힌 칸(구분 · 재시도 횟수)에 걸린 조건만 칩이 되고 ×를 누르면 그 조건만 푼다', async () => {
+  it('접힌 칸(재시도 횟수)에 걸린 조건만 칩이 되고 ×를 누르면 그 조건만 푼다', async () => {
     const { onRemoveFilter, user } = renderBar({
       filters: { ...EMPTY_FILTERS, status: 'FAILED', direction: 'OUTBOUND', retryMin: '2' },
       statusOptions: ['FAILED'],
-      directionOptions: ['OUTBOUND'],
     });
 
-    expect(screen.getByText('송수신 구분: 송신')).toBeInTheDocument();
+    /* 송수신 구분은 위 줄 라벨이 보이므로 조회 상자에 칩으로 겹쳐 적지 않는다(#358). */
+    expect(screen.queryByText('송수신 구분: 송신')).not.toBeInTheDocument();
     expect(screen.getByText('재시도 2회 이상')).toBeInTheDocument();
     /* 보이는 칸(상태)의 조건은 칩으로 겹쳐 적지 않는다. */
     expect(screen.queryByText('상태: 실패')).not.toBeInTheDocument();
@@ -241,25 +236,42 @@ describe('MessageFilterBar — 조건 4종', () => {
   it('조건이 없으면 칩을 만들지 않는다', () => {
     renderBar();
 
-    expect(screen.queryByRole('button', { name: '송수신 구분 조건 제거' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '재시도 횟수 조건 제거' })).not.toBeInTheDocument();
+  });
+
+  it('조회 상자에 송수신 구분 칸을 두지 않는다 — 위 줄 라벨이 거른다(#358)', async () => {
+    const { user } = renderBar();
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+
+    expect(screen.queryByLabelText('송수신 구분 선택')).toBeNull();
+  });
+
+  it('연동 항목 칸은 선택지가 많아도 검색창 없이 펼친다(#358)', async () => {
+    const { user } = renderBar({
+      interfaceOptions: ['IF-A', 'IF-B', 'IF-C', 'IF-D', 'IF-E', 'IF-F', 'IF-G'],
+    });
+
+    await user.click(screen.getByRole('combobox', { name: '연동 항목 선택' }));
+
+    expect(screen.getAllByRole('option').length).toBeGreaterThan(5);
+    expect(screen.queryByRole('searchbox')).toBeNull();
+    expect(screen.queryByRole('textbox')).toBeNull();
   });
 });
 
 describe('MessageFilterBar — 조건 더보기(C-6)', () => {
-  it('보이는 칸은 기간 · 항목 · 상태, 구분 · 재시도 횟수는 「조건 더보기」 안에 접혀 있다', async () => {
+  it('보이는 칸은 기간 · 항목 · 상태, 재시도 횟수는 「조건 더보기」 안에 접혀 있다', async () => {
     const { user } = renderBar();
     const more = screen.getByRole('button', { name: messages.common.filterMore.open });
 
     expect(more).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('combobox', { name: '연동 항목 선택' })).toBeVisible();
     expect(screen.getByRole('combobox', { name: '상태 선택' })).toBeVisible();
-    expect(screen.queryByRole('combobox', { name: '송수신 구분 선택' })).toBeNull();
-    expect(screen.queryByRole('spinbutton', { name: '재시도 횟수(이상)' })).toBeNull();
+    expect(screen.queryByRole('spinbutton', { name: '최소 재시도 횟수' })).toBeNull();
 
     await user.click(more);
 
-    expect(screen.getByRole('combobox', { name: '송수신 구분 선택' })).toBeVisible();
-    expect(screen.getByRole('spinbutton', { name: '재시도 횟수(이상)' })).toBeVisible();
+    expect(screen.getByRole('spinbutton', { name: '최소 재시도 횟수' })).toBeVisible();
   });
 
   it('펼치면 칸에 값이 보이므로 칩을 거둔다', async () => {
@@ -269,6 +281,6 @@ describe('MessageFilterBar — 조건 더보기(C-6)', () => {
     await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
 
     expect(screen.queryByText('재시도 2회 이상')).toBeNull();
-    expect(screen.getByLabelText('재시도 횟수(이상)')).toHaveValue(2);
+    expect(screen.getByLabelText('최소 재시도 횟수')).toHaveValue(2);
   });
 });

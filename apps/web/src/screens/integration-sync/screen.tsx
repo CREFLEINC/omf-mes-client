@@ -1,18 +1,18 @@
-import { Button, Dialog, useToast } from '@crefle/web-ui';
+import { Button, Dialog, EmptyState, Icon, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { useMasterWrite } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
-import { useFitToViewport } from '../../patterns/po-board';
 import { ErpSendChips } from '../erp-outbound/send-chips';
 import { DirectionChips } from './direction-chips';
+import { ERP_LINK_ORIENTATION_KEY } from './erp-link-layout';
 import { toBatchResultView, type BatchResultView, type RequestedMessage } from './batch-result';
 import { BatchRetryDialog } from './batch-retry-dialog';
 import {
-  PLACEHOLDER_DIRECTION_CODES,
   PLACEHOLDER_INTERFACE_CODES,
   PLACEHOLDER_STATUS_CODES,
   toCodeOptions,
@@ -66,6 +66,8 @@ const RetryConfirmDialog = ({
   <Dialog
     open={target !== null}
     onClose={onClose}
+    /* 닫기는 [취소] 하나(창의 X 단추는 두지 않는다 · #358). */
+    showCloseButton={false}
     title={t.retry.confirmTitle}
     footer={
       <>
@@ -80,6 +82,13 @@ const RetryConfirmDialog = ({
     }
   >
     {banner}
+    {/* 대상 — 「문서 번호 GR-…」(#358). */}
+    {target !== null && (
+      <p className="integration-sync-confirm-target">
+        <strong>{t.retry.targetLabel}</strong>
+        <span className="integration-sync-confirm-chip">{documentNoOf(target)}</span>
+      </p>
+    )}
     <p>{t.retry.confirmDescription}</p>
   </Dialog>
 );
@@ -205,43 +214,14 @@ export const IntegrationSyncScreen = () => {
   };
 
   const detail = useMessageDetail(selectedId);
-  const { splitRef, aboveRef } = useFitToViewport();
-  const workspaceRef = useRef<HTMLDivElement>(null);
-  /*
-   * 목록 상자의 창 안 윗변을 화면 전체 크기가 바뀔 때마다 다시 잰다(공용 목록 · 상세 틀과 같다 · #358). 조회 상자 위쪽
-   * (탭 줄 라벨 등)이 나중에 자리를 잡으면 윗변만 움직이고 조회 상자 크기는 그대로라, 재지 않으면 바닥에 빈 띠가 남는다.
-   */
-  useLayoutEffect(() => {
-    const root = workspaceRef.current;
-    const listEl = splitRef.current;
-    if (root === null || listEl === null || typeof ResizeObserver === 'undefined') return;
-    let frame = 0;
-    const observer = new ResizeObserver(() => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        listEl.style.setProperty('--split-top', `${String(listEl.getBoundingClientRect().top)}px`);
-      });
-    });
-    observer.observe(root);
-    observer.observe(document.documentElement);
-    return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
-    };
-  }, [splitRef]);
 
   /*
-   * 상세를 여는 것은 **보이는 행을 바꾸지 않는다** — 선택(체크)을 건드리지 않는다. 상세는 창으로 뜬다(#358).
+   * 상세를 여는 것은 **보이는 행을 바꾸지 않는다** — 선택(체크)을 건드리지 않는다. 상세는 오른쪽 상세 상자에 선다(#358).
    */
   const openDetail = (id: number) => {
     const next = toSearchParams(period, filters, page, size);
     next.set('sel', String(id));
     setSearchParams(next);
-  };
-
-  /* 상세 창을 닫으면 주소에서 그 건을 뺀다 — 목록 조건 · 쪽은 그대로. */
-  const closeDetail = () => {
-    setSearchParams(toSearchParams(period, filters, page, size));
   };
 
   /*
@@ -378,84 +358,79 @@ export const IntegrationSyncScreen = () => {
   return (
     <>
       {/*
-       * 조회 조건 상자 + 목록 상자(#358). 줄을 누르면 상세가 창으로 뜬다 — 오른쪽 상세 구획 · 좌우/상하 배치는 두지 않는다
-       * (사용자 지시 2026-11-24). 탭 막대 오른쪽의 송신 대기 · 실패 칩(누르면 ERP 송신 탭)은 그대로.
+       * 조회 조건 · 목록 | 상세(공용 목록 · 상세 틀 · #358). 줄을 누르면 오른쪽 상세 상자에 그 건이 선다(사용자 지시
+       * 2026-11-24 — 창으로 띄우지 않는다). 탭 막대 오른쪽에 송신 대기 · 실패 칩과 송수신 구분 라벨.
        */}
-      <ErpSendChips linkToTab />
-      {/* 위 줄 송수신 구분 라벨 — 누르면 그 구분으로 거른다(조회 상자의 「송수신 구분 선택」과 같은 조건 · #358). */}
-      <DirectionChips
-        query={periodQuery === null ? null : { ...periodQuery, ...toFilterQuery(filters) }}
-        value={filters.direction}
-        onChange={(code) => {
-          applyQuery(period, { ...filters, direction: code });
+      <ListDetailWorkspace
+        storageKey="omf-mes:integration-sync"
+        orientationKey={ERP_LINK_ORIENTATION_KEY}
+        initialRatio={0.65}
+        toolbar={
+          <>
+            <ErpSendChips linkToTab />
+            {/* 위 줄 송수신 구분 라벨 — 누르면 그 구분으로 거른다(#358). */}
+            <DirectionChips
+              query={periodQuery === null ? null : { ...periodQuery, ...toFilterQuery(filters) }}
+              value={filters.direction}
+              onChange={(code) => {
+                applyQuery(period, { ...filters, direction: code });
+              }}
+            />
+          </>
+        }
+        filter={{
+          label: t.panes.filter,
+          /* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */
+          content: (
+            <MessageFilterBar
+              appliedPeriod={period}
+              appliedFilters={filters}
+              statusOptions={toCodeOptions(
+                PLACEHOLDER_STATUS_CODES,
+                optionRows,
+                (row) => row.statusCode,
+                filters.status,
+              )}
+              interfaceOptions={toCodeOptions(
+                PLACEHOLDER_INTERFACE_CODES,
+                optionRows,
+                (row) => row.interfaceCode,
+                filters.iface,
+              )}
+              onSearch={(nextPeriod, nextFilters) => {
+                applyQuery(nextPeriod, nextFilters);
+              }}
+              onRemoveFilter={(key) => {
+                applyQuery(period, { ...filters, [key]: '' });
+              }}
+              onReset={() => {
+                applyQuery(defaultPeriod(new Date()), EMPTY_FILTERS);
+              }}
+            />
+          ),
         }}
-      />
-      <div ref={workspaceRef} className="integration-sync-workspace">
-        <section
-          ref={aboveRef}
-          className="pane po-board-filter list-detail-filter"
-          aria-label={t.panes.filter}
-        >
-          <MessageFilterBar
-            appliedPeriod={period}
-            appliedFilters={filters}
-            statusOptions={toCodeOptions(
-              PLACEHOLDER_STATUS_CODES,
-              optionRows,
-              (row) => row.statusCode,
-              filters.status,
-            )}
-            interfaceOptions={toCodeOptions(
-              PLACEHOLDER_INTERFACE_CODES,
-              optionRows,
-              (row) => row.interfaceCode,
-              filters.iface,
-            )}
-            directionOptions={toCodeOptions(
-              PLACEHOLDER_DIRECTION_CODES,
-              optionRows,
-              (row) => row.directionCode,
-              filters.direction,
-            )}
-            onSearch={(nextPeriod, nextFilters) => {
-              applyQuery(nextPeriod, nextFilters);
-            }}
-            onRemoveFilter={(key) => {
-              applyQuery(period, { ...filters, [key]: '' });
-            }}
-            onReset={() => {
-              applyQuery(defaultPeriod(new Date()), EMPTY_FILTERS);
-            }}
-          />
-        </section>
-
-        {/* 목록 상자는 창 바닥에서 멈춘다 — 표만 안에서 구르고 쪽 넘김은 늘 보인다(창 크기를 따른다 · #358). */}
-        <section ref={splitRef} className="pane integration-sync-list" aria-label={t.panes.list}>
-          {/* 제목 줄 「연동 이력 목록 N건 … 선택 N건 · [일괄 재처리]」. 고른 건이 없으면 단추만 잠근다. */}
-          <div className="po-board-list-head">
-            <h2 className="pane-title">{t.panes.list}</h2>
-            {list.data !== undefined && (
-              <span className="po-board-list-count">
-                {messages.common.paneList.count(list.data.page.total)}
+        list={{
+          label: t.panes.list,
+          title: t.panes.list,
+          count: list.data?.page.total,
+          className: 'integration-sync-list',
+          /* 선택 건수 · 일괄 재처리는 제목 줄 오른쪽 「목록 접기」 앞에 한 줄로(#358). 고른 건이 없으면 단추만 잠근다. */
+          actions: list.isError ? undefined : (
+            <>
+              <span className="list-detail-list-selection">
+                {t.batch.selectionCount(selectedIds.length)}
               </span>
-            )}
-            {!list.isError && (
-              <div className="integration-sync-list-actions">
-                <span className="integration-sync-list-selection">
-                  {t.batch.selectionCount(selectedIds.length)}
-                </span>
-                <Button
-                  variant="outlined"
-                  size="sm"
-                  disabled={selectedIds.length === 0}
-                  onClick={openBatch}
-                >
-                  {t.actions.batchRetry}
-                </Button>
-              </div>
-            )}
-          </div>
-          {list.isError ? (
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={selectedIds.length === 0}
+                onClick={openBatch}
+              >
+                {t.actions.batchRetry}
+              </Button>
+            </>
+          ),
+          content: list.isError ? (
             /* 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「기록이 없습니다」로 보이면 안 된다. */
             <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
           ) : (
@@ -497,35 +472,38 @@ export const IntegrationSyncScreen = () => {
                 />
               )}
             </>
-          )}
-        </section>
-      </div>
-
-      {/* 상세 창 — 줄을 누르면 뜬다. 주소(`sel`)에 남아 새로고침해도 다시 뜬다. 닫으면 주소에서 뺀다. */}
-      <Dialog
-        open={selectedId !== null}
-        size="lg"
-        onClose={closeDetail}
-        /* 닫기는 아래 [닫기] 하나(창의 X 단추는 두지 않는다). */
-        showCloseButton={false}
-        title={detail.data === undefined ? t.detail.title : documentNoOf(detail.data)}
-        footer={
-          <Button variant="outlined" onClick={closeDetail}>
-            {messages.common.close}
-          </Button>
-        }
-      >
-        <MessageDetailPane
-          view={detail.data}
-          isLoading={detail.isPending}
-          loadError={
-            detail.isError ? (
-              <LoadErrorBanner error={detail.error} onRetry={() => void detail.refetch()} />
-            ) : null
-          }
-          now={now}
-        />
-      </Dialog>
+          ),
+        }}
+        detail={{
+          label: t.panes.detail,
+          /* 상세 구획은 늘 선다 — 고르기 전에는 무엇을 하라는지만 말한다(단말 관리와 같은 빈 상태 · #358). */
+          content:
+            selectedId === null ? (
+              <EmptyState
+                size="sm"
+                className="users-roles-pick-empty"
+                icon={
+                  <span className="inspection-standard-empty-icon">
+                    <Icon name="swap_horiz" size={20} />
+                  </span>
+                }
+                title={t.detail.pick}
+                description={t.detail.pickDescription}
+              />
+            ) : (
+              <MessageDetailPane
+                view={detail.data}
+                isLoading={detail.isPending}
+                loadError={
+                  detail.isError ? (
+                    <LoadErrorBanner error={detail.error} onRetry={() => void detail.refetch()} />
+                  ) : null
+                }
+                now={now}
+              />
+            ),
+        }}
+      />
 
       <RetryConfirmDialog
         target={retryTarget}

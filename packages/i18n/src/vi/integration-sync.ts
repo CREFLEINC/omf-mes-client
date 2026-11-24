@@ -49,8 +49,8 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     periodTo: 'Ngày phát sinh đến',
     status: 'Chọn trạng thái',
     interfaceCode: 'Chọn hạng mục liên kết',
-    direction: 'Chọn gửi/nhận',
-    retryMin: 'Số lần thử lại (từ)',
+    retryMin: 'Số lần thử lại tối thiểu',
+    retryMinPlaceholder: 'Nhập số',
   },
   actions: {
     prevPage: 'Trước',
@@ -65,22 +65,25 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
   /** 부분 실패를 허용하는 일괄 재처리라 성공 건수와 실패 사유를 함께 낸다. */
   batch: {
     selectionCount: (count: number): string => `Đã chọn ${String(count)}`,
-    confirmTitle: (count: number): string => `Gửi lại ${String(count)} mục đã chọn?`,
-    confirmDescription: 'Có thể chỉ một phần thành công. Kết quả được báo theo từng mục.',
+    confirmTitle: (count: number): string => `Xử lý lại ${String(count)} mục đã chọn?`,
+    targetLabel: 'Đối tượng',
+    confirmDescription: 'Xử lý lại các mục liên kết đã chọn. Không tạo mục liên kết mới.',
+    confirmNote: 'Có thể chỉ một phần được xử lý. Kết quả được báo theo từng mục.',
     resultTitle: 'Kết quả xử lý lại',
-    failedListLabel: 'Mục không gửi được',
-    allSucceeded: (count: number): string => `Đã gửi lại ${String(count)} mục.`,
+    failedListLabel: 'Mục không xử lý lại được',
+    allSucceeded: (count: number): string => `Đã yêu cầu xử lý lại ${String(count)} mục.`,
     partial: (succeeded: number, failed: number): string =>
-      `Đã gửi lại ${String(succeeded)} mục. ${String(failed)} mục không gửi được.`,
+      `Đã yêu cầu xử lý lại ${String(succeeded)} mục. ${String(failed)} mục không yêu cầu được.`,
     /** 서버가 준 위치 번호가 보낸 건수 밖일 때. 그 항목을 버리지 않고 이렇게 밝힌다. */
     unknownItem: 'Không rõ là mục nào.',
     noReason: 'Không nhận được lý do.',
   },
   /** 재처리는 같은 메시지 키로 다시 보내는 것이라 새 건을 만들지 않는다고 못 박는다. */
   retry: {
-    confirmTitle: 'Gửi lại?',
-    confirmDescription: 'Gửi lại cùng mục này. Không tạo mục mới.',
-    requested: 'Đã yêu cầu gửi lại',
+    confirmTitle: 'Xử lý lại mục liên kết này?',
+    targetLabel: 'Số chứng từ',
+    confirmDescription: 'Xử lý lại mục liên kết hiện có. Không tạo mục liên kết mới.',
+    requested: 'Đã yêu cầu xử lý lại',
   },
   /** 이 화면의 쓰기는 저장이 아니라 재처리 요청이라 「저장」 어휘를 쓰지 않는다. */
   retryError: {
@@ -130,6 +133,8 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     availableAt: 'Thời điểm thử lại tiếp theo',
     sentAt: 'Thời điểm gửi',
     completedAt: 'Thời điểm hoàn tất',
+    linkInfo: 'Thông tin liên kết',
+    processTimes: 'Thời điểm xử lý',
   },
   /** 계약이 정의한 사실만 옮긴다 — 「잠금이 오래됐다」 같은 판정은 하지 않는다. */
   status: {

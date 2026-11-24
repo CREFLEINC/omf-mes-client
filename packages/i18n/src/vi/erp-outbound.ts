@@ -55,6 +55,11 @@ export const erpOutbound: Translated<typeof ko.erpOutbound> = {
     month: '1 tháng gần nhất',
     from: 'Từ ngày',
     to: 'Đến ngày',
+    reasons: {
+      searchNeedsPeriod:
+        'Tra cứu chỉ dùng được sau khi điền đủ kỳ. Hãy chọn ngày bắt đầu và ngày kết thúc.',
+      periodReversed: 'Kết thúc kỳ không được sớm hơn bắt đầu kỳ.',
+    },
   },
   chips: {
     sendOn: 'Gửi: bật',

@@ -41,8 +41,10 @@ describe('MessageDetailPane — 항목', () => {
       }),
     });
 
-    // 배지 · 처리 중 보조 줄, 정보 상자 첫 칸에 연동 항목과 송수신 구분(#358). 문서 번호는 창 제목이 단다.
-    expect(fieldValue('연동 항목')).toBe('IF-SAMPLE-A수신');
+    // 머리 줄에 문서 번호 · 배지 · 처리 중 보조 줄, 연동 정보 줄에 연동 항목 · 송수신 구분 · 재시도 횟수(#358).
+    expect(screen.getByRole('heading', { name: 'SAMPLE-KEY-0001' })).toBeInTheDocument();
+    expect(fieldValue('연동 항목')).toBe('IF-SAMPLE-A');
+    expect(fieldValue('송수신 구분')).toBe('수신');
     expect(screen.getByText('2026-08-04 09:20부터 처리 중')).toBeInTheDocument();
     expect(fieldValue('전송 일시')).toBe('2026-08-04 07:13');
     expect(fieldValue('완료 일시')).toBe('2026-08-04 07:15');
@@ -69,7 +71,24 @@ describe('MessageDetailPane — 항목', () => {
     // 처리 중이 아니면 처리 중 줄을, 재시도가 예정돼 있지 않으면 「다음 재시도 일시」 칸을 두지 않는다.
     expect(screen.queryByText(/처리 중/)).toBeNull();
     expect(screen.queryByText('다음 재시도 일시')).toBeNull();
-    expect(fieldValue('오류 내용')).toBe('—');
+    // 오류 내용은 값이 있을 때만 선다(#358).
+    expect(screen.queryByText('오류 내용')).toBeNull();
+  });
+
+  it('오류 내용이 있으면 머리 줄 바로 아래에 전체 폭으로 선다(#358)', () => {
+    renderPane({ view: messageRow({ lastErrorMessage: 'ERP 응답 없음' }) });
+
+    const error = screen.getByText('ERP 응답 없음').closest('.integration-sync-detail-error');
+    expect(error).not.toBeNull();
+    expect(error?.previousElementSibling).toHaveClass('integration-sync-detail-head');
+  });
+
+  it('처리 일시는 발생 → 전송 → 완료 순으로 선다(#358)', () => {
+    renderPane();
+
+    const box = screen.getByLabelText('처리 일시');
+    const labels = [...box.querySelectorAll('dt')].map((dt) => dt.textContent);
+    expect(labels.slice(0, 3)).toEqual(['발생일시', '전송 일시', '완료 일시']);
   });
 
   it('시도 횟수가 0이어도 그대로 보인다', () => {

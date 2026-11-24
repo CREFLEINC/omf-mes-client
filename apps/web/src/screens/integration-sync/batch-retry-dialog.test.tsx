@@ -25,7 +25,7 @@ const renderDialog = (props: Partial<Parameters<typeof BatchRetryDialog>[0]> = {
 };
 
 const resultView = (overrides: Partial<BatchResultView> = {}): BatchResultView => ({
-  summary: '2건을 다시 보냈습니다. 1건은 보내지 못했습니다.',
+  summary: '2건의 재처리를 요청했습니다. 1건은 요청하지 못했습니다.',
   failed: [{ label: 'SAMPLE-KEY-0003', reasons: ['상태가 맞지 않습니다'] }],
   isAllSucceeded: false,
   ...overrides,
@@ -35,9 +35,9 @@ describe('BatchRetryDialog — 확인 단계', () => {
   it('고른 건수와 부분 실패 가능성을 함께 밝힌다', () => {
     renderDialog();
 
-    expect(screen.getByText('선택한 3건을 다시 보낼까요?')).toBeInTheDocument();
+    expect(screen.getByText('선택한 3건을 재처리할까요?')).toBeInTheDocument();
     expect(
-      screen.getByText('일부만 성공할 수 있습니다. 결과를 건별로 알려 드립니다.'),
+      screen.getByText('일부 건만 처리될 수 있습니다. 결과는 건별로 알려 드립니다.'),
     ).toBeInTheDocument();
   });
 
@@ -69,9 +69,11 @@ describe('BatchRetryDialog — 결과 단계', () => {
     renderDialog({ result: resultView() });
 
     expect(screen.getByText('재처리 결과')).toBeInTheDocument();
-    expect(screen.getByText('2건을 다시 보냈습니다. 1건은 보내지 못했습니다.')).toBeInTheDocument();
+    expect(
+      screen.getByText('2건의 재처리를 요청했습니다. 1건은 요청하지 못했습니다.'),
+    ).toBeInTheDocument();
 
-    const failedList = screen.getByRole('region', { name: '보내지 못한 건' });
+    const failedList = screen.getByRole('region', { name: '재처리하지 못한 건' });
     expect(within(failedList).getByText('SAMPLE-KEY-0003')).toBeInTheDocument();
     expect(within(failedList).getByText('상태가 맞지 않습니다')).toBeInTheDocument();
   });
@@ -87,7 +89,7 @@ describe('BatchRetryDialog — 결과 단계', () => {
       }),
     });
 
-    expect(screen.queryByText(/다시 보냈습니다/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/재처리를 요청했습니다/)).not.toBeInTheDocument();
     expect(screen.getByText('어느 건인지 알 수 없습니다.')).toBeInTheDocument();
     expect(screen.getByText('사유를 받지 못했습니다.')).toBeInTheDocument();
   });
@@ -100,7 +102,7 @@ describe('BatchRetryDialog — 결과 단계', () => {
     });
 
     expect(
-      within(screen.getByRole('region', { name: '보내지 못한 건' })).getByText(
+      within(screen.getByRole('region', { name: '재처리하지 못한 건' })).getByText(
         '어느 건인지 알 수 없습니다.',
       ),
     ).toBeInTheDocument();

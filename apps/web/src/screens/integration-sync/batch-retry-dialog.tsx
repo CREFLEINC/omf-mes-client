@@ -41,10 +41,14 @@ export const BatchRetryDialog = ({
       open={open}
       onClose={onClose}
       closeOnBackdropClick={false}
+      /* 닫기는 [취소] · [닫기] 하나(창의 X 단추는 두지 않는다 · #358). */
+      showCloseButton={false}
       title={isResultPhase ? t.batch.resultTitle : t.batch.confirmTitle(selectedCount)}
       footer={
         isResultPhase ? (
-          <Button onClick={onClose}>{messages.common.close}</Button>
+          <Button variant="outlined" onClick={onClose}>
+            {messages.common.close}
+          </Button>
         ) : (
           <>
             <Button variant="outlined" onClick={onClose}>
@@ -61,7 +65,17 @@ export const BatchRetryDialog = ({
       {banner}
 
       {result === null ? (
-        <p>{t.batch.confirmDescription}</p>
+        <>
+          {/* 대상 — 「대상 N건」(단건 재처리 창과 같은 짜임 · #358). */}
+          <p className="integration-sync-confirm-target">
+            <strong>{t.batch.targetLabel}</strong>
+            <span className="integration-sync-confirm-chip">
+              {messages.common.paneList.count(selectedCount)}
+            </span>
+          </p>
+          <p>{t.batch.confirmDescription}</p>
+          <p className="integration-sync-confirm-note">{t.batch.confirmNote}</p>
+        </>
       ) : (
         <>
           {/* 성공이 하나도 없으면 성공 안내를 내지 않는다. 실패 목록만 남는다. */}

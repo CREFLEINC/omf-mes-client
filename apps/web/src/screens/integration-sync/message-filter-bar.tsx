@@ -1,4 +1,4 @@
-import { Button, TextField } from '@crefle/web-ui';
+import { Button, Select as DsSelect, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
@@ -10,13 +10,16 @@ import {
 } from '../../patterns/filter-more';
 import { Select } from '../../patterns/select';
 import { EMPTY_FILTERS, toFilterChips, type MessageFilters } from './filters';
-import { directionName, interfaceName, statusName } from './message-labels';
+import { interfaceName, statusName } from './message-labels';
 import { defaultPeriod, validatePeriod, type PeriodInput } from './period';
 
 const t = messages.integrationSync;
 
-/** 「조건 더보기」에 접는 조건(C-6) — 칩은 이 조건만 낸다. */
-const FOLDED_KEYS: readonly (keyof MessageFilters)[] = ['direction', 'retryMin'];
+/**
+ * 「조건 더보기」에 접는 조건(C-6) — 칩은 이 조건만 낸다. 송수신 구분은 위 줄 라벨이 거르고 그 라벨이 걸린 값을 보이므로
+ * 조회 상자에 칸 · 칩을 두지 않는다(사용자 지시 2026-11-24).
+ */
+const FOLDED_KEYS: readonly (keyof MessageFilters)[] = ['retryMin'];
 
 /** 한 선택칸이 필요로 하는 것 전부. 세 칸이 같은 구조라 한 그리기 함수로 돌린다. */
 interface CodeSelect {
@@ -25,6 +28,8 @@ interface CodeSelect {
   options: readonly string[];
   /** 선택지에 보이는 이름 — 코드 대신 업무 이름(`message-labels.ts`). 값은 코드 그대로 보낸다. */
   nameOf: (code: string) => string;
+  /** 검색창 없는 선택칸 — 선택지 수와 상관없이 펼친 목록만(연동 항목 · 사용자 지시 2026-11-24). */
+  plain?: boolean;
 }
 
 export interface MessageFilterBarProps {
@@ -37,7 +42,6 @@ export interface MessageFilterBarProps {
    */
   statusOptions: readonly string[];
   interfaceOptions: readonly string[];
-  directionOptions: readonly string[];
   onSearch: (period: PeriodInput, filters: MessageFilters) => void;
   /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
   onRemoveFilter: (key: keyof MessageFilters) => void;
@@ -51,7 +55,7 @@ export interface MessageFilterBarProps {
  * 반쯤 지운 기간으로 요청이 나간다. 「조회」를 누를 때만 주소가 바뀌고 그때 조회된다.
  * 조건 칩의 ×는 해제라 즉시 반영한다.
  *
- * **보이는 칸은 셋이다**(C-6) — 기간 · 항목 · 상태. 구분 · 재시도 횟수는 「조건 더보기」에 접고,
+ * **보이는 칸은 셋이다**(C-6) — 기간 · 항목 · 상태. 재시도 횟수는 「조건 더보기」에 접고,
  * 접힌 조건이 걸려 있으면 칩으로만 알린다. 「초기화」는 바뀐 것이 있을 때만 보인다.
  * [조회][초기화][조건 더보기]는 줄 오른쪽 끝에 함께 선다(단말 관리와 같다 · #358).
  */
@@ -60,7 +64,6 @@ export const MessageFilterBar = ({
   appliedFilters,
   statusOptions,
   interfaceOptions,
-  directionOptions,
   onSearch,
   onRemoveFilter,
   onReset,
@@ -95,24 +98,19 @@ export const MessageFilterBar = ({
   /** 기간이 갖춰지지 않으면 조회를 막고 사유를 밝힌다 — 계약이 기간을 필수로 두었다. */
   const searchReason = validatePeriod(period);
 
-  /* 줄에 보이는 선택칸 — 항목 · 상태. 구분은 「조건 더보기」 안에 접는다(C-6). */
+  /* 줄에 보이는 선택칸 — 항목 · 상태. */
   const codeSelects: CodeSelect[] = [
     {
       key: 'iface',
       label: t.fields.interfaceCode,
       options: interfaceOptions,
       nameOf: interfaceName,
+      plain: true,
     },
     { key: 'status', label: t.fields.status, options: statusOptions, nameOf: statusName },
   ];
-  const directionSelect: CodeSelect = {
-    key: 'direction',
-    label: t.fields.direction,
-    options: directionOptions,
-    nameOf: directionName,
-  };
 
-  /* 접힌 칸(구분 · 재시도 횟수)의 조건만 칩으로 — 보이는 칸의 값을 칩으로 겹쳐 적지 않는다. */
+  /* 접힌 칸(재시도 횟수)의 조건만 칩으로 — 보이는 칸의 값을 칩으로 겹쳐 적지 않는다. */
   const hiddenChips = toFilterChips(appliedFilters).filter((chip) =>
     FOLDED_KEYS.includes(chip.key),
   );
@@ -123,37 +121,40 @@ export const MessageFilterBar = ({
     { ...appliedPeriod, ...appliedFilters },
   );
 
-  const renderCodeSelect = (select: CodeSelect) => (
-    /*
-     * 배치 규범 3 — 디자인 시스템 Select는 라벨을 내장하지 않는다.
-     * 라벨을 직접 붙이고 htmlFor로 잇는다. aria-label만 두면 눈으로 보이는 이름이 없다.
-     *
-     * 규범 3-2 — 이 세 칸은 **코드값**을 고른다. 선택지 목록이 트리거 폭에 갇혀 있어
-     * 최소 폭을 주지 않으면 「FAILED」가 「FAI⋯」로 잘려 무엇을 고르는지 읽을 수 없다.
-     * 값이 짧은 시도 하한 칸에는 붙이지 않는다.
-     */
-    <div className="field-cell wide-select" key={select.key}>
-      <label className="field-label" htmlFor={`${fieldId}-${select.key}`}>
-        {select.label}
-      </label>
-      <Select
-        id={`${fieldId}-${select.key}`}
-        value={filters[select.key]}
-        placeholder={t.filters.all}
-        /*
-         * 「전체」를 값이 빈 선택지로 둔다. 두지 않으면 한 번 고른 뒤에
-         * 조건을 해제할 방법이 선택칸 안에 없어진다.
-         */
-        options={[
-          { value: '', label: t.filters.all },
-          ...select.options.map((code) => ({ value: code, label: select.nameOf(code) })),
-        ]}
-        onChange={(value) => {
-          setFilters((prev) => ({ ...prev, [select.key]: value }));
-        }}
-      />
-    </div>
-  );
+  const renderCodeSelect = (select: CodeSelect) => {
+    const SelectField = select.plain === true ? DsSelect : Select;
+    return (
+      /*
+       * 배치 규범 3 — 디자인 시스템 Select는 라벨을 내장하지 않는다.
+       * 라벨을 직접 붙이고 htmlFor로 잇는다. aria-label만 두면 눈으로 보이는 이름이 없다.
+       *
+       * 규범 3-2 — 이 세 칸은 **코드값**을 고른다. 선택지 목록이 트리거 폭에 갇혀 있어
+       * 최소 폭을 주지 않으면 「FAILED」가 「FAI⋯」로 잘려 무엇을 고르는지 읽을 수 없다.
+       * 값이 짧은 시도 하한 칸에는 붙이지 않는다.
+       */
+      <div className="field-cell wide-select" key={select.key}>
+        <label className="field-label" htmlFor={`${fieldId}-${select.key}`}>
+          {select.label}
+        </label>
+        <SelectField
+          id={`${fieldId}-${select.key}`}
+          value={filters[select.key]}
+          placeholder={t.filters.all}
+          /*
+           * 「전체」를 값이 빈 선택지로 둔다. 두지 않으면 한 번 고른 뒤에
+           * 조건을 해제할 방법이 선택칸 안에 없어진다.
+           */
+          options={[
+            { value: '', label: t.filters.all },
+            ...select.options.map((code) => ({ value: code, label: select.nameOf(code) })),
+          ]}
+          onChange={(value) => {
+            setFilters((prev) => ({ ...prev, [select.key]: value }));
+          }}
+        />
+      </div>
+    );
+  };
 
   return (
     <>
@@ -219,8 +220,6 @@ export const MessageFilterBar = ({
       {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
       <div id={more.id} hidden={!more.isOpen}>
         <div className="filter-bar">
-          {renderCodeSelect(directionSelect)}
-
           <div className="field-cell">
             <label className="field-label" htmlFor={`${fieldId}-retryMin`}>
               {t.fields.retryMin}
@@ -231,6 +230,7 @@ export const MessageFilterBar = ({
               min={0}
               step={1}
               value={filters.retryMin}
+              placeholder={t.fields.retryMinPlaceholder}
               onChange={(event) => {
                 setFilters((prev) => ({ ...prev, retryMin: event.target.value }));
               }}

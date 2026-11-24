@@ -57,8 +57,9 @@ export const integrationSync = {
     periodTo: '발생일 종료',
     status: '상태 선택',
     interfaceCode: '연동 항목 선택',
-    direction: '송수신 구분 선택',
-    retryMin: '재시도 횟수(이상)',
+    retryMin: '최소 재시도 횟수',
+    /** 최소 재시도 횟수 칸의 흐린 문구(#358). */
+    retryMinPlaceholder: '숫자를 입력하세요',
   },
   actions: {
     prevPage: '이전',
@@ -79,13 +80,16 @@ export const integrationSync = {
    */
   batch: {
     selectionCount: (count: number): string => `선택 ${String(count)}건`,
-    confirmTitle: (count: number): string => `선택한 ${String(count)}건을 다시 보낼까요?`,
-    confirmDescription: '일부만 성공할 수 있습니다. 결과를 건별로 알려 드립니다.',
+    confirmTitle: (count: number): string => `선택한 ${String(count)}건을 재처리할까요?`,
+    /** 확인 창의 대상 줄 — 「대상 N건」(#358). */
+    targetLabel: '대상',
+    confirmDescription: '선택한 연동 건을 다시 처리합니다. 새 연동 건은 생성되지 않습니다.',
+    confirmNote: '일부 건만 처리될 수 있습니다. 결과는 건별로 알려 드립니다.',
     resultTitle: '재처리 결과',
-    failedListLabel: '보내지 못한 건',
-    allSucceeded: (count: number): string => `${String(count)}건을 다시 보냈습니다.`,
+    failedListLabel: '재처리하지 못한 건',
+    allSucceeded: (count: number): string => `${String(count)}건의 재처리를 요청했습니다.`,
     partial: (succeeded: number, failed: number): string =>
-      `${String(succeeded)}건을 다시 보냈습니다. ${String(failed)}건은 보내지 못했습니다.`,
+      `${String(succeeded)}건의 재처리를 요청했습니다. ${String(failed)}건은 요청하지 못했습니다.`,
     /** 서버가 준 위치 번호가 보낸 건수 밖일 때. 그 항목을 버리지 않고 이렇게 밝힌다. */
     unknownItem: '어느 건인지 알 수 없습니다.',
     noReason: '사유를 받지 못했습니다.',
@@ -95,9 +99,11 @@ export const integrationSync = {
    * 되돌리기 쉽지 않은 조작이라 확인을 한 단계 둔다.
    */
   retry: {
-    confirmTitle: '다시 보낼까요?',
-    confirmDescription: '같은 건을 다시 보냅니다. 새 건을 만들지 않습니다.',
-    requested: '다시 보내도록 요청했습니다',
+    confirmTitle: '이 연동 건을 재처리할까요?',
+    /** 확인 창의 대상 줄 — 「문서 번호 {번호}」(#358). */
+    targetLabel: '문서 번호',
+    confirmDescription: '기존 연동 건을 다시 처리합니다. 새 연동 건은 생성되지 않습니다.',
+    requested: '재처리를 요청했습니다',
   },
   /**
    * 재처리 실패. 「저장」 어휘를 쓰는 공통 배너를 쓰지 않는다 —
@@ -156,6 +162,9 @@ export const integrationSync = {
     availableAt: '다음 재시도 일시',
     sentAt: '전송 일시',
     completedAt: '완료 일시',
+    /** 상세 정보 상자 두 줄의 접근 이름(#358). */
+    linkInfo: '연동 정보',
+    processTimes: '처리 일시',
   },
   /**
    * 상태 열의 보조 한 줄. 계약이 정의한 사실만 옮긴다 —
