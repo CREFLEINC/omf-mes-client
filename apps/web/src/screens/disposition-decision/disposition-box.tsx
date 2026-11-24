@@ -80,12 +80,14 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * 저장할 수 없는 상태로 그 까닭과 함께 보인다(omf-all-around#354). 서버가 공용 충돌 봉투(`conflictCause`)에 실어 보내
  * 정규화기가 `conflict` 로 접지만, 까닭은 위 `request` 가 되말해 둔 `message` 에 있다. 판 번호 충돌만 「최신 불러오기」로 푼다.
  */
+/** 판정 저장 `request` 가 화면 문구로 되말한 409 코드 — 이 밖의 409 는 서버 원문을 띄우지 않고 공용 처리에 둔다(공유계약 A-9 ⓑ). */
+const RESTATED_CONFLICT_CODES: readonly string[] = ['DISPOSITION_QTY_EXCEEDED', 'INVALID_STATE'];
+
 const shownWriteError = (error: ApiError | null): ApiError | null =>
   error !== null &&
   error.kind === 'conflict' &&
   error.code !== undefined &&
-  error.code !== 'VERSION_CONFLICT' &&
-  error.message !== ''
+  RESTATED_CONFLICT_CODES.includes(error.code)
     ? {
         kind: 'stateLocked',
         status: 409,
@@ -102,6 +104,8 @@ export interface DispositionBoxProps {
   emptyTitle?: string;
   dispositionTypeCodes?: readonly string[];
   today?: Date;
+  /** 저장 뒤 함께 다시 읽을 바깥 화면의 조회 — 검사 목록 · LOT 품질 상태 · 불합격 안내가 옛 값으로 남지 않게. */
+  refreshKeys?: readonly (readonly unknown[])[];
 }
 
 /**
@@ -114,6 +118,7 @@ export const DispositionBox = ({
   emptyTitle,
   dispositionTypeCodes = DISPOSITION_TYPE_CODES,
   today,
+  refreshKeys = [],
 }: DispositionBoxProps) => {
   const t = messages.dispositionDecision;
   /* 상자 안에서 연 다른 부적합 — 바깥이 고른 건이 바뀌면 그 건으로 돌아간다. */
@@ -220,7 +225,7 @@ export const DispositionBox = ({
     },
     /* ⭐ 토큰은 부적합 «상세»가 내린다 — 저장 경로가 아니다(공유계약 B-1). */
     etagPath: selectedId === null ? null : nonconformanceDetailPath(selectedId),
-    invalidateKeys: [dispositionKeys.all],
+    invalidateKeys: [dispositionKeys.all, ...refreshKeys],
     knownFields: [
       'dispositionTypeCode',
       'decisionQty',
@@ -251,7 +256,7 @@ export const DispositionBox = ({
         body,
       }),
     etagPath: null,
-    invalidateKeys: [dispositionKeys.all],
+    invalidateKeys: [dispositionKeys.all, ...refreshKeys],
     knownFields: ['lotId', 'approvedQty', 'uomId', 'validFrom', 'validTo', 'reason'],
     keyLifetime: 'until-applied',
     onSuccess: (data) => {
@@ -478,7 +483,7 @@ export const DispositionBox = ({
             inspectionRequestNo={detailView?.inspectionRequestNo}
             uomId={uomId}
             uoms={uoms}
-            writeError={shownWriteError(write.error ?? concessionWrite.error)}
+            writeError={write.error ? shownWriteError(write.error) : concessionWrite.error}
             isSaving={write.isSaving || concessionWrite.isSaving}
             canCancel={hasDecisionInput(form)}
             onChange={(next) => {

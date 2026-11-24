@@ -15,11 +15,13 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { DispositionBox } from '../disposition-decision/disposition-box';
+import { iqcInspectionKeys } from '../iqc-inspection/queries';
 import { formatPackage, formatQty } from '../../patterns/package-qty';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { toApiError } from '../../patterns/request';
 import {
   deleteInspectionResult,
+  iqcInboundKeys,
   useInboundInspection,
   useInboundRefresh,
   type InboundInspection,
@@ -40,6 +42,8 @@ const td = messages.iqcInboundLot.drawer;
 const th = messages.iqcInboundLot.history;
 const ts = messages.iqcInboundLot.split;
 const ta = messages.iqcInboundLot.attachments;
+/** 처분 저장 뒤 IQC 목록 · LOT 품질 상태 · 불합격 안내를 다시 읽는다(선별로 생긴 새 건이 목록에 바로 서게). */
+const IQC_REFRESH_KEYS = [iqcInspectionKeys.all, iqcInboundKeys.all];
 
 /** 품질 상태 칩 색. */
 const lotStatusTone = (code: string): 'success' | 'error' | 'warning' | 'idle' =>
@@ -668,7 +672,10 @@ export const InboundDetail = ({
                   content:
                     tab === 'disposition' ? (
                       <div className="disposition-tab">
-                        <DispositionBox nonconformanceId={nonconformanceId} />
+                        <DispositionBox
+                          nonconformanceId={nonconformanceId}
+                          refreshKeys={IQC_REFRESH_KEYS}
+                        />
                       </div>
                     ) : null,
                 },

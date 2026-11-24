@@ -24,7 +24,13 @@ const nonconformance = (overrides: Record<string, unknown>) => ({
 
 const render = (
   route: string,
-  stub: { nc?: Record<string, unknown>; inspectionType?: string; list?: unknown[] },
+  stub: {
+    nc?: Record<string, unknown>;
+    inspectionType?: string;
+    list?: unknown[];
+    /** 그 조회가 실패한다. */
+    fail?: 'nc' | 'request';
+  },
 ) =>
   renderWithProviders(
     <Routes>
@@ -36,7 +42,10 @@ const render = (
       fetch: createStubFetch([
         {
           match: (request) => /^\/quality\/nonconformances\/\d+$/.test(pathOf(request)),
-          respond: () => jsonResponse(nonconformance(stub.nc ?? {})),
+          respond: () =>
+            stub.fail === 'nc'
+              ? jsonResponse({ code: 'INTERNAL' }, { status: 500 })
+              : jsonResponse(nonconformance(stub.nc ?? {})),
         },
         {
           match: (request) => pathOf(request) === '/quality/nonconformances',
@@ -49,10 +58,12 @@ const render = (
         {
           match: (request) => /^\/quality\/inspection-requests\/\d+$/.test(pathOf(request)),
           respond: () =>
-            jsonResponse({
-              inspectionRequestId: 9001,
-              inspectionTypeCode: stub.inspectionType ?? 'IQC',
-            }),
+            stub.fail === 'request'
+              ? jsonResponse({ code: 'INTERNAL' }, { status: 500 })
+              : jsonResponse({
+                  inspectionRequestId: 9001,
+                  inspectionTypeCode: stub.inspectionType ?? 'IQC',
+                }),
         },
       ]),
     },
@@ -85,6 +96,19 @@ describe('옛 「부적합 처분 관리」 주소(omf-all-around#354)', () => {
     for (const sourceCode of ['RETURN', 'PRODUCT']) {
       const view = render('/quality/dispositions?nonconformanceId=41', {
         nc: { sourceCode, inspectionRequestId: null },
+      });
+      await waitFor(async () =>
+        expect(await location()).toBe('/shipment/oqc-inspection?kind=request&nonconformanceId=41'),
+      );
+      view.unmount();
+    }
+  });
+
+  it('부적합이나 그 검사 건을 읽지 못하면 OQC 탭 「판정 의뢰」에서 그 부적합을 고른 채로 연다', async () => {
+    for (const fail of ['nc', 'request'] as const) {
+      const view = render('/quality/dispositions?nonconformanceId=41', {
+        nc: { inspectionRequestId: 9001 },
+        fail,
       });
       await waitFor(async () =>
         expect(await location()).toBe('/shipment/oqc-inspection?kind=request&nonconformanceId=41'),

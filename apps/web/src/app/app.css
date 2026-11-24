@@ -7499,10 +7499,6 @@ dialog.routing-history-dialog {
   min-width: 30rem;
 }
 
-.disposition-history-table table {
-  min-width: 44rem;
-}
-
 .disposition-table th {
   white-space: nowrap;
 }

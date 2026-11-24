@@ -3,6 +3,10 @@ import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
 import { DispositionBox } from '../disposition-decision/disposition-box';
+import { oqcInspectionKeys } from './queries';
+
+/** 처분 저장 뒤 OQC 상세(피킹 LOT 판정 · 교체 줄)를 다시 읽는다. */
+const OQC_REFRESH_KEYS = [oqcInspectionKeys.all];
 
 export interface ReplacedNonconformance {
   nonconformanceId: number;
@@ -49,7 +53,7 @@ export const ReplacedDispositions = ({
           })}
         </div>
       )}
-      <DispositionBox nonconformanceId={current.nonconformanceId} />
+      <DispositionBox nonconformanceId={current.nonconformanceId} refreshKeys={OQC_REFRESH_KEYS} />
     </>
   );
 };

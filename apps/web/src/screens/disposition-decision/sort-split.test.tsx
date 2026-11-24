@@ -201,6 +201,27 @@ describe('W-03-10 선별', () => {
     expect(screen.queryByRole('button', { name: messages.conflict.reloadAction })).toBeNull();
   });
 
+  it('#354 되말하지 않은 409 코드는 서버 원문을 띄우지 않는다', async () => {
+    const { user } = renderSort({
+      saveResponse: () =>
+        jsonResponse(
+          { conflictCause: 'user', code: 'SOMETHING_ELSE', message: '서버 원문' },
+          { status: 409 },
+        ),
+    });
+    await screen.findByText('SAMPLE-ML|0003');
+    await user.click(screen.getByRole('radio', { name: '선별' }));
+    await user.click(screen.getByRole('checkbox', { name: 'SAMPLE-ML|0003' }));
+    await user.type(screen.getByLabelText(new RegExp(t.form.reasonLabel)), '사유');
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: t.actions.save }),
+    );
+
+    expect(await screen.findByText(messages.conflict.user)).toBeInTheDocument();
+    expect(screen.queryByText('서버 원문')).toBeNull();
+  });
+
   it('US7-2 첫 판정이 아니면 선별이 없다 — 잠그고 이유를 단다', async () => {
     renderSort({ decidedQty: 100 });
     await screen.findByText('SAMPLE-ML|0003');

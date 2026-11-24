@@ -53,6 +53,7 @@ import {
   useInspectionRounds,
   useRejectedLotFollowUp,
   useMeasurements,
+  iqcInspectionKeys,
 } from '../iqc-inspection/queries';
 import { DiscardDialog } from '../routing/leave-guard';
 import type { LevelDialogValues } from '../inspection-level/level-dialog';
@@ -79,7 +80,7 @@ import { WorkerConnectDialog } from '../iqc-inspection/worker-connect-dialog';
 import { InspectionHistory } from './history';
 import { InboundDetail, type InboundDetailProps } from './inbound-detail';
 import { splitRuleErrors } from './lot-judgment';
-import { useInboundFourM, useInboundInspection } from './inbound-queries';
+import { iqcInboundKeys, useInboundFourM, useInboundInspection } from './inbound-queries';
 import { DrawingImages, PlanDialog } from './plan-dialog';
 import { SkippedNotice, SkippedOverview } from './skipped-overview';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
@@ -142,6 +143,8 @@ const TIME_LABELS: TimeFieldLabels = {
 const toOffset = (local: string): string => `${local}:00${PLANT_UTC_OFFSET}`;
 /** 비고 글자 수 — 사용자 시안(0/200). 서버 칸에는 길이 제한이 없다. */
 const REMARKS_MAX = 200;
+/** 처분 저장 뒤 IQC 목록 · LOT 품질 상태 · 불합격 안내를 다시 읽는다(선별로 생긴 새 건이 목록에 바로 서게). */
+const IQC_REFRESH_KEYS = [iqcInspectionKeys.all, iqcInboundKeys.all];
 
 /** 고칠 결과를 양식에 다시 채우는 값 — 임시 저장 회차 · 새 흐름 결과 드로어가 같은 모양을 쓴다. */
 export type InspectionFormDraft = NonNullable<FormProps['draft']>;
@@ -515,7 +518,7 @@ export const InspectionDetail = ({
   /* 확정된 의뢰는 이력에서 시작하고, 첨부 파일 탭은 고를 수 있다(#247). */
   const pickedTab = picked?.requestId === inspectionRequestId ? picked.tab : null;
   /* 불합격 확정이 세운 부적합은 「부적합 처분」 탭으로 따로 두고, 그런 건을 열면 이 탭부터 보인다(omf-all-around#354). */
-  const dispositionNcId = confirmed ? (followUp.data?.nonconformanceId ?? null) : null;
+  const dispositionNcId = confirmed ? (detail.data?.nonconformanceId ?? null) : null;
   const tab = confirmed
     ? pickedTab === 'documents' || pickedTab === 'history'
       ? pickedTab
@@ -657,7 +660,10 @@ export const InspectionDetail = ({
                   content:
                     tab === 'disposition' ? (
                       <div className="disposition-tab">
-                        <DispositionBox nonconformanceId={dispositionNcId} />
+                        <DispositionBox
+                          nonconformanceId={dispositionNcId}
+                          refreshKeys={IQC_REFRESH_KEYS}
+                        />
                       </div>
                     ) : null,
                 },
