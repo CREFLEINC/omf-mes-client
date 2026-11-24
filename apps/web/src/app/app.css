@@ -39654,9 +39654,16 @@ body:has(
   margin-bottom: 0;
 }
 
-/* 송신 중지 제한 안내 — 파란 한 줄은 글 길이만큼만(사용자 지시 2026-11-24). */
-.erp-outbound-detail > .erp-outbound-lock-note {
-  justify-self: start;
+/* 상세 제목 줄 — 왼쪽 제목, 오른쪽 끝에 송신 중지 제한 안내(사용자 지시 2026-11-24). */
+.erp-outbound-detail > .erp-outbound-detail-head {
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.erp-outbound-detail-head > .pane-title {
+  margin: 0;
 }
 
 /* 송신 대기 목록 아래 「총 N건」은 소제목 「송신 대기 목록 (N건)」과 겹쳐 걷는다(사용자 지시 2026-11-24). */

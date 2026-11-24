@@ -56,11 +56,11 @@ export const erpOutbound: Translated<typeof ko.erpOutbound> = {
     beyondLast: 'Trang này không có bản tin chờ gửi',
   },
   created: {
-    label: 'Ngày tạo',
-    presets: 'Chọn nhanh khoảng ngày tạo',
+    label: 'Ngày đăng ký',
     all: 'Tất cả',
     week: '1 tuần gần nhất',
     month: '1 tháng gần nhất',
+    custom: 'Tự chọn',
     from: 'Từ ngày',
     to: 'Đến ngày',
     reasons: {

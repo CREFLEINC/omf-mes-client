@@ -97,6 +97,8 @@ const ItemTable = ({ items, counts, selectedCode, onSelect, onUnselect }: ItemTa
       key: 'outboundItemName',
       header: t.table.item,
       align: 'center',
+      /* 폭 — 항목 이름은 짧고 송신 시점 글이 길어 남는 폭을 송신 시점에 준다(사용자 지시 2026-11-24). */
+      width: '96px',
       /* 고르는 단추 자리(`BoardTable` 의 `pick`). */
       render: (item) => item.outboundItemName,
     },
@@ -111,7 +113,7 @@ const ItemTable = ({ items, counts, selectedCode, onSelect, onUnselect }: ItemTa
       key: 'enabled',
       header: t.table.send,
       align: 'center',
-      width: '96px',
+      width: '80px',
       render: (item) => (
         <Chip variant="status" size="sm" status={item.enabled ? 'success' : 'idle'}>
           {item.locked ? t.send.required : item.enabled ? t.send.on : t.send.off}
@@ -121,7 +123,7 @@ const ItemTable = ({ items, counts, selectedCode, onSelect, onUnselect }: ItemTa
     {
       key: 'pending',
       header: t.table.pending,
-      width: '96px',
+      width: '80px',
       align: 'center',
       render: (item) =>
         countText(
@@ -134,7 +136,7 @@ const ItemTable = ({ items, counts, selectedCode, onSelect, onUnselect }: ItemTa
     {
       key: 'failed',
       header: t.table.failed,
-      width: '96px',
+      width: '80px',
       align: 'center',
       render: (item) =>
         countText(
@@ -481,8 +483,19 @@ export const ErpOutboundScreen = () => {
             />
           ) : (
             <div className="integration-sync-detail erp-outbound-detail">
-              {/* 상자 제목 — 목록 상자의 「송신 항목 목록」과 짝(#358). */}
-              <h2 className="pane-title">{t.panes.detail}</h2>
+              {/*
+               * 상자 제목 — 목록 상자의 「ERP 송신 목록」과 짝(#358). 끌 수 없는 항목(생산 실적)은 제목 오른쪽에 파란 안내
+               * 한 줄을 둔다 — 서버 까닭 글에는 내부 근거가 섞여 있어 화면이 정한 문장을 쓴다(사용자 지시 2026-11-24).
+               */}
+              <div className="pane-heading-row erp-outbound-detail-head">
+                <h2 className="pane-title">{t.panes.detail}</h2>
+                {selected.locked && (
+                  <p className="iqc-inspection-action-note" data-tone="info" role="note">
+                    <Icon name="info" size={16} aria-hidden />
+                    {t.lockedNote}
+                  </p>
+                )}
+              </div>
               {/*
                * 정보 상자 하나 — 검사 조회·판정 · 연동 현황·이력 · ERP 수신과 같은 모양(첫 칸에 항목 이름 + 송신 여부 배지 · #358).
                */}
@@ -527,20 +540,6 @@ export const ErpOutboundScreen = () => {
                   </dd>
                 </div>
               </dl>
-              {/*
-               * 끌 수 없는 항목은 화면이 정한 한 문장으로 알린다 — 서버 까닭 글에는 내부 근거가 섞여 있다. 정보 상자의 칸이 아니라
-               * 다른 화면과 같은 파란 안내 한 줄로 둔다(사용자 지시 2026-11-24).
-               */}
-              {selected.locked && (
-                <p
-                  className="iqc-inspection-action-note erp-outbound-lock-note"
-                  data-tone="info"
-                  role="note"
-                >
-                  <Icon name="info" size={16} aria-hidden />
-                  {t.lockedNote}
-                </p>
-              )}
               {/* 송신 예정 — 제목 줄에 건수, 아직 보내지 않은 건의 표(#358). */}
               <h3 className="pane-title erp-outbound-pending-title">
                 {selected.interfaceCode !== null && pendingCount !== undefined

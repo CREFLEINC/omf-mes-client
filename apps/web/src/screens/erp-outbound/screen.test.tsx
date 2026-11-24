@@ -285,24 +285,23 @@ describe('ErpOutboundScreen — 송신 예정 목록', () => {
     const { requests } = renderScreen([settingsRoute, messagesRoute()], '?item=GOODS_RECEIPT');
 
     await pendingPane().findByText('SAMPLE-GR-0001');
-    /* 생성일 칸은 되살렸다 — 둘레 상자 없이 소제목 아래 한 줄(사용자 지시 2026-11-24). */
-    expect(pendingPane().getByLabelText('시작일')).toBeInTheDocument();
-    expect(pendingPane().getByRole('button', { name: '전체' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    /* 등록일은 선택칸 하나 — 처음은 「전체」, 날짜 칸은 「직접 지정」일 때만(사용자 지시 2026-11-24). */
+    expect(pendingPane().getByRole('combobox', { name: '등록일' })).toHaveTextContent('전체');
+    expect(pendingPane().queryByLabelText('시작일')).toBeNull();
     const last = pendingListRequests(requests).at(-1);
     expect(last?.searchParams.get('createdFrom')).toMatch(/^2000-01-01T00:00:00[+-]\d{2}:\d{2}$/);
     expect(last?.searchParams.get('createdTo')).toMatch(/^\d{4}-\d{2}-\d{2}T23:59:59/);
   });
 
-  it('생성일 날짜 두 칸으로 조회하면 그 기간을 실어 부르고 주소에 남긴다', async () => {
+  it('등록일 「직접 지정」의 날짜 두 칸으로 조회하면 그 기간을 실어 부르고 주소에 남긴다', async () => {
     const { requests, user } = renderScreen(
       [settingsRoute, messagesRoute()],
       '?item=GOODS_RECEIPT',
     );
 
     await pendingPane().findByText('SAMPLE-GR-0001');
+    await user.click(pendingPane().getByRole('combobox', { name: '등록일' }));
+    await user.click(screen.getByRole('option', { name: '직접 지정' }));
     await user.type(pendingPane().getByLabelText('시작일'), '2026-11-01');
     await user.type(pendingPane().getByLabelText('종료일'), '2026-11-24');
     await user.click(pendingPane().getByRole('button', { name: '조회' }));
