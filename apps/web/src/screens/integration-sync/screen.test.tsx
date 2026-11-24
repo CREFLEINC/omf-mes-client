@@ -1202,7 +1202,7 @@ describe('IntegrationSyncScreen — 선택의 수명', () => {
     };
   };
 
-  it('줄을 눌러 상세를 열면 그 줄도 체크되고, 먼저 고른 줄의 체크는 그대로다(#358)', async () => {
+  it('줄을 눌러 상세를 열면 그 줄도 체크되고, 다시 누르면 상세를 닫고 그 줄의 체크만 푼다(#358)', async () => {
     /*
      * 고른 행(9001)과 상세를 여는 행(9002)을 일부러 다르게 둔다 — 선택과 상세가
      * 서로 다른 축임을 드러낸다. 스텁 경로는 **여는 행에 맞춘다.**
@@ -1230,9 +1230,10 @@ describe('IntegrationSyncScreen — 선택의 수명', () => {
     expect(detailPane().queryByText('목록을 불러오지 못했습니다')).not.toBeInTheDocument();
     expect(screen.getByText('선택 2건')).toBeInTheDocument();
 
-    // 이미 체크된 줄을 다시 눌러도 체크가 풀리지 않는다.
+    // 열린 줄을 다시 누르면 상세를 닫고 그 줄의 체크도 푼다 — 먼저 고른 줄은 그대로(사용자 지시 2026-11-24).
     await user.click(screen.getByRole('button', { name: 'IF-SAMPLE-B SAMPLE-KEY-0002 상세 열기' }));
-    expect(screen.getByText('선택 2건')).toBeInTheDocument();
+    expect(await screen.findByText('선택 1건')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'SAMPLE-KEY-0002' })).not.toBeInTheDocument();
   });
 
   it('다시 조회하면 선택이 비워진다 — 행이 달라질 수 있다', async () => {

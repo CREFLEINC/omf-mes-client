@@ -227,8 +227,13 @@ export const IntegrationSyncScreen = () => {
     setSearchParams(next);
   };
 
-  /* 열린 줄을 다시 누르면 상세를 닫는다(`sel` 을 뺀다). 체크는 건드리지 않는다. */
+  /*
+   * 열린 줄을 다시 누르면 상세를 닫고(`sel` 을 뺀다) 그 줄의 체크도 푼다 — 누를 때 함께 걸린 체크가 남지 않게
+   * (사용자 지시 2026-11-24). 다른 줄의 체크는 그대로 둔다.
+   */
   const closeDetail = () => {
+    const opened = searchParams.get('sel');
+    if (opened !== null) setSelectedIds((prev) => prev.filter((id) => id !== opened));
     setSearchParams(toSearchParams(period, filters, page, size));
   };
 
