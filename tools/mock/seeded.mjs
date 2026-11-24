@@ -357,6 +357,93 @@ on('POST', '/integration/messages:retry-batch', (_params, _query, body) => {
   return { succeeded, failed };
 });
 
+/*
+ * ERP 수신 — 받는 표 여덟(기준정보 다섯 · 전표 셋 · #358). Prism 예시는 「수주」 한 줄뿐이라 목록 · 상태 · 쪽 넘김을
+ * 볼 수 없었다. 「지금 읽기」를 누르면 요청 시각이 걸리고, 4초 뒤 다음 조회 때 다 읽은 것으로 접는다.
+ */
+const erpSyncTables = (() => {
+  const now = Date.now();
+  const at = (hoursAgo) => new Date(now - hoursAgo * 3600_000).toISOString();
+  const table = (interfaceCode, name, laneCode, extra = {}) => ({
+    interfaceCode,
+    name,
+    laneCode,
+    laneName: laneCode === 'MASTER' ? '기준정보' : '전표',
+    running: false,
+    requestedAt: null,
+    lastStartedAt: at(1.02),
+    lastFinishedAt: at(1),
+    lastStatusCode: 'SUCCEEDED',
+    lastReadCount: 24,
+    lastAppliedCount: 24,
+    lastFailedCount: 0,
+    lastHeldCount: 0,
+    lastErrorMessage: null,
+    nextRunAt: at(-1),
+    ...extra,
+  });
+  return [
+    table('IF-ERP-ITEM-RECV', '품목', 'MASTER', {
+      lastReadCount: 120,
+      lastAppliedCount: 118,
+      lastHeldCount: 2,
+    }),
+    table('IF-ERP-BP-RECV', '거래처', 'MASTER', { lastReadCount: 36, lastAppliedCount: 36 }),
+    table('IF-ERP-BOM-RECV', 'BOM', 'MASTER', {
+      lastStatusCode: 'FAILED',
+      lastReadCount: 0,
+      lastAppliedCount: 0,
+      lastErrorMessage: 'ERP 응답 시간 초과(timeout 30s)',
+    }),
+    table('IF-ERP-CODE-RECV', '공통코드', 'MASTER', { lastReadCount: 8, lastAppliedCount: 8 }),
+    table('IF-ERP-EMP-RECV', '사원', 'MASTER', {
+      lastStartedAt: null,
+      lastFinishedAt: null,
+      lastStatusCode: null,
+      lastReadCount: null,
+      lastAppliedCount: null,
+      lastFailedCount: null,
+      lastHeldCount: null,
+    }),
+    table('IF-ERP-PO-RECV', '구매발주', 'ORDER', {
+      lastReadCount: 52,
+      lastAppliedCount: 49,
+      lastFailedCount: 3,
+    }),
+    table('IF-ERP-SO-RECV', '수주', 'ORDER', { lastReadCount: 41, lastAppliedCount: 41 }),
+    table('IF-ERP-WO-RECV', 'ERP W/O', 'ORDER', { lastReadCount: 17, lastAppliedCount: 17 }),
+  ];
+})();
+
+on('GET', '/integration/erp-sync/tables', () => {
+  const now = Date.now();
+  for (const row of erpSyncTables) {
+    if (row.requestedAt !== null && now - new Date(row.requestedAt).getTime() > 4000) {
+      row.lastStartedAt = row.requestedAt;
+      row.lastFinishedAt = new Date(now).toISOString();
+      row.requestedAt = null;
+      row.lastStatusCode = 'SUCCEEDED';
+      row.lastReadCount = row.lastReadCount ?? 10;
+      row.lastAppliedCount = row.lastReadCount;
+      row.lastFailedCount = 0;
+      row.lastHeldCount = 0;
+      row.lastErrorMessage = null;
+    }
+  }
+  return { enabled: true, items: erpSyncTables };
+});
+
+on('POST', '/integration/erp-sync/tables/{interfaceCode}:run', (params) => {
+  const row = erpSyncTables.find((entry) => entry.interfaceCode === params.interfaceCode);
+  if (row === undefined)
+    return { status: 404, created: { message: '받는 표를 찾을 수 없습니다.' } };
+  row.requestedAt = row.requestedAt ?? new Date().toISOString();
+  return {
+    status: 202,
+    created: { interfaceCode: row.interfaceCode, requestedAt: row.requestedAt },
+  };
+});
+
 /* ── 사용자·역할·권한(W-CO-02) ───────────────────────────── */
 
 /**

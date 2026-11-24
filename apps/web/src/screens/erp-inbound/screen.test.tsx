@@ -79,7 +79,7 @@ afterEach(() => {
 });
 
 describe('ErpInboundScreen — 표시', () => {
-  it('목록은 표마다 한 줄 — 표 · 상태 · 마지막 읽음 요약만 낸다', async () => {
+  it('목록은 표마다 한 줄 — 수신 항목 · 구분 · 상태(칩만) · 일시 · 건수를 낸다(#358)', async () => {
     const { fetch } = createServer([result([ITEM, BOM])]);
     renderWithProviders(<ErpInboundScreen />, { fetch });
 
@@ -88,7 +88,17 @@ describe('ErpInboundScreen — 표시', () => {
       .getAllByRole('columnheader')
       /* 열 순서 끌기 손잡이(아이콘 글자 `drag_indicator`)는 빼고 이름만 본다(#358). */
       .map((cell) => cell.textContent?.replace('drag_indicator', ''));
-    expect(headers).toEqual(['표', '상태', '마지막 읽음']);
+    expect(headers).toEqual([
+      '수신 항목',
+      '구분',
+      '상태',
+      '최근 수신 일시',
+      '다음 수신 예정 일시',
+      '읽음',
+      '반영',
+      '실패',
+      '보류',
+    ]);
     // 주기 설명 같은 안내문은 두지 않는다(사용자 지시 2026-10-27).
     expect(screen.queryByText(/12시간/)).toBeNull();
 
@@ -98,7 +108,9 @@ describe('ErpInboundScreen — 표시', () => {
     expect(within(itemRow).getByText('성공')).toBeInTheDocument();
 
     const bomRow = list().getByRole('row', { name: /^BOM/ });
-    expect(within(bomRow).getByText('모품목을 찾지 못했습니다')).toBeInTheDocument();
+    // 실패 사유는 목록에 내지 않는다 — 한 줄 유지, 상세에서 본다(#358).
+    expect(within(bomRow).getByText('실패')).toBeInTheDocument();
+    expect(within(bomRow).queryByText('모품목을 찾지 못했습니다')).toBeNull();
     expect(list().getByText('총 2건')).toBeInTheDocument();
   });
 
@@ -116,7 +128,17 @@ describe('ErpInboundScreen — 표시', () => {
     expect(detail().getByText('2026-10-20 14:00')).toBeInTheDocument();
     expect(detail().getByText('성공')).toBeInTheDocument();
     expect(detail().getByText('11')).toBeInTheDocument();
-    for (const label of ['상태', '마지막 읽음', '다음 예정', '읽음', '반영', '실패', '보류']) {
+    expect(detail().getByRole('heading', { name: '받는 표 상세' })).toBeInTheDocument();
+    for (const label of [
+      '수신 항목',
+      '구분',
+      '최근 수신 일시',
+      '다음 수신 예정 일시',
+      '읽음',
+      '반영',
+      '실패',
+      '보류',
+    ]) {
       expect(detail().getByText(label)).toBeInTheDocument();
     }
     expect(detail().getByRole('button', { name: '품목 지금 읽기' })).toBeEnabled();
@@ -124,6 +146,18 @@ describe('ErpInboundScreen — 표시', () => {
       'aria-current',
       'true',
     );
+  });
+
+  it('실패한 표를 고르면 실패 사유가 정보 상자 아래 빨간 칸에 나온다(#358)', async () => {
+    const { fetch } = createServer([result([ITEM, BOM])]);
+    renderWithProviders(<ErpInboundScreen />, { fetch });
+    await pick(userEvent.setup(), 'BOM');
+
+    const error = detail()
+      .getByText('모품목을 찾지 못했습니다')
+      .closest('.integration-sync-detail-error');
+    expect(error).not.toBeNull();
+    expect(error?.previousElementSibling).toHaveClass('parts-iqc-facts');
   });
 
   it('ERP 연동이 꺼진 서버면 버튼을 잠그고 사유를 보이는 글자로 낸다', async () => {
@@ -156,7 +190,7 @@ describe('ErpInboundScreen — 조회 상자 · 배치(#358)', () => {
     // 초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다.
     expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
 
-    await user.type(screen.getByRole('searchbox', { name: '표 검색' }), 'bom');
+    await user.type(screen.getByRole('searchbox', { name: '수신 항목 검색' }), 'bom');
     await user.click(
       within(screen.getByRole('region', { name: '조회 조건' })).getByRole('button', {
         name: '조회',
@@ -174,15 +208,39 @@ describe('ErpInboundScreen — 조회 상자 · 배치(#358)', () => {
     expect(requests).toHaveLength(reads);
   });
 
+  it('구분 · 상태 선택칸으로 화면 안에서 거른다 — 서버 요청은 그대로다(#358)', async () => {
+    const { fetch, requests } = createServer([result([ITEM, BOM])]);
+    renderWithProviders(<ErpInboundScreen />, { fetch });
+    const user = userEvent.setup();
+    await list().findByText('품목');
+    const reads = requests.length;
+    const filter = within(screen.getByRole('region', { name: '조회 조건' }));
+
+    await user.click(filter.getByRole('combobox', { name: '상태 선택' }));
+    await user.click(screen.getByRole('option', { name: '실패' }));
+    await user.click(filter.getByRole('button', { name: '조회' }));
+
+    expect(list().getByText('BOM')).toBeInTheDocument();
+    expect(list().queryByText('품목')).toBeNull();
+
+    await user.click(filter.getByRole('button', { name: '초기화' }));
+    await user.click(filter.getByRole('combobox', { name: '구분 선택' }));
+    await user.click(screen.getByRole('option', { name: '기준정보' }));
+    await user.click(filter.getByRole('button', { name: '조회' }));
+
+    expect(list().getByText('품목')).toBeInTheDocument();
+    expect(requests).toHaveLength(reads);
+  });
+
   it('맞는 표가 없으면 목록 자리에 빈 안내를 낸다', async () => {
     const { fetch } = createServer([result([ITEM, BOM])]);
     renderWithProviders(<ErpInboundScreen />, { fetch });
     const user = userEvent.setup();
     await list().findByText('품목');
 
-    await user.type(screen.getByRole('searchbox', { name: '표 검색' }), '없는 표{Enter}');
+    await user.type(screen.getByRole('searchbox', { name: '수신 항목 검색' }), '없는 표{Enter}');
 
-    expect(list().getByText('조건에 맞는 표가 없습니다')).toBeInTheDocument();
+    expect(list().getByText('조건에 맞는 수신 항목이 없습니다')).toBeInTheDocument();
   });
 
   it('탭 줄 오른쪽에 수신 칩과 배치 「⋯」 메뉴가 선다', async () => {

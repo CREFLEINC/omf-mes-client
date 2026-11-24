@@ -39077,7 +39077,8 @@ body:has(
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-bottom: var(--space-3);
+  /* 아래 간격은 상세 상자의 줄 간격(`.integration-sync-detail` gap)이 맡는다(#358). */
+  margin: 0;
 }
 
 .erp-inbound-detail-head > .pane-title {
@@ -39087,20 +39088,6 @@ body:has(
 /* 쪽 넘김 — 목록 상자가 좁으면 [처음]~[마지막]이 아랫줄로 내려간다(잘리지 않게). */
 .list-detail-list:has(> .erp-link-list-body) > .page-nav {
   flex-wrap: wrap;
-}
-
-/* ERP 수신 상세 사실 칸 — 윗줄 상태 · 마지막 읽음 · 다음 예정, 아랫줄 읽음 · 반영 · 실패 · 보류. */
-.iqc-inbound-facts.erp-inbound-facts {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-}
-
-.iqc-inbound-facts.erp-inbound-facts > .parts-iqc-fact {
-  grid-column: span 3;
-}
-
-.iqc-inbound-facts.erp-inbound-facts > .parts-iqc-fact:nth-child(-n + 3) {
-  grid-column: span 4;
 }
 
 /* 시스템 관리 화면 통일(omf-all-around#358) — erp-data 묶음. */

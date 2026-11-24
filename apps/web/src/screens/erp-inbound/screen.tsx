@@ -6,6 +6,7 @@ import {
   EmptyState,
   Icon,
   SearchInput,
+  Select,
   SkeletonText,
   useToast,
 } from '@crefle/web-ui';
@@ -46,23 +47,43 @@ const orEmptyMark = (value: string | number | null): ReactNode =>
  * 누른 표의 기다림. `baseline` 은 누를 때 보이던 마지막 끝난 시각이고, `seenRequest` 는 목록이 그 요청을
  * 한 번이라도 실었는가다 — 싣기 전에 받은 목록(누르기 전에 떠난 다시 읽기)으로 「사라졌다」고 판정하지 않는다.
  */
-/** 상태 칩과 그 아래 보조 한 줄(요청 시각 · 실패 사유) — 목록과 상세가 같이 쓴다. */
-const StateCell = ({ item }: { item: SyncTableStatus }) => {
+/** 상태 칩 — 목록은 칩만(한 줄 · #358). 요청 시각 · 실패 사유는 상세에서 본다. */
+const StateChip = ({ item }: { item: SyncTableStatus }) => {
   const view = toSyncStateView(item);
 
   return (
-    <>
-      <Chip variant="status" size="sm" status={view.tone}>
-        {view.label}
-      </Chip>
-      {view.note !== null && <span className="field-note">{view.note}</span>}
-    </>
+    <Chip variant="status" size="sm" status={view.tone}>
+      {view.label}
+    </Chip>
   );
 };
 
-/** 표 이름 검색 — 화면 안에서만 거른다(서버 요청은 그대로 · #358). 앞뒤 빈칸 · 대소문자는 가리지 않는다. */
-const matchesName = (item: SyncTableStatus, query: string): boolean =>
-  item.name.toLowerCase().includes(query.trim().toLowerCase());
+/** 조회 조건 — 이름 검색어 · 구분(laneCode) · 상태(상태 칩 글자). 빈 값은 조건 없음. */
+interface InboundFilters {
+  q: string;
+  lane: string;
+  state: string;
+}
+
+const EMPTY_FILTERS: InboundFilters = { q: '', lane: '', state: '' };
+
+/** 상태 선택지 — 상태 칩 글자 그대로(성공 · 실패 · 대기 중 · 읽는 중 · 기록 없음). */
+const STATE_OPTIONS = [
+  t.state.succeeded,
+  t.state.failed,
+  t.state.requested,
+  t.state.running,
+  t.state.never,
+];
+
+/**
+ * 화면 안에서만 거른다(서버 요청은 그대로 · #358). 이름은 앞뒤 빈칸 · 대소문자를 가리지 않는다.
+ * 상태는 목록의 상태 칩과 같은 판정(`toSyncStateView`)으로 견준다 — 칩에 보이는 것과 거르는 것이 어긋나지 않게.
+ */
+const matchesFilters = (item: SyncTableStatus, filters: InboundFilters): boolean =>
+  item.name.toLowerCase().includes(filters.q.trim().toLowerCase()) &&
+  (filters.lane === '' || item.laneCode === filters.lane) &&
+  (filters.state === '' || toSyncStateView(item).label === filters.state);
 
 interface PendingRun {
   baseline: string | null;
@@ -86,15 +107,18 @@ export const ErpInboundScreen = () => {
   const status = useSyncTables();
   const run = useRequestSyncRun();
   const [pending, setPending] = useState<Record<string, PendingRun>>({});
-  /* 이름 검색 — 치는 값(`search`)과 [조회]로 건 값(`query`). 고른 표는 `interfaceCode` 로 잡는다(#358). */
-  const [search, setSearch] = useState('');
+  /* 조회 조건 — 고치는 값(`draft`)과 [조회]로 건 값(`applied`). 고른 표는 `interfaceCode` 로 잡는다(#358). */
+  const [draft, setDraft] = useState<InboundFilters>(EMPTY_FILTERS);
+  const [applied, setApplied] = useState<InboundFilters>(EMPTY_FILTERS);
   const searchRef = useFitPlaceholderWidth(t.filters.searchPlaceholder);
-  const [query, setQuery] = useState('');
+  const fieldId = useId();
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
 
   const items = status.data?.items ?? [];
   const enabled = status.data?.enabled ?? false;
-  const shownItems = items.filter((item) => matchesName(item, query));
+  const shownItems = items.filter((item) => matchesFilters(item, applied));
+  /* 구분 선택지 — 받은 표들의 묶음에서 만든다(기준정보 · 전표). 순서는 서버가 준 순서. */
+  const laneOptions = [...new Map(items.map((item) => [item.laneCode, item.laneName])).entries()];
   /* 받는 표는 다 받는 작은 목록이라 화면에서 쪽을 나눈다(#358). */
   const itemPage = useClientPage(shownItems);
   const selected = items.find((item) => item.interfaceCode === selectedCode) ?? null;
@@ -153,21 +177,49 @@ export const ErpInboundScreen = () => {
     });
   };
 
-  /* 목록은 요약 열만 — 표 · 상태 · 마지막 읽음. 건수와 「지금 읽기」는 오른쪽 상세에서(#358). */
+  /*
+   * 목록 한 줄에 표의 요약을 다 낸다 — 수신 항목 · 구분 · 상태(칩만) · 최근 수신 · 다음 수신 예정 · 읽음 · 반영 · 실패 · 보류,
+   * 모두 가운데 정렬(연동 현황·이력과 같다 · 사용자 지시 2026-11-24). 요청 시각 · 실패 사유와 「지금 읽기」는 상세에서 본다.
+   * 폭이 모자라면 표가 옆으로 구른다(`minWidth`) — 수신 항목 이름이 잘리지 않게.
+   */
+  const countColumn = (
+    key: 'lastReadCount' | 'lastAppliedCount' | 'lastFailedCount' | 'lastHeldCount',
+    header: string,
+  ): Column<SyncTableStatus> => ({
+    key,
+    header,
+    align: 'center',
+    width: '72px',
+    render: (item) => orEmptyMark(item[key]),
+  });
   const columns: Column<SyncTableStatus>[] = [
-    { key: 'name', header: t.table.name, width: '120px' },
-    /* 폭을 지정하지 않는 열 — 실패 사유가 길 수 있어 남는 폭을 이 열이 가져간다. */
+    { key: 'name', header: t.table.name, align: 'center', width: '112px' },
+    { key: 'laneName', header: t.table.lane, align: 'center', width: '88px' },
     {
       key: 'state',
       header: t.table.state,
-      render: (item) => <StateCell item={item} />,
+      align: 'center',
+      width: '96px',
+      render: (item) => <StateChip item={item} />,
     },
     {
       key: 'lastFinishedAt',
       header: t.table.lastFinishedAt,
-      width: '156px',
+      align: 'center',
+      width: '160px',
       render: (item) => orEmptyMark(formatDateTime(item.lastFinishedAt)),
     },
+    {
+      key: 'nextRunAt',
+      header: t.table.nextRunAt,
+      align: 'center',
+      width: '180px',
+      render: (item) => orEmptyMark(formatDateTime(item.nextRunAt)),
+    },
+    countColumn('lastReadCount', t.table.read),
+    countColumn('lastAppliedCount', t.table.applied),
+    countColumn('lastFailedCount', t.table.failed),
+    countColumn('lastHeldCount', t.table.held),
   ];
   /* 열 순서는 머리칸 손잡이로 바꾸고 브라우저에 남는다(단말 관리와 같다 · #358). 폭은 `BoardTable` 이 맡는다. */
   const ordered = useColumnOrder('omf-mes:erp-inbound:columns:tables:order', columns);
@@ -190,7 +242,7 @@ export const ErpInboundScreen = () => {
           <BoardTable
             label={t.table.label}
             widthKey="omf-mes:erp-inbound:columns:tables"
-            minWidth="24rem"
+            minWidth="58rem"
             columns={ordered}
             rows={itemPage.rows}
             getRowId={(item) => item.interfaceCode}
@@ -229,16 +281,23 @@ export const ErpInboundScreen = () => {
       );
     }
 
+    const view = toSyncStateView(selected);
+    /* 요청 시각은 칩 옆 보조 줄, 실패 사유는 아래 빨간 칸으로 나눠 보인다(연동 현황·이력과 같다 · #358). */
+    const requestNote = selected.requestedAt !== null ? view.note : null;
+    const errorMessage = selected.lastErrorMessage ?? '';
+
     return (
-      <>
+      <div className="integration-sync-detail erp-inbound-detail">
         <div className="erp-inbound-detail-head">
-          <h2 className="pane-title">{selected.name}</h2>
+          {/* 상자 제목 — 목록 상자의 「받는 표 목록」과 짝(#358). */}
+          <h2 className="pane-title">{t.panes.detail}</h2>
           {/*
            * 요청이 걸려 있는 동안은 잠근다 — 다시 눌러도 서버가 처음 시각을 지켜 한 번 돌 뿐이라 누를 까닭이 없다.
            * **도는 중에는 잠그지 않는다.** 도는 사이에 들어온 줄은 그 회차가 놓칠 수 있어, 서버가 한 번 더 돈다.
            */}
           <Button
             variant="outlined"
+            size="sm"
             leadingIcon={<Icon name="refresh" size={18} aria-hidden />}
             disabled={!enabled}
             aria-describedby={enabled ? undefined : disabledReasonId}
@@ -256,11 +315,9 @@ export const ErpInboundScreen = () => {
         </div>
 
         {run.isError && (
-          <div className="banner-slot">
-            <AlertBanner variant="error" title={t.runErrorTitle}>
-              {describeLoadError(toApiError(run.error))}
-            </AlertBanner>
-          </div>
+          <AlertBanner variant="error" title={t.runErrorTitle}>
+            {describeLoadError(toApiError(run.error))}
+          </AlertBanner>
         )}
 
         {/* 배치 규범 4 — 비활성 사유는 감추지 않고 항상 보이는 DOM 텍스트로 낸다. 연동이 꺼진 서버에서만 선다. */}
@@ -270,39 +327,45 @@ export const ErpInboundScreen = () => {
           </p>
         )}
 
-        <dl className="parts-iqc-facts iqc-inbound-facts erp-inbound-facts">
+        {/* 정보 상자 하나 — 검사 조회·판정 · 연동 현황·이력과 같은 모양(첫 칸에 표 이름 + 상태 배지 · #358). */}
+        <dl className="parts-iqc-facts iqc-inbound-facts integration-sync-facts">
           <div className="parts-iqc-fact">
-            <dt className="field-label">{t.table.state}</dt>
-            <dd>
-              <StateCell item={selected} />
+            <dt className="field-label">{t.table.name}</dt>
+            <dd className="iqc-inbound-lot-key">
+              <h3 className="parts-iqc-fact-key">{selected.name}</h3>
+              <Chip variant="status" size="sm" status={view.tone}>
+                {view.label}
+              </Chip>
+              {requestNote !== null && <span className="parts-iqc-fact-sub">{requestNote}</span>}
             </dd>
           </div>
-          <div className="parts-iqc-fact">
-            <dt className="field-label">{t.table.lastFinishedAt}</dt>
-            <dd>{orEmptyMark(formatDateTime(selected.lastFinishedAt))}</dd>
-          </div>
-          <div className="parts-iqc-fact">
-            <dt className="field-label">{t.table.nextRunAt}</dt>
-            <dd>{orEmptyMark(formatDateTime(selected.nextRunAt))}</dd>
-          </div>
-          <div className="parts-iqc-fact">
-            <dt className="field-label">{t.table.read}</dt>
-            <dd>{orEmptyMark(selected.lastReadCount)}</dd>
-          </div>
-          <div className="parts-iqc-fact">
-            <dt className="field-label">{t.table.applied}</dt>
-            <dd>{orEmptyMark(selected.lastAppliedCount)}</dd>
-          </div>
-          <div className="parts-iqc-fact">
-            <dt className="field-label">{t.table.failed}</dt>
-            <dd>{orEmptyMark(selected.lastFailedCount)}</dd>
-          </div>
-          <div className="parts-iqc-fact">
-            <dt className="field-label">{t.table.held}</dt>
-            <dd>{orEmptyMark(selected.lastHeldCount)}</dd>
-          </div>
+          {[
+            { label: t.table.lane, value: selected.laneName },
+            {
+              label: t.table.lastFinishedAt,
+              value: orEmptyMark(formatDateTime(selected.lastFinishedAt)),
+            },
+            { label: t.table.nextRunAt, value: orEmptyMark(formatDateTime(selected.nextRunAt)) },
+            { label: t.table.read, value: orEmptyMark(selected.lastReadCount) },
+            { label: t.table.applied, value: orEmptyMark(selected.lastAppliedCount) },
+            { label: t.table.failed, value: orEmptyMark(selected.lastFailedCount) },
+            { label: t.table.held, value: orEmptyMark(selected.lastHeldCount) },
+          ].map((fact) => (
+            <div className="parts-iqc-fact" key={fact.label}>
+              <dt className="field-label">{fact.label}</dt>
+              <dd>{fact.value}</dd>
+            </div>
+          ))}
         </dl>
-      </>
+
+        {/* 실패 사유는 값이 있을 때만, 정보 상자 바로 아래 전체 폭으로(#358). */}
+        {errorMessage !== '' && (
+          <div className="integration-sync-detail-error">
+            <span className="field-label">{t.table.lastErrorMessage}</span>
+            <p>{errorMessage}</p>
+          </div>
+        )}
+      </div>
     );
   };
 
@@ -321,41 +384,74 @@ export const ErpInboundScreen = () => {
       <ListDetailWorkspace
         storageKey="omf-mes:erp-inbound"
         orientationKey={ERP_LINK_ORIENTATION_KEY}
-        initialRatio={0.45}
+        initialRatio={0.65}
         filter={{
           label: t.filters.label,
           content: (
-            /* 조건이 없던 화면 — 표 이름 검색 하나 + [조회][초기화](단말 관리와 같다 · #358).
-               초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */
+            /* 구분 · 상태 · 수신 항목 검색 + [조회][초기화](이 순서 · 사용자 지시 2026-11-24)(단말 관리와 같다 · #358).
+               초기화는 조건이 처음 값(빈칸 · 전체)과 다를 때만 보인다. */
             <div className="filter-bar erp-link-filter">
+              {/* 구분 · 상태 — 선택지가 몇 개 안 돼 검색창 없이 펼친다(#358). */}
+              <div className="field-cell">
+                <label className="field-label" htmlFor={`${fieldId}-lane`}>
+                  {t.filters.lane}
+                </label>
+                <Select
+                  id={`${fieldId}-lane`}
+                  value={draft.lane}
+                  options={[
+                    { value: '', label: t.filters.all },
+                    ...laneOptions.map(([code, name]) => ({ value: code, label: name })),
+                  ]}
+                  onChange={(value) => {
+                    setDraft((prev) => ({ ...prev, lane: value }));
+                  }}
+                />
+              </div>
+              <div className="field-cell">
+                <label className="field-label" htmlFor={`${fieldId}-state`}>
+                  {t.filters.state}
+                </label>
+                <Select
+                  id={`${fieldId}-state`}
+                  value={draft.state}
+                  options={[
+                    { value: '', label: t.filters.all },
+                    ...STATE_OPTIONS.map((label) => ({ value: label, label })),
+                  ]}
+                  onChange={(value) => {
+                    setDraft((prev) => ({ ...prev, state: value }));
+                  }}
+                />
+              </div>
               <SearchInput
                 containerClassName={`erp-link-search-input ${FIT_PLACEHOLDER_CLASS}`}
                 label={t.filters.search}
-                value={search}
+                value={draft.q}
                 placeholder={t.filters.searchPlaceholder}
                 ref={searchRef}
                 onChange={(event) => {
-                  setSearch(event.target.value);
+                  setDraft((prev) => ({ ...prev, q: event.target.value }));
                 }}
                 onSearch={(value) => {
-                  setQuery(value);
+                  setApplied({ ...draft, q: value });
                 }}
                 clearLabel={messages.common.clear}
               />
               <div className="filter-actions field-cell-unlabeled">
                 <Button
                   onClick={() => {
-                    setQuery(search);
+                    setApplied(draft);
                   }}
                 >
                   {messages.common.search}
                 </Button>
-                {hasChangedFilters({ q: '' }, { q: search }, { q: query }) && (
+                {hasChangedFilters(EMPTY_FILTERS, draft, applied) && (
                   <Button
                     variant="outlined"
                     onClick={() => {
-                      setSearch('');
-                      setQuery('');
+                      setDraft(EMPTY_FILTERS);
+                      setApplied(EMPTY_FILTERS);
                     }}
                   >
                     {messages.common.reset}

@@ -12,8 +12,11 @@ export const erpInbound: Translated<typeof ko.erpInbound> = {
   },
   filters: {
     label: 'Điều kiện tra cứu',
-    search: 'Tìm bảng',
-    searchPlaceholder: 'Nhập tên bảng',
+    search: 'Tìm hạng mục nhận',
+    searchPlaceholder: 'Nhập tên hạng mục nhận',
+    lane: 'Chọn nhóm',
+    state: 'Chọn trạng thái',
+    all: 'Tất cả',
   },
   panes: {
     list: 'Danh sách bảng nhận',
@@ -27,14 +30,16 @@ export const erpInbound: Translated<typeof ko.erpInbound> = {
   noMatch: 'Không có bảng phù hợp điều kiện',
   table: {
     label: 'Bảng nhận ERP',
-    name: 'Bảng',
+    name: 'Hạng mục nhận',
     state: 'Trạng thái',
-    lastFinishedAt: 'Đọc lần cuối',
+    lastFinishedAt: 'Thời điểm nhận gần nhất',
     read: 'Đã đọc',
     applied: 'Đã áp dụng',
     failed: 'Lỗi',
     held: 'Tạm giữ',
-    nextRunAt: 'Lần kế tiếp',
+    nextRunAt: 'Thời điểm nhận dự kiến tiếp theo',
+    lane: 'Nhóm',
+    lastErrorMessage: 'Nội dung lỗi',
     action: 'Đọc ngay',
   },
   actions: {

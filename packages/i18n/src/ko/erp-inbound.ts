@@ -14,11 +14,14 @@ export const erpInbound = {
     receiveOn: '수신 켜짐',
     receiveOff: '수신 꺼짐',
   },
-  /** 조회 상자 — 표 이름으로 화면 안에서 거른다(서버 요청은 그대로 · #358). */
+  /** 조회 상자 — 수신 항목 이름 · 구분 · 상태로 화면 안에서 거른다(서버 요청은 그대로 · #358). */
   filters: {
     label: '조회 조건',
-    search: '표 검색',
-    searchPlaceholder: '표 이름을 입력하세요',
+    search: '수신 항목 검색',
+    searchPlaceholder: '수신 항목 이름을 입력하세요',
+    lane: '구분 선택',
+    state: '상태 선택',
+    all: '전체',
   },
   /** 목록 상자 | 상세 상자(#358). */
   panes: {
@@ -32,17 +35,22 @@ export const erpInbound = {
     pickRow: (name: string): string => `${name} 선택`,
   },
   /** 이름 검색에 맞는 표가 없을 때. */
-  noMatch: '조건에 맞는 표가 없습니다',
+  noMatch: '조건에 맞는 수신 항목이 없습니다',
   table: {
     label: 'ERP 수신 표',
-    name: '표',
+    /** ERP에서 받아 오는 자료의 종류(품목 · 거래처 · 수주 …) — 「표」는 시스템 말이라 바꿨다(#358). */
+    name: '수신 항목',
     state: '상태',
-    lastFinishedAt: '마지막 읽음',
+    lastFinishedAt: '최근 수신 일시',
     read: '읽음',
     applied: '반영',
     failed: '실패',
     held: '보류',
-    nextRunAt: '다음 예정',
+    nextRunAt: '다음 수신 예정 일시',
+    /** 묶음 — 기준정보 · 전표(#358). */
+    lane: '구분',
+    /** 마지막 읽기의 실패 사유(#358). */
+    lastErrorMessage: '오류 내용',
     action: '지금 읽기',
   },
   actions: {
