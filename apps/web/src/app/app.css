@@ -401,10 +401,11 @@ main > * + * {
   white-space: nowrap;
 }
 
-/* 탭 막대가 없을 때 머리 오른쪽 — 사용 여부 칩 다음 배치 단추(omf-all-around#357). */
+/* 탭 막대가 없을 때 조회 상자 위 오른쪽 끝 — 사용 여부 칩 다음 배치 단추(omf-all-around#357). */
 .inspection-standard-head-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-2);
 }
 

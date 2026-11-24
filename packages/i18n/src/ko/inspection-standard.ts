@@ -6,8 +6,6 @@
  * 환산되는 파생값이고 이 화면이 정하는 것이 아니다(#201).
  */
 export const inspectionStandard = {
-  title: '검사기준 등록',
-  breadcrumbRoot: '품질 관리',
   panes: {
     plan: '검사 기준',
     version: '버전 목록',

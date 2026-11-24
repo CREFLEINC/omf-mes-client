@@ -216,13 +216,13 @@ describe('AppLayout', () => {
     );
   });
 
-  /* 검사 수준 설정을 검사 기준 화면에 합쳐 묶음을 풀었다 — 「검사 기준」 한 줄이다(omf-all-around#357). */
-  it('사이드바에 검사 기준 줄이 검사기준 주소로 보인다', () => {
+  /* 검사 수준 설정을 검사 기준 화면에 합쳐 묶음을 풀었다 — 「검사 기준 관리」 한 줄이다(omf-all-around#357). */
+  it('사이드바에 검사 기준 관리 줄이 검사기준 주소로 보인다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
-    expect(within(sidebar).getByRole('link', { name: '검사 기준' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: '검사 기준 관리' })).toHaveAttribute(
       'href',
       '/master-data/inspection-standard',
     );
@@ -956,7 +956,7 @@ describe('AppLayout', () => {
       '/logistics/document-progress',
       /* 품질 관리 — 검사 조회·판정(IQC · PQC · OQC 탭) → 기준·코드 → 이력 → LOT 판정 갈래. */
       '/logistics/iqc-inspection' /* ← 검사 조회·판정 */,
-      '/master-data/inspection-standard' /* ← 검사 기준 */,
+      '/master-data/inspection-standard' /* ← 검사 기준 관리 */,
       '/master-data/defect-cause-code',
       '/quality/inspection-results' /* ← 검사 실적·결과 */,
       '/quality/lot-status' /* ← LOT 상태 */,

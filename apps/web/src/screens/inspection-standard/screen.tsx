@@ -1,12 +1,10 @@
 import {
   AlertBanner,
-  Breadcrumb,
   Button,
   Chip,
   Dialog,
   EmptyState,
   Icon,
-  PageHeader,
   SkeletonText,
   useToast,
 } from '@crefle/web-ui';
@@ -2423,32 +2421,20 @@ export const InspectionStandardScreen = () => {
       />
       <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
       {/* 탭 묶음(품질 기준 정보) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다. */}
+      {/*
+       * 탭 막대가 없으면 사용 여부 칩 · 배치 단추만 오른쪽 끝 한 줄에 둔다(omf-all-around#357).
+       * 화면 제목 · 경로(「품질 관리 > 검사기준 등록」)는 두지 않는다 — 사이드바 「검사 기준 관리」가 말한다(사용자 지시).
+       */}
       {hub === null && (
-        <PageHeader
-          title={t.title}
-          /* 탭 막대가 없으면 사용 여부 칩 · 배치 단추를 머리 오른쪽에(검사 실적과 같다 · omf-all-around#357). */
-          actions={
-            <div className="inspection-standard-head-actions">
-              <UsageChips
-                counts={usageCounts.data ?? null}
-                value={usageOf(filters)}
-                onChange={(usage) => applyFilters(withUsage(filters, usage))}
-                inline
-              />
-              <SplitOrientationToggle
-                orientation={layout.orientation}
-                onChange={layout.change}
-                inline
-              />
-            </div>
-          }
-          breadcrumb={
-            <Breadcrumb
-              items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-              aria-label={messages.common.shell.breadcrumb}
-            />
-          }
-        />
+        <div className="inspection-standard-head-actions">
+          <UsageChips
+            counts={usageCounts.data ?? null}
+            value={usageOf(filters)}
+            onChange={(usage) => applyFilters(withUsage(filters, usage))}
+            inline
+          />
+          <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} inline />
+        </div>
       )}
 
       {/* 조회 조건 — 검사 조회·판정처럼 목록과 다른 카드에 둔다. */}
