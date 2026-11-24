@@ -2060,6 +2060,118 @@ on('GET', '/app/users', (_p, query) => {
   );
 });
 
+/*
+ * 알림 연결 설정 · 인계 작업 종류(#358 확인용) — 계약 예시는 「미설정」인데 설정 셋이 다 있고 오류도 있는 어긋난
+ * 조합이고, 인계 작업 종류는 한 줄뿐이라 나머지가 코드로 보였다. 서버 정의(handover-alert-types.ts)와 같은 이름을 쓴다.
+ */
+const MOCK_HANDOVER_TYPES = [
+  [
+    'IQC_INSPECTION_REQUESTED',
+    'IQC 수입검사',
+    'Kiểm tra IQC',
+    '입하 등록으로 IQC 의뢰가 생길 때(입하 1건에 1회)',
+    'INBOUND_RECEIPT',
+  ],
+  [
+    'PUTAWAY_REQUESTED',
+    '적치',
+    'Cất hàng',
+    '입고 처리로 적치 지시가 생길 때(입고 1건마다)',
+    'GOODS_RECEIPT',
+  ],
+  [
+    'MATERIAL_PICKING_REQUESTED',
+    '자재 출고 피킹',
+    'Lấy nguyên vật liệu xuất kho',
+    '출고 요청으로 피킹 지시가 생길 때(피킹 지시마다)',
+    'PICKING_ORDER',
+  ],
+  [
+    'STOCK_TRANSFER_ARRIVAL_PENDING',
+    '창고 이동 도착',
+    'Xác nhận đến kho chuyển',
+    '창고 이동이 등록(반출)될 때',
+    'STOCK_TRANSFER',
+  ],
+  ['WORK_ORDER_RELEASED', '작업 시작', 'Bắt đầu sản xuất', '일반 W/O 가 배포될 때', 'WORK_ORDER'],
+  [
+    'EMERGENCY_WORK_ORDER_RELEASED',
+    '긴급 W/O',
+    'W/O khẩn cấp',
+    '긴급 W/O 가 배포될 때',
+    'WORK_ORDER',
+  ],
+  [
+    'REWORK_WORK_ORDER_CREATED',
+    '재작업 실적',
+    'Kết quả làm lại',
+    '부적합 처분으로 재작업 W/O 가 생길 때',
+    'WORK_ORDER',
+  ],
+  [
+    'OQC_INSPECTION_REQUESTED',
+    'OQC 출하검사',
+    'Kiểm tra OQC',
+    '출하지시 등록으로 OQC 의뢰가 생길 때(출하지시 1건에 1회)',
+    'SHIPMENT_REQUEST',
+  ],
+  [
+    'SHIPMENT_PICKING_REQUESTED',
+    '제품 출하 피킹',
+    'Lấy hàng xuất thành phẩm',
+    '출하지시가 공장이 정해진 채 등록되거나 공장이 처음 정해질 때',
+    'SHIPMENT_REQUEST',
+  ],
+  [
+    'SHIPMENT_PACKING_REQUESTED',
+    '출하 포장',
+    'Đóng gói xuất hàng',
+    '출하 처리로 출하가 생길 때',
+    'SHIPMENT',
+  ],
+].map(([alertTypeCode, name, nameVi, description, targetTypeCode]) => ({
+  alertTypeCode,
+  name,
+  nameVi,
+  description,
+  targetTypeCode,
+}));
+on('GET', '/app/handover-alert-types', () => ({ items: MOCK_HANDOVER_TYPES }));
+/* 연결 오류(-124) + 발송 꺼짐을 함께 보이는 상태. 저장하면 보낸 값을 그대로 남긴다. */
+let mockZalo = {
+  appId: '1234567890',
+  secretKeySet: true,
+  refreshTokenSet: true,
+  status: 'REAUTH_REQUIRED',
+  accessTokenExpiresAt: '2026-10-21T07:30:00Z',
+  lastRefreshedAt: '2026-10-21T07:30:00Z',
+  lastErrorCode: '-124',
+  lastErrorMessage: 'Access token is invalid',
+  paramMaxLength: 100,
+  templates: [{ eventCode: 'string', templateId: '231234' }],
+  handoverTemplates: MOCK_HANDOVER_TYPES.map((type) => ({
+    alertTypeCode: type.alertTypeCode,
+    templateId: null,
+  })),
+  deliveryEnabled: false,
+};
+/* 응답에 `status` 칸이 있어 목이 응답 코드 묶음으로 읽는다 — 200 으로 감싸 보낸다. */
+let mockZaloVersion = 1;
+const zaloTag = () => ({ ETag: `"zalo-v${String(mockZaloVersion)}"` });
+on('GET', '/app/zalo-connection', () => ({ status: 200, created: mockZalo, headers: zaloTag() }));
+on('PUT', '/app/zalo-connection', (_p, _q, body) => {
+  mockZalo = {
+    ...mockZalo,
+    appId: body.appId ?? mockZalo.appId,
+    secretKeySet: body.secretKey === undefined ? mockZalo.secretKeySet : true,
+    refreshTokenSet: body.refreshToken === undefined ? mockZalo.refreshTokenSet : true,
+    paramMaxLength: body.paramMaxLength ?? mockZalo.paramMaxLength,
+    templates: body.templates ?? mockZalo.templates,
+    handoverTemplates: body.handoverTemplates ?? mockZalo.handoverTemplates,
+  };
+  mockZaloVersion += 1;
+  return { status: 200, created: mockZalo, headers: zaloTag() };
+});
 on('GET', '/mdm/code-values', (_p, query) => {
   const group = query.get('codeGroupCode') ?? '';
   const values = state.codeValues[group] ?? [];

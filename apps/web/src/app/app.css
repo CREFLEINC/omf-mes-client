@@ -39384,9 +39384,9 @@ body:has(
   margin: 0 0 0 auto;
 }
 
-/* 연결 정보 칸 넷을 한 줄에 — 좁으면 둘씩. */
+/* 연결 정보 칸 셋을 한 줄에 — 좁으면 둘씩. 공통 「템플릿 변수 값 최대 길이」는 템플릿 영역 위로 옮겼다(사용자 지시 2026-11-24). */
 .zalo-connection-box > .zalo-form {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: start;
 }
 
@@ -39394,6 +39394,93 @@ body:has(
   .zalo-connection-box > .zalo-form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+/* 발송 상태 — 배지 옆 짧은 글. 꺼짐은 흐리게. */
+.zalo-delivery {
+  color: var(--on-surface);
+  font: var(--type-label-md);
+}
+
+.zalo-delivery[data-on='false'] {
+  color: var(--on-surface-variant);
+}
+
+/* 토큰 일시 — 제목 아래 한 줄, 좁으면 접힌다. */
+.zalo-token-times {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+}
+
+.zalo-token-times > div {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.zalo-token-times dt {
+  color: var(--on-surface-variant);
+}
+
+.zalo-token-times dd {
+  margin: 0;
+}
+
+/* 오류 안내 줄 안 「상세 정보」 — 코드 · 원문. */
+.zalo-error-detail {
+  margin-top: var(--space-1);
+}
+
+.zalo-error-detail > summary {
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.zalo-error-detail > dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-2) 0 0;
+}
+
+.zalo-error-detail dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 화면 위 오른쪽 — 저장 범위 한 줄 + [변경 취소][변경 사항 저장]. */
+.zalo-save-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.list-detail-toolbar:has(> .zalo-save-actions) {
+  margin-bottom: 0;
+}
+
+.list-detail-toolbar > .zalo-save-actions {
+  margin: 0 0 0 auto;
+}
+
+/* 템플릿 공통 설정 줄 — 템플릿 목록 · 상세 위. */
+.zalo-template-common {
+  padding: var(--space-3) var(--space-5);
+}
+
+.zalo-template-common > * {
+  max-width: 20rem;
+}
+
+/* 상세 카드는 내용 높이만 — 목록과 윗선을 맞춘다. */
+.list-detail-split > .list-detail-detail.zalo-template-pane {
+  align-self: start;
+  height: auto;
 }
 
 /* 상세 — 고른 템플릿의 ID 입력 · 파라미터 · 복사. */
@@ -39428,6 +39515,19 @@ body:has(
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
+}
+
+.zalo-template-params > code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font: var(--type-body-md);
+  font-family: ui-monospace, monospace;
+}
+
+.zalo-template-detail .text-field,
+.zalo-template-detail input {
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* 알림 발송 이력 — 상세 상자(종전 드로어 자리 · #358). 머리: 대상 이름 + 이벤트 · 발생 시각 한 줄. */
@@ -39741,4 +39841,12 @@ body:has(
   > .approval-route-approver-field
   > :not(.field-label, .field-note) {
   width: 100%;
+}
+
+/* 알림 수신자 · 인계작업 알림 — Zalo 미연결 노란 안내 한 줄 끝의 이동 링크(사용자 지시 2026-11-24). */
+.notify-filter-note > .notify-filter-note-link {
+  margin-left: var(--space-2);
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
 }

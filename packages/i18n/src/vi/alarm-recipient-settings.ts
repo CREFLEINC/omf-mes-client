@@ -40,7 +40,7 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     revert: 'Hoàn tác',
     save: 'Lưu',
     reload: 'Tải lại',
-    openConnection: 'Mở thiết lập kết nối thông báo',
+    openConnection: 'Đi tới thiết lập kết nối thông báo',
     cancel: 'Hủy',
     discard: 'Bỏ thay đổi và chuyển',
     search: 'Tìm',
@@ -64,8 +64,7 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
       'Người phê duyệt đến lượt sẽ nhận. Đó là người được chỉ định trong luồng phê duyệt.',
     saved: 'Đã lưu',
     conflict: 'Người khác đã lưu trước. Hãy tải lại rồi lưu',
-    zaloNotActive:
-      'Chưa thiết lập kết nối Zalo nên hiện chỉ gửi đến trung tâm thông báo — Thiết lập kết nối thông báo',
+    zaloNotActive: 'Kết nối Zalo chưa sẵn sàng nên thông báo chỉ được gửi đến trung tâm thông báo.',
     unsavedTitle: 'Có thay đổi chưa lưu',
     unsavedBody: 'Nếu chuyển đi, nội dung đã sửa sẽ mất. Bỏ thay đổi và chuyển?',
     candidatesEmpty: 'Không có kết quả tìm kiếm',

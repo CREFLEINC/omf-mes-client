@@ -109,7 +109,7 @@ const openTemplate = async (user: ReturnType<typeof userEvent.setup>, name: stri
   await user.type(search, name);
   await user.click(screen.getByRole('button', { name: t.workspace.apply }));
   await user.click(await screen.findByRole('button', { name }));
-  return screen.findByRole('textbox', { name: t.fields.templateId(name) });
+  return screen.findByRole('textbox', { name: t.fields.templateId });
 };
 
 describe('ZaloConnectionScreen — 인계 작업 템플릿(피처 002)', () => {
@@ -148,9 +148,7 @@ describe('ZaloConnectionScreen — 인계 작업 템플릿(피처 002)', () => {
     expect(await openTemplate(user, '자재 출고 피킹')).toHaveValue('200002');
     expect(screen.getByText(t.handover.notice)).toBeInTheDocument();
     await openTemplate(user, 'IQC 수입검사');
-    expect(
-      screen.getByText(`${t.fields.params}: receipt_no, lot_count, supplier, event_time`),
-    ).toBeInTheDocument();
+    expect(screen.getByText('receipt_no, lot_count, supplier, event_time')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: t.handover.copyFor('IQC 수입검사') }),
     ).toBeInTheDocument();

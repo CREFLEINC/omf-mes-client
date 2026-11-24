@@ -30,7 +30,7 @@ export const alarmRecipientSettings = {
     revert: '되돌리기',
     save: '저장',
     reload: '다시 불러오기',
-    openConnection: '알림 연결 설정 열기',
+    openConnection: '알림 연결 설정으로 이동',
     cancel: '취소',
     discard: '버리고 이동',
     search: '검색',
@@ -56,7 +56,7 @@ export const alarmRecipientSettings = {
     saved: '저장했습니다',
     /** US4-6 — 409. */
     conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 저장하세요',
-    zaloNotActive: 'Zalo 연결이 설정되지 않아 지금은 알림센터로만 갑니다 — 알림 연결 설정',
+    zaloNotActive: 'Zalo 연결이 준비되지 않아 알림은 알림센터로만 보냅니다.',
     unsavedTitle: '저장하지 않은 변경이 있습니다',
     unsavedBody: '이동하면 고친 내용이 사라집니다. 버리고 이동할까요?',
     candidatesEmpty: '검색 결과 없음',

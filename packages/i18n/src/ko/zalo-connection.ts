@@ -1,20 +1,24 @@
 /** W-CO-12 알림 연결 설정 — Zalo 연결 정보와 이벤트별 템플릿(001 신설, 결정 #20). */
 export const zaloConnection = {
-  panes: { status: '연결 상태', connection: '연결 정보', templates: '이벤트별 템플릿' },
+  panes: { status: '연결 상태', connection: 'Zalo 연결 정보', templates: '이벤트별 템플릿' },
   status: {
     ACTIVE: '정상',
     NOT_CONFIGURED: '미설정',
-    REAUTH_REQUIRED: '재등록 필요',
+    /** 갱신 토큰 무효 · 비밀 키 오류 — 다시 등록하라는 안내는 오류 안내 줄이 맡는다(사용자 지시 2026-11-24). */
+    REAUTH_REQUIRED: '연결 오류',
   },
   fields: {
     appId: '앱 ID',
     secretKey: '앱 비밀 키',
     refreshToken: '갱신 토큰',
-    paramMaxLength: '값 최대 길이',
-    templateId: (eventName: string): string => `${eventName} 템플릿 ID`,
-    expiresAt: '접속 토큰 만료',
-    refreshedAt: '마지막 갱신',
-    params: '파라미터',
+    /** 템플릿 변수 값 자르기 길이 — 모든 템플릿 공통(계약 `paramMaxLength`). */
+    paramMaxLength: '템플릿 변수 값 최대 길이',
+    templateId: '템플릿 ID',
+    expiresAt: '액세스 토큰 만료 일시',
+    refreshedAt: '마지막 갱신 일시',
+    params: '템플릿 변수',
+    errorCode: '오류 코드',
+    errorMessage: '오류 원문',
   },
   values: {
     registered: '●●●●●● 등록됨',
@@ -26,24 +30,31 @@ export const zaloConnection = {
     change: '바꾸기',
     cancelChange: '바꾸지 않기',
     copy: '복사',
-    copyFor: (eventName: string): string => `${eventName} 파라미터 복사`,
-    revert: '되돌리기',
-    save: '저장',
+    copyFor: (eventName: string): string => `${eventName} 템플릿 변수 복사`,
+    revert: '변경 취소',
+    save: '변경 사항 저장',
+    errorDetail: '상세 정보',
     reload: '다시 불러오기',
   },
   state: {
     saved: '저장했습니다',
-    copied: '파라미터 이름을 복사했습니다',
+    copied: '템플릿 변수 이름을 복사했습니다',
     reauth: '고객사 Zalo 담당자에게 새 갱신 토큰을 받아 [바꾸기]로 등록하세요',
-    deliveryDisabled: 'Zalo 발송이 꺼져 있습니다',
-    lastError: (code: string, message: string): string => `${code} ${message}`.trim(),
+    deliveryOn: 'Zalo 발송 켜짐',
+    deliveryDisabled: 'Zalo 발송 꺼짐',
+    /** Zalo 오류 코드를 사람 말로 — 모르는 코드는 일반 문구, 코드와 원문은 상세 정보에 둔다. */
+    lastError: (code: string): string =>
+      code === '-124'
+        ? 'Zalo 액세스 토큰이 유효하지 않습니다.'
+        : 'Zalo 연결 중 오류가 발생했습니다.',
+    saveScope: '연결 정보와 템플릿 변경 사항을 함께 저장합니다.',
     conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 저장하세요',
   },
   /** 인계 작업 템플릿 카드(피처 002, FR-010·FR-022). 기존 6종 아래 별도 카드다(확정 2026-10-28). */
   handover: {
     title: '인계 작업 템플릿',
     /** 이벤트 칸의 복사(`copyFor`)와 접근 이름을 가른다 — 같은 화면에 16개가 선다. */
-    copyFor: (typeName: string): string => `${typeName} 템플릿 파라미터 이름 복사`,
+    copyFor: (typeName: string): string => `${typeName} 템플릿 변수 이름 복사`,
     /* 「MES Handover - …」는 고객사에 전달한 영문 템플릿 이름 접두 그대로다. */
     notice:
       // ui-check-ignore: C-13 영문 템플릿 이름 접두
@@ -65,14 +76,12 @@ export const zaloConnection = {
     clear: '초기화',
     list: '템플릿 목록',
     kind: '구분',
-    name: '템플릿',
+    name: '템플릿명',
     templateId: '템플릿 ID',
     kinds: { event: '이벤트', handover: '인계 작업' },
     empty: '조건에 맞는 템플릿이 없습니다.',
     hasError: '확인 필요',
     selectTitle: '템플릿을 선택하세요.',
-    select: '고른 템플릿의 템플릿 ID 를 넣고 파라미터 이름을 복사할 수 있습니다.',
-    /** 템플릿 ID 는 위 연결 정보의 [저장]으로 함께 저장된다 — 저장 범위는 종전과 같다. */
-    saveNote: '템플릿 ID 는 위 연결 정보의 [저장]을 누르면 연결 정보와 함께 저장됩니다.',
+    select: '고른 템플릿의 템플릿 ID 를 넣고 템플릿 변수 이름을 복사할 수 있습니다.',
   },
 } as const;

@@ -559,20 +559,21 @@ export const HandoverAlertSettingsScreen = () => {
         {t.intro}
       </p>
 
-      {/* 연결이 없다는 진짜 경고라 노란색 그대로 둔다(#358). */}
+      {/* Zalo 미연결 안내 — 다른 화면과 같은 노란 안내 한 줄 + 끝에 이동 링크(사용자 지시 2026-11-24). */}
       {summary.data?.zaloStatus !== undefined && summary.data.zaloStatus !== 'ACTIVE' && (
-        <div className="banner-slot">
-          <AlertBanner
-            variant="warning"
-            action={
-              canOpenConnection ? (
-                <Link to={ZALO_CONNECTION_PATH}>{t.actions.openConnection}</Link>
-              ) : undefined
-            }
-          >
-            {t.state.zaloNotActive}
-          </AlertBanner>
-        </div>
+        <p
+          className="iqc-inspection-action-note notify-filter-note"
+          data-tone="warning"
+          role="note"
+        >
+          <Icon name="warning" size={16} aria-hidden />
+          {t.state.zaloNotActive}
+          {canOpenConnection && (
+            <Link className="notify-filter-note-link" to={ZALO_CONNECTION_PATH}>
+              {t.actions.openConnection}
+            </Link>
+          )}
+        </p>
       )}
     </>
   );

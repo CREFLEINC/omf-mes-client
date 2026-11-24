@@ -13,7 +13,7 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
 import { useClientPage } from '../../patterns/client-page';
@@ -108,6 +108,20 @@ export const AlarmRecipientSettingsScreen = () => {
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pendingMove, setPendingMove] = useState<Move | null>(null);
+
+  /*
+   * 처음 들어오면 로그인한 계정의 부서를 미리 골라 둔다(사용자 지시 2026-11-24). 한 번만 한다 — [초기화]로
+   * 비운 뒤에는 다시 채우지 않는다. 계정에 부서가 없거나 목록에 없으면 종전처럼 비워 둔다.
+   */
+  const accountDepartmentId = session?.departmentId;
+  const autoPicked = useRef(false);
+  useEffect(() => {
+    if (autoPicked.current || departments.data === undefined) return;
+    autoPicked.current = true;
+    if (departmentId !== null || accountDepartmentId === undefined) return;
+    if (!departments.data.items.some((item) => item.departmentId === accountDepartmentId)) return;
+    setSearchParams({ department: String(accountDepartmentId) }, { replace: true });
+  }, [accountDepartmentId, departmentId, departments.data, setSearchParams]);
 
   /* 부서를 고른 뒤 이벤트가 URL 에 없으면 첫 이벤트를 적어 둔다 — 새로고침해도 같은 행이 열린다. */
   useEffect(() => {
@@ -490,20 +504,22 @@ export const AlarmRecipientSettingsScreen = () => {
         </div>
       </div>
 
-      {/* 연결이 없어도 Switch 는 켤 수 있다 — 지금은 알림센터로만 간다는 사실만 밝힌다. 진짜 경고라 노란색 그대로. */}
+      {/* 연결이 없어도 Switch 는 켤 수 있다 — 지금은 알림센터로만 간다는 사실만 밝힌다. */}
+      {/* Zalo 미연결 안내 — 다른 화면과 같은 노란 안내 한 줄 + 끝에 이동 링크(사용자 지시 2026-11-24). */}
       {summary.data !== undefined && summary.data.zaloStatus !== 'ACTIVE' && (
-        <div className="banner-slot">
-          <AlertBanner
-            variant="warning"
-            action={
-              canOpenConnection ? (
-                <Link to={ZALO_CONNECTION_PATH}>{t.actions.openConnection}</Link>
-              ) : undefined
-            }
-          >
-            {t.state.zaloNotActive}
-          </AlertBanner>
-        </div>
+        <p
+          className="iqc-inspection-action-note notify-filter-note"
+          data-tone="warning"
+          role="note"
+        >
+          <Icon name="warning" size={16} aria-hidden />
+          {t.state.zaloNotActive}
+          {canOpenConnection && (
+            <Link className="notify-filter-note-link" to={ZALO_CONNECTION_PATH}>
+              {t.actions.openConnection}
+            </Link>
+          )}
+        </p>
       )}
     </>
   );

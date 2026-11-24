@@ -184,6 +184,16 @@ export const ZaloConnectionScreen = () => {
     }
   };
 
+  const isDirty =
+    values !== null &&
+    ((baseline !== null && !sameValues(values, baseline)) ||
+      !sameHandover(handover, handoverBaseline));
+
+  const revert = (): void => {
+    if (baseline !== null) change(baseline);
+    setHandover(handoverBaseline);
+  };
+
   const fieldError = (key: string): string | undefined => errors[key] ?? replace.fieldErrors[key];
 
   const secretRow = (field: SecretField, label: string, isSet: boolean): ReactNode => {
@@ -312,50 +322,50 @@ export const ZaloConnectionScreen = () => {
     if (connection.isPending || values === null) return <Skeleton variant="rect" height="10rem" />;
 
     const data = connection.data;
-    const isDirty =
-      (baseline !== null && !sameValues(values, baseline)) ||
-      !sameHandover(handover, handoverBaseline);
 
     return (
       <>
+        {/* 제목 · 연결 상태 배지 · 발송 상태 한 줄, 아래에 토큰 일시(사용자 지시 2026-11-24). 저장은 화면 위 오른쪽. */}
         <div className="zalo-connection-head">
           <h2 className="pane-title">{t.panes.connection}</h2>
-          {/* 연결 상태는 제목 옆 한 줄(종전 「연결 상태」 구획 내용 그대로). */}
           <div className="zalo-status" role="group" aria-label={t.panes.status}>
             <Chip status={STATUS_CHIP[data.status]}>{t.status[data.status]}</Chip>
-            <span>{`${t.fields.expiresAt} ${when(data.accessTokenExpiresAt)}`}</span>
-            <span>{`${t.fields.refreshedAt} ${when(data.lastRefreshedAt)}`}</span>
-          </div>
-          <div className="form-actions zalo-connection-actions">
-            <Button
-              variant="outlined"
-              disabled={!isDirty}
-              onClick={() => {
-                if (baseline !== null) change(baseline);
-                setHandover(handoverBaseline);
-              }}
-            >
-              {t.actions.revert}
-            </Button>
-            <Button
-              disabled={!isDirty || replace.isSaving}
-              loading={replace.isSaving}
-              onClick={save}
-            >
-              {t.actions.save}
-            </Button>
+            <span className="zalo-delivery" data-on={data.deliveryEnabled ? 'true' : 'false'}>
+              {data.deliveryEnabled ? t.state.deliveryOn : t.state.deliveryDisabled}
+            </span>
           </div>
         </div>
-        {data.status === 'REAUTH_REQUIRED' && (
+        <dl className="zalo-token-times">
+          <div>
+            <dt>{t.fields.expiresAt}</dt>
+            <dd>{when(data.accessTokenExpiresAt)}</dd>
+          </div>
+          <div>
+            <dt>{t.fields.refreshedAt}</dt>
+            <dd>{when(data.lastRefreshedAt)}</dd>
+          </div>
+        </dl>
+        {/*
+         * 연결 오류는 안내 줄 하나로 — 읽기 쉬운 문장, 다시 등록하라는 안내, 코드 · 원문은 「상세 정보」를 펼쳐 본다
+         * (사용자 지시 2026-11-24). 나타나는 조건은 종전과 같다(재등록 필요 · 마지막 오류 코드).
+         */}
+        {data.status === 'REAUTH_REQUIRED' && data.lastErrorCode === null && (
           <AlertBanner variant="error">{t.state.reauth}</AlertBanner>
         )}
         {data.lastErrorCode !== null && (
-          <AlertBanner variant="warning">
-            {t.state.lastError(data.lastErrorCode, data.lastErrorMessage ?? '')}
+          <AlertBanner variant="error">
+            {t.state.lastError(data.lastErrorCode)}
+            {data.status === 'REAUTH_REQUIRED' && <> {t.state.reauth}</>}
+            <details className="zalo-error-detail">
+              <summary>{t.actions.errorDetail}</summary>
+              <dl>
+                <dt>{t.fields.errorCode}</dt>
+                <dd>{data.lastErrorCode}</dd>
+                <dt>{t.fields.errorMessage}</dt>
+                <dd>{data.lastErrorMessage ?? t.values.none}</dd>
+              </dl>
+            </details>
           </AlertBanner>
-        )}
-        {!data.deliveryEnabled && (
-          <AlertBanner variant="info">{t.state.deliveryDisabled}</AlertBanner>
         )}
         {replace.error?.kind === 'conflict' ? (
           <AlertBanner
@@ -383,13 +393,6 @@ export const ZaloConnectionScreen = () => {
           />
           {secretRow('secretKey', t.fields.secretKey, data.secretKeySet)}
           {secretRow('refreshToken', t.fields.refreshToken, data.refreshTokenSet)}
-          <TextField
-            label={`${t.fields.paramMaxLength} (${t.values.charUnit})`}
-            inputMode="numeric"
-            value={values.paramMaxLength}
-            onChange={(event) => change({ paramMaxLength: event.target.value })}
-            error={fieldError('paramMaxLength')}
-          />
         </div>
       </>
     );
@@ -452,10 +455,6 @@ export const ZaloConnectionScreen = () => {
     return (
       <div className="zalo-template-detail">
         <h2 className="pane-title">{row.name}</h2>
-        <p className="iqc-inspection-action-note" data-tone="info" role="note">
-          <Icon name="info" size={16} aria-hidden />
-          {w.saveNote}
-        </p>
         {/* 템플릿 ID 를 넣는 법 · 비워 두면 어떻게 되는지(인계 작업 — 종전 카드 제목 옆 ⓘ). */}
         {row.kind === 'handover' && (
           <p className="iqc-inspection-action-note" data-tone="info" role="note">
@@ -468,7 +467,7 @@ export const ZaloConnectionScreen = () => {
           <dd>{w.kinds[row.kind]}</dd>
         </dl>
         <TextField
-          label={t.fields.templateId(row.name)}
+          label={t.fields.templateId}
           value={templateIdOf(row)}
           onChange={(event) => {
             if (row.kind === 'event') {
@@ -479,18 +478,22 @@ export const ZaloConnectionScreen = () => {
           }}
           error={templateErrorOf(row)}
         />
-        <div className="zalo-template-params">
-          <span className="field-note">{`${t.fields.params}: ${params}`}</span>
-          <Button
-            variant="outlined"
-            size="sm"
-            aria-label={
-              row.kind === 'event' ? t.actions.copyFor(row.name) : t.handover.copyFor(row.name)
-            }
-            onClick={() => void copy(params)}
-          >
-            {t.actions.copy}
-          </Button>
+        {/* 템플릿 변수 — 라벨 아래 변수 이름과 [복사]를 나란히(사용자 지시 2026-11-24). 복사하는 글은 그대로다. */}
+        <div className="field-cell">
+          <span className="field-label">{t.fields.params}</span>
+          <div className="zalo-template-params">
+            <code>{params}</code>
+            <Button
+              variant="outlined"
+              size="sm"
+              aria-label={
+                row.kind === 'event' ? t.actions.copyFor(row.name) : t.handover.copyFor(row.name)
+              }
+              onClick={() => void copy(params)}
+            >
+              {t.actions.copy}
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -501,7 +504,23 @@ export const ZaloConnectionScreen = () => {
   return (
     <div className="list-detail-workspace">
       {/* 머리글(경로 · 화면 이름)은 두지 않는다 — 사이드바가 위치를 말한다(단말 관리와 같은 틀 · #358). */}
+      {/* 연결 정보와 템플릿 ID 는 한 번에 저장한다(종전과 같은 범위) — 그래서 두 카드 밖 화면 위 오른쪽에 둔다(사용자 지시 2026-11-24). */}
       <div className="list-detail-toolbar">
+        {values !== null && (
+          <div className="zalo-save-actions">
+            <span className="field-note">{t.state.saveScope}</span>
+            <Button variant="outlined" disabled={!isDirty} onClick={revert}>
+              {t.actions.revert}
+            </Button>
+            <Button
+              disabled={!isDirty || replace.isSaving}
+              loading={replace.isSaving}
+              onClick={save}
+            >
+              {t.actions.save}
+            </Button>
+          </div>
+        )}
         <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} inline />
       </div>
 
@@ -544,6 +563,19 @@ export const ZaloConnectionScreen = () => {
         {connectionBox()}
       </section>
 
+      {/* 템플릿 변수 값 최대 길이 — 모든 템플릿 공통 설정이라 템플릿 영역 위에 둔다(사용자 지시 2026-11-24). */}
+      {values !== null && (
+        <section className="pane zalo-template-common" aria-label={t.fields.paramMaxLength}>
+          <TextField
+            label={`${t.fields.paramMaxLength} (${t.values.charUnit})`}
+            inputMode="numeric"
+            value={values.paramMaxLength}
+            onChange={(event) => change({ paramMaxLength: event.target.value })}
+            error={fieldError('paramMaxLength')}
+          />
+        </section>
+      )}
+
       <div
         ref={splitRef}
         className={`po-board-split inspection-split list-detail-split${isStacked ? ' is-stacked' : ''}`}
@@ -571,7 +603,7 @@ export const ZaloConnectionScreen = () => {
         )}
 
         <section
-          className="pane list-detail-detail"
+          className="pane list-detail-detail zalo-template-pane"
           aria-label={selectedRow === undefined ? w.selectTitle : selectedRow.name}
         >
           {templateDetail()}

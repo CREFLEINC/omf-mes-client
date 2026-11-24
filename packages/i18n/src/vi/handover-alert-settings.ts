@@ -43,7 +43,7 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
     revert: 'Hoàn tác',
     save: 'Lưu',
     reload: 'Tải lại',
-    openConnection: 'Mở thiết lập kết nối thông báo',
+    openConnection: 'Đi tới thiết lập kết nối thông báo',
     cancel: 'Hủy',
     discard: 'Bỏ thay đổi và chuyển',
   },
@@ -59,7 +59,7 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
     zaloHelp:
       'Gửi tin Zalo tiếng Anh cho người nhận có số điện thoại. Nếu gửi lỗi, trung tâm thông báo vẫn nhận.',
     zaloNeedsEnabled: 'Chỉ bật được Zalo sau khi bật thông báo.',
-    zaloNotActive: 'Chưa thiết lập kết nối Zalo nên hiện chỉ gửi đến trung tâm thông báo',
+    zaloNotActive: 'Kết nối Zalo chưa sẵn sàng nên thông báo chỉ được gửi đến trung tâm thông báo.',
     saved: 'Đã lưu',
     conflict: 'Người khác đã lưu trước. Hãy tải lại rồi sửa.',
     unsavedTitle: 'Có thay đổi chưa lưu',

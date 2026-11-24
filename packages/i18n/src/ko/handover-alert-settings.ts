@@ -39,7 +39,7 @@ export const handoverAlertSettings = {
     revert: '되돌리기',
     save: '저장',
     reload: '다시 불러오기',
-    openConnection: '알림 연결 설정 열기',
+    openConnection: '알림 연결 설정으로 이동',
     cancel: '취소',
     discard: '버리고 이동',
   },
@@ -57,7 +57,7 @@ export const handoverAlertSettings = {
     zaloHelp:
       '전화번호가 있는 수신자에게 영문 Zalo 메시지를 보냅니다. 실패해도 알림센터는 받습니다.',
     zaloNeedsEnabled: 'Zalo 는 알림을 켠 뒤에 켤 수 있습니다.',
-    zaloNotActive: 'Zalo 연결이 설정되지 않아 지금은 알림센터로만 갑니다',
+    zaloNotActive: 'Zalo 연결이 준비되지 않아 알림은 알림센터로만 보냅니다.',
     saved: '저장했습니다',
     conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 고쳐 주세요.',
     unsavedTitle: '저장하지 않은 변경이 있습니다',

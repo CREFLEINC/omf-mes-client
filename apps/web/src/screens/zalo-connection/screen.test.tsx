@@ -89,7 +89,7 @@ const openTemplate = async (user: ReturnType<typeof userEvent.setup>, name: stri
   await user.type(search, name);
   await user.click(screen.getByRole('button', { name: t.workspace.apply }));
   await user.click(await screen.findByRole('button', { name }));
-  return screen.findByRole('textbox', { name: t.fields.templateId(name) });
+  return screen.findByRole('textbox', { name: t.fields.templateId });
 };
 
 describe('ZaloConnectionScreen', () => {
@@ -105,9 +105,7 @@ describe('ZaloConnectionScreen', () => {
     expect(screen.getByText(t.workspace.selectTitle)).toBeInTheDocument();
 
     expect(await openTemplate(user, '생산 중단')).toBeInTheDocument();
-    expect(
-      screen.getByText(`${t.fields.params}: line, work_order, event_time, reason`),
-    ).toBeInTheDocument();
+    expect(screen.getByText('line, work_order, event_time, reason')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: t.actions.copyFor('생산 중단') }),
     ).toBeInTheDocument();
@@ -200,7 +198,8 @@ describe('ZaloConnectionScreen', () => {
     expect(screen.getByRole('button', { name: t.actions.reload })).toBeInTheDocument();
   });
 
-  it('재등록 필요면 error Chip 과 안내, 마지막 오류, 서버 발송 꺼짐 배너를 보인다', async () => {
+  /* 연결 오류는 안내 줄 하나에 읽기 쉬운 문장 + 재등록 안내, 코드 · 원문은 「상세 정보」 안(사용자 지시 2026-11-24). */
+  it('재등록 필요면 「연결 오류」 배지와 오류 안내 한 줄, 상세 정보, 「Zalo 발송 꺼짐」을 보인다', async () => {
     setup({
       data: connection({
         status: 'REAUTH_REQUIRED',
@@ -211,8 +210,13 @@ describe('ZaloConnectionScreen', () => {
     });
 
     expect(await screen.findByText(t.status.REAUTH_REQUIRED)).toBeInTheDocument();
-    expect(screen.getByText(t.state.reauth)).toBeInTheDocument();
-    expect(screen.getByText('-14014 갱신 토큰이 무효입니다')).toBeInTheDocument();
+    expect(
+      screen.getAllByText(t.state.lastError('-14014'), { exact: false }).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText(t.state.reauth, { exact: false }).length).toBeGreaterThan(0);
+    expect(screen.getByText(t.actions.errorDetail)).toBeInTheDocument();
+    expect(screen.getByText('-14014')).toBeInTheDocument();
+    expect(screen.getByText('갱신 토큰이 무효입니다')).toBeInTheDocument();
     expect(screen.getByText(t.state.deliveryDisabled)).toBeInTheDocument();
   });
 
