@@ -83,9 +83,10 @@ describe('W-03-10 선별', () => {
 
     await user.click(screen.getByRole('radio', { name: '선별' }));
     await user.click(screen.getByRole('checkbox', { name: 'SAMPLE-ML|0003' }));
-    // 선별 규칙 · 정보 수량의 뜻은 늘 펼쳐 두지 않고 ⓘ 로 둔다(관리웹 정리 시안 A).
-    expect(screen.getByRole('button', { name: t.sort.help })).toBeInTheDocument();
-    expect(screen.queryByText(t.sort.help)).not.toBeInTheDocument();
+    // 정보 수량의 뜻은 ⓘ 로 둔다(관리웹 정리 시안 A). 제목 옆 ⓘ 는 없다 — 안내는 제목 오른쪽 라벨(#354).
+    const heading = screen.getByRole('heading', { name: new RegExp(t.sort.heading) });
+    expect(within(heading).queryByRole('button')).toBeNull();
+    expect(heading.parentElement).toHaveTextContent(t.sort.selectNote);
     expect(screen.getAllByRole('button', { name: t.sort.qtyNote })).toHaveLength(2);
     // 처분 수량은 선별을 골라도 같은 자리에 남는다 — 남은 수량 전부(omf-all-around#354).
     expect(screen.getByLabelText(t.form.qtyLabel)).toHaveTextContent('3,000 EA');

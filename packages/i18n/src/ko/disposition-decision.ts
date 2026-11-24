@@ -243,10 +243,9 @@ export const dispositionDecision = {
   },
   /** 005 선별(US7-2 · FR-041) — 불량 자재 관리 LOT 을 새 입하 LOT 로 옮긴다. 수량으로 LOT 를 쪼개지 않는다. */
   sort: {
-    /** 선별 영역(omf-all-around#352 사용자 지시) — 제목 · 목록 위 안내 · 저장 후 처리 요약. */
+    /** 선별 영역(omf-all-around#352 사용자 지시) — 제목 · 제목 옆 안내 · 저장 후 처리 요약. */
     heading: '불량으로 분리할 자재 LOT',
     selectNote: '선택한 LOT는 불량으로 분리하고, 나머지 LOT는 정상 처리합니다.',
-    help: '선택한 LOT 전체를 새 입하 LOT로 옮깁니다. 분리한 LOT의 처분은 새 부적합 건에서 진행합니다.',
     lotsLabel: '불량 자재 관리 LOT',
     noMatch: '연결된 검사 결과 없음',
     allSelected:

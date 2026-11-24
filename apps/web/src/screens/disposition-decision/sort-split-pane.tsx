@@ -2,7 +2,7 @@ import { Checkbox, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
-import { InfoLabel, InfoTip } from '../../patterns/info-tip';
+import { InfoLabel } from '../../patterns/info-tip';
 import type { DecisionFormErrors, DecisionFormValue } from './decision-form';
 import { IqcMatchChips } from './iqc-match';
 import { formatQty, type NonconformanceLotRow } from './types';
@@ -92,20 +92,22 @@ export const SortSplitPane = ({
 
   return (
     <div className="disposition-sort" role="group" aria-labelledby={headingId}>
-      {/* 선별 규칙은 제목 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
-      {/* LOT 을 하나 이상 골라야 저장된다 — 제목에 필수 표시(#352 사용자 지시). */}
-      <h4 className="disposition-sort-heading" id={headingId}>
-        {t.heading}
-        <span className="required-mark" aria-hidden="true">
-          {' *'}
-        </span>
-        <InfoTip text={t.help} />
-      </h4>
-      {/* 목록 바로 위 안내 — 고르기 전에도 보인다(#352 사용자 지시). */}
-      <p className="iqc-inspection-action-note disposition-sort-note" data-tone="info">
-        <Icon name="info" size={14} aria-hidden />
-        {t.selectNote}
-      </p>
+      {/*
+       * 제목 오른쪽에 안내 라벨 — 고르기 전에도 보인다(#352). 제목 옆 ⓘ 설명은 두지 않는다(omf-all-around#354 사용자 지시).
+       * LOT 을 하나 이상 골라야 저장된다 — 제목에 필수 표시(#352 사용자 지시).
+       */}
+      <div className="disposition-sort-head">
+        <h4 className="disposition-sort-heading" id={headingId}>
+          {t.heading}
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </h4>
+        <p className="iqc-inspection-action-note disposition-sort-note" data-tone="info">
+          <Icon name="info" size={14} aria-hidden />
+          {t.selectNote}
+        </p>
+      </div>
       <ul className="disposition-sort-lots" aria-label={t.lotsLabel}>
         {lots.map((lot) => (
           <li

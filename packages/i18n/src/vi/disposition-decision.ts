@@ -211,7 +211,6 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     heading: 'LOT vật tư tách ra là lỗi',
     selectNote:
       'LOT đã chọn được tách ra là lỗi, các LOT còn lại được xử lý bình thường.',
-    help: 'Chuyển toàn bộ LOT đã chọn sang LOT nhập hàng mới. Việc xử lý LOT đã tách được thực hiện ở mục không phù hợp mới.',
     lotsLabel: 'LOT quản lý vật tư lỗi',
     noMatch: 'Không có kết quả kiểm tra liên kết',
     allSelected:
