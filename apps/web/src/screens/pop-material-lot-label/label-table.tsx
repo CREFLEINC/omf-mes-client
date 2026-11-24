@@ -2,7 +2,7 @@ import type { MaterialLotTab } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { Fragment, type ReactNode, type RefObject } from 'react';
 
-import { formatPackage, formatQty } from '../../patterns/package-qty';
+import { formatPackage, formatQty, packageUnitName } from '../../patterns/package-qty';
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import { PuChip, PuIcon, puCx, type PuChipTone } from '../../patterns/pop-uniform';
 import { rowStatusOf, type BatchSnapshot, type RowStatus } from './batch-view';
@@ -63,11 +63,54 @@ export interface LabelTableProps {
   fitRef: RefObject<HTMLDivElement | null>;
   /** 번호 스캔으로 찾아 맨 위에 둔 LOT — 번호 옆에 「스캔」 칩. */
   scannedLotId?: number | null;
-  /** 품목 기본 LOT 수량 — 자동 LOT 이 이보다 작으면 「나머지」 칩(시안 ③). */
+  /** 품목 기본 LOT 수량 — P/O 라인 마지막 자동 LOT 이 이보다 작으면 「나머지」 칩(시안 ③ · `remainderLotIds`). */
   defaultLotQty?: number | null;
+  /** 이 쪽 뒤에 쪽이 더 있는가 — 라인의 마지막 LOT 이 다음 쪽에 있을 수 있어 「나머지」 판별에 쓴다. */
+  hasMoreAfter?: boolean;
   /** 줄 끝 동작 칸(미출력 탭 [수정]) — 없으면 칸을 두지 않는다. */
   rowAction?: (lot: LabelLot) => ReactNode;
 }
+
+/**
+ * 「나머지」 칩을 붙일 LOT(T052 · FR-004 · US3-1) — P/O 라인의 **마지막** 자동 LOT 이 품목 기본 수량보다 작을 때만.
+ *
+ * 서버 행에는 「나머지로 만든 LOT」 표시가 없어 화면이 판별한다. 미출력 탭은 만든 차례(`seq`)로 서고, 자동 생성은 라인마다
+ * 기본 수량씩 만든 뒤 마지막 한 개를 남는 양으로 만든다. [수정]으로 줄인 LOT(100 → 80)은 그 라인의 마지막이 아니다 —
+ * 줄여서 빈 몫은 다음 조회 때 더 큰 차례로 새로 만들어지기 때문이다. 그래서
+ * - 자동 LOT · P/O 라인이 있고 · 기본 수량보다 작고,
+ * - 이 쪽에서 같은 라인의 LOT 가운데 차례가 가장 크고,
+ * - 그 라인이 다음 쪽으로 이어질 수 있는지 모를 때(이 쪽의 마지막 줄 · 뒤에 쪽이 더 있음)는 붙이지 않는다.
+ * ⚠ 라인 마지막 LOT 을 [수정]으로 줄인 경우(빈 몫이 아직 다시 만들어지기 전)는 가려내지 못한다 — 서버 칸이 없다.
+ */
+export const remainderLotIds = (
+  lots: readonly LabelLot[],
+  defaultLotQty: number | null,
+  hasMoreAfter: boolean,
+): Set<number> => {
+  const result = new Set<number>();
+  if (defaultLotQty === null) return result;
+
+  const seqOf = (lot: LabelLot): number => lot.seq ?? 0;
+  const pageLastSeq = Math.max(0, ...lots.map(seqOf));
+  const lastOfLine = new Map<number, LabelLot>();
+
+  for (const lot of lots) {
+    const line = lot.purchaseOrderLine;
+    if (lot.creationModeCode !== 'AUTO' || line === null || line === undefined) continue;
+    const found = lastOfLine.get(line.purchaseOrderLineId);
+    if (found === undefined || seqOf(lot) > seqOf(found)) {
+      lastOfLine.set(line.purchaseOrderLineId, lot);
+    }
+  }
+
+  for (const lot of lastOfLine.values()) {
+    if (lot.lotQty >= defaultLotQty) continue;
+    if (hasMoreAfter && seqOf(lot) === pageLastSeq) continue;
+    result.add(lot.lotId);
+  }
+
+  return result;
+};
 
 /** 이 탭에서 고를 수 있는 줄인가 — 미출력 · 출력됨은 입하 대기, 입하된은 폐기 아닌 것, 폐기는 없음. */
 export const isSelectableIn = (tab: MaterialLotTab, lot: LabelLot): boolean => {
@@ -146,21 +189,38 @@ export const LabelTable = ({
   fitRef,
   scannedLotId = null,
   defaultLotQty = null,
+  hasMoreAfter = false,
   rowAction,
 }: LabelTableProps) => {
   const hasCheck = tab !== 'VOIDED';
+  const remainders =
+    tab === 'UNPRINTED' ? remainderLotIds(lots, defaultLotQty, hasMoreAfter) : new Set<number>();
   const hasAction = rowAction !== undefined && !showResults;
   /* 「PO-2611-007 · 1」 — 1100px 이하는 띄어쓰기를 접어 「PO-2611-007·1」(screens/P-01-01.md 상태·예외). */
   const poText = (lot: LabelLot): ReactNode => {
     if (lot.purchaseOrderLine === null || lot.purchaseOrderLine === undefined) return t.none;
 
+    /* 번호 · 줄은 한 덩어리 — 번호 안 「-」에서 접히지 않는다(T054). */
     return (
-      <>
+      <span className="mll-keep">
         {lot.purchaseOrderLine.purchaseOrderNo}
         <span className="mll-po-sep"> </span>
         {PO_DOT}
         <span className="mll-po-sep"> </span>
         {lot.purchaseOrderLine.lineNo}
+      </span>
+    );
+  };
+  /* 「롤 10 × 10」 — 좁으면 단위명과 곱 사이에서만 접는다(× 앞뒤는 붙임, T054). 글자는 formatPackage 와 같다. */
+  const packageCell = (lot: LabelLot): ReactNode => {
+    if (lot.package === null) return t.noPackage;
+
+    return (
+      <>
+        {packageUnitName(lot.package)}{' '}
+        <span className="mll-keep">
+          {formatQty(lot.package.count)} × {formatQty(lot.package.qtyPerPackage)}
+        </span>
       </>
     );
   };
@@ -233,11 +293,7 @@ export const LabelTable = ({
               const canToggle = selectable && !isLocked;
               const packageText = formatPackage(lot.package) ?? t.noPackage;
               const qtyText = `${formatQty(lot.lotQty)} ${lot.uomCode}`;
-              const isRemainder =
-                tab === 'UNPRINTED' &&
-                lot.creationModeCode === 'AUTO' &&
-                defaultLotQty !== null &&
-                lot.lotQty < defaultLotQty;
+              const isRemainder = tab === 'UNPRINTED' && remainders.has(lot.lotId);
 
               return (
                 <tr
@@ -305,7 +361,9 @@ export const LabelTable = ({
                     ) : null}
                   </td>
                   <td className="num fit">{qtyText}</td>
-                  <td className="fit mll-pkgcol">{packageText}</td>
+                  <td className="fit mll-pkgcol" title={packageText}>
+                    {packageCell(lot)}
+                  </td>
                   <td className="fit mll-pocol">{poText(lot)}</td>
                   {tab === 'RECEIVED' ? (
                     <>

@@ -20,7 +20,7 @@
   padding: 12px 16px 0;
 }
 
-/* ── 왼쪽: 탭 줄 + 찾기 + 목록 + 쪽 넘김 ── */
+/* ── 공급사 칸: 찾기 + 목록 + 쪽 넘김 ── */
 .mll-left .pu-card-head > .pu-seg button {
   height: 40px;
 }
@@ -693,7 +693,7 @@
   }
 }
 
-/* 세 칸(#1751 · 피처 014 FR-010 세 칸): 공급사 · 고른 공급사의 품목 표 · 상세. 왼쪽을 접으면 56. */
+/* 세 칸(#1751 · 피처 014 FR-010 세 칸): 공급사 · 고른 공급사의 품목 표 · 상세. 공급사 칸을 접으면 56. */
 .pu-cols.list.mll-cols3 {
   grid-template-columns: 280px 640px minmax(0, 1fr);
 }
@@ -904,14 +904,18 @@
     line-height: 15px;
   }
 
+  /* 포장은 단위명 | 곱 두 줄까지, P/O 는 한 덩어리(T054) — 줄이 3~4줄로 높아지지 않는다. */
   .mll-right .mll-table.mll-table .pu-table td.mll-pkgcol,
   .mll-right .mll-table.mll-table .pu-table td.mll-pocol {
-    min-width: 56px;
-    max-width: 88px;
+    max-width: none;
     white-space: normal;
     font-size: 12px;
     line-height: 15px;
     text-overflow: clip;
+  }
+
+  .mll-right .mll-table .mll-keep {
+    white-space: nowrap;
   }
 
   .mll-right .mll-table.mll-table .pu-table td.mll-modecol > .pu-chip {

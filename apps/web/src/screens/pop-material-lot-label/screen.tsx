@@ -222,7 +222,7 @@ export const PopMaterialLotLabelScreen = () => {
   };
 
   const pickedKey = picked === null ? null : keyOfRef(picked.ref);
-  /* 왼쪽 줄이 다시 오면(칩 수가 바뀜) 그 줄로 바꿔 든다. */
+  /* 품목 표 줄이 다시 오면(수가 바뀜) 그 줄로 바꿔 든다. */
   const pickedRow =
     picked === null
       ? null
@@ -905,6 +905,7 @@ export const PopMaterialLotLabelScreen = () => {
             fitRef={tableFitRef}
             scannedLotId={scanned?.tab === tab ? scanned.lot.lotId : null}
             defaultLotQty={pickedRow?.lotDefaults?.lotQty ?? null}
+            hasMoreAfter={lotPage < Math.ceil(lotTotal / Math.max(1, rowSize))}
           />
         )}
         {isReprintTab && !isShowingResults && selected.length > 0 ? (
