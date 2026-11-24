@@ -31914,7 +31914,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
  */
 .pqc-web-inspected-row {
   grid-template-columns: max-content minmax(0, 1fr);
-  column-gap: var(--space-3);
+  column-gap: var(--space-8);
 }
 
 .pqc-web-inspected-row .iqc-inspection-qty-line {
