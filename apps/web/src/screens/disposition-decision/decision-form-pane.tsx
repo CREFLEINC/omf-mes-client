@@ -364,6 +364,13 @@ export const DecisionFormPane = ({
             {t.form.wholeEffect(lots.length, dispositionTypeLabel(value.dispositionTypeCode))}
           </span>
         )}
+        {/* 선별 — 고른 LOT · 나머지 LOT 가 어떻게 되는지를 같은 자리에(omf-all-around#354 사용자 지시). */}
+        {isSort && (
+          <span className="iqc-inspection-action-note" data-tone="info">
+            <Icon name="info" size={14} aria-hidden />
+            {t.sort.selectNote}
+          </span>
+        )}
         <Button variant="outlined" disabled={!canCancel || isSaving} onClick={onCancel}>
           {t.actions.cancel}
         </Button>

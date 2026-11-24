@@ -8102,15 +8102,6 @@ dialog.routing-history-dialog {
   background: var(--surface-container-high);
 }
 
-/* 제목과 안내 라벨을 한 줄에 — 좁으면 라벨이 다음 줄로(omf-all-around#354). */
-.disposition-sort-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-  min-width: 0;
-}
-
 .disposition-sort-heading {
   display: flex;
   align-items: center;
@@ -8140,10 +8131,6 @@ dialog.routing-history-dialog {
 /* 고른 행 — 체크 칸과 함께 은은한 바탕으로 가른다(omf-all-around#352). */
 .disposition-sort-lot[data-checked='true'] {
   background: color-mix(in srgb, var(--primary) 8%, transparent);
-}
-
-.disposition-sort-note {
-  margin: 0;
 }
 
 /* 저장 후 처리 줄 — 처리 이름과 대상 LOT · 수량 사이를 조금 띄운다(#352). */
