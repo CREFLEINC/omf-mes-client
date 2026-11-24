@@ -23,9 +23,11 @@ const FIRST_VIEW_DEPTH = 2;
 
 /**
  * 계보 줄의 단계 — 항목 종류에 계보 안 자리를 더한다.
- * - `SEMI_LOT` 다시 투입된 생산 LOT(반제품) · `SEPARATED_LOT` 생산 LOT 분리(013) 자식 · `SPLIT_ORIGIN` 분할된 원래 LOT(역방향)
+ * - `SEMI_LOT` 다시 투입된 생산 LOT(반제품) · `SEPARATED_LOT` 생산 LOT 분리(013) 자식
+ * - `SPLIT_ORIGIN` 분할된 원래 LOT · `SEPARATED_ORIGIN` 분리된 원래 LOT(역방향 — 자식이 분할이냐 분리냐를 따른다)
  */
-export type LineageStage = TraceNodeKind | 'SEMI_LOT' | 'SEPARATED_LOT' | 'SPLIT_ORIGIN';
+export type LineageStage =
+  TraceNodeKind | 'SEMI_LOT' | 'SEPARATED_LOT' | 'SPLIT_ORIGIN' | 'SEPARATED_ORIGIN';
 
 export type LineageMark = 'none' | 'duplicate' | 'cycle';
 
@@ -98,19 +100,26 @@ export type VisibleRow =
       next: number;
     };
 
+/**
+ * 나뉜 LOT 의 갈래 — 008 부분 출고 분할은 출고 번호가 있고 자재 LOT 이다(「분할 LOT」). 출고 번호 없는 생산 LOT 자식은
+ * 013 생산 LOT 분리다(「분리 LOT」). 요약 · 계보가 같은 규칙을 쓴다.
+ */
+export const splitStageOf = (node: TraceGraphNode): 'SPLIT_LOT' | 'SEPARATED_LOT' =>
+  (node.split?.goodsIssueNo ?? null) === null && node.lot?.lotTypeCode !== 'MATERIAL'
+    ? 'SEPARATED_LOT'
+    : 'SPLIT_LOT';
+
 const stageOf = (
   node: TraceGraphNode | undefined,
   edge: TraceGraphEdge | null,
   outKinds: ReadonlySet<string>,
+  parentStage: LineageStage | null,
 ): LineageStage => {
-  if (edge?.kind === 'SPLIT_FROM') return 'SPLIT_ORIGIN';
-  if (node === undefined) return 'PRODUCTION_LOT';
-  if (node.kind === 'SPLIT_LOT') {
-    /* 008 부분 출고 분할은 출고 번호가 있고 자재 LOT 이다. 출고 번호 없는 생산 LOT 자식은 013 생산 LOT 분리다. */
-    const separated =
-      (node.split?.goodsIssueNo ?? null) === null && node.lot?.lotTypeCode !== 'MATERIAL';
-    return separated ? 'SEPARATED_LOT' : 'SPLIT_LOT';
+  if (edge?.kind === 'SPLIT_FROM') {
+    return parentStage === 'SEPARATED_LOT' ? 'SEPARATED_ORIGIN' : 'SPLIT_ORIGIN';
   }
+  if (node === undefined) return 'PRODUCTION_LOT';
+  if (node.kind === 'SPLIT_LOT') return splitStageOf(node);
   if (node.kind === 'PRODUCTION_LOT' && (edge?.kind === 'CONSUMED' || outKinds.has('CONSUMED'))) {
     return 'SEMI_LOT';
   }
@@ -149,7 +158,7 @@ export const buildLineage = (graph: TraceGraph): Lineage => {
       parent,
       depth: parent === null ? 0 : parent.depth + 1,
       mark,
-      stage: stageOf(node, edge, outKinds(nodeKey)),
+      stage: stageOf(node, edge, outKinds(nodeKey), parent?.stage ?? null),
       children: [],
       groups: [],
       bundle: null,

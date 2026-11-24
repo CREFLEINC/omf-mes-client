@@ -60817,7 +60817,7 @@ export interface components {
       item?: components['schemas']['TraceTreeItem'];
       qty?: number;
       uomCode?: string;
-      /** @description 자재 LOT(분할 자식 포함)만 — 입하·공급사는 분할이면 원래 LOT 것. 공급사 LOT 은 lot_external_identifier 먼저, 없으면 옛 입하 줄(F-6) */
+      /** @description 자재 LOT(분할 자식 포함)만 — 입하·공급사는 분할이면 원래 LOT 것. 공급사 LOT 은 lot_external_identifier 먼저, 없으면 옛 입하 줄(F-6). IQC 결과는 화면 요약(입하 LOT·공급사·공급사 LOT 옆)에 보인다 */
       material?: {
         /** Format: int64 */
         inboundLotId: number | null;
@@ -60829,6 +60829,8 @@ export interface components {
          * @description 입하 문서 시각
          */
         receivedAt: string | null;
+        /** @description 입하 LOT 의 IQC 종합 판정(quality.inspection_request — IQC·그 입하 LOT·취소 제외·최근 확정). 요청이 없거나 확정 전·입하 LOT 이 없으면 null. 분할 LOT 은 원래 LOT 의 입하 LOT 것 */
+        iqcJudgmentCode: string | null;
       };
       /**
        * Format: date-time

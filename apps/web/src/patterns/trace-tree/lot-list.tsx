@@ -14,7 +14,7 @@ import { useColumnWidths } from '../column-resize';
 import { PaneListHead, type PaneCollapse } from '../po-board';
 import { SelectableTable } from '../selectable-table';
 import { SCAN_CAP, type ListEntry, type ListMode } from './lot-list-state';
-import { TraceLotNo, lotStatusTone, shortDateTime } from './cells';
+import { TraceLotCell, lotStatusTone, shortDateTime } from './cells';
 import type { TraceDirection } from './types';
 
 const t = messages.traceTree;
@@ -64,60 +64,35 @@ export const TraceLotList = ({
   const words = direction === 'FORWARD' ? t.material : t.product;
   const columns: Column<ListEntry>[] = [
     {
-      key: 'lotNo',
-      header: t.list.columns.lotNo,
-      render: (entry) => <TraceLotNo lotNo={entry.row.lot.lotNo} />,
-    },
-    ...(mode === 'SCAN'
-      ? [
-          {
-            key: 'source',
-            header: t.list.columns.source,
-            width: '120px',
-            render: (entry: ListEntry) =>
-              entry.source === null ? (
-                ''
-              ) : (
-                <span
-                  className="ellipsis-cell trace-tree-source"
-                  title={`${t.matchedBy[entry.source.matchedBy]} ${entry.source.label}`}
-                >
-                  {`${t.matchedBy[entry.source.matchedBy]} ${entry.source.label}`}
-                </span>
-              ),
-          },
-        ]
-      : []),
-    {
-      key: 'item',
-      header: t.list.columns.itemName,
-      width: '80px',
-      render: (entry) => (
-        <span className="ellipsis-cell" title={named(entry.row.item.name, entry.row.item.code)}>
-          {entry.row.item.name}
-        </span>
-      ),
-    },
-    {
-      key: 'partner',
-      header: words.partnerName,
-      width: '72px',
-      render: (entry) =>
-        entry.row.partner === null ? (
-          ''
-        ) : (
-          <span
-            className="ellipsis-cell"
-            title={named(entry.row.partner.name, entry.row.partner.code)}
-          >
-            {entry.row.partner.name}
-          </span>
-        ),
+      key: 'lot',
+      header: t.list.columns.lotItem,
+      render: (entry) => {
+        const partner = entry.row.partner;
+        return (
+          <TraceLotCell
+            lotNo={entry.row.lot.lotNo}
+            source={
+              entry.source === null
+                ? null
+                : `${t.matchedBy[entry.source.matchedBy]} ${entry.source.label}`
+            }
+            sub={[entry.row.item.name, partner?.name ?? '']
+              .filter((part) => part !== '')
+              .join(', ')}
+            subTitle={[
+              named(entry.row.item.name, entry.row.item.code),
+              partner === null ? '' : named(partner.name, partner.code),
+            ]
+              .filter((part) => part !== '')
+              .join(', ')}
+          />
+        );
+      },
     },
     {
       key: 'date',
       header: mode === 'CONDITION' ? words.conditionDate : words.recentDate,
-      width: direction === 'BACKWARD' ? '124px' : '92px',
+      width: direction === 'BACKWARD' ? '152px' : '112px',
       render: (entry) => {
         const kind = entry.row.sortDateKind;
         if (entry.row.sortDate === null) return '';
@@ -136,7 +111,7 @@ export const TraceLotList = ({
     {
       key: 'status',
       header: t.list.columns.status,
-      width: '56px',
+      width: '64px',
       render: (entry) => (
         <Chip variant="status" size="sm" status={lotStatusTone(entry.row.lot.statusCode)}>
           {statusName(entry.row.lot.statusCode)}

@@ -86,6 +86,7 @@ export const traceTree = {
     scanFoot:
       '스캔 순서대로 쌓입니다. 이미 있는 LOT 을 다시 스캔하면 더하지 않고 그 LOT 을 고릅니다. [최근 목록으로]를 누르면 비워집니다.',
     columns: {
+      lotItem: 'LOT 번호, 품목',
       lotNo: 'LOT 번호',
       itemName: '품목명',
       source: '스캔 번호',
@@ -171,6 +172,7 @@ export const traceTree = {
       SPLIT_LOT: '분할 LOT',
       SEPARATED_LOT: '분리 LOT',
       SPLIT_ORIGIN: '분할된 원래 LOT',
+      SEPARATED_ORIGIN: '분리된 원래 LOT',
       WORK_ORDER: 'W/O',
       PRODUCTION_LOT: '생산 LOT',
       SEMI_LOT: '반제품 LOT',
@@ -209,7 +211,7 @@ export const traceTree = {
     locateHint: '줄을 고르면 계보에서 그 LOT 까지 펼칩니다',
     openRow: (lotNo: string): string => `${lotNo} 계보에서 찾기`,
     forward: {
-      lotNo: '제품 LOT',
+      lotNo: '제품 LOT, 품목',
       itemName: '품목명',
       fate: '행방',
       destination: '고객, 출하번호, 창고 위치',
@@ -218,7 +220,7 @@ export const traceTree = {
       status: '상태',
     },
     backward: {
-      lotNo: '자재 LOT',
+      lotNo: '자재 LOT, 품목',
       itemName: '품목명',
       supplier: '공급사, 공급사 LOT',
       inboundLot: '입하 LOT',

@@ -39746,9 +39746,32 @@ body:has(
 }
 
 .trace-tree-filter-scan {
-  flex: 1 1 280px;
-  max-width: 400px;
-  min-width: 220px;
+  flex: 1 1 180px;
+  max-width: 380px;
+  min-width: 180px;
+}
+
+/* 조건 줄을 1440 폭에서 한 줄에(시안 2판) — 상대 · 기간 칸은 「보통」보다 조금 좁게 정한다. */
+.trace-tree-filter-partner,
+.trace-tree-filter-period {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.trace-tree-filter-partner {
+  width: 170px;
+}
+
+.trace-tree-filter-period {
+  width: 276px;
+}
+
+.trace-tree-filter-partner > *,
+.trace-tree-filter-period > *,
+.trace-tree-filter-partner > * > button,
+.trace-tree-filter-period > * > button {
+  width: 100%;
+  max-width: 100%;
 }
 
 .trace-tree-filter-divider {
@@ -40020,3 +40043,62 @@ body:has(
   background: var(--semantic-warning-container);
 }
 
+
+/*
+ * 목록 · 최종 LOT 표의 첫 칸 — LOT 번호(줄이지 않고 칸 폭에서 접음) + 보조 줄(들어온 번호 · 품목 · 상대, 넘치면 말줄임).
+ * 공용 표(.inspection-queue-table)는 칸을 한 줄 · 가운데로 두므로 이 칸만 왼쪽 맞춤 · 여러 줄로 푼다(시안 2판).
+ */
+.inspection-queue-table td:has(> .trace-tree-lot-cell),
+.inspection-queue-table td:has(> .trace-tree-wrap) {
+  text-align: left;
+  white-space: normal;
+}
+
+.trace-tree-lot-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  text-align: left;
+}
+
+/* 최종 LOT 표 머리 — 묶은 칸 이름(「공급사, 공급사 LOT」 등)이 잘리지 않게 두 줄까지. */
+.inspection-queue-table.trace-tree-end-rows thead th,
+.inspection-queue-table.trace-tree-end-rows thead th * {
+  white-space: normal;
+}
+
+.trace-tree-lot-full {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.trace-tree-lot-sub {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  overflow: hidden;
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trace-tree-source {
+  flex: 0 0 auto;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--surface-container-high);
+  font: var(--type-label-sm);
+}
+
+/* 최종 LOT 표의 묶은 칸(고객 · 출하번호 · 창고 위치, 공급사 · 공급사 LOT) — 두 줄까지 접는다. */
+.trace-tree-wrap {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

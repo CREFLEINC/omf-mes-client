@@ -58,13 +58,14 @@ const setup = (props: Partial<TraceLotListProps> = {}) => {
 };
 
 describe('LOT 목록(FR-025)', () => {
-  it('US3-1 자재 최근 목록 — 번호 · 품목 · 공급사 · 최근 투입일 · 상태, 고른 것 없음, 투입 전 LOT 안내', () => {
+  it('US3-1 자재 최근 목록 — 번호(끝까지) · 품목 · 공급사 · 최근 투입일 · 상태, 고른 것 없음, 투입 전 LOT 안내', () => {
     setup();
     const table = screen.getByRole('table');
-    expect(within(table).getByText(t.list.columns.lotNo)).toBeInTheDocument();
-    expect(within(table).getByText(t.material.partnerName)).toBeInTheDocument();
+    expect(within(table).getByText(t.list.columns.lotItem)).toBeInTheDocument();
+    /* LOT 번호는 줄이지 않고 끝까지 보인다 */
+    expect(within(table).getByText(row(1).lot.lotNo)).toBeInTheDocument();
     expect(within(table).getByText(t.material.recentDate)).toBeInTheDocument();
-    expect(within(table).getAllByText('공급사 S')).toHaveLength(2);
+    expect(within(table).getAllByText('품목 A, 공급사 S')).toHaveLength(2);
     expect(within(table).getAllByText('11-20 09:12')).toHaveLength(2);
     expect(table.querySelector('[aria-selected="true"]')).toBeNull();
     expect(screen.getByText(t.material.recentFoot)).toBeInTheDocument();
@@ -88,7 +89,7 @@ describe('LOT 목록(FR-025)', () => {
     expect(within(table).getByText(t.product.recentDate)).toBeInTheDocument();
     expect(within(table).getByText(t.list.sortKinds.SHIPPED)).toBeInTheDocument();
     expect(within(table).getByText(t.list.sortKinds.RECEIVED)).toBeInTheDocument();
-    expect(within(table).getByText('고객 X')).toBeInTheDocument();
+    expect(within(table).getByText('품목 A, 고객 X')).toBeInTheDocument();
     expect(screen.getByText(t.product.recentFoot)).toBeInTheDocument();
   });
 

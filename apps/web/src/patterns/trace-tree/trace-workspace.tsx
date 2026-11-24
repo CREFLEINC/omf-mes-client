@@ -16,7 +16,7 @@ import {
 } from '../split-orientation';
 import { TraceExportButton, useTraceExportRun } from './export';
 import { TraceFilterBar } from './filter-bar';
-import { buildLineage, firstView, locate, type TreeView } from './graph-rows';
+import { buildLineage, firstView, locate, type LineageStage, type TreeView } from './graph-rows';
 import { traceLotHref } from './href';
 import {
   SCAN_CAP,
@@ -78,6 +78,8 @@ export interface TraceDetailContext {
   /** 최종 LOT 줄을 고르면 계보에서 그 항목(`nodeKey`)까지 편다. */
   onLocate: (rowId: string, nodeKey: string) => void;
   partial: boolean;
+  /** 그 항목이 계보에서 처음 선 줄의 단계 — 요약의 LOT 종류 표기를 계보와 맞춘다. */
+  stageOf: (nodeKey: string) => LineageStage | null;
 }
 
 export interface TraceWorkspaceProps {
@@ -430,6 +432,8 @@ export const TraceWorkspace = ({ direction, renderSummary, renderEnd }: TraceWor
           names,
           activeEnd,
           partial,
+          stageOf: (nodeKey) =>
+            lineage?.all.find((line) => line.nodeKey === nodeKey)?.stage ?? null,
           onLocate: (rowId, nodeKey) => {
             setActiveEnd(rowId);
             if (lineage === null || view === null) return;

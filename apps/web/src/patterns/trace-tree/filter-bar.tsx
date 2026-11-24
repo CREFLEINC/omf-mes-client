@@ -126,7 +126,7 @@ export const TraceFilterBar = ({
         />
       </div>
       <span className="trace-tree-filter-divider" aria-hidden="true" />
-      <div className="filter-field-md">
+      <div className="trace-tree-filter-partner">
         <ReferenceField
           label={words.partner}
           valueLabel={shownPartner}
@@ -147,7 +147,7 @@ export const TraceFilterBar = ({
           )}
         </ReferenceField>
       </div>
-      <div className="field-cell filter-field-md">
+      <div className="field-cell trace-tree-filter-period">
         <label className="field-label" htmlFor={periodId}>
           {words.period}
           <span className="required-mark" aria-hidden="true">

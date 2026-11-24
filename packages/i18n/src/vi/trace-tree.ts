@@ -90,6 +90,7 @@ export const traceTree: Translated<typeof ko.traceTree> = {
     scanFoot:
       'Xếp theo thứ tự quét. Quét lại LOT đã có thì không thêm mà chọn LOT đó. Nhấn [Về danh sách gần đây] để xóa.',
     columns: {
+      lotItem: 'Số LOT, mặt hàng',
       lotNo: 'Số LOT',
       itemName: 'Tên mặt hàng',
       source: 'Số đã quét',
@@ -186,6 +187,7 @@ export const traceTree: Translated<typeof ko.traceTree> = {
       SPLIT_LOT: 'LOT tách',
       SEPARATED_LOT: 'LOT chia',
       SPLIT_ORIGIN: 'LOT gốc đã tách',
+      SEPARATED_ORIGIN: 'LOT gốc đã chia',
       WORK_ORDER: 'W/O',
       PRODUCTION_LOT: 'LOT sản xuất',
       SEMI_LOT: 'LOT bán thành phẩm',
@@ -224,7 +226,7 @@ export const traceTree: Translated<typeof ko.traceTree> = {
     locateHint: 'Chọn dòng để mở phả hệ đến LOT đó',
     openRow: (lotNo: string): string => `Tìm ${lotNo} trong phả hệ`,
     forward: {
-      lotNo: 'LOT sản phẩm',
+      lotNo: 'LOT sản phẩm, mặt hàng',
       itemName: 'Tên mặt hàng',
       fate: 'Nơi đến',
       destination: 'Khách hàng, số xuất hàng, kho và vị trí',
@@ -233,7 +235,7 @@ export const traceTree: Translated<typeof ko.traceTree> = {
       status: 'Trạng thái',
     },
     backward: {
-      lotNo: 'LOT vật tư',
+      lotNo: 'LOT vật tư, mặt hàng',
       itemName: 'Tên mặt hàng',
       supplier: 'Nhà cung cấp, LOT nhà cung cấp',
       inboundLot: 'LOT nhập hàng',

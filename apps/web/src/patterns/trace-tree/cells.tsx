@@ -23,6 +23,32 @@ export const TraceLotNo = ({ lotNo }: { lotNo: string }) => {
   );
 };
 
+/**
+ * LOT 번호와 그 아래 보조 줄(들어온 번호 · 품목 · 상대) — 목록과 최종 LOT 표의 첫 칸(시안 2판).
+ * LOT 번호는 이 화면의 대조 값이라 줄이지 않고 칸 폭에서 접어 끝까지 보인다(C-10 · C-16 이탈, 화면 머리주석).
+ */
+export const TraceLotCell = ({
+  lotNo,
+  sub,
+  subTitle,
+  source = null,
+}: {
+  lotNo: string;
+  sub: string;
+  subTitle?: string;
+  source?: string | null;
+}) => (
+  <span className="trace-tree-lot-cell">
+    <span className="trace-tree-lot-full mono-cell">{lotNo}</span>
+    {(source !== null || sub !== '') && (
+      <span className="trace-tree-lot-sub" title={subTitle ?? sub}>
+        {source !== null && <span className="trace-tree-source">{source}</span>}
+        {sub}
+      </span>
+    )}
+  </span>
+);
+
 /** LOT 상태 칩 색 — LOT 상태 조회와 같다(정상 초록, 검사 대기 노랑, 불량 빨강, 그 밖 회색). */
 export const lotStatusTone = (statusCode: string): 'success' | 'warning' | 'error' | 'idle' => {
   if (statusCode === 'NORMAL') return 'success';
