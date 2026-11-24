@@ -393,6 +393,21 @@ main > * + * {
   gap: var(--space-2);
 }
 
+/* IQC 기준 상세의 품목 검사 수준 — 칩(또는 「미지정」) · 지정/변경 · 이력을 한 줄로(omf-all-around#357). */
+.inspection-standard-plan-facts .inspection-standard-item-level {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+/* 탭 막대가 없을 때 머리 오른쪽 — 사용 여부 칩 다음 배치 단추(omf-all-around#357). */
+.inspection-standard-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 /* 라우팅 — 입력칸이 아닌 값 글자(사용자 지시 2026-11-04). 옆 칸 입력 줄과 같은 높이에서 가운데 맞춘다. */
 .inspection-standard-plan-routing {
   display: flex;

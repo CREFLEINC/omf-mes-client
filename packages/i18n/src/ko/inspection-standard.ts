@@ -253,6 +253,15 @@ export const inspectionStandard = {
    * 신규 버전을 발행한다(omf-all-around#196).
    */
   /* 기준 정보 구획 머리(omf-all-around#196) — 제목과 승인 · 사용 상태 칩. */
+  /** IQC 기준 상세의 품목 검사 수준 칸 — 검사 수준 설정 화면을 합쳤다(omf-all-around#357). */
+  itemLevel: {
+    label: '검사 수준',
+    unset: '미지정',
+    loadFailed: '불러오지 못함',
+    set: '지정',
+    change: '변경',
+    history: '이력',
+  },
   detail: {
     title: '검사 기준 상세',
     createTitle: '검사 기준 등록',

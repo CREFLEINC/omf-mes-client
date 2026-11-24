@@ -219,6 +219,15 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     chipItem: (label: string): string => `Mặt hàng: ${label}`,
     chipRemoveItem: 'Bỏ điều kiện mặt hàng',
   },
+  /** IQC 기준 상세의 품목 검사 수준 칸 — 검사 수준 설정 화면을 합쳤다(omf-all-around#357). */
+  itemLevel: {
+    label: 'Mức kiểm tra',
+    unset: 'Chưa chỉ định',
+    loadFailed: 'Không tải được',
+    set: 'Chỉ định',
+    change: 'Đổi',
+    history: 'Lịch sử',
+  },
   detail: {
     title: 'Chi tiết tiêu chuẩn kiểm tra',
     createTitle: 'Đăng ký tiêu chuẩn kiểm tra',

@@ -231,7 +231,6 @@ describe('주 메뉴 트리', () => {
       '/quality/pqc-inspections → troubleshoot',
       '/shipment/oqc-inspection → troubleshoot',
       '/master-data/inspection-standard → rule_settings',
-      '/quality/inspection-levels → rule_settings',
       '/master-data/defect-cause-code → report',
       '/master-data/defect-process-mapping → report',
       '/quality/inspection-results → analytics',

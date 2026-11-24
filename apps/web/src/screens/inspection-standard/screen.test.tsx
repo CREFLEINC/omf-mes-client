@@ -3973,13 +3973,15 @@ describe('InspectionStandardScreen — 상세 표시 순서(#256)', () => {
   };
 
   /* 승인 · 사용 칩을 이 상자로 옮기고 칸 이름을 「~ 여부」로(사용자 지시 · #258). */
-  it('기준 상세는 검사 유형 · 품목 · 기준명 · 기준코드 · 기본 생략 여부 · 승인 여부 · 사용 여부 순서다', async () => {
+  /* IQC 기준은 품목 다음에 품목 검사 수준이 선다(omf-all-around#357). */
+  it('기준 상세는 검사 유형 · 품목 · 검사 수준(IQC) · 기준명 · 기준코드 · 기본 생략 여부 · 승인 여부 · 사용 여부 순서다', async () => {
     renderSelectedVersion();
     await awaitVersionForm();
 
-    expect(labelsIn('.inspection-standard-plan-facts').slice(0, 7)).toEqual([
+    expect(labelsIn('.inspection-standard-plan-facts').slice(0, 8)).toEqual([
       t.fields.inspectionType,
       t.fields.item,
+      t.itemLevel.label,
       t.fields.inspectionPlanName,
       t.fields.inspectionPlanCode,
       t.detail.defaultSkipLabel,

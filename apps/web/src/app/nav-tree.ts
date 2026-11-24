@@ -304,28 +304,15 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         ],
       },
       /*
-       * 품질 기준 정보 — 검사기준 · 검사 수준 관리를 사이드바 한 줄 ·
-       * 본문 위 탭으로 묶는다(사용자 2026-10-26). 모두 판정이 기대는 기준·코드 마스터다.
+       * 검사 기준 — 예전 「품질 기준 정보」 탭 묶음(검사 기준 · 검사 수준 설정)이었다(사용자 2026-10-26).
+       * 검사 수준 설정(W-03-12)은 검사 기준 화면의 IQC 기준 상세로 합쳐 탭이 하나만 남아 묶음을 풀었다(omf-all-around#357).
        * 검사표 기준(W-06-24 · OA 전용)은 검사 기준 탭에 합쳤다 — OA 공장 계정은 검사 유형 PQC 가 검사표 기준을 연다(omf-all-around#255).
        */
       {
         to: '/master-data/inspection-standard',
         icon: 'rule_settings',
-        label: '품질 기준 정보',
-        labelVi: 'Dữ liệu chuẩn chất lượng',
-        tabs: [
-          {
-            to: '/master-data/inspection-standard',
-            label: '검사 기준',
-            labelVi: 'Tiêu chuẩn kiểm tra',
-          },
-          /* W-03-12 — 품목별 IQC 검사 수준과 자동 전환 이력(omf-all-around#64). */
-          {
-            to: '/quality/inspection-levels',
-            label: '검사 수준 설정',
-            labelVi: 'Thiết lập mức kiểm tra',
-          },
-        ],
+        label: '검사 기준',
+        labelVi: 'Tiêu chuẩn kiểm tra',
       },
       /*
        * 품질 코드 관리 — 검사 판정 때 고르는 코드 목록(불량·원인코드 · 판정 유형 코드)을 한 묶음으로(사용자 지시 2026-10-29 · omf-all-around#208).

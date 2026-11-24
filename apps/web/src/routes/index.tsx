@@ -81,7 +81,6 @@ import {
 import { ProductionOrderProcessScreen } from '../screens/production-order/process/process-screen';
 import { DispositionDecisionScreen } from '../screens/disposition-decision/screen';
 import { PqcInspectionRegisterScreen } from '../screens/pqc-inspection-register/screen';
-import { InspectionLevelScreen } from '../screens/inspection-level/screen';
 import { RoutingScreen } from '../screens/routing/screen';
 import { ExpeditedShipmentScreen } from '../screens/expedited-shipment/screen';
 import { ProductDisposalRequestScreen } from '../screens/product-disposal-request/screen';
@@ -440,8 +439,11 @@ export const appRouter = createBrowserRouter([
        * 같은 판정을 관리웹에서 등록하고 지난 의뢰를 본다.
        */
       { path: 'quality/pqc-inspections', element: <PqcInspectionRegisterScreen /> },
-      /* W-03-12 — 검사 수준 관리(omf-all-around#64 · 설계보다 앞선 화면). 품목별 IQC 검사 수준과 전환 이력. */
-      { path: 'quality/inspection-levels', element: <InspectionLevelScreen /> },
+      /* W-03-12 검사 수준 관리의 옛 주소 — 검사 기준 화면의 IQC 기준 상세에 합쳤다(omf-all-around#357). 권한 판단은 이 주소로 남긴다. */
+      {
+        path: 'quality/inspection-levels',
+        element: <Navigate to="/master-data/inspection-standard?type=IQC" replace />,
+      },
       /* W-03-13 — 제품 검사표 조회(omf-all-around#89 · 설계보다 앞선 화면). 시리얼별 OA 제품 검사표 조회·서명·승인. */
       { path: 'quality/inspection-sheets', element: <InspectionSheetScreen /> },
       /* W-04-11 — 품질에서 정상 판정된 반품 LOT을 출하 가능 재고로 되돌린다. */

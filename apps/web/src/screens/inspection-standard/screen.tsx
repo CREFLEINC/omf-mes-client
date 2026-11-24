@@ -80,6 +80,7 @@ import {
   type InspectionPlanImportResult,
   importStatusOf,
 } from './import-dialog';
+import { ItemLevelFact } from './item-level-fact';
 import { PlanDetailHead } from './plan-detail-head';
 import { PlanFilterBar } from './plan-filter-bar';
 import type { TemplateBasics } from '../inspection-sheet-template/basic-dialog';
@@ -1810,6 +1811,21 @@ export const InspectionStandardScreen = () => {
         <PlanDetailHead
           plan={planDetail.data.inspectionPlan}
           itemLabel={itemLabel}
+          /* IQC 기준이면 품목의 검사 수준을 보이고 그 자리에서 지정 · 변경한다(omf-all-around#357). */
+          itemLevel={(() => {
+            const plan = planDetail.data.inspectionPlan;
+            const itemId = plan.itemId ?? null;
+            const parts = itemId === null ? null : itemPartsOf(itemId);
+            if (plan.inspectionTypeCode !== 'IQC' || itemId === null || parts === null) {
+              return undefined;
+            }
+            return (
+              <ItemLevelFact
+                key={itemId}
+                item={{ itemId, itemCode: parts.code ?? '', itemName: parts.name }}
+              />
+            );
+          })()}
           routingRevision={routingOptions.revisions.find(
             (revision) =>
               revision.routingId === String(planDetail.data.inspectionPlan.routingId ?? ''),
@@ -2410,6 +2426,22 @@ export const InspectionStandardScreen = () => {
       {hub === null && (
         <PageHeader
           title={t.title}
+          /* 탭 막대가 없으면 사용 여부 칩 · 배치 단추를 머리 오른쪽에(검사 실적과 같다 · omf-all-around#357). */
+          actions={
+            <div className="inspection-standard-head-actions">
+              <UsageChips
+                counts={usageCounts.data ?? null}
+                value={usageOf(filters)}
+                onChange={(usage) => applyFilters(withUsage(filters, usage))}
+                inline
+              />
+              <SplitOrientationToggle
+                orientation={layout.orientation}
+                onChange={layout.change}
+                inline
+              />
+            </div>
+          }
           breadcrumb={
             <Breadcrumb
               items={[{ label: t.breadcrumbRoot }, { label: t.title }]}

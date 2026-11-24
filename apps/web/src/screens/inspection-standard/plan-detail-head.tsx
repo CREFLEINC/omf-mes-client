@@ -1,5 +1,6 @@
 import { Button, Chip, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
 import { inspectionTypeLabel } from './code-options';
 import { RoutingSummary } from './plan-pane';
@@ -29,6 +30,8 @@ export interface PlanDetailHeadProps {
   isActivating?: boolean;
   /** 고른 버전이 있을 때만 — 그 버전의 설정 · 항목으로 다른 품목의 기준을 만든다(omf-all-around#255). */
   onCopy?: () => void;
+  /** 품목이 있는 IQC 기준에만 — 품목 칸 다음 「검사 수준」 칸의 값(`<dd>`) · omf-all-around#357. */
+  itemLevel?: ReactNode;
 }
 
 /**
@@ -48,6 +51,7 @@ export const PlanDetailHead = ({
   onActivate,
   isActivating = false,
   onCopy,
+  itemLevel,
 }: PlanDetailHeadProps) => {
   const approvedAt = formatApprovedAt(plan.approvedAt);
 
@@ -105,6 +109,20 @@ export const PlanDetailHead = ({
         {[
           { label: t.fields.inspectionType, value: inspectionTypeLabel(plan.inspectionTypeCode) },
           { label: t.fields.item, value: itemLabel ?? t.detail.itemUnset },
+        ].map((fact) => (
+          <div key={fact.label}>
+            <dt className="field-label">{fact.label}</dt>
+            <dd>{fact.value}</dd>
+          </div>
+        ))}
+        {/* 품목 검사 수준 — 품목 바로 뒤(검사 수준 설정 화면을 합쳤다 · omf-all-around#357). */}
+        {itemLevel !== undefined && (
+          <div>
+            <dt className="field-label">{t.itemLevel.label}</dt>
+            {itemLevel}
+          </div>
+        )}
+        {[
           { label: t.fields.inspectionPlanName, value: plan.inspectionPlanName },
           { label: t.fields.inspectionPlanCode, value: plan.inspectionPlanCode },
         ].map((fact) => (
