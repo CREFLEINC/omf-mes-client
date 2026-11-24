@@ -156,7 +156,7 @@ describe('ErpOutboundScreen — 송신 항목', () => {
         within(itemRow('입고 (G/R)'))
           .getAllByRole('cell')
           .map((c) => c.textContent),
-      ).toEqual(['입고 (G/R)', '켜짐', '2', '1']);
+      ).toEqual(['입고 (G/R)', '켜짐', '2건', '1건']);
     });
     expect(within(itemRow('생산 실적')).getByText('필수')).toBeInTheDocument();
     expect(within(itemRow('출하 (PGI)')).getByText('꺼짐')).toBeInTheDocument();
@@ -171,9 +171,31 @@ describe('ErpOutboundScreen — 송신 항목', () => {
     const { requests } = renderScreen([settingsRoute, messagesRoute()]);
 
     await waitFor(() => {
-      expect(within(itemRow('입고 (G/R)')).getByText('2')).toBeInTheDocument();
+      expect(within(itemRow('입고 (G/R)')).getByText('2건')).toBeInTheDocument();
     });
     expect(requests.filter((url) => url.searchParams.get('size') === '1')).toHaveLength(0);
+  });
+});
+
+describe('ErpOutboundScreen — 상태 선택', () => {
+  it('상태 선택으로 화면 안에서 거른다 — 송신 대기 · 송신 꺼짐(#358)', async () => {
+    const { user } = renderScreen([settingsRoute, messagesRoute()]);
+    await itemsPane().findByRole('button', { name: '입고 (G/R) 선택' });
+    const filter = within(screen.getByRole('region', { name: '조회 조건' }));
+
+    await user.click(filter.getByRole('combobox', { name: '송신 상태 선택' }));
+    await user.click(screen.getByRole('option', { name: '송신 꺼짐' }));
+    await user.click(filter.getByRole('button', { name: '조회' }));
+
+    expect(itemsPane().getByRole('button', { name: '출하 (PGI) 선택' })).toBeInTheDocument();
+    expect(itemsPane().queryByRole('button', { name: '입고 (G/R) 선택' })).toBeNull();
+
+    await user.click(filter.getByRole('combobox', { name: '송신 상태 선택' }));
+    await user.click(screen.getByRole('option', { name: '송신 대기' }));
+    await user.click(filter.getByRole('button', { name: '조회' }));
+
+    expect(itemsPane().getByRole('button', { name: '입고 (G/R) 선택' })).toBeInTheDocument();
+    expect(itemsPane().queryByRole('button', { name: '반품 선택' })).toBeNull();
   });
 });
 
@@ -190,15 +212,17 @@ describe('ErpOutboundScreen — 탭 막대 칩', () => {
 
     const hub = within(screen.getByTestId('hub-actions'));
     expect(await hub.findByText('송신 꺼짐')).toBeInTheDocument();
-    expect(await hub.findByText(/^송신 대기 /)).toBeInTheDocument();
+    expect(hub.queryByText(/^송신 대기 /)).toBeNull();
   });
 
-  it('켜짐을 모르는 서버(응답에 없음)면 켜짐 칩을 세우지 않는다', async () => {
+  it('켜짐을 모르는 서버(응답에 없음)면 칩을 세우지 않는다', async () => {
     renderScreen([settingsRoute, messagesRoute()]);
 
-    const hub = within(screen.getByTestId('hub-actions'));
-    expect(await hub.findByText(/^송신 대기 /)).toBeInTheDocument();
-    expect(hub.queryByText(/^송신 (켜짐|꺼짐)$/)).toBeNull();
+    await itemsPane().findByRole('button', { name: '입고 (G/R) 선택' });
+    // 탭 줄의 배치 「⋯」 메뉴는 그대로 선다 — 칩 묶음만 없다.
+    expect(
+      within(screen.getByTestId('hub-actions')).queryByRole('group', { name: 'ERP 송신 상태' }),
+    ).toBeNull();
   });
 });
 

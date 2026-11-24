@@ -444,6 +444,79 @@ on('POST', '/integration/erp-sync/tables/{interfaceCode}:run', (params) => {
   };
 });
 
+/*
+ * ERP 송신 — 송신 항목 다섯(생산 실적 · 입고 · 출하 · 반품 · 실사 조정 · #358). Prism 예시는 「입고」 한 줄뿐이었다.
+ * 짝인 송신 인터페이스가 있는 셋은 연동 이력 목의 건수를 그대로 센다. 송신 대기 건이 몇 개 안 돼 항목마다 6건씩 보탠다.
+ */
+const OUTBOUND_ITEM_SETTINGS = [
+  ['PRODUCTION_RESULT', '생산 실적', 'IF-WO-CLOSE-SEND', true, true, '작업지시 마감 직후 건별'],
+  ['GOODS_RECEIPT', '입고', 'IF-GR-SEND', true, false, '수입검사 합격 직후 건별'],
+  ['SHIPMENT_PGI', '출하', 'IF-SHIPMENT-PGI-SEND', true, false, '출하 처리 완료 직후 건별'],
+  ['RETURN', '반품', null, false, false, null],
+  ['STOCK_ADJUSTMENT', '실사 조정', null, false, false, null],
+];
+
+(() => {
+  const now = Date.now();
+  const prefixOf = { 'IF-WO-CLOSE-SEND': 'WO', 'IF-GR-SEND': 'GR', 'IF-SHIPMENT-PGI-SEND': 'PGI' };
+  let id = 70501;
+  for (const [, , interfaceCode] of OUTBOUND_ITEM_SETTINGS) {
+    if (interfaceCode === null) continue;
+    for (let index = 0; index < 6; index += 1) {
+      const createdMs = now - (index * 47 + 5) * 60 * 1000;
+      const ymd = new Date(createdMs).toISOString().slice(0, 10).replaceAll('-', '');
+      const docNo = `${prefixOf[interfaceCode]}-${ymd}-${String(500 + index)}`;
+      integrationMessages.push({
+        integrationMessageId: id,
+        messageKey: `${interfaceCode}:${docNo}`,
+        interfaceCode,
+        directionCode: 'OUTBOUND',
+        targetTypeCode: prefixOf[interfaceCode],
+        targetId: 9000 + id,
+        statusCode: 'PENDING',
+        retryCount: index % 3 === 0 ? 1 : 0,
+        lastErrorMessage: index % 3 === 0 ? '연계 대상 시스템 응답 없음(timeout 30s)' : null,
+        createdAt: new Date(createdMs).toISOString(),
+        availableAt: new Date(now + (index + 1) * 5 * 60 * 1000).toISOString(),
+        sentAt: null,
+        completedAt: null,
+        lockedAt: null,
+        lockedBy: null,
+      });
+      id += 1;
+    }
+  }
+})();
+
+on('GET', '/integration/outbound-item-settings', () => {
+  const countOf = (interfaceCode, statusCode) =>
+    interfaceCode === null
+      ? 0
+      : integrationMessages.filter(
+          (row) => row.interfaceCode === interfaceCode && row.statusCode === statusCode,
+        ).length;
+  return {
+    sendEnabled: true,
+    items: OUTBOUND_ITEM_SETTINGS.map(
+      (
+        [outboundItemCode, outboundItemName, interfaceCode, enabled, locked, sendTimingNote],
+        index,
+      ) => ({
+        outboundItemCode,
+        outboundItemName,
+        enabled,
+        locked,
+        lockReason: locked ? '생산 실적 송신은 필수입니다' : null,
+        sendTimingNote,
+        interfaceDefinitionId: interfaceCode === null ? null : 1001 + index,
+        interfaceCode,
+        pendingMessageCount: countOf(interfaceCode, 'PENDING'),
+        failedMessageCount: countOf(interfaceCode, 'FAILED'),
+      }),
+    ),
+  };
+});
+
 /* ── 사용자·역할·권한(W-CO-02) ───────────────────────────── */
 
 /**

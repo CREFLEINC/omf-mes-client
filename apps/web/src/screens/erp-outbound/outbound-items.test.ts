@@ -22,6 +22,8 @@ describe('송신 항목 — 서버 설정 한 줄', () => {
       interfaceCode: 'IF-GR-SEND',
       pendingCount: 3,
       failedCount: 1,
+      sendTimingNote: null,
+      lockReason: null,
     });
   });
 

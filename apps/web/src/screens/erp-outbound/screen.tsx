@@ -4,11 +4,12 @@ import {
   EmptyState,
   Icon,
   SearchInput,
+  Select,
   SkeletonText,
   type Column,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
 import { BoardTable } from '../../patterns/board-table';
@@ -55,7 +56,7 @@ const readPage = (raw: string | null): number => {
 const countText = (count: number | undefined, hasInterface: boolean): string => {
   if (!hasInterface || count === undefined) return t.values.empty;
 
-  return count.toLocaleString();
+  return t.counts(count);
 };
 
 interface ItemTableProps {
@@ -65,9 +66,27 @@ interface ItemTableProps {
   onSelect: (code: string) => void;
 }
 
-/** 송신 항목 이름 검색 — 화면 안에서만 거른다(서버 요청은 그대로 · #358). 앞뒤 빈칸 · 대소문자는 가리지 않는다. */
-const matchesName = (item: OutboundItem, query: string): boolean =>
-  item.outboundItemName.toLowerCase().includes(query.trim().toLowerCase());
+/** 조회 조건 — 상태 · 송신 항목 이름. 화면 안에서만 거른다(서버 요청은 그대로 · #358). */
+interface OutboundFilters {
+  state: '' | 'pending' | 'failed' | 'off';
+  q: string;
+}
+const EMPTY_FILTERS: OutboundFilters = { state: '', q: '' };
+
+/** 상태 — 송신 대기가 있는 · 송신 실패가 있는 · 송신이 꺼진 항목(#358). 이름은 앞뒤 빈칸 · 대소문자를 가리지 않는다. */
+const matchesFilters = (item: OutboundItem, filters: OutboundFilters): boolean => {
+  const linked = item.interfaceCode !== null;
+  const stateOk =
+    filters.state === ''
+      ? true
+      : filters.state === 'pending'
+        ? linked && item.pendingCount > 0
+        : filters.state === 'failed'
+          ? linked && item.failedCount > 0
+          : !item.enabled;
+
+  return stateOk && item.outboundItemName.toLowerCase().includes(filters.q.trim().toLowerCase());
+};
 
 /** 왼쪽 — 송신 항목 다섯. 줄 어디를 눌러도 고른다(입고 관리의 발주 목록과 같다). */
 const ItemTable = ({ items, counts, selectedCode, onSelect }: ItemTableProps) => {
@@ -75,13 +94,15 @@ const ItemTable = ({ items, counts, selectedCode, onSelect }: ItemTableProps) =>
     {
       key: 'outboundItemName',
       header: t.table.item,
+      align: 'center',
       /* 고르는 단추 자리(`BoardTable` 의 `pick`). */
       render: (item) => item.outboundItemName,
     },
     {
       key: 'enabled',
       header: t.table.send,
-      width: '80px',
+      align: 'center',
+      width: '96px',
       render: (item) => (
         <Chip variant="status" size="sm" status={item.enabled ? 'success' : 'idle'}>
           {item.locked ? t.send.required : item.enabled ? t.send.on : t.send.off}
@@ -91,8 +112,8 @@ const ItemTable = ({ items, counts, selectedCode, onSelect }: ItemTableProps) =>
     {
       key: 'pending',
       header: t.table.pending,
-      width: '72px',
-      align: 'end',
+      width: '96px',
+      align: 'center',
       render: (item) =>
         countText(
           item.interfaceCode === null
@@ -104,8 +125,8 @@ const ItemTable = ({ items, counts, selectedCode, onSelect }: ItemTableProps) =>
     {
       key: 'failed',
       header: t.table.failed,
-      width: '72px',
-      align: 'end',
+      width: '96px',
+      align: 'center',
       render: (item) =>
         countText(
           item.interfaceCode === null
@@ -145,6 +166,7 @@ const PendingTable = ({ rows }: { rows: IntegrationMessageRow[] }) => {
     {
       key: 'messageKey',
       header: t.table.messageKey,
+      align: 'center',
       width: '184px',
       render: (row) => (
         <Link
@@ -159,25 +181,28 @@ const PendingTable = ({ rows }: { rows: IntegrationMessageRow[] }) => {
     {
       key: 'createdAt',
       header: t.table.createdAt,
-      width: '148px',
+      align: 'center',
+      width: '156px',
       render: (row) => formatDateTime(row.createdAt) ?? t.values.empty,
     },
     {
       key: 'availableAt',
       header: t.table.availableAt,
-      width: '148px',
+      align: 'center',
+      width: '156px',
       render: (row) => formatDateTime(row.availableAt) ?? t.values.empty,
     },
     {
       key: 'retryCount',
       header: t.table.retryCount,
-      width: '56px',
-      align: 'end',
-      render: (row) => String(row.retryCount),
+      width: '104px',
+      align: 'center',
+      render: (row) => t.times(row.retryCount),
     },
     {
       key: 'lastErrorMessage',
       header: t.table.lastErrorMessage,
+      align: 'center',
       render: (row) => <OneLine text={row.lastErrorMessage ?? t.values.empty} />,
     },
   ];
@@ -207,11 +232,12 @@ export const ErpOutboundScreen = () => {
   const items = useOutboundItems();
   const counts = useOutboundCounts();
   const itemRows = items.data ?? [];
-  /* 이름 검색 — 치는 값(`search`)과 [조회]로 건 값(`query`). 주소에 두지 않는다(화면 안 거르기 · #358). */
-  const [search, setSearch] = useState('');
+  /* 조회 조건 — 고르는 값(`draft`)과 [조회]로 건 값(`applied`). 주소에 두지 않는다(화면 안 거르기 · #358). */
+  const [draft, setDraft] = useState<OutboundFilters>(EMPTY_FILTERS);
+  const [applied, setApplied] = useState<OutboundFilters>(EMPTY_FILTERS);
   const searchRef = useFitPlaceholderWidth(t.filters.searchPlaceholder);
-  const [query, setQuery] = useState('');
-  const shownItems = itemRows.filter((item) => matchesName(item, query));
+  const fieldId = useId();
+  const shownItems = itemRows.filter((item) => matchesFilters(item, applied));
   /* 송신 항목은 다 받는 작은 목록이라 화면에서 쪽을 나눈다(#358). */
   const itemPage = useClientPage(shownItems);
   const requestedCode = searchParams.get('item');
@@ -332,37 +358,56 @@ export const ErpOutboundScreen = () => {
       filter={{
         label: t.filters.label,
         content: (
-          /* 조건이 없던 화면 — 송신 항목 이름 검색 하나 + [조회][초기화](단말 관리와 같다 · #358).
-             초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */
+          /* 상태 선택 · 송신 항목 검색 + [조회][초기화](ERP 수신과 같은 순서 · #358).
+             초기화는 조건이 처음 값과 다를 때만 보인다. */
           <div className="filter-bar erp-link-filter">
+            {/* 상태 — 선택지가 몇 개 안 돼 검색창 없이 펼친다. */}
+            <div className="field-cell">
+              <label className="field-label" htmlFor={`${fieldId}-state`}>
+                {t.filters.state}
+              </label>
+              <Select
+                id={`${fieldId}-state`}
+                value={draft.state}
+                options={[
+                  { value: '', label: t.filters.all },
+                  { value: 'pending', label: t.table.pending },
+                  { value: 'failed', label: t.table.failed },
+                  { value: 'off', label: t.filters.sendOff },
+                ]}
+                onChange={(value) => {
+                  setDraft((prev) => ({ ...prev, state: value as OutboundFilters['state'] }));
+                }}
+              />
+            </div>
             <SearchInput
               containerClassName={`erp-link-search-input ${FIT_PLACEHOLDER_CLASS}`}
               label={t.filters.search}
-              value={search}
+              value={draft.q}
               placeholder={t.filters.searchPlaceholder}
               ref={searchRef}
               onChange={(event) => {
-                setSearch(event.target.value);
+                setDraft((prev) => ({ ...prev, q: event.target.value }));
               }}
               onSearch={(value) => {
-                setQuery(value);
+                setApplied({ ...draft, q: value });
               }}
               clearLabel={messages.common.clear}
             />
             <div className="filter-actions field-cell-unlabeled">
               <Button
                 onClick={() => {
-                  setQuery(search);
+                  setApplied(draft);
                 }}
               >
                 {messages.common.search}
               </Button>
-              {hasChangedFilters({ q: '' }, { q: search }, { q: query }) && (
+              {hasChangedFilters(EMPTY_FILTERS, draft, applied) && (
                 <Button
                   variant="outlined"
                   onClick={() => {
-                    setSearch('');
-                    setQuery('');
+                    setDraft(EMPTY_FILTERS);
+                    setApplied(EMPTY_FILTERS);
                   }}
                 >
                   {messages.common.reset}
@@ -413,19 +458,72 @@ export const ErpOutboundScreen = () => {
               description={t.empty.pickItemDescription}
             />
           ) : (
-            <>
-              <h2 className="pane-title">
+            <div className="integration-sync-detail erp-outbound-detail">
+              {/* 상자 제목 — 목록 상자의 「송신 항목 목록」과 짝(#358). */}
+              <h2 className="pane-title">{t.panes.detail}</h2>
+              {/*
+               * 정보 상자 하나 — 검사 조회·판정 · 연동 현황·이력 · ERP 수신과 같은 모양(첫 칸에 항목 이름 + 송신 여부 배지 · #358).
+               */}
+              <dl className="parts-iqc-facts iqc-inbound-facts integration-sync-facts">
+                <div className="parts-iqc-fact">
+                  <dt className="field-label">{t.table.item}</dt>
+                  <dd className="iqc-inbound-lot-key">
+                    <h3 className="parts-iqc-fact-key">{selected.outboundItemName}</h3>
+                    <Chip variant="status" size="sm" status={selected.enabled ? 'success' : 'idle'}>
+                      {selected.locked
+                        ? t.send.required
+                        : selected.enabled
+                          ? t.send.on
+                          : t.send.off}
+                    </Chip>
+                  </dd>
+                </div>
+                <div className="parts-iqc-fact">
+                  <dt className="field-label">{t.table.sendTiming}</dt>
+                  <dd>{selected.sendTimingNote ?? t.values.empty}</dd>
+                </div>
+                <div className="parts-iqc-fact">
+                  <dt className="field-label">{t.table.pending}</dt>
+                  <dd>
+                    {countText(
+                      selected.interfaceCode === null
+                        ? undefined
+                        : counts.of(selected.interfaceCode, MESSAGE_STATUS.pending),
+                      selected.interfaceCode !== null,
+                    )}
+                  </dd>
+                </div>
+                <div className="parts-iqc-fact">
+                  <dt className="field-label">{t.table.failed}</dt>
+                  <dd>
+                    {countText(
+                      selected.interfaceCode === null
+                        ? undefined
+                        : counts.of(selected.interfaceCode, MESSAGE_STATUS.failed),
+                      selected.interfaceCode !== null,
+                    )}
+                  </dd>
+                </div>
+                {selected.lockReason !== null && (
+                  <div className="parts-iqc-fact">
+                    <dt className="field-label">{t.table.lockReason}</dt>
+                    <dd>{selected.lockReason}</dd>
+                  </div>
+                )}
+              </dl>
+              {/* 송신 예정 — 제목 줄에 건수, 생성일 조건, 아직 보내지 않은 건의 표(#358). */}
+              <h3 className="pane-title erp-outbound-pending-title">
                 {selected.interfaceCode !== null && pendingCount !== undefined
                   ? t.pendingTitle(selected.outboundItemName, pendingCount)
-                  : selected.outboundItemName}
-              </h2>
+                  : t.panes.pending}
+              </h3>
               {selected.interfaceCode !== null && (
                 <div className="po-board-filter">
                   <CreatedFilter applied={created} today={today} onApply={applyCreated} />
                 </div>
               )}
               {pendingSlot()}
-            </>
+            </div>
           ),
       }}
     />

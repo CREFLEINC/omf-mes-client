@@ -39519,6 +39519,11 @@ body:has(
   margin: 0;
 }
 
+/* ERP 송신 상세 — 정보 상자 아래 「송신 예정」 소제목(제목 여백은 상자 줄 간격이 맡는다 · #358). */
+.erp-outbound-detail > .erp-outbound-pending-title {
+  margin: var(--space-2) 0 0;
+}
+
 /* 정보 상자 첫 칸의 문서 번호 — 제목 글자 크기, 기본 여백은 없앤다. */
 .integration-sync-facts .parts-iqc-fact-key {
   margin: 0;

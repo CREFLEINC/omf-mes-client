@@ -50,8 +50,8 @@ describe('ErpSendChips — 연동 현황·이력의 링크', () => {
     await hub.findByText('송신 켜짐');
     const link = hub.getByRole('link');
     expect(link).toHaveAttribute('href', '/master-data/erp-outbound');
-    // 접근 이름을 덮지 않는다 — 켜짐 · 건수가 읽힌다.
-    expect(link).toHaveAccessibleName(/송신 켜짐.*송신 대기/);
+    // 접근 이름을 덮지 않는다 — 칩 글자가 읽힌다.
+    expect(link).toHaveAccessibleName('송신 켜짐');
   });
 
   it('볼 수 없으면 링크로 세우지 않는다 — 누르면 막힌 탭으로 간다', async () => {
@@ -63,25 +63,17 @@ describe('ErpSendChips — 연동 현황·이력의 링크', () => {
   });
 });
 
-describe('ErpSendChips — 0건 칩', () => {
-  it('송신 대기가 0건이면 대기 칩을 세우지 않는다 — 실패 칩은 선다', async () => {
-    renderChips(['W-06-10', 'W-06-12'], { sendEnabled: true, items: [item(0, 3)] });
+describe('ErpSendChips — 켜짐 칩만', () => {
+  it('대기 · 실패 건수 칩은 세우지 않는다 — 켜짐 칩 하나만 선다(#358)', async () => {
+    renderChips(['W-06-10', 'W-06-12'], { sendEnabled: true, items: [item(4, 3)] });
 
     const hub = within(screen.getByTestId('hub-actions'));
-    expect(await hub.findByText('송신 실패 3')).toBeInTheDocument();
-    expect(hub.queryByText(/^송신 대기 /)).toBeNull();
+    expect(await hub.findByText('송신 켜짐')).toBeInTheDocument();
+    expect(hub.queryByText(/^송신 (대기|실패) /)).toBeNull();
   });
 
-  it('송신 실패가 0건이면 실패 칩을 세우지 않는다 — 대기 칩은 선다', async () => {
-    renderChips(['W-06-10', 'W-06-12'], { sendEnabled: true, items: [item(4, 0)] });
-
-    const hub = within(screen.getByTestId('hub-actions'));
-    expect(await hub.findByText('송신 대기 4')).toBeInTheDocument();
-    expect(hub.queryByText(/^송신 실패 /)).toBeNull();
-  });
-
-  it('켜짐을 모르고 건수가 모두 0건이면 빈 자리도 두지 않는다', async () => {
-    renderChips(['W-06-10', 'W-06-12'], { items: [item(0, 0)] });
+  it('켜짐을 모르면(옛 서버) 건수가 있어도 빈 자리도 두지 않는다', async () => {
+    renderChips(['W-06-10', 'W-06-12'], { items: [item(4, 3)] });
 
     const hub = screen.getByTestId('hub-actions');
     /* 설정 응답이 올 때까지 기다린 뒤에도 비어 있다. */
