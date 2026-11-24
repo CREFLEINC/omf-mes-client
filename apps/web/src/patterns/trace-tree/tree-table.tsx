@@ -292,12 +292,13 @@ export const TraceTreeTable = ({
     {
       key: 'item',
       header: t.columns.item,
-      width: '14%',
+      width: '22%',
       render: (row) => {
         if (row.type !== 'node') return '';
         const item = itemOf(row.line);
+        /* 품목명은 두 줄까지 접어 읽히게, 그보다 길면 말줄임(전체는 마우스를 올리면). */
         return (
-          <span className="ellipsis-cell" title={item.title}>
+          <span className="trace-tree-wrap" title={item.title}>
             {item.text}
           </span>
         );

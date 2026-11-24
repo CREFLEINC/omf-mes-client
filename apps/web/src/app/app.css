@@ -40141,3 +40141,32 @@ body:has(
   width: 100%;
 }
 
+/* 계보 표 품목 칸 — 두 줄까지 접는다(그 이상은 말줄임). 칸은 한 줄 규칙(.trace-tree-table)보다 무겁게. */
+.trace-tree-table td:has(> .trace-tree-wrap) {
+  white-space: normal;
+}
+
+/*
+ * 단계 · 번호 칸 — 깊은 줄에서 칸이 모자라면 번호를 줄이지 않고 다음 줄로 접는다(LOT 번호는 대조 값). 펼침 단추 · 단계
+ * 이름은 첫 줄에 남는다.
+ */
+.trace-tree-table td:has(> .trace-tree-cell) {
+  white-space: normal;
+}
+
+.trace-tree-table .trace-tree-cell {
+  align-items: flex-start;
+  white-space: normal;
+}
+
+.trace-tree-table .trace-tree-cell > .trace-tree-no {
+  min-width: 4ch;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+}
+
+
+.trace-tree-table .trace-tree-cell > .trace-tree-stage {
+  white-space: nowrap;
+}

@@ -73,8 +73,9 @@ export const TraceLotList = ({
         return (
           <TraceLotCell
             lotNo={entry.row.lot.lotNo}
+            /* 스캔 번호가 LOT 번호 그대로면 칩을 두지 않는다 — 위 줄과 같은 글이라 품목 자리만 줄인다. */
             source={
-              entry.source === null
+              entry.source === null || entry.source.label === entry.row.lot.lotNo
                 ? null
                 : `${t.matchedBy[entry.source.matchedBy]} ${entry.source.label}`
             }

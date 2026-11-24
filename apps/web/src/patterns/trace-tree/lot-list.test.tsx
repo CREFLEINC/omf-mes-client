@@ -162,4 +162,16 @@ describe('LOT 목록(FR-025)', () => {
     setup({ status: 'error', error: <p>목록 실패</p> });
     expect(screen.getByText('목록 실패')).toBeInTheDocument();
   });
+
+  it('US3-3 스캔 번호가 LOT 번호와 같으면 스캔 번호 칩을 두지 않는다(품목이 보이게)', () => {
+    setup({
+      mode: 'SCAN',
+      entries: [
+        entry(row(1), { matchedBy: 'MATERIAL_LOT_NO', label: row(1).lot.lotNo }),
+        entry(row(2), { matchedBy: 'INBOUND_LOT_NO', label: 'IL-1' }),
+      ],
+    });
+    expect(screen.queryByText(`${t.matchedBy.MATERIAL_LOT_NO} ${row(1).lot.lotNo}`)).toBeNull();
+    expect(screen.getByText(`${t.matchedBy.INBOUND_LOT_NO} IL-1`)).toBeInTheDocument();
+  });
 });
