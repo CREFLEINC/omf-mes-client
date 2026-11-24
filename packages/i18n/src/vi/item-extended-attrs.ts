@@ -508,8 +508,7 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
     },
     actionReasons: {
       /* 「무엇이 막혔는지 + 어떻게 푸는지」 - 이 컨트롤의 이름으로 시작한다. */
-      routingOperationEmpty:
-        'Công đoạn đăng ký hiện không chọn được vì mặt hàng này chưa có luồng công đoạn nào. Hãy đăng ký luồng công đoạn trước rồi mở lại.',
+      routingOperationEmpty: 'Chưa có luồng công đoạn nên không chọn được.',
     },
     loading: {
       list: 'Đang tải thành phần',
@@ -517,7 +516,7 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       detail: 'Đang tải thông tin thành phần',
     },
     dialog: {
-      title: (name: string): string => `Sửa cột mở rộng của thành phần — ${name}`,
+      title: 'Sửa cột mở rộng của thành phần',
       /* 창에 원본 열이 없다는 사실을 밝힌다 - 서버가 막지 않으므로 화면이 지키는 자리다. */
       originNotice:
         'Cột gốc do hệ thống ngoài sở hữu nên không đổi được ở đây. Chỉ bốn mục dưới đây được lưu.',

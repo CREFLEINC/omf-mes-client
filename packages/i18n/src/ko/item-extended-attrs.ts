@@ -601,8 +601,7 @@ export const itemExtendedAttrs = {
     },
     actionReasons: {
       /* 「무엇이 막혔는지 + 어떻게 풀 수 있는지」 — 이 컨트롤의 이름으로 시작한다. */
-      routingOperationEmpty:
-        '등록 공정은 이 품목에 등록된 공정 흐름이 없어 고를 수 없습니다. 공정 흐름을 먼저 등록한 뒤 다시 여세요.',
+      routingOperationEmpty: '등록된 공정 흐름이 없어 고를 수 없습니다.',
     },
     loading: {
       list: '구성품을 불러오는 중',
@@ -610,7 +609,8 @@ export const itemExtendedAttrs = {
       detail: '구성품 정보를 불러오는 중',
     },
     dialog: {
-      title: (name: string): string => `구성품 확장 열 수정 — ${name}`,
+      /** 제목은 한 줄 — 고치는 품목은 그 아래 줄에 따로(시안 A, 사용자 결정 2026-11-24). */
+      title: '구성품 확장 열 수정',
       /*
        * 창에 원본 열이 없다는 사실을 밝힌다 — 없는 것을 찾다가 「화면이 빠뜨렸다」로 읽지 않게 한다.
        * 서버가 이 경계를 막지 않으므로 화면이 지키는 자리라는 것도 이 문구가 대신한다.

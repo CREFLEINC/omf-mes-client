@@ -11308,6 +11308,48 @@ dd.bom-tree-code,
   font-weight: 700;
 }
 
+/*
+ * BOM 구성품 확장 열 수정 창(시안 A, 사용자 결정 2026-11-24) — 머리 · 바닥은 판의 회색 띠 그대로, 내용만 흰 바탕으로
+ * 띄우고 머리 아래에 선을 둬 머리와 내용을 가른다. 디자인 시스템 창 속 클래스는 빌드마다 바뀌는 해시라 자리로 고른다:
+ * 판 > 머리(첫째) · 내용(둘째) · 바닥(셋째).
+ */
+.bom-component-dialog > div > :first-child {
+  align-items: center;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.bom-component-dialog > div > :nth-child(2) {
+  padding: var(--space-5);
+  background: var(--surface);
+}
+
+/* 제목 한 줄 + 그 아래 고치는 품목 한 줄(코드 굵게 · 품목명). 품목명이 길면 말줄임. */
+.bom-component-dialog__title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bom-component-dialog__item {
+  display: flex;
+  gap: var(--space-2);
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  white-space: nowrap;
+}
+
+.bom-component-dialog__item b {
+  flex: none;
+  color: var(--on-surface);
+  font-weight: 700;
+}
+
+.bom-component-dialog__item > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* 품목 · BOM 탭 조건 카드 — 여백을 줄여 낮게(사용자 지시 2026-11-24 「필터 카드를 compact 하게」). */
 .pane.po-board-filter.item-master-filter {
   padding: var(--space-2) var(--space-3);

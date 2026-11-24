@@ -317,6 +317,8 @@ interface EditingRow {
   bomComponentId: number;
   parentItemId: number;
   rowName: string;
+  itemCode: string | null;
+  itemName: string;
 }
 
 interface ComponentFormState {
@@ -468,6 +470,8 @@ const BomTreeTable = ({ bom, uoms, processes, onEdit }: BomTreeTableProps) => {
                 bomComponentId: component.bomComponentId,
                 parentItemId,
                 rowName: rowLabel(row),
+                itemCode: itemOf(row.itemId).code,
+                itemName: itemOf(row.itemId).name,
               });
             }}
           />
@@ -674,7 +678,8 @@ const BomDetail = ({ parentItemId, requestedBomId, onPickBom }: BomDetailProps) 
       {/* 열 때만 마운트한다 — 닫힌 창을 남기면 지난 값이 살아 있고, 창이 행 상세 조회를 붙잡고 있게 된다. */}
       {editing !== null && (
         <BomComponentFormDialog
-          rowName={editing.rowName}
+          itemCode={editing.itemCode}
+          itemName={editing.itemName}
           loadError={
             detail.isError ? (
               <LoadErrorBanner error={detail.error} onRetry={() => void detail.refetch()} />
