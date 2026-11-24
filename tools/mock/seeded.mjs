@@ -969,19 +969,33 @@ const currentSession = () => ({
 
 on('GET', '/app/sessions/current', () => (signedIn ? currentSession() : unauthenticated()));
 
-on('POST', '/app/sessions', (_params, _query, _body, headers) =>
-  idempotent('login', headers, () => {
+/*
+ * ⚠ **로그인하면 세션 쿠키를 내려 준다**(#358 · 사용자 지적 2026-11-24 「로그인이 안 된다」). 목에 없는 경로는
+ * Prism 으로 넘어가는데 Prism 은 `omf_session` 쿠키가 없으면 401 을 낸다 — 쿠키가 없는 브라우저는 로그인에
+ * 성공해도 첫 화면의 요청(알림 이벤트 등)이 401 이 되어 다시 로그인 화면으로 돌아갔다. 실서버도 로그인 응답에서
+ * 쿠키를 심으므로 같은 흐름이다.
+ */
+const SESSION_COOKIE = 'omf_session=mock; Path=/; HttpOnly; SameSite=Lax';
+const CLEAR_SESSION_COOKIE = 'omf_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0';
+
+on('POST', '/app/sessions', (_params, _query, _body, headers) => {
+  const result = idempotent('login', headers, () => {
     signedIn = true;
     return currentSession();
-  }),
-);
+  });
+  if (result !== null && typeof result === 'object' && 'status' in result) return result;
+  return { status: 200, created: result, headers: { 'Set-Cookie': SESSION_COOKIE } };
+});
 
-on('DELETE', '/app/sessions/current', (_params, _query, _body, headers) =>
-  idempotent('logout', headers, () => {
+on('DELETE', '/app/sessions/current', (_params, _query, _body, headers) => {
+  const result = idempotent('logout', headers, () => {
     signedIn = false;
     return { status: 204, created: undefined };
-  }),
-);
+  });
+  return result?.status === 204
+    ? { ...result, headers: { 'Set-Cookie': CLEAR_SESSION_COOKIE } }
+    : result;
+});
 
 /* ── 기준정보 ─────────────────────────────────────────────── */
 
