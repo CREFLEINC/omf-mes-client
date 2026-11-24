@@ -4031,7 +4031,7 @@ describe('InspectionStandardScreen — 품목 검사 수준(#357)', () => {
   ];
   const levelSelect = () => within(planForm()).getByRole('combobox', { name: '검사 수준' });
 
-  it('상세 칸은 수준 옆에 「변경 이력」 단추 하나만 둔다 — 「변경」 단추는 없다', async () => {
+  it('상세 칸은 수준만 보이고 단추를 두지 않는다', async () => {
     renderSelectedPlan(levelRoutes([LEVEL]));
 
     const facts = await waitFor(() => {
@@ -4040,11 +4040,7 @@ describe('InspectionStandardScreen — 품목 검사 수준(#357)', () => {
       return box as HTMLElement;
     });
     expect(await within(facts).findByText('보통')).toBeInTheDocument();
-    expect(
-      within(facts)
-        .getAllByRole('button')
-        .map((button) => button.textContent),
-    ).toEqual(['변경 이력']);
+    expect(within(facts).queryByRole('button')).not.toBeInTheDocument();
   });
 
   it('기본 정보는 그대로 두고 수준만 바꾸면 수준만 사유와 함께 받은 판으로 잠가 보내고 창을 닫는다', async () => {
@@ -4099,42 +4095,42 @@ describe('InspectionStandardScreen — 품목 검사 수준(#357)', () => {
     });
   });
 
-  /* 검사 수준은 버전이 아니라 품목(기준 전체)에 걸린다 — 이력은 버전 구획이 아닌 「검사 수준」 칸 옆에서 연다(사용자 지시). */
-  it('「변경 이력」은 「검사 수준 변경 이력」 창을 열고, 닫아도 고른 기준이 그대로다', async () => {
+  /* 검사 수준은 버전이 아니라 품목(기준 전체)에 걸린다 — 아래 카드를 「버전 상세 · 검사 수준 상세」 탭으로 나눈다(사용자 지시). */
+  it('IQC 기준은 아래 카드가 버전 상세 · 검사 수준 상세 탭이고, 검사 수준 상세는 그 품목의 변경 이력을 보인다', async () => {
     const { requests, user } = renderSelectedPlan(levelRoutes([LEVEL]));
 
-    expect(await screen.findByRole('button', { name: '변경 이력' })).toBeInTheDocument();
+    const versionTab = await screen.findByRole('tab', { name: '버전 상세' });
+    expect(versionTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('button', { name: '버전 목록' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '변경 이력' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '검사 수준 이력' })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '변경 이력' }));
 
-    const dialog = await screen.findByRole('dialog', { name: '검사 수준 변경 이력' });
-    expect(within(dialog).queryByRole('tab')).not.toBeInTheDocument();
-    expect(await within(dialog).findByText('합성 최초 지정')).toBeInTheDocument();
-    const headers = within(dialog)
+    await user.click(screen.getByRole('tab', { name: '검사 수준 상세' }));
+    const section = await screen.findByRole('region', { name: '검사 수준 변경 이력' });
+    expect(await within(section).findByText('합성 최초 지정')).toBeInTheDocument();
+    const headers = within(section)
       .getAllByRole('columnheader')
       .map((cell) => cell.textContent?.replace('drag_indicator', ''));
     expect(headers.slice(0, 4)).toEqual(['변경 일시', '변경 전', '변경 후', '변경자']);
-    expect(within(dialog).getByText('최초 지정')).toBeInTheDocument();
-    expect(within(dialog).getByText('합성 사용자')).toBeInTheDocument();
+    expect(within(section).getByText('최초 지정')).toBeInTheDocument();
+    expect(within(section).getByText('합성 사용자')).toBeInTheDocument();
     expect(requestsTo(requests, HISTORIES)[0]?.url.searchParams.get('itemId')).toBe('5001');
 
-    await user.click(within(dialog).getByRole('button', { name: '닫기' }));
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: '검사 수준 변경 이력' })).not.toBeInTheDocument();
-    });
+    /* 탭을 오가도 고른 기준은 그대로다. */
+    await user.click(screen.getByRole('tab', { name: '버전 상세' }));
+    expect(screen.getByRole('button', { name: '버전 목록' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'SYN-PLAN-01' })).toHaveAttribute(
       'aria-current',
       'true',
     );
-    expect(screen.getByRole('button', { name: '기본 정보 수정' })).toBeInTheDocument();
   });
 
   it('수준 변경 이력이 없으면 「검사 수준 변경 이력이 없습니다.」라고 낸다', async () => {
     const { user } = renderSelectedPlan(levelRoutes([LEVEL], []));
 
-    await user.click(await screen.findByRole('button', { name: '변경 이력' }));
-    const dialog = await screen.findByRole('dialog', { name: '검사 수준 변경 이력' });
-    expect(await within(dialog).findByText('검사 수준 변경 이력이 없습니다.')).toBeInTheDocument();
+    await user.click(await screen.findByRole('tab', { name: '검사 수준 상세' }));
+    const section = await screen.findByRole('region', { name: '검사 수준 변경 이력' });
+    expect(await within(section).findByText('검사 수준 변경 이력이 없습니다.')).toBeInTheDocument();
   });
 
   it('「이력」 창은 검사 기준 이력 · 검사 수준 이력 탭으로 나뉘고, 검사 수준 이력은 그 품목만 조회한다', async () => {

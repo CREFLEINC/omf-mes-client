@@ -394,7 +394,7 @@ main > * + * {
 }
 
 /* IQC 기준 상세의 품목 검사 수준 — 칩(또는 「미지정」) · 지정/변경 · 이력을 한 줄로(omf-all-around#357). */
-/* 현재 수준 · 「변경 이력」 글자 단추를 한 줄로 — 칸이 좁으면 단추가 다음 줄로 내려가 겹치지 않는다(#357). */
+/* 품목의 현재 검사 수준 칩(#357). */
 .inspection-standard-plan-facts .inspection-standard-item-level {
   display: flex;
   flex-wrap: wrap;

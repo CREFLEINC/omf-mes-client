@@ -315,8 +315,8 @@ export const InspectionStandardScreen = () => {
     setIsHistoryOpen(false);
     setHistoryTab('plan');
   };
-  /* 상세 「검사 수준」 칸 옆 「변경 이력」 창(사용자 지시 · omf-all-around#357). 기준 · 버전 선택(주소)은 건드리지 않는다. */
-  const [isLevelHistoryOpen, setIsLevelHistoryOpen] = useState(false);
+  /* 아래 카드의 탭 — 버전 상세 · 검사 수준 상세(IQC 기준만 · 사용자 지시 omf-all-around#357). 버전 선택(주소)은 건드리지 않는다. */
+  const [detailTab, setDetailTab] = useState<'version' | 'level'>('version');
   const toast = useToast();
   const { client } = useApiClient();
   const sheetForPqc = useSheetForPqc();
@@ -1858,11 +1858,7 @@ export const InspectionStandardScreen = () => {
             const itemId = plan.itemId ?? null;
             if (plan.inspectionTypeCode !== 'IQC' || itemId === null) return undefined;
             return (
-              <ItemLevelFact
-                key={itemId}
-                itemId={itemId}
-                onOpenHistory={() => setIsLevelHistoryOpen(true)}
-              />
+              <ItemLevelFact key={itemId} itemId={itemId} />
             );
           })()}
           routingRevision={routingOptions.revisions.find(
@@ -1948,27 +1944,51 @@ export const InspectionStandardScreen = () => {
         />
 
         {/* 버전 카드(사용자 시안 · omf-all-around#258) — 머리 줄 · 요약 · 버전별 설정 · 바닥 줄(확정 등). */}
-        <div className="inspection-standard-version-card">
-          {renderVersionBar()}
+        {historyLevelItemId === null ? (
+          <div className="inspection-standard-version-card">
+            {renderVersionBar()}
 
-          {renderVersionBody()}
-        </div>
+            {renderVersionBody()}
+          </div>
+        ) : (
+          /*
+           * IQC 기준은 아래 카드를 「버전 상세 · 검사 수준 상세」 탭으로 나눈다(사용자 지시 · omf-all-around#357).
+           * 검사 수준은 버전이 아니라 품목(기준 전체)에 걸린 값이라 버전 구획 안에 섞지 않는다.
+           */
+          <Tabs
+            className="inspection-standard-detail-tabs"
+            aria-label={t.itemLevel.detailTabs}
+            value={detailTab}
+            onChange={(value) => setDetailTab(value as 'version' | 'level')}
+            items={[
+              {
+                value: 'version',
+                label: t.itemLevel.versionTab,
+                content: (
+                  <div className="inspection-standard-version-card">
+                    {renderVersionBar()}
 
-        {isLevelHistoryOpen && historyLevelItemId !== null && (
-          <Dialog
-            open
-            size="lg"
-            title={t.itemLevel.historyTitle}
-            showCloseButton={false}
-            onClose={() => setIsLevelHistoryOpen(false)}
-            footer={
-              <Button variant="outlined" onClick={() => setIsLevelHistoryOpen(false)}>
-                {messages.common.close}
-              </Button>
-            }
-          >
-            <ItemLevelHistoryTable itemId={historyLevelItemId} />
-          </Dialog>
+                    {renderVersionBody()}
+                  </div>
+                ),
+              },
+              {
+                value: 'level',
+                label: t.itemLevel.levelTab,
+                content: (
+                  <section
+                    className="inspection-standard-version-card"
+                    aria-label={t.itemLevel.historyTitle}
+                  >
+                    <h3 className="pane-title">
+                      {t.itemLevel.historyTitle}
+                    </h3>
+                    <ItemLevelHistoryTable itemId={historyLevelItemId} />
+                  </section>
+                ),
+              },
+            ]}
+          />
         )}
 
         {isHistoryOpen && historyVersionId !== null && (
