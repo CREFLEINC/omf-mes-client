@@ -439,7 +439,7 @@ export const appRouter = createBrowserRouter([
        * 같은 판정을 관리웹에서 등록하고 지난 의뢰를 본다.
        */
       { path: 'quality/pqc-inspections', element: <PqcInspectionRegisterScreen /> },
-      /* W-03-12 검사 수준 관리의 옛 주소 — 검사 기준 화면의 IQC 기준 상세에 합쳤다(omf-all-around#357). 권한 판단은 이 주소로 남긴다. */
+      /* 검사 수준 관리(W-03-12)의 옛 주소 — 화면과 권한을 검사 기준 관리(W-06-02)에 합쳤다(omf-all-around#357). */
       {
         path: 'quality/inspection-levels',
         element: <Navigate to="/master-data/inspection-standard?type=IQC" replace />,

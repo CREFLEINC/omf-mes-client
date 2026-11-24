@@ -4043,8 +4043,14 @@ describe('InspectionStandardScreen — 품목 검사 수준(#357)', () => {
     expect(within(facts).queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('기본 정보는 그대로 두고 수준만 바꾸면 수준만 사유와 함께 받은 판으로 잠가 보내고 창을 닫는다', async () => {
-    const { requests, user } = renderSelectedPlan(levelRoutes([LEVEL]));
+  /* 기본 정보와 검사 수준은 한 요청으로 저장한다 — 둘 중 하나만 저장되지 않는다(사용자 지시 · #357). */
+  const levelWrites = (requests: { method: string; url: URL }[]) =>
+    requests.filter(
+      (r) => (r.method === 'PUT' || r.method === 'POST') && r.url.pathname.startsWith(LEVELS),
+    );
+
+  it('수준만 바꿔도 기본 정보 수정 요청 하나에 수준 · 사유를 실어 보내고 창을 닫는다', async () => {
+    const { requests, user } = renderSelectedPlan([planSaveRoute(), ...levelRoutes([LEVEL])]);
     await awaitPlanForm();
 
     await user.click(await waitFor(levelSelect));
@@ -4053,19 +4059,17 @@ describe('InspectionStandardScreen — 품목 검사 수준(#357)', () => {
     await user.click(within(planForm()).getByRole('button', { name: '저장' }));
 
     await screen.findByText('저장했습니다');
-    expect(requests.some((r) => r.method === 'PUT' && r.url.pathname === PLAN_DETAIL_PATH)).toBe(
-      false,
-    );
-    const put = requests.find((r) => r.method === 'PUT' && r.url.pathname === `${LEVELS}/9`);
-    expect(put?.headers.get('If-Match')).toBe('3');
-    expect(JSON.parse(put?.body ?? '{}')).toEqual({
+    const puts = requests.filter((r) => r.method === 'PUT' && r.url.pathname === PLAN_DETAIL_PATH);
+    expect(puts).toHaveLength(1);
+    expect(JSON.parse(puts[0]?.body ?? '{}')).toMatchObject({
       inspectionLevelCode: 'TIGHTENED',
-      reason: '고객 클레임',
+      inspectionLevelReason: '고객 클레임',
     });
+    expect(levelWrites(requests)).toHaveLength(0);
     expect(screen.queryByRole('region', { name: '기준 정보' })).not.toBeInTheDocument();
   });
 
-  it('기준명과 수준을 함께 바꾸면 기본 정보를 먼저 저장하고 이어서 수준을 저장한다', async () => {
+  it('기준명과 수준을 함께 바꿔도 요청은 하나다', async () => {
     const { requests, user } = renderSelectedPlan([planSaveRoute(), ...levelRoutes([LEVEL])]);
 
     await user.type(await findPlanField('기준명'), 'X');
@@ -4074,12 +4078,27 @@ describe('InspectionStandardScreen — 품목 검사 수준(#357)', () => {
     await user.click(within(planForm()).getByRole('button', { name: '저장' }));
 
     await screen.findByText('저장했습니다');
-    const writes = requests.filter((r) => r.method === 'PUT').map((r) => r.url.pathname);
-    expect(writes).toEqual([PLAN_DETAIL_PATH, `${LEVELS}/9`]);
+    const puts = requests.filter((r) => r.method === 'PUT' && r.url.pathname === PLAN_DETAIL_PATH);
+    expect(puts).toHaveLength(1);
+    expect(JSON.parse(puts[0]?.body ?? '{}')).toMatchObject({ inspectionLevelCode: 'TIGHTENED' });
+    expect(JSON.parse(puts[0]?.body ?? '{}')).not.toHaveProperty('inspectionLevelReason');
+    expect(levelWrites(requests)).toHaveLength(0);
   });
 
-  it('수준이 없는 품목은 「미지정」에서 골라 지정한다 — 사유를 비우면 싣지 않는다', async () => {
-    const { requests, user } = renderSelectedPlan(levelRoutes([]));
+  it('수준을 그대로 두면 수준 칸을 싣지 않는다', async () => {
+    const { requests, user } = renderSelectedPlan([planSaveRoute(), ...levelRoutes([LEVEL])]);
+
+    await user.type(await findPlanField('기준명'), 'X');
+    await waitFor(levelSelect);
+    await user.click(within(planForm()).getByRole('button', { name: '저장' }));
+
+    await screen.findByText('저장했습니다');
+    const put = requests.find((r) => r.method === 'PUT' && r.url.pathname === PLAN_DETAIL_PATH);
+    expect(JSON.parse(put?.body ?? '{}')).not.toHaveProperty('inspectionLevelCode');
+  });
+
+  it('수준이 없는 품목은 「미지정」에서 골라 지정한다', async () => {
+    const { requests, user } = renderSelectedPlan([planSaveRoute(), ...levelRoutes([])]);
     await awaitPlanForm();
 
     await user.click(await waitFor(levelSelect));
@@ -4088,11 +4107,40 @@ describe('InspectionStandardScreen — 품목 검사 수준(#357)', () => {
     await user.click(within(planForm()).getByRole('button', { name: '저장' }));
 
     await screen.findByText('저장했습니다');
-    const post = requests.find((r) => r.method === 'POST' && r.url.pathname === LEVELS);
-    expect(JSON.parse(post?.body ?? '{}')).toEqual({
-      itemId: 5001,
-      inspectionLevelCode: 'REDUCED',
-    });
+    const put = requests.find((r) => r.method === 'PUT' && r.url.pathname === PLAN_DETAIL_PATH);
+    expect(JSON.parse(put?.body ?? '{}')).toMatchObject({ inspectionLevelCode: 'REDUCED' });
+    expect(levelWrites(requests)).toHaveLength(0);
+  });
+
+  it('서버가 수준을 거절하면 창이 열린 채 수준 칸 아래에 알리고 아무것도 저장되지 않는다', async () => {
+    const { user } = renderSelectedPlan([
+      planSaveRoute(() =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'field',
+                field: 'inspectionLevelCode',
+                code: 'INVALID',
+                message: '검사 수준은 품목이 있는 IQC 검사 기준에서만 정할 수 있습니다.',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+      ),
+      ...levelRoutes([LEVEL]),
+    ]);
+    await awaitPlanForm();
+
+    await user.click(await waitFor(levelSelect));
+    await user.click(screen.getByRole('option', { name: '엄격' }));
+    await user.click(within(planForm()).getByRole('button', { name: '저장' }));
+
+    expect(
+      await within(planForm()).findByText('검사 수준은 품목이 있는 IQC 검사 기준에서만 정할 수 있습니다.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('저장했습니다')).not.toBeInTheDocument();
   });
 
   /* 검사 수준은 버전이 아니라 품목(기준 전체)에 걸린다 — 아래 카드를 「버전 관리 · 검사 수준 변경 이력」 탭으로 나눈다(사용자 지시). */

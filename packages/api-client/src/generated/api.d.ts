@@ -49477,6 +49477,14 @@ export interface components {
        * @example false
        */
       pqcSkipAllowed?: boolean;
+      /**
+       * @description 품목 검사 수준 — 기본 정보와 한 트랜잭션에서 저장한다. 생략 = 그대로. 품목이 있는 IQC 기준이 아니면 400 inspectionLevelCode INVALID. 수준이 바뀌면 수동 이력 1건, 다른 저장이 먼저 수준을 바꿨으면 409 VERSION_CONFLICT(기본 정보도 저장 안 됨). 근거: omf-all-around#357
+       * @example NORMAL
+       * @enum {string}
+       */
+      inspectionLevelCode?: 'NONE' | 'REDUCED' | 'NORMAL' | 'TIGHTENED';
+      /** @description 검사 수준 변경 사유(선택) — 이력에 남는다. 근거: omf-all-around#357 */
+      inspectionLevelReason?: string | null;
     };
     InspectionPlanDetailResponse: {
       inspectionPlan: components['schemas']['InspectionPlan'];

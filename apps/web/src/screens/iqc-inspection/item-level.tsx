@@ -16,8 +16,8 @@ type ItemInspectionLevel = components['schemas']['ItemInspectionLevel'];
 const t = messages.iqcInspection.detail.level;
 const levelNames = messages.inspectionLevel.levels;
 
-/** 검사 수준 관리(W-03-12)의 옛 주소 — 화면은 검사 기준 관리에 합쳤고(#357) 권한 판단은 이 주소로 남는다. */
-const INSPECTION_LEVEL_PATH = '/quality/inspection-levels';
+/** 검사 수준 지정 권한 — 검사 수준 관리(W-03-12)를 검사기준 등록(W-06-02)에 합쳤다(#357). */
+const INSPECTION_LEVEL_PATH = '/master-data/inspection-standard';
 
 export interface ItemLevelProps {
   itemId: number;

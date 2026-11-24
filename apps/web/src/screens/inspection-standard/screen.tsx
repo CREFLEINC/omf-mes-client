@@ -80,8 +80,7 @@ import {
   importStatusOf,
 } from './import-dialog';
 import { ItemLevelHistoryTable } from '../inspection-level/history-table';
-import { useLevelWrite } from '../inspection-level/level-write';
-import { useItemInspectionLevel } from '../inspection-level/queries';
+import { inspectionLevelKeys, useItemInspectionLevel } from '../inspection-level/queries';
 import { ItemLevelFact } from './item-level-fact';
 import { type LevelDraft, PlanLevelField } from './plan-level-field';
 import { PlanDetailHead } from './plan-detail-head';
@@ -159,14 +158,22 @@ const t = messages.inspectionStandard;
 
 /** 라우팅 화면 — 상세 머리의 「라우팅 조회」가 이 주소로 그 품목 · Rev 를 연다(`item` · `rev` 는 그 화면의 주소 칸이다). */
 const ROUTING_PATH = '/master-data/routing';
-/** 검사 수준 지정 · 변경 권한(W-03-12) — 서버가 이 화면 권한으로 받는다. 화면 자체는 검사 기준에 합쳤다(omf-all-around#357). */
-const INSPECTION_LEVEL_PATH = '/quality/inspection-levels';
+/** 검사 수준 지정 · 변경 권한 — 검사 수준 관리(W-03-12)를 검사기준 등록(W-06-02)에 합쳤다(omf-all-around#357). */
+const INSPECTION_LEVEL_PATH = '/master-data/inspection-standard';
+/** 서버가 검사 수준 저장 실패를 돌려주는 칸 — 기본 정보 칸이 아니라 검사 수준 칸 아래에 보인다. */
+const LEVEL_FIELDS = ['inspectionLevelCode', 'inspectionLevelReason'] as const;
 
 /** 바뀌면 편집 대상(기준 · 버전)이 바뀌는 질의 — 「뒤로」로 이 값만 바뀌어도 편집이 사라져 묻는다. */
 const EDIT_TARGET_PARAMS = ['plan', 'ver'] as const;
 const hubText = messages.common.inspectionHub;
 
 /** 폼의 현재 값과 그것이 어디서 나왔는지. 「고친 것이 있는가」는 둘의 비교로 판정한다. */
+/** 「기본 정보 수정」 저장 — 바꾼 검사 수준이 있으면 같은 요청에 싣는다. */
+interface PlanSave {
+  values: PlanFormValues;
+  level: LevelDraft | null;
+}
+
 interface PlanFormState {
   source: InspectionPlanDetailResponse;
   baseline: PlanFormValues;
@@ -469,8 +476,9 @@ export const InspectionStandardScreen = () => {
     version: number;
   } | null>(null);
 
-  const planWrite = useMasterWrite<PlanFormValues, InspectionPlan>({
-    request: (values, headers) =>
+  /* 검사 수준은 기본 정보와 한 요청 · 한 트랜잭션으로 저장한다 — 둘 중 하나만 저장되지 않는다(사용자 지시 · omf-all-around#357). */
+  const planWrite = useMasterWrite<PlanSave, InspectionPlan>({
+    request: ({ values, level }, headers) =>
       client.PUT('/quality/inspection-plans/{inspectionPlanId}', {
         params: {
           path: { inspectionPlanId: selectedPlanId ?? 0 },
@@ -479,7 +487,15 @@ export const InspectionStandardScreen = () => {
             'If-Match': headers['If-Match'] ?? '',
           },
         },
-        body: toPlanUpdate(values),
+        body: {
+          ...toPlanUpdate(values),
+          ...(level === null
+            ? {}
+            : {
+                inspectionLevelCode: level.level,
+                ...(level.reason === '' ? {} : { inspectionLevelReason: level.reason }),
+              }),
+        },
       }),
     /*
      * 잠금 토큰은 상세 경로에 보관돼 있다. 보관 키가 요청 경로라 다른 경로로 꺼내면 언제나 비어 있다.
@@ -488,19 +504,13 @@ export const InspectionStandardScreen = () => {
      */
     etagPath: selectedPlanId === null ? null : planDetailPath(selectedPlanId),
     /* 품목 전용 IQC 기준의 기본 생략은 품목 「IQC 대상」을 함께 바꾼다(#215) — 품목 화면 자료도 다시 읽게 한다. */
-    invalidateKeys: [planKeys.all, itemKeys.all, lookupKeys.routingsAll],
-    knownFields: PLAN_FORM_FIELDS,
+    invalidateKeys: [planKeys.all, itemKeys.all, lookupKeys.routingsAll, inspectionLevelKeys.all],
+    knownFields: [...PLAN_FORM_FIELDS, ...LEVEL_FIELDS],
     onSuccess: (saved) => {
       setPlanFieldErrors({});
+      setLevelDraft(null);
       const next = planToFormValues(saved);
       setFormState((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
-      /* 검사 수준도 바꿨으면 이어서 저장한다 — 창은 그 저장이 끝나야 닫는다(omf-all-around#357). */
-      const thenLevel = afterPlanSave.current;
-      afterPlanSave.current = null;
-      if (thenLevel !== null) {
-        thenLevel();
-        return;
-      }
       /* 저장하면 「기본 정보 수정」 창을 닫는다(사용자 지시 2026-11-04). */
       setIsPlanEditOpen(false);
       toast.show({ variant: 'success', description: messages.common.saved });
@@ -509,7 +519,7 @@ export const InspectionStandardScreen = () => {
 
   /*
    * 「기본 정보 수정」 창의 검사 수준(omf-all-around#357) — IQC 기준이고 품목이 있을 때만. 창에서 고른 품목의 수준을 묻는다.
-   * 기본 정보와 저장 길이 다르다(품목 검사 수준 API) — 기본 정보를 먼저 저장하고 이어서 저장한다.
+   * 저장은 기본 정보 수정 요청에 함께 싣는다.
    */
   const levelItemId =
     formState !== null &&
@@ -528,19 +538,6 @@ export const InspectionStandardScreen = () => {
     activeLevelDraft !== null &&
     activeLevelDraft.level !== (currentLevel.data?.inspectionLevelCode ?? null);
   const canEditLevel = toWebAccess(session?.permissions).allows(INSPECTION_LEVEL_PATH);
-  const afterPlanSave = useRef<(() => void) | null>(null);
-  const levelWrite = useLevelWrite(() => {
-    setLevelDraft(null);
-    setIsPlanEditOpen(false);
-    toast.show({ variant: 'success', description: messages.common.saved });
-  });
-  const writeLevel = (): void => {
-    if (activeLevelDraft === null) return;
-    levelWrite.write({
-      row: currentLevel.data ?? null,
-      values: activeLevelDraft,
-    });
-  };
 
   const createWrite = useMasterWrite<PlanFormValues, InspectionPlan>({
     request: (values, headers) =>
@@ -1415,14 +1412,7 @@ export const InspectionStandardScreen = () => {
     // 화면에서 잡히는 오류는 서버로 보내지 않는다.
     if (Object.keys(errors).length > 0) return;
 
-    levelWrite.reset();
-    /* 기본 정보가 그대로면 검사 수준만 저장한다(omf-all-around#357). */
-    if (!isPlanDirty) {
-      writeLevel();
-      return;
-    }
-    afterPlanSave.current = isLevelDirty ? writeLevel : null;
-    planWrite.write(formState.values);
+    planWrite.write({ values: formState.values, level: isLevelDirty ? activeLevelDraft : null });
   };
 
   const handleSaveCreate = () => {
@@ -1445,7 +1435,9 @@ export const InspectionStandardScreen = () => {
     planWrite.reset();
     setPlanFieldErrors({});
     setFormState(null);
+    setLevelDraft(null);
     void planDetail.refetch();
+    void currentLevel.refetch();
   };
 
   /* 목록 · 상세 머리의 품목 이름 — 보이는 품목만 상세로 푼다(#196). */
@@ -1833,7 +1825,6 @@ export const InspectionStandardScreen = () => {
     /* 창을 닫으면 고친 값을 버린다 — 보이지 않는 미저장 편집이 남으면 신규 버전 발행이 이유 모르게 막힌다. */
     const cancelPlanEdit = (): void => {
       setLevelDraft(null);
-      levelWrite.reset();
       planWrite.reset();
       setPlanFieldErrors({});
       setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
@@ -2043,20 +2034,7 @@ export const InspectionStandardScreen = () => {
               onRoutingRefresh={refreshPlanRouting}
               // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
               fieldErrors={{ ...planWrite.fieldErrors, ...planFieldErrors }}
-              banner={
-                <>
-                  <SaveErrorBanner error={planWrite.error} onReload={handleReloadPlanDetail} />
-                  {/* 기본 정보는 저장됐고 검사 수준만 막힌 경우 — 다시 「저장」하면 검사 수준만 보낸다. */}
-                  <SaveErrorBanner
-                    error={levelWrite.error}
-                    onReload={() => {
-                      levelWrite.reset();
-                      setLevelDraft(null);
-                      void currentLevel.refetch();
-                    }}
-                  />
-                </>
-              }
+              banner={<SaveErrorBanner error={planWrite.error} onReload={handleReloadPlanDetail} />}
               levelField={
                 levelItemId === null ? undefined : (
                   <PlanLevelField
@@ -2069,10 +2047,18 @@ export const InspectionStandardScreen = () => {
                     canEdit={canEditLevel}
                     draft={activeLevelDraft}
                     onChange={(next) => {
-                      levelWrite.reset();
+                      planWrite.clearFieldError('inspectionLevelCode');
+                      planWrite.clearFieldError('inspectionLevelReason');
                       setLevelDraft(next);
                     }}
-                    fieldErrors={levelWrite.fieldErrors}
+                    fieldErrors={{
+                      ...(planWrite.fieldErrors.inspectionLevelCode === undefined
+                        ? {}
+                        : { inspectionLevelCode: planWrite.fieldErrors.inspectionLevelCode }),
+                      ...(planWrite.fieldErrors.inspectionLevelReason === undefined
+                        ? {}
+                        : { reason: planWrite.fieldErrors.inspectionLevelReason }),
+                    }}
                   />
                 )
               }
@@ -2090,7 +2076,7 @@ export const InspectionStandardScreen = () => {
                   : codeLockMessage(planDetail.data.editability)
               }
               isDirty={isPlanDirty || isLevelDirty}
-              isSaving={planWrite.isSaving || levelWrite.isSaving}
+              isSaving={planWrite.isSaving}
               onSave={handleSavePlan}
               /* 창의 「취소」는 고친 값을 버리고 창을 닫는다(닫기 단추를 따로 두지 않는다 · 사용자 시안 #196). */
               onCancel={() => {
