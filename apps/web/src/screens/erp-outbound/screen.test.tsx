@@ -281,6 +281,42 @@ describe('ErpOutboundScreen — 송신 예정 목록', () => {
     expect(list?.searchParams.get('directionCode')).toBe('OUTBOUND');
   });
 
+  it('송신 대기 표 아래 쪽 넘김 줄 — 총 N건 · 쪽 크기 · [처음]~[마지막], 쪽 크기는 서버 size 로 싣는다(사용자 지시 2026-11-24)', async () => {
+    const { requests, user } = renderScreen(
+      [settingsRoute, messagesRoute()],
+      '?item=GOODS_RECEIPT',
+    );
+
+    await pendingPane().findByText('SAMPLE-GR-0001');
+    const nav = within(pendingPane().getByRole('navigation', { name: '쪽 이동' }));
+    /* 「총 N건」은 감추지 않는다 — 다른 상세 표와 같은 모양(종전 숨김 규칙 걷음). */
+    expect(nav.getByText('총 2건')).toBeVisible();
+    expect(nav.getByText('1 / 1')).toBeInTheDocument();
+    for (const name of ['처음', '이전', '다음', '마지막']) {
+      expect(nav.getByRole('button', { name })).toBeDisabled();
+    }
+    /* 고르기 전에는 종전 그대로 20건씩 부른다. */
+    expect(pendingListRequests(requests).at(-1)?.searchParams.get('size')).toBe('20');
+
+    await user.click(nav.getByRole('combobox', { name: '페이지 크기' }));
+    expect(nav.getByRole('combobox', { name: '페이지 크기' })).toHaveTextContent('20건');
+    await user.click(within(screen.getByRole('listbox')).getByRole('option', { name: /50건$/ }));
+
+    await waitFor(() => {
+      expect(pendingListRequests(requests).at(-1)?.searchParams.get('size')).toBe('50');
+    });
+    expect(screen.getByTestId('location')).toHaveTextContent('size=50');
+    expect(screen.getByTestId('location')).not.toHaveTextContent('page=');
+  });
+
+  it('송신 대기가 없어도 쪽 넘김 줄은 선다(총 0건)', async () => {
+    renderScreen([settingsRoute, messagesRoute()]);
+
+    expect(await pendingPane().findByText('송신 대기 건이 없습니다')).toBeInTheDocument();
+    const nav = within(pendingPane().getByRole('navigation', { name: '쪽 이동' }));
+    expect(nav.getByText('총 0건')).toBeInTheDocument();
+  });
+
   it('생성일 「전체」면 송신 대기를 전체 기간(2000-01-01 ~ 오늘)으로 부른다 — 서버는 기간을 꼭 받는다(#358)', async () => {
     const { requests } = renderScreen([settingsRoute, messagesRoute()], '?item=GOODS_RECEIPT');
 

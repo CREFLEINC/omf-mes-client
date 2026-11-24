@@ -139,6 +139,13 @@ describe('ErpCommonCodeScreen', () => {
     expect(await within(pane).findByText('예시 값 B')).toBeInTheDocument();
     expect(within(pane).getByText('미사용')).toBeInTheDocument();
     expect(within(pane).getByText('총 2건')).toBeInTheDocument();
+    /* 상세 안 코드값 표 아래 쪽 넘김 줄 — 총 N건 · 쪽 크기 · [처음]~[마지막](사용자 지시 2026-11-24). */
+    const nav = within(within(pane).getByRole('navigation', { name: '쪽 이동' }));
+    expect(nav.getByRole('combobox', { name: '페이지 크기' })).toHaveTextContent('50건');
+    expect(nav.getByText('1 / 1')).toBeInTheDocument();
+    for (const name of ['처음', '이전', '다음', '마지막']) {
+      expect(nav.getByRole('button', { name })).toBeDisabled();
+    }
     // 한국어·베트남어 명칭 열은 두지 않는다 — 코드명과 겹친다.
     expect(within(pane).queryByText('한국어 명칭')).not.toBeInTheDocument();
     expect(within(pane).queryByText('베트남어 명칭')).not.toBeInTheDocument();

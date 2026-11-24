@@ -122,6 +122,26 @@ describe('ErpPartnerScreen', () => {
     expect(screen.queryByRole('button', { name: /저장|등록|삭제/ })).not.toBeInTheDocument();
   });
 
+  it('목록 아래 쪽 넘김 줄을 두고, 다음 쪽은 page 를 서버에 싣는다', async () => {
+    const { urls, user } = renderScreen([listRoute(ROWS, 120), rolesRoute]);
+    await screen.findByText('예시 거래처 A');
+
+    /* 쪽 넘김 줄 — 왼쪽 「총 N건」 + 쪽 크기, 오른쪽 [처음] [이전] n / N [다음] [마지막](ERP 수신 묶음 공통 · 사용자 지시 2026-11-24). */
+    const nav = within(screen.getByRole('navigation', { name: '쪽 이동' }));
+    expect(nav.getByText('총 120건')).toBeInTheDocument();
+    expect(nav.getByRole('combobox', { name: '페이지 크기' })).toHaveTextContent('50건');
+    expect(nav.getByText('1 / 3')).toBeInTheDocument();
+    for (const name of ['처음', '이전', '다음', '마지막']) {
+      expect(nav.getByRole('button', { name })).toBeInTheDocument();
+    }
+
+    await user.click(nav.getByRole('button', { name: '다음' }));
+    await waitFor(() => {
+      const last = urls.filter((url) => url.pathname === LIST_PATH).at(-1);
+      expect(last?.searchParams.get('page')).toBe('2');
+    });
+  });
+
   it('검색어·역할·미사용 포함을 조회 조건으로 싣는다', async () => {
     const { urls, user } = renderScreen([listRoute(), rolesRoute]);
     await screen.findByText('예시 거래처 B');

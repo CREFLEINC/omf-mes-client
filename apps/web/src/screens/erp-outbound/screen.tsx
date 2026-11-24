@@ -23,7 +23,7 @@ import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { OneLine } from '../../patterns/po-board';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { Select } from '../../patterns/select';
-import { PageNav } from '../../patterns/page-nav';
+import { PAGE_SIZES, PageNav, type PageSize } from '../../patterns/page-nav';
 import { documentNoOf } from '../integration-sync/message-labels';
 import { formatDateTime } from '../integration-sync/message-status';
 import { toPageView } from '../integration-sync/pagination';
@@ -34,6 +34,7 @@ import { CreatedFilter } from './created-filter';
 import { formatDate, readCreatedPeriod } from './created-period';
 import { MESSAGE_STATUS, type OutboundItem } from './outbound-items';
 import {
+  PENDING_PAGE_SIZE,
   useOutboundCounts,
   useOutboundItems,
   usePendingMessages,
@@ -52,6 +53,10 @@ const readPage = (raw: string | null): number => {
 
   return Number.isInteger(value) && value > 1 ? value : 1;
 };
+
+/** 송신 예정 쪽 크기 — 주소의 `size`. 고른 적이 없으면 `null`(종전 20건 · `PENDING_PAGE_SIZE`). */
+const readSize = (raw: string | null): PageSize | null =>
+  PAGE_SIZES.find((option) => String(option) === raw) ?? null;
 
 const countText = (count: number | undefined, hasInterface: boolean): string => {
   if (!hasInterface || count === undefined) return t.values.empty;
@@ -264,6 +269,7 @@ export const ErpOutboundScreen = () => {
       ? null
       : (itemRows.find((item) => item.outboundItemCode === requestedCode) ?? itemRows[0] ?? null);
   const page = readPage(searchParams.get('page'));
+  const size = readSize(searchParams.get('size'));
   /*
    * 생성일 조건 — 주소의 `from` · `to`(날짜). 없으면 「전체」다(사용자 지시 2026-11-24 · 칸 되살림, 둘레 상자는 두지 않는다).
    * 서버는 기간 없는 조회를 받지 않으므로(계약 `createdFrom` · `createdTo` 필수) 「전체」는 「아주 오래전 ~ 오늘」로 실어
@@ -277,20 +283,26 @@ export const ErpOutboundScreen = () => {
     -today.getTimezoneOffset(),
   );
 
-  const pending = usePendingMessages(selected?.interfaceCode ?? null, page, pendingPeriod);
+  const pending = usePendingMessages(
+    selected?.interfaceCode ?? null,
+    page,
+    pendingPeriod,
+    size ?? PENDING_PAGE_SIZE,
+  );
   const pendingRows = pending.data?.items ?? [];
   const pageView = toPageView(
     pending.data?.page ?? { page, size: 0, total: 0 },
     pendingRows.length,
   );
 
-  /** 항목을 고르면 쪽은 처음으로. 생성일 조건은 남긴다 — 같은 기간으로 다른 항목을 본다. */
+  /** 항목을 고르면 쪽은 처음으로. 생성일 조건 · 쪽 크기는 남긴다 — 같은 기간으로 다른 항목을 본다. */
   const select = (code: string): void => {
     const next = new URLSearchParams({ item: code });
     if (created !== null) {
       next.set('from', created.from);
       next.set('to', created.to);
     }
+    if (size !== null) next.set('size', String(size));
     setSearchParams(next);
   };
   /** 생성일 조건을 바꾸면 쪽은 처음으로. */
@@ -317,6 +329,27 @@ export const ErpOutboundScreen = () => {
     else next.delete('page');
     setSearchParams(next);
   };
+  /** 쪽 크기를 바꾸면 첫 쪽으로. */
+  const changeSize = (nextSize: PageSize): void => {
+    const next = new URLSearchParams(searchParams);
+    if (selected !== null) next.set('item', selected.outboundItemCode);
+    next.delete('page');
+    next.set('size', String(nextSize));
+    setSearchParams(next);
+  };
+  /*
+   * 송신 예정 쪽 넘김 — 상세 상자 안의 다른 표와 같은 한 줄(총 N건 · 쪽 크기 · [처음]~[마지막] · 사용자 지시 2026-11-24).
+   * 쪽 · 쪽 크기는 서버에 그대로 넘긴다(계약 `page` · `size`). 빈 결과 · 끝 쪽을 넘은 때에도 선다.
+   */
+  const pendingNav =
+    pending.data === undefined ? null : (
+      <PageNav
+        meta={pending.data.page}
+        buttonSize="md"
+        onChangePage={changePage}
+        onChangeSize={changeSize}
+      />
+    );
 
   const pendingSlot = () => {
     if (selected === null) return null;
@@ -339,32 +372,39 @@ export const ErpOutboundScreen = () => {
      */
     if (pageView.isBeyondLast) {
       return (
-        <EmptyState
-          size="sm"
-          live
-          title={t.empty.beyondLast}
-          action={
-            <Button
-              variant="outlined"
-              onClick={() => {
-                changePage(1);
-              }}
-            >
-              {ts.actions.goFirstPage}
-            </Button>
-          }
-        />
+        <>
+          <EmptyState
+            size="sm"
+            live
+            title={t.empty.beyondLast}
+            action={
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  changePage(1);
+                }}
+              >
+                {ts.actions.goFirstPage}
+              </Button>
+            }
+          />
+          {pendingNav}
+        </>
       );
     }
-    if (pendingRows.length === 0) return <EmptyState size="sm" live title={t.empty.noPending} />;
+    if (pendingRows.length === 0) {
+      return (
+        <>
+          <EmptyState size="sm" live title={t.empty.noPending} />
+          {pendingNav}
+        </>
+      );
+    }
 
     return (
       <>
         <PendingTable rows={pendingRows} />
-        {/* 공용 쪽 넘김(#358) — 쪽은 서버에 그대로 넘긴다. 쪽 크기는 요청 인자를 바꾸지 않게 두지 않는다. */}
-        {pending.data !== undefined && (
-          <PageNav meta={pending.data.page} buttonSize="md" onChangePage={changePage} />
-        )}
+        {pendingNav}
       </>
     );
   };

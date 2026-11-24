@@ -219,6 +219,15 @@ describe('ErpItemScreen', () => {
     const first = urls().find((url) => url.pathname === LIST_PATH);
     expect(first?.searchParams.has('size')).toBe(false);
 
+    /* 쪽 넘김 줄 — 왼쪽 「총 N건」 + 쪽 크기, 오른쪽 [처음] [이전] n / N [다음] [마지막](ERP 수신 묶음 공통 · 사용자 지시 2026-11-24). */
+    const nav = within(screen.getByRole('navigation', { name: '쪽 이동' }));
+    expect(nav.getByText('총 120건')).toBeInTheDocument();
+    expect(nav.getByRole('combobox', { name: '페이지 크기' })).toHaveTextContent('50건');
+    expect(nav.getByText('1 / 3')).toBeInTheDocument();
+    for (const name of ['처음', '이전', '다음', '마지막']) {
+      expect(nav.getByRole('button', { name })).toBeInTheDocument();
+    }
+
     await user.click(screen.getByRole('button', { name: messages.screenPatterns.pageNav.next }));
     await waitFor(() => {
       const last = urls()

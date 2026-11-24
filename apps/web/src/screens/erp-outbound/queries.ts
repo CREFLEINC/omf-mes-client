@@ -24,13 +24,17 @@ import {
  */
 export const REFRESH_MS = 15_000;
 
-/** 송신 예정 목록 한 쪽의 줄 수. */
+/** 송신 예정 목록 한 쪽의 줄 수 — 쪽 크기를 고르지 않았을 때(종전 그대로). */
 export const PENDING_PAGE_SIZE = 20;
 
 export const erpOutboundKeys = {
   items: ['erp-outbound', 'items'] as const,
-  pending: (interfaceCode: string | null, page: number, period: PeriodQuery | null) =>
-    ['integration-messages', 'outbound-pending', interfaceCode, page, period] as const,
+  pending: (
+    interfaceCode: string | null,
+    page: number,
+    period: PeriodQuery | null,
+    size: number = PENDING_PAGE_SIZE,
+  ) => ['integration-messages', 'outbound-pending', interfaceCode, page, period, size] as const,
 };
 
 /** 권한이 없으면(403) 다시 불러도 같다 — 되풀이하지 않는다. */
@@ -130,11 +134,13 @@ export const usePendingMessages = (
   page: number,
   /** 생성일 조건. 없으면 기간 없이(전체) — 「아직 보내지 않은 것」은 기간과 상관없다. */
   period: PeriodQuery | null = null,
+  /** 쪽 크기 — 쪽 넘김 줄의 크기 선택(계약 `size` · 사용자 지시 2026-11-24). 고르지 않았으면 종전 20. */
+  size: number = PENDING_PAGE_SIZE,
 ): UseQueryResult<MessageListResult> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: erpOutboundKeys.pending(interfaceCode, page, period),
+    queryKey: erpOutboundKeys.pending(interfaceCode, page, period, size),
     enabled: interfaceCode !== null,
     refetchInterval: REFRESH_MS,
     retry: retryUnlessForbidden,
@@ -153,7 +159,7 @@ export const usePendingMessages = (
         statusCode: MESSAGE_STATUS.pending,
         interfaceCode,
         ...(page > 1 ? { page } : {}),
-        size: PENDING_PAGE_SIZE,
+        size,
       } as MessageListQuery;
 
       return runRequest(() => client.GET('/integration/messages', { params: { query } }));
