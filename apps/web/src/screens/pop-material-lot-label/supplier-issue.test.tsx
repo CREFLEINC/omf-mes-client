@@ -283,7 +283,7 @@ describe('US1-5 공급사 LOT · 만들기', () => {
 });
 
 describe('US1-7 입하 대기 LOT 폐기', () => {
-  it('US1-7 고른 대기 LOT 을 확인 뒤 폐기한다 — 폐기는 아래로 내려간다', async () => {
+  it('US1-7 고른 대기 LOT 을 확인 뒤 폐기한다 — 폐기한 LOT 은 목록에서 빠진다', async () => {
     const user = userEvent.setup();
     const { sent } = renderLabelScreen();
 
@@ -304,8 +304,8 @@ describe('US1-7 입하 대기 LOT 폐기', () => {
     await waitFor(() =>
       expect(screen.queryAllByRole('checkbox', { name: /SYN-ITEM-01\|/u })).toHaveLength(0),
     );
-    const table = screen.getByRole('group', { name: t.work.waitingTitle });
-    expect(within(table).getAllByText(t.lotState.voided)).toHaveLength(3);
+    /* 폐기한 LOT 은 발행 대기 목록에서 빠진다(사용자 지시 2026-11-23). */
+    expect(document.body.textContent).not.toMatch(/\|000[124]/u);
   });
 
   it('대기가 아닌 LOT 은 서버가 건별 실패로 돌려준다 — 「N개 폐기 · 실패 N」으로 묶는다', async () => {
@@ -318,7 +318,7 @@ describe('US1-7 입하 대기 LOT 폐기', () => {
     await waitFor(() =>
       expect(screen.getAllByRole('checkbox', { name: /SYN-ITEM-01\|/u })).toHaveLength(2),
     );
-    await user.click(screen.getByRole('button', { name: t.bar.selectAllWaiting(2) }));
+    await user.click(screen.getByRole('button', { name: t.bar.selectAll }));
     await user.click(screen.getByRole('button', { name: t.bar.void(2) }));
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', {
@@ -331,10 +331,10 @@ describe('US1-7 입하 대기 LOT 폐기', () => {
 });
 
 describe('기본 정보 한 줄', () => {
-  it('기본 정보가 없는 공급사·품목은 「기본 정보 없음」', async () => {
+  it('기본 정보가 없는 공급사·품목은 상세 제목에 「기본 정보 없음」을 적지 않는다', async () => {
     renderLabelScreen({ defaults: [defaultInfo({ itemId: 9999 })] });
 
-    const list = await screen.findByRole('list', { name: t.pairs.label });
-    expect(within(list).getAllByRole('button')[0]).toHaveTextContent(t.pairs.noDefault);
+    const head = await screen.findByRole('heading', { name: /SYN-ITEM-01/u });
+    expect(head).not.toHaveTextContent(/기본 (?!단위)/u);
   });
 });

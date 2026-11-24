@@ -1,9 +1,9 @@
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
-import { formatBaseQty, formatPackage } from '../../patterns/package-qty';
-import { plantToday } from '../../patterns/plant-time';
+import { materialLotLabelFieldsOf } from '../../patterns/material-lot-label-print';
 import { PuButton, PuDialog } from '../../patterns/pop-uniform';
+import { LabelPreview } from './label-preview';
 import type { LabelLot } from './types';
 
 const t = messages.popMaterialLotLabel.preview;
@@ -19,8 +19,8 @@ export interface PreviewDialogProps {
 /**
  * 라벨 미리 보기(screens/P-01-01.md 「라벨 미리 보기」 · FR-007·008 · 규칙 16 — 머리 X 없이 [취소] + [N장 인쇄]).
  *
- * ⭐ 실제 라벨은 POP 이 TSPL 로 짠다(`label-tspl`) — 여기는 **무엇이 실리는가**를 보이는 그림이다. QR 에는
- *    자재 관리 LOT 번호만 실린다(지금 규칙). 재인쇄면 「재인쇄 N회」(다음 회차)를 함께 보인다.
+ * ⭐ 실제 라벨과 같은 자리 · 같은 값으로 그린다(`label-preview` — 인쇄의 `layoutMaterialLotLabel` 을 그대로 쓴다).
+ *    QR 에는 자재 관리 LOT 번호만 실린다(지금 규칙). 재인쇄면 「재인쇄 N회」(다음 회차)를 함께 보인다.
  */
 export const PreviewDialog = ({ lots, reasonName, onCancel, onPrint }: PreviewDialogProps) => {
   const [index, setIndex] = useState(0);
@@ -28,8 +28,6 @@ export const PreviewDialog = ({ lots, reasonName, onCancel, onPrint }: PreviewDi
   const isReprint = reasonName !== null;
 
   if (lot === undefined) return null;
-
-  const packageText = formatPackage(lot.package);
 
   return (
     <PuDialog
@@ -45,22 +43,13 @@ export const PreviewDialog = ({ lots, reasonName, onCancel, onPrint }: PreviewDi
         </>
       }
     >
-      <figure className="pu-label-preview mll-preview" aria-label={lot.lotNo}>
-        <b>{`${t.kind} · ${plantToday()}`}</b>
-        <div className="qr" aria-hidden="true" />
-        <b className="mll-preview-code">{lot.itemCode}</b>
-        <span>{lot.itemName}</span>
-        <span>
-          {`${t.qty} `}
-          <b className="mll-preview-qty">{formatBaseQty(lot.lotQty, lot.uomCode)}</b>
-          {packageText === null ? null : ` · ${packageText}`}
-        </span>
-        <span>{`${lot.supplierName} (${lot.supplierCode})`}</span>
-        <span className="pu-mono mll-preview-lot">{lot.lotNo}</span>
+      {/* 종이와 같은 자리 · 같은 값으로 그린다 — 회차는 라벨 오른쪽 위 `#n`(다음 회차). */}
+      <figure className="mll-preview">
+        <LabelPreview fields={materialLotLabelFieldsOf(lot, (lot.lastIssue?.issueSeq ?? 0) + 1)} />
         {isReprint ? (
-          <span className="mll-preview-reissue">
+          <figcaption className="mll-preview-reissue">
             {t.reissue((lot.lastIssue?.issueSeq ?? 0) + 1)}
-          </span>
+          </figcaption>
         ) : null}
       </figure>
       {lots.length > 1 ? (

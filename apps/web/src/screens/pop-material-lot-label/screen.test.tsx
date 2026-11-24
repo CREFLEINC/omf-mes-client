@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { POP_SCREENS } from '../../patterns/pop-screen-catalog';
 import { LIST_REFRESH_MS } from './queries';
-import { defaultLineOf } from './supplier-list';
 import {
   HARNESS_NOW,
   PLANT_ID,
@@ -32,8 +31,15 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const pairButton = (name: RegExp): HTMLElement =>
+/** 첫째 목록의 공급사 — 고르면 둘째 목록이 그 공급사의 품목이 되고 첫 품목이 골라진다. */
+const supplierButton = (name: string): HTMLElement =>
   screen.getByRole('button', { name, pressed: false });
+
+/** 가운데 품목 표의 본문 줄. */
+const itemRows = (): HTMLElement[] =>
+  within(screen.getByRole('group', { name: t.pairs.itemsLabel }))
+    .getAllByRole('row')
+    .slice(1);
 
 const waitingRows = (): HTMLElement[] =>
   screen.queryAllByRole('checkbox', { name: /SYN-ITEM-01\|/u });
@@ -43,21 +49,37 @@ const rowOf = (name: RegExp): HTMLElement =>
   screen.getByRole('checkbox', { name }).closest('tr') as HTMLElement;
 
 describe('PopMaterialLotLabelScreen — 공급사·품목(왼쪽)', () => {
-  it('공급사·품목마다 입하 대기 칩 · 공급사 · 기본 정보 한 줄 · 라벨 미출력을 보인다(입하 LOT 탭 없음)', async () => {
+  it('첫째 목록은 공급사만, 둘째 목록은 고른 공급사의 품목 — 입하 대기 칩은 없다(입하 LOT 탭 없음)', async () => {
+    const user = userEvent.setup();
     renderLabelScreen();
 
-    const list = await screen.findByRole('list', { name: t.pairs.label });
-    const [first, second] = within(list).getAllByRole('button');
+    /* 공급사 목록은 공급사명(코드 없이)과 라벨 미출력 수만(사용자 지시 2026-11-23). */
+    const suppliers = within(
+      await screen.findByRole('list', { name: t.pairs.suppliersLabel }),
+    ).getAllByRole('button');
+    expect(suppliers.map((button) => button.textContent)).toEqual([
+      `합성 공급사 가${t.pairs.unprinted(2)}`,
+      '합성 공급사 나',
+    ]);
 
-    expect(first).toHaveTextContent('SYN-ITEM-01');
-    expect(first).toHaveTextContent(t.pairs.waiting(3));
-    expect(first).toHaveTextContent('합성 공급사 가');
-    expect(first).toHaveTextContent(t.pairs.defaultPackaged('봉지 10 × 100 = 1,000 EA'));
-    expect(first).toHaveTextContent(
-      t.pairs.withUnprinted(t.pairs.defaultPackaged('봉지 10 × 100 = 1,000 EA'), 2),
-    );
-    expect(second).toHaveTextContent(t.pairs.waiting(0));
-    expect(second).toHaveTextContent(t.pairs.noDefault);
+    /* 품목 표는 처음 공급사의 품목 — 코드 · 이름 · LOT 수 · 수량 · 라벨 출력 · IQC · 최근 발행(사용자 지시 2026-11-23). */
+    const items = itemRows();
+    expect(items).toHaveLength(1);
+    const cells = within(items[0] as HTMLElement)
+      .getAllByRole('cell')
+      .map((cell) => cell.textContent);
+    expect(cells[0]).toBe('SYN-ITEM-01');
+    expect(cells[1]).toBe('합성 품목 가');
+    /* 라벨 출력은 출력한 수 / 입하 대기 LOT 수. */
+    expect(cells).toContain(t.pairs.printedOf(1, 3));
+    expect(cells).not.toContain('SYN-P-01');
+    expect(screen.queryByText(/입하 대기 \d/u)).toBeNull();
+
+    /* 다른 공급사를 고르면 그 공급사의 품목으로 바뀐다. */
+    await user.click(screen.getByRole('button', { name: '합성 공급사 나' }));
+    expect(itemRows()).toHaveLength(1);
+    expect(itemRows()[0]).toHaveTextContent('SYN-ITEM-02');
+    expect(itemRows()[0]).not.toHaveTextContent('기본 정보 없음');
 
     /* ⛔ 입하 LOT 탭 · 라벨 대기 입하 줄은 없다(FR-036 · D-19·D-25). */
     const tabs = within(screen.getByRole('tablist', { name: t.tabs.label })).getAllByRole('tab');
@@ -69,7 +91,7 @@ describe('PopMaterialLotLabelScreen — 공급사·품목(왼쪽)', () => {
   it('목록은 그 공장 하나로 부른다 — 단말의 공장', async () => {
     const { sent } = renderLabelScreen();
 
-    await screen.findByRole('list', { name: t.pairs.label });
+    await screen.findByRole('group', { name: t.pairs.itemsLabel });
     expect(sentTo(sent, '/logistics/waiting-material-lots')[0]?.search.get('plantId')).toBe(
       String(PLANT_ID),
     );
@@ -79,15 +101,14 @@ describe('PopMaterialLotLabelScreen — 공급사·품목(왼쪽)', () => {
     const user = userEvent.setup();
     renderLabelScreen();
 
-    await screen.findByRole('list', { name: t.pairs.label });
+    await screen.findByRole('group', { name: t.pairs.itemsLabel });
     /* 칸을 누르면 찾기 창이 뜬다 — [검색]으로 거른다(사용자 지시 2026-11-19). */
     await user.click(screen.getByRole('searchbox', { name: t.search.label }));
     await user.type(screen.getByRole('textbox', { name: t.search.label }), '공급사 나');
     await user.click(screen.getByRole('button', { name: messages.popUniform.scan.search }));
 
-    const list = screen.getByRole('list', { name: t.pairs.label });
-    expect(within(list).getAllByRole('button')).toHaveLength(1);
-    expect(within(list).getByRole('button')).toHaveTextContent('SYN-ITEM-02');
+    expect(itemRows()).toHaveLength(1);
+    expect(itemRows()[0]).toHaveTextContent('SYN-ITEM-02');
 
     expect(screen.getByRole('searchbox', { name: t.search.label })).toHaveValue('공급사 나');
 
@@ -96,7 +117,7 @@ describe('PopMaterialLotLabelScreen — 공급사·품목(왼쪽)', () => {
     await user.clear(screen.getByRole('textbox', { name: t.search.label }));
     await user.type(screen.getByRole('textbox', { name: t.search.label }), '없는말');
     await user.click(screen.getByRole('button', { name: messages.popUniform.dialog.cancel }));
-    expect(within(list).getAllByRole('button')).toHaveLength(1);
+    expect(itemRows()).toHaveLength(1);
 
     await user.click(screen.getByRole('searchbox', { name: t.search.label }));
     await user.clear(screen.getByRole('textbox', { name: t.search.label }));
@@ -117,22 +138,23 @@ describe('PopMaterialLotLabelScreen — 공급사·품목(왼쪽)', () => {
 });
 
 describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
-  it('입하 대기는 위에, 폐기는 아래에(고를 수 없음) — 라벨을 발행한 LOT(입하 대기 · 입하됨)은 표에 없다', async () => {
+  it('입하 대기만 — 폐기한 LOT 과 라벨을 발행한 LOT(입하 대기 · 입하됨)은 표에 없다', async () => {
     renderLabelScreen();
 
     await waitFor(() => expect(waitingRows()).toHaveLength(2));
     const waitingTable = screen.getByRole('group', { name: t.work.waitingTitle });
     const text = waitingTable.textContent ?? '';
 
-    expect(text.indexOf('|0001')).toBeLessThan(text.indexOf('|0004'));
-    expect(within(waitingTable).getByText(t.lotState.voided)).toBeInTheDocument();
-    /* 폐기 LOT 은 체크 칸이 아니다. */
-    expect(screen.queryByRole('checkbox', { name: /\|0004 /u })).toBeNull();
+    expect(text).toContain('|0001');
+    /* 폐기한 LOT 은 목록에서 뺀다(사용자 지시 2026-11-23). */
+    expect(text).not.toContain('|0004');
+    expect(within(waitingTable).queryByText(t.lotState.voided)).toBeNull();
 
     /* 라벨을 발행한 LOT 은 발행 대기 표에 서지 않는다 — 재발행 탭에만(사용자 지시 2026-11-19). */
     expect(text).not.toContain('|0003');
     expect(text).not.toContain('SYN-IL-0011');
-    expect(screen.getByText(t.work.receivedChip(1))).toBeInTheDocument();
+    /* 「입하 N · 재발행 탭」 칩은 두지 않는다(사용자 지시 2026-11-23). */
+    expect(screen.queryByText(t.work.receivedChip(1))).toBeNull();
   });
 
   it('줄은 번호 · 재고 수량 · 포장 · 공급사 LOT · 상태 · 라벨을 적는다 — 출력한 LOT 은 재발행 탭에 회차 · 시각 · 공급사 LOT 칸으로', async () => {
@@ -145,8 +167,15 @@ describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
     expect(unprinted).toHaveTextContent('1,000 EA');
     expect(unprinted).toHaveTextContent('봉지 10 × 100');
     expect(unprinted).toHaveTextContent('SYN-SL-77');
-    expect(unprinted).toHaveTextContent(t.lotState.waiting);
+    /* 발행 대기 표는 모두 입하 대기라 LOT 상태 칸이 없다(사용자 지시 2026-11-23). */
+    expect(within(unprinted).queryByText(t.lotState.waiting)).toBeNull();
     expect(unprinted).toHaveTextContent(t.table.unprinted);
+    /* 발행 대기 표는 품목 칸이 없다 — 품목은 상세 제목에(사용자 지시 2026-11-23). */
+    const waitingTable = screen.getByRole('group', { name: t.work.waitingTitle });
+    expect(
+      within(waitingTable).queryByRole('columnheader', { name: t.table.columns.itemCode }),
+    ).toBeNull();
+    expect(within(unprinted).queryByText('합성 품목 가')).toBeNull();
     expect(screen.queryByRole('checkbox', { name: /\|0003 /u })).toBeNull();
 
     await user.click(screen.getByRole('tab', { name: t.tabs.reprint }));
@@ -156,6 +185,9 @@ describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
     const cells = within(printed)
       .getAllByRole('cell')
       .map((cell) => cell.textContent);
+    /* 재발행 표는 품목코드 · 품목명 두 칸을 둔다. */
+    expect(cells).toContain('SYN-ITEM-01');
+    expect(cells).toContain('합성 품목 가');
     /* 공급사 LOT · 출력(회차) · 최근 출력 일시는 제 칸에 따로 — 08:12 는 공장 시각(UTC+7)이다. */
     expect(cells).toContain('SYN-SL-77');
     expect(cells).toContain(t.table.issuedSeq(1));
@@ -163,27 +195,23 @@ describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
     expect(screen.queryByText(/출력한 자재 관리 LOT/u)).toBeNull();
   });
 
-  it('머리에 품목 · 공급사 · 기본 단위 · 기본 정보를 적는다', async () => {
+  it('머리에 품목코드 · 품목명 · 공급사 · 기본 단위를 이름표와 함께, 기본 정보를 적는다', async () => {
     renderLabelScreen();
 
-    expect(
-      await screen.findByText(
-        t.work.meta(
-          '합성 공급사 가',
-          'SYN-P-01',
-          'EA',
-          t.pairs.defaultPackaged('봉지 10 × 100 = 1,000 EA'),
-        ),
-      ),
-    ).toBeInTheDocument();
+    const head = await screen.findByRole('heading', { name: /SYN-ITEM-01/u });
+    const f = t.work.fields;
+    expect(head).toHaveTextContent(
+      `${f.itemCode}SYN-ITEM-01${f.itemName}합성 품목 가${f.supplier}합성 공급사 가${f.uom}EA` +
+        t.pairs.defaultPackaged('봉지 10 × 100 = 1,000 EA'),
+    );
   });
 
   it('입하 대기가 없으면 만들라고 말한다', async () => {
     const user = userEvent.setup();
     renderLabelScreen();
 
-    await screen.findByRole('list', { name: t.pairs.label });
-    await user.click(pairButton(/SYN-ITEM-02/u));
+    await screen.findByRole('group', { name: t.pairs.itemsLabel });
+    await user.click(supplierButton('합성 공급사 나'));
 
     expect(screen.getByText(t.work.waitingEmpty)).toBeInTheDocument();
     expect(screen.getByText(t.work.waitingEmptyHint)).toBeInTheDocument();
@@ -221,7 +249,7 @@ describe('PopMaterialLotLabelScreen — 고르기와 작업 줄', () => {
     renderLabelScreen();
 
     await waitFor(() => expect(waitingRows()).toHaveLength(2));
-    await user.click(screen.getByRole('button', { name: t.bar.selectAllWaiting(2) }));
+    await user.click(screen.getByRole('button', { name: t.bar.selectAll }));
 
     expect(waitingRows().filter((row) => row.getAttribute('aria-checked') === 'true')).toHaveLength(
       2,
@@ -240,7 +268,7 @@ describe('PopMaterialLotLabelScreen — 고르기와 작업 줄', () => {
 
     await waitFor(() => expect(waitingRows()).toHaveLength(2));
     await user.click(screen.getByRole('checkbox', { name: /\|0001 /u }));
-    await user.click(pairButton(/SYN-ITEM-02/u));
+    await user.click(supplierButton('합성 공급사 나'));
 
     expect(screen.getByRole('button', { name: t.bar.voidIdle })).toBeDisabled();
     expect(screen.getByRole('button', { name: t.bar.issueIdle })).toBeDisabled();
@@ -290,9 +318,9 @@ describe('PopMaterialLotLabelScreen — 새로 고침과 기본 정보', () => {
         (each) => each.search.get('supplierId') === null,
       );
 
-    const firstPair = async () =>
-      within(await screen.findByRole('list', { name: t.pairs.label })).getAllByRole('button')[0];
-    const before = defaultLineOf(defaultInfo());
+    /* 기본 정보는 상세 제목에 적는다. */
+    const firstPair = async () => screen.findByRole('heading', { name: /SYN-ITEM-01/u });
+    const before = t.pairs.defaultPackaged('봉지 10 × 100 = 1,000 EA');
     await waitFor(async () => expect(await firstPair()).toHaveTextContent(before));
     const asked = plantWide().length;
 
@@ -307,7 +335,11 @@ describe('PopMaterialLotLabelScreen — 새로 고침과 기본 정보', () => {
     await queryClient.invalidateQueries();
 
     await waitFor(() => expect(plantWide().length).toBeGreaterThan(asked));
-    await waitFor(async () => expect(await firstPair()).toHaveTextContent(defaultLineOf(changed)));
+    await waitFor(async () =>
+      expect(await firstPair()).toHaveTextContent(
+        t.pairs.defaultPackaged('봉지 20 × 100 = 2,000 EA'),
+      ),
+    );
   });
 });
 
@@ -343,7 +375,8 @@ describe('PopMaterialLotLabelScreen — 다른 묶음', () => {
       ],
     });
 
-    const list = await screen.findByRole('list', { name: t.pairs.label });
-    expect(within(list).getByRole('button')).toHaveTextContent(t.pairs.defaultUnpackaged('1 TON'));
+    expect(await screen.findByRole('heading', { name: /SYN-ITEM-02/u })).toHaveTextContent(
+      t.pairs.defaultUnpackaged('1 TON'),
+    );
   });
 });

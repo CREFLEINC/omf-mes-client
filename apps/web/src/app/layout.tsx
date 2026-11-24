@@ -16,7 +16,7 @@ import { useHref, useLinkClickHandler, useLocation } from 'react-router';
 import { LocaleSelect } from '../patterns/locale-select';
 import { localizedLabel } from '../patterns/localized-label';
 import { useSession, useSignOut } from '../patterns/session';
-import { OA_ONLY_PATHS, useOaAccess } from '../patterns/oa-access';
+import { OA_ONLY_PATHS, type PlantMode, useOaAccess, usePlantMode } from '../patterns/oa-access';
 import { PageHubContext, type PageHub } from '../patterns/page-hub';
 import { PopoverButton } from '../patterns/popover-button';
 import { toWebAccess } from '../patterns/web-access';
@@ -209,6 +209,40 @@ interface AppLayoutProps {
  * ⚠ **나가는 중에는 잠근다.** 연타가 그대로 요청 두 벌이 되고, 계약이 쓰기마다 새 멱등 키를
  * 요구하므로 서버에는 서로 다른 요청으로 보인다.
  */
+/**
+ * OA·부품 동작 단추 둘 — OA·부품 공장을 모두 가진 계정에만 선다(omf-all-around#336 · 사용자 결정 2026-11-23).
+ * 메뉴(제품 검사표)까지 바뀌어 화면 하나가 아니라 상단 바에 둔다. 늘 보이는 단추 둘이다(「⋯」에 접지 않는다).
+ */
+const PlantModeToggle = () => {
+  const { mixed, mode, setMode } = usePlantMode();
+  if (!mixed) return null;
+  const options: readonly { value: PlantMode; label: string }[] = [
+    { value: 'oa', label: messages.common.plantMode.oa },
+    { value: 'parts', label: messages.common.plantMode.parts },
+  ];
+  return (
+    <div
+      className="split-orientation-toggle topbar-plant-mode"
+      role="group"
+      aria-label={messages.common.plantMode.label}
+    >
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          className="split-orientation-option"
+          aria-pressed={mode === option.value}
+          onClick={() => {
+            setMode(option.value);
+          }}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+};
+
 const SessionActions = ({ userName }: { userName: string }) => {
   const { signOut, isSigningOut } = useSignOut();
   const passwordHref = useHref(PASSWORD_CHANGE_PATH);
@@ -221,6 +255,7 @@ const SessionActions = ({ userName }: { userName: string }) => {
    */
   return (
     <div className="topbar-session">
+      <PlantModeToggle />
       <PopoverButton
         className="session-menu"
         trigger={

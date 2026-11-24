@@ -14,9 +14,9 @@ const tStatus = messages.popMaterialLotLabel.status;
 /**
  * 표가 무엇을 보이는가(screens/P-01-01.md · #295 시안).
  *
- * - `waiting` 공급사·품목의 라벨 미발행 입하 대기(+ 폐기, 맨 뒤에 최근 입하된 LOT — 고를 수 없음)
- *   — 선택 · 번호 · 공급사 LOT 번호 · 품목 · 재고 수량 · 포장 · 상태 · 라벨 · 등록일시
- * - `reprint` 재발행 — 선택 · 번호 · 공급사 LOT 번호 · 품목 · 재고 수량 · 포장 · 상태 · 출력(회차) · 최근 출력일시
+ * - `waiting` 공급사·품목의 라벨 미발행 입하 대기(맨 뒤에 최근 입하된 LOT — 고를 수 없음)
+ *   — 선택 · 번호 · 공급사 LOT 번호 · 재고 수량 · 포장 · 라벨 · 등록일시(품목은 상세 제목에)
+ * - `reprint` 재발행 — 선택 · 번호 · 공급사 LOT 번호 · 품목코드 · 품목명 · 재고 수량 · 포장 · 상태 · 출력(회차) · 최근 출력일시
  * ⭐ 칸마다 값 하나(사용자 지시 2026-11-19) — 두 줄 묶음 칸은 두지 않는다.
  *
  * ⭐ 발행 중 · 결과 확인 전에는 마지막 칸이 그 LOT 의 결과다(체크 대신 결과 표식이 제자리에 붙는다).
@@ -129,10 +129,13 @@ export const LabelTable = ({
               <th className="mll-slotcol" title={t.columns.supplierLot}>
                 {t.columns.supplierLot}
               </th>
-              <th className="mll-itemcol">{t.columns.item}</th>
+              {/* 품목은 코드 · 이름 두 칸 — 발행 대기는 상세 제목에 품목이 있어 빼고 재발행에만(사용자 지시 2026-11-23). */}
+              {isReprint && <th className="fit">{t.columns.itemCode}</th>}
+              {isReprint && <th className="mll-itemcol">{t.columns.itemName}</th>}
               <th className="num fit">{t.columns.qty}</th>
               <th className="fit">{t.columns.package}</th>
-              <th className="fit mid">{t.columns.status}</th>
+              {/* 발행 대기 표는 모두 입하 대기라 LOT 상태 칸을 두지 않는다(사용자 지시 2026-11-23). */}
+              {isReprint && <th className="fit mid">{t.columns.status}</th>}
               <th className="fit">
                 {showResults ? t.columns.result : isReprint ? t.columns.printed : t.columns.label}
               </th>
@@ -201,14 +204,23 @@ export const LabelTable = ({
                   <td className="mll-slotcol" title={lot.supplierLotNo ?? undefined}>
                     {lot.supplierLotNo ?? t.none}
                   </td>
-                  <td title={`${lot.itemCode} ${lot.itemName}`}>
-                    <b>{lot.itemCode}</b> {lot.itemName}
-                  </td>
+                  {isReprint && (
+                    <td className="fit" title={`${lot.itemCode} ${lot.itemName}`}>
+                      <b>{lot.itemCode}</b>
+                    </td>
+                  )}
+                  {isReprint && (
+                    <td className="mll-itemcol" title={lot.itemName}>
+                      {lot.itemName}
+                    </td>
+                  )}
                   <td className="num fit">{qtyText}</td>
                   <td className="fit">{packageText}</td>
-                  <td className="fit mid">
-                    <LotStateChip lot={lot} />
-                  </td>
+                  {isReprint && (
+                    <td className="fit mid">
+                      <LotStateChip lot={lot} />
+                    </td>
+                  )}
                   <td className="fit">
                     {status !== null ? (
                       <PuChip tone={statusTone(status)}>{statusText(status)}</PuChip>

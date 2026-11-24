@@ -193,6 +193,14 @@ const RE_REGISTER_ICON = navIcon(
   <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5" />,
 );
 
+/* 설정 — 톱니바퀴. [단말 재등록] · [종료]를 이 안에 모은다(사용자 지시 2026-11-23). */
+const SETTINGS_ICON = navIcon(
+  <>
+    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+    <circle cx="12" cy="12" r="3" />
+  </>,
+);
+
 const POWER_ICON = navIcon(
   <>
     <path d="M12 3v8" />
@@ -248,10 +256,30 @@ const TopBar = ({
   /* 화면 자료를 마지막으로 받은 때 — 화면을 열 때와 [새로고침]이 끝날 때 적는다. */
   const [refreshedAt, setRefreshedAt] = useState(() => new Date());
   const [isExitOpen, setExitOpen] = useState(false);
+  const [isSettingsOpen, setSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setRefreshedAt(new Date());
   }, [pathname]);
+
+  /* 설정 메뉴는 바깥을 누르거나 Esc 로 닫는다(관리웹 「⋯」 메뉴와 같은 규칙). */
+  useEffect(() => {
+    if (!isSettingsOpen) return undefined;
+    const handlePointerDown = (event: PointerEvent): void => {
+      if (event.target instanceof Node && settingsRef.current?.contains(event.target) === true) return;
+      setSettingsOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setSettingsOpen(false);
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isSettingsOpen]);
 
   /* 이름은 지금 사번과 같은 사람의 세션일 때만 붙인다 — 다른 사번의 이름을 빌려 오지 않는다. */
   const workerName =
@@ -346,27 +374,58 @@ const TopBar = ({
         <span>{formatRefreshedAt(refreshedAt).slice(6)}</span>
       </span>
       {/*
-       * [단말 재등록] — [종료] 바로 왼쪽(사용자 지시 2026-11-20 · #334). 설치 담당자용 보조 조작이라 사번 입력 중에만 선다
-       * (옛 사번 입력 화면 · 홈 사번 입력과 같은 범위). 사번 전 잠금을 받지 않는다 — 잘못된 단말로 등록되면 사번부터 막힌다.
+       * [설정] — 맨 위 줄 오른쪽 끝의 톱니 단추 하나(사용자 지시 2026-11-23). 드물게 쓰는 [단말 재등록] · [종료]를
+       * 이 안에 모은다. [단말 재등록]은 설치 담당자용 보조 조작이라 전처럼 사번 입력 전에만 선다(#334).
        */}
-      {workerNo === null && onReRegister !== undefined && (
-        <Button className="pop-logout" variant="outlined" size="md" onClick={onReRegister}>
-          {RE_REGISTER_ICON}
-          {messages.workerAssignment.registration.reRegister}
+      <div className="pop-nav-top__settings" ref={settingsRef}>
+        <Button
+          className="pop-logout pop-nav-top__settings-button"
+          variant="outlined"
+          size="md"
+          aria-label={messages.popChrome.settings}
+          title={messages.popChrome.settings}
+          aria-expanded={isSettingsOpen}
+          aria-haspopup="menu"
+          onClick={() => {
+            setSettingsOpen((open) => !open);
+          }}
+        >
+          {SETTINGS_ICON}
         </Button>
-      )}
-      {/* [종료] — 맨 위 줄 오른쪽 끝(#295 시안 규칙 17). 확인 창을 거친다. */}
-      <Button
-        className="pop-logout pop-nav-top__exit"
-        variant="outlined"
-        size="md"
-        onClick={() => {
-          setExitOpen(true);
-        }}
-      >
-        {POWER_ICON}
-        {messages.popChrome.exit.button}
-      </Button>
+        {isSettingsOpen && (
+          <div className="pop-nav-top__settings-menu" role="menu" aria-label={messages.popChrome.settings}>
+            {workerNo === null && onReRegister !== undefined && (
+              <Button
+                className="pop-logout"
+                variant="outlined"
+                size="md"
+                role="menuitem"
+                onClick={() => {
+                  setSettingsOpen(false);
+                  onReRegister();
+                }}
+              >
+                {RE_REGISTER_ICON}
+                {messages.workerAssignment.registration.reRegister}
+              </Button>
+            )}
+            {/* [종료] — 확인 창을 거친다(#295 시안 규칙 17). */}
+            <Button
+              className="pop-logout pop-nav-top__exit"
+              variant="outlined"
+              size="md"
+              role="menuitem"
+              onClick={() => {
+                setSettingsOpen(false);
+                setExitOpen(true);
+              }}
+            >
+              {POWER_ICON}
+              {messages.popChrome.exit.button}
+            </Button>
+          </div>
+        )}
+      </div>
       {isExitOpen && (
         <PuConfirm
           title={messages.popChrome.exit.title}

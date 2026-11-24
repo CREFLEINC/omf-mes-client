@@ -38,7 +38,7 @@ import { psQuote } from './windows-print';
  *    깨진 사유는 사유가 아니다.
  * ⚠ **몇 바이트를 보냈는지 세어 확인한다.** 일부만 나가면 잘린 라벨이 찍힌다.
  */
-const RAW_PRINTER_HELPER = String.raw`
+export const RAW_PRINTER_HELPER = String.raw`
 using System;
 using System.Runtime.InteropServices;
 public static class OmfRawPrinter {

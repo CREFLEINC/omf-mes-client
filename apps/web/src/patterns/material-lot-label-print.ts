@@ -1,7 +1,7 @@
 import type { ApiClient, components, MaterialPackage } from '@omf-mes/api-client';
 import { createIdempotencyKey } from '@omf-mes/api-client';
 
-import { buildMaterialLotLabelBytes } from './label/lot-label-tspl';
+import { buildMaterialLotLabelBytes, type MaterialLotLabelFields } from './label/lot-label-tspl';
 import { formatPackage } from './package-qty';
 import type { renditionShell } from './pop-print';
 import { runRequest } from './request';
@@ -160,26 +160,37 @@ export interface MaterialLotLabelLot {
  * ⭐ 005 — 수량 줄 오른쪽 끝에 패키징(있으면 「봉지 10 × 100」)을 싣는다(FR-007). 입하 전에 찍으므로 옛 「입하일」은
  *    없다. 품목·공급사·수량·패키징은 목록 응답이 이미 싣고, LOT 번호는 발행 기록(없으면 줄)의 값이다.
  */
+/**
+ * 라벨에 싣는 값 — 인쇄(`drawMaterialLotLabel`)와 화면 미리보기가 **같은 값**을 쓴다(따로 짜면 본 것과 나온 것이 갈린다).
+ */
+export const materialLotLabelFieldsOf = (
+  lot: MaterialLotLabelLot,
+  issueSeq: number,
+  lotNo: string = lot.lotNo,
+): MaterialLotLabelFields => ({
+  itemCode: lot.itemCode,
+  itemName: lot.itemName,
+  lotNo,
+  qty: lot.lotQty,
+  uomCode: lot.uomCode,
+  issueSeq,
+  supplier:
+    lot.supplierName === null || lot.supplierCode === null
+      ? null
+      : `${lot.supplierName} (${lot.supplierCode})`,
+  /* 라벨 인쇄는 코드 그대로 — 프린터 글꼴 · 칸 폭이 정해져 있다(화면 표기만 이름, G1 잔여). */
+  receipt: formatPackage(lot.package === null ? null : { ...lot.package, uomName: null }),
+});
+
 export const drawMaterialLotLabel = (input: {
   lot: MaterialLotLabelLot;
   issue: IssueView;
 }): Uint8Array => {
   const { lot, issue } = input;
 
-  return buildMaterialLotLabelBytes({
-    itemCode: lot.itemCode,
-    itemName: lot.itemName,
-    lotNo: issue.lotNo ?? lot.lotNo,
-    qty: lot.lotQty,
-    uomCode: lot.uomCode,
-    issueSeq: issue.issueSeq,
-    supplier:
-      lot.supplierName === null || lot.supplierCode === null
-        ? null
-        : `${lot.supplierName} (${lot.supplierCode})`,
-    /* 라벨 인쇄는 코드 그대로 — 프린터 글꼴 · 칸 폭이 정해져 있다(화면 표기만 이름, G1 잔여). */
-    receipt: formatPackage(lot.package === null ? null : { ...lot.package, uomName: null }),
-  });
+  return buildMaterialLotLabelBytes(
+    materialLotLabelFieldsOf(lot, issue.issueSeq, issue.lotNo ?? lot.lotNo),
+  );
 };
 
 /** 인쇄를 못 한 사유 — 서버 보고에 그대로 실린다. `FAILED` 인데 사유가 없으면 422 다. */
