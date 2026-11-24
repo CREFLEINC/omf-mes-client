@@ -233,7 +233,8 @@ export const TerminalForm = ({
       ref={warehouseRef}
       label={t.terminal.warehouse}
       optionalMark={t.terminal.optionalMark}
-      emptyLabel={t.terminal.warehouseAll}
+      /* 창고를 고르지 않으면 유형과 관계없이 「미지정」(사용자 지시 2026-11-24). */
+      emptyLabel={t.terminal.equipmentNone}
       disabledLabel={hasPlant ? undefined : t.terminal.warehouseNeedsPlant}
       value={draft.warehouse}
       valueLabel={draft.warehouseLabel}

@@ -99,7 +99,8 @@ export const TokenDialog = ({ token, terminalCode, onClose }: TokenDialogProps) 
     open={token !== null}
     onClose={onClose}
     title={t.token.title}
-    className="terminal-map-token-dialog"
+    /* 단말 추가 · 수정 팝업과 같은 모양(머리 띠 · 흰 본문 · 바닥 띠 · 사용자 지시 2026-11-24). */
+    className="terminal-map-form-dialog terminal-map-token-dialog"
     showCloseButton={false}
     closeOnBackdropClick={false}
     footer={<Button onClick={onClose}>{t.token.close}</Button>}

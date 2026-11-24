@@ -129,10 +129,9 @@ describe('TerminalProcessMapScreen 표시', () => {
     unmount();
 
     renderScreen('/system/terminal-process-map?terminal=701');
-    const label = await screen.findByText(t.terminal.status, { selector: 'dt' });
-    await waitFor(() =>
-      expect(label.parentElement?.querySelector('dd')?.textContent).toBe(t.list.notAvailable),
-    );
+    /* 단말 정보 표 — 항목 칸(th) 바로 옆 값 칸(td). */
+    const label = await screen.findByRole('rowheader', { name: t.terminal.status });
+    await waitFor(() => expect(label.nextElementSibling?.textContent).toBe(t.list.notAvailable));
   });
 
   it('고른 단말은 목록에서 aria-current 로 표시되고, 제목 옆 안내 문구는 없다', async () => {

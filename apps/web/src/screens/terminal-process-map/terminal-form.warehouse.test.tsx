@@ -50,7 +50,7 @@ const noCodes: TerminalCodeNames = (() => {
 })();
 
 describe('W-CO-06 단말 창고(피처 002)', () => {
-  it('US5-1 창고는 누르면 검색란 · 선택지가 펼쳐진다 — 단말 공장의 사용 중인 창고만, 비우면 공장 전체, 공장을 바꾸면 비운다', async () => {
+  it('US5-1 창고는 누르면 검색란 · 선택지가 펼쳐진다 — 단말 공장의 사용 중인 창고만, 비우면 미지정, 공장을 바꾸면 비운다', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     const queries: URL[] = [];
@@ -82,7 +82,7 @@ describe('W-CO-06 단말 창고(피처 002)', () => {
     );
 
     const field = screen.getByRole('combobox', { name: t.terminal.warehouse });
-    expect(field).toHaveTextContent(t.terminal.warehouseAll);
+    expect(field).toHaveTextContent(t.terminal.equipmentNone);
 
     /* 별도 찾기 창 없이 칸 아래로 검색란과 선택지가 펼쳐진다(사용자 지시 2026-11-20 · #333). */
     await user.click(field);
@@ -159,7 +159,7 @@ describe('W-CO-06 단말 창고(피처 002)', () => {
     expect(toTerminalDraft(plain).warehouse).toBe('');
   });
 
-  it('US5-1 단말 목록에 「창고」 열 — 없으면 「공장 전체」', async () => {
+  it('US5-1 단말 목록에 「창고」 열 — 없으면 「—」(사용자 지시 2026-11-24)', async () => {
     const terminals = [
       {
         terminalId: 1,
@@ -200,6 +200,9 @@ describe('W-CO-06 단말 창고(피처 002)', () => {
     const first = (await screen.findByRole('button', { name: 'SYN-MOB-01' })).closest('tr');
     const second = screen.getByRole('button', { name: 'SYN-MOB-02' }).closest('tr');
     expect(within(first as HTMLElement).getByText('합성 자재창고 A')).toBeInTheDocument();
-    expect(within(second as HTMLElement).getByText(t.list.warehouseAll)).toBeInTheDocument();
+    expect(within(second as HTMLElement).getAllByText(t.list.notAvailable).length).toBeGreaterThan(
+      0,
+    );
+    expect(within(second as HTMLElement).queryByText(t.list.warehouseAll)).not.toBeInTheDocument();
   });
 });

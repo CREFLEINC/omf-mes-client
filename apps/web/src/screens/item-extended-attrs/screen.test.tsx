@@ -615,7 +615,7 @@ describe('ItemExtendedAttrsScreen — 선택 수명 (M07)', () => {
 
     await findOriginContent();
 
-    await user.type(screen.getByRole('textbox', { name: '품목코드·품목명' }), 'SYN');
+    await user.type(screen.getByRole('searchbox', { name: '품목코드·품목명' }), 'SYN');
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     await waitFor(() => {
@@ -1098,7 +1098,7 @@ describe('ItemExtendedAttrsScreen — 품목 선택 변경 (§5.4 3행)', () => 
     await findAttrsPane();
 
     await user.type(screen.getByLabelText('생산 LOT 기본크기'), '9');
-    await user.type(screen.getByRole('textbox', { name: '품목코드·품목명' }), 'SYN');
+    await user.type(screen.getByRole('searchbox', { name: '품목코드·품목명' }), 'SYN');
 
     expect(history.search()).toBe('?item=1001');
     expect(screen.getByLabelText('생산 LOT 기본크기')).toHaveValue(5009);

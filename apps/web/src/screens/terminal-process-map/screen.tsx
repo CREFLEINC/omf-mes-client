@@ -348,13 +348,16 @@ export const TerminalProcessMapScreen = () => {
     return terminal.registrationStatusCode === 'REGISTERED' ? codeNames.status(text) : text;
   };
 
+  const registrationText = (terminal: TerminalView): string =>
+    terminal.registrationStatusCode === 'REGISTERED'
+      ? t.list.registrationComplete
+      : terminal.registrationStatusCode === 'UNREGISTERED'
+        ? t.list.registrationPending
+        : t.list.registrationUnknown;
+
   const registrationChip = (terminal: TerminalView) => (
     <Chip size="sm" status={terminal.registrationStatusCode === 'REGISTERED' ? 'success' : 'idle'}>
-      {terminal.registrationStatusCode === 'REGISTERED'
-        ? t.list.registrationComplete
-        : terminal.registrationStatusCode === 'UNREGISTERED'
-          ? t.list.registrationPending
-          : t.list.registrationUnknown}
+      {registrationText(terminal)}
     </Chip>
   );
 
@@ -374,9 +377,8 @@ export const TerminalProcessMapScreen = () => {
   const baseColumns: Column<TerminalView>[] = [
     {
       key: 'code',
-      align: 'center',
       header: t.list.code,
-      width: '184px',
+      width: '172px',
       /* 링크처럼 보이지 않는다 — 줄 아무 곳이나 눌러 고른다. 이 단추는 키보드·화면 낭독기의 자리다. */
       render: (row) => (
         <button
@@ -395,7 +397,7 @@ export const TerminalProcessMapScreen = () => {
       key: 'type',
       align: 'center',
       header: t.list.type,
-      width: '120px',
+      width: '96px',
       render: (row) => codeNames.type(row.terminalTypeCode),
     },
     {
@@ -413,27 +415,31 @@ export const TerminalProcessMapScreen = () => {
       key: 'registration',
       align: 'center',
       header: t.list.registration,
-      width: '104px',
+      width: '96px',
       render: (row) => registrationChip(row),
     },
     {
       key: 'equipment',
-      align: 'center',
       header: t.list.equipment,
-      width: '168px',
+      width: '240px',
       render: (row) => row.equipmentLabel ?? t.list.notAvailable,
     },
     {
       key: 'warehouse',
-      align: 'center',
       header: t.list.warehouse,
-      width: '120px',
-      render: (row) => row.warehouseName ?? t.list.warehouseAll,
+      width: '288px',
+      /* 창고를 정하지 않았으면 유형과 관계없이 설치 설비 칸처럼 「—」(사용자 지시 2026-11-24). */
+      render: (row) => row.warehouseName ?? t.list.notAvailable,
     },
   ];
-  /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(사용자 역할 권한 관리 목록과 같다). */
+  /*
+   * 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(사용자 역할 권한 관리 목록과 같다).
+   * 글자 열(코드 · 설비 · 창고)은 왼쪽 정렬에 넓게, 라벨 열은 라벨 폭만(사용자 지시 2026-11-24).
+   * 폭은 지금 자료(MOBILE-002-WH31 · 설비 이름 · 베트남어 창고 이름)가 잘리지 않는 만큼 — 목록 구획이 좁으면 표가 가로로 구른다.
+   * 폭 기본값을 바꾸며 저장 열쇠를 v2 로 — 예전에 끌어 둔 폭이 새 기본값을 덮지 않게.
+   */
   const ordered = useColumnOrder('omf-mes:terminal-process-map:columns:order', baseColumns);
-  const resizable = useColumnWidths('omf-mes:terminal-process-map:columns', ordered);
+  const resizable = useColumnWidths('omf-mes:terminal-process-map:columns:v2', ordered);
   const fit = useFitColumns(resizable.columns);
 
   const serverRowErrors = splitRowErrors(replace.error, sentProcessIds.current);
@@ -566,42 +572,42 @@ export const TerminalProcessMapScreen = () => {
           <SaveErrorBanner error={issueToken.error} />
           <SaveErrorBanner error={deactivate.error} />
           <SaveErrorBanner error={activate.error} />
-          {/* 항목명 위·값 아래의 3열 격자 — 순서는 그대로(코드 · 유형 · 운영 상태 · 등록 상태 · 설비 · 창고). */}
-          <dl className="parts-iqc-facts iqc-inbound-facts terminal-map-info">
-            <div className="parts-iqc-fact">
-              <dt className="field-label">{t.terminal.code}</dt>
-              <dd className="parts-iqc-fact-key">{selected.terminalCode}</dd>
-            </div>
-            <div className="parts-iqc-fact">
-              <dt className="field-label">{t.terminal.type}</dt>
-              <dd>{codeNames.type(selected.terminalTypeCode)}</dd>
-            </div>
-            <div className="parts-iqc-fact">
-              <dt className="field-label">{t.terminal.status}</dt>
-              <dd>{operatingStatusOf(selected)}</dd>
-            </div>
-            <div className="parts-iqc-fact">
-              <dt className="field-label">{t.terminal.registration}</dt>
-              <dd>{registrationChip(selected)}</dd>
-            </div>
-            {/* 등록 상태와 등록 일시를 나눈다(사용자 지시 2026-11-20 · #333). */}
-            <div className="parts-iqc-fact">
-              <dt className="field-label">{t.terminal.registeredAt}</dt>
-              <dd>
-                {selected.registrationConfirmedAt === null
-                  ? t.list.notAvailable
-                  : formatMoment(selected.registrationConfirmedAt)}
-              </dd>
-            </div>
-            <div className="parts-iqc-fact">
-              <dt className="field-label">{t.terminal.equipment}</dt>
-              <dd>{selected.equipmentLabel ?? t.terminal.unassigned}</dd>
-            </div>
-            <div className="parts-iqc-fact">
-              <dt className="field-label">{t.terminal.warehouse}</dt>
-              <dd>{selected.warehouseName ?? t.terminal.unassigned}</dd>
-            </div>
-          </dl>
+          {/*
+           * 단말 정보 표 — 항목 | 값 | 항목 | 값 네 칸(사용자 지시 2026-11-24). 한 줄에 짝 하나씩:
+           * 코드 · 유형 / 운영 상태 · 등록 상태 / 등록 일시 · 설치 설비 / 창고(이름이 길어 한 줄을 다 쓴다).
+           */}
+          <table className="terminal-map-info-table">
+            <tbody>
+              <tr>
+                <th scope="row">{t.terminal.code}</th>
+                <td className="terminal-map-info-key">{selected.terminalCode}</td>
+                <th scope="row">{t.terminal.type}</th>
+                <td>{codeNames.type(selected.terminalTypeCode)}</td>
+              </tr>
+              <tr>
+                <th scope="row">{t.terminal.status}</th>
+                <td>{operatingStatusOf(selected)}</td>
+                <th scope="row">{t.terminal.registration}</th>
+                {/* 표 안에서는 라벨 없이 글자로 — 다른 칸과 같게(사용자 지시 2026-11-24). */}
+                <td>{registrationText(selected)}</td>
+              </tr>
+              <tr>
+                {/* 등록 상태와 등록 일시를 나눈다(사용자 지시 2026-11-20 · #333). */}
+                <th scope="row">{t.terminal.registeredAt}</th>
+                <td>
+                  {selected.registrationConfirmedAt === null
+                    ? t.list.notAvailable
+                    : formatMoment(selected.registrationConfirmedAt)}
+                </td>
+                <th scope="row">{t.terminal.equipment}</th>
+                <td>{selected.equipmentLabel ?? t.terminal.unassigned}</td>
+              </tr>
+              <tr>
+                <th scope="row">{t.terminal.warehouse}</th>
+                <td colSpan={3}>{selected.warehouseName ?? t.list.notAvailable}</td>
+              </tr>
+            </tbody>
+          </table>
         </section>
 
         {/*
@@ -744,7 +750,12 @@ export const TerminalProcessMapScreen = () => {
       </div>
 
       <div className="users-roles-workspace">
-        <section ref={aboveRef} className="pane users-roles-search" aria-label={t.panes.search}>
+        {/* 조건 칸 바탕은 품목 · BOM 조회 묶음과 같은 공용 규칙(filter-field-surface · 사용자 지시 2026-11-24). */}
+        <section
+          ref={aboveRef}
+          className="pane users-roles-search filter-field-surface"
+          aria-label={t.panes.search}
+        >
           <div className="filter-bar users-roles-filter-row">
             {/* 단말 유형 · 설치 설비 · 창고 · 단말 코드 검색 순(사용자 지시 2026-11-20 · #333). 고르는 즉시 적용한다. */}
             <SelectField
