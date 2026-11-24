@@ -33,6 +33,7 @@ import {
   sameForm,
   startHistory,
   withValue,
+  type FormSnapshot,
   type PartsIqcForm,
 } from '../parts-iqc-inspection/form-state';
 import { PlanNote, TIME_LABELS } from '../parts-iqc-inspection/inspection-detail';
@@ -292,7 +293,6 @@ const ShipmentResultForm = ({
     (editing?.matchedLotIds ?? preselectedLotIds).filter((id) => activeIds.includes(id)),
   );
   const initialReason = editing?.reinspectionReasonCode ?? null;
-  const [matched, setMatched] = useState<number[]>([...initialMatch]);
   const [reason, setReason] = useState<string | null>(initialReason);
   const [serialRows, setSerialRows] = useState<SerialRow[]>([]);
   const [planOpen, setPlanOpen] = useState(false);
@@ -304,7 +304,6 @@ const ShipmentResultForm = ({
   /* 검사 수량 — 서버가 매칭한 피킹 LOT 수량의 합으로 채운다(이 흐름은 수량을 받지 않는다). */
   const qtyOf = (lotIds: readonly number[]): number =>
     lots.filter((lot) => lotIds.includes(lot.lotId)).reduce((sum, lot) => sum + lot.lotQty, 0);
-  const inspectedQty = qtyOf(matched);
 
   const judgmentInputOf = (f: PartsIqcForm, qty: number): JudgmentInput => ({
     inspectedQty: qty > 0 ? qty : null,
@@ -336,9 +335,21 @@ const ShipmentResultForm = ({
       measured,
     );
   });
-  const [history, dispatch] = useReducer(historyReducer, initial, startHistory);
-  const form = history.present;
-  const change = (next: PartsIqcForm) => dispatch({ type: 'change', next });
+  /* 피킹 LOT 매칭도 같은 되돌리기 기록에 쌓는다 — [되돌리기]가 LOT 바꿈부터 되돌린다(IQC 와 같다 · omf-all-around#356). */
+  const [history, dispatch] = useReducer(
+    historyReducer<FormSnapshot>,
+    { form: initial, lots: initialMatch },
+    startHistory,
+  );
+  const form = history.present.form;
+  const matched = history.present.lots;
+  const change = (next: PartsIqcForm) => {
+    if (next === form) return;
+    dispatch({ type: 'change', next: { form: next, lots: matched } });
+  };
+  const setMatched = (lotIds: number[]) =>
+    dispatch({ type: 'change', next: { form, lots: lotIds } });
+  const inspectedQty = qtyOf(matched);
 
   /* 고친 결과의 판정이 자동 판정과 같으면 자동 판정을 따르게 둔다(IQC 와 같다). */
   const [initialChosen] = useState<string | null>(() => {
@@ -446,6 +457,8 @@ const ShipmentResultForm = ({
     inspectedQty <= 0 ||
     form.inspectedAt === '' ||
     overall === null ||
+    /* 기준 항목이 있으면 필수 항목이 다 차 자동 판정이 나와야 한다 — 판정만 골라 제출하지 못한다. */
+    (suggested === null && !noPlan) ||
     manualUnjudged.length > 0 ||
     (needsReason && reason === null);
 
@@ -676,11 +689,11 @@ const ShipmentResultForm = ({
                 {' *'}
               </span>
             </span>
-            {/* 출하 검사는 측정 없이도 판정할 수 있었다 — 자동 판정 전에도 고를 수 있게 둔다. */}
+            {/* 필수 항목이 다 차 자동 판정이 나와야 고를 수 있다 — 기준이 없으면 바로 고른다(IQC 와 같다 · omf-all-around#356). */}
             <Select
               aria-labelledby={overallId}
               value={overall}
-              disabled={save.isSaving}
+              disabled={save.isSaving || (suggested === null && !noPlan)}
               options={SHIPMENT_JUDGMENTS.map((value) => ({
                 value,
                 label: t.judgment[value] ?? value,

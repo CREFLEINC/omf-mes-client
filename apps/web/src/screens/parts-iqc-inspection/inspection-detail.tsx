@@ -92,7 +92,9 @@ import {
   numberOf,
   sameForm,
   startHistory,
+  stepTarget,
   withValue,
+  type FormSnapshot,
   type PartsIqcForm,
 } from './form-state';
 import {
@@ -668,8 +670,13 @@ export interface InspectionFormDrawer {
   seqNo: number;
   /** 고른 자재 관리 LOT — 저장 때 `matchedLotIds` 로 싣는다. */
   matchedLotIds: number[];
-  /** 매칭 칸 · 재검 사유 칸(드로어가 그린다). */
-  matchField: ReactNode;
+  /**
+   * 매칭 칸 · 재검 사유 칸(드로어가 그린다) — LOT 을 바꾸면 받은 `onMatchChange` 로 알린다. 양식이 그 바꿈을 되돌리기 기록에
+   * 넣는다(omf-all-around#356).
+   */
+  matchField: (onMatchChange: (lotIds: number[]) => void) => ReactNode;
+  /** 고른 LOT 을 바꾼다 — 매칭 칸에서 바꾸거나 되돌리기 · 다시 실행으로 옮겨 갈 때. */
+  setMatchedLotIds: (lotIds: number[]) => void;
   /** 판정이 바뀔 때마다 알린다 — 드로어가 재검 사유가 필요한지 계산한다(FR-023a · 2026-11-12). 같은 함수를 계속 준다. */
   onJudgmentChange: (judgmentCode: string | null) => void;
   /** [저장] 직전 드로어 칸 검사 — 매칭 0개 · 재검 사유 빠짐이면 칸에 오류를 띄우고 `false`(FR-021 · FR-023a). */
@@ -815,9 +822,27 @@ const InspectionForm = (props: FormProps) => {
     return form;
   }, [draft, specs, defaultQty, aqlPlan]);
 
-  const [history, dispatch] = useReducer(historyReducer, initial, startHistory);
-  const form = history.present;
-  const change = (next: PartsIqcForm) => dispatch({ type: 'change', next });
+  /* 결과 드로어는 LOT 매칭도 같은 기록에 쌓는다 — [되돌리기]가 LOT 바꿈부터 되돌린다(omf-all-around#356). */
+  const [history, dispatch] = useReducer(
+    historyReducer<FormSnapshot>,
+    { form: initial, lots: props.drawer?.matchedLotIds ?? [] },
+    startHistory,
+  );
+  const form = history.present.form;
+  const change = (next: PartsIqcForm) => {
+    if (next === form) return;
+    dispatch({ type: 'change', next: { form: next, lots: history.present.lots } });
+  };
+  const changeMatch = (lotIds: number[]) => {
+    dispatch({ type: 'change', next: { form, lots: lotIds } });
+    props.drawer?.setMatchedLotIds(lotIds);
+  };
+  const step = (type: 'undo' | 'redo') => {
+    const target = stepTarget(history, type);
+    if (target === undefined) return;
+    dispatch({ type });
+    if (target.lots !== history.present.lots) props.drawer?.setMatchedLotIds([...target.lots]);
+  };
   /*
    * 고친 것이 있는가 — 마지막으로 불러오거나 저장한 내용과 견준다. 눌렀다 풀거나 적었다 지우면 고친 것이 아니다
    * (#247 · 사용자 지시 2026-11-10 — 되돌리기 기록 수로 재면 OK 를 눌렀다 풀어도 [임시 저장]이 켜져 있었다).
@@ -901,7 +926,8 @@ const InspectionForm = (props: FormProps) => {
       return;
     }
     setBaseline(latestForm.current);
-    dispatch({ type: 'reset', form: latestForm.current });
+    /* 드로어는 위에서 닫혔다 — 여기는 LOT 매칭이 없는 화면 양식이다. */
+    dispatch({ type: 'reset', form: { form: latestForm.current, lots: [] } });
   });
 
   const input = judgmentInputOf(form);
@@ -1240,7 +1266,7 @@ const InspectionForm = (props: FormProps) => {
           </div>
         </dl>
         {/* 결과 추가 창 — 자재 관리 LOT 매칭은 LOT 정보 위(사용자 지시 2026-11-16 · omf-all-around#274). */}
-        {props.drawer?.matchField}
+        {props.drawer?.matchField(changeMatch)}
         <div className="parts-iqc-lot-box" role="group" aria-labelledby="parts-iqc-lot">
           <h4 id="parts-iqc-lot">{t.lot.heading}</h4>
           {/* 받은 값(LOT · 공급업체 · 수량 · 입고) 두 줄, 구분선 아래에 적는 값(검사일시) — 사용자 시안 2026-10-29 */}
@@ -1529,7 +1555,7 @@ const InspectionForm = (props: FormProps) => {
             variant="text"
             leadingIcon={<Icon name="undo" />}
             disabled={history.past.length === 0 || submit.isSaving}
-            onClick={() => dispatch({ type: 'undo' })}
+            onClick={() => step('undo')}
           >
             {t.footer.undo}
           </Button>
@@ -1538,7 +1564,7 @@ const InspectionForm = (props: FormProps) => {
             aria-label={t.footer.redo}
             icon="redo"
             disabled={history.future.length === 0 || submit.isSaving}
-            onClick={() => dispatch({ type: 'redo' })}
+            onClick={() => step('redo')}
           />
           <span className="parts-iqc-footer-gap" />
           <Button variant="text" disabled={submit.isSaving} onClick={clearForm}>
@@ -1565,7 +1591,7 @@ const InspectionForm = (props: FormProps) => {
             variant="text"
             leadingIcon={<Icon name="undo" />}
             disabled={history.past.length === 0 || submit.isSaving}
-            onClick={() => dispatch({ type: 'undo' })}
+            onClick={() => step('undo')}
           >
             {t.footer.undo}
           </Button>
@@ -1574,7 +1600,7 @@ const InspectionForm = (props: FormProps) => {
             aria-label={t.footer.redo}
             icon="redo"
             disabled={history.future.length === 0 || submit.isSaving}
-            onClick={() => dispatch({ type: 'redo' })}
+            onClick={() => step('redo')}
           />
           <span className="parts-iqc-footer-gap" />
           {/*

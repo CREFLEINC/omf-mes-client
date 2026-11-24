@@ -263,7 +263,7 @@ export const PqcInspectionRegisterScreen = () => {
     />
   );
 
-  /* 「대기·진행만 보기」 — 조건이 바뀌면 결과가 통째로 달라진다 — 첫 쪽으로 간다. 다시 켜면 「완료」 칩은 푼다(같은 AND 이유). */
+  /* 「대기·진행만 보기」 — 조건이 바뀌면 결과가 통째로 달라진다 — 첫 쪽으로 간다. 다시 켜면 「완료」 칩 · 종합 판정은 푼다(같은 AND 이유 · #356). */
   const toggleToday = (next: boolean): void => {
     setTodayOnly(next);
     setPage(1);
@@ -272,6 +272,7 @@ export const PqcInspectionRegisterScreen = () => {
   const togglePendingOnly = (next: boolean): void => {
     setPendingOnly(next);
     if (next && statusCode === 'COMPLETED') setStatusCode(null);
+    if (next) setJudgmentCode(null);
     setPage(1);
   };
 
@@ -285,6 +286,8 @@ export const PqcInspectionRegisterScreen = () => {
         onChange={(next) => {
           /* 「완료」는 「대기·진행만 보기」를 함께 끈다 — 서버가 두 조건을 AND 로 묶어 그대로 두면 늘 빈 목록이다. */
           if (next === 'COMPLETED') setPendingOnly(false);
+          /* 「대기」 · 「진행」은 종합 판정을 푼다 — 판정은 확정 건에만 있다(#356). */
+          if (next === 'REQUESTED' || next === 'IN_PROGRESS') setJudgmentCode(null);
           setStatusCode(next);
           setPage(1);
         }}

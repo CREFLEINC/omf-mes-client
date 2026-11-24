@@ -149,27 +149,36 @@ export const withJudgmentFilter = <
   pendingOnly: overallJudgmentCode === null ? filters.pendingOnly : false,
 });
 
+/** 종합 판정 조건을 푼다 — 판정은 확정된 의뢰에만 있어 대기 · 진행과 함께 걸면 늘 빈 목록이다(omf-all-around#356). */
+const withoutJudgment = <F extends object>(filters: F): F =>
+  'overallJudgmentCode' in filters ? { ...filters, overallJudgmentCode: null } : filters;
+
 /**
  * 칩을 건다. **「완료」는 「대기·진행만 보기」를 함께 끈다** — 서버가 두 조건을 AND 로 묶어 그대로 두면
- * 늘 빈 목록이 된다. 끈 것이 조건 줄의 체크칸에 그대로 보인다.
+ * 늘 빈 목록이 된다. 끈 것이 조건 줄의 체크칸에 그대로 보인다. **「대기」 · 「진행」은 종합 판정을 푼다**(같은 AND 이유 · #356).
  */
 export const withStatus = <F extends StatusFilters>(
   filters: F,
   statusCode: InspectionHubStatus | null,
-): F => ({
-  ...filters,
-  statusCode,
-  pendingOnly: statusCode === COMPLETED ? false : filters.pendingOnly,
-});
+): F => {
+  const next: F = {
+    ...filters,
+    statusCode,
+    pendingOnly: statusCode === COMPLETED ? false : filters.pendingOnly,
+  };
+  return statusCode === null || statusCode === COMPLETED ? next : withoutJudgment(next);
+};
 
 /**
- * 조건 줄의 조회 — 칩은 그대로 둔다. 단 「대기·진행만 보기」를 다시 켜면 「완료」 칩은 푼다(같은 AND 이유).
+ * 조건 줄의 조회 — 칩은 그대로 둔다. 단 「대기·진행만 보기」를 다시 켜면 「완료」 칩과 종합 판정은 푼다(같은 AND 이유 · #356).
  */
-export const withDraft = <F extends StatusFilters>(filters: F, next: Omit<F, 'statusCode'>): F =>
-  ({
+export const withDraft = <F extends StatusFilters>(filters: F, next: Omit<F, 'statusCode'>): F => {
+  const merged = {
     ...next,
     statusCode: next.pendingOnly && filters.statusCode === COMPLETED ? null : filters.statusCode,
-  }) as F;
+  } as F;
+  return next.pendingOnly ? withoutJudgment(merged) : merged;
+};
 
 /**
  * 주소에서 조건을 읽는다.

@@ -283,6 +283,23 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     expect(screen.getByRole('checkbox', { name: t.queue.pendingOnly })).toBeChecked();
   });
 
+  it('종합 판정을 건 채 「대기·진행만 보기」를 다시 켜면 판정을 푼다 — 판정은 확정 건에만 있다(#356)', async () => {
+    const user = userEvent.setup();
+    const { queueQueries } = renderScreen();
+    await screen.findByText(REQUEST.inspectionRequestNo);
+
+    await user.click(
+      screen.getByRole('combobox', { name: messages.common.inspectionHub.judgmentFilter }),
+    );
+    await user.click(await screen.findByRole('option', { name: '합격' }));
+    await waitFor(() => expect(queueQueries.at(-1)?.get('overallJudgmentCode')).toBe('ACCEPTED'));
+    expect(queueQueries.at(-1)?.get('pendingOnly')).not.toBe('true');
+
+    await user.click(screen.getByRole('checkbox', { name: t.queue.pendingOnly }));
+    await waitFor(() => expect(queueQueries.at(-1)?.get('pendingOnly')).toBe('true'));
+    expect(queueQueries.at(-1)?.get('overallJudgmentCode')).toBeNull();
+  });
+
   it('「초기화」는 처음 연 상태에서는 없고, 바꾼 것이 생기면 나타난다(C-6)', async () => {
     const user = userEvent.setup();
     renderScreen();

@@ -38,6 +38,7 @@ import { LotScan } from '../inspection-documents/lot-scan';
 import { withDraft, withJudgmentFilter, withStatus } from '../oqc-inspection/filters';
 import { JudgmentFilter } from '../oqc-inspection/judgment-filter';
 import { InspectionDetail } from '../parts-iqc-inspection/inspection-detail';
+import { useScanOpen } from '../parts-iqc-inspection/scan-open';
 import { plantTodayRange } from '../parts-iqc-inspection/today';
 import { LeaveGuard } from '../routing/leave-guard';
 import {
@@ -177,15 +178,7 @@ const IqcInspectionScreenBody = () => {
    * 스캔으로 연다 — 같은 의뢰를 다시 스캔해도 닫지 않는다. 자재 관리 LOT 으로 찾았으면 그 LOT 을 고른 채로 결과 추가 창을 연다
    * (사용자 지시 2026-11-16 · omf-all-around#274).
    */
-  const [scanOpen, setScanOpen] = useState<{
-    requestId: number;
-    lotId: number;
-    key: number;
-  } | null>(null);
-  /* 스캔한 의뢰가 아닌 곳에 서면(다른 의뢰 · 상세 닫기 · 떠날지 묻는 창에서 「계속 작성」) 스캔 열기를 거둔다 — 남겨 두면 나중에 그 의뢰를 다시 고를 때 결과 추가 창이 또 뜬다. */
-  useEffect(() => {
-    if (scanOpen !== null && scanOpen.requestId !== selectedId) setScanOpen(null);
-  }, [scanOpen, selectedId]);
+  const { scanOpen, setScanOpen, stay } = useScanOpen(selectedId);
   const openByScan = (inspectionRequestId: number, scannedLotId: number | null): void => {
     if (inspectionRequestId !== selectedId) select(inspectionRequestId);
     setScanOpen(
@@ -407,10 +400,19 @@ const IqcInspectionScreenBody = () => {
           size="sm"
           showCloseButton={false}
           title={parts.dialog.title}
-          onClose={() => setLeaveTo(null)}
+          onClose={() => {
+            setLeaveTo(null);
+            stay();
+          }}
           footer={
             <>
-              <Button variant="text" onClick={() => setLeaveTo(null)}>
+              <Button
+                variant="text"
+                onClick={() => {
+                  setLeaveTo(null);
+                  stay();
+                }}
+              >
                 {messages.common.cancel}
               </Button>
               <Button

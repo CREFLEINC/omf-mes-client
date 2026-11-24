@@ -254,14 +254,21 @@ describe('W-04-03 출하 OQC 새 흐름 — 상세', () => {
     expect(drawer.getByRole('checkbox', { name: 'P2611-0001' })).not.toBeChecked();
   });
 
-  it('US3-1 Q4 필수 칸(매칭 · 판정)이 비면 [저장]이 잠긴다(omf-all-around#356)', async () => {
+  it('US3-1 Q4 필수 칸(필수 항목 · 매칭 · 판정)이 비면 [저장]이 잠긴다(omf-all-around#356)', async () => {
     const user = userEvent.setup();
     const { writes } = renderShipmentOqc({ withItems: true });
 
     const drawer = await openAddDrawer(user);
-    /* 판정을 고르기 전(필수 항목을 아직 안 재 자동 판정도 없다) — 잠김. */
+    /* 필수 항목을 아직 안 재 자동 판정이 없다 — 종합 판정도 고를 수 없고 [저장]은 잠김(IQC 와 같다). */
     expect(drawer.getByRole('button', { name: s.drawer.save })).toBeDisabled();
-    await pickOverall(user, drawer, 'ACCEPTED');
+    expect(drawer.getByRole('combobox', { name: iq.verdict.overall })).toBeDisabled();
+    await user.type(
+      await drawer.findByRole('textbox', { name: iq.visual.checkValueLabel('외관') }),
+      '긁힘 없음',
+    );
+    await user.click(
+      within(drawer.getByRole('group', { name: '외관' })).getByRole('button', { name: iq.ok }),
+    );
     expect(drawer.getByRole('button', { name: s.drawer.save })).toBeEnabled();
     /* 매칭을 다 풀면 — 다시 잠김. */
     await user.click(drawer.getByRole('button', { name: s.drawer.selectNone }));
@@ -269,6 +276,33 @@ describe('W-04-03 출하 OQC 새 흐름 — 상세', () => {
     await user.click(drawer.getByRole('button', { name: s.drawer.save }));
 
     expect(writes).toHaveLength(0);
+  });
+
+  it('[되돌리기]는 LOT 매칭 바꿈부터 한 칸씩 되돌리고 적은 값은 남긴다 — [다시 실행]이 다시 건다(omf-all-around#356)', async () => {
+    const user = userEvent.setup();
+    renderShipmentOqc({ withItems: true });
+
+    const drawer = await openAddDrawer(user);
+    const text = await drawer.findByRole('textbox', { name: iq.visual.checkValueLabel('외관') });
+    const lot = drawer.getByRole('checkbox', { name: 'P2611-0004' });
+    const undo = drawer.getByRole('button', { name: iq.footer.undo });
+    expect(lot).toBeChecked();
+
+    await user.type(text, 'A');
+    await user.click(drawer.getByRole('button', { name: s.drawer.selectNone }));
+    expect(lot).not.toBeChecked();
+
+    await user.click(undo);
+    expect(lot).toBeChecked();
+    expect(text).toHaveValue('A');
+    await user.click(undo);
+    expect(text).toHaveValue('');
+    expect(lot).toBeChecked();
+
+    await user.click(drawer.getByRole('button', { name: iq.footer.redo }));
+    await user.click(drawer.getByRole('button', { name: iq.footer.redo }));
+    expect(text).toHaveValue('A');
+    expect(lot).not.toBeChecked();
   });
 
   it('US3-4 판정만 골라 제출하면 매칭 · 판정을 작성중으로 보낸다(수량은 서버가 채운다)', async () => {

@@ -32313,6 +32313,25 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   margin-top: var(--space-6);
 }
 
+/*
+ * PQC 결과 창은 내용이 짧아 아래 단추 줄이 창 가운데에 떴다 — 양식이 창 높이를 채우고 단추 줄을 맨 아래로 내린다(IQC · OQC 결과 창과
+ * 같은 자리 · omf-all-around#356). 창 본문 아래 여백(--space-5)만큼 뺀다. 내용이 길면 종전처럼 줄이 아래에 붙어 함께 내려간다.
+ */
+.iqc-inbound-drawer .pqc-web-drawer {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-height: calc(var(--dialog-max-h, 100dvh) - var(--space-5));
+}
+
+.iqc-inbound-drawer .pqc-web-drawer > :nth-last-child(2) {
+  margin-bottom: var(--space-6);
+}
+
+.iqc-inbound-drawer .pqc-web-drawer > .parts-iqc-drawer-footer {
+  margin-top: auto;
+}
+
 .iqc-inbound-match-list {
   display: flex;
   flex-direction: column;

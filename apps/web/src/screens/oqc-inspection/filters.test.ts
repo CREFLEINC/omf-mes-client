@@ -8,7 +8,9 @@ import {
   readPageSize,
   readSelectedId,
   toListQuery,
+  withDraft,
   withJudgmentFilter,
+  withStatus,
   toPageParams,
   toPageSizeParams,
   toSearchParams,
@@ -166,5 +168,18 @@ describe('종합 판정 필터(omf-all-around#356)', () => {
     const picked = withJudgmentFilter(EMPTY_FILTERS, 'ACCEPTED');
     expect(picked).toMatchObject({ overallJudgmentCode: 'ACCEPTED', pendingOnly: false });
     expect(withJudgmentFilter(EMPTY_FILTERS, null).pendingOnly).toBe(true);
+  });
+
+  it('판정을 건 채 「대기·진행만 보기」를 다시 켜거나 대기 · 진행 칩을 누르면 판정을 푼다 — 완료 칩은 둔다', () => {
+    const picked = withJudgmentFilter(EMPTY_FILTERS, 'ACCEPTED');
+    expect(withDraft(picked, { ...picked, pendingOnly: true })).toMatchObject({
+      pendingOnly: true,
+      overallJudgmentCode: null,
+    });
+    expect(withDraft(picked, { ...picked, keyword: 'A' }).overallJudgmentCode).toBe('ACCEPTED');
+    expect(withStatus(picked, 'REQUESTED').overallJudgmentCode).toBeNull();
+    expect(withStatus(picked, 'IN_PROGRESS').overallJudgmentCode).toBeNull();
+    expect(withStatus(picked, 'COMPLETED').overallJudgmentCode).toBe('ACCEPTED');
+    expect(withStatus(picked, null).overallJudgmentCode).toBe('ACCEPTED');
   });
 });

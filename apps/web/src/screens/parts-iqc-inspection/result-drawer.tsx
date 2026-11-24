@@ -169,7 +169,7 @@ export const ResultDrawer = ({
               drawer: {
                 seqNo,
                 matchedLotIds: matched,
-                matchField: (
+                matchField: (onMatchChange) => (
                   <>
                     <LotMatchField
                       lots={lots}
@@ -177,7 +177,7 @@ export const ResultDrawer = ({
                       uomCode={uomCode}
                       value={matched}
                       error={matchError}
-                      onChange={setMatched}
+                      onChange={onMatchChange}
                     />
                     {needsReason && judgment !== null ? (
                       <ReinspectionReasonField
@@ -191,6 +191,7 @@ export const ResultDrawer = ({
                     ) : null}
                   </>
                 ),
+                setMatchedLotIds: setMatched,
                 onJudgmentChange: setJudgment,
                 validate,
                 ready: matched.length > 0 && (!needsReason || reason !== null),

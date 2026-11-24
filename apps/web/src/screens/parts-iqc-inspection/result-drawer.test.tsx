@@ -272,7 +272,7 @@ const mountDrawer = (data: InboundInspection) => {
         uomCode="EA"
         renderForm={({ drawer }) => (
           <div>
-            {drawer.matchField}
+            {drawer.matchField(drawer.setMatchedLotIds)}
             <output aria-label="ready">{String(drawer.ready)}</output>
             <button type="button" onClick={() => drawer.onJudgmentChange('ACCEPTED')}>
               {STUB.accept}
