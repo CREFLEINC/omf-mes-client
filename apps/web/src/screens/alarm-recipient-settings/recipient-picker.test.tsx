@@ -59,7 +59,7 @@ describe('RecipientPicker — 상한(D-11)', () => {
     expect(box(64)).toBeEnabled();
 
     const dialog = within(screen.getByRole('dialog'));
-    await user.click(dialog.getByRole('button', { name: '추가 (1)' }));
+    await user.click(dialog.getByRole('button', { name: '1명 추가' }));
     expect(onAdd).toHaveBeenCalledWith([expect.objectContaining({ appUserId: 64 })]);
   });
 
@@ -89,6 +89,6 @@ describe('RecipientPicker — 상한(D-11)', () => {
 
     expect(screen.queryByText(/남은 자리|최대/)).toBeNull();
     for (const id of [62, 63, 64]) expect(box(id)).toBeChecked();
-    expect(screen.getByRole('button', { name: '추가 (3)' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '3명 추가' })).toBeEnabled();
   });
 });

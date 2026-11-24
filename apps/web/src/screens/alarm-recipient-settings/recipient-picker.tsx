@@ -197,6 +197,7 @@ export const RecipientPicker = ({
       <div className="alarm-picker">
         <SearchInput
           label={t.picker.searchLabel}
+          placeholder={t.picker.searchPlaceholder}
           value={keyword}
           onChange={(event) => setKeyword(event.target.value)}
           onSearch={applySearch}

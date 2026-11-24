@@ -24,8 +24,8 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     recipients: (count: number): string => `Người nhận (${String(count)})`,
   },
   values: {
-    on: 'Bật',
-    off: 'Tắt',
+    on: 'ON',
+    off: 'OFF',
     approver: 'Người phê duyệt',
     noPhone: 'Không có số điện thoại',
     inactive: 'Ngừng sử dụng',
@@ -73,6 +73,7 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
   picker: {
     title: 'Thêm người nhận',
     searchLabel: 'Tên hoặc tên đăng nhập',
+    searchPlaceholder: 'Nhập tên hoặc tên đăng nhập',
     caption: 'Ứng viên người nhận',
   },
   errors: {

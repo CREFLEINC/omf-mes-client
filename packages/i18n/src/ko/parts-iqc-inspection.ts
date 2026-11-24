@@ -24,7 +24,7 @@ export const partsIqcInspection = {
     defects: '불량 유형',
   },
   today: '오늘 입고',
-  todayOn: '오늘 입고만 보기 켜짐 — 누르면 끕니다',
+  todayOn: '오늘 입고만 보기 ON — 누르면 끕니다',
   todayOff: '오늘 들어온 검사 건만 봅니다',
 
   /** 검사 기준 조회 팝업(사용자 지시 2026-10-30). */

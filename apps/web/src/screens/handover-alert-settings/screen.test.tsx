@@ -82,6 +82,11 @@ interface SetupOptions {
   candidates?: number[];
   /** 서버가 더한 종류(피처 009 의 적치 대기 등) — 10종 뒤에 붙는다 */
   extraTypes?: typeof TYPES;
+  /** 요약 응답의 Zalo 연결 상태. 주지 않으면 싣지 않는다 */
+  zaloStatus?: string;
+  permissions?: string[];
+  /** 이동한 주소를 읽어야 할 때 — 데이터 라우터로 렌더한다 */
+  dataRouter?: boolean;
 }
 
 const setup = (options: SetupOptions = {}) => {
@@ -122,6 +127,7 @@ const setup = (options: SetupOptions = {}) => {
       respond: (request) => {
         summaryQueries.push(new URL(request.url));
         return jsonResponse({
+          ...(options.zaloStatus === undefined ? {} : { zaloStatus: options.zaloStatus }),
           items: Object.entries(settings).map(([alertTypeCode, setting]) => ({
             alertTypeCode,
             enabled: setting.enabled,
@@ -174,10 +180,11 @@ const setup = (options: SetupOptions = {}) => {
     {
       fetch: createStubFetch(routes),
       route: options.route ?? '/notification/handover-settings',
+      dataRouter: options.dataRouter,
       session: {
         ...SYNTHETIC_SESSION,
         scopes: options.scopes ?? [{ businessUnitId: 8301 }],
-        permissions: ['W-CO-14'],
+        permissions: options.permissions ?? ['W-CO-14'],
       },
     },
   );
@@ -232,6 +239,33 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     const pane = await openType(user, '자재 출고 피킹');
     expect(pane.getByText(t.types.MATERIAL_PICKING_REQUESTED.when)).toBeInTheDocument();
     expect(pane.getByText(t.types.MATERIAL_PICKING_REQUESTED.where)).toBeInTheDocument();
+  });
+
+  it('Zalo 미연결이면 안내 라벨 하나에 이어 붙이고, 옆 단추로 알림 연결 설정에 간다', async () => {
+    const user = userEvent.setup();
+    const { router } = setup({
+      zaloStatus: 'NOT_CONFIGURED',
+      permissions: ['W-CO-14', 'W-CO-12'],
+      dataRouter: true,
+    });
+
+    const note = await screen.findByText(`${t.intro} ${t.state.zaloNotActive}`);
+    expect(note.closest('[role="note"]')).toHaveAttribute('data-tone', 'warning');
+    expect(screen.getAllByRole('note')).toHaveLength(1);
+    expect(screen.queryByRole('link', { name: t.actions.openConnection })).toBeNull();
+    await user.click(screen.getByRole('button', { name: t.actions.openConnection }));
+    await waitFor(() =>
+      expect(router?.state.location.pathname).toBe('/notification/zalo-connection'),
+    );
+  });
+
+  it('Zalo 가 연결돼 있으면 파란 안내 한 줄만 있고 이동 단추는 없다', async () => {
+    setup({ zaloStatus: 'ACTIVE', permissions: ['W-CO-14', 'W-CO-12'] });
+
+    const note = await screen.findByText(t.intro);
+    expect(note.closest('[role="note"]')).toHaveAttribute('data-tone', 'info');
+    expect(screen.queryByText(t.state.zaloNotActive, { exact: false })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.actions.openConnection })).toBeNull();
   });
 
   /* 피처 009(omf-all-around#294) — 「적치 대기」 새 유형과 바뀐 「검사 불합격」 처리 안내. */
@@ -342,7 +376,7 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     expect(dialog.getByRole('checkbox', { name: '후보 62 선택' })).toBeDisabled();
     expect(dialog.getByRole('checkbox', { name: '후보 63 선택' })).toBeDisabled();
 
-    await user.click(dialog.getByRole('button', { name: '추가 (1)' }));
+    await user.click(dialog.getByRole('button', { name: '1명 추가' }));
     expect(pane.getByText(t.fields.recipients(5, 5))).toBeInTheDocument();
     await user.click(pane.getByRole('button', { name: t.actions.save }));
 
@@ -366,7 +400,7 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     const rows = await typeRows();
     expect(within(rows[2] as HTMLElement).getByText('⚠1')).toBeInTheDocument();
     const pane = await openType(user, '자재 출고 피킹');
-    expect(pane.getByText('📵 전화번호 없음 — 알림센터로만 받음')).toBeInTheDocument();
+    expect(pane.getByText('📵 전화번호 없음')).toBeInTheDocument();
     expect(pane.getByText(t.state.noPhoneNotice(1))).toBeInTheDocument();
   });
 

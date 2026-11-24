@@ -40,8 +40,8 @@ export const zaloConnection = {
     saved: '저장했습니다',
     copied: '템플릿 변수 이름을 복사했습니다',
     reauth: '고객사 Zalo 담당자에게 새 갱신 토큰을 받아 [바꾸기]로 등록하세요',
-    deliveryOn: 'Zalo 발송 켜짐',
-    deliveryDisabled: 'Zalo 발송 꺼짐',
+    deliveryOn: 'Zalo 발송 ON',
+    deliveryDisabled: 'Zalo 발송 OFF',
     /** Zalo 오류 코드를 사람 말로 — 모르는 코드는 일반 문구, 코드와 원문은 상세 정보에 둔다. */
     lastError: (code: string): string =>
       code === '-124'

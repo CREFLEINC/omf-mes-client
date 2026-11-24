@@ -45,7 +45,6 @@ export const erpOutbound: Translated<typeof ko.erpOutbound> = {
     required: 'Bắt buộc',
   },
   pickRow: (name: string): string => `Chọn ${name}`,
-  pendingTitle: (count: number): string => `Danh sách chờ gửi (${count.toLocaleString()})`,
   lockedNote: 'Đây là mục gửi bắt buộc nên không thể dừng.',
   empty: {
     pickItem: 'Hãy chọn hạng mục gửi.',

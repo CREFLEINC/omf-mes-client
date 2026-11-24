@@ -409,8 +409,6 @@ export const ErpOutboundScreen = () => {
     );
   };
 
-  const pendingCount = pending.data?.page.total;
-
   return (
     <ListDetailWorkspace
       storageKey="omf-mes:erp-outbound"
@@ -580,13 +578,9 @@ export const ErpOutboundScreen = () => {
                   </dd>
                 </div>
               </dl>
-              {/* 송신 예정 — 제목 줄에 건수, 아직 보내지 않은 건의 표(#358). */}
-              <h3 className="pane-title erp-outbound-pending-title">
-                {selected.interfaceCode !== null && pendingCount !== undefined
-                  ? t.pendingTitle(pendingCount)
-                  : t.panes.pending}
-              </h3>
-              {/* 생성일 조건 — 둘레 상자 없이 제목 아래 한 줄(사용자 지시 2026-11-24). */}
+              {/* 송신 예정 — 건수는 표 아래 쪽 넘김 줄 「총 N건」이 보인다(제목에서 뺌 · 사용자 지시 2026-11-24). */}
+              <h3 className="pane-title erp-outbound-pending-title">{t.panes.pending}</h3>
+              {/* 등록일 조건 — 조회 상자로 감싼 한 줄(사용자 지시 2026-11-24). */}
               {selected.interfaceCode !== null && (
                 <CreatedFilter applied={created} today={today} onApply={applyCreated} />
               )}

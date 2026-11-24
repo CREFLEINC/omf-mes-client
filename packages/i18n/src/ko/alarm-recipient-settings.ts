@@ -3,21 +3,21 @@
  * 수신자는 개인 지정만 남았고 미리보기는 없앴다(결정 #19).
  */
 export const alarmRecipientSettings = {
-  panes: { events: '이벤트', setting: (eventName: string): string => `설정: ${eventName}` },
+  panes: { events: '이벤트', setting: (eventName: string): string => `${eventName} 설정 상세` },
   fields: {
     department: '부서 선택',
     departmentPlaceholder: '부서를 선택하세요',
     enabled: '알림 받기',
     zalo: 'Zalo로도 보내기',
-    recipients: (count: number): string => `수신자 (${String(count)})`,
+    recipients: (count: number): string => `수신자 ${String(count)}명`,
   },
   values: {
-    on: '켬',
-    off: '끔',
+    on: 'ON',
+    off: 'OFF',
     approver: '결재자',
     /** 수신자 행에 붙는 표식. 이 사람은 Zalo 를 받지 못하고 알림센터로만 받는다. */
     noPhone: '전화번호 없음',
-    inactive: '비활성',
+    inactive: '미사용',
     /** 후보 표의 전화번호 칸 */
     hasPhone: '있음',
     alreadyAdded: '이미 추가됨',
@@ -36,40 +36,41 @@ export const alarmRecipientSettings = {
     search: '검색',
     prevPage: '이전 쪽',
     nextPage: '다음 쪽',
-    addSelected: (count: number): string => `추가 (${String(count)})`,
+    addSelected: (count: number): string => `${String(count)}명 추가`,
   },
   state: {
-    selectDepartment: '부서를 고르면 그 부서의 이벤트 설정이 보입니다.',
-    noDepartments: '부서가 없습니다',
+    selectDepartment: '부서를 선택하면 그 부서의 이벤트 설정이 보입니다.',
+    noDepartments: '부서가 없습니다.',
     departmentsTruncated:
       '부서 목록이 일부만 표시됩니다. 찾는 부서가 없으면 담당자에게 알려 주세요.',
     noEvents: '설정할 이벤트가 없습니다.',
     noRecipients: '지정한 수신자가 없습니다.',
     /** US4-4 — 켜 두었는데 받을 사람이 없다. 저장은 막지 않는다. */
-    noRecipientsWarning: '수신자가 없어 알림이 가지 않습니다',
+    noRecipientsWarning: '수신자가 없어 알림이 가지 않습니다.',
     /** US4-5 — 전화번호가 없는 수신자는 Zalo 를 받지 못한다. */
     noPhoneNotice: (count: number): string =>
-      `전화번호가 없는 수신자 ${String(count)}명은 알림센터로만 받습니다`,
-    zaloHelp: '실패해도 알림센터는 받습니다',
-    zaloNeedsEnabled: '알림을 켜야 Zalo도 보낼 수 있습니다',
+      `전화번호가 없는 수신자 ${String(count)}명은 알림센터로만 받습니다.`,
+    zaloHelp: 'Zalo 발송에 실패해도 알림센터로는 받습니다.',
+    zaloNeedsEnabled: '알림 받기를 ON으로 해야 Zalo로도 보낼 수 있습니다.',
     approverNotice: '그 차례의 결재자가 받습니다. 결재선 정의에서 정한 사람입니다.',
-    saved: '저장했습니다',
+    saved: '저장했습니다.',
     /** US4-6 — 409. */
-    conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 저장하세요',
+    conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 저장하세요.',
     zaloNotActive: 'Zalo 연결이 준비되지 않아 알림은 알림센터로만 보냅니다.',
     unsavedTitle: '저장하지 않은 변경이 있습니다',
     unsavedBody: '이동하면 고친 내용이 사라집니다. 버리고 이동할까요?',
-    candidatesEmpty: '검색 결과 없음',
+    candidatesEmpty: '검색 결과가 없습니다.',
     pageOf: (page: number, totalPages: number): string => `${String(page)} / ${String(totalPages)}`,
   },
   picker: {
     title: '수신자 추가',
-    searchLabel: '이름 또는 로그인 ID',
+    searchLabel: '이름 또는 로그인 아이디 검색',
+    searchPlaceholder: '이름 또는 로그인 아이디를 입력하세요',
     caption: '수신자 후보',
   },
   errors: {
     /** 서버도 400 으로 막는다 — 화면이 먼저 알린다. */
-    inactiveRecipient: '비활성 사용자는 수신자로 둘 수 없습니다. 해제한 뒤 저장하세요.',
+    inactiveRecipient: '미사용 사용자는 수신자로 둘 수 없습니다. 해제한 뒤 저장하세요.',
     lookupFailed: '목록을 불러오지 못했습니다. 다시 시도해 주세요.',
   },
   columns: {
@@ -78,7 +79,7 @@ export const alarmRecipientSettings = {
     zalo: 'Zalo',
     recipients: '수신자',
     userName: '이름',
-    loginId: '로그인 ID',
+    loginId: '로그인 아이디',
     department: '부서',
     phone: '전화번호',
   },
@@ -89,6 +90,6 @@ export const alarmRecipientSettings = {
     apply: '조회',
     clear: '초기화',
     selectEventTitle: '이벤트를 선택하세요.',
-    selectEvent: '부서를 고르고 이벤트를 누르면 알림 받기 · Zalo · 수신자를 정할 수 있습니다.',
+    selectEvent: '부서와 이벤트를 선택하면 알림 받기, Zalo로도 보내기, 수신자를 정할 수 있습니다.',
   },
 } as const;

@@ -39352,6 +39352,14 @@ body:has(
   gap: var(--space-4);
 }
 
+/* 인계작업 알림 — 안내 라벨 하나 + 옆 [알림 연결 설정으로 이동] 단추(사용자 지시 2026-11-24). */
+.notify-filter-note-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
 .zalo-connection-head > .pane-title {
   margin: 0;
 }

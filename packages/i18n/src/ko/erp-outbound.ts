@@ -22,7 +22,7 @@ export const erpOutbound = {
     /** 상태 선택칸 — 전체 · 송신 대기 · 송신 실패 · 송신 꺼짐(#358). */
     state: '송신 상태 선택',
     all: '전체',
-    sendOff: '송신 꺼짐',
+    sendOff: '송신 OFF',
   },
   /** 두 구획 사이 끌기 막대(키보드 ←·→ 로도 움직인다). */
   splitter: '끌어서 송신 항목·송신 예정 폭 조절',
@@ -56,8 +56,6 @@ export const erpOutbound = {
   },
   /** 행 단추의 접근 이름 — 보이는 이름을 그대로 담는다. */
   pickRow: (name: string): string => `${name} 선택`,
-  /** 송신 예정 구획의 제목 — 건수(사용자 지시 2026-11-24). */
-  pendingTitle: (count: number): string => `송신 대기 목록 (${count.toLocaleString()}건)`,
   /** 끌 수 없는 항목(생산 실적)의 「송신 중지 제한」 값(사용자 지시 2026-11-24). */
   lockedNote: '필수 송신 항목이므로 중지할 수 없습니다.',
   empty: {

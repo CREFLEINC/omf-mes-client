@@ -15,7 +15,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
 import {
   handoverTypeName,
@@ -111,6 +111,7 @@ export const HandoverAlertSettingsScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const toast = useToast();
+  const navigate = useNavigate();
   const zaloNoteId = useId();
   const { session } = useSession();
   const canOpenConnection = toWebAccess(session?.permissions).allows(ZALO_CONNECTION_PATH);
@@ -217,10 +218,10 @@ export const HandoverAlertSettingsScreen = () => {
       key: 'type',
       header: t.columns.type,
       render: (type) => (
-        <Button
-          variant={type.alertTypeCode === selectedCode ? 'filled' : 'text'}
-          size="sm"
-          className="handover-type-button"
+        /* 링크·단추처럼 보이지 않는다 — 줄 아무 곳이나 눌러 고른다. 이 단추는 키보드·화면 낭독기의 자리다(단말 관리와 같다). */
+        <button
+          type="button"
+          className="users-roles-row-pick handover-type-button"
           aria-current={type.alertTypeCode === selectedCode ? 'true' : undefined}
           onClick={() => {
             if (plantId === null) return;
@@ -232,7 +233,7 @@ export const HandoverAlertSettingsScreen = () => {
           }}
         >
           {typeName(type)}
-        </Button>
+        </button>
       ),
     },
     {
@@ -519,6 +520,9 @@ export const HandoverAlertSettingsScreen = () => {
     );
   };
 
+  const zaloNotActive =
+    summary.data?.zaloStatus !== undefined && summary.data.zaloStatus !== 'ACTIVE';
+
   const filter = (
     <>
       <div className="filter-bar notify-filter-row">
@@ -563,28 +567,31 @@ export const HandoverAlertSettingsScreen = () => {
         </div>
       </div>
 
-      {/* 처음엔 모두 꺼져 있고 Zalo 를 켜면 발송량이 는다는 안내(관리웹 정리 시안 A의 ⓘ) — 파란 안내 한 줄(#358). */}
-      <p className="iqc-inspection-action-note notify-filter-note" data-tone="info" role="note">
-        <Icon name="info" size={16} aria-hidden />
-        {t.intro}
-      </p>
-
-      {/* Zalo 미연결 안내 — 다른 화면과 같은 노란 안내 한 줄 + 끝에 이동 링크(사용자 지시 2026-11-24). */}
-      {summary.data?.zaloStatus !== undefined && summary.data.zaloStatus !== 'ACTIVE' && (
+      {/*
+       * 안내 라벨 하나(사용자 지시 2026-11-24) — 처음엔 모두 OFF · Zalo 발송량 안내에, Zalo 미연결이면 그 사실을 같은 라벨에
+       * 이어 붙이고 노란 경고로 바꾼다. 연결 설정으로 가는 길은 라벨 옆 작은 테두리 단추다.
+       */}
+      <div className="notify-filter-note notify-filter-note-row">
         <p
-          className="iqc-inspection-action-note notify-filter-note"
-          data-tone="warning"
+          className="iqc-inspection-action-note"
+          data-tone={zaloNotActive ? 'warning' : 'info'}
           role="note"
         >
-          <Icon name="warning" size={16} aria-hidden />
-          {t.state.zaloNotActive}
-          {canOpenConnection && (
-            <Link className="notify-filter-note-link" to={ZALO_CONNECTION_PATH}>
-              {t.actions.openConnection}
-            </Link>
-          )}
+          <Icon name={zaloNotActive ? 'warning' : 'info'} size={16} aria-hidden />
+          {zaloNotActive ? `${t.intro} ${t.state.zaloNotActive}` : t.intro}
         </p>
-      )}
+        {zaloNotActive && canOpenConnection && (
+          <Button
+            variant="outlined"
+            size="sm"
+            onClick={() => {
+              void navigate(ZALO_CONNECTION_PATH);
+            }}
+          >
+            {t.actions.openConnection}
+          </Button>
+        )}
+      </div>
     </>
   );
 

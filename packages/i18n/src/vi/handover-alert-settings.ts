@@ -31,8 +31,8 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
     recipients: 'N.nhận',
   },
   values: {
-    on: 'Bật',
-    off: 'Tắt',
+    on: 'ON',
+    off: 'OFF',
     noPhone: 'Không có số điện thoại — chỉ nhận ở trung tâm thông báo',
     inactive: 'Ngừng sử dụng',
     noPhoneCount: (count: number): string => `${String(count)} người nhận không có số điện thoại`,

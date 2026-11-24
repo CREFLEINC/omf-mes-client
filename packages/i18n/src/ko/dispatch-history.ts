@@ -23,9 +23,9 @@ export const dispatchHistory = {
   /** 알리지 않은 이유(data-model §5). */
   skipReasons: {
     DEPARTMENT_UNRESOLVED: '부서 미확인',
-    EVENT_DISABLED: '이벤트 꺼짐',
+    EVENT_DISABLED: '이벤트 OFF',
     NO_RECIPIENTS: '수신자 없음',
-    REPORTER_OPTED_OUT: '보고자가 알림 끔',
+    REPORTER_OPTED_OUT: '보고자 알림 OFF',
     APPROVER_INACTIVE: '결재자 비활성',
   },
   skipped: (reason: string): string => `건너뜀: ${reason}`,

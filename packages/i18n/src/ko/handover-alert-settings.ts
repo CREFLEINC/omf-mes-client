@@ -5,32 +5,33 @@
  */
 export const handoverAlertSettings = {
   intro:
-    '처음에는 모두 꺼져 있습니다. Zalo 를 켜면 고객사 Zalo 발송량(요금과 일일 한도)이 늘어납니다.',
+    '처음에는 모두 OFF입니다. Zalo를 ON으로 하면 고객사 Zalo 발송량(요금과 일일 한도)이 늘어납니다.',
   panes: {
     types: '인계 작업',
-    setting: (typeName: string): string => `설정: ${typeName}`,
+    setting: (typeName: string): string => `${typeName} 설정 상세`,
   },
   fields: {
     plant: '공장 선택',
     plantPlaceholder: '공장을 선택하세요',
-    when: '언제',
-    where: '처리',
+    when: '알림 시점',
+    where: '처리 화면',
     enabled: '알림 받기',
     zalo: 'Zalo로도 보내기',
-    recipients: (count: number, max: number): string => `수신자 (${String(count)}/${String(max)})`,
+    recipients: (count: number, max: number): string =>
+      `수신자 ${String(count)}명 (최대 ${String(max)}명)`,
   },
   columns: {
-    type: '작업',
+    type: '작업명',
     enabled: '알림',
     zalo: 'Zalo',
     recipients: '수신자',
   },
   values: {
-    on: '켬',
-    off: '끔',
+    on: 'ON',
+    off: 'OFF',
     /** US2-4 — 이 사람은 Zalo 를 받지 못하고 알림센터로만 받는다. */
-    noPhone: '전화번호 없음 — 알림센터로만 받음',
-    inactive: '비활성',
+    noPhone: '전화번호 없음',
+    inactive: '미사용',
     noPhoneCount: (count: number): string => `전화번호 없는 수신자 ${String(count)}명`,
   },
   actions: {
@@ -44,90 +45,89 @@ export const handoverAlertSettings = {
     discard: '버리고 이동',
   },
   state: {
-    noPlants: '고를 수 있는 공장이 없습니다.',
+    noPlants: '선택할 수 있는 공장이 없습니다.',
     noTypes: '설정할 인계 작업이 없습니다.',
     noRecipients: '지정한 수신자가 없습니다.',
     /** US2-5 — 켜 두었는데 받을 사람이 없다. 저장은 막지 않는다. */
-    noRecipientsWarning: '담당자가 없어 알림이 가지 않습니다.',
+    noRecipientsWarning: '수신자가 없어 알림이 가지 않습니다.',
     /** US2-3 — 상한이 찼다. 서버도 400 으로 막는다. */
     limitReached: (max: number): string =>
       `최대 ${String(max)}명까지 지정할 수 있습니다. 바꾸려면 먼저 한 명을 해제하세요.`,
     noPhoneNotice: (count: number): string =>
-      `전화번호가 없는 수신자 ${String(count)}명은 알림센터로만 받습니다`,
+      `전화번호가 없는 수신자 ${String(count)}명은 알림센터로만 받습니다.`,
     zaloHelp:
-      '전화번호가 있는 수신자에게 영문 Zalo 메시지를 보냅니다. 실패해도 알림센터는 받습니다.',
-    zaloNeedsEnabled: 'Zalo 는 알림을 켠 뒤에 켤 수 있습니다.',
+      '전화번호가 있는 수신자에게 영문 Zalo 메시지를 보냅니다. Zalo 발송에 실패해도 알림센터로는 받습니다.',
+    zaloNeedsEnabled: '알림 받기를 ON으로 해야 Zalo로도 보낼 수 있습니다.',
     zaloNotActive: 'Zalo 연결이 준비되지 않아 알림은 알림센터로만 보냅니다.',
-    saved: '저장했습니다',
-    conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 고쳐 주세요.',
+    saved: '저장했습니다.',
+    conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 저장하세요.',
     unsavedTitle: '저장하지 않은 변경이 있습니다',
     unsavedBody: '이동하면 고친 내용이 사라집니다. 버리고 이동할까요?',
   },
   errors: {
     inactiveRecipients: (count: number): string =>
-      `비활성 계정 ${String(count)}명이 있습니다. 해제해야 저장할 수 있습니다.`,
+      `미사용 계정 ${String(count)}명이 있습니다. 해제해야 저장할 수 있습니다.`,
   },
   /** 수신자 고르기 창의 상한 안내(D-11). */
   picker: {
     slotsLeft: (left: number, max: number): string =>
-      `남은 자리 ${String(left)}명 — 한 작업에 최대 ${String(max)}명까지 지정할 수 있습니다`,
-    full: (max: number): string =>
-      `최대 ${String(max)}명까지 지정할 수 있습니다 — 남은 사람은 고를 수 없습니다`,
+      `남은 자리는 ${String(left)}명입니다. 한 작업에 최대 ${String(max)}명까지 지정할 수 있습니다.`,
+    full: (max: number): string => `최대 ${String(max)}명까지 지정해 더 선택할 수 없습니다.`,
   },
   /** 종류별 「언제」(알림이 생기는 때)·「처리」(처리하는 화면). 화면 이름은 메뉴 글자 그대로다. */
   types: {
     IQC_INSPECTION_REQUESTED: {
-      when: '입하 LOT 이 등록돼 IQC 의뢰가 생길 때 — 입하 1건에 1번(LOT 수를 내용에)',
+      when: '입하 LOT이 등록돼 IQC 의뢰가 생길 때 알립니다. 입하 1건에 한 번 보내고 LOT 수를 내용에 적습니다.',
       // ui-check-ignore: C-13 메뉴 이름 「검사 조회·판정」 그대로
       where: '관리웹 품질 관리 › 검사 조회·판정 (IQC 탭)',
     },
     IQC_INSPECTION_REJECTED: {
-      when: 'IQC 판정이 불합격으로 확정될 때 — 불합격 LOT 1건에 1번',
+      when: 'IQC 판정이 불합격으로 확정될 때 알립니다. 불합격 LOT 1건에 한 번 보냅니다.',
       /* 피처 009 — 관리웹 입고 처리가 없어졌다. 불합격 LOT 도 PDA 적치로 불량창고에 입고한다(FR-003). */
       // ui-check-ignore: C-13 PDA 화면 이름 「적치·입고 완료」 그대로
       where: '모바일 PDA › 창고 › 적치·입고 완료 (PDA 적치로 불량창고에 입고)',
     },
     /** 피처 009(omf-all-around#294) — 지시 없이 적치할 LOT 이 생겼다(FR-034). */
     PUTAWAY_PENDING: {
-      when: 'IQC 판정 확정 또는 검사 불필요 입하 마감으로 적치할 LOT 이 생길 때 — 입하 LOT 1건에 1번(LOT 수를 내용에)',
+      when: 'IQC 판정 확정 또는 검사 불필요 입하 마감으로 적치할 LOT이 생길 때 알립니다. 입하 1건에 한 번 보내고 LOT 수를 내용에 적습니다.',
       // ui-check-ignore: C-13 PDA 화면 이름 「적치·입고 완료」 그대로
       where: '모바일 PDA › 창고 › 적치·입고 완료',
     },
     PUTAWAY_REQUESTED: {
-      when: '입고 처리로 적치 지시가 생길 때 — 입고 1건에 1번(적치 지시 수를 내용에)',
+      when: '입고 처리로 적치 지시가 생길 때 알립니다. 입고 1건에 한 번 보내고 적치 지시 수를 내용에 적습니다.',
       where: '모바일 PDA › 창고 › 적치',
     },
     MATERIAL_PICKING_REQUESTED: {
-      when: '출고 요청이 배포돼 피킹 지시가 생길 때(출고 작업일 00:00 또는 바로) — 피킹 지시마다',
+      when: '출고 요청이 배포돼 피킹 지시가 생길 때(출고 작업일 00:00 또는 바로) 알립니다. 피킹 지시마다 보냅니다.',
       // ui-check-ignore: C-13 메뉴 이름 「자재 출고·피킹」 그대로
       where: '모바일 PDA › 창고 › 자재 출고·피킹',
     },
     STOCK_TRANSFER_ARRIVAL_PENDING: {
-      when: '창고 이동이 반출될 때 — 도착 창고 공장의 담당자에게',
+      when: '창고 이동이 반출될 때 도착 창고 공장의 수신자에게 알립니다.',
       where: '모바일 PDA › 창고 › 재고 이동(도착)',
     },
     WORK_ORDER_RELEASED: {
-      when: '일반 W/O 가 배포될 때',
+      when: '일반 W/O가 배포될 때 알립니다.',
       where: 'POP › 작업 시작',
     },
     EMERGENCY_WORK_ORDER_RELEASED: {
-      when: '긴급 W/O 가 배포될 때',
+      when: '긴급 W/O가 배포될 때 알립니다.',
       where: 'POP › 긴급 W/O',
     },
     REWORK_WORK_ORDER_CREATED: {
-      when: '부적합 처분으로 재작업 W/O 가 생길 때',
+      when: '부적합 처분으로 재작업 W/O가 생길 때 알립니다.',
       where: 'POP › 재작업 실적 등록',
     },
     OQC_INSPECTION_REQUESTED: {
-      when: '출하지시 등록으로 OQC 의뢰가 생길 때 — 출하지시 1건에 1번(의뢰 수를 내용에)',
+      when: '출하지시 등록으로 OQC 의뢰가 생길 때 알립니다. 출하지시 1건에 한 번 보내고 의뢰 수를 내용에 적습니다.',
       where: 'POP › OQC 출하검사 판정',
     },
     SHIPMENT_PICKING_REQUESTED: {
-      when: '출하지시가 공장이 정해진 채 등록되거나 공장이 처음 정해질 때',
+      when: '출하지시가 공장이 정해진 채 등록되거나 공장이 처음 정해질 때 알립니다.',
       where: '모바일 PDA › 제품 출하 › 제품 출하 피킹',
     },
     SHIPMENT_PACKING_REQUESTED: {
-      when: '관리웹 출하 처리로 출하가 생길 때',
+      when: '관리웹 출하 처리로 출하가 생길 때 알립니다.',
       where: 'POP › 출하 포장',
     },
   },
@@ -135,11 +135,11 @@ export const handoverAlertSettings = {
   workspace: {
     filter: '조회 조건',
     list: '인계 작업 목록',
-    search: '작업 이름 검색',
-    searchPlaceholder: '작업 이름을 입력하세요',
+    search: '작업명 검색',
+    searchPlaceholder: '작업명을 입력하세요',
     apply: '조회',
     clear: '초기화',
     selectTypeTitle: '인계 작업을 선택하세요.',
-    selectType: '고른 작업의 알림 받기 · Zalo · 담당자를 정할 수 있습니다.',
+    selectType: '인계 작업을 선택하면 알림 받기, Zalo로도 보내기, 수신자를 정할 수 있습니다.',
   },
 } as const;

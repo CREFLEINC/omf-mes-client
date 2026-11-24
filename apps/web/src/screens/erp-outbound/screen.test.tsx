@@ -178,13 +178,13 @@ describe('ErpOutboundScreen — 송신 항목', () => {
 });
 
 describe('ErpOutboundScreen — 상태 선택', () => {
-  it('상태 선택으로 화면 안에서 거른다 — 송신 대기 · 송신 꺼짐(#358)', async () => {
+  it('상태 선택으로 화면 안에서 거른다 — 송신 대기 · 송신 OFF(#358)', async () => {
     const { user } = renderScreen([settingsRoute, messagesRoute()]);
     await itemsPane().findByRole('button', { name: '입고 (G/R) 선택' });
     const filter = within(screen.getByRole('region', { name: '조회 조건' }));
 
     await user.click(filter.getByRole('combobox', { name: '송신 상태 선택' }));
-    await user.click(screen.getByRole('option', { name: '송신 꺼짐' }));
+    await user.click(screen.getByRole('option', { name: '송신 OFF' }));
     await user.click(filter.getByRole('button', { name: '조회' }));
 
     expect(itemsPane().getByRole('button', { name: '출하 (PGI) 선택' })).toBeInTheDocument();
@@ -252,9 +252,7 @@ describe('ErpOutboundScreen — 송신 예정 목록', () => {
     renderScreen([settingsRoute, messagesRoute()]);
 
     expect(await pendingPane().findByText('송신 대기 건이 없습니다')).toBeInTheDocument();
-    expect(
-      pendingPane().getByRole('heading', { name: '송신 대기 목록 (0건)' }),
-    ).toBeInTheDocument();
+    expect(pendingPane().getByRole('heading', { name: '송신 대기 목록' })).toBeInTheDocument();
     expect(itemsPane().getByRole('button', { name: '생산 실적 선택' })).toHaveAttribute(
       'aria-current',
       'true',
@@ -267,7 +265,7 @@ describe('ErpOutboundScreen — 송신 예정 목록', () => {
     await user.click(await itemsPane().findByText('입고 (G/R)'));
 
     expect(
-      await pendingPane().findByRole('heading', { name: '송신 대기 목록 (2건)' }),
+      await pendingPane().findByRole('heading', { name: '송신 대기 목록' }),
     ).toBeInTheDocument();
     // 메시지 키 대신 업무 번호만 — 연계 코드 · 대상 코드는 보이지 않는다(사용자 지시 2026-10-27).
     expect(pendingPane().getByText('SAMPLE-GR-0001')).toBeInTheDocument();
