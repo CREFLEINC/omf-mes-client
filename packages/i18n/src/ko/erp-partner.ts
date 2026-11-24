@@ -10,7 +10,6 @@ export const erpPartner = {
   panes: {
     filter: '조회 조건',
     list: '거래처 목록',
-    detail: '거래처 상세',
   },
   fields: {
     q: '거래처 검색',
@@ -51,7 +50,5 @@ export const erpPartner = {
   empty: {
     noResultTitle: '조건에 맞는 거래처가 없습니다',
     beyondLastTitle: '이 쪽에는 거래처가 없습니다',
-    pickTitle: '거래처를 선택하세요.',
-    pickDescription: '목록에서 거래처를 고르면 ERP 에서 받은 모든 칸을 볼 수 있습니다.',
   },
 } as const;

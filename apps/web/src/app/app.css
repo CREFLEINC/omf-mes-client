@@ -39907,6 +39907,11 @@ body:has(
 /* 「조건 더보기」로 펼친 둘째 줄 — 첫 줄과 사이를 띄운다. */
 .erp-po-more > .filter-bar {
   margin-top: 12px;
+
+/* ERP 연동 현황·이력 — 품목 · 거래처 탭은 상세 칸 없이 목록이 폭 전체를 쓴다(ERP 수신 탭과 같은 한 칸 · 사용자 지시 2026-11-24). */
+.list-detail-split.erp-data-list-only-split {
+  grid-template-columns: minmax(0, 1fr);
+}
 }
 
 /*

@@ -16,18 +16,11 @@ import {
   FIT_PLACEHOLDER_CLASS,
   useFitPlaceholderWidth,
 } from '../../patterns/fit-placeholder-width';
-import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
-import { OneLine } from '../../patterns/po-board';
+import { OneLine, useFitToViewport } from '../../patterns/po-board';
 import { PAGE_SIZES, PageNav, type PageSize } from '../../patterns/page-nav';
 import { Select } from '../../patterns/select';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
-import {
-  ERP_DATA_ORIENTATION_KEY,
-  ErpDetailFields,
-  ErpFilterActions,
-  ErpListTable,
-  ErpPickEmpty,
-} from './erp-data-parts';
+import { ErpFilterActions, ErpListTable } from './erp-data-parts';
 import { type ErpItemListQuery, useErpItemList, useItemTypeLookup, useUomLookup } from './queries';
 import type { ErpItem, SelectOption } from './types';
 
@@ -168,14 +161,15 @@ const EMPTY_ROWS: ErpItem[] = [];
 /**
  * 품목정보 조회 (ERP) · W-06-17. ERP 가 보낸 품목을 읽기만 한다 — 쓰기 조작이 하나도 없다.
  *
- * 조회 조건 · 목록 | 상세 통일 배치(omf-all-around#358): 목록은 식별 칸만, 고른 품목의 모든 칸은 오른쪽 상세에 「이름 : 값」으로
- * 보인다(같은 목록 응답만 쓴다 — 상세 요청을 따로 보내지 않는다). 조건·쪽을 전부 주소에 둔다.
+ * 조회 조건 · 목록만 둔다(omf-all-around#358) — ERP 가 준 칸은 모두 목록 열에 있어 상세 칸은 두지 않는다(사용자 지시
+ * 2026-11-24). 조건·쪽을 전부 주소에 둔다.
  * **ERP 에서 온 칸만** 보인다 — 다국어 명칭·LOT 관리 같은 MES 확장 속성은 품목 확장속성 화면의 몫이다. 여기서 함께
  * 보이면 「ERP 가 준 값」으로 읽힌다. 품목그룹은 ERP 코드 그대로 낸다 — 이름을 담은 코드 그룹이 아직 없다(장부 P-67).
  */
 export const ErpItemScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  /* 목록이 창 바닥에서 멈추게 윗변을 잰다(ERP 수신 탭과 같은 아래 여백). */
+  const { splitRef, aboveRef } = useFitToViewport();
 
   const filters: Filters = {
     q: searchParams.get('q') ?? '',
@@ -190,7 +184,6 @@ export const ErpItemScreen = () => {
   const uoms = useUomLookup();
   const rows = list.data?.items ?? EMPTY_ROWS;
   const meta = list.data?.page ?? { page, size: size ?? 0, total: 0 };
-  const selected = rows.find((row) => String(row.itemId) === selectedId) ?? null;
 
   // 서버가 준 쪽을 정본으로 쓴다. size가 0이면 나눗셈이 무한대가 되므로 하한을 둔다.
   const shownPage = meta.page > 0 ? meta.page : 1;
@@ -268,109 +261,69 @@ export const ErpItemScreen = () => {
     <EmptyState size="sm" live title={t.empty.noResultTitle} />
   );
 
+  /*
+   * 조회 상자 + 목록 한 상자 — 상세 칸은 두지 않는다(목록에 같은 값이 모두 열로 있다 · 사용자 지시 2026-11-24).
+   * 상자 짜임 · 클래스는 같은 묶음의 ERP 수신 탭과 같다. 줄 고르기도 없다 — 고를 상세가 없다.
+   */
   return (
-    <ListDetailWorkspace
-      storageKey="omf-mes:erp-item"
-      orientationKey={ERP_DATA_ORIENTATION_KEY}
-      filter={{
-        label: t.panes.filter,
-        content: (
-          <>
-            {list.isError && (
-              <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
+    <div className="list-detail-workspace">
+      <section
+        ref={aboveRef}
+        className="pane po-board-filter list-detail-filter"
+        aria-label={t.panes.filter}
+      >
+        {list.isError && <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />}
+        {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
+        <FilterBar
+          applied={filters}
+          itemTypeOptions={itemTypes.options}
+          onSearch={(next) => {
+            applyQuery(next);
+          }}
+          onReset={() => {
+            applyQuery(EMPTY_FILTERS);
+          }}
+        />
+      </section>
+      <div ref={splitRef} className="po-board-split list-detail-split erp-data-list-only-split">
+        <section className="pane list-detail-list" aria-label={t.panes.list}>
+          <div className="po-board-list-head">
+            <h2 className="pane-title">{t.panes.list}</h2>
+            {list.data !== undefined && (
+              <span className="po-board-list-count">
+                {messages.common.paneList.count(list.data.page.total)}
+              </span>
             )}
-            {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-            <FilterBar
-              applied={filters}
-              itemTypeOptions={itemTypes.options}
-              onSearch={(next) => {
-                applyQuery(next);
-              }}
-              onReset={() => {
-                applyQuery(EMPTY_FILTERS);
-              }}
-            />
-          </>
-        ),
-      }}
-      list={{
-        label: t.panes.list,
-        title: t.panes.list,
-        count: list.data?.page.total,
-        /* 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「없습니다」로 보이면 안 된다. */
-        content: list.isError ? null : list.isPending ? (
-          <div role="status" aria-label={t.loading.list}>
-            <SkeletonText lines={3} />
           </div>
-        ) : (
-          <>
-            <ErpListTable
-              label={t.panes.list}
-              storageKey="omf-mes:erp-item:columns:items"
-              columns={columns}
-              rows={rows}
-              getRowId={(row) => String(row.itemId)}
-              pick={{
-                currentId: selectedId,
-                onPick: (row) => {
-                  setSelectedId(String(row.itemId));
-                },
-                onUnpick: () => {
-                  setSelectedId(null);
-                },
-              }}
-              empty={emptySlot}
-            />
-            <PageNav
-              meta={meta}
-              buttonSize="md"
-              onChangePage={(nextPage) => {
-                applyQuery(filters, nextPage);
-              }}
-              onChangeSize={(nextSize) => {
-                applyQuery(filters, 1, nextSize);
-              }}
-            />
-          </>
-        ),
-      }}
-      /* 「품목 상세」 상자(테두리 · 제목)는 걷고 값만 남긴다(사용자 지시 2026-11-24). */
-      detail={{
-        label: t.panes.detail,
-        bare: true,
-        content:
-          selected === null ? (
-            <ErpPickEmpty
-              icon="inventory_2"
-              title={t.empty.pickTitle}
-              description={t.empty.pickDescription}
-            />
+          {/* 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「없습니다」로 보이면 안 된다. */}
+          {list.isError ? null : list.isPending ? (
+            <div role="status" aria-label={t.loading.list}>
+              <SkeletonText lines={3} />
+            </div>
           ) : (
-            <ErpDetailFields
-              fields={[
-                { key: 'itemCode', label: t.table.itemCode, value: selected.itemCode },
-                { key: 'itemName', label: t.table.itemName, value: selected.itemName },
-                {
-                  key: 'itemType',
-                  label: t.table.itemType,
-                  value: itemTypes.nameOf(selected.itemTypeCode),
-                },
-                { key: 'erpSpec', label: t.table.erpSpec, value: orEmpty(selected.erpSpec) },
-                {
-                  key: 'erpItemGroupCode',
-                  label: t.table.erpItemGroupCode,
-                  value: orEmpty(selected.erpItemGroupCode),
-                },
-                { key: 'baseUom', label: t.table.baseUom, value: uoms.nameOf(selected.baseUomId) },
-                {
-                  key: 'isActive',
-                  label: t.table.isActive,
-                  value: <ActiveChip isActive={selected.isActive} />,
-                },
-              ]}
-            />
-          ),
-      }}
-    />
+            <>
+              <ErpListTable
+                label={t.panes.list}
+                storageKey="omf-mes:erp-item:columns:items"
+                columns={columns}
+                rows={rows}
+                getRowId={(row) => String(row.itemId)}
+                empty={emptySlot}
+              />
+              <PageNav
+                meta={meta}
+                buttonSize="md"
+                onChangePage={(nextPage) => {
+                  applyQuery(filters, nextPage);
+                }}
+                onChangeSize={(nextSize) => {
+                  applyQuery(filters, 1, nextSize);
+                }}
+              />
+            </>
+          )}
+        </section>
+      </div>
+    </div>
   );
 };

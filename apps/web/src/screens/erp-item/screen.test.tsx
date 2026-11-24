@@ -50,6 +50,13 @@ const ROWS = [
   }),
 ];
 
+/** 화면 한 벌(조회 상자 + 목록 상자). */
+const workspace = (): HTMLElement => {
+  const el = document.querySelector<HTMLElement>('.list-detail-workspace');
+  if (el === null) throw new Error('화면이 그려지지 않았습니다.');
+  return el;
+};
+
 const isGet = (request: Request, pathname: string): boolean =>
   request.method === 'GET' && new URL(request.url).pathname === pathname;
 
@@ -97,8 +104,8 @@ const renderScreen = (routes: StubRoute[], search = '') => {
 };
 
 describe('ErpItemScreen', () => {
-  it('목록에 규격 · 품목 그룹까지 내고, 고른 품목은 제목 없는 상세에 내며 이름을 못 찾은 유형·단위는 받은 값을 그대로 낸다', async () => {
-    const { requests, user, urls } = renderScreen([listRoute()]);
+  it('목록에 규격 · 품목 그룹까지 내고, 이름을 못 찾은 유형·단위는 받은 값을 그대로 낸다', async () => {
+    const { requests, urls } = renderScreen([listRoute()]);
 
     const table = await screen.findByRole('table');
     expect(within(table).getByText('SYN-ITEM-001')).toBeInTheDocument();
@@ -122,41 +129,54 @@ describe('ErpItemScreen', () => {
     expect(within(table).getByText('SYN 10x20')).toBeInTheDocument();
     expect(within(table).getByText('SYN-GRP')).toBeInTheDocument();
     expect(within(table).getAllByText(t.values.empty)).toHaveLength(2);
-
-    const detail = screen.getByRole('region', { name: t.panes.detail });
-    expect(within(detail).getByText(t.empty.pickTitle)).toBeInTheDocument();
-    // 「품목 상세」 제목 상자는 걷었다 — 값만 남는다.
-    expect(within(detail).queryByRole('heading', { name: t.panes.detail })).not.toBeInTheDocument();
-
-    await user.click(within(table).getByText('합성 품목 B'));
-    expect(within(detail).getByText('SYN-ITEM-002')).toBeInTheDocument();
-    expect(within(detail).getAllByText(t.values.empty)).toHaveLength(2);
-    expect(within(detail).getByText(t.values.inactive).parentElement?.className).toMatch(
-      /status-idle/,
-    );
-
-    await user.click(within(table).getByText('SYN-ITEM-001'));
-    expect(within(detail).getByText('SYN 10x20')).toBeInTheDocument();
-    expect(within(detail).getByText('SYN-GRP')).toBeInTheDocument();
+    // 목록 제목 줄 — 이름 · 건수.
+    expect(screen.getByRole('heading', { name: t.panes.list })).toBeInTheDocument();
+    expect(screen.getByText(messages.common.paneList.count(2))).toBeInTheDocument();
     // MES 확장 속성(다국어 명칭 등)은 이 화면에 보이지 않는다.
     expect(screen.queryByText('한국어 확장 명칭')).not.toBeInTheDocument();
 
-    // 읽기 전용 — 쓰기 요청이 나가지 않고, 고치는 단추도 없다. 상세는 목록 응답만 쓴다.
+    // 읽기 전용 — 쓰기 요청이 나가지 않고, 고치는 단추도 없다. 목록 응답만 쓴다.
     expect(requests.every((request) => request.method === 'GET')).toBe(true);
     expect(urls().some((url) => url.pathname.startsWith(`${LIST_PATH}/`))).toBe(false);
     expect(screen.queryByRole('button', { name: /저장|수정|등록|삭제/ })).not.toBeInTheDocument();
   });
 
-  it('고른 품목을 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
-    const { user } = renderScreen([listRoute()]);
+  it('상세 칸이 없다 — 줄을 눌러도 상세가 생기지 않고, 배치 · 목록 접기 조작도 없다(사용자 지시 2026-11-24)', async () => {
+    const { user, requests } = renderScreen([listRoute()]);
 
     const table = await screen.findByRole('table');
-    const detail = screen.getByRole('region', { name: t.panes.detail });
-    await user.click(within(table).getByText('SYN-ITEM-001'));
-    expect(within(detail).queryByText(t.empty.pickTitle)).not.toBeInTheDocument();
+    /* 화면 몫의 구획만 센다(알림 구획은 앱 몫이다). */
+    const regionNames = () =>
+      within(workspace())
+        .queryAllByRole('region')
+        .map((el) => el.getAttribute('aria-label'));
+    expect(regionNames()).toEqual([t.panes.filter, t.panes.list]);
+    expect(screen.queryByRole('separator')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: messages.common.inspectionHub.listCollapse }),
+    ).not.toBeInTheDocument();
+    // 줄 고르기 단추가 없다.
+    expect(table.querySelector('.users-roles-row-pick')).toBeNull();
+    const before = requests.length;
+
+    await user.click(within(table).getByText('합성 품목 B'));
     await user.click(within(table).getByText('SYN-ITEM-001'));
 
-    expect(within(detail).getByText(t.empty.pickTitle)).toBeInTheDocument();
+    expect(regionNames()).toEqual([t.panes.filter, t.panes.list]);
+    expect(table.querySelector('[aria-current]')).toBeNull();
+    // 「SYN 10x20」은 목록 칸 한 곳에만 있다 — 다른 곳에 값이 다시 그려지지 않는다.
+    expect(screen.getAllByText('SYN 10x20')).toHaveLength(1);
+    expect(requests.length).toBe(before);
+  });
+
+  it('주소에 옛 선택 값이 남아 와도 화면이 깨지지 않고 조회 인자에 싣지 않는다', async () => {
+    const { urls } = renderScreen([listRoute()], '?item=7001&selected=7001');
+
+    expect(await screen.findByText('합성 품목 B')).toBeInTheDocument();
+    const first = urls().find((url) => url.pathname === LIST_PATH);
+    expect(first?.searchParams.has('item')).toBe(false);
+    expect(first?.searchParams.has('selected')).toBe(false);
+    expect(within(workspace()).getAllByRole('region')).toHaveLength(2);
   });
 
   it('주소의 품목유형과 검색어·미사용 포함을 조회 조건으로 싣는다', async () => {

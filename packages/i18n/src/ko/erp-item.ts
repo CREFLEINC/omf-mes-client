@@ -9,7 +9,6 @@ export const erpItem = {
   panes: {
     filter: '조회 조건',
     list: '품목 목록',
-    detail: '품목 상세',
   },
   fields: {
     q: '품목 검색',
@@ -43,7 +42,5 @@ export const erpItem = {
   empty: {
     noResultTitle: '조건에 맞는 품목이 없습니다',
     beyondLastTitle: '이 쪽에는 품목이 없습니다',
-    pickTitle: '품목을 선택하세요.',
-    pickDescription: '목록에서 품목을 고르면 ERP 에서 받은 모든 칸을 볼 수 있습니다.',
   },
 } as const;

@@ -8,7 +8,6 @@ export const erpItem: Translated<typeof ko.erpItem> = {
   panes: {
     filter: 'Điều kiện tra cứu',
     list: 'Danh sách mặt hàng',
-    detail: 'Chi tiết mặt hàng',
   },
   fields: {
     q: 'Tìm mặt hàng',
@@ -42,7 +41,5 @@ export const erpItem: Translated<typeof ko.erpItem> = {
   empty: {
     noResultTitle: 'Không có mặt hàng phù hợp',
     beyondLastTitle: 'Trang này không có mặt hàng',
-    pickTitle: 'Hãy chọn mặt hàng.',
-    pickDescription: 'Chọn mặt hàng trong danh sách để xem mọi trường nhận từ ERP.',
   },
 };

@@ -8,7 +8,6 @@ export const erpPartner: Translated<typeof ko.erpPartner> = {
   panes: {
     filter: 'Điều kiện tra cứu',
     list: 'Danh sách đối tác',
-    detail: 'Chi tiết đối tác',
   },
   fields: {
     q: 'Tìm đối tác',
@@ -49,7 +48,5 @@ export const erpPartner: Translated<typeof ko.erpPartner> = {
   empty: {
     noResultTitle: 'Không có đối tác phù hợp',
     beyondLastTitle: 'Trang này không có đối tác',
-    pickTitle: 'Hãy chọn đối tác.',
-    pickDescription: 'Chọn đối tác trong danh sách để xem mọi trường nhận từ ERP.',
   },
 };

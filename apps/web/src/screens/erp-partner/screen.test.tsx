@@ -50,6 +50,13 @@ const rowOf = (cell: HTMLElement): HTMLElement => {
   return row;
 };
 
+/** 화면 한 벌(조회 상자 + 목록 상자). */
+const workspace = (): HTMLElement => {
+  const el = document.querySelector<HTMLElement>('.list-detail-workspace');
+  if (el === null) throw new Error('화면이 그려지지 않았습니다.');
+  return el;
+};
+
 const isGet = (request: Request, pathname: string): boolean =>
   request.method === 'GET' && new URL(request.url).pathname === pathname;
 
@@ -144,35 +151,43 @@ describe('ErpPartnerScreen', () => {
     expect(first?.searchParams.has('roleTypeCode')).toBe(false);
   });
 
-  it('줄을 고르면 그 거래처의 모든 칸을 상세에 내고, 거래처 한 건 조회는 부르지 않는다', async () => {
+  it('상세 칸이 없다 — 줄을 눌러도 상세가 생기지 않고, 배치 · 목록 접기 조작도 없다(사용자 지시 2026-11-24)', async () => {
     const { urls, user } = renderScreen([listRoute(), rolesRoute]);
 
-    const detail = await screen.findByRole('region', { name: '거래처 상세' });
-    expect(within(detail).getByText('거래처를 선택하세요.')).toBeInTheDocument();
+    const table = await screen.findByRole('table');
+    const rowA = rowOf(await within(table).findByText('예시 거래처 A'));
+    expect(await within(rowA).findByText('고객사, 공급사')).toBeInTheDocument();
+    /* 화면 몫의 구획만 센다(알림 구획은 앱 몫이다). */
+    const regionNames = () =>
+      within(workspace())
+        .queryAllByRole('region')
+        .map((el) => el.getAttribute('aria-label'));
+    expect(regionNames()).toEqual(['조회 조건', '거래처 목록']);
+    expect(screen.queryByRole('separator')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '목록 접기' })).not.toBeInTheDocument();
+    // 줄 고르기 단추가 없다.
+    expect(table.querySelector('.users-roles-row-pick')).toBeNull();
+    const before = urls.length;
 
-    await user.click(await screen.findByText('예시 거래처 B'));
-    // ERP 코드·국가·역할이 모두 비어 있다.
-    expect(await within(detail).findAllByText('—')).toHaveLength(3);
-    expect(within(detail).getByText('미사용').parentElement?.className).toMatch(/status-idle/);
-    // 「거래처 상세」 제목 상자는 걷었다 — 값만 남는다.
-    expect(within(detail).queryByRole('heading', { name: '거래처 상세' })).not.toBeInTheDocument();
+    await user.click(within(table).getByText('예시 거래처 B'));
+    await user.click(within(table).getByText('예시 거래처 A'));
 
-    await user.click(screen.getByText('예시 거래처 A'));
-    expect(await within(detail).findByText('고객사, 공급사')).toBeInTheDocument();
-    // 행마다 역할만 부르고, 거래처 한 건 조회는 나가지 않는다.
-    expect(urls.some((url) => url.pathname === `${LIST_PATH}/7001`)).toBe(false);
+    expect(regionNames()).toEqual(['조회 조건', '거래처 목록']);
+    expect(screen.queryByText('거래처 상세')).not.toBeInTheDocument();
+    expect(table.querySelector('[aria-current]')).toBeNull();
+    // 역할은 목록 칸 한 곳에만 있다 — 다른 곳에 값이 다시 그려지지 않고, 요청도 더 나가지 않는다.
+    expect(screen.getAllByText('고객사, 공급사')).toHaveLength(1);
+    expect(urls.length).toBe(before);
   });
 
-  it('고른 거래처를 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
-    const { user } = renderScreen([listRoute(), rolesRoute]);
+  it('주소에 옛 선택 값이 남아 와도 화면이 깨지지 않고 조회 인자에 싣지 않는다', async () => {
+    const { urls } = renderScreen([listRoute(), rolesRoute], '?partner=7001&selected=7001');
 
-    const detail = await screen.findByRole('region', { name: '거래처 상세' });
-    const table = await screen.findByRole('table');
-    await user.click(await within(table).findByText('예시 거래처 B'));
-    expect(within(detail).queryByText('거래처를 선택하세요.')).not.toBeInTheDocument();
-    await user.click(within(table).getByText('예시 거래처 B'));
-
-    expect(within(detail).getByText('거래처를 선택하세요.')).toBeInTheDocument();
+    expect(await screen.findByText('예시 거래처 B')).toBeInTheDocument();
+    const first = urls.find((url) => url.pathname === LIST_PATH);
+    expect(first?.searchParams.has('partner')).toBe(false);
+    expect(first?.searchParams.has('selected')).toBe(false);
+    expect(within(workspace()).getAllByRole('region')).toHaveLength(2);
   });
 
   it('결과가 없으면 빈 상태를 낸다', async () => {
