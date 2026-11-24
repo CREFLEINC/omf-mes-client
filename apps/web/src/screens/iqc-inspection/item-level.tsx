@@ -16,7 +16,7 @@ type ItemInspectionLevel = components['schemas']['ItemInspectionLevel'];
 const t = messages.iqcInspection.detail.level;
 const levelNames = messages.inspectionLevel.levels;
 
-/** 검사 수준 관리 화면 주소 — 이 권한(`W-03-12`)이 있어야 서버가 지정·변경을 받는다. */
+/** 검사 수준 관리(W-03-12)의 옛 주소 — 화면은 검사 기준 관리에 합쳤고(#357) 권한 판단은 이 주소로 남는다. */
 const INSPECTION_LEVEL_PATH = '/quality/inspection-levels';
 
 export interface ItemLevelProps {
@@ -36,7 +36,7 @@ export interface ItemLevelProps {
 
 /**
  * IQC 「검사 수준」 칸(omf-all-around#133) — 품목의 현재 검사 수준을 보인다. 지정은 검사 중 수준이 없을 때만
- * 4M 변경 정보 단계에서 고르고, 판정을 확정할 때 저장된다(#247) — 변경은 검사 수준 관리 화면에서 한다.
+ * 4M 변경 정보 단계에서 고르고, 판정을 확정할 때 저장된다(#247) — 변경은 검사 기준 관리의 IQC 기준 「기본 정보 수정」에서 한다(#357).
  * 자동 전환은 없다 — 사용자가 정한 수준만 쓴다.
  */
 export const ItemLevel = ({

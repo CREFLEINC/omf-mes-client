@@ -309,11 +309,8 @@ export const InspectionStandardScreen = () => {
   /* 「버전 설정 수정」 창 — 작성중 버전의 설정을 고친다(버전 설정 탭을 걷었다 · #196). */
   const [isVersionEditOpen, setIsVersionEditOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  /* 「이력」 창의 탭 — 검사 기준(버전) 이력 · 품목 검사 수준 이력(omf-all-around#357). 열 때마다 검사 기준 이력부터. */
-  const [historyTab, setHistoryTab] = useState<'plan' | 'level'>('plan');
   const closeHistory = (): void => {
     setIsHistoryOpen(false);
-    setHistoryTab('plan');
   };
   /* 아래 카드의 탭 — 버전 관리 · 검사 수준 변경 이력(IQC 기준만 · 사용자 지시 omf-all-around#357). 버전 선택(주소)은 건드리지 않는다. */
   const [detailTab, setDetailTab] = useState<'version' | 'level'>('version');
@@ -1990,8 +1987,8 @@ export const InspectionStandardScreen = () => {
 
         {isHistoryOpen && historyVersionId !== null && (
           /*
-           * 종전 「이력」 탭 내용을 창으로(사용자 지시 · #258). 품목이 있는 IQC 기준은 「검사 기준 이력 · 검사 수준 이력」 탭으로
-           * 나눈다 — 검사 수준 설정 화면의 이력을 여기로 옮겼다(사용자 지시 · omf-all-around#357).
+           * 종전 「이력」 탭 내용을 창으로(사용자 지시 · #258). 검사 수준 이력은 아래 카드 「검사 수준 변경 이력」 탭 한 곳에서만
+           * 본다(사용자 지시 · omf-all-around#357).
            */
           <Dialog
             open
@@ -2000,13 +1997,11 @@ export const InspectionStandardScreen = () => {
             title={
               <span className="inspection-standard-dialog-title">
                 {t.versionSection.history}
-                {(historyLevelItemId === null || historyTab === 'plan') && (
-                    <span className="inspection-standard-dialog-title-chips">
-                      <Chip variant="status" size="sm" status="idle">
-                        {t.history.range}
-                      </Chip>
-                    </span>
-                  )}
+                <span className="inspection-standard-dialog-title-chips">
+                  <Chip variant="status" size="sm" status="idle">
+                    {t.history.range}
+                  </Chip>
+                </span>
               </span>
             }
             showCloseButton={false}
@@ -2017,35 +2012,10 @@ export const InspectionStandardScreen = () => {
               </Button>
             }
           >
-            {historyLevelItemId === null ? (
-              <VersionHistoryTable
-                inspectionPlanVersionId={historyVersionId}
-                labels={compareLabels}
-              />
-            ) : (
-              <Tabs
-                aria-label={t.itemLevel.historyTabs}
-                value={historyTab}
-                onChange={(value) => setHistoryTab(value as 'plan' | 'level')}
-                items={[
-                  {
-                    value: 'plan',
-                    label: t.itemLevel.planHistoryTab,
-                    content: (
-                      <VersionHistoryTable
-                        inspectionPlanVersionId={historyVersionId}
-                        labels={compareLabels}
-                      />
-                    ),
-                  },
-                  {
-                    value: 'level',
-                    label: t.itemLevel.levelHistoryTab,
-                    content: <ItemLevelHistoryTable itemId={historyLevelItemId} />,
-                  },
-                ]}
-              />
-            )}
+            <VersionHistoryTable
+              inspectionPlanVersionId={historyVersionId}
+              labels={compareLabels}
+            />
           </Dialog>
         )}
 

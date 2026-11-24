@@ -4167,8 +4167,8 @@ describe('InspectionStandardScreen — 품목 검사 수준(#357)', () => {
     expect(await within(section).findByText('검사 수준 변경 이력이 없습니다.')).toBeInTheDocument();
   });
 
-  it('「이력」 창은 검사 기준 이력 · 검사 수준 이력 탭으로 나뉘고, 검사 수준 이력은 그 품목만 조회한다', async () => {
-    const { requests, user } = renderSelectedVersion([
+  it('「버전 이력」 창에는 검사 기준 이력만 있다 — 검사 수준 이력은 아래 카드 탭 한 곳(#357)', async () => {
+    const { user } = renderSelectedVersion([
       ...levelRoutes([LEVEL]),
       {
         match: (request) => isGet(request, '/audit/events'),
@@ -4179,13 +4179,8 @@ describe('InspectionStandardScreen — 품목 검사 수준(#357)', () => {
 
     await user.click(await screen.findByRole('button', { name: '버전 이력' }));
     const dialog = await screen.findByRole('dialog', { name: /^버전 이력/ });
-    expect(within(dialog).getByRole('tab', { name: '검사 기준 이력' })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
-
-    await user.click(within(dialog).getByRole('tab', { name: '검사 수준 이력' }));
-    expect(await within(dialog).findByText('합성 최초 지정')).toBeInTheDocument();
-    expect(requestsTo(requests, HISTORIES)[0]?.url.searchParams.get('itemId')).toBe('5001');
+    expect(within(dialog).queryByRole('tab')).not.toBeInTheDocument();
+    expect(within(dialog).getByText('최근 1년')).toBeInTheDocument();
+    expect(within(dialog).queryByText('합성 최초 지정')).not.toBeInTheDocument();
   });
 });

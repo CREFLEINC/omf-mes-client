@@ -251,10 +251,6 @@ export const inspectionStandard = {
     /** 기본 정보 수정 창 — 수준을 바꾸면 나오는 사유 칸(선택 · 이력에 남는다). */
     reason: '변경 사유',
     reasonPlaceholder: '사유를 입력하세요(선택)',
-    /** 「이력」 창의 탭 — 버전 이력 · 품목 검사 수준 이력. */
-    planHistoryTab: '검사 기준 이력',
-    levelHistoryTab: '검사 수준 이력',
-    historyTabs: '이력 구분',
     /** 아래 카드 탭 — 버전 관리 · 검사 수준 변경 이력(사용자 지시 · #357). historyTitle 은 그 탭 상자의 접근성 이름. */
     detailTabs: '상세 구분',
     versionTab: '버전 관리',

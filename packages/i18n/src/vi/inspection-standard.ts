@@ -219,10 +219,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     /** 기본 정보 수정 창 — 수준을 바꾸면 나오는 사유 칸(선택 · 이력에 남는다). */
     reason: 'Lý do thay đổi',
     reasonPlaceholder: 'Nhập lý do (không bắt buộc)',
-    /** 「이력」 창의 탭 — 버전 이력 · 품목 검사 수준 이력. */
-    planHistoryTab: 'Lịch sử tiêu chuẩn kiểm tra',
-    levelHistoryTab: 'Lịch sử mức kiểm tra',
-    historyTabs: 'Loại lịch sử',
     /** 아래 카드 탭 — 버전 관리 · 검사 수준 변경 이력(사용자 지시 · #357). historyTitle 은 그 탭 상자의 접근성 이름. */
     detailTabs: 'Loại chi tiết',
     versionTab: 'Quản lý phiên bản',
