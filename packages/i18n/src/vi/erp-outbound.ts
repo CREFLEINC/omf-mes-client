@@ -40,8 +40,8 @@ export const erpOutbound: Translated<typeof ko.erpOutbound> = {
   counts: (count: number): string => `${count.toLocaleString()} mục`,
   times: (count: number): string => `${String(count)} lần`,
   send: {
-    on: 'Bật',
-    off: 'Tắt',
+    on: 'ON',
+    off: 'OFF',
     required: 'Bắt buộc',
   },
   pickRow: (name: string): string => `Chọn ${name}`,

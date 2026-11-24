@@ -156,15 +156,15 @@ describe('ErpOutboundScreen — 송신 항목', () => {
         within(itemRow('입고 (G/R)'))
           .getAllByRole('cell')
           .map((c) => c.textContent),
-      ).toEqual(['입고 (G/R)', '—', '켜짐', '2건', '1건']);
+      ).toEqual(['입고 (G/R)', '—', 'ON', '2건', '1건']);
     });
     expect(within(itemRow('생산 실적')).getByText('필수')).toBeInTheDocument();
-    expect(within(itemRow('출하 (PGI)')).getByText('꺼짐')).toBeInTheDocument();
+    expect(within(itemRow('출하 (PGI)')).getByText('OFF')).toBeInTheDocument();
     expect(
       within(itemRow('반품'))
         .getAllByRole('cell')
         .map((c) => c.textContent),
-    ).toEqual(['반품', '—', '켜짐', '—', '—']);
+    ).toEqual(['반품', '—', 'ON', '—', '—']);
   });
 
   it('건수는 송신 항목 설정에 실려 오는 서버 값이다 — 메시지 목록을 따로 세지 않는다', async () => {

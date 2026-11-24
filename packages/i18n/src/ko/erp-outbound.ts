@@ -48,10 +48,10 @@ export const erpOutbound = {
   /** 건수 · 횟수 값 — 「3건」 · 「1회」(#358). */
   counts: (count: number): string => `${count.toLocaleString()}건`,
   times: (count: number): string => `${String(count)}회`,
-  /** 송신 열 — 켜짐 · 꺼짐, 끌 수 없는 항목(생산 실적)은 필수. */
+  /** 송신 열 — ON · OFF(사용자 지시 2026-11-24), 끌 수 없는 항목(생산 실적)은 필수. */
   send: {
-    on: '켜짐',
-    off: '꺼짐',
+    on: 'ON',
+    off: 'OFF',
     required: '필수',
   },
   /** 행 단추의 접근 이름 — 보이는 이름을 그대로 담는다. */
