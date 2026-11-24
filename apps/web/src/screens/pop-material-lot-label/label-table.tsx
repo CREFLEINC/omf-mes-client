@@ -211,13 +211,13 @@ export const LabelTable = ({
       </span>
     );
   };
-  /* 「롤 10 × 10」 — 좁으면 단위명과 곱 사이에서만 접는다(× 앞뒤는 붙임, T054). 글자는 formatPackage 와 같다. */
+  /* 「롤 10 × 10」 — 좁으면 단위명과 곱 사이에서만 접는다(× 앞뒤는 붙임, 긴 단위명은 한 줄 말줄임 · T054). 글자는 formatPackage 와 같다. */
   const packageCell = (lot: LabelLot): ReactNode => {
     if (lot.package === null) return t.noPackage;
 
     return (
       <>
-        {packageUnitName(lot.package)}{' '}
+        <span className="mll-pkg-unit">{packageUnitName(lot.package)}</span>{' '}
         <span className="mll-keep">
           {formatQty(lot.package.count)} × {formatQty(lot.package.qtyPerPackage)}
         </span>

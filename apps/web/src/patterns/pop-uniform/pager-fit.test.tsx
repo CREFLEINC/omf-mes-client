@@ -99,9 +99,12 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const TableProbe = ({ show = true }: { show?: boolean }) => {
+const TableProbe = ({ show = true, resetKey }: { show?: boolean; resetKey?: string }) => {
   const ref = useRef<HTMLDivElement>(null);
-  const size = useFitTableRows(ref, { fallback: 5 });
+  const size = useFitTableRows(ref, {
+    fallback: 5,
+    ...(resetKey === undefined ? {} : { resetKey }),
+  });
 
   return (
     <>
@@ -194,6 +197,21 @@ describe('FR-010 세 칸 쪽 줄 수 — 줄 높이가 줄 수에 따라 바뀌�
 
     /* (384 − 36 − 2) / 44 = 7 · (420 − 36 − 2) / 44 = 8 — 8 ↔ 7 로 돌던 것이 7 에 멈춘다. */
     expect(sizeNow()).toBe(7);
+  });
+
+  it('FR-010 세 칸 T054 보기(resetKey)가 바뀌면 천장을 풀어 같은 창 크기에서도 다시 늘어난다', () => {
+    rowHeightFor = oscillating;
+    const { rerender } = render(<TableProbe resetKey="A|PRINTED|1" />);
+    expect(sizeNow()).toBe(3);
+
+    /* 같은 보기에서는 줄이 낮아져도 3 에 머문다(진동 막기). */
+    rowHeightFor = () => 40;
+    rerender(<TableProbe resetKey="A|PRINTED|1" />);
+    expect(sizeNow()).toBe(3);
+
+    /* 탭 · 쪽 등 보기가 바뀌면 다시 잰다. */
+    rerender(<TableProbe resetKey="A|UNPRINTED|1" />);
+    expect(sizeNow()).toBe(6);
   });
 
   it('FR-010 세 칸 처음 줄어드는 것은 천장을 만들지 않는다 — 줄이 다시 낮아지면 지금처럼 늘어난다', () => {

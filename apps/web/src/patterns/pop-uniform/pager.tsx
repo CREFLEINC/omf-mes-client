@@ -75,7 +75,8 @@ export const PuPager = ({
  *   420 ↔ 384). 그래서 «칸 크기»가 아니라 «창 크기»(`innerWidth` · `innerHeight`)를 기준으로, 같은 창 크기에서
  *   «전에 거쳤던 값»으로 다시 줄어들면(= 돌기 시작) 그 값을 «천장»으로 삼아 다시 늘지 않는다 — 작은 쪽에 멈춘다.
  *   처음 줄어드는 것(데이터가 바뀌어 줄이 높아짐)은 천장을 만들지 않으므로 줄이 다시 낮아지면 지금처럼 늘어난다.
- *   창 크기가 바뀌면(1100 ↔ 1920) 천장 · 거친 값을 풀고 새로 잰다.
+ *   창 크기가 바뀌면(1100 ↔ 1920) 천장 · 거친 값을 풀고 새로 잰다. 화면이 `resetKey`(고른 대상 · 탭 · 쪽 등 사람이
+ *   바꾼 보기)를 주면 그것이 바뀔 때도 푼다 — 한 번 잡힌 천장이 다른 보기의 줄 수까지 묶지 않게(T054).
  * - ⭐ **칸이 갈려도 지켜본다**: 빈 상태 · 로딩으로 칸 요소가 내려갔다 다시 서면 `ref` 가 새 요소를 가리킨다. 크기 관찰을
  *   새 요소로 옮겨 붙인다(전에는 처음 요소에 붙은 채라 창 크기를 바꿔도 다시 재지 않았다).
  */
@@ -83,6 +84,7 @@ const useFitMeasure = (
   ref: RefObject<HTMLElement | null>,
   fallback: number,
   fitsOf: (box: HTMLElement) => number | null,
+  resetKey: string | undefined,
 ): number => {
   const [count, setCount] = useState(fallback);
   const guard = useRef<{
@@ -92,12 +94,14 @@ const useFitMeasure = (
   }>({ viewport: '', ceiling: null, seen: new Set() });
   const fitsRef = useRef(fitsOf);
   fitsRef.current = fitsOf;
+  const resetKeyRef = useRef(resetKey);
+  resetKeyRef.current = resetKey;
 
   const measure = useCallback(() => {
     const box = ref.current;
     if (box === null) return;
     if (box.clientHeight <= 0) return;
-    const viewport = `${String(window.innerWidth)}x${String(window.innerHeight)}`;
+    const viewport = `${String(window.innerWidth)}x${String(window.innerHeight)}|${resetKeyRef.current ?? ''}`;
     if (viewport !== guard.current.viewport) {
       guard.current = { viewport, ceiling: null, seen: new Set() };
     }
@@ -155,41 +159,73 @@ const useFitMeasure = (
  */
 export const useFitCount = (
   ref: RefObject<HTMLElement | null>,
-  { fallback = 5, min = 1, max = 50 }: { fallback?: number; min?: number; max?: number } = {},
+  {
+    fallback = 5,
+    min = 1,
+    max = 50,
+    resetKey,
+  }: {
+    fallback?: number;
+    min?: number;
+    max?: number;
+    /** 사람이 바꾼 보기(고른 대상 · 탭 · 쪽) — 바뀌면 진동 막기의 천장을 푼다. */
+    resetKey?: string;
+  } = {},
 ): number =>
-  useFitMeasure(ref, fallback, (box) => {
-    const rows = Array.from(box.children).filter(
-      (child): child is HTMLElement => child instanceof HTMLElement && child.offsetHeight > 0,
-    );
-    if (rows.length === 0) return null;
-    const style = getComputedStyle(box);
-    const gap = Number.parseFloat(style.rowGap) || 0;
-    const rowHeight = Math.max(...rows.map((row) => row.offsetHeight));
-    if (rowHeight <= 0) return null;
-    const fits = Math.floor((box.clientHeight + gap) / (rowHeight + gap));
+  useFitMeasure(
+    ref,
+    fallback,
+    (box) => {
+      const rows = Array.from(box.children).filter(
+        (child): child is HTMLElement => child instanceof HTMLElement && child.offsetHeight > 0,
+      );
+      if (rows.length === 0) return null;
+      const style = getComputedStyle(box);
+      const gap = Number.parseFloat(style.rowGap) || 0;
+      const rowHeight = Math.max(...rows.map((row) => row.offsetHeight));
+      if (rowHeight <= 0) return null;
+      const fits = Math.floor((box.clientHeight + gap) / (rowHeight + gap));
 
-    return Math.min(max, Math.max(min, fits));
-  });
+      return Math.min(max, Math.max(min, fits));
+    },
+    resetKey,
+  );
 
 /**
  * 표에 들어가는 한 쪽 줄 수. `ref` 는 표를 감싼 칸(높이가 정해진 칸), 머리 줄은 빼고 잰다.
  */
 export const useFitTableRows = (
   ref: RefObject<HTMLElement | null>,
-  { fallback = 5, min = 1, max = 50 }: { fallback?: number; min?: number; max?: number } = {},
+  {
+    fallback = 5,
+    min = 1,
+    max = 50,
+    resetKey,
+  }: {
+    fallback?: number;
+    min?: number;
+    max?: number;
+    /** 사람이 바꾼 보기(고른 대상 · 탭 · 쪽) — 바뀌면 진동 막기의 천장을 푼다. */
+    resetKey?: string;
+  } = {},
 ): number =>
-  useFitMeasure(ref, fallback, (box) => {
-    const head = box.querySelector('thead');
-    const rows = Array.from(box.querySelectorAll('tbody > tr')).filter(
-      (row): row is HTMLElement => row instanceof HTMLElement && row.offsetHeight > 0,
-    );
-    if (rows.length === 0) return null;
-    const rowHeight = Math.max(...rows.map((row) => row.offsetHeight));
-    const headHeight = head instanceof HTMLElement ? head.offsetHeight : 0;
-    const fits = Math.floor((box.clientHeight - headHeight - 2) / rowHeight);
+  useFitMeasure(
+    ref,
+    fallback,
+    (box) => {
+      const head = box.querySelector('thead');
+      const rows = Array.from(box.querySelectorAll('tbody > tr')).filter(
+        (row): row is HTMLElement => row instanceof HTMLElement && row.offsetHeight > 0,
+      );
+      if (rows.length === 0) return null;
+      const rowHeight = Math.max(...rows.map((row) => row.offsetHeight));
+      const headHeight = head instanceof HTMLElement ? head.offsetHeight : 0;
+      const fits = Math.floor((box.clientHeight - headHeight - 2) / rowHeight);
 
-    return Math.min(max, Math.max(min, fits));
-  });
+      return Math.min(max, Math.max(min, fits));
+    },
+    resetKey,
+  );
 
 export interface PuPage<T> {
   items: T[];

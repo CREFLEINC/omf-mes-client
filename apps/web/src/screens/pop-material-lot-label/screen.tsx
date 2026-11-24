@@ -169,7 +169,11 @@ export const PopMaterialLotLabelScreen = () => {
   const tableFitRef = useRef<HTMLDivElement>(null);
   const supplierSize = useFitCount(supplierFitRef, { fallback: 6 });
   const itemSize = useFitTableRows(itemFitRef, { fallback: 8 });
-  const rowSize = useFitTableRows(tableFitRef, { fallback: 5 });
+  /* 고른 품목 · 탭 · 쪽 · 스캔이 바뀌면 진동 막기 천장을 푼다(pager `resetKey`, T054). */
+  const rowSize = useFitTableRows(tableFitRef, {
+    fallback: 5,
+    resetKey: `${picked === null ? '' : keyOfRef(picked.ref)}|${tab}|${String(lotPage)}|${String(scanned?.lot.lotId ?? '')}`,
+  });
 
   const suppliers = useMaterialLotSuppliers(
     plantId === null ? null : { plantId, q: findQ, page: supplierPage, size: supplierSize },

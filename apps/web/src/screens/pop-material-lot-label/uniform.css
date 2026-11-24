@@ -918,6 +918,16 @@
     white-space: nowrap;
   }
 
+  /* 단위명이 길면(「롤 (추가 설명)」) 한 줄로 말줄임 — 포장 칸이 두 줄을 넘지 않는다. 전체 글은 칸 title. */
+  .mll-right .mll-table .mll-pkg-unit {
+    display: inline-block;
+    max-width: 64px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+  }
+
   .mll-right .mll-table.mll-table .pu-table td.mll-modecol > .pu-chip {
     padding-inline: 6px;
     font-size: 12px;
