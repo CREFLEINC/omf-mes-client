@@ -585,7 +585,7 @@ export const PopMaterialLotLabelScreen = () => {
 
   /*
    * 일괄 출력(FR-015) — 넣을 수 있는 최대는 미출력 탭 총 건수(아직 만들지 않은 몫 포함). 미출력 탭을 받았으면 그
-   * 응답, 아니면 왼쪽 줄의 미출력 + 생성 예정.
+   * 응답, 아니면 품목 표 줄의 미출력(만든 것 + 아직 만들지 않은 몫).
    */
   const bulkMax =
     tab === 'UNPRINTED' && lotsData !== undefined
