@@ -43,7 +43,7 @@ export const erpBom: Translated<typeof ko.erpBom> = {
     collapse: (label: string): string => `Thu gọn ${label}`,
     loading: 'Đang tải',
     failed: 'Không tải được cấu trúc con',
-    cycle: 'Trùng mặt hàng ở cấp trên',
+    cycle: 'Đã có mặt hàng này ở cấp trên, không mở thêm',
   },
   values: {
     empty: '—',
@@ -51,7 +51,7 @@ export const erpBom: Translated<typeof ko.erpBom> = {
     no: 'Không',
     loadingName: 'Đang tải',
     failedName: 'Không tải được',
-    unknown: 'Không xác định',
+    unknown: 'Mặt hàng chưa đăng ký',
   },
   loading: {
     parents: 'Đang tải danh sách mặt hàng cha',

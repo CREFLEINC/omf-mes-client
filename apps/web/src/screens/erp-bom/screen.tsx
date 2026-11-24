@@ -136,6 +136,7 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
         onSearch({ ...applied, q: q.trim() });
       }}
     >
+      {/* 유형 선택 · 품목 검색 · BOM 있는 품목만 순서(사용자 지시 2026-11-24). */}
       <div className="field-cell">
         <label className="field-label" htmlFor={typeId}>
           {t.fields.itemType}
@@ -149,16 +150,6 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
           }}
         />
       </div>
-      <div className="field-cell field-cell-unlabeled">
-        <Checkbox
-          checked={applied.hasBom}
-          onChange={(event) => {
-            onSearch({ ...applied, q: q.trim(), hasBom: event.target.checked });
-          }}
-        >
-          {t.fields.hasBom}
-        </Checkbox>
-      </div>
       <TextField
         containerClassName={FIT_PLACEHOLDER_CLASS}
         label={t.fields.q}
@@ -169,6 +160,16 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
           setQ(event.target.value);
         }}
       />
+      <div className="field-cell field-cell-unlabeled">
+        <Checkbox
+          checked={applied.hasBom}
+          onChange={(event) => {
+            onSearch({ ...applied, q: q.trim(), hasBom: event.target.checked });
+          }}
+        >
+          {t.fields.hasBom}
+        </Checkbox>
+      </div>
       <ErpFilterActions onReset={reset} showReset={isChanged} />
     </form>
   );

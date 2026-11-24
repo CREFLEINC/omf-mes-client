@@ -989,6 +989,120 @@ on('GET', '/mdm/workers', (_p, query) =>
   ),
 );
 
+/*
+ * ERP BOM 확인용 자료(#358) — 계약 예시 BOM 은 없는 품목(1001)을 가리켜 구성품이 「알 수 없음」으로만 보였다.
+ * 완제품 둘 · 반제품 둘과 그 BOM 을 세우고, 품목 목록이 유형(itemTypeCode) · BOM 있는 품목만(hasBom)을 걸게 한다.
+ * 먼저 등록한 처리가 이기므로 아래 기존 `/mdm/items` 보다 앞에 둔다.
+ */
+{
+  const base = state.items[0];
+  const extra = [
+    [2101, 'FG-2001', '스마트 도어락 본체', 'FINISHED'],
+    [2102, 'FG-2002', '차량용 충전기', 'FINISHED'],
+    [2103, 'SF-3001', '메인 PCB 조립품', 'SEMI_FINISHED'],
+    [2104, 'SF-3002', '하우징 조립품', 'SEMI_FINISHED'],
+    [2105, 'RM-4001', 'PCB 기판', 'MATERIAL'],
+    [2106, 'RM-4002', '커넥터', 'MATERIAL'],
+  ];
+  for (const [itemId, itemCode, itemName, itemTypeCode] of extra) {
+    if (!state.items.some((row) => row.itemId === itemId)) {
+      state.items.push({ ...base, itemId, itemCode, itemName, labelName: itemName, itemTypeCode });
+    }
+  }
+}
+const ERP_BOMS = [
+  {
+    bomId: 5001,
+    parentItemId: 2101,
+    children: [
+      [2103, 1],
+      [2104, 1],
+      [2106, 2],
+    ],
+  },
+  {
+    bomId: 5002,
+    parentItemId: 2102,
+    children: [
+      [2103, 1],
+      [2001, 0.2],
+    ],
+  },
+  {
+    bomId: 5003,
+    parentItemId: 2103,
+    children: [
+      [2105, 1],
+      [2106, 4],
+    ],
+  },
+  {
+    bomId: 5004,
+    parentItemId: 2104,
+    children: [
+      [2001, 0.35],
+      [2002, 1],
+    ],
+  },
+];
+const bomHeader = (bom) => ({
+  bomId: bom.bomId,
+  parentItemId: bom.parentItemId,
+  bomCode: 'STANDARD',
+  bomVersion: 1,
+  statusCode: 'ACTIVE',
+  isDefault: true,
+  effectiveFrom: '2026-01-01',
+  effectiveTo: '2099-12-31',
+  baseQty: 1,
+  baseUomId: 1001,
+});
+on('GET', '/planning/boms', (_p, query) => {
+  const parent = Number(query.get('parentItemId'));
+  return { items: ERP_BOMS.filter((bom) => bom.parentItemId === parent).map(bomHeader) };
+});
+on('GET', '/planning/boms/{bomId}/components', (params) => {
+  const bom = ERP_BOMS.find((each) => each.bomId === Number(params.bomId));
+  return {
+    items: (bom?.children ?? []).map(([componentItemId, requiredQty], index) => ({
+      bomComponentId: bom.bomId * 10 + index,
+      bomId: bom.bomId,
+      componentItemId,
+      routingOperationId: null,
+      actualUseProcessId: null,
+      requiredQty,
+      uomId: 1001,
+      scrapRate: index === 0 ? 0 : 1.5,
+      isMandatory: true,
+      lotTraceRequired: false,
+      backflushAllowed: false,
+      sequenceNo: index + 1,
+      erpChildItemSeq: (index + 1) * 10,
+    })),
+  };
+});
+on('GET', '/mdm/items', (_p, query) => {
+  const types = query
+    .getAll('itemTypeCode')
+    .flatMap((value) => value.split(','))
+    .filter(Boolean);
+  const hasBom = bool(query, 'hasBom');
+  const needle = query.get('q')?.trim().toUpperCase();
+  return page(
+    keep(state.items, [
+      (row) =>
+        needle === undefined ||
+        needle === '' ||
+        row.itemCode.toUpperCase().includes(needle) ||
+        row.itemName.toUpperCase().includes(needle),
+      (row) => bool(query, 'includeInactive') === true || row.isActive,
+      (row) => types.length === 0 || types.includes(row.itemTypeCode),
+      (row) => hasBom !== true || ERP_BOMS.some((bom) => bom.parentItemId === row.itemId),
+    ]),
+    query,
+  );
+});
+
 on('GET', '/mdm/items', (_p, query) =>
   page(
     keep(state.items, [
@@ -1592,6 +1706,274 @@ on('GET', '/mdm/equipments/{equipmentId}/inspection-items', (params) => {
     effective: assigned,
     resolvedFromLevelCode: assigned.length === 0 ? 'NONE' : 'EQUIPMENT',
   };
+});
+
+/*
+ * ERP 공통코드 여덟 그룹 + 품목 유형 · BOM 상태 이름(#358 확인용). 씨앗에 없어 「ERP 공통코드」 화면이 비고 BOM 유형이
+ * 영문 코드로 보였다. 이름은 ERP 수신본을 흉내 낸 예시다 — 실서버 값은 ERP 가 보낸다.
+ */
+const ERP_CODE_SEEDS = {
+  TRANS_TYPE: [
+    ['I11', '정상 입고'],
+    ['I44', '생산 입고'],
+    ['O11', '정상 출고'],
+    ['O44', '생산 출고'],
+  ],
+  COST_TYPE: [
+    ['C10', '재료비'],
+    ['C20', '노무비'],
+    ['C30', '경비'],
+  ],
+  SL_TYPE: [
+    ['S510', '자재 창고'],
+    ['S520', '제품 창고'],
+    ['S530', '반제품 창고'],
+  ],
+  UNIT: [
+    ['EA', '개'],
+    ['KG', '킬로그램'],
+    ['M', '미터'],
+    ['BOX', '박스'],
+  ],
+  SO_TYPE: [
+    ['ESOA', '일반 수주'],
+    ['ESOB', '수출 수주'],
+  ],
+  ORDER_TYPE: [
+    ['NB', '일반 발주'],
+    ['IM', '수입 발주'],
+  ],
+  SALE_GROUP: [
+    ['S21', '국내 영업'],
+    ['S22', '해외 영업'],
+  ],
+  PUR_GROUP: [
+    ['P10', '원자재 구매'],
+    ['P20', '부자재 구매'],
+  ],
+  ITEM_TYPE: [
+    ['FINISHED', '완제품'],
+    ['SEMI_FINISHED', '반제품'],
+    ['PRODUCT', '제품'],
+    ['MATERIAL', '원자재'],
+  ],
+  MASTER_VERSION_STATUS: [
+    ['DRAFT', '작성 중'],
+    ['ACTIVE', '사용 중'],
+    ['RETIRED', '사용 종료'],
+  ],
+};
+const ERP_GROUP_NAMES = {
+  TRANS_TYPE: '입출고 유형',
+  COST_TYPE: '원가 유형',
+  SL_TYPE: '창고 유형',
+  UNIT: '단위',
+  SO_TYPE: '수주 유형',
+  ORDER_TYPE: '발주 유형',
+  SALE_GROUP: '영업 그룹',
+  PUR_GROUP: '구매 그룹',
+  ITEM_TYPE: '품목 유형',
+  MASTER_VERSION_STATUS: 'BOM 상태',
+};
+for (const [group, values] of Object.entries(ERP_CODE_SEEDS)) {
+  if (state.codeValues[group] === undefined || state.codeValues[group].length === 0) {
+    state.codeValues[group] = values;
+  }
+}
+
+/* 코드 그룹 목록 — 씨앗의 코드값 그룹 전부(종전에는 계약 예시 한 줄뿐이었다). */
+on('GET', '/mdm/code-groups', (_p, query) => {
+  const q = (query.get('q') ?? '').toLowerCase();
+  const groups = Object.keys(state.codeValues)
+    .sort()
+    .map((groupCode, index) => ({
+      codeGroupId: 3000 + index,
+      groupCode,
+      groupName: ERP_GROUP_NAMES[groupCode] ?? groupCode,
+      description: null,
+      isActive: true,
+    }))
+    .filter(
+      (group) =>
+        q === '' ||
+        group.groupCode.toLowerCase().includes(q) ||
+        group.groupName.toLowerCase().includes(q),
+    );
+  return page(groups, query);
+});
+
+/*
+ * 수주 · ERP W/O 확인용 자료(#358) — 계약 예시는 한 줄(상태 「string」 · 번호 「값」 · 없는 고객사/품목)이라 화면 모양을
+ * 볼 수 없었다. 수주 여섯 · W/O 여섯을 세우고 상태 코드 이름을 넣는다. 조건은 번호 · 고객사/품목 · 기간 · 상태만 건다.
+ */
+for (const [group, values] of Object.entries({
+  SALES_ORDER_STATUS: [
+    ['OPEN', '진행 중'],
+    ['CLOSED', '완료'],
+    ['CANCELLED', '취소'],
+  ],
+  PRODUCTION_ORDER_STATUS: [
+    ['RELEASED', '지시'],
+    ['IN_PROGRESS', '생산 중'],
+    ['COMPLETED', '완료'],
+  ],
+  LOGISTICS_DOCUMENT_STATUS: [
+    ['OPEN', '진행 중'],
+    ['CLOSED', '완료'],
+    ['CANCELLED', '취소'],
+  ],
+})) {
+  if ((state.codeValues[group] ?? []).length === 0) state.codeValues[group] = values;
+}
+const inRange = (value, from, to) =>
+  (from === null || from === '' || value >= from) && (to === null || to === '' || value <= to);
+const ERP_SALES_ORDERS = [
+  [7001, 'SO-2026-1102-0001', 4002, '2026-11-02', 'CLOSED', 2101, 50, 50],
+  [7002, 'SO-2026-1105-0002', 4003, '2026-11-05', 'OPEN', 2102, 200, 80],
+  [7003, 'SO-2026-1110-0003', 4002, '2026-11-10', 'OPEN', 2101, 120, 0],
+  [7004, 'SO-2026-1114-0004', 4003, '2026-11-14', 'OPEN', 2003, 300, 120],
+  [7005, 'SO-2026-1118-0005', 4002, '2026-11-18', 'CANCELLED', 2102, 40, 0],
+  [7006, 'SO-2026-1121-0006', 4003, '2026-11-21', 'OPEN', 2101, 80, 0],
+].map(
+  ([
+    salesOrderId,
+    salesOrderNo,
+    customerId,
+    orderDate,
+    statusCode,
+    itemId,
+    orderedQty,
+    shippedQty,
+  ]) => ({
+    salesOrderId,
+    salesOrderNo,
+    erpSalesOrderNo: salesOrderNo.replace('SO-', 'ERP-SO-'),
+    customerId,
+    shipToPartnerId: customerId,
+    orderDate,
+    statusCode,
+    lines: [
+      {
+        salesOrderLineId: salesOrderId * 10 + 1,
+        lineNo: 1,
+        itemId,
+        orderedQty,
+        uomId: 1001,
+        requestedDeliveryDate: orderDate,
+        shippedQty,
+        erpStorageLocationCode: 'S520',
+        cancelledAt: null,
+      },
+    ],
+    versionNo: 1,
+    erpOrderTypeCode: 'ESOA',
+    erpMovementTypeCode: 'O11',
+    erpSalesGroupCode: 'S21',
+  }),
+);
+on('GET', '/logistics/sales-orders', (_p, query) => {
+  const needle = (query.get('q') ?? '').trim().toUpperCase();
+  const customer = Number(query.get('customerId') ?? 0);
+  const status = query.get('statusCode') ?? '';
+  return page(
+    ERP_SALES_ORDERS.filter(
+      (row) =>
+        (needle === '' || row.salesOrderNo.toUpperCase().includes(needle)) &&
+        (customer === 0 || row.customerId === customer) &&
+        (status === '' || row.statusCode === status) &&
+        inRange(row.orderDate, query.get('orderDateFrom'), query.get('orderDateTo')),
+    ),
+    query,
+  );
+});
+on(
+  'GET',
+  '/logistics/sales-orders/{salesOrderId}',
+  (params) =>
+    ERP_SALES_ORDERS.find((row) => row.salesOrderId === Number(params.salesOrderId)) ?? null,
+);
+const WO_BASE = {
+  productionOrderId: 1001,
+  productionOrderNo: '값',
+  erpOrderNo: 'string',
+  parentProductionOrderId: 1001,
+  bomLevel: 1,
+  businessUnitId: 1001,
+  plantId: 1001,
+  itemId: 1001,
+  orderQty: 120,
+  uomId: 1001,
+  dueDate: '2026-08-11',
+  statusCode: 'string',
+  acknowledgedAt: '2026-08-11T09:12:00+09:00',
+  acknowledgedBy: 1001,
+  acknowledgeDecisionCode: 'APPLY',
+  remarks: '값',
+  versionNo: 1,
+  expandedWorkOrderCount: 3,
+  plannedWorkOrderCount: 3,
+  autoPlan: { status: 'DONE', reasons: ['BOM_MISSING'] },
+  worklistState: 'BEFORE_PLAN',
+  worklistReasons: [{ code: 'DRAFT_PLAN_PENDING', workOrderCount: 1 }],
+  masterDataReasons: ['BOM_DEFAULT_REQUIRED'],
+  releasePendingWorkOrderCount: 1,
+  liveWorkOrderCount: 2,
+  confirmedPlanQty: 60,
+  draftPlanQty: 30,
+  remainingQty: 10,
+  planStatusCode: 'UNPLANNED',
+  itemGroupCode: 'ZZ400',
+  itemGroupName: 'Resin',
+  plannedStartDate: '2026-08-11',
+  lastChange: {
+    receivedAt: '2026-08-05T09:12:00+09:00',
+    changedFields: [
+      { field: 'ORDER_QTY', label: '수량', beforeText: '5000', afterText: '4000', beforeQty: 5000 },
+    ],
+  },
+  erpOperationNo: '010',
+  erpStorageLocationCode: 'S510',
+  erpStorageWarehouse: { id: 1001, code: 'S510', name: '완제품창고' },
+  erpReworkFlag: 'N',
+};
+const ERP_PRODUCTION_ORDERS = [
+  [8001, 'WO-2026-1103-001', 2101, 100, '2026-11-03', 'COMPLETED'],
+  [8002, 'WO-2026-1108-002', 2103, 200, '2026-11-08', 'COMPLETED'],
+  [8003, 'WO-2026-1112-003', 2102, 150, '2026-11-12', 'IN_PROGRESS'],
+  [8004, 'WO-2026-1117-004', 2104, 120, '2026-11-17', 'IN_PROGRESS'],
+  [8005, 'WO-2026-1120-005', 2101, 80, '2026-11-20', 'RELEASED'],
+  [8006, 'WO-2026-1124-006', 2103, 60, '2026-11-24', 'RELEASED'],
+].map(([productionOrderId, productionOrderNo, itemId, orderQty, plannedStartDate, statusCode]) => ({
+  ...WO_BASE,
+  productionOrderId,
+  productionOrderNo,
+  erpOrderNo: productionOrderNo,
+  parentProductionOrderId: null,
+  itemId,
+  orderQty,
+  plannedStartDate,
+  dueDate: plannedStartDate,
+  statusCode,
+  remarks: null,
+}));
+on('GET', '/planning/production-orders', (_p, query) => {
+  const needle = (query.get('q') ?? '').trim().toUpperCase();
+  const item = Number(query.get('itemId') ?? 0);
+  const status = query.get('statusCode') ?? '';
+  return page(
+    ERP_PRODUCTION_ORDERS.filter(
+      (row) =>
+        (needle === '' || row.productionOrderNo.toUpperCase().includes(needle)) &&
+        (item === 0 || row.itemId === item) &&
+        (status === '' || row.statusCode === status) &&
+        inRange(
+          row.plannedStartDate,
+          query.get('plannedStartDateFrom'),
+          query.get('plannedStartDateTo'),
+        ),
+    ),
+    query,
+  );
 });
 
 on('GET', '/mdm/code-values', (_p, query) => {

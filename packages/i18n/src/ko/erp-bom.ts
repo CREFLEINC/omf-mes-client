@@ -46,7 +46,7 @@ export const erpBom = {
     loading: '불러오는 중',
     failed: '하위 구성을 불러오지 못했습니다',
     /** 같은 품목이 위 단계에 이미 있다 — 더 내려가지 않는다. */
-    cycle: '위 단계와 같은 품목',
+    cycle: '상위에 같은 품목이 있어 더 펼치지 않음',
   },
   values: {
     empty: '—',
@@ -54,7 +54,7 @@ export const erpBom = {
     no: '아니오',
     loadingName: '불러오는 중',
     failedName: '불러오지 못함',
-    unknown: '알 수 없음',
+    unknown: '등록되지 않은 품목',
   },
   loading: {
     parents: '모품목 목록을 불러오는 중',

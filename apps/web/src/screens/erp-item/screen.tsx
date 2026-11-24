@@ -107,16 +107,7 @@ const FilterBar = ({ applied, itemTypeOptions, onSearch, onReset }: FilterBarPro
         onSearch({ ...draft, q: draft.q.trim() });
       }}
     >
-      <TextField
-        containerClassName={FIT_PLACEHOLDER_CLASS}
-        label={t.fields.q}
-        placeholder={t.fields.qPlaceholder}
-        ref={searchRef}
-        value={draft.q}
-        onChange={(event) => {
-          setDraft((prev) => ({ ...prev, q: event.target.value }));
-        }}
-      />
+      {/* 품목 유형 선택 · 품목 검색 · 미사용 포함 순서(사용자 지시 2026-11-24). */}
       <div className="field-cell">
         <label className="field-label" htmlFor={typeId}>
           {t.fields.itemType}
@@ -131,6 +122,16 @@ const FilterBar = ({ applied, itemTypeOptions, onSearch, onReset }: FilterBarPro
           }}
         />
       </div>
+      <TextField
+        containerClassName={FIT_PLACEHOLDER_CLASS}
+        label={t.fields.q}
+        placeholder={t.fields.qPlaceholder}
+        ref={searchRef}
+        value={draft.q}
+        onChange={(event) => {
+          setDraft((prev) => ({ ...prev, q: event.target.value }));
+        }}
+      />
       <div className="field-cell field-cell-unlabeled">
         <Checkbox
           checked={draft.includeInactive}

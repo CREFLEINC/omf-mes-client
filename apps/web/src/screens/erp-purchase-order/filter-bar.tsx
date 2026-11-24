@@ -156,6 +156,25 @@ export const ErpPurchaseOrderFilterBar = ({
   return (
     <>
       <div className="filter-bar erp-data-filter-row">
+        {/* 선택 · 검색 · 기간 순서 — 품목 · 거래처 · BOM 탭과 같은 차례(사용자 지시 2026-11-24). */}
+        <FilterSelect
+          partners
+          label={t.filters.supplierSelect}
+          className="filter-field-md"
+          options={[]}
+          value={draft.supplier}
+          onChange={(value) => update('supplier', value)}
+        />
+        <SearchInput
+          label={t.fields.q}
+          placeholder={t.values.searchPlaceholder}
+          ref={searchRef}
+          value={draft.q}
+          onChange={(event) => update('q', event.target.value)}
+          onSearch={search}
+          clearLabel={messages.common.clear}
+          containerClassName={`filter-field-sm erp-order-search ${FIT_PLACEHOLDER_CLASS}`}
+        />
         {/*
          * 기간은 **한 컨트롤**이다(C-12 — 브라우저 날짜 칸을 쓰지 않는다). 컴포넌트가 완결된 쌍만, 그것도
          * 시작 ≤ 종료로만 내보내 이 칸을 거친 역전은 생기지 않는다. 주소 키(`from`·`to`)와 요청 파라미터는 그대로다.
@@ -179,24 +198,6 @@ export const ErpPurchaseOrderFilterBar = ({
             }
           />
         </div>
-        <FilterSelect
-          partners
-          label={t.filters.supplierSelect}
-          className="filter-field-md"
-          options={[]}
-          value={draft.supplier}
-          onChange={(value) => update('supplier', value)}
-        />
-        <SearchInput
-          label={t.fields.q}
-          placeholder={t.values.searchPlaceholder}
-          ref={searchRef}
-          value={draft.q}
-          onChange={(event) => update('q', event.target.value)}
-          onSearch={search}
-          clearLabel={messages.common.clear}
-          containerClassName={`filter-field-sm erp-order-search ${FIT_PLACEHOLDER_CLASS}`}
-        />
         {/* 조회 · 초기화 · 조건 더보기는 줄 오른쪽 끝(단말 관리와 같다 · #358). 초기화는 바뀐 것이 있을 때만. */}
         <div className="filter-actions field-cell-unlabeled">
           <Button onClick={search}>{messages.common.search}</Button>
