@@ -476,3 +476,26 @@ describe('W-01-01 상세 머리', () => {
     expect(within(group as HTMLElement).queryByText('IL-20991111-0003')).toBeNull();
   });
 });
+
+describe('W-01-01 부적합 처분 탭(omf-all-around#354)', () => {
+  it('불합격 확정 건을 열면 상세 정보가 아니라 「부적합 처분」 탭부터 보인다', async () => {
+    mount(confirmedOf({ overallJudgmentCode: 'REJECTED', nonconformanceId: 9 }));
+
+    const tab = await screen.findByRole('tab', { name: messages.dispositionDecision.box.title });
+    expect(tab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: t.history.detailTab })).toHaveAttribute(
+      'aria-selected',
+      'false',
+    );
+  });
+
+  it('합격 건에는 「부적합 처분」 탭이 없고 상세 정보부터 보인다', async () => {
+    mount(confirmedOf());
+
+    expect(await screen.findByRole('tab', { name: t.history.detailTab })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.queryByRole('tab', { name: messages.dispositionDecision.box.title })).toBeNull();
+  });
+});

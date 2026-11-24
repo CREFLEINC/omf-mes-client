@@ -377,11 +377,14 @@ export const InboundAttachDialog = ({
   inspectionRequestId,
   lots,
   uomCode,
+  scannedLotId = null,
   onClose,
 }: {
   inspectionRequestId: number;
   lots: readonly InspectionLotForward[];
   uomCode: string;
+  /** 스캔해 연 자재 관리 LOT — 그 LOT 만 골라 둔다(omf-all-around#356). */
+  scannedLotId?: number | null;
   onClose: () => void;
 }) => {
   const { client } = useApiClient();
@@ -389,8 +392,10 @@ export const InboundAttachDialog = ({
   const toast = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
-  /* 처음에는 LOT 전부 — 성적서 하나에 모든 LOT 결과가 담기는 경우가 많다. */
-  const [lotIds, setLotIds] = useState<number[]>(lots.map((lot) => lot.lotId));
+  /* 처음에는 아무 LOT 도 고르지 않는다 — LOT 을 스캔해 왔으면 그 LOT 만(omf-all-around#356). */
+  const [lotIds, setLotIds] = useState<number[]>(
+    scannedLotId !== null && lots.some((lot) => lot.lotId === scannedLotId) ? [scannedLotId] : [],
+  );
   const [tried, setTried] = useState(false);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);

@@ -79,7 +79,7 @@ import {
   LegacyReleaseRedirect,
 } from '../screens/production-order/process/legacy-redirects';
 import { ProductionOrderProcessScreen } from '../screens/production-order/process/process-screen';
-import { DispositionDecisionScreen } from '../screens/disposition-decision/screen';
+import { DispositionLegacyRedirect } from '../screens/disposition-decision/legacy-redirect';
 import { PqcInspectionRegisterScreen } from '../screens/pqc-inspection-register/screen';
 import { RoutingScreen } from '../screens/routing/screen';
 import { ExpeditedShipmentScreen } from '../screens/expedited-shipment/screen';
@@ -428,12 +428,10 @@ export const appRouter = createBrowserRouter([
       /* W-03-05 — 측정치는 검사 결과 상세 안의 표로 본다(따로 여는 쪽 없음 · omf-all-around#217). */
       { path: 'quality/inspection-results', element: <InspectionResultInsightsPage /> },
       /*
-       * W-03-10 — 특채·한도승인 «다음»이다. 부적합의 처분을 정하는 화면이라 승인 처리 뒤에 서고,
-       * 이 라우트가 W-04-10(폐기)·W-04-11(재등록)·P-04-03(재작업)의 진입 목록과
-       * W-03-09의 「부적합 열기」(`?nonconformanceId=`)를 함께 연다.
-       * 앞머리는 계약 경로가 아니라 사이드바 업무 섹션(품질관리)을 따른다.
+       * W-03-10 — 「부적합 처분 관리」 메뉴는 없앴다(omf-all-around#354). 처분은 검사 조회·판정의 IQC · OQC 탭 안
+       * 처분 상자가 한다. 옛 주소(`?nonconformanceId=` · `?item=`)는 그 부적합이 속한 탭으로 넘긴다.
        */
-      { path: 'quality/dispositions', element: <DispositionDecisionScreen /> },
+      { path: 'quality/dispositions', element: <DispositionLegacyRedirect /> },
       /*
        * W-03-11 — PQC 검사 등록·조회(omf-all-around#107 · 설계보다 앞선 화면). 현장 POP 의 PQC 와
        * 같은 판정을 관리웹에서 등록하고 지난 의뢰를 본다.
@@ -680,7 +678,8 @@ export const appRouter = createBrowserRouter([
       /*
        * W-04-07 — 같은 규칙(사이드바 섹션)이다. 계약 경로는 `/quality/**`이지만 IA가 이 화면을
        * 「출하 > 반품·재고」에 두었다. 이 화면은 부적합을 등록하고 판정을 «의뢰»만 한다 — 판정 자체는
-       * `quality/dispositions`(W-03-10)이고, 이 화면의 「판정 결과 보기」가 그리로 연다.
+       * 검사 조회·판정 OQC 탭 「판정 의뢰」다 — 이 화면의 「판정 결과 보기」는 옛 주소(`quality/dispositions`)로 열어
+       * 넘기기가 그 부적합을 고른 채로 보낸다(omf-all-around#354).
        */
       { path: 'shipment/disposition-requests', element: <DispositionRequestScreen /> },
       /*

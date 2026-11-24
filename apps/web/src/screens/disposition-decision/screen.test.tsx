@@ -39,7 +39,7 @@ describe('DispositionDecisionScreen 조회', () => {
     renderScreen();
 
     expect(await screen.findByRole('region', { name: t.panes.list })).toBeInTheDocument();
-    /* 목록 제목 줄 「처분 대기 목록 · N건 · 목록 접기」가 늘 선다(통일 배치 · #350). */
+    /* 목록 제목 줄 「판정 의뢰 목록 · N건 · 목록 접기」가 늘 선다(통일 배치 · #350). */
     expect(screen.getByRole('heading', { name: t.panes.list })).toBeInTheDocument();
     /* 고르기 전에는 상세 칸 제목 「부적합 상세 및 판정」을 두지 않는다 — 안내만(omf-all-around#228). */
     expect(screen.queryByRole('heading', { name: t.panes.detailDecision })).toBeNull();
@@ -212,5 +212,28 @@ describe('DispositionDecisionScreen 조회', () => {
     );
     expect(within(group).getByRole('radio', { name: '폐기' })).toBeEnabled();
     expect(screen.queryByText(t.dispositionPending)).toBeNull();
+  });
+});
+
+describe('DispositionDecisionScreen — OQC 탭 「판정 의뢰」(omf-all-around#354)', () => {
+  it('검사 건 없는 부적합만 서버에 걸러 달라고 하고, 원천(반품 · 제품) 조건 칸은 그대로 둔다', async () => {
+    renderWithProviders(
+      <SessionProvider>
+        <DispositionDecisionScreen requestOnly today={TODAY} offsetMinutes={KST} />
+      </SessionProvider>,
+      {
+        session: SYNTHETIC_SESSION,
+        fetch: dispositionStub(),
+        route: '/shipment/oqc-inspection?kind=request',
+      },
+    );
+
+    await waitFor(() => {
+      const url = requestedPaths().find((path) => path.startsWith('/quality/nonconformances?'));
+      const params = new URLSearchParams(url?.split('?')[1] ?? '');
+      expect(params.get('withoutInspectionRequestOnly')).toBe('true');
+      expect(params.get('sourceCode')).toBeNull();
+    });
+    expect(screen.getByLabelText(t.fields.sourcePick)).toBeInTheDocument();
   });
 });

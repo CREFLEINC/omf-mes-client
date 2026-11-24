@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { INSPECTION_HUB_COUNTS_KEY } from '../../patterns/inspection-hub-counts';
 import { splitError, type SplitError } from '../../patterns/master';
 import { runRequest, toApiError } from '../../patterns/request';
 import { oqcInspectionKeys } from '../oqc-inspection/queries';
@@ -47,6 +48,8 @@ export const useDirectSubmitter = (): PqcSubmitter => {
           setSentCount((count) => count + 1);
           /* 목록의 상태(대기 → 진행 → 완료)가 바뀐다 — 확정한 의뢰가 「대기·진행만」에 남지 않게 다시 묻는다(리뷰 m5). */
           void queryClient.invalidateQueries({ queryKey: oqcInspectionKeys.queues() });
+          /* 탭 줄 상태 칩 · 탭 건수도 곧바로 다시 센다 — IQC 저장과 같다(omf-all-around#356). */
+          void queryClient.invalidateQueries({ queryKey: INSPECTION_HUB_COUNTS_KEY });
         })
         .catch((error: unknown) => {
           setRejection(splitError(toApiError(error), SAVE_FIELDS, undefined));

@@ -214,18 +214,29 @@ describe('결과 저장 몸통', () => {
         matchedLotIds: [7004],
         reinspectionReasonCode: null,
         measurements: [],
+        inspectedAt: '2026-11-24T09:30:00+07:00',
       }),
-    ).toEqual({ overallJudgmentCode: 'ACCEPTED', matchedLotIds: [7004], measurements: [] });
+    ).toEqual({
+      overallJudgmentCode: 'ACCEPTED',
+      matchedLotIds: [7004],
+      measurements: [],
+      inspectedAt: '2026-11-24T09:30:00+07:00',
+    });
   });
 
-  it('고침은 매칭 · 판정 · 사유만 보낸다', () => {
+  it('고침은 매칭 · 판정 · 사유 · 검사일시를 보낸다 — 관리웹 서랍이 검사일시를 고칠 수 있다(#356)', () => {
     expect(
       toShipmentResultUpdateBody({
         judgmentCode: 'REJECTED',
         matchedLotIds: [7001, 7002],
         reinspectionReasonCode: null,
+        inspectedAt: '2026-11-24T09:30:00+07:00',
       }),
-    ).toEqual({ overallJudgmentCode: 'REJECTED', matchedLotIds: [7001, 7002] });
+    ).toEqual({
+      overallJudgmentCode: 'REJECTED',
+      matchedLotIds: [7001, 7002],
+      inspectedAt: '2026-11-24T09:30:00+07:00',
+    });
     expect(shipmentResult(1, 'ACCEPTED', [7001]).statusCode).toBe('DRAFT');
   });
 });

@@ -389,13 +389,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
         ],
       },
-      /* W-03-10 — 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */
-      {
-        to: '/quality/dispositions',
-        icon: 'gavel',
-        label: '부적합 처분 관리',
-        labelVi: 'Ra quyết định xử lý',
-      },
+      /* W-03-10 「부적합 처분 관리」는 메뉴에서 뺐다 — 처분은 검사 조회·판정 IQC · OQC 탭의 처분 상자가 한다(omf-all-around#354). */
     ],
   },
   /*

@@ -57,7 +57,11 @@ export const QueueDetailFilters = ({ filters, onApply }: QueueDetailFiltersProps
           appliedFilters={filters}
           showPendingOnly={false}
           /* 상태는 탭 줄 칩이 맡는다 — 조회는 걸린 칩을 그대로 두고, 초기화는 함께 푼다. */
-          onSearch={(next) => onApply(withDraft(filters, next))}
+          onSearch={(next) =>
+            onApply(
+              withDraft(filters, { ...next, overallJudgmentCode: filters.overallJudgmentCode }),
+            )
+          }
           onTogglePendingOnly={(next) =>
             onApply(withDraft(filters, { ...filters, pendingOnly: next }))
           }

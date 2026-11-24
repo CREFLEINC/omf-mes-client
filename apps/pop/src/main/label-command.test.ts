@@ -62,7 +62,8 @@ describe('명령줄 읽기', () => {
   /* ⛔ 값을 빠뜨린 깃발이 다음 깃발을 값으로 삼키면 엉뚱한 프린터로 보낸다. */
   it('값을 빠뜨린 깃발이 다음 깃발을 삼키지 않는다', () => {
     expect(
-      parseLabelCommand(['app', '--print-sample', 'lot', '--printer', '--print-label'])?.printerName,
+      parseLabelCommand(['app', '--print-sample', 'lot', '--printer', '--print-label'])
+        ?.printerName,
     ).toBeUndefined();
   });
 
