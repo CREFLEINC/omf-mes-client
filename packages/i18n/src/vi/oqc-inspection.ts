@@ -344,9 +344,11 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
       replacedFallback: 'Đã thay thế trên PDA nên không còn là đối tượng phán định.',
       portion: (warehouse: string, location: string | null, qty: string): string =>
         location === null ? `${warehouse} ${qty}` : `${warehouse} ${location} ${qty}`,
-      emptyTitle: 'Chưa có LOT nào được lấy',
-      emptyDescription:
-        'Khi quét LOT ở「Lấy hàng thành phẩm」trên PDA, LOT sẽ hiện ở đây. Có thể ghi kết quả cho các LOT đã lấy ngay cả khi chưa lấy xong.',
+      emptyTitle: 'Chưa có LOT nào được lấy.',
+      emptyDescription: [
+        'Khi quét LOT ở [Lấy hàng thành phẩm] trên PDA, LOT sẽ hiện trong danh sách này.',
+        'Có thể ghi kết quả kiểm tra cho các LOT đã lấy trước, ngay cả khi chưa lấy xong toàn bộ.',
+      ],
     },
     results: {
       title: 'Kết quả kiểm tra',

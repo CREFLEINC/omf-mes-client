@@ -89,6 +89,8 @@ export interface PqcWebStepsProps {
   judgmentBelow?: ReactNode;
   /** 검사 정보 상자 맨 위(결과 창 — 받은 값 · 검사일시 · omf-all-around#356). 수량 줄은 그 아래에 선다. */
   infoTop?: ReactNode;
+  /** 검사일시 칸 — 수량 칸과 한 줄에 세운다(사용자 지시 2026-11-24 · omf-all-around#356). */
+  inspectedAtField?: ReactNode;
 }
 
 /**
@@ -121,6 +123,7 @@ export const PqcWebSteps = ({
   isLocked,
   judgmentBelow,
   infoTop,
+  inspectedAtField,
 }: PqcWebStepsProps) => {
   const overallLabelId = useId();
   const withUnit = (value: string): string => (uomCode === null ? value : `${value} ${uomCode}`);
@@ -200,48 +203,51 @@ export const PqcWebSteps = ({
     <>
       <section className="parts-iqc-lot-box pqc-web-info-box" aria-label={t.drawer.infoBox}>
         {infoTop}
-        <div className="iqc-inspection-qty-body">
-          <InspectionQtyLine
-            uomCode={uomCode}
-            disabled={isLocked}
-            status={status}
-            /*
-             * 검사 수량은 입력받지 않는다(사용자 지시 2026-10-29 · #197) — 서버가 의뢰를 만들 때 검사기준의 전수 · 샘플링 설정으로
-             * 정한 의뢰 수량(작성중 회차면 그 회차의 값)이고, 오른쪽 「전체 N EA 중」에 보인다. IQC 와 같다.
-             */
-            fields={[
-              ...(
-                [
-                  ['accepted', t.quantity.accepted],
-                  ['rejected', t.quantity.rejected],
-                  ['held', t.quantity.held],
-                ] as const
-              ).map(([key, label]) => ({
-                key,
-                kind: key,
-                label,
-                value: draft[key],
-                onChange: (raw: string) => {
-                  const typed = { ...draft, [key]: raw };
-                  /* 불량 · 보류를 바꾸면 합격 수량을 다시 계산한다(IQC 와 같다). */
-                  const remaining =
-                    key === 'accepted' ? null : remainingAcceptedOf(typed, inspectedQty);
-                  const next = remaining === null ? typed : { ...typed, accepted: remaining };
-                  onChange(next);
-                  applyAuto(next);
-                },
-                error:
-                  serverErrorOf(key) ??
-                  (showErrors && errors[key] ? tResult.quantityInvalid : undefined),
-              })),
-            ]}
-          >
-            {inspectionRound !== null && (
-              <p className="field-note">{t.quantity.round(inspectionRound)}</p>
-            )}
-            {errorBanner}
-          </InspectionQtyLine>
+        {/* 검사일시 · 합격 · 불합격 · 보류를 한 줄에 — 칸 모양은 다른 입력 칸과 같게(사용자 지시 2026-11-24 · #356). */}
+        <div className="parts-iqc-lot-inspected pqc-web-inspected-row">
+          {inspectedAtField}
+          <div className="iqc-inspection-qty-body">
+            <InspectionQtyLine
+              uomCode={uomCode}
+              disabled={isLocked}
+              status={status}
+              /*
+               * 검사 수량은 입력받지 않는다(사용자 지시 2026-10-29 · #197) — 서버가 의뢰를 만들 때 검사기준의 전수 · 샘플링 설정으로
+               * 정한 의뢰 수량(작성중 회차면 그 회차의 값)이고, 오른쪽 「전체 N EA 중」에 보인다. IQC 와 같다.
+               */
+              fields={[
+                ...(
+                  [
+                    ['accepted', t.quantity.accepted],
+                    ['rejected', t.quantity.rejected],
+                    ['held', t.quantity.held],
+                  ] as const
+                ).map(([key, label]) => ({
+                  key,
+                  kind: key,
+                  label,
+                  value: draft[key],
+                  onChange: (raw: string) => {
+                    const typed = { ...draft, [key]: raw };
+                    /* 불량 · 보류를 바꾸면 합격 수량을 다시 계산한다(IQC 와 같다). */
+                    const remaining =
+                      key === 'accepted' ? null : remainingAcceptedOf(typed, inspectedQty);
+                    const next = remaining === null ? typed : { ...typed, accepted: remaining };
+                    onChange(next);
+                    applyAuto(next);
+                  },
+                  error:
+                    serverErrorOf(key) ??
+                    (showErrors && errors[key] ? tResult.quantityInvalid : undefined),
+                })),
+              ]}
+            />
+          </div>
         </div>
+        {inspectionRound !== null && (
+          <p className="field-note">{t.quantity.round(inspectionRound)}</p>
+        )}
+        {errorBanner}
       </section>
       {inspectionPlanVersionId !== null && (
         <WebItemTable

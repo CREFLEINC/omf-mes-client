@@ -500,9 +500,12 @@ export const oqcInspection = {
       replacedFallback: 'PDA 에서 교체되어 판정 대상에서 빠졌습니다.',
       portion: (warehouse: string, location: string | null, qty: string): string =>
         location === null ? `${warehouse} ${qty}` : `${warehouse} ${location} ${qty}`,
-      emptyTitle: '아직 피킹된 LOT 이 없습니다',
-      emptyDescription:
-        'PDA 「제품 피킹」에서 LOT 을 스캔하면 여기에 보입니다. 피킹이 끝나지 않아도 피킹된 LOT 부터 결과를 기록할 수 있습니다.',
+      /** 사용자 지시 2026-11-24 · omf-all-around#356 — 준 문장 그대로, 설명은 두 줄. */
+      emptyTitle: '아직 피킹된 LOT가 없습니다.',
+      emptyDescription: [
+        'PDA의 [제품 피킹]에서 LOT를 스캔하면 이 목록에 표시됩니다.',
+        '전체 피킹이 끝나기 전에도 먼저 피킹한 LOT부터 검사 결과를 기록할 수 있습니다.',
+      ],
     },
     results: {
       title: '검사 결과',

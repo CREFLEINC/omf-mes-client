@@ -295,9 +295,15 @@ export const ShipmentOqcDetail = ({
         {lotRows.length === 0 ? (
           <EmptyState
             size="sm"
+            className="oqc-shipment-lots-empty"
             icon={<Icon name="inventory_2" size={20} />}
             title={s.lots.emptyTitle}
-            description={s.lots.emptyDescription}
+            description={s.lots.emptyDescription.map((line, index) => (
+              <span key={line}>
+                {index > 0 && <br />}
+                {line}
+              </span>
+            ))}
           />
         ) : (
           <div className="wide-table iqc-inbound-table oqc-shipment-lots">

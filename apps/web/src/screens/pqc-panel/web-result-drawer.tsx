@@ -453,34 +453,34 @@ export const PqcWebResultDrawer = ({
                     <dd>{formatPlantDateTime(target.requestedAt) ?? target.requestedAt}</dd>
                   </div>
                 </dl>
-                <div className="parts-iqc-lot-inspected">
-                  <div className="field-cell date-time-field">
-                    <label className="field-label" htmlFor={inspectedAtId}>
-                      {tIqc.lot.inspectedAt}
-                      <span className="required-mark" aria-hidden="true">
-                        {' *'}
-                      </span>
-                    </label>
-                    <div className="date-time-field-controls">
-                      <DatePicker
-                        id={inspectedAtId}
-                        value={inspectedDate === '' ? null : inspectedDate}
-                        onChange={(next) => changeInspectedAt(next, inspectedTime)}
-                      />
-                      <TimeField
-                        labels={TIME_LABELS}
-                        hour={inspectedTime.slice(0, 2)}
-                        minute={inspectedTime.slice(3, 5)}
-                        disabled={false}
-                        invalid={false}
-                        onChange={(hour, minute) =>
-                          changeInspectedAt(inspectedDate, `${hour}:${minute}`)
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
               </>
+            }
+            inspectedAtField={
+              <div className="field-cell date-time-field">
+                <label className="field-label" htmlFor={inspectedAtId}>
+                  {tIqc.lot.inspectedAt}
+                  <span className="required-mark" aria-hidden="true">
+                    {' *'}
+                  </span>
+                </label>
+                <div className="date-time-field-controls">
+                  <DatePicker
+                    id={inspectedAtId}
+                    value={inspectedDate === '' ? null : inspectedDate}
+                    onChange={(next) => changeInspectedAt(next, inspectedTime)}
+                  />
+                  <TimeField
+                    labels={TIME_LABELS}
+                    hour={inspectedTime.slice(0, 2)}
+                    minute={inspectedTime.slice(3, 5)}
+                    disabled={false}
+                    invalid={false}
+                    onChange={(hour, minute) =>
+                      changeInspectedAt(inspectedDate, `${hour}:${minute}`)
+                    }
+                  />
+                </div>
+              </div>
             }
             judgmentBelow={
               planVersionId === null ? (
