@@ -26530,8 +26530,15 @@ body:has(.page-nav-size [aria-expanded="true"])
   min-width: 0;
 }
 
+/* 맨 왼쪽 종합 판정 선택칸은 내용 폭만 쓴다 — 늘어나면 스캔 칸과 사이가 벌어진다(omf-all-around#356). */
+.iqc-inspection-search .inspection-judgment-filter,
+.pqc-web-search > .inspection-judgment-filter,
+.oqc-inspection-search > .inspection-judgment-filter {
+  flex: 0 0 auto;
+}
+
 /* OQC 시리얼 스캔은 제목 옆 안내가 붙어 한 단계 넓다. */
-.oqc-inspection-search > :first-child {
+.oqc-inspection-search > .oqc-inspection-scan {
   flex: 0 1 32rem;
   min-width: 0;
 }
@@ -26860,7 +26867,7 @@ body.col-reordering * {
     flex-basis: 20rem;
   }
 
-  .oqc-inspection-search > :first-child {
+  .oqc-inspection-search > .oqc-inspection-scan {
     flex-basis: 24rem;
   }
 
@@ -35387,6 +35394,27 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   margin: 0;
   font: var(--type-body-lg);
   overflow-wrap: anywhere;
+}
+
+/*
+ * 「첨부할 파일」 ⓘ 말풍선은 창 폭 안에서 줄을 바꿔 제목 줄 아래에 띄운다 — 오른쪽으로 띄우면 창 가장자리에서
+ * 테두리가 잘린다(사용자 지시 2026-11-24 · omf-all-around#356).
+ */
+.iqc-inbound-attach-dialog .parts-iqc-block-head {
+  position: relative;
+}
+
+.iqc-inbound-attach-dialog .parts-iqc-block-head .info-tip-anchor {
+  position: static;
+}
+
+.iqc-inbound-attach-dialog .parts-iqc-block-head .info-tip-anchor > [role="tooltip"] {
+  top: calc(100% + var(--space-1));
+  right: 0;
+  left: 0;
+  width: auto;
+  max-width: none;
+  transform: none;
 }
 
 /* 파일 안내(형식 · 크기 제한)는 한 줄로 — 공용 안내 폭 제한(20rem)을 풀어 준다(사용자 지시 2026-11-19 · omf-all-around#296). */

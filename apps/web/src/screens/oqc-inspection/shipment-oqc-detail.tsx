@@ -373,7 +373,7 @@ export const ShipmentOqcDetail = ({
             setDrawer(null);
             toast.show({
               variant: 'success',
-              description: edited ? s.drawer.updated(seqNo) : s.drawer.added(seqNo),
+              description: edited ? s.drawer.updated(seqNo) : s.drawer.added,
             });
           }}
         />

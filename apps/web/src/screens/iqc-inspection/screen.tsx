@@ -260,6 +260,11 @@ const IqcInspectionScreenBody = () => {
         className="pane iqc-inspection-panes iqc-inspection-search parts-iqc-search"
       >
         <div className="parts-iqc-scan-row">
+          {/* 종합 판정 — 맨 왼쪽(사용자 지시 2026-11-24) · 고르면 바로 조회한다(omf-all-around#356). */}
+          <JudgmentFilter
+            value={filters.overallJudgmentCode}
+            onChange={(code) => applyFilters(withJudgmentFilter(filters, code))}
+          />
           {/* LOT 바코드로 대기 의뢰를 바로 연다(#58) — 목록 조건은 그대로 두고 선택만 한다. */}
           <LotScan
             inspectionTypeCode="IQC"
@@ -287,11 +292,6 @@ const IqcInspectionScreenBody = () => {
               {hubText.pendingOnly}
             </Checkbox>
           </div>
-          {/* 종합 판정 — 고르면 바로 조회한다(omf-all-around#356). */}
-          <JudgmentFilter
-            value={filters.overallJudgmentCode}
-            onChange={(code) => applyFilters(withJudgmentFilter(filters, code))}
-          />
         </div>
         {/* 품목 · 공급사 · 의뢰번호는 「조건 더보기」로 접는다 — 단추는 스캔 줄 오른쪽 끝(#225), 걸린 조건은 칩으로. */}
         <QueueDetailFilters filters={filters} onApply={applyFilters} />

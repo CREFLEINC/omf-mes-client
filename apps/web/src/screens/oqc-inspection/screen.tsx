@@ -1110,6 +1110,11 @@ export const OqcInspectionScreen = () => {
        */}
       {/* 검색 묶음 — 입하 예정 조회처럼 표와 다른 카드에 둔다(#185). 시리얼 스캔과 조회 조건이 한 줄에 선다. */}
       <section ref={aboveRef} className="pane oqc-inspection-panes oqc-inspection-search">
+        {/* 종합 판정 — 맨 왼쪽(사용자 지시 2026-11-24) · 고르면 바로 조회한다(omf-all-around#356). */}
+        <JudgmentFilter
+          value={filters.overallJudgmentCode}
+          onChange={(code) => applyFilters(withJudgmentFilter(filters, code))}
+        />
         <SerialOpenByScan
           onOpen={openBySerial}
           onOpenByLot={openByLot}
@@ -1143,11 +1148,6 @@ export const OqcInspectionScreen = () => {
             {t.filters.pendingOnly}
           </Checkbox>
         </div>
-        {/* 종합 판정 — 고르면 바로 조회한다(omf-all-around#356). */}
-        <JudgmentFilter
-          value={filters.overallJudgmentCode}
-          onChange={(code) => applyFilters(withJudgmentFilter(filters, code))}
-        />
         {/* 품목 · 의뢰번호는 「조건 더보기」로 접는다(사용자 지시 2026-11-02 · #225) — 걸린 조건은 칩으로. */}
         <QueueDetailFilters filters={filters} onApply={applyFilters} />
       </section>

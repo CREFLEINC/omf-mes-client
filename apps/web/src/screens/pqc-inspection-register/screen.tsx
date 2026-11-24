@@ -311,6 +311,15 @@ export const PqcInspectionRegisterScreen = () => {
       {/* 목록과 상세(판정)를 한 화면에 나란히 둔다(#185 · 입하 예정 조회와 같다) — 의뢰를 고르면 오른쪽에 상세가 선다. */}
       {/* 검색 묶음 — 입하 예정 조회처럼 표와 다른 카드에 둔다(#185). 생산 LOT 의 작업지시로 대기 의뢰를 바로 연다. */}
       <section ref={aboveRef} className="pane pqc-web-search">
+        {/* 종합 판정 — 맨 왼쪽(사용자 지시 2026-11-24) · 고르면 바로 조회한다. 판정은 확정 건에만 있어 「대기·진행만 보기」를 함께 끈다(omf-all-around#356). */}
+        <JudgmentFilter
+          value={judgmentCode}
+          onChange={(code) => {
+            setJudgmentCode(code);
+            if (code !== null) setPendingOnly(false);
+            setPage(1);
+          }}
+        />
         <LotScan
           inspectionTypeCode={PQC}
           matchBy="workOrder"
@@ -335,15 +344,6 @@ export const PqcInspectionRegisterScreen = () => {
             {messages.pqcInspectionRegister.queue.pendingOnly}
           </Checkbox>
         </div>
-        {/* 종합 판정 — 고르면 바로 조회한다. 판정은 확정 건에만 있어 「대기·진행만 보기」를 함께 끈다(omf-all-around#356). */}
-        <JudgmentFilter
-          value={judgmentCode}
-          onChange={(code) => {
-            setJudgmentCode(code);
-            if (code !== null) setPendingOnly(false);
-            setPage(1);
-          }}
-        />
         <div className="inspection-filter-more">
           <FilterMoreButton open={fold.isOpen} controlsId={fold.id} onToggle={fold.toggle} />
         </div>

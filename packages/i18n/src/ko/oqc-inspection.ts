@@ -551,7 +551,8 @@ export const oqcInspection = {
       cancel: '취소',
       save: '제출',
       saving: '저장 중…',
-      added: (seqNo: number): string => `${String(seqNo)}회차 검사 결과를 기록했습니다.`,
+      /** 사용자 지시 2026-11-24 · omf-all-around#356 — IQC 와 같은 한 문장. */
+      added: '검사 결과를 제출하였습니다.',
       updated: (seqNo: number): string => `${String(seqNo)}회차 검사 결과를 고쳤습니다.`,
       loading: '결과를 불러오는 중입니다',
       /** 409 CONFIRMED_BY_SHIPMENT_COMPLETION — 그 사이 출하 완료로 확정됐다. */

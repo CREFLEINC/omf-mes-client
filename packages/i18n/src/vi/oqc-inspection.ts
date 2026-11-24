@@ -396,7 +396,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
       cancel: 'Hủy',
       save: 'Gửi',
       saving: 'Đang lưu…',
-      added: (seqNo: number): string => `Đã ghi kết quả kiểm tra lần ${String(seqNo)}.`,
+      added: 'Đã nộp kết quả kiểm tra.',
       updated: (seqNo: number): string => `Đã sửa kết quả kiểm tra lần ${String(seqNo)}.`,
       loading: 'Đang tải kết quả',
       confirmedByShipment:

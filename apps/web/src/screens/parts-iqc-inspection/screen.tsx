@@ -279,6 +279,11 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
           </div>
         )}
         <div className="parts-iqc-scan-row">
+          {/* 종합 판정 — 맨 왼쪽(사용자 지시 2026-11-24) · 고르면 바로 조회한다(omf-all-around#356). */}
+          <JudgmentFilter
+            value={filters.overallJudgmentCode}
+            onChange={(code) => applyFilters(withJudgmentFilter(filters, code))}
+          />
           <LotScan
             inspectionTypeCode="IQC"
             onFound={openByScan}
@@ -305,11 +310,6 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
               {messages.common.inspectionHub.pendingOnly}
             </Checkbox>
           </div>
-          {/* 종합 판정 — 고르면 바로 조회한다(omf-all-around#356). */}
-          <JudgmentFilter
-            value={filters.overallJudgmentCode}
-            onChange={(code) => applyFilters(withJudgmentFilter(filters, code))}
-          />
         </div>
         {/* 품목 · 공급사 · 의뢰번호는 「조건 더보기」로 접는다(사용자 지시 2026-11-02 · #225) — 걸린 조건은 칩으로. */}
         <QueueDetailFilters filters={filters} onApply={applyFilters} />

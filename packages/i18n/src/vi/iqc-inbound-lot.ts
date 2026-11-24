@@ -155,8 +155,7 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
     discardBody: 'Nội dung đã nhập sẽ mất. Đóng?',
     discardStay: 'Tiếp tục nhập',
     discardLeave: 'Đóng',
-    added: (seqNo: number, judgment: string) =>
-      `Đã ghi kết quả ${seqNo}. Xem trước đánh giá tổng hợp: ${judgment}`,
+    added: 'Đã nộp kết quả kiểm tra.',
     updated: (seqNo: number) => `Đã sửa kết quả ${seqNo}.`,
     loading: 'Đang tải kết quả',
   },
