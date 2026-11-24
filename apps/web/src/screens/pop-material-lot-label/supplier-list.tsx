@@ -1,25 +1,13 @@
-import type { SupplierItemDefault, WaitingMaterialLotGroup } from '@omf-mes/api-client';
+import type { WaitingMaterialLotGroup } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useLayoutEffect, useRef, type RefObject } from 'react';
 
-import { formatBaseQty, formatPackageQty } from '../../patterns/package-qty';
+import { formatBaseQty } from '../../patterns/package-qty';
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import { puCx } from '../../patterns/pop-uniform';
 import { pairKeyOf } from './types';
 
 const t = messages.popMaterialLotLabel.pairs;
-
-/**
- * 기본 정보 한 줄(screens/P-01-01.md 「왼쪽 행」) — 포장이 있으면 「기본 봉지 10 × 100 = 1,000 EA」, 포장 없음이면
- * 「기본 1 TON · 포장 없음」. 기본 정보가 없으면 `null` — 「기본 정보 없음」은 적지 않는다(사용자 지시 2026-11-23).
- */
-export const defaultLineOf = (defaults: SupplierItemDefault | undefined): string | null => {
-  if (defaults === undefined) return null;
-
-  return defaults.package === null
-    ? t.defaultUnpackaged(formatBaseQty(defaults.lotQty, defaults.uomCode))
-    : t.defaultPackaged(formatPackageQty(defaults.lotQty, defaults.uomCode, defaults.package));
-};
 
 /** 품목명 글자 크기 — 넘치면 이 범위에서 줄여 한 줄에 담는다(사용자 지시 2026-11-23). */
 const NAME_FONT_MAX = 15;

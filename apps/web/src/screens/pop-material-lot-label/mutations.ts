@@ -103,44 +103,40 @@ interface IssueDeps {
 }
 
 /**
- * 한 LOT 의 라벨을 끝까지 몬다 — 결과를 던지지 않고 돌려준다.
+ * 한 인쇄 작업(스풀러 작업 하나)에 싣는 최대 장수(사용자 지시 2026-11-23 「출력 속도 개선 1번」).
+ *
+ * ⭐ 장마다 셸 · 스풀러 작업을 따로 세우던 것을 묶는다 — 프린터가 멈춤 없이 이어 찍는다.
+ * ⚠ 묶음 안에서 프린터가 서면 어느 장까지 나왔는지 알 수 없다 — 그 묶음은 통째로 인쇄 실패로 보고하고
+ *    「다시 발행」(사유 PRINT_FAILURE)으로 잇는다. 그래서 너무 크게 잡지 않는다.
+ */
+export const PRINT_CHUNK = 10;
+
+/** 발행 기록을 만들고 라벨을 짠 장 — 아직 인쇄 전. */
+interface PreparedLabel {
+  command: IssueCommand;
+  issue: IssueView;
+  bytes: Uint8Array;
+}
+
+/**
+ * 한 장의 발행 기록을 만들고 라벨을 짠다 — 인쇄는 묶음이 한 번에 한다(`printChunk`).
+ * 실패하면 그 장의 결과를 돌려준다(던지지 않는다).
  *
  * ⛔ **인쇄에 실패해도 발행 기록을 되돌리지 않는다.** 실패는 보고하고 재발행으로 처리한다 — 그 재발행의
  *    사유가 「인쇄 실패」다(계약 명시).
  */
-/**
- * 한 장을 인쇄까지 몰고, 결과 보고는 기다리지 않고 넘긴다(사용자 지시 2026-11-23 「출력 속도가 너무 느려」).
- *
- * - `early` — 보고 전에 멈췄다(발행 기록 · 인쇄 실패 등). 묶음을 멈출지 이것으로 본다.
- * - `done` — 보고까지 끝난 결과. 보고가 실패하면 「라벨은 나왔다」를 들고 온다(`hasPrintedLabel`).
- *
- * ⭐ 보고는 다음 장의 발행 · 인쇄와 겹쳐 간다 — 묶음은 끝나기 전에 모든 `done` 을 기다린다.
- * ⛔ 다음 장의 발행 기록을 미리 만들지는 않는다 — 프린터가 서면 찍히지 않은 장의 기록이 남는다.
- */
-interface StagedIssue {
-  early: IssueRunResult | null;
-  done: Promise<IssueRunResult>;
-}
-
-const startIssue = async (deps: IssueDeps, command: IssueCommand): Promise<StagedIssue> => {
+const prepareLabel = async (
+  deps: IssueDeps,
+  command: IssueCommand,
+): Promise<PreparedLabel | IssueRunResult> => {
   const { client, workerNo, keys, onStep } = deps;
-  const { lot, printerName, reissueReasonCode, shellPrinterName } = command;
+  const { lot, printerName, reissueReasonCode } = command;
   const lotId = lot.lotId;
-  let hasPrintedLabel = false;
-  let issue: IssueView | null = null;
-  /*
-   * ⛔ **멈춘 자리는 이 변수로 센다.** 걸음 표시는 그리기 위한 것이라 다음 렌더에서야 반영되고,
-   * 잡은 자리에서 상태 변수를 읽으면 **한 걸음 뒤진 값**이 나온다.
-   */
   let at: IssueStep = 'issue';
-
-  const enter = (next: IssueStep): void => {
-    at = next;
-    onStep(next);
-  };
+  let issue: IssueView | null = null;
 
   try {
-    enter('issue');
+    onStep('issue');
     /*
      * 발행의 멱등 키 — **같은 본문을 다시 보낼 때만 같은 값을 쓴다**(스펙 §5-2). 본문을 가르는 값이
      * 하나라도 다르면 다른 쓰기다 — 사유 없는 발행이 재인쇄로 둔갑하는 길을 막는다.
@@ -159,58 +155,93 @@ const startIssue = async (deps: IssueDeps, command: IssueCommand): Promise<Stage
     // 기록이 남았다 — 다음 재인쇄는 새 회차라 새 키여야 한다.
     keys.issue.delete(lotId);
 
-    enter('render');
+    at = 'render';
+    onStep('render');
     const bytes = buildLabel({ lot, issue });
 
-    enter('print');
-    const shell = renditionShell();
-
-    /* ⛔ 통로가 없으면 실패 사유(`NO_SHELL_REASON`)로 보고한다 — 나오지 않은 라벨이 나온 것으로 남지 않게. */
-    const failureReason = await printMaterialLotLabel(
-      shell,
-      bytes,
-      `lot-${String(issue.documentIssueLogId)}`,
-      shellPrinterName,
-    );
-
-    hasPrintedLabel = failureReason === null;
-
-    enter('report');
-    const printed: IssueRunResult = {
-      lotId,
-      isPrinted: failureReason === null,
-      failedAt: failureReason === null ? null : 'print',
-      hasPrintedLabel,
-      issue,
-      error: null,
-    };
-    const issued = issue;
-    const done = reportPrint(client, issued.documentIssueLogId, failureReason, workerNo).then(
-      () => printed,
-      (cause: unknown): IssueRunResult => ({
-        lotId,
-        isPrinted: false,
-        failedAt: 'report',
-        hasPrintedLabel,
-        issue: issued,
-        error: toApiError(cause),
-      }),
-    );
-
-    /* 인쇄가 실패했으면 묶음을 멈출지 보려고 보고까지 기다린다 — 드문 길이라 느려도 된다. */
-    return failureReason === null ? { early: null, done } : { early: await done, done };
+    return { command, issue, bytes };
   } catch (cause) {
-    const failed: IssueRunResult = {
+    return {
       lotId,
       isPrinted: false,
       failedAt: at,
-      hasPrintedLabel,
+      hasPrintedLabel: false,
       issue,
       error: toApiError(cause),
     };
-
-    return { early: failed, done: Promise.resolve(failed) };
   }
+};
+
+const isPrepared = (value: PreparedLabel | IssueRunResult): value is PreparedLabel =>
+  'bytes' in value;
+
+/** 여러 장의 TSPL 을 한 덩이로 — 장마다 `CLS … PRINT` 가 이어진다(셸이 장마다 용지 머리를 다시 세운다). */
+const concatLabels = (parts: readonly Uint8Array[]): Uint8Array => {
+  const out = new Uint8Array(parts.reduce((sum, part) => sum + part.byteLength, 0));
+  let offset = 0;
+
+  for (const part of parts) {
+    out.set(part, offset);
+    offset += part.byteLength;
+  }
+
+  return out;
+};
+
+/**
+ * 짠 장들을 **한 인쇄 작업으로** 보내고, 결과 보고는 기다리지 않고 넘긴다.
+ *
+ * - `failureReason` — 인쇄가 실패했으면 그 사유(묶음 전체가 같은 답이다). 묶음을 멈출지 이것으로 본다.
+ * - `done` — 장마다 보고까지 끝난 결과. 보고는 다음 묶음의 발행 기록과 겹쳐 간다.
+ *
+ * ⛔ 다음 묶음의 발행 기록을 미리 만들지는 않는다 — 프린터가 서면 찍히지 않은 장의 기록이 남는다.
+ */
+const printChunk = async (
+  deps: IssueDeps,
+  prepared: readonly PreparedLabel[],
+): Promise<{ failureReason: string | null; done: Promise<IssueRunResult[]> }> => {
+  const { client, workerNo, onStep } = deps;
+  const first = prepared[0];
+
+  if (first === undefined) return { failureReason: null, done: Promise.resolve([]) };
+
+  onStep('print');
+  const label = `lots-${String(first.issue.documentIssueLogId)}-x${String(prepared.length)}`;
+  const bytes = concatLabels(prepared.map((each) => each.bytes));
+  /* ⛔ 통로가 없으면 실패 사유(`NO_SHELL_REASON`)로 보고한다 — 나오지 않은 라벨이 나온 것으로 남지 않게. */
+  const failureReason = await printMaterialLotLabel(
+    renditionShell(),
+    bytes,
+    label,
+    first.command.shellPrinterName,
+  );
+  const isPrinted = failureReason === null;
+
+  onStep('report');
+  const done = Promise.all(
+    prepared.map(({ command, issue }) =>
+      reportPrint(client, issue.documentIssueLogId, failureReason, workerNo).then(
+        (): IssueRunResult => ({
+          lotId: command.lot.lotId,
+          isPrinted,
+          failedAt: isPrinted ? null : 'print',
+          hasPrintedLabel: isPrinted,
+          issue,
+          error: null,
+        }),
+        (cause: unknown): IssueRunResult => ({
+          lotId: command.lot.lotId,
+          isPrinted: false,
+          failedAt: 'report',
+          hasPrintedLabel: isPrinted,
+          issue,
+          error: toApiError(cause),
+        }),
+      ),
+    ),
+  );
+
+  return { failureReason, done };
 };
 
 /**
@@ -301,7 +332,7 @@ export const useBatchIssue = ({ workerNo }: IssueRunOptions): BatchIssueHandle =
   const stopRequested = useRef(false);
   /*
    * 멱등 키는 묶음을 넘어 붙잡아 둔다 — 실패한 장을 다시 보낼 때(같은 줄 · 같은 본문) 같은 키로
-   * 나가야 서버가 같은 쓰기로 본다(`startIssue` 머리말).
+   * 나가야 서버가 같은 쓰기로 본다(`prepareLabel` 머리말).
    */
   const keys = useRef<IssueKeys>({ issue: new Map() });
 
@@ -381,38 +412,58 @@ export const useBatchIssue = ({ workerNo }: IssueRunOptions): BatchIssueHandle =
             setSkipped((previous) => new Set([...previous, ...gone]));
           });
           let halted = false;
-          /* 보고 중인 장 — 다음 장과 겹쳐 가고, 묶음이 끝나기 전에 모두 기다린다. */
+          /* 보고 중인 묶음 — 다음 묶음과 겹쳐 가고, 끝나기 전에 모두 기다린다. */
           const reporting: Promise<void>[] = [];
-
-          for (const [index, command] of queue.entries()) {
+          const record = (result: IssueRunResult): void => {
+            setResults((previous) => new Map(previous).set(result.lotId, result));
+          };
+          /* 남은 장과 다음 단위까지 「보내지 않음」으로 돌린다. */
+          const haltFrom = (index: number): void => {
             const rest = queue.slice(index).map((left) => left.lot.lotId);
+            const dropped = dropLater();
 
-            if (stopRequested.current) {
-              const dropped = dropLater();
+            setNotRun((previous) => new Set([...previous, ...rest, ...dropped]));
+            halted = true;
+          };
 
-              setNotRun((previous) => new Set([...previous, ...rest, ...dropped]));
-              halted = true;
-              break;
+          /* 묶음(최대 PRINT_CHUNK 장)마다: 발행 기록 · 라벨 짜기 → 한 인쇄 작업 → 보고는 겹쳐서. */
+          for (let start = 0; start < queue.length && !halted; start += PRINT_CHUNK) {
+            const chunk = queue.slice(start, start + PRINT_CHUNK);
+            const prepared: PreparedLabel[] = [];
+
+            for (const [offset, command] of chunk.entries()) {
+              /* 멈춤 — 이미 기록을 만든 장은 아래에서 찍고, 나머지는 보내지 않는다. */
+              if (stopRequested.current) {
+                haltFrom(start + offset);
+                break;
+              }
+
+              setCurrentLotId(command.lot.lotId);
+              const outcome = await prepareLabel(deps, command);
+
+              if (isPrepared(outcome)) {
+                prepared.push(outcome);
+                continue;
+              }
+
+              record(outcome);
+              /* 이 단말에 발행 권한이 없다 — 다음 장도 같은 답이다. */
+              if (stopsBatch(outcome)) {
+                haltFrom(start + offset + 1);
+                break;
+              }
             }
 
-            setCurrentLotId(command.lot.lotId);
+            const printed = await printChunk(deps, prepared);
 
-            const staged = await startIssue(deps, command);
-            const record = (result: IssueRunResult): void => {
-              setResults((previous) => new Map(previous).set(command.lot.lotId, result));
-            };
+            reporting.push(
+              printed.done.then((results) => {
+                for (const result of results) record(result);
+              }),
+            );
 
-            reporting.push(staged.done.then(record));
-            const result = staged.early;
-
-            /* 프린터가 서면 다음 단위도 같은 답이다 — 기다리던 장까지 「보내지 않음」이다. */
-            if (result !== null && stopsBatch(result)) {
-              const dropped = dropLater();
-
-              setNotRun((previous) => new Set([...previous, ...rest.slice(1), ...dropped]));
-              halted = true;
-              break;
-            }
+            /* 프린터가 서면 다음 묶음 · 다음 단위도 같은 답이다 — 남은 장까지 「보내지 않음」이다. */
+            if (printed.failureReason !== null && !halted) haltFrom(start + chunk.length);
           }
 
           /* 이 단위의 마지막 장을 찍는 사이에 「멈춤」을 눌렀다 — 쉬지 않고 남은 단위를 접는다. */
