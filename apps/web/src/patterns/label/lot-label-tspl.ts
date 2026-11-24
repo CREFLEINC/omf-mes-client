@@ -699,8 +699,8 @@ const materialCommands = <T>(
 ): (string | T)[] => [...HEADER, ...layout.texts.map(line), qrCommand(layout.qr), 'PRINT 1,1', ''];
 
 /**
- * 자재 LOT 라벨 한 장 — **TEXT 만 쓰는 판**(ASCII 밖 글자는 결정 17 대로 `?`). 셸 진단의 견본
- * 인쇄(`sample-print`)가 쓴다. 자리는 `layoutMaterialLotLabel` 그대로다.
+ * 자재 LOT 라벨 한 장 — **TEXT 만 쓰는 판**(ASCII 밖 글자는 결정 17 대로 `?`). 라벨지 설정 창의
+ * [견본 인쇄](`patterns/pop-sample-label`)가 쓴다. 자리는 `layoutMaterialLotLabel` 그대로다.
  *
  * ⭐ 모든 줄이 ASCII 면 실제 발행(`buildMaterialLotLabelBytes`)과 바이트까지 같다.
  */

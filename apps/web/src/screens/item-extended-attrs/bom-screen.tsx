@@ -7,7 +7,7 @@ import {
   EmptyState,
   IconButton,
   SkeletonText,
-  TextField,
+  SearchInput,
   useToast,
 } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
@@ -146,11 +146,18 @@ const FilterBar = ({ applied, typeName, onSearch }: FilterBarProps) => {
         onSearch({ ...applied, q: q.trim() });
       }}
     >
-      <TextField
+      {/* 품목 탭과 같은 공용 검색창(바탕색 · 돋보기 · 지우기 · 사용자 지시 2026-11-24). Enter 는 form 제출이 받는다. */}
+      <SearchInput
+        containerClassName="item-attrs-search-input"
         label={tb.fields.q}
         value={q}
+        placeholder={t.filters.itemSearchPlaceholder}
+        clearLabel={messages.common.clear}
         onChange={(event) => {
           setQ(event.target.value);
+        }}
+        onClear={() => {
+          setQ('');
         }}
       />
       <div className="field-cell">
@@ -843,7 +850,7 @@ export const ItemBomScreen = () => {
       above={{
         label: t.panes.filter,
         content: (
-          <div className="pane po-board-filter item-master-filter">
+          <div className="pane po-board-filter item-master-filter filter-field-surface">
             <FilterBar
               applied={filters}
               typeName={typeName}

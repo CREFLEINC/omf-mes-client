@@ -9,7 +9,7 @@ import {
   type LookupResult,
   type TerminalCodeNames,
 } from './lookups';
-import { EMPTY_TERMINAL, nextTerminalCode } from './terminal-draft';
+import { EMPTY_TERMINAL, nextTerminalCode, terminalCodePrefix } from './terminal-draft';
 import { TerminalForm } from './terminal-form';
 
 const emptyLookup: LookupResult = {
@@ -48,14 +48,11 @@ const showForm = (isNew: boolean, codeNames: TerminalCodeNames = syntheticCodes)
       draft={{ ...EMPTY_TERMINAL, statusCode: 'RUNNING' }}
       errors={{}}
       isNew={isNew}
-      isSaving={false}
       saveError={null}
       fieldErrors={{}}
       plants={emptyLookup}
       codeNames={codeNames}
       onChange={vi.fn()}
-      onSubmit={vi.fn()}
-      onCancel={vi.fn()}
     />,
   );
 
@@ -65,9 +62,10 @@ describe('단말 등록·수정 폼의 운영 상태', () => {
     expect(screen.queryByLabelText('운영 상태')).toBeNull();
   });
 
-  it('수정에서는 운영 상태를 코드가 아니라 공통코드 이름으로 고른다', () => {
+  it('수정에서는 운영 상태를 고르지 않고 공통코드 이름으로 보이기만 한다', () => {
     showForm(false);
     expect(screen.getByLabelText('운영 상태')).toHaveTextContent('합성 가동');
+    expect(screen.queryByRole('combobox', { name: '운영 상태' })).not.toBeInTheDocument();
   });
 
   it('공통코드를 못 받아도 지금 값은 코드 그대로 선택된 채 남는다', () => {
@@ -106,24 +104,23 @@ describe('설치 설비는 POP 단말에서만 (사용자 지시 2026-11-20 · #
         draft={{ ...EMPTY_TERMINAL, terminalTypeCode, equipment: '7' }}
         errors={{}}
         isNew
-        isSaving={false}
         saveError={null}
         fieldErrors={{}}
         plants={emptyLookup}
         codeNames={syntheticCodes}
         onChange={onChange}
-        onSubmit={vi.fn()}
-        onCancel={vi.fn()}
       />,
     );
 
-  it('POP 이면 설치 설비 칸이 보이고, 아니면 없다', () => {
+  it('POP 이면 설치 설비를 고르고, 아니면 칸은 자리를 지킨 채 사유를 적고 잠긴다', () => {
     const { unmount } = showWith('POP');
-    expect(screen.getByLabelText('설치 설비')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '설치 설비' })).toBeEnabled();
     unmount();
 
     showWith('MOBILE');
-    expect(screen.queryByLabelText('설치 설비')).toBeNull();
+    const field = screen.getByRole('combobox', { name: '설치 설비' });
+    expect(field).toBeDisabled();
+    expect(field).toHaveTextContent('POP 단말만');
   });
 
   it('POP 에서 다른 유형으로 바꾸면 고르던 설비를 비운다', async () => {
@@ -131,14 +128,40 @@ describe('설치 설비는 POP 단말에서만 (사용자 지시 2026-11-20 · #
     const user = userEvent.setup();
     showWith('POP', onChange);
 
-    await user.click(screen.getByRole('combobox', { name: '단말 유형' }));
-    await user.click(await screen.findByRole('option', { name: '합성 모바일' }));
+    /* 유형은 펼친 카드(라디오)로 한 번에 고른다(사용자 결정 2026-11-24). */
+    await user.click(screen.getByRole('radio', { name: /합성 모바일/ }));
 
     expect(onChange).toHaveBeenLastCalledWith({
       terminalTypeCode: 'MOBILE',
       equipment: '',
       equipmentLabel: '',
     });
+  });
+});
+
+describe('단말 추가 칸 순서 (사용자 결정 2026-11-24)', () => {
+  it('유형을 고르기 전에는 단말 코드 칸이 잠겨 있다 — 유형으로 채워지는 값이라 맨 끝에 둔다', () => {
+    showForm(true);
+    expect(screen.getByLabelText('단말 코드')).toBeDisabled();
+  });
+
+  it('유형으로 채운 코드 그대로면 「자동」 표시를 붙인다', () => {
+    renderWithProviders(
+      <TerminalForm
+        draft={{ ...EMPTY_TERMINAL, terminalTypeCode: 'MOBILE', terminalCode: 'MOBILE-001' }}
+        errors={{}}
+        isNew
+        codeIsAuto
+        saveError={null}
+        fieldErrors={{}}
+        plants={emptyLookup}
+        codeNames={syntheticCodes}
+        onChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText('단말 코드')).toBeEnabled();
+    expect(screen.getByText('자동')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /합성 모바일/ })).toBeChecked();
   });
 });
 
@@ -149,5 +172,13 @@ describe('단말 코드 자동 채움 (사용자 지시 2026-11-20 · #333)', ()
       'POP-008',
     );
     expect(nextTerminalCode('MOBILE', ['POP-003', 'MOBILE-012'])).toBe('MOBILE-013');
+  });
+
+  it('PDA(유형 코드 MOBILE)는 「PDA-」로 채운다 — 다른 유형은 유형 코드 그대로', () => {
+    expect(terminalCodePrefix('MOBILE')).toBe('PDA');
+    expect(terminalCodePrefix('POP')).toBe('POP');
+    expect(nextTerminalCode(terminalCodePrefix('MOBILE'), ['PDA-002', 'MOBILE-009'])).toBe(
+      'PDA-003',
+    );
   });
 });

@@ -51,6 +51,7 @@ export const itemExtendedAttrs = {
   },
   filters: {
     itemSearchLabel: '품목코드·품목명',
+    itemSearchPlaceholder: '품목코드나 품목명을 입력하세요',
     /** 품목 유형 선택. 선택지 이름은 코드 그룹 `ITEM_TYPE`이 준다 — 화면이 짓지 않는다 */
     itemTypeLabel: '품목유형',
     itemTypeAll: '전체',

@@ -155,17 +155,16 @@ describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
     expect(commands).toContain('PRINT 1,1');
   });
 
-  it('다 나오면 LOT 마다 「인쇄됨」을 남기고, 「확인」을 누르면 발행 대기에서 빠져 재발행 탭에 회차로 선다', async () => {
+  it('다 나오면 「확인」 없이 알림만 내고 발행 대기에서 빠져 재발행 탭에 회차로 선다', async () => {
     const user = userEvent.setup();
     installShell();
     renderLabelScreen(waitingOnly(2));
 
     await issueAll(user, 2);
 
+    /* 다 나왔으면 [확인]을 기다리지 않는다(사용자 지시 2026-11-24). */
     await waitFor(() => expect(screen.getAllByText(t.bar.done(2)).length).toBeGreaterThan(0));
-    expect(screen.getAllByText(t.status.printed)).toHaveLength(2);
-
-    await user.click(screen.getByRole('button', { name: t.bar.confirm }));
+    expect(screen.queryByRole('button', { name: t.bar.confirm })).not.toBeInTheDocument();
 
     /* 발행한 LOT 은 발행 대기에 남지 않는다(사용자 지시 2026-11-19) — 재발행 탭에만 선다. */
     await waitFor(() => expect(rows()).toHaveLength(0));

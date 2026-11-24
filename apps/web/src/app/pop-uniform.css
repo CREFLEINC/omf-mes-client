@@ -1773,6 +1773,14 @@ textarea.pu-input {
   color: var(--pu-text);
 }
 
+/* ⇧ 두 번 = 대문자 고정 — 채운 색으로 「한 번만」(테두리)과 가른다. 터치 뒤 남는 hover 에 덮이지 않게. */
+.pu-tkbd button.is-lock,
+.pu-tkbd button.is-lock:hover:not(:disabled) {
+  border-color: var(--pu-primary);
+  background: var(--pu-primary);
+  color: #fff;
+}
+
 .pu-tkbd button:hover:not(:disabled) {
   background: var(--pu-hover);
 }
@@ -1787,15 +1795,59 @@ textarea.pu-input {
 }
 
 /*
- * 글자판이 든 선택 창: 넓은 창(760)에 높이를 화면에 맞춰 고정하고, 목록 칸이 남은 높이를 갖는다.
- * 한 쪽 건수는 그 칸 높이로 잰다(`useFitCount`) — 창 안 스크롤 없음.
+ * ── 키패드 판(사용자 지시 2026-11-24): 창과 따로, 화면 아래 고정 높이 띠 ──
+ * 글자판(넓다)과 숫자 키패드(좁다)를 창 안에 두었더니 바뀔 때마다 창 크기가 바뀌었다. 판은 화면 아래에 늘 같은
+ * 높이로 서고, 창은 그 위 남은 자리 가운데에 같은 크기로 있다(`PuDialog` 의 `keyboard`).
+ * 높이 = 글자판 5줄(키 5 + 틈 4) + 머리줄 36 · 틈 8 + 위아래 여백 32.
  */
-.pu-dialog:has(.pu-tkbd) {
-  height: min(760px, calc(100vh - 24px));
-  max-height: none;
+:root {
+  --pu-dock-h: calc(var(--pu-key) * 5 + 24px + 44px + 32px);
 }
 
-.pu-dialog:has(.pu-tkbd) > .pu-dialog-body {
+.pu-overlay.has-keyboard {
+  padding-bottom: var(--pu-dock-h);
+}
+
+.pu-dialog.has-keyboard {
+  max-height: calc(100vh - var(--pu-dock-h) - 24px);
+}
+
+.pu-kbd-dock {
+  position: fixed;
+  inset: auto 0 0;
+  height: var(--pu-dock-h);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 16px;
+  background: var(--pu-bg);
+  border-top: 1px solid var(--pu-line);
+  box-shadow: 0 -8px 24px rgb(0 0 0 / 18%);
+}
+
+.pu-kbd-dock-inner {
+  width: min(880px, 100%);
+}
+
+/* 숫자 키패드만 든 판은 좁게 — 3칸 키가 너무 넓어지지 않게. */
+.pu-kbd-dock-inner:not(:has(.pu-tkbd)) {
+  width: min(420px, 100%);
+}
+
+/* 꺼진 키(예: 빈 칸의 전체 삭제)를 눌러도 판 바탕이 누름을 받아 칸에서 초점이 빠지지 않는다. */
+.pu-kbd-dock .pu-tkbd button:disabled {
+  pointer-events: none;
+}
+
+/*
+ * 글자판이 든 선택 창: 높이를 판 위 남은 자리에 맞춰 고정하고, 목록 칸이 남은 높이를 갖는다.
+ * 한 쪽 건수는 그 칸 높이로 잰다(`useFitCount`) — 창 안 스크롤 없음.
+ */
+.pu-dialog.has-keyboard:has(> .pu-dialog-body > .pu-list) {
+  height: min(760px, calc(100vh - var(--pu-dock-h) - 24px));
+}
+
+.pu-dialog.has-keyboard:has(> .pu-dialog-body > .pu-list) > .pu-dialog-body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1803,25 +1855,12 @@ textarea.pu-input {
   min-height: 0;
 }
 
-.pu-dialog:has(.pu-tkbd) > .pu-dialog-body > * {
+.pu-dialog.has-keyboard:has(> .pu-dialog-body > .pu-list) > .pu-dialog-body > * {
   flex: none;
 }
 
-.pu-dialog:has(.pu-tkbd) > .pu-dialog-body > .pu-list {
+.pu-dialog.has-keyboard:has(> .pu-dialog-body > .pu-list) > .pu-dialog-body > .pu-list {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-}
-
-/*
- * [직접 입력] 창의 글자판(#295 · 2026-11-19): 선택 창처럼 높이를 고정하지 않고 내용만큼만 —
- * 칸 하나 + 글자판이라 1024×768 에서도 창 안에 다 들어간다.
- */
-.pu-dialog:has(.pu-manual-kbd) {
-  height: auto;
-  max-height: calc(100vh - 24px);
-}
-
-.pu-manual-kbd .pu-tkbd button:disabled {
-  pointer-events: none;
 }
