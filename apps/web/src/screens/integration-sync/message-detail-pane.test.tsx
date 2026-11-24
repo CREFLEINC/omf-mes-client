@@ -40,12 +40,12 @@ describe('MessageDetailPane — 항목', () => {
       }),
     });
 
-    expect(fieldValue('구분')).toBe('수신');
-    expect(fieldValue('보낸 일시')).toBe('2026-08-04 07:13');
-    expect(fieldValue('완료일시')).toBe('2026-08-04 07:15');
+    expect(fieldValue('송수신')).toBe('수신');
+    expect(fieldValue('전송 일시')).toBe('2026-08-04 07:13');
+    expect(fieldValue('완료 일시')).toBe('2026-08-04 07:15');
     // 처리하는 워커 이름 · 대상 코드 같은 시스템 값은 보이지 않는다(사용자 지시 2026-10-27).
-    expect(fieldValue('처리 중')).toBe('2026-08-04 09:20부터 처리 중');
-    expect(fieldValue('다음 시도')).toBe('2026-08-04 07:20');
+    expect(fieldValue('처리 중인 작업')).toBe('2026-08-04 09:20부터 처리 중');
+    expect(fieldValue('다음 재시도 일시')).toBe('2026-08-04 07:20');
     expect(screen.queryByText('대상')).toBeNull();
     expect(screen.queryByText(/sync-worker-01/)).toBeNull();
     expect(screen.queryByText(/SAMPLE_TARGET/)).toBeNull();
@@ -62,9 +62,9 @@ describe('MessageDetailPane — 항목', () => {
       }),
     });
 
-    expect(fieldValue('보낸 일시')).toBe('—');
-    expect(fieldValue('완료일시')).toBe('—');
-    expect(fieldValue('처리 중')).toBe('—');
+    expect(fieldValue('전송 일시')).toBe('—');
+    expect(fieldValue('완료 일시')).toBe('—');
+    expect(fieldValue('처리 중인 작업')).toBe('—');
     expect(fieldValue('오류 내용')).toBe('—');
   });
 
@@ -77,9 +77,8 @@ describe('MessageDetailPane — 항목', () => {
   it('처리 중인데 시작 시각이 없으면 「처리 중」만 낸다 — 시각을 지어내지 않는다', () => {
     renderPane({ view: messageRow({ lockedBy: 'sync-worker-01', lockedAt: null }) });
 
-    // 이름표와 값이 같은 글자다 — 그 칸의 두 글자를 함께 본다.
-    const cell = screen.getAllByText('처리 중')[0]?.closest('.field-cell');
-    expect(cell?.textContent).toBe('처리 중처리 중');
+    const cell = screen.getByText('처리 중인 작업').closest('.field-cell');
+    expect(cell?.textContent).toBe('처리 중인 작업처리 중');
   });
 });
 
@@ -123,7 +122,7 @@ describe('MessageDetailPane — 불러오는 중과 실패', () => {
     renderPane({ view: undefined, isLoading: true });
 
     expect(
-      screen.getByRole('status', { name: '연계 메시지 정보를 불러오는 중' }),
+      screen.getByRole('status', { name: '연동 이력 정보를 불러오는 중' }),
     ).toBeInTheDocument();
     expect(screen.queryByText('방향')).not.toBeInTheDocument();
   });

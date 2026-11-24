@@ -37,7 +37,7 @@ describe('MessageTable', () => {
     renderTable({ isLoading: true });
 
     expect(
-      screen.getByRole('status', { name: '연계 메시지 목록을 불러오는 중' }),
+      screen.getByRole('status', { name: '연동 이력 목록을 불러오는 중' }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
@@ -45,15 +45,15 @@ describe('MessageTable', () => {
   it('기간을 정한 뒤 0건이면 없다고만 낸다 — 고치라는 안내문은 두지 않는다', () => {
     renderTable({ rows: [] });
 
-    expect(screen.getByText('조건에 맞는 기록이 없습니다')).toBeInTheDocument();
+    expect(screen.getByText('조건에 맞는 연동 이력이 없습니다')).toBeInTheDocument();
     expect(screen.queryByText(/다시 조회하세요/)).toBeNull();
   });
 
   it('기간이 없어 아직 조회하지 않았으면 다른 안내를 낸다 — 결과가 없는 것과 다르다', () => {
     renderTable({ rows: [], hasPeriod: false });
 
-    expect(screen.getByText('기간을 고르고 조회하세요')).toBeInTheDocument();
-    expect(screen.queryByText('조건에 맞는 기록이 없습니다')).not.toBeInTheDocument();
+    expect(screen.getByText('발생일을 고르고 조회하세요')).toBeInTheDocument();
+    expect(screen.queryByText('조건에 맞는 연동 이력이 없습니다')).not.toBeInTheDocument();
   });
 
   it('null이 섞인 행도 셀을 비우지 않는다', () => {
@@ -153,7 +153,7 @@ describe('MessageTable', () => {
     const { onFirstPage, user } = renderTable({ rows: [], isBeyondLast: true });
 
     expect(screen.getByText('이 쪽에는 결과가 없습니다')).toBeInTheDocument();
-    expect(screen.queryByText('조건에 맞는 기록이 없습니다')).not.toBeInTheDocument();
+    expect(screen.queryByText('조건에 맞는 연동 이력이 없습니다')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '첫 쪽으로' }));
 

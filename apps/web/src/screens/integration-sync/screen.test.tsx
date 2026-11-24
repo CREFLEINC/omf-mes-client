@@ -110,9 +110,9 @@ const plainRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requestsTo(requests, LIST_PATH).filter((request) => !isNarrowed(request));
 
 /** 연계 메시지 목록 구획. 표·행·글자는 이 안에서 찾는다. */
-const messageList = () => within(screen.getByRole('region', { name: '연계 메시지 목록' }));
+const messageList = () => within(screen.getByRole('region', { name: '연동 이력 목록' }));
 /** 오른쪽 상세 구획 — 늘 선다. 고르기 전에는 고르라는 안내만 있다. */
-const detailPane = () => within(screen.getByRole('region', { name: '연계 메시지 상세' }));
+const detailPane = () => within(screen.getByRole('region', { name: '연동 이력 상세' }));
 
 const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
 
@@ -178,8 +178,8 @@ describe('IntegrationSyncScreen — 기간 필수 조회', () => {
     const { requests, user } = renderScreen([listRoute()], '?from=2026-08-01&to=2026-08-06');
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.clear(screen.getByLabelText('기간 시작'));
-    await user.type(screen.getByLabelText('기간 시작'), '2026-07-20');
+    await user.clear(screen.getByLabelText('발생일 시작'));
+    await user.type(screen.getByLabelText('발생일 시작'), '2026-07-20');
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(currentLocation()).toContain('from=2026-07-20');
@@ -192,14 +192,14 @@ describe('IntegrationSyncScreen — 기간 필수 조회', () => {
     const { requests, user } = renderScreen([listRoute()], '?from=2026-08-01&to=2026-08-06');
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.clear(screen.getByLabelText('기간 시작'));
+    await user.clear(screen.getByLabelText('발생일 시작'));
 
     const searchButton = screen.getByRole('button', { name: '조회' });
     expect(searchButton).toBeDisabled();
 
     const reasonId = searchButton.getAttribute('aria-describedby') ?? '';
     expect(document.getElementById(reasonId)).toHaveTextContent(
-      '조회는 기간을 모두 채운 뒤에 쓸 수 있습니다.',
+      '조회는 발생일을 모두 채운 뒤에 쓸 수 있습니다.',
     );
     expect(requestsTo(requests, LIST_PATH)).toHaveLength(1);
   });
@@ -208,22 +208,22 @@ describe('IntegrationSyncScreen — 기간 필수 조회', () => {
     const { user } = renderScreen([listRoute()], '?from=2026-08-01&to=2026-08-06');
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.clear(screen.getByLabelText('기간 종료'));
-    await user.type(screen.getByLabelText('기간 종료'), '2026-07-01');
+    await user.clear(screen.getByLabelText('발생일 종료'));
+    await user.type(screen.getByLabelText('발생일 종료'), '2026-07-01');
 
     const searchButton = screen.getByRole('button', { name: '조회' });
     expect(searchButton).toBeDisabled();
 
     const reasonId = searchButton.getAttribute('aria-describedby') ?? '';
     expect(document.getElementById(reasonId)).toHaveTextContent(
-      '기간 종료는 기간 시작보다 앞설 수 없습니다.',
+      '발생일 종료는 발생일 시작보다 앞설 수 없습니다.',
     );
   });
 
   it('주소의 기간이 비어 있으면 조회하지 않고 기간을 고르라고 안내한다', async () => {
     const { requests } = renderScreen([listRoute()], '?from=&to=');
 
-    expect(await screen.findByText('기간을 고르고 조회하세요')).toBeInTheDocument();
+    expect(await screen.findByText('발생일을 고르고 조회하세요')).toBeInTheDocument();
     expect(requestsTo(requests, LIST_PATH)).toHaveLength(0);
   });
 
@@ -252,11 +252,11 @@ describe('IntegrationSyncScreen — 목록 표시', () => {
     // 첫 칸은 디자인 시스템이 렌더하는 선택 열이라 머리글 글자가 없다.
     expect(headers).toEqual([
       '',
-      '구분',
-      '항목',
-      '번호',
+      '송수신',
+      '연동 항목',
+      '문서 번호',
       '상태',
-      '재시도',
+      '재시도 횟수',
       '발생일시',
       '오류 내용',
       '재처리',
@@ -304,7 +304,7 @@ describe('IntegrationSyncScreen — 빈 상태와 실패', () => {
   it('0건이면 조건을 고치라는 빈 상태가 나온다', async () => {
     renderScreen([listRoute([])]);
 
-    expect(await screen.findByText('조건에 맞는 기록이 없습니다')).toBeInTheDocument();
+    expect(await screen.findByText('조건에 맞는 연동 이력이 없습니다')).toBeInTheDocument();
   });
 
   it('조회에 실패하면 표와 빈 상태 대신 오류 배너와 다시 시도가 나온다', async () => {
@@ -313,7 +313,7 @@ describe('IntegrationSyncScreen — 빈 상태와 실패', () => {
     expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
     expect(messageList().queryByRole('table')).not.toBeInTheDocument();
-    expect(screen.queryByText('조건에 맞는 기록이 없습니다')).not.toBeInTheDocument();
+    expect(screen.queryByText('조건에 맞는 연동 이력이 없습니다')).not.toBeInTheDocument();
     // 서버가 빈 message를 줘도 배너에 제목만 남으면 안 된다 — 무엇을 하라는 안내가 사라진다.
     expect(
       screen.getByText('잠시 뒤 재시도하세요. 지속적인 요청 불가 시 담당자에게 문의하세요.'),
@@ -417,7 +417,7 @@ describe('IntegrationSyncScreen — 조건으로 좁히기', () => {
     /* 보이는 칸(상태)의 조건은 칩이 없다 — 접힌 구분만 칩이다(C-6). */
     expect(screen.queryByRole('button', { name: '상태 조건 제거' })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '구분 조건 제거' }));
+    await user.click(screen.getByRole('button', { name: '송수신 조건 제거' }));
 
     expect(currentLocation()).not.toContain('dir=');
     expect(currentLocation()).toContain('status=FAILED');
@@ -616,7 +616,7 @@ describe('IntegrationSyncScreen — 상세', () => {
     renderScreen([listRoute(), detailRoute()], PERIOD);
     await screen.findByText('SAMPLE-KEY-0001');
 
-    expect(detailPane().getByText('연계 메시지를 선택하세요.')).toBeInTheDocument();
+    expect(detailPane().getByText('연동 이력을 선택하세요.')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
@@ -625,7 +625,7 @@ describe('IntegrationSyncScreen — 상세', () => {
     await openFirstDetail(user);
 
     expect(
-      await detailPane().findByRole('heading', { name: '연계 메시지 상세' }),
+      await detailPane().findByRole('heading', { name: '연동 이력 상세' }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(
@@ -639,7 +639,7 @@ describe('IntegrationSyncScreen — 상세', () => {
     const { requests } = renderScreen([listRoute(), detailRoute()], `${PERIOD}&sel=9001`);
 
     expect(
-      await detailPane().findByRole('heading', { name: '연계 메시지 상세' }),
+      await detailPane().findByRole('heading', { name: '연동 이력 상세' }),
     ).toBeInTheDocument();
     expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(1);
   });
@@ -649,7 +649,7 @@ describe('IntegrationSyncScreen — 상세', () => {
     const { requests } = renderScreen([listRoute(), detailRoute()], '?sel=9001');
 
     expect(
-      await detailPane().findByRole('heading', { name: '연계 메시지 상세' }),
+      await detailPane().findByRole('heading', { name: '연동 이력 상세' }),
     ).toBeInTheDocument();
     await waitFor(() => {
       expect(currentLocation()).toMatch(/from=.*to=/);
@@ -661,7 +661,7 @@ describe('IntegrationSyncScreen — 상세', () => {
   it('전문이 실려 와도 화면 어디에도 나오지 않는다', async () => {
     const { user } = renderScreen([listRoute(), detailRoute()], PERIOD);
     await openFirstDetail(user);
-    await detailPane().findByRole('heading', { name: '연계 메시지 상세' });
+    await detailPane().findByRole('heading', { name: '연동 이력 상세' });
 
     expect(screen.queryByText(PAYLOAD_MARKER)).not.toBeInTheDocument();
     expect(document.body.textContent).not.toContain(PAYLOAD_MARKER);
@@ -699,12 +699,12 @@ describe('IntegrationSyncScreen — 상세', () => {
 
   it('조건을 바꾸면 열려 있던 상세도 닫힌다 — 그 건이 새 결과에 없을 수 있다', async () => {
     const { user } = renderScreen([listRoute(), detailRoute()], `${PERIOD}&sel=9001`);
-    await detailPane().findByRole('heading', { name: '연계 메시지 상세' });
+    await detailPane().findByRole('heading', { name: '연동 이력 상세' });
 
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(currentLocation()).not.toContain('sel=');
-    expect(detailPane().getByText('연계 메시지를 선택하세요.')).toBeInTheDocument();
+    expect(detailPane().getByText('연동 이력을 선택하세요.')).toBeInTheDocument();
   });
 });
 
@@ -1186,7 +1186,7 @@ describe('IntegrationSyncScreen — 선택의 수명', () => {
 
     // 정상 경로로 열렸는지 확인한다 — 실패 배너가 아니라 상세 항목이 보여야 한다.
     expect(
-      await detailPane().findByRole('heading', { name: '연계 메시지 상세' }),
+      await detailPane().findByRole('heading', { name: '연동 이력 상세' }),
     ).toBeInTheDocument();
     expect(detailPane().queryByText('목록을 불러오지 못했습니다')).not.toBeInTheDocument();
     expect(screen.getByText('선택 1건')).toBeInTheDocument();
@@ -1251,7 +1251,7 @@ describe('IntegrationSyncScreen — 선택칸 폭', () => {
     renderScreen([listRoute()], PERIOD);
     await screen.findByText('SAMPLE-KEY-0001');
 
-    for (const label of ['구분 선택', '항목 선택', '상태 선택']) {
+    for (const label of ['송수신 선택', '연동 항목 선택', '상태 선택']) {
       expect(screen.getByLabelText(label).closest('.field-cell')).toHaveClass('wide-select');
     }
   });

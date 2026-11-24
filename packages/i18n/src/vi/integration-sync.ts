@@ -13,8 +13,8 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
   menuPath: 'Quản trị hệ thống › Tình trạng · lịch sử liên kết ERP › Tình trạng · lịch sử liên kết',
   panes: {
     filter: 'Điều kiện tra cứu',
-    list: 'Danh sách bản tin liên kết',
-    detail: 'Chi tiết bản tin liên kết',
+    list: 'Danh sách lịch sử liên kết',
+    detail: 'Chi tiết lịch sử liên kết',
   },
   splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
   listCollapse: 'Thu gọn danh sách',
@@ -45,11 +45,11 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     },
   },
   fields: {
-    periodFrom: 'Bắt đầu kỳ',
-    periodTo: 'Kết thúc kỳ',
+    periodFrom: 'Ngày phát sinh từ',
+    periodTo: 'Ngày phát sinh đến',
     status: 'Chọn trạng thái',
-    interfaceCode: 'Chọn hạng mục',
-    direction: 'Chọn phân loại',
+    interfaceCode: 'Chọn hạng mục liên kết',
+    direction: 'Chọn gửi/nhận',
     retryMin: 'Số lần thử lại (từ)',
   },
   actions: {
@@ -98,11 +98,11 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
   },
   /** 목록 표의 머리글. 열 구성의 근거는 screens/integration-sync/message-table.tsx에 있다. */
   table: {
-    direction: 'Phân loại',
-    interfaceCode: 'Hạng mục',
-    messageKey: 'Số',
+    direction: 'Gửi/nhận',
+    interfaceCode: 'Hạng mục liên kết',
+    messageKey: 'Số chứng từ',
     status: 'Trạng thái',
-    retryCount: 'Thử lại',
+    retryCount: 'Số lần thử lại',
     createdAt: 'Thời điểm phát sinh',
     lastErrorMessage: 'Nội dung lỗi',
     retry: 'Xử lý lại',
@@ -110,24 +110,24 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
   /** 비활성 사유는 그 컨트롤의 이름으로 시작한다. */
   reasons: {
     searchNeedsPeriod:
-      'Tra cứu chỉ dùng được sau khi điền đủ kỳ. Hãy chọn ngày bắt đầu và ngày kết thúc.',
-    periodReversed: 'Kết thúc kỳ không được sớm hơn bắt đầu kỳ.',
+      'Tra cứu chỉ dùng được sau khi điền đủ ngày phát sinh. Hãy chọn ngày phát sinh từ và đến.',
+    periodReversed: 'Ngày phát sinh đến không được sớm hơn ngày phát sinh từ.',
   },
   loading: {
-    messages: 'Đang tải danh sách bản tin liên kết',
-    messageDetail: 'Đang tải thông tin bản tin liên kết',
+    messages: 'Đang tải danh sách lịch sử liên kết',
+    messageDetail: 'Đang tải thông tin lịch sử liên kết',
   },
   /** 상세. 전송 내용은 구획만 두고 값을 그리지 않는다 — 열람 범위가 정해지지 않았다. */
   detail: {
-    title: 'Chi tiết bản tin liên kết',
-    pick: 'Hãy chọn một bản tin liên kết.',
-    pickDescription: 'Có thể xem trạng thái xử lý và nội dung lỗi của bản tin đã chọn.',
+    title: 'Chi tiết lịch sử liên kết',
+    pick: 'Hãy chọn một lịch sử liên kết.',
+    pickDescription: 'Có thể xem trạng thái xử lý và nội dung lỗi của lịch sử liên kết đã chọn.',
     openAction: (title: string): string => `Mở chi tiết ${title}`,
     retryCount: 'Số lần thử lại',
-    availableAt: 'Lần thử tiếp theo',
+    availableAt: 'Thời điểm thử lại tiếp theo',
     sentAt: 'Thời điểm gửi',
     completedAt: 'Thời điểm hoàn tất',
-    lockedBy: 'Đang xử lý',
+    lockedBy: 'Tác vụ đang xử lý',
   },
   /** 계약이 정의한 사실만 옮긴다 — 「잠금이 오래됐다」 같은 판정은 하지 않는다. */
   status: {
@@ -141,12 +141,12 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
   filters: {
     all: 'Tất cả',
     chipStatus: (value: string): string => `Trạng thái: ${value}`,
-    chipInterface: (value: string): string => `Hạng mục: ${value}`,
-    chipDirection: (value: string): string => `Phân loại: ${value}`,
+    chipInterface: (value: string): string => `Hạng mục liên kết: ${value}`,
+    chipDirection: (value: string): string => `Gửi/nhận: ${value}`,
     chipRetryMin: (value: string): string => `Thử lại từ ${value} lần`,
     chipRemoveStatus: 'Bỏ điều kiện trạng thái',
-    chipRemoveInterface: 'Bỏ điều kiện hạng mục',
-    chipRemoveDirection: 'Bỏ điều kiện phân loại',
+    chipRemoveInterface: 'Bỏ điều kiện hạng mục liên kết',
+    chipRemoveDirection: 'Bỏ điều kiện gửi/nhận',
     chipRemoveRetryMin: 'Bỏ điều kiện số lần thử lại',
   },
   /** 쪽 이동. 번호 목록을 두지 않는다 — 조건을 좁히는 것이 정상 경로다. */
@@ -158,8 +158,8 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     totalOnly: (total: number): string => `Tổng ${String(total)}`,
   },
   empty: {
-    noResultTitle: 'Không có bản ghi khớp điều kiện',
-    noPeriodTitle: 'Hãy chọn kỳ rồi tra cứu',
+    noResultTitle: 'Không có lịch sử liên kết khớp điều kiện',
+    noPeriodTitle: 'Hãy chọn ngày phát sinh rồi tra cứu',
     beyondLastTitle: 'Trang này không có kết quả',
   },
   values: {

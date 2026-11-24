@@ -68,8 +68,8 @@ export const MessageTable = ({
     {
       key: 'directionCode',
       header: t.table.direction,
-      /* 머리칸 끌기 손잡이 몫만큼 넓힌다(#358) — 64px 이면 「구분」이 잘린다. */
-      width: '80px',
+      /* 머리칸 끌기 손잡이 몫만큼 넓힌다(#358) — 「송수신」 세 글자가 잘리지 않는 폭. */
+      width: '96px',
       render: (row) => directionName(row.directionCode),
     },
     {
@@ -102,7 +102,7 @@ export const MessageTable = ({
         );
       },
     },
-    { key: 'retryCount', header: t.table.retryCount, align: 'end', width: '88px' },
+    { key: 'retryCount', header: t.table.retryCount, align: 'end', width: '112px' },
     {
       key: 'createdAt',
       header: t.table.createdAt,
