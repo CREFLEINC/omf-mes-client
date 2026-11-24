@@ -13,6 +13,8 @@ const tp = messages.materialLotIssue.poLines;
 export interface PoLinesProps {
   plantId: number;
   group: Group;
+  /** 품목 기본 단위 번호 — 단위가 다른 라인을 뺀다. 모르면 null. */
+  uomId: number | null;
 }
 
 /**
@@ -20,8 +22,8 @@ export interface PoLinesProps {
  * 자재 관리 LOT 는 발행할 때 P/O 와 묶이지 않고, 어느 P/O 로 갈지는 서버가 입하 마감 때 이 차례로 정한다(피처 005).
  * 납기만 따로 보이면 그 P/O 몫으로 읽히기 쉬워 채우는 차례 그대로 늘어놓고, 그 차례의 뜻은 제목 옆 ⓘ 가 말한다.
  */
-export const PoLines = ({ plantId, group }: PoLinesProps) => {
-  const lines = useOpenPoLines(plantId, group);
+export const PoLines = ({ plantId, group, uomId }: PoLinesProps) => {
+  const lines = useOpenPoLines(plantId, group, uomId);
 
   const body = () => {
     if (lines.isError) {

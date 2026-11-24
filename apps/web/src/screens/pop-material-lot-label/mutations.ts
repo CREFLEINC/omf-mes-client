@@ -22,7 +22,7 @@ import { runRequest, toApiError } from '../../patterns/request';
 
 import { toIssueFailure } from './failure';
 import type { IssueUnit } from './issue-unit';
-import { fetchWaitingGroups, waitingKeys } from './queries';
+import { lookupMaterialLot, materialLotKeys } from '../../patterns/material-lot-precreate';
 
 import type { LabelLot } from './types';
 
@@ -483,7 +483,8 @@ export const useBatchIssue = ({ workerNo }: IssueRunOptions): BatchIssueHandle =
           setCurrentLotId(null);
           setStep(null);
           // LOT 의 발행 여부가 바뀌었다 — 끝나면 언제나 목록을 다시 읽는다.
-          await queryClient.invalidateQueries({ queryKey: waitingKeys.all });
+          /* 탭 넷 · 공급사 칸 · 품목 표 수를 다시 받는다 — 찍은 LOT 은 미출력에서 출력됨으로 옮긴다(피처 014). */
+          await queryClient.invalidateQueries({ queryKey: materialLotKeys.all });
         }
       };
 
@@ -540,7 +541,7 @@ export const useBatchIssue = ({ workerNo }: IssueRunOptions): BatchIssueHandle =
 };
 
 /**
- * 보내기 직전 확인 — 첫 발행(`verifyUnissued`)인 LOT 은 목록을 **지금** 다시 받아, 다른 단말이 먼저 찍었거나
+ * 보내기 직전 확인 — 첫 발행(`verifyUnissued`)인 LOT 은 **지금** 다시 찾아, 다른 단말이 먼저 찍었거나
  * 그사이 폐기된 LOT 은 빼고(`onGone`) 남은 것만 보낸다.
  *
  * ⚠ 확인을 못 했으면(조회 실패) 받은 그대로 보낸다 — 두 번째 발행은 서버가 회차로 남기고(재발행 사유 필수 422),
@@ -555,22 +556,24 @@ const verifyCommands = async (
 
   if (plantId === undefined) return [...commands];
 
-  let fresh: Map<number, { unissued: boolean }>;
+  /*
+   * 피처 014 — 공장 전체 대기 목록 대신 LOT 마다 번호 찾기(`GET /logistics/material-lots/lookup`)로 지금 탭을 본다.
+   * 미출력(`UNPRINTED`)이 아니면 다른 단말이 먼저 찍었거나 폐기 · 입하된 것이다. 찾기는 만들지 않는다.
+   */
+  const unissued = new Map<number, boolean>();
+  const targets = commands.filter((command) => command.verifyUnissued === true);
 
   try {
-    const groups = await fetchWaitingGroups(client, plantId);
+    for (let start = 0; start < targets.length; start += VERIFY_CHUNK) {
+      const chunk = targets.slice(start, start + VERIFY_CHUNK);
+      const found = await Promise.all(
+        chunk.map((command) => lookupMaterialLot(client, plantId, command.lot.lotNo)),
+      );
 
-    fresh = new Map(
-      groups.flatMap((group) =>
-        group.lots.map(
-          (lot) =>
-            [
-              lot.lotId,
-              { unissued: lot.lifecycleStatusCode === 'WAITING' && lot.lastLabelIssue === null },
-            ] as const,
-        ),
-      ),
-    );
+      chunk.forEach((command, index) => {
+        unissued.set(command.lot.lotId, found[index]?.tab === 'UNPRINTED');
+      });
+    }
   } catch {
     /* 확인을 못 했다 — 받은 그대로 보낸다. */
     return [...commands];
@@ -580,7 +583,7 @@ const verifyCommands = async (
   const gone: number[] = [];
 
   for (const command of commands) {
-    if (command.verifyUnissued === true && fresh.get(command.lot.lotId)?.unissued !== true) {
+    if (command.verifyUnissued === true && unissued.get(command.lot.lotId) !== true) {
       gone.push(command.lot.lotId);
     } else {
       queue.push(command);
@@ -591,6 +594,9 @@ const verifyCommands = async (
 
   return queue;
 };
+
+/** 보내기 직전 확인을 한 번에 몇 LOT 씩 묻는가 — 일괄 출력 200장도 서버를 한꺼번에 두드리지 않게. */
+const VERIFY_CHUNK = 10;
 
 /**
  * 자재 관리 LOT 만들기(계약 §1 `POST /logistics/material-lot-batches`) — POP 은 사번을 함께 싣는다.

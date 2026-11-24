@@ -96,6 +96,8 @@ export const popMaterialLotLabel = {
       /** 발행 대기 표의 등록 일시 칸 — 목록 정렬 기준(사용자 지시 2026-11-19). */
       createdAt: '등록일시',
       result: '출력 결과',
+      /** 줄 끝 동작 칸(미출력 탭 [수정]) — 머리는 비우고 읽는 이름만. */
+      action: '동작',
     },
     none: '—',
     noPackage: '포장 없음',
@@ -291,6 +293,170 @@ export const popMaterialLotLabel = {
     done: (count: number) => `자재 관리 LOT ${count}개를 폐기했습니다`,
     partial: (count: number, failed: number) => `자재 관리 LOT ${count}개 폐기 · 실패 ${failed}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     failed: '폐기하지 못했습니다.',
+  },
+  /**
+   * 피처 014 — P/O 미리 생성 · 탭 넷 · 서버 쪽 나눔 · 번호 스캔 찾기(omf-all-around#349 · 시안 P0101 · screens/P-01-01.md).
+   * 문구는 명세가 정한 그대로(FR-005 · FR-012 · FR-013 · FR-021).
+   */
+  precreate: {
+    listTitle: '공급사·품목', // ui-check-ignore: C-13 설계 확정 문구(specs 014 mockups/P0101)
+    /** 공급사 칸 · 품목 표 위 넓은 줄(시안 6판 · 사용자 2026-11-24) — LOT 번호 스캔과 공급사 · 품목 찾기를 함께 한다. */
+    scanLabel: 'LOT 번호 스캔 · 공급사/품목 찾기', // ui-check-ignore: C-13 설계 확정 문구(specs 014 mockups/P0101-v6 · 사용자 승인 2026-11-24)
+    /** 줄의 넣은 값 · 찾기 · 결과를 지운다. */
+    scanClear: '지우기',
+    /** 글자로 찾았을 때 줄 아래 단 — 「테이프」 찾은 공급사 2곳. */
+    findResult: (q: string, suppliers: number) => `「${q}」 찾은 공급사 ${suppliers}곳`,
+    /** [직접 입력] 창 칸 이름 — 번호면 그 LOT 을 찾고, 아니면 공급사·품목 찾기. */
+    scanManual: '자재 관리 LOT 번호 또는 공급사나 품목의 코드나 이름',
+    tabsLabel: '자재 관리 LOT 상태',
+    tabs: {
+      UNPRINTED: '미출력',
+      PRINTED: '출력됨(입하 전)',
+      RECEIVED: '입하된 LOT',
+      VOIDED: '폐기 LOT',
+    },
+    chipUnprinted: (count: number) => `미출력 ${count}`,
+    chipCreatable: (count: number) => `생성 예정 ${count}`,
+    /** 왼쪽 줄 · 머리의 품목 기본값 — 「기본 100 EA · ROLL 10」 / 「기본 500 EA · 포장 없음」. */
+    defaultPackaged: (qty: string, pkg: string) => `기본 ${qty} · ${pkg}`, // ui-check-ignore: C-13 설계 확정 문구(specs 014 mockups/P0101)
+    defaultUnpackaged: (qty: string) => `기본 ${qty} · 포장 없음`, // ui-check-ignore: C-13 설계 확정 문구(specs 014 mockups/P0101)
+    noDefault: '기본 단위 설정 없음',
+    noConversion: '품목 단위 환산 없음',
+    headDefault: (text: string) => `${text} (품목 기본값)`,
+    loading: '자재 관리 LOT 을 조회하고 생성하고 있습니다',
+    loadingHint: '미입고 P/O 남은 양만큼 이 쪽에 필요한 LOT 만 만듭니다',
+    loadingOther: '자재 관리 LOT 을 조회하고 있습니다',
+    notes: {
+      NO_DEFAULT: '기본 단위 설정이 안되어있습니다. 직접 생성해 주세요.',
+      noDefaultHint: '[자재 관리 LOT 생성]으로 만든 LOT 은 이 탭에 그대로 보이고 찍을 수 있습니다.',
+      NO_OPEN_PO: '입하 예정 계획이 없습니다. 관리자에게 문의하세요',
+      noOpenPoHint: '이 공급사와 품목에 미입고 ERP P/O 가 없습니다',
+      NO_CONVERSION: '품목 단위 환산이 없어 LOT 을 만들 수 없습니다. 관리자에게 문의하세요',
+      noConversionHint: '자재 LOT 기본크기 단위를 품목 기본 단위로 바꿀 환산이 없습니다',
+      manualHint: 'P/O 없이 들어오는 자재는 [자재 관리 LOT 생성]으로 만듭니다',
+      /** 409 LOT_NO_CONFLICT — 다시 부르면 풀린다. */
+      conflict: '자재 관리 LOT 번호가 겹쳐 만들지 못했습니다. 다시 불러오세요.',
+    },
+    /** 탭 위 안내 한 줄. */
+    tabNotes: {
+      PRINTED:
+        '출력했지만 아직 PDA 입하 받기 전인 LOT 입니다. 사유를 골라 다시 찍거나 폐기할 수 있습니다. 수량과 포장은 고칠 수 없습니다.',
+      RECEIVED:
+        'PDA 입하 받기가 끝나고 아직 입하 마감 전인 LOT 입니다. 입하 마감하면 이 탭에서 빠집니다(번호를 스캔하면 찾아 다시 찍을 수 있습니다). 사유를 골라 다시 찍을 수 있고, 폐기는 여기서 하지 않습니다.',
+      VOIDED:
+        '폐기한 LOT 은 찍을 수 없고 번호도 다시 쓰지 않습니다. 자동으로 만든 LOT 을 폐기하면 그 P/O 몫은 다음 조회 때 새 번호로 다시 만듭니다.',
+    },
+    empty: {
+      UNPRINTED: '미출력 자재 관리 LOT 이 없습니다.',
+      PRINTED: '출력했지만 입하 전인 LOT 이 없습니다.',
+      RECEIVED: '입하 마감 전인 입하된 LOT 이 없습니다.',
+      VOIDED: '폐기한 LOT 이 없습니다.',
+    },
+    /** 쪽 넘김 옆 — 미출력 총 건수에 아직 만들지 않은 몫이 들어 있다. */
+    notCreatedYet: (count: number) => `아직 만들지 않은 ${count}건 포함`,
+    columns: {
+      seq: '차례',
+      po: 'P/O 라인',
+      mode: '만든 방식',
+      printCount: '출력 횟수',
+      lastPrinted: '최근 출력일시',
+      receivedAt: '입하 일시',
+      voidedAt: '폐기 일시',
+    },
+    mode: { AUTO: '자동', MANUAL: '수동' },
+    remainder: '나머지',
+    poLine: (purchaseOrderNo: string, lineNo: number) => `${purchaseOrderNo} · ${lineNo}`, // ui-check-ignore: C-13 설계 확정 문구(specs 014 mockups/P0101)
+    /** [수정] 창(FR-016 · FR-017 · 시안 P0101 ⑤). */
+    revise: {
+      action: '수정',
+      title: '자재 관리 LOT 수정',
+      lotNo: '자재 관리 LOT 번호',
+      pair: '공급사·품목', // ui-check-ignore: C-13 설계 확정 문구(specs 014 mockups/P0101)
+      po: 'P/O 라인',
+      qty: '재고량',
+      package: '포장',
+      optional: '(선택)',
+      packageOn: '포장 넣기',
+      packageOff: '포장 없음',
+      packageUom: '포장 단위',
+      packageCount: '포장 수',
+      qtyPerPackage: '포장당 수',
+      calcOk: (calc: string) => `${calc} · 재고량과 같음`, // ui-check-ignore: C-13 설계 확정 문구(specs 014 mockups/P0101)
+      mismatch: (qty: string, calc: string) =>
+        `재고량 ${qty} ≠ ${calc} — 맞춰야 저장할 수 있습니다`,
+      invalid: '재고량과 포장 칸을 확인하세요(0보다 큰 수, 포장 수는 정수)',
+      renumber: '수량이 바뀌면 LOT 번호를 새로 받습니다',
+      now: '지금',
+      after: '저장 뒤',
+      printedNote: '출력한 LOT 은 고칠 수 없습니다(폐기하고 새로 만듭니다)',
+      cancel: '취소',
+      save: '저장',
+      saved: (lotNo: string) => `${lotNo} 로 고쳤습니다`,
+      alreadyPrinted: '이미 출력한 LOT 이라 고칠 수 없습니다. 목록을 다시 불러왔습니다.',
+      stateLocked: '입하됐거나 폐기한 LOT 이라 고칠 수 없습니다. 목록을 다시 불러왔습니다.',
+      conflict: 'LOT 번호가 겹쳐 저장하지 못했습니다. 다시 저장하세요.',
+      failed: '수정하지 못했습니다.',
+    },
+    /** [일괄 출력] 창(FR-015 · 시안 P0101 ④). */
+    bulk: {
+      action: '일괄 출력',
+      title: '일괄 출력',
+      lead: '미출력 자재 관리 LOT 을 차례 번호 순서대로 앞에서부터 찍습니다. 몇 장 찍을지 넣으세요.',
+      count: '찍을 장수',
+      unit: '장',
+      hint: (max: number, existing: number, notYet: number) =>
+        `최대 ${max} · 미출력 ${existing} + 아직 만들지 않은 ${notYet}`, // ui-check-ignore: C-13 설계 확정 문구(specs 014 mockups/P0101)
+      over: (max: number) => `최대 ${max}장까지 찍을 수 있습니다`,
+      overBody: (count: number) =>
+        `넣은 장수(${count})가 이 공급사와 품목의 미출력 LOT 수보다 많아 찍지 않습니다.`,
+      range: '찍을 LOT',
+      rangeValue: (count: number) => `차례 1 ~ ${count} · ${count}장`, // ui-check-ignore: C-13 설계 확정 문구(specs 014 mockups/P0101)
+      create: '먼저 만들기',
+      createValue: (count: number) => `아직 만들지 않은 ${count}개를 먼저 만든 뒤 찍습니다`,
+      unitLabel: '발행 단위',
+      unitEach: (count: number) => `${count}장마다 멈춤`,
+      unitAll: '멈추지 않음',
+      next: '다음: 라벨 미리보기에서 인쇄',
+      cancel: '취소',
+      submit: (count: number) => `${count}장 출력`,
+      submitIdle: '일괄 출력',
+      collecting: '찍을 LOT 을 모으고 있습니다',
+      failed: '찍을 LOT 을 받지 못했습니다. 다시 하세요.',
+    },
+    lookup: {
+      found: (tab: string) => `스캔한 LOT 을 찾았습니다. ${tab} 탭 맨 위에 골라 두었습니다.`,
+      foundReprint: '사유를 골라 재인쇄하세요.',
+      notFound: '이 공장에 없는 자재 관리 LOT 번호입니다',
+      voided: '폐기한 LOT 은 찍을 수 없습니다',
+      failed: 'LOT 번호를 찾지 못했습니다. 다시 스캔하세요.',
+      chip: '스캔',
+    },
+    /**
+     * 세 칸(#1751 짜임 · 피처 014 FR-010 세 칸 · 사용자 결정 2026-11-23 「세 칸에 맞추기」) — 공급사 칸 · 품목 표 · 상세.
+     */
+    threeCols: {
+      suppliers: '공급사',
+      items: '품목',
+      itemsOf: (supplierName: string) => `품목 · ${supplierName}`, // ui-check-ignore: C-13 설계 확정 문구(specs 014 screens/P-01-01 「품목 · 대한포장」)
+      pickSupplier: '공급사를 고르세요.',
+      pickSupplierHint:
+        '공급사 칸의 「미출력 N」은 그 공급사 품목들의 미출력 합입니다(아직 만들지 않은 몫 포함, 고르기 전에는 만들지 않음).',
+      pickItem: '품목을 고르세요. 품목을 고르면 탭 넷이 열립니다.',
+      emptySuppliers: '발행할 공급사가 없습니다. 발주가 등록되면 나타납니다.',
+      noMatchSuppliers: '찾는 공급사가 없습니다.',
+      emptyItems: '이 공급사에 찾는 품목이 없습니다.',
+      columns: {
+        itemCode: '품목코드',
+        itemName: '품목명',
+        unprinted: '미출력',
+        printed: '출력됨',
+        iqc: 'IQC',
+        lastIssued: '최근 발행',
+      },
+      iqcRequired: '검사',
+      /** 품목 표 미출력 칸의 빨간 칩 — 자동으로 만들 수 없는 까닭. */
+      miss: { NO_DEFAULT: '기본값 없음', NO_CONVERSION: '환산 없음' },
+    },
   },
   /** 라벨 미리 보기(발행 · 다시 인쇄). */
   preview: {

@@ -33,7 +33,16 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+/** 공급사 칸 첫 공급사 → 품목 표 첫 품목을 고른다(세 칸 · 피처 014 — 화면을 열기만 해서는 고르지 않는다). */
+const pickFirstPair = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  const suppliers = await screen.findByRole('list', { name: t.precreate.threeCols.suppliers });
+  await user.click(within(suppliers).getAllByRole('button')[0] as HTMLElement);
+  const items = await screen.findByRole('group', { name: t.precreate.threeCols.items });
+  await user.click((await within(items).findAllByRole('button'))[0] as HTMLElement);
+};
+
 const openBatch = async (user: ReturnType<typeof userEvent.setup>): Promise<HTMLElement> => {
+  await pickFirstPair(user);
   await user.click(await screen.findByRole('button', { name: t.work.create }));
   const dialog = await screen.findByRole('dialog', { name: tb.title });
   await within(dialog).findByText((text) => text === tb.lotQty || text === tb.lotQtyAmount, {
@@ -287,6 +296,7 @@ describe('US1-7 입하 대기 LOT 폐기', () => {
     const user = userEvent.setup();
     const { sent } = renderLabelScreen();
 
+    await pickFirstPair(user);
     await waitFor(() =>
       expect(screen.getAllByRole('checkbox', { name: /SYN-ITEM-01\|/u })).toHaveLength(2),
     );
@@ -315,10 +325,12 @@ describe('US1-7 입하 대기 LOT 폐기', () => {
       voidRejects: [9002],
     });
 
+    await pickFirstPair(user);
     await waitFor(() =>
       expect(screen.getAllByRole('checkbox', { name: /SYN-ITEM-01\|/u })).toHaveLength(2),
     );
-    await user.click(screen.getByRole('button', { name: t.bar.selectAll }));
+    await user.click(screen.getByRole('checkbox', { name: /\|0001 /u }));
+    await user.click(screen.getByRole('checkbox', { name: /\|0002 /u }));
     await user.click(screen.getByRole('button', { name: t.bar.void(2) }));
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', {
@@ -330,11 +342,44 @@ describe('US1-7 입하 대기 LOT 폐기', () => {
   });
 });
 
-describe('기본 정보 한 줄', () => {
-  it('기본 정보가 없는 공급사·품목은 상세 제목에 「기본 정보 없음」을 적지 않는다', async () => {
-    renderLabelScreen({ defaults: [defaultInfo({ itemId: 9999 })] });
+describe('기본값 한 줄 — 품목 기본값(피처 014)', () => {
+  it('US1-4 품목 기본값이 없으면 품목 표에 「기본값 없음」 칩 — 상세 제목엔 기본 정보 줄을 적지 않고(#1758) W-06-25 기본 정보도 보지 않는다', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen({
+      defaults: [defaultInfo()],
+      shares: { '8201:8601': { creatable: 0, lotQty: 0, package: null, status: 'NO_DEFAULT' } },
+    });
 
+    await pickFirstPair(user);
     const head = await screen.findByRole('heading', { name: /SYN-ITEM-01/u });
-    expect(head).not.toHaveTextContent(/기본 (?!단위)/u);
+    expect(head).not.toHaveTextContent(t.precreate.noDefault);
+    expect(head).not.toHaveTextContent('1,000 EA');
+    const items = screen.getByRole('group', { name: t.precreate.threeCols.items });
+    expect(within(items).getByText(t.precreate.threeCols.miss.NO_DEFAULT)).toBeInTheDocument();
+  });
+});
+
+describe('FR-019 [만들기] 처음 값은 품목 기본값 먼저', () => {
+  it('FR-019 품목 기본값(기본크기 · 패키징)이 있으면 공급사·품목 기본 정보보다 먼저 채운다', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen({
+      items: [
+        {
+          itemId: 8601,
+          baseUomId: 8401,
+          defaultLotStorageUomId: 8401,
+          defaultProductionLotSize: 100,
+          defaultPackageUomId: 8403,
+          defaultPackageCount: 10,
+        },
+      ],
+    });
+
+    const dialog = await openBatch(user);
+
+    expect(within(dialog).getByText(tb.source.item)).toBeInTheDocument();
+    expect(field(dialog, tb.packageCount).value).toBe('10');
+    expect(field(dialog, tb.qtyPerPackage).value).toBe('10');
+    expect(field(dialog, tb.lotQty).value).toBe('100');
   });
 });

@@ -5,7 +5,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { runRequest } from '../../patterns/request';
 import { inDataScope } from '../supplier-item-default/queries';
-import type { Defaults, Group } from './types';
+import type { Group } from './types';
 
 type Plant = components['schemas']['Plant'];
 type SessionScope = components['schemas']['SessionScope'];
@@ -14,8 +14,6 @@ export type PoLine = components['schemas']['PurchaseOrderLineListItem'];
 export const materialLotIssueKeys = {
   all: ['material-lot-issue'] as const,
   plants: ['material-lot-issue', 'plants'] as const,
-  groups: (plantId: number) => ['material-lot-issue', 'groups', plantId] as const,
-  defaults: (plantId: number) => ['material-lot-issue', 'defaults', plantId] as const,
   poLines: (plantId: number, supplierId: number, itemId: number) =>
     ['material-lot-issue', 'po-lines', plantId, supplierId, itemId] as const,
 };
@@ -34,11 +32,13 @@ const byFillOrder = (left: PoLine, right: PoLine): number => {
 
 /**
  * 고른 공급사·품목의 미입고 P/O 라인 — 입하 마감이 채우는 차례로.
- * 자동 배정 후보는 같은 공장 · 공급사 · 품목 · **단위**의 라인이라 단위가 다른 라인은 뺀다.
+ * 자동 배정 후보는 같은 공장 · 공급사 · 품목 · **단위**의 라인이라 단위가 다른 라인은 뺀다. 기본 단위 번호를
+ * 모르면(단위 목록을 못 받음) 거르지 않는다.
  */
 export const useOpenPoLines = (
   plantId: number,
-  group: Pick<Group, 'supplierId' | 'itemId' | 'uomId'>,
+  group: Pick<Group, 'supplierId' | 'itemId'>,
+  uomId: number | null,
 ): UseQueryResult<PoLine[]> => {
   const { client } = useApiClient();
   return useQuery({
@@ -62,7 +62,8 @@ export const useOpenPoLines = (
           ),
         )
       ).items,
-    select: (lines) => lines.filter((line) => line.uomId === group.uomId).sort(byFillOrder),
+    select: (lines) =>
+      lines.filter((line) => uomId === null || line.uomId === uomId).sort(byFillOrder),
   });
 };
 
@@ -84,45 +85,5 @@ export const usePlants = (scopes: readonly SessionScope[]): UseQueryResult<Plant
       plants
         .filter((plant) => plant.isActive && inDataScope(plant, scopes))
         .sort((left, right) => left.plantCode.localeCompare(right.plantCode)),
-  });
-};
-
-/**
- * 공장의 공급사·품목별 대기 자재 관리 LOT(계약 §1 `GET /logistics/waiting-material-lots`).
- * ⭐ 공급사 · 품목 · 「대기 있는 것만」은 화면이 거른다 — 발행 창의 공급사·품목 고르기와 공급사 조건 목록이
- *   공장의 전체 조합을 써야 해서 한 번에 받는다.
- */
-export const useWaitingGroups = (plantId: number | null): UseQueryResult<Group[]> => {
-  const { client } = useApiClient();
-  return useQuery({
-    queryKey: materialLotIssueKeys.groups(plantId ?? 0),
-    enabled: plantId !== null,
-    queryFn: async () =>
-      (
-        await runRequest(() =>
-          client.GET('/logistics/waiting-material-lots', {
-            params: { query: { plantId: plantId ?? 0 } },
-          }),
-        )
-      ).items,
-  });
-};
-
-/** 공장의 공급사·품목 기본 정보 전부(계약 §9) — 표의 「기본 정보」 칸. */
-export const usePlantDefaults = (plantId: number | null): UseQueryResult<Defaults[]> => {
-  const { client } = useApiClient();
-  return useQuery({
-    queryKey: materialLotIssueKeys.defaults(plantId ?? 0),
-    enabled: plantId !== null,
-    queryFn: async () =>
-      (
-        await fetchAllPages((page, size) =>
-          runRequest(() =>
-            client.GET('/mdm/supplier-item-defaults', {
-              params: { query: { plantId: plantId ?? 0, page, size } },
-            }),
-          ),
-        )
-      ).items,
   });
 };

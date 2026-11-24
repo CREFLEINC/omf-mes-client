@@ -20,14 +20,14 @@
   padding: 12px 16px 0;
 }
 
-/* ── 왼쪽: 탭 줄 + 찾기 + 목록 + 쪽 넘김 ── */
+/* ── 공급사 칸: 찾기 + 목록 + 쪽 넘김 ── */
 .mll-left .pu-card-head > .pu-seg button {
   height: 40px;
 }
 
 .mll-left-top {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 12px;
   min-height: 0;
 }
@@ -204,13 +204,6 @@
   height: 48px;
 }
 
-/* 발행 단위 고르기 칸도 단추와 같은 높이(사용자 지시 2026-11-23). */
-.mll-units .mll-unit-select,
-.mll-units .mll-unit-select button {
-  height: 48px;
-  min-height: 48px;
-}
-
 /* 표: 바깥 칸(`mll-table`)이 남는 높이를 갖고 쪽 건수를 잰다. 칸 폭·줄 높이는 공통 표(`pu-table`) 규칙.
  * LOT 번호 칸은 번호만큼(넘치면 말줄임) — 남는 폭은 발행 대기면 마지막 「라벨」, 재발행이면 「품목」 칸이 갖는다. */
 .mll-table {
@@ -238,13 +231,13 @@
   width: auto;
 }
 
-.mll-table.is-reprint .pu-table th.mll-slotcol {
+.mll-table.is-received .pu-table th.mll-slotcol {
   width: 108px;
 }
 
 /* 재발행 표는 칸이 아홉 개라 칸 안 여백을 줄인다 — 1280 에서 LOT 번호가 다 보이고 품목 칸에 폭이 남는다. */
-.mll-table.is-reprint .pu-table th,
-.mll-table.is-reprint .pu-table td {
+.mll-table.is-received .pu-table th,
+.mll-table.is-received .pu-table td {
   padding-inline: 6px;
 }
 
@@ -608,7 +601,7 @@
     padding-inline: 6px;
   }
 
-  .mll-table.is-reprint .pu-table th.fit:not(.mid) {
+  .mll-table.is-received .pu-table th.fit:not(.mid) {
     white-space: normal;
     line-height: 15px;
   }
@@ -622,7 +615,7 @@
     width: 1%;
   }
 
-  .mll-table.is-reprint .pu-table th.mll-slotcol {
+  .mll-table.is-received .pu-table th.mll-slotcol {
     width: 80px;
     white-space: normal;
     line-height: 15px;
@@ -667,18 +660,107 @@
   }
 
   /* 재발행 표는 칸이 열 개라 1024 에서는 품목명 칸을 접는다 — LOT 번호가 먼저다. 품목코드 칸 title 에 이름이 있다. */
-  .mll-table.is-reprint .pu-table .mll-itemcol {
+  .mll-table.is-received .pu-table .mll-itemcol {
     display: none;
   }
 }
 
-/* 세 칸(사용자 지시 2026-11-23): 공급사 · 고른 공급사의 품목 · 상세. 왼쪽을 접으면 56. */
+/* 세 칸(#1751 · 피처 014 FR-010 세 칸): 공급사 · 고른 공급사의 품목 표 · 상세. 공급사 칸을 접으면 56. */
 .pu-cols.list.mll-cols3 {
   grid-template-columns: 280px 640px minmax(0, 1fr);
 }
 
-.pu-cols.list.mll-cols3:has(> .is-folded:first-child) {
+.pu-cols.list.mll-cols3:has(> .mll-left.is-folded) {
   grid-template-columns: 56px 640px minmax(0, 1fr);
+}
+
+/*
+ * 스캔 · 찾기 줄(시안 6판 · 사용자 2026-11-24) — 공급사 칸 + 품목 표 위에 걸친다. 상세 칸은 위에서부터 전체 높이.
+ * 줄 안: 위 단 칸 이름 · [지우기] · [직접 입력], 가운데 단 스캔 칸(넣은 값 전체), 아래 단 결과 안내.
+ */
+.pu-cols.list.mll-cols3 {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.pu-cols.list.mll-cols3 > .mll-findbar {
+  grid-column: 1 / span 2;
+  grid-row: 1;
+}
+
+.pu-cols.list.mll-cols3 > .mll-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.pu-cols.list.mll-cols3 > .mll-mid {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.pu-cols.list.mll-cols3 > .mll-right {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+}
+
+.mll-findbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 8px;
+  padding: 10px 12px 12px;
+  background: var(--pu-card);
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-lg, 16px);
+}
+
+.mll-findbar > .mll-find-field,
+.mll-findbar > .mll-find-field > .pu-row {
+  display: contents;
+}
+
+.mll-findbar .pu-label {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: 15px;
+}
+
+.mll-findbar > .mll-find-clear {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.mll-findbar .pu-row > .pu-btn {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.mll-findbar .pu-row > .pu-scan {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.mll-findbar .pu-scan input {
+  font-size: 18px;
+}
+
+.mll-findbar .pu-note {
+  grid-column: 1 / -1;
+  grid-row: 3;
+}
+
+.mll-findbar.is-bad .pu-scan {
+  border-color: var(--pu-bad);
+}
+
+/* 공급사 칸 「미출력 N」 — 있으면 노랑 굵게, 0 이면 흐리게(시안 P0101 ①). */
+.mll-pairs .mll-pair-item > .mll-pair-unprinted.has {
+  color: var(--pu-warn);
+  font-weight: 700;
+}
+
+.mll-pairs .mll-pair-item > .mll-pair-unprinted.is-zero {
+  color: var(--pu-text-3);
 }
 
 /* 가운데 품목 표 — 바깥 칸이 남는 높이를 갖고 쪽 줄 수를 잰다. 품목명 칸이 남는 폭을 갖는다. */
@@ -698,6 +780,7 @@
 
 .mll-item-code {
   all: unset;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -719,13 +802,26 @@
   font-weight: 700;
 }
 
+/* 미출력 · 출력됨이 모두 0 인 품목은 흐리게(고를 수는 있다). */
+.mll-items tr.mll-idle td {
+  color: var(--pu-text-3);
+}
+
+.mll-mid-empty {
+  flex: 1 1 0;
+}
+
 @media (max-width: 1100px) {
   .pu-cols.list.mll-cols3 {
     grid-template-columns: 220px 260px minmax(0, 1fr);
   }
 
-  .pu-cols.list.mll-cols3:has(> .is-folded:first-child) {
+  .pu-cols.list.mll-cols3:has(> .mll-left.is-folded) {
     grid-template-columns: 56px 260px minmax(0, 1fr);
+  }
+
+  .mll-findbar .pu-scan input {
+    font-size: 16px;
   }
 }
 
@@ -745,21 +841,271 @@
   font-family: var(--pu-font, sans-serif);
 }
 
-/*
- * 발행 대기 표 칸 배치(사용자 지시 2026-11-23 「표 컬럼의 위치를 조정」) — LOT 번호는 번호만큼, 나머지 칸
- * (공급사 LOT · 재고량 · 포장 · 출력 유무 · 등록일시)이 남는 폭을 고르게 나눠 가운데 맞춤. 한쪽에 몰려 큰 빈칸이 생기지 않게.
- */
-.mll-table:not(.is-reprint) .pu-table th.mll-lotcol {
-  width: 280px;
+/* ── 피처 014: 공급사·품목 줄 칩 · 탭 넷 · 로딩 · 알림(시안 P0101) ── */
+.mll-pairs .mll-pair-item {
+  flex-wrap: nowrap;
 }
 
-.mll-table:not(.is-reprint) .pu-table th:not(:first-child):not(.mll-lotcol),
-.mll-table:not(.is-reprint) .pu-table td:not(:first-child):not(.mll-lotcol) {
-  width: auto;
+.mll-pair-chips {
+  display: inline-flex;
+  flex: none;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.mll-pairs .mll-pair-sub {
+  font-size: 13px;
+  color: var(--pu-text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mll-pairs .mll-pair-sub.mll-miss,
+.mll-head-sub.mll-miss {
+  color: var(--pu-bad);
+}
+
+/* 미출력 · 생성 예정이 모두 0 인 조합은 흐리게(고를 수는 있다). */
+.mll-pairs .pu-item.mll-idle {
+  opacity: 0.6;
+}
+
+.mll-right {
+  position: relative;
+}
+
+.mll-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mll-seq {
+  font-weight: 700;
+}
+
+.mll-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.mll-foot > .mll-foot-note {
+  font-size: 13px;
+  color: var(--pu-text-3);
+}
+
+/* 조회 · 생성 중 — 오른쪽 구획을 덮고 문구를 보인다(FR-013). */
+.mll-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: inherit;
+  background: var(--pu-card);
+  opacity: 0.94;
   text-align: center;
+  padding: 24px;
 }
 
-/* 품목 표의 품목코드 — 공통 단추 글자(17px)보다 2px 작게(사용자 지시 2026-11-23). */
+.mll-loading > b {
+  font-size: 18px;
+}
+
+.mll-loading > span {
+  font-size: 14px;
+  color: var(--pu-text-2);
+}
+
+/* ── 피처 014: [수정] · [일괄 출력] 창(시안 P0101 ④ · ⑤) ── */
+.mll-revise-kv {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 16px;
+  margin: 0;
+}
+
+.mll-revise-kv > dt {
+  color: var(--pu-text-3);
+}
+
+.mll-revise-kv > dd {
+  margin: 0;
+}
+
+.mll-revise-foot {
+  flex: 1;
+  font-size: 13px;
+}
+
+.mll-revise-numbers {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 2px 12px;
+  margin-top: 4px;
+}
+
+/*
+ * 1100px 이하 상세 칸(세 칸 · 총괄 확인 2026-11-24) — 상세 칸 폭이 약 550px 로 준다.
+ * ① LOT 번호가 가장 중요하다: 말줄임 대신 `|` 뒤에서 두 줄로 접어 끝까지 읽히게 하고, 남는 폭을 모두 갖는다.
+ *    머리 글은 낱말 단위로만 접는다(「자재 관리 LOT / 번호」).
+ * ② 포장 · 만든 방식은 글자를 줄이고 두 줄을 허용하며, [수정] 단추는 작게 — 가로로 넘치지 않는다.
+ * ③ 머리 줄: 이름표 칸들을 두 줄로 접고(값은 말줄임), 단추 줄은 그 아래로 — 글자가 겹치지 않는다.
+ */
+@media (max-width: 1100px) {
+  .mll-right .mll-table.mll-table .pu-table th.mll-lotcol {
+    width: auto;
+    white-space: normal;
+    word-break: keep-all;
+    line-height: 15px;
+  }
+
+  .mll-right .mll-table.mll-table .pu-table td.mll-lotcol {
+    white-space: normal;
+    line-height: 15px;
+    font-size: 12px;
+    text-overflow: clip;
+  }
+
+  .mll-right .mll-table.mll-table .pu-table th.mll-pkgcol,
+  .mll-right .mll-table.mll-table .pu-table th.mll-modecol {
+    white-space: normal;
+    word-break: keep-all;
+    line-height: 15px;
+  }
+
+  /* 포장은 단위명 | 곱 두 줄까지(T054) — 줄이 3~4줄로 높아지지 않는다. */
+  .mll-right .mll-table.mll-table .pu-table td.mll-pkgcol {
+    max-width: none;
+    white-space: normal;
+    font-size: 12px;
+    line-height: 15px;
+    text-overflow: clip;
+  }
+
+  .mll-right .mll-table .mll-keep {
+    white-space: nowrap;
+  }
+
+  /* 단위명이 길면(「롤 (추가 설명)」) 한 줄로 말줄임 — 포장 칸이 두 줄을 넘지 않는다. 전체 글은 칸 title. */
+  .mll-right .mll-table .mll-pkg-unit {
+    display: inline-block;
+    max-width: 64px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+  }
+
+  .mll-right .mll-table.mll-table .pu-table td.mll-modecol > .pu-chip {
+    padding-inline: 6px;
+    font-size: 12px;
+  }
+
+  .mll-right .mll-table.mll-table .pu-table td.mll-actcol > .pu-btn {
+    padding: 0 10px;
+  }
+
+  .mll-right > .pu-card-head {
+    height: auto;
+    min-height: 52px;
+    flex-wrap: wrap;
+    row-gap: 6px;
+    padding-bottom: 2px;
+  }
+
+  .mll-right > .pu-card-head h2 {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    row-gap: 2px;
+    column-gap: 10px;
+    white-space: normal;
+  }
+
+  .mll-right .mll-head-field {
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .mll-right .mll-head-name,
+  .mll-right .mll-head-value {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mll-right .mll-head-sub {
+    flex: 1 1 160px;
+    white-space: nowrap;
+  }
+}
+
+/*
+ * 1100px 이하 스캔 직후(T059 · FR-021) — 탭 안내 · 사유 고르기가 세로를 다 차지해 표 칸이 0 이
+ * 되던 것을 줄인다. 안내 띠는 작게, 스캔 안내가 서 있으면 탭 안내는 접고, 사유는 이름 옆 한 줄 타일로.
+ */
+@media (max-width: 1100px) {
+  .mll-right .pu-note {
+    padding: 6px 10px;
+    font-size: 13px;
+    line-height: 18px;
+  }
+
+  .mll-right .mll-reasons .pu-field {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 10px;
+  }
+
+  .mll-right .mll-reasons .pu-tiles {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .mll-right .mll-reasons .pu-tile {
+    min-height: 40px;
+    padding: 4px 6px;
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* ── #1758(사용자 지시 2026-11-23) 상세 정리를 014 화면에 옮김 ── */
+/* 발행 단위 고르기 칸도 단추와 같은 높이. */
+.mll-units .mll-unit-select,
+.mll-units .mll-unit-select button {
+  height: 48px;
+  min-height: 48px;
+}
+
+/* 품목 표의 품목코드 — 공통 단추 글자(17px)보다 2px 작게. */
 .mll-items .pu-table td .mll-item-code {
   font-size: 15px;
+}
+
+/*
+ * 미출력 표 칸 배치(「표 컬럼의 위치를 조정」) — LOT 번호는 280, 나머지 칸이 남는 폭을 고르게 나눠 가운데 맞춤.
+ * 1100 이하는 T054 의 칸 배치를 그대로 둔다.
+ */
+@media (min-width: 1101px) {
+  .mll-table.is-unprinted .pu-table th.mll-lotcol {
+    width: 280px;
+  }
+
+  .mll-table.is-unprinted .pu-table th:not(:first-child):not(.mll-lotcol),
+  .mll-table.is-unprinted .pu-table td:not(:first-child):not(.mll-lotcol) {
+    width: auto;
+    text-align: center;
+  }
 }

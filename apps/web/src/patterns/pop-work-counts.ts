@@ -42,7 +42,8 @@ export const usePopWorkCounts = (enabled: boolean): PopWorkCounts => {
 /**
  * 화면 탭 건수(POP 통일 시안 #295) — `/app/terminal-work-counts` 가 세지 않는 화면의 수.
  * 그 화면이 이미 쓰는 GET 을 한 쪽(size 1)만 불러 서버가 준 합계를 쓴다. 남은 작업 창에는 넣지 않는다.
- * - 자재 관리 LOT 라벨: 입하 대기 자재 관리 LOT 수(공급사·품목별 `waitingCount` 합 — 화면 「발행 대기 N」과 같다)
+ * - 자재 관리 LOT 라벨: 공장 전체 이미 만든 미출력 자재 관리 LOT 수(`material-lot-pairs` 의 `summary.unprintedCount` —
+ *   피처 014 D-9). 아직 아무도 고르지 않은 조합의 「생성 예정」 몫은 세지 않는다(가벼운 집계).
  * - 분할 LOT 라벨: 라벨 안 찍은 분할 LOT 수(`unprintedCount` — 화면 「발행 대기 N」과 같다)
  * 갈 수 없는 화면(`paths` 에 없음)은 부르지 않는다. 실패하거나 아직이면 그 화면 수는 없다.
  */
@@ -68,11 +69,11 @@ export const usePopTabCounts = (
     enabled: can(POP_TAB_COUNT_PATHS.materialLotLabel) && plantId !== null,
     queryFn: async () => {
       const data = await runRequest(() =>
-        client.GET('/logistics/waiting-material-lots', {
-          params: { query: { plantId: plantId ?? 0 } },
+        client.GET('/logistics/material-lot-pairs', {
+          params: { query: { plantId: plantId ?? 0, page: 1, size: 1 } },
         }),
       );
-      return data.items.reduce((sum, group) => sum + group.waitingCount, 0);
+      return data.summary.unprintedCount;
     },
   });
   const split = useQuery({

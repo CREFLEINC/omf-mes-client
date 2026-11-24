@@ -155,6 +155,82 @@ export const materialLotIssue = {
     voidedPartly: (count: number, failed: number) =>
       `자재 관리 LOT ${count}개 폐기 · 실패 ${failed}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
   },
+  /**
+   * 피처 014 — 서버 쪽 목록 · 찾기, 상세 탭 넷(미출력은 P/O 몫을 만들면서) · [수정](omf-all-around#349 · 시안 W0114).
+   * 알림 문구는 명세 그대로(FR-005 · FR-012 · FR-013). 라벨은 여전히 여기서 찍지 않는다.
+   */
+  precreate: {
+    retry: '다시 불러오기',
+    loadFailed: '자재 관리 LOT 목록을 불러오지 못했습니다.',
+    search: '찾기',
+    searchPlaceholder: '공급사 또는 품목의 코드나 이름',
+    columns: { unprinted: '미출력', creatable: '생성 예정' },
+    defaultPackaged: (qty: string, pkg: string) => `${qty} · ${pkg}`, // ui-check-ignore: C-13 설계 확정 문구(specs 014 mockups/W0114-W0605)
+    defaultUnpackaged: (qty: string) => `${qty} · 패키징 없음`, // ui-check-ignore: C-13 설계 확정 문구(specs 014 mockups/W0114-W0605)
+    noDefault: '기본 단위 설정 없음',
+    noConversion: '품목 단위 환산 없음',
+    headDefault: (text: string) => `${text} (품목·BOM 정보)`, // ui-check-ignore: C-13 설계 확정 문구(specs 014 mockups/W0114-W0605)
+    tabsLabel: '자재 관리 LOT 상태',
+    tabs: {
+      UNPRINTED: '미출력',
+      PRINTED: '출력됨(입하 전)',
+      RECEIVED: '입하된 LOT',
+      VOIDED: '폐기 LOT',
+    },
+    loading: '자재 관리 LOT 을 조회하고 생성하고 있습니다',
+    loadingOther: '자재 관리 LOT 을 조회하고 있습니다',
+    notes: {
+      NO_DEFAULT: '기본 단위 설정이 안되어있습니다. 직접 생성해 주세요.',
+      noDefaultHint: '[자재 관리 LOT 발행]으로 만든 LOT 은 미출력 탭에 그대로 보입니다.',
+      NO_OPEN_PO: '입하 예정 계획이 없습니다. 관리자에게 문의하세요',
+      NO_CONVERSION: '품목 단위 환산이 없어 LOT 을 만들 수 없습니다. 관리자에게 문의하세요',
+      conflict: '자재 관리 LOT 번호가 겹쳐 만들지 못했습니다. 다시 불러오세요.',
+    },
+    empty: {
+      UNPRINTED: '미출력 자재 관리 LOT 이 없습니다.',
+      PRINTED: '출력했지만 입하 전인 LOT 이 없습니다.',
+      RECEIVED: '입하 마감 전인 입하된 LOT 이 없습니다.',
+      VOIDED: '폐기한 LOT 이 없습니다.',
+    },
+    notCreatedYet: (count: number) => `아직 만들지 않은 ${count}건 포함`,
+    columns2: {
+      seq: '차례',
+      po: 'P/O',
+      mode: '만든 방식',
+      label: '라벨',
+      lastPrinted: '최근 출력',
+      receivedAt: '입하 일시',
+      voidedAt: '폐기 일시',
+      action: '동작',
+    },
+    mode: { AUTO: '자동', MANUAL: '수동' },
+    poLine: (purchaseOrderNo: string, lineNo: number) => `${purchaseOrderNo} · ${lineNo}`, // ui-check-ignore: C-13 설계 확정 문구(specs 014 mockups/W0114-W0605)
+    revise: {
+      action: '수정',
+      actionName: (lotNo: string) => `${lotNo} 수정`,
+      title: '자재 관리 LOT 수정',
+      lotNo: '자재 관리 LOT 번호',
+      po: 'P/O',
+      qty: '자재 관리 LOT당 재고 수량',
+      qtyFixed: '품목 기본 단위로 고정',
+      package: '패키징',
+      packageOn: '패키징 넣기',
+      packageOff: '패키징 없음',
+      packageUom: '패키징 단위',
+      packageCount: '패키징 수',
+      qtyPerPackage: (uom: string) => `패키징당 수량 (${uom})`,
+      mismatch: (qty: string, calc: string) => `${qty} ≠ ${calc} — 맞춰야 저장할 수 있습니다`,
+      invalid: '재고 수량과 패키징 칸을 확인하세요(0보다 큰 수, 패키징 수는 정수)',
+      renumber: '수량이 바뀌면 LOT 번호를 새로 받습니다',
+      cancel: '취소',
+      save: '저장',
+      saved: (lotNo: string) => `${lotNo} 로 고쳤습니다`,
+      alreadyPrinted: '이미 출력한 LOT 이라 고칠 수 없습니다. 목록을 다시 불러왔습니다.',
+      stateLocked: '입하됐거나 폐기한 LOT 이라 고칠 수 없습니다. 목록을 다시 불러왔습니다.',
+      conflict: 'LOT 번호가 겹쳐 저장하지 못했습니다. 다시 저장하세요.',
+      failed: '수정하지 못했습니다.',
+    },
+  },
   noPlant: '볼 수 있는 공장이 없습니다.',
   today: (day: string) => day,
 } as const;
