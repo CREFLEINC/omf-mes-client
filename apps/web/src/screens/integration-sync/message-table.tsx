@@ -63,24 +63,28 @@ export const MessageTable = ({
   onSelectionChange,
   now,
 }: MessageTableProps) => {
+  /* 목록 칸은 모두 가운데 정렬(사용자 지시 2026-11-24 · #358). */
   const columns: Column<IntegrationMessageRow>[] = [
     /* 코드 대신 업무 이름(사용자 지시 2026-10-27) — `message-labels.ts`. */
     {
       key: 'directionCode',
       header: t.table.direction,
-      /* 머리칸 끌기 손잡이 몫만큼 넓힌다(#358) — 「송수신」 세 글자가 잘리지 않는 폭. */
-      width: '96px',
+      align: 'center',
+      /* 「수신 (ERP → MES)」가 한 줄에 들어가는 폭(#358). */
+      width: '148px',
       render: (row) => directionName(row.directionCode),
     },
     {
       key: 'interfaceCode',
       header: t.table.interfaceCode,
+      align: 'center',
       width: '112px',
       render: (row) => <OneLine text={interfaceName(row.interfaceCode)} />,
     },
     {
       key: 'messageKey',
       header: t.table.messageKey,
+      align: 'center',
       /* 폭을 지정하지 않는 유일한 열 — 남는 폭을 문서 번호가 가져간다(#358 · 오류 내용 · 재처리 열은 상세로). */
       /* 상세를 여는 단추 자리(`BoardTable` 의 `pick`) — 줄 어디를 눌러도 연다(체크 · 재처리 단추는 그쪽이 받는다). */
       render: (row) => <OneLine text={documentNoOf(row)} />,
@@ -88,6 +92,7 @@ export const MessageTable = ({
     {
       key: 'statusCode',
       header: t.table.status,
+      align: 'center',
       width: '104px',
       /* 배지만 — 「언제부터 처리 중」 · 「자동 재시도」 보조 줄은 상세에서 본다(행 높이를 한 줄로 · #358). */
       render: (row) => {
@@ -100,16 +105,25 @@ export const MessageTable = ({
         );
       },
     },
-    { key: 'retryCount', header: t.table.retryCount, align: 'end', width: '112px' },
+    {
+      key: 'retryCount',
+      header: t.table.retryCount,
+      align: 'center',
+      width: '112px',
+      /* 「0회」처럼 단위를 붙인다(#358). */
+      render: (row) => t.table.retryTimes(row.retryCount),
+    },
     {
       key: 'createdAt',
       header: t.table.createdAt,
+      align: 'center',
       width: '160px',
       render: (row) => orEmptyMark(formatDateTime(row.createdAt)),
     },
     {
       key: 'retry',
       header: t.table.retry,
+      align: 'center',
       width: '88px',
       /*
        * **상태 코드로도 `lockedBy`로도 막지 않는다.** 실서버의 상태 어휘를 화면이 모르므로

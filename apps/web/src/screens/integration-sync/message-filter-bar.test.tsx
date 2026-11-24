@@ -28,7 +28,7 @@ interface FilterChangeCase {
 const FILTER_CHANGE_CASES: FilterChangeCase[] = [
   { key: 'status', label: '상태 선택', value: 'FAILED', shown: '실패' },
   { key: 'iface', label: '연동 항목 선택', value: 'IF-GR-SEND', shown: '입고 (G/R)' },
-  { key: 'direction', label: '송수신 선택', value: 'OUTBOUND', shown: '송신' },
+  { key: 'direction', label: '연동 방향 선택', value: 'OUTBOUND', shown: '송신 (MES → ERP)' },
   { key: 'retryMin', label: '재시도 횟수(이상)', value: '5', shown: '5' },
 ];
 
@@ -178,7 +178,7 @@ describe('MessageFilterBar — 조건 4종', () => {
   it('선택칸마다 눈에 보이는 라벨이 붙는다', () => {
     renderBar();
 
-    for (const label of ['송수신 선택', '연동 항목 선택', '상태 선택', '재시도 횟수(이상)']) {
+    for (const label of ['연동 방향 선택', '연동 항목 선택', '상태 선택', '재시도 횟수(이상)']) {
       expect(screen.getByLabelText(label)).toBeInTheDocument();
     }
     // 대상 유형 칸은 두지 않는다 — 값이 시스템 코드라 읽을 수 없고 항목과 짝이다.
@@ -228,7 +228,7 @@ describe('MessageFilterBar — 조건 4종', () => {
       directionOptions: ['OUTBOUND'],
     });
 
-    expect(screen.getByText('송수신: 송신')).toBeInTheDocument();
+    expect(screen.getByText('연동 방향: 송신 (MES → ERP)')).toBeInTheDocument();
     expect(screen.getByText('재시도 2회 이상')).toBeInTheDocument();
     /* 보이는 칸(상태)의 조건은 칩으로 겹쳐 적지 않는다. */
     expect(screen.queryByText('상태: 실패')).not.toBeInTheDocument();
@@ -241,7 +241,7 @@ describe('MessageFilterBar — 조건 4종', () => {
   it('조건이 없으면 칩을 만들지 않는다', () => {
     renderBar();
 
-    expect(screen.queryByRole('button', { name: '송수신 조건 제거' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '연동 방향 조건 제거' })).not.toBeInTheDocument();
   });
 });
 
@@ -253,12 +253,12 @@ describe('MessageFilterBar — 조건 더보기(C-6)', () => {
     expect(more).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('combobox', { name: '연동 항목 선택' })).toBeVisible();
     expect(screen.getByRole('combobox', { name: '상태 선택' })).toBeVisible();
-    expect(screen.queryByRole('combobox', { name: '송수신 선택' })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: '연동 방향 선택' })).toBeNull();
     expect(screen.queryByRole('spinbutton', { name: '재시도 횟수(이상)' })).toBeNull();
 
     await user.click(more);
 
-    expect(screen.getByRole('combobox', { name: '송수신 선택' })).toBeVisible();
+    expect(screen.getByRole('combobox', { name: '연동 방향 선택' })).toBeVisible();
     expect(screen.getByRole('spinbutton', { name: '재시도 횟수(이상)' })).toBeVisible();
   });
 

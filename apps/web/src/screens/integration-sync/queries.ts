@@ -1,5 +1,5 @@
 import type { ApiClient, components } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -64,6 +64,42 @@ export const useMessageList = (
       return fetchMessageList(client, query);
     },
   });
+};
+
+/**
+ * 위 줄 연동 방향 라벨의 건수(#358) — 지금 조건에서 방향만 바꿔(전체 · 수신 · 송신) 한 줄짜리로 조회해 전체 건수만 읽는다.
+ * 쪽 · 쪽 크기는 싣지 않는다. 기간이 갖춰지지 않았으면(`query === null`) 세지 않는다.
+ */
+export const useDirectionCounts = (
+  query: MessageListQuery | null,
+  codes: readonly string[],
+): (number | undefined)[] => {
+  const { client } = useApiClient();
+  const results = useQueries({
+    queries: codes.map((code) => {
+      const scoped =
+        query === null
+          ? null
+          : {
+              ...query,
+              page: undefined,
+              size: 1,
+              directionCode: (code === '' ? undefined : code) as MessageListQuery['directionCode'],
+            };
+
+      return {
+        queryKey: [...messageKeys.all, 'direction-count', scoped] as const,
+        enabled: scoped !== null,
+        queryFn: () => {
+          if (scoped === null) throw new Error('기간을 정하기 전에는 세지 않습니다.');
+
+          return fetchMessageList(client, scoped).then((result) => result.page.total);
+        },
+      };
+    }),
+  });
+
+  return results.map((result) => result.data);
 };
 
 export interface FilterOptionsResult {

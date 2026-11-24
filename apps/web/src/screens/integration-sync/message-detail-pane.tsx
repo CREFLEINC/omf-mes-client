@@ -40,7 +40,7 @@ const isScheduled = (value: string | null | undefined, now: Date): boolean => {
 const toItems = (view: MessageDetailView, now: Date): DetailItem[] => {
   const availableAt = formatDateTime(view.availableAt);
   const items: DetailItem[] = [
-    { label: t.detail.retryCount, value: String(view.retryCount) },
+    { label: t.detail.retryCount, value: t.table.retryTimes(view.retryCount) },
     { label: t.table.createdAt, value: orEmptyMark(formatDateTime(view.createdAt)) },
     { label: t.detail.sentAt, value: orEmptyMark(formatDateTime(view.sentAt)) },
     { label: t.detail.completedAt, value: orEmptyMark(formatDateTime(view.completedAt)) },

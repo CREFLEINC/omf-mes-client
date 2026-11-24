@@ -110,8 +110,12 @@ const renderScreen = (
   return { requests, user: userEvent.setup() };
 };
 
+/** 위 줄 연동 방향 라벨의 건수 조회(`size=1`) — 목록 · 선택지 조회와 따로 센다(#358). */
+const isDirectionCount = (request: RecordedRequest): boolean =>
+  request.url.searchParams.get('size') === '1';
+
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
-  requests.filter((request) => request.url.pathname === pathname);
+  requests.filter((request) => request.url.pathname === pathname && !isDirectionCount(request));
 
 /** 목록과 선택지가 같은 경로를 쓴다. 조건이 실렸는지로 가른다. */
 const NARROWING_KEYS = ['statusCode', 'interfaceCode', 'directionCode', 'retryCountMin', 'page'];
@@ -270,7 +274,7 @@ describe('IntegrationSyncScreen — 목록 표시', () => {
     // 첫 칸은 디자인 시스템이 렌더하는 선택 열이라 머리글 글자가 없다.
     expect(headers).toEqual([
       '',
-      '송수신',
+      '연동 방향',
       '연동 항목',
       '문서 번호',
       '상태',
@@ -444,7 +448,7 @@ describe('IntegrationSyncScreen — 조건으로 좁히기', () => {
     /* 보이는 칸(상태)의 조건은 칩이 없다 — 접힌 구분만 칩이다(C-6). */
     expect(screen.queryByRole('button', { name: '상태 조건 제거' })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '송수신 조건 제거' }));
+    await user.click(screen.getByRole('button', { name: '연동 방향 조건 제거' }));
 
     expect(currentLocation()).not.toContain('dir=');
     expect(currentLocation()).toContain('status=FAILED');
@@ -637,6 +641,26 @@ describe('IntegrationSyncScreen — 상세', () => {
     await screen.findByText('SAMPLE-KEY-0001');
 
     expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(0);
+  });
+
+  it('위 줄 연동 방향 라벨을 누르면 그 방향으로 거르고, 「전체」는 거르기를 푼다(#358)', async () => {
+    const { requests, user } = renderScreen([listRoute(), detailRoute()], PERIOD);
+    const group = await screen.findByRole('group', { name: '연동 방향으로 거르기' });
+
+    await user.click(await within(group).findByText(/^송신 \(MES → ERP\)/));
+
+    expect(currentLocation()).toContain('dir=OUTBOUND');
+    await waitFor(() => {
+      expect(
+        requestsTo(requests, LIST_PATH).some(
+          (request) => request.url.searchParams.get('directionCode') === 'OUTBOUND',
+        ),
+      ).toBe(true);
+    });
+
+    await user.click(within(group).getByText(/^전체/));
+
+    expect(currentLocation()).not.toContain('dir=');
   });
 
   it('고르기 전에는 상세 창이 뜨지 않는다 — 오른쪽 상세 구획도 없다(#358)', async () => {
@@ -1183,7 +1207,11 @@ describe('IntegrationSyncScreen — 선택의 수명', () => {
 
     return {
       match: (request) => isGet(request, LIST_PATH),
-      respond: () => {
+      respond: (request) => {
+        // 위 줄 연동 방향 라벨의 건수 조회는 세지 않는다(#358).
+        if (new URL(request.url).searchParams.get('size') === '1') {
+          return jsonResponse(listBody(messageRowFixtures));
+        }
         calls += 1;
         // 두 번째 조회부터 첫 행이 사라진다 — 워커가 그 사이에 처리했다는 뜻이다.
         const items = calls === 1 ? messageRowFixtures : messageRowFixtures.slice(1);
@@ -1281,7 +1309,7 @@ describe('IntegrationSyncScreen — 선택칸 폭', () => {
     renderScreen([listRoute()], PERIOD);
     await screen.findByText('SAMPLE-KEY-0001');
 
-    for (const label of ['송수신 선택', '연동 항목 선택', '상태 선택']) {
+    for (const label of ['연동 방향 선택', '연동 항목 선택', '상태 선택']) {
       expect(screen.getByLabelText(label).closest('.field-cell')).toHaveClass('wide-select');
     }
   });
@@ -1458,6 +1486,8 @@ describe('IntegrationSyncScreen — 조회를 기다리는 동안의 선택', ()
 
     const stub = createStubFetch([listRoute()]);
     const fetch: StubFetch = async (request) => {
+      // 위 줄 연동 방향 라벨의 건수 조회는 세지도 붙잡지도 않는다(#358).
+      if (new URL(request.url).searchParams.get('size') === '1') return stub(request);
       calls += 1;
       // 두 번째 조회부터 붙잡아 둔다 — 결과를 기다리는 순간을 관찰할 수 있게 한다.
       if (calls > 1) await gate;

@@ -80,7 +80,7 @@ describe('MessageTable', () => {
     renderTable({ rows: [messageRow({ retryCount: 0 })] });
 
     const row = screen.getAllByRole('row')[1] as HTMLElement;
-    expect(within(row).getByText('0')).toBeInTheDocument();
+    expect(within(row).getByText('0회')).toBeInTheDocument();
   });
 
   it('정렬 가능한 머리글을 두지 않는다 — 계약에 정렬 파라미터가 없다', () => {

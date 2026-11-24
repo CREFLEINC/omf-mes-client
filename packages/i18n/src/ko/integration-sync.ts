@@ -29,8 +29,8 @@ export const integrationSync = {
    */
   labels: {
     directions: {
-      INBOUND: '수신',
-      OUTBOUND: '송신',
+      INBOUND: '수신 (ERP → MES)',
+      OUTBOUND: '송신 (MES → ERP)',
     } as Readonly<Record<string, string>>,
     statuses: {
       PENDING: '대기',
@@ -57,7 +57,7 @@ export const integrationSync = {
     periodTo: '발생일 종료',
     status: '상태 선택',
     interfaceCode: '연동 항목 선택',
-    direction: '송수신 선택',
+    direction: '연동 방향 선택',
     retryMin: '재시도 횟수(이상)',
   },
   actions: {
@@ -116,7 +116,7 @@ export const integrationSync = {
   },
   /** 목록 표의 머리글. 열 구성의 근거는 screens/integration-sync/message-table.tsx에 있다. */
   table: {
-    direction: '송수신',
+    direction: '연동 방향',
     interfaceCode: '연동 항목',
     /** 메시지 키에서 연계 코드를 뗀 번호(송신은 입고 번호 같은 업무 번호, 수신은 ERP 전송 순번). */
     messageKey: '문서 번호',
@@ -125,6 +125,11 @@ export const integrationSync = {
     createdAt: '발생일시',
     lastErrorMessage: '오류 내용',
     retry: '재처리',
+    /** 재시도 횟수 값 — 「0회」(#358). */
+    retryTimes: (count: number): string => `${String(count)}회`,
+    /** 위 줄 연동 방향 라벨 묶음 — 누르면 그 방향으로 거른다(#358). */
+    directionChips: '연동 방향으로 거르기',
+    directionAll: '전체',
   },
   /** 비활성 사유는 그 컨트롤의 이름으로 시작한다. */
   reasons: {
@@ -171,11 +176,11 @@ export const integrationSync = {
     all: '전체',
     chipStatus: (value: string): string => `상태: ${value}`,
     chipInterface: (value: string): string => `연동 항목: ${value}`,
-    chipDirection: (value: string): string => `송수신: ${value}`,
+    chipDirection: (value: string): string => `연동 방향: ${value}`,
     chipRetryMin: (value: string): string => `재시도 ${value}회 이상`,
     chipRemoveStatus: '상태 조건 제거',
     chipRemoveInterface: '연동 항목 조건 제거',
-    chipRemoveDirection: '송수신 조건 제거',
+    chipRemoveDirection: '연동 방향 조건 제거',
     chipRemoveRetryMin: '재시도 횟수 조건 제거',
   },
   /**

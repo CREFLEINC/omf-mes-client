@@ -7,6 +7,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
 import { ErpSendChips } from '../erp-outbound/send-chips';
+import { DirectionChips } from './direction-chips';
 import { toBatchResultView, type BatchResultView, type RequestedMessage } from './batch-result';
 import { BatchRetryDialog } from './batch-retry-dialog';
 import {
@@ -356,6 +357,14 @@ export const IntegrationSyncScreen = () => {
        * (사용자 지시 2026-11-24). 탭 막대 오른쪽의 송신 대기 · 실패 칩(누르면 ERP 송신 탭)은 그대로.
        */}
       <ErpSendChips linkToTab />
+      {/* 위 줄 연동 방향 라벨 — 누르면 그 방향으로 거른다(조회 상자의 「연동 방향 선택」과 같은 조건 · #358). */}
+      <DirectionChips
+        query={periodQuery === null ? null : { ...periodQuery, ...toFilterQuery(filters) }}
+        value={filters.direction}
+        onChange={(code) => {
+          applyQuery(period, { ...filters, direction: code });
+        }}
+      />
       <div className="integration-sync-workspace">
         <section className="pane po-board-filter list-detail-filter" aria-label={t.panes.filter}>
           <MessageFilterBar

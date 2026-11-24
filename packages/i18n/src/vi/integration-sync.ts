@@ -21,8 +21,8 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
   listExpand: 'Mở danh sách',
   labels: {
     directions: {
-      INBOUND: 'Nhận',
-      OUTBOUND: 'Gửi',
+      INBOUND: 'Nhận (ERP → MES)',
+      OUTBOUND: 'Gửi (MES → ERP)',
     },
     statuses: {
       PENDING: 'Chờ',
@@ -49,7 +49,7 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     periodTo: 'Ngày phát sinh đến',
     status: 'Chọn trạng thái',
     interfaceCode: 'Chọn hạng mục liên kết',
-    direction: 'Chọn gửi/nhận',
+    direction: 'Chọn hướng liên kết',
     retryMin: 'Số lần thử lại (từ)',
   },
   actions: {
@@ -98,7 +98,7 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
   },
   /** 목록 표의 머리글. 열 구성의 근거는 screens/integration-sync/message-table.tsx에 있다. */
   table: {
-    direction: 'Gửi/nhận',
+    direction: 'Hướng liên kết',
     interfaceCode: 'Hạng mục liên kết',
     messageKey: 'Số chứng từ',
     status: 'Trạng thái',
@@ -106,6 +106,9 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     createdAt: 'Thời điểm phát sinh',
     lastErrorMessage: 'Nội dung lỗi',
     retry: 'Xử lý lại',
+    retryTimes: (count: number): string => `${String(count)} lần`,
+    directionChips: 'Lọc theo hướng liên kết',
+    directionAll: 'Tất cả',
   },
   /** 비활성 사유는 그 컨트롤의 이름으로 시작한다. */
   reasons: {
@@ -141,11 +144,11 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     all: 'Tất cả',
     chipStatus: (value: string): string => `Trạng thái: ${value}`,
     chipInterface: (value: string): string => `Hạng mục liên kết: ${value}`,
-    chipDirection: (value: string): string => `Gửi/nhận: ${value}`,
+    chipDirection: (value: string): string => `Hướng liên kết: ${value}`,
     chipRetryMin: (value: string): string => `Thử lại từ ${value} lần`,
     chipRemoveStatus: 'Bỏ điều kiện trạng thái',
     chipRemoveInterface: 'Bỏ điều kiện hạng mục liên kết',
-    chipRemoveDirection: 'Bỏ điều kiện gửi/nhận',
+    chipRemoveDirection: 'Bỏ điều kiện hướng liên kết',
     chipRemoveRetryMin: 'Bỏ điều kiện số lần thử lại',
   },
   /** 쪽 이동. 번호 목록을 두지 않는다 — 조건을 좁히는 것이 정상 경로다. */
