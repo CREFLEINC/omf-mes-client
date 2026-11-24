@@ -12341,8 +12341,10 @@ a.erp-send-chips:focus-visible {
   flex-direction: column;
   gap: var(--space-3);
   min-width: 0;
-  max-height: calc(100dvh - 20rem);
-  min-height: 18rem;
+  /* 창 바닥에서 멈춘다 — `--split-top` 은 목록 | 상세 구획의 창 안 윗변(useFitToViewport · #358). */
+  max-height: max(12rem, calc(100dvh - var(--split-top, 20rem) - var(--space-6)));
+  min-height: 12rem;
+  overflow: hidden;
 }
 
 .users-roles-list-body {
@@ -12350,6 +12352,8 @@ a.erp-send-chips:focus-visible {
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
+  /* 줄이 넘치면 이 안에서 구른다 — 쪽 넘김이 칸 밖으로 밀리지 않는다(#358). */
+  overflow: auto;
 }
 
 .users-roles-list-body > .users-roles-list {
@@ -38811,6 +38815,28 @@ body:has(
   overflow: auto;
 }
 
+/*
+ * 쪽 넘김은 늘 보인다(사용자 지시 2026-11-24 · #358 — 창 크기를 따른다). 목록 상자 안에서 줄이 넘쳐 구를 때도
+ * 쪽 넘김은 상자 바닥에 붙어 있다.
+ */
+.list-detail-split > .list-detail-list > .page-nav {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  flex: 0 0 auto;
+  margin-top: auto;
+  padding-top: var(--space-2);
+  background: var(--surface-container-low, var(--surface));
+}
+
+/* 좁은 창(위아래로 쌓임) — 목록 상자가 창 높이를 넘지 않게 해 쪽 넘김이 화면 밖으로 밀리지 않는다. */
+@media (max-width: 1439.98px) {
+  .list-detail-split > .list-detail-list {
+    box-sizing: border-box;
+    max-height: max(12rem, calc(100dvh - var(--split-top, 20rem) - var(--space-6)));
+  }
+}
+
 .list-detail-split > .list-detail-detail.is-bare {
   display: flex;
   flex-direction: column;
@@ -39454,9 +39480,10 @@ body:has(
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  box-sizing: border-box;
+  /* 창 바닥까지 채운다 — 다른 시스템 관리 화면과 같은 아래 여백(`--split-top` · useFitToViewport · #358). */
+  height: max(12rem, calc(100dvh - var(--split-top, 15rem) - var(--space-6)));
   min-width: 0;
-  min-height: 18rem;
-  max-height: calc(100dvh - 15rem);
   margin: 0;
 }
 
@@ -39486,9 +39513,25 @@ body:has(
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  box-sizing: border-box;
+  /* 창 바닥에서 멈춘다(창 크기를 따른다) — `--split-top` 은 이 상자의 창 안 윗변(useFitToViewport). */
+  height: calc(100dvh - var(--split-top, 20rem) - var(--space-6));
   min-width: 0;
   min-height: 18rem;
   margin: 0;
+  overflow: hidden;
+}
+
+/* 표만 안에서 구르고(머리줄 고정) 쪽 넘김은 상자 바닥에 남는다. */
+.integration-sync-list > .erp-link-list-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.integration-sync-list > .page-nav {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
 }
 
 /* 목록 제목 줄 오른쪽 — 선택 건수 · [일괄 재처리]. */
@@ -39534,4 +39577,40 @@ body:has(
 .iqc-inbound-facts.integration-sync-facts > .integration-sync-fact-wide > dd {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/*
+ * 시스템 관리 · ERP 받은 데이터 화면(#358)의 목록은 머리글 · 칸을 모두 가운데 정렬한다(사용자 지시 2026-11-24).
+ * 다른 메뉴가 같이 쓰는 목록 · 상세 틀은 건드리지 않도록 이 화면들의 목록 자리만 고른다.
+ */
+:is(
+    .integration-sync-workspace,
+    .users-roles-workspace,
+    .plant-working-days-workspace,
+    .list-detail-list:has(> .erp-link-list-body),
+    .approval-route-list,
+    .notify-list-table,
+    .erp-data-list,
+    .common-code-tab-panel .list-detail-list
+  )
+  table
+  :is(th, td) {
+  text-align: center;
+}
+
+:is(
+    .integration-sync-workspace,
+    .users-roles-workspace,
+    .plant-working-days-workspace,
+    .list-detail-list:has(> .erp-link-list-body),
+    .approval-route-list,
+    .notify-list-table,
+    .erp-data-list,
+    .common-code-tab-panel .list-detail-list
+  )
+  table
+  :is(th, td)
+  > :is(div, span, button) {
+  justify-content: center;
+  text-align: center;
 }

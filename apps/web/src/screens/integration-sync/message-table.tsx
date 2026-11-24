@@ -70,8 +70,8 @@ export const MessageTable = ({
       key: 'directionCode',
       header: t.table.direction,
       align: 'center',
-      /* 「수신 (ERP → MES)」가 한 줄에 들어가는 폭(#358). */
-      width: '148px',
+      /* 「송수신 구분」 머리글이 잘리지 않는 폭(#358). */
+      width: '120px',
       render: (row) => directionName(row.directionCode),
     },
     {

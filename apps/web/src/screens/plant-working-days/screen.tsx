@@ -27,6 +27,7 @@ import {
 import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
+import { useFitToViewport } from '../../patterns/po-board';
 import { useSession } from '../../patterns/session';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { LeaveGuard } from '../routing/leave-guard';
@@ -109,6 +110,7 @@ export const PlantWorkingDaysScreen = () => {
     return edit !== undefined && (row.isDefault || edit !== row.saved);
   };
   const isDirty = rows.some(isChanged);
+  const { splitRef, aboveRef } = useFitToViewport();
 
   const choose = (row: Row, days: WeeklyWorkingDays): void => {
     save.reset();
@@ -280,7 +282,11 @@ export const PlantWorkingDaysScreen = () => {
        * 머리글(경로 · 화면 이름)은 두지 않는다 — 사이드바가 위치를 말한다(단말 관리와 같은 틀 · #358).
        * 사용자 지시: 상세 상자가 없다 — 조회 조건 상자 + 목록 상자 하나. 나눌 상세가 없어 배치 단추 · 목록 접기도 두지 않는다.
        */}
-      <section className="pane po-board-filter list-detail-filter" aria-label={w.filter}>
+      <section
+        ref={aboveRef}
+        className="pane po-board-filter list-detail-filter"
+        aria-label={w.filter}
+      >
         <div className="filter-bar notify-filter-row">
           <SearchInput
             containerClassName={`notify-search-input ${FIT_PLACEHOLDER_CLASS}`}
@@ -310,7 +316,8 @@ export const PlantWorkingDaysScreen = () => {
         </div>
       </section>
 
-      <section className="pane plant-working-days-pane" aria-label={w.list}>
+      {/* 목록 상자는 창 바닥까지 — 다른 시스템 관리 화면과 같은 아래 여백(#358). */}
+      <section ref={splitRef} className="pane plant-working-days-pane" aria-label={w.list}>
         {/*
          * 제목 줄 「공장 목록 N건」 — 주간 근무일이 무엇을 세는 값인지는 제목 옆 ⓘ(관리웹 정리 시안 A).
          * 되돌리기 · 저장은 제목 줄 오른쪽 끝(저장 범위 · 동작은 종전과 같다: 바뀐 공장 전부).

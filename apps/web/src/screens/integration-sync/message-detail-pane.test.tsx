@@ -41,8 +41,8 @@ describe('MessageDetailPane — 항목', () => {
       }),
     });
 
-    // 배지 · 처리 중 보조 줄, 정보 상자 첫 칸에 연동 항목과 연동 방향(#358). 문서 번호는 창 제목이 단다.
-    expect(fieldValue('연동 항목')).toBe('IF-SAMPLE-A수신 (ERP → MES)');
+    // 배지 · 처리 중 보조 줄, 정보 상자 첫 칸에 연동 항목과 송수신 구분(#358). 문서 번호는 창 제목이 단다.
+    expect(fieldValue('연동 항목')).toBe('IF-SAMPLE-A수신');
     expect(screen.getByText('2026-08-04 09:20부터 처리 중')).toBeInTheDocument();
     expect(fieldValue('전송 일시')).toBe('2026-08-04 07:13');
     expect(fieldValue('완료 일시')).toBe('2026-08-04 07:15');

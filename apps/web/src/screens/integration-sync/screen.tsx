@@ -1,11 +1,12 @@
 import { Button, Dialog, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
+import { useFitToViewport } from '../../patterns/po-board';
 import { ErpSendChips } from '../erp-outbound/send-chips';
 import { DirectionChips } from './direction-chips';
 import { toBatchResultView, type BatchResultView, type RequestedMessage } from './batch-result';
@@ -204,6 +205,30 @@ export const IntegrationSyncScreen = () => {
   };
 
   const detail = useMessageDetail(selectedId);
+  const { splitRef, aboveRef } = useFitToViewport();
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  /*
+   * 목록 상자의 창 안 윗변을 화면 전체 크기가 바뀔 때마다 다시 잰다(공용 목록 · 상세 틀과 같다 · #358). 조회 상자 위쪽
+   * (탭 줄 라벨 등)이 나중에 자리를 잡으면 윗변만 움직이고 조회 상자 크기는 그대로라, 재지 않으면 바닥에 빈 띠가 남는다.
+   */
+  useLayoutEffect(() => {
+    const root = workspaceRef.current;
+    const listEl = splitRef.current;
+    if (root === null || listEl === null || typeof ResizeObserver === 'undefined') return;
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        listEl.style.setProperty('--split-top', `${String(listEl.getBoundingClientRect().top)}px`);
+      });
+    });
+    observer.observe(root);
+    observer.observe(document.documentElement);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [splitRef]);
 
   /*
    * 상세를 여는 것은 **보이는 행을 바꾸지 않는다** — 선택(체크)을 건드리지 않는다. 상세는 창으로 뜬다(#358).
@@ -357,7 +382,7 @@ export const IntegrationSyncScreen = () => {
        * (사용자 지시 2026-11-24). 탭 막대 오른쪽의 송신 대기 · 실패 칩(누르면 ERP 송신 탭)은 그대로.
        */}
       <ErpSendChips linkToTab />
-      {/* 위 줄 연동 방향 라벨 — 누르면 그 방향으로 거른다(조회 상자의 「연동 방향 선택」과 같은 조건 · #358). */}
+      {/* 위 줄 송수신 구분 라벨 — 누르면 그 구분으로 거른다(조회 상자의 「송수신 구분 선택」과 같은 조건 · #358). */}
       <DirectionChips
         query={periodQuery === null ? null : { ...periodQuery, ...toFilterQuery(filters) }}
         value={filters.direction}
@@ -365,8 +390,12 @@ export const IntegrationSyncScreen = () => {
           applyQuery(period, { ...filters, direction: code });
         }}
       />
-      <div className="integration-sync-workspace">
-        <section className="pane po-board-filter list-detail-filter" aria-label={t.panes.filter}>
+      <div ref={workspaceRef} className="integration-sync-workspace">
+        <section
+          ref={aboveRef}
+          className="pane po-board-filter list-detail-filter"
+          aria-label={t.panes.filter}
+        >
           <MessageFilterBar
             appliedPeriod={period}
             appliedFilters={filters}
@@ -400,7 +429,8 @@ export const IntegrationSyncScreen = () => {
           />
         </section>
 
-        <section className="pane integration-sync-list" aria-label={t.panes.list}>
+        {/* 목록 상자는 창 바닥에서 멈춘다 — 표만 안에서 구르고 쪽 넘김은 늘 보인다(창 크기를 따른다 · #358). */}
+        <section ref={splitRef} className="pane integration-sync-list" aria-label={t.panes.list}>
           {/* 제목 줄 「연동 이력 목록 N건 … 선택 N건 · [일괄 재처리]」. 고른 건이 없으면 단추만 잠근다. */}
           <div className="po-board-list-head">
             <h2 className="pane-title">{t.panes.list}</h2>
