@@ -6,7 +6,6 @@ import { ItemSelect } from '../../patterns/item-select';
 
 import { INSPECTION_TYPE_OPTIONS, ensureOption } from './code-options';
 import { FieldLabel } from './field-label';
-import { formatApprovedAt } from './plan-mappers';
 import { resolveVersionStatus } from './plan-version-status';
 import type { RoutingRevision } from './queries';
 import { SelectField } from './select-field';
@@ -67,6 +66,8 @@ export interface PlanPaneProps {
   sheetFields?: ReactNode;
   /** 고른 품목 전체 — 검사표 기준 칸이 품목 이름을 들고 간다(#260). */
   onItemChange?: (item: { itemId: number; itemCode: string; itemName: string }) => void;
+  /** 「기본 정보 수정」 창의 IQC 기준에만 — 라우팅 다음 「검사 수준」 칸(omf-all-around#357). */
+  levelField?: ReactNode;
 }
 
 /**
@@ -103,6 +104,7 @@ export const PlanPane = ({
   embedded = false,
   sheetFields,
   onItemChange,
+  levelField,
 }: PlanPaneProps) => {
   const isSheet = sheetFields !== undefined;
   const codeId = useId();
@@ -151,7 +153,6 @@ export const PlanPane = ({
     if (values.routingId !== next) refresh(next);
   }, [values.itemId, values.routingId, autoRoutingId, onChange, onRoutingRefresh]);
 
-  const approvedAt = formatApprovedAt(plan?.approvedAt);
   /* 바꿀 수 없는 칸에는 필수 표시를 두지 않는다 — 고칠 수 없는 칸에 「꼭 채우라」는 뜻이 없다(사용자 지시 · #196). */
   const isCodeLocked = codeLockReason !== null;
 
@@ -171,9 +172,6 @@ export const PlanPane = ({
           </h2>
           {mode === 'edit' && plan !== null && (
             <div className="inspection-standard-plan-chips">
-              <Chip variant="status" status={approvedAt === null ? 'warning' : 'success'}>
-                {approvedAt === null ? t.detail.chipNotApproved : t.values.approvedAt(approvedAt)}
-              </Chip>
               <Chip variant="status" status={plan.isActive ? 'success' : 'idle'}>
                 {plan.isActive ? t.detail.chipActive : t.detail.chipInactive}
               </Chip>
@@ -185,7 +183,8 @@ export const PlanPane = ({
       {optionsNotice}
       {banner}
 
-      <div className="form-grid">
+      {/* 기본 정보 수정 창은 왼쪽 칸(검사 유형 · 검사 수준)을 좁히고 오른쪽(품목 · 변경 사유)을 넓힌다 — 검사 유형 공통(사용자 지시 · #357). */}
+      <div className={`form-grid${mode === 'edit' ? ' inspection-standard-plan-form-edit' : ''}`}>
         {/*
          * 필수 표시는 디자인 시스템 내장 라벨에 끼울 자리가 없어 라벨을 직접 붙인다(배치 규범 3).
          * 검증이 필수로 막는 칸에 표시가 없으면 저장을 눌러야 필수임을 알게 된다.
@@ -283,7 +282,7 @@ export const PlanPane = ({
          * 고르는 칸이 아니라 자동으로 채운 Rev 를 글자로만 보인다(사용자 지시 2026-11-04).
          */}
         {isRoutingShown && (
-          <div className="field-cell">
+          <div className="field-cell inspection-standard-plan-routing-cell">
             <span className="field-label" id={routingId}>
               {t.fields.routing}
             </span>
@@ -296,6 +295,9 @@ export const PlanPane = ({
             )}
           </div>
         )}
+
+        {/* 검사 수준(IQC · 품목 있음) — 품목에 딸린 값이라 품목 · 라우팅 다음(omf-all-around#357). */}
+        {levelField}
 
         {isSheet && <div className="inspection-standard-sheet-fields">{sheetFields}</div>}
       </div>

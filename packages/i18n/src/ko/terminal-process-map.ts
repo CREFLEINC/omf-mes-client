@@ -83,8 +83,6 @@ export const terminalProcessMap = {
     warehouse: '창고',
     warehouseAll: '공장 전체',
     register: '등록',
-    /** 창고 칸 이름 오른쪽 안내 라벨(사용자 시안 2026-11-20 · #333). */
-    warehouseScope: '작업 목록과 남은 작업 수는 선택한 창고 기준으로 표시됩니다.',
     optionalMark: '(선택)',
     save: '저장',
     saving: '저장하는 중입니다.',
@@ -92,6 +90,8 @@ export const terminalProcessMap = {
     registered: '등록했습니다.',
     cancel: '취소',
     deactivate: '사용 중지',
+    /** 수정 창 단추 — 운영 상태 「중지」와 헷갈리지 않게 하는 일을 붙인다(사용자 결정 2026-11-24). */
+    deactivateAction: '사용 중지 (기기 접속 차단)',
     deactivated: '단말 사용을 중지했습니다. 기존 작업 기록은 유지됩니다.',
     activate: '사용 재개',
     activated: '단말 사용을 재개했습니다.',
@@ -109,6 +109,39 @@ export const terminalProcessMap = {
     plantLookupFailed: '공장 목록을 불러오지 못해 지금은 고를 수 없습니다.',
     lookupTruncated: '목록의 일부만 보입니다. 찾는 것이 없으면 담당자에게 문의하세요.',
     selectPlaceholder: '고르세요',
+    /** 단말 코드 칸 라벨 옆 — 유형을 고르면 화면이 채운 값이다. 고칠 수 있다. */
+    /** 단말 추가 첫 단계 바닥글 왼쪽(코드 칸 옆에서 옮겼다). */
+    codeLockedFooter: '단말 코드는 등록 후 변경할 수 없습니다.',
+    /** 유형 카드 — 자주 쓰지 않는 유형(추적 시스템 연동 등)을 펼친다. */
+    moreTypes: '더보기',
+    autoMark: '자동',
+    /** 칸을 고를 수 없을 때 칸 안에 보이는 사유(칸은 처음부터 자리를 지킨다). */
+    warehouseNeedsPlant: '공장 먼저 선택',
+    equipmentPopOnly: 'POP 단말만',
+    codeNeedsType: '유형을 고르면 채워짐',
+    /** 유형 카드의 한 줄 설명 — 공통코드에 없는 유형은 설명 없이 이름만. */
+    typeHints: { POP: '작업장 단말', MOBILE: '창고 휴대 단말' } as Record<string, string>,
+  },
+
+  /** 단말 추가 단계 — 단말 정보 → 공정 기능(POP만) → 기기 연결. */
+  wizard: {
+    stepsLabel: '등록 단계',
+    stepInfo: '단말 정보',
+    stepProcesses: '공정 기능',
+    stepConnect: '기기 연결',
+    /** 창고에서 쓰는 단말은 공정이 뜻이 없다 — 공정 기능 단계 옆에 붙여 건너뜀을 알린다. */
+    popOnly: '(POP만)',
+    next: '다음',
+    back: '이전',
+    skip: '건너뛰기',
+    register: '등록',
+    retry: '다시 시도',
+    done: '완료',
+    saving: '등록하는 중입니다.',
+    summary: (code: string, count: number): string => `${code} · 공정 ${String(count)}개`,
+    registered: (code: string): string => `${code} 단말을 등록했습니다.`,
+    /** 단말은 만들었고 공정 저장이나 토큰 발급에서 멈췄다 — [다시 시도]는 남은 단계만 한다. */
+    unfinished: '단말은 등록했지만 남은 단계를 마치지 못했습니다. 다시 시도해 주세요.',
   },
 
   token: {

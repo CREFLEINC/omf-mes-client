@@ -106,8 +106,9 @@ const renderScreen = (
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
   requests.filter((request) => request.url.pathname === pathname);
 
+/* 사용 여부 칩 건수 조회(`size=1`)는 빼고 목록 요청만 센다 — 칩은 탭 막대 없이도 늘 건수를 센다(omf-all-around#357). */
 const planRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
-  requestsTo(requests, PLANS_PATH);
+  requestsTo(requests, PLANS_PATH).filter((r) => r.url.searchParams.get('size') !== '1');
 
 const planPane = (): HTMLElement => screen.getByRole('region', { name: '검사 기준' });
 
@@ -132,6 +133,20 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
     const first = planRequests(requests);
     expect(first).toHaveLength(1);
     expect(first[0]?.url.search).toBe('');
+  });
+
+  it('사용 여부 칩에 건수가 붙는다 — 탭 막대가 없어도 센다(omf-all-around#357)', async () => {
+    renderScreen([planListRoute()]);
+
+    const chips = await screen.findByRole('group', {
+      name: messages.inspectionStandard.filters.usageLabel,
+    });
+    const total = String(inspectionPlanFixtures.length);
+    await waitFor(() => {
+      expect(
+        within(chips).getByRole('button', { pressed: false, name: new RegExp(`^전체.*${total}`) }),
+      ).toBeInTheDocument();
+    });
   });
 
   it('서버 응답의 기준을 표에 그린다', async () => {
@@ -181,19 +196,13 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
     expect(await screen.findByRole('button', { name: 'SYN-PLAN-01' })).toBeInTheDocument();
   });
 
-  /* 「미승인」은 서버 조건이 없어 화면이 거른다(#208) — 승인된 SYN-PLAN-03 은 빠진다. */
-  it('미승인을 켜면 승인되지 않은 기준만 남는다', async () => {
-    const { user } = renderScreen([planListRoute()], '?inactive=1');
-    await screen.findByRole('button', { name: 'SYN-PLAN-03' });
+  /* 승인 기능을 걷었다(omf-all-around#357) — 예전 주소의 `unapproved=1` 은 아무것도 거르지 않는다. */
+  it('예전 주소의 미승인 조건은 무시하고 승인된 기준도 보인다', async () => {
+    renderScreen([planListRoute()], '?inactive=1&unapproved=1');
 
-    /* 미승인은 「조건 더보기」 안에 접혀 있다(C-6). */
-    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
-    await user.click(screen.getByRole('checkbox', { name: '미승인' }));
-
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'SYN-PLAN-03' })).not.toBeInTheDocument();
-    });
+    expect(await screen.findByRole('button', { name: 'SYN-PLAN-03' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'SYN-PLAN-01' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '미승인 조건 제거' })).not.toBeInTheDocument();
   });
 
   /* 사용 여부 칩 「미사용」(#208) — 미사용인 기준만 남는다. 주소 `usage=off` 로 들어온다. */
@@ -206,20 +215,13 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
   });
 
   it('조회 조건은 주소에 남는다 — 새로고침·공유가 같은 결과를 낸다', async () => {
-    const { requests, user } = renderScreen(
-      [planListRoute()],
-      '?q=SYN&type=OQC&inactive=1&unapproved=1',
-    );
+    const { requests } = renderScreen([planListRoute()], '?q=SYN&type=OQC&inactive=1');
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
 
     const first = planRequests(requests)[0];
     expect(first?.url.searchParams.get('q')).toBe('SYN');
     expect(first?.url.searchParams.get('inspectionTypeCode')).toBe('OQC');
     expect(first?.url.searchParams.get('includeInactive')).toBe('true');
-    /* 접힌 미승인 조건은 칩으로 알리고, 펼치면 칸에 그대로 보인다(C-6). */
-    expect(screen.getByRole('button', { name: '미승인 조건 제거' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
-    expect(screen.getByRole('checkbox', { name: '미승인' })).toBeChecked();
   });
 
   it('접힌 상태 조건 칩의 ×가 그 조건만 풀고 다시 조회한다', async () => {
@@ -1587,7 +1589,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
 const DEACTIVATE_PATH = `${PLANS_PATH}/3001:deactivate`;
 
 const planActionRoute = (
-  action: 'deactivate' | 'activate' | 'approve',
+  action: 'deactivate' | 'activate',
   respond: StubRoute['respond'] = () => jsonResponse(inspectionPlanFixtures[0]),
 ): StubRoute => ({
   match: (request) =>
@@ -1615,33 +1617,14 @@ const dialog = async (): Promise<HTMLElement> =>
     return first;
   });
 
-/* 승인은 상세 머리에만 둔다 — #208 에서 걷었다가 되살렸다(사용자 지시 · omf-all-around#258). */
-describe('InspectionStandardScreen — 기준 승인', () => {
-  it('미승인 기준은 상세 머리에 승인이 서고, 확인하면 If-Match 없이 보낸다', async () => {
-    const { requests, user } = renderSelectedPlan([planActionRoute('approve')]);
-
-    await user.click(await screen.findByRole('button', { name: '승인' }));
-    expect(screen.getByText(t.dialog.approveTitle)).toBeInTheDocument();
-    expect(requestsTo(requests, `${PLANS_PATH}/3001:approve`)).toHaveLength(0);
-
-    await user.click(within(await dialog()).getByRole('button', { name: '승인' }));
-    await screen.findByText(t.result.approved);
-
-    const posts = requestsTo(requests, `${PLANS_PATH}/3001:approve`);
-    expect(posts).toHaveLength(1);
-    expect(posts[0]?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
-    expect(posts[0]?.headers.get('If-Match')).toBeNull();
-  });
-
-  /* 승인 해제가 없다 — 승인된 기준에는 단추를 두지 않는다. */
-  it('승인된 기준에는 승인 단추가 없다', async () => {
-    renderScreen(
-      [planListRoute(), planDetailRoute(inspectionPlanFixtures[2]), ...lookupRoutes()],
-      '?plan=3003',
-    );
+/* 승인 기능은 걷었다(사용자 지시 · omf-all-around#357) — 승인해도 검사 동작이 달라지지 않아 쓰임이 없었다. */
+describe('InspectionStandardScreen — 기준 승인(삭제)', () => {
+  it('미승인 기준에도 승인 단추 · 승인 여부 칸이 없다', async () => {
+    renderSelectedPlan();
 
     await screen.findByRole('button', { name: '기본 정보 수정' });
     expect(screen.queryByRole('button', { name: '승인' })).not.toBeInTheDocument();
+    expect(screen.queryByText('승인 여부')).not.toBeInTheDocument();
   });
 
   /* 사용 중지는 창 밖, 상세 상자의 「기본 정보 수정」 옆으로 옮겼다(#208). */
@@ -2971,7 +2954,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
 
     await awaitVersionForm();
     /* 변경 이력은 「버전 이력」 창에서 본다 — 종전 「이력」 탭을 창으로 옮겼다(#258 사용자 지시). */
-    expect(screen.queryByRole('tab', { name: /이력/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: '이력' })).not.toBeInTheDocument();
     await user.click(await screen.findByRole('button', { name: '버전 이력' }));
     const dialog = await screen.findByRole('dialog', { name: /^버전 이력/ });
 
@@ -3972,18 +3955,19 @@ describe('InspectionStandardScreen — 상세 표시 순서(#256)', () => {
     return Array.from(box?.querySelectorAll('dt') ?? []).map((dt) => dt.textContent ?? '');
   };
 
-  /* 승인 · 사용 칩을 이 상자로 옮기고 칸 이름을 「~ 여부」로(사용자 지시 · #258). */
-  it('기준 상세는 검사 유형 · 품목 · 기준명 · 기준코드 · 기본 생략 여부 · 승인 여부 · 사용 여부 순서다', async () => {
+  /* 사용 칩을 이 상자로 옮기고 칸 이름을 「~ 여부」로(사용자 지시 · #258). 승인 여부는 걷었다(#357). */
+  /* IQC 기준은 품목 다음에 품목 검사 수준이 선다(omf-all-around#357). */
+  it('기준 상세는 검사 유형 · 품목 · 검사 수준(IQC) · 기준명 · 기준코드 · 기본 생략 여부 · 사용 여부 순서다', async () => {
     renderSelectedVersion();
     await awaitVersionForm();
 
     expect(labelsIn('.inspection-standard-plan-facts').slice(0, 7)).toEqual([
       t.fields.inspectionType,
       t.fields.item,
+      t.itemLevel.label,
       t.fields.inspectionPlanName,
       t.fields.inspectionPlanCode,
       t.detail.defaultSkipLabel,
-      t.detail.approvalLabel,
       t.detail.activeLabel,
     ]);
   });
@@ -4003,5 +3987,270 @@ describe('InspectionStandardScreen — 상세 표시 순서(#256)', () => {
       t.fields.aqlValue,
       t.versionSection.effectivePeriod,
     ]);
+  });
+});
+
+/* 검사 수준 설정 화면을 합쳤다(omf-all-around#357) — 보기는 상세 칸, 지정 · 변경은 「기본 정보 수정」 창, 이력은 「이력」 창 탭. */
+describe('InspectionStandardScreen — 품목 검사 수준(#357)', () => {
+  const LEVELS = '/quality/item-inspection-levels';
+  const HISTORIES = '/quality/item-inspection-level-histories';
+  const LEVEL = {
+    itemInspectionLevelId: 9,
+    itemId: 5001,
+    itemCode: 'SYN-ITEM-01',
+    itemName: '합성 품목 A',
+    inspectionLevelCode: 'NORMAL',
+    autoSwitchEnabled: false,
+    consecutiveAcceptCount: 0,
+    updatedAt: '2026-11-01T00:00:00Z',
+    versionNo: 3,
+  };
+  const HISTORY_ROW = {
+    itemInspectionLevelHistoryId: 1,
+    itemId: 5001,
+    itemCode: 'SYN-ITEM-01',
+    itemName: '합성 품목 A',
+    fromLevelCode: null,
+    toLevelCode: 'NORMAL',
+    changeTypeCode: 'MANUAL',
+    consecutiveAcceptCount: null,
+    inspectionRequestId: null,
+    inspectionRequestNo: null,
+    reason: '합성 최초 지정',
+    changedAt: '2026-11-01T00:00:00Z',
+    changedByName: '합성 사용자',
+  };
+  const levelRoutes = (levels: object[], histories: object[] = [HISTORY_ROW]): StubRoute[] => [
+    {
+      match: (request) => isGet(request, LEVELS),
+      respond: () =>
+        jsonResponse({ items: levels, page: { page: 1, size: 1, total: levels.length } }),
+    },
+    {
+      match: (request) =>
+        request.method === 'PUT' && new URL(request.url).pathname === `${LEVELS}/9`,
+      respond: () => jsonResponse({ ...LEVEL, inspectionLevelCode: 'TIGHTENED', versionNo: 4 }),
+    },
+    {
+      match: (request) => request.method === 'POST' && new URL(request.url).pathname === LEVELS,
+      respond: () => jsonResponse({ ...LEVEL, versionNo: 1 }, { status: 201 }),
+    },
+    {
+      match: (request) => isGet(request, HISTORIES),
+      respond: () =>
+        jsonResponse({
+          items: histories,
+          page: { page: 1, size: 50, total: histories.length },
+        }),
+    },
+  ];
+  const levelSelect = () => within(planForm()).getByRole('combobox', { name: '검사 수준' });
+
+  it('상세 칸은 수준만 보이고 단추를 두지 않는다', async () => {
+    renderSelectedPlan(levelRoutes([LEVEL]));
+
+    const facts = await waitFor(() => {
+      const box = document.querySelector('.inspection-standard-plan-facts');
+      expect(box).not.toBeNull();
+      return box as HTMLElement;
+    });
+    expect(await within(facts).findByText('보통')).toBeInTheDocument();
+    expect(within(facts).queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  /* 기본 정보와 검사 수준은 한 요청으로 저장한다 — 둘 중 하나만 저장되지 않는다(사용자 지시 · #357). */
+  const levelWrites = (requests: { method: string; url: URL }[]) =>
+    requests.filter(
+      (r) => (r.method === 'PUT' || r.method === 'POST') && r.url.pathname.startsWith(LEVELS),
+    );
+
+  it('수준만 바꿔도 기본 정보 수정 요청 하나에 수준 · 사유를 실어 보내고 창을 닫는다', async () => {
+    const { requests, user } = renderSelectedPlan([planSaveRoute(), ...levelRoutes([LEVEL])]);
+    await awaitPlanForm();
+
+    await user.click(await waitFor(levelSelect));
+    await user.click(screen.getByRole('option', { name: '엄격' }));
+    await user.type(within(planForm()).getByLabelText('변경 사유'), '고객 클레임');
+    await user.click(within(planForm()).getByRole('button', { name: '저장' }));
+
+    await screen.findByText('저장했습니다');
+    const puts = requests.filter((r) => r.method === 'PUT' && r.url.pathname === PLAN_DETAIL_PATH);
+    expect(puts).toHaveLength(1);
+    expect(JSON.parse(puts[0]?.body ?? '{}')).toMatchObject({
+      inspectionLevelCode: 'TIGHTENED',
+      inspectionLevelReason: '고객 클레임',
+      /* 창에서 본 수준의 판 — 그 사이 다른 사람이 바꿨으면 서버가 409 로 막는다. */
+      inspectionLevelVersionNo: 3,
+    });
+    expect(levelWrites(requests)).toHaveLength(0);
+    expect(screen.queryByRole('region', { name: '기준 정보' })).not.toBeInTheDocument();
+  });
+
+  it('기준명과 수준을 함께 바꿔도 요청은 하나다', async () => {
+    const { requests, user } = renderSelectedPlan([planSaveRoute(), ...levelRoutes([LEVEL])]);
+
+    await user.type(await findPlanField('기준명'), 'X');
+    await user.click(await waitFor(levelSelect));
+    await user.click(screen.getByRole('option', { name: '엄격' }));
+    await user.click(within(planForm()).getByRole('button', { name: '저장' }));
+
+    await screen.findByText('저장했습니다');
+    const puts = requests.filter((r) => r.method === 'PUT' && r.url.pathname === PLAN_DETAIL_PATH);
+    expect(puts).toHaveLength(1);
+    expect(JSON.parse(puts[0]?.body ?? '{}')).toMatchObject({ inspectionLevelCode: 'TIGHTENED' });
+    expect(JSON.parse(puts[0]?.body ?? '{}')).not.toHaveProperty('inspectionLevelReason');
+    expect(levelWrites(requests)).toHaveLength(0);
+  });
+
+  it('수준을 그대로 두면 수준 칸을 싣지 않는다', async () => {
+    const { requests, user } = renderSelectedPlan([planSaveRoute(), ...levelRoutes([LEVEL])]);
+
+    await user.type(await findPlanField('기준명'), 'X');
+    await waitFor(levelSelect);
+    await user.click(within(planForm()).getByRole('button', { name: '저장' }));
+
+    await screen.findByText('저장했습니다');
+    const put = requests.find((r) => r.method === 'PUT' && r.url.pathname === PLAN_DETAIL_PATH);
+    expect(JSON.parse(put?.body ?? '{}')).not.toHaveProperty('inspectionLevelCode');
+  });
+
+  it('수준이 없는 품목은 「미지정」에서 골라 지정한다', async () => {
+    const { requests, user } = renderSelectedPlan([planSaveRoute(), ...levelRoutes([])]);
+    await awaitPlanForm();
+
+    await user.click(await waitFor(levelSelect));
+    expect(screen.getByRole('option', { name: '미지정' })).toBeInTheDocument();
+    await user.click(screen.getByRole('option', { name: '수월' }));
+    await user.click(within(planForm()).getByRole('button', { name: '저장' }));
+
+    await screen.findByText('저장했습니다');
+    const put = requests.find((r) => r.method === 'PUT' && r.url.pathname === PLAN_DETAIL_PATH);
+    expect(JSON.parse(put?.body ?? '{}')).toMatchObject({
+      inspectionLevelCode: 'REDUCED',
+      inspectionLevelVersionNo: null,
+    });
+    expect(levelWrites(requests)).toHaveLength(0);
+  });
+
+  it('서버가 수준을 거절하면 창이 열린 채 수준 칸 아래에 알리고 아무것도 저장되지 않는다', async () => {
+    const { user } = renderSelectedPlan([
+      planSaveRoute(() =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'field',
+                field: 'inspectionLevelCode',
+                code: 'INVALID',
+                message: '검사 수준은 품목이 있는 IQC 검사 기준에서만 정할 수 있습니다.',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+      ),
+      ...levelRoutes([LEVEL]),
+    ]);
+    await awaitPlanForm();
+
+    await user.click(await waitFor(levelSelect));
+    await user.click(screen.getByRole('option', { name: '엄격' }));
+    await user.click(within(planForm()).getByRole('button', { name: '저장' }));
+
+    expect(
+      await within(planForm()).findByText(
+        '검사 수준은 품목이 있는 IQC 검사 기준에서만 정할 수 있습니다.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('저장했습니다')).not.toBeInTheDocument();
+  });
+
+  /* 검사 수준은 버전이 아니라 품목(기준 전체)에 걸린다 — 아래 카드를 「버전 관리 · 검사 수준 변경 이력」 탭으로 나눈다(사용자 지시). */
+  it('IQC 기준은 아래 카드가 버전 관리 · 검사 수준 변경 이력 탭이고, 그 탭은 그 품목의 변경 이력을 보인다', async () => {
+    const { requests, user } = renderSelectedPlan(levelRoutes([LEVEL]));
+
+    const versionTab = await screen.findByRole('tab', { name: '버전 관리' });
+    expect(versionTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('button', { name: '버전 목록' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '변경 이력' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '검사 수준 이력' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: '검사 수준 변경 이력' }));
+    const section = await screen.findByRole('region', { name: '검사 수준 변경 이력' });
+    expect(await within(section).findByText('합성 최초 지정')).toBeInTheDocument();
+    /* 탭 이름이 곧 제목이다 — 상자 안에 같은 제목을 되풀이하지 않는다(사용자 지시). */
+    expect(within(section).queryByRole('heading')).not.toBeInTheDocument();
+    const headers = within(section)
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent?.replace('drag_indicator', ''));
+    expect(headers.slice(0, 4)).toEqual(['변경 일시', '변경 전', '변경 후', '변경자']);
+    expect(within(section).getByText('최초 지정')).toBeInTheDocument();
+    expect(within(section).getByText('합성 사용자')).toBeInTheDocument();
+    expect(requestsTo(requests, HISTORIES)[0]?.url.searchParams.get('itemId')).toBe('5001');
+
+    /* 탭을 오가도 고른 기준은 그대로다. */
+    await user.click(screen.getByRole('tab', { name: '버전 관리' }));
+    expect(screen.getByRole('button', { name: '버전 목록' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'SYN-PLAN-01' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+  });
+
+  /* 서버는 최근 것부터만 준다 — 다 받아 화면이 정렬하므로 쪽을 넘어서도 순서가 맞다(사용자 지시). */
+  it('변경 일시 머리를 누르면 오름 · 내림이 바뀌고, 사유는 글이면 왼쪽 · 「—」면 가운데로 놓는다', async () => {
+    const later = {
+      ...HISTORY_ROW,
+      itemInspectionLevelHistoryId: 2,
+      fromLevelCode: 'NORMAL',
+      toLevelCode: 'TIGHTENED',
+      reason: null,
+      changedAt: '2026-11-05T00:00:00Z',
+    };
+    const { user } = renderSelectedPlan(levelRoutes([LEVEL], [later, HISTORY_ROW]));
+
+    await user.click(await screen.findByRole('tab', { name: '검사 수준 변경 이력' }));
+    const section = await screen.findByRole('region', { name: '검사 수준 변경 이력' });
+    await within(section).findByText('합성 최초 지정');
+    const firstRowText = () => within(section).getAllByRole('row')[1]?.textContent ?? '';
+    const header = within(section).getByRole('columnheader', { name: /변경 일시/ });
+
+    expect(header).toHaveAttribute('aria-sort', 'descending');
+    expect(firstRowText()).toContain('엄격');
+    expect(within(section).getByText('—')).toHaveClass('is-empty');
+    expect(within(section).getByText('합성 최초 지정')).not.toHaveClass('is-empty');
+
+    await user.click(within(header).getByRole('button', { name: /변경 일시/ }));
+    expect(header).toHaveAttribute('aria-sort', 'ascending');
+    expect(firstRowText()).toContain('합성 최초 지정');
+
+    await user.click(within(header).getByRole('button', { name: /변경 일시/ }));
+    expect(header).toHaveAttribute('aria-sort', 'descending');
+    expect(firstRowText()).toContain('엄격');
+  });
+
+  it('수준 변경 이력이 없으면 「검사 수준 변경 이력이 없습니다.」라고 낸다', async () => {
+    const { user } = renderSelectedPlan(levelRoutes([LEVEL], []));
+
+    await user.click(await screen.findByRole('tab', { name: '검사 수준 변경 이력' }));
+    const section = await screen.findByRole('region', { name: '검사 수준 변경 이력' });
+    expect(await within(section).findByText('검사 수준 변경 이력이 없습니다.')).toBeInTheDocument();
+  });
+
+  it('「버전 이력」 창에는 검사 기준 이력만 있다 — 검사 수준 이력은 아래 카드 탭 한 곳(#357)', async () => {
+    const { user } = renderSelectedVersion([
+      ...levelRoutes([LEVEL]),
+      {
+        match: (request) => isGet(request, '/audit/events'),
+        respond: () => jsonResponse({ items: [], page: { page: 1, size: 100, total: 0 } }),
+      },
+    ]);
+    await awaitVersionForm();
+
+    await user.click(await screen.findByRole('button', { name: '버전 이력' }));
+    const dialog = await screen.findByRole('dialog', { name: /^버전 이력/ });
+    expect(within(dialog).queryByRole('tab')).not.toBeInTheDocument();
+    expect(within(dialog).getByText('최근 1년')).toBeInTheDocument();
+    expect(within(dialog).queryByText('합성 최초 지정')).not.toBeInTheDocument();
   });
 });

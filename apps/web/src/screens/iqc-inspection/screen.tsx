@@ -35,8 +35,10 @@ import {
   useSplitOrientation,
 } from '../../patterns/split-orientation';
 import { LotScan } from '../inspection-documents/lot-scan';
-import { withDraft, withStatus } from '../oqc-inspection/filters';
+import { withDraft, withJudgmentFilter, withStatus } from '../oqc-inspection/filters';
+import { JudgmentFilter } from '../oqc-inspection/judgment-filter';
 import { InspectionDetail } from '../parts-iqc-inspection/inspection-detail';
+import { useScanOpen } from '../parts-iqc-inspection/scan-open';
 import { plantTodayRange } from '../parts-iqc-inspection/today';
 import { LeaveGuard } from '../routing/leave-guard';
 import {
@@ -132,7 +134,8 @@ const IqcInspectionScreenBody = () => {
       next.supplierId === filters.supplierId &&
       next.keyword === filters.keyword &&
       next.pendingOnly === filters.pendingOnly &&
-      next.statusCode === filters.statusCode
+      next.statusCode === filters.statusCode &&
+      next.overallJudgmentCode === filters.overallJudgmentCode
     ) {
       void queue.refetch();
     }
@@ -175,15 +178,7 @@ const IqcInspectionScreenBody = () => {
    * 스캔으로 연다 — 같은 의뢰를 다시 스캔해도 닫지 않는다. 자재 관리 LOT 으로 찾았으면 그 LOT 을 고른 채로 결과 추가 창을 연다
    * (사용자 지시 2026-11-16 · omf-all-around#274).
    */
-  const [scanOpen, setScanOpen] = useState<{
-    requestId: number;
-    lotId: number;
-    key: number;
-  } | null>(null);
-  /* 스캔한 의뢰가 아닌 곳에 서면(다른 의뢰 · 상세 닫기 · 떠날지 묻는 창에서 「계속 작성」) 스캔 열기를 거둔다 — 남겨 두면 나중에 그 의뢰를 다시 고를 때 결과 추가 창이 또 뜬다. */
-  useEffect(() => {
-    if (scanOpen !== null && scanOpen.requestId !== selectedId) setScanOpen(null);
-  }, [scanOpen, selectedId]);
+  const { scanOpen, setScanOpen, stay } = useScanOpen(selectedId);
   const openByScan = (inspectionRequestId: number, scannedLotId: number | null): void => {
     if (inspectionRequestId !== selectedId) select(inspectionRequestId);
     setScanOpen(
@@ -258,6 +253,11 @@ const IqcInspectionScreenBody = () => {
         className="pane iqc-inspection-panes iqc-inspection-search parts-iqc-search"
       >
         <div className="parts-iqc-scan-row">
+          {/* 종합 판정 — 맨 왼쪽(사용자 지시 2026-11-24) · 고르면 바로 조회한다(omf-all-around#356). */}
+          <JudgmentFilter
+            value={filters.overallJudgmentCode}
+            onChange={(code) => applyFilters(withJudgmentFilter(filters, code))}
+          />
           {/* LOT 바코드로 대기 의뢰를 바로 연다(#58) — 목록 조건은 그대로 두고 선택만 한다. */}
           <LotScan
             inspectionTypeCode="IQC"
@@ -400,10 +400,19 @@ const IqcInspectionScreenBody = () => {
           size="sm"
           showCloseButton={false}
           title={parts.dialog.title}
-          onClose={() => setLeaveTo(null)}
+          onClose={() => {
+            setLeaveTo(null);
+            stay();
+          }}
           footer={
             <>
-              <Button variant="text" onClick={() => setLeaveTo(null)}>
+              <Button
+                variant="text"
+                onClick={() => {
+                  setLeaveTo(null);
+                  stay();
+                }}
+              >
                 {messages.common.cancel}
               </Button>
               <Button

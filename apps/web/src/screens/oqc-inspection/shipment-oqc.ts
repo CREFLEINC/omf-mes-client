@@ -206,9 +206,15 @@ export const toShipmentResultBody = (
     : { measurements: [...input.measurements] }),
 });
 
-/** 결과 고침 몸통 — 작성중만, 매칭 · 판정 · 사유 · 측정치(수량은 서버가 매칭으로 다시 채운다). */
-export const toShipmentResultUpdateBody = (input: ShipmentResultInput): InspectionResultUpdate => ({
+/**
+ * 결과 고침 몸통 — 작성중만, 매칭 · 판정 · 사유 · 측정치 · 검사일시(수량은 서버가 매칭으로 다시 채운다).
+ * 관리웹 결과 서랍이 검사일시를 고칠 수 있어 고침에도 싣는다(omf-all-around#356).
+ */
+export const toShipmentResultUpdateBody = (
+  input: ShipmentResultInput & { inspectedAt: string },
+): InspectionResultUpdate => ({
   overallJudgmentCode: input.judgmentCode,
+  inspectedAt: input.inspectedAt,
   matchedLotIds: [...input.matchedLotIds],
   ...(input.reinspectionReasonCode === null
     ? {}

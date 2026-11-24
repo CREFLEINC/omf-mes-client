@@ -6,11 +6,9 @@ import {
   readPage,
   readPendingFilters,
   readSelectedNonconformanceId,
-  readTab,
   toAppliedSearchParams,
   toPendingListQuery,
   withSelectedNonconformance,
-  withTab,
   type PendingFilters,
 } from './filters';
 
@@ -129,17 +127,6 @@ describe('readPage', () => {
   });
 });
 
-describe('readTab', () => {
-  it('기본은 판정 대기다', () => {
-    expect(readTab(params(''))).toBe('pending');
-    expect(readTab(params('tab=엉뚱한값'))).toBe('pending');
-  });
-
-  it('처리 이력 탭을 읽는다', () => {
-    expect(readTab(params('tab=history'))).toBe('history');
-  });
-});
-
 describe('readSelectedNonconformanceId', () => {
   it('W-03-09가 넘긴 진입 키를 읽는다', () => {
     expect(readSelectedNonconformanceId(params('nonconformanceId=1001'))).toBe(1001);
@@ -199,20 +186,6 @@ describe('withSelectedNonconformance', () => {
     expect(
       withSelectedNonconformance(params('nonconformanceId=1001'), null).get('nonconformanceId'),
     ).toBeNull();
-  });
-});
-
-describe('withTab', () => {
-  it('처리 이력으로 옮기면 쪽과 고른 부적합을 지운다', () => {
-    const next = withTab(params('page=3&nonconformanceId=1001'), 'history');
-
-    expect(next.get('tab')).toBe('history');
-    expect(next.get('page')).toBeNull();
-    expect(next.get('nonconformanceId')).toBeNull();
-  });
-
-  it('판정 대기는 기본값이라 주소에 남기지 않는다', () => {
-    expect(withTab(params('tab=history'), 'pending').get('tab')).toBeNull();
   });
 });
 

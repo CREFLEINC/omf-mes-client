@@ -1,7 +1,5 @@
 /** 검사 수준 관리(관리웹 · 품질 관리). 품목별 IQC 검사 수준과 자동 전환 이력. */
 export const inspectionLevel = {
-  title: '검사 수준 설정',
-
   levels: {
     NONE: '무검사',
     REDUCED: '수월',
@@ -9,91 +7,29 @@ export const inspectionLevel = {
     TIGHTENED: '엄격',
   } as Record<string, string>,
 
-  list: {
-    caption: '품목별 검사 수준 목록',
-    keyword: '품목 검색',
-    keywordPlaceholder: '품목 코드 또는 품목명을 입력하세요',
-    keywordClear: '품목 조건 지우기',
-    /** 조건 줄의 「전체」 — 좁히지 않는다는 뜻이다(빈 값과 같은 자리). */
-    all: '전체',
-    level: '검사 수준',
-    levelAll: '전체',
-    levelCount: (label: string, count: number): string => `${label} ${String(count)}`,
-    add: '품목 추가',
-    empty: '검사 수준을 지정한 품목이 없습니다.',
-    emptyHint: '「품목 추가」로 검사 수준을 지정하세요.',
-    loading: '검사 수준을 불러오는 중입니다.',
-    loadFailed: '검사 수준을 불러오지 못했습니다.',
-    retry: '다시 시도',
-  },
-
-  columns: {
-    item: '품목',
-    /** 품목은 코드 · 이름 두 칸으로 나눠 보인다(사용자 지시 2026-11-20). */
-    itemCode: '품목코드',
-    itemName: '품목명',
-    level: '검사 수준',
-    updatedAt: '변경 일시',
-    actions: '설정',
-  },
-
-  actions: {
-    changeLevel: '변경',
-    changeLevelRow: (itemCode: string) => `${itemCode} 수준 변경`,
-    showHistory: '이력',
-    showHistoryRow: (itemCode: string) => `${itemCode} 검사 수준 변경 이력 보기`,
-  },
-
   dialog: {
     addTitle: '검사 수준 지정',
-    changeTitle: '검사 수준 변경',
     item: '품목',
-    pickItem: '품목 찾기',
-    pickConfirm: '선택',
-    noItem: '품목을 선택하세요.',
-    itemPlaceholder: '품목을 선택하세요',
     level: '검사 수준',
     reason: '사유',
     reasonPlaceholder: '사유를 입력하세요(선택)',
-    sameLevel: '현재 검사 수준과 동일합니다.',
-    duplicate: '이미 검사 수준을 지정한 품목입니다. 목록에서 「변경」을 쓰세요.',
+    duplicate:
+      '이미 검사 수준을 지정한 품목입니다. 검사 기준 관리에서 이 품목의 IQC 기준을 열고 「기본 정보 수정」으로 바꿔 주세요.',
   },
 
   history: {
-    heading: '검사 수준 변경 이력',
-    /** 목록에서 고른 품목의 이력만 볼 때 — 다시 누르면 전체로 돌아간다(#350). */
-    selectedItem: (code: string, name: string) => `${code} · ${name}`,
-    allHint: '목록에서 품목을 누르면 해당 품목의 이력만 표시됩니다.',
-    selectedHint: '같은 품목을 다시 누르면 전체 이력이 표시됩니다.',
-    openRow: (code: string) => `${code} 고르기`,
-    itemTitle: '검사 수준 변경 이력',
-    itemCode: (code: string) => `품목코드 ${code}`,
     itemColumns: {
       changedAt: '변경 일시',
-      level: '검사 수준',
-      type: '변경 방식',
+      from: '변경 전',
+      to: '변경 후',
+      changedBy: '변경자',
       reason: '변경 사유',
-      changedBy: '처리자',
     },
     firstSetNote: '최초 지정',
-    changedFrom: (level: string) => `${level}에서 변경`,
     caption: '검사 수준 변경 이력',
-    empty: '변경 이력이 없습니다.',
-    emptyHint: '검사 수준을 지정하거나 바꾸면 여기에 남습니다.',
+    empty: '검사 수준 변경 이력이 없습니다.',
     loading: '변경 이력을 불러오는 중입니다.',
     loadFailed: '변경 이력을 불러오지 못했습니다.',
-    columns: {
-      changedAt: '변경 일시',
-      item: '품목',
-      itemCode: '품목코드',
-      itemName: '품목명',
-      change: '검사 수준',
-      type: '변경 방식',
-      reason: '변경 사유',
-      changedBy: '처리자',
-    },
-    types: { AUTO: '자동', MANUAL: '수동' } as Record<string, string>,
-    firstSet: '(최초 지정)',
     acceptStreak: (count: number) => `${String(count)} LOT 연속 합격`,
     rejected: (requestNo: string) => `불합격 — 의뢰 ${requestNo}`,
   },

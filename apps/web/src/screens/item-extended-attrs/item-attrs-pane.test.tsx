@@ -218,3 +218,38 @@ describe('ItemAttrsPane — 품목유형별 LOT 기본크기', () => {
     expect(screen.queryByLabelText('자재 LOT 기본크기')).not.toBeInTheDocument();
   });
 });
+
+describe('ItemAttrsPane — 소포장(읽기만)', () => {
+  const group = (): HTMLElement =>
+    screen.getByRole('rowgroup', { name: messages.itemExtendedAttrs.attrs.groups.package });
+
+  it('공급사마다 한 줄로 소포장 구성을 보인다 — 고치는 칸은 없다', () => {
+    renderPane({
+      packages: {
+        rows: [{ key: '1', label: 'Samjin Lnd', value: '봉지 40 × 25 = 1,000 KG' }],
+        isLoading: false,
+        isError: false,
+      },
+    });
+
+    expect(within(group()).getByText('Samjin Lnd')).toBeInTheDocument();
+    expect(within(group()).getByText('봉지 40 × 25 = 1,000 KG')).toBeInTheDocument();
+    expect(within(group()).queryByRole('textbox')).toBeNull();
+  });
+
+  it('등록된 소포장이 없으면 그렇다고 한 줄로 말한다', () => {
+    renderPane({ packages: { rows: [], isLoading: false, isError: false } });
+
+    expect(
+      within(group()).getByText(messages.itemExtendedAttrs.attrs.values.noPackage),
+    ).toBeInTheDocument();
+  });
+
+  it('원자재 · 부자재가 아니면(넘기지 않으면) 묶음이 없다', () => {
+    renderPane();
+
+    expect(
+      screen.queryByRole('rowgroup', { name: messages.itemExtendedAttrs.attrs.groups.package }),
+    ).toBeNull();
+  });
+});

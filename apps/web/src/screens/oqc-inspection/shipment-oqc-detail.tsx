@@ -23,6 +23,7 @@ import {
   pickedLotViewsOf,
   type PickedLotView,
 } from './shipment-oqc';
+import { ReplacedDispositions } from './replaced-dispositions';
 import { LotJudgmentChip, OverviewChip, portionsText, replacedText } from './shipment-oqc-parts';
 import { useShipmentOqcRequest, useShipmentRequestRef } from './shipment-oqc-queries';
 import { ShipmentResultDrawer } from './shipment-result-drawer';
@@ -99,6 +100,18 @@ export const ShipmentOqcDetail = ({
   const nextSeqNo =
     request.nextResultSeqNo ?? results.reduce((max, result) => Math.max(max, result.seqNo), 0) + 1;
   const refData = ref.data;
+  /* 교체한 LOT 마다 서버가 세운 부적합 — 처분 상자로 연다(omf-all-around#354). */
+  const replacedNonconformances = replaced.flatMap((lot) => {
+    const replacement = refData?.lotOf(lot.lotId)?.replacement ?? null;
+    return replacement === null || replacement.nonconformanceId == null
+      ? []
+      : [
+          {
+            nonconformanceId: replacement.nonconformanceId,
+            nonconformanceNo: replacement.nonconformanceNo ?? String(replacement.nonconformanceId),
+          },
+        ];
+  });
   const shipmentRequestNo = request.shipmentRequestNo ?? refData?.shipmentRequestNo ?? '—';
 
   /* 생략 건은 IQC 생략 건과 같은 틀 — 입력 · 결과 칸 없이 요약만(사용자 지시 2026-11-23 · #353). */
@@ -295,9 +308,15 @@ export const ShipmentOqcDetail = ({
         {lotRows.length === 0 ? (
           <EmptyState
             size="sm"
+            className="oqc-shipment-lots-empty"
             icon={<Icon name="inventory_2" size={20} />}
             title={s.lots.emptyTitle}
-            description={s.lots.emptyDescription}
+            description={s.lots.emptyDescription.map((line, index) => (
+              <span key={line}>
+                {index > 0 && <br />}
+                {line}
+              </span>
+            ))}
           />
         ) : (
           <div className="wide-table iqc-inbound-table oqc-shipment-lots">
@@ -356,10 +375,13 @@ export const ShipmentOqcDetail = ({
         />
       </section>
 
+      <ReplacedDispositions nonconformances={replacedNonconformances} />
+
       {drawer !== null && (
         <ShipmentResultDrawer
           inspectionRequestId={request.inspectionRequestId}
           itemId={request.itemId}
+          itemParts={itemParts}
           uomId={request.uomId}
           uomCode={uom}
           planVersionId={request.inspectionPlanVersionId}
@@ -373,7 +395,7 @@ export const ShipmentOqcDetail = ({
             setDrawer(null);
             toast.show({
               variant: 'success',
-              description: edited ? s.drawer.updated(seqNo) : s.drawer.added(seqNo),
+              description: edited ? s.drawer.updated(seqNo) : s.drawer.added,
             });
           }}
         />

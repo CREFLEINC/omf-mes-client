@@ -125,7 +125,14 @@ describe('QueueFilterBar — 조건은 골라서 넣는다', () => {
   });
 
   it('주소로 들어온 품목은 펼치지 않아도 이름으로 선다', async () => {
-    renderBar({ itemId: 1001, supplierId: null, keyword: '', pendingOnly: true, statusCode: null });
+    renderBar({
+      itemId: 1001,
+      supplierId: null,
+      keyword: '',
+      pendingOnly: true,
+      statusCode: null,
+      overallJudgmentCode: null,
+    });
 
     await waitFor(() => {
       expect(itemBox()).toHaveTextContent(ITEM_LABEL);
@@ -135,7 +142,14 @@ describe('QueueFilterBar — 조건은 골라서 넣는다', () => {
   });
 
   it('주소로 들어온 공급사도 이름으로 선다', async () => {
-    renderBar({ itemId: null, supplierId: 2002, keyword: '', pendingOnly: true, statusCode: null });
+    renderBar({
+      itemId: null,
+      supplierId: 2002,
+      keyword: '',
+      pendingOnly: true,
+      statusCode: null,
+      overallJudgmentCode: null,
+    });
 
     await waitFor(() => {
       expect(supplierBox()).toHaveTextContent(SUPPLIER_LABEL);
@@ -180,6 +194,7 @@ describe('QueueFilterBar — 조건은 골라서 넣는다', () => {
       keyword: '',
       pendingOnly: true,
       statusCode: null,
+      overallJudgmentCode: null,
     });
 
     await waitFor(() => {
@@ -201,6 +216,7 @@ describe('QueueFilterBar — 의뢰번호와 조회·초기화', () => {
       keyword: 'IR-1',
       pendingOnly: true,
       statusCode: null,
+      overallJudgmentCode: null,
     });
 
     expect(keywordBox()).toHaveValue('IR-1');
@@ -266,6 +282,7 @@ describe('QueueFilterBar — 의뢰번호와 조회·초기화', () => {
                 keyword: 'IR-1',
                 pendingOnly: true,
                 statusCode: null,
+                overallJudgmentCode: null,
               });
             }}
           >

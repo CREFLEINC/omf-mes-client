@@ -109,7 +109,7 @@ export const PlanListPane = ({
       width: '136px',
       render: (row) => inspectionTypeLabel(row.inspectionTypeCode),
     },
-    /* 목록에서 바로 가를 수 있게 품목 · 승인 · 사용을 함께 싣는다(사용자 지시 · #196). */
+    /* 목록에서 바로 가를 수 있게 품목 · 사용을 함께 싣는다(사용자 지시 · #196). 승인은 걷었다(omf-all-around#357). */
     /*
      * 품목은 코드 · 이름 두 칸이다(사용자 지시 2026-11-20, 한 칸에 붙이던 「이름 코드」를 나눴다 · 검사 조회·판정 목록과
      * 같다). 전 품목 공통 기준은 이름 칸에 「전체 품목」, 코드 칸은 「—」다.
@@ -152,22 +152,6 @@ export const PlanListPane = ({
           </Chip>
         );
       },
-    },
-    {
-      key: 'approvedAt',
-      align: 'center',
-      header: t.listColumns.approval,
-      width: '96px',
-      render: (row) =>
-        row.approvedAt === null || row.approvedAt === undefined ? (
-          <Chip variant="status" size="sm" status="warning">
-            {t.listColumns.notApproved}
-          </Chip>
-        ) : (
-          <Chip variant="status" size="sm" status="success">
-            {t.listColumns.approved}
-          </Chip>
-        ),
     },
     {
       key: 'isActive',

@@ -216,13 +216,13 @@ describe('AppLayout', () => {
     );
   });
 
-  /* 검사기준은 「품질 기준 정보」 묶음의 첫 탭이다 — 사이드바의 묶음 줄이 그 주소를 건다. */
-  it('사이드바에 품질 기준 정보 묶음이 검사기준 주소로 보인다', () => {
+  /* 검사 수준 설정을 검사 기준 화면에 합쳐 묶음을 풀었다 — 「검사 기준 관리」 한 줄이다(omf-all-around#357). */
+  it('사이드바에 검사 기준 관리 줄이 검사기준 주소로 보인다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
-    expect(within(sidebar).getByRole('link', { name: '품질 기준 정보' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: '검사 기준 관리' })).toHaveAttribute(
       'href',
       '/master-data/inspection-standard',
     );
@@ -522,14 +522,12 @@ describe('AppLayout', () => {
     expect(within(sidebar).queryByRole('link', { name: '제품 검사표 조회' })).toBeNull();
     /* 품질 승인 처리는 특채 결재가 없어지며 화면째 지웠다(omf-all-around#352). */
     expect(within(sidebar).queryByRole('link', { name: '품질 승인 처리' })).toBeNull();
-    expect(within(sidebar).getByRole('link', { name: '부적합 처분 관리' })).toHaveAttribute(
-      'href',
-      '/quality/dispositions',
-    );
+    /* 부적합 처분 관리는 메뉴를 없앴다 — 처분은 IQC · OQC 탭의 처분 상자가 한다(omf-all-around#354). */
+    expect(within(sidebar).queryByRole('link', { name: '부적합 처분 관리' })).toBeNull();
 
     const qualityOrder = [
       '/logistics/iqc-inspection',
-      /* 「품질 기준 정보」 묶음 — 검사기준 → 검사표 기준(W-06-24) → 검사 수준 관리(W-03-12). */
+      /* 검사 기준 — 검사 수준 관리(W-03-12)를 상세로 합쳤다(omf-all-around#357). */
       '/master-data/inspection-standard',
       /* 「품질 코드 관리」 묶음 — 불량·원인코드 → 판정유형 코드(#208). */
       '/master-data/defect-cause-code',
@@ -537,8 +535,6 @@ describe('AppLayout', () => {
       '/quality/inspection-results',
       /* 「LOT 상태」 묶음 — 조회 → 판정 → 의심자재 등록(#210). */
       '/quality/lot-status',
-      /* W-03-10 — 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */
-      '/quality/dispositions',
     ];
     const start = links.indexOf(qualityOrder[0] ?? '');
 
@@ -713,9 +709,9 @@ describe('AppLayout', () => {
       'href',
       '/production/work-order-progress',
     );
-    /* 품질 관리의 끝(처분 판정 처리) 바로 뒤가 섹션의 시작이다. */
+    /* 품질 관리의 끝(LOT 상태) 바로 뒤가 섹션의 시작이다 — 부적합 처분 관리는 메뉴를 없앴다(#354). */
     expect(links.indexOf('/production/production-orders')).toBe(
-      links.indexOf('/quality/dispositions') + 1,
+      links.indexOf('/quality/lot-status') + 1,
     );
     /*
      * W-02-10 자재 불출 요청은 「구매 / 자재 관리 > 출고 관리」로 옮겼다 — 작업계획 바로 뒤가
@@ -956,11 +952,10 @@ describe('AppLayout', () => {
       '/logistics/document-progress',
       /* 품질 관리 — 검사 조회·판정(IQC · PQC · OQC 탭) → 기준·코드 → 이력 → LOT 판정 갈래. */
       '/logistics/iqc-inspection' /* ← 검사 조회·판정 */,
-      '/master-data/inspection-standard' /* ← 품질 기준 정보 */,
+      '/master-data/inspection-standard' /* ← 검사 기준 관리 */,
       '/master-data/defect-cause-code',
       '/quality/inspection-results' /* ← 검사 실적·결과 */,
       '/quality/lot-status' /* ← LOT 상태 */,
-      '/quality/dispositions',
       /* 생산 관리 — 작업계획(작업함, 변경 확인) → 진행 → LOT 생산 이력 조회 → 마감. 긴급 W/O 발행은 감췄다. */
       '/production/production-orders' /* ← 작업계획 */,
       '/production/work-order-progress',
@@ -998,7 +993,7 @@ describe('AppLayout', () => {
   });
 
   /*
-   * 탭 묶음 열두 개의 **탭 차례와 경로**(계측기 · 설비 보전 · 툴 보전은 메뉴에서 감췄다). 사이드바 전체 감지기가 묶음 줄만 재므로, 묶음 안의
+   * 탭 묶음 열한 개의 **탭 차례와 경로**(계측기 · 설비 보전 · 툴 보전은 메뉴에서 감췄다). 사이드바 전체 감지기가 묶음 줄만 재므로, 묶음 안의
    * 차례는 여기서 얼린다 — 묶음 줄을 **실제로 눌러** 첫 탭에 들어가고 그 자리의 탭 막대를 읽는다.
    * 줄을 누르면 첫 탭에 닿는다는 것(`to` = 첫 탭)도 함께 재진다.
    */
@@ -1017,7 +1012,6 @@ describe('AppLayout', () => {
         '/logistics/supplier-return',
         '/logistics/disposal-issue',
       ],
-      '품질 기준 정보': ['/master-data/inspection-standard', '/quality/inspection-levels'],
       '품질 코드 관리': ['/master-data/defect-cause-code', '/master-data/defect-process-mapping'],
       '검사 실적·결과': ['/quality/inspection-results', '/quality/inspection-sheets'],
       'LOT 상태': [
@@ -1625,7 +1619,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(36);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(35);
   });
 
   /*
@@ -1675,7 +1669,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(36);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(35);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */

@@ -144,5 +144,35 @@ export const pqcInspectionRegister = {
       confirmNote: '판정 확정 후 수정이 불가합니다.',
       confirmed: '판정이 확정되어 수정할 수 없습니다.',
     },
+    /** 검사 결과 표 — IQC 상세의 결과 표와 같은 짜임(omf-all-around#356). 작성중 결과는 의뢰마다 하나다(서버 장부 P-49). */
+    results: {
+      title: '검사 결과',
+      count: (count: number): string => `(${String(count)}건)`,
+      heading: (count: number): string => `검사 결과 ${String(count)}건`,
+      add: '검사 결과 추가',
+      columns: {
+        round: '검사 회차',
+        judgment: '판정',
+        inspectedQty: '검사 수량',
+        accepted: '합격',
+        rejected: '불합격',
+        held: '보류',
+        inspectedAt: '검사일시',
+        inspector: '검사자',
+        actions: '상태',
+      },
+      round: (round: number): string => `${String(round)}회차`,
+      edit: '수정',
+      confirmedRow: '확정',
+      empty: '등록된 검사 결과가 없습니다.',
+      /** 작성중 결과가 있어 [검사 결과 추가]를 잠글 때 — 단추에 마우스를 올리면 보인다. */
+      draftExists: '작성 중인 검사 결과가 있습니다. 수정으로 고치세요.',
+      /** 확정할 결과가 없을 때 [판정 확정] 옆 안내. */
+      needResult: '검사 결과를 먼저 추가하세요.',
+    },
+    /** 결과 추가 · 수정 창 — IQC 결과 창과 같은 짜임(omf-all-around#356). */
+    drawer: {
+      infoBox: '검사 정보',
+    },
   },
 };

@@ -63,10 +63,15 @@ export const toTerminalDraft = (view: TerminalView): TerminalDraft => ({
 });
 
 /**
- * 단말 추가 팝업을 열자마자 채울 단말 코드 — `접두어-일련번호`(예: TERM-003), 쓰이지 않은 다음 번호
- * (사용자 지시 2026-11-20 · #333). 유형을 고르기 전에도 채우려고 유형과 무관한 접두어를 쓴다. 고칠 수 있고, 겹치면 서버가 막는다.
+ * 단말 추가에서 유형을 고르면 채울 단말 코드 — `접두어-일련번호`(예: POP-003), 쓰이지 않은 다음 번호
+ * (사용자 지시 2026-11-20 · #333). 고칠 수 있고, 겹치면 서버가 막는다.
+ *
+ * 접두어는 유형 코드 그대로이되, 현장이 부르는 이름이 다른 유형은 그 이름을 쓴다 —
+ * 손에 드는 기기(MOBILE)는 「PDA」(사용자 지시 2026-11-24). 유형 코드 자체는 서버 공통코드라 바꾸지 않는다.
  */
-export const TERMINAL_CODE_PREFIX = 'TERM';
+const CODE_PREFIXES: Readonly<Record<string, string>> = { MOBILE: 'PDA' };
+
+export const terminalCodePrefix = (typeCode: string): string => CODE_PREFIXES[typeCode] ?? typeCode;
 
 export const nextTerminalCode = (typeCode: string, codes: readonly string[]): string => {
   const pattern = new RegExp(`^${typeCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-(\\d+)$`);

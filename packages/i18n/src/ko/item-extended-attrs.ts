@@ -15,7 +15,8 @@ export const itemExtendedAttrs = {
   tabs: {
     label: '품목 상세 구획',
     attrs: '확장 속성',
-    subsidiary: '부속 정보',
+    uomConversion: '단위 환산',
+    resourceMap: '설비·금형',
   },
   /** 두 구획 사이 끌기 막대(키보드 ←·→ 로도 움직인다). */
   splitter: '끌어서 품목 목록·상세 폭 조절',
@@ -28,13 +29,6 @@ export const itemExtendedAttrs = {
    * 부속 정보 안의 하위 탭. 계약이 인용한 화면 스펙의 구획 이름을 그대로 옮긴 것이다 —
    * 여기서 이름을 새로 지으면 설계 문서와 화면이 다른 말을 하게 된다.
    */
-  subTabs: {
-    label: '부속 정보',
-    buMap: '사업부 매핑',
-    uomConversion: '단위 환산',
-    externalCode: '외부 코드',
-    resourceMap: '설비·금형',
-  },
   panes: {
     detail: '품목 상세',
     filter: '조회 조건',
@@ -57,6 +51,7 @@ export const itemExtendedAttrs = {
   },
   filters: {
     itemSearchLabel: '품목코드·품목명',
+    itemSearchPlaceholder: '품목코드나 품목명을 입력하세요',
     /** 품목 유형 선택. 선택지 이름은 코드 그룹 `ITEM_TYPE`이 준다 — 화면이 짓지 않는다 */
     itemTypeLabel: '품목유형',
     itemTypeAll: '전체',
@@ -143,6 +138,8 @@ export const itemExtendedAttrs = {
       lot: 'LOT 기본값',
       shelfLife: '유효기한·선출',
       inventory: '검사·재고',
+      /** 공급사별 소포장(읽기만, 고치는 곳은 공급사·품목 기본 정보). */
+      package: '소포장',
     },
     fields: {
       nameKo: '품목명(한국어)',
@@ -176,6 +173,9 @@ export const itemExtendedAttrs = {
       active: '사용 중',
       inactive: '미사용',
       unspecified: '지정하지 않음',
+      noPackage: '등록된 소포장이 없습니다',
+      packageLoading: '소포장을 불러오는 중',
+      packageLoadFailed: '소포장을 불러오지 못했습니다',
     },
     validation: {
       required: '필수 입력 항목입니다.',
@@ -191,76 +191,9 @@ export const itemExtendedAttrs = {
     },
   },
   /**
-   * 대상 품목을 **검색해서 고르는** 묶음(결정 8).
+   * 부속 하위 탭① — 단위 환산.
    *
-   * 품목이 수천 건일 수 있어 선택칸에 다 담을 수 없고, 번호를 입력받으면 사용자가
-   * 알 수도 확인할 수도 없는 내부 식별자를 화면이 요구하게 된다.
-   */
-  itemPicker: {
-    keywordLabel: '대상 품목 검색',
-    keywordPlaceholder: '품목코드 또는 품목명',
-    search: '찾기',
-    resultLabel: '대상 품목',
-    resultPlaceholder: '검색 결과에서 고르세요',
-    /* 검색 전에는 선택칸이 비어 있는 것이 정상이다 — 그 사실을 밝히지 않으면 고장으로 읽힌다. */
-    beforeSearch: '품목코드나 품목명을 넣고 찾기를 누르세요.',
-    truncated: '검색 결과가 많아 일부만 표시합니다. 검색어를 좁히세요.',
-    noResult: '검색어에 맞는 품목이 없습니다. 검색어를 바꿔 다시 찾아 보세요.',
-    searchFailed: '품목을 검색하지 못했습니다. 잠시 뒤 다시 찾아 보세요.',
-  },
-  /**
-   * 부속 하위 탭① — 사업부 매핑. 사업부 사이의 품목 대응을 담는다.
-   *
-   * **중복 안내 문구가 없다.** 계약이 이 표에 유일 제약을 적지 않았고,
-   * 화면이 없는 제약을 흉내 내면 서버가 허용하는 값을 막는다(결정 7).
-   */
-  buMap: {
-    paneTitle: '사업부 매핑',
-    fields: {
-      fromBusinessUnit: '보내는 사업부',
-      toBusinessUnit: '받는 사업부',
-      toItem: '대상 품목',
-      validPeriod: '유효기간',
-      effectiveFrom: '유효 시작',
-      effectiveTo: '유효 종료',
-      edit: '편집',
-    },
-    values: {
-      period: (from: string, to: string): string => `${from} ~ ${to}`,
-    },
-    actions: {
-      add: '매핑 추가',
-      editRow: (name: string): string => `${name} 매핑 수정`,
-      removeRow: (name: string): string => `${name} 매핑 삭제`,
-    },
-    loading: {
-      list: '사업부 매핑을 불러오는 중',
-    },
-    empty: {
-      noneTitle: '등록된 사업부 매핑이 없습니다',
-      noneDescription: '「매핑 추가」로 줄을 만든 뒤 저장하세요.',
-    },
-    dialog: {
-      addTitle: '사업부 매핑 추가',
-      editTitle: '사업부 매핑 수정',
-      confirm: '확인',
-      /* 확인이 저장이라고 오해하면 창을 닫고 화면을 떠난다 — 전체 치환이라 저장이 따로 있다. */
-      notSavedNotice: '확인한 뒤 「저장」을 눌러야 저장됩니다.',
-    },
-    /* 「대상 품목 이름을 못 받았다」는 저장을 막지 않는다 — 표시만의 문제다. */
-    itemNamesLoadFailed: '대상 품목 이름을 불러오지 못했습니다. 저장에는 영향이 없습니다.',
-    validation: {
-      required: '필수 입력 항목입니다.',
-      /* 계약 ck_item_bu_map_distinct */
-      sameBusinessUnit: '보내는 사업부와 받는 사업부는 서로 달라야 합니다.',
-      /* 계약 ck_item_bu_map_dates — 짝 제약이라 두 칸에 함께 낸다. */
-      validRangeReversed: '유효 종료는 유효 시작과 같거나 뒤여야 합니다.',
-    },
-  },
-  /**
-   * 부속 하위 탭② — 단위 환산.
-   *
-   * 사업부 매핑과 달리 **유일 제약이 있다**(`uq_item_uom_conversion` 네 컬럼).
+   * **유일 제약이 있다**(`uq_item_uom_conversion` 네 컬럼).
    * 서버가 준 목록에 이미 겹친 줄이 있을 수 있어 저장을 막는 사유 문구가 함께 있다.
    */
   uomConversion: {
@@ -315,59 +248,7 @@ export const itemExtendedAttrs = {
     },
   },
   /**
-   * 부속 하위 탭③ — 외부 코드. 고객 바코드 체계의 저장처다.
-   *
-   * **중복 문구가 접힘을 밝힌다.** 계약의 유일 제약이 `COALESCE(partner_id,0)`으로 접혀
-   * 거래처를 비운 두 줄이 서버에게 같은 짝이 되는데(A-7), 그 사실을 적지 않으면
-   * 사용자가 「다른 줄인데 왜 막느냐」로 읽는다.
-   */
-  externalCode: {
-    paneTitle: '외부 코드',
-    fields: {
-      externalSystem: '외부 시스템',
-      partner: '거래처',
-      externalItemCode: '외부 품목코드',
-      edit: '편집',
-    },
-    values: {
-      /* 계약이 「비우면 (전체)」로 정했다(A-7) — 빈 칸으로 두면 빠뜨린 것으로 읽힌다. */
-      allPartners: '(전체)',
-    },
-    actions: {
-      add: '외부 코드 추가',
-      editRow: (name: string): string => `${name} 외부 코드 수정`,
-      removeRow: (name: string): string => `${name} 외부 코드 삭제`,
-    },
-    actionReasons: {
-      saveBlockedByDuplicate:
-        '저장할 수 없습니다. 외부 시스템과 거래처가 같은 줄이 둘 이상 있습니다. 겹친 줄을 고치거나 지운 뒤 저장하세요.',
-    },
-    loading: {
-      list: '외부 코드를 불러오는 중',
-    },
-    empty: {
-      noneTitle: '등록된 외부 코드가 없습니다',
-      noneDescription: '「외부 코드 추가」로 줄을 만든 뒤 저장하세요.',
-    },
-    dialog: {
-      addTitle: '외부 코드 추가',
-      editTitle: '외부 코드 수정',
-      confirm: '확인',
-      notSavedNotice: '확인한 뒤 「저장」을 눌러야 저장됩니다.',
-    },
-    externalSystemPlaceholder: '외부 시스템을 선택하세요',
-    validation: {
-      required: '필수 입력 항목입니다.',
-      externalItemCodeTooLong: '외부 품목코드는 100자를 넘을 수 없습니다.',
-      /* 계약 uq_item_external_code — COALESCE(partner_id,0) 접기를 문구가 밝힌다(A-7). */
-      duplicateKey:
-        '외부 시스템과 거래처가 같은 줄이 이미 있습니다. 거래처를 비운 줄끼리도 같은 줄로 봅니다.',
-      duplicateInList:
-        '외부 시스템과 거래처가 같은 줄이 있습니다. 거래처를 비운 줄끼리도 같은 줄로 보므로 겹친 줄을 정리하세요.',
-    },
-  },
-  /**
-   * 부속 하위 탭 — 설비·금형 매핑. 계획 확정이 기본 매핑으로 설비·금형을 배정하고 4M 점검이 추천한다.
+   * 부속 하위 탭② — 설비·금형 매핑. 계획 확정이 기본 매핑으로 설비·금형을 배정하고 4M 점검이 추천한다.
    *
    * **다른 부속 하위 탭과 저장 방식이 다르다** — 전체 치환이 아니라 줄마다 바로 저장한다.
    * 그래서 「확인을 눌러도 저장되지 않는다」는 안내가 없다.
@@ -601,8 +482,7 @@ export const itemExtendedAttrs = {
     },
     actionReasons: {
       /* 「무엇이 막혔는지 + 어떻게 풀 수 있는지」 — 이 컨트롤의 이름으로 시작한다. */
-      routingOperationEmpty:
-        '등록 공정은 이 품목에 등록된 공정 흐름이 없어 고를 수 없습니다. 공정 흐름을 먼저 등록한 뒤 다시 여세요.',
+      routingOperationEmpty: '등록된 공정 흐름이 없어 고를 수 없습니다.',
     },
     loading: {
       list: '구성품을 불러오는 중',
@@ -610,7 +490,8 @@ export const itemExtendedAttrs = {
       detail: '구성품 정보를 불러오는 중',
     },
     dialog: {
-      title: (name: string): string => `구성품 확장 열 수정 — ${name}`,
+      /** 제목은 한 줄 — 고치는 품목은 그 아래 줄에 따로(시안 A, 사용자 결정 2026-11-24). */
+      title: '구성품 확장 열 수정',
       /*
        * 창에 원본 열이 없다는 사실을 밝힌다 — 없는 것을 찾다가 「화면이 빠뜨렸다」로 읽지 않게 한다.
        * 서버가 이 경계를 막지 않으므로 화면이 지키는 자리라는 것도 이 문구가 대신한다.

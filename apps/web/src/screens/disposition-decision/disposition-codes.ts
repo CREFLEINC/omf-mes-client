@@ -124,6 +124,11 @@ export interface DispositionOptionContext {
   decisionCount: number;
   /** 선별로 떼어 낸 불량에서 생긴 부적합 — 정상 처분 없음. */
   isSortedOff: boolean;
+  /**
+   * 반려되지 않은 특채가 걸려 있다 — 서버가 선별을 409 로 막는다(`lockSortable`). 결재 시절에 남은 요청 중 특채도
+   * 여기에 든다(omf-all-around#354).
+   */
+  hasOpenConcession?: boolean;
 }
 
 /**
@@ -143,6 +148,7 @@ export const dispositionOptionLock = (
     }
     if (context.lotCount < 2) return t.sortSingleLot;
     if (context.decisionCount > 0) return t.sortNotFirst;
+    if (context.hasOpenConcession === true) return t.sortConcession;
   }
   if (code === 'NORMAL' && context.isSortedOff) return t.normalSorted;
   return undefined;

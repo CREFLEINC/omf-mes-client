@@ -31,7 +31,8 @@ const renderDialog = (overrides: Partial<Parameters<typeof BomComponentFormDialo
 
   render(
     <BomComponentFormDialog
-      rowName="1. SYN-ITEM-02 · 합성 품목 B"
+      itemCode="SYN-ITEM-02"
+      itemName="합성 품목 B"
       loadError={null}
       values={values()}
       onChange={onChange}
@@ -84,12 +85,10 @@ describe('BomComponentFormDialog — 확장 열 넷뿐이다 (C14)', () => {
     expect(screen.queryAllByRole('spinbutton')).toHaveLength(0);
   });
 
-  it('제목이 대상 줄을 담는다', () => {
+  it('제목 아래 줄에 고치는 품목의 코드와 이름을 담는다', () => {
     renderDialog();
 
-    expect(
-      screen.getByRole('dialog', { name: /1\. SYN-ITEM-02 · 합성 품목 B/ }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /SYN-ITEM-02.*합성 품목 B/ })).toBeInTheDocument();
   });
 });
 
