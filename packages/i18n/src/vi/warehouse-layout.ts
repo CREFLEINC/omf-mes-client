@@ -96,7 +96,7 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
   },
   editor: {
     open: 'Sửa',
-    title: (warehouse: string): string => `Sửa sơ đồ bố trí — ${warehouse}`,
+    title: 'Sửa sơ đồ bố trí',
     cancel: 'Hủy',
     discardTitle: 'Bỏ thay đổi và đóng?',
     discardBody: 'Các thay đổi điểm đánh dấu chưa lưu sẽ mất.',

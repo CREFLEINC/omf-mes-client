@@ -48,7 +48,8 @@ const WIDTHS = {
    * 「Đã đánh dấu」 칩이 들도록 104px. 2차(FR-015)로 목록이 구역 · 랙만이라 셀 4단계 때문에 넓혔던 코드 280px 를 되돌렸다.
    * ⚠ 열 폭은 px 만 받는다(`column-resize` 의 `pxOf` — 그 밖은 남은 폭 나눔).
    */
-  compact: { code: '220px', level: '64px', placed: '104px', min: '0px' },
+  /* 편집 창 — 이름 칸이 92px 로 눌려 「적치···」로 잘렸다(사용자 지시 2026-11-24). 코드 · 도면을 줄여 이름에 내준다. */
+  compact: { code: '232px', level: '84px', placed: '64px', min: '0px' },
 } as const;
 
 /**
@@ -178,7 +179,7 @@ export const LocationList = ({
       getRowId={(row) => String(row.location.locationId)}
       widthKey={
         compact
-          ? 'omf-mes:warehouse-layout:editor-location-tree-widths'
+          ? 'omf-mes:warehouse-layout:editor-location-tree-widths:v3'
           : 'omf-mes:warehouse-layout:location-tree-widths'
       }
       minWidth={widths.min}

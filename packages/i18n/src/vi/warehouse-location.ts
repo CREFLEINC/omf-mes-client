@@ -27,6 +27,10 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     activate: 'Dùng lại',
     editWarehouse: 'Thông tin kho',
   },
+  layoutLink: {
+    header: 'Sơ đồ',
+    label: (code: string): string => `Sửa sơ đồ ${code}`,
+  },
   selection: {
     label: 'Vị trí đã chọn',
     count: (count: number): string => `Đã chọn ${String(count)}`,

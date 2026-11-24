@@ -111,7 +111,8 @@ export const warehouseLayout = {
   },
   editor: {
     open: '수정',
-    title: (warehouse: string): string => `배치도 수정 — ${warehouse}`,
+    /** 제목은 이것만 — 어느 창고인지는 본문 맨 위에(사용자 지시 2026-11-24). */
+    title: '배치도 수정',
     cancel: '취소',
     discardTitle: '변경을 버리고 닫을까요?',
     discardBody: '저장하지 않은 표식 변경이 사라집니다.',

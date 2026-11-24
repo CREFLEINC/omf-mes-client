@@ -58,6 +58,7 @@ import {
   locationLabelKeys,
   useLocationDetail,
   useLocationItems,
+  useCanEditLayout,
   useLocationList,
   useCanWriteLocations,
   useLookupOptions,
@@ -541,6 +542,18 @@ export const WarehouseLocationScreen = () => {
     () => new Map(hierarchyItems.map((item) => [item.locationId, item] as const)),
     [hierarchyItems],
   );
+
+  /*
+   * 「배치도」 아이콘(사용자 지시 2026-11-24) — 배치도 수정 창을 그 창고 · 그 위치로 바로 연다. 배치도에는 구역 · 랙만
+   * 놓을 수 있어 그 줄에만 두고, 배치도 수정 권한이 없으면 두지 않는다.
+   */
+  const canEditLayout = useCanEditLayout();
+  const layoutHrefOf = (location: Location): string | null =>
+    canEditLayout &&
+    selectedWarehouseId !== null &&
+    (location.locationLevelCode === 'ZONE' || location.locationLevelCode === 'RACK')
+      ? `/master-data/warehouse-layout?warehouse=${String(selectedWarehouseId)}&location=${String(location.locationId)}&edit=1`
+      : null;
 
   /* 보기(사용자 지시 2026-11-19) — 적치 위치만은 랙 아래 말단을 한 줄씩. */
   const locationViewMode = readLocationViewMode(searchParams.get(LOCATION_VIEW_PARAM));
@@ -1269,6 +1282,7 @@ export const WarehouseLocationScreen = () => {
             setSelectedLocationIds([]);
           }}
           parentPathOf={(location) => parentPathOf(location, hierarchyById)}
+          layoutHrefOf={layoutHrefOf}
           expandedIds={expandedIds}
           onToggleExpand={handleToggleExpand}
           onCollapseAll={() =>

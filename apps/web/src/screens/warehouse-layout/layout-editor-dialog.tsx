@@ -38,6 +38,7 @@ import { useDrawingReplace } from './use-drawing-replace';
 import { useObjectUrl } from './use-object-url';
 
 const t = messages.warehouseLayout;
+const wl = messages.warehouseLocation;
 
 const EMPTY_MARKERS: LayoutDraft = [];
 const EMPTY_LOCATIONS: LocationView[] = [];
@@ -427,12 +428,19 @@ export const LayoutEditorDialog = ({
         open
         size="lg"
         className="layout-editor-dialog"
-        title={t.editor.title(warehouseLabel)}
+        title={t.editor.title}
         closeOnBackdropClick={false}
         showCloseButton={!busy}
         onClose={requestClose}
         footer={footer}
       >
+        {/* 어느 창고의 배치도인지 — 제목이 아니라 본문 맨 위에(사용자 지시 2026-11-24, Location 추가 창과 같은 줄). */}
+        <dl className="bulk-create-target layout-editor-target">
+          <div>
+            <dt>{wl.fields.warehouse}</dt>
+            <dd>{warehouseLabel}</dd>
+          </div>
+        </dl>
         <div className="layout-editor-body">
           <section className="layout-editor-list" aria-label={t.panes.locations}>
             <Checkbox

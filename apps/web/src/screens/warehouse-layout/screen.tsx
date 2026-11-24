@@ -1,7 +1,7 @@
 import { AlertBanner, Button, Checkbox, Chip, EmptyState, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { MarkerOverlay, type OverlayMarker } from '@omf-mes/ui';
-import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { BoardFrame } from '../../patterns/board-frame';
@@ -73,7 +73,11 @@ export const WarehouseLayoutScreen = () => {
   const warehouseId = isPositiveInteger(warehouseParam) ? Number(warehouseParam) : null;
 
   const [includeInactive, setIncludeInactive] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
+  /* 창고·Location 의 「배치도」 바로가기는 `location` 으로 그 위치를 골라 연다(사용자 지시 2026-11-24). */
+  const locationParam = searchParams.get('location') ?? '';
+  const [selectedLocation, setSelectedLocation] = useState<number | null>(() =>
+    isPositiveInteger(locationParam) ? Number(locationParam) : null,
+  );
   const [flash, setFlash] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
 
@@ -141,6 +145,27 @@ export const WarehouseLayoutScreen = () => {
 
   const expandedIds = expansion?.ids ?? NO_EXPANDED_IDS;
   const drawingAttachmentId = layout.data?.drawingAttachmentId ?? null;
+
+  /*
+   * 창고·Location 의 「배치도」 아이콘은 `edit=1` 로 편집 창까지 열어 준다(사용자 지시 2026-11-24). 배치도를 받은 뒤 한 번만
+   * 열고 주소에서 지운다 — 닫은 뒤 다시 열리거나 새로고침마다 열리지 않게. 수정 권한이 없으면 조회 화면에 머문다.
+   */
+  const editParam = searchParams.get('edit') === '1';
+  useEffect(() => {
+    if (!editParam || (warehouseId !== null && layout.isPending)) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('edit');
+    setSearchParams(next, { replace: true });
+    if (canEdit && !layout.isError && warehouseId !== null) setEditing(true);
+  }, [
+    editParam,
+    layout.isPending,
+    layout.isError,
+    canEdit,
+    warehouseId,
+    searchParams,
+    setSearchParams,
+  ]);
 
   /*
    * ⭐ **그림은 `<img src>` 가 아니라 계약 클라이언트로 받는다** — 내려받기도 세션 쿠키를
@@ -256,25 +281,31 @@ export const WarehouseLayoutScreen = () => {
                * 늘 보인다. 표는 구획의 바로 아래 자식이라 남은 높이에서 스크롤한다.
                */
               <>
+                {/*
+                 * 조회 묶음 하나(사용자 지시 2026-11-24) — 공장 · 유형 · 창고 · 미사용 포함 · 중지된 위치도 보기. 창고는 선택칸으로
+                 * 고르므로 검색칸은 두지 않는다. 걸러진 창고 가운데 하나를 고르면 그 아래 위치 계층이 늘 보인다.
+                 */}
                 <WarehouseFilterBar
                   appliedFilters={filters}
                   onApplyFilters={setFilters}
                   plantOptions={filterOptions.plantOptions}
                   warehouseTypeOptions={filterOptions.warehouseTypeOptions}
-                />
-                {/* 걸러진 창고 가운데 하나를 고르면 그 아래 위치 계층이 늘 보인다. */}
-                <div className="warehouse-location-filter">
-                  <div className="warehouse-location-filter-row">
-                    <Select
-                      aria-label={t.warehouse.select}
-                      aria-describedby={warehouseNote === undefined ? undefined : warehouseNoteId}
-                      options={toOptions(warehouses.entries)}
-                      value={warehouseParam === '' ? null : warehouseParam}
-                      placeholder={t.warehouse.selectPlaceholder}
-                      /* ⛔ 편집 창이 열린 동안 창고를 바꾸지 않는다(명세 예외 6). */
-                      disabled={editing}
-                      onChange={selectWarehouse}
-                    />
+                  showSearch={false}
+                  afterType={
+                    <div className="warehouse-filter-select is-wide">
+                      <Select
+                        aria-label={t.warehouse.select}
+                        aria-describedby={warehouseNote === undefined ? undefined : warehouseNoteId}
+                        options={toOptions(warehouses.entries)}
+                        value={warehouseParam === '' ? null : warehouseParam}
+                        placeholder={t.warehouse.selectPlaceholder}
+                        /* ⛔ 편집 창이 열린 동안 창고를 바꾸지 않는다(명세 예외 6). */
+                        disabled={editing}
+                        onChange={selectWarehouse}
+                      />
+                    </div>
+                  }
+                  extra={
                     <Checkbox
                       checked={includeInactive}
                       disabled={editing}
@@ -284,13 +315,15 @@ export const WarehouseLayoutScreen = () => {
                     >
                       {t.locations.includeInactive}
                     </Checkbox>
-                  </div>
-                  {warehouseNote !== undefined && (
-                    <span id={warehouseNoteId} className="field-note">
-                      {warehouseNote}
-                    </span>
-                  )}
-                </div>
+                  }
+                  note={
+                    warehouseNote === undefined ? undefined : (
+                      <span id={warehouseNoteId} className="field-note">
+                        {warehouseNote}
+                      </span>
+                    )
+                  }
+                />
 
                 {warehouseId === null ? (
                   <EmptyState size="sm" title={t.warehouse.emptyTitle} />

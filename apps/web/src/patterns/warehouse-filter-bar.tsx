@@ -1,7 +1,7 @@
 import { Checkbox, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 import { useApiClient } from './api-context';
 import { type LookupEntry, type LookupSource, selectableLookupOptions } from './lookup-display';
@@ -129,6 +129,14 @@ export interface WarehouseFilterBarProps {
   warehouseTypeOptions: { value: string; label: string }[];
   /** 공장 선택지. 미사용 공장은 지금 고른 값일 때만 남는다 */
   plantOptions: { value: string; label: string }[];
+  /** 검색칸 — 창고 배치도는 창고를 선택칸으로 고르므로 끈다(사용자 지시 2026-11-24). 기본 켬. */
+  showSearch?: boolean;
+  /** 유형 선택칸 바로 오른쪽에 둘 칸 — 창고 배치도의 창고 선택. */
+  afterType?: ReactNode;
+  /** 미사용 포함 뒤에 둘 칸 — 창고 배치도의 「중지된 위치도 보기」. */
+  extra?: ReactNode;
+  /** 줄 아래 안내(창고 선택의 까닭 등). */
+  note?: ReactNode;
 }
 
 const t = messages.warehouseLocation;
@@ -149,6 +157,10 @@ export const WarehouseFilterBar = ({
   onApplyFilters,
   warehouseTypeOptions,
   plantOptions,
+  showSearch = true,
+  afterType,
+  extra,
+  note,
 }: WarehouseFilterBarProps) => {
   const [draftQ, setDraftQ] = useState(appliedFilters.q);
   const appliedQ = appliedFilters.q;
@@ -178,20 +190,22 @@ export const WarehouseFilterBar = ({
   return (
     <div className="warehouse-location-filter filter-field-surface">
       <div className="warehouse-location-filter-row is-one-line">
-        <SearchInput
-          aria-label={t.filters.searchLabel}
-          placeholder={t.filters.searchPlaceholder}
-          value={draftQ}
-          onChange={(event) => setDraftQ(event.target.value)}
-          /* Enter 는 기다리지 않고 바로. */
-          onSearch={(value) => applyQ(value)}
-          /* 검색칸의 X(사용자 지시 2026-10-29) — 검색어를 비우고 바로 다시 조회한다. */
-          onClear={() => {
-            setDraftQ('');
-            applyQ('');
-          }}
-          clearLabel={messages.common.clear}
-        />
+        {showSearch && (
+          <SearchInput
+            aria-label={t.filters.searchLabel}
+            placeholder={t.filters.searchPlaceholder}
+            value={draftQ}
+            onChange={(event) => setDraftQ(event.target.value)}
+            /* Enter 는 기다리지 않고 바로. */
+            onSearch={(value) => applyQ(value)}
+            /* 검색칸의 X(사용자 지시 2026-10-29) — 검색어를 비우고 바로 다시 조회한다. */
+            onClear={() => {
+              setDraftQ('');
+              applyQ('');
+            }}
+            clearLabel={messages.common.clear}
+          />
+        )}
         <div className="warehouse-filter-select">
           <Select
             aria-label={t.fields.plant}
@@ -208,6 +222,7 @@ export const WarehouseFilterBar = ({
             onChange={(value) => onApplyFilters({ ...appliedFilters, warehouseTypeCode: value })}
           />
         </div>
+        {afterType}
         {/* 해제 축이라 변경 즉시 적용한다(공장·유형과 같다). */}
         <Checkbox
           checked={appliedFilters.includeInactive}
@@ -217,7 +232,9 @@ export const WarehouseFilterBar = ({
         >
           {messages.common.includeInactive}
         </Checkbox>
+        {extra}
       </div>
+      {note}
     </div>
   );
 };

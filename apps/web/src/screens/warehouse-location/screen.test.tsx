@@ -875,6 +875,46 @@ const putRoute = (respond: StubRoute['respond']): StubRoute => ({
 });
 
 /** 옛 `tab=putaway`(없어진 적치 규칙 탭, omf-mes-server #907)는 기본 탭으로 연다. */
+/* 「배치도」 열(사용자 지시 2026-11-24) — 구역 · 랙 줄의 아이콘이 그 위치로 배치도 수정 창을 바로 연다. */
+describe('WarehouseLocationScreen — 배치도 수정 아이콘', () => {
+  it('구역 · 랙 줄에는 배치도 수정 아이콘 링크가 있고, 층 · 셀 줄은 줄표다', async () => {
+    const LEVELS: Record<number, Location['locationLevelCode']> = {
+      2001: 'ZONE',
+      2002: 'RACK',
+      2003: 'LEVEL',
+      2004: 'ZONE',
+    };
+    renderScreen(
+      [
+        warehouseListRoute(),
+        warehouseDetailRoute(),
+        locationListRoute(
+          locationFixtures.map((location) => ({
+            ...location,
+            locationLevelCode: LEVELS[location.locationId] ?? null,
+          })),
+        ),
+        ...lookupRoutes(),
+      ],
+      '?wh=1001',
+    );
+
+    const panel = await openLocationTab();
+    expect(within(panel).getByRole('columnheader', { name: /배치도/u })).toBeInTheDocument();
+
+    expect(await within(panel).findByRole('link', { name: 'A-01 배치도 수정' })).toHaveAttribute(
+      'href',
+      '/master-data/warehouse-layout?warehouse=1001&location=2001&edit=1',
+    );
+    expect(within(panel).getByRole('link', { name: 'A-01-01 배치도 수정' })).toHaveAttribute(
+      'href',
+      '/master-data/warehouse-layout?warehouse=1001&location=2002&edit=1',
+    );
+    /* A-01-01-01 은 층 — 배치도에 둘 수 없다. */
+    expect(within(panel).queryByRole('link', { name: 'A-01-01-01 배치도 수정' })).toBeNull();
+  });
+});
+
 describe('WarehouseLocationScreen — 적치 규칙 탭 없음', () => {
   it('옛 tab=putaway 로 열어도 같은 화면이고 적치 규칙은 없다', async () => {
     const { requests } = renderScreen(

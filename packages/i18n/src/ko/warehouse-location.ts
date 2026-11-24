@@ -24,6 +24,11 @@ export const warehouseLocation = {
     editWarehouse: '창고 정보',
   },
   /** Location 표 위 선택 막대(안 2, 사용자 결정 2026-11-24) — 고른 행이 있을 때만 나타난다. */
+  /** Location 표의 「배치도」 열 — 아이콘으로 그 위치의 창고 배치도 수정 창을 바로 연다(사용자 지시 2026-11-24). */
+  layoutLink: {
+    header: '배치도',
+    label: (code: string): string => `${code} 배치도 수정`,
+  },
   selection: {
     label: '고른 위치',
     count: (count: number): string => `${String(count)}개 선택됨`,
