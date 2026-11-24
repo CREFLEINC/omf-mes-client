@@ -41,6 +41,7 @@ import {
   PAGE_SIZE,
   QUEUE_STATUSES,
   withDraft,
+  withJudgmentFilter,
   withStatus,
   readFilters,
   readPage,
@@ -75,6 +76,7 @@ import {
   useSaveInspectionResult,
 } from './queries';
 import { plantTodayRange } from '../parts-iqc-inspection/today';
+import { JudgmentFilter } from './judgment-filter';
 import { QueueDetailFilters } from './queue-detail-filters';
 import { QueueListTable } from './queue-list-table';
 import { RequestDetailPane } from './request-detail-pane';
@@ -1110,6 +1112,11 @@ const OqcInspectionView = ({ kindSelect }: { kindSelect: ReactNode }) => {
        */}
       {/* 검색 묶음 — 입하 예정 조회처럼 표와 다른 카드에 둔다(#185). 시리얼 스캔과 조회 조건이 한 줄에 선다. */}
       <section ref={aboveRef} className="pane oqc-inspection-panes oqc-inspection-search">
+        {/* 종합 판정 — 맨 왼쪽(사용자 지시 2026-11-24) · 고르면 바로 조회한다(omf-all-around#356). */}
+        <JudgmentFilter
+          value={filters.overallJudgmentCode}
+          onChange={(code) => applyFilters(withJudgmentFilter(filters, code))}
+        />
         {kindSelect}
         <SerialOpenByScan
           onOpen={openBySerial}

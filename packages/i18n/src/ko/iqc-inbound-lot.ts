@@ -182,15 +182,14 @@ export const iqcInboundLot = {
         '이 결과가 불합격이나 보류 판정을 바꿉니다. 재검 사유를 고르세요',
     },
     alsoMatched: (seqNos: string) => `${seqNos}회차에도 매칭됨`,
-    judgmentRequired: '판정을 고르세요.',
     cancel: '취소',
     /** 사용자 지시 2026-11-16 · #274 — 「저장」에서 정정. */
     save: '제출',
     discardBody: '입력한 내용이 사라집니다. 닫을까요?',
     discardStay: '계속 입력',
     discardLeave: '닫기',
-    added: (seqNo: number, judgment: string) =>
-      `${seqNo}회차 검사 결과를 기록했습니다. 종합 판정 미리 보기: ${judgment}`,
+    /** 사용자 지시 2026-11-24 · omf-all-around#356 — 종합 판정 미리 보기 없이 이 문장만. */
+    added: '검사 결과를 제출하였습니다.',
     updated: (seqNo: number) => `${seqNo}회차 검사 결과를 고쳤습니다.`,
     loading: '결과를 불러오는 중입니다',
   },

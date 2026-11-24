@@ -129,6 +129,9 @@ export const common = {
     filterOn: (label: string): string => `${label} 의뢰만 보기`,
     filterOff: (label: string): string => `${label} 거르기 해제`,
     pendingOnly: '대기·진행만 보기', // ui-check-ignore: C-13 사용자 지시 문구(2026-10-26 · #185)
+    /** 종합 판정 필터(omf-all-around#356) — 확정된 의뢰의 판정으로 거른다. */
+    judgmentFilter: '종합 판정',
+    judgmentAll: '전체',
     pickRequest: '검사 의뢰를 선택하세요.',
     pickRequestHint: '선택한 의뢰의 상세 정보가 표시됩니다.',
     close: '닫기',

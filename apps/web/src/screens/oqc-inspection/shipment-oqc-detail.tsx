@@ -308,9 +308,15 @@ export const ShipmentOqcDetail = ({
         {lotRows.length === 0 ? (
           <EmptyState
             size="sm"
+            className="oqc-shipment-lots-empty"
             icon={<Icon name="inventory_2" size={20} />}
             title={s.lots.emptyTitle}
-            description={s.lots.emptyDescription}
+            description={s.lots.emptyDescription.map((line, index) => (
+              <span key={line}>
+                {index > 0 && <br />}
+                {line}
+              </span>
+            ))}
           />
         ) : (
           <div className="wide-table iqc-inbound-table oqc-shipment-lots">
@@ -375,6 +381,7 @@ export const ShipmentOqcDetail = ({
         <ShipmentResultDrawer
           inspectionRequestId={request.inspectionRequestId}
           itemId={request.itemId}
+          itemParts={itemParts}
           uomId={request.uomId}
           uomCode={uom}
           planVersionId={request.inspectionPlanVersionId}
@@ -388,7 +395,7 @@ export const ShipmentOqcDetail = ({
             setDrawer(null);
             toast.show({
               variant: 'success',
-              description: edited ? s.drawer.updated(seqNo) : s.drawer.added(seqNo),
+              description: edited ? s.drawer.updated(seqNo) : s.drawer.added,
             });
           }}
         />

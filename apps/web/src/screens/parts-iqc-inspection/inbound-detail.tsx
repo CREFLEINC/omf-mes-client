@@ -574,22 +574,11 @@ export const InboundDetail = ({
                         setDrawer(null);
                         void (async () => {
                           await refresh();
-                          /* 알림의 미리 보기는 저장 뒤 서버가 다시 매긴 것으로(불합격 > 보류 > 합격). */
-                          const fresh = await query.refetch();
-                          const added = (fresh.data?.results ?? []).reduce(
-                            (max, result) => Math.max(max, result.seqNo),
-                            0,
-                          );
-
+                          await query.refetch();
+                          /* 추가 알림은 한 문장만 — 종합 판정 미리 보기는 싣지 않는다(omf-all-around#356). */
                           toast.show({
                             variant: 'success',
-                            description:
-                              editing === null
-                                ? td.added(
-                                    added,
-                                    judgmentText(fresh.data?.previewJudgmentCode ?? null),
-                                  )
-                                : td.updated(editing.seqNo),
+                            description: editing === null ? td.added : td.updated(editing.seqNo),
                           });
                         })();
                       }}
@@ -628,6 +617,7 @@ export const InboundDetail = ({
                       inspectionRequestId={inspectionRequestId}
                       lots={lots}
                       uomCode={uomCode}
+                      scannedLotId={scanOpen?.lotId ?? null}
                       onClose={() => setAttachOpen(false)}
                     />
                   )}
