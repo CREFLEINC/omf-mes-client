@@ -4745,6 +4745,72 @@
   background: var(--surface-container);
 }
 
+/*
+ * 라벨지 설정 창(톱니 설정 → 라벨지 설정 · 사용자 지시 2026-11-24) — 왼쪽 입력, 오른쪽 숫자 키패드(규칙 8 · 340).
+ * 넓은 창(760)으로는 입력 칸 넷이 한 줄에 들지 않아 이 창만 넓힌다(현장 1920 × 1080).
+ */
+.pu-dialog.wide:has(.pop-label-media) {
+  width: 1120px;
+}
+
+.pop-label-media {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px;
+  align-items: start;
+}
+
+.pop-label-media__form {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.pop-label-media__current {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--pu-line);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-card);
+}
+
+.pop-label-media__source {
+  margin-inline-start: 6px;
+  color: var(--pu-text-3);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+/* 네 칸 격자 — 칸이 셋 · 하나인 줄도 아래 줄(네 칸)과 폭 · 자리가 맞는다. */
+.pop-label-media__row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pop-label-media__input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pop-label-media__input .pu-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pop-label-media__test {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 12px;
+  color: var(--pu-text-2);
+  font-size: 14px;
+}
+
 /* 1024 폭 — 갱신 시각 · [종료]가 더해져 단말·설비 칩이 다 줄지 않게 맨 위 줄 단추 여백을 줄인다(#295). */
 @media (max-width: 1180px) {
   .pop-nav-top {

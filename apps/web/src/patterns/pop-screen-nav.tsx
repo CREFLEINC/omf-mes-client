@@ -15,6 +15,8 @@ import {
   type PopScreen,
   type PopScreenGroupKey,
 } from './pop-screen-catalog';
+import { PopLabelMediaDialog } from './pop-label-media-dialog';
+import { labelMediaShell } from './pop-label-media';
 import { PuConfirm } from './pop-uniform';
 import { usePopTabCounts, usePopWorkCounts, type PopWorkCounts } from './pop-work-counts';
 import { PopWorkSteps } from './pop-work-steps';
@@ -201,6 +203,15 @@ const SETTINGS_ICON = navIcon(
   </>,
 );
 
+/** 라벨지 — 프린터에서 나오는 라벨 한 장. */
+const LABEL_MEDIA_ICON = navIcon(
+  <>
+    <path d="M6 9V3h12v6" />
+    <rect x="3" y="9" width="18" height="8" rx="2" />
+    <path d="M7 17v4h10v-4" />
+  </>,
+);
+
 const POWER_ICON = navIcon(
   <>
     <path d="M12 3v8" />
@@ -257,6 +268,9 @@ const TopBar = ({
   const [refreshedAt, setRefreshedAt] = useState(() => new Date());
   const [isExitOpen, setExitOpen] = useState(false);
   const [isSettingsOpen, setSettingsOpen] = useState(false);
+  const [isLabelMediaOpen, setLabelMediaOpen] = useState(false);
+  /* 라벨지 설정은 셸에 통로가 있을 때만 선다 — 브라우저 · 옛 설치본에서는 눌러도 할 수 있는 것이 없다. */
+  const [canSetLabelMedia] = useState(() => labelMediaShell() !== null);
   const settingsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -267,7 +281,8 @@ const TopBar = ({
   useEffect(() => {
     if (!isSettingsOpen) return undefined;
     const handlePointerDown = (event: PointerEvent): void => {
-      if (event.target instanceof Node && settingsRef.current?.contains(event.target) === true) return;
+      if (event.target instanceof Node && settingsRef.current?.contains(event.target) === true)
+        return;
       setSettingsOpen(false);
     };
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -374,7 +389,7 @@ const TopBar = ({
         <span>{formatRefreshedAt(refreshedAt).slice(6)}</span>
       </span>
       {/*
-       * [설정] — 맨 위 줄 오른쪽 끝의 톱니 단추 하나(사용자 지시 2026-11-23). 드물게 쓰는 [단말 재등록] · [종료]를
+       * [설정] — 맨 위 줄 오른쪽 끝의 톱니 단추 하나(사용자 지시 2026-11-23). 드물게 쓰는 [라벨지 설정] · [단말 재등록] · [종료]를
        * 이 안에 모은다. [단말 재등록]은 설치 담당자용 보조 조작이라 전처럼 사번 입력 전에만 선다(#334).
        */}
       <div className="pop-nav-top__settings" ref={settingsRef}>
@@ -393,7 +408,30 @@ const TopBar = ({
           {SETTINGS_ICON}
         </Button>
         {isSettingsOpen && (
-          <div className="pop-nav-top__settings-menu" role="menu" aria-label={messages.popChrome.settings}>
+          <div
+            className="pop-nav-top__settings-menu"
+            role="menu"
+            aria-label={messages.popChrome.settings}
+          >
+            {/*
+             * [라벨지 설정] — 크기가 다른 라벨지로 갈아 끼웠을 때 앱을 끄지 않고 맞춘다(사용자 지시 2026-11-24).
+             * 숨은 단축키(보정 · 견본)를 대신한다. 서버와 무관하다 — 사번 · 연결과 상관없이 늘 선다.
+             */}
+            {canSetLabelMedia && (
+              <Button
+                className="pop-logout"
+                variant="outlined"
+                size="md"
+                role="menuitem"
+                onClick={() => {
+                  setSettingsOpen(false);
+                  setLabelMediaOpen(true);
+                }}
+              >
+                {LABEL_MEDIA_ICON}
+                {messages.popChrome.labelMedia.button}
+              </Button>
+            )}
             {workerNo === null && onReRegister !== undefined && (
               <Button
                 className="pop-logout"
@@ -426,6 +464,13 @@ const TopBar = ({
           </div>
         )}
       </div>
+      {isLabelMediaOpen && (
+        <PopLabelMediaDialog
+          onClose={() => {
+            setLabelMediaOpen(false);
+          }}
+        />
+      )}
       {isExitOpen && (
         <PuConfirm
           title={messages.popChrome.exit.title}

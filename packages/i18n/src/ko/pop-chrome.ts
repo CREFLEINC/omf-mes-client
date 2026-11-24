@@ -107,6 +107,78 @@ export const popChrome = {
   refreshedAt: (time: string): string => `갱신 ${time}`,
   /** 맨 위 줄 오른쪽 끝 톱니 단추 — [단말 재등록] · [종료]를 그 안에 모은다(사용자 지시 2026-11-23). */
   settings: '설정',
+  /**
+   * 설정 메뉴 안 [라벨지 설정] — 단말에 걸린 라벨지의 크기 · 장 구분 · 속도 · 농도를 맞춘다(사용자 지시 2026-11-24).
+   * 숨은 단축키(보정 · 견본)를 대신한다. 서버와 무관하다 — 값은 단말에만 남고 다음 인쇄부터 바로 따른다.
+   */
+  labelMedia: {
+    button: '라벨지 설정',
+    title: '라벨지 설정',
+    loading: '프린터 설정을 읽는 중입니다.',
+    loadFailed: '프린터 설정을 읽지 못했습니다.',
+    current: '지금 쓰는 값',
+    printer: '프린터',
+    printerDefault: '기본 프린터',
+    noPrinter: '연결된 프린터가 없습니다.',
+    size: '용지 크기',
+    mm: (value: number): string => `${String(value)} mm`,
+    sizeValue: (width: number, height: number): string => `${String(width)} × ${String(height)} mm`,
+    /** 「지금 쓰는 값」의 크기가 어디서 왔는가. */
+    source: {
+      saved: '이 창에서 정함',
+      env: '단말 환경값',
+      driver: '프린터 설정',
+      label: '라벨 기본 크기',
+      default: '기본값',
+    },
+    sizeMode: '크기 정하기',
+    followDriver: '프린터 설정 따르기',
+    manual: '직접 정하기',
+    driverSize: (text: string): string => `프린터 설정: ${text}`,
+    driverUnknown: '프린터 설정을 읽지 못했습니다.',
+    envPinned: '단말 환경값으로 정한 크기가 프린터 설정보다 먼저 쓰입니다.',
+    width: '가로',
+    height: '세로',
+    presets: '자주 쓰는 크기',
+    kind: '장 구분',
+    kinds: { gap: '틈(갭)', bline: '검은 표시', continuous: '연속지' },
+    gap: '장 사이 간격',
+    offset: '경계 보정',
+    speed: '속도',
+    density: '농도',
+    /** 라벨이 붙은 밑종이의 가로폭 — 셸이 `SIZE` 가로로 보낸다. */
+    linerWidth: '이형지 가로폭',
+    linerEmpty: '비우면 라벨 가로',
+    linerValue: (value: number): string => `이형지 ${String(value)} mm`,
+    linerHint:
+      '라벨이 붙은 이형지(밑종이)의 가로폭을 자로 재어 넣습니다. 프린터는 이형지 폭에 맞춰 자리를 잡습니다.',
+    linerNarrow: '이형지 가로폭은 라벨 가로보다 좁을 수 없습니다.',
+    separatorValue: (kind: string, gap: string, offset: string): string =>
+      `${kind}, 간격 ${gap}, 보정 ${offset}`,
+    printSettings: '인쇄 설정',
+    printValue: (speed: number, density: number): string =>
+      `속도 ${String(speed)}, 농도 ${String(density)}`,
+    range: (min: number, max: number): string => `${String(min)}~${String(max)}`,
+    outOfRange: (label: string, min: number, max: number): string =>
+      `${label}은(는) ${String(min)}~${String(max)} 사이로 넣어 주세요.`,
+    test: '시험 인쇄',
+    calibrate: '라벨지 보정',
+    calibrateHint:
+      '라벨지를 갈아 끼운 뒤 한 번 돌립니다. 빈 라벨 한두 장이 밀려 나온 뒤 멈추면 정상입니다.',
+    sample: '견본 인쇄',
+    sampleHint: '실제 자재 관리 LOT 라벨과 같은 모양으로 한 장 찍습니다.',
+    saveFirst: '바꾼 값을 저장한 뒤 찍을 수 있습니다.',
+    calibrated: '보정 명령을 보냈습니다.',
+    sampled: '견본 라벨을 보냈습니다.',
+    printFailed: '프린터로 보내지 못했습니다.',
+    saved: '저장했습니다. 다음 인쇄부터 따릅니다.',
+    saveFailed: '저장하지 못했습니다.',
+    clear: '저장한 값 지우기',
+    cleared: '저장한 값을 지웠습니다.',
+    save: '저장',
+    cancel: '취소',
+    close: '닫기',
+  },
   /** 설정 메뉴 안 [종료](#295 시안 규칙 17). */
   exit: {
     button: '종료',

@@ -582,6 +582,41 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     ).toBeNull();
     expect(screen.getByRole('menuitem', { name: messages.popChrome.exit.button })).toBeVisible();
   });
+
+  /* 사용자 지시 2026-11-24 — 라벨지 설정은 창고 탭이 아니라 톱니 설정 메뉴에, 서버와 무관하게. */
+  it('셸에 라벨지 통로가 있으면 설정 메뉴 맨 위 [라벨지 설정]이 서고 창을 연다', async () => {
+    const user = userEvent.setup();
+    const read = vi.fn(() => new Promise(() => undefined));
+    (window as unknown as { pop: unknown }).pop = {
+      rendition: { save: vi.fn() },
+      labelMedia: { read, save: vi.fn(), calibrate: vi.fn() },
+    };
+    try {
+      setup({ route: '/pop/home', workerNo: null });
+
+      await user.click(screen.getByRole('button', { name: messages.popChrome.settings }));
+      const items = screen.getAllByRole('menuitem');
+      expect(items[0]).toHaveAccessibleName(messages.popChrome.labelMedia.button);
+
+      await user.click(items[0] as HTMLElement);
+      expect(
+        screen.getByRole('dialog', { name: messages.popChrome.labelMedia.title }),
+      ).toBeInTheDocument();
+      expect(read).toHaveBeenCalledOnce();
+    } finally {
+      delete (window as unknown as { pop?: unknown }).pop;
+    }
+  });
+
+  it('셸에 라벨지 통로가 없으면(브라우저) [라벨지 설정]을 두지 않는다', async () => {
+    const user = userEvent.setup();
+    setup({});
+
+    await user.click(screen.getByRole('button', { name: messages.popChrome.settings }));
+    expect(
+      screen.queryByRole('menuitem', { name: messages.popChrome.labelMedia.button }),
+    ).toBeNull();
+  });
 });
 
 describe('destinationOf — 화면으로 가는 주소', () => {
