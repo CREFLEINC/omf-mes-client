@@ -6292,7 +6292,7 @@ export interface paths {
     };
     /**
      * 검사기준 헤더 수정
-     * @description approvedBy·approvedAt 은 이 요청에 포함하지 않는다 — 별도 :approve 액션으로만 기록한다. 낙관적 잠금은 공유계약 B-1. 근거: W-06-02 §4-A·§5-1
+     * @description 낙관적 잠금은 공유계약 B-1. 근거: W-06-02 §4-A·§5-1
      */
     put: {
       parameters: {
@@ -6591,79 +6591,6 @@ export interface paths {
         };
         /** @description 없는 검사기준 버전 */
         404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/quality/inspection-plans/{inspectionPlanId}:approve': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        inspectionPlanId: number;
-      };
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * 검사기준 승인
-     * @description approvedBy·approvedAt 을 서버가 동시에 기록한다(현재 사용자·현재 시각) — 둘은 짝이어야 하며 서버가 항상 함께 채우는 방식으로 그 짝을 보장한다(A-9 취지 · §8-3). 전제: 이 기준에 확정(status_code=확정) 버전이 1건 이상 있어야 한다 — 없으면 400(code=CONFIRMED_VERSION_REQUIRED). 승인 해제(취소)는 제공하지 않는다. 근거: W-06-02 §5-1 「승인」
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header: {
-          /** @description 전 쓰기 API 필수. */
-          'Idempotency-Key': components['parameters']['IdempotencyKey'];
-        };
-        path: {
-          inspectionPlanId: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description 승인됨 */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['InspectionPlan'];
-          };
-        };
-        /** @description 확정된 버전이 없음(code=CONFIRMED_VERSION_REQUIRED) — W-06-02 §5-1 */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 권한 없음. 근거: W-06-02 §6 「권한 없음」 */
-        403: {
           headers: {
             [name: string]: unknown;
           };
@@ -49328,18 +49255,6 @@ export interface components {
        */
       inspectionTypeCode: string;
       /**
-       * Format: int64
-       * @description :approve 액션으로만 기록
-       * @example 1001
-       */
-      approvedBy?: number | null;
-      /**
-       * Format: date-time
-       * @description approvedBy 와 짝(CHECK 없음 — 서버가 항상 함께 기록해 보장)
-       * @example 2026-08-04T09:12:00+09:00
-       */
-      approvedAt?: string | null;
-      /**
        * @description 기본 생략 — 검사 유형(IQC·PQC·OQC) 공통. 켜진 기준이 걸리는 입하 LOT(IQC)·작업지시(PQC)·출하작업지시(OQC)는 검사할 의뢰를 세우지 않고 생략(SKIPPED · skipBasisCode=DEFAULT) 기록만 남긴다. 요청에 없으면 pqcSkipAllowed 를 그 값으로 읽는다. 서버 선행 · 장부 P-152 · omf-all-around#212 ⭐ 품목이 지정된 IQC 기준이면 그 품목의 inspectionRequired 와 반대 값으로 연동된다 — 저장하거나 다시 사용(:activate)하면 서버가 같은 트랜잭션에서 품목 값을 맞춘다(어긋난 경우만 · 품목 versionNo +1). 품목이 빈(전 품목 공통) IQC 기준은 생성·defaultSkip 변경·다시 사용 때 전용 IQC 기준(사용 중)이 없는 모든 품목의 inspectionRequired 를 반대 값으로 맞춘다(어긋난 품목만 · 품목 versionNo +1 · 이름만 바꾼 저장은 건드리지 않는다 · 사용자 결정 2026-11-04). PQC 기준은 라우팅 공정의 inspectionManaged 와 연동하지 않는다 — 품목 전용 PQC 기준이 있는 품목의 작업지시가 PQC 대상이고(전 품목 공통 PQC 기준은 대상을 만들지 않는다), PQC 기준의 defaultSkip 은 그 제품의 모든 PQC 의뢰에 걸린다(사용자 결정 2026-11-05). OQC 는 연동하지 않는다. omf-all-around#215
        * @default false
        * @example false
@@ -49357,7 +49272,7 @@ export interface components {
        */
       isActive: boolean;
     };
-    /** @description 검사기준 헤더 등록 요청. approvedBy·approvedAt·isActive 는 받지 않는다. 근거: W-06-02 §4-A·§5-1 */
+    /** @description 검사기준 헤더 등록 요청. isActive 는 받지 않는다. 근거: W-06-02 §4-A·§5-1 */
     InspectionPlanCreate: {
       /**
        * @description uq — 전역 유일 ⭐ 비우면(생략 · 빈 글) 서버가 `QP-{YYYYMMDD}-{SEQ4}` 로 붙인다(사용자 결정 2026-11-11 · omf-all-around#262).
@@ -49432,7 +49347,7 @@ export interface components {
        */
       inspectionPlanVersionId: number;
     };
-    /** @description 검사기준 헤더 수정 요청. approvedBy·approvedAt 은 :approve 전용, isActive 는 :deactivate 전용. 낙관적 잠금은 공유계약 B-1. 근거: W-06-02 §4-A */
+    /** @description 검사기준 헤더 수정 요청. isActive 는 :deactivate 전용. 낙관적 잠금은 공유계약 B-1. 근거: W-06-02 §4-A */
     InspectionPlanUpdate: {
       /** @example STANDARD */
       inspectionPlanCode: string;
