@@ -11,6 +11,7 @@ import { Chip, type Column } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 
 import { TraceEndTable } from '../../patterns/trace-tree/end-table';
+import { stockPlace } from '../../patterns/trace-tree/tree-table';
 import {
   TraceLotCell,
   iqcTone,
@@ -103,7 +104,7 @@ const destinationOf = (row: ForwardEndRow): string =>
     firstWithMore(
       row.shipments.map((shipment) => `${shipment.customer.name} ${shipment.shipmentNo}`),
     ),
-    firstWithMore(row.stock.map((stock) => `${stock.warehouse.name} ${stock.location.code}`)),
+    firstWithMore(row.stock.map((stock) => stockPlace(stock.warehouse, stock.location))),
   ]
     .filter((part) => part !== '')
     .join(', ');

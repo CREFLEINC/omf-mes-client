@@ -111,7 +111,7 @@ describe('W-02-13 자재 기준 생산 추적', () => {
     /* 영향 제품 LOT — 완제품(출하) · 반제품 P2(재고), 반제품 P1 은 없음 */
     const end = within(detail()).getByRole('table', { name: t.material.endTitle });
     expect(within(end).getByText('고객 X SH-SYN-0001')).toBeInTheDocument();
-    expect(within(end).getByText('생산창고 L-02')).toBeInTheDocument();
+    expect(within(end).getByText('생산창고 (WH-P) / L-02 (L-02)')).toBeInTheDocument();
     expect(within(end).queryByTitle('PL-SYN-0001-A01')).toBeNull();
     expect(calls.trees).toHaveLength(1);
     expect(calls.trees[0]?.searchParams.get('lotId')).toBe(String(A.lot.lotId));
