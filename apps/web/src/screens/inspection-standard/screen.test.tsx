@@ -4129,6 +4129,16 @@ describe('InspectionStandardScreen — 품목 검사 수준(#357)', () => {
     });
   });
 
+  it('버전을 고르지 않아도 「검사 수준 이력」 단추로 그 품목의 수준 이력만 본다', async () => {
+    const { requests, user } = renderSelectedPlan(levelRoutes([LEVEL]));
+
+    await user.click(await screen.findByRole('button', { name: '검사 수준 이력' }));
+    const dialog = await screen.findByRole('dialog', { name: /^검사 수준 이력/ });
+    expect(within(dialog).queryByRole('tab')).not.toBeInTheDocument();
+    expect(await within(dialog).findByText('합성 최초 지정')).toBeInTheDocument();
+    expect(requestsTo(requests, HISTORIES)[0]?.url.searchParams.get('itemId')).toBe('5001');
+  });
+
   it('「이력」 창은 검사 기준 이력 · 검사 수준 이력 탭으로 나뉘고, 검사 수준 이력은 그 품목만 조회한다', async () => {
     const { requests, user } = renderSelectedVersion([
       ...levelRoutes([LEVEL]),

@@ -24,6 +24,8 @@ export interface VersionBarProps extends VersionPaneProps {
   versionActions?: ReactNode;
   /** 「버전 이력」 창을 연다 — 고른 버전이 있을 때만 넘긴다(종전 「이력」 탭 · omf-all-around#258). */
   onHistory?: () => void;
+  /** 이력 단추 글자 — 버전을 고르지 않았으면 「검사 수준 이력」(omf-all-around#357). 없으면 「버전 이력」. */
+  historyLabel?: string;
   /** 「버전 비교」 창을 연다(#196). 견줄 버전이 2개 미만이면 화면이 넘기지 않는다 — 단추가 서지 않는다(#208). */
   onCompare?: () => void;
 }
@@ -33,6 +35,7 @@ export const VersionBar = ({
   onListOpenChange,
   versionActions,
   onHistory,
+  historyLabel,
   onCompare,
   ...props
 }: VersionBarProps) => {
@@ -94,7 +97,7 @@ export const VersionBar = ({
           )}
           {onHistory !== undefined && (
             <Button variant="outlined" onClick={onHistory}>
-              {t.versionSection.history}
+              {historyLabel ?? t.versionSection.history}
             </Button>
           )}
           {versionActions}

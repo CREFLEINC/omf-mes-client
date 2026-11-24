@@ -776,6 +776,13 @@ export const InspectionStandardScreen = () => {
       ? null
       : resolveVersionStatus(versionDetail.data.inspectionPlanVersion.statusCode);
 
+  /* 버전 이력은 고른 버전이 있을 때만, 검사 수준 이력은 품목이 있는 IQC 기준이면 늘(사용자 지시 · omf-all-around#357). */
+  const historyVersionId =
+    selectedVersionId !== null && versionStatus !== null ? selectedVersionId : null;
+  const historyPlan = planDetail.data?.inspectionPlan;
+  const historyLevelItemId =
+    historyPlan?.inspectionTypeCode === 'IQC' ? (historyPlan.itemId ?? null) : null;
+
   const versionWrite = useMasterWrite<VersionFormValues, InspectionPlanVersion>({
     request: (values, headers) =>
       client.PUT('/quality/inspection-plan-versions/{inspectionPlanVersionId}', {
@@ -1674,10 +1681,14 @@ export const InspectionStandardScreen = () => {
           </Button>
         ) : undefined
       }
+      /* 버전이 없어도 품목이 있는 IQC 기준이면 검사 수준 이력은 본다(사용자 지시 · omf-all-around#357). */
       onHistory={
-        selectedVersionId !== null && versionStatus !== null
+        historyVersionId !== null || historyLevelItemId !== null
           ? () => setIsHistoryOpen(true)
           : undefined
+      }
+      historyLabel={
+        historyVersionId === null ? t.itemLevel.levelHistoryTab : t.versionSection.history
       }
       versions={versions}
       isLoading={versionList.isPending}
@@ -1979,6 +1990,71 @@ export const InspectionStandardScreen = () => {
           {renderVersionBody()}
         </div>
 
+        {isHistoryOpen && (historyVersionId !== null || historyLevelItemId !== null) && (
+          /*
+           * 종전 「이력」 탭 내용을 창으로(사용자 지시 · #258). 품목이 있는 IQC 기준은 「검사 기준 이력 · 검사 수준 이력」 탭으로
+           * 나눈다 — 검사 수준 설정 화면의 이력을 여기로 옮겼다(사용자 지시 · omf-all-around#357).
+           * 버전을 고르지 않았으면(버전이 없는 기준 포함) 검사 수준 이력만 보인다(사용자 지시).
+           */
+          <Dialog
+            open
+            size="lg"
+            /* 「최근 1년」 라벨은 제목 줄에(사용자 지시 · #258). 검사 기준 이력에만 걸린다. */
+            title={
+              <span className="inspection-standard-dialog-title">
+                {historyVersionId === null ? t.itemLevel.levelHistoryTab : t.versionSection.history}
+                {historyVersionId !== null &&
+                  (historyLevelItemId === null || historyTab === 'plan') && (
+                    <span className="inspection-standard-dialog-title-chips">
+                      <Chip variant="status" size="sm" status="idle">
+                        {t.history.range}
+                      </Chip>
+                    </span>
+                  )}
+              </span>
+            }
+            showCloseButton={false}
+            onClose={closeHistory}
+            footer={
+              <Button variant="outlined" onClick={closeHistory}>
+                {messages.common.close}
+              </Button>
+            }
+          >
+            {historyLevelItemId === null && historyVersionId !== null ? (
+              <VersionHistoryTable
+                inspectionPlanVersionId={historyVersionId}
+                labels={compareLabels}
+              />
+            ) : historyVersionId === null && historyLevelItemId !== null ? (
+              <ItemLevelHistoryTable itemId={historyLevelItemId} />
+            ) : historyVersionId !== null && historyLevelItemId !== null ? (
+              <Tabs
+                aria-label={t.itemLevel.historyTabs}
+                value={historyTab}
+                onChange={(value) => setHistoryTab(value as 'plan' | 'level')}
+                items={[
+                  {
+                    value: 'plan',
+                    label: t.itemLevel.planHistoryTab,
+                    content: (
+                      <VersionHistoryTable
+                        inspectionPlanVersionId={historyVersionId}
+                        labels={compareLabels}
+                      />
+                    ),
+                  },
+                  {
+                    value: 'level',
+                    label: t.itemLevel.levelHistoryTab,
+                    content: <ItemLevelHistoryTable itemId={historyLevelItemId} />,
+                  },
+                ]}
+              />
+            ) : null}
+          </Dialog>
+        )}
+
         {isPlanEditOpen && (
           <Dialog
             open
@@ -2069,10 +2145,6 @@ export const InspectionStandardScreen = () => {
    * 버전 상세를 못 받았거나 받는 중이면 종전 버전 정보 칸이 그 상태를 낸다.
    */
   const renderVersionBody = (): ReactNode => {
-    /* 「이력」 창의 검사 수준 이력 탭 — 품목이 있는 IQC 기준에만(omf-all-around#357). */
-    const historyPlan = planDetail.data?.inspectionPlan;
-    const historyLevelItemId =
-      historyPlan?.inspectionTypeCode === 'IQC' ? (historyPlan.itemId ?? null) : null;
     if (versionCreateValues !== null) return renderVersionFormPane();
 
     if (selectedVersionId === null) {
@@ -2109,67 +2181,6 @@ export const InspectionStandardScreen = () => {
         </div>
 
         {isCompareOpen && renderCompareDialog()}
-
-        {isHistoryOpen && selectedVersionId !== null && (
-          /*
-           * 종전 「이력」 탭 내용을 창으로(사용자 지시 · #258). 품목이 있는 IQC 기준은 「검사 기준 이력 · 검사 수준 이력」 탭으로
-           * 나눈다 — 검사 수준 설정 화면의 이력을 여기로 옮겼다(사용자 지시 · omf-all-around#357).
-           */
-          <Dialog
-            open
-            size="lg"
-            /* 「최근 1년」 라벨은 제목 줄에(사용자 지시 · #258). 검사 기준 이력에만 걸린다. */
-            title={
-              <span className="inspection-standard-dialog-title">
-                {t.versionSection.history}
-                {(historyLevelItemId === null || historyTab === 'plan') && (
-                  <span className="inspection-standard-dialog-title-chips">
-                    <Chip variant="status" size="sm" status="idle">
-                      {t.history.range}
-                    </Chip>
-                  </span>
-                )}
-              </span>
-            }
-            showCloseButton={false}
-            onClose={closeHistory}
-            footer={
-              <Button variant="outlined" onClick={closeHistory}>
-                {messages.common.close}
-              </Button>
-            }
-          >
-            {historyLevelItemId === null ? (
-              <VersionHistoryTable
-                inspectionPlanVersionId={selectedVersionId}
-                labels={compareLabels}
-              />
-            ) : (
-              <Tabs
-                aria-label={t.itemLevel.historyTabs}
-                value={historyTab}
-                onChange={(value) => setHistoryTab(value as 'plan' | 'level')}
-                items={[
-                  {
-                    value: 'plan',
-                    label: t.itemLevel.planHistoryTab,
-                    content: (
-                      <VersionHistoryTable
-                        inspectionPlanVersionId={selectedVersionId}
-                        labels={compareLabels}
-                      />
-                    ),
-                  },
-                  {
-                    value: 'level',
-                    label: t.itemLevel.levelHistoryTab,
-                    content: <ItemLevelHistoryTable itemId={historyLevelItemId} />,
-                  },
-                ]}
-              />
-            )}
-          </Dialog>
-        )}
 
         {guideEditField !== null && versionStatus.isEditable && (
           <VersionGuideDialog
