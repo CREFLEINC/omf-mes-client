@@ -255,6 +255,9 @@ export const inspectionStandard = {
     planHistoryTab: '검사 기준 이력',
     levelHistoryTab: '검사 수준 이력',
     historyTabs: '이력 구분',
+    /** 「검사 수준」 값 옆 글자 단추와 그 창 제목(사용자 지시 · #357). */
+    historyButton: '변경 이력',
+    historyTitle: '검사 수준 변경 이력',
   },
   detail: {
     title: '검사 기준 상세',

@@ -41,8 +41,9 @@ export const historyReason = (row: ItemInspectionLevelHistory): string => {
 };
 
 /*
- * 품목 이력 창의 열 — 사용자 시안(#208): 변경 일시 · 검사 수준(새 수준 칩 + 아래 「최초 지정」/「이전 수준에서 변경」) ·
- * 변경 방식 · 변경 사유 · 처리자. 품목은 창 머리가 말하므로 열에서 뺀다. 왼쪽 정렬.
+ * 품목 이력 표의 열 — 변경 일시 · 변경 전 · 변경 후 · 변경자(사용자 지시 · omf-all-around#357) · 변경 사유.
+ * 사유는 「기본 정보 수정」 창에서 받는 값이고, 자동 전환의 근거(연속 합격 · 불합격 의뢰)도 여기에 보여 남긴다.
+ * 품목은 창 머리가 말하므로 열에서 뺀다. 왼쪽 정렬.
  */
 const columns: Column<ItemInspectionLevelHistory>[] = [
   {
@@ -52,40 +53,36 @@ const columns: Column<ItemInspectionLevelHistory>[] = [
     render: (row) => formatPlantDateTime(row.changedAt) ?? '',
   },
   {
-    key: 'level',
-    header: t.history.itemColumns.level,
-    width: '130px',
-    render: (row) => (
-      <span className="inspection-level-history-level">
-        <LevelChip code={row.toLevelCode} />
-        <span className="inspection-sheet-template-muted">
-          {row.fromLevelCode === null
-            ? t.history.firstSetNote
-            : t.history.changedFrom(levelName(row.fromLevelCode))}
-        </span>
-      </span>
-    ),
+    key: 'from',
+    header: t.history.itemColumns.from,
+    width: '110px',
+    render: (row) =>
+      row.fromLevelCode === null ? (
+        <span className="inspection-sheet-template-muted">{t.history.firstSetNote}</span>
+      ) : (
+        <LevelChip code={row.fromLevelCode} />
+      ),
   },
   {
-    key: 'type',
-    header: t.history.itemColumns.type,
-    width: '90px',
-    render: (row) => t.history.types[row.changeTypeCode] ?? row.changeTypeCode,
-  },
-  {
-    key: 'reason',
-    header: t.history.itemColumns.reason,
-    width: '150px',
-    render: (row) => {
-      const reason = historyReason(row);
-      return <span title={reason}>{reason}</span>;
-    },
+    key: 'to',
+    header: t.history.itemColumns.to,
+    width: '110px',
+    render: (row) => <LevelChip code={row.toLevelCode} />,
   },
   {
     key: 'changedBy',
     header: t.history.itemColumns.changedBy,
     width: '120px',
     render: (row) => row.changedByName ?? '',
+  },
+  {
+    key: 'reason',
+    header: t.history.itemColumns.reason,
+    width: '180px',
+    render: (row) => {
+      const reason = historyReason(row);
+      return <span title={reason}>{reason}</span>;
+    },
   },
 ];
 
@@ -94,13 +91,13 @@ export interface ItemLevelHistoryTableProps {
 }
 
 /**
- * 품목 하나의 검사 수준 전환 이력 표(사용자 시안 · #208). 검사 기준 「이력」 창의 「검사 수준 이력」 탭이 쓴다(omf-all-around#357).
+ * 품목 하나의 검사 수준 전환 이력 표(사용자 시안 · #208). 검사 기준 상세의 「검사 수준 변경 이력」 창과 「버전 이력」 창의 「검사 수준 이력」 탭이 쓴다(omf-all-around#357).
  */
 export const ItemLevelHistoryTable = ({ itemId }: ItemLevelHistoryTableProps) => {
   const [page, setPage] = useState(1);
   const [size, setSize] = useState<number>(PAGE_SIZE);
   const histories = useInspectionLevelHistories(itemId, page, size);
-  /* 창 폭에 맞춰 열을 비율대로 줄이고 늘린다 — 마지막 열(처리자)이 잘리지 않게(#208). */
+  /* 창 폭에 맞춰 열을 비율대로 줄이고 늘린다 — 마지막 열이 잘리지 않게(#208). */
   const fit = useFitColumns(columns);
 
   return (

@@ -315,6 +315,8 @@ export const InspectionStandardScreen = () => {
     setIsHistoryOpen(false);
     setHistoryTab('plan');
   };
+  /* 상세 「검사 수준」 칸 옆 「변경 이력」 창(사용자 지시 · omf-all-around#357). 기준 · 버전 선택(주소)은 건드리지 않는다. */
+  const [isLevelHistoryOpen, setIsLevelHistoryOpen] = useState(false);
   const toast = useToast();
   const { client } = useApiClient();
   const sheetForPqc = useSheetForPqc();
@@ -749,7 +751,7 @@ export const InspectionStandardScreen = () => {
       ? null
       : resolveVersionStatus(versionDetail.data.inspectionPlanVersion.statusCode);
 
-  /* 버전 이력은 고른 버전이 있을 때만, 검사 수준 이력은 품목이 있는 IQC 기준이면 늘(사용자 지시 · omf-all-around#357). */
+  /* 버전 이력은 고른 버전이 있을 때만. 품목이 있는 IQC 기준이면 그 창에 검사 수준 이력 탭이 붙는다(omf-all-around#357). */
   const historyVersionId =
     selectedVersionId !== null && versionStatus !== null ? selectedVersionId : null;
   const historyPlan = planDetail.data?.inspectionPlan;
@@ -1654,15 +1656,8 @@ export const InspectionStandardScreen = () => {
           </Button>
         ) : undefined
       }
-      /* 버전이 없어도 품목이 있는 IQC 기준이면 검사 수준 이력은 본다(사용자 지시 · omf-all-around#357). */
-      onHistory={
-        historyVersionId !== null || historyLevelItemId !== null
-          ? () => setIsHistoryOpen(true)
-          : undefined
-      }
-      historyLabel={
-        historyVersionId === null ? t.itemLevel.levelHistoryTab : t.versionSection.history
-      }
+      /* 버전이 없을 때의 검사 수준 이력은 상세 「검사 수준」 칸 옆 「변경 이력」이 맡는다(사용자 지시 · omf-all-around#357). */
+      onHistory={historyVersionId !== null ? () => setIsHistoryOpen(true) : undefined}
       versions={versions}
       isLoading={versionList.isPending}
       isPlanSelected={selectedPlanId !== null}
@@ -1862,7 +1857,13 @@ export const InspectionStandardScreen = () => {
             const plan = planDetail.data.inspectionPlan;
             const itemId = plan.itemId ?? null;
             if (plan.inspectionTypeCode !== 'IQC' || itemId === null) return undefined;
-            return <ItemLevelFact key={itemId} itemId={itemId} />;
+            return (
+              <ItemLevelFact
+                key={itemId}
+                itemId={itemId}
+                onOpenHistory={() => setIsLevelHistoryOpen(true)}
+              />
+            );
           })()}
           routingRevision={routingOptions.revisions.find(
             (revision) =>
@@ -1953,11 +1954,27 @@ export const InspectionStandardScreen = () => {
           {renderVersionBody()}
         </div>
 
-        {isHistoryOpen && (historyVersionId !== null || historyLevelItemId !== null) && (
+        {isLevelHistoryOpen && historyLevelItemId !== null && (
+          <Dialog
+            open
+            size="lg"
+            title={t.itemLevel.historyTitle}
+            showCloseButton={false}
+            onClose={() => setIsLevelHistoryOpen(false)}
+            footer={
+              <Button variant="outlined" onClick={() => setIsLevelHistoryOpen(false)}>
+                {messages.common.close}
+              </Button>
+            }
+          >
+            <ItemLevelHistoryTable itemId={historyLevelItemId} />
+          </Dialog>
+        )}
+
+        {isHistoryOpen && historyVersionId !== null && (
           /*
            * 종전 「이력」 탭 내용을 창으로(사용자 지시 · #258). 품목이 있는 IQC 기준은 「검사 기준 이력 · 검사 수준 이력」 탭으로
            * 나눈다 — 검사 수준 설정 화면의 이력을 여기로 옮겼다(사용자 지시 · omf-all-around#357).
-           * 버전을 고르지 않았으면(버전이 없는 기준 포함) 검사 수준 이력만 보인다(사용자 지시).
            */
           <Dialog
             open
@@ -1965,9 +1982,8 @@ export const InspectionStandardScreen = () => {
             /* 「최근 1년」 라벨은 제목 줄에(사용자 지시 · #258). 검사 기준 이력에만 걸린다. */
             title={
               <span className="inspection-standard-dialog-title">
-                {historyVersionId === null ? t.itemLevel.levelHistoryTab : t.versionSection.history}
-                {historyVersionId !== null &&
-                  (historyLevelItemId === null || historyTab === 'plan') && (
+                {t.versionSection.history}
+                {(historyLevelItemId === null || historyTab === 'plan') && (
                     <span className="inspection-standard-dialog-title-chips">
                       <Chip variant="status" size="sm" status="idle">
                         {t.history.range}
@@ -1984,14 +2000,12 @@ export const InspectionStandardScreen = () => {
               </Button>
             }
           >
-            {historyLevelItemId === null && historyVersionId !== null ? (
+            {historyLevelItemId === null ? (
               <VersionHistoryTable
                 inspectionPlanVersionId={historyVersionId}
                 labels={compareLabels}
               />
-            ) : historyVersionId === null && historyLevelItemId !== null ? (
-              <ItemLevelHistoryTable itemId={historyLevelItemId} />
-            ) : historyVersionId !== null && historyLevelItemId !== null ? (
+            ) : (
               <Tabs
                 aria-label={t.itemLevel.historyTabs}
                 value={historyTab}
@@ -2014,7 +2028,7 @@ export const InspectionStandardScreen = () => {
                   },
                 ]}
               />
-            ) : null}
+            )}
           </Dialog>
         )}
 

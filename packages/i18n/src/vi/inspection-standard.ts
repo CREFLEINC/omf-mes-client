@@ -223,6 +223,9 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     planHistoryTab: 'Lịch sử tiêu chuẩn kiểm tra',
     levelHistoryTab: 'Lịch sử mức kiểm tra',
     historyTabs: 'Loại lịch sử',
+    /** 「검사 수준」 값 옆 글자 단추와 그 창 제목(사용자 지시 · #357). */
+    historyButton: 'Lịch sử thay đổi',
+    historyTitle: 'Lịch sử thay đổi mức kiểm tra',
   },
   detail: {
     title: 'Chi tiết tiêu chuẩn kiểm tra',
