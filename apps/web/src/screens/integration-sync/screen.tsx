@@ -216,9 +216,12 @@ export const IntegrationSyncScreen = () => {
   const detail = useMessageDetail(selectedId);
 
   /*
-   * 상세를 여는 것은 **보이는 행을 바꾸지 않는다** — 선택(체크)을 건드리지 않는다. 상세는 오른쪽 상세 상자에 선다(#358).
+   * 줄을 누르면 오른쪽 상세 상자에 그 건이 서고, 그 줄도 체크된다(이미 체크돼 있으면 그대로 · 사용자 지시 2026-11-24).
+   * 다른 줄의 체크는 건드리지 않는다.
    */
   const openDetail = (id: number) => {
+    const key = String(id);
+    setSelectedIds((prev) => (prev.includes(key) ? prev : [...prev, key]));
     const next = toSearchParams(period, filters, page, size);
     next.set('sel', String(id));
     setSearchParams(next);

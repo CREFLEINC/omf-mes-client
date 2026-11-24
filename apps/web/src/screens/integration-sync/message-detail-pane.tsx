@@ -33,18 +33,6 @@ const isScheduled = (value: string | null | undefined, now: Date): boolean => {
   return !Number.isNaN(at) && at > now.getTime();
 };
 
-/** 정보 상자 한 줄(세 칸)을 그린다 — 검사 조회·판정과 같은 테두리 상자 · 칸 사이 세로선(#358). */
-const FactRow = ({ label, items }: { label: string; items: DetailItem[] }) => (
-  <dl className="parts-iqc-facts iqc-inbound-facts integration-sync-facts" aria-label={label}>
-    {items.map((item) => (
-      <div className="parts-iqc-fact" key={item.label}>
-        <dt className="field-label">{item.label}</dt>
-        <dd>{item.value}</dd>
-      </div>
-    ))}
-  </dl>
-);
-
 /** 처리 일시 — 발생 → 전송 → 완료 순. 「다음 재시도 일시」는 재시도가 예정돼 있을 때만 덧붙인다. */
 const toTimeItems = (view: MessageDetailView, now: Date): DetailItem[] => {
   const availableAt = formatDateTime(view.availableAt);
@@ -60,7 +48,7 @@ const toTimeItems = (view: MessageDetailView, now: Date): DetailItem[] => {
 };
 
 /**
- * 오른쪽 상세 상자(#358) — 머리 줄(문서 번호 · 상태) → 오류 내용(있을 때만) → 연동 정보 → 처리 일시.
+ * 오른쪽 상세 상자(#358) — 정보 상자 하나(검사 조회·판정과 같은 모양) → 오류 내용(있을 때만).
  * 재처리는 목록 줄의 [재처리]가 맡는다.
  *
  * **전송 내용(전문)은 그리지 않는다.** 거래처·수량 등이 들어 있어 누구에게까지 보일지가 정해지지 않았다.
@@ -79,39 +67,50 @@ export const MessageDetailPane = ({ view, isLoading, loadError, now }: MessageDe
   const status = toStatusView(view, now);
   const errorMessage = view.lastErrorMessage ?? '';
 
+  const items: DetailItem[] = [
+    { label: t.table.interfaceCode, value: interfaceName(view.interfaceCode) },
+    { label: t.table.direction, value: directionName(view.directionCode) },
+    { label: t.detail.retryCount, value: t.table.retryTimes(view.retryCount) },
+    ...toTimeItems(view, now),
+  ];
+
   return (
     <div className="integration-sync-detail">
-      <div className="integration-sync-detail-head">
-        <h2 className="pane-title">{documentNoOf(view)}</h2>
-        <Chip variant="status" size="sm" status={status.tone}>
-          {status.label}
-        </Chip>
-        {/*
-         * 「언제부터 처리 중」 — 처리를 시작한 시각만 낸다(「잠금이 오래됐다」 같은 판정은 하지 않는다).
-         * 자동 재시도 예정은 아래 「다음 재시도 일시」 칸이 말한다.
-         */}
-        {(view.lockedBy ?? '') !== '' && status.note !== null && (
-          <span className="field-note">{status.note}</span>
-        )}
-      </div>
+      {/* 상자 제목 — 목록 상자의 「연동 이력 목록」과 짝(사용자 지시 2026-11-24). */}
+      <h2 className="pane-title">{t.detail.title}</h2>
+      {/*
+       * 정보 상자 하나 — 검사 조회·판정과 같은 모양(첫 칸에 번호 + 상태 배지, 칸 사이 세로선 · #358).
+       * 칸 순서: 문서 번호 → 연동 항목 · 송수신 구분 · 재시도 횟수 → 발생 · 전송 · 완료 일시.
+       */}
+      <dl className="parts-iqc-facts iqc-inbound-facts integration-sync-facts">
+        <div className="parts-iqc-fact">
+          <dt className="field-label">{t.table.messageKey}</dt>
+          <dd className="iqc-inbound-lot-key">
+            <h3 className="parts-iqc-fact-key">{documentNoOf(view)}</h3>
+            <Chip variant="status" size="sm" status={status.tone}>
+              {status.label}
+            </Chip>
+            {/* 「언제부터 처리 중」 — 처리를 시작한 시각만 낸다(「잠금이 오래됐다」 같은 판정은 하지 않는다). */}
+            {(view.lockedBy ?? '') !== '' && status.note !== null && (
+              <span className="parts-iqc-fact-sub">{status.note}</span>
+            )}
+          </dd>
+        </div>
+        {items.map((item) => (
+          <div className="parts-iqc-fact" key={item.label}>
+            <dt className="field-label">{item.label}</dt>
+            <dd>{item.value}</dd>
+          </div>
+        ))}
+      </dl>
 
-      {/* 오류 내용은 값이 있을 때만, 머리 줄 바로 아래 전체 폭으로(#358). */}
+      {/* 오류 내용은 값이 있을 때만, 정보 상자 바로 아래 전체 폭으로(#358). */}
       {errorMessage !== '' && (
         <div className="integration-sync-detail-error">
           <span className="field-label">{t.table.lastErrorMessage}</span>
           <p>{errorMessage}</p>
         </div>
       )}
-
-      <FactRow
-        label={t.detail.linkInfo}
-        items={[
-          { label: t.table.interfaceCode, value: interfaceName(view.interfaceCode) },
-          { label: t.table.direction, value: directionName(view.directionCode) },
-          { label: t.detail.retryCount, value: t.table.retryTimes(view.retryCount) },
-        ]}
-      />
-      <FactRow label={t.detail.processTimes} items={toTimeItems(view, now)} />
     </div>
   );
 };

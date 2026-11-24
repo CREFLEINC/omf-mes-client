@@ -39519,7 +39519,7 @@ body:has(
   white-space: nowrap;
 }
 
-/* 연동 현황·이력 상세(#358) — 머리 줄(문서 번호 · 상태) → 오류 내용(있을 때만) → 연동 정보 → 처리 일시. */
+/* 연동 현황·이력 상세(#358) — 정보 상자 하나(검사 조회·판정과 같은 모양) → 오류 내용(있을 때만). */
 .integration-sync-detail {
   display: grid;
   gap: var(--space-4);
@@ -39527,18 +39527,9 @@ body:has(
   min-width: 0;
 }
 
-.integration-sync-detail-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.integration-sync-detail-head > .pane-title {
-  min-width: 0;
+/* 정보 상자 첫 칸의 문서 번호 — 제목 글자 크기, 기본 여백은 없앤다. */
+.integration-sync-facts .parts-iqc-fact-key {
   margin: 0;
-  overflow-wrap: anywhere;
 }
 
 /* 오류 내용 — 전체 폭, 오류 색 테두리 상자. */
@@ -39556,20 +39547,6 @@ body:has(
   color: var(--semantic-error-text);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-}
-
-/* 정보 상자 한 줄 — 세 칸(연동 항목 · 송수신 구분 · 재시도 횟수 / 발생 → 전송 → 완료), 칸이 넘치면 다음 줄로. */
-.iqc-inbound-facts.integration-sync-facts {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
-  margin: 0;
-}
-
-/* 칸이 좁아도 일시를 「…」로 자르지 않고 줄을 바꿔 다 보인다. */
-.iqc-inbound-facts.integration-sync-facts dd {
-  overflow: visible;
-  white-space: normal;
-  text-overflow: clip;
 }
 
 /* 일괄 재처리 확인 창의 덧붙임 한 줄(부분 처리 안내). */

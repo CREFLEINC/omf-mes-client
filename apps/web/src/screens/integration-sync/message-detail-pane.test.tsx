@@ -75,20 +75,37 @@ describe('MessageDetailPane — 항목', () => {
     expect(screen.queryByText('오류 내용')).toBeNull();
   });
 
-  it('오류 내용이 있으면 머리 줄 바로 아래에 전체 폭으로 선다(#358)', () => {
+  it('오류 내용이 있으면 정보 상자 바로 아래에 전체 폭으로 선다(#358)', () => {
     renderPane({ view: messageRow({ lastErrorMessage: 'ERP 응답 없음' }) });
 
     const error = screen.getByText('ERP 응답 없음').closest('.integration-sync-detail-error');
     expect(error).not.toBeNull();
-    expect(error?.previousElementSibling).toHaveClass('integration-sync-detail-head');
+    expect(error?.previousElementSibling).toHaveClass('parts-iqc-facts');
   });
 
-  it('처리 일시는 발생 → 전송 → 완료 순으로 선다(#358)', () => {
+  it('상자 맨 위에 「연동 이력 상세」 제목이 선다(#358)', () => {
     renderPane();
 
-    const box = screen.getByLabelText('처리 일시');
-    const labels = [...box.querySelectorAll('dt')].map((dt) => dt.textContent);
-    expect(labels.slice(0, 3)).toEqual(['발생일시', '전송 일시', '완료 일시']);
+    expect(screen.getByRole('heading', { level: 2, name: '연동 이력 상세' })).toBeInTheDocument();
+  });
+
+  it('정보 상자 하나에 문서 번호 → 연동 항목 · 송수신 구분 · 재시도 횟수 → 발생 · 전송 · 완료 일시 순으로 선다(#358)', () => {
+    renderPane();
+
+    const boxes = document.querySelectorAll('.parts-iqc-facts');
+    expect(boxes).toHaveLength(1);
+    const labels = [...(boxes[0] as HTMLElement).querySelectorAll('dt')].map(
+      (dt) => dt.textContent,
+    );
+    expect(labels).toEqual([
+      '문서 번호',
+      '연동 항목',
+      '송수신 구분',
+      '재시도 횟수',
+      '발생일시',
+      '전송 일시',
+      '완료 일시',
+    ]);
   });
 
   it('시도 횟수가 0이어도 그대로 보인다', () => {
