@@ -496,11 +496,6 @@ export const InspectionDetail = ({
           scanOpen={scanOpen}
           onConfirmed={savePendingLevel}
         />
-        {/* 불합격 확정이 세운 부적합 — 검사 상세와 따로 처분 상자로(omf-all-around#354). */}
-        {inboundInspection.data?.overallJudgmentCode === 'REJECTED' &&
-          inboundInspection.data.nonconformanceId != null && (
-            <DispositionBox nonconformanceId={inboundInspection.data.nonconformanceId} />
-          )}
         {inboundPlanOpen && version.data !== undefined && specs.data !== undefined && (
           <PlanDialog
             planCode={plan.data === undefined ? '-' : plan.data.inspectionPlanCode}
@@ -519,10 +514,14 @@ export const InspectionDetail = ({
 
   /* 확정된 의뢰는 이력에서 시작하고, 첨부 파일 탭은 고를 수 있다(#247). */
   const pickedTab = picked?.requestId === inspectionRequestId ? picked.tab : null;
+  /* 불합격 확정이 세운 부적합은 「부적합 처분」 탭으로 따로 두고, 그런 건을 열면 이 탭부터 보인다(omf-all-around#354). */
+  const dispositionNcId = confirmed ? (followUp.data?.nonconformanceId ?? null) : null;
   const tab = confirmed
-    ? pickedTab === 'documents'
-      ? 'documents'
-      : 'history'
+    ? pickedTab === 'documents' || pickedTab === 'history'
+      ? pickedTab
+      : dispositionNcId === null
+        ? 'history'
+        : 'disposition'
     : (pickedTab ?? 'input');
 
   /* 목록 아래(또는 옆) 상세 구획에 선다 — 기존 검사 조회·판정과 같은 배치(팝업이 아니다 · 사용자 지시 2026-10-29). */
@@ -649,6 +648,20 @@ export const InspectionDetail = ({
                 />
               ) : null,
           },
+          ...(dispositionNcId === null
+            ? []
+            : [
+                {
+                  value: 'disposition',
+                  label: messages.dispositionDecision.box.title,
+                  content:
+                    tab === 'disposition' ? (
+                      <div className="disposition-tab">
+                        <DispositionBox nonconformanceId={dispositionNcId} />
+                      </div>
+                    ) : null,
+                },
+              ]),
         ]}
       />
       {pendingTab !== null && (
@@ -663,10 +676,6 @@ export const InspectionDetail = ({
             setPendingTab(null);
           }}
         />
-      )}
-      {/* 불합격 확정이 세운 부적합 — 검사 상세와 따로 처분 상자로(omf-all-around#354). */}
-      {confirmed && followUp.data?.nonconformanceId != null && (
-        <DispositionBox nonconformanceId={followUp.data.nonconformanceId} />
       )}
     </div>
   );

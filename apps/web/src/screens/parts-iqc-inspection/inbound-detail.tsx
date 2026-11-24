@@ -14,6 +14,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { DispositionBox } from '../disposition-decision/disposition-box';
 import { formatPackage, formatQty } from '../../patterns/package-qty';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { toApiError } from '../../patterns/request';
@@ -53,6 +54,8 @@ const lotStatusTone = (code: string): 'success' | 'error' | 'warning' | 'idle' =
 /** 판정 확정됐는가 — 새 흐름은 의뢰 단위 확정(`confirmedAt`). */
 export const isConfirmed = (inspection: InboundInspection): boolean =>
   inspection.confirmedAt != null;
+
+type InboundTab = 'detail' | 'history' | 'disposition';
 
 export interface InboundDetailProps {
   inspectionRequestId: number;
@@ -111,14 +114,16 @@ export const InboundDetail = ({
     setOpenedScan(scanOpen.key);
     if (isConfirmed(loaded) || drawer !== null) return;
     if (!(loaded.lots ?? []).some((lot) => lot.lotId === scanOpen.lotId)) return;
-    setTab('detail');
+    setPicked({ requestId: inspectionRequestId, tab: 'detail' });
     setDrawer({ editing: null, preselectedLotIds: [scanOpen.lotId] });
-  }, [scanOpen, loaded, openedScan, drawer]);
+  }, [scanOpen, loaded, openedScan, drawer, inspectionRequestId]);
   const [deleting, setDeleting] = useState<InspectionResultSummaryForward | null>(null);
   const [busy, setBusy] = useState(false);
   const [writeError, setWriteError] = useState<'conflict' | 'locked' | 'failed' | null>(null);
-  /* 상세 내용 · 변경 이력 탭(사용자 지시 2026-11-16 · omf-all-around#274). */
-  const [tab, setTab] = useState<'detail' | 'history'>('detail');
+  /*
+   * 상세 정보 · 작업 이력(사용자 지시 2026-11-16 · omf-all-around#274) · 부적합 처분(#354) 탭 — 고른 탭은 의뢰마다 처음부터.
+   */
+  const [picked, setPicked] = useState<{ requestId: number; tab: InboundTab } | null>(null);
   const [splitOpen, setSplitOpen] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
   const splitLockId = useId();
@@ -139,6 +144,14 @@ export const InboundDetail = ({
 
   const inspection = query.data;
   const confirmed = isConfirmed(inspection);
+  /* 불합격 확정이 세운 부적합 — 「부적합 처분」 탭으로 따로 두고, 그런 건을 열면 이 탭부터 보인다(omf-all-around#354). */
+  const nonconformanceId =
+    inspection.overallJudgmentCode === 'REJECTED' ? (inspection.nonconformanceId ?? null) : null;
+  const pickedTab = picked?.requestId === inspectionRequestId ? picked.tab : null;
+  const tab: InboundTab =
+    pickedTab === 'disposition' && nonconformanceId === null
+      ? 'detail'
+      : (pickedTab ?? (nonconformanceId === null ? 'detail' : 'disposition'));
   const lots = inspection.lots ?? [];
   const results = inspection.results ?? [];
   const inboundLotNo = inspection.inboundLotNo ?? inspection.inspectionRequestNo;
@@ -291,7 +304,12 @@ export const InboundDetail = ({
         size="md"
         aria-label={inboundLotNo}
         value={tab}
-        onChange={(next) => setTab(next === 'history' ? 'history' : 'detail')}
+        onChange={(next) =>
+          setPicked({
+            requestId: inspectionRequestId,
+            tab: next === 'history' || next === 'disposition' ? next : 'detail',
+          })
+        }
         items={[
           {
             value: 'detail',
@@ -641,6 +659,20 @@ export const InboundDetail = ({
                 />
               ) : null,
           },
+          ...(nonconformanceId === null
+            ? []
+            : [
+                {
+                  value: 'disposition',
+                  label: messages.dispositionDecision.box.title,
+                  content:
+                    tab === 'disposition' ? (
+                      <div className="disposition-tab">
+                        <DispositionBox nonconformanceId={nonconformanceId} />
+                      </div>
+                    ) : null,
+                },
+              ]),
         ]}
       />
     </div>
