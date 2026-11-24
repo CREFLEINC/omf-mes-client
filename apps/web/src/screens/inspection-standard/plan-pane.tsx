@@ -183,10 +183,8 @@ export const PlanPane = ({
       {optionsNotice}
       {banner}
 
-      {/* 검사 수준 칸이 서면(IQC 기본 정보 수정) 왼쪽 칸(검사 유형 · 검사 수준)을 좁히고 오른쪽(품목 · 변경 사유)을 넓힌다(사용자 지시 · #357). */}
-      <div
-        className={`form-grid${levelField === undefined ? '' : ' inspection-standard-plan-form-level'}`}
-      >
+      {/* 기본 정보 수정 창은 왼쪽 칸(검사 유형 · 검사 수준)을 좁히고 오른쪽(품목 · 변경 사유)을 넓힌다 — 검사 유형 공통(사용자 지시 · #357). */}
+      <div className={`form-grid${mode === 'edit' ? ' inspection-standard-plan-form-edit' : ''}`}>
         {/*
          * 필수 표시는 디자인 시스템 내장 라벨에 끼울 자리가 없어 라벨을 직접 붙인다(배치 규범 3).
          * 검증이 필수로 막는 칸에 표시가 없으면 저장을 눌러야 필수임을 알게 된다.
@@ -284,7 +282,7 @@ export const PlanPane = ({
          * 고르는 칸이 아니라 자동으로 채운 Rev 를 글자로만 보인다(사용자 지시 2026-11-04).
          */}
         {isRoutingShown && (
-          <div className="field-cell">
+          <div className="field-cell inspection-standard-plan-routing-cell">
             <span className="field-label" id={routingId}>
               {t.fields.routing}
             </span>

@@ -361,19 +361,24 @@ main > * + * {
 }
 
 /*
- * 기본 정보 수정 창(검사 수준 칸이 선 IQC 기준) — 검사 유형 · 검사 수준은 좁게, 품목 · 변경 사유는 넓게(사용자 지시 · #357).
+ * 기본 정보 수정 창(IQC · PQC · OQC 공통) — 검사 유형 · 검사 수준은 좁게, 품목 · 변경 사유는 넓게(사용자 지시 · #357).
  * 검사 수준은 늘 왼쪽 칸에서 새 줄을 열어, 변경 사유가 그 오른쪽에 붙는다.
  */
 @media (min-width: 721px) {
-  .inspection-standard-plan-pane .form-grid.inspection-standard-plan-form-level {
+  .inspection-standard-plan-pane .form-grid.inspection-standard-plan-form-edit {
     grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
   }
 
-  .inspection-standard-plan-form-level > .inspection-standard-level-cell {
+  /* 라우팅은 글자만 보이는 칸이라 좁은 왼쪽 칸에서 줄이 꺾인다 — 한 줄을 다 쓴다. */
+  .inspection-standard-plan-form-edit > .inspection-standard-plan-routing-cell {
+    grid-column: 1 / -1;
+  }
+
+  .inspection-standard-plan-form-edit > .inspection-standard-level-cell {
     grid-column: 1;
   }
 
-  .inspection-standard-plan-form-level > .inspection-standard-level-reason {
+  .inspection-standard-plan-form-edit > .inspection-standard-level-reason {
     grid-column: 2;
   }
 }
