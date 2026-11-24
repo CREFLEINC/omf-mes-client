@@ -440,16 +440,26 @@ export const PopMaterialLotLabelScreen = () => {
             isBlocked: workerNo === null,
           };
 
-  /* 발행 · 재인쇄 결과는 아래 가운데 알림으로도 낸다(규칙 13) — 안내 줄은 「확인」 전까지 남는다. */
+  /*
+   * 발행 · 재인쇄 결과는 아래 가운데 알림으로 낸다(규칙 13).
+   * ⭐ **다 나왔으면 [확인]을 기다리지 않는다**(사용자 지시 2026-11-24) — 알림만 남기고 결과 표를 바로 걷는다.
+   *   보낸 장이 하나라도 안 나왔거나 건너뛰었으면(다른 단말이 먼저 찍음 등) 결과 표 · [확인]이 남는다.
+   */
+  const allPrinted = summary.total > 0 && summary.printed === summary.total;
   const doneMessage =
-    barState.kind === 'done' && barState.unfinished === 0
+    barState.kind === 'done' && barState.unfinished === 0 && allPrinted
       ? barState.isReprint
         ? t.bar.reprinted(barState.printed)
         : t.bar.done(barState.printed)
       : null;
+  const resetBatch = batch.reset;
   useEffect(() => {
-    if (doneMessage !== null) puToast(doneMessage);
-  }, [doneMessage]);
+    if (doneMessage === null) return;
+
+    puToast(doneMessage);
+    resetBatch();
+    setSnapshot(null);
+  }, [doneMessage, resetBatch]);
 
   /** 재발행 탭 스캔 칸 — **라벨 스캔**이다. 번호가 정확히 맞는 LOT 을 고르고 그 줄이 있는 쪽으로 넘긴다. */
   const submitScan = (scanned: string): void => {
