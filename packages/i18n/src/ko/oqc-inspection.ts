@@ -10,6 +10,8 @@
 export const oqcInspection = {
   /* 화면 스펙 §1 의 이름 그대로다 — 사이드바 항목과 같은 글자여야 길을 잃지 않는다. */
   title: 'OQC (출하검사) 조회·판정',
+  /** 「구분」 — OQC 검사 건 · 판정 의뢰(재작업/폐기 판정 의뢰로 올린 반품 · 제품 부적합 · omf-all-around#354). */
+  kind: { label: '구분', inspection: 'OQC 검사', request: '판정 의뢰' },
   /** 머리는 관리웹 사이드바 묶음을 따른다 — 「품질 관리 > OQC (출하검사) 조회·판정」. */
   breadcrumbRoot: '품질 관리',
 
@@ -500,9 +502,12 @@ export const oqcInspection = {
       replacedFallback: 'PDA 에서 교체되어 판정 대상에서 빠졌습니다.',
       portion: (warehouse: string, location: string | null, qty: string): string =>
         location === null ? `${warehouse} ${qty}` : `${warehouse} ${location} ${qty}`,
-      emptyTitle: '아직 피킹된 LOT 이 없습니다',
-      emptyDescription:
-        'PDA 「제품 피킹」에서 LOT 을 스캔하면 여기에 보입니다. 피킹이 끝나지 않아도 피킹된 LOT 부터 결과를 기록할 수 있습니다.',
+      /** 사용자 지시 2026-11-24 · omf-all-around#356 — 준 문장 그대로, 설명은 두 줄. */
+      emptyTitle: '아직 피킹된 LOT가 없습니다.',
+      emptyDescription: [
+        'PDA의 [제품 피킹]에서 LOT를 스캔하면 이 목록에 표시됩니다.',
+        '전체 피킹이 끝나기 전에도 먼저 피킹한 LOT부터 검사 결과를 기록할 수 있습니다.',
+      ],
     },
     results: {
       title: '검사 결과',
@@ -533,15 +538,12 @@ export const oqcInspection = {
       selectAll: '전부 선택',
       selectNone: '전부 해제',
       alsoMatched: (seqNos: string): string => `${seqNos}회차에도 매칭됨`,
-      matchRequired: '피킹 LOT 을 1개 이상 고르세요',
       judgmentHeading: '판정',
-      judgmentRequired: '판정을 고르세요',
       reasonHeading: '재검 사유',
       reasonHelp: '이 결과가 아래 피킹 LOT 의 판정을 바꿉니다. 재검 사유를 고르세요.',
       reasonLine: (lotNo: string, seqNo: number, before: string, after: string): string =>
         `LOT ${lotNo}: ${String(seqNo)}회차 ${before} → 이 회차 ${after}`,
       reasonPlaceholder: '재검 사유 선택',
-      reasonRequired: '재검 사유를 고르세요',
       reasonLoadFailed: '재검 사유 목록을 불러오지 못했습니다.',
       ruleErrors: {
         MATCHED_LOT_REQUIRED: '피킹 LOT 을 1개 이상 고르세요',
@@ -550,8 +552,8 @@ export const oqcInspection = {
       },
       cancel: '취소',
       save: '제출',
-      saving: '저장 중…',
-      added: (seqNo: number): string => `${String(seqNo)}회차 검사 결과를 기록했습니다.`,
+      /** 사용자 지시 2026-11-24 · omf-all-around#356 — IQC 와 같은 한 문장. */
+      added: '검사 결과를 제출하였습니다.',
       updated: (seqNo: number): string => `${String(seqNo)}회차 검사 결과를 고쳤습니다.`,
       loading: '결과를 불러오는 중입니다',
       /** 409 CONFIRMED_BY_SHIPMENT_COMPLETION — 그 사이 출하 완료로 확정됐다. */
@@ -560,6 +562,12 @@ export const oqcInspection = {
       discardBody: '입력한 내용이 사라집니다. 닫을까요?',
       discardStay: '계속 입력',
       discardLeave: '닫기',
+      /** IQC 결과 서랍과 같은 안내 — 출하 검사에 맞춘 문장(omf-all-around#356). */
+      planVersionNote:
+        '변경한 검사 기준은 새로 발행되는 출하 검사 건부터 적용됩니다. 이미 발행된 건에는 발행 당시의 기준이 적용됩니다.',
+      noPlan: '적용된 검사 기준이 없습니다. 종합 판정만 입력하세요.',
+      /** 검사 수량은 서버가 매칭한 피킹 LOT 수량의 합으로 채운다 — 칸은 읽기 전용. */
+      inspectedQtyHint: '매칭한 피킹 LOT 수량의 합입니다.',
     },
   },
 } as const;

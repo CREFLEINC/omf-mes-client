@@ -167,6 +167,11 @@ export interface InspectionRequestDetail {
   targetTypeCode: string;
   /** AQL 샘플링 기준이면 의뢰 수량으로 표에서 낸 시료 계획(omf-all-around#264). 아니면 `null`. */
   aqlPlan: InspectionAqlPlanForward | null;
+  /**
+   * 지금 판정 확정이 만든 부적합(서버가 확정 시각으로 고정 — 처분이 끝나도 남는다). 확정 전이거나 부적합이 없으면 `null`.
+   * 부품 화면 「부적합 처분」 탭이 처분 뒤에도 그 건 이력을 보이게 쓴다(omf-all-around#354).
+   */
+  nonconformanceId: number | null;
 }
 
 export const toInspectionRequestDetail = (
@@ -186,6 +191,7 @@ export const toInspectionRequestDetail = (
   skipBasisCode: item.skipBasisCode ?? null,
   targetTypeCode: item.targetTypeCode,
   aqlPlan: item.aqlPlan ?? null,
+  nonconformanceId: item.nonconformanceId ?? null,
 });
 
 /**

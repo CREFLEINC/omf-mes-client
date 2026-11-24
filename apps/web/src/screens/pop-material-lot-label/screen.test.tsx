@@ -388,7 +388,9 @@ describe('US1 · US2 미출력 탭 — 고르면 이미 만들어져 있다', ()
     expect(rows[0]).toHaveTextContent(tp.mode.MANUAL);
     expect(rows[2]).toHaveTextContent(tp.mode.AUTO);
     expect(rows[2]).not.toHaveTextContent('SYN-PO-07');
-    expect(rows[2]).toHaveTextContent('롤 10 × 10');
+    /* 포장은 개수만(사용자 지시 2026-11-23, #1758). */
+    expect(rows[2]).toHaveTextContent('롤 10');
+    expect(rows[2]).not.toHaveTextContent('× 10');
     expect(rows[2]).toHaveTextContent('100 EA');
   });
 
@@ -540,7 +542,7 @@ describe('US1 · US2 미출력 탭 — 고르면 이미 만들어져 있다', ()
     expect(screen.getByRole('button', { name: t.work.retry })).toBeInTheDocument();
   });
 
-  it('FR-010 세 칸 US1-6 머리에 품목코드 · 품목명 · 공급사 · 기본 단위를 이름표와 함께, 품목 기본값을 적는다', async () => {
+  it('FR-010 세 칸 머리에 품목코드 · 품목명 · 공급사를 이름표와 함께, 기본 단위 · 기본 정보 줄은 적지 않는다(#1758)', async () => {
     const user = userEvent.setup();
     renderLabelScreen(withShare(0));
 
@@ -548,9 +550,10 @@ describe('US1 · US2 미출력 탭 — 고르면 이미 만들어져 있다', ()
     const head = await screen.findByRole('heading', { name: /SYN-ITEM-01/u });
     const f = t.work.fields;
     expect(head).toHaveTextContent(
-      `${f.itemCode}SYN-ITEM-01${f.itemName}합성 품목 가${f.supplier}합성 공급사 가${f.uom}EA` +
-        tp.headDefault(tp.defaultPackaged('100 EA', '롤 10 × 10')),
+      `${f.itemCode}SYN-ITEM-01${f.itemName}합성 품목 가${f.supplier}합성 공급사 가`,
     );
+    /* 기본 정보 줄(「기본 100 EA · 롤 10 × 10 (품목 기본값)」)은 적지 않는다(사용자 지시 2026-11-24, #1758). */
+    expect(head).not.toHaveTextContent(tp.headDefault(tp.defaultPackaged('100 EA', '롤 10 × 10')));
   });
 
   it('US2-3 FR-005 vi 문구 — 로딩 · 알림이 베트남어로 옮겨져 있다', () => {

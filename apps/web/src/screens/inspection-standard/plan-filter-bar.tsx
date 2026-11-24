@@ -24,7 +24,7 @@ const t = messages.inspectionStandard;
 const ALL = [{ value: '', label: t.filters.all }];
 
 /** 「조건 더보기」에 접는 조건(C-6) — 칩은 이 조건만 낸다. */
-const FOLDED_KEYS: readonly (keyof PlanFilters)[] = ['versionStatus', 'unapprovedOnly'];
+const FOLDED_KEYS: readonly (keyof PlanFilters)[] = ['versionStatus'];
 
 /** 검사 기준 칸의 한 쪽 건수 — 종전 검색 창의 첫 쪽과 같다. */
 const PLAN_SELECT_PAGE_SIZE = 20;
@@ -77,7 +77,6 @@ export const PlanFilterBar = ({
     itemId: appliedItemId,
     includeInactive: appliedIncludeInactive,
     inactiveOnly: appliedInactiveOnly,
-    unapprovedOnly: appliedUnapprovedOnly,
     versionStatus: appliedVersionStatus,
   } = appliedFilters;
 
@@ -88,7 +87,6 @@ export const PlanFilterBar = ({
       itemId: appliedItemId,
       includeInactive: appliedIncludeInactive,
       inactiveOnly: appliedInactiveOnly,
-      unapprovedOnly: appliedUnapprovedOnly,
       versionStatus: appliedVersionStatus,
     });
   }, [
@@ -97,7 +95,6 @@ export const PlanFilterBar = ({
     appliedItemId,
     appliedIncludeInactive,
     appliedInactiveOnly,
-    appliedUnapprovedOnly,
     appliedVersionStatus,
   ]);
 
@@ -107,7 +104,7 @@ export const PlanFilterBar = ({
   const draftItemLabel = itemLabelOf(toItemId(draft.itemId)) ?? '';
   /* 종전 창과 같은 범위에서 찾는다 — 목록 조건의 미사용 포함을 따른다(목록에 없는 기준을 고르지 않게). */
   const planIncludeInactive = appliedFilters.includeInactive || appliedFilters.inactiveOnly;
-  /* 접힌 칸(상태 · 미승인)의 조건만, 칸 차례대로 칩으로 — 보이는 칸의 값을 칩으로 겹쳐 적지 않는다. */
+  /* 접힌 칸(상태)의 조건만, 칸 차례대로 칩으로 — 보이는 칸의 값을 칩으로 겹쳐 적지 않는다. */
   const appliedChips = toFilterChips(appliedFilters);
   const hiddenChips = FOLDED_KEYS.flatMap((key) => appliedChips.filter((chip) => chip.key === key));
   /* 사용 여부 칩도 초기화가 되돌리므로 함께 견준다. */
@@ -116,7 +113,7 @@ export const PlanFilterBar = ({
   return (
     <>
       <div className="filter-bar">
-        {/* 순서: 검사 유형 → 검사 기준 검색 → 품목 검색 → (조건 더보기) 상태 · 미승인 체크(사용자 지시 · #208 · C-6). */}
+        {/* 순서: 검사 유형 → 검사 기준 검색 → 품목 검색 → (조건 더보기) 상태(사용자 지시 · #208 · C-6). 미승인 체크는 승인 기능과 함께 걷었다(omf-all-around#357). */}
         {/*
          * 규범 3-2 — 선택지 목록이 트리거 폭에 갇혀 있어(디자인 시스템 이슈 #62) 최소 폭을 주지 않으면
          * 「IQC (수입검사)」가 「IQC (수⋯」로 잘려 무엇을 고르는지 읽을 수 없다.
@@ -248,21 +245,6 @@ export const PlanFilterBar = ({
                 applyNow({ versionStatus: value as PlanFilters['versionStatus'] })
               }
             />
-          </div>
-
-          {/*
-           * 「미승인」만 보기(사용자 지시 · #208) — 바로 적용한다. 사용 여부(전체 · 사용 · 미사용)는 탭 줄의 칩이 맡아
-           * 종전 「미사용 포함」 체크는 걷었다.
-           */}
-          <div className="field-cell field-cell-unlabeled">
-            <Checkbox
-              checked={appliedFilters.unapprovedOnly}
-              onChange={(event) =>
-                onApplyFilters({ ...appliedFilters, unapprovedOnly: event.target.checked })
-              }
-            >
-              {t.filters.unapprovedOnly}
-            </Checkbox>
           </div>
         </div>
       </div>

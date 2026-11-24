@@ -1108,3 +1108,32 @@
     white-space: nowrap;
   }
 }
+
+/* ── #1758(사용자 지시 2026-11-23) 상세 정리를 014 화면에 옮김 ── */
+/* 발행 단위 고르기 칸도 단추와 같은 높이. */
+.mll-units .mll-unit-select,
+.mll-units .mll-unit-select button {
+  height: 48px;
+  min-height: 48px;
+}
+
+/* 품목 표의 품목코드 — 공통 단추 글자(17px)보다 2px 작게. */
+.mll-items .pu-table td .mll-item-code {
+  font-size: 15px;
+}
+
+/*
+ * 미출력 표 칸 배치(「표 컬럼의 위치를 조정」) — LOT 번호는 280, 나머지 칸이 남는 폭을 고르게 나눠 가운데 맞춤.
+ * 1100 이하는 T054 의 칸 배치를 그대로 둔다.
+ */
+@media (min-width: 1101px) {
+  .mll-table.is-unprinted .pu-table th.mll-lotcol {
+    width: 280px;
+  }
+
+  .mll-table.is-unprinted .pu-table th:not(:first-child):not(.mll-lotcol),
+  .mll-table.is-unprinted .pu-table td:not(:first-child):not(.mll-lotcol) {
+    width: auto;
+    text-align: center;
+  }
+}

@@ -422,11 +422,14 @@ const InspectedAt = ({ value, withTime = false }: { value: string; withTime?: bo
 export const INSPECTION_RESULTS_PATH = '/quality/inspection-results';
 
 /**
- * 처분 판정 처리 — PQC 주요 현황 「재작업 판정」 줄이 연다(⭐ 사용자 지시 2026-10-19 「처분 판정 처리 화면」). 이미
- * 내려진 판정이라 「처리 이력」 탭으로 연다. 화면 슬라이스끼리는 서로 참조하지 않아 주소를 여기 적는다.
+ * 옛 「부적합 처분 관리」 주소 — 메뉴는 없앴고(omf-all-around#354), 이 주소가 부적합 · 품목을 받아 그것이 속한
+ * 검사 조회·판정 탭(IQC · OQC)으로 넘긴다. 화면 슬라이스끼리는 서로 참조하지 않아 주소를 여기 적는다.
  */
 export const DISPOSITION_DECISIONS_PATH = '/quality/dispositions';
-const DISPOSITION_HISTORY_PATH = `${DISPOSITION_DECISIONS_PATH}?tab=history`;
+/** 처분은 IQC · OQC 탭 안에서 한다 — 둘 중 하나라도 열 수 있어야 부적합 링크를 건다. */
+const DISPOSITION_TAB_PATHS = ['/logistics/iqc-inspection', '/shipment/oqc-inspection'] as const;
+const allowsDisposition = (allows: (path: string) => boolean): boolean =>
+  DISPOSITION_TAB_PATHS.some((path) => allows(path));
 
 /**
  * 그 검사 결과의 상세를 여는 주소(⭐ 사용자 지시 2026-10-19 「항목을 누르면 검사실적 · 검사결과 조회 화면에서 상세」).
@@ -1109,8 +1112,6 @@ export const PqcTab = ({
   const pqc = quality.pqc;
   const dialog = useLotDialog();
   const navigate = useNavigate();
-  /* 재작업 판정 줄 → 처분 판정 처리(처리 이력 · 사용자 지시 2026-10-19). 그 화면 권한이 있을 때만. */
-  const canOpenDisposition = allows(DISPOSITION_DECISIONS_PATH);
   const held = lotRecordValue(quality.statusCounts?.INSPECTION_HELD.byType.PQC, pqc.monthLots.held);
   const pending = lotRecordValue(quality.statusCounts?.PQC_PENDING, pqc.pendingLotCount);
   const oldest = pendingElapsedMinutes(pqc.oldestPendingSince, new Date());
@@ -1186,8 +1187,7 @@ export const PqcTab = ({
             <StatusList
               rowProps={dialog.rowProps}
               onSelect={(key) => {
-                if (key === 'rework') void navigate(DISPOSITION_HISTORY_PATH);
-                else dialog.open(key);
+                dialog.open(key);
               }}
               items={[
                 {
@@ -1218,7 +1218,8 @@ export const PqcTab = ({
                   note: t.pqcMonthNote,
                   /* LOT · 건수 둘 다(사용자 지시 2026-10-19) — 서버가 LOT 수를 주지 않으면 기존 건수만. */
                   ...lotCountValue(pqc.reworkRequestCounts, pqc.reworkRequestCount),
-                  selectable: canOpenDisposition,
+                  /* 처분 이력 목록을 없앴다(omf-all-around#354) — 재작업은 #352 에서 처분 유형에서도 빠져 열 목록이 없다. */
+                  selectable: false,
                 },
               ]}
             />
@@ -1785,7 +1786,7 @@ export const NonconformanceTab = ({
           <OpenNonconformancePanel
             rows={nc.openList}
             total={nc.openCount}
-            linked={allows(DISPOSITION_DECISIONS_PATH)}
+            linked={allowsDisposition(allows)}
           />
         )}
       </Row>
@@ -1797,7 +1798,7 @@ export const NonconformanceTab = ({
             rows={nc.repeatedItems}
             total={nc.repeatedItemCount ?? nc.repeatedItems.length}
             tag={tags.month}
-            linked={allows(DISPOSITION_DECISIONS_PATH)}
+            linked={allowsDisposition(allows)}
           />
         </Row>
       )}

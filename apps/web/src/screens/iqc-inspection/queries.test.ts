@@ -74,7 +74,14 @@ describe('useInspectionQueue', () => {
       () =>
         useInspectionQueue(
           toListQuery(
-            { itemId: 2001, supplierId: 3003, keyword: 'IR', pendingOnly: true, statusCode: null },
+            {
+              itemId: 2001,
+              supplierId: 3003,
+              keyword: 'IR',
+              pendingOnly: true,
+              statusCode: null,
+              overallJudgmentCode: null,
+            },
             2,
           ),
         ),

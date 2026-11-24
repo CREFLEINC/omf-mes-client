@@ -5,6 +5,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { INSPECTION_HUB_COUNTS_KEY } from '../../patterns/inspection-hub-counts';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest, type ApiCallResult } from '../../patterns/request';
+import { iqcInspectionKeys } from '../iqc-inspection/queries';
 import { oqcInspectionKeys } from './queries';
 import {
   toShipmentResultBody,
@@ -194,6 +195,8 @@ export const useSaveShipmentResult = (
       oqcInspectionKeys.rounds(id),
       oqcInspectionKeys.queues(),
       oqcInspectionKeys.serialRecords(id),
+      /* 결과 서랍이 되살리는 측정치(IQC 측정치 조회) — 고친 뒤 다시 열면 새 값으로. */
+      [...iqcInspectionKeys.all, 'measurements'],
       INSPECTION_HUB_COUNTS_KEY,
       ['inspection-history', id],
     ],

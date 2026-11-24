@@ -73,7 +73,6 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
         ncNo === null
           ? `Tất cả ${count} LOT quản lý vật tư đã được xử lý là lỗi.`
           : `Tất cả ${count} LOT quản lý vật tư đã được xử lý là lỗi. Hãy tiếp tục xử lý tại phiếu không phù hợp ${ncNo}.`,
-      ncOpen: 'Đến quản lý xử lý không phù hợp',
       heldTitle: 'Xác nhận kiểm tra tạm giữ',
       held: 'LOT quản lý vật tư vẫn chờ kiểm tra. Để kiểm tra lại, hãy sửa đánh giá rồi thêm kết quả kiểm tra.',
     },
@@ -149,14 +148,12 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
         'Kết quả này thay đổi đánh giá Không đạt hoặc Giữ lại. Hãy chọn lý do kiểm tra lại',
     },
     alsoMatched: (seqNos: string) => `Cũng liên kết với kết quả ${seqNos}`,
-    judgmentRequired: 'Hãy chọn đánh giá.',
     cancel: 'Hủy',
     save: 'Gửi',
     discardBody: 'Nội dung đã nhập sẽ mất. Đóng?',
     discardStay: 'Tiếp tục nhập',
     discardLeave: 'Đóng',
-    added: (seqNo: number, judgment: string) =>
-      `Đã ghi kết quả ${seqNo}. Xem trước đánh giá tổng hợp: ${judgment}`,
+    added: 'Đã nộp kết quả kiểm tra.',
     updated: (seqNo: number) => `Đã sửa kết quả ${seqNo}.`,
     loading: 'Đang tải kết quả',
   },

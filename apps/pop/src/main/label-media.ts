@@ -217,6 +217,29 @@ export const buildMediaProbeScript = (deviceName?: string): string =>
     '} catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }',
   ].join('\n');
 
+/**
+ * 라벨 명령이 **스스로 적은 크기**(첫 `SIZE <w> mm,<h> mm`). 없거나 읽을 수 없으면 `null`.
+ *
+ * ⭐ 용지 크기는 명시적으로 정한 값을 쓴다(사용자 지시 2026-11-23) — 단말 환경값이 먼저, 그다음 라벨이 적은
+ *   크기다. 드라이버에 묻는 것(`buildMediaProbeScript`)은 둘 다 없을 때만 — 묻는 데 장마다 1초 남짓 걸렸다.
+ */
+export const declaredLabelSize = (
+  commands: string,
+): { widthMm: number; heightMm: number } | null => {
+  const matched = /^\s*SIZE\s+(\d+(?:\.\d+)?)\s*mm\s*,\s*(\d+(?:\.\d+)?)\s*mm/imu.exec(commands);
+
+  if (matched === null) return null;
+
+  const widthMm = Number(matched[1]);
+  const heightMm = Number(matched[2]);
+
+  return widthMm > 0 && heightMm > 0 ? { widthMm, heightMm } : null;
+};
+
+/** 단말 환경값으로 크기를 못 박았는가 — 그러면 라벨이 적은 크기도 드라이버 값도 덮지 않는다. */
+export const isLabelSizePinned = (): boolean =>
+  process.env.POP_LABEL_WIDTH_MM !== undefined || process.env.POP_LABEL_HEIGHT_MM !== undefined;
+
 /** 1/100 인치를 mm 로. 소수점 한 자리까지 — 프린터가 그 이상 가리지 못한다. */
 const toMillimetres = (hundredthsOfInch: number): number =>
   Math.round(hundredthsOfInch * 0.254 * 10) / 10;

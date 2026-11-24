@@ -1,7 +1,7 @@
-import { AlertBanner, TextField } from '@crefle/web-ui';
+import { AlertBanner, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { InspectionGuideNotice } from '../../patterns/inspection-guide';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -47,7 +47,13 @@ import {
 } from '../pqc-inspection/quantity-draft';
 import { useWorkOrder } from '../production-result/queries';
 import { PanelActions } from './panel-actions';
-import { pqcPanelKeys, useLatestRound, useRoundMeasurements } from './queries';
+import {
+  pqcPanelKeys,
+  useLatestRound,
+  useRoundMeasurements,
+  useRounds,
+  type InspectionResultResponse,
+} from './queries';
 import { ResultForm } from './result-form';
 import { SplitResultForm } from './split-result-form';
 import type { SkippedOverviewTab } from '../parts-iqc-inspection/skipped-overview';
@@ -55,7 +61,8 @@ import type { SkippedOverviewTab } from '../parts-iqc-inspection/skipped-overvie
 import { PqcSkippedOverview } from './skipped-overview';
 import { PanelTargetHeader } from './target-header';
 import { WebActions } from './web-actions';
-import { PqcWebSteps } from './web-steps';
+import { PqcWebResultDrawer } from './web-result-drawer';
+import { PqcWebResults } from './web-results';
 import { WebSummary } from './web-summary';
 
 const t = messages.pqcInspection;
@@ -133,6 +140,8 @@ export const PqcPanel = ({
    */
   const latestRoundQuery = useLatestRound(inspectionRequestId);
   const latestRound = latestRoundQuery.data ?? null;
+  /* 관리웹 검사 결과 표 — 마지막 회차와 같은 조회(같은 캐시)다. */
+  const allRounds = useRounds(inspectionRequestId);
   const savedRound =
     latestRound !== null &&
     (latestRound.statusCode === RESULT_STATUS.draft ||
@@ -141,6 +150,7 @@ export const PqcPanel = ({
       : null;
   const savedMeasurements = useRoundMeasurements(savedRound?.inspectionResultId ?? null);
   const rows = toMeasurementRows(itemSpecs.data ?? [], savedMeasurements.data ?? []);
+  const blankRows = toMeasurementRows(itemSpecs.data ?? [], []);
   /* 업무 순서는 «실적 입력 → PQC» 다(사용자 결정 2026-10-19). 실적 수는 W/O 진척(양품·불량·보류·폐기·재작업 합)으로 본다. */
   const workOrder = useWorkOrder(detail.data?.workOrderId ?? null);
   const overallOptions = toCodeOptions(useCodeValues(CODE_GROUPS.overallJudgment).data ?? []);
@@ -157,16 +167,30 @@ export const PqcPanel = ({
   const [judgment, setJudgment] = useState('');
   const [padField, setPadField] = useState<PadField | null>(null);
   const [remarks, setRemarks] = useState('');
-  const remarksId = useId();
   const lastTargetId = useRef<number | null>(null);
   const [showErrors, setShowErrors] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isJustConfirmed, setIsJustConfirmed] = useState(false);
   /* 저장하지 않은 입력 — 고치면 참, 서버가 받았거나 대상이 바뀌면 거짓(#135). */
   const [dirty, setDirty] = useState(false);
+  /*
+   * 관리웹 결과 창(omf-all-around#356) — 결과는 창에서 적고 [제출]로 작성중 저장, 상세의 [판정 확정]이 그 작성중 결과를 확정한다.
+   * 창이 적는 값은 창이 쥔다. 저장하지 않은 입력은 창이 열려 있을 때만 있다.
+   */
+  const [webDrawer, setWebDrawer] = useState<{
+    editing: InspectionResultResponse | null;
+    round: number;
+  } | null>(null);
+  const [drawerDirty, setDrawerDirty] = useState(false);
+  /* 저장 응답 효과가 «어느 창이 열려 있었나»를 읽는 자리 — 그리는 중에는 쓰지 않고 효과에서 맞춘다. */
+  const webDrawerRef = useRef(webDrawer);
   useEffect(() => {
-    onDirtyChange?.(dirty);
-  }, [dirty, onDirtyChange]);
+    webDrawerRef.current = webDrawer;
+  }, [webDrawer]);
+  const reportedDirty = variant === 'web' ? drawerDirty : dirty;
+  useEffect(() => {
+    onDirtyChange?.(reportedDirty);
+  }, [reportedDirty, onDirtyChange]);
 
   const { clearRejection, rejection, rejectedStatusCode, sentCount } = submitter;
 
@@ -197,6 +221,24 @@ export const PqcPanel = ({
     setAwaiting(null);
   }, [sentCount, queryClient, inspectionRequestId]);
 
+  /* 관리웹 — 결과 창의 [제출]이 서버에 닿으면 창을 닫고 알린다(IQC 결과 창과 같은 문구 · omf-all-around#356). */
+  const toast = useToast();
+  useEffect(() => {
+    if (variant !== 'web' || !isSaved) return;
+    const opened = webDrawerRef.current;
+    setWebDrawer(null);
+    setDrawerDirty(false);
+    if (opened === null) return;
+    toast.show({
+      variant: 'success',
+      description:
+        opened.editing === null
+          ? messages.iqcInboundLot.drawer.added
+          : messages.iqcInboundLot.drawer.updated(opened.round),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 저장이 막 끝났을 때 한 번만 알린다.
+  }, [isSaved, variant]);
+
   /* 거부가 돌아오면 「담았다」 표시를 거둔다 — 확정이 거부됐으면 확정 표시도. */
   useEffect(() => {
     if (rejection === null) return;
@@ -218,12 +260,8 @@ export const PqcPanel = ({
     setDirty(false);
     setShowErrors(false);
     setJudgment('');
-    /* 관리웹 새 회차는 합격 수량에 총 검사 수량을 넣어 둔다(IQC 와 같다 · 사용자 지시 2026-11-09). */
-    setDraft(
-      variant === 'web' && storedInspectedQty > 0
-        ? { ...EMPTY_QUANTITY_DRAFT, accepted: String(storedInspectedQty) }
-        : EMPTY_QUANTITY_DRAFT,
-    );
+    /* 관리웹 새 회차의 합격 수량 기본값(총 검사 수량)은 결과 창이 넣는다(omf-all-around#356). */
+    setDraft(EMPTY_QUANTITY_DRAFT);
     setDisposition(null);
     setPadField(null);
     clearRejection();
@@ -234,7 +272,7 @@ export const PqcPanel = ({
     /* 초기화가 다시 돌면(재마운트 · StrictMode 재실행) 작성중 회차도 다시 되살린다 — 아래 복원이 이 표시를 본다. */
     restoredKey.current = null;
     measurementsRestoredKey.current = null;
-  }, [inspectionRequestId, storedInspectedQty, clearRejection, variant]);
+  }, [inspectionRequestId, storedInspectedQty, clearRejection]);
 
   /*
    * 작성중 회차를 칸에 되살린다. ⭐ 위 초기화 «뒤»에 선다 — 의뢰 상세가 늦게 와 초기화가 다시 돌아도 저장된 값이
@@ -331,11 +369,6 @@ export const PqcPanel = ({
    * 저장된 회차를 다 읽기 전에는 잠근다(리뷰 M1) — 덜 읽은 칸으로 저장하면 서버가 그 회차를 덮어 저장된 값이 사라진다.
    * 실적 수는 모르면(조회 전·실패) 막지 않는다 — 서버가 같은 규칙으로 막는다.
    */
-  /*
-   * 실적이 없으면 서버가 저장·확정을 받지 않는다 — 관리웹은 입력 칸도 다 잠가 헛입력을 막는다(#135).
-   * ⚠ POP(split)은 이번 범위가 아니다 — 종전대로 둔다.
-   */
-  const isInputLocked = isConfirmed || (variant === 'web' && producedQty === 0);
   const roundLoadFailed =
     latestRoundQuery.isError || (savedRound !== null && savedMeasurements.isError);
   const roundLoading =
@@ -421,15 +454,7 @@ export const PqcPanel = ({
   const FormOf = variant === 'split' ? SplitResultForm : ResultForm;
 
   if (variant === 'web') {
-    /* 관리웹(W-03-11 · omf-all-around#135) — IQC 판정 화면(#133)과 같은 짜임. 상태·저장 규칙은 위 그대로다. */
-    function edited<T>(set: (value: T) => void): (value: T) => void {
-      return (value) => {
-        setDirty(true);
-        setIsSaved(false);
-        set(value);
-      };
-    }
-    const tNoStandard = t.noStandard;
+    /* 관리웹(W-03-11 · omf-all-around#135 · #356) — IQC 상세와 같은 짜임: 결과 표 · 결과 창 · 판정 확정. */
 
     /* 생략으로 닫힌 의뢰는 입력할 것이 없다 — 대상 요약과 안내만(omf-all-around#353). */
     if (target.statusCode === 'SKIPPED') {
@@ -444,6 +469,76 @@ export const PqcPanel = ({
         </div>
       );
     }
+
+    /*
+     * 결과 표 · 판정 확정(omf-all-around#356) — IQC 상세와 같은 짜임. 확정은 «저장된» 작성중 결과를 그대로 보낸다 — 지금까지
+     * [판정 확정]이 보내던 본문(같은 `toResultBody` · 확정 상태)이고, 값은 창에서 [제출]로 저장한 것이다.
+     */
+    const draftRound = latestRound?.statusCode === RESULT_STATUS.draft ? latestRound : null;
+    const savedDrafts = toMeasurementDrafts(rows);
+    const savedQty: QuantityDraft =
+      draftRound === null
+        ? EMPTY_QUANTITY_DRAFT
+        : {
+            accepted: String(draftRound.acceptedQty),
+            rejected: String(draftRound.rejectedQty),
+            held: String(draftRound.heldQty),
+          };
+    const savedJudgment = draftRound?.overallJudgmentCode ?? '';
+    const webConfirmBlocked =
+      draftRound === null && !isConfirmed
+        ? messages.pqcInspectionRegister.web.results.needResult
+        : toConfirmBlockedReason({
+            isConfirmed,
+            canInputInspection: true,
+            totals: toTotals(savedQty, draftRound?.inspectedQty ?? 0),
+            judgment: savedJudgment,
+            isAllJudged: isAllJudged(rows, savedDrafts),
+          });
+    const confirmWeb = (): void => {
+      if (draftRound === null || lockedReason !== null || webConfirmBlocked !== null) return;
+      if (awaiting !== null) return;
+      setIsJustConfirmed(false);
+      submitter.enqueue(
+        '',
+        toResultBody({
+          inspectionRequestId,
+          inspectedQty: toSendableNumber(String(draftRound.inspectedQty)),
+          acceptedQty: toSendableNumber(savedQty.accepted),
+          rejectedQty: toSendableNumber(savedQty.rejected),
+          heldQty: toSendableNumber(savedQty.held),
+          uomId: target.uomId,
+          overallJudgmentCode: savedJudgment,
+          inspectedAt: draftRound.inspectedAt,
+          remarks: draftRound.remarks ?? '',
+          statusCode: RESULT_STATUS.confirmed,
+          coverage: EMPTY_COVERAGE_DRAFT,
+          measurements: toMeasurementInputs(rows, savedDrafts, draftRound.inspectedAt),
+        }),
+      );
+      waitFor(RESULT_STATUS.confirmed);
+    };
+
+    const rounds = allRounds.data ?? [];
+    const nextRound = rounds.reduce((max, round) => Math.max(max, round.inspectionRound), 0) + 1;
+    const itemsPending = planVersionId !== null && itemSpecs.isPending;
+    /* 작성중 결과는 의뢰마다 하나다(서버 장부 P-49) — 있으면 추가 대신 [수정]. */
+    const addBlockedReason =
+      lockedReason ??
+      (draftRound !== null
+        ? messages.pqcInspectionRegister.web.results.draftExists
+        : itemsPending
+          ? t.panel.roundLoading
+          : awaiting !== null
+            ? t.panel.roundLoading
+            : null);
+    const openDrawer = (editing: InspectionResultResponse | null): void => {
+      clearRejection();
+      setDrawerDirty(false);
+      setWebDrawer({ editing, round: editing?.inspectionRound ?? nextRound });
+    };
+    const confirmRejected =
+      rejection !== null && rejectedStatusCode === RESULT_STATUS.confirmed ? rejection : null;
 
     return (
       <div className="pqc-web">
@@ -465,80 +560,83 @@ export const PqcPanel = ({
           />
         )}
 
-        {/*
-         * 입력 단계(사용자 지시 2026-10-29 · #197) — ① 검사 항목별 결과 → ② 검사 수량 입력 → ③ 최종 판정. IQC 와 같은 짜임이다.
-         * 검사기준이 없으면 ① 이 없고, 「검사 내용」은 판정 단계 아래에 선다(#135). 의뢰가 바뀌면 단계를 새로 시작한다.
-         */}
-        <PqcWebSteps
-          key={inspectionRequestId}
-          rows={rows}
-          drafts={drafts}
-          onValueChange={changeMeasurementValue}
-          onItemJudgmentChange={changeMeasurementJudgment}
-          itemJudgmentOptions={itemJudgmentOptions}
-          uomCodeOf={uomCodeOf}
-          itemsLoading={itemSpecs.isLoading}
-          inspectionPlanVersionId={planVersionId}
-          inspectedQty={inspectedQty}
-          inspectionRound={savedRound?.inspectionRound ?? null}
+        <PqcWebResults
+          rounds={rounds}
           uomCode={uomCodeOf(target.uomId)}
-          draft={draft}
-          onChange={changeDraft}
-          fieldErrors={rejection?.fieldErrors ?? EMPTY_FIELD_ERRORS}
-          errorBanner={<SaveErrorBanner error={rejection?.error ?? null} />}
-          showErrors={showErrors}
-          judgmentOptions={overallOptions}
-          judgment={judgment}
-          onJudgmentChange={edited(setJudgment)}
-          disposition={disposition}
-          onDispositionChange={edited(setDisposition)}
-          isLocked={isInputLocked}
-          judgmentBelow={
-            planVersionId === null ? (
-              /* 검사기준이 없다는 안내는 「검사 내용」 이름 옆에 둔다 — 직접 적을 칸이 바로 이 칸이다. */
-              <div className="field-cell pqc-web-remarks-field">
-                <span className="field-label">
-                  <label htmlFor={remarksId}>{tNoStandard.remarks}</label>
-                  <span className="pqc-web-label-hint">
-                    {messages.pqcInspectionRegister.web.noStandardNote}
-                  </span>
-                </span>
-                <TextField
-                  id={remarksId}
-                  fullWidth
-                  placeholder={messages.pqcInspectionRegister.web.remarksPlaceholder}
-                  value={remarks}
-                  disabled={isInputLocked}
-                  onChange={(event) => edited(setRemarks)(event.target.value)}
-                />
-              </div>
-            ) : undefined
-          }
+          confirmed={isConfirmed}
+          addBlockedReason={addBlockedReason}
+          editDisabled={lockedReason !== null || itemsPending || awaiting !== null}
+          onAdd={() => openDrawer(null)}
+          onEdit={(round) => openDrawer(round)}
         />
+
+        {confirmRejected !== null && (
+          <>
+            <SaveErrorBanner error={confirmRejected.error} />
+            {Object.values(confirmRejected.fieldErrors).map((message) => (
+              <p key={message} className="field-error" role="alert">
+                {message}
+              </p>
+            ))}
+          </>
+        )}
 
         <WebActions
           isConfirmed={isConfirmed}
-          isSaved={isSaved}
           confirmInfo={{
             inspectionRequestNo: target.inspectionRequestNo,
-            judgmentCode: judgment,
+            judgmentCode: savedJudgment,
             judgmentLabel:
-              overallOptions.find((option) => option.value === judgment)?.label ?? judgment,
+              overallOptions.find((option) => option.value === savedJudgment)?.label ??
+              savedJudgment,
             /* 보낼 값 그대로 보인다(`toSendableNumber` — 비운 칸은 0). */
             quantities: {
-              accepted: String(toSendableNumber(draft.accepted)),
-              rejected: String(toSendableNumber(draft.rejected)),
-              held: String(toSendableNumber(draft.held)),
+              accepted: String(toSendableNumber(savedQty.accepted)),
+              rejected: String(toSendableNumber(savedQty.rejected)),
+              held: String(toSendableNumber(savedQty.held)),
             },
           }}
           lockedReason={lockedReason}
           showLockedNote={!roundLoadFailed}
-          confirmBlockedReason={confirmBlockedReason}
-          saveBlockedReason={saveBlockedReason}
+          confirmBlockedReason={webConfirmBlocked}
           isSending={awaiting !== null}
-          onSave={() => saveResult(target.uomId, RESULT_STATUS.draft)}
-          onConfirm={() => saveResult(target.uomId, RESULT_STATUS.confirmed)}
+          onConfirm={confirmWeb}
         />
+
+        {webDrawer !== null && (
+          <PqcWebResultDrawer
+            target={target}
+            planVersion={planVersion.data ?? null}
+            editing={webDrawer.editing}
+            round={webDrawer.round}
+            /* 고칠 때는 저장된 측정치가 든 줄, 더할 때는 빈 줄. */
+            rows={webDrawer.editing === null ? blankRows : rows}
+            itemsLoading={itemSpecs.isLoading}
+            itemJudgmentOptions={itemJudgmentOptions}
+            judgmentOptions={overallOptions}
+            uomCodeOf={uomCodeOf}
+            isSending={awaiting !== null}
+            fieldErrors={
+              rejectedStatusCode === RESULT_STATUS.draft
+                ? (rejection?.fieldErrors ?? EMPTY_FIELD_ERRORS)
+                : EMPTY_FIELD_ERRORS
+            }
+            saveError={
+              rejectedStatusCode === RESULT_STATUS.draft ? (rejection?.error ?? null) : null
+            }
+            onSubmit={(body) => {
+              if (awaiting !== null) return;
+              setIsSaved(false);
+              submitter.enqueue('', body);
+              waitFor(RESULT_STATUS.draft);
+            }}
+            onDirtyChange={setDrawerDirty}
+            onClose={() => {
+              setWebDrawer(null);
+              setDrawerDirty(false);
+            }}
+          />
+        )}
       </div>
     );
   }

@@ -38644,6 +38644,8 @@ export interface paths {
           inspectionTypeCode?: string;
           /** @description 검사 의뢰 상태로 좁힌다 — 확정 5값: REQUESTED(대기) · IN_PROGRESS(진행) · COMPLETED(완료) · SKIPPED(생략) · CANCELLED(취소). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_REQUEST_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
           statusCode?: string;
+          /** @description 확정된 종합 판정으로 좁힌다 — 합격(ACCEPTED) · 불합격(REJECTED) · 보류(HELD). 의뢰의 overallJudgmentCode(입하 LOT IQC · 출하 OQC 새 흐름은 확정 때 서버가 적는다)가 이 값인 의뢰, 그 칸이 빈 완료 의뢰(PQC · 옛 OQC — 결과 단위 확정)는 마지막(회차가 가장 큰) 확정 결과의 판정이 이 값인 의뢰. 아직 확정 전인 의뢰는 빠진다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_RESULT_OVERALL_JUDGMENT 로 받는다(공유계약 G-32). 근거: 검사 조회·판정 종합 판정 필터 · omf-all-around#356 */
+          overallJudgmentCode?: string;
           /** @description 참이면 아직 끝나지 않은 의뢰만. ⭐ 정의를 값으로 못박는다 — pendingOnly=true ⇔ statusCode ∈ { REQUESTED, IN_PROGRESS }. ⭐ 검사 대기 큐가 이것이다(W-01-01 §3 좌단은 「대기」와 「진행」을 함께 보인다 — 상태 하나로는 못 고른다). ⛔ 화면이 상태 코드값을 고정하지 않게 하려는 것이 목적이다(공유계약 G-6). 선례: /app/approval-requests pendingOnly · /logistics/stock-transfers inTransitOnly. 근거: W-01-01 §3 · omf-mes#170 · 확정 2026-08-21 */
           pendingOnly?: boolean;
           itemId?: number;
@@ -43684,6 +43686,8 @@ export interface paths {
           warehouseId?: number;
           itemId?: number;
           lotId?: number;
+          /** @description 참이면 **검사 건(IQC · OQC)에 묶이지 않은 부적합만** 낸다 — 재작업/폐기 판정 의뢰(W-04-07)로 올린 반품 · 제품 부적합이다. 검사 조회·판정 OQC 탭 「구분: 판정 의뢰」가 쓴다(omf-all-around#354). ⛔ 화면이 응답을 걸러 대신하지 않는다(페이지 단위). */
+          withoutInspectionRequestOnly?: boolean;
           /** @description 부적합 심각도 — 중대(CRITICAL) · 중(MAJOR) · 경(MINOR). ⭐ 화면 목업이 「심각도 중대」(W-03-10 §3)·「심각도 중」(W-04-07 §3)을 그려 3단계 축이 이미 서 있다. ⭐ 고객이 늘릴 수 있다 — 아래는 초기값(기본값)이지 닫힌 목록이 아니다. 값 목록은 GET /mdm/code-values?codeGroupCode=NONCONFORMANCE_SEVERITY 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
           severityCode?: string;
           /** @description 기간 필수 — 공유계약 L-3 */
@@ -49936,6 +49940,19 @@ export interface components {
        * @example false
        */
       pqcSkipAllowed?: boolean;
+      /**
+       * @description 품목 검사 수준 — 기본 정보와 한 트랜잭션에서 저장한다. 생략 = 그대로. 저장 뒤 기준의 품목에 쓴다(같은 저장에서 품목을 바꾸면 바꾼 품목). 품목이 있는 IQC 기준이 아니면 400 inspectionLevelCode INVALID. 수준이 바뀌면 수동 이력 1건, 다른 저장이 먼저 수준을 바꿨으면 409(기본 정보도 저장 안 됨). 근거: omf-all-around#357
+       * @example NORMAL
+       * @enum {string}
+       */
+      inspectionLevelCode?: 'NONE' | 'REDUCED' | 'NORMAL' | 'TIGHTENED';
+      /** @description 검사 수준 변경 사유(선택) — 이력에 남는다. 근거: omf-all-around#357 */
+      inspectionLevelReason?: string | null;
+      /**
+       * @description 창을 열 때 본 품목 검사 수준의 versionNo — 미지정 품목이면 null. 지금 판과 다르면 409(기본 정보도 저장 안 됨). 생략 = 견주지 않음. 근거: omf-all-around#357
+       * @example 3
+       */
+      inspectionLevelVersionNo?: number | null;
     };
     InspectionPlanDetailResponse: {
       inspectionPlan: components['schemas']['InspectionPlan'];

@@ -343,7 +343,7 @@ describe('US1-7 입하 대기 LOT 폐기', () => {
 });
 
 describe('기본값 한 줄 — 품목 기본값(피처 014)', () => {
-  it('US1-4 품목 기본값이 없으면 상세 제목에 「기본 단위 설정 없음」을 적는다 — W-06-25 기본 정보는 보지 않는다', async () => {
+  it('US1-4 품목 기본값이 없으면 품목 표에 「기본값 없음」 칩 — 상세 제목엔 기본 정보 줄을 적지 않고(#1758) W-06-25 기본 정보도 보지 않는다', async () => {
     const user = userEvent.setup();
     renderLabelScreen({
       defaults: [defaultInfo()],
@@ -352,8 +352,10 @@ describe('기본값 한 줄 — 품목 기본값(피처 014)', () => {
 
     await pickFirstPair(user);
     const head = await screen.findByRole('heading', { name: /SYN-ITEM-01/u });
-    expect(head).toHaveTextContent(t.precreate.noDefault);
+    expect(head).not.toHaveTextContent(t.precreate.noDefault);
     expect(head).not.toHaveTextContent('1,000 EA');
+    const items = screen.getByRole('group', { name: t.precreate.threeCols.items });
+    expect(within(items).getByText(t.precreate.threeCols.miss.NO_DEFAULT)).toBeInTheDocument();
   });
 });
 

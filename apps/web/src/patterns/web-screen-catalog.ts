@@ -252,11 +252,10 @@ export const WEB_SCREENS: readonly WebScreen[] = [
     code: 'W-03-05',
     name: '검사실적·검사결과 조회(불량률·불량코드 분포 집계 포함)',
   },
-  { path: '/quality/dispositions', code: 'W-03-10', name: '부적합 처분 관리(재작업/폐기/정상)' },
+  /* W-03-10 부적합 처분 관리는 메뉴를 없앴다(omf-all-around#354) — 옛 주소는 검사 탭으로 넘기기만 하므로 이름표에 두지 않는다. */
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#107) — 화면 코드는 사용자 결정으로 부여했다. */
   { path: '/quality/pqc-inspections', code: 'W-03-11', name: 'PQC 검사 등록·조회' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#64 · 서버 장부 P-87) — 다음 빈 번호로 받았다. */
-  { path: '/quality/inspection-levels', code: 'W-03-12', name: '검사 수준 관리' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#89 · 서버 장부 P-102). */
   { path: '/master-data/inspection-sheet-template', code: 'W-06-24', name: '검사표 기준' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#89 · 서버 장부 P-102). 서명·승인은 같은 화면의 권한 W-03-14 로 가른다. */

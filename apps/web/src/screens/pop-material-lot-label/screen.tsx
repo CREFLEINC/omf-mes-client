@@ -59,7 +59,7 @@ import { choosePrinter, rememberPrinterName, storedPrinterName } from './printer
 import { usePrinters, useReissueReasons, useShellSelectsPrinter } from './queries';
 import { ReasonPicker } from './reason-picker';
 import { ReviseDialog } from './revise-dialog';
-import { ItemTable, SupplierList, pairDefaultLine, pairUnprintedOf } from './supplier-list';
+import { ItemTable, SupplierList, pairUnprintedOf } from './supplier-list';
 import { isWaiting, pairKeyOf, toLabelLotFromRow, type LabelLot, type PairRef } from './types';
 import { VoidDialog } from './void-dialog';
 import './uniform.css';
@@ -865,7 +865,6 @@ export const PopMaterialLotLabelScreen = () => {
     return <PuEmpty icon="box" title={tp.empty[tab]} />;
   };
 
-  const defaultLine = pickedRow === null ? null : pairDefaultLine(pickedRow, true);
   const remaining = creatableRemainingOf(generation);
   const lotTotal = lotsData?.total ?? 0;
   const tableShown = snapshot?.lots ?? tableLots;
@@ -894,15 +893,7 @@ export const PopMaterialLotLabelScreen = () => {
               <small>{t.work.fields.supplier}</small>
               <span className="mll-head-value">{picked.ref.supplierName}</span>
             </span>
-            <span className="mll-head-field">
-              <small>{t.work.fields.uom}</small>
-              <span className="mll-head-value">{picked.ref.uomCode}</span>
-            </span>
-            {defaultLine === null ? null : (
-              <span className={defaultLine.isMissing ? 'mll-head-sub mll-miss' : 'mll-head-sub'}>
-                {defaultLine.isMissing ? defaultLine.text : tp.headDefault(defaultLine.text)}
-              </span>
-            )}
+            {/* 기본 단위 · 기본 정보 줄은 적지 않는다(사용자 지시 2026-11-23 · 11-24, #1758). */}
           </>
         }
         meta={
@@ -938,17 +929,6 @@ export const PopMaterialLotLabelScreen = () => {
                 }}
               >
                 {tp.bulk.action}
-              </PuButton>
-              <PuButton
-                size="sm"
-                icon="plus"
-                disabled={isLocked || workerNo === null}
-                aria-describedby={workerNo === null ? createNoteId : undefined}
-                onClick={() => {
-                  setDialog({ kind: 'batch' });
-                }}
-              >
-                {t.work.create}
               </PuButton>
             </>
           )
@@ -1011,6 +991,18 @@ export const PopMaterialLotLabelScreen = () => {
             />
             <PuButton size="sm" disabled={isFrozen || checked.size === 0} onClick={clearSelection}>
               {t.bar.clear}
+            </PuButton>
+            {/* 「자재 관리 LOT 생성」은 선택 단추 오른쪽, 같은 높이(사용자 지시 2026-11-23, #1758). */}
+            <PuButton
+              size="sm"
+              icon="plus"
+              disabled={isLocked || isShowingResults || workerNo === null}
+              aria-describedby={workerNo === null ? createNoteId : undefined}
+              onClick={() => {
+                setDialog({ kind: 'batch' });
+              }}
+            >
+              {t.work.create}
             </PuButton>
           </div>
         ) : null}

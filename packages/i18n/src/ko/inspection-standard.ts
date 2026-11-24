@@ -6,8 +6,6 @@
  * 환산되는 파생값이고 이 화면이 정하는 것이 아니다(#201).
  */
 export const inspectionStandard = {
-  title: '검사기준 등록',
-  breadcrumbRoot: '품질 관리',
   panes: {
     plan: '검사 기준',
     version: '버전 목록',
@@ -23,8 +21,6 @@ export const inspectionStandard = {
     openRouting: '라우팅 조회',
     /* 미사용 기준을 다시 켜는 단추 — 「사용 중지」 자리(사용자 지시 2026-11-04). */
     reactivate: '재사용',
-    /* 상세 머리의 승인 — 미승인 기준에만(사용자 지시 · omf-all-around#258). */
-    approve: '승인',
     /* 다른 품목으로 복사(omf-all-around#255). */
     copy: '복사',
     /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
@@ -112,9 +108,6 @@ export const inspectionStandard = {
     deactivateTitle: '검사 기준을 사용 중지하시겠습니까?',
     /* 사용 중지한 기준을 다시 켠다(사용자 지시 2026-11-04). */
     activateTitle: '검사 기준을 다시 사용하시겠습니까?',
-    approveTitle: '검사 기준을 승인하시겠습니까?',
-    /* 계약이 승인 해제를 제공하지 않는다 — 되돌릴 수 없다는 사실만 짧게(사용자 시안 · #258). */
-    approveDescription: '승인 후에는 취소할 수 없습니다.',
     activateDescription: '재사용하면 새 검사에 이 기준을 적용할 수 있습니다.',
     deactivateDescription:
       '사용 중지하면 새 검사에 적용할 수 없습니다. 검사 기준 정보는 삭제되지 않습니다.',
@@ -164,7 +157,6 @@ export const inspectionStandard = {
   result: {
     deactivated: '검사기준 사용을 중지했습니다.',
     activated: '검사기준을 다시 사용합니다.',
-    approved: '검사기준을 승인했습니다.',
     copied: '복사한 검사 기준을 만들었습니다. 버전은 작성중이니 내용을 확인한 뒤 확정하세요.',
     confirmed: '버전을 확정했습니다.',
     obsoleted: '버전을 사용 중지했습니다.',
@@ -232,8 +224,6 @@ export const inspectionStandard = {
     chipInspectionType: (label: string): string => `검사 유형: ${label}`,
     chipRemoveKeyword: '검색어 조건 제거',
     chipRemoveInspectionType: '검사 유형 조건 제거',
-    unapprovedOnly: '미승인',
-    chipRemoveUnapproved: '미승인 조건 제거',
     usageLabel: '사용 여부',
     usageAll: '전체',
     usageActive: '사용',
@@ -252,7 +242,21 @@ export const inspectionStandard = {
    * 상세 칸 맨 위의 버전 고르기 줄 — 선택칸으로 바로 고르고, 「버전 목록」 창에서 표로 고르거나
    * 신규 버전을 발행한다(omf-all-around#196).
    */
-  /* 기준 정보 구획 머리(omf-all-around#196) — 제목과 승인 · 사용 상태 칩. */
+  /* 기준 정보 구획 머리(omf-all-around#196) — 제목과 사용 상태 칩. */
+  /** IQC 기준 상세의 품목 검사 수준 칸 — 검사 수준 설정 화면을 합쳤다(omf-all-around#357). */
+  itemLevel: {
+    label: '검사 수준',
+    unset: '미지정',
+    loadFailed: '불러오지 못함',
+    /** 기본 정보 수정 창 — 수준을 바꾸면 나오는 사유 칸(선택 · 이력에 남는다). */
+    reason: '변경 사유',
+    reasonPlaceholder: '사유를 입력하세요(선택)',
+    /** 아래 카드 탭 — 버전 관리 · 검사 수준 변경 이력(사용자 지시 · #357). historyTitle 은 그 탭 상자의 접근성 이름. */
+    detailTabs: '상세 구분',
+    versionTab: '버전 관리',
+    levelTab: '검사 수준 변경 이력',
+    historyTitle: '검사 수준 변경 이력',
+  },
   detail: {
     title: '검사 기준 상세',
     createTitle: '검사 기준 등록',
@@ -260,7 +264,6 @@ export const inspectionStandard = {
     copyTitle: '검사 기준 복사',
     copyNote: (version: number): string =>
       `버전 ${String(version)}의 설정과 검사 항목을 복사합니다. 도면은 복사하지 않습니다.`,
-    chipNotApproved: '미승인',
     chipActive: '사용',
     chipInactive: '미사용',
     editBasic: '기본 정보 수정',
@@ -270,7 +273,6 @@ export const inspectionStandard = {
     close: '닫기',
     /* 상세 정보 상자의 칸 이름 — 여부를 묻는 값임을 밝힌다(사용자 지시 · #258). 등록 · 수정 창의 이름은 그대로. */
     defaultSkipLabel: '기본 생략 여부',
-    approvalLabel: '승인 여부',
     activeLabel: '사용 여부',
   },
   /* 상세 카드의 버전 구획(omf-all-around#196) — 버전 고르기 · 요약 · 탭(검사 항목 / 버전 설정 / 이력). */
@@ -341,10 +343,7 @@ export const inspectionStandard = {
     /** 품목은 코드 · 이름 두 칸으로 나눠 보인다(사용자 지시 2026-11-20). */
     itemCode: '품목코드',
     itemName: '품목명',
-    approval: '승인 여부',
     active: '사용 여부',
-    approved: '승인',
-    notApproved: '미승인',
   },
   /* 버전 비교 창 — 두 버전의 설정 · 검사 항목 차이(사용자 지시 · #196). 서버 비교 경로 없이 두 버전을 불러 화면이 견준다. */
   compare: {
@@ -469,7 +468,6 @@ export const inspectionStandard = {
     routing: '라우팅',
     /** omf-all-around#212 — 검사 유형 공통(옛 「PQC 생략 허용」 #119). */
     defaultSkip: '기본 생략',
-    approval: '승인',
     active: '사용',
     planVersion: '버전',
     status: '상태',
@@ -521,12 +519,6 @@ export const inspectionStandard = {
     /** 「전 품목 공통 기준」. 계약이 품목 널을 허용한다 — 빈 칸으로 두면 빠뜨린 것처럼 보인다. */
     allItems: '전 품목 공통',
     pickItem: '품목을 선택하세요',
-    /*
-     * 승인자 **이름을 만들지 않는다.** 계약이 주는 것은 사용자 번호이고
-     * 이름을 만들려면 이 화면의 관심사가 아닌 사용자 조회가 필요하다 — 시각만 낸다.
-     */
-    approvedAt: (at: string): string => `승인됨 · ${at}`,
-    notApproved: '미승인',
     active: '사용',
     inactive: '미사용',
     /*

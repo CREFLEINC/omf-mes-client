@@ -6,15 +6,7 @@
  * 이 파일이 얇아야 「Electron을 띄워야만 확인 가능한 부분」이 작아진다.
  */
 import { execFile, spawn } from 'node:child_process';
-import {
-  appendFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -61,7 +53,7 @@ import {
   isRenditionFormat,
   toRenditionFileName,
 } from './print';
-import { type LoggedPrinter, formatPrintLog, reasonOf } from './print-log';
+import { type LoggedPrinter, appendPrintLog, formatPrintLog, reasonOf } from './print-log';
 import { PRINT_PAGE_FILE, labelFileName, renderPrintPage } from './print-page';
 import {
   type LabelCommand,
@@ -100,6 +92,8 @@ import {
   buildMediaProbeScript,
   calibrationCommands,
   parseMediaProbe,
+  declaredLabelSize,
+  isLabelSizePinned,
   readLabelMedia,
   withProbedSize,
 } from './label-media';
@@ -434,7 +428,16 @@ function createRawPrinter(fallbackName?: string, host?: PrintHost): RawPrinter |
        *    않아도 그 단말에 걸린 라벨지에 맞는다 — 현장에서 갈아 끼워도 프린터 설정만 맞으면
        *    그대로 따라간다. 못 읽으면 설정값·기본값으로 물러선다.
        */
-      const probed = await probeMedia(deviceName ?? fallbackName, join(dataPath, '..'), host);
+      /*
+       * ⭐ **용지 크기는 명시적으로 정한 값**(사용자 지시 2026-11-23) — 단말 환경값 → 라벨이 적은 `SIZE` → (둘 다
+       *    없을 때만) 드라이버에 묻기. 드라이버에 묻는 데 작업마다 1초 남짓 걸렸다(현장 실측 2026-11-23).
+       */
+      const commands = readFileSync(dataPath, 'latin1');
+      const declared = isLabelSizePinned() ? null : declaredLabelSize(commands);
+      const probed =
+        isLabelSizePinned() || declared !== null
+          ? declared
+          : await probeMedia(deviceName ?? fallbackName, join(dataPath, '..'), host);
       const media = withProbedSize(readLabelMedia(), probed);
       /*
        * ⛔ **`ascii` 로 읽고 쓰지 않는다.** Node 의 `ascii` 는 바이트마다 최상위 비트를
@@ -443,7 +446,7 @@ function createRawPrinter(fallbackName?: string, host?: PrintHost): RawPrinter |
        *    `latin1` 은 바이트를 그대로 옮긴다. 지금은 목이 ASCII 만 내려 드러나지 않지만,
        *    실제 서버가 명령형 렌디션을 내려 주는 순간 재현된다.
        */
-      const sent = applyLabelMedia(readFileSync(dataPath, 'latin1'), media);
+      const sent = applyLabelMedia(commands, media);
       writeFileSync(dataPath, sent, 'latin1');
 
       /*
@@ -477,13 +480,25 @@ function createRawPrinter(fallbackName?: string, host?: PrintHost): RawPrinter |
  *    그때 기록에는 「(OS 기본)」만 남아 **어느 장치로 갔는지 나중에 알 수 없다** — 라벨이 안
  *    나온 날 그 줄이 유일한 단서다.
  *
- * ⛔ **캐시하지 않는다.** 현장에서 기본 프린터를 바꾸는 일이 있고, 기동 시점의 값을 들고 있으면
- *    바뀐 뒤에도 옛 장치 이름으로 보낸다(프린터 목록을 매번 다시 묻는 것과 같은 이유다).
+ * ⚠ **오래 들고 있지 않는다.** 현장에서 기본 프린터를 바꾸는 일이 있다 — 부르는 쪽(`resolvePrinter`)이
+ *    1분만 기억하고, 인쇄가 실패하면 바로 버린다(사용자 지시 2026-11-23).
  *
  * ⚠ Windows 밖에서는 묻지 않는다 — 개발 기계에는 이 길이 없고, 엔진 경로가 알아서 간다.
  */
-async function readDefaultPrinterName(scratchDir: string): Promise<string | null> {
+async function readDefaultPrinterName(
+  scratchDir: string,
+  host?: PrintHost,
+): Promise<string | null> {
   if (process.platform !== 'win32') return null;
+
+  /* 떠 있는 도우미가 있으면 그쪽에 묻는다 — 작업마다 PowerShell 을 새로 띄우지 않는다(현장 실측 2026-11-23). */
+  if (host !== undefined) {
+    try {
+      return parseDefaultPrinterName(await host.defaultPrinter());
+    } catch (cause) {
+      if (!(cause instanceof PrintHostDownError)) return null;
+    }
+  }
 
   try {
     const output = await runPrintScript(
@@ -618,8 +633,24 @@ async function main(): Promise<void> {
    *   목록을 들고 있으면 사라진 장치로 계속 보낸다.
    */
   let printHost: BrowserWindow | null = null;
+  /*
+   * 프린터 목록 · 기본 프린터 기억(사용자 지시 2026-11-23) — 작업마다 묻던 것이 1.3초씩 걸렸다(현장 실측).
+   * ⚠ 1분만 들고, 인쇄가 실패하면 바로 버린다 — 현장에서 프린터를 갈아 끼우거나 기본을 바꿔도 따라간다.
+   * 머리의 프린터 고르기 창(`printers:list`)은 늘 새로 묻는다.
+   */
+  const PRINTER_MEMORY_MS = 60_000;
+  let printerMemory: {
+    at: number;
+    printers: Awaited<ReturnType<Electron.WebContents['getPrintersAsync']>>;
+    defaultName: string | null;
+  } | null = null;
+  const forgetPrinters = (): void => {
+    printerMemory = null;
+  };
+
   const resolvePrinter = async (
     requested?: string,
+    fresh = false,
   ): Promise<{
     choice: PrinterChoice;
     available: LoggedPrinter[];
@@ -634,12 +665,32 @@ async function main(): Promise<void> {
      * ⚠ **매번 다시 묻는다.** 현장에서 프린터를 갈아 끼우거나 기본 프린터를 바꾸는 일이 있어,
      *   기동 시점의 값을 들고 있으면 사라진 장치로 계속 보낸다.
      */
-    return resolveTerminalPrinter({
+    if (MOCK_PRINTER) {
       /* 가상 프린터를 켰으면 OS 목록을 읽지 않는다 — 진짜 장치가 골라질 길을 닫는다. */
-      printers: MOCK_PRINTER ? mockPrinters() : await printHost.webContents.getPrintersAsync(),
+      return resolveTerminalPrinter({
+        printers: mockPrinters(),
+        preferred: process.env.POP_PRINTER_NAME,
+        requested,
+        defaultName: MOCK_PRINTER_NAME,
+      });
+    }
+
+    const remembered = printerMemory;
+    const known =
+      !fresh && remembered !== null && Date.now() - remembered.at < PRINTER_MEMORY_MS
+        ? remembered
+        : {
+            at: Date.now(),
+            printers: await printHost.webContents.getPrintersAsync(),
+            defaultName: await readDefaultPrinterName(stagingDir, labelPrintHost),
+          };
+    printerMemory = known;
+
+    return resolveTerminalPrinter({
+      printers: known.printers,
       preferred: process.env.POP_PRINTER_NAME,
       requested,
-      defaultName: MOCK_PRINTER ? MOCK_PRINTER_NAME : await readDefaultPrinterName(stagingDir),
+      defaultName: known.defaultName,
     });
   };
 
@@ -661,7 +712,7 @@ async function main(): Promise<void> {
    *    않게 아는 것만 넘긴다.
    */
   ipcMain.handle('printers:list', async () => {
-    const { choice, available } = await resolvePrinter();
+    const { choice, available } = await resolvePrinter(undefined, true);
 
     return {
       printers: available,
@@ -758,7 +809,7 @@ async function main(): Promise<void> {
       ) => {
         try {
           mkdirSync(logDir, { recursive: true });
-          appendFileSync(
+          appendPrintLog(
             join(logDir, 'print.log'),
             formatPrintLog({
               at: new Date().toISOString(),
@@ -781,7 +832,7 @@ async function main(): Promise<void> {
       ) => {
         try {
           mkdirSync(logDir, { recursive: true });
-          appendFileSync(
+          appendPrintLog(
             join(logDir, 'print.log'),
             formatPrintLog({
               at: new Date().toISOString(),
@@ -813,6 +864,8 @@ async function main(): Promise<void> {
           available.map((printer) => printer.displayName ?? printer.name),
         );
         noteFailure(available, null, error);
+        /* 기억한 프린터가 틀렸을 수 있다 — 다음 작업은 새로 묻는다. */
+        forgetPrinters();
         throw error;
       }
 
@@ -829,6 +882,8 @@ async function main(): Promise<void> {
         noteOutcome(available, deviceName ?? '(OS 기본)', `보냄(${rendition.format})`);
       } catch (cause) {
         noteFailure(available, deviceName ?? '(OS 기본)', cause);
+        /* 기억한 프린터가 틀렸을 수 있다 — 다음 작업은 새로 묻는다. */
+        forgetPrinters();
         throw cause;
       }
 

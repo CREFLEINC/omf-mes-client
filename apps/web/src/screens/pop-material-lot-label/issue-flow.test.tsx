@@ -17,8 +17,8 @@ import {
 } from './screen-harness';
 
 /**
- * 라벨 인쇄 — **한 장마다 네 걸음(발행 기록 → 라벨 짜기 → 인쇄 → 결과 보고)을 차례로**(개편안 승인 2026-10-24 ·
- * omf-all-around#184). 005 부터 옛 첫 걸음 「LOT 등록」은 없다 — LOT 은 「자재 관리 LOT 만들기」가 이미 만들었다.
+ * 라벨 인쇄 — **장마다 발행 기록 → 라벨 짜기, 최대 10장(`PRINT_CHUNK`)을 한 인쇄 작업으로, 결과 보고는 장마다**
+ * (개편안 승인 2026-10-24 · omf-all-around#184 · 묶음 인쇄 사용자 지시 2026-11-23). 005 부터 옛 첫 걸음 「LOT 등록」은 없다 — LOT 은 「자재 관리 LOT 만들기」가 이미 만들었다.
  *
  * 여기서 무는 것은 「무엇을 어떤 차례로 보내는가」와 「어디서 멈췄을 때 무엇을 말하고 무엇을 다시 보내는가」다.
  * 본문 조립은 `patterns/material-lot-label-print.test.ts`, 라벨 배치는 `patterns/label/lot-label-tspl.test.ts` 가 따로 문다.
@@ -101,7 +101,7 @@ const docTypes = (sent: readonly Sent[]): string[] =>
   );
 
 describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
-  it('US1-4 미리 보기를 거쳐 고른 LOT 을 한 장씩 네 걸음 보내고, 쓰기마다 사번과 멱등 키를 싣는다 — LOT 등록은 부르지 않는다', async () => {
+  it('US1-4 미리 보기를 거쳐 고른 LOT 마다 발행 기록 → 한 인쇄 작업 → 장마다 보고, 쓰기마다 사번과 멱등 키를 싣는다 — LOT 등록은 부르지 않는다', async () => {
     const user = userEvent.setup();
     const save = installShell();
     const { sent } = renderLabelScreen(waitingOnly(3));
@@ -111,10 +111,10 @@ describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
     await waitFor(() => expect(screen.getAllByText(t.bar.done(3)).length).toBeGreaterThan(0));
     expect(posts(sent)).toEqual([
       '/app/document-issues',
-      '/app/document-issues/REPORT',
+      '/app/document-issues',
       '/app/document-issues',
       '/app/document-issues/REPORT',
-      '/app/document-issues',
+      '/app/document-issues/REPORT',
       '/app/document-issues/REPORT',
     ]);
     expect(
@@ -122,7 +122,11 @@ describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
         (entry) => (entry.body as { targets: { lotId: number }[] }).targets[0]?.lotId,
       ),
     ).toEqual([9001, 9002, 9003]);
-    expect(save).toHaveBeenCalledTimes(3);
+    /* 세 장이 한 인쇄 작업으로 간다 — 장마다 `CLS … PRINT` 가 이어진다. */
+    expect(save).toHaveBeenCalledTimes(1);
+    const [bytes] = (save as ReturnType<typeof vi.fn>).mock.calls[0] ?? [];
+    const commands = new TextDecoder('latin1').decode(bytes as Uint8Array);
+    expect(commands.match(/PRINT 1,1/gu)).toHaveLength(3);
 
     for (const entry of sent.filter((each) => each.method === 'POST')) {
       expect(entry.headers.get('X-Worker-No')).toBe(WORKER_NO);
@@ -213,29 +217,46 @@ describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
 });
 
 describe('라벨 발행 — 멈추는 자리', () => {
-  it('프린터가 응답하지 않으면 그 장에서 멈추고 남은 장은 「멈춤」으로 남긴다', async () => {
+  it('프린터가 응답하지 않으면 그 묶음(10장)을 인쇄 실패로 두고 남은 장은 「멈춤」으로 남긴다', async () => {
     const user = userEvent.setup();
     installShell(vi.fn(async () => Promise.reject(new Error('프린터 응답 없음'))));
-    const { sent } = renderLabelScreen(waitingOnly(3));
+    const { sent } = renderLabelScreen(waitingOnly(12));
 
-    await issueAll(user, 3);
+    /* 014 표는 쪽으로 나뉜다 — 쪽을 넘기며 12장을 모두 고른다(고른 줄은 쪽을 넘겨도 남는다). */
+    await pickFirst(user);
+    await waitFor(() =>
+      expect(screen.getByText(messages.popUniform.pager.total(12))).toBeInTheDocument(),
+    );
+    for (let pageNo = 1; pageNo <= 3; pageNo += 1) {
+      await waitFor(() => expect(rows()[0]).toBeDefined());
+      await checkVisible(user);
+      if (pageNo < 3) {
+        const before = rows()[0]?.getAttribute('aria-label');
+        await user.click(screen.getByRole('button', { name: messages.popUniform.pager.next }));
+        await waitFor(() => expect(rows()[0]?.getAttribute('aria-label')).not.toBe(before));
+      }
+    }
+    await user.click(screen.getByRole('button', { name: t.bar.issue(12) }));
+    const dialog = await screen.findByRole('dialog', { name: t.preview.title });
+    await user.click(within(dialog).getByRole('button', { name: t.preview.print(12) }));
 
-    await waitFor(() => expect(screen.getByText(t.bar.failed(3))).toBeInTheDocument());
-    expect(screen.getByText(t.bar.next.printFailed)).toBeInTheDocument();
-    expect(screen.getAllByText(t.status.stopped)).toHaveLength(2);
-    expect(sentTo(sent, '/app/document-issues')).toHaveLength(1);
+    await waitFor(() => expect(screen.getByText(t.bar.next.printFailed)).toBeInTheDocument());
+    /* 묶음 안에서 어느 장까지 나왔는지 알 수 없다 — 열 장 모두 인쇄 실패, 다음 묶음은 보내지 않는다. */
+    expect(sentTo(sent, '/app/document-issues')).toHaveLength(10);
+    /* 결과 머리 — 인쇄된 장 0, 끝나지 못한 장 12(실패 10 + 멈춤 2). */
+    expect(screen.getByText(t.work.resultSummary(0, 12))).toBeInTheDocument();
   });
 
-  it('셸 인쇄 통로가 없는 단말(브라우저)에서는 첫 장에서 멈춘다', async () => {
+  it('셸 인쇄 통로가 없는 단말(브라우저)에서는 첫 묶음에서 멈춘다', async () => {
     const user = userEvent.setup();
     renderLabelScreen(waitingOnly(2));
 
     await issueAll(user, 2);
 
-    await waitFor(() => expect(screen.getByText(t.status.failed.printFailed)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText(t.status.failed.printFailed)).toHaveLength(2));
   });
 
-  it('다시 발행 — 인쇄만 실패한 장은 같은 LOT 에 「인쇄 실패」 사유로, 멈춘 장은 사유 없이 첫 발행으로 보낸다', async () => {
+  it('다시 발행 — 인쇄만 실패한 묶음의 장은 같은 LOT 에 「인쇄 실패」 사유로 다시 보낸다', async () => {
     const user = userEvent.setup();
     const save = vi
       .fn<SaveFn>()
@@ -252,11 +273,15 @@ describe('라벨 발행 — 멈추는 자리', () => {
     const issues = sentTo(sent, '/app/document-issues').map((entry) => entry.body);
     expect(issues).toEqual([
       expect.objectContaining({ targets: [expect.objectContaining({ lotId: 9001 })] }),
+      expect.objectContaining({ targets: [expect.objectContaining({ lotId: 9002 })] }),
       expect.objectContaining({
         targets: [expect.objectContaining({ lotId: 9001 })],
         reissueReasonCode: 'PRINT_FAILURE',
       }),
-      expect.not.objectContaining({ reissueReasonCode: expect.anything() }),
+      expect.objectContaining({
+        targets: [expect.objectContaining({ lotId: 9002 })],
+        reissueReasonCode: 'PRINT_FAILURE',
+      }),
     ]);
   });
 
