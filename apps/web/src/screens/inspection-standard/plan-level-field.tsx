@@ -63,7 +63,7 @@ export const PlanLevelField = ({
 
   return (
     <>
-      <div className="field-cell">
+      <div className="field-cell inspection-standard-level-cell">
         {status === 'ready' && canEdit ? (
           <FieldLabel htmlFor={levelId} label={t.label} />
         ) : (
@@ -98,7 +98,7 @@ export const PlanLevelField = ({
         )}
       </div>
       {isChanged && (
-        <div className="field-cell">
+        <div className="field-cell inspection-standard-level-reason">
           <FieldLabel htmlFor={reasonId} label={t.reason} />
           <TextField
             id={reasonId}
