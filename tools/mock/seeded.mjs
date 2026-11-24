@@ -211,7 +211,7 @@ const INTEGRATION_INTERFACES = [
   ['IF-ERP-PRODORD-RECV', 'INBOUND', 'PRODORD'],
 ];
 const INTEGRATION_ERRORS = [
-  '연계 대상 시스템 응답 없음(timeout 30s)',
+  '연동 대상 시스템이 30초 동안 응답하지 않았습니다.',
   'ERP 품목 코드 미등록',
   '필수 항목 누락: 창고 코드',
   'ERP 전표 마감 기간',
@@ -449,9 +449,16 @@ on('POST', '/integration/erp-sync/tables/{interfaceCode}:run', (params) => {
  * 짝인 송신 인터페이스가 있는 셋은 연동 이력 목의 건수를 그대로 센다. 송신 대기 건이 몇 개 안 돼 항목마다 6건씩 보탠다.
  */
 const OUTBOUND_ITEM_SETTINGS = [
-  ['PRODUCTION_RESULT', '생산 실적', 'IF-WO-CLOSE-SEND', true, true, '작업지시 마감 직후 건별'],
-  ['GOODS_RECEIPT', '입고', 'IF-GR-SEND', true, false, '수입검사 합격 직후 건별'],
-  ['SHIPMENT_PGI', '출하', 'IF-SHIPMENT-PGI-SEND', true, false, '출하 처리 완료 직후 건별'],
+  [
+    'PRODUCTION_RESULT',
+    '생산 실적',
+    'IF-WO-CLOSE-SEND',
+    true,
+    true,
+    '작업지시 마감 직후 건별 송신',
+  ],
+  ['GOODS_RECEIPT', '입고', 'IF-GR-SEND', true, false, '수입검사 합격 직후 건별 송신'],
+  ['SHIPMENT_PGI', '출하', 'IF-SHIPMENT-PGI-SEND', true, false, '출하 처리 완료 직후 건별 송신'],
   ['RETURN', '반품', null, false, false, null],
   ['STOCK_ADJUSTMENT', '실사 조정', null, false, false, null],
 ];
@@ -475,7 +482,8 @@ const OUTBOUND_ITEM_SETTINGS = [
         targetId: 9000 + id,
         statusCode: 'PENDING',
         retryCount: index % 3 === 0 ? 1 : 0,
-        lastErrorMessage: index % 3 === 0 ? '연계 대상 시스템 응답 없음(timeout 30s)' : null,
+        lastErrorMessage:
+          index % 3 === 0 ? '연동 대상 시스템이 30초 동안 응답하지 않았습니다.' : null,
         createdAt: new Date(createdMs).toISOString(),
         availableAt: new Date(now + (index + 1) * 5 * 60 * 1000).toISOString(),
         sentAt: null,

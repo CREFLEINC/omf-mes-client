@@ -246,7 +246,7 @@ describe('ErpSalesOrderScreen', () => {
     expect(screen.getByTestId('location')).toHaveTextContent(/progress=done$/);
   });
 
-  it('진행은 「조건 더보기」에 접혀 있고, 전체가 아니면 칩으로 알리며 × 는 전체로 되돌려 다시 조회한다', async () => {
+  it('진행은 위 줄 라벨로 고르고, 「전체」를 누르면 진행 조건을 풀어 다시 조회한다', async () => {
     const { fetch, requests } = recordingFetch(normalRoutes);
     renderWithProviders(
       <>
@@ -256,17 +256,20 @@ describe('ErpSalesOrderScreen', () => {
       { fetch, route: '/?q=SYN&progress=done' },
     );
     const user = userEvent.setup();
-    const removeProgress = messages.common.filterMore.remove(t.fields.progress);
 
     await screen.findByRole('button', { name: 'SYN-SO-801' });
-    expect(screen.queryByRole('group', { name: t.progress.group })).toBeNull();
-    expect(screen.getByText(t.filters.chip(t.fields.progress, t.progress.done))).toBeVisible();
+    const group = screen.getByRole('group', { name: t.progress.group });
+    expect(within(group).getByRole('button', { name: t.progress.done })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    /* 위 줄 라벨이 보여 주므로 「조건 더보기」 칩으로 다시 알리지 않는다. */
+    expect(screen.queryByText(t.filters.chip(t.fields.progress, t.progress.done))).toBeNull();
 
-    await user.click(screen.getByRole('button', { name: removeProgress }));
+    await user.click(within(group).getByRole('button', { name: t.progress.all }));
 
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\?q=SYN$/));
     expect(listUrls(requests).at(-1)?.searchParams.has('progress')).toBe(false);
-    expect(screen.queryByRole('button', { name: removeProgress })).toBeNull();
   });
 
   it('진행 열은 출하 진행을 표지로 보이고, 칸이 없는 응답은 「-」로 보인다', async () => {

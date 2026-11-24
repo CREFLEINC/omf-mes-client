@@ -87,7 +87,7 @@ describe('ErpEmployeeScreen', () => {
     expect(screen.queryByRole('button', { name: /저장|등록|삭제/ })).not.toBeInTheDocument();
   });
 
-  it('검색어와 퇴사자 포함을 조회 조건으로 싣는다', async () => {
+  it('검색어와 재직 상태 라벨 「전체」(퇴사자 포함)를 조회 조건으로 싣는다', async () => {
     const { urls, user } = renderScreen([listRoute()]);
     await screen.findByText('예시 사원 B');
     // 초기화는 바뀐 것이 있을 때만 보인다.
@@ -95,8 +95,13 @@ describe('ErpEmployeeScreen', () => {
 
     await user.type(screen.getByLabelText('사원 검색'), 'SAMPLE');
     expect(screen.getByRole('button', { name: '초기화' })).toBeInTheDocument();
-    await user.click(screen.getByRole('checkbox', { name: '퇴사자 포함' }));
+    const status = screen.getByRole('group', { name: '재직 상태' });
+    expect(within(status).getByRole('button', { name: '재직' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
     await user.click(screen.getByRole('button', { name: '조회' }));
+    await user.click(within(status).getByRole('button', { name: '전체' }));
 
     await waitFor(() => {
       const last = urls.filter((url) => url.pathname === LIST_PATH).at(-1);

@@ -31,8 +31,6 @@ export interface OutboundItem {
   failedCount: number;
   /** 언제 보내는가(서버가 준 글 그대로 · 상세에 보인다 · #358). 없으면 null. */
   sendTimingNote: string | null;
-  /** 끌 수 없는 까닭(생산 실적). 없으면 null. */
-  lockReason: string | null;
 }
 
 export const toOutboundItem = (setting: OutboundItemSettingRow): OutboundItem => ({
@@ -44,5 +42,4 @@ export const toOutboundItem = (setting: OutboundItemSettingRow): OutboundItem =>
   pendingCount: setting.pendingMessageCount,
   failedCount: setting.failedMessageCount ?? 0,
   sendTimingNote: setting.sendTimingNote ?? null,
-  lockReason: setting.lockReason ?? null,
 });

@@ -13,7 +13,7 @@ export const erpItem = {
   },
   fields: {
     q: '품목 검색',
-    qPlaceholder: '품목코드 또는 품목명을 입력하세요',
+    qPlaceholder: '품목 코드 또는 품목명을 입력하세요',
     itemType: '품목 유형 선택',
     includeInactive: '미사용 포함',
   },
@@ -21,13 +21,13 @@ export const erpItem = {
     all: '전체',
   },
   table: {
-    itemCode: '품목코드',
+    itemCode: '품목 코드',
     itemName: '품목명',
-    itemType: '품목유형',
+    itemType: '품목 유형',
     erpSpec: '규격',
-    erpItemGroupCode: '품목그룹',
+    erpItemGroupCode: '품목 그룹',
     baseUom: '기준 단위',
-    isActive: '사용',
+    isActive: '사용 여부',
   },
   values: {
     empty: '—',

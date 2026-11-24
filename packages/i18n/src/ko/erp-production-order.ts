@@ -14,13 +14,13 @@ export const erpProductionOrder = {
     item: '품목',
     orderQty: '지시 수량',
     plannedStartDate: '계획 시작일',
-    dueDate: '납기',
-    operationNo: '공정번호',
+    dueDate: '납기일',
+    operationNo: '공정 번호',
     storageLocation: '창고',
-    rework: '재작업',
+    rework: '재작업 여부',
     status: '상태',
-    progress: '진행',
-    q: 'W/O 번호 검색',
+    progress: '진행 상태',
+    q: 'ERP W/O 번호 검색',
   },
   panes: {
     filters: 'ERP W/O 조회 조건',
@@ -43,7 +43,7 @@ export const erpProductionOrder = {
    * 표지는 서버 `progressStatusCode` 의 넷이다.
    */
   progress: {
-    group: '진행 조건',
+    group: '진행 상태',
     all: '전체',
     open: '미완료',
     done: '완료',
@@ -57,7 +57,7 @@ export const erpProductionOrder = {
   values: {
     searchPlaceholder: 'ERP W/O 번호를 입력하세요',
     missing: '-',
-    unknown: '알 수 없음',
+    unknown: '등록 정보 없음',
     loadingName: '불러오는 중',
     failedName: '불러오지 못함',
     reworkYes: '예',

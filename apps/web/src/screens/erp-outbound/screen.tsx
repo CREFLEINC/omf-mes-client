@@ -10,7 +10,7 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 
 import { BoardTable } from '../../patterns/board-table';
 import { useClientPage } from '../../patterns/client-page';
@@ -24,7 +24,7 @@ import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { OneLine } from '../../patterns/po-board';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { PageNav } from '../../patterns/page-nav';
-import { documentNoOf, messageTitleOf } from '../integration-sync/message-labels';
+import { documentNoOf } from '../integration-sync/message-labels';
 import { formatDateTime } from '../integration-sync/message-status';
 import { toPageView } from '../integration-sync/pagination';
 import { toPeriodQuery } from '../integration-sync/period';
@@ -42,9 +42,6 @@ import { ErpSendChips } from './send-chips';
 
 const t = messages.erpOutbound;
 const ts = messages.integrationSync;
-
-/** 연동 현황·이력 — 송신 예정 건의 메시지 키가 그 탭의 상세를 연다. */
-const INTEGRATION_SYNC_PATH = '/master-data/integration-sync';
 
 /** 송신 예정의 「전체」 기간 시작 — 서버가 기간을 꼭 받으므로 그보다 앞선 날짜로 둔다(#358). */
 const PENDING_FROM = '2000-01-01';
@@ -164,21 +161,15 @@ const ItemTable = ({ items, counts, selectedCode, onSelect }: ItemTableProps) =>
 
 /** 오른쪽 — 고른 항목의 송신 예정(송신기가 아직 보내지 않은 건). */
 const PendingTable = ({ rows }: { rows: IntegrationMessageRow[] }) => {
+  /* 줄 어디를 눌러도 그 줄을 고른다(사용자 지시 2026-11-24) — 문서 번호는 링크가 아니다. */
+  const [pickedId, setPickedId] = useState<string | null>(null);
   const columns: Column<IntegrationMessageRow>[] = [
     {
       key: 'messageKey',
       header: t.table.messageKey,
       align: 'center',
       width: '184px',
-      render: (row) => (
-        <Link
-          className="link-cell"
-          to={`${INTEGRATION_SYNC_PATH}?sel=${String(row.integrationMessageId)}`}
-          aria-label={t.openMessage(messageTitleOf(row))}
-        >
-          <OneLine text={documentNoOf(row)} />
-        </Link>
-      ),
+      render: (row) => <OneLine text={documentNoOf(row)} />,
     },
     {
       key: 'createdAt',
@@ -197,7 +188,7 @@ const PendingTable = ({ rows }: { rows: IntegrationMessageRow[] }) => {
     {
       key: 'retryCount',
       header: t.table.retryCount,
-      width: '104px',
+      width: '128px',
       align: 'center',
       render: (row) => t.times(row.retryCount),
     },
@@ -217,6 +208,14 @@ const PendingTable = ({ rows }: { rows: IntegrationMessageRow[] }) => {
       columns={columns}
       rows={rows}
       getRowId={(row) => String(row.integrationMessageId)}
+      pick={{
+        columnKey: 'messageKey',
+        label: (row) => t.pickRow(documentNoOf(row)),
+        currentId: pickedId,
+        onPick: (row) => {
+          setPickedId(String(row.integrationMessageId));
+        },
+      }}
     />
   );
 };
@@ -485,17 +484,18 @@ export const ErpOutboundScreen = () => {
                     )}
                   </dd>
                 </div>
-                {selected.lockReason !== null && (
+                {/* 끌 수 없는 항목은 화면이 정한 한 문장으로 알린다 — 서버 까닭 글에는 내부 근거가 섞여 있다(사용자 지시 2026-11-24). */}
+                {selected.locked && (
                   <div className="parts-iqc-fact">
                     <dt className="field-label">{t.table.lockReason}</dt>
-                    <dd>{selected.lockReason}</dd>
+                    <dd>{t.lockedNote}</dd>
                   </div>
                 )}
               </dl>
               {/* 송신 예정 — 제목 줄에 건수, 아직 보내지 않은 건의 표(#358). */}
               <h3 className="pane-title erp-outbound-pending-title">
                 {selected.interfaceCode !== null && pendingCount !== undefined
-                  ? t.pendingTitle(selected.outboundItemName, pendingCount)
+                  ? t.pendingTitle(pendingCount)
                   : t.panes.pending}
               </h3>
               {pendingSlot()}

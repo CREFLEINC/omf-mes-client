@@ -13,7 +13,6 @@ export const erpEmployee: Translated<typeof ko.erpEmployee> = {
   fields: {
     q: 'Tìm nhân viên',
     qPlaceholder: 'Nhập mã NV hoặc họ tên',
-    includeInactive: 'Bao gồm đã nghỉ việc',
   },
   table: {
     workerNo: 'Mã NV',
@@ -23,6 +22,11 @@ export const erpEmployee: Translated<typeof ko.erpEmployee> = {
     departmentId: 'Bộ phận',
     statusCode: 'Trạng thái ERP',
     isActive: 'Đang làm việc',
+  },
+  status: {
+    group: 'Trạng thái làm việc',
+    all: 'Tất cả',
+    active: 'Đang làm việc',
   },
   values: {
     empty: '—',

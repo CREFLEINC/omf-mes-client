@@ -1,9 +1,10 @@
-import { Button, Checkbox, type Column, EmptyState, SkeletonText, TextField } from '@crefle/web-ui';
+import { Button, Chip, type Column, EmptyState, SkeletonText, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { hasChangedFilters } from '../../patterns/filter-more';
+import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import {
   FIT_PLACEHOLDER_CLASS,
   useFitPlaceholderWidth,
@@ -28,6 +29,50 @@ const orEmpty = (value: string | number | null | undefined): string =>
   value === null || value === undefined || value === '' ? t.values.empty : String(value);
 
 const activeLabel = (isActive: boolean): string => (isActive ? t.values.active : t.values.inactive);
+
+/** 재직 칸 — 라벨 모양(사용자 지시 2026-11-24). 재직은 초록, 퇴사는 회색. */
+const ActiveChip = ({ isActive }: { isActive: boolean }) => (
+  <Chip variant="status" size="sm" status={isActive ? 'success' : 'idle'}>
+    {activeLabel(isActive)}
+  </Chip>
+);
+
+interface ActiveFilterChipsProps {
+  includeInactive: boolean;
+  onChange: (includeInactive: boolean) => void;
+}
+
+/**
+ * 재직 상태 라벨 「전체 · 재직」을 탭 줄 위에 낸다(사용자 지시 2026-11-24 · #358) — 누르는 즉시 건다. 서버 조건이
+ * 「퇴사자 포함」(includeInactive) 하나뿐이라 「퇴사만」은 고를 수 없다. 조회 상자의 「퇴사자 포함」 칸은 이 라벨로 옮겼다.
+ */
+const ActiveFilterChips = ({ includeInactive, onChange }: ActiveFilterChipsProps) => {
+  const target = useHubActionsTarget();
+  const options = [
+    { value: true, label: t.status.all },
+    { value: false, label: t.status.active },
+  ];
+  const group = (
+    <div className="inspection-hub-counts" role="group" aria-label={t.status.group}>
+      {options.map((option) => (
+        <Chip
+          key={option.label}
+          variant="filter"
+          size="sm"
+          selected={includeInactive === option.value}
+          aria-pressed={includeInactive === option.value}
+          onSelectedChange={() => {
+            onChange(option.value);
+          }}
+        >
+          {option.label}
+        </Chip>
+      ))}
+    </div>
+  );
+
+  return target === null ? group : <HubActions target={target}>{group}</HubActions>;
+};
 
 /** 주소의 조건. 조건은 전부 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다. */
 interface Filters {
@@ -111,17 +156,6 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
           setDraft((prev) => ({ ...prev, q: event.target.value }));
         }}
       />
-      <div className="field-cell field-cell-unlabeled">
-        <Checkbox
-          checked={draft.includeInactive}
-          onChange={(event) => {
-            const { checked } = event.target;
-            setDraft((prev) => ({ ...prev, includeInactive: checked }));
-          }}
-        >
-          {t.fields.includeInactive}
-        </Checkbox>
-      </div>
       <ErpFilterActions onReset={reset} showReset={isChanged} />
     </form>
   );
@@ -180,8 +214,8 @@ export const ErpEmployeeScreen = () => {
     {
       key: 'isActive',
       header: t.table.isActive,
-      width: '72px',
-      render: (row) => activeLabel(row.isActive),
+      width: '96px',
+      render: (row) => <ActiveChip isActive={row.isActive} />,
     },
   ];
 
@@ -216,6 +250,12 @@ export const ErpEmployeeScreen = () => {
             {list.isError && (
               <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
             )}
+            <ActiveFilterChips
+              includeInactive={filters.includeInactive}
+              onChange={(includeInactive) => {
+                applyQuery({ ...filters, includeInactive });
+              }}
+            />
             {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
             <FilterBar
               applied={filters}
@@ -294,7 +334,11 @@ export const ErpEmployeeScreen = () => {
                   value: orEmpty(selected.departmentId),
                 },
                 { key: 'statusCode', label: t.table.statusCode, value: selected.statusCode },
-                { key: 'isActive', label: t.table.isActive, value: activeLabel(selected.isActive) },
+                {
+                  key: 'isActive',
+                  label: t.table.isActive,
+                  value: <ActiveChip isActive={selected.isActive} />,
+                },
               ]}
             />
           ),

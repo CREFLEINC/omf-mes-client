@@ -23,7 +23,6 @@ describe('송신 항목 — 서버 설정 한 줄', () => {
       pendingCount: 3,
       failedCount: 1,
       sendTimingNote: null,
-      lockReason: null,
     });
   });
 

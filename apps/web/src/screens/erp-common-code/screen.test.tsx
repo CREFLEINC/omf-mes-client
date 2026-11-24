@@ -142,7 +142,7 @@ describe('ErpCommonCodeScreen', () => {
     // 초기화는 바뀐 것이 있을 때만 보인다 — 고른 그룹은 조건이 아니다.
     expect(within(form).queryByRole('button', { name: '초기화' })).toBeNull();
 
-    await user.type(within(form).getByLabelText('코드·코드명'), 'SAMPLE');
+    await user.type(within(form).getByLabelText('코드 검색'), 'SAMPLE');
     expect(within(form).getByRole('button', { name: '초기화' })).toBeInTheDocument();
     await user.click(within(form).getByRole('checkbox', { name: '미사용 포함' }));
     await user.click(within(form).getByRole('button', { name: '조회' }));
@@ -162,7 +162,7 @@ describe('ErpCommonCodeScreen', () => {
     // 그룹 검색 초기화도 검색어가 처음 값(빈칸)과 다를 때만 보인다.
     expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
 
-    await user.type(screen.getByLabelText('코드그룹 검색'), '단위');
+    await user.type(screen.getByLabelText('코드 그룹 검색'), '단위');
     await user.click(screen.getAllByRole('button', { name: '조회' })[0]!);
     expect(screen.queryByRole('button', { name: 'PUR_GROUP' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'UNIT' })).toBeInTheDocument();

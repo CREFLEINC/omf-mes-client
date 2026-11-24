@@ -16,7 +16,6 @@ import {
 import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
 import { DEFAULT_FILTERS, type ErpProductionOrderFilters } from './filters';
-import { ProgressFilterField } from './progress';
 import type { SelectOption } from './types';
 
 const t = messages.erpProductionOrder;
@@ -84,11 +83,11 @@ export interface ErpProductionOrderFilterBarProps {
 /**
  * 조건 줄. 고치는 동안은 초안(`draft`)에만 담고 「조회」를 눌러야 주소로 간다 —
  * 칸 하나를 바꿀 때마다 조회가 나가면 기간을 다 고르기도 전에 엉뚱한 결과가 뜬다.
- * 진행 단추만은 누르는 즉시 건다 — 걸린 조건에 진행만 바꿔 얹고, 고치던 초안은 그대로 둔다.
+ * 진행은 탭 줄 위 라벨(`ProgressHubChips`)이 누르는 즉시 건다 — 걸린 조건에 진행만 바꿔 얹는다(#358).
  *
  * **보이는 칸은 셋이다**(C-6) — 계획 시작일 · 품목 · ERP W/O 번호. 칸 폭은 C-19 고정 폭이라 값을 넣어도 그대로다 —
  * 기간 · 품목은 보통, 번호는 좁음이다(보통 셋에 조회 · 초기화 · 조건 더보기를 더하면 1280 에서 한 줄을 넘는다).
- * 진행 · 상태는 「조건 더보기」에 접고, 걸려 있으면 칩으로만 알린다. 「초기화」는 바뀐 것이 있을 때만 보인다.
+ * 상태는 「조건 더보기」에 접고, 걸려 있으면 칩으로만 알린다. 「초기화」는 바뀐 것이 있을 때만 보인다.
  * [조회][초기화][조건 더보기]는 줄 오른쪽 끝(#358).
  */
 export const ErpProductionOrderFilterBar = ({
@@ -126,17 +125,7 @@ export const ErpProductionOrderFilterBar = ({
 
   /* 진행은 초안을 거치지 않으므로 걸린 값으로 견준다 — 초안에 남은 옛 진행이 「바뀜」으로 읽히지 않게. */
   const isChanged = hasChangedFilters(DEFAULT_FILTERS, { ...draft, progress }, appliedFilters);
-  /* 진행은 처음 값(전체)과 다를 때만 칩이 된다 — × 는 처음 값으로 되돌리고 다시 조회한다. */
-  const hiddenChips: HiddenFilterChip<'progress' | 'status'>[] = [
-    ...(progress === DEFAULT_FILTERS.progress
-      ? []
-      : [
-          {
-            key: 'progress' as const,
-            label: t.filters.chip(t.fields.progress, t.progress[progress]),
-            removeLabel: messages.common.filterMore.remove(t.fields.progress),
-          },
-        ]),
+  const hiddenChips: HiddenFilterChip<'status'>[] = [
     ...(status === ''
       ? []
       : [
@@ -204,11 +193,6 @@ export const ErpProductionOrderFilterBar = ({
       {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
       <div id={more.id} hidden={!more.isOpen}>
         <div className="filter-bar">
-          {/* 진행은 누르는 즉시 건다 — 접힌 칸 안에서도 「조회」를 기다리지 않는다. */}
-          <ProgressFilterField
-            value={progress}
-            onChange={(next) => onSearch({ ...appliedFilters, progress: next })}
-          />
           <FilterSelect
             label={t.filters.statusSelect}
             options={statusOptions}

@@ -7,6 +7,7 @@ import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { ERP_DATA_ORIENTATION_KEY } from '../erp-item/erp-data-parts';
 import { ErpSalesOrderDetailPane, type DetailState } from './detail-pane';
 import { ErpSalesOrderFilterBar } from './filter-bar';
+import { ProgressHubChips } from './progress';
 import {
   DEFAULT_FILTERS,
   LIST_PAGE_SIZE,
@@ -86,6 +87,13 @@ export const ErpSalesOrderScreen = () => {
                 {t.loadFailedDescription}
               </AlertBanner>
             )}
+            {/* 진행 「전체 · 미완료 · 완료」는 탭 줄 위 라벨(사용자 지시 2026-11-24). */}
+            <ProgressHubChips
+              value={filters.progress}
+              onChange={(progress) =>
+                setSearchParams(toSearchParams({ ...filters, progress }, 1, size))
+              }
+            />
             <ErpSalesOrderFilterBar
               appliedFilters={filters}
               statusOptions={status.options}

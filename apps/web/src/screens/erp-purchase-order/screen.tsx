@@ -11,6 +11,7 @@ import { CustomsClearanceAction } from './customs-clearance-action';
 import { ERP_DATA_ORIENTATION_KEY } from '../erp-item/erp-data-parts';
 import { ErpPurchaseOrderDetailPane, type DetailState } from './detail-pane';
 import { ErpPurchaseOrderFilterBar } from './filter-bar';
+import { ProgressHubChips } from './progress';
 import {
   DEFAULT_FILTERS,
   LIST_PAGE_SIZE,
@@ -103,6 +104,13 @@ export const ErpPurchaseOrderScreen = () => {
                 {t.loadFailedDescription}
               </AlertBanner>
             )}
+            {/* 진행 「전체 · 미완료 · 완료」는 탭 줄 위 라벨(사용자 지시 2026-11-24). */}
+            <ProgressHubChips
+              value={filters.progress}
+              onChange={(progress) =>
+                setSearchParams(toSearchParams({ ...filters, progress }, 1, size))
+              }
+            />
             <ErpPurchaseOrderFilterBar
               appliedFilters={filters}
               plantOptions={plants.options}

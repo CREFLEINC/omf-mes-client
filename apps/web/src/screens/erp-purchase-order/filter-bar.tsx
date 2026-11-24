@@ -16,7 +16,6 @@ import {
 import { PartnerSelect } from '../../patterns/partner-select';
 import { Select } from '../../patterns/select';
 import { DEFAULT_FILTERS, type PurchaseOrderFilters } from './filters';
-import { ProgressFilterField } from './progress';
 import type { SelectOption } from './types';
 
 const t = messages.erpPurchaseOrder;
@@ -65,8 +64,8 @@ const FilterSelect = ({
   );
 };
 
-/** 「조건 더보기」에 접는 조건 — 진행 · 공장 · 상태 · 발주 유형. */
-type HiddenKey = 'progress' | 'plant' | 'status' | 'orderType';
+/** 「조건 더보기」에 접는 조건 — 공장 · 상태 · 발주 유형. 진행은 탭 줄 위 라벨이다(#358). */
+type HiddenKey = 'plant' | 'status' | 'orderType';
 
 /** 칩에는 코드가 아니라 선택지 이름을 낸다. 선택지를 아직 못 받았으면 받은 값 그대로. */
 const optionLabel = (options: SelectOption[], value: string): string =>
@@ -85,11 +84,11 @@ export interface ErpPurchaseOrderFilterBarProps {
 /**
  * 조건 줄. 고치는 동안은 초안(`draft`)에만 담고 「조회」를 눌러야 주소로 간다 —
  * 칸 하나를 바꿀 때마다 조회가 나가면 기간을 다 고르기도 전에 엉뚱한 결과가 뜬다.
- * 진행 단추만은 누르는 즉시 건다 — 걸린 조건에 진행만 바꿔 얹고, 고치던 초안은 그대로 둔다.
+ * 진행은 탭 줄 위 라벨(`ProgressHubChips`)이 누르는 즉시 건다 — 걸린 조건에 진행만 바꿔 얹는다(#358).
  *
  * **보이는 칸은 셋이다**(C-6) — 발주일 · 공급사 · 발주번호. 칸 폭은 C-19 고정 폭이라 값을 넣어도 그대로다 — 기간 · 공급사는
  * 보통, 발주번호는 좁음이다(보통 셋에 조회 · 초기화 · 조건 더보기를 더하면 1280 에서 한 줄을 넘는다).
- * 진행 · 공장 · 상태 · 발주 유형은 「조건 더보기」에 접고, 접힌 칸에 걸린 조건은 칩으로만 알린다. 「초기화」는 바뀐 것이 있을
+ * 공장 · 상태 · 발주 유형은 「조건 더보기」에 접고, 접힌 칸에 걸린 조건은 칩으로만 알린다. 「초기화」는 바뀐 것이 있을
  * 때만 보인다. [조회][초기화][조건 더보기]는 줄 오른쪽 끝(#358).
  */
 export const ErpPurchaseOrderFilterBar = ({
@@ -127,17 +126,6 @@ export const ErpPurchaseOrderFilterBar = ({
 
   /* 진행은 초안을 거치지 않으므로 걸린 값으로 견준다 — 초안에 남은 옛 진행이 「바뀜」으로 읽히지 않게. */
   const isChanged = hasChangedFilters(DEFAULT_FILTERS, { ...draft, progress }, appliedFilters);
-  /* 진행은 처음 값(전체)과 다를 때만 칩이 된다 — × 는 처음 값으로 되돌리고 다시 조회한다. */
-  const progressChips: HiddenFilterChip<HiddenKey>[] =
-    progress === DEFAULT_FILTERS.progress
-      ? []
-      : [
-          {
-            key: 'progress',
-            label: t.filters.chip(t.fields.progress, t.progress[progress]),
-            removeLabel: messages.common.filterMore.remove(t.fields.progress),
-          },
-        ];
   const codeChips: HiddenFilterChip<HiddenKey>[] = (
     [
       ['plant', t.fields.plant, plantOptions],
@@ -151,7 +139,8 @@ export const ErpPurchaseOrderFilterBar = ({
       label: t.filters.chip(label, optionLabel(options, appliedFilters[key])),
       removeLabel: messages.common.filterMore.remove(label),
     }));
-  const hiddenChips = [...progressChips, ...codeChips];
+  /* 진행은 탭 줄 위 라벨이 보여 주므로 칩으로 다시 알리지 않는다(#358). */
+  const hiddenChips = codeChips;
 
   return (
     <>
@@ -213,11 +202,6 @@ export const ErpPurchaseOrderFilterBar = ({
       {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
       <div id={more.id} hidden={!more.isOpen}>
         <div className="filter-bar">
-          {/* 진행은 누르는 즉시 건다 — 접힌 칸 안에서도 「조회」를 기다리지 않는다. */}
-          <ProgressFilterField
-            value={progress}
-            onChange={(next) => onSearch({ ...appliedFilters, progress: next })}
-          />
           <FilterSelect
             label={t.filters.plantSelect}
             className="filter-field-md"

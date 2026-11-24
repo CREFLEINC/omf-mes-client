@@ -1,41 +1,45 @@
-import { Button, Chip, type ChipStatus } from '@crefle/web-ui';
+import { Chip, type ChipStatus } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import type { ProgressFilter } from './filters';
 
 const t = messages.erpSalesOrder;
 
 const OPTIONS: readonly ProgressFilter[] = ['all', 'open', 'done'];
 
-export interface ProgressFilterFieldProps {
+export interface ProgressHubChipsProps {
   value: ProgressFilter;
   onChange: (value: ProgressFilter) => void;
 }
 
 /**
- * 진행 조건 「전체 · 미완료 · 완료」(사용자 지시 2026-10-28) — 누르는 즉시 건다. 다른 조건은 「조회」로 걸지만 셋 중 하나를
- * 고르는 단추라 미리 고칠 것이 없다. ERP 송신 탭의 생성일 단추와 같은 모양이다.
+ * 진행 조건 「전체 · 미완료 · 완료」를 탭 줄 위 라벨로 낸다(사용자 지시 2026-11-24 · #358) — 검사 조회의 판정 라벨과 같은
+ * 자리 · 모양이다. 누르는 즉시 건다. 「조건 더보기」 안의 진행 단추는 이 라벨로 옮겼다.
  */
-export const ProgressFilterField = ({ value, onChange }: ProgressFilterFieldProps) => (
-  <div className="field-cell">
-    <span className="field-label">{t.fields.progress}</span>
-    <div className="filter-actions" role="group" aria-label={t.progress.group}>
+export const ProgressHubChips = ({ value, onChange }: ProgressHubChipsProps) => {
+  const target = useHubActionsTarget();
+  const group = (
+    <div className="inspection-hub-counts" role="group" aria-label={t.progress.group}>
       {OPTIONS.map((option) => (
-        <Button
+        <Chip
           key={option}
-          variant={value === option ? 'filled' : 'outlined'}
+          variant="filter"
           size="sm"
+          selected={value === option}
           aria-pressed={value === option}
-          onClick={() => {
+          onSelectedChange={() => {
             onChange(option);
           }}
         >
           {t.progress[option]}
-        </Button>
+        </Chip>
       ))}
     </div>
-  </div>
-);
+  );
+
+  return target === null ? group : <HubActions target={target}>{group}</HubActions>;
+};
 
 type ProgressCode = keyof typeof t.progress.status;
 

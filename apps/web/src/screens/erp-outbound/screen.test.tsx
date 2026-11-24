@@ -134,7 +134,7 @@ const renderScreen = (routes: StubRoute[], search = '', session?: Session | null
 };
 
 const itemsPane = () => within(screen.getByRole('region', { name: '송신 항목' }));
-const pendingPane = () => within(screen.getByRole('region', { name: '송신 예정' }));
+const pendingPane = () => within(screen.getByRole('region', { name: '송신 대기 목록' }));
 const itemRow = (name: string): HTMLElement => {
   const row = itemsPane()
     .getByRole('button', { name: `${name} 선택` })
@@ -239,7 +239,7 @@ describe('ErpOutboundScreen — 끝 쪽 넘김', () => {
       '?item=GOODS_RECEIPT&page=3',
     );
 
-    expect(await pendingPane().findByText('이 쪽에는 보낼 건이 없습니다')).toBeInTheDocument();
+    expect(await pendingPane().findByText('이 쪽에는 송신 대기 건이 없습니다')).toBeInTheDocument();
     await user.click(pendingPane().getByRole('button', { name: '첫 쪽으로' }));
 
     expect(await pendingPane().findByText('SAMPLE-GR-0001')).toBeInTheDocument();
@@ -251,9 +251,9 @@ describe('ErpOutboundScreen — 송신 예정 목록', () => {
   it('고르지 않았으면 첫 항목을 연다', async () => {
     renderScreen([settingsRoute, messagesRoute()]);
 
-    expect(await pendingPane().findByText('보낼 건이 없습니다')).toBeInTheDocument();
+    expect(await pendingPane().findByText('송신 대기 건이 없습니다')).toBeInTheDocument();
     expect(
-      pendingPane().getByRole('heading', { name: '생산 실적 · 송신 예정 0건' }),
+      pendingPane().getByRole('heading', { name: '송신 대기 목록 (0건)' }),
     ).toBeInTheDocument();
     expect(itemsPane().getByRole('button', { name: '생산 실적 선택' })).toHaveAttribute(
       'aria-current',
@@ -267,7 +267,7 @@ describe('ErpOutboundScreen — 송신 예정 목록', () => {
     await user.click(await itemsPane().findByText('입고 (G/R)'));
 
     expect(
-      await pendingPane().findByRole('heading', { name: '입고 (G/R) · 송신 예정 2건' }),
+      await pendingPane().findByRole('heading', { name: '송신 대기 목록 (2건)' }),
     ).toBeInTheDocument();
     // 메시지 키 대신 업무 번호만 — 연계 코드 · 대상 코드는 보이지 않는다(사용자 지시 2026-10-27).
     expect(pendingPane().getByText('SAMPLE-GR-0001')).toBeInTheDocument();
@@ -292,12 +292,17 @@ describe('ErpOutboundScreen — 송신 예정 목록', () => {
     expect(last?.searchParams.get('createdTo')).toMatch(/^\d{4}-\d{2}-\d{2}T23:59:59/);
   });
 
-  it('메시지 키는 연동 현황 · 이력에서 그 건의 상세를 연다', async () => {
-    renderScreen([settingsRoute, messagesRoute()], '?item=GOODS_RECEIPT');
+  it('송신 대기 줄은 어디를 눌러도 고르고, 문서 번호는 링크가 아니다(사용자 지시 2026-11-24)', async () => {
+    const { user } = renderScreen([settingsRoute, messagesRoute()], '?item=GOODS_RECEIPT');
 
-    expect(
-      await pendingPane().findByRole('link', { name: '입고 (G/R) SAMPLE-GR-0001 상세 열기' }),
-    ).toHaveAttribute('href', '/master-data/integration-sync?sel=9101');
+    const cell = await pendingPane().findByText('SAMPLE-GR-0001');
+    expect(pendingPane().queryByRole('link')).toBeNull();
+    const pick = pendingPane().getByRole('button', { name: 'SAMPLE-GR-0001 선택' });
+    expect(pick).not.toHaveAttribute('aria-current', 'true');
+
+    await user.click(cell.closest('tr')?.querySelector('td:last-child') ?? cell);
+
+    expect(pick).toHaveAttribute('aria-current', 'true');
   });
 
   it('송신이 없는 항목(반품)은 목록을 부르지 않고 그 사실만 말한다', async () => {

@@ -10,7 +10,7 @@ export const erpOutbound = {
     items: '송신 항목',
     /** 목록 상자 제목 — 「송신 항목 목록 N건」(#358). */
     list: 'ERP 송신 목록',
-    pending: '송신 예정',
+    pending: '송신 대기 목록',
     /** 상세 상자 제목(#358). */
     detail: '송신 항목 상세',
   },
@@ -37,13 +37,13 @@ export const erpOutbound = {
     failed: '송신 실패',
     /** 메시지 키에서 연계 코드를 뗀 번호 — 입고 번호 같은 업무 번호(연동 현황·이력의 「문서 번호」와 같다). */
     messageKey: '문서 번호',
-    createdAt: '생성 일시',
+    createdAt: '등록 일시',
     availableAt: '송신 예정 일시',
-    retryCount: '재시도 횟수',
-    lastErrorMessage: '오류 내용',
+    retryCount: '다시 보낸 횟수',
+    lastErrorMessage: '실패 사유',
     /** 상세 정보 상자(#358). */
     sendTiming: '송신 시점',
-    lockReason: '끌 수 없는 이유',
+    lockReason: '송신 중지 제한',
   },
   /** 건수 · 횟수 값 — 「3건」 · 「1회」(#358). */
   counts: (count: number): string => `${count.toLocaleString()}건`,
@@ -56,19 +56,19 @@ export const erpOutbound = {
   },
   /** 행 단추의 접근 이름 — 보이는 이름을 그대로 담는다. */
   pickRow: (name: string): string => `${name} 선택`,
-  /** 송신 예정 구획의 제목 — 고른 항목과 건수. */
-  pendingTitle: (name: string, count: number): string => `${name} · 송신 예정 ${String(count)}건`,
-  /** 메시지 키 링크 — 「ERP 연동 현황·이력」에서 그 건의 상세를 연다. */
-  openMessage: (title: string): string => `${title} 상세 열기`,
+  /** 송신 예정 구획의 제목 — 건수(사용자 지시 2026-11-24). */
+  pendingTitle: (count: number): string => `송신 대기 목록 (${count.toLocaleString()}건)`,
+  /** 끌 수 없는 항목(생산 실적)의 「송신 중지 제한」 값(사용자 지시 2026-11-24). */
+  lockedNote: '필수 송신 항목이므로 중지할 수 없습니다.',
   empty: {
     pickItem: '송신 항목을 선택하세요.',
-    pickItemDescription: '선택한 항목의 송신 예정 건을 확인할 수 있습니다.',
+    pickItemDescription: '선택한 항목의 송신 대기 건을 확인할 수 있습니다.',
     /** 이름 검색에 맞는 송신 항목이 없을 때. */
     noMatch: '조건에 맞는 송신 항목이 없습니다',
     /** 반품 · 실사 조정 — 서버에 아직 송신이 없다. */
     noInterface: '아직 ERP로 보내지 않는 항목입니다',
-    noPending: '보낼 건이 없습니다',
-    beyondLast: '이 쪽에는 보낼 건이 없습니다',
+    noPending: '송신 대기 건이 없습니다',
+    beyondLast: '이 쪽에는 송신 대기 건이 없습니다',
   },
   /** 탭 막대 오른쪽의 상태 칩 — 송신 항목 전체의 합. 누르면 이 탭으로 온다. */
   chips: {
@@ -81,7 +81,7 @@ export const erpOutbound = {
   },
   loading: {
     items: '송신 항목을 불러오는 중',
-    pending: '송신 예정 목록을 불러오는 중',
+    pending: '송신 대기 목록을 불러오는 중',
   },
   values: {
     empty: '—',
