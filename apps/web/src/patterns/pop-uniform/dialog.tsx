@@ -28,6 +28,7 @@ export const PuDialog = ({
   wide = false,
   closeLabel,
   ariaLabel,
+  keyboard,
 }: {
   /** 비우면 머리줄 없이 본문만 — 읽어 주는 이름은 `ariaLabel`. */
   title?: ReactNode;
@@ -40,6 +41,16 @@ export const PuDialog = ({
   closeLabel?: string;
   /** 제목이 없는 창의 읽어 주는 이름. */
   ariaLabel?: string;
+  /**
+   * 화면 아래 **키패드 판**에 띄울 글자판 · 숫자 키패드(사용자 지시 2026-11-24).
+   *
+   * ⭐ 창 안에 두지 않는다 — 글자판(넓다)과 숫자 키패드(좁다)가 바뀔 때마다 창 크기가 바뀌어 어색했다.
+   *    판은 화면 아래 고정 높이 띠이고, 창은 그 위 남은 자리 가운데에 같은 크기로 있다.
+   * - `undefined`: 판이 없는 창.
+   * - `null` · `false`: 지금은 띄울 것이 없지만 판 자리는 비워 둔다 — 칸을 눌러 판이 열려도 창이 움직이지 않는다.
+   * ⚠ 판은 창(`role="dialog"`) 안에 그린다(자리만 화면 아래) — 화면 낭독 · 초점이 창 안에 머문다.
+   */
+  keyboard?: ReactNode;
 }) => {
   const titleId = useId();
   const hasTitle = title !== undefined && title !== null;
@@ -66,10 +77,20 @@ export const PuDialog = ({
     };
   }, [onClose, seq]);
 
+  const hasKeyboard = keyboard !== undefined;
+  const showKeyboard = hasKeyboard && keyboard !== null && keyboard !== false;
+
   return createPortal(
-    <div className="pu-overlay">
+    <div className={hasKeyboard ? 'pu-overlay has-keyboard' : 'pu-overlay'}>
       <div
-        className={['pu-dialog', wide && 'wide', !hasTitle && 'no-head'].filter(Boolean).join(' ')}
+        className={[
+          'pu-dialog',
+          wide && 'wide',
+          !hasTitle && 'no-head',
+          hasKeyboard && 'has-keyboard',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         role="dialog"
         aria-modal="true"
         aria-labelledby={hasTitle ? titleId : undefined}
@@ -84,6 +105,17 @@ export const PuDialog = ({
         <div className="pu-dialog-foot">
           {footer ?? <PuButton onClick={onClose}>{closeLabel ?? t.dialog.close}</PuButton>}
         </div>
+        {showKeyboard && (
+          /* 판의 빈 곳 · 꺼진 키를 눌러도 칸에서 초점이 빠지지 않게 한다 — 스캐너 · 실물 자판이 계속 그 칸에 친다. */
+          <div
+            className="pu-kbd-dock"
+            onMouseDown={(event) => {
+              event.preventDefault();
+            }}
+          >
+            <div className="pu-kbd-dock-inner">{keyboard}</div>
+          </div>
+        )}
       </div>
     </div>,
     document.body,

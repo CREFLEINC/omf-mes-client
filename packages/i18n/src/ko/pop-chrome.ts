@@ -148,10 +148,9 @@ export const popChrome = {
     density: '농도',
     /** 라벨이 붙은 밑종이의 가로폭 — 셸이 `SIZE` 가로로 보낸다. */
     linerWidth: '이형지 가로폭',
-    linerEmpty: '비우면 라벨 가로',
     linerValue: (value: number): string => `이형지 ${String(value)} mm`,
     linerHint:
-      '라벨이 붙은 이형지(밑종이)의 가로폭을 자로 재어 넣습니다. 프린터는 이형지 폭에 맞춰 자리를 잡습니다.',
+      '이형지(밑종이) 가로폭을 자로 재어 넣습니다. 프린터는 이형지 폭에 맞춰 자리를 잡습니다. 비우면 라벨 가로와 같게 봅니다.',
     linerNarrow: '이형지 가로폭은 라벨 가로보다 좁을 수 없습니다.',
     separatorValue: (kind: string, gap: string, offset: string): string =>
       `${kind}, 간격 ${gap}, 보정 ${offset}`,

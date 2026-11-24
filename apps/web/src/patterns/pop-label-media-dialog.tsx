@@ -243,7 +243,7 @@ export const PopLabelMediaDialog = ({ onClose }: { onClose: () => void }) => {
     return (
       <PuField
         label={fieldLabel(field)}
-        optional={field === 'linerWidthMm' ? t.linerEmpty : t.range(limits.min, limits.max)}
+        optional={t.range(limits.min, limits.max)}
         htmlFor={`pop-label-media-${field}`}
       >
         <span className="pop-label-media__input">
@@ -275,6 +275,20 @@ export const PopLabelMediaDialog = ({ onClose }: { onClose: () => void }) => {
       wide
       title={t.title}
       onClose={onClose}
+      /* 키패드는 창 밖 화면 아래 판에(사용자 지시 2026-11-24 · `PuDialog` `keyboard`). */
+      keyboard={
+        state === null || draft === null ? null : (
+          <PuKeypad
+            targetLabel={target === null ? null : fieldLabel(target)}
+            decimal={target === null || !isWhole(target)}
+            disabled={busy}
+            onKey={pressKey}
+            onClearAll={() => {
+              if (target !== null) setValue(target, '');
+            }}
+          />
+        )
+      }
       footer={
         <>
           <PuButton disabled={busy} onClick={onClose}>
@@ -298,63 +312,65 @@ export const PopLabelMediaDialog = ({ onClose }: { onClose: () => void }) => {
         <PuNote live>{t.loading}</PuNote>
       ) : (
         <div className="pop-label-media">
-          <div className="pop-label-media__form">
-            <div className="pop-label-media__current">
-              <PuKv
-                cols2
-                items={[
-                  {
-                    label: t.printer,
-                    value:
-                      state.printer === null
-                        ? t.noPrinter
-                        : state.printer === '(OS 기본)'
-                          ? t.printerDefault
-                          : state.printer,
-                  },
-                  {
-                    label: t.size,
-                    value: (
-                      <>
-                        {sizeText(state.media.widthMm, state.media.heightMm)}{' '}
+          {/*
+           * 위: 지금 쓰는 값(창 폭 전체) / 왼쪽: 용지 크기 / 오른쪽: 장 구분 · 인쇄 설정 · 시험 인쇄 — 키패드 판 위
+           * 높이에 스크롤 없이 든다.
+           */}
+          <div className="pop-label-media__current">
+            <PuKv
+              cols2
+              items={[
+                {
+                  label: t.printer,
+                  value:
+                    state.printer === null
+                      ? t.noPrinter
+                      : state.printer === '(OS 기본)'
+                        ? t.printerDefault
+                        : state.printer,
+                },
+                {
+                  label: t.size,
+                  value: (
+                    <>
+                      {sizeText(state.media.widthMm, state.media.heightMm)}{' '}
+                      <span className="pop-label-media__source">{t.source[state.sizeSource]}</span>
+                      {state.media.linerWidthMm !== null && (
                         <span className="pop-label-media__source">
-                          {t.source[state.sizeSource]}
+                          {t.linerValue(state.media.linerWidthMm)}
                         </span>
-                        {state.media.linerWidthMm !== null && (
-                          <span className="pop-label-media__source">
-                            {t.linerValue(state.media.linerWidthMm)}
-                          </span>
-                        )}
-                      </>
-                    ),
-                  },
-                  {
-                    label: t.kind,
-                    value: t.separatorValue(
-                      t.kinds[state.media.kind],
-                      t.mm(state.media.gapMm),
-                      t.mm(state.media.offsetMm),
-                    ),
-                  },
-                  {
-                    label: t.printSettings,
-                    value: t.printValue(state.media.speed, state.media.density),
-                  },
-                ]}
-              />
-              {state.saved !== null && (
-                <PuButton
-                  size="sm"
-                  disabled={busy}
-                  onClick={() => {
-                    void save(null, t.cleared);
-                  }}
-                >
-                  {t.clear}
-                </PuButton>
-              )}
-            </div>
+                      )}
+                    </>
+                  ),
+                },
+                {
+                  label: t.kind,
+                  value: t.separatorValue(
+                    t.kinds[state.media.kind],
+                    t.mm(state.media.gapMm),
+                    t.mm(state.media.offsetMm),
+                  ),
+                },
+                {
+                  label: t.printSettings,
+                  value: t.printValue(state.media.speed, state.media.density),
+                },
+              ]}
+            />
+            {state.saved !== null && (
+              <PuButton
+                size="sm"
+                disabled={busy}
+                onClick={() => {
+                  void save(null, t.cleared);
+                }}
+              >
+                {t.clear}
+              </PuButton>
+            )}
+          </div>
 
+          <div className="pop-label-media__form">
             <PuField label={t.size}>
               <PuTiles
                 label={t.sizeMode}
@@ -425,7 +441,8 @@ export const PopLabelMediaDialog = ({ onClose }: { onClose: () => void }) => {
                 />
               </>
             )}
-
+          </div>
+          <div className="pop-label-media__form">
             <PuField label={t.kind}>
               <PuTiles
                 label={t.kind}
@@ -441,7 +458,7 @@ export const PopLabelMediaDialog = ({ onClose }: { onClose: () => void }) => {
                 }}
               />
             </PuField>
-            <div className="pop-label-media__row">
+            <div className="pop-label-media__row is-pairs">
               {input('gapMm')}
               {input('offsetMm')}
               {input('speed')}
@@ -487,15 +504,6 @@ export const PopLabelMediaDialog = ({ onClose }: { onClose: () => void }) => {
             {isDirty && <PuNote tone="warn">{t.saveFirst}</PuNote>}
             {!state.hasPrinter && <PuNote tone="warn">{t.noPrinter}</PuNote>}
           </div>
-          <PuKeypad
-            targetLabel={target === null ? null : fieldLabel(target)}
-            decimal={target === null || !isWhole(target)}
-            disabled={busy}
-            onKey={pressKey}
-            onClearAll={() => {
-              if (target !== null) setValue(target, '');
-            }}
-          />
         </div>
       )}
     </PuDialog>

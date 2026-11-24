@@ -111,10 +111,9 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     speed: 'Tốc độ',
     density: 'Độ đậm',
     linerWidth: 'Chiều ngang giấy đế',
-    linerEmpty: 'Để trống = ngang nhãn',
     linerValue: (value: number): string => `Giấy đế ${String(value)} mm`,
     linerHint:
-      'Đo chiều ngang giấy đế (lớp giấy dán nhãn) bằng thước rồi nhập. Máy in căn vị trí theo chiều ngang giấy đế.',
+      'Đo chiều ngang giấy đế (lớp giấy dán nhãn) bằng thước rồi nhập. Máy in căn vị trí theo chiều ngang giấy đế. Để trống thì coi như bằng chiều ngang nhãn.',
     linerNarrow: 'Chiều ngang giấy đế không được nhỏ hơn chiều ngang nhãn.',
     separatorValue: (kind: string, gap: string, offset: string): string =>
       `${kind}, khoảng cách ${gap}, bù ${offset}`,

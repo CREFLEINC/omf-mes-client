@@ -4746,18 +4746,24 @@
 }
 
 /*
- * 라벨지 설정 창(톱니 설정 → 라벨지 설정 · 사용자 지시 2026-11-24) — 왼쪽 입력, 오른쪽 숫자 키패드(규칙 8 · 340).
- * 넓은 창(760)으로는 입력 칸 넷이 한 줄에 들지 않아 이 창만 넓힌다(현장 1920 × 1080).
+ * 라벨지 설정 창(톱니 설정 → 라벨지 설정 · 사용자 지시 2026-11-24) — 입력을 두 단으로. 숫자 키패드는 창 밖
+ * 화면 아래 판에 뜬다(`PuDialog` `keyboard`) — 판 위 남은 높이(1080 에서 약 680)에 스크롤 없이 든다.
  */
+
 .pu-dialog.wide:has(.pop-label-media) {
-  width: 1120px;
+  width: min(1120px, calc(100vw - 32px));
 }
 
 .pop-label-media {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 20px;
+  /* 왼쪽(용지 크기)이 넓다 — 「프린터 설정 따르기 (82.6 × 39.9 mm)」가 잘리지 않게. */
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 16px 24px;
   align-items: start;
+}
+
+.pop-label-media > .pop-label-media__current {
+  grid-column: 1 / -1;
 }
 
 .pop-label-media__form {
@@ -4784,11 +4790,15 @@
   font-weight: 400;
 }
 
-/* 네 칸 격자 — 칸이 셋 · 하나인 줄도 아래 줄(네 칸)과 폭 · 자리가 맞는다. */
+/* 크기 줄은 세 칸(가로 · 세로 · 이형지), 인쇄 설정은 두 칸씩 두 줄. */
 .pop-label-media__row {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+}
+
+.pop-label-media__row.is-pairs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .pop-label-media__input {

@@ -36,6 +36,8 @@ export const popUniform = {
   textKeyboard: {
     region: '글자판',
     shift: '쌍자음·대문자',
+    /** ⇧ 을 연달아 두 번 누르면 풀 때까지 대문자(쌍자음)로 친다(사용자 지시 2026-11-24). */
+    shiftLocked: '대문자 고정',
     lang: '한/영',
     symbols: '기호',
     space: '띄어쓰기',
