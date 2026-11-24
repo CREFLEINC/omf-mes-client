@@ -18,7 +18,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   actions: {
     openRouting: 'Tra cứu routing',
     reactivate: 'Sử dụng lại',
-    approve: 'Phê duyệt',
     copy: 'Sao chép',
     /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
     tempSave: 'Lưu tạm',
@@ -95,8 +94,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   dialog: {
     deactivateTitle: 'Bạn có muốn ngừng sử dụng tiêu chuẩn kiểm tra không?',
     activateTitle: 'Bạn có muốn sử dụng lại tiêu chuẩn kiểm tra không?',
-    approveTitle: 'Phê duyệt tiêu chuẩn kiểm tra?',
-    approveDescription: 'Sau khi phê duyệt thì không thể hủy.',
     activateDescription: 'Sử dụng lại thì có thể áp dụng tiêu chuẩn này cho lần kiểm tra mới.',
     deactivateDescription:
       'Khi ngừng dùng, tiêu chuẩn sẽ không áp dụng được cho lần kiểm tra mới. Thông tin tiêu chuẩn kiểm tra không bị xóa.',
@@ -139,7 +136,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   result: {
     deactivated: 'Đã ngừng sử dụng tiêu chuẩn kiểm tra.',
     activated: 'Đã sử dụng lại tiêu chuẩn kiểm tra.',
-    approved: 'Đã phê duyệt tiêu chuẩn kiểm tra.',
     copied:
       'Đã tạo bản sao tiêu chuẩn kiểm tra. Phiên bản đang soạn — hãy kiểm tra nội dung rồi xác nhận.',
     confirmed: 'Đã xác nhận phiên bản.',
@@ -203,8 +199,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     chipInspectionType: (label: string): string => `Loại kiểm tra: ${label}`,
     chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
     chipRemoveInspectionType: 'Bỏ điều kiện loại kiểm tra',
-    unapprovedOnly: 'Chưa phê duyệt',
-    chipRemoveUnapproved: 'Bỏ điều kiện chưa phê duyệt',
     usageLabel: 'Sử dụng',
     usageAll: 'Tất cả',
     usageActive: 'Đang dùng',
@@ -236,7 +230,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     copyTitle: 'Sao chép tiêu chuẩn kiểm tra',
     copyNote: (version: number): string =>
       `Sao chép thiết lập và hạng mục kiểm tra của phiên bản ${String(version)}. Không sao chép bản vẽ.`,
-    chipNotApproved: 'Chưa phê duyệt',
     chipActive: 'Sử dụng',
     chipInactive: 'Ngừng dùng',
     editBasic: 'Sửa thông tin cơ bản',
@@ -245,7 +238,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     pqcSkipOff: 'Không áp dụng',
     close: 'Đóng',
     defaultSkipLabel: 'Có bỏ qua mặc định',
-    approvalLabel: 'Trạng thái phê duyệt',
     activeLabel: 'Trạng thái sử dụng',
   },
   versionSection: {
@@ -305,10 +297,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     item: 'Mặt hàng',
     itemCode: 'Mã mặt hàng',
     itemName: 'Tên mặt hàng',
-    approval: 'Trạng thái phê duyệt',
     active: 'Trạng thái sử dụng',
-    approved: 'Đã duyệt',
-    notApproved: 'Chưa duyệt',
   },
   compare: {
     title: 'So sánh phiên bản',
@@ -427,7 +416,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     process: 'Công đoạn',
     routing: 'Routing',
     defaultSkip: 'Bỏ qua mặc định',
-    approval: 'Phê duyệt',
     active: 'Sử dụng',
     planVersion: 'Phiên bản',
     status: 'Trạng thái',
@@ -477,9 +465,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     /** 「전 품목 공통 기준」. 계약이 품목 널을 허용한다 — 빈 칸으로 두면 빠뜨린 것처럼 보인다. */
     allItems: 'Chung mọi mặt hàng',
     pickItem: 'Hãy chọn mặt hàng',
-    /* 승인자 이름을 만들지 않는다 — 계약이 주는 것은 사용자 번호뿐이라 시각만 낸다. */
-    approvedAt: (at: string): string => `Đã phê duyệt · ${at}`,
-    notApproved: 'Chưa phê duyệt',
     active: 'Đang dùng',
     inactive: 'Ngừng dùng',
     /*

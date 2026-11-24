@@ -4,7 +4,6 @@ import type { ReactNode } from 'react';
 
 import { inspectionTypeLabel } from './code-options';
 import { RoutingSummary } from './plan-pane';
-import { formatApprovedAt } from './plan-mappers';
 import type { RoutingRevision } from './queries';
 import type { InspectionPlan } from './types';
 
@@ -17,9 +16,6 @@ export interface PlanDetailHeadProps {
   /** 기준의 라우팅 Rev. 없거나 아직 받지 못했으면 undefined — 「없음」 */
   routingRevision: RoutingRevision | undefined;
   onEdit: () => void;
-  /** 미승인 기준에만 — 「승인」(사용자 지시 · omf-all-around#258). 승인 해제는 없다. */
-  onApprove?: () => void;
-  isApproving?: boolean;
   /** 품목이 있는 기준에만 — 그 품목의 라우팅 화면으로 옮긴다(사용자 지시 2026-11-05). */
   onOpenRouting?: () => void;
   /** 사용 중인 기준에만 — 「기본 정보 수정」 옆 「사용 중지」(#208) */
@@ -43,8 +39,6 @@ export const PlanDetailHead = ({
   itemLabel,
   routingRevision,
   onEdit,
-  onApprove,
-  isApproving = false,
   onOpenRouting,
   onDeactivate,
   isDeactivating = false,
@@ -53,11 +47,9 @@ export const PlanDetailHead = ({
   onCopy,
   itemLevel,
 }: PlanDetailHeadProps) => {
-  const approvedAt = formatApprovedAt(plan.approvedAt);
-
   return (
     /*
-     * 첫 줄 — 「검사 기준 상세」 · 승인/사용 칩, 오른쪽 끝 기본 정보 수정(사용자 시안 · #196).
+     * 첫 줄 — 「검사 기준 상세」 · 사용 칩, 오른쪽 끝 기본 정보 수정(사용자 시안 · #196).
      * 둘째 줄 — 기준명 · 기준코드 · 검사 유형 · 품목 · 공정 · 기본 생략 · 라우팅을 이름표와 함께. 시안에는 없으나 무엇을 보고 있는지 알 길이라 남긴다.
      */
     <div className="inspection-standard-plan-head-card">
@@ -69,11 +61,6 @@ export const PlanDetailHead = ({
           {onOpenRouting !== undefined && (
             <Button variant="outlined" onClick={onOpenRouting}>
               {t.actions.openRouting}
-            </Button>
-          )}
-          {onApprove !== undefined && (
-            <Button variant="outlined" disabled={isApproving} onClick={onApprove}>
-              {t.actions.approve}
             </Button>
           )}
           {onDeactivate !== undefined && (
@@ -140,22 +127,14 @@ export const PlanDetailHead = ({
                 {t.detail.pqcSkipOn}
               </Chip>
             ) : (
-              /* 회색(idle) 칩은 바탕이 옅어 글자처럼 보인다 — 미승인 칩과 같은 색으로 라벨임을 드러낸다(사용자 지시 2026-11-04). */
+              /* 회색(idle) 칩은 바탕이 옅어 글자처럼 보인다 — 주의색으로 라벨임을 드러낸다(사용자 지시 2026-11-04). */
               <Chip variant="status" size="sm" status="warning">
                 {t.detail.pqcSkipOff}
               </Chip>
             )}
           </dd>
         </div>
-        {/* 승인 · 사용은 전용 액션으로만 바뀐다 — 값 표기로만 낸다. 제목 옆 칩을 이 상자로 옮겼다(사용자 지시 · #258). */}
-        <div>
-          <dt className="field-label">{t.detail.approvalLabel}</dt>
-          <dd>
-            <Chip variant="status" size="sm" status={approvedAt === null ? 'warning' : 'success'}>
-              {approvedAt === null ? t.detail.chipNotApproved : t.values.approvedAt(approvedAt)}
-            </Chip>
-          </dd>
-        </div>
+        {/* 사용은 전용 액션으로만 바뀐다 — 값 표기로만 낸다(#258). 승인 여부는 승인 기능과 함께 걷었다(omf-all-around#357). */}
         <div>
           <dt className="field-label">{t.detail.activeLabel}</dt>
           <dd>

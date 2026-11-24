@@ -1,7 +1,6 @@
 import type { components, InspectionPlanCreateForward } from '@omf-mes/api-client';
 
 import type { InspectionPlan, PlanFormValues } from './types';
-import { formatPlantDateTime } from '../../patterns/plant-time';
 
 type InspectionPlanUpdateForward = components['schemas']['InspectionPlanUpdate'];
 
@@ -81,16 +80,3 @@ export const isSamePlanValues = (a: PlanFormValues, b: PlanFormValues): boolean 
   a.processId === b.processId &&
   a.routingId === b.routingId &&
   a.defaultSkip === b.defaultSkip;
-
-/**
- * 승인 시각 표기. 값이 없으면 null이다.
- *
- * **공장 시각으로 보인다**(`patterns/plant-time` · omf-all-around#20). 보는 사람(실행 환경)의
- * 시간대로 옮기지 않는다 — 서버가 UTC 로 보내므로 글자만 자르면 7시간 이르게 찍힌다.
- * 아는 형식이 아니면 원문을 그대로 낸다 — 시각을 지어내지 않는다.
- */
-export const formatApprovedAt = (value: string | null | undefined): string | null => {
-  if (value === null || value === undefined || value === '') return null;
-
-  return formatPlantDateTime(value) ?? value;
-};

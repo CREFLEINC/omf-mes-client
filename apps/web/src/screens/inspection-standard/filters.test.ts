@@ -19,7 +19,6 @@ describe('readFilters', () => {
       itemId: '',
       includeInactive: false,
       inactiveOnly: false,
-      unapprovedOnly: false,
       versionStatus: '',
     });
   });
@@ -31,7 +30,6 @@ describe('readFilters', () => {
       itemId: '',
       includeInactive: true,
       inactiveOnly: false,
-      unapprovedOnly: false,
       versionStatus: '',
     });
   });
@@ -77,7 +75,6 @@ describe('toSearchParams', () => {
           itemId: '',
           includeInactive: false,
           inactiveOnly: false,
-          unapprovedOnly: false,
           versionStatus: '',
         },
         1,
@@ -93,7 +90,6 @@ describe('toSearchParams', () => {
         itemId: '',
         includeInactive: true,
         inactiveOnly: false,
-        unapprovedOnly: false,
         versionStatus: '',
       },
       2,
@@ -114,7 +110,6 @@ describe('toSearchParams', () => {
         itemId: '',
         includeInactive: false,
         inactiveOnly: false,
-        unapprovedOnly: false,
         versionStatus: '',
       },
       1,
@@ -136,7 +131,6 @@ describe('toSearchParams', () => {
         itemId: '',
         includeInactive: false,
         inactiveOnly: false,
-        unapprovedOnly: false,
         versionStatus: '',
       },
       3,
@@ -157,7 +151,6 @@ describe('toListQuery', () => {
           itemId: '42',
           includeInactive: false,
           inactiveOnly: false,
-          unapprovedOnly: false,
           versionStatus: '',
         },
         1,
@@ -174,7 +167,6 @@ describe('toListQuery', () => {
           itemId: '',
           includeInactive: false,
           inactiveOnly: false,
-          unapprovedOnly: false,
           versionStatus: '',
         },
         1,
@@ -191,7 +183,6 @@ describe('toListQuery', () => {
         itemId: '',
         includeInactive: false,
         inactiveOnly: false,
-        unapprovedOnly: false,
         versionStatus: '',
       },
       1,
@@ -210,7 +201,6 @@ describe('toListQuery', () => {
           itemId: '',
           includeInactive: true,
           inactiveOnly: false,
-          unapprovedOnly: false,
           versionStatus: '',
         },
         1,
@@ -228,7 +218,6 @@ describe('toListQuery', () => {
             itemId: '',
             includeInactive: false,
             inactiveOnly: false,
-            unapprovedOnly: false,
             versionStatus: '',
           },
           1,
@@ -242,7 +231,6 @@ describe('toListQuery', () => {
           itemId: '',
           includeInactive: false,
           inactiveOnly: false,
-          unapprovedOnly: false,
           versionStatus: '',
         },
         4,
@@ -259,7 +247,6 @@ describe('toListQuery', () => {
           itemId: '',
           includeInactive: false,
           inactiveOnly: false,
-          unapprovedOnly: false,
           versionStatus: '',
         },
         1,
@@ -277,28 +264,25 @@ describe('toFilterChips', () => {
         itemId: '',
         includeInactive: false,
         inactiveOnly: false,
-        unapprovedOnly: false,
         versionStatus: '',
       }),
     ).toEqual([]);
   });
 
   /* 사용 여부는 탭 줄 칩이 보인다 — 조건 칩으로 되풀이하지 않는다(#208). */
-  it('검색어·유형·미승인이 각각 칩이 되고 사용 여부는 칩이 되지 않는다', () => {
+  it('검색어·유형이 각각 칩이 되고 사용 여부는 칩이 되지 않는다', () => {
     const chips = toFilterChips({
       q: 'SYN',
       inspectionTypeCode: 'IQC',
       itemId: '',
       includeInactive: true,
       inactiveOnly: false,
-      unapprovedOnly: true,
       versionStatus: '',
     });
 
-    expect(chips.map((chip) => chip.key)).toEqual(['q', 'inspectionTypeCode', 'unapprovedOnly']);
+    expect(chips.map((chip) => chip.key)).toEqual(['q', 'inspectionTypeCode']);
     expect(chips[0]?.label).toBe('검색어: SYN');
     expect(chips[1]?.label).toBe('검사 유형: IQC (수입검사)');
-    expect(chips[2]?.label).toBe('미승인');
   });
 
   /* 「제거」가 셋이면 어느 조건을 푸는 것인지 알 수 없다. */
@@ -309,8 +293,7 @@ describe('toFilterChips', () => {
       itemId: '',
       includeInactive: false,
       inactiveOnly: false,
-      unapprovedOnly: true,
-      versionStatus: '',
+      versionStatus: 'draft',
     });
     const labels = chips.map((chip) => chip.removeLabel);
 
@@ -327,7 +310,6 @@ describe('hasAnyFilter', () => {
         itemId: '',
         includeInactive: false,
         inactiveOnly: false,
-        unapprovedOnly: false,
         versionStatus: '',
       }),
     ).toBe(false);
@@ -341,7 +323,6 @@ describe('hasAnyFilter', () => {
         itemId: '',
         includeInactive: true,
         inactiveOnly: false,
-        unapprovedOnly: false,
         versionStatus: '',
       }),
     ).toBe(true);

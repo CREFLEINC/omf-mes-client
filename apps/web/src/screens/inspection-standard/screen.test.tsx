@@ -181,19 +181,13 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
     expect(await screen.findByRole('button', { name: 'SYN-PLAN-01' })).toBeInTheDocument();
   });
 
-  /* 「미승인」은 서버 조건이 없어 화면이 거른다(#208) — 승인된 SYN-PLAN-03 은 빠진다. */
-  it('미승인을 켜면 승인되지 않은 기준만 남는다', async () => {
-    const { user } = renderScreen([planListRoute()], '?inactive=1');
-    await screen.findByRole('button', { name: 'SYN-PLAN-03' });
+  /* 승인 기능을 걷었다(omf-all-around#357) — 예전 주소의 `unapproved=1` 은 아무것도 거르지 않는다. */
+  it('예전 주소의 미승인 조건은 무시하고 승인된 기준도 보인다', async () => {
+    renderScreen([planListRoute()], '?inactive=1&unapproved=1');
 
-    /* 미승인은 「조건 더보기」 안에 접혀 있다(C-6). */
-    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
-    await user.click(screen.getByRole('checkbox', { name: '미승인' }));
-
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'SYN-PLAN-03' })).not.toBeInTheDocument();
-    });
+    expect(await screen.findByRole('button', { name: 'SYN-PLAN-03' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'SYN-PLAN-01' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '미승인 조건 제거' })).not.toBeInTheDocument();
   });
 
   /* 사용 여부 칩 「미사용」(#208) — 미사용인 기준만 남는다. 주소 `usage=off` 로 들어온다. */
@@ -206,20 +200,13 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
   });
 
   it('조회 조건은 주소에 남는다 — 새로고침·공유가 같은 결과를 낸다', async () => {
-    const { requests, user } = renderScreen(
-      [planListRoute()],
-      '?q=SYN&type=OQC&inactive=1&unapproved=1',
-    );
+    const { requests } = renderScreen([planListRoute()], '?q=SYN&type=OQC&inactive=1');
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
 
     const first = planRequests(requests)[0];
     expect(first?.url.searchParams.get('q')).toBe('SYN');
     expect(first?.url.searchParams.get('inspectionTypeCode')).toBe('OQC');
     expect(first?.url.searchParams.get('includeInactive')).toBe('true');
-    /* 접힌 미승인 조건은 칩으로 알리고, 펼치면 칸에 그대로 보인다(C-6). */
-    expect(screen.getByRole('button', { name: '미승인 조건 제거' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
-    expect(screen.getByRole('checkbox', { name: '미승인' })).toBeChecked();
   });
 
   it('접힌 상태 조건 칩의 ×가 그 조건만 풀고 다시 조회한다', async () => {
@@ -1587,7 +1574,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
 const DEACTIVATE_PATH = `${PLANS_PATH}/3001:deactivate`;
 
 const planActionRoute = (
-  action: 'deactivate' | 'activate' | 'approve',
+  action: 'deactivate' | 'activate',
   respond: StubRoute['respond'] = () => jsonResponse(inspectionPlanFixtures[0]),
 ): StubRoute => ({
   match: (request) =>
@@ -1615,33 +1602,14 @@ const dialog = async (): Promise<HTMLElement> =>
     return first;
   });
 
-/* 승인은 상세 머리에만 둔다 — #208 에서 걷었다가 되살렸다(사용자 지시 · omf-all-around#258). */
-describe('InspectionStandardScreen — 기준 승인', () => {
-  it('미승인 기준은 상세 머리에 승인이 서고, 확인하면 If-Match 없이 보낸다', async () => {
-    const { requests, user } = renderSelectedPlan([planActionRoute('approve')]);
-
-    await user.click(await screen.findByRole('button', { name: '승인' }));
-    expect(screen.getByText(t.dialog.approveTitle)).toBeInTheDocument();
-    expect(requestsTo(requests, `${PLANS_PATH}/3001:approve`)).toHaveLength(0);
-
-    await user.click(within(await dialog()).getByRole('button', { name: '승인' }));
-    await screen.findByText(t.result.approved);
-
-    const posts = requestsTo(requests, `${PLANS_PATH}/3001:approve`);
-    expect(posts).toHaveLength(1);
-    expect(posts[0]?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
-    expect(posts[0]?.headers.get('If-Match')).toBeNull();
-  });
-
-  /* 승인 해제가 없다 — 승인된 기준에는 단추를 두지 않는다. */
-  it('승인된 기준에는 승인 단추가 없다', async () => {
-    renderScreen(
-      [planListRoute(), planDetailRoute(inspectionPlanFixtures[2]), ...lookupRoutes()],
-      '?plan=3003',
-    );
+/* 승인 기능은 걷었다(사용자 지시 · omf-all-around#357) — 승인해도 검사 동작이 달라지지 않아 쓰임이 없었다. */
+describe('InspectionStandardScreen — 기준 승인(삭제)', () => {
+  it('미승인 기준에도 승인 단추 · 승인 여부 칸이 없다', async () => {
+    renderSelectedPlan();
 
     await screen.findByRole('button', { name: '기본 정보 수정' });
     expect(screen.queryByRole('button', { name: '승인' })).not.toBeInTheDocument();
+    expect(screen.queryByText('승인 여부')).not.toBeInTheDocument();
   });
 
   /* 사용 중지는 창 밖, 상세 상자의 「기본 정보 수정」 옆으로 옮겼다(#208). */
@@ -3972,20 +3940,19 @@ describe('InspectionStandardScreen — 상세 표시 순서(#256)', () => {
     return Array.from(box?.querySelectorAll('dt') ?? []).map((dt) => dt.textContent ?? '');
   };
 
-  /* 승인 · 사용 칩을 이 상자로 옮기고 칸 이름을 「~ 여부」로(사용자 지시 · #258). */
+  /* 사용 칩을 이 상자로 옮기고 칸 이름을 「~ 여부」로(사용자 지시 · #258). 승인 여부는 걷었다(#357). */
   /* IQC 기준은 품목 다음에 품목 검사 수준이 선다(omf-all-around#357). */
-  it('기준 상세는 검사 유형 · 품목 · 검사 수준(IQC) · 기준명 · 기준코드 · 기본 생략 여부 · 승인 여부 · 사용 여부 순서다', async () => {
+  it('기준 상세는 검사 유형 · 품목 · 검사 수준(IQC) · 기준명 · 기준코드 · 기본 생략 여부 · 사용 여부 순서다', async () => {
     renderSelectedVersion();
     await awaitVersionForm();
 
-    expect(labelsIn('.inspection-standard-plan-facts').slice(0, 8)).toEqual([
+    expect(labelsIn('.inspection-standard-plan-facts').slice(0, 7)).toEqual([
       t.fields.inspectionType,
       t.fields.item,
       t.itemLevel.label,
       t.fields.inspectionPlanName,
       t.fields.inspectionPlanCode,
       t.detail.defaultSkipLabel,
-      t.detail.approvalLabel,
       t.detail.activeLabel,
     ]);
   });

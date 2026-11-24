@@ -20,7 +20,6 @@ const URL_KEYS = {
   includeInactive: 'inactive',
   /* 사용 여부 칩 「미사용」 — `inactive=1` 과 함께 `usage=off`(#208). */
   inactiveOnly: 'usage',
-  unapprovedOnly: 'unapproved',
   versionStatus: 'vstatus',
   page: 'page',
   size: 'size',
@@ -45,7 +44,6 @@ export const readFilters = (params: URLSearchParams): PlanFilters => ({
     : '',
   includeInactive: params.get(URL_KEYS.includeInactive) === ON,
   inactiveOnly: params.get(URL_KEYS.inactiveOnly) === OFF,
-  unapprovedOnly: params.get(URL_KEYS.unapprovedOnly) === ON,
   versionStatus: readVersionStatus(params.get(URL_KEYS.versionStatus)),
 });
 
@@ -89,7 +87,6 @@ export const toSearchParams = (
   if (filters.itemId !== '') next.set(URL_KEYS.itemId, filters.itemId);
   if (filters.includeInactive || filters.inactiveOnly) next.set(URL_KEYS.includeInactive, ON);
   if (filters.inactiveOnly) next.set(URL_KEYS.inactiveOnly, OFF);
-  if (filters.unapprovedOnly) next.set(URL_KEYS.unapprovedOnly, ON);
   if (filters.versionStatus !== '') next.set(URL_KEYS.versionStatus, filters.versionStatus);
   if (page > 1) next.set(URL_KEYS.page, String(page));
   if (size !== DEFAULT_PAGE_SIZE) next.set(URL_KEYS.size, String(size));
@@ -162,14 +159,6 @@ export const toFilterChips = (filters: PlanFilters, itemLabel = ''): FilterChip[
   }
 
   /* 사용 여부는 탭 줄의 칩(전체 · 사용 · 미사용)이 보인다 — 조건 칩으로 되풀이하지 않는다(#208). */
-  if (filters.unapprovedOnly) {
-    chips.push({
-      key: 'unapprovedOnly',
-      label: t.filters.unapprovedOnly,
-      removeLabel: t.filters.chipRemoveUnapproved,
-    });
-  }
-
   if (filters.versionStatus !== '') {
     chips.push({
       key: 'versionStatus',
@@ -187,7 +176,6 @@ export const hasAnyFilter = (filters: PlanFilters): boolean =>
   filters.itemId !== '' ||
   filters.includeInactive ||
   filters.inactiveOnly ||
-  filters.unapprovedOnly ||
   filters.versionStatus !== '';
 
 /**
@@ -195,6 +183,6 @@ export const hasAnyFilter = (filters: PlanFilters): boolean =>
  * 키마다 「비었다」의 표현이 달라(문자열 vs 불리언) 호출부가 그것을 알지 않도록 여기서 다룬다.
  */
 export const clearFilter = (filters: PlanFilters, key: keyof PlanFilters): PlanFilters =>
-  key === 'includeInactive' || key === 'inactiveOnly' || key === 'unapprovedOnly'
+  key === 'includeInactive' || key === 'inactiveOnly'
     ? { ...filters, [key]: false }
     : { ...filters, [key]: '' };

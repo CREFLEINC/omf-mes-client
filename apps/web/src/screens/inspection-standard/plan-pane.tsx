@@ -6,7 +6,6 @@ import { ItemSelect } from '../../patterns/item-select';
 
 import { INSPECTION_TYPE_OPTIONS, ensureOption } from './code-options';
 import { FieldLabel } from './field-label';
-import { formatApprovedAt } from './plan-mappers';
 import { resolveVersionStatus } from './plan-version-status';
 import type { RoutingRevision } from './queries';
 import { SelectField } from './select-field';
@@ -154,7 +153,6 @@ export const PlanPane = ({
     if (values.routingId !== next) refresh(next);
   }, [values.itemId, values.routingId, autoRoutingId, onChange, onRoutingRefresh]);
 
-  const approvedAt = formatApprovedAt(plan?.approvedAt);
   /* 바꿀 수 없는 칸에는 필수 표시를 두지 않는다 — 고칠 수 없는 칸에 「꼭 채우라」는 뜻이 없다(사용자 지시 · #196). */
   const isCodeLocked = codeLockReason !== null;
 
@@ -174,9 +172,6 @@ export const PlanPane = ({
           </h2>
           {mode === 'edit' && plan !== null && (
             <div className="inspection-standard-plan-chips">
-              <Chip variant="status" status={approvedAt === null ? 'warning' : 'success'}>
-                {approvedAt === null ? t.detail.chipNotApproved : t.values.approvedAt(approvedAt)}
-              </Chip>
               <Chip variant="status" status={plan.isActive ? 'success' : 'idle'}>
                 {plan.isActive ? t.detail.chipActive : t.detail.chipInactive}
               </Chip>
