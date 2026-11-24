@@ -47,8 +47,8 @@ export const emptyPlanFormValues = (): PlanFormValues => ({
 /**
  * 기준 헤더 수정 요청 본문.
  *
- * **승인 정보(`approvedBy`·`approvedAt`)와 사용 여부(`isActive`)를 싣지 않는다** —
- * 승인은 `:approve`가, 사용 중지는 `:deactivate`가 기록한다. 실어 보내면 계약 위반이다.
+ * **사용 여부(`isActive`)를 싣지 않는다** — 사용 중지는 `:deactivate`가 기록한다.
+ * 실어 보내면 계약 위반이다.
  */
 export const toPlanUpdate = (values: PlanFormValues): InspectionPlanUpdate => ({
   // 앞뒤 공백이 붙은 코드·이름은 눈으로 구분되지 않는 다른 값이 된다.
