@@ -2939,7 +2939,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
 
     await awaitVersionForm();
     /* 변경 이력은 「버전 이력」 창에서 본다 — 종전 「이력」 탭을 창으로 옮겼다(#258 사용자 지시). */
-    expect(screen.queryByRole('tab', { name: /이력/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: '이력' })).not.toBeInTheDocument();
     await user.click(await screen.findByRole('button', { name: '버전 이력' }));
     const dialog = await screen.findByRole('dialog', { name: /^버전 이력/ });
 
@@ -4095,19 +4095,21 @@ describe('InspectionStandardScreen — 품목 검사 수준(#357)', () => {
     });
   });
 
-  /* 검사 수준은 버전이 아니라 품목(기준 전체)에 걸린다 — 아래 카드를 「버전 상세 · 검사 수준 상세」 탭으로 나눈다(사용자 지시). */
-  it('IQC 기준은 아래 카드가 버전 상세 · 검사 수준 상세 탭이고, 검사 수준 상세는 그 품목의 변경 이력을 보인다', async () => {
+  /* 검사 수준은 버전이 아니라 품목(기준 전체)에 걸린다 — 아래 카드를 「버전 관리 · 검사 수준 변경 이력」 탭으로 나눈다(사용자 지시). */
+  it('IQC 기준은 아래 카드가 버전 관리 · 검사 수준 변경 이력 탭이고, 그 탭은 그 품목의 변경 이력을 보인다', async () => {
     const { requests, user } = renderSelectedPlan(levelRoutes([LEVEL]));
 
-    const versionTab = await screen.findByRole('tab', { name: '버전 상세' });
+    const versionTab = await screen.findByRole('tab', { name: '버전 관리' });
     expect(versionTab).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('button', { name: '버전 목록' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '변경 이력' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '검사 수준 이력' })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('tab', { name: '검사 수준 상세' }));
+    await user.click(screen.getByRole('tab', { name: '검사 수준 변경 이력' }));
     const section = await screen.findByRole('region', { name: '검사 수준 변경 이력' });
     expect(await within(section).findByText('합성 최초 지정')).toBeInTheDocument();
+    /* 탭 이름이 곧 제목이다 — 상자 안에 같은 제목을 되풀이하지 않는다(사용자 지시). */
+    expect(within(section).queryByRole('heading')).not.toBeInTheDocument();
     const headers = within(section)
       .getAllByRole('columnheader')
       .map((cell) => cell.textContent?.replace('drag_indicator', ''));
@@ -4117,7 +4119,7 @@ describe('InspectionStandardScreen — 품목 검사 수준(#357)', () => {
     expect(requestsTo(requests, HISTORIES)[0]?.url.searchParams.get('itemId')).toBe('5001');
 
     /* 탭을 오가도 고른 기준은 그대로다. */
-    await user.click(screen.getByRole('tab', { name: '버전 상세' }));
+    await user.click(screen.getByRole('tab', { name: '버전 관리' }));
     expect(screen.getByRole('button', { name: '버전 목록' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'SYN-PLAN-01' })).toHaveAttribute(
       'aria-current',
@@ -4128,7 +4130,7 @@ describe('InspectionStandardScreen — 품목 검사 수준(#357)', () => {
   it('수준 변경 이력이 없으면 「검사 수준 변경 이력이 없습니다.」라고 낸다', async () => {
     const { user } = renderSelectedPlan(levelRoutes([LEVEL], []));
 
-    await user.click(await screen.findByRole('tab', { name: '검사 수준 상세' }));
+    await user.click(await screen.findByRole('tab', { name: '검사 수준 변경 이력' }));
     const section = await screen.findByRole('region', { name: '검사 수준 변경 이력' });
     expect(await within(section).findByText('검사 수준 변경 이력이 없습니다.')).toBeInTheDocument();
   });

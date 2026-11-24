@@ -315,7 +315,7 @@ export const InspectionStandardScreen = () => {
     setIsHistoryOpen(false);
     setHistoryTab('plan');
   };
-  /* 아래 카드의 탭 — 버전 상세 · 검사 수준 상세(IQC 기준만 · 사용자 지시 omf-all-around#357). 버전 선택(주소)은 건드리지 않는다. */
+  /* 아래 카드의 탭 — 버전 관리 · 검사 수준 변경 이력(IQC 기준만 · 사용자 지시 omf-all-around#357). 버전 선택(주소)은 건드리지 않는다. */
   const [detailTab, setDetailTab] = useState<'version' | 'level'>('version');
   const toast = useToast();
   const { client } = useApiClient();
@@ -1952,7 +1952,7 @@ export const InspectionStandardScreen = () => {
           </div>
         ) : (
           /*
-           * IQC 기준은 아래 카드를 「버전 상세 · 검사 수준 상세」 탭으로 나눈다(사용자 지시 · omf-all-around#357).
+           * IQC 기준은 아래 카드를 「버전 관리 · 검사 수준 변경 이력」 탭으로 나눈다(사용자 지시 · omf-all-around#357).
            * 검사 수준은 버전이 아니라 품목(기준 전체)에 걸린 값이라 버전 구획 안에 섞지 않는다.
            */
           <Tabs
@@ -1980,9 +1980,6 @@ export const InspectionStandardScreen = () => {
                     className="inspection-standard-version-card"
                     aria-label={t.itemLevel.historyTitle}
                   >
-                    <h3 className="pane-title">
-                      {t.itemLevel.historyTitle}
-                    </h3>
                     <ItemLevelHistoryTable itemId={historyLevelItemId} />
                   </section>
                 ),

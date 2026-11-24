@@ -223,10 +223,10 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     planHistoryTab: 'Lịch sử tiêu chuẩn kiểm tra',
     levelHistoryTab: 'Lịch sử mức kiểm tra',
     historyTabs: 'Loại lịch sử',
-    /** 아래 카드 탭 — 버전 상세 · 검사 수준 상세(사용자 지시 · #357). 검사 수준 상세의 이력 제목. */
+    /** 아래 카드 탭 — 버전 관리 · 검사 수준 변경 이력(사용자 지시 · #357). historyTitle 은 그 탭 상자의 접근성 이름. */
     detailTabs: 'Loại chi tiết',
-    versionTab: 'Chi tiết phiên bản',
-    levelTab: 'Chi tiết mức kiểm tra',
+    versionTab: 'Quản lý phiên bản',
+    levelTab: 'Lịch sử thay đổi mức kiểm tra',
     historyTitle: 'Lịch sử thay đổi mức kiểm tra',
   },
   detail: {
