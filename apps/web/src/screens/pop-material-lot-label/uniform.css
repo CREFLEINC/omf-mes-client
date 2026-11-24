@@ -204,6 +204,13 @@
   height: 48px;
 }
 
+/* 발행 단위 고르기 칸도 단추와 같은 높이(사용자 지시 2026-11-23). */
+.mll-units .mll-unit-select,
+.mll-units .mll-unit-select button {
+  height: 48px;
+  min-height: 48px;
+}
+
 /* 표: 바깥 칸(`mll-table`)이 남는 높이를 갖고 쪽 건수를 잰다. 칸 폭·줄 높이는 공통 표(`pu-table`) 규칙.
  * LOT 번호 칸은 번호만큼(넘치면 말줄임) — 남는 폭은 발행 대기면 마지막 「라벨」, 재발행이면 「품목」 칸이 갖는다. */
 .mll-table {
@@ -548,29 +555,12 @@
   font-size: 14px;
 }
 
-/* 자재 관리 LOT 만들기 창: 왼쪽 입력 · 오른쪽 키패드(POP 통일 규칙 8). */
+/*
+ * 자재 관리 LOT 만들기 창: 입력만 — 키패드 · 글자판은 창 밖 화면 아래 판에 뜬다(사용자 지시 2026-11-24 · `PuDialog`
+ * `keyboard`). 폭은 예전 왼쪽 입력 칸 폭(760) 그대로다.
+ */
 .pu-dialog:has(.mll-batch-wrap) {
-  width: min(1120px, calc(100vw - 32px));
-}
-
-.mll-batch-wrap {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 20px;
-  /* 키패드는 창 아래쪽에 붙인다(사용자 지시 2026-11-19). */
-  align-items: end;
-}
-
-@media (max-width: 1100px) {
-  .mll-batch-wrap {
-    grid-template-columns: minmax(0, 1fr) 260px;
-    gap: 16px;
-  }
-}
-
-/* 공급사 LOT 번호를 칠 때는 글자판(열 칸)이 들어가도록 오른쪽 칸을 넓힌다. */
-.mll-batch-wrap:has(.mll-batch-keypad[data-text='true']) {
-  grid-template-columns: minmax(0, 1fr) 440px;
+  width: min(800px, calc(100vw - 32px));
 }
 
 /* 만들기 창 머리 오른쪽 출처 칩(사용자 지시 2026-11-19) — 제목 줄(`pu-dialog-head`)에 맞춰 세운다. */
@@ -636,17 +626,6 @@
     width: 80px;
     white-space: normal;
     line-height: 15px;
-  }
-}
-
-/* 1024 에서 글자판(공급사 LOT 번호)이 열리면 입력 열이 좁아진다 — LOT 1개 수는 한 줄을 다 쓰고, 공급사 LOT 번호 · 개수는 다음 줄에 나란히. */
-@media (max-width: 1100px) {
-  .mll-batch-wrap:has(.mll-batch-keypad[data-text='true']) .mll-batch-grid.is-lot {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .mll-batch-wrap:has(.mll-batch-keypad[data-text='true']) .mll-batch-grid.is-lot > :first-child {
-    grid-column: 1 / -1;
   }
 }
 
@@ -719,7 +698,6 @@
 
 .mll-item-code {
   all: unset;
-  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -765,4 +743,23 @@
   height: auto;
   aspect-ratio: 80 / 30;
   font-family: var(--pu-font, sans-serif);
+}
+
+/*
+ * 발행 대기 표 칸 배치(사용자 지시 2026-11-23 「표 컬럼의 위치를 조정」) — LOT 번호는 번호만큼, 나머지 칸
+ * (공급사 LOT · 재고량 · 포장 · 출력 유무 · 등록일시)이 남는 폭을 고르게 나눠 가운데 맞춤. 한쪽에 몰려 큰 빈칸이 생기지 않게.
+ */
+.mll-table:not(.is-reprint) .pu-table th.mll-lotcol {
+  width: 280px;
+}
+
+.mll-table:not(.is-reprint) .pu-table th:not(:first-child):not(.mll-lotcol),
+.mll-table:not(.is-reprint) .pu-table td:not(:first-child):not(.mll-lotcol) {
+  width: auto;
+  text-align: center;
+}
+
+/* 품목 표의 품목코드 — 공통 단추 글자(17px)보다 2px 작게(사용자 지시 2026-11-23). */
+.mll-items .pu-table td .mll-item-code {
+  font-size: 15px;
 }

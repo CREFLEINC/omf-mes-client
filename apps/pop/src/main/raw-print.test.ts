@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  buildListPrintersScript,
-  buildRawPrintScript,
-  rawPrintScriptArgs,
-} from './raw-print';
+import { buildListPrintersScript, buildRawPrintScript, rawPrintScriptArgs } from './raw-print';
 
 describe('원시 바이트 전송 스크립트', () => {
   const job = { dataPath: 'C:\\job\\label.prn', jobName: 'LOT-1' };
@@ -77,8 +73,6 @@ describe('원시 바이트 전송 스크립트', () => {
   });
 
   // ⚠ 닫지 않으면 열린 작업이 대기열에 남아 다음 인쇄가 그 뒤에 선다.
-
-
 
   /* ⛔ 값 셋 모두 스크립트 문자열에 박힌다 — 하나만 막으면 나머지로 스크립트가 갈라진다. */
   it.each([

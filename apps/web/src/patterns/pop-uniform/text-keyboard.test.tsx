@@ -97,6 +97,39 @@ describe('PuTextKeyboard', () => {
     expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });
 
+  it('⭐ ⇧ 을 연달아 두 번 누르면 대문자가 고정되고, 한 번 더 누르면 풀린다', () => {
+    render(<Harness />);
+    press('쌍자음·대문자');
+    press('쌍자음·대문자');
+    expect(screen.getByRole('button', { name: '대문자 고정' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    press('A');
+    press('B');
+    press('1');
+    press('C');
+    expect(screen.getByRole('status')).toHaveTextContent(/^AB1C$/u);
+
+    press('대문자 고정');
+    press('d');
+    expect(screen.getByRole('status')).toHaveTextContent(/^AB1Cd$/u);
+    expect(screen.getByRole('button', { name: '쌍자음·대문자' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
+
+  it('고정한 채 판(한/영)을 바꾸면 풀린다', () => {
+    render(<Harness />);
+    press('쌍자음·대문자');
+    press('쌍자음·대문자');
+    press('한/영');
+    press('ㅂ');
+    expect(screen.getByRole('status')).toHaveTextContent(/^ㅂ$/u);
+  });
+
   it('불량 등록 칸은 initialMode="ko" 로 한글 판을 연다', () => {
     render(<PuTextKeyboard value="" onChange={() => undefined} initialMode="ko" />);
     expect(screen.getByRole('button', { name: 'ㅂ' })).toBeInTheDocument();

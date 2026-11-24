@@ -6,6 +6,23 @@
  * `nodeIntegration`을 켜거나 통로를 하나 더 여는 방식으로 풀지 않는다.
  */
 import { contextBridge, ipcRenderer } from 'electron';
+import type { LabelMedia } from '../main/label-media';
+import type { LabelSettings, LabelSize, LabelSizeSource } from '../main/label-settings';
+
+/** 라벨지 설정 창이 받는 지금 상태(`label-media:read`). */
+interface LabelMediaState {
+  /** 보낼 프린터 이름 · 「(OS 기본)」 · 없으면 `null`. */
+  printer: string | null;
+  hasPrinter: boolean;
+  /** 지금 쓰는 값. */
+  media: LabelMedia;
+  sizeSource: LabelSizeSource;
+  /** 드라이버가 알려 준 크기(못 물어봤으면 `null`). */
+  driver: LabelSize | null;
+  saved: LabelSettings | null;
+  /** 단말 환경값이 크기를 정했는가. */
+  envPinned: boolean;
+}
 
 export interface QueuedRequest {
   id: number;
@@ -90,6 +107,19 @@ const api = {
       now: string,
       format: 'png' | 'pdf' | 'tspl',
     ): Promise<string> => ipcRenderer.invoke('rendition:keep', bytes, label, now, format),
+  },
+  /**
+   * 라벨지 설정(톱니 설정 → 라벨지 설정). 값은 단말에만 남고 다음 인쇄부터 바로 따른다 — 서버와 무관하다.
+   * 모양은 셸 `label-settings` 가 정본이다. `printerName` 은 화면이 고른 프린터(`printers.list` 의 `name`)다.
+   */
+  labelMedia: {
+    read: (printerName?: string): Promise<LabelMediaState> =>
+      ipcRenderer.invoke('label-media:read', printerName),
+    /** `null` 이면 저장한 값을 지운다(환경값 · 프린터 설정 · 기본으로). */
+    save: (settings: LabelSettings | null, printerName?: string): Promise<LabelMediaState> =>
+      ipcRenderer.invoke('label-media:save', settings, printerName),
+    calibrate: (printerName?: string): Promise<void> =>
+      ipcRenderer.invoke('label-media:calibrate', printerName),
   },
 };
 

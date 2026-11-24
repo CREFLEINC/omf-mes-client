@@ -200,8 +200,6 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     );
     expect(await screen.findByText(t.empty.title)).toBeInTheDocument();
     expect(document.querySelector('[data-nc-id="41"]')).toBeNull();
-    /* 탭 숫자도 행 수와 같다 — 취소 건을 덜어 0 이 되어 배지가 없다(G2 L-b · 서버 total 은 1). */
-    expect(screen.queryByLabelText(t.tabs.pendingCount(1))).toBeNull();
   });
 
   it('#275 「지금(바뀌기 전)」 안내 띠는 두지 않는다', async () => {

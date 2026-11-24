@@ -24,8 +24,6 @@ export const inspectionPlanFixtures: InspectionPlan[] = [
     inspectionTypeCode: 'IQC',
     pqcSkipAllowed: false,
     defaultSkip: false,
-    approvedBy: null,
-    approvedAt: null,
     isActive: true,
   },
   {
@@ -38,8 +36,6 @@ export const inspectionPlanFixtures: InspectionPlan[] = [
     inspectionTypeCode: 'PQC',
     pqcSkipAllowed: true,
     defaultSkip: true,
-    approvedBy: null,
-    approvedAt: null,
     isActive: true,
   },
   {
@@ -52,8 +48,6 @@ export const inspectionPlanFixtures: InspectionPlan[] = [
     inspectionTypeCode: 'OQC',
     pqcSkipAllowed: false,
     defaultSkip: false,
-    approvedBy: 4001,
-    approvedAt: '2026-08-04T09:12:00+09:00',
     isActive: false,
   },
 ];

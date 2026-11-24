@@ -6292,7 +6292,7 @@ export interface paths {
     };
     /**
      * 검사기준 헤더 수정
-     * @description approvedBy·approvedAt 은 이 요청에 포함하지 않는다 — 별도 :approve 액션으로만 기록한다. 낙관적 잠금은 공유계약 B-1. 근거: W-06-02 §4-A·§5-1
+     * @description 낙관적 잠금은 공유계약 B-1. 근거: W-06-02 §4-A·§5-1
      */
     put: {
       parameters: {
@@ -6591,79 +6591,6 @@ export interface paths {
         };
         /** @description 없는 검사기준 버전 */
         404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/quality/inspection-plans/{inspectionPlanId}:approve': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        inspectionPlanId: number;
-      };
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * 검사기준 승인
-     * @description approvedBy·approvedAt 을 서버가 동시에 기록한다(현재 사용자·현재 시각) — 둘은 짝이어야 하며 서버가 항상 함께 채우는 방식으로 그 짝을 보장한다(A-9 취지 · §8-3). 전제: 이 기준에 확정(status_code=확정) 버전이 1건 이상 있어야 한다 — 없으면 400(code=CONFIRMED_VERSION_REQUIRED). 승인 해제(취소)는 제공하지 않는다. 근거: W-06-02 §5-1 「승인」
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header: {
-          /** @description 전 쓰기 API 필수. */
-          'Idempotency-Key': components['parameters']['IdempotencyKey'];
-        };
-        path: {
-          inspectionPlanId: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description 승인됨 */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['InspectionPlan'];
-          };
-        };
-        /** @description 확정된 버전이 없음(code=CONFIRMED_VERSION_REQUIRED) — W-06-02 §5-1 */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 권한 없음. 근거: W-06-02 §6 「권한 없음」 */
-        403: {
           headers: {
             [name: string]: unknown;
           };
@@ -38564,6 +38491,8 @@ export interface paths {
           inspectionTypeCode?: string;
           /** @description 검사 의뢰 상태로 좁힌다 — 확정 5값: REQUESTED(대기) · IN_PROGRESS(진행) · COMPLETED(완료) · SKIPPED(생략) · CANCELLED(취소). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_REQUEST_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
           statusCode?: string;
+          /** @description 확정된 종합 판정으로 좁힌다 — 합격(ACCEPTED) · 불합격(REJECTED) · 보류(HELD). 의뢰의 overallJudgmentCode(입하 LOT IQC · 출하 OQC 새 흐름은 확정 때 서버가 적는다)가 이 값인 의뢰, 그 칸이 빈 완료 의뢰(PQC · 옛 OQC — 결과 단위 확정)는 마지막(회차가 가장 큰) 확정 결과의 판정이 이 값인 의뢰. 아직 확정 전인 의뢰는 빠진다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_RESULT_OVERALL_JUDGMENT 로 받는다(공유계약 G-32). 근거: 검사 조회·판정 종합 판정 필터 · omf-all-around#356 */
+          overallJudgmentCode?: string;
           /** @description 참이면 아직 끝나지 않은 의뢰만. ⭐ 정의를 값으로 못박는다 — pendingOnly=true ⇔ statusCode ∈ { REQUESTED, IN_PROGRESS }. ⭐ 검사 대기 큐가 이것이다(W-01-01 §3 좌단은 「대기」와 「진행」을 함께 보인다 — 상태 하나로는 못 고른다). ⛔ 화면이 상태 코드값을 고정하지 않게 하려는 것이 목적이다(공유계약 G-6). 선례: /app/approval-requests pendingOnly · /logistics/stock-transfers inTransitOnly. 근거: W-01-01 §3 · omf-mes#170 · 확정 2026-08-21 */
           pendingOnly?: boolean;
           itemId?: number;
@@ -43604,6 +43533,8 @@ export interface paths {
           warehouseId?: number;
           itemId?: number;
           lotId?: number;
+          /** @description 참이면 **검사 건(IQC · OQC)에 묶이지 않은 부적합만** 낸다 — 재작업/폐기 판정 의뢰(W-04-07)로 올린 반품 · 제품 부적합이다. 검사 조회·판정 OQC 탭 「구분: 판정 의뢰」가 쓴다(omf-all-around#354). ⛔ 화면이 응답을 걸러 대신하지 않는다(페이지 단위). */
+          withoutInspectionRequestOnly?: boolean;
           /** @description 부적합 심각도 — 중대(CRITICAL) · 중(MAJOR) · 경(MINOR). ⭐ 화면 목업이 「심각도 중대」(W-03-10 §3)·「심각도 중」(W-04-07 §3)을 그려 3단계 축이 이미 서 있다. ⭐ 고객이 늘릴 수 있다 — 아래는 초기값(기본값)이지 닫힌 목록이 아니다. 값 목록은 GET /mdm/code-values?codeGroupCode=NONCONFORMANCE_SEVERITY 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
           severityCode?: string;
           /** @description 기간 필수 — 공유계약 L-3 */
@@ -49703,18 +49634,6 @@ export interface components {
        */
       inspectionTypeCode: string;
       /**
-       * Format: int64
-       * @description :approve 액션으로만 기록
-       * @example 1001
-       */
-      approvedBy?: number | null;
-      /**
-       * Format: date-time
-       * @description approvedBy 와 짝(CHECK 없음 — 서버가 항상 함께 기록해 보장)
-       * @example 2026-08-04T09:12:00+09:00
-       */
-      approvedAt?: string | null;
-      /**
        * @description 기본 생략 — 검사 유형(IQC·PQC·OQC) 공통. 켜진 기준이 걸리는 입하 LOT(IQC)·작업지시(PQC)·출하작업지시(OQC)는 검사할 의뢰를 세우지 않고 생략(SKIPPED · skipBasisCode=DEFAULT) 기록만 남긴다. 요청에 없으면 pqcSkipAllowed 를 그 값으로 읽는다. 서버 선행 · 장부 P-152 · omf-all-around#212 ⭐ 품목이 지정된 IQC 기준이면 그 품목의 inspectionRequired 와 반대 값으로 연동된다 — 저장하거나 다시 사용(:activate)하면 서버가 같은 트랜잭션에서 품목 값을 맞춘다(어긋난 경우만 · 품목 versionNo +1). 품목이 빈(전 품목 공통) IQC 기준은 생성·defaultSkip 변경·다시 사용 때 전용 IQC 기준(사용 중)이 없는 모든 품목의 inspectionRequired 를 반대 값으로 맞춘다(어긋난 품목만 · 품목 versionNo +1 · 이름만 바꾼 저장은 건드리지 않는다 · 사용자 결정 2026-11-04). PQC 기준은 라우팅 공정의 inspectionManaged 와 연동하지 않는다 — 품목 전용 PQC 기준이 있는 품목의 작업지시가 PQC 대상이고(전 품목 공통 PQC 기준은 대상을 만들지 않는다), PQC 기준의 defaultSkip 은 그 제품의 모든 PQC 의뢰에 걸린다(사용자 결정 2026-11-05). OQC 는 연동하지 않는다. omf-all-around#215
        * @default false
        * @example false
@@ -49732,7 +49651,7 @@ export interface components {
        */
       isActive: boolean;
     };
-    /** @description 검사기준 헤더 등록 요청. approvedBy·approvedAt·isActive 는 받지 않는다. 근거: W-06-02 §4-A·§5-1 */
+    /** @description 검사기준 헤더 등록 요청. isActive 는 받지 않는다. 근거: W-06-02 §4-A·§5-1 */
     InspectionPlanCreate: {
       /**
        * @description uq — 전역 유일 ⭐ 비우면(생략 · 빈 글) 서버가 `QP-{YYYYMMDD}-{SEQ4}` 로 붙인다(사용자 결정 2026-11-11 · omf-all-around#262).
@@ -49807,7 +49726,7 @@ export interface components {
        */
       inspectionPlanVersionId: number;
     };
-    /** @description 검사기준 헤더 수정 요청. approvedBy·approvedAt 은 :approve 전용, isActive 는 :deactivate 전용. 낙관적 잠금은 공유계약 B-1. 근거: W-06-02 §4-A */
+    /** @description 검사기준 헤더 수정 요청. isActive 는 :deactivate 전용. 낙관적 잠금은 공유계약 B-1. 근거: W-06-02 §4-A */
     InspectionPlanUpdate: {
       /** @example STANDARD */
       inspectionPlanCode: string;
@@ -49856,6 +49775,19 @@ export interface components {
        * @example false
        */
       pqcSkipAllowed?: boolean;
+      /**
+       * @description 품목 검사 수준 — 기본 정보와 한 트랜잭션에서 저장한다. 생략 = 그대로. 저장 뒤 기준의 품목에 쓴다(같은 저장에서 품목을 바꾸면 바꾼 품목). 품목이 있는 IQC 기준이 아니면 400 inspectionLevelCode INVALID. 수준이 바뀌면 수동 이력 1건, 다른 저장이 먼저 수준을 바꿨으면 409(기본 정보도 저장 안 됨). 근거: omf-all-around#357
+       * @example NORMAL
+       * @enum {string}
+       */
+      inspectionLevelCode?: 'NONE' | 'REDUCED' | 'NORMAL' | 'TIGHTENED';
+      /** @description 검사 수준 변경 사유(선택) — 이력에 남는다. 근거: omf-all-around#357 */
+      inspectionLevelReason?: string | null;
+      /**
+       * @description 창을 열 때 본 품목 검사 수준의 versionNo — 미지정 품목이면 null. 지금 판과 다르면 409(기본 정보도 저장 안 됨). 생략 = 견주지 않음. 근거: omf-all-around#357
+       * @example 3
+       */
+      inspectionLevelVersionNo?: number | null;
     };
     InspectionPlanDetailResponse: {
       inspectionPlan: components['schemas']['InspectionPlan'];

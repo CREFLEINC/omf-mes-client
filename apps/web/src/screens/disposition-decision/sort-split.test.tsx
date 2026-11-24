@@ -83,10 +83,16 @@ describe('W-03-10 선별', () => {
 
     await user.click(screen.getByRole('radio', { name: '선별' }));
     await user.click(screen.getByRole('checkbox', { name: 'SAMPLE-ML|0003' }));
-    // 선별 규칙 · 정보 수량의 뜻은 늘 펼쳐 두지 않고 ⓘ 로 둔다(관리웹 정리 시안 A).
-    expect(screen.getByRole('button', { name: t.sort.help })).toBeInTheDocument();
-    expect(screen.queryByText(t.sort.help)).not.toBeInTheDocument();
+    // 정보 수량의 뜻은 ⓘ 로 둔다(관리웹 정리 시안 A). 제목 옆 ⓘ 는 없다 — 안내는 [취소] 왼쪽 라벨(#354).
+    const heading = screen.getByRole('heading', { name: new RegExp(t.sort.heading) });
+    expect(within(heading).queryByRole('button')).toBeNull();
+    expect(heading.parentElement).toHaveTextContent(t.sort.headNote);
+    expect(screen.getByText(t.sort.selectNote).nextElementSibling).toBe(
+      screen.getByRole('button', { name: t.actions.cancel }),
+    );
     expect(screen.getAllByRole('button', { name: t.sort.qtyNote })).toHaveLength(2);
+    // 처분 수량은 선별을 골라도 같은 자리에 남는다 — 남은 수량 전부(omf-all-around#354).
+    expect(screen.getByLabelText(t.form.qtyLabel)).toHaveTextContent('3,000 EA');
     // 저장 후 처리 — 처리 이름과 대상 LOT · 수량, 아래 짧은 안내(#352).
     const preview = screen.getByRole('group', { name: t.sort.previewTitle });
     expect(
@@ -116,6 +122,21 @@ describe('W-03-10 선별', () => {
     expect(document.querySelector('.disposition-result')).toBeNull();
   });
 
+  it('#354 선별을 고르자마자 양품 · 불량 수량이 값으로 채워지고, LOT 을 다 풀면 전부 양품으로 돌아간다', async () => {
+    const { user } = renderSort({});
+    await screen.findByText('SAMPLE-ML|0003');
+
+    await user.click(screen.getByRole('radio', { name: '선별' }));
+    expect(screen.getByLabelText(t.sort.goodQty)).toHaveValue('3000');
+    expect(screen.getByLabelText(t.sort.defectQty)).toHaveValue('0');
+
+    await user.click(screen.getByRole('checkbox', { name: 'SAMPLE-ML|0003' }));
+    expect(screen.getByLabelText(t.sort.defectQty)).toHaveValue('1000');
+    await user.click(screen.getByRole('checkbox', { name: 'SAMPLE-ML|0003' }));
+    expect(screen.getByLabelText(t.sort.goodQty)).toHaveValue('3000');
+    expect(screen.getByLabelText(t.sort.defectQty)).toHaveValue('0');
+  });
+
   it('US7-2 전부 고르면 막는다 — 원래 입하 LOT 에 하나 이상 남아야 한다. 하나도 안 골라도 저장할 수 없다', async () => {
     const { user } = renderSort();
     await screen.findByText('SAMPLE-ML|0003');
@@ -137,6 +158,68 @@ describe('W-03-10 선별', () => {
     expect(save).toBeDisabled();
     expect(save).toHaveAccessibleDescription(t.sort.allSelected);
     expect(sortPost()).toBeUndefined();
+  });
+
+  it('#354 반려 아닌 특채가 걸린 부적합은 선별을 잠그고 이유를 단다 — 서버가 막는 조건과 같다', async () => {
+    renderSort({ concessions: [{ concessionId: 1, statusCode: 'PENDING' }] });
+    await screen.findByText('SAMPLE-ML|0003');
+
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: '선별' })).toHaveAccessibleDescription(
+        t.form.typeLock.sortConcession,
+      ),
+    );
+    expect(screen.getByRole('radio', { name: '선별' })).toBeDisabled();
+  });
+
+  it('#354 반려된 특채만 있으면 선별을 고를 수 있다', async () => {
+    renderSort({ concessions: [{ concessionId: 1, statusCode: 'REJECTED' }] });
+    await screen.findByText('SAMPLE-ML|0003');
+
+    await waitFor(() => expect(screen.getByRole('radio', { name: '선별' })).not.toBeDisabled());
+  });
+
+  it('#354 서버가 선별을 상태로 거절하면(409 INVALID_STATE) 「다른 사용자」가 아니라 저장할 수 없는 까닭을 보인다', async () => {
+    const { user } = renderSort({
+      saveResponse: () =>
+        jsonResponse(
+          { conflictCause: 'user', code: 'INVALID_STATE', message: '서버 원문' },
+          { status: 409 },
+        ),
+    });
+    await screen.findByText('SAMPLE-ML|0003');
+    await user.click(screen.getByRole('radio', { name: '선별' }));
+    await user.click(screen.getByRole('checkbox', { name: 'SAMPLE-ML|0003' }));
+    await user.type(screen.getByLabelText(new RegExp(t.form.reasonLabel)), '사유');
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: t.actions.save }),
+    );
+
+    expect(await screen.findByText(t.form.sortRefused)).toBeInTheDocument();
+    expect(screen.queryByText(messages.conflict.user)).toBeNull();
+    expect(screen.queryByRole('button', { name: messages.conflict.reloadAction })).toBeNull();
+  });
+
+  it('#354 되말하지 않은 409 코드는 서버 원문을 띄우지 않는다', async () => {
+    const { user } = renderSort({
+      saveResponse: () =>
+        jsonResponse(
+          { conflictCause: 'user', code: 'SOMETHING_ELSE', message: '서버 원문' },
+          { status: 409 },
+        ),
+    });
+    await screen.findByText('SAMPLE-ML|0003');
+    await user.click(screen.getByRole('radio', { name: '선별' }));
+    await user.click(screen.getByRole('checkbox', { name: 'SAMPLE-ML|0003' }));
+    await user.type(screen.getByLabelText(new RegExp(t.form.reasonLabel)), '사유');
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: t.actions.save }),
+    );
+
+    expect(await screen.findByText(messages.conflict.user)).toBeInTheDocument();
+    expect(screen.queryByText('서버 원문')).toBeNull();
   });
 
   it('US7-2 첫 판정이 아니면 선별이 없다 — 잠그고 이유를 단다', async () => {

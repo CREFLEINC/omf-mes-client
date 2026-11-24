@@ -8,6 +8,9 @@ import {
   readPageSize,
   readSelectedId,
   toListQuery,
+  withDraft,
+  withJudgmentFilter,
+  withStatus,
   toPageParams,
   toPageSizeParams,
   toSearchParams,
@@ -70,7 +73,13 @@ describe('toListQuery', () => {
 
   it('비어 있는 조건은 키 자체를 싣지 않는다', () => {
     const query = toListQuery(
-      { itemId: 2101, keyword: 'IR-OQC', pendingOnly: true, statusCode: null },
+      {
+        itemId: 2101,
+        keyword: 'IR-OQC',
+        pendingOnly: true,
+        statusCode: null,
+        overallJudgmentCode: null,
+      },
       2,
     );
 
@@ -92,7 +101,13 @@ describe('toSearchParams', () => {
 
   it('고른 의뢰를 싣지 않는다 — 조건이 바뀌면 그 의뢰가 목록에 없을 수 있다', () => {
     const params = toSearchParams(
-      { itemId: 2101, keyword: 'IR', pendingOnly: true, statusCode: null },
+      {
+        itemId: 2101,
+        keyword: 'IR',
+        pendingOnly: true,
+        statusCode: null,
+        overallJudgmentCode: null,
+      },
       3,
     );
 
@@ -136,5 +151,46 @@ describe('목록 쪽 크기(#197)', () => {
     expect(next.has('page')).toBe(false);
     expect(next.get('ir')).toBe('5');
     expect(toPageSizeParams(new URLSearchParams('size=20'), PAGE_SIZE).has('size')).toBe(false);
+  });
+});
+
+describe('종합 판정 필터(omf-all-around#356)', () => {
+  it('주소 · 질의에 싣고, 비면 싣지 않는다', () => {
+    const filters = readFilters(new URLSearchParams('jd=REJECTED&pd=0'));
+    expect(filters.overallJudgmentCode).toBe('REJECTED');
+    expect(toListQuery(filters, 1).overallJudgmentCode).toBe('REJECTED');
+    expect(toSearchParams(filters).get('jd')).toBe('REJECTED');
+    expect(toListQuery(EMPTY_FILTERS, 1)).not.toHaveProperty('overallJudgmentCode');
+    expect(toSearchParams(EMPTY_FILTERS).has('jd')).toBe(false);
+  });
+
+  it('판정을 고르면 「대기·진행만 보기」를 끄고, 풀면 그대로 둔다', () => {
+    const picked = withJudgmentFilter(EMPTY_FILTERS, 'ACCEPTED');
+    expect(picked).toMatchObject({ overallJudgmentCode: 'ACCEPTED', pendingOnly: false });
+    expect(withJudgmentFilter(EMPTY_FILTERS, null).pendingOnly).toBe(true);
+  });
+
+  it('판정을 고르면 「대기」 · 「진행」 칩을 푼다 — 「완료」 칩은 둔다', () => {
+    const withChip = (statusCode: 'REQUESTED' | 'IN_PROGRESS' | 'COMPLETED') =>
+      withJudgmentFilter({ ...EMPTY_FILTERS, statusCode }, 'ACCEPTED').statusCode;
+    expect(withChip('REQUESTED')).toBeNull();
+    expect(withChip('IN_PROGRESS')).toBeNull();
+    expect(withChip('COMPLETED')).toBe('COMPLETED');
+    expect(withJudgmentFilter({ ...EMPTY_FILTERS, statusCode: 'REQUESTED' }, null).statusCode).toBe(
+      'REQUESTED',
+    );
+  });
+
+  it('판정을 건 채 「대기·진행만 보기」를 다시 켜거나 대기 · 진행 칩을 누르면 판정을 푼다 — 완료 칩은 둔다', () => {
+    const picked = withJudgmentFilter(EMPTY_FILTERS, 'ACCEPTED');
+    expect(withDraft(picked, { ...picked, pendingOnly: true })).toMatchObject({
+      pendingOnly: true,
+      overallJudgmentCode: null,
+    });
+    expect(withDraft(picked, { ...picked, keyword: 'A' }).overallJudgmentCode).toBe('ACCEPTED');
+    expect(withStatus(picked, 'REQUESTED').overallJudgmentCode).toBeNull();
+    expect(withStatus(picked, 'IN_PROGRESS').overallJudgmentCode).toBeNull();
+    expect(withStatus(picked, 'COMPLETED').overallJudgmentCode).toBe('ACCEPTED');
+    expect(withStatus(picked, null).overallJudgmentCode).toBe('ACCEPTED');
   });
 });

@@ -4,6 +4,7 @@ import type { Translated } from './translated';
 /** W-04-03 OQC 출하검사 판정. 저장은 한 번이고 되돌릴 수 없다 — 번복은 재검사 회차다. */
 export const oqcInspection: Translated<typeof ko.oqcInspection> = {
   title: 'OQC (kiểm tra xuất hàng) tra cứu · đánh giá',
+  kind: { label: 'Phân loại', inspection: 'Kiểm tra OQC', request: 'Yêu cầu phán định' },
   breadcrumbRoot: 'Quản lý chất lượng',
 
   queue: {
@@ -344,9 +345,11 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
       replacedFallback: 'Đã thay thế trên PDA nên không còn là đối tượng phán định.',
       portion: (warehouse: string, location: string | null, qty: string): string =>
         location === null ? `${warehouse} ${qty}` : `${warehouse} ${location} ${qty}`,
-      emptyTitle: 'Chưa có LOT nào được lấy',
-      emptyDescription:
-        'Khi quét LOT ở「Lấy hàng thành phẩm」trên PDA, LOT sẽ hiện ở đây. Có thể ghi kết quả cho các LOT đã lấy ngay cả khi chưa lấy xong.',
+      emptyTitle: 'Chưa có LOT nào được lấy.',
+      emptyDescription: [
+        'Khi quét LOT ở [Lấy hàng thành phẩm] trên PDA, LOT sẽ hiện trong danh sách này.',
+        'Có thể ghi kết quả kiểm tra cho các LOT đã lấy trước, ngay cả khi chưa lấy xong toàn bộ.',
+      ],
     },
     results: {
       title: 'Kết quả kiểm tra',
@@ -377,16 +380,13 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
       selectAll: 'Chọn tất cả',
       selectNone: 'Bỏ chọn tất cả',
       alsoMatched: (seqNos: string): string => `Cũng liên kết với lần ${seqNos}`,
-      matchRequired: 'Hãy chọn ít nhất 1 LOT đã lấy',
       judgmentHeading: 'Phán định',
-      judgmentRequired: 'Hãy chọn phán định',
       reasonHeading: 'Lý do kiểm tra lại',
       reasonHelp:
         'Kết quả này thay đổi phán định của các LOT đã lấy bên dưới. Hãy chọn lý do kiểm tra lại.',
       reasonLine: (lotNo: string, seqNo: number, before: string, after: string): string =>
         `LOT ${lotNo}: lần ${String(seqNo)} ${before} → lần này ${after}`,
       reasonPlaceholder: 'Chọn lý do kiểm tra lại',
-      reasonRequired: 'Hãy chọn lý do kiểm tra lại',
       reasonLoadFailed: 'Không tải được danh sách lý do kiểm tra lại.',
       ruleErrors: {
         MATCHED_LOT_REQUIRED: 'Hãy chọn ít nhất 1 LOT đã lấy',
@@ -395,8 +395,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
       },
       cancel: 'Hủy',
       save: 'Gửi',
-      saving: 'Đang lưu…',
-      added: (seqNo: number): string => `Đã ghi kết quả kiểm tra lần ${String(seqNo)}.`,
+      added: 'Đã nộp kết quả kiểm tra.',
       updated: (seqNo: number): string => `Đã sửa kết quả kiểm tra lần ${String(seqNo)}.`,
       loading: 'Đang tải kết quả',
       confirmedByShipment:
@@ -405,6 +404,10 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
       discardBody: 'Nội dung đã nhập sẽ mất. Đóng lại?',
       discardStay: 'Tiếp tục nhập',
       discardLeave: 'Đóng',
+      planVersionNote:
+        'Tiêu chuẩn kiểm tra đã thay đổi được áp dụng từ các phiếu kiểm tra xuất hàng phát hành mới. Các phiếu đã phát hành áp dụng tiêu chuẩn tại thời điểm phát hành.',
+      noPlan: 'Không có tiêu chuẩn kiểm tra được áp dụng. Chỉ nhập phán định tổng hợp.',
+      inspectedQtyHint: 'Là tổng số lượng các LOT đã lấy hàng được ghép.',
     },
   },
 };

@@ -53,6 +53,7 @@ import {
   useInspectionRounds,
   useRejectedLotFollowUp,
   useMeasurements,
+  iqcInspectionKeys,
 } from '../iqc-inspection/queries';
 import { DiscardDialog } from '../routing/leave-guard';
 import type { LevelDialogValues } from '../inspection-level/level-dialog';
@@ -79,31 +80,36 @@ import { WorkerConnectDialog } from '../iqc-inspection/worker-connect-dialog';
 import { InspectionHistory } from './history';
 import { InboundDetail, type InboundDetailProps } from './inbound-detail';
 import { splitRuleErrors } from './lot-judgment';
-import { useInboundFourM, useInboundInspection } from './inbound-queries';
+import { iqcInboundKeys, useInboundFourM, useInboundInspection } from './inbound-queries';
 import { DrawingImages, PlanDialog } from './plan-dialog';
 import { SkippedNotice, SkippedOverview } from './skipped-overview';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
 import {
   checkRowCount,
   countOf,
-  defectsFromMeasured,
   emptyForm,
   historyReducer,
   numberOf,
   sameForm,
   startHistory,
+  stepTarget,
   withValue,
+  type FormSnapshot,
   type PartsIqcForm,
 } from './form-state';
 import {
   acceptanceOf,
-  judgeDimension,
   kindOf,
   rejectedQtyOf,
   serverExpectedOf,
   suggestedJudgmentOf,
-  type ItemJudgment,
 } from './judgment';
+import { DispositionBox } from '../disposition-decision/disposition-box';
+import {
+  judgmentInputOf as sharedJudgmentInputOf,
+  measurementsOf as sharedMeasurementsOf,
+  restoreMeasured,
+} from './measurement-inputs';
 import { isManualDimension, ItemNameCell, MeasurementTable, rowStateOf } from './measurement-table';
 import {
   partsIqcKeys,
@@ -129,7 +135,7 @@ const tResult = messages.iqcInspection.result;
 /** 검사 기준 화면 — 기준이 없을 때 「검사기준 설정」이 이 주소로 그 화면의 「기준 추가」 창을 유형 · 품목을 채워 연다(`new` · `newItem`). */
 const STANDARD_PATH = '/master-data/inspection-standard';
 
-const TIME_LABELS: TimeFieldLabels = {
+export const TIME_LABELS: TimeFieldLabels = {
   field: t.lot.inspectedTime,
   hourList: t.lot.inspectedHour,
   minuteList: t.lot.inspectedMinute,
@@ -141,6 +147,8 @@ const TIME_LABELS: TimeFieldLabels = {
 const toOffset = (local: string): string => `${local}:00${PLANT_UTC_OFFSET}`;
 /** 비고 글자 수 — 사용자 시안(0/200). 서버 칸에는 길이 제한이 없다. */
 const REMARKS_MAX = 200;
+/** 처분 저장 뒤 IQC 목록 · LOT 품질 상태 · 불합격 안내를 다시 읽는다(선별로 생긴 새 건이 목록에 바로 서게). */
+const IQC_REFRESH_KEYS = [iqcInspectionKeys.all, iqcInboundKeys.all];
 
 /** 고칠 결과를 양식에 다시 채우는 값 — 임시 저장 회차 · 새 흐름 결과 드로어가 같은 모양을 쓴다. */
 export type InspectionFormDraft = NonNullable<FormProps['draft']>;
@@ -226,7 +234,7 @@ export const InspectionDetail = ({
   const levelWrite = useLevelWrite(() => undefined);
   const savePendingLevel = () => {
     if (pendingLevel !== null) {
-      levelWrite.write({ row: null, values: pendingLevel });
+      levelWrite.write(pendingLevel);
       storePendingLevel(inspectionRequestId, null);
       setPendingLevel(null);
     }
@@ -513,10 +521,14 @@ export const InspectionDetail = ({
 
   /* 확정된 의뢰는 이력에서 시작하고, 첨부 파일 탭은 고를 수 있다(#247). */
   const pickedTab = picked?.requestId === inspectionRequestId ? picked.tab : null;
+  /* 불합격 확정이 세운 부적합은 「부적합 처분」 탭으로 따로 두고, 그런 건을 열면 이 탭부터 보인다(omf-all-around#354). */
+  const dispositionNcId = confirmed ? (detail.data?.nonconformanceId ?? null) : null;
   const tab = confirmed
-    ? pickedTab === 'documents'
-      ? 'documents'
-      : 'history'
+    ? pickedTab === 'documents' || pickedTab === 'history'
+      ? pickedTab
+      : dispositionNcId === null
+        ? 'history'
+        : 'disposition'
     : (pickedTab ?? 'input');
 
   /* 목록 아래(또는 옆) 상세 구획에 선다 — 기존 검사 조회·판정과 같은 배치(팝업이 아니다 · 사용자 지시 2026-10-29). */
@@ -643,6 +655,23 @@ export const InspectionDetail = ({
                 />
               ) : null,
           },
+          ...(dispositionNcId === null
+            ? []
+            : [
+                {
+                  value: 'disposition',
+                  label: messages.dispositionDecision.box.title,
+                  content:
+                    tab === 'disposition' ? (
+                      <div className="disposition-tab">
+                        <DispositionBox
+                          nonconformanceId={dispositionNcId}
+                          refreshKeys={IQC_REFRESH_KEYS}
+                        />
+                      </div>
+                    ) : null,
+                },
+              ]),
         ]}
       />
       {pendingTab !== null && (
@@ -668,12 +697,19 @@ export interface InspectionFormDrawer {
   seqNo: number;
   /** 고른 자재 관리 LOT — 저장 때 `matchedLotIds` 로 싣는다. */
   matchedLotIds: number[];
-  /** 매칭 칸 · 재검 사유 칸(드로어가 그린다). */
-  matchField: ReactNode;
+  /**
+   * 매칭 칸 · 재검 사유 칸(드로어가 그린다) — LOT 을 바꾸면 받은 `onMatchChange` 로 알린다. 양식이 그 바꿈을 되돌리기 기록에
+   * 넣는다(omf-all-around#356).
+   */
+  matchField: (onMatchChange: (lotIds: number[]) => void) => ReactNode;
+  /** 고른 LOT 을 바꾼다 — 매칭 칸에서 바꾸거나 되돌리기 · 다시 실행으로 옮겨 갈 때. */
+  setMatchedLotIds: (lotIds: number[]) => void;
   /** 판정이 바뀔 때마다 알린다 — 드로어가 재검 사유가 필요한지 계산한다(FR-023a · 2026-11-12). 같은 함수를 계속 준다. */
   onJudgmentChange: (judgmentCode: string | null) => void;
   /** [저장] 직전 드로어 칸 검사 — 매칭 0개 · 재검 사유 빠짐이면 칸에 오류를 띄우고 `false`(FR-021 · FR-023a). */
   validate: () => boolean;
+  /** 드로어 칸의 필수 입력(LOT 매칭 · 재검 사유)이 다 찼는가 — 아니면 [저장]을 잠근다(omf-all-around#356). */
+  ready: boolean;
   /** 재검 사유 — 필요할 때만 싣는다(`null` 이면 싣지 않는다). */
   reinspectionReasonCode: string | null;
   onCancel: () => void;
@@ -744,7 +780,7 @@ interface FormProps {
 }
 
 /** IQC 기준 안내 라벨 — 글 폭만큼, 본문 크기 글자(omf-all-around#351 · 사용자 지시 2026-11-23). */
-const PlanNote = ({ text }: { text: string }) => (
+export const PlanNote = ({ text }: { text: string }) => (
   <p className="iqc-inspection-action-note parts-iqc-plan-note" data-tone="info" role="status">
     <Icon name="info" size={16} aria-hidden />
     {text}
@@ -782,40 +818,33 @@ const InspectionForm = (props: FormProps) => {
     const form = emptyForm(saved === null ? plantNowLocal() : `${saved.date}T${saved.time}`);
     form.visualInspectedQty = draft === null ? defaultQty : String(draft.inspectedQty);
     form.remarks = draft?.remarks ?? '';
-    for (const m of draft?.measured ?? []) {
-      const spec = specs.find((s) => s.inspectionItemSpecId === m.inspectionItemSpecId);
-      if (spec === undefined) continue;
-      const kind = kindOf(spec);
-      if (kind === 'dimension' && m.numericValue != null) {
-        const row = [...(form.values[spec.inspectionItemSpecId] ?? [])];
-        row[m.sampleNo - 1] = String(m.numericValue);
-        form.values[spec.inspectionItemSpecId] = row;
-        if (
-          isManualDimension(spec) &&
-          (m.judgmentCode === 'ACCEPTED' || m.judgmentCode === 'REJECTED')
-        )
-          form.checks[spec.inspectionItemSpecId] = m.judgmentCode;
-      } else if (kind === 'check') {
-        /* 텍스트 항목은 적은 글과 판정으로 남는다(#247). */
-        if (m.textValue != null) form.texts[spec.inspectionItemSpecId] = m.textValue;
-        if (m.booleanValue != null)
-          form.checks[spec.inspectionItemSpecId] = m.booleanValue ? 'ACCEPTED' : 'REJECTED';
-        else if (m.judgmentCode === 'ACCEPTED' || m.judgmentCode === 'REJECTED')
-          form.checks[spec.inspectionItemSpecId] = m.judgmentCode;
-        /* AQL 은 찾은 불량 수만큼 불량 시료 줄로 남는다 — 줄 수가 불량 수다(omf-all-around#264). */
-        const defects =
-          aqlPlan === null
-            ? undefined
-            : defectsFromMeasured(draft?.measured ?? [], spec.inspectionItemSpecId);
-        if (defects !== undefined) form.defects[spec.inspectionItemSpecId] = defects;
-      }
-    }
-    return form;
+    return restoreMeasured(form, specs, draft?.measured ?? [], {
+      aqlDefects: aqlPlan !== null,
+      keepRejected: false,
+    });
   }, [draft, specs, defaultQty, aqlPlan]);
 
-  const [history, dispatch] = useReducer(historyReducer, initial, startHistory);
-  const form = history.present;
-  const change = (next: PartsIqcForm) => dispatch({ type: 'change', next });
+  /* 결과 드로어는 LOT 매칭도 같은 기록에 쌓는다 — [되돌리기]가 LOT 바꿈부터 되돌린다(omf-all-around#356). */
+  const [history, dispatch] = useReducer(
+    historyReducer<FormSnapshot>,
+    { form: initial, lots: props.drawer?.matchedLotIds ?? [] },
+    startHistory,
+  );
+  const form = history.present.form;
+  const change = (next: PartsIqcForm) => {
+    if (next === form) return;
+    dispatch({ type: 'change', next: { form: next, lots: history.present.lots } });
+  };
+  const changeMatch = (lotIds: number[]) => {
+    dispatch({ type: 'change', next: { form, lots: lotIds } });
+    props.drawer?.setMatchedLotIds(lotIds);
+  };
+  const step = (type: 'undo' | 'redo') => {
+    const target = stepTarget(history, type);
+    if (target === undefined) return;
+    dispatch({ type });
+    if (target.lots !== history.present.lots) props.drawer?.setMatchedLotIds([...target.lots]);
+  };
   /*
    * 고친 것이 있는가 — 마지막으로 불러오거나 저장한 내용과 견준다. 눌렀다 풀거나 적었다 지우면 고친 것이 아니다
    * (#247 · 사용자 지시 2026-11-10 — 되돌리기 기록 수로 재면 OK 를 눌렀다 풀어도 [임시 저장]이 켜져 있었다).
@@ -844,32 +873,13 @@ const InspectionForm = (props: FormProps) => {
   const inspectedTime = inspectedTimeRaw.slice(0, 5);
   const changeInspectedAt = (date: string, time: string) =>
     change({ ...form, inspectedAt: date === '' ? '' : `${date}T${time === '' ? '00:00' : time}` });
-  const judgmentInputOf = (f: PartsIqcForm) => {
-    /* 자동 판정이 꺼진 항목은 고른 OK/NG 가 그 항목의 판정이다 — NG 면 불량 1(기타 검사 항목과 같다 · #247 클릭 점검). */
-    const dims = dimensions.map((item) => {
-      if (isManualDimension(item)) {
-        const picked = f.checks[item.inspectionItemSpecId] ?? null;
-        return { judgment: picked, outCount: picked === 'REJECTED' ? 1 : 0 };
-      }
-      return judgeDimension(
-        Array.from({ length: item.measurementCount }, (_, i) =>
-          numberOf(f.values[item.inspectionItemSpecId]?.[i]),
-        ),
-        item,
-        versionAcceptance,
-      );
-    });
-    return {
+  /* 자동 판정이 꺼진 항목은 고른 OK/NG 가 그 항목의 판정이다 — NG 면 불량 1(기타 검사 항목과 같다 · #247 클릭 점검). */
+  const judgmentInputOf = (f: PartsIqcForm) =>
+    sharedJudgmentInputOf(f, { dimensions, checkItems }, versionAcceptance, {
       inspectedQty: countOf(f.visualInspectedQty),
-      dimensions: dims,
-      checks: checkItems.map((item): ItemJudgment => f.checks[item.inspectionItemSpecId] ?? null),
       checkDefects: checkItems.map((item) => defectsOf(f, item)),
-      /* 필수 항목만 다 적으면 자동 판정 · 종합 판정이 채워진다(#247 · 사용자 지시 2026-11-10). */
-      requiredDimensions: dimensions.map((item) => item.requiredFlag),
-      requiredChecks: checkItems.map((item) => item.requiredFlag),
       aqlAcceptance: aqlPlan?.acceptanceNumber ?? null,
-    };
-  };
+    });
   /* 임시 저장 때 자동 판정과 다르게 고른 판정이면 그대로 되살린다(#247). */
   const [chosen, setChosen] = useState<string | null>(() => {
     const stored = draft?.overallJudgmentCode ?? '';
@@ -899,7 +909,8 @@ const InspectionForm = (props: FormProps) => {
       return;
     }
     setBaseline(latestForm.current);
-    dispatch({ type: 'reset', form: latestForm.current });
+    /* 드로어는 위에서 닫혔다 — 여기는 LOT 매칭이 없는 화면 양식이다. */
+    dispatch({ type: 'reset', form: { form: latestForm.current, lots: [] } });
   });
 
   const input = judgmentInputOf(form);
@@ -967,59 +978,14 @@ const InspectionForm = (props: FormProps) => {
   const needsReason = overall !== null && expected !== null && overall !== expected;
   const maxN = Math.max(0, ...dimensions.map((d) => d.measurementCount));
 
-  const measurementsOf = (): SubmitVariables['measurements'] => {
-    const measuredAt = toOffset(form.inspectedAt);
-    const out: SubmitVariables['measurements'] = [];
-    dimensions.forEach((item) => {
-      const picked = isManualDimension(item)
-        ? (form.checks[item.inspectionItemSpecId] ?? null)
-        : null;
-      for (let i = 0; i < item.measurementCount; i += 1) {
-        const value = numberOf(form.values[item.inspectionItemSpecId]?.[i]);
-        if (value === null) continue;
-        const lower = item.lowerLimit ?? -Infinity;
-        const upper = item.upperLimit ?? Infinity;
-        out.push({
-          inspectionItemSpecId: item.inspectionItemSpecId,
-          sampleNo: i + 1,
-          numericValue: value,
-          /* 자동 판정이 꺼진 항목은 고른 판정을 시료마다 싣는다. */
-          judgmentCode: picked ?? (value < lower || value > upper ? 'REJECTED' : 'ACCEPTED'),
-          measuredAt,
-        });
-      }
-    });
-    const bool = (item: ItemSpec, ok: boolean, sampleNo: number) =>
-      out.push({
-        inspectionItemSpecId: item.inspectionItemSpecId,
-        sampleNo,
-        booleanValue: ok,
-        judgmentCode: ok ? 'ACCEPTED' : 'REJECTED',
-        measuredAt,
-      });
-    checkItems.forEach((item) => {
-      const j = form.checks[item.inspectionItemSpecId];
-      if (j == null) return;
-      /* AQL 은 찾은 불량 수만큼 불량 시료 줄을 싣는다 — 다시 열 때 줄 수로 불량 수를 되살린다(omf-all-around#264). */
-      const rows = checkRowCount(j, defectsOf(form, item), aqlPlan !== null);
-      for (let sampleNo = 1; sampleNo <= rows; sampleNo += 1) {
-        if (item.dataTypeCode !== 'TEXT') {
-          bool(item, j === 'ACCEPTED', sampleNo);
-          continue;
-        }
-        /* 텍스트 항목은 적은 글을 싣는다 — 글이 없으면 판정만(#247 · 사용자 지시 2026-11-10). */
-        const text = sampleNo === 1 ? (form.texts[item.inspectionItemSpecId] ?? '').trim() : '';
-        out.push({
-          inspectionItemSpecId: item.inspectionItemSpecId,
-          sampleNo,
-          ...(text === '' ? {} : { textValue: text }),
-          judgmentCode: j,
-          measuredAt,
-        });
-      }
-    });
-    return out;
-  };
+  /* AQL 은 찾은 불량 수만큼 불량 시료 줄을 싣는다 — 다시 열 때 줄 수로 불량 수를 되살린다(omf-all-around#264). */
+  const measurementsOf = (): SubmitVariables['measurements'] =>
+    sharedMeasurementsOf(
+      form,
+      { dimensions, checkItems },
+      toOffset(form.inspectedAt),
+      (item, judgment) => checkRowCount(judgment, defectsOf(form, item), aqlPlan !== null),
+    );
 
   const blocked =
     props.inspector === null ||
@@ -1079,26 +1045,23 @@ const InspectionForm = (props: FormProps) => {
   };
 
   /*
-   * 결과 드로어의 [저장] — 확정하지 않고 결과만 남긴다(005 새 흐름). 판정이 없으면 막고 「판정을 고르세요.」 —
-   * 검사 단위 판정 확정이 판정 빈 결과를 받지 않는다(FR-025).
+   * 결과 드로어의 [저장] — 확정하지 않고 결과만 남긴다(005 새 흐름). 필수 칸(LOT 매칭 · 검사일시 · 검사 수량 · 종합 판정 ·
+   * 불량 수 · 사유)이 다 차야 눌린다(omf-all-around#356) — 검사 단위 판정 확정이 판정 빈 결과를 받지 않는다(FR-025).
    */
-  const [judgmentMissing, setJudgmentMissing] = useState(false);
   const drawerBlocked =
     submit.isSaving ||
     props.inspector === null ||
     inspectedQty === null ||
     inspectedQty <= 0 ||
     form.inspectedAt === '' ||
+    overall === null ||
     fourMBlocked ||
     manualUnjudged.length > 0 ||
-    (needsReason && reason.trim() === '');
+    defectsMissing ||
+    (needsReason && reason.trim() === '') ||
+    props.drawer?.ready === false;
   const onSaveResult = () => {
-    if (drawerBlocked || inspectedQty === null || props.drawer == null) return;
-    if (overall === null) {
-      setJudgmentMissing(true);
-      return;
-    }
-    setJudgmentMissing(false);
+    if (drawerBlocked || inspectedQty === null || overall === null || props.drawer == null) return;
     if (!props.drawer.validate()) return;
     const reasonCode = props.drawer.reinspectionReasonCode;
     submit.write({
@@ -1241,7 +1204,7 @@ const InspectionForm = (props: FormProps) => {
           </div>
         </dl>
         {/* 결과 추가 창 — 자재 관리 LOT 매칭은 LOT 정보 위(사용자 지시 2026-11-16 · omf-all-around#274). */}
-        {props.drawer?.matchField}
+        {props.drawer?.matchField(changeMatch)}
         <div className="parts-iqc-lot-box" role="group" aria-labelledby="parts-iqc-lot">
           <h4 id="parts-iqc-lot">{t.lot.heading}</h4>
           {/* 받은 값(LOT · 공급업체 · 수량 · 입고) 두 줄, 구분선 아래에 적는 값(검사일시) — 사용자 시안 2026-10-29 */}
@@ -1520,11 +1483,6 @@ const InspectionForm = (props: FormProps) => {
 
       {props.drawer != null ? (
         <div className="parts-iqc-footer parts-iqc-drawer-footer">
-          {judgmentMissing && (
-            <p className="field-error" role="alert">
-              {messages.iqcInboundLot.drawer.judgmentRequired}
-            </p>
-          )}
           {(ruleErrors?.codes ?? []).map((code) => (
             <p key={code} className="field-error" role="alert">
               {messages.iqcInboundLot.drawer.ruleErrors[code]}
@@ -1535,7 +1493,7 @@ const InspectionForm = (props: FormProps) => {
             variant="text"
             leadingIcon={<Icon name="undo" />}
             disabled={history.past.length === 0 || submit.isSaving}
-            onClick={() => dispatch({ type: 'undo' })}
+            onClick={() => step('undo')}
           >
             {t.footer.undo}
           </Button>
@@ -1544,7 +1502,7 @@ const InspectionForm = (props: FormProps) => {
             aria-label={t.footer.redo}
             icon="redo"
             disabled={history.future.length === 0 || submit.isSaving}
-            onClick={() => dispatch({ type: 'redo' })}
+            onClick={() => step('redo')}
           />
           <span className="parts-iqc-footer-gap" />
           <Button variant="text" disabled={submit.isSaving} onClick={clearForm}>
@@ -1571,7 +1529,7 @@ const InspectionForm = (props: FormProps) => {
             variant="text"
             leadingIcon={<Icon name="undo" />}
             disabled={history.past.length === 0 || submit.isSaving}
-            onClick={() => dispatch({ type: 'undo' })}
+            onClick={() => step('undo')}
           >
             {t.footer.undo}
           </Button>
@@ -1580,7 +1538,7 @@ const InspectionForm = (props: FormProps) => {
             aria-label={t.footer.redo}
             icon="redo"
             disabled={history.future.length === 0 || submit.isSaving}
-            onClick={() => dispatch({ type: 'redo' })}
+            onClick={() => step('redo')}
           />
           <span className="parts-iqc-footer-gap" />
           {/*

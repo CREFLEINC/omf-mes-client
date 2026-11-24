@@ -29,7 +29,7 @@ const orEmptyMark = (value: string | null | undefined): string =>
   value === null || value === undefined || value === '' ? t.values.empty : value;
 
 /**
- * 오른쪽 구획 머리 — 고른 품목의 원본 정보를 **한 줄 사실 칸**으로(사용자 지시 2026-10-28 「ERP 연동 현황·이력의 품목 ·
+ * 오른쪽 구획 머리 — 고른 품목의 원본 정보를 **이름표 | 값 격자 표**로(사용자 지시 2026-10-28 「ERP 연동 현황·이력의 품목 ·
  * BOM 탭처럼」). 입고 관리 라인 머리 · BOM 조회 (ERP) 모품목 상세와 같은 모양이다.
  *
  * **입력칸도 저장도 두지 않는다** — 계약의 `ItemUpdate`가 원본 열을 아예 담지 않고, 원본을 고치는 경로 자체가
@@ -55,7 +55,12 @@ export const ItemOriginFacts = ({
       value: orEmptyMark(item.itemCode),
       strong: true,
     },
-    { key: 'name', label: t.origin.fields.itemName, value: orEmptyMark(item.itemName) },
+    {
+      key: 'name',
+      label: t.origin.fields.itemName,
+      value: orEmptyMark(item.itemName),
+      wide: true,
+    },
     {
       key: 'type',
       label: t.origin.fields.itemType,
@@ -76,19 +81,25 @@ export const ItemOriginFacts = ({
     },
   ];
 
+  /*
+   * BOM 탭 모품목 상세와 같은 격자 표(사용자 지시 2026-11-24 「품목 탭도 BOM 탭처럼」) — 세 짝씩이면 품목코드 | 품목명
+   * (두 칸) / 유형 · 규격 · 품목군 / 기준 단위 · MES 구분 · 사용 여부, 좁으면 두 짝씩 네 줄.
+   */
   return (
-    <dl className="po-board-order-facts bom-parent-facts" aria-label={t.panes.itemOrigin}>
-      {facts.map((fact) => (
-        <div key={fact.key}>
-          <dt id={`${idBase}-${fact.key}`}>{fact.label}</dt>
-          <dd
-            aria-labelledby={`${idBase}-${fact.key}`}
-            className={fact.strong === true ? 'bom-tree-code' : undefined}
-          >
-            {fact.value}
-          </dd>
-        </div>
-      ))}
-    </dl>
+    <div className="bom-parent-box">
+      <dl className="bom-parent-grid" aria-label={t.panes.itemOrigin}>
+        {facts.map((fact) => (
+          <div key={fact.key} data-wide={fact.wide === true ? '' : undefined}>
+            <dt id={`${idBase}-${fact.key}`}>{fact.label}</dt>
+            <dd
+              aria-labelledby={`${idBase}-${fact.key}`}
+              className={fact.strong === true ? 'bom-tree-code' : undefined}
+            >
+              {fact.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 };

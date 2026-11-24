@@ -82,7 +82,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     },
     level: {
       saveFailed:
-        'Không thể chỉ định mức kiểm tra. Vui lòng chỉ định tại màn hình quản lý mức kiểm tra.',
+        'Không thể chỉ định mức kiểm tra. Vui lòng mở tiêu chuẩn IQC của mặt hàng này trong Quản lý tiêu chuẩn kiểm tra và chỉ định tại 「Sửa thông tin cơ bản」.',
       unset: 'Chưa chỉ định',
       loadFailed: 'Không tải được',
       set: 'Chỉ định',
@@ -170,11 +170,10 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       'Tài khoản này chưa liên kết người lao động nên không lưu được phán định. Hãy liên kết người lao động.',
     followUp: {
       title: 'LOT không đạt · Không thể kiểm tra lại',
-      body: 'LOT đã xác nhận không đạt thì không thể kiểm tra lại. Vui lòng thực hiện phán định xử lý hoặc trả hàng nhà cung cấp.',
-      toDisposition: 'Phán định xử lý',
+      body: 'LOT đã xác nhận không đạt thì không thể kiểm tra lại. Vui lòng phán định ở mục xử lý không phù hợp bên dưới hoặc trả hàng nhà cung cấp.',
       toSupplierReturn: 'Trả hàng nhà cung cấp',
       noNonconformance:
-        'Không tìm thấy sự không phù hợp đang chờ xử lý. Hãy tìm LOT này trong danh sách phán định xử lý.',
+        'Không tìm thấy sự không phù hợp đang chờ xử lý. Vui lòng trả hàng nhà cung cấp.',
     },
     rejection: {
       heading: 'Nội dung không đạt',

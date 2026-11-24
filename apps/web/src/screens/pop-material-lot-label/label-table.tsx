@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import type { RefObject } from 'react';
 
-import { formatPackage, formatQty } from '../../patterns/package-qty';
+import { formatQty, packageUnitName } from '../../patterns/package-qty';
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import { PuChip, PuIcon, puCx, type PuChipTone } from '../../patterns/pop-uniform';
 import { rowStatusOf, type BatchSnapshot, type RowStatus } from './batch-view';
@@ -152,7 +152,11 @@ export const LabelTable = ({
               const selectable = !showResults && (isReprint ? !isVoided(lot) : isWaiting(lot));
               const isChecked = checked.has(lot.lotId);
               const canToggle = selectable && !isLocked;
-              const packageText = formatPackage(lot.package) ?? t.noPackage;
+              /* 포장은 개수만 — 포장당 수량은 적지 않는다(사용자 지시 2026-11-23). */
+              const packageText =
+                lot.package === null
+                  ? t.noPackage
+                  : `${packageUnitName(lot.package)} ${formatQty(lot.package.count)}`;
               const qtyText = `${formatQty(lot.lotQty)} ${lot.uomCode}`;
 
               return (

@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  createMediaMemory,
+  declaredLabelSize,
   applyLabelMedia,
   buildMediaProbeScript,
   calibrationCommands,
@@ -188,6 +190,7 @@ it('라벨 덩이마다 대지 선언을 다시 세운다', () => {
     offsetMm: 0,
     speed: 4,
     density: 8,
+    linerWidthMm: null,
   });
 
   expect(applied.match(/^SIZE 100 mm,60 mm$/gm)).toHaveLength(2);
@@ -215,4 +218,71 @@ it('BITMAP 자료 안의 줄바꿈 바이트를 건드리지 않는다', () => {
   const applied = applyLabelMedia(label, readLabelMedia());
 
   expect(applied).toContain(`BITMAP 0,0,5,1,0,${payload}\r\nPRINT 1,1\r\n`);
+});
+
+describe('라벨이 적은 용지 크기(사용자 지시 2026-11-23)', () => {
+  it('첫 SIZE 줄의 mm 값을 읽는다 — 묶음 인쇄라 SIZE 가 여러 번 있어도 첫 줄', () => {
+    const commands =
+      'SIZE 80 mm,30 mm\r\nGAP 2 mm,0 mm\r\nCLS\r\nPRINT 1,1\r\nSIZE 80 mm,30 mm\r\n';
+
+    expect(declaredLabelSize(commands)).toEqual({ widthMm: 80, heightMm: 30 });
+  });
+
+  it('소수 · 띄어쓰기 · 소문자도 읽는다', () => {
+    expect(declaredLabelSize('size 101.6 mm , 50.8 mm\n')).toEqual({
+      widthMm: 101.6,
+      heightMm: 50.8,
+    });
+  });
+
+  it('SIZE 가 없거나 0 이면 null', () => {
+    expect(declaredLabelSize('CLS\r\nPRINT 1,1\r\n')).toBeNull();
+    expect(declaredLabelSize('SIZE 0 mm,30 mm\r\n')).toBeNull();
+    expect(declaredLabelSize('SIZE 3,2\r\n')).toBeNull();
+  });
+});
+
+describe('드라이버 용지 크기 기억', () => {
+  it('프린터마다 정한 시간 동안 기억하고, 지나면 다시 묻게 한다', () => {
+    let clock = 0;
+    const memory = createMediaMemory(60_000, () => clock);
+
+    expect(memory.recall('HT800')).toBeUndefined();
+
+    memory.remember('HT800', { widthMm: 100, heightMm: 60 });
+    clock = 59_999;
+    expect(memory.recall('HT800')).toEqual({ widthMm: 100, heightMm: 60 });
+    expect(memory.recall('다른 프린터')).toBeUndefined();
+
+    clock = 60_000;
+    expect(memory.recall('HT800')).toBeUndefined();
+  });
+
+  it('못 물어본 것(null)도 기억한다 — 같은 데서 다시 막히지 않게', () => {
+    const memory = createMediaMemory(60_000, () => 0);
+
+    memory.remember('', null);
+    expect(memory.recall('')).toBeNull();
+  });
+
+  it('forget 하면 모두 버린다 — 인쇄가 실패한 뒤에는 새로 묻는다', () => {
+    const memory = createMediaMemory(60_000, () => 0);
+
+    memory.remember('HT800', { widthMm: 100, heightMm: 60 });
+    memory.forget();
+    expect(memory.recall('HT800')).toBeUndefined();
+  });
+});
+
+it('이형지 폭이 있으면 SIZE 가로로 그것을 보낸다 — 라벨 80 × 40 · 이형지 82.6 이면 지금 자리와 같다', () => {
+  const media = { ...readLabelMedia(), widthMm: 80, heightMm: 40, linerWidthMm: 82.6 };
+
+  expect(applyLabelMedia('CLS\r\nPRINT 1', media)).toMatch(/^SIZE 82\.6 mm,40 mm\r\n/u);
+  expect(calibrationCommands(media)).toMatch(/^SIZE 82\.6 mm,40 mm\r\n/u);
+});
+
+it('이형지 폭이 없으면 라벨 가로를 보낸다', () => {
+  const media = { ...readLabelMedia(), widthMm: 80, heightMm: 40, linerWidthMm: null };
+
+  expect(applyLabelMedia('CLS\r\nPRINT 1', media)).toMatch(/^SIZE 80 mm,40 mm\r\n/u);
 });

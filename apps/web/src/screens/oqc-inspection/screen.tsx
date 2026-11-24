@@ -33,12 +33,15 @@ import {
   SplitOrientationToggle,
   useSplitOrientation,
 } from '../../patterns/split-orientation';
+import { DispositionDecisionScreen } from '../disposition-decision/screen';
 import { CODE_GROUPS, labelOfCode, toCodeOptions } from './code-options';
+import { OqcKindSelect, readKind, withKind } from './kind';
 import {
   LIST_PAGE_SIZES,
   PAGE_SIZE,
   QUEUE_STATUSES,
   withDraft,
+  withJudgmentFilter,
   withStatus,
   readFilters,
   readPage,
@@ -73,6 +76,7 @@ import {
   useSaveInspectionResult,
 } from './queries';
 import { plantTodayRange } from '../parts-iqc-inspection/today';
+import { JudgmentFilter } from './judgment-filter';
 import { QueueDetailFilters } from './queue-detail-filters';
 import { QueueListTable } from './queue-list-table';
 import { RequestDetailPane } from './request-detail-pane';
@@ -142,7 +146,7 @@ const REJECTED = 'REJECTED';
 const DRAFT = 'DRAFT';
 const referenceT = messages.common.reference;
 
-export const OqcInspectionScreen = () => {
+const OqcInspectionView = ({ kindSelect }: { kindSelect: ReactNode }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   /* 검사 조회·판정 묶음(사이드바 한 줄 · 제목 아래 탭) 안이면 셸이 준다 — 셸 밖이면 `null`. */
   const hub = usePageHub();
@@ -1108,6 +1112,12 @@ export const OqcInspectionScreen = () => {
        */}
       {/* 검색 묶음 — 입하 예정 조회처럼 표와 다른 카드에 둔다(#185). 시리얼 스캔과 조회 조건이 한 줄에 선다. */}
       <section ref={aboveRef} className="pane oqc-inspection-panes oqc-inspection-search">
+        {/* 종합 판정 — 맨 왼쪽(사용자 지시 2026-11-24) · 고르면 바로 조회한다(omf-all-around#356). */}
+        <JudgmentFilter
+          value={filters.overallJudgmentCode}
+          onChange={(code) => applyFilters(withJudgmentFilter(filters, code))}
+        />
+        {kindSelect}
         <SerialOpenByScan
           onOpen={openBySerial}
           onOpenByLot={openByLot}
@@ -1277,5 +1287,22 @@ export const OqcInspectionScreen = () => {
         </Dialog>
       )}
     </>
+  );
+};
+
+/**
+ * OQC 탭 — 「구분」으로 OQC 검사 건과 판정 의뢰를 고른다(omf-all-around#354). 판정 의뢰로 올린 반품 · 제품 부적합은
+ * 검사 건에 묶이지 않아 검사 목록에 오를 줄이 없으므로 그 부적합 목록 | 처분 상자로 선다.
+ */
+export const OqcInspectionScreen = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const kind = readKind(searchParams);
+  const kindSelect = (
+    <OqcKindSelect value={kind} onChange={(next) => setSearchParams(withKind(next))} />
+  );
+  return kind === 'request' ? (
+    <DispositionDecisionScreen requestOnly leading={kindSelect} />
+  ) : (
+    <OqcInspectionView kindSelect={kindSelect} />
   );
 };

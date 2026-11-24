@@ -169,7 +169,7 @@ export const ResultDrawer = ({
               drawer: {
                 seqNo,
                 matchedLotIds: matched,
-                matchField: (
+                matchField: (onMatchChange) => (
                   <>
                     <LotMatchField
                       lots={lots}
@@ -177,7 +177,7 @@ export const ResultDrawer = ({
                       uomCode={uomCode}
                       value={matched}
                       error={matchError}
-                      onChange={setMatched}
+                      onChange={onMatchChange}
                     />
                     {needsReason && judgment !== null ? (
                       <ReinspectionReasonField
@@ -191,8 +191,10 @@ export const ResultDrawer = ({
                     ) : null}
                   </>
                 ),
+                setMatchedLotIds: setMatched,
                 onJudgmentChange: setJudgment,
                 validate,
+                ready: matched.length > 0 && (!needsReason || reason !== null),
                 /* 덮지 않는 결과에도 고쳐 둔 사유는 그대로 싣는다(서버가 「무시하지 않고 저장」). */
                 reinspectionReasonCode: reason,
                 onCancel: requestClose,

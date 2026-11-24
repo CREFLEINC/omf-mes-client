@@ -4745,6 +4745,82 @@
   background: var(--surface-container);
 }
 
+/*
+ * 라벨지 설정 창(톱니 설정 → 라벨지 설정 · 사용자 지시 2026-11-24) — 입력을 두 단으로. 숫자 키패드는 창 밖
+ * 화면 아래 판에 뜬다(`PuDialog` `keyboard`) — 판 위 남은 높이(1080 에서 약 680)에 스크롤 없이 든다.
+ */
+
+.pu-dialog.wide:has(.pop-label-media) {
+  width: min(1120px, calc(100vw - 32px));
+}
+
+.pop-label-media {
+  display: grid;
+  /* 왼쪽(용지 크기)이 넓다 — 「프린터 설정 따르기 (82.6 × 39.9 mm)」가 잘리지 않게. */
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 16px 24px;
+  align-items: start;
+}
+
+.pop-label-media > .pop-label-media__current {
+  grid-column: 1 / -1;
+}
+
+.pop-label-media__form {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.pop-label-media__current {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--pu-line);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-card);
+}
+
+.pop-label-media__source {
+  margin-inline-start: 6px;
+  color: var(--pu-text-3);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+/* 크기 줄은 세 칸(가로 · 세로 · 이형지), 인쇄 설정은 두 칸씩 두 줄. */
+.pop-label-media__row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pop-label-media__row.is-pairs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pop-label-media__input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pop-label-media__input .pu-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pop-label-media__test {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 12px;
+  color: var(--pu-text-2);
+  font-size: 14px;
+}
+
 /* 1024 폭 — 갱신 시각 · [종료]가 더해져 단말·설비 칩이 다 줄지 않게 맨 위 줄 단추 여백을 줄인다(#295). */
 @media (max-width: 1180px) {
   .pop-nav-top {

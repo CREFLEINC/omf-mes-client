@@ -29,7 +29,6 @@ describe('PlanFilterBar — 조건', () => {
       itemId: '',
       includeInactive: false,
       inactiveOnly: false,
-      unapprovedOnly: false,
       versionStatus: '',
     });
 
@@ -42,7 +41,6 @@ describe('PlanFilterBar — 조건', () => {
       itemId: '',
       includeInactive: false,
       inactiveOnly: false,
-      unapprovedOnly: false,
       versionStatus: '',
     });
   });
@@ -52,7 +50,7 @@ describe('PlanFilterBar — 조건', () => {
     const onApplyFilters = vi.fn<(next: PlanFilters) => void>();
     renderWithProviders(
       <PlanFilterBar
-        appliedFilters={{ ...DEFAULT_PLAN_FILTERS, q: 'SYN', unapprovedOnly: true }}
+        appliedFilters={{ ...DEFAULT_PLAN_FILTERS, q: 'SYN', versionStatus: 'draft' }}
         onApplyFilters={onApplyFilters}
         sheetTypeCode={SHEET_TYPE}
       />,
@@ -72,7 +70,7 @@ describe('PlanFilterBar — 조건', () => {
     const onApplyFilters = vi.fn<(next: PlanFilters) => void>();
     renderWithProviders(
       <PlanFilterBar
-        appliedFilters={{ ...DEFAULT_PLAN_FILTERS, q: 'SYN', unapprovedOnly: true }}
+        appliedFilters={{ ...DEFAULT_PLAN_FILTERS, q: 'SYN', versionStatus: 'draft' }}
         onApplyFilters={onApplyFilters}
       />,
     );
@@ -83,7 +81,7 @@ describe('PlanFilterBar — 조건', () => {
     await user.click(screen.getByRole('option', { name: 'PQC (공정검사)' }));
 
     expect(onApplyFilters).toHaveBeenCalledWith(
-      expect.objectContaining({ inspectionTypeCode: 'PQC', q: 'SYN', unapprovedOnly: true }),
+      expect.objectContaining({ inspectionTypeCode: 'PQC', q: 'SYN', versionStatus: 'draft' }),
     );
   });
 
@@ -101,23 +99,13 @@ describe('PlanFilterBar — 조건', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  /* 「미승인」은 누르는 즉시 적용한다(#208). 종전 「미사용 포함」 체크는 탭 줄 사용 여부 칩으로 옮겼다. */
-  it('미승인은 누르는 즉시 적용되고 미사용 포함 체크는 없다', async () => {
-    const { onApplyFilters, user } = renderBar();
+  /* 종전 「미사용 포함」 체크는 탭 줄 사용 여부 칩으로 옮겼고(#208), 「미승인」 체크는 승인 기능과 함께 걷었다(omf-all-around#357). */
+  it('조건 더보기에 미사용 포함 · 미승인 체크가 없다', async () => {
+    const { user } = renderBar();
 
     await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     expect(screen.queryByRole('checkbox', { name: '미사용 포함' })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('checkbox', { name: '미승인' }));
-
-    expect(onApplyFilters).toHaveBeenCalledWith({
-      q: '',
-      inspectionTypeCode: '',
-      itemId: '',
-      includeInactive: false,
-      inactiveOnly: false,
-      unapprovedOnly: true,
-      versionStatus: '',
-    });
+    expect(screen.queryByRole('checkbox', { name: '미승인' })).not.toBeInTheDocument();
   });
 
   /*
@@ -153,13 +141,12 @@ describe('PlanFilterBar — 조건', () => {
 });
 
 describe('PlanFilterBar — 조건 더보기(C-6)', () => {
-  it('상태 · 미승인은 「조건 더보기」 안에 접혀 있다', async () => {
+  it('상태는 「조건 더보기」 안에 접혀 있다', async () => {
     const { user } = renderBar();
     const more = screen.getByRole('button', { name: messages.common.filterMore.open });
 
     expect(more).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByRole('combobox', { name: '상태 선택' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('checkbox', { name: '미승인' })).not.toBeInTheDocument();
     /* 보이는 칸은 셋 — 검사 유형 · 검사 기준 검색 · 품목 검색. */
     expect(screen.getByRole('combobox', { name: '검사 유형 선택' })).toBeVisible();
     expect(screen.getByLabelText('검사 기준 검색')).toBeVisible();
@@ -168,7 +155,6 @@ describe('PlanFilterBar — 조건 더보기(C-6)', () => {
     await user.click(more);
 
     expect(screen.getByRole('combobox', { name: '상태 선택' })).toBeVisible();
-    expect(screen.getByRole('checkbox', { name: '미승인' })).toBeVisible();
     expect(screen.getByRole('button', { name: messages.common.filterMore.close })).toHaveAttribute(
       'aria-expanded',
       'true',
@@ -182,13 +168,11 @@ describe('PlanFilterBar — 조건 더보기(C-6)', () => {
       itemId: '',
       includeInactive: false,
       inactiveOnly: false,
-      unapprovedOnly: true,
       versionStatus: 'confirmed',
     });
 
     expect(screen.getByText('상태: 확정')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '상태 조건 제거' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '미승인 조건 제거' })).toBeInTheDocument();
     expect(screen.queryByText('검색어: SYN')).not.toBeInTheDocument();
     expect(screen.queryByText('검사 유형: IQC (수입검사)')).not.toBeInTheDocument();
   });
@@ -200,7 +184,6 @@ describe('PlanFilterBar — 조건 더보기(C-6)', () => {
       itemId: '',
       includeInactive: true,
       inactiveOnly: false,
-      unapprovedOnly: false,
       versionStatus: 'draft',
     });
 
@@ -212,18 +195,16 @@ describe('PlanFilterBar — 조건 더보기(C-6)', () => {
       itemId: '',
       includeInactive: true,
       inactiveOnly: false,
-      unapprovedOnly: false,
       versionStatus: '',
     });
   });
 
   it('펼치면 칸에 값이 보이므로 칩을 거둔다', async () => {
-    const { user } = renderBar({ ...DEFAULT_PLAN_FILTERS, unapprovedOnly: true });
+    const { user } = renderBar({ ...DEFAULT_PLAN_FILTERS, versionStatus: 'confirmed' });
 
-    expect(screen.getByRole('button', { name: '미승인 조건 제거' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '상태 조건 제거' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
 
-    expect(screen.queryByRole('button', { name: '미승인 조건 제거' })).not.toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: '미승인' })).toBeChecked();
+    expect(screen.queryByRole('button', { name: '상태 조건 제거' })).not.toBeInTheDocument();
   });
 });

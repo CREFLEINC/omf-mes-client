@@ -6,7 +6,7 @@
  *   Windows 에서 이 둘이 장마다 수 초를 먹어 20장이면 1분 가까이 걸렸다.
  *   여기서는 처음 한 번만 띄우고 컴파일한 뒤, 작업을 한 줄(JSON)씩 넣고 결과를 한 줄씩 받는다.
  *
- * ⭐ **약속(한 줄에 하나).** 넣는 줄 `{"id":1,"kind":"print"|"probe","device":..,"path":..,"name":..}`,
+ * ⭐ **약속(한 줄에 하나).** 넣는 줄 `{"id":1,"kind":"print"|"probe"|"default","device":..,"path":..,"name":..}`,
  *   받는 줄 `OK <id> <값>` 또는 `ERR <id> <사유>`. 처음 준비가 끝나면 `READY`.
  *
  * ⚠ **넣는 줄은 ASCII 만.** 한글 작업 이름 · 경로는 `\uXXXX` 로 적는다 — 콘솔 문자표에 따라 한글이 깨지는 것을
@@ -37,7 +37,9 @@ export const buildPrintHostScript = (): string =>
     '  try {',
     '    $job = $line | ConvertFrom-Json',
     '    $id = [string]$job.id',
-    "    if ($job.kind -eq 'probe') {",
+    "    if ($job.kind -eq 'default') {",
+    '      $out = (New-Object System.Drawing.Printing.PrinterSettings).PrinterName',
+    "    } elseif ($job.kind -eq 'probe') {",
     '      $s = New-Object System.Drawing.Printing.PrinterSettings',
     '      if ($job.device) { $s.PrinterName = $job.device }',
     '      $p = $s.DefaultPageSettings.PaperSize',
@@ -81,6 +83,8 @@ export interface PrintHostOptions {
 export interface PrintHost {
   /** RAW 로 보낸다. 작업 실패면 `Error`, 길이 막히면 `PrintHostDownError`. */
   print(job: { path: string; name: string; device?: string }): Promise<void>;
+  /** Windows 기본 프린터 이름 — 없으면 빈 글. */
+  defaultPrinter(): Promise<string>;
   /** 드라이버 용지 크기 줄(`"<w> <h>"`, 1/100 인치). */
   probe(device?: string): Promise<string>;
   /** 미리 띄워 둔다 — 첫 장도 빠르게. 실패는 삼킨다(첫 작업에서 다시 띄운다). */
@@ -217,6 +221,7 @@ export const createPrintHost = ({ start, timeoutMs }: PrintHostOptions): PrintHo
       await run({ kind: 'print', path, name, device: device ?? null });
     },
     probe: (device) => run({ kind: 'probe', device: device ?? null }),
+    defaultPrinter: () => run({ kind: 'default' }),
     warm: () => {
       launch().catch(() => undefined);
     },

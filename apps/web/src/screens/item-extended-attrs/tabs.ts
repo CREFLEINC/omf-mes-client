@@ -1,12 +1,14 @@
 import { messages } from '@omf-mes/i18n';
 
 /**
- * 품목 탭 오른쪽 구획의 보기 상태 — 확장 속성 / 부속 정보. 품목 / BOM 은 셸 탭 막대가 가른다(주소가 다르다).
+ * 품목 탭 오른쪽 구획의 보기 상태 — 확장 속성 / 단위 환산 / 설비·금형. 품목 / BOM 은 셸 탭 막대가 가른다(주소가 다르다).
+ * 예전에는 단위 환산 · 설비·금형이 「부속 정보」 탭 안의 하위 탭이었다 — 사업부 매핑 · 외부 코드를 뺀 뒤 둘만 남아
+ * 같은 줄로 올렸다(사용자 지시 2026-11-24).
  */
 
 const t = messages.itemExtendedAttrs;
 
-export type ItemExtendedAttrsTabId = 'attrs' | 'sub';
+export type ItemExtendedAttrsTabId = 'attrs' | 'uom' | 'res';
 
 export interface ItemExtendedAttrsTabDefinition {
   /** 주소의 `tab` 값이자 DS `Tabs`의 항목 값 */
@@ -23,7 +25,8 @@ export const ITEM_EXTENDED_ATTRS_TABS: readonly [
   ...ItemExtendedAttrsTabDefinition[],
 ] = [
   { id: 'attrs', label: t.tabs.attrs },
-  { id: 'sub', label: t.tabs.subsidiary },
+  { id: 'uom', label: t.tabs.uomConversion },
+  { id: 'res', label: t.tabs.resourceMap },
 ];
 
 /** 오른쪽 구획의 탭. */
@@ -44,37 +47,3 @@ export const DEFAULT_TAB_ID: ItemExtendedAttrsTabId = ITEM_EXTENDED_ATTRS_TABS[0
  */
 export const resolveTab = (param: string | null): ItemExtendedAttrsTabDefinition =>
   ITEM_EXTENDED_ATTRS_TABS.find((tab) => tab.id === param) ?? ITEM_EXTENDED_ATTRS_TABS[0];
-
-/* ── 부속 정보 안의 하위 탭 ───────────────────────────────────────────────── */
-
-/**
- * 부속 자원 하위 탭. **탭 안의 탭이다**(결정 2).
- *
- * 계약이 인용한 화면 스펙의 구획 이름(「부속 정보」)을 그대로 옮긴 결과다.
- * 평평한 탭으로 펴는 대안이 있으나 그러면 그 구획 이름이 사라진다.
- *
- * **자원끼리 서로를 알지 않는다**(결정 6) — 필드도 검증도 저장 방식도 다르다.
- * 여기 있는 것은 「어느 하위 탭인가」뿐이고, 자원의 규칙은 각 파일이 갖는다.
- */
-export type SubsidiaryTabId = 'bu' | 'uom' | 'ext' | 'res';
-
-export interface SubsidiaryTabDefinition {
-  id: SubsidiaryTabId;
-  label: string;
-}
-
-/** 하위 탭의 주소 키. 바깥 탭과 같은 주소에 살되 키가 다르다. */
-export const SUBSIDIARY_TAB_KEY = 'sub';
-
-export const SUBSIDIARY_TABS: readonly [SubsidiaryTabDefinition, ...SubsidiaryTabDefinition[]] = [
-  { id: 'bu', label: t.subTabs.buMap },
-  { id: 'uom', label: t.subTabs.uomConversion },
-  { id: 'ext', label: t.subTabs.externalCode },
-  { id: 'res', label: t.subTabs.resourceMap },
-];
-
-/** 기본 하위 탭. 바깥 탭과 같은 규칙으로 **주소에 쓰지 않는다.** */
-export const DEFAULT_SUBSIDIARY_TAB_ID: SubsidiaryTabId = SUBSIDIARY_TABS[0].id;
-
-export const resolveSubsidiaryTab = (param: string | null): SubsidiaryTabDefinition =>
-  SUBSIDIARY_TABS.find((tab) => tab.id === param) ?? SUBSIDIARY_TABS[0];

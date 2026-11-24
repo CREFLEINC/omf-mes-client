@@ -82,6 +82,19 @@ describe('인쇄 도우미 — 한 번 띄워 여러 장', () => {
     expect(starts).toBe(1);
   });
 
+  it('기본 프린터 이름을 같은 도우미에게 묻는다 — PowerShell 을 새로 띄우지 않는다', async () => {
+    const fake = fakeHost();
+    const host = createPrintHost({ timeoutMs: 1000, start: () => fake.child });
+
+    const name = host.defaultPrinter();
+    fake.stdout.write('READY\n');
+    await tick();
+    expect(fake.received).toEqual([{ kind: 'default', id: '1' }]);
+    fake.stdout.write('OK 1 TSC TH240 Series\n');
+    await expect(name).resolves.toBe('TSC TH240 Series');
+    expect(buildPrintHostScript()).toContain("$job.kind -eq 'default'");
+  });
+
   it('작업이 실패하면 그 사유로 실패한다 — 길이 막힌 것(PrintHostDownError)이 아니다', async () => {
     const fake = fakeHost();
     const host = createPrintHost({ timeoutMs: 1000, start: () => fake.child });

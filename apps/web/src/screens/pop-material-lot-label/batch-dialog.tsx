@@ -241,6 +241,38 @@ const BatchForm = ({
       title={t.title}
       wide
       onClose={onClose}
+      /*
+       * 키패드 · 글자판은 창 밖 화면 아래 판에(사용자 지시 2026-11-24) — 공급사 LOT 번호(글자판)와 수 칸(숫자 키패드)을
+       * 오가도 창 크기가 바뀌지 않는다.
+       */
+      keyboard={
+        textTarget ? (
+          <div className="pu-stack" role="group" aria-label={t.supplierLot}>
+            <div className="pu-keypad-head">
+              <span className="pu-keypad-target">
+                <b>{t.supplierLot}</b>
+              </span>
+            </div>
+            <PuTextKeyboard
+              value={draft.supplierLotNo}
+              disabled={isSaving}
+              onChange={(next) => {
+                update({ supplierLotNo: next });
+              }}
+            />
+          </div>
+        ) : (
+          <PuKeypad
+            targetLabel={targetLabel[activeTarget]}
+            decimal={decimalTarget}
+            disabled={isSaving}
+            onKey={onKey}
+            onClearAll={() => {
+              setTargetValue('');
+            }}
+          />
+        )
+      }
       footer={
         <>
           <PuButton onClick={onClose}>{t.cancel}</PuButton>
@@ -471,34 +503,6 @@ const BatchForm = ({
               </b>
             </p>
           ) : null}
-        </div>
-        <div className="mll-batch-keypad" data-text={textTarget}>
-          {textTarget ? (
-            <div className="pu-stack" role="group" aria-label={t.supplierLot}>
-              <div className="pu-keypad-head">
-                <span className="pu-keypad-target">
-                  <b>{t.supplierLot}</b>
-                </span>
-              </div>
-              <PuTextKeyboard
-                value={draft.supplierLotNo}
-                disabled={isSaving}
-                onChange={(next) => {
-                  update({ supplierLotNo: next });
-                }}
-              />
-            </div>
-          ) : (
-            <PuKeypad
-              targetLabel={targetLabel[activeTarget]}
-              decimal={decimalTarget}
-              disabled={isSaving}
-              onKey={onKey}
-              onClearAll={() => {
-                setTargetValue('');
-              }}
-            />
-          )}
         </div>
       </div>
     </PuDialog>

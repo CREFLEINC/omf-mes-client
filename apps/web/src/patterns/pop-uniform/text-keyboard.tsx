@@ -175,7 +175,8 @@ const shifted = (mode: Mode, ch: string): string => {
 /**
  * 글자판: 5줄(키 56, 낮은 화면 48). 맨 위는 늘 숫자 줄, 맨 아래 줄은 [한/영] [기호] [띄어쓰기] [전체 삭제].
  * 처음 판은 영문(기본). 불량 등록 칸만 `initialMode="ko"` 로 한글 판을 연다(사용자 지시 2026-11-19).
- * ⇧ 은 한 글자만 쌍자음·겹모음(ㅃㅉㄸㄲㅆㅒㅖ)·대문자로 바꾸고 풀린다.
+ * ⇧ 은 한 글자만 쌍자음·겹모음(ㅃㅉㄸㄲㅆㅒㅖ)·대문자로 바꾸고 풀린다. **연달아 두 번 누르면 고정**되어 다시 누를
+ * 때까지 그대로 친다(사용자 지시 2026-11-24) — 끄기 → 한 번 → 고정 → 끄기 차례다. 판(한/영 · 기호)을 바꾸면 풀린다.
  *
  * ⭐ 키를 눌러도 초점이 검색 칸에 남는다(`mousedown` 기본 동작 막음) — 스캐너·실물 자판이 계속 그 칸에 친다.
  */
@@ -193,7 +194,8 @@ export const PuTextKeyboard = ({
 }) => {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [letters, setLetters] = useState<'ko' | 'en'>(initialMode);
-  const [shift, setShift] = useState(false);
+  const [shiftState, setShiftState] = useState<'off' | 'once' | 'lock'>('off');
+  const shift = shiftState !== 'off';
   const [first = '', second = '', third = ''] = ROWS[mode];
 
   const keepFocus = (event: { preventDefault: () => void }): void => {
@@ -202,7 +204,7 @@ export const PuTextKeyboard = ({
 
   const type = (ch: string): void => {
     onChange(typeHangul(value, shift ? shifted(mode, ch) : ch));
-    setShift(false);
+    if (shiftState === 'once') setShiftState('off');
   };
 
   const charKey = (ch: string, extra?: string) => {
@@ -227,13 +229,15 @@ export const PuTextKeyboard = ({
   const shiftKey = (
     <button
       type="button"
-      className={shift ? 'fn w3 is-on' : 'fn w3'}
+      className={
+        shiftState === 'lock' ? 'fn w3 is-lock' : shiftState === 'once' ? 'fn w3 is-on' : 'fn w3'
+      }
       disabled={disabled || mode === 'num'}
-      aria-label={t.textKeyboard.shift}
+      aria-label={shiftState === 'lock' ? t.textKeyboard.shiftLocked : t.textKeyboard.shift}
       aria-pressed={shift}
       onMouseDown={keepFocus}
       onClick={() => {
-        setShift((on) => !on);
+        setShiftState((state) => (state === 'off' ? 'once' : state === 'once' ? 'lock' : 'off'));
       }}
     >
       ⇧
@@ -281,7 +285,7 @@ export const PuTextKeyboard = ({
           const next = mode === 'num' ? letters : letters === 'ko' ? 'en' : 'ko';
           setLetters(next);
           setMode(next);
-          setShift(false);
+          setShiftState('off');
         }}
       >
         {t.textKeyboard.lang}
@@ -294,7 +298,7 @@ export const PuTextKeyboard = ({
         onMouseDown={keepFocus}
         onClick={() => {
           setMode(mode === 'num' ? letters : 'num');
-          setShift(false);
+          setShiftState('off');
         }}
       >
         {t.textKeyboard.symbols}
