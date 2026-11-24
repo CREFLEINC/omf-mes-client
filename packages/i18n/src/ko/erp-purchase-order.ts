@@ -18,7 +18,7 @@ export const erpPurchaseOrder = {
     progress: '진행 상태',
     lineNo: '순번',
     item: '품목',
-    itemCode: '품목 코드',
+    itemCode: '품목코드',
     itemName: '품목명',
     orderedQty: '발주 수량',
     receivedQty: '입하 수량',
