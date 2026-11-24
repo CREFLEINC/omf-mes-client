@@ -2119,6 +2119,17 @@ h2:has(> .inspection-standard-dialog-title) {
   font: var(--type-body-sm);
 }
 
+/* 소포장 묶음(읽기만) — 값은 표 글자 그대로, 「없음 · 불러오는 중」은 흐린 글자. */
+.item-attrs-readonly {
+  color: var(--on-surface);
+  font: var(--type-body-sm);
+}
+
+.item-attrs-note {
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+}
+
 .item-attrs-table td .field-error {
   display: block;
   font: var(--type-label-sm);
@@ -11371,6 +11382,15 @@ dd.bom-tree-code,
 
 .item-master-filter > .filter-bar {
   margin-bottom: 0;
+}
+
+/*
+ * 조건 칸 바탕 — 검색칸(DS 는 투명이라 카드 회색이 비쳤다)과 선택칸을 같은 입력칸 바탕으로(사용자 결정 2026-11-24).
+ * DS 속 클래스는 해시라 자리로 고른다: 입력을 바로 품은 상자 · 펼침 단추. 체크박스는 뺀다.
+ */
+.item-master-filter div:has(> input:not([type='checkbox'])),
+.item-master-filter [aria-haspopup] {
+  background-color: var(--app-field-surface);
 }
 
 /*
@@ -22882,12 +22902,19 @@ main:has(> .oqc-inspection-panes) {
  * 다른 화면 · POP 은 DS 다크 그대로.
  */
 :root {
+  /*
+   * 입력칸 바탕(사용자 결정 2026-11-24, 시안 B) — 디자인 시스템에 바탕용 흰색이 없다(`--surface` #FBF8FD 는 조건 카드
+   * #F5F2F7 과 거의 같고, 순백은 `--on-primary` 글자색뿐). 회색 카드 위 입력칸이 떠 보이게 라이트는 순백, 다크는
+   * 선택칸과 같은 DS 표면.
+   */
+  --app-field-surface: #ffffff;
   --app-info: var(--semantic-info);
   --app-error: var(--semantic-error);
   --app-error-text: var(--semantic-error);
 }
 
 [data-theme='dark'] {
+  --app-field-surface: var(--surface);
   /* 정보 파랑 · 오류 빨강 그림(점 · 막대 · 기준선 · 누적선) — #2A2D33 위 각 6.2:1 · 3.9:1. */
   --app-info: #8ab4f8;
   --app-error: #e5534b;

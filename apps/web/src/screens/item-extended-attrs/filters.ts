@@ -1,11 +1,4 @@
-import {
-  DEFAULT_SUBSIDIARY_TAB_ID,
-  DEFAULT_TAB_ID,
-  SUBSIDIARY_TAB_KEY,
-  TAB_KEY,
-  type ItemExtendedAttrsTabId,
-  type SubsidiaryTabId,
-} from './tabs';
+import { DEFAULT_TAB_ID, TAB_KEY, type ItemExtendedAttrsTabId } from './tabs';
 import type { IqcFilter, ItemFilters } from './types';
 
 /**
@@ -96,21 +89,17 @@ export const readSelectedId = (params: URLSearchParams, key: string): number | n
  * 주소를 통째로 갈아 끼우면 선택이 자연히 사라진다 — 목록에 없는 품목의 폼이 우 칸에 남으면
  * 그것이 어디서 왔는지 알 수 없다.
  *
- * **탭과 하위 탭은 남긴다.** 조건이 바뀌어도 「같은 품목의 어느 면을 보고 있는가」는
+ * **탭은 남긴다.** 조건이 바뀌어도 「같은 품목의 어느 면을 보고 있는가」는
  * 달라지지 않는다 — 여기서 탭을 떨구면 조건을 고칠 때마다 첫 탭으로 튕긴다.
- * 하위 탭도 같은 이유로 남긴다. 층이 다르다고 규칙을 달리하면 「외부 코드를 보다가
- * 검색어를 고쳤더니 사업부 매핑으로 돌아오는」 어긋남이 생긴다.
  */
 export const toSearchParams = (
   tabId: ItemExtendedAttrsTabId,
-  subTabId: SubsidiaryTabId,
   filters: ItemFilters,
   page: number,
 ): URLSearchParams => {
   const next = new URLSearchParams();
 
   if (tabId !== DEFAULT_TAB_ID) next.set(TAB_KEY, tabId);
-  if (subTabId !== DEFAULT_SUBSIDIARY_TAB_ID) next.set(SUBSIDIARY_TAB_KEY, subTabId);
   if (filters.q !== '') next.set(URL_KEYS.q, filters.q);
   if (filters.itemType !== DEFAULT_ITEM_TYPE) {
     next.set(URL_KEYS.itemType, filters.itemType === '' ? ALL_TYPES : filters.itemType);

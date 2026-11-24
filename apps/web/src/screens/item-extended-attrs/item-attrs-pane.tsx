@@ -5,6 +5,7 @@ import { type ReactNode, useId } from 'react';
 import { Select } from '../../patterns/select';
 import { fifoPolicyOptions } from './code-catalog';
 import { FieldLabel } from './field-label';
+import type { ItemPackages } from './item-package-queries';
 import type { ItemAttrsFormValues, SelectOption } from './types';
 
 const t = messages.itemExtendedAttrs;
@@ -21,6 +22,10 @@ export interface ItemAttrsPaneProps {
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
+  /**
+   * 공급사별 소포장 — 읽기만(고치는 곳은 공급사·품목 기본 정보). 원자재 · 부자재만 넘긴다 — 없으면 묶음을 두지 않는다.
+   */
+  packages?: ItemPackages;
 }
 
 /**
@@ -38,6 +43,7 @@ export const ItemAttrsPane = ({
   isSaving,
   onSave,
   onCancel,
+  packages,
 }: ItemAttrsPaneProps) => {
   const lotStorageUomId = useId();
   const productionLotSizeId = useId();
@@ -172,6 +178,7 @@ export const ItemAttrsPane = ({
         },
       ],
     },
+    ...(packages === undefined ? [] : [packageGroup(packages)]),
   ];
 
   return (
@@ -200,12 +207,16 @@ export const ItemAttrsPane = ({
                   </th>
                 )}
                 <th scope="row" className="item-attrs-field">
-                  <FieldLabel
-                    htmlFor={row.id}
-                    label={row.label}
-                    required={row.required ?? false}
-                    info={row.info}
-                  />
+                  {row.readOnly === true ? (
+                    <span className="field-label">{row.label}</span>
+                  ) : (
+                    <FieldLabel
+                      htmlFor={row.id}
+                      label={row.label}
+                      required={row.required ?? false}
+                      info={row.info}
+                    />
+                  )}
                 </th>
                 <td>
                   <div className="item-attrs-inline">{row.control}</div>
@@ -253,8 +264,39 @@ interface SettingRow {
   info?: string;
   /** 선택칸의 오류(입력칸은 제 칸 아래에 낸다). */
   error?: string | undefined;
+  /** 고치지 않는 줄(소포장) — 항목 이름이 부를 칸이 없다. */
+  readOnly?: boolean;
   control: ReactNode;
 }
+
+/**
+ * 소포장 묶음(사용자 지시 2026-11-24) — 공급사마다 한 줄, 설정값 칸에 「봉지 40 × 25 = 1,000 KG」. 읽기만이다 —
+ * 공급사·품목 기본 정보가 공장 · 공급사마다 따로 갖는 값이라 여기서 고치면 어느 것을 고치는지 흐려진다.
+ */
+const packageGroup = (packages: ItemPackages): SettingGroup => {
+  const note = (key: string, text: string): SettingRow => ({
+    id: `package-${key}`,
+    label: t.attrs.groups.package,
+    readOnly: true,
+    control: <span className="item-attrs-note">{text}</span>,
+  });
+
+  return {
+    label: t.attrs.groups.package,
+    rows: packages.isLoading
+      ? [note('loading', t.attrs.values.packageLoading)]
+      : packages.isError && packages.rows.length === 0
+        ? [note('error', t.attrs.values.packageLoadFailed)]
+        : packages.rows.length === 0
+          ? [note('none', t.attrs.values.noPackage)]
+          : packages.rows.map((row) => ({
+              id: `package-${row.key}`,
+              label: row.label,
+              readOnly: true,
+              control: <span className="item-attrs-readonly">{row.value}</span>,
+            })),
+  };
+};
 
 interface SettingGroup {
   label: string;
