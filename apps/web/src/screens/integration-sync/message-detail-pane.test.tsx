@@ -1,11 +1,13 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
 
 import { messageRow } from './fixtures';
 import { MessageDetailPane } from './message-detail-pane';
 import type { MessageDetailView } from './types';
 
 const NOW = new Date('2026-08-06T12:00:00+09:00');
+const onRetry = vi.fn();
 
 const renderPane = (props: Partial<Parameters<typeof MessageDetailPane>[0]> = {}) => {
   render(
@@ -14,6 +16,8 @@ const renderPane = (props: Partial<Parameters<typeof MessageDetailPane>[0]> = {}
       isLoading={false}
       loadError={null}
       now={NOW}
+      onRetry={onRetry}
+      isRetrying={false}
       {...props}
     />,
   );
@@ -37,15 +41,18 @@ describe('MessageDetailPane — 항목', () => {
         completedAt: '2026-08-04T09:15:00+09:00',
         lockedBy: 'sync-worker-01',
         lockedAt: '2026-08-04T11:20:00+09:00',
+        availableAt: '2026-08-07T09:20:00+09:00',
       }),
     });
 
-    expect(fieldValue('송수신')).toBe('수신');
+    // 머리 줄: 문서 번호 · 배지 · 처리 중 보조 줄, 그 아래 「송수신 · 연동 항목」(#358).
+    expect(screen.getByRole('heading', { name: 'SAMPLE-KEY-0001' })).toBeInTheDocument();
+    expect(screen.getByText('수신 · IF-SAMPLE-A')).toBeInTheDocument();
+    expect(screen.getByText('2026-08-04 09:20부터 처리 중')).toBeInTheDocument();
     expect(fieldValue('전송 일시')).toBe('2026-08-04 07:13');
     expect(fieldValue('완료 일시')).toBe('2026-08-04 07:15');
     // 처리하는 워커 이름 · 대상 코드 같은 시스템 값은 보이지 않는다(사용자 지시 2026-10-27).
-    expect(fieldValue('처리 중인 작업')).toBe('2026-08-04 09:20부터 처리 중');
-    expect(fieldValue('다음 재시도 일시')).toBe('2026-08-04 07:20');
+    expect(fieldValue('다음 재시도 일시')).toBe('2026-08-07 07:20');
     expect(screen.queryByText('대상')).toBeNull();
     expect(screen.queryByText(/sync-worker-01/)).toBeNull();
     expect(screen.queryByText(/SAMPLE_TARGET/)).toBeNull();
@@ -64,7 +71,9 @@ describe('MessageDetailPane — 항목', () => {
 
     expect(fieldValue('전송 일시')).toBe('—');
     expect(fieldValue('완료 일시')).toBe('—');
-    expect(fieldValue('처리 중인 작업')).toBe('—');
+    // 처리 중이 아니면 처리 중 줄을, 재시도가 예정돼 있지 않으면 「다음 재시도 일시」 칸을 두지 않는다.
+    expect(screen.queryByText(/처리 중/)).toBeNull();
+    expect(screen.queryByText('다음 재시도 일시')).toBeNull();
     expect(fieldValue('오류 내용')).toBe('—');
   });
 
@@ -77,8 +86,8 @@ describe('MessageDetailPane — 항목', () => {
   it('처리 중인데 시작 시각이 없으면 「처리 중」만 낸다 — 시각을 지어내지 않는다', () => {
     renderPane({ view: messageRow({ lockedBy: 'sync-worker-01', lockedAt: null }) });
 
-    const cell = screen.getByText('처리 중인 작업').closest('.field-cell');
-    expect(cell?.textContent).toBe('처리 중인 작업처리 중');
+    expect(screen.getByText('처리 중')).toBeInTheDocument();
+    expect(screen.queryByText(/부터 처리 중/)).toBeNull();
   });
 });
 
@@ -133,5 +142,27 @@ describe('MessageDetailPane — 불러오는 중과 실패', () => {
     expect(screen.getByText('불러오지 못했습니다')).toBeInTheDocument();
     expect(screen.queryByText('방향')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '전송 내용 보기' })).not.toBeInTheDocument();
+  });
+});
+
+describe('MessageDetailPane — 재처리', () => {
+  it('재처리 단추는 상태와 무관하게 언제나 누를 수 있다', async () => {
+    // 실서버의 상태 어휘를 화면이 모른다. 「실패일 때만」으로 막으면 어휘가 다른 서버에서 전부 죽는다.
+    onRetry.mockClear();
+    renderPane({ view: messageRow({ statusCode: 'ERROR', lockedBy: 'sync-worker-01' }) });
+
+    const button = screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' });
+    expect(button).toBeEnabled();
+    await userEvent.setup().click(button);
+
+    expect(onRetry).toHaveBeenCalledWith(expect.objectContaining({ integrationMessageId: 9001 }));
+  });
+
+  it('보내는 중이면 단추가 진행 중으로 잠긴다', () => {
+    renderPane({ isRetrying: true });
+
+    expect(
+      screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' }),
+    ).toBeDisabled();
   });
 });

@@ -39473,3 +39473,72 @@ body:has(
   min-height: 0;
   overflow-y: auto;
 }
+
+/* 목록 제목 줄 오른쪽 — 선택 건수 · 일괄 동작을 「목록 접기」 앞에 한 줄로(ListDetailWorkspace `list.actions` · #358). */
+.list-detail-list-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.list-detail-list-actions + .po-board-list-collapse {
+  margin-left: 0;
+}
+
+.list-detail-list-selection {
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+
+/* 연동 현황·이력 상세(#358) — 머리 줄(문서 번호 · 상태 · 재처리) → 송수신 · 연동 항목 → 오류 내용 → 두 열. */
+.integration-sync-detail {
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+  min-width: 0;
+}
+
+.integration-sync-detail-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.integration-sync-detail-head > .pane-title {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.integration-sync-detail-head > :not(.pane-title) {
+  flex: 0 0 auto;
+}
+
+.integration-sync-detail-note {
+  display: block;
+  margin-top: var(--space-1);
+}
+
+.integration-sync-detail-retry {
+  margin-left: auto;
+}
+
+.integration-sync-detail-sub {
+  margin: calc(var(--space-2) * -1) 0 0;
+  font: var(--type-body-md);
+  color: var(--on-surface-variant);
+}
+
+.integration-sync-detail-error > span:last-child {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.integration-sync-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-4);
+}

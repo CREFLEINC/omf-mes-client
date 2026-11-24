@@ -60,7 +60,7 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     /* 행 버튼의 접근 이름. 보이는 글자(`Xử lý lại`)를 그대로 담아 음성 조작이 부를 수 있게 둔다. */
     retryRow: (title: string): string => `Xử lý lại ${title}`,
     reload: 'Tra cứu lại',
-    batchRetry: 'Xử lý lại theo lô mục đã chọn',
+    batchRetry: 'Xử lý lại theo lô',
   },
   /** 부분 실패를 허용하는 일괄 재처리라 성공 건수와 실패 사유를 함께 낸다. */
   batch: {
@@ -127,7 +127,6 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     availableAt: 'Thời điểm thử lại tiếp theo',
     sentAt: 'Thời điểm gửi',
     completedAt: 'Thời điểm hoàn tất',
-    lockedBy: 'Tác vụ đang xử lý',
   },
   /** 계약이 정의한 사실만 옮긴다 — 「잠금이 오래됐다」 같은 판정은 하지 않는다. */
   status: {

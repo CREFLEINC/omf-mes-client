@@ -10,7 +10,6 @@ const NOW = new Date('2026-08-06T12:00:00+09:00');
 const renderTable = (props: Partial<Parameters<typeof MessageTable>[0]> = {}) => {
   const onFirstPage = vi.fn();
   const onOpenDetail = vi.fn();
-  const onRetry = vi.fn();
   const onSelectionChange = vi.fn();
   render(
     <MessageTable
@@ -20,8 +19,6 @@ const renderTable = (props: Partial<Parameters<typeof MessageTable>[0]> = {}) =>
       isBeyondLast={false}
       onFirstPage={onFirstPage}
       onOpenDetail={onOpenDetail}
-      onRetry={onRetry}
-      retryingId={null}
       selectedIds={[]}
       onSelectionChange={onSelectionChange}
       now={NOW}
@@ -29,7 +26,7 @@ const renderTable = (props: Partial<Parameters<typeof MessageTable>[0]> = {}) =>
     />,
   );
 
-  return { onFirstPage, onOpenDetail, onRetry, onSelectionChange, user: userEvent.setup() };
+  return { onFirstPage, onOpenDetail, onSelectionChange, user: userEvent.setup() };
 };
 
 describe('MessageTable', () => {
@@ -69,8 +66,11 @@ describe('MessageTable', () => {
       ],
     });
 
+    // 빈 값이 섞여도 보이는 칸은 비지 않는다(오류 내용 등 빈 값이 많은 칸은 상세로 옮겼다 · #358).
     const row = screen.getAllByRole('row')[1] as HTMLElement;
-    expect(within(row).getByText('—')).toBeInTheDocument();
+    for (const cell of within(row).getAllByRole('cell').slice(1)) {
+      expect(cell.textContent?.trim()).not.toBe('');
+    }
   });
 
   it('시도 횟수가 0이어도 그대로 보인다 — 0을 빈 칸으로 접으면 안 된다', () => {
@@ -98,35 +98,10 @@ describe('MessageTable', () => {
     expect(onOpenDetail).toHaveBeenCalledWith(9001);
   });
 
-  it('재처리 버튼은 상태와 무관하게 언제나 누를 수 있다', async () => {
-    // 실서버의 상태 어휘를 화면이 모른다. 「실패일 때만」으로 막으면 어휘가 다른 서버에서 전부 죽는다.
-    const { onRetry, user } = renderTable({
-      rows: [messageRow({ statusCode: 'ERROR', lockedBy: 'sync-worker-01' })],
-    });
+  it('목록에는 재처리 단추가 없다 — 건별 재처리는 상세 머리 줄에서 한다(#358)', () => {
+    renderTable();
 
-    const button = screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' });
-    expect(button).toBeEnabled();
-
-    await user.click(button);
-
-    expect(onRetry).toHaveBeenCalledWith(expect.objectContaining({ integrationMessageId: 9001 }));
-  });
-
-  it('보내는 중인 행의 버튼만 진행 중으로 잠긴다', () => {
-    renderTable({
-      rows: [
-        messageRow(),
-        messageRow({ integrationMessageId: 9002, messageKey: 'SAMPLE-KEY-0002' }),
-      ],
-      retryingId: 9001,
-    });
-
-    expect(
-      screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' }),
-    ).toBeDisabled();
-    expect(
-      screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0002 재처리' }),
-    ).toBeEnabled();
+    expect(screen.queryByRole('button', { name: /재처리$/ })).not.toBeInTheDocument();
   });
 
   it('행마다 선택칸이 있고 고르면 그 식별자가 넘어간다', async () => {

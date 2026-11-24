@@ -22,9 +22,6 @@ export interface MessageTableProps {
   onOpenDetail: (id: number) => void;
   /** 오른쪽에 상세가 열린 메시지 — 그 줄을 칠한다(입고 관리의 고른 발주와 같다). */
   openedId?: number | null;
-  onRetry: (row: IntegrationMessageRow) => void;
-  /** 지금 재처리를 보내고 있는 건. 그 행의 버튼만 진행 중으로 보인다. */
-  retryingId: number | null;
   /** 고른 행의 식별자. 디자인 시스템 `Table`의 선택은 제어형이다. */
   selectedIds: readonly string[];
   onSelectionChange: (nextIds: string[]) => void;
@@ -41,8 +38,8 @@ const orEmptyMark = (value: string | null): ReactNode => value ?? t.values.empty
 /**
  * 연계 메시지 목록 표.
  *
- * 계약의 `IntegrationMessage`에는 필드가 14개 있으나 **자료 열은 일곱이다**(+ 재처리 열). 코드는 업무 이름으로
- * 옮겨 낸다(구분 · 항목 · 번호 · 상태 — `message-labels.ts`).
+ * 계약의 `IntegrationMessage`에는 필드가 14개 있으나 **자료 열은 여섯이다**(송수신 · 연동 항목 · 문서 번호 · 상태 ·
+ * 재시도 횟수 · 발생일시 · #358). 오류 내용 · 건별 재처리는 오른쪽 상세에서 본다. 코드는 업무 이름으로 옮겨 낸다(`message-labels.ts`).
  * 전부 열로 만들면 표가 짓눌려 셀이 낱말 단위로 쪼개진다 —
  * 앞 화면에서 「표를 읽을 수 없다」로 보고된 결함이다. 나머지는 상세에서 본다.
  *
@@ -57,8 +54,6 @@ export const MessageTable = ({
   onFirstPage,
   onOpenDetail,
   openedId = null,
-  onRetry,
-  retryingId,
   selectedIds,
   onSelectionChange,
   now,
@@ -81,24 +76,22 @@ export const MessageTable = ({
     {
       key: 'messageKey',
       header: t.table.messageKey,
-      width: '168px',
+      /* 폭을 지정하지 않는 유일한 열 — 남는 폭을 문서 번호가 가져간다(#358 · 오류 내용 · 재처리 열은 상세로). */
       /* 상세를 여는 단추 자리(`BoardTable` 의 `pick`) — 줄 어디를 눌러도 연다(체크 · 재처리 단추는 그쪽이 받는다). */
       render: (row) => <OneLine text={documentNoOf(row)} />,
     },
     {
       key: 'statusCode',
       header: t.table.status,
-      width: '152px',
+      width: '104px',
+      /* 배지만 — 「언제부터 처리 중」 · 「자동 재시도」 보조 줄은 상세에서 본다(행 높이를 한 줄로 · #358). */
       render: (row) => {
         const view = toStatusView(row, now);
 
         return (
-          <>
-            <Chip variant="status" size="sm" status={view.tone}>
-              {view.label}
-            </Chip>
-            {view.note !== null && <span className="field-note">{view.note}</span>}
-          </>
+          <Chip variant="status" size="sm" status={view.tone}>
+            {view.label}
+          </Chip>
         );
       },
     },
@@ -106,38 +99,8 @@ export const MessageTable = ({
     {
       key: 'createdAt',
       header: t.table.createdAt,
-      width: '148px',
+      width: '160px',
       render: (row) => orEmptyMark(formatDateTime(row.createdAt)),
-    },
-    /* 폭을 지정하지 않는 유일한 열이다 — 남는 폭을 이 열이 가져간다. */
-    {
-      key: 'lastErrorMessage',
-      header: t.table.lastErrorMessage,
-      render: (row) => <OneLine text={row.lastErrorMessage ?? t.values.empty} />,
-    },
-    {
-      key: 'retry',
-      header: t.table.retry,
-      width: '88px',
-      /*
-       * **상태 코드로도 `lockedBy`로도 막지 않는다.** 실서버의 상태 어휘를 화면이 모르므로
-       * 「실패일 때만」으로 막으면 어휘가 다른 서버에서 버튼이 전부 죽는다. 화면의 자료는 낡기도 한다.
-       * 계약이 두 실패(400 NOT_RETRYABLE · 409 workerLease)를 정의했고, 판정은 서버 몫이다.
-       * 막지 않는 대신 상태 열의 보조 한 줄이 「처리 중」을 미리 알린다.
-       */
-      render: (row) => (
-        <Button
-          variant="outlined"
-          size="sm"
-          loading={retryingId === row.integrationMessageId}
-          aria-label={t.actions.retryRow(messageTitleOf(row))}
-          onClick={() => {
-            onRetry(row);
-          }}
-        >
-          {t.actions.retry}
-        </Button>
-      ),
     },
   ];
   /* 열 순서는 머리칸 손잡이로 바꾸고 브라우저에 남는다(단말 관리와 같다 · #358). 폭은 `BoardTable` 이 맡는다. */
@@ -180,7 +143,7 @@ export const MessageTable = ({
     <BoardTable
       label={t.panes.list}
       widthKey="omf-mes:integration-sync:columns:messages"
-      minWidth="60rem"
+      minWidth="40rem"
       columns={ordered}
       rows={rows}
       /*

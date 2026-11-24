@@ -71,7 +71,7 @@ export const integrationSync = {
      */
     retryRow: (title: string): string => `${title} 재처리`,
     reload: '다시 조회',
-    batchRetry: '선택 일괄 재처리',
+    batchRetry: '일괄 재처리',
   },
   /**
    * 선택 일괄 재처리. **부분 실패를 허용한다** — 전체를 되돌리지 않으므로
@@ -151,7 +151,6 @@ export const integrationSync = {
     availableAt: '다음 재시도 일시',
     sentAt: '전송 일시',
     completedAt: '완료 일시',
-    lockedBy: '처리 중인 작업',
   },
   /**
    * 상태 열의 보조 한 줄. 계약이 정의한 사실만 옮긴다 —

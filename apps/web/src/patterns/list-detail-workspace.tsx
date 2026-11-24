@@ -26,7 +26,15 @@ export interface ListDetailWorkspaceProps {
    * 목록 상자 — 맨 위 「이름 · 건수 · 목록 접기」 제목 줄(#350). `title` 이 빈 글이면 건수 · 단추만.
    * `count` 는 조회 전이면 비운다.
    */
-  list: { label: string; title: string; count?: number; content: ReactNode; className?: string };
+  list: {
+    label: string;
+    title: string;
+    count?: number;
+    content: ReactNode;
+    className?: string;
+    /** 제목 줄 오른쪽(「목록 접기」 앞)에 둘 것 — 선택 건수 · 일괄 동작 등. 없으면 종전과 같다(#358). */
+    actions?: ReactNode;
+  };
   /** 상세 상자. `bare` 면 상자를 씌우지 않는다(안에서 여러 상자를 쌓는 상세). */
   detail: { label: string; content: ReactNode; className?: string; bare?: boolean };
   /**
@@ -129,7 +137,11 @@ export const ListDetailWorkspace = ({
           className={`pane list-detail-list${list.className === undefined ? '' : ` ${list.className}`}`}
           aria-label={list.label}
         >
-          <PaneListHead title={list.title} collapse={collapse} />
+          <PaneListHead title={list.title} collapse={collapse}>
+            {list.actions === undefined ? null : (
+              <div className="list-detail-list-actions">{list.actions}</div>
+            )}
+          </PaneListHead>
           {list.content}
         </section>
 

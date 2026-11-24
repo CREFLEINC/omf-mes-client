@@ -44,7 +44,7 @@ describe('BatchRetryDialog — 확인 단계', () => {
   it('확인을 누르면 보낸다', async () => {
     const { onConfirm, user } = renderDialog();
 
-    await user.click(screen.getByRole('button', { name: '선택 일괄 재처리' }));
+    await user.click(screen.getByRole('button', { name: '일괄 재처리' }));
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
@@ -52,7 +52,7 @@ describe('BatchRetryDialog — 확인 단계', () => {
   it('보내는 중에는 확인이 잠긴다 — 연타해도 두 번 나가지 않는다', () => {
     renderDialog({ isSaving: true });
 
-    expect(screen.getByRole('button', { name: '선택 일괄 재처리' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '일괄 재처리' })).toBeDisabled();
   });
 
   it('바깥 어둠을 눌러도 닫히지 않는다', async () => {
@@ -109,7 +109,7 @@ describe('BatchRetryDialog — 결과 단계', () => {
   it('결과 단계에서는 보내는 수단이 사라지고 닫기만 남는다', () => {
     renderDialog({ result: resultView() });
 
-    expect(screen.queryByRole('button', { name: '선택 일괄 재처리' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '일괄 재처리' })).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: '닫기' }).length).toBeGreaterThan(0);
   });
 
@@ -128,6 +128,6 @@ describe('BatchRetryDialog — 요청 자체가 실패', () => {
 
     expect(screen.getByText('보내지 못했습니다')).toBeInTheDocument();
     // 실패했어도 확인 단계에 머문다 — 사유를 보고 다시 시도할 수 있어야 한다.
-    expect(screen.getByRole('button', { name: '선택 일괄 재처리' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '일괄 재처리' })).toBeInTheDocument();
   });
 });

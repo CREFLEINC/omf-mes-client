@@ -356,7 +356,7 @@ export const IntegrationSyncScreen = () => {
       <ListDetailWorkspace
         storageKey="omf-mes:integration-sync"
         orientationKey={ERP_LINK_ORIENTATION_KEY}
-        initialRatio={0.6}
+        initialRatio={0.65}
         toolbar={<ErpSendChips linkToTab />}
         filter={{
           label: t.panes.filter,
@@ -400,25 +400,27 @@ export const IntegrationSyncScreen = () => {
           title: t.panes.list,
           count: list.data?.page.total,
           className: 'integration-sync-list',
+          /* 선택 건수 · 일괄 재처리는 제목 줄 오른쪽 「목록 접기」 앞에 한 줄로(#358). 고른 건이 없으면 단추만 잠근다. */
+          actions: list.isError ? undefined : (
+            <>
+              <span className="list-detail-list-selection">
+                {t.batch.selectionCount(selectedIds.length)}
+              </span>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={selectedIds.length === 0}
+                onClick={openBatch}
+              >
+                {t.actions.batchRetry}
+              </Button>
+            </>
+          ),
           content: list.isError ? (
             /* 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「기록이 없습니다」로 보이면 안 된다. */
             <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
           ) : (
             <>
-              {/* 고른 건이 없으면 단추만 잠근다 — 사유 안내 줄은 두지 않는다(사용자 지시 2026-10-27 「불필요한 안내문 제거」). */}
-              <div className="filter-bar">
-                <div className="field-cell">
-                  <span className="field-label">{t.batch.selectionCount(selectedIds.length)}</span>
-                  <Button
-                    variant="outlined"
-                    disabled={selectedIds.length === 0}
-                    onClick={openBatch}
-                  >
-                    {t.actions.batchRetry}
-                  </Button>
-                </div>
-              </div>
-
               <div className="erp-link-list-body">
                 <MessageTable
                   rows={rows}
@@ -430,13 +432,6 @@ export const IntegrationSyncScreen = () => {
                   }}
                   onOpenDetail={openDetail}
                   openedId={selectedId}
-                  onRetry={(row) => {
-                    retryWrite.reset();
-                    setRetryTarget(row);
-                  }}
-                  retryingId={
-                    retryWrite.isSaving ? (retryTarget?.integrationMessageId ?? null) : null
-                  }
                   selectedIds={selectedIds}
                   onSelectionChange={setSelectedIds}
                   now={now}
@@ -484,6 +479,16 @@ export const IntegrationSyncScreen = () => {
                   ) : null
                 }
                 now={now}
+                /* 건별 재처리는 상세 머리 줄로 옮겼다(목록은 읽기 열만 · #358). 막지 않는 근거는 message-detail-pane.tsx. */
+                onRetry={(view) => {
+                  retryWrite.reset();
+                  /* 종전처럼 목록 행을 대상으로 둔다(충돌 안내의 「언제부터 처리 중」이 그 행의 시각을 쓴다). 쪽이 바뀌어 없으면 상세 값. */
+                  setRetryTarget(
+                    rows.find((row) => row.integrationMessageId === view.integrationMessageId) ??
+                      view,
+                  );
+                }}
+                isRetrying={retryWrite.isSaving && retryTarget?.integrationMessageId === selectedId}
               />
             ),
         }}
