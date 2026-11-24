@@ -27165,7 +27165,8 @@ body.col-reordering * {
 .inspection-split > .iqc-inspection-queue-pane,
 .inspection-split > .oqc-inspection-queue-pane,
 .inspection-split > .pqc-web-list.pane,
-.inspection-split > .lot-trace-list-pane {
+.inspection-split > .lot-trace-list-pane,
+.inspection-split > .trace-tree-list-pane {
   height: auto;
   max-height: calc(100dvh - 20rem);
 }
@@ -27342,7 +27343,8 @@ body.col-reordering * {
 .po-board-split.inspection-split.is-stacked > .iqc-inspection-queue-pane,
 .po-board-split.inspection-split.is-stacked > .oqc-inspection-queue-pane,
 .po-board-split.inspection-split.is-stacked > .pqc-web-list.pane,
-.po-board-split.inspection-split.is-stacked > .lot-trace-list-pane {
+.po-board-split.inspection-split.is-stacked > .lot-trace-list-pane,
+.po-board-split.inspection-split.is-stacked > .trace-tree-list-pane {
   /* 가운데 막대로 높이를 정했으면 그 높이, 아니면 줄 수만큼(넘치면 상자 안에서 구른다). */
   box-sizing: border-box;
   height: var(--stacked-list-height, auto);
@@ -27353,7 +27355,8 @@ body.col-reordering * {
 .po-board-split.inspection-split.is-stacked > .iqc-inspection-detail,
 .po-board-split.inspection-split.is-stacked > .oqc-inspection-detail,
 .po-board-split.inspection-split.is-stacked > .pqc-web-detail,
-.po-board-split.inspection-split.is-stacked > .lot-trace-detail-pane {
+.po-board-split.inspection-split.is-stacked > .lot-trace-detail-pane,
+.po-board-split.inspection-split.is-stacked > .trace-tree-detail-pane {
   overflow: visible;
 }
 
@@ -39733,3 +39736,282 @@ body:has(
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/*
+ * 피처 015 — W-02-13 자재 기준 생산 추적 · W-02-14 제품 기준 역추적(`patterns/trace-tree`). 위 조건 줄 / 왼쪽 LOT
+ * 목록 / 오른쪽 고른 LOT(요약 → 계보 → 최종 LOT 목록). 분할 배치는 검사 조회·판정과 같은 `.inspection-split` 이다.
+ */
+.trace-tree-filter {
+  align-items: flex-end;
+}
+
+.trace-tree-filter-scan {
+  flex: 1 1 320px;
+  max-width: 440px;
+  min-width: 240px;
+}
+
+.trace-tree-filter-divider {
+  align-self: stretch;
+  width: 1px;
+  background: var(--outline-variant);
+}
+
+.trace-tree-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+
+.trace-tree-list-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.trace-tree-list-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  margin-bottom: var(--space-2);
+}
+
+.trace-tree-list-head > .pane-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trace-tree-list-rows,
+.trace-tree-end-rows {
+  min-height: 0;
+  overflow: auto;
+}
+
+.trace-tree-list-more {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+
+.trace-tree-list-foot {
+  margin-top: var(--space-2);
+}
+
+.trace-tree-lot {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trace-tree-lot:has(> .trace-tree-lot-tail) {
+  display: flex;
+  min-width: 0;
+}
+
+.trace-tree-lot-head {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trace-tree-lot-tail {
+  flex: none;
+}
+
+.trace-tree-date {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+
+/* 제품 기준 날짜 종류 — 「출하」는 오류 색 테두리, 「입고」는 회색 테두리(시안 2판). */
+.trace-tree-date-kind {
+  padding: 0 var(--space-1);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-sm);
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+
+.trace-tree-date-kind[data-kind='SHIPPED'] {
+  border-color: var(--semantic-error);
+  color: var(--semantic-error-text);
+}
+
+.trace-tree-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.trace-tree-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.trace-tree-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.trace-tree-panel-head > .subsection-title {
+  margin: 0;
+}
+
+.trace-tree-panel-actions {
+  display: inline-flex;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.trace-tree-panel-hint {
+  margin: 0 0 0 auto;
+}
+
+.trace-tree-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.trace-tree-summary-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.trace-tree-summary-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+}
+
+.trace-tree-summary-facts > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.trace-tree-summary-facts dt {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+
+.trace-tree-summary-facts dd {
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+.trace-tree-table {
+  overflow-x: auto;
+}
+
+/* 계보 칸 — 단계만큼 들여 쓰고(단계당 20px), 펼침 단추 · 단계 이름 · 번호 · 표시를 한 줄에. */
+.trace-tree-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  padding-left: calc(var(--trace-depth, 0) * 20px);
+  white-space: nowrap;
+}
+
+.trace-tree-toggle,
+.trace-tree-spacer {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.trace-tree-toggle {
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+}
+
+.trace-tree-toggle:hover {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+}
+
+.trace-tree-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.trace-tree-stage {
+  flex: 0 0 auto;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--surface-container-high);
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+
+.trace-tree-no {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 계보의 LOT 번호 — 누르면 목록에 더해 연다(FR-011). */
+.trace-tree-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.trace-tree-link:hover {
+  text-decoration: underline;
+}
+
+.trace-tree-link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.trace-tree-flag {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.trace-tree-located {
+  display: inline-flex;
+  color: var(--on-semantic-warning-container);
+}
+
+/* 경로 펼치기로 찾아간 줄(Q18) — 노란 바탕. */
+.trace-tree-table tr:has(.trace-tree-cell.is-located) > td {
+  background: var(--semantic-warning-container);
+}
+
