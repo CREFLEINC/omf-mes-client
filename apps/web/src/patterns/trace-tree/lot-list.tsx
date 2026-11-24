@@ -11,6 +11,7 @@ import { messages, named } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { useColumnWidths } from '../column-resize';
+import { PaneListHead, type PaneCollapse } from '../po-board';
 import { SelectableTable } from '../selectable-table';
 import { SCAN_CAP, type ListEntry, type ListMode } from './lot-list-state';
 import { TraceLotNo, lotStatusTone, shortDateTime } from './cells';
@@ -38,6 +39,8 @@ export interface TraceLotListProps {
     onMore: () => void;
   };
   statusName: (code: string) => string;
+  /** 목록 접기(제목 줄의 [목록 접기]). */
+  collapse: PaneCollapse;
 }
 
 /**
@@ -56,13 +59,13 @@ export const TraceLotList = ({
   error,
   condition,
   statusName,
+  collapse,
 }: TraceLotListProps) => {
   const words = direction === 'FORWARD' ? t.material : t.product;
   const columns: Column<ListEntry>[] = [
     {
       key: 'lotNo',
       header: t.list.columns.lotNo,
-      width: '220px',
       render: (entry) => <TraceLotNo lotNo={entry.row.lot.lotNo} />,
     },
     ...(mode === 'SCAN'
@@ -70,7 +73,7 @@ export const TraceLotList = ({
           {
             key: 'source',
             header: t.list.columns.source,
-            width: '180px',
+            width: '120px',
             render: (entry: ListEntry) =>
               entry.source === null ? (
                 ''
@@ -88,7 +91,7 @@ export const TraceLotList = ({
     {
       key: 'item',
       header: t.list.columns.itemName,
-      width: '160px',
+      width: '80px',
       render: (entry) => (
         <span className="ellipsis-cell" title={named(entry.row.item.name, entry.row.item.code)}>
           {entry.row.item.name}
@@ -98,7 +101,7 @@ export const TraceLotList = ({
     {
       key: 'partner',
       header: words.partnerName,
-      width: '140px',
+      width: '72px',
       render: (entry) =>
         entry.row.partner === null ? (
           ''
@@ -114,7 +117,7 @@ export const TraceLotList = ({
     {
       key: 'date',
       header: mode === 'CONDITION' ? words.conditionDate : words.recentDate,
-      width: '150px',
+      width: direction === 'BACKWARD' ? '124px' : '92px',
       render: (entry) => {
         const kind = entry.row.sortDateKind;
         if (entry.row.sortDate === null) return '';
@@ -133,7 +136,7 @@ export const TraceLotList = ({
     {
       key: 'status',
       header: t.list.columns.status,
-      width: '84px',
+      width: '56px',
       render: (entry) => (
         <Chip variant="status" size="sm" status={lotStatusTone(entry.row.lot.statusCode)}>
           {statusName(entry.row.lot.statusCode)}
@@ -167,16 +170,13 @@ export const TraceLotList = ({
 
   return (
     <>
-      <div className="trace-tree-list-head">
-        <h2 className="pane-title" title={title}>
-          {title}
-        </h2>
+      <PaneListHead title={title} collapse={collapse} className="trace-tree-list-head">
         {status === 'ready' && (
           <Chip variant="status" size="sm" status="idle">
             {count}
           </Chip>
         )}
-      </div>
+      </PaneListHead>
       {status === 'loading' ? (
         <div role="status" aria-label={t.list.loading}>
           <SkeletonText lines={5} />

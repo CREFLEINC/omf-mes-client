@@ -39746,9 +39746,9 @@ body:has(
 }
 
 .trace-tree-filter-scan {
-  flex: 1 1 320px;
-  max-width: 440px;
-  min-width: 240px;
+  flex: 1 1 280px;
+  max-width: 400px;
+  min-width: 220px;
 }
 
 .trace-tree-filter-divider {
@@ -39812,7 +39812,7 @@ body:has(
 }
 
 .trace-tree-lot:has(> .trace-tree-lot-tail) {
-  display: flex;
+  display: inline-flex;
   min-width: 0;
 }
 
@@ -39924,6 +39924,11 @@ body:has(
 
 .trace-tree-table {
   overflow-x: auto;
+}
+
+/* C-16 — 계보 표의 칸은 한 줄(수량 · 일시가 칸 폭 때문에 접히지 않게). */
+.trace-tree-table :is(th, td) {
+  white-space: nowrap;
 }
 
 /* 계보 칸 — 단계만큼 들여 쓰고(단계당 20px), 펼침 단추 · 단계 이름 · 번호 · 표시를 한 줄에. */

@@ -106,9 +106,10 @@ const stageOf = (
   if (edge?.kind === 'SPLIT_FROM') return 'SPLIT_ORIGIN';
   if (node === undefined) return 'PRODUCTION_LOT';
   if (node.kind === 'SPLIT_LOT') {
-    return node.split !== undefined && node.split.goodsIssueNo === null
-      ? 'SEPARATED_LOT'
-      : 'SPLIT_LOT';
+    /* 008 부분 출고 분할은 출고 번호가 있고 자재 LOT 이다. 출고 번호 없는 생산 LOT 자식은 013 생산 LOT 분리다. */
+    const separated =
+      (node.split?.goodsIssueNo ?? null) === null && node.lot?.lotTypeCode !== 'MATERIAL';
+    return separated ? 'SEPARATED_LOT' : 'SPLIT_LOT';
   }
   if (node.kind === 'PRODUCTION_LOT' && (edge?.kind === 'CONSUMED' || outKinds.has('CONSUMED'))) {
     return 'SEMI_LOT';

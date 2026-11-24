@@ -6,7 +6,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../api-context';
 import { plantToday } from '../plant-time';
-import { PaneListHead, PaneSplitter, useFitToViewport, usePaneSplit } from '../po-board';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../po-board';
 import { ApiRequestError } from '../request';
 import { ScreenHeader } from '../screen-header';
 import {
@@ -376,7 +376,7 @@ export const TraceWorkspace = ({ direction, renderSummary, renderEnd }: TraceWor
   }, [lineage]);
 
   const run = useTraceExportRun(direction, plantId);
-  const split = usePaneSplit(`omf-mes:trace-tree:${direction}:split`, 0.34);
+  const split = usePaneSplit(`omf-mes:trace-tree:${direction}:split`, 0.38);
   const layout = useSplitOrientation(`omf-mes:trace-tree:${direction}:split-orientation`);
   const { splitRef, aboveRef } = useFitToViewport();
 
@@ -493,7 +493,7 @@ export const TraceWorkspace = ({ direction, renderSummary, renderEnd }: TraceWor
           </>
         }
       />
-      <section ref={aboveRef} className="pane trace-tree-filter-pane" aria-label={t.list.pane}>
+      <section ref={aboveRef} className="pane trace-tree-filter-pane" aria-label={t.filterPane}>
         <TraceFilterBar
           direction={direction}
           plants={plantList}
@@ -531,7 +531,6 @@ export const TraceWorkspace = ({ direction, renderSummary, renderEnd }: TraceWor
         data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <section className="pane trace-tree-list-pane" aria-label={t.list.pane}>
-          <PaneListHead title="" collapse={listCollapse} />
           <TraceLotList
             direction={direction}
             mode={list.mode}
@@ -547,6 +546,7 @@ export const TraceWorkspace = ({ direction, renderSummary, renderEnd }: TraceWor
               />
             }
             statusName={names.lotStatus}
+            collapse={listCollapse}
             {...(list.mode === 'CONDITION' && list.condition !== null
               ? {
                   condition: {

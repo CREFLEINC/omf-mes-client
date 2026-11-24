@@ -94,7 +94,7 @@ export const TraceFilterBar = ({
   };
 
   return (
-    <div className="filter-bar trace-tree-filter" role="search" aria-label={t.list.pane}>
+    <div className="filter-bar trace-tree-filter" role="search" aria-label={t.filterPane}>
       {plants.length > 1 && (
         <div className="field-cell filter-field-sm">
           <span className="field-label">{t.plant}</span>
@@ -147,7 +147,7 @@ export const TraceFilterBar = ({
           )}
         </ReferenceField>
       </div>
-      <div className="field-cell filter-field-lg">
+      <div className="field-cell filter-field-md">
         <label className="field-label" htmlFor={periodId}>
           {words.period}
           <span className="required-mark" aria-hidden="true">

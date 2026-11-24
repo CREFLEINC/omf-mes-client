@@ -45,6 +45,12 @@ const setup = (props: Partial<TraceLotListProps> = {}) => {
       onSelect={onSelect}
       status="ready"
       statusName={(code) => (code === 'NORMAL' ? '정상' : code)}
+      collapse={{
+        collapsed: false,
+        onToggle: vi.fn(),
+        collapseLabel: '목록 접기',
+        expandLabel: '목록 펼치기',
+      }}
       {...props}
     />,
   );

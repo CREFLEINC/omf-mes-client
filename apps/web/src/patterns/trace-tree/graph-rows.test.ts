@@ -23,7 +23,7 @@ const lot = (id: number, kind: TraceGraphNode['kind'] = 'PRODUCTION_LOT', lotNo?
     lot: {
       lotId: id,
       lotNo: lotNo ?? `LOT-${String(id)}`,
-      lotTypeCode: kind === 'MATERIAL_LOT' ? 'MATERIAL' : 'PRODUCTION',
+      lotTypeCode: kind === 'MATERIAL_LOT' || kind === 'SPLIT_LOT' ? 'MATERIAL' : 'PRODUCTION',
       statusCode: 'NORMAL',
       lifecycleStatusCode: 'ACTIVE',
     },
@@ -122,6 +122,16 @@ describe('계보 줄 만들기(graph → rows)', () => {
     expect(stageOf('L:11')).toBe('SEMI_LOT');
     expect(stageOf('L:13')).toBe('PRODUCTION_LOT');
     expect(stageOf('L:2')).toBe('SPLIT_LOT');
+  });
+
+  it('US2-4 출고 번호 없는 생산 LOT 자식은 「분리 LOT」(013), 역방향의 원래 LOT 은 「분할된 원래 LOT」', () => {
+    const separated = graph(
+      'L:41',
+      [{ ...lot(41, 'SPLIT_LOT'), lot: { ...lot(41).lot, lotTypeCode: 'PRODUCTION' } }, lot(4)],
+      [edge('L:41', 'L:4', 'SPLIT_FROM')],
+    );
+    const lineage = buildLineage(separated);
+    expect(lineage.all.map((line) => line.stage)).toEqual(['SEPARATED_LOT', 'SPLIT_ORIGIN']);
   });
 
   it('경계-여러 길 같은 LOT 에 두 길로 닿으면 두 번째부터 「중복 — 위와 같음」이고 아래를 펴지 않는다', () => {
