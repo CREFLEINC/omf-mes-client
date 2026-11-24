@@ -447,15 +447,20 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         labelVi: 'Tra cứu tiến độ W/O',
       },
       /*
-       * W-02-09 — 「W/O 진행현황 조회」 바로 아래. 정방향과 역방향 모두 「투입 → W/O → 생산 LOT」을 지나
-       * 생산이 가진 자료다. 세 탭(자재 LOT, 제품 LOT, 입출고 현황)은 한 권한이라 셸 탭 묶음(탭마다
-       * 화면 코드)이 아니라 화면이 그린다.
+       * W-02-13 · W-02-14(피처 015) — 「W/O 진행현황 조회」 바로 아래 나란히(W-02-09 「LOT 생산 이력 조회」 자리).
+       * 정방향과 역방향 모두 「투입 → W/O → 생산 LOT」을 지나 생산이 가진 자료다. 권한이 따로라 두 항목이다.
        */
       {
-        to: '/production/lot-trace',
+        to: '/production/material-trace',
         icon: 'timeline',
-        label: 'LOT 생산 이력 조회',
-        labelVi: 'Tra cứu lịch sử sản xuất LOT',
+        label: '자재 기준 생산 추적',
+        labelVi: 'Truy vết sản xuất theo vật tư',
+      },
+      {
+        to: '/production/product-trace',
+        icon: 'manage_search',
+        label: '제품 기준 역추적',
+        labelVi: 'Truy vết ngược theo sản phẩm',
       },
       /* W-02-05 — 진행을 본 뒤 닫는다. 생산 흐름의 끝이다. */
       {

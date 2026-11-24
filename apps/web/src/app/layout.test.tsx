@@ -720,17 +720,28 @@ describe('AppLayout', () => {
     expect(links.indexOf('/production/work-order-progress')).toBe(
       links.indexOf('/production/production-orders') + 1,
     );
-    /* W-02-09 LOT 생산 이력 조회 — 「W/O 진행현황 조회」 바로 아래. */
-    expect(within(sidebar).getByRole('link', { name: 'LOT 생산 이력 조회' })).toHaveAttribute(
+    /*
+     * Q22 W-02-13 자재 기준 생산 추적 · W-02-14 제품 기준 역추적(피처 015) — 「W/O 진행현황 조회」 바로 아래 나란히.
+     * W-02-09 LOT 생산 이력 조회는 메뉴에서 빠졌다.
+     */
+    expect(within(sidebar).getByRole('link', { name: '자재 기준 생산 추적' })).toHaveAttribute(
       'href',
-      '/production/lot-trace',
+      '/production/material-trace',
     );
-    expect(links.indexOf('/production/lot-trace')).toBe(
+    expect(within(sidebar).getByRole('link', { name: '제품 기준 역추적' })).toHaveAttribute(
+      'href',
+      '/production/product-trace',
+    );
+    expect(within(sidebar).queryByRole('link', { name: 'LOT 생산 이력 조회' })).toBeNull();
+    expect(links.indexOf('/production/material-trace')).toBe(
       links.indexOf('/production/work-order-progress') + 1,
+    );
+    expect(links.indexOf('/production/product-trace')).toBe(
+      links.indexOf('/production/material-trace') + 1,
     );
     /* W-02-05 — 진행을 본 뒤 닫는다. 생산 흐름의 끝이다. */
     expect(links.indexOf('/production/work-order-close')).toBe(
-      links.indexOf('/production/lot-trace') + 1,
+      links.indexOf('/production/product-trace') + 1,
     );
     /* 영업 / 출하 관리가 생산 바로 뒤에 선다 — 매일 일하는 묶음끼리 붙어 있다. */
     expect(links.indexOf('/shipment/shipment-request-create')).toBe(
@@ -956,10 +967,11 @@ describe('AppLayout', () => {
       '/master-data/defect-cause-code',
       '/quality/inspection-results' /* ← 검사 실적·결과 */,
       '/quality/lot-status' /* ← LOT 상태 */,
-      /* 생산 관리 — 작업계획(작업함, 변경 확인) → 진행 → LOT 생산 이력 조회 → 마감. 긴급 W/O 발행은 감췄다. */
+      /* 생산 관리 — 작업계획(작업함, 변경 확인) → 진행 → 자재 기준 생산 추적 → 제품 기준 역추적 → 마감. 긴급 W/O 발행은 감췄다. */
       '/production/production-orders' /* ← 작업계획 */,
       '/production/work-order-progress',
-      '/production/lot-trace',
+      '/production/material-trace',
+      '/production/product-trace',
       '/production/work-order-close',
       /* 영업 / 출하 관리 — 편성 → 예정 → 반품·클레임(피처 012: 긴급 직행 · 출하 내역은 메뉴에서 뺐다). */
       '/shipment/shipment-request-create',
@@ -1619,7 +1631,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(35);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(36);
   });
 
   /*
@@ -1669,7 +1681,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(35);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(36);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */
