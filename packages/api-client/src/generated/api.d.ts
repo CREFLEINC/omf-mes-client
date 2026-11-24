@@ -28124,6 +28124,572 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/trace/material-trace-lots': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 자재 기준 생산 추적 LOT 목록
+     * @description 조건이 없으면 최근 100개 — 마지막 생산 투입 시각(정정된 원 투입 제외) 내림차순, 같으면 lotId 내림차순. 투입되지 않은 LOT 은 없다(반제품도 투입되면 들어간다). 공급사(partnerId) + 입하일 기간이면 조건 — 입하에 직접 든 관리 LOT(분할 자손 빼고)을 입하일(입하 LOT 입하일, 없으면 첫 자재 입고일) 내림차순으로 100개씩. 근거: 피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355 R-12
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description 공장 — 다른 공장 LOT 은 나오지 않는다 */
+          plantId: number;
+          /** @description 공급사 — dateFrom·dateTo 와 함께 주면 조건 목록 */
+          partnerId?: number;
+          /** @description 기간 시작(공장 현지 날짜) */
+          dateFrom?: string;
+          /** @description 기간 종료(포함). 최대 366일 */
+          dateTo?: string;
+          /** @description 조건 목록만 — 최근 목록은 늘 첫 100개 */
+          page?: number;
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description LOT 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['TraceLotPage'];
+          };
+        };
+        /** @description 검증 실패 — 상대·기간 중 일부만 · 종료가 시작보다 앞섬 · 366일 초과(field·code 가 있는 칸 오류) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 자재 기준 생산 추적 화면 권한(W-02-13) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/product-trace-lots': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 제품 기준 역추적 LOT 목록
+     * @description 조건이 없으면 최근 100개 — LOT 마다 마지막 출하 완료 시각, 없으면 마지막 제품 창고 생산 입고 시각 하나로 섞어 내림차순(결정 2-나). 출하도 입고도 없는 LOT 은 없다. 고객(partnerId) + 출하일 기간이면 조건 — 그 고객 출하 완료분에 배분된 제품 LOT 을 한 줄씩(기간 안 마지막 출하일 내림차순) 100개씩. 근거: 피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355 R-12
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description 공장 — 다른 공장 LOT 은 나오지 않는다 */
+          plantId: number;
+          /** @description 고객 — dateFrom·dateTo 와 함께 주면 조건 목록 */
+          partnerId?: number;
+          /** @description 기간 시작(공장 현지 날짜) */
+          dateFrom?: string;
+          /** @description 기간 종료(포함). 최대 366일 */
+          dateTo?: string;
+          /** @description 조건 목록만 — 최근 목록은 늘 첫 100개 */
+          page?: number;
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description LOT 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['TraceLotPage'];
+          };
+        };
+        /** @description 검증 실패 — 상대·기간 중 일부만 · 종료가 시작보다 앞섬 · 366일 초과(field·code 가 있는 칸 오류) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 제품 기준 역추적 화면 권한(W-02-14) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/trace-starts': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 번호 하나를 목록 줄 LOT 들로 풀기
+     * @description 입력·스캔한 번호(앞뒤 공백 무시, 정확 일치)의 종류를 서버가 알아내 목록 줄 모양의 LOT 들로 준다. 같은 글자가 여러 종류에 맞으면 모두 준다. 맞는 것이 없거나 다른 공장 번호면 matches 가 빈 배열(200). 근거: 피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355 R-5·R-6
+     */
+    get: {
+      parameters: {
+        query: {
+          plantId: number;
+          /** @description FORWARD = 자재 기준(W-02-13 필요) · BACKWARD = 제품 기준(W-02-14 필요) */
+          direction: 'FORWARD' | 'BACKWARD';
+          /** @description 번호 하나 */
+          q: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 맞은 번호 종류들 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              matches: components['schemas']['TraceStartMatch'][];
+            };
+          };
+        };
+        /** @description 검증 실패 — plantId·direction·q 없음, direction 값이 틀림 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 두 화면 권한 모두 없음, 또는 direction 에 맞는 권한(FORWARD W-02-13 · BACKWARD W-02-14) 없음 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/forward-tree': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 자재 기준 생산 추적 — LOT 하나의 정방향 계보
+     * @description 기준 LOT 에서 투입 W/O → 생산 LOT → (반제품이면 다시 W/O → 생산 LOT …) → 포장(옛 기록)·출하·재고까지, 분할(008)·분리(013) 자식을 지나 끝까지 한 번에 준다. 단계마다 그 단계 LOT 전부를 한 번에 질의하고, 깊이 20·겹치지 않는 LOT 5,000 에서 멈춘다. 이음 규칙(계보 추정·W/O 단위 추정)은 지금 그대로다. 근거: 피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355 R-2·R-3
+     */
+    get: {
+      parameters: {
+        query: {
+          plantId: number;
+          /** @description 기준 LOT 하나(아무 종류 — 반제품 포함) */
+          lotId: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 정방향 계보 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ForwardTree'];
+          };
+        };
+        /** @description 검증 실패 — plantId·lotId 없음 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 자재 기준 생산 추적 화면 권한(W-02-13) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 공장에 없는 LOT */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/backward-tree': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 제품 기준 역추적 — LOT 하나의 역방향 계보
+     * @description 기준 LOT(또는 그 LOT 의 시리얼)에서 생산 W/O → 투입 LOT → (반제품이면 그 W/O → 투입 LOT …) → 분할 원래 LOT → 입하 LOT·IQC 까지 한 번에 준다. 줄은 뿌리에서 멀어지는 쪽이다. 투입 자재는 지금 규칙 그대로 — 계보가 있는 W/O 는 그 LOT 의 계보, 없으면 W/O 투입 전부, 실적 배분이 없는 LOT 은 잇지 않는다. 깊이 20·LOT 5,000 상한. 근거: 피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355 R-2·R-4·R-6
+     */
+    get: {
+      parameters: {
+        query: {
+          plantId: number;
+          /** @description 기준 LOT 하나 */
+          lotId: number;
+          /** @description 시리얼로 들어온 줄을 골랐을 때 — 뿌리가 SERIAL 항목이고 조립 기록(부품 시리얼)을 한 단계 보인다 */
+          serialNo?: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 역방향 계보 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['BackwardTree'];
+          };
+        };
+        /** @description 검증 실패 — plantId·lotId 없음, serialNo 가 그 LOT 의 시리얼이 아님 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 제품 기준 역추적 화면 권한(W-02-14) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 공장에 없는 LOT, 없는 시리얼 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/forward-exports': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 자재 기준 생산 추적 엑셀 내보내기
+     * @description 목록의 LOT 들로 .xlsx 하나를 만든다. 기준 LOT 들을 한 번에 따라가고(깊이 20·겹치지 않는 LOT 5,000 을 함께 센다) 기준 LOT 마다 나눠 적는다. 시트 「최종 LOT」 = 첫 열 기준 LOT + 최종 LOT 줄(정방향은 출하마다 한 줄 — 제품 LOT·품목·생산 수량·행방·고객·출하번호·출하일·출하 수량·창고·위치·재고 수량·W/O·LOT 상태·비고). 시트 「LOT 계보」 = 기준 LOT 마다 계보 줄 전체(묶음·접힘 무관, 깊이 우선, 같은 항목 두 번째부터 비고 「중복 — 위와 같음」, 조상과 같으면 「순환 참조 — 전개 중단」) — 기준 LOT·깊이·단계·번호·품목 코드·품목명·수량·단위·부모 번호·연결 근거(기록/추정)·LOT 상태·비고. 멈춘 단계에서 펼치지 못한 LOT 이 닿는 기준 LOT 은 비고 「일부」. 파일 이름 material-trace-YYYYMMDD-HHmm.xlsx(공장 시간). 근거: 피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355 R-8
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['TraceExportRequest'];
+        };
+      };
+      responses: {
+        /** @description .xlsx 파일(Content-Disposition: attachment) */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': string;
+          };
+        };
+        /** @description 검증 실패 — lotIds 0개 또는 200 초과, serialNo 가 그 LOT 의 시리얼이 아님 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 자재 기준 생산 추적 화면 권한(W-02-13) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 공장에 없는 LOT·없는 시리얼이 있음 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description TRACE_EXPORT_TOO_LARGE — 「LOT 계보」가 100,000줄을 넘어 만들지 않음. 화면 「LOT 이 너무 많습니다 — 조건을 좁히세요」 */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/backward-exports': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 제품 기준 역추적 엑셀 내보내기
+     * @description 목록의 LOT 들로 .xlsx 하나를 만든다. 기준 LOT 들을 한 번에 따라가고(깊이 20·겹치지 않는 LOT 5,000 을 함께 센다) 기준 LOT 마다 나눠 적는다. 시트 「최종 LOT」 = 첫 열 기준 LOT + 최종 LOT 줄(원자재 LOT × 투입 W/O — 자재 LOT·품목·공급사·공급사 LOT·입하 LOT·입하일·IQC·W/O·생산 LOT·투입량·단위·연결 근거·LOT 상태·비고). 시트 「LOT 계보」 = 기준 LOT 마다 계보 줄 전체(묶음·접힘 무관, 깊이 우선, 같은 항목 두 번째부터 비고 「중복 — 위와 같음」, 조상과 같으면 「순환 참조 — 전개 중단」) — 기준 LOT·깊이·단계·번호·품목 코드·품목명·수량·단위·부모 번호·연결 근거(기록/추정)·LOT 상태·비고. 멈춘 단계에서 펼치지 못한 LOT 이 닿는 기준 LOT 은 비고 「일부」. 파일 이름 product-trace-YYYYMMDD-HHmm.xlsx(공장 시간). 근거: 피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355 R-8
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['TraceExportRequest'];
+        };
+      };
+      responses: {
+        /** @description .xlsx 파일(Content-Disposition: attachment) */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': string;
+          };
+        };
+        /** @description 검증 실패 — lotIds 0개 또는 200 초과, serialNo 가 그 LOT 의 시리얼이 아님 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 제품 기준 역추적 화면 권한(W-02-14) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 공장에 없는 LOT·없는 시리얼이 있음 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description TRACE_EXPORT_TOO_LARGE — 「LOT 계보」가 100,000줄을 넘어 만들지 않음. 화면 「LOT 이 너무 많습니다 — 조건을 좁히세요」 */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/app/approval-routes': {
     parameters: {
       query?: never;
@@ -60153,6 +60719,330 @@ export interface components {
         count: number;
         qtyPerPackage: number;
       } | null;
+    };
+    /** @description 추적 LOT 머리 — 목록 줄·계보 항목이 함께 쓴다(피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355) */
+    TraceTreeLot: {
+      /** Format: int64 */
+      lotId: number;
+      lotNo: string;
+      lotTypeCode: string;
+      /** @description LOT 상태(NORMAL·HOLD·DEFECT·SCRAPPED 등) — 화면 상태 칩 */
+      statusCode: string;
+      lifecycleStatusCode: string | null;
+    };
+    TraceTreeItem: {
+      /** Format: int64 */
+      itemId: number;
+      code: string;
+      name: string;
+    };
+    /** @description 공급사 또는 고객 */
+    TraceTreePartner: {
+      /** Format: int64 */
+      partnerId: number;
+      code: string;
+      name: string;
+    };
+    /** @description LOT 목록 한 줄(contracts §1·§2 공통 · FR-025). 피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355 */
+    TraceLotRow: {
+      lot: components['schemas']['TraceTreeLot'];
+      item: components['schemas']['TraceTreeItem'];
+      /** @description LOT 처음 수량 */
+      qty: number;
+      uomCode: string;
+      /** @description 자재 쪽은 공급사(분할 LOT 이면 원래 LOT 의 입하 공급사, 입하 LOT 이 없으면 옛 입하 줄의 공급사), 제품 쪽은 마지막 출하 완료의 고객(출하 전이면 null) */
+      partner: components['schemas']['TraceTreePartner'] | null;
+      /** @description 자재 쪽만 — 입하 LOT 번호(분할 LOT 이면 원래 LOT 것). 없으면 null */
+      inboundLotNo: string | null;
+      /**
+       * Format: date-time
+       * @description 정렬 날짜 — sortDateKind 의 시각. 번호 풀기 줄은 최근 규칙과 같고 없으면 null
+       */
+      sortDate: string | null;
+      /** @description CONSUMED = 마지막 생산 투입(정정된 원 투입 제외) · INBOUND = 입하일(입하 LOT 의 입하 문서 시각, 옛 입하는 첫 자재 입고) · SHIPPED = 마지막 출하 완료(조건 목록은 기간 안 마지막) · RECEIVED = 제품 창고 생산 입고 */
+      sortDateKind: ('CONSUMED' | 'INBOUND' | 'SHIPPED' | 'RECEIVED') | null;
+    };
+    TraceLotPage: {
+      /**
+       * @description RECENT = 조건 없이 최근 100개 · CONDITION = 상대 + 기간 결과(100개씩)
+       * @enum {string}
+       */
+      mode: 'RECENT' | 'CONDITION';
+      items: components['schemas']['TraceLotRow'][];
+      page: components['schemas']['PageMeta'];
+    };
+    /** @description 번호 하나가 맞은 종류 하나와 그 LOT 들 */
+    TraceStartMatch: {
+      /**
+       * @description FORWARD 는 MATERIAL_LOT_NO → INBOUND_LOT_NO → SUPPLIER_LOT_NO, BACKWARD 는 PRODUCT_LOT_NO → SHIPMENT_NO → SERIAL_NO 순으로 준다
+       * @enum {string}
+       */
+      matchedBy:
+        | 'MATERIAL_LOT_NO'
+        | 'INBOUND_LOT_NO'
+        | 'SUPPLIER_LOT_NO'
+        | 'PRODUCT_LOT_NO'
+        | 'SHIPMENT_NO'
+        | 'SERIAL_NO';
+      /** @description 맞은 번호(화면이 「어느 번호로 들어왔는지」 줄에 보인다) */
+      label: string;
+      /** @description SERIAL_NO 일 때만 — 그 줄을 고르면 backward-tree 에 serialNo 로 넘긴다 */
+      serialNo: string | null;
+      /** @description 반대 방향 LOT 번호다(LOT 번호로 맞은 것만) — FORWARD 에 생산으로 만들어지고 다시 투입되지 않은 LOT, BACKWARD 에 생산으로 만들어지지 않은 LOT. 반제품은 두 방향 모두 false. 화면은 목록을 바꾸지 않고 [그 화면으로 열기]를 보인다 */
+      otherDirection: boolean;
+      /** @description 한 번호의 LOT 이 200 을 넘어 앞(lot id 순) 200 개만 실었다 */
+      truncated: boolean;
+      /** @description 입하 LOT·공급사 LOT 은 그 묶음의 관리 LOT(분할 자손 빼고), 출하는 출하 완료분의 배분 LOT, 시리얼은 그 생산 LOT 하나 */
+      lots: components['schemas']['TraceLotRow'][];
+    };
+    /** @description 계보 항목 하나(contracts §3·§4). nodeKey 는 종류 머리글자 + id 로 유일하다(L: LOT · W: W/O · S: 출하 · H: 포장 · K: 재고 위치 · N: 시리얼 · I: 입하 LOT). 같은 LOT·W/O 는 한 항목이다. 종류별 칸만 싣는다. 피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355 */
+    TraceGraphNode: {
+      nodeKey: string;
+      /**
+       * @description SPLIT_LOT = 008 부분 출고 분할·013 생산 LOT 분리 자식 · PACKAGE = 010 이전 포장 기록만 · STOCK = 그 LOT 의 창고·위치 재고(on_hand > 0)
+       * @enum {string}
+       */
+      kind:
+        | 'MATERIAL_LOT'
+        | 'SPLIT_LOT'
+        | 'WORK_ORDER'
+        | 'PRODUCTION_LOT'
+        | 'PACKAGE'
+        | 'SHIPMENT'
+        | 'STOCK'
+        | 'SERIAL'
+        | 'COMPONENT_SERIAL'
+        | 'INBOUND_LOT';
+      lot?: components['schemas']['TraceTreeLot'];
+      item?: components['schemas']['TraceTreeItem'];
+      qty?: number;
+      uomCode?: string;
+      /** @description 자재 LOT(분할 자식 포함)만 — 입하·공급사는 분할이면 원래 LOT 것. 공급사 LOT 은 lot_external_identifier 먼저, 없으면 옛 입하 줄(F-6) */
+      material?: {
+        /** Format: int64 */
+        inboundLotId: number | null;
+        inboundLotNo: string | null;
+        supplier: components['schemas']['TraceTreePartner'] | null;
+        supplierLotNo: string | null;
+        /**
+         * Format: date-time
+         * @description 입하 문서 시각
+         */
+        receivedAt: string | null;
+      };
+      /**
+       * Format: date-time
+       * @description PRODUCTION_LOT — 첫 실적 시각 · SERIAL·COMPONENT_SERIAL — 생산 시각(없으면 발번 시각)
+       */
+      producedAt?: string | null;
+      /** @description SPLIT_LOT — 나뉜 시각과 분할을 일으킨 출고(013 분리면 null) */
+      split?: {
+        /** Format: date-time */
+        splitAt: string;
+        goodsIssueNo: string | null;
+        lineNo: number | null;
+      };
+      workOrder?: {
+        /** Format: int64 */
+        workOrderId: number;
+        workOrderNo: string;
+        statusCode: string;
+      };
+      shipment?: {
+        /** Format: int64 */
+        shipmentId: number;
+        shipmentNo: string;
+        /** Format: date-time */
+        shippedAt: string | null;
+        statusCode: string;
+        customer: components['schemas']['TraceTreePartner'];
+      };
+      /** @description PACKAGE */
+      handlingUnitNo?: string;
+      warehouse?: {
+        /** Format: int64 */
+        warehouseId: number;
+        code: string;
+        name: string;
+      };
+      location?: {
+        /** Format: int64 */
+        locationId: number;
+        code: string;
+        name: string;
+      };
+      /** @description SERIAL·COMPONENT_SERIAL */
+      serialNo?: string;
+      /**
+       * Format: int64
+       * @description SERIAL·COMPONENT_SERIAL — 그 시리얼의 LOT
+       */
+      lotId?: number;
+      /** @description INBOUND_LOT — 입하 LOT·입하일(공장 현지 날짜)·공급사·IQC 결과(취소 제외 최근 확정) */
+      inboundLot?: {
+        /** Format: int64 */
+        inboundLotId: number;
+        inboundLotNo: string;
+        /** Format: date */
+        receivedDate: string;
+        supplier: components['schemas']['TraceTreePartner'];
+        /** @description IQC 종합 판정 — 요청이 없거나 확정 전이면 null */
+        iqcJudgmentCode: string | null;
+      };
+    };
+    /** @description 계보 줄 — 같은 (from, to, kind) 는 한 줄. 길마다 남긴다(같은 항목에 두 길로 닿으면 줄 둘) */
+    TraceGraphEdge: {
+      from: string;
+      to: string;
+      /**
+       * @description 정방향 SPLIT(LOT → 자식)·CONSUMED(LOT → W/O)·PRODUCED(W/O → 생산 LOT)·PACKED·SHIPPED·STOCKED, 역방향은 뿌리에서 멀어지는 쪽 PRODUCED_BY(생산 LOT → W/O)·CONSUMED(W/O → 투입 LOT)·SPLIT_FROM(자식 → 원래 LOT)·RECEIVED_FROM(자재 LOT → 입하 LOT)·SERIAL_OF·ASSEMBLED
+       * @enum {string}
+       */
+      kind:
+        | 'SPLIT'
+        | 'CONSUMED'
+        | 'PRODUCED'
+        | 'PACKED'
+        | 'SHIPPED'
+        | 'STOCKED'
+        | 'PRODUCED_BY'
+        | 'SPLIT_FROM'
+        | 'RECEIVED_FROM'
+        | 'SERIAL_OF'
+        | 'ASSEMBLED';
+      /** @description 투입량·배분량·분할량·실적 배분 합 */
+      qty: number | null;
+      /**
+       * @description 연결 근거 — 투입·생산 이음만 추정(지금 규칙 그대로), 나머지는 RECORDED. 화면은 보이지 않고 내보낸 파일 근거 열에만 쓴다
+       * @enum {string}
+       */
+      basis: 'RECORDED' | 'LOT_GENEALOGY_ESTIMATE' | 'WORK_ORDER_ESTIMATE';
+      /** Format: date-time */
+      firstAt?: string;
+      /** Format: date-time */
+      lastAt?: string;
+    };
+    TraceGraphLimit: {
+      /** @description 겹치지 않는 LOT 이 lotCap 을 넘어 그 단계에서 멈췄다 — 결과는 본 데까지(화면 「일부」) */
+      exceeded: boolean;
+      /** @description 깊이(지나온 LOT 단계) 20 에 닿았는데 더 펼칠 LOT 이 남았다 */
+      maxDepthReached: boolean;
+      lotCount: number;
+      lotCap: number;
+    };
+    /** @description LOT 하나의 계보 그래프. 순환(조상으로 되돌아오는 줄)은 그대로 싣는다 — 화면이 조상과 같으면 「순환」으로 멈춘다 */
+    TraceGraph: {
+      /** @description 뿌리 항목 nodeKey */
+      root: string;
+      nodes: components['schemas']['TraceGraphNode'][];
+      edges: components['schemas']['TraceGraphEdge'][];
+      limit: components['schemas']['TraceGraphLimit'];
+    };
+    /** @description 정방향 최종 LOT 한 줄 — 마지막 생산 LOT(더 투입되지 않은 생산 LOT, 분리·분할 자식 포함. 자식이 있는 원래 LOT 은 자기 출하·재고가 남았을 때만)과 그 행방. LOT 마다 한 줄이고 같은 LOT 이 여러 길로 와도 한 번이다(R-3). 피처 015 · omf-all-around#355 */
+    ForwardEndRow: {
+      lot: components['schemas']['TraceTreeLot'];
+      item: components['schemas']['TraceTreeItem'];
+      /** @description 실적 배분 합(분리·분할 자식은 그 LOT 수량) */
+      producedQty: number;
+      uomCode: string;
+      /**
+       * @description PARTIAL = 출하 + 재고 · CONSUMED_OUT = 재고 0·출하 없음 · VOIDED = 폐번·폐기
+       * @enum {string}
+       */
+      fate: 'SHIPPED' | 'IN_STOCK' | 'PARTIAL' | 'CONSUMED_OUT' | 'VOIDED';
+      /** @description 취소 제외 출하 — 화면은 첫 출하 + 「외 n건」, 내보내기는 출하마다 한 줄 */
+      shipments: {
+        shipmentNo: string;
+        customer: components['schemas']['TraceTreePartner'];
+        /** Format: date-time */
+        shippedAt: string | null;
+        qty: number;
+      }[];
+      stock: {
+        warehouse: {
+          /** Format: int64 */
+          warehouseId: number;
+          code: string;
+          name: string;
+        };
+        location: {
+          /** Format: int64 */
+          locationId: number;
+          code: string;
+          name: string;
+        };
+        qty: number;
+      }[];
+      /** @description 이 LOT 을 만든 W/O 번호(분리·분할 자식은 원래 LOT 의 것) */
+      viaWorkOrders: string[];
+    };
+    /** @description 정방향 요약 — 본 데까지(limit.exceeded 면 「일부」), 겹치지 않게 센다 */
+    ForwardSummary: {
+      lotCount: number;
+      workOrderCount: number;
+      endLotCount: number;
+      shippedLotCount: number;
+      customerCount: number;
+      stockLotCount: number;
+    };
+    ForwardTree: components['schemas']['TraceGraph'] & {
+      /** @description LOT 번호 순. 기준 LOT 이 아무 데도 투입되지 않았으면 빈 배열(화면 「아직 생산에 투입되지 않았습니다」) */
+      endRows: components['schemas']['ForwardEndRow'][];
+      summary: components['schemas']['ForwardSummary'];
+    };
+    /** @description 역방향 최종 LOT 한 줄 — 원자재 LOT(생산으로 만들어지지 않은 투입 LOT) × 그것이 투입된 W/O(R-4). 입하·공급사·공급사 LOT 은 분할 LOT 이면 원래 LOT 것, 공급사 LOT 은 lot_external_identifier 먼저(F-6). 피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355 */
+    BackwardEndRow: {
+      lot: components['schemas']['TraceTreeLot'];
+      item: components['schemas']['TraceTreeItem'];
+      supplier: components['schemas']['TraceTreePartner'] | null;
+      supplierLotNo: string | null;
+      inboundLot: {
+        inboundLotNo: string;
+        /** Format: date */
+        receivedDate: string;
+        iqcJudgmentCode: string | null;
+      } | null;
+      workOrder: {
+        workOrderNo: string;
+      };
+      /** @description 그 W/O 가 만든 생산 LOT 번호(이 계보 안) */
+      productLots: string[];
+      /** @description 그 W/O 에 투입한 양(정정 반영) */
+      consumedQty: number | null;
+      uomCode: string;
+      /** @enum {string} */
+      basis: 'LOT_GENEALOGY_ESTIMATE' | 'WORK_ORDER_ESTIMATE';
+    };
+    /** @description 역방향 요약 — 겹치지 않게 센다(productLotCount = 생산으로 만들어진 LOT 항목 수) */
+    BackwardSummary: {
+      rawLotCount: number;
+      supplierCount: number;
+      workOrderCount: number;
+      productLotCount: number;
+    };
+    BackwardTree: components['schemas']['TraceGraph'] & {
+      /** @description LOT 번호·W/O 번호 순. 투입 기록이 없으면 빈 배열(화면 「투입 자재 기록이 없습니다」) */
+      endRows: components['schemas']['BackwardEndRow'][];
+      summary: components['schemas']['BackwardSummary'];
+      /** @description 고른 LOT 의 출하(출하 완료분) — 화면 요약. 계보에는 넣지 않는다 */
+      rootShipments: {
+        shipmentNo: string;
+        customer: components['schemas']['TraceTreePartner'];
+        /** Format: date-time */
+        shippedAt: string;
+        qty: number;
+      }[];
+    };
+    /** @description 내보낼 목록 LOT 들(피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355) */
+    TraceExportRequest: {
+      /** Format: int64 */
+      plantId: number;
+      /** @description 지금 목록의 LOT(목록 순서). 기준 LOT 순서가 파일의 순서다 */
+      lotIds: number[];
+      /** @description backward 만 — 시리얼로 들어온 줄의 { lotId: serialNo }. 그 LOT 의 계보 줄 맨 위가 시리얼이다 */
+      serialNos?: {
+        [key: string]: string;
+      };
     };
     /**
      * @description 결재선 정의. 승인 유형과 사업부로 고른다.
