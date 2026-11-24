@@ -31914,6 +31914,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
  */
 .pqc-web-inspected-row {
   grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: var(--space-3);
 }
 
 .pqc-web-inspected-row .iqc-inspection-qty-line {
@@ -31929,6 +31930,10 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   grid-template-columns: repeat(3, 6.5rem);
 }
 
+.pqc-web-inspected-row .iqc-inspection-qty-input {
+  gap: 0;
+}
+
 .pqc-web-inspected-row .iqc-inspection-qty-input input {
   text-align: left;
   font: var(--type-body-lg);
@@ -31936,15 +31941,16 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 
 .pqc-web-inspected-row .iqc-inspection-qty-input [class*="_inputWrap"] {
   min-height: 0;
-  background: none;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
 }
 
 .pqc-web-inspected-row .iqc-inspection-qty-status {
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  min-height: var(--control-height-md);
-  margin: 0 0 0 auto;
+  min-height: 2.5rem;
+  margin: 0;
   white-space: nowrap;
 }
 
