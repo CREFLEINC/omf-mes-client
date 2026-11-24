@@ -319,6 +319,11 @@ const batchKeys = {
 interface ItemLotBasis {
   storage: ItemStorageUnit | null;
   lotDefault: ItemLotDefault | null;
+  /**
+   * 보관 단위가 기본 단위와 같다(T050) — `storage` 는 패키징 처음 값이라 이때 `null` 이지만(같은 단위를 패키징으로
+   * 채우지 않음), 화면에 「없음」이 아니라 그 단위를 보이려면 따로 알아야 한다.
+   */
+  storageIsBase: boolean;
 }
 
 /**
@@ -381,7 +386,11 @@ const useItemLotBasis = <T>(itemId: number | null, select: (basis: ItemLotBasis 
       const baseUomId = data.item.baseUomId;
 
       if (storageUomId === null || storageUomId === baseUomId) {
-        return { storage: null, lotDefault: itemLotDefaultOf(data.item, null) };
+        return {
+          storage: null,
+          lotDefault: itemLotDefaultOf(data.item, null),
+          storageIsBase: storageUomId !== null,
+        };
       }
 
       let qtyPerPackage: number | null = null;
@@ -416,6 +425,7 @@ const useItemLotBasis = <T>(itemId: number | null, select: (basis: ItemLotBasis 
       return {
         storage: { uomId: storageUomId, qtyPerPackage },
         lotDefault: itemLotDefaultOf(data.item, qtyPerPackage),
+        storageIsBase: false,
       };
     },
   });
@@ -427,6 +437,12 @@ const selectLotDefault = (basis: ItemLotBasis | null): ItemLotDefault | null =>
   basis?.lotDefault ?? null;
 
 export const useItemStorageUnit = (itemId: number | null) => useItemLotBasis(itemId, selectStorage);
+
+const selectStorageIsBase = (basis: ItemLotBasis | null): boolean => basis?.storageIsBase ?? false;
+
+/** 품목 기본 보관 단위가 기본 단위와 같은가(T050 — W-01-14 상세가 「없음」 대신 그 단위를 보인다). */
+export const useItemStorageIsBase = (itemId: number | null) =>
+  useItemLotBasis(itemId, selectStorageIsBase);
 
 /** 품목 LOT 기본값(피처 014 FR-019) — 수동 [만들기] 창의 첫째 처음 값. */
 export const useItemLotDefault = (itemId: number | null) =>

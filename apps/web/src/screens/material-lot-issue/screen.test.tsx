@@ -16,13 +16,14 @@ import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/a
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { storageText } from './defaults-text';
 import { MaterialLotIssueScreen } from './screen';
+import { formatAt } from './types';
 
 const t = messages.materialLotIssue;
 
 /*
  * 시험 받침 — 공장 · 공급사 · 품목 · LOT 은 모두 지어낸 값이다.
  * 합성 공급사 가(8201) · 합성 캡(601, EA, 기본 정보 봉지 10 × 100 = 1,000) — 대기 3개(하나 미출력), 폐기 1개.
- * 합성 공급사 나(8202) · 합성 레진(602, TON, 기본 정보 없음 · 보관 단위 없음) — 대기 없음.
+ * 합성 공급사 나(8202) · 합성 레진(602, TON, 기본 정보 없음 · 보관 단위 = 기본 단위 TON) — 대기 없음.
  */
 const PLANT = {
   plantId: 8401,
@@ -67,7 +68,7 @@ const PAIRS: MaterialLotPair[] = [
     lotDefaults: { lotQty: 1000, packageUomId: 3, packageUomCode: 'BAG', packageCount: 10 },
     printedCount: 0,
     inspectionRequired: false,
-    lastIssuedAt: null,
+    lastIssuedAt: '2026-11-23T01:00:00Z',
   },
   {
     supplier: { supplierId: 8202, code: 'SYN-S2', name: '합성 공급사 나' },
@@ -326,7 +327,8 @@ const setup = (
           item: {
             itemId,
             baseUomId: itemId === 601 ? 1 : 2,
-            defaultLotStorageUomId: itemId === 601 ? 3 : null,
+            /* 레진은 보관 단위가 기본 단위와 같다(T050). */
+            defaultLotStorageUomId: itemId === 601 ? 3 : 2,
           },
         });
       },
@@ -444,10 +446,16 @@ describe('W-01-14 자재 관리 LOT 발행 — 목록(피처 014 · 서버 쪽)'
     expect(cells[4]).toBe(tp.defaultPackaged('1,000 EA', 'BAG 10'));
     expect(cells[5]).toBe('1');
     expect(cells[6]).toBe('37');
+    /* T051 최근 발행 — 조합 목록 lastIssuedAt, 없으면 「—」. */
+    expect(cells[7]).toBe(formatAt('2026-11-23T01:00:00Z'));
+    expect(
+      screen.getByRole('columnheader', { name: t.list.columns.lastIssued }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: tp.columns.creatable })).toBeInTheDocument();
 
     const resin = within(await rowOf('SYN-RES'));
     expect(resin.getByText(tp.noDefault)).toBeInTheDocument();
+    expect(resin.getAllByRole('cell').at(-1)?.textContent).toBe('—');
 
     expect(Object.fromEntries(pairQueries[0] ?? [])).toMatchObject({ plantId: '8401', page: '1' });
     expect(document.body.textContent).not.toMatch(/[MPW]-0\d-\d\d/u);
@@ -545,6 +553,15 @@ describe('W-01-14 상세 — 탭 넷(피처 014 Q17)', () => {
 
     expect(await pane.findByText(tp.notes.NO_DEFAULT)).toBeInTheDocument();
     expect(pane.getByRole('button', { name: t.detail.issue })).toBeEnabled();
+  });
+
+  it('가정-W0114 T050 품목 기본 보관 단위가 기본 단위와 같으면 「없음」이 아니라 그 단위(TON)를 적는다', async () => {
+    const { user } = setup();
+    const pane = await openDetail(user, 'SYN-RES');
+
+    const term = await pane.findByText(t.detail.storageUom);
+    await waitFor(() => expect(term.nextElementSibling).toHaveTextContent('TON'));
+    expect(term.nextElementSibling).not.toHaveTextContent(t.detail.storageNone);
   });
 
   it('US1-5 SC-005 입하 예정 계획이 없으면 빈 표 대신 표 자리에 알림', async () => {

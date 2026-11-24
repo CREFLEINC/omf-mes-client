@@ -15,7 +15,15 @@ import { PairDefaultsText } from './defaults-text';
 import { DetailPane } from './detail-pane';
 import { IssueDialog } from './issue-dialog';
 import { usePlants } from './queries';
-import { groupKey, groupOf, pairKey, parseGroupKey, type Group, type Pair } from './types';
+import {
+  formatAt,
+  groupKey,
+  groupOf,
+  pairKey,
+  parseGroupKey,
+  type Group,
+  type Pair,
+} from './types';
 
 const t = messages.materialLotIssue;
 const tl = t.list;
@@ -115,7 +123,7 @@ export const MaterialLotIssueScreen = () => {
     </div>
   );
 
-  /* 입고 관리 표와 같은 열 짜임 — 공급사 칸이 고르는 단추다. 최근 발행 칸은 서버 조합 목록에 없어 뺐다. */
+  /* 입고 관리 표와 같은 열 짜임 — 공급사 칸이 고르는 단추다. 최근 발행은 조합 목록 `lastIssuedAt`(T051 · 계약 §1). */
   const columns: Column<Pair>[] = [
     {
       key: 'supplier',
@@ -174,6 +182,12 @@ export const MaterialLotIssueScreen = () => {
         ) : (
           <span className="field-note">0</span>
         ),
+    },
+    {
+      key: 'lastIssued',
+      header: tl.columns.lastIssued,
+      width: '104px',
+      render: (pair) => formatAt(pair.lastIssuedAt) ?? '—',
     },
   ];
 

@@ -14,7 +14,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
-import { useItemStorageUnit, type UomOption } from '../../patterns/material-lot-batch';
+import {
+  useItemStorageIsBase,
+  useItemStorageUnit,
+  type UomOption,
+} from '../../patterns/material-lot-batch';
 import {
   TAB_ORDER,
   creatableRemainingOf,
@@ -75,6 +79,7 @@ export const DetailPane = ({
   const [confirming, setConfirming] = useState(false);
   const [revising, setRevising] = useState<Lot | null>(null);
   const storage = useItemStorageUnit(group.itemId);
+  const storageIsBase = useItemStorageIsBase(group.itemId);
   const lots = useMaterialLots(
     { plantId, supplierId: group.supplierId, itemId: group.itemId },
     tab,
@@ -315,7 +320,9 @@ export const DetailPane = ({
           </div>
           <div>
             <dt>{td.storageUom}</dt>
-            <dd>{storageLabel ?? td.storageNone}</dd>
+            <dd>
+              {storageLabel ?? (storageIsBase.data === true ? group.uomCode : td.storageNone)}
+            </dd>
           </div>
           <div>
             <dt>{td.defaults}</dt>
