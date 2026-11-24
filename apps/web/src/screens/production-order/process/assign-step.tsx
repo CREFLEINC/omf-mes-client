@@ -24,7 +24,10 @@ export interface AssignStepProps {
   lineNameOf?: (lineId: number | null) => string;
   uomLabelOf?: (uomId: number) => string;
   selectedId: number | null;
-  onSelect: (workOrderId: number) => void;
+  /** 고른 W/O를 다시 눌러 풀었다 — 읽기 전용에서도 첫 W/O로 되돌리지 않는다. */
+  cleared?: boolean;
+  /** `null` 은 고른 W/O를 다시 눌러 푼 것. */
+  onSelect: (workOrderId: number | null) => void;
   onDirtyChange: (dirty: boolean) => void;
 }
 
@@ -49,15 +52,17 @@ export const AssignStep = ({
   lineNameOf,
   uomLabelOf,
   selectedId,
+  cleared = false,
   onSelect,
   onDirtyChange,
 }: AssignStepProps) => {
   const [dirty, setDirty] = useState(false);
-  const [pending, setPending] = useState<number | null>(null);
+  /* 옮길 W/O. `'none'` 은 고른 W/O를 푸는 것 — 저장하지 않은 변경이 있으면 같은 확인을 거친다. */
+  const [pending, setPending] = useState<number | 'none' | null>(null);
   if (workOrders === undefined || blockedIds === undefined) return <SkeletonText lines={4} />;
   const selected =
     workOrders.find((item) => item.workOrderId === selectedId) ??
-    (readOnly ? workOrders[0] : undefined);
+    (readOnly && !cleared ? workOrders[0] : undefined);
   const columns: Column<OrderWorkOrder>[] = [
     {
       key: 'operation',
@@ -118,9 +123,9 @@ export const AssignStep = ({
             activeId={selected ? String(selected.workOrderId) : null}
             rowLabel={(row) => `${row.workOrderNo} ${row.operationName}`}
             onActivate={(row) => {
-              if (row.workOrderId === selectedId) return;
-              if (dirty) setPending(row.workOrderId);
-              else onSelect(row.workOrderId);
+              const next = row.workOrderId === selected?.workOrderId ? 'none' : row.workOrderId;
+              if (dirty) setPending(next);
+              else onSelect(next === 'none' ? null : next);
             }}
             empty={<EmptyState size="sm" title={t.empty} />}
           />
@@ -173,7 +178,7 @@ export const AssignStep = ({
                   const next = pending;
                   setPending(null);
                   changeDirty(false);
-                  onSelect(next);
+                  onSelect(next === 'none' ? null : next);
                 }}
               >
                 {t.discard.confirm}

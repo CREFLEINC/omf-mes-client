@@ -26,7 +26,16 @@ import {
 import { MasterDetails } from './master-details';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { AlertBanner, Button, type Column, Dialog, Icon, SkeletonText, Tabs } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  type Column,
+  Dialog,
+  EmptyState,
+  Icon,
+  SkeletonText,
+  Tabs,
+} from '@crefle/web-ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { ActionBar } from '../../../patterns/action-bar';
@@ -89,12 +98,15 @@ const ErpWorkOrderList = ({
   disabled,
   showReadiness = false,
   onSelect,
+  onUnpick,
 }: {
   entries: Controller[];
   selected: string;
   disabled: boolean;
   showReadiness?: boolean;
   onSelect: (value: string) => void;
+  /** 고른 ERP W/O를 다시 누르면 부른다. 없으면 다시 눌러도 그대로다. */
+  onUnpick?: () => void;
 }) => {
   const side = useAdjustableOrientation() === 'side';
   const collapse = useAdjustableCollapse();
@@ -187,6 +199,12 @@ const ErpWorkOrderList = ({
           onPick: (entry) => {
             if (!disabled) onSelect(entry.order.productionOrderNo);
           },
+          onUnpick:
+            onUnpick === undefined
+              ? undefined
+              : () => {
+                  if (!disabled) onUnpick();
+                },
         }}
       />
     </aside>
@@ -423,6 +441,8 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
   );
   const [stage, setStage] = useState('master');
   const [masterFocus, setMasterFocus] = useState(orderNumbers[0] ?? '');
+  /* BOM·Routing 점검에서 고른 ERP W/O를 다시 눌러 풀었다 — 첫 ERP W/O를 저절로 다시 고르지 않는다. */
+  const [masterCleared, setMasterCleared] = useState(false);
   const [planView, setPlanView] = useState('week');
   const [distributionDirty, setDistributionDirty] = useState(false);
   const [focus, setFocus] = useState(orderNumbers[0] ?? '');
@@ -687,18 +707,29 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               <ErpWorkOrderList
                 entries={entries}
                 selected={
-                  controllers[masterFocus]
-                    ? masterFocus
-                    : (entries[0]?.order.productionOrderNo ?? '')
+                  masterCleared
+                    ? ''
+                    : controllers[masterFocus]
+                      ? masterFocus
+                      : (entries[0]?.order.productionOrderNo ?? '')
                 }
                 disabled={busy}
                 showReadiness
                 onSelect={(value) => {
+                  setMasterCleared(false);
                   setMasterFocus(value);
                   setFocus(value);
                 }}
+                onUnpick={() => setMasterCleared(true)}
               />
               {(() => {
+                if (masterCleared)
+                  return (
+                    <EmptyState
+                      size="sm"
+                      title={messages.erpWorkOrderFlow.process.master.selectPrompt}
+                    />
+                  );
                 const entry = controllers[masterFocus] ?? entries[0];
                 return entry ? (
                   <div
@@ -1050,6 +1081,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                   const select = () => {
                     setExecutionDirty(false);
                     setFocus(value);
+                    setMasterCleared(false);
                     setMasterFocus(value);
                   };
                   if (executionDirty) setPendingAction(() => select);

@@ -129,6 +129,21 @@ describe('제안 검토 화면', () => {
     await user.click(within(list).getAllByRole('row').at(-1)!);
     expect(screen.getByRole('region', { name: '4M 배정 입력' })).toHaveTextContent('2026-11-20');
   });
+  it('4M 배정에서 고른 작업지시를 다시 누르면 풀리고 첫 작업지시를 다시 고르지 않는다', async () => {
+    const user = userEvent.setup();
+    renderReview({ manualLayout: true });
+    await user.click(screen.getByRole('tab', { name: '4M 배정' }));
+    const list = screen.getByRole('region', { name: '작업지시 목록' });
+    const editor = screen.getByRole('region', { name: '4M 배정 입력' });
+    const first = within(list).getAllByRole('row')[1]!;
+    expect(first).toHaveAttribute('aria-selected', 'true');
+    await user.click(first);
+    expect(first).not.toHaveAttribute('aria-selected', 'true');
+    expect(within(editor).getByText('왼쪽 목록에서 W/O를 고르세요')).toBeVisible();
+    await user.click(first);
+    expect(first).toHaveAttribute('aria-selected', 'true');
+    expect(within(editor).queryByText('왼쪽 목록에서 W/O를 고르세요')).toBeNull();
+  });
   it('상태 열은 ERP W/O 바로 다음이며 상세는 세 탭으로 확인한다', async () => {
     const user = userEvent.setup();
     renderReview();

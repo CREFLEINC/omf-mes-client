@@ -100,6 +100,21 @@ describe('설비 배정 중복', () => {
     expect(url.searchParams.get('plannedEquipmentId')).toBe('1');
     expect(url.searchParams.has('plannedStartFrom')).toBe(false);
   });
+  it('고른 배정을 다시 누르면 상세가 풀리고 겹치는 배정을 저절로 다시 고르지 않는다', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <EquipmentOccupancy equipmentId={1} selfId={1} start={start} end={end} label="사출기" />,
+      { fetch: fetchFor() },
+    );
+    expect(await screen.findByText('커버 ASSY')).toBeInTheDocument();
+    const target = screen.getByRole('row', { name: 'ERP-2 WO-2 배정 상세' });
+    expect(target).toHaveAttribute('aria-selected', 'true');
+    await user.click(target);
+    expect(target).not.toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByText('커버 ASSY')).toBeNull();
+    await user.click(target);
+    expect(await screen.findByText('커버 ASSY')).toBeInTheDocument();
+  });
   it('실패를 빈 설비로 표시하지 않는다', async () => {
     const fetch = vi.fn(async () => jsonResponse({ message: 'failed' }, { status: 500 }));
     renderWithProviders(
@@ -146,6 +161,11 @@ describe('설비 배정 중복', () => {
     );
     await user.click(await screen.findByRole('row', { name: 'EQ-1 사출 1호기 배정 내역 확인' }));
     expect(await screen.findByText('PP-1')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^선택$/ })).toBeDisabled();
+    await user.click(screen.getByRole('row', { name: 'EQ-2 사출 2호기 배정 내역 확인' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /^선택$/ })).toBeEnabled());
+    /* 고른 설비를 다시 누르면 풀려 [선택]이 꺼지고, 다시 고르면 켜진다. */
+    await user.click(screen.getByRole('row', { name: 'EQ-2 사출 2호기 배정 내역 확인' }));
     expect(screen.getByRole('button', { name: /^선택$/ })).toBeDisabled();
     await user.click(screen.getByRole('row', { name: 'EQ-2 사출 2호기 배정 내역 확인' }));
     await waitFor(() => expect(screen.getByRole('button', { name: /^선택$/ })).toBeEnabled());

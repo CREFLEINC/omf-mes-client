@@ -62,6 +62,9 @@ type Tab = 'pairs' | 'reprint';
 /** 라벨을 낼 수 없는 LOT 품질 상태 — 서버 `qualifyDocumentIssueTarget`(MATERIAL_LOT_LABEL)이 검사 대기·정상만 받는다. */
 const LABEL_LOCKED_LOT_STATUS: readonly string[] = ['DEFECTIVE', 'SCRAPPED'];
 
+/** 고른 공급사·품목을 다시 눌러 풀었다는 표시 — 공급사 id·「공급사:품목」 키와 겹치지 않는다. */
+const UNPICKED = 'none';
+
 /** 발행 결과를 그리는 동안 붙잡아 둔 표 — 찍은 LOT 이 목록에서 바뀌어도 「확인」 전까지 결과와 함께 남는다. */
 interface ResultSnapshot {
   lots: LabelLot[];
@@ -130,8 +133,9 @@ export const PopMaterialLotLabelScreen = () => {
   const [folded, setFolded] = useState(false);
   const [query, setQuery] = useState('');
   const [scanNote, setScanNote] = useState<string | null>(null);
+  /* `UNPICKED` 는 고른 줄을 다시 눌러 푼 것 — 첫 공급사·품목을 저절로 다시 고르지 않는다. */
   const [pairKey, setPairKey] = useState<string | null>(null);
-  const [supplierId, setSupplierId] = useState<number | null>(null);
+  const [supplierId, setSupplierId] = useState<number | typeof UNPICKED | null>(null);
   const [checked, setChecked] = useState<ReadonlySet<number>>(new Set());
   const [reasonCode, setReasonCode] = useState<string | null>(null);
   const [unit, setUnit] = useState<IssueUnit>(storedIssueUnit);
@@ -188,7 +192,9 @@ export const PopMaterialLotLabelScreen = () => {
   /* 첫째 목록은 공급사, 둘째 목록은 고른 공급사의 품목(사용자 지시 2026-11-23). */
   const suppliers = useMemo(() => supplierRowsOf(groups), [groups]);
   const currentSupplier =
-    suppliers.find((supplier) => supplier.supplierId === supplierId) ?? suppliers[0] ?? null;
+    supplierId === UNPICKED
+      ? null
+      : (suppliers.find((supplier) => supplier.supplierId === supplierId) ?? suppliers[0] ?? null);
   const supplierGroups = useMemo(
     () =>
       currentSupplier === null
@@ -197,9 +203,11 @@ export const PopMaterialLotLabelScreen = () => {
     [groups, currentSupplier],
   );
   const current =
-    supplierGroups.find((group) => pairKeyOf(group.supplierId, group.itemId) === pairKey) ??
-    supplierGroups[0] ??
-    null;
+    pairKey === UNPICKED
+      ? null
+      : (supplierGroups.find((group) => pairKeyOf(group.supplierId, group.itemId) === pairKey) ??
+        supplierGroups[0] ??
+        null);
   const currentKey = current === null ? null : pairKeyOf(current.supplierId, current.itemId);
   /*
    * 표 정렬 [최신순 | 오래된순](사용자 지시 2026-11-19) — 발행 대기는 등록일시, 재발행은 최근 출력일시. 처음은 둘 다
@@ -303,9 +311,9 @@ export const PopMaterialLotLabelScreen = () => {
     itemPage.setPage(1);
   };
 
+  /* 고른 공급사·품목을 다시 누르면 푼다(목록 공통). */
   const chooseSupplier = (next: number): void => {
-    if (next === currentSupplier?.supplierId) return;
-    setSupplierId(next);
+    setSupplierId(next === currentSupplier?.supplierId ? UNPICKED : next);
     setPairKey(null);
     clearSelection();
     itemPage.setPage(1);
@@ -313,8 +321,7 @@ export const PopMaterialLotLabelScreen = () => {
   };
 
   const choosePair = (key: string): void => {
-    if (key === currentKey) return;
-    setPairKey(key);
+    setPairKey(key === currentKey ? UNPICKED : key);
     clearSelection();
     waitPage.setPage(1);
   };

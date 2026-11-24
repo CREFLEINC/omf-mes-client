@@ -94,6 +94,40 @@ describe('생산계획 보기와 선택 편집', () => {
     expect(screen.getByText('단위 KG')).toBeVisible();
   });
 
+  it('고른 계획을 다시 누르면 편집이 풀리고 첫 계획을 다시 고르지 않는다 — 보던 주는 그대로', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <PlanStep
+        rows={initialRows()}
+        orderQty={300}
+        confirmedQty={0}
+        uomLabel="EA"
+        plantId={null}
+        lines={[{ id: 31, code: 'LN-31', name: '라인 A' }]}
+        statusNameOf={(value) => value}
+        disabled={false}
+        failures={[]}
+        onAdd={() => {}}
+        onChange={() => {}}
+        onRemove={() => {}}
+      />,
+    );
+    const editor = screen.getByRole('region', { name: t.workspace.editor });
+    const inputName = t.fieldLabel(t.newRow(1), t.columns.plannedQty);
+    expect(within(editor).getByRole('textbox', { name: inputName })).toBeVisible();
+    expect(screen.getByText('2026-11-02 — 2026-11-08')).toBeVisible();
+
+    const card = screen.getByRole('button', { name: t.workspace.selectPlan(t.newRow(1)) });
+    await user.click(card);
+    expect(within(editor).getByText(t.workspace.selectPrompt)).toBeVisible();
+    expect(within(editor).queryByRole('textbox', { name: inputName })).toBeNull();
+    /* 푼 뒤에도 보던 주에 머문다. */
+    expect(screen.getByText('2026-11-02 — 2026-11-08')).toBeVisible();
+
+    await user.click(card);
+    expect(within(editor).getByRole('textbox', { name: inputName })).toBeVisible();
+  });
+
   it('확정된 계획을 선택해도 편집이나 삭제를 허용하지 않는다', () => {
     const rows = initialRows().map((row) => ({
       ...row,

@@ -1,6 +1,7 @@
 import { planningDaysResponse } from '../../../test/planning-day-fixture';
 import { ToastProvider } from '@crefle/web-ui';
 import { createApiClient } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -389,6 +390,24 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     expect(within(detail).getByRole('region', { name: 'BOM 상세 정보' })).toBeVisible();
     expect(within(detail).getByRole('region', { name: 'Routing 상세 정보' })).toBeVisible();
     expect(screen.queryByRole('dialog', { name: '미저장 변경사항' })).toBeNull();
+  });
+  it('BOM·Routing 점검에서 고른 ERP W/O를 다시 누르면 풀리고 첫 ERP W/O를 다시 고르지 않는다', async () => {
+    mount();
+    const list = await screen.findByRole('complementary', { name: 'ERP W/O 목록' });
+    await waitFor(() =>
+      expect(within(within(list).getByRole('table')).getAllByRole('button')).toHaveLength(2),
+    );
+    const buttons = within(within(list).getByRole('table')).getAllByRole('button');
+    expect(buttons[0]).toHaveAttribute('aria-current', 'true');
+    const user = userEvent.setup();
+    await user.click(buttons[0]!);
+    expect(buttons[0]).not.toHaveAttribute('aria-current', 'true');
+    expect(screen.queryByRole('region', { name: '선택 ERP W/O 상세' })).toBeNull();
+    expect(screen.getByText(messages.erpWorkOrderFlow.process.master.selectPrompt)).toBeVisible();
+
+    await user.click(buttons[0]!);
+    expect(buttons[0]).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByRole('region', { name: '선택 ERP W/O 상세' })).toBeVisible();
   });
   it('ERP W/O 목록을 접으면 「목록 N건」 탭이 서고, 펼쳐도 고른 ERP W/O가 그대로다(#350)', async () => {
     try {

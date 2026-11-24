@@ -353,6 +353,7 @@ export const erpWorkOrderFlow = {
       bom: 'BOM',
       routing: 'Routing',
       placeholder: '개정을 고르세요',
+      selectPrompt: 'ERP W/O를 선택하세요.',
       revision: (code: string, version: number, status: string): string =>
         `${code} Rev ${String(version)} (${status})`,
       effective: (from: string, to: string): string => `유효기간 ${from} ~ ${to}`,
@@ -528,6 +529,7 @@ export const erpWorkOrderFlow = {
     release: {
       lotsPending: '생성 예정 LOT 수: 품목 기본 LOT 크기 설정 후 확인',
       selectedTarget: '선택 작업지시 정보',
+      selectPrompt: '작업지시를 선택하세요.',
       orderNo: 'ERP W/O',
       item: '품목',
       planDate: '계획일',

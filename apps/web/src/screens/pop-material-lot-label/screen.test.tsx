@@ -88,6 +88,27 @@ describe('PopMaterialLotLabelScreen — 공급사·품목(왼쪽)', () => {
     expect(screen.queryByText(/입하 줄/u)).toBeNull();
   });
 
+  it('고른 공급사·품목을 다시 누르면 풀리고 첫 줄을 저절로 다시 고르지 않는다', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen();
+
+    await screen.findByRole('group', { name: t.pairs.itemsLabel });
+    /* 품목을 다시 누르면 오른쪽 표가 비고 고르라는 안내가 선다 — 품목 목록은 그대로. */
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-01', pressed: true }));
+    expect(screen.getByText(t.work.pickPair)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'SYN-ITEM-01', pressed: false })).toBeInTheDocument();
+
+    /* 공급사를 다시 누르면 품목 목록도 비운다. */
+    await user.click(screen.getByRole('button', { name: /합성 공급사 가/u, pressed: true }));
+    expect(screen.queryByRole('group', { name: t.pairs.itemsLabel })).toBeNull();
+    expect(screen.getByText(t.work.pickPair)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { pressed: true })).toBeNull();
+
+    /* 다시 고르면 그 공급사의 첫 품목이 골라진다. */
+    await user.click(screen.getByRole('button', { name: /합성 공급사 가/u }));
+    expect(screen.getByRole('button', { name: 'SYN-ITEM-01', pressed: true })).toBeInTheDocument();
+  });
+
   it('목록은 그 공장 하나로 부른다 — 단말의 공장', async () => {
     const { sent } = renderLabelScreen();
 

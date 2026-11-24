@@ -727,6 +727,62 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     ).toBeVisible();
   });
 
+  it('4M 배정에서 고른 W/O를 다시 누르면 풀리고 첫 W/O를 저절로 다시 고르지 않는다', async () => {
+    const user = userEvent.setup();
+    renderAt(
+      `${WORKLIST}/${ORDER_NO}`,
+      world({
+        autoPlan: { status: 'DONE', reasons: [] },
+        plans: [{ ...CONFIRMED_PLAN }],
+        workOrders: [
+          { workOrderId: 9001, productionLineId: 31, located: false },
+          { workOrderId: 9002, productionLineId: 31, located: false },
+        ],
+      }),
+    );
+    await currentStep(tp.steps.assign);
+    await screen.findByRole('region', { name: tp.assign.editorLabel('SYN-WO-9001') });
+    await user.click(screen.getByRole('row', { name: /^SYN-WO-9001 / }));
+    /* 편집기가 라인 기본 위치를 채워 둔 상태라 다른 줄로 옮길 때와 같은 확인을 거친다. */
+    const confirm = await screen.findByRole('dialog', { name: tp.assign.discard.title });
+    await user.click(within(confirm).getByRole('button', { name: tp.assign.discard.confirm }));
+
+    const editor = await screen.findByRole('region', { name: tp.assign.editorHeading });
+    expect(within(editor).getByText(tp.assign.selectPrompt)).toBeVisible();
+    expect(screen.getByRole('row', { name: /^SYN-WO-9001 / })).not.toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await user.click(screen.getByRole('row', { name: /^SYN-WO-9002 / }));
+    expect(
+      await screen.findByRole('region', { name: tp.assign.editorLabel('SYN-WO-9002') }),
+    ).toBeVisible();
+  });
+
+  it('배포 확인에서 고른 작업지시를 다시 누르면 풀리고, [다음 작업지시]는 첫 작업지시를 연다', async () => {
+    const user = userEvent.setup();
+    renderAt(
+      `${WORKLIST}/${ORDER_NO}`,
+      world({
+        autoPlan: { status: 'DONE', reasons: [] },
+        plans: [{ ...CONFIRMED_PLAN }],
+        workOrders: [
+          { workOrderId: 9001, productionLineId: 31, located: true },
+          { workOrderId: 9002, productionLineId: 31, located: true },
+        ],
+      }),
+    );
+    await currentStep(tp.steps.release);
+    await user.click(screen.getByRole('row', { name: 'SYN-WO-9001 배포 상세' }));
+    const detail = screen.getByRole('region', { name: '선택 작업지시 배포 상세' });
+    expect(within(detail).getByText(tp.release.selectPrompt)).toBeVisible();
+    expect(detail).not.toHaveTextContent('SYN-WO-9001');
+    expect(screen.getByRole('group', { name: '배포 작업지시 이동' })).toHaveTextContent('0 / 2');
+    expect(screen.getByRole('button', { name: '이전 작업지시' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: '다음 작업지시' }));
+    expect(detail).toHaveTextContent('SYN-WO-9001');
+  });
+
   it('4M을 저장하면 머리의 상태 칩과 사유 칩을 서버 판정으로 다시 읽는다', async () => {
     const user = userEvent.setup();
     const state = world({
