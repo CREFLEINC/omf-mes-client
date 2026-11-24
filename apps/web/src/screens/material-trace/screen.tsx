@@ -84,14 +84,14 @@ const Summary = ({ tree, names, partial, entry, stageOf }: TraceDetailContext) =
       partial={partial}
       facts={facts}
       counts={[
-        { key: 'wo', label: t.summary.workOrders, value: summary.workOrderCount },
-        { key: 'end', label: t.summary.endLots, value: summary.endLotCount },
+        { key: 'wo', label: t.summary.workOrders, value: t.summary.count(summary.workOrderCount) },
+        { key: 'end', label: t.summary.endLots, value: t.summary.count(summary.endLotCount) },
         {
           key: 'ship',
           label: t.summary.shipments,
           value: t.summary.shipmentsValue(summary.shippedLotCount, summary.customerCount),
         },
-        { key: 'stock', label: t.summary.stockLots, value: summary.stockLotCount },
+        { key: 'stock', label: t.summary.stockLots, value: t.summary.count(summary.stockLotCount) },
       ]}
     />
   );

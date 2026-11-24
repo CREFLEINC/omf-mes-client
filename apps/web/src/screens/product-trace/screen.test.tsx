@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { messages } from '@omf-mes/i18n';
+import { messages, setLocale } from '@omf-mes/i18n';
 import { useLocation } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
@@ -155,5 +155,19 @@ describe('W-02-14 제품 기준 역추적', () => {
     expect(body.lotIds).toEqual([P3.lot.lotId]);
     expect(body.serialNos).toEqual({ [String(P3.lot.lotId)]: 'SN-1' });
     expect(calls.exports[0]?.url).toContain('/trace/backward-exports');
+  });
+
+  it('US4-1 앱이 베트남어면 내보내기 파일 언어도 vi 로 보낸다', async () => {
+    setLocale('vi');
+    try {
+      const { calls, user } = setup();
+      await waitFor(() => expect(listRows()).toHaveLength(2));
+      await user.click(screen.getByRole('button', { name: t.export }));
+      await waitFor(() => expect(calls.exports).toHaveLength(1));
+      const body = (await calls.exports[0]?.clone().json()) as { language: string };
+      expect(body.language).toBe('vi');
+    } finally {
+      setLocale('ko');
+    }
   });
 });

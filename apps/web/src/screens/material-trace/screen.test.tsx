@@ -6,6 +6,8 @@ import { describe, expect, it } from 'vitest';
 
 import { SessionProvider } from '../../patterns/session';
 import {
+  PLANT,
+  PLANT2,
   A,
   B,
   C,
@@ -29,7 +31,11 @@ const Location = () => {
 };
 const search = () => new URLSearchParams(screen.getByTestId('location').textContent?.split('?')[1]);
 
-const setup = (route = '/production/material-trace', options: Partial<TraceStubOptions> = {}) => {
+const setup = (
+  route = '/production/material-trace',
+  options: Partial<TraceStubOptions> = {},
+  permissions = ['W-02-13', 'W-02-14'],
+) => {
   const calls = newCalls();
   const lotNos: Record<number, string> = { 201: A.lot.lotNo, 202: B.lot.lotNo, 203: C.lot.lotNo };
   renderWithProviders(
@@ -39,7 +45,7 @@ const setup = (route = '/production/material-trace', options: Partial<TraceStubO
     </SessionProvider>,
     {
       route,
-      session: { ...SYNTHETIC_SESSION, permissions: ['W-02-13', 'W-02-14'] },
+      session: { ...SYNTHETIC_SESSION, scopes: [], permissions },
       fetch: createStubFetch(
         traceStubRoutes(
           {
@@ -261,7 +267,7 @@ describe('W-02-13 자재 기준 생산 추적', () => {
     );
     await waitFor(() => expect(listRows()).toHaveLength(100));
     expect(screen.getByText(t.list.ofTotal(100, 150))).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: t.list.more(50) }));
+    await user.click(screen.getByRole('button', { name: t.list.more(50, 50) }));
     await waitFor(() => expect(listRows()).toHaveLength(150));
     expect(calls.lists.at(-1)?.searchParams.get('page')).toBe('2');
     expect(search().has('lot')).toBe(false);
@@ -272,8 +278,56 @@ describe('W-02-13 자재 기준 생산 추적', () => {
     await waitFor(() => expect(listRows()).toHaveLength(3));
     await user.click(screen.getByRole('button', { name: t.export }));
     await waitFor(() => expect(calls.exports).toHaveLength(1));
-    const body = (await calls.exports[0]?.clone().json()) as { lotIds: number[]; plantId: number };
+    const body = (await calls.exports[0]?.clone().json()) as {
+      lotIds: number[];
+      plantId: number;
+      language: string;
+    };
     expect(body.lotIds).toEqual([A.lot.lotId, B.lot.lotId, C.lot.lotId]);
     expect(body.plantId).toBe(8401);
+    /* 파일 언어는 화면 언어 */
+    expect(body.language).toBe('ko');
+  });
+
+  it('US3-7 · Q8 [최근 목록으로]는 최근 100 밖의 고른 LOT 을 다시 목록에 넣지 않고 선택을 푼다', async () => {
+    const outside = { ...A, lot: { ...A.lot, lotId: 999, lotNo: 'OUT-0001' } };
+    const { user } = setup('/production/material-trace?lot=999', {
+      lotNos: { 999: 'OUT-0001' },
+      starts: { 'OUT-0001': startsOf('MATERIAL_LOT_NO', 'OUT-0001', [outside]) },
+    });
+    await waitFor(() => expect(listRows()).toHaveLength(1));
+    await user.click(screen.getByRole('button', { name: t.backToRecent }));
+    await waitFor(() => expect(search().has('lot')).toBe(false));
+    await waitFor(() => expect(listRows()).toHaveLength(3));
+    expect(screen.getByText(t.list.recentTitle)).toBeInTheDocument();
+    expect(within(detail()).getByText(t.detail.pickTitle)).toBeInTheDocument();
+    expect(screen.queryByText(t.list.scanTitle)).toBeNull();
+  });
+
+  it('Q21 · SC-005 여러 공장 계정이 공장 없이 ?lot= 으로 들어오면 그 LOT 의 공장으로 연다', async () => {
+    const { calls } = setup(`/production/material-trace?lot=${String(B.lot.lotId)}`, {
+      plants: [PLANT, PLANT2],
+      lotPlants: { [B.lot.lotId]: PLANT2.plantId },
+    });
+    await waitFor(() => expect(search().get('plant')).toBe(String(PLANT2.plantId)));
+    await waitFor(() => expect(calls.trees.length).toBeGreaterThan(0));
+    expect(
+      calls.trees.every((url) => url.searchParams.get('plantId') === String(PLANT2.plantId)),
+    ).toBe(true);
+    expect(within(listTable()).getByText(B.lot.lotNo)).toBeInTheDocument();
+  });
+
+  it('권한 없이 열면 다시 시도 대신 권한 안내', async () => {
+    setup('/production/material-trace', { forbidden: true });
+    expect(await screen.findByText(t.material.forbidden)).toBeInTheDocument();
+    expect(screen.queryByText(t.list.loadFailed)).toBeNull();
+  });
+
+  it('Q13 제품 기준 권한이 없으면 [제품 기준 역추적에서 열기]를 두지 않는다', async () => {
+    const { user } = setup('/production/material-trace', {}, ['W-02-13']);
+    await waitFor(() => expect(listRows()).toHaveLength(3));
+    await user.type(scanBox(), `${P3.lot.lotNo}{Enter}`);
+    expect(await screen.findByText(t.material.otherTitle)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.material.otherOpen })).toBeNull();
   });
 });

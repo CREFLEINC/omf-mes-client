@@ -11,6 +11,13 @@ import type {
  * 추적 두 화면 시험의 가상 계보(quickstart 「준비」를 줄인 것) — 합성값만 쓴다(공개 저장소).
  * 자재 A(공급사 S, 입하 IL-1) → W/O 1 → P1(반제품) → W/O 2 → P3 → SH-1(고객 X), W/O 1 → P2(재고).
  */
+export const PLANT2 = {
+  plantId: 8402,
+  plantCode: 'PL-SYN2',
+  plantName: '합성 공장 2',
+  isActive: true,
+  businessUnitId: 8301,
+};
 export const PLANT = {
   plantId: 8401,
   plantCode: 'PL-SYN',
@@ -426,6 +433,12 @@ export interface TraceStubOptions {
   lotNos?: Record<number, string>;
   condition?: (page: number) => TraceLotRow[];
   conditionTotal?: number;
+  /** 계정 범위 공장(기본: 하나). */
+  plants?: (typeof PLANT)[];
+  /** lotId → 공장(주소로 들어올 때). 없으면 첫 공장. */
+  lotPlants?: Record<number, number>;
+  /** 목록 · 계보 API 를 403 으로. */
+  forbidden?: boolean;
 }
 
 const path = (request: Request) => new URL(request.url).pathname;
@@ -433,7 +446,10 @@ const path = (request: Request) => new URL(request.url).pathname;
 export const traceStubRoutes = (options: TraceStubOptions, calls: TraceCalls): StubRoute[] => [
   {
     match: (request) => path(request) === '/mdm/plants',
-    respond: () => jsonResponse({ items: [PLANT], page: { page: 1, size: 100, total: 1 } }),
+    respond: () => {
+      const items = options.plants ?? [PLANT];
+      return jsonResponse({ items, page: { page: 1, size: 100, total: items.length } });
+    },
   },
   {
     match: (request) => path(request) === '/mdm/code-values',
@@ -463,6 +479,12 @@ export const traceStubRoutes = (options: TraceStubOptions, calls: TraceCalls): S
     respond: (request) => {
       const url = new URL(request.url);
       calls.lists.push(url);
+      if (options.forbidden === true) {
+        return jsonResponse(
+          { errors: [{ code: 'FORBIDDEN', message: '권한 없음' }] },
+          { status: 403 },
+        );
+      }
       if (url.searchParams.has('partnerId')) {
         const page = Number(url.searchParams.get('page') ?? '1');
         return jsonResponse({
@@ -504,7 +526,15 @@ export const traceStubRoutes = (options: TraceStubOptions, calls: TraceCalls): S
       const lotNo = options.lotNos?.[lotId];
       return lotNo === undefined
         ? jsonResponse({ message: '없음' }, { status: 404 })
-        : jsonResponse({ lot: { lotId, lotNo }, externalIdentifiers: [], holds: [] });
+        : jsonResponse({
+            lot: {
+              lotId,
+              lotNo,
+              plantId: options.lotPlants?.[lotId] ?? (options.plants ?? [PLANT])[0]?.plantId,
+            },
+            externalIdentifiers: [],
+            holds: [],
+          });
     },
   },
   {
