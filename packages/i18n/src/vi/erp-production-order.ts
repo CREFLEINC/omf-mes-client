@@ -27,7 +27,8 @@ export const erpProductionOrder: Translated<typeof ko.erpProductionOrder> = {
   },
   filters: {
     all: 'Tất cả',
-    itemSelect: 'Chọn mặt hàng',
+    itemSelect: 'Tìm mặt hàng',
+    plannedStartDatePlaceholder: 'Chọn ngày bắt đầu kế hoạch',
     statusSelect: 'Chọn trạng thái',
     itemPlaceholder: 'Tìm và chọn mặt hàng',
     itemClear: 'Xóa mặt hàng',
@@ -39,6 +40,7 @@ export const erpProductionOrder: Translated<typeof ko.erpProductionOrder> = {
     all: 'Tất cả',
     open: 'Chưa xong',
     done: 'Đã xong',
+    withCount: (label: string, count: number): string => `${label} ${String(count)}`,
     status: {
       NOT_STARTED: 'Chưa sản xuất',
       PARTIAL: 'Đang sản xuất',

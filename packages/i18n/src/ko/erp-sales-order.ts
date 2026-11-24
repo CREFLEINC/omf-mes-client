@@ -15,9 +15,12 @@ export const erpSalesOrder = {
     progress: '진행 상태',
     lineNo: '순번',
     item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     orderedQty: '수주 수량',
     shippedQty: '출하 수량',
-    remainingQty: '잔량',
+    /** 수주 수량 − 출하 수량(사용자 지시 2026-11-24 — 「잔량」을 뜻이 분명한 이름으로). */
+    remainingQty: '미출하 수량',
     uom: '단위',
     requestedDeliveryDate: '납기 요청일',
     unassignedOnly: '미편성만',
@@ -26,7 +29,7 @@ export const erpSalesOrder = {
     movementType: '이동 유형',
     salesGroup: '영업 그룹',
     storageLocation: '창고',
-    cancelled: '취소',
+    cancelled: '취소 여부',
   },
   panes: {
     filters: '수주정보 조회 조건',
@@ -37,7 +40,9 @@ export const erpSalesOrder = {
   filters: {
     all: '전체',
     /* 조회 상자 선택칸 이름(#358). 목록 열 · 칩은 `fields` 이름 그대로. */
-    customerSelect: '고객사 선택',
+    customerSelect: '고객사 검색',
+    /** 수주일 칸의 흐린 안내(사용자 지시 2026-11-24). */
+    orderDatePlaceholder: '수주일을 선택하세요',
     statusSelect: '상태 선택',
     /** 「조건 더보기」에 접힌 조건의 칩 — 「상태: 반려」처럼 칸 이름과 값을 한 줄로. */
     chip: (label: string, value: string): string => `${label}: ${value}`,
@@ -51,6 +56,7 @@ export const erpSalesOrder = {
     all: '전체',
     open: '미완료',
     done: '완료',
+    withCount: (label: string, count: number): string => `${label} ${String(count)}건`,
     status: {
       NOT_STARTED: '출하 전',
       PARTIAL: '일부 출하',

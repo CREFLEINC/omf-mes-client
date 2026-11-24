@@ -1877,7 +1877,7 @@ on('GET', '/mdm/code-groups', (_p, query) => {
  */
 for (const [group, values] of Object.entries({
   SALES_ORDER_STATUS: [
-    ['OPEN', '진행 중'],
+    ['OPEN', '진행'],
     ['CLOSED', '완료'],
     ['CANCELLED', '취소'],
   ],
@@ -1887,7 +1887,7 @@ for (const [group, values] of Object.entries({
     ['COMPLETED', '완료'],
   ],
   LOGISTICS_DOCUMENT_STATUS: [
-    ['OPEN', '진행 중'],
+    ['OPEN', '진행'],
     ['CLOSED', '완료'],
     ['CANCELLED', '취소'],
   ],
@@ -1940,6 +1940,15 @@ const ERP_SALES_ORDERS = [
     erpSalesGroupCode: 'S21',
   }),
 );
+/* 진행(미완료 · 완료) — 서버 #851 그대로: 취소가 아니고 출하가 덜 된 라인이 있으면 미완료(화면 확인용 · 2026-11-24). */
+const soProgressMatches = (row, progress) => {
+  const done =
+    row.statusCode === 'CANCELLED' ||
+    (row.lines ?? []).every(
+      (each) => each.cancelledAt !== null || each.shippedQty >= each.orderedQty,
+    );
+  return progress === 'OPEN' ? !done : progress === 'COMPLETED' ? done : true;
+};
 on('GET', '/logistics/sales-orders', (_p, query) => {
   const needle = (query.get('q') ?? '').trim().toUpperCase();
   const customer = Number(query.get('customerId') ?? 0);
@@ -1947,6 +1956,7 @@ on('GET', '/logistics/sales-orders', (_p, query) => {
   return page(
     ERP_SALES_ORDERS.filter(
       (row) =>
+        soProgressMatches(row, query.get('progress')) &&
         (needle === '' || row.salesOrderNo.toUpperCase().includes(needle)) &&
         (customer === 0 || row.customerId === customer) &&
         (status === '' || row.statusCode === status) &&
@@ -2025,6 +2035,13 @@ const ERP_PRODUCTION_ORDERS = [
   statusCode,
   remarks: null,
 }));
+/* 진행(미완료 · 완료) — 목 자료의 W/O 상태 COMPLETED 를 완료로 본다(화면 확인용 · 2026-11-24). */
+const woProgressMatches = (row, progress) =>
+  progress === 'OPEN'
+    ? row.statusCode !== 'COMPLETED'
+    : progress === 'COMPLETED'
+      ? row.statusCode === 'COMPLETED'
+      : true;
 on('GET', '/planning/production-orders', (_p, query) => {
   const needle = (query.get('q') ?? '').trim().toUpperCase();
   const item = Number(query.get('itemId') ?? 0);
@@ -2032,6 +2049,7 @@ on('GET', '/planning/production-orders', (_p, query) => {
   return page(
     ERP_PRODUCTION_ORDERS.filter(
       (row) =>
+        woProgressMatches(row, query.get('progress')) &&
         (needle === '' || row.productionOrderNo.toUpperCase().includes(needle)) &&
         (item === 0 || row.itemId === item) &&
         (status === '' || row.statusCode === status) &&

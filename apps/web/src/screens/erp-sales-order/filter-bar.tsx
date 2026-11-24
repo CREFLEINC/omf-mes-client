@@ -38,8 +38,8 @@ export interface ErpSalesOrderFilterBarProps {
  *
  * 상태 선택지는 공통코드 `SALES_ORDER_STATUS` 에서 온다(서버 #737 · 장부 P-68). 화면에 값을 박지 않는다.
  *
- * **보이는 칸은 셋이다**(C-6) — 수주일 · 고객사 · 수주번호. 칸 폭은 C-19 고정 폭이라 값을 넣어도 그대로다 — 기간 · 고객사는
- * 보통, 수주번호는 좁음이다(보통 셋에 조회 · 초기화 · 조건 더보기를 더하면 1280 에서 한 줄을 넘는다).
+ * **보이는 칸은 셋이다**(C-6) — 수주일 · 고객사 · 수주번호. 수주일은 흐린 문구 길이만큼, 선택칸(고객사 · 상태)은 같은
+ * 폭, 수주번호는 좁음이다(구매발주 탭과 같다 · 사용자 지시 2026-11-24).
  * 상태 · 미편성만은 「조건 더보기」에 접고, 접힌 칸에 걸린 조건은 칩으로만 알린다. 「초기화」는 바뀐 것이 있을
  * 때만 보인다. [조회][초기화][조건 더보기]는 줄 오른쪽 끝(#358).
  */
@@ -101,8 +101,31 @@ export const ErpSalesOrderFilterBar = ({
   return (
     <>
       <div className="filter-bar erp-data-filter-row">
-        {/* 선택 · 검색 · 기간 순서 — 품목 · 거래처 · BOM 탭과 같은 차례(사용자 지시 2026-11-24). */}
-        <div className="field-cell filter-field-md">
+        {/* 수주일 · 고객사 검색 · 수주 번호 검색 순서(구매발주 탭과 같다 · 사용자 지시 2026-11-24). */}
+        {/*
+         * 기간은 **한 컨트롤**이다(C-12 — 브라우저 날짜 칸을 쓰지 않는다). 컴포넌트가 완결된 쌍만, 그것도
+         * 시작 ≤ 종료로만 내보내 이 칸을 거친 역전은 생기지 않는다. 주소 키(`from`·`to`)와 요청 파라미터는 그대로다.
+         */}
+        <div className="field-cell erp-so-period-field">
+          <label className="field-label" htmlFor={periodId}>
+            {t.fields.orderDate}
+          </label>
+          <DatePicker
+            id={periodId}
+            mode="range"
+            clearable
+            value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
+            placeholder={t.filters.orderDatePlaceholder}
+            onChange={(value) =>
+              setDraft((current) => ({
+                ...current,
+                from: value === null ? '' : value[0],
+                to: value === null ? '' : value[1],
+              }))
+            }
+          />
+        </div>
+        <div className="field-cell erp-so-select-field">
           <label className="field-label" htmlFor={customerId}>
             {t.filters.customerSelect}
           </label>
@@ -125,29 +148,6 @@ export const ErpSalesOrderFilterBar = ({
           clearLabel={messages.common.clear}
           containerClassName={`filter-field-sm erp-order-search ${FIT_PLACEHOLDER_CLASS}`}
         />
-        {/*
-         * 기간은 **한 컨트롤**이다(C-12 — 브라우저 날짜 칸을 쓰지 않는다). 컴포넌트가 완결된 쌍만, 그것도
-         * 시작 ≤ 종료로만 내보내 이 칸을 거친 역전은 생기지 않는다. 주소 키(`from`·`to`)와 요청 파라미터는 그대로다.
-         */}
-        <div className="field-cell filter-field-md">
-          <label className="field-label" htmlFor={periodId}>
-            {t.fields.orderDate}
-          </label>
-          <DatePicker
-            id={periodId}
-            mode="range"
-            clearable
-            value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
-            placeholder={messages.common.selectDate}
-            onChange={(value) =>
-              setDraft((current) => ({
-                ...current,
-                from: value === null ? '' : value[0],
-                to: value === null ? '' : value[1],
-              }))
-            }
-          />
-        </div>
         {/* 조회 · 초기화 · 조건 더보기는 줄 오른쪽 끝(단말 관리와 같다 · #358). 초기화는 바뀐 것이 있을 때만. */}
         <div className="filter-actions field-cell-unlabeled">
           <Button onClick={search}>{messages.common.search}</Button>
@@ -161,9 +161,9 @@ export const ErpSalesOrderFilterBar = ({
       </div>
 
       {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
-      <div id={more.id} hidden={!more.isOpen}>
+      <div id={more.id} className="erp-so-more" hidden={!more.isOpen}>
         <div className="filter-bar">
-          <div className="field-cell filter-field-sm">
+          <div className="field-cell erp-so-select-field">
             <label className="field-label" htmlFor={statusId}>
               {t.filters.statusSelect}
             </label>

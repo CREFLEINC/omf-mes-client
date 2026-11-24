@@ -50,6 +50,15 @@ export const ErpSalesOrderScreen = () => {
   const selectedId = readSelectedId(searchParams);
 
   const list = useSalesOrderList(toListQuery(filters, page, size));
+  /* 진행 라벨의 건수 — 같은 조건에 진행만 바꿔 총 건수만 읽는다(한 줄만 받는다 · 사용자 지시 2026-11-24). */
+  const openCount = useSalesOrderList({
+    ...toListQuery({ ...filters, progress: 'open' }, 1),
+    size: 1,
+  });
+  const doneCount = useSalesOrderList({
+    ...toListQuery({ ...filters, progress: 'done' }, 1),
+    size: 1,
+  });
   const detail = useSalesOrderDetail(selectedId);
   const partners = usePartnerLookup();
   const uoms = useUomLookup(selectedId !== null);
@@ -88,9 +97,10 @@ export const ErpSalesOrderScreen = () => {
                 {t.loadFailedDescription}
               </AlertBanner>
             )}
-            {/* 진행 「전체 · 미완료 · 완료」는 탭 줄 위 라벨(사용자 지시 2026-11-24). */}
+            {/* 진행 「미완료 N건 · 완료 N건」은 탭 줄 위 라벨(사용자 지시 2026-11-24). */}
             <ProgressHubChips
               value={filters.progress}
+              counts={{ open: openCount.data?.page.total, done: doneCount.data?.page.total }}
               onChange={(progress) =>
                 setSearchParams(toSearchParams({ ...filters, progress }, 1, size))
               }
@@ -116,6 +126,8 @@ export const ErpSalesOrderScreen = () => {
             selectedId={selectedId}
             partnerNameOf={partners.nameOf}
             statusNameOf={status.nameOf}
+            orderTypeNameOf={orderTypes.nameOf}
+            salesGroupNameOf={salesGroups.nameOf}
             onSelect={(id) => setSearchParams(toSelectionSearchParams(searchParams, id))}
             onUnselect={() => setSearchParams(toClearedSelectionSearchParams(searchParams))}
             onChangePage={(nextPage) => setSearchParams(toSearchParams(filters, nextPage, size))}

@@ -19,6 +19,10 @@ export interface ErpSalesOrderListPaneProps {
   partnerNameOf: (id: number) => string;
   /** 수주 상태(공통코드 `SALES_ORDER_STATUS` · 서버 장부 P-68) */
   statusNameOf: (code: string) => string;
+  /** ERP 수주 유형(공통코드 `SO_TYPE`) — 서버 #737 · P-67 */
+  orderTypeNameOf: (code: string | null | undefined) => string;
+  /** ERP 영업그룹(공통코드 `SALE_GROUP`) — 서버 #737 · P-67 */
+  salesGroupNameOf: (code: string | null | undefined) => string;
   onSelect: (salesOrderId: number) => void;
   /** 고른 줄을 다시 누르면 고르기를 푼다. */
   onUnselect: () => void;
@@ -27,8 +31,8 @@ export interface ErpSalesOrderListPaneProps {
 }
 
 /**
- * 수주 목록 — 목록 상자 내용. 줄 어디를 눌러도 그 건을 고른다. 식별 칸만 두고(#358) 수주 유형 · 영업그룹은 오른쪽
- * 상세에서 본다. 행 고르기 말고는 조작이 없다 — 읽기 전용 화면이다.
+ * 수주 목록 — 목록 상자 내용. 줄 어디를 눌러도 그 건을 고른다. 수주 유형 · 영업 그룹도 목록에서 본다(되살림 · 사용자
+ * 지시 2026-11-24). 행 고르기 말고는 조작이 없다 — 읽기 전용 화면이다.
  */
 export const ErpSalesOrderListPane = ({
   rows,
@@ -37,6 +41,8 @@ export const ErpSalesOrderListPane = ({
   selectedId,
   partnerNameOf,
   statusNameOf,
+  orderTypeNameOf,
+  salesGroupNameOf,
   onSelect,
   onUnselect,
   onChangePage,
@@ -49,6 +55,19 @@ export const ErpSalesOrderListPane = ({
       header: t.fields.customer,
       width: '168px',
       render: (row) => <OneLine text={partnerNameOf(row.customerId)} />,
+    },
+    /* 수주 유형 · 영업 그룹 — 목록에서도 본다(되살림 · 사용자 지시 2026-11-24). */
+    {
+      key: 'erpOrderTypeCode',
+      header: t.fields.orderType,
+      width: '96px',
+      render: (row) => <OneLine text={orderTypeNameOf(row.erpOrderTypeCode)} />,
+    },
+    {
+      key: 'erpSalesGroupCode',
+      header: t.fields.salesGroup,
+      width: '96px',
+      render: (row) => <OneLine text={salesGroupNameOf(row.erpSalesGroupCode)} />,
     },
     { key: 'orderDate', header: t.fields.orderDate, width: '104px' },
     {
@@ -83,6 +102,8 @@ export const ErpSalesOrderListPane = ({
       <ErpListTable
         label={t.panes.list}
         storageKey="omf-mes:erp-sales-order:columns:orders"
+        /* 열 일곱 — 줄여 잘리지 않게 가로로 구른다(사용자 지시 2026-11-24 열 되살림). */
+        scrollX
         columns={columns}
         rows={rows}
         getRowId={(row) => String(row.salesOrderId)}

@@ -27,11 +27,11 @@ interface FilterSelectProps {
   onChange: (value: string) => void;
 }
 
-/** 접힌 칸의 코드 선택 — 고정 코드라 좁은 폭(C-19). */
+/** 접힌 칸의 코드 선택 — 선택칸은 모두 같은 폭(구매발주 탭과 같다 · 사용자 지시 2026-11-24). */
 const FilterSelect = ({ label, options, value, onChange }: FilterSelectProps) => {
   const id = useId();
   return (
-    <div className="field-cell filter-field-sm">
+    <div className="field-cell erp-wo-select-field">
       <label className="field-label" htmlFor={id}>
         {label}
       </label>
@@ -58,7 +58,7 @@ interface ItemFieldProps {
 const ItemField = ({ value, onChange }: ItemFieldProps) => {
   const id = useId();
   return (
-    <div className="field-cell filter-field-md">
+    <div className="field-cell erp-wo-select-field">
       <label className="field-label" htmlFor={id}>
         {t.filters.itemSelect}
       </label>
@@ -85,8 +85,8 @@ export interface ErpProductionOrderFilterBarProps {
  * 칸 하나를 바꿀 때마다 조회가 나가면 기간을 다 고르기도 전에 엉뚱한 결과가 뜬다.
  * 진행은 탭 줄 위 라벨(`ProgressHubChips`)이 누르는 즉시 건다 — 걸린 조건에 진행만 바꿔 얹는다(#358).
  *
- * **보이는 칸은 셋이다**(C-6) — 계획 시작일 · 품목 · ERP W/O 번호. 칸 폭은 C-19 고정 폭이라 값을 넣어도 그대로다 —
- * 기간 · 품목은 보통, 번호는 좁음이다(보통 셋에 조회 · 초기화 · 조건 더보기를 더하면 1280 에서 한 줄을 넘는다).
+ * **보이는 칸은 셋이다**(C-6) — 계획 시작일 · 품목 · ERP W/O 번호. 계획 시작일은 흐린 문구 길이만큼, 선택칸(품목 · 상태)은
+ * 같은 폭, 번호는 좁음이다(구매발주 탭과 같다 · 사용자 지시 2026-11-24).
  * 상태는 「조건 더보기」에 접고, 걸려 있으면 칩으로만 알린다. 「초기화」는 바뀐 것이 있을 때만 보인다.
  * [조회][초기화][조건 더보기]는 줄 오른쪽 끝(#358).
  */
@@ -144,7 +144,30 @@ export const ErpProductionOrderFilterBar = ({
   return (
     <>
       <div className="filter-bar erp-data-filter-row">
-        {/* 선택 · 검색 · 기간 순서 — 품목 · 거래처 · BOM 탭과 같은 차례(사용자 지시 2026-11-24). */}
+        {/* 계획 시작일 · 품목 검색 · ERP W/O 번호 검색 순서(구매발주 탭과 같다 · 사용자 지시 2026-11-24). */}
+        {/*
+         * 기간은 **한 컨트롤**이다(C-12 — 브라우저 날짜 칸을 쓰지 않는다). 컴포넌트가 완결된 쌍만, 그것도
+         * 시작 ≤ 종료로만 내보내 이 칸을 거친 역전은 생기지 않는다. 주소 키(`from`·`to`)와 요청 파라미터는 그대로다.
+         */}
+        <div className="field-cell erp-wo-period-field">
+          <label className="field-label" htmlFor={periodId}>
+            {t.fields.plannedStartDate}
+          </label>
+          <DatePicker
+            id={periodId}
+            mode="range"
+            clearable
+            value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
+            placeholder={t.filters.plannedStartDatePlaceholder}
+            onChange={(value) =>
+              setDraft((current) => ({
+                ...current,
+                from: value === null ? '' : value[0],
+                to: value === null ? '' : value[1],
+              }))
+            }
+          />
+        </div>
         <ItemField value={draft.item} onChange={(value) => update('item', value)} />
         <SearchInput
           label={t.fields.q}
@@ -156,29 +179,6 @@ export const ErpProductionOrderFilterBar = ({
           clearLabel={messages.common.clear}
           containerClassName={`filter-field-sm erp-order-search ${FIT_PLACEHOLDER_CLASS}`}
         />
-        {/*
-         * 기간은 **한 컨트롤**이다(C-12 — 브라우저 날짜 칸을 쓰지 않는다). 컴포넌트가 완결된 쌍만, 그것도
-         * 시작 ≤ 종료로만 내보내 이 칸을 거친 역전은 생기지 않는다. 주소 키(`from`·`to`)와 요청 파라미터는 그대로다.
-         */}
-        <div className="field-cell filter-field-md">
-          <label className="field-label" htmlFor={periodId}>
-            {t.fields.plannedStartDate}
-          </label>
-          <DatePicker
-            id={periodId}
-            mode="range"
-            clearable
-            value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
-            placeholder={messages.common.selectDate}
-            onChange={(value) =>
-              setDraft((current) => ({
-                ...current,
-                from: value === null ? '' : value[0],
-                to: value === null ? '' : value[1],
-              }))
-            }
-          />
-        </div>
         <div className="filter-actions field-cell-unlabeled">
           <Button onClick={search}>{messages.common.search}</Button>
           {isChanged && (
@@ -191,7 +191,7 @@ export const ErpProductionOrderFilterBar = ({
       </div>
 
       {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
-      <div id={more.id} hidden={!more.isOpen}>
+      <div id={more.id} className="erp-wo-more" hidden={!more.isOpen}>
         <div className="filter-bar">
           <FilterSelect
             label={t.filters.statusSelect}
