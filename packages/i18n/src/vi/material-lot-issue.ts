@@ -175,7 +175,7 @@ export const materialLotIssue: Translated<typeof ko.materialLotIssue> = {
     empty: {
       UNPRINTED: 'Không có LOT quản lý vật tư chưa in.',
       PRINTED: 'Không có LOT đã in mà chưa nhập.',
-      RECEIVED: 'Không có LOT đã nhập.',
+      RECEIVED: 'Không có LOT đã nhập chưa chốt nhập hàng.',
       VOIDED: 'Không có LOT đã hủy.',
     },
     notCreatedYet: (count: number) => `gồm ${count} chưa tạo`,

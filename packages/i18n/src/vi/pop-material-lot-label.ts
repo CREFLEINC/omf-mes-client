@@ -286,14 +286,14 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     tabNotes: {
       PRINTED:
         'LOT đã in nhưng chưa nhận nhập trên PDA. Chọn lý do để in lại hoặc hủy. Không sửa được số lượng và đóng gói.',
-      RECEIVED: 'LOT đã nhận nhập trên PDA. Chọn lý do để in lại; không hủy ở đây.',
+      RECEIVED: 'LOT đã nhận nhập trên PDA và chưa chốt nhập hàng. Sau khi chốt nhập hàng, LOT không còn ở tab này (quét số LOT để tìm và in lại). Chọn lý do để in lại; không hủy ở đây.',
       VOIDED:
         'LOT đã hủy không in được và số LOT không dùng lại. Hủy LOT tạo tự động thì phần P/O đó sẽ được tạo lại với số mới ở lần tra cứu sau.',
     },
     empty: {
       UNPRINTED: 'Không có LOT quản lý vật tư chưa in.',
       PRINTED: 'Không có LOT đã in mà chưa nhập.',
-      RECEIVED: 'Không có LOT đã nhập.',
+      RECEIVED: 'Không có LOT đã nhập chưa chốt nhập hàng.',
       VOIDED: 'Không có LOT đã hủy.',
     },
     notCreatedYet: (count: number) => `gồm ${count} chưa tạo`,

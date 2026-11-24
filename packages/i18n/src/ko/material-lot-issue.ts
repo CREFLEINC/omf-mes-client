@@ -189,7 +189,7 @@ export const materialLotIssue = {
     empty: {
       UNPRINTED: '미출력 자재 관리 LOT 이 없습니다.',
       PRINTED: '출력했지만 입하 전인 LOT 이 없습니다.',
-      RECEIVED: '입하된 LOT 이 없습니다.',
+      RECEIVED: '입하 마감 전인 입하된 LOT 이 없습니다.',
       VOIDED: '폐기한 LOT 이 없습니다.',
     },
     notCreatedYet: (count: number) => `아직 만들지 않은 ${count}건 포함`,
