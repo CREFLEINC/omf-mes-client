@@ -14,6 +14,8 @@ import { useFitCount, useFitTableRows } from './pager';
 
 let boxHeight = 300;
 let boxWidth = 500;
+/** 그려진 줄 수 → 칸 높이(없으면 `boxHeight`). 칸 높이가 줄 수 · 데이터에 따라 오르내리는 경우를 흉내 낸다. */
+let boxHeightFor: ((rendered: number) => number) | null = null;
 /** 그려진 줄 수 → 줄마다 높이. */
 let rowHeightFor: (rendered: number) => number = () => 40;
 
@@ -47,10 +49,16 @@ const resize = (target: Element): void => {
   }
 };
 
+/** 창 크기(진동 막기의 기준). */
+const setViewport = (width: number, height: number): void => {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: height });
+};
+
 const isBox = (element: HTMLElement): boolean => element.dataset.box === 'true';
 
 const renderedRows = (element: HTMLElement): number => {
-  const box = element.closest('[data-box="true"]');
+  const box = isBox(element) ? element : element.closest('[data-box="true"]');
   if (box === null) return 0;
 
   return box.querySelectorAll('tbody > tr, :scope > li').length;
@@ -60,12 +68,16 @@ beforeEach(() => {
   boxHeight = 300;
   boxWidth = 500;
   rowHeightFor = () => 40;
+  boxHeightFor = null;
   observers.length = 0;
+  setViewport(1920, 1080);
   vi.stubGlobal('ResizeObserver', FakeResizeObserver);
   vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(function (
     this: HTMLElement,
   ) {
-    return isBox(this) ? boxHeight : 0;
+    if (!isBox(this)) return 0;
+
+    return boxHeightFor === null ? boxHeight : boxHeightFor(renderedRows(this));
   });
   vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (
     this: HTMLElement,
@@ -165,11 +177,23 @@ describe('FR-010 세 칸 쪽 줄 수 — 줄 높이가 줄 수에 따라 바뀌�
     rowHeightFor = () => 40;
     boxHeight = 600;
     boxWidth = 900;
+    setViewport(1100, 768);
     act(() => {
       resize(screen.getByText('칸').closest('[data-box="true"]') as Element);
     });
 
     expect(sizeNow()).toBe(14);
+  });
+
+  it('P-01-01 스캔 · 인쇄 직후 — 칸 높이가 줄 수에 따라 오르내려도(420 ↔ 384) 작은 쪽에 멈춘다', () => {
+    /* 실측(1920×1080): 8줄 칸이면 받는 동안 쪽 넘김이 숨어 420, 7줄로 다시 받으면 쪽 넘김이 서서 384. 줄 높이 44. */
+    rowHeightFor = () => 44;
+    boxHeightFor = (rendered) => (rendered >= 8 ? 384 : 420);
+
+    render(<TableProbe />);
+
+    /* (384 − 36 − 2) / 44 = 7 · (420 − 36 − 2) / 44 = 8 — 8 ↔ 7 로 돌던 것이 7 에 멈춘다. */
+    expect(sizeNow()).toBe(7);
   });
 
   it('처음 줄어드는 것은 천장을 만들지 않는다 — 줄이 다시 낮아지면 지금처럼 늘어난다', () => {
@@ -203,6 +227,7 @@ describe('FR-010 세 칸 쪽 줄 수 — 줄 높이가 줄 수에 따라 바뀌�
     rerender(<TableProbe />);
 
     boxHeight = 600;
+    setViewport(1100, 768);
     act(() => {
       resize(screen.getByText('칸').closest('[data-box="true"]') as Element);
     });

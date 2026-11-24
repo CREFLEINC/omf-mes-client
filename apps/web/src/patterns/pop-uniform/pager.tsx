@@ -70,10 +70,12 @@ export const PuPager = ({
  *
  * - 그릴 때마다 잰다(데이터가 바뀌어 줄이 높아지면 다음 그리기에서 줄인다 — 지금 동작 그대로).
  * - ⭐ **진동 막기**: 줄 높이가 «그려진 줄 수»에 따라 바뀌면(두 줄 셀 · 칩이 든 줄이 보이느냐에 따라) 줄 수 → 보이는 줄 →
- *   가장 높은 줄 → 줄 수가 번갈아 바뀌어 끝없이 돈다(Maximum update depth). 같은 칸 크기에서 «전에 거쳤던 값»으로 다시
- *   줄어들면(= 돌기 시작) 그 값을 그 크기의 «천장»으로 삼아 다시 늘지 않는다 — 작은 쪽에 멈춘다. 처음 줄어드는 것
- *   (데이터가 바뀌어 줄이 높아짐)은 천장을 만들지 않으므로 줄이 다시 낮아지면 지금처럼 늘어난다. 칸 크기(높이 · 폭)가
- *   바뀌면 천장 · 거친 값을 풀고 새로 잰다.
+ *   가장 높은 줄 → 줄 수가 번갈아 바뀌어 끝없이 돈다(Maximum update depth). 칸 높이도 줄 수 · 데이터에 따라 바뀔 수 있다
+ *   (쪽 크기가 바뀌면 다시 받는 동안 쪽 넘김 줄이 숨었다 서며 표 칸이 36px 오르내림 — P-01-01 스캔 · 인쇄 직후 실측
+ *   420 ↔ 384). 그래서 «칸 크기»가 아니라 «창 크기»(`innerWidth` · `innerHeight`)를 기준으로, 같은 창 크기에서
+ *   «전에 거쳤던 값»으로 다시 줄어들면(= 돌기 시작) 그 값을 «천장»으로 삼아 다시 늘지 않는다 — 작은 쪽에 멈춘다.
+ *   처음 줄어드는 것(데이터가 바뀌어 줄이 높아짐)은 천장을 만들지 않으므로 줄이 다시 낮아지면 지금처럼 늘어난다.
+ *   창 크기가 바뀌면(1100 ↔ 1920) 천장 · 거친 값을 풀고 새로 잰다.
  * - ⭐ **칸이 갈려도 지켜본다**: 빈 상태 · 로딩으로 칸 요소가 내려갔다 다시 서면 `ref` 가 새 요소를 가리킨다. 크기 관찰을
  *   새 요소로 옮겨 붙인다(전에는 처음 요소에 붙은 채라 창 크기를 바꿔도 다시 재지 않았다).
  */
@@ -83,30 +85,28 @@ const useFitMeasure = (
   fitsOf: (box: HTMLElement) => number | null,
 ): number => {
   const [count, setCount] = useState(fallback);
-  const size = useRef<{
-    height: number;
-    width: number;
+  const guard = useRef<{
+    viewport: string;
     ceiling: number | null;
     seen: Set<number>;
-  }>({ height: -1, width: -1, ceiling: null, seen: new Set() });
+  }>({ viewport: '', ceiling: null, seen: new Set() });
   const fitsRef = useRef(fitsOf);
   fitsRef.current = fitsOf;
 
   const measure = useCallback(() => {
     const box = ref.current;
     if (box === null) return;
-    const height = box.clientHeight;
-    const width = box.clientWidth;
-    if (height <= 0) return;
-    if (height !== size.current.height || width !== size.current.width) {
-      size.current = { height, width, ceiling: null, seen: new Set() };
+    if (box.clientHeight <= 0) return;
+    const viewport = `${String(window.innerWidth)}x${String(window.innerHeight)}`;
+    if (viewport !== guard.current.viewport) {
+      guard.current = { viewport, ceiling: null, seen: new Set() };
     }
     const fits = fitsRef.current(box);
     if (fits === null) return;
     setCount((prev) => {
-      const { ceiling, seen } = size.current;
+      const { ceiling, seen } = guard.current;
       const next = ceiling === null ? fits : Math.min(fits, ceiling);
-      if (next < prev && seen.has(next)) size.current.ceiling = next;
+      if (next < prev && seen.has(next)) guard.current.ceiling = next;
       seen.add(prev);
       seen.add(next);
 
