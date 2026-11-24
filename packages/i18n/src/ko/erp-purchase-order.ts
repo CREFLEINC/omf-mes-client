@@ -67,6 +67,7 @@ export const erpPurchaseOrder = {
     all: '전체',
     open: '미완료',
     done: '완료',
+    withCount: (label: string, count: number): string => `${label} ${String(count)}건`,
     status: {
       NOT_STARTED: '입하 전',
       PARTIAL: '일부 입하',

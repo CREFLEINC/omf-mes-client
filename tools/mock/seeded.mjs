@@ -3323,7 +3323,22 @@ on('GET', '/logistics/purchase-orders', (_p, query) =>
     keep(state.purchaseOrders, [
       byText(query, 'statusCode', 'statusCode'),
       contains(query, 'q', 'purchaseOrderNo'),
-    ]).map((each) => ({ ...each, inboundStageCounts: {} })),
+    ])
+      /* 진행(미완료 · 완료)과 일자 정렬 — 계약 그대로(화면 확인용 · 2026-11-24). */
+      .filter((each) =>
+        query.get('progress') === 'OPEN'
+          ? each.receiptStatusCode !== 'COMPLETED' && each.receiptStatusCode !== 'CANCELLED'
+          : query.get('progress') === 'COMPLETED'
+            ? each.receiptStatusCode === 'COMPLETED' || each.receiptStatusCode === 'CANCELLED'
+            : true,
+      )
+      .sort((a, b) => {
+        const [key = 'orderDate', direction = 'desc'] = String(query.get('sort') ?? 'orderDate,desc').split(',');
+        const x = String(a[key] ?? '');
+        const y = String(b[key] ?? '');
+        return (x < y ? -1 : x > y ? 1 : 0) * (direction === 'asc' ? 1 : -1);
+      })
+      .map((each) => ({ ...each, inboundStageCounts: {} })),
     query,
   ),
 );

@@ -57,6 +57,7 @@ export const erpPurchaseOrder: Translated<typeof ko.erpPurchaseOrder> = {
     all: 'Tất cả',
     open: 'Chưa xong',
     done: 'Đã xong',
+    withCount: (label: string, count: number): string => `${label} ${String(count)}`,
     status: {
       NOT_STARTED: 'Chưa nhận',
       PARTIAL: 'Nhận một phần',

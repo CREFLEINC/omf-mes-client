@@ -18,7 +18,9 @@ import {
   readFilters,
   readPage,
   readSelectedId,
+  readListSort,
   readSize,
+  withListSort,
   toListQuery,
   toSearchParams,
   toClearedSelectionSearchParams,
@@ -56,7 +58,24 @@ export const ErpPurchaseOrderScreen = () => {
   const size = readSize(searchParams);
   const selectedId = readSelectedId(searchParams);
 
-  const list = usePurchaseOrderList(toListQuery(filters, page, size));
+  const sort = readListSort(searchParams);
+  const list = usePurchaseOrderList({
+    ...toListQuery(filters, page, size),
+    ...(sort === null ? {} : { sort }),
+  });
+  /* 진행 라벨의 건수 — 같은 조건에 진행만 바꿔 총 건수만 읽는다(한 줄만 받는다 · 사용자 지시 2026-11-24). */
+  const openCount = usePurchaseOrderList({
+    ...toListQuery({ ...filters, progress: 'open' }, 1),
+    size: 1,
+  });
+  const doneCount = usePurchaseOrderList({
+    ...toListQuery({ ...filters, progress: 'done' }, 1),
+    size: 1,
+  });
+  /* 조건 · 쪽을 다시 적어도 정렬은 이어 간다. */
+  const go = (params: URLSearchParams): void => {
+    setSearchParams(withListSort(params, sort));
+  };
   const detail = usePurchaseOrderDetail(selectedId);
   const suppliers = useSupplierLookup();
   const plants = usePlantLookup();
@@ -105,20 +124,19 @@ export const ErpPurchaseOrderScreen = () => {
                 {t.loadFailedDescription}
               </AlertBanner>
             )}
-            {/* 진행 「전체 · 미완료 · 완료」는 탭 줄 위 라벨(사용자 지시 2026-11-24). */}
+            {/* 진행 「미완료 N건 · 완료 N건」은 탭 줄 위 라벨(사용자 지시 2026-11-24). */}
             <ProgressHubChips
               value={filters.progress}
-              onChange={(progress) =>
-                setSearchParams(toSearchParams({ ...filters, progress }, 1, size))
-              }
+              counts={{ open: openCount.data?.page.total, done: doneCount.data?.page.total }}
+              onChange={(progress) => go(toSearchParams({ ...filters, progress }, 1, size))}
             />
             <ErpPurchaseOrderFilterBar
               appliedFilters={filters}
               plantOptions={plants.options}
               statusOptions={status.options}
               orderTypeOptions={orderTypes.options}
-              onSearch={(next) => setSearchParams(toSearchParams(next, 1, size))}
-              onReset={() => setSearchParams(toSearchParams(DEFAULT_FILTERS, 1, size))}
+              onSearch={(next) => go(toSearchParams(next, 1, size))}
+              onReset={() => go(toSearchParams(DEFAULT_FILTERS, 1, size))}
             />
           </>
         ),
@@ -140,8 +158,15 @@ export const ErpPurchaseOrderScreen = () => {
             statusNameOf={status.nameOf}
             onSelect={(id) => setSearchParams(toSelectionSearchParams(searchParams, id))}
             onUnselect={() => setSearchParams(toClearedSelectionSearchParams(searchParams))}
-            onChangePage={(nextPage) => setSearchParams(toSearchParams(filters, nextPage, size))}
-            onChangeSize={(nextSize) => setSearchParams(toSearchParams(filters, 1, nextSize))}
+            onChangePage={(nextPage) => go(toSearchParams(filters, nextPage, size))}
+            onChangeSize={(nextSize) => go(toSearchParams(filters, 1, nextSize))}
+            sort={sort}
+            onChangeSort={(next) => {
+              const params = toSearchParams(filters, 1, size);
+              const selected = searchParams.get('sel');
+              if (selected !== null) params.set('sel', selected);
+              setSearchParams(withListSort(params, next));
+            }}
           />
         ),
       }}

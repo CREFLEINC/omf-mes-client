@@ -1,4 +1,4 @@
-import { Button, type Column, EmptyState, Icon, Table } from '@crefle/web-ui';
+import { Button, type Column, EmptyState, Icon, type SortState, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -53,6 +53,9 @@ export interface ErpListTableProps<T> {
   };
   empty?: ReactNode;
   className?: string;
+  /** 서버 정렬 상태(제어) — 주면 `sortable` 열 머리가 단추가 되고, 행은 받은 순서 그대로 그린다. */
+  sort?: SortState | null;
+  onSortChange?: (next: SortState | null) => void;
   /** 열이 상자보다 넓으면 줄이지 않고 표 안에서 가로로 구른다 — 열이 많은 표(구매발주)용. 기본은 줄여 맞춘다. */
   scrollX?: boolean;
 }
@@ -76,6 +79,8 @@ export const ErpListTable = <T,>({
   empty,
   className,
   scrollX = false,
+  sort,
+  onSortChange,
 }: ErpListTableProps<T>) => {
   const pickKey = pick === undefined ? undefined : (pick.columnKey ?? columns[0]?.key);
   const picked =
@@ -131,6 +136,7 @@ export const ErpListTable = <T,>({
         rows={rows}
         getRowId={getRowId}
         {...(empty === undefined ? {} : { empty })}
+        {...(onSortChange === undefined ? {} : { sort: sort ?? null, onSortChange })}
       />
     </div>
   );

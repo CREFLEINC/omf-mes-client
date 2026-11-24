@@ -140,9 +140,34 @@ export type PurchaseOrderListQuery = Pick<
   | 'orderDateTo'
   | 'openOnly'
   | 'progress'
+  | 'sort'
   | 'page'
   | 'size'
 >;
+
+/*
+ * 목록 정렬 — 일자 열(발주일 · 입고 예정일)만 오름/내림으로 서버에 맡긴다(사용자 지시 2026-11-24). 주소 `sort` 에
+ * 계약 값 그대로 적고, 없으면 서버 기본(발주일 최신순)이다. 모르는 값은 읽지 않는다.
+ */
+export const SORTABLE_KEYS = ['orderDate', 'expectedReceiptDate'] as const;
+export type SortableKey = (typeof SORTABLE_KEYS)[number];
+export type ListSort = `${SortableKey},${'asc' | 'desc'}`;
+
+export const readListSort = (params: URLSearchParams): ListSort | null => {
+  const raw = params.get('sort') ?? '';
+  const [key, direction] = raw.split(',');
+  return SORTABLE_KEYS.some((sortable) => sortable === key) &&
+    (direction === 'asc' || direction === 'desc')
+    ? (raw as ListSort)
+    : null;
+};
+
+/** 조건 · 쪽을 다시 적은 주소에 지금 정렬을 이어 붙인다 — 조회 · 쪽 넘김이 정렬을 잃지 않게. */
+export const withListSort = (params: URLSearchParams, sort: ListSort | null): URLSearchParams => {
+  if (sort === null) params.delete('sort');
+  else params.set('sort', sort);
+  return params;
+};
 
 export const LIST_PAGE_SIZE = 25;
 

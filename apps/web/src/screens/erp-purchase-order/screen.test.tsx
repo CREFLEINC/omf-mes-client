@@ -146,7 +146,9 @@ const LocationProbe = () => {
 const listUrls = (requests: Request[]): URL[] =>
   requests
     .map((request) => new URL(request.url))
-    .filter((url) => url.pathname === '/logistics/purchase-orders');
+    .filter((url) => url.pathname === '/logistics/purchase-orders')
+    /* 진행 라벨 건수용 요청(한 줄만 받는다)은 목록 요청이 아니다. */
+    .filter((url) => url.searchParams.get('size') !== '1');
 
 describe('ErpPurchaseOrderScreen', () => {
   it('주소의 조건으로 목록을 부르고, 고른 뒤에만 상세·라인을 이름으로 풀어 보인다', async () => {
@@ -172,10 +174,7 @@ describe('ErpPurchaseOrderScreen', () => {
     expect(listUrl?.searchParams.get('openOnly')).toBe('true');
     expect(listUrl?.searchParams.get('progress')).toBe('OPEN');
     /* 진행은 위 줄 라벨로 보인다. */
-    expect(screen.getByRole('button', { name: t.progress.open })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    expect(screen.getByRole('button', { name: /^미완료/ })).toHaveAttribute('aria-pressed', 'true');
     expect(listUrl?.searchParams.get('orderDateFrom')).toBe('2026-10-01');
     /* 고르기 전에는 상세를 부르지 않는다. */
     expect(
@@ -239,11 +238,11 @@ describe('ErpPurchaseOrderScreen', () => {
     const first = listUrls(requests)[0];
     expect(first?.searchParams.has('progress')).toBe(false);
     expect(first?.searchParams.has('openOnly')).toBe(false);
-    /* 진행은 「조건 더보기」 안에 있다. */
-    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+    /* 진행은 위 줄 라벨 「미완료 N건 · 완료 N건」이다 — 「전체」 라벨은 없다(사용자 지시 2026-11-24). */
     const group = screen.getByRole('group', { name: t.progress.group });
-    const button = (name: string) => within(group).getByRole('button', { name });
-    expect(button(t.progress.all)).toHaveAttribute('aria-pressed', 'true');
+    const button = (name: string) =>
+      within(group).getByRole('button', { name: new RegExp(`^${name}`) });
+    expect(within(group).queryByRole('button', { name: t.progress.all })).toBeNull();
     expect(button(t.progress.open)).toHaveAttribute('aria-pressed', 'false');
 
     /* 미완료 — 지금 서버가 아는 `openOnly` 도 함께 싣고, 쪽은 첫 쪽으로 돌린다. */
@@ -265,10 +264,65 @@ describe('ErpPurchaseOrderScreen', () => {
     expect(listUrls(requests).at(-1)?.searchParams.has('openOnly')).toBe(false);
     expect(screen.getByTestId('location')).toHaveTextContent(/^\?supplier=4101&progress=done$/);
 
-    await user.click(button(t.progress.all));
+    /* 고른 라벨을 다시 누르면 전체로 돌아간다. */
+    await user.click(button(t.progress.done));
     await waitFor(() =>
       expect(screen.getByTestId('location')).toHaveTextContent(/^\?supplier=4101$/),
     );
+  });
+
+  /* 사용자 지시 2026-11-24 — 진행 라벨에 같은 조건의 미완료 · 완료 건수를 싣고, 0건 라벨은 감춘다. */
+  it('진행 라벨은 같은 조건의 미완료 · 완료 건수를 보이고 0건 라벨은 감춘다', async () => {
+    const routes: StubRoute[] = [
+      ...references,
+      {
+        match: (request) => exact(request, '/logistics/purchase-orders'),
+        respond: (request) => {
+          const progress = new URL(request.url).searchParams.get('progress');
+          const total = progress === 'OPEN' ? 3 : progress === 'COMPLETED' ? 0 : 3;
+          return jsonResponse({ items: [header], page: { page: 1, size: 25, total } });
+        },
+      },
+    ];
+    const { fetch, requests } = recordingFetch(routes);
+    renderWithProviders(<ErpPurchaseOrderScreen />, { fetch, route: '/?supplier=4101' });
+
+    const group = await screen.findByRole('group', { name: t.progress.group });
+    expect(await within(group).findByRole('button', { name: '미완료 3건' })).toBeInTheDocument();
+    expect(within(group).queryByRole('button', { name: /^완료/ })).toBeNull();
+    /* 건수 요청도 지금 조건(공급사)을 지킨다. */
+    const counts = requests
+      .map((request) => new URL(request.url))
+      .filter((url) => url.searchParams.get('size') === '1');
+    expect(counts.every((url) => url.searchParams.get('supplierId') === '4101')).toBe(true);
+  });
+
+  /* 사용자 지시 2026-11-24 — 일자 열(발주일 · 입고 예정일)은 머리를 눌러 오름/내림 정렬(서버 정렬). */
+  it('일자 열 머리를 누르면 정렬을 주소와 목록 요청에 싣고, 조건을 다시 걸어도 이어 간다', async () => {
+    const { fetch, requests } = recordingFetch(normalRoutes);
+    renderWithProviders(
+      <>
+        <ErpPurchaseOrderScreen />
+        <LocationProbe />
+      </>,
+      { fetch },
+    );
+    const user = userEvent.setup();
+    await screen.findByRole('button', { name: 'SYN-PO-901' });
+    const listPane = screen.getByRole('region', { name: t.panes.list });
+
+    await user.click(within(listPane).getByRole('button', { name: t.fields.expectedReceiptDate }));
+    await waitFor(() =>
+      expect(listUrls(requests).at(-1)?.searchParams.get('sort')).toBe('expectedReceiptDate,asc'),
+    );
+    await user.click(within(listPane).getByRole('button', { name: t.fields.expectedReceiptDate }));
+    await waitFor(() =>
+      expect(listUrls(requests).at(-1)?.searchParams.get('sort')).toBe('expectedReceiptDate,desc'),
+    );
+    expect(screen.getByTestId('location')).toHaveTextContent('sort=expectedReceiptDate%2Cdesc');
+
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+    expect(listUrls(requests).at(-1)?.searchParams.get('sort')).toBe('expectedReceiptDate,desc');
   });
 
   it('공장 · 상태 · 발주 유형은 「조건 더보기」에 접혀 있고, 걸린 것만 이름 칩으로 알리며 ×는 그 조건만 푼다', async () => {
@@ -348,7 +402,7 @@ describe('ErpPurchaseOrderScreen', () => {
     expect(last?.searchParams.get('orderDateTo')).toBe('2026-10-15');
   });
 
-  it('진행은 위 줄 라벨로 고르고, 「전체」를 누르면 진행 조건을 풀어 다시 조회한다', async () => {
+  it('진행은 위 줄 라벨로 고르고, 고른 라벨을 다시 누르면 진행 조건을 풀어 다시 조회한다', async () => {
     const { fetch, requests } = recordingFetch(normalRoutes);
     renderWithProviders(
       <>
@@ -361,14 +415,14 @@ describe('ErpPurchaseOrderScreen', () => {
 
     await screen.findByRole('button', { name: 'SYN-PO-901' });
     const group = screen.getByRole('group', { name: t.progress.group });
-    expect(within(group).getByRole('button', { name: t.progress.done })).toHaveAttribute(
+    expect(within(group).getByRole('button', { name: /^완료/ })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
     /* 위 줄 라벨이 보여 주므로 「조건 더보기」 칩으로 다시 알리지 않는다. */
     expect(screen.queryByText(t.filters.chip(t.fields.progress, t.progress.done))).toBeNull();
 
-    await user.click(within(group).getByRole('button', { name: t.progress.all }));
+    await user.click(within(group).getByRole('button', { name: /^완료/ }));
 
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\?q=SYN$/));
     expect(listUrls(requests).at(-1)?.searchParams.has('progress')).toBe(false);

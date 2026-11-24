@@ -4,7 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
 import { OneLine } from '../../patterns/po-board';
 import { ErpListTable } from '../erp-item/erp-data-parts';
-import { LIST_PAGE_SIZES, type ListPageSize } from './filters';
+import { LIST_PAGE_SIZES, type ListPageSize, type ListSort, SORTABLE_KEYS } from './filters';
 import { ProgressChip } from './progress';
 import type { PurchaseOrderListItem } from './types';
 
@@ -31,6 +31,9 @@ export interface ErpPurchaseOrderListPaneProps {
   onUnselect: () => void;
   onChangePage: (page: number) => void;
   onChangeSize: (size: ListPageSize) => void;
+  /** 일자 열 정렬(서버 정렬 · 주소 `sort`). null 이면 서버 기본(발주일 최신순). */
+  sort: ListSort | null;
+  onChangeSort: (sort: ListSort | null) => void;
 }
 
 /**
@@ -51,6 +54,8 @@ export const ErpPurchaseOrderListPane = ({
   onUnselect,
   onChangePage,
   onChangeSize,
+  sort,
+  onChangeSort,
 }: ErpPurchaseOrderListPaneProps) => {
   const columns: Column<PurchaseOrderListItem>[] = [
     { key: 'purchaseOrderNo', header: t.fields.purchaseOrderNo, width: '152px' },
@@ -79,11 +84,12 @@ export const ErpPurchaseOrderListPane = ({
       width: '96px',
       render: (row) => <OneLine text={purchaseGroupNameOf(row.erpPurchaseGroupCode)} />,
     },
-    { key: 'orderDate', header: t.fields.orderDate, width: '104px' },
+    { key: 'orderDate', header: t.fields.orderDate, width: '112px', sortable: true },
     {
       key: 'expectedReceiptDate',
       header: t.fields.expectedReceiptDate,
-      width: '104px',
+      width: '128px',
+      sortable: true,
       render: (row) => displayOr(row.expectedReceiptDate),
     },
     {
@@ -123,6 +129,22 @@ export const ErpPurchaseOrderListPane = ({
         columns={columns}
         rows={rows}
         getRowId={(row) => String(row.purchaseOrderId)}
+        sort={
+          sort === null
+            ? null
+            : {
+                key: sort.split(',')[0] ?? '',
+                direction: sort.endsWith(',asc') ? 'ascending' : 'descending',
+              }
+        }
+        onSortChange={(next) => {
+          const key = SORTABLE_KEYS.find((sortable) => sortable === next?.key);
+          onChangeSort(
+            next === null || key === undefined
+              ? null
+              : `${key},${next.direction === 'ascending' ? 'asc' : 'desc'}`,
+          );
+        }}
         pick={{
           currentId: selectedId === null ? null : String(selectedId),
           onPick: (row) => {
