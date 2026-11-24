@@ -160,6 +160,47 @@ describe('W-03-10 선별', () => {
     expect(sortPost()).toBeUndefined();
   });
 
+  it('#354 반려 아닌 특채가 걸린 부적합은 선별을 잠그고 이유를 단다 — 서버가 막는 조건과 같다', async () => {
+    renderSort({ concessions: [{ concessionId: 1, statusCode: 'PENDING' }] });
+    await screen.findByText('SAMPLE-ML|0003');
+
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: '선별' })).toHaveAccessibleDescription(
+        t.form.typeLock.sortConcession,
+      ),
+    );
+    expect(screen.getByRole('radio', { name: '선별' })).toBeDisabled();
+  });
+
+  it('#354 반려된 특채만 있으면 선별을 고를 수 있다', async () => {
+    renderSort({ concessions: [{ concessionId: 1, statusCode: 'REJECTED' }] });
+    await screen.findByText('SAMPLE-ML|0003');
+
+    await waitFor(() => expect(screen.getByRole('radio', { name: '선별' })).not.toBeDisabled());
+  });
+
+  it('#354 서버가 선별을 상태로 거절하면(409 INVALID_STATE) 「다른 사용자」가 아니라 저장할 수 없는 까닭을 보인다', async () => {
+    const { user } = renderSort({
+      saveResponse: () =>
+        jsonResponse(
+          { conflictCause: 'user', code: 'INVALID_STATE', message: '서버 원문' },
+          { status: 409 },
+        ),
+    });
+    await screen.findByText('SAMPLE-ML|0003');
+    await user.click(screen.getByRole('radio', { name: '선별' }));
+    await user.click(screen.getByRole('checkbox', { name: 'SAMPLE-ML|0003' }));
+    await user.type(screen.getByLabelText(new RegExp(t.form.reasonLabel)), '사유');
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: t.actions.save }),
+    );
+
+    expect(await screen.findByText(t.form.sortRefused)).toBeInTheDocument();
+    expect(screen.queryByText(messages.conflict.user)).toBeNull();
+    expect(screen.queryByRole('button', { name: messages.conflict.reloadAction })).toBeNull();
+  });
+
   it('US7-2 첫 판정이 아니면 선별이 없다 — 잠그고 이유를 단다', async () => {
     renderSort({ decidedQty: 100 });
     await screen.findByText('SAMPLE-ML|0003');

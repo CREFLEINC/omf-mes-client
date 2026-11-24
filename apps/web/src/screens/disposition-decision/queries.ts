@@ -17,6 +17,8 @@ export const dispositionKeys = {
     ['disposition-decision', 'detail', nonconformanceId] as const,
   decisions: (nonconformanceId: number | null) =>
     ['disposition-decision', 'decisions', nonconformanceId] as const,
+  concessions: (nonconformanceId: number | null) =>
+    ['disposition-decision', 'concessions', nonconformanceId] as const,
 };
 
 /**
@@ -109,6 +111,31 @@ export const useNonconformanceDetail = (
 };
 
 /** 이 부적합에 이미 내려진 판정. 부분 처분이 되므로 여러 건일 수 있다. */
+/**
+ * 이 부적합에 걸린 반려 아닌 특채 수(omf-all-around#354) — 서버가 선별을 막는 조건(`lockSortable`)과 같다. 결재 시절에 남은
+ * 요청 중 특채 때문에 선별 저장이 409 로 떨어지기 전에 유형 칸에서 먼저 막는다. 부적합 하나의 특채는 LOT 수만큼이라 한 쪽이면 된다.
+ */
+export const useOpenConcessionCount = (nonconformanceId: number | null): UseQueryResult<number> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: dispositionKeys.concessions(nonconformanceId),
+    enabled: nonconformanceId !== null,
+    queryFn: async () => {
+      if (nonconformanceId === null) {
+        throw new Error('부적합을 고르기 전에는 특채를 조회하지 않습니다.');
+      }
+      const page = await runRequest(() =>
+        client.GET('/quality/concessions', {
+          params: { query: { nonconformanceId, page: 1, size: 100 } },
+        }),
+      );
+      const rejected = page.items.filter((item) => item.statusCode === 'REJECTED').length;
+      return Math.max(page.page.total, page.items.length) - rejected;
+    },
+  });
+};
+
 export const useDispositionDecisions = (
   nonconformanceId: number | null,
 ): UseQueryResult<DispositionDecisionListResponse> => {

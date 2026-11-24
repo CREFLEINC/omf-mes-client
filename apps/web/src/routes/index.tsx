@@ -676,7 +676,8 @@ export const appRouter = createBrowserRouter([
       /*
        * W-04-07 — 같은 규칙(사이드바 섹션)이다. 계약 경로는 `/quality/**`이지만 IA가 이 화면을
        * 「출하 > 반품·재고」에 두었다. 이 화면은 부적합을 등록하고 판정을 «의뢰»만 한다 — 판정 자체는
-       * `quality/dispositions`(W-03-10)이고, 이 화면의 「판정 결과 보기」가 그리로 연다.
+       * 검사 조회·판정 OQC 탭 「판정 의뢰」다 — 이 화면의 「판정 결과 보기」는 옛 주소(`quality/dispositions`)로 열어
+       * 넘기기가 그 부적합을 고른 채로 보낸다(omf-all-around#354).
        */
       { path: 'shipment/disposition-requests', element: <DispositionRequestScreen /> },
       /*

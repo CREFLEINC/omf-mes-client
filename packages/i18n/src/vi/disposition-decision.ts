@@ -24,7 +24,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     count === undefined ? label : `${label} ${String(count)}`,
   panes: {
     filter: 'Điều kiện tra cứu',
-    list: 'Danh sách chờ đánh giá',
+    list: 'Danh sách yêu cầu phán định',
     detail: 'Mục không phù hợp đã chọn',
     detailDecision: 'Chi tiết không phù hợp',
     decision: 'Đánh giá',
@@ -129,11 +129,14 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
       sortNoInboundLot: 'Không phù hợp trả hàng · OQC không có phân loại (không có LOT nhập hàng)',
       sortSingleLot: 'Chỉ có thể chọn phân loại khi có từ 2 LOT quản lý vật tư trở lên.',
       sortNotFirst: 'Chỉ phân loại được ở lần quyết định đầu tiên',
+      sortConcession: 'Không thể phân loại mục không phù hợp đã có yêu cầu nhận nhượng bộ',
       normalSorted: 'Phần lỗi tách ra do phân loại — hãy xử lý bằng hủy · đặc cách',
     },
     qtyExceededByServer: (remaining: string): string =>
       `Tổng số lượng quyết định xử lý vượt số lượng còn lại (${remaining}) nên chưa được lưu. Hãy tải lại mục không phù hợp rồi lưu`,
     alreadyClosed: 'Mục không phù hợp này đã kết thúc. Không lưu được đánh giá',
+    sortRefused:
+      'Không thể phân loại mục không phù hợp đã kết thúc hoặc đã có quyết định hay nhận nhượng bộ',
     reasonRequired: 'Bắt buộc nhập lý do quyết định.',
     dispositionRequired: 'Hãy chọn quyết định xử lý',
     savingReason: 'Đang lưu đánh giá',
@@ -209,8 +212,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   },
   sort: {
     heading: 'LOT vật tư tách ra là lỗi',
-    selectNote:
-      'LOT đã chọn được tách ra là lỗi, các LOT còn lại được xử lý bình thường.',
+    selectNote: 'LOT đã chọn được tách ra là lỗi, các LOT còn lại được xử lý bình thường.',
     headNote: 'Hãy chọn ít nhất một LOT.',
     lotsLabel: 'LOT quản lý vật tư lỗi',
     noMatch: 'Không có kết quả kiểm tra liên kết',
@@ -219,7 +221,8 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     noneSelected: 'Hãy chọn ít nhất một LOT quản lý vật tư lỗi',
     goodQty: 'Số lượng đạt (tùy chọn)',
     defectQty: 'Số lượng lỗi (tùy chọn)',
-    qtyNote: 'Số lượng nhập chỉ được ghi làm kết quả phân loại, không phản ánh vào tồn kho và số lượng LOT.',
+    qtyNote:
+      'Số lượng nhập chỉ được ghi làm kết quả phân loại, không phản ánh vào tồn kho và số lượng LOT.',
     qtyInvalid: 'Hãy nhập số từ 0 trở lên',
     previewTitle: 'Xử lý sau khi lưu',
     previewRestLabel: 'Xử lý bình thường',
@@ -233,7 +236,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     previewIqc: (inspectionRequestNo: string): string =>
       `Yêu cầu kiểm tra ban đầu ${inspectionRequestNo}`,
   },
-  loading: 'Đang tải danh sách chờ đánh giá',
+  loading: 'Đang tải danh sách yêu cầu phán định',
   empty: {
     title: 'Không có mục không phù hợp nào khớp điều kiện',
     description: 'Hãy nới rộng khoảng thời gian hoặc tra cứu với điều kiện khác.',

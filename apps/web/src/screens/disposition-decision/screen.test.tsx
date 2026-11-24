@@ -39,7 +39,7 @@ describe('DispositionDecisionScreen 조회', () => {
     renderScreen();
 
     expect(await screen.findByRole('region', { name: t.panes.list })).toBeInTheDocument();
-    /* 목록 제목 줄 「처분 대기 목록 · N건 · 목록 접기」가 늘 선다(통일 배치 · #350). */
+    /* 목록 제목 줄 「판정 의뢰 목록 · N건 · 목록 접기」가 늘 선다(통일 배치 · #350). */
     expect(screen.getByRole('heading', { name: t.panes.list })).toBeInTheDocument();
     /* 고르기 전에는 상세 칸 제목 「부적합 상세 및 판정」을 두지 않는다 — 안내만(omf-all-around#228). */
     expect(screen.queryByRole('heading', { name: t.panes.detailDecision })).toBeNull();

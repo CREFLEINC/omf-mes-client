@@ -14,7 +14,8 @@ export const dispositionDecision = {
     count === undefined ? label : `${label} ${String(count)}`,
   panes: {
     filter: '조회 조건',
-    list: '처분 대기 목록',
+    /** OQC 탭 「판정 의뢰」 목록 — 판정 완료 건도 함께 보인다(omf-all-around#354). */
+    list: '판정 의뢰 목록',
     detail: '선택한 부적합',
     detailDecision: '부적합 상세',
     decision: '판정',
@@ -142,6 +143,7 @@ export const dispositionDecision = {
       sortNoInboundLot: '반품·OQC 부적합에는 선별이 없습니다(입하 LOT 없음)', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
       sortSingleLot: '선별은 자재 관리 LOT가 2개 이상일 때 선택할 수 있습니다.',
       sortNotFirst: '선별은 첫 판정일 때만 할 수 있습니다',
+      sortConcession: '특채 요청이 있는 부적합은 선별할 수 없습니다',
       normalSorted: '선별로 떼어 낸 불량 — 폐기·특채로 처분', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
     },
     /**
@@ -152,6 +154,8 @@ export const dispositionDecision = {
     qtyExceededByServer: (remaining: string): string =>
       `처분 결정 수량 합이 남은 수량(${remaining})을 넘어 저장되지 않았습니다. 부적합을 다시 불러온 뒤 저장하세요`,
     alreadyClosed: '이미 종결된 부적합입니다. 판정을 저장할 수 없습니다',
+    /** 선별 저장 409 `INVALID_STATE` — 종결 · 판정 있음 · 특채 있음을 서버가 한 코드로 내린다(omf-all-around#354). */
+    sortRefused: '종결되었거나 이미 판정 또는 특채가 있는 부적합은 선별할 수 없습니다',
     /* 입력칸 안내(「판정 사유를 입력하세요」)와 같은 말을 되풀이하지 않는다(omf-all-around#275). */
     reasonRequired: '판정 사유를 입력하세요.',
     dispositionRequired: '처분을 선택하세요',
@@ -269,7 +273,7 @@ export const dispositionDecision = {
     ],
     previewIqc: (inspectionRequestNo: string): string => `기존 검사 의뢰 ${inspectionRequestNo}`,
   },
-  loading: '처분 대기 목록 불러오는 중',
+  loading: '판정 의뢰 목록 불러오는 중',
   empty: {
     title: '조건에 맞는 부적합이 없습니다',
     description: '기간을 넓히거나 다른 조건으로 조회하세요.',

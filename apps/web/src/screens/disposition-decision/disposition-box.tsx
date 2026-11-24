@@ -1,4 +1,5 @@
 import type {
+  ApiError,
   ConcessionCreatedForward005,
   ConcessionCreateForward005,
   DispositionDecisionCreatedForward005,
@@ -50,6 +51,7 @@ import {
   useDispositionDecisions,
   useLotStatuses,
   useNonconformanceDetail,
+  useOpenConcessionCount,
 } from './queries';
 import { toRemainingQty } from './remaining-qty';
 import { lotNames, sumQty } from './sort-split-pane';
@@ -72,6 +74,24 @@ interface PendingWriteTarget {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
+
+/**
+ * 저장 409 중 «다시 불러도 안 풀리는» 것(종결 · 판정 있음 · 특채 있음 · 남은 수량 초과)은 「다른 사용자가 먼저 저장했습니다」가 아니라
+ * 저장할 수 없는 상태로 그 까닭과 함께 보인다(omf-all-around#354). 서버가 공용 충돌 봉투(`conflictCause`)에 실어 보내
+ * 정규화기가 `conflict` 로 접지만, 까닭은 위 `request` 가 되말해 둔 `message` 에 있다. 판 번호 충돌만 「최신 불러오기」로 푼다.
+ */
+const shownWriteError = (error: ApiError | null): ApiError | null =>
+  error !== null &&
+  error.kind === 'conflict' &&
+  error.code !== undefined &&
+  error.code !== 'VERSION_CONFLICT' &&
+  error.message !== ''
+    ? {
+        kind: 'stateLocked',
+        status: 409,
+        errors: [{ scope: 'screen', code: error.code, message: error.message }],
+      }
+    : error;
 
 export interface DispositionBoxProps {
   /** 보여 줄 부적합. `null` 이면 고르기 전 안내만. */
@@ -109,6 +129,7 @@ export const DispositionBox = ({
   const status = useNonconformanceStatusLookup();
   const detail = useNonconformanceDetail(selectedId);
   const decisions = useDispositionDecisions(selectedId);
+  const openConcessions = useOpenConcessionCount(selectedId);
   const items = useItemLookupFor([detail.data?.itemId]);
   const uoms = useUomLookup();
 
@@ -190,7 +211,9 @@ export const DispositionBox = ({
         };
       }
       if (raw.code === 'INVALID_STATE') {
-        return { ...result, error: { ...raw, message: t.form.alreadyClosed } };
+        const message =
+          variables.body.dispositionTypeCode === SORT ? t.form.sortRefused : t.form.alreadyClosed;
+        return { ...result, error: { ...raw, message } };
       }
 
       return result;
@@ -259,6 +282,7 @@ export const DispositionBox = ({
     lotCount: lotRows.length,
     decisionCount: decisions.data?.items.length ?? 0,
     isSortedOff: detailView?.sortedFrom !== null && detailView?.sortedFrom !== undefined,
+    hasOpenConcession: (openConcessions.data ?? 0) > 0,
   };
   const dispositionOptions = dispositionTypeOptions(
     selectableDispositionCodes(dispositionTypeCodes),
@@ -454,7 +478,7 @@ export const DispositionBox = ({
             inspectionRequestNo={detailView?.inspectionRequestNo}
             uomId={uomId}
             uoms={uoms}
-            writeError={write.error ?? concessionWrite.error}
+            writeError={shownWriteError(write.error ?? concessionWrite.error)}
             isSaving={write.isSaving || concessionWrite.isSaving}
             canCancel={hasDecisionInput(form)}
             onChange={(next) => {
