@@ -8,7 +8,6 @@ export const erpEmployee: Translated<typeof ko.erpEmployee> = {
   panes: {
     filter: 'Điều kiện tra cứu',
     list: 'Danh sách nhân viên',
-    detail: 'Chi tiết nhân viên',
   },
   fields: {
     q: 'Tìm nhân viên',
@@ -44,7 +43,5 @@ export const erpEmployee: Translated<typeof ko.erpEmployee> = {
   empty: {
     noResultTitle: 'Không có nhân viên phù hợp',
     beyondLastTitle: 'Trang này không có nhân viên',
-    pickTitle: 'Hãy chọn nhân viên.',
-    pickDescription: 'Chọn nhân viên trong danh sách để xem mọi trường nhận từ ERP.',
   },
 };

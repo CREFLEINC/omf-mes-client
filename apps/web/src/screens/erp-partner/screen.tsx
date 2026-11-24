@@ -283,7 +283,6 @@ export const ErpPartnerScreen = () => {
         className="pane po-board-filter list-detail-filter"
         aria-label={t.panes.filter}
       >
-        {list.isError && <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />}
         {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
         <FilterBar
           applied={filters}
@@ -305,8 +304,13 @@ export const ErpPartnerScreen = () => {
               </span>
             )}
           </div>
-          {/* 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「없습니다」로 보이면 안 된다. */}
-          {list.isError ? null : list.isPending ? (
+          {/*
+           * 조회에 실패했으면 표 자리에 오류 배너만 낸다 — 실패를 「없습니다」로 보이면 안 된다. 배너는 목록 상자 안(ERP 수신
+           * 탭과 같은 자리 · 사용자 지시 2026-11-24).
+           */}
+          {list.isError ? (
+            <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
+          ) : list.isPending ? (
             <div role="status" aria-label={t.loading.list}>
               <SkeletonText lines={3} />
             </div>

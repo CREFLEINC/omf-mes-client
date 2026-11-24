@@ -9,7 +9,6 @@ export const erpEmployee = {
   panes: {
     filter: '조회 조건',
     list: '사원 목록',
-    detail: '사원 상세',
   },
   fields: {
     q: '사원 검색',
@@ -45,7 +44,5 @@ export const erpEmployee = {
   empty: {
     noResultTitle: '조건에 맞는 사원이 없습니다',
     beyondLastTitle: '이 쪽에는 사원이 없습니다',
-    pickTitle: '사원을 선택하세요.',
-    pickDescription: '목록에서 사원을 고르면 ERP 에서 받은 모든 칸을 볼 수 있습니다.',
   },
 } as const;

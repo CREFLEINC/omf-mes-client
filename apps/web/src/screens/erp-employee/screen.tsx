@@ -16,18 +16,11 @@ import {
   FIT_PLACEHOLDER_CLASS,
   useFitPlaceholderWidth,
 } from '../../patterns/fit-placeholder-width';
-import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
-import { OneLine } from '../../patterns/po-board';
+import { OneLine, useFitToViewport } from '../../patterns/po-board';
 import { PAGE_SIZES, PageNav, type PageSize } from '../../patterns/page-nav';
 import { Select } from '../../patterns/select';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
-import {
-  ERP_DATA_ORIENTATION_KEY,
-  ErpDetailFields,
-  ErpFilterActions,
-  ErpListTable,
-  ErpPickEmpty,
-} from '../erp-item/erp-data-parts';
+import { ErpFilterActions, ErpListTable } from '../erp-item/erp-data-parts';
 import {
   type SelectOption,
   useDepartmentOptions,
@@ -202,13 +195,14 @@ const EMPTY_ROWS: Worker[] = [];
 /**
  * 사원정보 조회 (ERP). ERP 가 보낸 작업자를 읽기만 한다 — 쓰기 조작이 하나도 없다.
  *
- * 조회 조건 · 목록 | 상세 통일 배치(omf-all-around#358): 목록은 식별 칸만, 고른 사원의 모든 칸은 오른쪽 상세에
- * 「이름 : 값」으로 보인다(같은 목록 응답만 쓴다 — 상세 요청을 따로 보내지 않는다). 조건·쪽을 전부 주소에 둔다.
+ * 조회 조건 · 목록만 둔다(omf-all-around#358) — ERP 수신 · 품목 · 거래처 탭과 같은 틀(사용자 지시 2026-11-24). 상세에만
+ * 있던 사업장 · ERP 상태도 목록 열로 옮겨 ERP 가 준 칸은 모두 목록에 있다. 조건·쪽을 전부 주소에 둔다.
  * 공장·부서는 계약이 식별자만 주므로 번호 그대로 낸다 — 이름을 지어내지 않는다. 다국어 명칭은 MES 확장이라 보이지 않는다.
  */
 export const ErpEmployeeScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  /* 목록이 창 바닥에서 멈추게 윗변을 잰다(ERP 수신 탭과 같은 아래 여백). */
+  const { splitRef, aboveRef } = useFitToViewport();
 
   const filters: Filters = {
     q: searchParams.get('q') ?? '',
@@ -224,7 +218,6 @@ export const ErpEmployeeScreen = () => {
   const departmentOptions = useDepartmentOptions();
   const rows = list.data?.items ?? EMPTY_ROWS;
   const meta = list.data?.page ?? { page, size: size ?? 0, total: 0 };
-  const selected = rows.find((row) => String(row.workerId) === selectedId) ?? null;
 
   // 서버가 준 쪽을 정본으로 쓴다. size가 0이면 나눗셈이 무한대가 되므로 하한을 둔다.
   const shownPage = meta.page > 0 ? meta.page : 1;
@@ -244,6 +237,8 @@ export const ErpEmployeeScreen = () => {
       width: '160px',
       render: (row) => <OneLine text={row.workerName} />,
     },
+    /* 사업장 · ERP 상태 — 상세 칸을 없애며 목록 열로 옮긴다(값은 상세가 쓰던 그대로 · 사용자 지시 2026-11-24). */
+    { key: 'businessUnitId', header: t.table.businessUnitId, width: '72px' },
     { key: 'plantId', header: t.table.plantId, width: '72px' },
     {
       key: 'departmentId',
@@ -251,6 +246,7 @@ export const ErpEmployeeScreen = () => {
       width: '72px',
       render: (row) => orEmpty(row.departmentId),
     },
+    { key: 'statusCode', header: t.table.statusCode, width: '96px' },
     {
       key: 'isActive',
       header: t.table.isActive,
@@ -279,109 +275,74 @@ export const ErpEmployeeScreen = () => {
     <EmptyState size="sm" live title={t.empty.noResultTitle} />
   );
 
+  /*
+   * 조회 상자 + 목록 한 상자 — 상세 칸은 두지 않는다(목록에 같은 값이 모두 열로 있다 · 사용자 지시 2026-11-24).
+   * 상자 짜임 · 클래스는 같은 묶음의 ERP 수신 · 품목 · 거래처 탭과 같다. 줄 고르기도 없다 — 고를 상세가 없다.
+   */
   return (
-    <ListDetailWorkspace
-      storageKey="omf-mes:erp-employee"
-      orientationKey={ERP_DATA_ORIENTATION_KEY}
-      filter={{
-        label: t.panes.filter,
-        content: (
-          <>
-            {list.isError && (
-              <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
+    <div className="list-detail-workspace">
+      <section
+        ref={aboveRef}
+        className="pane po-board-filter list-detail-filter"
+        aria-label={t.panes.filter}
+      >
+        {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
+        <FilterBar
+          applied={filters}
+          plantOptions={plantOptions}
+          departmentOptions={departmentOptions}
+          onSearch={(next) => {
+            applyQuery(next);
+          }}
+          onReset={() => {
+            applyQuery(EMPTY_FILTERS);
+          }}
+        />
+      </section>
+      <div ref={splitRef} className="po-board-split list-detail-split erp-data-list-only-split">
+        <section className="pane list-detail-list" aria-label={t.panes.list}>
+          <div className="po-board-list-head">
+            <h2 className="pane-title">{t.panes.list}</h2>
+            {list.data !== undefined && (
+              <span className="po-board-list-count">
+                {messages.common.paneList.count(list.data.page.total)}
+              </span>
             )}
-            {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-            <FilterBar
-              applied={filters}
-              plantOptions={plantOptions}
-              departmentOptions={departmentOptions}
-              onSearch={(next) => {
-                applyQuery(next);
-              }}
-              onReset={() => {
-                applyQuery(EMPTY_FILTERS);
-              }}
-            />
-          </>
-        ),
-      }}
-      list={{
-        label: t.panes.list,
-        title: t.panes.list,
-        count: list.data?.page.total,
-        /* 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「없습니다」로 보이면 안 된다. */
-        content: list.isError ? null : list.isPending ? (
-          <div role="status" aria-label={t.loading.list}>
-            <SkeletonText lines={3} />
           </div>
-        ) : (
-          <>
-            <ErpListTable
-              label={t.panes.list}
-              storageKey="omf-mes:erp-employee:columns:workers"
-              columns={columns}
-              rows={rows}
-              getRowId={(row) => String(row.workerId)}
-              pick={{
-                currentId: selectedId,
-                onPick: (row) => {
-                  setSelectedId(String(row.workerId));
-                },
-                onUnpick: () => {
-                  setSelectedId(null);
-                },
-              }}
-              empty={emptySlot}
-            />
-            <PageNav
-              meta={meta}
-              buttonSize="md"
-              onChangePage={(nextPage) => {
-                applyQuery(filters, nextPage);
-              }}
-              onChangeSize={(nextSize) => {
-                applyQuery(filters, 1, nextSize);
-              }}
-            />
-          </>
-        ),
-      }}
-      detail={{
-        label: t.panes.detail,
-        content:
-          selected === null ? (
-            <ErpPickEmpty
-              icon="badge"
-              title={t.empty.pickTitle}
-              description={t.empty.pickDescription}
-            />
+          {/*
+           * 조회에 실패했으면 표 자리에 오류 배너만 낸다 — 실패를 「없습니다」로 보이면 안 된다. 배너는 목록 상자 안(ERP 수신
+           * 탭과 같은 자리 · 사용자 지시 2026-11-24).
+           */}
+          {list.isError ? (
+            <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
+          ) : list.isPending ? (
+            <div role="status" aria-label={t.loading.list}>
+              <SkeletonText lines={3} />
+            </div>
           ) : (
-            <ErpDetailFields
-              title={t.panes.detail}
-              fields={[
-                { key: 'workerNo', label: t.table.workerNo, value: selected.workerNo },
-                { key: 'workerName', label: t.table.workerName, value: selected.workerName },
-                {
-                  key: 'businessUnitId',
-                  label: t.table.businessUnitId,
-                  value: String(selected.businessUnitId),
-                },
-                { key: 'plantId', label: t.table.plantId, value: String(selected.plantId) },
-                {
-                  key: 'departmentId',
-                  label: t.table.departmentId,
-                  value: orEmpty(selected.departmentId),
-                },
-                { key: 'statusCode', label: t.table.statusCode, value: selected.statusCode },
-                {
-                  key: 'isActive',
-                  label: t.table.isActive,
-                  value: <ActiveChip isActive={selected.isActive} />,
-                },
-              ]}
-            />
-          ),
-      }}
-    />
+            <>
+              <ErpListTable
+                label={t.panes.list}
+                storageKey="omf-mes:erp-employee:columns:workers"
+                columns={columns}
+                rows={rows}
+                getRowId={(row) => String(row.workerId)}
+                empty={emptySlot}
+              />
+              <PageNav
+                meta={meta}
+                buttonSize="md"
+                onChangePage={(nextPage) => {
+                  applyQuery(filters, nextPage);
+                }}
+                onChangeSize={(nextSize) => {
+                  applyQuery(filters, 1, nextSize);
+                }}
+              />
+            </>
+          )}
+        </section>
+      </div>
+    </div>
   );
 };

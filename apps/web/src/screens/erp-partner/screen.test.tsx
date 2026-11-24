@@ -226,5 +226,16 @@ describe('ErpPartnerScreen', () => {
 
     expect(await screen.findByRole('button', { name: '다시 시도' })).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    // 배너는 목록 상자 안 표 자리에 선다(ERP 수신 탭과 같은 자리) — 조회 상자에는 없다.
+    expect(
+      within(screen.getByRole('region', { name: '거래처 목록' })).getByRole('button', {
+        name: '다시 시도',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: '조회 조건' })).queryByRole('button', {
+        name: '다시 시도',
+      }),
+    ).not.toBeInTheDocument();
   });
 });

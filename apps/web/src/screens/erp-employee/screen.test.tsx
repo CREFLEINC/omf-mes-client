@@ -34,8 +34,33 @@ const worker = (overrides: Partial<Worker> = {}): Worker => ({
 
 const ROWS = [
   worker(),
-  worker({ workerId: 9002, workerNo: 'SAMPLE-002', workerName: '예시 사원 B', isActive: false }),
+  worker({
+    workerId: 9002,
+    workerNo: 'SAMPLE-002',
+    workerName: '예시 사원 B',
+    businessUnitId: 12,
+    statusCode: 'RETIRED',
+    isActive: false,
+  }),
 ];
+
+/** 화면 한 벌(조회 상자 + 목록 상자). */
+const workspace = (): HTMLElement => {
+  const el = document.querySelector<HTMLElement>('.list-detail-workspace');
+  if (el === null) throw new Error('화면이 그려지지 않았습니다.');
+  return el;
+};
+
+/** 열 이름으로 그 열의 칸 글자를 위에서부터 모은다. */
+const columnTexts = (table: HTMLElement, header: string): string[] => {
+  const headers = within(table).getAllByRole('columnheader');
+  const index = headers.findIndex((el) => el.textContent?.includes(header) === true);
+  if (index < 0) throw new Error(`열 「${header}」이 없습니다.`);
+  return within(table)
+    .getAllByRole('row')
+    .slice(1)
+    .map((row) => within(row).getAllByRole('cell')[index]?.textContent ?? '');
+};
 
 const isGet = (request: Request, pathname: string): boolean =>
   request.method === 'GET' && new URL(request.url).pathname === pathname;
@@ -96,44 +121,65 @@ const lookupRoutes: StubRoute[] = [
 ];
 
 describe('ErpEmployeeScreen', () => {
-  it('목록을 그리고, 고른 사원의 모든 칸을 상세에 내며 비어 있는 값은 표시 기호로 낸다', async () => {
-    const { urls, user } = renderScreen([listRoute()]);
+  it('목록에 사업장 · ERP 상태까지 열로 내고, 비어 있는 값은 표시 기호로 낸다', async () => {
+    const { urls } = renderScreen([listRoute()]);
 
     const table = await screen.findByRole('table');
     expect(within(table).getByText('SAMPLE-001')).toBeInTheDocument();
     expect(within(table).getByText('예시 사원 B')).toBeInTheDocument();
     expect(within(table).getByText('퇴사')).toBeInTheDocument();
+    // 상세에만 있던 사업장 · ERP 상태가 목록 열에 받은 값 그대로 있다.
+    expect(columnTexts(table, '사업장')).toEqual(['11', '12']);
+    expect(columnTexts(table, 'ERP 상태')).toEqual(['ACTIVE', 'RETIRED']);
+    expect(columnTexts(table, '공장')).toEqual(['21', '21']);
     // 두 행 모두 부서가 비어 있다.
-    expect(within(table).getAllByText('—')).toHaveLength(2);
+    expect(columnTexts(table, '부서')).toEqual(['—', '—']);
     // 한국어·베트남어 명칭은 두지 않는다.
     expect(screen.queryByText('Nhan vien A')).not.toBeInTheDocument();
-    expect(screen.getByText('총 2건')).toBeInTheDocument();
-
-    const detail = screen.getByRole('region', { name: '사원 상세' });
-    expect(within(detail).getByText('사원을 선택하세요.')).toBeInTheDocument();
-
-    await user.click(within(table).getByText('SAMPLE-001'));
-    expect(within(detail).getByText('ACTIVE')).toBeInTheDocument();
-    expect(within(detail).getByText('11')).toBeInTheDocument();
-    expect(within(detail).getByText('21')).toBeInTheDocument();
-    expect(within(detail).getByText('—')).toBeInTheDocument();
-    expect(screen.queryByText('Nhan vien A')).not.toBeInTheDocument();
-    // 상세는 목록 응답만 쓴다 — 상세 요청을 보내지 않는다.
+    // 목록 제목 줄 — 이름 · 건수.
+    expect(screen.getByRole('heading', { name: '사원 목록' })).toBeInTheDocument();
+    expect(within(workspace()).getAllByText('총 2건').length).toBeGreaterThan(0);
+    // 목록 응답만 쓴다 — 한 건 요청을 보내지 않는다.
     expect(urls.some((url) => url.pathname.startsWith(`${LIST_PATH}/`))).toBe(false);
     // 쓰기 조작이 없다.
     expect(screen.queryByRole('button', { name: /저장|등록|삭제/ })).not.toBeInTheDocument();
   });
 
-  it('고른 사원을 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
-    const { user } = renderScreen([listRoute()]);
+  it('상세 칸이 없다 — 줄을 눌러도 상세가 생기지 않고, 배치 · 목록 접기 조작도 없다(사용자 지시 2026-11-24)', async () => {
+    const { urls, user } = renderScreen([listRoute()]);
 
     const table = await screen.findByRole('table');
-    const detail = screen.getByRole('region', { name: '사원 상세' });
-    await user.click(within(table).getByText('SAMPLE-001'));
-    expect(within(detail).getByText('ACTIVE')).toBeInTheDocument();
+    /* 화면 몫의 구획만 센다(알림 구획은 앱 몫이다). */
+    const regionNames = () =>
+      within(workspace())
+        .queryAllByRole('region')
+        .map((el) => el.getAttribute('aria-label'));
+    expect(regionNames()).toEqual(['조회 조건', '사원 목록']);
+    expect(screen.queryByRole('separator')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '목록 접기' })).not.toBeInTheDocument();
+    expect(screen.queryByText('사원을 선택하세요.')).not.toBeInTheDocument();
+    // 줄 고르기 단추가 없다.
+    expect(table.querySelector('.users-roles-row-pick')).toBeNull();
+    const before = urls.length;
+
+    await user.click(within(table).getByText('예시 사원 B'));
     await user.click(within(table).getByText('SAMPLE-001'));
 
-    expect(within(detail).getByText('사원을 선택하세요.')).toBeInTheDocument();
+    expect(regionNames()).toEqual(['조회 조건', '사원 목록']);
+    expect(table.querySelector('[aria-current]')).toBeNull();
+    // 「RETIRED」는 목록 칸 한 곳에만 있다 — 다른 곳에 값이 다시 그려지지 않는다.
+    expect(screen.getAllByText('RETIRED')).toHaveLength(1);
+    expect(urls.length).toBe(before);
+  });
+
+  it('주소에 옛 선택 값이 남아 와도 화면이 깨지지 않고 조회 인자에 싣지 않는다', async () => {
+    const { urls } = renderScreen([listRoute()], '?worker=9002&selected=9002');
+
+    expect(await screen.findByText('예시 사원 B')).toBeInTheDocument();
+    const first = urls.find((url) => url.pathname === LIST_PATH);
+    expect(first?.searchParams.has('worker')).toBe(false);
+    expect(first?.searchParams.has('selected')).toBe(false);
+    expect(within(workspace()).getAllByRole('region')).toHaveLength(2);
   });
 
   it('검색어와 「퇴사자 포함」을 조회 조건으로 싣고, 위 줄 재직 상태 라벨은 두지 않는다', async () => {
@@ -232,5 +278,16 @@ describe('ErpEmployeeScreen', () => {
 
     expect(await screen.findByRole('button', { name: '다시 시도' })).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    // 배너는 목록 상자 안 표 자리에 선다(ERP 수신 탭과 같은 자리) — 조회 상자에는 없다.
+    expect(
+      within(screen.getByRole('region', { name: '사원 목록' })).getByRole('button', {
+        name: '다시 시도',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: '조회 조건' })).queryByRole('button', {
+        name: '다시 시도',
+      }),
+    ).not.toBeInTheDocument();
   });
 });

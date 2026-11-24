@@ -253,5 +253,16 @@ describe('ErpItemScreen', () => {
 
     expect(await screen.findByRole('button', { name: messages.common.retry })).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    // 배너는 목록 상자 안 표 자리에 선다(ERP 수신 탭과 같은 자리) — 조회 상자에는 없다.
+    expect(
+      within(screen.getByRole('region', { name: t.panes.list })).getByRole('button', {
+        name: messages.common.retry,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: t.panes.filter })).queryByRole('button', {
+        name: messages.common.retry,
+      }),
+    ).not.toBeInTheDocument();
   });
 });
