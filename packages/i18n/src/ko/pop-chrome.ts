@@ -65,7 +65,7 @@ export const popChrome = {
     shortcutsTitle: '바로가기',
     /** 오늘 작업 현황 — 이 단말 설비의 작업지시 수(작업지시 목록과 같은 조회). */
     statusTitle: '오늘 작업 현황',
-    inProgress: '진행 중',
+    inProgress: '진행',
     waiting: '대기',
     done: '완료',
     statusCount: (count: number): string => `${String(count)}건`,

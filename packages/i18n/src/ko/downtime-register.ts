@@ -145,7 +145,7 @@ export const downtimeRegister = {
      */
     unsettled: (count: number): string => `합계 미반영 ${String(count)}건`,
     unsettledDescription: '방금 넣은 건은 서버 합계에 아직 들어가지 않았습니다.',
-    ongoingRow: '진행 중',
+    ongoingRow: '진행',
   },
   actions: {
     reset: '입력 초기화',

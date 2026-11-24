@@ -29,7 +29,7 @@ export const productionWarehouseReplenishment = {
   status: {
     WAITING: '대기',
     RELEASED: '배포',
-    IN_PROGRESS: '진행 중',
+    IN_PROGRESS: '진행',
     DONE: '완료',
     CLOSED: '마감',
     CANCELLED: '취소',

@@ -216,7 +216,7 @@ export const productionResult = {
         worker: '작업자',
         state: '세션 상태',
         where: '끝낼 곳',
-        RUNNING: '진행 중',
+        RUNNING: '진행',
         STOPPED: '중단',
         unknown: '확인할 수 없음',
         workerValue: (name: string, workerNo: string): string => `${name}(${workerNo})`,

@@ -95,7 +95,7 @@ export const workStart = {
     /** 상태 이름(T-P-W 상태 텍스트). 코드값은 화면에 보이지 않는다(C-13). */
     status: {
       released: '미착수',
-      inProgress: '진행 중',
+      inProgress: '진행',
       suspended: '중단',
     },
     emergencyBadge: '긴급',

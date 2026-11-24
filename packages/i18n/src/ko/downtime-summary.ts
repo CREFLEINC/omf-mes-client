@@ -133,7 +133,7 @@ export const downtimeSummary = {
     startedAt: '시작',
     endedAt: '종료',
     duration: '길이(분)',
-    ongoing: '진행 중',
+    ongoing: '진행',
     emptyTitle: '구간 없음',
     empty: '해당하는 구간이 없습니다.',
     /**

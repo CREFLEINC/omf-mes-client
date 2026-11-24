@@ -54,7 +54,7 @@ describe('W-02-11 상태 표시', () => {
       (['WAITING', 'RELEASED', 'IN_PROGRESS', 'DONE', 'CANCELLED'] as const).map((displayStatus) =>
         statusLabel({ displayStatus }),
       ),
-    ).toEqual(['대기', '배포', '진행 중', '완료', '취소']);
+    ).toEqual(['대기', '배포', '진행', '완료', '취소']);
   });
 
   it('US5-11 닫힌 요청은 「완료」에 닫힘 사유를 붙인다', () => {

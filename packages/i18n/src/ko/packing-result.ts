@@ -18,7 +18,7 @@ export const packingResult = {
     loading: '목록 조회 중…',
     empty: '오늘 피킹을 마친 출하가 없습니다.',
     failed: '출하 목록을 받지 못했습니다. 다시 시도해 주세요',
-    inProgress: '포장 진행 중',
+    inProgress: '포장 진행',
     allocations: (count: number): string => `배분 LOT ${String(count)}건`,
     item: '품목',
     scan: '출하번호',
