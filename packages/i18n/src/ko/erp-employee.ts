@@ -14,6 +14,13 @@ export const erpEmployee = {
   fields: {
     q: '사원 검색',
     qPlaceholder: '사번 또는 이름을 입력하세요',
+    plant: '공장 선택',
+    department: '부서 선택',
+    includeInactive: '퇴사자 포함',
+  },
+  filters: {
+    allPlants: '전체 공장',
+    allDepartments: '전체 부서',
   },
   table: {
     workerNo: '사번',
@@ -23,12 +30,6 @@ export const erpEmployee = {
     departmentId: '부서',
     statusCode: 'ERP 상태',
     isActive: '재직 상태',
-  },
-  /** 위 줄 재직 상태 라벨(사용자 지시 2026-11-24). */
-  status: {
-    group: '재직 상태',
-    all: '전체',
-    active: '재직',
   },
   values: {
     empty: '—',

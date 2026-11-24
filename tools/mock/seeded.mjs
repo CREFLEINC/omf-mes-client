@@ -1006,10 +1006,24 @@ on('DELETE', '/app/sessions/current', (_params, _query, _body, headers) => {
  */
 on('GET', '/mdm/workers', (_p, query) =>
   page(
-    keep(state.workers, [byText(query, 'workerNo', 'workerNo'), contains(query, 'q', 'workerNo')]),
+    keep(state.workers, [
+      byText(query, 'workerNo', 'workerNo'),
+      contains(query, 'q', 'workerNo'),
+      byNum(query, 'plantId', 'plantId'),
+      byNum(query, 'departmentId', 'departmentId'),
+    ]),
     query,
   ),
 );
+
+/* 사원 탭 부서 거르기 확인용(#358) — 씨앗 작업자가 모두 부서 1001 이라 거르기가 드러나지 않았다. */
+for (const [workerId, departmentId] of [
+  [1003, 1003],
+  [1004, 1002],
+]) {
+  const row = state.workers.find((worker) => worker.workerId === workerId);
+  if (row !== undefined) row.departmentId = departmentId;
+}
 
 /*
  * ERP BOM 확인용 자료(#358) — 계약 예시 BOM 은 없는 품목(1001)을 가리켜 구성품이 「알 수 없음」으로만 보였다.
@@ -1635,6 +1649,39 @@ const allowedLocationsFor = (warehouseId, itemId) => {
   return humanMade.length === 0 && whole !== undefined ? [allowedView(whole)] : [];
 };
 
+/*
+ * ERP 품목 · 거래처 확인용 원본 칸(#358) — 서버는 품목에 erpSpec · erpItemGroupCode, 거래처에 erpPartnerCode ·
+ * countryCode 를 싣는다. 씨앗에 없어 목록 열이 「—」로만 보였다. 이미 값이 있으면 건드리지 않는다.
+ */
+{
+  const itemErp = {
+    'RM-1001': ['PP 수지 1kg', 'IG-RAW'],
+    'FG-2001': ['DL-500 / 120x70x30', 'IG-FG'],
+    'FG-2002': ['12V 2A USB-C', 'IG-FG'],
+    'SF-3001': ['4층 PCB 80x60', 'IG-SEMI'],
+    'SF-3002': ['ABS 하우징 조립', 'IG-SEMI'],
+    'RM-4001': ['FR-4 1.6t', 'IG-RAW'],
+    'RM-4002': ['2.54mm 10P', 'IG-RAW'],
+  };
+  for (const row of state.items) {
+    const erp = itemErp[row.itemCode];
+    if (erp === undefined) continue;
+    if (row.erpSpec === undefined) row.erpSpec = erp[0];
+    if (row.erpItemGroupCode === undefined) row.erpItemGroupCode = erp[1];
+  }
+  const partnerErp = {
+    'SUP-001': ['V10001', 'KR'],
+    'CUS-002': ['C20002', 'VN'],
+    'CUS-001': ['C20001', 'KR'],
+    'DSP-001': ['D30001', 'KR'],
+  };
+  for (const row of state.partners) {
+    const erp = partnerErp[row.partnerCode];
+    if (erp === undefined) continue;
+    if (row.erpPartnerCode === undefined) row.erpPartnerCode = erp[0];
+    if (row.countryCode === undefined) row.countryCode = erp[1];
+  }
+}
 on('GET', '/mdm/partners', (_p, query) =>
   page(keep(state.partners, [byText(query, 'roleTypeCode', 'roleTypeCode')]), query),
 );

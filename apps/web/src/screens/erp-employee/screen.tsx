@@ -1,10 +1,17 @@
-import { Button, Chip, type Column, EmptyState, SkeletonText, TextField } from '@crefle/web-ui';
+import {
+  Button,
+  Checkbox,
+  Chip,
+  type Column,
+  EmptyState,
+  SkeletonText,
+  TextField,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { hasChangedFilters } from '../../patterns/filter-more';
-import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import {
   FIT_PLACEHOLDER_CLASS,
   useFitPlaceholderWidth,
@@ -12,6 +19,7 @@ import {
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { OneLine } from '../../patterns/po-board';
 import { PAGE_SIZES, PageNav, type PageSize } from '../../patterns/page-nav';
+import { Select } from '../../patterns/select';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import {
   ERP_DATA_ORIENTATION_KEY,
@@ -20,7 +28,14 @@ import {
   ErpListTable,
   ErpPickEmpty,
 } from '../erp-item/erp-data-parts';
-import { useWorkerList, type Worker, type WorkerListQuery } from './queries';
+import {
+  type SelectOption,
+  useDepartmentOptions,
+  usePlantOptions,
+  useWorkerList,
+  type Worker,
+  type WorkerListQuery,
+} from './queries';
 
 const t = messages.erpEmployee;
 
@@ -37,51 +52,17 @@ const ActiveChip = ({ isActive }: { isActive: boolean }) => (
   </Chip>
 );
 
-interface ActiveFilterChipsProps {
-  includeInactive: boolean;
-  onChange: (includeInactive: boolean) => void;
-}
-
-/**
- * 재직 상태 라벨 「전체 · 재직」을 탭 줄 위에 낸다(사용자 지시 2026-11-24 · #358) — 누르는 즉시 건다. 서버 조건이
- * 「퇴사자 포함」(includeInactive) 하나뿐이라 「퇴사만」은 고를 수 없다. 조회 상자의 「퇴사자 포함」 칸은 이 라벨로 옮겼다.
- */
-const ActiveFilterChips = ({ includeInactive, onChange }: ActiveFilterChipsProps) => {
-  const target = useHubActionsTarget();
-  const options = [
-    { value: true, label: t.status.all },
-    { value: false, label: t.status.active },
-  ];
-  const group = (
-    <div className="inspection-hub-counts" role="group" aria-label={t.status.group}>
-      {options.map((option) => (
-        <Chip
-          key={option.label}
-          variant="filter"
-          size="sm"
-          selected={includeInactive === option.value}
-          aria-pressed={includeInactive === option.value}
-          onSelectedChange={() => {
-            onChange(option.value);
-          }}
-        >
-          {option.label}
-        </Chip>
-      ))}
-    </div>
-  );
-
-  return target === null ? group : <HubActions target={target}>{group}</HubActions>;
-};
-
 /** 주소의 조건. 조건은 전부 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다. */
 interface Filters {
   q: string;
+  /** 공장 · 부서 번호(글자). 빈 글자는 「전체」. */
+  plantId: string;
+  departmentId: string;
   includeInactive: boolean;
 }
 
 /** 화면을 처음 열었을 때의 조건. 「초기화」가 돌아가는 자리이기도 하다. */
-const EMPTY_FILTERS: Filters = { q: '', includeInactive: false };
+const EMPTY_FILTERS: Filters = { q: '', plantId: '', departmentId: '', includeInactive: false };
 
 const readPage = (params: URLSearchParams): number => {
   const page = Number(params.get('page') ?? '');
@@ -97,6 +78,8 @@ const readSize = (params: URLSearchParams): PageSize | null => {
 const toSearchParams = (filters: Filters, page = 1, size: PageSize | null = null) => {
   const next = new URLSearchParams();
   if (filters.q !== '') next.set('q', filters.q);
+  if (filters.plantId !== '') next.set('plant', filters.plantId);
+  if (filters.departmentId !== '') next.set('dept', filters.departmentId);
   if (filters.includeInactive) next.set('inactive', '1');
   if (page > 1) next.set('page', String(page));
   if (size !== null) next.set('size', String(size));
@@ -105,6 +88,8 @@ const toSearchParams = (filters: Filters, page = 1, size: PageSize | null = null
 
 const toListQuery = (filters: Filters, page: number, size: PageSize | null): WorkerListQuery => ({
   ...(filters.q !== '' ? { q: filters.q } : {}),
+  ...(filters.plantId !== '' ? { plantId: Number(filters.plantId) } : {}),
+  ...(filters.departmentId !== '' ? { departmentId: Number(filters.departmentId) } : {}),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
   ...(size !== null ? { size } : {}),
@@ -112,20 +97,32 @@ const toListQuery = (filters: Filters, page: number, size: PageSize | null): Wor
 
 interface FilterBarProps {
   applied: Filters;
+  plantOptions: SelectOption[];
+  departmentOptions: SelectOption[];
   onSearch: (filters: Filters) => void;
   onReset: () => void;
 }
 
 /** 입력 중인 값은 이 줄이 갖고, 「조회」를 눌러야 주소로 옮긴다 — 글자마다 요청이 나가지 않게 한다. */
-const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
+const FilterBar = ({
+  applied,
+  plantOptions,
+  departmentOptions,
+  onSearch,
+  onReset,
+}: FilterBarProps) => {
   const [draft, setDraft] = useState<Filters>(applied);
   const searchRef = useFitPlaceholderWidth(t.fields.qPlaceholder);
+  const plantId = useId();
+  const departmentId = useId();
   const { q, includeInactive } = applied;
+  const appliedPlant = applied.plantId;
+  const appliedDepartment = applied.departmentId;
 
   // 뒤로가기 등으로 주소가 바뀌면 입력칸도 따라간다.
   useEffect(() => {
-    setDraft({ q, includeInactive });
-  }, [q, includeInactive]);
+    setDraft({ q, plantId: appliedPlant, departmentId: appliedDepartment, includeInactive });
+  }, [q, appliedPlant, appliedDepartment, includeInactive]);
 
   /*
    * 초기화는 초안도 함께 비운다 — 주소가 이미 처음 값이면 주소가 바뀌지 않아 따라가는 effect 가
@@ -146,6 +143,34 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
         onSearch({ ...draft, q: draft.q.trim() });
       }}
     >
+      {/* 공장 선택 · 부서 선택 · 사원 검색 · 퇴사자 포함 순서 — 같은 묶음의 품목 · 거래처 탭과 같다(사용자 지시 2026-11-24). */}
+      <div className="field-cell">
+        <label className="field-label" htmlFor={plantId}>
+          {t.fields.plant}
+        </label>
+        {/* 공장 목록을 못 받아도 「전체 공장」으로는 조회할 수 있다 — 길을 막지 않는다. */}
+        <Select
+          id={plantId}
+          options={[{ value: '', label: t.filters.allPlants }, ...plantOptions]}
+          value={draft.plantId}
+          onChange={(value) => {
+            setDraft((prev) => ({ ...prev, plantId: value }));
+          }}
+        />
+      </div>
+      <div className="field-cell">
+        <label className="field-label" htmlFor={departmentId}>
+          {t.fields.department}
+        </label>
+        <Select
+          id={departmentId}
+          options={[{ value: '', label: t.filters.allDepartments }, ...departmentOptions]}
+          value={draft.departmentId}
+          onChange={(value) => {
+            setDraft((prev) => ({ ...prev, departmentId: value }));
+          }}
+        />
+      </div>
       <TextField
         containerClassName={FIT_PLACEHOLDER_CLASS}
         label={t.fields.q}
@@ -156,6 +181,17 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
           setDraft((prev) => ({ ...prev, q: event.target.value }));
         }}
       />
+      <div className="field-cell field-cell-unlabeled">
+        <Checkbox
+          checked={draft.includeInactive}
+          onChange={(event) => {
+            const { checked } = event.target;
+            setDraft((prev) => ({ ...prev, includeInactive: checked }));
+          }}
+        >
+          {t.fields.includeInactive}
+        </Checkbox>
+      </div>
       <ErpFilterActions onReset={reset} showReset={isChanged} />
     </form>
   );
@@ -176,12 +212,16 @@ export const ErpEmployeeScreen = () => {
 
   const filters: Filters = {
     q: searchParams.get('q') ?? '',
+    plantId: searchParams.get('plant') ?? '',
+    departmentId: searchParams.get('dept') ?? '',
     includeInactive: searchParams.get('inactive') === '1',
   };
   const page = readPage(searchParams);
   const size = readSize(searchParams);
 
   const list = useWorkerList(toListQuery(filters, page, size));
+  const plantOptions = usePlantOptions();
+  const departmentOptions = useDepartmentOptions();
   const rows = list.data?.items ?? EMPTY_ROWS;
   const meta = list.data?.page ?? { page, size: size ?? 0, total: 0 };
   const selected = rows.find((row) => String(row.workerId) === selectedId) ?? null;
@@ -250,15 +290,11 @@ export const ErpEmployeeScreen = () => {
             {list.isError && (
               <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
             )}
-            <ActiveFilterChips
-              includeInactive={filters.includeInactive}
-              onChange={(includeInactive) => {
-                applyQuery({ ...filters, includeInactive });
-              }}
-            />
             {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
             <FilterBar
               applied={filters}
+              plantOptions={plantOptions}
+              departmentOptions={departmentOptions}
               onSearch={(next) => {
                 applyQuery(next);
               }}

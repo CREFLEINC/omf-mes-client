@@ -13,6 +13,8 @@ import { ErpEmployeeScreen } from './screen';
 
 const ROUTE = '/system/erp-data/employees';
 const LIST_PATH = '/mdm/workers';
+const PLANT_PATH = '/mdm/plants';
+const DEPARTMENT_PATH = '/mdm/departments';
 
 /** 지어낸 합성값만 쓴다 — 실제 사번·이름처럼 보이는 값을 넣지 않는다(공개 저장소 경계). */
 const worker = (overrides: Partial<Worker> = {}): Worker => ({
@@ -40,7 +42,7 @@ const isGet = (request: Request, pathname: string): boolean =>
 
 const renderScreen = (routes: StubRoute[], search = '') => {
   const urls: URL[] = [];
-  const stub = createStubFetch(routes);
+  const stub = createStubFetch([...routes, ...lookupRoutes]);
 
   renderWithProviders(<ErpEmployeeScreen />, {
     fetch: (request) => {
@@ -57,6 +59,41 @@ const listRoute = (items: Worker[] = ROWS, total = items.length): StubRoute => (
   match: (request) => isGet(request, LIST_PATH),
   respond: () => jsonResponse({ items, page: { page: 1, size: 50, total } }),
 });
+
+/** 공장 둘 · 부서 여섯 — 부서는 5개를 넘어 펼친 목록에 검색창이 선다. */
+const PLANTS = [
+  { plantId: 21, plantCode: 'PLT-A', plantName: '합성 공장 A', isActive: true },
+  { plantId: 22, plantCode: 'PLT-B', plantName: '합성 공장 B', isActive: true },
+];
+const DEPARTMENTS = [
+  [31, 'DEP-A', '합성 부서 A'],
+  [32, 'DEP-B', '합성 부서 B'],
+  [33, 'DEP-C', '합성 부서 C'],
+  [34, 'DEP-D', '합성 부서 D'],
+  [35, 'DEP-E', '합성 부서 E'],
+  [36, 'DEP-QC', '합성 품질 부서'],
+].map(([departmentId, departmentCode, departmentName]) => ({
+  departmentId,
+  departmentCode,
+  departmentName,
+  isActive: true,
+}));
+
+const lookupRoutes: StubRoute[] = [
+  {
+    match: (request) => isGet(request, PLANT_PATH),
+    respond: () =>
+      jsonResponse({ items: PLANTS, page: { page: 1, size: 200, total: PLANTS.length } }),
+  },
+  {
+    match: (request) => isGet(request, DEPARTMENT_PATH),
+    respond: () =>
+      jsonResponse({
+        items: DEPARTMENTS,
+        page: { page: 1, size: 200, total: DEPARTMENTS.length },
+      }),
+  },
+];
 
 describe('ErpEmployeeScreen', () => {
   it('목록을 그리고, 고른 사원의 모든 칸을 상세에 내며 비어 있는 값은 표시 기호로 낸다', async () => {
@@ -99,21 +136,19 @@ describe('ErpEmployeeScreen', () => {
     expect(within(detail).getByText('사원을 선택하세요.')).toBeInTheDocument();
   });
 
-  it('검색어와 재직 상태 라벨 「전체」(퇴사자 포함)를 조회 조건으로 싣는다', async () => {
+  it('검색어와 「퇴사자 포함」을 조회 조건으로 싣고, 위 줄 재직 상태 라벨은 두지 않는다', async () => {
     const { urls, user } = renderScreen([listRoute()]);
     await screen.findByText('예시 사원 B');
+    expect(screen.queryByRole('group', { name: '재직 상태' })).toBeNull();
     // 초기화는 바뀐 것이 있을 때만 보인다.
     expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
 
     await user.type(screen.getByLabelText('사원 검색'), 'SAMPLE');
     expect(screen.getByRole('button', { name: '초기화' })).toBeInTheDocument();
-    const status = screen.getByRole('group', { name: '재직 상태' });
-    expect(within(status).getByRole('button', { name: '재직' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    const inactive = screen.getByRole('checkbox', { name: '퇴사자 포함' });
+    expect(inactive).not.toBeChecked();
+    await user.click(inactive);
     await user.click(screen.getByRole('button', { name: '조회' }));
-    await user.click(within(status).getByRole('button', { name: '전체' }));
 
     await waitFor(() => {
       const last = urls.filter((url) => url.pathname === LIST_PATH).at(-1);
@@ -121,6 +156,44 @@ describe('ErpEmployeeScreen', () => {
       expect(last?.searchParams.get('includeInactive')).toBe('true');
       expect(last?.searchParams.has('size')).toBe(false);
     });
+  });
+
+  it('공장 · 부서를 「코드 · 이름」 선택지로 고르면 서버 조회 조건 plantId · departmentId 로 싣는다', async () => {
+    const { urls, user } = renderScreen([listRoute()]);
+    await screen.findByText('예시 사원 B');
+    const first = urls.find((url) => url.pathname === LIST_PATH);
+    expect(first?.searchParams.has('plantId')).toBe(false);
+    expect(first?.searchParams.has('departmentId')).toBe(false);
+
+    const plant = screen.getByRole('combobox', { name: '공장 선택' });
+    expect(plant).toHaveTextContent('전체 공장');
+    await user.click(plant);
+    await user.click(await screen.findByRole('option', { name: 'PLT-B · 합성 공장 B' }));
+
+    const department = screen.getByRole('combobox', { name: '부서 선택' });
+    expect(department).toHaveTextContent('전체 부서');
+    await user.click(department);
+    // 선택지가 5개를 넘으면 검색창으로 좁힌다.
+    await user.type(await screen.findByRole('searchbox', { name: '검색' }), 'QC');
+    expect(screen.queryByRole('option', { name: 'DEP-A · 합성 부서 A' })).toBeNull();
+    await user.click(screen.getByRole('option', { name: 'DEP-QC · 합성 품질 부서' }));
+
+    expect(screen.getByRole('button', { name: '초기화' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '조회' }));
+
+    await waitFor(() => {
+      const last = urls.filter((url) => url.pathname === LIST_PATH).at(-1);
+      expect(last?.searchParams.get('plantId')).toBe('22');
+      expect(last?.searchParams.get('departmentId')).toBe('36');
+    });
+
+    await user.click(screen.getByRole('button', { name: '초기화' }));
+    await waitFor(() => {
+      const last = urls.filter((url) => url.pathname === LIST_PATH).at(-1);
+      expect(last?.searchParams.has('plantId')).toBe(false);
+      expect(last?.searchParams.has('departmentId')).toBe(false);
+    });
+    expect(screen.getByRole('combobox', { name: '부서 선택' })).toHaveTextContent('전체 부서');
   });
 
   it('다음 쪽은 page 를 서버에 싣는다', async () => {
