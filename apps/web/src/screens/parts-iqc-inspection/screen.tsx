@@ -53,7 +53,8 @@ import { toPageView } from '../iqc-inspection/pagination';
 import { QueueDetailFilters } from '../iqc-inspection/queue-detail-filters';
 import { QueueTable } from '../iqc-inspection/queue-table';
 import { useItemNames, useLotNumbers, useLotSuppliers } from '../iqc-inspection/reference-lookup';
-import { withDraft, withStatus } from '../oqc-inspection/filters';
+import { withDraft, withJudgmentFilter, withStatus } from '../oqc-inspection/filters';
+import { JudgmentFilter } from '../oqc-inspection/judgment-filter';
 import { LeaveGuard } from '../routing/leave-guard';
 import { InspectionDetail } from './inspection-detail';
 import { usePartsQueue } from './queries';
@@ -128,7 +129,8 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
       next.supplierId === filters.supplierId &&
       next.keyword === filters.keyword &&
       next.pendingOnly === filters.pendingOnly &&
-      next.statusCode === filters.statusCode
+      next.statusCode === filters.statusCode &&
+      next.overallJudgmentCode === filters.overallJudgmentCode
     ) {
       void queue.refetch();
     }
@@ -303,6 +305,11 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
               {messages.common.inspectionHub.pendingOnly}
             </Checkbox>
           </div>
+          {/* 종합 판정 — 고르면 바로 조회한다(omf-all-around#356). */}
+          <JudgmentFilter
+            value={filters.overallJudgmentCode}
+            onChange={(code) => applyFilters(withJudgmentFilter(filters, code))}
+          />
         </div>
         {/* 품목 · 공급사 · 의뢰번호는 「조건 더보기」로 접는다(사용자 지시 2026-11-02 · #225) — 걸린 조건은 칩으로. */}
         <QueueDetailFilters filters={filters} onApply={applyFilters} />

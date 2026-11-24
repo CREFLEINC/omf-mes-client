@@ -46,6 +46,7 @@ import {
   QUEUE_STATUSES,
   type ListPageSize,
 } from '../oqc-inspection/filters';
+import { JudgmentFilter } from '../oqc-inspection/judgment-filter';
 import { QueueLoadErrorBanner } from '../oqc-inspection/load-error-banner';
 import { useInspectionQueue } from '../oqc-inspection/queries';
 import { useDirectSubmitter } from '../pqc-panel/direct-submitter';
@@ -106,6 +107,8 @@ export const PqcInspectionRegisterScreen = () => {
   const [todayOnly, setTodayOnly] = useState(false);
   /* 탭 줄 상태 칩(#185) — 비면 거르지 않는다. */
   const [statusCode, setStatusCode] = useState<InspectionHubStatus | null>(null);
+  /* 종합 판정(omf-all-around#356) — 비면 거르지 않는다. */
+  const [judgmentCode, setJudgmentCode] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   /* 목록 쪽 크기 — IQC 목록과 같은 10 · 20 · 50건(사용자 지시 2026-10-28 · #197). */
   const [pageSize, setPageSize] = useState<ListPageSize>(PAGE_SIZE);
@@ -191,6 +194,7 @@ export const PqcInspectionRegisterScreen = () => {
     inspectionTypeCode: PQC,
     pendingOnly,
     ...(statusCode === null ? {} : { statusCode }),
+    ...(judgmentCode === null ? {} : { overallJudgmentCode: judgmentCode }),
     ...(filters.itemId === null ? {} : { itemId: filters.itemId }),
     ...(filters.workOrderId === null ? {} : { workOrderId: filters.workOrderId }),
     ...(filters.keyword === '' ? {} : { q: filters.keyword }),
@@ -331,6 +335,15 @@ export const PqcInspectionRegisterScreen = () => {
             {messages.pqcInspectionRegister.queue.pendingOnly}
           </Checkbox>
         </div>
+        {/* 종합 판정 — 고르면 바로 조회한다. 판정은 확정 건에만 있어 「대기·진행만 보기」를 함께 끈다(omf-all-around#356). */}
+        <JudgmentFilter
+          value={judgmentCode}
+          onChange={(code) => {
+            setJudgmentCode(code);
+            if (code !== null) setPendingOnly(false);
+            setPage(1);
+          }}
+        />
         <div className="inspection-filter-more">
           <FilterMoreButton open={fold.isOpen} controlsId={fold.id} onToggle={fold.toggle} />
         </div>
@@ -351,6 +364,7 @@ export const PqcInspectionRegisterScreen = () => {
               setFilters(EMPTY_PQC_FILTERS);
               setPendingOnly(true);
               setStatusCode(null);
+              setJudgmentCode(null);
               setPage(1);
             }}
           />

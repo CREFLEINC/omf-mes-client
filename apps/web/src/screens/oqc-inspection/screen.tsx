@@ -39,6 +39,7 @@ import {
   PAGE_SIZE,
   QUEUE_STATUSES,
   withDraft,
+  withJudgmentFilter,
   withStatus,
   readFilters,
   readPage,
@@ -73,6 +74,7 @@ import {
   useSaveInspectionResult,
 } from './queries';
 import { plantTodayRange } from '../parts-iqc-inspection/today';
+import { JudgmentFilter } from './judgment-filter';
 import { QueueDetailFilters } from './queue-detail-filters';
 import { QueueListTable } from './queue-list-table';
 import { RequestDetailPane } from './request-detail-pane';
@@ -1141,6 +1143,11 @@ export const OqcInspectionScreen = () => {
             {t.filters.pendingOnly}
           </Checkbox>
         </div>
+        {/* 종합 판정 — 고르면 바로 조회한다(omf-all-around#356). */}
+        <JudgmentFilter
+          value={filters.overallJudgmentCode}
+          onChange={(code) => applyFilters(withJudgmentFilter(filters, code))}
+        />
         {/* 품목 · 의뢰번호는 「조건 더보기」로 접는다(사용자 지시 2026-11-02 · #225) — 걸린 조건은 칩으로. */}
         <QueueDetailFilters filters={filters} onApply={applyFilters} />
       </section>

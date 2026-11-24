@@ -273,6 +273,7 @@ const mountDrawer = (data: InboundInspection) => {
         renderForm={({ drawer }) => (
           <div>
             {drawer.matchField}
+            <output aria-label="ready">{String(drawer.ready)}</output>
             <button type="button" onClick={() => drawer.onJudgmentChange('ACCEPTED')}>
               {STUB.accept}
             </button>
@@ -333,6 +334,15 @@ describe('W-01-01 결과 드로어 — 판정 규칙 변경(2026-11-12)', () => 
     await user.click(within(drawer).getByRole('checkbox', { name: lot(2).lotNo }));
     await user.click(within(drawer).getByRole('button', { name: STUB.save }));
     expect(saved).toEqual([{ matchedLotIds: [2], reinspectionReasonCode: null }]);
+  });
+
+  it('드로어 필수 칸(LOT 매칭)이 비면 양식에 「아직」을 알린다 — [저장]을 잠근다(omf-all-around#356)', async () => {
+    mountDrawer(inspection([]));
+    const { user, drawer } = await openAdd(1);
+
+    expect(within(drawer).getByLabelText('ready')).toHaveTextContent('false');
+    await user.click(within(drawer).getByRole('checkbox', { name: lot(1).lotNo }));
+    expect(within(drawer).getByLabelText('ready')).toHaveTextContent('true');
   });
 
   it('US3-4 [전부 선택]은 이 입하 LOT 의 자재 관리 LOT 마다 매칭으로 저장한다(「전체」 표시 없음)', async () => {

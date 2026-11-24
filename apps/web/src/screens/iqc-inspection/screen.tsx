@@ -35,7 +35,8 @@ import {
   useSplitOrientation,
 } from '../../patterns/split-orientation';
 import { LotScan } from '../inspection-documents/lot-scan';
-import { withDraft, withStatus } from '../oqc-inspection/filters';
+import { withDraft, withJudgmentFilter, withStatus } from '../oqc-inspection/filters';
+import { JudgmentFilter } from '../oqc-inspection/judgment-filter';
 import { InspectionDetail } from '../parts-iqc-inspection/inspection-detail';
 import { plantTodayRange } from '../parts-iqc-inspection/today';
 import { LeaveGuard } from '../routing/leave-guard';
@@ -132,7 +133,8 @@ const IqcInspectionScreenBody = () => {
       next.supplierId === filters.supplierId &&
       next.keyword === filters.keyword &&
       next.pendingOnly === filters.pendingOnly &&
-      next.statusCode === filters.statusCode
+      next.statusCode === filters.statusCode &&
+      next.overallJudgmentCode === filters.overallJudgmentCode
     ) {
       void queue.refetch();
     }
@@ -285,6 +287,11 @@ const IqcInspectionScreenBody = () => {
               {hubText.pendingOnly}
             </Checkbox>
           </div>
+          {/* 종합 판정 — 고르면 바로 조회한다(omf-all-around#356). */}
+          <JudgmentFilter
+            value={filters.overallJudgmentCode}
+            onChange={(code) => applyFilters(withJudgmentFilter(filters, code))}
+          />
         </div>
         {/* 품목 · 공급사 · 의뢰번호는 「조건 더보기」로 접는다 — 단추는 스캔 줄 오른쪽 끝(#225), 걸린 조건은 칩으로. */}
         <QueueDetailFilters filters={filters} onApply={applyFilters} />

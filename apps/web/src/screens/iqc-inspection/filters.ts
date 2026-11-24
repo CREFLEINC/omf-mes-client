@@ -38,6 +38,7 @@ import {
   type InspectionHubStatus,
   toInspectionHubStatus,
 } from '../../patterns/inspection-hub-counts';
+import { readCode } from '../oqc-inspection/filters';
 
 /** 주소 키는 짧게 쓰고 계약 이름과 분리한다 — 주소는 사람이 읽고 고치는 자리다. */
 export const URL_KEYS = {
@@ -45,6 +46,7 @@ export const URL_KEYS = {
   supplierId: 'sp',
   keyword: 'q',
   status: 'st',
+  judgment: 'jd',
   pendingOnly: 'pd',
   page: 'page',
   size: 'size',
@@ -106,6 +108,8 @@ export interface QueueFilters {
   pendingOnly: boolean;
   /** 탭 줄 상태 칩(#185) — 한 상태만 남긴다. 비면 거르지 않는다. */
   statusCode: InspectionHubStatus | null;
+  /** 종합 판정(omf-all-around#356) — 확정된 의뢰의 판정. 비면 거르지 않는다. */
+  overallJudgmentCode: string | null;
 }
 
 /** 칩으로 거르는 상태 — 대기·진행·완료(OQC · PQC 와 같다). */
@@ -123,6 +127,7 @@ export const EMPTY_FILTERS: QueueFilters = {
   keyword: '',
   pendingOnly: FIXED_AXES.pendingOnly,
   statusCode: null,
+  overallJudgmentCode: null,
 };
 
 export const readFilters = (params: URLSearchParams): QueueFilters => ({
@@ -131,6 +136,7 @@ export const readFilters = (params: URLSearchParams): QueueFilters => ({
   keyword: params.get(URL_KEYS.keyword) ?? '',
   pendingOnly: params.get(URL_KEYS.pendingOnly) !== PENDING_ONLY_OFF,
   statusCode: toInspectionHubStatus(params.get(URL_KEYS.status), QUEUE_STATUSES),
+  overallJudgmentCode: readCode(params.get(URL_KEYS.judgment)),
 });
 
 /** 서버로 보내는 질의. **비어 있는 조건은 키 자체를 싣지 않는다** — 빈 문자열은 조건이 아니다. */
@@ -141,6 +147,8 @@ export interface QueueListQuery {
   supplierId?: number;
   q?: string;
   statusCode?: string;
+  /** 종합 판정(omf-all-around#356). */
+  overallJudgmentCode?: string;
   /** 「오늘 입고」 — 공장 하루 `[from, to)`(부품 IQC 와 같다 · omf-all-around#228). */
   requestedAtFrom?: string;
   requestedAtTo?: string;
@@ -164,6 +172,7 @@ export const toListQuery = (
   if (filters.supplierId !== null) query.supplierId = filters.supplierId;
   if (filters.keyword !== '') query.q = filters.keyword;
   if (filters.statusCode !== null) query.statusCode = filters.statusCode;
+  if (filters.overallJudgmentCode !== null) query.overallJudgmentCode = filters.overallJudgmentCode;
 
   return query;
 };
@@ -189,6 +198,9 @@ export const toSearchParams = (
   /* 기본값(켜짐)은 적지 않는다 — 적으면 주소가 길어지고 「끈 사람」과 구분되지 않는다. */
   if (!filters.pendingOnly) params.set(URL_KEYS.pendingOnly, PENDING_ONLY_OFF);
   if (filters.statusCode !== null) params.set(URL_KEYS.status, filters.statusCode);
+  if (filters.overallJudgmentCode !== null) {
+    params.set(URL_KEYS.judgment, filters.overallJudgmentCode);
+  }
   if (page !== FIRST_PAGE) params.set(URL_KEYS.page, String(page));
 
   return params;

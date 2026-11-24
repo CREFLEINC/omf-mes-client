@@ -209,6 +209,19 @@ const expandQuantities = async (_user: unknown, pane: ReturnType<typeof within>)
   await pane.findByRole('region', { name: web.quantityBox });
 };
 
+/* 필수 칸(나머지 수량 · 종합 판정)을 채운다 — 그래야 [저장]이 눌린다(omf-all-around#356). */
+const fillRequired = async (
+  user: ReturnType<typeof userEvent.setup>,
+  pane: ReturnType<typeof within>,
+): Promise<void> => {
+  for (const name of [web.quantity.rejected, web.quantity.held]) {
+    await user.clear(pane.getByRole('textbox', { name }));
+    await user.type(pane.getByRole('textbox', { name }), '0');
+  }
+  await user.click(pane.getByRole('combobox', { name: web.judgment.label }));
+  await user.click(await screen.findByRole('option', { name: '합격' }));
+};
+
 /* 목록 줄의 의뢰번호 단추로 상세를 연다(#135 — 목록과 상세가 나뉜 화면). */
 const openRequest = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(await screen.findByText(REQUEST.inspectionRequestNo));
@@ -533,6 +546,9 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     const pane = await openRequest(user);
 
     await user.type(await pane.findByRole('textbox', { name: web.quantity.accepted }), '5');
+    /* 필수 칸이 비면 잠겨 있다(omf-all-around#356). */
+    expect(pane.getByRole('button', { name: pqc.result.save })).toBeDisabled();
+    await fillRequired(user, pane);
     await waitFor(() => expect(pane.getByRole('button', { name: pqc.result.save })).toBeEnabled());
     await user.click(pane.getByRole('button', { name: pqc.result.save }));
 
@@ -602,14 +618,16 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
 
     const accepted = await pane.findByRole('textbox', { name: web.quantity.accepted });
     await waitFor(() => expect(accepted).toHaveValue('3'));
+    /* 필수 칸을 먼저 채우고(omf-all-around#356) 합격 수량을 고친다 — 합계가 맞아야 [저장]이 눌린다. */
+    await fillRequired(user, pane);
     await user.clear(accepted);
-    await user.type(accepted, '4');
+    await user.type(accepted, '5');
     saved = true;
     await waitFor(() => expect(pane.getByRole('button', { name: pqc.result.save })).toBeEnabled());
     await user.click(pane.getByRole('button', { name: pqc.result.save }));
 
     expect(await screen.findByText(pqc.result.saved)).toBeInTheDocument();
-    expect(pane.getByRole('textbox', { name: web.quantity.accepted })).toHaveValue('4');
+    expect(pane.getByRole('textbox', { name: web.quantity.accepted })).toHaveValue('5');
   });
 
   /* 목록 접기(#350) — 접힌 탭에 건수, 펼치면 고른 의뢰 · 적던 수량이 그대로. */

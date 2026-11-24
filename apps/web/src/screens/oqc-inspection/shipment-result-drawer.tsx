@@ -115,6 +115,12 @@ export const ShipmentResultDrawer = ({
   const judgmentError = checked && judgment === null ? d.judgmentRequired : null;
   const lotNoOf = (lotId: number): string =>
     lots.find((lot) => lot.lotId === lotId)?.lotNo ?? String(lotId);
+  /* 필수 칸(피킹 LOT 매칭 · 판정 · 재검 사유)이 다 차야 [저장]이 눌린다(omf-all-around#356). */
+  const ready =
+    matched.length > 0 &&
+    judgment !== null &&
+    (!needsReason || reason !== null) &&
+    !measurements.hasError;
 
   const submit = () => {
     setChecked(true);
@@ -167,7 +173,7 @@ export const ShipmentResultDrawer = ({
               {d.cancel}
             </Button>
             <Button
-              disabled={save.isSaving}
+              disabled={save.isSaving || !ready}
               aria-describedby={save.isSaving ? savingId : undefined}
               onClick={submit}
             >

@@ -623,6 +623,7 @@ export const InboundDetail = ({
                       inspectionRequestId={inspectionRequestId}
                       lots={lots}
                       uomCode={uomCode}
+                      scannedLotId={scanOpen?.lotId ?? null}
                       onClose={() => setAttachOpen(false)}
                     />
                   )}

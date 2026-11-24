@@ -221,16 +221,20 @@ describe('W-04-03 출하 OQC 새 흐름 — 상세', () => {
     expect(drawer.getByRole('checkbox', { name: 'P2611-0001' })).not.toBeChecked();
   });
 
-  it('US3-1 Q4 매칭 없이 제출하면 「피킹 LOT 을 1개 이상 고르세요」로 막고 보내지 않는다', async () => {
+  it('US3-1 Q4 필수 칸(매칭 · 판정)이 비면 [저장]이 잠긴다(omf-all-around#356)', async () => {
     const user = userEvent.setup();
     const { writes } = renderShipmentOqc();
 
     const drawer = await openAddDrawer(user);
-    await user.click(drawer.getByRole('button', { name: s.drawer.selectNone }));
+    /* 판정을 고르기 전 — 잠김. */
+    expect(drawer.getByRole('button', { name: s.drawer.save })).toBeDisabled();
     await user.click(drawer.getByRole('button', { name: s.judgments.ACCEPTED }));
+    expect(drawer.getByRole('button', { name: s.drawer.save })).toBeEnabled();
+    /* 매칭을 다 풀면 — 다시 잠김. */
+    await user.click(drawer.getByRole('button', { name: s.drawer.selectNone }));
+    expect(drawer.getByRole('button', { name: s.drawer.save })).toBeDisabled();
     await user.click(drawer.getByRole('button', { name: s.drawer.save }));
 
-    expect(drawer.getAllByText(s.drawer.matchRequired).length).toBeGreaterThan(0);
     expect(writes).toHaveLength(0);
   });
 
@@ -266,8 +270,8 @@ describe('W-04-03 출하 OQC 새 흐름 — 상세', () => {
       drawer.getByText(s.drawer.reasonLine('P2611-0003', 2, '불합격', '합격')),
     ).toBeInTheDocument();
 
-    await user.click(drawer.getByRole('button', { name: s.drawer.save }));
-    expect(drawer.getAllByText(s.drawer.reasonRequired).length).toBeGreaterThan(0);
+    /* 재검 사유를 고르기 전 — [저장]이 잠긴다(omf-all-around#356). */
+    expect(drawer.getByRole('button', { name: s.drawer.save })).toBeDisabled();
     expect(writes).toHaveLength(0);
 
     await user.click(drawer.getByRole('combobox', { name: s.drawer.reasonHeading }));

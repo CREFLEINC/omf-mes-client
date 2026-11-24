@@ -674,6 +674,8 @@ export interface InspectionFormDrawer {
   onJudgmentChange: (judgmentCode: string | null) => void;
   /** [저장] 직전 드로어 칸 검사 — 매칭 0개 · 재검 사유 빠짐이면 칸에 오류를 띄우고 `false`(FR-021 · FR-023a). */
   validate: () => boolean;
+  /** 드로어 칸의 필수 입력(LOT 매칭 · 재검 사유)이 다 찼는가 — 아니면 [저장]을 잠근다(omf-all-around#356). */
+  ready: boolean;
   /** 재검 사유 — 필요할 때만 싣는다(`null` 이면 싣지 않는다). */
   reinspectionReasonCode: string | null;
   onCancel: () => void;
@@ -1079,26 +1081,23 @@ const InspectionForm = (props: FormProps) => {
   };
 
   /*
-   * 결과 드로어의 [저장] — 확정하지 않고 결과만 남긴다(005 새 흐름). 판정이 없으면 막고 「판정을 고르세요.」 —
-   * 검사 단위 판정 확정이 판정 빈 결과를 받지 않는다(FR-025).
+   * 결과 드로어의 [저장] — 확정하지 않고 결과만 남긴다(005 새 흐름). 필수 칸(LOT 매칭 · 검사일시 · 검사 수량 · 종합 판정 ·
+   * 불량 수 · 사유)이 다 차야 눌린다(omf-all-around#356) — 검사 단위 판정 확정이 판정 빈 결과를 받지 않는다(FR-025).
    */
-  const [judgmentMissing, setJudgmentMissing] = useState(false);
   const drawerBlocked =
     submit.isSaving ||
     props.inspector === null ||
     inspectedQty === null ||
     inspectedQty <= 0 ||
     form.inspectedAt === '' ||
+    overall === null ||
     fourMBlocked ||
     manualUnjudged.length > 0 ||
-    (needsReason && reason.trim() === '');
+    defectsMissing ||
+    (needsReason && reason.trim() === '') ||
+    props.drawer?.ready === false;
   const onSaveResult = () => {
-    if (drawerBlocked || inspectedQty === null || props.drawer == null) return;
-    if (overall === null) {
-      setJudgmentMissing(true);
-      return;
-    }
-    setJudgmentMissing(false);
+    if (drawerBlocked || inspectedQty === null || overall === null || props.drawer == null) return;
     if (!props.drawer.validate()) return;
     const reasonCode = props.drawer.reinspectionReasonCode;
     submit.write({
@@ -1520,11 +1519,6 @@ const InspectionForm = (props: FormProps) => {
 
       {props.drawer != null ? (
         <div className="parts-iqc-footer parts-iqc-drawer-footer">
-          {judgmentMissing && (
-            <p className="field-error" role="alert">
-              {messages.iqcInboundLot.drawer.judgmentRequired}
-            </p>
-          )}
           {(ruleErrors?.codes ?? []).map((code) => (
             <p key={code} className="field-error" role="alert">
               {messages.iqcInboundLot.drawer.ruleErrors[code]}

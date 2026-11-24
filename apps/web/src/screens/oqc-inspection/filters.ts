@@ -42,6 +42,7 @@ export const URL_KEYS = {
   keyword: 'q',
   pendingOnly: 'pd',
   status: 'st',
+  judgment: 'jd',
   page: 'page',
   size: 'size',
   selected: 'ir',
@@ -106,6 +107,8 @@ export interface QueueFilters {
   pendingOnly: boolean;
   /** 탭 줄 상태 칩(#185) — 한 상태만 남긴다. 비면 거르지 않는다. */
   statusCode: InspectionHubStatus | null;
+  /** 종합 판정(omf-all-around#356) — 확정된 의뢰의 판정. 비면 거르지 않는다. */
+  overallJudgmentCode: string | null;
 }
 
 /** 칩으로 거르는 상태 — 대기·진행·완료. */
@@ -128,7 +131,23 @@ export const EMPTY_FILTERS: QueueFilters = {
   keyword: '',
   pendingOnly: PENDING_ONLY_DEFAULT,
   statusCode: null,
+  overallJudgmentCode: null,
 };
+
+/**
+ * 종합 판정을 건다(omf-all-around#356). 판정은 확정된 의뢰에만 있어 **「대기·진행만 보기」를 함께 끈다** — 켜 둔 채면
+ * 서버가 두 조건을 AND 로 묶어 늘 빈 목록이다(「완료」 칩과 같은 이유). 끈 것이 체크칸에 그대로 보인다.
+ */
+export const withJudgmentFilter = <
+  F extends StatusFilters & { overallJudgmentCode: string | null },
+>(
+  filters: F,
+  overallJudgmentCode: string | null,
+): F => ({
+  ...filters,
+  overallJudgmentCode,
+  pendingOnly: overallJudgmentCode === null ? filters.pendingOnly : false,
+});
 
 /**
  * 칩을 건다. **「완료」는 「대기·진행만 보기」를 함께 끈다** — 서버가 두 조건을 AND 로 묶어 그대로 두면
@@ -163,7 +182,12 @@ export const readFilters = (params: URLSearchParams): QueueFilters => ({
   keyword: params.get(URL_KEYS.keyword) ?? '',
   pendingOnly: params.get(URL_KEYS.pendingOnly) !== PENDING_ONLY_OFF,
   statusCode: toInspectionHubStatus(params.get(URL_KEYS.status), QUEUE_STATUSES),
+  overallJudgmentCode: readCode(params.get(URL_KEYS.judgment)),
 });
+
+/** 코드값 — 비었으면 거르지 않는다. 값 목록은 공통코드가 정해 화면이 알아볼 수 없으므로 그대로 싣는다. */
+export const readCode = (raw: string | null): string | null =>
+  raw === null || raw.trim() === '' ? null : raw.trim();
 
 /** 서버로 보내는 질의. **비어 있는 조건은 키 자체를 싣지 않는다** — 빈 문자열은 조건이 아니다. */
 export interface QueueListQuery {
@@ -175,6 +199,8 @@ export interface QueueListQuery {
   q?: string;
   /** 탭 줄 상태 칩(#185). */
   statusCode?: string;
+  /** 종합 판정(omf-all-around#356). */
+  overallJudgmentCode?: string;
   /** 「오늘 입고」 — 공장 하루의 의뢰 시각 구간(#225 · 부품 IQC 와 같다). */
   requestedAtFrom?: string;
   requestedAtTo?: string;
@@ -203,6 +229,7 @@ export const toListQuery = (
   if (filters.itemId !== null) query.itemId = filters.itemId;
   if (filters.keyword !== '') query.q = filters.keyword;
   if (filters.statusCode !== null) query.statusCode = filters.statusCode;
+  if (filters.overallJudgmentCode !== null) query.overallJudgmentCode = filters.overallJudgmentCode;
 
   return query;
 };
@@ -227,6 +254,9 @@ export const toSearchParams = (
   /* 기본값(켜짐)은 적지 않는다 — 적으면 주소가 길어지고 「끈 사람」과 구분되지 않는다. */
   if (!filters.pendingOnly) params.set(URL_KEYS.pendingOnly, PENDING_ONLY_OFF);
   if (filters.statusCode !== null) params.set(URL_KEYS.status, filters.statusCode);
+  if (filters.overallJudgmentCode !== null) {
+    params.set(URL_KEYS.judgment, filters.overallJudgmentCode);
+  }
   if (page !== FIRST_PAGE) params.set(URL_KEYS.page, String(page));
 
   return params;

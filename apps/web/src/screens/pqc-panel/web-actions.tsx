@@ -102,7 +102,10 @@ export const WebActions = ({
           type="button"
           variant="outlined"
           size="md"
-          disabled={isConfirmed || lockedReason !== null || isSending}
+          /* 필수 칸(수량 · 항목별 결과 · 종합 판정)이 다 차야 눌린다 — 확정과 같은 조건(omf-all-around#356). */
+          disabled={
+            isConfirmed || lockedReason !== null || confirmBlockedReason !== null || isSending
+          }
           onClick={onSave}
         >
           {tResult.save}

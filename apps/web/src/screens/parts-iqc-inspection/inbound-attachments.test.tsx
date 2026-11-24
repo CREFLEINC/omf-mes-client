@@ -87,8 +87,12 @@ describe('IQC 입하 LOT 파일 첨부', () => {
       within(dialog).getByLabelText(t.pick),
       new File(['%PDF-1.4'], 'report.pdf', { type: 'application/pdf' }),
     );
-    /* 처음엔 LOT 전부 — 하나를 빼고 저장한다. */
-    await user.click(within(dialog).getByRole('checkbox', { name: LOTS[2]?.lotNo }));
+    /* 처음엔 아무 LOT 도 고르지 않는다(omf-all-around#356) — 둘을 골라 저장한다. */
+    for (const lot of LOTS) {
+      expect(within(dialog).getByRole('checkbox', { name: lot.lotNo })).not.toBeChecked();
+    }
+    await user.click(within(dialog).getByRole('checkbox', { name: LOTS[0]?.lotNo }));
+    await user.click(within(dialog).getByRole('checkbox', { name: LOTS[1]?.lotNo }));
     await user.click(within(dialog).getByRole('button', { name: t.save }));
 
     await waitFor(() => expect(closed).toBe(true));
@@ -98,7 +102,25 @@ describe('IQC 입하 LOT 파일 첨부', () => {
     ]);
   });
 
-  it('LOT 를 모두 빼고 저장하면 검사 의뢰에 한 번 붙인다(omf-all-around#296)', async () => {
+  it('LOT 을 스캔해 왔으면 그 LOT 만 골라 둔다(omf-all-around#356)', async () => {
+    renderWithProviders(
+      <InboundAttachDialog
+        inspectionRequestId={501}
+        lots={LOTS}
+        uomCode="EA"
+        scannedLotId={2}
+        onClose={() => undefined}
+      />,
+      { fetch: createStubFetch([]), session: null },
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: t.title });
+    expect(within(dialog).getByRole('checkbox', { name: LOTS[1]?.lotNo })).toBeChecked();
+    expect(within(dialog).getByRole('checkbox', { name: LOTS[0]?.lotNo })).not.toBeChecked();
+    expect(within(dialog).getByRole('checkbox', { name: LOTS[2]?.lotNo })).not.toBeChecked();
+  });
+
+  it('LOT 를 고르지 않고 저장하면 검사 의뢰에 한 번 붙인다(omf-all-around#296)', async () => {
     const user = userEvent.setup();
     const posted: { targetTypeCode: string; targetId: string }[] = [];
     const fetch = createStubFetch([
@@ -128,9 +150,6 @@ describe('IQC 입하 LOT 파일 첨부', () => {
     await user.upload(
       within(dialog).getByLabelText(t.pick),
       new File(['%PDF-1.4'], 'report.pdf', { type: 'application/pdf' }),
-    );
-    await user.click(
-      within(dialog).getByRole('button', { name: messages.iqcInboundLot.drawer.selectNone }),
     );
     await user.click(within(dialog).getByRole('button', { name: t.save }));
 
