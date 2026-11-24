@@ -561,6 +561,12 @@ export const oqcInspection = {
       discardBody: '입력한 내용이 사라집니다. 닫을까요?',
       discardStay: '계속 입력',
       discardLeave: '닫기',
+      /** IQC 결과 서랍과 같은 안내 — 출하 검사에 맞춘 문장(omf-all-around#356). */
+      planVersionNote:
+        '변경한 검사 기준은 새로 발행되는 출하 검사 건부터 적용됩니다. 이미 발행된 건에는 발행 당시의 기준이 적용됩니다.',
+      noPlan: '적용된 검사 기준이 없습니다. 종합 판정만 입력하세요.',
+      /** 검사 수량은 서버가 매칭한 피킹 LOT 수량의 합으로 채운다 — 칸은 읽기 전용. */
+      inspectedQtyHint: '매칭한 피킹 LOT 수량의 합입니다.',
     },
   },
 } as const;

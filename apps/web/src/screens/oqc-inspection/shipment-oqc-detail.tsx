@@ -360,6 +360,7 @@ export const ShipmentOqcDetail = ({
         <ShipmentResultDrawer
           inspectionRequestId={request.inspectionRequestId}
           itemId={request.itemId}
+          itemParts={itemParts}
           uomId={request.uomId}
           uomCode={uom}
           planVersionId={request.inspectionPlanVersionId}

@@ -1,7 +1,8 @@
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 
 import { InspectionQtyLine, type InspectionQtyStatus } from '../../patterns/inspection-qty-line';
+import { Select } from '../../patterns/select';
 import { isKnownCode, type CodeOption } from '../pqc-inspection/code-options';
 import type { DispositionState } from '../pqc-inspection/disposition';
 import {
@@ -24,6 +25,7 @@ import { WebItemTable } from './web-item-table';
 
 const t = messages.pqcInspectionRegister.web;
 const tResult = messages.pqcInspection.result;
+const tVerdict = messages.partsIqcInspection.verdict;
 
 const ACCEPTED = 'ACCEPTED';
 const REJECTED = 'REJECTED';
@@ -85,6 +87,8 @@ export interface PqcWebStepsProps {
   isLocked: boolean;
   /** 판정 단계 아래 — 검사기준이 없을 때의 「검사 내용」 입력(#135). */
   judgmentBelow?: ReactNode;
+  /** 검사 정보 상자 맨 위(결과 창 — 받은 값 · 검사일시 · omf-all-around#356). 수량 줄은 그 아래에 선다. */
+  infoTop?: ReactNode;
 }
 
 /**
@@ -116,7 +120,9 @@ export const PqcWebSteps = ({
   onDispositionChange,
   isLocked,
   judgmentBelow,
+  infoTop,
 }: PqcWebStepsProps) => {
+  const overallLabelId = useId();
   const withUnit = (value: string): string => (uomCode === null ? value : `${value} ${uomCode}`);
   const errors = validateQuantities(draft);
   const totals = toTotals(draft, inspectedQty);
@@ -186,10 +192,14 @@ export const PqcWebSteps = ({
       ? null
       : (judgmentOptions.find((option) => option.value === expected)?.label ?? expected);
 
+  /*
+   * 결과 창(omf-all-around#356) — IQC 결과 창과 같은 짜임: 검사 정보 상자(받은 값 · 검사일시 · 수량) → 검사 항목 → 종합 판정.
+   * 값 · 판정 규칙은 그대로다.
+   */
   return (
-    <div className="pqc-web-boxes">
-      <section className="pqc-web-box" aria-label={t.quantityBox}>
-        <h3>{t.quantityBox}</h3>
+    <>
+      <section className="parts-iqc-lot-box pqc-web-info-box" aria-label={t.drawer.infoBox}>
+        {infoTop}
         <div className="iqc-inspection-qty-body">
           <InspectionQtyLine
             uomCode={uomCode}
@@ -247,30 +257,54 @@ export const PqcWebSteps = ({
           footer={null}
         />
       )}
-      <section className="pqc-web-box" aria-label={t.judgmentBox}>
-        <h3>{t.judgmentBox}</h3>
-        <div className="pqc-web-judgment-row">
-          <p className="pqc-web-auto-result">
-            <span className="parts-iqc-muted">{t.autoResult}</span>
-            {/* 확정된 회차는 다시 판정하지 않는다 — 안내 대신 「-」(OQC 와 같다). */}
-            <span>{isLocked ? '-' : (expectedText ?? t.autoResultHint)}</span>
-          </p>
-          <div className="pqc-web-judgment-pick">
-            <PqcJudgmentFields
-              part="judgment"
-              judgmentOptions={judgmentOptions}
-              judgment={judgment}
-              onJudgmentChange={(code) => {
+      {/* 종합 판정 — IQC 와 같은 상자: 왼쪽 자동 판정 결과 · 세로선 · 오른쪽 종합 판정 고르기. */}
+      <section className="parts-iqc-card" aria-label={t.judgmentBox}>
+        <h3 className="parts-iqc-sub-title">{t.judgmentBox}</h3>
+        <div className="parts-iqc-verdict-line">
+          <div
+            className={`parts-iqc-auto-box${expected === REJECTED ? ' is-ng' : expected === ACCEPTED ? ' is-ok' : ''}`}
+          >
+            <span className="parts-iqc-auto-label">{t.autoResult}</span>
+            {isLocked || expectedText === null ? (
+              /* 확정된 회차는 다시 판정하지 않는다 — 안내 대신 「-」(OQC 와 같다). */
+              <span className="parts-iqc-muted">{isLocked ? '-' : t.autoResultHint}</span>
+            ) : (
+              <span className="parts-iqc-auto-value">
+                <strong>{expectedText}</strong>
+                {` ${tVerdict.rejectedQty(Number(formatMicro(toMicro(draft.rejected) ?? 0n)))}`}
+              </span>
+            )}
+          </div>
+          <div
+            className="parts-iqc-inline-field parts-iqc-overall"
+            data-judgment={judgment || undefined}
+          >
+            <span className="field-label" id={overallLabelId}>
+              {t.judgmentBox}
+              <span className="required-mark" aria-hidden="true">
+                {' *'}
+              </span>
+            </span>
+            <Select
+              aria-labelledby={overallLabelId}
+              options={judgmentOptions}
+              value={judgment}
+              placeholder={
+                judgmentOptions.length === 0 ? tResult.judgmentUnavailable : t.judgment.placeholder
+              }
+              disabled={isLocked || judgmentOptions.length === 0}
+              onChange={(code) => {
                 autoFilled.current = null;
                 onJudgmentChange(code);
+                /* 불합격이 아니면 처분 칸이 사라진다 — 앞서 고른 처분이 숨은 채 남지 않게 거둔다. */
+                if (code !== REJECTED) onDispositionChange(null);
               }}
-              disposition={disposition}
-              onDispositionChange={onDispositionChange}
-              rejected={draft.rejected}
-              isLocked={isLocked}
             />
           </div>
         </div>
+        {judgmentOptions.length > 0 && !isKnownCode(judgmentOptions, judgment) && (
+          <p className="field-note">{tResult.judgmentUnknown(judgment)}</p>
+        )}
         <PqcJudgmentFields
           part="disposition"
           judgmentOptions={judgmentOptions}
@@ -286,6 +320,6 @@ export const PqcWebSteps = ({
         />
         {judgmentBelow}
       </section>
-    </div>
+    </>
   );
 };

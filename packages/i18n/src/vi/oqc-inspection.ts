@@ -405,6 +405,10 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
       discardBody: 'Nội dung đã nhập sẽ mất. Đóng lại?',
       discardStay: 'Tiếp tục nhập',
       discardLeave: 'Đóng',
+      planVersionNote:
+        'Tiêu chuẩn kiểm tra đã thay đổi được áp dụng từ các phiếu kiểm tra xuất hàng phát hành mới. Các phiếu đã phát hành áp dụng tiêu chuẩn tại thời điểm phát hành.',
+      noPlan: 'Không có tiêu chuẩn kiểm tra được áp dụng. Chỉ nhập phán định tổng hợp.',
+      inspectedQtyHint: 'Là tổng số lượng các LOT đã lấy hàng được ghép.',
     },
   },
 };

@@ -129,7 +129,7 @@ const tResult = messages.iqcInspection.result;
 /** 검사 기준 화면 — 기준이 없을 때 「검사기준 설정」이 이 주소로 그 화면의 「기준 추가」 창을 유형 · 품목을 채워 연다(`new` · `newItem`). */
 const STANDARD_PATH = '/master-data/inspection-standard';
 
-const TIME_LABELS: TimeFieldLabels = {
+export const TIME_LABELS: TimeFieldLabels = {
   field: t.lot.inspectedTime,
   hourList: t.lot.inspectedHour,
   minuteList: t.lot.inspectedMinute,
@@ -746,7 +746,7 @@ interface FormProps {
 }
 
 /** IQC 기준 안내 라벨 — 글 폭만큼, 본문 크기 글자(omf-all-around#351 · 사용자 지시 2026-11-23). */
-const PlanNote = ({ text }: { text: string }) => (
+export const PlanNote = ({ text }: { text: string }) => (
   <p className="iqc-inspection-action-note parts-iqc-plan-note" data-tone="info" role="status">
     <Icon name="info" size={16} aria-hidden />
     {text}

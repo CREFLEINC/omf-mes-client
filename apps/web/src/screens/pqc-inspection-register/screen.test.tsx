@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
 import { PqcInspectionRegisterScreen } from './screen';
 
@@ -190,10 +191,25 @@ const renderScreen = (options: RenderOptions = {}) => {
     throw new Error(`스텁에 없는 요청입니다: ${request.method} ${request.url}`);
   };
 
-  renderWithProviders(<PqcInspectionRegisterScreen />, {
-    route: '/quality/pqc-inspections',
-    fetch: stubFetch,
-  });
+  /* 결과 창이 검사자(세션)를 읽는다(omf-all-around#356) — 앱처럼 세션 자리 안에 둔다. */
+  renderWithProviders(
+    <SessionProvider>
+      <PqcInspectionRegisterScreen />
+    </SessionProvider>,
+    {
+      route: '/quality/pqc-inspections',
+      fetch: stubFetch,
+      session: {
+        userId: 8101,
+        loginId: 'TST-LOGIN-01',
+        userName: '합성 사용자',
+        scopes: [{ businessUnitId: 8301 }],
+        mustChangePassword: false,
+        roles: [],
+        permissions: [],
+      },
+    },
+  );
 
   return { saves, queueQueries, releaseSave: () => releaseSave() };
 };
@@ -201,26 +217,35 @@ const renderScreen = (options: RenderOptions = {}) => {
 const web = t.web;
 const hub = messages.common.inspectionHub;
 
-/* 입력 단계(#197) — ② 수량의 [확정]으로 ③ 판정이 열린다. */
-/* 수량과 판정은 한 단계다(사용자 지시 2026-11-09) — 넘길 [확정]이 없다. */
-const confirmQuantities = async (_user: unknown, _pane: unknown): Promise<void> => undefined;
-/* 단계가 하나라 늘 펼쳐져 있다 — 그 자리가 선 것만 기다린다. */
-const expandQuantities = async (_user: unknown, pane: ReturnType<typeof within>): Promise<void> => {
-  await pane.findByRole('region', { name: web.quantityBox });
-};
+const td = messages.iqcInboundLot.drawer;
 
-/* 필수 칸(나머지 수량 · 종합 판정)을 채운다 — 그래야 [저장]이 눌린다(omf-all-around#356). */
-const fillRequired = async (
+/* 결과 창(omf-all-around#356) — [검사 결과 추가]로 연다. */
+const openAddDrawer = async (
   user: ReturnType<typeof userEvent.setup>,
   pane: ReturnType<typeof within>,
+  round = 1,
+) => {
+  const add = await pane.findByRole('button', { name: web.results.add });
+  await waitFor(() => expect(add).toBeEnabled());
+  await user.click(add);
+  return within(await screen.findByRole('dialog', { name: td.addTitle(round) }));
+};
+
+/* 필수 칸(나머지 수량 · 종합 판정)을 채운다 — 그래야 [제출]이 눌린다(omf-all-around#356). */
+const fillRequired = async (
+  user: ReturnType<typeof userEvent.setup>,
+  drawer: ReturnType<typeof within>,
 ): Promise<void> => {
   for (const name of [web.quantity.rejected, web.quantity.held]) {
-    await user.clear(pane.getByRole('textbox', { name }));
-    await user.type(pane.getByRole('textbox', { name }), '0');
+    await user.clear(drawer.getByRole('textbox', { name }));
+    await user.type(drawer.getByRole('textbox', { name }), '0');
   }
-  await user.click(pane.getByRole('combobox', { name: web.judgment.label }));
+  await user.click(drawer.getByRole('combobox', { name: web.judgmentBox }));
   await user.click(await screen.findByRole('option', { name: '합격' }));
 };
+
+/* 확정할 수 있는 작성중 회차 — 수량이 맞고 종합 판정이 있다. */
+const READY_ROUND = { ...ROUND, acceptedQty: 5, heldQty: 0, overallJudgmentCode: 'ACCEPTED' };
 
 /* 목록 줄의 의뢰번호 단추로 상세를 연다(#135 — 목록과 상세가 나뉜 화면). */
 const openRequest = async (user: ReturnType<typeof userEvent.setup>) => {
@@ -405,7 +430,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
 
     expect(await pane.findByText(messages.partsIqcInspection.skipped.notice)).toBeInTheDocument();
     expect(pane.queryByRole('button', { name: web.actions.confirm })).toBeNull();
-    expect(pane.queryByRole('region', { name: web.quantityBox })).toBeNull();
+    expect(pane.queryByRole('button', { name: web.results.add })).toBeNull();
   });
 
   it('상세의 검사 기본 정보는 작업지시 번호·품목 이름·코드와 작업지시의 생산 LOT 을 보이고, 머리 제목은 「검사 기본 정보」(#135)', async () => {
@@ -429,216 +454,253 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     ).toBeInTheDocument();
   });
 
-  it('고른 줄을 다시 눌러 상세를 닫을 때 저장하지 않은 입력이 있으면 한 번 묻는다(#135 · #185 · #197)', async () => {
+  it('결과 창에 적던 것이 있으면 [취소] 때 한 번 묻고, [계속 입력]이면 그대로, [닫기]면 닫는다(#356)', async () => {
     const user = userEvent.setup();
     renderScreen();
     const pane = await openRequest(user);
+    const drawer = await openAddDrawer(user, pane);
 
-    await user.clear(await pane.findByRole('textbox', { name: web.quantity.accepted }));
-    await user.type(pane.getByRole('textbox', { name: web.quantity.accepted }), '1');
-    /* 고른 줄을 다시 누르면 고르지 않은 상태로 — 상세를 닫는다(#197). */
-    await user.click(
-      within(screen.getByRole('region', { name: t.queue.heading })).getByText(
-        REQUEST.inspectionRequestNo,
-      ),
-    );
-    expect(await screen.findByText(t.detail.leaveUnsaved)).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: t.detail.keepEditing }));
-    expect(pane.getByRole('textbox', { name: web.quantity.accepted })).toHaveValue('1');
-
-    /* 고른 줄을 다시 누르면 고르지 않은 상태로 — 상세를 닫는다(#197). */
-    await user.click(
-      within(screen.getByRole('region', { name: t.queue.heading })).getByText(
-        REQUEST.inspectionRequestNo,
-      ),
-    );
-    await user.click(await screen.findByRole('button', { name: t.detail.leaveAnyway }));
-    /* 상세가 닫히고 고르기 안내가 선다 — 목록은 옆에 그대로다(#185). */
-    expect(await screen.findByText(messages.common.inspectionHub.pickRequest)).toBeInTheDocument();
-  });
-
-  it('검사 수량 입력 제목 줄에 총 검사 수량을 보인다(#135)', async () => {
-    const user = userEvent.setup();
-    renderScreen();
-    const pane = await openRequest(user);
-
-    const quantity = await pane.findByRole('region', { name: web.quantityBox });
-    /* 총 검사 수량은 수량 줄 오른쪽 「전체 5 EA 중」으로 선다(#197). */
+    /* 처음 그대로면 묻지 않고 닫는다. */
+    await user.click(drawer.getByRole('button', { name: td.cancel }));
     await waitFor(() =>
-      expect(quantity).toHaveTextContent(new RegExp(hub.qtyTotalOf('5(?: \\S+)?'))),
+      expect(screen.queryByRole('dialog', { name: td.addTitle(1) })).not.toBeInTheDocument(),
+    );
+
+    const again = await openAddDrawer(user, pane);
+    await user.type(again.getByRole('textbox', { name: web.quantity.rejected }), '1');
+    await user.click(again.getByRole('button', { name: td.cancel }));
+    expect(await screen.findByText(td.discardBody)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: td.discardStay }));
+    expect(again.getByRole('textbox', { name: web.quantity.rejected })).toHaveValue('1');
+
+    await user.click(again.getByRole('button', { name: td.cancel }));
+    await user.click(await screen.findByRole('button', { name: td.discardLeave }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: td.addTitle(1) })).not.toBeInTheDocument(),
     );
   });
 
-  it('작성중 회차가 있으면 검사 수량 입력 제목 줄에 회차를 보인다(#135)', async () => {
+  it('결과 창의 [되돌리기]는 한 번의 입력(수량과 그에 따른 자동 판정)을 한 칸으로 되돌리고, [다시 실행]으로 되살린다(#356)', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    const pane = await openRequest(user);
+    const drawer = await openAddDrawer(user, pane);
+    const rejected = drawer.getByRole('textbox', { name: web.quantity.rejected });
+
+    await user.type(rejected, '1');
+    expect(drawer.getByRole('textbox', { name: web.quantity.accepted })).toHaveValue('4');
+    expect(drawer.getByRole('combobox', { name: web.judgmentBox })).toHaveTextContent('불합격');
+
+    await user.click(drawer.getByRole('button', { name: messages.partsIqcInspection.footer.undo }));
+    expect(rejected).toHaveValue('');
+    expect(drawer.getByRole('textbox', { name: web.quantity.accepted })).toHaveValue('5');
+    expect(drawer.getByRole('combobox', { name: web.judgmentBox })).not.toHaveTextContent('불합격');
+
+    await user.click(drawer.getByRole('button', { name: messages.partsIqcInspection.footer.redo }));
+    expect(rejected).toHaveValue('1');
+    expect(drawer.getByRole('combobox', { name: web.judgmentBox })).toHaveTextContent('불합격');
+  });
+
+  it('결과 창의 검사 정보에 총 검사 수량을 보이고, 새 결과의 합격 수량은 총 검사 수량이다(#135 · #356)', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    const pane = await openRequest(user);
+    const drawer = await openAddDrawer(user, pane);
+
+    const info = drawer.getByRole('region', { name: web.drawer.infoBox });
+    await waitFor(() => expect(info).toHaveTextContent(new RegExp(hub.qtyTotalOf('5(?: \\S+)?'))));
+    expect(drawer.getByRole('textbox', { name: web.quantity.accepted })).toHaveValue('5');
+  });
+
+  it('작성중 회차가 있으면 결과 표에 그 회차가 서고, 추가는 잠기고 [수정]이 저장된 값으로 창을 연다(#356)', async () => {
     const user = userEvent.setup();
     renderScreen({ rounds: [ROUND] });
     const pane = await openRequest(user);
-    await expandQuantities(user, pane);
 
-    const quantity = await pane.findByRole('region', { name: web.quantityBox });
-    await waitFor(() => expect(quantity).toHaveTextContent(web.quantity.round(1)));
+    const results = await pane.findByRole('region', { name: web.results.heading(1) });
+    expect(within(results).getByText(web.results.round(1))).toBeInTheDocument();
+    await waitFor(() => expect(pane.getByRole('button', { name: web.results.add })).toBeDisabled());
+
+    const edit = within(results).getByRole('button', {
+      name: `${web.results.round(1)} ${web.results.edit}`,
+    });
+    await waitFor(() => expect(edit).toBeEnabled());
+    await user.click(edit);
+    const drawer = within(await screen.findByRole('dialog', { name: td.editTitle(1) }));
+    expect(drawer.getByRole('textbox', { name: web.quantity.accepted })).toHaveValue('3');
+    expect(drawer.getByRole('textbox', { name: web.quantity.held })).toHaveValue('2');
   });
 
   it('불합격 처분은 판정이 「불합격」일 때만 보이고, 다른 판정으로 바꾸면 고른 처분을 거둔다(#135)', async () => {
     const user = userEvent.setup();
     renderScreen();
     const pane = await openRequest(user);
+    const drawer = await openAddDrawer(user, pane);
     const disposition = (): HTMLElement | null =>
-      pane.queryByRole('radio', { name: pqc.disposition.scrap });
+      drawer.queryByRole('radio', { name: pqc.disposition.scrap });
 
-    await user.type(await pane.findByRole('textbox', { name: web.quantity.rejected }), '2');
-    await confirmQuantities(user, pane);
-    /* 불합격이 있으면 [확정] 때 최종 판정이 「불합격」으로 채워지고 처분 칸이 선다(#197). 처분은 아직 고르지 않았다. */
-    expect(pane.getByRole('combobox', { name: web.judgment.label })).toHaveTextContent('불합격');
+    await user.type(drawer.getByRole('textbox', { name: web.quantity.rejected }), '2');
+    /* 불합격이 있으면 종합 판정이 「불합격」으로 채워지고 처분 칸이 선다(#197). 처분은 아직 고르지 않았다. */
+    expect(drawer.getByRole('combobox', { name: web.judgmentBox })).toHaveTextContent('불합격');
     expect(disposition()).not.toBeChecked();
 
-    await user.click(await pane.findByRole('radio', { name: pqc.disposition.scrap }));
+    await user.click(await drawer.findByRole('radio', { name: pqc.disposition.scrap }));
     expect(disposition()).toBeChecked();
 
-    await user.click(pane.getByRole('combobox', { name: web.judgment.label }));
+    await user.click(drawer.getByRole('combobox', { name: web.judgmentBox }));
     await user.click(await screen.findByRole('option', { name: '합격' }));
     expect(disposition()).toBeNull();
 
-    await user.click(pane.getByRole('combobox', { name: web.judgment.label }));
+    await user.click(drawer.getByRole('combobox', { name: web.judgmentBox }));
     await user.click(await screen.findByRole('option', { name: '불합격' }));
-    expect(await pane.findByRole('radio', { name: pqc.disposition.scrap })).not.toBeChecked();
+    expect(await drawer.findByRole('radio', { name: pqc.disposition.scrap })).not.toBeChecked();
   });
 
-  it('고른 의뢰를 판정해 바로 저장한다 — 사번 헤더를 싣지 않는다', async () => {
+  it('[제출]은 필수 칸이 차야 눌리고, 작성중(DRAFT)으로 바로 저장한다 — 사번 헤더를 싣지 않는다(#356)', async () => {
     const user = userEvent.setup();
     const { saves } = renderScreen();
-
     const pane = await openRequest(user);
+    const drawer = await openAddDrawer(user, pane);
 
-    await user.type(await pane.findByRole('textbox', { name: web.quantity.accepted }), '5');
-    await user.type(pane.getByRole('textbox', { name: web.quantity.rejected }), '0');
-    await user.type(pane.getByRole('textbox', { name: web.quantity.held }), '0');
-    await confirmQuantities(user, pane);
-    await user.click(pane.getByRole('combobox', { name: web.judgment.label }));
-    await user.click(await screen.findByRole('option', { name: '합격' }));
-    await user.click(pane.getByRole('button', { name: web.actions.confirm }));
-    /* PQC 는 작업지시 단위 전이 글을 쓴다 — OQC 의 LOT 상태 글이 아니다(리뷰 #1660). */
-    expect(
-      within(await screen.findByRole('dialog')).getByText(
-        messages.judgmentConfirm.pqcLotState.release,
-      ),
-    ).toBeInTheDocument();
-    /* 확인 창에서 한 번 더 누른다(omf-all-around#286). */
-    await user.click(
-      within(await screen.findByRole('dialog')).getByRole('button', {
-        name: messages.judgmentConfirm.confirm,
-      }),
-    );
+    /* 종합 판정이 비면 잠겨 있다(omf-all-around#356). */
+    expect(drawer.getByRole('button', { name: td.save })).toBeDisabled();
+    await fillRequired(user, drawer);
+    await waitFor(() => expect(drawer.getByRole('button', { name: td.save })).toBeEnabled());
+    await user.click(drawer.getByRole('button', { name: td.save }));
 
     await waitFor(() => expect(saves).toHaveLength(1));
     const [saved] = saves;
     expect(saved?.headers.get('X-Worker-No')).toBeNull();
     expect(saved?.headers.get('Idempotency-Key')).toBeTruthy();
-    const body = (await saved?.json()) as { statusCode: string; overallJudgmentCode?: string };
-    expect(body.statusCode).toBe('CONFIRMED');
-    expect(body.overallJudgmentCode).toBe('ACCEPTED');
+    const body = (await saved?.json()) as Record<string, unknown>;
+    expect(body).toMatchObject({
+      inspectionRequestId: 7101,
+      inspectedQty: 5,
+      acceptedQty: 5,
+      rejectedQty: 0,
+      heldQty: 0,
+      uomId: 1,
+      statusCode: 'DRAFT',
+      overallJudgmentCode: 'ACCEPTED',
+    });
+    expect(body.previousResultId).toBeUndefined();
+    /* 창은 닫히고 IQC 와 같은 알림(#356). */
+    expect(await screen.findByText(td.added)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
-  it('⭐ 저장은 서버 답을 받은 뒤에야 「저장했습니다」 알림을 띄우고, 기다리는 동안 두 단추를 잠근다(리뷰 m5)', async () => {
+  it('⭐ 제출은 서버 답을 받은 뒤에야 알림을 띄우고 창을 닫으며, 기다리는 동안 단추를 잠근다(리뷰 m5)', async () => {
     const user = userEvent.setup();
     const { saves, releaseSave } = renderScreen({ holdSave: true });
     const pane = await openRequest(user);
+    const drawer = await openAddDrawer(user, pane);
 
-    await user.type(await pane.findByRole('textbox', { name: web.quantity.accepted }), '5');
-    /* 필수 칸이 비면 잠겨 있다(omf-all-around#356). */
-    expect(pane.getByRole('button', { name: pqc.result.save })).toBeDisabled();
-    await fillRequired(user, pane);
-    await waitFor(() => expect(pane.getByRole('button', { name: pqc.result.save })).toBeEnabled());
-    await user.click(pane.getByRole('button', { name: pqc.result.save }));
+    await fillRequired(user, drawer);
+    await waitFor(() => expect(drawer.getByRole('button', { name: td.save })).toBeEnabled());
+    await user.click(drawer.getByRole('button', { name: td.save }));
 
     await waitFor(() => expect(saves).toHaveLength(1));
-    expect(screen.queryByText(pqc.result.saved)).not.toBeInTheDocument();
-    expect(pane.getByRole('button', { name: pqc.result.save })).toBeDisabled();
-    expect(pane.getByRole('button', { name: web.actions.confirm })).toBeDisabled();
+    expect(screen.queryByText(td.added)).not.toBeInTheDocument();
+    expect(drawer.getByRole('button', { name: td.save })).toBeDisabled();
+    expect(drawer.getByRole('button', { name: td.cancel })).toBeDisabled();
 
     releaseSave();
-    expect(await screen.findByText(pqc.result.saved)).toBeInTheDocument();
+    expect(await screen.findByText(td.added)).toBeInTheDocument();
   });
 
-  it('확정이 서버에 닿으면 목록을 다시 묻는다(리뷰 m5)', async () => {
+  it('[수정] 뒤 제출은 같은 작성중 저장을 보내고 「N회차 검사 결과를 고쳤습니다.」를 알린다(#356)', async () => {
     const user = userEvent.setup();
-    const { saves, queueQueries } = renderScreen();
+    const { saves } = renderScreen({ rounds: [READY_ROUND] });
     const pane = await openRequest(user);
 
-    await user.type(await pane.findByRole('textbox', { name: web.quantity.accepted }), '5');
-    await user.type(pane.getByRole('textbox', { name: web.quantity.rejected }), '0');
-    await user.type(pane.getByRole('textbox', { name: web.quantity.held }), '0');
-    await confirmQuantities(user, pane);
-    await user.click(pane.getByRole('combobox', { name: web.judgment.label }));
-    await user.click(await screen.findByRole('option', { name: '합격' }));
-    const before = queueQueries.length;
-    await user.click(pane.getByRole('button', { name: web.actions.confirm }));
-    /* 확인 창에서 한 번 더 누른다(omf-all-around#286). */
-    await user.click(
-      within(await screen.findByRole('dialog')).getByRole('button', {
-        name: messages.judgmentConfirm.confirm,
-      }),
-    );
+    const edit = await pane.findByRole('button', {
+      name: `${web.results.round(1)} ${web.results.edit}`,
+    });
+    await waitFor(() => expect(edit).toBeEnabled());
+    await user.click(edit);
+    const drawer = within(await screen.findByRole('dialog', { name: td.editTitle(1) }));
+    await user.clear(drawer.getByRole('textbox', { name: web.quantity.held }));
+    await user.type(drawer.getByRole('textbox', { name: web.quantity.held }), '1');
+    await waitFor(() => expect(drawer.getByRole('button', { name: td.save })).toBeEnabled());
+    await user.click(drawer.getByRole('button', { name: td.save }));
 
     await waitFor(() => expect(saves).toHaveLength(1));
+    const body = (await saves[0]?.json()) as Record<string, unknown>;
+    expect(body).toMatchObject({ statusCode: 'DRAFT', acceptedQty: 4, heldQty: 1 });
+    expect(await screen.findByText(td.updated(1))).toBeInTheDocument();
+  });
+
+  it('[판정 확정]은 저장된 작성중 결과를 그대로 확정(CONFIRMED)으로 보내고, 서버에 닿으면 목록을 다시 묻는다(리뷰 m5 · #356)', async () => {
+    const user = userEvent.setup();
+    const { saves, queueQueries } = renderScreen({ rounds: [READY_ROUND] });
+    const pane = await openRequest(user);
+
+    const confirm = pane.getByRole('button', { name: web.actions.confirm });
+    await waitFor(() => expect(confirm).toBeEnabled());
+    const before = queueQueries.length;
+    await user.click(confirm);
+    /* PQC 는 작업지시 단위 전이 글을 쓴다 — OQC 의 LOT 상태 글이 아니다(리뷰 #1660). */
+    const dialog = within(await screen.findByRole('dialog'));
+    expect(dialog.getByText(messages.judgmentConfirm.pqcLotState.release)).toBeInTheDocument();
+    /* 확인 창에서 한 번 더 누른다(omf-all-around#286). */
+    await user.click(dialog.getByRole('button', { name: messages.judgmentConfirm.confirm }));
+
+    await waitFor(() => expect(saves).toHaveLength(1));
+    const [saved] = saves;
+    expect(saved?.headers.get('X-Worker-No')).toBeNull();
+    const body = (await saved?.json()) as Record<string, unknown>;
+    expect(body).toEqual({
+      inspectionRequestId: 7101,
+      inspectedQty: 5,
+      acceptedQty: 5,
+      rejectedQty: 0,
+      heldQty: 0,
+      uomId: 1,
+      inspectedAt: READY_ROUND.inspectedAt,
+      statusCode: 'CONFIRMED',
+      overallJudgmentCode: 'ACCEPTED',
+    });
     await waitFor(() => expect(queueQueries.length).toBeGreaterThan(before));
   });
 
-  it('⛔ 저장된 회차를 못 읽으면 저장·확정을 잠그고 이유를 말한다(리뷰 M1)', async () => {
+  it('작성중 결과가 없으면 [판정 확정]을 잠그고 결과를 먼저 추가하라고 말한다(#356)', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    const pane = await openRequest(user);
+
+    expect(await pane.findByText(web.results.needResult)).toBeInTheDocument();
+    expect(pane.getByRole('button', { name: web.actions.confirm })).toBeDisabled();
+  });
+
+  it('⛔ 저장된 회차를 못 읽으면 추가·확정을 잠그고 이유를 말한다(리뷰 M1)', async () => {
     const user = userEvent.setup();
     renderScreen({ roundsFail: true });
     const pane = await openRequest(user);
 
     expect(await pane.findByText(messages.httpError.description)).toBeInTheDocument();
-    expect(pane.getByRole('button', { name: pqc.result.save })).toBeDisabled();
+    expect(pane.getByRole('button', { name: web.results.add })).toBeDisabled();
     expect(pane.getByRole('button', { name: web.actions.confirm })).toBeDisabled();
   });
 
-  it('⛔ 생산 실적이 없으면 이유를 말하고 입력 칸을 모두 잠근다(#135)', async () => {
+  it('⛔ 생산 실적이 없으면 이유를 말하고 결과 추가·확정을 잠근다(#135)', async () => {
     const user = userEvent.setup();
     renderScreen({ noProduction: true });
     const pane = await openRequest(user);
 
     expect(await pane.findByText(web.noProductionResult)).toBeInTheDocument();
-    for (const box of pane.getAllByRole('textbox')) expect(box).toBeDisabled();
-    expect(pane.getByRole('combobox', { name: web.judgment.label })).toBeDisabled();
-    expect(pane.getByRole('button', { name: pqc.result.save })).toBeDisabled();
+    expect(pane.getByRole('button', { name: web.results.add })).toBeDisabled();
     expect(pane.getByRole('button', { name: web.actions.confirm })).toBeDisabled();
   });
 
-  it('저장 뒤 재조회가 사람이 고친 칸을 되돌리지 않는다(리뷰 m1)', async () => {
-    const user = userEvent.setup();
-    let saved = false;
-    renderScreen({
-      rounds: () => (saved ? [{ ...ROUND, acceptedQty: 9, versionNo: 2 }] : [ROUND]),
-    });
-    const pane = await openRequest(user);
-    await expandQuantities(user, pane);
-
-    const accepted = await pane.findByRole('textbox', { name: web.quantity.accepted });
-    await waitFor(() => expect(accepted).toHaveValue('3'));
-    /* 필수 칸을 먼저 채우고(omf-all-around#356) 합격 수량을 고친다 — 합계가 맞아야 [저장]이 눌린다. */
-    await fillRequired(user, pane);
-    await user.clear(accepted);
-    await user.type(accepted, '5');
-    saved = true;
-    await waitFor(() => expect(pane.getByRole('button', { name: pqc.result.save })).toBeEnabled());
-    await user.click(pane.getByRole('button', { name: pqc.result.save }));
-
-    expect(await screen.findByText(pqc.result.saved)).toBeInTheDocument();
-    expect(pane.getByRole('textbox', { name: web.quantity.accepted })).toHaveValue('5');
-  });
-
-  /* 목록 접기(#350) — 접힌 탭에 건수, 펼치면 고른 의뢰 · 적던 수량이 그대로. */
-  it('목록을 접으면 「목록 N건」 탭이 서고, 펼쳐도 고른 의뢰와 적던 수량이 그대로다(#350)', async () => {
+  /* 목록 접기(#350) — 접힌 탭에 건수, 펼치면 고른 의뢰가 그대로(입력은 결과 창에서 한다 · #356). */
+  it('목록을 접으면 「목록 N건」 탭이 서고, 펼쳐도 고른 의뢰가 그대로다(#350)', async () => {
     const storageKey = 'omf-mes:pqc-inspection-register:split:collapsed';
     window.localStorage.removeItem(storageKey);
     const user = userEvent.setup();
     renderScreen();
     const pane = await openRequest(user);
-    await user.clear(await pane.findByRole('textbox', { name: web.quantity.accepted }));
-    await user.type(pane.getByRole('textbox', { name: web.quantity.accepted }), '1');
+    await pane.findByRole('button', { name: web.results.add });
     const split = document.querySelector('.po-board-split');
 
     await user.click(screen.getAllByRole('button', { name: hub.listCollapse })[0]!);
@@ -653,7 +715,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
         REQUEST.inspectionRequestNo,
       ),
     ).toHaveAttribute('aria-current', 'true');
-    expect(pane.getByRole('textbox', { name: web.quantity.accepted })).toHaveValue('1');
+    expect(pane.getByRole('button', { name: web.results.add })).toBeInTheDocument();
     window.localStorage.removeItem(storageKey);
   });
 });
