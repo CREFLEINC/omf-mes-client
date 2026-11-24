@@ -254,6 +254,27 @@ describe('W-04-03 출하 OQC 새 흐름 — 상세', () => {
     expect(drawer.getByRole('checkbox', { name: 'P2611-0001' })).not.toBeChecked();
   });
 
+  it('교체된 LOT 의 부적합은 검사 상세와 따로 「부적합 처분」 상자로 선다(omf-all-around#354)', async () => {
+    const lots = [
+      shipmentLot(7001, 'P2611-0001', 40),
+      shipmentLot(7003, 'P2611-0003', 30, 'REPLACED'),
+    ];
+    renderShipmentOqc({ request: shipmentOqcRequest({ lots }) });
+
+    expect(
+      await screen.findByRole('region', { name: messages.dispositionDecision.box.title }),
+    ).toBeInTheDocument();
+  });
+
+  it('교체된 LOT 이 없으면 처분 상자를 두지 않는다', async () => {
+    renderShipmentOqc();
+
+    await lotsTable();
+    expect(
+      screen.queryByRole('region', { name: messages.dispositionDecision.box.title }),
+    ).toBeNull();
+  });
+
   it('US3-1 Q4 필수 칸(필수 항목 · 매칭 · 판정)이 비면 [저장]이 잠긴다(omf-all-around#356)', async () => {
     const user = userEvent.setup();
     const { writes } = renderShipmentOqc({ withItems: true });

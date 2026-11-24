@@ -33,7 +33,9 @@ import {
   SplitOrientationToggle,
   useSplitOrientation,
 } from '../../patterns/split-orientation';
+import { DispositionDecisionScreen } from '../disposition-decision/screen';
 import { CODE_GROUPS, labelOfCode, toCodeOptions } from './code-options';
+import { OqcKindSelect, readKind, withKind } from './kind';
 import {
   LIST_PAGE_SIZES,
   PAGE_SIZE,
@@ -144,7 +146,7 @@ const REJECTED = 'REJECTED';
 const DRAFT = 'DRAFT';
 const referenceT = messages.common.reference;
 
-export const OqcInspectionScreen = () => {
+const OqcInspectionView = ({ kindSelect }: { kindSelect: ReactNode }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   /* 검사 조회·판정 묶음(사이드바 한 줄 · 제목 아래 탭) 안이면 셸이 준다 — 셸 밖이면 `null`. */
   const hub = usePageHub();
@@ -1115,6 +1117,7 @@ export const OqcInspectionScreen = () => {
           value={filters.overallJudgmentCode}
           onChange={(code) => applyFilters(withJudgmentFilter(filters, code))}
         />
+        {kindSelect}
         <SerialOpenByScan
           onOpen={openBySerial}
           onOpenByLot={openByLot}
@@ -1284,5 +1287,22 @@ export const OqcInspectionScreen = () => {
         </Dialog>
       )}
     </>
+  );
+};
+
+/**
+ * OQC 탭 — 「구분」으로 OQC 검사 건과 판정 의뢰를 고른다(omf-all-around#354). 판정 의뢰로 올린 반품 · 제품 부적합은
+ * 검사 건에 묶이지 않아 검사 목록에 오를 줄이 없으므로 그 부적합 목록 | 처분 상자로 선다.
+ */
+export const OqcInspectionScreen = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const kind = readKind(searchParams);
+  const kindSelect = (
+    <OqcKindSelect value={kind} onChange={(next) => setSearchParams(withKind(next))} />
+  );
+  return kind === 'request' ? (
+    <DispositionDecisionScreen requestOnly leading={kindSelect} />
+  ) : (
+    <OqcInspectionView kindSelect={kindSelect} />
   );
 };

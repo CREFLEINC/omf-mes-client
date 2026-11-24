@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  declaredLabelSize,
   applyLabelMedia,
   buildMediaProbeScript,
   calibrationCommands,
@@ -215,4 +216,26 @@ it('BITMAP 자료 안의 줄바꿈 바이트를 건드리지 않는다', () => {
   const applied = applyLabelMedia(label, readLabelMedia());
 
   expect(applied).toContain(`BITMAP 0,0,5,1,0,${payload}\r\nPRINT 1,1\r\n`);
+});
+
+describe('라벨이 적은 용지 크기(사용자 지시 2026-11-23)', () => {
+  it('첫 SIZE 줄의 mm 값을 읽는다 — 묶음 인쇄라 SIZE 가 여러 번 있어도 첫 줄', () => {
+    const commands =
+      'SIZE 80 mm,30 mm\r\nGAP 2 mm,0 mm\r\nCLS\r\nPRINT 1,1\r\nSIZE 80 mm,30 mm\r\n';
+
+    expect(declaredLabelSize(commands)).toEqual({ widthMm: 80, heightMm: 30 });
+  });
+
+  it('소수 · 띄어쓰기 · 소문자도 읽는다', () => {
+    expect(declaredLabelSize('size 101.6 mm , 50.8 mm\n')).toEqual({
+      widthMm: 101.6,
+      heightMm: 50.8,
+    });
+  });
+
+  it('SIZE 가 없거나 0 이면 null — 그때만 드라이버에 묻는다', () => {
+    expect(declaredLabelSize('CLS\r\nPRINT 1,1\r\n')).toBeNull();
+    expect(declaredLabelSize('SIZE 0 mm,30 mm\r\n')).toBeNull();
+    expect(declaredLabelSize('SIZE 3,2\r\n')).toBeNull();
+  });
 });

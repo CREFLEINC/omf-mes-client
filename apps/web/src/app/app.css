@@ -7499,10 +7499,6 @@ dialog.routing-history-dialog {
   min-width: 30rem;
 }
 
-.disposition-history-table table {
-  min-width: 44rem;
-}
-
 .disposition-table th {
   white-space: nowrap;
 }
@@ -7838,6 +7834,49 @@ dialog.routing-history-dialog {
   grid-template-columns: minmax(0, 1fr);
 }
 
+/*
+ * 부적합 처분 상자(omf-all-around#354) — IQC · OQC 검사 상세 아래에 검사 상세와 따로 선 테두리 상자.
+ * OQC 「판정 의뢰」 목록의 오른쪽 구획 안에서는 구획이 곧 상자라 테두리를 겹치지 않는다.
+ */
+.disposition-box {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+}
+
+.disposition-box > .disposition-box-title {
+  margin: 0;
+}
+
+.disposition-side > .disposition-box {
+  margin-top: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* IQC 상세의 「부적합 처분」 탭 안 — 탭 이름이 곧 제목이라 상자 제목 · 테두리를 겹치지 않는다. */
+.disposition-tab > .disposition-box {
+  margin-top: var(--space-4);
+  padding: 0;
+  border: 0;
+}
+
+.disposition-tab > .disposition-box > .disposition-box-title {
+  display: none;
+}
+
+.oqc-replaced-nc-chips {
+  margin-top: var(--space-5);
+}
+
+.oqc-replaced-nc-chips + .disposition-box {
+  margin-top: var(--space-2);
+}
+
 .disposition-side-part + .disposition-side-part.disposition-decision-card,
 .disposition-side-part + .disposition-side-part.disposition-history-card {
   padding-top: var(--space-4);
@@ -8059,8 +8098,20 @@ dialog.routing-history-dialog {
   background: var(--surface-container-high);
 }
 
+/* 제목과 안내 라벨을 한 줄에 — 좁으면 라벨이 다음 줄로(omf-all-around#354). */
+.disposition-sort-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+.disposition-sort-note {
+  margin: 0;
+}
+
 .disposition-sort-heading {
-  /* 제목 옆 ⓘ(선별 규칙)를 가운데 맞춘다. */
   display: flex;
   align-items: center;
   gap: var(--space-1);
@@ -8089,10 +8140,6 @@ dialog.routing-history-dialog {
 /* 고른 행 — 체크 칸과 함께 은은한 바탕으로 가른다(omf-all-around#352). */
 .disposition-sort-lot[data-checked='true'] {
   background: color-mix(in srgb, var(--primary) 8%, transparent);
-}
-
-.disposition-sort-note {
-  margin: 0;
 }
 
 /* 저장 후 처리 줄 — 처리 이름과 대상 LOT · 수량 사이를 조금 띄운다(#352). */
@@ -32585,30 +32632,6 @@ ul.iqc-inbound-superseded {
 
 .iqc-inbound-nc-banner > [class*='_icon_'] {
   margin-top: 0;
-}
-
-.iqc-inbound-nc-link {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: var(--space-1);
-  min-height: var(--control-height-sm);
-  padding: 0 var(--space-3);
-  border: 1px solid currentColor;
-  border-radius: var(--radius-full);
-  color: inherit;
-  font: var(--type-label-lg);
-  letter-spacing: var(--type-label-lg-tracking);
-  text-decoration: none;
-}
-
-.iqc-inbound-nc-link:hover {
-  background: color-mix(in srgb, currentColor 12%, transparent);
-}
-
-.iqc-inbound-nc-link:focus-visible {
-  box-shadow: var(--focus-ring);
-  outline: none;
 }
 
 /* 발주 정보 줄은 위에 구분선(#274). */

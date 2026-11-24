@@ -10,6 +10,8 @@
 export const oqcInspection = {
   /* 화면 스펙 §1 의 이름 그대로다 — 사이드바 항목과 같은 글자여야 길을 잃지 않는다. */
   title: 'OQC (출하검사) 조회·판정',
+  /** 「구분」 — OQC 검사 건 · 판정 의뢰(재작업/폐기 판정 의뢰로 올린 반품 · 제품 부적합 · omf-all-around#354). */
+  kind: { label: '구분', inspection: 'OQC 검사', request: '판정 의뢰' },
   /** 머리는 관리웹 사이드바 묶음을 따른다 — 「품질 관리 > OQC (출하검사) 조회·판정」. */
   breadcrumbRoot: '품질 관리',
 

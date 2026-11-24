@@ -73,7 +73,6 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
         ncNo === null
           ? `Tất cả ${count} LOT quản lý vật tư đã được xử lý là lỗi.`
           : `Tất cả ${count} LOT quản lý vật tư đã được xử lý là lỗi. Hãy tiếp tục xử lý tại phiếu không phù hợp ${ncNo}.`,
-      ncOpen: 'Đến quản lý xử lý không phù hợp',
       heldTitle: 'Xác nhận kiểm tra tạm giữ',
       held: 'LOT quản lý vật tư vẫn chờ kiểm tra. Để kiểm tra lại, hãy sửa đánh giá rồi thêm kết quả kiểm tra.',
     },

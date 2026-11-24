@@ -4,6 +4,7 @@ import type { Translated } from './translated';
 /** W-04-03 OQC 출하검사 판정. 저장은 한 번이고 되돌릴 수 없다 — 번복은 재검사 회차다. */
 export const oqcInspection: Translated<typeof ko.oqcInspection> = {
   title: 'OQC (kiểm tra xuất hàng) tra cứu · đánh giá',
+  kind: { label: 'Phân loại', inspection: 'Kiểm tra OQC', request: 'Yêu cầu phán định' },
   breadcrumbRoot: 'Quản lý chất lượng',
 
   queue: {
