@@ -171,16 +171,8 @@ export const ReviseDialog = ({
             <dd className="pu-mono">{lot.lotNo}</dd>
             <dt>{t.pair}</dt>
             <dd>
-              {lot.supplierName} {lot.supplierCode} / {lot.itemCode} {lot.itemName}
-            </dd>
-            <dt>{t.po}</dt>
-            <dd>
-              {lot.purchaseOrderLine === null || lot.purchaseOrderLine === undefined
-                ? '—'
-                : tp.poLine(
-                    lot.purchaseOrderLine.purchaseOrderNo,
-                    lot.purchaseOrderLine.lineNo,
-                  )}{' '}
+              {lot.supplierName} {lot.supplierCode} / {lot.itemCode} {lot.itemName}{' '}
+              {/* P/O 라인은 POP 에 보이지 않는다(T058 · 사용자 2026-11-24) — 만든 방식 칩만. */}
               {lot.creationModeCode === undefined ? null : (
                 <PuChip tone={lot.creationModeCode === 'AUTO' ? 'info' : 'idle'}>
                   {tp.mode[lot.creationModeCode]}

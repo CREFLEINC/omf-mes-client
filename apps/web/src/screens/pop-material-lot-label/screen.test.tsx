@@ -1025,6 +1025,21 @@ describe('FR-016 · FR-017 [수정] — 출력 전 수량 · 포장 고치기', 
     return screen.findByRole('dialog', { name: tp.revise.title });
   };
 
+  it('T058 [수정] 창 머리에 P/O 라인 줄이 없다 — 번호 · 공급사·품목 · 만든 방식만', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen(ROLL_SHARE);
+
+    await pickPair(user);
+    await waitFor(() => expect(checkboxes()).toHaveLength(5));
+    const autoRow = bodyRows(tp.tabs.UNPRINTED)[2] as HTMLElement;
+    await user.click(within(autoRow).getByRole('button', { name: tp.revise.action }));
+    const dialog = await screen.findByRole('dialog', { name: tp.revise.title });
+
+    expect(within(dialog).queryByText(tp.revise.po)).toBeNull();
+    expect(dialog).not.toHaveTextContent('SYN-PO-07');
+    expect(within(dialog).getByText(tp.mode.AUTO)).toBeInTheDocument();
+  });
+
   it('US3-1 100 EA · 롤 10 × 10 을 롤 8 × 10 으로 고치면 재고량이 80 을 따르고, 저장하면 번호를 새로 받는다', async () => {
     const user = userEvent.setup();
     const { sent } = renderLabelScreen(ROLL_SHARE);
