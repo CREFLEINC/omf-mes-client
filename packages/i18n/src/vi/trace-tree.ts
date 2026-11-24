@@ -9,7 +9,7 @@ export const traceTree: Translated<typeof ko.traceTree> = {
   material: {
     title: 'Truy vết sản xuất theo vật tư',
     scanLabel: 'Số LOT',
-    scanPlaceholder: 'LOT vật tư, LOT nhập hàng, LOT NCC',
+    scanPlaceholder: 'LOT vật tư, nhập hàng, NCC',
     partner: 'Nhà cung cấp',
     partnerPicker: 'Chọn nhà cung cấp',
     partnerCode: 'Mã nhà cung cấp',
@@ -102,8 +102,8 @@ export const traceTree: Translated<typeof ko.traceTree> = {
     sortKinds: {
       CONSUMED: 'Đưa vào',
       INBOUND: 'Nhập hàng',
-      SHIPPED: 'Xuất hàng',
-      RECEIVED: 'Nhập kho',
+      SHIPPED: 'Xuất',
+      RECEIVED: 'Nhập',
     },
     openRow: (lotNo: string): string => `Mở phả hệ ${lotNo}`,
     loading: 'Đang tải danh sách LOT',
@@ -218,7 +218,7 @@ export const traceTree: Translated<typeof ko.traceTree> = {
     consumed: (qty: string): string => `Đưa vào ${qty}`,
     produced: (qty: string): string => `Sản lượng ${qty}`,
     received: (date: string): string => `${date} nhập hàng`,
-    produce: (date: string): string => `${date} sản xuất`,
+    depth: (depth: number): string => `Cấp ${depth}`,
     splitNote: (goodsIssueNo: string, lineNo: number | null): string =>
       lineNo === null
         ? `Tách khi xuất một phần ${goodsIssueNo}`

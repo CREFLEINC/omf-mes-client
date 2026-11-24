@@ -39975,7 +39975,7 @@ body:has(
   align-items: center;
   gap: var(--space-1);
   min-width: 0;
-  padding-left: calc(var(--trace-depth, 0) * 14px);
+  padding-left: calc(var(--trace-depth, 0) * 12px);
   white-space: nowrap;
 }
 
@@ -40159,14 +40159,50 @@ body:has(
   white-space: normal;
 }
 
-.trace-tree-table .trace-tree-cell > .trace-tree-no {
-  min-width: 4ch;
-  overflow: visible;
-  overflow-wrap: anywhere;
-  text-overflow: clip;
+/* 단계 칩(+ 깊이 수)을 위 작은 줄에, 번호를 그 아래 줄에 — 칩 · 들여쓰기가 번호와 한 줄에서 폭을 다투지 않게. */
+.trace-tree-cell-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
 }
 
-
-.trace-tree-table .trace-tree-cell > .trace-tree-stage {
+.trace-tree-cell-head {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+  min-width: 0;
   white-space: nowrap;
 }
+
+/* 단계 칩은 칸이 모자라면 말줄임(전체는 title) — 긴 베트남어 단계 이름. */
+.trace-tree-cell-head > .trace-tree-stage {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trace-tree-depth {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+
+/* 번호는 「-」「|」 경계(<wbr>)에서만 접는다 — 글자 중간에서 꺾지 않는다. */
+.trace-tree-table .trace-tree-cell-body > .trace-tree-no {
+  max-width: 100%;
+  overflow: visible;
+  overflow-wrap: normal;
+  text-align: left;
+  text-overflow: clip;
+  white-space: normal;
+  word-break: keep-all;
+}
+
+.trace-tree-table .trace-tree-cell-body > .trace-tree-flag {
+  white-space: normal;
+}
+
+
+

@@ -28,6 +28,30 @@ const qtyFormat = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 3 });
 const qtyText = (qty: number | null | undefined, uom: string | null | undefined): string =>
   qty === null || qty === undefined ? '' : `${qtyFormat.format(qty)} ${uom ?? ''}`.trim();
 
+/** 창고 · 위치 — 엑셀과 같은 「창고 이름 (코드) / 위치 이름 (코드)」. */
+export const stockPlace = (
+  warehouse: { name: string; code: string },
+  location: { name: string; code: string } | undefined,
+): string =>
+  location === undefined
+    ? named(warehouse.name, warehouse.code)
+    : `${named(warehouse.name, warehouse.code)} / ${named(location.name, location.code)}`;
+
+/**
+ * 번호를 「-」「|」 경계에서만 접히게 — 경계 뒤에 접을 자리(<wbr>)를 두고 칸은 글자 중간에서 꺾지 않는다(1440 깊은 단계).
+ */
+export const BreakableNo = ({ value }: { value: string }) => (
+  <>
+    {value.split(/(?<=[-|])/).flatMap((part, index) =>
+      /* 조각 자리가 곧 열쇠다(번호는 바뀌지 않는다). */
+      index === 0 ? [part] : [<wbr key={index} />, part],
+    )}
+  </>
+);
+
+/** 들여쓰기 상한 — 이보다 깊으면 더 들이지 않고 단계 칩 앞에 깊이 수를 둔다(번호 자리를 지킨다). */
+const INDENT_CAP = 5;
+
 /** 계보 줄의 번호 — LOT·W/O·출하·포장·시리얼·입하 LOT 번호, 재고는 창고와 위치. */
 export const numberOf = (line: LineageLine): string => {
   const node = line.node;
@@ -39,9 +63,7 @@ export const numberOf = (line: LineageLine): string => {
     node.handlingUnitNo ??
     node.serialNo ??
     node.inboundLot?.inboundLotNo ??
-    (node.warehouse === undefined
-      ? line.nodeKey
-      : `${node.warehouse.name} ${node.location?.code ?? ''}`.trim())
+    (node.warehouse === undefined ? line.nodeKey : stockPlace(node.warehouse, node.location))
   );
 };
 
@@ -93,7 +115,7 @@ const atOf = (line: LineageLine): string => {
     case 'COMPONENT_SERIAL':
       return node.producedAt === null || node.producedAt === undefined
         ? ''
-        : t.produce(shortDateTime(node.producedAt));
+        : shortDateTime(node.producedAt);
     default:
       return '';
   }
@@ -157,7 +179,8 @@ const StatusCell = ({ line, names }: { line: LineageLine; names: TraceNames }) =
   return null;
 };
 
-const indent = (depth: number): CSSProperties => ({ '--trace-depth': depth }) as CSSProperties;
+const indent = (depth: number): CSSProperties =>
+  ({ '--trace-depth': Math.min(depth, INDENT_CAP) }) as CSSProperties;
 
 export interface TraceTreeTableProps {
   lineage: Lineage;
@@ -252,31 +275,44 @@ export const TraceTreeTable = ({
         ) : (
           <span className="trace-tree-spacer" aria-hidden="true" />
         )}
-        <span className="trace-tree-stage" data-stage={line.stage}>
-          {t.stages[line.stage]}
-        </span>
-        {isLot ? (
-          <button
-            type="button"
-            className="trace-tree-no trace-tree-link mono-cell"
-            title={t.openLot(number)}
-            onClick={() => onOpenLot(number)}
-          >
-            {number}
-          </button>
-        ) : (
-          <span className="trace-tree-no mono-cell" title={number}>
-            {number}
+        <span className="trace-tree-cell-body">
+          <span className="trace-tree-cell-head">
+            {row.depth > INDENT_CAP && (
+              <span className="trace-tree-depth" title={t.depth(row.depth)}>
+                {row.depth}
+              </span>
+            )}
+            <span className="trace-tree-stage" data-stage={line.stage} title={t.stages[line.stage]}>
+              {t.stages[line.stage]}
+            </span>
           </span>
-        )}
-        {line.mark === 'duplicate' && (
-          <span className="field-note trace-tree-flag">{t.duplicate}</span>
-        )}
-        {line.mark === 'cycle' && (
-          <Chip variant="status" size="sm" status="warning">
-            {t.cycle}
-          </Chip>
-        )}
+          {isLot ? (
+            <button
+              type="button"
+              className="trace-tree-no trace-tree-link mono-cell"
+              title={t.openLot(number)}
+              onClick={() => onOpenLot(number)}
+            >
+              <BreakableNo value={number} />
+            </button>
+          ) : (
+            <span className="trace-tree-no mono-cell" title={number}>
+              {line.node?.warehouse === undefined ? <BreakableNo value={number} /> : number}
+            </span>
+          )}
+          {line.mark === 'duplicate' && (
+            <span className="field-note trace-tree-flag" title={t.duplicate}>
+              {t.duplicate}
+            </span>
+          )}
+          {line.mark === 'cycle' && (
+            <span className="trace-tree-flag" title={t.cycle}>
+              <Chip variant="status" size="sm" status="warning">
+                {t.cycle}
+              </Chip>
+            </span>
+          )}
+        </span>
         {row.located && (
           <span className="trace-tree-located" title={t.located}>
             <Icon name="my_location" size={16} />
@@ -292,7 +328,7 @@ export const TraceTreeTable = ({
     {
       key: 'item',
       header: t.columns.item,
-      width: '22%',
+      width: '20%',
       render: (row) => {
         if (row.type !== 'node') return '';
         const item = itemOf(row.line);
@@ -307,20 +343,38 @@ export const TraceTreeTable = ({
     {
       key: 'qty',
       header: t.columns.qty,
-      width: '100px',
+      width: '104px',
       align: 'end',
-      render: (row) =>
-        row.type === 'node'
-          ? qtyOf(row.line)
-          : row.type === 'bundle'
-            ? qtyText(row.qty, row.uomCode)
-            : '',
+      render: (row) => {
+        const text =
+          row.type === 'node'
+            ? qtyOf(row.line)
+            : row.type === 'bundle'
+              ? qtyText(row.qty, row.uomCode)
+              : '';
+        return text === '' ? (
+          ''
+        ) : (
+          <span className="ellipsis-cell" title={text}>
+            {text}
+          </span>
+        );
+      },
     },
     {
       key: 'at',
       header: t.columns.at,
-      width: '116px',
-      render: (row) => (row.type === 'node' ? atOf(row.line) : ''),
+      width: '124px',
+      render: (row) => {
+        const text = row.type === 'node' ? atOf(row.line) : '';
+        return text === '' ? (
+          ''
+        ) : (
+          <span className="ellipsis-cell" title={text}>
+            {text}
+          </span>
+        );
+      },
     },
     {
       key: 'status',

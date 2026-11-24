@@ -209,7 +209,7 @@ export const traceTree = {
     consumed: (qty: string): string => `투입 ${qty}`,
     produced: (qty: string): string => `실적 ${qty}`,
     received: (date: string): string => `${date} 입하`,
-    produce: (date: string): string => `${date} 생산`,
+    depth: (depth: number): string => `깊이 ${depth}`,
     splitNote: (goodsIssueNo: string, lineNo: number | null): string =>
       lineNo === null
         ? `부분 출고 분할 ${goodsIssueNo}`

@@ -114,7 +114,7 @@ export const TraceLotList = ({
     {
       key: 'status',
       header: t.list.columns.status,
-      width: '84px',
+      width: '96px',
       render: (entry) => (
         <Chip variant="status" size="sm" status={lotStatusTone(entry.row.lot.statusCode)}>
           {statusName(entry.row.lot.statusCode)}
