@@ -69,7 +69,7 @@ export const forwardTreeOf = (lotId: number, lotNo: string): ForwardTree => ({
         supplier: { partnerId: 7, code: 'SUP-S', name: '공급사 S' },
         supplierLotNo: 'SUP-A',
         receivedAt: '2026-11-01T02:00:00Z',
-        iqcJudgmentCode: 'PASS',
+        iqcJudgmentCode: 'ACCEPTED',
       },
     },
     {
@@ -344,7 +344,7 @@ export const backwardTreeOf = (
           inboundLotNo: 'IL-1',
           receivedDate: '2026-11-01',
           supplier: { partnerId: 7, code: 'SUP-S', name: '공급사 S' },
-          iqcJudgmentCode: 'PASS',
+          iqcJudgmentCode: 'ACCEPTED',
         },
       },
     ],
@@ -384,7 +384,11 @@ export const backwardTreeOf = (
         item: { itemId: 1, code: 'ITEM-A', name: '자재 A' },
         supplier: { partnerId: 7, code: 'SUP-S', name: '공급사 S' },
         supplierLotNo: 'SUP-A',
-        inboundLot: { inboundLotNo: 'IL-1', receivedDate: '2026-11-01', iqcJudgmentCode: 'PASS' },
+        inboundLot: {
+          inboundLotNo: 'IL-1',
+          receivedDate: '2026-11-01',
+          iqcJudgmentCode: 'ACCEPTED',
+        },
         workOrder: { workOrderNo: 'WO-SYN-0002' },
         productLots: [lotNo],
         consumedQty: 200,
@@ -440,7 +444,7 @@ export const traceStubRoutes = (options: TraceStubOptions, calls: TraceCalls): S
           ? [{ code: 'NORMAL', codeName: '정상', displayOrder: 1, isActive: true }]
           : group === 'WORK_ORDER_STATUS'
             ? [{ code: 'CLOSED', codeName: '마감', displayOrder: 1, isActive: true }]
-            : [{ code: 'PASS', codeName: '합격', displayOrder: 1, isActive: true }];
+            : [{ code: 'ACCEPTED', codeName: '합격', displayOrder: 1, isActive: true }];
       return jsonResponse({ items, page: { page: 1, size: 100, total: items.length } });
     },
   },

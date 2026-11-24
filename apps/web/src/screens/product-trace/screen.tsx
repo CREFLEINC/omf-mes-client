@@ -10,7 +10,7 @@
 import { Chip, type Column } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 
-import { TraceLotCell, shortDateTime } from '../../patterns/trace-tree/cells';
+import { TraceLotCell, iqcTone, shortDateTime } from '../../patterns/trace-tree/cells';
 import { TraceEndTable } from '../../patterns/trace-tree/end-table';
 import { TraceSummaryCard } from '../../patterns/trace-tree/summary-card';
 import { TraceWorkspace, type TraceDetailContext } from '../../patterns/trace-tree/trace-workspace';
@@ -131,7 +131,7 @@ const columns = (iqcName: (code: string) => string): Column<BackwardEndRow>[] =>
     {
       key: 'inboundLot',
       header: c.inboundLot,
-      width: '116px',
+      width: '110px',
       render: (row) =>
         row.inboundLot === null ? (
           ''
@@ -147,13 +147,13 @@ const columns = (iqcName: (code: string) => string): Column<BackwardEndRow>[] =>
     {
       key: 'iqc',
       header: c.iqc,
-      width: '60px',
+      width: '76px',
       render: (row) => {
         const code = row.inboundLot?.iqcJudgmentCode ?? null;
         return code === null ? (
           ''
         ) : (
-          <Chip variant="status" size="sm" status={code === 'PASS' ? 'success' : 'warning'}>
+          <Chip variant="status" size="sm" status={iqcTone(code)}>
             {iqcName(code)}
           </Chip>
         );
@@ -162,7 +162,7 @@ const columns = (iqcName: (code: string) => string): Column<BackwardEndRow>[] =>
     {
       key: 'workOrder',
       header: c.workOrder,
-      width: '116px',
+      width: '110px',
       render: (row) => (
         <span className="trace-tree-wrap mono-cell">{row.workOrder.workOrderNo}</span>
       ),

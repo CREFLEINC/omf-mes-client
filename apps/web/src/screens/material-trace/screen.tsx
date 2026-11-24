@@ -11,7 +11,12 @@ import { Chip, type Column } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 
 import { TraceEndTable } from '../../patterns/trace-tree/end-table';
-import { TraceLotCell, lotStatusTone, shortDateTime } from '../../patterns/trace-tree/cells';
+import {
+  TraceLotCell,
+  iqcTone,
+  lotStatusTone,
+  shortDateTime,
+} from '../../patterns/trace-tree/cells';
 import { TraceSummaryCard } from '../../patterns/trace-tree/summary-card';
 import { TraceWorkspace, type TraceDetailContext } from '../../patterns/trace-tree/trace-workspace';
 import type { ForwardEndRow, ForwardTree } from '../../patterns/trace-tree/types';
@@ -61,11 +66,7 @@ const Summary = ({ tree, names, partial, entry, stageOf }: TraceDetailContext) =
             key: 'iqc',
             label: t.summary.iqc,
             value: (
-              <Chip
-                variant="status"
-                size="sm"
-                status={material.iqcJudgmentCode === 'PASS' ? 'success' : 'warning'}
-              >
+              <Chip variant="status" size="sm" status={iqcTone(material.iqcJudgmentCode)}>
                 {names.iqc(material.iqcJudgmentCode)}
               </Chip>
             ),
