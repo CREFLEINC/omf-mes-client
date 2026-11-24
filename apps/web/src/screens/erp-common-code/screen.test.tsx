@@ -88,7 +88,7 @@ describe('ErpCommonCodeScreen', () => {
     expect(screen.queryByText('ITEM_TYPE')).not.toBeInTheDocument();
     // 그룹 수는 목록 제목 줄의 건수로 선다(#350).
     expect(screen.getByText('2건')).toBeInTheDocument();
-    expect(screen.getByText('코드 그룹을 선택하세요.')).toBeInTheDocument();
+    expect(screen.getByText('코드그룹을 선택하세요.')).toBeInTheDocument();
 
     // 미사용 그룹도 받는다 — 꺼진 ERP 그룹이 사라지지 않게.
     const request = urls.find((url) => url.pathname === GROUPS_PATH);
@@ -120,7 +120,7 @@ describe('ErpCommonCodeScreen', () => {
 
     await user.click(await screen.findByRole('button', { name: 'PUR_GROUP' }));
 
-    const detail = screen.getByRole('region', { name: '코드 그룹 상세' });
+    const detail = screen.getByRole('region', { name: '코드그룹 상세' });
     expect(within(detail).getByText('예시 구매그룹')).toBeInTheDocument();
     const pane = await screen.findByRole('region', { name: '코드값' });
     expect(await within(pane).findByText('예시 값 B')).toBeInTheDocument();
@@ -142,7 +142,7 @@ describe('ErpCommonCodeScreen', () => {
     await screen.findByRole('region', { name: '코드값' });
     await user.click(screen.getByRole('button', { name: 'PUR_GROUP' }));
 
-    expect(await screen.findByText('코드 그룹을 선택하세요.')).toBeInTheDocument();
+    expect(await screen.findByText('코드그룹을 선택하세요.')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '코드값' })).not.toBeInTheDocument();
   });
 
@@ -153,7 +153,7 @@ describe('ErpCommonCodeScreen', () => {
     // 초기화는 바뀐 것이 있을 때만 보인다 — 고른 그룹은 조건이 아니다.
     expect(within(form).queryByRole('button', { name: '초기화' })).toBeNull();
 
-    await user.type(within(form).getByLabelText('코드 검색'), 'SAMPLE');
+    await user.type(within(form).getByLabelText('코드값 검색'), 'SAMPLE');
     expect(within(form).getByRole('button', { name: '초기화' })).toBeInTheDocument();
     await user.click(within(form).getByRole('checkbox', { name: '미사용 포함' }));
     await user.click(within(form).getByRole('button', { name: '조회' }));
@@ -173,7 +173,7 @@ describe('ErpCommonCodeScreen', () => {
     // 그룹 검색 초기화도 검색어가 처음 값(빈칸)과 다를 때만 보인다.
     expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
 
-    await user.type(screen.getByLabelText('코드 그룹 검색'), '단위');
+    await user.type(screen.getByLabelText('코드그룹 검색'), '단위');
     await user.click(screen.getAllByRole('button', { name: '조회' })[0]!);
     expect(screen.queryByRole('button', { name: 'PUR_GROUP' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'UNIT' })).toBeInTheDocument();
@@ -188,14 +188,14 @@ describe('ErpCommonCodeScreen', () => {
     const { urls } = renderScreen([groupsRoute()], '?group=ITEM_TYPE');
     await screen.findByRole('button', { name: 'PUR_GROUP' });
 
-    expect(screen.getByText('코드 그룹을 선택하세요.')).toBeInTheDocument();
+    expect(screen.getByText('코드그룹을 선택하세요.')).toBeInTheDocument();
     expect(urls.some((url) => url.pathname === VALUES_PATH)).toBe(false);
   });
 
   it('ERP 그룹이 하나도 없으면 빈 상태를 낸다', async () => {
     renderScreen([groupsRoute([GROUPS[2] ?? group()])]);
 
-    expect(await screen.findByText('ERP 에서 받은 코드 그룹이 없습니다')).toBeInTheDocument();
+    expect(await screen.findByText('ERP에서 받은 코드그룹이 없습니다')).toBeInTheDocument();
   });
 
   it('코드값이 없으면 빈 상태를 낸다', async () => {

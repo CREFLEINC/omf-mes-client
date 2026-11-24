@@ -123,6 +123,7 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
   };
 
   const isChanged = hasChangedFilters(EMPTY_FILTERS, draft, applied);
+  const qRef = useFitPlaceholderWidth(t.fields.qPlaceholder);
 
   return (
     <form
@@ -134,7 +135,10 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
       }}
     >
       <TextField
+        containerClassName={FIT_PLACEHOLDER_CLASS}
         label={t.fields.q}
+        placeholder={t.fields.qPlaceholder}
+        ref={qRef}
         value={draft.q}
         onChange={(event) => {
           setDraft((prev) => ({ ...prev, q: event.target.value }));
