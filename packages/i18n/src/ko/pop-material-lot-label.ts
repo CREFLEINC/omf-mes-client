@@ -303,7 +303,12 @@ export const popMaterialLotLabel = {
    */
   precreate: {
     listTitle: '공급사·품목', // ui-check-ignore: C-13 설계 확정 문구(specs 014 mockups/P0101)
-    scanLabel: '스캔 또는 찾기',
+    /** 공급사 칸 · 품목 표 위 넓은 줄(시안 6판 · 사용자 2026-11-24) — LOT 번호 스캔과 공급사 · 품목 찾기를 함께 한다. */
+    scanLabel: 'LOT 번호 스캔 · 공급사/품목 찾기', // ui-check-ignore: C-13 설계 확정 문구(specs 014 mockups/P0101-v6 · 사용자 승인 2026-11-24)
+    /** 줄의 넣은 값 · 찾기 · 결과를 지운다. */
+    scanClear: '지우기',
+    /** 글자로 찾았을 때 줄 아래 단 — 「테이프」 찾은 공급사 2곳. */
+    findResult: (q: string, suppliers: number) => `「${q}」 찾은 공급사 ${suppliers}곳`,
     /** [직접 입력] 창 칸 이름 — 번호면 그 LOT 을 찾고, 아니면 공급사·품목 찾기. */
     scanManual: '자재 관리 LOT 번호 또는 공급사나 품목의 코드나 이름',
     tabsLabel: '자재 관리 LOT 상태',

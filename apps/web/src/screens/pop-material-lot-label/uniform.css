@@ -27,7 +27,7 @@
 
 .mll-left-top {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 12px;
   min-height: 0;
 }
@@ -698,8 +698,87 @@
   grid-template-columns: 280px 640px minmax(0, 1fr);
 }
 
-.pu-cols.list.mll-cols3:has(> .is-folded:first-child) {
+.pu-cols.list.mll-cols3:has(> .mll-left.is-folded) {
   grid-template-columns: 56px 640px minmax(0, 1fr);
+}
+
+/*
+ * 스캔 · 찾기 줄(시안 6판 · 사용자 2026-11-24) — 공급사 칸 + 품목 표 위에 걸친다. 상세 칸은 위에서부터 전체 높이.
+ * 줄 안: 위 단 칸 이름 · [지우기] · [직접 입력], 가운데 단 스캔 칸(넣은 값 전체), 아래 단 결과 안내.
+ */
+.pu-cols.list.mll-cols3 {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.pu-cols.list.mll-cols3 > .mll-findbar {
+  grid-column: 1 / span 2;
+  grid-row: 1;
+}
+
+.pu-cols.list.mll-cols3 > .mll-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.pu-cols.list.mll-cols3 > .mll-mid {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.pu-cols.list.mll-cols3 > .mll-right {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+}
+
+.mll-findbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 8px;
+  padding: 10px 12px 12px;
+  background: var(--pu-card);
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-lg, 16px);
+}
+
+.mll-findbar > .mll-find-field,
+.mll-findbar > .mll-find-field > .pu-row {
+  display: contents;
+}
+
+.mll-findbar .pu-label {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: 15px;
+}
+
+.mll-findbar > .mll-find-clear {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.mll-findbar .pu-row > .pu-btn {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.mll-findbar .pu-row > .pu-scan {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.mll-findbar .pu-scan input {
+  font-size: 18px;
+}
+
+.mll-findbar .pu-note {
+  grid-column: 1 / -1;
+  grid-row: 3;
+}
+
+.mll-findbar.is-bad .pu-scan {
+  border-color: var(--pu-bad);
 }
 
 /* 공급사 칸 「미출력 N」 — 있으면 노랑 굵게, 0 이면 흐리게(시안 P0101 ①). */
@@ -765,8 +844,12 @@
     grid-template-columns: 220px 260px minmax(0, 1fr);
   }
 
-  .pu-cols.list.mll-cols3:has(> .is-folded:first-child) {
+  .pu-cols.list.mll-cols3:has(> .mll-left.is-folded) {
     grid-template-columns: 56px 260px minmax(0, 1fr);
+  }
+
+  .mll-findbar .pu-scan input {
+    font-size: 16px;
   }
 }
 
@@ -993,7 +1076,7 @@
 }
 
 /*
- * 1100px 이하 스캔 직후(T059 · FR-021) — 「찾았습니다」 안내 · 탭 안내 · 사유 고르기가 세로를 다 차지해 표 칸이 0 이
+ * 1100px 이하 스캔 직후(T059 · FR-021) — 탭 안내 · 사유 고르기가 세로를 다 차지해 표 칸이 0 이
  * 되던 것을 줄인다. 안내 띠는 작게, 스캔 안내가 서 있으면 탭 안내는 접고, 사유는 이름 옆 한 줄 타일로.
  */
 @media (max-width: 1100px) {
@@ -1001,10 +1084,6 @@
     padding: 6px 10px;
     font-size: 13px;
     line-height: 18px;
-  }
-
-  .mll-right .mll-scan-note ~ .mll-tab-note {
-    display: none;
   }
 
   .mll-right .mll-reasons .pu-field {

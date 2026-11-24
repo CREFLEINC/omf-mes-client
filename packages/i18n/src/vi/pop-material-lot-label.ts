@@ -252,7 +252,9 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
   },
   precreate: {
     listTitle: 'Nhà cung cấp · mặt hàng',
-    scanLabel: 'Quét hoặc tìm',
+    scanLabel: 'Quét số LOT · tìm nhà cung cấp/mặt hàng',
+    scanClear: 'Xóa',
+    findResult: (q: string, suppliers: number) => `Tìm 「${q}」: ${suppliers} nhà cung cấp`,
     scanManual: 'Số LOT quản lý vật tư hoặc mã/tên nhà cung cấp, mặt hàng',
     tabsLabel: 'Trạng thái LOT quản lý vật tư',
     tabs: {

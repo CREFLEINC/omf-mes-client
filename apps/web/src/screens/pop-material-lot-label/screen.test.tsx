@@ -728,29 +728,52 @@ describe('FR-021 번호 스캔 찾기', () => {
     ).toBeNull();
   });
 
-  it('T059 FR-021 1100px 이하 스캔 직후 — 안내 띠는 작게, 스캔 안내가 서면 탭 안내는 접고, 사유는 이름 옆 한 줄', async () => {
+  it('시안 6판 — 스캔 · 찾기 줄은 공급사 칸 · 품목 표 위, 찾은 안내는 줄 안에 서고 넣은 번호는 남는다', async () => {
     const user = userEvent.setup();
     renderLabelScreen();
 
     await supplierList();
-    await user.type(
-      screen.getByRole('textbox', { name: tp.scanLabel }),
-      'SYN-ITEM-01|1000|261111|SYN-P-01|0003{Enter}',
-    );
+    const field = screen.getByRole('textbox', { name: tp.scanLabel });
+    /* 줄은 공급사 칸 밖(세 칸의 바로 아래 자식)이다. */
+    const bar = field.closest('.mll-findbar');
+    expect(bar).not.toBeNull();
+    expect(bar?.parentElement).toHaveClass('mll-cols3');
+    expect(field.closest('.mll-left')).toBeNull();
+
+    await user.type(field, 'SYN-ITEM-01|1000|261111|SYN-P-01|0003{Enter}');
     const found = await screen.findByText((text) =>
       text.startsWith(tp.lookup.found(tp.tabs.PRINTED)),
     );
-    /* 구조: 스캔 안내 뒤에 탭 안내, 사유 고르기는 감싼 칸 안. */
-    const scanNote = found.closest('.mll-scan-note');
-    expect(scanNote).not.toBeNull();
-    expect(scanNote?.parentElement?.querySelector('.mll-scan-note ~ .mll-tab-note')).not.toBeNull();
+    expect(found.closest('.mll-findbar')).toBe(bar);
+    expect(field).toHaveValue('SYN-ITEM-01|1000|261111|SYN-P-01|0003');
+    /* 상세 칸의 탭 안내는 그대로, 사유 고르기는 감싼 칸 안. */
+    expect(document.querySelector('.mll-right .mll-tab-note')).not.toBeNull();
     expect(screen.getByRole('radio', { name: '훼손' }).closest('.mll-reasons')).not.toBeNull();
 
+    /* [지우기] — 넣은 값과 안내를 지운다. */
+    await user.click(within(bar as HTMLElement).getByRole('button', { name: tp.scanClear }));
+    expect(field).toHaveValue('');
+    expect(
+      screen.queryByText((text) => text.startsWith(tp.lookup.found(tp.tabs.PRINTED))),
+    ).toBeNull();
+
     const css = readFileSync(resolve(__dirname, 'uniform.css'), 'utf8');
+    expect(css).toMatch(/\.mll-cols3 > \.mll-findbar \{[^}]*grid-column: 1 \/ span 2/u);
+    expect(css).toMatch(/\.mll-cols3 > \.mll-right \{[^}]*grid-row: 1 \/ span 2/u);
     const narrow = css.slice(css.indexOf('1100px 이하 스캔 직후'));
-    expect(narrow).toMatch(/\.mll-scan-note ~ \.mll-tab-note \{[^}]*display: none/u);
     expect(narrow).toMatch(/\.mll-reasons \.pu-tiles \{[^}]*grid-auto-flow: column/u);
     expect(narrow).toMatch(/\.mll-reasons \.pu-field \{[^}]*grid-template-columns: auto/u);
+  });
+
+  it('시안 6판 — 글자로 찾으면 줄 안에 찾은 결과(공급사 수)를 보인다', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen();
+
+    await supplierList();
+    const field = screen.getByRole('textbox', { name: tp.scanLabel });
+    await user.type(field, '공급사 나{Enter}');
+    expect(await screen.findByText(tp.findResult('공급사 나', 1))).toBeInTheDocument();
+    expect(field).toHaveValue('공급사 나');
   });
 
   it('US4-5 폐기 LOT 이면 폐기 LOT 탭을 열고 찍을 수 없다고 말한다', async () => {

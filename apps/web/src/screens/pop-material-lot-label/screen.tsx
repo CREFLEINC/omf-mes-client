@@ -37,6 +37,7 @@ import {
   PuScreen,
   PuSection,
   PuSeg,
+  puCx,
   puToast,
   useFitCount,
   useFitTableRows,
@@ -173,6 +174,8 @@ export const PopMaterialLotLabelScreen = () => {
   const supplierFitRef = useRef<HTMLUListElement>(null);
   const itemFitRef = useRef<HTMLDivElement>(null);
   const tableFitRef = useRef<HTMLDivElement>(null);
+  /** 스캔 · 찾기 줄의 입력 — 넣은 값을 남겨 두고 골라 두어 다음 스캔이 그 값을 바꿔 쓰게 한다(시안 6판). */
+  const scanInputRef = useRef<HTMLInputElement>(null);
   const supplierSize = useFitCount(supplierFitRef, { fallback: 6 });
   const itemSize = useFitTableRows(itemFitRef, { fallback: 8 });
   /* 고른 품목 · 탭 · 쪽 · 스캔이 바뀌면 진동 막기 천장을 푼다(pager `resetKey`, T054). */
@@ -349,6 +352,24 @@ export const PopMaterialLotLabelScreen = () => {
    * 「스캔 또는 찾기」(FR-021) — 자재 관리 LOT 번호면 공장 전체에서 찾아 그 공급사(공급사 칸) · 품목(품목 표) ·
    * 탭을 열고 맨 위에 골라 둔다. 번호가 아닌 글자는 공급사 칸 · 품목 표를 함께 거른다(서버 `q`).
    */
+  /* 넣은 값 골라 두기 — 그린 직후(effect)에 해서, 이어 들어오는 입력이 반쯤 골라진 값에 섞이지 않게 한다. */
+  const [selectTick, setSelectTick] = useState(0);
+  useEffect(() => {
+    if (selectTick > 0) scanInputRef.current?.select();
+  }, [selectTick]);
+  const selectScanText = (): void => {
+    setSelectTick((tick) => tick + 1);
+  };
+
+  /** 줄의 [지우기] — 넣은 값 · 찾기 · 결과를 지운다. 고른 공급사 · 품목은 그대로. */
+  const clearScan = (): void => {
+    setScanText('');
+    setScanError(null);
+    setScanFound(null);
+    if (findQ !== '') changeFind('');
+    scanInputRef.current?.focus();
+  };
+
   const submitScan = async (value: string): Promise<void> => {
     const text = value.trim();
 
@@ -357,6 +378,7 @@ export const PopMaterialLotLabelScreen = () => {
 
     if (!isMaterialLotNoText(text)) {
       changeFind(text);
+      selectScanText();
 
       return;
     }
@@ -366,7 +388,9 @@ export const PopMaterialLotLabelScreen = () => {
     try {
       const found = await lookupMaterialLot(client, plantId, text);
 
-      setScanText('');
+      /* 넣은 번호는 줄에 남긴다 — 무엇을 찍었는지 보이게. 골라 두어 다음 스캔이 바꿔 쓴다(시안 6판). */
+      setScanText(text);
+      selectScanText();
 
       if (found === null) {
         setScanError(tp.lookup.notFound);
@@ -650,7 +674,52 @@ export const PopMaterialLotLabelScreen = () => {
       </PuNote>
     ) : null;
 
-  /* ── 첫째 칸: 스캔 또는 찾기 + 공급사(서버 쪽, #1751 접기) ── */
+  /*
+   * ── 스캔 · 찾기 줄(시안 6판 · 사용자 2026-11-24): 공급사 칸 + 품목 표 위에 걸친 넓은 줄 ──
+   * 위 단 칸 이름 · [지우기] · [직접 입력], 가운데 단 넣은 값 전체, 아래 단 결과(찾음 · 없는 번호 · 찾은 수).
+   */
+  const findSummary =
+    findQ !== '' && scanError === null && scanFound === null
+      ? tp.findResult(findQ, supplierTotal)
+      : null;
+  const findBar = (
+    <div className={puCx('mll-findbar', scanError !== null && 'is-bad')}>
+      <PuScanField
+        className="mll-find-field"
+        label={tp.scanLabel}
+        value={scanText}
+        inputRef={scanInputRef}
+        disabled={isFrozen || plantId === null}
+        error={scanError}
+        manual={{ label: tp.scanManual, search: true }}
+        onChange={(value) => {
+          setScanText(value);
+          setScanError(null);
+          setScanFound(null);
+          if (value.trim() === '' && findQ !== '') changeFind('');
+        }}
+        onSubmit={(value) => {
+          void submitScan(value);
+        }}
+      >
+        {scanFound !== null ? (
+          <PuNote tone="ok" live>
+            {scanFound}
+            {isReprintTab ? ` ${tp.lookup.foundReprint}` : null}
+          </PuNote>
+        ) : findSummary !== null ? (
+          <PuNote live>{findSummary}</PuNote>
+        ) : null}
+      </PuScanField>
+      {scanText !== '' || findQ !== '' ? (
+        <PuButton size="sm" className="mll-find-clear" disabled={isFrozen} onClick={clearScan}>
+          {tp.scanClear}
+        </PuButton>
+      ) : null}
+    </div>
+  );
+
+  /* ── 첫째 칸: 공급사(서버 쪽, #1751 접기) — 스캔 · 찾기 칸은 위 줄로 옮김(시안 6판) ── */
   const leftSection = (
     <PuSection
       className="mll-left"
@@ -659,21 +728,6 @@ export const PopMaterialLotLabelScreen = () => {
       split
     >
       <div className="mll-left-top">
-        <PuScanField
-          label={tp.scanLabel}
-          value={scanText}
-          disabled={isFrozen || plantId === null}
-          error={scanError}
-          manual={{ label: tp.scanManual, search: true }}
-          onChange={(value) => {
-            setScanText(value);
-            setScanError(null);
-            if (value.trim() === '' && findQ !== '') changeFind('');
-          }}
-          onSubmit={(value) => {
-            void submitScan(value);
-          }}
-        />
         {plantId === null ? (
           <PuEmpty icon="info" title={t.work.noPlant} />
         ) : suppliers.isError ? (
@@ -902,14 +956,6 @@ export const PopMaterialLotLabelScreen = () => {
       >
         {tabs}
         {hasStatusNote ? statusNote : null}
-        {scanFound === null || hasStatusNote ? null : (
-          <div className="mll-scan-note">
-            <PuNote tone="ok" live>
-              {scanFound}
-              {isReprintTab ? ` ${tp.lookup.foundReprint}` : null}
-            </PuNote>
-          </div>
-        )}
         {/* 1100px 이하에서 스캔 안내가 서 있으면 탭 안내는 접는다(T059 · uniform.css). */}
         {isReprintTab || tab === 'VOIDED' ? (
           <div className="mll-tab-note">
@@ -1104,6 +1150,7 @@ export const PopMaterialLotLabelScreen = () => {
         }
       >
         <PuCols variant="list" className="mll-cols3">
+          {findBar}
           {leftSection}
           {itemSection}
           {pairSection}
