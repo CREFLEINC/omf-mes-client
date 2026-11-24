@@ -107,6 +107,8 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       defaultLotStorageUom: 'Đơn vị bảo quản LOT mặc định',
       defaultProductionLotSize: 'Kích thước LOT sản xuất mặc định',
       defaultMaterialLotSize: 'Kích thước LOT vật tư mặc định',
+      defaultPackageUom: 'Đơn vị đóng gói mặc định',
+      defaultPackageCount: 'Số kiện đóng gói mỗi LOT mặc định',
       serialControlType: 'Loại quản lý serial',
       shelfLifeManaged: 'Quản lý hạn sử dụng',
       shelfLifeDays: 'Hạn sử dụng (ngày)',
@@ -121,7 +123,10 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
     /** 유효기한 관리 스위치 옆 일수 칸의 단위 — 칸 이름은 읽기 도구에만 있다. */
     units: {
       days: 'ngày',
+      packages: 'kiện',
     },
+    defaultPackageCountNote:
+      'Số kiện đóng gói trong một LOT quản lý vật tư. Kích thước LOT vật tư mặc định ÷ số kiện đóng gói phải ra số có tối đa 1 chữ số thập phân. Để trống cả hai thì tạo không có đóng gói.',
     inspectionRequiredSyncNote:
       'Thay đổi cùng với ‘Bỏ qua mặc định’ IQC trong tiêu chuẩn kiểm tra. Nếu mặt hàng này chưa có tiêu chuẩn IQC riêng, tiêu chuẩn đó sẽ được tạo khi thay đổi; trước đó mặt hàng theo tiêu chuẩn IQC chung cho mọi mặt hàng.',
     values: {
@@ -143,6 +148,11 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       openedShelfLifeHoursInvalid: 'Hãy nhập thời hạn sau khi mở (giờ) là số nguyên từ 1 trở lên.',
       defaultLotStorageUomInvalid: 'Hãy chọn lại đơn vị bảo quản LOT mặc định.',
       defaultProductionLotSizeInvalid: 'Hãy nhập kích thước LOT mặc định bằng số.',
+      packagePair:
+        'Hãy nhập cùng lúc hoặc để trống cùng lúc đơn vị đóng gói và số kiện đóng gói mỗi LOT',
+      packageCountInvalid: 'Hãy nhập số kiện đóng gói mỗi LOT là số nguyên từ 1 trở lên.',
+      packageNotDivisible:
+        'Số kiện đóng gói không phù hợp. Hãy nhập giá trị chia hết kích thước LOT vật tư mặc định.',
     },
   },
   /* 부속 하위 탭① - 단위 환산. 유일 제약이 있어 저장을 막는 사유 문구가 함께 있다. */

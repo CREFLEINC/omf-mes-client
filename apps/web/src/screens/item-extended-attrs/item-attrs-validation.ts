@@ -1,5 +1,7 @@
+import type { ErrorItem } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { toDecimalText } from './decimal-text';
 import type { ItemAttrsFormValues } from './types';
 
 const t = messages.itemExtendedAttrs.attrs.validation;
@@ -21,6 +23,9 @@ const NON_NEGATIVE_INTEGER = /^\d+$/;
 export const ITEM_ATTRS_FORM_FIELDS: readonly string[] = [
   'defaultLotStorageUomId',
   'defaultProductionLotSize',
+  /* 피처 014 FR-018 — 서버 400 PAIR · INVALID 를 두 칸 아래에 낸다. */
+  'defaultPackageUomId',
+  'defaultPackageCount',
   'shelfLifeDays',
   'inspectionRequired',
   'fifoPolicyCode',
@@ -40,6 +45,39 @@ export const ITEM_ATTRS_FORM_FIELDS: readonly string[] = [
  * **유효기한 관리와 선출 정책을 연동하지 않는다**(이슈 #14 §4). 어긋난 조합에 경고도 내지 않는다 —
  * 경고는 자동 연동의 절반이며, 이슈가 「두 항목을 따로 받는다」로 정했다.
  */
+/**
+ * 서버 400 의 패키징 기본값 오류를 화면 문구로(피처 014 FR-018) — `PAIR` 는 「함께 넣거나 함께 비워」,
+ * LOT 당 패키징 수량의 `INVALID` 는 「패키징 수량이 부적합 합니다…」. 그 밖은 서버 문구 그대로.
+ */
+export const restatePackageError = (item: ErrorItem): string | undefined => {
+  if (item.field !== 'defaultPackageUomId' && item.field !== 'defaultPackageCount')
+    return undefined;
+  if (item.code === 'PAIR') return t.packagePair;
+  if (item.field === 'defaultPackageCount' && item.code === 'INVALID') return t.packageNotDivisible;
+  return undefined;
+};
+
+/** 지수 표기 없는 양의 십진수 — 정수부와 소수부로 나눈다. */
+const PLAIN_DECIMAL = /^(\d+)(?:\.(\d*))?$/;
+
+/**
+ * `size ÷ count`(봉지당 양)가 소수 1자리까지 떨어지는가(피처 014 FR-018 · 사용자 결정 2026-11-24).
+ * 부동소수 나눗셈을 쓰지 않는다 — 기본크기 문자열을 10^k 배 정수로 옮겨 `size × 10` 이 `count × 10^k` 의
+ * 배수인지 BigInt 로 본다(예: 2.5 ÷ 5 → 250 mod 50 = 0 통과, 2.5 ÷ 2 → 250 mod 20 ≠ 0 막힘).
+ * 지수 표기(`1e3`)는 십진 문자열로 편 뒤 본다. 그래도 읽지 못하면 막지 않는다(서버가 본다).
+ */
+const dividesToOneDecimal = (sizeText: string, count: number): boolean => {
+  const match = PLAIN_DECIMAL.exec(sizeText) ?? PLAIN_DECIMAL.exec(toDecimalText(Number(sizeText)));
+
+  if (match === null) return true;
+
+  const [, intPart = '0', fracPart = ''] = match;
+  const scaled = BigInt(`${intPart}${fracPart}`);
+  const unit = BigInt(count) * 10n ** BigInt(fracPart.length);
+
+  return (scaled * 10n) % unit === 0n;
+};
+
 export const validateItemAttrsForm = (values: ItemAttrsFormValues): Record<string, string> => {
   const errors: Record<string, string> = {};
 
@@ -62,6 +100,31 @@ export const validateItemAttrsForm = (values: ItemAttrsFormValues): Record<strin
 
   if (defaultProductionLotSize !== '' && !Number.isFinite(Number(defaultProductionLotSize))) {
     errors.defaultProductionLotSize = t.defaultProductionLotSizeInvalid;
+  }
+
+  /*
+   * 패키징 기본값(피처 014 FR-018) — 함께 넣거나 함께 비우고, LOT 당 패키징 수량은 1 이상 정수이며 자재 LOT
+   * 기본크기 ÷ 수량(봉지당 양)이 소수 1자리까지 떨어져야 한다(사용자 결정 2026-11-24). 기본크기가 비면 나눔은 보지 않는다.
+   */
+  const packageUomId = values.defaultPackageUomId.trim();
+  const packageCount = values.defaultPackageCount.trim();
+
+  if ((packageUomId === '') !== (packageCount === '')) {
+    if (packageUomId === '') errors.defaultPackageUomId = t.packagePair;
+    else errors.defaultPackageCount = t.packagePair;
+  } else if (packageCount !== '') {
+    const count = Number(packageCount);
+    const size = Number(defaultProductionLotSize);
+
+    if (!NON_NEGATIVE_INTEGER.test(packageCount) || count < 1) {
+      errors.defaultPackageCount = t.packageCountInvalid;
+    } else if (
+      defaultProductionLotSize !== '' &&
+      Number.isFinite(size) &&
+      !dividesToOneDecimal(defaultProductionLotSize, count)
+    ) {
+      errors.defaultPackageCount = t.packageNotDivisible;
+    }
   }
 
   /*

@@ -25,6 +25,18 @@ export type SupplierItemDefault = Schemas['SupplierItemDefault'];
 export type SupplierItemDefaultCreate = Schemas['SupplierItemDefaultCreate'];
 export type SupplierItemDefaultUpdate = Schemas['SupplierItemDefaultUpdate'];
 
+/* ── 자재 관리 LOT P/O 미리 생성(피처 014 · omf-all-around#349) ── */
+
+export type MaterialLotPair = Schemas['MaterialLotPair'];
+export type MaterialLotPairSupplier = Schemas['MaterialLotPairSupplier'];
+export type MaterialLotPairItem = Schemas['MaterialLotPairItem'];
+export type MaterialLotPairDefaultsStatus = MaterialLotPair['defaultsStatus'];
+export type MaterialLotTabRow = Schemas['MaterialLotTabRow'];
+export type MaterialLotTab = QueryOf<'/logistics/material-lots'>['tab'];
+export type MaterialLotGeneration = Schemas['MaterialLotGeneration'];
+export type MaterialLotGenerationStatus = MaterialLotGeneration['status'];
+export type MaterialLotRevise = Schemas['MaterialLotRevise'];
+
 /* ── 입하 LOT(계약 §2 · §3) ── */
 
 export type InboundLot = Schemas['InboundLot'];

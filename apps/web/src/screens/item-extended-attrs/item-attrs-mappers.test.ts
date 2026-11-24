@@ -16,6 +16,9 @@ const UPDATE_KEYS = [
   'lotControlled',
   'defaultLotStorageUomId',
   'defaultProductionLotSize',
+  /* 피처 014 FR-018 — 자재 관리 LOT 패키징 기본값 두 칸. */
+  'defaultPackageUomId',
+  'defaultPackageCount',
   'serialControlTypeCode',
   'shelfLifeDays',
   'inspectionRequired',
@@ -38,6 +41,8 @@ describe('itemToAttrsFormValues', () => {
       lotControlled: true,
       defaultLotStorageUomId: '7001',
       defaultProductionLotSize: '500',
+      defaultPackageUomId: '',
+      defaultPackageCount: '',
       serialControlTypeCode: 'NONE',
       shelfLifeManaged: true,
       shelfLifeDays: '30',
@@ -213,6 +218,8 @@ describe('isSameItemAttrsValues', () => {
     ['lotControlled', { lotControlled: false }],
     ['defaultLotStorageUomId', { defaultLotStorageUomId: '7003' }],
     ['defaultProductionLotSize', { defaultProductionLotSize: '250' }],
+    ['defaultPackageUomId', { defaultPackageUomId: '7003' }],
+    ['defaultPackageCount', { defaultPackageCount: '10' }],
     ['serialControlTypeCode', { serialControlTypeCode: 'SYN-SERIAL-99' }],
     ['shelfLifeManaged', { shelfLifeManaged: false }],
     ['shelfLifeDays', { shelfLifeDays: '90' }],
@@ -252,5 +259,33 @@ describe('toItemUpdate — 없는 값을 지어내지 않는다', () => {
     expect(values.shelfLifeManaged).toBe(false);
     expect(values.openedShelfLifeHours).toBe('');
     expect(toItemUpdate(values, sparse).shelfLifeDays).toBeNull();
+  });
+});
+
+/** 피처 014 FR-018 — 자재 관리 LOT 패키징 기본값(패키징 단위 · LOT 당 패키징 수량). */
+describe('US5-1 패키징 기본값 두 칸', () => {
+  const packed: Item = { ...activeItem, defaultPackageUomId: 7003, defaultPackageCount: 10 };
+
+  it('US5-1 계약 값을 폼으로 옮기고 숫자로 되돌려 싣는다', () => {
+    const values = itemToAttrsFormValues(packed);
+
+    expect(values.defaultPackageUomId).toBe('7003');
+    expect(values.defaultPackageCount).toBe('10');
+    expect(toItemUpdate(values, packed)).toMatchObject({
+      defaultPackageUomId: 7003,
+      defaultPackageCount: 10,
+    });
+  });
+
+  it('US5-1 둘 다 비우면 널을 명시해 지운다', () => {
+    const values = {
+      ...itemToAttrsFormValues(packed),
+      defaultPackageUomId: '',
+      defaultPackageCount: ' ',
+    };
+    const body = toItemUpdate(values, packed);
+
+    expect(body.defaultPackageUomId).toBeNull();
+    expect(body.defaultPackageCount).toBeNull();
   });
 });

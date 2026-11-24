@@ -97,6 +97,7 @@ export const materialLotIssue = {
     targetOption: (supplier: string, itemCode: string, itemName: string, uom: string) =>
       `${supplier} · ${itemCode} ${itemName} (${uom})`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
     source: {
+      item: '품목 기본값에서 가져옴',
       default: '기본 정보에서 가져옴',
       itemStorage: '공급사·품목 기본 정보 없음 — 품목 기본 보관 단위로 채움', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
       none: '기본 정보 없음 — 직접 입력',

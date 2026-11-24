@@ -25,6 +25,7 @@ import {
   uomFixtures,
 } from './fixtures';
 import { ItemExtendedAttrsScreen } from './screen';
+import type { Item } from './types';
 
 type ItemResourceMapRow = (typeof itemResourceMapFixtures)[number];
 
@@ -774,6 +775,9 @@ describe('ItemExtendedAttrsScreen — 저장 본문 (M02·M03)', () => {
       [
         'defaultLotStorageUomId',
         'defaultProductionLotSize',
+        /* 피처 014 FR-018 — 패키징 기본값 두 칸. */
+        'defaultPackageUomId',
+        'defaultPackageCount',
         'developmentItem',
         'fifoPolicyCode',
         'inspectionRequired',
@@ -2815,5 +2819,109 @@ describe('ItemExtendedAttrsScreen — 설비·금형 매핑의 판 갱신', () =
     expect(resourceMapWrites(requests, 'PUT')[1]?.headers.get('If-Match')).toBe(
       String(commonRow.versionNo + 4),
     );
+  });
+});
+
+/* ── 피처 014 FR-018 · 패키징 기본값 ─────────────────────────────────────── */
+
+/** 원자재로 바꾼 1001 — 자재 LOT 기본크기 500, 패키징 합성 단위 C × 10. */
+const RAW_ITEM: Item = {
+  ...itemFixtures[0]!,
+  itemTypeCode: 'RAW_MATERIAL',
+  defaultPackageUomId: 7003,
+  defaultPackageCount: 10,
+};
+
+const rawItemRoutes = (): StubRoute[] => [
+  {
+    match: (request) => isGet(request, `${ITEMS_PATH}/1001`),
+    respond: () =>
+      jsonResponse(
+        {
+          item: RAW_ITEM,
+          editability: { codeEditable: false, reason: 'EDITABLE', referenceCount: 3 },
+        },
+        { headers: { ETag: 'W/"7"' } },
+      ),
+  },
+  itemListRoute(),
+  uomsRoute(),
+];
+
+describe('ItemExtendedAttrsScreen — 패키징 기본값 (US5)', () => {
+  const NOT_DIVISIBLE =
+    '패키징 수량이 부적합 합니다. 자재 LOT 기본크기를 정확히 나눌 수 있는 값을 입력해주세요.';
+
+  it('US5-1 LOT 당 패키징 수량을 고쳐 저장하면 두 칸이 숫자로 실린다', async () => {
+    const { requests, user } = renderScreen([
+      ...rawItemRoutes(),
+      {
+        match: (request) => isPut(request, `${ITEMS_PATH}/1001`),
+        respond: () =>
+          jsonResponse({ ...RAW_ITEM, defaultPackageCount: 50 }, { headers: { ETag: 'W/"8"' } }),
+      },
+    ]);
+
+    await selectFirstItem(user);
+    await findAttrsPane();
+    const count = screen.getByLabelText('LOT 당 패키징 수량 기본값');
+    await user.clear(count);
+    await user.type(count, '50');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(savedBodies(requests)).toHaveLength(1);
+    });
+    expect(savedBodies(requests)[0]).toMatchObject({
+      defaultPackageUomId: 7003,
+      defaultPackageCount: 50,
+    });
+  });
+
+  it('US5-3 기본크기를 나누지 못하면(500 ÷ 30) 알림을 내고 보내지 않는다', async () => {
+    const { requests, user } = renderScreen(rawItemRoutes());
+
+    await selectFirstItem(user);
+    await findAttrsPane();
+    const count = screen.getByLabelText('LOT 당 패키징 수량 기본값');
+    await user.clear(count);
+    await user.type(count, '30');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText(NOT_DIVISIBLE)).toBeInTheDocument();
+    expect(savedBodies(requests)).toHaveLength(0);
+  });
+
+  it('US5-2 하나만 비우면 보내지 않는다', async () => {
+    const { requests, user } = renderScreen(rawItemRoutes());
+
+    await selectFirstItem(user);
+    await findAttrsPane();
+    await user.clear(screen.getByLabelText('LOT 당 패키징 수량 기본값'));
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(
+      await screen.findByText('패키징 단위와 LOT 당 패키징 수량은 함께 넣거나 함께 비워 주세요'),
+    ).toBeInTheDocument();
+    expect(savedBodies(requests)).toHaveLength(0);
+  });
+
+  it('US5-3 서버 400 INVALID 도 같은 문구로 그 칸 아래에 낸다', async () => {
+    const { user } = renderScreen([
+      ...rawItemRoutes(),
+      itemSaveFailureRoute(400, {
+        code: 'VALIDATION_ERROR',
+        message: '검증 실패',
+        errors: [
+          { scope: 'field', field: 'defaultPackageCount', code: 'INVALID', message: 'server text' },
+        ],
+      }),
+    ]);
+
+    await selectFirstItem(user);
+    await findAttrsPane();
+    await editAndSave(user);
+
+    expect(await screen.findByText(NOT_DIVISIBLE)).toBeInTheDocument();
   });
 });

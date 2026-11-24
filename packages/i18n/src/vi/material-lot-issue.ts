@@ -85,6 +85,7 @@ export const materialLotIssue: Translated<typeof ko.materialLotIssue> = {
     targetOption: (supplier: string, itemCode: string, itemName: string, uom: string) =>
       `${supplier} · ${itemCode} ${itemName} (${uom})`,
     source: {
+      item: 'Lấy từ giá trị mặc định của mặt hàng',
       default: 'Lấy từ thông tin mặc định',
       itemStorage:
         'Chưa có thông tin mặc định nhà cung cấp · mặt hàng — điền theo đơn vị bảo quản mặc định của mặt hàng',
