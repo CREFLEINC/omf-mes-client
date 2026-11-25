@@ -204,6 +204,8 @@ export const traceTree: Translated<typeof ko.traceTree> = {
       COMPONENT_SERIAL: 'Sê-ri linh kiện',
       INBOUND_LOT: 'LOT nhập hàng',
     },
+    stageOperation: (stage: string, operationSeq: number): string =>
+      `${stage} · CĐ ${String(operationSeq)}`, // ui-check-ignore: C-13 승인 시안 2판 표기(016 screens/W-02-13-W-02-14)
     bundle: (kind: string, count: number): string => `${num(count)} ${kind}`,
     more: (next: number, remaining: number): string =>
       next < remaining
@@ -258,7 +260,13 @@ export const traceTree: Translated<typeof ko.traceTree> = {
       PARTIAL: 'Xuất hàng, tồn kho',
       CONSUMED_OUT: 'Đã dùng hết',
       VOIDED: 'Hủy bỏ',
+      WIP_PENDING: 'Chờ đưa vào công đoạn sau',
     },
+    wipRemaining: (qtyWithUnit: string): string => `Còn ${qtyWithUnit}`,
+    wipItem: (operationSeq: number | null, itemName: string): string =>
+      operationSeq === null
+        ? `Bán thành phẩm ${itemName}`
+        : `Bán thành phẩm · CĐ ${String(operationSeq)} ${itemName}`, // ui-check-ignore: C-13 승인 시안 2판 표기(016 screens/W-02-13-W-02-14)
     count: (count: number): string => num(count),
   },
   exporting: {

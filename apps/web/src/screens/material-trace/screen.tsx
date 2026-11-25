@@ -11,7 +11,7 @@ import { Chip, type Column } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 
 import { TraceEndTable } from '../../patterns/trace-tree/end-table';
-import { stockPlace } from '../../patterns/trace-tree/tree-table';
+import { stageNameOf, stockPlace } from '../../patterns/trace-tree/tree-table';
 import {
   TraceLotCell,
   iqcTone,
@@ -21,6 +21,7 @@ import {
 import { TraceSummaryCard } from '../../patterns/trace-tree/summary-card';
 import { TraceWorkspace, type TraceDetailContext } from '../../patterns/trace-tree/trace-workspace';
 import type { ForwardEndRow, ForwardTree } from '../../patterns/trace-tree/types';
+import { WIP_LOT_TYPE } from '../../patterns/trace-tree/graph-rows';
 
 const t = messages.traceTree;
 
@@ -32,6 +33,8 @@ const FATE_TONE: Record<ForwardEndRow['fate'], 'error' | 'idle' | 'warning' | 's
   PARTIAL: 'warning',
   CONSUMED_OUT: 'success',
   VOIDED: 'idle',
+  /* 피처 016 — 다음 공정에 아직 투입되지 않은 반제품. 소진도 재고도 아니다. */
+  WIP_PENDING: 'warning',
 };
 
 /** 첫 값 + 「외 n건」(R-3 — 출하가 둘 이상이면 화면은 줄이고 파일은 출하마다 한 줄). */
@@ -79,7 +82,7 @@ const Summary = ({ tree, names, partial, entry, stageOf }: TraceDetailContext) =
   return (
     <TraceSummaryCard
       lot={root.lot}
-      kindLabel={t.tree.stages[stageOf(root.nodeKey) ?? root.kind]}
+      kindLabel={stageNameOf(stageOf(root.nodeKey) ?? root.kind, root.lot)}
       statusName={names.lotStatus(root.lot.statusCode)}
       serialNo={entry?.serialNo ?? null}
       partial={partial}
@@ -98,16 +101,22 @@ const Summary = ({ tree, names, partial, entry, stageOf }: TraceDetailContext) =
   );
 };
 
-/** 행선지 — 출하됐으면 고객과 출하번호, 남았으면 창고와 위치(일부 출하면 둘 다). 둘 이상이면 「외 n건」. */
+/**
+ * 행선지 — 출하됐으면 고객과 출하번호, 남았으면 창고와 위치(일부 출하면 둘 다). 둘 이상이면 「외 n건」.
+ * 투입 전 반제품(피처 016 `WIP_PENDING`)은 「남은 n 단위」 — 아직 다음 공정에 넣지 않았으니 실적 전량이 남아 있다
+ * (나눠 넣기 시작한 반제품은 나가는 투입이 있어 최종 줄이 서지 않는다 — 서버 규칙).
+ */
 const destinationOf = (row: ForwardEndRow): string =>
-  [
-    firstWithMore(
-      row.shipments.map((shipment) => `${shipment.customer.name} ${shipment.shipmentNo}`),
-    ),
-    firstWithMore(row.stock.map((stock) => stockPlace(stock.warehouse, stock.location))),
-  ]
-    .filter((part) => part !== '')
-    .join(', ');
+  row.fate === 'WIP_PENDING'
+    ? t.end.wipRemaining(`${qtyFormat.format(row.producedQty)} ${row.uomCode}`.trim())
+    : [
+        firstWithMore(
+          row.shipments.map((shipment) => `${shipment.customer.name} ${shipment.shipmentNo}`),
+        ),
+        firstWithMore(row.stock.map((stock) => stockPlace(stock.warehouse, stock.location))),
+      ]
+        .filter((part) => part !== '')
+        .join(', ');
 
 /**
  * 영향 제품 LOT 칸(시안 2판) — 제품 LOT · 품목명 · 행방 · 고객, 출하번호, 창고 위치 · 출하일 · 수량 · 상태.
@@ -123,7 +132,11 @@ const columns = (statusName: (code: string) => string): Column<ForwardEndRow>[] 
       render: (row) => (
         <TraceLotCell
           lotNo={row.lot.lotNo}
-          sub={row.item.name}
+          sub={
+            row.lot.lotTypeCode === WIP_LOT_TYPE
+              ? t.end.wipItem(row.lot.operationSeq ?? null, row.item.name)
+              : row.item.name
+          }
           subTitle={named(row.item.name, row.item.code)}
         />
       ),

@@ -10,7 +10,7 @@ import { LotTimeline } from './lot-timeline';
 import { useFourMChangeTypeLabel } from '../four-m-inputs/panel';
 import { MaterialLotUsage, ProductionLotInputs } from './lot-genealogy';
 import { lotStatusTone, useLotTypeOptions } from './options';
-import { useLotDetail } from './queries';
+import { useLotDetail, useWorkOrderNo } from './queries';
 import type { ProductLotSplitView } from './types';
 import { useItemNameSources } from './reference-options';
 import { useUomCodeOf, withUom } from './uoms';
@@ -72,6 +72,9 @@ export const LotDetailPane = ({
       ? lotTraceHref({ lotId, lotTypeCode: detail.data.lotTypeCode })
       : null;
   const fourMTypeLabel = useFourMChangeTypeLabel();
+  /* 피처 016 — 공정 반제품이면 생산 공정 줄에 그 W/O 번호를 붙인다. */
+  const wip = detail.data?.wip ?? null;
+  const wipWorkOrderNo = useWorkOrderNo(wip?.operation?.workOrderId ?? null);
   const uomCodeOf = useUomCodeOf();
   /* 팝업(생산 LOT)에는 투입 이력 탭을 두지 않는다 — 생산 LOT 은 다시 투입되는 일이 드물다(사용자 2026-11-02). */
   const [chosenTab, setHistoryTab] = useState<HistoryTab>('usage');
@@ -230,6 +233,34 @@ export const LotDetailPane = ({
                       .filter((part) => part !== undefined && part !== null && part !== '')
                       .join(' · ') || EMPTY,
               ],
+              /* 피처 016 — 공정 반제품 상세에만: 생산 공정 · 남은 투입 가능(시안 2판 ③). */
+              ...(wip === null
+                ? []
+                : ([
+                    [
+                      'wide',
+                      t.detail.wip.operation,
+                      wip.operation === null
+                        ? EMPTY
+                        : t.detail.wip.operationText(
+                            wip.operation.operationSeq,
+                            wip.operation.processCode,
+                            wip.operation.processName,
+                            wipWorkOrderNo.data ?? null,
+                          ),
+                    ],
+                    [
+                      'wide',
+                      t.detail.wip.remaining,
+                      wip.remainingQty === null || wip.producedQty === null
+                        ? EMPTY
+                        : t.detail.wip.remainingText(
+                            withUom(String(wip.remainingQty), uomCodeOf(detail.data.uomId)),
+                            String(wip.producedQty),
+                            String(Number((wip.producedQty - wip.remainingQty).toFixed(6))),
+                          ),
+                    ],
+                  ] as const)),
             ] as const
           ).map(([size, label, value]) => (
             <div className="lot-detail-field" data-size={size} key={label}>

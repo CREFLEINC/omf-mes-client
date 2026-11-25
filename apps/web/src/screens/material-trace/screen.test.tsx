@@ -330,4 +330,41 @@ describe('W-02-13 자재 기준 생산 추적', () => {
     expect(await screen.findByText(t.material.otherTitle)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.material.otherOpen })).toBeNull();
   });
+
+  /* 피처 016 — 공정 반제품: 계보 단계 「반제품 LOT · 공정 10」, 투입 전 반제품은 최종 LOT 「다음 공정 투입 전」 · 「남은 n」. */
+  it('US2-6 · Q14 투입 전 공정 반제품은 계보에 공정이 붙고 최종 LOT 에 「다음 공정 투입 전」 · 남은 수량으로 선다', async () => {
+    const wipLot = {
+      lotId: 302,
+      lotNo: 'PL-SYN-0001-A02',
+      lotTypeCode: 'WIP',
+      statusCode: 'NORMAL',
+      lifecycleStatusCode: 'ACTIVE',
+      operationSeq: 10,
+      processName: '가공',
+    };
+    setup(`/production/material-trace?lot=${String(A.lot.lotId)}`, {
+      tree: (lotId) => {
+        const base = forwardTreeOf(lotId, A.lot.lotNo);
+        return {
+          ...base,
+          nodes: base.nodes
+            .filter((node) => node.nodeKey !== 'K:302:5')
+            .map((node) => (node.nodeKey === 'L:302' ? { ...node, lot: wipLot } : node)),
+          edges: base.edges.filter((edge) => edge.to !== 'K:302:5'),
+          endRows: base.endRows.map((row) =>
+            row.lot.lotId === 302
+              ? { ...row, lot: wipLot, fate: 'WIP_PENDING' as const, stock: [] }
+              : row,
+          ),
+        };
+      },
+    });
+    const tree = await within(detail()).findByRole('table', { name: t.tree.caption });
+    expect(within(tree).getByText('반제품 LOT · 공정 10')).toBeInTheDocument();
+
+    const end = within(detail()).getByRole('table', { name: t.material.endTitle });
+    expect(within(end).getByText(t.end.fates.WIP_PENDING)).toBeInTheDocument();
+    expect(within(end).getByText('남은 180 EA')).toBeInTheDocument();
+    expect(within(end).getByText('반제품 · 공정 10 반제품 1')).toBeInTheDocument();
+  });
 });

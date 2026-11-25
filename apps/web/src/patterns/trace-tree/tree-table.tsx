@@ -12,6 +12,7 @@ import {
   visibleRows,
   type Lineage,
   type LineageLine,
+  type LineageStage,
   type TreeView,
   type VisibleRow,
 } from './graph-rows';
@@ -40,6 +41,19 @@ export const stockPlace = (
 /**
  * 번호를 「-」「|」 경계에서만 접히게 — 경계 뒤에 접을 자리(<wbr>)를 두고 칸은 글자 중간에서 꺾지 않는다(1440 깊은 단계).
  */
+/**
+ * 계보 단계 이름 — 공정 반제품(피처 016)은 「반제품 LOT · 공정 10」처럼 만든 공정 순번을 붙인다. 요약 칸도 같은 이름.
+ */
+export const stageNameOf = (
+  stage: LineageStage,
+  lot: { operationSeq?: number | null } | undefined,
+): string => {
+  const name = t.stages[stage];
+  const seq = lot?.operationSeq ?? null;
+
+  return stage === 'SEMI_LOT' && seq !== null ? t.stageOperation(name, seq) : name;
+};
+
 export const BreakableNo = ({ value }: { value: string }) => (
   <>
     {value.split(/(?<=[-|])/).flatMap((part, index) =>
@@ -282,8 +296,12 @@ export const TraceTreeTable = ({
                 {row.depth}
               </span>
             )}
-            <span className="trace-tree-stage" data-stage={line.stage} title={t.stages[line.stage]}>
-              {t.stages[line.stage]}
+            <span
+              className="trace-tree-stage"
+              data-stage={line.stage}
+              title={stageNameOf(line.stage, line.node?.lot)}
+            >
+              {stageNameOf(line.stage, line.node?.lot)}
             </span>
           </span>
           {isLot ? (
