@@ -204,4 +204,30 @@ export const materialInputScan = {
     goToProductionResult: '생산 작업으로',
     failed: '투입을 등록하지 못했습니다.',
   },
+
+  /**
+   * 공정 반제품 LOT(피처 016 · 시안 2판 ①). 다음 공정 W/O 에서 앞 공정 반제품 라벨을 스캔한다. 판정(같은 품목 ·
+   * 바로 앞 공정 · 남은 수량)은 서버가 하고 화면은 근거만 보인다. 투입량 처음 값은 남은 전량이다(사용자 결정
+   * 2026-11-25 — 대부분 전량, 나눠 넣을 때만 줄인다).
+   */
+  wip: {
+    /** 목록 줄 칩 「반제품 · 공정 10 가공」. 공정을 모르면 「반제품」만. */
+    chip: (operationSeq: number | null, processName: string | null): string =>
+      operationSeq === null
+        ? '반제품'
+        : `반제품 · 공정 ${String(operationSeq)}${processName === null || processName === '' ? '' : ` ${processName}`}`, // ui-check-ignore: C-13 승인 시안 2판 표기 「반제품 · 공정 10 가공」(016 screens/P-02-03)
+    /** 목록 줄 근거 「실적 100 · 투입 60 · 남은 수량 40 EA」(투입 = 실적 − 남은). */
+    basis: (produced: string, consumed: string, remainingWithUnit: string): string =>
+      `실적 ${produced} · 투입 ${consumed} · 남은 수량 ${remainingWithUnit}`, // ui-check-ignore: C-13 승인 시안 2판 표기 「실적 100 · 투입 60 · 남은 수량 40 EA」(016 screens/P-02-03)
+    /** 스캔 칸 아래 한 줄 — 남은 전량을 투입량에 채웠다. */
+    filled: (item: string, qtyWithUnit: string): string =>
+      `${item} — 반제품 남은 전량 ${qtyWithUnit} 를 투입량에 채웠습니다. 나눠 넣을 때만 줄이세요.`,
+    /** 409 `WIP_QTY_EXCEEDED` — 서버 meta 의 수량으로 말한다(이미 투입 = 실적 − 남은). */
+    exceeded: (remainingWithUnit: string, produced: string, consumed: string): string =>
+      `남은 수량(${remainingWithUnit})보다 많이 넣었습니다. 실적 ${produced} 중 ${consumed} 은 이미 투입했습니다.`,
+    /** 남은 수량이 0 인 반제품(스캔 칸 아래 한 줄, [추가 투입]과 함께). */
+    allInput: (item: string): string => `${item} 반제품 남은 수량을 모두 투입했습니다.`,
+    /** 남은 수량을 받지 못했다 — 직접 입력으로 돌린다. */
+    unknown: '반제품 남은 수량을 몰라 투입량을 직접 입력합니다.',
+  },
 } as const;

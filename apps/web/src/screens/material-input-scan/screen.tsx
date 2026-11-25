@@ -50,6 +50,7 @@ import {
   type ScanDraft,
   type ScannedMaterial,
   type ScanOutcome,
+  type WipLotInfo,
 } from './scan';
 import { ScanField, type ScanOutcomeView } from './scan-field';
 import { useScanLookup } from './scan-queries';
@@ -168,8 +169,19 @@ const describeOutcome = (
  * 하단 바 [생산 작업으로]를 잠근다. 다만 그 잠금은 오조작을 줄이는 장치이지 집행이 아니다 — 집행은 서버의 403이고,
  * 오프라인 큐로 들어온 투입은 이 화면을 지나지 않는다.
  */
-/** 자동 투입을 하지 않고 직접 입력으로 돌리는 까닭(PI-28). */
-type ManualReason = 'unknown' | 'none' | 'unit';
+/**
+ * 자동 투입을 하지 않고 직접 입력으로 돌리는 까닭(PI-28). `wipUnknown` 은 공정 반제품의 남은 수량을 받지
+ * 못한 것이다(피처 016).
+ */
+type ManualReason = 'unknown' | 'none' | 'unit' | 'wipUnknown';
+
+/** 직접 입력의 까닭 한 줄. */
+const manualReasonText = (reason: ManualReason | null): string =>
+  reason === null
+    ? t.scanned.manualDefault
+    : reason === 'wipUnknown'
+      ? t.wip.unknown
+      : t.scanned.manualReasons[reason];
 
 /** 이 화면에서 큐에 담은 투입 한 건. `occurredAt`은 본문 그대로라 서버 응답, 거부와 맞출 수 있다. */
 interface LocalRecord {
@@ -301,9 +313,7 @@ export const MaterialInputScanScreen = () => {
    * 2026-10-23, PI-05). 기록을 못 받았으면 수령 수량이다. 작업자가 바꿀 수 있다. 단위가 다르거나
    * 수령 줄이 없거나 남은 양이 없으면 비워 둔다. 표시와 기본값일 뿐 판정이 아니다.
    */
-  const prefillQty = (lotId: number, uomId: number): void => {
-    const left = remainingQtyOf(lotId, uomId);
-
+  const prefillQty = (lotId: number, left: number | null): void => {
     setQtyDrafts((prev) => writeQty(prev, lotId, left !== null && left > 0 ? String(left) : ''));
   };
 
@@ -380,17 +390,28 @@ export const MaterialInputScanScreen = () => {
   const beginInput = (material: ScannedMaterial): ManualReason | null => {
     const { lotId, uomId } = material;
     const line = receipt.lines.find((candidate) => candidate.lotId === lotId);
-    const left = remainingQtyOf(lotId, uomId);
+    const wip = material.wip ?? null;
+    /*
+     * 공정 반제품(피처 016)은 불출 줄 대신 서버의 남은 투입 가능 수량이 처음 값이다 — 남은 전량을 채운다(사용자
+     * 결정 2026-11-25). 불출 줄이 없어도 자재와 같은 「미전송」 길로 간다(스캔·확정 조작 수 같음, SC-004).
+     */
+    const left = wip === null ? remainingQtyOf(lotId, uomId) : wipLeftOf(lotId, wip);
     const reason: ManualReason | null =
-      line === undefined
-        ? 'unknown'
-        : line.uomId !== uomId
-          ? 'unit'
-          : left === null
-            ? 'unknown'
-            : left <= 0
-              ? 'none'
-              : null;
+      wip !== null
+        ? left === null
+          ? 'wipUnknown'
+          : left <= 0
+            ? 'none'
+            : null
+        : line === undefined
+          ? 'unknown'
+          : line.uomId !== uomId
+            ? 'unit'
+            : left === null
+              ? 'unknown'
+              : left <= 0
+                ? 'none'
+                : null;
 
     setManualReasons((prev) => {
       const { [lotId]: _old, ...rest } = prev;
@@ -406,7 +427,7 @@ export const MaterialInputScanScreen = () => {
       return reason;
     }
 
-    prefillQty(lotId, uomId);
+    prefillQty(lotId, left);
     arm(lotId);
 
     if (reason === null && canRecordNow && workOrderId !== null && workerNo !== null) {
@@ -842,6 +863,29 @@ export const MaterialInputScanScreen = () => {
     );
   };
 
+  /*
+   * 공정 반제품의 남은 수량(피처 016) = 조회한 그때 서버의 남은 투입 가능 수량 − 그 뒤 이 화면이 보낸 투입(거부된 것
+   * 빼고). 같은 LOT 을 다시 스캔하면 조회하지 않고 담긴 값을 쓰므로(`duplicate`) 나눠 넣은 양을 여기서 뺀다.
+   * 표시와 처음 값일 뿐 판정이 아니다 — 넘으면 서버가 409 로 거절한다.
+   */
+  function wipLeftOf(lotId: number, wip: WipLotInfo): number | null {
+    if (wip.remainingQty === null) return null;
+    /* 투입 본문의 `occurredAt` 은 초 단위라(`toOffsetDateTime`) 조회 시각도 초로 내려 견준다. */
+    const since = Math.floor(Date.parse(wip.lookedUpAt) / 1000) * 1000;
+    let sent = 0;
+
+    for (const local of localRecords) {
+      if (local.lotId !== lotId || Date.parse(local.occurredAt) < since) continue;
+      const isRejected = outbox.rejections.some(
+        (one) =>
+          one.entry.body.lotId === lotId && sameMoment(one.entry.body.occurredAt, local.occurredAt),
+      );
+      if (!isRejected) sent += local.qty;
+    }
+
+    return Number((wip.remainingQty - sent).toFixed(6));
+  }
+
   /* 잔량 = 수령 − 투입량. 수령 줄이 없거나 단위가 다르면 모른다(`null`). */
   function remainingQtyOf(lotId: number, uomId: number): number | null {
     const line = receipt.lines.find((candidate) => candidate.lotId === lotId);
@@ -939,7 +983,11 @@ export const MaterialInputScanScreen = () => {
   /* 기록한 LOT이 있고 기록하지 않은 LOT이 없어야 다음 작업으로 간다(C-4, 사유는 「남은 일」). */
   const isNextBlocked = workOrderId === null || blockReason !== undefined || !hasRecorded;
 
-  const rejection = outbox.rejections.at(-1)?.error ?? null;
+  const lastRejection = outbox.rejections.at(-1) ?? null;
+  const rejection = lastRejection?.error ?? null;
+  /* 거부 문구의 단위(반제품 남은 수량 초과가 「남은 수량(40 EA)」로 말한다) — 그 투입 본문의 단위다. */
+  const rejectionUom =
+    lastRejection === null ? '' : labels.describeUom(lastRejection.entry.body.uomId);
 
   /* 지금 넣는 LOT — 담기고 아직 기록하지 않은 것(투입 중)만 칸과 키패드, [투입 등록]이 켜진다(PI-29). */
   const editingMaterial = editingRow?.material;
@@ -963,6 +1011,7 @@ export const MaterialInputScanScreen = () => {
         : labels.describeUom(workOrder.uomId);
   const editingName = editingRow === null ? '' : itemNameOf(editingRow.lotId, editingRow.itemId);
   const editingReason = editingRow === null ? null : (manualReasons[editingRow.lotId] ?? null);
+  const editingWip = editingMaterial?.wip ?? null;
   const fourM = editingMaterial?.fourMChange ?? null;
   const fourMText =
     fourM === null
@@ -988,6 +1037,14 @@ export const MaterialInputScanScreen = () => {
 
     return unit === '' ? qty : `${qty} ${unit}`;
   };
+  /* 「미전송」인 공정 반제품에 채운 남은 전량(단위 포함). 반제품이 아니면 `null`. */
+  const pendingWipFilled = ((): string | null => {
+    const wip = pendingInput?.material.wip ?? null;
+    if (pendingInput === null || wip === null) return null;
+    const left = wipLeftOf(pendingInput.material.lotId, wip);
+
+    return left === null ? null : qtyWithUnit(String(left), pendingInput.material.uomId);
+  })();
 
   return (
     /* 셸이 없는 화면이라 표제가 본문의 이름이 된다. */
@@ -1135,7 +1192,8 @@ export const MaterialInputScanScreen = () => {
                */}
               {rejection !== null && (
                 <PuNote tone="bad">
-                  <b>{t.confirm.failed}</b> <span>{describeRecordError(rejection)}</span>
+                  <b>{t.confirm.failed}</b>{' '}
+                  <span>{describeRecordError(rejection, rejectionUom)}</span>
                 </PuNote>
               )}
               {blockNote !== null && (
@@ -1176,13 +1234,20 @@ export const MaterialInputScanScreen = () => {
                     </PuButton>
                   }
                 >
-                  <b>
-                    {t.scanned.pendingItem(
-                      editingName,
-                      qtyWithUnit(editingQty, pendingInput.material.uomId),
-                    )}
-                  </b>{' '}
-                  <span>{t.scanned.pendingHint}</span>
+                  {pendingWipFilled === null ? (
+                    <>
+                      <b>
+                        {t.scanned.pendingItem(
+                          editingName,
+                          qtyWithUnit(editingQty, pendingInput.material.uomId),
+                        )}
+                      </b>{' '}
+                      <span>{t.scanned.pendingHint}</span>
+                    </>
+                  ) : (
+                    /* 공정 반제품 — 남은 전량을 채웠다는 한 줄(시안 2판 ①). 줄이면 나눠 넣는다. */
+                    t.wip.filled(editingName, pendingWipFilled)
+                  )}
                 </PuNote>
               ) : isEditingPending && editingRow !== null ? (
                 <PuNote
@@ -1199,11 +1264,7 @@ export const MaterialInputScanScreen = () => {
                   }
                 >
                   {`${editingName} — `}
-                  <span>
-                    {editingReason === null
-                      ? t.scanned.manualDefault
-                      : t.scanned.manualReasons[editingReason]}
-                  </span>
+                  <span>{manualReasonText(editingReason)}</span>
                 </PuNote>
               ) : editingRow !== null &&
                 editingMaterial !== undefined &&
@@ -1221,7 +1282,9 @@ export const MaterialInputScanScreen = () => {
                     </PuButton>
                   }
                 >
-                  {t.scan.outcomes.allInput(editingName)}
+                  {editingWip === null
+                    ? t.scan.outcomes.allInput(editingName)
+                    : t.wip.allInput(editingName)}
                 </PuNote>
               ) : null}
               {fourMText !== '' && (

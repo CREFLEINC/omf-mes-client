@@ -2,7 +2,7 @@ import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useRef } from 'react';
 
 import type { RecordedNote } from './mutations';
-import type { ScannedMaterial } from './scan';
+import type { ScannedMaterial, WipLotInfo } from './scan';
 import type { ReceiptLineStatus, ReceiptLineView } from './types';
 
 import {
@@ -40,6 +40,22 @@ export const RECEIPT_STATUS_LABEL: Record<ReceiptLineStatus, string> = {
 /** 수량을 화면 글자로(단위 포함). */
 const withUnit = (value: number, uom: string): string =>
   uom === '' ? String(value) : `${String(value)} ${uom}`;
+
+/** 뺄셈의 부동소수 꼬리(0.1 + 0.2 꼴)를 털어 낸다 — 실적·남은 수량은 서버 값 그대로이고 이 차만 화면이 낸다. */
+const tidy = (value: number): number => Number(value.toFixed(6));
+
+/**
+ * 공정 반제품 줄의 근거 「실적 100 · 투입 60 · 남은 수량 40 EA」(피처 016 · 시안 2판 ①). 투입 = 실적 − 남은.
+ * 둘 중 하나라도 받지 못했으면 줄을 두지 않는다 — 모르는 값을 0 으로 적지 않는다.
+ */
+export const wipBasisText = (wip: WipLotInfo, uom: string): string | null =>
+  wip.producedQty === null || wip.remainingQty === null
+    ? null
+    : t.wip.basis(
+        String(wip.producedQty),
+        String(tidy(wip.producedQty - wip.remainingQty)),
+        withUnit(wip.remainingQty, uom),
+      );
 
 export interface QtyProgressProps {
   /** 불출량. 불출 줄이 없으면 `null`(기준이 없어 막대를 두지 않는다). */
@@ -268,6 +284,8 @@ export const MaterialList = ({
             /* 최근 것부터(「미전송」이 맨 앞). */
             const records = isSelected ? [...selectedRecords].reverse() : [];
             const receivedAt = listDateTimeText(receipt?.receivedAt);
+            const wip = material?.wip ?? null;
+            const wipBasis = wip === null ? null : wipBasisText(wip, uom);
             const more = records.length - RECORDS_SHOWN;
 
             return (
@@ -284,6 +302,10 @@ export const MaterialList = ({
                   <span className="pu-item-top">
                     <span className="no">{named(receipt?.itemName, itemCode)}</span>
                     <span className="chips">
+                      {/* 공정 반제품(피처 016) — 앞 공정 산출을 다음 공정에 넣는 줄임을 알린다. 막지 않는다. */}
+                      {wip !== null && (
+                        <PuChip>{t.wip.chip(wip.operationSeq, wip.processName)}</PuChip>
+                      )}
                       {/* 예외만 칩으로 보인다(C-21 정상은 숨김). */}
                       {receipt !== undefined && receipt.status !== 'matched' && (
                         <PuChip tone={RECEIPT_STATUS_TONE[receipt.status]}>
@@ -315,6 +337,11 @@ export const MaterialList = ({
                   {/* 정보 영역(C-21): LOT 번호(라벨 대조용, C-10)와 투입량 막대. */}
                   <span className="pu-item-sub mi-pair">
                     <span>{t.pairs.lotLabel}</span> <b className="mi-lot-no">{row.lotNo}</b>{' '}
+                    {wipBasis !== null && (
+                      <>
+                        <b className="mi-wip-basis">{wipBasis}</b>{' '}
+                      </>
+                    )}
                     <span>{t.pairs.progressLabel}</span>{' '}
                     <QtyProgress
                       received={receipt?.receivedQty ?? null}

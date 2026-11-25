@@ -40,6 +40,18 @@ describe('자재 투입 문구와 화면 용어집', () => {
     );
   });
 
+  it('US2-1 공정 반제품 문구는 승인 시안 2판 그대로다', () => {
+    expect(t.wip.chip(10, '가공')).toBe('반제품 · 공정 10 가공');
+    expect(t.wip.chip(10, null)).toBe('반제품 · 공정 10');
+    expect(t.wip.basis('100', '60', '40 EA')).toBe('실적 100 · 투입 60 · 남은 수량 40 EA');
+    expect(t.wip.filled('ABC', '40 EA')).toBe(
+      'ABC — 반제품 남은 전량 40 EA 를 투입량에 채웠습니다. 나눠 넣을 때만 줄이세요.',
+    );
+    expect(t.wip.exceeded('40 EA', '100', '60')).toBe(
+      '남은 수량(40 EA)보다 많이 넣었습니다. 실적 100 중 60 은 이미 투입했습니다.',
+    );
+  });
+
   it('쓰지 않는 말이 없다', () => {
     const banned = [
       '받은 수량',
@@ -58,8 +70,15 @@ describe('자재 투입 문구와 화면 용어집', () => {
       '기록됨',
     ];
     const texts = allTexts(t);
+    /*
+     * 공정 반제품 문구(피처 016)는 「남은 수량」을 쓴다 — 불출 기준 「잔량」과 다른 값(실적 − 투입)이고 승인 시안
+     * 2판의 말이다. 그 한 말만 반제품 묶음에서 허용한다.
+     */
+    const { wip, ...rest } = t;
+    const wipTexts = allTexts(wip);
     for (const word of banned) {
-      expect(texts.filter((text) => text.includes(word))).toEqual([]);
+      expect(allTexts(rest).filter((text) => text.includes(word))).toEqual([]);
+      if (word !== '남은 수량') expect(wipTexts.filter((text) => text.includes(word))).toEqual([]);
     }
     /* 음수 글자도 없다. */
     expect(texts.filter((text) => /(^|\s)-\d/.test(text))).toEqual([]);
