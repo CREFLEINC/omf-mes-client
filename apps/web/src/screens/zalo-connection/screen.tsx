@@ -410,8 +410,8 @@ export const ZaloConnectionScreen = () => {
     },
     {
       key: 'name',
-      /* 템플릿명 열만 왼쪽 정렬 — 열 순서를 바꿔도 따라가게 머리글에 표식을 단다(app.css `.notify-name-head`). */
-      header: <span className="notify-name-head">{w.name}</span>,
+      /* 이름 열도 다른 열처럼 가운데 · 보통 굵기(알림 수신자 · 인계작업 알림 목록과 같다 · app.css `.notify-list-centered`). */
+      header: w.name,
       render: (row) => (
         <button
           type="button"
@@ -560,7 +560,7 @@ export const ZaloConnectionScreen = () => {
         {/* 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 단추로 넘긴다(단말 관리와 같다). */}
         <div
           ref={fit.ref}
-          className="users-roles-list inspection-queue-table notify-list-table"
+          className="inspection-queue-table notify-list-table notify-list-centered"
           style={resizable.style}
           onClick={(event) => {
             const target = event.target;

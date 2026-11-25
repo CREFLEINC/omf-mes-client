@@ -158,6 +158,21 @@ describe('ZaloConnectionScreen', () => {
     expect(screen.getByText(t.workspace.selectTitle)).toBeInTheDocument();
   });
 
+  it('템플릿 목록은 알림 수신자 · 인계작업 알림 목록과 같은 모양 — 모든 열 가운데, 고른 줄도 보통 굵기(#358)', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    await openTemplate(user, '생산 중단');
+    const table = screen.getByRole('table', { name: t.workspace.list });
+    const wrapper = table.closest('.notify-list-table');
+    /* 가운데 · 보통 굵기는 app.css `.notify-list-centered`, 고른 줄 바탕은 `.inspection-queue-table` 공용 규칙. */
+    expect(wrapper).toHaveClass('inspection-queue-table', 'notify-list-centered');
+    /* 고른 줄 굵게 · 회색 바탕(`.users-roles-list`)과 이름 열 왼쪽 정렬 표식은 쓰지 않는다. */
+    expect(wrapper).not.toHaveClass('users-roles-list');
+    expect(table.querySelector('.notify-name-head')).toBeNull();
+    expect(within(table).getByRole('columnheader', { name: t.workspace.name })).toBeInTheDocument();
+  });
+
   it('초기화는 검색어가 처음 값(빈칸)과 다를 때만 보이고, 누르면 다시 숨는다(#358)', async () => {
     const user = userEvent.setup();
     setup();

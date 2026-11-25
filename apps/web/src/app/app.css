@@ -40589,3 +40589,17 @@ body:has(
 .zalo-split.is-stacked > .list-detail-list > .page-nav {
   margin-top: 0;
 }
+
+/*
+ * 알림 연결 설정 — 알림 수신자 · 인계작업 알림 설정과 같은 모양(#358 통일성): 위 두 상자 안쪽 여백은 조회 상자와 같게,
+ * 왼쪽 칸 이름은 다른 입력 칸 이름(조회 상자 · 상세 「템플릿 ID」)과 같은 글꼴.
+ */
+.zalo-connection-box,
+.zalo-template-box {
+  padding: var(--space-4);
+}
+
+.zalo-field-row > .field-label {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
