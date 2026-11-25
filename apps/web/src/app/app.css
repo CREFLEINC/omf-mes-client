@@ -13477,14 +13477,6 @@ dialog.layout-editor-dialog {
   gap: var(--space-1);
 }
 
-.production-warehouse-candidates {
-  display: grid;
-  gap: var(--space-2);
-  margin: var(--space-3) 0 0;
-  padding: 0;
-  list-style: none;
-}
-
 /* W-02-11 출고 요청 현황(003) — 보기 전환 · 조건 · 표 · 오른쪽 상세(screens/W-02-11.md). */
 .material-issue-status-views {
   display: flex;

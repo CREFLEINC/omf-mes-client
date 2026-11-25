@@ -77,6 +77,20 @@ describe('DeactivateDialog', () => {
     expect(
       within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }),
     ).toBeDisabled();
+    /* 결재선 정의의 사용 전환 창과 같다 — 나가는 중에는 취소로도 빠지지 않는다. */
+    expect(within(screen.getByRole('dialog')).getByRole('button', { name: '취소' })).toBeDisabled();
+  });
+
+  /* 결재선 정의의 확인 창과 같은 모양 — 닫기(X) 없이 바닥 단추 둘로만 나간다(사용자 지시 2026-11-25). */
+  it('창 머리에 닫기(X)가 없다', () => {
+    renderDialog();
+
+    const dialog = within(screen.getByRole('dialog'));
+    expect(dialog.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
+    expect(dialog.getAllByRole('button').map((button) => button.textContent)).toEqual([
+      '취소',
+      '사용 중지',
+    ]);
   });
 
   it('실패 배너를 창 안에 담는다 — 닫지 않고 이유를 보여야 다시 시도할 수 있다', () => {

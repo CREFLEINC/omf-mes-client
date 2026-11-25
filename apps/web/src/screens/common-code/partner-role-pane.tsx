@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
 import { UsageChip } from '../../patterns/usage-chip';
-import { DisabledAction } from './disabled-action';
+import { ErpDetailFields } from '../erp-item/erp-data-parts';
 import type { PartnerRoleChoice } from './partner-role-draft';
 import type { Partner } from './types';
 
@@ -49,26 +49,6 @@ const orEmptyMark = (value: string | null | undefined): string =>
   value === null || value === undefined || value === '' ? t.values.empty : value;
 
 /**
- * 라벨과 값 한 쌍. **폼 컨트롤이 아니다** — 잠긴 입력칸은 「언젠가 열린다」는 뜻이 된다.
- *
- * 같은 슬라이스의 작업자 기본 정보가 세운 형태를 그대로 쓴다. 그쪽 부품은 그 파일 안의
- * 지역 부품이라 여기서 자기 사본을 갖는다 — 한 자리로 모으는 것은 그 파일까지 건드리는
- * 별건의 정리이고, 이 회차의 목적(거래처 역할 편집)에 섞지 않는다.
- */
-const ValueField = ({ label, value }: { label: string; value: ReactNode }) => {
-  const labelId = useId();
-
-  return (
-    <div className="field-cell">
-      <span className="field-label" id={labelId}>
-        {label}
-      </span>
-      <p aria-labelledby={labelId}>{value}</p>
-    </div>
-  );
-};
-
-/**
  * 우 칸 — 거래처 기본 정보(읽기)와 그 거래처의 역할(편집).
  *
  * **기본 정보는 값 표기만 있다**(결정 12 — 표시 방법 정정). 거래처 본체는 ERP 수신 마스터라
@@ -106,10 +86,7 @@ export const PartnerRolePane = ({
   const unknownNoteId = useId();
   const hasUnknown = choices.some((choice) => !choice.isKnown);
 
-  /**
-   * 저장 자리의 네 상태. **잠긴 자리에는 반드시 사유가 붙는다**(배치 규범 4) —
-   * 사유 없는 비활성은 사용자에게 「고장」으로 읽힌다.
-   */
+  /** 저장 자리. 잠긴 까닭을 단추 아래 문구로 내지 않는다 — 꺼진 단추로만(사용자 지시 2026-11-25). */
   const saveAction = (): ReactNode => {
     /* 내 저장이 나가는 중이면 진행 표시가 사유 자리를 대신한다. */
     if (isSaving) {
@@ -120,26 +97,15 @@ export const PartnerRolePane = ({
       );
     }
 
-    /* 남의 저장이 나가는 중이다 — 잠그되 **무엇을 기다리는지** 밝힌다. */
-    if (isLocked) {
-      return (
-        <DisabledAction
-          label={messages.common.save}
-          reason={t.partnerRole.actionReasons.saveLockedByOtherPartner}
-        />
-      );
-    }
-
-    if (!isDirty) {
-      return (
-        <DisabledAction
-          label={messages.common.save}
-          reason={t.partnerRole.actionReasons.saveNoChanges}
-        />
-      );
-    }
-
-    return <Button onClick={onSave}>{messages.common.save}</Button>;
+    /*
+     * 남의 저장이 나가는 중이거나 고친 것이 없으면 잠그기만 한다 — 저장 단추 아래 사유 문구는 두지 않는다
+     * (사용자 지시 2026-11-25).
+     */
+    return (
+      <Button disabled={isLocked || !isDirty} onClick={onSave}>
+        {messages.common.save}
+      </Button>
+    );
   };
 
   const roleSlot = (): ReactNode => {
@@ -170,7 +136,8 @@ export const PartnerRolePane = ({
           </p>
         )}
 
-        <div className="check-group">
+        {/* 역할 확인칸은 상자 폭만큼 가로로 흐르고 모자라면 다음 줄로(사용자 지시 2026-11-25 · layout.css). */}
+        <div className="check-group common-code-partner-roles">
           {choices.map((choice) => (
             <Checkbox
               key={choice.roleTypeCode}
@@ -230,23 +197,36 @@ export const PartnerRolePane = ({
           <AlertBanner variant="info">{messages.editability.receivedFromErp(null)}</AlertBanner>
         </div>
 
-        <div className="form-grid">
-          <ValueField
-            label={t.partner.fields.partnerCode}
-            value={orEmptyMark(partner.partnerCode)}
-          />
-          <ValueField
-            label={t.partner.fields.partnerName}
-            value={orEmptyMark(partner.partnerName)}
-          />
-          <ValueField label={t.partner.fields.country} value={orEmptyMark(partner.countryCode)} />
-          <ValueField
-            label={t.partner.fields.erpPartnerCode}
-            value={orEmptyMark(partner.erpPartnerCode)}
-          />
-          <ValueField
-            label={t.partner.fields.isActive}
-            value={<UsageChip isActive={partner.isActive} />}
+        {/* ERP 조회 화면의 정보 표시 상자와 같은 모양(사용자 지시 2026-11-25). 사용 여부는 상태 칩 그대로. */}
+        <div className="erp-data-detail erp-data-detail-fill">
+          <ErpDetailFields
+            fields={[
+              {
+                key: 'partnerCode',
+                label: t.partner.fields.partnerCode,
+                value: orEmptyMark(partner.partnerCode),
+              },
+              {
+                key: 'partnerName',
+                label: t.partner.fields.partnerName,
+                value: orEmptyMark(partner.partnerName),
+              },
+              {
+                key: 'country',
+                label: t.partner.fields.country,
+                value: orEmptyMark(partner.countryCode),
+              },
+              {
+                key: 'erpPartnerCode',
+                label: t.partner.fields.erpPartnerCode,
+                value: orEmptyMark(partner.erpPartnerCode),
+              },
+              {
+                key: 'isActive',
+                label: t.partner.fields.isActive,
+                value: <UsageChip isActive={partner.isActive} />,
+              },
+            ]}
           />
         </div>
       </section>

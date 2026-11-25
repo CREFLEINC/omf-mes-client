@@ -44,7 +44,6 @@ const renderPane = (overrides: Partial<Parameters<typeof QualificationPane>[0]> 
     isWorkerSelected: true,
     processes: source(),
     certifiers: source(certifierEntries),
-    optionsNotice: null,
     loadError: null,
     banner: null,
     isDirty: true,
@@ -73,7 +72,7 @@ describe('QualificationPane — 표', () => {
       '인증번호',
       '유효기간',
       '인증자',
-      '편집',
+      '관리',
     ]);
   });
 
@@ -172,7 +171,7 @@ describe('QualificationPane — 겹친 짝', () => {
     renderPane({ drafts: [draft({ processId: '' }), draft({ processId: '' })] });
 
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(screen.getByText(/저장은 자격 유형과 공정 짝이 겹치는 줄이 있어/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
   it('겹친 짝이 있으면 표 위에도 그 사실을 알린다', () => {
@@ -237,9 +236,7 @@ describe('QualificationPane — 저장이 나가는 중', () => {
     expect(screen.getByRole('button', { name: 'PENDING 자격 삭제' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
     expect(save).toBeDisabled();
-    expect(
-      screen.getByText('저장은 다른 작업자의 저장이 끝난 뒤에 할 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
     expect(save).not.toHaveAttribute('aria-busy', 'true');
   });
 

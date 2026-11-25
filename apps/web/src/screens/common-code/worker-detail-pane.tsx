@@ -14,6 +14,8 @@ export interface WorkerDetailPaneProps {
   businessUnits: LookupSource<LookupEntry>;
   plants: LookupSource<LookupEntry>;
   departments: LookupSource<LookupEntry>;
+  /** 제목 오른쪽 안내 알약(선택 목록이 잘렸거나 못 불러왔을 때). 없으면 null. */
+  headingNote?: ReactNode;
 }
 
 /** 라벨과 값 한 쌍. **폼 컨트롤이 아니다** — 잠긴 입력칸은 「언젠가 열린다」는 뜻이 된다. */
@@ -51,11 +53,13 @@ export const WorkerDetailPane = ({
   businessUnits,
   plants,
   departments,
+  headingNote = null,
 }: WorkerDetailPaneProps) => (
   <section className="pane" aria-label={t.panes.workerDetail}>
     {/* 사용자 관리 상세와 같은 머리(제목 줄) · 정보 안내 한 줄(사용자 지시 2026-11-24). */}
-    <div className="pane-heading-row users-roles-heading">
+    <div className="pane-heading-row users-roles-heading common-code-heading-with-note">
       <h3 className="pane-title">{t.panes.workerDetail}</h3>
+      {headingNote}
     </div>
     <p
       className="iqc-inspection-action-note common-code-readonly-note"

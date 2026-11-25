@@ -44,6 +44,15 @@ const detailPane = (): HTMLElement => screen.getByRole('region', { name: '거래
 
 const rolePane = (): HTMLElement => screen.getByRole('region', { name: '거래처 역할' });
 
+/** 정보 표시 상자(`dl`)에서 이름(`dt`) 바로 옆 값(`dd`) — 값마다 이름이 붙어 있는지를 잰다(사용자 지시 2026-11-25). */
+const factValue = (pane: HTMLElement, label: string): HTMLElement => {
+  const term = within(pane).getByText(label, { selector: 'dt' });
+  const value = term.nextElementSibling;
+  if (!(value instanceof HTMLElement) || value.tagName !== 'DD')
+    throw new Error(`${label} 값 없음`);
+  return value;
+};
+
 const roleCheckbox = (name: string): HTMLElement =>
   within(rolePane()).getByRole('checkbox', { name });
 
@@ -90,9 +99,9 @@ describe('PartnerRolePane — 기본 정보는 고칠 수 없다 (결정 12)', (
 
     const pane = detailPane();
 
-    expect(within(pane).getByLabelText('거래처코드')).toHaveTextContent('SAMPLE-PTNR-A');
-    expect(within(pane).getByLabelText('거래처명')).toHaveTextContent('샘플 거래처 가');
-    expect(within(pane).getByLabelText('ERP 코드')).toHaveTextContent('SAMPLE-ERP-A');
+    expect(factValue(pane, '거래처코드')).toHaveTextContent('SAMPLE-PTNR-A');
+    expect(factValue(pane, '거래처명')).toHaveTextContent('샘플 거래처 가');
+    expect(factValue(pane, 'ERP 코드')).toHaveTextContent('SAMPLE-ERP-A');
   });
 
   /* 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
@@ -101,18 +110,18 @@ describe('PartnerRolePane — 기본 정보는 고칠 수 없다 (결정 12)', (
 
     const pane = detailPane();
 
-    expect(within(pane).getByLabelText('국가')).toHaveTextContent('—');
-    expect(within(pane).getByLabelText('ERP 코드')).toHaveTextContent('—');
+    expect(factValue(pane, '국가')).toHaveTextContent('—');
+    expect(factValue(pane, 'ERP 코드')).toHaveTextContent('—');
   });
 
   it('사용 여부를 값으로 낸다', () => {
     renderPane();
-    expect(within(detailPane()).getByLabelText('사용 여부')).toHaveTextContent('사용');
+    expect(factValue(detailPane(), '사용 여부')).toHaveTextContent('사용');
   });
 
   it('미사용 거래처는 미사용으로 낸다', () => {
     renderPane({ partner: partnerFixtures[2]! });
-    expect(within(detailPane()).getByLabelText('사용 여부')).toHaveTextContent('미사용');
+    expect(factValue(detailPane(), '사용 여부')).toHaveTextContent('미사용');
   });
 
   /* 내부 번호는 주소와 조회에만 쓴다 — 보이면 사용자가 자료로 읽는다. */
@@ -279,7 +288,7 @@ describe('PartnerRolePane — 저장과 취소', () => {
     const save = within(rolePane()).getByRole('button', { name: '저장' });
 
     expect(save).toBeDisabled();
-    expect(within(rolePane()).getByText(/저장은 역할을 고친 뒤에/)).toBeInTheDocument();
+    expect(within(rolePane()).getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
   it('고친 것이 있으면 저장과 취소를 누를 수 있다', async () => {
@@ -316,9 +325,7 @@ describe('PartnerRolePane — 저장과 취소', () => {
     const pane = rolePane();
 
     expect(within(pane).getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(
-      within(pane).getByText('저장은 다른 거래처의 저장이 끝난 뒤에 할 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(within(pane).getByRole('button', { name: '저장' })).toBeDisabled();
     for (const box of within(pane).getAllByRole('checkbox')) {
       expect(box).toBeDisabled();
     }

@@ -1281,11 +1281,7 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
     const save = codeGroupSaveButton();
 
     expect(save).toBeDisabled();
-    expect(
-      within(codeGroupFormPane()).getByText(
-        '저장은 다른 코드그룹의 저장이 끝난 뒤에 할 수 있습니다.',
-      ),
-    ).toBeInTheDocument();
+    expect(within(codeGroupFormPane()).getByRole('button', { name: '저장' })).toBeDisabled();
     /* 남의 저장으로 스피너를 돌리면 화면이 손댄 적 없는 코드그룹을 「저장 중」이라고 말한다. */
     expect(save).not.toHaveAttribute('aria-busy', 'true');
   });
@@ -1310,9 +1306,7 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
      * 그래야 잠금이 풀리는 순간을 「저장이 다시 열린다」는 **양성**으로 잡을 수 있다.
      */
     await user.type(screen.getByLabelText('그룹명'), 'Y');
-    expect(
-      within(codeGroupFormPane()).getByText(/저장은 다른 코드그룹의 저장이 끝난 뒤에/),
-    ).toBeInTheDocument();
+    expect(within(codeGroupFormPane()).getByRole('button', { name: '저장' })).toBeDisabled();
 
     await act(async () => {
       deferred.release({
@@ -1534,9 +1528,7 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
     await user.click(codeGroupSaveButton());
 
     expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
-    expect(
-      within(codeGroupFormPane()).getByText(/저장은 다른 코드그룹의 저장이 끝난 뒤에/),
-    ).toBeInTheDocument();
+    expect(within(codeGroupFormPane()).getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
   /*
@@ -1618,8 +1610,8 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
      */
     expect(addCodeGroupButton()).not.toHaveAttribute('aria-busy', 'true');
     expect(
-      within(codeGroupCreateDialog()).getByText(/그룹 추가는 다른 코드그룹의 저장이 끝난 뒤에/),
-    ).toBeInTheDocument();
+      within(codeGroupCreateDialog()).getByRole('button', { name: '그룹 추가' }),
+    ).toBeDisabled();
 
     await act(async () => {
       deferred.release(createFailure);
@@ -3655,9 +3647,7 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
     const save = departmentSaveButton();
 
     expect(save).toBeDisabled();
-    expect(
-      within(departmentFormPane()).getByText('저장은 다른 부서의 저장이 끝난 뒤에 할 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(within(departmentFormPane()).getByRole('button', { name: '저장' })).toBeDisabled();
     /* 남의 저장으로 스피너를 돌리면 화면이 손댄 적 없는 부서를 「저장 중」이라고 말한다. */
     expect(save).not.toHaveAttribute('aria-busy', 'true');
   });
@@ -3682,9 +3672,7 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
      * 그래야 잠금이 풀리는 순간을 「저장이 다시 열린다」는 **양성**으로 잡을 수 있다.
      */
     await user.type(screen.getByLabelText('부서명'), 'Y');
-    expect(
-      within(departmentFormPane()).getByText(/저장은 다른 부서의 저장이 끝난 뒤에/),
-    ).toBeInTheDocument();
+    expect(within(departmentFormPane()).getByRole('button', { name: '저장' })).toBeDisabled();
 
     await act(async () => {
       deferred.release({
@@ -3909,9 +3897,7 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
     await user.click(departmentSaveButton());
 
     expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
-    expect(
-      within(departmentFormPane()).getByText(/저장은 다른 부서의 저장이 끝난 뒤에/),
-    ).toBeInTheDocument();
+    expect(within(departmentFormPane()).getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
   /*
@@ -4000,8 +3986,8 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
      */
     expect(addDepartmentButton()).not.toHaveAttribute('aria-busy', 'true');
     expect(
-      within(departmentCreateDialog()).getByText(/부서 추가는 다른 부서의 저장이 끝난 뒤에/),
-    ).toBeInTheDocument();
+      within(departmentCreateDialog()).getByRole('button', { name: '부서 추가' }),
+    ).toBeDisabled();
 
     await act(async () => {
       deferred.release(createFailure);
@@ -4573,7 +4559,7 @@ describe('CommonCodeScreen — 자격 조회 (C64·C75)', () => {
     expect(await screen.findByText('(전체 공정)')).toBeInTheDocument();
   });
 
-  it('공정 선택지 조회가 실패하면 그 사실을 표 위에 알린다', async () => {
+  it('공정 선택지 조회가 실패하면 그 사실을 작업자 상세 제목 옆에 알린다', async () => {
     renderScreen(
       [
         ...workerRoutes(),
@@ -4586,9 +4572,12 @@ describe('CommonCodeScreen — 자격 조회 (C64·C75)', () => {
       '?tab=worker&wkr=5001',
     );
 
-    expect(
-      await screen.findByText('선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.'),
-    ).toBeInTheDocument();
+    const note = await screen.findByText(
+      '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
+    );
+    /* 제목 「작업자 상세 정보」와 같은 줄 — 자격 표 위 배너가 아니다(사용자 지시 2026-11-25). */
+    expect(note.parentElement).toHaveTextContent('작업자 상세 정보');
+    expect(within(qualificationPane()).queryByText(/선택 목록을/)).not.toBeInTheDocument();
   });
 
   it('자격이 0건이면 빈 상태를 낸다', async () => {
@@ -4632,12 +4621,15 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
     expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(0);
   });
 
-  it('창 안에 확인이 저장이 아니라는 안내가 있다', async () => {
+  it('창 안에 저장 안내 문구와 닫기(X)가 없다(사용자 지시 2026-11-25)', async () => {
     const { user } = renderScreen(qualificationRoutes(), '?tab=worker&wkr=5001');
 
     const dialog = await openEditDialog(user);
 
-    expect(within(dialog).getByText('확인한 뒤 「저장」을 눌러야 저장됩니다.')).toBeInTheDocument();
+    expect(
+      within(dialog).queryByText('확인한 뒤 「저장」을 눌러야 저장됩니다.'),
+    ).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
   });
 
   /* 창은 열 때만 마운트한다 — 닫힌 창을 남기면 지난 값이 살아 있다. */
@@ -4943,7 +4935,7 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
     await screen.findAllByText('(전체 공정)');
 
     expect(within(qualificationPane()).getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(screen.getByText(/저장은 자격 유형과 공정 짝이 겹치는 줄이 있어/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
   /* 저장 실패는 삼키지 않는다 — 무엇이 막았는지 밝힌다. */
@@ -5120,9 +5112,7 @@ describe('CommonCodeScreen — 나가는 중인 자격 저장의 매임과 잠�
     const save = qualificationSaveButton();
 
     expect(save).toBeDisabled();
-    expect(
-      within(pane).getByText('저장은 다른 작업자의 저장이 끝난 뒤에 할 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(within(pane).getByRole('button', { name: '저장' })).toBeDisabled();
     /* 남의 저장으로 스피너를 돌리면 화면이 손댄 적 없는 작업자를 「저장 중」이라고 말한다. */
     expect(save).not.toHaveAttribute('aria-busy', 'true');
   });
@@ -5142,9 +5132,7 @@ describe('CommonCodeScreen — 나가는 중인 자격 저장의 매임과 잠�
     await selectSecondWorker(user);
 
     /* 도착 전 — 남의 저장이 나가는 중이라 이 구획이 그 사유로 잠겨 있다. */
-    expect(
-      within(qualificationPane()).getByText(/저장은 다른 작업자의 저장이 끝난 뒤에/),
-    ).toBeInTheDocument();
+    expect(within(qualificationPane()).getByRole('button', { name: '저장' })).toBeDisabled();
 
     await act(async () => {
       deferred.release({
@@ -5274,9 +5262,7 @@ describe('CommonCodeScreen — 나가는 중인 자격 저장의 매임과 잠�
     await user.click(qualificationSaveButton());
 
     expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
-    expect(
-      within(qualificationPane()).getByText(/저장은 다른 작업자의 저장이 끝난 뒤에/),
-    ).toBeInTheDocument();
+    expect(within(qualificationPane()).getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
   /*
@@ -5473,6 +5459,15 @@ const partnerPane = (): HTMLElement => screen.getByRole('region', { name: '거�
 
 const partnerRolePane = (): HTMLElement => screen.getByRole('region', { name: '거래처 역할' });
 
+/** 정보 표시 상자(`dl`)에서 이름(`dt`) 바로 옆 값(`dd`) — 값마다 이름이 붙어 있는지를 잰다(사용자 지시 2026-11-25). */
+const factValue = (pane: HTMLElement, label: string): HTMLElement => {
+  const term = within(pane).getByText(label, { selector: 'dt' });
+  const value = term.nextElementSibling;
+  if (!(value instanceof HTMLElement) || value.tagName !== 'DD')
+    throw new Error(`${label} 값 없음`);
+  return value;
+};
+
 const partnerRoutes = (): StubRoute[] => [
   partnerListRoute(),
   partnerDetailRoute(),
@@ -5594,7 +5589,7 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
 
     const pane = await screen.findByRole('region', { name: '거래처 기본 정보' });
 
-    expect(within(pane).getByLabelText('거래처코드')).toHaveTextContent('SAMPLE-PTNR-A');
+    expect(factValue(pane, '거래처코드')).toHaveTextContent('SAMPLE-PTNR-A');
     expect(within(pane).queryAllByRole('textbox')).toHaveLength(0);
     expect(within(pane).queryAllByRole('button')).toHaveLength(0);
     expect(
@@ -5631,7 +5626,7 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
 
     const pane = await screen.findByRole('region', { name: '거래처 기본 정보' });
 
-    expect(within(pane).getByLabelText('거래처코드')).toHaveTextContent('SAMPLE-PTNR-Z');
+    expect(factValue(pane, '거래처코드')).toHaveTextContent('SAMPLE-PTNR-Z');
     expect(await screen.findByText('고객사')).toBeInTheDocument();
   });
 
@@ -5654,7 +5649,7 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
 
     const pane = await screen.findByRole('region', { name: '거래처 기본 정보' });
 
-    expect(within(pane).getByLabelText('거래처코드')).toHaveTextContent('SAMPLE-PTNR-A');
+    expect(factValue(pane, '거래처코드')).toHaveTextContent('SAMPLE-PTNR-A');
     expect(await screen.findByText('고객사')).toBeInTheDocument();
     /* 목록 실패는 좌 목록이 낸다 — 우 칸이 대신 말하지 않는다. */
     expect(within(partnerPane()).getByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
@@ -6562,7 +6557,7 @@ describe('CommonCodeScreen — 나가는 중인 저장의 매임 (M-1·F-1)', ()
      * 진행 표시를 도는 갈래에는 **사유가 없다** — 사유가 보인다는 것이 곧 이 구획이
      * 남의 저장으로 스피너를 돌리고 있지 않다는 뜻이다.
      */
-    expect(within(pane).getByText(/저장은 다른 거래처의 저장이 끝난 뒤에/)).toBeInTheDocument();
+    expect(within(pane).getByRole('button', { name: '저장' })).toBeDisabled();
     expect(within(pane).queryByText(/저장은 역할을 고친 뒤에/)).not.toBeInTheDocument();
   });
 
@@ -6590,9 +6585,7 @@ describe('CommonCodeScreen — 나가는 중인 저장의 매임 (M-1·F-1)', ()
     await user.click(partnerSaveButton());
 
     expect(putRequests(requests)).toHaveLength(1);
-    expect(
-      within(partnerRolePane()).getByText(/저장은 다른 거래처의 저장이 끝난 뒤에/),
-    ).toBeInTheDocument();
+    expect(within(partnerRolePane()).getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
   /*
@@ -6655,9 +6648,7 @@ describe('CommonCodeScreen — 나가는 중인 저장의 매임 (M-1·F-1)', ()
     await screen.findByText('지정된 역할이 없습니다');
 
     /* 도착 전 — 남의 저장이 나가는 중이라 이 구획이 그 사유로 잠겨 있다. */
-    expect(
-      within(partnerRolePane()).getByText(/저장은 다른 거래처의 저장이 끝난 뒤에/),
-    ).toBeInTheDocument();
+    expect(within(partnerRolePane()).getByRole('button', { name: '저장' })).toBeDisabled();
 
     await act(async () => {
       deferred.release({
@@ -6667,12 +6658,11 @@ describe('CommonCodeScreen — 나가는 중인 저장의 매임 (M-1·F-1)', ()
     });
 
     /*
-     * **잠금 사유가 갈리는 것으로 실패가 도착한 것을 안다** — 「다른 거래처의 저장이 끝난 뒤에」가
-     * 「역할을 고친 뒤에」로 바뀌는 순간은 나가는 중이던 저장이 끝났을 때뿐이다.
-     * 도착 전에 음성 단언을 하면 늘 통과한다.
+     * **잠금이 풀리는 것으로 실패가 도착한 것을 안다** — 잠긴 동안 꺼져 있던 역할 확인칸이 다시 켜지는 순간은
+     * 나가는 중이던 저장이 끝났을 때뿐이다. 도착 전에 음성 단언을 하면 늘 통과한다.
      */
     await waitFor(() => {
-      expect(within(partnerRolePane()).getByText(/저장은 역할을 고친 뒤에/)).toBeInTheDocument();
+      expect(roleCheckbox('고객사')).toBeEnabled();
     });
     expect(within(partnerRolePane()).queryByText('저장이 막혔습니다.')).not.toBeInTheDocument();
   });

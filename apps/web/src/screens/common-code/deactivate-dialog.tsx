@@ -28,6 +28,9 @@ export interface DeactivateDialogProps {
  *
  * 스크림 클릭으로 닫히지 않게 한다. 되돌릴 수 없는 액션의 확인 창이 실수로 사라지면
  * 사용자는 자기가 무엇을 취소했는지 모른다.
+ *
+ * 모양은 결재선 정의의 사용 전환 확인 창(`approval-route/activation-dialog.tsx`)과 같다 — 닫기(X) 없이 바닥 단추
+ * 둘로만 나가고, 전송 중에는 「취소」도 잠근다(사용자 지시 2026-11-25). Esc 는 종전대로 닫는다.
  */
 export const DeactivateDialog = ({
   open,
@@ -43,9 +46,10 @@ export const DeactivateDialog = ({
     size="sm"
     title={title}
     closeOnBackdropClick={false}
+    showCloseButton={false}
     footer={
       <>
-        <Button variant="outlined" onClick={onClose}>
+        <Button variant="outlined" disabled={isSaving} onClick={onClose}>
           {messages.common.cancel}
         </Button>
         <Button loading={isSaving} disabled={isSaving} onClick={onConfirm}>

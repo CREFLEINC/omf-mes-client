@@ -4,7 +4,6 @@ import { type ReactNode, useId } from 'react';
 
 import { CodeLockLabel } from '../../patterns/master';
 import { requiredEmptyClass } from '../users-roles/required-empty';
-import { DisabledAction } from './disabled-action';
 import { FieldLabel } from './field-label';
 import { SelectField } from './select-field';
 import type { DepartmentFormValues, SelectOption } from './types';
@@ -99,36 +98,10 @@ export const DepartmentFormPane = ({
   const codeId = useId();
   const nameId = useId();
 
-  /*
-   * 이름과 사유를 **한 쌍으로 고른다.** 사유 문면이 두 벌인 것은 저장 자리의 **컨트롤 이름이
-   * 모드마다 다르기 때문**이고, 문구는 그 이름으로 시작한다(배치 규범 4-5) — 두 값을 따로
-   * 고르면 한쪽만 바꿔 이름과 사유가 어긋나는 짝이 생긴다.
-   */
-  const { saveLabel, saveLockedReason } =
-    mode === 'create'
-      ? {
-          saveLabel: t.actions.addDepartment,
-          saveLockedReason: t.department.actionReasons.addLockedByOtherDepartment,
-        }
-      : {
-          saveLabel: messages.common.save,
-          saveLockedReason: t.department.actionReasons.saveLockedByOtherDepartment,
-        };
+  /* 저장 자리 이름 — 등록 팝업은 「추가」 이름, 수정은 「저장」. */
+  const saveLabel = mode === 'create' ? t.actions.addDepartment : messages.common.save;
 
-  /**
-   * 저장 자리의 세 상태. **잠금에서 오는 비활성에는 반드시 사유가 붙는다**(배치 규범 4) —
-   * 남의 저장이 왜 내 저장을 막는지는 이 구획 어디에도 드러나지 않아, 사유가 없으면
-   * 사용자에게 「고장」으로 읽힌다.
-   *
-   * **셋째 갈래에는 사유를 두지 않는다.** 그 비활성은 잠김(남의 사정)이 아니라
-   * **고친 것이 없음**(자기 사정)이라 원인이 사용자가 방금 한 일에 그대로 있다.
-   *
-   * 형제 구획(코드그룹)과 같은 갈래 순서이며, **자격 구획의 셋째 갈래(중복 짝 차단)에
-   * 해당하는 사정이 이 구획에도 없다** — 서버가 거부할 것을 **미리 아는** 자리가 없기
-   * 때문이다. 자격은 렌더 시점에 초안끼리 견줘 중복을 판정하지만(그 판정기는 자격 전용이다),
-   * 부서 검증은 저장을 누른 뒤 상위에서 돈다. 갈래가 넷에서 셋으로 준 이유가 이것이다 —
-   * 다음 사본이 「셋이 원래 그런 것」으로 받지 않도록 근거를 여기 남긴다.
-   */
+  /** 저장 자리. 잠긴 까닭을 단추 아래 문구로 내지 않는다 — 꺼진 단추로만(사용자 지시 2026-11-25). */
   const saveAction = (): ReactNode => {
     /* 내 저장이 나가는 중이면 진행 표시가 사유 자리를 대신한다. */
     if (isSaving) {
@@ -139,9 +112,9 @@ export const DepartmentFormPane = ({
       );
     }
 
-    /* 남의 저장이 나가는 중이다 — 잠그되 **무엇을 기다리는지** 밝힌다. */
+    /* 남의 저장이 나가는 중이다 — 잠그기만 한다. 저장 단추 아래 사유 문구는 두지 않는다(사용자 지시 2026-11-25). */
     if (isLocked) {
-      return <DisabledAction label={saveLabel} reason={saveLockedReason} />;
+      return <Button disabled>{saveLabel}</Button>;
     }
 
     return (
@@ -215,7 +188,7 @@ export const DepartmentFormPane = ({
 
   /*
    * 등록은 팝업 — 사용자 추가 팝업과 같은 모양(사용자 지시 2026-11-25 · #333). 열고 닫힘은 종전대로 주소의 등록 상태가
-   * 쥐고, 닫기(취소)는 등록 폼을 접는 같은 처리로 간다. 저장 자리 세 상태(진행 · 잠금 사유 · 고친 것 없음)도 그대로다.
+   * 쥐고, 닫기(취소)는 등록 폼을 접는 같은 처리로 간다. 저장 자리 세 상태(진행 · 잠금 · 고친 것 없음)도 그대로다.
    */
   if (mode === 'create') {
     return (

@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Dialog, TextField } from '@crefle/web-ui';
+import { Button, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
@@ -93,6 +93,8 @@ export const QualificationFormDialog = ({
       onClose={onClose}
       size="md"
       title={isNew ? t.dialog.addTitle : t.dialog.editTitle}
+      /* 닫기(X) 없이 바닥 단추로만 — Esc 는 종전대로 닫는다(사용자 지시 2026-11-25). */
+      showCloseButton={false}
       footer={
         <>
           <Button variant="outlined" onClick={onClose}>
@@ -102,11 +104,6 @@ export const QualificationFormDialog = ({
         </>
       }
     >
-      {/* 확인이 저장이라고 오해하면 창을 닫고 화면을 떠난다. */}
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.dialog.notSavedNotice}</AlertBanner>
-      </div>
-
       <div className="form-grid">
         <SelectField
           label={t.fields.qualificationType}

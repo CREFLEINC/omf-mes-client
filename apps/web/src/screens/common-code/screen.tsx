@@ -787,6 +787,30 @@ export const CommonCodeScreen = () => {
   };
 
   /**
+   * 같은 사실을 제목 옆 알약으로 — 작업자 상세 제목 오른쪽에 글 폭만큼(결재선 정의의 진행 중 안내와 같은 자리 ·
+   * 사용자 지시 2026-11-25). 보이는 조건 · 경고색은 위 배너와 같다.
+   */
+  const renderOptionsNote = (lookups: LookupResult[]): ReactNode => {
+    const text = lookups.some((lookup) => lookup.isError)
+      ? t.optionsLoadFailed
+      : lookups.some((lookup) => lookup.truncated)
+        ? t.optionsTruncated
+        : null;
+    if (text === null) return null;
+
+    return (
+      <p
+        className="iqc-inspection-action-note common-code-heading-note"
+        data-tone="warning"
+        role="note"
+      >
+        <Icon name="warning" size={14} aria-hidden />
+        {text}
+      </p>
+    );
+  };
+
+  /**
    * 부서를 고른다. **주소 갱신 한 번으로 끝낸다** — 선택과 등록 폼은 함께 성립하지 않으므로
    * 그 규칙까지 이 patch 안에서 처리한다. 나눠 부르면 뒤로가기가 중간 상태로 떨어진다.
    */
@@ -2187,6 +2211,8 @@ export const CommonCodeScreen = () => {
         businessUnits={workerBusinessUnits}
         plants={plantOptions}
         departments={workerDepartmentOptions}
+        /* 자격 표의 공정 · 인증자 선택지 안내 — 종전엔 자격 표 위 배너였다(사용자 지시 2026-11-25). */
+        headingNote={renderOptionsNote([processOptions, certifierOptions])}
       />
     );
   };
@@ -2237,7 +2263,6 @@ export const CommonCodeScreen = () => {
                   isWorkerSelected={selectedWorkerId !== null}
                   processes={processOptions}
                   certifiers={certifierOptions}
-                  optionsNotice={renderOptionsNotice([processOptions, certifierOptions])}
                   loadError={
                     qualificationList.isError ? (
                       <LoadErrorBanner

@@ -174,6 +174,19 @@ const setup = (options: SetupOptions = {}) => {
 const section = () => within(screen.getByRole('region', { name: t.title }));
 const linkedTable = async () => within(await screen.findByRole('table', { name: t.tableLabel }));
 
+/** 「+ 창고 추가」로 표 아래 추가 줄을 펼친다(종전 추가 창 대신 · 사용자 지시 2026-11-25). */
+const openAddRow = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(section().getByRole('button', { name: `+ ${t.add}` }));
+  return section().getByRole('combobox', { name: t.addRow.label });
+};
+
+/** 추가 줄에서 창고 하나를 골라 [추가] — 종전 창에서 그 창고를 체크한 것과 같다. */
+const addWarehouse = async (user: ReturnType<typeof userEvent.setup>, label: string) => {
+  await user.click(await openAddRow(user));
+  await user.click(screen.getByRole('option', { name: label }));
+  await user.click(section().getByRole('button', { name: t.addRow.confirm }));
+};
+
 const saveButton = () =>
   within(screen.getByRole('region', { name: '부서 상세 정보' })).getByRole('button', {
     name: '저장',
@@ -203,11 +216,11 @@ describe('W-06-06 생산 창고 구획', () => {
     await linkedTable();
     expect(saveButton()).toBeDisabled();
 
-    await user.click(section().getByRole('button', { name: `+ ${t.add}` }));
-    const picker = within(await screen.findByRole('dialog', { name: t.picker.title }));
-    await user.click(picker.getByRole('checkbox', { name: '합성 1공장 SYN-PW-B 합성 생산창고 B' }));
-    await user.click(picker.getByRole('checkbox', { name: '합성 2공장 SYN-PW-G 합성 생산창고 G' }));
-    await user.click(picker.getByRole('button', { name: t.picker.close }));
+    await addWarehouse(user, '합성 1공장 SYN-PW-B 합성 생산창고 B');
+    /* [추가] 뒤에는 줄이 접힌다 — 다시 펼쳐 하나 더 넣는다. 창(dialog)은 뜨지 않는다. */
+    expect(section().queryByRole('combobox', { name: t.addRow.label })).not.toBeInTheDocument();
+    await addWarehouse(user, '합성 2공장 SYN-PW-G 합성 생산창고 G');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
     const table = await linkedTable();
     expect(table.getAllByText(t.newlyLinked)).toHaveLength(2);
@@ -290,10 +303,7 @@ describe('W-06-06 생산 창고 구획', () => {
     );
     await user.clear(name);
     await user.type(name, '합성 부서 가');
-    await user.click(section().getByRole('button', { name: `+ ${t.add}` }));
-    const picker = within(await screen.findByRole('dialog', { name: t.picker.title }));
-    await user.click(picker.getByRole('checkbox', { name: '합성 1공장 SYN-PW-C 합성 생산창고 C' }));
-    await user.click(picker.getByRole('button', { name: t.picker.close }));
+    await addWarehouse(user, '합성 1공장 SYN-PW-C 합성 생산창고 C');
     await user.click(saveButton());
 
     await waitFor(() => expect(writes()).toHaveLength(2));
@@ -327,18 +337,31 @@ describe('W-06-06 생산 창고 구획', () => {
     expect((await cellOf('SYN-DEPT-03')).getByText('—')).toBeInTheDocument();
   });
 
-  it('US8-1 후보 창고는 유형으로 거르지 않아 불량 · 외부 창고가 남고, 쓰지 않는 창고만 빠진다', async () => {
+  it('US8-1 후보 창고는 유형으로 거르지 않아 불량 · 외부 창고가 남고, 쓰지 않는 창고 · 이미 연결한 창고만 빠진다', async () => {
     const { user } = setup({ linked: [7001] });
     await linkedTable();
 
-    await user.click(section().getByRole('button', { name: `+ ${t.add}` }));
-    const picker = within(await screen.findByRole('dialog', { name: t.picker.title }));
-
-    expect(picker.getByRole('checkbox', { name: '합성 1공장 SYN-DF 합성 불량창고' })).toBeEnabled();
+    await user.click(await openAddRow(user));
+    expect(screen.getByRole('option', { name: '합성 1공장 SYN-DF 합성 불량창고' })).toBeEnabled();
     expect(
-      picker.getByRole('checkbox', { name: '합성 1공장 SYN-EX 합성 외주 보관창고' }),
+      screen.getByRole('option', { name: '합성 1공장 SYN-EX 합성 외주 보관창고' }),
     ).toBeEnabled();
-    expect(picker.queryByText(/SYN-OLD/)).not.toBeInTheDocument();
-    expect(picker.getAllByRole('checkbox')).toHaveLength(6);
+    expect(screen.queryByRole('option', { name: /SYN-OLD/ })).not.toBeInTheDocument();
+    /* 이미 연결한 A 는 고를 것이 아니다 — 종전 창의 후보 6개 중 남은 5개. */
+    expect(screen.queryByRole('option', { name: /SYN-PW-A/ })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('option')).toHaveLength(5);
+  });
+
+  it('추가 줄은 창고를 고르기 전엔 [추가]가 꺼져 있고, [취소]하면 아무것도 넣지 않고 접힌다', async () => {
+    const { user } = setup({ linked: [7001] });
+    await linkedTable();
+
+    await openAddRow(user);
+    expect(section().getByRole('button', { name: t.addRow.confirm })).toBeDisabled();
+    await user.click(section().getByRole('button', { name: messages.common.cancel }));
+
+    expect(section().queryByRole('combobox', { name: t.addRow.label })).not.toBeInTheDocument();
+    expect((await linkedTable()).queryByText(t.newlyLinked)).not.toBeInTheDocument();
+    expect(saveButton()).toBeDisabled();
   });
 });

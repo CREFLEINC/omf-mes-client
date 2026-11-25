@@ -123,14 +123,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       groupCodeTooLong: 'Mã nhóm không được vượt quá 50 ký tự.',
       groupNameTooLong: 'Tên nhóm không được vượt quá 200 ký tự.',
     },
-    actionReasons: {
-      /* 잠금 사유가 갈린다 — 이 문구는 «다른 코드그룹의 저장»이라는 다른 사실을 말한다. */
-      saveLockedByOtherCodeGroup:
-        'Lưu chỉ thực hiện được sau khi việc lưu của nhóm mã khác kết thúc.',
-      /* 같은 사실이되 컨트롤 이름이 달라 문면이 둘이다 — 이름으로 시작해야 어느 버튼인지 복원된다. */
-      addLockedByOtherCodeGroup:
-        'Thêm nhóm chỉ thực hiện được sau khi việc lưu của nhóm mã khác kết thúc.',
-    },
   },
   department: {
     fields: {
@@ -162,10 +154,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       /* 목록에 자기 하나뿐이면 상위로 고를 대상이 없다 — 감추지 않고 사유를 밝힌다. */
       parentNeedsOthers:
         'Phòng ban cấp trên không chỉ định được vì không có phòng ban khác để chọn. Đăng ký thêm một phòng ban thì có thể dùng ô này.',
-      saveLockedByOtherDepartment:
-        'Lưu chỉ thực hiện được sau khi việc lưu của phòng ban khác kết thúc.',
-      addLockedByOtherDepartment:
-        'Thêm phòng ban chỉ thực hiện được sau khi việc lưu của phòng ban khác kết thúc.',
     },
     productionWarehouses: {
       title: 'Kho sản xuất',
@@ -185,10 +173,11 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       viewStock: 'Xem tồn kho',
       viewStockLabel: (warehouse: string): string => `Xem tồn kho ${warehouse}`,
       removeLabel: (warehouse: string): string => `Gỡ liên kết ${warehouse}`,
-      picker: {
-        title: 'Thêm kho sản xuất',
+      addRow: {
+        label: 'Kho cần thêm',
+        placeholder: 'Chọn kho',
         empty: 'Không có kho nào để chọn. Chỉ chọn được kho đang sử dụng.',
-        close: 'Đóng',
+        confirm: 'Thêm',
       },
       confirm: {
         title: 'Gỡ liên kết kho sản xuất',
@@ -249,7 +238,7 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       validFrom: 'Hiệu lực từ',
       validTo: 'Hiệu lực đến',
       certifiedBy: 'Người chứng nhận',
-      edit: 'Sửa',
+      manage: 'Quản lý',
     },
     values: {
       /** 공정을 비운 자격은 모든 공정에 걸린다. */
@@ -265,10 +254,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
     },
     actionReasons: {
       needsWorker: 'Thêm chứng chỉ chỉ thực hiện được sau khi chọn công nhân ở bên trái.',
-      saveBlockedByInvalid:
-        'Lưu không thực hiện được vì có dòng trùng cặp loại chứng chỉ và công đoạn. Sửa hoặc xóa dòng đó thì có thể lưu.',
-      saveLockedByOtherWorker:
-        'Lưu chỉ thực hiện được sau khi việc lưu của công nhân khác kết thúc.',
       certifierLookupLoading:
         'Trong lúc đang tải danh sách người chứng nhận thì không đổi được người chứng nhận.',
       certifierLookupFailed:
@@ -279,8 +264,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
     dialog: {
       addTitle: 'Thêm chứng chỉ',
       editTitle: 'Sửa chứng chỉ',
-      notSavedNotice:
-        'Xác nhận ở cửa sổ này không phải là lưu. Sau khi phản ánh vào bảng, phải bấm «Lưu» thì mới gửi lên máy chủ.',
       confirm: 'Xác nhận',
     },
     empty: {
@@ -342,11 +325,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
      */
     saveTokenUnavailable:
       'Thông tin cần cho việc lưu vẫn chưa được máy chủ cung cấp nên bây giờ chưa lưu được. Bấm lại cũng cho kết quả như vậy. Nếu lặp lại thì hãy báo người phụ trách.',
-    actionReasons: {
-      saveNoChanges: 'Lưu chỉ thực hiện được sau khi sửa vai trò.',
-      saveLockedByOtherPartner:
-        'Lưu chỉ thực hiện được sau khi việc lưu của đối tác khác kết thúc.',
-    },
     /* 잃는 것이 있을 때만 서는 창. 버튼 문구가 «확인/취소»가 아니다 — 무엇을 누르는지 알아야 한다. */
     dialog: {
       title: 'Có vai trò sẽ bị gỡ',

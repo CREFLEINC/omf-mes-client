@@ -1,14 +1,4 @@
-import {
-  Button,
-  Checkbox,
-  Chip,
-  Dialog,
-  EmptyState,
-  IconButton,
-  Table,
-  useToast,
-  type Column,
-} from '@crefle/web-ui';
+import { Button, Chip, Dialog, IconButton, Table, useToast, type Column } from '@crefle/web-ui';
 import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useRef, useState } from 'react';
@@ -26,6 +16,7 @@ import {
   type WarehouseCandidate,
 } from './department-production-warehouse-queries';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
+import { SelectField } from './select-field';
 
 type DepartmentProductionWarehouse = components['schemas']['DepartmentProductionWarehouse'];
 const t = messages.commonCode.department.productionWarehouses;
@@ -225,7 +216,9 @@ export interface ProductionWarehouseSectionProps {
  * 「재고 보기」는 W-01-07 을 새 탭으로 연다 — 편집 중인 폼을 잃지 않게. 권한은 그 화면이 막는다.
  */
 export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectionProps) => {
-  const [pickerOpen, setPickerOpen] = useState(false);
+  /* 표 아래 추가 줄 — 「창고 추가」를 눌렀을 때만 펼친다(결재선 정의의 결재 단계 추가 줄과 같다 · 사용자 지시 2026-11-25). */
+  const [isAdding, setIsAdding] = useState(false);
+  const [addValue, setAddValue] = useState('');
   /* 라우터 기준 주소(basename)를 붙인 W-01-07 주소 — 종전 링크(`Link to`)가 내던 주소와 같다. */
   const stockStatusHref = useHref(STOCK_STATUS_PATH);
 
@@ -286,6 +279,26 @@ export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectio
     },
   ];
 
+  /* 고를 수 있는 창고 — 종전 추가 창이 늘어놓던 후보 중 아직 연결하지 않은 것. */
+  const addOptions = editor.candidates
+    .filter((warehouse) => !editor.isLinked(warehouse.warehouseId))
+    .map((warehouse) => ({
+      value: String(warehouse.warehouseId),
+      label: `${editor.plantName(warehouse.plantId)} ${warehouse.warehouseCode} ${warehouse.warehouseName}`,
+    }));
+
+  const closeAddRow = (): void => {
+    setAddValue('');
+    setIsAdding(false);
+  };
+
+  /* 종전 창에서 그 창고를 체크한 것과 같다 — 초안에만 넣고 저장은 부서 「저장」이 한다. */
+  const handleAdd = (): void => {
+    if (addValue === '') return;
+    editor.toggle(Number(addValue));
+    closeAddRow();
+  };
+
   const body = () => {
     if (editor.loadError !== null) {
       return <LoadErrorBanner error={editor.loadError} onRetry={editor.retryLoad} />;
@@ -328,7 +341,8 @@ export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectio
           variant="outlined"
           size="sm"
           disabled={editor.isLoading || editor.loadError !== null}
-          onClick={() => setPickerOpen(true)}
+          aria-expanded={isAdding}
+          onClick={() => setIsAdding(true)}
         >
           {`+ ${t.add}`}
         </Button>
@@ -336,42 +350,36 @@ export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectio
       <SaveErrorBanner error={editor.error} />
       {body()}
 
-      <Dialog
-        open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        title={t.picker.title}
-        size="sm"
-        /* 아래 「닫기」와 같은 이름의 × 를 두지 않는다. */
-        showCloseButton={false}
-        footer={
-          <Button variant="outlined" onClick={() => setPickerOpen(false)}>
-            {t.picker.close}
-          </Button>
-        }
-      >
-        {editor.candidates.length === 0 ? (
-          <EmptyState size="sm" title={t.picker.empty} />
-        ) : (
-          <ul className="production-warehouse-candidates" aria-label={t.picker.title}>
-            {editor.candidates.map((warehouse) => (
-              <li key={warehouse.warehouseId}>
-                <Checkbox
-                  checked={editor.isLinked(warehouse.warehouseId)}
-                  onChange={() => editor.toggle(warehouse.warehouseId)}
-                >
-                  {`${editor.plantName(warehouse.plantId)} ${warehouse.warehouseCode} ${warehouse.warehouseName}`}
-                </Checkbox>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Dialog>
+      {isAdding && editor.loadError === null && !editor.isLoading && (
+        <div className="filter-bar production-warehouse-add">
+          <SelectField
+            label={t.addRow.label}
+            placeholder={t.addRow.placeholder}
+            options={addOptions}
+            value={addValue}
+            onChange={setAddValue}
+            disabled={addOptions.length === 0}
+            disabledReason={t.addRow.empty}
+          />
+          {/* 창고를 고르기 전에는 꺼진 단추로만 — 칸의 「창고를 선택하세요」가 이미 말한다. */}
+          <div className="field-cell field-cell-unlabeled production-warehouse-add-actions">
+            <Button variant="outlined" disabled={addValue === ''} onClick={handleAdd}>
+              {t.addRow.confirm}
+            </Button>
+            <Button variant="outlined" onClick={closeAddRow}>
+              {messages.common.cancel}
+            </Button>
+          </div>
+        </div>
+      )}
 
       <Dialog
         open={editor.pendingConfirm !== null}
         onClose={editor.cancelConfirm}
         title={t.confirm.title}
         size="sm"
+        /* 닫기(X) 없이 바닥 단추로만 — Esc 는 종전대로 닫는다(사용자 지시 2026-11-25). */
+        showCloseButton={false}
         footer={
           <>
             <Button variant="outlined" onClick={editor.cancelConfirm}>

@@ -100,3 +100,75 @@ dialog .field-cell.users-roles-required-empty > div > button[aria-haspopup] {
 .common-code-detail-filter > .common-code-value-add {
   margin-left: auto;
 }
+
+/* 생산 창고 추가 줄의 [추가] · [취소] — 결재 단계 추가 줄(`.approval-route-step-add`)과 같다. 공용 `.field-cell` 은 세로 쌓기라 가로로 돌린다. */
+.filter-bar.production-warehouse-add {
+  margin-top: var(--space-3);
+}
+
+/* 창고 이름이 길어 조회 줄 선택칸 폭(176px · app.css)을 풀고 결재자 선택칸처럼 줄 폭을 나눠 쓴다. */
+.production-warehouse-section .filter-bar.production-warehouse-add > .field-cell:first-child {
+  flex: 1 1 14rem;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+}
+
+.filter-bar.production-warehouse-add > .field-cell:first-child > :not(.field-label, .field-note) {
+  width: 100%;
+}
+
+.filter-bar.production-warehouse-add > .field-cell.production-warehouse-add-actions {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 「자격 추가」 — 자격 표 위 줄 오른쪽 끝(사용자 지시 2026-11-25). */
+.common-code-qualification-add-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-3);
+}
+
+/*
+ * 자격 표 — 상세 상자 폭에 맞춘다(종전 `.wide-table` 최소 폭 58rem 이 상세보다 넓어 첫 열이 잘렸다 · 사용자 지시
+ * 2026-11-25). 유효기간 · 인증자는 줄을 바꾸지 않는다. 상자가 그보다 좁으면 그때만 가로로 밀린다.
+ */
+.wide-table.common-code-qualification-table table {
+  min-width: 0;
+}
+
+.common-code-qualification-table td:nth-child(4),
+.common-code-qualification-table td:nth-child(5),
+.common-code-qualification-table th {
+  white-space: nowrap;
+}
+
+/*
+ * 작업자 상세 제목 줄 — 제목 바로 오른쪽에 선택 목록 안내 알약(결재선 정의 `.approval-route-head-title-row` 와 같다 ·
+ * 사용자 지시 2026-11-25). 알약은 글 폭만큼, 문장이 길면 알약 안에서 줄을 바꾼다.
+ */
+.pane-heading-row.common-code-heading-with-note {
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.common-code-heading-with-note > .pane-title {
+  flex: none;
+}
+
+.common-code-heading-with-note > .iqc-inspection-action-note.common-code-heading-note {
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+}
+
+/* 거래처 역할 확인칸 — 상자 폭만큼 가로로 흐르고 모자라면 다음 줄로(사용자 지시 2026-11-25). */
+.check-group.common-code-partner-roles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: var(--space-2) var(--space-4);
+}

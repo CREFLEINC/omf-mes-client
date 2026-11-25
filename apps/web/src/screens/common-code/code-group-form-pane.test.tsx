@@ -214,9 +214,7 @@ describe('CodeGroupFormPane — 다른 코드그룹의 저장이 나가는 중',
     const save = screen.getByRole('button', { name: '저장' });
 
     expect(save).toBeDisabled();
-    expect(
-      screen.getByText('저장은 다른 코드그룹의 저장이 끝난 뒤에 할 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
     expect(save).not.toHaveAttribute('aria-busy', 'true');
     expect(screen.getByLabelText('그룹명')).toBeEnabled();
     expect(screen.getByLabelText('설명')).toBeEnabled();
@@ -247,9 +245,7 @@ describe('CodeGroupFormPane — 다른 코드그룹의 저장이 나가는 중',
     const add = screen.getByRole('button', { name: '그룹 추가' });
 
     expect(add).toBeDisabled();
-    expect(
-      screen.getByText('그룹 추가는 다른 코드그룹의 저장이 끝난 뒤에 할 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '그룹 추가' })).toBeDisabled();
     /* 수정 자리의 문면이 여기 서면 사용자는 「저장」이라는 없는 버튼을 찾는다. */
     expect(screen.queryByText(/^저장은 다른 코드그룹의/)).not.toBeInTheDocument();
   });
