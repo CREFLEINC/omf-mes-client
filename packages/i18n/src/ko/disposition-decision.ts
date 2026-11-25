@@ -1,6 +1,8 @@
 export const dispositionDecision = {
   title: '부적합 처분 관리',
   splitter: '끌어서 목록·상세 폭 조절',
+  /** 검사 화면 안 처분 상자(omf-all-around#354). */
+  box: { title: '부적합 처분' },
   /** 목록 · 상세 배치 고르기 — 「좌우 배치 | 상하 배치」 두 단추(품질 승인 처리 화면에서 옮김 · #352). */
   layout: { group: '목록·상세 배치', side: '좌우 배치', stack: '상하 배치' },
   /** 목록과 상세 사이 막대의 단추 — 항목을 고르면 목록이 접힌다(omf-all-around#275). */
@@ -10,25 +12,13 @@ export const dispositionDecision = {
   /** 탭 줄 오른쪽 상태 칩 — 「판정 대기 3」(라벨에는 「건」을 빼고 · 사용자 지시 2026-11-25). 건수를 아직 모르면 이름만(#223). */
   statusChip: (label: string, count: number | undefined): string =>
     count === undefined ? label : `${label} ${String(count)}`,
-  tabs: {
-    label: '처분 판정 보기',
-    pending: '처분 대기',
-    history: '처분 이력',
-    /** 탭 줄 칩 — 「처분 대기 3」(#223). 건수를 아직 모르면 이름만. */
-    pendingCount: (count: number | undefined): string =>
-      count === undefined ? '처분 대기' : `처분 대기 ${String(count)}`,
-    historyCount: (count: number | undefined): string =>
-      count === undefined ? '처분 이력' : `처분 이력 ${String(count)}`,
-  },
   panes: {
     filter: '조회 조건',
-    list: '처분 대기 목록',
+    /** OQC 탭 「판정 의뢰」 목록 — 판정 완료 건도 함께 보인다(omf-all-around#354). */
+    list: '판정 의뢰 목록',
     detail: '선택한 부적합',
     detailDecision: '부적합 상세',
-    /** 처분 이력 탭의 오른쪽 구획 — 판정 입력 없이 보기만(#223). */
-    historyDetail: '부적합 상세',
     decision: '판정',
-    history: '처분 판정 이력',
     lots: '대상 자재 관리 LOT',
     decisions: '처분 이력',
   },
@@ -40,12 +30,6 @@ export const dispositionDecision = {
     openedFrom: '접수 시작일',
     openedTo: '접수 종료일',
     decidedPeriod: '판정일',
-    decidedFrom: '판정 시작일',
-    decidedTo: '판정 종료일',
-    /** 처분 이력 목록 열 이름(#223). */
-    historyType: '처분 유형',
-    historyQty: '처분 수량',
-    historyReason: '판정 사유',
     item: '품목',
     /** 목록은 품목명 · 품목코드 두 칸(#352 사용자 지시). */
     itemName: '품목명',
@@ -98,8 +82,6 @@ export const dispositionDecision = {
   },
   detail: {
     select: '목록에서 판정할 부적합을 선택하세요.',
-    /** 처분 이력 탭 — 고르기 전 안내(#223). */
-    selectHistory: '목록에서 볼 처분 이력을 선택하세요.',
     /** 고르기 전 소제목 — 두 탭 같다(omf-all-around#228). */
     selectHint: '선택한 부적합의 상세 정보가 표시됩니다.',
     loading: '부적합 상세 불러오는 중',
@@ -161,6 +143,7 @@ export const dispositionDecision = {
       sortNoInboundLot: '반품·OQC 부적합에는 선별이 없습니다(입하 LOT 없음)', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
       sortSingleLot: '선별은 자재 관리 LOT가 2개 이상일 때 선택할 수 있습니다.',
       sortNotFirst: '선별은 첫 판정일 때만 할 수 있습니다',
+      sortConcession: '특채 요청이 있는 부적합은 선별할 수 없습니다',
       normalSorted: '선별로 떼어 낸 불량 — 폐기·특채로 처분', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
     },
     /**
@@ -171,6 +154,8 @@ export const dispositionDecision = {
     qtyExceededByServer: (remaining: string): string =>
       `처분 결정 수량 합이 남은 수량(${remaining})을 넘어 저장되지 않았습니다. 부적합을 다시 불러온 뒤 저장하세요`,
     alreadyClosed: '이미 종결된 부적합입니다. 판정을 저장할 수 없습니다',
+    /** 선별 저장 409 `INVALID_STATE` — 종결 · 판정 있음 · 특채 있음을 서버가 한 코드로 내린다(omf-all-around#354). */
+    sortRefused: '종결되었거나 이미 판정 또는 특채가 있는 부적합은 선별할 수 없습니다',
     /* 입력칸 안내(「판정 사유를 입력하세요」)와 같은 말을 되풀이하지 않는다(omf-all-around#275). */
     reasonRequired: '판정 사유를 입력하세요.',
     dispositionRequired: '처분을 선택하세요',
@@ -262,10 +247,11 @@ export const dispositionDecision = {
   },
   /** 005 선별(US7-2 · FR-041) — 불량 자재 관리 LOT 을 새 입하 LOT 로 옮긴다. 수량으로 LOT 를 쪼개지 않는다. */
   sort: {
-    /** 선별 영역(omf-all-around#352 사용자 지시) — 제목 · 목록 위 안내 · 저장 후 처리 요약. */
+    /** 선별 영역(omf-all-around#352 사용자 지시) — 제목 · 제목 옆 안내 · 저장 후 처리 요약. */
     heading: '불량으로 분리할 자재 LOT',
-    selectNote: '저장하면 선택한 LOT는 불량으로 분리되고, 나머지 LOT는 정상 처리됩니다.',
-    help: '고른 자재 관리 LOT 는 새 입하 LOT 로 옮겨져 불량 그대로 새 부적합에서 처분합니다. 고르지 않은 자재 관리 LOT 는 정상이 됩니다. 수량으로 LOT 를 쪼개지 않습니다.',
+    selectNote: '선택한 LOT는 불량으로 분리하고, 나머지 LOT는 정상 처리합니다.',
+    /** 제목 오른쪽 안내 라벨(omf-all-around#354 사용자 지시). */
+    headNote: '하나 이상의 LOT를 선택하세요.',
     lotsLabel: '불량 자재 관리 LOT',
     noMatch: '연결된 검사 결과 없음',
     allSelected:
@@ -273,7 +259,7 @@ export const dispositionDecision = {
     noneSelected: '불량 자재 관리 LOT 를 하나 이상 고르세요',
     goodQty: '양품 수량 (선택)',
     defectQty: '불량 수량 (선택)',
-    qtyNote: '선별 결과 기록용입니다. 재고·LOT 수량은 바뀌지 않습니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
+    qtyNote: '입력한 수량은 선별 결과로만 기록되며, 재고와 LOT 수량에는 반영되지 않습니다.',
     qtyInvalid: '0 이상의 수로 입력하세요',
     previewTitle: '저장 후 처리',
     previewRestLabel: '정상 처리',
@@ -287,13 +273,10 @@ export const dispositionDecision = {
     ],
     previewIqc: (inspectionRequestNo: string): string => `기존 검사 의뢰 ${inspectionRequestNo}`,
   },
-  loading: '처분 대기 목록 불러오는 중',
-  historyLoading: '처분 이력 불러오는 중',
+  loading: '판정 의뢰 목록 불러오는 중',
   empty: {
     title: '조건에 맞는 부적합이 없습니다',
     description: '기간을 넓히거나 다른 조건으로 조회하세요.',
-    historyTitle: '조건에 맞는 판정 내역이 없습니다',
-    historyDescription: '판정일 기간을 넓혀 다시 조회하세요.',
     beyondTitle: '이 쪽에 표시할 내용이 없습니다',
     beyondDescription: '첫 쪽으로 돌아가 확인하세요.',
   },

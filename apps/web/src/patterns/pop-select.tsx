@@ -333,6 +333,18 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
           wide={showSearch}
           onClose={close}
           closeLabel={messages.popUniform.dialog.cancel}
+          keyboard={
+            /* 글자판은 창 밖 화면 아래 판에(사용자 지시 2026-11-24 · `PuDialog` `keyboard`). */
+            showSearch ? (
+              <PuTextKeyboard
+                value={query}
+                onChange={(next) => {
+                  setQuery(next);
+                  setPage(0);
+                }}
+              />
+            ) : undefined
+          }
         >
           {dialogLead?.((chosen) => {
             const option = flatOptions.find((candidate) => candidate.value === chosen);
@@ -411,16 +423,6 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
               pages={totalPages}
               onPage={(next) => {
                 setPage(Math.min(totalPages - 1, Math.max(0, next - 1)));
-              }}
-            />
-          )}
-          {/* 글자판은 맨 아래 — 목록·쪽 넘김 다음(사용자 지시 2026-11-19). */}
-          {showSearch && (
-            <PuTextKeyboard
-              value={query}
-              onChange={(next) => {
-                setQuery(next);
-                setPage(0);
               }}
             />
           )}

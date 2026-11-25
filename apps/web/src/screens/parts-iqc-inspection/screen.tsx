@@ -9,7 +9,7 @@ import {
   useToast,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import {
@@ -53,10 +53,12 @@ import { toPageView } from '../iqc-inspection/pagination';
 import { QueueDetailFilters } from '../iqc-inspection/queue-detail-filters';
 import { QueueTable } from '../iqc-inspection/queue-table';
 import { useItemNames, useLotNumbers, useLotSuppliers } from '../iqc-inspection/reference-lookup';
-import { withDraft, withStatus } from '../oqc-inspection/filters';
+import { withDraft, withJudgmentFilter, withStatus } from '../oqc-inspection/filters';
+import { JudgmentFilter } from '../oqc-inspection/judgment-filter';
 import { LeaveGuard } from '../routing/leave-guard';
 import { InspectionDetail } from './inspection-detail';
 import { usePartsQueue } from './queries';
+import { useScanOpen } from './scan-open';
 import { plantTodayRange } from './today';
 
 const t = messages.partsIqcInspection;
@@ -128,7 +130,8 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
       next.supplierId === filters.supplierId &&
       next.keyword === filters.keyword &&
       next.pendingOnly === filters.pendingOnly &&
-      next.statusCode === filters.statusCode
+      next.statusCode === filters.statusCode &&
+      next.overallJudgmentCode === filters.overallJudgmentCode
     ) {
       void queue.refetch();
     }
@@ -179,15 +182,7 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
    * 스캔으로 연다 — 같은 의뢰를 다시 스캔해도 닫지 않는다. 자재 관리 LOT 으로 찾았으면 그 LOT 을 고른 채로 결과 추가 창을 연다
    * (사용자 지시 2026-11-16 · omf-all-around#274).
    */
-  const [scanOpen, setScanOpen] = useState<{
-    requestId: number;
-    lotId: number;
-    key: number;
-  } | null>(null);
-  /* 스캔한 의뢰가 아닌 곳에 서면(다른 의뢰 · 상세 닫기 · 떠날지 묻는 창에서 「계속 작성」) 스캔 열기를 거둔다 — 남겨 두면 나중에 그 의뢰를 다시 고를 때 결과 추가 창이 또 뜬다. */
-  useEffect(() => {
-    if (scanOpen !== null && scanOpen.requestId !== selectedId) setScanOpen(null);
-  }, [scanOpen, selectedId]);
+  const { scanOpen, setScanOpen, stay } = useScanOpen(selectedId);
   const openByScan = (inspectionRequestId: number, scannedLotId: number | null): void => {
     if (inspectionRequestId !== selectedId) select(inspectionRequestId);
     setScanOpen(
@@ -277,6 +272,11 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
           </div>
         )}
         <div className="parts-iqc-scan-row">
+          {/* 종합 판정 — 맨 왼쪽(사용자 지시 2026-11-24) · 고르면 바로 조회한다(omf-all-around#356). */}
+          <JudgmentFilter
+            value={filters.overallJudgmentCode}
+            onChange={(code) => applyFilters(withJudgmentFilter(filters, code))}
+          />
           <LotScan
             inspectionTypeCode="IQC"
             onFound={openByScan}
@@ -413,10 +413,19 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
           size="sm"
           showCloseButton={false}
           title={t.dialog.title}
-          onClose={() => setLeaveTo(null)}
+          onClose={() => {
+            setLeaveTo(null);
+            stay();
+          }}
           footer={
             <>
-              <Button variant="text" onClick={() => setLeaveTo(null)}>
+              <Button
+                variant="text"
+                onClick={() => {
+                  setLeaveTo(null);
+                  stay();
+                }}
+              >
                 {messages.common.cancel}
               </Button>
               <Button

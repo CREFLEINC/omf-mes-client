@@ -1,0 +1,93 @@
+import type { ko } from '../ko';
+import type { Translated } from './translated';
+
+export const shiftManagement: Translated<typeof ko.shiftManagement> = {
+  intro:
+    'Thiết lập giờ bắt đầu và giờ kết thúc của ca ngày và ca đêm cho từng nhà máy. Nếu giờ kết thúc sớm hơn giờ bắt đầu, ca sẽ được lưu là kết thúc vào ngày hôm sau.\nVD: 20:00~08:00 → bắt đầu 20:00 trong ngày, kết thúc 08:00 ngày hôm sau',
+  filters: {
+    label: 'Điều kiện',
+    plant: 'Tìm nhà máy',
+    plantSearchPlaceholder: 'Nhập tên nhà máy',
+    all: 'Tất cả',
+    search: 'Tìm ca',
+    searchPlaceholder: 'Nhập mã ca hoặc tên ca',
+    apply: 'Tra cứu',
+    clear: 'Đặt lại',
+  },
+  chips: {
+    label: 'Trạng thái sử dụng',
+    active: 'Đang dùng',
+    inactive: 'Ngừng dùng',
+    filterOn: (label: string): string => `Chỉ xem ${label}`,
+    filterOff: (label: string): string => `Bỏ lọc ${label}`,
+  },
+  noPlant: 'Không có nhà máy nào có thể xem.',
+  add: 'Thêm ca',
+  tableLabel: 'Danh sách ca',
+  emptyFiltered: 'Không có ca nào phù hợp điều kiện.',
+  empty: 'Chưa có ca nào. Hãy bấm [Thêm ca] để đăng ký ca ngày và ca đêm.',
+  columns: {
+    plant: 'Nhà máy',
+    code: 'Mã ca',
+    name: 'Tên ca',
+    start: 'Giờ bắt đầu',
+    end: 'Giờ kết thúc',
+    status: 'Trạng thái sử dụng',
+    actions: 'Quản lý',
+  },
+  values: {
+    nextDayEnd: (time: string) => `${time} ngày hôm sau`,
+  },
+  edit: 'Sửa',
+  editRow: (name: string) => `Sửa ca ${name}`,
+  deactivate: 'Ngừng sử dụng',
+  deactivateRow: (name: string) => `Ngừng sử dụng ca ${name}`,
+  activate: 'Dùng lại',
+  activateRow: (name: string) => `Dùng lại ca ${name}`,
+  dialog: {
+    addTitle: 'Thêm ca',
+    editTitle: 'Sửa ca',
+    plant: 'Nhà máy',
+    plantLocked: 'Không thể đổi',
+    code: 'Mã ca',
+    codePlaceholder: 'Nhập mã ca',
+    codeTaken: 'Mã ca này đã có ở nhà máy này. Hãy nhập mã khác.',
+    codeLocked: (count: number) =>
+      `Ca đã được dùng ở ${count} công việc hoặc kết quả nên không thể đổi mã.`,
+    name: 'Tên ca',
+    namePlaceholder: 'Nhập tên ca',
+    start: 'Giờ bắt đầu',
+    end: 'Giờ kết thúc',
+    startHour: 'Giờ bắt đầu (giờ)',
+    startMinute: 'Giờ bắt đầu (phút)',
+    endHour: 'Giờ kết thúc (giờ)',
+    endMinute: 'Giờ kết thúc (phút)',
+    hourHead: 'Giờ',
+    minuteHead: 'Phút',
+    startPlaceholder: 'Nhập giờ bắt đầu',
+    endPlaceholder: 'Nhập giờ kết thúc',
+    nextDayNote: 'Ca kết thúc vào ngày hôm sau.',
+    cancel: 'Hủy',
+    save: 'Lưu',
+    loading: 'Đang tải thông tin ca.',
+  },
+  deactivateDialog: {
+    title: (name: string) => `Ngừng sử dụng ca ${name}`,
+    body: (name: string) =>
+      `Khi ngừng sử dụng, ca ${name} sẽ bị loại khỏi danh sách chọn ca và việc xác định ca theo giờ làm. Công việc và kết quả đã ghi vẫn được giữ nguyên.`,
+    cancel: 'Hủy',
+    confirm: 'Ngừng sử dụng',
+  },
+  activateDialog: {
+    title: (name: string) => `Dùng lại ca ${name}`,
+    body: (name: string) =>
+      `Khi dùng lại, ca ${name} sẽ được đưa lại vào danh sách chọn ca và việc xác định ca theo giờ làm.`,
+    cancel: 'Hủy',
+    confirm: 'Dùng lại',
+  },
+  toast: {
+    saved: 'Đã lưu.',
+    deactivated: 'Đã ngừng sử dụng.',
+    activated: 'Đã dùng lại.',
+  },
+};

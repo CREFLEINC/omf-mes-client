@@ -18,8 +18,6 @@ export interface WarehouseListPaneProps {
   onApplyFilters: (next: WarehouseFilters) => void;
   selectedWarehouseId: number | null;
   onSelect: (warehouseId: number) => void;
-  /** 빈 상태에서 등록으로 이끄는 주 액션 */
-  onAddWarehouse: () => void;
   /**
    * 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 —
    * 실패를 「등록된 창고가 없습니다」로 보이면 사실과 다른 안내가 된다.
@@ -49,7 +47,6 @@ export const WarehouseListPane = ({
   onApplyFilters,
   selectedWarehouseId,
   onSelect,
-  onAddWarehouse,
   loadError,
   warehouseTypeOptions,
   plants,
@@ -104,12 +101,7 @@ export const WarehouseListPane = ({
       }
     />
   ) : (
-    <EmptyState
-      size="sm"
-      live
-      title={t.empty.warehouseNoneTitle}
-      action={<Button onClick={onAddWarehouse}>{t.actions.addWarehouse}</Button>}
-    />
+    <EmptyState size="sm" live title={t.empty.warehouseNoneTitle} />
   );
 
   /** 조회 실패 → 로딩 → 표 순서로 하나만 낸다. 실패했는데 빈 표를 함께 보이면 안 된다. */

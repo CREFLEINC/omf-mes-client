@@ -27,29 +27,33 @@ export const emptyForm = (inspectedAt: string): PartsIqcForm => ({
 
 /**
  * 되돌리기·다시 실행(레퍼런스 화면 아래 줄) — 바뀐 값마다 한 칸씩 쌓는다. 되돌린 뒤 새로 고치면 앞으로 갈 칸을 버린다.
+ * 결과 드로어는 양식과 LOT 매칭을 한 칸에 함께 쌓는다(`FormSnapshot` · omf-all-around#356).
  */
-export interface FormHistory {
-  past: PartsIqcForm[];
-  present: PartsIqcForm;
-  future: PartsIqcForm[];
+export interface FormHistory<T = PartsIqcForm> {
+  past: T[];
+  present: T;
+  future: T[];
+}
+
+/** 결과 드로어의 되돌리기 한 칸 — 양식과 고른 자재 관리 LOT. 드로어가 아니면 LOT 은 빈 목록이다. */
+export interface FormSnapshot {
+  form: PartsIqcForm;
+  lots: readonly number[];
 }
 
 /** 되돌리기 칸 수 — 측정값 수십 칸을 다 적어도 넘지 않을 만큼. */
 const LIMIT = 200;
 
-export type FormAction =
-  | { type: 'change'; next: PartsIqcForm }
-  | { type: 'undo' }
-  | { type: 'redo' }
-  | { type: 'reset'; form: PartsIqcForm };
+export type FormAction<T = PartsIqcForm> =
+  { type: 'change'; next: T } | { type: 'undo' } | { type: 'redo' } | { type: 'reset'; form: T };
 
-export const startHistory = (form: PartsIqcForm): FormHistory => ({
+export const startHistory = <T>(form: T): FormHistory<T> => ({
   past: [],
   present: form,
   future: [],
 });
 
-export const historyReducer = (state: FormHistory, action: FormAction): FormHistory => {
+export const historyReducer = <T>(state: FormHistory<T>, action: FormAction<T>): FormHistory<T> => {
   switch (action.type) {
     case 'change':
       if (action.next === state.present) return state;
@@ -76,6 +80,10 @@ export const historyReducer = (state: FormHistory, action: FormAction): FormHist
       return startHistory(action.form);
   }
 };
+
+/** 되돌리기 · 다시 실행이 옮겨 갈 칸 — 없으면 `undefined`. */
+export const stepTarget = <T>(state: FormHistory<T>, type: 'undo' | 'redo'): T | undefined =>
+  type === 'undo' ? state.past.at(-1) : state.future[0];
 
 /** 측정값 칸 하나를 바꾼다. */
 export const withValue = (

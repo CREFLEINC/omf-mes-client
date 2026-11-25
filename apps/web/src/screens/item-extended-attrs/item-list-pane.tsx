@@ -1,4 +1,11 @@
-import { Button, Checkbox, type Column, EmptyState, SkeletonText, TextField } from '@crefle/web-ui';
+import {
+  Button,
+  Checkbox,
+  type Column,
+  EmptyState,
+  SearchInput,
+  SkeletonText,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 
@@ -65,11 +72,21 @@ export const ItemFilterBar = ({
         onApply({ ...draft, q: draft.q.trim() });
       }}
     >
-      <TextField
+      {/*
+       * 검색 칸 — 단말 관리의 단말 코드 검색과 같은 공용 검색창(바탕색 · 돋보기 · 지우기 · 사용자 지시 2026-11-24).
+       * Enter 는 이 form 의 제출이 받는다 — onSearch 를 따로 달면 조회가 두 번 나간다.
+       */}
+      <SearchInput
+        containerClassName="item-attrs-search-input"
         label={t.filters.itemSearchLabel}
         value={draft.q}
+        placeholder={t.filters.itemSearchPlaceholder}
+        clearLabel={messages.common.clear}
         onChange={(event) => {
           setDraft((prev) => ({ ...prev, q: event.target.value }));
+        }}
+        onClear={() => {
+          setDraft((prev) => ({ ...prev, q: '' }));
         }}
       />
       <div className="field-cell">

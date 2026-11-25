@@ -34,16 +34,6 @@ export interface NonconformanceListResponse {
 export type DispositionDecisionListResponse =
   paths['/quality/nonconformances/{nonconformanceId}/disposition-decisions']['get']['responses']['200']['content']['application/json'];
 
-/**
- * 처리 이력 탭이 부르는 **전역** 판정 목록.
- *
- * ⛔ **위 봉투와 같은 타입으로 두지 않는다.** 경로가 다르고 **봉투도 다르다** — 부적합 하나에
- * 딸린 목록에는 집계가 함께 오지만 전역 목록에는 없다. 하나로 묶으면 있지도 않은 집계를
- * 화면이 읽게 되고, 그 값은 오류가 아니라 **빈 값**으로 나타나 알아채기 어렵다.
- */
-export type DispositionDecisionHistoryResponse =
-  paths['/quality/disposition-decisions']['get']['responses']['200']['content']['application/json'];
-
 const quantityFormat = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 });
 
 /** 날짜만 있는 값의 앞부분(`YYYY-MM-DD`) — 날짜는 시간대를 적용하지 않는다(하루 밀림 방지). */
@@ -184,18 +174,6 @@ export const toDecisionRow = (decision: DispositionDecision): DecisionRow => ({
   reason: decision.reason,
   decidedAtText: formatDateTime(decision.decidedAt),
   decidedBy: decision.decidedBy,
-});
-
-/** 처분 이력 목록 한 줄 — 어느 부적합의 판정인지 함께 든다(#223). 번호가 안 오면 식별자로 보인다. */
-export interface HistoryRow extends DecisionRow {
-  nonconformanceId: number;
-  nonconformanceNo: string;
-}
-
-export const toHistoryRow = (decision: DispositionDecision): HistoryRow => ({
-  ...toDecisionRow(decision),
-  nonconformanceId: decision.nonconformanceId,
-  nonconformanceNo: decision.nonconformanceNo ?? String(decision.nonconformanceId),
 });
 
 export interface NonconformanceDetailView {

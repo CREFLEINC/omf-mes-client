@@ -19,7 +19,7 @@ import { formatPlantDateTime } from '../../patterns/plant-time';
 import { splitCodeName } from '../../patterns/split-code-name';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
-import { LOT_TRACE_PATH, lotTraceHref } from '../lot-trace/trace-filters';
+import { directionOfLotType, lotTraceHref, tracePathOf } from '../../patterns/trace-tree/href';
 
 const t = messages.lotStatusHistory;
 /** W/O 진행현황 조회(W-02-08) — 주소의 `q`·`workOrderId` 로 그 W/O 를 고른 채 연다. */
@@ -63,13 +63,13 @@ export const LotDetailPane = ({
   const detail = useLotDetail(lotId);
   const navigate = useNavigate();
   const { session } = useSession();
+  /* [추적 보기] — 자재 LOT 은 자재 기준 생산 추적, 생산 LOT 은 제품 기준 역추적. 그 화면 권한이 없으면 숨긴다(피처 015 FR-017). */
   const traceHref =
-    detail.data !== undefined && toWebAccess(session?.permissions).allows(LOT_TRACE_PATH)
-      ? lotTraceHref({
-          lotId,
-          lotNo: detail.data.lotNo,
-          lotTypeCode: detail.data.lotTypeCode,
-        })
+    detail.data !== undefined &&
+    toWebAccess(session?.permissions).allows(
+      tracePathOf(directionOfLotType(detail.data.lotTypeCode)),
+    )
+      ? lotTraceHref({ lotId, lotTypeCode: detail.data.lotTypeCode })
       : null;
   const fourMTypeLabel = useFourMChangeTypeLabel();
   const uomCodeOf = useUomCodeOf();
@@ -126,7 +126,7 @@ export const LotDetailPane = ({
 
   const actions = (
     <>
-      {/* LOT 생산 이력 조회로 간다. 자재 LOT은 자재 LOT 탭, 생산 LOT은 제품 LOT 탭에서 연다. */}
+      {/* 추적 화면으로 간다. 자재 LOT은 자재 기준 생산 추적, 생산 LOT은 제품 기준 역추적에서 그 LOT 을 골라 연다. */}
       {traceHref !== null && (
         <Button variant="outlined" size="md" onClick={() => void navigate(traceHref)}>
           {t.detail.trace}

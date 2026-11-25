@@ -21,7 +21,6 @@ const plantSource: LookupSources['plants'] = {
 const renderPane = (overrides: Partial<Parameters<typeof WarehouseListPane>[0]> = {}) => {
   const onApplyFilters = vi.fn();
   const onSelect = vi.fn();
-  const onAddWarehouse = vi.fn();
 
   render(
     <WarehouseListPane
@@ -31,7 +30,6 @@ const renderPane = (overrides: Partial<Parameters<typeof WarehouseListPane>[0]> 
       onApplyFilters={onApplyFilters}
       selectedWarehouseId={null}
       onSelect={onSelect}
-      onAddWarehouse={onAddWarehouse}
       loadError={null}
       warehouseTypeOptions={lookupFixtures.warehouseTypes}
       plants={plantSource}
@@ -39,7 +37,7 @@ const renderPane = (overrides: Partial<Parameters<typeof WarehouseListPane>[0]> 
     />,
   );
 
-  return { onApplyFilters, onSelect, onAddWarehouse };
+  return { onApplyFilters, onSelect };
 };
 
 describe('WarehouseListPane', () => {
@@ -87,13 +85,10 @@ describe('WarehouseListPane', () => {
     expect(screen.getByText('조건에 맞는 결과가 없습니다')).toBeInTheDocument();
   });
 
-  it('등록된 것이 없을 때의 빈 상태에서 창고 추가를 눌러 onAddWarehouse를 부른다', async () => {
-    const user = userEvent.setup();
-    const { onAddWarehouse } = renderPane({ items: [] });
+  it('등록된 것이 없을 때의 빈 상태에 창고 추가 단추가 없다 — 창고는 ERP 에서 받는다', () => {
+    renderPane({ items: [] });
 
-    await user.click(screen.getByRole('button', { name: '창고 추가' }));
-
-    expect(onAddWarehouse).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: '창고 추가' })).not.toBeInTheDocument();
   });
 
   it('loadError가 있으면 표와 빈 상태 대신 그것을 낸다 — 조회 실패를 「없음」으로 보이지 않는다', () => {

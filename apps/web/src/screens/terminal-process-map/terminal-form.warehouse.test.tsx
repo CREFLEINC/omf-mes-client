@@ -50,7 +50,7 @@ const noCodes: TerminalCodeNames = (() => {
 })();
 
 describe('W-CO-06 단말 창고(피처 002)', () => {
-  it('US5-1 창고는 누르면 검색란 · 선택지가 펼쳐진다 — 단말 공장의 사용 중인 창고만, 비우면 공장 전체, 공장을 바꾸면 비운다', async () => {
+  it('US5-1 창고는 누르면 검색란 · 선택지가 펼쳐진다 — 단말 공장의 사용 중인 창고만, 비우면 미지정, 공장을 바꾸면 비운다', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     const queries: URL[] = [];
@@ -59,7 +59,6 @@ describe('W-CO-06 단말 창고(피처 002)', () => {
         draft={{ ...EMPTY_TERMINAL, plant: '1', statusCode: 'RUNNING' }}
         errors={{}}
         isNew={false}
-        isSaving={false}
         saveError={null}
         fieldErrors={{}}
         plants={lookup([
@@ -68,8 +67,6 @@ describe('W-CO-06 단말 창고(피처 002)', () => {
         ])}
         codeNames={noCodes}
         onChange={onChange}
-        onSubmit={vi.fn()}
-        onCancel={vi.fn()}
       />,
       {
         fetch: createStubFetch([
@@ -84,9 +81,8 @@ describe('W-CO-06 단말 창고(피처 002)', () => {
       },
     );
 
-    expect(screen.getByText(t.terminal.warehouseScope)).toBeInTheDocument();
     const field = screen.getByRole('combobox', { name: t.terminal.warehouse });
-    expect(field).toHaveTextContent(t.terminal.warehouseAll);
+    expect(field).toHaveTextContent(t.terminal.equipmentNone);
 
     /* 별도 찾기 창 없이 칸 아래로 검색란과 선택지가 펼쳐진다(사용자 지시 2026-11-20 · #333). */
     await user.click(field);
@@ -108,25 +104,24 @@ describe('W-CO-06 단말 창고(피처 002)', () => {
     expect(onChange).toHaveBeenLastCalledWith({ plant: '2', warehouse: '', warehouseLabel: '' });
   });
 
-  it('공장을 고르기 전에는 창고 칸을 보이지 않는다', () => {
+  it('공장을 고르기 전에는 창고 칸이 잠겨 「공장 먼저 선택」을 보인다', () => {
     renderWithProviders(
       <TerminalForm
         draft={{ ...EMPTY_TERMINAL }}
         errors={{}}
         isNew
-        isSaving={false}
         saveError={null}
         fieldErrors={{}}
         plants={lookup([])}
         codeNames={noCodes}
         onChange={vi.fn()}
-        onSubmit={vi.fn()}
-        onCancel={vi.fn()}
       />,
     );
 
-    /* 공장을 고르기 전에는 창고 칸 자체가 없다(사용자 지시 2026-11-20 · #333). */
-    expect(screen.queryByLabelText(t.terminal.warehouse)).toBeNull();
+    /* 칸은 처음부터 자리를 지킨다 — 고를 수 없는 동안 사유를 칸 안에 적는다(사용자 결정 2026-11-24). */
+    const field = screen.getByRole('combobox', { name: t.terminal.warehouse });
+    expect(field).toBeDisabled();
+    expect(field).toHaveTextContent(t.terminal.warehouseNeedsPlant);
   });
 
   it('US5-1 저장 본문 — 등록은 고르면 warehouseId, 수정은 비우면 null 로 뗀다', () => {
@@ -164,7 +159,7 @@ describe('W-CO-06 단말 창고(피처 002)', () => {
     expect(toTerminalDraft(plain).warehouse).toBe('');
   });
 
-  it('US5-1 단말 목록에 「창고」 열 — 없으면 「공장 전체」', async () => {
+  it('US5-1 단말 목록에 「창고」 열 — 없으면 「—」(사용자 지시 2026-11-24)', async () => {
     const terminals = [
       {
         terminalId: 1,
@@ -206,6 +201,9 @@ describe('W-CO-06 단말 창고(피처 002)', () => {
     const first = (await screen.findByRole('button', { name: 'SYN-MOB-01' })).closest('tr');
     const second = screen.getByRole('button', { name: 'SYN-MOB-02' }).closest('tr');
     expect(within(first as HTMLElement).getByText('합성 자재창고 A')).toBeInTheDocument();
-    expect(within(second as HTMLElement).getByText(t.list.warehouseAll)).toBeInTheDocument();
+    expect(within(second as HTMLElement).getAllByText(t.list.notAvailable).length).toBeGreaterThan(
+      0,
+    );
+    expect(within(second as HTMLElement).queryByText(t.list.warehouseAll)).not.toBeInTheDocument();
   });
 });

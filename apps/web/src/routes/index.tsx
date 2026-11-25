@@ -25,13 +25,16 @@ import { MaterialIssueRequestScreen } from '../screens/material-issue-request/sc
 import { MaterialIssueStatusScreen } from '../screens/material-issue-status/screen';
 import { ProductionWarehouseReplenishmentScreen } from '../screens/production-warehouse-replenishment/screen';
 import { WorkOrderProgressScreen } from '../screens/work-order-progress/screen';
-import { LotTraceScreen } from '../screens/lot-trace/screen';
+import { LotTraceLegacyRedirect } from '../screens/material-trace/legacy-redirect';
+import { MaterialTraceScreen } from '../screens/material-trace/screen';
+import { ProductTraceScreen } from '../screens/product-trace/screen';
 import { OverReceiptSplitRedirect } from '../screens/inbound-schedule/register-redirect';
 import { InboundExcessScreen } from '../screens/inbound-schedule/excess-screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { MaterialLotIssueScreen } from '../screens/material-lot-issue/screen';
 import { InboundWorkRecordScreen } from '../screens/inbound-work-record/screen';
 import { SupplierItemDefaultScreen } from '../screens/supplier-item-default/screen';
+import { ShiftManagementScreen } from '../screens/shift-management/screen';
 import { InspectionSheetScreen } from '../screens/inspection-sheet/screen';
 import { InspectionStandardRoute } from '../screens/inspection-standard/sheet-type';
 import { ErpInboundScreen } from '../screens/erp-inbound/screen';
@@ -79,9 +82,8 @@ import {
   LegacyReleaseRedirect,
 } from '../screens/production-order/process/legacy-redirects';
 import { ProductionOrderProcessScreen } from '../screens/production-order/process/process-screen';
-import { DispositionDecisionScreen } from '../screens/disposition-decision/screen';
+import { DispositionLegacyRedirect } from '../screens/disposition-decision/legacy-redirect';
 import { PqcInspectionRegisterScreen } from '../screens/pqc-inspection-register/screen';
-import { InspectionLevelScreen } from '../screens/inspection-level/screen';
 import { RoutingScreen } from '../screens/routing/screen';
 import { ExpeditedShipmentScreen } from '../screens/expedited-shipment/screen';
 import { ProductDisposalRequestScreen } from '../screens/product-disposal-request/screen';
@@ -98,11 +100,6 @@ import { SupplierReturnScreen } from '../screens/supplier-return/screen';
 import { UsersRolesScreen } from '../screens/users-roles/screen';
 import { WarehouseLayoutScreen } from '../screens/warehouse-layout/screen';
 import { WarehouseLocationScreen } from '../screens/warehouse-location/screen';
-
-/** LOT 생산 이력 조회의 권한 안내는 사용자와 역할 메뉴를 사이드바의 이름 그대로 가리킨다. 그리는 순간의 언어로 만든다. */
-const LotTraceRoute = () => (
-  <LotTraceScreen permissionMenuPath={navMenuPath('/system/users-roles')} />
-);
 
 /** 작업지시 목록(W-02-01)의 권한 안내도 같은 메뉴를 가리킨다. */
 const ProductionOrderRoute = () => (
@@ -143,6 +140,7 @@ export const appRouter = createBrowserRouter([
       { path: 'master-data/warehouse-location', element: <WarehouseLocationScreen /> },
       /* W-CO-08 — 창고·Location 바로 뒤다. 그 화면이 만든 위치를 여기서 도면에 얹는다. */
       { path: 'master-data/warehouse-layout', element: <WarehouseLayoutScreen /> },
+      { path: 'master-data/shifts', element: <ShiftManagementScreen /> },
       /* 없어진 적치 규칙(omf-mes-server #907)의 옛 주소 — 즐겨찾기 · 알림 링크가 끊기지 않게 넘긴다. */
       {
         path: 'master-data/putaway-rule',
@@ -407,10 +405,13 @@ export const appRouter = createBrowserRouter([
        */
       { path: 'production/work-order-progress', element: <WorkOrderProgressScreen /> },
       /*
-       * W-02-09 — 진행을 본 뒤 그 LOT이 어디서 와서 어디로 갔는지 본다. 조회 자리라 진행현황 바로 뒤다.
-       * 자재 LOT, 제품 LOT, 입출고 현황은 화면 안 탭이다(`?tab=`).
+       * W-02-13 자재 기준 생산 추적 · W-02-14 제품 기준 역추적(피처 015) — 진행을 본 뒤 그 LOT 이 어디로 갔는지(정방향),
+       * 제품에 무엇이 들어왔는지(역방향) 본다. 조회 자리라 진행현황 바로 뒤다.
        */
-      { path: 'production/lot-trace', element: <LotTraceRoute /> },
+      { path: 'production/material-trace', element: <MaterialTraceScreen /> },
+      { path: 'production/product-trace', element: <ProductTraceScreen /> },
+      /* W-02-09 LOT 생산 이력 조회의 옛 주소 — LOT 종류에 맞는 새 화면으로 넘긴다(피처 015 FR-018). */
+      { path: 'production/lot-trace', element: <LotTraceLegacyRedirect /> },
       /*
        * W-03-01 — Lot Status 계열의 첫 화면이므로 품질관리 섹션을 연다.
        * 계약의 /quality/**와 주소 앞머리가 같지만 근거는 사이드바 업무 섹션이다.
@@ -429,19 +430,20 @@ export const appRouter = createBrowserRouter([
       /* W-03-05 — 측정치는 검사 결과 상세 안의 표로 본다(따로 여는 쪽 없음 · omf-all-around#217). */
       { path: 'quality/inspection-results', element: <InspectionResultInsightsPage /> },
       /*
-       * W-03-10 — 특채·한도승인 «다음»이다. 부적합의 처분을 정하는 화면이라 승인 처리 뒤에 서고,
-       * 이 라우트가 W-04-10(폐기)·W-04-11(재등록)·P-04-03(재작업)의 진입 목록과
-       * W-03-09의 「부적합 열기」(`?nonconformanceId=`)를 함께 연다.
-       * 앞머리는 계약 경로가 아니라 사이드바 업무 섹션(품질관리)을 따른다.
+       * W-03-10 — 「부적합 처분 관리」 메뉴는 없앴다(omf-all-around#354). 처분은 검사 조회·판정의 IQC · OQC 탭 안
+       * 처분 상자가 한다. 옛 주소(`?nonconformanceId=` · `?item=`)는 그 부적합이 속한 탭으로 넘긴다.
        */
-      { path: 'quality/dispositions', element: <DispositionDecisionScreen /> },
+      { path: 'quality/dispositions', element: <DispositionLegacyRedirect /> },
       /*
        * W-03-11 — PQC 검사 등록·조회(omf-all-around#107 · 설계보다 앞선 화면). 현장 POP 의 PQC 와
        * 같은 판정을 관리웹에서 등록하고 지난 의뢰를 본다.
        */
       { path: 'quality/pqc-inspections', element: <PqcInspectionRegisterScreen /> },
-      /* W-03-12 — 검사 수준 관리(omf-all-around#64 · 설계보다 앞선 화면). 품목별 IQC 검사 수준과 전환 이력. */
-      { path: 'quality/inspection-levels', element: <InspectionLevelScreen /> },
+      /* 검사 수준 관리(W-03-12)의 옛 주소 — 화면과 권한을 검사 기준 관리(W-06-02)에 합쳤다(omf-all-around#357). */
+      {
+        path: 'quality/inspection-levels',
+        element: <Navigate to="/master-data/inspection-standard?type=IQC" replace />,
+      },
       /* W-03-13 — 제품 검사표 조회(omf-all-around#89 · 설계보다 앞선 화면). 시리얼별 OA 제품 검사표 조회·서명·승인. */
       { path: 'quality/inspection-sheets', element: <InspectionSheetScreen /> },
       /* W-04-11 — 품질에서 정상 판정된 반품 LOT을 출하 가능 재고로 되돌린다. */
@@ -678,7 +680,8 @@ export const appRouter = createBrowserRouter([
       /*
        * W-04-07 — 같은 규칙(사이드바 섹션)이다. 계약 경로는 `/quality/**`이지만 IA가 이 화면을
        * 「출하 > 반품·재고」에 두었다. 이 화면은 부적합을 등록하고 판정을 «의뢰»만 한다 — 판정 자체는
-       * `quality/dispositions`(W-03-10)이고, 이 화면의 「판정 결과 보기」가 그리로 연다.
+       * 검사 조회·판정 OQC 탭 「판정 의뢰」다 — 이 화면의 「판정 결과 보기」는 옛 주소(`quality/dispositions`)로 열어
+       * 넘기기가 그 부적합을 고른 채로 보낸다(omf-all-around#354).
        */
       { path: 'shipment/disposition-requests', element: <DispositionRequestScreen /> },
       /*

@@ -20,7 +20,8 @@ const terminal = (id: number, code: string, overrides: Record<string, unknown> =
   terminalId: id,
   terminalCode: code,
   plantId: 1,
-  terminalTypeCode: 'SYN-TYPE',
+  /* 공정별 기능 구성은 POP 단말에만 보인다 — 기본 단말은 POP. */
+  terminalTypeCode: 'POP',
   statusCode: 'SYN-RUN',
   registrationStatusCode: 'UNREGISTERED',
   isActive: true,
@@ -28,11 +29,17 @@ const terminal = (id: number, code: string, overrides: Record<string, unknown> =
   ...overrides,
 });
 const unregistered = terminal(701, 'SYN-TERM-01');
-const registered = terminal(702, 'SYN-TERM-02', { registrationStatusCode: 'REGISTERED' });
+const registered = terminal(702, 'SYN-TERM-02', {
+  registrationStatusCode: 'REGISTERED',
+  terminalTypeCode: 'SYN-TYPE',
+});
 
 /* 공통코드 표시명 — 이름이 없는 코드는 화면이 코드를 그대로 보인다. */
 const codeNames: Record<string, { code: string; codeName: string }[]> = {
-  TERMINAL_TYPE: [{ code: 'SYN-TYPE', codeName: '합성 유형' }],
+  TERMINAL_TYPE: [
+    { code: 'POP', codeName: 'POP' },
+    { code: 'SYN-TYPE', codeName: '합성 유형' },
+  ],
   TERMINAL_STATUS: [{ code: 'SYN-RUN', codeName: '합성 가동' }],
 };
 
@@ -124,10 +131,9 @@ describe('TerminalProcessMapScreen 표시', () => {
     unmount();
 
     renderScreen('/system/terminal-process-map?terminal=701');
-    const label = await screen.findByText(t.terminal.status, { selector: 'dt' });
-    await waitFor(() =>
-      expect(label.parentElement?.querySelector('dd')?.textContent).toBe(t.list.notAvailable),
-    );
+    /* 단말 정보 표 — 항목 칸(th) 바로 옆 값 칸(td). */
+    const label = await screen.findByRole('rowheader', { name: t.terminal.status });
+    await waitFor(() => expect(label.nextElementSibling?.textContent).toBe(t.list.notAvailable));
   });
 
   it('고른 단말은 목록에서 aria-current 로 표시되고, 제목 옆 안내 문구는 없다', async () => {
@@ -225,19 +231,188 @@ describe('TerminalProcessMapScreen 조회 조건', () => {
     const dialog = await screen.findByRole('dialog', { name: t.terminal.create });
     expect(within(dialog).queryByRole('button', { name: /닫기|close/i })).not.toBeInTheDocument();
 
-    /* 단말 코드는 열자마자 미리 채워진다(사용자 지시 2026-11-20 · #333) — 지워야 빈 칸 오류를 본다. */
+    /* 단말 코드는 유형을 고르면 채워진다(사용자 결정 2026-11-24) — 지워야 빈 칸 오류를 본다. */
     const code = within(dialog).getByRole('textbox', { name: t.terminal.code });
+    expect(code).toBeDisabled();
+    /* 자주 쓰지 않는 유형은 [더보기] 뒤에 있다(사용자 지시 2026-11-24). */
+    expect(within(dialog).queryByRole('radio', { name: /합성 유형/ })).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: t.terminal.moreTypes }));
+    await user.click(within(dialog).getByRole('radio', { name: /합성 유형/ }));
     await waitFor(() => {
       expect(code).not.toHaveValue('');
     });
     await user.clear(code);
-    await user.click(within(dialog).getByRole('button', { name: t.terminal.register }));
+    /* POP 이 아니면 공정 단계를 건너뛰어 첫 단계에서 바로 [등록]. */
+    await user.click(within(dialog).getByRole('button', { name: t.wizard.register }));
     expect(within(dialog).getByText(t.terminal.requiredCode)).toBeInTheDocument();
     await user.type(within(dialog).getByRole('textbox', { name: t.terminal.code }), 'SYN-NEW');
     expect(within(dialog).queryByText(t.terminal.requiredCode)).not.toBeInTheDocument();
 
     await user.click(within(dialog).getByRole('button', { name: t.terminal.cancel }));
     expect(screen.queryByRole('dialog', { name: t.terminal.create })).not.toBeInTheDocument();
+  });
+});
+
+describe('TerminalProcessMapScreen 단말 정보 정리 (사용자 지시 2026-11-24)', () => {
+  it('POP 이 아닌 단말(창고에서 쓰는 단말)은 공정별 기능 구성을 보이지 않는다', async () => {
+    renderScreen('/system/terminal-process-map?terminal=702');
+    await screen.findByRole('heading', { name: t.panes.terminal });
+    expect(screen.queryByRole('heading', { name: t.panes.grid })).not.toBeInTheDocument();
+  });
+
+  it('사용 중지는 단말 정보가 아니라 [단말 수정] 창 본문에 있고, 수정 창에서 유형은 바꿀 수 없다', async () => {
+    const user = userEvent.setup();
+    renderScreen('/system/terminal-process-map?terminal=701');
+    await screen.findByRole('heading', { name: t.panes.grid });
+    expect(
+      screen.queryByRole('button', { name: t.terminal.deactivateAction }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.terminal.edit }));
+    const dialog = await screen.findByRole('dialog', { name: t.terminal.edit });
+    expect(within(dialog).queryByRole('radio')).not.toBeInTheDocument();
+    expect(within(dialog).getByLabelText(t.terminal.type)).toHaveTextContent('POP');
+
+    await user.click(within(dialog).getByRole('button', { name: t.terminal.deactivateAction }));
+    expect(
+      await screen.findByRole('dialog', { name: t.terminal.deactivateTitle }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('TerminalProcessMapScreen 단말 추가 단계 (사용자 결정 2026-11-24)', () => {
+  const created = terminal(801, 'POP-001', { terminalTypeCode: 'POP' });
+  const issuedToken = {
+    token: 'header.payload.signature',
+    issuedAt: '2026-11-24T04:00:00Z',
+    expiresAt: null,
+  };
+
+  const renderWizard = () => {
+    const calls: string[] = [];
+    const puts: { body: unknown; ifMatch: string | null }[] = [];
+    renderWithProviders(<TerminalProcessMapScreen />, {
+      fetch: createStubFetch([
+        {
+          match: (request) => request.method === 'POST' && path(request) === '/mdm/terminals',
+          respond: () => {
+            calls.push('create');
+            return jsonResponse(created, { status: 201, headers: { ETag: '"1"' } });
+          },
+        },
+        {
+          match: (request) => request.method === 'PUT' && path(request).endsWith('/processes'),
+          respond: async (request) => {
+            calls.push('processes');
+            puts.push({ body: await request.json(), ifMatch: request.headers.get('If-Match') });
+            return jsonResponse(page([]), { headers: { ETag: '"2"' } });
+          },
+        },
+        {
+          match: (request) => path(request).endsWith(':issue-token'),
+          respond: () => {
+            calls.push('token');
+            return jsonResponse(issuedToken, { status: 201 });
+          },
+        },
+        {
+          match: (request) => path(request) === '/mdm/code-values',
+          respond: (request) => {
+            const group = new URL(request.url).searchParams.get('codeGroupCode') ?? '';
+            const values =
+              group === 'TERMINAL_TYPE'
+                ? [
+                    { code: 'POP', codeName: 'POP' },
+                    { code: 'MOBILE', codeName: 'PDA' },
+                  ]
+                : [];
+            return jsonResponse(
+              page(
+                values.map((value, index) => ({
+                  ...value,
+                  codeValueId: index + 1,
+                  displayOrder: index + 1,
+                  isActive: true,
+                })),
+              ),
+            );
+          },
+        },
+        {
+          match: (request) => path(request) === '/mdm/plants',
+          respond: () =>
+            jsonResponse(
+              page([{ plantId: 1, plantCode: 'G1', plantName: '합성 1공장', isActive: true }]),
+            ),
+        },
+        {
+          match: (request) => path(request) === '/mdm/processes',
+          respond: () =>
+            jsonResponse(
+              page([
+                { processId: 31, processCode: 'SYN-P', processName: '합성 사출', isActive: true },
+              ]),
+            ),
+        },
+        ...routes,
+      ]),
+      route: '/system/terminal-process-map',
+      session: null,
+      /* 기능 구성 나가기 확인(LeaveGuard · #358)은 데이터 라우터가 있어야 선다. */
+      dataRouter: true,
+    });
+    return { calls, puts };
+  };
+
+  const fillInfo = async (user: ReturnType<typeof userEvent.setup>, type: RegExp) => {
+    await screen.findByRole('button', { name: 'SYN-TERM-01' });
+    await user.click(screen.getByRole('button', { name: t.terminal.create }));
+    const dialog = await screen.findByRole('dialog', { name: t.terminal.create });
+    await user.click(within(dialog).getByRole('radio', { name: type }));
+    await user.click(within(dialog).getByRole('combobox', { name: t.terminal.plant }));
+    await user.click(await screen.findByRole('option', { name: 'G1 · 합성 1공장' }));
+    await waitFor(() => {
+      expect(within(dialog).getByRole('textbox', { name: t.terminal.code })).not.toHaveValue('');
+    });
+    return dialog;
+  };
+
+  it('POP — 단말 정보 → 공정 기능 → [등록]이 만들기 · 구성 저장 · 토큰 발급을 잇고 기기 연결에 QR 을 보인다', async () => {
+    const user = userEvent.setup();
+    const { calls, puts } = renderWizard();
+    const dialog = await fillInfo(user, /^POP/);
+
+    await user.click(within(dialog).getByRole('button', { name: t.wizard.next }));
+    expect(within(dialog).getByText(t.wizard.stepProcesses).closest('li')).toHaveAttribute(
+      'aria-current',
+      'step',
+    );
+
+    await user.click(within(dialog).getByRole('combobox', { name: t.grid.add }));
+    await user.click(await screen.findByRole('option', { name: 'SYN-P · 합성 사출' }));
+    await user.click(within(dialog).getByRole('button', { name: t.wizard.register }));
+
+    expect(await within(dialog).findByText(t.wizard.registered('POP-001'))).toBeInTheDocument();
+    expect(calls).toEqual(['create', 'processes', 'token']);
+    /* 구성 저장은 새 단말의 구성 조회가 준 잠금 토큰을 싣는다. */
+    expect(puts[0]?.ifMatch).toBe('"1"');
+    expect(puts[0]?.body).toMatchObject({ items: [{ processId: 31, canStartWork: true }] });
+
+    await user.click(within(dialog).getByRole('button', { name: t.wizard.done }));
+    expect(screen.queryByRole('dialog', { name: t.terminal.create })).not.toBeInTheDocument();
+  });
+
+  it('창고에서 쓰는 단말(PDA)은 공정 단계를 건너뛴다 — 첫 단계 [등록]이 만들기 · 토큰 발급만 한다', async () => {
+    const user = userEvent.setup();
+    const { calls } = renderWizard();
+    const dialog = await fillInfo(user, /^PDA/);
+
+    expect(within(dialog).getByText(t.wizard.popOnly)).toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: t.wizard.next })).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: t.wizard.register }));
+
+    expect(await within(dialog).findByText(t.wizard.registered('POP-001'))).toBeInTheDocument();
+    expect(calls).toEqual(['create', 'token']);
   });
 });
 

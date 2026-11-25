@@ -6292,7 +6292,7 @@ export interface paths {
     };
     /**
      * 검사기준 헤더 수정
-     * @description approvedBy·approvedAt 은 이 요청에 포함하지 않는다 — 별도 :approve 액션으로만 기록한다. 낙관적 잠금은 공유계약 B-1. 근거: W-06-02 §4-A·§5-1
+     * @description 낙관적 잠금은 공유계약 B-1. 근거: W-06-02 §4-A·§5-1
      */
     put: {
       parameters: {
@@ -6591,79 +6591,6 @@ export interface paths {
         };
         /** @description 없는 검사기준 버전 */
         404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/quality/inspection-plans/{inspectionPlanId}:approve': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        inspectionPlanId: number;
-      };
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * 검사기준 승인
-     * @description approvedBy·approvedAt 을 서버가 동시에 기록한다(현재 사용자·현재 시각) — 둘은 짝이어야 하며 서버가 항상 함께 채우는 방식으로 그 짝을 보장한다(A-9 취지 · §8-3). 전제: 이 기준에 확정(status_code=확정) 버전이 1건 이상 있어야 한다 — 없으면 400(code=CONFIRMED_VERSION_REQUIRED). 승인 해제(취소)는 제공하지 않는다. 근거: W-06-02 §5-1 「승인」
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header: {
-          /** @description 전 쓰기 API 필수. */
-          'Idempotency-Key': components['parameters']['IdempotencyKey'];
-        };
-        path: {
-          inspectionPlanId: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description 승인됨 */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['InspectionPlan'];
-          };
-        };
-        /** @description 확정된 버전이 없음(code=CONFIRMED_VERSION_REQUIRED) — W-06-02 §5-1 */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 권한 없음. 근거: W-06-02 §6 「권한 없음」 */
-        403: {
           headers: {
             [name: string]: unknown;
           };
@@ -14743,7 +14670,398 @@ export interface paths {
       };
     };
     put?: never;
+    /**
+     * 교대 등록
+     * @description 공장별 교대(주간·야간 등)를 등록한다. 자정 넘김(crossesMidnight)은 서버가 시각으로 정한다(끝 ≤ 시작이면 자정 넘김). 근거: omf-all-around#318
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. 같은 키로 다시 보내면 두 번 결재하지 않는다. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ShiftCreate'];
+        };
+      };
+      responses: {
+        /** @description 등록됨 */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Shift'];
+          };
+        };
+        /** @description 검증 실패 — 유일 위반이면 유일 범위(plantId·shiftCode)를 담아 돌려준다 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 교대 관리(W-06-26) 권한이 없거나 공장이 데이터 범위 밖이다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/mdm/shifts/{shiftId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        shiftId: number;
+      };
+      cookie?: never;
+    };
+    /**
+     * 교대 상세
+     * @description 교대 관리 화면이 수정·사용 중지 전에 부른다 — 잠금 토큰(ETag)과 코드 수정 가부를 함께 내린다. 근거: omf-all-around#318
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          shiftId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 상세 */
+        200: {
+          headers: {
+            /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+            ETag?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ShiftDetailResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 교대 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    /**
+     * 교대 수정
+     * @description 이름·시작·끝 시각을 고친다. 자정 넘김(crossesMidnight)은 서버가 시각으로 정한다(끝 ≤ 시작이면 자정 넘김). 공장은 바꿀 수 없다. 근거: omf-all-around#318
+     */
+    put: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. 같은 키로 다시 보내면 두 번 결재하지 않는다. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다. 근거: 공유계약 B-1 · B-1-1 */
+          'If-Match': components['parameters']['IfMatchVersion'];
+        };
+        path: {
+          shiftId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ShiftUpdate'];
+        };
+      };
+      responses: {
+        /** @description 수정됨 */
+        200: {
+          headers: {
+            /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+            ETag?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Shift'];
+          };
+        };
+        /** @description 검증 실패 — 공백 이름이거나, 작업·실적에 쓰인 교대의 코드를 바꾸려 했다 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 교대 관리(W-06-26) 권한이 없거나 공장이 데이터 범위 밖이다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 교대 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 저장 충돌 — 다른 사용자가 먼저 고쳤다. 업무 규칙 위반(상태 잠김·참조 존재)은 409 가 아니라 400 이다 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ConflictResponse'];
+          };
+        };
+      };
+    };
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/mdm/shifts/{shiftId}:deactivate': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        shiftId: number;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 교대 사용 중지
+     * @description 물리 삭제는 제공하지 않는다. 이미 기록된 작업·실적의 교대는 그대로 남고, 이후 교대 판정·선택 목록에서 빠진다. 근거: 공유계약 B-4 · omf-all-around#318
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. 같은 키로 다시 보내면 두 번 결재하지 않는다. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다. 근거: 공유계약 B-1 · B-1-1 */
+          'If-Match': components['parameters']['IfMatchVersion'];
+        };
+        path: {
+          shiftId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 처리됨 */
+        200: {
+          headers: {
+            /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+            ETag?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Shift'];
+          };
+        };
+        /** @description 업무 규칙 위반 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 교대 관리(W-06-26) 권한이 없거나 공장이 데이터 범위 밖이다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 교대 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 저장 충돌 — 다른 사용자가 먼저 고쳤다. 업무 규칙 위반(상태 잠김·참조 존재)은 409 가 아니라 400 이다 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ConflictResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/mdm/shifts/{shiftId}:activate': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        shiftId: number;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 교대 다시 사용
+     * @description 사용 중지한 교대를 다시 쓴다. 같은 공장에 같은 코드가 남아 있어 새로 등록할 수 없으므로 되살리는 길을 둔다. 이미 사용 중이어도 200 이고 판 번호(ETag)는 올라간다 — 사용 중지와 같다. 근거: 공유계약 B-4 · omf-all-around#318
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. 같은 키로 다시 보내면 두 번 결재하지 않는다. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다. 근거: 공유계약 B-1 · B-1-1 */
+          'If-Match': components['parameters']['IfMatchVersion'];
+        };
+        path: {
+          shiftId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 처리됨 */
+        200: {
+          headers: {
+            /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+            ETag?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Shift'];
+          };
+        };
+        /** @description 업무 규칙 위반 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 교대 관리(W-06-26) 권한이 없거나 공장이 데이터 범위 밖이다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 교대 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 저장 충돌 — 다른 사용자가 먼저 고쳤다. 업무 규칙 위반(상태 잠김·참조 존재)은 409 가 아니라 400 이다 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ConflictResponse'];
+          };
+        };
+      };
+    };
     delete?: never;
     options?: never;
     head?: never;
@@ -26000,6 +26318,443 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/logistics/material-lot-suppliers': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 자재 관리 LOT 공급사 목록(POP 첫째 칸)
+     * @description 근거: P-01-01 (피처 014 FR-010·011, 세 칸). 공급사 = GET /logistics/material-lot-pairs 의 조합 셋(같은 q 거르기)을 공급사로 묶은 것 — 조합 하나라도 맞으면 그 공급사가 선다(발행 이력 없는 공급사도). unprintedCount·creatableCount 는 그 공급사 조합들의 합(pairs 와 같은 계산). 정렬: 할 일(미출력 LOT 이 있거나 P/O 남은 양이 받기 전 자동 LOT 보다 많은) 조합이 있는 공급사 먼저, 그다음 공급사 코드. 만들지 않는다
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description 공장 */
+          plantId: number;
+          /** @description 공급사·품목 코드·이름(부분 일치) — 품목으로 찾으면 그 품목을 가진 공급사가 선다 */
+          q?: string;
+          /** @description 쪽 */
+          page?: number;
+          /** @description 쪽 크기 */
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: components['schemas']['MaterialLotSupplier'][];
+              page: components['schemas']['PageMeta'];
+            };
+          };
+        };
+        /** @description 검증 실패 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다. 단말은 POP 이고 질의 plantId 가 단말 공장이어야 한다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — P-01-01 · W-01-14 중 하나가 필요하다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/material-lot-pairs': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 자재 관리 LOT 공급사·품목 목록(왼쪽)
+     * @description 근거: P-01-01 · W-01-14 (피처 014 FR-010·011). 조합 = 발행 묶음 ∪ 공급사·품목 기본 정보 ∪ 그 공장의 미마감 P/O 라인 — 발행 여부와 상관없이 모두. 정렬: 할 일(미출력 LOT 이 있거나 P/O 남은 양이 받기 전 자동 LOT 보다 많은) 조합 먼저, 그다음 공급사 코드·품목 코드. 만들지 않는다
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description 공장 */
+          plantId: number;
+          /** @description 공급사 — POP P-01-01 둘째 칸(품목 표)은 고른 공급사로 거른다(피처 014 세 칸). 비우면 모든 공급사 */
+          supplierId?: number;
+          /** @description 공급사·품목 코드·이름(부분 일치) */
+          q?: string;
+          /** @description 쪽 */
+          page?: number;
+          /** @description 쪽 크기 */
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: components['schemas']['MaterialLotPair'][];
+              page: components['schemas']['PageMeta'];
+              summary: {
+                /** @description 공장 전체 이미 만든 미출력 LOT 수 — POP 「화면 이동」 배지(찾기와 상관없음) */
+                unprintedCount: number;
+              };
+            };
+          };
+        };
+        /** @description 검증 실패 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다. 단말은 POP 이고 질의 plantId 가 단말 공장이어야 한다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — P-01-01 · W-01-14 중 하나가 필요하다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/material-lots': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 자재 관리 LOT 탭 목록(오른쪽) — 미출력은 P/O 몫을 만들면서
+     * @description 근거: P-01-01 · W-01-14 (피처 014 FR-001~004·008·012~014). tab=UNPRINTED 일 때만 만든다 — (공장·공급사·품목) 잠금 안에서 P/O 몫(라인 남은 양 − 받은 양에 아직 들어가지 않은 자동 LOT, 발주일 순)을 계산해 이 쪽까지 모자란 만큼(page×size − 이미 있는 미출력)만 만든다. total(UNPRINTED) = 이미 있는 미출력 + 아직 만들 수 있는 수. 정렬: UNPRINTED 만든 차례(lot_id 오름차순) · PRINTED 마지막 발행 최근 순 · RECEIVED 받은 시각 최근 순 · VOIDED 폐기 시각 최근 순(기간 제한 없음).
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description 공장 */
+          plantId: number;
+          /** @description 공급사 */
+          supplierId: number;
+          /** @description 품목 */
+          itemId: number;
+          /** @description 탭 — 미출력 · 출력됨(입하 전) · 입하된 LOT · 폐기 LOT */
+          tab: 'UNPRINTED' | 'PRINTED' | 'RECEIVED' | 'VOIDED';
+          /** @description 쪽 */
+          page?: number;
+          /** @description 쪽 크기 */
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: components['schemas']['MaterialLotTabRow'][];
+              page: components['schemas']['PageMeta'];
+              /** @description UNPRINTED 만 — 다른 탭은 null */
+              generation: components['schemas']['MaterialLotGeneration'] | null;
+            };
+          };
+        };
+        /** @description 검증 실패 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다. 단말은 POP 이고 질의 plantId 가 단말 공장이어야 한다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — P-01-01 · W-01-14 중 하나가 필요하다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description LOT_NO_CONFLICT — 번호 충돌이 거듭됐다. 다시 부르면 풀린다 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/material-lots/lookup': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 자재 관리 LOT 번호 스캔 찾기
+     * @description 근거: P-01-01 (피처 014 FR-021). 공장 안 자재 관리 LOT 하나를 번호로 찾아 그 공급사·품목과 속한 탭을 알린다. 만들지 않는다. 탭: 입하 LOT 이 있으면 RECEIVED, 폐기 VOIDED, 대기이고 라벨 발행 기록이 있으면 PRINTED, 없으면 UNPRINTED
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description 공장 */
+          plantId: number;
+          /** @description 자재 관리 LOT 번호(스캔 값) */
+          lotNo: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 찾음 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              lot: components['schemas']['MaterialLotTabRow'];
+              supplier: components['schemas']['MaterialLotPairSupplier'];
+              item: components['schemas']['MaterialLotPairItem'];
+              /** @enum {string} */
+              tab: 'UNPRINTED' | 'PRINTED' | 'RECEIVED' | 'VOIDED';
+            };
+          };
+        };
+        /** @description 검증 실패 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다. 단말은 POP 이고 질의 plantId 가 단말 공장이어야 한다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — P-01-01 · W-01-14 중 하나가 필요하다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description NOT_FOUND 「이 공장에 없는 자재 관리 LOT 번호입니다」 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/material-lots/{lotId}:revise': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 출력 전 자재 관리 LOT 수정
+     * @description 근거: P-01-01 · W-01-14 (피처 014 FR-016·017). 미출력(대기 · 자재 관리 LOT 라벨 발행 기록 없음) LOT 의 수량·패키징을 고친다 — 자동·수동 모두. 같은 LOT(lotId·P/O 몫 기록 그대로)이고, 수량이 바뀌면 lotNo 를 새 수량 접두사(품목·수량·날짜·공급사)의 다음 일련으로 바꾼다. 같으면 번호 그대로. 줄인 몫은 다음 미출력 조회가 다시 만들고, 늘리면 만들 양이 줄어든다. 바꾼 사실은 감사(audit_event MATERIAL_LOT_REVISED, 옛·새 번호)에 남는다
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /** @description POP 단말에서는 필수(활성 작업자 사번 — 단말 공장). 웹(W-01-14)은 보내지 않는다 — 계정이 행위자다. */
+          'X-Worker-No'?: string;
+        };
+        path: {
+          /** @description 자재 관리 LOT */
+          lotId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['MaterialLotRevise'];
+        };
+      };
+      responses: {
+        /** @description 고친 LOT */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['MaterialLotTabRow'];
+          };
+        };
+        /** @description 검증 실패 — qty ≤ 0(RANGE) · qty ≠ count × qtyPerPackage(INVALID) · 없는 패키징 단위(INVALID) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다. 단말은 POP 이고 작업자(X-Worker-No)·멱등 키가 있어야 하며 LOT 이 단말 공장의 것이어야 한다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — P-01-01 · W-01-14 중 하나가 필요하다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 LOT */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description ALREADY_PRINTED(한 번이라도 출력한 LOT) · STATE_LOCKED(대기 아님 — 입하·폐기, 또는 자재 관리 LOT 이 아님) · LOT_NO_CONFLICT(번호 충돌이 거듭됨 — 다시 부르면 풀린다) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/trace/lots:void': {
     parameters: {
       query?: never;
@@ -27754,6 +28509,572 @@ export interface paths {
     };
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/material-trace-lots': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 자재 기준 생산 추적 LOT 목록
+     * @description 조건이 없으면 최근 100개 — 마지막 생산 투입 시각(정정된 원 투입 제외) 내림차순, 같으면 lotId 내림차순. 투입되지 않은 LOT 은 없다(반제품도 투입되면 들어간다). 공급사(partnerId) + 입하일 기간이면 조건 — 입하에 직접 든 관리 LOT(분할 자손 빼고)을 입하일(입하 LOT 입하일, 없으면 첫 자재 입고일) 내림차순으로 100개씩. 근거: 피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355 R-12
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description 공장 — 다른 공장 LOT 은 나오지 않는다 */
+          plantId: number;
+          /** @description 공급사 — dateFrom·dateTo 와 함께 주면 조건 목록 */
+          partnerId?: number;
+          /** @description 기간 시작(공장 현지 날짜) */
+          dateFrom?: string;
+          /** @description 기간 종료(포함). 최대 366일 */
+          dateTo?: string;
+          /** @description 조건 목록만 — 최근 목록은 늘 첫 100개 */
+          page?: number;
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description LOT 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['TraceLotPage'];
+          };
+        };
+        /** @description 검증 실패 — 상대·기간 중 일부만 · 종료가 시작보다 앞섬 · 366일 초과(field·code 가 있는 칸 오류) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 자재 기준 생산 추적 화면 권한(W-02-13) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/product-trace-lots': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 제품 기준 역추적 LOT 목록
+     * @description 조건이 없으면 최근 100개 — LOT 마다 마지막 출하 완료 시각, 없으면 마지막 제품 창고 생산 입고 시각 하나로 섞어 내림차순(결정 2-나). 출하도 입고도 없는 LOT 은 없다. 고객(partnerId) + 출하일 기간이면 조건 — 그 고객 출하 완료분에 배분된 제품 LOT 을 한 줄씩(기간 안 마지막 출하일 내림차순) 100개씩. 근거: 피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355 R-12
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description 공장 — 다른 공장 LOT 은 나오지 않는다 */
+          plantId: number;
+          /** @description 고객 — dateFrom·dateTo 와 함께 주면 조건 목록 */
+          partnerId?: number;
+          /** @description 기간 시작(공장 현지 날짜) */
+          dateFrom?: string;
+          /** @description 기간 종료(포함). 최대 366일 */
+          dateTo?: string;
+          /** @description 조건 목록만 — 최근 목록은 늘 첫 100개 */
+          page?: number;
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description LOT 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['TraceLotPage'];
+          };
+        };
+        /** @description 검증 실패 — 상대·기간 중 일부만 · 종료가 시작보다 앞섬 · 366일 초과(field·code 가 있는 칸 오류) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 제품 기준 역추적 화면 권한(W-02-14) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/trace-starts': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 번호 하나를 목록 줄 LOT 들로 풀기
+     * @description 입력·스캔한 번호(앞뒤 공백 무시, 정확 일치)의 종류를 서버가 알아내 목록 줄 모양의 LOT 들로 준다. 같은 글자가 여러 종류에 맞으면 모두 준다. 맞는 것이 없거나 다른 공장 번호면 matches 가 빈 배열(200). 근거: 피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355 R-5·R-6
+     */
+    get: {
+      parameters: {
+        query: {
+          plantId: number;
+          /** @description FORWARD = 자재 기준(W-02-13 필요) · BACKWARD = 제품 기준(W-02-14 필요) */
+          direction: 'FORWARD' | 'BACKWARD';
+          /** @description 번호 하나 */
+          q: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 맞은 번호 종류들 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              matches: components['schemas']['TraceStartMatch'][];
+            };
+          };
+        };
+        /** @description 검증 실패 — plantId·direction·q 없음, direction 값이 틀림 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 두 화면 권한 모두 없음, 또는 direction 에 맞는 권한(FORWARD W-02-13 · BACKWARD W-02-14) 없음 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/forward-tree': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 자재 기준 생산 추적 — LOT 하나의 정방향 계보
+     * @description 기준 LOT 에서 투입 W/O → 생산 LOT → (반제품이면 다시 W/O → 생산 LOT …) → 포장(옛 기록)·출하·재고까지, 분할(008)·분리(013) 자식을 지나 끝까지 한 번에 준다. 단계마다 그 단계 LOT 전부를 한 번에 질의하고, 깊이 20·겹치지 않는 LOT 5,000 에서 멈춘다. 이음 규칙(계보 추정·W/O 단위 추정)은 지금 그대로다. 근거: 피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355 R-2·R-3
+     */
+    get: {
+      parameters: {
+        query: {
+          plantId: number;
+          /** @description 기준 LOT 하나(아무 종류 — 반제품 포함) */
+          lotId: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 정방향 계보 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ForwardTree'];
+          };
+        };
+        /** @description 검증 실패 — plantId·lotId 없음 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 자재 기준 생산 추적 화면 권한(W-02-13) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 공장에 없는 LOT */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/backward-tree': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 제품 기준 역추적 — LOT 하나의 역방향 계보
+     * @description 기준 LOT(또는 그 LOT 의 시리얼)에서 생산 W/O → 투입 LOT → (반제품이면 그 W/O → 투입 LOT …) → 분할 원래 LOT → 입하 LOT·IQC 까지 한 번에 준다. 줄은 뿌리에서 멀어지는 쪽이다. 투입 자재는 지금 규칙 그대로 — 계보가 있는 W/O 는 그 LOT 의 계보, 없으면 W/O 투입 전부, 실적 배분이 없는 LOT 은 잇지 않는다. 깊이 20·LOT 5,000 상한. 근거: 피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355 R-2·R-4·R-6
+     */
+    get: {
+      parameters: {
+        query: {
+          plantId: number;
+          /** @description 기준 LOT 하나 */
+          lotId: number;
+          /** @description 시리얼로 들어온 줄을 골랐을 때 — 뿌리가 SERIAL 항목이고 조립 기록(부품 시리얼)을 한 단계 보인다 */
+          serialNo?: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 역방향 계보 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['BackwardTree'];
+          };
+        };
+        /** @description 검증 실패 — plantId·lotId 없음, serialNo 가 그 LOT 의 시리얼이 아님 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 제품 기준 역추적 화면 권한(W-02-14) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 공장에 없는 LOT, 없는 시리얼 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/forward-exports': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 자재 기준 생산 추적 엑셀 내보내기
+     * @description 목록의 LOT 들로 .xlsx 하나를 만든다. 기준 LOT 들을 한 번에 따라가고(깊이 20·겹치지 않는 LOT 5,000 을 함께 센다) 기준 LOT 마다 나눠 적는다. 시트 「최종 LOT」 = 첫 열 기준 LOT + 최종 LOT 줄(정방향은 출하마다 한 줄 — 제품 LOT·품목·생산 수량·현황(출하·재고 등)·고객·출하번호·출하일·출하 수량·창고·위치·재고 수량·W/O·LOT 상태·비고). 시트 「LOT 계보」 = 기준 LOT 마다 계보 줄 전체(묶음·접힘 무관, 깊이 우선, 같은 항목 두 번째부터 비고 「중복 — 위와 같음」, 조상과 같으면 「순환 참조 — 전개 중단」) — 기준 LOT·깊이·단계·번호·품목 코드·품목명·수량·단위·상위 항목(바로 위 항목 번호)·연결 근거(기록/추정)·LOT 상태·비고. 단계 이름은 화면과 같다 — 분할 LOT·분할된 원래 LOT(008), 분리 LOT·분리된 원래 LOT(013 — 출고 번호 없는 생산 LOT 자식), 다음 W/O 에 투입된 생산 LOT 은 반제품 LOT. LOT 상태는 공통코드 이름, 창고·위치는 「이름 (코드)」, 숫자 칸은 천 단위 표시 형식. 멈춘 단계에서 펼치지 못한 LOT 이 닿는 기준 LOT 은 비고 「일부」. 파일 이름 material-trace-YYYYMMDD-HHmm.xlsx(공장 시간). 근거: 피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355 R-8
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['TraceExportRequest'];
+        };
+      };
+      responses: {
+        /** @description .xlsx 파일(Content-Disposition: attachment) */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': string;
+          };
+        };
+        /** @description 검증 실패 — lotIds 0개 또는 200 초과, serialNo 가 그 LOT 의 시리얼이 아님 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 자재 기준 생산 추적 화면 권한(W-02-13) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 공장에 없는 LOT·없는 시리얼이 있음 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description TRACE_EXPORT_TOO_LARGE — 「LOT 계보」가 100,000줄을 넘어 만들지 않음. 화면 「LOT 이 너무 많습니다 — 조건을 좁히세요」 */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/backward-exports': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 제품 기준 역추적 엑셀 내보내기
+     * @description 목록의 LOT 들로 .xlsx 하나를 만든다. 기준 LOT 들을 한 번에 따라가고(깊이 20·겹치지 않는 LOT 5,000 을 함께 센다) 기준 LOT 마다 나눠 적는다. 시트 「최종 LOT」 = 첫 열 기준 LOT + 최종 LOT 줄(원자재 LOT × 투입 W/O — 자재 LOT·품목·공급사·공급사 LOT·입하 LOT·입하일·IQC·W/O·생산 LOT·투입량·단위·연결 근거·LOT 상태·비고). 시트 「LOT 계보」 = 기준 LOT 마다 계보 줄 전체(묶음·접힘 무관, 깊이 우선, 같은 항목 두 번째부터 비고 「중복 — 위와 같음」, 조상과 같으면 「순환 참조 — 전개 중단」) — 기준 LOT·깊이·단계·번호·품목 코드·품목명·수량·단위·상위 항목(바로 위 항목 번호)·연결 근거(기록/추정)·LOT 상태·비고. 단계 이름은 화면과 같다 — 분할 LOT·분할된 원래 LOT(008), 분리 LOT·분리된 원래 LOT(013 — 출고 번호 없는 생산 LOT 자식), 다음 W/O 에 투입된 생산 LOT 은 반제품 LOT. LOT 상태는 공통코드 이름, 창고·위치는 「이름 (코드)」, 숫자 칸은 천 단위 표시 형식. 멈춘 단계에서 펼치지 못한 LOT 이 닿는 기준 LOT 은 비고 「일부」. 파일 이름 product-trace-YYYYMMDD-HHmm.xlsx(공장 시간). 근거: 피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355 R-8
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['TraceExportRequest'];
+        };
+      };
+      responses: {
+        /** @description .xlsx 파일(Content-Disposition: attachment) */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': string;
+          };
+        };
+        /** @description 검증 실패 — lotIds 0개 또는 200 초과, serialNo 가 그 LOT 의 시리얼이 아님 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 제품 기준 역추적 화면 권한(W-02-14) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 공장에 없는 LOT·없는 시리얼이 있음 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description TRACE_EXPORT_TOO_LARGE — 「LOT 계보」가 100,000줄을 넘어 만들지 않음. 화면 「LOT 이 너무 많습니다 — 조건을 좁히세요」 */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
     delete?: never;
     options?: never;
     head?: never;
@@ -38207,6 +39528,8 @@ export interface paths {
           inspectionTypeCode?: string;
           /** @description 검사 의뢰 상태로 좁힌다 — 확정 5값: REQUESTED(대기) · IN_PROGRESS(진행) · COMPLETED(완료) · SKIPPED(생략) · CANCELLED(취소). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_REQUEST_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
           statusCode?: string;
+          /** @description 확정된 종합 판정으로 좁힌다 — 합격(ACCEPTED) · 불합격(REJECTED) · 보류(HELD). 의뢰의 overallJudgmentCode(입하 LOT IQC · 출하 OQC 새 흐름은 확정 때 서버가 적는다)가 이 값인 의뢰, 그 칸이 빈 완료 의뢰(PQC · 옛 OQC — 결과 단위 확정)는 마지막(회차가 가장 큰) 확정 결과의 판정이 이 값인 의뢰. 아직 확정 전인 의뢰는 빠진다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_RESULT_OVERALL_JUDGMENT 로 받는다(공유계약 G-32). 근거: 검사 조회·판정 종합 판정 필터 · omf-all-around#356 */
+          overallJudgmentCode?: string;
           /** @description 참이면 아직 끝나지 않은 의뢰만. ⭐ 정의를 값으로 못박는다 — pendingOnly=true ⇔ statusCode ∈ { REQUESTED, IN_PROGRESS }. ⭐ 검사 대기 큐가 이것이다(W-01-01 §3 좌단은 「대기」와 「진행」을 함께 보인다 — 상태 하나로는 못 고른다). ⛔ 화면이 상태 코드값을 고정하지 않게 하려는 것이 목적이다(공유계약 G-6). 선례: /app/approval-requests pendingOnly · /logistics/stock-transfers inTransitOnly. 근거: W-01-01 §3 · omf-mes#170 · 확정 2026-08-21 */
           pendingOnly?: boolean;
           itemId?: number;
@@ -43247,6 +44570,8 @@ export interface paths {
           warehouseId?: number;
           itemId?: number;
           lotId?: number;
+          /** @description 참이면 **검사 건(IQC · OQC)에 묶이지 않은 부적합만** 낸다 — 재작업/폐기 판정 의뢰(W-04-07)로 올린 반품 · 제품 부적합이다. 검사 조회·판정 OQC 탭 「구분: 판정 의뢰」가 쓴다(omf-all-around#354). ⛔ 화면이 응답을 걸러 대신하지 않는다(페이지 단위). */
+          withoutInspectionRequestOnly?: boolean;
           /** @description 부적합 심각도 — 중대(CRITICAL) · 중(MAJOR) · 경(MINOR). ⭐ 화면 목업이 「심각도 중대」(W-03-10 §3)·「심각도 중」(W-04-07 §3)을 그려 3단계 축이 이미 서 있다. ⭐ 고객이 늘릴 수 있다 — 아래는 초기값(기본값)이지 닫힌 목록이 아니다. 값 목록은 GET /mdm/code-values?codeGroupCode=NONCONFORMANCE_SEVERITY 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
           severityCode?: string;
           /** @description 기간 필수 — 공유계약 L-3 */
@@ -48919,6 +50244,17 @@ export interface components {
        */
       defaultProductionLotSize?: number | null;
       /**
+       * Format: int64
+       * @description MES 확장 — 자재 관리 LOT 패키징 단위 기본값(피처 014 · omf-all-around#349). defaultPackageCount 와 함께 있거나 함께 비어야 한다. 조회 때 P/O 몫만큼 자동으로 만드는 자재 관리 LOT 에 복사한다(만든 뒤 바뀌어도 LOT 은 그대로). 근거: W-06-05 lot 그룹
+       * @example 1001
+       */
+      defaultPackageUomId?: number | null;
+      /**
+       * @description MES 확장 — LOT 당 패키징 수량 기본값(LOT 하나에 든 패키징 개수, 정수 ≥ 1). 패키징당 수량 = LOT 수량 ÷ 이 값. defaultProductionLotSize 를 나머지 없이 나눠야 한다(기본크기가 비면 검사하지 않음). 피처 014 FR-018
+       * @example 10
+       */
+      defaultPackageCount?: number | null;
+      /**
        * @description ERP 규격(SPEC) — 받은 그대로다. ERP 가 비워 보냈거나 ERP 에서 받지 않은 품목은 null
        * @example PC, LD7700, V-2, NATURAL
        */
@@ -48981,6 +50317,17 @@ export interface components {
        * @example 500
        */
       defaultProductionLotSize?: number | null;
+      /**
+       * Format: int64
+       * @description MES 확장 — 자재 관리 LOT 패키징 단위 기본값(피처 014 · omf-all-around#349). defaultPackageCount 와 함께 있거나 함께 비어야 한다. 조회 때 P/O 몫만큼 자동으로 만드는 자재 관리 LOT 에 복사한다(만든 뒤 바뀌어도 LOT 은 그대로). 근거: W-06-05 lot 그룹. 칸을 보내지 않으면 지금 값을 둔다
+       * @example 1001
+       */
+      defaultPackageUomId?: number | null;
+      /**
+       * @description MES 확장 — LOT 당 패키징 수량 기본값(LOT 하나에 든 패키징 개수, 정수 ≥ 1). 패키징당 수량 = LOT 수량 ÷ 이 값. defaultProductionLotSize 를 나머지 없이 나눠야 한다(기본크기가 비면 검사하지 않음). 피처 014 FR-018. 하나만 있으면 400 PAIR, 나누지 못하면 400 INVALID 「패키징 수량이 부적합 합니다. 자재 LOT 기본크기를 정확히 나눌 수 있는 값을 입력해주세요.」
+       * @example 10
+       */
+      defaultPackageCount?: number | null;
       /**
        * @description 품목 한국어 명칭 — QA #33 「다국어(한/베) 전범위(UI·마스터 명칭·출력물)」·QA #34 「다국어 명칭 = MES 확장 속성」을 되살렸다(2026-08-30). ERP 원본 필드의 편집 가능 여부와 무관하게 항상 편집 가능하다. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
        * @example 표시명
@@ -49324,18 +50671,6 @@ export interface components {
        */
       inspectionTypeCode: string;
       /**
-       * Format: int64
-       * @description :approve 액션으로만 기록
-       * @example 1001
-       */
-      approvedBy?: number | null;
-      /**
-       * Format: date-time
-       * @description approvedBy 와 짝(CHECK 없음 — 서버가 항상 함께 기록해 보장)
-       * @example 2026-08-04T09:12:00+09:00
-       */
-      approvedAt?: string | null;
-      /**
        * @description 기본 생략 — 검사 유형(IQC·PQC·OQC) 공통. 켜진 기준이 걸리는 입하 LOT(IQC)·작업지시(PQC)·출하작업지시(OQC)는 검사할 의뢰를 세우지 않고 생략(SKIPPED · skipBasisCode=DEFAULT) 기록만 남긴다. 요청에 없으면 pqcSkipAllowed 를 그 값으로 읽는다. 서버 선행 · 장부 P-152 · omf-all-around#212 ⭐ 품목이 지정된 IQC 기준이면 그 품목의 inspectionRequired 와 반대 값으로 연동된다 — 저장하거나 다시 사용(:activate)하면 서버가 같은 트랜잭션에서 품목 값을 맞춘다(어긋난 경우만 · 품목 versionNo +1). 품목이 빈(전 품목 공통) IQC 기준은 생성·defaultSkip 변경·다시 사용 때 전용 IQC 기준(사용 중)이 없는 모든 품목의 inspectionRequired 를 반대 값으로 맞춘다(어긋난 품목만 · 품목 versionNo +1 · 이름만 바꾼 저장은 건드리지 않는다 · 사용자 결정 2026-11-04). PQC 기준은 라우팅 공정의 inspectionManaged 와 연동하지 않는다 — 품목 전용 PQC 기준이 있는 품목의 작업지시가 PQC 대상이고(전 품목 공통 PQC 기준은 대상을 만들지 않는다), PQC 기준의 defaultSkip 은 그 제품의 모든 PQC 의뢰에 걸린다(사용자 결정 2026-11-05). OQC 는 연동하지 않는다. omf-all-around#215
        * @default false
        * @example false
@@ -49353,7 +50688,7 @@ export interface components {
        */
       isActive: boolean;
     };
-    /** @description 검사기준 헤더 등록 요청. approvedBy·approvedAt·isActive 는 받지 않는다. 근거: W-06-02 §4-A·§5-1 */
+    /** @description 검사기준 헤더 등록 요청. isActive 는 받지 않는다. 근거: W-06-02 §4-A·§5-1 */
     InspectionPlanCreate: {
       /**
        * @description uq — 전역 유일 ⭐ 비우면(생략 · 빈 글) 서버가 `QP-{YYYYMMDD}-{SEQ4}` 로 붙인다(사용자 결정 2026-11-11 · omf-all-around#262).
@@ -49428,7 +50763,7 @@ export interface components {
        */
       inspectionPlanVersionId: number;
     };
-    /** @description 검사기준 헤더 수정 요청. approvedBy·approvedAt 은 :approve 전용, isActive 는 :deactivate 전용. 낙관적 잠금은 공유계약 B-1. 근거: W-06-02 §4-A */
+    /** @description 검사기준 헤더 수정 요청. isActive 는 :deactivate 전용. 낙관적 잠금은 공유계약 B-1. 근거: W-06-02 §4-A */
     InspectionPlanUpdate: {
       /** @example STANDARD */
       inspectionPlanCode: string;
@@ -49477,6 +50812,19 @@ export interface components {
        * @example false
        */
       pqcSkipAllowed?: boolean;
+      /**
+       * @description 품목 검사 수준 — 기본 정보와 한 트랜잭션에서 저장한다. 생략 = 그대로. 저장 뒤 기준의 품목에 쓴다(같은 저장에서 품목을 바꾸면 바꾼 품목). 품목이 있는 IQC 기준이 아니면 400 inspectionLevelCode INVALID. 수준이 바뀌면 수동 이력 1건, 다른 저장이 먼저 수준을 바꿨으면 409(기본 정보도 저장 안 됨). 근거: omf-all-around#357
+       * @example NORMAL
+       * @enum {string}
+       */
+      inspectionLevelCode?: 'NONE' | 'REDUCED' | 'NORMAL' | 'TIGHTENED';
+      /** @description 검사 수준 변경 사유(선택) — 이력에 남는다. 근거: omf-all-around#357 */
+      inspectionLevelReason?: string | null;
+      /**
+       * @description 창을 열 때 본 품목 검사 수준의 versionNo — 미지정 품목이면 null. 지금 판과 다르면 409(기본 정보도 저장 안 됨). 생략 = 견주지 않음. 근거: omf-all-around#357
+       * @example 3
+       */
+      inspectionLevelVersionNo?: number | null;
     };
     InspectionPlanDetailResponse: {
       inspectionPlan: components['schemas']['InspectionPlan'];
@@ -52458,6 +53806,50 @@ export interface components {
       crossesMidnight: boolean;
       /** @example true */
       isActive: boolean;
+    };
+    /** @description 교대 등록. 근거: omf-all-around#318 */
+    ShiftCreate: {
+      /**
+       * Format: int64
+       * @description 공장
+       * @example 1
+       */
+      plantId: number;
+      /** @example D */
+      shiftCode: string;
+      /** @example 주간 */
+      shiftName: string;
+      /**
+       * @description 공장 현지 시각 HH:MM:SS
+       * @example 08:00:00
+       */
+      startTime: string;
+      /**
+       * @description 공장 현지 시각 HH:MM:SS
+       * @example 20:00:00
+       */
+      endTime: string;
+    };
+    /** @description shiftCode 는 참조가 0일 때만 보낼 수 있다 — 상세 조회의 editability 가 가부와 사유를 함께 내린다. 근거: 공유계약 B-4 */
+    ShiftUpdate: {
+      /** @example D */
+      shiftCode?: string;
+      /** @example 주간 */
+      shiftName: string;
+      /**
+       * @description 공장 현지 시각 HH:MM:SS
+       * @example 08:00:00
+       */
+      startTime: string;
+      /**
+       * @description 공장 현지 시각 HH:MM:SS
+       * @example 20:00:00
+       */
+      endTime: string;
+    };
+    ShiftDetailResponse: {
+      shift: components['schemas']['Shift'];
+      editability: components['schemas']['Editability'];
     };
     /** @description 계정에 연결된 작업자. 연결이 없으면 세 칸이 모두 null (서버 선행 · 장부 P-38). */
     AppUserWorker: {
@@ -59643,6 +61035,456 @@ export interface components {
        * @enum {string|null}
        */
       receiptStatusCode: 'POSTED' | 'CANCEL_REQUESTED' | 'CANCELLED' | null;
+    };
+    /** @description 공급사(피처 014) */
+    MaterialLotPairSupplier: {
+      /** Format: int64 */
+      supplierId: number;
+      /** @example 100019 */
+      code: string;
+      name: string;
+    };
+    /** @description 품목(피처 014) */
+    MaterialLotPairItem: {
+      /** Format: int64 */
+      itemId: number;
+      code: string;
+      name: string;
+      /**
+       * @description 품목 기본 단위 — LOT 수량 단위
+       * @example EA
+       */
+      baseUomCode: string;
+    };
+    /** @description POP 첫째 칸 공급사 한 줄(피처 014 FR-010·011 · P-01-01 세 칸) */
+    MaterialLotSupplier: {
+      supplier: components['schemas']['MaterialLotPairSupplier'];
+      /** @description 찾기 조건에 맞는 그 공급사 품목 조합 수 */
+      pairCount: number;
+      /** @description 그 공급사 조합들의 이미 만든 미출력 LOT 수 합 */
+      unprintedCount: number;
+      /** @description 그 공급사 조합들의 P/O 몫으로 아직 만들 수 있는 LOT 수 합 — 계산만 하고 만들지 않는다. 화면 「미출력 N」= unprintedCount + creatableCount */
+      creatableCount: number;
+    };
+    /** @description 왼쪽 공급사·품목 한 줄(피처 014 FR-010·011 · P-01-01 · W-01-14) */
+    MaterialLotPair: {
+      supplier: components['schemas']['MaterialLotPairSupplier'];
+      item: components['schemas']['MaterialLotPairItem'];
+      /** @description 이미 만든 미출력 LOT 수(대기 · 자재 관리 LOT 라벨 발행 기록 없음 · 수동 포함) */
+      unprintedCount: number;
+      /** @description P/O 몫으로 아직 만들 수 있는 LOT 수 — 계산만 하고 만들지 않는다(기본값 없음·환산 없음이면 0) */
+      creatableCount: number;
+      /**
+       * @description 품목 LOT 기본값 상태 — NO_DEFAULT 보관 단위·기본크기 없음, NO_CONVERSION 보관 단위 → 기본 단위 환산 없음
+       * @enum {string}
+       */
+      defaultsStatus: 'OK' | 'NO_DEFAULT' | 'NO_CONVERSION';
+      /** @description defaultsStatus = OK 일 때만 */
+      lotDefaults: {
+        /** @description LOT 하나의 수량(품목 기본 단위로 바꾼 값) */
+        lotQty: number;
+        /** Format: int64 */
+        packageUomId: number | null;
+        packageUomCode: string | null;
+        /** @description LOT 당 패키징 수량 */
+        packageCount: number | null;
+      } | null;
+      /** @description 출력됨 LOT 수 — 대기(입하 전) · 자재 관리 LOT 라벨 발행 기록 있음(「출력됨」 탭과 같은 기준) */
+      printedCount: number;
+      /** @description 품목 수입검사(IQC) 대상 */
+      inspectionRequired: boolean;
+      /**
+       * Format: date-time
+       * @description 그 공급사·품목 자재 관리 LOT 의 마지막 라벨 발행 시각(입하·폐기된 LOT 포함) — 없으면 null
+       */
+      lastIssuedAt: string | null;
+    };
+    /** @description 오른쪽 탭의 자재 관리 LOT 한 줄(피처 014) — MaterialLotSummary 에 탭 차례·만든 방식·P/O 라인·받은·폐기 시각을 더한다 */
+    MaterialLotTabRow: components['schemas']['MaterialLotSummary'] & {
+      /** @description 이 탭에서의 차례(1 부터). 미출력 탭은 만든 차례(lot_id 오름차순 = P/O 발주일 차례) — 일괄 출력 장수가 이 차례의 앞에서부터다 */
+      seq: number;
+      /** @description 수량 단위(품목 기본 단위) */
+      uomCode: string;
+      /**
+       * @description AUTO = 조회가 P/O 몫으로 만듦(몫 기록 있음) · MANUAL = [만들기]
+       * @enum {string}
+       */
+      creationModeCode: 'AUTO' | 'MANUAL';
+      /** @description 만들 때 채운 P/O 라인(AUTO 만). 입하 마감 배정은 이것과 따로 발주일 순이다 */
+      purchaseOrderLine: {
+        /** Format: int64 */
+        purchaseOrderLineId: number;
+        purchaseOrderNo: string;
+        lineNo: number;
+      } | null;
+      /**
+       * Format: date-time
+       * @description 받은 시각(입하된 LOT 탭)
+       */
+      receivedAt: string | null;
+      /**
+       * Format: date-time
+       * @description 폐기 시각(폐기 LOT 탭)
+       */
+      voidedAt: string | null;
+    };
+    /** @description 미출력 탭 조회가 만든 결과(피처 014). P/O 감량으로 넘쳐도 따로 알리지 않는다(FR-009) */
+    MaterialLotGeneration: {
+      /**
+       * @description NO_DEFAULT 「기본 단위 설정이 안되어있습니다. 직접 생성해 주세요.」 · NO_CONVERSION 「품목 단위 환산이 없어 LOT 을 만들 수 없습니다. 관리자에게 문의하세요」 · NO_OPEN_PO(기본값은 있고 미출력·만들 수 있는 몫이 모두 0) 「입하 예정 계획이 없습니다. 관리자에게 문의하세요」. NO_* 여도 수동으로 만든 미출력 LOT 은 목록에 나온다
+       * @enum {string}
+       */
+      status: 'OK' | 'NO_DEFAULT' | 'NO_CONVERSION' | 'NO_OPEN_PO';
+      /** @description 이번 요청이 만든 LOT 수 */
+      createdNow: number;
+      /** @description 이번에 만든 뒤에도 P/O 몫으로 더 만들 수 있는 LOT 수 */
+      creatableRemaining: number;
+    };
+    /** @description 출력 전 자재 관리 LOT 수정(피처 014 FR-016·017). 수량이 바뀌면 번호의 수량 자리가 바뀌므로 새 일련을 받는다 */
+    MaterialLotRevise: {
+      /** @description LOT 수량(품목 기본 단위) */
+      qty: number;
+      /** @description null = 패키징 없음. 있으면 qty = count × qtyPerPackage 여야 한다 */
+      package: {
+        /**
+         * Format: int64
+         * @description 패키징 단위
+         */
+        uomId: number;
+        count: number;
+        qtyPerPackage: number;
+      } | null;
+    };
+    /** @description 추적 LOT 머리 — 목록 줄·계보 항목이 함께 쓴다(피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355) */
+    TraceTreeLot: {
+      /** Format: int64 */
+      lotId: number;
+      lotNo: string;
+      lotTypeCode: string;
+      /** @description LOT 상태(NORMAL·HOLD·DEFECT·SCRAPPED 등) — 화면 상태 칩 */
+      statusCode: string;
+      lifecycleStatusCode: string | null;
+    };
+    TraceTreeItem: {
+      /** Format: int64 */
+      itemId: number;
+      code: string;
+      name: string;
+    };
+    /** @description 공급사 또는 고객 */
+    TraceTreePartner: {
+      /** Format: int64 */
+      partnerId: number;
+      code: string;
+      name: string;
+    };
+    /** @description LOT 목록 한 줄(contracts §1·§2 공통 · FR-025). 피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355 */
+    TraceLotRow: {
+      lot: components['schemas']['TraceTreeLot'];
+      item: components['schemas']['TraceTreeItem'];
+      /** @description LOT 처음 수량 */
+      qty: number;
+      uomCode: string;
+      /** @description 자재 쪽은 공급사(분할 LOT 이면 원래 LOT 의 입하 공급사, 입하 LOT 이 없으면 옛 입하 줄의 공급사), 제품 쪽은 마지막 출하 완료의 고객(출하 전이면 null) */
+      partner: components['schemas']['TraceTreePartner'] | null;
+      /** @description 자재 쪽만 — 입하 LOT 번호(분할 LOT 이면 원래 LOT 것). 없으면 null */
+      inboundLotNo: string | null;
+      /**
+       * Format: date-time
+       * @description 정렬 날짜 — sortDateKind 의 시각. 번호 풀기 줄은 최근 규칙과 같고 없으면 null
+       */
+      sortDate: string | null;
+      /** @description CONSUMED = 마지막 생산 투입(정정된 원 투입 제외) · INBOUND = 입하일(입하 LOT 의 입하 문서 시각, 옛 입하는 첫 자재 입고) · SHIPPED = 마지막 출하 완료(조건 목록은 기간 안 마지막) · RECEIVED = 제품 창고 생산 입고 */
+      sortDateKind: ('CONSUMED' | 'INBOUND' | 'SHIPPED' | 'RECEIVED') | null;
+    };
+    TraceLotPage: {
+      /**
+       * @description RECENT = 조건 없이 최근 100개 · CONDITION = 상대 + 기간 결과(100개씩)
+       * @enum {string}
+       */
+      mode: 'RECENT' | 'CONDITION';
+      items: components['schemas']['TraceLotRow'][];
+      page: components['schemas']['PageMeta'];
+    };
+    /** @description 번호 하나가 맞은 종류 하나와 그 LOT 들 */
+    TraceStartMatch: {
+      /**
+       * @description FORWARD 는 MATERIAL_LOT_NO → INBOUND_LOT_NO → SUPPLIER_LOT_NO, BACKWARD 는 PRODUCT_LOT_NO → SHIPMENT_NO → SERIAL_NO 순으로 준다
+       * @enum {string}
+       */
+      matchedBy:
+        | 'MATERIAL_LOT_NO'
+        | 'INBOUND_LOT_NO'
+        | 'SUPPLIER_LOT_NO'
+        | 'PRODUCT_LOT_NO'
+        | 'SHIPMENT_NO'
+        | 'SERIAL_NO';
+      /** @description 맞은 번호(화면이 「어느 번호로 들어왔는지」 줄에 보인다) */
+      label: string;
+      /** @description SERIAL_NO 일 때만 — 그 줄을 고르면 backward-tree 에 serialNo 로 넘긴다 */
+      serialNo: string | null;
+      /** @description 반대 방향 LOT 번호다(LOT 번호로 맞은 것만) — FORWARD 에 생산으로 만들어지고 다시 투입되지 않은 LOT, BACKWARD 에 생산으로 만들어지지 않은 LOT. 반제품은 두 방향 모두 false. 화면은 목록을 바꾸지 않고 [그 화면으로 열기]를 보인다 */
+      otherDirection: boolean;
+      /** @description 한 번호의 LOT 이 200 을 넘어 앞(lot id 순) 200 개만 실었다 */
+      truncated: boolean;
+      /** @description 입하 LOT·공급사 LOT 은 그 묶음의 관리 LOT(분할 자손 빼고), 출하는 출하 완료분의 배분 LOT, 시리얼은 그 생산 LOT 하나 */
+      lots: components['schemas']['TraceLotRow'][];
+    };
+    /** @description 계보 항목 하나(contracts §3·§4). nodeKey 는 종류 머리글자 + id 로 유일하다(L: LOT · W: W/O · S: 출하 · H: 포장 · K: 재고 위치 · N: 시리얼 · I: 입하 LOT). 같은 LOT·W/O 는 한 항목이다. 종류별 칸만 싣는다. 피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355 */
+    TraceGraphNode: {
+      nodeKey: string;
+      /**
+       * @description SPLIT_LOT = 008 부분 출고 분할·013 생산 LOT 분리 자식 · PACKAGE = 010 이전 포장 기록만 · STOCK = 그 LOT 의 창고·위치 재고(on_hand > 0)
+       * @enum {string}
+       */
+      kind:
+        | 'MATERIAL_LOT'
+        | 'SPLIT_LOT'
+        | 'WORK_ORDER'
+        | 'PRODUCTION_LOT'
+        | 'PACKAGE'
+        | 'SHIPMENT'
+        | 'STOCK'
+        | 'SERIAL'
+        | 'COMPONENT_SERIAL'
+        | 'INBOUND_LOT';
+      lot?: components['schemas']['TraceTreeLot'];
+      item?: components['schemas']['TraceTreeItem'];
+      qty?: number;
+      uomCode?: string;
+      /** @description 자재 LOT(분할 자식 포함)만 — 입하·공급사는 분할이면 원래 LOT 것. 공급사 LOT 은 lot_external_identifier 먼저, 없으면 옛 입하 줄(F-6). IQC 결과는 화면 요약(입하 LOT·공급사·공급사 LOT 옆)에 보인다 */
+      material?: {
+        /** Format: int64 */
+        inboundLotId: number | null;
+        inboundLotNo: string | null;
+        supplier: components['schemas']['TraceTreePartner'] | null;
+        supplierLotNo: string | null;
+        /**
+         * Format: date-time
+         * @description 입하 문서 시각
+         */
+        receivedAt: string | null;
+        /** @description 입하 LOT 의 IQC 종합 판정(quality.inspection_request — IQC·그 입하 LOT·취소 제외·최근 확정). 요청이 없거나 확정 전·입하 LOT 이 없으면 null. 분할 LOT 은 원래 LOT 의 입하 LOT 것 */
+        iqcJudgmentCode: string | null;
+      };
+      /**
+       * Format: date-time
+       * @description PRODUCTION_LOT — 첫 실적 시각 · SERIAL·COMPONENT_SERIAL — 생산 시각(없으면 발번 시각)
+       */
+      producedAt?: string | null;
+      /** @description SPLIT_LOT — 나뉜 시각과 분할을 일으킨 출고(013 분리면 null) */
+      split?: {
+        /** Format: date-time */
+        splitAt: string;
+        goodsIssueNo: string | null;
+        lineNo: number | null;
+      };
+      workOrder?: {
+        /** Format: int64 */
+        workOrderId: number;
+        workOrderNo: string;
+        statusCode: string;
+      };
+      shipment?: {
+        /** Format: int64 */
+        shipmentId: number;
+        shipmentNo: string;
+        /** Format: date-time */
+        shippedAt: string | null;
+        statusCode: string;
+        customer: components['schemas']['TraceTreePartner'];
+      };
+      /** @description PACKAGE */
+      handlingUnitNo?: string;
+      warehouse?: {
+        /** Format: int64 */
+        warehouseId: number;
+        code: string;
+        name: string;
+      };
+      location?: {
+        /** Format: int64 */
+        locationId: number;
+        code: string;
+        name: string;
+      };
+      /** @description SERIAL·COMPONENT_SERIAL */
+      serialNo?: string;
+      /**
+       * Format: int64
+       * @description SERIAL·COMPONENT_SERIAL — 그 시리얼의 LOT
+       */
+      lotId?: number;
+      /** @description INBOUND_LOT — 입하 LOT·입하일(공장 현지 날짜)·공급사·IQC 결과(취소 제외 최근 확정) */
+      inboundLot?: {
+        /** Format: int64 */
+        inboundLotId: number;
+        inboundLotNo: string;
+        /** Format: date */
+        receivedDate: string;
+        supplier: components['schemas']['TraceTreePartner'];
+        /** @description IQC 종합 판정 — 요청이 없거나 확정 전이면 null */
+        iqcJudgmentCode: string | null;
+      };
+    };
+    /** @description 계보 줄 — 같은 (from, to, kind) 는 한 줄. 길마다 남긴다(같은 항목에 두 길로 닿으면 줄 둘) */
+    TraceGraphEdge: {
+      from: string;
+      to: string;
+      /**
+       * @description 정방향 SPLIT(LOT → 자식)·CONSUMED(LOT → W/O)·PRODUCED(W/O → 생산 LOT)·PACKED·SHIPPED·STOCKED, 역방향은 뿌리에서 멀어지는 쪽 PRODUCED_BY(생산 LOT → W/O)·CONSUMED(W/O → 투입 LOT)·SPLIT_FROM(자식 → 원래 LOT)·RECEIVED_FROM(자재 LOT → 입하 LOT)·SERIAL_OF·ASSEMBLED
+       * @enum {string}
+       */
+      kind:
+        | 'SPLIT'
+        | 'CONSUMED'
+        | 'PRODUCED'
+        | 'PACKED'
+        | 'SHIPPED'
+        | 'STOCKED'
+        | 'PRODUCED_BY'
+        | 'SPLIT_FROM'
+        | 'RECEIVED_FROM'
+        | 'SERIAL_OF'
+        | 'ASSEMBLED';
+      /** @description 투입량·배분량·분할량·실적 배분 합 */
+      qty: number | null;
+      /**
+       * @description 연결 근거 — 투입·생산 이음만 추정(지금 규칙 그대로), 나머지는 RECORDED. 화면은 보이지 않고 내보낸 파일 근거 열에만 쓴다
+       * @enum {string}
+       */
+      basis: 'RECORDED' | 'LOT_GENEALOGY_ESTIMATE' | 'WORK_ORDER_ESTIMATE';
+      /** Format: date-time */
+      firstAt?: string;
+      /** Format: date-time */
+      lastAt?: string;
+    };
+    TraceGraphLimit: {
+      /** @description 겹치지 않는 LOT 이 lotCap 을 넘어 그 단계에서 멈췄다 — 결과는 본 데까지(화면 「일부」) */
+      exceeded: boolean;
+      /** @description 깊이(지나온 LOT 단계) 20 에 닿았는데 더 펼칠 LOT 이 남았다 */
+      maxDepthReached: boolean;
+      lotCount: number;
+      lotCap: number;
+    };
+    /** @description LOT 하나의 계보 그래프. 순환(조상으로 되돌아오는 줄)은 그대로 싣는다 — 화면이 조상과 같으면 「순환」으로 멈춘다 */
+    TraceGraph: {
+      /** @description 뿌리 항목 nodeKey */
+      root: string;
+      nodes: components['schemas']['TraceGraphNode'][];
+      edges: components['schemas']['TraceGraphEdge'][];
+      limit: components['schemas']['TraceGraphLimit'];
+    };
+    /** @description 정방향 최종 LOT 한 줄 — 마지막 생산 LOT(더 투입되지 않은 생산 LOT, 분리·분할 자식 포함. 자식이 있는 원래 LOT 은 자기 출하·재고가 남았을 때만)과 그 행방. LOT 마다 한 줄이고 같은 LOT 이 여러 길로 와도 한 번이다(R-3). 피처 015 · omf-all-around#355 */
+    ForwardEndRow: {
+      lot: components['schemas']['TraceTreeLot'];
+      item: components['schemas']['TraceTreeItem'];
+      /** @description 실적 배분 합(분리·분할 자식은 그 LOT 수량) */
+      producedQty: number;
+      uomCode: string;
+      /**
+       * @description PARTIAL = 출하 + 재고 · CONSUMED_OUT = 재고 0·출하 없음 · VOIDED = 폐번·폐기
+       * @enum {string}
+       */
+      fate: 'SHIPPED' | 'IN_STOCK' | 'PARTIAL' | 'CONSUMED_OUT' | 'VOIDED';
+      /** @description 취소 제외 출하 — 화면은 첫 출하 + 「외 n건」, 내보내기는 출하마다 한 줄 */
+      shipments: {
+        shipmentNo: string;
+        customer: components['schemas']['TraceTreePartner'];
+        /** Format: date-time */
+        shippedAt: string | null;
+        qty: number;
+      }[];
+      stock: {
+        warehouse: {
+          /** Format: int64 */
+          warehouseId: number;
+          code: string;
+          name: string;
+        };
+        location: {
+          /** Format: int64 */
+          locationId: number;
+          code: string;
+          name: string;
+        };
+        qty: number;
+      }[];
+      /** @description 이 LOT 을 만든 W/O 번호(분리·분할 자식은 원래 LOT 의 것) */
+      viaWorkOrders: string[];
+    };
+    /** @description 정방향 요약 — 본 데까지(limit.exceeded 면 「일부」), 겹치지 않게 센다 */
+    ForwardSummary: {
+      lotCount: number;
+      workOrderCount: number;
+      endLotCount: number;
+      shippedLotCount: number;
+      customerCount: number;
+      stockLotCount: number;
+    };
+    ForwardTree: components['schemas']['TraceGraph'] & {
+      /** @description LOT 번호 순. 기준 LOT 이 아무 데도 투입되지 않았으면 빈 배열(화면 「아직 생산에 투입되지 않았습니다」) */
+      endRows: components['schemas']['ForwardEndRow'][];
+      summary: components['schemas']['ForwardSummary'];
+    };
+    /** @description 역방향 최종 LOT 한 줄 — 원자재 LOT(생산으로 만들어지지 않은 투입 LOT) × 그것이 투입된 W/O(R-4). 입하·공급사·공급사 LOT 은 분할 LOT 이면 원래 LOT 것, 공급사 LOT 은 lot_external_identifier 먼저(F-6). 피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355 */
+    BackwardEndRow: {
+      lot: components['schemas']['TraceTreeLot'];
+      item: components['schemas']['TraceTreeItem'];
+      supplier: components['schemas']['TraceTreePartner'] | null;
+      supplierLotNo: string | null;
+      inboundLot: {
+        inboundLotNo: string;
+        /** Format: date */
+        receivedDate: string;
+        iqcJudgmentCode: string | null;
+      } | null;
+      workOrder: {
+        workOrderNo: string;
+      };
+      /** @description 그 W/O 가 만든 생산 LOT 번호(이 계보 안) */
+      productLots: string[];
+      /** @description 그 W/O 에 투입한 양(정정 반영) */
+      consumedQty: number | null;
+      uomCode: string;
+      /** @enum {string} */
+      basis: 'LOT_GENEALOGY_ESTIMATE' | 'WORK_ORDER_ESTIMATE';
+    };
+    /** @description 역방향 요약 — 겹치지 않게 센다(productLotCount = 생산으로 만들어진 LOT 항목 수) */
+    BackwardSummary: {
+      rawLotCount: number;
+      supplierCount: number;
+      workOrderCount: number;
+      productLotCount: number;
+    };
+    BackwardTree: components['schemas']['TraceGraph'] & {
+      /** @description LOT 번호·W/O 번호 순. 투입 기록이 없으면 빈 배열(화면 「투입 자재 기록이 없습니다」) */
+      endRows: components['schemas']['BackwardEndRow'][];
+      summary: components['schemas']['BackwardSummary'];
+      /** @description 고른 LOT 의 출하(출하 완료분) — 화면 요약. 계보에는 넣지 않는다 */
+      rootShipments: {
+        shipmentNo: string;
+        customer: components['schemas']['TraceTreePartner'];
+        /** Format: date-time */
+        shippedAt: string;
+        qty: number;
+      }[];
+    };
+    /** @description 내보낼 목록 LOT 들(피처 015 자재 기준 생산 추적·제품 기준 역추적 · omf-all-around#355) */
+    TraceExportRequest: {
+      /** Format: int64 */
+      plantId: number;
+      /** @description 지금 목록의 LOT(목록 순서). 기준 LOT 순서가 파일의 순서다 */
+      lotIds: number[];
+      /** @description backward 만 — 시리얼로 들어온 줄의 { lotId: serialNo }. 그 LOT 의 계보 줄 맨 위가 시리얼이다 */
+      serialNos?: {
+        [key: string]: string;
+      };
+      /**
+       * @description 파일 문구·LOT 상태 이름(공통코드 name_ko·name_vi)의 언어. 없으면 Accept-Language 첫 언어가 vi 일 때 vi, 아니면 ko
+       * @enum {string}
+       */
+      language?: 'ko' | 'vi';
     };
     /**
      * @description 결재선 정의. 승인 유형과 사업부로 고른다.

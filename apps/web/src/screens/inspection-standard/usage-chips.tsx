@@ -29,38 +29,40 @@ export interface UsageChipsProps {
   counts: Record<PlanUsage, number> | null;
   value: PlanUsage;
   onChange: (next: PlanUsage) => void;
+  /** 탭 막대가 없을 때 그 자리(화면 머리 오른쪽)에 세운다 — 배치 단추의 `inline` 과 같다(omf-all-around#357). */
+  inline?: boolean;
 }
 
 /**
  * 탭 줄 오른쪽, 좌우 · 상하 배치 단추 왼쪽에 서는 사용 여부 칩(사용자 지시 · #208).
  * 「전체」 없이 「사용 N건 · 미사용 N건」 — 고른 라벨을 다시 누르면 전체(미사용 포함)로 풀린다. 0건 라벨은 감춘다(고른 라벨은
  * 남긴다 · 사용자 지시 2026-11-24).
- * 탭 묶음 밖(탭 막대가 없는 화면 · 화면만 그린 시험)에서는 자리가 없어 그리지 않는다.
+ * 탭 막대가 없으면 `inline` 일 때만 그 자리에 서고, 아니면 그리지 않는다.
  */
-export const UsageChips = ({ counts, value, onChange }: UsageChipsProps) => {
+export const UsageChips = ({ counts, value, onChange, inline = false }: UsageChipsProps) => {
   const target = useHubActionsTarget();
-  if (target === null) return null;
+  if (target === null && !inline) return null;
 
-  return (
-    <HubActions target={target}>
-      <div className="inspection-hub-counts" role="group" aria-label={t.usageLabel}>
-        {OPTIONS.filter(
-          (option) => value === option.value || counts === null || counts[option.value] !== 0,
-        ).map((option) => (
-          <Chip
-            key={option.value}
-            variant="filter"
-            size="sm"
-            selected={value === option.value}
-            aria-pressed={value === option.value}
-            onSelectedChange={() => {
-              onChange(value === option.value ? 'all' : option.value);
-            }}
-          >
-            {counts === null ? option.label : t.usageCount(option.label, counts[option.value])}
-          </Chip>
-        ))}
-      </div>
-    </HubActions>
+  const group = (
+    <div className="inspection-hub-counts" role="group" aria-label={t.usageLabel}>
+      {OPTIONS.filter(
+        (option) => value === option.value || counts === null || counts[option.value] !== 0,
+      ).map((option) => (
+        <Chip
+          key={option.value}
+          variant="filter"
+          size="sm"
+          selected={value === option.value}
+          aria-pressed={value === option.value}
+          onSelectedChange={() => {
+            onChange(value === option.value ? 'all' : option.value);
+          }}
+        >
+          {counts === null ? option.label : t.usageCount(option.label, counts[option.value])}
+        </Chip>
+      ))}
+    </div>
   );
+
+  return target === null ? group : <HubActions target={target}>{group}</HubActions>;
 };

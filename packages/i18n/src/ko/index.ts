@@ -63,6 +63,7 @@ import { productionWarehouseReplenishment } from './production-warehouse-repleni
 import { materialLotIssue } from './material-lot-issue';
 import { inboundWorkRecord } from './inbound-work-record';
 import { supplierItemDefault } from './supplier-item-default';
+import { shiftManagement } from './shift-management';
 import { zaloConnection } from './zalo-connection';
 import { dispatchHistory } from './dispatch-history';
 import { iqcInspection } from './iqc-inspection';
@@ -96,6 +97,7 @@ import { workStart } from './work-start';
 import { workPrecheckGate } from './work-precheck-gate';
 import { workOrderProgress } from './work-order-progress';
 import { lotTrace } from './lot-trace';
+import { traceTree } from './trace-tree';
 import { materialLocation } from './material-location';
 import { materialPicking } from './material-picking';
 import { toolUsage } from './tool-usage';
@@ -225,6 +227,7 @@ export const ko = {
   materialLotIssue,
   inboundWorkRecord,
   supplierItemDefault,
+  shiftManagement,
   zaloConnection,
   dispatchHistory,
   iqcInspection,
@@ -256,6 +259,7 @@ export const ko = {
   emergencyWorkOrder,
   workOrderProgress,
   lotTrace,
+  traceTree,
   materialLocation,
   materialPicking,
   shipmentRequestCreate,

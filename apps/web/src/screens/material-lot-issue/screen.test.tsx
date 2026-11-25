@@ -1,7 +1,9 @@
 import type {
+  MaterialLotPair,
   MaterialLotSummary,
+  MaterialLotTab,
+  MaterialLotTabRow,
   SupplierItemDefault,
-  WaitingMaterialLotGroup,
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
@@ -14,13 +16,14 @@ import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/a
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { storageText } from './defaults-text';
 import { MaterialLotIssueScreen } from './screen';
+import { formatAt } from './types';
 
 const t = messages.materialLotIssue;
 
 /*
  * 시험 받침 — 공장 · 공급사 · 품목 · LOT 은 모두 지어낸 값이다.
  * 합성 공급사 가(8201) · 합성 캡(601, EA, 기본 정보 봉지 10 × 100 = 1,000) — 대기 3개(하나 미출력), 폐기 1개.
- * 합성 공급사 나(8202) · 합성 레진(602, TON, 기본 정보 없음 · 보관 단위 없음) — 대기 없음.
+ * 합성 공급사 나(8202) · 합성 레진(602, TON, 기본 정보 없음 · 보관 단위 = 기본 단위 TON) — 대기 없음.
  */
 const PLANT = {
   plantId: 8401,
@@ -54,47 +57,68 @@ const lot = (lotId: number, over: Partial<MaterialLotSummary> = {}): MaterialLot
   ...over,
 });
 
-const GROUPS: WaitingMaterialLotGroup[] = [
+/** 왼쪽 공급사·품목(피처 014 `material-lot-pairs`) — 캡은 미출력 1 · 생성 예정 37, 레진은 품목 기본값 없음. */
+const PAIRS: MaterialLotPair[] = [
   {
-    supplierId: 8201,
-    supplierCode: 'SYN-S1',
-    supplierName: '합성 공급사 가',
-    itemId: 601,
-    itemCode: 'SYN-CAP',
-    itemName: '합성 캡',
-    uomId: 1,
-    uomCode: 'EA',
-    inspectionRequired: true,
-    waitingCount: 3,
-    waitingQty: 3000,
+    supplier: { supplierId: 8201, code: 'SYN-S1', name: '합성 공급사 가' },
+    item: { itemId: 601, code: 'SYN-CAP', name: '합성 캡', baseUomCode: 'EA' },
     unprintedCount: 1,
-    lastIssuedAt: '2026-11-11T01:12:00Z',
-    batches: [],
-    lots: [
-      lot(1),
-      lot(2),
-      lot(3, { lastLabelIssue: null, createdChannelCode: 'WEB' }),
-      lot(4, { lifecycleStatusCode: 'VOIDED' }),
-    ],
+    creatableCount: 37,
+    defaultsStatus: 'OK',
+    lotDefaults: { lotQty: 1000, packageUomId: 3, packageUomCode: 'BAG', packageCount: 10 },
+    printedCount: 0,
+    inspectionRequired: false,
+    lastIssuedAt: '2026-11-23T01:00:00Z',
   },
   {
-    supplierId: 8202,
-    supplierCode: 'SYN-S2',
-    supplierName: '합성 공급사 나',
-    itemId: 602,
-    itemCode: 'SYN-RES',
-    itemName: '합성 레진',
-    uomId: 2,
-    uomCode: 'TON',
-    inspectionRequired: false,
-    waitingCount: 0,
-    waitingQty: 0,
+    supplier: { supplierId: 8202, code: 'SYN-S2', name: '합성 공급사 나' },
+    item: { itemId: 602, code: 'SYN-RES', name: '합성 레진', baseUomCode: 'TON' },
     unprintedCount: 0,
+    creatableCount: 0,
+    defaultsStatus: 'NO_DEFAULT',
+    lotDefaults: null,
+    printedCount: 0,
+    inspectionRequired: false,
     lastIssuedAt: null,
-    batches: [],
-    lots: [],
   },
 ];
+
+/** LOT 줄(탭 목록 한 줄) — 캡의 탭마다. */
+const row = (
+  base: MaterialLotSummary,
+  over: Partial<MaterialLotTabRow> = {},
+): MaterialLotTabRow => ({
+  ...base,
+  seq: 1,
+  uomCode: 'EA',
+  creationModeCode: 'MANUAL',
+  purchaseOrderLine: null,
+  receivedAt: null,
+  voidedAt: null,
+  ...over,
+});
+
+/** 캡의 탭 넷 — 미출력 2(수동 1 · 자동 1), 출력됨 2, 입하됨 0, 폐기 1. */
+const CAP_TABS: Record<MaterialLotTab, MaterialLotTabRow[]> = {
+  UNPRINTED: [
+    row(lot(3, { lastLabelIssue: null, createdChannelCode: 'WEB' }), { seq: 1 }),
+    row(
+      lot(5, {
+        lotNo: 'SYN-CAP|1000|261123|SYN-S1|0001',
+        lastLabelIssue: null,
+        createdChannelCode: 'WEB',
+      }),
+      {
+        seq: 2,
+        creationModeCode: 'AUTO',
+        purchaseOrderLine: { purchaseOrderLineId: 93, purchaseOrderNo: 'PO-SYN-0001', lineNo: 1 },
+      },
+    ),
+  ],
+  PRINTED: [row(lot(1)), row(lot(2))],
+  RECEIVED: [],
+  VOIDED: [row(lot(4, { lifecycleStatusCode: 'VOIDED' }), { voidedAt: '2026-11-12T01:00:00Z' })],
+};
 
 const DEFAULTS: SupplierItemDefault[] = [
   {
@@ -139,8 +163,10 @@ const OTHER_PLANT = {
   plantName: '합성 부품공장',
 };
 
-/** 대기 LOT 을 부른 공장 — 어느 공장으로 열렸는지 요청으로 잰다. */
-const waitingPlantIds: (string | null)[] = [];
+/** 공급사·품목 목록을 부른 조건 — 어느 공장 · 찾기로 불렀는지 잰다. */
+const pairQueries: URLSearchParams[] = [];
+/** 탭 목록을 부른 조건. */
+const lotQueries: URLSearchParams[] = [];
 
 /**
  * 합성 캡(8201 · 601)의 미입고 P/O 라인 — 서버 차례(납기순)로 온다. 채우는 차례(발주일 → P/O 번호 → 라인)는
@@ -201,10 +227,18 @@ const setup = (
     voidFails?: number[];
     plants?: (typeof PLANT)[];
     uoms?: readonly (typeof UOMS)[number][];
+    /** 캡 미출력 탭의 생성 결과 상태. */
+    generation?: 'OK' | 'NO_DEFAULT' | 'NO_OPEN_PO' | 'NO_CONVERSION';
+    /** 미출력 탭을 비운다(입하 예정 없음 등). */
+    noUnprinted?: boolean;
+    /** 탭 목록 응답을 붙잡는다 — 로딩을 잰다. */
+    lotsGate?: Promise<void>;
+    reviseFail?: { status: number; code: string };
   } = {},
 ) => {
   const writes: Write[] = [];
-  waitingPlantIds.length = 0;
+  pairQueries.length = 0;
+  lotQueries.length = 0;
   poLineQueries.length = 0;
   const fetch = createStubFetch([
     {
@@ -212,10 +246,56 @@ const setup = (
       respond: () => jsonResponse(page(options.plants ?? [PLANT])),
     },
     {
-      match: (r) => isGet(r, '/logistics/waiting-material-lots'),
+      match: (r) => isGet(r, '/logistics/material-lot-pairs'),
       respond: (r) => {
-        waitingPlantIds.push(new URL(r.url).searchParams.get('plantId'));
-        return jsonResponse({ items: GROUPS });
+        const query = new URL(r.url).searchParams;
+        pairQueries.push(query);
+        const q = (query.get('q') ?? '').toLocaleLowerCase('ko-KR');
+        const items = PAIRS.filter(
+          (pair) =>
+            q === '' ||
+            [pair.supplier.code, pair.supplier.name, pair.item.code, pair.item.name].some((v) =>
+              v.toLocaleLowerCase('ko-KR').includes(q),
+            ),
+        );
+        return jsonResponse({
+          items,
+          page: {
+            page: Number(query.get('page') ?? 1),
+            size: Number(query.get('size') ?? 50),
+            total: items.length,
+          },
+          summary: { unprintedCount: 1 },
+        });
+      },
+    },
+    {
+      match: (r) => isGet(r, '/logistics/material-lots'),
+      respond: async (r) => {
+        const query = new URL(r.url).searchParams;
+        lotQueries.push(query);
+        if (options.lotsGate !== undefined) await options.lotsGate;
+        const tab = (query.get('tab') ?? 'UNPRINTED') as MaterialLotTab;
+        const isCap = query.get('itemId') === '601';
+        const rows =
+          isCap && !(tab === 'UNPRINTED' && options.noUnprinted === true) ? CAP_TABS[tab] : [];
+        const creatable = isCap && options.generation !== 'NO_DEFAULT' ? 36 : 0;
+        return jsonResponse({
+          items: rows,
+          page: {
+            page: Number(query.get('page') ?? 1),
+            size: Number(query.get('size') ?? 10),
+            total: rows.length + (tab === 'UNPRINTED' ? creatable : 0),
+          },
+          generation:
+            tab === 'UNPRINTED'
+              ? {
+                  status: options.generation ?? (isCap ? 'OK' : 'NO_DEFAULT'),
+                  createdNow: 1,
+                  creatableRemaining: creatable,
+                }
+              : null,
+        });
       },
     },
     {
@@ -247,7 +327,8 @@ const setup = (
           item: {
             itemId,
             baseUomId: itemId === 601 ? 1 : 2,
-            defaultLotStorageUomId: itemId === 601 ? 3 : null,
+            /* 레진은 보관 단위가 기본 단위와 같다(T050). */
+            defaultLotStorageUomId: itemId === 601 ? 3 : 2,
           },
         });
       },
@@ -278,6 +359,31 @@ const setup = (
         const text = await r.clone().text();
         const body: unknown = text === '' ? null : JSON.parse(text);
         writes.push({ method: r.method, path: pathOf(r), headers: r.headers, body });
+        if (pathOf(r).endsWith(':revise')) {
+          if (options.reviseFail !== undefined) {
+            return jsonResponse(
+              {
+                errors: [
+                  {
+                    scope: 'screen',
+                    code: options.reviseFail.code,
+                    message: options.reviseFail.code,
+                  },
+                ],
+              },
+              { status: options.reviseFail.status },
+            );
+          }
+          const revised = body as { qty: number };
+          return jsonResponse(
+            row(
+              lot(5, {
+                lotNo: `SYN-CAP|${String(revised.qty)}|261123|SYN-S1|0002`,
+                lotQty: revised.qty,
+              }),
+            ),
+          );
+        }
         if (pathOf(r) === '/trace/lots:void') {
           const lotIds = (body as { lotIds: number[] }).lotIds;
           return jsonResponse({
@@ -310,10 +416,11 @@ const setup = (
 const listTable = async () => within(await screen.findByRole('table', { name: t.list.label }));
 const rowOf = async (code: string) => {
   const cell = (await listTable()).getByText(code);
-  const row = cell.closest('tr');
-  if (row === null) throw new Error(`${code} 줄이 없다`);
-  return row;
+  const found = cell.closest('tr');
+  if (found === null) throw new Error(`${code} 줄이 없다`);
+  return found;
 };
+const tp = t.precreate;
 /** 줄을 누르면 오른쪽 구획(입고 관리 짜임)에 그 공급사·품목이 나온다 — 덮개 창이 아니다. */
 const openDetail = async (user: ReturnType<typeof userEvent.setup>, code: string) => {
   await user.click(await rowOf(code));
@@ -323,82 +430,57 @@ const openDetail = async (user: ReturnType<typeof userEvent.setup>, code: string
   );
   return within(pane);
 };
+const lotTable = async (pane: ReturnType<typeof within>, tab: MaterialLotTab) =>
+  within(await pane.findByRole('table', { name: tp.tabs[tab] }));
 
-describe('W-01-14 자재 관리 LOT 발행', () => {
-  it('US1-8 공급사·품목 목록에 기본 정보 · 대기 수 · 라벨 미출력 · 최근 발행을 보이고, 라벨 단추가 없다', async () => {
+describe('W-01-14 자재 관리 LOT 발행 — 목록(피처 014 · 서버 쪽)', () => {
+  it('가정-W0114 FR-010 공급사·품목 목록은 material-lot-pairs 로 받고 기본 정보 · 미출력 · 생성 예정을 보이며 라벨 단추가 없다', async () => {
     setup();
 
     const cap = within(await rowOf('SYN-CAP'));
     const cells = cap.getAllByRole('cell').map((cell) => cell.textContent);
     expect(cells[0]).toBe('합성 공급사 가 SYN-S1');
-    /* 품목코드와 품목은 따로 열이다(사용자 지시 2026-11-19). */
     expect(cells[1]).toBe('SYN-CAP');
     expect(cells[2]).toBe('합성 캡');
     expect(cells[3]).toBe('EA');
-    expect(cells[4]).toBe('BAG 10 × 100 = 1,000 EA');
-    expect(cells[5]).toBe('3');
-    expect(cells[6]).toBe('1');
-    expect(cells[7]).toMatch(/^11-11 \d\d:12$/);
-    expect(screen.getByRole('columnheader', { name: t.list.columns.itemCode })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: '기본 정보' })).toBeInTheDocument();
+    expect(cells[4]).toBe(tp.defaultPackaged('1,000 EA', 'BAG 10'));
+    expect(cells[5]).toBe('1');
+    expect(cells[6]).toBe('37');
+    /* T051 최근 발행 — 조합 목록 lastIssuedAt, 없으면 「—」. */
+    expect(cells[7]).toBe(formatAt('2026-11-23T01:00:00Z'));
+    expect(
+      screen.getByRole('columnheader', { name: t.list.columns.lastIssued }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: tp.columns.creatable })).toBeInTheDocument();
 
     const resin = within(await rowOf('SYN-RES'));
-    expect(resin.getByText(t.defaults.missing)).toBeInTheDocument();
-    expect(await resin.findByText(t.defaults.manual)).toBeInTheDocument();
+    expect(resin.getByText(tp.noDefault)).toBeInTheDocument();
+    expect(resin.getAllByRole('cell').at(-1)?.textContent).toBe('—');
 
+    expect(Object.fromEntries(pairQueries[0] ?? [])).toMatchObject({ plantId: '8401', page: '1' });
     expect(document.body.textContent).not.toMatch(/[MPW]-0\d-\d\d/u);
     expect(screen.queryByRole('button', { name: /라벨|인쇄/ })).not.toBeInTheDocument();
   });
 
-  it('G2 L17 기본 정보 없는 줄의 「품목 기본 보관 단위」는 단위 이름(봉지)으로, 발행 창 패키징 단위도 이름으로', async () => {
-    const { user } = setup({
-      uoms: UOMS.map((uom) => (uom.uomId === 3 ? { ...uom, uomCode: 'SYN-BAG' } : uom)),
-    });
+  it('가정-W0114 조건은 공장 · 찾기 하나 — 공급사 고르기 · 「대기 있는 것만」은 없고, 찾기는 서버 q 로', async () => {
+    const { user } = setup();
     await listTable();
 
-    /* 받침의 기본 정보 없는 줄(합성 레진)은 보관 단위도 없다 — 보관 단위 글은 글 만드는 함수로 직접 본다. */
-    const bag = { uomId: 3, uomCode: 'SYN-BAG', uomName: '봉지', decimalScale: 0 };
-    expect(storageText({ uomId: 3, qtyPerPackage: 100 }, [bag], 'EA')).toBe('봉지 100 EA');
-    expect(storageText({ uomId: 3, qtyPerPackage: null }, [{ ...bag, uomName: '' }], 'EA')).toBe(
-      'SYN-BAG',
-    );
+    const bar = within(screen.getByRole('region', { name: t.filters.label }));
+    expect(bar.queryByRole('combobox', { name: t.filters.supplier })).toBeNull();
+    expect(bar.queryByRole('checkbox', { name: t.filters.waitingOnly })).toBeNull();
+    await user.type(bar.getByRole('searchbox', { name: tp.search }), '레진');
 
-    await user.click(screen.getByRole('button', { name: t.list.issue }));
-    const dialog = within(await screen.findByRole('dialog', { name: t.dialog.title }));
-    await user.click(dialog.getByRole('combobox', { name: t.dialog.target }));
-    await user.click(
-      await screen.findByRole('option', {
-        name: t.dialog.targetOption('합성 공급사 가', 'SYN-CAP', '합성 캡', 'EA'),
-      }),
-    );
-    await waitFor(() =>
-      expect(dialog.getByRole('combobox', { name: t.dialog.packageUom })).toHaveTextContent('봉지'),
-    );
-    expect(dialog.queryByText('SYN-BAG')).toBeNull();
+    await waitFor(() => expect(pairQueries.at(-1)?.get('q')).toBe('레진'));
+    await waitFor(() => expect(screen.queryByText('SYN-CAP')).not.toBeInTheDocument());
   });
 
   it('G2 L21 공장은 사용자 데이터 범위의 공장으로 열린다(코드가 앞선 범위 밖 공장이 아님)', async () => {
     setup({ plants: [OTHER_PLANT, PLANT] });
 
     await listTable();
-    expect(waitingPlantIds).toEqual(['8401']);
-    /* 범위 밖 공장은 고를 수도 없다 — 공장이 하나면 공장 칸을 세우지 않는다. */
+    expect(pairQueries.map((query) => query.get('plantId'))).toEqual(['8401']);
     expect(screen.queryByRole('combobox', { name: t.filters.plant })).toBeNull();
-  });
-
-  it('G2 L21 조건 줄의 칸마다 「공급사 · 품목 · 보기」 이름이 보인다', async () => {
-    setup();
-    await listTable();
-
-    const bar = within(screen.getByRole('region', { name: t.filters.label }));
-    expect(bar.getByText(t.filters.supplier)).toBeVisible();
-    expect(bar.getByText(t.filters.item)).toBeVisible();
-    expect(bar.getByText(t.filters.view)).toBeVisible();
-    expect(bar.getByRole('combobox', { name: t.filters.supplier })).toBeInTheDocument();
-    expect(bar.getByRole('searchbox', { name: t.filters.item })).toBeInTheDocument();
-    expect(bar.getByRole('group', { name: t.filters.view })).toContainElement(
-      bar.getByRole('checkbox', { name: t.filters.waitingOnly }),
-    );
   });
 
   it('G2 L21 공장이 여럿이면 공장 칸에도 「공장」 이름이 붙는다', async () => {
@@ -412,14 +494,44 @@ describe('W-01-14 자재 관리 LOT 발행', () => {
     expect(bar.getByRole('combobox', { name: t.filters.plant })).toHaveTextContent('합성 1공장');
   });
 
-  it('US1-8 「대기 있는 것만」은 대기 없는 조합을 뺀다', async () => {
+  it('G2 L17 품목 기본 보관 단위 글은 단위 이름(봉지)으로', () => {
+    const bag = { uomId: 3, uomCode: 'SYN-BAG', uomName: '봉지', decimalScale: 0 };
+    expect(storageText({ uomId: 3, qtyPerPackage: 100 }, [bag], 'EA')).toBe('봉지 100 EA');
+    expect(storageText({ uomId: 3, qtyPerPackage: null }, [{ ...bag, uomName: '' }], 'EA')).toBe(
+      'SYN-BAG',
+    );
+  });
+});
+
+describe('W-01-14 상세 — 탭 넷(피처 014 Q17)', () => {
+  it('Q17 US1-1 미출력 탭은 고르면 만들면서 받고, 차례 · P/O · 만든 방식 · [수정]과 아직 만들지 않은 몫을 보인다', async () => {
     const { user } = setup();
-    await rowOf('SYN-RES');
+    const pane = await openDetail(user, 'SYN-CAP');
 
-    await user.click(screen.getByRole('checkbox', { name: t.filters.waitingOnly }));
-
-    await waitFor(() => expect(screen.queryByText('SYN-RES')).not.toBeInTheDocument());
-    expect(await rowOf('SYN-CAP')).toBeInTheDocument();
+    const table = await lotTable(pane, 'UNPRINTED');
+    const rows = table.getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(2);
+    expect(rows[1]).toHaveTextContent(tp.mode.AUTO);
+    expect(rows[1]).toHaveTextContent(tp.poLine('PO-SYN-0001', 1));
+    expect(rows[0]).toHaveTextContent(tp.mode.MANUAL);
+    expect(
+      within(rows[0] as HTMLElement).getByRole('button', {
+        name: tp.revise.actionName(lot(3).lotNo),
+      }),
+    ).toBeInTheDocument();
+    expect(pane.getByText(tp.notCreatedYet(36))).toBeInTheDocument();
+    expect(pane.getByText(messages.screenPatterns.pageNav.total(38))).toBeInTheDocument();
+    expect(Object.fromEntries(lotQueries[0] ?? [])).toMatchObject({
+      plantId: '8401',
+      supplierId: '8201',
+      itemId: '601',
+      tab: 'UNPRINTED',
+      page: '1',
+    });
+    expect(
+      pane.getByText(tp.headDefault(tp.defaultPackaged('1,000 EA', 'BAG 10 × 100'))),
+    ).toBeInTheDocument();
+    expect(pane.queryByRole('button', { name: /라벨|인쇄/ })).not.toBeInTheDocument();
   });
 
   it('고른 줄을 다시 누르면 고르기를 풀고 오른쪽이 「고르세요」로 돌아간다', async () => {
@@ -432,18 +544,60 @@ describe('W-01-14 자재 관리 LOT 발행', () => {
     expect(await within(pane).findByText(t.detail.choose)).toBeInTheDocument();
   });
 
-  it('US1-8 상세 창은 대기 · 폐기 자재 관리 LOT 와 만든 곳을 보이고 라벨 단추가 없다', async () => {
-    const { user } = setup();
-    const detail = await openDetail(user, 'SYN-CAP');
+  it('US2-3 조회 · 생성 중에는 로딩 문구를 보인다', async () => {
+    let open = (): void => undefined;
+    const lotsGate = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    const { user } = setup({ lotsGate });
+    const pane = await openDetail(user, 'SYN-CAP');
 
-    const table = within(detail.getByRole('table', { name: t.detail.waitingTitle }));
-    expect(table.getAllByRole('row')).toHaveLength(5);
-    expect(table.getAllByRole('checkbox')).toHaveLength(3);
-    expect(table.getByText(t.detail.status.VOIDED)).toBeInTheDocument();
-    expect(table.getByText(t.detail.unprinted)).toBeInTheDocument();
-    expect(table.getByText(/^관리웹 /)).toBeInTheDocument();
-    expect(detail.getByText(t.detail.waitingCount(3))).toBeInTheDocument();
-    expect(detail.queryByRole('button', { name: /라벨|인쇄/ })).not.toBeInTheDocument();
+    expect(await pane.findByText(tp.loading)).toBeInTheDocument();
+    open();
+    await waitFor(() => expect(pane.queryByText(tp.loading)).toBeNull());
+  });
+
+  it('US1-4 SC-005 기본값이 없으면 「기본 단위 설정이 안되어있습니다…」, 발행 단추는 그대로', async () => {
+    const { user } = setup();
+    const pane = await openDetail(user, 'SYN-RES');
+
+    expect(await pane.findByText(tp.notes.NO_DEFAULT)).toBeInTheDocument();
+    expect(pane.getByRole('button', { name: t.detail.issue })).toBeEnabled();
+  });
+
+  it('가정-W0114 T050 품목 기본 보관 단위가 기본 단위와 같으면 「없음」이 아니라 그 단위(TON)를 적는다', async () => {
+    const { user } = setup();
+    const pane = await openDetail(user, 'SYN-RES');
+
+    const term = await pane.findByText(t.detail.storageUom);
+    await waitFor(() => expect(term.nextElementSibling).toHaveTextContent('TON'));
+    expect(term.nextElementSibling).not.toHaveTextContent(t.detail.storageNone);
+  });
+
+  it('US1-5 SC-005 입하 예정 계획이 없으면 빈 표 대신 표 자리에 알림', async () => {
+    const first = setup({ generation: 'NO_OPEN_PO', noUnprinted: true });
+    const pane = await openDetail(first.user, 'SYN-CAP');
+
+    expect(await pane.findByText(tp.notes.NO_OPEN_PO)).toBeInTheDocument();
+    expect(pane.queryByRole('table', { name: tp.tabs.UNPRINTED })).toBeNull();
+  });
+
+  it('US4-4 출력됨(입하 전) 탭은 [수정]이 없고 폐기는 된다 · 폐기 LOT 탭은 고를 수 없다', async () => {
+    const { user } = setup();
+    const pane = await openDetail(user, 'SYN-CAP');
+    await lotTable(pane, 'UNPRINTED');
+
+    await user.click(pane.getByRole('tab', { name: tp.tabs.PRINTED }));
+    const printed = await lotTable(pane, 'PRINTED');
+    expect(printed.getAllByRole('row')).toHaveLength(3);
+    expect(printed.queryByRole('button', { name: /수정/u })).toBeNull();
+    await user.click(printed.getByRole('checkbox', { name: t.detail.pick(lot(1).lotNo) }));
+    expect(pane.getByRole('button', { name: t.detail.void(1) })).toBeEnabled();
+
+    await user.click(pane.getByRole('tab', { name: tp.tabs.VOIDED }));
+    const voided = await lotTable(pane, 'VOIDED');
+    expect(voided.queryAllByRole('checkbox')).toHaveLength(0);
+    expect(voided.getByText(t.detail.status.VOIDED)).toBeInTheDocument();
   });
 
   it('미입고 P/O 는 입하 마감이 채우는 차례(발주일 → P/O 번호 → 라인)로 보이고, 단위가 다른 라인은 뺀다', async () => {
@@ -454,65 +608,60 @@ describe('W-01-14 자재 관리 LOT 발행', () => {
     const rows = table
       .getAllByRole('row')
       .slice(1)
-      .map((row) =>
-        within(row)
+      .map((each) =>
+        within(each)
           .getAllByRole('cell')
           .map((cell) => cell.textContent),
       );
-    /* 납기가 가장 이른 0002 가 맨 뒤다 — 납기순이 아니다. 단위가 BAG 인 0003 은 없다. */
     expect(rows).toEqual([
       ['PO-SYN-0001', '1', '2026.11.01', '—', '1,000 EA'],
       ['PO-SYN-0001', '2', '2026.11.01', '2026.11.20', '200 EA'],
       ['PO-SYN-0002', '1', '2026.11.03', '2026.11.10', '300 EA'],
     ]);
-    expect(pane.getByText(t.poLines.count(3))).toBeInTheDocument();
-    /* 채우는 차례는 제목 옆 ⓘ 의 설명으로 읽힌다(관리웹 정리 시안 A). */
-    expect(pane.getByRole('button', { name: t.poLines.fillOrder })).toBeInTheDocument();
     expect(Object.fromEntries(poLineQueries[0] ?? [])).toMatchObject({
       plantId: '8401',
       supplierId: '8201',
       itemId: '601',
       openOnly: 'true',
     });
-
-    const resin = await openDetail(user, 'SYN-RES');
-    expect(await resin.findByText(t.poLines.empty)).toBeInTheDocument();
   });
 
-  it('US1-8 대기 LOT 폐기 — 고른 LOT 를 :void 로 보내고 건별 실패는 「N개 폐기 · 실패 N」으로 묶는다', async () => {
-    const { user, writes } = setup({ voidFails: [2] });
-    const detail = await openDetail(user, 'SYN-CAP');
+  it('US1-8 미출력 LOT 폐기 — 고른 LOT 를 :void 로 보내고 건별 실패는 「N개 폐기 · 실패 N」으로 묶는다', async () => {
+    const { user, writes } = setup({ voidFails: [5] });
+    const pane = await openDetail(user, 'SYN-CAP');
+    const table = await lotTable(pane, 'UNPRINTED');
 
-    await user.click(detail.getByRole('checkbox', { name: t.detail.pick(lot(1).lotNo) }));
-    await user.click(detail.getByRole('checkbox', { name: t.detail.pick(lot(2).lotNo) }));
-    await user.click(detail.getByRole('button', { name: t.detail.void(2) }));
+    await user.click(table.getByRole('checkbox', { name: t.detail.pick(lot(3).lotNo) }));
+    await user.click(
+      table.getByRole('checkbox', { name: t.detail.pick('SYN-CAP|1000|261123|SYN-S1|0001') }),
+    );
+    await user.click(pane.getByRole('button', { name: t.detail.void(2) }));
 
     const confirm = within(await screen.findByRole('dialog', { name: t.void.title(2) }));
-    expect(confirm.getByText(t.void.printed(2))).toBeInTheDocument();
     await user.click(confirm.getByRole('button', { name: t.void.confirm(2) }));
 
     await waitFor(() =>
       expect(writes.filter((w) => w.path === '/trace/lots:void')).toHaveLength(1),
     );
-    const sent = writes.find((w) => w.path === '/trace/lots:void');
-    expect(sent?.body).toEqual({ lotIds: [1, 2] });
-    expect(sent?.headers.get('Idempotency-Key')).not.toBeNull();
+    expect(writes.find((w) => w.path === '/trace/lots:void')?.body).toEqual({ lotIds: [3, 5] });
     expect(await screen.findByText(t.toast.voidedPartly(1, 1))).toBeInTheDocument();
   });
+});
+
+describe('W-01-14 발행 창(수동)', () => {
+  const openIssue = async (user: ReturnType<typeof userEvent.setup>, code: string) => {
+    const pane = await openDetail(user, code);
+    await user.click(pane.getByRole('button', { name: t.detail.issue }));
+    return within(await screen.findByRole('dialog', { name: t.dialog.title }));
+  };
 
   it('US1-8 발행 창은 기본 정보로 채우고(바꿀 수 있음) POP 과 같은 본문으로 발행한다', async () => {
     const { user, writes } = setup();
-    const detail = await openDetail(user, 'SYN-CAP');
-    await user.click(detail.getByRole('button', { name: t.detail.issue }));
+    const dialog = await openIssue(user, 'SYN-CAP');
 
-    const dialog = within(await screen.findByRole('dialog', { name: t.dialog.title }));
     expect(await dialog.findByText(t.dialog.source.default)).toBeInTheDocument();
     expect(dialog.getByLabelText(t.dialog.packageCount)).toHaveValue('10');
-    expect(dialog.getByLabelText(t.dialog.qtyPerPackage('EA'))).toHaveValue('100');
     expect(dialog.getByLabelText(t.dialog.lotQty)).toHaveValue('1000');
-    expect(dialog.queryByRole('button', { name: /라벨|인쇄/ })).not.toBeInTheDocument();
-    /* 개수 범위는 칸 아래가 아니라 라벨 옆 ⓘ 로 읽힌다(관리웹 정리 시안 A). */
-    expect(dialog.getByRole('button', { name: t.dialog.lotCountHelp })).toBeInTheDocument();
 
     await user.type(dialog.getByLabelText(t.dialog.supplierLotNo), 'SL-77');
     await user.type(dialog.getByLabelText(t.dialog.lotCount), '3');
@@ -522,7 +671,6 @@ describe('W-01-14 자재 관리 LOT 발행', () => {
       expect(writes.filter((w) => w.path === '/logistics/material-lot-batches')).toHaveLength(1),
     );
     const sent = writes.find((w) => w.path === '/logistics/material-lot-batches');
-    expect(sent?.headers.get('Idempotency-Key')).not.toBeNull();
     expect(sent?.headers.get('X-Worker-No')).toBeNull();
     expect(sent?.body).toEqual({
       plantId: 8401,
@@ -538,20 +686,22 @@ describe('W-01-14 자재 관리 LOT 발행', () => {
     expect(await screen.findByText(t.toast.issued(3))).toBeInTheDocument();
   });
 
+  it('G2 L17 발행 창 패키징 단위는 이름(봉지)으로', async () => {
+    const { user } = setup({
+      uoms: UOMS.map((uom) => (uom.uomId === 3 ? { ...uom, uomCode: 'SYN-BAG' } : uom)),
+    });
+    const dialog = await openIssue(user, 'SYN-CAP');
+
+    await waitFor(() =>
+      expect(dialog.getByRole('combobox', { name: t.dialog.packageUom })).toHaveTextContent('봉지'),
+    );
+  });
+
   it('US1-8 발행 창 — 재고 수량이 패키징 곱과 다르면 알리고 발행을 잠근다', async () => {
     const { user } = setup();
-    await listTable();
-    await user.click(screen.getByRole('button', { name: t.list.issue }));
+    const dialog = await openIssue(user, 'SYN-CAP');
 
-    const dialog = within(await screen.findByRole('dialog', { name: t.dialog.title }));
-    await user.click(dialog.getByRole('combobox', { name: t.dialog.target }));
-    await user.click(
-      await screen.findByRole('option', {
-        name: t.dialog.targetOption('합성 공급사 가', 'SYN-CAP', '합성 캡', 'EA'),
-      }),
-    );
     const qty = await dialog.findByLabelText(t.dialog.lotQty);
-    /* 곱을 따라 채운 값을 통째로 바꿔 쓴다 — 비우면 곱으로 다시 채워진다(시안과 같음). */
     await user.tripleClick(qty);
     await user.keyboard('950');
     await user.type(dialog.getByLabelText(t.dialog.lotCount), '2');
@@ -564,18 +714,70 @@ describe('W-01-14 자재 관리 LOT 발행', () => {
 
   it('US1-8 발행 창 — 기본 정보도 보관 단위도 없으면 「직접 입력」으로 패키징 없이 시작한다', async () => {
     const { user } = setup();
-    await listTable();
-    await user.click(screen.getByRole('button', { name: t.list.issue }));
-
-    const dialog = within(await screen.findByRole('dialog', { name: t.dialog.title }));
-    await user.click(dialog.getByRole('combobox', { name: t.dialog.target }));
-    await user.click(
-      await screen.findByRole('option', {
-        name: t.dialog.targetOption('합성 공급사 나', 'SYN-RES', '합성 레진', 'TON'),
-      }),
-    );
+    const dialog = await openIssue(user, 'SYN-RES');
 
     expect(await dialog.findByText(t.dialog.source.none)).toBeInTheDocument();
     expect(dialog.getByLabelText(t.dialog.lotQty)).toHaveValue('');
+  });
+});
+
+describe('W-01-14 [수정](피처 014 FR-016 · FR-017)', () => {
+  const openRevise = async (user: ReturnType<typeof userEvent.setup>) => {
+    const pane = await openDetail(user, 'SYN-CAP');
+    const table = await lotTable(pane, 'UNPRINTED');
+    await user.click(
+      table.getByRole('button', {
+        name: tp.revise.actionName('SYN-CAP|1000|261123|SYN-S1|0001'),
+      }),
+    );
+    return within(await screen.findByRole('dialog', { name: tp.revise.title }));
+  };
+
+  it('US3-1 패키징 수를 8 로 고치면 재고 수량이 800 을 따르고, 저장하면 :revise 로(사번 없이) 보내 번호를 새로 받는다', async () => {
+    const { user, writes } = setup();
+    const dialog = await openRevise(user);
+
+    const count = dialog.getByLabelText(tp.revise.packageCount);
+    await user.clear(count);
+    await user.type(count, '8');
+    expect(dialog.getByLabelText(tp.revise.qty)).toHaveValue('800');
+    expect(dialog.getByText(tp.revise.renumber)).toBeInTheDocument();
+    await user.click(dialog.getByRole('button', { name: tp.revise.save }));
+
+    await waitFor(() => expect(writes.filter((w) => w.path.endsWith(':revise'))).toHaveLength(1));
+    const sent = writes.find((w) => w.path.endsWith(':revise'));
+    expect(sent?.path).toBe('/logistics/material-lots/5:revise');
+    expect(sent?.body).toEqual({ qty: 800, package: { uomId: 3, count: 8, qtyPerPackage: 100 } });
+    expect(sent?.headers.get('X-Worker-No')).toBeNull();
+    expect(sent?.headers.get('Idempotency-Key')).not.toBeNull();
+    expect(
+      await screen.findByText(tp.revise.saved('SYN-CAP|800|261123|SYN-S1|0002')),
+    ).toBeInTheDocument();
+  });
+
+  it('US3-2 곱이 맞지 않으면 저장이 잠긴다', async () => {
+    const { user } = setup();
+    const dialog = await openRevise(user);
+
+    const count = dialog.getByLabelText(tp.revise.packageCount);
+    await user.clear(count);
+    await user.type(count, '7');
+    const qty = dialog.getByLabelText(tp.revise.qty);
+    await user.tripleClick(qty);
+    await user.keyboard('800');
+
+    expect(dialog.getByRole('alert')).toHaveTextContent('≠');
+    expect(dialog.getByRole('button', { name: tp.revise.save })).toBeDisabled();
+  });
+
+  it('US3-3 서버가 409 ALREADY_PRINTED 로 거절하면 알리고 목록을 다시 받는다', async () => {
+    const { user } = setup({ reviseFail: { status: 409, code: 'ALREADY_PRINTED' } });
+    const dialog = await openRevise(user);
+    const asked = lotQueries.length;
+
+    await user.click(dialog.getByRole('button', { name: tp.revise.save }));
+
+    expect(await screen.findByText(tp.revise.alreadyPrinted)).toBeInTheDocument();
+    await waitFor(() => expect(lotQueries.length).toBeGreaterThan(asked));
   });
 });

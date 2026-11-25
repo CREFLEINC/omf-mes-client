@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { itemFixtures } from './fixtures';
 import { ItemAttrsPane, lotSizeLabelOf } from './item-attrs-pane';
 import { itemToAttrsFormValues } from './item-attrs-mappers';
+import { validateItemAttrsForm } from './item-attrs-validation';
 import type { ItemAttrsFormValues } from './types';
 
 const renderPane = (overrides: Partial<Parameters<typeof ItemAttrsPane>[0]> = {}) => {
@@ -216,5 +217,112 @@ describe('ItemAttrsPane — 품목유형별 LOT 기본크기', () => {
 
     expect(screen.queryByLabelText('생산 LOT 기본크기')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('자재 LOT 기본크기')).not.toBeInTheDocument();
+  });
+});
+
+/* 피처 014 FR-018 · 시안 W0114-W0605 W6·W7 — 원자재 · 부자재의 LOT 기본값에 패키징 두 칸. */
+describe('US5-1 ItemAttrsPane — 패키징 기본값 두 칸', () => {
+  it('US5-1 원자재 · 부자재는 패키징 단위 · LOT 당 패키징 수량 기본값 칸을 LOT 기본값 묶음에 낸다', () => {
+    renderPane({ itemTypeCode: 'SUBSIDIARY_MATERIAL' });
+
+    const lot = screen.getByRole('rowgroup', { name: 'LOT 기본값' });
+    expect(within(lot).getByLabelText('패키징 단위 기본값')).toBeInTheDocument();
+    expect(within(lot).getByLabelText('LOT 당 패키징 수량 기본값')).toBeInTheDocument();
+  });
+
+  it('US5-1 제품 · 상품에는 두 칸이 없다(자재 LOT 이 아니다)', () => {
+    renderPane({ itemTypeCode: 'FINISHED' });
+
+    expect(screen.queryByLabelText('패키징 단위 기본값')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('LOT 당 패키징 수량 기본값')).not.toBeInTheDocument();
+  });
+
+  it('US5-1 LOT 당 패키징 수량을 넣으면 그 칸만 알린다', async () => {
+    const { onChange, user } = renderPane({ itemTypeCode: 'RAW_MATERIAL' });
+
+    await user.type(screen.getByLabelText('LOT 당 패키징 수량 기본값'), '5');
+
+    expect(onChange).toHaveBeenLastCalledWith({ defaultPackageCount: '5' });
+  });
+
+  it('US5-3 나누지 못하는 오류를 LOT 당 패키징 수량 칸 아래에 낸다', () => {
+    const message =
+      '패키징 수량이 부적합 합니다. 자재 LOT 기본크기를 정확히 나눌 수 있는 값을 입력해주세요.';
+    renderPane({ itemTypeCode: 'RAW_MATERIAL', fieldErrors: { defaultPackageCount: message } });
+
+    expect(screen.getByText(message)).toBeInTheDocument();
+  });
+
+  /* 사용자 결정 2026-11-24 — 기본크기 ÷ 패키징 수량이 소수 1자리까지 떨어지면 통과(Q15). */
+  it.each([
+    ['2.5', '5', true],
+    ['10', '4', true],
+    ['2.5', '2', false],
+    ['100', '30', false],
+  ])('US5-3 Q15 기본크기 %s ÷ 패키징 수량 %s — 통과 %s', (size, count, ok) => {
+    const message =
+      '패키징 수량이 부적합 합니다. 자재 LOT 기본크기를 정확히 나눌 수 있는 값을 입력해주세요.';
+    const values = {
+      ...itemToAttrsFormValues(itemFixtures[0]!),
+      defaultProductionLotSize: size,
+      defaultPackageUomId: '7003',
+      defaultPackageCount: count,
+    };
+    renderPane({
+      itemTypeCode: 'RAW_MATERIAL',
+      values,
+      fieldErrors: validateItemAttrsForm(values),
+    });
+
+    if (ok) expect(screen.queryByText(message)).not.toBeInTheDocument();
+    else expect(screen.getByText(message)).toBeInTheDocument();
+  });
+
+  it('US5-3 LOT 당 패키징 수량 도움말은 소수 1자리 규칙을 말한다', () => {
+    expect(messages.itemExtendedAttrs.attrs.defaultPackageCountNote).toContain(
+      '자재 LOT 기본크기 ÷ 패키징 수량이 소수 1자리까지 떨어져야 합니다.',
+    );
+  });
+
+  it('US5-2 패키징 단위 칸의 오류도 낸다', () => {
+    const message = '패키징 단위와 LOT 당 패키징 수량은 함께 넣거나 함께 비워 주세요';
+    renderPane({ itemTypeCode: 'RAW_MATERIAL', fieldErrors: { defaultPackageUomId: message } });
+
+    expect(screen.getByText(message)).toBeInTheDocument();
+  });
+});
+
+describe('ItemAttrsPane — 소포장(읽기만)', () => {
+  const group = (): HTMLElement =>
+    screen.getByRole('rowgroup', { name: messages.itemExtendedAttrs.attrs.groups.package });
+
+  it('공급사마다 한 줄로 소포장 구성을 보인다 — 고치는 칸은 없다', () => {
+    renderPane({
+      packages: {
+        rows: [{ key: '1', label: 'Samjin Lnd', value: '봉지 40 × 25 = 1,000 KG' }],
+        isLoading: false,
+        isError: false,
+      },
+    });
+
+    expect(within(group()).getByText('Samjin Lnd')).toBeInTheDocument();
+    expect(within(group()).getByText('봉지 40 × 25 = 1,000 KG')).toBeInTheDocument();
+    expect(within(group()).queryByRole('textbox')).toBeNull();
+  });
+
+  it('등록된 소포장이 없으면 그렇다고 한 줄로 말한다', () => {
+    renderPane({ packages: { rows: [], isLoading: false, isError: false } });
+
+    expect(
+      within(group()).getByText(messages.itemExtendedAttrs.attrs.values.noPackage),
+    ).toBeInTheDocument();
+  });
+
+  it('원자재 · 부자재가 아니면(넘기지 않으면) 묶음이 없다', () => {
+    renderPane();
+
+    expect(
+      screen.queryByRole('rowgroup', { name: messages.itemExtendedAttrs.attrs.groups.package }),
+    ).toBeNull();
   });
 });

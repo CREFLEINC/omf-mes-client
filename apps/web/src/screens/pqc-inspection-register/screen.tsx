@@ -46,6 +46,7 @@ import {
   QUEUE_STATUSES,
   type ListPageSize,
 } from '../oqc-inspection/filters';
+import { JudgmentFilter } from '../oqc-inspection/judgment-filter';
 import { QueueLoadErrorBanner } from '../oqc-inspection/load-error-banner';
 import { useInspectionQueue } from '../oqc-inspection/queries';
 import { useDirectSubmitter } from '../pqc-panel/direct-submitter';
@@ -106,6 +107,8 @@ export const PqcInspectionRegisterScreen = () => {
   const [todayOnly, setTodayOnly] = useState(false);
   /* 탭 줄 상태 칩(#185) — 비면 거르지 않는다. */
   const [statusCode, setStatusCode] = useState<InspectionHubStatus | null>(null);
+  /* 종합 판정(omf-all-around#356) — 비면 거르지 않는다. */
+  const [judgmentCode, setJudgmentCode] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   /* 목록 쪽 크기 — IQC 목록과 같은 10 · 20 · 50건(사용자 지시 2026-10-28 · #197). */
   const [pageSize, setPageSize] = useState<ListPageSize>(PAGE_SIZE);
@@ -191,6 +194,7 @@ export const PqcInspectionRegisterScreen = () => {
     inspectionTypeCode: PQC,
     pendingOnly,
     ...(statusCode === null ? {} : { statusCode }),
+    ...(judgmentCode === null ? {} : { overallJudgmentCode: judgmentCode }),
     ...(filters.itemId === null ? {} : { itemId: filters.itemId }),
     ...(filters.workOrderId === null ? {} : { workOrderId: filters.workOrderId }),
     ...(filters.keyword === '' ? {} : { q: filters.keyword }),
@@ -259,7 +263,7 @@ export const PqcInspectionRegisterScreen = () => {
     />
   );
 
-  /* 「대기·진행만 보기」 — 조건이 바뀌면 결과가 통째로 달라진다 — 첫 쪽으로 간다. 다시 켜면 「완료」 칩은 푼다(같은 AND 이유). */
+  /* 「대기·진행만 보기」 — 조건이 바뀌면 결과가 통째로 달라진다 — 첫 쪽으로 간다. 다시 켜면 「완료」 칩 · 종합 판정은 푼다(같은 AND 이유 · #356). */
   const toggleToday = (next: boolean): void => {
     setTodayOnly(next);
     setPage(1);
@@ -268,6 +272,7 @@ export const PqcInspectionRegisterScreen = () => {
   const togglePendingOnly = (next: boolean): void => {
     setPendingOnly(next);
     if (next && statusCode === 'COMPLETED') setStatusCode(null);
+    if (next) setJudgmentCode(null);
     setPage(1);
   };
 
@@ -281,6 +286,8 @@ export const PqcInspectionRegisterScreen = () => {
         onChange={(next) => {
           /* 「완료」는 「대기·진행만 보기」를 함께 끈다 — 서버가 두 조건을 AND 로 묶어 그대로 두면 늘 빈 목록이다. */
           if (next === 'COMPLETED') setPendingOnly(false);
+          /* 「대기」 · 「진행」은 종합 판정을 푼다 — 판정은 확정 건에만 있다(#356). */
+          if (next === 'REQUESTED' || next === 'IN_PROGRESS') setJudgmentCode(null);
           setStatusCode(next);
           setPage(1);
         }}
@@ -307,6 +314,17 @@ export const PqcInspectionRegisterScreen = () => {
       {/* 목록과 상세(판정)를 한 화면에 나란히 둔다(#185 · 입하 예정 조회와 같다) — 의뢰를 고르면 오른쪽에 상세가 선다. */}
       {/* 검색 묶음 — 입하 예정 조회처럼 표와 다른 카드에 둔다(#185). 생산 LOT 의 작업지시로 대기 의뢰를 바로 연다. */}
       <section ref={aboveRef} className="pane pqc-web-search">
+        {/* 종합 판정 — 맨 왼쪽(사용자 지시 2026-11-24) · 고르면 바로 조회한다. 판정은 확정 건에만 있어 「대기·진행만 보기」와 「대기」 · 「진행」 칩을 함께 끈다(omf-all-around#356). */}
+        <JudgmentFilter
+          value={judgmentCode}
+          onChange={(code) => {
+            setJudgmentCode(code);
+            if (code !== null) setPendingOnly(false);
+            if (code !== null && (statusCode === 'REQUESTED' || statusCode === 'IN_PROGRESS'))
+              setStatusCode(null);
+            setPage(1);
+          }}
+        />
         <LotScan
           inspectionTypeCode={PQC}
           matchBy="workOrder"
@@ -351,6 +369,7 @@ export const PqcInspectionRegisterScreen = () => {
               setFilters(EMPTY_PQC_FILTERS);
               setPendingOnly(true);
               setStatusCode(null);
+              setJudgmentCode(null);
               setPage(1);
             }}
           />

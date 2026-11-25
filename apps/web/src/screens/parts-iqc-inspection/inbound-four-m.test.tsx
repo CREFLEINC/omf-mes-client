@@ -283,3 +283,45 @@ describe('#290 새 흐름 [결과 추가] 창의 4M 변경 정보', () => {
     expect(lotQueries).toHaveLength(0);
   });
 });
+
+/* 같은 가짜 위에서 — 결과 창 [되돌리기]가 LOT 매칭 바꿈도 한 칸으로 되돌린다(omf-all-around#356). */
+describe('#356 결과 창 되돌리기 · 다시 실행과 LOT 매칭', () => {
+  it('값을 적고 LOT 을 고른 뒤 [되돌리기]는 LOT 고름부터 되돌리고, [다시 실행]이 다시 고른다 — 비우기는 LOT 을 남긴다', async () => {
+    const user = userEvent.setup();
+    mount(false, null);
+    const drawer = within(await openAdd());
+    const p = messages.partsIqcInspection;
+    const remarks = await drawer.findByRole('textbox', { name: p.visual.remarks });
+    const firstLot = drawer.getByRole('checkbox', { name: lot(1).lotNo });
+    const undo = drawer.getByRole('button', { name: p.footer.undo });
+    const redo = drawer.getByRole('button', { name: p.footer.redo });
+
+    await user.type(remarks, 'A');
+    await user.click(firstLot);
+    expect(firstLot).toBeChecked();
+
+    await user.click(undo);
+    expect(firstLot).not.toBeChecked();
+    expect(remarks).toHaveValue('A');
+
+    await user.click(undo);
+    expect(remarks).toHaveValue('');
+    expect(firstLot).not.toBeChecked();
+
+    await user.click(redo);
+    expect(remarks).toHaveValue('A');
+    await user.click(redo);
+    expect(firstLot).toBeChecked();
+
+    /* [전부 해제]도 한 칸이다. */
+    await user.click(drawer.getByRole('button', { name: t.drawer.selectNone }));
+    expect(firstLot).not.toBeChecked();
+    await user.click(undo);
+    expect(firstLot).toBeChecked();
+    expect(remarks).toHaveValue('A');
+
+    await user.click(drawer.getByRole('button', { name: p.footer.clear }));
+    expect(remarks).toHaveValue('');
+    expect(firstLot).toBeChecked();
+  });
+});

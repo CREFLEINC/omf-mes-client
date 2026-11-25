@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { inspectionPlanFixtures } from './fixtures';
 import {
   emptyPlanFormValues,
-  formatApprovedAt,
   isSamePlanValues,
   planToFormValues,
   toPlanCreate,
@@ -96,7 +95,7 @@ describe('toPlanUpdate', () => {
   });
 
   /*
-   * 승인 정보와 사용 여부는 전용 액션(:approve · :deactivate)으로만 바뀐다.
+   * 사용 여부는 전용 액션(:deactivate)으로만 바뀐다. 승인 기능은 없앴다.
    * 수정 본문에 실으면 계약 위반이다.
    */
   it('승인 정보와 사용 여부를 싣지 않는다', () => {
@@ -130,23 +129,5 @@ describe('isSamePlanValues', () => {
   it('한 칸이라도 다르면 다르다고 본다', () => {
     expect(isSamePlanValues(filled, { ...filled, routingId: '' })).toBe(false);
     expect(isSamePlanValues(filled, { ...filled, inspectionTypeCode: 'OQC' })).toBe(false);
-  });
-});
-
-describe('formatApprovedAt', () => {
-  /* 공장 시각(베트남, UTC+7)으로 보인다(omf-all-around#20). */
-  it('날짜와 분까지만 공장 시각으로 낸다', () => {
-    expect(formatApprovedAt('2026-08-04T09:12:00+09:00')).toBe('2026-08-04 07:12');
-  });
-
-  it('값이 없으면 null이다', () => {
-    expect(formatApprovedAt(null)).toBeNull();
-    expect(formatApprovedAt(undefined)).toBeNull();
-    expect(formatApprovedAt('')).toBeNull();
-  });
-
-  /* 시각을 지어내지 않는다 — 형식이 다르면 원문을 그대로 낸다. */
-  it('아는 형식이 아니면 원문을 그대로 낸다', () => {
-    expect(formatApprovedAt('2026년 8월 4일')).toBe('2026년 8월 4일');
   });
 });

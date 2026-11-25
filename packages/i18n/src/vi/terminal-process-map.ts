@@ -84,8 +84,6 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     warehouse: 'Kho',
     warehouseAll: 'Toàn nhà máy',
     register: 'Đăng ký',
-    /** 창고 칸 이름 오른쪽 안내 라벨(사용자 시안 2026-11-20 · #333). */
-    warehouseScope: 'Danh sách công việc và số việc còn lại được hiển thị theo kho đã chọn.',
     optionalMark: '(tùy chọn)',
     save: 'Lưu',
     saving: 'Đang lưu.',
@@ -93,6 +91,7 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     registered: 'Đã đăng ký.',
     cancel: 'Hủy',
     deactivate: 'Ngừng sử dụng',
+    deactivateAction: 'Ngừng sử dụng (chặn kết nối thiết bị)',
     deactivated: 'Đã ngừng máy quét. Bản ghi vẫn còn.',
     activate: 'Dùng lại',
     activated: 'Đã dùng lại thiết bị đầu cuối.',
@@ -111,6 +110,31 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     lookupTruncated:
       'Chỉ hiển thị một phần danh sách. Không thấy cái cần tìm thì hãy hỏi người phụ trách.',
     selectPlaceholder: 'Hãy chọn',
+    codeLockedFooter: 'Không thể đổi mã máy quét sau khi đăng ký.',
+    moreTypes: 'Xem thêm',
+    autoMark: 'Tự động',
+    warehouseNeedsPlant: 'Chọn nhà máy trước',
+    equipmentPopOnly: 'Chỉ máy quét POP',
+    codeNeedsType: 'Tự điền khi chọn loại',
+    typeHints: { POP: 'Máy quét tại xưởng', MOBILE: 'Máy quét cầm tay kho' },
+  },
+
+  wizard: {
+    stepsLabel: 'Các bước đăng ký',
+    stepInfo: 'Thông tin máy quét',
+    stepProcesses: 'Chức năng công đoạn',
+    stepConnect: 'Kết nối thiết bị',
+    popOnly: '(chỉ POP)',
+    next: 'Tiếp',
+    back: 'Quay lại',
+    skip: 'Bỏ qua',
+    register: 'Đăng ký',
+    retry: 'Thử lại',
+    done: 'Hoàn tất',
+    saving: 'Đang đăng ký.',
+    summary: (code: string, count: number): string => `${code} · ${String(count)} công đoạn`,
+    registered: (code: string): string => `Đã đăng ký máy quét ${code}.`,
+    unfinished: 'Đã đăng ký máy quét nhưng chưa hoàn tất các bước còn lại. Hãy thử lại.',
   },
 
   token: {

@@ -1407,13 +1407,13 @@ describe('LOT 상세의 [생산 이력 조회]', () => {
     permissions,
   });
 
-  it('자재 LOT은 LOT 생산 이력 조회를 자재 LOT 번호 조건으로 열고 그 LOT을 상세에 세운다', async () => {
+  it('Q21 자재 LOT은 자재 기준 생산 추적에서 그 LOT 을 골라 연다(FR-017)', async () => {
     renderScreen(
       '/quality/lot-status?lot=401',
       'ready',
       detailRoutes(200, { lotTypeCode: 'MATERIAL' }),
       200,
-      withPermissions(['W-03-01', 'W-02-09']),
+      withPermissions(['W-03-01', 'W-02-13']),
     );
     const user = userEvent.setup();
 
@@ -1421,32 +1421,45 @@ describe('LOT 상세의 [생산 이력 조회]', () => {
     await user.click(await within(detail).findByRole('button', { name: '생산 이력 조회' }));
 
     await waitFor(() =>
-      expect(screen.getByTestId('location')).toHaveTextContent('/production/lot-trace?'),
+      expect(screen.getByTestId('location')).toHaveTextContent('/production/material-trace?'),
     );
-    /* 자재 LOT은 자재 LOT 번호 조건으로 찾고 그 LOT을 상세에 세운다. */
-    expect(locationSearch().get('mlot')).toBe('SAMPLE-LOT-001');
-    expect(locationSearch().get('selected')).toBe('401');
-    expect(locationSearch().has('tab')).toBe(false);
+    expect(locationSearch().get('lot')).toBe('401');
   });
 
-  it('생산 LOT은 제품 LOT 번호 조건으로 연다', async () => {
+  it('Q21 생산 LOT은 제품 기준 역추적에서 그 LOT 을 골라 연다(FR-017)', async () => {
     renderScreen(
       '/quality/lot-status?lot=401',
       'ready',
       detailRoutes(200, { lotTypeCode: 'PRODUCTION' }),
       200,
-      withPermissions(['W-03-01', 'W-02-09']),
+      withPermissions(['W-03-01', 'W-02-14']),
     );
     const user = userEvent.setup();
 
     const detail = await screen.findByRole('region', { name: 'LOT 상세' });
     await user.click(await within(detail).findByRole('button', { name: '생산 이력 조회' }));
 
-    await waitFor(() => expect(locationSearch().get('plot')).toBe('SAMPLE-LOT-001'));
-    expect(locationSearch().get('selected')).toBe('401');
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent('/production/product-trace?'),
+    );
+    expect(locationSearch().get('lot')).toBe('401');
   });
 
-  it('LOT 생산 이력 조회 권한이 없으면 두지 않는다', async () => {
+  it('Q21 그 LOT 종류의 추적 화면 권한이 없으면 두지 않는다(자재 LOT 에 제품 기준 권한만)', async () => {
+    renderScreen(
+      '/quality/lot-status?lot=401',
+      'ready',
+      detailRoutes(200, { lotTypeCode: 'MATERIAL' }),
+      200,
+      withPermissions(['W-03-01', 'W-02-14']),
+    );
+
+    const detail = await screen.findByRole('region', { name: 'LOT 상세' });
+    expect(await within(detail).findByText('SAMPLE-LOT-001')).toBeVisible();
+    expect(within(detail).queryByRole('button', { name: '생산 이력 조회' })).toBeNull();
+  });
+
+  it('추적 화면 권한이 없으면 두지 않는다', async () => {
     renderScreen(
       '/quality/lot-status?lot=401',
       'ready',

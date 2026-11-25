@@ -6,15 +6,7 @@
  * 이 파일이 얇아야 「Electron을 띄워야만 확인 가능한 부분」이 작아진다.
  */
 import { execFile, spawn } from 'node:child_process';
-import {
-  appendFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -25,17 +17,7 @@ import {
   type PrintHost,
 } from './print-host';
 
-import {
-  BrowserWindow,
-  Menu,
-  app,
-  dialog,
-  globalShortcut,
-  ipcMain,
-  net,
-  protocol,
-  safeStorage,
-} from 'electron';
+import { BrowserWindow, Menu, app, dialog, ipcMain, net, protocol, safeStorage } from 'electron';
 import initSqlJs from 'sql.js';
 
 import { normalizeTarget, relayToApi, shouldRelay } from './api-relay';
@@ -61,11 +43,10 @@ import {
   isRenditionFormat,
   toRenditionFileName,
 } from './print';
-import { type LoggedPrinter, formatPrintLog, reasonOf } from './print-log';
+import { type LoggedPrinter, appendPrintLog, formatPrintLog, reasonOf } from './print-log';
 import { PRINT_PAGE_FILE, labelFileName, renderPrintPage } from './print-page';
 import {
   type LabelCommand,
-  type LabelKind,
   LabelCommandError,
   buildLabelFromFields,
   parseHandWrittenJson,
@@ -100,9 +81,22 @@ import {
   buildMediaProbeScript,
   calibrationCommands,
   parseMediaProbe,
+  createMediaMemory,
+  declaredLabelSize,
+  isLabelSizePinned,
+  type LabelMedia,
   readLabelMedia,
-  withProbedSize,
 } from './label-media';
+import {
+  type LabelSettings,
+  type LabelSize,
+  type LabelSizeSource,
+  needsDriverSize,
+  parseLabelSettings,
+  readLabelSettings,
+  resolveLabelMedia,
+  writeLabelSettings,
+} from './label-settings';
 import { createKioskWindowOptions } from './window-options';
 
 // ⚠ `import.meta.url`을 쓰지 않는다 — 이 파일은 CJS로 번들되고(Electron preload가 ESM을
@@ -409,6 +403,77 @@ function createWindowsPrintHost(dir: string): PrintHost {
   });
 }
 
+/**
+ * 드라이버가 알려 준 용지 크기 기억 — 인쇄와 라벨지 설정 창이 함께 쓴다(프린터마다 1분).
+ * 묻는 데 작업마다 1초 남짓 걸렸다(현장 실측 2026-11-23).
+ */
+const driverMediaMemory = createMediaMemory(60_000);
+
+/** 라벨지 설정 파일(`label-settings`). `main()` 이 정한다 — 명령줄 인쇄처럼 정하기 전이면 저장한 값 없이 간다. */
+let labelSettingsPath: string | null = null;
+
+/** 드라이버 용지 크기. `fresh` 면 기억을 쓰지 않고 새로 묻는다(라벨지 설정 창을 열 때). */
+async function driverSizeOf(
+  device: string | undefined,
+  jobDir: string,
+  host: PrintHost | undefined,
+  fresh = false,
+): Promise<LabelSize | null> {
+  const key = device ?? '';
+  const remembered = fresh ? undefined : driverMediaMemory.recall(key);
+
+  if (remembered !== undefined) return remembered;
+
+  const asked = await probeMedia(device, jobDir, host);
+  driverMediaMemory.remember(key, asked);
+
+  return asked;
+}
+
+/**
+ * 지금 쓸 용지 설정 — 라벨지 설정 창 저장값 → 단말 환경값 → 드라이버 → 라벨이 적은 `SIZE` → 기본(`label-settings`).
+ *
+ * ⚠ **라벨이 적은 크기를 드라이버보다 앞세우지 않는다.** 그렇게 바꿨더니 현장에서 그리는 자리가 전부 틀어졌다
+ *   (2026-11-24) — 좌표는 드라이버 크기를 `SIZE` 로 보낸 채 실기에서 맞췄다.
+ */
+async function currentLabelMedia({
+  device,
+  jobDir,
+  host,
+  commands,
+  fresh = false,
+}: {
+  device: string | undefined;
+  jobDir: string;
+  host: PrintHost | undefined;
+  /** 보낼 라벨 명령 — 있으면 그 `SIZE` 를 마지막 대안으로 쓴다. */
+  commands?: string;
+  fresh?: boolean;
+}): Promise<{
+  media: LabelMedia;
+  sizeSource: LabelSizeSource;
+  driver: LabelSize | null;
+  saved: LabelSettings | null;
+  envPinned: boolean;
+}> {
+  const saved = labelSettingsPath === null ? null : readLabelSettings(labelSettingsPath);
+  const envPinned = isLabelSizePinned();
+  const driver =
+    fresh || needsDriverSize(saved, envPinned)
+      ? await driverSizeOf(device, jobDir, host, fresh)
+      : null;
+  const declared = commands === undefined ? null : declaredLabelSize(commands);
+  const resolved = resolveLabelMedia({
+    saved,
+    envMedia: readLabelMedia(),
+    envPinned,
+    driver,
+    declared,
+  });
+
+  return { ...resolved, driver, saved, envPinned };
+}
+
 function createRawPrinter(fallbackName?: string, host?: PrintHost): RawPrinter | undefined {
   if (process.platform !== 'win32') return undefined;
 
@@ -430,12 +495,16 @@ function createRawPrinter(fallbackName?: string, host?: PrintHost): RawPrinter |
        * 않는다 — 바꾸는 것은 용지 줄뿐이다.
        */
       /*
-       * ⭐ **용지 크기는 드라이버에 물어본다**(사용자 지시 2026-09-08). 사람이 값을 적어 주지
-       *    않아도 그 단말에 걸린 라벨지에 맞는다 — 현장에서 갈아 끼워도 프린터 설정만 맞으면
-       *    그대로 따라간다. 못 읽으면 설정값·기본값으로 물러선다.
+       * ⭐ **용지 설정은 인쇄할 때마다 새로 정한다**(`currentLabelMedia`) — 라벨지 설정 창에서 저장하면 다음 장부터
+       *    바로 따른다(사용자 지시 2026-11-24 「런타임 중에 설정을 변경」).
        */
-      const probed = await probeMedia(deviceName ?? fallbackName, join(dataPath, '..'), host);
-      const media = withProbedSize(readLabelMedia(), probed);
+      const commands = readFileSync(dataPath, 'latin1');
+      const { media } = await currentLabelMedia({
+        device: deviceName ?? fallbackName,
+        jobDir: join(dataPath, '..'),
+        host,
+        commands,
+      });
       /*
        * ⛔ **`ascii` 로 읽고 쓰지 않는다.** Node 의 `ascii` 는 바이트마다 최상위 비트를
        *    떨어뜨린다 — 서버가 보낸 명령에 한글이나 코드페이지 바이트가 한 자라도 섞이면
@@ -443,7 +512,7 @@ function createRawPrinter(fallbackName?: string, host?: PrintHost): RawPrinter |
        *    `latin1` 은 바이트를 그대로 옮긴다. 지금은 목이 ASCII 만 내려 드러나지 않지만,
        *    실제 서버가 명령형 렌디션을 내려 주는 순간 재현된다.
        */
-      const sent = applyLabelMedia(readFileSync(dataPath, 'latin1'), media);
+      const sent = applyLabelMedia(commands, media);
       writeFileSync(dataPath, sent, 'latin1');
 
       /*
@@ -451,21 +520,27 @@ function createRawPrinter(fallbackName?: string, host?: PrintHost): RawPrinter |
        * 도우미가 죽었거나 없을 때만(`PrintHostDownError`) 종전 길로 물러선다. 작업이 실패한 것은 그대로 실패다 —
        * 다른 길로 다시 보내면 라벨이 두 장 나올 수 있다.
        */
-      if (host !== undefined) {
-        try {
-          await host.print({ path: dataPath, name: jobName, device: deviceName ?? fallbackName });
-          return;
-        } catch (cause) {
-          if (!(cause instanceof PrintHostDownError)) throw cause;
+      try {
+        if (host !== undefined) {
+          try {
+            await host.print({ path: dataPath, name: jobName, device: deviceName ?? fallbackName });
+            return;
+          } catch (cause) {
+            if (!(cause instanceof PrintHostDownError)) throw cause;
+          }
         }
-      }
 
-      await runPrintScript(
-        join(dataPath, '..', 'raw-print.ps1'),
-        /* 작업이 준 이름이 먼저다. 없으면 기동 시 지정값, 그것도 없으면 OS 기본이다. */
-        buildRawPrintScript({ dataPath, deviceName: deviceName ?? fallbackName, jobName }),
-        rawPrintScriptArgs,
-      );
+        await runPrintScript(
+          join(dataPath, '..', 'raw-print.ps1'),
+          /* 작업이 준 이름이 먼저다. 없으면 기동 시 지정값, 그것도 없으면 OS 기본이다. */
+          buildRawPrintScript({ dataPath, deviceName: deviceName ?? fallbackName, jobName }),
+          rawPrintScriptArgs,
+        );
+      } catch (cause) {
+        /* 기억한 용지 크기가 틀렸을 수 있다 — 다음 작업은 드라이버에 새로 묻는다. */
+        driverMediaMemory.forget();
+        throw cause;
+      }
     },
   };
 }
@@ -477,13 +552,25 @@ function createRawPrinter(fallbackName?: string, host?: PrintHost): RawPrinter |
  *    그때 기록에는 「(OS 기본)」만 남아 **어느 장치로 갔는지 나중에 알 수 없다** — 라벨이 안
  *    나온 날 그 줄이 유일한 단서다.
  *
- * ⛔ **캐시하지 않는다.** 현장에서 기본 프린터를 바꾸는 일이 있고, 기동 시점의 값을 들고 있으면
- *    바뀐 뒤에도 옛 장치 이름으로 보낸다(프린터 목록을 매번 다시 묻는 것과 같은 이유다).
+ * ⚠ **오래 들고 있지 않는다.** 현장에서 기본 프린터를 바꾸는 일이 있다 — 부르는 쪽(`resolvePrinter`)이
+ *    1분만 기억하고, 인쇄가 실패하면 바로 버린다(사용자 지시 2026-11-23).
  *
  * ⚠ Windows 밖에서는 묻지 않는다 — 개발 기계에는 이 길이 없고, 엔진 경로가 알아서 간다.
  */
-async function readDefaultPrinterName(scratchDir: string): Promise<string | null> {
+async function readDefaultPrinterName(
+  scratchDir: string,
+  host?: PrintHost,
+): Promise<string | null> {
   if (process.platform !== 'win32') return null;
+
+  /* 떠 있는 도우미가 있으면 그쪽에 묻는다 — 작업마다 PowerShell 을 새로 띄우지 않는다(현장 실측 2026-11-23). */
+  if (host !== undefined) {
+    try {
+      return parseDefaultPrinterName(await host.defaultPrinter());
+    } catch (cause) {
+      if (!(cause instanceof PrintHostDownError)) return null;
+    }
+  }
 
   try {
     const output = await runPrintScript(
@@ -556,6 +643,8 @@ async function main(): Promise<void> {
   if (!IS_DEV) app.setLoginItemSettings({ openAtLogin: true });
 
   const userData = app.getPath('userData');
+  /* 라벨지 설정 창이 저장하는 값 — 인쇄할 때마다 읽는다(`label-settings`). */
+  labelSettingsPath = join(userData, 'label-settings.json');
   const secureStore = new SecureStore(safeStorage, createFileBlobStore(join(userData, 'secure')));
   const dbPath = join(userData, 'pop.sqlite');
   const localDb = await openLocalDb(dbPath);
@@ -618,8 +707,24 @@ async function main(): Promise<void> {
    *   목록을 들고 있으면 사라진 장치로 계속 보낸다.
    */
   let printHost: BrowserWindow | null = null;
+  /*
+   * 프린터 목록 · 기본 프린터 기억(사용자 지시 2026-11-23) — 작업마다 묻던 것이 1.3초씩 걸렸다(현장 실측).
+   * ⚠ 1분만 들고, 인쇄가 실패하면 바로 버린다 — 현장에서 프린터를 갈아 끼우거나 기본을 바꿔도 따라간다.
+   * 머리의 프린터 고르기 창(`printers:list`)은 늘 새로 묻는다.
+   */
+  const PRINTER_MEMORY_MS = 60_000;
+  let printerMemory: {
+    at: number;
+    printers: Awaited<ReturnType<Electron.WebContents['getPrintersAsync']>>;
+    defaultName: string | null;
+  } | null = null;
+  const forgetPrinters = (): void => {
+    printerMemory = null;
+  };
+
   const resolvePrinter = async (
     requested?: string,
+    fresh = false,
   ): Promise<{
     choice: PrinterChoice;
     available: LoggedPrinter[];
@@ -634,12 +739,32 @@ async function main(): Promise<void> {
      * ⚠ **매번 다시 묻는다.** 현장에서 프린터를 갈아 끼우거나 기본 프린터를 바꾸는 일이 있어,
      *   기동 시점의 값을 들고 있으면 사라진 장치로 계속 보낸다.
      */
-    return resolveTerminalPrinter({
+    if (MOCK_PRINTER) {
       /* 가상 프린터를 켰으면 OS 목록을 읽지 않는다 — 진짜 장치가 골라질 길을 닫는다. */
-      printers: MOCK_PRINTER ? mockPrinters() : await printHost.webContents.getPrintersAsync(),
+      return resolveTerminalPrinter({
+        printers: mockPrinters(),
+        preferred: process.env.POP_PRINTER_NAME,
+        requested,
+        defaultName: MOCK_PRINTER_NAME,
+      });
+    }
+
+    const remembered = printerMemory;
+    const known =
+      !fresh && remembered !== null && Date.now() - remembered.at < PRINTER_MEMORY_MS
+        ? remembered
+        : {
+            at: Date.now(),
+            printers: await printHost.webContents.getPrintersAsync(),
+            defaultName: await readDefaultPrinterName(stagingDir, labelPrintHost),
+          };
+    printerMemory = known;
+
+    return resolveTerminalPrinter({
+      printers: known.printers,
       preferred: process.env.POP_PRINTER_NAME,
       requested,
-      defaultName: MOCK_PRINTER ? MOCK_PRINTER_NAME : await readDefaultPrinterName(stagingDir),
+      defaultName: known.defaultName,
     });
   };
 
@@ -661,7 +786,7 @@ async function main(): Promise<void> {
    *    않게 아는 것만 넘긴다.
    */
   ipcMain.handle('printers:list', async () => {
-    const { choice, available } = await resolvePrinter();
+    const { choice, available } = await resolvePrinter(undefined, true);
 
     return {
       printers: available,
@@ -758,7 +883,7 @@ async function main(): Promise<void> {
       ) => {
         try {
           mkdirSync(logDir, { recursive: true });
-          appendFileSync(
+          appendPrintLog(
             join(logDir, 'print.log'),
             formatPrintLog({
               at: new Date().toISOString(),
@@ -781,7 +906,7 @@ async function main(): Promise<void> {
       ) => {
         try {
           mkdirSync(logDir, { recursive: true });
-          appendFileSync(
+          appendPrintLog(
             join(logDir, 'print.log'),
             formatPrintLog({
               at: new Date().toISOString(),
@@ -813,6 +938,8 @@ async function main(): Promise<void> {
           available.map((printer) => printer.displayName ?? printer.name),
         );
         noteFailure(available, null, error);
+        /* 기억한 프린터가 틀렸을 수 있다 — 다음 작업은 새로 묻는다. */
+        forgetPrinters();
         throw error;
       }
 
@@ -829,12 +956,92 @@ async function main(): Promise<void> {
         noteOutcome(available, deviceName ?? '(OS 기본)', `보냄(${rendition.format})`);
       } catch (cause) {
         noteFailure(available, deviceName ?? '(OS 기본)', cause);
+        /* 기억한 프린터가 틀렸을 수 있다 — 다음 작업은 새로 묻는다. */
+        forgetPrinters();
         throw cause;
       }
 
       return filePath;
     },
   );
+
+  /*
+   * 라벨지 설정 창(톱니 설정 → 라벨지 설정) — 숨은 단축키(Ctrl+Alt+G 보정 · Ctrl+Alt+P 견본)를 대신한다
+   * (사용자 지시 2026-11-24). ⛔ 서버를 부르지 않는다 — 단말에 걸린 라벨지의 일이다.
+   *
+   * 화면이 고른 프린터 이름(`printerName`)을 받아, 실제 인쇄와 같은 프린터의 드라이버에 묻는다.
+   */
+  const labelMediaState = async (printerName: unknown) => {
+    const { choice } = await resolvePrinter(requestedPrinterName(printerName));
+    const device = choice.kind === 'named' ? choice.deviceName : undefined;
+    const jobDir = join(stagingDir, `media-${String(Date.now())}`);
+    mkdirSync(jobDir, { recursive: true });
+
+    try {
+      const state = await currentLabelMedia({
+        device: device ?? process.env.POP_PRINTER_NAME,
+        jobDir,
+        host: labelPrintHost,
+        fresh: true,
+      });
+
+      return {
+        printer: choice.kind === 'none' ? null : (device ?? '(OS 기본)'),
+        hasPrinter: choice.kind !== 'none' && rawPrinter !== undefined,
+        ...state,
+      };
+    } finally {
+      rmSync(jobDir, { force: true, recursive: true });
+    }
+  };
+
+  ipcMain.handle('label-media:read', (_e, printerName?: unknown) => labelMediaState(printerName));
+
+  ipcMain.handle('label-media:save', async (_e, value: unknown, printerName?: unknown) => {
+    const settings = value === null ? null : parseLabelSettings(value);
+
+    /* ⛔ 범위를 벗어난 값으로 프린터를 설정하지 않는다 — 화면이 먼저 막지만 경계에서 한 번 더 본다. */
+    if (value !== null && settings === null)
+      throw new Error('라벨지 설정 값이 범위를 벗어났습니다.');
+
+    if (labelSettingsPath !== null) writeLabelSettings(labelSettingsPath, settings);
+    /* 라벨지를 갈아 끼운 참이다 — 드라이버 크기도 새로 묻는다. */
+    driverMediaMemory.forget();
+
+    return labelMediaState(printerName);
+  });
+
+  /*
+   * 라벨지 보정 — 프린터가 걸린 라벨지를 스스로 재고 그 값을 기억한다. 라벨지를 갈아 끼운 뒤 한 번 돌린다 —
+   * 라벨 한두 장이 빈 채로 밀려 나오는 것이 정상이다. 대지는 실제 인쇄와 같은 값(`currentLabelMedia`)이다.
+   */
+  ipcMain.handle('label-media:calibrate', async (_e, printerName?: unknown) => {
+    if (rawPrinter === undefined) throw new RawPrinterUnavailableError();
+
+    const { choice } = await resolvePrinter(requestedPrinterName(printerName));
+
+    if (choice.kind === 'none') throw new PrinterUnavailableError([]);
+
+    const deviceName = choice.kind === 'named' ? choice.deviceName : undefined;
+    const jobDir = join(stagingDir, `calibrate-${String(Date.now())}`);
+    mkdirSync(jobDir, { recursive: true });
+
+    try {
+      const { media } = await currentLabelMedia({
+        device: deviceName ?? process.env.POP_PRINTER_NAME,
+        jobDir,
+        host: labelPrintHost,
+      });
+      const dataPath = join(jobDir, 'calibrate.tspl');
+      writeFileSync(dataPath, calibrationCommands(media), 'ascii');
+      await rawPrinter.print({ dataPath, jobName: 'OMF 라벨지 보정', deviceName });
+    } catch (cause) {
+      forgetPrinters();
+      throw cause;
+    } finally {
+      rmSync(jobDir, { force: true, recursive: true });
+    }
+  });
 
   const window = new BrowserWindow(
     createKioskWindowOptions({ preloadPath: PRELOAD_PATH, isDev: IS_DEV }),
@@ -857,8 +1064,6 @@ async function main(): Promise<void> {
    *    그것이 이 잠금이 피하려던 상태다(`docs/decisions.md` 15).
    */
   lockKiosk(window);
-
-  registerPrinterDiagnostic(rawPrinter, stagingDir, window);
 }
 
 /**
@@ -877,25 +1082,6 @@ let leavingOnPurpose = false;
 app.on('before-quit', () => {
   leavingOnPurpose = true;
 });
-
-/**
- * 화면을 가리는 대화상자가 떠 있는 깊이.
- *
- * ⚠ **0이 아니면 초점을 되찾지 않는다.** 대화상자가 뜨면 키오스크 창은 초점을 잃는데, 그때
- *   되찾아 버리면 대화상자가 뒤로 밀려 **누를 수 없는 채로 화면 밖에 남는다**(라벨 진단이
- *   그렇다). 초점 회복과 대화상자는 서로 싸우므로 한쪽을 재워 둔다.
- */
-let modalDepth = 0;
-
-async function whileModalIsUp<T>(run: () => Promise<T>): Promise<T> {
-  modalDepth += 1;
-
-  try {
-    return await run();
-  } finally {
-    modalDepth -= 1;
-  }
-}
 
 /**
  * 키오스크 잠금 배선 — 창 옵션이 못 막는 **입력과 창 수명**을 여기서 막는다(#901).
@@ -959,178 +1145,12 @@ function lockKiosk(window: BrowserWindow): void {
 
   window.setAlwaysOnTop(true, 'screen-saver');
   window.on('blur', () => {
-    if (modalDepth > 0) return;
     if (leavingOnPurpose) return;
     if (window.isDestroyed()) return;
 
     window.focus();
   });
 }
-
-/**
- * 실기 진단 — **Ctrl+Alt+P 로 시험 라벨 한 장을 찍어 본다**(#831).
- *
- * ⭐ **왜 단축키인가.** 단말은 키오스크라 메뉴도 개발자도구도 없고, 서버가 명령형을 내려 주기
- *   전까지는 화면을 눌러서 이 경로에 닿을 수 없다. 그런데 실기에서만 알 수 있는 것이 셋
- *   있다 — 포트 이름 · 프린터 쪽 통신 설정 · TSPL 로 보내면 정말 찍히는가. 그것을 사람이
- *   확인할 유일한 창구다.
- *
- * ⛔ **업무 라벨을 여기서 뽑지 않는다.** 나오는 것은 고정된 시험 문구뿐이다
- *    (`serial-diagnostic` 머리말).
- *
- * ⚠ **결과를 반드시 말한다.** 사유를 삼키면 「눌렀는데 아무 일도 안 난다」가 되고, 그때
- *   포트가 틀린 것인지 프린터가 죽은 것인지 가릴 방법이 단말에 남지 않는다.
- */
-function registerPrinterDiagnostic(
-  rawPrinter: RawPrinter | undefined,
-  stagingDir: string,
-  /**
-   * 상자를 띄울 부모 창.
-   *
-   * ⚠ **부모를 주지 않으면 상자가 키오스크 창 뒤로 깔린다.** 잠금이 창을 항상 맨 앞에 두는데
-   *   (`lockKiosk`) 소유자 없는 상자는 그 위로 못 올라온다 — 눌러도 아무 일이 없고 앱은 응답을
-   *   기다린 채 멈춘다. 부모가 있는 상자는 부모 위에 뜬다.
-   */
-  parent: BrowserWindow,
-): void {
-  /*
-   * 라벨지 보정 — **Ctrl+Alt+G**. 프린터가 걸린 라벨지를 스스로 재고 그 값을 기억한다.
-   *
-   * ⭐ 「인쇄가 나오다가 멈춘다」가 설정이 아니라 보정 문제일 때 이것이 답이다. 라벨지를
-   *    갈아 끼운 뒤 한 번 돌린다 — 라벨 한두 장이 빈 채로 밀려 나오는 것이 정상이다.
-   */
-  globalShortcut.register('CommandOrControl+Alt+G', () => {
-    /* 대화상자가 떠 있는 동안은 초점 회복을 재운다 — 아니면 이 상자가 창 뒤로 밀린다. */
-    void whileModalIsUp(async () => {
-      if (rawPrinter === undefined) {
-        await dialog.showMessageBox(parent, {
-          type: 'warning',
-          title: '라벨지 보정',
-          message: '보낼 프린터를 찾을 수 없습니다',
-          detail: '이 단말에 등록된 프린터가 없거나, Windows 가 아닙니다.',
-        });
-
-        return;
-      }
-
-      const media = readLabelMedia();
-      const jobDir = join(stagingDir, `calibrate-${String(Date.now())}`);
-
-      try {
-        mkdirSync(jobDir, { recursive: true });
-        const dataPath = join(jobDir, 'calibrate.tspl');
-        writeFileSync(dataPath, calibrationCommands(media), 'ascii');
-        await rawPrinter.print({ dataPath, jobName: 'OMF 라벨지 보정' });
-
-        await dialog.showMessageBox(parent, {
-          type: 'info',
-          title: '라벨지 보정',
-          message: '보정 명령을 보냈습니다',
-          detail: `대지 ${String(media.widthMm)} × ${String(media.heightMm)} mm · ${media.kind}\n라벨 한두 장이 밀려 나온 뒤 멈추면 정상입니다.`,
-        });
-      } catch (cause) {
-        await dialog.showMessageBox(parent, {
-          type: 'error',
-          title: '라벨지 보정',
-          message: '보정을 보내지 못했습니다',
-          detail: cause instanceof Error ? cause.message : String(cause),
-        });
-      } finally {
-        rmSync(jobDir, { force: true, recursive: true });
-      }
-    });
-  });
-
-  globalShortcut.register('CommandOrControl+Alt+P', () => {
-    /* 대화상자가 떠 있는 동안은 초점 회복을 재운다 — 아니면 이 상자가 창 뒤로 밀린다. */
-    void whileModalIsUp(async () => {
-      if (rawPrinter === undefined) {
-        await dialog.showMessageBox(parent, {
-          type: 'warning',
-          title: '라벨 프린터 진단',
-          message: '보낼 프린터를 찾을 수 없습니다',
-          detail: '이 단말에 등록된 프린터가 없거나, Windows 가 아닙니다.',
-        });
-
-        return;
-      }
-
-      const kinds: LabelKind[] = ['lot', 'shipping'];
-      const { response } = await dialog.showMessageBox(parent, {
-        type: 'question',
-        title: '라벨 프린터 진단',
-        message: '견본 라벨을 찍습니다',
-        detail: `보낼 곳: ${process.env.POP_PRINTER_NAME ?? 'OS 기본 프린터'}\n라벨을 그 규격으로 끼운 뒤 골라 주세요.`,
-        buttons: ['자재 LOT 라벨 80 × 30 (실제 서식)', '출하용 라벨 100 × 60', '취소'],
-        cancelId: 2,
-      });
-
-      const kind = kinds[response];
-
-      if (kind === undefined) return;
-
-      /*
-       * ⭐ **80 × 30 은 실제 발행과 같은 길로 찍는다**(사용자 지시 2026-09-15). 서식은 화면의
-       *    `buildMaterialLotLabel`, 보내는 곳은 `rendition:save` — 발행 화면과 같은 두 자리다.
-       *    셸이 짠 견본(`sampleLabel`)은 서식도 프린터 고르는 길도 달라, 견본이 맞아도 실제 라벨은
-       *    어긋날 수 있었다. 화면 쪽 자리는 `screens/pop-material-lot-label/sample-print`.
-       */
-      if (kind === 'lot') {
-        try {
-          const saved: unknown = await parent.webContents.executeJavaScript(
-            'window.__popPrintSampleLotLabel()',
-            true,
-          );
-          await dialog.showMessageBox(parent, {
-            type: 'info',
-            title: '라벨 프린터 진단',
-            message: '프린터로 보냈습니다',
-            detail: `실제 자재 LOT 라벨과 같은 서식·같은 인쇄 경로입니다.\n여백이 좌우·위아래로 고른지, QR 이 스캐너에 읽히는지 확인해 주세요.\n(${String(saved)})`,
-          });
-        } catch (cause) {
-          await dialog.showMessageBox(parent, {
-            type: 'error',
-            title: '라벨 프린터 진단',
-            message: '보내지 못했습니다',
-            detail: reasonOf(cause),
-          });
-        }
-
-        return;
-      }
-
-      /* 인쇄 스크립트가 같은 폴더에 앉는다 — 업무 인쇄와 같은 방식이다. */
-      const jobDir = join(stagingDir, `diagnostic-${String(Date.now())}`);
-      mkdirSync(jobDir, { recursive: true });
-      const dataPath = join(jobDir, 'label.prn');
-      writeFileSync(dataPath, sampleLabel(kind), 'ascii');
-
-      try {
-        await rawPrinter.print({ dataPath, jobName: `POP 진단 ${kind}` });
-        await dialog.showMessageBox(parent, {
-          type: 'info',
-          title: '라벨 프린터 진단',
-          message: '프린터로 보냈습니다',
-          detail:
-            '견본이 규격대로 나왔는지, DataMatrix 가 스캐너에 읽히는지 확인해 주세요.\n종이가 나오지 않았다면 통신 설정이 프린터 쪽과 다를 수 있습니다.',
-        });
-      } catch (cause) {
-        /* `showErrorBox` 는 부모를 받지 못해 맨 앞 창 뒤로 깔린다 — 같은 내용을 부모 있는
-           상자로 낸다. 사유를 삼키면 포트가 틀린 것인지 프린터가 죽은 것인지 가릴 수 없다. */
-        await dialog.showMessageBox(parent, {
-          type: 'error',
-          title: '라벨 프린터 진단',
-          message: '보내지 못했습니다',
-          detail: reasonOf(cause),
-        });
-      } finally {
-        rmSync(jobDir, { force: true, recursive: true });
-      }
-    });
-  });
-}
-
-app.on('will-quit', () => globalShortcut.unregisterAll());
 
 app.on('window-all-closed', () => app.quit());
 

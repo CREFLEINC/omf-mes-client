@@ -20,6 +20,7 @@ export const popUniform: Translated<typeof ko.popUniform> = {
   textKeyboard: {
     region: 'Bàn phím chữ',
     shift: 'Chữ hoa',
+    shiftLocked: 'Khóa chữ hoa',
     lang: '한/EN',
     symbols: 'Ký hiệu',
     space: 'Dấu cách',

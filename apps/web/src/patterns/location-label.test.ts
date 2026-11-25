@@ -19,8 +19,12 @@ describe('locationMarkerLabel', () => {
     expect(locationMarkerLabel({ locationCode: 'Z01-R001' })).toBe('Z01-R001');
   });
 
-  it('US2-2 이름은 표식에 쓰지 않는다', () => {
+  /* 사용자 지시 2026-11-24 — 도면 위에 위치명이 보이게. 별칭이 없으면 위치명, 그것도 없으면 코드. */
+  it('별칭이 없으면 위치명을 표식에 쓴다', () => {
     expect(locationMarkerLabel({ locationCode: 'Z01', locationName: 'A동', aliasName: '' })).toBe(
+      'A동',
+    );
+    expect(locationMarkerLabel({ locationCode: 'Z01', locationName: '  ', aliasName: null })).toBe(
       'Z01',
     );
   });

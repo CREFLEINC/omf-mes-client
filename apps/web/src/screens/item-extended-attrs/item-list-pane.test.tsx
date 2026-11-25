@@ -136,7 +136,7 @@ describe('ItemListPane — 조회 조건', () => {
   it('검색어를 모아서 적용한다', async () => {
     const { onApplyFilters, user } = renderPane();
 
-    await user.type(screen.getByRole('textbox', { name: '품목코드·품목명' }), 'SYN');
+    await user.type(screen.getByRole('searchbox', { name: '품목코드·품목명' }), 'SYN');
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(onApplyFilters).toHaveBeenCalledWith({

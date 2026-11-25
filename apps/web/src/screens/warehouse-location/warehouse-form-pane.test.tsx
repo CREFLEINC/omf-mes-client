@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  locationFixtures,
   lookupFixtures,
   warehouseFieldErrorFixtures,
   warehouseFormInitialValues,
@@ -38,32 +37,6 @@ const renderPane = (overrides: Partial<Parameters<typeof WarehouseFormPane>[0]> 
   );
 
   return { onChange, onSave, onCancel, onDeactivate, onActivate };
-};
-
-/** 같은 창에 값만 바꿔 다시 그린다 — 받는 중 → 받음. */
-const renderPaneWithRerender = (initial: Partial<Parameters<typeof WarehouseFormPane>[0]>) => {
-  const props: Parameters<typeof WarehouseFormPane>[0] = {
-    mode: 'edit',
-    values: warehouseFormInitialValues,
-    onChange: vi.fn(),
-    fieldErrors: {},
-    banner: null,
-    codeLockReason: null,
-    isActive: true,
-    isDirty: false,
-    isSaving: false,
-    lookups: lookupFixtures,
-    onSave: vi.fn(),
-    onCancel: vi.fn(),
-    onDeactivate: vi.fn(),
-    onActivate: vi.fn(),
-    ...initial,
-  };
-  const view = render(<WarehouseFormPane {...props} />);
-  return {
-    rerender: (next: Partial<Parameters<typeof WarehouseFormPane>[0]>) =>
-      view.rerender(<WarehouseFormPane {...props} {...next} />),
-  };
 };
 
 describe('WarehouseFormPane', () => {
@@ -210,18 +183,21 @@ describe('WarehouseFormPane', () => {
     expect(onChange).toHaveBeenCalledWith({ isDefect: true });
   });
 
-  it('Location 묶음은 목록을 받는 동안 자리만 잡고, 받으면 위치 수를 보인다', () => {
-    const { rerender } = renderPaneWithRerender({ locations: { items: null, error: null } });
+  it('창 안에 넣을 때(showActions=false)는 저장 · 취소가 없고, 사용 중지는 본문 「사용 상태」 줄에 있다', async () => {
+    const user = userEvent.setup();
+    const { onDeactivate } = renderPane({ showActions: false });
 
-    expect(screen.getByRole('status', { name: 'Location을 불러오는 중' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '저장' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '취소' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Location' })).not.toBeInTheDocument();
 
-    rerender({ locations: { items: locationFixtures, error: null } });
-    expect(screen.getByLabelText('사용 중지')).toHaveTextContent('0');
-    expect(
-      within(screen.getByRole('region', { name: 'Location' })).getByText(
-        String(locationFixtures.length),
-      ),
-    ).toBeInTheDocument();
+    const stateRow = screen.getByText('사용 상태').closest('.warehouse-info-state');
+    expect(stateRow).not.toBeNull();
+    /* 상태 칩은 이 줄에 한 번만 — 머리에 두 번 두지 않는다. */
+    /* 사용 여부는 전 화면 같은 「사용 / 미사용」 라벨(#358). */
+    expect(screen.getAllByText('사용', { exact: true })).toHaveLength(1);
+    await user.click(within(stateRow as HTMLElement).getByRole('button', { name: '사용 중지' }));
+    expect(onDeactivate).toHaveBeenCalledOnce();
   });
 
   it('fieldErrors를 주입하면 창고코드의 인라인 오류가 화면에 보인다', () => {

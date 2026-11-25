@@ -36,7 +36,7 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
     /** ⚠ 그림만 못 받은 것이다 — 점은 그대로 있다. */
     drawingLoadFailed: 'Không tải được bản vẽ.',
     drawingRetry: 'Tải lại bản vẽ',
-    placeNeedsLocation: 'Hãy chọn vị trí cần đánh dấu.',
+    placeNeedsLocation: 'Hãy chọn vị trí cần đặt trong danh sách.',
     /**
      * ⭐ 잠긴 판이 **무엇을 막고 무엇은 허락하는지** 듣는 사람에게 전하는 말. 「사용 불가」로
      * 뭉뚱그리면 고르기까지 막힌 것으로 들린다 — 잠겨도 고르기는 된다.
@@ -55,7 +55,7 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
     width: 'Rộng (%)',
     height: 'Cao (%)',
     rotation: 'Xoay (°)',
-    remove: 'Bỏ khỏi bản đồ',
+    remove: 'Bỏ khỏi bản vẽ',
     removeNeedsMarker: 'Hãy chọn điểm đánh dấu cần bỏ.',
     save: 'Lưu sơ đồ bố trí',
     saving: 'Đang lưu.',
@@ -96,7 +96,7 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
   },
   editor: {
     open: 'Sửa',
-    title: (warehouse: string): string => `Sửa sơ đồ bố trí — ${warehouse}`,
+    title: 'Sửa sơ đồ bố trí',
     cancel: 'Hủy',
     discardTitle: 'Bỏ thay đổi và đóng?',
     discardBody: 'Các thay đổi điểm đánh dấu chưa lưu sẽ mất.',
@@ -106,12 +106,24 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
       `${String(count)} điểm đánh dấu tầng·ô sẽ bị bỏ khi lưu.`,
     drawingBoard: 'Đang vẽ bố trí',
     emptyPlaceable: 'Không có khu·kệ để đặt lên bản vẽ',
+    toolbar: 'Công cụ bản vẽ',
+    progress: (placed: number, total: number): string =>
+      `Đã đặt ${String(placed)} / ${String(total)}`,
+    autoNext: 'Đặt xong thì chọn vị trí kế tiếp',
+    zoomOut: 'Thu nhỏ',
+    zoomIn: 'Phóng to',
+    zoomFit: 'Vừa khung',
+    zoomLevel: (percent: number): string => `${String(percent)}%`,
+    props: 'Vị trí đã chọn',
+    propsEmpty: 'Chọn vị trí trong danh sách rồi bấm lên bản vẽ để đặt.',
+    propsNotPlaced: 'Chưa có trên bản vẽ. Bấm lên bản vẽ để đặt.',
+    location: 'Vị trí',
   },
 
   stock: {
     legendStocked: 'Có tồn kho',
     legendEmpty: 'Trống',
-    legendNote: 'Vị trí chưa có trên bản vẽ hiện «Chưa» trong danh sách',
+    legendNote: 'Vị trí chưa có trên bản vẽ hiện «Chưa đặt» trong danh sách',
     title: (locationCode: string): string => `Tồn kho tại ${locationCode}`,
     location: 'Vị trí',
     itemCode: 'Mã mặt hàng',
@@ -131,8 +143,8 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
     name: 'Tên',
     level: 'Phân loại',
     placed: 'Bản vẽ',
-    onMap: 'Đã đánh dấu',
-    notOnMap: 'Chưa',
+    onMap: 'Đã đặt',
+    notOnMap: 'Chưa đặt',
     emptyTitle: 'Không có vị trí',
     emptyGuide: (screenName: string): string => `Hãy đăng ký vị trí trong màn hình ${screenName}.`,
     notOnDrawing: 'Chưa có trên bản vẽ',

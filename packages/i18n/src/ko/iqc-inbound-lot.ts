@@ -98,7 +98,6 @@ export const iqcInboundLot = {
         ncNo === null
           ? `자재 관리 LOT ${count}개가 모두 불량 처리되었습니다.`
           : `자재 관리 LOT ${count}개가 모두 불량 처리되었습니다. 부적합 ${ncNo}에서 후속 처분을 진행하세요.`,
-      ncOpen: '부적합 처분 관리로 이동',
       heldTitle: '검사 보류 확정',
       held: '자재 관리 LOT는 검사 대기로 남습니다. 다시 검사하려면 판정 수정 후 검사 결과를 추가하세요.',
     },
@@ -184,15 +183,14 @@ export const iqcInboundLot = {
         '이 결과가 불합격이나 보류 판정을 바꿉니다. 재검 사유를 고르세요',
     },
     alsoMatched: (seqNos: string) => `${seqNos}회차에도 매칭됨`,
-    judgmentRequired: '판정을 고르세요.',
     cancel: '취소',
     /** 사용자 지시 2026-11-16 · #274 — 「저장」에서 정정. */
     save: '제출',
     discardBody: '입력한 내용이 사라집니다. 닫을까요?',
     discardStay: '계속 입력',
     discardLeave: '닫기',
-    added: (seqNo: number, judgment: string) =>
-      `${seqNo}회차 검사 결과를 기록했습니다. 종합 판정 미리 보기: ${judgment}`,
+    /** 사용자 지시 2026-11-24 · omf-all-around#356 — 종합 판정 미리 보기 없이 이 문장만. */
+    added: '검사 결과를 제출하였습니다.',
     updated: (seqNo: number) => `${seqNo}회차 검사 결과를 고쳤습니다.`,
     loading: '결과를 불러오는 중입니다',
   },

@@ -304,28 +304,15 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         ],
       },
       /*
-       * 품질 기준 정보 — 검사기준 · 검사 수준 관리를 사이드바 한 줄 ·
-       * 본문 위 탭으로 묶는다(사용자 2026-10-26). 모두 판정이 기대는 기준·코드 마스터다.
+       * 검사 기준 관리 — 예전 「품질 기준 정보」 탭 묶음(검사 기준 · 검사 수준 설정)이었다(사용자 2026-10-26).
+       * 검사 수준 설정(W-03-12)은 검사 기준 화면의 IQC 기준 상세로 합쳐 탭이 하나만 남아 묶음을 풀었다(omf-all-around#357).
        * 검사표 기준(W-06-24 · OA 전용)은 검사 기준 탭에 합쳤다 — OA 공장 계정은 검사 유형 PQC 가 검사표 기준을 연다(omf-all-around#255).
        */
       {
         to: '/master-data/inspection-standard',
         icon: 'rule_settings',
-        label: '품질 기준 정보',
-        labelVi: 'Dữ liệu chuẩn chất lượng',
-        tabs: [
-          {
-            to: '/master-data/inspection-standard',
-            label: '검사 기준',
-            labelVi: 'Tiêu chuẩn kiểm tra',
-          },
-          /* W-03-12 — 품목별 IQC 검사 수준과 자동 전환 이력(omf-all-around#64). */
-          {
-            to: '/quality/inspection-levels',
-            label: '검사 수준 설정',
-            labelVi: 'Thiết lập mức kiểm tra',
-          },
-        ],
+        label: '검사 기준 관리',
+        labelVi: 'Quản lý tiêu chuẩn kiểm tra',
       },
       /*
        * 품질 코드 관리 — 검사 판정 때 고르는 코드 목록(불량·원인코드 · 판정 유형 코드)을 한 묶음으로(사용자 지시 2026-10-29 · omf-all-around#208).
@@ -402,13 +389,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
         ],
       },
-      /* W-03-10 — 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */
-      {
-        to: '/quality/dispositions',
-        icon: 'gavel',
-        label: '부적합 처분 관리',
-        labelVi: 'Ra quyết định xử lý',
-      },
+      /* W-03-10 「부적합 처분 관리」는 메뉴에서 뺐다 — 처분은 검사 조회·판정 IQC · OQC 탭의 처분 상자가 한다(omf-all-around#354). */
     ],
   },
   /*
@@ -466,15 +447,20 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         labelVi: 'Tra cứu tiến độ W/O',
       },
       /*
-       * W-02-09 — 「W/O 진행현황 조회」 바로 아래. 정방향과 역방향 모두 「투입 → W/O → 생산 LOT」을 지나
-       * 생산이 가진 자료다. 세 탭(자재 LOT, 제품 LOT, 입출고 현황)은 한 권한이라 셸 탭 묶음(탭마다
-       * 화면 코드)이 아니라 화면이 그린다.
+       * W-02-13 · W-02-14(피처 015) — 「W/O 진행현황 조회」 바로 아래 나란히(W-02-09 「LOT 생산 이력 조회」 자리).
+       * 정방향과 역방향 모두 「투입 → W/O → 생산 LOT」을 지나 생산이 가진 자료다. 권한이 따로라 두 항목이다.
        */
       {
-        to: '/production/lot-trace',
+        to: '/production/material-trace',
         icon: 'timeline',
-        label: 'LOT 생산 이력 조회',
-        labelVi: 'Tra cứu lịch sử sản xuất LOT',
+        label: '자재 기준 생산 추적',
+        labelVi: 'Truy vết sản xuất theo vật tư',
+      },
+      {
+        to: '/production/product-trace',
+        icon: 'manage_search',
+        label: '제품 기준 역추적',
+        labelVi: 'Truy vết ngược theo sản phẩm',
       },
       /* W-02-05 — 진행을 본 뒤 닫는다. 생산 흐름의 끝이다. */
       {
@@ -694,6 +680,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             labelVi: 'Sơ đồ bố trí kho',
           },
         ],
+      },
+      /* W-06-26 교대 관리(omf-all-around#318) — 공장별 주간·야간 교대 시간. 생산계획·작업 시간 판정이 쓰는 기준이다. */
+      {
+        to: '/master-data/shifts',
+        icon: 'schedule',
+        label: '교대 관리',
+        labelVi: 'Quản lý ca làm việc',
       },
       /*
        * W-06-11 마스터 변경관리는 **메뉴에서 감춘다**(사용자 지시 2026-11-20) — 주소·화면은 남긴다. 다시 세우면

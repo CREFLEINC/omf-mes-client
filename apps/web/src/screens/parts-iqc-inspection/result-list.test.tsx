@@ -128,7 +128,7 @@ const mount = (data: InboundInspection, events: unknown[] = []) => {
         uomCode="EA"
         renderForm={({ drawer }) => (
           <div>
-            {drawer.matchField}
+            {drawer.matchField(drawer.setMatchedLotIds)}
             <p>양식 자리</p>
           </div>
         )}

@@ -1,11 +1,14 @@
 import type {
   MaterialLotBatchCreate,
   MaterialLotBatchCreated,
+  MaterialLotRevise,
+  MaterialLotTabRow,
   MaterialLotVoidResult,
 } from '@omf-mes/api-client';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
+import { materialLotKeys } from '../../patterns/material-lot-precreate';
 import { materialLotIssueKeys } from './queries';
 
 /**
@@ -24,7 +27,7 @@ export const useIssueBatch = (
         body,
       }),
     etagPath: null,
-    invalidateKeys: [materialLotIssueKeys.all],
+    invalidateKeys: [materialLotIssueKeys.all, materialLotKeys.all],
     knownFields: [],
     keyLifetime: 'until-applied',
     onSuccess,
@@ -43,8 +46,30 @@ export const useVoidLots = (
         body: { lotIds },
       }),
     etagPath: null,
-    invalidateKeys: [materialLotIssueKeys.all],
+    invalidateKeys: [materialLotIssueKeys.all, materialLotKeys.all],
     knownFields: [],
+    onSuccess,
+  });
+};
+
+/**
+ * 출력 전 자재 관리 LOT 수정(피처 014 FR-016 · 계약 §3 `POST /logistics/material-lots/{lotId}:revise`). 웹은 사번을
+ * 싣지 않는다 — 계정이 행위자다. 되돌릴 수 없는 쓰기(번호가 바뀐다)라 적용될 때까지 같은 멱등 키를 쓴다.
+ */
+export const useReviseLot = (
+  onSuccess: (revised: MaterialLotTabRow) => void,
+): MasterWriteResult<{ lotId: number; body: MaterialLotRevise }> => {
+  const { client } = useApiClient();
+  return useMasterWrite({
+    request: ({ lotId, body }, headers) =>
+      client.POST('/logistics/material-lots/{lotId}:revise', {
+        params: { path: { lotId }, header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+        body,
+      }),
+    etagPath: null,
+    invalidateKeys: [materialLotIssueKeys.all, materialLotKeys.all],
+    knownFields: [],
+    keyLifetime: 'until-applied',
     onSuccess,
   });
 };

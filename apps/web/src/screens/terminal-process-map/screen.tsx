@@ -71,33 +71,32 @@ import { PagedSelectField } from './paged-select-field';
 import { ProcessGrid } from './process-grid';
 import {
   useProcessesReplace,
-  useTerminalCreate,
   useEquipmentLabel,
   useEquipmentPages,
   useWarehouseLabel,
   useWarehousePages,
-  useTerminalActivate,
-  useTerminalDeactivate,
   useTerminalDetail,
   useTerminalProcesses,
   useTerminals,
   useNextTerminalCode,
   useTerminalRegistrationCounts,
+  useTerminalActivate,
+  useTerminalDeactivate,
   useTerminalUpdate,
   useTokenIssue,
 } from './queries';
 import { SelectField } from './select-field';
 import {
   EMPTY_TERMINAL,
-  TERMINAL_CODE_PREFIX,
   hasTerminalErrors,
-  toCreateBody,
+  terminalCodePrefix,
   toTerminalDraft,
   toUpdateBody,
   validateTerminal,
   type TerminalDraft,
   type TerminalErrors,
 } from './terminal-draft';
+import { TerminalCreateWizard } from './terminal-create-wizard';
 import { TerminalForm } from './terminal-form';
 import { TokenDialog } from './token-dialog';
 import {
@@ -113,6 +112,8 @@ const t = messages.terminalProcessMap;
 const leave = messages.common.unsavedLeave;
 
 const EMPTY_ROWS: TerminalView[] = [];
+/** 공정별 기능 구성을 쓰는 단말 유형 — 작업장 단말만 공정에서 일한다. */
+const POP_TYPE = 'POP';
 const EMPTY_GRID: GridDraft = [];
 
 /** 폼이 무엇을 하고 있는가. 닫힘·등록·수정 셋뿐이다. */
@@ -150,7 +151,6 @@ export const TerminalProcessMapScreen = () => {
   const [gridNotice, setGridNotice] = useState<string | null>(null);
   const [addTarget, setAddTarget] = useState('');
   const [token, setToken] = useState<TokenView | null>(null);
-  const [isDeactivating, setDeactivating] = useState(false);
   /* 저장 · 중지 결과는 오른쪽 아래 알림으로(사용자 지시 2026-11-20 · #333). */
   const toast = useToast();
   const notify = (description: string): void => {
@@ -179,12 +179,13 @@ export const TerminalProcessMapScreen = () => {
   const codeNames = useTerminalCodeNames();
 
   /*
-   * 단말 추가 팝업을 열면 단말 코드를 `TERM-일련번호` 로 바로 채운다 — 고칠 수 있다(사용자 지시 2026-11-20 · #333).
+   * 단말 유형을 고르면 단말 코드를 `유형-일련번호` 로 채운다 — 고칠 수 있다(사용자 지시 2026-11-20 · #333).
    * 칸이 비었거나 앞서 채운 값 그대로일 때만 바꾼다 — 사용자가 고친 코드는 덮지 않는다.
+   * 유형을 고르기 전에는 코드 칸이 잠겨 있다 — 위에서 채운 코드가 유형을 고를 때 바뀌지 않게 칸을 맨 끝에 둔다.
    */
   const [autoCode, setAutoCode] = useState<string | null>(null);
   const codeSuggestion = useNextTerminalCode(
-    formMode === 'create' ? terminalDraft.terminalTypeCode || TERMINAL_CODE_PREFIX : '',
+    formMode === 'create' ? terminalCodePrefix(terminalDraft.terminalTypeCode) : '',
   );
   if (
     formMode === 'create' &&
@@ -221,21 +222,23 @@ export const TerminalProcessMapScreen = () => {
     setAddTarget('');
   }, [original]);
 
-  const create = useTerminalCreate((created) => {
-    setFormMode('closed');
-    notify(t.terminal.registered);
-    selectTerminal(created.terminalId);
-  });
+  /** 단말 추가 창을 열 때마다 새로 — 지난 등록의 단계 · 표 · 오류를 들고 오지 않는다. */
+  const [wizardKey, setWizardKey] = useState(0);
 
   const update = useTerminalUpdate(selectedId, () => {
     setFormMode('closed');
     notify(t.terminal.saved);
   });
 
+  /*
+   * 사용 중지 · 재개 — 운영 상태(가동 · 중지)와 다른 축이다. 끄면 그 기기의 토큰이 막히고 다시 켜면 풀린다
+   * (계약 Terminal.statusCode 설명 · 사용자 결정 2026-11-24). 수정 창 본문 맨 아래에 둔다.
+   */
+  const [isDeactivating, setDeactivating] = useState(false);
   const activate = useTerminalActivate(selectedId, () => {
+    setFormMode('closed');
     notify(t.terminal.activated);
   });
-
   const deactivate = useTerminalDeactivate(selectedId, () => {
     setDeactivating(false);
     notify(t.terminal.deactivated);
@@ -283,7 +286,6 @@ export const TerminalProcessMapScreen = () => {
   const selectTerminal = (terminalId: number | null): void => {
     setSearchParams(toSearchParams(filters, terminalId));
     setFormMode('closed');
-    create.reset();
     update.reset();
     replace.reset();
     issueToken.reset();
@@ -294,7 +296,7 @@ export const TerminalProcessMapScreen = () => {
     setAutoCode(null);
     setTerminalErrors({});
     setFormMode('create');
-    create.reset();
+    setWizardKey((key) => key + 1);
     update.reset();
   };
 
@@ -304,20 +306,28 @@ export const TerminalProcessMapScreen = () => {
     setTerminalDraft(toTerminalDraft(selected));
     setTerminalErrors({});
     setFormMode('edit');
-    create.reset();
     update.reset();
   };
 
-  const submitTerminal = (): void => {
-    const isNew = formMode === 'create';
-    const errors = validateTerminal(terminalDraft, isNew);
+  /** 칸을 검사해 오류를 건다 — 넘어가도 되면 `true`. */
+  const checkTerminal = (): boolean => {
+    const errors = validateTerminal(terminalDraft, formMode === 'create');
 
     setTerminalErrors(errors);
 
-    if (hasTerminalErrors(errors)) return;
+    return !hasTerminalErrors(errors);
+  };
 
-    if (isNew) create.write(toCreateBody(terminalDraft));
-    else update.write(toUpdateBody(terminalDraft));
+  const submitEdit = (): void => {
+    if (checkTerminal()) update.write(toUpdateBody(terminalDraft));
+  };
+
+  const changeDraft = (patch: Partial<TerminalDraft>): void => {
+    setTerminalDraft((prev) => ({ ...prev, ...patch }));
+    /* 고친 칸의 「비었다」 오류는 바로 지운다 — 다 채웠는데 빨간 문구가 남지 않게(#333). */
+    setTerminalErrors((prev) =>
+      Object.fromEntries(Object.entries(prev).filter(([key]) => !(key in patch))),
+    );
   };
 
   const addRow = (value: string): void => {
@@ -349,7 +359,7 @@ export const TerminalProcessMapScreen = () => {
     return terminal.registrationStatusCode === 'REGISTERED' ? codeNames.status(text) : text;
   };
 
-  const registrationLabelOf = (terminal: TerminalView): string =>
+  const registrationText = (terminal: TerminalView): string =>
     terminal.registrationStatusCode === 'REGISTERED'
       ? t.list.registrationComplete
       : terminal.registrationStatusCode === 'UNREGISTERED'
@@ -358,7 +368,7 @@ export const TerminalProcessMapScreen = () => {
 
   const registrationChip = (terminal: TerminalView) => (
     <Chip size="sm" status={terminal.registrationStatusCode === 'REGISTERED' ? 'success' : 'idle'}>
-      {registrationLabelOf(terminal)}
+      {registrationText(terminal)}
     </Chip>
   );
 
@@ -378,9 +388,8 @@ export const TerminalProcessMapScreen = () => {
   const baseColumns: Column<TerminalView>[] = [
     {
       key: 'code',
-      align: 'center',
       header: t.list.code,
-      width: '184px',
+      width: '172px',
       /* 링크처럼 보이지 않는다 — 줄 아무 곳이나 눌러 고른다. 이 단추는 키보드·화면 낭독기의 자리다. */
       render: (row) => (
         <button
@@ -399,7 +408,7 @@ export const TerminalProcessMapScreen = () => {
       key: 'type',
       align: 'center',
       header: t.list.type,
-      width: '120px',
+      width: '96px',
       render: (row) => codeNames.type(row.terminalTypeCode),
     },
     {
@@ -417,27 +426,31 @@ export const TerminalProcessMapScreen = () => {
       key: 'registration',
       align: 'center',
       header: t.list.registration,
-      width: '104px',
+      width: '96px',
       render: (row) => registrationChip(row),
     },
     {
       key: 'equipment',
-      align: 'center',
       header: t.list.equipment,
-      width: '168px',
+      width: '240px',
       render: (row) => row.equipmentLabel ?? t.list.notAvailable,
     },
     {
       key: 'warehouse',
-      align: 'center',
       header: t.list.warehouse,
-      width: '120px',
-      render: (row) => row.warehouseName ?? t.list.warehouseAll,
+      width: '288px',
+      /* 창고를 정하지 않았으면 유형과 관계없이 설치 설비 칸처럼 「—」(사용자 지시 2026-11-24). */
+      render: (row) => row.warehouseName ?? t.list.notAvailable,
     },
   ];
-  /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(사용자 역할 권한 관리 목록과 같다). */
+  /*
+   * 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(사용자 역할 권한 관리 목록과 같다).
+   * 글자 열(코드 · 설비 · 창고)은 왼쪽 정렬에 넓게, 라벨 열은 라벨 폭만(사용자 지시 2026-11-24).
+   * 폭은 지금 자료(MOBILE-002-WH31 · 설비 이름 · 베트남어 창고 이름)가 잘리지 않는 만큼 — 목록 구획이 좁으면 표가 가로로 구른다.
+   * 폭 기본값을 바꾸며 저장 열쇠를 v2 로 — 예전에 끌어 둔 폭이 새 기본값을 덮지 않게.
+   */
   const ordered = useColumnOrder('omf-mes:terminal-process-map:columns:order', baseColumns);
-  const resizable = useColumnWidths('omf-mes:terminal-process-map:columns', ordered);
+  const resizable = useColumnWidths('omf-mes:terminal-process-map:columns:v2', ordered);
   const fit = useFitColumns(resizable.columns);
 
   const serverRowErrors = splitRowErrors(replace.error, sentProcessIds.current);
@@ -548,33 +561,7 @@ export const TerminalProcessMapScreen = () => {
           <div className="terminal-map-settings-head">
             <h3 className="terminal-map-settings-title">{t.panes.terminal}</h3>
             <div className="terminal-map-info-actions">
-              {/* 사용 중이면 「사용 중지」, 중지된 단말이면 「사용 재개」(사용자 지시 2026-11-20 · #333). */}
-              {selected.isActive ? (
-                <Button
-                  variant="outlined"
-                  size="sm"
-                  leadingIcon={<Icon name="block" size={18} aria-hidden />}
-                  disabled={deactivate.isSaving}
-                  onClick={() => {
-                    setDeactivating(true);
-                  }}
-                >
-                  {t.terminal.deactivate}
-                </Button>
-              ) : (
-                <Button
-                  variant="outlined"
-                  size="sm"
-                  leadingIcon={<Icon name="restart_alt" size={18} aria-hidden />}
-                  loading={activate.isSaving}
-                  disabled={activate.isSaving}
-                  onClick={() => {
-                    activate.write({});
-                  }}
-                >
-                  {t.terminal.activate}
-                </Button>
-              )}
+              {/* 사용 중지 · 재개는 [단말 수정] 창 본문 맨 아래에(사용자 지시 2026-11-24). */}
               <Button
                 variant="outlined"
                 size="sm"
@@ -598,148 +585,159 @@ export const TerminalProcessMapScreen = () => {
           <SaveErrorBanner error={issueToken.error} />
           <SaveErrorBanner error={deactivate.error} />
           <SaveErrorBanner error={activate.error} />
-          {/* 항목명 위·값 아래의 3열 격자 — 순서는 그대로(코드 · 유형 · 운영 상태 · 등록 상태 · 설비 · 창고). */}
-          <dl className="parts-iqc-facts iqc-inbound-facts terminal-map-info">
-            <div className="parts-iqc-fact">
-              <dt className="field-label">{t.terminal.code}</dt>
-              <dd className="parts-iqc-fact-key">{selected.terminalCode}</dd>
-            </div>
-            <div className="parts-iqc-fact">
-              <dt className="field-label">{t.terminal.type}</dt>
-              <dd>{codeNames.type(selected.terminalTypeCode)}</dd>
-            </div>
-            <div className="parts-iqc-fact">
-              <dt className="field-label">{t.terminal.status}</dt>
-              <dd>{operatingStatusOf(selected)}</dd>
-            </div>
-            <div className="parts-iqc-fact">
-              <dt className="field-label">{t.terminal.registration}</dt>
-              {/* 상세 요약 상자에서는 운영 상태와 같은 글자로 — 표의 라벨(Chip)은 글이 작아 옆 칸 값과 크기가 달라 보였다(사용자 지시 2026-11-25). */}
-              <dd>{registrationLabelOf(selected)}</dd>
-            </div>
-            {/* 등록 상태와 등록 일시를 나눈다(사용자 지시 2026-11-20 · #333). */}
-            <div className="parts-iqc-fact">
-              <dt className="field-label">{t.terminal.registeredAt}</dt>
-              <dd>
-                {selected.registrationConfirmedAt === null
-                  ? t.list.notAvailable
-                  : formatMoment(selected.registrationConfirmedAt)}
-              </dd>
-            </div>
-            <div className="parts-iqc-fact">
-              <dt className="field-label">{t.terminal.equipment}</dt>
-              <dd>{selected.equipmentLabel ?? t.terminal.unassigned}</dd>
-            </div>
-            <div className="parts-iqc-fact">
-              <dt className="field-label">{t.terminal.warehouse}</dt>
-              <dd>{selected.warehouseName ?? t.terminal.unassigned}</dd>
-            </div>
-          </dl>
+          {/*
+           * 단말 정보 표 — 항목 | 값 | 항목 | 값 네 칸(사용자 지시 2026-11-24). 한 줄에 짝 하나씩:
+           * 코드 · 유형 / 운영 상태 · 등록 상태 / 등록 일시 · 설치 설비 / 창고(이름이 길어 한 줄을 다 쓴다).
+           */}
+          <table className="terminal-map-info-table">
+            <tbody>
+              <tr>
+                <th scope="row">{t.terminal.code}</th>
+                <td className="terminal-map-info-key">{selected.terminalCode}</td>
+                <th scope="row">{t.terminal.type}</th>
+                <td>{codeNames.type(selected.terminalTypeCode)}</td>
+              </tr>
+              <tr>
+                <th scope="row">{t.terminal.status}</th>
+                <td>{operatingStatusOf(selected)}</td>
+                <th scope="row">{t.terminal.registration}</th>
+                {/* 표 안에서는 라벨 없이 글자로 — 다른 칸과 같게(사용자 지시 2026-11-24). */}
+                <td>{registrationText(selected)}</td>
+              </tr>
+              <tr>
+                {/* 등록 상태와 등록 일시를 나눈다(사용자 지시 2026-11-20 · #333). */}
+                <th scope="row">{t.terminal.registeredAt}</th>
+                <td>
+                  {selected.registrationConfirmedAt === null
+                    ? t.list.notAvailable
+                    : formatMoment(selected.registrationConfirmedAt)}
+                </td>
+                <th scope="row">{t.terminal.equipment}</th>
+                <td>{selected.equipmentLabel ?? t.terminal.unassigned}</td>
+              </tr>
+              <tr>
+                <th scope="row">{t.terminal.warehouse}</th>
+                <td colSpan={3}>{selected.warehouseName ?? t.list.notAvailable}</td>
+              </tr>
+            </tbody>
+          </table>
         </section>
 
-        <section className="terminal-map-settings-block" aria-label={t.panes.grid}>
-          {/* 제목 옆 안내는 두지 않는다 — 제목과 [공정 추가]가 목적과 첫 행동을 말한다(사용자 지시 2026-11-20 · #333). */}
-          <div className="terminal-map-settings-head terminal-map-grid-head">
-            <h3 className="terminal-map-settings-title">{t.panes.grid}</h3>
-            {/* 공정 추가는 같은 줄 오른쪽 끝, 칸 이름은 선택칸 왼쪽(사용자 지시 2026-11-20 · #333). */}
-            {!processRows.isError &&
-              !processRows.isPending &&
-              (addableProcesses.length === 0 && !processes.isLoading && !processes.isError ? (
-                /* 다 추가했으면 빈 선택칸 대신 안내 라벨(사용자 지시 2026-11-20 · #333). */
-                <p className="iqc-inspection-action-note terminal-map-add-done" data-tone="info">
-                  <Icon name="info" size={16} aria-hidden />
-                  {t.grid.nothingToAdd}
-                </p>
-              ) : (
-                <SelectField
-                  label={t.grid.add}
-                  /* 이미 표에 있는 공정은 고를 거리에서 뺀다(사용자 지시 2026-11-20 · #333). */
-                  options={toOptions(addableProcesses)}
-                  value={addTarget}
-                  note={lookupNote(processes, t.grid.processLookupFailed)}
-                  error={gridNotice ?? undefined}
-                  placeholder={t.grid.addPlaceholder}
-                  className="terminal-map-add-field"
-                  onChange={addRow}
-                />
-              ))}
-          </div>
-
-          {processRows.isError ? (
-            <LoadErrorBanner
-              error={processRows.error}
-              onRetry={() => {
-                void processRows.refetch();
-              }}
-            />
-          ) : processRows.isPending ? (
-            <Skeleton variant="rect" height="10rem" />
-          ) : (
-            <>
-              <SaveErrorBanner error={serverRowErrors.rest} />
-              {processes.isError ? (
-                <LoadErrorBanner error={processes.error} onRetry={processes.refetch} />
-              ) : null}
-
-              {/*
-               * 공정이 없어도 표 머리는 그대로 두고 표 안에 빈 상태를 낸다 — 목록 표와 같은 모양(사용자 지시 2026-11-20 · #333).
-               * ⭐ 0건이 정상인 단말이 있다 — 오류처럼 그리지 않는다.
-               */}
-              <div className="terminal-map-grid-table">
-                <ProcessGrid
-                  rows={grid}
-                  rowErrors={rowErrors}
-                  disabled={replace.isSaving}
-                  onToggle={(processId, key: FlagKey) => {
-                    markEdited(processId);
-                    setGrid(toggleFlag(grid, processId, key));
-                  }}
-                  onToggleRow={(processId, open) => {
-                    markEdited(processId);
-                    setGrid(setRow(grid, processId, open));
-                  }}
-                  onRemove={(processId) => {
-                    setGrid(removeProcess(grid, processId));
-                  }}
-                  empty={
-                    /* 오른쪽 「단말을 선택해 주세요」와 같은 아이콘 원 + 한 줄(사용자 지시 2026-11-20 · #333). */
-                    <EmptyState
-                      size="sm"
-                      className="terminal-map-grid-empty"
-                      icon={
-                        <span className="inspection-standard-empty-icon">
-                          <Icon name="checklist" size={20} />
-                        </span>
-                      }
-                      title={t.grid.emptyTitle}
+        {/*
+         * 공정별 기능 구성은 POP 단말만 — 창고에서 쓰는 단말(PDA 등)은 공정이 뜻이 없다(사용자 지시 2026-11-24).
+         */}
+        {selected.terminalTypeCode === POP_TYPE && (
+          <>
+            <section className="terminal-map-settings-block" aria-label={t.panes.grid}>
+              {/* 제목 옆 안내는 두지 않는다 — 제목과 [공정 추가]가 목적과 첫 행동을 말한다(사용자 지시 2026-11-20 · #333). */}
+              <div className="terminal-map-settings-head terminal-map-grid-head">
+                <h3 className="terminal-map-settings-title">{t.panes.grid}</h3>
+                {/* 공정 추가는 같은 줄 오른쪽 끝, 칸 이름은 선택칸 왼쪽(사용자 지시 2026-11-20 · #333). */}
+                {!processRows.isError &&
+                  !processRows.isPending &&
+                  (addableProcesses.length === 0 && !processes.isLoading && !processes.isError ? (
+                    /* 다 추가했으면 빈 선택칸 대신 안내 라벨(사용자 지시 2026-11-20 · #333). */
+                    <p
+                      className="iqc-inspection-action-note terminal-map-add-done"
+                      data-tone="info"
+                    >
+                      <Icon name="info" size={16} aria-hidden />
+                      {t.grid.nothingToAdd}
+                    </p>
+                  ) : (
+                    <SelectField
+                      label={t.grid.add}
+                      /* 이미 표에 있는 공정은 고를 거리에서 뺀다(사용자 지시 2026-11-20 · #333). */
+                      options={toOptions(addableProcesses)}
+                      value={addTarget}
+                      note={lookupNote(processes, t.grid.processLookupFailed)}
+                      error={gridNotice ?? undefined}
+                      placeholder={t.grid.addPlaceholder}
+                      className="terminal-map-add-field"
+                      onChange={addRow}
                     />
-                  }
-                />
+                  ))}
               </div>
-            </>
-          )}
-        </section>
 
-        <div className="form-actions terminal-map-settings-footer">
-          {replace.isSaving && <p className="field-note form-actions-secondary">{t.grid.saving}</p>}
-          <Button
-            variant="outlined"
-            disabled={replace.isSaving || !isGridDirty}
-            onClick={resetGrid}
-          >
-            {t.grid.reset}
-          </Button>
-          <Button
-            disabled={!canSaveGrid || !isGridDirty}
-            onClick={() => {
-              sentProcessIds.current = grid.map((row) => row.processId);
-              setEditedSinceSave(new Set());
-              replace.write(toReplaceBody(grid));
-            }}
-          >
-            {t.grid.save}
-          </Button>
-        </div>
+              {processRows.isError ? (
+                <LoadErrorBanner
+                  error={processRows.error}
+                  onRetry={() => {
+                    void processRows.refetch();
+                  }}
+                />
+              ) : processRows.isPending ? (
+                <Skeleton variant="rect" height="10rem" />
+              ) : (
+                <>
+                  <SaveErrorBanner error={serverRowErrors.rest} />
+                  {processes.isError ? (
+                    <LoadErrorBanner error={processes.error} onRetry={processes.refetch} />
+                  ) : null}
+
+                  {/*
+                   * 공정이 없어도 표 머리는 그대로 두고 표 안에 빈 상태를 낸다 — 목록 표와 같은 모양(사용자 지시 2026-11-20 · #333).
+                   * ⭐ 0건이 정상인 단말이 있다 — 오류처럼 그리지 않는다.
+                   */}
+                  <div className="terminal-map-grid-table">
+                    <ProcessGrid
+                      rows={grid}
+                      rowErrors={rowErrors}
+                      disabled={replace.isSaving}
+                      onToggle={(processId, key: FlagKey) => {
+                        markEdited(processId);
+                        setGrid(toggleFlag(grid, processId, key));
+                      }}
+                      onToggleRow={(processId, open) => {
+                        markEdited(processId);
+                        setGrid(setRow(grid, processId, open));
+                      }}
+                      onRemove={(processId) => {
+                        setGrid(removeProcess(grid, processId));
+                      }}
+                      empty={
+                        /* 오른쪽 「단말을 선택해 주세요」와 같은 아이콘 원 + 한 줄(사용자 지시 2026-11-20 · #333). */
+                        <EmptyState
+                          size="sm"
+                          className="terminal-map-grid-empty"
+                          icon={
+                            <span className="inspection-standard-empty-icon">
+                              <Icon name="checklist" size={20} />
+                            </span>
+                          }
+                          title={t.grid.emptyTitle}
+                        />
+                      }
+                    />
+                  </div>
+                </>
+              )}
+            </section>
+
+            <div className="form-actions terminal-map-settings-footer">
+              {replace.isSaving && (
+                <p className="field-note form-actions-secondary">{t.grid.saving}</p>
+              )}
+              <Button
+                variant="outlined"
+                disabled={replace.isSaving || !isGridDirty}
+                onClick={resetGrid}
+              >
+                {t.grid.reset}
+              </Button>
+              <Button
+                disabled={!canSaveGrid || !isGridDirty}
+                onClick={() => {
+                  sentProcessIds.current = grid.map((row) => row.processId);
+                  setEditedSinceSave(new Set());
+                  replace.write(toReplaceBody(grid));
+                }}
+              >
+                {t.grid.save}
+              </Button>
+            </div>
+          </>
+        )}
       </>
     );
   };
@@ -765,7 +763,12 @@ export const TerminalProcessMapScreen = () => {
       </div>
 
       <div className="users-roles-workspace">
-        <section ref={aboveRef} className="pane users-roles-search" aria-label={t.panes.search}>
+        {/* 조건 칸 바탕은 품목 · BOM 조회 묶음과 같은 공용 규칙(filter-field-surface · 사용자 지시 2026-11-24). */}
+        <section
+          ref={aboveRef}
+          className="pane users-roles-search filter-field-surface"
+          aria-label={t.panes.search}
+        >
           <div className="filter-bar users-roles-filter-row">
             {/* 단말 유형 · 설치 설비 · 창고 · 단말 코드 검색 순(사용자 지시 2026-11-20 · #333). 고르는 즉시 적용한다. */}
             <SelectField
@@ -939,11 +942,35 @@ export const TerminalProcessMapScreen = () => {
         </div>
       </div>
 
-      {/* 단말 추가 · 수정은 팝업(사용자 · 역할 추가와 같다 · #333). 고르던 단말과 기능 구성은 그대로 남는다. */}
+      {/*
+       * 단말 추가는 단계 창(단말 정보 → 공정 기능(POP만) → 기기 연결 · 사용자 결정 2026-11-24).
+       * 닫히면 이 창에서 만든 단말을 고른다 — 오른쪽에서 이어 고칠 수 있다.
+       */}
+      <TerminalCreateWizard
+        key={wizardKey}
+        open={formMode === 'create'}
+        draft={terminalDraft}
+        errors={terminalErrors}
+        codeIsAuto={autoCode !== null && terminalDraft.terminalCode === autoCode}
+        plants={plants}
+        processes={processes}
+        codeNames={codeNames}
+        onChange={changeDraft}
+        validate={checkTerminal}
+        onClose={(createdId, finished) => {
+          setFormMode('closed');
+          if (createdId === null) return;
+          /* 다 마쳤으면 창이 이미 알렸다 — 알림은 한 자리에 하나. */
+          if (!finished) notify(t.terminal.registered);
+          selectTerminal(createdId);
+        }}
+      />
+
+      {/* 단말 수정은 팝업 하나(사용자 · 역할 수정과 같다 · #333). 고르던 단말과 기능 구성은 그대로 남는다. */}
       <Dialog
-        open={formMode !== 'closed'}
+        open={formMode === 'edit'}
         size="lg"
-        title={formMode === 'create' ? t.terminal.create : t.terminal.edit}
+        title={t.terminal.edit}
         className="terminal-map-form-dialog"
         closeOnBackdropClick={false}
         /* 닫기는 [취소] 하나(사용자 지시 2026-11-20 · #333). */
@@ -951,28 +978,66 @@ export const TerminalProcessMapScreen = () => {
         onClose={() => {
           setFormMode('closed');
         }}
+        footer={
+          <>
+            {update.isSaving && (
+              <p className="field-note form-actions-secondary">{t.terminal.saving}</p>
+            )}
+            <Button
+              variant="outlined"
+              disabled={update.isSaving}
+              onClick={() => {
+                setFormMode('closed');
+              }}
+            >
+              {t.terminal.cancel}
+            </Button>
+            <Button disabled={update.isSaving} onClick={submitEdit}>
+              {t.terminal.save}
+            </Button>
+          </>
+        }
       >
         <TerminalForm
           draft={terminalDraft}
           errors={terminalErrors}
-          isNew={formMode === 'create'}
-          isSaving={create.isSaving || update.isSaving}
-          saveError={formMode === 'create' ? create.error : update.error}
-          fieldErrors={formMode === 'create' ? create.fieldErrors : update.fieldErrors}
+          isNew={false}
+          saveError={update.error}
+          fieldErrors={update.fieldErrors}
           plants={plants}
           codeNames={codeNames}
-          onChange={(patch) => {
-            setTerminalDraft((prev) => ({ ...prev, ...patch }));
-            /* 고친 칸의 「비었다」 오류는 바로 지운다 — 다 채웠는데 빨간 문구가 남지 않게(#333). */
-            setTerminalErrors((prev) =>
-              Object.fromEntries(Object.entries(prev).filter(([key]) => !(key in patch))),
-            );
-          }}
-          onSubmit={submitTerminal}
-          onCancel={() => {
-            setFormMode('closed');
-          }}
+          onChange={changeDraft}
         />
+        {/* 사용 중지 · 재개 — 칸들과 구분선으로 가른 본문 맨 아래(사용자 지시 2026-11-24). */}
+        {selected !== null && (
+          <div className="terminal-map-edit-danger">
+            {selected.isActive ? (
+              <Button
+                variant="outlined"
+                leadingIcon={<Icon name="block" size={18} aria-hidden />}
+                disabled={update.isSaving || deactivate.isSaving}
+                onClick={() => {
+                  setFormMode('closed');
+                  setDeactivating(true);
+                }}
+              >
+                {t.terminal.deactivateAction}
+              </Button>
+            ) : (
+              <Button
+                variant="outlined"
+                leadingIcon={<Icon name="restart_alt" size={18} aria-hidden />}
+                loading={activate.isSaving}
+                disabled={update.isSaving || activate.isSaving}
+                onClick={() => {
+                  activate.write({});
+                }}
+              >
+                {t.terminal.activate}
+              </Button>
+            )}
+          </div>
+        )}
       </Dialog>
 
       <TokenDialog
@@ -983,7 +1048,7 @@ export const TerminalProcessMapScreen = () => {
         }}
       />
 
-      {/* 사용 중지 — 사용자 · 역할 사용 중지 창과 같은 모양(대상 · 질문 · 경고 · #333). */}
+      {/* 사용 중지 확인 — 사용자 · 역할 사용 중지 창과 같은 모양(대상 · 질문 · 경고 · #333). */}
       <Dialog
         open={isDeactivating}
         size="md"

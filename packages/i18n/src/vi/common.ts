@@ -101,6 +101,8 @@ export const common: Translated<typeof ko.common> = {
     filterOn: (label: string): string => `Chỉ xem yêu cầu ${label}`,
     filterOff: (label: string): string => `Bỏ lọc ${label}`,
     pendingOnly: 'Chỉ xem chờ · đang làm',
+    judgmentFilter: 'Đánh giá tổng hợp',
+    judgmentAll: 'Tất cả',
     pickRequest: 'Chọn yêu cầu kiểm tra',
     pickRequestHint: 'Chọn một yêu cầu kiểm tra để xem nội dung chi tiết.',
     close: 'Đóng',

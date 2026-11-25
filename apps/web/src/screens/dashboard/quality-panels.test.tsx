@@ -8,7 +8,6 @@ import { OTHER_SLICE_KEY, roundShares, toDonutSlices } from './defect-types-pane
 import { quality, qualityBlock } from './quality.fixture';
 import { toNiceRateTicks } from './viz';
 import {
-  DISPOSITION_DECISIONS_PATH,
   IqcTab,
   NonconformanceTab,
   OqcTab,
@@ -312,23 +311,13 @@ describe('품질 탭', () => {
     expect(bars[0]).toHaveAttribute('data-tip', '2026-10-15 4 EA');
   });
 
-  it('PQC — 주요 현황 「재작업 의뢰」 줄은 권한이 있으면 처분 판정 처리로 간다(사용자 지시 2026-10-19)', async () => {
-    const user = userEvent.setup();
+  it('PQC — 「재작업 의뢰」 줄은 누를 수 없다 — 처분 이력 목록을 없앴다(omf-all-around#354)', () => {
     render(
-      <MemoryRouter initialEntries={['/dashboard?tab=pqc']}>
-        <Routes>
-          <Route
-            path="/dashboard"
-            element={
-              <PqcTab quality={quality()} allows={(path) => path === DISPOSITION_DECISIONS_PATH} />
-            }
-          />
-          <Route path={DISPOSITION_DECISIONS_PATH} element={<p>처분 판정 처리 화면</p>} />
-        </Routes>
+      <MemoryRouter>
+        <PqcTab quality={quality()} allows={() => true} />
       </MemoryRouter>,
     );
-    await user.click(screen.getByRole('button', { name: new RegExp(t.reworkRequests) }));
-    expect(screen.getByText('처분 판정 처리 화면')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: new RegExp(t.reworkRequests) })).toBeDisabled();
   });
 
   it('일별 합격률 — 검사 실적이 없는 날은 툴팁에 「검사 실적 없음」, 안내 문구는 없다(사용자 지시 2026-10-19)', () => {
@@ -367,7 +356,7 @@ describe('품질 탭', () => {
     expect(region).toHaveTextContent(/0\s*LOT\s*· 3건/);
   });
 
-  it('PQC — 처분 판정 처리 화면 권한이 없으면 「재작업 의뢰」 줄은 누를 수 없다', () => {
+  it('PQC — 권한이 없어도 「재작업 의뢰」 줄은 누를 수 없다', () => {
     render(
       <MemoryRouter>
         <PqcTab quality={quality()} />
@@ -404,7 +393,7 @@ describe('품질 탭', () => {
     q.nonconformance.repeatedItemCount = 4;
     render(
       <MemoryRouter>
-        <NonconformanceTab quality={q} allows={(path) => path === '/quality/dispositions'} />
+        <NonconformanceTab quality={q} allows={(path) => path === '/shipment/oqc-inspection'} />
       </MemoryRouter>,
     );
 

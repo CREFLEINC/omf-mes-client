@@ -76,8 +76,9 @@ describe('PopSelect — 항목 뒤 표시·맨 위 묶음(D-10)', () => {
       '항목 4',
     ]);
     const list = screen.getByRole('listbox');
-    // 검색 칸 → 목록 → 쪽 넘김 → 글자판(맨 아래, 사용자 지시 2026-11-19).
+    // 검색 칸 → 목록 → 쪽 넘김. 글자판은 창 밖 화면 아래 판에(사용자 지시 2026-11-24).
     expect(list.previousElementSibling).toHaveClass('pu-search');
-    expect(list.parentElement?.lastElementChild).toHaveClass('pu-tkbd');
+    expect(list.parentElement?.lastElementChild).toHaveClass('pu-pager');
+    expect(list.closest('.pu-dialog')?.querySelector('.pu-kbd-dock .pu-tkbd')).not.toBeNull();
   });
 });

@@ -11,6 +11,7 @@ import {
   lotNoPattern,
   prefillBatch,
   toBatchBody,
+  useItemLotDefault,
   useItemStorageUnit,
   useSupplierItemDefault,
   useUomOptions,
@@ -37,6 +38,7 @@ export interface IssueDialogProps {
 }
 
 const SOURCE_STATUS: Record<BatchSource, 'success' | 'info' | 'idle'> = {
+  item: 'success',
   default: 'success',
   itemStorage: 'info',
   none: 'idle',
@@ -58,6 +60,7 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
 
   const defaults = useSupplierItemDefault(target);
   const storage = useItemStorageUnit(group?.itemId ?? null);
+  const itemDefault = useItemLotDefault(group?.itemId ?? null);
   const uoms = useUomOptions();
 
   /* 고른 조합의 기본값을 다 읽으면 그 조합으로 한 번 채운다 — 사람이 쓰는 중인 값을 다시 덮지 않는다. */
@@ -70,7 +73,11 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
   const key = group === null ? null : groupKey(group);
   const ready = group !== null && !defaults.isPending && !storage.isPending;
   if (ready && key !== null && filled?.key !== key) {
-    const prefill = prefillBatch(defaults.data ?? null, storage.data ?? null);
+    const prefill = prefillBatch(
+      itemDefault.data ?? null,
+      defaults.data ?? null,
+      storage.data ?? null,
+    );
     setFilled({ key, source: prefill.source, noPackage: prefill.defaultWithoutPackage });
     setDraft(prefill.draft);
   }

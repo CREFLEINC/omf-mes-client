@@ -56,22 +56,15 @@ describe('PlanPane — 표시', () => {
     expect(screen.getByLabelText('기준명')).toHaveValue('합성 검사기준 A');
   });
 
-  /* 승인자 이름을 만들지 않는다 — 계약이 주는 것은 사용자 번호다. */
-  it('승인된 기준은 승인 시각만 낸다', () => {
+  /* 승인 기능은 걷었다(omf-all-around#357) — 승인 여부를 내지 않는다. */
+  it('승인 여부를 내지 않는다', () => {
     renderPane({
       plan: inspectionPlanFixtures[2]!,
       values: planToFormValues(inspectionPlanFixtures[2]!),
     });
 
-    // 승인 시각은 공장 시각(UTC+7) — +09:00 09:12 는 07:12 다(omf-all-around#20).
-    expect(screen.getByText('승인됨 · 2026-08-04 07:12')).toBeInTheDocument();
-    expect(screen.queryByText(/4001/)).not.toBeInTheDocument();
-  });
-
-  it('승인 전이면 미승인으로 낸다', () => {
-    renderPane();
-
-    expect(screen.getByText('미승인')).toBeInTheDocument();
+    expect(screen.queryByText(/승인됨/)).not.toBeInTheDocument();
+    expect(screen.queryByText('미승인')).not.toBeInTheDocument();
   });
 
   it('사용 여부를 값 표기로 낸다', () => {
@@ -84,7 +77,7 @@ describe('PlanPane — 표시', () => {
   });
 
   /* 서버가 채우는 값을 미리 지어내 보이지 않는다. */
-  it('등록 폼에서는 승인·사용 여부를 내지 않는다', () => {
+  it('등록 폼에서는 사용 여부를 내지 않는다', () => {
     renderPane({
       mode: 'create',
       plan: null,
@@ -99,7 +92,6 @@ describe('PlanPane — 표시', () => {
       },
     });
 
-    expect(screen.queryByText('미승인')).not.toBeInTheDocument();
     expect(screen.queryByText('미사용')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '기준 추가' })).toBeInTheDocument();
   });

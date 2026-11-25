@@ -17,14 +17,15 @@ import {
 } from './screen-harness';
 
 /**
- * 라벨 인쇄 — **한 장마다 네 걸음(발행 기록 → 라벨 짜기 → 인쇄 → 결과 보고)을 차례로**(개편안 승인 2026-10-24 ·
- * omf-all-around#184). 005 부터 옛 첫 걸음 「LOT 등록」은 없다 — LOT 은 「자재 관리 LOT 만들기」가 이미 만들었다.
+ * 라벨 인쇄 — **장마다 발행 기록 → 라벨 짜기, 최대 10장(`PRINT_CHUNK`)을 한 인쇄 작업으로, 결과 보고는 장마다**
+ * (개편안 승인 2026-10-24 · omf-all-around#184 · 묶음 인쇄 사용자 지시 2026-11-23). 005 부터 옛 첫 걸음 「LOT 등록」은 없다 — LOT 은 「자재 관리 LOT 만들기」가 이미 만들었다.
  *
  * 여기서 무는 것은 「무엇을 어떤 차례로 보내는가」와 「어디서 멈췄을 때 무엇을 말하고 무엇을 다시 보내는가」다.
  * 본문 조립은 `patterns/material-lot-label-print.test.ts`, 라벨 배치는 `patterns/label/lot-label-tspl.test.ts` 가 따로 문다.
  */
 
 const t = messages.popMaterialLotLabel;
+const tp = t.precreate;
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
@@ -64,10 +65,26 @@ const waitingOnly = (count: number, over: Partial<Parameters<typeof group>[1]> =
 
 const rows = (): HTMLElement[] => screen.queryAllByRole('checkbox', { name: /SYN-ITEM-01\|/u });
 
-/** 대기를 모두 고르고 [라벨 N장 발행] → 미리 보기 [N장 인쇄]. */
+/** 공급사 칸 첫 공급사 → 품목 표 첫 품목을 고른다(세 칸 · 피처 014 — 화면을 열기만 해서는 고르지 않는다). */
+const pickFirst = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  const suppliers = await screen.findByRole('list', { name: tp.threeCols.suppliers });
+  await user.click(within(suppliers).getAllByRole('button')[0] as HTMLElement);
+  const items = await screen.findByRole('group', { name: tp.threeCols.items });
+  await user.click((await within(items).findAllByRole('button'))[0] as HTMLElement);
+};
+
+/** 이 쪽의 줄을 모두 고른다 — 「입하 대기 전체 선택」은 없앴다(피처 014 시안 확인 거리 2). */
+const checkVisible = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  for (const row of rows()) {
+    if (row.getAttribute('aria-checked') !== 'true') await user.click(row);
+  }
+};
+
+/** 고르고 · 대기를 모두 고르고 [라벨 N장 발행] → 미리 보기 [N장 인쇄]. */
 const issueAll = async (user: ReturnType<typeof userEvent.setup>, count: number): Promise<void> => {
+  await pickFirst(user);
   await waitFor(() => expect(rows().length).toBeGreaterThan(0));
-  await user.click(screen.getByRole('button', { name: t.bar.selectAll }));
+  await checkVisible(user);
   await user.click(screen.getByRole('button', { name: t.bar.issue(count) }));
   const dialog = await screen.findByRole('dialog', { name: t.preview.title });
   await user.click(within(dialog).getByRole('button', { name: t.preview.print(count) }));
@@ -84,7 +101,7 @@ const docTypes = (sent: readonly Sent[]): string[] =>
   );
 
 describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
-  it('US1-4 미리 보기를 거쳐 고른 LOT 을 한 장씩 네 걸음 보내고, 쓰기마다 사번과 멱등 키를 싣는다 — LOT 등록은 부르지 않는다', async () => {
+  it('US1-4 미리 보기를 거쳐 고른 LOT 마다 발행 기록 → 한 인쇄 작업 → 장마다 보고, 쓰기마다 사번과 멱등 키를 싣는다 — LOT 등록은 부르지 않는다', async () => {
     const user = userEvent.setup();
     const save = installShell();
     const { sent } = renderLabelScreen(waitingOnly(3));
@@ -94,10 +111,10 @@ describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
     await waitFor(() => expect(screen.getAllByText(t.bar.done(3)).length).toBeGreaterThan(0));
     expect(posts(sent)).toEqual([
       '/app/document-issues',
-      '/app/document-issues/REPORT',
+      '/app/document-issues',
       '/app/document-issues',
       '/app/document-issues/REPORT',
-      '/app/document-issues',
+      '/app/document-issues/REPORT',
       '/app/document-issues/REPORT',
     ]);
     expect(
@@ -105,7 +122,11 @@ describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
         (entry) => (entry.body as { targets: { lotId: number }[] }).targets[0]?.lotId,
       ),
     ).toEqual([9001, 9002, 9003]);
-    expect(save).toHaveBeenCalledTimes(3);
+    /* 세 장이 한 인쇄 작업으로 간다 — 장마다 `CLS … PRINT` 가 이어진다. */
+    expect(save).toHaveBeenCalledTimes(1);
+    const [bytes] = (save as ReturnType<typeof vi.fn>).mock.calls[0] ?? [];
+    const commands = new TextDecoder('latin1').decode(bytes as Uint8Array);
+    expect(commands.match(/PRINT 1,1/gu)).toHaveLength(3);
 
     for (const entry of sent.filter((each) => each.method === 'POST')) {
       expect(entry.headers.get('X-Worker-No')).toBe(WORKER_NO);
@@ -117,6 +138,7 @@ describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
     const user = userEvent.setup();
     renderLabelScreen(waitingOnly(1));
 
+    await pickFirst(user);
     await waitFor(() => expect(rows()).toHaveLength(1));
     await user.click(rows()[0] as HTMLElement);
     await user.click(screen.getByRole('button', { name: t.bar.issue(1) }));
@@ -151,24 +173,24 @@ describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
     expect(commands).toContain('PRINT 1,1');
   });
 
-  it('다 나오면 LOT 마다 「인쇄됨」을 남기고, 「확인」을 누르면 발행 대기에서 빠져 재발행 탭에 회차로 선다', async () => {
+  it('US4-4 다 나오면 「확인」 없이 알림만 내고 미출력에서 빠져 출력됨(입하 전) 탭에 회차로 선다(#1764)', async () => {
     const user = userEvent.setup();
     installShell();
     renderLabelScreen(waitingOnly(2));
 
     await issueAll(user, 2);
 
+    /* 다 나왔으면 [확인]을 기다리지 않는다(사용자 지시 2026-11-24). */
     await waitFor(() => expect(screen.getAllByText(t.bar.done(2)).length).toBeGreaterThan(0));
-    expect(screen.getAllByText(t.status.printed)).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: t.bar.confirm })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: t.bar.confirm }));
-
-    /* 발행한 LOT 은 발행 대기에 남지 않는다(사용자 지시 2026-11-19) — 재발행 탭에만 선다. */
+    /* 찍은 LOT 은 미출력에 남지 않는다 — 출력됨(입하 전) 탭에 선다(FR-014). */
     await waitFor(() => expect(rows()).toHaveLength(0));
-    expect(screen.getByText(t.work.waitingEmpty)).toBeInTheDocument();
-    await user.click(screen.getByRole('tab', { name: t.tabs.reprint }));
-    const reprintTable = await screen.findByRole('group', { name: t.work.reprintTitle });
-    expect(within(reprintTable).getAllByText(t.table.issuedSeq(1))).toHaveLength(2);
+    expect(screen.getByText(tp.notes.NO_OPEN_PO)).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: tp.tabs.PRINTED }));
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    const printedTable = screen.getByRole('group', { name: tp.tabs.PRINTED });
+    expect(within(printedTable).getAllByText(t.table.issuedSeq(1))).toHaveLength(2);
   });
 
   it('⛔ 보내기 직전에 보니 다른 단말이 먼저 찍은 LOT 은 보내지 않고 「이미 발행됨」으로 둔다', async () => {
@@ -176,8 +198,9 @@ describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
     installShell();
     const { findLot, sent } = renderLabelScreen(waitingOnly(2));
 
+    await pickFirst(user);
     await waitFor(() => expect(rows()).toHaveLength(2));
-    await user.click(screen.getByRole('button', { name: t.bar.selectAll }));
+    await checkVisible(user);
     /* 다른 단말이 그사이 9002 를 찍었다. */
     const other = findLot(9002);
     if (other !== undefined)
@@ -193,29 +216,46 @@ describe('US1-4 라벨 발행 — 차례로 보낸다', () => {
 });
 
 describe('라벨 발행 — 멈추는 자리', () => {
-  it('프린터가 응답하지 않으면 그 장에서 멈추고 남은 장은 「멈춤」으로 남긴다', async () => {
+  it('프린터가 응답하지 않으면 그 묶음(10장)을 인쇄 실패로 두고 남은 장은 「멈춤」으로 남긴다', async () => {
     const user = userEvent.setup();
     installShell(vi.fn(async () => Promise.reject(new Error('프린터 응답 없음'))));
-    const { sent } = renderLabelScreen(waitingOnly(3));
+    const { sent } = renderLabelScreen(waitingOnly(12));
 
-    await issueAll(user, 3);
+    /* 014 표는 쪽으로 나뉜다 — 쪽을 넘기며 12장을 모두 고른다(고른 줄은 쪽을 넘겨도 남는다). */
+    await pickFirst(user);
+    await waitFor(() =>
+      expect(screen.getByText(messages.popUniform.pager.total(12))).toBeInTheDocument(),
+    );
+    for (let pageNo = 1; pageNo <= 3; pageNo += 1) {
+      await waitFor(() => expect(rows()[0]).toBeDefined());
+      await checkVisible(user);
+      if (pageNo < 3) {
+        const before = rows()[0]?.getAttribute('aria-label');
+        await user.click(screen.getByRole('button', { name: messages.popUniform.pager.next }));
+        await waitFor(() => expect(rows()[0]?.getAttribute('aria-label')).not.toBe(before));
+      }
+    }
+    await user.click(screen.getByRole('button', { name: t.bar.issue(12) }));
+    const dialog = await screen.findByRole('dialog', { name: t.preview.title });
+    await user.click(within(dialog).getByRole('button', { name: t.preview.print(12) }));
 
-    await waitFor(() => expect(screen.getByText(t.bar.failed(3))).toBeInTheDocument());
-    expect(screen.getByText(t.bar.next.printFailed)).toBeInTheDocument();
-    expect(screen.getAllByText(t.status.stopped)).toHaveLength(2);
-    expect(sentTo(sent, '/app/document-issues')).toHaveLength(1);
+    await waitFor(() => expect(screen.getByText(t.bar.next.printFailed)).toBeInTheDocument());
+    /* 묶음 안에서 어느 장까지 나왔는지 알 수 없다 — 열 장 모두 인쇄 실패, 다음 묶음은 보내지 않는다. */
+    expect(sentTo(sent, '/app/document-issues')).toHaveLength(10);
+    /* 결과 머리 — 인쇄된 장 0, 끝나지 못한 장 12(실패 10 + 멈춤 2). */
+    expect(screen.getByText(t.work.resultSummary(0, 12))).toBeInTheDocument();
   });
 
-  it('셸 인쇄 통로가 없는 단말(브라우저)에서는 첫 장에서 멈춘다', async () => {
+  it('셸 인쇄 통로가 없는 단말(브라우저)에서는 첫 묶음에서 멈춘다', async () => {
     const user = userEvent.setup();
     renderLabelScreen(waitingOnly(2));
 
     await issueAll(user, 2);
 
-    await waitFor(() => expect(screen.getByText(t.status.failed.printFailed)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText(t.status.failed.printFailed)).toHaveLength(2));
   });
 
-  it('다시 발행 — 인쇄만 실패한 장은 같은 LOT 에 「인쇄 실패」 사유로, 멈춘 장은 사유 없이 첫 발행으로 보낸다', async () => {
+  it('다시 발행 — 인쇄만 실패한 묶음의 장은 같은 LOT 에 「인쇄 실패」 사유로 다시 보낸다', async () => {
     const user = userEvent.setup();
     const save = vi
       .fn<SaveFn>()
@@ -232,11 +272,15 @@ describe('라벨 발행 — 멈추는 자리', () => {
     const issues = sentTo(sent, '/app/document-issues').map((entry) => entry.body);
     expect(issues).toEqual([
       expect.objectContaining({ targets: [expect.objectContaining({ lotId: 9001 })] }),
+      expect.objectContaining({ targets: [expect.objectContaining({ lotId: 9002 })] }),
       expect.objectContaining({
         targets: [expect.objectContaining({ lotId: 9001 })],
         reissueReasonCode: 'PRINT_FAILURE',
       }),
-      expect.not.objectContaining({ reissueReasonCode: expect.anything() }),
+      expect.objectContaining({
+        targets: [expect.objectContaining({ lotId: 9002 })],
+        reissueReasonCode: 'PRINT_FAILURE',
+      }),
     ]);
   });
 
@@ -287,7 +331,7 @@ describe('라벨 발행 — 멈추는 자리', () => {
 
     expect(await screen.findByRole('button', { name: t.bar.stop })).toBeInTheDocument();
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: t.tabs.reprint })).toBeDisabled();
+    expect(screen.getByRole('tab', { name: tp.tabs.PRINTED })).toBeDisabled();
   });
 });
 
@@ -297,7 +341,8 @@ describe('라벨 발행 — N장마다 멈추고 이어서', () => {
     installShell();
     const { sent } = renderLabelScreen(waitingOnly(12));
 
-    /* 표는 구획 높이만큼 한 쪽에 보이고(쪽 넘김) 나머지는 다음 쪽 — 「입하 대기 전체 선택」은 쪽과 상관없이 모두 고른다. */
+    /* 표는 구획 높이만큼 한 쪽(서버 쪽)이고 나머지는 다음 쪽 — 쪽을 넘겨도 고른 줄은 남는다. */
+    await pickFirst(user);
     await waitFor(() =>
       expect(screen.getByText(messages.popUniform.pager.total(12))).toBeInTheDocument(),
     );
@@ -306,7 +351,15 @@ describe('라벨 발행 — N장마다 멈추고 이어서', () => {
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('option', { name: t.bar.unit.each(10) }),
     );
-    await user.click(screen.getByRole('button', { name: t.bar.selectAll }));
+    for (let pageNo = 1; pageNo <= 3; pageNo += 1) {
+      await waitFor(() => expect(rows()[0]).toBeDefined());
+      await checkVisible(user);
+      if (pageNo < 3) {
+        const before = rows()[0]?.getAttribute('aria-label');
+        await user.click(screen.getByRole('button', { name: messages.popUniform.pager.next }));
+        await waitFor(() => expect(rows()[0]?.getAttribute('aria-label')).not.toBe(before));
+      }
+    }
     /* 단위보다 많이 골랐다 — 단추와 안내 줄이 10장마다 멈춘다고 말한다. */
     expect(screen.getByText(t.bar.unitNote(10))).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: t.bar.issueEach(12, 10) }));
@@ -336,7 +389,7 @@ describe('라벨 발행 — IQC 대상 품목', () => {
   });
 });
 
-describe('US1-4 다시 인쇄', () => {
+describe('US4-4 출력됨(입하 전) · 입하된 LOT 탭에서 다시 인쇄', () => {
   const PRINTED = (): HarnessOptions => ({
     groups: [
       group([
@@ -344,10 +397,11 @@ describe('US1-4 다시 인쇄', () => {
         lot(9002, {
           lifecycleStatusCode: 'ACTIVE',
           statusCode: 'DEFECTIVE',
+          inboundLotId: 6002,
           inboundLotNo: 'SYN-IL-0002',
           lastLabelIssue: { issueSeq: 2, issuedAt: '2026-11-10T01:00:00Z' },
         }),
-        /* 3주 전 — 최근 2주 창 밖이다. */
+        /* 3주 전 — 옛 「최근 2주」 창 밖이지만 기간 제한이 없어졌다(FR-014). */
         lot(9003, { lastLabelIssue: { issueSeq: 1, issuedAt: '2026-10-20T01:00:00Z' } }),
         lot(9004, {
           lifecycleStatusCode: 'VOIDED',
@@ -357,42 +411,28 @@ describe('US1-4 다시 인쇄', () => {
     ],
   });
 
-  const reprintRows = (): HTMLElement[] =>
-    screen.queryAllByRole('checkbox', { name: /SYN-ITEM-01\|/u });
+  const openTab = async (user: ReturnType<typeof userEvent.setup>, name: string, count: number) => {
+    await pickFirst(user);
+    await user.click(await screen.findByRole('tab', { name }));
+    await waitFor(() => expect(rows()).toHaveLength(count));
+  };
 
-  it('US1-4 최근 2주 안에 출력한 LOT 을 최근 것이 위로 보인다 — 폐기 LOT 은 빼고', async () => {
+  it('US4-4 출력됨 탭은 기간 제한 없이 최근 출력 순 — 입하된 · 폐기 LOT 은 빼고', async () => {
     const user = userEvent.setup();
     renderLabelScreen(PRINTED());
 
-    await user.click(await screen.findByRole('tab', { name: t.tabs.reprint }));
-
-    await waitFor(() => expect(reprintRows()).toHaveLength(2));
-    expect(reprintRows()[0]?.closest('tr')).toHaveTextContent('|0001');
-    expect(reprintRows()[1]?.closest('tr')).toHaveTextContent('|0002');
+    await openTab(user, tp.tabs.PRINTED, 2);
+    expect(rows()[0]?.closest('tr')).toHaveTextContent('|0001');
+    expect(rows()[1]?.closest('tr')).toHaveTextContent('|0003');
   });
 
-  it('[전체 선택 (N건)]은 재발행 목록 전부를 고른다 — [선택 해제]로 푼다', async () => {
-    const user = userEvent.setup();
-    renderLabelScreen(PRINTED());
-
-    await user.click(await screen.findByRole('tab', { name: t.tabs.reprint }));
-    await waitFor(() => expect(reprintRows()).toHaveLength(2));
-    await user.click(screen.getByRole('button', { name: t.bar.selectAllReprint(2) }));
-
-    expect(reprintRows().every((row) => row.getAttribute('aria-checked') === 'true')).toBe(true);
-
-    await user.click(screen.getByRole('button', { name: t.bar.clear }));
-    expect(reprintRows().some((row) => row.getAttribute('aria-checked') === 'true')).toBe(false);
-  });
-
-  it('US1-4 사유를 고르기 전에는 보내지 않고, 고른 사유를 본문에 실어 출력 차수를 올린다', async () => {
+  it('US4-4 사유를 고르기 전에는 보내지 않고, 고른 사유를 본문에 실어 출력 차수를 올린다', async () => {
     const user = userEvent.setup();
     installShell();
     const { sent } = renderLabelScreen(PRINTED());
 
-    await user.click(await screen.findByRole('tab', { name: t.tabs.reprint }));
-    await waitFor(() => expect(reprintRows()).toHaveLength(2));
-    await user.click(reprintRows()[0] as HTMLElement);
+    await openTab(user, tp.tabs.PRINTED, 2);
+    await user.click(rows()[0] as HTMLElement);
 
     /* 사유는 필수 칸 — 고르기 전에는 [N장 재인쇄]가 흐리게 꺼져 있다. */
     expect(screen.getByRole('button', { name: t.reprint.action(1) })).toBeDisabled();
@@ -410,32 +450,27 @@ describe('US1-4 다시 인쇄', () => {
     });
   });
 
-  it('라벨을 스캔하면(번호 + Enter) 그 LOT 을 고르고, 창 밖 번호면 찾는 범위를 말한다', async () => {
+  it('US4-5 3주 전에 출력한 라벨을 스캔해도 찾아 고른다 — 기간 제한 없음', async () => {
     const user = userEvent.setup();
     renderLabelScreen(PRINTED());
 
-    await user.click(await screen.findByRole('tab', { name: t.tabs.reprint }));
-    const search = screen.getByRole('textbox', { name: t.search.scanLabel });
-    await user.type(search, 'SYN-ITEM-01|1000|261111|SYN-P-01|0001{Enter}');
-
-    expect(screen.getByRole('checkbox', { name: /\|0001 /u })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    );
-
+    const search = await screen.findByRole('textbox', { name: tp.scanLabel });
     await user.type(search, 'SYN-ITEM-01|1000|261111|SYN-P-01|0003{Enter}');
-    expect(
-      screen.getByText(t.reprint.notFound('SYN-ITEM-01|1000|261111|SYN-P-01|0003')),
-    ).toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(screen.getByRole('checkbox', { name: /\|0003 /u })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      ),
+    );
   });
 
-  it('⛔ 불량 LOT 은 누르기 전에 막고 그 까닭을 말한다', async () => {
+  it('US4-2 ⛔ 불량 LOT 은 누르기 전에 막고 그 까닭을 말한다(입하된 LOT 탭)', async () => {
     const user = userEvent.setup();
     renderLabelScreen(PRINTED());
 
-    await user.click(await screen.findByRole('tab', { name: t.tabs.reprint }));
-    await waitFor(() => expect(reprintRows()).toHaveLength(2));
-    await user.click(reprintRows()[1] as HTMLElement);
+    await openTab(user, tp.tabs.RECEIVED, 1);
+    await user.click(rows()[0] as HTMLElement);
     await user.click(screen.getByRole('radio', { name: '훼손' }));
 
     expect(screen.getByText(t.reprint.lotBlocked('불량'))).toBeInTheDocument();
@@ -446,11 +481,10 @@ describe('US1-4 다시 인쇄', () => {
     const user = userEvent.setup();
     renderLabelScreen({ ...PRINTED(), reissueReasons: [] });
 
-    await user.click(await screen.findByRole('tab', { name: t.tabs.reprint }));
+    await openTab(user, tp.tabs.PRINTED, 2);
     /* 사유 칸은 LOT을 고른 뒤에만 선다. */
     expect(screen.queryByText(t.reprint.reasonsEmpty)).toBeNull();
-    await waitFor(() => expect(reprintRows()).toHaveLength(2));
-    await user.click(reprintRows()[0] as HTMLElement);
+    await user.click(rows()[0] as HTMLElement);
 
     expect(await screen.findByText(t.reprint.reasonsEmpty)).toBeInTheDocument();
   });

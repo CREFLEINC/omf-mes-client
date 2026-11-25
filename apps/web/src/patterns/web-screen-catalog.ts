@@ -77,6 +77,8 @@ export const WEB_SCREENS: readonly WebScreen[] = [
    * 코드는 설계가 붙인 값을 따른다(§3-2 공통 표 · v1.6 재정의로 「창고 적재 위치 배치도」).
    */
   { path: '/master-data/warehouse-layout', code: 'W-CO-08', name: '창고 적재 위치 배치도' },
+  /* omf-all-around#318 — 교대 관리(공장별 주간·야간). 설계 밖 화면이라 서버가 코드를 정했다. 사이드바는 창고·위치 다음이다. */
+  { path: '/master-data/shifts', code: 'W-06-26', name: '교대 관리' },
   { path: '/master-data/routing', code: 'W-06-01', name: 'Routing(공정) 등록·관리' },
   /*
    * ⚠ **`W-06-13`(검사정책 설정)이 아니다.** 그 화면은 속성 11개 중 7개가 이 화면의 테이블에 이미
@@ -232,8 +234,9 @@ export const WEB_SCREENS: readonly WebScreen[] = [
     code: 'W-02-08',
     name: 'W/O 진행현황 조회(생산 실적 집계 포함)',
   },
-  /* 서버 권한 키 W-02-09 「LOT 생산 이력 조회」. */
-  { path: '/production/lot-trace', code: 'W-02-09', name: 'LOT 생산 이력 조회' },
+  /* 피처 015 — W-02-09 「LOT 생산 이력 조회」를 둘로 나눴다(옛 주소는 넘기기만 한다). */
+  { path: '/production/material-trace', code: 'W-02-13', name: '자재 기준 생산 추적' },
+  { path: '/production/product-trace', code: 'W-02-14', name: '제품 기준 역추적' },
 
   /* ── 품질관리 ─────────────────────────────────────────────────────────── */
   {
@@ -252,11 +255,10 @@ export const WEB_SCREENS: readonly WebScreen[] = [
     code: 'W-03-05',
     name: '검사실적·검사결과 조회(불량률·불량코드 분포 집계 포함)',
   },
-  { path: '/quality/dispositions', code: 'W-03-10', name: '부적합 처분 관리(재작업/폐기/정상)' },
+  /* W-03-10 부적합 처분 관리는 메뉴를 없앴다(omf-all-around#354) — 옛 주소는 검사 탭으로 넘기기만 하므로 이름표에 두지 않는다. */
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#107) — 화면 코드는 사용자 결정으로 부여했다. */
   { path: '/quality/pqc-inspections', code: 'W-03-11', name: 'PQC 검사 등록·조회' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#64 · 서버 장부 P-87) — 다음 빈 번호로 받았다. */
-  { path: '/quality/inspection-levels', code: 'W-03-12', name: '검사 수준 관리' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#89 · 서버 장부 P-102). */
   { path: '/master-data/inspection-sheet-template', code: 'W-06-24', name: '검사표 기준' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#89 · 서버 장부 P-102). 서명·승인은 같은 화면의 권한 W-03-14 로 가른다. */

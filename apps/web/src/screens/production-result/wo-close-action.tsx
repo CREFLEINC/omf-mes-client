@@ -287,6 +287,24 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
         <PuDialog
           title={t.title(workOrderNo)}
           onClose={close}
+          keyboard={
+            /*
+             * 비고 글자판은 창 밖 화면 아래 판에(사용자 지시 2026-11-24). 소멸 처리가 걸린 창은 판 자리를 늘 비워
+             * 두어(`null`) 칸을 눌러 판이 열려도 창이 움직이지 않는다.
+             */
+            needsDisposition ? (
+              showKeyboard ? (
+                <div className="pu-stack" role="group" aria-label={t.fields.remarks}>
+                  <div className="pu-keypad-head">
+                    <span className="pu-keypad-target">
+                      <b>{t.fields.remarks}</b>
+                    </span>
+                  </div>
+                  <PuTextKeyboard value={remarks} onChange={setRemarks} />
+                </div>
+              ) : null
+            ) : undefined
+          }
           footer={
             <>
               <PuButton disabled={sequence.isSaving} onClick={close}>
@@ -308,8 +326,7 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
             </>
           }
         >
-          {/* 비고 글자판이 열린 동안은 창을 넓혀 오른쪽 열에 글자판을 둔다(자재 관리 LOT 만들기 창과 같은 방식). */}
-          <div className={showKeyboard ? 'wc-wrap is-kbd' : 'wc-wrap'}>
+          <div className="wc-wrap">
             <div className="wc-main">
               {endFailureText !== null && <PuNote tone="bad">{endFailureText}</PuNote>}
               {sequence.endedButNotClosed && <PuNote tone="warn">{t.endedButNotClosed}</PuNote>}
@@ -485,22 +502,6 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                 </p>
               )}
             </div>
-            {showKeyboard && (
-              /* 글자판의 빈 곳·꺼진 키를 눌러도 칸에서 초점이 빠져 닫히지 않게 한다. */
-              <div
-                className="pu-stack wc-kbd"
-                role="group"
-                aria-label={t.fields.remarks}
-                onMouseDown={(event) => event.preventDefault()}
-              >
-                <div className="pu-keypad-head">
-                  <span className="pu-keypad-target">
-                    <b>{t.fields.remarks}</b>
-                  </span>
-                </div>
-                <PuTextKeyboard value={remarks} onChange={setRemarks} />
-              </div>
-            )}
           </div>
         </PuDialog>
       )}

@@ -27,6 +27,11 @@ export type BarState =
       /** 고른 LOT 이 라벨을 낼 수 없는 상태 — 그 까닭. */
       blockedReason: string | null;
       isBlocked: boolean;
+      /**
+       * 「출력됨(입하 전)」 탭(피처 014 FR-014) — 재인쇄와 함께 폐기도 한다. 고른 입하 대기 수.
+       * 없으면 폐기 단추를 두지 않는다(입하된 LOT 탭).
+       */
+      voidCount?: number;
     }
   | {
       kind: 'running';
@@ -123,6 +128,16 @@ export const IssueBar = ({
 
     return (
       <PuActionBar label={t.label}>
+        {state.voidCount === undefined ? null : (
+          <PuButton
+            variant="danger"
+            icon="trash"
+            disabled={state.voidCount === 0 || state.isBlocked}
+            onClick={onVoid}
+          >
+            {state.voidCount > 0 ? t.void(state.voidCount) : t.voidIdle}
+          </PuButton>
+        )}
         <PuButton variant="primary" icon="print" disabled={!canSend} onClick={onIssue}>
           {hasSelection ? tReprint.action(state.count) : tReprint.actionIdle}
         </PuButton>

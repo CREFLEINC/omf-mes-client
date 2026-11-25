@@ -39,7 +39,7 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanListPane>[0]> = {})
 };
 
 describe('PlanListPane — 목록 표시', () => {
-  it('기준코드·기준명·유형과 품목·상태·승인·사용 열을 낸다', () => {
+  it('기준코드·기준명·유형과 품목·상태·사용 열을 낸다 — 승인 열은 없다(#357)', () => {
     renderPane();
 
     /* 머리칸에는 열 순서를 옮기는 손잡이 아이콘 글자(drag_indicator)가 함께 있다 — 이름만 견준다. */
@@ -53,7 +53,6 @@ describe('PlanListPane — 목록 표시', () => {
       '품목코드',
       '품목명',
       '상태',
-      '승인 여부',
       '사용 여부',
     ]);
   });
@@ -119,7 +118,6 @@ describe('PlanListPane — 0건 안내', () => {
         itemId: '',
         includeInactive: false,
         inactiveOnly: false,
-        unapprovedOnly: false,
         versionStatus: '',
       },
       pageView: toPageView({ page: 1, size: 50, total: 0 }, 0),

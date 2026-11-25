@@ -1,13 +1,12 @@
-import { Button, Chip, Dialog, Icon, SkeletonText, Switch, TextField } from '@crefle/web-ui';
+import { Button, Chip, Dialog, Icon, Switch, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useId, useState } from 'react';
 
 import { InfoTip } from '../../patterns/info-tip';
-import { LOCATION_LEVEL_CODES } from '../../patterns/location-level';
 import { CodeLockTextField } from '../../patterns/master';
-import { levelIconOf, levelNameOf } from '../../patterns/location-tree-cell';
 import { Select } from '../../patterns/select';
+import { UsageChip } from '../../patterns/usage-chip';
 import {
   ConfirmTarget,
   IdentityHeader,
@@ -15,8 +14,7 @@ import {
   LocationFacts,
 } from './location-identity';
 import { LOCATION_PREFIX_MAX_LENGTH, generateLocationPrefix } from './location-prefix';
-import { summarizeLocations } from './location-summary';
-import type { Location, LookupOptions, WarehouseFormValues } from './types';
+import type { LookupOptions, WarehouseFormValues } from './types';
 
 export interface WarehouseFormPaneProps {
   mode: 'create' | 'edit';
@@ -39,12 +37,10 @@ export interface WarehouseFormPaneProps {
   onDeactivate: () => void;
   onActivate: () => void;
   /**
-   * 고칠 때의 Location 묶음 — Location 탭이 받는 목록(미사용 포함). `items` 가 null 이면 아직 받는 중, `error` 는
-   * 받지 못했을 때 그 자리에 둘 배너.
+   * 바닥 단추 줄(사용 중지 · 취소 · 저장)을 판 안에 둘지 — 창고 정보 수정 창은 취소 · 저장을 창 바닥에 두므로 끈다.
+   * 끄면 사용 중지 · 다시 사용은 본문 맨 아래 「사용 상태」 줄로 옮긴다(사용자 지시 2026-11-24).
    */
-  locations?: { items: readonly Location[] | null; error: ReactNode } | undefined;
-  /** 「Location 탭에서 보기」 — 옆 탭을 연다. */
-  onOpenLocations?: (() => void) | undefined;
+  showActions?: boolean;
 }
 
 const t = messages.warehouseLocation;
@@ -283,8 +279,6 @@ const WarehouseCreateFields = ({
   </>
 );
 
-const STAT_ICON_SIZE = 18;
-
 interface PendingFlag {
   field: 'isExternal' | 'isDefect';
   value: boolean;
@@ -296,113 +290,10 @@ const flagConfirmTitle = ({ field, value }: PendingFlag): string => {
   return value ? confirm.on : confirm.off;
 };
 
-/** 창고 정보의 Location 묶음 — 위치 수 · 단계별 수 · 사용 중지 수 · 서버가 만든 위치 · 옆 탭으로. */
-const WarehouseLocationSummary = ({
-  locations,
-  onOpenLocations,
-}: {
-  locations: NonNullable<WarehouseFormPaneProps['locations']>;
-  onOpenLocations: WarehouseFormPaneProps['onOpenLocations'];
-}) => {
-  const baseId = useId();
-  const summary = locations.items === null ? null : summarizeLocations(locations.items);
-  const stats =
-    summary === null
-      ? []
-      : [
-          ...LOCATION_LEVEL_CODES.map((level) => ({
-            key: level,
-            label: t.values.locationLevels[level],
-            icon: levelIconOf({ locationLevelCode: level, systemRoleCode: null }),
-            count: summary.levels[level],
-          })),
-          {
-            key: 'inactive',
-            label: messages.common.deactivate,
-            icon: { name: 'block', tone: 'none' },
-            count: summary.inactive,
-          },
-        ];
-
-  return (
-    <section className="location-section" aria-label={t.tabs.location}>
-      <div className="warehouse-info-section-head">
-        <h3 className="location-section-title">
-          {t.tabs.location}
-          {summary !== null && <span className="location-items-count">{summary.total}</span>}
-        </h3>
-        {onOpenLocations !== undefined && (
-          <Button
-            variant="text"
-            className="location-state-button"
-            leadingIcon={<Icon name="arrow_forward" size={18} />}
-            onClick={onOpenLocations}
-          >
-            {t.actions.viewLocations}
-          </Button>
-        )}
-      </div>
-      {locations.error}
-      {summary === null ? (
-        locations.error === null && (
-          <div role="status" aria-label={t.loading.locations}>
-            <SkeletonText lines={2} />
-          </div>
-        )
-      ) : (
-        <>
-          <dl className="warehouse-info-stats">
-            {stats.map((stat) => {
-              const id = `${baseId}-${stat.key}`;
-              return (
-                <div
-                  key={stat.key}
-                  className={
-                    stat.count === 0 ? 'warehouse-info-stat is-muted' : 'warehouse-info-stat'
-                  }
-                >
-                  <span className={`location-identity-icon is-${stat.icon.tone}`}>
-                    <Icon name={stat.icon.name} size={STAT_ICON_SIZE} />
-                  </span>
-                  <div className="warehouse-info-stat-text">
-                    <dt id={id}>{stat.label}</dt>
-                    <dd>
-                      <output aria-labelledby={id}>{stat.count}</output>
-                    </dd>
-                  </div>
-                </div>
-              );
-            })}
-          </dl>
-          {summary.system.length > 0 && (
-            <ul
-              className="location-items-list warehouse-info-system"
-              aria-label={t.warehouseInfo.systemLocations}
-            >
-              {summary.system.map((location) => {
-                const icon = levelIconOf(location);
-                return (
-                  <li key={location.locationId} className="location-items-row">
-                    <span className={`location-identity-icon is-${icon.tone}`}>
-                      <Icon name={icon.name} size={STAT_ICON_SIZE} />
-                    </span>
-                    <span className="location-items-code">{location.locationCode}</span>
-                    <span className="location-items-name">{levelNameOf(location)}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </>
-      )}
-    </section>
-  );
-};
-
 /**
- * 창고 정보 탭(안 A, 사용자 결정 2026-10-30) — 위치 수정 창과 같은 짜임: 머리(창고 · 코드 · 창고명 · 칩) · 옅은 정보 판
- * (고칠 값만 연필, 불량 · 외부는 스위치) · Location 묶음 · 바닥(왼쪽 상태 단추, 오른쪽 취소 · 저장). 등록은 머리와 필수
- * 칸만.
+ * 창고 정보 판 — 위치 수정 창과 같은 짜임: 머리(창고 · 코드 · 창고명 · 칩) · 옅은 정보 판(고칠 값만 연필, 불량 · 외부는
+ * 스위치) · 바닥(왼쪽 상태 단추, 오른쪽 취소 · 저장). 등록은 오른쪽 창에, 수정은 [창고 정보] 창 안에 둔다(안 B, 사용자 결정
+ * 2026-11-24). 등록은 머리와 필수 칸만.
  */
 export const WarehouseFormPane = ({
   mode,
@@ -420,8 +311,7 @@ export const WarehouseFormPane = ({
   onCancel,
   onDeactivate,
   onActivate,
-  locations,
-  onOpenLocations,
+  showActions = true,
 }: WarehouseFormPaneProps) => {
   /*
    * 불량 창고는 바꾸기 전에 한 번 묻는다(사용자 지시 2026-10-30) — 확인하면 값이 바뀌고 저장이 켜진다. 확인을 곧 저장으로
@@ -494,7 +384,7 @@ export const WarehouseFormPane = ({
   return (
     <section
       className="warehouse-location-form warehouse-info"
-      aria-label={mode === 'create' ? t.actions.addWarehouse : t.tabs.warehouse}
+      aria-label={mode === 'create' ? t.actions.addWarehouse : t.sections.warehouse}
     >
       {banner}
 
@@ -531,7 +421,8 @@ export const WarehouseFormPane = ({
                 </>
               ) : undefined
             }
-            isActive={isActive}
+            /* 창 안에서는 「사용 상태」 줄이 상태를 보인다 — 머리에 두 번 두지 않는다. */
+            isActive={showActions ? isActive : undefined}
           />
           {identityErrors.map((error) => (
             <span key={error} className="field-error">
@@ -539,43 +430,58 @@ export const WarehouseFormPane = ({
             </span>
           ))}
           <LocationFacts key={`${values.warehouseCode}-${String(resetCount)}`} facts={facts} />
-          {locations !== undefined && (
-            <WarehouseLocationSummary locations={locations} onOpenLocations={onOpenLocations} />
+          {!showActions && (
+            /* 사용 중지는 저장과 다른 일이라 바닥이 아니라 본문에 — 지금 상태와 바꾸는 단추를 한 줄에. */
+            <div className="warehouse-info-state">
+              <span className="warehouse-info-state-label">{t.fields.isActive}</span>
+              <UsageChip isActive={isActive} />
+              <Button
+                variant="outlined"
+                size="sm"
+                className="location-state-button"
+                leadingIcon={<Icon name={isActive ? 'block' : 'restart_alt'} size={18} />}
+                onClick={isActive ? onDeactivate : onActivate}
+              >
+                {isActive ? messages.common.deactivate : t.actions.activate}
+              </Button>
+            </div>
           )}
         </>
       )}
 
-      <div className="form-actions warehouse-location-form-actions">
-        {/*
-         * 상태를 바꾸는 단추는 바닥 왼쪽 — 오른쪽의 취소 · 저장과 가른다(omf-all-around#17). 위치 창과 같은 아이콘 ·
-         * 글자 단추다. 아직 등록되지 않은 창고에는 사용 중지할 대상이 없다.
-         */}
-        <div className="field-cell form-actions-secondary">
-          {mode === 'edit' && (
-            <Button
-              variant="text"
-              className="location-state-button"
-              leadingIcon={<Icon name={isActive ? 'block' : 'restart_alt'} size={18} />}
-              onClick={isActive ? onDeactivate : onActivate}
-            >
-              {isActive ? messages.common.deactivate : t.actions.activate}
-            </Button>
-          )}
+      {showActions && (
+        <div className="form-actions warehouse-location-form-actions">
+          {/*
+           * 상태를 바꾸는 단추는 바닥 왼쪽 — 오른쪽의 취소 · 저장과 가른다(omf-all-around#17). 위치 창과 같은 아이콘 ·
+           * 글자 단추다. 아직 등록되지 않은 창고에는 사용 중지할 대상이 없다.
+           */}
+          <div className="field-cell form-actions-secondary">
+            {mode === 'edit' && (
+              <Button
+                variant="text"
+                className="location-state-button"
+                leadingIcon={<Icon name={isActive ? 'block' : 'restart_alt'} size={18} />}
+                onClick={isActive ? onDeactivate : onActivate}
+              >
+                {isActive ? messages.common.deactivate : t.actions.activate}
+              </Button>
+            )}
+          </div>
+          <Button
+            variant="outlined"
+            disabled={!isDirty}
+            onClick={() => {
+              setResetCount((count) => count + 1);
+              onCancel();
+            }}
+          >
+            {messages.common.cancel}
+          </Button>
+          <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
+            {messages.common.save}
+          </Button>
         </div>
-        <Button
-          variant="outlined"
-          disabled={!isDirty}
-          onClick={() => {
-            setResetCount((count) => count + 1);
-            onCancel();
-          }}
-        >
-          {messages.common.cancel}
-        </Button>
-        <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
-          {messages.common.save}
-        </Button>
-      </div>
+      )}
 
       <Dialog
         className="location-dialog"

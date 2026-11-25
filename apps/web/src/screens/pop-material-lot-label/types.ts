@@ -1,6 +1,7 @@
 import type {
   components,
   MaterialLotSummary,
+  MaterialLotTabRow,
   MaterialPackage,
   WaitingMaterialLotGroup,
 } from '@omf-mes/api-client';
@@ -73,9 +74,56 @@ export interface LabelLot {
    * 선택인 까닭: 분할 LOT 라벨(`goods-issue-qr`)도 이 줄 타입을 쓰는데 그쪽은 분할 일시로 따로 줄 세운다.
    */
   createdAt?: string;
+  /** 탭에서의 차례(피처 014) — 미출력 탭은 만든 차례(1 부터). 일괄 출력 장수가 이 차례의 앞에서부터다. */
+  seq?: number;
+  /** 만든 방식(피처 014) — AUTO 조회가 P/O 몫으로 · MANUAL [만들기]. */
+  creationModeCode?: MaterialLotTabRow['creationModeCode'];
+  /** 만들 때 채운 P/O 라인(AUTO 만). */
+  purchaseOrderLine?: MaterialLotTabRow['purchaseOrderLine'];
+  /** 받은 시각(입하된 LOT 탭) · 폐기 시각(폐기 LOT 탭). */
+  receivedAt?: string | null;
+  voidedAt?: string | null;
 }
 
-/** 공급사·품목 묶음의 열쇠 — 왼쪽 목록의 한 줄. */
+/** 공급사·품목 하나 — 품목 표 · 번호 찾기 · 만들기 창이 함께 쓰는 이름표. */
+export interface PairRef {
+  supplierId: number;
+  supplierCode: string;
+  supplierName: string;
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  /** 품목 기본 단위. */
+  uomCode: string;
+}
+
+/** 탭 목록의 한 줄(피처 014 `MaterialLotTabRow`)을 화면 줄로 옮기는 **유일한 지점**이다. */
+export const toLabelLotFromRow = (row: MaterialLotTabRow, pair: PairRef): LabelLot => ({
+  lotId: row.lotId,
+  lotNo: row.lotNo,
+  supplierId: pair.supplierId,
+  supplierCode: pair.supplierCode,
+  supplierName: pair.supplierName,
+  itemId: pair.itemId,
+  itemCode: pair.itemCode,
+  itemName: pair.itemName,
+  uomCode: row.uomCode,
+  lotQty: row.lotQty,
+  package: row.package,
+  supplierLotNo: row.supplierLotNo,
+  lifecycleStatusCode: row.lifecycleStatusCode,
+  statusCode: row.statusCode,
+  inboundLotNo: row.inboundLotNo,
+  lastIssue: row.lastLabelIssue,
+  createdAt: row.createdAt,
+  seq: row.seq,
+  creationModeCode: row.creationModeCode,
+  purchaseOrderLine: row.purchaseOrderLine,
+  receivedAt: row.receivedAt,
+  voidedAt: row.voidedAt,
+});
+
+/** 공급사·품목 묶음의 열쇠 — 품목 표의 한 줄. */
 export const pairKeyOf = (supplierId: number, itemId: number): string =>
   `${String(supplierId)}:${String(itemId)}`;
 

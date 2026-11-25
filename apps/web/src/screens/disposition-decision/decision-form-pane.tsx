@@ -16,7 +16,7 @@ import {
 } from './decision-form';
 import { dispositionTypeLabel, type DispositionOption } from './disposition-codes';
 import type { DispositionLookup } from './lookups';
-import { SortSplitPane } from './sort-split-pane';
+import { SortSplitPane, sortQtyValues } from './sort-split-pane';
 import { formatQty, type NonconformanceLotRow } from './types';
 
 /**
@@ -112,7 +112,18 @@ export const DecisionFormPane = ({
   const validToId = useId();
   const todayText = toBusinessDate(today ?? new Date());
   const isConcession = value.dispositionTypeCode === CONCESSION;
-  const pickType = (code: string): void => onChange(withDispositionType(value, code, todayText));
+  /*
+   * 선별을 고르면 양품 · 불량 수량 칸을 고른 LOT 대로 바로 채운다(아직 안 골랐으면 전부 양품 · 불량 0 · omf-all-around#354 사용자 지시).
+   * 선별에서 벗어나면 두 칸을 비운다 — 다른 유형에선 보이지도 보내지도 않는 값이다.
+   */
+  const pickType = (code: string): void => {
+    const next = withDispositionType(value, code, todayText);
+    onChange(
+      code === SORT
+        ? { ...next, ...sortQtyValues(lots, next.sortLotIds) }
+        : { ...next, goodQty: '', defectQty: '' },
+    );
+  };
   const isLocked = lockReason !== undefined;
   const reasonMissing = value.reason.trim() === '';
   const isSort = value.dispositionTypeCode === SORT;
@@ -230,31 +241,32 @@ export const DecisionFormPane = ({
           )}
         </div>
 
-        {!isSort && (
-          /* 처분 수량 = 남은 수량 전부 — 입력하지 않는다(FR-038 · 일부 판정 없음). 바꿀 수 없는 값이라 글로 보인다. */
-          <div className="disposition-qty-card">
-            <label className="field-label" htmlFor={qtyId}>
-              {t.form.qtyLabel}
-            </label>
-            <div className="disposition-qty-line">
-              <output
-                id={qtyId}
-                className="disposition-qty-value"
-                aria-describedby={[
-                  isLocked ? lockReasonId : '',
-                  effect === undefined ? '' : qtyNoteId,
-                ]
-                  .filter((id) => id !== '')
-                  .join(' ')}
-              >
-                {remainingText}
-              </output>
-            </div>
-            {errors.decisionQty !== undefined && (
-              <span className="field-error disposition-qty-error">{errors.decisionQty}</span>
-            )}
+        {/*
+         * 처분 수량 = 남은 수량 전부 — 입력하지 않는다(FR-038 · 일부 판정 없음). 바꿀 수 없는 값이라 글로 보인다.
+         * 선별을 골라도 같은 자리에 그대로 둔다 — 유형을 바꿀 때 칸이 사라졌다 나타나지 않게(omf-all-around#354 사용자 지시).
+         */}
+        <div className="disposition-qty-card">
+          <label className="field-label" htmlFor={qtyId}>
+            {t.form.qtyLabel}
+          </label>
+          <div className="disposition-qty-line">
+            <output
+              id={qtyId}
+              className="disposition-qty-value"
+              aria-describedby={[
+                isLocked ? lockReasonId : '',
+                effect === undefined ? '' : qtyNoteId,
+              ]
+                .filter((id) => id !== '')
+                .join(' ')}
+            >
+              {remainingText}
+            </output>
           </div>
-        )}
+          {errors.decisionQty !== undefined && (
+            <span className="field-error disposition-qty-error">{errors.decisionQty}</span>
+          )}
+        </div>
       </div>
 
       {/* 특채 — 요청 팝업에 있던 적용 기간 칸을 판정 칸 아래에(#352 사용자 지시). 수량은 위 처분 수량(남은 수량 전부), 사유는 아래 판정 사유. */}
@@ -361,6 +373,13 @@ export const DecisionFormPane = ({
           <span id={qtyNoteId} className="iqc-inspection-action-note" data-tone="info">
             <Icon name="info" size={14} aria-hidden />
             {t.form.wholeEffect(lots.length, dispositionTypeLabel(value.dispositionTypeCode))}
+          </span>
+        )}
+        {/* 선별 — 고른 LOT · 나머지 LOT 가 어떻게 되는지를 같은 자리에(omf-all-around#354 사용자 지시). */}
+        {isSort && (
+          <span className="iqc-inspection-action-note" data-tone="info">
+            <Icon name="info" size={14} aria-hidden />
+            {t.sort.selectNote}
           </span>
         )}
         <Button variant="outlined" disabled={!canCancel || isSaving} onClick={onCancel}>

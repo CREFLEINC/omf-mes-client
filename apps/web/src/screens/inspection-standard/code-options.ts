@@ -15,7 +15,6 @@ export const DEFAULT_PLAN_FILTERS: PlanFilters = {
   itemId: '',
   includeInactive: false,
   inactiveOnly: false,
-  unapprovedOnly: false,
   versionStatus: '',
 };
 

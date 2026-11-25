@@ -1,0 +1,46 @@
+import { renditionShell } from './pop-print';
+
+import { buildMaterialLotLabel, type MaterialLotLabelFields } from './label/lot-label-tspl';
+
+/**
+ * 라벨지 설정 창의 [견본 인쇄](톱니 설정 → 라벨지 설정 · 80 × 30)가 찍는 **견본 자재 LOT 라벨.**
+ * 숨은 단축키(Ctrl+Alt+P)였던 것을 창의 단추로 옮겼다(사용자 지시 2026-11-24).
+ *
+ * ⭐ **실제 발행과 같은 길로 보낸다**(사용자 지시 2026-09-15). 서식은 실제 발행과 같은 배치
+ *   (`layoutMaterialLotLabel` — 2026-10-24 개편안 · omf-all-around#184), 보내는 곳은
+ *   `rendition.save(…, 'tspl')` — 발행 화면이 쓰는 두 자리 그대로다. 셸이 따로 짠 견본은 서식도
+ *   프린터 고르는 길도 달라, 견본이 잘 나와도 실제 라벨은 어긋날 수 있었다.
+ *   ⚠ 견본 값은 전부 ASCII 라 TEXT 판(`buildMaterialLotLabel`)이 실제 발행
+ *     (`buildMaterialLotLabelBytes`)과 바이트까지 같다 — 견본에 한글을 넣으면 이 등식이 깨진다.
+ *
+ * ⛔ **서버에 아무것도 남기지 않는다.** 발행 기록·LOT 을 만들지 않고 값은 고정 견본이다 —
+ *    QR 을 모바일로 찍으면 「없는 LOT」 이 정상이다.
+ */
+export const SAMPLE_LOT_LABEL: MaterialLotLabelFields = {
+  itemCode: 'TEST-000000',
+  itemName: 'TEST ITEM',
+  lotNo: 'TEST-000000|10000|260101|000000|0001',
+  qty: 10000,
+  uomCode: 'EA',
+  issueSeq: 1,
+  supplier: 'TEST SUPPLIER (000000)',
+  receipt: 'RCV 2026-01-01',
+};
+
+/**
+ * 견본 한 장. 셸 통로가 없으면 던진다 — 부른 쪽이 사유를 알린다.
+ * `printerName` 은 화면이 고른 프린터 — 발행 화면과 같은 프린터로 보낸다(없으면 셸 기본).
+ */
+export const printSampleLotLabel = async (printerName?: string | null): Promise<string> => {
+  const shell = renditionShell();
+
+  if (shell === null) throw new Error('셸 인쇄 통로가 없습니다.');
+
+  return shell.save(
+    new TextEncoder().encode(buildMaterialLotLabel(SAMPLE_LOT_LABEL)),
+    'lot-sample',
+    new Date().toISOString(),
+    'tspl',
+    printerName ?? undefined,
+  );
+};

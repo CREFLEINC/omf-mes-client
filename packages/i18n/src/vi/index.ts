@@ -91,6 +91,7 @@ import { inspectionHistory } from './inspection-history';
 import { fourMInputs } from './four-m-inputs';
 import { lotGenealogy } from './lot-genealogy';
 import { lotTrace } from './lot-trace';
+import { traceTree } from './trace-tree';
 import { pqcInspectionRegister } from './pqc-inspection-register';
 import { inspectionLevel } from './inspection-level';
 import { inspectionSheet } from './inspection-sheet';
@@ -174,6 +175,7 @@ import { productionWarehouseReplenishment } from './production-warehouse-repleni
 import { materialLotIssue } from './material-lot-issue';
 import { inboundWorkRecord } from './inbound-work-record';
 import { supplierItemDefault } from './supplier-item-default';
+import { shiftManagement } from './shift-management';
 
 export const vi: Translated<Messages> = {
   ...ko,
@@ -185,6 +187,7 @@ export const vi: Translated<Messages> = {
   materialLotIssue,
   inboundWorkRecord,
   supplierItemDefault,
+  shiftManagement,
   approvalInbox,
   approvalRoute,
   collectionChannel,
@@ -259,6 +262,7 @@ export const vi: Translated<Messages> = {
   fourMInputs,
   lotGenealogy,
   lotTrace,
+  traceTree,
   pqcInspectionRegister,
   inspectionLevel,
   inspectionSheet,

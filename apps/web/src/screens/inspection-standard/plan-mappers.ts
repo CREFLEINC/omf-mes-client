@@ -1,7 +1,6 @@
 import type { components, InspectionPlanCreateForward } from '@omf-mes/api-client';
 
 import type { InspectionPlan, PlanFormValues } from './types';
-import { formatPlantDateTime } from '../../patterns/plant-time';
 
 type InspectionPlanUpdateForward = components['schemas']['InspectionPlanUpdate'];
 
@@ -48,8 +47,8 @@ export const emptyPlanFormValues = (): PlanFormValues => ({
 /**
  * 기준 헤더 수정 요청 본문.
  *
- * **승인 정보(`approvedBy`·`approvedAt`)와 사용 여부(`isActive`)를 싣지 않는다** —
- * 승인은 `:approve`가, 사용 중지는 `:deactivate`가 기록한다. 실어 보내면 계약 위반이다.
+ * **사용 여부(`isActive`)를 싣지 않는다** — 사용 중지는 `:deactivate`가 기록한다.
+ * 실어 보내면 계약 위반이다.
  */
 export const toPlanUpdate = (values: PlanFormValues): InspectionPlanUpdate => ({
   // 앞뒤 공백이 붙은 코드·이름은 눈으로 구분되지 않는 다른 값이 된다.
@@ -81,16 +80,3 @@ export const isSamePlanValues = (a: PlanFormValues, b: PlanFormValues): boolean 
   a.processId === b.processId &&
   a.routingId === b.routingId &&
   a.defaultSkip === b.defaultSkip;
-
-/**
- * 승인 시각 표기. 값이 없으면 null이다.
- *
- * **공장 시각으로 보인다**(`patterns/plant-time` · omf-all-around#20). 보는 사람(실행 환경)의
- * 시간대로 옮기지 않는다 — 서버가 UTC 로 보내므로 글자만 자르면 7시간 이르게 찍힌다.
- * 아는 형식이 아니면 원문을 그대로 낸다 — 시각을 지어내지 않는다.
- */
-export const formatApprovedAt = (value: string | null | undefined): string | null => {
-  if (value === null || value === undefined || value === '') return null;
-
-  return formatPlantDateTime(value) ?? value;
-};

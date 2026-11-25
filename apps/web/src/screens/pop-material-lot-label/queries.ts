@@ -1,12 +1,10 @@
-import type { ApiClient, SupplierItemDefault, WaitingMaterialLotGroup } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { shellSelectsPrinter, terminalPrinters } from '../../patterns/pop-terminal-printers';
 import { runRequest } from '../../patterns/request';
 import { REISSUE_REASON_CODE_GROUP } from './codes';
-import { pairKeyOf, toPrinterView, type PrinterView } from './types';
+import { toPrinterView, type PrinterView } from './types';
 import { withoutSystemReissueReasons } from '../../patterns/reissue-reasons';
 
 /**
@@ -14,7 +12,8 @@ import { withoutSystemReissueReasons } from '../../patterns/reissue-reasons';
  *
  * | 무엇 | 경로 |
  * | --- | --- |
- * | 공급사·품목 목록 · 대기/최근 자재 관리 LOT | `GET /logistics/waiting-material-lots`(계약 §1) — 한 번에 받는다 |
+ * | 공급사 칸 · 품목 표 · 탭 넷 · 번호 찾기 | `patterns/material-lot-precreate`(피처 014 — 서버 쪽 · 찾기, 20초 다시 받기 없음) |
+ * | 보내기 직전 확인 | `GET /logistics/material-lots/lookup`(LOT 마다) — `mutations.verifyCommands` |
  * | 프린터 · 재발행 사유 | 지금 그대로 |
  *
  * ⭐ 옛 「라벨 대기 입하 줄」(`GET /logistics/inbound-receipt-lines` · 입하 건 → 줄 모으기)은 없앴다(FR-036 ·
@@ -23,80 +22,6 @@ import { withoutSystemReissueReasons } from '../../patterns/reissue-reasons';
  * 경로 리터럴은 이 파일에만 둔다 — `openapi-fetch`가 경로를 리터럴 타입으로 요구해
  * 문자열 변수로 넘기면 타입 검사가 풀린다.
  */
-
-type Client = ApiClient['client'];
-
-/**
- * 목록 주기 갱신 간격.
- *
- * ⭐ **이 목록을 바꾸는 것은 이 화면만이 아니다.** 관리웹(W-01-14)에서 만든 LOT 도 여기 대기로 서고, PDA
- *    입하 스캔이 대기 LOT 을 입하됨으로 옮긴다 — 화면이 스스로 다시 받지 않으면 앱을 껐다 켜야 보였다
- *    (omf-all-around#29).
- * ⛔ **조회 화면에 자동 갱신을 두지 않는다는 관례의 예외다**(공유계약 L-6). 그 관례의 근거는 「사용자
- *    수만큼 부하가 곱해진다」인데, POP 단말은 **공장당 몇 대뿐**이다.
- */
-export const LIST_REFRESH_MS = 20_000;
-
-/** 다시 인쇄에서 보이는 기간(마지막 발행 기준). 그보다 오래된 라벨은 스캔해도 찾지 못한다고 말한다. */
-export const REPRINT_DAYS = 14;
-
-/** 주기 갱신을 걸 것인가 — **발행 중에는 걸지 않는다**(도는 사이 목록이 바뀌면 결과가 줄을 잃는다). */
-export const listRefetchInterval = (isBusy: boolean, interval = LIST_REFRESH_MS): number | false =>
-  isBusy ? false : interval;
-
-export const waitingKeys = {
-  all: ['pop-material-lot-label', 'waiting'] as const,
-  plant: (plantId: number) => ['pop-material-lot-label', 'waiting', plantId] as const,
-};
-
-/** 공급사·품목별 대기 자재 관리 LOT — 그 공장 전부(계약 §1). */
-export const fetchWaitingGroups = async (
-  client: Client,
-  plantId: number,
-): Promise<WaitingMaterialLotGroup[]> => {
-  const data = await runRequest(() =>
-    client.GET('/logistics/waiting-material-lots', { params: { query: { plantId } } }),
-  );
-
-  return data.items;
-};
-
-export interface WaitingGroupsResult {
-  groups: WaitingMaterialLotGroup[];
-  isPending: boolean;
-  isError: boolean;
-  isFetching: boolean;
-  /** 서버에서 마지막으로 받은 시각(ms). 받은 적 없으면 0. */
-  updatedAt: number;
-  refetch: () => void;
-}
-
-const NO_GROUPS: WaitingMaterialLotGroup[] = [];
-
-/**
- * 왼쪽 목록 · 오른쪽 표 · 다시 인쇄가 모두 이 한 조회에서 나온다 — 같은 순간의 값이라 서로 어긋나지 않는다.
- * ⚠ 공장을 모르면(단말 등록 전) 부르지 않는다.
- */
-export const useWaitingGroups = (plantId: number | null, isBusy: boolean): WaitingGroupsResult => {
-  const { client } = useApiClient();
-  const query = useQuery({
-    queryKey: plantId === null ? waitingKeys.all : waitingKeys.plant(plantId),
-    enabled: plantId !== null,
-    refetchInterval: listRefetchInterval(isBusy),
-    queryFn: () => fetchWaitingGroups(client, plantId ?? 0),
-  });
-
-  return {
-    groups: query.data ?? NO_GROUPS,
-    isPending: plantId === null || query.isPending,
-    isError: query.isError,
-    isFetching: query.isFetching,
-    updatedAt: query.dataUpdatedAt,
-    refetch: () => {
-      void query.refetch();
-    },
-  };
-};
 
 /**
  * 이 단말이 쓸 수 있는 프린터와 그 상태.
@@ -170,31 +95,6 @@ export const useReissueReasons = (enabled: boolean): UseQueryResult<ReissueReaso
       return withoutSystemReissueReasons(
         data.items.map((item) => ({ code: item.code, name: item.codeName })),
       );
-    },
-  });
-};
-
-/**
- * 공장의 공급사·품목 기본 정보 전부(계약 §9) — 왼쪽 목록의 기본값 한 줄. (공급사, 품목) 열쇠로 찾는다.
- * ⚠ 못 읽으면 줄마다 「기본 정보 없음」으로 읽힐 수 있다 — 그래서 실패를 따로 알린다(`isError`).
- */
-export const useSupplierItemDefaults = (plantId: number | null) => {
-  const { client } = useApiClient();
-
-  return useQuery({
-    queryKey: ['pop-material-lot-label', 'defaults', plantId],
-    enabled: plantId !== null,
-    staleTime: 60_000,
-    queryFn: async (): Promise<Map<string, SupplierItemDefault>> => {
-      const all = await fetchAllPages((page, size) =>
-        runRequest(() =>
-          client.GET('/mdm/supplier-item-defaults', {
-            params: { query: { plantId: plantId ?? 0, page, size } },
-          }),
-        ),
-      );
-
-      return new Map(all.items.map((row) => [pairKeyOf(row.supplierId, row.itemId), row] as const));
     },
   });
 };

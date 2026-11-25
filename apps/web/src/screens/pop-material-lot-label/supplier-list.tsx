@@ -1,27 +1,61 @@
-import type { SupplierItemDefault, WaitingMaterialLotGroup } from '@omf-mes/api-client';
+import type { MaterialLotPair, MaterialLotSupplier } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useLayoutEffect, useRef, type RefObject } from 'react';
 
-import { formatBaseQty, formatPackageQty } from '../../patterns/package-qty';
+import { formatBaseQty, formatQty } from '../../patterns/package-qty';
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
-import { puCx } from '../../patterns/pop-uniform';
+import { PuChip, puCx } from '../../patterns/pop-uniform';
 import { pairKeyOf } from './types';
 
-const t = messages.popMaterialLotLabel.pairs;
+const t = messages.popMaterialLotLabel;
+const tp = t.precreate;
+const tc = tp.threeCols;
 
 /**
- * 기본 정보 한 줄(screens/P-01-01.md 「왼쪽 행」) — 포장이 있으면 「기본 봉지 10 × 100 = 1,000 EA」, 포장 없음이면
- * 「기본 1 TON · 포장 없음」. 기본 정보가 없으면 `null` — 「기본 정보 없음」은 적지 않는다(사용자 지시 2026-11-23).
+ * 품목 기본값 한 줄(피처 014 · 시안 P0101) — 「기본 100 EA · ROLL 10 × 10」 / 「기본 500 EA · 포장 없음」.
+ * 기본값이 없으면 「기본 단위 설정 없음」, 환산이 없으면 「품목 단위 환산 없음」(빨강 — `isMissing`).
+ * `withPackageQty` 면 포장을 「ROLL 10 × 10」(패키징 수 × 패키징당 수량)으로 — 상세 머리.
  */
-export const defaultLineOf = (defaults: SupplierItemDefault | undefined): string | null => {
-  if (defaults === undefined) return null;
+export const pairDefaultLine = (
+  pair: Pick<MaterialLotPair, 'defaultsStatus' | 'lotDefaults' | 'item'>,
+  withPackageQty = false,
+): { text: string; isMissing: boolean } => {
+  if (pair.defaultsStatus === 'NO_DEFAULT') return { text: tp.noDefault, isMissing: true };
+  if (pair.defaultsStatus === 'NO_CONVERSION') return { text: tp.noConversion, isMissing: true };
 
-  return defaults.package === null
-    ? t.defaultUnpackaged(formatBaseQty(defaults.lotQty, defaults.uomCode))
-    : t.defaultPackaged(formatPackageQty(defaults.lotQty, defaults.uomCode, defaults.package));
+  const defaults = pair.lotDefaults;
+
+  if (defaults === null) return { text: tp.noDefault, isMissing: true };
+
+  const qty = formatBaseQty(defaults.lotQty, pair.item.baseUomCode);
+
+  if (defaults.packageCount === null || defaults.packageUomCode === null) {
+    return { text: tp.defaultUnpackaged(qty), isMissing: false };
+  }
+
+  const pkg = withPackageQty
+    ? `${defaults.packageUomCode} ${formatQty(defaults.packageCount)} × ${formatQty(
+        Math.round((defaults.lotQty / defaults.packageCount) * 1e6) / 1e6,
+      )}`
+    : `${defaults.packageUomCode} ${formatQty(defaults.packageCount)}`;
+
+  return { text: tp.defaultPackaged(qty, pkg), isMissing: false };
 };
 
-/** 품목명 글자 크기 — 넘치면 이 범위에서 줄여 한 줄에 담는다(사용자 지시 2026-11-23). */
+/**
+ * 화면의 「미출력 N」 = 이미 만든 미출력 + 아직 만들지 않은 몫(계약 §1a · §1). 기본값이 없거나 환산이 없는 조합은
+ * 만들 몫이 없다 — 이미 만든 미출력만 센다.
+ */
+export const pairUnprintedOf = (
+  pair: Pick<MaterialLotPair, 'unprintedCount' | 'creatableCount' | 'defaultsStatus'>,
+): number => pair.unprintedCount + (pair.defaultsStatus === 'OK' ? pair.creatableCount : 0);
+
+/** 공급사 칸 한 줄의 「미출력 N」 — 서버가 합을 준다(만들지 않음). */
+export const supplierUnprintedOf = (
+  row: Pick<MaterialLotSupplier, 'unprintedCount' | 'creatableCount'>,
+): number => row.unprintedCount + row.creatableCount;
+
+/** 품목명 글자 크기 — 넘치면 이 범위에서 줄여 한 줄에 담는다(#1751 · 사용자 지시 2026-11-23). */
 const NAME_FONT_MAX = 15;
 const NAME_FONT_MIN = 10;
 
@@ -60,51 +94,24 @@ const FitItemName = ({ name }: { name: string }) => {
   );
 };
 
-/** 왼쪽 공급사 목록의 한 줄 — 찾기에 걸린 공급사·품목을 공급사별로 모은 것. */
 /** 최근 발행 — 「11-23」(공장 날짜). */
-const shortWhen = (value: string): string => toPlantDateTimeParts(value)?.date.slice(5) ?? t.none;
-
-export interface SupplierRow {
-  supplierId: number;
-  supplierName: string;
-  /** 그 공급사 품목들의 라벨 미출력 합. */
-  unprintedCount: number;
-}
-
-/** 공급사·품목을 공급사별로 모은다 — 순서는 처음 나온 차례(서버 정렬: 공급사 코드 · 품목 코드). */
-export const supplierRowsOf = (groups: readonly WaitingMaterialLotGroup[]): SupplierRow[] => {
-  const rows = new Map<number, SupplierRow>();
-
-  for (const group of groups) {
-    const row = rows.get(group.supplierId);
-
-    if (row === undefined) {
-      rows.set(group.supplierId, {
-        supplierId: group.supplierId,
-        supplierName: group.supplierName,
-        unprintedCount: group.unprintedCount,
-      });
-    } else {
-      row.unprintedCount += group.unprintedCount;
-    }
-  }
-
-  return [...rows.values()];
-};
+const shortWhen = (value: string): string =>
+  toPlantDateTimeParts(value)?.date.slice(5) ?? t.pairs.none;
 
 export interface SupplierListProps {
-  /** 이 쪽에 보일 공급사(쪽 넘김은 화면이 자른다). */
-  suppliers: readonly SupplierRow[];
+  /** 이 쪽의 공급사(서버 쪽 — `GET /logistics/material-lot-suppliers`). */
+  suppliers: readonly MaterialLotSupplier[];
   selectedId: number | null;
   isLocked: boolean;
-  onSelect: (supplierId: number) => void;
+  onSelect: (row: MaterialLotSupplier) => void;
   /** 쪽 건수를 재는 칸. */
   fitRef: RefObject<HTMLUListElement | null>;
 }
 
 /**
- * 첫째 목록 — **공급사만**(사용자 지시 2026-11-23). 공급사명(코드 없이) · 오른쪽 끝에 라벨 미출력 수.
- * ⭐ 항목 전체가 누르는 자리다(규범 C-1). 넘치면 화면이 쪽으로 나눈다(구획 안 스크롤 없음).
+ * 첫째 칸 — **공급사만**(#1751 · 피처 014 FR-010 · 시안 P0101 ①). 공급사명(코드 없이) · 오른쪽 끝에 「미출력 N」
+ * (이미 만든 것 + 아직 만들지 않은 몫, 있으면 노랑 굵게 · 0 이면 흐리게). 발행 여부와 상관없이 조회 조건에 맞는
+ * 공급사가 모두 선다(FR-011). ⭐ 항목 전체가 누르는 자리다(규범 C-1). 넘치면 서버 쪽으로 나눈다.
  */
 export const SupplierList = ({
   suppliers,
@@ -113,75 +120,86 @@ export const SupplierList = ({
   onSelect,
   fitRef,
 }: SupplierListProps) => (
-  <ul ref={fitRef} className="pu-list pu-fit mll-pairs" aria-label={t.suppliersLabel}>
-    {suppliers.map((supplier) => (
-      <li key={supplier.supplierId}>
-        <button
-          type="button"
-          className={puCx('pu-item', supplier.supplierId === selectedId && 'is-selected')}
-          aria-pressed={supplier.supplierId === selectedId}
-          disabled={isLocked}
-          onClick={() => {
-            onSelect(supplier.supplierId);
-          }}
-        >
-          <span className="pu-item-top mll-pair-item">
-            <span className="mll-pair-name">{supplier.supplierName}</span>
-            {supplier.unprintedCount > 0 && (
-              <span className="mll-pair-unprinted">{t.unprinted(supplier.unprintedCount)}</span>
-            )}
-          </span>
-        </button>
-      </li>
-    ))}
+  <ul ref={fitRef} className="pu-list pu-fit mll-pairs" aria-label={tc.suppliers}>
+    {suppliers.map((row) => {
+      const isSelected = row.supplier.supplierId === selectedId;
+      const unprinted = supplierUnprintedOf(row);
+
+      return (
+        <li key={row.supplier.supplierId}>
+          <button
+            type="button"
+            className={puCx('pu-item', isSelected && 'is-selected')}
+            aria-pressed={isSelected}
+            disabled={isLocked}
+            onClick={() => {
+              onSelect(row);
+            }}
+          >
+            <span className="pu-item-top mll-pair-item">
+              <span className="mll-pair-name">{row.supplier.name}</span>
+              <span className={puCx('mll-pair-unprinted', unprinted > 0 ? 'has' : 'is-zero')}>
+                {tp.chipUnprinted(unprinted)}
+              </span>
+            </span>
+          </button>
+        </li>
+      );
+    })}
   </ul>
 );
 
 export interface ItemTableProps {
-  /** 이 쪽에 보일 고른 공급사의 품목(쪽 넘김은 화면이 자른다). */
-  groups: readonly WaitingMaterialLotGroup[];
+  /** 이 쪽의 고른 공급사 품목(서버 쪽 — `GET /logistics/material-lot-pairs?supplierId`). */
+  pairs: readonly MaterialLotPair[];
   selectedKey: string | null;
   isLocked: boolean;
-  onSelect: (key: string) => void;
+  onSelect: (pair: MaterialLotPair) => void;
   /** 쪽 줄 수를 재는 칸(표를 감싼 칸). */
   fitRef: RefObject<HTMLDivElement | null>;
 }
 
 /**
- * 둘째 목록 — **고른 공급사의 품목 표**(사용자 지시 2026-11-23).
- * 품목코드 · 품목명(길면 글자를 줄여 한 줄) · 입하 대기 LOT 수 · 그 수량 · 라벨 출력(출력 / 대기) · IQC 대상 · 최근 발행.
+ * 둘째 칸 — **고른 공급사의 품목 표**(#1751 · 피처 014 FR-010 세 칸 · 시안 P0101 ②).
+ * 품목코드 · 품목명(길면 글자를 줄여 한 줄) · 미출력(이미 만든 것 + 아직 만들지 않은 몫) · 출력됨 · IQC · 최근 발행.
+ * 기본값이 없거나 환산이 없으면 미출력 칸에 빨간 칩(「기본값 없음」 · 「환산 없음」) — 이미 만든 미출력 수는 앞에 그대로.
  * ⭐ 줄 어디를 눌러도 고른다 — 품목코드 칸의 단추가 읽어 주는 도구의 이름을 갖는다.
  */
-export const ItemTable = ({ groups, selectedKey, isLocked, onSelect, fitRef }: ItemTableProps) => (
-  <div ref={fitRef} className="mll-items" role="group" aria-label={t.itemsLabel}>
+export const ItemTable = ({ pairs, selectedKey, isLocked, onSelect, fitRef }: ItemTableProps) => (
+  <div ref={fitRef} className="mll-items" role="group" aria-label={tc.items}>
     <div className="pu-table-wrap">
       <table className="pu-table">
         <thead>
           <tr>
-            <th className="fit">{t.columns.itemCode}</th>
-            <th>{t.columns.itemName}</th>
-            <th className="num fit">{t.columns.lots}</th>
-            <th className="num fit">{t.columns.qty}</th>
-            <th className="num fit">{t.columns.printed}</th>
-            <th className="fit mid">{t.columns.iqc}</th>
-            <th className="fit">{t.columns.lastIssued}</th>
+            <th className="fit">{tc.columns.itemCode}</th>
+            <th>{tc.columns.itemName}</th>
+            <th className="num fit">{tc.columns.unprinted}</th>
+            <th className="num fit">{tc.columns.printed}</th>
+            <th className="fit mid">{tc.columns.iqc}</th>
+            <th className="fit">{tc.columns.lastIssued}</th>
           </tr>
         </thead>
         <tbody>
-          {groups.map((group) => {
-            const key = pairKeyOf(group.supplierId, group.itemId);
+          {pairs.map((pair) => {
+            const key = pairKeyOf(pair.supplier.supplierId, pair.item.itemId);
             const isSelected = key === selectedKey;
-            const printed = group.waitingCount - group.unprintedCount;
+            const unprinted = pairUnprintedOf(pair);
+            const miss = pair.defaultsStatus === 'OK' ? null : tc.miss[pair.defaultsStatus];
+            const isIdle = unprinted === 0 && pair.printedCount === 0;
 
             return (
               <tr
                 key={key}
-                className={puCx('is-pick', isSelected && 'is-selected')}
+                className={puCx(
+                  'is-pick',
+                  isSelected && 'is-selected',
+                  isIdle && !isSelected && 'mll-idle',
+                )}
                 onClick={
                   isLocked
                     ? undefined
                     : () => {
-                        onSelect(key);
+                        onSelect(pair);
                       }
                 }
               >
@@ -193,29 +211,36 @@ export const ItemTable = ({ groups, selectedKey, isLocked, onSelect, fitRef }: I
                     disabled={isLocked}
                     onClick={(event) => {
                       event.stopPropagation();
-                      onSelect(key);
+                      onSelect(pair);
                     }}
                   >
-                    {group.itemCode}
+                    {pair.item.code}
                   </button>
                 </td>
                 <td className="mll-item-name-cell">
-                  <FitItemName name={group.itemName} />
+                  <FitItemName name={pair.item.name} />
+                </td>
+                <td className={puCx('num fit', unprinted > 0 && 'mll-unprinted-cell')}>
+                  {unprinted === 0 && miss !== null
+                    ? null
+                    : unprinted === 0
+                      ? t.pairs.none
+                      : unprinted}
+                  {miss === null ? null : (
+                    <>
+                      {unprinted === 0 ? null : ' '}
+                      <PuChip tone="bad">{miss}</PuChip>
+                    </>
+                  )}
                 </td>
                 <td className="num fit">
-                  {group.waitingCount === 0 ? t.none : group.waitingCount}
+                  {pair.printedCount === 0 ? t.pairs.none : pair.printedCount}
                 </td>
-                <td className="num fit">
-                  {group.waitingCount === 0
-                    ? t.none
-                    : formatBaseQty(group.waitingQty, group.uomCode)}
+                <td className="fit mid">
+                  {pair.inspectionRequired ? tc.iqcRequired : t.pairs.none}
                 </td>
-                <td className={puCx('num fit', group.unprintedCount > 0 && 'mll-unprinted-cell')}>
-                  {group.waitingCount === 0 ? t.none : t.printedOf(printed, group.waitingCount)}
-                </td>
-                <td className="fit mid">{group.inspectionRequired ? t.iqcRequired : t.none}</td>
                 <td className="fit">
-                  {group.lastIssuedAt === null ? t.none : shortWhen(group.lastIssuedAt)}
+                  {pair.lastIssuedAt === null ? t.pairs.none : shortWhen(pair.lastIssuedAt)}
                 </td>
               </tr>
             );

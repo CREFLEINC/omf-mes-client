@@ -55,6 +55,7 @@ describe('readFilters', () => {
       keyword: 'IR-2026',
       pendingOnly: true,
       statusCode: null,
+      overallJudgmentCode: null,
     });
   });
 
@@ -97,7 +98,14 @@ describe('toListQuery', () => {
   it('채운 조건만 싣는다', () => {
     expect(
       toListQuery(
-        { itemId: 7, supplierId: null, keyword: '', pendingOnly: true, statusCode: null },
+        {
+          itemId: 7,
+          supplierId: null,
+          keyword: '',
+          pendingOnly: true,
+          statusCode: null,
+          overallJudgmentCode: null,
+        },
         2,
       ),
     ).toEqual({
@@ -140,6 +148,7 @@ describe('toSearchParams', () => {
       keyword: 'IR',
       pendingOnly: true,
       statusCode: null,
+      overallJudgmentCode: null,
     });
 
     expect(Object.fromEntries(params)).toEqual({ it: '12', sp: '34', q: 'IR' });
@@ -152,6 +161,7 @@ describe('toSearchParams', () => {
       keyword: '',
       pendingOnly: true,
       statusCode: null,
+      overallJudgmentCode: null,
     });
 
     expect(params.has('ty')).toBe(false);

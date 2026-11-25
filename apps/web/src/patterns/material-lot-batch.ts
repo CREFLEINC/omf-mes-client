@@ -16,16 +16,76 @@ import { runRequest } from './request';
  * POP P-01-01 「자재 관리 LOT 만들기」와 관리웹 W-01-14 「자재 관리 LOT 발행」이 **같은 칸 · 같은 규칙**이다
  * (screens/W-01-14.md 「발행 창」). 그림만 다르고(POP 손 크기 · 관리웹 DS) 채우기 · 검사 · 본문은 여기 하나다.
  *
- * ⭐ 기본값의 출처는 셋이다(FR-002·US1-1·US1-3):
- *   1. `default` — 공급사·품목 기본 정보(W-06-25)가 있다: 패키징 · 재고 수량을 채운다(바꿀 수 있다).
- *   2. `itemStorage` — 기본 정보는 없고 품목 기본 보관 단위가 있다: 패키징 단위(와 품목 환산이 있으면
+ * ⭐ 기본값의 출처는 넷이고 이 차례로 고른다(피처 014 FR-019 · plan D-6 — 품목 기본값이 먼저):
+ *   1. `item` — 품목 LOT 기본값(W-06-05 · 자재 LOT 기본크기 · 보관 단위 · 패키징 기본값)이 있다: 재고 수량 ·
+ *      패키징을 채운다. 자동 생성(조회 때 P/O 몫)과 같은 값이다.
+ *   2. `default` — 공급사·품목 기본 정보(W-06-25)가 있다: 패키징 · 재고 수량을 채운다(바꿀 수 있다).
+ *   3. `itemStorage` — 둘 다 없고 품목 기본 보관 단위가 있다: 패키징 단위(와 품목 환산이 있으면
  *      패키징당 수량)만 채우고 재고 수량 · 개수는 빈칸.
- *   3. `none` — 둘 다 없다: 패키징 없음으로 시작, 직접 입력.
+ *   4. `none` — 셋 다 없다: 패키징 없음으로 시작, 직접 입력.
  * ⛔ 서버 발행 경로는 기본 정보를 강제하지 않는다 — 본문 값이 정본이다(research R-26).
  */
 
 /** 기본값을 어디서 채웠나 — 창의 출처 칩이 말한다. */
-export type BatchSource = 'default' | 'itemStorage' | 'none';
+export type BatchSource = 'item' | 'default' | 'itemStorage' | 'none';
+
+/**
+ * 품목 LOT 기본값(피처 014 FR-004·006) — LOT 하나의 재고 수량(품목 기본 단위)과 패키징(LOT 당 패키징 수 ·
+ * 패키징당 수량 = 수량 ÷ 패키징 수).
+ */
+export interface ItemLotDefault {
+  lotQty: number;
+  package: { uomId: number; count: number; qtyPerPackage: number } | null;
+}
+
+/** 품목 마스터에서 LOT 기본값을 셈하는 데 쓰는 칸. */
+export interface ItemLotFields {
+  baseUomId: number;
+  defaultLotStorageUomId?: number | null;
+  defaultProductionLotSize?: number | null;
+  defaultPackageUomId?: number | null;
+  defaultPackageCount?: number | null;
+}
+
+/** 소수 여섯 자리 — 환산 · 나눗셈 찌꺼기를 걷는다. */
+const round6 = (value: number): number => Math.round(value * 1e6) / 1e6;
+
+/**
+ * 품목 마스터 → LOT 기본값(서버 자동 생성과 같은 규칙 · 계약 `lotDefaults`). 보관 단위 · 기본크기가 없으면 없다
+ * (`NO_DEFAULT`). 보관 단위가 기본 단위와 다르면 `storageRate`(보관 단위 1 = 기본 단위 몇)로 바꾸고, 환산이
+ * 없으면 없다(`NO_CONVERSION`).
+ */
+export const itemLotDefaultOf = (
+  item: ItemLotFields,
+  storageRate: number | null,
+): ItemLotDefault | null => {
+  const storageUomId = item.defaultLotStorageUomId ?? null;
+  const size = item.defaultProductionLotSize ?? null;
+
+  if (storageUomId === null || size === null || !(size > 0)) return null;
+
+  let lotQty = size;
+
+  if (storageUomId !== item.baseUomId) {
+    if (storageRate === null || !(storageRate > 0)) return null;
+    lotQty = round6(size * storageRate);
+  }
+
+  const packageUomId = item.defaultPackageUomId ?? null;
+  const packageCount = item.defaultPackageCount ?? null;
+
+  return {
+    lotQty,
+    package:
+      packageUomId === null || packageCount === null || packageCount < 1
+        ? null
+        : {
+            uomId: packageUomId,
+            count: packageCount,
+            qtyPerPackage: round6(lotQty / packageCount),
+          },
+  };
+};
 
 /** 품목 기본 보관 단위 — 품목 마스터 `defaultLotStorageUomId` 와 그 단위의 품목 환산(있으면). */
 export interface ItemStorageUnit {
@@ -70,11 +130,30 @@ const EMPTY_DRAFT: BatchDraft = {
 
 const text = (value: number): string => String(value);
 
-/** 기본값으로 창을 채운다(US1-1 · US1-3). */
+/** 기본값으로 창을 채운다(US1-1 · US1-3 · 피처 014 FR-019 — 품목 기본값 먼저). */
 export const prefillBatch = (
+  itemDefault: ItemLotDefault | null,
   defaults: SupplierItemDefault | null,
   storage: ItemStorageUnit | null,
 ): BatchPrefill => {
+  if (itemDefault !== null) {
+    const pkg = itemDefault.package;
+
+    return {
+      source: 'item',
+      defaultWithoutPackage: pkg === null,
+      draft: {
+        ...EMPTY_DRAFT,
+        packageOn: pkg !== null,
+        packageUomId: pkg?.uomId ?? storage?.uomId ?? null,
+        packageCount: pkg === null ? '' : text(pkg.count),
+        qtyPerPackage: pkg === null ? '' : text(pkg.qtyPerPackage),
+        lotQty: text(itemDefault.lotQty),
+        lotQtyEdited: pkg === null,
+      },
+    };
+  }
+
   if (defaults !== null) {
     const pkg = defaults.package;
 
@@ -233,8 +312,19 @@ export const lotNoPattern = (
 const batchKeys = {
   defaults: (plantId: number, supplierId: number, itemId: number) =>
     ['material-lot-batch', 'defaults', plantId, supplierId, itemId] as const,
-  storage: (itemId: number) => ['material-lot-batch', 'item-storage', itemId] as const,
+  basis: (itemId: number) => ['material-lot-batch', 'item-lot-basis', itemId] as const,
 };
+
+/** 품목 하나에서 읽는 두 가지 — 보관 단위(패키징 단위 처음 값)와 LOT 기본값(피처 014). */
+interface ItemLotBasis {
+  storage: ItemStorageUnit | null;
+  lotDefault: ItemLotDefault | null;
+  /**
+   * 보관 단위가 기본 단위와 같다(T050) — `storage` 는 패키징 처음 값이라 이때 `null` 이지만(같은 단위를 패키징으로
+   * 채우지 않음), 화면에 「없음」이 아니라 그 단위를 보이려면 따로 알아야 한다.
+   */
+  storageIsBase: boolean;
+}
 
 /**
  * 고른 공급사·품목의 기본 정보(계약 §9 — 그 조합 하나).
@@ -276,16 +366,18 @@ export const useSupplierItemDefault = (
 
 /**
  * 품목 기본 보관 단위(품목 마스터 `defaultLotStorageUomId`)와 그 단위의 패키징당 수량(품목 환산 — 보관 단위 →
- * 기본 단위). 환산이 없으면 단위만 채운다(FR-002 「패키징 단위로만 채우고」).
+ * 기본 단위), 그리고 품목 LOT 기본값(피처 014 — 자재 LOT 기본크기 · 패키징 기본값). 품목 · 환산을 한 번 읽어
+ * 두 훅이 나눠 쓴다. 환산이 없으면 보관 단위는 단위만 채우고(FR-002 「패키징 단위로만 채우고」) LOT 기본값은 없다.
  */
-export const useItemStorageUnit = (itemId: number | null) => {
+const useItemLotBasis = <T>(itemId: number | null, select: (basis: ItemLotBasis | null) => T) => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey:
-      itemId === null ? ['material-lot-batch', 'item-storage', 'none'] : batchKeys.storage(itemId),
+      itemId === null ? ['material-lot-batch', 'item-lot-basis', 'none'] : batchKeys.basis(itemId),
     enabled: itemId !== null,
-    queryFn: async (): Promise<ItemStorageUnit | null> => {
+    select,
+    queryFn: async (): Promise<ItemLotBasis | null> => {
       if (itemId === null) return null;
       const data = await runRequest(() =>
         client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }),
@@ -293,7 +385,13 @@ export const useItemStorageUnit = (itemId: number | null) => {
       const storageUomId = data.item.defaultLotStorageUomId ?? null;
       const baseUomId = data.item.baseUomId;
 
-      if (storageUomId === null || storageUomId === baseUomId) return null;
+      if (storageUomId === null || storageUomId === baseUomId) {
+        return {
+          storage: null,
+          lotDefault: itemLotDefaultOf(data.item, null),
+          storageIsBase: storageUomId !== null,
+        };
+      }
 
       let qtyPerPackage: number | null = null;
 
@@ -324,10 +422,31 @@ export const useItemStorageUnit = (itemId: number | null) => {
         /* 환산을 못 읽었다 — 단위만 채운다. */
       }
 
-      return { uomId: storageUomId, qtyPerPackage };
+      return {
+        storage: { uomId: storageUomId, qtyPerPackage },
+        lotDefault: itemLotDefaultOf(data.item, qtyPerPackage),
+        storageIsBase: false,
+      };
     },
   });
 };
+
+const selectStorage = (basis: ItemLotBasis | null): ItemStorageUnit | null =>
+  basis?.storage ?? null;
+const selectLotDefault = (basis: ItemLotBasis | null): ItemLotDefault | null =>
+  basis?.lotDefault ?? null;
+
+export const useItemStorageUnit = (itemId: number | null) => useItemLotBasis(itemId, selectStorage);
+
+const selectStorageIsBase = (basis: ItemLotBasis | null): boolean => basis?.storageIsBase ?? false;
+
+/** 품목 기본 보관 단위가 기본 단위와 같은가(T050 — W-01-14 상세가 「없음」 대신 그 단위를 보인다). */
+export const useItemStorageIsBase = (itemId: number | null) =>
+  useItemLotBasis(itemId, selectStorageIsBase);
+
+/** 품목 LOT 기본값(피처 014 FR-019) — 수동 [만들기] 창의 첫째 처음 값. */
+export const useItemLotDefault = (itemId: number | null) =>
+  useItemLotBasis(itemId, selectLotDefault);
 
 /** 단위 목록(패키징 단위 고르기 · 기본 단위 소수 자릿수) — `GET /mdm/uoms`. */
 export interface UomOption {
