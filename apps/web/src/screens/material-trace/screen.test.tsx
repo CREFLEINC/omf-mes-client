@@ -375,13 +375,18 @@ describe('W-02-13 자재 기준 생산 추적', () => {
     expect(within(end).getByText('반제품 · 공정 10 반제품 1')).toBeInTheDocument();
   });
 
-  /* 실제 앱 확인 2026-11-26 — 80px 현황 칸에서 「다음 공정 투입 전」이 잘렸다. 가장 긴 운명 이름이 들어가는 폭이다. */
-  it('Q14 현황 칸은 ko · vi 의 가장 긴 운명 이름(「다음 공정 투입 전」 · 「Chờ đưa vào công đoạn sau」)이 들어가는 폭이다', () => {
-    const koWidth = fateColumnWidth(Object.values(ko.traceTree.end.fates));
-    const viWidth = fateColumnWidth(Object.values(vi.traceTree.end.fates));
+  /*
+   * 실제 앱 확인 2026-11-26 — 80px 현황 칸에서 「다음 공정 투입 전」이 잘렸고(1차), 모든 운명의 최장 vi 이름으로 넓히자
+   * 상세 창 1440 에서 행선지 칸이 밀려 머리가 글자 단위로 끊겼다(2차). 폭은 지금 목록에 나온 운명 기준이다.
+   */
+  it('Q14 현황 칸은 목록에 나온 운명 이름이 들어가고, vi 반제품 목록에서도 행선지 칸을 밀어내지 않는다', () => {
+    const ko14 = [ko.traceTree.end.fates.WIP_PENDING, ko.traceTree.end.fates.CONSUMED_OUT];
+    const vi14 = [vi.traceTree.end.fates.WIP_PENDING, vi.traceTree.end.fates.CONSUMED_OUT];
     /* 칩 103px(실측) + 칸 여백 */
-    expect(koWidth).toBeGreaterThanOrEqual(103 + 24);
-    expect(viWidth).toBeGreaterThan(koWidth);
-    expect(viWidth).toBeGreaterThanOrEqual(fateColumnWidth(['Chờ đưa vào công đoạn sau']));
+    expect(fateColumnWidth(ko14)).toBeGreaterThanOrEqual(103 + 24);
+    /* 상세 창(1440, 약 660px)에서 행선지 칸에 120px 이상 남는다 — 첫 칸 180 · 출하일 72 · 수량 88 · 상태 64 */
+    expect(660 - 180 - 72 - 88 - 64 - fateColumnWidth(vi14)).toBeGreaterThanOrEqual(120);
+    /* 나오지 않은 운명은 폭을 늘리지 않는다 */
+    expect(fateColumnWidth([ko.traceTree.end.fates.SHIPPED])).toBe(80);
   });
 });

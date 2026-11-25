@@ -39,17 +39,17 @@ const FATE_TONE: Record<ForwardEndRow['fate'], 'error' | 'idle' | 'warning' | 's
 
 /**
  * 현황 칸 폭(px) — 지금 언어의 가장 긴 운명 이름 칩이 잘리지 않게(피처 016 실제 앱 확인 2026-11-26: 80px 에서
- * 「다음 공정 투입 전」이 「다음 공정 투」로 잘림). 칩 글(12px)의 어림 폭: 한글 11.5 · 빈칸 3.5 · 그 밖 7px, 칩 안쪽 여백 16 +
- * 칸 여백 24. 너무 좁게 어림하지 않게 올림한다.
+ * 「다음 공정 투입 전」이 「다음 공정 투」로 잘림). 칩 글(12px)의 어림 폭: 한글 11.5 · 빈칸 3.5 · 그 밖 7.5px(vi 성조 글자),
+ * 칩 안쪽 여백 16 + 칸 여백 32(실측). 너무 좁게 어림하지 않게 올림한다.
  */
 export const fateColumnWidth = (labels: readonly string[]): number => {
   const textWidth = (text: string): number =>
     [...text].reduce(
-      (sum, char) => sum + (/[가-힣]/u.test(char) ? 11.5 : char === ' ' ? 3.5 : 7),
+      (sum, char) => sum + (/[가-힣]/u.test(char) ? 11.5 : char === ' ' ? 3.5 : 7.5),
       0,
     );
 
-  return Math.ceil(Math.max(80, ...labels.map((label) => textWidth(label) + 16 + 24)));
+  return Math.ceil(Math.max(80, ...labels.map((label) => textWidth(label) + 16 + 32)));
 };
 
 /** 첫 값 + 「외 n건」(R-3 — 출하가 둘 이상이면 화면은 줄이고 파일은 출하마다 한 줄). */
@@ -139,7 +139,10 @@ const destinationOf = (row: ForwardEndRow): string =>
  * 영향 제품 LOT 칸(시안 2판) — 제품 LOT · 품목명 · 행방 · 고객, 출하번호, 창고 위치 · 출하일 · 수량 · 상태.
  * 고객 · 출하번호와 창고 · 위치는 행방에 따라 하나가 서므로 한 칸에 둔다(상세 창 폭 — T-W-A 하위 표).
  */
-const columns = (statusName: (code: string) => string): Column<ForwardEndRow>[] => {
+const columns = (
+  statusName: (code: string) => string,
+  rows: readonly ForwardEndRow[],
+): Column<ForwardEndRow>[] => {
   const c = t.end.forward;
   return [
     {
@@ -161,11 +164,17 @@ const columns = (statusName: (code: string) => string): Column<ForwardEndRow>[] 
     {
       key: 'fate',
       header: c.fate,
-      width: `${String(fateColumnWidth(Object.values(t.end.fates)))}px`,
+      /*
+       * 지금 목록에 실제로 나온 운명들 기준 — 모든 운명의 최장(vi 「Xuất hàng, tồn kho」 등)으로 잡으면 상세 창(1440)에서
+       * 행선지 칸이 밀려 머리가 글자 단위로 끊겼다(2차 확인 2026-11-26).
+       */
+      width: `${String(fateColumnWidth([...new Set(rows.map((row) => t.end.fates[row.fate]))]))}px`,
       render: (row) => (
-        <Chip variant="status" size="sm" status={FATE_TONE[row.fate]}>
-          {t.end.fates[row.fate]}
-        </Chip>
+        <span title={t.end.fates[row.fate]}>
+          <Chip variant="status" size="sm" status={FATE_TONE[row.fate]}>
+            {t.end.fates[row.fate]}
+          </Chip>
+        </span>
       ),
     },
     {
@@ -211,7 +220,7 @@ const EndRows = ({ tree, names, activeEnd, onLocate, partial }: TraceDetailConte
   return (
     <TraceEndTable
       title={t.material.endTitle}
-      columns={columns(names.lotStatus)}
+      columns={columns(names.lotStatus, forward.endRows)}
       rows={forward.endRows}
       getRowId={(row) => String(row.lot.lotId)}
       lotNoOf={(row) => row.lot.lotNo}

@@ -261,7 +261,7 @@ export const traceTree: Translated<typeof ko.traceTree> = {
       PARTIAL: 'Xuất hàng, tồn kho',
       CONSUMED_OUT: 'Đã dùng hết',
       VOIDED: 'Hủy bỏ',
-      WIP_PENDING: 'Chờ đưa vào công đoạn sau',
+      WIP_PENDING: 'Chờ CĐ sau',
     },
     wipRemaining: (qtyWithUnit: string): string => `Còn ${qtyWithUnit}`,
     wipItem: (operationSeq: number | null, itemName: string): string =>

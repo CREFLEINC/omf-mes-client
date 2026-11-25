@@ -42073,6 +42073,8 @@ body:has(
 
 /* 단계 칩은 칸이 모자라면 말줄임(전체는 title) — 긴 베트남어 단계 이름. */
 .trace-tree-cell-head > .trace-tree-stage {
+  /* 줄어들 수 있어야 말줄임이 선다 — 그러지 않으면 칸 끝에서 표시 없이 잘린다(vi 「LOT bán thành phẩm · CĐ 20」, 016). */
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
