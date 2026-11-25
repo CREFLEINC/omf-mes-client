@@ -40406,14 +40406,14 @@ body:has(
 .action-link-button:focus-visible {
   outline: none;
   box-shadow:
-/* 배포 실패 안내 — 문장 끝 이동 단추가 글에 붙지 않게(밑줄 링크 → 단추 · 사용자 지시 2026-11-25). */
-.erp-wo-release-failures .action-link-button {
-  margin-left: var(--space-2);
-}
     inset 0 0 0 1px var(--outline-variant),
     var(--focus-ring);
 }
 
+/* 배포 실패 안내 — 문장 끝 이동 단추가 글에 붙지 않게(밑줄 링크 → 단추 · 사용자 지시 2026-11-25). */
+.erp-wo-release-failures .action-link-button {
+  margin-left: var(--space-2);
+}
 
 /*
  * 조회 상자 안 칸 이름에는 빨간 * 를 두지 않는다(사용자 지시 2026-11-25). 필수 조건 검사 · 오류 안내 · aria-required 는
@@ -40432,6 +40432,10 @@ body:has(
     .maintenance-result-part-picker,
     .tool-pm-order-item-row,
     .tool-pm-result-tool-grid
+  )
+  :is(.required-mark, [class*='requiredMark']) {
+  display: revert;
+}
 
 /*
  * 알림 수신자 · 인계작업 알림 — 조회 칸은 다른 화면처럼 위 조회 상자에, [조회]([초기화])는 줄 오른쪽 끝
@@ -40444,7 +40448,9 @@ body:has(
 .list-detail-filter > .notify-list-search > .filter-actions {
   margin-left: auto;
 }
-  )
-  :is(.required-mark, [class*='requiredMark']) {
-  display: revert;
+
+/* 부서 · 공장 선택칸 — 「DEPT-P2 · 생산2팀」 같은 값이 「…」로 잘리지 않는 폭(사용자 지시 2026-11-25). */
+.list-detail-filter > .notify-list-search > .field-cell:not(.filter-actions) {
+  flex: 0 1 20rem;
+  min-width: 16rem;
 }
