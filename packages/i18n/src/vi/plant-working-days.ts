@@ -35,7 +35,7 @@ export const plantWorkingDays: Translated<typeof ko.plantWorkingDays> = {
     changed: 'Đã đổi',
   },
   actions: {
-    revert: 'Hoàn tác',
+    revert: 'Hủy thay đổi',
     save: 'Lưu',
     reload: 'Tải lại',
   },

@@ -34,7 +34,7 @@ export const plantWorkingDays = {
     changed: '바뀜',
   },
   actions: {
-    revert: '되돌리기',
+    revert: '변경 취소',
     save: '저장',
     reload: '다시 불러오기',
   },

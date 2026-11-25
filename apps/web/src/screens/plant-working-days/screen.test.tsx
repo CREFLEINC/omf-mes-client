@@ -294,7 +294,7 @@ describe('W-CO-15 공장 근무일 설정', () => {
     expect(writes[0]?.headers.get('If-Match')).toBe('"7"');
   });
 
-  it('되돌리기는 고친 값을 버린다', async () => {
+  it('변경 취소는 고친 값을 버린다', async () => {
     const { user, writes } = setup();
     const row = await rowOf('합성 1공장');
 
