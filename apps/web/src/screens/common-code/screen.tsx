@@ -1687,6 +1687,13 @@ export const CommonCodeScreen = () => {
     setPendingSwitch(() => action);
   };
 
+  /** 목록 · 조건 · 추가 단추에 넘기는 조작을 `confirmSwitch`로 감싼다 — 선택이나 등록 폼이 바뀌면 고친 것이 사라진다(#358). */
+  const guarded =
+    <A extends unknown[]>(isDirty: boolean, action: (...args: A) => void) =>
+    (...args: A) => {
+      confirmSwitch(isDirty, () => action(...args));
+    };
+
   /*
    * 탭이 바뀌면 그 탭의 처음 상태로 간다. 한쪽 탭의 조건·선택이 남으면
    * 그 탭에 없는 자원을 조회하게 된다.
@@ -1896,18 +1903,18 @@ export const CommonCodeScreen = () => {
       codeGroups={codeGroups}
       isLoading={codeGroupList.isPending}
       appliedFilters={filters}
-      onApplyFilters={applyFilters}
+      onApplyFilters={guarded(isCodeGroupSwitchDirty, applyFilters)}
       pageView={codeGroupPageView}
       pageMeta={codeGroupList.data?.page ?? null}
-      onChangePage={changeCodeGroupPage}
-      onChangePageSize={changeCodeGroupPageSize}
+      onChangePage={guarded(isCodeGroupSwitchDirty, changeCodeGroupPage)}
+      onChangePageSize={guarded(isCodeGroupSwitchDirty, changeCodeGroupPageSize)}
       selectedCodeGroupId={selectedCodeGroupId}
       onSelect={(codeGroupId) => {
         /* 코드그룹을 바꾸면 그 그룹의 코드값 편집도 함께 사라진다(#358). */
         confirmSwitch(isCodeGroupSwitchDirty, () => handleSelectCodeGroup(codeGroupId));
       }}
       isCreating={isCreatingCodeGroup}
-      onAddCodeGroup={handleAddCodeGroup}
+      onAddCodeGroup={guarded(isCodeGroupSwitchDirty, handleAddCodeGroup)}
       loadError={
         codeGroupList.isError ? (
           <LoadErrorBanner
@@ -2166,7 +2173,7 @@ export const CommonCodeScreen = () => {
       byId={departmentById}
       isLoading={departmentList.isPending}
       appliedFilters={departmentFilters}
-      onApplyFilters={applyDepartmentFilters}
+      onApplyFilters={guarded(isDepartmentSwitchDirty, applyDepartmentFilters)}
       businessUnitOptions={selectableOptions(businessUnitOptions, departmentFilters.scopeId)}
       /*
        * 조건 칩에는 번호가 아니라 이름을 낸다. 목록을 받는 중·실패·다 받은 뒤 미확인을
@@ -2176,14 +2183,14 @@ export const CommonCodeScreen = () => {
       optionsNotice={renderOptionsNotice([businessUnitOptions])}
       pageView={departmentPageView}
       pageMeta={departmentList.data?.page ?? null}
-      onChangePage={changeDepartmentPage}
-      onChangePageSize={changeDepartmentPageSize}
+      onChangePage={guarded(isDepartmentSwitchDirty, changeDepartmentPage)}
+      onChangePageSize={guarded(isDepartmentSwitchDirty, changeDepartmentPageSize)}
       selectedDepartmentId={selectedDepartmentId}
       onSelect={(departmentId) => {
         confirmSwitch(isDepartmentSwitchDirty, () => handleSelectDepartmentRow(departmentId));
       }}
       isCreating={isCreatingDepartment}
-      onAddDepartment={handleAddDepartment}
+      onAddDepartment={guarded(isDepartmentSwitchDirty, handleAddDepartment)}
       loadError={
         departmentList.isError ? (
           <LoadErrorBanner
@@ -2274,13 +2281,13 @@ export const CommonCodeScreen = () => {
       workers={workers}
       isLoading={workerList.isPending}
       appliedFilters={workerFilters}
-      onApplyFilters={applyWorkerFilters}
+      onApplyFilters={guarded(isQualificationSwitchDirty, applyWorkerFilters)}
       departmentOptions={selectableOptions(workerDepartmentOptions, workerFilters.scopeId)}
       optionsNotice={renderOptionsNotice([workerDepartmentOptions])}
       pageView={workerPageView}
       pageMeta={workerList.data?.page ?? null}
-      onChangePage={changeWorkerPage}
-      onChangePageSize={changeWorkerPageSize}
+      onChangePage={guarded(isQualificationSwitchDirty, changeWorkerPage)}
+      onChangePageSize={guarded(isQualificationSwitchDirty, changeWorkerPageSize)}
       selectedWorkerId={selectedWorkerId}
       onSelect={(workerId) => {
         confirmSwitch(isQualificationSwitchDirty, () => handleSelectWorker(workerId));
@@ -2486,11 +2493,11 @@ export const CommonCodeScreen = () => {
       partners={partners}
       isLoading={partnerList.isPending}
       appliedFilters={partnerFilters}
-      onApplyFilters={applyPartnerFilters}
+      onApplyFilters={guarded(isPartnerRoleSwitchDirty, applyPartnerFilters)}
       pageView={partnerPageView}
       pageMeta={partnerList.data?.page ?? null}
-      onChangePage={changePartnerPage}
-      onChangePageSize={changePartnerPageSize}
+      onChangePage={guarded(isPartnerRoleSwitchDirty, changePartnerPage)}
+      onChangePageSize={guarded(isPartnerRoleSwitchDirty, changePartnerPageSize)}
       selectedPartnerId={selectedPartnerId}
       onSelect={(partnerId) => {
         confirmSwitch(isPartnerRoleSwitchDirty, () => handleSelectPartner(partnerId));

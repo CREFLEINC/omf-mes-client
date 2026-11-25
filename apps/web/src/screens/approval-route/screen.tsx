@@ -7,7 +7,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
-import { LeaveGuard } from '../routing/leave-guard';
+import { DiscardDialog, LeaveGuard } from '../routing/leave-guard';
 import { ActivationDialog, type ActivationIntent } from './activation-dialog';
 import { approverNote, useApproverLookup, type ApproverOption } from './approver-options';
 import { PLACEHOLDER_APPROVAL_TYPE_CODES, toApprovalTypeOptions } from './code-options';
@@ -697,23 +697,38 @@ export const ApprovalRouteScreen = () => {
     applySearchParams(next);
   };
 
+  /**
+   * 고른 결재선의 고친 값(기본 정보 · 단계)이 사라지는 이동(다른 줄 · 조건 · 쪽)을 미뤄 둔 것 — 다른 화면으로 갈 때와
+   * 같은 창으로 묻고, 「저장하지 않고 나가기」를 누르면 그때 옮긴다(#358). 「계속 편집」은 고친 값과 선택을 그대로 둔다.
+   */
+  const [pendingSwitch, setPendingSwitch] = useState<URLSearchParams | null>(null);
+
+  /** 저장이 나가는 중이면 묻지 않는다 — 그때는 아래 `applyUserNavigation`이 이동 자체를 막는다. */
+  const confirmUserNavigation = (next: URLSearchParams): void => {
+    if (!isLocked && (isEditDirty || isStepDirty)) {
+      setPendingSwitch(next);
+      return;
+    }
+    applyUserNavigation(next);
+  };
+
   const handleSearch = (next: RouteFilters): void => {
     // 조건·쪽·선택을 **한 patch로** 갱신한다. 나누면 그 사이에 어느 쪽도 아닌 한 프레임이 생긴다.
-    applyUserNavigation(toSearchParams(next, 1, size));
+    confirmUserNavigation(toSearchParams(next, 1, size));
   };
 
   const handleChangePage = (nextPage: number): void => {
-    applyUserNavigation(toSearchParams(filters, nextPage, size));
+    confirmUserNavigation(toSearchParams(filters, nextPage, size));
   };
 
   /** 쪽 크기를 바꾸면 첫 쪽으로 간다 — 조건과 같이 보이는 줄이 바뀌므로 선택도 함께 비운다. */
   const handleChangePageSize = (nextSize: ListPageSize): void => {
-    applyUserNavigation(toSearchParams(filters, 1, nextSize));
+    confirmUserNavigation(toSearchParams(filters, 1, nextSize));
   };
 
   /** 고른 줄을 다시 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
   const handleSelect = (approvalRouteId: number): void => {
-    applyUserNavigation(
+    confirmUserNavigation(
       toSelectionSearchParams(
         filters,
         page,
@@ -1340,6 +1355,22 @@ export const ApprovalRouteScreen = () => {
         showCloseButton={false}
         size="sm"
       />
+
+      {pendingSwitch !== null && (
+        <DiscardDialog
+          title={leave.title}
+          body={leave.body}
+          stayLabel={leave.keep}
+          leaveLabel={leave.confirm}
+          showCloseButton={false}
+          size="sm"
+          onStay={() => setPendingSwitch(null)}
+          onLeave={() => {
+            setPendingSwitch(null);
+            applyUserNavigation(pendingSwitch);
+          }}
+        />
+      )}
 
       {dialog === 'discard' && (
         <DiscardConfirmDialog

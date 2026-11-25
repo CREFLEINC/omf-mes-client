@@ -72,7 +72,7 @@ export interface CodeValueSectionProps {
   onPageChange: (page: number) => void;
   /** 저장하지 않은 코드값 편집이 있는지 — 소비 화면이 다른 화면으로 옮기기 전에 묻는 데 쓴다(#358). */
   onDirtyChange?: (isDirty: boolean) => void;
-  /** 다른 코드값을 고르기 전에 소비 화면이 고친 것을 버릴지 묻는다 — 주지 않으면 곧바로 옮긴다(#358). */
+  /** 다른 코드값 · 쪽 · 조건 · 등록으로 옮기기 전에 소비 화면이 고친 것을 버릴지 묻는다 — 주지 않으면 곧바로 옮긴다(#358). */
   confirmSwitch?: (action: () => void) => void;
 }
 
@@ -267,18 +267,24 @@ export const CodeValueSection = ({
   };
 
   const handleIncludeInactiveChange = (next: boolean) => {
-    resetEditing();
-    onIncludeInactiveChange(next);
+    confirmSwitch(() => {
+      resetEditing();
+      onIncludeInactiveChange(next);
+    });
   };
 
   const handlePageChange = (next: number) => {
-    resetEditing();
-    onPageChange(next);
+    confirmSwitch(() => {
+      resetEditing();
+      onPageChange(next);
+    });
   };
 
   const handleAdd = () => {
-    resetEditing();
-    onOpenCreate();
+    confirmSwitch(() => {
+      resetEditing();
+      onOpenCreate();
+    });
   };
 
   const closeCreateForm = () => {

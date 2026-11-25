@@ -2319,6 +2319,113 @@ describe('CommonCodeScreen — 저장하지 않은 편집을 두고 다른 화�
     expect(await screen.findByRole('button', { name: 'SYN-DEPT-01' })).toBeInTheDocument();
   });
 
+  /** 확인 창에서 「계속 편집」을 누른다. */
+  const keepEditing = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+    const dialog = within(await screen.findByRole('dialog', { name: leave.title }));
+    expect(dialog.getByText(leave.body)).toBeInTheDocument();
+    await user.click(dialog.getByRole('button', { name: leave.keep }));
+    expect(screen.queryByRole('dialog', { name: leave.title })).toBeNull();
+  };
+
+  const renderEditedGroup = async (routes: StubRoute[] = [codeGroupListRoute()]) => {
+    const rendered = renderScreen([...routes, codeGroupDetailRoute()], '?grp=1001');
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
+    await rendered.user.type(screen.getByLabelText('그룹명'), '-편집중');
+    return rendered;
+  };
+
+  it('코드그룹 정보를 고친 채 「그룹 추가」를 누르면 묻고, 계속 편집은 남고 나가기는 등록 창을 연다', async () => {
+    const { history, user } = await renderEditedGroup();
+
+    await user.click(within(filterPane()).getByRole('button', { name: '그룹 추가' }));
+    await keepEditing(user);
+    expect(history.search()).toBe('?grp=1001');
+    expect(screen.queryByRole('dialog', { name: '그룹 추가' })).toBeNull();
+    expect(screen.getByLabelText('그룹명')).toHaveValue('합성 코드그룹 A-편집중');
+
+    await user.click(within(filterPane()).getByRole('button', { name: '그룹 추가' }));
+    await confirmDiscardSwitch(user);
+    expect(await screen.findByRole('dialog', { name: '그룹 추가' })).toBeInTheDocument();
+    expect(history.search()).toBe('?new=group');
+  });
+
+  it('코드그룹 정보를 고친 채 「미사용 포함」을 바꾸면 묻고, 계속 편집은 조건을 그대로 둔다', async () => {
+    const { history, user } = await renderEditedGroup();
+
+    await user.click(within(filterPane()).getByRole('checkbox', { name: '미사용 포함' }));
+    await keepEditing(user);
+    expect(history.search()).toBe('?grp=1001');
+    expect(within(filterPane()).getByRole('checkbox', { name: '미사용 포함' })).not.toBeChecked();
+    expect(screen.getByLabelText('그룹명')).toHaveValue('합성 코드그룹 A-편집중');
+
+    await user.click(within(filterPane()).getByRole('checkbox', { name: '미사용 포함' }));
+    await confirmDiscardSwitch(user);
+    await waitFor(() => expect(history.search()).toBe('?tab=code&inactive=1'));
+  });
+
+  it('코드그룹 정보를 고친 채 조회를 누르면 묻는다', async () => {
+    const { history, user } = await renderEditedGroup();
+
+    await user.click(within(filterPane()).getByRole('button', { name: '조회' }));
+    await keepEditing(user);
+    expect(history.search()).toBe('?grp=1001');
+
+    await user.click(within(filterPane()).getByRole('button', { name: '조회' }));
+    await confirmDiscardSwitch(user);
+    await waitFor(() => expect(history.search()).not.toContain('grp='));
+  });
+
+  it('코드그룹 정보를 고친 채 쪽을 옮기면 묻는다', async () => {
+    const { history, user } = await renderEditedGroup([
+      codeGroupListRoute(codeGroupFixtures, { page: 1, size: 2, total: 10 }),
+    ]);
+
+    await user.click(within(codeGroupPane()).getByRole('button', { name: '다음' }));
+    await keepEditing(user);
+    expect(history.search()).toBe('?grp=1001');
+
+    await user.click(within(codeGroupPane()).getByRole('button', { name: '다음' }));
+    await confirmDiscardSwitch(user);
+    await waitFor(() => expect(history.search()).toBe('?tab=code&page=2'));
+  });
+
+  it('코드값 정보를 고친 채 「코드값 추가」 · 「미사용 포함」을 누르면 묻는다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute(), codeValueDetailRoute()],
+      '?grp=1001&val=2001',
+    );
+    await screen.findByLabelText('코드명');
+    await user.type(screen.getByLabelText('코드명'), 'X');
+
+    await user.click(within(codeValuePane()).getByRole('button', { name: '코드값 추가' }));
+    await keepEditing(user);
+    expect(history.search()).toBe('?grp=1001&val=2001');
+    expect(screen.getByLabelText('코드명')).toHaveValue('합성 코드값 AX');
+
+    await user.click(within(codeValuePane()).getByRole('checkbox', { name: '미사용 포함' }));
+    await keepEditing(user);
+    expect(history.search()).toBe('?grp=1001&val=2001');
+
+    await user.click(within(codeValuePane()).getByRole('button', { name: '코드값 추가' }));
+    await confirmDiscardSwitch(user);
+    expect(await screen.findByRole('dialog', { name: '코드값 추가' })).toBeInTheDocument();
+  });
+
+  it('부서 정보를 고친 채 「부서 추가」를 누르면 묻고, 나가기는 등록 창을 연다', async () => {
+    const { history, user } = renderScreen(orgDetailRoutes(), '?tab=org&dep=3001');
+    await screen.findByDisplayValue('합성 부서 A');
+    await user.type(screen.getByLabelText('부서명'), '-편집중');
+
+    await user.click(within(filterPane()).getByRole('button', { name: '부서 추가' }));
+    await keepEditing(user);
+    expect(history.search()).toBe('?tab=org&dep=3001');
+    expect(screen.getByLabelText('부서명')).toHaveValue('합성 부서 A-편집중');
+
+    await user.click(within(filterPane()).getByRole('button', { name: '부서 추가' }));
+    await confirmDiscardSwitch(user);
+    expect(await screen.findByRole('dialog', { name: '부서 추가' })).toBeInTheDocument();
+  });
+
   it('고친 것이 없으면 다른 줄을 눌러도 묻지 않는다', async () => {
     const { history, user } = renderScreen(
       [codeGroupListRoute(), codeGroupDetailRoute(), codeGroupDetailRoute(1002)],
@@ -5187,6 +5294,7 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
     // 조건을 바꾸면 보이는 작업자가 달라진다 — 주소에서 wkr가 사라진다.
     await user.type(screen.getByLabelText('작업자 검색'), 'SYN');
     await user.click(within(filterPane()).getByRole('button', { name: '조회' }));
+    await confirmDiscardSwitch(user);
     expect(history.search()).toBe('?tab=worker&q=SYN');
 
     history.back();
@@ -7047,6 +7155,7 @@ describe('CommonCodeScreen — 저장 실패와 초안 수명 (C32·C34)', () =>
 
     await user.click(roleCheckbox('공급사'));
     await user.click(within(filterPane()).getByRole('checkbox', { name: '미사용 포함' }));
+    await confirmDiscardSwitch(user);
 
     await screen.findByText('거래처를 선택하세요.');
     expect(screen.queryByRole('checkbox', { name: '공급사' })).not.toBeInTheDocument();

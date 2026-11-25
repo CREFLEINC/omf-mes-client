@@ -393,6 +393,16 @@ const renderScreen = (
 
 const locationText = (): string => screen.getByTestId('location').textContent ?? '';
 
+/** 고친 채 다른 결재선 · 조건으로 옮기면 서는 확인 창에서 「저장하지 않고 나가기」를 누른다(#358). */
+const confirmDiscardSwitch = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  const leave = messages.common.unsavedLeave;
+  await user.click(
+    within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+      name: leave.confirm,
+    }),
+  );
+};
+
 const selectRouteButton = (approvalTypeCode: string, businessUnitLabel: string): HTMLElement =>
   screen.getByRole('button', { name: t.actions.selectRow(approvalTypeCode, businessUnitLabel) });
 
@@ -1734,6 +1744,7 @@ describe('ApprovalRouteScreen — 활성 중복 선검사', () => {
     await screen.findByText(t.actionReasons.duplicateActive);
 
     await user.click(screen.getByRole('button', { name: t.actions.openExisting }));
+    await confirmDiscardSwitch(user);
 
     await waitFor(() => {
       expect(locationText()).toContain('ar=9005');
@@ -2216,6 +2227,7 @@ describe('ApprovalRouteScreen — 배너 매임과 초안 수명', () => {
     const { user } = await failThenSelect();
 
     await user.click(selectRouteButton('재고 조정', INACTIVE_BUSINESS_UNIT_LABEL));
+    await confirmDiscardSwitch(user);
 
     await waitFor(() => {
       expect(screen.queryByText(messages.conflict.user)).not.toBeInTheDocument();
@@ -2257,6 +2269,7 @@ describe('ApprovalRouteScreen — 배너 매임과 초안 수명', () => {
 
     await dirtyForm(user, '77');
     await user.click(selectRouteButton('재고 조정', INACTIVE_BUSINESS_UNIT_LABEL));
+    await confirmDiscardSwitch(user);
 
     await waitFor(() => {
       expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('0');
@@ -3396,6 +3409,54 @@ describe('ApprovalRouteScreen — 저장하지 않은 편집을 두고 다른 �
     await rendered.user.type(within(pane).getByLabelText(t.fields.minValue), '5');
 
     await expectLeaveFlow(rendered);
+  });
+
+  const keepEditing = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+    const dialog = within(await screen.findByRole('dialog', { name: leave.title }));
+    expect(dialog.getByText(leave.body)).toBeInTheDocument();
+    expect(dialog.queryByRole('button', { name: /닫기/ })).toBeNull();
+    await user.click(dialog.getByRole('button', { name: leave.keep }));
+    expect(screen.queryByRole('dialog', { name: leave.title })).toBeNull();
+  };
+
+  it('고친 채 다른 결재선 줄을 누르면 묻고, 계속 편집은 선택 · 값을 남기고 나가기는 옮긴다', async () => {
+    const { user } = renderScreen(allRoutes(), SELECTED);
+
+    await dirtyForm(user, '77');
+    await user.click(selectRouteButton('재고 조정', INACTIVE_BUSINESS_UNIT_LABEL));
+    await keepEditing(user);
+    expect(locationText()).toBe(`${ROUTE}${SELECTED}`);
+    expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('77');
+
+    await user.click(selectRouteButton('재고 조정', INACTIVE_BUSINESS_UNIT_LABEL));
+    await confirmDiscardSwitch(user);
+    await waitFor(() => expect(locationText()).not.toBe(`${ROUTE}${SELECTED}`));
+    expect(locationText()).toContain('ar=');
+  });
+
+  it('단계만 고친 채 다른 결재선 줄을 눌러도 묻는다', async () => {
+    const { user } = renderScreen(allRoutes(), SELECTED);
+
+    await stepPane();
+    await addStep(user);
+    await user.click(selectRouteButton('재고 조정', INACTIVE_BUSINESS_UNIT_LABEL));
+    await keepEditing(user);
+    expect(locationText()).toBe(`${ROUTE}${SELECTED}`);
+    expect(stepRows()).toHaveLength(stepFixtures.length + 2);
+  });
+
+  it('고친 채 조회 조건을 적용하면 묻고, 나가기는 조건을 적용한다', async () => {
+    const { user } = renderScreen(allRoutes(), SELECTED);
+
+    await dirtyForm(user, '77');
+    await user.type(screen.getByLabelText(t.fields.q), 'SAMPLE');
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+    await keepEditing(user);
+    expect(locationText()).toBe(`${ROUTE}${SELECTED}`);
+
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+    await confirmDiscardSwitch(user);
+    await waitFor(() => expect(locationText()).toContain('SAMPLE'));
   });
 
   it('고친 것이 없으면 묻지 않고 옮긴다', async () => {
