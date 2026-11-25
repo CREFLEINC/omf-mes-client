@@ -40533,3 +40533,44 @@ body:has(
 .location-layout-none {
   color: var(--on-surface-variant);
 }
+
+/* W-06-26 교대 관리(omf-all-around#318) — 목록 머리 · 추가·수정 창. */
+.shift-management-list-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.shift-management-actions-end {
+  margin-inline-start: auto;
+}
+
+.shift-management-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.shift-management-head {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+}
+
+.shift-management-head dd {
+  margin: 0;
+}
+
+.shift-management-times {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+/* 사용 중지는 창 바닥 왼쪽 — 저장·취소와 떨어뜨린다. */
+.shift-management-deactivate {
+  margin-inline-end: auto;
+}

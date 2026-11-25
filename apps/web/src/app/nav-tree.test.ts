@@ -265,6 +265,7 @@ describe('주 메뉴 트리', () => {
       '/equipment/shot-conversion → handyman',
       '/master-data/warehouse-location → warehouse',
       '/master-data/warehouse-layout → warehouse',
+      '/master-data/shifts → schedule',
       '/master-data/integration-sync → sync_alt',
       '/master-data/erp-inbound → sync_alt',
       '/master-data/erp-outbound → sync_alt',

@@ -34,6 +34,7 @@ import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { MaterialLotIssueScreen } from '../screens/material-lot-issue/screen';
 import { InboundWorkRecordScreen } from '../screens/inbound-work-record/screen';
 import { SupplierItemDefaultScreen } from '../screens/supplier-item-default/screen';
+import { ShiftManagementScreen } from '../screens/shift-management/screen';
 import { InspectionSheetScreen } from '../screens/inspection-sheet/screen';
 import { InspectionStandardRoute } from '../screens/inspection-standard/sheet-type';
 import { ErpInboundScreen } from '../screens/erp-inbound/screen';
@@ -139,6 +140,7 @@ export const appRouter = createBrowserRouter([
       { path: 'master-data/warehouse-location', element: <WarehouseLocationScreen /> },
       /* W-CO-08 — 창고·Location 바로 뒤다. 그 화면이 만든 위치를 여기서 도면에 얹는다. */
       { path: 'master-data/warehouse-layout', element: <WarehouseLayoutScreen /> },
+      { path: 'master-data/shifts', element: <ShiftManagementScreen /> },
       /* 없어진 적치 규칙(omf-mes-server #907)의 옛 주소 — 즐겨찾기 · 알림 링크가 끊기지 않게 넘긴다. */
       {
         path: 'master-data/putaway-rule',

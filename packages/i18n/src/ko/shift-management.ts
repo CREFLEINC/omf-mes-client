@@ -1,0 +1,68 @@
+/** W-06-26 교대 관리(omf-all-around#318) — 공장별 주간·야간 교대 시간. */
+export const shiftManagement = {
+  title: '교대 관리',
+  breadcrumbRoot: '기준정보 관리',
+  intro:
+    '공장마다 주간과 야간 교대 시간을 등록합니다. 끝 시각이 시작 시각보다 이르면 다음 날 끝나는 야간 교대로 저장됩니다.',
+  filters: {
+    label: '조건',
+    plant: '공장',
+  },
+  noPlant: '볼 수 있는 공장이 없습니다.',
+  count: (count: number) => `교대 ${count}건`,
+  plantNote: (plantName: string) => `공장: ${plantName}`,
+  add: '추가',
+  tableLabel: '교대 목록',
+  empty: '등록된 교대가 없습니다. [추가]로 주간과 야간 교대를 등록하세요.',
+  columns: {
+    code: '교대 코드',
+    name: '교대명',
+    start: '시작 시각',
+    end: '끝 시각',
+    crossesMidnight: '끝나는 날',
+    actions: '관리',
+  },
+  values: {
+    sameDay: '같은 날',
+    nextDay: '다음 날',
+  },
+  edit: '수정',
+  editRow: (name: string) => `${name} 교대 수정`,
+  dialog: {
+    addTitle: '교대 추가',
+    editTitle: '교대 수정',
+    plant: '공장',
+    code: '교대 코드',
+    codePlaceholder: '예: D, N',
+    codeLocked: (count: number) =>
+      `작업이나 실적에 ${count}건 쓰인 교대라 코드는 바꿀 수 없습니다.`,
+    name: '교대명',
+    namePlaceholder: '예: 주간, 야간',
+    start: '시작 시각',
+    end: '끝 시각',
+    startHour: '시작 시각(시)',
+    startMinute: '시작 시각(분)',
+    endHour: '끝 시각(시)',
+    endMinute: '끝 시각(분)',
+    hourHead: '시',
+    minuteHead: '분',
+    timePlaceholder: '시각 선택',
+    nextDayNote: '끝 시각이 시작 시각보다 이르거나 같아 다음 날 끝나는 교대로 저장됩니다.',
+    required: '입력하세요.',
+    cancel: '취소',
+    save: '저장',
+    deactivate: '사용 중지',
+    loading: '교대 정보를 불러오는 중입니다.',
+  },
+  deactivateDialog: {
+    title: '교대 사용 중지',
+    body: (name: string) =>
+      `${name} 교대를 사용 중지합니다. 이미 기록된 작업과 실적은 그대로 남고, 이후 교대 선택과 작업 시간 판정에서 빠집니다.`,
+    cancel: '취소',
+    confirm: '사용 중지',
+  },
+  toast: {
+    saved: '저장했습니다.',
+    deactivated: '사용 중지했습니다.',
+  },
+};

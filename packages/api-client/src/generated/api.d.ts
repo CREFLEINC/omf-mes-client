@@ -14670,7 +14670,303 @@ export interface paths {
       };
     };
     put?: never;
+    /**
+     * 교대 등록
+     * @description 공장별 교대(주간·야간 등)를 등록한다. 자정 넘김(crossesMidnight)은 서버가 시각으로 정한다(끝 ≤ 시작이면 자정 넘김). 근거: omf-all-around#318
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. 같은 키로 다시 보내면 두 번 결재하지 않는다. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ShiftCreate'];
+        };
+      };
+      responses: {
+        /** @description 등록됨 */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Shift'];
+          };
+        };
+        /** @description 검증 실패 — 유일 위반이면 유일 범위(plantId·shiftCode)를 담아 돌려준다 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 교대 관리(W-06-26) 권한이 없거나 공장이 데이터 범위 밖이다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/mdm/shifts/{shiftId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        shiftId: number;
+      };
+      cookie?: never;
+    };
+    /**
+     * 교대 상세
+     * @description 교대 관리 화면이 수정·사용 중지 전에 부른다 — 잠금 토큰(ETag)과 코드 수정 가부를 함께 내린다. 근거: omf-all-around#318
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          shiftId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 상세 */
+        200: {
+          headers: {
+            /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+            ETag?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ShiftDetailResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 교대 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    /**
+     * 교대 수정
+     * @description 이름·시작·끝 시각을 고친다. 자정 넘김(crossesMidnight)은 서버가 시각으로 정한다(끝 ≤ 시작이면 자정 넘김). 공장은 바꿀 수 없다. 근거: omf-all-around#318
+     */
+    put: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. 같은 키로 다시 보내면 두 번 결재하지 않는다. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다. 근거: 공유계약 B-1 · B-1-1 */
+          'If-Match': components['parameters']['IfMatchVersion'];
+        };
+        path: {
+          shiftId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ShiftUpdate'];
+        };
+      };
+      responses: {
+        /** @description 수정됨 */
+        200: {
+          headers: {
+            /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+            ETag?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Shift'];
+          };
+        };
+        /** @description 검증 실패 — 공백 이름이거나, 작업·실적에 쓰인 교대의 코드를 바꾸려 했다 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 교대 관리(W-06-26) 권한이 없거나 공장이 데이터 범위 밖이다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 교대 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 저장 충돌 — 다른 사용자가 먼저 고쳤다. 업무 규칙 위반(상태 잠김·참조 존재)은 409 가 아니라 400 이다 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ConflictResponse'];
+          };
+        };
+      };
+    };
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/mdm/shifts/{shiftId}:deactivate': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        shiftId: number;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 교대 사용 중지
+     * @description 물리 삭제는 제공하지 않는다. 이미 기록된 작업·실적의 교대는 그대로 남고, 이후 교대 판정·선택 목록에서 빠진다. 근거: 공유계약 B-4 · omf-all-around#318
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. 같은 키로 다시 보내면 두 번 결재하지 않는다. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다. 근거: 공유계약 B-1 · B-1-1 */
+          'If-Match': components['parameters']['IfMatchVersion'];
+        };
+        path: {
+          shiftId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 처리됨 */
+        200: {
+          headers: {
+            /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+            ETag?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Shift'];
+          };
+        };
+        /** @description 업무 규칙 위반 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 교대 관리(W-06-26) 권한이 없거나 공장이 데이터 범위 밖이다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 교대 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 저장 충돌 — 다른 사용자가 먼저 고쳤다. 업무 규칙 위반(상태 잠김·참조 존재)은 409 가 아니라 400 이다 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ConflictResponse'];
+          };
+        };
+      };
+    };
     delete?: never;
     options?: never;
     head?: never;
@@ -53415,6 +53711,50 @@ export interface components {
       crossesMidnight: boolean;
       /** @example true */
       isActive: boolean;
+    };
+    /** @description 교대 등록. 근거: omf-all-around#318 */
+    ShiftCreate: {
+      /**
+       * Format: int64
+       * @description 공장
+       * @example 1
+       */
+      plantId: number;
+      /** @example D */
+      shiftCode: string;
+      /** @example 주간 */
+      shiftName: string;
+      /**
+       * @description 공장 현지 시각 HH:MM:SS
+       * @example 08:00:00
+       */
+      startTime: string;
+      /**
+       * @description 공장 현지 시각 HH:MM:SS
+       * @example 20:00:00
+       */
+      endTime: string;
+    };
+    /** @description shiftCode 는 참조가 0일 때만 보낼 수 있다 — 상세 조회의 editability 가 가부와 사유를 함께 내린다. 근거: 공유계약 B-4 */
+    ShiftUpdate: {
+      /** @example D */
+      shiftCode?: string;
+      /** @example 주간 */
+      shiftName: string;
+      /**
+       * @description 공장 현지 시각 HH:MM:SS
+       * @example 08:00:00
+       */
+      startTime: string;
+      /**
+       * @description 공장 현지 시각 HH:MM:SS
+       * @example 20:00:00
+       */
+      endTime: string;
+    };
+    ShiftDetailResponse: {
+      shift: components['schemas']['Shift'];
+      editability: components['schemas']['Editability'];
     };
     /** @description 계정에 연결된 작업자. 연결이 없으면 세 칸이 모두 null (서버 선행 · 장부 P-38). */
     AppUserWorker: {
