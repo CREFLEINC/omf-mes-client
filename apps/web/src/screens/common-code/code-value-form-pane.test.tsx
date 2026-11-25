@@ -115,11 +115,12 @@ describe('CodeValueFormPane — 코드 잠금', () => {
 });
 
 describe('CodeValueFormPane — 액션', () => {
-  it('고친 것이 없으면 저장·취소가 막힌다', () => {
-    renderPane();
+  it('고친 것이 없으면 저장이 막히고, 취소는 읽기 전용으로 돌아가는 길이라 눌린다', async () => {
+    const { onCancel, user } = renderPane();
 
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: '취소' }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
   it('고친 것이 있으면 저장할 수 있다', async () => {

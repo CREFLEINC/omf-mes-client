@@ -5,6 +5,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
+import { CodeValueDetailPane } from './code-value-detail-pane';
 import { CodeValueFormPane } from './code-value-form-pane';
 import { CodeValueListPane } from './code-value-list-pane';
 import {
@@ -155,6 +156,13 @@ export const CodeValueSection = ({
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
 
   /**
+   * 편집 폼을 연 코드값 번호. 고른 코드값은 읽기 전용으로 보이고 [수정]을 눌러야 폼이 된다(사용자 지시 2026-11-25).
+   * 번호로 두어 다른 코드값을 고르면(뒤로가기 포함) 저절로 읽기 전용으로 돌아간다.
+   */
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const isEditing = editingId !== null && editingId === selectedCodeValueId;
+
+  /**
    * 코드값 수정 — **이 행 하나만 보낸다.**
    *
    * 정렬 순서를 고쳐도 다른 행에 요청을 보내지 않는다. `display_order`에 유일 제약이 없어
@@ -182,6 +190,7 @@ export const CodeValueSection = ({
       setFieldErrors({});
       const next = codeValueToFormValues(saved);
       setFormState((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
+      setEditingId(null);
       toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
@@ -253,6 +262,7 @@ export const CodeValueSection = ({
     setIsDeactivateOpen(false);
     setFormState(null);
     setFieldErrors({});
+    setEditingId(null);
   };
 
   /*
@@ -420,6 +430,20 @@ export const CodeValueSection = ({
       );
     }
 
+    if (!isEditing) {
+      return (
+        <CodeValueDetailPane
+          values={formState.baseline}
+          deactivateDisabledReason={deactivateDisabledReason}
+          onDeactivate={() => {
+            deactivateWrite.reset();
+            setIsDeactivateOpen(true);
+          }}
+          onEdit={() => setEditingId(selectedCodeValueId)}
+        />
+      );
+    }
+
     return (
       <CodeValueFormPane
         mode="edit"
@@ -441,6 +465,7 @@ export const CodeValueSection = ({
           setFieldErrors({});
           updateWrite.reset();
           setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
+          setEditingId(null);
         }}
         onDeactivate={() => {
           deactivateWrite.reset();

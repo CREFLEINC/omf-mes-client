@@ -43,7 +43,10 @@ describe('CodeValueListPane — 목록 표시', () => {
   it('코드·코드명·정렬 순서·유효기간 네 열을 낸다', () => {
     renderPane();
 
-    const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
+    // 열 순서를 바꾸는 손잡이 아이콘 글자(`drag_indicator`)는 빼고 본다.
+    const headers = screen
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent?.replace('drag_indicator', ''));
     expect(headers).toEqual(['코드', '코드명', '정렬 순서', '유효기간']);
   });
 
@@ -104,6 +107,16 @@ describe('CodeValueListPane — 목록 표시', () => {
     await user.click(screen.getByRole('button', { name: 'SYN-CV-03' }));
 
     expect(onSelect).toHaveBeenCalledWith(2003);
+  });
+
+  /* 사용자 지시 2026-11-25 — 코드 글자만이 아니라 줄 어디를 눌러도 고른다. */
+  it('줄의 다른 칸을 눌러도 그 코드값 번호를 알린다', async () => {
+    const { onSelect, user } = renderPane();
+
+    await user.click(screen.getByText('2026-07-01 ~ 2026-12-31'));
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith(2001);
   });
 });
 

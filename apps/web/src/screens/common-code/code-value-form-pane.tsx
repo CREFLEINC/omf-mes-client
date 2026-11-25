@@ -189,8 +189,8 @@ export const CodeValueFormPane = ({
           />
         )}
 
-        {/* 수정에서 「취소」는 **기준값으로 되돌리는 것**이라 고친 것이 있을 때만 의미가 있다. */}
-        <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
+        {/* 수정에서 「취소」는 기준값으로 되돌리고 읽기 전용 보기로 돌아간다(사용자 지시 2026-11-25) — 고친 것이 없어도 누른다. */}
+        <Button variant="outlined" onClick={onCancel}>
           {messages.common.cancel}
         </Button>
 

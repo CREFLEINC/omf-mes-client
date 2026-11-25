@@ -223,6 +223,17 @@ const codeValueCreateDialog = (): HTMLElement =>
 
 const codeValuePane = (): HTMLElement => screen.getByRole('region', { name: '코드값' });
 
+/** 고른 코드값은 읽기 전용으로 보인다 — [수정]을 눌러 편집 폼을 연다(사용자 지시 2026-11-25). */
+const openCodeValueEdit = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  const edit = await waitFor(() =>
+    within(screen.getByRole('region', { name: '코드값 정보' })).getByRole('button', {
+      name: '수정',
+    }),
+  );
+  await user.click(edit);
+  await screen.findByRole('textbox', { name: '코드명' });
+};
+
 /** 코드값 목록 — 계약이 `codeGroupId`를 필수 쿼리로 둔다. */
 const codeValueListRoute = (
   items = codeValueFixtures,
@@ -1964,8 +1975,8 @@ describe('CommonCodeScreen — 코드값 상세와 수정 (C30·C31·C32·C33·C
       ],
       `?grp=1001&val=${String(codeValueId)}`,
     );
-    // 구획은 불러오는 중에도 있다 — 입력칸이 나와야 상세가 도착한 것이다.
-    await screen.findByLabelText('코드명');
+    // 구획은 불러오는 중에도 있다 — 읽기 전용 보기의 [수정]으로 편집 폼을 연다.
+    await openCodeValueEdit(rendered.user);
 
     return rendered;
   };
@@ -1991,6 +2002,51 @@ describe('CommonCodeScreen — 코드값 상세와 수정 (C30·C31·C32·C33·C
     await screen.findByLabelText('코드명');
 
     expect(requestsTo(requests, `${CODE_VALUES_PATH}/2002`)).toHaveLength(1);
+  });
+
+  /* 사용자 지시 2026-11-25 — 고른 코드값은 읽기 전용, [수정]으로 폼, [취소]로 다시 읽기 전용. */
+  it('고른 코드값은 읽기 전용으로 보이고 [수정]으로 폼이 열리며 [취소]로 돌아간다', async () => {
+    const { user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute(), codeValueDetailRoute()],
+      '?grp=1001&val=2001',
+    );
+
+    const edit = await waitFor(() =>
+      within(codeValueFormPane()).getByRole('button', { name: '수정' }),
+    );
+    expect(screen.getByLabelText('코드명')).toHaveTextContent('합성 코드값 A');
+    expect(within(codeValueFormPane()).queryByRole('textbox')).toBeNull();
+    expect(within(codeValueFormPane()).getByRole('button', { name: '사용 중지' })).toBeEnabled();
+    expect(within(codeValueFormPane()).queryByRole('button', { name: '저장' })).toBeNull();
+
+    await user.click(edit);
+    expect(screen.getByRole('textbox', { name: '코드명' })).toHaveValue('합성 코드값 A');
+    await user.type(screen.getByRole('textbox', { name: '코드명' }), 'X');
+
+    await user.click(within(codeValueFormPane()).getByRole('button', { name: '취소' }));
+    expect(within(codeValueFormPane()).queryByRole('textbox')).toBeNull();
+    // 고친 값은 버리고 저장된 값으로 보인다.
+    expect(screen.getByLabelText('코드명')).toHaveTextContent('합성 코드값 A');
+    expect(screen.getByLabelText('코드명')).not.toHaveTextContent('합성 코드값 AX');
+  });
+
+  /* 사용자 지시 2026-11-25 — 코드 글자만이 아니라 줄 어디를 눌러도 그 코드값을 연다. */
+  it('코드값 줄의 다른 칸을 눌러도 그 코드값을 연다', async () => {
+    const { history, user } = renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(),
+        codeValueListRoute(),
+        codeValueDetailRoute(2002),
+      ],
+      '?grp=1001',
+    );
+    const row = (await screen.findByRole('button', { name: 'SYN-CV-02' })).closest('tr');
+    const cells = within(row as HTMLElement).getAllByRole('cell');
+
+    await user.click(cells[cells.length - 1] as HTMLElement);
+
+    await waitFor(() => expect(history.search()).toContain('val=2002'));
   });
 
   it('폼이 상세 값으로 채워진다', async () => {
@@ -2223,7 +2279,7 @@ describe('CommonCodeScreen — 저장하지 않은 편집을 두고 다른 화�
       ],
       '?grp=1001&val=2001',
     );
-    await screen.findByLabelText('코드명');
+    await openCodeValueEdit(rendered.user);
     await rendered.user.type(screen.getByLabelText('코드명'), 'X');
 
     await expectLeaveFlow(rendered);
@@ -2270,7 +2326,7 @@ describe('CommonCodeScreen — 저장하지 않은 편집을 두고 다른 화�
       ],
       '?grp=1001&val=2001',
     );
-    await screen.findByLabelText('코드명');
+    await openCodeValueEdit(user);
     await user.type(screen.getByLabelText('코드명'), 'X');
 
     await user.click(screen.getByRole('button', { name: 'SYN-CV-02' }));
@@ -2394,7 +2450,7 @@ describe('CommonCodeScreen — 저장하지 않은 편집을 두고 다른 화�
       [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute(), codeValueDetailRoute()],
       '?grp=1001&val=2001',
     );
-    await screen.findByLabelText('코드명');
+    await openCodeValueEdit(user);
     await user.type(screen.getByLabelText('코드명'), 'X');
 
     await user.click(within(codeValuePane()).getByRole('button', { name: '코드값 추가' }));
@@ -2927,7 +2983,8 @@ describe('CommonCodeScreen — 한 조작은 히스토리 한 칸이다 (리뷰 
         name: '코드값 추가',
       }),
     );
-    await screen.findByDisplayValue('SYN-CV-09');
+    // 등록한 코드값이 읽기 전용 보기로 선다(사용자 지시 2026-11-25).
+    await waitFor(() => expect(screen.getByLabelText('코드')).toHaveTextContent('SYN-CV-09'));
 
     history.back();
     expect(history.search()).toBe(before);

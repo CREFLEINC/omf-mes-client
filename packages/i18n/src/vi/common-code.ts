@@ -349,6 +349,7 @@ export const commonCode: Translated<typeof ko.commonCode> = {
     pageNavLabel: 'Chuyển trang giá trị mã',
     actions: {
       add: 'Thêm giá trị mã',
+      edit: 'Sửa',
     },
     actionReasons: {
       addNeedsGroup: 'Thêm giá trị mã chỉ thực hiện được sau khi chọn nhóm mã ở bên trái.',
