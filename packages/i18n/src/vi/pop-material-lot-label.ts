@@ -189,13 +189,12 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     item: 'Mặt hàng',
     source: {
       item: 'Lấy từ giá trị mặc định của mặt hàng',
-      default: 'Lấy từ thông tin mặc định',
       itemStorage:
-        'Chưa có thông tin mặc định nhà cung cấp · mặt hàng — điền theo đơn vị bảo quản mặc định của mặt hàng',
-      none: 'Chưa có thông tin mặc định — nhập tay',
+        'Chưa có giá trị mặc định của mặt hàng — điền theo đơn vị bảo quản mặc định của mặt hàng',
+      none: 'Chưa có giá trị mặc định của mặt hàng — nhập tay',
     },
-    loading: 'Đang tải thông tin mặc định.',
-    defaultsFailed: 'Không tải được thông tin mặc định — hãy nhập tay.',
+    loading: 'Đang tải giá trị mặc định của mặt hàng.',
+    defaultsFailed: 'Không tải được giá trị mặc định của mặt hàng — hãy nhập tay.',
     package: 'Đóng gói',
     optional: '(tùy chọn)',
     packageOn: 'Có đóng gói',
@@ -285,7 +284,8 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     tabNotes: {
       PRINTED:
         'LOT đã in nhưng chưa nhận nhập trên PDA. Chọn lý do để in lại hoặc hủy. Không sửa được số lượng và đóng gói.',
-      RECEIVED: 'LOT đã nhận nhập trên PDA và chưa chốt nhập hàng. Sau khi chốt nhập hàng, LOT không còn ở tab này (quét số LOT để tìm và in lại). Chọn lý do để in lại; không hủy ở đây.',
+      RECEIVED:
+        'LOT đã nhận nhập trên PDA và chưa chốt nhập hàng. Sau khi chốt nhập hàng, LOT không còn ở tab này (quét số LOT để tìm và in lại). Chọn lý do để in lại; không hủy ở đây.',
       VOIDED:
         'LOT đã hủy không in được và số LOT không dùng lại. Hủy LOT tạo tự động thì phần P/O đó sẽ được tạo lại với số mới ở lần tra cứu sau.',
     },

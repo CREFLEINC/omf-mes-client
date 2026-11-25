@@ -7,7 +7,6 @@ import {
   HARNESS_NOW,
   PLANT_ID,
   WORKER_NO,
-  defaultInfo,
   group,
   lot,
   renderLabelScreen,
@@ -55,7 +54,7 @@ const openBatch = async (user: ReturnType<typeof userEvent.setup>): Promise<HTML
 const field = (dialog: HTMLElement, label: string | RegExp): HTMLInputElement =>
   within(dialog).getByRole('textbox', { name: label }) as HTMLInputElement;
 
-/** 레진 — 기본 단위 TON, 기본 정보 없음, 품목 기본 보관 단위 드럼(8403)·환산 없음. */
+/** 레진 — 기본 단위 TON, 품목 LOT 기본값 없음, 품목 기본 보관 단위 드럼(8403)·환산 없음. */
 const RESIN: HarnessOptions = {
   groups: [
     group([], {
@@ -69,18 +68,17 @@ const RESIN: HarnessOptions = {
       uomCode: 'TON',
     }),
   ],
-  defaults: [],
   items: [{ itemId: 8602, baseUomId: 8404, defaultLotStorageUomId: 8403 }],
 };
 
-describe('US1-1 기본 정보로 채운다', () => {
-  it('US1-1 S·A 를 고르면 기본 정보(봉지 · 10 · 1,000 EA)가 채워지고 「기본 정보에서 가져옴」을 보인다', async () => {
+describe('US1-1 품목 기본값으로 채운다', () => {
+  it('US1-1 S·A 를 고르면 품목 기본값(봉지 · 10 · 1,000 EA)이 채워지고 「품목 기본값에서 가져옴」을 보인다', async () => {
     const user = userEvent.setup();
     renderLabelScreen();
 
     const dialog = await openBatch(user);
 
-    expect(within(dialog).getByText(tb.source.default)).toBeInTheDocument();
+    expect(within(dialog).getByText(tb.source.item)).toBeInTheDocument();
     expect(field(dialog, tb.packageCount).value).toBe('10');
     expect(field(dialog, tb.qtyPerPackage).value).toBe('100');
     expect(field(dialog, tb.lotQty).value).toBe('1000');
@@ -163,7 +161,7 @@ describe('US1-1 기본 정보로 채운다', () => {
   });
 });
 
-describe('US1-3 기본 정보가 없으면', () => {
+describe('US1-3 품목 기본값이 없으면', () => {
   it('US1-3 품목 기본 보관 단위로 패키징 단위만 채우고 수량은 빈칸 — 패키징 없이 1 TON × 5 를 만든다', async () => {
     const user = userEvent.setup();
     const { sent } = renderLabelScreen(RESIN);
@@ -191,7 +189,7 @@ describe('US1-3 기본 정보가 없으면', () => {
     });
   });
 
-  it('기본 정보도 품목 기본 보관 단위도 없으면 「직접 입력」으로 패키징 없이 시작한다', async () => {
+  it('품목 기본값도 품목 기본 보관 단위도 없으면 「직접 입력」으로 패키징 없이 시작한다', async () => {
     const user = userEvent.setup();
     renderLabelScreen({ ...RESIN, items: [{ itemId: 8602, baseUomId: 8404 }] });
 
@@ -343,10 +341,9 @@ describe('US1-7 입하 대기 LOT 폐기', () => {
 });
 
 describe('기본값 한 줄 — 품목 기본값(피처 014)', () => {
-  it('US1-4 품목 기본값이 없으면 품목 표에 「기본값 없음」 칩 — 상세 제목엔 기본 정보 줄을 적지 않고(#1758) W-06-25 기본 정보도 보지 않는다', async () => {
+  it('US1-4 품목 기본값이 없으면 품목 표에 「기본값 없음」 칩 — 상세 제목엔 기본값 줄을 적지 않는다(#1758)', async () => {
     const user = userEvent.setup();
     renderLabelScreen({
-      defaults: [defaultInfo()],
       shares: { '8201:8601': { creatable: 0, lotQty: 0, package: null, status: 'NO_DEFAULT' } },
     });
 
@@ -359,8 +356,8 @@ describe('기본값 한 줄 — 품목 기본값(피처 014)', () => {
   });
 });
 
-describe('FR-019 [만들기] 처음 값은 품목 기본값 먼저', () => {
-  it('FR-019 품목 기본값(기본크기 · 패키징)이 있으면 공급사·품목 기본 정보보다 먼저 채운다', async () => {
+describe('FR-019 [만들기] 처음 값은 품목 기본값', () => {
+  it('FR-019 품목 기본값(기본크기 · 패키징)이 있으면 그 값으로 채운다', async () => {
     const user = userEvent.setup();
     renderLabelScreen({
       items: [

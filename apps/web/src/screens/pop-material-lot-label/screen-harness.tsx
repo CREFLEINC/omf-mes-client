@@ -15,7 +15,6 @@ import type {
   MaterialLotTab,
   MaterialLotTabRow,
   MaterialPackage,
-  SupplierItemDefault,
   WaitingMaterialLotGroup,
 } from '@omf-mes/api-client';
 
@@ -78,27 +77,6 @@ export const group = (
   lastIssuedAt: null,
   batches: [],
   lots,
-  ...over,
-});
-
-/** 공급사·품목 기본 정보 — 품목 가 · 공급사 가에 봉지 10 × 100 = 1,000 EA. */
-export const defaultInfo = (over: Partial<SupplierItemDefault> = {}): SupplierItemDefault => ({
-  supplierItemDefaultId: 7701,
-  plantId: PLANT_ID,
-  supplierId: 8201,
-  supplierCode: 'SYN-P-01',
-  supplierName: '합성 공급사 가',
-  itemId: 8601,
-  itemCode: 'SYN-ITEM-01',
-  itemName: '합성 품목 가',
-  uomId: 8401,
-  uomCode: 'EA',
-  lotQty: 1000,
-  package: BAG,
-  remarks: null,
-  versionNo: 1,
-  updatedAt: '2026-11-10T00:00:00Z',
-  updatedByName: '합성 관리자',
   ...over,
 });
 
@@ -188,7 +166,6 @@ export interface HarnessOptions {
   lotsGate?: Promise<void>;
   /** 단위 목록 — 없으면 `UOMS`(G2 L17: 코드와 이름이 다른 단위를 흉내 낸다). */
   uoms?: readonly (typeof UOMS)[number][];
-  defaults?: SupplierItemDefault[];
   items?: ItemFixture[];
   identity?: Partial<PopIdentity>;
   /** 발행 기록을 이 상태로 실패시킨다(모든 LOT). */
@@ -211,9 +188,17 @@ const page = (total: number) => ({ page: 1, size: 200, total });
 
 export const renderLabelScreen = (options: HarnessOptions = {}) => {
   const groups = structuredClone(options.groups ?? STANDARD_GROUPS());
-  const defaults = options.defaults ?? [defaultInfo()];
   const items = options.items ?? [
-    { itemId: 8601, baseUomId: 8401, defaultLotStorageUomId: 8402, storageRate: 100 },
+    /* 품목 가 — 봉지 10개(1,000 EA)가 LOT 기본크기, 패키징 봉지 10. */
+    {
+      itemId: 8601,
+      baseUomId: 8401,
+      defaultLotStorageUomId: 8402,
+      storageRate: 100,
+      defaultProductionLotSize: 10,
+      defaultPackageUomId: 8402,
+      defaultPackageCount: 10,
+    },
     { itemId: 8602, baseUomId: 8404, defaultLotStorageUomId: null },
   ];
   const sent: Sent[] = [];
@@ -627,23 +612,6 @@ export const renderLabelScreen = (options: HarnessOptions = {}) => {
         return options.waitingFail === true
           ? jsonResponse({ message: '실패' }, { status: 500 })
           : jsonResponse({ items: counted() });
-      },
-    },
-    {
-      match: (request) =>
-        path(request) === '/mdm/supplier-item-defaults' && request.method === 'GET',
-      respond: (request) => {
-        void record(request);
-        const url = new URL(request.url);
-        const supplierId = url.searchParams.get('supplierId');
-        const itemId = url.searchParams.get('itemId');
-        const rows = defaults.filter(
-          (row) =>
-            (supplierId === null || String(row.supplierId) === supplierId) &&
-            (itemId === null || String(row.itemId) === itemId),
-        );
-
-        return jsonResponse({ items: rows, page: page(rows.length) });
       },
     },
     {

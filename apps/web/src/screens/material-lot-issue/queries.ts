@@ -4,7 +4,6 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { runRequest } from '../../patterns/request';
-import { inDataScope } from '../supplier-item-default/queries';
 import type { Group } from './types';
 
 type Plant = components['schemas']['Plant'];
@@ -17,6 +16,15 @@ export const materialLotIssueKeys = {
   poLines: (plantId: number, supplierId: number, itemId: number) =>
     ['material-lot-issue', 'po-lines', plantId, supplierId, itemId] as const,
 };
+
+/** 데이터 범위 안인가 — 줄에 공장이 있으면 그 공장, 없으면 그 사업부의 공장 모두, 줄이 없으면 전체. */
+const inDataScope = (plant: Plant, scopes: readonly SessionScope[]): boolean =>
+  scopes.length === 0 ||
+  scopes.some((scope) =>
+    scope.plantId !== undefined
+      ? scope.plantId === plant.plantId
+      : scope.businessUnitId === plant.businessUnitId,
+  );
 
 /**
  * 입하 마감의 P/O 자동 배정이 라인을 채우는 차례 — 발주일 → P/O 번호 → 라인 번호(서버 `allocateByOrderAge` · R-22).
@@ -69,7 +77,7 @@ export const useOpenPoLines = (
 
 /**
  * 공장 목록 — 쓰는 공장 중 세션 데이터 범위 안의 것만, 코드 순. 첫 공장이 기본이라 범위로 거르지 않으면
- * 사용자의 공장이 아닌 공장(코드가 앞선 공장)으로 열린다 — W-06-25 와 같게 거른다(G2 L21).
+ * 사용자의 공장이 아닌 공장(코드가 앞선 공장)으로 열린다 — 데이터 범위로 거른다(G2 L21).
  */
 export const usePlants = (scopes: readonly SessionScope[]): UseQueryResult<Plant[]> => {
   const { client } = useApiClient();

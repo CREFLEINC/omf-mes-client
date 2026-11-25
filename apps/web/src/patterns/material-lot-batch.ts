@@ -1,8 +1,4 @@
-import type {
-  MaterialLotBatchCreate,
-  MaterialPackageInput,
-  SupplierItemDefault,
-} from '@omf-mes/api-client';
+import type { MaterialLotBatchCreate, MaterialPackageInput } from '@omf-mes/api-client';
 import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from './api-context';
@@ -16,18 +12,17 @@ import { runRequest } from './request';
  * POP P-01-01 「자재 관리 LOT 만들기」와 관리웹 W-01-14 「자재 관리 LOT 발행」이 **같은 칸 · 같은 규칙**이다
  * (screens/W-01-14.md 「발행 창」). 그림만 다르고(POP 손 크기 · 관리웹 DS) 채우기 · 검사 · 본문은 여기 하나다.
  *
- * ⭐ 기본값의 출처는 넷이고 이 차례로 고른다(피처 014 FR-019 · plan D-6 — 품목 기본값이 먼저):
+ * ⭐ 기본값의 출처는 셋이고 이 차례로 고른다(피처 014 FR-019, 공급사·품목 기본 정보는 2026-11-25 걷음):
  *   1. `item` — 품목 LOT 기본값(W-06-05 · 자재 LOT 기본크기 · 보관 단위 · 패키징 기본값)이 있다: 재고 수량 ·
  *      패키징을 채운다. 자동 생성(조회 때 P/O 몫)과 같은 값이다.
- *   2. `default` — 공급사·품목 기본 정보(W-06-25)가 있다: 패키징 · 재고 수량을 채운다(바꿀 수 있다).
- *   3. `itemStorage` — 둘 다 없고 품목 기본 보관 단위가 있다: 패키징 단위(와 품목 환산이 있으면
+ *   2. `itemStorage` — 품목 LOT 기본값이 없고 품목 기본 보관 단위가 있다: 패키징 단위(와 품목 환산이 있으면
  *      패키징당 수량)만 채우고 재고 수량 · 개수는 빈칸.
- *   4. `none` — 셋 다 없다: 패키징 없음으로 시작, 직접 입력.
- * ⛔ 서버 발행 경로는 기본 정보를 강제하지 않는다 — 본문 값이 정본이다(research R-26).
+ *   3. `none` — 둘 다 없다: 패키징 없음으로 시작, 직접 입력.
+ * ⛔ 서버 발행 경로는 기본값을 강제하지 않는다 — 본문 값이 정본이다(research R-26).
  */
 
 /** 기본값을 어디서 채웠나 — 창의 출처 칩이 말한다. */
-export type BatchSource = 'item' | 'default' | 'itemStorage' | 'none';
+export type BatchSource = 'item' | 'itemStorage' | 'none';
 
 /**
  * 품목 LOT 기본값(피처 014 FR-004·006) — LOT 하나의 재고 수량(품목 기본 단위)과 패키징(LOT 당 패키징 수 ·
@@ -113,7 +108,7 @@ export interface BatchDraft {
 export interface BatchPrefill {
   source: BatchSource;
   draft: BatchDraft;
-  /** 기본 정보가 「패키징 없음」이다 — 창이 「필요하면 넣을 수 있습니다」를 말한다. */
+  /** 품목 기본값이 「패키징 없음」이다 — 창이 「필요하면 넣을 수 있습니다」를 말한다. */
   defaultWithoutPackage: boolean;
 }
 
@@ -133,7 +128,6 @@ const text = (value: number): string => String(value);
 /** 기본값으로 창을 채운다(US1-1 · US1-3 · 피처 014 FR-019 — 품목 기본값 먼저). */
 export const prefillBatch = (
   itemDefault: ItemLotDefault | null,
-  defaults: SupplierItemDefault | null,
   storage: ItemStorageUnit | null,
 ): BatchPrefill => {
   if (itemDefault !== null) {
@@ -149,25 +143,7 @@ export const prefillBatch = (
         packageCount: pkg === null ? '' : text(pkg.count),
         qtyPerPackage: pkg === null ? '' : text(pkg.qtyPerPackage),
         lotQty: text(itemDefault.lotQty),
-        lotQtyEdited: pkg === null,
-      },
-    };
-  }
-
-  if (defaults !== null) {
-    const pkg = defaults.package;
-
-    return {
-      source: 'default',
-      defaultWithoutPackage: pkg === null,
-      draft: {
-        ...EMPTY_DRAFT,
-        packageOn: pkg !== null,
-        packageUomId: pkg?.uomId ?? storage?.uomId ?? null,
-        packageCount: pkg === null ? '' : text(pkg.count),
-        qtyPerPackage: pkg === null ? '' : text(pkg.qtyPerPackage),
-        lotQty: text(defaults.lotQty),
-        /* 패키징이 없으면 재고 수량이 곧 기본 정보 값이다 — 곱으로 덮지 않는다. */
+        /* 패키징이 없으면 재고 수량이 곧 품목 기본값이다 — 곱으로 덮지 않는다. */
         lotQtyEdited: pkg === null,
       },
     };
@@ -310,8 +286,6 @@ export const lotNoPattern = (
   `${itemCode}|${String(lotQty)}|${today.slice(2, 4)}${today.slice(5, 7)}${today.slice(8, 10)}|${supplierCode}|NNNN`;
 
 const batchKeys = {
-  defaults: (plantId: number, supplierId: number, itemId: number) =>
-    ['material-lot-batch', 'defaults', plantId, supplierId, itemId] as const,
   basis: (itemId: number) => ['material-lot-batch', 'item-lot-basis', itemId] as const,
 };
 
@@ -325,44 +299,6 @@ interface ItemLotBasis {
    */
   storageIsBase: boolean;
 }
-
-/**
- * 고른 공급사·품목의 기본 정보(계약 §9 — 그 조합 하나).
- * ⚠ 기본 정보가 없는 것과 못 읽은 것은 다르다 — 못 읽었으면 `isError` 로 창이 말하고 직접 입력을 막지 않는다.
- */
-export const useSupplierItemDefault = (
-  target: { plantId: number; supplierId: number; itemId: number } | null,
-) => {
-  const { client } = useApiClient();
-
-  return useQuery({
-    queryKey:
-      target === null
-        ? ['material-lot-batch', 'defaults', 'none']
-        : batchKeys.defaults(target.plantId, target.supplierId, target.itemId),
-    enabled: target !== null,
-    queryFn: async (): Promise<SupplierItemDefault | null> => {
-      if (target === null) return null;
-      const data = await runRequest(() =>
-        client.GET('/mdm/supplier-item-defaults', {
-          params: {
-            query: {
-              plantId: target.plantId,
-              supplierId: target.supplierId,
-              itemId: target.itemId,
-            },
-          },
-        }),
-      );
-
-      return (
-        data.items.find(
-          (row) => row.supplierId === target.supplierId && row.itemId === target.itemId,
-        ) ?? null
-      );
-    },
-  });
-};
 
 /**
  * 품목 기본 보관 단위(품목 마스터 `defaultLotStorageUomId`)와 그 단위의 패키징당 수량(품목 환산 — 보관 단위 →

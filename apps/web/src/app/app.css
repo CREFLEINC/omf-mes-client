@@ -2159,17 +2159,6 @@ h2:has(> .inspection-standard-dialog-title) {
   font: var(--type-body-sm);
 }
 
-/* 소포장 묶음(읽기만) — 값은 표 글자 그대로, 「없음 · 불러오는 중」은 흐린 글자. */
-.item-attrs-readonly {
-  color: var(--on-surface);
-  font: var(--type-body-sm);
-}
-
-.item-attrs-note {
-  color: var(--on-surface-muted);
-  font: var(--type-body-sm);
-}
-
 .item-attrs-table td .field-error {
   display: block;
   font: var(--type-label-sm);
@@ -14178,108 +14167,6 @@ dialog.layout-editor-dialog {
 
 .replenishment-head > dd {
   margin: 0;
-}
-
-/* W-06-25 공급사·품목 기본 정보(005) — 조건 줄 · 목록 머리 · 수정 창. */
-.supplier-item-default-filter {
-  align-items: flex-end;
-  margin-bottom: 0;
-}
-
-.supplier-item-default-list-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
-}
-
-.supplier-item-default-actions-end {
-  margin-inline-start: auto;
-}
-
-.supplier-item-default-actions,
-.supplier-item-default-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-.supplier-item-default-code {
-  font-family: var(--font-mono);
-  color: var(--on-surface-muted);
-}
-
-/*
- * 표는 짓누르지 않는다(screens/W-06-25.md 좁은 폭) — 칸은 한 줄, 넘치면 표 상자 안에서 가로로 민다(.wide-table).
- * 76rem 은 1440 에서 아홉 열이 한 줄로 서는 폭이다(품목명 · 「바꾼 때」가 가장 길다).
- */
-.wide-table.supplier-item-default-table table {
-  min-width: 76rem;
-}
-
-.supplier-item-default-table td {
-  white-space: nowrap;
-}
-
-.supplier-item-default-help {
-  max-width: none;
-  margin-top: var(--space-2);
-}
-
-.supplier-item-default-form {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-3);
-}
-
-.supplier-item-default-head {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: var(--space-2) var(--space-3);
-  margin: 0;
-}
-
-.supplier-item-default-head > dd {
-  margin: 0;
-}
-
-.supplier-item-default-storage {
-  display: block;
-  max-width: none;
-}
-
-/* 재고 수량 칸 옆에 단위 · 「= 봉지 10개」를 한 줄로(시안 「[1,000] EA = 봉지 10개」, G2 L18). */
-.supplier-item-default-qty-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-2);
-}
-
-.supplier-item-default-qty-field {
-  flex: 0 1 12rem;
-  min-width: 0;
-}
-
-.supplier-item-default-qty-after {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: var(--control-height-md);
-  color: var(--on-surface-variant);
-  white-space: nowrap;
-}
-
-/* 오류 줄 자리를 늘 잡아 둔다 — 나타나고 사라질 때 창 높이가 흔들리지 않게(G2 L18). */
-.supplier-item-default-error {
-  min-height: 1.5em;
-  margin: 0;
-}
-
-.supplier-item-default-foot-hint {
-  max-width: none;
-  margin-inline-end: auto;
 }
 
 .replenishment-history,
@@ -40645,7 +40532,6 @@ body:has(
 .shift-management-footer-note {
   margin-inline-end: auto;
 }
-
 
 /* 비어 있는 필수 칸 — 글 없이 테두리만 붉게. 다 채우면 [저장]이 켜진다. */
 .shift-management-empty [class*='_inputWrap_'] {

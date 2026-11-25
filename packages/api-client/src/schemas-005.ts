@@ -11,7 +11,7 @@ type QueryOf<P extends keyof paths> = NonNullable<
   NonNullable<paths[P]['get']>['parameters']['query']
 >;
 
-/* ── 자재 관리 LOT 발행 · 공급사·품목 기본 정보(계약 §1 · §9) ── */
+/* ── 자재 관리 LOT 발행(계약 §1) ── */
 
 export type MaterialPackage = Schemas['MaterialPackage'];
 export type MaterialPackageInput = Schemas['MaterialPackageInput'];
@@ -21,9 +21,6 @@ export type WaitingMaterialLotGroup = Schemas['WaitingMaterialLotGroup'];
 export type MaterialLotBatchCreate = Schemas['MaterialLotBatchCreate'];
 export type MaterialLotBatchCreated = Schemas['MaterialLotBatchCreated'];
 export type MaterialLotVoidResult = Schemas['MaterialLotVoidResult'];
-export type SupplierItemDefault = Schemas['SupplierItemDefault'];
-export type SupplierItemDefaultCreate = Schemas['SupplierItemDefaultCreate'];
-export type SupplierItemDefaultUpdate = Schemas['SupplierItemDefaultUpdate'];
 
 /* ── 자재 관리 LOT P/O 미리 생성(피처 014 · omf-all-around#349) ── */
 

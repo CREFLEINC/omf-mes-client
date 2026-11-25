@@ -1,31 +1,11 @@
-import type { SupplierItemDefault } from '@omf-mes/api-client';
 import { describe, expect, it } from 'vitest';
 
 import { itemLotDefaultOf, prefillBatch, type ItemLotDefault } from './material-lot-batch';
 
 /**
- * 수동 [만들기] 창의 처음 값 순서(피처 014 FR-019 · plan D-6) — 품목 기본값(패키징 포함) → 공급사·품목 기본 정보 →
- * 품목 보관 단위 → 빈 칸.
+ * 수동 [만들기] 창의 처음 값 순서(피처 014 FR-019 · plan D-6) — 품목 기본값(패키징 포함) → 품목 보관 단위 →
+ * 빈 칸.
  */
-
-const SUPPLIER_DEFAULT: SupplierItemDefault = {
-  supplierItemDefaultId: 1,
-  plantId: 10,
-  supplierId: 20,
-  supplierCode: 'SUP-1',
-  supplierName: '공급사 1',
-  itemId: 30,
-  itemCode: 'ITEM-1',
-  itemName: '품목 1',
-  uomId: 1,
-  uomCode: 'EA',
-  lotQty: 500,
-  package: { uomId: 41, uomCode: 'BAG', uomName: '봉지', count: 5, qtyPerPackage: 100 },
-  remarks: null,
-  versionNo: 1,
-  updatedAt: '2026-11-20T00:00:00Z',
-  updatedByName: null,
-};
 
 const ITEM_DEFAULT: ItemLotDefault = {
   lotQty: 100,
@@ -35,8 +15,8 @@ const ITEM_DEFAULT: ItemLotDefault = {
 const STORAGE = { uomId: 43, qtyPerPackage: 25 };
 
 describe('FR-019 prefillBatch — 품목 기본값이 먼저', () => {
-  it('FR-019 품목 기본값(패키징 포함)이 있으면 공급사·품목 기본 정보보다 먼저 채운다', () => {
-    const prefill = prefillBatch(ITEM_DEFAULT, SUPPLIER_DEFAULT, STORAGE);
+  it('FR-019 품목 기본값(패키징 포함)이 있으면 보관 단위보다 먼저 채운다', () => {
+    const prefill = prefillBatch(ITEM_DEFAULT, STORAGE);
 
     expect(prefill.source).toBe('item');
     expect(prefill.draft).toMatchObject({
@@ -51,7 +31,7 @@ describe('FR-019 prefillBatch — 품목 기본값이 먼저', () => {
   });
 
   it('FR-019 품목 기본값에 패키징이 없으면 패키징 없이 수량만 채운다', () => {
-    const prefill = prefillBatch({ lotQty: 500, package: null }, SUPPLIER_DEFAULT, STORAGE);
+    const prefill = prefillBatch({ lotQty: 500, package: null }, STORAGE);
 
     expect(prefill.source).toBe('item');
     expect(prefill.draft).toMatchObject({ packageOn: false, lotQty: '500', lotQtyEdited: true });
@@ -60,16 +40,15 @@ describe('FR-019 prefillBatch — 품목 기본값이 먼저', () => {
     expect(prefill.defaultWithoutPackage).toBe(true);
   });
 
-  it('FR-019 품목 기본값이 없으면 공급사·품목 기본 정보 → 보관 단위 → 빈 칸 순이다', () => {
-    expect(prefillBatch(null, SUPPLIER_DEFAULT, STORAGE).source).toBe('default');
-    expect(prefillBatch(null, SUPPLIER_DEFAULT, STORAGE).draft).toMatchObject({
-      packageUomId: 41,
-      packageCount: '5',
-      qtyPerPackage: '100',
-      lotQty: '500',
+  it('FR-019 품목 기본값이 없으면 보관 단위 → 빈 칸 순이다', () => {
+    expect(prefillBatch(null, STORAGE).source).toBe('itemStorage');
+    expect(prefillBatch(null, STORAGE).draft).toMatchObject({
+      packageUomId: 43,
+      packageCount: '',
+      qtyPerPackage: '25',
+      lotQty: '',
     });
-    expect(prefillBatch(null, null, STORAGE).source).toBe('itemStorage');
-    expect(prefillBatch(null, null, null).source).toBe('none');
+    expect(prefillBatch(null, null).source).toBe('none');
   });
 });
 
