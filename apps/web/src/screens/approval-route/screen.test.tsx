@@ -423,7 +423,7 @@ const clearBusinessUnit = async (user: ReturnType<typeof userEvent.setup>): Prom
   const pane = await findDetailPane();
 
   await user.click(within(pane).getByRole('combobox', { name: t.fields.businessUnit }));
-  await user.click(screen.getByRole('option', { name: t.values.allBusinessUnits }));
+  await user.click(screen.getByRole('option', { name: t.values.allBusinessUnitsOption }));
 };
 
 describe('ApprovalRouteScreen — 조회 조건', () => {
@@ -843,21 +843,22 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
    * 없다」로 결론짓는다.
    */
   it('승인자 목록이 잘리면 그 사실을 밝힌다', async () => {
-    renderScreen(
+    const { user } = renderScreen(
       allRoutes([usersRoute(userFixtures, { total: userFixtures.length + 1 })]),
       SELECTED,
     );
 
-    await screen.findByRole('region', { name: t.panes.steps });
+    /* 추가 줄은 「단계 추가」로 펼쳐야 선다(사용자 지시 2026-11-25) — 안내는 그 줄의 결재자 칸 아래다. */
+    await openAddRow(user);
 
     expect(await screen.findByText(t.notes.approverListTruncated)).toBeInTheDocument();
   });
 
   /** 짝 방향 — 잘리지 않았으면 밝히지 않는다. 늘 세워 두면 안내가 배경이 된다. */
   it('승인자 목록이 온전하면 잘림 표식이 없다', async () => {
-    renderScreen(allRoutes(), SELECTED);
+    const { user } = renderScreen(allRoutes(), SELECTED);
 
-    const pane = await screen.findByRole('region', { name: t.panes.steps });
+    const pane = await openAddRow(user);
 
     // 선행 단언 — 선택지가 실제로 서 있어야 「표식이 없다」가 뜻을 갖는다.
     expect(
@@ -1253,7 +1254,7 @@ describe('ApprovalRouteScreen — 등록 폼', () => {
     await waitForList();
     await user.click(screen.getByRole('button', { name: t.actions.create }));
 
-    expect(await screen.findByRole('region', { name: t.panes.create })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: t.panes.create })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: t.panes.steps })).toBeNull();
     expect(detailRequests(requests)).toHaveLength(0);
     expect(stepsRequests(requests)).toHaveLength(0);
@@ -1265,7 +1266,7 @@ describe('ApprovalRouteScreen — 등록 폼', () => {
     await waitForList();
     await user.click(screen.getByRole('button', { name: t.actions.create }));
 
-    const createPane = await screen.findByRole('region', { name: t.panes.create });
+    const createPane = await screen.findByRole('dialog', { name: t.panes.create });
     const approvalType = within(createPane).getByRole('combobox', {
       name: t.fields.approvalTypeCode,
     });
@@ -1331,7 +1332,7 @@ describe('ApprovalRouteScreen — 등록 폼', () => {
     await dirtyForm(user, '77');
     await user.click(screen.getByRole('button', { name: t.actions.create }));
 
-    const pane = await screen.findByRole('region', { name: t.panes.create });
+    const pane = await screen.findByRole('dialog', { name: t.panes.create });
 
     expect(within(pane).getByLabelText(t.fields.minValue)).toHaveValue('');
     expect(within(pane).getByLabelText(t.fields.maxValue)).toHaveValue('');
@@ -1343,7 +1344,7 @@ describe('ApprovalRouteScreen — 등록 폼', () => {
 
     await waitForList();
     await user.click(screen.getByRole('button', { name: t.actions.create }));
-    await screen.findByRole('region', { name: t.panes.create });
+    await screen.findByRole('dialog', { name: t.panes.create });
 
     await user.click(screen.getByRole('button', { name: messages.common.cancel }));
 
@@ -1351,6 +1352,33 @@ describe('ApprovalRouteScreen — 등록 폼', () => {
       expect(locationText()).not.toContain('new=');
     });
     expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: t.panes.create })).toBeNull();
+  });
+
+  /*
+   * 등록은 팝업이다(사용자 지시 2026-11-25 · 공통코드와 같다) — 열린 동안 뒤의 상세 자리는 고르기 전과 같은 빈 안내이고,
+   * 팝업 바닥에 [취소][등록]이 선다. 승인 유형을 고르기 전에는 중복 확인 안내를 내지 않는다.
+   */
+  it('「새 결재선」은 등록 팝업을 열고 상세 자리는 빈 안내로 남는다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await waitForList();
+    expect(screen.queryByRole('dialog', { name: t.panes.create })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: t.actions.create }));
+
+    const dialog = await screen.findByRole('dialog', { name: t.panes.create });
+    const detail = await findDetailPane();
+
+    expect(detail).toContainElement(screen.getByText(t.empty.noSelectionTitle));
+    expect(within(dialog).queryByText(t.empty.noSelectionTitle)).toBeNull();
+    expect(within(dialog).getByRole('button', { name: messages.common.cancel })).toBeEnabled();
+    expect(within(dialog).getByRole('button', { name: t.actions.submitCreate })).toBeDisabled();
+    expect(
+      within(dialog).getByRole('combobox', { name: t.fields.approvalTypeCode }),
+    ).toHaveTextContent(t.fields.approvalTypePlaceholder);
+    expect(within(dialog).queryByText(t.notes.duplicateUnknownCreate)).toBeNull();
+    expect(within(dialog).queryByText(t.notes.duplicateUnknown)).toBeNull();
   });
 });
 
@@ -1505,16 +1533,17 @@ describe('ApprovalRouteScreen — 수정 저장', () => {
     expect(writeRequests(requests)).toHaveLength(0);
   });
 
-  /** 비운 칸의 뜻은 **폼 안에서** 읽힌다 — 창을 하나 더 늘리지 않는다(계획 §13-4). */
-  it('사업부를 비우면 그 뜻이 폼 안에서 읽힌다', async () => {
+  /* 비운 칸의 뜻은 칸 아래 문구 대신 선택지 이름 「전체 사업부」가 말한다(사용자 지시 2026-11-25). */
+  it('사업부를 비우면 칸에 「전체 사업부」가 읽힌다', async () => {
     const { user } = renderScreen(allRoutes(), SELECTED);
 
     await waitForForm();
-    expect(screen.queryByText(t.notes.businessUnitEmpty)).not.toBeInTheDocument();
-
     await clearBusinessUnit(user);
 
-    expect(await screen.findByText(t.notes.businessUnitEmpty)).toBeInTheDocument();
+    const pane = await findDetailPane();
+    expect(within(pane).getByRole('combobox', { name: t.fields.businessUnit })).toHaveTextContent(
+      t.values.allBusinessUnitsOption,
+    );
   });
 });
 
@@ -2549,7 +2578,8 @@ describe('ApprovalRouteScreen — 되먹임의 매임은 실패에도 같은 축
 const stepPane = async (): Promise<HTMLElement> =>
   screen.findByRole('region', { name: t.panes.steps });
 
-const addStepButton = (): HTMLElement => screen.getByRole('button', { name: t.actions.addStep });
+const addStepButton = (): HTMLElement =>
+  screen.getByRole('button', { name: t.actions.confirmAddStep });
 
 /** **단계 표의 줄만 센다** — 화면에는 결재선 목록 표가 함께 서 있어 바깥에서 세면 둘이 섞인다. */
 const stepRows = (): HTMLElement[] =>
@@ -2557,12 +2587,21 @@ const stepRows = (): HTMLElement[] =>
 const saveStepsButton = (): HTMLElement =>
   screen.getByRole('button', { name: t.actions.saveSteps });
 
+/** 제목 줄 「단계 추가」로 추가 줄을 펼친다(사용자 지시 2026-11-25 — 기본은 접혀 있다). */
+const openAddRow = async (user: ReturnType<typeof userEvent.setup>): Promise<HTMLElement> => {
+  const pane = await stepPane();
+
+  await user.click(within(pane).getByRole('button', { name: t.actions.addStep }));
+
+  return pane;
+};
+
 /** 추가 줄에서 승인자를 골라 한 단계를 더한다. 표를 더럽히는 가장 짧은 길이다. */
 const addStep = async (
   user: ReturnType<typeof userEvent.setup>,
   label = APPROVER_OPTION_LABEL,
 ): Promise<void> => {
-  const pane = await stepPane();
+  const pane = await openAddRow(user);
 
   await user.click(within(pane).getByRole('combobox', { name: t.fields.approverSelect }));
   await user.click(screen.getByRole('option', { name: label }));
@@ -2962,7 +3001,7 @@ describe('ApprovalRouteScreen — 단계 초안 수명', () => {
       expect(locationText()).toContain('ar=9001');
     });
 
-    const pane = await stepPane();
+    const pane = await openAddRow(user);
 
     await user.click(within(pane).getByRole('combobox', { name: t.fields.approverSelect }));
     await user.click(screen.getByRole('option', { name: APPROVER_OPTION_LABEL }));
@@ -2977,6 +3016,8 @@ describe('ApprovalRouteScreen — 단계 초안 수명', () => {
       expect(locationText()).toContain('ar=9003');
     });
 
+    /* 대상이 바뀌면 추가 줄도 접힌 채 새로 선다 — 다시 펼쳐도 앞 결재선에서 고른 사람이 없다. */
+    await openAddRow(user);
     expect(
       within(screen.getByRole('region', { name: t.panes.steps })).getByRole('combobox', {
         name: t.fields.approverSelect,
@@ -3112,7 +3153,7 @@ describe('ApprovalRouteScreen — 단계 저장이 나가는 중', () => {
       holdStepsReplace,
     );
 
-    await stepPane();
+    await openAddRow(user);
     await user.click(screen.getAllByRole('button', { name: '아래로 이동' })[0] as HTMLElement);
     await user.click(saveStepsButton());
     await waitFor(() => {
@@ -3123,6 +3164,7 @@ describe('ApprovalRouteScreen — 단계 저장이 나가는 중', () => {
     expect(saveStepsButton()).toBeDisabled();
     expect(screen.getByRole('button', { name: t.actions.removeStep(1) })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: t.fields.approverSelect })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.addStep })).toBeDisabled();
 
     await user.click(saveStepsButton());
 

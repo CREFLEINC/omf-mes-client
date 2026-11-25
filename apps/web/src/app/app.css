@@ -39841,10 +39841,6 @@ body:has(
   min-width: 18rem;
 }
 
-.approval-route-range > .field-note {
-  margin: var(--space-1) 0 0;
-}
-
 .approval-route-range-row {
   display: flex;
   flex-wrap: nowrap;
@@ -40082,9 +40078,12 @@ body:has(
   margin-bottom: 0;
 }
 
-/* 라벨(24px)이 이름 글줄(16px)보다 높다 — 위아래를 겹쳐 이름 줄 높이를 그대로 두어 옆 칸과 입력칸 윗선을 맞춘다. */
+/*
+ * 라벨(24px)이 이름 글줄(16px)보다 높다 — 넘치는 높이를 위쪽으로 보내 이름 줄 높이를 그대로 두고(옆 칸과 입력칸 윗선 맞춤),
+ * 아래 입력칸과는 띄운다(사용자 지시 2026-11-25 — 라벨이 입력칸에 붙어 보였다).
+ */
 .code-lock-label-row > .code-lock-chip {
-  margin-block: -4px;
+  margin-block: -10px 2px;
 }
 
 /* DS 내장 라벨을 쓰던 칸이 잠겨 이름을 밖으로 꺼낸 경우 — 내장 라벨과 같은 간격(이름 · 칸 사이 space-1). */

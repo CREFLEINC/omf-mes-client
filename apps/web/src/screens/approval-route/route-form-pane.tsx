@@ -1,8 +1,9 @@
-import { Button, Icon, TextField } from '@crefle/web-ui';
+import { Button, Dialog, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
 import { InfoTip } from '../../patterns/info-tip';
+import { requiredEmptyClass } from '../users-roles/required-empty';
 
 import { approvalTypeLabelOf, codeNote, codePlaceholder } from './code-options';
 import { DisabledAction } from './disabled-action';
@@ -114,15 +115,164 @@ export const RouteFormPane = ({
   /**
    * 「선택 없음」이 곧 **전 사업부 공통**이다 — 특별한 값이 아니라 값이 없는 것이다.
    * 빈 선택지를 두지 않으면 한 번 고른 뒤에 다시 비울 방법이 칸 안에 없어진다.
+   * 폼에서는 「전체 사업부」로 읽힌다(사용자 지시 2026-11-25) — 목록 열은 종전 이름 그대로다.
    */
   const businessUnitChoices: SelectOption[] = [
-    { value: '', label: t.values.allBusinessUnits },
+    { value: '', label: t.values.allBusinessUnitsOption },
     ...businessUnitOptions,
   ];
 
-  /** **비웠을 때만 낸다.** 늘 세워 두면 안내가 배경이 되어 정작 비운 순간에 읽히지 않는다. */
-  const isBusinessUnitEmpty = values.businessUnitId === '';
-  const isValueRangeEmpty = values.minValue.trim() === '' && values.maxValue.trim() === '';
+  const formGrid = (
+    <div className="form-grid">
+      {isCreate && (
+        /* 등록에서만 입력칸이다. 고정 OpenAPI enum 선택지를 그대로 사용한다. */
+        <SelectField
+          required
+          label={t.fields.approvalTypeCode}
+          options={approvalTypeOptions}
+          value={values.approvalTypeCode}
+          note={codeNote(approvalTypeOptions)}
+          error={fieldErrors.approvalTypeCode}
+          placeholder={
+            approvalTypeOptions.length === 0 ? codePlaceholder() : t.fields.approvalTypePlaceholder
+          }
+          /* 필수 칸이 비면 빨간 테두리 — 공통코드 등록 팝업과 같은 방식(#333 · #358). */
+          className={requiredEmptyClass(values.approvalTypeCode)}
+          disabled={isLocked}
+          onChange={(value) => {
+            onChange({ approvalTypeCode: value });
+          }}
+        />
+      )}
+
+      {/*
+       * 규범 3-2 — 선택칸이 「코드 · 이름」을 고른다. 최소 폭을 주지 않으면 선택지 목록이
+       * 트리거 폭에 갇혀 잘리고, 무엇을 고르는지 읽을 수 없다.
+       */}
+      <SelectField
+        wide
+        label={t.fields.businessUnit}
+        options={businessUnitChoices}
+        value={values.businessUnitId}
+        /* 비웠을 때의 뜻 안내는 걷었다(사용자 지시 2026-11-25) — 선택지 이름 「전체 사업부」가 말한다. 잘림 · 실패 안내는 그대로. */
+        note={businessUnitNote}
+        error={fieldErrors.businessUnitId}
+        disabled={isLocked}
+        onChange={(value) => {
+          onChange({ businessUnitId: value });
+        }}
+      />
+
+      {/*
+       * 하한 · 상한은 한 묶음(사용자 지시 2026-11-24). 이름은 「수량 범위」 한 줄만 두고 하한 · 상한은 칸 안 흐린 글자와
+       * 접근 이름으로 — 옆 사업부 칸과 입력칸 윗선이 맞는다(사용자 지시 2026-11-25). 좁으면 묶음이 통째로 다음 줄로 간다.
+       */}
+      <fieldset className="approval-route-range">
+        <legend className="field-label info-label">
+          {t.fields.valueRange}
+          {/*
+           * 비웠을 때의 뜻도 칸 아래가 아니라 ⓘ 안에 둘째 줄로(사용자 지시 2026-11-25). 문장은 라벨을 가리지 않게
+           * ⓘ 오른쪽으로 띄운다.
+           */}
+          <InfoTip
+            text={`${t.notes.valueRangeUnused}\n${t.notes.valueRangeEmpty}`}
+            placement="right"
+          />
+        </legend>
+        <div className="approval-route-range-row">
+          <div className="field-cell">
+            <TextField
+              id={minValueId}
+              aria-label={t.fields.minValue}
+              placeholder={t.fields.minValue}
+              value={values.minValue}
+              /* 숫자 자판을 띄우되 형식 판정은 화면이 한다 — 브라우저마다 허용 글자가 다르다. */
+              inputMode="decimal"
+              error={fieldErrors.minValue}
+              disabled={isLocked}
+              onChange={(event) => {
+                onChange({ minValue: event.target.value });
+              }}
+            />
+          </div>
+          <span className="approval-route-range-sep" aria-hidden>
+            ~
+          </span>
+          <div className="field-cell">
+            <TextField
+              id={maxValueId}
+              aria-label={t.fields.maxValue}
+              placeholder={t.fields.maxValue}
+              value={values.maxValue}
+              inputMode="decimal"
+              error={fieldErrors.maxValue}
+              disabled={isLocked}
+              onChange={(event) => {
+                onChange({ maxValue: event.target.value });
+              }}
+            />
+          </div>
+        </div>
+      </fieldset>
+    </div>
+  );
+
+  /*
+   * 막혔으면 **비활성 + 사유**로 둔다(배치 규범 4) — 사유가 없으면 사용자는 버튼이 왜
+   * 안 눌리는지 알 방법이 없다. 전송 중에는 진행 표시가 그 자리를 대신한다.
+   */
+  const saveAction =
+    saveDisabledReason === null ? (
+      <Button variant="filled" loading={isLocked} disabled={isLocked} onClick={onSave}>
+        {saveLabel}
+      </Button>
+    ) : saveDisabledReason === t.actionReasons.saveNoChanges ||
+      saveDisabledReason === t.actionReasons.createNoType ? (
+      /*
+       * 고친 것이 없을 때 · 등록에서 승인 유형을 고르기 전에는 꺼진 단추로만 — 「고친 내용이 없습니다」를 되풀이하지 않고
+       * (사용자 지시 2026-11-24), 「승인 유형을 고르세요.」는 칸의 흐린 글자 · 빨간 테두리가 이미 말한다(2026-11-25).
+       */
+      <Button variant="filled" disabled>
+        {saveLabel}
+      </Button>
+    ) : (
+      <DisabledAction variant="filled" label={saveLabel} reason={saveDisabledReason} />
+    );
+
+  /*
+   * 등록은 팝업 — 공통코드 「그룹 추가」 팝업과 같은 모양(사용자 지시 2026-11-25 · #358). 열고 닫힘은 종전대로 주소의
+   * 등록 상태(`new=`)가 쥐고, 닫기(취소 · Esc)는 등록 폼을 접는 같은 처리로 간다. 바깥을 눌러도 닫히지 않는다.
+   */
+  if (isCreate) {
+    return (
+      <Dialog
+        open
+        onClose={onCancel}
+        size="lg"
+        title={t.panes.create}
+        closeOnBackdropClick={false}
+        showCloseButton={false}
+        footer={
+          <>
+            {onOpenExisting !== null && (
+              <Button variant="outlined" disabled={isLocked} onClick={onOpenExisting}>
+                {t.actions.openExisting}
+              </Button>
+            )}
+            {/* 등록에서 「취소」는 **폼을 닫는 것**이라 고친 것이 없어도 눌러야 한다. */}
+            <Button variant="outlined" disabled={isLocked} onClick={onCancel}>
+              {messages.common.cancel}
+            </Button>
+            {saveAction}
+          </>
+        }
+      >
+        {banner}
+        {formGrid}
+        {duplicateUnknownNote !== null && <p className="field-note">{duplicateUnknownNote}</p>}
+      </Dialog>
+    );
+  }
 
   return (
     /* 고른 결재선이면 이름은 바깥 상세 칸이 갖는다 — 새 결재선일 때만 이 상자가 「새 결재선」 구획이 된다(#350 리뷰). */
@@ -146,88 +296,7 @@ export const RouteFormPane = ({
         </div>
       )}
 
-      <div className="form-grid">
-        {isCreate && (
-          /* 등록에서만 입력칸이다. 고정 OpenAPI enum 선택지를 그대로 사용한다. */
-          <SelectField
-            required
-            label={t.fields.approvalTypeCode}
-            options={approvalTypeOptions}
-            value={values.approvalTypeCode}
-            note={codeNote(approvalTypeOptions)}
-            error={fieldErrors.approvalTypeCode}
-            placeholder={approvalTypeOptions.length === 0 ? codePlaceholder() : undefined}
-            disabled={isLocked}
-            onChange={(value) => {
-              onChange({ approvalTypeCode: value });
-            }}
-          />
-        )}
-
-        {/*
-         * 규범 3-2 — 선택칸이 「코드 · 이름」을 고른다. 최소 폭을 주지 않으면 선택지 목록이
-         * 트리거 폭에 갇혀 잘리고, 무엇을 고르는지 읽을 수 없다.
-         */}
-        <SelectField
-          wide
-          label={t.fields.businessUnit}
-          options={businessUnitChoices}
-          value={values.businessUnitId}
-          /* 비웠을 때의 뜻은 이 칸 바로 아래(사용자 지시 2026-11-25 — 안내를 해당 칸 아래로). */
-          note={businessUnitNote ?? (isBusinessUnitEmpty ? t.notes.businessUnitEmpty : undefined)}
-          error={fieldErrors.businessUnitId}
-          disabled={isLocked}
-          onChange={(value) => {
-            onChange({ businessUnitId: value });
-          }}
-        />
-
-        {/*
-         * 하한 · 상한은 한 묶음(사용자 지시 2026-11-24). 이름은 「수량 범위」 한 줄만 두고 하한 · 상한은 칸 안 흐린 글자와
-         * 접근 이름으로 — 옆 사업부 칸과 입력칸 윗선이 맞는다(사용자 지시 2026-11-25). 좁으면 묶음이 통째로 다음 줄로 간다.
-         */}
-        <fieldset className="approval-route-range">
-          <legend className="field-label info-label">
-            {t.fields.valueRange}
-            <InfoTip text={t.notes.valueRangeUnused} />
-          </legend>
-          <div className="approval-route-range-row">
-            <div className="field-cell">
-              <TextField
-                id={minValueId}
-                aria-label={t.fields.minValue}
-                placeholder={t.fields.minValue}
-                value={values.minValue}
-                /* 숫자 자판을 띄우되 형식 판정은 화면이 한다 — 브라우저마다 허용 글자가 다르다. */
-                inputMode="decimal"
-                error={fieldErrors.minValue}
-                disabled={isLocked}
-                onChange={(event) => {
-                  onChange({ minValue: event.target.value });
-                }}
-              />
-            </div>
-            <span className="approval-route-range-sep" aria-hidden>
-              ~
-            </span>
-            <div className="field-cell">
-              <TextField
-                id={maxValueId}
-                aria-label={t.fields.maxValue}
-                placeholder={t.fields.maxValue}
-                value={values.maxValue}
-                inputMode="decimal"
-                error={fieldErrors.maxValue}
-                disabled={isLocked}
-                onChange={(event) => {
-                  onChange({ maxValue: event.target.value });
-                }}
-              />
-            </div>
-          </div>
-          {isValueRangeEmpty && <p className="field-note">{t.notes.valueRangeEmpty}</p>}
-        </fieldset>
-      </div>
+      {formGrid}
 
       {/* 진행 중인 요청 안내는 입력란 아래 카드 너비 전체(사용자 지시 2026-11-24). */}
       {route !== null && (
@@ -297,18 +366,7 @@ export const RouteFormPane = ({
          * 막혔으면 **비활성 + 사유**로 둔다(배치 규범 4) — 사유가 없으면 사용자는 버튼이 왜
          * 안 눌리는지 알 방법이 없다. 전송 중에는 진행 표시가 그 자리를 대신한다.
          */}
-        {saveDisabledReason === null ? (
-          <Button variant="filled" loading={isLocked} disabled={isLocked} onClick={onSave}>
-            {saveLabel}
-          </Button>
-        ) : saveDisabledReason === t.actionReasons.saveNoChanges ? (
-          /* 고친 것이 없을 때는 꺼진 단추로만 — 「고친 내용이 없습니다」를 되풀이하지 않는다(사용자 지시 2026-11-24). */
-          <Button variant="filled" disabled>
-            {saveLabel}
-          </Button>
-        ) : (
-          <DisabledAction variant="filled" label={saveLabel} reason={saveDisabledReason} />
-        )}
+        {saveAction}
       </div>
     </section>
   );

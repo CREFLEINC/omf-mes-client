@@ -6,7 +6,6 @@ import {
   ENABLED_APPROVER_TYPE_CODES,
   PLACEHOLDER_APPROVAL_TYPE_CODES,
   approvalTypeLabelOf,
-  approverTypeNote,
   codeNote,
   codePlaceholder,
   toApprovalTypeOptions,
@@ -102,19 +101,6 @@ describe('toApproverTypeOptions', () => {
 
   it('지금 열린 것은 사용자 하나뿐이다', () => {
     expect(ENABLED_APPROVER_TYPE_CODES).toEqual(['USER']);
-  });
-});
-
-describe('approverTypeNote', () => {
-  it('잠긴 선택지가 있으면 왜 잠겼는지 밝힌다', () => {
-    expect(approverTypeNote(toApproverTypeOptions(ENABLED_APPROVER_TYPE_CODES))).toBe(
-      t.notes.approverTypePending,
-    );
-  });
-
-  it('전부 열리면 안내를 거둔다', () => {
-    // 남으면 화면이 거짓말을 한다 — 승인 유형 안내와 같은 규율이다.
-    expect(approverTypeNote(toApproverTypeOptions(APPROVER_TYPE_CODES))).toBeUndefined();
   });
 });
 

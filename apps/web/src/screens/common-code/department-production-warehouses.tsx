@@ -233,11 +233,13 @@ export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectio
     {
       key: 'plant',
       header: t.columns.plant,
+      align: 'center',
       render: (row) => editor.plantName(row.plantId),
     },
     {
       key: 'warehouse',
       header: t.columns.warehouse,
+      align: 'center',
       render: (row) => (
         <span className="production-warehouse-name">
           {`${row.warehouseCode} ${row.warehouseName}`}
@@ -252,6 +254,7 @@ export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectio
     {
       key: 'stock',
       header: t.columns.stock,
+      align: 'center',
       render: (row) => (
         /* 밑줄 글자 링크 대신 일반 단추 모양(사용자 지시 2026-11-25). 새 탭으로 여는 동작은 종전과 같다. */
         <Button
@@ -269,7 +272,7 @@ export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectio
     {
       key: 'remove',
       header: <span className="visually-hidden">{t.columns.remove}</span>,
-      align: 'end',
+      align: 'center',
       width: '56px',
       render: (row) => (
         <IconButton

@@ -83,9 +83,3 @@ export const toApproverTypeOptions = (enabledCodes: readonly ApproverTypeCode[])
     label: APPROVER_TYPE_LABELS[code],
     disabled: !enabledCodes.includes(code),
   }));
-
-/** 잠긴 선택지가 하나라도 있으면 무엇을 고를 수 있는지 밝힌다(라벨 옆 ⓘ). **전부 열리면 거둔다.** */
-export const approverTypeNote = (options: readonly SelectOption[]): string | undefined =>
-  options.some((option) => option.disabled === true)
-    ? messages.approvalRoute.notes.approverTypePending
-    : undefined;

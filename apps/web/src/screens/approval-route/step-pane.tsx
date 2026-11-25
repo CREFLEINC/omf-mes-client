@@ -1,4 +1,12 @@
-import { Button, type Column, EmptyState, IconButton, SkeletonText, Table } from '@crefle/web-ui';
+import {
+  Button,
+  type Column,
+  EmptyState,
+  Icon,
+  IconButton,
+  SkeletonText,
+  Table,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type ReactNode } from 'react';
 
@@ -22,22 +30,15 @@ const t = messages.approvalRoute;
 /**
  * 우 칸 단계 표의 열 폭.
  *
- * **흡수 열은 승인자 하나뿐이다** — 「이름 · 부서」와 경고 문구를 담는다.
- * 순서 이동 열은 디자인 시스템이 붙이고 인라인 폭 대신 자기 클래스를 쓰므로 여기 담기지
- * 않는다. 예산에는 `REORDER_COLUMN_WIDTH`로 따로 더한다.
+ * **흡수 열은 승인자 하나뿐이다** — 「이름 · 부서」와 경고 문구를 담는다. 나머지 열은 상자 폭에 대한
+ * 비율이라 상자가 넓든 좁든 표가 상자를 채운다(사용자 지시 2026-11-25).
  */
 export const STEP_COLUMN_WIDTH = {
-  stepNo: '64px',
-  approverStatus: '96px',
+  stepNo: '12%',
+  approverStatus: '18%',
   /* 위로 · 아래로 · 삭제 세 단추(사용자 지시 2026-11-24). */
-  rowActions: '128px',
+  rowActions: '24%',
 } as const;
-
-/**
- * 디자인 시스템이 붙이는 순서 이동 열의 폭. **우리가 지정하는 값이 아니라 예산에 더할 값이다** —
- * 열은 `columns`에 없으므로 폭 합을 셀 때 손으로 더하지 않으면 예산이 조용히 틀린다.
- */
-export const REORDER_COLUMN_WIDTH = '96px';
 
 export interface StepPaneProps {
   /**
@@ -55,7 +56,6 @@ export interface StepPaneProps {
   /** 승인자 목록이 잘리거나 실패했다는 안내. */
   approverNote?: string;
   approverTypeOptions: SelectOption[];
-  approverTypeNote?: string;
   isLocked: boolean;
   saveDisabledReason: string | null;
   onAdd: (approver: ApproverOption) => void;
@@ -105,7 +105,6 @@ export const StepPane = ({
   approverOptions,
   approverNote,
   approverTypeOptions,
-  approverTypeNote,
   isLocked,
   saveDisabledReason,
   onAdd,
@@ -121,6 +120,8 @@ export const StepPane = ({
    * 앞 결재선에 넣으려던 승인자가 다음 결재선의 추가 줄에 남아 있으면 안 된다.
    */
   const [approverValue, setApproverValue] = useState('');
+  /* 추가 줄은 제목 줄 「단계 추가」를 눌러야 펼쳐진다(사용자 지시 2026-11-25). 이 구획 안에서만 쓰는 화면 상태다. */
+  const [isAdding, setIsAdding] = useState(false);
   const removeReasonId = useId();
 
   const selectedApprover = approverOptions.find((option) => option.value === approverValue) ?? null;
@@ -133,15 +134,15 @@ export const StepPane = ({
       key: 'stepNo',
       header: t.fields.stepNo,
       width: STEP_COLUMN_WIDTH.stepNo,
-      align: 'end',
+      /* 표의 모든 열은 가운데 맞춤(사용자 지시 2026-11-25). */
+      align: 'center',
       /* 순서는 **배열의 위치**다. 서버가 준 값을 그리면 행을 옮긴 뒤 표시와 자료가 어긋난다. */
       render: (_step, index) => String(index + 1),
     },
     {
       key: 'approver',
       header: t.fields.approver,
-      /* 결재자는 왼쪽 정렬(사용자 지시 2026-11-25). */
-      align: 'start',
+      align: 'center',
       render: (step) => (
         <>
           <span>{describeApprover(step)}</span>
@@ -159,6 +160,7 @@ export const StepPane = ({
       key: 'approverStatus',
       header: t.fields.approverStatus,
       width: STEP_COLUMN_WIDTH.approverStatus,
+      align: 'center',
       render: (step) => <UsageChip isActive={step.approverIsActive} />,
     },
     {
@@ -248,21 +250,48 @@ export const StepPane = ({
     if (selectedApprover === null) return;
 
     onAdd(selectedApprover);
-    /* 같은 사람을 잇달아 두 번 넣는 실수를 줄인다 — 넣은 것은 이미 표에 보인다. */
+    /* 같은 사람을 잇달아 두 번 넣는 실수를 줄인다 — 넣은 것은 이미 표에 보인다. 넣은 뒤 줄을 접는다. */
     setApproverValue('');
+    setIsAdding(false);
+  };
+
+  const handleCancelAdd = (): void => {
+    setApproverValue('');
+    setIsAdding(false);
   };
 
   return (
     <section className="pane approval-route-steps" aria-label={t.panes.steps}>
-      {/* 표 아래 네 줄이던 규칙은 제목 옆 ⓘ 하나로 모은다(관리웹 정리 시안 A). */}
-      <h2 className="pane-title info-label">
-        {t.panes.steps}
-        <InfoTip text={STEP_RULES} />
-        {/* 단계 수는 표와 같은 기준(지금 보이는 줄 수)으로 센다(사용자 지시 2026-11-24). */}
-        {drafts !== null && drafts.length > 0 && (
-          <span className="approval-route-step-count">{t.values.stepCountOf(drafts.length)}</span>
-        )}
-      </h2>
+      {/*
+       * 제목 줄 — 왼쪽 제목 · ⓘ, 오른쪽 끝 「총 N단계」 · [단계 추가](사용자 지시 2026-11-25).
+       * 표 아래 네 줄이던 규칙은 제목 옆 ⓘ 하나로 모은다(관리웹 정리 시안 A).
+       */}
+      <div className="pane-heading-row approval-route-steps-heading">
+        <h2 className="pane-title info-label">
+          {t.panes.steps}
+          <InfoTip text={STEP_RULES} />
+        </h2>
+        <div className="approval-route-steps-heading-end">
+          {/* 단계 수는 표와 같은 기준(지금 보이는 줄 수)으로 센다(사용자 지시 2026-11-24). */}
+          {drafts !== null && drafts.length > 0 && (
+            <span className="approval-route-step-count">{t.values.stepCountOf(drafts.length)}</span>
+          )}
+          {drafts !== null && (
+            <Button
+              variant="outlined"
+              size="sm"
+              leadingIcon={<Icon name="add" size={18} />}
+              disabled={isLocked}
+              aria-expanded={isAdding}
+              onClick={() => {
+                setIsAdding(true);
+              }}
+            >
+              {t.actions.addStep}
+            </Button>
+          )}
+        </div>
+      </div>
       <div className="banner-slot">{banner}</div>
 
       {stepsSlot()}
@@ -281,13 +310,16 @@ export const StepPane = ({
         </span>
       )}
 
-      {drafts !== null && (
-        /* 결재자 유형 · 결재자 선택 · 단계 추가를 한 줄로(사용자 지시 2026-11-24) — 좁으면 읽는 순서대로 접힌다. */
+      {drafts !== null && isAdding && (
+        /*
+         * 결재자 유형 · 결재자 선택 · [추가] · [취소]를 한 줄로(사용자 지시 2026-11-24) — 좁으면 읽는 순서대로 접힌다.
+         * 제목 줄 「단계 추가」를 눌렀을 때만 표 아래에 펼친다(2026-11-25).
+         */
         <div className="filter-bar approval-route-step-add">
           {/*
            * 결재자 유형 — 1차에는 사용자만 열린다. **잠긴 선택지를 감추지 않는다**(`omf-mes#69`).
-           * 값이 하나뿐이라 고를 것이 없지만, 그 사실을 보이는 것이 이 칸의 일이다. 「사용자만 고를 수
-           * 있다」는 칸 아래가 아니라 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A).
+           * 값이 하나뿐이라 고를 것이 없지만, 그 사실을 보이는 것이 이 칸의 일이다. 라벨 옆 ⓘ 는 걷었다
+           * (사용자 지시 2026-11-25).
            *
            * **`disabledReason`을 주지 않는다.** 그 prop이 묻는 것은 「왜 잠겼는가」인데 여기
            * 담을 값(역할·부서를 열지 않았다 · 목록이 잘렸다)은 그 답이 아니다 — 이 칸이 잠기는
@@ -298,7 +330,6 @@ export const StepPane = ({
             label={t.fields.approverType}
             options={approverTypeOptions}
             value="USER"
-            info={approverTypeNote}
             disabled={isLocked}
             onChange={() => {
               /* 열린 값이 하나뿐이라 바뀔 값이 없다. 치환 본문의 구분은 상수이며 이 칸을 읽지 않는다. */
@@ -318,13 +349,16 @@ export const StepPane = ({
           />
 
           {/* 결재자를 고르기 전에는 꺼진 단추로만 — 칸의 「결재자를 선택하세요」가 이미 말한다. */}
-          <div className="field-cell field-cell-unlabeled">
+          <div className="field-cell field-cell-unlabeled approval-route-step-add-actions">
             <Button
               variant="outlined"
               disabled={isLocked || addDisabledReason !== null}
               onClick={handleAdd}
             >
-              {t.actions.addStep}
+              {t.actions.confirmAddStep}
+            </Button>
+            <Button variant="outlined" disabled={isLocked} onClick={handleCancelAdd}>
+              {messages.common.cancel}
             </Button>
           </div>
         </div>

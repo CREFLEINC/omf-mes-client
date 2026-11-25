@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -123,36 +123,51 @@ describe('RouteFormPane — 진행 중 건수 상시 표시', () => {
 });
 
 describe('RouteFormPane — 비움 경고 (전체 교체의 뜻)', () => {
-  it('사업부를 비우면 전 사업부 공통이 된다고 말한다', () => {
+  /* 비운 사업부의 뜻은 칸 아래 문구 대신 선택지 이름 「전체 사업부」가 말한다(사용자 지시 2026-11-25). */
+  it('사업부를 비우면 칸에 「전체 사업부」가 보인다', () => {
     renderPane({ values: { ...routeFormValuesFixture, businessUnitId: '' } });
 
-    expect(screen.getByText(t.notes.businessUnitEmpty)).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: t.fields.businessUnit })).toHaveTextContent(
+      t.values.allBusinessUnitsOption,
+    );
   });
 
-  /** 짝 방향 — 채웠을 때 문구가 사라지지 않으면 안내가 배경이 되어 읽히지 않는다. */
-  it('사업부를 채우면 그 문구가 사라진다', () => {
-    renderPane();
+  /* 잘림 · 실패 같은 사업부 선택지 안내는 그대로 칸 아래에 선다. */
+  it('사업부 선택지 안내는 그대로 칸 아래에 선다', () => {
+    renderPane({ businessUnitNote: t.filters.lookupFailed });
 
-    expect(screen.queryByText(t.notes.businessUnitEmpty)).not.toBeInTheDocument();
+    expect(screen.getByText(t.filters.lookupFailed)).toBeInTheDocument();
   });
 
-  it('값 구간을 둘 다 비우면 전 구간이 된다고 말한다', () => {
+  /*
+   * 비웠을 때의 뜻은 칸 아래가 아니라 「수량 범위」 ⓘ 의 둘째 줄이다(사용자 지시 2026-11-25) — 비웠든 채웠든 칸 아래에
+   * 늘 펼친 문장이 서지 않는다.
+   */
+  it('값 구간을 둘 다 비워도 칸 아래 문구는 없고 그 뜻은 ⓘ 에 있다', () => {
     renderPane({ values: { ...routeFormValuesFixture, minValue: '', maxValue: '' } });
 
-    expect(screen.getByText(t.notes.valueRangeEmpty)).toBeInTheDocument();
+    expect(screen.queryByText(t.notes.valueRangeEmpty)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: `${t.notes.valueRangeUnused}\n${t.notes.valueRangeEmpty}`,
+      }),
+    ).toBeInTheDocument();
   });
 
-  it('값 구간을 한쪽이라도 채우면 그 문구가 사라진다', () => {
+  it('값 구간을 한쪽이라도 채워도 칸 아래 문구는 없다', () => {
     renderPane({ values: { ...routeFormValuesFixture, minValue: '100', maxValue: '' } });
 
     expect(screen.queryByText(t.notes.valueRangeEmpty)).not.toBeInTheDocument();
   });
 
-  /* 칸 아래에 늘 펼쳐 두지 않고 하한 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
-  it('값 구간이 결재선을 고르지 않는다는 사실은 하한 라벨 옆 ⓘ 로 밝힌다', () => {
+  /* 칸 아래에 늘 펼쳐 두지 않고 「수량 범위」 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A). 두 문장, 고르지 않는다는 말이 먼저. */
+  it('값 구간이 결재선을 고르지 않는다는 사실과 비움의 뜻은 수량 범위 라벨 옆 ⓘ 로 밝힌다', () => {
     renderPane();
 
-    expect(screen.getByRole('button', { name: t.notes.valueRangeUnused })).toBeInTheDocument();
+    const tip = screen.getByRole('button', {
+      name: `${t.notes.valueRangeUnused}\n${t.notes.valueRangeEmpty}`,
+    });
+    expect(tip).toBeInTheDocument();
     expect(screen.queryByText(t.notes.valueRangeUnused)).toBeNull();
   });
 });
@@ -171,12 +186,13 @@ describe('RouteFormPane — 입력칸', () => {
    * **「선택 없음」이 곧 전 사업부 공통이다.** 빈 선택지를 두지 않으면 한 번 고른 뒤에
    * 다시 비울 방법이 칸 안에 없어져, 전 사업부 공통 결재선을 만들 길이 사라진다.
    */
-  it('사업부 선택칸에 「전 사업부 공통」 선택지가 있다', async () => {
+  /* 폼의 「선택 없음」은 「전체 사업부」로 읽힌다(사용자 지시 2026-11-25). 값은 종전대로 비움이다. */
+  it('사업부 선택칸에 「전체 사업부」 선택지가 있다', async () => {
     const user = userEvent.setup();
     const { props } = renderPane();
 
     await user.click(screen.getByRole('combobox', { name: t.fields.businessUnit }));
-    await user.click(screen.getByRole('option', { name: t.values.allBusinessUnits }));
+    await user.click(screen.getByRole('option', { name: t.values.allBusinessUnitsOption }));
 
     expect(props.onChange).toHaveBeenCalledWith({ businessUnitId: '' });
   });
@@ -242,6 +258,80 @@ describe('RouteFormPane — 등록 폼', () => {
     renderPane({ ...createProps, isDirty: false });
 
     expect(screen.getByRole('button', { name: messages.common.cancel })).toBeEnabled();
+  });
+
+  /* 등록은 팝업이다(사용자 지시 2026-11-25 · 공통코드 「그룹 추가」와 같다). */
+  it('등록 폼은 「결재선 등록」 팝업으로 서고 바닥에 [취소][등록]이 있다', () => {
+    renderPane(createProps);
+
+    const dialog = screen.getByRole('dialog', { name: t.panes.create });
+
+    expect(
+      within(dialog).getByRole('combobox', { name: t.fields.approvalTypeCode }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('button', { name: messages.common.cancel }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('button', { name: t.actions.submitCreate }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.panes.create })).toBeNull();
+  });
+
+  it('팝업의 취소는 등록 폼을 닫는 처리로 간다', async () => {
+    const user = userEvent.setup();
+    const { props } = renderPane({ ...createProps, isDirty: false });
+
+    await user.click(
+      within(screen.getByRole('dialog', { name: t.panes.create })).getByRole('button', {
+        name: messages.common.cancel,
+      }),
+    );
+
+    expect(props.onCancel).toHaveBeenCalledTimes(1);
+    expect(props.onSave).not.toHaveBeenCalled();
+  });
+
+  /* 필수 칸이 비면 빨간 테두리(#333 · 공통코드 등록 팝업과 같다). 고르면 걷힌다. */
+  it('승인 유형이 비면 빨간 테두리 표시가 붙고 고르면 걷힌다', () => {
+    const { rerender, props } = renderPane({
+      ...createProps,
+      approvalTypeOptions: [{ value: 'PURCHASE_ORDER', label: 'P/O' }],
+    });
+    const cellOf = (): HTMLElement | null =>
+      screen.getByRole('combobox', { name: t.fields.approvalTypeCode }).closest('.field-cell');
+
+    expect(cellOf()).toHaveClass('users-roles-required-empty');
+    expect(screen.getByRole('combobox', { name: t.fields.approvalTypeCode })).toHaveTextContent(
+      t.fields.approvalTypePlaceholder,
+    );
+
+    rerender(
+      <RouteFormPane
+        {...props}
+        values={{ ...emptyRouteFormValues(), approvalTypeCode: 'PURCHASE_ORDER' }}
+      />,
+    );
+
+    expect(cellOf()).not.toHaveClass('users-roles-required-empty');
+  });
+
+  /* 유형을 고르기 전의 「승인 유형을 고르세요.」 사유 글은 걷었다 — 등록 단추만 꺼진다(사용자 지시 2026-11-25). */
+  it('유형을 고르기 전에는 등록이 꺼지고 사유 글은 없다', () => {
+    renderPane({ ...createProps, saveDisabledReason: t.actionReasons.createNoType });
+
+    expect(screen.getByRole('button', { name: t.actions.submitCreate })).toBeDisabled();
+    expect(screen.queryByText(t.actionReasons.createNoType)).toBeNull();
+  });
+
+  it('중복 확인 안내를 받으면 팝업 안에 낸다', () => {
+    renderPane({ ...createProps, duplicateUnknownNote: t.notes.duplicateUnknownCreate });
+
+    expect(
+      within(screen.getByRole('dialog', { name: t.panes.create })).getByText(
+        t.notes.duplicateUnknownCreate,
+      ),
+    ).toBeInTheDocument();
   });
 });
 

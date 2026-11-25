@@ -10,3 +10,36 @@
 .approval-route-list tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
   box-shadow: inset 3px 0 0 var(--semantic-info);
 }
+
+/*
+ * 「수량 범위」 ⓘ 의 두 문장은 줄을 나눠 오른쪽으로 띄운다(사용자 지시 2026-11-25) — 공용 툴팁은 줄바꿈을 접는다.
+ * 상세 칸 오른쪽 끝에 가까워도 칸 밖으로 잘리지 않게 폭을 좁혀 접는다(공용 22rem → 16rem).
+ */
+.approval-route-range .info-tip-anchor > [role='tooltip'] {
+  max-width: 16rem;
+  white-space: pre-line;
+}
+
+/* 결재 단계 제목 줄 — 왼쪽 제목 · ⓘ, 오른쪽 끝 「총 N단계」 · [단계 추가](사용자 지시 2026-11-25). */
+.pane-heading-row.approval-route-steps-heading {
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.approval-route-steps-heading-end {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+}
+
+.approval-route-steps-heading-end > .approval-route-step-count {
+  margin-left: 0;
+}
+
+/* 펼친 추가 줄의 [추가] · [취소] — 공용 `.field-cell` 은 세로 쌓기라 가로로 돌린다. */
+.filter-bar.approval-route-step-add > .field-cell.approval-route-step-add-actions {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}

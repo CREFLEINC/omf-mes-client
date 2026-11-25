@@ -12,7 +12,6 @@ import { approverNote, useApproverLookup, type ApproverOption } from './approver
 import {
   ENABLED_APPROVER_TYPE_CODES,
   PLACEHOLDER_APPROVAL_TYPE_CODES,
-  approverTypeNote,
   toApprovalTypeOptions,
   toApproverTypeOptions,
 } from './code-options';
@@ -991,9 +990,20 @@ export const ApprovalRouteScreen = () => {
          * 「밝힐 때만 밝힌다」 — 안내가 걸리는 자리를 저장 판정이 걸리는 자리와 맞춘다.
          */
         duplicateUnknownNote={
-          (isCreating || isDirty) && saveDuplicate.kind === 'unknown'
-            ? t.notes.duplicateUnknown
-            : null
+          isCreating
+            ? /*
+               * 등록 팝업은 승인 유형을 고른 뒤 확인이 실제로 실패했을(못 받았거나 잘렸을) 때만 낸다(사용자 지시
+               * 2026-11-25). 유형을 고르기 전에는 조준 조회가 나가지 않아 「불러오는 중」으로 남는다 — 그때 내면
+               * 확인할 것도 없는데 확인하지 못했다고 말하게 된다. 판정 자체는 그대로다.
+               */
+              probeTypeCode !== '' &&
+              saveDuplicate.kind === 'unknown' &&
+              saveDuplicate.reason !== 'loading'
+              ? t.notes.duplicateUnknownCreate
+              : null
+            : isDirty && saveDuplicate.kind === 'unknown'
+              ? t.notes.duplicateUnknown
+              : null
         }
         onOpenExisting={
           existingDuplicateRouteId === null
@@ -1022,9 +1032,36 @@ export const ApprovalRouteScreen = () => {
     );
   };
 
+  const pickEmpty = (
+    <section className="pane">
+      {/* 단말 관리의 빈 상세와 같은 모양 — 원 안 아이콘 · 제목 · 설명 한 줄(omf-all-around#358). */}
+      <EmptyState
+        size="sm"
+        className="users-roles-pick-empty"
+        icon={
+          <span className="inspection-standard-empty-icon">
+            <Icon name="account_tree" size={20} />
+          </span>
+        }
+        title={t.empty.noSelectionTitle}
+        description={t.empty.noSelectionDescription}
+      />
+    </section>
+  );
+
   const detailSlot = () => {
-    /* 등록 중에는 상세도 단계도 부를 대상이 없다 — 붙일 자원이 아직 만들어지지 않았다. */
-    if (isCreating) return formPane('create');
+    /*
+     * 등록 중에는 상세도 단계도 부를 대상이 없다 — 붙일 자원이 아직 만들어지지 않았다. 등록 폼은 팝업이라(사용자 지시
+     * 2026-11-25 · 공통코드와 같다) 뒤의 상세 자리는 고르기 전과 같은 빈 안내로 둔다.
+     */
+    if (isCreating) {
+      return (
+        <>
+          {pickEmpty}
+          {formPane('create')}
+        </>
+      );
+    }
 
     if (isRouteNotFound || isRouteMissing) {
       return (
@@ -1039,24 +1076,7 @@ export const ApprovalRouteScreen = () => {
       );
     }
 
-    if (selectedRouteId === null) {
-      return (
-        <section className="pane">
-          {/* 단말 관리의 빈 상세와 같은 모양 — 원 안 아이콘 · 제목 · 설명 한 줄(omf-all-around#358). */}
-          <EmptyState
-            size="sm"
-            className="users-roles-pick-empty"
-            icon={
-              <span className="inspection-standard-empty-icon">
-                <Icon name="account_tree" size={20} />
-              </span>
-            }
-            title={t.empty.noSelectionTitle}
-            description={t.empty.noSelectionDescription}
-          />
-        </section>
-      );
-    }
+    if (selectedRouteId === null) return pickEmpty;
 
     if (detail.isError) {
       return (
@@ -1103,7 +1123,6 @@ export const ApprovalRouteScreen = () => {
           approverOptions={approvers.options}
           approverNote={approverNote(approvers)}
           approverTypeOptions={approverTypeOptions}
-          approverTypeNote={approverTypeNote(approverTypeOptions)}
           isLocked={isLocked}
           saveDisabledReason={stepSaveDisabledReason}
           onAdd={handleAddStep}

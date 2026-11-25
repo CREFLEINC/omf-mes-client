@@ -224,7 +224,7 @@ const openCreateForm = async (
   await screen.findByText('재고 조정');
   await user.click(screen.getByRole('button', { name: t.actions.create }));
 
-  const pane = await screen.findByRole('region', { name: t.panes.create });
+  const pane = await screen.findByRole('dialog', { name: t.panes.create });
 
   await user.click(within(pane).getByRole('combobox', { name: t.fields.approvalTypeCode }));
   await user.click(screen.getByRole('option', { name: approvalTypeLabelOf(approvalTypeCode) }));
@@ -244,16 +244,20 @@ describe('ApprovalRouteScreen(등록) — 값 목록이 차면 등록이 열린�
     expect(within(pane).getByRole('button', { name: t.actions.submitCreate })).toBeEnabled();
   });
 
-  it('유형을 고르기 전에는 사유와 함께 잠겨 있다', async () => {
+  /* 「승인 유형을 고르세요.」 사유 글은 걷었다 — 칸의 흐린 글자 · 빨간 테두리가 말한다(사용자 지시 2026-11-25). */
+  it('유형을 고르기 전에는 등록이 잠겨 있고 칸이 고르라고 말한다', async () => {
     const { user } = renderScreen(allRoutes());
 
     await screen.findByText('재고 조정');
     await user.click(screen.getByRole('button', { name: t.actions.create }));
 
-    const pane = await screen.findByRole('region', { name: t.panes.create });
+    const pane = await screen.findByRole('dialog', { name: t.panes.create });
 
     expect(within(pane).getByRole('button', { name: t.actions.submitCreate })).toBeDisabled();
-    expect(within(pane).getByText(t.actionReasons.createNoType)).toBeInTheDocument();
+    expect(within(pane).queryByText(t.actionReasons.createNoType)).not.toBeInTheDocument();
+    expect(
+      within(pane).getByRole('combobox', { name: t.fields.approvalTypeCode }),
+    ).toHaveTextContent(t.fields.approvalTypePlaceholder);
   });
 });
 
@@ -393,7 +397,7 @@ describe('ApprovalRouteScreen(등록) — 활성 중복 선검사', () => {
     await screen.findByText('재고 조정');
     await user.click(screen.getByRole('button', { name: t.actions.create }));
 
-    const pane = await screen.findByRole('region', { name: t.panes.create });
+    const pane = await screen.findByRole('dialog', { name: t.panes.create });
 
     expect(probeRequests(requests)).toHaveLength(0);
 
@@ -407,6 +411,42 @@ describe('ApprovalRouteScreen(등록) — 활성 중복 선검사', () => {
     expect(probeRequests(requests)[0]?.url.searchParams.get('approvalTypeCode')).toBe(
       'PURCHASE_ORDER',
     );
+  });
+
+  /*
+   * 중복 확인 안내는 유형을 고른 뒤 확인이 실제로 실패했을 때만 선다(사용자 지시 2026-11-25) — 고르기 전이나 확인이 끝나
+   * 중복이 없으면 내지 않는다. 막지는 않는다(서버가 다시 검사한다).
+   */
+  it('유형을 고른 뒤 조준 조회가 실패하면 「등록할 때 다시 확인」 안내가 서고 막지 않는다', async () => {
+    const { user } = renderScreen(
+      allRoutes([{ match: isProbe, respond: () => jsonResponse({}, { status: 500 }) }]),
+    );
+
+    await screen.findByText('재고 조정');
+    await user.click(screen.getByRole('button', { name: t.actions.create }));
+    const dialog = await screen.findByRole('dialog', { name: t.panes.create });
+
+    expect(within(dialog).queryByText(t.notes.duplicateUnknownCreate)).toBeNull();
+
+    await user.click(within(dialog).getByRole('combobox', { name: t.fields.approvalTypeCode }));
+    await user.click(screen.getByRole('option', { name: approvalTypeLabelOf('PURCHASE_ORDER') }));
+
+    expect(await within(dialog).findByText(t.notes.duplicateUnknownCreate)).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: t.actions.submitCreate })).toBeEnabled();
+  });
+
+  it('유형을 고른 뒤 중복이 없으면 확인 안내가 서지 않는다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    const dialog = await openCreateForm(user);
+
+    await waitFor(() => {
+      expect(probeRequests(requests)).toHaveLength(1);
+    });
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: t.actions.submitCreate })).toBeEnabled();
+    });
+    expect(within(dialog).queryByText(t.notes.duplicateUnknownCreate)).toBeNull();
   });
 });
 
@@ -495,7 +535,7 @@ describe('ApprovalRouteScreen(등록) — 실패 배너의 매임', () => {
 
     await user.click(screen.getByRole('button', { name: t.actions.create }));
 
-    const reopened = await screen.findByRole('region', { name: t.panes.create });
+    const reopened = await screen.findByRole('dialog', { name: t.panes.create });
 
     // 선행 단언 — 폼이 실제로 다시 섰어야 「배너가 없다」가 뜻을 갖는다.
     expect(within(reopened).getByRole('button', { name: t.actions.submitCreate })).toBeDisabled();
