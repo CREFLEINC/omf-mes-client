@@ -4,21 +4,20 @@
  * 이 파일은 「언제」·「처리」 안내만 든다.
  */
 export const handoverAlertSettings = {
-  intro:
-    '처음에는 모두 OFF입니다. Zalo를 ON으로 하면 고객사 Zalo 발송량(요금과 일일 한도)이 늘어납니다.',
   panes: {
     types: '인계 작업',
-    setting: (typeName: string): string => `${typeName} 설정 상세`,
+    setting: (typeName: string): string => `${typeName} 알림 설정`,
   },
   fields: {
     plant: '공장 선택',
     plantPlaceholder: '공장을 선택하세요',
     when: '알림 시점',
     where: '처리 화면',
-    enabled: '알림 받기',
-    zalo: 'Zalo로도 보내기',
-    recipients: (count: number, max: number): string =>
-      `수신자 ${String(count)}명 (최대 ${String(max)}명)`,
+    /** 끄면 알림센터 · Zalo 모두 보내지 않는다(서버 `EVENT_DISABLED`) — 알림 전체 사용 여부. */
+    enabled: '알림 사용',
+    zalo: 'Zalo 발송',
+    recipients: (count: number): string => `수신자 ${String(count)}명`,
+    recipientMax: (max: number): string => `최대 ${String(max)}명`,
   },
   columns: {
     type: '작업명',
@@ -33,14 +32,15 @@ export const handoverAlertSettings = {
     noPhone: '전화번호 없음',
     inactive: '미사용',
     noPhoneCount: (count: number): string => `전화번호 없는 수신자 ${String(count)}명`,
+    recipientCount: (count: number): string => `${String(count)}명`,
   },
   actions: {
-    add: '추가',
-    remove: '해제',
-    revert: '되돌리기',
+    add: '수신자 추가',
+    remove: '제거',
+    revert: '변경 취소',
     save: '저장',
     reload: '다시 불러오기',
-    openConnection: '알림 연결 설정으로 이동',
+    openConnection: 'Zalo 연결 설정',
     cancel: '취소',
     discard: '버리고 이동',
   },
@@ -52,13 +52,19 @@ export const handoverAlertSettings = {
     noRecipientsWarning: '수신자가 없어 알림이 가지 않습니다.',
     /** US2-3 — 상한이 찼다. 서버도 400 으로 막는다. */
     limitReached: (max: number): string =>
-      `최대 ${String(max)}명까지 지정할 수 있습니다. 바꾸려면 먼저 한 명을 해제하세요.`,
+      `최대 ${String(max)}명까지 지정할 수 있습니다. 바꾸려면 먼저 한 명을 제거하세요.`,
     noPhoneNotice: (count: number): string =>
       `전화번호가 없는 수신자 ${String(count)}명은 알림센터로만 받습니다.`,
     zaloHelp:
       '전화번호가 있는 수신자에게 영문 Zalo 메시지를 보냅니다. Zalo 발송에 실패해도 알림센터로는 받습니다.',
-    zaloNeedsEnabled: '알림 받기를 ON으로 해야 Zalo로도 보낼 수 있습니다.',
-    zaloNotActive: 'Zalo 연결이 준비되지 않아 알림은 알림센터로만 보냅니다.',
+    zaloNeedsEnabled: '알림 사용을 ON으로 해야 Zalo로 보낼 수 있습니다.',
+    /** 연결 전 Zalo 건은 보내지 않고 대기한다(러너 CONNECTION_NOT_READY · 24시간 뒤 만료). 알림센터 행은 바로 생긴다. */
+    zaloNotActive:
+      'Zalo가 연결되지 않아 연결될 때까지 Zalo는 보내지 않습니다. 알림센터로는 바로 받습니다.',
+    /** 발송 건마다 ZBS 잔액 · OA 일일 한도를 쓴다. 한도 초과(-144 · -147)는 다음 07:00(현장 시각)으로 미룬다. */
+    zaloQuota:
+      'ON으로 하면 Zalo 발송 건수만큼 요금(ZBS 잔액)과 일일 발송 한도를 씁니다. 한도를 넘은 건은 다음 07:00(현장 시각)에 보냅니다.',
+    unsaved: '저장되지 않은 변경 사항',
     saved: '저장했습니다.',
     conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 저장하세요.',
     unsavedTitle: '저장하지 않은 변경이 있습니다',
@@ -66,7 +72,7 @@ export const handoverAlertSettings = {
   },
   errors: {
     inactiveRecipients: (count: number): string =>
-      `미사용 계정 ${String(count)}명이 있습니다. 해제해야 저장할 수 있습니다.`,
+      `미사용 계정 ${String(count)}명이 있습니다. 제거해야 저장할 수 있습니다.`,
   },
   /** 수신자 고르기 창의 상한 안내(D-11). */
   picker: {
@@ -77,7 +83,7 @@ export const handoverAlertSettings = {
   /** 종류별 「언제」(알림이 생기는 때)·「처리」(처리하는 화면). 화면 이름은 메뉴 글자 그대로다. */
   types: {
     IQC_INSPECTION_REQUESTED: {
-      when: '입하 LOT이 등록돼 IQC 의뢰가 생길 때 알립니다. 입하 1건에 한 번 보내고 LOT 수를 내용에 적습니다.',
+      when: '입하 LOT가 등록되어 IQC 검사 의뢰가 생성되면 알림을 보냅니다. 입하 건당 한 번 발송하며, 알림에 LOT 수를 표시합니다.',
       // ui-check-ignore: C-13 메뉴 이름 「검사 조회·판정」 그대로
       where: '관리웹 품질 관리 › 검사 조회·판정 (IQC 탭)',
     },
@@ -133,13 +139,12 @@ export const handoverAlertSettings = {
   },
   /** 조회 조건 · 목록 · 상세 통일 배치(omf-all-around#358). */
   workspace: {
-    filter: '조회 조건',
     list: '인계 작업 목록',
     search: '작업명 검색',
     searchPlaceholder: '작업명을 입력하세요',
     apply: '조회',
     clear: '초기화',
     selectTypeTitle: '인계 작업을 선택하세요.',
-    selectType: '인계 작업을 선택하면 알림 받기, Zalo로도 보내기, 수신자를 정할 수 있습니다.',
+    selectType: '인계 작업을 선택하면 알림 사용, Zalo 발송, 수신자를 정할 수 있습니다.',
   },
 } as const;

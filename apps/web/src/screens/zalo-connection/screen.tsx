@@ -196,32 +196,46 @@ export const ZaloConnectionScreen = () => {
 
   const fieldError = (key: string): string | undefined => errors[key] ?? replace.fieldErrors[key];
 
+  /** 연결 정보 한 줄 — 라벨은 왼쪽 같은 폭, 값은 같은 자리에서 시작한다(앱 ID · 앱 비밀 키 · 갱신 토큰). */
+  const fieldRow = (label: string, value: ReactNode, required = false): ReactNode => (
+    <div className="zalo-field-row">
+      <span className="field-label">
+        {label}
+        {required && (
+          <span className="required-mark" aria-hidden="true">
+            *
+          </span>
+        )}
+      </span>
+      <div className="zalo-field-value">{value}</div>
+    </div>
+  );
+
   const secretRow = (field: SecretField, label: string, isSet: boolean): ReactNode => {
     const value = values?.[field] ?? null;
     if (value === null) {
-      return (
-        <div className="field-cell">
-          <span className="field-label">{label}</span>
-          <div className="zalo-secret">
-            <span>{isSet ? t.values.registered : t.values.notRegistered}</span>
-            <Button
-              variant="outlined"
-              size="sm"
-              aria-label={`${label} ${t.actions.change}`}
-              onClick={() => change({ [field]: '' })}
-            >
-              {t.actions.change}
-            </Button>
-          </div>
-        </div>
+      return fieldRow(
+        label,
+        <div className="zalo-secret">
+          <span>{isSet ? t.values.registered : t.values.notRegistered}</span>
+          <Button
+            variant="outlined"
+            size="sm"
+            aria-label={`${label} ${t.actions.change}`}
+            onClick={() => change({ [field]: '' })}
+          >
+            {t.actions.change}
+          </Button>
+        </div>,
       );
     }
 
-    return (
+    /* [바꾸기]로 연 칸은 비우면 저장을 막는다(secretRequired) — 필수. */
+    return fieldRow(
+      label,
       <div className="zalo-secret">
-        {/* [바꾸기]로 연 칸은 비우면 저장을 막는다(secretRequired) — 필수. */}
         <TextField
-          label={label}
+          aria-label={label}
           required
           type="password"
           autoComplete="new-password"
@@ -232,7 +246,8 @@ export const ZaloConnectionScreen = () => {
         <Button variant="text" size="sm" onClick={() => change({ [field]: null })}>
           {t.actions.cancelChange}
         </Button>
-      </div>
+      </div>,
+      true,
     );
   };
 
@@ -273,7 +288,8 @@ export const ZaloConnectionScreen = () => {
     },
     {
       key: 'name',
-      header: w.name,
+      /* 템플릿명 열만 왼쪽 정렬 — 열 순서를 바꿔도 따라가게 머리글에 표식을 단다(app.css `.notify-name-head`). */
+      header: <span className="notify-name-head">{w.name}</span>,
       render: (row) => (
         <button
           type="button"
@@ -348,8 +364,8 @@ export const ZaloConnectionScreen = () => {
           </div>
         </dl>
         {/*
-         * 연결 오류는 안내 줄 하나로 — 읽기 쉬운 문장, 다시 등록하라는 안내, 코드 · 원문은 「상세 정보」를 펼쳐 본다
-         * (사용자 지시 2026-11-24). 나타나는 조건은 종전과 같다(재등록 필요 · 마지막 오류 코드).
+         * 연결 오류는 안내 줄 하나로 — 한글 요약, 코드 · 원문은 「오류 상세」를 펼쳐 본다(사용자 지시 2026-11-24).
+         * 갱신 토큰 교체 안내는 재등록 필요(REAUTH_REQUIRED — 서버가 갱신 토큰으로 새 토큰을 받지 못했을 때만 둔다)일 때만.
          */}
         {data.status === 'REAUTH_REQUIRED' && data.lastErrorCode === null && (
           <AlertBanner variant="error">{t.state.reauth}</AlertBanner>
@@ -358,8 +374,12 @@ export const ZaloConnectionScreen = () => {
           <AlertBanner variant="error">
             {t.state.lastError(data.lastErrorCode)}
             {data.status === 'REAUTH_REQUIRED' && <> {t.state.reauth}</>}
+            {/* 「오류 상세」 — 글 링크가 아니라 작은 테두리 단추 모양의 펼침(접힘이 처음). */}
             <details className="zalo-error-detail">
-              <summary>{t.actions.errorDetail}</summary>
+              <summary>
+                <Icon name="expand_more" size={16} aria-hidden />
+                {t.actions.errorDetail}
+              </summary>
               <dl>
                 <dt>{t.fields.errorCode}</dt>
                 <dd>{data.lastErrorCode}</dd>
@@ -385,14 +405,17 @@ export const ZaloConnectionScreen = () => {
         )}
         {flash !== null && <AlertBanner variant="success">{flash}</AlertBanner>}
 
-        <div className="form-grid zalo-form">
-          <TextField
-            label={t.fields.appId}
-            inputMode="numeric"
-            value={values.appId}
-            onChange={(event) => change({ appId: event.target.value })}
-            error={fieldError('appId')}
-          />
+        <div className="zalo-form">
+          {fieldRow(
+            t.fields.appId,
+            <TextField
+              aria-label={t.fields.appId}
+              inputMode="numeric"
+              value={values.appId}
+              onChange={(event) => change({ appId: event.target.value })}
+              error={fieldError('appId')}
+            />,
+          )}
           {secretRow('secretKey', t.fields.secretKey, data.secretKeySet)}
           {secretRow('refreshToken', t.fields.refreshToken, data.refreshTokenSet)}
         </div>
@@ -406,6 +429,34 @@ export const ZaloConnectionScreen = () => {
 
     return (
       <>
+        {/* 템플릿명 검색 — 목록 제목 바로 아래 한 줄(종전 위 조회 상자를 없앴다). 화면 안에서만 거른다. */}
+        <div className="notify-list-search">
+          <SearchInput
+            containerClassName={`notify-search-input ${FIT_PLACEHOLDER_CLASS}`}
+            label={w.search}
+            value={search}
+            placeholder={w.searchPlaceholder}
+            ref={searchRef}
+            onChange={(event) => setSearch(event.target.value)}
+            onSearch={(value) => setKeyword(value)}
+            clearLabel={messages.common.clear}
+          />
+          <div className="filter-actions field-cell-unlabeled">
+            <Button onClick={() => setKeyword(search)}>{w.apply}</Button>
+            {/* 초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */}
+            {hasChangedFilters({ q: '' }, { q: search }, { q: keyword }) && (
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setSearch('');
+                  setKeyword('');
+                }}
+              >
+                {w.clear}
+              </Button>
+            )}
+          </div>
+        </div>
         {/* 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 단추로 넘긴다(단말 관리와 같다). */}
         <div
           ref={fit.ref}
@@ -457,17 +508,6 @@ export const ZaloConnectionScreen = () => {
     return (
       <div className="zalo-template-detail">
         <h2 className="pane-title">{row.name}</h2>
-        {/* 템플릿 ID 를 넣는 법 · 비워 두면 어떻게 되는지(인계 작업 — 종전 카드 제목 옆 ⓘ). */}
-        {row.kind === 'handover' && (
-          <p className="iqc-inspection-action-note" data-tone="info" role="note">
-            <Icon name="info" size={16} aria-hidden />
-            {t.handover.notice}
-          </p>
-        )}
-        <dl className="zalo-template-meta">
-          <dt>{w.kind}</dt>
-          <dd>{w.kinds[row.kind]}</dd>
-        </dl>
         <TextField
           label={t.fields.templateId}
           value={templateIdOf(row)}
@@ -497,6 +537,13 @@ export const ZaloConnectionScreen = () => {
             </Button>
           </div>
         </div>
+        {/* 인계 작업 — 템플릿 ID 를 넣는 법 · 비워 두면 어떻게 되는지. */}
+        {row.kind === 'handover' && (
+          <p className="iqc-inspection-action-note" data-tone="info" role="note">
+            <Icon name="info" size={16} aria-hidden />
+            {t.handover.notice}
+          </p>
+        )}
       </div>
     );
   };
@@ -510,7 +557,8 @@ export const ZaloConnectionScreen = () => {
       <div className="list-detail-toolbar">
         {values !== null && (
           <div className="zalo-save-actions">
-            <span className="field-note">{t.state.saveScope}</span>
+            {/* 저장 범위 안내는 고친 것이 있을 때만 버튼 옆 한 줄. */}
+            {isDirty && <span className="field-note">{t.state.saveScope}</span>}
             <Button variant="outlined" disabled={!isDirty} onClick={revert}>
               {t.actions.revert}
             </Button>
@@ -526,37 +574,7 @@ export const ZaloConnectionScreen = () => {
         <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} inline />
       </div>
 
-      <section className="pane po-board-filter list-detail-filter" aria-label={w.filter}>
-        <div className="filter-bar notify-filter-row">
-          <SearchInput
-            containerClassName={`notify-search-input ${FIT_PLACEHOLDER_CLASS}`}
-            label={w.search}
-            value={search}
-            placeholder={w.searchPlaceholder}
-            ref={searchRef}
-            onChange={(event) => setSearch(event.target.value)}
-            onSearch={(value) => setKeyword(value)}
-            clearLabel={messages.common.clear}
-          />
-          <div className="filter-actions field-cell-unlabeled">
-            <Button onClick={() => setKeyword(search)}>{w.apply}</Button>
-            {/* 초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */}
-            {hasChangedFilters({ q: '' }, { q: search }, { q: keyword }) && (
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  setSearch('');
-                  setKeyword('');
-                }}
-              >
-                {w.clear}
-              </Button>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* 연결 상태 · 연결 정보 — 조회 상자 아래, 목록 | 상세 위에 고정(사용자 승인 배치 · #358). */}
+      {/* 위 — Zalo 연결 정보(연결 상태 · 연결 칸). 아래 — 템플릿 설정(공통 값 · 목록 | 상세). */}
       <section
         ref={aboveRef}
         className="pane zalo-pane zalo-connection-box"
@@ -565,17 +583,29 @@ export const ZaloConnectionScreen = () => {
         {connectionBox()}
       </section>
 
-      {/* 템플릿 변수 값 최대 길이 — 모든 템플릿 공통 설정이라 템플릿 영역 위에 둔다(사용자 지시 2026-11-24). */}
+      {/* 템플릿 설정 — 제목 아래 모든 템플릿 공통 값(변수 값 최대 길이) 한 줄, 단위는 입력란 옆(사용자 지시 2026-11-25). */}
       {values !== null && (
-        <section className="pane zalo-template-common" aria-label={t.fields.paramMaxLength}>
-          <TextField
-            label={`${t.fields.paramMaxLength} (${t.values.charUnit})`}
-            required
-            inputMode="numeric"
-            value={values.paramMaxLength}
-            onChange={(event) => change({ paramMaxLength: event.target.value })}
-            error={fieldError('paramMaxLength')}
-          />
+        <section className="pane zalo-template-common" aria-label={t.panes.templates}>
+          <h2 className="pane-title">{t.panes.templates}</h2>
+          <div className="zalo-field-row">
+            <span className="field-label">
+              {t.fields.paramMaxLength}
+              <span className="required-mark" aria-hidden="true">
+                *
+              </span>
+            </span>
+            <div className="zalo-field-value zalo-param-max">
+              <TextField
+                aria-label={t.fields.paramMaxLength}
+                required
+                inputMode="numeric"
+                value={values.paramMaxLength}
+                onChange={(event) => change({ paramMaxLength: event.target.value })}
+                error={fieldError('paramMaxLength')}
+              />
+              <span className="zalo-param-unit">{t.values.charUnit}</span>
+            </div>
+          </div>
         </section>
       )}
 
@@ -585,7 +615,7 @@ export const ZaloConnectionScreen = () => {
         style={{ ...split.style, ...layout.style }}
         data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
-        <section className="pane list-detail-list" aria-label={w.list}>
+        <section className="pane list-detail-list notify-fit-list" aria-label={w.list}>
           <PaneListHead title={w.list} collapse={listCollapse} />
           {templateList()}
         </section>

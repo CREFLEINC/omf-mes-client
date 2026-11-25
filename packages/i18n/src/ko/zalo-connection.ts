@@ -1,6 +1,6 @@
 /** W-CO-12 알림 연결 설정 — Zalo 연결 정보와 이벤트별 템플릿(001 신설, 결정 #20). */
 export const zaloConnection = {
-  panes: { status: '연결 상태', connection: 'Zalo 연결 정보', templates: '이벤트별 템플릿' },
+  panes: { status: '연결 상태', connection: 'Zalo 연결 정보', templates: '템플릿 설정' },
   status: {
     ACTIVE: '정상',
     NOT_CONFIGURED: '미설정',
@@ -11,8 +11,8 @@ export const zaloConnection = {
     appId: '앱 ID',
     secretKey: '앱 비밀 키',
     refreshToken: '갱신 토큰',
-    /** 템플릿 변수 값 자르기 길이 — 모든 템플릿 공통(계약 `paramMaxLength`). */
-    paramMaxLength: '템플릿 변수 값 최대 길이',
+    /** 템플릿 변수 값 자르기 길이 — 모든 템플릿 공통(계약 `paramMaxLength`). 「템플릿 설정」 제목 아래 한 줄. */
+    paramMaxLength: '변수 값 최대 길이',
     templateId: '템플릿 ID',
     expiresAt: '액세스 토큰 만료 일시',
     refreshedAt: '마지막 갱신 일시',
@@ -33,7 +33,7 @@ export const zaloConnection = {
     copyFor: (eventName: string): string => `${eventName} 템플릿 변수 복사`,
     revert: '변경 취소',
     save: '변경 사항 저장',
-    errorDetail: '상세 정보',
+    errorDetail: '오류 상세',
     reload: '다시 불러오기',
   },
   state: {
@@ -42,7 +42,7 @@ export const zaloConnection = {
     reauth: '고객사 Zalo 담당자에게 새 갱신 토큰을 받아 [바꾸기]로 등록하세요',
     deliveryOn: 'Zalo 발송 ON',
     deliveryDisabled: 'Zalo 발송 OFF',
-    /** Zalo 오류 코드를 사람 말로 — 모르는 코드는 일반 문구, 코드와 원문은 상세 정보에 둔다. */
+    /** Zalo 오류 코드를 사람 말로 — 모르는 코드는 일반 문구, 코드와 원문은 「오류 상세」에 둔다. */
     lastError: (code: string): string =>
       code === '-124'
         ? 'Zalo 액세스 토큰이 유효하지 않습니다.'
@@ -67,11 +67,10 @@ export const zaloConnection = {
     paramMaxLength: '20~400 사이의 정수를 입력하세요.',
     templateId: '템플릿 ID는 영문·숫자 1~40자이거나 비워 둡니다.',
   },
-  /** 조회 조건 · 연결 정보 · 템플릿 목록 · 상세 통일 배치(omf-all-around#358). */
+  /** 연결 정보 · 템플릿 설정(목록 · 상세) 통일 배치(omf-all-around#358). 검색은 목록 제목 아래. */
   workspace: {
-    filter: '조회 조건',
-    search: '템플릿 이름 검색',
-    searchPlaceholder: '템플릿 이름을 입력하세요',
+    search: '템플릿명 검색',
+    searchPlaceholder: '템플릿명을 입력하세요',
     apply: '조회',
     clear: '초기화',
     list: '템플릿 목록',
@@ -82,6 +81,6 @@ export const zaloConnection = {
     empty: '조건에 맞는 템플릿이 없습니다.',
     hasError: '확인 필요',
     selectTitle: '템플릿을 선택하세요.',
-    select: '고른 템플릿의 템플릿 ID 를 넣고 템플릿 변수 이름을 복사할 수 있습니다.',
+    select: '템플릿 ID를 설정하고 변수명을 복사할 수 있습니다.',
   },
 } as const;

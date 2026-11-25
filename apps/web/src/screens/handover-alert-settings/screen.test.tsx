@@ -218,7 +218,7 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     expect(rows.map((row) => within(row).getByRole('button').textContent)).toEqual(FLOW_ORDER);
     for (const row of rows) {
       expect(within(row).getAllByText(t.values.off)).toHaveLength(2);
-      expect(within(row).getByText('0')).toBeInTheDocument();
+      expect(within(row).getByText(t.values.recipientCount(0))).toBeInTheDocument();
     }
     /* 첫 행이 열리고 URL 이 그 자리를 든다. */
     expect(within(rows[0] as HTMLElement).getByRole('button')).toHaveAttribute(
@@ -227,21 +227,21 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     );
     const pane = settingPane('IQC 수입검사');
     expect(await pane.findByRole('switch', { name: t.fields.enabled })).not.toBeChecked();
-    expect(pane.getByText(t.fields.recipients(0, 5))).toBeInTheDocument();
+    expect(pane.getByText(t.fields.recipients(0))).toBeInTheDocument();
+    expect(pane.getByText(t.fields.recipientMax(5))).toBeInTheDocument();
   });
 
-  it('발송량 안내와 「언제」·「처리」 안내를 보인다', async () => {
+  it('요금 · 일일 한도 안내는 Zalo 스위치 아래, 「언제」·「처리」 안내는 제목 아래에 보인다', async () => {
     const user = userEvent.setup();
     setup();
 
-    /* 발송량 안내는 조회 상자 안 파란 안내 한 줄이다(#358). */
-    expect(await screen.findByText(t.intro)).toBeInTheDocument();
     const pane = await openType(user, '자재 출고 피킹');
+    expect(pane.getByText(t.state.zaloQuota)).toBeInTheDocument();
     expect(pane.getByText(t.types.MATERIAL_PICKING_REQUESTED.when)).toBeInTheDocument();
     expect(pane.getByText(t.types.MATERIAL_PICKING_REQUESTED.where)).toBeInTheDocument();
   });
 
-  it('Zalo 미연결이면 안내 라벨 하나에 이어 붙이고, 옆 단추로 알림 연결 설정에 간다', async () => {
+  it('Zalo 미연결이면 Zalo 스위치 아래 노란 안내와 연결 설정 단추를 두고, 누르면 알림 연결 설정에 간다', async () => {
     const user = userEvent.setup();
     const { router } = setup({
       zaloStatus: 'NOT_CONFIGURED',
@@ -249,21 +249,27 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
       dataRouter: true,
     });
 
-    const note = await screen.findByText(`${t.intro} ${t.state.zaloNotActive}`);
+    const pane = within(
+      await screen.findByRole('region', { name: t.panes.setting('IQC 수입검사') }),
+    );
+    const note = await pane.findByText(t.state.zaloNotActive);
     expect(note.closest('[role="note"]')).toHaveAttribute('data-tone', 'warning');
     expect(screen.getAllByRole('note')).toHaveLength(1);
     expect(screen.queryByRole('link', { name: t.actions.openConnection })).toBeNull();
-    await user.click(screen.getByRole('button', { name: t.actions.openConnection }));
+    await user.click(pane.getByRole('button', { name: t.actions.openConnection }));
     await waitFor(() =>
       expect(router?.state.location.pathname).toBe('/notification/zalo-connection'),
     );
   });
 
-  it('Zalo 가 연결돼 있으면 파란 안내 한 줄만 있고 이동 단추는 없다', async () => {
+  it('Zalo 가 연결돼 있으면 미연결 안내와 이동 단추가 없다', async () => {
     setup({ zaloStatus: 'ACTIVE', permissions: ['W-CO-14', 'W-CO-12'] });
 
-    const note = await screen.findByText(t.intro);
-    expect(note.closest('[role="note"]')).toHaveAttribute('data-tone', 'info');
+    const pane = within(
+      await screen.findByRole('region', { name: t.panes.setting('IQC 수입검사') }),
+    );
+    expect(await pane.findByRole('switch', { name: t.fields.zalo })).toBeInTheDocument();
+    expect(screen.queryByRole('note')).toBeNull();
     expect(screen.queryByText(t.state.zaloNotActive, { exact: false })).toBeNull();
     expect(screen.queryByRole('button', { name: t.actions.openConnection })).toBeNull();
   });
@@ -350,7 +356,7 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     });
 
     const pane = await openType(user, '적치');
-    expect(pane.getByText(t.fields.recipients(5, 5))).toBeInTheDocument();
+    expect(pane.getByText(t.fields.recipients(5))).toBeInTheDocument();
     expect(pane.getByRole('button', { name: `+ ${t.actions.add}` })).toBeDisabled();
     expect(pane.getByText(t.state.limitReached(5))).toBeInTheDocument();
   });
@@ -377,7 +383,7 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     expect(dialog.getByRole('checkbox', { name: '후보 63 선택' })).toBeDisabled();
 
     await user.click(dialog.getByRole('button', { name: '1명 추가' }));
-    expect(pane.getByText(t.fields.recipients(5, 5))).toBeInTheDocument();
+    expect(pane.getByText(t.fields.recipients(5))).toBeInTheDocument();
     await user.click(pane.getByRole('button', { name: t.actions.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -490,6 +496,26 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     await user.click(pane.getByRole('button', { name: t.actions.reload }));
     await waitFor(() => expect(pane.queryByText(t.state.conflict)).toBeNull());
     expect(pane.getByRole('switch', { name: t.fields.zalo })).not.toBeChecked();
+  });
+
+  it('고치면 「저장되지 않은 변경 사항」이 보이고, [변경 취소]는 마지막 저장값으로 되돌린다', async () => {
+    const user = userEvent.setup();
+    setup({
+      settings: {
+        PUTAWAY_REQUESTED: { enabled: true, zaloEnabled: false, recipients: [person(41)] },
+      },
+    });
+
+    const pane = await openType(user, '적치');
+    expect(pane.queryByText(t.state.unsaved)).toBeNull();
+    await user.click(pane.getByRole('switch', { name: t.fields.zalo }));
+    expect(pane.getByText(t.state.unsaved)).toBeInTheDocument();
+
+    await user.click(pane.getByRole('button', { name: t.actions.revert }));
+    expect(pane.getByRole('switch', { name: t.fields.zalo })).not.toBeChecked();
+    expect(pane.getByRole('switch', { name: t.fields.enabled })).toBeChecked();
+    expect(pane.getByText(t.fields.recipients(1))).toBeInTheDocument();
+    expect(pane.queryByText(t.state.unsaved)).toBeNull();
   });
 
   it('저장하지 않은 변경이 있으면 다른 작업으로 갈 때 확인한다', async () => {

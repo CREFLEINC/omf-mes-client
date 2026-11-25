@@ -54,6 +54,8 @@ interface SetupOptions {
   zaloStatus?: SettingSummary['zaloStatus'];
   /** 세션의 기능 권한 — W-CO-12 링크 여부를 가른다 */
   permissions?: string[];
+  /** 이동한 주소를 읽어야 할 때 — 데이터 라우터로 렌더한다 */
+  dataRouter?: boolean;
   /** 이벤트별 상세. 없으면 미설정 기본값(끔·끔·0) */
   settings?: Record<string, Partial<Setting>>;
   respondPut?: (request: Request) => Response;
@@ -173,6 +175,7 @@ const setup = (options: SetupOptions = {}) => {
     {
       fetch: createStubFetch(routes),
       route: options.route ?? `/notification/recipient-settings?department=${String(DEPT)}`,
+      dataRouter: options.dataRouter,
       session: { ...SYNTHETIC_SESSION, permissions: options.permissions ?? ['W-CO-11'] },
     },
   );
@@ -238,7 +241,7 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     ).toHaveAttribute('aria-current', 'true');
     const stopped = rows[1] as HTMLElement;
     expect(within(stopped).getAllByText(t.values.on)).toHaveLength(2);
-    expect(within(stopped).getByText('2')).toBeInTheDocument();
+    expect(within(stopped).getByText(t.values.recipientCount(2))).toBeInTheDocument();
     expect(within(stopped).getByText('⚠1')).toBeInTheDocument();
     expect(within(rows[5] as HTMLElement).getByText(t.values.approver)).toBeInTheDocument();
   });
@@ -434,26 +437,37 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     expect(pane.getByRole('switch', { name: t.fields.zalo })).not.toBeChecked();
   });
 
-  it('Zalo 연결이 ACTIVE 가 아니면 알림센터로만 간다는 배너를 보인다', async () => {
+  it('Zalo 연결이 ACTIVE 가 아니면 상세의 Zalo 스위치 아래 노란 안내를 보인다', async () => {
     setup({ zaloStatus: 'NOT_CONFIGURED' });
 
-    expect(await screen.findByText(t.state.zaloNotActive)).toBeInTheDocument();
+    const note = await screen.findByText(t.state.zaloNotActive);
+    expect(note.closest('[role="note"]')).toHaveAttribute('data-tone', 'warning');
+    expect(
+      within(screen.getByRole('region', { name: t.panes.setting('생산 실행') })).getByText(
+        t.state.zaloNotActive,
+      ),
+    ).toBeInTheDocument();
   });
 
-  it('W-CO-12 권한이 있으면 배너에 알림 연결 설정으로 가는 링크를 단다', async () => {
-    setup({ zaloStatus: 'REAUTH_REQUIRED', permissions: ['W-CO-11', 'W-CO-12'] });
+  it('W-CO-12 권한이 있으면 안내 옆 단추로 알림 연결 설정에 간다', async () => {
+    const user = userEvent.setup();
+    const { router } = setup({
+      zaloStatus: 'REAUTH_REQUIRED',
+      permissions: ['W-CO-11', 'W-CO-12'],
+      dataRouter: true,
+    });
 
-    expect(await screen.findByRole('link', { name: t.actions.openConnection })).toHaveAttribute(
-      'href',
-      '/notification/zalo-connection',
+    await user.click(await screen.findByRole('button', { name: t.actions.openConnection }));
+    await waitFor(() =>
+      expect(router?.state.location.pathname).toBe('/notification/zalo-connection'),
     );
   });
 
-  it('W-CO-12 권한이 없으면 링크 없이 안내만 보인다', async () => {
+  it('W-CO-12 권한이 없으면 이동 단추 없이 안내만 보인다', async () => {
     setup({ zaloStatus: 'NOT_CONFIGURED' });
 
     expect(await screen.findByText(t.state.zaloNotActive)).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: t.actions.openConnection })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.actions.openConnection })).toBeNull();
   });
 
   it('Zalo 연결이 ACTIVE 면 배너가 없다', async () => {
@@ -500,17 +514,20 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     expect(screen.getByRole('button', { name: '생산 실행' })).not.toHaveAttribute('aria-current');
   });
 
-  it('되돌리기는 마지막으로 읽은 값으로 돌린다', async () => {
+  it('[변경 취소]는 마지막으로 읽은 값으로 돌리고 「저장되지 않은 변경 사항」도 걷는다', async () => {
     const user = userEvent.setup();
     setup();
 
     const pane = await openEvent(user, '생산 마감');
     const enabled = await pane.findByRole('switch', { name: t.fields.enabled });
+    expect(pane.queryByText(t.state.unsaved)).toBeNull();
     await user.click(enabled);
     expect(enabled).toBeChecked();
+    expect(pane.getByText(t.state.unsaved)).toBeInTheDocument();
 
     await user.click(pane.getByRole('button', { name: t.actions.revert }));
     expect(pane.getByRole('switch', { name: t.fields.enabled })).not.toBeChecked();
     expect(pane.getByRole('button', { name: t.actions.save })).toBeDisabled();
+    expect(pane.queryByText(t.state.unsaved)).toBeNull();
   });
 });

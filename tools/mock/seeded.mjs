@@ -2338,6 +2338,151 @@ on('PUT', '/app/zalo-connection', (_p, _q, body) => {
   mockZaloVersion += 1;
   return { status: 200, created: mockZalo, headers: zaloTag() };
 });
+/*
+ * 알림 수신자 설정 · 인계작업 알림 설정(#358 확인용) — Prism 예시는 목록 요약(코드 `string` · 끔)과 상세(켬 · 수신자 1명)가
+ * 서로 다른 고정 값이라 목록은 OFF · 0명인데 상세는 켜짐 · 1명으로 보였고, 저장해도 남지 않았다. 행을 상태로 들고
+ * 요약 · 상세 · 저장이 같은 값을 쓰게 한다. 행이 없으면 서버 미설정 기본값(끔 · 끔 · 0명)이다.
+ */
+const NO_PHONE_USER_IDS = new Set([1004]);
+const recipientOf = (userId) => {
+  const user = MOCK_USERS.find((row) => row.appUserId === userId);
+  const department = MOCK_DEPARTMENTS.find((row) => row.departmentId === user?.departmentId);
+  return {
+    userId,
+    loginId: user?.loginId ?? `user${String(userId)}`,
+    name: user?.userName ?? `사용자 ${String(userId)}`,
+    departmentName: department?.departmentName ?? null,
+    active: user?.isActive ?? true,
+    hasPhone: !NO_PHONE_USER_IDS.has(userId),
+  };
+};
+on('GET', '/app/notification-settings/recipient-candidates', (_p, query) => {
+  const needle = (query.get('q') ?? '').trim().toLowerCase();
+  return page(
+    MOCK_USERS.filter(
+      (row) =>
+        row.isActive &&
+        (needle === '' || row.loginId.toLowerCase().includes(needle) || row.userName.includes(needle)),
+    ).map((row) => {
+      const recipient = recipientOf(row.appUserId);
+      return {
+        appUserId: row.appUserId,
+        loginId: row.loginId,
+        userName: row.userName,
+        departmentName: recipient.departmentName,
+        hasPhone: recipient.hasPhone,
+      };
+    }),
+    query,
+  );
+});
+/* 행 열쇠 → { enabled, zaloEnabled, userIds, version } */
+const handoverSettings = new Map([
+  ['1001:IQC_INSPECTION_REQUESTED', { enabled: true, zaloEnabled: true, userIds: [1001], version: 1 }],
+]);
+const handoverDetail = (plantId, code) => {
+  const row = handoverSettings.get(`${String(plantId)}:${code}`);
+  const body = {
+    plantId,
+    alertTypeCode: code,
+    enabled: row?.enabled ?? false,
+    zaloEnabled: row?.zaloEnabled ?? false,
+    recipients: (row?.userIds ?? []).map(recipientOf),
+  };
+  return row === undefined
+    ? { status: 200, created: body }
+    : { status: 200, created: body, headers: { ETag: `"handover-${String(plantId)}-${code}-v${String(row.version)}"` } };
+};
+on('GET', '/app/handover-alert-settings', (_p, query) => {
+  const plantId = Number(query.get('plantId') ?? 0);
+  const plant = state.plants.find((row) => row.plantId === plantId);
+  const items = [...handoverSettings.entries()]
+    .filter(([key]) => key.startsWith(`${String(plantId)}:`))
+    .map(([key, row]) => {
+      const recipients = row.userIds.map(recipientOf);
+      return {
+        alertTypeCode: key.slice(key.indexOf(':') + 1),
+        enabled: row.enabled,
+        zaloEnabled: row.zaloEnabled,
+        recipientCount: recipients.length,
+        noPhoneCount: recipients.filter((item) => !item.hasPhone).length,
+        inactiveCount: recipients.filter((item) => !item.active).length,
+      };
+    });
+  return { plantId, plantName: plant?.plantName ?? '', zaloStatus: mockZalo.status, items };
+});
+on('GET', '/app/handover-alert-settings/{plantId}/{alertTypeCode}', ({ plantId, alertTypeCode }) =>
+  handoverDetail(Number(plantId), alertTypeCode),
+);
+on('PUT', '/app/handover-alert-settings/{plantId}/{alertTypeCode}', ({ plantId, alertTypeCode }, _q, body) => {
+  const key = `${plantId}:${alertTypeCode}`;
+  const previous = handoverSettings.get(key);
+  handoverSettings.set(key, {
+    enabled: body.enabled === true,
+    zaloEnabled: body.enabled === true && body.zaloEnabled === true,
+    userIds: body.recipientUserIds ?? [],
+    version: (previous?.version ?? 0) + 1,
+  });
+  return handoverDetail(Number(plantId), alertTypeCode);
+});
+/* 부서 × 이벤트. 예시 이벤트(코드 `string`)에 생산1팀 행 하나 — 종전 상세 예시와 같은 값(켬 · 끔 · 홍길동). */
+const notificationSettings = new Map([
+  ['1001:string', { enabled: true, zaloEnabled: false, userIds: [1001], version: 1 }],
+]);
+const notificationDetail = (departmentId, eventCode) => {
+  const row = notificationSettings.get(`${String(departmentId)}:${eventCode}`);
+  const body = {
+    departmentId,
+    eventCode,
+    enabled: row?.enabled ?? false,
+    zaloEnabled: row?.zaloEnabled ?? false,
+    recipients: (row?.userIds ?? []).map((userId) => {
+      const recipient = recipientOf(userId);
+      return {
+        appUserId: userId,
+        loginId: recipient.loginId,
+        userName: recipient.name,
+        departmentName: recipient.departmentName,
+        active: recipient.active,
+        hasPhone: recipient.hasPhone,
+      };
+    }),
+  };
+  return row === undefined
+    ? { status: 200, created: body }
+    : { status: 200, created: body, headers: { ETag: `"notify-${String(departmentId)}-${eventCode}-v${String(row.version)}"` } };
+};
+on('GET', '/app/notification-settings', (_p, query) => {
+  const departmentId = Number(query.get('departmentId') ?? 0);
+  const department = MOCK_DEPARTMENTS.find((row) => row.departmentId === departmentId);
+  const items = [...notificationSettings.entries()]
+    .filter(([key]) => key.startsWith(`${String(departmentId)}:`))
+    .map(([key, row]) => {
+      const recipients = row.userIds.map(recipientOf);
+      return {
+        eventCode: key.slice(key.indexOf(':') + 1),
+        enabled: row.enabled,
+        zaloEnabled: row.zaloEnabled,
+        recipientCount: recipients.length,
+        noPhoneCount: recipients.filter((item) => !item.hasPhone).length,
+      };
+    });
+  return { departmentId, departmentName: department?.departmentName ?? '', zaloStatus: mockZalo.status, items };
+});
+on('GET', '/app/notification-settings/{departmentId}/{eventCode}', ({ departmentId, eventCode }) =>
+  notificationDetail(Number(departmentId), eventCode),
+);
+on('PUT', '/app/notification-settings/{departmentId}/{eventCode}', ({ departmentId, eventCode }, _q, body) => {
+  const key = `${departmentId}:${eventCode}`;
+  const previous = notificationSettings.get(key);
+  notificationSettings.set(key, {
+    enabled: body.enabled === true,
+    zaloEnabled: body.zaloEnabled === true,
+    userIds: body.recipientUserIds ?? [],
+    version: (previous?.version ?? 0) + 1,
+  });
+  return notificationDetail(Number(departmentId), eventCode);
+});
 on('GET', '/mdm/code-values', (_p, query) => {
   const group = query.get('codeGroupCode') ?? '';
   const values = state.codeValues[group] ?? [];

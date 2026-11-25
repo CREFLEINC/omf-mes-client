@@ -14,7 +14,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
 import { useClientPage } from '../../patterns/client-page';
 import { useFitColumns } from '../../patterns/column-fit';
@@ -84,6 +84,7 @@ export const AlarmRecipientSettingsScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const toast = useToast();
+  const navigate = useNavigate();
   const zaloNoteId = useId();
   const { session } = useSession();
   /* W-CO-12 권한이 있을 때만 연결 설정으로 가는 길을 단다 — 사이드바와 같은 판정이다. */
@@ -198,11 +199,13 @@ export const AlarmRecipientSettingsScreen = () => {
   const eventColumns: Column<NotificationEvent>[] = [
     {
       key: 'event',
-      header: t.columns.event,
+      /* 이벤트 열만 왼쪽 정렬 — 열 순서를 바꿔도 따라가게 머리글에 표식을 단다(app.css `.notify-name-head`). */
+      header: <span className="notify-name-head">{t.columns.event}</span>,
       render: (event) => (
-        <Button
-          variant={event.eventCode === selectedCode ? 'filled' : 'text'}
-          size="sm"
+        /* 링크·단추처럼 보이지 않는다 — 줄 아무 곳이나 눌러 고른다. 고른 줄은 기존 강조(인계작업 알림 설정과 같다). */
+        <button
+          type="button"
+          className="users-roles-row-pick handover-type-button"
           aria-current={event.eventCode === selectedCode ? 'true' : undefined}
           onClick={() => {
             if (departmentId === null) return;
@@ -213,7 +216,7 @@ export const AlarmRecipientSettingsScreen = () => {
           }}
         >
           {eventLabel(event, event.eventCode)}
-        </Button>
+        </button>
       ),
     },
     {
@@ -233,13 +236,10 @@ export const AlarmRecipientSettingsScreen = () => {
         if (isApproverEvent(event)) return t.values.approver;
         const item = summaryOf(event.eventCode);
         return (
-          <span>
-            {String(item.recipientCount)}
+          <span className="handover-recipient-count">
+            {t.values.recipientCount(item.recipientCount)}
             {item.noPhoneCount > 0 && (
-              <>
-                {' '}
-                <Chip size="sm" status="warning">{`⚠${String(item.noPhoneCount)}`}</Chip>
-              </>
+              <Chip size="sm" status="warning">{`⚠${String(item.noPhoneCount)}`}</Chip>
             )}
           </span>
         );
@@ -266,6 +266,9 @@ export const AlarmRecipientSettingsScreen = () => {
   const loadError = (error: unknown, onRetry: () => void) => (
     <LoadErrorAlert error={error} onRetry={onRetry} />
   );
+
+  /* 연결이 없어도 Switch 는 켤 수 있다 — 지금은 Zalo 가 나가지 않는다는 사실만 밝힌다. */
+  const zaloNotActive = summary.data !== undefined && summary.data.zaloStatus !== 'ACTIVE';
 
   const settingBody = () => {
     if (detail.isError) return loadError(detail.error, () => void detail.refetch());
@@ -297,7 +300,7 @@ export const AlarmRecipientSettingsScreen = () => {
           </div>
         )}
 
-        <div className="alarm-switches">
+        <div className="alarm-switches notify-switches">
           <Switch
             label={t.fields.enabled}
             checked={draft.enabled}
@@ -320,6 +323,28 @@ export const AlarmRecipientSettingsScreen = () => {
               <span id={zaloNoteId} className="field-note">
                 {t.state.zaloNeedsEnabled}
               </span>
+            )}
+            {/* 요금 · 일일 한도 — Zalo 스위치 바로 아래 짧게(인계작업 알림 설정과 같다). */}
+            <span className="field-note">{t.state.zaloQuota}</span>
+            {/* Zalo 미연결 — 종전 조회 상자 아래 노란 줄을 Zalo 스위치 바로 아래로, 이동은 테두리 단추. */}
+            {zaloNotActive && (
+              <div className="notify-zalo-status">
+                <p className="iqc-inspection-action-note" data-tone="warning" role="note">
+                  <Icon name="warning" size={16} aria-hidden />
+                  {t.state.zaloNotActive}
+                </p>
+                {canOpenConnection && (
+                  <Button
+                    variant="outlined"
+                    size="sm"
+                    onClick={() => {
+                      void navigate(ZALO_CONNECTION_PATH);
+                    }}
+                  >
+                    {t.actions.openConnection}
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -457,80 +482,67 @@ export const AlarmRecipientSettingsScreen = () => {
 
     return (
       <>
-        <h2 className="pane-title notify-detail-title">
-          {t.panes.setting(eventLabel(selectedEvent, selectedCode))}
-        </h2>
+        <div className="notify-detail-head">
+          <h2 className="pane-title">{t.panes.setting(eventLabel(selectedEvent, selectedCode))}</h2>
+          {/* 고친 값이 저장값과 다르면 알린다 — 목록의 ON/OFF · 명 수는 저장값이다. */}
+          {isDirty && (
+            <Chip size="sm" status="warning">
+              {t.state.unsaved}
+            </Chip>
+          )}
+        </div>
         {settingBody()}
       </>
     );
   };
 
-  const filter = (
-    <>
-      <div className="filter-bar notify-filter-row">
-        {departments.isError ? (
-          loadError(departments.error, () => void departments.refetch())
-        ) : departments.data !== undefined && departments.data.items.length === 0 ? (
-          <EmptyState size="sm" title={t.state.noDepartments} />
-        ) : (
-          <SelectField
-            required
-            label={t.fields.department}
-            options={departmentOptions}
-            value={departmentId === null ? '' : String(departmentId)}
-            placeholder={t.fields.departmentPlaceholder}
-            disabled={departments.isPending}
-            note={departments.data?.truncated === true ? t.state.departmentsTruncated : undefined}
-            onChange={(value) => {
-              if (value === String(departmentId)) return;
-              requestMove({ department: value, event: selectedCode });
-            }}
-          />
-        )}
-        {/* 부서는 고르는 즉시 적용한다. [조회]는 그 부서의 목록을 다시 부르고, [초기화]는 부서를 고르기 전으로 —
-            부서가 골라져 있을 때만 보인다(#358). */}
-        <div className="filter-actions field-cell-unlabeled">
+  /* 목록 제목 바로 아래 — 부서 선택 · [조회] · [초기화] 한 줄(종전 조회 상자를 없앴다 · 인계작업 알림 설정과 같은 자리). */
+  const listSearch = (
+    <div className="notify-list-search">
+      {departments.isError ? (
+        loadError(departments.error, () => void departments.refetch())
+      ) : departments.data !== undefined && departments.data.items.length === 0 ? (
+        <EmptyState size="sm" title={t.state.noDepartments} />
+      ) : (
+        <SelectField
+          required
+          label={t.fields.department}
+          options={departmentOptions}
+          value={departmentId === null ? '' : String(departmentId)}
+          placeholder={t.fields.departmentPlaceholder}
+          disabled={departments.isPending}
+          note={departments.data?.truncated === true ? t.state.departmentsTruncated : undefined}
+          onChange={(value) => {
+            if (value === String(departmentId)) return;
+            requestMove({ department: value, event: selectedCode });
+          }}
+        />
+      )}
+      {/* 부서는 고르는 즉시 적용한다. [조회]는 그 부서의 목록을 다시 부르고, [초기화]는 부서를 고르기 전으로 —
+          부서가 골라져 있을 때만 보인다(#358). */}
+      <div className="filter-actions field-cell-unlabeled">
+        <Button
+          onClick={() => {
+            void departments.refetch();
+            if (departmentId === null) return;
+            void events.refetch();
+            void summary.refetch();
+          }}
+        >
+          {w.apply}
+        </Button>
+        {departmentId !== null && (
           <Button
+            variant="outlined"
             onClick={() => {
-              void departments.refetch();
-              if (departmentId === null) return;
-              void events.refetch();
-              void summary.refetch();
+              requestMove({ department: '', event: null });
             }}
           >
-            {w.apply}
+            {w.clear}
           </Button>
-          {departmentId !== null && (
-            <Button
-              variant="outlined"
-              onClick={() => {
-                requestMove({ department: '', event: null });
-              }}
-            >
-              {w.clear}
-            </Button>
-          )}
-        </div>
+        )}
       </div>
-
-      {/* 연결이 없어도 Switch 는 켤 수 있다 — 지금은 알림센터로만 간다는 사실만 밝힌다. */}
-      {/* Zalo 미연결 안내 — 다른 화면과 같은 노란 안내 한 줄 + 끝에 이동 링크(사용자 지시 2026-11-24). */}
-      {summary.data !== undefined && summary.data.zaloStatus !== 'ACTIVE' && (
-        <p
-          className="iqc-inspection-action-note notify-filter-note"
-          data-tone="warning"
-          role="note"
-        >
-          <Icon name="warning" size={16} aria-hidden />
-          {t.state.zaloNotActive}
-          {canOpenConnection && (
-            <Link className="notify-filter-note-link" to={ZALO_CONNECTION_PATH}>
-              {t.actions.openConnection}
-            </Link>
-          )}
-        </p>
-      )}
-    </>
+    </div>
   );
 
   return (
@@ -538,12 +550,17 @@ export const AlarmRecipientSettingsScreen = () => {
       {/* 머리글(경로 · 화면 이름)은 두지 않는다 — 사이드바가 위치를 말한다(단말 관리와 같은 틀 · #358). */}
       <ListDetailWorkspace
         storageKey="omf-mes:alarm-recipient-settings"
-        filter={{ label: w.filter, content: filter }}
         list={{
           label: w.list,
           title: w.list,
+          className: 'notify-fit-list',
           count: departmentId === null ? undefined : events.data?.length,
-          content: eventList(),
+          content: (
+            <>
+              {listSearch}
+              {eventList()}
+            </>
+          ),
         }}
         detail={{
           label:

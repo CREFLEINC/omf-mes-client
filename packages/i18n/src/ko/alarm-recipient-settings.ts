@@ -3,12 +3,13 @@
  * 수신자는 개인 지정만 남았고 미리보기는 없앴다(결정 #19).
  */
 export const alarmRecipientSettings = {
-  panes: { events: '이벤트', setting: (eventName: string): string => `${eventName} 설정 상세` },
+  panes: { events: '이벤트', setting: (eventName: string): string => `${eventName} 알림 설정` },
   fields: {
     department: '부서 선택',
     departmentPlaceholder: '부서를 선택하세요',
-    enabled: '알림 받기',
-    zalo: 'Zalo로도 보내기',
+    /** 끄면 알림센터 · Zalo 모두 보내지 않는다(서버 `EVENT_DISABLED`) — 알림 전체 사용 여부. */
+    enabled: '알림 사용',
+    zalo: 'Zalo 발송',
     recipients: (count: number): string => `수신자 ${String(count)}명`,
   },
   values: {
@@ -23,14 +24,15 @@ export const alarmRecipientSettings = {
     alreadyAdded: '이미 추가됨',
     selectRow: (userName: string): string => `${userName} 선택`,
     noDepartment: '—',
+    recipientCount: (count: number): string => `${String(count)}명`,
   },
   actions: {
-    add: '추가',
-    remove: '해제',
-    revert: '되돌리기',
+    add: '수신자 추가',
+    remove: '제거',
+    revert: '변경 취소',
     save: '저장',
     reload: '다시 불러오기',
-    openConnection: '알림 연결 설정으로 이동',
+    openConnection: 'Zalo 연결 설정',
     cancel: '취소',
     discard: '버리고 이동',
     search: '검색',
@@ -51,12 +53,18 @@ export const alarmRecipientSettings = {
     noPhoneNotice: (count: number): string =>
       `전화번호가 없는 수신자 ${String(count)}명은 알림센터로만 받습니다.`,
     zaloHelp: 'Zalo 발송에 실패해도 알림센터로는 받습니다.',
-    zaloNeedsEnabled: '알림 받기를 ON으로 해야 Zalo로도 보낼 수 있습니다.',
+    zaloNeedsEnabled: '알림 사용을 ON으로 해야 Zalo로 보낼 수 있습니다.',
+    /** 발송 건마다 ZBS 잔액 · OA 일일 한도를 쓴다. 한도 초과(-144 · -147)는 다음 07:00(현장 시각)으로 미룬다. */
+    zaloQuota:
+      'ON으로 하면 Zalo 발송 건수만큼 요금(ZBS 잔액)과 일일 발송 한도를 씁니다. 한도를 넘은 건은 다음 07:00(현장 시각)에 보냅니다.',
+    unsaved: '저장되지 않은 변경 사항',
     approverNotice: '그 차례의 결재자가 받습니다. 결재선 정의에서 정한 사람입니다.',
     saved: '저장했습니다.',
     /** US4-6 — 409. */
     conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 저장하세요.',
-    zaloNotActive: 'Zalo 연결이 준비되지 않아 알림은 알림센터로만 보냅니다.',
+    /** 연결 전 Zalo 건은 보내지 않고 대기한다(러너 CONNECTION_NOT_READY · 24시간 뒤 만료). 알림센터 행은 바로 생긴다. */
+    zaloNotActive:
+      'Zalo가 연결되지 않아 연결될 때까지 Zalo는 보내지 않습니다. 알림센터로는 바로 받습니다.',
     unsavedTitle: '저장하지 않은 변경이 있습니다',
     unsavedBody: '이동하면 고친 내용이 사라집니다. 버리고 이동할까요?',
     candidatesEmpty: '검색 결과가 없습니다.',
@@ -70,7 +78,7 @@ export const alarmRecipientSettings = {
   },
   errors: {
     /** 서버도 400 으로 막는다 — 화면이 먼저 알린다. */
-    inactiveRecipient: '미사용 사용자는 수신자로 둘 수 없습니다. 해제한 뒤 저장하세요.',
+    inactiveRecipient: '미사용 사용자는 수신자로 둘 수 없습니다. 제거한 뒤 저장하세요.',
     lookupFailed: '목록을 불러오지 못했습니다. 다시 시도해 주세요.',
   },
   columns: {
@@ -83,13 +91,12 @@ export const alarmRecipientSettings = {
     department: '부서',
     phone: '전화번호',
   },
-  /** 조회 조건 · 목록 · 상세 통일 배치(omf-all-around#358). */
+  /** 목록(부서 선택은 목록 제목 아래) · 상세 통일 배치(omf-all-around#358). */
   workspace: {
-    filter: '조회 조건',
     list: '이벤트 목록',
     apply: '조회',
     clear: '초기화',
     selectEventTitle: '이벤트를 선택하세요.',
-    selectEvent: '부서와 이벤트를 선택하면 알림 받기, Zalo로도 보내기, 수신자를 정할 수 있습니다.',
+    selectEvent: '부서와 이벤트를 선택하면 알림 사용, Zalo 발송, 수신자를 정할 수 있습니다.',
   },
 } as const;

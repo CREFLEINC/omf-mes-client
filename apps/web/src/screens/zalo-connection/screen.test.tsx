@@ -138,6 +138,24 @@ describe('ZaloConnectionScreen', () => {
     expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
   });
 
+  it('템플릿 ID 만 고쳐도 저장이 열리고, 저장 범위 안내는 고친 것이 있을 때만 보인다', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    const save = await screen.findByRole('button', { name: t.actions.save });
+    expect(save).toBeDisabled();
+    expect(screen.queryByText(t.state.saveScope)).toBeNull();
+
+    await user.type(await openTemplate(user, '생산 실행'), 'TPL01');
+    expect(save).toBeEnabled();
+    expect(screen.getByText(t.state.saveScope)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.actions.revert }));
+    expect(screen.getByRole('textbox', { name: t.fields.templateId })).toHaveValue('');
+    expect(save).toBeDisabled();
+    expect(screen.queryByText(t.state.saveScope)).toBeNull();
+  });
+
   it('US7-1 비밀값은 다시 보이지 않고 「등록됨」으로만 보인다', async () => {
     setup();
 
@@ -212,8 +230,8 @@ describe('ZaloConnectionScreen', () => {
     expect(screen.getByRole('button', { name: t.actions.reload })).toBeInTheDocument();
   });
 
-  /* 연결 오류는 안내 줄 하나에 읽기 쉬운 문장 + 재등록 안내, 코드 · 원문은 「상세 정보」 안(사용자 지시 2026-11-24). */
-  it('재등록 필요면 「연결 오류」 배지와 오류 안내 한 줄, 상세 정보, 「Zalo 발송 꺼짐」을 보인다', async () => {
+  /* 연결 오류는 안내 줄 하나에 한글 요약 + 재등록 안내, 코드 · 원문은 「오류 상세」 안(사용자 지시 2026-11-24). */
+  it('재등록 필요면 「연결 오류」 배지와 오류 안내 한 줄, 오류 상세, 「Zalo 발송 OFF」를 보인다', async () => {
     setup({
       data: connection({
         status: 'REAUTH_REQUIRED',

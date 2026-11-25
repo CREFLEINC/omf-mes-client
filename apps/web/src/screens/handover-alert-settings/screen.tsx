@@ -105,7 +105,7 @@ const TYPE_CLEARED = 'none';
  * W-CO-14 인계작업 알림 설정 — 공장 × 인계 작업 종류(피처 002, omf-all-around#190).
  *
  * W-CO-11 과 같은 2단(목록 + 상세)·저장 규칙이다. 공장과 종류는 URL(`?plant=&type=`)이 든다.
- * 처음에는 10종 모두 꺼져 있고(행 없음), 담당자는 최대 5명이다.
+ * 처음에는 모두 꺼져 있고(행 없음), 담당자는 최대 5명이다. 검색은 목록 제목 아래 한 줄(#358).
  */
 export const HandoverAlertSettingsScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -216,7 +216,8 @@ export const HandoverAlertSettingsScreen = () => {
   const typeColumns: Column<HandoverAlertType>[] = [
     {
       key: 'type',
-      header: t.columns.type,
+      /* 작업명 열만 왼쪽 정렬 — 열 순서를 바꿔도 따라가게 머리글에 표식을 단다(app.css `.notify-name-head`). */
+      header: <span className="notify-name-head">{t.columns.type}</span>,
       render: (type) => (
         /* 링크·단추처럼 보이지 않는다 — 줄 아무 곳이나 눌러 고른다. 이 단추는 키보드·화면 낭독기의 자리다(단말 관리와 같다). */
         <button
@@ -253,7 +254,7 @@ export const HandoverAlertSettingsScreen = () => {
         const item = summaryOf(type.alertTypeCode);
         return (
           <span className="handover-recipient-count">
-            {String(item.recipientCount)}
+            {t.values.recipientCount(item.recipientCount)}
             {item.noPhoneCount > 0 && (
               <Chip
                 size="sm"
@@ -301,6 +302,9 @@ export const HandoverAlertSettingsScreen = () => {
     <LoadErrorAlert error={error} onRetry={onRetry} />
   );
 
+  const zaloNotActive =
+    summary.data?.zaloStatus !== undefined && summary.data.zaloStatus !== 'ACTIVE';
+
   const settingBody = () => {
     if (detail.isError) return loadError(detail.error, () => void detail.refetch());
     if (detail.isPending || draft === null) return <Skeleton variant="rect" height="14rem" />;
@@ -342,7 +346,7 @@ export const HandoverAlertSettingsScreen = () => {
           </dl>
         )}
 
-        <div className="alarm-switches">
+        <div className="alarm-switches notify-switches">
           <Switch
             label={t.fields.enabled}
             checked={draft.enabled}
@@ -366,12 +370,35 @@ export const HandoverAlertSettingsScreen = () => {
                 {t.state.zaloNeedsEnabled}
               </span>
             )}
+            {/* 요금 · 일일 한도 — Zalo 스위치 바로 아래 짧게(종전 조회 상자 위 긴 안내를 옮겼다). */}
+            <span className="field-note">{t.state.zaloQuota}</span>
+            {/* Zalo 미연결 — 사실과 연결 설정으로 가는 단추를 Zalo 스위치 바로 아래에. */}
+            {zaloNotActive && (
+              <div className="notify-zalo-status">
+                <p className="iqc-inspection-action-note" data-tone="warning" role="note">
+                  <Icon name="warning" size={16} aria-hidden />
+                  {t.state.zaloNotActive}
+                </p>
+                {canOpenConnection && (
+                  <Button
+                    variant="outlined"
+                    size="sm"
+                    onClick={() => {
+                      void navigate(ZALO_CONNECTION_PATH);
+                    }}
+                  >
+                    {t.actions.openConnection}
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="alarm-recipients">
           <div className="alarm-recipients-heading">
-            <h3>{t.fields.recipients(draft.recipients.length, MAX_RECIPIENTS)}</h3>
+            <h3>{t.fields.recipients(draft.recipients.length)}</h3>
+            <span className="notify-recipient-max">{t.fields.recipientMax(MAX_RECIPIENTS)}</span>
             <Button
               variant="outlined"
               size="sm"
@@ -512,87 +539,63 @@ export const HandoverAlertSettingsScreen = () => {
 
     return (
       <>
-        <h2 className="pane-title notify-detail-title">
-          {t.panes.setting(typeName(selectedType))}
-        </h2>
+        <div className="notify-detail-head">
+          <h2 className="pane-title">{t.panes.setting(typeName(selectedType))}</h2>
+          {/* 고친 값이 저장값과 다르면 알린다 — 목록의 ON/OFF · 명 수는 저장값이다. */}
+          {isDirty && (
+            <Chip size="sm" status="warning">
+              {t.state.unsaved}
+            </Chip>
+          )}
+        </div>
         {settingBody()}
       </>
     );
   };
 
-  const zaloNotActive =
-    summary.data?.zaloStatus !== undefined && summary.data.zaloStatus !== 'ACTIVE';
-
-  const filter = (
-    <>
-      <div className="filter-bar notify-filter-row">
-        {/* US2-6 — 고를 공장이 하나뿐이면 칸을 두지 않는다. 공장은 고르는 즉시 적용한다. */}
-        {(plants.data?.length ?? 0) > 1 && (
-          <SelectField
-            label={t.fields.plant}
-            options={plantOptions}
-            value={plantId === null ? '' : String(plantId)}
-            placeholder={t.fields.plantPlaceholder}
-            onChange={(value) => {
-              if (value === String(plantId)) return;
-              if (selectedCode === null && typeParam !== TYPE_CLEARED) return;
-              requestMove({ plant: value, type: selectedCode ?? TYPE_CLEARED });
-            }}
-          />
-        )}
-        <SearchInput
-          containerClassName={`notify-search-input ${FIT_PLACEHOLDER_CLASS}`}
-          label={w.search}
-          value={search}
-          placeholder={w.searchPlaceholder}
-          ref={searchRef}
-          onChange={(event) => setSearch(event.target.value)}
-          onSearch={(value) => setKeyword(value)}
-          clearLabel={messages.common.clear}
+  /* 목록 제목 바로 아래 — (공장이 여럿이면 공장 칸) · 작업명 검색 · [조회] 한 줄(종전 조회 상자를 없앴다). */
+  const listSearch = (
+    <div className="notify-list-search">
+      {/* US2-6 — 고를 공장이 하나뿐이면 칸을 두지 않는다. 공장은 고르는 즉시 적용한다. */}
+      {(plants.data?.length ?? 0) > 1 && (
+        <SelectField
+          label={t.fields.plant}
+          options={plantOptions}
+          value={plantId === null ? '' : String(plantId)}
+          placeholder={t.fields.plantPlaceholder}
+          onChange={(value) => {
+            if (value === String(plantId)) return;
+            if (selectedCode === null && typeParam !== TYPE_CLEARED) return;
+            requestMove({ plant: value, type: selectedCode ?? TYPE_CLEARED });
+          }}
         />
-        <div className="filter-actions field-cell-unlabeled">
-          <Button onClick={() => setKeyword(search)}>{w.apply}</Button>
-          {/* 초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */}
-          {hasChangedFilters({ q: '' }, { q: search }, { q: keyword }) && (
-            <Button
-              variant="outlined"
-              onClick={() => {
-                setSearch('');
-                setKeyword('');
-              }}
-            >
-              {w.clear}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/*
-       * 안내 라벨 하나(사용자 지시 2026-11-24) — 처음엔 모두 OFF · Zalo 발송량 안내에, Zalo 미연결이면 그 사실을 같은 라벨에
-       * 이어 붙이고 노란 경고로 바꾼다. 연결 설정으로 가는 길은 라벨 옆 작은 테두리 단추다.
-       */}
-      <div className="notify-filter-note notify-filter-note-row">
-        <p
-          className="iqc-inspection-action-note"
-          data-tone={zaloNotActive ? 'warning' : 'info'}
-          role="note"
-        >
-          <Icon name={zaloNotActive ? 'warning' : 'info'} size={16} aria-hidden />
-          {zaloNotActive ? `${t.intro} ${t.state.zaloNotActive}` : t.intro}
-        </p>
-        {zaloNotActive && canOpenConnection && (
+      )}
+      <SearchInput
+        containerClassName={`notify-search-input ${FIT_PLACEHOLDER_CLASS}`}
+        label={w.search}
+        value={search}
+        placeholder={w.searchPlaceholder}
+        ref={searchRef}
+        onChange={(event) => setSearch(event.target.value)}
+        onSearch={(value) => setKeyword(value)}
+        clearLabel={messages.common.clear}
+      />
+      <div className="filter-actions field-cell-unlabeled">
+        <Button onClick={() => setKeyword(search)}>{w.apply}</Button>
+        {/* 초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */}
+        {hasChangedFilters({ q: '' }, { q: search }, { q: keyword }) && (
           <Button
             variant="outlined"
-            size="sm"
             onClick={() => {
-              void navigate(ZALO_CONNECTION_PATH);
+              setSearch('');
+              setKeyword('');
             }}
           >
-            {t.actions.openConnection}
+            {w.clear}
           </Button>
         )}
       </div>
-    </>
+    </div>
   );
 
   return (
@@ -600,12 +603,17 @@ export const HandoverAlertSettingsScreen = () => {
       {/* 머리글(경로 · 화면 이름)은 두지 않는다 — 사이드바가 위치를 말한다(단말 관리와 같은 틀 · #358). */}
       <ListDetailWorkspace
         storageKey="omf-mes:handover-alert-settings"
-        filter={{ label: w.filter, content: filter }}
         list={{
           label: w.list,
           title: w.list,
+          className: 'notify-fit-list',
           count: plantId === null || types.data === undefined ? undefined : shownTypes.length,
-          content: typeList(),
+          content: (
+            <>
+              {listSearch}
+              {typeList()}
+            </>
+          ),
         }}
         detail={{
           label:

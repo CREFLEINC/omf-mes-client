@@ -39442,32 +39442,10 @@ body:has(
   cursor: pointer;
 }
 
-/* 상세 상자 — 제목 줄과 본문 사이를 띄운다. */
-.list-detail-detail > .notify-detail-title {
-  margin-bottom: var(--space-4);
-}
-
 /* 이름 검색 칸 — 흐린 문구(「~을 입력하세요」)가 다 보이는 폭만(단말 관리 검색 칸과 같은 방식). */
 .notify-filter-row > .notify-search-input {
   flex: 0 0 16rem;
   width: 16rem;
-}
-
-/* 조회 상자 안 안내 · 경고 줄 — 조회 줄 아래, 상자 폭을 다 쓴다. */
-.list-detail-filter > .notify-filter-note {
-  margin: 0;
-}
-
-.list-detail-filter > .notify-filter-note:not(:last-child) {
-  margin-bottom: var(--space-3);
-}
-
-/* 인계작업 알림 — 안내 라벨 하나 + 옆 [알림 연결 설정으로 이동] 단추(사용자 지시 2026-11-24). */
-.notify-filter-note-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
 }
 
 /*
@@ -39488,10 +39466,6 @@ body:has(
 
 .zalo-connection-head > .pane-title {
   margin: 0;
-}
-
-.zalo-connection-head > .zalo-connection-actions {
-  margin: 0 0 0 auto;
 }
 
 /* 연결 정보 칸 셋을 한 줄에 — 좁으면 둘씩. 공통 「템플릿 변수 값 최대 길이」는 템플릿 영역 위로 옮겼다(사용자 지시 2026-11-24). */
@@ -39602,21 +39576,6 @@ body:has(
 
 .zalo-template-detail > .pane-title,
 .zalo-template-detail > .iqc-inspection-action-note {
-  margin: 0;
-}
-
-.zalo-template-meta {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--space-2) var(--space-4);
-  margin: 0;
-}
-
-.zalo-template-meta dt {
-  color: var(--on-surface-variant);
-}
-
-.zalo-template-meta dd {
   margin: 0;
 }
 
@@ -39969,14 +39928,6 @@ body:has(
   width: 100%;
 }
 
-/* 알림 수신자 · 인계작업 알림 — Zalo 미연결 노란 안내 한 줄 끝의 이동 링크(사용자 지시 2026-11-24). */
-.notify-filter-note > .notify-filter-note-link {
-  margin-left: var(--space-2);
-  color: inherit;
-  font-weight: 600;
-  text-decoration: underline;
-}
-
 /* 작업자 상세 — 읽기 전용 안내 한 줄과 아래 칸 사이(사용자 지시 2026-11-24 · 사용자 관리 상세와 같은 머리). */
 .pane > .iqc-inspection-action-note.common-code-readonly-note {
   justify-self: start;
@@ -40209,4 +40160,280 @@ body:has(
   flex-basis: 100%;
   width: 0;
   min-width: 100%;
+}
+
+/*
+ * 알림 화면 통일 2차(사용자 지시 2026-11-25 · #358) — 알림 연결 설정 · 인계작업 알림 설정 · 알림 수신자 설정.
+ * 위 조회 상자를 걷고 검색(· 부서 선택)을 목록 제목 바로 아래 한 줄로 둔다. 목록 | 상세는 윗선을 맞추고 높이는 내용만큼,
+ * 쪽 넘김은 표 바로 아래(목록 아래 빈 띠 없이). 좌우 배치일 때만 — 상하 배치는 종전처럼 끌어 정한 높이 안에서 구른다.
+ */
+.po-board-split.list-detail-split:not(.is-stacked):has(> .notify-fit-list) {
+  height: auto;
+  min-height: 0;
+  align-items: start;
+}
+
+.list-detail-split:not(.is-stacked) > .list-detail-list.notify-fit-list {
+  max-height: none;
+}
+
+.list-detail-split:not(.is-stacked):has(> .notify-fit-list) > .list-detail-detail {
+  height: auto;
+}
+
+.list-detail-split:not(.is-stacked) > .list-detail-list.notify-fit-list .notify-list-table {
+  flex: 0 0 auto;
+}
+
+.list-detail-split:not(.is-stacked) > .list-detail-list.notify-fit-list > .page-nav {
+  position: static;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* 목록 폭을 좁히면 쪽 넘김이 상자 밖으로 잘리지 않고 두 줄로 접힌다. */
+.list-detail-list.notify-fit-list > .page-nav,
+.list-detail-list.notify-fit-list > .page-nav > .page-nav-right {
+  flex-wrap: wrap;
+  row-gap: var(--space-2);
+}
+
+/* 목록 제목 아래 검색 한 줄 — 검색 칸(· 부서 · 공장)과 [조회]([초기화])를 나란히, 좁으면 접힌다. */
+.notify-list-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+.notify-list-search > .notify-search-input {
+  flex: 0 1 16rem;
+  width: auto;
+  min-width: 10rem;
+}
+
+.notify-list-search > .filter-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-2);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.notify-list-search > .field-cell:not(.filter-actions) {
+  flex: 0 1 16rem;
+  min-width: 10rem;
+  margin: 0;
+}
+
+/*
+ * 이름 열(템플릿명 · 작업명 · 이벤트)만 왼쪽 정렬 — 나머지(알림 · Zalo · 수신자 · 구분 · 템플릿 ID)는 가운데 그대로.
+ * `.inspection-queue-table … :nth-child(n)×3` 가운데 정렬보다 세게 건다.
+ */
+.list-detail-list .notify-list-table.inspection-queue-table table th:has(.notify-name-head):nth-child(n),
+.list-detail-list
+  .notify-list-table.inspection-queue-table
+  table
+  td:has(> .users-roles-row-pick):nth-child(n) {
+  text-align: start;
+}
+
+.list-detail-list .notify-list-table table th:has(.notify-name-head) > .col-head,
+.list-detail-list .notify-list-table table td > .users-roles-row-pick {
+  justify-content: flex-start;
+  text-align: start;
+}
+
+/* 상세 머리 — 「○○ 알림 설정」 제목 + 고친 값이 있으면 「저장되지 않은 변경 사항」 칩. */
+.list-detail-detail .notify-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.list-detail-detail .notify-detail-head > .pane-title {
+  margin: 0;
+}
+
+/* 두 스위치(알림 사용 · Zalo 발송) — 같은 왼쪽 선, 같은 간격. Zalo 아래 안내 · 미연결 줄은 스위치 바로 아래. */
+.list-detail-detail .notify-switches {
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.list-detail-detail .notify-switches .field-note {
+  max-width: 44rem;
+}
+
+.notify-zalo-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-1);
+}
+
+.notify-zalo-status > .iqc-inspection-action-note {
+  margin: 0;
+}
+
+/* 수신자 N명 · 최대 5명(보조 글) · 오른쪽 끝 [+ 수신자 추가]. */
+.alarm-recipients-heading:has(> .notify-recipient-max) {
+  justify-content: flex-start;
+}
+
+.alarm-recipients-heading > .notify-recipient-max {
+  margin-right: auto;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+/* 알림 연결 설정 — 앱 ID · 앱 비밀 키 · 갱신 토큰 · 변수 값 최대 길이: 라벨은 같은 폭, 값은 같은 자리에서 시작. */
+.zalo-connection-box > .zalo-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.zalo-field-row {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 30rem);
+  align-items: baseline;
+  column-gap: var(--space-4);
+}
+
+.zalo-field-row > .field-label {
+  margin: 0;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.zalo-field-row > .field-label > .required-mark {
+  margin-left: 2px;
+}
+
+.zalo-field-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+.zalo-field-value > [class*='_field_'],
+.zalo-field-value > .zalo-secret > [class*='_field_'] {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.zalo-field-value > .zalo-secret {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.zalo-field-value.zalo-param-max > [class*='_field_'] {
+  flex: 0 0 8rem;
+}
+
+.zalo-param-unit {
+  color: var(--on-surface-variant);
+}
+
+/* 템플릿 설정 — 제목 아래 공통 값 한 줄. */
+.zalo-template-common {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+
+.zalo-template-common > * {
+  max-width: none;
+}
+
+.zalo-template-common > .pane-title {
+  margin: 0;
+}
+
+/* 「오류 상세」 — 글 링크가 아니라 작은 테두리 단추 모양 펼침. 펼치면 화살표가 돈다. */
+.zalo-error-detail {
+  margin-top: var(--space-2);
+}
+
+.zalo-error-detail > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-3) 2px var(--space-2);
+  border: 1px solid var(--outline);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--on-surface);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  text-decoration: none;
+  list-style: none;
+  cursor: pointer;
+}
+
+.zalo-error-detail > summary::-webkit-details-marker {
+  display: none;
+}
+
+.zalo-error-detail[open] > summary > [class*='_icon_'] {
+  transform: rotate(180deg);
+}
+
+/*
+ * 이동 링크를 DS 외곽선 단추(outlined · sm)와 같은 모양으로 — 밑줄 글자 링크 대신 일반 단추 모양(사용자 지시 2026-11-25).
+ * 문서를 옮기는 링크라 `a`(라우터 Link) 그대로 두고 모양만 맞춘다(새 탭 · 가운데 단추 열기 유지). 값은 DS Button 의 것.
+ */
+.action-link-button {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: var(--control-height-sm);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-full);
+  box-shadow: inset 0 0 0 1px var(--outline-variant);
+  background: none;
+  color: var(--primary-text);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  text-decoration: none;
+  white-space: nowrap;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.action-link-button::before {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: none;
+  content: '';
+  pointer-events: none;
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+
+.action-link-button:hover::before {
+  background: var(--state-hover);
+}
+
+.action-link-button:active::before {
+  background: var(--state-press);
+}
+
+.action-link-button:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px var(--outline-variant),
+    var(--focus-ring);
 }

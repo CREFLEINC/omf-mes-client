@@ -14,14 +14,14 @@ import type { Translated } from './translated';
 export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings> = {
   panes: {
     events: 'Sự kiện',
-    setting: (eventName: string): string => `Thiết lập: ${eventName}`,
+    setting: (eventName: string): string => `Thiết lập thông báo: ${eventName}`,
   },
   fields: {
     department: 'Chọn phòng ban',
     departmentPlaceholder: 'Chọn phòng ban',
-    enabled: 'Nhận thông báo',
-    zalo: 'Gửi cả qua Zalo',
-    recipients: (count: number): string => `Người nhận (${String(count)})`,
+    enabled: 'Dùng thông báo',
+    zalo: 'Gửi Zalo',
+    recipients: (count: number): string => `Người nhận ${String(count)} người`,
   },
   values: {
     on: 'ON',
@@ -33,14 +33,15 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     alreadyAdded: 'Đã thêm',
     selectRow: (userName: string): string => `Chọn ${userName}`,
     noDepartment: '—',
+    recipientCount: (count: number): string => `${String(count)} người`,
   },
   actions: {
-    add: 'Thêm',
-    remove: 'Bỏ',
-    revert: 'Hoàn tác',
+    add: 'Thêm người nhận',
+    remove: 'Xóa',
+    revert: 'Hủy thay đổi',
     save: 'Lưu',
     reload: 'Tải lại',
-    openConnection: 'Đi tới thiết lập kết nối thông báo',
+    openConnection: 'Thiết lập kết nối Zalo',
     cancel: 'Hủy',
     discard: 'Bỏ thay đổi và chuyển',
     search: 'Tìm',
@@ -59,12 +60,16 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     noPhoneNotice: (count: number): string =>
       `${String(count)} người nhận không có số điện thoại chỉ nhận qua trung tâm thông báo`,
     zaloHelp: 'Dù gửi thất bại, trung tâm thông báo vẫn nhận',
-    zaloNeedsEnabled: 'Phải bật thông báo thì mới gửi được qua Zalo',
+    zaloNeedsEnabled: 'Phải bật dùng thông báo thì mới gửi được qua Zalo',
+    zaloQuota:
+      'Khi bật, mỗi tin Zalo sẽ tính phí (số dư ZBS) và dùng hạn mức gửi trong ngày. Tin vượt hạn mức sẽ được gửi lúc 07:00 kế tiếp (giờ nhà máy).',
+    unsaved: 'Có thay đổi chưa lưu',
     approverNotice:
       'Người phê duyệt đến lượt sẽ nhận. Đó là người được chỉ định trong luồng phê duyệt.',
     saved: 'Đã lưu',
     conflict: 'Người khác đã lưu trước. Hãy tải lại rồi lưu',
-    zaloNotActive: 'Kết nối Zalo chưa sẵn sàng nên thông báo chỉ được gửi đến trung tâm thông báo.',
+    zaloNotActive:
+      'Zalo chưa được kết nối nên sẽ không gửi Zalo cho đến khi kết nối. Trung tâm thông báo vẫn nhận ngay.',
     unsavedTitle: 'Có thay đổi chưa lưu',
     unsavedBody: 'Nếu chuyển đi, nội dung đã sửa sẽ mất. Bỏ thay đổi và chuyển?',
     candidatesEmpty: 'Không có kết quả tìm kiếm',
@@ -77,7 +82,7 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     caption: 'Ứng viên người nhận',
   },
   errors: {
-    inactiveRecipient: 'Không thể đặt người dùng ngừng sử dụng làm người nhận. Hãy bỏ rồi lưu.',
+    inactiveRecipient: 'Không thể đặt người dùng ngừng sử dụng làm người nhận. Hãy xóa rồi lưu.',
     lookupFailed: 'Không tải được danh sách. Hãy thử lại.',
   },
   columns: {
@@ -91,12 +96,11 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     phone: 'Số điện thoại',
   },
   workspace: {
-    filter: 'Điều kiện tra cứu',
     list: 'Danh sách sự kiện',
     apply: 'Tra cứu',
     clear: 'Đặt lại',
     selectEventTitle: 'Hãy chọn sự kiện.',
     selectEvent:
-      'Chọn phòng ban rồi bấm vào sự kiện để thiết lập nhận thông báo, Zalo và người nhận.',
+      'Chọn phòng ban rồi bấm vào sự kiện để thiết lập dùng thông báo, gửi Zalo và người nhận.',
   },
 };

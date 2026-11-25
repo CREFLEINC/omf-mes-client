@@ -6,7 +6,7 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
   panes: {
     status: 'Trạng thái kết nối',
     connection: 'Thông tin kết nối Zalo',
-    templates: 'Mẫu tin theo sự kiện',
+    templates: 'Thiết lập mẫu tin',
   },
   status: {
     ACTIVE: 'Bình thường',
@@ -17,7 +17,7 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
     appId: 'ID ứng dụng',
     secretKey: 'Khóa bí mật ứng dụng',
     refreshToken: 'Mã làm mới',
-    paramMaxLength: 'Độ dài tối đa giá trị biến mẫu',
+    paramMaxLength: 'Độ dài tối đa giá trị biến',
     templateId: 'ID mẫu',
     expiresAt: 'Thời điểm hết hạn mã truy cập',
     refreshedAt: 'Thời điểm làm mới lần cuối',
@@ -38,7 +38,7 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
     copyFor: (eventName: string): string => `Sao chép biến mẫu ${eventName}`,
     revert: 'Hủy thay đổi',
     save: 'Lưu thay đổi',
-    errorDetail: 'Thông tin chi tiết',
+    errorDetail: 'Chi tiết lỗi',
     reload: 'Tải lại',
   },
   state: {
@@ -67,7 +67,6 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
     templateId: 'ID mẫu tin gồm 1–40 chữ cái tiếng Anh hoặc chữ số, hoặc để trống.',
   },
   workspace: {
-    filter: 'Điều kiện tra cứu',
     search: 'Tìm tên mẫu',
     searchPlaceholder: 'Nhập tên mẫu',
     apply: 'Tra cứu',
@@ -80,6 +79,6 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
     empty: 'Không có mẫu phù hợp với điều kiện.',
     hasError: 'Cần kiểm tra',
     selectTitle: 'Hãy chọn mẫu.',
-    select: 'Có thể nhập ID mẫu và sao chép tên biến mẫu của mẫu đã chọn.',
+    select: 'Có thể thiết lập ID mẫu và sao chép tên biến.',
   },
 };
