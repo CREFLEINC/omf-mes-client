@@ -13,7 +13,7 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import {
   HANDOVER_ALERT_ORDER,
@@ -21,24 +21,12 @@ import {
   useHandoverAlertTypes,
 } from '../../patterns/handover-alert-types';
 import { useClientPage } from '../../patterns/client-page';
-import '../erp-item/erp-data-parts.css';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { hasChangedFilters } from '../../patterns/filter-more';
 import { SaveErrorBanner } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
-import {
-  PaneListHead,
-  PaneSplitter,
-  useFitToViewport,
-  usePaneSplit,
-} from '../../patterns/po-board';
-import {
-  PaneHeightSplitter,
-  SplitOrientationToggle,
-  useSplitOrientation,
-} from '../../patterns/split-orientation';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import {
   rebaseHandover,
@@ -65,12 +53,10 @@ import { LeaveGuard } from '../routing/leave-guard';
 
 const t = messages.zaloConnection;
 const w = t.workspace;
-const hub = messages.common.inspectionHub;
 const leave = messages.common.unsavedLeave;
 
 /** 템플릿명 검색 칸 — 왼쪽 라벨(「템플릿명」)과 잇는다. */
 const SEARCH_ID = 'zalo-template-search';
-const TEMPLATE_ID_FIELD = 'zalo-template-id';
 const TEMPLATE_ID_HELP = 'zalo-template-id-help';
 
 type SecretField = 'secretKey' | 'refreshToken';
@@ -125,11 +111,8 @@ export const ZaloConnectionScreen = () => {
   const [errorDetailOpen, setErrorDetailOpen] = useState(false);
   /* 앱 ID · 변수 값 길이 제한 — 처음엔 값만 보이고 [수정]을 눌러야 입력 칸이 열린다(사용자 지시 2026-11-25). */
   const [editing, setEditing] = useState<ReadonlySet<PlainField>>(new Set());
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const { splitRef, aboveRef } = useFitToViewport();
-  const rootRef = useRef<HTMLDivElement>(null);
-  const split = usePaneSplit('omf-mes:zalo-connection:split', 0.45);
-  const layout = useSplitOrientation('omf-mes:zalo-connection:split-orientation');
+  /* 템플릿 ID 를 고치는 줄 — 목록 줄의 [수정]으로 열고, 그 줄의 [취소]·[저장]으로 닫는다(사용자 지시 2026-11-25). */
+  const [editingRows, setEditingRows] = useState<ReadonlySet<string>>(new Set());
 
   const seed = (data: Connection): void => {
     const next = toFormValues(data);
@@ -140,37 +123,13 @@ export const ZaloConnectionScreen = () => {
     setHandoverBaseline(nextHandover);
     setErrors({});
     setEditing(new Set());
+    setEditingRows(new Set());
   };
 
   /* 처음 한 번만 채운다 — 저장 뒤 캐시를 바꿔도 다른 상자의 저장 안 한 값을 지우지 않는다(다시 불러오기는 `reload`). */
   useEffect(() => {
     if (connection.data !== undefined && baseline === null) seed(connection.data);
   }, [connection.data]);
-
-  /*
-   * 위 상자(Zalo 발송 설정 · 템플릿 조회)의 높이가 바뀌면 목록 | 상세의 윗변을 다시 잰다 — 창 바닥까지 채우는
-   * 높이가 어긋나지 않게(ListDetailWorkspace 와 같다).
-   */
-  useLayoutEffect(() => {
-    const root = rootRef.current;
-    const splitEl = splitRef.current;
-    if (root === null || splitEl === null || typeof ResizeObserver === 'undefined') return;
-    let frame = 0;
-    const observer = new ResizeObserver(() => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        splitEl.style.setProperty(
-          '--split-top',
-          `${String(splitEl.getBoundingClientRect().top)}px`,
-        );
-      });
-    });
-    observer.observe(root);
-    return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
-    };
-  }, [splitRef]);
 
   const replace = useReplaceConnection((saved) => {
     /*
@@ -197,6 +156,7 @@ export const ZaloConnectionScreen = () => {
       setErrors({});
       /* 저장한 상자의 연 칸은 닫는다 — 비밀값 칸이 저장 뒤 「등록 [수정]」으로 돌아가는 것과 같다. */
       if (pending.section.kind === 'connection') setEditing(new Set());
+      else closeRow(sectionKey(pending.section));
     }
     setFlash(t.state.saved);
   });
@@ -228,6 +188,21 @@ export const ZaloConnectionScreen = () => {
     const name = events.data?.find((event) => event.eventCode === code)?.eventName ?? '';
     return name.trim() === '' ? code : name;
   };
+
+  /* 목록 줄 키(`event:<코드>` · `handover:<코드>`)와 저장 단위를 잇는다. */
+  const sectionKey = (section: SaveSection): string =>
+    section.kind === 'event' || section.kind === 'handover'
+      ? `${section.kind}:${section.code}`
+      : '';
+  const sectionOf = (row: TemplateRow): SaveSection =>
+    row.kind === 'event' ? { kind: 'event', code: row.code } : { kind: 'handover', code: row.code };
+  const closeRow = (key: string): void =>
+    setEditingRows((current) => {
+      if (!current.has(key)) return current;
+      const next = new Set(current);
+      next.delete(key);
+      return next;
+    });
 
   /**
    * 한 상자 저장 — 본문은 종전처럼 전체(PUT · If-Match)지만, 마지막 저장 값 위에 이 단위의 고친 값만 얹는다.
@@ -279,6 +254,7 @@ export const ZaloConnectionScreen = () => {
     setValues((current) => (current === null ? current : withSection(current, baseline, section)));
     setHandover((current) => withHandoverSection(current, handoverBaseline, section));
     if (section.kind === 'connection') setEditing(new Set());
+    else closeRow(sectionKey(section));
     touched();
   };
 
@@ -462,18 +438,23 @@ export const ZaloConnectionScreen = () => {
     })),
   ];
   const needle = keyword.trim().toLowerCase();
-  /* 템플릿명 또는 템플릿 변수로 찾는다(사용자 지시 2026-11-25). */
+  /* 템플릿명 · 템플릿 변수 · 템플릿 ID 로 찾는다(사용자 지시 2026-11-25). */
   const paramsOfRow = (row: TemplateRow): string =>
     row.kind === 'event' ? paramsOf(row.code) : handoverParamsOf(row.code);
+  /* 템플릿 ID(저장 값)로도 찾는다(사용자 지시 2026-11-25). 고치는 중인 값이 아니라 저장된 값 기준이라 입력 중에 줄이 사라지지 않는다. */
+  const savedTemplateIdOf = (row: TemplateRow): string =>
+    row.kind === 'event'
+      ? (baseline?.templates[row.code] ?? '')
+      : (handoverBaseline[row.code] ?? '');
   const matches = (row: TemplateRow): boolean =>
     needle === '' ||
     row.name.toLowerCase().includes(needle) ||
-    paramsOfRow(row).toLowerCase().includes(needle);
+    paramsOfRow(row).toLowerCase().includes(needle) ||
+    savedTemplateIdOf(row).toLowerCase().includes(needle);
   const shownTemplates = allTemplates.filter(
     (row) => matches(row) && (kindFilter === null || row.kind === kindFilter),
   );
   const templatePage = useClientPage(shownTemplates);
-  const selectedRow = allTemplates.find((row) => row.key === selectedKey);
 
   const templateIdOf = (row: TemplateRow): string =>
     row.kind === 'event' ? (values?.templates[row.code] ?? '') : (handover[row.code] ?? '');
@@ -492,19 +473,10 @@ export const ZaloConnectionScreen = () => {
       key: 'name',
       /* 이름 열도 다른 열처럼 가운데 · 보통 굵기(알림 수신자 · 인계작업 알림 목록과 같다 · app.css `.notify-list-centered`). */
       header: w.name,
-      render: (row) => (
-        <button
-          type="button"
-          className="users-roles-row-pick"
-          aria-current={row.key === selectedKey ? 'true' : undefined}
-          onClick={() => setSelectedKey((prev) => (prev === row.key ? null : row.key))}
-        >
-          {row.name}
-        </button>
-      ),
+      render: (row) => row.name,
     },
     {
-      /* 템플릿 변수 — 상세의 「템플릿 변수」와 같은 글(사용자 지시 2026-11-25). 길면 열 폭에서 줄임표. */
+      /* 템플릿 변수 — 길면 열 폭에서 줄임표(사용자 지시 2026-11-25). */
       key: 'params',
       align: 'center',
       header: t.fields.params,
@@ -514,17 +486,96 @@ export const ZaloConnectionScreen = () => {
       key: 'templateId',
       align: 'center',
       header: w.templateId,
-      width: '150px',
+      width: '200px',
       render: (row) => {
-        if (templateErrorOf(row) !== undefined) {
+        /* [수정]으로 연 줄은 입력 칸 — 오류는 칸 테두리 · 문구로 보인다. */
+        if (editingRows.has(row.key)) {
           return (
-            <Chip size="sm" status="error">
-              {w.hasError}
-            </Chip>
+            <TextField
+              aria-label={t.fields.templateIdFor(row.name)}
+              aria-describedby={TEMPLATE_ID_HELP}
+              value={templateIdOf(row)}
+              onChange={(event) => {
+                if (row.kind === 'event') {
+                  change({
+                    templates: { ...(values?.templates ?? {}), [row.code]: event.target.value },
+                  });
+                } else {
+                  changeHandover(row.code, event.target.value);
+                }
+              }}
+              error={templateErrorOf(row)}
+            />
           );
         }
         const id = templateIdOf(row).trim();
         return id === '' ? t.values.none : id;
+      },
+    },
+    {
+      /*
+       * 관리 — [변수명 복사] · [수정](템플릿 상세 상자를 걷고 목록 줄에서 바로, 사용자 지시 2026-11-25).
+       * [수정]을 누르면 그 줄의 템플릿 ID 가 입력 칸이 되고 단추는 [취소] · [저장]으로 바뀐다. 저장은 그 줄의 ID 만 싣는다.
+       */
+      key: 'manage',
+      align: 'center',
+      header: w.manage,
+      width: '220px',
+      render: (row) => {
+        const section = sectionOf(row);
+        if (editingRows.has(row.key)) {
+          const dirty = isDirty(section);
+          return (
+            <span className="zalo-row-actions">
+              <Button
+                variant="outlined"
+                size="sm"
+                aria-label={`${row.name} ${t.actions.revert}`}
+                onClick={() => revert(section)}
+              >
+                {t.actions.revert}
+              </Button>
+              <Button
+                size="sm"
+                aria-label={`${row.name} ${t.actions.save}`}
+                disabled={!dirty || replace.isSaving}
+                loading={
+                  replace.isSaving &&
+                  pendingRef.current !== null &&
+                  sectionKey(pendingRef.current.section) === row.key
+                }
+                onClick={() => save(section)}
+              >
+                {t.actions.save}
+              </Button>
+            </span>
+          );
+        }
+        const params = paramsOfRow(row);
+        return (
+          <span className="zalo-row-actions">
+            <Button
+              variant="outlined"
+              size="sm"
+              aria-label={
+                row.kind === 'event' ? t.actions.copyFor(row.name) : t.handover.copyFor(row.name)
+              }
+              leadingIcon={<Icon name="content_copy" size={16} aria-hidden />}
+              onClick={() => void copy(params)}
+            >
+              {t.actions.copy}
+            </Button>
+            <Button
+              variant="outlined"
+              size="sm"
+              aria-label={`${row.name} ${t.actions.change}`}
+              leadingIcon={<Icon name="edit" size={16} aria-hidden />}
+              onClick={() => setEditingRows((current) => new Set(current).add(row.key))}
+            >
+              {t.actions.change}
+            </Button>
+          </span>
+        );
       },
     },
   ];
@@ -532,14 +583,6 @@ export const ZaloConnectionScreen = () => {
   const orderedColumns = useColumnOrder('omf-mes:zalo-connection:columns:order', templateColumns);
   const resizable = useColumnWidths('omf-mes:zalo-connection:columns', orderedColumns);
   const fit = useFitColumns(resizable.columns);
-
-  const listCollapse = {
-    collapsed: split.collapsed,
-    onToggle: split.toggleCollapsed,
-    collapseLabel: hub.listCollapse,
-    expandLabel: hub.listExpand,
-    count: connection.data === undefined ? undefined : shownTemplates.length,
-  };
 
   /** 고정 상자 — 연결 상태 · 연결 정보. 아래 오른쪽 [취소][저장]은 앱 ID · 앱 비밀 키 · 갱신 토큰 · 변수 값 길이 제한만 저장한다. */
   const connectionBox = (): ReactNode => {
@@ -686,20 +729,11 @@ export const ZaloConnectionScreen = () => {
 
     return (
       <>
-        {/* 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 단추로 넘긴다(단말 관리와 같다). */}
+        {feedback('template')}
         <div
           ref={fit.ref}
-          className="inspection-queue-table notify-list-table notify-list-centered"
+          className="inspection-queue-table notify-list-table notify-list-centered zalo-template-table"
           style={resizable.style}
-          onClick={(event) => {
-            const target = event.target;
-            if (!(target instanceof Element)) return;
-            if (target.closest('button, a, input, select, textarea') !== null) return;
-            target
-              .closest('tbody tr')
-              ?.querySelector<HTMLButtonElement>('.users-roles-row-pick')
-              ?.click();
-          }}
         >
           <Table
             density="compact"
@@ -776,115 +810,6 @@ export const ZaloConnectionScreen = () => {
     </div>
   );
 
-  const templateDetail = (): ReactNode => {
-    if (selectedRow === undefined || values === null) {
-      /* 고르기 전 — 다른 알림 화면과 같은 빈 안내(아이콘 + 한 줄, 사용자 지시 2026-11-25). */
-      return (
-        <EmptyState
-          size="sm"
-          className="users-roles-pick-empty"
-          icon={
-            <span className="inspection-standard-empty-icon">
-              <Icon name="notifications" size={20} />
-            </span>
-          }
-          title={w.selectTitle}
-        />
-      );
-    }
-
-    const row = selectedRow;
-    const params = row.kind === 'event' ? paramsOf(row.code) : handoverParamsOf(row.code);
-    const section: SaveSection =
-      row.kind === 'event'
-        ? { kind: 'event', code: row.code }
-        : { kind: 'handover', code: row.code };
-    return (
-      <div className="zalo-template-detail">
-        {/*
-         * 「템플릿 상세」 — 정보 표시 상자 하나(공통코드 상세와 같은 모양): 템플릿명(오른쪽에 구분 라벨) · 템플릿 변수 ·
-         * 템플릿 ID 입력(사용자 지시 2026-11-25). 템플릿 ID 는 상자 안 한 줄을 다 쓴다. 이름 오른쪽 안내 라벨은 인계 작업만 —
-         * 입력 칸의 설명(aria-describedby)으로 이어 둔다.
-         */}
-        <div className="erp-data-detail erp-data-detail-fill">
-          <div className="erp-data-detail">
-            <h2 className="pane-title">{w.detailTitle}</h2>
-            <dl className="parts-iqc-facts iqc-inbound-facts erp-data-detail-fields zalo-template-facts">
-              <div className="parts-iqc-fact">
-                <dt className="field-label">{w.name}</dt>
-                <dd className="zalo-template-name">
-                  {row.name}
-                  <Chip size="sm" status={row.kind === 'event' ? 'info' : 'idle'}>
-                    {w.kinds[row.kind]}
-                  </Chip>
-                </dd>
-              </div>
-              <div className="parts-iqc-fact">
-                <dt className="field-label">{t.fields.params}</dt>
-                <dd>
-                  <span className="zalo-template-params">
-                    <code>{params}</code>
-                    <Button
-                      variant="outlined"
-                      size="sm"
-                      aria-label={
-                        row.kind === 'event'
-                          ? t.actions.copyFor(row.name)
-                          : t.handover.copyFor(row.name)
-                      }
-                      onClick={() => void copy(params)}
-                    >
-                      {t.actions.copy}
-                    </Button>
-                  </span>
-                </dd>
-              </div>
-              <div className="parts-iqc-fact zalo-template-id-fact">
-                <dt className="zalo-template-id-head">
-                  <label className="field-label" htmlFor={TEMPLATE_ID_FIELD}>
-                    {t.fields.templateId}
-                  </label>
-                  {row.kind === 'handover' && (
-                    <span
-                      id={TEMPLATE_ID_HELP}
-                      className="iqc-inspection-action-note"
-                      data-tone="info"
-                    >
-                      <Icon name="info" size={16} aria-hidden />
-                      {t.handover.templateIdHelp}
-                    </span>
-                  )}
-                </dt>
-                <dd>
-                  <TextField
-                    id={TEMPLATE_ID_FIELD}
-                    aria-describedby={row.kind === 'handover' ? TEMPLATE_ID_HELP : undefined}
-                    value={templateIdOf(row)}
-                    onChange={(event) => {
-                      if (row.kind === 'event') {
-                        change({
-                          templates: { ...values.templates, [row.code]: event.target.value },
-                        });
-                      } else {
-                        changeHandover(row.code, event.target.value);
-                      }
-                    }}
-                    error={templateErrorOf(row)}
-                  />
-                </dd>
-              </div>
-            </dl>
-          </div>
-        </div>
-        {feedback('template')}
-        {/* 이 템플릿의 ID 만 저장한다 — 다른 템플릿 · 연결 정보에서 고친 값은 싣지 않는다. */}
-        {sectionActions(section)}
-      </div>
-    );
-  };
-
-  const isStacked = layout.orientation === 'column';
-
   /* 어느 상자든 저장하지 않은 값이 있으면 다른 화면으로 가기 전에 묻는다(#358). */
   const hasUnsavedChanges =
     values !== null &&
@@ -892,7 +817,7 @@ export const ZaloConnectionScreen = () => {
     (!sameValues(values, baseline) || !sameHandover(handover, handoverBaseline));
 
   return (
-    <div ref={rootRef} className="list-detail-workspace">
+    <div className="list-detail-workspace zalo-workspace">
       <LeaveGuard
         when={hasUnsavedChanges}
         discardTitle={leave.title}
@@ -903,61 +828,37 @@ export const ZaloConnectionScreen = () => {
         size="sm"
       />
       {/* 머리글(경로 · 화면 이름)은 두지 않는다 — 사이드바가 위치를 말한다(단말 관리와 같은 틀 · #358). */}
-      <div className="list-detail-toolbar">
-        {kindChips}
-        <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} inline />
-      </div>
+      <div className="list-detail-toolbar">{kindChips}</div>
 
       {/*
        * 템플릿 조회 — 템플릿명 검색 · [조회]만(길이 제한은 Zalo 발송 설정 상자로 옮겼다 · 사용자 지시 2026-11-25).
-       * 목록 · 상세에는 저장 단추를 두지 않는다(상세 저장은 고른 템플릿 상자 안).
+       * 템플릿 ID 저장은 목록 줄의 [수정] → [저장](템플릿 상세 상자는 걷었다).
        */}
       <section className="pane zalo-template-box" aria-label={t.panes.templates}>
         {listSearch}
       </section>
 
       {/* 템플릿 조회 아래 — Zalo 발송 설정(연결 정보 + 변수 값 길이 제한). 아래 오른쪽 [취소][저장]은 이 상자의 칸만 저장한다. */}
-      <section
-        ref={aboveRef}
-        className="pane zalo-pane zalo-connection-box"
-        aria-label={t.panes.connection}
-      >
+      <section className="pane zalo-pane zalo-connection-box" aria-label={t.panes.connection}>
         {connectionBox()}
       </section>
 
-      <div
-        ref={splitRef}
-        className={`po-board-split inspection-split list-detail-split zalo-split${isStacked ? ' is-stacked' : ''}`}
-        style={{ ...split.style, ...layout.style }}
-        data-left-collapsed={split.collapsed ? 'true' : undefined}
-      >
-        <section className="pane list-detail-list" aria-label={w.list}>
-          <PaneListHead title={w.list} collapse={listCollapse} />
-          {templateList()}
-        </section>
-
-        <PaneSplitter
-          label={hub.splitter}
-          ratio={split.ratio}
-          onChange={split.commit}
-          collapse={listCollapse}
-        />
-        {isStacked && (
-          <PaneHeightSplitter
-            label={hub.heightSplitter}
-            height={layout.listHeight}
-            onChange={layout.changeListHeight}
-            collapse={listCollapse}
-          />
-        )}
-
-        <section
-          className="pane list-detail-detail"
-          aria-label={selectedRow === undefined ? w.selectTitle : selectedRow.name}
-        >
-          {templateDetail()}
-        </section>
-      </div>
+      {/* 템플릿 목록 — 화면 폭 한 상자(사용자 지시 2026-11-25). 「템플릿 ID」 안내는 제목 오른쪽 안내 라벨. */}
+      <section className="pane list-detail-list zalo-template-list" aria-label={w.list}>
+        <div className="po-board-list-head">
+          <h2 className="pane-title">{w.list}</h2>
+          {connection.data !== undefined && (
+            <span className="po-board-list-count">
+              {messages.common.paneList.count(shownTemplates.length)}
+            </span>
+          )}
+          <span id={TEMPLATE_ID_HELP} className="iqc-inspection-action-note" data-tone="info">
+            <Icon name="info" size={16} aria-hidden />
+            {t.handover.templateIdHelp}
+          </span>
+        </div>
+        {templateList()}
+      </section>
     </div>
   );
 };

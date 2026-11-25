@@ -39459,38 +39459,6 @@ body:has(
   margin: 0;
 }
 
-/* 상세 — 고른 템플릿의 ID 입력 · 파라미터 · 복사. */
-.zalo-template-detail {
-  display: grid;
-  align-content: start;
-  gap: var(--space-4);
-}
-
-.zalo-template-detail > .pane-title,
-.zalo-template-detail > .iqc-inspection-action-note {
-  margin: 0;
-}
-
-.zalo-template-params {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.zalo-template-params > code {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  font: var(--type-body-md);
-  font-family: ui-monospace, monospace;
-}
-
-.zalo-template-detail .text-field,
-.zalo-template-detail input {
-  min-width: 0;
-  max-width: 100%;
-}
-
 .list-detail-filter > .dispatch-filter-more > .filter-bar {
   margin: var(--space-3) 0 0;
 }
@@ -40395,8 +40363,7 @@ body:has(
  * 알림 연결 설정 — [변경 취소][저장]은 고치는 상자 아래 오른쪽(연결 정보 · 템플릿 설정 · 템플릿 상세, 다른 화면과 같은 자리 ·
  * 사용자 지시 2026-11-25). 템플릿 설정은 한 줄 상자라 같은 줄 오른쪽 끝에 둔다.
  */
-.zalo-pane > .form-actions,
-.zalo-template-detail > .form-actions {
+.zalo-pane > .form-actions {
   margin-top: 0;
 }
 
@@ -40498,22 +40465,6 @@ body:has(
   display: grid;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
-}
-
-/* 좌우 배치 — 상세는 내용 높이만. */
-.zalo-split:not(.is-stacked) > .list-detail-detail {
-  align-self: start;
-  height: auto;
-  max-height: 100%;
-}
-
-/* 상하 배치 — 목록은 줄이 잘리지 않는 높이(끌어 줄이면 표만 구른다), 쪽 넘김은 표 바로 아래. */
-.po-board-split.inspection-split.zalo-split.is-stacked > .list-detail-list {
-  max-height: var(--stacked-list-height, none);
-}
-
-.zalo-split.is-stacked > .list-detail-list > .page-nav {
-  margin-top: 0;
 }
 
 /*
@@ -40653,8 +40604,8 @@ body:has(
 }
 
 .zalo-search-cell > .zalo-search-input {
-  /* 돋보기 40px + 흐린 문구 「템플릿명 또는 템플릿 변수를 입력하세요」 약 265px + 오른쪽 여백 — 실측 2026-11-25. */
-  width: 20.5rem;
+  /* 돋보기 40px + 흐린 문구 「템플릿명, 템플릿 변수 또는 템플릿 ID를 입력하세요」 약 335px + 오른쪽 여백 — 실측 2026-11-25. */
+  width: 25rem;
   max-width: 100%;
 }
 
@@ -40669,24 +40620,6 @@ body:has(
 /* 알림 연결 설정 — 필수인데 비어 있는 칸(앱 비밀 키 · 갱신 토큰 입력, 변수 값 길이 제한)은 빨간 테두리(사용자 지시 2026-11-25). */
 .zalo-required-empty > div:has(input) {
   box-shadow: inset 0 0 0 1px var(--semantic-error);
-}
-
-/* 알림 연결 설정 — 템플릿 상세 「템플릿 ID」 이름 오른쪽 안내 라벨(인계 작업, 사용자 지시 2026-11-25). 라벨 폭은 글에 맞춘다. */
-.zalo-template-id-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-  margin-bottom: calc(var(--space-2) * -1);
-}
-
-.zalo-template-id-head > .field-label {
-  margin: 0;
-}
-
-.zalo-template-id-head > .iqc-inspection-action-note[data-tone] {
-  width: fit-content;
-  margin: 0;
 }
 
 /* 변수 값 길이 제한 입력 칸 — 앱 ID 입력 칸처럼 칸 폭을 채운다(「자」는 오른쪽 끝, 사용자 지시 2026-11-25). */
@@ -40744,29 +40677,24 @@ body:has(
   }
 }
 
-/* 템플릿 상세 정보 상자(사용자 지시 2026-11-25) — 템플릿명 오른쪽 구분 라벨, 템플릿 ID 는 상자 안 한 줄을 다 쓴다. */
-.zalo-template-facts > .parts-iqc-fact > .zalo-template-name {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+/*
+ * 템플릿 목록(템플릿 상세 상자를 걷음 · 사용자 지시 2026-11-25) — 제목 · 건수 오른쪽에 「템플릿 ID」 안내 라벨,
+ * 줄마다 [변수명 복사] · [수정](연 줄은 [취소] · [저장]). 고치는 줄의 ID 입력 칸은 열 폭을 채운다.
+ */
+.zalo-template-list > .po-board-list-head > .iqc-inspection-action-note[data-tone] {
+  width: fit-content;
+  margin: 0 0 0 var(--space-2);
+}
+
+.zalo-row-actions {
+  display: inline-flex;
   gap: var(--space-2);
+  justify-content: center;
+  white-space: nowrap;
 }
 
-.zalo-template-facts > .zalo-template-id-fact {
-  flex: 1 1 100%;
-}
-
-.zalo-template-facts > .zalo-template-id-fact > .zalo-template-id-head {
-  margin: 0;
-}
-
-.zalo-template-facts > .zalo-template-id-fact > .zalo-template-id-head > .field-label {
-  margin: 0;
-}
-
-/* 템플릿 ID 입력 칸은 정보 상자 폭을 채운다. */
-.zalo-template-facts > .zalo-template-id-fact > dd,
-.zalo-template-facts > .zalo-template-id-fact > dd > * {
+.zalo-template-table td .text-field,
+.zalo-template-table td input {
   width: 100%;
-  max-width: none;
+  min-width: 0;
 }

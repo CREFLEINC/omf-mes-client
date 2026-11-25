@@ -84,14 +84,17 @@ const setup = (
   return { writes, router: view.router };
 };
 
-/* 조회 조건 · 목록 · 상세 통일 배치(#358) — 템플릿은 목록에서 골라 상세에서 고친다. 이름 검색으로 찾아 고른다. */
+/*
+ * 템플릿 상세 상자는 걷었다(사용자 지시 2026-11-25) — 이름 검색으로 찾고, 그 줄의 [수정]을 누르면 줄의 템플릿 ID 가
+ * 입력 칸이 된다.
+ */
 const openTemplate = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
   const search = await screen.findByRole('searchbox', { name: t.workspace.search });
   await user.clear(search);
   await user.type(search, name);
   await user.click(screen.getByRole('button', { name: t.workspace.apply }));
-  await user.click(await screen.findByRole('button', { name }));
-  return screen.findByRole('textbox', { name: t.fields.templateId });
+  await user.click(await screen.findByRole('button', { name: `${name} ${t.actions.change}` }));
+  return screen.findByRole('textbox', { name: t.fields.templateIdFor(name) });
 };
 
 /** 상자마다 아래 오른쪽 [변경 취소][저장](#358) — 상자 이름으로 그 상자 안 단추를 찾는다. */
@@ -105,7 +108,11 @@ const openField = async (user: ReturnType<typeof userEvent.setup>, label: string
   );
   return screen.getByRole('textbox', { name: new RegExp(label) });
 };
-const saveIn = (name: string) => box(name).getByRole('button', { name: t.actions.save });
+/* 상자(Zalo 발송 설정)는 상자 안 [저장], 템플릿은 그 줄의 [저장](접근 이름 「<템플릿명> 저장」). */
+const saveIn = (name: string) =>
+  screen.queryByRole('region', { name }) === null
+    ? screen.getByRole('button', { name: `${name} ${t.actions.save}` })
+    : box(name).getByRole('button', { name: t.actions.save });
 
 /** 받은 본문을 그대로 저장한 것처럼 돌려준다 — ETag 는 "6", "7" … 로 오른다. */
 const echoPut = (initial: ZaloConnection) => {
@@ -128,7 +135,7 @@ const echoPut = (initial: ZaloConnection) => {
 };
 
 describe('ZaloConnectionScreen', () => {
-  it('머리글 없이 템플릿 목록을 보이고, 고른 템플릿의 ID 칸 · 파라미터 · 변수명 복사가 상세에 선다', async () => {
+  it('머리글 없이 템플릿 목록을 보이고, 줄마다 템플릿 변수 · [변수명 복사] · [수정]이 선다(상세 상자 없음)', async () => {
     const user = userEvent.setup();
     setup();
 
@@ -142,31 +149,23 @@ describe('ZaloConnectionScreen', () => {
     /* 이벤트 6종 + 인계 작업 템플릿이 한 목록에 선다. */
     const list = within(await screen.findByRole('region', { name: t.workspace.list }));
     expect(await list.findAllByText(t.workspace.kinds.event)).toHaveLength(6);
-    expect(screen.getByText(t.workspace.selectTitle)).toBeInTheDocument();
-
-    expect(await openTemplate(user, '생산 중단')).toBeInTheDocument();
-    /* 상세 제목은 「템플릿 상세」, 구분 · 템플릿명은 상세 상자 안 정보 칸(사용자 지시 2026-11-25). */
-    const detail = box('생산 중단');
-    expect(detail.getByRole('heading', { name: t.workspace.detailTitle })).toBeInTheDocument();
-    /* 구분은 템플릿명 오른쪽 라벨, 템플릿 ID 입력도 같은 정보 상자 안(사용자 지시 2026-11-25). */
-    const nameValue = detail.getByText(t.workspace.name).nextElementSibling;
-    expect(nameValue).toHaveTextContent('생산 중단');
-    expect(nameValue).toHaveTextContent(t.workspace.kinds.event);
-    expect(
-      detail.getByRole('textbox', { name: t.fields.templateId }).closest('.zalo-template-facts'),
-    ).not.toBeNull();
-    /* 목록에도 템플릿 변수 열이 선다(사용자 지시 2026-11-25) — 상세의 정보 칸과 같은 글. */
-    expect(
-      within(screen.getByRole('region', { name: t.workspace.list })).getByRole('columnheader', {
-        name: t.fields.params,
-      }),
-    ).toBeInTheDocument();
-    expect(screen.getAllByText('line, work_order, event_time, reason')).toHaveLength(2);
+    /* 템플릿 상세 상자는 없다 — 「템플릿 ID」 안내는 목록 제목 옆 안내 라벨(사용자 지시 2026-11-25). */
+    expect(screen.queryByRole('heading', { name: '템플릿 상세' })).toBeNull();
+    expect(list.getByText(t.handover.templateIdHelp)).toBeInTheDocument();
+    for (const header of [t.fields.params, t.workspace.templateId, t.workspace.manage]) {
+      expect(list.getByRole('columnheader', { name: header })).toBeInTheDocument();
+    }
+    expect(list.getByText('line, work_order, event_time, reason')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.actions.copyFor('생산 중단') })).toHaveTextContent(
       t.actions.copy,
     );
-    /* 이벤트 템플릿에는 인계 작업 도움말이 없다. */
-    expect(screen.queryByText(t.handover.templateIdHelp)).toBeNull();
+
+    /* [수정]을 누르면 그 줄의 템플릿 ID 가 입력 칸이 되고 단추는 [취소] · [저장]으로 바뀐다. */
+    const input = await openTemplate(user, '생산 중단');
+    expect(input).toHaveAccessibleDescription(t.handover.templateIdHelp);
+    expect(screen.getByRole('button', { name: `생산 중단 ${t.actions.revert}` })).toBeEnabled();
+    expect(saveIn('생산 중단')).toBeDisabled();
+    expect(screen.queryByRole('button', { name: `생산 중단 ${t.actions.change}` })).toBeNull();
   });
 
   /* 변수명 복사 알림은 화면 오른쪽 아래 잠깐 뜨는 알림(사용자 지시 2026-11-25) — 상세 상자 안에는 뜨지 않는다. */
@@ -174,11 +173,9 @@ describe('ZaloConnectionScreen', () => {
     const user = userEvent.setup();
     setup();
 
-    await openTemplate(user, '생산 중단');
-    await user.click(screen.getByRole('button', { name: t.actions.copyFor('생산 중단') }));
+    await user.click(await screen.findByRole('button', { name: t.actions.copyFor('생산 중단') }));
 
     expect(await screen.findByText(t.state.copied)).toBeInTheDocument();
-    expect(box('생산 중단').queryByText(t.state.copied)).toBeNull();
     expect(await navigator.clipboard.readText()).toBe('line, work_order, event_time, reason');
   });
 
@@ -189,26 +186,34 @@ describe('ZaloConnectionScreen', () => {
 
     const search = await screen.findByRole('searchbox', { name: t.workspace.search });
     const list = within(screen.getByRole('region', { name: t.workspace.list }));
-    expect(await list.findByRole('button', { name: '생산 실행' })).toBeInTheDocument();
+    expect(await list.findByText('생산 실행')).toBeInTheDocument();
     await user.type(search, 'reason');
     await user.click(screen.getByRole('button', { name: t.workspace.apply }));
 
-    expect(list.getByRole('button', { name: '생산 중단' })).toBeInTheDocument();
-    expect(list.queryByRole('button', { name: '생산 실행' })).toBeNull();
+    expect(list.getByText('생산 중단')).toBeInTheDocument();
+    expect(list.queryByText('생산 실행')).toBeNull();
   });
 
-  it('고른 템플릿을 한 번 더 누르면 선택이 풀린다', async () => {
+  /* 템플릿 ID(저장 값)로도 찾는다(사용자 지시 2026-11-25). */
+  it('템플릿 ID 로 검색하면 그 ID 의 템플릿만 남는다', async () => {
     const user = userEvent.setup();
-    setup();
+    setup({
+      data: connection({
+        templates: CODES.map((eventCode) => ({
+          eventCode,
+          templateId: eventCode === 'WORK_SESSION_STOPPED' ? 'TPL-STOP' : null,
+        })),
+      }),
+    });
 
-    await openTemplate(user, '생산 중단');
-    const row = screen.getByRole('button', { name: '생산 중단' });
-    expect(row).toHaveAttribute('aria-current', 'true');
+    const search = await screen.findByRole('searchbox', { name: t.workspace.search });
+    const list = within(screen.getByRole('region', { name: t.workspace.list }));
+    expect(await list.findByText('생산 실행')).toBeInTheDocument();
+    await user.type(search, 'tpl-stop');
+    await user.click(screen.getByRole('button', { name: t.workspace.apply }));
 
-    await user.click(row);
-    expect(row).not.toHaveAttribute('aria-current');
-    expect(screen.queryByRole('textbox', { name: t.fields.templateId })).toBeNull();
-    expect(screen.getByText(t.workspace.selectTitle)).toBeInTheDocument();
+    expect(list.getByText('생산 중단')).toBeInTheDocument();
+    expect(list.queryByText('생산 실행')).toBeNull();
   });
 
   it('템플릿 목록은 알림 수신자 · 인계작업 알림 목록과 같은 모양 — 모든 열 가운데, 고른 줄도 보통 굵기(#358)', async () => {
@@ -269,7 +274,7 @@ describe('ZaloConnectionScreen', () => {
     );
   });
 
-  it('[취소][저장]은 상자마다 아래에 서고, 템플릿 ID 를 고치면 상세의 저장만 열린다(#358)', async () => {
+  it('[취소][저장]은 상자마다 아래에 서고, 템플릿 ID 를 고치면 그 줄의 저장만 열린다(#358)', async () => {
     const user = userEvent.setup();
     setup();
 
@@ -279,7 +284,7 @@ describe('ZaloConnectionScreen', () => {
         name: t.actions.save,
       }),
     ).toBeNull();
-    /* 화면 위 오른쪽의 한꺼번 저장은 없다 — Zalo 발송 설정 · 템플릿 상세 상자마다 하나씩. 템플릿 조회 상자에는 없다. */
+    /* 화면 위 오른쪽의 한꺼번 저장은 없다 — Zalo 발송 설정 상자 하나, 템플릿은 줄마다. 템플릿 조회 상자에는 없다. */
     expect(saveIn(t.panes.connection)).toBeDisabled();
     expect(box(t.panes.templates).queryByRole('button', { name: t.actions.save })).toBeNull();
 
@@ -287,11 +292,16 @@ describe('ZaloConnectionScreen', () => {
     const save = saveIn('생산 실행');
     expect(save).toBeEnabled();
     expect(saveIn(t.panes.connection)).toBeDisabled();
-    expect(screen.getAllByRole('button', { name: t.actions.save })).toHaveLength(2);
+    /* 상자 [저장]은 Zalo 발송 설정 하나, 템플릿은 [수정]으로 연 줄의 [저장]. */
+    expect(screen.getAllByRole('button', { name: t.actions.save })).toHaveLength(1);
 
-    await user.click(box('생산 실행').getByRole('button', { name: t.actions.revert }));
-    expect(screen.getByRole('textbox', { name: t.fields.templateId })).toHaveValue('');
-    expect(save).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: `생산 실행 ${t.actions.revert}` }));
+    /* 줄의 [취소]는 입력 칸을 닫고 저장 값으로 되돌린다. */
+    expect(screen.queryByRole('textbox', { name: t.fields.templateIdFor('생산 실행') })).toBeNull();
+    expect(screen.queryByRole('button', { name: `생산 실행 ${t.actions.save}` })).toBeNull();
+    expect(
+      screen.getByRole('button', { name: `생산 실행 ${t.actions.change}` }),
+    ).toBeInTheDocument();
   });
 
   /* 변수 값 길이 제한은 Zalo 발송 설정 상자 안 — [취소]는 앱 ID 와 함께 되돌린다(사용자 지시 2026-11-25). */
@@ -356,7 +366,9 @@ describe('ZaloConnectionScreen', () => {
     expect(await box(t.panes.connection).findByText(t.state.saved)).toBeInTheDocument();
     expect(saveIn(t.panes.connection)).toBeDisabled();
     /* 템플릿 ID 는 고친 채 남고 그 저장은 그대로 열려 있다. */
-    expect(screen.getByRole('textbox', { name: t.fields.templateId })).toHaveValue('TPL01');
+    expect(screen.getByRole('textbox', { name: t.fields.templateIdFor('생산 실행') })).toHaveValue(
+      'TPL01',
+    );
     expect(saveIn('생산 실행')).toBeEnabled();
 
     await user.click(saveIn('생산 실행'));
@@ -369,7 +381,13 @@ describe('ZaloConnectionScreen', () => {
       eventCode: 'WORK_SESSION_STARTED',
       templateId: 'TPL01',
     });
-    await waitFor(() => expect(saveIn('생산 실행')).toBeDisabled());
+    /* 저장하면 그 줄의 입력 칸이 닫히고 저장한 ID 가 보인다. */
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: `생산 실행 ${t.actions.save}` })).toBeNull(),
+    );
+    expect(
+      within(screen.getByRole('region', { name: t.workspace.list })).getByText('TPL01'),
+    ).toBeInTheDocument();
   });
 
   it('템플릿 ID 를 저장해도 고치던 연결 정보 · 최대 길이 · 갱신 토큰은 싣지 않고 고친 채 남는다', async () => {
@@ -400,8 +418,8 @@ describe('ZaloConnectionScreen', () => {
       templateId: 'TPL02',
     });
 
-    expect(await box('생산 중단').findByText(t.state.saved)).toBeInTheDocument();
-    expect(saveIn('생산 중단')).toBeDisabled();
+    expect(await box(t.workspace.list).findByText(t.state.saved)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: `생산 중단 ${t.actions.save}` })).toBeNull();
     expect(appId).toHaveValue('777');
     expect(length).toHaveValue('150');
     expect(screen.getByLabelText(t.fields.refreshToken)).toHaveValue('rt');

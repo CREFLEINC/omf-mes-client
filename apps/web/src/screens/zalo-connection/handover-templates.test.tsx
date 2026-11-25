@@ -109,8 +109,9 @@ const openTemplate = async (user: ReturnType<typeof userEvent.setup>, name: stri
   await user.clear(search);
   await user.type(search, name);
   await user.click(screen.getByRole('button', { name: t.workspace.apply }));
-  await user.click(await screen.findByRole('button', { name }));
-  return screen.findByRole('textbox', { name: t.fields.templateId });
+  /* 템플릿 상세 상자는 걷었다 — 그 줄의 [수정]으로 줄의 템플릿 ID 를 연다(사용자 지시 2026-11-25). */
+  await user.click(await screen.findByRole('button', { name: `${name} ${t.actions.change}` }));
+  return screen.findByRole('textbox', { name: t.fields.templateIdFor(name) });
 };
 
 describe('ZaloConnectionScreen — 인계 작업 템플릿(피처 002)', () => {
@@ -148,12 +149,15 @@ describe('ZaloConnectionScreen — 인계 작업 템플릿(피처 002)', () => {
 
     const pickingId = await openTemplate(user, '자재 출고 피킹');
     expect(pickingId).toHaveValue('200002');
-    /* 안내는 「템플릿 ID」 이름 오른쪽 안내 라벨 — 입력 칸의 설명으로 이어진다. */
+    /* 안내는 목록 제목 옆 안내 라벨 — 입력 칸의 설명으로 이어진다. */
     expect(pickingId).toHaveAccessibleDescription(t.handover.templateIdHelp);
-    await openTemplate(user, 'IQC 수입검사');
-    /* 상세 정보 칸 · 목록 「템플릿 변수」 열 두 곳에 같은 글이 선다. */
+    /* [수정]으로 열지 않은 줄에는 [변수명 복사]가 선다. 목록 「템플릿 변수」 열에 변수 이름이 선다. */
+    const search = screen.getByRole('searchbox', { name: t.workspace.search });
+    await user.clear(search);
+    await user.type(search, 'IQC 수입검사');
+    await user.click(screen.getByRole('button', { name: t.workspace.apply }));
     expect(
-      within(screen.getByRole('region', { name: 'IQC 수입검사' })).getByText(
+      within(screen.getByRole('region', { name: t.workspace.list })).getByText(
         'receipt_no, lot_count, supplier, event_time',
       ),
     ).toBeInTheDocument();
@@ -168,12 +172,8 @@ describe('ZaloConnectionScreen — 인계 작업 템플릿(피처 002)', () => {
 
     const putaway = await openTemplate(user, '적치');
     await user.type(putaway, 'H0001');
-    /* 저장은 그 템플릿 상세 아래 오른쪽(#358). */
-    await user.click(
-      within(screen.getByRole('region', { name: '적치' })).getByRole('button', {
-        name: t.actions.save,
-      }),
-    );
+    /* 저장은 그 줄의 [저장](#358 · 템플릿 상세 상자 없음). */
+    await user.click(screen.getByRole('button', { name: `적치 ${t.actions.save}` }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
     const body = (await (writes[0] as Request).json()) as {
@@ -198,16 +198,10 @@ describe('ZaloConnectionScreen — 인계 작업 템플릿(피처 002)', () => {
     const { writes } = setup(connection([]));
 
     await user.type(await openTemplate(user, '적치'), 'H-1');
-    /* 저장은 그 템플릿 상세 아래 오른쪽(#358). */
-    await user.click(
-      within(screen.getByRole('region', { name: '적치' })).getByRole('button', {
-        name: t.actions.save,
-      }),
-    );
+    /* 저장은 그 줄의 [저장](#358 · 템플릿 상세 상자 없음). */
+    await user.click(screen.getByRole('button', { name: `적치 ${t.actions.save}` }));
 
     expect(await screen.findByText(t.errors.templateId)).toBeInTheDocument();
-    /* 목록의 그 줄에도 「확인 필요」가 선다 — 다른 템플릿을 보고 있어도 오류 자리를 찾는다. */
-    expect(screen.getByText(t.workspace.hasError)).toBeInTheDocument();
     expect(writes).toHaveLength(0);
   });
 

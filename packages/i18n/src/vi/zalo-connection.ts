@@ -18,6 +18,7 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
     refreshToken: 'Mã làm mới',
     paramMaxLength: 'Giới hạn độ dài giá trị biến',
     templateId: 'ID mẫu',
+    templateIdFor: (name: string): string => `ID mẫu ${name}`,
     expiresAt: 'Thời điểm hết hạn mã truy cập',
     refreshedAt: 'Thời điểm làm mới lần cuối',
     params: 'Biến mẫu',
@@ -63,7 +64,7 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
   },
   workspace: {
     search: 'Tìm tên mẫu',
-    searchPlaceholder: 'Nhập tên mẫu hoặc biến mẫu',
+    searchPlaceholder: 'Nhập tên mẫu, biến mẫu hoặc ID mẫu',
     apply: 'Tra cứu',
     clear: 'Đặt lại',
     list: 'Danh sách mẫu',
@@ -71,10 +72,8 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
     name: 'Tên mẫu',
     templateId: 'ID mẫu',
     kindWithCount: (label: string, count: number): string => `${label} ${String(count)}`,
-    detailTitle: 'Chi tiết mẫu tin',
+    manage: 'Quản lý',
     kinds: { event: 'Sự kiện', handover: 'Công việc bàn giao' },
     empty: 'Không có mẫu phù hợp với điều kiện.',
-    hasError: 'Cần kiểm tra',
-    selectTitle: 'Hãy chọn mẫu.',
   },
 };

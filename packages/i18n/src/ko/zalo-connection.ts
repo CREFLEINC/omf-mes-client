@@ -14,6 +14,7 @@ export const zaloConnection = {
     /** 템플릿 변수 값 자르기 길이 — 모든 템플릿 공통(계약 `paramMaxLength`). Zalo 발송 설정 상자 네 번째 칸. */
     paramMaxLength: '변수 값 길이 제한',
     templateId: '템플릿 ID',
+    templateIdFor: (name: string): string => `${name} 템플릿 ID`,
     expiresAt: '액세스 토큰 만료 일시',
     refreshedAt: '마지막 갱신 일시',
     params: '템플릿 변수',
@@ -67,7 +68,7 @@ export const zaloConnection = {
   /** 연결 정보 · 템플릿 설정(목록 · 상세) 통일 배치(omf-all-around#358). 검색은 템플릿 설정 상자 안. */
   workspace: {
     search: '템플릿명 검색',
-    searchPlaceholder: '템플릿명 또는 템플릿 변수를 입력하세요',
+    searchPlaceholder: '템플릿명, 템플릿 변수 또는 템플릿 ID를 입력하세요',
     apply: '조회',
     clear: '초기화',
     list: '템플릿 목록',
@@ -75,10 +76,8 @@ export const zaloConnection = {
     name: '템플릿명',
     templateId: '템플릿 ID',
     kindWithCount: (label: string, count: number): string => `${label} ${String(count)}건`,
-    detailTitle: '템플릿 상세',
+    manage: '관리',
     kinds: { event: '이벤트', handover: '인계 작업' },
     empty: '조건에 맞는 템플릿이 없습니다.',
-    hasError: '확인 필요',
-    selectTitle: '템플릿을 선택하세요.',
   },
 } as const;
