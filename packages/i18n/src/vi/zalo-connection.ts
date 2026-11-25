@@ -8,16 +8,15 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
     connection: 'Thông tin kết nối Zalo',
     templates: 'Thiết lập mẫu tin',
   },
-  status: {
-    ACTIVE: 'Bình thường',
-    NOT_CONFIGURED: 'Chưa thiết lập',
-    REAUTH_REQUIRED: 'Lỗi kết nối',
+  chips: {
+    connectionError: 'Lỗi kết nối',
+    deliveryOff: 'Đã tắt gửi',
   },
   fields: {
     appId: 'ID ứng dụng',
     secretKey: 'Khóa bí mật ứng dụng',
     refreshToken: 'Mã làm mới',
-    paramMaxLength: 'Độ dài tối đa giá trị biến',
+    paramMaxLength: 'Giới hạn độ dài giá trị biến',
     templateId: 'ID mẫu',
     expiresAt: 'Thời điểm hết hạn mã truy cập',
     refreshedAt: 'Thời điểm làm mới lần cuối',
@@ -26,17 +25,18 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
     errorMessage: 'Nội dung lỗi gốc',
   },
   values: {
-    registered: '●●●●●● Đã đăng ký',
+    registered: 'Đã đăng ký',
     notRegistered: 'Chưa đăng ký',
     none: '—',
     charUnit: 'ký tự',
   },
   actions: {
+    register: 'Đăng ký',
     change: 'Thay đổi',
-    cancelChange: 'Không thay đổi',
-    copy: 'Sao chép',
-    copyFor: (eventName: string): string => `Sao chép biến mẫu ${eventName}`,
-    revert: 'Hủy thay đổi',
+    cancelChange: 'Hủy',
+    copy: 'Sao chép tên biến',
+    copyFor: (eventName: string): string => `Sao chép tên biến ${eventName}`,
+    revert: 'Hủy',
     save: 'Lưu',
     errorDetail: 'Chi tiết lỗi',
     reload: 'Tải lại',
@@ -46,27 +46,25 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
     copied: 'Đã sao chép tên biến mẫu',
     reauth:
       'Hãy nhận mã làm mới mới từ người phụ trách Zalo của khách hàng rồi đăng ký bằng [Thay đổi]',
-    deliveryOn: 'Đang bật gửi Zalo',
-    deliveryDisabled: 'Đang tắt gửi Zalo',
     lastError: (code: string): string =>
       code === '-124' ? 'Mã truy cập Zalo không hợp lệ.' : 'Đã xảy ra lỗi khi kết nối Zalo.',
     conflict: 'Người khác đã lưu trước. Hãy tải lại rồi lưu',
   },
   handover: {
     title: 'Mẫu tin công việc bàn giao',
-    copyFor: (typeName: string): string => `Sao chép tên biến mẫu ${typeName}`,
-    notice:
-      'Khách hàng đăng ký mẫu «MES Handover - …» trên Zalo OA rồi nhập ID nhận được. Nếu để trống, Zalo của công việc đó sẽ không gửi và lịch sử gửi ghi «chưa thiết lập mẫu» (trung tâm thông báo vẫn nhận).',
+    copyFor: (typeName: string): string => `Sao chép tên biến công việc bàn giao ${typeName}`,
+    templateIdHelp:
+      'Hãy nhập ID mẫu đã đăng ký trên Zalo OA. Nếu để trống ID, chỉ gửi đến trung tâm thông báo.',
   },
   errors: {
     appId: 'ID ứng dụng gồm 1–40 chữ số.',
-    secretRequired: 'Hãy nhập giá trị mới. Nếu không muốn thay đổi, hãy bấm [Không thay đổi].',
+    secretRequired: 'Hãy nhập giá trị mới. Nếu không muốn thay đổi, hãy bấm [Hủy].',
     secretTooLong: (max: number): string => `Không được quá ${String(max)} ký tự.`,
     paramMaxLength: 'Hãy nhập số nguyên từ 20 đến 400.',
     templateId: 'ID mẫu tin gồm 1–40 chữ cái tiếng Anh hoặc chữ số, hoặc để trống.',
   },
   workspace: {
-    search: 'Tìm tên mẫu',
+    search: 'Tên mẫu',
     searchPlaceholder: 'Nhập tên mẫu',
     apply: 'Tra cứu',
     clear: 'Đặt lại',
@@ -78,6 +76,5 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
     empty: 'Không có mẫu phù hợp với điều kiện.',
     hasError: 'Cần kiểm tra',
     selectTitle: 'Hãy chọn mẫu.',
-    select: 'Có thể thiết lập ID mẫu và sao chép tên biến.',
   },
 };

@@ -119,12 +119,17 @@ const echoPut = (initial: ZaloConnection) => {
 };
 
 describe('ZaloConnectionScreen', () => {
-  it('머리글 없이 상태 Chip 과 템플릿 목록을 보이고, 고른 템플릿의 ID 칸 · 파라미터 · 복사가 상세에 선다', async () => {
+  it('머리글 없이 템플릿 목록을 보이고, 고른 템플릿의 ID 칸 · 파라미터 · 변수명 복사가 상세에 선다', async () => {
     const user = userEvent.setup();
     setup();
 
-    expect(await screen.findByText(t.status.ACTIVE)).toBeInTheDocument();
+    await screen.findByRole('textbox', { name: t.fields.appId });
     expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+    /* 정상 연결 · 발송 켜짐이면 제목 옆 상태 칩은 없다. */
+    expect(screen.queryByRole('group', { name: t.panes.status })).toBeNull();
+    /* 토큰 일시는 값이 있을 때 보조 글로 선다. */
+    expect(screen.getByText(t.fields.expiresAt)).toBeInTheDocument();
+    expect(screen.getByText(t.fields.refreshedAt)).toBeInTheDocument();
     /* 이벤트 6종 + 인계 작업 템플릿이 한 목록에 선다. */
     const list = within(await screen.findByRole('region', { name: t.workspace.list }));
     expect(await list.findAllByText(t.workspace.kinds.event)).toHaveLength(6);
@@ -132,9 +137,11 @@ describe('ZaloConnectionScreen', () => {
 
     expect(await openTemplate(user, '생산 중단')).toBeInTheDocument();
     expect(screen.getByText('line, work_order, event_time, reason')).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: t.actions.copyFor('생산 중단') }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.actions.copyFor('생산 중단') })).toHaveTextContent(
+      t.actions.copy,
+    );
+    /* 이벤트 템플릿에는 인계 작업 도움말이 없다. */
+    expect(screen.queryByText(t.handover.templateIdHelp)).toBeNull();
   });
 
   it('고른 템플릿을 한 번 더 누르면 선택이 풀린다', async () => {
@@ -156,8 +163,8 @@ describe('ZaloConnectionScreen', () => {
     setup();
 
     const search = await screen.findByRole('searchbox', { name: t.workspace.search });
-    /* 검색은 목록 | 상세 위 조회 조건 상자에 선다(알림 수신자 · 인계작업 알림과 같다). */
-    const filter = box(messages.common.paneList.filter);
+    /* 검색은 길이 제한 줄과 같은 「템플릿 설정」 상자 안에 선다 — 목록 · 검색 줄에는 저장 단추가 없다. */
+    const filter = box(t.panes.templates);
     expect(filter.getByRole('searchbox', { name: t.workspace.search })).toBe(search);
     expect(filter.getByRole('button', { name: t.workspace.apply })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
@@ -168,11 +175,16 @@ describe('ZaloConnectionScreen', () => {
     expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
   });
 
-  it('[변경 취소][저장]은 상자마다 아래에 서고, 템플릿 ID 를 고치면 상세의 저장만 열린다(#358)', async () => {
+  it('[취소][저장]은 상자마다 아래에 서고, 템플릿 ID 를 고치면 상세의 저장만 열린다(#358)', async () => {
     const user = userEvent.setup();
     setup();
 
-    await screen.findByText(t.status.ACTIVE);
+    await screen.findByRole('textbox', { name: t.fields.appId });
+    expect(
+      within(screen.getByRole('region', { name: t.workspace.list })).queryByRole('button', {
+        name: t.actions.save,
+      }),
+    ).toBeNull();
     /* 화면 위 오른쪽의 한꺼번 저장은 없다 — 연결 정보 · 템플릿 설정 · 템플릿 상세 상자마다 하나씩. */
     expect(saveIn(t.panes.connection)).toBeDisabled();
     expect(saveIn(t.panes.templates)).toBeDisabled();
@@ -189,7 +201,7 @@ describe('ZaloConnectionScreen', () => {
     expect(save).toBeDisabled();
   });
 
-  it('앱 ID 를 고쳤다가 [변경 취소]하면 연결 정보만 되돌리고, 고치던 최대 길이는 남는다', async () => {
+  it('앱 ID 를 고쳤다가 [취소]하면 연결 정보만 되돌리고, 고치던 최대 길이는 남는다', async () => {
     const user = userEvent.setup();
     setup();
 
@@ -283,11 +295,34 @@ describe('ZaloConnectionScreen', () => {
     expect(saveIn(t.panes.templates)).toBeEnabled();
   });
 
-  it('US7-1 비밀값은 다시 보이지 않고 「등록됨」으로만 보인다', async () => {
+  it('US7-1 비밀값은 다시 보이지 않고 「등록됨 [변경]」으로만 보인다', async () => {
     setup();
 
     expect(await screen.findAllByText(t.values.registered)).toHaveLength(2);
     expect(screen.queryByLabelText(t.fields.secretKey)).toBeNull();
+    expect(
+      screen.getByRole('button', { name: `${t.fields.secretKey} ${t.actions.change}` }),
+    ).toHaveTextContent(t.actions.change);
+    expect(
+      screen.queryByRole('button', { name: `${t.fields.secretKey} ${t.actions.register}` }),
+    ).toBeNull();
+  });
+
+  it('[변경]으로 연 비밀값 칸은 [취소]로 닫고 저장 값을 그대로 둔다', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    await user.click(
+      await screen.findByRole('button', { name: `${t.fields.secretKey} ${t.actions.change}` }),
+    );
+    await user.type(screen.getByLabelText(t.fields.secretKey), 'sk');
+    expect(saveIn(t.panes.connection)).toBeEnabled();
+    await user.click(
+      screen.getByRole('button', { name: `${t.fields.secretKey} ${t.actions.cancelChange}` }),
+    );
+    expect(screen.queryByLabelText(t.fields.secretKey)).toBeNull();
+    expect(screen.getAllByText(t.values.registered)).toHaveLength(2);
+    expect(saveIn(t.panes.connection)).toBeDisabled();
   });
 
   it('US7-1 비밀값을 바꾸지 않고 저장하면 본문에서 생략하고 If-Match 를 싣는다', async () => {
@@ -358,7 +393,7 @@ describe('ZaloConnectionScreen', () => {
   });
 
   /* 연결 오류는 안내 줄 하나에 한글 요약 + 재등록 안내, 코드 · 원문은 「오류 상세」 안(사용자 지시 2026-11-24). */
-  it('재등록 필요면 「연결 오류」 배지와 오류 안내 한 줄, 오류 상세, 「Zalo 발송 OFF」를 보인다', async () => {
+  it('재등록 필요면 제목 옆 「연결 오류」 · 「발송 꺼짐」 칩과 오류 안내 한 줄, 오류 상세를 보인다', async () => {
     setup({
       data: connection({
         status: 'REAUTH_REQUIRED',
@@ -368,7 +403,9 @@ describe('ZaloConnectionScreen', () => {
       }),
     });
 
-    expect(await screen.findByText(t.status.REAUTH_REQUIRED)).toBeInTheDocument();
+    const chips = within(await screen.findByRole('group', { name: t.panes.status }));
+    expect(chips.getByText(t.chips.connectionError)).toBeInTheDocument();
+    expect(chips.getByText(t.chips.deliveryOff)).toBeInTheDocument();
     expect(
       screen.getAllByText(t.state.lastError('-14014'), { exact: false }).length,
     ).toBeGreaterThan(0);
@@ -376,10 +413,17 @@ describe('ZaloConnectionScreen', () => {
     expect(screen.getByText(t.actions.errorDetail)).toBeInTheDocument();
     expect(screen.getByText('-14014')).toBeInTheDocument();
     expect(screen.getByText('갱신 토큰이 무효입니다')).toBeInTheDocument();
-    expect(screen.getByText(t.state.deliveryDisabled)).toBeInTheDocument();
   });
 
-  it('미설정이면 「미설정」 Chip 이고 비밀값은 「등록 안 됨」이다', async () => {
+  it('발송만 꺼져 있으면 「발송 꺼짐」 칩만 보인다', async () => {
+    setup({ data: connection({ deliveryEnabled: false }) });
+
+    const chips = within(await screen.findByRole('group', { name: t.panes.status }));
+    expect(chips.getByText(t.chips.deliveryOff)).toBeInTheDocument();
+    expect(chips.queryByText(t.chips.connectionError)).toBeNull();
+  });
+
+  it('미설정이면 비밀값은 「미등록 [등록]」이고 토큰 일시는 보이지 않는다', async () => {
     setup({
       data: connection({
         status: 'NOT_CONFIGURED',
@@ -391,9 +435,13 @@ describe('ZaloConnectionScreen', () => {
       }),
     });
 
-    expect(await screen.findByText(t.status.NOT_CONFIGURED)).toBeInTheDocument();
-    expect(screen.getAllByText(t.values.notRegistered)).toHaveLength(2);
+    expect(await screen.findAllByText(t.values.notRegistered)).toHaveLength(2);
+    expect(
+      screen.getByRole('button', { name: `${t.fields.refreshToken} ${t.actions.register}` }),
+    ).toHaveTextContent(t.actions.register);
     expect(screen.queryByText(t.state.reauth)).toBeNull();
+    expect(screen.queryByText(t.fields.expiresAt)).toBeNull();
+    expect(screen.queryByText(t.fields.refreshedAt)).toBeNull();
   });
 
   it('US7-1 저장하면 응답 값으로 상태·칸을 다시 그린다 — 첫 조회(미설정)가 남지 않는다', async () => {
@@ -421,19 +469,21 @@ describe('ZaloConnectionScreen', () => {
 
     await user.type(await screen.findByRole('textbox', { name: t.fields.appId }), '123');
     await user.click(
-      screen.getByRole('button', { name: `${t.fields.secretKey} ${t.actions.change}` }),
+      screen.getByRole('button', { name: `${t.fields.secretKey} ${t.actions.register}` }),
     );
     await user.type(screen.getByLabelText(t.fields.secretKey), 'sk');
     await user.click(
-      screen.getByRole('button', { name: `${t.fields.refreshToken} ${t.actions.change}` }),
+      screen.getByRole('button', { name: `${t.fields.refreshToken} ${t.actions.register}` }),
     );
     await user.type(screen.getByLabelText(t.fields.refreshToken), 'rt');
     await user.click(saveIn(t.panes.connection));
 
     expect(await screen.findByText(t.state.saved)).toBeInTheDocument();
-    expect(await screen.findByText(t.status.ACTIVE)).toBeInTheDocument();
-    expect(screen.queryByText(t.status.NOT_CONFIGURED)).toBeNull();
+    expect(screen.queryByText(t.values.notRegistered)).toBeNull();
     expect(screen.getAllByText(t.values.registered)).toHaveLength(2);
+    expect(
+      screen.getByRole('button', { name: `${t.fields.secretKey} ${t.actions.change}` }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: t.fields.appId })).toHaveValue('123');
     expect(await openTemplate(user, '생산 실행')).toHaveValue('100');
   });

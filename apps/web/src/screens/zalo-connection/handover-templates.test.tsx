@@ -146,8 +146,10 @@ describe('ZaloConnectionScreen — 인계 작업 템플릿(피처 002)', () => {
       ),
     ]);
 
-    expect(await openTemplate(user, '자재 출고 피킹')).toHaveValue('200002');
-    expect(screen.getByText(t.handover.notice)).toBeInTheDocument();
+    const pickingId = await openTemplate(user, '자재 출고 피킹');
+    expect(pickingId).toHaveValue('200002');
+    /* 안내는 템플릿 ID 칸 아래 도움말로 선다. */
+    expect(pickingId).toHaveAccessibleDescription(t.handover.templateIdHelp);
     await openTemplate(user, 'IQC 수입검사');
     expect(screen.getByText('receipt_no, lot_count, supplier, event_time')).toBeInTheDocument();
     expect(

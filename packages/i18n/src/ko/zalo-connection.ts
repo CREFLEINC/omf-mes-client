@@ -1,18 +1,17 @@
 /** W-CO-12 알림 연결 설정 — Zalo 연결 정보와 이벤트별 템플릿(001 신설, 결정 #20). */
 export const zaloConnection = {
   panes: { status: '연결 상태', connection: 'Zalo 연결 정보', templates: '템플릿 설정' },
-  status: {
-    ACTIVE: '정상',
-    NOT_CONFIGURED: '미설정',
-    /** 갱신 토큰 무효 · 비밀 키 오류 — 다시 등록하라는 안내는 오류 안내 줄이 맡는다(사용자 지시 2026-11-24). */
-    REAUTH_REQUIRED: '연결 오류',
+  /** 제목 옆 상태 칩 — 해당할 때만. 연결 오류(재등록 필요 · 마지막 오류)는 경고색, 발송 꺼짐은 무채색. */
+  chips: {
+    connectionError: '연결 오류',
+    deliveryOff: '발송 꺼짐',
   },
   fields: {
     appId: '앱 ID',
     secretKey: '앱 비밀 키',
     refreshToken: '갱신 토큰',
-    /** 템플릿 변수 값 자르기 길이 — 모든 템플릿 공통(계약 `paramMaxLength`). 「템플릿 설정」 제목 아래 한 줄. */
-    paramMaxLength: '변수 값 최대 길이',
+    /** 템플릿 변수 값 자르기 길이 — 모든 템플릿 공통(계약 `paramMaxLength`). 템플릿 설정 상자 맨 위 한 줄. */
+    paramMaxLength: '변수 값 길이 제한',
     templateId: '템플릿 ID',
     expiresAt: '액세스 토큰 만료 일시',
     refreshedAt: '마지막 갱신 일시',
@@ -21,17 +20,19 @@ export const zaloConnection = {
     errorMessage: '오류 원문',
   },
   values: {
-    registered: '●●●●●● 등록됨',
-    notRegistered: '등록 안 됨',
+    registered: '등록됨',
+    notRegistered: '미등록',
     none: '—',
     charUnit: '자',
   },
   actions: {
-    change: '바꾸기',
-    cancelChange: '바꾸지 않기',
-    copy: '복사',
-    copyFor: (eventName: string): string => `${eventName} 템플릿 변수 복사`,
-    revert: '변경 취소',
+    /** 비밀값 — 없으면 [등록], 있으면 [변경]. 연 칸을 닫는 단추는 [취소]. */
+    register: '등록',
+    change: '변경',
+    cancelChange: '취소',
+    copy: '변수명 복사',
+    copyFor: (eventName: string): string => `${eventName} 변수명 복사`,
+    revert: '취소',
     save: '저장',
     errorDetail: '오류 상세',
     reload: '다시 불러오기',
@@ -39,9 +40,7 @@ export const zaloConnection = {
   state: {
     saved: '저장했습니다',
     copied: '템플릿 변수 이름을 복사했습니다',
-    reauth: '고객사 Zalo 담당자에게 새 갱신 토큰을 받아 [바꾸기]로 등록하세요',
-    deliveryOn: 'Zalo 발송 ON',
-    deliveryDisabled: 'Zalo 발송 OFF',
+    reauth: '고객사 Zalo 담당자에게 새 갱신 토큰을 받아 [변경]으로 등록하세요',
     /** Zalo 오류 코드를 사람 말로 — 모르는 코드는 일반 문구, 코드와 원문은 「오류 상세」에 둔다. */
     lastError: (code: string): string =>
       code === '-124'
@@ -52,23 +51,22 @@ export const zaloConnection = {
   /** 인계 작업 템플릿 카드(피처 002, FR-010·FR-022). 기존 6종 아래 별도 카드다(확정 2026-10-28). */
   handover: {
     title: '인계 작업 템플릿',
-    /** 이벤트 칸의 복사(`copyFor`)와 접근 이름을 가른다 — 같은 화면에 16개가 선다. */
-    copyFor: (typeName: string): string => `${typeName} 템플릿 변수 이름 복사`,
-    /* 「MES Handover - …」는 고객사에 전달한 영문 템플릿 이름 접두 그대로다. */
-    notice:
-      // ui-check-ignore: C-13 영문 템플릿 이름 접두
-      '고객사가 Zalo OA 에 「MES Handover - …」 템플릿을 등록하고 받은 ID 를 넣습니다. 비어 있으면 그 작업의 Zalo 는 보내지 않고 발송 이력에 「템플릿 미설정」으로 남습니다(알림센터는 그대로 받습니다).',
+    /** 이벤트 템플릿의 복사(`copyFor`)와 접근 이름을 가른다. 보이는 글 「변수명 복사」를 담는다. */
+    copyFor: (typeName: string): string => `${typeName} 인계 작업 변수명 복사`,
+    /** 템플릿 ID 입력 칸 아래 도움말. */
+    templateIdHelp:
+      'Zalo OA에서 등록한 템플릿 ID를 입력하세요. ID를 비워 두면 알림센터로만 발송됩니다.',
   },
   errors: {
     appId: '앱 ID는 숫자 1~40자입니다.',
-    secretRequired: '새 값을 입력하세요. 바꾸지 않으려면 [바꾸지 않기]를 누르세요.',
+    secretRequired: '새 값을 입력하세요. 바꾸지 않으려면 [취소]를 누르세요.',
     secretTooLong: (max: number): string => `${String(max)}자를 넘을 수 없습니다.`,
     paramMaxLength: '20~400 사이의 정수를 입력하세요.',
     templateId: '템플릿 ID는 영문·숫자 1~40자이거나 비워 둡니다.',
   },
-  /** 연결 정보 · 템플릿 설정(목록 · 상세) 통일 배치(omf-all-around#358). 검색은 위 조회 상자. */
+  /** 연결 정보 · 템플릿 설정(목록 · 상세) 통일 배치(omf-all-around#358). 검색은 템플릿 설정 상자 안. */
   workspace: {
-    search: '템플릿명 검색',
+    search: '템플릿명',
     searchPlaceholder: '템플릿명을 입력하세요',
     apply: '조회',
     clear: '초기화',
@@ -80,6 +78,5 @@ export const zaloConnection = {
     empty: '조건에 맞는 템플릿이 없습니다.',
     hasError: '확인 필요',
     selectTitle: '템플릿을 선택하세요.',
-    select: '템플릿 ID를 설정하고 변수명을 복사할 수 있습니다.',
   },
 } as const;

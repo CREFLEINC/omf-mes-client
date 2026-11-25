@@ -39450,16 +39450,6 @@ body:has(
   }
 }
 
-/* 발송 상태 — 배지 옆 짧은 글. 꺼짐은 흐리게. */
-.zalo-delivery {
-  color: var(--on-surface);
-  font: var(--type-label-md);
-}
-
-.zalo-delivery[data-on='false'] {
-  color: var(--on-surface-variant);
-}
-
 /* 토큰 일시 — 제목 아래 한 줄, 좁으면 접힌다. */
 .zalo-token-times {
   display: flex;
@@ -39501,15 +39491,6 @@ body:has(
 .zalo-error-detail dd {
   margin: 0;
   overflow-wrap: anywhere;
-}
-
-/* 템플릿 공통 설정 줄 — 템플릿 목록 · 상세 위. */
-.zalo-template-common {
-  padding: var(--space-3) var(--space-5);
-}
-
-.zalo-template-common > * {
-  max-width: 20rem;
 }
 
 /* 상세 — 고른 템플릿의 ID 입력 · 파라미터 · 복사. */
@@ -40298,21 +40279,6 @@ body:has(
   color: var(--on-surface-variant);
 }
 
-/* 템플릿 설정 — 제목 아래 공통 값 한 줄. */
-.zalo-template-common {
-  display: grid;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
-}
-
-.zalo-template-common > * {
-  max-width: none;
-}
-
-.zalo-template-common > .pane-title {
-  margin: 0;
-}
-
 /* 「오류 상세」 — 글 링크가 아니라 작은 테두리 단추 모양 펼침. 펼치면 화살표가 돈다. */
 .zalo-error-detail {
   margin-top: var(--space-2);
@@ -40544,4 +40510,82 @@ body:has(
 /* 수신자 추가 창 — 줄 어디를 눌러도 고른다(사용자 지시 2026-11-25). */
 .alarm-picker-rows tbody tr:has(input[type='checkbox']:not(:disabled)) {
   cursor: pointer;
+}
+
+/*
+ * 알림 연결 설정(#358) — 제목 옆 상태 칩 · 토큰 일시 보조 글 · 템플릿 설정 상자 하나(길이 제한 줄 + 템플릿명 검색).
+ * 좌우 배치는 상세가 내용 높이만, 상하 배치는 쪽 넘김이 표 바로 아래 · 줄이 잘리지 않는 높이.
+ */
+.zalo-connection-head > .zalo-status {
+  gap: var(--space-2);
+}
+
+.zalo-connection-box > .zalo-token-times {
+  gap: var(--space-1) var(--space-5);
+  margin-top: calc(var(--space-1) * -1);
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.zalo-connection-box > .zalo-token-times > div {
+  gap: var(--space-1);
+}
+
+.zalo-connection-box .zalo-field-row,
+.zalo-template-box .zalo-field-row {
+  align-items: center;
+}
+
+.zalo-template-box {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+
+.zalo-template-box > .zalo-template-common-row {
+  align-items: center;
+}
+
+.zalo-template-box > .zalo-template-search {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.zalo-template-search > .zalo-field-value {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.zalo-template-search > .zalo-field-value > .zalo-search-input {
+  flex: 0 1 16rem;
+  width: 16rem;
+  min-width: 0;
+}
+
+.zalo-template-search > .zalo-field-value > button {
+  flex: 0 0 auto;
+}
+
+/* 고르기 전 상세 — 한 줄만. */
+.zalo-detail-empty {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-md);
+}
+
+/* 좌우 배치 — 상세는 내용 높이만. */
+.zalo-split:not(.is-stacked) > .list-detail-detail {
+  align-self: start;
+  height: auto;
+  max-height: 100%;
+}
+
+/* 상하 배치 — 목록은 줄이 잘리지 않는 높이(끌어 줄이면 표만 구른다), 쪽 넘김은 표 바로 아래. */
+.po-board-split.inspection-split.zalo-split.is-stacked > .list-detail-list {
+  max-height: var(--stacked-list-height, none);
+}
+
+.zalo-split.is-stacked > .list-detail-list > .page-nav {
+  margin-top: 0;
 }
