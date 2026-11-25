@@ -553,9 +553,9 @@ export const HandoverAlertSettingsScreen = () => {
     );
   };
 
-  /* 목록 제목 바로 아래 — (공장이 여럿이면 공장 칸) · 작업명 검색 · [조회] 한 줄(종전 조회 상자를 없앴다). */
+  /* 위 조회 상자 — (공장이 여럿이면 공장 칸) · 작업명 검색 · [조회] 한 줄(다른 화면과 같은 자리 · 사용자 지시 2026-11-25). */
   const listSearch = (
-    <div className="notify-list-search">
+    <div className="filter-bar notify-list-search">
       {/* US2-6 — 고를 공장이 하나뿐이면 칸을 두지 않는다. 공장은 고르는 즉시 적용한다. */}
       {(plants.data?.length ?? 0) > 1 && (
         <SelectField
@@ -603,17 +603,12 @@ export const HandoverAlertSettingsScreen = () => {
       {/* 머리글(경로 · 화면 이름)은 두지 않는다 — 사이드바가 위치를 말한다(단말 관리와 같은 틀 · #358). */}
       <ListDetailWorkspace
         storageKey="omf-mes:handover-alert-settings"
+        filter={{ label: messages.common.paneList.filter, content: listSearch }}
         list={{
           label: w.list,
           title: w.list,
-          className: 'notify-fit-list',
           count: plantId === null || types.data === undefined ? undefined : shownTypes.length,
-          content: (
-            <>
-              {listSearch}
-              {typeList()}
-            </>
-          ),
+          content: typeList(),
         }}
         detail={{
           label:

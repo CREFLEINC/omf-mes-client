@@ -496,9 +496,9 @@ export const AlarmRecipientSettingsScreen = () => {
     );
   };
 
-  /* 목록 제목 바로 아래 — 부서 선택 · [조회] · [초기화] 한 줄(종전 조회 상자를 없앴다 · 인계작업 알림 설정과 같은 자리). */
+  /* 위 조회 상자 — 부서 선택 · [조회] · [초기화] 한 줄(다른 화면과 같은 자리 · 사용자 지시 2026-11-25). */
   const listSearch = (
-    <div className="notify-list-search">
+    <div className="filter-bar notify-list-search">
       {departments.isError ? (
         loadError(departments.error, () => void departments.refetch())
       ) : departments.data !== undefined && departments.data.items.length === 0 ? (
@@ -550,17 +550,12 @@ export const AlarmRecipientSettingsScreen = () => {
       {/* 머리글(경로 · 화면 이름)은 두지 않는다 — 사이드바가 위치를 말한다(단말 관리와 같은 틀 · #358). */}
       <ListDetailWorkspace
         storageKey="omf-mes:alarm-recipient-settings"
+        filter={{ label: messages.common.paneList.filter, content: listSearch }}
         list={{
           label: w.list,
           title: w.list,
-          className: 'notify-fit-list',
           count: departmentId === null ? undefined : events.data?.length,
-          content: (
-            <>
-              {listSearch}
-              {eventList()}
-            </>
-          ),
+          content: eventList(),
         }}
         detail={{
           label:

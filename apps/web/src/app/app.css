@@ -40432,6 +40432,18 @@ body:has(
     .maintenance-result-part-picker,
     .tool-pm-order-item-row,
     .tool-pm-result-tool-grid
+
+/*
+ * 알림 수신자 · 인계작업 알림 — 조회 칸은 다른 화면처럼 위 조회 상자에, [조회]([초기화])는 줄 오른쪽 끝
+ * (사용자 지시 2026-11-25).
+ */
+.list-detail-filter > .filter-bar.notify-list-search {
+  margin: 0;
+}
+
+.list-detail-filter > .notify-list-search > .filter-actions {
+  margin-left: auto;
+}
   )
   :is(.required-mark, [class*='requiredMark']) {
   display: revert;
