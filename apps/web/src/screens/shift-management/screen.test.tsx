@@ -372,6 +372,22 @@ describe('nextShiftCode', () => {
   });
 });
 
+describe('ShiftManagementScreen — 시작 · 종료 같은 시각', () => {
+  it('종료 시간에서 시작 시간과 같은 시각은 고를 수 없다', async () => {
+    const { user } = setup();
+    await user.click(await screen.findByRole('button', { name: t.add }));
+    const dialog = within(await screen.findByRole('dialog', { name: td.addTitle }));
+    await pickTime(user, 'start', '08:00');
+    await user.click(dialog.getByRole('button', { name: td.end }));
+    await user.click(
+      within(screen.getByRole('listbox', { name: td.endHour })).getByRole('option', { name: '08' }),
+    );
+    const minutes = within(screen.getByRole('listbox', { name: td.endMinute }));
+    expect(minutes.getByRole('option', { name: '00' })).toHaveAttribute('aria-disabled', 'true');
+    expect(minutes.getByRole('option', { name: '30' })).not.toHaveAttribute('aria-disabled');
+  });
+});
+
 describe('endsNextDay', () => {
   it('끝이 시작보다 이르거나 같으면 다음 날이다 — 비어 있으면 판단하지 않는다', () => {
     expect(endsNextDay('20:00', '08:00')).toBe(true);

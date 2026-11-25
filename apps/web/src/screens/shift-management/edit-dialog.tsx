@@ -1,4 +1,4 @@
-import { Button, Chip, Dialog, Field, Skeleton, TextField } from '@crefle/web-ui';
+import { Button, Chip, Dialog, Field, Icon, Skeleton, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
@@ -258,6 +258,8 @@ export const EditDialog = ({
             {(ids) => (
               <TimeField
                 labels={START_LABELS}
+                /* 시작과 종료는 같은 시각일 수 없다(사용자 결정 2026-11-25) — 다음 날로 넘는 교대는 그대로 고른다. */
+                blockedTimes={draft.endTime === '' ? undefined : [draft.endTime]}
                 hour={draft.startTime.slice(0, 2)}
                 minute={draft.startTime.slice(3, 5)}
                 disabled={false}
@@ -271,6 +273,7 @@ export const EditDialog = ({
             {(ids) => (
               <TimeField
                 labels={END_LABELS}
+                blockedTimes={draft.startTime === '' ? undefined : [draft.startTime]}
                 hour={draft.endTime.slice(0, 2)}
                 minute={draft.endTime.slice(3, 5)}
                 disabled={false}
@@ -281,9 +284,6 @@ export const EditDialog = ({
             )}
           </Field>
         </div>
-        {endsNextDay(draft.startTime, draft.endTime) && (
-          <p className="field-note">{td.nextDayNote}</p>
-        )}
       </div>
     );
   };
@@ -298,6 +298,17 @@ export const EditDialog = ({
       className="shift-management-dialog"
       footer={
         <>
+          {/* 다음 날 끝나는 교대 안내 — 정보 아이콘 + 파란 바탕 라벨, 단추 줄 왼쪽(사용자 지시 2026-11-25). */}
+          {endsNextDay(draft.startTime, draft.endTime) && (
+            <span
+              className="iqc-inspection-action-note shift-management-footer-note"
+              data-tone="info"
+              role="status"
+            >
+              <Icon name="info" size={14} aria-hidden />
+              {td.nextDayNote}
+            </span>
+          )}
           <Button variant="outlined" onClick={onClose}>
             {td.cancel}
           </Button>

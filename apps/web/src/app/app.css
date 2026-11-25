@@ -40641,11 +40641,11 @@ body:has(
   letter-spacing: var(--type-body-md-tracking);
 }
 
-/* 창 안 안내 문구는 크게(사용자 지시 2026-11-25). */
-.shift-management-form .field-note {
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
+/* 창 아래 단추 줄 왼쪽 안내 라벨 — 단추를 오른쪽으로 민다. */
+.shift-management-footer-note {
+  margin-inline-end: auto;
 }
+
 
 /* 비어 있는 필수 칸 — 글 없이 테두리만 붉게. 다 채우면 [저장]이 켜진다. */
 .shift-management-empty [class*='_inputWrap_'] {

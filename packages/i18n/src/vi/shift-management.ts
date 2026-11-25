@@ -63,8 +63,7 @@ export const shiftManagement: Translated<typeof ko.shiftManagement> = {
     minuteHead: 'Phút',
     startPlaceholder: 'Nhập giờ bắt đầu',
     endPlaceholder: 'Nhập giờ kết thúc',
-    nextDayNote:
-      'Giờ kết thúc sớm hơn hoặc bằng giờ bắt đầu nên ca sẽ được lưu là kết thúc vào ngày hôm sau.',
+    nextDayNote: 'Ca kết thúc vào ngày hôm sau.',
     cancel: 'Hủy',
     save: 'Lưu',
     loading: 'Đang tải thông tin ca.',

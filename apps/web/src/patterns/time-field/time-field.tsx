@@ -30,6 +30,11 @@ export interface TimeFieldProps {
   disabled: boolean;
   invalid: boolean;
   describedBy?: string;
+  /**
+   * 고를 수 없는 시각(`HH:MM`) — 그 시의 그 분 칸만 잠근다. 주지 않으면 모두 고를 수 있다(종전 동작).
+   * 예: 교대 관리의 종료 시간은 시작 시간과 같은 시각을 고를 수 없다(#318).
+   */
+  blockedTimes?: readonly string[];
 }
 
 /**
@@ -47,6 +52,7 @@ export const TimeField = ({
   disabled,
   invalid,
   describedBy,
+  blockedTimes,
 }: TimeFieldProps) => {
   const popupId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -133,10 +139,17 @@ export const TimeField = ({
              * 분은 시를 고른 뒤에 고른다 — 시가 없으면 분 칸은 잠긴다. `disabled` 대신 `aria-disabled` 로 잠근다:
              * 입력 칸 묶음의 «아직 열리지 않은 칸» 표시(`:has(:disabled)`)가 이 칸까지 흐리게 만들지 않게.
              */
-            aria-disabled={kind === 'minute' && draftHour === '' ? true : undefined}
+            aria-disabled={
+              kind === 'minute' &&
+              (draftHour === '' || blockedTimes?.includes(`${draftHour}:${value}`) === true)
+                ? true
+                : undefined
+            }
             className="time-picker-option"
             onClick={() => {
               if (kind === 'minute' && draftHour === '') return;
+              if (kind === 'minute' && blockedTimes?.includes(`${draftHour}:${value}`) === true)
+                return;
 
               onPick(value);
             }}

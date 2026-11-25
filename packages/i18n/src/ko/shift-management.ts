@@ -63,7 +63,7 @@ export const shiftManagement = {
     minuteHead: '분',
     startPlaceholder: '시작 시간을 입력하세요',
     endPlaceholder: '종료 시간을 입력하세요',
-    nextDayNote: '종료 시간이 시작 시간보다 빠르거나 같아 다음 날 끝나는 교대로 저장됩니다.',
+    nextDayNote: '다음 날 종료되는 교대입니다.',
     cancel: '취소',
     save: '저장',
     loading: '교대 정보를 불러오는 중입니다.',
