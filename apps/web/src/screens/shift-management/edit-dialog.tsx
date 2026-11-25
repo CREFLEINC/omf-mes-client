@@ -1,6 +1,6 @@
-import { Button, Dialog, Field, Skeleton, TextField } from '@crefle/web-ui';
+import { Button, Dialog, Field, Icon, Skeleton, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -91,6 +91,7 @@ export const EditDialog = ({
       : draftOf(shift),
   );
   const save = useSaveShift(shiftId, onSaved);
+  const codeId = useId();
 
   /* 상세가 오면 그 값으로 채운다 — 목록을 받은 뒤 누가 고쳤을 수 있다. */
   const loaded = detail.data?.shift;
@@ -158,34 +159,56 @@ export const EditDialog = ({
           <dt>{td.plant}</dt>
           <dd>{plantName}</dd>
         </dl>
-        <TextField
-          label={td.code}
-          required
-          placeholder={td.codePlaceholder}
-          maxLength={50}
-          value={draft.shiftCode}
-          disabled={codeLocked}
-          containerClassName={textFieldClass('shiftCode')}
-          helperText={
-            codeLocked && editability !== undefined
-              ? td.codeLocked(editability.referenceCount ?? 0)
-              : shift === null
-                ? td.codeAuto
-                : undefined
-          }
-          error={save.fieldErrors.shiftCode}
-          onChange={(event) => update({ shiftCode: event.target.value })}
-        />
-        <TextField
-          label={td.name}
-          required
-          placeholder={td.namePlaceholder}
-          maxLength={200}
-          value={draft.shiftName}
-          containerClassName={textFieldClass('shiftName')}
-          error={save.fieldErrors.shiftName}
-          onChange={(event) => update({ shiftName: event.target.value })}
-        />
+        {/* 교대 코드 · 교대명은 한 줄(사용자 지시 2026-11-25). */}
+        <div className="shift-management-pair">
+          <div className="shift-management-code">
+            {/* 자동 입력 안내는 칸 이름 오른쪽 라벨(정보 아이콘 + 파란 바탕) — 추가 창에서만. */}
+            <span className="field-label">
+              <label htmlFor={codeId}>{td.code}</label>
+              <span className="required-mark" aria-hidden="true">
+                {' '}
+                *
+              </span>
+              {shift === null && (
+                <span
+                  className="iqc-inspection-action-note shift-management-label-note"
+                  data-tone="info"
+                >
+                  <Icon name="info" size={14} aria-hidden />
+                  {td.codeAuto}
+                </span>
+              )}
+            </span>
+            <TextField
+              id={codeId}
+              fullWidth
+              required
+              placeholder={td.codePlaceholder}
+              maxLength={50}
+              value={draft.shiftCode}
+              disabled={codeLocked}
+              containerClassName={textFieldClass('shiftCode')}
+              helperText={
+                codeLocked && editability !== undefined
+                  ? td.codeLocked(editability.referenceCount ?? 0)
+                  : undefined
+              }
+              error={save.fieldErrors.shiftCode}
+              onChange={(event) => update({ shiftCode: event.target.value })}
+            />
+          </div>
+          <TextField
+            label={td.name}
+            fullWidth
+            required
+            placeholder={td.namePlaceholder}
+            maxLength={200}
+            value={draft.shiftName}
+            containerClassName={textFieldClass('shiftName')}
+            error={save.fieldErrors.shiftName}
+            onChange={(event) => update({ shiftName: event.target.value })}
+          />
+        </div>
         <div className="shift-management-times">
           <Field label={td.start} labelAs="span" required error={save.fieldErrors.startTime}>
             {(ids) => (
@@ -226,7 +249,7 @@ export const EditDialog = ({
       open
       onClose={onClose}
       title={shift === null ? td.addTitle : td.editTitle}
-      size="sm"
+      size="lg"
       showCloseButton={false}
       className="shift-management-dialog"
       footer={

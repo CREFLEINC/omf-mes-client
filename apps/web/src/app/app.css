@@ -40536,7 +40536,18 @@ body:has(
 
 /* W-06-26 교대 관리(omf-all-around#318) — 검사 조회·판정과 같은 틀: 위 조회 상자, 아래 목록 상자. */
 .shift-management-filter .shift-management-add {
+  flex: 0 0 auto;
   margin-inline-start: auto;
+}
+
+/* 공장 — 공장 이름이 잘리지 않는 폭, 고르개가 칸을 꽉 채운다. */
+.shift-management-filter > .shift-management-plant {
+  flex: 0 0 12rem;
+  width: 12rem;
+}
+
+.shift-management-plant > :not(.field-label) {
+  width: 100%;
 }
 
 .shift-management-list-pane {
@@ -40571,9 +40582,44 @@ body:has(
   margin: 0;
 }
 
+.shift-management-pair {
+  display: grid;
+  /* 앞 칸은 교대 코드 이름 + 자동 입력 안내 라벨이 한 줄에 들어가는 폭 — 시간 줄도 같은 열에 맞춘다. */
+  grid-template-columns: 27rem minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.shift-management-code {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+}
+
+.shift-management-pair > * {
+  min-width: 0;
+}
+
+/* 라벨 줄 — 칸 이름 · * · 안내 라벨을 한 줄로. */
+.shift-management-code > .field-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+
+/* 교대 코드 이름 오른쪽 안내 라벨 — 라벨 줄이 높아지지 않게 여백 · 글자만 줄인다(단말 관리 칸 이름 라벨과 같다). */
+.field-label > .shift-management-label-note {
+  margin: 0 0 0 var(--space-2);
+  padding: 1px var(--space-2);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  white-space: nowrap;
+}
+
 .shift-management-times {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 27rem minmax(0, 1fr);
   gap: var(--space-3);
 }
 
@@ -40598,7 +40644,7 @@ body:has(
 }
 
 /* 비어 있는 필수 칸 — 글 없이 테두리만 붉게. 다 채우면 [저장]이 켜진다. */
-.shift-management-empty [class*='_field_']:has(> input) {
+.shift-management-empty [class*='_inputWrap_'] {
   box-shadow: inset 0 0 0 1px var(--semantic-error);
 }
 

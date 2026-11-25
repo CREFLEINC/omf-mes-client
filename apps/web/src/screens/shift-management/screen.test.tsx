@@ -263,7 +263,9 @@ describe('ShiftManagementScreen — 교대 관리 W-06-26 (#318)', () => {
     const { user, writes } = setup();
     await user.click((await table()).getByRole('button', { name: t.deactivateRow('합성 야간') }));
 
-    const confirm = within(await screen.findByRole('dialog', { name: t.deactivateDialog.title }));
+    const confirm = within(
+      await screen.findByRole('dialog', { name: t.deactivateDialog.title('합성 야간') }),
+    );
     expect(confirm.getByText(t.deactivateDialog.body('합성 야간'))).toBeInTheDocument();
     await waitFor(() =>
       expect(confirm.getByRole('button', { name: t.deactivateDialog.confirm })).toBeEnabled(),
@@ -274,7 +276,9 @@ describe('ShiftManagementScreen — 교대 관리 W-06-26 (#318)', () => {
     expect(writes[0]).toMatchObject({ method: 'POST', path: '/mdm/shifts/2:deactivate' });
     expect(writes[0]?.headers.get('If-Match')).toBe('5');
     await waitFor(() =>
-      expect(screen.queryByRole('dialog', { name: t.deactivateDialog.title })).toBeNull(),
+      expect(
+        screen.queryByRole('dialog', { name: t.deactivateDialog.title('합성 야간') }),
+      ).toBeNull(),
     );
   });
 

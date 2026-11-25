@@ -40,7 +40,7 @@ export const shiftManagement: Translated<typeof ko.shiftManagement> = {
     plant: 'Nhà máy',
     code: 'Mã ca',
     codePlaceholder: 'VD: S01',
-    codeAuto: 'Số tiếp theo được điền tự động. Có thể thay đổi nếu cần.',
+    codeAuto: 'Mã tiếp theo được nhập tự động. Có thể sửa nếu cần.',
     codeLocked: (count: number) =>
       `Ca đã được dùng ở ${count} công việc hoặc kết quả nên không thể đổi mã.`,
     name: 'Tên ca',
@@ -61,9 +61,9 @@ export const shiftManagement: Translated<typeof ko.shiftManagement> = {
     loading: 'Đang tải thông tin ca.',
   },
   deactivateDialog: {
-    title: 'Ngừng sử dụng ca',
+    title: (name: string) => `Ngừng sử dụng ca ${name}`,
     body: (name: string) =>
-      `Ngừng sử dụng ca ${name}. Công việc và kết quả đã ghi vẫn giữ nguyên, từ nay ca này không còn trong danh sách chọn ca và việc xác định ca theo giờ làm.`,
+      `Khi ngừng sử dụng, ca ${name} sẽ bị loại khỏi danh sách chọn ca và việc xác định ca theo giờ làm. Công việc và kết quả đã ghi vẫn được giữ nguyên.`,
     cancel: 'Hủy',
     confirm: 'Ngừng sử dụng',
   },

@@ -41,7 +41,7 @@ export const shiftManagement = {
     plant: '공장',
     code: '교대 코드',
     codePlaceholder: '예: S01',
-    codeAuto: '다음 번호가 자동으로 들어갑니다. 필요하면 바꿀 수 있습니다.',
+    codeAuto: '다음 코드가 자동으로 입력됩니다. 필요하면 수정할 수 있습니다.',
     codeLocked: (count: number) => `작업이나 실적에 ${count}건 쓰인 교대라 코드는 바꿀 수 없습니다.`,
     name: '교대명',
     namePlaceholder: '예: 주간, 야간',
@@ -60,9 +60,9 @@ export const shiftManagement = {
     loading: '교대 정보를 불러오는 중입니다.',
   },
   deactivateDialog: {
-    title: '교대 사용 중지',
+    title: (name: string) => `${name} 교대 사용 중지`,
     body: (name: string) =>
-      `${name} 교대를 사용 중지합니다. 이미 기록된 작업과 실적은 그대로 남고, 이후 교대 선택과 작업 시간 판정에서 빠집니다.`,
+      `사용을 중지하면 ${name} 교대가 교대 선택 목록과 작업 시간 판정에서 제외됩니다. 기존 작업 기록과 실적은 유지됩니다.`,
     cancel: '취소',
     confirm: '사용 중지',
   },

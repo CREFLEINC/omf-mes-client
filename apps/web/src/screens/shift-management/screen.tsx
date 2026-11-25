@@ -3,7 +3,6 @@ import {
   Chip,
   Dialog,
   EmptyState,
-  Field,
   Icon,
   Skeleton,
   Table,
@@ -12,13 +11,14 @@ import {
 } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { InfoTip } from '../../patterns/info-tip';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
+import { useOaAccess, useScopedPlants } from '../../patterns/oa-access';
 import { SaveErrorBanner } from '../../patterns/master';
 import { useSession } from '../../patterns/session';
 import { Select } from '../../patterns/select';
@@ -42,11 +42,24 @@ const hhmm = (time: string): string => time.slice(0, 5);
  */
 export const ShiftManagementScreen = () => {
   const toast = useToast();
+  const plantFieldId = useId();
   const { session } = useSession();
   const plants = usePlants(session?.scopes ?? NO_SCOPES);
+  /*
+   * 공장은 사용자 설정을 따라 자동으로 고른다 — 계정 범위 공장 중 위 줄에서 고른 동작(OA · 부품)의 공장.
+   * 그 공장이 여럿이면 고를 수 있다. 판단 근거를 못 받으면 범위 공장 전체를 후보로 둔다.
+   */
+  const access = useOaAccess();
+  const scoped = useScopedPlants();
+  const kindIds =
+    scoped.status === 'ready' && (access === 'oa' || access === 'not-oa')
+      ? new Set((access === 'oa' ? scoped.oa : scoped.parts).map((each) => each.plantId))
+      : null;
+  const candidates = (plants.data ?? []).filter(
+    (each) => kindIds === null || kindIds.has(each.plantId),
+  );
   const [pickedPlant, setPickedPlant] = useState<number | null>(null);
-  const plant =
-    plants.data?.find((each) => each.plantId === pickedPlant) ?? plants.data?.[0] ?? null;
+  const plant = candidates.find((each) => each.plantId === pickedPlant) ?? candidates[0] ?? null;
   const plantId = plant?.plantId ?? null;
   const list = useShifts(plantId);
   /** 사용 유무 라벨 — `null` 이면 둘 다 보인다. 공장을 바꾸면 풀린다. */
@@ -83,7 +96,11 @@ export const ShiftManagementScreen = () => {
       key: 'status',
       header: t.columns.status,
       align: 'center',
-      render: (row) => (row.isActive ? t.chips.active : t.chips.inactive),
+      render: (row) => (
+        <Chip variant="status" size="sm" status={row.isActive ? 'success' : 'idle'}>
+          {row.isActive ? t.chips.active : t.chips.inactive}
+        </Chip>
+      ),
     },
     {
       key: 'actions',
@@ -183,25 +200,29 @@ export const ShiftManagementScreen = () => {
           </div>
         </div>
       )}
-      <section className="pane filter-field-surface" aria-label={t.filters.label}>
-        <div className="filter-bar shift-management-filter">
-          <Field label={t.filters.plant} labelAs="span">
-            {(ids) => (
-              <Select
-                id={ids.controlId}
-                aria-label={t.filters.plant}
-                value={plantId === null ? null : String(plantId)}
-                options={(plants.data ?? []).map((each) => ({
-                  value: String(each.plantId),
-                  label: each.plantName,
-                }))}
-                onChange={(value) => {
-                  setPickedPlant(Number(value));
-                  setStatusFilter(null);
-                }}
-              />
-            )}
-          </Field>
+      {/* 조회 상자는 단말 관리 · 사용자 역할 권한 관리와 같은 틀 — 칸 바닥 맞춤, 추가 단추는 줄 오른쪽 끝. */}
+      <section
+        className="pane users-roles-search filter-field-surface"
+        aria-label={t.filters.label}
+      >
+        <div className="filter-bar users-roles-filter-row shift-management-filter">
+          <div className="field-cell shift-management-plant">
+            <span className="field-label">
+              <label htmlFor={plantFieldId}>{t.filters.plant}</label>
+            </span>
+            <Select
+              id={plantFieldId}
+              value={plantId === null ? null : String(plantId)}
+              options={candidates.map((each) => ({
+                value: String(each.plantId),
+                label: each.plantName,
+              }))}
+              onChange={(value) => {
+                setPickedPlant(Number(value));
+                setStatusFilter(null);
+              }}
+            />
+          </div>
           {/* 볼 수 있는 공장이 없으면 목록이 그 사유를 말한다 — 추가 단추는 두지 않는다. */}
           {plant !== null && (
             <Button
@@ -243,7 +264,7 @@ export const ShiftManagementScreen = () => {
       <Dialog
         open={retiring !== null}
         onClose={() => setRetiring(null)}
-        title={t.deactivateDialog.title}
+        title={t.deactivateDialog.title(retiring?.shiftName ?? '')}
         size="sm"
         showCloseButton={false}
         footer={
