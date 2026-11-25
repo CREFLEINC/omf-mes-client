@@ -8,9 +8,8 @@ export const dispatchHistory = {
     deliveryStatus: '상태',
     all: '전체',
     search: '조회',
-    /* 조회 상자 선택칸 이름(#358). 칩 · 「조건 제거」는 위 이름 그대로. */
+    /* 조회 상자 선택칸 이름(#358). 칩 · 「조건 제거」는 위 이름 그대로. 결과는 위 줄 오른쪽 칩으로 거른다(#358). */
     eventSelect: '이벤트 선택',
-    resultSelect: '결과 선택',
     departmentSelect: '부서 선택',
     /** 「조건 더보기」에 접힌 부서 조건의 칩(C-6). */
     chipDepartment: (name: string): string => `부서: ${name}`,
@@ -52,7 +51,7 @@ export const dispatchHistory = {
     attempts: '시도',
     error: '오류',
     sentAt: '발송일시',
-    trackingId: 'tracking id',
+    trackingId: '추적 ID',
   },
   actions: { prevPage: '이전 쪽', nextPage: '다음 쪽' },
   state: {

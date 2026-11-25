@@ -39640,37 +39640,6 @@ body:has(
   max-width: 100%;
 }
 
-/* 알림 발송 이력 — 상세 상자(종전 드로어 자리 · #358). 머리: 대상 이름 + 이벤트 · 발생 시각 한 줄. */
-.dispatch-detail {
-  display: grid;
-  align-content: start;
-  gap: var(--space-4);
-}
-
-.dispatch-detail-head {
-  display: grid;
-  gap: var(--space-1);
-}
-
-.dispatch-detail-head > .pane-title {
-  margin: 0;
-}
-
-.dispatch-detail-summary {
-  color: var(--on-surface-variant);
-}
-
-.dispatch-detail > section,
-.dispatch-detail > div:not(.dispatch-detail-head) {
-  display: grid;
-  gap: var(--space-4);
-}
-
-/* 상태 선택 칸은 조건 줄과 같은 폭 — 상자 폭으로 늘이지 않는다(종전 드로어와 같다). */
-.dispatch-detail .field-cell {
-  max-width: 16rem;
-}
-
 .list-detail-filter > .dispatch-filter-more > .filter-bar {
   margin: var(--space-3) 0 0;
 }

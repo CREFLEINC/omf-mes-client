@@ -12,7 +12,6 @@ export const dispatchHistory: Translated<typeof ko.dispatchHistory> = {
     all: 'Tất cả',
     search: 'Tra cứu',
     eventSelect: 'Chọn sự kiện',
-    resultSelect: 'Chọn kết quả',
     departmentSelect: 'Chọn phòng ban',
     chipDepartment: (name: string): string => `Phòng ban: ${name}`,
     eventGroup: 'Sự kiện',
@@ -55,7 +54,7 @@ export const dispatchHistory: Translated<typeof ko.dispatchHistory> = {
     attempts: 'Lần thử',
     error: 'Lỗi',
     sentAt: 'Thời điểm gửi',
-    trackingId: 'tracking id',
+    trackingId: 'Mã theo dõi',
   },
   actions: { prevPage: 'Trang trước', nextPage: 'Trang sau' },
   state: {

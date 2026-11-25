@@ -14,11 +14,12 @@ import { handoverTypeName, useHandoverAlertTypes } from '../../patterns/handover
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { PageNav } from '../../patterns/page-nav';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { ErpDetailFields, type ErpDetailField } from '../erp-item/erp-data-parts';
 
 import { Select } from '../../patterns/select';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { DeliveryTable, toDeliveryView } from './delivery-table';
-import { DispatchTable } from './dispatch-table';
+import { DispatchTable, resultLabel } from './dispatch-table';
 import {
   EMPTY_FILTERS,
   readFilters,
@@ -30,7 +31,16 @@ import {
   type DispatchFilters,
 } from './filters';
 import { defaultPeriod, toPeriodQuery, validatePeriod, type PeriodInput } from './period';
-import { PAGE_SIZE, useDeliveries, useDepartments, useDispatches, useEvents } from './queries';
+import {
+  PAGE_SIZE,
+  useDeliveries,
+  useDepartments,
+  useDispatchResultCounts,
+  useDispatches,
+  useEvents,
+} from './queries';
+import { RESULTS, ResultChips } from './result-chips';
+import './layout.css';
 
 const t = messages.dispatchHistory;
 const w = t.workspace;
@@ -40,7 +50,8 @@ const w = t.workspace;
  * 조건은 주소가 든다. 행을 고르면 그 건의 Zalo 발송 상세가 오른쪽 상세 상자에 선다
  * (조회 조건 · 목록 · 상세 통일 배치 · omf-all-around#358 — 종전 드로어 #183 자리).
  *
- * **보이는 조건은 셋이다**(C-6) — 기간 · 이벤트 · 결과. 부서는 「조건 더보기」에 접고, 걸려 있으면
+ * **보이는 조건은 둘이다**(C-6) — 기간 · 이벤트. 결과는 위 줄 오른쪽 칩으로 곧바로 거른다(#358 — 종전 「결과 선택」 칸과
+ * 같은 주소 키 · 요청 값). 부서는 「조건 더보기」에 접고, 걸려 있으면
  * 칩으로 알린다. [초기화]는 처음 연 때처럼 기본 7일 · 조건 없음으로 되돌려 다시 조회한다(#358).
  */
 export const DispatchHistoryScreen = () => {
@@ -83,6 +94,13 @@ export const DispatchHistoryScreen = () => {
       : null;
 
   const dispatches = useDispatches(query);
+  /* 결과 칩 건수 — 결과만 빼고 지금 걸린 조건 그대로 센다. */
+  const resultCounts = useDispatchResultCounts(
+    periodQuery === null
+      ? null
+      : { ...periodQuery, ...toFilterQuery({ ...appliedFilters, result: '' }) },
+    RESULTS,
+  );
   const deliveries = useDeliveries(selected, periodQuery);
   const events = useEvents();
   /* 인계 작업 10종(피처 002) — 이름 풀이와 이벤트 거르기에 기존 6종 뒤로 더한다. 못 받으면 코드 그대로. */
@@ -150,6 +168,12 @@ export const DispatchHistoryScreen = () => {
           },
         ];
 
+  /* 칩은 곧바로 다시 조회한다 — 종전 「결과 선택」 + [조회]와 같은 주소 키(`result`). 편집 중인 칸도 맞춘다. */
+  const changeResult = (result: string): void => {
+    setFilters((prev) => ({ ...prev, result }));
+    setSearchParams(toSearchParams(applied, { ...appliedFilters, result }));
+  };
+
   /* × 는 부서만 풀어 곧바로 다시 조회한다. 편집 중인 칸도 함께 비워야 다음 [조회]가 되살리지 않는다. */
   const removeDepartment = (): void => {
     setFilters((prev) => ({ ...prev, department: '' }));
@@ -212,13 +236,18 @@ export const DispatchHistoryScreen = () => {
     );
     return (
       <>
-        {selectField(
-          'deliveryStatus',
-          t.filters.deliveryStatus,
-          deliveryStatus,
-          Object.entries(t.deliveryStatus).map(([value, label]) => ({ value, label })),
-          setDeliveryStatus,
-        )}
+        {/* 상세 안 거르기는 다른 화면처럼 테두리 상자로 감싼다(ERP 공통코드 코드 값 조건과 같다). */}
+        <div className="pane po-board-filter dispatch-delivery-filter">
+          <div className="filter-bar">
+            {selectField(
+              'deliveryStatus',
+              t.filters.deliveryStatus,
+              deliveryStatus,
+              Object.entries(t.deliveryStatus).map(([value, label]) => ({ value, label })),
+              setDeliveryStatus,
+            )}
+          </div>
+        </div>
         <DeliveryTable rows={rows} />
       </>
     );
@@ -228,13 +257,43 @@ export const DispatchHistoryScreen = () => {
    * ⭐ **상세 머리에 대상을 둔다.** 어느 건의 상세인지 머리가 말해야 한다(종전 드로어 머리 그대로).
    * 목록의 행이 정본이고, 주소로 바로 열어 그 쪽에 행이 없으면 발송 건이 든 같은 값을 쓴다.
    */
-  const selectedHead = (): { target: string; summary: string } | null => {
-    const row =
-      dispatches.data?.items.find((item) => item.notificationEventId === selected) ??
-      deliveries.data?.items[0];
+  const selectedHead = (): { target: string; fields: ErpDetailField[] } | null => {
+    const listed = dispatches.data?.items.find((item) => item.notificationEventId === selected);
+    const row = listed ?? deliveries.data?.items[0];
     if (row === undefined) return null;
-    const at = formatPlantDateTime(row.occurredAt) ?? row.occurredAt;
-    return { target: row.targetLabel ?? '—', summary: `${eventName(row.eventCode)}, ${at}` };
+    const c = t.columns;
+    /* 요약 상자 — 목록 줄의 칸 그대로(대상은 제목). 발송 건에서 푼 머리면 그 건에 있는 칸만. */
+    const fields: ErpDetailField[] = [
+      {
+        key: 'occurredAt',
+        label: c.occurredAt,
+        value: formatPlantDateTime(row.occurredAt) ?? row.occurredAt,
+      },
+      { key: 'event', label: c.event, value: eventName(row.eventCode) },
+      { key: 'department', label: c.department, value: row.departmentName ?? '—' },
+      ...(listed === undefined
+        ? []
+        : [
+            { key: 'result', label: c.result, value: resultLabel(listed) },
+            {
+              key: 'count',
+              label: c.notificationCount,
+              value: String(listed.notificationCount),
+            },
+            {
+              key: 'zalo',
+              label: c.zalo,
+              value: t.zaloSummary(
+                listed.zalo.sent,
+                listed.zalo.failed,
+                listed.zalo.pending,
+                listed.zalo.expired,
+                listed.zalo.skippedNoPhone,
+              ),
+            },
+          ]),
+    ];
+    return { target: row.targetLabel ?? '—', fields };
   };
 
   const deliveryDetail = (): ReactNode => {
@@ -254,18 +313,27 @@ export const DispatchHistoryScreen = () => {
       );
     }
     const head = selectedHead();
-    return (
-      <div className="dispatch-detail">
-        <div className="dispatch-detail-head">
-          <h2 className="pane-title">{head?.target ?? t.panes.deliveries}</h2>
-          {head !== null && <span className="dispatch-detail-summary">{head.summary}</span>}
+    /*
+     * 다른 화면 상세와 같은 틀(#358) — 제목(대상) · 요약 상자(이름 위 · 값 아래) · 하위 표 제목 줄 · 거르기 상자 · 열 조절 표.
+     * 머리를 아직 못 풀면 바깥 상자 이름이 「Zalo 발송 상세」라 안쪽 구획 이름을 겹쳐 달지 않는다.
+     */
+    const sub = (
+      <>
+        <div className="erp-data-sub-head">
+          <h2 className="pane-title">{t.panes.deliveries}</h2>
         </div>
-        {/* 이름은 구획에 싣고 보이는 제목은 표 caption 하나로 둔다 — 같은 글이 두 번 서지 않게. */}
-        {/* 머리를 아직 못 풀면 바깥 상자 이름이 「Zalo 발송 상세」라 안쪽 구획 이름을 겹쳐 달지 않는다. */}
+        {deliverySlot()}
+      </>
+    );
+    return (
+      <div className="erp-data-detail">
+        {head !== null && <ErpDetailFields title={head.target} fields={head.fields} />}
         {head === null ? (
-          <div>{deliverySlot()}</div>
+          <div className="erp-data-sub">{sub}</div>
         ) : (
-          <section aria-label={t.panes.deliveries}>{deliverySlot()}</section>
+          <section className="erp-data-sub" aria-label={t.panes.deliveries}>
+            {sub}
+          </section>
         )}
       </div>
     );
@@ -307,16 +375,6 @@ export const DispatchHistoryScreen = () => {
                 { label: t.filters.handoverGroup, options: handoverOptions },
               ],
           (value) => setFilters((prev) => ({ ...prev, event: value })),
-        )}
-        {selectField(
-          'result',
-          t.filters.resultSelect,
-          filters.result,
-          [
-            { value: 'NOTIFIED', label: t.results.NOTIFIED },
-            { value: 'SKIPPED', label: t.results.SKIPPED },
-          ],
-          (value) => setFilters((prev) => ({ ...prev, result: value })),
         )}
         {/* [조회][초기화][조건 더보기] 순으로 오른쪽 끝에 함께 선다(#358). */}
         <div className="filter-actions field-cell-unlabeled">
@@ -360,6 +418,9 @@ export const DispatchHistoryScreen = () => {
     <ListDetailWorkspace
       storageKey="omf-mes:dispatch-history"
       initialRatio={0.55}
+      toolbar={
+        <ResultChips counts={resultCounts} value={appliedFilters.result} onChange={changeResult} />
+      }
       filter={{ label: w.filter, content: filter }}
       list={{
         label: w.list,
