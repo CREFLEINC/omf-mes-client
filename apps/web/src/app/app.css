@@ -36589,6 +36589,19 @@ body:has(
   min-width: 0;
 }
 
+/*
+ * LOT 유형 칸 — 칸은 제 글자 폭(위 규칙)인데 펼친 목록은 칸과 같은 폭이라(사용자 2026-10-30), 고른 값이 「전체」면 세 글자
+ * 「반제품」(피처 016, vi 「Bán thành phẩm」)이 목록에서 「반…」으로 잘렸다(실제 앱 확인 2026-11-26). 가장 긴 선택지가 체크
+ * 자리 · 여백과 함께 들어가는 폭을 최소로 둔다. vi 는 선택지 이름이 길어 따로.
+ */
+.lot-status-search .filter-bar > .lot-status-filter-lot-type:nth-child(n) {
+  min-width: 7.5rem;
+}
+
+:root:lang(vi) .lot-status-search .filter-bar > .lot-status-filter-lot-type:nth-child(n) {
+  min-width: 11.5rem;
+}
+
 /* LOT 스캔 칸 — 앞에 돋보기가 붙어 검사 조회·판정(17.5rem)보다 그만큼 넓혀야 안내 글이 다 보인다. */
 .lot-status-search .filter-bar > .lot-status-filter-lot-no:nth-child(n) {
   flex: 0 1 19rem;
