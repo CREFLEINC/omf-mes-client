@@ -26,6 +26,7 @@ import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { hasChangedFilters } from '../../patterns/filter-more';
 import { SaveErrorBanner } from '../../patterns/master';
+import { InfoTip } from '../../patterns/info-tip';
 import { PageNav } from '../../patterns/page-nav';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import {
@@ -852,8 +853,9 @@ export const ZaloConnectionScreen = () => {
               {messages.common.paneList.count(shownTemplates.length)}
             </span>
           )}
-          <span id={TEMPLATE_ID_HELP} className="iqc-inspection-action-note" data-tone="info">
-            <Icon name="info" size={16} aria-hidden />
+          {/* 템플릿 ID 안내는 건수 옆 ⓘ — 마우스를 올리면 뜬다(사용자 지시 2026-11-25). 입력 칸 설명으로도 잇는다. */}
+          <InfoTip text={t.handover.templateIdHelp} />
+          <span id={TEMPLATE_ID_HELP} className="visually-hidden">
             {t.handover.templateIdHelp}
           </span>
         </div>
