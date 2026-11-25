@@ -3,7 +3,6 @@ import type {
   MaterialLotSummary,
   MaterialLotTab,
   MaterialLotTabRow,
-  SupplierItemDefault,
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
@@ -119,27 +118,6 @@ const CAP_TABS: Record<MaterialLotTab, MaterialLotTabRow[]> = {
   RECEIVED: [],
   VOIDED: [row(lot(4, { lifecycleStatusCode: 'VOIDED' }), { voidedAt: '2026-11-12T01:00:00Z' })],
 };
-
-const DEFAULTS: SupplierItemDefault[] = [
-  {
-    supplierItemDefaultId: 71,
-    plantId: 8401,
-    supplierId: 8201,
-    supplierCode: 'SYN-S1',
-    supplierName: '합성 공급사 가',
-    itemId: 601,
-    itemCode: 'SYN-CAP',
-    itemName: '합성 캡',
-    uomId: 1,
-    uomCode: 'EA',
-    lotQty: 1000,
-    package: { uomId: 3, uomCode: 'BAG', uomName: 'BAG', count: 10, qtyPerPackage: 100 },
-    remarks: null,
-    versionNo: 1,
-    updatedAt: '2026-11-10T02:00:00Z',
-    updatedByName: null,
-  },
-];
 
 interface Write {
   method: string;
@@ -299,23 +277,6 @@ const setup = (
       },
     },
     {
-      match: (r) => isGet(r, '/mdm/supplier-item-defaults'),
-      respond: (r) => {
-        const query = new URL(r.url).searchParams;
-        const supplierId = query.get('supplierId');
-        const itemId = query.get('itemId');
-        return jsonResponse(
-          page(
-            DEFAULTS.filter(
-              (row) =>
-                (supplierId === null || String(row.supplierId) === supplierId) &&
-                (itemId === null || String(row.itemId) === itemId),
-            ),
-          ),
-        );
-      },
-    },
-    {
       match: (r) => isGet(r, '/mdm/uoms'),
       respond: () => jsonResponse({ items: options.uoms ?? UOMS }),
     },
@@ -329,13 +290,32 @@ const setup = (
             baseUomId: itemId === 601 ? 1 : 2,
             /* 레진은 보관 단위가 기본 단위와 같다(T050). */
             defaultLotStorageUomId: itemId === 601 ? 3 : 2,
+            /* 캡은 봉지 10개(1,000 EA)가 LOT 기본크기다 — 봉지 1 = 100 EA 환산. */
+            ...(itemId === 601
+              ? { defaultProductionLotSize: 10, defaultPackageUomId: 3, defaultPackageCount: 10 }
+              : {}),
           },
         });
       },
     },
     {
       match: (r) => isGet(r, /^\/mdm\/items\/\d+\/uom-conversions$/),
-      respond: () => jsonResponse({ items: [] }),
+      respond: (r) =>
+        jsonResponse({
+          items: pathOf(r).includes('/601/')
+            ? [
+                {
+                  itemUomConversionId: 1,
+                  itemId: 601,
+                  fromUomId: 3,
+                  toUomId: 1,
+                  conversionRate: 100,
+                  effectiveFrom: '2026-01-01',
+                  effectiveTo: null,
+                },
+              ]
+            : [],
+        }),
     },
     {
       match: (r) => isGet(r, '/logistics/purchase-order-lines'),
@@ -645,11 +625,11 @@ describe('W-01-14 발행 창(수동)', () => {
     return within(await screen.findByRole('dialog', { name: t.dialog.title }));
   };
 
-  it('US1-8 발행 창은 기본 정보로 채우고(바꿀 수 있음) POP 과 같은 본문으로 발행한다', async () => {
+  it('US1-8 발행 창은 품목 기본값으로 채우고(바꿀 수 있음) POP 과 같은 본문으로 발행한다', async () => {
     const { user, writes } = setup();
     const dialog = await openIssue(user, 'SYN-CAP');
 
-    expect(await dialog.findByText(t.dialog.source.default)).toBeInTheDocument();
+    expect(await dialog.findByText(t.dialog.source.item)).toBeInTheDocument();
     expect(dialog.getByLabelText(t.dialog.packageCount)).toHaveValue('10');
     expect(dialog.getByLabelText(t.dialog.lotQty)).toHaveValue('1000');
 
@@ -702,7 +682,7 @@ describe('W-01-14 발행 창(수동)', () => {
     expect(dialog.getByRole('button', { name: t.dialog.submit(null) })).toBeDisabled();
   });
 
-  it('US1-8 발행 창 — 기본 정보도 보관 단위도 없으면 「직접 입력」으로 패키징 없이 시작한다', async () => {
+  it('US1-8 발행 창 — 품목 기본값도 보관 단위도 없으면 「직접 입력」으로 패키징 없이 시작한다', async () => {
     const { user } = setup();
     const dialog = await openIssue(user, 'SYN-RES');
 

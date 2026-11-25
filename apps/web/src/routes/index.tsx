@@ -33,7 +33,6 @@ import { InboundExcessScreen } from '../screens/inbound-schedule/excess-screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { MaterialLotIssueScreen } from '../screens/material-lot-issue/screen';
 import { InboundWorkRecordScreen } from '../screens/inbound-work-record/screen';
-import { SupplierItemDefaultScreen } from '../screens/supplier-item-default/screen';
 import { ShiftManagementScreen } from '../screens/shift-management/screen';
 import { InspectionSheetScreen } from '../screens/inspection-sheet/screen';
 import { InspectionStandardRoute } from '../screens/inspection-standard/sheet-type';
@@ -135,8 +134,6 @@ export const appRouter = createBrowserRouter([
        */
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', element: <DashboardScreen /> },
-      /* W-06-25 공급사·품목 기본 정보(005 · omf-all-around#254). */
-      { path: 'master-data/supplier-item-defaults', element: <SupplierItemDefaultScreen /> },
       { path: 'master-data/warehouse-location', element: <WarehouseLocationScreen /> },
       /* W-CO-08 — 창고·Location 바로 뒤다. 그 화면이 만든 위치를 여기서 도면에 얹는다. */
       { path: 'master-data/warehouse-layout', element: <WarehouseLayoutScreen /> },

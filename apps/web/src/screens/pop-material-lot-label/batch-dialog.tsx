@@ -11,7 +11,6 @@ import {
   toBatchBody,
   useItemLotDefault,
   useItemStorageUnit,
-  useSupplierItemDefault,
   useUomOptions,
   type BatchDraft,
   type BatchPrefill,
@@ -64,14 +63,12 @@ const firstEmptyTarget = (draft: BatchDraft): KeypadTarget => {
 };
 
 export const BatchDialog = (props: BatchDialogProps) => {
-  const { plantId, group } = props;
-  const target = { plantId, supplierId: group.supplierId, itemId: group.itemId };
-  const defaults = useSupplierItemDefault(target);
+  const { group } = props;
   const storage = useItemStorageUnit(group.itemId);
   const itemDefault = useItemLotDefault(group.itemId);
   const uoms = useUomOptions();
   /* 기본값을 못 읽었으면 직접 입력으로 연다 — 막지 않는다. */
-  const isLoading = defaults.isPending || (storage.isPending && !storage.isError);
+  const isLoading = storage.isPending;
 
   /* POP 팝업은 바깥을 눌러 닫히지 않는다(#1005) — 공통 창(`PuDialog`)도 바깥 누름으로 닫지 않는다. */
   if (isLoading) {
@@ -97,8 +94,8 @@ export const BatchDialog = (props: BatchDialogProps) => {
   return (
     <BatchForm
       {...props}
-      prefill={prefillBatch(itemDefault.data ?? null, defaults.data ?? null, storage.data ?? null)}
-      defaultsFailed={defaults.isError}
+      prefill={prefillBatch(itemDefault.data ?? null, storage.data ?? null)}
+      defaultsFailed={storage.isError}
       uoms={uoms.data ?? []}
     />
   );

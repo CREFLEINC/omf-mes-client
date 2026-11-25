@@ -138,8 +138,6 @@ export const itemExtendedAttrs = {
       lot: 'LOT 기본값',
       shelfLife: '유효기한·선출',
       inventory: '검사·재고',
-      /** 공급사별 소포장(읽기만, 고치는 곳은 공급사·품목 기본 정보). */
-      package: '소포장',
     },
     fields: {
       nameKo: '품목명(한국어)',
@@ -181,9 +179,6 @@ export const itemExtendedAttrs = {
       active: '사용 중',
       inactive: '미사용',
       unspecified: '지정하지 않음',
-      noPackage: '등록된 소포장이 없습니다',
-      packageLoading: '소포장을 불러오는 중',
-      packageLoadFailed: '소포장을 불러오지 못했습니다',
     },
     validation: {
       required: '필수 입력 항목입니다.',

@@ -25,7 +25,6 @@ export const storageText = (
  * 기본 정보 한 줄 — 품목 기본값(피처 014 · W-06-05 자재 LOT 기본크기 · 패키징). 「1,000 EA · BAG 10」 /
  * 「500 EA · 패키징 없음」, 기본값이 없으면 「기본 단위 설정 없음」, 환산이 없으면 「품목 단위 환산 없음」(빨강).
  * `withPackageQty` 면 패키징을 「BAG 10 × 100」(패키징 수 × 패키징당 수량)으로 — 상세 머리.
- * ⛔ W-06-25 공급사·품목 기본 정보는 더 보지 않는다(FR-019 — 자동 생성이 쓰지 않는다).
  */
 export const pairDefaultLine = (
   pair: Pick<Pair, 'defaultsStatus' | 'lotDefaults' | 'item'>,

@@ -86,12 +86,12 @@ export const materialLotIssue: Translated<typeof ko.materialLotIssue> = {
       `${supplier} · ${itemCode} ${itemName} (${uom})`,
     source: {
       item: 'Lấy từ giá trị mặc định của mặt hàng',
-      default: 'Lấy từ thông tin mặc định',
       itemStorage:
-        'Chưa có thông tin mặc định nhà cung cấp · mặt hàng — điền theo đơn vị bảo quản mặc định của mặt hàng',
-      none: 'Chưa có thông tin mặc định — nhập tay',
+        'Chưa có giá trị mặc định của mặt hàng — điền theo đơn vị bảo quản mặc định của mặt hàng',
+      none: 'Chưa có giá trị mặc định của mặt hàng — nhập tay',
     },
-    defaultsFailed: 'Không tải được thông tin mặc định. Vẫn có thể nhập tay để phát hành.',
+    defaultsFailed:
+      'Không tải được giá trị mặc định của mặt hàng. Vẫn có thể nhập tay để phát hành.',
     package: 'Đóng gói',
     packageOptional: '(tùy chọn)',
     packageOn: 'Có đóng gói',

@@ -1995,8 +1995,8 @@ describe('appRouter — 계측기 마스터의 진입 경로', () => {
    * 글자만 보면 이름을 바꿔 단 메뉴가 통과한다.
    */
   /**
-   * ⭐ **메뉴에서 감췄다**(사용자 지시 2026-11-20) — 계측기 묶음(마스터 · 검교정 이력)도, 그 뒤에 서던 공급사·품목
-   * 기본 정보(W-06-25)도 사이드바에 없고 툴·금형 바로 뒤에 창고·위치가 선다. 주소는 남는다(아래).
+   * ⭐ **메뉴에서 감췄다**(사용자 지시 2026-11-20) — 계측기 묶음(마스터 · 검교정 이력)이 사이드바에 없고
+   * 툴·금형 바로 뒤에 창고·위치가 선다. 주소는 남는다(아래).
    */
   it('사이드바에 없고 툴·금형 바로 뒤에 창고·위치가 선다', () => {
     const hrefs = sidebarHrefs();
@@ -2005,7 +2005,6 @@ describe('appRouter — 계측기 마스터의 진입 경로', () => {
     expect(hrefs).toContain('/equipment/tool-master');
     expect(hrefs).not.toContain('/equipment/gauge-master');
     expect(hrefs).not.toContain('/equipment/gauge-calibration');
-    expect(hrefs).not.toContain('/master-data/supplier-item-defaults');
     expect(hrefs.indexOf('/master-data/warehouse-location')).toBe(
       hrefs.indexOf('/equipment/tool-master') + 1,
     );

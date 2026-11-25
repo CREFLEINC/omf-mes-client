@@ -203,9 +203,8 @@ describe('AppLayout', () => {
     expect(links.indexOf('/master-data/shifts')).toBe(
       links.indexOf('/master-data/warehouse-location') + 1,
     );
-    /* 감춘 셋 — 사이드바에 없다. */
+    /* 감춘 둘 — 사이드바에 없다. */
     expect(links).not.toContain('/equipment/gauge-master');
-    expect(links).not.toContain('/master-data/supplier-item-defaults');
     expect(links).not.toContain('/master-data/master-change');
   });
 
