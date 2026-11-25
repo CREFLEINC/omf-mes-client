@@ -1,9 +1,8 @@
-import { Button, Chip, SearchInput } from '@crefle/web-ui';
+import { Button, Checkbox, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState, type ReactNode } from 'react';
 
 import { hasChangedFilters } from '../../patterns/filter-more';
-import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import {
   FIT_PLACEHOLDER_CLASS,
   useFitPlaceholderWidth,
@@ -41,7 +40,7 @@ export interface RouteFilterBarProps {
  * **조건 칩을 두지 않는다**(C-6). 네 조건이 모두 조건 줄에 보여 칩으로 겹쳐 적을 것이 없다 —
  * 한 줄에 들어가 「조건 더보기」로 접을 것도 없다. 「초기화」는 바뀐 것이 있을 때만 보인다.
  *
- * **「미사용 포함」은 위 줄 「사용 유무」 라벨(`ActiveFilterChips`)이 맡는다(사용자 지시 2026-11-24).** 계약 파라미터(`activeOnly`)는 방향이 반대이고 기본값이
+ * **「미사용 포함」이 화면 어휘다(조회 줄 체크칸 · 사용자 지시 2026-11-25).** 계약 파라미터(`activeOnly`)는 방향이 반대이고 기본값이
  * 없지만, 그것은 계약의 사정이며 뒤집는 자리는 `filters.ts` 한 곳이다.
  *
  * **승인 유형 선택지는 고정 OpenAPI가 닫은 enum을 그대로 쓴다.** 비어 있는
@@ -159,6 +158,19 @@ export const RouteFilterBar = ({
         clearLabel={messages.common.clear}
       />
 
+      {/* 「미사용 포함」 체크칸 — 켜면 사용 · 미사용을 모두 본다(사용자 지시 2026-11-25 · 위 줄 「사용」 라벨을 대신한다). */}
+      <div className="field-cell field-cell-unlabeled">
+        <Checkbox
+          checked={filters.includeInactive}
+          onChange={(event) => {
+            const { checked } = event.target;
+            setFilters((prev) => ({ ...prev, includeInactive: checked }));
+          }}
+        >
+          {messages.common.includeInactive}
+        </Checkbox>
+      </div>
+
       {/*
        * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1).
        * 조건 없이도 조회가 열려 있다 — 이 화면은 들어오자마자 결재선을 보여야 한다.
@@ -181,46 +193,4 @@ export const RouteFilterBar = ({
       </div>
     </div>
   );
-};
-
-export interface ActiveFilterChipsProps {
-  includeInactive: boolean;
-  /** 지금 조건에서 사용 중인 결재선 수. 받기 전이면 이름만 낸다. */
-  activeCount: number | undefined;
-  onChange: (includeInactive: boolean) => void;
-}
-
-/**
- * 사용 유무 라벨 「사용 N건」을 위 줄에 낸다(사용자 지시 2026-11-24) — 누르는 즉시 건다. 계약 조건이 「사용 중만」
- * (`activeOnly`) 하나라 「미사용만」은 고를 수 없다. 「전체」 라벨은 두지 않는다 — 고른 「사용」을 다시 누르면 전체(미사용
- * 포함)로 풀린다. 0건이면 감춘다(고른 동안은 남긴다).
- */
-export const ActiveFilterChips = ({
-  includeInactive,
-  activeCount,
-  onChange,
-}: ActiveFilterChipsProps) => {
-  const target = useHubActionsTarget();
-  const isActiveOnly = !includeInactive;
-  const group = (
-    <div className="inspection-hub-counts" role="group" aria-label={t.filters.activeGroup}>
-      {(isActiveOnly || activeCount !== 0) && (
-        <Chip
-          variant="filter"
-          size="sm"
-          selected={isActiveOnly}
-          aria-pressed={isActiveOnly}
-          onSelectedChange={() => {
-            onChange(isActiveOnly);
-          }}
-        >
-          {activeCount === undefined
-            ? t.filters.activeOnly
-            : messages.common.inspectionHub.count(t.filters.activeOnly, activeCount)}
-        </Chip>
-      )}
-    </div>
-  );
-
-  return target === null ? group : <HubActions target={target}>{group}</HubActions>;
 };

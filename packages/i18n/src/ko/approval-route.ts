@@ -99,9 +99,6 @@ export const approvalRoute = {
   },
   filters: {
     all: '전체',
-    /** 위 줄 사용 유무 라벨(사용자 지시 2026-11-24). 서버 조건이 「사용 중만」 하나라 「미사용만」은 없다. */
-    activeGroup: '사용 유무',
-    activeOnly: '사용',
     /* 조회 상자 칸 이름 · 흐린 문구(#358). 목록 열 · 등록 폼은 `fields` 이름 그대로. */
     approvalTypeSelect: '승인 유형 선택',
     businessUnitSelect: '사업부 선택',

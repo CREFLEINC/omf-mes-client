@@ -1165,6 +1165,92 @@ on('GET', '/mdm/uoms', (_p, query) => page(state.uoms, query));
 on('GET', '/mdm/plants', (_p, query) => page(state.plants, query));
 on('GET', '/mdm/business-units', (_p, query) => page(state.businessUnits, query));
 
+/*
+ * 결재선 정의(W-06-15) — 목이 이 오퍼레이션을 몰라 계약 예시(1줄인데 「총 137건」)로 응답하던 것을 씨앗 자료로 바꾼다
+ * (사용자 지시 2026-11-25 「결재선 정의 화면 데이터도 이상하다」 · #358). 읽기 세 오퍼레이션만 — 쓰기는 계약 예시 그대로다.
+ * 화면이 다루는 승인 유형 8개(code-options.ts)마다 제조사업부 결재선 하나, 폐기 출고 · 재고조정은 전 사업부 공통도 하나,
+ * 출고 취소 · 출하 취소는 미사용.
+ */
+const APPROVAL_ROUTE_TYPES = [
+  'GOODS_ISSUE_DISPOSAL',
+  'INVENTORY_ADJUSTMENT',
+  'PURCHASE_ORDER',
+  'INBOUND_RECEIPT_CANCEL',
+  'GOODS_RECEIPT_CANCEL',
+  'GOODS_ISSUE_CANCEL',
+  'SHIPMENT_CANCEL',
+  'PRODUCTION_RESULT_CORRECT',
+];
+const APPROVAL_ROUTE_APPROVERS = [
+  { approverUserId: 1002, approverName: '김품질', approverDepartmentId: 1003, approverDepartmentName: '품질팀' },
+  { approverUserId: 1003, approverName: '이구매', approverDepartmentId: 1004, approverDepartmentName: '구매팀' },
+  { approverUserId: 1001, approverName: '홍길동', approverDepartmentId: 1001, approverDepartmentName: '생산1팀' },
+];
+const approvalRoutes = [
+  ...APPROVAL_ROUTE_TYPES.map((approvalTypeCode, index) => ({
+    approvalRouteId: 1001 + index,
+    approvalTypeCode,
+    businessUnitId: 1001,
+    minValue: null,
+    maxValue: null,
+    isActive: !['GOODS_ISSUE_CANCEL', 'SHIPMENT_CANCEL'].includes(approvalTypeCode),
+    stepCount: (index % 3) + 1,
+    inProgressCount: index === 0 ? 3 : 0,
+  })),
+  ...['GOODS_ISSUE_DISPOSAL', 'INVENTORY_ADJUSTMENT'].map((approvalTypeCode, index) => ({
+    approvalRouteId: 1101 + index,
+    approvalTypeCode,
+    businessUnitId: null,
+    minValue: null,
+    maxValue: null,
+    isActive: true,
+    stepCount: 1,
+    inProgressCount: 0,
+  })),
+];
+const approvalRouteOf = (params) =>
+  approvalRoutes.find((row) => row.approvalRouteId === Number(params.approvalRouteId));
+
+on('GET', '/app/approval-routes', (_p, query) => {
+  const type = query.get('approvalTypeCode');
+  const businessUnitId = query.get('businessUnitId');
+  const activeOnly = query.get('activeOnly') !== 'false';
+  const q = (query.get('q') ?? '').trim();
+  return page(
+    approvalRoutes.filter(
+      (row) =>
+        (type === null || row.approvalTypeCode === type) &&
+        (businessUnitId === null || row.businessUnitId === Number(businessUnitId)) &&
+        (!activeOnly || row.isActive) &&
+        (q === '' || row.approvalTypeCode.includes(q.toUpperCase())),
+    ),
+    query,
+  );
+});
+on('GET', '/app/approval-routes/{approvalRouteId}', (params) => {
+  const route = approvalRouteOf(params);
+  if (route === undefined) return null;
+  return {
+    status: 200,
+    created: route,
+    headers: { ETag: `"approval-route-${String(route.approvalRouteId)}-v1"` },
+  };
+});
+on('GET', '/app/approval-routes/{approvalRouteId}/steps', (params) => {
+  const route = approvalRouteOf(params);
+  if (route === undefined) return null;
+  return {
+    items: APPROVAL_ROUTE_APPROVERS.slice(0, route.stepCount).map((approver, index) => ({
+      approvalRouteStepId: route.approvalRouteId * 10 + index,
+      stepNo: index + 1,
+      approverTypeCode: 'USER',
+      approverRoleId: null,
+      approverIsActive: true,
+      ...approver,
+    })),
+  };
+});
+
 on('GET', '/mdm/warehouses', (_p, query) => {
   const q = query.get('q');
   const needle = q?.trim().toUpperCase();

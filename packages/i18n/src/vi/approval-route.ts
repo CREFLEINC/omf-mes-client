@@ -68,8 +68,6 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
   },
   filters: {
     all: 'Tất cả',
-    activeGroup: 'Trạng thái sử dụng',
-    activeOnly: 'Đang dùng',
     approvalTypeSelect: 'Chọn loại phê duyệt',
     businessUnitSelect: 'Chọn đơn vị kinh doanh',
     qPlaceholder: 'Nhập loại phê duyệt',
