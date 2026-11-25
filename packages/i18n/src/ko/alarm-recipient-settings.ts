@@ -52,7 +52,6 @@ export const alarmRecipientSettings = {
     noEvents: '설정할 이벤트가 없습니다.',
     noRecipients: '지정한 수신자가 없습니다.',
     /** US4-4 — 켜 두었는데 받을 사람이 없다. 저장은 막지 않는다. */
-    noRecipientsWarning: '수신자가 없어 알림이 가지 않습니다.',
     /** US4-5 — 전화번호가 없는 수신자는 Zalo 를 받지 못한다. */
     noPhoneNotice: (count: number): string =>
       `전화번호가 없는 수신자 ${String(count)}명은 알림센터로만 받습니다.`,

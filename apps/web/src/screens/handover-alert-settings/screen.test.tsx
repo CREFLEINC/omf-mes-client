@@ -452,7 +452,8 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     const pane = await openType(user, '적치');
     await user.click(pane.getByRole('switch', { name: t.fields.enabled }));
 
-    expect(pane.getByText(t.state.noRecipientsWarning)).toBeInTheDocument();
+    // 수신자 0명은 「지정한 수신자가 없습니다.」 라벨 하나 — 알림이 켜져 있으면 경고색이다.
+    expect(await pane.findByText(t.state.noRecipients)).toHaveAttribute('data-tone', 'warning');
     await user.click(pane.getByRole('button', { name: t.actions.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
   });

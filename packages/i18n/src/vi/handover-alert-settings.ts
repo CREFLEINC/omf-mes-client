@@ -52,7 +52,6 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
     noPlants: 'Không có nhà máy để chọn.',
     noTypes: 'Không có công việc bàn giao để thiết lập.',
     noRecipients: 'Chưa chọn người nhận.',
-    noRecipientsWarning: 'Không có người phụ trách nên thông báo sẽ không được gửi.',
     limitReached: (max: number): string =>
       `Chỉ được chọn tối đa ${String(max)} người. Hãy xóa một người trước khi đổi.`,
     noPhoneNotice: (count: number): string =>

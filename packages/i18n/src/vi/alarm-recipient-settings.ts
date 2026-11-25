@@ -58,7 +58,6 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
       'Danh sách phòng ban chỉ hiển thị một phần. Nếu không thấy phòng ban cần tìm, hãy báo cho người phụ trách.',
     noEvents: 'Không có sự kiện để thiết lập.',
     noRecipients: 'Chưa chỉ định người nhận.',
-    noRecipientsWarning: 'Không có người nhận nên thông báo sẽ không được gửi',
     noPhoneNotice: (count: number): string =>
       `${String(count)} người nhận không có số điện thoại chỉ nhận qua trung tâm thông báo`,
     zaloNeedsEnabled: 'Phải bật dùng thông báo thì mới gửi được qua Zalo',

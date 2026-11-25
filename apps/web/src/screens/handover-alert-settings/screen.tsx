@@ -432,7 +432,14 @@ export const HandoverAlertSettingsScreen = () => {
             <AlertBanner variant="warning">{t.state.limitReached(MAX_RECIPIENTS)}</AlertBanner>
           )}
           {draft.recipients.length === 0 ? (
-            <p className="field-note">{t.state.noRecipients}</p>
+            /* 수신자 0명 — 문구 하나를 라벨로(사용자 지시 2026-11-25). 알림이 켜져 있으면 노란(경고), 아니면 파란 라벨. */
+            <p
+              className="iqc-inspection-action-note alarm-no-recipients"
+              data-tone={lacksRecipients(draft) ? 'warning' : 'info'}
+            >
+              <Icon name={lacksRecipients(draft) ? 'warning' : 'info'} size={16} aria-hidden />
+              {t.state.noRecipients}
+            </p>
           ) : (
             <ul className="alarm-recipient-list" aria-label={t.columns.recipients}>
               {draft.recipients.map((recipient) => (
@@ -459,9 +466,6 @@ export const HandoverAlertSettingsScreen = () => {
                 </li>
               ))}
             </ul>
-          )}
-          {lacksRecipients(draft) && (
-            <AlertBanner variant="warning">{t.state.noRecipientsWarning}</AlertBanner>
           )}
           {missingPhones > 0 && (
             <AlertBanner variant="info">{t.state.noPhoneNotice(missingPhones)}</AlertBanner>

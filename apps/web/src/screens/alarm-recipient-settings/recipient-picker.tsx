@@ -186,14 +186,31 @@ export const RecipientPicker = ({
     if (candidates.isPending) return <Skeleton variant="rect" height="12rem" />;
 
     return (
-      <Table
-        columns={columns}
-        rows={rows}
-        getRowId={(row) => String(row.appUserId)}
-        density="compact"
-        aria-label={t.picker.caption}
-        empty={<EmptyState size="sm" title={t.state.candidatesEmpty} />}
-      />
+      /*
+       * 줄 어디를 눌러도 고르거나 푼다(사용자 지시 2026-11-25). DS 표에 줄 클릭이 없어 그 줄의 체크 칸을 대신 누른다 —
+       * 이미 수신자(체크 칸 없음) · 남은 자리 없음(체크 칸 잠김)은 체크 칸과 똑같이 막힌다.
+       */
+      // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- 키보드는 줄마다 있는 체크 칸이 맡는다.
+      <div
+        className="alarm-picker-rows"
+        onClick={(event) => {
+          const target = event.target as HTMLElement;
+          if (target.closest('input, button, label') !== null) return;
+          const box = target
+            .closest('tr')
+            ?.querySelector<HTMLInputElement>('input[type="checkbox"]');
+          if (box !== null && box !== undefined && !box.disabled) box.click();
+        }}
+      >
+        <Table
+          columns={columns}
+          rows={rows}
+          getRowId={(row) => String(row.appUserId)}
+          density="compact"
+          aria-label={t.picker.caption}
+          empty={<EmptyState size="sm" title={t.state.candidatesEmpty} />}
+        />
+      </div>
     );
   })();
 

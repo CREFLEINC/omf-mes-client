@@ -51,7 +51,6 @@ export const handoverAlertSettings = {
     noTypes: '설정할 인계 작업이 없습니다.',
     noRecipients: '지정한 수신자가 없습니다.',
     /** US2-5 — 켜 두었는데 받을 사람이 없다. 저장은 막지 않는다. */
-    noRecipientsWarning: '수신자가 없어 알림이 가지 않습니다.',
     /** US2-3 — 상한이 찼다. 서버도 400 으로 막는다. */
     limitReached: (max: number): string =>
       `최대 ${String(max)}명까지 지정할 수 있습니다. 바꾸려면 먼저 한 명을 제거하세요.`,

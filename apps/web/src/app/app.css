@@ -40534,3 +40534,14 @@ body:has(
   flex: 1 1 16rem;
   min-width: 0;
 }
+
+/* 수신자 0명 라벨 — 글 폭만큼만(사용자 지시 2026-11-25). */
+.alarm-no-recipients {
+  justify-self: start;
+  width: fit-content;
+}
+
+/* 수신자 추가 창 — 줄 어디를 눌러도 고른다(사용자 지시 2026-11-25). */
+.alarm-picker-rows tbody tr:has(input[type='checkbox']:not(:disabled)) {
+  cursor: pointer;
+}

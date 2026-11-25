@@ -364,7 +364,8 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
 
     const pane = await openEvent(user, '생산 마감');
 
-    expect(await pane.findByText(t.state.noRecipientsWarning)).toBeInTheDocument();
+    // 수신자 0명은 「지정한 수신자가 없습니다.」 라벨 하나 — 알림이 켜져 있으면 경고색이다.
+    expect(await pane.findByText(t.state.noRecipients)).toHaveAttribute('data-tone', 'warning');
   });
 
   it('US4-5 전화번호 없는 수신자가 있으면 표식과 안내가 보인다', async () => {

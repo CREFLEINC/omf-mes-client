@@ -115,6 +115,26 @@ describe('RecipientPicker — 상한(D-11)', () => {
 });
 
 describe('RecipientPicker — 부서 · 쪽 이동 · 닫기', () => {
+  /* 체크 칸이 아니라 줄 어디를 눌러도 고르거나 푼다(사용자 지시 2026-11-25). */
+  it('줄을 누르면 고르고, 다시 누르면 풀린다 — 이미 수신자인 줄은 반응하지 않는다', async () => {
+    const user = userEvent.setup();
+    renderPicker({ existing: [61] });
+
+    await user.click(await screen.findByText('후보 62'));
+    expect(box(62)).toBeChecked();
+    expect(screen.getByRole('button', { name: '1명 추가' })).toBeEnabled();
+
+    await user.click(screen.getByText('syn.c62'));
+    expect(box(62)).not.toBeChecked();
+
+    await user.click(box(63));
+    expect(box(63)).toBeChecked();
+
+    await user.click(screen.getByText('syn.c61'));
+    expect(screen.queryByRole('checkbox', { name: '후보 61 선택' })).toBeNull();
+    expect(screen.getByRole('button', { name: '1명 추가' })).toBeEnabled();
+  });
+
   /* 후보 조회에 부서 조건이 없어 화면에서 부서 이름으로 거른다. */
   it('부서를 고르면 그 부서 사람만 남고, 고른 사람은 그대로 남는다', async () => {
     const user = userEvent.setup();
