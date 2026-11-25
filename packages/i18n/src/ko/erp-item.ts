@@ -26,7 +26,7 @@ export const erpItem = {
     erpSpec: '규격',
     erpItemGroupCode: '품목 그룹',
     baseUom: '기준 단위',
-    isActive: '사용 여부',
+    isActive: '사용 유무',
   },
   values: {
     empty: '—',

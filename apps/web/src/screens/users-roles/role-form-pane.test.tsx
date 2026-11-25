@@ -66,7 +66,7 @@ describe('RoleFormPane 입력칸', () => {
   it('사용 여부를 고치는 칸이 없다 — 전용 액션으로만 바뀐다', () => {
     renderPane();
 
-    expect(screen.queryByLabelText(/사용 여부/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/사용 유무/)).not.toBeInTheDocument();
   });
 
   it('고치면 그 칸만 상위에 올라간다', async () => {

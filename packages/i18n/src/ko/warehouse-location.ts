@@ -118,7 +118,7 @@ export const warehouseLocation = {
     isExternal: '외부 창고',
     isDefect: '불량 창고',
 
-    isActive: '사용 상태',
+    isActive: '사용 유무',
     warehouse: '창고',
     parentLocation: '상위 위치',
     locationCode: '위치 코드',

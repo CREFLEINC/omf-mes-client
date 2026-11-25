@@ -159,7 +159,7 @@ export const itemExtendedAttrs = {
       negativeStockAllowed: '마이너스 재고 허용',
       storageCondition: '보관 조건',
       openedShelfLifeHours: '개봉 후 유효시간(시간)',
-      isActive: '사용 여부',
+      isActive: '사용 유무',
       /** 신재·재생재. 이름은 코드 그룹 `MES_CATEGORY`가 준다 — 화면이 짓지 않는다 */
       mesCategory: 'MES 구분',
     },
@@ -272,7 +272,7 @@ export const itemExtendedAttrs = {
       equipment: '설비',
       mold: '금형',
       priorityNo: '추천 순서',
-      isActive: '사용 여부',
+      isActive: '사용 유무',
       remarks: '비고',
       actions: '작업',
     },

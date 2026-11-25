@@ -134,7 +134,7 @@ export const defectCauseCode = {
     defectCode: '불량코드',
     defectName: '불량명',
     kind: '구분',
-    isActive: '사용 여부',
+    isActive: '사용 유무',
   },
   /** 상세 카드(omf-all-around#209) — 제목 · 상태 칩 · 이름표 상자, 수정은 창에서. */
   detail: {

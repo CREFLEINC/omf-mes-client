@@ -15,7 +15,7 @@ export const erpCommonCode = {
     groupCode: '그룹코드',
     groupName: '그룹명',
     description: '설명',
-    isActive: '사용 여부',
+    isActive: '사용 유무',
   },
   values: {
     label: '코드값',
@@ -28,7 +28,7 @@ export const erpCommonCode = {
     /** 유효기간 한 칸 — 공통코드 화면과 같은 이름 · 표기(사용자 지시 2026-11-24). */
     effectivePeriod: '유효기간',
     period: (from: string, to: string): string => `${from} ~ ${to}`,
-    isActive: '사용 여부',
+    isActive: '사용 유무',
   },
   fields: {
     groupSearch: '코드그룹 검색',

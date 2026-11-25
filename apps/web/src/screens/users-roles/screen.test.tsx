@@ -3785,7 +3785,7 @@ describe('UsersRolesScreen 역할 상세 열기', () => {
     const { requests, search, user } = renderScreen([roleListRoute()], ROLES_TAB);
 
     await waitForRoleList(requests);
-    const group = await screen.findByRole('group', { name: '사용 상태' });
+    const group = await screen.findByRole('group', { name: '사용 유무' });
     await user.click(within(group).getByRole('button', { name: /^사용/ }));
 
     await waitFor(() => {
@@ -4300,7 +4300,7 @@ describe('UsersRolesScreen 역할 초안·창의 수명', () => {
     await waitForRoleForm('SYN-ROLE-01');
     await user.type(roleNameField(), 'X');
 
-    const group = await screen.findByRole('group', { name: '사용 상태' });
+    const group = await screen.findByRole('group', { name: '사용 유무' });
     await user.click(within(group).getByRole('button', { name: /^사용/ }));
 
     const dialog = await screen.findByRole('dialog', { name: '저장되지 않은 변경 사항' });

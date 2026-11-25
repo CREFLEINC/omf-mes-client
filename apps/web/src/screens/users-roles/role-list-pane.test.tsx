@@ -77,7 +77,7 @@ describe('RoleListPane 표', () => {
     expect(headers.map((header) => header.textContent?.replace('drag_indicator', ''))).toEqual([
       '역할 코드',
       '역할명',
-      '사용 상태',
+      '사용 유무',
     ]);
   });
 

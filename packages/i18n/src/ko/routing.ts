@@ -164,7 +164,7 @@ export const routing = {
     processCode: '공정코드',
     processName: '공정명',
     processType: '공정 유형',
-    isActive: '사용여부',
+    isActive: '사용 유무',
     operationName: '공정명',
     managedItems: '관리 항목',
     /** 단위를 라벨에 적는다 — 값만 보고는 분·초를 구분할 수 없다. */

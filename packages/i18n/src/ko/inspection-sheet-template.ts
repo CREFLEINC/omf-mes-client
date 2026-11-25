@@ -44,7 +44,7 @@ export const inspectionSheetTemplate = {
     chipStatus: (label: string): string => `상태: ${label}`,
     chipRemoveLayout: '양식 조건 제거',
     chipRemoveStatus: '상태 조건 제거',
-    usageLabel: '사용 여부',
+    usageLabel: '사용 유무',
     usageActive: '사용',
     usageInactive: '미사용',
     usageCount: (label: string, count: number): string => `${label} ${String(count)}`,
@@ -68,7 +68,7 @@ export const inspectionSheetTemplate = {
     confirmedAt: '확정 일시',
     material: '재료',
     confirmedBy: '확정자',
-    usage: '사용 여부',
+    usage: '사용 유무',
   },
 
   versionBar: {

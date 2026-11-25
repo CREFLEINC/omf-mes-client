@@ -191,7 +191,7 @@ describe('WarehouseFormPane', () => {
     expect(screen.queryByRole('button', { name: '취소' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Location' })).not.toBeInTheDocument();
 
-    const stateRow = screen.getByText('사용 상태').closest('.warehouse-info-state');
+    const stateRow = screen.getByText('사용 유무').closest('.warehouse-info-state');
     expect(stateRow).not.toBeNull();
     /* 상태 칩은 이 줄에 한 번만 — 머리에 두 번 두지 않는다. */
     /* 사용 여부는 전 화면 같은 「사용 / 미사용」 라벨(#358). */

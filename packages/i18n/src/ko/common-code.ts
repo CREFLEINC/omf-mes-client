@@ -265,7 +265,7 @@ export const commonCode = {
       department: '부서',
       status: '상태',
       appUser: '계정 연결',
-      isActive: '사용 여부',
+      isActive: '사용 유무',
     },
     values: {
       /*
@@ -365,7 +365,7 @@ export const commonCode = {
       partnerName: '거래처명',
       country: '국가',
       erpPartnerCode: 'ERP 코드',
-      isActive: '사용 여부',
+      isActive: '사용 유무',
     },
     empty: {
       noneTitle: '등록된 거래처가 없습니다',

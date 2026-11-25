@@ -145,7 +145,7 @@ export const usersRoles = {
     roleIncludeInactive: '미사용 포함',
     roleReset: '초기화',
     /* 탭 줄 사용 · 미사용 라벨(사용자 지시 2026-11-20 · #333). */
-    roleStatusChipsLabel: '사용 상태',
+    roleStatusChipsLabel: '사용 유무',
   },
   loading: {
     users: '사용자 목록을 불러오는 중',
@@ -244,7 +244,7 @@ export const usersRoles = {
       roleCode: '역할 코드',
       roleName: '역할명',
       description: '설명',
-      status: '사용 상태',
+      status: '사용 유무',
     },
     /* 쓰이는 중이라 역할 코드가 잠겼다는 라벨(사용자 지시 2026-11-20 · #333). */
     codeInUse: '사용 중인 코드는 바꿀 수 없습니다.',

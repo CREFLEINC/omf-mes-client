@@ -116,12 +116,12 @@ describe('PartnerRolePane — 기본 정보는 고칠 수 없다 (결정 12)', (
 
   it('사용 여부를 값으로 낸다', () => {
     renderPane();
-    expect(factValue(detailPane(), '사용 여부')).toHaveTextContent('사용');
+    expect(factValue(detailPane(), '사용 유무')).toHaveTextContent('사용');
   });
 
   it('미사용 거래처는 미사용으로 낸다', () => {
     renderPane({ partner: partnerFixtures[2]! });
-    expect(factValue(detailPane(), '사용 여부')).toHaveTextContent('미사용');
+    expect(factValue(detailPane(), '사용 유무')).toHaveTextContent('미사용');
   });
 
   /* 내부 번호는 주소와 조회에만 쓴다 — 보이면 사용자가 자료로 읽는다. */

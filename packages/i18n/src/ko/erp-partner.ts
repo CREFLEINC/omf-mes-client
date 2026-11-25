@@ -23,7 +23,7 @@ export const erpPartner = {
     erpPartnerCode: 'ERP 거래처 코드',
     countryCode: '국가',
     roles: '역할',
-    isActive: '사용 여부',
+    isActive: '사용 유무',
   },
   roleNames: {
     customer: '고객사',

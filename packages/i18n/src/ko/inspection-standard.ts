@@ -225,7 +225,7 @@ export const inspectionStandard = {
     chipInspectionType: (label: string): string => `검사 유형: ${label}`,
     chipRemoveKeyword: '검색어 조건 제거',
     chipRemoveInspectionType: '검사 유형 조건 제거',
-    usageLabel: '사용 여부',
+    usageLabel: '사용 유무',
     usageActive: '사용',
     usageInactive: '미사용',
     usageCount: (label: string, count: number): string => `${label} ${String(count)}`,
@@ -273,7 +273,7 @@ export const inspectionStandard = {
     close: '닫기',
     /* 상세 정보 상자의 칸 이름 — 여부를 묻는 값임을 밝힌다(사용자 지시 · #258). 등록 · 수정 창의 이름은 그대로. */
     defaultSkipLabel: '기본 생략 여부',
-    activeLabel: '사용 여부',
+    activeLabel: '사용 유무',
   },
   /* 상세 카드의 버전 구획(omf-all-around#196) — 버전 고르기 · 요약 · 탭(검사 항목 / 버전 설정 / 이력). */
   versionSection: {
@@ -343,7 +343,7 @@ export const inspectionStandard = {
     /** 품목은 코드 · 이름 두 칸으로 나눠 보인다(사용자 지시 2026-11-20). */
     itemCode: '품목코드',
     itemName: '품목명',
-    active: '사용 여부',
+    active: '사용 유무',
   },
   /* 버전 비교 창 — 두 버전의 설정 · 검사 항목 차이(사용자 지시 · #196). 서버 비교 경로 없이 두 버전을 불러 화면이 견준다. */
   compare: {
