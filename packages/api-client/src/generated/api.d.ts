@@ -14986,7 +14986,7 @@ export interface paths {
     put?: never;
     /**
      * 교대 다시 사용
-     * @description 사용 중지한 교대를 다시 쓴다. 같은 공장에 같은 코드가 남아 있어 새로 등록할 수 없으므로 되살리는 길을 둔다. 이미 사용 중이면 그대로 200. 근거: 공유계약 B-4 · omf-all-around#318
+     * @description 사용 중지한 교대를 다시 쓴다. 같은 공장에 같은 코드가 남아 있어 새로 등록할 수 없으므로 되살리는 길을 둔다. 이미 사용 중이어도 200 이고 판 번호(ETag)는 올라간다 — 사용 중지와 같다. 근거: 공유계약 B-4 · omf-all-around#318
      */
     post: {
       parameters: {
