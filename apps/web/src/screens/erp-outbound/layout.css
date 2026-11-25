@@ -20,3 +20,8 @@
 .parts-iqc-facts.iqc-inbound-facts.erp-outbound-facts > .parts-iqc-fact {
   flex: 1 1 auto;
 }
+
+/* 등록일 조회 상자 — [조회]는 줄 오른쪽 끝(다른 조회 상자와 같다 · 사용자 지시 2026-11-25). */
+.erp-send-created > .field-cell-unlabeled {
+  margin-left: auto;
+}

@@ -227,6 +227,8 @@ const PendingTable = ({ rows }: { rows: IntegrationMessageRow[] }) => {
       columns={columns}
       rows={rows}
       getRowId={(row) => String(row.integrationMessageId)}
+      /* 대기 건이 없으면 표 머리줄은 두고 표 안에 문구(다른 목록과 같다 · 사용자 지시 2026-11-25). */
+      empty={<EmptyState size="sm" live title={t.empty.noPending} />}
       pick={{
         columnKey: 'messageKey',
         label: (row) => t.pickRow(documentNoOf(row)),
@@ -393,15 +395,6 @@ export const ErpOutboundScreen = () => {
         </>
       );
     }
-    if (pendingRows.length === 0) {
-      return (
-        <>
-          <EmptyState size="sm" live title={t.empty.noPending} />
-          {pendingNav}
-        </>
-      );
-    }
-
     return (
       <>
         <PendingTable rows={pendingRows} />
