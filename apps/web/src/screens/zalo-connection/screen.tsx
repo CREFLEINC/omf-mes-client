@@ -517,15 +517,17 @@ export const ZaloConnectionScreen = () => {
                 {t.state.lastError(data.lastErrorCode)}
                 {data.status === 'REAUTH_REQUIRED' && <> {t.state.reauth}</>}
               </span>
-              <button
-                type="button"
+              {/* 「Zalo 연결 설정」 단추와 같은 작은 테두리 단추 — 색은 오류 줄 글자색(사용자 지시 2026-11-25). */}
+              <Button
+                variant="outlined"
+                size="sm"
                 className="zalo-error-toggle"
                 aria-expanded={errorDetailOpen}
+                trailingIcon={<Icon name="chevron_right" size={16} aria-hidden />}
                 onClick={() => setErrorDetailOpen((open) => !open)}
               >
                 {t.actions.errorDetail}
-                <Icon name="chevron_right" size={16} aria-hidden />
-              </button>
+              </Button>
             </div>
             {errorDetailOpen && (
               <dl className="zalo-error-detail-list">

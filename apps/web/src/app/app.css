@@ -40245,7 +40245,7 @@ body:has(
   color: var(--on-surface-variant);
 }
 
-/* 「오류 상세」 — 글 링크가 아니라 작은 테두리 단추 모양. 오류 줄 오른쪽 끝, 펼치면 화살표가 아래로 돈다(시안 2026-11-25). */
+/* 「오류 상세」 — 오류 줄 오른쪽 끝 작은 테두리 단추, 오류 줄 글자색. 펼치면 화살표가 아래로 돈다(2026-11-25). */
 .zalo-error-line {
   display: flex;
   flex-wrap: wrap;
@@ -40255,26 +40255,22 @@ body:has(
 }
 
 .zalo-error-toggle {
-  display: inline-flex;
   flex: none;
-  align-items: center;
-  gap: var(--space-1);
   margin-left: auto;
-  padding: 2px var(--space-2) 2px var(--space-3);
-  border: 1px solid var(--outline);
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--on-surface);
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
-  cursor: pointer;
+  border-color: color-mix(in srgb, var(--on-semantic-error-container) 45%, transparent);
+  background: transparent;
+  color: var(--on-semantic-error-container);
 }
 
-.zalo-error-toggle > [class*='_icon_'] {
+.zalo-error-toggle:hover {
+  background: color-mix(in srgb, var(--on-semantic-error-container) 10%, transparent);
+}
+
+.zalo-error-toggle [class*='_icon_'] {
   transition: transform 0.15s;
 }
 
-.zalo-error-toggle[aria-expanded='true'] > [class*='_icon_'] {
+.zalo-error-toggle[aria-expanded='true'] [class*='_icon_'] {
   transform: rotate(90deg);
 }
 
