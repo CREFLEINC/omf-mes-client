@@ -276,17 +276,7 @@ export const DepartmentListPane = ({
 
       {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
       <div className="filter-bar common-code-filter">
-        <SearchInput
-          containerClassName={FIT_PLACEHOLDER_CLASS}
-          label={t.filters.departmentSearchLabel}
-          placeholder={t.filters.departmentSearchPlaceholder}
-          ref={searchRef}
-          value={draft.q}
-          onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
-          onSearch={(value) => onApplyFilters({ ...draft, q: value })}
-          clearLabel={messages.common.clear}
-        />
-
+        {/* 칸 순서: 사업부 선택 → 부서 검색 → 미사용 포함(사용자 지시 2026-11-25). */}
         {/*
          * 규범 3-2 — 「SYN-BU-01 · 합성 사업부 A」처럼 코드와 이름을 함께 담은 선택지는
          * 트리거 폭에 갇혀 잘린다(디자인 시스템 이슈 #62). 판단 기준은 코드값이 아니라 선택지 문구다.
@@ -298,6 +288,17 @@ export const DepartmentListPane = ({
           options={[{ value: '', label: t.filters.businessUnitAll }, ...businessUnitOptions]}
           value={draft.scopeId}
           onChange={(value) => setDraft((prev) => ({ ...prev, scopeId: value }))}
+        />
+
+        <SearchInput
+          containerClassName={FIT_PLACEHOLDER_CLASS}
+          label={t.filters.departmentSearchLabel}
+          placeholder={t.filters.departmentSearchPlaceholder}
+          ref={searchRef}
+          value={draft.q}
+          onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
+          onSearch={(value) => onApplyFilters({ ...draft, q: value })}
+          clearLabel={messages.common.clear}
         />
 
         {/* 해제 축이라 변경 즉시 적용한다. */}

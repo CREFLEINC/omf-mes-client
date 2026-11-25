@@ -1687,6 +1687,24 @@ export const CommonCodeScreen = () => {
       ? t.actionReasons.deactivateAlreadyDone(t.targets.codeGroup)
       : null;
 
+  /* 다른 탭(부서 · 작업자 · 거래처)처럼 상자 안에 안내를 둔다(#350). 등록 팝업이 떠 있는 동안에도 뒤에 선다. */
+  const codeGroupEmptyPane = (
+    <section className="pane" aria-label={t.panes.codeGroupForm}>
+      {/* 단말 관리의 빈 상세와 같은 모양 — 원 안 아이콘 · 제목 · 설명 한 줄(omf-all-around#358). */}
+      <EmptyState
+        size="sm"
+        className="users-roles-pick-empty"
+        icon={
+          <span className="inspection-standard-empty-icon">
+            <Icon name="category" size={20} />
+          </span>
+        }
+        title={t.codeGroup.empty.notSelected}
+        description={t.codeGroup.empty.notSelectedDescription}
+      />
+    </section>
+  );
+
   /**
    * 우 칸 위쪽 — 코드그룹 정보.
    *
@@ -1704,54 +1722,40 @@ export const CommonCodeScreen = () => {
        * 지나야 남는 자리가 없다(배너 · 필드 오류 · 진행 표시).
        */
       return (
-        <CodeGroupFormPane
-          mode="create"
-          values={formState.values}
-          onChange={changeCodeGroupValues}
-          fieldErrors={{
-            ...(isCodeGroupCreateWriteMine ? codeGroupCreateWrite.fieldErrors : {}),
-            ...codeGroupFieldErrors,
-          }}
-          /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
-          banner={
-            isCodeGroupCreateWriteMine ? (
-              <SaveErrorBanner error={codeGroupCreateWrite.error} />
-            ) : null
-          }
-          /* 등록에서는 코드 칸이 열려 있다 — 아직 참조할 자료가 없다. */
-          codeLockReason={null}
-          deactivateDisabledReason={null}
-          isDirty={isCodeGroupDirty}
-          /* **막는 것은 전역** — 수정 저장이 나가는 중에 열린 등록 폼도 잠긴다(사유는 페인이 낸다). */
-          isLocked={isCodeGroupLocked}
-          /* **가리는 것은 초안 축** — 버린 초안의 진행 표시가 새 초안 위에서 돌지 않는다. */
-          isSaving={isCodeGroupCreateWriteMine && codeGroupCreateWrite.isSaving}
-          onSave={handleSaveCodeGroup}
-          onCancel={closeCodeGroupCreateForm}
-          onDeactivate={() => undefined}
-        />
+        <>
+          {/* 등록은 팝업이다(사용자 지시 2026-11-25) — 뒤의 상세 자리는 고르기 전과 같은 빈 안내로 둔다. */}
+          {codeGroupEmptyPane}
+          <CodeGroupFormPane
+            mode="create"
+            values={formState.values}
+            onChange={changeCodeGroupValues}
+            fieldErrors={{
+              ...(isCodeGroupCreateWriteMine ? codeGroupCreateWrite.fieldErrors : {}),
+              ...codeGroupFieldErrors,
+            }}
+            /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
+            banner={
+              isCodeGroupCreateWriteMine ? (
+                <SaveErrorBanner error={codeGroupCreateWrite.error} />
+              ) : null
+            }
+            /* 등록에서는 코드 칸이 열려 있다 — 아직 참조할 자료가 없다. */
+            codeLockReason={null}
+            deactivateDisabledReason={null}
+            isDirty={isCodeGroupDirty}
+            /* **막는 것은 전역** — 수정 저장이 나가는 중에 열린 등록 폼도 잠긴다(사유는 페인이 낸다). */
+            isLocked={isCodeGroupLocked}
+            /* **가리는 것은 초안 축** — 버린 초안의 진행 표시가 새 초안 위에서 돌지 않는다. */
+            isSaving={isCodeGroupCreateWriteMine && codeGroupCreateWrite.isSaving}
+            onSave={handleSaveCodeGroup}
+            onCancel={closeCodeGroupCreateForm}
+            onDeactivate={() => undefined}
+          />
+        </>
       );
     }
 
-    if (selectedCodeGroupId === null) {
-      /* 다른 탭(부서 · 작업자 · 거래처)처럼 상자 안에 안내를 둔다(#350). */
-      return (
-        <section className="pane" aria-label={t.panes.codeGroupForm}>
-          {/* 단말 관리의 빈 상세와 같은 모양 — 원 안 아이콘 · 제목 · 설명 한 줄(omf-all-around#358). */}
-          <EmptyState
-            size="sm"
-            className="users-roles-pick-empty"
-            icon={
-              <span className="inspection-standard-empty-icon">
-                <Icon name="category" size={20} />
-              </span>
-            }
-            title={t.codeGroup.empty.notSelected}
-            description={t.codeGroup.empty.notSelectedDescription}
-          />
-        </section>
-      );
-    }
+    if (selectedCodeGroupId === null) return codeGroupEmptyPane;
 
     if (codeGroupDetail.isError) {
       return (
@@ -1915,6 +1919,23 @@ export const CommonCodeScreen = () => {
     ],
   );
 
+  const departmentEmptyPane = (
+    <section className="pane" aria-label={t.panes.departmentForm}>
+      {/* 단말 관리의 빈 상세와 같은 모양 — 원 안 아이콘 · 제목 · 설명 한 줄(omf-all-around#358). */}
+      <EmptyState
+        size="sm"
+        className="users-roles-pick-empty"
+        icon={
+          <span className="inspection-standard-empty-icon">
+            <Icon name="apartment" size={20} />
+          </span>
+        }
+        title={t.department.empty.notSelected}
+        description={t.department.empty.notSelectedDescription}
+      />
+    </section>
+  );
+
   /**
    * 우 칸 — 부서 정보.
    *
@@ -1932,63 +1953,50 @@ export const CommonCodeScreen = () => {
        * 지나야 남는 자리가 없다(배너 · 필드 오류 · 진행 표시).
        */
       return (
-        <DepartmentFormPane
-          mode="create"
-          values={departmentFormState.values}
-          onChange={changeDepartmentValues}
-          fieldErrors={{
-            ...(isDepartmentCreateWriteMine ? departmentCreateWrite.fieldErrors : {}),
-            ...departmentFieldErrors,
-          }}
-          /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
-          banner={
-            isDepartmentCreateWriteMine ? (
-              <SaveErrorBanner error={departmentCreateWrite.error} />
-            ) : null
-          }
-          /* 등록에서는 부서코드 칸이 열려 있다 — 아직 참조할 자료가 없다. */
-          codeLockReason={null}
-          deactivateDisabledReason={null}
-          parentOptions={parentDepartmentOptions}
-          parentDisabledReason={
-            parentDepartmentOptions.length === 0
-              ? t.department.actionReasons.parentNeedsOthers
-              : null
-          }
-          businessUnitOptions={selectableOptions(
-            businessUnitOptions,
-            departmentFormState.values.businessUnitId,
-          )}
-          isDirty={isDepartmentDirty}
-          /* **막는 것은 전역** — 수정 저장이 나가는 중에 열린 등록 폼도 잠긴다(사유는 페인이 낸다). */
-          isLocked={isDepartmentLocked}
-          /* **가리는 것은 초안 축** — 버린 초안의 진행 표시가 새 초안 위에서 돌지 않는다. */
-          isSaving={isDepartmentCreateWriteMine && departmentCreateWrite.isSaving}
-          onSave={handleSaveDepartment}
-          onCancel={closeDepartmentCreateForm}
-          onDeactivate={() => undefined}
-        />
+        <>
+          {/* 등록은 팝업이다(사용자 지시 2026-11-25) — 뒤의 상세 자리는 고르기 전과 같은 빈 안내로 둔다. */}
+          {departmentEmptyPane}
+          <DepartmentFormPane
+            mode="create"
+            values={departmentFormState.values}
+            onChange={changeDepartmentValues}
+            fieldErrors={{
+              ...(isDepartmentCreateWriteMine ? departmentCreateWrite.fieldErrors : {}),
+              ...departmentFieldErrors,
+            }}
+            /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
+            banner={
+              isDepartmentCreateWriteMine ? (
+                <SaveErrorBanner error={departmentCreateWrite.error} />
+              ) : null
+            }
+            /* 등록에서는 부서코드 칸이 열려 있다 — 아직 참조할 자료가 없다. */
+            codeLockReason={null}
+            deactivateDisabledReason={null}
+            parentOptions={parentDepartmentOptions}
+            parentDisabledReason={
+              parentDepartmentOptions.length === 0
+                ? t.department.actionReasons.parentNeedsOthers
+                : null
+            }
+            businessUnitOptions={selectableOptions(
+              businessUnitOptions,
+              departmentFormState.values.businessUnitId,
+            )}
+            isDirty={isDepartmentDirty}
+            /* **막는 것은 전역** — 수정 저장이 나가는 중에 열린 등록 폼도 잠긴다(사유는 페인이 낸다). */
+            isLocked={isDepartmentLocked}
+            /* **가리는 것은 초안 축** — 버린 초안의 진행 표시가 새 초안 위에서 돌지 않는다. */
+            isSaving={isDepartmentCreateWriteMine && departmentCreateWrite.isSaving}
+            onSave={handleSaveDepartment}
+            onCancel={closeDepartmentCreateForm}
+            onDeactivate={() => undefined}
+          />
+        </>
       );
     }
 
-    if (selectedDepartmentId === null) {
-      return (
-        <section className="pane" aria-label={t.panes.departmentForm}>
-          {/* 단말 관리의 빈 상세와 같은 모양 — 원 안 아이콘 · 제목 · 설명 한 줄(omf-all-around#358). */}
-          <EmptyState
-            size="sm"
-            className="users-roles-pick-empty"
-            icon={
-              <span className="inspection-standard-empty-icon">
-                <Icon name="apartment" size={20} />
-              </span>
-            }
-            title={t.department.empty.notSelected}
-            description={t.department.empty.notSelectedDescription}
-          />
-        </section>
-      );
-    }
+    if (selectedDepartmentId === null) return departmentEmptyPane;
 
     if (departmentDetail.isError) {
       return (

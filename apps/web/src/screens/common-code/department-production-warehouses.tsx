@@ -12,7 +12,7 @@ import {
 import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useRef, useState } from 'react';
-import { Link } from 'react-router';
+import { useHref } from 'react-router';
 
 import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -32,8 +32,6 @@ const t = messages.commonCode.department.productionWarehouses;
 
 /** W-01-07 재고 현황 — `wh` 가 그 화면의 창고 조건이다. */
 export const STOCK_STATUS_PATH = '/logistics/stock-status';
-export const stockStatusLink = (warehouseId: number): string =>
-  `${STOCK_STATUS_PATH}?wh=${String(warehouseId)}`;
 
 interface DraftState {
   departmentId: number;
@@ -228,6 +226,8 @@ export interface ProductionWarehouseSectionProps {
  */
 export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectionProps) => {
   const [pickerOpen, setPickerOpen] = useState(false);
+  /* 라우터 기준 주소(basename)를 붙인 W-01-07 주소 — 종전 링크(`Link to`)가 내던 주소와 같다. */
+  const stockStatusHref = useHref(STOCK_STATUS_PATH);
 
   const columns: Column<LinkedWarehouseRow>[] = [
     {
@@ -253,14 +253,17 @@ export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectio
       key: 'stock',
       header: t.columns.stock,
       render: (row) => (
-        <Link
-          to={stockStatusLink(row.warehouseId)}
-          target="_blank"
-          rel="noreferrer"
+        /* 밑줄 글자 링크 대신 일반 단추 모양(사용자 지시 2026-11-25). 새 탭으로 여는 동작은 종전과 같다. */
+        <Button
+          variant="outlined"
+          size="sm"
           aria-label={t.viewStockLabel(`${row.warehouseCode} ${row.warehouseName}`)}
+          onClick={() =>
+            window.open(`${stockStatusHref}?wh=${String(row.warehouseId)}`, '_blank', 'noreferrer')
+          }
         >
           {t.viewStock}
-        </Link>
+        </Button>
       ),
     },
     {
@@ -316,9 +319,9 @@ export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectio
           </h3>
           <InfoTip text={t.help} />
         </div>
+        {/* 상자 안 다른 단추(취소 · 저장)와 같은 크기(사용자 지시 2026-11-25). */}
         <Button
           variant="outlined"
-          size="sm"
           disabled={editor.isLoading || editor.loadError !== null}
           onClick={() => setPickerOpen(true)}
         >

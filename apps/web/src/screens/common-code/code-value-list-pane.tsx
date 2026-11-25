@@ -212,9 +212,10 @@ export const CodeValueListPane = ({
         </div>
       )}
 
-      <div className="filter-bar">
-        {/* 해제 축이라 변경 즉시 적용한다. */}
-        <div className="field-cell field-cell-unlabeled">
+      {/* 상세 안 조회 조건도 테두리 상자에 담는다 — 다른 화면 상세 안 조회 상자와 같은 모양(사용자 지시 2026-11-25). */}
+      <div className="filter-bar common-code-detail-filter">
+        {/* 해제 축이라 변경 즉시 적용한다. 상자 안 조건이 이것 하나라 라벨 층만큼 내리지 않는다. */}
+        <div className="field-cell">
           <Checkbox
             checked={includeInactive}
             onChange={(event) => onIncludeInactiveChange(event.target.checked)}

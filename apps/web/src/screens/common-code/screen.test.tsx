@@ -188,6 +188,13 @@ const codeGroupPane = (): HTMLElement => screen.getByRole('region', { name: '코
 const codeGroupFormPane = (): HTMLElement =>
   screen.getByRole('region', { name: '코드그룹 상세 정보' });
 
+/** 코드그룹 등록은 팝업이다(사용자 지시 2026-11-25). */
+const codeGroupCreateDialog = (): HTMLElement => screen.getByRole('dialog', { name: '그룹 추가' });
+
+/** 코드값 등록도 팝업이다(사용자 지시 2026-11-25). */
+const codeValueCreateDialog = (): HTMLElement =>
+  screen.getByRole('dialog', { name: '코드값 추가' });
+
 const codeValuePane = (): HTMLElement => screen.getByRole('region', { name: '코드값' });
 
 /** 코드값 목록 — 계약이 `codeGroupId`를 필수 쿼리로 둔다. */
@@ -304,6 +311,9 @@ const departmentPane = (): HTMLElement => screen.getByRole('region', { name: '�
 
 const departmentFormPane = (): HTMLElement =>
   screen.getByRole('region', { name: '부서 상세 정보' });
+
+/** 부서 등록은 팝업이다(사용자 지시 2026-11-25). */
+const departmentCreateDialog = (): HTMLElement => screen.getByRole('dialog', { name: '부서 추가' });
 
 /** 조직 탭의 기본 스텁 묶음. 탭이 열리면 부서 목록과 사업부 선택지가 함께 필요하다. */
 const orgRoutes = (): StubRoute[] => [departmentListRoute(), businessUnitsRoute()];
@@ -974,7 +984,7 @@ describe('CommonCodeScreen — 코드그룹 등록 (C21)', () => {
     await screen.findByRole('button', { name: 'SYN-GRP-01' });
 
     await rendered.user.click(screen.getByRole('button', { name: '그룹 추가' }));
-    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
+    await screen.findByRole('dialog', { name: '그룹 추가' });
 
     return rendered;
   };
@@ -984,7 +994,7 @@ describe('CommonCodeScreen — 코드그룹 등록 (C21)', () => {
 
     await user.type(screen.getByLabelText('그룹코드'), 'SYN-GRP-09');
     await user.type(screen.getByLabelText('그룹명'), '합성 코드그룹 I');
-    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '그룹 추가' }));
+    await user.click(within(codeGroupCreateDialog()).getByRole('button', { name: '그룹 추가' }));
 
     const post = await waitFor(() => {
       const found = requests.find((request) => request.method === 'POST');
@@ -1002,7 +1012,7 @@ describe('CommonCodeScreen — 코드그룹 등록 (C21)', () => {
 
     await user.type(screen.getByLabelText('그룹코드'), 'SYN-GRP-09');
     await user.type(screen.getByLabelText('그룹명'), '합성 코드그룹 I');
-    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '그룹 추가' }));
+    await user.click(within(codeGroupCreateDialog()).getByRole('button', { name: '그룹 추가' }));
 
     // 새 그룹의 상세를 조회한다 = grp가 새 번호가 되고 new가 사라졌다.
     await waitFor(() => {
@@ -1017,7 +1027,7 @@ describe('CommonCodeScreen — 코드그룹 등록 (C21)', () => {
 
     await user.type(screen.getByLabelText('그룹코드'), 'SYN-GRP-09');
     await user.type(screen.getByLabelText('그룹명'), '합성 코드그룹 I');
-    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '그룹 추가' }));
+    await user.click(within(codeGroupCreateDialog()).getByRole('button', { name: '그룹 추가' }));
 
     await waitFor(() => {
       expect(
@@ -1214,12 +1224,12 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
   });
 
   const addCodeGroupButton = (): HTMLElement =>
-    within(codeGroupFormPane()).getByRole('button', { name: '그룹 추가' });
+    within(codeGroupCreateDialog()).getByRole('button', { name: '그룹 추가' });
 
   /** 등록 폼을 열고 필수 두 칸을 채운 뒤 등록을 낸다. */
   const startCreate = async (user: ReturnType<typeof userEvent.setup>, groupName: string) => {
     await user.click(within(filterPane()).getByRole('button', { name: '그룹 추가' }));
-    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
+    await screen.findByRole('dialog', { name: '그룹 추가' });
     await user.type(screen.getByLabelText('그룹코드'), 'SYN-GRP-09');
     await user.type(screen.getByLabelText('그룹명'), groupName);
     await user.click(addCodeGroupButton());
@@ -1230,7 +1240,7 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
     user: ReturnType<typeof userEvent.setup>,
     groupName: string,
   ) => {
-    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '취소' }));
+    await user.click(within(codeGroupCreateDialog()).getByRole('button', { name: '취소' }));
     await user.click(within(filterPane()).getByRole('button', { name: '그룹 추가' }));
     await user.type(screen.getByLabelText('그룹명'), groupName);
   };
@@ -1474,7 +1484,7 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
     await user.click(await within(filterPane()).findByRole('button', { name: '그룹 추가' }));
     await user.type(screen.getByLabelText('그룹코드'), 'SYN-GRP-09');
     await user.type(screen.getByLabelText('그룹명'), '합성 코드그룹 I');
-    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '그룹 추가' }));
+    await user.click(within(codeGroupCreateDialog()).getByRole('button', { name: '그룹 추가' }));
 
     await waitFor(() => {
       expect(requests.filter((request) => request.method === 'POST')).toHaveLength(1);
@@ -1608,7 +1618,7 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
      */
     expect(addCodeGroupButton()).not.toHaveAttribute('aria-busy', 'true');
     expect(
-      within(codeGroupFormPane()).getByText(/그룹 추가는 다른 코드그룹의 저장이 끝난 뒤에/),
+      within(codeGroupCreateDialog()).getByText(/그룹 추가는 다른 코드그룹의 저장이 끝난 뒤에/),
     ).toBeInTheDocument();
 
     await act(async () => {
@@ -1622,9 +1632,11 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
     await waitFor(() => {
       expect(addCodeGroupButton()).toBeEnabled();
     });
-    expect(within(codeGroupFormPane()).queryByText('저장할 수 없습니다.')).not.toBeInTheDocument();
     expect(
-      within(codeGroupFormPane()).queryByText('이미 있는 그룹명입니다.'),
+      within(codeGroupCreateDialog()).queryByText('저장할 수 없습니다.'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(codeGroupCreateDialog()).queryByText('이미 있는 그룹명입니다.'),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText('그룹명')).toHaveValue('새 초안');
   });
@@ -1661,9 +1673,11 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
     await waitFor(() => {
       expect(addCodeGroupButton()).toBeEnabled();
     });
-    expect(within(codeGroupFormPane()).queryByText('저장할 수 없습니다.')).not.toBeInTheDocument();
     expect(
-      within(codeGroupFormPane()).queryByText('이미 있는 그룹명입니다.'),
+      within(codeGroupCreateDialog()).queryByText('저장할 수 없습니다.'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(codeGroupCreateDialog()).queryByText('이미 있는 그룹명입니다.'),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText('그룹명')).toHaveValue('되돌아온 초안');
   });
@@ -1677,8 +1691,12 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
 
     await startCreate(user, '합성 코드그룹 I');
 
-    expect(await within(codeGroupFormPane()).findByText('저장할 수 없습니다.')).toBeInTheDocument();
-    expect(within(codeGroupFormPane()).getByText('이미 있는 그룹명입니다.')).toBeInTheDocument();
+    expect(
+      await within(codeGroupCreateDialog()).findByText('저장할 수 없습니다.'),
+    ).toBeInTheDocument();
+    expect(
+      within(codeGroupCreateDialog()).getByText('이미 있는 그룹명입니다.'),
+    ).toBeInTheDocument();
   });
 
   /*
@@ -2203,7 +2221,7 @@ describe('CommonCodeScreen — 코드값 등록 (C37·C38)', () => {
 
     await user.type(await screen.findByLabelText('코드'), 'SYN-CV-09');
     await user.type(screen.getByLabelText('코드명'), '합성 코드값 I');
-    await user.click(within(codeValueFormPane()).getByRole('button', { name: '코드값 추가' }));
+    await user.click(within(codeValueCreateDialog()).getByRole('button', { name: '코드값 추가' }));
 
     const post = await waitFor(() => {
       const found = requests.find((request) => request.method === 'POST');
@@ -2236,7 +2254,7 @@ describe('CommonCodeScreen — 코드값 등록 (C37·C38)', () => {
 
     await user.type(await screen.findByLabelText('코드'), 'SYN-CV-09');
     await user.type(screen.getByLabelText('코드명'), '합성 코드값 I');
-    await user.click(within(codeValueFormPane()).getByRole('button', { name: '코드값 추가' }));
+    await user.click(within(codeValueCreateDialog()).getByRole('button', { name: '코드값 추가' }));
 
     await waitFor(() => {
       expect(requestsTo(requests, `${CODE_VALUES_PATH}/2009`)).toHaveLength(1);
@@ -2403,10 +2421,10 @@ describe('CommonCodeScreen — 주소만으로 등록 폼이 살아난다 (리�
   it('?new=group으로 직접 들어와도 코드그룹 등록 폼이 뜬다', async () => {
     renderScreen([codeGroupListRoute()], '?new=group');
 
-    expect(await screen.findByRole('region', { name: '코드그룹 상세 정보' })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: '그룹 추가' })).toBeInTheDocument();
     expect(screen.getByLabelText('그룹코드')).toHaveValue('');
     expect(
-      within(screen.getByRole('region', { name: '코드그룹 상세 정보' })).getByRole('button', {
+      within(codeGroupCreateDialog()).getByRole('button', {
         name: '그룹 추가',
       }),
     ).toBeInTheDocument();
@@ -2418,10 +2436,10 @@ describe('CommonCodeScreen — 주소만으로 등록 폼이 살아난다 (리�
       '?grp=1001&new=value',
     );
 
-    expect(await screen.findByRole('region', { name: '코드값 정보' })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: '코드값 추가' })).toBeInTheDocument();
     expect(screen.getByLabelText('코드')).toHaveValue('');
     expect(
-      within(screen.getByRole('region', { name: '코드값 정보' })).getByRole('button', {
+      within(codeValueCreateDialog()).getByRole('button', {
         name: '코드값 추가',
       }),
     ).toBeInTheDocument();
@@ -2465,7 +2483,7 @@ describe('CommonCodeScreen — 주소만으로 등록 폼이 살아난다 (리�
     await user.type(await screen.findByLabelText('코드'), 'SYN-CV-09');
     await user.type(screen.getByLabelText('코드명'), '합성 코드값 I');
     await user.click(
-      within(screen.getByRole('region', { name: '코드값 정보' })).getByRole('button', {
+      within(codeValueCreateDialog()).getByRole('button', {
         name: '코드값 추가',
       }),
     );
@@ -2617,7 +2635,7 @@ describe('CommonCodeScreen — 한 조작은 히스토리 한 칸이다 (리뷰 
     const before = history.search();
 
     await user.click(
-      within(screen.getByRole('region', { name: '코드값 정보' })).getByRole('button', {
+      within(codeValueCreateDialog()).getByRole('button', {
         name: '코드값 추가',
       }),
     );
@@ -2666,7 +2684,7 @@ describe('CommonCodeScreen — 한 조작은 히스토리 한 칸이다 (리뷰 
     const before = history.search();
 
     await user.click(
-      within(screen.getByRole('region', { name: '코드그룹 상세 정보' })).getByRole('button', {
+      within(codeGroupCreateDialog()).getByRole('button', {
         name: '그룹 추가',
       }),
     );
@@ -3294,9 +3312,9 @@ describe('CommonCodeScreen — 부서 등록 (C55)', () => {
   it('주소로 바로 들어와도 등록 폼이 선다', async () => {
     renderScreen(orgDetailRoutes(), '?tab=org&new=dept');
 
-    const pane = await screen.findByRole('region', { name: '부서 상세 정보' });
-    expect(within(pane).getByLabelText('부서코드')).toHaveValue('');
-    expect(within(pane).getByRole('button', { name: '부서 추가' })).toBeInTheDocument();
+    const dialog = await screen.findByRole('dialog', { name: '부서 추가' });
+    expect(within(dialog).getByLabelText('부서코드')).toHaveValue('');
+    expect(within(dialog).getByRole('button', { name: '부서 추가' })).toBeInTheDocument();
   });
 
   /* C55 — 아직 없는 자원이라 잠글 대상이 없다. */
@@ -3312,7 +3330,7 @@ describe('CommonCodeScreen — 부서 등록 (C55)', () => {
 
     await user.type(await screen.findByLabelText('부서코드'), 'SYN-DEPT-09');
     await user.type(screen.getByLabelText('부서명'), '합성 부서 I');
-    await user.click(within(departmentFormPane()).getByRole('button', { name: '부서 추가' }));
+    await user.click(within(departmentCreateDialog()).getByRole('button', { name: '부서 추가' }));
 
     await waitFor(() => {
       expect(requests.filter((request) => request.method === 'POST')).toHaveLength(1);
@@ -3336,7 +3354,7 @@ describe('CommonCodeScreen — 부서 등록 (C55)', () => {
 
     await user.type(await screen.findByLabelText('부서코드'), 'SYN-DEPT-09');
     await user.type(screen.getByLabelText('부서명'), '합성 부서 I');
-    await user.click(within(departmentFormPane()).getByRole('button', { name: '부서 추가' }));
+    await user.click(within(departmentCreateDialog()).getByRole('button', { name: '부서 추가' }));
 
     await waitFor(() => {
       expect(requests.filter((request) => request.method === 'POST')).toHaveLength(1);
@@ -3363,7 +3381,7 @@ describe('CommonCodeScreen — 부서 등록 (C55)', () => {
 
     await user.type(await screen.findByLabelText('부서코드'), 'SYN-DEPT-09');
     await user.type(screen.getByLabelText('부서명'), '합성 부서 I');
-    await user.click(within(departmentFormPane()).getByRole('button', { name: '부서 추가' }));
+    await user.click(within(departmentCreateDialog()).getByRole('button', { name: '부서 추가' }));
 
     /*
      * 주소가 바뀌기를 기다린다. 화면에 선 SYN-DEPT-09 로는 가를 수 없다 - 방금 사람이 친
@@ -3391,7 +3409,7 @@ describe('CommonCodeScreen — 부서 등록 (C55)', () => {
 
     const before = history.search();
 
-    await user.click(within(departmentFormPane()).getByRole('button', { name: '부서 추가' }));
+    await user.click(within(departmentCreateDialog()).getByRole('button', { name: '부서 추가' }));
     await waitFor(() => {
       expect(history.search()).toBe('?tab=org&dep=3009');
     });
@@ -3520,7 +3538,7 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
     within(departmentFormPane()).getByRole('button', { name: '저장' });
 
   const addDepartmentButton = (): HTMLElement =>
-    within(departmentFormPane()).getByRole('button', { name: '부서 추가' });
+    within(departmentCreateDialog()).getByRole('button', { name: '부서 추가' });
 
   /**
    * 두 부서의 수정 경로를 **둘 다** 스텁할 수 있게 대상을 인자로 받는다. 3002 쪽을 비워 두면
@@ -3596,7 +3614,7 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
     user: ReturnType<typeof userEvent.setup>,
     departmentName: string,
   ) => {
-    await user.click(within(departmentFormPane()).getByRole('button', { name: '취소' }));
+    await user.click(within(departmentCreateDialog()).getByRole('button', { name: '취소' }));
     await user.click(within(filterPane()).getByRole('button', { name: '부서 추가' }));
     await user.type(await screen.findByLabelText('부서명'), departmentName);
   };
@@ -3982,7 +4000,7 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
      */
     expect(addDepartmentButton()).not.toHaveAttribute('aria-busy', 'true');
     expect(
-      within(departmentFormPane()).getByText(/부서 추가는 다른 부서의 저장이 끝난 뒤에/),
+      within(departmentCreateDialog()).getByText(/부서 추가는 다른 부서의 저장이 끝난 뒤에/),
     ).toBeInTheDocument();
 
     await act(async () => {
@@ -3996,9 +4014,11 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
     await waitFor(() => {
       expect(addDepartmentButton()).toBeEnabled();
     });
-    expect(within(departmentFormPane()).queryByText('저장할 수 없습니다.')).not.toBeInTheDocument();
     expect(
-      within(departmentFormPane()).queryByText('이미 있는 부서명입니다.'),
+      within(departmentCreateDialog()).queryByText('저장할 수 없습니다.'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(departmentCreateDialog()).queryByText('이미 있는 부서명입니다.'),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText('부서명')).toHaveValue('새 초안');
   });
@@ -4039,9 +4059,11 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
     await waitFor(() => {
       expect(addDepartmentButton()).toBeEnabled();
     });
-    expect(within(departmentFormPane()).queryByText('저장할 수 없습니다.')).not.toBeInTheDocument();
     expect(
-      within(departmentFormPane()).queryByText('이미 있는 부서명입니다.'),
+      within(departmentCreateDialog()).queryByText('저장할 수 없습니다.'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(departmentCreateDialog()).queryByText('이미 있는 부서명입니다.'),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText('부서명')).toHaveValue('되돌아온 초안');
   });
@@ -4061,9 +4083,11 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
     await startCreate(user, '합성 부서 I');
 
     expect(
-      await within(departmentFormPane()).findByText('저장할 수 없습니다.'),
+      await within(departmentCreateDialog()).findByText('저장할 수 없습니다.'),
     ).toBeInTheDocument();
-    expect(within(departmentFormPane()).getByText('이미 있는 부서명입니다.')).toBeInTheDocument();
+    expect(
+      within(departmentCreateDialog()).getByText('이미 있는 부서명입니다.'),
+    ).toBeInTheDocument();
   });
 
   /*

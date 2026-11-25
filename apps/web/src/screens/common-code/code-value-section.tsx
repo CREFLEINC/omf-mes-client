@@ -340,23 +340,29 @@ export const CodeValueSection = ({
     if (isCreating) {
       if (formState === null) return null;
 
+      /* 등록은 팝업이다(사용자 지시 2026-11-25) — 뒤의 상세 자리는 고르기 전과 같은 빈 안내로 둔다. */
       return (
-        <CodeValueFormPane
-          mode="create"
-          values={formState.values}
-          onChange={changeValues}
-          fieldErrors={{ ...createWrite.fieldErrors, ...fieldErrors }}
-          /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
-          banner={<SaveErrorBanner error={createWrite.error} />}
-          /* 등록에서는 코드 칸이 열려 있다 — 아직 참조할 자료가 없다. */
-          codeLockReason={null}
-          deactivateDisabledReason={null}
-          isDirty={isDirty}
-          isSaving={createWrite.isSaving}
-          onSave={handleSave}
-          onCancel={closeCreateForm}
-          onDeactivate={() => undefined}
-        />
+        <>
+          <section className="pane" aria-label={t.formPaneTitle}>
+            <EmptyState size="sm" title={t.empty.notSelected} />
+          </section>
+          <CodeValueFormPane
+            mode="create"
+            values={formState.values}
+            onChange={changeValues}
+            fieldErrors={{ ...createWrite.fieldErrors, ...fieldErrors }}
+            /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
+            banner={<SaveErrorBanner error={createWrite.error} />}
+            /* 등록에서는 코드 칸이 열려 있다 — 아직 참조할 자료가 없다. */
+            codeLockReason={null}
+            deactivateDisabledReason={null}
+            isDirty={isDirty}
+            isSaving={createWrite.isSaving}
+            onSave={handleSave}
+            onCancel={closeCreateForm}
+            onDeactivate={() => undefined}
+          />
+        </>
       );
     }
 

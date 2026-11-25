@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -129,6 +129,37 @@ describe('CodeGroupFormPane — 액션', () => {
 
     expect(screen.getByRole('button', { name: '그룹 추가' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '저장' })).not.toBeInTheDocument();
+  });
+
+  /* 등록은 팝업이다(사용자 지시 2026-11-25) — 창의 취소는 등록 폼을 접는 같은 처리로 간다. */
+  it('등록 폼은 「그룹 추가」 팝업으로 뜨고 취소가 닫기를 알린다', async () => {
+    const { onCancel, user } = renderPane({ mode: 'create' });
+
+    const dialog = screen.getByRole('dialog', { name: '그룹 추가' });
+    expect(within(dialog).getByLabelText('그룹코드')).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: '취소' }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  /* 필수 칸이 비면 빨간 테두리(사용자 역할 화면과 같은 방식 · #333). 잠긴 칸에는 걸지 않는다. */
+  it('비어 있는 필수 칸에만 빨간 테두리 표시가 붙는다', () => {
+    renderPane({ mode: 'create', values: { groupCode: '', groupName: '이름', description: '' } });
+
+    const shell = (label: string) => screen.getByLabelText(label).closest('.field-cell');
+    expect(shell('그룹코드')?.querySelector('.users-roles-required-empty')).not.toBeNull();
+    expect(shell('그룹명')?.querySelector('.users-roles-required-empty')).toBeNull();
+    expect(shell('설명')?.querySelector('.users-roles-required-empty')).toBeNull();
+  });
+
+  it('잠긴 그룹코드 칸에는 빈 칸 테두리를 걸지 않는다', () => {
+    renderPane({ values: { ...values, groupCode: '' }, codeLockReason: '사유' });
+
+    expect(
+      screen
+        .getByLabelText('그룹코드')
+        .closest('.field-cell')
+        ?.querySelector('.users-roles-required-empty'),
+    ).toBeNull();
   });
 
   /* 아직 없는 자원이라 「언젠가 풀린다」가 아니라 애초에 해당하지 않는 액션이다. */

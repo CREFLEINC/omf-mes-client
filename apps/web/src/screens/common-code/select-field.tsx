@@ -22,6 +22,8 @@ export interface SelectFieldProps {
    * **판단 기준은 코드값이 아니라 선택지 문구 길이다**(W-06-02 교훈).
    */
   wide?: boolean;
+  /** 칸 껍데기(`.field-cell`)에 덧붙이는 클래스 — 필수 칸이 비었을 때의 빨간 테두리(`requiredEmptyClass`) 등. */
+  containerClassName?: string;
 }
 
 /**
@@ -47,6 +49,7 @@ export const SelectField = ({
   error,
   placeholder,
   wide = false,
+  containerClassName,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
@@ -60,7 +63,11 @@ export const SelectField = ({
   const hasEmptyOption = options.some((option) => option.value === '');
 
   return (
-    <div className={wide ? 'field-cell wide-select' : 'field-cell'}>
+    <div
+      className={[wide ? 'field-cell wide-select' : 'field-cell', containerClassName]
+        .filter(Boolean)
+        .join(' ')}
+    >
       <FieldLabel htmlFor={id} label={label} required={required} />
       <Select
         id={id}

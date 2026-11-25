@@ -14,6 +14,8 @@ export interface DateFieldProps {
   /** 보조 안내. 오류가 있으면 오류가 우선한다. */
   note?: string;
   error?: string;
+  /** 칸 껍데기(`.field-cell`)에 덧붙이는 클래스 — 필수 칸이 비었을 때의 빨간 테두리(`requiredEmptyClass`) 등. */
+  containerClassName?: string;
 }
 
 /**
@@ -39,6 +41,7 @@ export const DateField = ({
   disabled = false,
   note,
   error,
+  containerClassName,
 }: DateFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
@@ -46,7 +49,11 @@ export const DateField = ({
   const message = error ?? note;
 
   return (
-    <div className="field-cell">
+    <div
+      className={
+        containerClassName === undefined ? 'field-cell' : `field-cell ${containerClassName}`
+      }
+    >
       <FieldLabel htmlFor={id} label={label} required={required} />
       <DatePicker
         id={id}

@@ -145,6 +145,19 @@ describe('DepartmentListPane — 계층 표시', () => {
 });
 
 describe('DepartmentListPane — 조건', () => {
+  /* 칸 순서: 사업부 선택 → 부서 검색 → 미사용 포함(사용자 지시 2026-11-25). */
+  it('조건 칸이 사업부 선택 · 부서 검색 · 미사용 포함 순서로 선다', () => {
+    renderPane();
+
+    const businessUnit = screen.getByRole('combobox', { name: '사업부 선택' });
+    const search = screen.getByLabelText('부서 검색');
+    const includeInactive = screen.getByRole('checkbox', { name: '미사용 포함' });
+    const follows = (a: Element, b: Element) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows(businessUnit, search)).toBe(true);
+    expect(follows(search, includeInactive)).toBe(true);
+  });
+
   it('검색어를 고치고 조회를 누르면 그 조건을 알린다', async () => {
     const { onApplyFilters, user } = renderPane();
 

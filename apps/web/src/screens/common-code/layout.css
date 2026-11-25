@@ -35,3 +35,55 @@
   color: var(--primary-text);
   box-shadow: inset 0 -2px 0 var(--primary-text);
 }
+
+/*
+ * 상세 안 조회 조건(코드값 「미사용 포함」) — 다른 화면 상세 안 조회 상자와 같은 테두리 상자(사용자 지시 2026-11-25).
+ * 값은 입고 작업 기록 · 자재 출고 현황의 조회 상자(`.iwr-filters` · `.material-issue-status-filters`)와 같다.
+ */
+.common-code-tab-panel .filter-bar.common-code-detail-filter {
+  margin-bottom: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+}
+
+/*
+ * 등록 팝업(그룹 · 코드값 · 부서)은 상세 상자 안에서 열린다 — 상세 구획 사이 구분선 규칙(app.css)이 창에까지 윗선 ·
+ * 윗여백을 붙이지 않게 걷는다.
+ */
+.list-detail-detail.common-code-detail > .pane-stack > dialog:not(:first-child) {
+  padding-top: 0;
+  border-top: 0;
+}
+
+/*
+ * 부서 목록의 상위 부서 묶음 줄(「DEPT-LG · 물류팀」)은 왼쪽 맞춤(사용자 지시 2026-11-25). 공용 표 가운데 맞춤 규칙
+ * (`.inspection-queue-table table th:nth-child(n)…`)보다 무거워야 선다.
+ */
+.common-code-tab-panel
+  .users-roles-list
+  tbody
+  tr[data-group-header='true']
+  > th:nth-child(n):nth-child(n) {
+  text-align: left;
+}
+
+/*
+ * 필수인데 비어 있는 선택칸 · 날짜칸 — 입력칸과 같은 빨간 테두리(사용자 역할 화면 `users-roles-required-empty` · #333).
+ * 공용 규칙(app.css)은 `input` 을 품은 상자만 겨누는데, DS 선택칸 · 날짜칸의 상자는 `button` 이라 여기서 같은 선을 긋는다.
+ */
+.common-code-tab-panel .field-cell.users-roles-required-empty > div > button[aria-haspopup],
+dialog .field-cell.users-roles-required-empty > div > button[aria-haspopup] {
+  box-shadow: inset 0 0 0 1px var(--semantic-error);
+}
+
+/*
+ * 상세 · 등록 팝업의 입력칸 줄 — 칸이 좁아지면(상세 칸을 줄이거나 화면이 좁을 때) 두 칸이 한 줄씩 쌓인다(사용자 지시
+ * 2026-11-25). 넓을 때는 종전처럼 두 칸, 한 칸이 14rem 밑으로 줄 자리에서 한 칸으로 바뀌고 넘치지 않는다.
+ */
+.common-code-tab-panel .form-grid {
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, max(14rem, (100% - var(--space-4)) / 2)), 1fr)
+  );
+}

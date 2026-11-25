@@ -2,6 +2,7 @@ import { AlertBanner, Button, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { requiredEmptyClass } from '../users-roles/required-empty';
 import { DateField } from './date-field';
 import { FieldLabel } from './field-label';
 import type { QualificationDraft } from './qualification-draft';
@@ -112,6 +113,8 @@ export const QualificationFormDialog = ({
           required
           options={QUALIFICATION_TYPE_OPTIONS}
           value={values.qualificationTypeCode}
+          /* 필수 칸이 비면 빨간 테두리 — 사용자 역할 화면과 같은 방식(#333 · 사용자 지시 2026-11-25). */
+          containerClassName={requiredEmptyClass(values.qualificationTypeCode)}
           onChange={(value) => change({ qualificationTypeCode: value })}
           error={errors.qualificationTypeCode}
         />
@@ -140,6 +143,7 @@ export const QualificationFormDialog = ({
           label={t.fields.validFrom}
           required
           value={values.validFrom}
+          containerClassName={requiredEmptyClass(values.validFrom)}
           onChange={(validFrom) => change({ validFrom })}
           error={errors.validFrom}
         />

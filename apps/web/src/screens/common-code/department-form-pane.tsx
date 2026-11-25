@@ -1,8 +1,9 @@
-import { Button, Icon, TextField } from '@crefle/web-ui';
+import { Button, Dialog, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
 import { CodeLockLabel } from '../../patterns/master';
+import { requiredEmptyClass } from '../users-roles/required-empty';
 import { DisabledAction } from './disabled-action';
 import { FieldLabel } from './field-label';
 import { SelectField } from './select-field';
@@ -150,94 +151,125 @@ export const DepartmentFormPane = ({
     );
   };
 
+  const formGrid = (
+    <div className="form-grid">
+      {/*
+       * 필수 표시는 디자인 시스템 내장 라벨에 끼울 자리가 없어 라벨을 직접 붙인다(배치 규범 3).
+       * 검증이 필수로 막는 칸에 표시가 없으면 저장을 눌러야 필수임을 알게 된다.
+       */}
+      <div className="field-cell">
+        {/* 잠긴 코드는 사유 문장 대신 칸 이름 오른쪽 「변경 불가」 라벨(사용자 지시 2026-11-24). */}
+        <CodeLockLabel reason={codeLockReason} reasonId={`${codeId}-lock`}>
+          <FieldLabel htmlFor={codeId} label={t.department.fields.departmentCode} required />
+        </CodeLockLabel>
+        <TextField
+          id={codeId}
+          value={values.departmentCode}
+          onChange={(event) => onChange({ departmentCode: event.target.value })}
+          disabled={codeLockReason !== null}
+          aria-describedby={codeLockReason === null ? undefined : `${codeId}-lock`}
+          /* 필수 칸이 비면 빨간 테두리 — 사용자 역할 화면과 같은 방식(#333). 잠긴 칸은 고칠 수 없어 뺀다. */
+          containerClassName={
+            codeLockReason === null ? requiredEmptyClass(values.departmentCode) : undefined
+          }
+          error={fieldErrors.departmentCode}
+          aria-required
+        />
+      </div>
+
+      <div className="field-cell">
+        <FieldLabel htmlFor={nameId} label={t.department.fields.departmentName} required />
+        <TextField
+          id={nameId}
+          value={values.departmentName}
+          onChange={(event) => onChange({ departmentName: event.target.value })}
+          containerClassName={requiredEmptyClass(values.departmentName)}
+          error={fieldErrors.departmentName}
+          aria-required
+        />
+      </div>
+
+      {/*
+       * 비우는 것이 정상 값이다 — 계약이 널을 허용하고 그것이 곧 뿌리 부서다.
+       * 폼 그리드 안이라 규범 3-1이 이미 칸 폭에 맞춰 늘려 준다(`.wide-select`를 붙이지 않는다).
+       */}
+      <SelectField
+        label={t.department.fields.parentDepartment}
+        options={[{ value: '', label: t.department.values.noParent }, ...parentOptions]}
+        value={values.parentDepartmentId}
+        onChange={(value) => onChange({ parentDepartmentId: value })}
+        disabled={parentDisabledReason !== null}
+        disabledReason={parentDisabledReason ?? undefined}
+        error={fieldErrors.parentDepartmentId}
+      />
+
+      <SelectField
+        label={t.department.fields.businessUnit}
+        options={[{ value: '', label: t.values.empty }, ...businessUnitOptions]}
+        value={values.businessUnitId}
+        onChange={(value) => onChange({ businessUnitId: value })}
+        error={fieldErrors.businessUnitId}
+      />
+    </div>
+  );
+
+  /*
+   * 등록은 팝업 — 사용자 추가 팝업과 같은 모양(사용자 지시 2026-11-25 · #333). 열고 닫힘은 종전대로 주소의 등록 상태가
+   * 쥐고, 닫기(취소)는 등록 폼을 접는 같은 처리로 간다. 저장 자리 세 상태(진행 · 잠금 사유 · 고친 것 없음)도 그대로다.
+   */
+  if (mode === 'create') {
+    return (
+      <Dialog
+        open
+        onClose={onCancel}
+        size="lg"
+        title={t.actions.addDepartment}
+        closeOnBackdropClick={false}
+        showCloseButton={false}
+        footer={
+          <>
+            <Button variant="outlined" onClick={onCancel}>
+              {messages.common.cancel}
+            </Button>
+            {saveAction()}
+          </>
+        }
+      >
+        {banner}
+        {formGrid}
+      </Dialog>
+    );
+  }
+
   return (
     <section className="pane" aria-label={t.panes.departmentForm}>
       {/*
        * 사용자 관리 상세와 같은 머리 — 제목 줄 오른쪽에 「사용 중지」(사용자 지시 2026-11-24). 폼 값 저장과 따로 서버에
-       * 바로 나가는 작업이라 아래 「취소 · 저장」과 떨어져 선다. 등록 폼에는 두지 않는다.
+       * 바로 나가는 작업이라 아래 「취소 · 저장」과 떨어져 선다. 단추 크기는 상자 안 다른 단추(취소 · 저장)와 같다(2026-11-25).
        */}
       <div className="pane-heading-row users-roles-heading">
         <h3 className="pane-title">{t.panes.departmentForm}</h3>
-        {mode === 'edit' && (
-          <div className="users-roles-account-actions">
-            <Button
-              variant="outlined"
-              size="sm"
-              disabled={deactivateDisabledReason !== null}
-              title={deactivateDisabledReason ?? undefined}
-              leadingIcon={<Icon name="block" size={18} />}
-              onClick={onDeactivate}
-            >
-              {messages.common.deactivate}
-            </Button>
-          </div>
-        )}
+        <div className="users-roles-account-actions">
+          <Button
+            variant="outlined"
+            disabled={deactivateDisabledReason !== null}
+            title={deactivateDisabledReason ?? undefined}
+            leadingIcon={<Icon name="block" size={18} />}
+            onClick={onDeactivate}
+          >
+            {messages.common.deactivate}
+          </Button>
+        </div>
       </div>
       {banner}
 
-      <div className="form-grid">
-        {/*
-         * 필수 표시는 디자인 시스템 내장 라벨에 끼울 자리가 없어 라벨을 직접 붙인다(배치 규범 3).
-         * 검증이 필수로 막는 칸에 표시가 없으면 저장을 눌러야 필수임을 알게 된다.
-         */}
-        <div className="field-cell">
-          {/* 잠긴 코드는 사유 문장 대신 칸 이름 오른쪽 「변경 불가」 라벨(사용자 지시 2026-11-24). */}
-          <CodeLockLabel reason={codeLockReason} reasonId={`${codeId}-lock`}>
-            <FieldLabel htmlFor={codeId} label={t.department.fields.departmentCode} required />
-          </CodeLockLabel>
-          <TextField
-            id={codeId}
-            value={values.departmentCode}
-            onChange={(event) => onChange({ departmentCode: event.target.value })}
-            disabled={codeLockReason !== null}
-            aria-describedby={codeLockReason === null ? undefined : `${codeId}-lock`}
-            error={fieldErrors.departmentCode}
-            aria-required
-          />
-        </div>
-
-        <div className="field-cell">
-          <FieldLabel htmlFor={nameId} label={t.department.fields.departmentName} required />
-          <TextField
-            id={nameId}
-            value={values.departmentName}
-            onChange={(event) => onChange({ departmentName: event.target.value })}
-            error={fieldErrors.departmentName}
-            aria-required
-          />
-        </div>
-
-        {/*
-         * 비우는 것이 정상 값이다 — 계약이 널을 허용하고 그것이 곧 뿌리 부서다.
-         * 폼 그리드 안이라 규범 3-1이 이미 칸 폭에 맞춰 늘려 준다(`.wide-select`를 붙이지 않는다).
-         */}
-        <SelectField
-          label={t.department.fields.parentDepartment}
-          options={[{ value: '', label: t.department.values.noParent }, ...parentOptions]}
-          value={values.parentDepartmentId}
-          onChange={(value) => onChange({ parentDepartmentId: value })}
-          disabled={parentDisabledReason !== null}
-          disabledReason={parentDisabledReason ?? undefined}
-          error={fieldErrors.parentDepartmentId}
-        />
-
-        <SelectField
-          label={t.department.fields.businessUnit}
-          options={[{ value: '', label: t.values.empty }, ...businessUnitOptions]}
-          value={values.businessUnitId}
-          onChange={(value) => onChange({ businessUnitId: value })}
-          error={fieldErrors.businessUnitId}
-        />
-      </div>
+      {formGrid}
 
       {productionWarehouses}
 
       <div className="form-actions">
-        {/*
-         * 등록에서 「취소」는 **폼을 닫는 것**이라 고친 것이 없어도 눌러야 한다.
-         * 수정에서는 **기준값으로 되돌리는 것**이라 고친 것이 있을 때만 의미가 있다.
-         */}
-        <Button variant="outlined" disabled={mode === 'edit' && !isDirty} onClick={onCancel}>
+        {/* 수정에서 「취소」는 **기준값으로 되돌리는 것**이라 고친 것이 있을 때만 의미가 있다. */}
+        <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
           {messages.common.cancel}
         </Button>
 

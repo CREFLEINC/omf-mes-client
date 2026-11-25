@@ -2,7 +2,7 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   createStubFetch,
@@ -181,15 +181,19 @@ const saveButton = () =>
 
 describe('W-06-06 생산 창고 구획', () => {
   it('US8-1 연결한 생산 창고를 공장과 창고로 보이고 「재고 보기」가 W-01-07 을 그 창고 조건으로 연다', async () => {
-    setup();
+    const { user } = setup();
+    /* 「재고 보기」는 링크 글자 대신 단추 모양이다(사용자 지시 2026-11-25) — 여는 주소 · 새 탭은 종전과 같다. */
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
 
     const table = await linkedTable();
     expect(table.getAllByRole('row')).toHaveLength(3);
     expect(table.getAllByText('합성 1공장')).toHaveLength(2);
     expect(table.getByText('SYN-PW-A 합성 생산창고 A')).toBeInTheDocument();
-    expect(
-      table.getByRole('link', { name: t.viewStockLabel('SYN-PW-A 합성 생산창고 A') }),
-    ).toHaveAttribute('href', '/logistics/stock-status?wh=7001');
+    await user.click(
+      table.getByRole('button', { name: t.viewStockLabel('SYN-PW-A 합성 생산창고 A') }),
+    );
+    expect(open).toHaveBeenCalledWith('/logistics/stock-status?wh=7001', '_blank', 'noreferrer');
+    open.mockRestore();
     /* 출고 창고를 고르는 규칙은 제목 옆 ⓘ 의 설명으로 읽힌다(관리웹 정리 시안 A). */
     expect(screen.getByRole('button', { name: t.help })).toBeInTheDocument();
   });
