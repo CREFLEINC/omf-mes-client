@@ -32,7 +32,7 @@ export const plantWorkingDays: Translated<typeof ko.plantWorkingDays> = {
   },
   tags: {
     default: 'Mặc định',
-    changed: 'Đã đổi',
+    changed: 'Đã sửa',
   },
   actions: {
     revert: 'Hủy thay đổi',

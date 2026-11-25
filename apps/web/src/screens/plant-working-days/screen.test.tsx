@@ -306,6 +306,27 @@ describe('W-CO-15 공장 근무일 설정', () => {
     expect(writes).toHaveLength(0);
   });
 
+  it('바꿨다가 처음 값으로 되돌리면 「수정」 표시가 사라지고 저장할 것이 없다(기본값 공장 포함)', async () => {
+    const { user, router } = setup();
+
+    for (const name of ['합성 1공장', '합성 2공장']) {
+      const row = await rowOf(name);
+      await user.click(row.getByRole('radio', { name: t.options.six }));
+      expect(row.getByText(t.tags.changed)).toBeInTheDocument();
+      await user.click(row.getByRole('radio', { name: t.options.five }));
+      expect(row.queryByText(t.tags.changed)).not.toBeInTheDocument();
+    }
+
+    expect(t.tags.changed).toBe('수정');
+    expect((await rowOf('합성 1공장')).getByText(t.tags.default)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.revert })).toBeDisabled();
+    await act(async () => {
+      await router?.navigate('/notification/handover-settings');
+    });
+    expect(screen.queryByRole('dialog', { name: t.discard.title })).not.toBeInTheDocument();
+  });
+
   it('충돌(409)이면 「다른 사람이 먼저 저장했습니다」와 다시 불러오기를 보인다', async () => {
     /* 오늘 시작한 행을 남이 먼저 고쳤다 — If-Match 가 낡아 수정이 409 다. */
     const { user } = setup({

@@ -111,12 +111,12 @@ export const PlantWorkingDaysScreen = () => {
 
   const valueOf = (row: Row): WeeklyWorkingDays => edits.get(row.plant.plantId) ?? row.saved;
   /*
-   * 고친 값이 지금 저장된 값과 다를 때만 「바뀜」이다 — 여러 공장 저장이 중간에 멈추면 앞 공장은 저장돼
-   * 다시 받은 값과 같아지므로 바뀐 줄에서 빠진다.
+   * 고친 값이 지금 저장된 값과 다를 때만 「수정」이다 — 처음 값으로 되돌리면(기본값 공장 포함) 빠지고,
+   * 여러 공장 저장이 중간에 멈추면 앞 공장은 저장돼 다시 받은 값과 같아지므로 바뀐 줄에서 빠진다.
    */
   const isChanged = (row: Row): boolean => {
     const edit = edits.get(row.plant.plantId);
-    return edit !== undefined && (row.isDefault || edit !== row.saved);
+    return edit !== undefined && edit !== row.saved;
   };
   const isDirty = rows.some(isChanged);
   const { splitRef, aboveRef } = useFitToViewport();
@@ -125,7 +125,7 @@ export const PlantWorkingDaysScreen = () => {
     save.reset();
     setEdits((prev) => {
       const next = new Map(prev);
-      if (!row.isDefault && days === row.saved) next.delete(row.plant.plantId);
+      if (days === row.saved) next.delete(row.plant.plantId);
       else next.set(row.plant.plantId, days);
       return next;
     });
