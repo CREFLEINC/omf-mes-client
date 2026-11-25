@@ -271,12 +271,13 @@ export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectio
     },
     {
       key: 'remove',
-      header: <span className="visually-hidden">{t.columns.remove}</span>,
+      /* 다른 화면 표처럼 「관리」 열 · 휴지통(사용자 지시 2026-11-25). */
+      header: t.columns.manage,
       align: 'center',
-      width: '56px',
+      width: '96px',
       render: (row) => (
         <IconButton
-          icon="close"
+          icon="delete"
           size="sm"
           aria-label={t.removeLabel(`${row.warehouseCode} ${row.warehouseName}`)}
           onClick={() => editor.toggle(row.warehouseId)}

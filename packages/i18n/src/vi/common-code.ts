@@ -177,6 +177,7 @@ export const commonCode: Translated<typeof ko.commonCode> = {
         plant: 'Nhà máy',
         warehouse: 'Kho',
         stock: 'Tồn kho',
+        manage: 'Quản lý',
         remove: 'Gỡ',
       },
       newlyLinked: 'Mới liên kết',

@@ -223,11 +223,10 @@ export const CodeValueListPane = ({
             {messages.common.includeInactive}
           </Checkbox>
         </div>
+        {addAction}
       </div>
 
       {listSlot()}
-
-      <div className="filter-bar">{addAction}</div>
     </section>
   );
 };

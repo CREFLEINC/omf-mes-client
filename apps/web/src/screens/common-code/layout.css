@@ -95,3 +95,8 @@ dialog .field-cell.users-roles-required-empty > div > button[aria-haspopup] {
 .common-code-tab-panel .form-actions > .form-actions-secondary > button:first-child {
   margin-top: calc((var(--control-height-md) - var(--control-height-sm)) / 2);
 }
+
+/* 「코드값 추가」 — 미사용 포함 상자 안 오른쪽 끝(사용자 지시 2026-11-25). */
+.common-code-detail-filter > .common-code-value-add {
+  margin-left: auto;
+}

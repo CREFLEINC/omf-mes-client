@@ -237,6 +237,7 @@ export const commonCode = {
         plant: '공장',
         warehouse: '창고',
         stock: '재고',
+        manage: '관리',
         remove: '해제',
       },
       newlyLinked: '새로 연결',

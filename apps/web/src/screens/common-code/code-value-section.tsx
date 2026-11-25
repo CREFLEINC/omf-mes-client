@@ -1,4 +1,4 @@
-import { Button, EmptyState, SkeletonText, useToast } from '@crefle/web-ui';
+import { Button, EmptyState, Icon, SkeletonText, useToast } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useState } from 'react';
@@ -320,10 +320,11 @@ export const CodeValueSection = ({
    */
   const addAction: ReactNode =
     codeGroupId === null ? (
-      <DisabledAction label={t.actions.add} reason={t.actionReasons.addNeedsGroup} size="sm" />
+      <DisabledAction label={t.actions.add} reason={t.actionReasons.addNeedsGroup} />
     ) : (
-      <div className="field-cell">
-        <Button variant="outlined" size="sm" disabled={isCreating} onClick={handleAdd}>
+      /* 미사용 포함 상자 안 오른쪽 끝 · 빨간 기본 단추(사용자 지시 2026-11-25). */
+      <div className="field-cell common-code-value-add">
+        <Button leadingIcon={<Icon name="add" size={18} />} disabled={isCreating} onClick={handleAdd}>
           {t.actions.add}
         </Button>
       </div>
