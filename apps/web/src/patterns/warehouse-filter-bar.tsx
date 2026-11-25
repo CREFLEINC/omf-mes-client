@@ -1,7 +1,7 @@
-import { Button, Checkbox, SearchInput } from '@crefle/web-ui';
+import { Checkbox, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 import { useApiClient } from './api-context';
 import { type LookupEntry, type LookupSource, selectableLookupOptions } from './lookup-display';
@@ -124,84 +124,105 @@ export const useWarehouseFilterOptions = (
 export interface WarehouseFilterBarProps {
   /** 적용된(URL에 반영된) 조건 */
   appliedFilters: WarehouseFilters;
-  /** 조회 버튼·Enter·초기화·즉시 적용 칸이 호출 */
+  /** 검색어(입력이 멈춘 뒤 · Enter · X)와 공장 · 유형 · 미사용 포함(바꾸는 즉시)이 부른다. */
   onApplyFilters: (next: WarehouseFilters) => void;
-  /** 창고 등록 — 조건 줄 오른쪽 끝(입고 관리 짜임에는 머리 줄이 없다). 없으면 단추도 없다(창고 배치도). */
-  onAddWarehouse?: () => void;
   warehouseTypeOptions: { value: string; label: string }[];
   /** 공장 선택지. 미사용 공장은 지금 고른 값일 때만 남는다 */
   plantOptions: { value: string; label: string }[];
+  /** 검색칸 — 창고 배치도는 창고를 선택칸으로 고르므로 끈다(사용자 지시 2026-11-24). 기본 켬. */
+  showSearch?: boolean;
+  /** 유형 선택칸 바로 오른쪽에 둘 칸 — 창고 배치도의 창고 선택. */
+  afterType?: ReactNode;
+  /** 미사용 포함 뒤에 둘 칸 — 창고 배치도의 「중지된 위치도 보기」. */
+  extra?: ReactNode;
+  /** 줄 아래 안내(창고 선택의 까닭 등). */
+  note?: ReactNode;
 }
 
 const t = messages.warehouseLocation;
 
+/** 검색어는 입력이 이만큼 멈추면 적용한다 — 글자마다 조회하지 않게. */
+export const WAREHOUSE_SEARCH_DELAY_MS = 300;
+
 /**
- * 창고 조회 조건 — 왼쪽 창고 목록 위에 좁게 둔다(사용자 지시 2026-10-29).
+ * 창고 조회 조건 — 왼쪽 창고 목록 위에 한 줄로(안 A, 사용자 결정 2026-11-24): 검색 · 공장 · 유형 · 미사용 포함.
+ * [조회] · [창고 추가] 단추는 없다 — 검색어는 입력이 멈추면 바로 적용하고, 창고는 ERP 에서 받아 만든다.
  *
- * 트리거 모델: **검색어만** 모아서 적용([조회]·Enter), 공장·창고 유형·미사용 포함은 바꾸는 즉시 적용.
- *
- * ⛔ 유형(공장도 같다)을 draft 에 두면 안 된다(omf-all-around#17 · 실화면 재현 2026-09-18). 유형을 고르기만
- *    하면 요청이 나가지 않아 「필터가 안 먹는다」로 보였고, [조회] 전에 「미사용 포함」을 누르면
- *    draft 가 적용값으로 덮여 고른 유형이 지워진 채 조회됐다.
- * ⛔ 입력 중인 검색어는 적용된 검색어가 바뀔 때만 맞춘다 — 즉시 적용 축(공장·유형·미사용)을 바꿀
- *    때 입력하던 검색어가 지워지지 않게 한다.
+ * ⛔ 유형(공장도 같다)을 draft 에 두면 안 된다(omf-all-around#17 · 실화면 재현 2026-09-18) — 바꾸는 즉시 적용한다.
+ * ⛔ 입력 중인 검색어는 바깥에서 적용된 검색어가 바뀔 때만 맞춘다 — 이 칸이 보낸 값이 돌아온 것은 무시해야 그 사이
+ *    더 친 글자가 지워지지 않는다. 공장 · 유형 · 미사용을 바꿀 때도 입력하던 검색어가 남는다.
  */
 export const WarehouseFilterBar = ({
   appliedFilters,
   onApplyFilters,
-  onAddWarehouse,
   warehouseTypeOptions,
   plantOptions,
+  showSearch = true,
+  afterType,
+  extra,
+  note,
 }: WarehouseFilterBarProps) => {
   const [draftQ, setDraftQ] = useState(appliedFilters.q);
   const appliedQ = appliedFilters.q;
+  /** 이 칸이 마지막으로 보낸 검색어 — 그 값이 적용돼 돌아올 때는 입력칸을 덮지 않는다. */
+  const sentQ = useRef(appliedQ);
+  /* 타이머가 늦게 불려도 그때의 조건(공장 · 유형 · 미사용)에 검색어만 얹는다. */
+  const latest = useRef({ appliedFilters, onApplyFilters });
+  latest.current = { appliedFilters, onApplyFilters };
 
   useEffect(() => {
+    if (appliedQ === sentQ.current) return;
+    sentQ.current = appliedQ;
     setDraftQ(appliedQ);
   }, [appliedQ]);
 
-  /*
-   * 왼쪽 목록 위에 두 줄로 좁게(사용자 지시 2026-10-29) — 윗줄 검색어(X 로 비움) · 조회 · 창고 추가, 아랫줄 공장 · 유형 ·
-   * 미사용. 칸 라벨은 선택지 글자(「전체 공장」 등)가 대신해 접근명으로만 둔다.
-   */
+  const applyQ = (value: string) => {
+    sentQ.current = value;
+    latest.current.onApplyFilters({ ...latest.current.appliedFilters, q: value });
+  };
+
+  useEffect(() => {
+    if (draftQ === sentQ.current) return undefined;
+    const timer = window.setTimeout(() => applyQ(draftQ), WAREHOUSE_SEARCH_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [draftQ]);
+
   return (
-    <div className="warehouse-location-filter">
-      <div className="warehouse-location-filter-row">
-        <SearchInput
-          aria-label={t.filters.searchLabel}
-          placeholder={t.filters.searchPlaceholder}
-          value={draftQ}
-          onChange={(event) => setDraftQ(event.target.value)}
-          onSearch={(value) => onApplyFilters({ ...appliedFilters, q: value })}
-          /* 초기화 단추 대신 검색칸의 X(사용자 지시 2026-10-29) — 검색어를 비우고 바로 다시 조회한다. */
-          onClear={() => {
-            setDraftQ('');
-            onApplyFilters({ ...appliedFilters, q: '' });
-          }}
-          clearLabel={messages.common.clear}
-        />
-        <Button onClick={() => onApplyFilters({ ...appliedFilters, q: draftQ })}>
-          {messages.common.search}
-        </Button>
-        {onAddWarehouse !== undefined && (
-          <Button className="warehouse-location-add" onClick={onAddWarehouse}>
-            {t.actions.addWarehouse}
-          </Button>
+    <div className="warehouse-location-filter filter-field-surface">
+      <div className="warehouse-location-filter-row is-one-line">
+        {showSearch && (
+          <SearchInput
+            aria-label={t.filters.searchLabel}
+            placeholder={t.filters.searchPlaceholder}
+            value={draftQ}
+            onChange={(event) => setDraftQ(event.target.value)}
+            /* Enter 는 기다리지 않고 바로. */
+            onSearch={(value) => applyQ(value)}
+            /* 검색칸의 X(사용자 지시 2026-10-29) — 검색어를 비우고 바로 다시 조회한다. */
+            onClear={() => {
+              setDraftQ('');
+              applyQ('');
+            }}
+            clearLabel={messages.common.clear}
+          />
         )}
-      </div>
-      <div className="warehouse-location-filter-row">
-        <Select
-          aria-label={t.fields.plant}
-          options={[{ value: '', label: t.filters.plantAll }, ...plantOptions]}
-          value={appliedFilters.plantId}
-          onChange={(value) => onApplyFilters({ ...appliedFilters, plantId: value })}
-        />
-        <Select
-          aria-label={t.fields.warehouseType}
-          options={[{ value: '', label: t.filters.typeAll }, ...warehouseTypeOptions]}
-          value={appliedFilters.warehouseTypeCode}
-          onChange={(value) => onApplyFilters({ ...appliedFilters, warehouseTypeCode: value })}
-        />
+        <div className="warehouse-filter-select">
+          <Select
+            aria-label={t.fields.plant}
+            options={[{ value: '', label: t.filters.plantAll }, ...plantOptions]}
+            value={appliedFilters.plantId}
+            onChange={(value) => onApplyFilters({ ...appliedFilters, plantId: value })}
+          />
+        </div>
+        <div className="warehouse-filter-select">
+          <Select
+            aria-label={t.fields.warehouseType}
+            options={[{ value: '', label: t.filters.typeAll }, ...warehouseTypeOptions]}
+            value={appliedFilters.warehouseTypeCode}
+            onChange={(value) => onApplyFilters({ ...appliedFilters, warehouseTypeCode: value })}
+          />
+        </div>
+        {afterType}
         {/* 해제 축이라 변경 즉시 적용한다(공장·유형과 같다). */}
         <Checkbox
           checked={appliedFilters.includeInactive}
@@ -211,7 +232,9 @@ export const WarehouseFilterBar = ({
         >
           {messages.common.includeInactive}
         </Checkbox>
+        {extra}
       </div>
+      {note}
     </div>
   );
 };

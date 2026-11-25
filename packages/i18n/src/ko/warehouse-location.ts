@@ -10,27 +10,42 @@ export const warehouseLocation = {
     list: '창고 목록',
     detail: '창고 상세',
   },
-  tabs: {
+  /** 오른쪽 창의 두 묶음 — 창고 머리와 Location 표(안 B, 사용자 결정 2026-11-24 — 탭을 걷었다). */
+  sections: {
     warehouse: '창고 정보',
     location: 'Location',
   },
   actions: {
     addWarehouse: '창고 추가',
-    addZone: '구역 추가',
     addRack: '랙 추가',
-    printLabels: '라벨 일괄 출력',
+    printLabels: '라벨 출력',
     activate: '다시 사용',
-    /** 창고 정보의 Location 묶음에서 옆 탭을 연다. */
-    viewLocations: 'Location 탭에서 보기',
+    /** 창고 머리 오른쪽 — 창고 정보 수정 창을 연다. */
+    editWarehouse: '창고 정보',
   },
-  /** 창고 정보 탭(안 A, 사용자 결정 2026-10-30) — 위치 창과 같은 머리 · 정보 판 · Location 묶음. */
+  /** Location 표 위 선택 막대(안 2, 사용자 결정 2026-11-24) — 고른 행이 있을 때만 나타난다. */
+  /** Location 표의 「배치도」 열 — 아이콘으로 그 위치의 창고 배치도 수정 창을 바로 연다(사용자 지시 2026-11-24). */
+  layoutLink: {
+    header: '배치도',
+    label: (code: string): string => `${code} 배치도 수정`,
+  },
+  selection: {
+    label: '고른 위치',
+    count: (count: number): string => `${String(count)}개 선택됨`,
+    clear: '선택 해제',
+  },
+  /** 창고 머리 · 창고 정보 수정 창(안 B, 사용자 결정 2026-11-24). */
   warehouseInfo: {
-    /** Location 묶음의 서버가 만든 위치 목록 — 접근성 이름. */
-    systemLocations: '자동으로 만든 위치',
+    editTitle: '창고 정보 수정',
+    /** Location 표 위 한 줄 — 「전체 6 · 구역 1 · 랙 1 · 층 1 · 셀 1」. */
+    countLabel: '위치 수',
+    total: (count: number): string => `전체 ${String(count)}`,
+    level: (label: string, count: number): string => `${label} ${String(count)}`,
+    inactive: (count: number): string => `사용 중지 ${String(count)}`,
   },
   /**
    * 창고 위치 코드(omf-all-around#292) — 그 창고의 모든 위치 코드 앞에 붙는다. 창고 추가가 무작위로 지어 채우고
-   * 사람이 고칠 수 있다. 저장한 뒤에는 바꿀 수 없어 Location 탭 위에 잠긴 줄로 보인다.
+   * 사람이 고칠 수 있다. 저장한 뒤에는 바꿀 수 없어 창고 머리에 자물쇠와 함께 보인다.
    */
   locationPrefix: {
     label: '창고 위치 코드',
@@ -71,14 +86,14 @@ export const warehouseLocation = {
     warehouseNoneTitle: '아직 등록된 창고가 없습니다',
     warehouseNoMatchTitle: '조건에 맞는 결과가 없습니다',
     locationNoneTitle: '등록된 Location이 없습니다',
-    locationNoneDescription: '구역을 추가해 주세요.',
+    locationNoneDescription: '[Location 추가]로 만들어 주세요.',
     locationNoMatchTitle: '조건에 맞는 Location이 없습니다',
     locationNoMatchDescription: '검색어를 지우면 전체 계층이 보입니다.',
     /* 창고를 고르기 전 오른쪽 자리 — 제목 + 안내(사용자 지시 2026-09-18 · omf-all-around#17). */
     warehouseNotSelectedTitle: '창고 정보',
     warehouseNotSelectedDescription: '창고를 먼저 선택하세요',
   },
-  /** Location 탭의 보기(사용자 지시 2026-11-19). 목록 = 랙 아래 말단(층 · 셀)만 한 줄씩. */
+  /** Location 표의 보기(사용자 지시 2026-11-19). 목록 = 랙 아래 말단(층 · 셀)만 한 줄씩. */
   view: {
     label: '보기',
     tree: '계층',
@@ -138,8 +153,6 @@ export const warehouseLocation = {
     selectionLabel: 'Location 선택',
   },
   dialog: {
-    createTitle: 'Location 추가',
-    createZoneTitle: '구역 추가',
     createRackTitle: '랙 추가',
     editRackTitle: '랙 수정',
     editTitle: 'Location 수정',
@@ -149,27 +162,29 @@ export const warehouseLocation = {
   /** 위치 수정 창 안의 보관 품목(사용자 지시 2026-10-29) — 품목 무관 · 지정 품목만 둘 중 하나. 안내문 없이. */
   /** 위치 일괄 생성 창(#267 · 시안 W-06-07-bulk). 가운뎃점 문구는 승인 시안 문구다. */
   bulkCreate: {
-    open: '일괄 생성',
-    title: (warehouse: string): string =>
-      warehouse === '' ? '위치 일괄 생성' : `위치 일괄 생성 — ${warehouse}`,
-    modeLabel: '만드는 방식',
-    modeNew: '새 구역 만들기',
-    modeExisting: '기존 구역에 랙 추가',
-    zoneCount: '구역 수',
-    racksPerZone: '구역마다 랙 수',
-    levelsPerRack: '랙마다 층 수',
-    cellsPerLevel: '층마다 셀 수',
-    levelHint: '0 이면 랙까지만',
-    cellHint: '0 이면 층까지만',
-    pickZones: '랙을 더할 구역',
-    noZones: '랙을 더할 구역이 없습니다.',
+    /**
+     * 위치를 만드는 단추는 이것 하나(사용자 지시 2026-11-24) — 구역부터 셀까지, 이미 있는 구역에 랙도. 창 제목도 이것만
+     * 쓰고, 어느 창고인지는 본문 맨 위에 둔다. 문구는 현장 사람이 바로 읽게 「만들기」 대신 「추가」로 맞춘다.
+     */
+    open: 'Location 추가',
+    modeLabel: '추가 방법',
+    modeNew: '새 구역부터 추가',
+    modeExisting: '있는 구역에 랙 추가',
+    zoneCount: '추가할 구역 수',
+    racksPerZone: '구역별 랙 수',
+    levelsPerRack: '랙별 층 수',
+    cellsPerLevel: '층별 셀 수',
+    levelHint: '0을 넣으면 층 · 셀 없이 랙까지만 추가합니다.',
+    cellHint: '0을 넣으면 셀 없이 층까지만 추가합니다.',
+    pickZones: '랙을 추가할 구역',
+    noZones: '랙을 추가할 구역이 없습니다. 「새 구역부터 추가」로 구역을 먼저 만드세요.',
     zoneName: (code: string, alias: string): string => `${code} · ${alias}`, // ui-check-ignore: C-13 승인 시안 W-06-07-bulk 문구(#267)
     zoneInfo: (racks: number, cells: number): string =>
-      `랙 ${String(racks)}개 · 셀 ${String(cells)}개`, // ui-check-ignore: C-13 승인 시안 W-06-07-bulk 문구(#267)
-    stockBlocked: '구역에 재고가 있어 랙을 둘 수 없습니다 — 재고를 먼저 옮깁니다.',
-    pickRequired: '랙을 더할 구역을 하나 이상 고르세요.',
-    rackNoLeft: '랙 번호(R999)를 넘습니다. 랙 수를 줄이세요.',
-    total: '만들 위치',
+      `지금 랙 ${String(racks)}개 · 셀 ${String(cells)}개`, // ui-check-ignore: C-13 승인 시안 W-06-07-bulk 문구(#267)
+    stockBlocked: '재고가 있어 랙을 추가할 수 없습니다',
+    pickRequired: '랙을 추가할 구역을 하나 이상 선택하세요.',
+    rackNoLeft: '랙은 구역마다 999개까지 추가할 수 있습니다. 랙 수를 줄이세요.',
+    total: '추가할 위치',
     count: (count: number): string => `위치 ${count.toLocaleString('ko-KR')}개`,
     parts: (zones: number | null, racks: number, levels: number, cells: number): string =>
       [
@@ -180,22 +195,20 @@ export const warehouseLocation = {
       ]
         .filter((part) => part !== null)
         .join(' · '), // ui-check-ignore: C-13 승인 시안 W-06-07-bulk 문구(#267)
-    firstCode: '첫 코드',
-    lastCode: '마지막 코드',
     overCells: (count: number): string =>
-      `한 번에 셀 1,000개까지 만들 수 있습니다(지금 ${count.toLocaleString('ko-KR')}개). 수를 줄이세요.`,
+      `셀은 한 번에 1,000개까지 추가할 수 있습니다(지금 ${count.toLocaleString('ko-KR')}개). 수를 줄이세요.`,
     overAll: (count: number): string =>
-      `한 번에 위치 1,200개까지 만들 수 있습니다(지금 ${count.toLocaleString('ko-KR')}개). 수를 줄이세요.`,
-    make: '만들기',
-    making: (done: number, total: number): string => `만드는 중 ${String(done)}/${String(total)}`,
-    done: (count: number): string => `위치 ${count.toLocaleString('ko-KR')}개를 만들었습니다.`,
+      `위치는 한 번에 1,200개까지 추가할 수 있습니다(지금 ${count.toLocaleString('ko-KR')}개). 수를 줄이세요.`,
+    make: '추가',
+    making: (done: number, total: number): string => `추가하는 중 ${String(done)}/${String(total)}`,
+    done: (count: number): string => `위치 ${count.toLocaleString('ko-KR')}개를 추가했습니다.`,
     partial: (created: number, failedRacks: number): string =>
-      `${created.toLocaleString('ko-KR')}개를 만들었고 랙 ${String(failedRacks)}개는 만들지 못했습니다.`,
+      `${created.toLocaleString('ko-KR')}개를 추가했고 랙 ${String(failedRacks)}개는 추가하지 못했습니다.`,
     partialNames: (created: number): string =>
-      `${created.toLocaleString('ko-KR')}개를 만들었고 이름 일부를 맞추지 못했습니다.`,
+      `${created.toLocaleString('ko-KR')}개를 추가했지만 일부 위치의 별칭을 넣지 못했습니다.`,
     failure: (code: string, reason: string): string => `${code} — ${reason}`,
-    retryRest: '남은 것 다시 만들기',
-    renameFailed: (reason: string): string => `만들었지만 이름 맞추기 실패 — ${reason}`,
+    retryRest: '남은 위치 다시 추가',
+    renameFailed: (reason: string): string => `추가했지만 별칭을 넣지 못했습니다 — ${reason}`,
     netFail: '연결이 끊겨 멈췄습니다.',
   },
   /** 목록 별칭 칸에서 바로 고치기(#267 FR-007) — 이름은 그대로, 별칭만 바로 저장한다. */

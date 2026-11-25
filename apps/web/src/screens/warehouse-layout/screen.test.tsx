@@ -26,6 +26,7 @@ import {
   withDrawing,
   withoutDrawing,
   wl,
+  pinName,
 } from './test-harness';
 
 /**
@@ -38,20 +39,28 @@ import {
 stubObjectUrls();
 
 describe('W-CO-08 창고 배치도 — 조건 상자', () => {
-  it('⭐ 창고·Location 과 같은 조건으로 창고를 걸러 고른다 — 창고 등록 단추는 없다', async () => {
-    const { user, warehouseGets } = renderScreen({ layouts: [withDrawing([])] });
+  /* 사용자 지시 2026-11-24 — 검색칸 없이 공장 · 유형 · 창고 · 미사용 포함 · 중지된 위치도 보기가 한 묶음 안에. */
+  it('⭐ 조회 묶음 하나에 공장 · 유형 다음 창고 선택, 중지된 위치도 보기가 있고 검색칸 · 창고 등록 단추는 없다', async () => {
+    renderScreen({ layouts: [withDrawing([])] });
 
     await loaded();
     expect(screen.queryByRole('button', { name: wl.actions.addWarehouse })).toBeNull();
+    expect(screen.queryByRole('searchbox', { name: wl.filters.searchLabel })).toBeNull();
 
-    await user.type(screen.getByRole('searchbox', { name: wl.filters.searchLabel }), 'SYN');
-    await user.click(screen.getByRole('button', { name: messages.common.search }));
-
-    await waitFor(() => {
-      expect(
-        warehouseGets.some((request) => new URL(request.url).searchParams.get('q') === 'SYN'),
-      ).toBe(true);
-    });
+    const row = screen
+      .getByRole('combobox', { name: wl.fields.warehouseType })
+      .closest('.warehouse-location-filter-row');
+    expect(row).not.toBeNull();
+    const controls = Array.from(
+      row!.querySelectorAll('[role="combobox"], input[type="checkbox"]'),
+    ).map((element) => element.getAttribute('aria-label') ?? element.closest('label')?.textContent);
+    expect(controls).toEqual([
+      wl.fields.plant,
+      wl.fields.warehouseType,
+      t.warehouse.select,
+      messages.common.includeInactive,
+      t.locations.includeInactive,
+    ]);
     /* 고른 창고와 그 위치 계층은 그대로다. */
     expect(locationButton('SYN-LOC-07')).toBeInTheDocument();
   });
@@ -136,7 +145,7 @@ describe('W-CO-08 창고 배치도 — 도면 보이기', () => {
 
     await loaded();
 
-    const pin = within(board()).getByRole('button', { name: 'SYN-LOC-07' });
+    const pin = within(board()).getByRole('button', { name: pinName('SYN-LOC-07') });
 
     expect(pin).toHaveAccessibleDescription(t.map.markerPosition(10, 20));
   });
@@ -144,7 +153,7 @@ describe('W-CO-08 창고 배치도 — 도면 보이기', () => {
 
 /* 피처 006 — 조회 화면은 상태 확인에만 쓴다(FR-001~FR-003 · FR-012). */
 describe('W-CO-08 조회 화면 — 읽기 전용 · [수정] (US2)', () => {
-  const editorTitle = t.editor.title(WAREHOUSE_LABEL);
+  const editorTitle = t.editor.title;
 
   it('US2-1 SC-003 ⛔ 판을 누르거나 표식을 끌어도 배치가 바뀌지 않는다 — 편집 단추는 [수정] 하나다', async () => {
     const { puts } = renderScreen({ layouts: [withDrawing()] });
@@ -158,7 +167,7 @@ describe('W-CO-08 조회 화면 — 읽기 전용 · [수정] (US2)', () => {
     expect(within(board()).getAllByRole('button')).toHaveLength(1);
 
     /* 표식을 끌어도 자리가 그대로다. */
-    const pin = within(board()).getByRole('button', { name: 'SYN-LOC-07' });
+    const pin = within(board()).getByRole('button', { name: pinName('SYN-LOC-07') });
     fireEvent.pointerDown(pin, {
       pointerId: 1,
       pointerType: 'mouse',
@@ -193,7 +202,7 @@ describe('W-CO-08 조회 화면 — 읽기 전용 · [수정] (US2)', () => {
     await loaded();
     await user.click(locationButton('SYN-LOC-07'));
 
-    expect(within(board()).getByRole('button', { name: 'SYN-LOC-07' })).toHaveAttribute(
+    expect(within(board()).getByRole('button', { name: pinName('SYN-LOC-07') })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
@@ -201,7 +210,7 @@ describe('W-CO-08 조회 화면 — 읽기 전용 · [수정] (US2)', () => {
 
     await user.click(locationButton('SYN-LOC-08'));
 
-    expect(within(board()).getByRole('button', { name: 'SYN-LOC-07' })).toHaveAttribute(
+    expect(within(board()).getByRole('button', { name: pinName('SYN-LOC-07') })).toHaveAttribute(
       'aria-pressed',
       'false',
     );
@@ -256,7 +265,7 @@ describe('W-CO-08 조회 화면 — 읽기 전용 · [수정] (US2)', () => {
 
     expect(screen.getByText(t.locations.emptyTitle)).toBeInTheDocument();
     expect(screen.getByText(t.locations.emptyGuide(wl.title))).toBeInTheDocument();
-    for (const name of [wl.actions.addZone, wl.actions.addRack, wl.actions.addWarehouse]) {
+    for (const name of [wl.bulkCreate.open, wl.actions.addRack, wl.actions.addWarehouse]) {
       expect(screen.queryByRole('button', { name })).toBeNull();
     }
   });
@@ -286,7 +295,7 @@ describe('W-CO-08 조회 화면 — 재고 (US2)', () => {
     await loaded();
 
     await waitFor(() => {
-      expect(within(board()).getByRole('button', { name: 'SYS-STAGING' })).toHaveClass(
+      expect(within(board()).getByRole('button', { name: pinName('SYS-STAGING') })).toHaveClass(
         'marker-overlay-pin-muted',
       );
     });
@@ -294,9 +303,9 @@ describe('W-CO-08 조회 화면 — 재고 (US2)', () => {
      * 2차(FR-016)로 고쳤다 — 옛 시험은 층(Z01-R001-L01) 표식이 기본 모양으로 그려진다고 기대했다. 층 · 셀 표식은 이제 판에
      * 그리지 않는다. 재고가 조상으로 올라가는 것은 아래 랙 줄이 그대로 잰다.
      */
-    expect(within(board()).queryByRole('button', { name: 'Z01-R001-L01' })).toBeNull();
+    expect(within(board()).queryByRole('button', { name: pinName('Z01-R001-L01') })).toBeNull();
     /* 랙은 아래 층에 재고가 있어 「있음」이다. */
-    expect(within(board()).getByRole('button', { name: 'Z01-R001' })).not.toHaveClass(
+    expect(within(board()).getByRole('button', { name: pinName('Z01-R001') })).not.toHaveClass(
       'marker-overlay-pin-muted',
     );
     expect(screen.getByText(t.stock.legendStocked)).toBeInTheDocument();
@@ -378,7 +387,7 @@ describe('W-CO-08 조회 화면 — 재고 (US2)', () => {
     await user.click(screen.getByRole('button', { name: t.stock.retry }));
 
     await waitFor(() => {
-      expect(within(board()).getByRole('button', { name: 'SYS-STAGING' })).toHaveClass(
+      expect(within(board()).getByRole('button', { name: pinName('SYS-STAGING') })).toHaveClass(
         'marker-overlay-pin-muted',
       );
     });
@@ -405,13 +414,13 @@ describe('W-CO-08 조회 화면 — 재고 (US2)', () => {
 
     await loaded();
     await waitFor(() => {
-      expect(within(board()).getByRole('button', { name: 'SYS-STAGING' })).toHaveClass(
+      expect(within(board()).getByRole('button', { name: pinName('SYS-STAGING') })).toHaveClass(
         'marker-overlay-pin-muted',
       );
     });
     await user.click(screen.getByRole('button', { name: t.editor.open }));
 
-    const dialog = await screen.findByRole('dialog', { name: t.editor.title(WAREHOUSE_LABEL) });
+    const dialog = await screen.findByRole('dialog', { name: t.editor.title });
     const editorBoard = await within(dialog).findByRole('group', { name: t.map.imageLabel });
 
     for (const pin of within(editorBoard).getAllByRole('button')) {
@@ -434,7 +443,7 @@ describe('W-CO-08 조회 화면 — 재고 (US2)', () => {
     });
     await user.click(screen.getByRole('button', { name: t.editor.open }));
 
-    const dialog = await screen.findByRole('dialog', { name: t.editor.title(WAREHOUSE_LABEL) });
+    const dialog = await screen.findByRole('dialog', { name: t.editor.title });
     await user.click(
       within(within(dialog).getByRole('region', { name: t.panes.locations })).getByRole('button', {
         name: 'SYS-STAGING',
@@ -475,7 +484,7 @@ describe('W-CO-08 조회 화면 — 구역 · 랙만 배치 (2차)', () => {
 
     await loaded();
     await waitFor(() => locationButton('Z01-R001'));
-    expect(within(board()).queryByRole('button', { name: 'Z01-R001-L01-C01' })).toBeNull();
+    expect(within(board()).queryByRole('button', { name: pinName('Z01-R001-L01-C01') })).toBeNull();
 
     await user.click(
       within(rowOf('Z01-R001')).getByRole('button', { name: wl.locationTable.expand }),
@@ -485,7 +494,7 @@ describe('W-CO-08 조회 화면 — 구역 · 랙만 배치 (2차)', () => {
     );
     await user.click(locationButton('Z01-R001-L01-C01'));
 
-    expect(within(board()).getByRole('button', { name: 'Z01-R001' })).toHaveAttribute(
+    expect(within(board()).getByRole('button', { name: pinName('Z01-R001') })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
@@ -544,12 +553,13 @@ describe('W-CO-08 창고 배치도 — 표식 이름은 별칭(#267)', () => {
     expect(zone.querySelector('.marker-overlay-pin-label')).toHaveTextContent(/^A구역$/);
   });
 
-  it('US2-3 별칭이 없으면 표식은 코드다', async () => {
+  /* 사용자 지시 2026-11-24 — 도면 위에 위치명이 보이게. 별칭이 없으면 위치명, 접근명은 「코드 위치명」. */
+  it('US2-3 별칭이 없으면 표식은 위치명이다', async () => {
     renderScreen({ layouts: [withDrawing(ALIAS_MARKERS)], locations: ALIAS_ROWS });
 
     await loaded();
-    const rack = await within(board()).findByRole('button', { name: 'Z01-R002' });
-    expect(rack.querySelector('.marker-overlay-pin-label')).toHaveTextContent(/^Z01-R002$/);
+    const rack = await within(board()).findByRole('button', { name: 'Z01-R002 Z01-R002 위치' });
+    expect(rack.querySelector('.marker-overlay-pin-label')).toHaveTextContent(/^Z01-R002 위치$/);
   });
   it('US2-4 별칭이 있으면 고른 위치 · 재고 머리에 「코드 · 별칭」이 보인다', async () => {
     const { user } = renderScreen({

@@ -1,7 +1,7 @@
 /**
  * 위치를 글로 보이는 규칙 두 가지(피처 007 · omf-all-around#267 · plan R-6 · R-9). 화면은 이 둘만 부른다.
  *
- * - 표식(창고 배치도): 별칭이 있으면 **별칭만**, 없으면 코드.
+ * - 표식(창고 배치도): 별칭 → 위치명 → 코드 순으로 하나(사용자 지시 2026-11-24 — 도면 위에 위치명이 보이게).
  * - 목록 · 선택 칸: 별칭이 있으면 `코드 · 별칭`, 없으면 이름이 코드와 다를 때 `코드 · 이름`, 같으면 코드만.
  *
  * 빈 글 · 공백뿐인 별칭은 없는 것으로 본다.
@@ -17,9 +17,9 @@ export interface LocationLabelSource {
 
 const trimmed = (text: string | null | undefined): string => text?.trim() ?? '';
 
-/** 배치도 표식의 이름 — 별칭(공백 뺌) 또는 코드. */
+/** 배치도 표식의 이름 — 별칭, 없으면 위치명, 그것도 없으면 코드(공백 뺌). */
 export const locationMarkerLabel = (location: LocationLabelSource): string =>
-  trimmed(location.aliasName) || location.locationCode;
+  trimmed(location.aliasName) || trimmed(location.locationName) || location.locationCode;
 
 /** 목록 · 선택 칸의 이름 — `코드 · 별칭`, `코드 · 이름`, 또는 코드. */
 export const locationOptionLabel = (location: LocationLabelSource): string => {

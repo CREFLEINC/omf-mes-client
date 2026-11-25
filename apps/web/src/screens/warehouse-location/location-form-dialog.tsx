@@ -14,14 +14,11 @@ import type { LocationFormValues } from './types';
 export interface LocationFormDialogProps {
   open: boolean;
   onClose: () => void;
-  mode: 'create' | 'edit';
-  /** 추가할 때의 제목 — 구역 추가 · 랙 추가. 없으면 「Location 추가」. */
-  createTitle?: string;
   /** 어느 창고의 Location인지 — 「창고코드 · 창고명」 */
   warehouseLabel: string;
   /** 상위 위치 — 별칭, 없으면 코드. 구역이면 창고. 바꿀 수 없어 글자로만 보인다. */
   parentLabel: string;
-  /** 머리의 단계 아이콘 · 단계 이름 — 고칠 때는 그 위치, 추가할 때는 만들 단계. */
+  /** 머리의 단계 아이콘 · 단계 이름 — 고치는 그 위치. */
   subject: LocationIdentityProps['subject'];
   values: LocationFormValues;
   onChange: (patch: Partial<LocationFormValues>) => void;
@@ -58,8 +55,6 @@ const t = messages.warehouseLocation;
 export const LocationFormDialog = ({
   open,
   onClose,
-  mode,
-  createTitle,
   warehouseLabel,
   parentLabel,
   subject,
@@ -90,7 +85,7 @@ export const LocationFormDialog = ({
             error: fieldErrors.parentLocationId,
           },
         ];
-  const showStateActions = mode === 'edit' && (onDelete !== undefined || canToggleActive);
+  const showStateActions = onDelete !== undefined || canToggleActive;
 
   return (
     <Dialog
@@ -98,7 +93,7 @@ export const LocationFormDialog = ({
       open={open}
       onClose={onClose}
       size="lg"
-      title={mode === 'create' ? (createTitle ?? t.dialog.createTitle) : t.dialog.editTitle}
+      title={t.dialog.editTitle}
       footer={
         <>
           {/* 지우기 · 끄기는 왼쪽에 따로 — 저장과 섞이지 않게. */}
@@ -131,11 +126,7 @@ export const LocationFormDialog = ({
           <Button variant="outlined" onClick={onClose}>
             {messages.common.cancel}
           </Button>
-          <Button
-            loading={isSaving}
-            disabled={!isReady || isSaving || (mode === 'edit' && !isDirty)}
-            onClick={onSave}
-          >
+          <Button loading={isSaving} disabled={!isReady || isSaving || !isDirty} onClick={onSave}>
             {messages.common.save}
           </Button>
         </>
@@ -149,7 +140,7 @@ export const LocationFormDialog = ({
           subject={subject}
           code={values.locationCode}
           alias={values.aliasName}
-          isActive={mode === 'edit' ? isActive : undefined}
+          isActive={isActive}
         />
         {fieldErrors.locationCode !== undefined && (
           <span className="field-error">{fieldErrors.locationCode}</span>

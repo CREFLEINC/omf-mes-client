@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -26,38 +26,55 @@ const lookupFixtures = {
 
 const renderPane = (overrides: Partial<Parameters<typeof WarehouseFilterBar>[0]> = {}) => {
   const onApplyFilters = vi.fn();
-  const onAddWarehouse = vi.fn();
 
   render(
     <WarehouseFilterBar
       appliedFilters={defaultWarehouseFilters}
       onApplyFilters={onApplyFilters}
-      onAddWarehouse={onAddWarehouse}
       warehouseTypeOptions={lookupFixtures.warehouseTypes}
       plantOptions={lookupFixtures.plants}
       {...overrides}
     />,
   );
 
-  return { onApplyFilters, onAddWarehouse };
+  return { onApplyFilters };
 };
 
 describe('WarehouseFilterBar', () => {
-  it('검색칸과 조회 단추가 있다', () => {
+  /* 안 A(사용자 결정 2026-11-24) — 한 줄, [조회] · [창고 추가] 없음. */
+  it('검색 · 공장 · 유형 · 미사용 포함이 한 줄에 있고 조회 · 창고 추가 단추가 없다', () => {
     renderPane();
 
-    expect(screen.getByLabelText('창고 검색')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '조회' })).toBeInTheDocument();
+    const row = screen.getByLabelText('창고 검색').closest('.warehouse-location-filter-row');
+    expect(row).toHaveClass('is-one-line');
+    expect(row).toContainElement(screen.getByRole('combobox', { name: '공장' }));
+    expect(row).toContainElement(screen.getByRole('checkbox', { name: '미사용 포함' }));
+    expect(screen.queryByRole('button', { name: '조회' })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: messages.warehouseLocation.actions.addWarehouse }),
+    ).toBeNull();
   });
 
-  it('검색어를 입력하고 조회를 누르면 입력값으로 onApplyFilters를 부른다', async () => {
+  it('검색어는 입력이 멈추면 한 번만 적용한다 — 글자마다 부르지 않는다', async () => {
     const user = userEvent.setup();
     const { onApplyFilters } = renderPane();
 
     await user.type(screen.getByLabelText('창고 검색'), 'WH-0');
-    await user.click(screen.getByRole('button', { name: '조회' }));
+    expect(onApplyFilters).not.toHaveBeenCalled();
 
-    expect(onApplyFilters).toHaveBeenCalledWith({ ...defaultWarehouseFilters, q: 'WH-0' });
+    await waitFor(() =>
+      expect(onApplyFilters).toHaveBeenCalledWith({ ...defaultWarehouseFilters, q: 'WH-0' }),
+    );
+    expect(onApplyFilters).toHaveBeenCalledTimes(1);
+  });
+
+  it('Enter 는 기다리지 않고 바로 적용한다', async () => {
+    const user = userEvent.setup();
+    const { onApplyFilters } = renderPane();
+
+    await user.type(screen.getByLabelText('창고 검색'), 'WH{Enter}');
+
+    expect(onApplyFilters).toHaveBeenCalledWith({ ...defaultWarehouseFilters, q: 'WH' });
   });
 
   it('초기화 단추 대신 검색칸의 X 가 검색어만 비우고 바로 다시 조회한다', async () => {
@@ -97,26 +114,9 @@ describe('WarehouseFilterBar', () => {
 
     expect(onApplyFilters).toHaveBeenCalledWith({ ...defaultWarehouseFilters, plantId: '12' });
   });
-
-  it('창고 추가는 조건 줄 오른쪽 끝에 있다', async () => {
-    const user = userEvent.setup();
-    const { onAddWarehouse } = renderPane();
-
-    await user.click(screen.getByRole('button', { name: '창고 추가' }));
-
-    expect(onAddWarehouse).toHaveBeenCalledTimes(1);
-  });
 });
 
 describe('창고 배치도에서 쓰는 조건 상자', () => {
-  it('창고 등록을 주지 않으면 그 단추가 없다', () => {
-    renderPane({ onAddWarehouse: undefined });
-
-    expect(
-      screen.queryByRole('button', { name: messages.warehouseLocation.actions.addWarehouse }),
-    ).toBeNull();
-  });
-
   it('조건을 서버 질의로 옮긴다 — 빈 조건은 싣지 않고, 숫자가 아닌 공장은 버린다', () => {
     expect(warehouseListQuery(defaultWarehouseFilters)).toEqual({ includeInactive: false });
     expect(

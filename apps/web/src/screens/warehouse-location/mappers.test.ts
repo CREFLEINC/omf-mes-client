@@ -7,7 +7,6 @@ import {
   isSameWarehouseValues,
   locationAliasOrCode,
   locationToFormValues,
-  toLocationCreate,
   toLocationUpdate,
   toWarehouseCreate,
   toWarehouseUpdate,
@@ -163,37 +162,6 @@ const DROPPED_KEYS = [
   'allowMixedLot',
   'locationCode',
 ];
-
-describe('toLocationCreate', () => {
-  const values = {
-    ...emptyLocationFormValues(),
-    locationCode: 'Z01-R03',
-  };
-
-  it('창고와 상위 위치가 함께 실린다', () => {
-    const body = toLocationCreate({ ...values, parentLocationId: '2001' }, 1001);
-
-    expect(body.warehouseId).toBe(1001);
-    expect(body.parentLocationId).toBe(2001);
-  });
-
-  it('위치명은 별칭이다 — 별칭이 없으면 미리 지어 보인 코드다', () => {
-    expect(toLocationCreate({ ...values, aliasName: ' 원자재 랙 ' }, 1001)).toMatchObject({
-      locationName: '원자재 랙',
-      aliasName: '원자재 랙',
-    });
-    expect(toLocationCreate({ ...values, aliasName: '  ' }, 1001)).toMatchObject({
-      locationName: 'Z01-R03',
-      aliasName: null,
-    });
-  });
-
-  it('코드 · 위치유형 · 혼적 · 수용량 · 보관조건 키를 싣지 않는다', () => {
-    const body = toLocationCreate(values, 1001);
-
-    for (const key of DROPPED_KEYS) expect(body).not.toHaveProperty(key);
-  });
-});
 
 describe('toLocationUpdate', () => {
   const stored: Location = { ...locationFixtures[1]!, aliasName: '1번 랙' };

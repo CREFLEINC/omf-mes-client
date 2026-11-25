@@ -429,6 +429,9 @@ export const busyOverlay = (): HTMLElement => {
 
 export const hasBusyOverlay = (): boolean => document.querySelector('.drawing-busy') !== null;
 
+/** 표식 이름 — 접근명은 「코드」 또는 「코드 이름」(표식 글자가 별칭 → 위치명 → 코드, 2026-11-24). 코드로 찾는다. */
+export const pinName = (code: string): RegExp => new RegExp(`^${code}(?: |$)`, 'u');
+
 /**
  * 목록 쪽의 위치 코드 버튼.
  *

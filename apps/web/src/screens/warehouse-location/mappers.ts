@@ -5,7 +5,6 @@ import type { Location, LocationFormValues, Warehouse, WarehouseFormValues } fro
 
 type WarehouseCreate = components['schemas']['WarehouseCreate'];
 type WarehouseUpdate = components['schemas']['WarehouseUpdate'];
-type LocationCreate = components['schemas']['LocationCreate'];
 type LocationUpdate = components['schemas']['LocationUpdate'];
 
 /**
@@ -46,9 +45,6 @@ export const emptyWarehouseFormValues = (): WarehouseFormValues => ({
   /* 신규 창고는 불량창고가 아니다 — 그렇게 정하는 자리가 화면에 없으므로 꺼진 값으로 낸다. */
   isDefect: false,
 });
-
-/** 빈 문자열은 「고르지 않음」이므로 널로 되돌린다. 0은 유효한 id가 아니다. */
-const textToOptionalId = (value: string): number | null => (value === '' ? null : Number(value));
 
 /**
  * 창고 수정 요청 본문. plantId · 창고 위치 코드(#292)는 등록 후 변경할 수 없어 실리지 않고,
@@ -134,21 +130,6 @@ export const toLocationUpdate = (
     ...(restrictChanged ? { itemRestricted: values.itemRestricted } : {}),
   };
 };
-
-/**
- * Location 등록 요청 본문. 코드는 서버가 발행하고 단계는 상위로 정해 싣지 않는다. 위치명은 별칭, 별칭이 없으면
- * 화면이 미리 지어 보인 코드다(서버가 발행할 코드와 같은 규칙).
- *
- * ⚠ 서버가 위치명을 선택으로 바꾸면 위치명을 싣지 않는다.
- */
-export const toLocationCreate = (
-  values: LocationFormValues,
-  warehouseId: number,
-): LocationCreate => ({
-  ...locationBody(values, trimmedAlias(values) ?? values.locationCode.trim()),
-  warehouseId,
-  parentLocationId: textToOptionalId(values.parentLocationId),
-});
 
 /** 기준값과 현재 값의 비교. 「고친 것이 있는가」의 판정 근거다. */
 export const isSameWarehouseValues = (a: WarehouseFormValues, b: WarehouseFormValues): boolean =>

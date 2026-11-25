@@ -38,6 +38,7 @@ import {
   withDrawing,
   withoutDrawing,
   wl,
+  pinName,
 } from './test-harness';
 
 /**
@@ -112,7 +113,7 @@ describe('W-CO-08 창고 배치도 — 표식 크기 · 회전', () => {
     expect(within(shapeGroup()).getByLabelText(t.map.width)).toHaveValue(20);
     expect(within(shapeGroup()).getByLabelText(t.map.rotation)).toHaveValue(30);
 
-    const marker = within(board()).getByRole('button', { name: 'SYN-LOC-07' });
+    const marker = within(board()).getByRole('button', { name: pinName('SYN-LOC-07') });
     expect(marker.style.width).toBe('20%');
     expect(marker.style.transform).toContain('rotate(30deg)');
   });
@@ -363,9 +364,9 @@ describe('W-CO-08 창고 배치도 — 올리는 동안', () => {
      * ⭐ **찍힌 자리까지 잰다.** 개수만 세면 점이 통째로 어긋나도 통과한다 — 판 안에서 잰
      * 비율이어야 하므로 판의 자리(`left`·`top`)를 빼지 않으면 여기서 값이 달라진다.
      */
-    expect(within(board()).getByRole('button', { name: 'SYN-LOC-08' })).toHaveAccessibleDescription(
-      t.map.markerPosition(30, 20),
-    );
+    expect(
+      within(board()).getByRole('button', { name: pinName('SYN-LOC-08') }),
+    ).toHaveAccessibleDescription(t.map.markerPosition(30, 20));
   });
 
   /*
@@ -697,14 +698,13 @@ describe('W-CO-08 창고 배치도 — 점만 고치는 저장', () => {
  * 피처 006 — 조회 화면의 [수정]이 여는 편집 창(FR-004~FR-009). 조회 화면과 함께 그리는 시험은 판 · 목록 이름이 두 벌이라
  * 편집 창 안으로 좁혀 찾는다.
  */
-const editorDialog = (): HTMLElement =>
-  screen.getByRole('dialog', { name: t.editor.title(WAREHOUSE_LABEL) });
+const editorDialog = (): HTMLElement => screen.getByRole('dialog', { name: t.editor.title });
 
 const openEditor = async (user: ReturnType<typeof renderScreen>['user']): Promise<HTMLElement> => {
   await loaded();
   await user.click(screen.getByRole('button', { name: t.editor.open }));
 
-  const dialog = await screen.findByRole('dialog', { name: t.editor.title(WAREHOUSE_LABEL) });
+  const dialog = await screen.findByRole('dialog', { name: t.editor.title });
 
   await within(dialog).findByRole('group', { name: t.map.imageLabel });
   return dialog;
@@ -740,7 +740,7 @@ describe('W-CO-08 편집 창 — 열기 · 찍기 · 저장 (US1)', () => {
     );
     const marker = within(within(dialog).getByRole('group', { name: t.map.imageLabel })).getByRole(
       'button',
-      { name: 'SYN-LOC-07' },
+      { name: pinName('SYN-LOC-07') },
     );
     expect(marker).toHaveAccessibleDescription(t.map.markerPosition(10, 20));
     /* ⛔ 편집 창에는 재고 모양이 없다(FR-014). */
@@ -757,7 +757,9 @@ describe('W-CO-08 편집 창 — 열기 · 찍기 · 저장 (US1)', () => {
     stubBoardRect(board());
     fireEvent.click(board(), { clientX: 140, clientY: 80 });
 
-    expect(within(board()).getByRole('button', { name: 'SYN-LOC-08' })).toBeInTheDocument();
+    expect(
+      within(board()).getByRole('button', { name: pinName('SYN-LOC-08') }),
+    ).toBeInTheDocument();
     expect(within(rowOf('SYN-LOC-08')).getByText(t.locations.onMap)).toBeInTheDocument();
   });
 
@@ -795,14 +797,14 @@ describe('W-CO-08 편집 창 — 열기 · 찍기 · 저장 (US1)', () => {
 
     expect(await screen.findByText(t.map.saved)).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: t.editor.title(WAREHOUSE_LABEL) })).toBeNull();
+      expect(screen.queryByRole('dialog', { name: t.editor.title })).toBeNull();
     });
     /* 저장한 배치를 다시 읽어 조회 판에 같은 자리로 보인다. */
     await waitFor(() => {
       expect(layoutGets.length).toBeGreaterThan(readsBeforeSave);
     });
     expect(
-      await within(board()).findByRole('button', { name: 'SYN-LOC-08' }),
+      await within(board()).findByRole('button', { name: pinName('SYN-LOC-08') }),
     ).toHaveAccessibleDescription(t.map.markerPosition(50, 50));
   });
 
@@ -830,7 +832,9 @@ describe('W-CO-08 편집 창 — 열기 · 찍기 · 저장 (US1)', () => {
     await user.click(locationButton('SYN-LOC-07'));
     stubBoardRect(board());
     fireEvent.click(board(), { clientX: 140, clientY: 80 });
-    expect(within(board()).getByRole('button', { name: 'SYN-LOC-07' })).toBeInTheDocument();
+    expect(
+      within(board()).getByRole('button', { name: pinName('SYN-LOC-07') }),
+    ).toBeInTheDocument();
 
     /* 찍은 표식을 되돌려야 올릴 수 있다 — 저장 안 한 변경 위에 도면을 갈지 않는다(지금 규칙). */
     await user.click(screen.getByRole('button', { name: t.map.reset }));
@@ -847,7 +851,7 @@ describe('W-CO-08 편집 창 — 닫기 보호 · 충돌 (US3)', () => {
     await loaded();
     await user.click(locationButton('SYN-LOC-07'));
     await user.click(screen.getByRole('button', { name: t.map.remove }));
-    expect(within(board()).queryByRole('button', { name: 'SYN-LOC-07' })).toBeNull();
+    expect(within(board()).queryByRole('button', { name: pinName('SYN-LOC-07') })).toBeNull();
   };
 
   it('US3-1 SC-004 ⭐ 변경이 있으면 X · ESC · [취소] 마다 묻고, [계속 편집]이면 변경이 남는다', async () => {
@@ -883,7 +887,10 @@ describe('W-CO-08 편집 창 — 닫기 보호 · 충돌 (US3)', () => {
         expect(discardDialog(), way).toBeNull();
       });
       expect(onClose, way).not.toHaveBeenCalled();
-      expect(within(board()).queryByRole('button', { name: 'SYN-LOC-07' }), way).toBeNull();
+      expect(
+        within(board()).queryByRole('button', { name: pinName('SYN-LOC-07') }),
+        way,
+      ).toBeNull();
     }
   });
 
@@ -922,9 +929,11 @@ describe('W-CO-08 편집 창 — 닫기 보호 · 충돌 (US3)', () => {
     );
 
     await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: t.editor.title(WAREHOUSE_LABEL) })).toBeNull();
+      expect(screen.queryByRole('dialog', { name: t.editor.title })).toBeNull();
     });
-    expect(within(board()).getByRole('button', { name: 'SYN-LOC-07' })).toBeInTheDocument();
+    expect(
+      within(board()).getByRole('button', { name: pinName('SYN-LOC-07') }),
+    ).toBeInTheDocument();
     expect(puts).toHaveLength(0);
   });
 
@@ -965,13 +974,17 @@ describe('W-CO-08 편집 창 — 닫기 보호 · 충돌 (US3)', () => {
     expect(puts).toHaveLength(1);
     expect(onSaved).not.toHaveBeenCalled();
     /* 내 변경(07 을 뺌)이 창에 남는다 — 덮어쓰지 않는다. */
-    expect(within(board()).queryByRole('button', { name: 'SYN-LOC-07' })).toBeNull();
+    expect(within(board()).queryByRole('button', { name: pinName('SYN-LOC-07') })).toBeNull();
     expect(screen.getByRole('button', { name: t.map.save })).toBeEnabled();
 
     await user.click(screen.getByRole('button', { name: messages.conflict.reloadAction }));
 
-    expect(await within(board()).findByRole('button', { name: 'SYN-LOC-08' })).toBeInTheDocument();
-    expect(within(board()).getByRole('button', { name: 'SYN-LOC-07' })).toBeInTheDocument();
+    expect(
+      await within(board()).findByRole('button', { name: pinName('SYN-LOC-08') }),
+    ).toBeInTheDocument();
+    expect(
+      within(board()).getByRole('button', { name: pinName('SYN-LOC-07') }),
+    ).toBeInTheDocument();
   });
 
   it('EC-2 ⛔ 도면을 올리는 동안은 X 가 없고 ESC · [취소]로 닫히지 않는다(FR-009)', async () => {
@@ -1062,10 +1075,10 @@ describe('W-CO-08 편집 창 — 구역 · 랙만 배치 (2차)', () => {
     await loaded();
     expect(await screen.findByText(t.editor.legacyMarkers(2))).toBeInTheDocument();
     await waitFor(() => {
-      expect(within(board()).queryByRole('button', { name: 'Z01-R001-L01' })).toBeNull();
+      expect(within(board()).queryByRole('button', { name: pinName('Z01-R001-L01') })).toBeNull();
     });
-    expect(within(board()).queryByRole('button', { name: 'Z01-R001-L01-C01' })).toBeNull();
-    expect(within(board()).getByRole('button', { name: 'Z01-R001' })).toBeInTheDocument();
+    expect(within(board()).queryByRole('button', { name: pinName('Z01-R001-L01-C01') })).toBeNull();
+    expect(within(board()).getByRole('button', { name: pinName('Z01-R001') })).toBeInTheDocument();
     /* 목록에 없는 위치는 단계를 모른다 — 남긴다. */
     expect(
       within(board()).getByRole('button', { name: t.locations.unknown(77) }),
@@ -1114,9 +1127,7 @@ describe('W-CO-08 편집 창 — 반응 (2차 · FR-017)', () => {
     try {
       renderEditor({ layouts: [withDrawing()] });
 
-      expect(
-        await screen.findByRole('dialog', { name: t.editor.title(WAREHOUSE_LABEL) }),
-      ).toBeInTheDocument();
+      expect(await screen.findByRole('dialog', { name: t.editor.title })).toBeInTheDocument();
       expect(await screen.findByText(t.editor.drawingBoard)).toBeInTheDocument();
       expect(await screen.findByText('SYN-LOC-08')).toBeInTheDocument();
       /* 판은 아직 붙지 않았다 — 창 틀 · 목록을 먼저 그린다. */
@@ -1132,5 +1143,82 @@ describe('W-CO-08 편집 창 — 반응 (2차 · FR-017)', () => {
       raf.mockRestore();
       caf.mockRestore();
     }
+  });
+});
+
+/* 안 A(사용자 결정 2026-11-24) — 도면 도구 막대 · 오른쪽 속성 판 · 목록 위 진행 · 놓은 뒤 다음 위치 자동 고르기. */
+describe('W-CO-08 편집 창 — 도구 막대 · 속성 판 (안 A)', () => {
+  const props = (): HTMLElement => screen.getByRole('region', { name: t.editor.props });
+
+  it('놓으면 진행이 늘고, 다음 놓지 않은 위치가 저절로 골라져 속성 판에 보인다', async () => {
+    const { user } = renderEditor({ layouts: [withDrawing([])] });
+
+    await loaded();
+    expect(screen.getByText(t.editor.progress(0, 2))).toBeInTheDocument();
+    expect(within(props()).getByText(t.editor.propsEmpty)).toBeInTheDocument();
+
+    await user.click(locationButton('SYN-LOC-07'));
+    stubBoardRect(board());
+    fireEvent.click(board(), { clientX: 140, clientY: 80 });
+
+    expect(screen.getByText(t.editor.progress(1, 2))).toBeInTheDocument();
+    expect(locationButton('SYN-LOC-08')).toHaveAttribute('aria-current', 'true');
+    expect(within(props()).getByText('합성 위치 나')).toBeInTheDocument();
+    expect(within(props()).getByText(t.editor.propsNotPlaced)).toBeInTheDocument();
+  });
+
+  it('「놓은 뒤 다음 위치 고르기」를 끄면 놓은 위치가 그대로 골라져 있고 크기 칸이 보인다', async () => {
+    const { user } = renderEditor({ layouts: [withDrawing([])] });
+
+    await loaded();
+    await user.click(screen.getByRole('checkbox', { name: t.editor.autoNext }));
+    await user.click(locationButton('SYN-LOC-07'));
+    stubBoardRect(board());
+    fireEvent.click(board(), { clientX: 140, clientY: 80 });
+
+    expect(locationButton('SYN-LOC-07')).toHaveAttribute('aria-current', 'true');
+    expect(within(props()).getByRole('group', { name: t.map.shape })).toBeInTheDocument();
+  });
+
+  it('속성 판의 [도면에서 빼기]로 고른 표식을 뺀다 — 바닥 줄에는 취소 · 저장만 있다', async () => {
+    const { user } = renderEditor({ layouts: [withDrawing()] });
+
+    await loaded();
+    await user.click(locationButton('SYN-LOC-07'));
+    await user.click(within(props()).getByRole('button', { name: t.map.remove }));
+
+    expect(within(board()).queryByRole('button', { name: pinName('SYN-LOC-07') })).toBeNull();
+    expect(screen.getByText(t.editor.progress(0, 2))).toBeInTheDocument();
+    const toolbar = screen.getByRole('toolbar', { name: t.editor.toolbar });
+    expect(within(toolbar).getByRole('button', { name: t.map.upload })).toBeInTheDocument();
+    expect(within(toolbar).getByRole('button', { name: t.map.reset })).toBeEnabled();
+  });
+
+  it('축소 · 확대 · 창에 맞춤 — 50%~400%, 배율 글자가 바뀌고 판에 배율이 실린다', async () => {
+    const { user } = renderEditor({ layouts: [withDrawing()] });
+
+    await loaded();
+    const toolbar = screen.getByRole('toolbar', { name: t.editor.toolbar });
+    const stage = board().closest<HTMLElement>('.layout-editor-board')!;
+    expect(within(toolbar).getByText(t.editor.zoomLevel(100))).toBeInTheDocument();
+    expect(within(toolbar).getByRole('button', { name: t.editor.zoomFit })).toBeDisabled();
+
+    /* 축소 — 75% · 50%, 50% 아래로는 더 줄지 않는다. */
+    await user.click(within(toolbar).getByRole('button', { name: t.editor.zoomOut }));
+    expect(within(toolbar).getByText(t.editor.zoomLevel(75))).toBeInTheDocument();
+    await user.click(within(toolbar).getByRole('button', { name: t.editor.zoomOut }));
+    expect(within(toolbar).getByText(t.editor.zoomLevel(50))).toBeInTheDocument();
+    expect(stage.style.getPropertyValue('--board-zoom')).toBe('0.5');
+    expect(within(toolbar).getByRole('button', { name: t.editor.zoomOut })).toBeDisabled();
+
+    await user.click(within(toolbar).getByRole('button', { name: t.editor.zoomFit }));
+    await user.click(within(toolbar).getByRole('button', { name: t.editor.zoomIn }));
+    await user.click(within(toolbar).getByRole('button', { name: t.editor.zoomIn }));
+    expect(within(toolbar).getByText(t.editor.zoomLevel(150))).toBeInTheDocument();
+    expect(stage.style.getPropertyValue('--board-zoom')).toBe('1.5');
+
+    await user.click(within(toolbar).getByRole('button', { name: t.editor.zoomFit }));
+    expect(within(toolbar).getByText(t.editor.zoomLevel(100))).toBeInTheDocument();
+    expect(stage.style.getPropertyValue('--board-zoom')).toBe('1');
   });
 });

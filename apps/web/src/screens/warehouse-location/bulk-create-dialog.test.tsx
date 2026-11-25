@@ -10,7 +10,7 @@ import type { Location } from './types';
 
 const b = messages.warehouseLocation.bulkCreate;
 const WAREHOUSE_ID = 7;
-const TITLE = b.title('PTW-E · 시험 창고');
+const TITLE = b.open;
 
 const loc = (
   locationId: number,
@@ -131,15 +131,40 @@ const fillAll = async (
 const summary = () => within(dialog()).getByRole('region', { name: b.total });
 
 describe('BulkCreateDialog', () => {
-  it('US1-1 ⭐ 2×5×4×10 을 넣으면 합계 452 와 첫 · 마지막 코드가 바로 보인다', async () => {
+  it('US1-1 ⭐ 2×5×4×10 을 넣으면 합계 452 와 단계별 수가 바로 보인다', async () => {
     const { user } = setup();
 
     await fillAll(user, { zones: '2', racks: '5', levels: '4', cells: '10' });
 
     expect(within(summary()).getByText(b.count(452))).toBeInTheDocument();
     expect(within(summary()).getByText(b.parts(2, 10, 40, 400))).toBeInTheDocument();
-    expect(within(summary()).getByText('K7PM-Z01')).toBeInTheDocument();
-    expect(within(summary()).getByText('K7PM-Z02-R005-L04-C10')).toBeInTheDocument();
+    /* 첫 · 마지막 위치 코드는 보이지 않는다(사용자 지시 2026-11-24) — 수만. */
+    expect(within(summary()).queryByText('K7PM-Z01')).toBeNull();
+  });
+
+  /* 사용자 지시 2026-11-24 — 제목은 「Location 추가」만, 어느 창고인지는 본문 맨 위에. */
+  it('제목에는 창고를 싣지 않고 본문 맨 위에 창고 · 창고 위치 코드를 보인다', () => {
+    setup();
+
+    expect(dialog()).toBeInTheDocument();
+    const target = within(dialog()).getByText('창고').closest('dl');
+    expect(target).not.toBeNull();
+    expect(within(target!).getByText('PTW-E · 시험 창고')).toBeInTheDocument();
+    expect(within(target!).getByText('K7PM')).toBeInTheDocument();
+  });
+
+  it('있는 구역 목록은 높이를 넘으면 그 안에서 스크롤하고, 지금 랙 · 셀 수는 구역과 한 줄에 있다', async () => {
+    const { user } = setup({ items: ZONED });
+
+    await user.click(within(dialog()).getByRole('radio', { name: b.modeExisting }));
+    const row = within(dialog()).getByText(b.zoneInfo(3, 0)).closest('.bulk-create-zone');
+    expect(row).not.toBeNull();
+    expect(
+      within(row as HTMLElement).getByRole('checkbox', {
+        name: b.zoneName('K7PM-Z01', 'A동 자재 구역'),
+      }),
+    ).toBeInTheDocument();
+    expect(row!.parentElement).toHaveClass('bulk-create-zone-list');
   });
 
   it('US1-2 ⭐ [만들기] → 만드는 중 n/m → 끝남, 다 만들면 [닫기]', async () => {
@@ -164,7 +189,7 @@ describe('BulkCreateDialog', () => {
 
     expect(within(dialog()).getByLabelText(b.cellsPerLevel)).toBeDisabled();
     expect(within(summary()).getByText(b.count(4))).toBeInTheDocument();
-    expect(within(summary()).getByText('K7PM-Z01-R003')).toBeInTheDocument();
+    expect(within(summary()).getByText(b.parts(1, 3, 0, 0))).toBeInTheDocument();
   });
 
   /* 「0 이면 …까지만」은 칸 아래가 아니라 층 수 · 셀 수 라벨 옆 ⓘ 로 읽힌다(관리웹 정리 시안 A). */
@@ -189,7 +214,6 @@ describe('BulkCreateDialog', () => {
 
     expect(within(summary()).getByText(b.count(90))).toBeInTheDocument();
     expect(within(summary()).getByText(b.parts(null, 2, 8, 80))).toBeInTheDocument();
-    expect(within(summary()).getByText('K7PM-Z01-R004')).toBeInTheDocument();
 
     await user.click(within(dialog()).getByRole('button', { name: b.make }));
     await within(dialog()).findByText(b.done(90));
@@ -323,7 +347,7 @@ describe('BulkCreateDialog', () => {
   });
 });
 
-describe('Location 탭 [일괄 생성] 단추', () => {
+describe('Location 표 [Location 추가] 단추', () => {
   const renderPane = (props: { canBulkCreate: boolean; canAddRoot?: boolean }) => {
     const onBulkCreate = vi.fn();
     render(
@@ -340,7 +364,6 @@ describe('Location 탭 [일괄 생성] 단추', () => {
         onFilterTextChange={vi.fn()}
         canAddRoot={props.canAddRoot ?? true}
         addRootDisabledReason="계층을 불러온 뒤"
-        onAddRoot={vi.fn()}
         canAddChild={false}
         onAddChild={vi.fn()}
         canPrintLabels={false}
@@ -356,19 +379,14 @@ describe('Location 탭 [일괄 생성] 단추', () => {
     return { onBulkCreate };
   };
 
-  it('US1-1 [구역 추가]와 [랙 추가] 사이에 서고, 누르면 창을 연다', async () => {
+  it('US1-1 위치를 만드는 단추는 이것 하나이고, 누르면 창을 연다', async () => {
     const { onBulkCreate } = renderPane({ canBulkCreate: true });
 
-    const names = screen.getAllByRole('button').map((button) => button.textContent ?? '');
-    const zone = names.findIndex((name) =>
-      name.includes(messages.warehouseLocation.actions.addZone),
-    );
-    const bulk = names.findIndex((name) => name.includes(b.open));
-    const rack = names.findIndex((name) =>
-      name.includes(messages.warehouseLocation.actions.addRack),
-    );
-    expect(zone).toBeLessThan(bulk);
-    expect(bulk).toBeLessThan(rack);
+    /* 하나씩 만드는 [구역 추가]는 없앴다(사용자 지시 2026-11-24). 고르지 않으면 [랙 추가]도 없다 — 선택 막대에 있다. */
+    expect(screen.queryByRole('button', { name: '구역 추가' })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: messages.warehouseLocation.actions.addRack }),
+    ).toBeNull();
 
     await userEvent.setup().click(screen.getByRole('button', { name: new RegExp(b.open) }));
     expect(onBulkCreate).toHaveBeenCalledOnce();
@@ -380,7 +398,7 @@ describe('Location 탭 [일괄 생성] 단추', () => {
     expect(screen.queryByRole('button', { name: new RegExp(b.open) })).toBeNull();
   });
 
-  it('US1-1 계층을 못 불렀으면 막히고 구역 추가와 같은 이유가 이어진다', () => {
+  it('US1-1 계층을 못 불렀으면 막히고 그 이유가 이어진다', () => {
     renderPane({ canBulkCreate: true, canAddRoot: false });
 
     const button = screen.getByRole('button', { name: new RegExp(b.open) });

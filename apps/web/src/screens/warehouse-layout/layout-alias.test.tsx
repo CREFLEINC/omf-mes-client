@@ -16,6 +16,7 @@ import {
   t,
   withDrawing,
   wl,
+  pinName,
 } from './test-harness';
 
 /**
@@ -102,7 +103,7 @@ describe('W-CO-08 편집 창 — 별칭 고치기 (#267 FR-007a)', () => {
     });
 
     await loaded();
-    expect(within(board()).getByRole('button', { name: 'Z01-R001' })).toBeInTheDocument();
+    expect(within(board()).getByRole('button', { name: pinName('Z01-R001') })).toBeInTheDocument();
 
     await user.click(pencil('Z01-R001'));
     /* 「바로 저장 · 배치도 저장과 따로」는 제목 옆 ⓘ 로 읽힌다(관리웹 정리 시안 A). */

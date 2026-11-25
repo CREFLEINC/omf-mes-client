@@ -1,7 +1,7 @@
 import { compareLocationCodes, type LocationTreeRow } from '../../patterns/location-tree';
 import type { Location } from './types';
 
-/** Location 탭의 보기 — 전체 계층(기본) · 적치 위치만. 주소의 `view` 에 싣는다. */
+/** Location 표의 보기 — 전체 계층(기본) · 적치 위치만. 주소의 `view` 에 싣는다. */
 export type LocationViewMode = 'tree' | 'leaf';
 
 export const LOCATION_VIEW_PARAM = 'view';

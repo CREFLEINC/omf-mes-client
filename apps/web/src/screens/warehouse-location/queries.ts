@@ -468,3 +468,12 @@ export const useCanWriteLocations = (): boolean => {
   const permissions = session.data?.permissions;
   return permissions === undefined || permissions.includes(LOCATION_WRITE_PERMISSION);
 };
+
+/** 창고 배치도 수정 권한(W-CO-08) — Location 표의 「배치도」 아이콘은 이 권한이 있을 때만(사용자 지시 2026-11-24). */
+const LAYOUT_EDIT_PERMISSION = 'W-CO-08';
+
+export const useCanEditLayout = (): boolean => {
+  const session = useQuery<Session | null>({ queryKey: sessionKeys.current, queryFn: skipToken });
+  const permissions = session.data?.permissions;
+  return permissions === undefined || permissions.includes(LAYOUT_EDIT_PERMISSION);
+};
