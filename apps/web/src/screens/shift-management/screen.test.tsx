@@ -315,6 +315,46 @@ describe('ShiftManagementScreen — 교대 관리 W-06-26 (#318)', () => {
   });
 });
 
+describe('ShiftManagementScreen — 검색 · 쪽 넘김', () => {
+  it('교대 코드 · 교대명으로 거르고, 조건이 바뀌면 [초기화]가 나와 되돌린다', async () => {
+    const { user } = setup();
+    await table();
+    expect(screen.queryByRole('button', { name: t.filters.clear })).toBeNull();
+    await user.type(screen.getByLabelText(t.filters.search), '야간');
+    await user.click(screen.getByRole('button', { name: t.filters.apply }));
+    let rows = (await table()).getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(1);
+    expect(within(rows[0] as HTMLElement).getByText('합성 야간')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.filters.clear }));
+    rows = (await table()).getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(2);
+  });
+
+  it('쪽당 건수만큼 보이고 다음 쪽으로 넘긴다', async () => {
+    const many = Array.from({ length: 12 }, (_, index) =>
+      shift(
+        100 + index,
+        `C${String(index).padStart(2, '0')}`,
+        `합성 ${String(index)}`,
+        '08:00:00',
+        '20:00:00',
+      ),
+    );
+    const { user } = setup({ shifts: many });
+    expect((await table()).getAllByRole('row').slice(1)).toHaveLength(12);
+    await user.click(screen.getByRole('combobox', { name: /쪽|페이지|건/ }));
+    await user.click(screen.getByRole('option', { name: '10건' }));
+    expect((await table()).getAllByRole('row').slice(1)).toHaveLength(10);
+    await user.click(
+      within(screen.getByRole('navigation')).getByRole('button', {
+        name: messages.screenPatterns.pageNav.next,
+      }),
+    );
+    expect((await table()).getAllByRole('row').slice(1)).toHaveLength(2);
+  });
+});
+
 describe('ShiftManagementScreen — 공장이 지정되지 않은 계정', () => {
   it('「전체」로 공장 조건 없이 모든 교대를 보이고 공장 열을 둔다', async () => {
     const { listQueries } = setup({ scopes: [{ businessUnitId: 8301 }] });

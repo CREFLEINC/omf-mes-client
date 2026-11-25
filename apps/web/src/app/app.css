@@ -40537,7 +40537,12 @@ body:has(
 /* W-06-26 교대 관리(omf-all-around#318) — 검사 조회·판정과 같은 틀: 위 조회 상자, 아래 목록 상자. */
 .shift-management-filter .shift-management-add {
   flex: 0 0 auto;
-  margin-inline-start: auto;
+}
+
+/* 교대 검색 — 흐린 문구(교대 코드 또는 교대명을 입력하세요)가 다 보이는 폭만. */
+.shift-management-filter > .shift-management-search {
+  flex: 0 0 18.5rem;
+  width: 18.5rem;
 }
 
 /* 공장 — 공장 이름이 잘리지 않는 폭, 고르개가 칸을 꽉 채운다. */
@@ -40633,6 +40638,9 @@ body:has(
 /* 목록 제목 오른쪽 ⓘ 말풍선 — 예시를 둘째 줄로, 글자는 크게(사용자 지시 2026-11-25). */
 .shift-management-list-pane .info-tip-anchor [class*='_tooltip_'] {
   white-space: pre-line;
+  /* 넓게 — 문장 줄이 중간에 꺾이지 않게(사용자 지시 2026-11-25). 좁은 창에서는 화면 폭 안에서 꺾인다. */
+  width: max-content;
+  max-width: min(56rem, calc(100vw - 4rem));
   font: var(--type-body-md);
   letter-spacing: var(--type-body-md-tracking);
 }

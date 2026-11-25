@@ -6,8 +6,12 @@ export const shiftManagement: Translated<typeof ko.shiftManagement> = {
     'Thiết lập giờ bắt đầu và giờ kết thúc của ca ngày và ca đêm cho từng nhà máy. Nếu giờ kết thúc sớm hơn giờ bắt đầu, ca sẽ được lưu là kết thúc vào ngày hôm sau.\nVD: 20:00~08:00 → bắt đầu 20:00 trong ngày, kết thúc 08:00 ngày hôm sau',
   filters: {
     label: 'Điều kiện',
-    plant: 'Nhà máy',
+    plant: 'Chọn nhà máy',
     all: 'Tất cả',
+    search: 'Tìm ca',
+    searchPlaceholder: 'Nhập mã ca hoặc tên ca',
+    apply: 'Tra cứu',
+    clear: 'Đặt lại',
   },
   chips: {
     label: 'Trạng thái sử dụng',
@@ -19,6 +23,7 @@ export const shiftManagement: Translated<typeof ko.shiftManagement> = {
   noPlant: 'Không có nhà máy nào có thể xem.',
   add: 'Thêm ca',
   tableLabel: 'Danh sách ca',
+  emptyFiltered: 'Không có ca nào phù hợp điều kiện.',
   empty: 'Chưa có ca nào. Hãy bấm [Thêm ca] để đăng ký ca ngày và ca đêm.',
   columns: {
     plant: 'Nhà máy',

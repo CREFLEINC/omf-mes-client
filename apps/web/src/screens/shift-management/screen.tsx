@@ -4,6 +4,7 @@ import {
   Dialog,
   EmptyState,
   Icon,
+  SearchInput,
   Skeleton,
   Table,
   useToast,
@@ -17,6 +18,7 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { InfoTip } from '../../patterns/info-tip';
+import { PageNav } from '../../patterns/page-nav';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { useOaAccess, useScopedPlants } from '../../patterns/oa-access';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -29,6 +31,9 @@ type SessionScope = components['schemas']['SessionScope'];
 
 const t = messages.shiftManagement;
 const NO_SCOPES: readonly SessionScope[] = [];
+/** 쪽당 건수 — 단말 관리 목록과 같다(10 · 20 · 50, 처음 20). */
+const PAGE_SIZES = [10, 20, 50] as const;
+type ShiftPageSize = (typeof PAGE_SIZES)[number];
 
 /** `HH:MM:SS` → `HH:MM`. 교대 시간은 분 단위로 정한다. */
 const hhmm = (time: string): string => time.slice(0, 5);
@@ -74,8 +79,22 @@ export const ShiftManagementScreen = () => {
   const plantName = new Map(plantOptions.map((each) => [each.plantId, each.plantName]));
   /* 추가 창이 처음 고를 공장 — 고른 공장, 「전체」면 위 줄 동작(OA · 부품)의 첫 공장. */
   const defaultPlant = plant ?? candidates[0] ?? plantOptions[0] ?? null;
+  /** 교대 코드 · 교대명 검색 — 칸에 친 글(`searchDraft`)은 [조회] · Enter 때 목록에 건다(`query`). */
+  const [searchDraft, setSearchDraft] = useState('');
+  const [query, setQuery] = useState('');
+  /* [초기화]는 조건이 처음과 다를 때만(C-6). */
+  const isChanged = searchDraft !== '' || query !== '' || pickedPlant !== null;
   /** 사용 유무 라벨 — `null` 이면 둘 다 보인다. 공장을 바꾸면 풀린다. */
   const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | null>(null);
+  /* 목록은 한 번에 다 받으므로 쪽 넘김은 화면에서 자른다. 조건이 바뀌면 첫 쪽으로. */
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<ShiftPageSize>(20);
+  const [conditionKey, setConditionKey] = useState('');
+  const currentKey = `${String(plantId)}|${query}|${String(statusFilter)}`;
+  if (conditionKey !== currentKey) {
+    setConditionKey(currentKey);
+    setPage(1);
+  }
 
   /** 열린 창 — `null` 닫힘, `'new'` 추가. */
   const [editing, setEditing] = useState<Shift | 'new' | null>(null);
@@ -100,7 +119,7 @@ export const ShiftManagementScreen = () => {
         ]
       : []),
     { key: 'code', header: t.columns.code, align: 'center', render: (row) => row.shiftCode },
-    { key: 'name', header: t.columns.name, render: (row) => row.shiftName },
+    { key: 'name', header: t.columns.name, align: 'center', render: (row) => row.shiftName },
     {
       key: 'start',
       header: t.columns.start,
@@ -160,13 +179,26 @@ export const ShiftManagementScreen = () => {
   const fit = useFitColumns(resizable.columns);
 
   /* 「전체」는 조건 없이 받으므로 볼 수 있는 공장의 교대만 남긴다. */
-  const allRows = (list.data ?? []).filter((row) => plantName.has(row.plantId));
+  const plantRows = (list.data ?? []).filter((row) => plantName.has(row.plantId));
+  const needle = query.trim().toLowerCase();
+  /* 검색은 받은 목록에서 거른다 — 사용 유무 라벨 건수도 검색 결과 기준이다. */
+  const allRows =
+    needle === ''
+      ? plantRows
+      : plantRows.filter(
+          (row) =>
+            row.shiftCode.toLowerCase().includes(needle) ||
+            row.shiftName.toLowerCase().includes(needle),
+        );
   const activeCount = allRows.filter((row) => row.isActive).length;
   const counts = { active: activeCount, inactive: allRows.length - activeCount };
   const rows =
     statusFilter === null
       ? allRows
       : allRows.filter((row) => row.isActive === (statusFilter === 'active'));
+  const lastPage = Math.max(1, Math.ceil(rows.length / pageSize));
+  const shownPage = Math.min(page, lastPage);
+  const pageRows = rows.slice((shownPage - 1) * pageSize, shownPage * pageSize);
   /* 0건 라벨은 숨긴다 — 걸려 있는 라벨은 0건이어도 남겨 풀 수 있게 한다. */
   const chips = (['active', 'inactive'] as const).filter(
     (status) => list.data !== undefined && (statusFilter === status || counts[status] > 0),
@@ -189,10 +221,10 @@ export const ShiftManagementScreen = () => {
         <Table
           density="compact"
           columns={fit.columns}
-          rows={rows}
+          rows={pageRows}
           getRowId={(row) => String(row.shiftId)}
           aria-label={t.tableLabel}
-          empty={<EmptyState size="sm" title={t.empty} />}
+          empty={<EmptyState size="sm" title={needle === '' ? t.empty : t.emptyFiltered} />}
         />
       </div>
     );
@@ -249,6 +281,42 @@ export const ShiftManagementScreen = () => {
               }}
             />
           </div>
+          <SearchInput
+            containerClassName="shift-management-search"
+            label={t.filters.search}
+            value={searchDraft}
+            placeholder={t.filters.searchPlaceholder}
+            onChange={(event) => setSearchDraft(event.target.value)}
+            onSearch={(value) => {
+              setQuery(value);
+              setStatusFilter(null);
+            }}
+            clearLabel={messages.common.clear}
+          />
+          {/* [조회] → [초기화] 순, [초기화]는 조건이 바뀌었을 때만. 교대 추가와는 세로선으로 나눈다(단말 관리와 같다). */}
+          <div className="filter-actions field-cell-unlabeled">
+            <Button
+              onClick={() => {
+                setQuery(searchDraft);
+                setStatusFilter(null);
+              }}
+            >
+              {t.filters.apply}
+            </Button>
+            {isChanged && (
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setSearchDraft('');
+                  setQuery('');
+                  setPickedPlant(null);
+                  setStatusFilter(null);
+                }}
+              >
+                {t.filters.clear}
+              </Button>
+            )}
+          </div>
           {/* 볼 수 있는 공장이 없으면 목록이 그 사유를 말한다 — 추가 단추는 두지 않는다. */}
           {defaultPlant !== null && (
             <Button
@@ -273,6 +341,18 @@ export const ShiftManagementScreen = () => {
           <InfoTip text={t.intro} />
         </div>
         {listBody()}
+        {list.data !== undefined && (
+          <PageNav<ShiftPageSize>
+            meta={{ page: shownPage, size: pageSize, total: rows.length }}
+            sizes={PAGE_SIZES}
+            buttonSize="md"
+            onChangePage={setPage}
+            onChangeSize={(size) => {
+              setPageSize(size);
+              setPage(1);
+            }}
+          />
+        )}
       </section>
       {editing !== null && defaultPlant !== null && (
         <EditDialog
@@ -286,7 +366,7 @@ export const ShiftManagementScreen = () => {
                 }
           }
           shift={editing === 'new' ? null : editing}
-          existingShifts={allRows}
+          existingShifts={plantRows}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);

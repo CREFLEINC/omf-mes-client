@@ -5,8 +5,12 @@ export const shiftManagement = {
     '공장별로 주간·야간 교대의 시작 시각과 종료 시각을 설정합니다. 종료 시각이 시작 시각보다 이르면 다음 날 종료로 저장됩니다.\n예: 20:00~08:00 → 당일 20:00 시작, 다음 날 08:00 종료',
   filters: {
     label: '조건',
-    plant: '공장',
+    plant: '공장 선택',
     all: '전체',
+    search: '교대 검색',
+    searchPlaceholder: '교대 코드 또는 교대명을 입력하세요',
+    apply: '조회',
+    clear: '초기화',
   },
   /** 위 줄 오른쪽 사용 유무 라벨 — 누르면 그 상태만 보이고 다시 누르면 풀린다. 0건 라벨은 숨긴다. */
   chips: {
@@ -19,6 +23,7 @@ export const shiftManagement = {
   noPlant: '볼 수 있는 공장이 없습니다.',
   add: '교대 추가',
   tableLabel: '교대 목록',
+  emptyFiltered: '조건에 맞는 교대가 없습니다.',
   empty: '등록된 교대가 없습니다. [교대 추가]로 주간과 야간 교대를 등록하세요.',
   columns: {
     plant: '공장',
