@@ -1108,7 +1108,7 @@ on('GET', '/planning/boms/{bomId}/components', (params) => {
       actualUseProcessId: null,
       requiredQty,
       uomId: 1001,
-      scrapRate: index === 0 ? 0 : 1.5,
+      scrapRate: index === 0 ? 0 : 0.015,
       isMandatory: true,
       lotTraceRequired: false,
       backflushAllowed: false,

@@ -1,4 +1,4 @@
-import { Checkbox, type Column, EmptyState, SkeletonText, TextField } from '@crefle/web-ui';
+import { Checkbox, Chip, type Column, EmptyState, SkeletonText, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState, type ReactNode } from 'react';
@@ -42,7 +42,12 @@ import type { Bom } from './types';
 const t = messages.erpBom;
 
 /** 필수 여부 — 「필수 · 선택」(「예 · 아니오」가 어색하다 — 사용자 지시 2026-11-24). */
-const mandatoryLabel = (value: boolean): string => (value ? t.values.mandatory : t.values.optional);
+/** 필수 여부 라벨 — 필수는 파랑, 선택은 회색(사용자 지시 2026-11-25 「필수 여부는 라벨 디자인」). */
+const MandatoryChip = ({ value }: { value: boolean }) => (
+  <Chip variant="status" size="sm" status={value ? 'info' : 'idle'}>
+    {value ? t.values.mandatory : t.values.optional}
+  </Chip>
+);
 
 const formatQty = (qty: number, uom: string): string => `${qty.toLocaleString()} ${uom}`;
 
@@ -212,13 +217,14 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
 
   const columns: Column<BomTreeRow>[] = [
     /*
-     * 폭을 주지 않는 유일한 열 — 들여 쓴 품목코드가 남는 폭을 다 쓴다. 칸 안은 왼쪽 정렬(app.css `.bom-tree-table`)이라
+     * 다섯 열 모두 폭을 주어 상자 폭을 그 비율로 나눈다(사용자 지시 2026-11-25 — 품목코드 칸만 남는 폭을 다 쓰지 않게). 칸 안은 왼쪽 정렬(app.css `.bom-tree-table`)이라
      * 단계마다 들여 쓴 자리 · 연결선이 줄마다 같은 세로선에 선다. 품목명은 옆 칸에 따로 둔다(사용자 지시 2026-11-24) —
      * 이 칸은 펼침 단추 이름에 쓰려고 이름도 넘기고, 보이는 이름은 app.css `.bom-tree-split` 이 감춘다.
      */
     {
       key: 'item',
       header: t.parent.itemCode,
+      width: '280px',
       render: (row) => {
         const item = itemOf(row.itemId);
         return (
@@ -236,7 +242,7 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
     {
       key: 'itemName',
       header: t.parent.itemName,
-      width: '180px',
+      width: '240px',
       render: (row) => {
         const item = itemOf(row.itemId);
         /* 받기 전 · 못 받음은 코드 칸이 그 사정을 낸다 — 여기는 비운다. */
@@ -256,7 +262,7 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
     {
       key: 'scrapRate',
       header: t.componentTable.scrapRate,
-      width: '80px',
+      width: '96px',
       align: 'end',
       render: (row) =>
         row.component === null ? t.values.empty : formatRate(row.component.scrapRate),
@@ -267,7 +273,11 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
       /* 머리글 「필수 여부」와 끌기 손잡이가 잘리지 않는 폭(사용자 지시 2026-11-24). */
       width: '104px',
       render: (row) =>
-        row.component === null ? t.values.empty : mandatoryLabel(row.component.isMandatory),
+        row.component === null ? (
+          t.values.empty
+        ) : (
+          <MandatoryChip value={row.component.isMandatory} />
+        ),
     },
   ];
 
