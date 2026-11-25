@@ -813,13 +813,35 @@ export const ZaloConnectionScreen = () => {
         : { kind: 'handover', code: row.code };
     return (
       <div className="zalo-template-detail">
-        {/* 제목은 「템플릿 상세」, 구분 · 템플릿명은 정보 표시 상자로(사용자 지시 2026-11-25 · 공통코드 상세와 같은 모양). */}
+        {/* 제목은 「템플릿 상세」, 구분 · 템플릿명 · 템플릿 변수는 정보 표시 상자로(사용자 지시 2026-11-25 · 공통코드 상세와 같은 모양). */}
         <div className="erp-data-detail erp-data-detail-fill">
           <ErpDetailFields
             title={w.detailTitle}
             fields={[
               { key: 'kind', label: w.kind, value: w.kinds[row.kind] },
               { key: 'name', label: w.name, value: row.name },
+              /* 템플릿 변수 — 정보 칸 안에 변수 이름과 [변수명 복사]를 나란히(사용자 지시 2026-11-25). 복사하는 글은 그대로다. */
+              {
+                key: 'params',
+                label: t.fields.params,
+                value: (
+                  <span className="zalo-template-params">
+                    <code>{params}</code>
+                    <Button
+                      variant="outlined"
+                      size="sm"
+                      aria-label={
+                        row.kind === 'event'
+                          ? t.actions.copyFor(row.name)
+                          : t.handover.copyFor(row.name)
+                      }
+                      onClick={() => void copy(params)}
+                    >
+                      {t.actions.copy}
+                    </Button>
+                  </span>
+                ),
+              },
             ]}
           />
         </div>
@@ -852,23 +874,6 @@ export const ZaloConnectionScreen = () => {
           }}
           error={templateErrorOf(row)}
         />
-        {/* 템플릿 변수 — 라벨 아래 변수 이름과 [변수명 복사]를 나란히. 복사하는 글은 그대로다. */}
-        <div className="field-cell">
-          <span className="field-label">{t.fields.params}</span>
-          <div className="zalo-template-params">
-            <code>{params}</code>
-            <Button
-              variant="outlined"
-              size="sm"
-              aria-label={
-                row.kind === 'event' ? t.actions.copyFor(row.name) : t.handover.copyFor(row.name)
-              }
-              onClick={() => void copy(params)}
-            >
-              {t.actions.copy}
-            </Button>
-          </div>
-        </div>
         {/* 이 템플릿의 ID 만 저장한다 — 다른 템플릿 · 연결 정보에서 고친 값은 싣지 않는다. */}
         {sectionActions(section)}
       </div>
