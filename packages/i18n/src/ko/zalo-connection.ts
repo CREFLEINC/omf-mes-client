@@ -67,7 +67,7 @@ export const zaloConnection = {
   },
   /** 연결 정보 · 템플릿 설정(목록 · 상세) 통일 배치(omf-all-around#358). 검색은 템플릿 설정 상자 안. */
   workspace: {
-    search: '템플릿명 검색',
+    search: '템플릿 검색',
     searchPlaceholder: '템플릿명, 템플릿 변수 또는 템플릿 ID를 입력하세요',
     apply: '조회',
     clear: '초기화',

@@ -49,6 +49,7 @@ import {
   useSettingSummary,
 } from './queries';
 import { RecipientPicker } from './recipient-picker';
+import { RecipientTable } from './recipient-table';
 import { SelectField } from './select-field';
 import type { NotificationEvent, SettingDraft, SettingSummaryItem } from './types';
 
@@ -88,7 +89,6 @@ export const AlarmRecipientSettingsScreen = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
-  const zaloNoteId = useId();
   const enabledId = useId();
   const zaloId = useId();
   const { session } = useSession();
@@ -338,33 +338,19 @@ export const AlarmRecipientSettingsScreen = () => {
               id={zaloId}
               checked={draft.zaloEnabled}
               disabled={!draft.enabled}
-              aria-describedby={draft.enabled ? undefined : zaloNoteId}
               onChange={(event) => change({ ...draft, zaloEnabled: event.target.checked })}
             />
           </div>
-          {/* 잠긴 사유는 잠겼을 때만 Switch 아래에 둔다. */}
-          {!draft.enabled && (
-            <span id={zaloNoteId} className="field-note">
-              {t.state.zaloNeedsEnabled}
-            </span>
-          )}
-          {/* Zalo 미연결 — 왼쪽 안내 라벨(정보 표식 + 파란 바탕 한 줄) · 오른쪽 끝 [Zalo 연결 설정](좁으면 다음 줄로). */}
-          {zaloNotActive && (
+          {/* Zalo 미연결 — [Zalo 연결 설정] 단추만(안내 문구는 걷었다 · 사용자 지시 2026-11-25). */}
+          {zaloNotActive && canOpenConnection && (
             <div className="notify-zalo-connect">
-              {/* 단추는 안내 라벨 안 오른쪽 끝(사용자 지시 2026-11-25). */}
-              <div className="iqc-inspection-action-note" data-tone="info">
-                <Icon name="info" size={16} aria-hidden />
-                <span className="notify-zalo-connect-text">{t.state.zaloNotActive}</span>
-                {canOpenConnection && (
-                  <Button
-                    variant="outlined"
-                    size="sm"
-                    onClick={() => void navigate(ZALO_CONNECTION_PATH)}
-                  >
-                    {t.actions.openConnection}
-                  </Button>
-                )}
-              </div>
+              <Button
+                variant="outlined"
+                size="sm"
+                onClick={() => void navigate(ZALO_CONNECTION_PATH)}
+              >
+                {t.actions.openConnection}
+              </Button>
             </div>
           )}
         </div>
@@ -375,51 +361,23 @@ export const AlarmRecipientSettingsScreen = () => {
           <div className="alarm-recipients">
             <div className="alarm-recipients-heading">
               <h3>{t.fields.recipients(draft.recipients.length)}</h3>
+              {/* 전화번호 없는 수신자 안내는 건수 옆 ⓘ 로(사용자 지시 2026-11-25). */}
+              {missingPhones > 0 && <InfoTip text={t.state.noPhoneNotice(missingPhones)} />}
               <Button variant="outlined" size="sm" onClick={() => setPickerOpen(true)}>
                 {`+ ${t.actions.add}`}
               </Button>
             </div>
-            {draft.recipients.length === 0 ? (
-              /* 수신자 0명 — 문구 하나를 라벨로(사용자 지시 2026-11-25). 알림이 켜져 있으면 노란(경고), 아니면 파란 라벨. */
-              <p
-                className="iqc-inspection-action-note alarm-no-recipients"
-                data-tone={lacksRecipients(draft, approver) ? 'warning' : 'info'}
-              >
-                <Icon
-                  name={lacksRecipients(draft, approver) ? 'warning' : 'info'}
-                  size={16}
-                  aria-hidden
-                />
-                {t.state.noRecipients}
-              </p>
-            ) : (
-              <ul className="alarm-recipient-list" aria-label={t.columns.recipients}>
-                {draft.recipients.map((recipient) => (
-                  <li key={recipient.appUserId}>
-                    <span>
-                      {`${recipient.userName} (${recipient.departmentName ?? t.values.noDepartment})`}
-                    </span>
-                    {!recipient.hasPhone && (
-                      <Chip size="sm" status="warning">{`📵 ${t.values.noPhone}`}</Chip>
-                    )}
-                    {!recipient.active && (
-                      <Chip size="sm" status="error">
-                        {t.values.inactive}
-                      </Chip>
-                    )}
-                    <IconButton
-                      icon="delete"
-                      size="sm"
-                      aria-label={`${recipient.userName} ${t.actions.remove}`}
-                      onClick={() => change(removeRecipient(draft, recipient.appUserId))}
-                    />
-                  </li>
-                ))}
-              </ul>
-            )}
-            {missingPhones > 0 && (
-              <AlertBanner variant="info">{t.state.noPhoneNotice(missingPhones)}</AlertBanner>
-            )}
+            <RecipientTable
+              storageKey="omf-mes:alarm-recipient-settings:recipients"
+              rows={draft.recipients.map((recipient) => ({
+                id: String(recipient.appUserId),
+                name: recipient.userName,
+                departmentName: recipient.departmentName,
+                hasPhone: recipient.hasPhone,
+                active: recipient.active,
+              }))}
+              onRemove={(id) => change(removeRecipient(draft, Number(id)))}
+            />
           </div>
         )}
 

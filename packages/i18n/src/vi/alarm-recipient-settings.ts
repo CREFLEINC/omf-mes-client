@@ -85,6 +85,13 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     inactiveRecipient: 'Không thể đặt người dùng ngừng sử dụng làm người nhận. Hãy xóa rồi lưu.',
     lookupFailed: 'Không tải được danh sách. Hãy thử lại.',
   },
+  /** 지정한 수신자 표(두 알림 설정 화면이 함께 쓴다 · 사용자 지시 2026-11-25). */
+  recipientTable: {
+    name: 'Tên',
+    department: 'Bộ phận',
+    phone: 'Số điện thoại',
+    manage: 'Quản lý',
+  },
   columns: {
     event: 'Sự kiện',
     enabled: 'Thông báo',

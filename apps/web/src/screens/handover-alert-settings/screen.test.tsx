@@ -259,13 +259,14 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     const pane = within(
       await screen.findByRole('region', { name: t.panes.setting('IQC 수입검사') }),
     );
-    expect(await pane.findByText(t.state.zaloNotActive)).toBeInTheDocument();
-    expect(pane.getByText(t.values.notConnected)).toBeInTheDocument();
+    expect(await pane.findByText(t.values.notConnected)).toBeInTheDocument();
+    /* 안내 문구는 걷었다 — 미연결은 칩과 [Zalo 연결 설정] 단추만(사용자 지시 2026-11-25). */
+    expect(pane.queryByText(t.state.zaloNotActive)).toBeNull();
     /* 종전 긴 노란 줄 · 글 링크는 걷었다. 스위치는 미연결이어도 켤 수 있다(서버가 막지 않는다). */
     expect(screen.queryByRole('note')).toBeNull();
     expect(screen.queryByRole('link', { name: t.actions.openConnection })).toBeNull();
     const button = pane.getByRole('button', { name: t.actions.openConnection });
-    expect(button.closest('.notify-zalo-connect')).toHaveTextContent(t.state.zaloNotActive);
+    expect(button.closest('.notify-zalo-connect')).not.toBeNull();
     await user.click(button);
     await waitFor(() =>
       expect(router?.state.location.pathname).toBe('/notification/zalo-connection'),
@@ -441,7 +442,7 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     expect(within(rows[2] as HTMLElement).getByText('⚠1')).toBeInTheDocument();
     const pane = await openType(user, '자재 출고 피킹');
     expect(pane.getByText('📵 전화번호 없음')).toBeInTheDocument();
-    expect(pane.getByText(t.state.noPhoneNotice(1))).toBeInTheDocument();
+    expect(pane.getByRole('button', { name: t.state.noPhoneNotice(1) })).toBeInTheDocument();
   });
 
   it('US2-5 알림을 켜고 담당자가 0명이면 안내가 보이고 저장은 된다', async () => {
@@ -452,7 +453,8 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     await user.click(pane.getByRole('switch', { name: t.fields.enabled }));
 
     // 수신자 0명은 「지정한 수신자가 없습니다.」 라벨 하나 — 알림이 켜져 있으면 경고색이다.
-    expect(await pane.findByText(t.state.noRecipients)).toHaveAttribute('data-tone', 'warning');
+    const table = await pane.findByRole('table', { name: t.columns.recipients });
+    expect(within(table).getByText(t.state.noRecipients)).toBeInTheDocument();
     await user.click(pane.getByRole('button', { name: t.actions.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
   });

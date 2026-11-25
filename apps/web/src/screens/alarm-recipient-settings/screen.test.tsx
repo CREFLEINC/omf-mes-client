@@ -339,14 +339,15 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     expect(pane.queryByRole('button', { name: `+ ${t.actions.add}` })).toBeNull();
   });
 
-  it('알림이 꺼져 있으면 Zalo Switch 가 잠기고 사유를 잇는다', async () => {
+  it('알림이 꺼져 있으면 Zalo Switch 가 잠기고 사유 문구는 없다', async () => {
     const user = userEvent.setup();
     setup();
 
     const pane = await openEvent(user, '생산 마감');
     const zalo = await pane.findByRole('switch', { name: t.fields.zalo });
     expect(zalo).toBeDisabled();
-    expect(pane.getByText(t.state.zaloNeedsEnabled)).toBeInTheDocument();
+    /* 잠긴 사유 문구는 걷었다(사용자 지시 2026-11-25). */
+    expect(pane.queryByText(t.state.zaloNeedsEnabled)).toBeNull();
 
     await user.click(pane.getByRole('switch', { name: t.fields.enabled }));
     expect(pane.getByRole('switch', { name: t.fields.zalo })).toBeEnabled();
@@ -363,7 +364,9 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     const pane = await openEvent(user, '생산 마감');
 
     // 수신자 0명은 「지정한 수신자가 없습니다.」 라벨 하나 — 알림이 켜져 있으면 경고색이다.
-    expect(await pane.findByText(t.state.noRecipients)).toHaveAttribute('data-tone', 'warning');
+    /* 수신자가 없으면 표 안에 문구(사용자 지시 2026-11-25). */
+    const table = await pane.findByRole('table', { name: t.columns.recipients });
+    expect(within(table).getByText(t.state.noRecipients)).toBeInTheDocument();
   });
 
   it('US4-5 전화번호 없는 수신자가 있으면 표식과 안내가 보인다', async () => {
@@ -379,8 +382,9 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
 
     const pane = await openEvent(user, '생산 마감');
 
-    expect(await pane.findByText(t.state.noPhoneNotice(1))).toBeInTheDocument();
-    const list = pane.getByRole('list', { name: t.columns.recipients });
+    /* 안내는 수신자 건수 옆 ⓘ(사용자 지시 2026-11-25). */
+    expect(await pane.findByRole('button', { name: t.state.noPhoneNotice(1) })).toBeInTheDocument();
+    const list = pane.getByRole('table', { name: t.columns.recipients });
     expect(within(list).getAllByText(`📵 ${t.values.noPhone}`)).toHaveLength(1);
   });
 
@@ -406,8 +410,8 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     await user.click(within(noPhoneRow).getByRole('checkbox'));
     await user.click(dialog.getByRole('button', { name: t.actions.addSelected(1) }));
 
-    const list = pane.getByRole('list', { name: t.columns.recipients });
-    expect(within(list).getByText('후보 나 (—)')).toBeInTheDocument();
+    const list = pane.getByRole('table', { name: t.columns.recipients });
+    expect(within(list).getByText('후보 나')).toBeInTheDocument();
     expect(pane.getByText(t.fields.recipients(2))).toBeInTheDocument();
   });
 
@@ -536,8 +540,9 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     setup({ zaloStatus: 'NOT_CONFIGURED' });
 
     const pane = within(await screen.findByRole('region', { name: t.panes.setting('생산 실행') }));
-    expect(await pane.findByText(t.state.zaloNotActive)).toBeInTheDocument();
-    expect(pane.getByText(t.values.notConnected)).toBeInTheDocument();
+    expect(await pane.findByText(t.values.notConnected)).toBeInTheDocument();
+    /* 안내 문구는 걷었다 — 미연결은 칩과 [Zalo 연결 설정] 단추만(사용자 지시 2026-11-25). */
+    expect(pane.queryByText(t.state.zaloNotActive)).toBeNull();
     /* 종전 긴 노란 줄은 걷었다. */
     expect(screen.queryByRole('note')).toBeNull();
   });
@@ -550,7 +555,7 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     });
 
     const button = await screen.findByRole('button', { name: t.actions.openConnection });
-    expect(button.closest('.notify-zalo-connect')).toHaveTextContent(t.state.zaloNotActive);
+    expect(button.closest('.notify-zalo-connect')).not.toBeNull();
     expect(screen.queryByRole('link', { name: t.actions.openConnection })).toBeNull();
     await user.click(button);
     await waitFor(() =>
@@ -558,10 +563,10 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     );
   });
 
-  it('W-CO-12 권한이 없으면 이동 단추 없이 안내만 보인다', async () => {
+  it('W-CO-12 권한이 없으면 이동 단추 없이 미연결 칩만 보인다', async () => {
     setup({ zaloStatus: 'NOT_CONFIGURED' });
 
-    expect(await screen.findByText(t.state.zaloNotActive)).toBeInTheDocument();
+    expect(await screen.findByText(t.values.notConnected)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.actions.openConnection })).toBeNull();
   });
 

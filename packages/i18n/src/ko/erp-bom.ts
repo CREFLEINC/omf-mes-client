@@ -18,7 +18,7 @@ export const erpBom = {
   },
   /** 모품목 상세 — 하이라키 위 한 줄(품목 칸 · 그 BOM 칸). */
   parent: {
-    label: '상위 품목 상세',
+    label: '모품목 상세',
     itemCode: '품목코드',
     itemName: '품목명',
     itemType: '품목 유형',

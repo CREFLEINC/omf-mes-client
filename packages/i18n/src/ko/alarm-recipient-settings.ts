@@ -84,6 +84,13 @@ export const alarmRecipientSettings = {
     inactiveRecipient: '미사용 사용자는 수신자로 둘 수 없습니다. 제거한 뒤 저장하세요.',
     lookupFailed: '목록을 불러오지 못했습니다. 다시 시도해 주세요.',
   },
+  /** 지정한 수신자 표(두 알림 설정 화면이 함께 쓴다 · 사용자 지시 2026-11-25). */
+  recipientTable: {
+    name: '이름',
+    department: '부서',
+    phone: '전화번호',
+    manage: '관리',
+  },
   columns: {
     event: '이벤트',
     enabled: '알림',
