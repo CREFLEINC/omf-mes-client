@@ -1,4 +1,4 @@
-import { Button, Dialog, Field, Icon, Skeleton, TextField } from '@crefle/web-ui';
+import { Button, Dialog, Field, Skeleton, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
@@ -27,7 +27,7 @@ const START_LABELS: TimeFieldLabels = {
   minuteList: td.startMinute,
   hourHead: td.hourHead,
   minuteHead: td.minuteHead,
-  placeholder: td.timePlaceholder,
+  placeholder: td.startPlaceholder,
 };
 
 const END_LABELS: TimeFieldLabels = {
@@ -36,7 +36,7 @@ const END_LABELS: TimeFieldLabels = {
   minuteList: td.endMinute,
   hourHead: td.hourHead,
   minuteHead: td.minuteHead,
-  placeholder: td.timePlaceholder,
+  placeholder: td.endPlaceholder,
 };
 
 const draftOf = (shift: Shift): Draft => ({
@@ -108,7 +108,6 @@ export const EditDialog = ({
       : draftOf(shift),
   );
   const save = useSaveShift(shiftId, onSaved);
-  const codeId = useId();
 
   /* 상세가 오면 그 값으로 채운다 — 목록을 받은 뒤 누가 고쳤을 수 있다. */
   const loaded = detail.data?.shift;
@@ -172,75 +171,57 @@ export const EditDialog = ({
     return (
       <div className="shift-management-form">
         {save.error !== null && <SaveErrorBanner error={save.error} />}
-        {plants.length > 1 ? (
-          <div className="field-cell shift-management-dialog-plant">
-            <span className="field-label">
-              <label htmlFor={plantFieldId}>{td.plant}</label>
-              <span className="required-mark" aria-hidden="true">
-                {' '}
-                *
-              </span>
-            </span>
-            <Select
-              id={plantFieldId}
-              value={String(plantId)}
-              options={plants.map((each) => ({
-                value: String(each.plantId),
-                label: each.plantName,
-              }))}
-              onChange={(value) => {
-                const next = Number(value);
-                /* 자동으로 넣은 코드를 그대로 두었으면 새 공장의 다음 코드로 바꾼다. */
-                if (draft.shiftCode === nextShiftCode(codesOf(plantId)))
-                  update({ shiftCode: nextShiftCode(codesOf(next)) });
-                setPlantId(next);
-              }}
-            />
-          </div>
-        ) : (
-          <dl className="shift-management-head">
-            <dt>{td.plant}</dt>
-            <dd>{plant.plantName}</dd>
-          </dl>
-        )}
-        {/* 교대 코드 · 교대명은 한 줄(사용자 지시 2026-11-25). */}
+        {/* 공장 · 교대 코드 · 교대명은 한 줄(사용자 지시 2026-11-25). */}
         <div className="shift-management-pair">
-          <div className="shift-management-code">
-            {/* 자동 입력 안내는 칸 이름 오른쪽 라벨(정보 아이콘 + 파란 바탕) — 추가 창에서만. */}
-            <span className="field-label">
-              <label htmlFor={codeId}>{td.code}</label>
-              <span className="required-mark" aria-hidden="true">
-                {' '}
-                *
-              </span>
-              {shift === null && (
-                <span
-                  className="iqc-inspection-action-note shift-management-label-note"
-                  data-tone="info"
-                >
-                  <Icon name="info" size={14} aria-hidden />
-                  {td.codeAuto}
+          {plants.length > 1 ? (
+            <div className="field-cell shift-management-dialog-plant">
+              <span className="field-label">
+                <label htmlFor={plantFieldId}>{td.plant}</label>
+                <span className="required-mark" aria-hidden="true">
+                  {' '}
+                  *
                 </span>
-              )}
-            </span>
-            <TextField
-              id={codeId}
-              fullWidth
-              required
-              placeholder={td.codePlaceholder}
-              maxLength={50}
-              value={draft.shiftCode}
-              disabled={codeLocked}
-              containerClassName={textFieldClass('shiftCode')}
-              helperText={
-                codeLocked && editability !== undefined
-                  ? td.codeLocked(editability.referenceCount ?? 0)
-                  : undefined
-              }
-              error={save.fieldErrors.shiftCode}
-              onChange={(event) => update({ shiftCode: event.target.value })}
-            />
-          </div>
+              </span>
+              {/* 공장은 이름으로 찾아 고른다(사용자 지시 2026-11-25). */}
+              <Select
+                id={plantFieldId}
+                searchable
+                searchPlaceholder={t.filters.plantSearchPlaceholder}
+                value={String(plantId)}
+                options={plants.map((each) => ({
+                  value: String(each.plantId),
+                  label: each.plantName,
+                }))}
+                onChange={(value) => {
+                  const next = Number(value);
+                  /* 자동으로 넣은 코드를 그대로 두었으면 새 공장의 다음 코드로 바꾼다. */
+                  if (draft.shiftCode === nextShiftCode(codesOf(plantId)))
+                    update({ shiftCode: nextShiftCode(codesOf(next)) });
+                  setPlantId(next);
+                }}
+              />
+            </div>
+          ) : (
+            /* 고를 공장이 하나뿐이면(공장이 정해진 목록 · 수정) 읽기 전용으로 보인다. */
+            <TextField label={td.plant} fullWidth readOnly value={plant.plantName} />
+          )}
+          <TextField
+            label={td.code}
+            fullWidth
+            required
+            placeholder={td.codePlaceholder}
+            maxLength={50}
+            value={draft.shiftCode}
+            disabled={codeLocked}
+            containerClassName={textFieldClass('shiftCode')}
+            helperText={
+              codeLocked && editability !== undefined
+                ? td.codeLocked(editability.referenceCount ?? 0)
+                : undefined
+            }
+            error={save.fieldErrors.shiftCode}
+            onChange={(event) => update({ shiftCode: event.target.value })}
+          />
           <TextField
             label={td.name}
             fullWidth

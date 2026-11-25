@@ -147,13 +147,17 @@ export const ShiftManagementScreen = () => {
       key: 'actions',
       header: t.columns.actions,
       align: 'center',
+      /* [수정] [사용 중지] 두 단추가 잘리지 않는 폭. */
+      width: '240px',
       /* 사용 중지한 교대는 다시 쓰게 하는 기능이 없어 관리 단추를 두지 않는다(#318 범위). */
       render: (row) =>
         !row.isActive ? null : (
+          /* 단말 관리의 [수정]과 같은 아이콘 + 글자 단추(사용자 지시 2026-11-25). */
           <span className="shift-management-row-actions">
             <Button
               variant="outlined"
               size="sm"
+              leadingIcon={<Icon name="edit" size={18} aria-hidden />}
               aria-label={t.editRow(row.shiftName)}
               onClick={() => setEditing(row)}
             >
@@ -162,6 +166,7 @@ export const ShiftManagementScreen = () => {
             <Button
               variant="outlined"
               size="sm"
+              leadingIcon={<Icon name="block" size={18} aria-hidden />}
               aria-label={t.deactivateRow(row.shiftName)}
               onClick={() => {
                 deactivate.reset();
@@ -175,7 +180,7 @@ export const ShiftManagementScreen = () => {
     },
   ];
   const ordered = useColumnOrder('omf-mes:shift-management:columns:order', baseColumns);
-  const resizable = useColumnWidths('omf-mes:shift-management:columns:v2', ordered);
+  const resizable = useColumnWidths('omf-mes:shift-management:columns:v3', ordered);
   const fit = useFitColumns(resizable.columns);
 
   /* 「전체」는 조건 없이 받으므로 볼 수 있는 공장의 교대만 남긴다. */
@@ -267,6 +272,8 @@ export const ShiftManagementScreen = () => {
             </span>
             <Select
               id={plantFieldId}
+              searchable
+              searchPlaceholder={t.filters.plantSearchPlaceholder}
               value={plantId === null ? '' : String(plantId)}
               options={[
                 ...(designated ? [] : [{ value: '', label: t.filters.all }]),
