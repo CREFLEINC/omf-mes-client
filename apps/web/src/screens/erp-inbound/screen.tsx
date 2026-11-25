@@ -14,6 +14,7 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 import { BoardTable } from '../../patterns/board-table';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
+import { InfoTip } from '../../patterns/info-tip';
 import { OneLine, useFitToViewport } from '../../patterns/po-board';
 import { toApiError } from '../../patterns/request';
 import { describeLoadError, LoadErrorBanner } from '../../patterns/load-error-banner';
@@ -283,17 +284,19 @@ export const ErpInboundScreen = () => {
                   {messages.common.paneList.count(items.length)}
                 </span>
               )}
+              {/* 연동이 꺼진 서버에서만 — 건수 오른쪽 ⓘ, 마우스를 올리면 사유가 뜬다(사용자 지시 2026-11-25). */}
+              {status.data !== undefined && !enabled && <InfoTip text={t.disabledReason} />}
             </div>
             {run.isError && (
               <AlertBanner variant="error" title={t.runErrorTitle}>
                 {describeLoadError(toApiError(run.error))}
               </AlertBanner>
             )}
-            {/* 배치 규범 4 — 비활성 사유는 감추지 않고 항상 보이는 DOM 텍스트로 낸다. 연동이 꺼진 서버에서만 선다. */}
+            {/* 꺼진 「지금 읽기」 단추의 설명(aria-describedby) — 보이는 안내는 건수 옆 ⓘ 로 옮겼다. */}
             {status.data !== undefined && !enabled && (
-              <p id={disabledReasonId} className="field-note">
+              <span id={disabledReasonId} className="visually-hidden">
                 {t.disabledReason}
-              </p>
+              </span>
             )}
             {listSlot()}
           </section>
