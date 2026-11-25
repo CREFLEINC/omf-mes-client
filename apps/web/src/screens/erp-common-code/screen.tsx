@@ -328,6 +328,8 @@ const ValuesSection = ({ group, groupName, filters, page, size, onApply }: Value
           <ErpListTable
             label={t.values.labelOf(groupName)}
             storageKey="omf-mes:erp-common-code:columns:values"
+            /* 줄을 눌러 하는 일이 없다 — 눌리는 것처럼 보이지 않게(사용자 지시 2026-11-25). */
+            className="erp-data-list-static"
             columns={columns}
             rows={rows}
             getRowId={(row) => String(row.codeValueId)}
