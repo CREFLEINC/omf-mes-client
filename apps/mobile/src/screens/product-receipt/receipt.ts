@@ -60,8 +60,14 @@ export const unitLineKey = (handlingUnitContentId: number): string =>
  */
 const PRODUCT_LOT_TYPES: readonly string[] = ['PRODUCTION', 'PRODUCT'];
 
-/** 생산 LOT 라벨을 받지 않는 까닭. */
-export type LotRefusal = 'notProduct' | 'voided' | 'noGood';
+/**
+ * 공정 반제품 LOT 유형(피처 016) — 마지막이 아닌 공정의 산출. 다음 공정에서 POP 자재 투입으로 넣는 것이지 제품 입고
+ * 대상이 아니다. 서버도 거절하지만(모든 입고 유형 · PDA 적치) 담기 전에 까닭을 말한다.
+ */
+export const WIP_LOT_TYPE = 'WIP';
+
+/** 생산 LOT 라벨을 받지 않는 까닭. `semiFinished` 는 공정 반제품(피처 016). */
+export type LotRefusal = 'semiFinished' | 'notProduct' | 'voided' | 'noGood';
 
 /** LOT 의 양품 실적. `withProgress=true` 로 받은 단건에만 실린다 — 없으면 0 으로 본다. */
 export const goodQtyOf = (lot: Pick<Lot, 'progress'>): number => lot.progress?.goodQty ?? 0;
@@ -76,6 +82,11 @@ export const goodQtyOf = (lot: Pick<Lot, 'progress'>): number => lot.progress?.g
 export const lotRefusalOf = (
   lot: Pick<Lot, 'lotTypeCode' | 'lifecycleStatusCode' | 'progress'>,
 ): LotRefusal | null => {
+  /* 반제품은 「제품 LOT 이 아니다」보다 할 일(다음 공정 투입)을 먼저 말한다. */
+  if (lot.lotTypeCode === WIP_LOT_TYPE) {
+    return 'semiFinished';
+  }
+
   if (!PRODUCT_LOT_TYPES.includes(lot.lotTypeCode)) {
     return 'notProduct';
   }

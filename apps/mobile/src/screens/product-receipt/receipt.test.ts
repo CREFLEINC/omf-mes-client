@@ -459,6 +459,10 @@ describe('생산 LOT 라벨 입고 (omf-all-around#293)', () => {
     expect(lotRefusalOf({ ...lot, lotTypeCode: 'PRODUCT' })).toBeNull();
   });
 
+  it('US1-3 공정 반제품 LOT 은 양품이 있어도 받지 않는다 — 까닭은 반제품(피처 016)', () => {
+    expect(lotRefusalOf({ ...lot, lotTypeCode: 'WIP' })).toBe('semiFinished');
+  });
+
   it('자재 LOT · 폐번 · 양품 0 은 받지 않는다', () => {
     expect(lotRefusalOf({ ...lot, lotTypeCode: 'MATERIAL' })).toBe('notProduct');
     expect(lotRefusalOf({ ...lot, lifecycleStatusCode: 'VOIDED' })).toBe('voided');
