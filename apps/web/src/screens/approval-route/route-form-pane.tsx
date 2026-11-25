@@ -6,7 +6,6 @@ import { InfoTip } from '../../patterns/info-tip';
 
 import { approvalTypeLabelOf, codeNote, codePlaceholder } from './code-options';
 import { DisabledAction } from './disabled-action';
-import { FieldLabel } from './field-label';
 import { ActiveChip } from './route-list-pane';
 import type { RouteFormMode } from './route-validation';
 import { SelectField } from './select-field';
@@ -174,7 +173,8 @@ export const RouteFormPane = ({
           label={t.fields.businessUnit}
           options={businessUnitChoices}
           value={values.businessUnitId}
-          note={businessUnitNote}
+          /* 비웠을 때의 뜻은 이 칸 바로 아래(사용자 지시 2026-11-25 — 안내를 해당 칸 아래로). */
+          note={businessUnitNote ?? (isBusinessUnitEmpty ? t.notes.businessUnitEmpty : undefined)}
           error={fieldErrors.businessUnitId}
           disabled={isLocked}
           onChange={(value) => {
@@ -182,7 +182,10 @@ export const RouteFormPane = ({
           }}
         />
 
-        {/* 하한 · 상한은 한 묶음(사용자 지시 2026-11-24) — 수량인지 금액인지 계약이 정하지 않아 「값 범위」로 둔다. */}
+        {/*
+         * 하한 · 상한은 한 묶음(사용자 지시 2026-11-24). 이름은 「수량 범위」 한 줄만 두고 하한 · 상한은 칸 안 흐린 글자와
+         * 접근 이름으로 — 옆 사업부 칸과 입력칸 윗선이 맞는다(사용자 지시 2026-11-25). 좁으면 묶음이 통째로 다음 줄로 간다.
+         */}
         <fieldset className="approval-route-range">
           <legend className="field-label info-label">
             {t.fields.valueRange}
@@ -190,9 +193,10 @@ export const RouteFormPane = ({
           </legend>
           <div className="approval-route-range-row">
             <div className="field-cell">
-              <FieldLabel htmlFor={minValueId} label={t.fields.minValue} />
               <TextField
                 id={minValueId}
+                aria-label={t.fields.minValue}
+                placeholder={t.fields.minValue}
                 value={values.minValue}
                 /* 숫자 자판을 띄우되 형식 판정은 화면이 한다 — 브라우저마다 허용 글자가 다르다. */
                 inputMode="decimal"
@@ -207,9 +211,10 @@ export const RouteFormPane = ({
               ~
             </span>
             <div className="field-cell">
-              <FieldLabel htmlFor={maxValueId} label={t.fields.maxValue} />
               <TextField
                 id={maxValueId}
+                aria-label={t.fields.maxValue}
+                placeholder={t.fields.maxValue}
                 value={values.maxValue}
                 inputMode="decimal"
                 error={fieldErrors.maxValue}
@@ -220,11 +225,9 @@ export const RouteFormPane = ({
               />
             </div>
           </div>
+          {isValueRangeEmpty && <p className="field-note">{t.notes.valueRangeEmpty}</p>}
         </fieldset>
       </div>
-
-      {isBusinessUnitEmpty && <p className="field-note">{t.notes.businessUnitEmpty}</p>}
-      {isValueRangeEmpty && <p className="field-note">{t.notes.valueRangeEmpty}</p>}
 
       {/* 진행 중인 요청 안내는 입력란 아래 카드 너비 전체(사용자 지시 2026-11-24). */}
       {route !== null && (
@@ -286,7 +289,8 @@ export const RouteFormPane = ({
           disabled={isLocked || (!isCreate && !isDirty)}
           onClick={onCancel}
         >
-          {messages.common.cancel}
+          {/* 수정은 마지막 저장값으로 되돌리는 「변경 취소」, 등록은 폼을 닫는 「취소」(사용자 지시 2026-11-25). */}
+          {isCreate ? messages.common.cancel : t.actions.discardChanges}
         </Button>
 
         {/*

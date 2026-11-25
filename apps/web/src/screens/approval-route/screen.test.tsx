@@ -2165,11 +2165,11 @@ describe('ApprovalRouteScreen — 배너 매임과 초안 수명', () => {
   });
 
   /** 되돌리면 친 값이 사라진다 — 되돌릴 수 없는 조작 앞에 한 걸음을 둔다. */
-  it('취소는 파기를 확인한 뒤에 되돌린다', async () => {
+  it('변경 취소는 파기를 확인한 뒤에 되돌린다', async () => {
     const { requests, user } = renderScreen(allRoutes(), SELECTED);
 
     await dirtyForm(user, '77');
-    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+    await user.click(screen.getByRole('button', { name: t.actions.discardChanges }));
 
     expect(await screen.findByText(messages.common.discardChangesConfirm)).toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('77');
@@ -2187,7 +2187,7 @@ describe('ApprovalRouteScreen — 배너 매임과 초안 수명', () => {
     const { user } = renderScreen(allRoutes(), SELECTED);
 
     await dirtyForm(user, '77');
-    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+    await user.click(screen.getByRole('button', { name: t.actions.discardChanges }));
     await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
 
     await waitFor(() => {
@@ -2991,7 +2991,7 @@ describe('ApprovalRouteScreen — 단계 초안 수명', () => {
     await stepPane();
     await user.click(screen.getByRole('button', { name: t.actions.removeStep(3) }));
     await dirtyForm(user);
-    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+    await user.click(screen.getByRole('button', { name: t.actions.discardChanges }));
     await user.click(screen.getByRole('button', { name: t.actions.discardDraft }));
 
     await waitFor(() => {

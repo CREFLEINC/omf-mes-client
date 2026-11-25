@@ -197,7 +197,7 @@ describe('RouteFormPane — 입력칸', () => {
     expect(screen.getByLabelText(t.fields.minValue)).toBeDisabled();
     expect(screen.getByLabelText(t.fields.maxValue)).toBeDisabled();
     expect(screen.getByRole('button', { name: t.actions.saveRoute })).toBeDisabled();
-    expect(screen.getByRole('button', { name: messages.common.cancel })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.discardChanges })).toBeDisabled();
     expect(screen.getByRole('button', { name: messages.common.deactivate })).toBeDisabled();
   });
 });

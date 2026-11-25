@@ -44,11 +44,11 @@ export const approvalRoute = {
      * 감추면 사용자는 역할·부서 결재가 **없는 기능**이라고 읽는다(`omf-mes#69`).
      */
     approverType: '결재자 유형',
-    /** 추가 줄 결재자 선택칸 이름(사용자 지시 2026-11-24). */
-    approverSelect: '결재자 선택',
+    /** 추가 줄 결재자 선택칸 이름(사용자 지시 2026-11-25 「결재자 *」). */
+    approverSelect: '결재자',
     approverPlaceholder: '결재자를 선택하세요',
-    /** 하한 · 상한 묶음 이름(사용자 지시 2026-11-24) — 수량인지 금액인지 계약이 정하지 않아 「값」으로 둔다. */
-    valueRange: '값 범위',
+    /** 하한 · 상한 묶음 이름 — 계약이 「값의 성격은 금액이 아니라 수량」(공유계약 J-2)이라 「수량 범위」(사용자 지시 2026-11-25). */
+    valueRange: '수량 범위',
     q: '승인 유형 검색',
   },
   actions: {
@@ -57,6 +57,8 @@ export const approvalRoute = {
     create: '새 결재선',
     /** 등록의 주 액션. 수정의 「저장」과 갈라 적는다 — 없던 것이 생기는 일이다. */
     submitCreate: '등록',
+    /** 수정에서 저장 전 고친 값을 마지막 저장값으로 되돌린다(사용자 지시 2026-11-25). 등록의 「취소」는 폼을 닫는다. */
+    discardChanges: '변경 취소',
     /** 사용 중지의 반대. `messages.common.deactivate`와 짝이다. */
     activate: '다시 사용',
     /**
@@ -156,7 +158,8 @@ export const approvalRoute = {
     active: '사용',
     inactive: '미사용',
     /** 결재 단계 제목 옆 단계 수(사용자 지시 2026-11-24). */
-    stepCountOf: (count: number): string => `${String(count)}단계`,
+    /** 결재 단계 카드 제목 옆 전체 단계 수(사용자 지시 2026-11-25 「총 N단계」). */
+    stepCountOf: (count: number): string => `총 ${String(count)}단계`,
     /** 단계가 0인 결재선. 색이 아니라 글자로 낸다. */
     noSteps: '단계 없음',
     /**
@@ -235,7 +238,7 @@ export const approvalRoute = {
      * **비웠을 때만 낸다.** 늘 세워 두면 안내가 배경이 되어 정작 비운 순간에 읽히지 않는다.
      */
     businessUnitEmpty: '사업부를 비우면 전 사업부에 적용됩니다.',
-    valueRangeEmpty: '값 구간을 비우면 전 구간에 적용됩니다.',
+    valueRangeEmpty: '하한과 상한을 모두 비우면 전체 범위에 적용됩니다.',
     /**
      * 활성 중복 선검사를 하지 못했다(불러오는 중·실패·잘림).
      *

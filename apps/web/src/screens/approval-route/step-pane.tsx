@@ -140,6 +140,8 @@ export const StepPane = ({
     {
       key: 'approver',
       header: t.fields.approver,
+      /* 결재자는 왼쪽 정렬(사용자 지시 2026-11-25). */
+      align: 'start',
       render: (step) => (
         <>
           <span>{describeApprover(step)}</span>
@@ -251,7 +253,7 @@ export const StepPane = ({
   };
 
   return (
-    <section className="pane" aria-label={t.panes.steps}>
+    <section className="pane approval-route-steps" aria-label={t.panes.steps}>
       {/* 표 아래 네 줄이던 규칙은 제목 옆 ⓘ 하나로 모은다(관리웹 정리 시안 A). */}
       <h2 className="pane-title info-label">
         {t.panes.steps}

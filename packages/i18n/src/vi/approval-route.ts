@@ -36,9 +36,9 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     approverStatus: 'Trạng thái',
     stepRowActions: 'Quản lý',
     approverType: 'Loại người phê duyệt',
-    approverSelect: 'Chọn người phê duyệt',
+    approverSelect: 'Người phê duyệt',
     approverPlaceholder: 'Hãy chọn người phê duyệt',
-    valueRange: 'Khoảng giá trị',
+    valueRange: 'Khoảng số lượng',
     q: 'Tìm loại phê duyệt',
   },
   actions: {
@@ -46,6 +46,7 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     create: 'Luồng phê duyệt mới',
     /** 등록의 주 액션. 수정의 「저장」과 갈라 적는다 — 없던 것이 생기는 일이다. */
     submitCreate: 'Đăng ký',
+    discardChanges: 'Hủy thay đổi',
     activate: 'Dùng lại',
     openExisting: 'Xem luồng phê duyệt đã có',
     keepEditing: 'Tiếp tục sửa',
@@ -105,7 +106,7 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     allBusinessUnits: 'Chung mọi đơn vị kinh doanh',
     active: 'Đang dùng',
     inactive: 'Không dùng',
-    stepCountOf: (count: number): string => `${String(count)} bước`,
+    stepCountOf: (count: number): string => `Tổng ${String(count)} bước`,
     noSteps: 'Không có bước',
     /** ⛔ 승인자 번호를 대신 내지 않는다 — 한 번 화면에 서면 그것이 식별자로 읽힌다. */
     approverUnknown: 'Không xác nhận được thông tin người phê duyệt',
@@ -133,7 +134,7 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     approverListFailed: 'Không tải được lựa chọn người phê duyệt.',
     approvalTypeFixed: 'Không đổi được loại phê duyệt — đổi thì đó là luồng phê duyệt khác.',
     businessUnitEmpty: 'Để trống đơn vị kinh doanh thì áp dụng cho mọi đơn vị kinh doanh.',
-    valueRangeEmpty: 'Để trống khoảng giá trị thì áp dụng cho mọi khoảng.',
+    valueRangeEmpty: 'Để trống cả cận dưới và cận trên thì áp dụng cho toàn bộ khoảng.',
     /** ⭐ **막지 않는다** — 화면의 선검사는 마지막 방어가 아니고 서버가 다시 검사한다. */
     duplicateUnknown:
       'Chưa xác nhận được có luồng phê duyệt nào đang dùng cùng loại phê duyệt · đơn vị kinh doanh hay không. Vẫn lưu được và máy chủ sẽ kiểm tra lại.',

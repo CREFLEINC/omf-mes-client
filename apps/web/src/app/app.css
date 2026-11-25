@@ -39892,8 +39892,13 @@ body:has(
 .approval-route-head {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  /* 카드 제목과 「승인 유형 · 사용」 줄 사이를 좁힌다(사용자 지시 2026-11-25). */
+  gap: 0;
+  margin-bottom: var(--space-3);
+}
+
+.approval-route-head > .pane-title {
+  margin-bottom: var(--space-1);
 }
 
 .approval-route-head-line {
@@ -39913,14 +39918,24 @@ body:has(
 }
 
 .approval-route-range > legend {
+  /* 옆 사업부 칸 이름과 같은 간격 — 두 입력칸 윗선이 맞는다(사용자 지시 2026-11-25). */
   margin-bottom: var(--space-1);
   padding: 0;
 }
 
+/* 좁아지면 하한 · 상한 묶음이 통째로 다음 줄로 — 한 칸만 접히지 않게 최소 폭을 준다. */
+.form-grid > .approval-route-range {
+  min-width: 18rem;
+}
+
+.approval-route-range > .field-note {
+  margin: var(--space-1) 0 0;
+}
+
 .approval-route-range-row {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: var(--space-2);
 }
 
@@ -39930,7 +39945,6 @@ body:has(
 }
 
 .approval-route-range-sep {
-  padding-bottom: var(--space-3);
   color: var(--on-surface-variant);
 }
 
@@ -39939,6 +39953,21 @@ body:has(
   width: 100%;
   max-width: 100%;
   margin-top: var(--space-3);
+}
+
+/* 안내 바와 아래 단추 사이를 좁힌다(사용자 지시 2026-11-25). */
+.pane > .approval-route-progress-note + .form-actions {
+  margin-top: var(--space-3);
+}
+
+/* 결재 단계 카드 — 제목과 표 사이의 빈 안내 자리를 걷는다(사용자 지시 2026-11-25). */
+.approval-route-steps > .banner-slot:empty {
+  display: none;
+}
+
+.approval-route-steps > .field-note {
+  display: block;
+  margin-top: var(--space-1);
 }
 
 /* 결재 단계 카드 — 제목 옆 단계 수, 관리 열 단추, 추가 줄. */
@@ -39951,7 +39980,8 @@ body:has(
 .approval-route-step-actions {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
+  justify-content: center;
+  gap: var(--space-2);
 }
 
 .filter-bar.approval-route-step-add {
