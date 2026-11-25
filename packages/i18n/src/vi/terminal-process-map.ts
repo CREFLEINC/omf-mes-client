@@ -168,9 +168,4 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     canCancelInput: 'Hủy đưa vào',
     canReturnMaterial: 'Trả lại vật tư',
   },
-
-  discard: {
-    title: 'Thay đổi chưa được lưu',
-    body: 'Nếu rời đi mà không lưu, các thay đổi sẽ bị mất.',
-  },
 };

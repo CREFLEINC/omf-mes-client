@@ -223,7 +223,8 @@ const renderScreen = (
       <BackProbe />
       <SearchProbe to={navigateTo} />
     </>,
-    { fetch, route: `${ROUTE}${search}` },
+    /* 화면이 나가기 확인(`LeaveGuard` · `useBlocker`)을 써서 늘 데이터 라우터로 렌더한다(#358). */
+    { fetch, route: `${ROUTE}${search}`, dataRouter: true },
   );
 
   return { requests, release, user: userEvent.setup() };

@@ -46,7 +46,6 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     reload: 'Tải lại',
     openConnection: 'Thiết lập kết nối Zalo',
     cancel: 'Hủy',
-    discard: 'Bỏ thay đổi và chuyển',
     search: 'Tìm',
     addPick: 'Thêm',
     addSelected: (count: number): string => `Thêm ${String(count)} người`,
@@ -70,8 +69,6 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     conflict: 'Người khác đã lưu trước. Hãy tải lại rồi lưu',
     zaloNotActive:
       'Zalo chưa được kết nối nên sẽ không gửi Zalo. Trung tâm thông báo vẫn nhận ngay.',
-    unsavedTitle: 'Có thay đổi chưa lưu',
-    unsavedBody: 'Nếu chuyển đi, nội dung đã sửa sẽ mất. Bỏ thay đổi và chuyển?',
     candidatesEmpty: 'Không có kết quả tìm kiếm',
   },
   picker: {

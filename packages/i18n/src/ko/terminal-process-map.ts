@@ -172,10 +172,4 @@ export const terminalProcessMap = {
     canCancelInput: '투입 취소',
     canReturnMaterial: '자재 반납',
   },
-
-  /** 저장하지 않은 기능 구성을 두고 다른 단말로 옮길 때(사용자 역할 권한 관리와 같은 창 · #333). */
-  discard: {
-    title: '저장하지 않은 변경 사항이 있습니다',
-    body: '지금 나가면 수정한 공정별 기능 설정이 사라집니다.',
-  },
 } as const;

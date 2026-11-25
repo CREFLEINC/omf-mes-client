@@ -43,8 +43,6 @@ export const handoverAlertSettings = {
     save: '저장',
     reload: '다시 불러오기',
     openConnection: 'Zalo 연결 설정',
-    cancel: '취소',
-    discard: '버리고 이동',
   },
   state: {
     noPlants: '선택할 수 있는 공장이 없습니다.',
@@ -65,8 +63,6 @@ export const handoverAlertSettings = {
     unsaved: '저장되지 않은 변경 사항',
     saved: '저장했습니다.',
     conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 저장하세요.',
-    unsavedTitle: '저장하지 않은 변경이 있습니다',
-    unsavedBody: '이동하면 고친 내용이 사라집니다. 버리고 이동할까요?',
   },
   errors: {
     inactiveRecipients: (count: number): string =>

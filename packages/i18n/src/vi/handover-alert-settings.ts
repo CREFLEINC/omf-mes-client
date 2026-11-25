@@ -45,8 +45,6 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
     save: 'Lưu',
     reload: 'Tải lại',
     openConnection: 'Thiết lập kết nối Zalo',
-    cancel: 'Hủy',
-    discard: 'Bỏ thay đổi và chuyển',
   },
   state: {
     noPlants: 'Không có nhà máy để chọn.',
@@ -64,8 +62,6 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
     unsaved: 'Có thay đổi chưa lưu',
     saved: 'Đã lưu',
     conflict: 'Người khác đã lưu trước. Hãy tải lại rồi sửa.',
-    unsavedTitle: 'Có thay đổi chưa lưu',
-    unsavedBody: 'Nếu chuyển đi, nội dung đã sửa sẽ mất. Bỏ thay đổi và chuyển?',
   },
   errors: {
     inactiveRecipients: (count: number): string =>

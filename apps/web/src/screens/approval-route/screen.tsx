@@ -7,6 +7,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { LeaveGuard } from '../routing/leave-guard';
 import { ActivationDialog, type ActivationIntent } from './activation-dialog';
 import { approverNote, useApproverLookup, type ApproverOption } from './approver-options';
 import { PLACEHOLDER_APPROVAL_TYPE_CODES, toApprovalTypeOptions } from './code-options';
@@ -63,6 +64,7 @@ import {
 } from './route-validation';
 import {
   createStepDraft,
+  isSameStepDrafts,
   moveStepDraft,
   removeStepDraft,
   stepRemoveBlockedReason,
@@ -82,6 +84,7 @@ import {
 import './layout.css';
 
 const t = messages.approvalRoute;
+const leave = messages.common.unsavedLeave;
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 읽는 판정이 매번 달라 보인다. */
 const EMPTY_ROUTES: ApprovalRoute[] = [];
@@ -349,6 +352,9 @@ export const ApprovalRouteScreen = () => {
   /** 뒤의 고른 결재선 폼이 고쳐졌는가 — 등록 팝업이 떠 있어도 그 값을 본다. */
   const isEditDirty =
     editDraft !== null && !isSameRouteValues(editDraft.values, editDraft.baseline);
+  /** 등록 팝업에 친 값이 있는가 — 다른 화면으로 옮기기 전에 묻는 데만 쓴다(#358). */
+  const isCreateDirty =
+    createDraft !== null && !isSameRouteValues(createDraft.values, createDraft.baseline);
 
   /*
    * 단계 초안도 같은 규율로 세운다 — 다만 **매인 대상이 다르다.** 단계는 등록 중에 존재하지
@@ -379,6 +385,12 @@ export const ApprovalRouteScreen = () => {
    * 요구하지 않은 조작이라 지어내지 않는다. 그 판단을 여기 적어 두는 이유는, 읽는 곳 없는
    * `isStepDirty`를 남겨 두면 다음 사람이 「쓰려다 만 자리」로 읽고 되살리기 때문이다.
    */
+
+  /**
+   * 단계 초안이 고쳐졌는가 — **다른 화면으로 옮기기 전에 묻는 데만** 쓴다(#358). 위 결정(화면 안 되돌리기는
+   * 폼의 취소뿐)은 그대로다 — 저장하지 않은 단계 순서를 두고 화면을 떠나면 확인 없이 사라지므로 그 길만 막는다.
+   */
+  const isStepDirty = stepDraft !== null && !isSameStepDrafts(stepDraft.values, stepDraft.baseline);
 
   const approvalTypeOptions = toApprovalTypeOptions(PLACEHOLDER_APPROVAL_TYPE_CODES);
 
@@ -1317,6 +1329,17 @@ export const ApprovalRouteScreen = () => {
           onConfirm={handleConfirmActivation}
         />
       )}
+
+      {/* 저장하지 않은 수정 · 단계 · 등록 팝업 값을 두고 다른 화면으로(사이드바 · 뒤로가기) 갈 때 묻는다(#358). */}
+      <LeaveGuard
+        when={isEditDirty || isStepDirty || isCreateDirty}
+        discardTitle={leave.title}
+        discardBody={leave.body}
+        stayLabel={leave.keep}
+        leaveLabel={leave.confirm}
+        showCloseButton={false}
+        size="sm"
+      />
 
       {dialog === 'discard' && (
         <DiscardConfirmDialog

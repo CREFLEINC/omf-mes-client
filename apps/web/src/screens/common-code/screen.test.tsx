@@ -190,6 +190,16 @@ const renderScreen = (routes: StubRoute[], search = '') => {
   };
 };
 
+/** 고친 채 화면 안에서 옮기면 서는 확인 창에서 「저장하지 않고 나가기」를 누른다(#358). */
+const confirmDiscardSwitch = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  const leave = messages.common.unsavedLeave;
+  await user.click(
+    within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+      name: leave.confirm,
+    }),
+  );
+};
+
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
   requests.filter((request) => request.url.pathname === pathname);
 
@@ -2217,6 +2227,108 @@ describe('CommonCodeScreen — 저장하지 않은 편집을 두고 다른 화�
     await rendered.user.type(screen.getByLabelText('코드명'), 'X');
 
     await expectLeaveFlow(rendered);
+  });
+
+  it('코드그룹 정보를 고친 채 다른 줄을 누르면 묻고, 계속 편집은 고친 값과 선택을 남기고 나가기는 옮긴다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeGroupDetailRoute(1002)],
+      '?grp=1001',
+    );
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
+    await user.type(screen.getByLabelText('그룹명'), '-편집중');
+    const edited = (screen.getByLabelText('그룹명') as HTMLInputElement).value;
+
+    await user.click(screen.getByRole('button', { name: 'SYN-GRP-02' }));
+    const dialog = within(await screen.findByRole('dialog', { name: leave.title }));
+    expect(dialog.getByText(leave.body)).toBeInTheDocument();
+    expect(dialog.queryByRole('button', { name: /닫기/ })).toBeNull();
+    await user.click(dialog.getByRole('button', { name: leave.keep }));
+    expect(screen.queryByRole('dialog', { name: leave.title })).toBeNull();
+    expect(history.search()).toBe('?grp=1001');
+    expect(screen.getByLabelText('그룹명')).toHaveValue(edited);
+
+    await user.click(screen.getByRole('button', { name: 'SYN-GRP-02' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.confirm,
+      }),
+    );
+    await waitFor(() => expect(history.search()).toBe('?grp=1002'));
+    await waitFor(() =>
+      expect(screen.getByLabelText('그룹명')).toHaveValue(codeGroupFixtures[1]?.groupName),
+    );
+  });
+
+  it('코드값 정보를 고친 채 다른 코드값을 누르면 묻고, 계속 편집은 남고 나가기는 옮긴다', async () => {
+    const { history, user } = renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(),
+        codeValueListRoute(),
+        codeValueDetailRoute(2001),
+        codeValueDetailRoute(2002),
+      ],
+      '?grp=1001&val=2001',
+    );
+    await screen.findByLabelText('코드명');
+    await user.type(screen.getByLabelText('코드명'), 'X');
+
+    await user.click(screen.getByRole('button', { name: 'SYN-CV-02' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.keep,
+      }),
+    );
+    expect(history.search()).toBe('?grp=1001&val=2001');
+    expect(screen.getByLabelText('코드명')).toHaveValue('합성 코드값 AX');
+
+    await user.click(screen.getByRole('button', { name: 'SYN-CV-02' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.confirm,
+      }),
+    );
+    await waitFor(() => expect(history.search()).toBe('?grp=1001&val=2002'));
+  });
+
+  it('고친 채 탭을 바꾸려 하면 묻고, 계속 편집은 탭을 그대로 두고 나가기는 바꾼다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), ...orgRoutes()],
+      '?grp=1001',
+    );
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
+    await user.type(screen.getByLabelText('그룹명'), '-편집중');
+
+    await user.click(screen.getByRole('tab', { name: '조직(부서)' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.keep,
+      }),
+    );
+    expect(history.search()).toBe('?grp=1001');
+    expect(screen.getByRole('tab', { name: '공통코드' })).toHaveAttribute('aria-selected', 'true');
+    expect((screen.getByLabelText('그룹명') as HTMLInputElement).value).toMatch(/-편집중$/);
+
+    await user.click(screen.getByRole('tab', { name: '조직(부서)' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.confirm,
+      }),
+    );
+    await waitFor(() => expect(history.search()).toBe('?tab=org'));
+    expect(await screen.findByRole('button', { name: 'SYN-DEPT-01' })).toBeInTheDocument();
+  });
+
+  it('고친 것이 없으면 다른 줄을 눌러도 묻지 않는다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeGroupDetailRoute(1002)],
+      '?grp=1001',
+    );
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
+
+    await user.click(screen.getByRole('button', { name: 'SYN-GRP-02' }));
+    await waitFor(() => expect(history.search()).toBe('?grp=1002'));
+    expect(screen.queryByRole('dialog', { name: leave.title })).toBeNull();
   });
 
   it('고친 것이 없으면 묻지 않고 옮긴다', async () => {
@@ -5105,6 +5217,7 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
     await screen.findByText('SYN-CERT-77');
 
     await user.click(screen.getByRole('button', { name: 'SYN-W-0002' }));
+    await confirmDiscardSwitch(user);
 
     expect(await screen.findByText('등록된 자격·인증이 없습니다')).toBeInTheDocument();
     expect(screen.queryByText('SYN-CERT-77')).not.toBeInTheDocument();
@@ -6898,6 +7011,7 @@ describe('CommonCodeScreen — 저장 실패와 초안 수명 (C32·C34)', () =>
     await within(partnerRolePane()).findByText('저장이 막혔습니다.');
 
     await user.click(screen.getByRole('button', { name: 'SAMPLE-PTNR-B' }));
+    await confirmDiscardSwitch(user);
     await screen.findByText('지정된 역할이 없습니다');
 
     expect(within(partnerRolePane()).queryByText('저장이 막혔습니다.')).not.toBeInTheDocument();
@@ -6915,6 +7029,7 @@ describe('CommonCodeScreen — 저장 실패와 초안 수명 (C32·C34)', () =>
 
     await user.click(roleCheckbox('공급사'));
     await user.click(screen.getByRole('tab', { name: '공통코드' }));
+    await confirmDiscardSwitch(user);
     await screen.findByRole('button', { name: 'SYN-GRP-01' });
 
     await user.click(screen.getByRole('tab', { name: '거래처 역할' }));

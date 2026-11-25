@@ -278,18 +278,17 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     await user.click(await pane.findByRole('switch', { name: t.fields.enabled }));
     await user.click(screen.getByRole('button', { name: t.workspace.clear }));
 
-    const dialog = within(await screen.findByRole('dialog', { name: t.state.unsavedTitle }));
-    await user.click(dialog.getByRole('button', { name: t.actions.cancel }));
+    const dialog = within(await screen.findByRole('dialog', { name: leave.title }));
+    await user.click(dialog.getByRole('button', { name: leave.keep }));
     expect(screen.getByRole('combobox', { name: t.fields.department })).toHaveTextContent(
       'D-PRD1 · 생산1팀',
     );
 
     await user.click(screen.getByRole('button', { name: t.workspace.clear }));
     await user.click(
-      within(await screen.findByRole('dialog', { name: t.state.unsavedTitle })).getByRole(
-        'button',
-        { name: t.actions.discard },
-      ),
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.confirm,
+      }),
     );
     await waitFor(() =>
       expect(screen.getByRole('combobox', { name: t.fields.department })).toHaveTextContent(
@@ -583,16 +582,17 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     await user.click(await pane.findByRole('switch', { name: t.fields.enabled }));
     await user.click(screen.getByRole('button', { name: '생산 실행' }));
 
-    const dialog = within(await screen.findByRole('dialog', { name: t.state.unsavedTitle }));
-    await user.click(dialog.getByRole('button', { name: t.actions.cancel }));
+    const dialog = within(await screen.findByRole('dialog', { name: leave.title }));
+    expect(dialog.getByText(leave.body)).toBeInTheDocument();
+    expect(dialog.queryByRole('button', { name: /닫기/ })).toBeNull();
+    await user.click(dialog.getByRole('button', { name: leave.keep }));
     expect(screen.getByRole('region', { name: t.panes.setting('생산 마감') })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '생산 실행' }));
     await user.click(
-      within(await screen.findByRole('dialog', { name: t.state.unsavedTitle })).getByRole(
-        'button',
-        { name: t.actions.discard },
-      ),
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.confirm,
+      }),
     );
     expect(
       await screen.findByRole('region', { name: t.panes.setting('생산 실행') }),

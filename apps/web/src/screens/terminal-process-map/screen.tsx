@@ -1045,12 +1045,15 @@ export const TerminalProcessMapScreen = () => {
         size="sm"
       />
 
-      {/* 저장하지 않은 기능 구성 — 다른 화면과 같은 나가기 확인 창(시안 문구 · 사용자 지시 2026-11-20 · #333). */}
+      {/* 저장하지 않은 기능 구성 — 다른 화면과 같은 나가기 확인 창 · 문구(#333 · #358). */}
       {pendingLeave !== null && (
         <DiscardDialog
-          title={t.discard.title}
-          body={t.discard.body}
+          title={leave.title}
+          body={leave.body}
+          stayLabel={leave.keep}
+          leaveLabel={leave.confirm}
           showCloseButton={false}
+          size="sm"
           onStay={() => {
             setPendingLeave(null);
           }}

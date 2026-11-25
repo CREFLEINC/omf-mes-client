@@ -360,10 +360,10 @@ describe('TerminalProcessMapScreen 기능 구성 저장', () => {
     await user.click(flag('합성 사출', 'canCompleteWork'));
     await user.click(screen.getByRole('button', { name: 'SYN-TERM-02' }));
 
-    const dialog = await screen.findByRole('dialog', { name: t.discard.title });
-    await user.click(within(dialog).getByRole('button', { name: messages.routing.discard.stay }));
+    const dialog = await screen.findByRole('dialog', { name: leave.title });
+    await user.click(within(dialog).getByRole('button', { name: leave.keep }));
 
-    expect(screen.queryByRole('dialog', { name: t.discard.title })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: leave.title })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'SYN-TERM-01' })).toHaveAttribute(
       'aria-current',
       'true',
@@ -406,10 +406,8 @@ describe('TerminalProcessMapScreen 기능 구성 저장', () => {
     await screen.findByRole('button', { name: t.grid.save });
     await user.click(flag('합성 사출', 'canCompleteWork'));
     await user.click(screen.getByRole('button', { name: 'SYN-TERM-02' }));
-    const dialog = await screen.findByRole('dialog', { name: t.discard.title });
-    await user.click(
-      within(dialog).getByRole('button', { name: messages.routing.discard.confirm }),
-    );
+    const dialog = await screen.findByRole('dialog', { name: leave.title });
+    await user.click(within(dialog).getByRole('button', { name: leave.confirm }));
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'SYN-TERM-02' })).toHaveAttribute(

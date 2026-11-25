@@ -2,7 +2,6 @@ import {
   AlertBanner,
   Button,
   Chip,
-  Dialog,
   EmptyState,
   Icon,
   IconButton,
@@ -29,7 +28,7 @@ import { PageNav } from '../../patterns/page-nav';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
-import { LeaveGuard } from '../routing/leave-guard';
+import { DiscardDialog, LeaveGuard } from '../routing/leave-guard';
 import {
   addRecipients,
   hasInactiveRecipient,
@@ -608,29 +607,22 @@ export const AlarmRecipientSettingsScreen = () => {
         size="sm"
       />
 
-      <Dialog
-        open={pendingMove !== null}
-        onClose={() => setPendingMove(null)}
-        title={t.state.unsavedTitle}
-        size="sm"
-        footer={
-          <>
-            <Button variant="outlined" onClick={() => setPendingMove(null)}>
-              {t.actions.cancel}
-            </Button>
-            <Button
-              onClick={() => {
-                if (pendingMove !== null) go(pendingMove);
-                setPendingMove(null);
-              }}
-            >
-              {t.actions.discard}
-            </Button>
-          </>
-        }
-      >
-        {t.state.unsavedBody}
-      </Dialog>
+      {/* 화면 안 이동(다른 이벤트 · 부서 등)의 확인도 다른 화면으로 갈 때와 같은 창 · 문구(#358). */}
+      {pendingMove !== null && (
+        <DiscardDialog
+          title={leave.title}
+          body={leave.body}
+          stayLabel={leave.keep}
+          leaveLabel={leave.confirm}
+          showCloseButton={false}
+          size="sm"
+          onStay={() => setPendingMove(null)}
+          onLeave={() => {
+            go(pendingMove);
+            setPendingMove(null);
+          }}
+        />
+      )}
     </>
   );
 };

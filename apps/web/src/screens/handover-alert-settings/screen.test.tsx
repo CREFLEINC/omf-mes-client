@@ -561,8 +561,8 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     await user.click(pane.getByRole('switch', { name: t.fields.enabled }));
     await user.click(screen.getByRole('button', { name: '긴급 W/O' }));
 
-    expect(await screen.findByText(t.state.unsavedBody)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: t.actions.discard }));
+    expect(await screen.findByText(leave.body)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: leave.confirm }));
     expect(
       await screen.findByRole('region', { name: t.panes.setting('긴급 W/O') }),
     ).toBeInTheDocument();
@@ -576,8 +576,8 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     await user.click(pane.getByRole('switch', { name: t.fields.enabled }));
     await user.click(screen.getByRole('button', { name: '적치' }));
 
-    expect(await screen.findByText(t.state.unsavedBody)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: t.actions.discard }));
+    expect(await screen.findByText(leave.body)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: leave.confirm }));
     await waitFor(() =>
       expect(
         screen.queryByRole('region', { name: t.panes.setting('적치') }),

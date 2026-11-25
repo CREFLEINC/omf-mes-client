@@ -70,7 +70,7 @@ import {
   toSearchParams,
 } from './filters';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
-import { LeaveGuard } from '../routing/leave-guard';
+import { DiscardDialog, LeaveGuard } from '../routing/leave-guard';
 import {
   useActiveUserOptions,
   useBusinessUnitOptions,
@@ -1653,16 +1653,57 @@ export const CommonCodeScreen = () => {
     writePartnerRoles(partnerRoleState.selected);
   };
 
+  /* 어느 탭이든 저장하지 않은 편집이 있으면 다른 화면으로(사이드바 · 뒤로가기) 가기 전에 묻는다(#358). */
+  const hasUnsavedChanges =
+    isCodeGroupDirty ||
+    isCodeValueDirty ||
+    isDepartmentDirty ||
+    productionWarehouses.isDirty ||
+    isQualificationDirty ||
+    isPartnerRoleDirty;
+
+  /**
+   * 화면 안에서 고친 것이 사라지는 이동(다른 줄 · 다른 코드그룹 · 탭)을 미뤄 둔 것 — 다른 화면으로 갈 때와 같은
+   * 창으로 묻고, 「저장하지 않고 나가기」를 누르면 그때 옮긴다(#358). 「계속 편집」은 고친 값과 선택을 그대로 둔다.
+   */
+  const [pendingSwitch, setPendingSwitch] = useState<(() => void) | null>(null);
+
+  /*
+   * 화면 안 이동에서 묻는 편집 — **저장이 나가는 중인 편집은 묻지 않는다.** 고친 값은 이미 서버로 가고 있어
+   * 「사라진다」가 사실이 아니고, 나가는 중에 다른 줄로 옮기는 종전 흐름(되먹임 · 잠금)을 그대로 둔다.
+   */
+  const isCodeGroupSwitchDirty = (isCodeGroupDirty && !isCodeGroupLocked) || isCodeValueDirty;
+  const isDepartmentSwitchDirty =
+    (isDepartmentDirty || productionWarehouses.isDirty) && !isDepartmentLocked;
+  const isQualificationSwitchDirty = isQualificationDirty && !isQualificationLocked;
+  const isPartnerRoleSwitchDirty = isPartnerRoleDirty && !isPartnerRoleLocked;
+
+  /** 고친 것이 있으면 묻고, 없으면 곧바로 옮긴다. 저장 · 되돌리기 동작은 건드리지 않는다. */
+  const confirmSwitch = (isDirty: boolean, action: () => void) => {
+    if (!isDirty) {
+      action();
+      return;
+    }
+    setPendingSwitch(() => action);
+  };
+
   /*
    * 탭이 바뀌면 그 탭의 처음 상태로 간다. 한쪽 탭의 조건·선택이 남으면
    * 그 탭에 없는 자원을 조회하게 된다.
    */
   const changeTab = (value: string) => {
-    resetCodeGroupEditing();
-    resetDepartmentEditing();
-    resetQualificationEditing();
-    resetPartnerRoleEditing();
-    setSearchParams(tabSearchParams(value));
+    const isDirty =
+      isCodeGroupSwitchDirty ||
+      isDepartmentSwitchDirty ||
+      isQualificationSwitchDirty ||
+      isPartnerRoleSwitchDirty;
+    confirmSwitch(isDirty, () => {
+      resetCodeGroupEditing();
+      resetDepartmentEditing();
+      resetQualificationEditing();
+      resetPartnerRoleEditing();
+      setSearchParams(tabSearchParams(value));
+    });
   };
 
   /** 값을 고치는 중에 옛 오류가 남아 있으면 무엇을 고쳐야 하는지 알 수 없다. */
@@ -1861,7 +1902,10 @@ export const CommonCodeScreen = () => {
       onChangePage={changeCodeGroupPage}
       onChangePageSize={changeCodeGroupPageSize}
       selectedCodeGroupId={selectedCodeGroupId}
-      onSelect={handleSelectCodeGroup}
+      onSelect={(codeGroupId) => {
+        /* 코드그룹을 바꾸면 그 그룹의 코드값 편집도 함께 사라진다(#358). */
+        confirmSwitch(isCodeGroupSwitchDirty, () => handleSelectCodeGroup(codeGroupId));
+      }}
       isCreating={isCreatingCodeGroup}
       onAddCodeGroup={handleAddCodeGroup}
       loadError={
@@ -1914,6 +1958,7 @@ export const CommonCodeScreen = () => {
                       page={codeValuePage}
                       onPageChange={changeCodeValuePage}
                       onDirtyChange={setIsCodeValueDirty}
+                      confirmSwitch={(action) => confirmSwitch(isCodeValueDirty, action)}
                     />
                   )}
                 </div>
@@ -2134,7 +2179,9 @@ export const CommonCodeScreen = () => {
       onChangePage={changeDepartmentPage}
       onChangePageSize={changeDepartmentPageSize}
       selectedDepartmentId={selectedDepartmentId}
-      onSelect={handleSelectDepartmentRow}
+      onSelect={(departmentId) => {
+        confirmSwitch(isDepartmentSwitchDirty, () => handleSelectDepartmentRow(departmentId));
+      }}
       isCreating={isCreatingDepartment}
       onAddDepartment={handleAddDepartment}
       loadError={
@@ -2235,7 +2282,9 @@ export const CommonCodeScreen = () => {
       onChangePage={changeWorkerPage}
       onChangePageSize={changeWorkerPageSize}
       selectedWorkerId={selectedWorkerId}
-      onSelect={handleSelectWorker}
+      onSelect={(workerId) => {
+        confirmSwitch(isQualificationSwitchDirty, () => handleSelectWorker(workerId));
+      }}
       loadError={
         workerList.isError ? (
           <LoadErrorBanner error={workerList.error} onRetry={() => void workerList.refetch()} />
@@ -2443,7 +2492,9 @@ export const CommonCodeScreen = () => {
       onChangePage={changePartnerPage}
       onChangePageSize={changePartnerPageSize}
       selectedPartnerId={selectedPartnerId}
-      onSelect={handleSelectPartner}
+      onSelect={(partnerId) => {
+        confirmSwitch(isPartnerRoleSwitchDirty, () => handleSelectPartner(partnerId));
+      }}
       loadError={
         partnerList.isError ? (
           <LoadErrorBanner error={partnerList.error} onRetry={() => void partnerList.refetch()} />
@@ -2479,15 +2530,6 @@ export const CommonCodeScreen = () => {
     return partnerTabContent;
   };
 
-  /* 어느 탭이든 저장하지 않은 편집이 있으면 다른 화면으로(사이드바 · 뒤로가기) 가기 전에 묻는다(#358). */
-  const hasUnsavedChanges =
-    isCodeGroupDirty ||
-    isCodeValueDirty ||
-    isDepartmentDirty ||
-    productionWarehouses.isDirty ||
-    isQualificationDirty ||
-    isPartnerRoleDirty;
-
   return (
     <>
       <LeaveGuard
@@ -2499,6 +2541,21 @@ export const CommonCodeScreen = () => {
         showCloseButton={false}
         size="sm"
       />
+      {pendingSwitch !== null && (
+        <DiscardDialog
+          title={leave.title}
+          body={leave.body}
+          stayLabel={leave.keep}
+          leaveLabel={leave.confirm}
+          showCloseButton={false}
+          size="sm"
+          onStay={() => setPendingSwitch(null)}
+          onLeave={() => {
+            setPendingSwitch(null);
+            pendingSwitch();
+          }}
+        />
+      )}
       {/* 화면 제목 줄은 두지 않는다 — 탭마다 조회 조건 · 목록 · 상세 통일 배치(검사 조회·판정과 같다 · #350). */}
       {/*
        * 탭 줄 — 다른 탭 묶음 화면(검사 조회·판정 등)의 탭 막대와 같은 모양(`hub-bar` · `hub-tab`)이고, 오른쪽 끝 일 단추

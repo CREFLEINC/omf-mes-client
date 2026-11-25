@@ -38,7 +38,6 @@ export const alarmRecipientSettings = {
     reload: '다시 불러오기',
     openConnection: 'Zalo 연결 설정',
     cancel: '취소',
-    discard: '버리고 이동',
     search: '검색',
     /** 수신자 추가 창 — 고르기 전 「추가」, 고른 뒤 「N명 추가」. */
     addPick: '추가',
@@ -66,8 +65,6 @@ export const alarmRecipientSettings = {
     conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 저장하세요.',
     /** 연결 전 Zalo 건은 보내지 않고 대기한다(러너 CONNECTION_NOT_READY · 24시간 뒤 만료). 알림센터 행은 바로 생긴다. */
     zaloNotActive: 'Zalo가 연결되지 않아 Zalo는 보내지 않습니다. 알림센터로는 바로 받습니다.',
-    unsavedTitle: '저장하지 않은 변경이 있습니다',
-    unsavedBody: '이동하면 고친 내용이 사라집니다. 버리고 이동할까요?',
     candidatesEmpty: '검색 결과가 없습니다.',
   },
   picker: {

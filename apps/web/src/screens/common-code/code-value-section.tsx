@@ -72,6 +72,8 @@ export interface CodeValueSectionProps {
   onPageChange: (page: number) => void;
   /** 저장하지 않은 코드값 편집이 있는지 — 소비 화면이 다른 화면으로 옮기기 전에 묻는 데 쓴다(#358). */
   onDirtyChange?: (isDirty: boolean) => void;
+  /** 다른 코드값을 고르기 전에 소비 화면이 고친 것을 버릴지 묻는다 — 주지 않으면 곧바로 옮긴다(#358). */
+  confirmSwitch?: (action: () => void) => void;
 }
 
 /**
@@ -101,6 +103,7 @@ export const CodeValueSection = ({
   page,
   onPageChange,
   onDirtyChange,
+  confirmSwitch = (action) => action(),
 }: CodeValueSectionProps) => {
   const toast = useToast();
   const { client } = useApiClient();
@@ -257,8 +260,10 @@ export const CodeValueSection = ({
    * 뒤로가기가 사용자가 본 적 없는 중간 상태로 떨어지지 않는다.
    */
   const handleSelect = (codeValueId: number) => {
-    resetEditing();
-    onSelectCodeValue(codeValueId);
+    confirmSwitch(() => {
+      resetEditing();
+      onSelectCodeValue(codeValueId);
+    });
   };
 
   const handleIncludeInactiveChange = (next: boolean) => {

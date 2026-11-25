@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -373,20 +373,22 @@ const renderScreen = (
   requests: RecordedRequest[];
   release: () => void;
   user: ReturnType<typeof userEvent.setup>;
+  router: ReturnType<typeof renderWithProviders>['router'];
 } => {
   const { fetch, requests, release } = createRecordingFetch(routes, hold);
 
-  renderWithProviders(
+  /* 화면이 나가기 확인(`LeaveGuard` · `useBlocker`)을 써서 늘 데이터 라우터로 렌더한다(#358). */
+  const { router } = renderWithProviders(
     <>
       <ApprovalRouteScreen />
       <LocationProbe />
       <BackProbe />
       <SearchProbe to={navigateTo} />
     </>,
-    { fetch, route: `${ROUTE}${search}` },
+    { fetch, route: `${ROUTE}${search}`, dataRouter: true },
   );
 
-  return { requests, release, user: userEvent.setup() };
+  return { requests, release, user: userEvent.setup(), router };
 };
 
 const locationText = (): string => screen.getByTestId('location').textContent ?? '';
@@ -571,7 +573,11 @@ describe('ApprovalRouteScreen — 조회 조건', () => {
       return fetch(request);
     };
 
-    renderWithProviders(<ApprovalRouteScreen />, { fetch: holding, route: ROUTE });
+    renderWithProviders(<ApprovalRouteScreen />, {
+      fetch: holding,
+      route: ROUTE,
+      dataRouter: true,
+    });
 
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(t.fields.q), 'SAMPLE');
@@ -625,7 +631,11 @@ describe('ApprovalRouteScreen — 목록', () => {
       return stub(request);
     };
 
-    renderWithProviders(<ApprovalRouteScreen />, { fetch: holding, route: ROUTE });
+    renderWithProviders(<ApprovalRouteScreen />, {
+      fetch: holding,
+      route: ROUTE,
+      dataRouter: true,
+    });
 
     await waitForList();
 
@@ -3314,5 +3324,88 @@ describe('ApprovalRouteScreen — 단계 저장이 나가는 중', () => {
     await screen.findByText(messages.common.saved);
 
     expect(screen.queryByText('합성 승인자9 · 합성부서 다')).not.toBeInTheDocument();
+  });
+});
+
+describe('ApprovalRouteScreen — 저장하지 않은 편집을 두고 다른 화면으로 (#358)', () => {
+  const leave = messages.common.unsavedLeave;
+  const OTHER = '/system/users-roles';
+
+  const goTo = async (router: ReturnType<typeof renderScreen>['router']): Promise<void> => {
+    await act(async () => {
+      await router?.navigate(OTHER);
+    });
+  };
+
+  const expectLeaveFlow = async ({
+    router,
+    user,
+  }: Pick<ReturnType<typeof renderScreen>, 'router' | 'user'>): Promise<void> => {
+    await goTo(router);
+    const dialog = within(await screen.findByRole('dialog', { name: leave.title }));
+    expect(dialog.getByText(leave.body)).toBeInTheDocument();
+    expect(dialog.queryByRole('button', { name: /닫기/ })).toBeNull();
+    await user.click(dialog.getByRole('button', { name: leave.keep }));
+    expect(router?.state.location.pathname).toBe(ROUTE);
+    expect(screen.queryByRole('dialog', { name: leave.title })).toBeNull();
+
+    await goTo(router);
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.confirm,
+      }),
+    );
+    await waitFor(() => expect(router?.state.location.pathname).toBe(OTHER));
+  };
+
+  it('고른 결재선 정보를 고친 채 다른 화면으로 가면 묻고, 계속 편집은 남고 나가기는 옮긴다', async () => {
+    const rendered = renderScreen(allRoutes(), SELECTED);
+
+    await dirtyForm(rendered.user, '77');
+    await expectLeaveFlow(rendered);
+  });
+
+  it('계속 편집을 누르면 고친 값이 그대로 남는다', async () => {
+    const { router, user } = renderScreen(allRoutes(), SELECTED);
+
+    await dirtyForm(user, '77');
+    await goTo(router);
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.keep,
+      }),
+    );
+
+    expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('77');
+  });
+
+  it('단계만 고친 채 다른 화면으로 가도 묻는다', async () => {
+    const rendered = renderScreen(allRoutes(), SELECTED);
+
+    await stepPane();
+    await addStep(rendered.user);
+    await expectLeaveFlow(rendered);
+  });
+
+  it('등록 팝업에 값을 넣은 채 다른 화면으로 가도 묻는다', async () => {
+    const rendered = renderScreen(allRoutes());
+
+    await screen.findByText('재고 조정');
+    await rendered.user.click(screen.getByRole('button', { name: t.actions.create }));
+    const pane = await screen.findByRole('dialog', { name: t.panes.create });
+    await rendered.user.type(within(pane).getByLabelText(t.fields.minValue), '5');
+
+    await expectLeaveFlow(rendered);
+  });
+
+  it('고친 것이 없으면 묻지 않고 옮긴다', async () => {
+    const { router } = renderScreen(allRoutes(), SELECTED);
+
+    await waitForForm();
+    await stepPane();
+    await goTo(router);
+
+    await waitFor(() => expect(router?.state.location.pathname).toBe(OTHER));
+    expect(screen.queryByRole('dialog', { name: leave.title })).toBeNull();
   });
 });
