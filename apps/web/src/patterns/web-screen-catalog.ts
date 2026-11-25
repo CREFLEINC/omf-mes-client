@@ -77,6 +77,8 @@ export const WEB_SCREENS: readonly WebScreen[] = [
    * 코드는 설계가 붙인 값을 따른다(§3-2 공통 표 · v1.6 재정의로 「창고 적재 위치 배치도」).
    */
   { path: '/master-data/warehouse-layout', code: 'W-CO-08', name: '창고 적재 위치 배치도' },
+  /* omf-all-around#318 — 교대 관리(공장별 주간·야간). 설계 밖 화면이라 서버가 코드를 정했다. 사이드바는 창고·위치 다음이다. */
+  { path: '/master-data/shifts', code: 'W-06-26', name: '교대 관리' },
   { path: '/master-data/routing', code: 'W-06-01', name: 'Routing(공정) 등록·관리' },
   /*
    * ⚠ **`W-06-13`(검사정책 설정)이 아니다.** 그 화면은 속성 11개 중 7개가 이 화면의 테이블에 이미

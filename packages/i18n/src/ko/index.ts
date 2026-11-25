@@ -63,6 +63,7 @@ import { productionWarehouseReplenishment } from './production-warehouse-repleni
 import { materialLotIssue } from './material-lot-issue';
 import { inboundWorkRecord } from './inbound-work-record';
 import { supplierItemDefault } from './supplier-item-default';
+import { shiftManagement } from './shift-management';
 import { zaloConnection } from './zalo-connection';
 import { dispatchHistory } from './dispatch-history';
 import { iqcInspection } from './iqc-inspection';
@@ -226,6 +227,7 @@ export const ko = {
   materialLotIssue,
   inboundWorkRecord,
   supplierItemDefault,
+  shiftManagement,
   zaloConnection,
   dispatchHistory,
   iqcInspection,

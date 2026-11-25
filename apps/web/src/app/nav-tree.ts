@@ -681,6 +681,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
         ],
       },
+      /* W-06-26 교대 관리(omf-all-around#318) — 공장별 주간·야간 교대 시간. 생산계획·작업 시간 판정이 쓰는 기준이다. */
+      {
+        to: '/master-data/shifts',
+        icon: 'schedule',
+        label: '교대 관리',
+        labelVi: 'Quản lý ca làm việc',
+      },
       /*
        * W-06-11 마스터 변경관리는 **메뉴에서 감춘다**(사용자 지시 2026-11-20) — 주소·화면은 남긴다. 다시 세우면
        * 자리는 마스터 항목들 뒤다(특정 마스터에 속하지 않는 횡단 조회).
