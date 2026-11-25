@@ -32,7 +32,7 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
   },
   actions: {
     register: 'Đăng ký',
-    change: 'Thay đổi',
+    change: 'Sửa',
     cancelChange: 'Hủy',
     copy: 'Sao chép tên biến',
     copyFor: (eventName: string): string => `Sao chép tên biến ${eventName}`,
@@ -44,8 +44,7 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
   state: {
     saved: 'Đã lưu',
     copied: 'Đã sao chép tên biến mẫu',
-    reauth:
-      'Hãy nhận mã làm mới mới từ người phụ trách Zalo của khách hàng rồi đăng ký bằng [Thay đổi]',
+    reauth: 'Hãy nhận mã làm mới mới từ người phụ trách Zalo của khách hàng rồi đăng ký bằng [Sửa]',
     lastError: (code: string): string =>
       code === '-124' ? 'Mã truy cập Zalo không hợp lệ.' : 'Đã xảy ra lỗi khi kết nối Zalo.',
     conflict: 'Người khác đã lưu trước. Hãy tải lại rồi lưu',

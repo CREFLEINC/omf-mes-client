@@ -451,7 +451,12 @@ describe('ZaloConnectionScreen', () => {
       screen.getAllByText(t.state.lastError('-14014'), { exact: false }).length,
     ).toBeGreaterThan(0);
     expect(screen.getAllByText(t.state.reauth, { exact: false }).length).toBeGreaterThan(0);
-    expect(screen.getByText(t.actions.errorDetail)).toBeInTheDocument();
+    /* 「오류 상세」는 처음 접힘 — 누르면 코드 · 원문이 펼쳐진다. */
+    const toggle = screen.getByRole('button', { name: t.actions.errorDetail });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('-14014')).toBeNull();
+    await userEvent.setup().click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText('-14014')).toBeInTheDocument();
     expect(screen.getByText('갱신 토큰이 무효입니다')).toBeInTheDocument();
   });

@@ -116,6 +116,8 @@ export const ZaloConnectionScreen = () => {
   const [keyword, setKeyword] = useState('');
   /* 구분 거르기 라벨 — 누르면 바로 걸리고, 다시 누르면 풀린다(사용자 지시 2026-11-25). */
   const [kindFilter, setKindFilter] = useState<TemplateRow['kind'] | null>(null);
+  /* 오류 안내 줄 오른쪽 「오류 상세」 — 처음엔 접힘. */
+  const [errorDetailOpen, setErrorDetailOpen] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const { splitRef, aboveRef } = useFitToViewport();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -341,6 +343,7 @@ export const ZaloConnectionScreen = () => {
             variant="outlined"
             size="sm"
             aria-label={`${label} ${action}`}
+            leadingIcon={<Icon name={isSet ? 'edit' : 'add'} size={16} aria-hidden />}
             onClick={() => change({ [field]: '' })}
           >
             {action}
@@ -366,6 +369,7 @@ export const ZaloConnectionScreen = () => {
           variant="outlined"
           size="sm"
           aria-label={`${label} ${t.actions.cancelChange}`}
+          leadingIcon={<Icon name="close" size={16} aria-hidden />}
           onClick={() => change({ [field]: null })}
         >
           {t.actions.cancelChange}
@@ -498,16 +502,6 @@ export const ZaloConnectionScreen = () => {
             </div>
           )}
         </div>
-        {tokenTimes.length > 0 && (
-          <dl className="zalo-token-times">
-            {tokenTimes.map((item) => (
-              <div key={item.label}>
-                <dt>{item.label}</dt>
-                <dd>{item.value}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
         {/*
          * 연결 오류는 안내 줄 하나로 — 한글 요약, 코드 · 원문은 「오류 상세」를 펼쳐 본다(사용자 지시 2026-11-24).
          * 갱신 토큰 교체 안내는 재등록 필요(REAUTH_REQUIRED — 서버가 갱신 토큰으로 새 토큰을 받지 못했을 때만 둔다)일 때만.
@@ -517,21 +511,30 @@ export const ZaloConnectionScreen = () => {
         )}
         {data.lastErrorCode !== null && (
           <AlertBanner variant="error">
-            {t.state.lastError(data.lastErrorCode)}
-            {data.status === 'REAUTH_REQUIRED' && <> {t.state.reauth}</>}
-            {/* 「오류 상세」 — 글 링크가 아니라 작은 테두리 단추 모양의 펼침(접힘이 처음). */}
-            <details className="zalo-error-detail">
-              <summary>
-                <Icon name="expand_more" size={16} aria-hidden />
+            {/* 한 줄 — 왼쪽 요약, 오른쪽 「오류 상세」(테두리 단추 모양 유지 · 시안 2026-11-25). 펼치면 코드 · 원문이 아래에. */}
+            <div className="zalo-error-line">
+              <span>
+                {t.state.lastError(data.lastErrorCode)}
+                {data.status === 'REAUTH_REQUIRED' && <> {t.state.reauth}</>}
+              </span>
+              <button
+                type="button"
+                className="zalo-error-toggle"
+                aria-expanded={errorDetailOpen}
+                onClick={() => setErrorDetailOpen((open) => !open)}
+              >
                 {t.actions.errorDetail}
-              </summary>
-              <dl>
+                <Icon name="chevron_right" size={16} aria-hidden />
+              </button>
+            </div>
+            {errorDetailOpen && (
+              <dl className="zalo-error-detail-list">
                 <dt>{t.fields.errorCode}</dt>
                 <dd>{data.lastErrorCode}</dd>
                 <dt>{t.fields.errorMessage}</dt>
                 <dd>{data.lastErrorMessage ?? t.values.none}</dd>
               </dl>
-            </details>
+            )}
           </AlertBanner>
         )}
         {feedback('connection')}
@@ -550,7 +553,20 @@ export const ZaloConnectionScreen = () => {
           {secretRow('secretKey', t.fields.secretKey, data.secretKeySet)}
           {secretRow('refreshToken', t.fields.refreshToken, data.refreshTokenSet)}
         </div>
-        {sectionActions(CONNECTION_SECTION)}
+        {/* 아래 줄 — 왼쪽 토큰 일시, 오른쪽 [취소][저장](시안 2026-11-25). */}
+        <div className="zalo-connection-foot">
+          {tokenTimes.length > 0 && (
+            <dl className="zalo-token-times">
+              {tokenTimes.map((item) => (
+                <div key={item.label}>
+                  <dt>{item.label}</dt>
+                  <dd>{item.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {sectionActions(CONNECTION_SECTION)}
+        </div>
       </>
     );
   };

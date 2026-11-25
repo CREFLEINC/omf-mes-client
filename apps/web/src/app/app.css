@@ -39438,18 +39438,6 @@ body:has(
   margin: 0;
 }
 
-/* 연결 정보 칸 셋을 한 줄에 — 좁으면 둘씩. 공통 「템플릿 변수 값 최대 길이」는 템플릿 영역 위로 옮겼다(사용자 지시 2026-11-24). */
-.zalo-connection-box > .zalo-form {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: start;
-}
-
-@media (width <= 1200px) {
-  .zalo-connection-box > .zalo-form {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 /* 토큰 일시 — 제목 아래 한 줄, 좁으면 접힌다. */
 .zalo-token-times {
   display: flex;
@@ -39469,28 +39457,6 @@ body:has(
 
 .zalo-token-times dd {
   margin: 0;
-}
-
-/* 오류 안내 줄 안 「상세 정보」 — 코드 · 원문. */
-.zalo-error-detail {
-  margin-top: var(--space-1);
-}
-
-.zalo-error-detail > summary {
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.zalo-error-detail > dl {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--space-1) var(--space-3);
-  margin: var(--space-2) 0 0;
-}
-
-.zalo-error-detail dd {
-  margin: 0;
-  overflow-wrap: anywhere;
 }
 
 /* 상세 — 고른 템플릿의 ID 입력 · 파라미터 · 복사. */
@@ -40279,33 +40245,49 @@ body:has(
   color: var(--on-surface-variant);
 }
 
-/* 「오류 상세」 — 글 링크가 아니라 작은 테두리 단추 모양 펼침. 펼치면 화살표가 돈다. */
-.zalo-error-detail {
-  margin-top: var(--space-2);
+/* 「오류 상세」 — 글 링크가 아니라 작은 테두리 단추 모양. 오류 줄 오른쪽 끝, 펼치면 화살표가 아래로 돈다(시안 2026-11-25). */
+.zalo-error-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
 }
 
-.zalo-error-detail > summary {
+.zalo-error-toggle {
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: var(--space-1);
-  padding: 2px var(--space-3) 2px var(--space-2);
+  margin-left: auto;
+  padding: 2px var(--space-2) 2px var(--space-3);
   border: 1px solid var(--outline);
   border-radius: 999px;
   background: var(--surface);
   color: var(--on-surface);
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
-  text-decoration: none;
-  list-style: none;
   cursor: pointer;
 }
 
-.zalo-error-detail > summary::-webkit-details-marker {
-  display: none;
+.zalo-error-toggle > [class*='_icon_'] {
+  transition: transform 0.15s;
 }
 
-.zalo-error-detail[open] > summary > [class*='_icon_'] {
-  transform: rotate(180deg);
+.zalo-error-toggle[aria-expanded='true'] > [class*='_icon_'] {
+  transform: rotate(90deg);
+}
+
+.zalo-error-detail-list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-2) 0 0;
+}
+
+.zalo-error-detail-list dd {
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 /*
@@ -40520,18 +40502,6 @@ body:has(
   gap: var(--space-2);
 }
 
-.zalo-connection-box > .zalo-token-times {
-  gap: var(--space-1) var(--space-5);
-  margin-top: calc(var(--space-1) * -1);
-  color: var(--on-surface-variant);
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
-}
-
-.zalo-connection-box > .zalo-token-times > div {
-  gap: var(--space-1);
-}
-
 .zalo-connection-box .zalo-field-row,
 .zalo-template-box .zalo-field-row {
   align-items: center;
@@ -40605,4 +40575,67 @@ body:has(
 .zalo-template-search > .zalo-search-actions {
   justify-content: flex-end;
   margin: 0;
+}
+
+/*
+ * 알림 연결 설정 — Zalo 연결 정보 상자(시안 2026-11-25): 앱 ID · 앱 비밀 키 · 갱신 토큰 세 칸을 나란히(이름은 값 위),
+ * 칸 사이 세로선. 아래 가로선 밑 한 줄 — 왼쪽 토큰 일시, 오른쪽 [취소][저장].
+ */
+.zalo-connection-box > .zalo-form {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3) 0;
+}
+
+.zalo-connection-box > .zalo-form > .zalo-field-row {
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: var(--space-2);
+  align-content: start;
+  padding: 0 var(--space-5);
+  border-left: 1px solid var(--outline-variant);
+}
+
+.zalo-connection-box > .zalo-form > .zalo-field-row:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.zalo-connection-box > .zalo-form > .zalo-field-row > .zalo-field-value {
+  min-height: 40px;
+  align-items: center;
+}
+
+@media (width <= 1000px) {
+  .zalo-connection-box > .zalo-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .zalo-connection-box > .zalo-form > .zalo-field-row {
+    padding: 0;
+    border-left: 0;
+  }
+}
+
+.zalo-connection-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.zalo-connection-foot > .zalo-token-times {
+  gap: var(--space-1) var(--space-5);
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.zalo-connection-foot > .zalo-token-times > div {
+  gap: var(--space-1);
+}
+
+.zalo-connection-foot > .form-actions {
+  margin: 0 0 0 auto;
 }

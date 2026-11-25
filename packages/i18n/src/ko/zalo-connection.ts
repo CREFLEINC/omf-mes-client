@@ -26,9 +26,9 @@ export const zaloConnection = {
     charUnit: '자',
   },
   actions: {
-    /** 비밀값 — 없으면 [등록], 있으면 [변경]. 연 칸을 닫는 단추는 [취소]. */
+    /** 비밀값 — 없으면 [등록], 있으면 [수정]. 연 칸을 닫는 단추는 [취소]. */
     register: '등록',
-    change: '변경',
+    change: '수정',
     cancelChange: '취소',
     copy: '변수명 복사',
     copyFor: (eventName: string): string => `${eventName} 변수명 복사`,
@@ -40,7 +40,7 @@ export const zaloConnection = {
   state: {
     saved: '저장했습니다',
     copied: '템플릿 변수 이름을 복사했습니다',
-    reauth: '고객사 Zalo 담당자에게 새 갱신 토큰을 받아 [변경]으로 등록하세요',
+    reauth: '고객사 Zalo 담당자에게 새 갱신 토큰을 받아 [수정]으로 등록하세요',
     /** Zalo 오류 코드를 사람 말로 — 모르는 코드는 일반 문구, 코드와 원문은 「오류 상세」에 둔다. */
     lastError: (code: string): string =>
       code === '-124'
