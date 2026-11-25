@@ -353,9 +353,7 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     await user.click(pane.getByRole('switch', { name: t.fields.enabled }));
     expect(pane.getByRole('switch', { name: t.fields.zalo })).toBeEnabled();
     /* 요금 · 일일 한도는 스위치 아래 문장이 아니라 Zalo 발송 옆 ⓘ 에 든다. */
-    expect(
-      pane.getByRole('button', { name: `${t.state.zaloQuota} ${t.state.zaloHelp}` }),
-    ).toBeInTheDocument();
+    expect(pane.getByRole('button', { name: t.state.zaloQuota })).toBeInTheDocument();
     expect(pane.queryByText(t.state.zaloQuota)).toBeNull();
     expect(pane.queryByText(t.state.zaloNeedsEnabled)).toBeNull();
   });
@@ -398,8 +396,13 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
 
     const dialog = within(await screen.findByRole('dialog', { name: t.picker.title }));
     const noPhoneRow = (await dialog.findByText('후보 나')).closest('tr') as HTMLElement;
-    expect(within(noPhoneRow).getByText(`📵 ${t.values.noPhone}`)).toBeInTheDocument();
+    expect(within(noPhoneRow).getByText(t.values.phoneMissing)).toBeInTheDocument();
+    expect(dialog.getByRole('columnheader', { name: t.columns.phone })).toBeInTheDocument();
     expect(candidateQueries.at(-1)?.searchParams.get('page')).toBe('1');
+    /* 표 위 「수신자 후보」 제목 글은 걷었다 — 표 이름으로만 남는다. */
+    expect(dialog.getByRole('table', { name: t.picker.caption })).toBeInTheDocument();
+    expect(dialog.queryByText(t.picker.caption)).toBeNull();
+    expect(dialog.getByRole('button', { name: t.actions.addPick })).toBeDisabled();
 
     await user.click(within(noPhoneRow).getByRole('checkbox'));
     await user.click(dialog.getByRole('button', { name: t.actions.addSelected(1) }));
@@ -409,7 +412,7 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     expect(pane.getByText(t.fields.recipients(2))).toBeInTheDocument();
   });
 
-  it('이미 수신자인 후보는 체크박스가 잠겨 다시 고를 수 없다', async () => {
+  it('이미 수신자인 후보는 체크 칸 없이 「추가됨」 표식만 있어 다시 고를 수 없다', async () => {
     const user = userEvent.setup();
     setup({
       settings: {
@@ -421,10 +424,14 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     await user.click(await pane.findByRole('button', { name: `+ ${t.actions.add}` }));
     const dialog = within(await screen.findByRole('dialog', { name: t.picker.title }));
 
-    const existing = await dialog.findByRole('checkbox', { name: t.values.selectRow('후보 가') });
-    expect(existing).toBeDisabled();
-    expect(existing).toBeChecked();
-    expect(dialog.getByRole('checkbox', { name: t.values.selectRow('후보 나') })).toBeEnabled();
+    expect(
+      await dialog.findByRole('checkbox', { name: t.values.selectRow('후보 나') }),
+    ).toBeEnabled();
+    expect(dialog.queryByRole('checkbox', { name: t.values.selectRow('후보 가') })).toBeNull();
+    const existingRow = dialog.getByText('후보 가').closest('tr') as HTMLElement;
+    expect(within(existingRow).getByText(t.values.alreadyAdded)).toBeInTheDocument();
+    /* 체크 칸 자리는 비워 둬 열이 어긋나지 않는다. */
+    expect(within(existingRow).getAllByRole('cell')).toHaveLength(5);
   });
 
   it('부서 목록이 잘리면 잘림 안내를 보인다', async () => {
@@ -536,7 +543,7 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     expect(screen.queryByRole('note')).toBeNull();
   });
 
-  it('W-CO-12 권한이 있으면 안내 옆 「Zalo 연결 설정」 글 링크로 알림 연결 설정에 간다', async () => {
+  it('W-CO-12 권한이 있으면 안내 줄 오른쪽 [Zalo 연결 설정] 단추로 알림 연결 설정에 간다', async () => {
     const user = userEvent.setup();
     const { router } = setup({
       zaloStatus: 'REAUTH_REQUIRED',
@@ -544,20 +551,20 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
       dataRouter: true,
     });
 
-    const link = await screen.findByRole('link', { name: t.actions.openConnection });
-    expect(link.closest('p')).toHaveTextContent(t.state.zaloNotActive);
-    expect(screen.queryByRole('button', { name: t.actions.openConnection })).toBeNull();
-    await user.click(link);
+    const button = await screen.findByRole('button', { name: t.actions.openConnection });
+    expect(button.closest('.notify-zalo-connect')).toHaveTextContent(t.state.zaloNotActive);
+    expect(screen.queryByRole('link', { name: t.actions.openConnection })).toBeNull();
+    await user.click(button);
     await waitFor(() =>
       expect(router?.state.location.pathname).toBe('/notification/zalo-connection'),
     );
   });
 
-  it('W-CO-12 권한이 없으면 이동 링크 없이 안내만 보인다', async () => {
+  it('W-CO-12 권한이 없으면 이동 단추 없이 안내만 보인다', async () => {
     setup({ zaloStatus: 'NOT_CONFIGURED' });
 
     expect(await screen.findByText(t.state.zaloNotActive)).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: t.actions.openConnection })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.actions.openConnection })).toBeNull();
   });
 
   it('Zalo 연결이 ACTIVE 면 배너가 없다', async () => {
@@ -605,7 +612,7 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     expect(screen.getByRole('button', { name: '생산 실행' })).not.toHaveAttribute('aria-current');
   });
 
-  it('[변경 취소]는 마지막으로 읽은 값으로 돌리고 「저장되지 않은 변경 사항」도 걷는다', async () => {
+  it('[취소]는 마지막으로 읽은 값으로 돌리고 「저장되지 않은 변경 사항」도 걷는다', async () => {
     const user = userEvent.setup();
     setup();
 

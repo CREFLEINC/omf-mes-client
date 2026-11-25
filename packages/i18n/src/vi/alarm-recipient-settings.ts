@@ -31,7 +31,8 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     approver: 'Người phê duyệt',
     noPhone: 'Không có số điện thoại',
     inactive: 'Ngừng sử dụng',
-    hasPhone: 'Có',
+    hasPhone: 'Đã đăng ký',
+    phoneMissing: 'Chưa đăng ký · Không gửi được Zalo',
     alreadyAdded: 'Đã thêm',
     selectRow: (userName: string): string => `Chọn ${userName}`,
     noDepartment: '—',
@@ -40,7 +41,7 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
   actions: {
     add: 'Thêm người nhận',
     remove: 'Xóa',
-    revert: 'Hủy thay đổi',
+    revert: 'Hủy',
     save: 'Lưu',
     reload: 'Tải lại',
     openConnection: 'Thiết lập kết nối Zalo',
@@ -49,7 +50,8 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     search: 'Tìm',
     prevPage: 'Trang trước',
     nextPage: 'Trang sau',
-    addSelected: (count: number): string => `Thêm (${String(count)})`,
+    addPick: 'Thêm',
+    addSelected: (count: number): string => `Thêm ${String(count)} người`,
   },
   state: {
     selectDepartment: 'Chọn phòng ban để xem thiết lập sự kiện của phòng ban đó.',
@@ -61,10 +63,9 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     noRecipientsWarning: 'Không có người nhận nên thông báo sẽ không được gửi',
     noPhoneNotice: (count: number): string =>
       `${String(count)} người nhận không có số điện thoại chỉ nhận qua trung tâm thông báo`,
-    zaloHelp: 'Dù gửi thất bại, trung tâm thông báo vẫn nhận',
     zaloNeedsEnabled: 'Phải bật dùng thông báo thì mới gửi được qua Zalo',
     zaloQuota:
-      'Phí gửi Zalo được trừ vào số dư ZBS và số tin gửi được tính vào hạn mức hằng ngày. Thông báo vượt hạn mức sẽ được gửi lúc 7 giờ sáng hôm sau (giờ nhà máy).',
+      'Phí gửi được trừ vào số dư ZBS. Thông báo vượt hạn mức gửi hằng ngày sẽ được gửi lúc 7 giờ sáng hôm sau (giờ nhà máy).',
     unsaved: 'Có thay đổi chưa lưu',
     approverNotice:
       'Người phê duyệt đến lượt sẽ nhận. Đó là người được chỉ định trong luồng phê duyệt.',
@@ -79,9 +80,10 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
   },
   picker: {
     title: 'Thêm người nhận',
-    searchLabel: 'Tên hoặc tên đăng nhập',
+    searchLabel: 'Tìm người nhận',
     searchPlaceholder: 'Nhập tên hoặc tên đăng nhập',
     caption: 'Ứng viên người nhận',
+    addable: (count: number): string => `Có thể thêm tối đa ${String(count)} người`,
   },
   errors: {
     inactiveRecipient: 'Không thể đặt người dùng ngừng sử dụng làm người nhận. Hãy xóa rồi lưu.',
@@ -95,7 +97,7 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     userName: 'Tên',
     loginId: 'Tên đăng nhập',
     department: 'Phòng ban',
-    phone: 'Số điện thoại',
+    phone: 'Đăng ký số điện thoại',
   },
   workspace: {
     list: 'Danh sách sự kiện',

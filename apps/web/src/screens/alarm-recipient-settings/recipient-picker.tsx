@@ -17,8 +17,6 @@ import { CANDIDATE_PAGE_SIZE, useRecipientCandidates } from './queries';
 import type { Candidate } from './types';
 
 const t = messages.alarmRecipientSettings;
-/** 상한 안내는 상한을 쓰는 화면(W-CO-14)의 문구다 — W-CO-11 은 상한을 주지 않는다. */
-const limitText = messages.handoverAlertSettings.picker;
 
 export interface RecipientPickerProps {
   open: boolean;
@@ -67,7 +65,7 @@ export const RecipientPicker = ({
   const rows = candidates.data?.items ?? [];
   const total = candidates.data?.page.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / CANDIDATE_PAGE_SIZE));
-  /* 더 고를 수 있는 사람 수. 상한이 없으면 null. */
+  /* 더 고를 수 있는 사람 수(지금 고른 사람까지 뺀다). 상한이 없으면 null. */
   const slotsLeft = max === undefined ? null : Math.max(0, max - existingIds.size - picked.size);
 
   const applySearch = (value: string): void => {
@@ -93,16 +91,16 @@ export const RecipientPicker = ({
     {
       key: 'pick',
       header: '',
-      render: (row) => (
-        <Checkbox
-          aria-label={t.values.selectRow(row.userName)}
-          checked={existingIds.has(row.appUserId) || picked.has(row.appUserId)}
-          disabled={
-            existingIds.has(row.appUserId) || (slotsLeft === 0 && !picked.has(row.appUserId))
-          }
-          onChange={(event) => toggle(row, event.target.checked)}
-        />
-      ),
+      /* 이미 수신자인 사람은 체크 칸을 두지 않는다 — 빈 칸은 남겨 열 줄을 맞춘다. */
+      render: (row) =>
+        existingIds.has(row.appUserId) ? null : (
+          <Checkbox
+            aria-label={t.values.selectRow(row.userName)}
+            checked={picked.has(row.appUserId)}
+            disabled={slotsLeft === 0 && !picked.has(row.appUserId)}
+            onChange={(event) => toggle(row, event.target.checked)}
+          />
+        ),
     },
     {
       key: 'userName',
@@ -125,13 +123,12 @@ export const RecipientPicker = ({
     {
       key: 'phone',
       header: t.columns.phone,
+      /* 없으면 그 사람만 Zalo 를 건너뛴다(알림센터로는 받는다) — 추가는 막지 않고 보조 글로만 알린다. */
       render: (row) =>
         row.hasPhone ? (
           t.values.hasPhone
         ) : (
-          <Chip status="warning" size="sm">
-            {`📵 ${t.values.noPhone}`}
-          </Chip>
+          <span className="alarm-picker-muted">{t.values.phoneMissing}</span>
         ),
     },
   ];
@@ -166,7 +163,7 @@ export const RecipientPicker = ({
         rows={rows}
         getRowId={(row) => String(row.appUserId)}
         density="compact"
-        caption={t.picker.caption}
+        aria-label={t.picker.caption}
         empty={<EmptyState size="sm" title={t.state.candidatesEmpty} />}
       />
     );
@@ -180,6 +177,10 @@ export const RecipientPicker = ({
       size="lg"
       footer={
         <>
+          {/* 상한이 있는 화면만 — 왼쪽 끝에 남은 자리(지금 고른 사람까지 뺀 수). */}
+          {slotsLeft !== null && (
+            <span className="alarm-picker-limit">{t.picker.addable(slotsLeft)}</span>
+          )}
           <Button variant="outlined" onClick={onClose}>
             {t.actions.cancel}
           </Button>
@@ -189,7 +190,7 @@ export const RecipientPicker = ({
               onAdd([...picked.values()]);
             }}
           >
-            {t.actions.addSelected(picked.size)}
+            {picked.size === 0 ? t.actions.addPick : t.actions.addSelected(picked.size)}
           </Button>
         </>
       }
@@ -205,11 +206,6 @@ export const RecipientPicker = ({
           clearLabel={messages.common.clear}
           fullWidth
         />
-        {slotsLeft !== null && max !== undefined && (
-          <AlertBanner variant={slotsLeft > 0 ? 'info' : 'warning'}>
-            {slotsLeft > 0 ? limitText.slotsLeft(slotsLeft, max) : limitText.full(max)}
-          </AlertBanner>
-        )}
         {body}
         {totalPages > 1 && (
           <div className="alarm-picker-pages">

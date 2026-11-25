@@ -39,7 +39,7 @@ export const handoverAlertSettings = {
   actions: {
     add: '수신자 추가',
     remove: '제거',
-    revert: '변경 취소',
+    revert: '취소',
     save: '저장',
     reload: '다시 불러오기',
     openConnection: 'Zalo 연결 설정',
@@ -57,14 +57,12 @@ export const handoverAlertSettings = {
       `최대 ${String(max)}명까지 지정할 수 있습니다. 바꾸려면 먼저 한 명을 제거하세요.`,
     noPhoneNotice: (count: number): string =>
       `전화번호가 없는 수신자 ${String(count)}명은 알림센터로만 받습니다.`,
-    zaloHelp:
-      '전화번호가 있는 수신자에게 영문 Zalo 메시지를 보냅니다. Zalo 발송에 실패해도 알림센터로는 받습니다.',
     zaloNeedsEnabled: '알림 사용을 ON으로 해야 Zalo로 보낼 수 있습니다.',
     /** 연결 전 Zalo 건은 보내지 않고 대기한다(러너 CONNECTION_NOT_READY · 24시간 뒤 만료). 알림센터 행은 바로 생긴다. */
     zaloNotActive: 'Zalo가 연결되지 않아 Zalo는 보내지 않습니다. 알림센터로는 바로 받습니다.',
     /** 발송 건마다 ZBS 잔액 · OA 일일 한도를 쓴다. 한도 초과(-144 · -147)는 다음 07:00(현장 시각)으로 미룬다. */
     zaloQuota:
-      'Zalo 발송 요금은 ZBS 잔액에서 차감되며, 발송 건수는 일일 한도에 포함됩니다. 한도를 초과한 알림은 다음 날 오전 7시(현장 시간)에 발송됩니다.',
+      '발송 요금은 ZBS 잔액에서 차감됩니다. 일일 발송 한도를 초과한 알림은 다음 날 오전 7시(현장 시간)에 발송됩니다.',
     unsaved: '저장되지 않은 변경 사항',
     saved: '저장했습니다.',
     conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 저장하세요.',
@@ -74,12 +72,6 @@ export const handoverAlertSettings = {
   errors: {
     inactiveRecipients: (count: number): string =>
       `미사용 계정 ${String(count)}명이 있습니다. 제거해야 저장할 수 있습니다.`,
-  },
-  /** 수신자 고르기 창의 상한 안내(D-11). */
-  picker: {
-    slotsLeft: (left: number, max: number): string =>
-      `남은 자리는 ${String(left)}명입니다. 한 작업에 최대 ${String(max)}명까지 지정할 수 있습니다.`,
-    full: (max: number): string => `최대 ${String(max)}명까지 지정해 더 선택할 수 없습니다.`,
   },
   /** 종류별 「언제」(알림이 생기는 때)·「처리」(처리하는 화면). 화면 이름은 메뉴 글자 그대로다. */
   types: {

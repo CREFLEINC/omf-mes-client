@@ -5,6 +5,7 @@ import {
   Dialog,
   EmptyState,
   Icon,
+  IconButton,
   SearchInput,
   Skeleton,
   Switch,
@@ -15,7 +16,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
 import {
   handoverTypeName,
@@ -111,6 +112,7 @@ const TYPE_CLEARED = 'none';
  */
 export const HandoverAlertSettingsScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
   const zaloNoteId = useId();
@@ -225,8 +227,8 @@ export const HandoverAlertSettingsScreen = () => {
   const typeColumns: Column<HandoverAlertType>[] = [
     {
       key: 'type',
-      /* 작업명 열만 왼쪽 정렬 — 열 순서를 바꿔도 따라가게 머리글에 표식을 단다(app.css `.notify-name-head`). */
-      header: <span className="notify-name-head">{t.columns.type}</span>,
+      /* 이름 열도 다른 열처럼 가운데 · 보통 굵기(검사 조회·판정 목록과 같다 · app.css `.notify-list-centered`). */
+      header: t.columns.type,
       render: (type) => (
         /* 링크·단추처럼 보이지 않는다 — 줄 아무 곳이나 눌러 고른다. 이 단추는 키보드·화면 낭독기의 자리다(단말 관리와 같다). */
         <button
@@ -355,7 +357,7 @@ export const HandoverAlertSettingsScreen = () => {
           </dl>
         )}
 
-        {/* 발송 설정(알림 사용 · Zalo 발송) → 연결 상태(미연결 칩) → 연결 설정(글 링크). 스위치는 줄 오른쪽 끝에 맞춘다. */}
+        {/* 발송 설정(알림 사용 · Zalo 발송) → 연결 상태(미연결 칩) → 연결 설정(테두리 단추). 스위치는 줄 오른쪽 끝에 맞춘다. */}
         <div className="alarm-switches notify-switches">
           <div className="notify-switch-row">
             <label className="notify-switch-label" htmlFor={enabledId}>
@@ -370,8 +372,8 @@ export const HandoverAlertSettingsScreen = () => {
           <div className="notify-switch-row">
             <span className="notify-switch-label">
               <label htmlFor={zaloId}>{t.fields.zalo}</label>
-              {/* 요금 · 일일 한도와 무엇이 가는지 · 실패해도 알림센터는 받는다는 규칙은 ⓘ 로(스위치 아래 문장은 걷었다). */}
-              <InfoTip text={`${t.state.zaloQuota} ${t.state.zaloHelp}`} />
+              {/* 요금 · 일일 한도는 ⓘ 로(스위치 아래 문장은 걷었다). */}
+              <InfoTip text={t.state.zaloQuota} />
               {zaloNotActive && (
                 <Chip size="sm" status="warning">
                   {t.values.notConnected}
@@ -392,16 +394,23 @@ export const HandoverAlertSettingsScreen = () => {
               {t.state.zaloNeedsEnabled}
             </span>
           )}
-          {/* Zalo 미연결 — 한 줄 안내 + 바로 옆 「Zalo 연결 설정」 글 링크(좁으면 다음 줄로). */}
+          {/* Zalo 미연결 — 왼쪽 안내 라벨(정보 표식 + 파란 바탕 한 줄) · 오른쪽 끝 [Zalo 연결 설정](좁으면 다음 줄로). */}
           {zaloNotActive && (
-            <p className="notify-zalo-connect">
-              <span>{t.state.zaloNotActive}</span>
+            <div className="notify-zalo-connect">
+              <p className="iqc-inspection-action-note" data-tone="info">
+                <Icon name="info" size={16} aria-hidden />
+                {t.state.zaloNotActive}
+              </p>
               {canOpenConnection && (
-                <Link className="notify-zalo-link" to={ZALO_CONNECTION_PATH}>
+                <Button
+                  variant="outlined"
+                  size="sm"
+                  onClick={() => void navigate(ZALO_CONNECTION_PATH)}
+                >
                   {t.actions.openConnection}
-                </Link>
+                </Button>
               )}
-            </p>
+            </div>
           )}
         </div>
 
@@ -440,14 +449,12 @@ export const HandoverAlertSettingsScreen = () => {
                       {t.values.inactive}
                     </Chip>
                   )}
-                  <Button
-                    variant="text"
+                  <IconButton
+                    icon="delete"
                     size="sm"
                     aria-label={`${recipient.name} ${t.actions.remove}`}
                     onClick={() => change(removeRecipient(draft, recipient.userId))}
-                  >
-                    {t.actions.remove}
-                  </Button>
+                  />
                 </li>
               ))}
             </ul>
@@ -506,7 +513,7 @@ export const HandoverAlertSettingsScreen = () => {
         {/* 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 작업 단추로 넘긴다(단말 관리와 같다). */}
         <div
           ref={fit.ref}
-          className="inspection-queue-table notify-list-table"
+          className="inspection-queue-table notify-list-table notify-list-centered"
           style={resizable.style}
           onClick={(event) => {
             const target = event.target;

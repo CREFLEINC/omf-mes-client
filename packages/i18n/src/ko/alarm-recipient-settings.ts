@@ -21,9 +21,11 @@ export const alarmRecipientSettings = {
     /** 수신자 행에 붙는 표식. 이 사람은 Zalo 를 받지 못하고 알림센터로만 받는다. */
     noPhone: '전화번호 없음',
     inactive: '미사용',
-    /** 후보 표의 전화번호 칸 */
-    hasPhone: '있음',
-    alreadyAdded: '이미 추가됨',
+    /** 후보 표의 「전화번호 등록」 칸 — 없으면 Zalo 를 받지 못한다(서버가 그 사람의 Zalo 만 건너뛴다). */
+    hasPhone: '등록됨',
+    // ui-check-ignore: C-13 사용자 지정 문구 「미등록 · Zalo 발송 불가」 그대로
+    phoneMissing: '미등록 · Zalo 발송 불가',
+    alreadyAdded: '추가됨',
     selectRow: (userName: string): string => `${userName} 선택`,
     noDepartment: '—',
     recipientCount: (count: number): string => `${String(count)}명`,
@@ -31,7 +33,7 @@ export const alarmRecipientSettings = {
   actions: {
     add: '수신자 추가',
     remove: '제거',
-    revert: '변경 취소',
+    revert: '취소',
     save: '저장',
     reload: '다시 불러오기',
     openConnection: 'Zalo 연결 설정',
@@ -40,6 +42,8 @@ export const alarmRecipientSettings = {
     search: '검색',
     prevPage: '이전 쪽',
     nextPage: '다음 쪽',
+    /** 수신자 추가 창 — 고르기 전 「추가」, 고른 뒤 「N명 추가」. */
+    addPick: '추가',
     addSelected: (count: number): string => `${String(count)}명 추가`,
   },
   state: {
@@ -54,11 +58,10 @@ export const alarmRecipientSettings = {
     /** US4-5 — 전화번호가 없는 수신자는 Zalo 를 받지 못한다. */
     noPhoneNotice: (count: number): string =>
       `전화번호가 없는 수신자 ${String(count)}명은 알림센터로만 받습니다.`,
-    zaloHelp: 'Zalo 발송에 실패해도 알림센터로는 받습니다.',
     zaloNeedsEnabled: '알림 사용을 ON으로 해야 Zalo로 보낼 수 있습니다.',
     /** 발송 건마다 ZBS 잔액 · OA 일일 한도를 쓴다. 한도 초과(-144 · -147)는 다음 07:00(현장 시각)으로 미룬다. */
     zaloQuota:
-      'Zalo 발송 요금은 ZBS 잔액에서 차감되며, 발송 건수는 일일 한도에 포함됩니다. 한도를 초과한 알림은 다음 날 오전 7시(현장 시간)에 발송됩니다.',
+      '발송 요금은 ZBS 잔액에서 차감됩니다. 일일 발송 한도를 초과한 알림은 다음 날 오전 7시(현장 시간)에 발송됩니다.',
     unsaved: '저장되지 않은 변경 사항',
     approverNotice: '그 차례의 결재자가 받습니다. 결재선 정의에서 정한 사람입니다.',
     saved: '저장했습니다.',
@@ -73,9 +76,12 @@ export const alarmRecipientSettings = {
   },
   picker: {
     title: '수신자 추가',
-    searchLabel: '이름 또는 로그인 아이디 검색',
+    searchLabel: '수신자 검색',
     searchPlaceholder: '이름 또는 로그인 아이디를 입력하세요',
+    /** 표 이름 — 보이지 않고 읽기 도구에만 쓴다. */
     caption: '수신자 후보',
+    /** 상한이 있는 화면(W-CO-14)만 — 지금 고른 사람까지 뺀 남은 자리. */
+    addable: (count: number): string => `최대 ${String(count)}명 추가 가능`,
   },
   errors: {
     /** 서버도 400 으로 막는다 — 화면이 먼저 알린다. */
@@ -90,7 +96,7 @@ export const alarmRecipientSettings = {
     userName: '이름',
     loginId: '로그인 아이디',
     department: '부서',
-    phone: '전화번호',
+    phone: '전화번호 등록',
   },
   /** 목록(부서 선택은 목록 제목 아래) · 상세 통일 배치(omf-all-around#358). */
   workspace: {

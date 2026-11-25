@@ -41,7 +41,7 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
   actions: {
     add: 'Thêm người nhận',
     remove: 'Xóa',
-    revert: 'Hủy thay đổi',
+    revert: 'Hủy',
     save: 'Lưu',
     reload: 'Tải lại',
     openConnection: 'Thiết lập kết nối Zalo',
@@ -57,13 +57,11 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
       `Chỉ được chọn tối đa ${String(max)} người. Hãy xóa một người trước khi đổi.`,
     noPhoneNotice: (count: number): string =>
       `${String(count)} người nhận không có số điện thoại chỉ nhận ở trung tâm thông báo`,
-    zaloHelp:
-      'Gửi tin Zalo tiếng Anh cho người nhận có số điện thoại. Nếu gửi lỗi, trung tâm thông báo vẫn nhận.',
     zaloNeedsEnabled: 'Chỉ bật được Zalo sau khi bật dùng thông báo.',
     zaloNotActive:
       'Zalo chưa được kết nối nên sẽ không gửi Zalo. Trung tâm thông báo vẫn nhận ngay.',
     zaloQuota:
-      'Phí gửi Zalo được trừ vào số dư ZBS và số tin gửi được tính vào hạn mức hằng ngày. Thông báo vượt hạn mức sẽ được gửi lúc 7 giờ sáng hôm sau (giờ nhà máy).',
+      'Phí gửi được trừ vào số dư ZBS. Thông báo vượt hạn mức gửi hằng ngày sẽ được gửi lúc 7 giờ sáng hôm sau (giờ nhà máy).',
     unsaved: 'Có thay đổi chưa lưu',
     saved: 'Đã lưu',
     conflict: 'Người khác đã lưu trước. Hãy tải lại rồi sửa.',
@@ -73,11 +71,6 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
   errors: {
     inactiveRecipients: (count: number): string =>
       `Có ${String(count)} tài khoản ngừng sử dụng. Hãy xóa trước khi lưu.`,
-  },
-  picker: {
-    slotsLeft: (left: number, max: number): string =>
-      `Còn ${String(left)} chỗ — mỗi công việc tối đa ${String(max)} người`,
-    full: (max: number): string => `Đã đủ ${String(max)} người — không chọn thêm được`,
   },
   types: {
     IQC_INSPECTION_REQUESTED: {

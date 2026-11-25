@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { RecipientPicker } from './recipient-picker';
 
-const limit = messages.handoverAlertSettings.picker;
+const t = messages.alarmRecipientSettings;
 
 const CANDIDATES = [61, 62, 63, 64].map((id) => ({
   appUserId: id,
@@ -50,15 +50,22 @@ describe('RecipientPicker — 상한(D-11)', () => {
     const user = userEvent.setup();
     const { onAdd } = renderPicker({ max: 5, existing: [61, 62, 63] });
 
-    expect(await screen.findByText(limit.slotsLeft(2, 5))).toBeInTheDocument();
+    expect(await screen.findByText(t.picker.addable(2))).toBeInTheDocument();
     await screen.findByText('후보 64');
-    expect(box(61)).toBeDisabled();
-
-    await user.click(box(64));
-    expect(screen.getByText(limit.slotsLeft(1, 5))).toBeInTheDocument();
-    expect(box(64)).toBeEnabled();
+    /* 이미 수신자인 사람은 체크 칸 없이 「추가됨」 표식만. */
+    expect(screen.queryByRole('checkbox', { name: '후보 61 선택' })).toBeNull();
+    const existingRow = screen.getByText('후보 61').closest('tr');
+    expect(existingRow).not.toBeNull();
+    expect(within(existingRow as HTMLElement).getByText(t.values.alreadyAdded)).toBeInTheDocument();
 
     const dialog = within(screen.getByRole('dialog'));
+    /* 고르기 전에는 「추가」(잠김), 고르면 「N명 추가」. */
+    expect(dialog.getByRole('button', { name: t.actions.addPick })).toBeDisabled();
+
+    await user.click(box(64));
+    expect(screen.getByText(t.picker.addable(1))).toBeInTheDocument();
+    expect(box(64)).toBeEnabled();
+
     await user.click(dialog.getByRole('button', { name: '1명 추가' }));
     expect(onAdd).toHaveBeenCalledWith([expect.objectContaining({ appUserId: 64 })]);
   });
@@ -67,15 +74,15 @@ describe('RecipientPicker — 상한(D-11)', () => {
     const user = userEvent.setup();
     renderPicker({ max: 4, existing: [61, 62] });
 
-    await screen.findByText(limit.slotsLeft(2, 4));
+    await screen.findByText(t.picker.addable(2));
     await screen.findByText('후보 64');
     await user.click(box(63));
     await user.click(box(64));
 
-    expect(screen.getByText(limit.full(4))).toBeInTheDocument();
+    expect(screen.getByText(t.picker.addable(0))).toBeInTheDocument();
     expect(box(63)).toBeEnabled();
     await user.click(box(63));
-    expect(screen.getByText(limit.slotsLeft(1, 4))).toBeInTheDocument();
+    expect(screen.getByText(t.picker.addable(1))).toBeInTheDocument();
   });
 
   it('상한을 주지 않으면 안내가 없고 몇 명이든 고를 수 있다(W-CO-11 그대로)', async () => {

@@ -18,6 +18,7 @@ type HandoverAlertRecipient = components['schemas']['HandoverAlertSetting']['rec
 type HandoverAlertSetting = components['schemas']['HandoverAlertSetting'];
 
 const t = messages.handoverAlertSettings;
+const picker = messages.alarmRecipientSettings.picker;
 
 /**
  * 인계 종류 10종 — 서버가 주는 차례를 일부러 흔든다. 화면은 업무 흐름 순서로 세워야 한다
@@ -236,16 +237,14 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     setup();
 
     const pane = await openType(user, '자재 출고 피킹');
-    expect(
-      pane.getByRole('button', { name: `${t.state.zaloQuota} ${t.state.zaloHelp}` }),
-    ).toBeInTheDocument();
+    expect(pane.getByRole('button', { name: t.state.zaloQuota })).toBeInTheDocument();
     /* 스위치 아래 문장은 걷었다. */
     expect(pane.queryByText(t.state.zaloQuota)).toBeNull();
     expect(pane.getByText(t.types.MATERIAL_PICKING_REQUESTED.when)).toBeInTheDocument();
     expect(pane.getByText(t.types.MATERIAL_PICKING_REQUESTED.where)).toBeInTheDocument();
   });
 
-  it('Zalo 미연결이면 Zalo 발송 옆 「미연결」 칩과 한 줄 안내 + 「Zalo 연결 설정」 글 링크를 두고, 누르면 알림 연결 설정에 간다', async () => {
+  it('Zalo 미연결이면 Zalo 발송 옆 「미연결」 칩과 한 줄 안내 라벨 + 오른쪽 [Zalo 연결 설정] 단추를 두고, 누르면 알림 연결 설정에 간다', async () => {
     const user = userEvent.setup();
     const { router } = setup({
       zaloStatus: 'NOT_CONFIGURED',
@@ -258,12 +257,12 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     );
     expect(await pane.findByText(t.state.zaloNotActive)).toBeInTheDocument();
     expect(pane.getByText(t.values.notConnected)).toBeInTheDocument();
-    /* 종전 긴 노란 줄 · 테두리 단추는 걷었다. 스위치는 미연결이어도 켤 수 있다(서버가 막지 않는다). */
+    /* 종전 긴 노란 줄 · 글 링크는 걷었다. 스위치는 미연결이어도 켤 수 있다(서버가 막지 않는다). */
     expect(screen.queryByRole('note')).toBeNull();
-    expect(screen.queryByRole('button', { name: t.actions.openConnection })).toBeNull();
-    const link = pane.getByRole('link', { name: t.actions.openConnection });
-    expect(link.closest('p')).toHaveTextContent(t.state.zaloNotActive);
-    await user.click(link);
+    expect(screen.queryByRole('link', { name: t.actions.openConnection })).toBeNull();
+    const button = pane.getByRole('button', { name: t.actions.openConnection });
+    expect(button.closest('.notify-zalo-connect')).toHaveTextContent(t.state.zaloNotActive);
+    await user.click(button);
     await waitFor(() =>
       expect(router?.state.location.pathname).toBe('/notification/zalo-connection'),
     );
@@ -279,7 +278,7 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     expect(screen.queryByRole('note')).toBeNull();
     expect(screen.queryByText(t.state.zaloNotActive, { exact: false })).toBeNull();
     expect(screen.queryByText(t.values.notConnected)).toBeNull();
-    expect(screen.queryByRole('link', { name: t.actions.openConnection })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.actions.openConnection })).toBeNull();
   });
 
   /* 피처 009(omf-all-around#294) — 「적치 대기」 새 유형과 바뀐 「검사 불합격」 처리 안내. */
@@ -406,10 +405,10 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     const pane = await openType(user, '적치');
     await user.click(pane.getByRole('button', { name: `+ ${t.actions.add}` }));
     const dialog = within(await screen.findByRole('dialog'));
-    expect(await dialog.findByText(t.picker.slotsLeft(1, 5))).toBeInTheDocument();
+    expect(await dialog.findByText(picker.addable(1))).toBeInTheDocument();
 
     await user.click(dialog.getByRole('checkbox', { name: '후보 61 선택' }));
-    expect(dialog.getByText(t.picker.full(5))).toBeInTheDocument();
+    expect(dialog.getByText(picker.addable(0))).toBeInTheDocument();
     expect(dialog.getByRole('checkbox', { name: '후보 62 선택' })).toBeDisabled();
     expect(dialog.getByRole('checkbox', { name: '후보 63 선택' })).toBeDisabled();
 
@@ -529,7 +528,7 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     expect(pane.getByRole('switch', { name: t.fields.zalo })).not.toBeChecked();
   });
 
-  it('고치면 「저장되지 않은 변경 사항」이 보이고, [변경 취소]는 마지막 저장값으로 되돌린다', async () => {
+  it('고치면 「저장되지 않은 변경 사항」이 보이고, [취소]는 마지막 저장값으로 되돌린다', async () => {
     const user = userEvent.setup();
     setup({
       settings: {
