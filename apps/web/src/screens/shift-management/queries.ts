@@ -50,7 +50,7 @@ export const usePlants = (scopes: readonly SessionScope[]): UseQueryResult<Plant
   });
 };
 
-/** 공장의 사용 중인 교대(기존 조회 API · 시작 시각 차례). 사용 중지한 교대는 목록에서 빠진다. */
+/** 공장의 교대 — 사용 중지한 것까지(기존 조회 API `includeInactive` · 시작 시각 차례). 사용 유무 라벨이 화면에서 거른다. */
 export const useShifts = (plantId: number | null): UseQueryResult<Shift[]> => {
   const { client } = useApiClient();
   return useQuery({
@@ -60,7 +60,9 @@ export const useShifts = (plantId: number | null): UseQueryResult<Shift[]> => {
       (
         await fetchAllPages((page, size) =>
           runRequest(() =>
-            client.GET('/mdm/shifts', { params: { query: { plantId: plantId ?? 0, page, size } } }),
+            client.GET('/mdm/shifts', {
+              params: { query: { plantId: plantId ?? 0, includeInactive: true, page, size } },
+            }),
           ),
         )
       ).items,

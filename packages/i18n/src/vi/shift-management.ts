@@ -3,10 +3,17 @@ import type { Translated } from './translated';
 
 export const shiftManagement: Translated<typeof ko.shiftManagement> = {
   intro:
-    'Đăng ký giờ ca ngày và ca đêm cho từng nhà máy. Nếu giờ kết thúc sớm hơn giờ bắt đầu, ca sẽ được lưu là ca kết thúc vào ngày hôm sau (VD: ca đêm).',
+    'Thiết lập giờ bắt đầu và giờ kết thúc của ca ngày và ca đêm cho từng nhà máy. Nếu giờ kết thúc sớm hơn giờ bắt đầu, ca sẽ được lưu là kết thúc vào ngày hôm sau.\nVD: 20:00~08:00 → bắt đầu 20:00 trong ngày, kết thúc 08:00 ngày hôm sau',
   filters: {
     label: 'Điều kiện',
     plant: 'Nhà máy',
+  },
+  chips: {
+    label: 'Trạng thái sử dụng',
+    active: 'Đang dùng',
+    inactive: 'Ngừng dùng',
+    filterOn: (label: string): string => `Chỉ xem ${label}`,
+    filterOff: (label: string): string => `Bỏ lọc ${label}`,
   },
   noPlant: 'Không có nhà máy nào có thể xem.',
   add: 'Thêm ca',
@@ -17,6 +24,7 @@ export const shiftManagement: Translated<typeof ko.shiftManagement> = {
     name: 'Tên ca',
     start: 'Giờ bắt đầu',
     end: 'Giờ kết thúc',
+    status: 'Trạng thái sử dụng',
     actions: 'Quản lý',
   },
   values: {

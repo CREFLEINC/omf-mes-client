@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   Dialog,
   EmptyState,
   Field,
@@ -16,18 +17,13 @@ import { useState, type ReactNode } from 'react';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { InfoTip } from '../../patterns/info-tip';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { SaveErrorBanner } from '../../patterns/master';
 import { useSession } from '../../patterns/session';
 import { Select } from '../../patterns/select';
 import { EditDialog } from './edit-dialog';
-import {
-  useDeactivateShift,
-  usePlants,
-  useShiftDetail,
-  useShifts,
-  type Shift,
-} from './queries';
+import { useDeactivateShift, usePlants, useShiftDetail, useShifts, type Shift } from './queries';
 
 type SessionScope = components['schemas']['SessionScope'];
 
@@ -53,6 +49,8 @@ export const ShiftManagementScreen = () => {
     plants.data?.find((each) => each.plantId === pickedPlant) ?? plants.data?.[0] ?? null;
   const plantId = plant?.plantId ?? null;
   const list = useShifts(plantId);
+  /** 사용 유무 라벨 — `null` 이면 둘 다 보인다. 공장을 바꾸면 풀린다. */
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | null>(null);
 
   /** 열린 창 — `null` 닫힘, `'new'` 추가. */
   const [editing, setEditing] = useState<Shift | 'new' | null>(null);
@@ -68,7 +66,12 @@ export const ShiftManagementScreen = () => {
   const baseColumns: Column<Shift>[] = [
     { key: 'code', header: t.columns.code, align: 'center', render: (row) => row.shiftCode },
     { key: 'name', header: t.columns.name, render: (row) => row.shiftName },
-    { key: 'start', header: t.columns.start, align: 'center', render: (row) => hhmm(row.startTime) },
+    {
+      key: 'start',
+      header: t.columns.start,
+      align: 'center',
+      render: (row) => hhmm(row.startTime),
+    },
     {
       key: 'end',
       header: t.columns.end,
@@ -77,39 +80,57 @@ export const ShiftManagementScreen = () => {
         row.crossesMidnight ? t.values.nextDayEnd(hhmm(row.endTime)) : hhmm(row.endTime),
     },
     {
+      key: 'status',
+      header: t.columns.status,
+      align: 'center',
+      render: (row) => (row.isActive ? t.chips.active : t.chips.inactive),
+    },
+    {
       key: 'actions',
       header: t.columns.actions,
       align: 'center',
-      render: (row) => (
-        <span className="shift-management-row-actions">
-          <Button
-            variant="outlined"
-            size="sm"
-            aria-label={t.editRow(row.shiftName)}
-            onClick={() => setEditing(row)}
-          >
-            {t.edit}
-          </Button>
-          <Button
-            variant="outlined"
-            size="sm"
-            aria-label={t.deactivateRow(row.shiftName)}
-            onClick={() => {
-              deactivate.reset();
-              setRetiring(row);
-            }}
-          >
-            {t.deactivate}
-          </Button>
-        </span>
-      ),
+      /* 사용 중지한 교대는 다시 쓰게 하는 기능이 없어 관리 단추를 두지 않는다(#318 범위). */
+      render: (row) =>
+        !row.isActive ? null : (
+          <span className="shift-management-row-actions">
+            <Button
+              variant="outlined"
+              size="sm"
+              aria-label={t.editRow(row.shiftName)}
+              onClick={() => setEditing(row)}
+            >
+              {t.edit}
+            </Button>
+            <Button
+              variant="outlined"
+              size="sm"
+              aria-label={t.deactivateRow(row.shiftName)}
+              onClick={() => {
+                deactivate.reset();
+                setRetiring(row);
+              }}
+            >
+              {t.deactivate}
+            </Button>
+          </span>
+        ),
     },
   ];
   const ordered = useColumnOrder('omf-mes:shift-management:columns:order', baseColumns);
   const resizable = useColumnWidths('omf-mes:shift-management:columns:v2', ordered);
   const fit = useFitColumns(resizable.columns);
 
-  const rows = list.data ?? [];
+  const allRows = list.data ?? [];
+  const activeCount = allRows.filter((row) => row.isActive).length;
+  const counts = { active: activeCount, inactive: allRows.length - activeCount };
+  const rows =
+    statusFilter === null
+      ? allRows
+      : allRows.filter((row) => row.isActive === (statusFilter === 'active'));
+  /* 0건 라벨은 숨긴다 — 걸려 있는 라벨은 0건이어도 남겨 풀 수 있게 한다. */
+  const chips = (['active', 'inactive'] as const).filter(
+    (status) => list.data !== undefined && (statusFilter === status || counts[status] > 0),
+  );
 
   const listBody = (): ReactNode => {
     if (plants.isError)
@@ -139,6 +160,29 @@ export const ShiftManagementScreen = () => {
 
   return (
     <>
+      {chips.length > 0 && (
+        <div className="shift-management-top-actions">
+          <div className="inspection-hub-counts" role="group" aria-label={t.chips.label}>
+            {chips.map((status) => {
+              const label = t.chips[status];
+              const isOn = statusFilter === status;
+              return (
+                <Chip
+                  key={status}
+                  variant="filter"
+                  size="sm"
+                  selected={isOn}
+                  aria-pressed={isOn}
+                  aria-label={isOn ? t.chips.filterOff(label) : t.chips.filterOn(label)}
+                  onSelectedChange={(selected) => setStatusFilter(selected ? status : null)}
+                >
+                  {messages.common.inspectionHub.count(label, counts[status])}
+                </Chip>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <section className="pane filter-field-surface" aria-label={t.filters.label}>
         <div className="filter-bar shift-management-filter">
           <Field label={t.filters.plant} labelAs="span">
@@ -151,7 +195,10 @@ export const ShiftManagementScreen = () => {
                   value: String(each.plantId),
                   label: each.plantName,
                 }))}
-                onChange={(value) => setPickedPlant(Number(value))}
+                onChange={(value) => {
+                  setPickedPlant(Number(value));
+                  setStatusFilter(null);
+                }}
               />
             )}
           </Field>
@@ -175,11 +222,9 @@ export const ShiftManagementScreen = () => {
               {messages.common.paneList.count(rows.length)}
             </span>
           )}
+          {/* 안내는 아이콘만 — 마우스를 올리면 문장이 뜬다(사용자 지시 2026-11-25). */}
+          <InfoTip text={t.intro} />
         </div>
-        <p className="iqc-inspection-action-note" data-tone="info" role="status">
-          <Icon name="info" size={14} aria-hidden />
-          {t.intro}
-        </p>
         {listBody()}
       </section>
       {editing !== null && plant !== null && (
@@ -187,7 +232,7 @@ export const ShiftManagementScreen = () => {
           plantId={plant.plantId}
           plantName={plant.plantName}
           shift={editing === 'new' ? null : editing}
-          existingCodes={rows.map((row) => row.shiftCode)}
+          existingCodes={allRows.map((row) => row.shiftCode)}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);

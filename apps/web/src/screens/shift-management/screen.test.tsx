@@ -53,7 +53,11 @@ interface Write {
 }
 
 const setup = (
-  options: { referenceCount?: number; respondWrite?: (path: string) => Response | undefined } = {},
+  options: {
+    referenceCount?: number;
+    shifts?: ReturnType<typeof shift>[];
+    respondWrite?: (path: string) => Response | undefined;
+  } = {},
 ) => {
   const writes: Write[] = [];
   const listQueries: URL[] = [];
@@ -69,7 +73,7 @@ const setup = (
       match: (r) => isGet(r, '/mdm/shifts'),
       respond: (r) => {
         listQueries.push(new URL(r.url));
-        return jsonResponse(page(SHIFTS));
+        return jsonResponse(page(options.shifts ?? SHIFTS));
       },
     },
     {
@@ -153,9 +157,35 @@ describe('ShiftManagementScreen — 교대 관리 W-06-26 (#318)', () => {
     expect(within(day).getByText('20:00')).toBeInTheDocument();
     expect(within(night).getByText(t.values.nextDayEnd('08:00'))).toBeInTheDocument();
     expect(screen.getByText(messages.common.paneList.count(2))).toBeInTheDocument();
-    /* 기존 조회 API 를 공장으로 거른다 — 사용 중지 포함 조건은 싣지 않는다. */
+    /* 기존 조회 API 를 공장으로 거르고, 사용 유무 라벨을 위해 사용 중지한 교대까지 받는다. */
     expect(listQueries[0]?.searchParams.get('plantId')).toBe('8401');
-    expect(listQueries[0]?.searchParams.has('includeInactive')).toBe(false);
+    expect(listQueries[0]?.searchParams.get('includeInactive')).toBe('true');
+  });
+
+  it('사용 유무 라벨 — 누르면 그 상태만 보이고, 0건인 라벨은 보이지 않는다', async () => {
+    const { user } = setup({
+      shifts: [
+        ...SHIFTS,
+        { ...shift(3, 'X', '합성 폐지', '06:00:00', '14:00:00'), isActive: false },
+      ],
+    });
+    await table();
+    const chips = within(screen.getByRole('group', { name: t.chips.label }));
+    await user.click(chips.getByRole('button', { name: t.chips.filterOn(t.chips.inactive) }));
+    const rows = (await table()).getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(1);
+    /* 사용 중지한 교대는 관리 단추가 없다. */
+    expect(within(rows[0] as HTMLElement).queryByRole('button')).toBeNull();
+  });
+
+  it('미사용이 0건이면 미사용 라벨은 보이지 않는다', async () => {
+    setup();
+    await table();
+    const chips = within(screen.getByRole('group', { name: t.chips.label }));
+    expect(
+      chips.getByRole('button', { name: t.chips.filterOn(t.chips.active) }),
+    ).toBeInTheDocument();
+    expect(chips.queryByRole('button', { name: t.chips.filterOn(t.chips.inactive) })).toBeNull();
   });
 
   it('추가 — 코드를 미리 채우고, 필수 칸이 다 차야 [저장]이 켜지며, 공장과 HH:MM:SS 시간을 보낸다', async () => {

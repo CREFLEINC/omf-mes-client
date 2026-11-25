@@ -1,10 +1,19 @@
 /** W-06-26 교대 관리(omf-all-around#318) — 공장별 주간·야간 교대 시간. */
 export const shiftManagement = {
+  /** 교대 목록 제목 오른쪽 ⓘ 말풍선(사용자 정정 2026-11-25 · 글자 그대로). */
   intro:
-    '공장마다 주간과 야간 교대 시간을 등록합니다. 종료 시간이 시작 시간보다 빠르면 다음 날 끝나는 교대(예: 야간)로 저장됩니다.',
+    '공장별로 주간·야간 교대의 시작 시각과 종료 시각을 설정합니다. 종료 시각이 시작 시각보다 이르면 다음 날 종료로 저장됩니다.\n예: 20:00~08:00 → 당일 20:00 시작, 다음 날 08:00 종료',
   filters: {
     label: '조건',
     plant: '공장',
+  },
+  /** 위 줄 오른쪽 사용 유무 라벨 — 누르면 그 상태만 보이고 다시 누르면 풀린다. 0건 라벨은 숨긴다. */
+  chips: {
+    label: '사용 유무',
+    active: '사용',
+    inactive: '미사용',
+    filterOn: (label: string): string => `${label}만 보기`,
+    filterOff: (label: string): string => `${label} 거르기 해제`,
   },
   noPlant: '볼 수 있는 공장이 없습니다.',
   add: '교대 추가',
@@ -15,6 +24,7 @@ export const shiftManagement = {
     name: '교대명',
     start: '시작 시간',
     end: '종료 시간',
+    status: '사용 유무',
     actions: '관리',
   },
   values: {
