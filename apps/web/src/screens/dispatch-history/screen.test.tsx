@@ -256,7 +256,7 @@ describe('DispatchHistoryScreen', () => {
       'NOTIFIED',
       'SKIPPED',
     ]);
-    /* 건너뜀 0건 — 감춘다. */
+    /* 발송 생략 0건 — 감춘다. */
     expect(resultChips().queryByRole('button', { name: new RegExp(t.results.SKIPPED) })).toBeNull();
   });
 

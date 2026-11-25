@@ -17,7 +17,7 @@ export const dispatchHistory = {
     eventGroup: '이벤트',
     handoverGroup: '인계 작업',
   },
-  results: { NOTIFIED: '알림', SKIPPED: '건너뜀' },
+  results: { NOTIFIED: '알림', SKIPPED: '발송 생략' },
   /** 알리지 않은 이유(data-model §5). */
   skipReasons: {
     DEPARTMENT_UNRESOLVED: '부서 미확인',
@@ -26,7 +26,7 @@ export const dispatchHistory = {
     REPORTER_OPTED_OUT: '보고자 알림 OFF',
     APPROVER_INACTIVE: '결재자 비활성',
   },
-  skipped: (reason: string): string => `건너뜀: ${reason}`,
+  skipped: (reason: string): string => `발송 생략: ${reason}`,
   /** 상태 네 가지 — `PENDING`·`SENDING` 은 「대기」로 합친다(설계 W-CO-13). */
   deliveryStatus: { PENDING: '대기', SENT: '성공', FAILED: '실패', EXPIRED: '만료' },
   zaloSummary: (

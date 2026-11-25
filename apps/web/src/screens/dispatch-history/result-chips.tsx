@@ -9,7 +9,7 @@ const t = messages.dispatchHistory;
 export const RESULTS: readonly DispatchResult[] = ['NOTIFIED', 'SKIPPED'];
 
 /**
- * 위 줄 오른쪽 결과 칩 — 「알림 N · 건너뜀 N」(다른 화면 상태 칩과 같은 모양 · 자리 · #358).
+ * 위 줄 오른쪽 결과 칩 — 「알림 N · 발송 생략 N」(다른 화면 상태 칩과 같은 모양 · 자리 · #358).
  * 「전체」 칩은 두지 않는다 — 고른 칩을 다시 누르면 전체로 돌아간다. 0건 칩은 고른 칩이 아니면 감춘다.
  * 아직 세지 못한 칩은 이름만 보인다.
  */

@@ -46,7 +46,7 @@ const t = messages.dispatchHistory;
 const w = t.workspace;
 
 /**
- * W-CO-13 알림 발송 이력 — 이벤트 처리 결과(알림/건너뜀과 사유)와 수신자별 Zalo 결과.
+ * W-CO-13 알림 발송 이력 — 이벤트 처리 결과(알림/발송 생략과 사유)와 수신자별 Zalo 결과.
  * 조건은 주소가 든다. 행을 고르면 그 건의 Zalo 발송 상세가 오른쪽 상세 상자에 선다
  * (조회 조건 · 목록 · 상세 통일 배치 · omf-all-around#358 — 종전 드로어 #183 자리).
  *
