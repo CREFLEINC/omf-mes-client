@@ -160,7 +160,12 @@ describe('ZaloConnectionScreen — 인계 작업 템플릿(피처 002)', () => {
 
     const putaway = await openTemplate(user, '적치');
     await user.type(putaway, 'H0001');
-    await user.click(screen.getByRole('button', { name: t.actions.save }));
+    /* 저장은 그 템플릿 상세 아래 오른쪽(#358). */
+    await user.click(
+      within(screen.getByRole('region', { name: '적치' })).getByRole('button', {
+        name: t.actions.save,
+      }),
+    );
 
     await waitFor(() => expect(writes).toHaveLength(1));
     const body = (await (writes[0] as Request).json()) as {
@@ -185,7 +190,12 @@ describe('ZaloConnectionScreen — 인계 작업 템플릿(피처 002)', () => {
     const { writes } = setup(connection([]));
 
     await user.type(await openTemplate(user, '적치'), 'H-1');
-    await user.click(screen.getByRole('button', { name: t.actions.save }));
+    /* 저장은 그 템플릿 상세 아래 오른쪽(#358). */
+    await user.click(
+      within(screen.getByRole('region', { name: '적치' })).getByRole('button', {
+        name: t.actions.save,
+      }),
+    );
 
     expect(await screen.findByText(t.errors.templateId)).toBeInTheDocument();
     /* 목록의 그 줄에도 「확인 필요」가 선다 — 다른 템플릿을 보고 있어도 오류 자리를 찾는다. */

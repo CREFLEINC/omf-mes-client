@@ -2,6 +2,8 @@ import { messages } from '@omf-mes/i18n';
 
 import type { components } from '@omf-mes/api-client';
 
+import type { SaveSection } from './types';
+
 type HandoverTemplate = components['schemas']['ZaloConnection']['handoverTemplates'][number];
 type ZaloConnectionForward = components['schemas']['ZaloConnection'];
 
@@ -52,3 +54,29 @@ export const sameHandover = (
   right: HandoverTemplateValues,
 ): boolean =>
   Object.keys({ ...left, ...right }).every((code) => (left[code] ?? '') === (right[code] ?? ''));
+
+/** 인계 작업 칸에서 `withSection` 과 같은 일 — 인계 작업 단위일 때만 그 코드 하나를 얹는다. */
+export const withHandoverSection = (
+  base: HandoverTemplateValues,
+  draft: HandoverTemplateValues,
+  section: SaveSection,
+): HandoverTemplateValues =>
+  section.kind === 'handover' ? { ...base, [section.code]: draft[section.code] ?? '' } : base;
+
+/** 인계 작업 칸에서 `rebaseValues` 와 같은 일. */
+export const rebaseHandover = (
+  draft: HandoverTemplateValues,
+  before: HandoverTemplateValues,
+  after: HandoverTemplateValues,
+  saved: SaveSection,
+): HandoverTemplateValues =>
+  withHandoverSection(
+    Object.fromEntries(
+      Object.entries(after).map(([code, value]) => [
+        code,
+        (draft[code] ?? '') === (before[code] ?? '') ? value : (draft[code] ?? ''),
+      ]),
+    ),
+    after,
+    saved,
+  );

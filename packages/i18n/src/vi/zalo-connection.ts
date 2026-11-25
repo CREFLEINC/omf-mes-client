@@ -37,7 +37,7 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
     copy: 'Sao chép',
     copyFor: (eventName: string): string => `Sao chép biến mẫu ${eventName}`,
     revert: 'Hủy thay đổi',
-    save: 'Lưu thay đổi',
+    save: 'Lưu',
     errorDetail: 'Chi tiết lỗi',
     reload: 'Tải lại',
   },
@@ -50,7 +50,6 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
     deliveryDisabled: 'Đang tắt gửi Zalo',
     lastError: (code: string): string =>
       code === '-124' ? 'Mã truy cập Zalo không hợp lệ.' : 'Đã xảy ra lỗi khi kết nối Zalo.',
-    saveScope: 'Lưu cùng lúc thay đổi thông tin kết nối và mẫu tin.',
     conflict: 'Người khác đã lưu trước. Hãy tải lại rồi lưu',
   },
   handover: {

@@ -13,7 +13,7 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
 import {
   HANDOVER_ALERT_ORDER,
@@ -44,16 +44,25 @@ import {
 } from '../../patterns/split-orientation';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import {
+  rebaseHandover,
   sameHandover,
   toHandoverBody,
   toHandoverValues,
   validateHandover,
+  withHandoverSection,
   type HandoverTemplateValues,
 } from './handover-templates';
 import { useConnection, useEventNames, useReplaceConnection, zaloConnectionKeys } from './queries';
 import { handoverParamsOf, paramsOf } from './template-params';
-import type { Connection, ConnectionFormValues } from './types';
-import { sameValues, toFormValues, toReplaceBody, validateConnection } from './validation';
+import type { Connection, ConnectionFormValues, SaveSection } from './types';
+import {
+  rebaseValues,
+  sameValues,
+  toFormValues,
+  toReplaceBody,
+  validateConnection,
+  withSection,
+} from './validation';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 
 const t = messages.zaloConnection;
@@ -70,6 +79,15 @@ const when = (value: string | null): string =>
   value === null ? t.values.none : (formatPlantDateTime(value) ?? value);
 
 type SecretField = 'secretKey' | 'refreshToken';
+
+/** 저장 결과(오류 · 저장했습니다)를 보이는 상자 — 저장한 상자 안에 보인다. */
+type FeedbackArea = 'connection' | 'common' | 'template';
+
+const CONNECTION_SECTION: SaveSection = { kind: 'connection' };
+const COMMON_SECTION: SaveSection = { kind: 'common' };
+
+const areaOf = (section: SaveSection): FeedbackArea =>
+  section.kind === 'connection' ? 'connection' : section.kind === 'common' ? 'common' : 'template';
 
 /** 템플릿 목록 한 줄 — 이벤트별 템플릿과 인계 작업 템플릿을 한 목록에 둔다(#358). */
 interface TemplateRow {
@@ -95,12 +113,20 @@ export const ZaloConnectionScreen = () => {
   const [handoverBaseline, setHandoverBaseline] = useState<HandoverTemplateValues>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [flash, setFlash] = useState<string | null>(null);
+  const [feedbackAt, setFeedbackAt] = useState<FeedbackArea | null>(null);
+  /** 보내는 중인 저장 — 어느 단위를, 어떤 저장 값 위에 얹었는지(응답이 오면 나머지 고친 값을 새 값 위로 옮긴다). */
+  const pendingRef = useRef<{
+    section: SaveSection;
+    before: ConnectionFormValues;
+    handoverBefore: HandoverTemplateValues;
+  } | null>(null);
   /* 템플릿 이름 검색 — 화면 안에서만 거른다(#358). 입력 중인 글과 [조회]로 건 글을 따로 든다. */
   const [search, setSearch] = useState('');
   const searchRef = useFitPlaceholderWidth(w.searchPlaceholder);
   const [keyword, setKeyword] = useState('');
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const { splitRef, aboveRef } = useFitToViewport();
+  const rootRef = useRef<HTMLDivElement>(null);
   const split = usePaneSplit('omf-mes:zalo-connection:split', 0.45);
   const layout = useSplitOrientation('omf-mes:zalo-connection:split-orientation');
 
@@ -114,9 +140,35 @@ export const ZaloConnectionScreen = () => {
     setErrors({});
   };
 
+  /* 처음 한 번만 채운다 — 저장 뒤 캐시를 바꿔도 다른 상자의 저장 안 한 값을 지우지 않는다(다시 불러오기는 `reload`). */
   useEffect(() => {
-    if (connection.data !== undefined) seed(connection.data);
+    if (connection.data !== undefined && baseline === null) seed(connection.data);
   }, [connection.data]);
+
+  /*
+   * 위 상자(연결 정보 · 템플릿 설정 · 조회 조건)의 높이가 바뀌면 목록 | 상세의 윗변을 다시 잰다 — 창 바닥까지 채우는
+   * 높이가 어긋나지 않게(ListDetailWorkspace 와 같다).
+   */
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    const splitEl = splitRef.current;
+    if (root === null || splitEl === null || typeof ResizeObserver === 'undefined') return;
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        splitEl.style.setProperty(
+          '--split-top',
+          `${String(splitEl.getBoundingClientRect().top)}px`,
+        );
+      });
+    });
+    observer.observe(root);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [splitRef]);
 
   const replace = useReplaceConnection((saved) => {
     /*
@@ -124,7 +176,24 @@ export const ZaloConnectionScreen = () => {
      * 첫 조회(미설정)가 새로 고칠 때까지 남는다(G2 실측).
      */
     queryClient.setQueryData(zaloConnectionKeys.connection, saved);
-    seed(saved);
+    const pending = pendingRef.current;
+    pendingRef.current = null;
+    if (pending === null) {
+      seed(saved);
+    } else {
+      /* 저장한 단위는 응답 값으로, 다른 상자에서 고친 값은 고친 채 새 저장 값 위로 옮긴다. */
+      const next = toFormValues(saved);
+      const nextHandover = toHandoverValues(saved, HANDOVER_ALERT_ORDER);
+      setValues((current) =>
+        current === null ? next : rebaseValues(current, pending.before, next, pending.section),
+      );
+      setHandover((current) =>
+        rebaseHandover(current, pending.handoverBefore, nextHandover, pending.section),
+      );
+      setBaseline(next);
+      setHandoverBaseline(nextHandover);
+      setErrors({});
+    }
     setFlash(t.state.saved);
   });
 
@@ -156,14 +225,22 @@ export const ZaloConnectionScreen = () => {
     return name.trim() === '' ? code : name;
   };
 
-  const save = (): void => {
-    if (values === null) return;
-    const found = { ...validateConnection(values), ...validateHandover(handover) };
+  /**
+   * 한 상자 저장 — 본문은 종전처럼 전체(PUT · If-Match)지만, 마지막 저장 값 위에 이 단위의 고친 값만 얹는다.
+   * 다른 상자의 저장 안 한 값은 싣지 않고 화면에 고친 채 남는다(#358).
+   */
+  const save = (section: SaveSection): void => {
+    if (values === null || baseline === null) return;
+    const body = withSection(baseline, values, section);
+    const handoverBody = withHandoverSection(handoverBaseline, handover, section);
+    const found = { ...validateConnection(body), ...validateHandover(handoverBody) };
     setErrors(found);
+    setFeedbackAt(areaOf(section));
     if (Object.keys(found).length > 0) return;
+    pendingRef.current = { section, before: baseline, handoverBefore: handoverBaseline };
     replace.write({
-      ...toReplaceBody(values, eventOrder),
-      handoverTemplates: toHandoverBody(handover, HANDOVER_ALERT_ORDER),
+      ...toReplaceBody(body, eventOrder),
+      handoverTemplates: toHandoverBody(handoverBody, HANDOVER_ALERT_ORDER),
     });
   };
 
@@ -178,20 +255,68 @@ export const ZaloConnectionScreen = () => {
     /* 보안 연결이 아니면 클립보드가 없다 — 파라미터는 화면에 보이므로 조용히 둔다. */
     try {
       await navigator.clipboard.writeText(params);
+      setFeedbackAt('template');
       setFlash(t.state.copied);
     } catch {
       setFlash(null);
     }
   };
 
-  const isDirty =
+  const isDirty = (section: SaveSection): boolean =>
     values !== null &&
-    ((baseline !== null && !sameValues(values, baseline)) ||
-      !sameHandover(handover, handoverBaseline));
+    baseline !== null &&
+    (!sameValues(withSection(baseline, values, section), baseline) ||
+      !sameHandover(withHandoverSection(handoverBaseline, handover, section), handoverBaseline));
 
-  const revert = (): void => {
-    if (baseline !== null) change(baseline);
-    setHandover(handoverBaseline);
+  /** 이 상자의 칸만 저장 값으로 되돌린다 — 다른 상자에서 고친 값은 그대로. */
+  const revert = (section: SaveSection): void => {
+    if (baseline === null) return;
+    setValues((current) => (current === null ? current : withSection(current, baseline, section)));
+    setHandover((current) => withHandoverSection(current, handoverBaseline, section));
+    touched();
+  };
+
+  /** 상자 아래 오른쪽 [변경 취소][저장] — 다른 화면과 같은 자리. */
+  const sectionActions = (section: SaveSection): ReactNode => {
+    const dirty = isDirty(section);
+    return (
+      <div className="form-actions">
+        <Button variant="outlined" disabled={!dirty} onClick={() => revert(section)}>
+          {t.actions.revert}
+        </Button>
+        <Button
+          disabled={!dirty || replace.isSaving}
+          loading={replace.isSaving && feedbackAt === areaOf(section)}
+          onClick={() => save(section)}
+        >
+          {t.actions.save}
+        </Button>
+      </div>
+    );
+  };
+
+  /** 저장 결과 — 저장(복사)한 상자 안에만 보인다. */
+  const feedback = (area: FeedbackArea): ReactNode => {
+    if (feedbackAt !== area) return null;
+    return (
+      <>
+        {replace.error?.kind === 'conflict' ? (
+          <AlertBanner
+            variant="error"
+            action={
+              <Button variant="outlined" size="sm" onClick={reload}>
+                {t.actions.reload}
+              </Button>
+            }
+          >
+            {t.state.conflict}
+          </AlertBanner>
+        ) : (
+          <SaveErrorBanner error={replace.error} />
+        )}
+        {flash !== null && <AlertBanner variant="success">{flash}</AlertBanner>}
+      </>
+    );
   };
 
   const fieldError = (key: string): string | undefined => errors[key] ?? replace.fieldErrors[key];
@@ -332,7 +457,7 @@ export const ZaloConnectionScreen = () => {
     count: connection.data === undefined ? undefined : shownTemplates.length,
   };
 
-  /** 고정 상자 — 연결 상태 · 연결 정보와 저장(저장 범위는 종전과 같다: 연결 정보 + 템플릿 ID 전부). */
+  /** 고정 상자 — 연결 상태 · 연결 정보. 아래 오른쪽 [변경 취소][저장]은 앱 ID · 앱 비밀 키 · 갱신 토큰만 저장한다. */
   const connectionBox = (): ReactNode => {
     if (connection.isError) {
       return <LoadErrorAlert error={connection.error} onRetry={() => void connection.refetch()} />;
@@ -343,7 +468,7 @@ export const ZaloConnectionScreen = () => {
 
     return (
       <>
-        {/* 제목 · 연결 상태 배지 · 발송 상태 한 줄, 아래에 토큰 일시(사용자 지시 2026-11-24). 저장은 화면 위 오른쪽. */}
+        {/* 제목 · 연결 상태 배지 · 발송 상태 한 줄, 아래에 토큰 일시(사용자 지시 2026-11-24). */}
         <div className="zalo-connection-head">
           <h2 className="pane-title">{t.panes.connection}</h2>
           <div className="zalo-status" role="group" aria-label={t.panes.status}>
@@ -389,21 +514,7 @@ export const ZaloConnectionScreen = () => {
             </details>
           </AlertBanner>
         )}
-        {replace.error?.kind === 'conflict' ? (
-          <AlertBanner
-            variant="error"
-            action={
-              <Button variant="outlined" size="sm" onClick={reload}>
-                {t.actions.reload}
-              </Button>
-            }
-          >
-            {t.state.conflict}
-          </AlertBanner>
-        ) : (
-          <SaveErrorBanner error={replace.error} />
-        )}
-        {flash !== null && <AlertBanner variant="success">{flash}</AlertBanner>}
+        {feedback('connection')}
 
         <div className="zalo-form">
           {fieldRow(
@@ -419,6 +530,7 @@ export const ZaloConnectionScreen = () => {
           {secretRow('secretKey', t.fields.secretKey, data.secretKeySet)}
           {secretRow('refreshToken', t.fields.refreshToken, data.refreshTokenSet)}
         </div>
+        {sectionActions(CONNECTION_SECTION)}
       </>
     );
   };
@@ -429,34 +541,6 @@ export const ZaloConnectionScreen = () => {
 
     return (
       <>
-        {/* 템플릿명 검색 — 목록 제목 바로 아래 한 줄(종전 위 조회 상자를 없앴다). 화면 안에서만 거른다. */}
-        <div className="notify-list-search">
-          <SearchInput
-            containerClassName={`notify-search-input ${FIT_PLACEHOLDER_CLASS}`}
-            label={w.search}
-            value={search}
-            placeholder={w.searchPlaceholder}
-            ref={searchRef}
-            onChange={(event) => setSearch(event.target.value)}
-            onSearch={(value) => setKeyword(value)}
-            clearLabel={messages.common.clear}
-          />
-          <div className="filter-actions field-cell-unlabeled">
-            <Button onClick={() => setKeyword(search)}>{w.apply}</Button>
-            {/* 초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */}
-            {hasChangedFilters({ q: '' }, { q: search }, { q: keyword }) && (
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  setSearch('');
-                  setKeyword('');
-                }}
-              >
-                {w.clear}
-              </Button>
-            )}
-          </div>
-        </div>
         {/* 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 단추로 넘긴다(단말 관리와 같다). */}
         <div
           ref={fit.ref}
@@ -486,6 +570,37 @@ export const ZaloConnectionScreen = () => {
     );
   };
 
+  /* 위 조회 상자 — 템플릿명 검색 · [조회] · [초기화] 한 줄(알림 수신자 · 인계작업 알림과 같은 자리 · 사용자 지시 2026-11-25). */
+  const listSearch = (
+    <div className="filter-bar notify-list-search">
+      <SearchInput
+        containerClassName={`notify-search-input ${FIT_PLACEHOLDER_CLASS}`}
+        label={w.search}
+        value={search}
+        placeholder={w.searchPlaceholder}
+        ref={searchRef}
+        onChange={(event) => setSearch(event.target.value)}
+        onSearch={(value) => setKeyword(value)}
+        clearLabel={messages.common.clear}
+      />
+      <div className="filter-actions field-cell-unlabeled">
+        <Button onClick={() => setKeyword(search)}>{w.apply}</Button>
+        {/* 초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */}
+        {hasChangedFilters({ q: '' }, { q: search }, { q: keyword }) && (
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setSearch('');
+              setKeyword('');
+            }}
+          >
+            {w.clear}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+
   const templateDetail = (): ReactNode => {
     if (selectedRow === undefined || values === null) {
       return (
@@ -505,9 +620,14 @@ export const ZaloConnectionScreen = () => {
 
     const row = selectedRow;
     const params = row.kind === 'event' ? paramsOf(row.code) : handoverParamsOf(row.code);
+    const section: SaveSection =
+      row.kind === 'event'
+        ? { kind: 'event', code: row.code }
+        : { kind: 'handover', code: row.code };
     return (
       <div className="zalo-template-detail">
         <h2 className="pane-title">{row.name}</h2>
+        {feedback('template')}
         <TextField
           label={t.fields.templateId}
           value={templateIdOf(row)}
@@ -544,6 +664,8 @@ export const ZaloConnectionScreen = () => {
             {t.handover.notice}
           </p>
         )}
+        {/* 이 템플릿의 ID 만 저장한다 — 다른 템플릿 · 연결 정보에서 고친 값은 싣지 않는다. */}
+        {sectionActions(section)}
       </div>
     );
   };
@@ -551,63 +673,54 @@ export const ZaloConnectionScreen = () => {
   const isStacked = layout.orientation === 'column';
 
   return (
-    <div className="list-detail-workspace">
+    <div ref={rootRef} className="list-detail-workspace">
       {/* 머리글(경로 · 화면 이름)은 두지 않는다 — 사이드바가 위치를 말한다(단말 관리와 같은 틀 · #358). */}
-      {/* 연결 정보와 템플릿 ID 는 한 번에 저장한다(종전과 같은 범위) — 그래서 두 카드 밖 화면 위 오른쪽에 둔다(사용자 지시 2026-11-24). */}
       <div className="list-detail-toolbar">
-        {values !== null && (
-          <div className="zalo-save-actions">
-            {/* 저장 범위 안내는 고친 것이 있을 때만 버튼 옆 한 줄. */}
-            {isDirty && <span className="field-note">{t.state.saveScope}</span>}
-            <Button variant="outlined" disabled={!isDirty} onClick={revert}>
-              {t.actions.revert}
-            </Button>
-            <Button
-              disabled={!isDirty || replace.isSaving}
-              loading={replace.isSaving}
-              onClick={save}
-            >
-              {t.actions.save}
-            </Button>
-          </div>
-        )}
         <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} inline />
       </div>
 
-      {/* 위 — Zalo 연결 정보(연결 상태 · 연결 칸). 아래 — 템플릿 설정(공통 값 · 목록 | 상세). */}
-      <section
-        ref={aboveRef}
-        className="pane zalo-pane zalo-connection-box"
-        aria-label={t.panes.connection}
-      >
+      {/* 위 — Zalo 연결 정보 · 템플릿 설정(공통 값). 상자마다 아래 오른쪽 [변경 취소][저장]으로 따로 저장한다. */}
+      <section className="pane zalo-pane zalo-connection-box" aria-label={t.panes.connection}>
         {connectionBox()}
       </section>
 
-      {/* 템플릿 설정 — 제목 아래 모든 템플릿 공통 값(변수 값 최대 길이) 한 줄, 단위는 입력란 옆(사용자 지시 2026-11-25). */}
+      {/* 템플릿 설정 — 모든 템플릿 공통 값(변수 값 최대 길이) 한 줄, 단위는 입력란 옆(사용자 지시 2026-11-25). [저장]은 줄 오른쪽 끝. */}
       {values !== null && (
         <section className="pane zalo-template-common" aria-label={t.panes.templates}>
           <h2 className="pane-title">{t.panes.templates}</h2>
-          <div className="zalo-field-row">
-            <span className="field-label">
-              {t.fields.paramMaxLength}
-              <span className="required-mark" aria-hidden="true">
-                *
+          {feedback('common')}
+          <div className="zalo-template-common-row">
+            <div className="zalo-field-row">
+              <span className="field-label">
+                {t.fields.paramMaxLength}
+                <span className="required-mark" aria-hidden="true">
+                  *
+                </span>
               </span>
-            </span>
-            <div className="zalo-field-value zalo-param-max">
-              <TextField
-                aria-label={t.fields.paramMaxLength}
-                required
-                inputMode="numeric"
-                value={values.paramMaxLength}
-                onChange={(event) => change({ paramMaxLength: event.target.value })}
-                error={fieldError('paramMaxLength')}
-              />
-              <span className="zalo-param-unit">{t.values.charUnit}</span>
+              <div className="zalo-field-value zalo-param-max">
+                <TextField
+                  aria-label={t.fields.paramMaxLength}
+                  required
+                  inputMode="numeric"
+                  value={values.paramMaxLength}
+                  onChange={(event) => change({ paramMaxLength: event.target.value })}
+                  error={fieldError('paramMaxLength')}
+                />
+                <span className="zalo-param-unit">{t.values.charUnit}</span>
+              </div>
             </div>
+            {sectionActions(COMMON_SECTION)}
           </div>
         </section>
       )}
+
+      <section
+        ref={aboveRef}
+        className="pane po-board-filter list-detail-filter"
+        aria-label={messages.common.paneList.filter}
+      >
+        {listSearch}
+      </section>
 
       <div
         ref={splitRef}
@@ -615,7 +728,7 @@ export const ZaloConnectionScreen = () => {
         style={{ ...split.style, ...layout.style }}
         data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
-        <section className="pane list-detail-list notify-fit-list" aria-label={w.list}>
+        <section className="pane list-detail-list" aria-label={w.list}>
           <PaneListHead title={w.list} collapse={listCollapse} />
           {templateList()}
         </section>
@@ -636,7 +749,7 @@ export const ZaloConnectionScreen = () => {
         )}
 
         <section
-          className="pane list-detail-detail zalo-template-pane"
+          className="pane list-detail-detail"
           aria-label={selectedRow === undefined ? w.selectTitle : selectedRow.name}
         >
           {templateDetail()}

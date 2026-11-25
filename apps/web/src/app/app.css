@@ -39435,7 +39435,7 @@ body:has(
 
 /*
  * 알림 연결 설정 — 조회 상자 아래 연결 상태 · 연결 정보 고정 상자(사용자 승인 배치 · #358).
- * 제목 · 상태 한 줄, 오른쪽 끝에 [되돌리기][저장](연결 정보 + 템플릿 ID 를 한 번에 보낸다 — 종전과 같은 범위).
+ * 제목 · 상태 한 줄. [변경 취소][저장]은 상자 아래 오른쪽(이 상자의 연결 칸만 저장 · 2026-11-25).
  */
 .zalo-connection-box {
   gap: var(--space-3);
@@ -39518,25 +39518,6 @@ body:has(
   overflow-wrap: anywhere;
 }
 
-/* 화면 위 오른쪽 — 저장 범위 한 줄 + [변경 취소][변경 사항 저장]. */
-.zalo-save-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  margin-right: auto;
-  margin-left: auto;
-}
-
-.list-detail-toolbar:has(> .zalo-save-actions) {
-  margin-bottom: 0;
-}
-
-.list-detail-toolbar > .zalo-save-actions {
-  margin: 0 0 0 auto;
-}
-
 /* 템플릿 공통 설정 줄 — 템플릿 목록 · 상세 위. */
 .zalo-template-common {
   padding: var(--space-3) var(--space-5);
@@ -39544,12 +39525,6 @@ body:has(
 
 .zalo-template-common > * {
   max-width: 20rem;
-}
-
-/* 상세 카드는 내용 높이만 — 목록과 윗선을 맞춘다. */
-.list-detail-split > .list-detail-detail.zalo-template-pane {
-  align-self: start;
-  height: auto;
 }
 
 /* 상세 — 고른 템플릿의 ID 입력 · 파라미터 · 복사. */
@@ -40484,4 +40459,30 @@ body:has(
 .list-detail-filter > .notify-list-search > .field-cell:not(.filter-actions) {
   flex: 0 1 20rem;
   min-width: 16rem;
+}
+
+/*
+ * 알림 연결 설정 — [변경 취소][저장]은 고치는 상자 아래 오른쪽(연결 정보 · 템플릿 설정 · 템플릿 상세, 다른 화면과 같은 자리 ·
+ * 사용자 지시 2026-11-25). 템플릿 설정은 한 줄 상자라 같은 줄 오른쪽 끝에 둔다.
+ */
+.zalo-pane > .form-actions,
+.zalo-template-detail > .form-actions {
+  margin-top: 0;
+}
+
+.zalo-template-common-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.zalo-template-common-row > .zalo-field-row {
+  flex: 1 1 24rem;
+  min-width: 0;
+}
+
+.zalo-template-common-row > .form-actions {
+  margin: 0 0 0 auto;
 }

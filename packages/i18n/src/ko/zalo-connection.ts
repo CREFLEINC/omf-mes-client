@@ -32,7 +32,7 @@ export const zaloConnection = {
     copy: '복사',
     copyFor: (eventName: string): string => `${eventName} 템플릿 변수 복사`,
     revert: '변경 취소',
-    save: '변경 사항 저장',
+    save: '저장',
     errorDetail: '오류 상세',
     reload: '다시 불러오기',
   },
@@ -47,7 +47,6 @@ export const zaloConnection = {
       code === '-124'
         ? 'Zalo 액세스 토큰이 유효하지 않습니다.'
         : 'Zalo 연결 중 오류가 발생했습니다.',
-    saveScope: '연결 정보와 템플릿 변경 사항을 함께 저장합니다.',
     conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 저장하세요',
   },
   /** 인계 작업 템플릿 카드(피처 002, FR-010·FR-022). 기존 6종 아래 별도 카드다(확정 2026-10-28). */
@@ -67,7 +66,7 @@ export const zaloConnection = {
     paramMaxLength: '20~400 사이의 정수를 입력하세요.',
     templateId: '템플릿 ID는 영문·숫자 1~40자이거나 비워 둡니다.',
   },
-  /** 연결 정보 · 템플릿 설정(목록 · 상세) 통일 배치(omf-all-around#358). 검색은 목록 제목 아래. */
+  /** 연결 정보 · 템플릿 설정(목록 · 상세) 통일 배치(omf-all-around#358). 검색은 위 조회 상자. */
   workspace: {
     search: '템플릿명 검색',
     searchPlaceholder: '템플릿명을 입력하세요',
