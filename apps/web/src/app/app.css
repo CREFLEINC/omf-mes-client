@@ -40534,17 +40534,24 @@ body:has(
   color: var(--on-surface-variant);
 }
 
-/* W-06-26 교대 관리(omf-all-around#318) — 목록 머리 · 추가·수정 창. */
-.shift-management-list-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
+/* W-06-26 교대 관리(omf-all-around#318) — 검사 조회·판정과 같은 틀: 위 조회 상자, 아래 목록 상자. */
+.shift-management-filter .shift-management-add {
+  margin-inline-start: auto;
 }
 
-.shift-management-actions-end {
-  margin-inline-start: auto;
+.shift-management-list-pane {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.shift-management-list-pane .po-board-list-head {
+  margin: 0;
+}
+
+.shift-management-row-actions {
+  display: inline-flex;
+  gap: var(--space-2);
 }
 
 .shift-management-form {
@@ -40570,7 +40577,13 @@ body:has(
   gap: var(--space-3);
 }
 
-/* 사용 중지는 창 바닥 왼쪽 — 저장·취소와 떨어뜨린다. */
-.shift-management-deactivate {
-  margin-inline-end: auto;
+/* 비어 있는 필수 칸 — 글 없이 테두리만 붉게. 다 채우면 [저장]이 켜진다. */
+.shift-management-empty [class*='_field_']:has(> input) {
+  box-shadow: inset 0 0 0 1px var(--semantic-error);
+}
+
+/* 시간 선택 펼침이 창 아래에서 잘리지 않게 — 창 판 · 본문이 넘침을 자르지 않는다(창이 작아 스크롤이 필요 없다). */
+.shift-management-dialog [class*='_panel_'],
+.shift-management-dialog [class*='_body_'] {
+  overflow: visible;
 }

@@ -11,7 +11,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
-import { endsNextDay } from './edit-dialog';
+import { endsNextDay, nextShiftCode } from './edit-dialog';
 import { ShiftManagementScreen } from './screen';
 
 const t = messages.shiftManagement;
@@ -142,7 +142,7 @@ const pickTime = async (user: User, which: 'start' | 'end', value: string) => {
 };
 
 describe('ShiftManagementScreen — 교대 관리 W-06-26 (#318)', () => {
-  it('공장의 교대를 시작 시각 차례로 보이고, 자정을 넘는 교대는 「다음 날」로 적는다', async () => {
+  it('공장의 교대를 시작 시간 차례로 보이고, 자정을 넘는 교대의 종료 시간은 「다음 날 HH:MM」로 적는다', async () => {
     const { listQueries } = setup();
     const rows = (await table()).getAllByRole('row').slice(1);
     const [day, night] = rows;
@@ -150,28 +150,35 @@ describe('ShiftManagementScreen — 교대 관리 W-06-26 (#318)', () => {
 
     expect(rows.map((row) => within(row).getAllByRole('cell')[0]?.textContent)).toEqual(['D', 'N']);
     expect(within(day).getByText('08:00')).toBeInTheDocument();
-    expect(within(day).getByText(t.values.sameDay)).toBeInTheDocument();
-    expect(within(night).getByText(t.values.nextDay)).toBeInTheDocument();
-    expect(screen.getByText(t.count(2))).toBeInTheDocument();
+    expect(within(day).getByText('20:00')).toBeInTheDocument();
+    expect(within(night).getByText(t.values.nextDayEnd('08:00'))).toBeInTheDocument();
+    expect(screen.getByText(messages.common.paneList.count(2))).toBeInTheDocument();
     /* 기존 조회 API 를 공장으로 거른다 — 사용 중지 포함 조건은 싣지 않는다. */
     expect(listQueries[0]?.searchParams.get('plantId')).toBe('8401');
     expect(listQueries[0]?.searchParams.has('includeInactive')).toBe(false);
   });
 
-  it('추가 — 빈 필수 칸은 막고, 채우면 공장과 HH:MM:SS 시각을 보낸다', async () => {
+  it('추가 — 코드를 미리 채우고, 필수 칸이 다 차야 [저장]이 켜지며, 공장과 HH:MM:SS 시간을 보낸다', async () => {
     const { user, writes } = setup();
     await user.click(await screen.findByRole('button', { name: t.add }));
     const dialog = within(await screen.findByRole('dialog', { name: td.addTitle }));
 
-    await user.click(dialog.getByRole('button', { name: td.save }));
-    expect(dialog.getAllByText(td.required)).toHaveLength(4);
-    expect(writes).toHaveLength(0);
+    /* 닫기(X) 단추는 없다. */
+    expect(dialog.queryByRole('button', { name: /닫기/ })).toBeNull();
+    const code = dialog.getByLabelText(td.code, { exact: false });
+    expect(code).toHaveValue('S01');
+    expect(dialog.getByRole('button', { name: td.save })).toBeDisabled();
+    expect(dialog.getByRole('button', { name: td.start })).toHaveAttribute('aria-invalid', 'true');
 
-    await user.type(dialog.getByLabelText(td.code, { exact: false }), 'N2');
+    /* 자동 코드는 바꿀 수 있다. */
+    await user.clear(code);
+    expect(dialog.getByRole('button', { name: td.save })).toBeDisabled();
+    await user.type(code, 'N2');
     await user.type(dialog.getByLabelText(td.name, { exact: false }), '야간 2');
     await pickTime(user, 'start', '22:00');
     await pickTime(user, 'end', '06:00');
     expect(dialog.getByText(td.nextDayNote)).toBeInTheDocument();
+    expect(dialog.getByRole('button', { name: td.save })).toBeEnabled();
     await user.click(dialog.getByRole('button', { name: td.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -222,21 +229,23 @@ describe('ShiftManagementScreen — 교대 관리 W-06-26 (#318)', () => {
     expect(writes[0]?.body).not.toHaveProperty('shiftCode');
   });
 
-  it('사용 중지 — 확인 뒤 :deactivate 를 ETag 와 함께 보내고 창을 닫는다', async () => {
+  it('사용 중지 — 목록 관리 칸에서 확인 뒤 :deactivate 를 ETag 와 함께 보낸다', async () => {
     const { user, writes } = setup();
-    await user.click((await table()).getByRole('button', { name: t.editRow('합성 야간') }));
-    const dialog = within(await screen.findByRole('dialog', { name: td.editTitle }));
-    await waitFor(() => expect(dialog.getByRole('button', { name: td.deactivate })).toBeEnabled());
-    await user.click(dialog.getByRole('button', { name: td.deactivate }));
+    await user.click((await table()).getByRole('button', { name: t.deactivateRow('합성 야간') }));
 
     const confirm = within(await screen.findByRole('dialog', { name: t.deactivateDialog.title }));
     expect(confirm.getByText(t.deactivateDialog.body('합성 야간'))).toBeInTheDocument();
+    await waitFor(() =>
+      expect(confirm.getByRole('button', { name: t.deactivateDialog.confirm })).toBeEnabled(),
+    );
     await user.click(confirm.getByRole('button', { name: t.deactivateDialog.confirm }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
     expect(writes[0]).toMatchObject({ method: 'POST', path: '/mdm/shifts/2:deactivate' });
     expect(writes[0]?.headers.get('If-Match')).toBe('5');
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: td.editTitle })).toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: t.deactivateDialog.title })).toBeNull(),
+    );
   });
 
   it('서버가 거절하면 창을 닫지 않고 칸 옆에 이유를 보인다', async () => {
@@ -258,6 +267,7 @@ describe('ShiftManagementScreen — 교대 관리 W-06-26 (#318)', () => {
     });
     await user.click(await screen.findByRole('button', { name: t.add }));
     const dialog = within(await screen.findByRole('dialog', { name: td.addTitle }));
+    await user.clear(dialog.getByLabelText(td.code, { exact: false }));
     await user.type(dialog.getByLabelText(td.code, { exact: false }), 'D');
     await user.type(dialog.getByLabelText(td.name, { exact: false }), '주간');
     await pickTime(user, 'start', '08:00');
@@ -266,6 +276,13 @@ describe('ShiftManagementScreen — 교대 관리 W-06-26 (#318)', () => {
 
     expect(await dialog.findByText('이미 있는 교대 코드입니다.')).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: td.addTitle })).toBeInTheDocument();
+  });
+});
+
+describe('nextShiftCode', () => {
+  it('이 공장에서 아직 쓰지 않은 S01 · S02 … 중 첫 번째를 고른다', () => {
+    expect(nextShiftCode([])).toBe('S01');
+    expect(nextShiftCode(['D', 's01', 'S03'])).toBe('S02');
   });
 });
 

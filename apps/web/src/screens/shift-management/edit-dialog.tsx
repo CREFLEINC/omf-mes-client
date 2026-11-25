@@ -18,6 +18,8 @@ interface Draft {
   endTime: string;
 }
 
+type DraftField = keyof Draft;
+
 const START_LABELS: TimeFieldLabels = {
   field: td.start,
   hourList: td.startHour,
@@ -36,8 +38,6 @@ const END_LABELS: TimeFieldLabels = {
   placeholder: td.timePlaceholder,
 };
 
-const EMPTY: Draft = { shiftCode: '', shiftName: '', startTime: '', endTime: '' };
-
 const draftOf = (shift: Shift): Draft => ({
   shiftCode: shift.shiftCode,
   shiftName: shift.shiftName,
@@ -47,18 +47,31 @@ const draftOf = (shift: Shift): Draft => ({
 
 const withSeconds = (value: string): string => `${value}:00`;
 
-/** 끝 ≤ 시작이면 다음 날 끝난다 — 서버가 같은 규칙으로 자정 넘김을 정한다. */
+/** 종료 ≤ 시작이면 다음 날 끝난다 — 서버가 같은 규칙으로 자정 넘김을 정한다. */
 export const endsNextDay = (startTime: string, endTime: string): boolean =>
   startTime !== '' && endTime !== '' && endTime <= startTime;
+
+/**
+ * 추가 창이 미리 채우는 교대 코드 — 이 공장에서 아직 쓰지 않은 `S01`·`S02`… 중 첫 번째.
+ * 사용자가 고칠 수 있다(사용 중지한 교대의 코드는 목록에 없어 겹칠 수 있다 — 그때는 서버가 중복으로 거절한다).
+ */
+export const nextShiftCode = (existingCodes: readonly string[]): string => {
+  const taken = new Set(existingCodes.map((code) => code.toUpperCase()));
+  for (let index = 1; ; index += 1) {
+    const code = `S${String(index).padStart(2, '0')}`;
+    if (!taken.has(code)) return code;
+  }
+};
 
 export interface EditDialogProps {
   plantId: number;
   plantName: string;
   /** 고칠 교대. 없으면 추가 창. */
   shift: Shift | null;
+  /** 이 공장의 교대 코드 — 추가 창의 코드 미리 채우기에 쓴다. */
+  existingCodes: readonly string[];
   onClose: () => void;
   onSaved: () => void;
-  onDeactivate: (shift: Shift) => void;
 }
 
 /** 교대 추가 · 수정 창. 수정 창은 상세를 받아 잠금 토큰과 코드 수정 가부를 쓴다. */
@@ -66,14 +79,17 @@ export const EditDialog = ({
   plantId,
   plantName,
   shift,
+  existingCodes,
   onClose,
   onSaved,
-  onDeactivate,
 }: EditDialogProps) => {
   const shiftId = shift?.shiftId ?? null;
   const detail = useShiftDetail(shiftId);
-  const [draft, setDraft] = useState<Draft>(shift === null ? EMPTY : draftOf(shift));
-  const [touched, setTouched] = useState(false);
+  const [draft, setDraft] = useState<Draft>(
+    shift === null
+      ? { shiftCode: nextShiftCode(existingCodes), shiftName: '', startTime: '', endTime: '' }
+      : draftOf(shift),
+  );
   const save = useSaveShift(shiftId, onSaved);
 
   /* 상세가 오면 그 값으로 채운다 — 목록을 받은 뒤 누가 고쳤을 수 있다. */
@@ -86,14 +102,14 @@ export const EditDialog = ({
   const codeLocked = shift !== null && editability?.codeEditable === false;
   const waiting = shift !== null && detail.data === undefined;
 
-  const missing = {
+  /* 비어 있는 필수 칸은 처음부터 빨간 테두리 — 다 채워야 [저장]이 켜진다. */
+  const missing: Record<DraftField, boolean> = {
     shiftCode: draft.shiftCode.trim() === '',
     shiftName: draft.shiftName.trim() === '',
     startTime: draft.startTime === '',
     endTime: draft.endTime === '',
   };
-  const fieldError = (field: keyof Draft): string | undefined =>
-    save.fieldErrors[field] ?? (touched && missing[field] ? td.required : undefined);
+  const complete = !Object.values(missing).some(Boolean);
 
   const update = (patch: Partial<Draft>) => {
     for (const field of Object.keys(patch)) save.clearFieldError(field);
@@ -101,8 +117,7 @@ export const EditDialog = ({
   };
 
   const submit = () => {
-    setTouched(true);
-    if (Object.values(missing).some(Boolean)) return;
+    if (!complete) return;
     const times = { startTime: withSeconds(draft.startTime), endTime: withSeconds(draft.endTime) };
     if (shift === null) {
       save.write({
@@ -128,6 +143,10 @@ export const EditDialog = ({
     });
   };
 
+  /** 빈 칸은 테두리만 붉게(글 없이), 서버가 거절한 칸은 이유 글까지. */
+  const textFieldClass = (field: DraftField): string | undefined =>
+    missing[field] ? 'shift-management-empty' : undefined;
+
   const body = () => {
     if (shift !== null && detail.isError)
       return <LoadErrorAlert error={detail.error} onRetry={() => void detail.refetch()} />;
@@ -146,12 +165,15 @@ export const EditDialog = ({
           maxLength={50}
           value={draft.shiftCode}
           disabled={codeLocked}
+          containerClassName={textFieldClass('shiftCode')}
           helperText={
             codeLocked && editability !== undefined
               ? td.codeLocked(editability.referenceCount ?? 0)
-              : undefined
+              : shift === null
+                ? td.codeAuto
+                : undefined
           }
-          error={fieldError('shiftCode')}
+          error={save.fieldErrors.shiftCode}
           onChange={(event) => update({ shiftCode: event.target.value })}
         />
         <TextField
@@ -160,31 +182,32 @@ export const EditDialog = ({
           placeholder={td.namePlaceholder}
           maxLength={200}
           value={draft.shiftName}
-          error={fieldError('shiftName')}
+          containerClassName={textFieldClass('shiftName')}
+          error={save.fieldErrors.shiftName}
           onChange={(event) => update({ shiftName: event.target.value })}
         />
         <div className="shift-management-times">
-          <Field label={td.start} labelAs="span" required error={fieldError('startTime')}>
+          <Field label={td.start} labelAs="span" required error={save.fieldErrors.startTime}>
             {(ids) => (
               <TimeField
                 labels={START_LABELS}
                 hour={draft.startTime.slice(0, 2)}
                 minute={draft.startTime.slice(3, 5)}
                 disabled={false}
-                invalid={ids.invalid}
+                invalid={ids.invalid || missing.startTime}
                 describedBy={ids.describedById}
                 onChange={(hour, minute) => update({ startTime: `${hour}:${minute}` })}
               />
             )}
           </Field>
-          <Field label={td.end} labelAs="span" required error={fieldError('endTime')}>
+          <Field label={td.end} labelAs="span" required error={save.fieldErrors.endTime}>
             {(ids) => (
               <TimeField
                 labels={END_LABELS}
                 hour={draft.endTime.slice(0, 2)}
                 minute={draft.endTime.slice(3, 5)}
                 disabled={false}
-                invalid={ids.invalid}
+                invalid={ids.invalid || missing.endTime}
                 describedBy={ids.describedById}
                 onChange={(hour, minute) => update({ endTime: `${hour}:${minute}` })}
               />
@@ -204,22 +227,14 @@ export const EditDialog = ({
       onClose={onClose}
       title={shift === null ? td.addTitle : td.editTitle}
       size="sm"
+      showCloseButton={false}
+      className="shift-management-dialog"
       footer={
         <>
-          {shift !== null && (
-            <Button
-              variant="outlined"
-              className="shift-management-deactivate"
-              disabled={waiting || save.isSaving}
-              onClick={() => onDeactivate(shift)}
-            >
-              {td.deactivate}
-            </Button>
-          )}
           <Button variant="outlined" onClick={onClose}>
             {td.cancel}
           </Button>
-          <Button loading={save.isSaving} disabled={waiting} onClick={submit}>
+          <Button loading={save.isSaving} disabled={waiting || !complete} onClick={submit}>
             {td.save}
           </Button>
         </>
