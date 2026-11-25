@@ -736,6 +736,108 @@ const grantsOf = (roleId) => state.rolePermissions.filter((row) => row.roleId ==
 on('GET', '/app/permissions', () => ({ items: APP_PERMISSIONS }));
 
 /*
+ * W-06-26 교대 관리 — 조회 · 추가 · 수정(#358 목 보강). 저장 값이 다시 읽히도록 상태를 바꾼다.
+ * 공장마다 주간 · 야간 두 줄로 시작한다. 수정은 상세의 ETag 로 잠근다(어긋나면 409).
+ */
+const shifts = [
+  { shiftId: 1, plantId: 1001, shiftCode: 'DAY', shiftName: '주간', startTime: '08:00', endTime: '20:00', crossesMidnight: false, isActive: true },
+  { shiftId: 2, plantId: 1001, shiftCode: 'NIGHT', shiftName: '야간', startTime: '20:00', endTime: '08:00', crossesMidnight: true, isActive: true },
+];
+const shiftVersions = new Map(shifts.map((row) => [row.shiftId, 1]));
+const crossesMidnight = (start, end) => String(end) <= String(start);
+const shiftDetail = (shift) => ({
+  status: 200,
+  created: {
+    shift,
+    editability: { codeEditable: true, reason: 'EDITABLE', referenceCount: 0 },
+  },
+  headers: { ETag: resourceEtag('shift', shift.shiftId, shiftVersions) },
+});
+const shiftInputError = (body) => {
+  for (const field of ['shiftCode', 'shiftName', 'startTime', 'endTime']) {
+    if (typeof body?.[field] !== 'string' || body[field].trim() === '') {
+      return fieldError(field, 'REQUIRED', '필수 입력 항목입니다.');
+    }
+  }
+  return null;
+};
+
+on('GET', '/mdm/shifts', (_params, query) => {
+  const plantId = query.get('plantId');
+  const includeInactive = query.get('includeInactive') === 'true';
+  return page(
+    shifts.filter(
+      (row) =>
+        (plantId === null || row.plantId === Number(plantId)) && (includeInactive || row.isActive),
+    ),
+    query,
+  );
+});
+
+on('GET', '/mdm/shifts/{shiftId}', (params) => {
+  const shift = shifts.find((row) => row.shiftId === Number(params.shiftId));
+  return shift === undefined ? null : shiftDetail(shift);
+});
+
+on('POST', '/mdm/shifts', (_params, _query, body) => {
+  const invalid = shiftInputError(body);
+  if (invalid !== null) return invalid;
+  if (shifts.some((row) => row.plantId === Number(body.plantId) && row.shiftCode === body.shiftCode.trim())) {
+    return fieldError('shiftCode', 'DUPLICATE', '이미 있는 교대 코드입니다.');
+  }
+  const shift = {
+    shiftId: Math.max(0, ...shifts.map((row) => row.shiftId)) + 1,
+    plantId: Number(body.plantId),
+    shiftCode: body.shiftCode.trim(),
+    shiftName: body.shiftName.trim(),
+    startTime: body.startTime,
+    endTime: body.endTime,
+    crossesMidnight: crossesMidnight(body.startTime, body.endTime),
+    isActive: true,
+  };
+  shifts.push(shift);
+  shiftVersions.set(shift.shiftId, 1);
+  return { ...shiftDetail(shift), status: 201 };
+});
+
+on('PUT', '/mdm/shifts/{shiftId}', (params, _query, body, headers) => {
+  const shift = shifts.find((row) => row.shiftId === Number(params.shiftId));
+  if (shift === undefined) return null;
+  const ifMatch = headers?.['if-match'] ?? headers?.['If-Match'];
+  if (ifMatch !== undefined && ifMatch !== resourceEtag('shift', shift.shiftId, shiftVersions)) {
+    return conflict();
+  }
+  const invalid = shiftInputError({ shiftCode: shift.shiftCode, ...body });
+  if (invalid !== null) return invalid;
+  Object.assign(shift, {
+    ...(typeof body.shiftCode === 'string' ? { shiftCode: body.shiftCode.trim() } : {}),
+    shiftName: body.shiftName.trim(),
+    startTime: body.startTime,
+    endTime: body.endTime,
+    crossesMidnight: crossesMidnight(body.startTime, body.endTime),
+  });
+  shiftVersions.set(shift.shiftId, (shiftVersions.get(shift.shiftId) ?? 1) + 1);
+  return shiftDetail(shift);
+});
+
+for (const [action, isActive] of [
+  ['deactivate', false],
+  ['activate', true],
+]) {
+  on('POST', `/mdm/shifts/{shiftId}:${action}`, (params, _query, _body, headers) => {
+    const shift = shifts.find((row) => row.shiftId === Number(params.shiftId));
+    if (shift === undefined) return null;
+    const ifMatch = headers?.['if-match'] ?? headers?.['If-Match'];
+    if (ifMatch !== undefined && ifMatch !== '' && ifMatch !== resourceEtag('shift', shift.shiftId, shiftVersions)) {
+      return conflict();
+    }
+    shift.isActive = isActive;
+    shiftVersions.set(shift.shiftId, (shiftVersions.get(shift.shiftId) ?? 1) + 1);
+    return shiftDetail(shift);
+  });
+}
+
+/*
  * ⭐ **`q` 는 부분 일치·대소문자 불문이다**(2026-09-06 게이트 승인). 역할코드와 역할명 두 축을
  *    함께 본다 — 관리자는 `sys` 로도 `운영` 으로도 찾는다.
  */
