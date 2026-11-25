@@ -176,7 +176,7 @@ export const ErpSalesOrderDetailPane = ({
 
   /* 머리 칸은 「이름 : 값」, 그 아래 라인 표(열 조절 · 화면 안 쪽 넘김 · #358). 상자가 통째로 스크롤한다. */
   return (
-    <div className="erp-data-detail">
+    <div className="erp-data-detail erp-data-detail-fill">
       <ErpDetailFields title={t.panes.detail} fields={fields} />
       <Lines columns={columns} rows={lines} />
     </div>

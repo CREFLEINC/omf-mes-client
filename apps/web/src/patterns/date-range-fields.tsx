@@ -25,7 +25,9 @@ export interface DateRangeFieldsProps {
   clearable?: boolean;
   disabled?: boolean;
   invalid?: boolean;
+  /** 두 칸 공통 흐린 문구. 칸마다 다르면 `placeholders`[시작, 종료] 가 앞선다. */
   placeholder?: string;
+  placeholders?: readonly [string, string];
   /** 두 칸 공통 한계(YYYY-MM-DD). 서로의 한계(시작 ≤ 종료)는 이 부품이 더한다. */
   min?: string;
   max?: string;
@@ -62,6 +64,7 @@ export const DateRangeFields = ({
   disabled,
   invalid,
   placeholder,
+  placeholders,
   min,
   max,
   describedBy,
@@ -84,7 +87,7 @@ export const DateRangeFields = ({
     const common = {
       id: isStart ? startId : endId,
       value: value === '' ? null : value,
-      placeholder: hideLabels ? label : placeholder,
+      placeholder: hideLabels ? label : (placeholders?.[isStart ? 0 : 1] ?? placeholder),
       'aria-label': hideLabels ? label : undefined,
       'aria-required': required ? true : undefined,
       'aria-describedby': describedBy,

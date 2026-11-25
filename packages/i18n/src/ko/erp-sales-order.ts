@@ -38,6 +38,8 @@ export const erpSalesOrder = {
     lines: '수주 품목',
   },
   filters: {
+    orderDateFromPlaceholder: '수주 시작일을 입력하세요',
+    orderDateToPlaceholder: '수주 종료일을 입력하세요',
     all: '전체',
     /* 조회 상자 선택칸 이름(#358). 목록 열 · 칩은 `fields` 이름 그대로. */
     customerSelect: '고객사 검색',

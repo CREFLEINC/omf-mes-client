@@ -12,6 +12,7 @@ import {
 } from '../../test/api-harness';
 import { messageRow } from '../integration-sync/fixtures';
 import type { Session } from '../../patterns/session';
+import { presetPeriod } from './created-period';
 import { ErpOutboundScreen } from './screen';
 
 const ROUTE = '/master-data/erp-outbound';
@@ -319,8 +320,21 @@ describe('ErpOutboundScreen — 송신 예정 목록', () => {
     const { requests } = renderScreen([settingsRoute, messagesRoute()], '?item=GOODS_RECEIPT');
 
     await pendingPane().findByText('SAMPLE-GR-0001');
-    /* 등록일 선택칸 · 시작일 · 종료일 · 조회는 늘 보인다 — 처음은 「전체」, 날짜 칸은 비어 있다(사용자 지시 2026-11-24). */
-    expect(pendingPane().getByRole('combobox', { name: '등록일' })).toHaveTextContent('전체');
+    /*
+     * 등록일 라벨 둘 · 시작일 · 종료일 · 조회는 늘 보인다 — 처음은 「전체」(라벨 안 눌림), 날짜 칸은 비어 있다.
+     * 선택칸 · 「직접 지정」은 없앴다(사용자 지시 2026-11-25).
+     */
+    const chips = within(pendingPane().getByRole('group', { name: '등록일' }));
+    expect(chips.getByRole('button', { name: '최근 1주일' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    expect(chips.getByRole('button', { name: '최근 1개월' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    expect(pendingPane().queryByRole('combobox', { name: '등록일' })).toBeNull();
+    expect(pendingPane().queryByText('직접 지정')).toBeNull();
     expect(pendingPane().getByLabelText('시작일')).toHaveValue('');
     expect(pendingPane().getByLabelText('종료일')).toHaveValue('');
     const last = pendingListRequests(requests).at(-1);
@@ -328,16 +342,22 @@ describe('ErpOutboundScreen — 송신 예정 목록', () => {
     expect(last?.searchParams.get('createdTo')).toMatch(/^\d{4}-\d{2}-\d{2}T23:59:59/);
   });
 
-  it('등록일 「직접 지정」의 날짜 두 칸으로 조회하면 그 기간을 실어 부르고 주소에 남긴다', async () => {
+  it('등록일 날짜 두 칸으로 조회하면 그 기간을 실어 부르고 주소에 남긴다 — 날짜를 고치면 라벨 선택이 풀린다', async () => {
     const { requests, user } = renderScreen(
       [settingsRoute, messagesRoute()],
       '?item=GOODS_RECEIPT',
     );
 
     await pendingPane().findByText('SAMPLE-GR-0001');
-    await user.click(pendingPane().getByRole('combobox', { name: '등록일' }));
-    await user.click(screen.getByRole('option', { name: '직접 지정' }));
+    const week = within(pendingPane().getByRole('group', { name: '등록일' })).getByRole('button', {
+      name: '최근 1주일',
+    });
+    await user.click(week);
+    expect(week).toHaveAttribute('aria-pressed', 'true');
+    await user.clear(pendingPane().getByLabelText('시작일'));
+    expect(week).toHaveAttribute('aria-pressed', 'false');
     await user.type(pendingPane().getByLabelText('시작일'), '2026-11-01');
+    await user.clear(pendingPane().getByLabelText('종료일'));
     await user.type(pendingPane().getByLabelText('종료일'), '2026-11-24');
     await user.click(pendingPane().getByRole('button', { name: '조회' }));
 
@@ -345,6 +365,50 @@ describe('ErpOutboundScreen — 송신 예정 목록', () => {
       const last = pendingListRequests(requests).at(-1);
       expect(last?.searchParams.get('createdFrom')).toMatch(/^2026-11-01T00:00:00/);
       expect(last?.searchParams.get('createdTo')).toMatch(/^2026-11-24T23:59:59/);
+    });
+    expect(screen.getByTestId('location')).toHaveTextContent('from=2026-11-01&to=2026-11-24');
+  });
+
+  it('등록일 라벨을 누르면 그 범위를 바로 걸고, 다시 누르면 전체로 돌아간다(사용자 지시 2026-11-25)', async () => {
+    const { requests, user } = renderScreen(
+      [settingsRoute, messagesRoute()],
+      '?item=GOODS_RECEIPT',
+    );
+
+    await pendingPane().findByText('SAMPLE-GR-0001');
+    const chips = within(pendingPane().getByRole('group', { name: '등록일' }));
+    const month = chips.getByRole('button', { name: '최근 1개월' });
+    const expected = presetPeriod('month', new Date());
+    await user.click(month);
+
+    expect(month).toHaveAttribute('aria-pressed', 'true');
+    expect(chips.getByRole('button', { name: '최근 1주일' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      `from=${expected.from}&to=${expected.to}`,
+    );
+    expect(pendingPane().getByLabelText('시작일')).toHaveValue(expected.from);
+    expect(pendingPane().getByLabelText('종료일')).toHaveValue(expected.to);
+    await waitFor(() => {
+      const last = pendingListRequests(requests).at(-1);
+      expect(last?.searchParams.get('createdFrom')).toMatch(
+        new RegExp(`^${expected.from}T00:00:00`),
+      );
+      expect(last?.searchParams.get('createdTo')).toMatch(new RegExp(`^${expected.to}T23:59:59`));
+    });
+
+    await user.click(month);
+
+    expect(month).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByTestId('location')).not.toHaveTextContent('from=');
+    expect(screen.getByTestId('location')).not.toHaveTextContent('to=');
+    expect(pendingPane().getByLabelText('시작일')).toHaveValue('');
+    expect(pendingPane().getByLabelText('종료일')).toHaveValue('');
+    await waitFor(() => {
+      const last = pendingListRequests(requests).at(-1);
+      expect(last?.searchParams.get('createdFrom')).toMatch(/^2000-01-01T00:00:00/);
     });
   });
 

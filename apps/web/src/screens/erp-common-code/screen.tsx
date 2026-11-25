@@ -515,7 +515,7 @@ export const ErpCommonCodeScreen = () => {
               description={t.empty.pickDescription}
             />
           ) : (
-            <div className="erp-data-detail">
+            <div className="erp-data-detail erp-data-detail-fill">
               <ErpDetailFields
                 title={t.panes.detail}
                 /* 그룹명 · 그룹코드 · 설명 · 사용 여부 순(사용자 지시 2026-11-24). */

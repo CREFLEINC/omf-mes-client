@@ -30,6 +30,8 @@ export const erpProductionOrder = {
     detail: 'ERP W/O 상세',
   },
   filters: {
+    plannedStartDateFromPlaceholder: '계획 시작일(부터)을 입력하세요',
+    plannedStartDateToPlaceholder: '계획 시작일(까지)을 입력하세요',
     all: '전체',
     /* 조회 상자 선택칸 이름(#358). 목록 열 · 칩은 `fields` 이름 그대로. */
     itemSelect: '품목 검색',

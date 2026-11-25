@@ -40423,6 +40423,28 @@ body:has(
     var(--focus-ring);
 }
 
+
+/*
+ * 조회 상자 안 칸 이름에는 빨간 * 를 두지 않는다(사용자 지시 2026-11-25). 필수 조건 검사 · 오류 안내 · aria-required 는
+ * 그대로다 — 표시만 숨긴다. 상세 · 팝업 안 입력 칸의 * 는 그대로 둔다.
+ */
+:is(.list-detail-filter, .po-board-filter, .filter-bar) :is(.required-mark, [class*='requiredMark']) {
+  display: none;
+}
+
+/* 상세 · 팝업 안 입력 줄(filter-bar 모양을 빌려 쓰는 입력 칸)의 * 는 남긴다. */
+:is(.list-detail-detail, [role='dialog']) :is(.required-mark, [class*='requiredMark']),
+:is(
+    .approval-route-step-add,
+    .item-bom-choice,
+    .maintenance-result-part-row,
+    .maintenance-result-part-picker,
+    .tool-pm-order-item-row,
+    .tool-pm-result-tool-grid
+  )
+  :is(.required-mark, [class*='requiredMark']) {
+  display: revert;
+}
 /* 배포 실패 안내 — 문장 끝 이동 단추가 글에 붙지 않게(밑줄 링크 → 단추 · 사용자 지시 2026-11-25). */
 .erp-wo-release-failures .action-link-button {
   margin-left: var(--space-2);

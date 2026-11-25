@@ -28,6 +28,8 @@ export const erpProductionOrder: Translated<typeof ko.erpProductionOrder> = {
     detail: 'Chi tiết ERP W/O',
   },
   filters: {
+    plannedStartDateFromPlaceholder: 'Nhập từ ngày bắt đầu kế hoạch',
+    plannedStartDateToPlaceholder: 'Nhập đến ngày bắt đầu kế hoạch',
     all: 'Tất cả',
     itemSelect: 'Tìm mặt hàng',
     statusSelect: 'Chọn trạng thái',

@@ -56,10 +56,8 @@ export const erpOutbound: Translated<typeof ko.erpOutbound> = {
   },
   created: {
     label: 'Ngày đăng ký',
-    all: 'Tất cả',
     week: '1 tuần gần nhất',
     month: '1 tháng gần nhất',
-    custom: 'Tự chọn',
     from: 'Từ ngày',
     to: 'Đến ngày',
     reasons: {

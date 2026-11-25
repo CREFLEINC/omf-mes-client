@@ -155,7 +155,7 @@ export const ErpPurchaseOrderFilterBar = ({
           className="erp-po-period-field"
           startLabel={t.filters.orderDateFrom}
           endLabel={t.filters.orderDateTo}
-          placeholder={messages.common.selectDate}
+          placeholders={[t.filters.orderDateFromPlaceholder, t.filters.orderDateToPlaceholder]}
           from={draft.from}
           to={draft.to}
           onChange={(from, to) => setDraft((current) => ({ ...current, from, to }))}

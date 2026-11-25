@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
+import './erp-data-parts.css';
 
 /**
  * ERP 수신 데이터 조회 화면 8개(공통코드 · 품목 · BOM · 생산오더 · 구매발주 · 수주 · 거래처 · 사원)가 함께 쓰는 작은 부품

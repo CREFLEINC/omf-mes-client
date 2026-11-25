@@ -39,6 +39,8 @@ export const erpPurchaseOrder: Translated<typeof ko.erpPurchaseOrder> = {
     lines: 'Dòng đơn mua hàng',
   },
   filters: {
+    orderDateFromPlaceholder: 'Nhập ngày đặt hàng bắt đầu',
+    orderDateToPlaceholder: 'Nhập ngày đặt hàng kết thúc',
     all: 'Tất cả',
     supplierSelect: 'Tìm nhà cung cấp',
     plantSelect: 'Tìm nhà máy',

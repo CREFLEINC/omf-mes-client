@@ -37,6 +37,8 @@ export const erpSalesOrder: Translated<typeof ko.erpSalesOrder> = {
     lines: 'Dòng đơn bán hàng',
   },
   filters: {
+    orderDateFromPlaceholder: 'Nhập ngày nhận đơn bắt đầu',
+    orderDateToPlaceholder: 'Nhập ngày nhận đơn kết thúc',
     all: 'Tất cả',
     customerSelect: 'Tìm khách hàng',
     statusSelect: 'Chọn trạng thái',

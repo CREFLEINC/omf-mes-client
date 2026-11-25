@@ -41,6 +41,8 @@ export const erpPurchaseOrder = {
     lines: '발주 품목',
   },
   filters: {
+    orderDateFromPlaceholder: '발주 시작일을 입력하세요',
+    orderDateToPlaceholder: '발주 종료일을 입력하세요',
     all: '전체',
     /* 조회 상자 선택칸 이름(#358). 목록 열 · 칩은 `fields` 이름 그대로. */
     supplierSelect: '공급사 검색',

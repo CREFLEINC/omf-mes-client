@@ -150,7 +150,7 @@ export const ErpProductionOrderFilterBar = ({
           className="erp-wo-period-field"
           startLabel={t.filters.plannedStartDateFrom}
           endLabel={t.filters.plannedStartDateTo}
-          placeholder={messages.common.selectDate}
+          placeholders={[t.filters.plannedStartDateFromPlaceholder, t.filters.plannedStartDateToPlaceholder]}
           from={draft.from}
           to={draft.to}
           onChange={(from, to) => setDraft((current) => ({ ...current, from, to }))}

@@ -41,6 +41,7 @@ import {
   type OutboundCounts,
 } from './queries';
 import { ErpSendChips } from './send-chips';
+import './layout.css';
 
 const t = messages.erpOutbound;
 const ts = messages.integrationSync;
@@ -537,7 +538,7 @@ export const ErpOutboundScreen = () => {
               {/*
                * 정보 상자 하나 — 검사 조회·판정 · 연동 현황·이력 · ERP 수신과 같은 모양(첫 칸에 항목 이름 + 송신 여부 배지 · #358).
                */}
-              <dl className="parts-iqc-facts iqc-inbound-facts integration-sync-facts">
+              <dl className="parts-iqc-facts iqc-inbound-facts integration-sync-facts erp-outbound-facts">
                 <div className="parts-iqc-fact">
                   <dt className="field-label">{t.table.item}</dt>
                   <dd className="iqc-inbound-lot-key">
@@ -579,10 +580,19 @@ export const ErpOutboundScreen = () => {
                 </div>
               </dl>
               {/* 송신 예정 — 건수는 표 아래 쪽 넘김 줄 「총 N건」이 보인다(제목에서 뺌 · 사용자 지시 2026-11-24). */}
-              <h3 className="pane-title erp-outbound-pending-title">{t.panes.pending}</h3>
-              {/* 등록일 조건 — 조회 상자로 감싼 한 줄(사용자 지시 2026-11-24). */}
-              {selected.interfaceCode !== null && (
-                <CreatedFilter applied={created} today={today} onApply={applyCreated} />
+              {/*
+               * 등록일 조건 — 소제목 줄 오른쪽 끝의 범위 라벨 + 조회 상자로 감싼 날짜 한 줄(사용자 지시 2026-11-24 · 11-25).
+               * 송신이 없는 항목은 소제목만 둔다.
+               */}
+              {selected.interfaceCode !== null ? (
+                <CreatedFilter
+                  title={t.panes.pending}
+                  applied={created}
+                  today={today}
+                  onApply={applyCreated}
+                />
+              ) : (
+                <h3 className="pane-title erp-outbound-pending-title">{t.panes.pending}</h3>
               )}
               {pendingSlot()}
             </div>
