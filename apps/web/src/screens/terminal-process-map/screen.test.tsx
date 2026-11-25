@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -12,6 +12,7 @@ import {
 import { TerminalProcessMapScreen } from './screen';
 
 const t = messages.terminalProcessMap;
+const leave = messages.common.unsavedLeave;
 const path = (request: Request): string => new URL(request.url).pathname;
 const page = (items: unknown[]) => ({ items, page: { page: 1, size: 50, total: items.length } });
 
@@ -79,6 +80,7 @@ const renderScreen = (route = '/system/terminal-process-map') =>
     fetch: createStubFetch(routes),
     route,
     session: null,
+    dataRouter: true,
   });
 
 describe('TerminalProcessMapScreen 표시', () => {
@@ -200,6 +202,7 @@ describe('TerminalProcessMapScreen 조회 조건', () => {
       ]),
       route: '/system/terminal-process-map',
       session: null,
+      dataRouter: true,
     });
     await screen.findByRole('button', { name: 'SYN-TERM-01' });
 
@@ -262,12 +265,13 @@ describe('TerminalProcessMapScreen 기능 구성 저장', () => {
         respond: () => jsonResponse(page(rows), { headers: { ETag: '"1"' } }),
       },
     ];
-    renderWithProviders(<TerminalProcessMapScreen />, {
+    const view = renderWithProviders(<TerminalProcessMapScreen />, {
       fetch: createStubFetch([...extra, ...routes]),
       route: '/system/terminal-process-map?terminal=701',
       session: null,
+      dataRouter: true,
     });
-    return { puts, user: userEvent.setup() };
+    return { puts, user: userEvent.setup(), router: view.router };
   };
   const flag = (processName: string, key: keyof typeof t.flags) =>
     screen.getByRole('checkbox', { name: `${processName} ${t.flags[key]}` });
@@ -365,6 +369,35 @@ describe('TerminalProcessMapScreen 기능 구성 저장', () => {
       'true',
     );
     expect(flag('합성 사출', 'canCompleteWork')).toBeChecked();
+  });
+
+  it('저장하지 않은 구성을 두고 다른 화면으로 가면 묻고, 계속 편집은 남고 나가기는 옮긴다(#358)', async () => {
+    const { user, router, puts } = renderWith([
+      processRow(11, '합성 사출', { canStartWork: true }),
+    ]);
+
+    await screen.findByRole('button', { name: t.grid.save });
+    await user.click(flag('합성 사출', 'canCompleteWork'));
+
+    await act(async () => {
+      await router?.navigate('/system/users-roles');
+    });
+    const dialog = within(await screen.findByRole('dialog', { name: leave.title }));
+    expect(dialog.getByText(leave.body)).toBeInTheDocument();
+    await user.click(dialog.getByRole('button', { name: leave.keep }));
+    expect(router?.state.location.pathname).toBe('/system/terminal-process-map');
+    expect(flag('합성 사출', 'canCompleteWork')).toBeChecked();
+
+    await act(async () => {
+      await router?.navigate('/system/users-roles');
+    });
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.confirm,
+      }),
+    );
+    await waitFor(() => expect(router?.state.location.pathname).toBe('/system/users-roles'));
+    expect(puts).toHaveLength(0);
   });
 
   it('저장하지 않고 나가면 고른 단말이 바뀐다', async () => {

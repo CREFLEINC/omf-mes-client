@@ -1,6 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -18,6 +18,7 @@ type HandoverAlertRecipient = components['schemas']['HandoverAlertSetting']['rec
 type HandoverAlertSetting = components['schemas']['HandoverAlertSetting'];
 
 const t = messages.handoverAlertSettings;
+const leave = messages.common.unsavedLeave;
 const picker = messages.alarmRecipientSettings.picker;
 
 /**
@@ -86,8 +87,6 @@ interface SetupOptions {
   /** 요약 응답의 Zalo 연결 상태. 주지 않으면 싣지 않는다 */
   zaloStatus?: string;
   permissions?: string[];
-  /** 이동한 주소를 읽어야 할 때 — 데이터 라우터로 렌더한다 */
-  dataRouter?: boolean;
 }
 
 const setup = (options: SetupOptions = {}) => {
@@ -186,7 +185,8 @@ const setup = (options: SetupOptions = {}) => {
     {
       fetch: createStubFetch(routes),
       route: options.route ?? '/notification/handover-settings',
-      dataRouter: options.dataRouter,
+      /* 화면이 나가기 확인(`LeaveGuard` · `useBlocker`)을 써서 늘 데이터 라우터로 렌더한다(#358). */
+      dataRouter: true,
       session: {
         ...SYNTHETIC_SESSION,
         scopes: options.scopes ?? [{ businessUnitId: 8301 }],
@@ -254,7 +254,6 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     const { router } = setup({
       zaloStatus: 'NOT_CONFIGURED',
       permissions: ['W-CO-14', 'W-CO-12'],
-      dataRouter: true,
     });
 
     const pane = within(
@@ -585,5 +584,32 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
       ).not.toBeInTheDocument(),
     );
     expect(screen.getByRole('button', { name: '적치' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('저장하지 않은 변경을 두고 다른 화면으로 가면 묻고, 계속 편집은 남고 나가기는 옮긴다(#358)', async () => {
+    const user = userEvent.setup();
+    const { router } = setup();
+
+    const pane = await openType(user, '자재 출고 피킹');
+    await user.click(pane.getByRole('switch', { name: t.fields.enabled }));
+
+    await act(async () => {
+      await router?.navigate('/system/users-roles');
+    });
+    const dialog = within(await screen.findByRole('dialog', { name: leave.title }));
+    expect(dialog.getByText(leave.body)).toBeInTheDocument();
+    await user.click(dialog.getByRole('button', { name: leave.keep }));
+    expect(router?.state.location.pathname).toBe('/notification/handover-settings');
+    expect(pane.getByRole('switch', { name: t.fields.enabled })).toBeInTheDocument();
+
+    await act(async () => {
+      await router?.navigate('/system/users-roles');
+    });
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.confirm,
+      }),
+    );
+    await waitFor(() => expect(router?.state.location.pathname).toBe('/system/users-roles'));
   });
 });

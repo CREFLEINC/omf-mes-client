@@ -389,10 +389,13 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * 클릭 핸들러가 하는 정리를 하나도 거치지 않는다 — 그래서 따로 밟아 봐야 한다.
  */
 let probeSearch = '';
+let probePathname = '';
 let probeNavigate: ((to: string) => void) | null = null;
 
 const RouterProbe = () => {
-  probeSearch = useLocation().search;
+  const location = useLocation();
+  probeSearch = location.search;
+  probePathname = location.pathname;
   probeNavigate = useNavigate();
 
   return null;
@@ -409,7 +412,7 @@ const renderScreen = (routes: StubRoute[], search = '') => {
       <UsersRolesScreen />
       <RouterProbe />
     </>,
-    { fetch, route: `${ROUTE}${search}` },
+    { fetch, route: `${ROUTE}${search}`, dataRouter: true },
   );
 
   const goTo = (to: string) => {
@@ -418,7 +421,14 @@ const renderScreen = (routes: StubRoute[], search = '') => {
     });
   };
 
-  return { requests, search: () => probeSearch, goTo, queryClient, user: userEvent.setup() };
+  return {
+    requests,
+    search: () => probeSearch,
+    pathname: () => probePathname,
+    goTo,
+    queryClient,
+    user: userEvent.setup(),
+  };
 };
 
 /**
@@ -2170,6 +2180,33 @@ describe('UsersRolesScreen 초안 수명', () => {
         '합성 사용자 B',
       );
     });
+  });
+
+  /** #358 — 저장하지 않은 변경을 두고 다른 화면(사이드바 · 뒤로가기)으로 가도 같은 창으로 묻는다. */
+  it('고치던 중 다른 화면으로 가면 묻고, 계속 편집은 남고 나가기는 옮긴다', async () => {
+    const { goTo, pathname, user } = await openUserDetail();
+
+    await user.clear(within(userFormPane()).getByRole('textbox', { name: '이름' }));
+    await user.type(within(userFormPane()).getByRole('textbox', { name: '이름' }), '고치던 값');
+
+    goTo('/system/approval-route');
+    await user.click(
+      within(await screen.findByRole('dialog', { name: '저장되지 않은 변경 사항' })).getByRole(
+        'button',
+        { name: '계속 편집' },
+      ),
+    );
+    expect(pathname()).toBe(ROUTE);
+    expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toHaveValue('고치던 값');
+
+    goTo('/system/approval-route');
+    await user.click(
+      within(await screen.findByRole('dialog', { name: '저장되지 않은 변경 사항' })).getByRole(
+        'button',
+        { name: '저장하지 않고 나가기' },
+      ),
+    );
+    await waitFor(() => expect(pathname()).toBe('/system/approval-route'));
   });
 
   /** omf-all-around#333 — 저장하지 않은 변경이 사용자 전환으로 말없이 사라지지 않는다. */

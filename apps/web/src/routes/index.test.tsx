@@ -1435,7 +1435,9 @@ describe('appRouter — 알람 수신자 설정의 진입 경로', () => {
   });
 
   it('그 주소로 들어가면 알람 수신자 설정 화면이 선다', async () => {
-    renderRoutedApp('/notification/recipient-settings', alarmRecipientRoutes());
+    renderRoutedApp('/notification/recipient-settings', alarmRecipientRoutes(), {
+      dataRouter: true,
+    });
 
     /* 경로 · 큰 제목은 두지 않는다(시스템 관리 화면 통일 · #358) — 부서를 고르기 전에는 주소에 아무것도 적지 않는다 — 어느 부서의 설정인지가 먼저다. */
     expect(

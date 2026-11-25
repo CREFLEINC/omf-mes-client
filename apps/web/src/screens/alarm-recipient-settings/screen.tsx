@@ -29,6 +29,7 @@ import { PageNav } from '../../patterns/page-nav';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
+import { LeaveGuard } from '../routing/leave-guard';
 import {
   addRecipients,
   hasInactiveRecipient,
@@ -53,6 +54,7 @@ import { SelectField } from './select-field';
 import type { NotificationEvent, SettingDraft, SettingSummaryItem } from './types';
 
 const t = messages.alarmRecipientSettings;
+const leave = messages.common.unsavedLeave;
 const w = t.workspace;
 const ZALO_CONNECTION_PATH = '/notification/zalo-connection';
 
@@ -593,6 +595,17 @@ export const AlarmRecipientSettingsScreen = () => {
               : t.panes.setting(eventLabel(selectedEvent, selectedCode)),
           content: settingPane(),
         }}
+      />
+
+      {/* 저장하지 않은 변경을 두고 다른 화면으로(사이드바 · 뒤로가기) 갈 때 묻는다(#358). */}
+      <LeaveGuard
+        when={isDirty}
+        discardTitle={leave.title}
+        discardBody={leave.body}
+        stayLabel={leave.keep}
+        leaveLabel={leave.confirm}
+        showCloseButton={false}
+        size="sm"
       />
 
       <Dialog

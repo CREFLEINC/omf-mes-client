@@ -70,6 +70,7 @@ import {
   toSearchParams,
 } from './filters';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
+import { LeaveGuard } from '../routing/leave-guard';
 import {
   useActiveUserOptions,
   useBusinessUnitOptions,
@@ -136,6 +137,7 @@ type DepartmentDetailResponse = components['schemas']['DepartmentDetailResponse'
 type WorkerQualificationListResponse = components['schemas']['WorkerQualificationListResponse'];
 
 const t = messages.commonCode;
+const leave = messages.common.unsavedLeave;
 
 /** 좌우 · 상하 배치는 네 탭(공통코드 · 조직 · 작업자 · 거래처)이 함께 쓴다 — 「⋯」 이 같은 탭 줄에 선다(#350 리뷰). */
 const ORIENTATION_KEY = 'omf-mes:common-code:split-orientation';
@@ -348,6 +350,8 @@ export const CommonCodeScreen = () => {
 
   const isCodeGroupDirty =
     formState !== null && !isSameCodeGroupValues(formState.values, formState.baseline);
+  /** 코드값 구획(`CodeValueSection`)이 알려 주는 저장하지 않은 편집 — 다른 화면으로 옮기기 전에 묻는다(#358). */
+  const [isCodeValueDirty, setIsCodeValueDirty] = useState(false);
 
   /** 보내기 전에 화면에서 잡은 오류. 저장을 누른 뒤에만 세운다 — 입력 도중에 붉은 글씨를 띄우지 않는다. */
   const [codeGroupFieldErrors, setCodeGroupFieldErrors] = useState<Record<string, string>>({});
@@ -1909,6 +1913,7 @@ export const CommonCodeScreen = () => {
                       onIncludeInactiveChange={changeCodeValueIncludeInactive}
                       page={codeValuePage}
                       onPageChange={changeCodeValuePage}
+                      onDirtyChange={setIsCodeValueDirty}
                     />
                   )}
                 </div>
@@ -2474,8 +2479,26 @@ export const CommonCodeScreen = () => {
     return partnerTabContent;
   };
 
+  /* 어느 탭이든 저장하지 않은 편집이 있으면 다른 화면으로(사이드바 · 뒤로가기) 가기 전에 묻는다(#358). */
+  const hasUnsavedChanges =
+    isCodeGroupDirty ||
+    isCodeValueDirty ||
+    isDepartmentDirty ||
+    productionWarehouses.isDirty ||
+    isQualificationDirty ||
+    isPartnerRoleDirty;
+
   return (
     <>
+      <LeaveGuard
+        when={hasUnsavedChanges}
+        discardTitle={leave.title}
+        discardBody={leave.body}
+        stayLabel={leave.keep}
+        leaveLabel={leave.confirm}
+        showCloseButton={false}
+        size="sm"
+      />
       {/* 화면 제목 줄은 두지 않는다 — 탭마다 조회 조건 · 목록 · 상세 통일 배치(검사 조회·판정과 같다 · #350). */}
       {/*
        * 탭 줄 — 다른 탭 묶음 화면(검사 조회·판정 등)의 탭 막대와 같은 모양(`hub-bar` · `hub-tab`)이고, 오른쪽 끝 일 단추

@@ -64,10 +64,12 @@ import {
   withSection,
 } from './validation';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
+import { LeaveGuard } from '../routing/leave-guard';
 
 const t = messages.zaloConnection;
 const w = t.workspace;
 const hub = messages.common.inspectionHub;
+const leave = messages.common.unsavedLeave;
 
 const STATUS_CHIP: Record<Connection['status'], ChipStatus> = {
   ACTIVE: 'success',
@@ -672,8 +674,23 @@ export const ZaloConnectionScreen = () => {
 
   const isStacked = layout.orientation === 'column';
 
+  /* 어느 상자든 저장하지 않은 값이 있으면 다른 화면으로 가기 전에 묻는다(#358). */
+  const hasUnsavedChanges =
+    values !== null &&
+    baseline !== null &&
+    (!sameValues(values, baseline) || !sameHandover(handover, handoverBaseline));
+
   return (
     <div ref={rootRef} className="list-detail-workspace">
+      <LeaveGuard
+        when={hasUnsavedChanges}
+        discardTitle={leave.title}
+        discardBody={leave.body}
+        stayLabel={leave.keep}
+        leaveLabel={leave.confirm}
+        showCloseButton={false}
+        size="sm"
+      />
       {/* 머리글(경로 · 화면 이름)은 두지 않는다 — 사이드바가 위치를 말한다(단말 관리와 같은 틀 · #358). */}
       <div className="list-detail-toolbar">
         <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} inline />

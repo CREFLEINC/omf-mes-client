@@ -58,6 +58,7 @@ import {
   toUserSearchParams,
 } from './filters';
 import { validateInitialPassword } from './initial-password';
+import { LeaveGuard } from '../routing/leave-guard';
 import { isForbiddenLoadError, LoadErrorBanner } from './load-error-banner';
 import {
   lookupKeys,
@@ -2306,6 +2307,16 @@ export const UsersRolesScreen = () => {
         />
       </div>
 
+      {/* 저장하지 않은 변경을 두고 다른 화면으로(사이드바 · 뒤로가기) 갈 때도 같은 창으로 묻는다(#358). */}
+      <LeaveGuard
+        when={hasUnsavedChanges}
+        discardTitle={t.discard.title}
+        discardBody={t.discard.body}
+        stayLabel={t.discard.keep}
+        leaveLabel={t.discard.confirm}
+        showCloseButton={false}
+        size="sm"
+      />
       {pendingLeave !== null && (
         <Dialog
           open

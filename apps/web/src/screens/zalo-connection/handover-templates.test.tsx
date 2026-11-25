@@ -98,6 +98,7 @@ const setup = (data: Connection) => {
       },
     ]),
     route: '/notification/zalo-connection',
+    dataRouter: true,
   });
   return { writes };
 };

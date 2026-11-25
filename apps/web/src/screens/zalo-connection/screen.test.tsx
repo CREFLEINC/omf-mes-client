@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -8,6 +8,7 @@ import { ZaloConnectionScreen } from './screen';
 import type { Connection as ZaloConnection } from './types';
 
 const t = messages.zaloConnection;
+const leave = messages.common.unsavedLeave;
 
 const CODES = [
   'WORK_SESSION_STARTED',
@@ -52,7 +53,7 @@ const setup = (
 ) => {
   const writes: Request[] = [];
   let data = options.data ?? connection();
-  renderWithProviders(<ZaloConnectionScreen />, {
+  const view = renderWithProviders(<ZaloConnectionScreen />, {
     fetch: createStubFetch([
       {
         match: (request) => new URL(request.url).pathname === '/app/notification-events',
@@ -78,8 +79,9 @@ const setup = (
       },
     ]),
     route: '/notification/zalo-connection',
+    dataRouter: true,
   });
-  return { writes };
+  return { writes, router: view.router };
 };
 
 /* 조회 조건 · 목록 · 상세 통일 배치(#358) — 템플릿은 목록에서 골라 상세에서 고친다. 이름 검색으로 찾아 고른다. */
@@ -434,5 +436,45 @@ describe('ZaloConnectionScreen', () => {
     expect(screen.getAllByText(t.values.registered)).toHaveLength(2);
     expect(screen.getByRole('textbox', { name: t.fields.appId })).toHaveValue('123');
     expect(await openTemplate(user, '생산 실행')).toHaveValue('100');
+  });
+
+  it('어느 상자든 저장하지 않은 값을 두고 다른 화면으로 가면 묻고, 계속 편집은 남고 나가기는 옮긴다(#358)', async () => {
+    const user = userEvent.setup();
+    const { router, writes } = setup();
+
+    const appId = await screen.findByRole('textbox', { name: t.fields.appId });
+    await user.clear(appId);
+    await user.type(appId, '77');
+
+    await act(async () => {
+      await router?.navigate('/system/users-roles');
+    });
+    const dialog = within(await screen.findByRole('dialog', { name: leave.title }));
+    expect(dialog.getByText(leave.body)).toBeInTheDocument();
+    await user.click(dialog.getByRole('button', { name: leave.keep }));
+    expect(router?.state.location.pathname).toBe('/notification/zalo-connection');
+    expect(screen.getByRole('textbox', { name: t.fields.appId })).toHaveValue('77');
+
+    await act(async () => {
+      await router?.navigate('/system/users-roles');
+    });
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.confirm,
+      }),
+    );
+    await waitFor(() => expect(router?.state.location.pathname).toBe('/system/users-roles'));
+    expect(writes).toHaveLength(0);
+  });
+
+  it('고친 값이 없으면 묻지 않고 옮긴다(#358)', async () => {
+    const { router } = setup();
+    await screen.findByRole('textbox', { name: t.fields.appId });
+
+    await act(async () => {
+      await router?.navigate('/system/users-roles');
+    });
+    expect(router?.state.location.pathname).toBe('/system/users-roles');
+    expect(screen.queryByRole('dialog', { name: leave.title })).toBeNull();
   });
 });

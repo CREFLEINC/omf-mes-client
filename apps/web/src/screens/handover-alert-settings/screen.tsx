@@ -39,6 +39,7 @@ import { PageNav } from '../../patterns/page-nav';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
+import { LeaveGuard } from '../routing/leave-guard';
 import { RecipientPicker } from '../alarm-recipient-settings/recipient-picker';
 import { SelectField } from '../alarm-recipient-settings/select-field';
 import {
@@ -68,6 +69,7 @@ import {
 } from './types';
 
 const t = messages.handoverAlertSettings;
+const leave = messages.common.unsavedLeave;
 const w = t.workspace;
 const ZALO_CONNECTION_PATH = '/notification/zalo-connection';
 const NO_SCOPES: readonly DataScope[] = [];
@@ -653,6 +655,17 @@ export const HandoverAlertSettingsScreen = () => {
               : t.panes.setting(typeName(selectedType)),
           content: settingPane(),
         }}
+      />
+
+      {/* 저장하지 않은 변경을 두고 다른 화면으로(사이드바 · 뒤로가기) 갈 때 묻는다(#358). */}
+      <LeaveGuard
+        when={isDirty}
+        discardTitle={leave.title}
+        discardBody={leave.body}
+        stayLabel={leave.keep}
+        leaveLabel={leave.confirm}
+        showCloseButton={false}
+        size="sm"
       />
 
       <Dialog

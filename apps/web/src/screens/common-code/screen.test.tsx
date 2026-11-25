@@ -114,8 +114,9 @@ interface HistoryProbe {
   back: () => void;
 }
 
-let probeNavigate: ((delta: number) => void) | null = null;
+let probeNavigate: ReturnType<typeof useNavigate> | null = null;
 let probeSearch = '';
+let probePathname = '';
 let probeKeys: string[] = [];
 
 const RouterProbe = () => {
@@ -123,6 +124,7 @@ const RouterProbe = () => {
 
   probeNavigate = useNavigate();
   probeSearch = location.search;
+  probePathname = location.pathname;
   // 같은 칸을 여러 번 렌더해도 한 번만 센다. 라우터는 칸마다 다른 열쇠를 준다.
   if (probeKeys.at(-1) !== location.key) probeKeys.push(location.key);
 
@@ -158,7 +160,7 @@ const renderScreen = (routes: StubRoute[], search = '') => {
       <CommonCodeScreen />
       <RouterProbe />
     </>,
-    { fetch, route: `${ROUTE}${search}` },
+    { fetch, route: `${ROUTE}${search}`, dataRouter: true },
   );
 
   const history: HistoryProbe = {
@@ -166,12 +168,26 @@ const renderScreen = (routes: StubRoute[], search = '') => {
     entries: () => probeKeys.length,
     back: () => {
       act(() => {
-        probeNavigate?.(-1);
+        void probeNavigate?.(-1);
       });
     },
   };
 
-  return { requests, queryClient, history, user: userEvent.setup() };
+  /** 다른 화면으로 옮긴다 — 사이드바 메뉴를 누른 것과 같은 이동(#358). */
+  const goTo = (to: string) => {
+    act(() => {
+      void probeNavigate?.(to);
+    });
+  };
+
+  return {
+    requests,
+    queryClient,
+    history,
+    goTo,
+    pathname: () => probePathname,
+    user: userEvent.setup(),
+  };
 };
 
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
@@ -547,6 +563,7 @@ describe('CommonCodeScreen — 조회 실패 (C10)', () => {
     renderWithProviders(<CommonCodeScreen />, {
       fetch: () => Promise.reject(new Error('네트워크 실패')),
       route: ROUTE,
+      dataRouter: true,
     });
 
     expect(
@@ -2152,6 +2169,66 @@ describe('CommonCodeScreen — 코드값 상세와 수정 (C30·C31·C32·C33·C
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '최신 불러오기' })).toBeInTheDocument();
+  });
+});
+
+describe('CommonCodeScreen — 저장하지 않은 편집을 두고 다른 화면으로 (#358)', () => {
+  const leave = messages.common.unsavedLeave;
+
+  const expectLeaveFlow = async ({
+    goTo,
+    pathname,
+    user,
+  }: Pick<ReturnType<typeof renderScreen>, 'goTo' | 'pathname' | 'user'>) => {
+    goTo('/system/users-roles');
+    const dialog = within(await screen.findByRole('dialog', { name: leave.title }));
+    expect(dialog.getByText(leave.body)).toBeInTheDocument();
+    await user.click(dialog.getByRole('button', { name: leave.keep }));
+    expect(pathname()).toBe(ROUTE);
+
+    goTo('/system/users-roles');
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.confirm,
+      }),
+    );
+    await waitFor(() => expect(pathname()).toBe('/system/users-roles'));
+  };
+
+  it('코드그룹 정보를 고친 채 다른 화면으로 가면 묻고, 계속 편집은 남고 나가기는 옮긴다', async () => {
+    const rendered = renderScreen([codeGroupListRoute(), codeGroupDetailRoute()], '?grp=1001');
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
+    await rendered.user.type(screen.getByLabelText('그룹명'), '-편집중');
+
+    await expectLeaveFlow(rendered);
+  });
+
+  it('코드값 정보를 고친 채 다른 화면으로 가도 묻는다', async () => {
+    const rendered = renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(),
+        codeValueListRoute(),
+        codeValueDetailRoute(2001),
+      ],
+      '?grp=1001&val=2001',
+    );
+    await screen.findByLabelText('코드명');
+    await rendered.user.type(screen.getByLabelText('코드명'), 'X');
+
+    await expectLeaveFlow(rendered);
+  });
+
+  it('고친 것이 없으면 묻지 않고 옮긴다', async () => {
+    const { goTo, pathname } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute()],
+      '?grp=1001',
+    );
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
+
+    goTo('/system/users-roles');
+    await waitFor(() => expect(pathname()).toBe('/system/users-roles'));
+    expect(screen.queryByRole('dialog', { name: leave.title })).toBeNull();
   });
 });
 

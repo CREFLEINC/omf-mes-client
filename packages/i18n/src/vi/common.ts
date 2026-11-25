@@ -136,4 +136,10 @@ export const common: Translated<typeof ko.common> = {
     keep: 'Giữ nguyên',
     replace: 'Dùng giá trị vừa đọc',
   },
+  unsavedLeave: {
+    title: 'Thay đổi chưa lưu',
+    body: 'Nếu rời đi mà không lưu, các thay đổi sẽ bị mất.',
+    keep: 'Tiếp tục chỉnh sửa',
+    confirm: 'Rời đi không lưu',
+  },
 };

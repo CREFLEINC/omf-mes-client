@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -15,6 +15,7 @@ import { AlarmRecipientSettingsScreen } from './screen';
 import type { Setting, SettingRecipient, SettingSummary } from './types';
 
 const t = messages.alarmRecipientSettings;
+const leave = messages.common.unsavedLeave;
 
 /** 001 이벤트 카탈로그 6종(contracts/notification-api.md §1). */
 const EVENTS = [
@@ -54,8 +55,6 @@ interface SetupOptions {
   zaloStatus?: SettingSummary['zaloStatus'];
   /** 세션의 기능 권한 — W-CO-12 링크 여부를 가른다 */
   permissions?: string[];
-  /** 이동한 주소를 읽어야 할 때 — 데이터 라우터로 렌더한다 */
-  dataRouter?: boolean;
   /** 이벤트별 상세. 없으면 미설정 기본값(끔·끔·0) */
   settings?: Record<string, Partial<Setting>>;
   respondPut?: (request: Request) => Response;
@@ -193,7 +192,8 @@ const setup = (options: SetupOptions = {}) => {
     {
       fetch: createStubFetch(routes),
       route: options.route ?? `/notification/recipient-settings?department=${String(DEPT)}`,
-      dataRouter: options.dataRouter,
+      /* 화면이 나가기 확인(`LeaveGuard` · `useBlocker`)을 써서 늘 데이터 라우터로 렌더한다(#358). */
+      dataRouter: true,
       session: {
         ...SYNTHETIC_SESSION,
         permissions: options.permissions ?? ['W-CO-11'],
@@ -245,7 +245,6 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
       route: '/notification/recipient-settings',
       sessionDepartmentId: DEPT,
       extraDepartments: [{ departmentId: 9, departmentCode: 'D-PRD2', departmentName: '생산2팀' }],
-      dataRouter: true,
     });
 
     const department = await screen.findByRole('combobox', { name: t.fields.department });
@@ -549,7 +548,6 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     const { router } = setup({
       zaloStatus: 'REAUTH_REQUIRED',
       permissions: ['W-CO-11', 'W-CO-12'],
-      dataRouter: true,
     });
 
     const button = await screen.findByRole('button', { name: t.actions.openConnection });
@@ -599,6 +597,34 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     expect(
       await screen.findByRole('region', { name: t.panes.setting('생산 실행') }),
     ).toBeInTheDocument();
+  });
+
+  it('저장하지 않은 변경을 두고 다른 화면으로 가면 묻고, 계속 편집은 남고 나가기는 옮긴다(#358)', async () => {
+    const user = userEvent.setup();
+    const { router } = setup();
+
+    const pane = await openEvent(user, '생산 마감');
+    await user.click(await pane.findByRole('switch', { name: t.fields.enabled }));
+
+    await act(async () => {
+      await router?.navigate('/system/users-roles');
+    });
+    const dialog = within(await screen.findByRole('dialog', { name: leave.title }));
+    expect(dialog.getByText(leave.body)).toBeInTheDocument();
+    expect(dialog.queryByRole('button', { name: /닫기/ })).toBeNull();
+    await user.click(dialog.getByRole('button', { name: leave.keep }));
+    expect(router?.state.location.pathname).toBe('/notification/recipient-settings');
+    expect(screen.getByRole('region', { name: t.panes.setting('생산 마감') })).toBeInTheDocument();
+
+    await act(async () => {
+      await router?.navigate('/system/users-roles');
+    });
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.confirm,
+      }),
+    );
+    await waitFor(() => expect(router?.state.location.pathname).toBe('/system/users-roles'));
   });
 
   it('고른 이벤트를 다시 누르면 선택이 풀리고 상세는 안내로 돌아간다(사용자 지시 2026-11-24)', async () => {

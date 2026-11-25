@@ -44,7 +44,7 @@ import {
   toSearchParams,
   type ListPageSize,
 } from './filters';
-import { DiscardDialog } from '../routing/leave-guard';
+import { DiscardDialog, LeaveGuard } from '../routing/leave-guard';
 import type { FlagKey } from './flags';
 import {
   addProcess,
@@ -110,6 +110,7 @@ import {
 import './layout.css';
 
 const t = messages.terminalProcessMap;
+const leave = messages.common.unsavedLeave;
 
 const EMPTY_ROWS: TerminalView[] = [];
 const EMPTY_GRID: GridDraft = [];
@@ -1032,6 +1033,17 @@ export const TerminalProcessMapScreen = () => {
           </p>
         </div>
       </Dialog>
+
+      {/* 저장하지 않은 기능 구성을 두고 다른 화면으로(사이드바 · 뒤로가기) 갈 때 묻는다(#358). */}
+      <LeaveGuard
+        when={isGridDirty}
+        discardTitle={leave.title}
+        discardBody={leave.body}
+        stayLabel={leave.keep}
+        leaveLabel={leave.confirm}
+        showCloseButton={false}
+        size="sm"
+      />
 
       {/* 저장하지 않은 기능 구성 — 다른 화면과 같은 나가기 확인 창(시안 문구 · 사용자 지시 2026-11-20 · #333). */}
       {pendingLeave !== null && (

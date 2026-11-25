@@ -165,6 +165,7 @@ const setup = (options: SetupOptions = {}) => {
       return stub(request);
     },
     route: '/master-data/common-code?tab=org&dep=3001',
+    dataRouter: true,
   });
 
   const writes = () => requests.filter((request) => request.method === 'PUT');

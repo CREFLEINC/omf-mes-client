@@ -1,7 +1,7 @@
 import { Button, EmptyState, Icon, SkeletonText, useToast } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
@@ -70,6 +70,8 @@ export interface CodeValueSectionProps {
   onIncludeInactiveChange: (includeInactive: boolean) => void;
   page: number;
   onPageChange: (page: number) => void;
+  /** 저장하지 않은 코드값 편집이 있는지 — 소비 화면이 다른 화면으로 옮기기 전에 묻는 데 쓴다(#358). */
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 /**
@@ -98,6 +100,7 @@ export const CodeValueSection = ({
   onIncludeInactiveChange,
   page,
   onPageChange,
+  onDirtyChange,
 }: CodeValueSectionProps) => {
   const toast = useToast();
   const { client } = useApiClient();
@@ -136,6 +139,12 @@ export const CodeValueSection = ({
 
   const isDirty =
     formState !== null && !isSameCodeValueValues(formState.values, formState.baseline);
+
+  /* 구획이 사라지면(코드그룹 선택 해제) 고친 것도 함께 사라지므로 `false` 로 되돌린다. */
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    return () => onDirtyChange?.(false);
+  }, [isDirty, onDirtyChange]);
 
   /** 보내기 전에 화면에서 잡은 오류. 저장을 누른 뒤에만 세운다. */
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -324,7 +333,11 @@ export const CodeValueSection = ({
     ) : (
       /* 미사용 포함 상자 안 오른쪽 끝 · 빨간 기본 단추(사용자 지시 2026-11-25). */
       <div className="field-cell common-code-value-add">
-        <Button leadingIcon={<Icon name="add" size={18} />} disabled={isCreating} onClick={handleAdd}>
+        <Button
+          leadingIcon={<Icon name="add" size={18} />}
+          disabled={isCreating}
+          onClick={handleAdd}
+        >
           {t.actions.add}
         </Button>
       </div>
