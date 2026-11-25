@@ -206,6 +206,7 @@ export const traceTree: Translated<typeof ko.traceTree> = {
     },
     stageOperation: (stage: string, operationSeq: number): string =>
       `${stage} · CĐ ${String(operationSeq)}`, // ui-check-ignore: C-13 승인 시안 2판 표기(016 screens/W-02-13-W-02-14)
+    workOrderOperation: (operationSeq: number): string => `· CĐ ${String(operationSeq)}`, // ui-check-ignore: C-13 승인 시안 2판 표기(016 screens/W-02-13-W-02-14)
     bundle: (kind: string, count: number): string => `${num(count)} ${kind}`,
     more: (next: number, remaining: number): string =>
       next < remaining

@@ -332,7 +332,7 @@ describe('W-02-13 자재 기준 생산 추적', () => {
   });
 
   /* 피처 016 — 공정 반제품: 계보 단계 「반제품 LOT · 공정 10」, 투입 전 반제품은 최종 LOT 「다음 공정 투입 전」 · 「남은 n」. */
-  it('US2-6 · Q14 투입 전 공정 반제품은 계보에 공정이 붙고 최종 LOT 에 「다음 공정 투입 전」 · 남은 수량으로 선다', async () => {
+  it('US2-6 · Q14 투입 전(일부 투입 포함) 공정 반제품은 계보에 공정이 붙고 최종 LOT 에 「다음 공정 투입 전」 · 남은 수량으로 선다', async () => {
     const wipLot = {
       lotId: 302,
       lotNo: 'PL-SYN-0001-A02',
@@ -353,7 +353,13 @@ describe('W-02-13 자재 기준 생산 추적', () => {
           edges: base.edges.filter((edge) => edge.to !== 'K:302:5'),
           endRows: base.endRows.map((row) =>
             row.lot.lotId === 302
-              ? { ...row, lot: wipLot, fate: 'WIP_PENDING' as const, stock: [] }
+              ? {
+                  ...row,
+                  lot: wipLot,
+                  fate: 'WIP_PENDING' as const,
+                  stock: [],
+                  wipRemainingQty: 40,
+                }
               : row,
           ),
         };
@@ -364,7 +370,8 @@ describe('W-02-13 자재 기준 생산 추적', () => {
 
     const end = within(detail()).getByRole('table', { name: t.material.endTitle });
     expect(within(end).getByText(t.end.fates.WIP_PENDING)).toBeInTheDocument();
-    expect(within(end).getByText('남은 180 EA')).toBeInTheDocument();
+    /* 일부만 투입된 반제품도 선다 — 행선지는 서버가 센 남은 수량(실적 180 이 아님). */
+    expect(within(end).getByText('남은 40 EA')).toBeInTheDocument();
     expect(within(end).getByText('반제품 · 공정 10 반제품 1')).toBeInTheDocument();
   });
 });

@@ -103,12 +103,14 @@ const Summary = ({ tree, names, partial, entry, stageOf }: TraceDetailContext) =
 
 /**
  * 행선지 — 출하됐으면 고객과 출하번호, 남았으면 창고와 위치(일부 출하면 둘 다). 둘 이상이면 「외 n건」.
- * 투입 전 반제품(피처 016 `WIP_PENDING`)은 「남은 n 단위」 — 아직 다음 공정에 넣지 않았으니 실적 전량이 남아 있다
- * (나눠 넣기 시작한 반제품은 나가는 투입이 있어 최종 줄이 서지 않는다 — 서버 규칙).
+ * 투입 전 반제품(피처 016 `WIP_PENDING`, 일부만 투입된 것 포함)은 「남은 n 단위」 — 서버가 센 `wipRemainingQty`.
+ * 받지 못했으면 실적 전량(아직 넣지 않은 반제품)으로 적는다.
  */
 const destinationOf = (row: ForwardEndRow): string =>
   row.fate === 'WIP_PENDING'
-    ? t.end.wipRemaining(`${qtyFormat.format(row.producedQty)} ${row.uomCode}`.trim())
+    ? t.end.wipRemaining(
+        `${qtyFormat.format(row.wipRemainingQty ?? row.producedQty)} ${row.uomCode}`.trim(),
+      )
     : [
         firstWithMore(
           row.shipments.map((shipment) => `${shipment.customer.name} ${shipment.shipmentNo}`),

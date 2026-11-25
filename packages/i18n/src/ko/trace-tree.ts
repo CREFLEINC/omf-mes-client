@@ -198,6 +198,8 @@ export const traceTree = {
     /** 공정 반제품(피처 016) 단계 이름 「반제품 LOT · 공정 10」(시안 2판 ④). */
     stageOperation: (stage: string, operationSeq: number): string =>
       `${stage} · 공정 ${String(operationSeq)}`, // ui-check-ignore: C-13 승인 시안 2판 표기 「반제품 LOT · 공정 10」(016 screens/W-02-13-W-02-14)
+    /** W/O 줄 번호 뒤 공정(피처 016 · 시안 2판 ④ 「W/O WO-… · 공정 30」). */
+    workOrderOperation: (operationSeq: number): string => `· 공정 ${String(operationSeq)}`, // ui-check-ignore: C-13 승인 시안 2판 표기(016 screens/W-02-13-W-02-14)
     bundle: (kind: string, count: number): string => `${kind} ${num(count)}개`,
     more: (next: number, remaining: number): string =>
       next < remaining

@@ -41942,6 +41942,13 @@ body:has(
   margin: 0;
 }
 
+/* W/O 줄 번호 뒤 공정 「· 공정 30」(피처 016) — 번호와 한 줄, 접히지 않는다. */
+.trace-tree-op {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  color: var(--on-surface-variant);
+}
+
 .trace-tree-located {
   display: inline-flex;
   color: var(--on-semantic-warning-container);

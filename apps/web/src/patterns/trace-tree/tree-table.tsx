@@ -54,6 +54,16 @@ export const stageNameOf = (
   return stage === 'SEMI_LOT' && seq !== null ? t.stageOperation(name, seq) : name;
 };
 
+/**
+ * W/O 줄 번호 뒤에 붙는 공정 「· 공정 30」(피처 016 · 시안 ④ 「W/O WO-… · 공정 30」). 공정 순번이 없으면 `null`.
+ * 번호(`numberOf`)는 접기 단추 이름 · LOT 찾기에 쓰이므로 건드리지 않고 따로 붙인다.
+ */
+export const workOrderOperationOf = (line: LineageLine): string | null => {
+  const seq = line.node?.workOrder?.operationSeq ?? null;
+
+  return seq === null ? null : t.workOrderOperation(seq);
+};
+
 export const BreakableNo = ({ value }: { value: string }) => (
   <>
     {value.split(/(?<=[-|])/).flatMap((part, index) =>
@@ -317,6 +327,9 @@ export const TraceTreeTable = ({
             <span className="trace-tree-no mono-cell" title={number}>
               {line.node?.warehouse === undefined ? <BreakableNo value={number} /> : number}
             </span>
+          )}
+          {workOrderOperationOf(line) !== null && (
+            <span className="trace-tree-op">{workOrderOperationOf(line)}</span>
           )}
           {line.mark === 'duplicate' && (
             <span className="field-note trace-tree-flag" title={t.duplicate}>
