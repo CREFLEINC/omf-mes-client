@@ -320,7 +320,10 @@ export const InboundExcessScreen = () => {
    */
   const newFlowNotice = (
     <p className="field-note">
-      {t.newFlowNotice} <Link to={WORK_RECORD_PATH}>{t.newFlowLink}</Link>
+      {t.newFlowNotice}{' '}
+      <Link className="action-link-button" to={WORK_RECORD_PATH}>
+        {t.newFlowLink}
+      </Link>
     </p>
   );
 

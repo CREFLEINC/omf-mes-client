@@ -390,7 +390,11 @@ export const ReleaseResult = (props: Props) => {
         <AlertBanner
           variant="warning"
           title="배포 완료 / 자재 확인 필요"
-          action={<Link to={MATERIAL_ISSUE_SHORTAGE_PATH}>자재 부족분 확인</Link>}
+          action={
+            <Link className="action-link-button" to={MATERIAL_ISSUE_SHORTAGE_PATH}>
+              자재 부족분 확인
+            </Link>
+          }
         >
           <ul>
             {props.shortages.map((text) => (

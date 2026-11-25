@@ -663,8 +663,8 @@ describe('W-02-09 LOT 생산 이력 조회: 분할 LOT (008)', () => {
     expect(within(inputs).getByRole('button', { name: `${ROOT} 추적 보기` })).toBeInTheDocument();
     expect(within(inputs).getByText('(2단)', { exact: false })).toBeInTheDocument();
     /* 좁은 상세 칸에서도 끝 칸(번호 칸)이 보이게 — 앞을 자르지 않고 끝 칸만 남긴다(실제 앱 검증 2026-11-17). */
-    expect(within(inputs).getByText('…|0001-S1')).toHaveAttribute('title', SPLIT);
-    expect(within(inputs).getByText('…|0001')).toHaveAttribute('title', ROOT);
+    expect(within(inputs).getByText('…|0001-S1').closest('button')).toHaveAttribute('title', SPLIT);
+    expect(within(inputs).getByText('…|0001').closest('button')).toHaveAttribute('title', ROOT);
   });
 
   it('분할이 없는 LOT 은 분할 구획·안내가 없다(회귀)', async () => {

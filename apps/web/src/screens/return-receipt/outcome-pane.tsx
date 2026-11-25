@@ -69,7 +69,9 @@ export const OutcomePane = ({ outcome, uoms, onAnother }: OutcomePaneProps) => {
         <Button variant="outlined" onClick={onAnother}>
           {t.actions.registerAnother}
         </Button>
-        <Link to={dispositionRequestHref(outcome)}>{t.actions.openDisposition}</Link>
+        <Link className="action-link-button" to={dispositionRequestHref(outcome)}>
+          {t.actions.openDisposition}
+        </Link>
       </div>
     </div>
   );

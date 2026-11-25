@@ -659,7 +659,10 @@ export const ProposalReview = ({
                     (selected.autoWorkOrder?.lastAttemptedAt
                       ? `최근 처리 ${selected.autoWorkOrder.lastAttemptedAt}`
                       : '처리 이력 없음')}
-                  <Link to={`/production/production-orders/${encodeURIComponent(selected.number)}`}>
+                  <Link
+                    className="action-link-button"
+                    to={`/production/production-orders/${encodeURIComponent(selected.number)}`}
+                  >
                     작업계획 확인
                   </Link>
                 </AlertBanner>
@@ -706,7 +709,10 @@ export const ProposalReview = ({
                       ? '이미 확정된 ERP W/O입니다'
                       : '확정 완료'}
                   </h3>
-                  <Link to={`/production/production-orders/${encodeURIComponent(selected.number)}`}>
+                  <Link
+                    className="action-link-button"
+                    to={`/production/production-orders/${encodeURIComponent(selected.number)}`}
+                  >
                     작업계획에서 확정 결과 확인
                   </Link>
                   {selected.resultPlans?.map((plan) => (
@@ -938,6 +944,7 @@ export const ProposalReview = ({
                       action={
                         selected.serverKind === 'KEEP_CONFIRMED' ? (
                           <Link
+                            className="action-link-button"
                             to={`/production/production-orders/${encodeURIComponent(selected.number)}`}
                           >
                             기존 작업계획 보기

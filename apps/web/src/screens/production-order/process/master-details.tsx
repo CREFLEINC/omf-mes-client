@@ -103,6 +103,7 @@ export const MasterDetails = ({
             <div className="section-heading-row erp-wo-inline-routing-actions">
               {itemId != null && (
                 <Link
+                  className="action-link-button"
                   to={`/master-data/routing?item=${itemId}&rev=${preview}`}
                   target="_blank"
                   rel="noopener noreferrer"

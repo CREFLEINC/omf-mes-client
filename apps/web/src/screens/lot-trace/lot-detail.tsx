@@ -152,17 +152,20 @@ export const lotNoTail = (lotNo: string): string => {
   return cut <= 0 ? lotNo : `…${lotNo.slice(cut)}`;
 };
 
-/** 분할 관계로 이어진 LOT — 끝 칸만 보이는 글 단추(번호 전체는 title). 누르면 그 LOT 을 가운데 둔다(008). */
+/**
+ * 분할 관계로 이어진 LOT — 끝 칸만 보이는 단추(번호 전체는 title). 누르면 그 LOT 을 가운데 둔다(008).
+ * 밑줄 글자 대신 일반 단추 모양(사용자 지시 2026-11-25).
+ */
 const SplitLink = ({ lot, onView }: { lot: LotRef; onView: (lot: LotRef) => void }) => (
-  <button
-    type="button"
-    className="lot-trace-split-link"
+  <Button
+    variant="outlined"
+    size="sm"
     title={lot.lotNo}
     aria-label={c.viewFor(lot.lotNo)}
     onClick={() => onView(lot)}
   >
     {lotNoTail(lot.lotNo)}
-  </button>
+  </Button>
 );
 
 const materialRef = (head: FlowLotHead): LotRef => ({

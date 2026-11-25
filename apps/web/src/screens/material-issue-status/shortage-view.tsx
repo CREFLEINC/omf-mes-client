@@ -131,6 +131,7 @@ export const ShortageView = ({ data, isPending, isError, error, onRetry }: Short
                     </Chip>
                   ) : (
                     <Link
+                      className="action-link-button"
                       to={replenishLink({
                         workOrderId: row.workOrderId,
                         workOrderNo: row.workOrderNo,
@@ -209,6 +210,7 @@ export const ShortageView = ({ data, isPending, isError, error, onRetry }: Short
                         {t.shortageChip(formatQty(request.shortageQty))}
                       </Chip>
                       <Link
+                        className="action-link-button"
                         to={replenishLink({
                           ...(request.workOrderId === undefined
                             ? {}

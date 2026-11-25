@@ -36,7 +36,9 @@ const FollowUpButton = ({ label, reason, to }: FollowUpButtonProps) => {
   return (
     <div className="field-cell">
       {reason === undefined && to !== undefined ? (
-        <Link to={to}>{label}</Link>
+        <Link className="action-link-button" to={to}>
+          {label}
+        </Link>
       ) : (
         <Button
           variant="outlined"
@@ -139,7 +141,9 @@ export const ResultPane = ({
               </span>
             </>
           ) : (
-            <Link to={dispositionEntryPath(nonconformanceId)}>{t.actions.openDecision}</Link>
+            <Link className="action-link-button" to={dispositionEntryPath(nonconformanceId)}>
+              {t.actions.openDecision}
+            </Link>
           )}
         </div>
         <FollowUpButton

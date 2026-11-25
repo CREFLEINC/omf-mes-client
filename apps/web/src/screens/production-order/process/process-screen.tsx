@@ -566,9 +566,13 @@ export const ProcessWorkspace = ({
   const remainingLink =
     (step === 'master' && master.blockedOutside === 'bom') ||
     (step === 'plan' && invalidRow?.master === 'bom') ? (
-      <Link to="/system/erp-data/boms">{tp.links.bom}</Link>
+      <Link className="action-link-button" to="/system/erp-data/boms">
+        {tp.links.bom}
+      </Link>
     ) : step === 'master' && master.blockedOutside === 'routing' ? (
-      <Link to="/master-data/routing">{tp.links.routing}</Link>
+      <Link className="action-link-button" to="/master-data/routing">
+        {tp.links.routing}
+      </Link>
     ) : undefined;
 
   /*

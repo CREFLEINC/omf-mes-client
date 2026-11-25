@@ -124,7 +124,7 @@ export const BulkResult = ({
                 {item.reason !== null && <span className="bulk-result-reason">{item.reason}</span>}
                 {item.fixHref !== undefined && (
                   <Link
-                    className="bulk-result-fix"
+                    className="action-link-button bulk-result-fix"
                     to={item.fixHref}
                     aria-label={t.fixFor(item.label)}
                   >

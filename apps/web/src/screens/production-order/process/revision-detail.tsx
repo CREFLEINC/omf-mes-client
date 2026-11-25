@@ -555,7 +555,7 @@ export const RevisionDetailButton = ({
                     to={`/master-data/routing?item=${itemId}&rev=${id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="erp-wo-revision-master-link"
+                    className="action-link-button erp-wo-revision-master-link"
                     aria-label="Routing 관리 화면 열기 (새 탭)"
                   >
                     Routing 관리 화면 열기 ↗

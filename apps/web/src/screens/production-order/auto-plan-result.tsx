@@ -110,6 +110,7 @@ export const AutoPlanResult = ({
                     </td>
                     <td>
                       <Link
+                        className="action-link-button"
                         to={item.fixHref ?? processPath(item.label)}
                         aria-label={`${item.label} 계획 확인`}
                       >

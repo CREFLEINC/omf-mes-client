@@ -602,7 +602,13 @@ export const ReleaseStep = ({
                       <li key={failure.key}>
                         {failure.text}
                         {failure.links.map((link) => (
-                          <Link key={link.to} to={link.to} target="_blank" rel="noreferrer">
+                          <Link
+                            key={link.to}
+                            className="action-link-button"
+                            to={link.to}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
                             {link.label}
                           </Link>
                         ))}
