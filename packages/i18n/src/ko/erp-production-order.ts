@@ -74,8 +74,6 @@ export const erpProductionOrder = {
   empty: {
     title: '조건에 맞는 ERP W/O 가 없습니다',
     beyondTitle: '이 쪽에는 ERP W/O 가 없습니다',
-    pickTitle: 'ERP W/O 를 선택하세요.',
-    pickDescription: '목록에서 ERP W/O 를 고르면 ERP 에서 받은 모든 칸을 볼 수 있습니다.',
   },
   loading: 'ERP W/O 를 불러오는 중',
   listLoadFailedTitle: 'ERP W/O 목록을 불러오지 못했습니다',

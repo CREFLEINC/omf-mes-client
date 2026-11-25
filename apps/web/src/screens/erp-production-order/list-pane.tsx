@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 
 import { OneLine } from '../../patterns/po-board';
 import { splitCodeName } from '../../patterns/split-code-name';
-import { ErpDetailFields, ErpListTable, ErpPickEmpty } from '../erp-item/erp-data-parts';
+import { ErpListTable } from '../erp-item/erp-data-parts';
 import { displayOr, formatQty, reworkLabel } from './format';
 import { ProgressChip } from './progress';
 import type { ErpProductionOrder } from './types';
@@ -32,10 +32,6 @@ export interface ErpProductionOrderListPaneProps extends ErpProductionOrderNames
   rows: ErpProductionOrder[];
   isLoading: boolean;
   isBeyondLast: boolean;
-  selectedId: number | null;
-  onSelect: (row: ErpProductionOrder) => void;
-  /** 고른 줄을 다시 누르면 고르기를 푼다. */
-  onUnselect: () => void;
 }
 
 /**
@@ -46,14 +42,12 @@ export const ErpProductionOrderListPane = ({
   rows,
   isLoading,
   isBeyondLast,
-  selectedId,
-  onSelect,
-  onUnselect,
   ...names
 }: ErpProductionOrderListPaneProps) => {
   const hasDueDate = rows.some((row) => row.dueDate !== undefined && row.dueDate !== '');
   const columns: Column<ErpProductionOrder>[] = [
-    { key: 'productionOrderNo', header: t.fields.productionOrderNo, width: '152px' },
+    /* 번호 끝이 「…」로 잘리지 않는 폭(사용자 지시 2026-11-25 목록만 보이게 바꾸며). */
+    { key: 'productionOrderNo', header: t.fields.productionOrderNo, width: '184px' },
     /* 품목코드 · 품목명은 두 열(사용자 지시 2026-11-24 — 구매발주 상세 품목 표와 같은 모양). */
     {
       key: 'itemId',
@@ -147,77 +141,11 @@ export const ErpProductionOrderListPane = ({
       columns={columns}
       rows={rows}
       getRowId={(row) => String(row.productionOrderId)}
-      pick={{
-        currentId: selectedId === null ? null : String(selectedId),
-        onPick: onSelect,
-        onUnpick: onUnselect,
-      }}
+      /* 줄을 눌러 하는 일이 없다 — 눌리는 것처럼 보이지 않게(사용자 지시 2026-11-25). */
+      className="erp-data-list-static"
       empty={
         <EmptyState size="sm" live title={isBeyondLast ? t.empty.beyondTitle : t.empty.title} />
       }
-    />
-  );
-};
-
-/** 고른 ERP W/O 의 모든 칸 — 같은 목록 응답만 쓴다(상세 요청을 따로 보내지 않는다). */
-export const ErpProductionOrderDetail = ({
-  row,
-  ...names
-}: ErpProductionOrderNames & { row: ErpProductionOrder | null }) => {
-  if (row === null) {
-    return (
-      <ErpPickEmpty
-        icon="factory"
-        title={t.empty.pickTitle}
-        description={t.empty.pickDescription}
-      />
-    );
-  }
-
-  return (
-    <ErpDetailFields
-      title={t.panes.detail}
-      fields={[
-        { key: 'no', label: t.fields.productionOrderNo, value: row.productionOrderNo },
-        {
-          key: 'itemCode',
-          label: t.fields.itemCode,
-          value: splitCodeName(names.itemNameOf(row.itemId), t.values.missing).code,
-        },
-        {
-          key: 'itemName',
-          label: t.fields.itemName,
-          value: splitCodeName(names.itemNameOf(row.itemId), t.values.missing).name,
-        },
-        {
-          key: 'qty',
-          label: t.fields.orderQty,
-          value: t.values.qtyWithUom(formatQty(row.orderQty), names.uomNameOf(row.uomId)),
-        },
-        {
-          key: 'plannedStartDate',
-          label: t.fields.plannedStartDate,
-          value: displayOr(row.plannedStartDate),
-        },
-        { key: 'dueDate', label: t.fields.dueDate, value: displayOr(row.dueDate) },
-        { key: 'operationNo', label: t.fields.operationNo, value: displayOr(row.erpOperationNo) },
-        {
-          key: 'storageLocation',
-          label: t.fields.storageLocation,
-          value: storageLocationLabel(row, names),
-        },
-        { key: 'rework', label: t.fields.rework, value: reworkLabel(row.erpReworkFlag) },
-        {
-          key: 'progress',
-          label: t.fields.progress,
-          value: <ProgressChip code={row.progressStatusCode} />,
-        },
-        {
-          key: 'status',
-          label: t.fields.status,
-          value: <StatusChip label={names.statusNameOf(row.statusCode)} />,
-        },
-      ]}
     />
   );
 };

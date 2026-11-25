@@ -64,8 +64,6 @@ export const erpProductionOrder: Translated<typeof ko.erpProductionOrder> = {
   empty: {
     title: 'Không có ERP W/O phù hợp điều kiện',
     beyondTitle: 'Trang này không có ERP W/O',
-    pickTitle: 'Hãy chọn ERP W/O.',
-    pickDescription: 'Chọn ERP W/O trong danh sách để xem mọi trường nhận từ ERP.',
   },
   loading: 'Đang tải ERP W/O',
   listLoadFailedTitle: 'Không tải được danh sách ERP W/O',
