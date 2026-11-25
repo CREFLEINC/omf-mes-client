@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   type Column,
   EmptyState,
   Icon,
@@ -9,8 +10,6 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type ReactNode } from 'react';
-
-import { InfoTip } from '../../patterns/info-tip';
 
 import { UsageChip } from '../../patterns/usage-chip';
 import type { ApproverOption } from './approver-options';
@@ -66,17 +65,6 @@ export interface StepPaneProps {
 }
 
 /**
- * 결재 단계 제목 옆 ⓘ 의 문장 — 전체 교체(계약에 개별 추가·삭제 경로가 없어 배열이 곧 최종 순서다) ·
- * 승인자 부재 · 소급하지 않음 · 반려 후 재상신.
- */
-export const STEP_RULES = [
-  t.notes.stepReplaceWholeList,
-  t.notes.stepGuideApproverAbsent,
-  t.notes.stepGuideNotRetroactive,
-  t.notes.stepGuideRejectResubmit,
-].join(' ');
-
-/**
  * 고른 결재선의 결재 단계 — **추가·삭제·순서 이동과 전체 치환 저장**.
  *
  * **읽는 데는 조회가 하나도 붙지 않는다.** 계약이 단계 응답에 승인자의 표시 이름과 부서,
@@ -91,9 +79,6 @@ export const STEP_RULES = [
  * 않는다. 그래서 **추가는 표 아래 줄**에서 하고, 승인자를 **바꾸는** 조작은 두지 않는다:
  * 단계는 (순서, 승인자) 둘뿐이라 「바꾸기」가 「지우고 넣고 옮기기」와 같고, 조작을 하나 줄이면
  * 초안 규칙도 하나 줄어든다.
- *
- * **규칙 네 가지는 구획 제목 옆 ⓘ 에 둔다.** 전체 교체 · 승인자 부재 · 소급하지 않음 · 반려 후 재상신은
- * 결재선을 보는 내내 참인 사실이라 성공 알림에 붙이지 않는다 — 다만 늘 펼쳐 두지도 않는다(관리웹 정리 시안 A).
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
@@ -263,52 +248,46 @@ export const StepPane = ({
   return (
     <section className="pane approval-route-steps" aria-label={t.panes.steps}>
       {/*
-       * 제목 줄 — 왼쪽 제목 · ⓘ, 오른쪽 끝 「총 N단계」 · [단계 추가](사용자 지시 2026-11-25).
-       * 표 아래 네 줄이던 규칙은 제목 옆 ⓘ 하나로 모은다(관리웹 정리 시안 A).
+       * 제목 줄 — 왼쪽 「결재 단계 · 총 N단계 · [최소 1개] 라벨」, 오른쪽 끝 [단계 추가](사용자 지시 2026-11-25).
+       * 단계 수는 다른 화면 목록 제목 옆 건수(`po-board-list-count`)와 같은 모양이다.
        */}
       <div className="pane-heading-row approval-route-steps-heading">
-        <h2 className="pane-title info-label">
-          {t.panes.steps}
-          <InfoTip text={STEP_RULES} />
-        </h2>
-        <div className="approval-route-steps-heading-end">
-          {/* 단계 수는 표와 같은 기준(지금 보이는 줄 수)으로 센다(사용자 지시 2026-11-24). */}
-          {drafts !== null && drafts.length > 0 && (
-            <span className="approval-route-step-count">{t.values.stepCountOf(drafts.length)}</span>
-          )}
-          {drafts !== null && (
-            <Button
-              variant="outlined"
-              size="sm"
-              leadingIcon={<Icon name="add" size={18} />}
-              disabled={isLocked}
-              aria-expanded={isAdding}
-              onClick={() => {
-                setIsAdding(true);
-              }}
-            >
-              {t.actions.addStep}
-            </Button>
-          )}
-        </div>
+        <h2 className="pane-title">{t.panes.steps}</h2>
+        {/* 단계 수는 표와 같은 기준(지금 보이는 줄 수)으로 센다(사용자 지시 2026-11-24). */}
+        {drafts !== null && drafts.length > 0 && (
+          <span className="po-board-list-count">{t.values.stepCountOf(drafts.length)}</span>
+        )}
+        {/*
+         * 사유를 담는 자리 — 제목 옆 라벨(사용자 지시 2026-11-25). 행마다 삭제 버튼이 서지만 사유는 하나라
+         * 한 번만 렌더하고 `aria-describedby`로 잇는다.
+         *
+         * **지울 것이 없으면 내지 않는다.** 사유는 삭제 버튼의 설명이라 그 버튼이 없으면 가리킬
+         * 대상이 없다. 판정 함수는 건드리지 않는다 — 핸들러와 버튼의 잠금이 같은 함수를 보고 있다.
+         */}
+        {drafts !== null && drafts.length > 0 && removeDisabledReason !== null && (
+          <Chip variant="status" status="info" size="sm">
+            <span id={removeReasonId}>{removeDisabledReason}</span>
+          </Chip>
+        )}
+        {drafts !== null && (
+          <Button
+            className="approval-route-steps-add"
+            variant="outlined"
+            size="sm"
+            leadingIcon={<Icon name="add" size={18} />}
+            disabled={isLocked}
+            aria-expanded={isAdding}
+            onClick={() => {
+              setIsAdding(true);
+            }}
+          >
+            {t.actions.addStep}
+          </Button>
+        )}
       </div>
       <div className="banner-slot">{banner}</div>
 
       {stepsSlot()}
-
-      {/*
-       * 사유를 담는 자리. 행마다 버튼이 서지만 사유는 하나라 한 번만 렌더하고 `aria-describedby`로
-       * 잇는다 — 행마다 같은 문장을 되풀이하면 스크린리더가 목록을 읽는 내내 그것을 반복한다.
-       *
-       * **지울 것이 없으면 내지 않는다.** 사유는 삭제 버튼의 설명이라 그 버튼이 없으면 가리킬
-       * 대상이 없고, 빈 상태 안내 옆에 서면 「지울 것도 없는데 지울 수 없다」가 된다.
-       * 판정 함수는 건드리지 않는다 — 핸들러와 버튼의 잠금이 같은 함수를 보고 있다.
-       */}
-      {drafts !== null && drafts.length > 0 && removeDisabledReason !== null && (
-        <span id={removeReasonId} className="field-note">
-          {removeDisabledReason}
-        </span>
-      )}
 
       {drafts !== null && isAdding && (
         /*

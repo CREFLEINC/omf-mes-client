@@ -39832,35 +39832,12 @@ body:has(
   color: var(--on-surface-variant);
 }
 
-.pane > .iqc-inspection-action-note.approval-route-progress-note {
-  box-sizing: border-box;
-  width: 100%;
-  max-width: 100%;
-  margin-top: var(--space-3);
-}
-
-/* 안내 바와 아래 단추 사이를 좁힌다(사용자 지시 2026-11-25). */
-.pane > .approval-route-progress-note + .form-actions {
-  margin-top: var(--space-3);
-}
-
 /* 결재 단계 카드 — 제목과 표 사이의 빈 안내 자리를 걷는다(사용자 지시 2026-11-25). */
 .approval-route-steps > .banner-slot:empty {
   display: none;
 }
 
-.approval-route-steps > .field-note {
-  display: block;
-  margin-top: var(--space-1);
-}
-
-/* 결재 단계 카드 — 제목 옆 단계 수, 관리 열 단추, 추가 줄. */
-.approval-route-step-count {
-  margin-left: var(--space-2);
-  color: var(--on-surface-variant);
-  font: var(--type-label-md);
-}
-
+/* 결재 단계 카드 — 관리 열 단추, 추가 줄. */
 .approval-route-step-actions {
   display: inline-flex;
   align-items: center;

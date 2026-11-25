@@ -89,6 +89,18 @@ describe('RouteFormPane — 진행 중 건수 상시 표시', () => {
     expect(screen.getByText(t.notes.inProgressSome(3))).toBeInTheDocument();
   });
 
+  /* 안내 알약은 「결재선 기본 정보」 제목 오른쪽 같은 줄이다(사용자 지시 2026-11-25). */
+  it('진행 중 안내는 기본 정보 제목과 같은 줄에 선다', () => {
+    renderPane();
+
+    const heading = screen.getByRole('heading', { name: t.panes.basicInfo });
+    const note = screen.getByText(t.notes.inProgressSome(3));
+
+    expect(heading.nextElementSibling).toBe(note);
+    expect(note).toHaveClass('iqc-inspection-action-note');
+    expect(note).toHaveAttribute('data-tone', 'info');
+  });
+
   it('진행 중인 요청이 없어도 그 사실을 말한다', () => {
     renderPane({ route: allUnits });
 
@@ -195,6 +207,22 @@ describe('RouteFormPane — 입력칸', () => {
     await user.click(screen.getByRole('option', { name: t.values.allBusinessUnitsOption }));
 
     expect(props.onChange).toHaveBeenCalledWith({ businessUnitId: '' });
+  });
+
+  /* 칸 안 흐린 글자는 「하한 값을 입력하세요」 · 「상한 값을 입력하세요」, 접근 이름은 하한 · 상한 그대로(사용자 지시 2026-11-25). */
+  it('하한 · 상한 칸의 흐린 글자가 입력 안내다', () => {
+    renderPane();
+
+    expect(screen.getByLabelText(t.fields.minValue)).toHaveAttribute(
+      'placeholder',
+      t.fields.minValuePlaceholder,
+    );
+    expect(screen.getByLabelText(t.fields.maxValue)).toHaveAttribute(
+      'placeholder',
+      t.fields.maxValuePlaceholder,
+    );
+    expect(t.fields.minValuePlaceholder).toBe('하한 값을 입력하세요');
+    expect(t.fields.maxValuePlaceholder).toBe('상한 값을 입력하세요');
   });
 
   it('인라인 오류를 그 칸 옆에 낸다', () => {
@@ -324,6 +352,54 @@ describe('RouteFormPane — 등록 폼', () => {
     expect(screen.queryByText(t.actionReasons.createNoType)).toBeNull();
   });
 
+  /* 등록 팝업에서는 활성 중복 사유 글을 [등록] 아래에 내지 않는다 — 단추만 꺼진다(사용자 지시 2026-11-25). */
+  it('활성 중복으로 막혀도 팝업에는 사유 글이 없고 등록만 꺼진다', () => {
+    renderPane({ ...createProps, saveDisabledReason: t.actionReasons.duplicateActive });
+
+    expect(screen.getByRole('button', { name: t.actions.submitCreate })).toBeDisabled();
+    expect(screen.queryByText(t.actionReasons.duplicateActive)).toBeNull();
+  });
+
+  /* 고른 사업부에 이미 쓰는 승인 유형은 선택지에서 뺀다(사용자 지시 2026-11-25). */
+  it('감출 유형을 받으면 그 유형만 선택지에서 빠진다', async () => {
+    const user = userEvent.setup();
+    renderPane({
+      ...createProps,
+      approvalTypeOptions: [
+        { value: 'PURCHASE_ORDER', label: 'P/O' },
+        { value: 'GOODS_ISSUE_DISPOSAL', label: '폐기 출고' },
+      ],
+      hiddenApprovalTypeCodes: new Set(['PURCHASE_ORDER']),
+    });
+
+    await user.click(screen.getByRole('combobox', { name: t.fields.approvalTypeCode }));
+
+    expect(screen.queryByRole('option', { name: 'P/O' })).toBeNull();
+    expect(screen.getByRole('option', { name: '폐기 출고' })).toBeInTheDocument();
+  });
+
+  /* 다 빠졌다고 「값 목록을 못 받았다」 안내를 내지 않는다 — 안내는 빼기 전 목록으로 판단한다. */
+  it('모든 유형이 감춰져도 값 목록 안내는 서지 않는다', () => {
+    renderPane({
+      ...createProps,
+      approvalTypeOptions: [{ value: 'PURCHASE_ORDER', label: 'P/O' }],
+      hiddenApprovalTypeCodes: new Set(['PURCHASE_ORDER']),
+    });
+
+    expect(screen.queryByText(messages.pendingCode.note)).toBeNull();
+    expect(screen.getByRole('combobox', { name: t.fields.approvalTypeCode })).toHaveTextContent(
+      t.fields.approvalTypePlaceholder,
+    );
+  });
+
+  /* 이 화면의 모든 창은 닫기(X)가 없다(사용자 지시 2026-11-25). */
+  it('등록 팝업에 닫기(X) 단추가 없다', () => {
+    renderPane(createProps);
+
+    const dialog = screen.getByRole('dialog', { name: t.panes.create });
+    expect(within(dialog).queryByRole('button', { name: '닫기' })).toBeNull();
+  });
+
   it('중복 확인 안내를 받으면 팝업 안에 낸다', () => {
     renderPane({ ...createProps, duplicateUnknownNote: t.notes.duplicateUnknownCreate });
 
@@ -396,6 +472,14 @@ describe('RouteFormPane — 사용 전환 액션', () => {
 
     expect(screen.getByRole('button', { name: messages.common.deactivate })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.actions.activate })).toBeNull();
+  });
+
+  /* 다른 마스터 화면과 같은 모양 — 작은 외곽선 단추 + 금지 아이콘(사용자 지시 2026-11-25). */
+  it('「사용 중지」는 금지 아이콘이 붙은 작은 단추다', () => {
+    renderPane();
+
+    const button = screen.getByRole('button', { name: messages.common.deactivate });
+    expect(button).toHaveTextContent('block');
   });
 
   it('사용 중지된 결재선에는 「다시 사용」만 선다', () => {

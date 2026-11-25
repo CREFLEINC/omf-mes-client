@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { toApproverOptions } from './approver-options';
 import { ENABLED_APPROVER_TYPE_CODES, toApproverTypeOptions } from './code-options';
 import { APPROVER_OPTION_LABEL, stepDraftFixtures, userFixtures } from './fixtures';
-import { STEP_COLUMN_WIDTH, STEP_RULES, StepPane, type StepPaneProps } from './step-pane';
+import { STEP_COLUMN_WIDTH, StepPane, type StepPaneProps } from './step-pane';
 import type { StepDraft } from './step-draft';
 
 const t = messages.approvalRoute;
@@ -197,18 +197,19 @@ describe('StepPane — 순서 이동', () => {
   });
 
   /* 단계 수는 표와 같은 기준으로 카드 제목 옆에 낸다(사용자 지시 2026-11-24). */
-  /* 제목 줄 오른쪽 끝, 「단계 추가」 바로 왼쪽에 둔다(사용자 지시 2026-11-25). */
-  it('카드 제목 줄 오른쪽에 표의 줄 수만큼 「총 N단계」를 낸다', () => {
+  /* 제목 바로 뒤에 다른 화면 목록 건수와 같은 모양으로, [단계 추가]는 오른쪽 끝(사용자 지시 2026-11-25). */
+  it('카드 제목 바로 뒤에 표의 줄 수만큼 「총 N단계」를 건수 모양으로 낸다', () => {
     renderPane();
 
     const count = screen.getByText(t.values.stepCountOf(stepDraftFixtures.length));
+    const heading = screen.getByRole('heading', { name: t.panes.steps });
     const addButton = screen.getByRole('button', { name: t.actions.addStep });
 
-    expect(count.parentElement).toBe(addButton.parentElement);
-    expect(count.nextElementSibling).toBe(addButton);
-    expect(screen.getByRole('heading', { name: /결재 단계/ }).parentElement).toContainElement(
-      count,
-    );
+    expect(count).toHaveClass('po-board-list-count');
+    expect(heading.nextElementSibling).toBe(count);
+    expect(count.parentElement).toBe(heading.parentElement);
+    expect(addButton.parentElement).toBe(heading.parentElement);
+    expect(heading.parentElement?.lastElementChild).toBe(addButton);
   });
 });
 
@@ -280,6 +281,28 @@ describe('StepPane — 삭제', () => {
     renderPane({ drafts: [draftOf(9301, 'a')] });
 
     expect(screen.getByText(t.actionReasons.stepRemoveLast)).toBeInTheDocument();
+  });
+
+  /* 사유는 제목 줄의 라벨이다 — 「총 N단계」 뒤, [단계 추가] 앞(사용자 지시 2026-11-25). */
+  it('삭제 사유는 제목 줄에 「총 N단계」 다음 라벨로 선다', () => {
+    renderPane({ drafts: [draftOf(9301, 'a')] });
+
+    const heading = screen.getByRole('heading', { name: t.panes.steps });
+    const headingRow = heading.parentElement as HTMLElement;
+    const reason = within(headingRow).getByText(t.actionReasons.stepRemoveLast);
+    const count = within(headingRow).getByText(t.values.stepCountOf(1));
+    const chip = count.nextElementSibling as HTMLElement;
+
+    expect(chip).toContainElement(reason);
+    expect(chip.nextElementSibling).toBe(
+      within(headingRow).getByRole('button', { name: t.actions.addStep }),
+    );
+  });
+
+  it('단계가 둘 이상이면 삭제 사유 라벨이 서지 않는다', () => {
+    renderPane();
+
+    expect(screen.queryByText(t.actionReasons.stepRemoveLast)).toBeNull();
   });
 });
 
@@ -493,43 +516,13 @@ describe('StepPane — 저장', () => {
   });
 });
 
-describe('StepPane — 규칙 ⓘ', () => {
-  /**
-   * 전체 교체 · 승인자 부재 · 소급하지 않음 · 반려 후 재상신 — 결재선을 보는 내내 참인 사실이다.
-   * 표 아래 네 줄로 늘 펼쳐 두지 않고 구획 제목 옆 ⓘ 하나로 모은다(관리웹 정리 시안 A).
-   */
-  it('네 규칙을 제목 옆 ⓘ 의 설명으로 두고 표 아래에는 펼치지 않는다', () => {
+describe('StepPane — 제목 ⓘ', () => {
+  /* 제목 옆 규칙 ⓘ 는 걷었다(사용자 지시 2026-11-25). */
+  it('결재 단계 제목 줄에 ⓘ 단추가 없다', () => {
     renderPane();
 
-    const tip = screen.getByRole('button', { name: STEP_RULES });
-
-    expect(within(screen.getByRole('heading', { level: 2 })).getByRole('button')).toBe(tip);
-    for (const rule of [
-      t.notes.stepReplaceWholeList,
-      t.notes.stepGuideApproverAbsent,
-      t.notes.stepGuideNotRetroactive,
-      t.notes.stepGuideRejectResubmit,
-    ]) {
-      expect(STEP_RULES).toContain(rule);
-      expect(screen.queryByText(rule)).toBeNull();
-    }
-  });
-
-  /** **표가 무엇으로 채워졌는지와 무관하다** — 표에 딸린 것으로 두면 표가 비는 순간 함께 사라진다. */
-  it('단계가 없어도 · 조회에 실패해도 · 불러오는 중에도 ⓘ 가 남는다', () => {
-    const { unmount } = renderPane({ drafts: [] });
-    expect(screen.getByRole('button', { name: STEP_RULES })).toBeInTheDocument();
-    unmount();
-
-    const failed = renderPane({ drafts: null, loadError: <p>단계 조회 실패 배너</p> });
-    // 선행 단언 — 실제로 실패 상태여야 이 감지기가 뜻을 갖는다.
-    expect(screen.getByText('단계 조회 실패 배너')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: STEP_RULES })).toBeInTheDocument();
-    failed.unmount();
-
-    renderPane({ drafts: null, isLoading: true });
-    expect(screen.getByRole('status', { name: t.loading.steps })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: STEP_RULES })).toBeInTheDocument();
+    const heading = screen.getByRole('heading', { name: t.panes.steps });
+    expect(within(heading).queryByRole('button')).toBeNull();
   });
 });
 

@@ -36,6 +36,8 @@ export const routeKeys = {
   steps: (approvalRouteId: number) => ['approval-routes', 'steps', approvalRouteId] as const,
   duplicateProbe: (approvalTypeCode: string) =>
     ['approval-routes', 'duplicate-probe', approvalTypeCode] as const,
+  /** 등록 팝업 승인 유형 선택지에서 뺄 유형을 가리는 사용 중 결재선 전부(사용자 지시 2026-11-25). */
+  activeForCreate: ['approval-routes', 'active-for-create'] as const,
 };
 
 /**
@@ -170,6 +172,28 @@ export const useDuplicateProbe = (
               size: DUPLICATE_PROBE_SIZE,
             },
           },
+        }),
+      ),
+  });
+};
+
+/**
+ * 등록 팝업의 승인 유형 선택지에서 **이미 쓰는 유형을 빼기 위한** 사용 중 결재선 조회(사용자 지시 2026-11-25).
+ *
+ * 조준 조회와 같은 경로 · 같은 크기다. 승인 유형도 사업부도 싣지 않는다 — 쿼리로는 「전 사업부 공통」(`null`)을
+ * 표현할 수 없어 사업부는 클라이언트가 맞춘다(`takenApprovalTypeCodes`). 사업부를 바꿔도 다시 부르지 않는다.
+ * 잘리거나 실패하면 아무것도 빼지 않는다 — 저장 직전 조준 조회와 서버 검사가 그대로 남는다.
+ */
+export const useActiveRoutesForCreate = (enabled: boolean): UseQueryResult<RouteListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: routeKeys.activeForCreate,
+    enabled,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/app/approval-routes', {
+          params: { query: { activeOnly: true, size: DUPLICATE_PROBE_SIZE } },
         }),
       ),
   });

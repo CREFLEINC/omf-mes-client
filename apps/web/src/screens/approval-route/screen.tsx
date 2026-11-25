@@ -16,7 +16,7 @@ import {
   toApproverTypeOptions,
 } from './code-options';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
-import { judgeDuplicate, type DuplicateProbe } from './duplicate-check';
+import { judgeDuplicate, takenApprovalTypeCodes, type DuplicateProbe } from './duplicate-check';
 import {
   DEFAULT_FILTERS,
   isCreating as readIsCreating,
@@ -42,6 +42,7 @@ import { toPageView } from './pagination';
 import {
   routeDetailPath,
   routeKeys,
+  useActiveRoutesForCreate,
   useDuplicateProbe,
   useRouteDetail,
   useRouteList,
@@ -393,6 +394,20 @@ export const ApprovalRouteScreen = () => {
   };
 
   /**
+   * 등록 팝업에서 **그 사업부에 이미 사용 중인 결재선이 있는 승인 유형**은 선택지에서 뺀다(사용자 지시 2026-11-25).
+   * 판정 못 함(불러오는 중 · 실패 · 잘림)이면 빼지 않는다 — 위 조준 조회 · 서버 검사가 그대로 남는다.
+   */
+  const activeForCreate = useActiveRoutesForCreate(isCreating);
+  const activeForCreateState: DuplicateProbe = {
+    items: activeForCreate.data?.items ?? EMPTY_ROUTES,
+    total: activeForCreate.data?.page.total ?? 0,
+    isLoading: activeForCreate.isPending,
+    isError: activeForCreate.isError,
+  };
+  const takenTypesFor = (businessUnitId: string): ReadonlySet<string> =>
+    takenApprovalTypeCodes(activeForCreateState, toBusinessUnitId(businessUnitId));
+
+  /**
    * 저장이 만들려는 (유형, 사업부)의 중복. **사업부는 폼 값**이다 — 저장하면 그 값이 된다.
    * 자기 자신을 빼지 않으면 수정이 자기 때문에 늘 막힌다.
    */
@@ -735,7 +750,16 @@ export const ApprovalRouteScreen = () => {
     resetEditingRef.current();
   }, [editTargetKey]);
 
-  const changeValues = (patch: Partial<RouteFormValues>): void => {
+  const changeValues = (requested: Partial<RouteFormValues>): void => {
+    /* 등록에서 사업부를 바꿔 고른 승인 유형이 그 사업부에서 이미 쓰이면 유형을 비운다(사용자 지시 2026-11-25). */
+    const patch =
+      isCreating &&
+      requested.businessUnitId !== undefined &&
+      draft !== null &&
+      takenTypesFor(requested.businessUnitId).has(draft.values.approvalTypeCode)
+        ? { ...requested, approvalTypeCode: '' }
+        : requested;
+
     setDraft((prev) => (prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } }));
 
     // 고치는 즉시 그 칸의 오류를 지운다 — 고친 값 옆에 낡은 오류가 남으면 안 된다.
@@ -854,6 +878,8 @@ export const ApprovalRouteScreen = () => {
     if (created === null) return;
 
     changeStepDrafts([...stepDraft.values, created]);
+    /* 오른쪽 아래 알림만 — 저장 전 초안에 넣은 것이다(사용자 지시 2026-11-25). */
+    toast.show({ variant: 'success', description: t.notes.stepAdded });
   };
 
   const handleRemoveStep = (draftId: string): void => {
@@ -982,6 +1008,9 @@ export const ApprovalRouteScreen = () => {
             : writeFailureSlot(updateWrite, reloadDetail)
         }
         approvalTypeOptions={approvalTypeOptions}
+        hiddenApprovalTypeCodes={
+          mode === 'create' ? takenTypesFor(draft.values.businessUnitId) : undefined
+        }
         businessUnitOptions={toBusinessUnitOptions(businessUnits.entries)}
         businessUnitNote={lookupNote(businessUnits)}
         /*

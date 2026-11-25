@@ -12,7 +12,12 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { approvalTypeLabelOf } from './code-options';
-import { businessUnitFixtures, createdRouteFixture, routeFixtures } from './fixtures';
+import {
+  BUSINESS_UNIT_LABEL,
+  businessUnitFixtures,
+  createdRouteFixture,
+  routeFixtures,
+} from './fixtures';
 import { ApprovalRouteScreen } from './screen';
 
 /**
@@ -88,10 +93,24 @@ const isGet = (request: Request, pathname: string): boolean =>
 
 /** 조준 조회는 목록과 같은 경로를 쓰되 `size` 상수를 싣는다. */
 /** 위 줄 「사용」 라벨의 건수 조회(`size=1`)는 조준 조회가 아니다(사용자 지시 2026-11-24). */
+/** 조준 조회는 승인 유형으로 좁혀 부른다 — 유형 없이 부르는 등록 팝업 선택지용 조회와 가른다. */
 const isProbeQuery = (params: URLSearchParams): boolean =>
-  params.has('size') && params.get('size') !== '1';
+  params.has('size') && params.get('size') !== '1' && params.has('approvalTypeCode');
 const isProbe = (request: Request): boolean =>
   isGet(request, ROUTES_PATH) && isProbeQuery(new URL(request.url).searchParams);
+
+/** 등록 팝업 승인 유형 선택지에서 뺄 유형을 가리는 사용 중 결재선 조회 — 유형 없이 `activeOnly` · `size`를 싣는다. */
+const isActiveForCreate = (request: Request): boolean => {
+  const params = new URL(request.url).searchParams;
+
+  return (
+    isGet(request, ROUTES_PATH) &&
+    params.get('activeOnly') === 'true' &&
+    params.has('size') &&
+    params.get('size') !== '1' &&
+    !params.has('approvalTypeCode')
+  );
+};
 
 const listBody = (items: unknown[]) => ({
   items,
@@ -103,6 +122,15 @@ const probeRoute = (items: unknown[] = []): StubRoute => ({
   respond: () => jsonResponse(listBody(items)),
 });
 
+const activeForCreateRoute = (
+  items: unknown[] = [],
+  page: Partial<{ page: number; size: number; total: number }> = {},
+): StubRoute => ({
+  match: isActiveForCreate,
+  respond: () =>
+    jsonResponse({ items, page: { page: 1, size: 100, total: items.length, ...page } }),
+});
+
 const createRoute = (saved: unknown = createdRouteFixture): StubRoute => ({
   match: (request) => request.method === 'POST' && new URL(request.url).pathname === ROUTES_PATH,
   /* 계약이 201에 `ETag`를 싣지만 그것은 **컬렉션 경로**에 캡처된다 — 상세 토큰이 되지 않는다. */
@@ -112,6 +140,7 @@ const createRoute = (saved: unknown = createdRouteFixture): StubRoute => ({
 const allRoutes = (extra: StubRoute[] = []): StubRoute[] => [
   ...extra,
   probeRoute(),
+  activeForCreateRoute(),
   createRoute(),
   {
     match: (request) => isGet(request, ROUTES_PATH) && !isProbe(request),
@@ -215,6 +244,8 @@ const createRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
 
 const probeRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requests.filter((request) => isProbe(new Request(request.url)));
+const activeForCreateRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => isActiveForCreate(new Request(request.url)));
 
 /** 등록 폼을 열고 승인 유형을 고른 상태까지 간다. */
 const openCreateForm = async (
@@ -380,14 +411,23 @@ describe('ApprovalRouteScreen(등록) — 성공한 뒤', () => {
 
 describe('ApprovalRouteScreen(등록) — 활성 중복 선검사', () => {
   /** 등록에는 뺄 자기 행이 없다 — 조준 조회가 낸 사용 중 결재선은 모두 중복이다. */
-  it('같은 유형·사업부로 사용 중인 결재선이 있으면 등록 전에 막힌다', async () => {
+  /*
+   * 선택지 조회가 못 본 중복(경합 등)을 조준 조회가 잡으면 등록이 잠긴다. 단추 아래 안내 문장은 내지 않는다
+   * (사용자 지시 2026-11-25).
+   */
+  it('같은 유형·사업부로 사용 중인 결재선이 있으면 등록 전에 막히고 단추 아래 안내는 없다', async () => {
     const clash = { ...createdRouteFixture, approvalRouteId: 9007, businessUnitId: null };
     const { requests, user } = renderScreen(allRoutes([probeRoute([clash])]));
 
     const pane = await openCreateForm(user);
 
-    expect(await screen.findByText(t.actionReasons.duplicateActive)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        within(pane).getByRole('button', { name: t.actions.openExisting }),
+      ).toBeInTheDocument();
+    });
     expect(within(pane).getByRole('button', { name: t.actions.submitCreate })).toBeDisabled();
+    expect(screen.queryByText(t.actionReasons.duplicateActive)).toBeNull();
     expect(createRequests(requests)).toHaveLength(0);
   });
 
@@ -579,5 +619,154 @@ describe('ApprovalRouteScreen(등록) — 전송 중 바깥 주소 이동', () =
     await waitFor(() => {
       expect(locationText()).toContain('ar=9004');
     });
+  });
+});
+
+/*
+ * 같은 승인 유형 · 사업부로 사용 중인 결재선이 있으면 그 유형은 등록 팝업 선택지에 뜨지 않는다(사용자 지시 2026-11-25).
+ * 근거는 `GET /app/approval-routes?activeOnly=true&size=100` 한 번 — 사업부는 화면이 맞춘다.
+ */
+describe('ApprovalRouteScreen(등록) — 이미 쓰는 승인 유형 감추기', () => {
+  const openDialog = async (user: ReturnType<typeof userEvent.setup>): Promise<HTMLElement> => {
+    await screen.findByText('재고 조정');
+    await user.click(screen.getByRole('button', { name: t.actions.create }));
+
+    return screen.findByRole('dialog', { name: t.panes.create });
+  };
+
+  const typeOptionNames = async (
+    user: ReturnType<typeof userEvent.setup>,
+    dialog: HTMLElement,
+  ): Promise<string[]> => {
+    const trigger = within(dialog).getByRole('combobox', { name: t.fields.approvalTypeCode });
+    await user.click(trigger);
+    /* 선택지의 접근 이름으로 센다 — 글자에는 고름 표시 아이콘 이름이 섞인다. 이 파일의 유형 목록은 둘이다. */
+    const names = ['GOODS_ISSUE_DISPOSAL', 'PURCHASE_ORDER']
+      .map(approvalTypeLabelOf)
+      .filter((name) => screen.queryByRole('option', { name }) !== null);
+    /* Esc 는 팝업까지 닫을 수 있어 칸을 다시 눌러 접는다. */
+    await user.click(trigger);
+
+    return names;
+  };
+
+  /* 첫 사업부(BUSINESS_UNIT_LABEL). */
+  const BU_ID = 9101;
+
+  const activePurchaseOrder = (businessUnitId: number | null) => ({
+    ...createdRouteFixture,
+    approvalRouteId: 9010,
+    approvalTypeCode: 'PURCHASE_ORDER',
+    businessUnitId,
+    isActive: true,
+  });
+
+  it('유형 없이 사용 중 결재선만 한 번 부른다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await openDialog(user);
+
+    await waitFor(() => {
+      expect(activeForCreateRequests(requests)).toHaveLength(1);
+    });
+    const params = activeForCreateRequests(requests)[0]?.url.searchParams;
+    expect(params?.get('activeOnly')).toBe('true');
+    expect(params?.get('size')).toBe('100');
+    expect(params?.has('businessUnitId')).toBe(false);
+  });
+
+  it('전체 사업부에 이미 쓰는 유형은 선택지에 없고 다른 유형은 남는다', async () => {
+    const { requests, user } = renderScreen(
+      allRoutes([activeForCreateRoute([activePurchaseOrder(null)])]),
+    );
+
+    const dialog = await openDialog(user);
+    await waitFor(() => {
+      expect(activeForCreateRequests(requests)).toHaveLength(1);
+    });
+
+    await waitFor(async () => {
+      const names = await typeOptionNames(user, dialog);
+      expect(names).not.toContain(approvalTypeLabelOf('PURCHASE_ORDER'));
+      expect(names).toContain(approvalTypeLabelOf('GOODS_ISSUE_DISPOSAL'));
+    });
+  });
+
+  it('다른 사업부에서만 쓰는 유형은 전체 사업부 등록에 남는다', async () => {
+    const { requests, user } = renderScreen(
+      allRoutes([activeForCreateRoute([activePurchaseOrder(BU_ID)])]),
+    );
+
+    const dialog = await openDialog(user);
+    await waitFor(() => {
+      expect(activeForCreateRequests(requests)).toHaveLength(1);
+    });
+
+    expect(await typeOptionNames(user, dialog)).toContain(approvalTypeLabelOf('PURCHASE_ORDER'));
+  });
+
+  it('사업부를 바꿔 고른 유형이 그 사업부에서 이미 쓰이면 유형이 비워진다', async () => {
+    const { requests, user } = renderScreen(
+      allRoutes([activeForCreateRoute([activePurchaseOrder(BU_ID)])]),
+    );
+
+    const dialog = await openCreateForm(user, 'PURCHASE_ORDER');
+    await waitFor(() => {
+      expect(activeForCreateRequests(requests)).toHaveLength(1);
+    });
+    const typeBox = within(dialog).getByRole('combobox', { name: t.fields.approvalTypeCode });
+    expect(typeBox).toHaveTextContent(approvalTypeLabelOf('PURCHASE_ORDER'));
+
+    await user.click(within(dialog).getByRole('combobox', { name: t.fields.businessUnit }));
+    await user.click(await screen.findByRole('option', { name: BUSINESS_UNIT_LABEL }));
+
+    await waitFor(() => {
+      expect(typeBox).not.toHaveTextContent(approvalTypeLabelOf('PURCHASE_ORDER'));
+    });
+    expect(within(dialog).getByRole('button', { name: t.actions.submitCreate })).toBeDisabled();
+    expect(await typeOptionNames(user, dialog)).not.toContain(
+      approvalTypeLabelOf('PURCHASE_ORDER'),
+    );
+  });
+
+  it('모든 유형이 쓰이면 선택칸을 펼쳐도 고를 유형이 없다', async () => {
+    const { requests, user } = renderScreen(
+      allRoutes([
+        activeForCreateRoute([
+          activePurchaseOrder(null),
+          {
+            ...activePurchaseOrder(null),
+            approvalRouteId: 9011,
+            approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
+          },
+        ]),
+      ]),
+    );
+
+    const dialog = await openDialog(user);
+    await waitFor(() => {
+      expect(activeForCreateRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(within(dialog).getByRole('combobox', { name: t.fields.approvalTypeCode }));
+
+    expect(await screen.findByRole('listbox')).toBeInTheDocument();
+    expect(screen.queryAllByRole('option')).toHaveLength(0);
+  });
+
+  /** 잘렸으면 못 본 것이 있다 — 아무것도 감추지 않는다(서버 검사가 안전망). */
+  it('조회가 잘리면 아무 유형도 감추지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      allRoutes([activeForCreateRoute([activePurchaseOrder(null)], { total: 150 })]),
+    );
+
+    const dialog = await openDialog(user);
+    await waitFor(() => {
+      expect(activeForCreateRequests(requests)).toHaveLength(1);
+    });
+
+    const names = await typeOptionNames(user, dialog);
+    expect(names).toContain(approvalTypeLabelOf('PURCHASE_ORDER'));
+    expect(names).toContain(approvalTypeLabelOf('GOODS_ISSUE_DISPOSAL'));
   });
 });

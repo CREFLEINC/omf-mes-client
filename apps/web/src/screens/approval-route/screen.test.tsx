@@ -2200,7 +2200,7 @@ describe('ApprovalRouteScreen — 배너 매임과 초안 수명', () => {
     await dirtyForm(user, '77');
     await user.click(screen.getByRole('button', { name: t.actions.discardChanges }));
 
-    expect(await screen.findByText(messages.common.discardChangesConfirm)).toBeInTheDocument();
+    expect(await screen.findByText(t.dialog.discardBody)).toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('77');
 
     await user.click(screen.getByRole('button', { name: t.actions.discardDraft }));
@@ -2220,7 +2220,7 @@ describe('ApprovalRouteScreen — 배너 매임과 초안 수명', () => {
     await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
 
     await waitFor(() => {
-      expect(screen.queryByText(messages.common.discardChangesConfirm)).not.toBeInTheDocument();
+      expect(screen.queryByText(t.dialog.discardBody)).not.toBeInTheDocument();
     });
     expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('77');
   });
@@ -2636,6 +2636,19 @@ describe('ApprovalRouteScreen — 단계 편집', () => {
     expect(
       within(stepRows()[1] as HTMLElement).getByText('합성 승인자1 · 합성부서 가'),
     ).toBeInTheDocument();
+  });
+
+  /* [추가] 뒤 오른쪽 아래 알림 — 저장 요청은 아직 나가지 않는다(사용자 지시 2026-11-25). */
+  it('단계를 더하면 「추가되었습니다.」 알림이 뜨고 저장 요청은 나가지 않는다', async () => {
+    const { requests, user } = renderScreen(allRoutes(), SELECTED);
+
+    await stepPane();
+    expect(screen.queryByText(t.notes.stepAdded)).toBeNull();
+
+    await addStep(user);
+
+    expect(await screen.findByText(t.notes.stepAdded)).toBeInTheDocument();
+    expect(writeRequests(requests)).toHaveLength(0);
   });
 
   /** **그 행만** 지운다 — 옆줄이 함께 사라지면 사용자는 저장하기 전까지 알 수 없다. */

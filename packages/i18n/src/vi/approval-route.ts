@@ -27,6 +27,9 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     businessUnit: 'Đơn vị kinh doanh',
     minValue: 'Cận dưới khoảng giá trị',
     maxValue: 'Cận trên khoảng giá trị',
+    /** 하한 · 상한 칸 안 흐린 글자(사용자 지시 2026-11-25). 접근 이름은 위 `minValue` · `maxValue`. */
+    minValuePlaceholder: 'Nhập giá trị cận dưới',
+    maxValuePlaceholder: 'Nhập giá trị cận trên',
     /** ⚠ 목록 열 이름이라 **한 낱말**이어야 한다 — 길면 좁은 칸에서 접힌다. */
     status: 'Dùng',
     stepCount: 'Bước',
@@ -47,11 +50,11 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     create: 'Luồng phê duyệt mới',
     /** 등록의 주 액션. 수정의 「저장」과 갈라 적는다 — 없던 것이 생기는 일이다. */
     submitCreate: 'Đăng ký',
-    discardChanges: 'Hủy thay đổi',
+    discardChanges: 'Hủy',
     activate: 'Dùng lại',
     openExisting: 'Xem luồng phê duyệt đã có',
-    keepEditing: 'Tiếp tục sửa',
-    discardDraft: 'Hủy thay đổi',
+    keepEditing: 'Tiếp tục chỉnh sửa',
+    discardDraft: 'Rời đi không lưu',
     /** ⚠ 보이는 글자(승인 유형)를 그대로 담고 **내부 번호는 접근 이름에도 넣지 않는다.** */
     selectRow: (approvalTypeCode: string, businessUnitLabel: string): string =>
       `Chọn ${approvalTypeCode} · ${businessUnitLabel}`,
@@ -122,18 +125,14 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     inProgressSome: (count: number): string =>
       `${String(count)} yêu cầu đang xử lý sẽ tiếp tục theo luồng phê duyệt hiện tại. Để áp dụng luồng phê duyệt đã thay đổi, hãy từ chối yêu cầu đó rồi trình lại.`,
     inProgressNone: 'Không có yêu cầu nào đang xử lý.',
-    stepGuideApproverAbsent: 'Người phê duyệt vắng mặt thì yêu cầu dừng lại ở bước đó.',
-    stepGuideNotRetroactive: 'Sửa luồng phê duyệt cũng không áp dụng cho yêu cầu đang xử lý.',
-    stepGuideRejectResubmit:
-      'Muốn cho yêu cầu đang xử lý chạy theo luồng đã sửa thì phải từ chối rồi trình lại.',
+    stepAdded: 'Đã thêm.',
     approverInactiveWarning: 'Người phê duyệt này đang ngừng sử dụng — phê duyệt sẽ dừng lại.',
     /** ⭐ **막지 않는다** — 없는 규칙을 지어내는 대신 보이기만 한다. */
     approverDuplicateWarning: 'Cùng người phê duyệt này còn ở bước khác nữa. Vẫn lưu như vậy được.',
-    stepReplaceWholeList: 'Lưu thì thay toàn bộ bước phê duyệt đúng theo thứ tự đang hiện.',
     approverListTruncated:
       'Lựa chọn người phê duyệt chỉ hiện một phần ở đầu. Không thấy người cần tìm thì hãy báo người phụ trách.',
     approverListFailed: 'Không tải được lựa chọn người phê duyệt.',
-    approvalTypeFixed: 'Không đổi được loại phê duyệt — đổi thì đó là luồng phê duyệt khác.',
+    approvalTypeFixed: 'Để dùng loại phê duyệt khác, hãy đăng ký luồng phê duyệt mới.',
     valueRangeEmpty: 'Để trống cả cận dưới và cận trên thì áp dụng cho toàn bộ khoảng.',
     /** ⭐ **막지 않는다** — 화면의 선검사는 마지막 방어가 아니고 서버가 다시 검사한다. */
     duplicateUnknown:
@@ -184,6 +183,7 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
       `Yêu cầu trình của loại «${approvalTypeCode}» sẽ mở lại.`,
     activateStepCount: (count: number): string => `Có ${String(count)} bước phê duyệt.`,
     /** ⚠ 「확인/취소」로 두지 않는다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다. */
-    discardTitle: 'Hủy các thay đổi chứ?',
+    discardTitle: 'Thay đổi chưa lưu',
+    discardBody: 'Nếu rời đi mà không lưu, các thay đổi sẽ bị mất.',
   },
 };

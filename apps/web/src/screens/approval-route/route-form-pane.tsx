@@ -32,6 +32,11 @@ export interface RouteFormPaneProps {
    * 「값이 확정되면 배열만 채운다」는 전환을 바깥에서 잴 수 없다.
    */
   approvalTypeOptions: SelectOption[];
+  /**
+   * 등록 팝업 승인 유형 선택지에서 뺄 유형 — 고른 사업부에 이미 사용 중인 결재선이 있다(사용자 지시 2026-11-25).
+   * 「값 목록을 못 받았다」 안내는 빼기 전 목록으로 판단한다 — 다 빠졌으면 선택칸의 빈 상태가 말한다.
+   */
+  hiddenApprovalTypeCodes?: ReadonlySet<string>;
   businessUnitOptions: SelectOption[];
   /** 사업부 선택지의 한계(잘림·실패) 안내. 밝히지 않으면 값이 사라진 것으로 읽힌다. */
   businessUnitNote?: string;
@@ -92,6 +97,7 @@ export const RouteFormPane = ({
   fieldErrors,
   banner,
   approvalTypeOptions,
+  hiddenApprovalTypeCodes,
   businessUnitOptions,
   businessUnitNote,
   duplicateUnknownNote,
@@ -129,7 +135,11 @@ export const RouteFormPane = ({
         <SelectField
           required
           label={t.fields.approvalTypeCode}
-          options={approvalTypeOptions}
+          options={
+            hiddenApprovalTypeCodes === undefined
+              ? approvalTypeOptions
+              : approvalTypeOptions.filter((option) => !hiddenApprovalTypeCodes.has(option.value))
+          }
           value={values.approvalTypeCode}
           note={codeNote(approvalTypeOptions)}
           error={fieldErrors.approvalTypeCode}
@@ -184,7 +194,7 @@ export const RouteFormPane = ({
             <TextField
               id={minValueId}
               aria-label={t.fields.minValue}
-              placeholder={t.fields.minValue}
+              placeholder={t.fields.minValuePlaceholder}
               value={values.minValue}
               /* 숫자 자판을 띄우되 형식 판정은 화면이 한다 — 브라우저마다 허용 글자가 다르다. */
               inputMode="decimal"
@@ -202,7 +212,7 @@ export const RouteFormPane = ({
             <TextField
               id={maxValueId}
               aria-label={t.fields.maxValue}
-              placeholder={t.fields.maxValue}
+              placeholder={t.fields.maxValuePlaceholder}
               value={values.maxValue}
               inputMode="decimal"
               error={fieldErrors.maxValue}
@@ -227,10 +237,12 @@ export const RouteFormPane = ({
         {saveLabel}
       </Button>
     ) : saveDisabledReason === t.actionReasons.saveNoChanges ||
-      saveDisabledReason === t.actionReasons.createNoType ? (
+      saveDisabledReason === t.actionReasons.createNoType ||
+      (isCreate && saveDisabledReason === t.actionReasons.duplicateActive) ? (
       /*
        * 고친 것이 없을 때 · 등록에서 승인 유형을 고르기 전에는 꺼진 단추로만 — 「고친 내용이 없습니다」를 되풀이하지 않고
        * (사용자 지시 2026-11-24), 「승인 유형을 고르세요.」는 칸의 흐린 글자 · 빨간 테두리가 이미 말한다(2026-11-25).
+       * 등록 팝업의 활성 중복 안내도 단추 아래에 내지 않는다(2026-11-25) — 쓰는 유형은 선택지에서 이미 빠진다.
        */
       <Button variant="filled" disabled>
         {saveLabel}
@@ -285,7 +297,19 @@ export const RouteFormPane = ({
          * 없는 값이라 표기로 낸다. 단계 수는 결재 단계 카드 제목 옆으로 옮겼다(표와 같은 기준으로 센다).
          */
         <div className="approval-route-head">
-          <h2 className="pane-title">{t.panes.basicInfo}</h2>
+          {/*
+           * 진행 중인 요청 안내는 제목 오른쪽 같은 줄, 글자 폭만큼의 파란 알약(사용자 지시 2026-11-25 — 종전엔 입력란 아래
+           * 카드 너비 전체). 문구는 그대로다.
+           */}
+          <div className="approval-route-head-title-row">
+            <h2 className="pane-title">{t.panes.basicInfo}</h2>
+            <p className="iqc-inspection-action-note approval-route-progress-note" data-tone="info">
+              <Icon name="info" size={14} aria-hidden />
+              {route.inProgressCount === 0
+                ? t.notes.inProgressNone
+                : t.notes.inProgressSome(route.inProgressCount)}
+            </p>
+          </div>
           <p className="approval-route-head-line">
             <span className="info-label">
               {approvalTypeLabelOf(route.approvalTypeCode)}
@@ -298,16 +322,6 @@ export const RouteFormPane = ({
 
       {formGrid}
 
-      {/* 진행 중인 요청 안내는 입력란 아래 카드 너비 전체(사용자 지시 2026-11-24). */}
-      {route !== null && (
-        <p className="iqc-inspection-action-note approval-route-progress-note" data-tone="info">
-          <Icon name="info" size={14} aria-hidden />
-          {route.inProgressCount === 0
-            ? t.notes.inProgressNone
-            : t.notes.inProgressSome(route.inProgressCount)}
-        </p>
-      )}
-
       {duplicateUnknownNote !== null && <p className="field-note">{duplicateUnknownNote}</p>}
 
       <div className="form-actions">
@@ -318,7 +332,14 @@ export const RouteFormPane = ({
         {route !== null &&
           (route.isActive ? (
             <div className="field-cell form-actions-secondary">
-              <Button variant="outlined" disabled={isLocked} onClick={onDeactivate}>
+              {/* 다른 마스터 화면(공통코드 부서 등)의 「사용 중지」와 같은 모양 — 작은 외곽선 + 금지 아이콘(사용자 지시 2026-11-25). */}
+              <Button
+                variant="outlined"
+                size="sm"
+                leadingIcon={<Icon name="block" size={18} />}
+                disabled={isLocked}
+                onClick={onDeactivate}
+              >
                 {messages.common.deactivate}
               </Button>
             </div>
@@ -358,7 +379,7 @@ export const RouteFormPane = ({
           disabled={isLocked || (!isCreate && !isDirty)}
           onClick={onCancel}
         >
-          {/* 수정은 마지막 저장값으로 되돌리는 「변경 취소」, 등록은 폼을 닫는 「취소」(사용자 지시 2026-11-25). */}
+          {/* 수정은 마지막 저장값으로 되돌리기, 등록은 폼을 닫기 — 둘 다 「취소」로 읽힌다(사용자 지시 2026-11-25). */}
           {isCreate ? messages.common.cancel : t.actions.discardChanges}
         </Button>
 

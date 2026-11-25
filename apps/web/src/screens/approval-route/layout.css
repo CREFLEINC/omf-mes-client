@@ -20,21 +20,19 @@
   white-space: pre-line;
 }
 
-/* 결재 단계 제목 줄 — 왼쪽 제목 · ⓘ, 오른쪽 끝 「총 N단계」 · [단계 추가](사용자 지시 2026-11-25). */
+/*
+ * 결재 단계 제목 줄 — 「결재 단계 · 총 N단계 · [최소 1개] 라벨」 왼쪽, [단계 추가] 오른쪽 끝(사용자 지시 2026-11-25).
+ * 공용 `.pane-heading-row` 는 양 끝 벌리기라 왼쪽부터 붙이고 단추만 끝으로 민다.
+ */
 .pane-heading-row.approval-route-steps-heading {
   align-items: center;
+  justify-content: flex-start;
+  column-gap: var(--space-2);
   margin-bottom: var(--space-3);
 }
 
-.approval-route-steps-heading-end {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
+.approval-route-steps-heading > .approval-route-steps-add {
   margin-left: auto;
-}
-
-.approval-route-steps-heading-end > .approval-route-step-count {
-  margin-left: 0;
 }
 
 /* 펼친 추가 줄의 [추가] · [취소] — 공용 `.field-cell` 은 세로 쌓기라 가로로 돌린다. */
@@ -42,4 +40,28 @@
   flex-direction: row;
   align-items: center;
   gap: var(--space-2);
+}
+
+/*
+ * 결재선 기본 정보 제목 줄 — 제목 오른쪽에 진행 중인 요청 안내 알약(사용자 지시 2026-11-25). 알약은 글자 폭만큼, 글자는
+ * 본문 크기. 문장이 길면 알약 안에서 줄을 바꿔 제목 옆 자리를 지킨다.
+ */
+.approval-route-head-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+.approval-route-head-title-row > .pane-title {
+  flex: none;
+  margin-bottom: 0;
+}
+
+.approval-route-head-title-row > .iqc-inspection-action-note.approval-route-progress-note {
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  font: var(--type-body-md);
 }

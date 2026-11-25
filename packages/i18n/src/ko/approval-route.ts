@@ -29,6 +29,9 @@ export const approvalRoute = {
      */
     minValue: '하한',
     maxValue: '상한',
+    /** 하한 · 상한 칸 안 흐린 글자(사용자 지시 2026-11-25). 접근 이름은 위 `minValue` · `maxValue`. */
+    minValuePlaceholder: '하한 값을 입력하세요',
+    maxValuePlaceholder: '상한 값을 입력하세요',
     /** 목록 열 이름. 폼의 「사용 여부」와 달리 한 낱말이라야 64px 칸에서 접히지 않는다. */
     status: '사용 유무',
     stepCount: '단계',
@@ -60,7 +63,8 @@ export const approvalRoute = {
     /** 등록의 주 액션. 수정의 「저장」과 갈라 적는다 — 없던 것이 생기는 일이다. */
     submitCreate: '등록',
     /** 수정에서 저장 전 고친 값을 마지막 저장값으로 되돌린다(사용자 지시 2026-11-25). 등록의 「취소」는 폼을 닫는다. */
-    discardChanges: '변경 취소',
+    /* 상세 바닥 되돌리기 — 「변경 취소」에서 「취소」로(사용자 지시 2026-11-25). 동작은 그대로. */
+    discardChanges: '취소',
     /** 사용 중지의 반대. `messages.common.deactivate`와 짝이다. */
     activate: '다시 사용',
     /**
@@ -69,7 +73,8 @@ export const approvalRoute = {
      */
     openExisting: '기존 결재선 보기',
     keepEditing: '계속 편집',
-    discardDraft: '변경 파기',
+    /* 저장 안 한 변경 창 — 사용자 관리 · 주간 근무일 화면과 같은 문구(사용자 지시 2026-11-25). */
+    discardDraft: '저장하지 않고 나가기',
     /*
      * 행 안의 버튼은 보이는 글자가 행마다 같을 수 있다 — 같은 승인 유형의 사업부 지정본과
      * 전 사업부 공통본이 함께 서기 때문이다. 그래서 사업부 **이름**을 함께 담는다.
@@ -198,14 +203,8 @@ export const approvalRoute = {
     inProgressSome: (count: number): string =>
       `진행 중인 요청 ${String(count)}건은 기존 결재선으로 계속 처리됩니다. 변경한 결재선을 적용하려면 해당 요청을 반려한 뒤 다시 상신해 주세요.`,
     inProgressNone: '진행 중인 요청이 없습니다.',
-    /**
-     * 단계 구획 제목 옆 ⓘ 의 규칙(전체 교체와 함께 넷). 성공 알림에 붙이지 않는다 — 알림은 사라지고,
-     * 이 셋은 결재선을 보는 내내 참인 사실이다.
-     */
-    stepGuideApproverAbsent: '결재자가 자리를 비우면 그 단계에서 요청이 멈춥니다.',
-    stepGuideNotRetroactive: '결재선을 고쳐도 진행 중인 요청에는 반영되지 않습니다.',
-    stepGuideRejectResubmit:
-      '진행 중인 요청에 바뀐 결재선을 태우려면 반려한 뒤 다시 상신해야 합니다.',
+    /** 단계 추가 줄 [추가] 뒤 오른쪽 아래 알림(사용자 지시 2026-11-25). 저장 전이라 「추가」만 말한다. */
+    stepAdded: '추가되었습니다.',
     /** 승인자가 사용 중지 상태다. 색에만 기대지 않도록 글자로 함께 낸다. */
     approverInactiveWarning: '이 결재자는 사용 중지 상태입니다 — 결재가 멈춥니다.',
     /**
@@ -215,11 +214,6 @@ export const approvalRoute = {
      */
     approverDuplicateWarning: '같은 결재자가 다른 단계에도 있습니다. 그대로 저장할 수 있습니다.',
     /**
-     * 이 저장이 **전체 교체**라는 사실. 단계 구획 제목 옆 ⓘ 에 둔다 —
-     * 계약에 개별 추가·삭제 경로가 없어 보내는 배열이 곧 최종 순서 전체다.
-     */
-    stepReplaceWholeList: '저장하면 지금 보이는 순서 그대로 결재 단계를 전부 바꿉니다.',
-    /**
      * 승인자 선택지가 잘렸다. 밝히지 않으면 사용자는 **불완전한 목록을 완전한 것으로 읽고**
      * 찾는 사람이 없으면 「그런 사용자가 없다」로 결론짓는다.
      */
@@ -228,9 +222,9 @@ export const approvalRoute = {
     approverListFailed: '결재자 선택지를 불러오지 못했습니다.',
     /**
      * 수정 폼에 승인 유형 입력칸이 없는 이유. 계약의 수정 본문에 그 키가 아예 없다 —
-     * 밝히지 않으면 「왜 이 칸만 못 고치나」가 결함으로 읽힌다. 승인 유형 라벨 옆 ⓘ.
+     * 밝히지 않으면 「왜 이 칸만 못 고치나」가 결함으로 읽힌다. 승인 유형 라벨 옆 ⓘ(문구: 사용자 지시 2026-11-25).
      */
-    approvalTypeFixed: '승인 유형은 바꿀 수 없습니다 — 바꾸면 다른 결재선입니다.',
+    approvalTypeFixed: '다른 승인 유형을 사용하려면 새 결재선을 등록하세요.',
     /** 「수량 범위」 ⓘ 의 둘째 줄(사용자 지시 2026-11-25 — 칸 아래 문구를 ⓘ 안으로). */
     valueRangeEmpty: '하한과 상한을 모두 비우면 전체 범위에 적용됩니다.',
     /**
@@ -327,7 +321,8 @@ export const approvalRoute = {
     activateOpens: (approvalTypeCode: string): string =>
       `「${approvalTypeCode}」 유형의 상신이 다시 열립니다.`,
     activateStepCount: (count: number): string => `결재 단계는 ${String(count)}개입니다.`,
-    /** 초안 파기. 문구가 「확인/취소」가 아니다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다. */
-    discardTitle: '변경을 파기할까요?',
+    /** 초안 파기 — 사용자 관리 · 주간 근무일 화면의 저장 안 한 변경 창과 같은 제목 · 본문(사용자 지시 2026-11-25). */
+    discardTitle: '저장되지 않은 변경 사항',
+    discardBody: '저장하지 않고 나가면 변경 사항이 사라집니다.',
   },
 } as const;
