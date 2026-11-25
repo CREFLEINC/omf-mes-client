@@ -18,7 +18,8 @@ export const gaugeCalibration: Translated<typeof ko.gaugeCalibration> = {
   filters: {
     equipment: 'Thiết bị đo',
     historyType: 'Loại lịch sử',
-    period: 'Khoảng thời gian thực hiện',
+    periodFrom: 'Từ ngày thực hiện',
+    periodTo: 'Đến ngày thực hiện',
     all: 'Tất cả',
     search: 'Tra cứu',
     reset: 'Đặt lại',

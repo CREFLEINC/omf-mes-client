@@ -7,7 +7,8 @@ export const inboundWorkRecord: Translated<typeof ko.inboundWorkRecord> = {
   filters: {
     label: 'Điều kiện tra cứu',
     plant: 'Nhà máy',
-    period: 'Ngày nhập hàng',
+    periodFrom: 'Từ ngày nhập hàng',
+    periodTo: 'Đến ngày nhập hàng',
     supplier: 'Nhà cung cấp',
     supplierAll: 'Tất cả',
     query: 'Mặt hàng · LOT nhập hàng',

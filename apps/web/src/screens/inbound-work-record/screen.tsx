@@ -1,4 +1,4 @@
-import { DatePicker, EmptyState, Skeleton, Tabs, TextField, useToast } from '@crefle/web-ui';
+import { EmptyState, Skeleton, Tabs, TextField, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -10,6 +10,7 @@ import {
   useFilterMore,
   type HiddenFilterChip,
 } from '../../patterns/filter-more';
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { plantToday, toPlantDateTimeParts } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
@@ -149,11 +150,13 @@ export const InboundWorkRecordScreen = () => {
   const filters = (
     <section className="iwr-filters" aria-label={t.filters.label}>
       <div className="iwr-filter-row">
-        <DatePicker
-          mode="range"
-          aria-label={t.filters.period}
-          value={[from, to]}
-          onChange={([nextFrom, nextTo]) => update({ from: nextFrom, to: nextTo, open: null })}
+        <DateRangeFields
+          hideLabels
+          startLabel={t.filters.periodFrom}
+          endLabel={t.filters.periodTo}
+          from={from}
+          to={to}
+          onChange={(nextFrom, nextTo) => update({ from: nextFrom, to: nextTo, open: null })}
         />
         <Select
           aria-label={t.filters.supplier}

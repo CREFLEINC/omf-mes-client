@@ -15,7 +15,8 @@ export const returnReceipt = {
   },
   fields: {
     customer: '고객',
-    shipDate: '출하일',
+    shipDateFrom: '출하 시작일',
+    shipDateTo: '출하 종료일',
     keyword: '검색어',
     shipmentNo: '출하번호',
     shippedAt: '출하일',

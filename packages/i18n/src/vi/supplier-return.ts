@@ -16,7 +16,8 @@ export const supplierReturn: Translated<typeof ko.supplierReturn> = {
   },
   fields: {
     warehouse: 'Kho',
-    period: 'Ngày nhập kho',
+    periodFrom: 'Từ ngày nhập kho',
+    periodTo: 'Đến ngày nhập kho',
     receiptType: 'Loại nhập kho',
     status: 'Trạng thái',
     q: 'Tìm số nhập kho',

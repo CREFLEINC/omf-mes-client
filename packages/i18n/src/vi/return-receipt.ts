@@ -13,7 +13,8 @@ export const returnReceipt: Translated<typeof ko.returnReceipt> = {
   },
   fields: {
     customer: 'Khách hàng',
-    shipDate: 'Ngày xuất hàng',
+    shipDateFrom: 'Từ ngày xuất hàng',
+    shipDateTo: 'Đến ngày xuất hàng',
     keyword: 'Từ khóa',
     shipmentNo: 'Số xuất hàng',
     shippedAt: 'Ngày xuất hàng',

@@ -70,6 +70,8 @@ export const stockAdjust: Translated<typeof ko.stockAdjust> = {
   },
   historyFields: {
     period: 'Ngày ghi sổ',
+    periodFrom: 'Từ ngày ghi sổ',
+    periodTo: 'Đến ngày ghi sổ',
     count: 'Kiểm kê liên quan',
     reason: 'Lý do điều chỉnh',
   },

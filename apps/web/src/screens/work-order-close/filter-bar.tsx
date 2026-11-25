@@ -1,7 +1,8 @@
-import { Button, DatePicker, type SelectItems } from '@crefle/web-ui';
+import { Button, type SelectItems } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type JSX, useEffect, useId, useState } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import {
   FilterMoreButton,
   HiddenFilterChips,
@@ -40,7 +41,7 @@ const isJudgmentKey = (code: string): code is keyof typeof judgmentLabels =>
  * **보이는 조건은 셋이다**(C-6) — P/O · 계획 시작일 · 마감 상태. 마감 상태는 조회에 꼭 있어야 해 늘 보인다.
  * 판정은 「조건 더보기」에 접고, 걸려 있으면 칩으로만 알린다. 「초기화」는 처음 값과 다를 때만 보인다.
  *
- * 계획 시작일은 DS `DatePicker` 기간 모드 한 칸이다(C-12). 값과 요청 파라미터는 그대로 시작 · 끝 두 값이다.
+ * 계획 시작일은 시작 · 끝 두 칸이다(`patterns/date-range-fields`). 값과 요청 파라미터는 그대로 시작 · 끝 두 값이다.
  */
 export const WorkOrderCloseFilterBar = ({
   appliedFilters,
@@ -67,7 +68,6 @@ export const WorkOrderCloseFilterBar = ({
   } = appliedFilters;
   const judgmentId = useId();
   const judgmentNoteId = `${judgmentId}-note`;
-  const plannedStartId = useId();
   const more = useFilterMore();
 
   useEffect(() => {
@@ -139,28 +139,17 @@ export const WorkOrderCloseFilterBar = ({
             </p>
           )}
         </div>
-        <div className="field-cell filter-field-md">
-          <label className="field-label" htmlFor={plannedStartId}>
-            {t.plannedStart}
-          </label>
-          <DatePicker
-            id={plannedStartId}
-            mode="range"
-            clearable
-            value={[
-              draft.plannedStartFrom === '' ? null : draft.plannedStartFrom,
-              draft.plannedStartTo === '' ? null : draft.plannedStartTo,
-            ]}
-            placeholder={t.plannedStartPlaceholder}
-            onChange={(value) =>
-              setDraft((current) => ({
-                ...current,
-                plannedStartFrom: value === null ? '' : value[0],
-                plannedStartTo: value === null ? '' : value[1],
-              }))
-            }
-          />
-        </div>
+        <DateRangeFields
+          clearable
+          startLabel={t.plannedStartFrom}
+          endLabel={t.plannedStartTo}
+          placeholder={messages.common.selectDate}
+          from={draft.plannedStartFrom}
+          to={draft.plannedStartTo}
+          onChange={(plannedStartFrom, plannedStartTo) =>
+            setDraft((current) => ({ ...current, plannedStartFrom, plannedStartTo }))
+          }
+        />
         <div className="field-cell wide-select">
           <span className="field-label">
             <label htmlFor={statusId}>{t.status}</label>

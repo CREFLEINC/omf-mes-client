@@ -146,8 +146,8 @@ export const erpWorkOrderFlow = {
     pane: '조회 조건',
     q: '번호 검색',
     qPlaceholder: 'ERP W/O 번호',
-    due: '납기 기간',
-    duePlaceholder: '시작일 ~ 종료일',
+    dueFrom: '납기 시작일',
+    dueTo: '납기 종료일',
     plant: '공장',
     allPlants: '전체',
     /** 「조건 더보기」에 접힌 공장 조건의 칩(C-6). */

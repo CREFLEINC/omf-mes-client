@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { pickRange } from '../../test/date-picker';
+import { pickDateRange } from '../../test/date-picker';
 import { toCodeOptions } from './code-options';
 import { EMPTY_FILTERS } from './filters';
 import { RequestFilterBar, type RequestFilterBarProps } from './request-filter-bar';
@@ -104,7 +104,13 @@ describe('RequestFilterBar — 모아서 적용', () => {
   it('고친 기간은 조회를 눌러야 올라간다', async () => {
     const { onSearch, user } = renderBar();
 
-    await pickRange(user, screen.getByLabelText(t.fields.period), '2026-07-20', '2026-07-25');
+    await pickDateRange(
+      user,
+      screen.getByLabelText(t.fields.periodFrom),
+      screen.getByLabelText(t.fields.periodTo),
+      '2026-07-20',
+      '2026-07-25',
+    );
     expect(onSearch).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: messages.common.search }));

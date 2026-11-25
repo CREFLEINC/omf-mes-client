@@ -15,8 +15,10 @@ export const materialIssueStatus: Translated<typeof ko.materialIssueStatus> = {
   filters: {
     label: 'Điều kiện tra cứu',
     plant: 'Nhà máy',
-    issueWorkDate: 'Ngày xuất kho',
-    productionDate: 'Ngày sản xuất',
+    issueWorkDateFrom: 'Từ ngày xuất kho',
+    issueWorkDateTo: 'Đến ngày xuất kho',
+    productionDateFrom: 'Từ ngày sản xuất',
+    productionDateTo: 'Đến ngày sản xuất',
     workOrder: 'W/O',
     workOrderPlaceholder: 'Số W/O',
     sourceWarehouse: 'Kho sản xuất xuất đi',

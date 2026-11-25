@@ -122,6 +122,8 @@ export const common: Translated<typeof ko.common> = {
     layoutNarrow: 'Cửa sổ hẹp nên hiển thị trên dưới.',
   },
   selectDate: 'Chọn ngày',
+  startDate: 'Từ ngày',
+  endDate: 'Đến ngày',
   popWorker: {
     label: 'Mã nhân viên',
     unknown: 'Chưa xác nhận mã nhân viên',

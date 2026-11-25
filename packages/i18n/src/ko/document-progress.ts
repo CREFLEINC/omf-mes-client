@@ -41,7 +41,8 @@ export const documentProgress = {
   fields: {
     documentType: '문서 유형',
     status: '상태',
-    period: '문서 일자',
+    periodFrom: '문서 시작일',
+    periodTo: '문서 종료일',
     cancellableOnly: '지금 취소 가능한 것만',
     q: '문서번호',
   },

@@ -84,7 +84,8 @@ describe('DashboardFilterBar — 기간', () => {
 
     const select = screen.getByRole('combobox', { name: t.period });
     expect(select).toHaveTextContent(t.quick.today);
-    expect(screen.getByRole('button', { name: t.customPeriod })).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.startDate })).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.endDate })).toBeDisabled();
 
     await user.click(select);
     await user.click(screen.getByRole('option', { name: t.quick.last7 }));
@@ -99,7 +100,8 @@ describe('DashboardFilterBar — 기간', () => {
     renderBar({ filters: { dateFrom: '2026-10-02', dateTo: '2026-10-05', plant: '' } });
 
     expect(screen.getByRole('combobox', { name: t.period })).toHaveTextContent(t.customPeriod);
-    expect(screen.getByRole('button', { name: t.customPeriod })).toBeEnabled();
+    expect(screen.getByRole('button', { name: messages.common.startDate })).toBeEnabled();
+    expect(screen.getByRole('button', { name: messages.common.endDate })).toBeEnabled();
   });
 
   it('「직접 지정」을 고르면 지금 기간 그대로 날짜 칸을 켠다', async () => {
@@ -109,7 +111,8 @@ describe('DashboardFilterBar — 기간', () => {
 
     await user.click(screen.getByRole('combobox', { name: t.period }));
     await user.click(screen.getByRole('option', { name: t.customPeriod }));
-    expect(screen.getByRole('button', { name: t.customPeriod })).toBeEnabled();
+    expect(screen.getByRole('button', { name: messages.common.startDate })).toBeEnabled();
+    expect(screen.getByRole('button', { name: messages.common.endDate })).toBeEnabled();
     expect(onChange).not.toHaveBeenCalled();
   });
 

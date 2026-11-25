@@ -14,7 +14,8 @@ export const inboundWorkRecord = {
   filters: {
     label: '조회 조건',
     plant: '공장',
-    period: '입하일',
+    periodFrom: '입하 시작일',
+    periodTo: '입하 종료일',
     supplier: '공급사',
     supplierAll: '전체',
     query: '품목 · 입하 LOT', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-16.md)

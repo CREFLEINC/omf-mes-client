@@ -17,7 +17,8 @@ export const gaugeCalibration = {
   filters: {
     equipment: '계측기',
     historyType: '이력 유형',
-    period: '실시 기간',
+    periodFrom: '실시 시작일',
+    periodTo: '실시 종료일',
     all: '전체',
     search: '조회',
     reset: '초기화',

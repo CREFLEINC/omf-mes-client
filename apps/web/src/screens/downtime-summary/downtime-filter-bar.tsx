@@ -1,7 +1,8 @@
-import { Button, DatePicker } from '@crefle/web-ui';
+import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import {
   FilterMoreButton,
   HiddenFilterChips,
@@ -9,7 +10,6 @@ import {
   useFilterMore,
 } from '../../patterns/filter-more';
 
-import { FieldLabel } from './field-label';
 import { EMPTY_FILTERS, type DowntimeFilters } from './filters';
 import { periodLockReason, type PeriodInput } from './period';
 import { SelectField } from './select-field';
@@ -123,21 +123,19 @@ export const DowntimeFilterBar = ({
   return (
     <>
       <div className="filter-bar downtime-summary-filter">
-        <div className="field-cell">
-          <FieldLabel htmlFor={periodId} label={t.filters.period} required />
-          {/* 기간은 **한 컨트롤**이다 — `mode="range"` 하나가 두 값을 준다. */}
-          <DatePicker
-            id={periodId}
-            mode="range"
-            placeholder={messages.common.selectDate}
-            invalid={lockReason !== null}
-            aria-describedby={lockReason === null ? undefined : reasonId}
-            value={[period.from === '' ? null : period.from, period.to === '' ? null : period.to]}
-            onChange={([from, to]) => {
-              setPeriod({ from, to });
-            }}
-          />
-        </div>
+        <DateRangeFields
+          required
+          startLabel={messages.common.startDate}
+          endLabel={messages.common.endDate}
+          placeholder={messages.common.selectDate}
+          invalid={lockReason !== null}
+          describedBy={lockReason === null ? undefined : reasonId}
+          from={period.from}
+          to={period.to}
+          onChange={(from, to) => {
+            setPeriod({ from, to });
+          }}
+        />
 
         <SelectField
           label={t.filters.equipmentGroup}

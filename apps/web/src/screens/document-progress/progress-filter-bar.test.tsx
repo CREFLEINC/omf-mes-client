@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { pickDate, pickRange } from '../../test/date-picker';
+import { pickDate, pickDateRange } from '../../test/date-picker';
 import { toDocumentTypeOptions } from './document-types';
 import { DEFAULT_PROGRESS_FILTERS, type ProgressFilters } from './filters';
 import { documentTypeFixtures } from './fixtures';
@@ -28,7 +28,8 @@ const renderBar = (overrides: Partial<ProgressFilterBarProps> = {}) => {
   return { ...props, ...result, user: userEvent.setup() };
 };
 
-const periodTrigger = (): HTMLElement => screen.getByLabelText(t.fields.period);
+const startTrigger = (): HTMLElement => screen.getByLabelText(t.fields.periodFrom);
+const endTrigger = (): HTMLElement => screen.getByLabelText(t.fields.periodTo);
 
 /** 「조건 더보기」를 편다 — 상태 · 지금 취소 가능한 것만을 쓰는 시험은 먼저 편다. */
 const openMore = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
@@ -46,7 +47,8 @@ describe('ProgressFilterBar — 다섯 축이 선다', () => {
     const { user } = renderBar();
 
     expect(screen.getByLabelText(t.fields.documentType)).toBeVisible();
-    expect(screen.getByLabelText(t.fields.period)).toBeVisible();
+    expect(screen.getByLabelText(t.fields.periodFrom)).toBeVisible();
+    expect(screen.getByLabelText(t.fields.periodTo)).toBeVisible();
     expect(screen.getByLabelText(t.fields.q)).toBeVisible();
     expect(
       screen.queryByRole('checkbox', { name: t.fields.cancellableOnly }),
@@ -58,10 +60,11 @@ describe('ProgressFilterBar — 다섯 축이 선다', () => {
     expect(screen.getByRole('checkbox', { name: t.fields.cancellableOnly })).toBeVisible();
   });
 
-  it('기간 칸이 하나뿐이다', () => {
+  it('기간이 시작일 · 종료일 두 칸이다', () => {
     renderBar();
 
-    expect(screen.getAllByLabelText(t.fields.period)).toHaveLength(1);
+    expect(screen.getAllByLabelText(t.fields.periodFrom)).toHaveLength(1);
+    expect(screen.getAllByLabelText(t.fields.periodTo)).toHaveLength(1);
   });
 
   /* 걷은 번호 칸(품목 · 자재 LOT · 창고)과 칸 아래 안내가 다시 생기지 않는다(사용자 지시 2026-11-19). */
@@ -112,34 +115,31 @@ describe('ProgressFilterBar — 모아서 적용', () => {
   });
 });
 
-describe('ProgressFilterBar — 기간은 한 컨트롤이다', () => {
+describe('ProgressFilterBar — 기간은 시작일 · 종료일 두 칸이다', () => {
   it('시작·종료를 함께 고르면 두 값이 함께 나간다', async () => {
     const { onSearch, user } = renderBar();
 
-    await pickRange(user, periodTrigger(), '2026-08-01', '2026-08-05');
+    await pickDateRange(user, startTrigger(), endTrigger(), '2026-08-01', '2026-08-05');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     expect(onSearch).toHaveBeenCalledWith(applied({ from: '2026-08-01', to: '2026-08-05' }));
   });
 
-  /*
-   * ⭐ **완결된 쌍만 방출된다.** 시작만 고른 중간 상태에서 조회하면 한쪽만 실린 기간이 나가는데,
-   * 컴포넌트가 그 상태를 방출하지 않으므로 조건은 그대로 비어 있다.
-   */
-  it('시작만 고른 중간 상태는 조건에 실리지 않는다', async () => {
+  /* 한쪽만 고르면 그쪽만 실린다 — 조회 규칙(`filters.ts`)이 두 날짜를 각각 다룬다. */
+  it('시작일만 고르면 시작일만 조건에 실린다', async () => {
     const { onSearch, user } = renderBar();
 
-    await pickDate(user, periodTrigger(), '2026-08-01');
+    await pickDate(user, startTrigger(), '2026-08-01');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
-    expect(onSearch).toHaveBeenCalledWith(DEFAULT_PROGRESS_FILTERS);
+    expect(onSearch).toHaveBeenCalledWith(applied({ from: '2026-08-01' }));
   });
 
   /* 반쪽 값도 **표시**는 된다 — 고르는 중인 것이 화면에서 사라지면 사용자가 되짚을 수 없다. */
   it('반쪽으로 걸린 기간도 컨트롤에 보인다', () => {
     renderBar({ appliedFilters: applied({ from: '2026-08-01' }) });
 
-    expect(periodTrigger()).toHaveTextContent('2026-08-01');
+    expect(startTrigger()).toHaveTextContent('2026-08-01');
   });
 });
 
@@ -180,7 +180,7 @@ describe('ProgressFilterBar — 초기화', () => {
     const { onReset, onSearch, user } = renderBar();
 
     await user.type(screen.getByLabelText(t.fields.q), 'SYN-GR');
-    await pickRange(user, periodTrigger(), '2026-08-01', '2026-08-05');
+    await pickDateRange(user, startTrigger(), endTrigger(), '2026-08-01', '2026-08-05');
     await openMore(user);
     await user.click(screen.getByRole('checkbox', { name: t.fields.cancellableOnly }));
     await user.click(screen.getByRole('button', { name: messages.common.reset }));

@@ -15,7 +15,6 @@ export const downtimeSummary = {
   },
 
   filters: {
-    period: '기간',
     plant: '공장',
     equipmentGroup: '설비 그룹',
     equipment: '설비',

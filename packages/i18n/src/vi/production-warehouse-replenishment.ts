@@ -104,7 +104,8 @@ export const productionWarehouseReplenishment: Translated<
       item: 'Mặt hàng',
       origin: 'Phân loại',
       status: 'Trạng thái',
-      period: 'Ngày yêu cầu',
+      periodFrom: 'Từ ngày yêu cầu',
+      periodTo: 'Đến ngày yêu cầu',
     },
     columns: {
       requestNo: 'Số yêu cầu',
@@ -270,7 +271,8 @@ export const productionWarehouseReplenishment: Translated<
     filters: {
       label: 'Điều kiện chờ hàng đến',
       productionWarehouse: 'Kho sản xuất',
-      period: 'Ngày xuất',
+      periodFrom: 'Từ ngày xuất',
+      periodTo: 'Đến ngày xuất',
     },
     lead: 'Chỉ hiển thị phiếu xuất từ yêu cầu bổ sung kho. Phiếu xuất ra hiện trường sản xuất được nhận ở màn hình nhập kho sản xuất trên di động.',
     listLabel: 'Danh sách phiếu xuất chờ hàng đến',

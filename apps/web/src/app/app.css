@@ -40215,3 +40215,29 @@ body:has(
 .users-roles-list.erp-data-list-static tbody tr:nth-child(n):hover {
   background: transparent;
 }
+
+/*
+ * 조회 조건 기간 — 시작일 · 종료일 두 칸(사용자 지시 2026-11-25 · patterns/date-range-fields).
+ * 두 칸을 한 묶음으로 두어 줄이 좁아져도 갈라지지 않고, 격자 조회 줄에서는 종전 기간 칸 한 자리를 나눠 쓴다.
+ * 막힌 이유 같은 안내는 두 칸 아래 한 줄로 선다.
+ */
+.date-range-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  column-gap: var(--space-3);
+  min-width: 0;
+}
+
+.date-range-fields > .field-cell {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* 안내 글이 묶음 폭을 늘리지 않게 — 폭은 두 칸이 정하고 글은 그 안에서 줄바꿈된다. */
+.date-range-fields > .field-error,
+.date-range-fields > .field-note {
+  flex-basis: 100%;
+  width: 0;
+  min-width: 100%;
+}

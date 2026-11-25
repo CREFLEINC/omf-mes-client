@@ -47,9 +47,9 @@ export const erpPurchaseOrder = {
     plantSelect: '공장 검색',
     statusSelect: '등록 상태 선택',
     /** 조회 줄 날짜 칸 이름 — 다른 칸처럼 「검색」을 붙인다(사용자 지시 2026-11-25). 목록 열 이름은 `fields.orderDate` 그대로. */
-    orderDateSearch: '발주일 검색',
+    orderDateFrom: '발주 시작일',
+    orderDateTo: '발주 종료일',
     /** 발주일 칸의 흐린 안내(사용자 지시 2026-11-24). */
-    orderDatePlaceholder: '발주일을 선택하세요',
     orderTypeSelect: '발주 유형 선택',
     /** 「조건 더보기」에 접힌 조건의 칩 — 「상태: 반려」처럼 칸 이름과 값을 한 줄로. */
     chip: (label: string, value: string): string => `${label}: ${value}`,

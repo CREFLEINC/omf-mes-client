@@ -20,7 +20,8 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     lines: 'Dòng đơn đặt hàng',
   },
   fields: {
-    period: 'Hạn giao',
+    periodFrom: 'Từ hạn giao',
+    periodTo: 'Đến hạn giao',
     supplier: 'Nhà cung cấp',
     plant: 'Nhà máy',
     item: 'Mặt hàng',

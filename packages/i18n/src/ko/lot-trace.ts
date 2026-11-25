@@ -15,7 +15,6 @@ export const lotTrace = {
   filters: {
     pane: '조회 조건',
     period: '기간',
-    periodPlaceholder: '시작일 ~ 종료일',
     item: '품목',
     itemPicker: '품목 선택',
     itemCode: '품목 코드',

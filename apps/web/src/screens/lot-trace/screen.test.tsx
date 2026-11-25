@@ -7,7 +7,7 @@ import { plantToday } from '../../patterns/plant-time';
 import { SessionProvider } from '../../patterns/session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
-import { pickRange } from '../../test/date-picker';
+import { pickDateRange } from '../../test/date-picker';
 import { defaultPeriod } from './period';
 import { LotTraceScreen } from './screen';
 import { traceRoutes } from './trace-fixtures';
@@ -552,7 +552,13 @@ describe('W-02-09 LOT 생산 이력 조회: 조건 바로 반영', () => {
     const { receiptQueries } = setup({ route: `${ROUTE}&kind=MATERIAL&page=2` });
     await screen.findByText('GR-SYN-0001');
 
-    await pickRange(user, screen.getByLabelText(/^기간/), '2026-10-21', '2026-10-24');
+    await pickDateRange(
+      user,
+      screen.getByLabelText(/^시작일/),
+      screen.getByLabelText(/^종료일/),
+      '2026-10-21',
+      '2026-10-24',
+    );
 
     await waitFor(() =>
       expect(listQueries(receiptQueries).at(-1)?.searchParams.get('receiptDateFrom')).toBe(

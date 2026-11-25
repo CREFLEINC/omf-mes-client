@@ -35,7 +35,7 @@ export interface AdjustmentFilters {
   count: string;
   /** 조정 사유 코드. **선택칸에서 고른 값이 들어온다**(고객의 공통코드 마스터 · #36 회신) */
   reason: string;
-  /** 전기일 범위. `DatePicker mode="range"` 한 컨트롤이 `YYYY-MM-DD` 두 값을 준다 */
+  /** 전기일 범위. 시작일 · 종료일 두 칸(`patterns/date-range-fields`)이 `YYYY-MM-DD` 두 값을 준다 */
   from: string;
   to: string;
 }

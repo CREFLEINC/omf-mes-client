@@ -1,9 +1,9 @@
-import { Button, DatePicker, TextField } from '@crefle/web-ui';
+import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import { hasChangedFilters } from '../../patterns/filter-more';
-import { InfoLabel } from '../../patterns/info-tip';
 import { isUsable, type SearchFilters } from './filters';
 import type { CodeOptionSource } from './lookups';
 import { SelectField } from './select-field';
@@ -75,33 +75,27 @@ export const SearchPane = ({
           onChange={(value) => setDraft((current) => ({ ...current, customerId: value }))}
           wide
         />
-        <div className="field-cell">
-          {/* 기간을 비울 수 없다는 규칙은 라벨 옆 ⓘ 로, 칸 아래에는 막혔을 때만 이유를 적는다(관리웹 정리 시안 A). */}
-          {/* 기간은 비우면 조회를 막는다 — 조회 필수 표시. */}
-          <InfoLabel
-            htmlFor={periodId}
-            label={t.fields.shipDate}
-            info={t.search.periodRequired}
-            required
-          />
-          <DatePicker
-            id={periodId}
-            mode="range"
-            value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
-            placeholder={messages.common.selectDate}
-            aria-describedby={isUsable(draft) ? undefined : periodNoteId}
-            onChange={([nextFrom, nextTo]) =>
-              setDraft((current) => ({ ...current, from: nextFrom ?? '', to: nextTo ?? '' }))
-            }
-          />
-          {!isUsable(draft) && (
-            <span id={periodNoteId} className="field-note">
-              {draft.from === '' || draft.to === ''
-                ? t.search.periodRequired
-                : t.search.periodReversed}
-            </span>
-          )}
-        </div>
+        {/* 기간을 비울 수 없다는 규칙은 시작일 라벨 옆 ⓘ 로, 칸 아래에는 막혔을 때만 이유를 적는다(관리웹 정리 시안 A). */}
+        <DateRangeFields
+          required
+          startLabel={t.fields.shipDateFrom}
+          endLabel={t.fields.shipDateTo}
+          info={t.search.periodRequired}
+          placeholder={messages.common.selectDate}
+          describedBy={isUsable(draft) ? undefined : periodNoteId}
+          from={draft.from}
+          to={draft.to}
+          onChange={(from, to) => setDraft((current) => ({ ...current, from, to }))}
+          note={
+            !isUsable(draft) && (
+              <span id={periodNoteId} className="field-note">
+                {draft.from === '' || draft.to === ''
+                  ? t.search.periodRequired
+                  : t.search.periodReversed}
+              </span>
+            )
+          }
+        />
         <TextField
           label={t.fields.keyword}
           value={draft.q}

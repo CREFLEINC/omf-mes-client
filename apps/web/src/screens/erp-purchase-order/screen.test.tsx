@@ -11,7 +11,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import { pickRange } from '../../test/date-picker';
+import { pickDateRange } from '../../test/date-picker';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { ErpPurchaseOrderScreen } from './screen';
 
@@ -379,7 +379,7 @@ describe('ErpPurchaseOrderScreen', () => {
     expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
   });
 
-  it('발주일은 기간 한 칸이고, 고른 기간을 주소 from · to 와 orderDateFrom · orderDateTo 로 싣는다', async () => {
+  it('발주일은 시작일 · 종료일 두 칸이고, 고른 기간을 주소 from · to 와 orderDateFrom · orderDateTo 로 싣는다', async () => {
     const { fetch, requests } = recordingFetch(normalRoutes);
     renderWithProviders(
       <>
@@ -391,9 +391,10 @@ describe('ErpPurchaseOrderScreen', () => {
     const user = userEvent.setup();
 
     await screen.findByRole('button', { name: 'SYN-PO-901' });
-    await pickRange(
+    await pickDateRange(
       user,
-      screen.getByLabelText(t.filters.orderDateSearch),
+      screen.getByLabelText(t.filters.orderDateFrom),
+      screen.getByLabelText(t.filters.orderDateTo),
       '2026-10-01',
       '2026-10-15',
     );

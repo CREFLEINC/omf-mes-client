@@ -1,7 +1,8 @@
-import { Button, DatePicker, SearchInput } from '@crefle/web-ui';
+import { Button, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import {
   FilterMoreButton,
   HiddenFilterChips,
@@ -105,7 +106,6 @@ export const ErpPurchaseOrderFilterBar = ({
 }: ErpPurchaseOrderFilterBarProps) => {
   const [draft, setDraft] = useState(appliedFilters);
   const searchRef = useFitPlaceholderWidth(t.values.searchPlaceholder);
-  const periodId = useId();
   const more = useFilterMore();
   const { q, supplier, plant, status, orderType, from, to, progress } = appliedFilters;
   /* 주소가 바뀌면(뒤로가기·초기화) 초안도 따라간다. 진행은 초안을 거치지 않아 따라가지 않는다. */
@@ -150,29 +150,16 @@ export const ErpPurchaseOrderFilterBar = ({
     <>
       <div className="filter-bar erp-data-filter-row">
         {/* 발주일 · 공급사 검색 · 발주 번호 검색 순서(사용자 지시 2026-11-24). */}
-        {/*
-         * 기간은 **한 컨트롤**이다(C-12 — 브라우저 날짜 칸을 쓰지 않는다). 컴포넌트가 완결된 쌍만, 그것도
-         * 시작 ≤ 종료로만 내보내 이 칸을 거친 역전은 생기지 않는다. 주소 키(`from`·`to`)와 요청 파라미터는 그대로다.
-         */}
-        <div className="field-cell erp-po-period-field">
-          <label className="field-label" htmlFor={periodId}>
-            {t.filters.orderDateSearch}
-          </label>
-          <DatePicker
-            id={periodId}
-            mode="range"
-            clearable
-            value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
-            placeholder={t.filters.orderDatePlaceholder}
-            onChange={(value) =>
-              setDraft((current) => ({
-                ...current,
-                from: value === null ? '' : value[0],
-                to: value === null ? '' : value[1],
-              }))
-            }
-          />
-        </div>
+        <DateRangeFields
+          clearable
+          className="erp-po-period-field"
+          startLabel={t.filters.orderDateFrom}
+          endLabel={t.filters.orderDateTo}
+          placeholder={messages.common.selectDate}
+          from={draft.from}
+          to={draft.to}
+          onChange={(from, to) => setDraft((current) => ({ ...current, from, to }))}
+        />
         <FilterSelect
           partners
           label={t.filters.supplierSelect}

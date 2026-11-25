@@ -119,3 +119,33 @@ export const pickRange = async (
   await goToMonthOf(user, calendar, to);
   await user.click(enabledCellOf(calendar, to));
 };
+
+/**
+ * 시작일 · 종료일 두 칸(`patterns/date-range-fields`)에 기간을 넣는다.
+ *
+ * 두 칸은 서로의 한계(시작 ≤ 종료)를 달력에 건다. 새 시작일이 지금 종료일보다 뒤면 시작 칸에서
+ * 그날을 고를 수 없으므로, 그때는 종료일을 먼저 고른다.
+ */
+export const pickDateRange = async (
+  user: User,
+  start: HTMLElement,
+  end: HTMLElement,
+  from: string,
+  to: string,
+): Promise<void> => {
+  await user.click(start);
+
+  const calendar = calendarOf(start);
+  await goToMonthOf(user, calendar, from);
+  const cell = cellOf(calendar, from);
+
+  if (cell !== null && cell.getAttribute('aria-disabled') !== 'true') {
+    await user.click(cell);
+    await pickDate(user, end, to);
+    return;
+  }
+
+  await user.keyboard('{Escape}');
+  await pickDate(user, end, to);
+  await pickDate(user, start, from);
+};

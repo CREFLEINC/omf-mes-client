@@ -16,8 +16,10 @@ export const materialIssueStatus = {
   filters: {
     label: '조회 조건',
     plant: '공장',
-    issueWorkDate: '출고 작업일',
-    productionDate: '생산일',
+    issueWorkDateFrom: '출고 작업 시작일',
+    issueWorkDateTo: '출고 작업 종료일',
+    productionDateFrom: '생산 시작일',
+    productionDateTo: '생산 종료일',
     workOrder: 'W/O',
     workOrderPlaceholder: 'W/O 번호',
     sourceWarehouse: '출발 생산 창고',

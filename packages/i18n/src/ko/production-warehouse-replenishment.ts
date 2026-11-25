@@ -103,7 +103,8 @@ export const productionWarehouseReplenishment = {
       item: '품목',
       origin: '구분',
       status: '상태',
-      period: '요청일',
+      periodFrom: '요청 시작일',
+      periodTo: '요청 종료일',
     },
     columns: {
       requestNo: '요청번호',
@@ -269,7 +270,8 @@ export const productionWarehouseReplenishment = {
     filters: {
       label: '도착 대기 조건',
       productionWarehouse: '생산 창고',
-      period: '출고일',
+      periodFrom: '출고 시작일',
+      periodTo: '출고 종료일',
     },
     lead: '창고 보충 요청에서 나간 출고만 보입니다. 생산 현장으로 나간 출고는 모바일 생산창고 입고에서 받습니다.',
     listLabel: '도착 대기 출고 목록',

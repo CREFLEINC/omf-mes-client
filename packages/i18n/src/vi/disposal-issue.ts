@@ -21,7 +21,8 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
   },
   fields: {
     warehouse: 'Kho',
-    period: 'Ngày nhập kho',
+    periodFrom: 'Từ ngày nhập kho',
+    periodTo: 'Đến ngày nhập kho',
     receiptType: 'Loại nhập kho',
     status: 'Trạng thái',
     q: 'Tìm số nhập kho',
@@ -76,7 +77,8 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
     chipRemoveQ: 'Gỡ điều kiện từ khóa',
   },
   historyFields: {
-    period: 'Ngày xuất kho',
+    periodFrom: 'Từ ngày xuất kho',
+    periodTo: 'Đến ngày xuất kho',
     issueType: 'Loại xuất kho',
     reason: 'Lý do hủy',
     status: 'Trạng thái',

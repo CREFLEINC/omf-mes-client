@@ -4,7 +4,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { pickRange } from '../../test/date-picker';
+import { pickDateRange } from '../../test/date-picker';
 import { WorkOrderCloseFilterBar, type WorkOrderCloseFilterValues } from './filter-bar';
 
 const t = messages.workOrderClose.filter;
@@ -49,8 +49,8 @@ describe('WorkOrderCloseFilterBar', () => {
     expect(t).toEqual({
       pane: '마감 후보 조회 조건',
       productionOrder: 'P/O',
-      plannedStart: '계획 시작일',
-      plannedStartPlaceholder: '시작일 ~ 종료일',
+      plannedStartFrom: '계획 시작일(부터)',
+      plannedStartTo: '계획 시작일(까지)',
       status: '마감 상태',
       judgment: '판정',
       judgmentUnavailable:
@@ -79,7 +79,13 @@ describe('WorkOrderCloseFilterBar', () => {
       'work-order-close-filter-pane',
     );
     expect(screen.getByRole('heading', { level: 2, name: t.pane })).toBeVisible();
-    await pickRange(user, screen.getByLabelText(t.plannedStart), '2026-08-01', '2026-08-02');
+    await pickDateRange(
+      user,
+      screen.getByLabelText(t.plannedStartFrom),
+      screen.getByLabelText(t.plannedStartTo),
+      '2026-08-01',
+      '2026-08-02',
+    );
     expect(onSearch).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: t.search }));
     expect(onSearch).toHaveBeenCalledTimes(1);
@@ -115,21 +121,29 @@ describe('WorkOrderCloseFilterBar', () => {
     const { rerender } = render(<WorkOrderCloseFilterBar {...props} />);
     await user.click(screen.getByRole('combobox', { name: t.productionOrder }));
     await user.click(screen.getByRole('option', { name: 'Synthetic plan B' }));
-    await pickRange(user, screen.getByLabelText(t.plannedStart), '2026-08-20', '2026-08-21');
+    await pickDateRange(
+      user,
+      screen.getByLabelText(t.plannedStartFrom),
+      screen.getByLabelText(t.plannedStartTo),
+      '2026-08-20',
+      '2026-08-21',
+    );
     await user.click(screen.getByRole('combobox', { name: t.status }));
     await user.click(screen.getByRole('option', { name: 'Hold' }));
     rerender(<WorkOrderCloseFilterBar {...props} appliedFilters={{ ...initial }} />);
     expect(screen.getByRole('combobox', { name: t.productionOrder })).toHaveTextContent(
       'Synthetic plan B',
     );
-    expect(screen.getByLabelText(t.plannedStart)).toHaveTextContent('2026-08-20 ~ 2026-08-21');
+    expect(screen.getByLabelText(t.plannedStartFrom)).toHaveTextContent('2026-08-20');
+    expect(screen.getByLabelText(t.plannedStartTo)).toHaveTextContent('2026-08-21');
     expect(screen.getByRole('combobox', { name: t.status })).toHaveTextContent('Hold');
     const next = { ...initial, plannedStartTo: '2026-08-31' };
     rerender(<WorkOrderCloseFilterBar {...props} appliedFilters={next} />);
     expect(screen.getByRole('combobox', { name: t.productionOrder })).toHaveTextContent(
       'Synthetic plan A',
     );
-    expect(screen.getByLabelText(t.plannedStart)).toHaveTextContent('2026-08-10 ~ 2026-08-31');
+    expect(screen.getByLabelText(t.plannedStartFrom)).toHaveTextContent('2026-08-10');
+    expect(screen.getByLabelText(t.plannedStartTo)).toHaveTextContent('2026-08-31');
     expect(screen.getByRole('combobox', { name: t.status })).toHaveTextContent('Ready');
   });
 
@@ -205,13 +219,15 @@ describe('WorkOrderCloseFilterBar', () => {
     const { onReset } = renderBar();
     /* 처음 값 그대로면 「초기화」가 없다(C-6). */
     expect(screen.queryByRole('button', { name: t.reset })).not.toBeInTheDocument();
-    const period = screen.getByLabelText(t.plannedStart);
-    await pickRange(user, period, '2026-08-01', '2026-08-02');
+    const start = screen.getByLabelText(t.plannedStartFrom);
+    const end = screen.getByLabelText(t.plannedStartTo);
+    await pickDateRange(user, start, end, '2026-08-01', '2026-08-02');
     await user.click(screen.getByRole('button', { name: t.reset }));
     expect(onReset).toHaveBeenCalledTimes(1);
-    expect(period).toHaveTextContent('2026-08-01 ~ 2026-08-02');
-    /* 계획 시작일 달력 단추와 조회 · 초기화 · 조건 더보기뿐이다. */
-    expect(screen.getAllByRole('button')).toHaveLength(4);
+    expect(start).toHaveTextContent('2026-08-01');
+    expect(end).toHaveTextContent('2026-08-02');
+    /* 계획 시작일 달력 단추 둘(시작 · 끝)과 조회 · 초기화 · 조건 더보기뿐이다. */
+    expect(screen.getAllByRole('button')).toHaveLength(5);
   });
 
   it('걸린 조건이 처음 값과 다르면 고치지 않아도 「초기화」가 보인다', () => {
@@ -226,7 +242,8 @@ describe('WorkOrderCloseFilterBar', () => {
     expect(more).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByRole('combobox', { name: t.judgment })).not.toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: t.productionOrder })).toBeVisible();
-    expect(screen.getByLabelText(t.plannedStart)).toBeVisible();
+    expect(screen.getByLabelText(t.plannedStartFrom)).toBeVisible();
+    expect(screen.getByLabelText(t.plannedStartTo)).toBeVisible();
     expect(screen.getByRole('combobox', { name: t.status })).toBeVisible();
 
     await user.click(more);

@@ -1,7 +1,8 @@
-import { Button, DatePicker, Icon } from '@crefle/web-ui';
+import { Button, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import { Select } from '../../patterns/select';
 import { FieldLabel } from './field-label';
 import {
@@ -138,17 +139,19 @@ export const DashboardFilterBar = ({
             }}
           />
           {/*
-           * 날짜 범위 — 「직접 지정」일 때만 켠다. 다른 항목이면 꺼진 채 그 항목이 계산한 기간을 그대로 보인다.
+           * 시작일 · 종료일 두 칸 — 「직접 지정」일 때만 켠다. 다른 항목이면 꺼진 채 그 항목이 계산한 기간을 그대로 보인다.
            */}
-          <DatePicker
-            mode="range"
+          <DateRangeFields
+            hideLabels
+            startLabel={messages.common.startDate}
+            endLabel={messages.common.endDate}
             max={today}
-            value={[shownFrom, shownTo]}
+            from={shownFrom}
+            to={shownTo}
             disabled={selected !== 'custom'}
             invalid={periodNote !== undefined}
-            aria-label={t.filters.customPeriod}
-            aria-describedby={periodNote === undefined ? undefined : periodNoteId}
-            onChange={([from, to]) => {
+            describedBy={periodNote === undefined ? undefined : periodNoteId}
+            onChange={(from, to) => {
               applyPeriod(from, to);
             }}
           />

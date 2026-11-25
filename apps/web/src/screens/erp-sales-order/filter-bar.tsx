@@ -1,7 +1,8 @@
-import { Button, Checkbox, DatePicker, SearchInput } from '@crefle/web-ui';
+import { Button, Checkbox, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import {
   FilterMoreButton,
   HiddenFilterChips,
@@ -51,7 +52,6 @@ export const ErpSalesOrderFilterBar = ({
 }: ErpSalesOrderFilterBarProps) => {
   const [draft, setDraft] = useState(appliedFilters);
   const searchRef = useFitPlaceholderWidth(t.values.searchPlaceholder);
-  const periodId = useId();
   const customerId = useId();
   const statusId = useId();
   const more = useFilterMore();
@@ -102,29 +102,16 @@ export const ErpSalesOrderFilterBar = ({
     <>
       <div className="filter-bar erp-data-filter-row">
         {/* 수주일 · 고객사 검색 · 수주 번호 검색 순서(구매발주 탭과 같다 · 사용자 지시 2026-11-24). */}
-        {/*
-         * 기간은 **한 컨트롤**이다(C-12 — 브라우저 날짜 칸을 쓰지 않는다). 컴포넌트가 완결된 쌍만, 그것도
-         * 시작 ≤ 종료로만 내보내 이 칸을 거친 역전은 생기지 않는다. 주소 키(`from`·`to`)와 요청 파라미터는 그대로다.
-         */}
-        <div className="field-cell erp-so-period-field">
-          <label className="field-label" htmlFor={periodId}>
-            {t.filters.orderDateSearch}
-          </label>
-          <DatePicker
-            id={periodId}
-            mode="range"
-            clearable
-            value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
-            placeholder={t.filters.orderDatePlaceholder}
-            onChange={(value) =>
-              setDraft((current) => ({
-                ...current,
-                from: value === null ? '' : value[0],
-                to: value === null ? '' : value[1],
-              }))
-            }
-          />
-        </div>
+        <DateRangeFields
+          clearable
+          className="erp-so-period-field"
+          startLabel={t.filters.orderDateFrom}
+          endLabel={t.filters.orderDateTo}
+          placeholder={messages.common.selectDate}
+          from={draft.from}
+          to={draft.to}
+          onChange={(from, to) => setDraft((current) => ({ ...current, from, to }))}
+        />
         <div className="field-cell erp-so-select-field">
           <label className="field-label" htmlFor={customerId}>
             {t.filters.customerSelect}

@@ -1,8 +1,9 @@
-import { Button, Chip, DatePicker, EmptyState, Skeleton } from '@crefle/web-ui';
+import { Button, Chip, EmptyState, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
 import type { ReplenishmentOriginCode, ReplenishmentSettings } from './api-types';
@@ -153,13 +154,14 @@ export const ProgressView = ({
           value={draft.item === '' ? null : draft.item}
           onChange={(value) => setDraft({ ...draft, item: value })}
         />
-        <DatePicker
-          mode="range"
+        <DateRangeFields
+          hideLabels
           clearable
-          aria-label={tp.filters.period}
-          placeholder={tp.filters.period}
-          value={draft.from === '' ? null : [draft.from, draft.to]}
-          onChange={(value) => setDraft({ ...draft, from: value?.[0] ?? '', to: value?.[1] ?? '' })}
+          startLabel={tp.filters.periodFrom}
+          endLabel={tp.filters.periodTo}
+          from={draft.from}
+          to={draft.to}
+          onChange={(from, to) => setDraft({ ...draft, from, to })}
         />
         <Button onClick={() => search(draft)}>{t.common.search}</Button>
         {isChanged && (

@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { pickRange } from '../../test/date-picker';
+import { pickDateRange } from '../../test/date-picker';
 import { DEFAULT_FILTERS, type ReceiptFilters } from './filters';
 import { GrFilterBar, type GrFilterBarProps } from './gr-filter-bar';
 
@@ -34,7 +34,8 @@ const renderBar = (overrides: Partial<GrFilterBarProps> = {}) => {
   return { ...props, ...result, user: userEvent.setup() };
 };
 
-const periodTrigger = (): HTMLElement => screen.getByLabelText(t.fields.period);
+const startTrigger = (): HTMLElement => screen.getByLabelText(t.fields.periodFrom);
+const endTrigger = (): HTMLElement => screen.getByLabelText(t.fields.periodTo);
 
 describe('GrFilterBar — 모아서 적용', () => {
   it('적용된 조건이 컨트롤에 서 있다', () => {
@@ -61,14 +62,11 @@ describe('GrFilterBar — 모아서 적용', () => {
     expect(onSearch).toHaveBeenCalledWith({ ...DEFAULT_FILTERS, q: 'GR-2026' });
   });
 
-  /**
-   * **기간은 한 컨트롤이다**(`mode="range"`). 시작·종료 두 칸으로 나누지 않는다 —
-   * 값 비우기가 없는 날짜 컨트롤에서 두 칸을 두면 한쪽만 남은 기간을 풀 길이 사라진다.
-   */
-  it('기간을 한 컨트롤에서 고르고 조회에 함께 싣는다', async () => {
+  /** 기간은 시작일 · 종료일 두 칸이다(사용자 지시 2026-11-25). 칸마다 지우기가 있어 한쪽만 남은 기간도 풀 수 있다. */
+  it('기간을 시작일 · 종료일 두 칸에서 고르고 조회에 함께 싣는다', async () => {
     const { onSearch, user } = renderBar();
 
-    await pickRange(user, periodTrigger(), '2026-08-01', '2026-08-05');
+    await pickDateRange(user, startTrigger(), endTrigger(), '2026-08-01', '2026-08-05');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     expect(onSearch).toHaveBeenCalledWith({
@@ -78,10 +76,11 @@ describe('GrFilterBar — 모아서 적용', () => {
     });
   });
 
-  it('기간 칸이 하나뿐이다', () => {
+  it('기간이 시작일 · 종료일 두 칸이다', () => {
     renderBar();
 
-    expect(screen.getAllByLabelText(t.fields.period)).toHaveLength(1);
+    expect(screen.getAllByLabelText(t.fields.periodFrom)).toHaveLength(1);
+    expect(screen.getAllByLabelText(t.fields.periodTo)).toHaveLength(1);
   });
 });
 
@@ -94,15 +93,16 @@ describe('GrFilterBar — 초기화', () => {
   it('초기화가 아직 조회하지 않은 기간까지 비운다', async () => {
     const { onReset, user } = renderBar();
 
-    await pickRange(user, periodTrigger(), '2026-08-01', '2026-08-05');
+    await pickDateRange(user, startTrigger(), endTrigger(), '2026-08-01', '2026-08-05');
 
     /* 짝 방향 — 실제로 값이 들어갔다(아무것도 고르지 않아서 통과한 것이 아니다). */
-    expect(periodTrigger().textContent).toContain('2026-08-01');
+    expect(startTrigger().textContent).toContain('2026-08-01');
+    expect(endTrigger().textContent).toContain('2026-08-05');
 
     await user.click(screen.getByRole('button', { name: messages.common.reset }));
 
-    expect(periodTrigger().textContent).not.toContain('2026-08-01');
-    expect(periodTrigger().textContent).not.toContain('2026-08-05');
+    expect(startTrigger().textContent).not.toContain('2026-08-01');
+    expect(endTrigger().textContent).not.toContain('2026-08-05');
     expect(onReset).toHaveBeenCalledTimes(1);
   });
 

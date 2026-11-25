@@ -2,7 +2,6 @@
 export const dispatchHistory = {
   panes: { dispatches: '이벤트 처리 결과', deliveries: 'Zalo 발송 상세' },
   filters: {
-    period: '기간',
     event: '이벤트',
     department: '부서',
     result: '결과',

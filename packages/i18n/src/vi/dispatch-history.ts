@@ -5,7 +5,6 @@ import type { Translated } from './translated';
 export const dispatchHistory: Translated<typeof ko.dispatchHistory> = {
   panes: { dispatches: 'Kết quả xử lý sự kiện', deliveries: 'Chi tiết gửi Zalo' },
   filters: {
-    period: 'Khoảng thời gian',
     event: 'Sự kiện',
     department: 'Phòng ban',
     result: 'Kết quả',

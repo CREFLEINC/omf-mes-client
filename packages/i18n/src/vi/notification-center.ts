@@ -24,7 +24,8 @@ export const notificationCenter: Translated<typeof ko.notificationCenter> = {
     list: 'Đang tải thông báo',
   },
   fields: {
-    period: 'Khoảng tra cứu',
+    periodFrom: 'Ngày bắt đầu tra cứu',
+    periodTo: 'Ngày kết thúc tra cứu',
     unreadOnly: 'Chỉ chưa xem',
     eventCode: 'Loại thông báo',
   },

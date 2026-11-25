@@ -3,7 +3,6 @@ import {
   Button,
   Checkbox,
   Chip,
-  DatePicker,
   EmptyState,
   PageHeader,
   Skeleton,
@@ -20,6 +19,7 @@ import {
   hasChangedFilters,
   useFilterMore,
 } from '../../patterns/filter-more';
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import { plantToday } from '../../patterns/plant-time';
 import { InfoTip } from '../../patterns/info-tip';
 import { ScreenHeader } from '../../patterns/screen-header';
@@ -213,25 +213,23 @@ export const MaterialIssueStatusScreen = () => {
   const filterBar = (
     <section className="material-issue-status-filters" aria-label={t.filters.label}>
       <div className="material-issue-status-filter-row">
-        <DatePicker
-          mode="range"
+        <DateRangeFields
+          hideLabels
           clearable
-          aria-label={t.filters.issueWorkDate}
-          placeholder={t.filters.issueWorkDate}
-          value={draft.workFrom === '' ? null : [draft.workFrom, draft.workTo]}
-          onChange={(value) =>
-            setDraft({ ...draft, workFrom: value?.[0] ?? '', workTo: value?.[1] ?? '' })
-          }
+          startLabel={t.filters.issueWorkDateFrom}
+          endLabel={t.filters.issueWorkDateTo}
+          from={draft.workFrom}
+          to={draft.workTo}
+          onChange={(workFrom, workTo) => setDraft({ ...draft, workFrom, workTo })}
         />
-        <DatePicker
-          mode="range"
+        <DateRangeFields
+          hideLabels
           clearable
-          aria-label={t.filters.productionDate}
-          placeholder={t.filters.productionDate}
-          value={draft.prodFrom === '' ? null : [draft.prodFrom, draft.prodTo]}
-          onChange={(value) =>
-            setDraft({ ...draft, prodFrom: value?.[0] ?? '', prodTo: value?.[1] ?? '' })
-          }
+          startLabel={t.filters.productionDateFrom}
+          endLabel={t.filters.productionDateTo}
+          from={draft.prodFrom}
+          to={draft.prodTo}
+          onChange={(prodFrom, prodTo) => setDraft({ ...draft, prodFrom, prodTo })}
         />
         <TextField
           aria-label={t.filters.workOrder}

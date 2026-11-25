@@ -39,9 +39,9 @@ export const erpSalesOrder: Translated<typeof ko.erpSalesOrder> = {
   filters: {
     all: 'Tất cả',
     customerSelect: 'Tìm khách hàng',
-    orderDatePlaceholder: 'Chọn ngày đặt hàng',
     statusSelect: 'Chọn trạng thái',
-    orderDateSearch: 'Tìm theo ngày nhận đơn',
+    orderDateFrom: 'Từ ngày nhận đơn',
+    orderDateTo: 'Đến ngày nhận đơn',
     chip: (label: string, value: string): string => `${label}: ${value}`,
   },
   progress: {

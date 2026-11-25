@@ -147,6 +147,8 @@ export const stockAdjust = {
    */
   historyFields: {
     period: '전기일',
+    periodFrom: '전기 시작일',
+    periodTo: '전기 종료일',
     count: '대상 실사',
     reason: '조정 사유',
   },

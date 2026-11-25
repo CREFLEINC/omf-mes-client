@@ -42,7 +42,8 @@ describe('HistoryFilterBar — 조건 칸', () => {
   it('조건 칸이 셋이다 — 전기일·대상 실사·조정 사유', () => {
     renderBar();
 
-    expect(screen.getByLabelText(t.historyFields.period)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.historyFields.periodFrom)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.historyFields.periodTo)).toBeInTheDocument();
     expect(screen.getByLabelText(t.historyFields.count)).toBeInTheDocument();
     expect(screen.getByLabelText(t.historyFields.reason)).toBeInTheDocument();
     expect(screen.queryByLabelText('상태')).not.toBeInTheDocument();
@@ -55,7 +56,8 @@ describe('HistoryFilterBar — 조건 칸', () => {
   it('승인 대기 조건 칸이 없다 — 조건 컨트롤이 셋뿐이다', () => {
     const { container } = renderBar();
 
-    expect(screen.getByLabelText(t.historyFields.period)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.historyFields.periodFrom)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.historyFields.periodTo)).toBeInTheDocument();
     expect(container.querySelectorAll('input[type="checkbox"]')).toHaveLength(0);
     expect(screen.queryAllByRole('switch')).toHaveLength(0);
   });

@@ -1,11 +1,11 @@
-import { Button, DatePicker } from '@crefle/web-ui';
+import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import { hasChangedFilters } from '../../patterns/filter-more';
 
 import { codeNote, PLACEHOLDER_HISTORY_TYPES } from './code-options';
-import { FieldLabel } from './field-label';
 import { EMPTY_FILTERS, periodLockReason, type CalibrationFilters } from './filters';
 import { SelectField } from './select-field';
 import type { SelectOption } from './types';
@@ -93,28 +93,19 @@ export const CalibrationFilterBar = ({
           }}
         />
 
-        <div className="field-cell">
-          <FieldLabel htmlFor={periodId} label={t.filters.period} />
-          <DatePicker
-            id={periodId}
-            mode="range"
-            clearable
-            placeholder={messages.common.selectDate}
-            invalid={lockReason !== null}
-            aria-describedby={lockReason === null ? undefined : reasonId}
-            value={[
-              filters.from === '' ? null : filters.from,
-              filters.to === '' ? null : filters.to,
-            ]}
-            onChange={(value) => {
-              setFilters((prev) => ({
-                ...prev,
-                from: value?.[0] ?? '',
-                to: value?.[1] ?? '',
-              }));
-            }}
-          />
-        </div>
+        <DateRangeFields
+          clearable
+          startLabel={t.filters.periodFrom}
+          endLabel={t.filters.periodTo}
+          placeholder={messages.common.selectDate}
+          invalid={lockReason !== null}
+          describedBy={lockReason === null ? undefined : reasonId}
+          from={filters.from}
+          to={filters.to}
+          onChange={(from, to) => {
+            setFilters((prev) => ({ ...prev, from, to }));
+          }}
+        />
 
         <div className="field-cell field-cell-unlabeled gauge-calibration-filter-actions">
           <div className="filter-actions">

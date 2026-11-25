@@ -1,9 +1,9 @@
-import { Button, Checkbox, DatePicker } from '@crefle/web-ui';
+import { Button, Checkbox } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useState } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import { HiddenFilterChips, hasChangedFilters } from '../../patterns/filter-more';
-import { FieldLabel } from './field-label';
 import { EMPTY_FILTERS, type FilterChip, type SourceFilters } from './filters';
 import { SelectField } from './select-field';
 import type { SelectOption } from './types';
@@ -73,8 +73,6 @@ export const SourceFilterBar = ({
   onRemoveFilter,
   onReset,
 }: SourceFilterBarProps) => {
-  const periodId = useId();
-
   const [filters, setFilters] = useState<SourceFilters>(appliedFilters);
 
   /*
@@ -131,21 +129,17 @@ export const SourceFilterBar = ({
           }}
         />
 
-        <div className="field-cell">
-          <FieldLabel htmlFor={periodId} label={t.filters.period} />
-          <DatePicker
-            id={periodId}
-            mode="range"
-            placeholder={messages.common.selectDate}
-            value={[
-              filters.orderDateFrom === '' ? null : filters.orderDateFrom,
-              filters.orderDateTo === '' ? null : filters.orderDateTo,
-            ]}
-            onChange={([from, to]) => {
-              setFilters((prev) => ({ ...prev, orderDateFrom: from, orderDateTo: to }));
-            }}
-          />
-        </div>
+        <DateRangeFields
+          clearable
+          startLabel={t.filters.periodFrom}
+          endLabel={t.filters.periodTo}
+          placeholder={messages.common.selectDate}
+          from={filters.orderDateFrom}
+          to={filters.orderDateTo}
+          onChange={(from, to) => {
+            setFilters((prev) => ({ ...prev, orderDateFrom: from, orderDateTo: to }));
+          }}
+        />
 
         {/* 확인칸은 라벨이 오른쪽에 붙어 라벨 층이 없다 — 윗선을 맞추려 라벨 없는 셀에 담는다. */}
         <div className="field-cell field-cell-unlabeled">

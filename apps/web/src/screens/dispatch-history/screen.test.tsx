@@ -225,7 +225,8 @@ describe('DispatchHistoryScreen', () => {
 
     await dispatchPane().findByText(t.errors.periodTooLong);
     expect(document.querySelector('input[type="date"]')).toBeNull();
-    expect(screen.getByLabelText(t.filters.period)).toBeInTheDocument();
+    expect(screen.getByLabelText(messages.common.startDate)).toBeInTheDocument();
+    expect(screen.getByLabelText(messages.common.endDate)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.filters.search })).toHaveAccessibleDescription(
       t.errors.periodTooLong,
     );

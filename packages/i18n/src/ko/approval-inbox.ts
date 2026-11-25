@@ -49,7 +49,8 @@ export const approvalInbox = {
      * (`requestedAtFrom`·`requestedAtTo`)이 `format: date`라 **날짜 단위로** 좁힌다.
      * 여기에 「일시」를 쓰면 시각까지 지정할 수 있다고 읽힌다.
      */
-    period: '상신일',
+    periodFrom: '상신 시작일',
+    periodTo: '상신 종료일',
     q: '요청번호 검색',
   },
   actions: {

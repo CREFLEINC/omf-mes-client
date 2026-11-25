@@ -191,6 +191,9 @@ export const common = {
    * 마스크를 그려 줬지만 `DatePicker`의 트리거는 우리가 넣지 않으면 빈 칸으로 남는다.
    */
   selectDate: '날짜 선택',
+  /** 기간을 시작 · 종료 두 칸으로 나눌 때, 날짜 이름이 따로 없는 「기간」의 두 칸 이름(`patterns/date-range-fields`). */
+  startDate: '시작일',
+  endDate: '종료일',
 
   /**
    * POP 머리줄의 사번. 화면마다 같은 말로 적는다(`patterns/pop-worker-tag`).

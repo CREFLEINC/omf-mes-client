@@ -34,10 +34,10 @@ export const erpProductionOrder = {
     /* 조회 상자 선택칸 이름(#358). 목록 열 · 칩은 `fields` 이름 그대로. */
     itemSelect: '품목 검색',
     /** 계획 시작일 칸의 흐린 안내(사용자 지시 2026-11-24). */
-    plannedStartDatePlaceholder: '계획 시작일을 선택하세요',
     statusSelect: '상태 선택',
     /** 조회 줄 날짜 칸 이름 — 다른 칸처럼 「검색」을 붙인다(사용자 지시 2026-11-25). 목록 열 이름은 `fields.plannedStartDate` 그대로. */
-    plannedStartDateSearch: '계획 시작일 검색',
+    plannedStartDateFrom: '계획 시작일(부터)',
+    plannedStartDateTo: '계획 시작일(까지)',
     itemPlaceholder: '품목을 검색해 고르세요',
     itemClear: '품목 지우기',
     itemPick: '고르기',

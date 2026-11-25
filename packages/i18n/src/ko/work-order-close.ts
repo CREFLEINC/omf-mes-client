@@ -92,8 +92,8 @@ export const workOrderClose = {
   filter: {
     pane: '마감 후보 조회 조건',
     productionOrder: 'P/O',
-    plannedStart: '계획 시작일',
-    plannedStartPlaceholder: '시작일 ~ 종료일',
+    plannedStartFrom: '계획 시작일(부터)',
+    plannedStartTo: '계획 시작일(까지)',
     status: '마감 상태',
     judgment: '판정',
     judgmentUnavailable:

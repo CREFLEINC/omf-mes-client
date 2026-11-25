@@ -12,7 +12,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import { pickDate, pickRange } from '../../test/date-picker';
+import { pickDate, pickDateRange } from '../../test/date-picker';
 import {
   balanceFixtures,
   goodsIssue,
@@ -920,7 +920,13 @@ describe('SupplierReturnScreen — 주소가 조건을 소유한다', () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await screen.findByText('GR-2026-900001');
-    await pickRange(user, screen.getByLabelText(t.fields.period), '2026-08-01', '2026-08-05');
+    await pickDateRange(
+      user,
+      screen.getByLabelText(t.fields.periodFrom),
+      screen.getByLabelText(t.fields.periodTo),
+      '2026-08-01',
+      '2026-08-05',
+    );
     await search(user);
 
     await waitFor(() => {

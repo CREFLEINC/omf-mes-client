@@ -51,7 +51,8 @@ export const expeditedShipment: Translated<typeof ko.expeditedShipment> = {
     noLine: 'Lệnh này không có dòng nào của mặt hàng đã chọn',
     fields: {
       shipmentRequestNo: 'Số lệnh xuất hàng',
-      requestedShipDate: 'Ngày xuất hàng',
+      requestedShipDateFrom: 'Từ ngày xuất hàng',
+      requestedShipDateTo: 'Đến ngày xuất hàng',
       allocatedQty: 'Phân bổ',
       remainingQty: 'Phân bổ còn lại',
       qty: 'Số lượng',

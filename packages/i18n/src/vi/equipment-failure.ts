@@ -18,7 +18,8 @@ export const equipmentFailure: Translated<typeof ko.equipmentFailure> = {
   filters: {
     equipment: 'Thiết bị',
     status: 'Trạng thái',
-    period: 'Khoảng thời gian báo',
+    periodFrom: 'Từ ngày báo',
+    periodTo: 'Đến ngày báo',
     openOnly: 'Chỉ mục chưa xử lý',
     withoutOrder: 'Chỉ mục chưa có lệnh bảo trì',
     all: 'Tất cả',

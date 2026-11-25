@@ -39,7 +39,8 @@ describe('NotificationFilterBar', () => {
   it('세 조건이 이름을 갖고 선다', () => {
     renderBar();
 
-    expect(screen.getByLabelText(t.fields.period)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.fields.periodFrom)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.fields.periodTo)).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: t.fields.unreadOnly })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: t.fields.eventCode })).toBeInTheDocument();
   });

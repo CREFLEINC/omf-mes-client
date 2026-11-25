@@ -1,7 +1,8 @@
-import { AlertBanner, DatePicker, EmptyState, SkeletonText, TextField } from '@crefle/web-ui';
+import { AlertBanner, EmptyState, SkeletonText, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import { InfoLabel } from '../../patterns/info-tip';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { Select } from '../../patterns/select';
@@ -89,28 +90,25 @@ export const TargetPane = ({
          * ⚠ 스펙에 없는 칸이다 — 계약이 출하일 시작을 필수로 두어(L-3) 기간 없이는 목록을
          * 부를 수조차 없다. 몰래 고정하면 어제 지시가 안 보이는 이유를 알 길이 없다.
          */}
-        <div className="field-cell">
-          {/* 기간의 뜻은 라벨 옆 ⓘ 로, 칸 아래에는 막혔을 때만 이유를 적는다(관리웹 정리 시안 A). */}
-          <InfoLabel
-            htmlFor={periodId}
-            label={t.target.fields.requestedShipDate}
-            info={t.target.periodNote}
-            required
-          />
-          <DatePicker
-            id={periodId}
-            mode="range"
-            value={[period.from === '' ? null : period.from, period.to === '' ? null : period.to]}
-            placeholder={messages.common.selectDate}
-            aria-describedby={isPeriodUsable ? undefined : periodNoteId}
-            onChange={([from, to]) => onChangePeriod({ from, to })}
-          />
-          {!isPeriodUsable && (
-            <span id={periodNoteId} className="field-note">
-              {t.target.periodInvalid}
-            </span>
-          )}
-        </div>
+        {/* 기간의 뜻은 시작일 라벨 옆 ⓘ 로, 칸 아래에는 막혔을 때만 이유를 적는다(관리웹 정리 시안 A). */}
+        <DateRangeFields
+          required
+          startLabel={t.target.fields.requestedShipDateFrom}
+          endLabel={t.target.fields.requestedShipDateTo}
+          info={t.target.periodNote}
+          placeholder={messages.common.selectDate}
+          describedBy={isPeriodUsable ? undefined : periodNoteId}
+          from={period.from}
+          to={period.to}
+          onChange={(from, to) => onChangePeriod({ from, to })}
+          note={
+            !isPeriodUsable && (
+              <span id={periodNoteId} className="field-note">
+                {t.target.periodInvalid}
+              </span>
+            )
+          }
+        />
       </div>
 
       {isError ? (

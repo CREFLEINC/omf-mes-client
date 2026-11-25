@@ -1,7 +1,8 @@
-import { Button, DatePicker, SearchInput } from '@crefle/web-ui';
+import { Button, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import {
   FilterMoreButton,
   HiddenFilterChips,
@@ -43,9 +44,9 @@ export interface RequestFilterBarProps {
  * **조회를 조건으로 잠그지 않는다.** 계약이 어느 조건도 필수로 두지 않았고, 결재함은
  * 들어오자마자 내 결재 대기를 보여야 하는 자리다 — 탭이 이미 범위를 좁히고 있다.
  *
- * **상신일은 한 컨트롤이다**(`mode="range"`). 컴포넌트가 완결된 쌍만, 그것도 `from ≤ to`로만
- * 방출하므로 이 칸을 거친 역전은 생기지 않는다. 그래도 주소로 들어온 한쪽만의 구간은
- * 조건으로 살아 있다 — 그 표기는 조건 칩이 맡는다(`filters.ts`).
+ * **상신일은 시작일 · 종료일 두 칸이다**(`patterns/date-range-fields`). 달력 한계가 시작 ≤ 종료를
+ * 지켜 이 칸을 거친 역전은 생기지 않는다. 한쪽만 고른 구간도 조건으로 살아 있다 —
+ * 그 표기는 조건 칩이 맡는다(`filters.ts`).
  *
  * **승인 유형은 고정 OpenAPI enum을 쓰고, 상태 선택지는 비어 있다.** 운영
  * 공통코드인 상태를 지어내지 않고, 왜 비어 있는지를 `aria-describedby`로 이어 붙인다.
@@ -64,7 +65,6 @@ export const RequestFilterBar = ({
   onReset,
   actions,
 }: RequestFilterBarProps) => {
-  const periodId = useId();
   const more = useFilterMore();
   const [filters, setFilters] = useState<InboxFilters>(appliedFilters);
 
@@ -142,30 +142,17 @@ export const RequestFilterBar = ({
           }}
         />
 
-        {/*
-         * 상신일은 **한 컨트롤**이다 — 시작·종료 두 칸이 아니라 `mode="range"` 하나다.
-         * 주소 키(`from`·`to`)와 요청 파라미터는 그대로다. 바뀐 것은 고르는 수단뿐이다.
-         *
-         * 계약이 이 두 파라미터를 **`format: date`**로 두었다 — 값이 `YYYY-MM-DD` 그대로 나간다.
-         * 같은 저장소의 다른 화면이 RFC3339로 바꿔 보내지만 그쪽 계약은 `date-time`이다.
-         */}
-        <div className="field-cell">
-          <label className="field-label" htmlFor={periodId}>
-            {t.fields.period}
-          </label>
-          <DatePicker
-            id={periodId}
-            mode="range"
-            value={[
-              filters.from === '' ? null : filters.from,
-              filters.to === '' ? null : filters.to,
-            ]}
-            placeholder={messages.common.selectDate}
-            onChange={([from, to]) => {
-              setFilters((prev) => ({ ...prev, from, to }));
-            }}
-          />
-        </div>
+        <DateRangeFields
+          clearable
+          startLabel={t.fields.periodFrom}
+          endLabel={t.fields.periodTo}
+          placeholder={messages.common.selectDate}
+          from={filters.from}
+          to={filters.to}
+          onChange={(from, to) => {
+            setFilters((prev) => ({ ...prev, from, to }));
+          }}
+        />
 
         <SearchInput
           label={t.fields.q}

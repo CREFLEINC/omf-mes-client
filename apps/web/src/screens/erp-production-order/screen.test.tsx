@@ -11,7 +11,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import { pickRange } from '../../test/date-picker';
+import { pickDateRange } from '../../test/date-picker';
 import { ErpProductionOrderScreen } from './screen';
 import type { ErpProductionOrder } from './types';
 
@@ -343,10 +343,11 @@ describe('ErpProductionOrderScreen', () => {
     await findRow('SYN-EWO-901');
     expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
 
-    /* 계획 시작일은 기간 한 칸이다(C-12) — 시작과 종료를 한 달력에서 고른다. */
-    await pickRange(
+    /* 계획 시작일은 시작 · 끝 두 칸이다 — 칸마다 달력에서 고른다. */
+    await pickDateRange(
       user,
-      screen.getByLabelText(t.filters.plannedStartDateSearch),
+      screen.getByLabelText(t.filters.plannedStartDateFrom),
+      screen.getByLabelText(t.filters.plannedStartDateTo),
       '2026-10-05',
       '2026-10-09',
     );

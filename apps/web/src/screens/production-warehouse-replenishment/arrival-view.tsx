@@ -1,16 +1,9 @@
-import {
-  AlertBanner,
-  Button,
-  Checkbox,
-  DatePicker,
-  Dialog,
-  EmptyState,
-  Skeleton,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, Checkbox, Dialog, EmptyState, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useState, type ReactNode } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import { plantToday } from '../../patterns/plant-time';
@@ -128,13 +121,14 @@ export const ArrivalView = ({
           ]}
           onChange={(value) => setDraft({ ...draft, warehouse: value })}
         />
-        <DatePicker
-          mode="range"
+        <DateRangeFields
+          hideLabels
           clearable
-          aria-label={ta.filters.period}
-          placeholder={ta.filters.period}
-          value={draft.from === '' ? null : [draft.from, draft.to]}
-          onChange={(value) => setDraft({ ...draft, from: value?.[0] ?? '', to: value?.[1] ?? '' })}
+          startLabel={ta.filters.periodFrom}
+          endLabel={ta.filters.periodTo}
+          from={draft.from}
+          to={draft.to}
+          onChange={(from, to) => setDraft({ ...draft, from, to })}
         />
         <Button
           onClick={() => {

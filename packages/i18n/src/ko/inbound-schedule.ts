@@ -28,7 +28,8 @@ export const inboundSchedule = {
     lines: '발주 라인',
   },
   fields: {
-    period: '납기',
+    periodFrom: '납기 시작일',
+    periodTo: '납기 종료일',
     supplier: '공급사',
     plant: '공장',
     item: '품목',

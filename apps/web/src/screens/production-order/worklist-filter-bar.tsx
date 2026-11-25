@@ -1,7 +1,8 @@
-import { Button, DatePicker, SearchInput, type SelectOption } from '@crefle/web-ui';
+import { Button, SearchInput, type SelectOption } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useState } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import { useApiClient } from '../../patterns/api-context';
 import {
   FilterMoreButton,
@@ -91,7 +92,6 @@ export const WorklistFilterBar = ({
   onReset,
 }: WorklistFilterBarProps) => {
   const [draft, setDraft] = useState<Draft>(applied);
-  const dueId = useId();
   const more = useFilterMore();
   const plantId = useId();
   const plantNoteId = useId();
@@ -143,28 +143,15 @@ export const WorklistFilterBar = ({
             onSearch={() => onSearch(draft)}
           />
         </div>
-        <div className="field-cell filter-field-md">
-          <label className="field-label" htmlFor={dueId}>
-            {t.due}
-          </label>
-          <DatePicker
-            id={dueId}
-            mode="range"
-            clearable
-            value={[
-              draft.dueFrom === '' ? null : draft.dueFrom,
-              draft.dueTo === '' ? null : draft.dueTo,
-            ]}
-            placeholder={t.duePlaceholder}
-            onChange={(value) =>
-              setDraft((current) => ({
-                ...current,
-                dueFrom: value === null ? '' : value[0],
-                dueTo: value === null ? '' : value[1],
-              }))
-            }
-          />
-        </div>
+        <DateRangeFields
+          clearable
+          startLabel={t.dueFrom}
+          endLabel={t.dueTo}
+          placeholder={messages.common.selectDate}
+          from={draft.dueFrom}
+          to={draft.dueTo}
+          onChange={(dueFrom, dueTo) => setDraft((current) => ({ ...current, dueFrom, dueTo }))}
+        />
         <div className="filter-field-md">
           <ReferenceField
             label={t.item}

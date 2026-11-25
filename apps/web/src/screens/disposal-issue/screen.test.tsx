@@ -13,7 +13,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import { pickDate, pickRange } from '../../test/date-picker';
+import { pickDate, pickDateRange } from '../../test/date-picker';
 import {
   approvalRequestDetailFixture,
   balanceResponseFixturesByItem,
@@ -987,7 +987,13 @@ describe('DisposalIssueScreen — 주소가 조건을 소유한다', () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await waitForList();
-    await pickRange(user, screen.getByLabelText(t.fields.period), '2026-08-01', '2026-08-05');
+    await pickDateRange(
+      user,
+      screen.getByLabelText(t.fields.periodFrom),
+      screen.getByLabelText(t.fields.periodTo),
+      '2026-08-01',
+      '2026-08-05',
+    );
     await search(user);
 
     await waitFor(() => {

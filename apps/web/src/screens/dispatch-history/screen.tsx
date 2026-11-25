@@ -1,16 +1,9 @@
-import {
-  AlertBanner,
-  Button,
-  DatePicker,
-  EmptyState,
-  Icon,
-  Skeleton,
-  type SelectItems,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, EmptyState, Icon, Skeleton, type SelectItems } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import {
   FilterMoreButton,
   HiddenFilterChips,
@@ -281,30 +274,26 @@ export const DispatchHistoryScreen = () => {
   const filter = (
     <>
       <div className="filter-bar notify-filter-row">
-        <div className="field-cell">
-          {/* 기간이 비면 조회를 막는다(필수 조회 조건) — 빨간 * 는 `<label>` 밖(접근 이름 그대로). */}
-          <span className="field-label">
-            <label htmlFor={`${fieldId}-period`}>{t.filters.period}</label>
-            <span className="required-mark" aria-hidden="true">
-              {' *'}
-            </span>
-          </span>
-          <DatePicker
-            id={`${fieldId}-period`}
-            mode="range"
-            clearable
-            placeholder={messages.common.selectDate}
-            invalid={draftReason !== null}
-            aria-describedby={draftReason === null ? undefined : periodReasonId}
-            value={[period.from === '' ? null : period.from, period.to === '' ? null : period.to]}
-            onChange={(value) => setPeriod({ from: value?.[0] ?? '', to: value?.[1] ?? '' })}
-          />
-          {draftReason !== null && (
-            <span id={periodReasonId} className="field-error">
-              {draftReason}
-            </span>
-          )}
-        </div>
+        {/* 기간이 비면 조회를 막는다(필수 조회 조건) — 두 칸 모두 빨간 * 는 `<label>` 밖(접근 이름 그대로). */}
+        <DateRangeFields
+          required
+          clearable
+          startLabel={messages.common.startDate}
+          endLabel={messages.common.endDate}
+          placeholder={messages.common.selectDate}
+          invalid={draftReason !== null}
+          describedBy={draftReason === null ? undefined : periodReasonId}
+          from={period.from}
+          to={period.to}
+          onChange={(from, to) => setPeriod({ from, to })}
+          note={
+            draftReason !== null && (
+              <span id={periodReasonId} className="field-error">
+                {draftReason}
+              </span>
+            )
+          }
+        />
         {selectField(
           'event',
           t.filters.eventSelect,

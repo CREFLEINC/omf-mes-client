@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { HUB_ACTIONS_ID } from '../../patterns/hub-actions';
 import { plantToday } from '../../patterns/plant-time';
 import { SessionProvider, type Session } from '../../patterns/session';
-import { pickRange } from '../../test/date-picker';
+import { pickDateRange } from '../../test/date-picker';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import {
   createStubFetch,
@@ -1009,7 +1009,13 @@ describe('InboundScheduleScreen — 빠른 조회', () => {
 
     await screen.findByText('SAMPLE-PO-0001');
     // 납기는 한 칸(기간 달력)이다 — 시작과 끝을 함께 골라야 값이 나간다(C-12).
-    await pickRange(user, screen.getByLabelText(t.fields.period), from, to);
+    await pickDateRange(
+      user,
+      screen.getByLabelText(t.fields.periodFrom),
+      screen.getByLabelText(t.fields.periodTo),
+      from,
+      to,
+    );
 
     await waitFor(() => {
       const query = requestsTo(requests, LIST_PATH).at(-1)?.url.searchParams;
@@ -1025,7 +1031,8 @@ describe('InboundScheduleScreen — 빠른 조회', () => {
 
     await screen.findByText('SAMPLE-PO-0001');
 
-    expect(screen.getByLabelText(t.fields.period)).toBeDisabled();
+    expect(screen.getByLabelText(t.fields.periodFrom)).toBeDisabled();
+    expect(screen.getByLabelText(t.fields.periodTo)).toBeDisabled();
   });
 
   it('「지연」은 켜는 즉시 납기 기간과 상관없이 지연만 조회한다', async () => {

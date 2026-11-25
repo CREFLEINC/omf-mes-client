@@ -1,7 +1,8 @@
-import { Button, DatePicker, TextField } from '@crefle/web-ui';
+import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import {
   FilterMoreButton,
   HiddenFilterChips,
@@ -66,7 +67,6 @@ export const EventFilterBar = ({
 }: EventFilterBarProps) => {
   const reasonId = useId();
   const fieldId = useId();
-  const periodId = useId();
   const more = useFilterMore();
 
   const [period, setPeriod] = useState<PeriodInput>(appliedPeriod);
@@ -188,31 +188,17 @@ export const EventFilterBar = ({
   return (
     <>
       <div className="filter-bar">
-        {/*
-         * 기간은 **한 컨트롤**이다(변경 통지 #63) — 시작·종료 두 칸이 아니라 `mode="range"` 하나다.
-         * 주소 키(`from`·`to`)와 요청 파라미터는 그대로다. 바뀐 것은 고르는 수단뿐이다.
-         *
-         * 컴포넌트가 **완결된 쌍만, 그것도 from ≤ to로만** 방출한다. 그래서 이 컨트롤을 거친
-         * 역전은 생기지 않지만 `validatePeriod`는 그대로 둔다 — 주소는 사용자가 직접 고칠 수 있고
-         * 조회 조건의 정본은 주소다. 컨트롤이 막는 것과 화면이 막는 것은 다른 층이다.
-         */}
-        <div className="field-cell">
-          {/* 기간이 비면 조회가 막힌다(조회 필수) — 라벨 밖에 빨간 * 를 둔다. */}
-          <span className="field-label">
-            <label htmlFor={periodId}>{t.fields.period}</label>
-            <span className="required-mark" aria-hidden="true">
-              {' *'}
-            </span>
-          </span>
-          <DatePicker
-            id={periodId}
-            mode="range"
-            value={[period.from === '' ? null : period.from, period.to === '' ? null : period.to]}
-            onChange={([from, to]) => {
-              setPeriod({ from, to });
-            }}
-          />
-        </div>
+        {/* 기간이 비면 조회가 막힌다(조회 필수) — 두 칸 모두 라벨 밖에 빨간 * 를 둔다. */}
+        <DateRangeFields
+          required
+          startLabel={t.fields.periodFrom}
+          endLabel={t.fields.periodTo}
+          from={period.from}
+          to={period.to}
+          onChange={(from, to) => {
+            setPeriod({ from, to });
+          }}
+        />
 
         {renderCodeSelect(targetTypeSelect)}
 

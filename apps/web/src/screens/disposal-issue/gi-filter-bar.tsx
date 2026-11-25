@@ -1,7 +1,8 @@
-import { Button, DatePicker, SearchInput } from '@crefle/web-ui';
+import { Button, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useState } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import {
   FilterMoreButton,
   HiddenFilterChips,
@@ -9,7 +10,6 @@ import {
   useFilterMore,
   type HiddenFilterChip,
 } from '../../patterns/filter-more';
-import { InfoLabel } from '../../patterns/info-tip';
 
 import { codeNote, codePlaceholder } from './code-options';
 import {
@@ -74,7 +74,6 @@ export const GiFilterBar = ({
   onRemoveFilter,
   onReset,
 }: GiFilterBarProps) => {
-  const periodId = useId();
   const more = useFilterMore();
   const [filters, setFilters] = useState<IssueFilters>(appliedFilters);
 
@@ -141,32 +140,19 @@ export const GiFilterBar = ({
   return (
     <>
       <div className="filter-bar">
-        {/*
-         * 기간은 **한 컨트롤**이다 — `mode="range"` 하나가 두 값을 준다. 주소 키(`ifrom`·`ito`)와
-         * 요청 파라미터는 그대로이고 바뀐 것은 고르는 수단뿐이다.
-         *
-         * 기본 기간이 없다는 사실은 라벨 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A).
-         */}
-        <div className="field-cell">
-          <InfoLabel
-            htmlFor={periodId}
-            label={t.historyFields.period}
-            info={t.historyFilters.periodNote}
-          />
-          <DatePicker
-            id={periodId}
-            mode="range"
-            placeholder={messages.common.selectDate}
-            disabled={isLocked}
-            value={[
-              filters.from === '' ? null : filters.from,
-              filters.to === '' ? null : filters.to,
-            ]}
-            onChange={([from, to]) => {
-              setFilters((prev) => ({ ...prev, from, to }));
-            }}
-          />
-        </div>
+        <DateRangeFields
+          clearable
+          startLabel={t.historyFields.periodFrom}
+          endLabel={t.historyFields.periodTo}
+          info={t.historyFilters.periodNote}
+          placeholder={messages.common.selectDate}
+          disabled={isLocked}
+          from={filters.from}
+          to={filters.to}
+          onChange={(from, to) => {
+            setFilters((prev) => ({ ...prev, from, to }));
+          }}
+        />
 
         <SelectField
           label={t.historyFields.reason}

@@ -39,7 +39,8 @@ export const approvalInbox: Translated<typeof ko.approvalInbox> = {
     status: 'Trạng thái',
     approvalTypeCode: 'Loại phê duyệt',
     /** 열 이름과 낱말이 다른 것이 맞다 — 조건은 **날짜 단위**라 시각을 뜻하는 말을 쓰지 않는다. */
-    period: 'Ngày trình',
+    periodFrom: 'Từ ngày trình',
+    periodTo: 'Đến ngày trình',
     q: 'Tìm số yêu cầu',
   },
   actions: {
