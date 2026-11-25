@@ -385,7 +385,7 @@ export const ShiftManagementScreen = () => {
         open={retiring !== null}
         onClose={() => setRetiring(null)}
         title={t.deactivateDialog.title(retiring?.shiftName ?? '')}
-        size="sm"
+        size="md"
         showCloseButton={false}
         footer={
           <>

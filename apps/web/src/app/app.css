@@ -40595,6 +40595,13 @@ body:has(
   align-items: start;
 }
 
+/* 바꿀 수 없는 공장 — 칸 이름 옆 회색 「변경 불가」 라벨(사용자 역할 권한 관리 로그인 ID와 같다). */
+.shift-management-locked-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 /* 창 안 공장 고르개는 칸 폭을 꽉 채운다. */
 .shift-management-dialog-plant > :not(.field-label) {
   width: 100%;

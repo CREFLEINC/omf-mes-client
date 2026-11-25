@@ -47,6 +47,7 @@ export const shiftManagement = {
     addTitle: '교대 추가',
     editTitle: '교대 수정',
     plant: '공장',
+    plantLocked: '변경 불가',
     code: '교대 코드',
     codePlaceholder: '교대 코드를 입력하세요',
     codeLocked: (count: number) => `작업이나 실적에 ${count}건 쓰인 교대라 코드는 바꿀 수 없습니다.`,

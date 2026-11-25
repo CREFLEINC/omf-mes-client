@@ -1,4 +1,4 @@
-import { Button, Dialog, Field, Skeleton, TextField } from '@crefle/web-ui';
+import { Button, Chip, Dialog, Field, Skeleton, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
@@ -94,6 +94,8 @@ export const EditDialog = ({
   const shiftId = shift?.shiftId ?? null;
   const [plantId, setPlantId] = useState(plant.plantId);
   const plantFieldId = useId();
+  const plantLabelId = useId();
+  const plantLockedId = useId();
   const codesOf = (id: number) =>
     existingShifts.filter((each) => each.plantId === id).map((each) => each.shiftCode);
   const detail = useShiftDetail(shiftId);
@@ -202,8 +204,25 @@ export const EditDialog = ({
               />
             </div>
           ) : (
-            /* 고를 공장이 하나뿐이면(공장이 정해진 목록 · 수정) 읽기 전용으로 보인다. */
-            <TextField label={td.plant} fullWidth readOnly value={plant.plantName} />
+            /*
+             * 고를 공장이 하나뿐이면(공장이 정해진 목록 · 수정) 입력칸이 아니라 값으로 보인다 —
+             * 사용자 역할 권한 관리의 로그인 ID와 같은 모양(칸 이름 옆 회색 「변경 불가」 라벨 · 사용자 지시 2026-11-25).
+             */
+            <div className="field-cell">
+              <span className="field-label shift-management-locked-label">
+                <span id={plantLabelId}>{td.plant}</span>
+                <Chip id={plantLockedId} variant="status" size="sm" status="idle">
+                  {td.plantLocked}
+                </Chip>
+              </span>
+              <p
+                className="readonly-value"
+                aria-labelledby={plantLabelId}
+                aria-describedby={plantLockedId}
+              >
+                {plant.plantName}
+              </p>
+            </div>
           )}
           <TextField
             label={td.code}
