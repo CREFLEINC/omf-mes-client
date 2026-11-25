@@ -40231,7 +40231,23 @@ body:has(
 }
 
 .notify-zalo-connect > .iqc-inspection-action-note {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
   min-width: 0;
+}
+
+.notify-zalo-connect-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.notify-zalo-connect > .iqc-inspection-action-note > button {
+  flex: none;
+  margin-left: auto;
 }
 
 /* 수신자 N명 · 최대 5명(보조 글) · 오른쪽 끝 [+ 수신자 추가]. */
@@ -40493,4 +40509,24 @@ body:has(
   color: var(--on-surface-variant);
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
+}
+
+/* 수신자 줄 — 휴지통이 상자 오른쪽 끝에 붙어 보였다. 안쪽으로 들인다(사용자 지시 2026-11-25). */
+.alarm-recipient-list > li {
+  padding-right: var(--space-3);
+}
+
+.notify-zalo-connect > .iqc-inspection-action-note {
+  column-gap: var(--space-2);
+}
+
+/* 안내 라벨 안 [Zalo 연결 설정] — 라벨과 같은 파란 계열 글자·테두리(사용자 지시 2026-11-25). */
+.notify-zalo-connect > .iqc-inspection-action-note > button {
+  border-color: color-mix(in srgb, var(--on-semantic-info-container) 45%, transparent);
+  background: transparent;
+  color: var(--on-semantic-info-container);
+}
+
+.notify-zalo-connect > .iqc-inspection-action-note > button:hover {
+  background: color-mix(in srgb, var(--on-semantic-info-container) 10%, transparent);
 }

@@ -397,19 +397,20 @@ export const HandoverAlertSettingsScreen = () => {
           {/* Zalo 미연결 — 왼쪽 안내 라벨(정보 표식 + 파란 바탕 한 줄) · 오른쪽 끝 [Zalo 연결 설정](좁으면 다음 줄로). */}
           {zaloNotActive && (
             <div className="notify-zalo-connect">
-              <p className="iqc-inspection-action-note" data-tone="info">
+              {/* 단추는 안내 라벨 안 오른쪽 끝(사용자 지시 2026-11-25). */}
+              <div className="iqc-inspection-action-note" data-tone="info">
                 <Icon name="info" size={16} aria-hidden />
-                {t.state.zaloNotActive}
-              </p>
-              {canOpenConnection && (
-                <Button
-                  variant="outlined"
-                  size="sm"
-                  onClick={() => void navigate(ZALO_CONNECTION_PATH)}
-                >
-                  {t.actions.openConnection}
-                </Button>
-              )}
+                <span className="notify-zalo-connect-text">{t.state.zaloNotActive}</span>
+                {canOpenConnection && (
+                  <Button
+                    variant="outlined"
+                    size="sm"
+                    onClick={() => void navigate(ZALO_CONNECTION_PATH)}
+                  >
+                    {t.actions.openConnection}
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </div>
