@@ -37,6 +37,21 @@ const FATE_TONE: Record<ForwardEndRow['fate'], 'error' | 'idle' | 'warning' | 's
   WIP_PENDING: 'warning',
 };
 
+/**
+ * 현황 칸 폭(px) — 지금 언어의 가장 긴 운명 이름 칩이 잘리지 않게(피처 016 실제 앱 확인 2026-11-26: 80px 에서
+ * 「다음 공정 투입 전」이 「다음 공정 투」로 잘림). 칩 글(12px)의 어림 폭: 한글 11.5 · 빈칸 3.5 · 그 밖 7px, 칩 안쪽 여백 16 +
+ * 칸 여백 24. 너무 좁게 어림하지 않게 올림한다.
+ */
+export const fateColumnWidth = (labels: readonly string[]): number => {
+  const textWidth = (text: string): number =>
+    [...text].reduce(
+      (sum, char) => sum + (/[가-힣]/u.test(char) ? 11.5 : char === ' ' ? 3.5 : 7),
+      0,
+    );
+
+  return Math.ceil(Math.max(80, ...labels.map((label) => textWidth(label) + 16 + 24)));
+};
+
 /** 첫 값 + 「외 n건」(R-3 — 출하가 둘 이상이면 화면은 줄이고 파일은 출하마다 한 줄). */
 const firstWithMore = (values: readonly string[]): string =>
   values.length <= 1
@@ -146,7 +161,7 @@ const columns = (statusName: (code: string) => string): Column<ForwardEndRow>[] 
     {
       key: 'fate',
       header: c.fate,
-      width: '80px',
+      width: `${String(fateColumnWidth(Object.values(t.end.fates)))}px`,
       render: (row) => (
         <Chip variant="status" size="sm" status={FATE_TONE[row.fate]}>
           {t.end.fates[row.fate]}

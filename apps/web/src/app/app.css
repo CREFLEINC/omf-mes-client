@@ -41942,13 +41942,6 @@ body:has(
   margin: 0;
 }
 
-/* W/O 줄 번호 뒤 공정 「· 공정 30」(피처 016) — 번호와 한 줄, 접히지 않는다. */
-.trace-tree-op {
-  flex: 0 0 auto;
-  white-space: nowrap;
-  color: var(--on-surface-variant);
-}
-
 .trace-tree-located {
   display: inline-flex;
   color: var(--on-semantic-warning-container);
@@ -42062,6 +42055,7 @@ body:has(
 /* 단계 칩(+ 깊이 수)을 위 작은 줄에, 번호를 그 아래 줄에 — 칩 · 들여쓰기가 번호와 한 줄에서 폭을 다투지 않게. */
 .trace-tree-cell-body {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
@@ -42089,15 +42083,17 @@ body:has(
   color: var(--on-surface-variant);
 }
 
-/* 번호는 「-」「|」 경계(<wbr>)에서만 접는다 — 글자 중간에서 꺾지 않는다. */
+/*
+ * 번호는 한 줄 — 칸이 모자라면 말줄임하고 전체는 title(피처 016 실제 앱 확인 2026-11-26). 015 에는 「-」「|」 경계에서
+ * 접었으나, 반제품 단계로 깊어지면 경계 없는 34자리 LOT 번호가 표시 없이 잘리고 W/O 번호가 3~4줄로 끊겼다.
+ * 깊이는 들여쓰기 상한 + 깊이 수(INDENT_CAP)가 그대로 맡는다.
+ */
 .trace-tree-table .trace-tree-cell-body > .trace-tree-no {
   max-width: 100%;
-  overflow: visible;
-  overflow-wrap: normal;
+  overflow: hidden;
   text-align: left;
-  text-overflow: clip;
-  white-space: normal;
-  word-break: keep-all;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .trace-tree-table .trace-tree-cell-body > .trace-tree-flag {

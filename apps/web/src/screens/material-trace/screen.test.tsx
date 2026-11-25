@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { messages } from '@omf-mes/i18n';
+import { ko, messages, vi } from '@omf-mes/i18n';
 import { useLocation } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
@@ -21,7 +21,7 @@ import {
 } from '../../patterns/trace-tree/trace-fixtures';
 import { createStubFetch, renderWithProviders } from '../../test/api-harness';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
-import { MaterialTraceScreen } from './screen';
+import { MaterialTraceScreen, fateColumnWidth } from './screen';
 
 const t = messages.traceTree;
 
@@ -373,5 +373,15 @@ describe('W-02-13 자재 기준 생산 추적', () => {
     /* 일부만 투입된 반제품도 선다 — 행선지는 서버가 센 남은 수량(실적 180 이 아님). */
     expect(within(end).getByText('남은 40 EA')).toBeInTheDocument();
     expect(within(end).getByText('반제품 · 공정 10 반제품 1')).toBeInTheDocument();
+  });
+
+  /* 실제 앱 확인 2026-11-26 — 80px 현황 칸에서 「다음 공정 투입 전」이 잘렸다. 가장 긴 운명 이름이 들어가는 폭이다. */
+  it('Q14 현황 칸은 ko · vi 의 가장 긴 운명 이름(「다음 공정 투입 전」 · 「Chờ đưa vào công đoạn sau」)이 들어가는 폭이다', () => {
+    const koWidth = fateColumnWidth(Object.values(ko.traceTree.end.fates));
+    const viWidth = fateColumnWidth(Object.values(vi.traceTree.end.fates));
+    /* 칩 103px(실측) + 칸 여백 */
+    expect(koWidth).toBeGreaterThanOrEqual(103 + 24);
+    expect(viWidth).toBeGreaterThan(koWidth);
+    expect(viWidth).toBeGreaterThanOrEqual(fateColumnWidth(['Chờ đưa vào công đoạn sau']));
   });
 });
