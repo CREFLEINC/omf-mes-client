@@ -188,12 +188,6 @@ export const hiddenScreens: HomeScreen[] = [
     description: t.screens.shopfloorReceipt,
   },
   {
-    to: '/wip-handover',
-    label: messages.wipHandover.title,
-    icon: 'sync_alt',
-    description: t.screens.wipHandover,
-  },
-  {
     to: '/repair-roundtrip',
     label: messages.repairRoundtrip.title,
     icon: 'build',

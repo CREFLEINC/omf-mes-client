@@ -141,7 +141,6 @@ import { putawayHistory } from './putaway-history';
 import { shellHome } from './shell-home';
 import { taskFlow } from './task-flow';
 import { shellNav } from './shell-nav';
-import { wipHandover } from './wip-handover';
 import { workerAssignment } from './worker-assignment';
 import { popLocationLabel } from './pop-location-label';
 import { inspectionDocuments } from './inspection-documents';
@@ -301,7 +300,6 @@ export const ko = {
   shellHome,
   taskFlow,
   shellNav,
-  wipHandover,
   workerAssignment,
   popLocationLabel,
   inspectionDocuments,

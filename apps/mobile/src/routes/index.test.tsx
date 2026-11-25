@@ -54,6 +54,13 @@ describe('모바일 라우트', () => {
    * 업무가 아니라 작업 목록에는 걸지 않는다 - 앱바의 「전송 실패 N」 칩과 홈의 전송 현황이 길이다
    * (layout · shell-home 시험).
    */
+  /* 피처 016 · D-7 — 공정 인계는 반제품 투입으로 바뀌어 닫았다. 주소로 열던 길은 홈(업무 목록)으로 넘긴다. */
+  it('US2-8 · Q16 /wip-handover 주소는 홈으로 넘긴다', async () => {
+    renderAt('/wip-handover');
+
+    expect(await screen.findByRole('link', { name: /^입고/ })).toBeInTheDocument();
+  });
+
   it('전송 실패한 기록 화면이 선다', async () => {
     renderAt('/rejections');
 
