@@ -31,6 +31,8 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
   values: {
     on: 'ON',
     off: 'OFF',
+    /** Zalo 연결이 ACTIVE 가 아닐 때 Zalo 발송 옆 노란 칩. */
+    notConnected: 'Chưa kết nối',
     noPhone: 'Không có số điện thoại — chỉ nhận ở trung tâm thông báo',
     inactive: 'Ngừng sử dụng',
     noPhoneCount: (count: number): string => `${String(count)} người nhận không có số điện thoại`,
@@ -59,9 +61,9 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
       'Gửi tin Zalo tiếng Anh cho người nhận có số điện thoại. Nếu gửi lỗi, trung tâm thông báo vẫn nhận.',
     zaloNeedsEnabled: 'Chỉ bật được Zalo sau khi bật dùng thông báo.',
     zaloNotActive:
-      'Zalo chưa được kết nối nên sẽ không gửi Zalo cho đến khi kết nối. Trung tâm thông báo vẫn nhận ngay.',
+      'Zalo chưa được kết nối nên sẽ không gửi Zalo. Trung tâm thông báo vẫn nhận ngay.',
     zaloQuota:
-      'Khi bật, mỗi tin Zalo sẽ tính phí (số dư ZBS) và dùng hạn mức gửi trong ngày. Tin vượt hạn mức sẽ được gửi lúc 07:00 kế tiếp (giờ nhà máy).',
+      'Phí gửi Zalo được trừ vào số dư ZBS và số tin gửi được tính vào hạn mức hằng ngày. Thông báo vượt hạn mức sẽ được gửi lúc 7 giờ sáng hôm sau (giờ nhà máy).',
     unsaved: 'Có thay đổi chưa lưu',
     saved: 'Đã lưu',
     conflict: 'Người khác đã lưu trước. Hãy tải lại rồi sửa.',
@@ -79,8 +81,8 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
   },
   types: {
     IQC_INSPECTION_REQUESTED: {
-      when: 'Khi LOT nhập hàng được đăng ký và tạo yêu cầu kiểm tra IQC — gửi 1 lần cho mỗi phiếu nhập, thông báo ghi số LOT',
-      where: 'Web quản trị › Quản lý chất lượng › Tra cứu · đánh giá kiểm tra (tab IQC)',
+      when: 'Khi tạo yêu cầu kiểm tra IQC — gửi 1 lần cho mỗi phiếu nhập, thông báo ghi số LOT',
+      where: 'Quản lý chất lượng › Tra cứu · đánh giá kiểm tra › IQC',
     },
     IQC_INSPECTION_REJECTED: {
       when: 'Khi kết quả IQC được xác nhận là không đạt — 1 lần cho mỗi LOT không đạt',

@@ -15,7 +15,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import {
   handoverTypeName,
@@ -96,6 +96,8 @@ const guideOf = (code: string): { when: string; where: string } | undefined =>
 interface Move {
   plant: string;
   type: string;
+  /** [초기화] — 공장과 함께 작업명 검색어도 처음 값(빈칸)으로 돌린다. */
+  clearSearch?: boolean;
 }
 
 /** 고른 작업을 풀었다는 `type` 값 — 첫 작업을 저절로 다시 고르지 않는다. */
@@ -111,8 +113,9 @@ export const HandoverAlertSettingsScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const toast = useToast();
-  const navigate = useNavigate();
   const zaloNoteId = useId();
+  const enabledId = useId();
+  const zaloId = useId();
   const { session } = useSession();
   const canOpenConnection = toWebAccess(session?.permissions).allows(ZALO_CONNECTION_PATH);
 
@@ -125,6 +128,8 @@ export const HandoverAlertSettingsScreen = () => {
     plants.data?.some((plant) => plant.plantId === plantParam) === true
       ? plantParam
       : (plants.data?.[0]?.plantId ?? null);
+  /* 조회 조건의 처음 값 — 첫 공장. */
+  const defaultPlantId = plants.data?.[0]?.plantId ?? null;
   const typeParam = searchParams.get('type');
   const selectedCode =
     typeParam === TYPE_CLEARED
@@ -176,6 +181,10 @@ export const HandoverAlertSettingsScreen = () => {
   const go = (move: Move): void => {
     setInlineError(null);
     replace.reset();
+    if (move.clearSearch === true) {
+      setSearch('');
+      setKeyword('');
+    }
     setSearchParams({ plant: move.plant, type: move.type });
   };
 
@@ -346,53 +355,54 @@ export const HandoverAlertSettingsScreen = () => {
           </dl>
         )}
 
+        {/* 발송 설정(알림 사용 · Zalo 발송) → 연결 상태(미연결 칩) → 연결 설정(글 링크). 스위치는 줄 오른쪽 끝에 맞춘다. */}
         <div className="alarm-switches notify-switches">
-          <Switch
-            label={t.fields.enabled}
-            checked={draft.enabled}
-            onChange={(event) => change(setEnabled(draft, event.target.checked))}
-          />
-          <div>
-            {/* 무엇이 가는지 · 실패해도 알림센터는 받는다는 규칙은 Switch 옆 ⓘ 로(관리웹 정리 시안 A). */}
-            <span className="info-label">
-              <Switch
-                label={t.fields.zalo}
-                checked={draft.zaloEnabled}
-                disabled={!draft.enabled}
-                aria-describedby={draft.enabled ? undefined : zaloNoteId}
-                onChange={(event) => change({ ...draft, zaloEnabled: event.target.checked })}
-              />
-              <InfoTip text={t.state.zaloHelp} />
-            </span>
-            {/* 잠긴 사유는 잠겼을 때만 Switch 아래에 둔다. */}
-            {!draft.enabled && (
-              <span id={zaloNoteId} className="field-note">
-                {t.state.zaloNeedsEnabled}
-              </span>
-            )}
-            {/* 요금 · 일일 한도 — Zalo 스위치 바로 아래 짧게(종전 조회 상자 위 긴 안내를 옮겼다). */}
-            <span className="field-note">{t.state.zaloQuota}</span>
-            {/* Zalo 미연결 — 사실과 연결 설정으로 가는 단추를 Zalo 스위치 바로 아래에. */}
-            {zaloNotActive && (
-              <div className="notify-zalo-status">
-                <p className="iqc-inspection-action-note" data-tone="warning" role="note">
-                  <Icon name="warning" size={16} aria-hidden />
-                  {t.state.zaloNotActive}
-                </p>
-                {canOpenConnection && (
-                  <Button
-                    variant="outlined"
-                    size="sm"
-                    onClick={() => {
-                      void navigate(ZALO_CONNECTION_PATH);
-                    }}
-                  >
-                    {t.actions.openConnection}
-                  </Button>
-                )}
-              </div>
-            )}
+          <div className="notify-switch-row">
+            <label className="notify-switch-label" htmlFor={enabledId}>
+              {t.fields.enabled}
+            </label>
+            <Switch
+              id={enabledId}
+              checked={draft.enabled}
+              onChange={(event) => change(setEnabled(draft, event.target.checked))}
+            />
           </div>
+          <div className="notify-switch-row">
+            <span className="notify-switch-label">
+              <label htmlFor={zaloId}>{t.fields.zalo}</label>
+              {/* 요금 · 일일 한도와 무엇이 가는지 · 실패해도 알림센터는 받는다는 규칙은 ⓘ 로(스위치 아래 문장은 걷었다). */}
+              <InfoTip text={`${t.state.zaloQuota} ${t.state.zaloHelp}`} />
+              {zaloNotActive && (
+                <Chip size="sm" status="warning">
+                  {t.values.notConnected}
+                </Chip>
+              )}
+            </span>
+            <Switch
+              id={zaloId}
+              checked={draft.zaloEnabled}
+              disabled={!draft.enabled}
+              aria-describedby={draft.enabled ? undefined : zaloNoteId}
+              onChange={(event) => change({ ...draft, zaloEnabled: event.target.checked })}
+            />
+          </div>
+          {/* 잠긴 사유는 잠겼을 때만 Switch 아래에 둔다. */}
+          {!draft.enabled && (
+            <span id={zaloNoteId} className="field-note">
+              {t.state.zaloNeedsEnabled}
+            </span>
+          )}
+          {/* Zalo 미연결 — 한 줄 안내 + 바로 옆 「Zalo 연결 설정」 글 링크(좁으면 다음 줄로). */}
+          {zaloNotActive && (
+            <p className="notify-zalo-connect">
+              <span>{t.state.zaloNotActive}</span>
+              {canOpenConnection && (
+                <Link className="notify-zalo-link" to={ZALO_CONNECTION_PATH}>
+                  {t.actions.openConnection}
+                </Link>
+              )}
+            </p>
+          )}
         </div>
 
         <div className="alarm-recipients">
@@ -582,13 +592,27 @@ export const HandoverAlertSettingsScreen = () => {
       />
       <div className="filter-actions field-cell-unlabeled">
         <Button onClick={() => setKeyword(search)}>{w.apply}</Button>
-        {/* 초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */}
-        {hasChangedFilters({ q: '' }, { q: search }, { q: keyword }) && (
+        {/* 초기화는 공장(처음 값: 첫 공장) · 검색어(빈칸)가 처음 값과 다를 때만 보인다. */}
+        {hasChangedFilters(
+          { plant: defaultPlantId, q: '' },
+          { plant: plantId, q: search },
+          { plant: plantId, q: keyword },
+        ) && (
           <Button
             variant="outlined"
             onClick={() => {
-              setSearch('');
-              setKeyword('');
+              if (plantId === defaultPlantId || defaultPlantId === null) {
+                setSearch('');
+                setKeyword('');
+                return;
+              }
+              /* 공장이 바뀌면 저장하지 않은 수정이 있을 때 같은 확인 창을 거친다. */
+              requestMove({
+                plant: String(defaultPlantId),
+                /* 고르기를 푼 상태(`none`)는 그대로, 아직 종류를 못 읽었으면 첫 작업이 열리게 둔다. */
+                type: selectedCode ?? typeParam ?? '',
+                clearSearch: true,
+              });
             }}
           >
             {w.clear}

@@ -231,17 +231,21 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     expect(pane.getByText(t.fields.recipientMax(5))).toBeInTheDocument();
   });
 
-  it('요금 · 일일 한도 안내는 Zalo 스위치 아래, 「언제」·「처리」 안내는 제목 아래에 보인다', async () => {
+  it('요금 · 일일 한도 안내는 Zalo 발송 옆 ⓘ 에, 「언제」·「처리」 안내는 제목 아래에 보인다', async () => {
     const user = userEvent.setup();
     setup();
 
     const pane = await openType(user, '자재 출고 피킹');
-    expect(pane.getByText(t.state.zaloQuota)).toBeInTheDocument();
+    expect(
+      pane.getByRole('button', { name: `${t.state.zaloQuota} ${t.state.zaloHelp}` }),
+    ).toBeInTheDocument();
+    /* 스위치 아래 문장은 걷었다. */
+    expect(pane.queryByText(t.state.zaloQuota)).toBeNull();
     expect(pane.getByText(t.types.MATERIAL_PICKING_REQUESTED.when)).toBeInTheDocument();
     expect(pane.getByText(t.types.MATERIAL_PICKING_REQUESTED.where)).toBeInTheDocument();
   });
 
-  it('Zalo 미연결이면 Zalo 스위치 아래 노란 안내와 연결 설정 단추를 두고, 누르면 알림 연결 설정에 간다', async () => {
+  it('Zalo 미연결이면 Zalo 발송 옆 「미연결」 칩과 한 줄 안내 + 「Zalo 연결 설정」 글 링크를 두고, 누르면 알림 연결 설정에 간다', async () => {
     const user = userEvent.setup();
     const { router } = setup({
       zaloStatus: 'NOT_CONFIGURED',
@@ -252,11 +256,14 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     const pane = within(
       await screen.findByRole('region', { name: t.panes.setting('IQC 수입검사') }),
     );
-    const note = await pane.findByText(t.state.zaloNotActive);
-    expect(note.closest('[role="note"]')).toHaveAttribute('data-tone', 'warning');
-    expect(screen.getAllByRole('note')).toHaveLength(1);
-    expect(screen.queryByRole('link', { name: t.actions.openConnection })).toBeNull();
-    await user.click(pane.getByRole('button', { name: t.actions.openConnection }));
+    expect(await pane.findByText(t.state.zaloNotActive)).toBeInTheDocument();
+    expect(pane.getByText(t.values.notConnected)).toBeInTheDocument();
+    /* 종전 긴 노란 줄 · 테두리 단추는 걷었다. 스위치는 미연결이어도 켤 수 있다(서버가 막지 않는다). */
+    expect(screen.queryByRole('note')).toBeNull();
+    expect(screen.queryByRole('button', { name: t.actions.openConnection })).toBeNull();
+    const link = pane.getByRole('link', { name: t.actions.openConnection });
+    expect(link.closest('p')).toHaveTextContent(t.state.zaloNotActive);
+    await user.click(link);
     await waitFor(() =>
       expect(router?.state.location.pathname).toBe('/notification/zalo-connection'),
     );
@@ -271,7 +278,8 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     expect(await pane.findByRole('switch', { name: t.fields.zalo })).toBeInTheDocument();
     expect(screen.queryByRole('note')).toBeNull();
     expect(screen.queryByText(t.state.zaloNotActive, { exact: false })).toBeNull();
-    expect(screen.queryByRole('button', { name: t.actions.openConnection })).toBeNull();
+    expect(screen.queryByText(t.values.notConnected)).toBeNull();
+    expect(screen.queryByRole('link', { name: t.actions.openConnection })).toBeNull();
   });
 
   /* 피처 009(omf-all-around#294) — 「적치 대기」 새 유형과 바뀐 「검사 불합격」 처리 안내. */
@@ -342,6 +350,29 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     await waitFor(() => {
       expect(summaryQueries.at(-1)?.searchParams.get('plantId')).toBe(String(PLANT_B.plantId));
     });
+  });
+
+  it('초기화는 공장이 처음 값(첫 공장)과 다를 때 보이고, 누르면 첫 공장 · 빈 검색어로 돌아가 다시 조회한다', async () => {
+    const user = userEvent.setup();
+    const { summaryQueries } = setup({ plants: [PLANT_A, PLANT_B] });
+
+    await typeRows();
+    expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
+    await user.click(screen.getByRole('combobox', { name: t.fields.plant }));
+    await user.click(await screen.findByRole('option', { name: 'G2 합성 2공장' }));
+    await user.type(screen.getByRole('searchbox', { name: t.workspace.search }), '자재 출고');
+    await user.click(screen.getByRole('button', { name: t.workspace.apply }));
+    await waitFor(() => expect(typesPane().getAllByRole('row')).toHaveLength(2));
+
+    await user.click(screen.getByRole('button', { name: t.workspace.clear }));
+
+    await waitFor(() => {
+      expect(summaryQueries.at(-1)?.searchParams.get('plantId')).toBe(String(PLANT_A.plantId));
+    });
+    expect(screen.getByRole('combobox', { name: t.fields.plant })).toHaveTextContent('G1');
+    expect(screen.getByRole('searchbox', { name: t.workspace.search })).toHaveValue('');
+    await typeRows();
+    expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
   });
 
   it('US2-3 SC-004 5명이 차면 추가가 잠기고 「최대 5명」 안내가 보인다', async () => {

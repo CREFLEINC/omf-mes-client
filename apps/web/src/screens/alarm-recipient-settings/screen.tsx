@@ -14,12 +14,13 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import { useClientPage } from '../../patterns/client-page';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { InfoTip } from '../../patterns/info-tip';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -84,8 +85,9 @@ export const AlarmRecipientSettingsScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const toast = useToast();
-  const navigate = useNavigate();
   const zaloNoteId = useId();
+  const enabledId = useId();
+  const zaloId = useId();
   const { session } = useSession();
   /* W-CO-12 권한이 있을 때만 연결 설정으로 가는 길을 단다 — 사이드바와 같은 판정이다. */
   const canOpenConnection = toWebAccess(session?.permissions).allows(ZALO_CONNECTION_PATH);
@@ -118,6 +120,12 @@ export const AlarmRecipientSettingsScreen = () => {
    * 비운 뒤에는 다시 채우지 않는다. 계정에 부서가 없거나 목록에 없으면 종전처럼 비워 둔다.
    */
   const accountDepartmentId = session?.departmentId;
+  /* 처음 값 — 목록에 있는 계정 부서, 없으면 고르지 않은 상태. [초기화]는 여기로 돌아간다. */
+  const defaultDepartmentId =
+    accountDepartmentId !== undefined &&
+    departments.data?.items.some((item) => item.departmentId === accountDepartmentId) === true
+      ? accountDepartmentId
+      : null;
   const autoPicked = useRef(false);
   useEffect(() => {
     if (autoPicked.current || departments.data === undefined) return;
@@ -157,7 +165,7 @@ export const AlarmRecipientSettingsScreen = () => {
     replace.reset();
     /* 고르기를 풀면 고치던 내용은 버린다 — 남겨 두면 다음 이벤트를 누를 때 버릴지 또 묻는다. */
     if (move.event === '') setDraft(baseline);
-    /* 초기화 — 부서를 고르기 전 처음 주소로(#358). */
+    /* 고른 부서가 없는 자리(계정 부서가 없을 때의 처음 값) — 처음 주소로(#358). */
     if (move.department === '') setSearchParams({});
     else
       setSearchParams(
@@ -300,53 +308,54 @@ export const AlarmRecipientSettingsScreen = () => {
           </div>
         )}
 
+        {/* 발송 설정(알림 사용 · Zalo 발송) → 연결 상태(미연결 칩) → 연결 설정(글 링크). 스위치는 줄 오른쪽 끝에 맞춘다. */}
         <div className="alarm-switches notify-switches">
-          <Switch
-            label={t.fields.enabled}
-            checked={draft.enabled}
-            onChange={(event) => change({ ...draft, enabled: event.target.checked })}
-          />
-          <div>
-            {/* 실패해도 알림센터는 받는다는 규칙은 Switch 옆 ⓘ 로(관리웹 정리 시안 A). */}
-            <span className="info-label">
-              <Switch
-                label={t.fields.zalo}
-                checked={draft.zaloEnabled}
-                disabled={!draft.enabled}
-                aria-describedby={draft.enabled ? undefined : zaloNoteId}
-                onChange={(event) => change({ ...draft, zaloEnabled: event.target.checked })}
-              />
-              <InfoTip text={t.state.zaloHelp} />
-            </span>
-            {/* 잠긴 사유는 잠겼을 때만 Switch 아래에 둔다. */}
-            {!draft.enabled && (
-              <span id={zaloNoteId} className="field-note">
-                {t.state.zaloNeedsEnabled}
-              </span>
-            )}
-            {/* 요금 · 일일 한도 — Zalo 스위치 바로 아래 짧게(인계작업 알림 설정과 같다). */}
-            <span className="field-note">{t.state.zaloQuota}</span>
-            {/* Zalo 미연결 — 종전 조회 상자 아래 노란 줄을 Zalo 스위치 바로 아래로, 이동은 테두리 단추. */}
-            {zaloNotActive && (
-              <div className="notify-zalo-status">
-                <p className="iqc-inspection-action-note" data-tone="warning" role="note">
-                  <Icon name="warning" size={16} aria-hidden />
-                  {t.state.zaloNotActive}
-                </p>
-                {canOpenConnection && (
-                  <Button
-                    variant="outlined"
-                    size="sm"
-                    onClick={() => {
-                      void navigate(ZALO_CONNECTION_PATH);
-                    }}
-                  >
-                    {t.actions.openConnection}
-                  </Button>
-                )}
-              </div>
-            )}
+          <div className="notify-switch-row">
+            <label className="notify-switch-label" htmlFor={enabledId}>
+              {t.fields.enabled}
+            </label>
+            <Switch
+              id={enabledId}
+              checked={draft.enabled}
+              onChange={(event) => change({ ...draft, enabled: event.target.checked })}
+            />
           </div>
+          <div className="notify-switch-row">
+            <span className="notify-switch-label">
+              <label htmlFor={zaloId}>{t.fields.zalo}</label>
+              {/* 요금 · 일일 한도와 실패해도 알림센터는 받는다는 규칙은 ⓘ 로(스위치 아래 문장은 걷었다). */}
+              <InfoTip text={`${t.state.zaloQuota} ${t.state.zaloHelp}`} />
+              {zaloNotActive && (
+                <Chip size="sm" status="warning">
+                  {t.values.notConnected}
+                </Chip>
+              )}
+            </span>
+            <Switch
+              id={zaloId}
+              checked={draft.zaloEnabled}
+              disabled={!draft.enabled}
+              aria-describedby={draft.enabled ? undefined : zaloNoteId}
+              onChange={(event) => change({ ...draft, zaloEnabled: event.target.checked })}
+            />
+          </div>
+          {/* 잠긴 사유는 잠겼을 때만 Switch 아래에 둔다. */}
+          {!draft.enabled && (
+            <span id={zaloNoteId} className="field-note">
+              {t.state.zaloNeedsEnabled}
+            </span>
+          )}
+          {/* Zalo 미연결 — 한 줄 안내 + 바로 옆 「Zalo 연결 설정」 글 링크(좁으면 다음 줄로). */}
+          {zaloNotActive && (
+            <p className="notify-zalo-connect">
+              <span>{t.state.zaloNotActive}</span>
+              {canOpenConnection && (
+                <Link className="notify-zalo-link" to={ZALO_CONNECTION_PATH}>
+                  {t.actions.openConnection}
+                </Link>
+              )}
+            </p>
+          )}
         </div>
 
         {approver ? (
@@ -518,8 +527,8 @@ export const AlarmRecipientSettingsScreen = () => {
           }}
         />
       )}
-      {/* 부서는 고르는 즉시 적용한다. [조회]는 그 부서의 목록을 다시 부르고, [초기화]는 부서를 고르기 전으로 —
-          부서가 골라져 있을 때만 보인다(#358). */}
+      {/* 부서는 고르는 즉시 적용한다. [조회]는 그 부서의 목록을 다시 부르고, [초기화]는 처음 부서(계정 부서)로 —
+          고른 부서가 처음 값과 다를 때만 보인다(다른 화면의 hasChangedFilters 규칙 · #358). */}
       <div className="filter-actions field-cell-unlabeled">
         <Button
           onClick={() => {
@@ -531,16 +540,20 @@ export const AlarmRecipientSettingsScreen = () => {
         >
           {w.apply}
         </Button>
-        {departmentId !== null && (
-          <Button
-            variant="outlined"
-            onClick={() => {
-              requestMove({ department: '', event: null });
-            }}
-          >
-            {w.clear}
-          </Button>
-        )}
+        {departments.data !== undefined &&
+          hasChangedFilters({ department: defaultDepartmentId }, { department: departmentId }) && (
+            <Button
+              variant="outlined"
+              onClick={() => {
+                requestMove({
+                  department: defaultDepartmentId === null ? '' : String(defaultDepartmentId),
+                  event: null,
+                });
+              }}
+            >
+              {w.clear}
+            </Button>
+          )}
       </div>
     </div>
   );

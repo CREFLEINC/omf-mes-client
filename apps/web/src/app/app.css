@@ -40229,7 +40229,10 @@ body:has(
   margin: 0;
 }
 
-/* 두 스위치(알림 사용 · Zalo 발송) — 같은 왼쪽 선, 같은 간격. Zalo 아래 안내 · 미연결 줄은 스위치 바로 아래. */
+/*
+ * 두 스위치(알림 사용 · Zalo 발송) — 이름은 왼쪽, 스위치는 같은 폭 줄의 오른쪽 끝(두 스위치가 세로로 맞는다).
+ * 미연결 안내 줄은 그 아래.
+ */
 .list-detail-detail .notify-switches {
   gap: var(--space-3);
   margin: var(--space-4) 0;
@@ -40239,16 +40242,45 @@ body:has(
   max-width: 44rem;
 }
 
-.notify-zalo-status {
+.alarm-switches > .notify-switch-row {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2) var(--space-3);
-  margin-top: var(--space-1);
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: min(100%, 20rem);
 }
 
-.notify-zalo-status > .iqc-inspection-action-note {
+.notify-switch-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  min-width: 0;
+  font: var(--type-body-md);
+  letter-spacing: var(--type-body-md-tracking);
+  color: var(--on-surface);
+}
+
+.notify-switch-label label {
+  cursor: pointer;
+}
+
+/* Zalo 미연결 — 한 줄 안내 + 바로 옆 글 링크. 좁으면 링크가 다음 줄로 내려간다. */
+.notify-zalo-connect {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
   margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.notify-zalo-link {
+  color: var(--primary-text);
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* 수신자 N명 · 최대 5명(보조 글) · 오른쪽 끝 [+ 수신자 추가]. */

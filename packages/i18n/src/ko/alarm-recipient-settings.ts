@@ -15,6 +15,8 @@ export const alarmRecipientSettings = {
   values: {
     on: 'ON',
     off: 'OFF',
+    /** Zalo 연결이 ACTIVE 가 아닐 때 Zalo 발송 옆 노란 칩. */
+    notConnected: '미연결',
     approver: '결재자',
     /** 수신자 행에 붙는 표식. 이 사람은 Zalo 를 받지 못하고 알림센터로만 받는다. */
     noPhone: '전화번호 없음',
@@ -56,15 +58,14 @@ export const alarmRecipientSettings = {
     zaloNeedsEnabled: '알림 사용을 ON으로 해야 Zalo로 보낼 수 있습니다.',
     /** 발송 건마다 ZBS 잔액 · OA 일일 한도를 쓴다. 한도 초과(-144 · -147)는 다음 07:00(현장 시각)으로 미룬다. */
     zaloQuota:
-      'ON으로 하면 Zalo 발송 건수만큼 요금(ZBS 잔액)과 일일 발송 한도를 씁니다. 한도를 넘은 건은 다음 07:00(현장 시각)에 보냅니다.',
+      'Zalo 발송 요금은 ZBS 잔액에서 차감되며, 발송 건수는 일일 한도에 포함됩니다. 한도를 초과한 알림은 다음 날 오전 7시(현장 시간)에 발송됩니다.',
     unsaved: '저장되지 않은 변경 사항',
     approverNotice: '그 차례의 결재자가 받습니다. 결재선 정의에서 정한 사람입니다.',
     saved: '저장했습니다.',
     /** US4-6 — 409. */
     conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 저장하세요.',
     /** 연결 전 Zalo 건은 보내지 않고 대기한다(러너 CONNECTION_NOT_READY · 24시간 뒤 만료). 알림센터 행은 바로 생긴다. */
-    zaloNotActive:
-      'Zalo가 연결되지 않아 연결될 때까지 Zalo는 보내지 않습니다. 알림센터로는 바로 받습니다.',
+    zaloNotActive: 'Zalo가 연결되지 않아 Zalo는 보내지 않습니다. 알림센터로는 바로 받습니다.',
     unsavedTitle: '저장하지 않은 변경이 있습니다',
     unsavedBody: '이동하면 고친 내용이 사라집니다. 버리고 이동할까요?',
     candidatesEmpty: '검색 결과가 없습니다.',

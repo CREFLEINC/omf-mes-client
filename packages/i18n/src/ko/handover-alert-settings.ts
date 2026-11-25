@@ -28,6 +28,8 @@ export const handoverAlertSettings = {
   values: {
     on: 'ON',
     off: 'OFF',
+    /** Zalo 연결이 ACTIVE 가 아닐 때 Zalo 발송 옆 노란 칩. */
+    notConnected: '미연결',
     /** US2-4 — 이 사람은 Zalo 를 받지 못하고 알림센터로만 받는다. */
     noPhone: '전화번호 없음',
     inactive: '미사용',
@@ -59,11 +61,10 @@ export const handoverAlertSettings = {
       '전화번호가 있는 수신자에게 영문 Zalo 메시지를 보냅니다. Zalo 발송에 실패해도 알림센터로는 받습니다.',
     zaloNeedsEnabled: '알림 사용을 ON으로 해야 Zalo로 보낼 수 있습니다.',
     /** 연결 전 Zalo 건은 보내지 않고 대기한다(러너 CONNECTION_NOT_READY · 24시간 뒤 만료). 알림센터 행은 바로 생긴다. */
-    zaloNotActive:
-      'Zalo가 연결되지 않아 연결될 때까지 Zalo는 보내지 않습니다. 알림센터로는 바로 받습니다.',
+    zaloNotActive: 'Zalo가 연결되지 않아 Zalo는 보내지 않습니다. 알림센터로는 바로 받습니다.',
     /** 발송 건마다 ZBS 잔액 · OA 일일 한도를 쓴다. 한도 초과(-144 · -147)는 다음 07:00(현장 시각)으로 미룬다. */
     zaloQuota:
-      'ON으로 하면 Zalo 발송 건수만큼 요금(ZBS 잔액)과 일일 발송 한도를 씁니다. 한도를 넘은 건은 다음 07:00(현장 시각)에 보냅니다.',
+      'Zalo 발송 요금은 ZBS 잔액에서 차감되며, 발송 건수는 일일 한도에 포함됩니다. 한도를 초과한 알림은 다음 날 오전 7시(현장 시간)에 발송됩니다.',
     unsaved: '저장되지 않은 변경 사항',
     saved: '저장했습니다.',
     conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 저장하세요.',
@@ -83,9 +84,9 @@ export const handoverAlertSettings = {
   /** 종류별 「언제」(알림이 생기는 때)·「처리」(처리하는 화면). 화면 이름은 메뉴 글자 그대로다. */
   types: {
     IQC_INSPECTION_REQUESTED: {
-      when: '입하 LOT가 등록되어 IQC 검사 의뢰가 생성되면 알림을 보냅니다. 입하 건당 한 번 발송하며, 알림에 LOT 수를 표시합니다.',
+      when: 'IQC 검사 의뢰가 생성되면 입하 건당 한 번 알림을 보냅니다. 알림에는 LOT 수가 표시됩니다.',
       // ui-check-ignore: C-13 메뉴 이름 「검사 조회·판정」 그대로
-      where: '관리웹 품질 관리 › 검사 조회·판정 (IQC 탭)',
+      where: '품질 관리 › 검사 조회·판정 › IQC',
     },
     IQC_INSPECTION_REJECTED: {
       when: 'IQC 판정이 불합격으로 확정될 때 알립니다. 불합격 LOT 1건에 한 번 보냅니다.',

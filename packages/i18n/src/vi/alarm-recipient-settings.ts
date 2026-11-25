@@ -26,6 +26,8 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
   values: {
     on: 'ON',
     off: 'OFF',
+    /** Zalo 연결이 ACTIVE 가 아닐 때 Zalo 발송 옆 노란 칩. */
+    notConnected: 'Chưa kết nối',
     approver: 'Người phê duyệt',
     noPhone: 'Không có số điện thoại',
     inactive: 'Ngừng sử dụng',
@@ -62,14 +64,14 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     zaloHelp: 'Dù gửi thất bại, trung tâm thông báo vẫn nhận',
     zaloNeedsEnabled: 'Phải bật dùng thông báo thì mới gửi được qua Zalo',
     zaloQuota:
-      'Khi bật, mỗi tin Zalo sẽ tính phí (số dư ZBS) và dùng hạn mức gửi trong ngày. Tin vượt hạn mức sẽ được gửi lúc 07:00 kế tiếp (giờ nhà máy).',
+      'Phí gửi Zalo được trừ vào số dư ZBS và số tin gửi được tính vào hạn mức hằng ngày. Thông báo vượt hạn mức sẽ được gửi lúc 7 giờ sáng hôm sau (giờ nhà máy).',
     unsaved: 'Có thay đổi chưa lưu',
     approverNotice:
       'Người phê duyệt đến lượt sẽ nhận. Đó là người được chỉ định trong luồng phê duyệt.',
     saved: 'Đã lưu',
     conflict: 'Người khác đã lưu trước. Hãy tải lại rồi lưu',
     zaloNotActive:
-      'Zalo chưa được kết nối nên sẽ không gửi Zalo cho đến khi kết nối. Trung tâm thông báo vẫn nhận ngay.',
+      'Zalo chưa được kết nối nên sẽ không gửi Zalo. Trung tâm thông báo vẫn nhận ngay.',
     unsavedTitle: 'Có thay đổi chưa lưu',
     unsavedBody: 'Nếu chuyển đi, nội dung đã sửa sẽ mất. Bỏ thay đổi và chuyển?',
     candidatesEmpty: 'Không có kết quả tìm kiếm',
