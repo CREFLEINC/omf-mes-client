@@ -685,6 +685,34 @@ const APP_PERMISSIONS = [
   { code: 'W-CO-09', name: '결재함(승인 요청 목록)', groupCode: 'CO' },
   { code: 'W-CO-10', name: '비밀번호 변경', groupCode: 'CO' },
   { code: 'W-CO-11', name: '알람 수신자 설정', groupCode: 'CO' },
+  /* 화면 목록(web-screen-catalog)에 있는데 빠져 있던 관리웹 화면 — 목에서도 메뉴가 서게 넣는다(#358). */
+  { code: 'W-01-14', name: '자재 관리 LOT 발행', groupCode: '01' },
+  { code: 'W-01-16', name: '입하/입고 작업 기록', groupCode: '01' },
+  { code: 'W-02-11', name: '출고 요청 현황', groupCode: '02' },
+  { code: 'W-02-12', name: '생산 창고 보충', groupCode: '02' },
+  { code: 'W-02-13', name: '자재 기준 생산 추적', groupCode: '02' },
+  { code: 'W-02-14', name: '제품 기준 역추적', groupCode: '02' },
+  { code: 'W-03-13', name: '제품 검사표 조회', groupCode: '03' },
+  { code: 'W-06-24', name: '검사표 기준', groupCode: '06' },
+  { code: 'W-06-25', name: '공급사·품목 기본 정보', groupCode: '06' },
+  { code: 'W-06-26', name: '교대 관리', groupCode: '06' },
+  { code: 'W-CO-12', name: '알림 연결 설정', groupCode: 'CO' },
+  { code: 'W-CO-13', name: '알림 발송 이력', groupCode: 'CO' },
+  { code: 'W-CO-14', name: '인계작업 알림 설정', groupCode: 'CO' },
+  { code: 'W-CO-15', name: '공장 근무일 설정', groupCode: 'CO' },
+];
+
+/*
+ * 목에서는 시스템 운영자(역할 4)에게 모든 화면 권한을 준다 — 로컬 확인 때 메뉴가 빠지지 않게(사용자 지시 2026-11-25 · #358).
+ * 다른 역할의 부여분은 씨앗 그대로 둔다.
+ */
+state.rolePermissions = [
+  ...state.rolePermissions.filter((row) => row.roleId !== 4),
+  ...APP_PERMISSIONS.map((permission, at) => ({
+    rolePermissionId: 5001 + at,
+    roleId: 4,
+    permissionCode: permission.code,
+  })),
 ];
 
 /** 후보에 있는가를 O(1)로 본다 — 격자는 체크박스 117개를 한 번에 보낸다. */
