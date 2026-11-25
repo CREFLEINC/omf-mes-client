@@ -40247,7 +40247,7 @@ body:has(
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  width: min(100%, 20rem);
+  width: 100%;
 }
 
 .notify-switch-label {
