@@ -22,7 +22,6 @@ import {
   stepRemoveBlockedReason,
   type StepDraft,
 } from './step-draft';
-import type { SelectOption } from './types';
 
 const t = messages.approvalRoute;
 
@@ -54,7 +53,6 @@ export interface StepPaneProps {
   approverOptions: ApproverOption[];
   /** 승인자 목록이 잘리거나 실패했다는 안내. */
   approverNote?: string;
-  approverTypeOptions: SelectOption[];
   isLocked: boolean;
   saveDisabledReason: string | null;
   onAdd: (approver: ApproverOption) => void;
@@ -89,7 +87,6 @@ export const StepPane = ({
   banner,
   approverOptions,
   approverNote,
-  approverTypeOptions,
   isLocked,
   saveDisabledReason,
   onAdd,
@@ -291,30 +288,11 @@ export const StepPane = ({
 
       {drafts !== null && isAdding && (
         /*
-         * 결재자 유형 · 결재자 선택 · [추가] · [취소]를 한 줄로(사용자 지시 2026-11-24) — 좁으면 읽는 순서대로 접힌다.
-         * 제목 줄 「단계 추가」를 눌렀을 때만 표 아래에 펼친다(2026-11-25).
+         * 결재자 선택 · [추가] · [취소]를 한 줄로(사용자 지시 2026-11-24) — 좁으면 읽는 순서대로 접힌다.
+         * 제목 줄 「단계 추가」를 눌렀을 때만 표 아래에 펼친다(2026-11-25). 결재자 유형 칸은 사용자 하나만 고를 수 있어
+         * 걷었다(사용자 지시 2026-11-25) — 단계는 종전대로 사용자 결재자로 저장된다(`toStepsReplaceBody`).
          */
         <div className="filter-bar approval-route-step-add">
-          {/*
-           * 결재자 유형 — 1차에는 사용자만 열린다. **잠긴 선택지를 감추지 않는다**(`omf-mes#69`).
-           * 값이 하나뿐이라 고를 것이 없지만, 그 사실을 보이는 것이 이 칸의 일이다. 라벨 옆 ⓘ 는 걷었다
-           * (사용자 지시 2026-11-25).
-           *
-           * **`disabledReason`을 주지 않는다.** 그 prop이 묻는 것은 「왜 잠겼는가」인데 여기
-           * 담을 값(역할·부서를 열지 않았다 · 목록이 잘렸다)은 그 답이 아니다 — 이 칸이 잠기는
-           * 이유는 **전송 중**이고, 그것은 저장 버튼의 진행 표시가 이미 말한다. 잠긴 동안은
-           * 고를 수 없으므로 「무엇을 고를 수 있는가」의 안내도 그 사이에는 읽을 일이 없다.
-           */}
-          <SelectField
-            label={t.fields.approverType}
-            options={approverTypeOptions}
-            value="USER"
-            disabled={isLocked}
-            onChange={() => {
-              /* 열린 값이 하나뿐이라 바뀔 값이 없다. 치환 본문의 구분은 상수이며 이 칸을 읽지 않는다. */
-            }}
-          />
-
           <SelectField
             className="approval-route-approver-field"
             required
@@ -329,11 +307,8 @@ export const StepPane = ({
 
           {/* 결재자를 고르기 전에는 꺼진 단추로만 — 칸의 「결재자를 선택하세요」가 이미 말한다. */}
           <div className="field-cell field-cell-unlabeled approval-route-step-add-actions">
-            <Button
-              variant="outlined"
-              disabled={isLocked || addDisabledReason !== null}
-              onClick={handleAdd}
-            >
+            {/* [추가]는 채운 빨간 단추 — 「새 결재선」과 같은 기본 모양(사용자 지시 2026-11-25). */}
+            <Button disabled={isLocked || addDisabledReason !== null} onClick={handleAdd}>
               {t.actions.confirmAddStep}
             </Button>
             <Button variant="outlined" disabled={isLocked} onClick={handleCancelAdd}>

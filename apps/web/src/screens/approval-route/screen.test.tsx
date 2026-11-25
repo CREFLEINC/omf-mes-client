@@ -782,14 +782,18 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
     expect(locationText()).toContain('page=2');
   });
 
-  it('등록 중이면 상세를 부르지 않는다', async () => {
-    // `ar`와 `new`는 함께 서지 않는다 — 주소를 손으로 고쳐도 그 규칙이 지켜져야 한다.
+  it('고른 결재선 위에 등록 팝업이 열린 주소면 상세 · 단계를 그대로 부르고 팝업을 띄운다', async () => {
+    // 등록 팝업은 고른 결재선 위에 뜬다(사용자 지시 2026-11-25) — 주소로 바로 들어와도 같다.
     const { requests } = renderScreen(allRoutes(), '?ar=9001&new=1');
 
-    await waitForList();
-
-    expect(detailRequests(requests)).toHaveLength(0);
-    expect(stepsRequests(requests)).toHaveLength(0);
+    expect(await screen.findByRole('dialog', { name: t.panes.create })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: t.panes.steps })).toBeInTheDocument();
+    expect(selectRouteButton('폐기 출고', BUSINESS_UNIT_LABEL)).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(detailRequests(requests).length).toBeGreaterThan(0);
+    expect(stepsRequests(requests).length).toBeGreaterThan(0);
   });
 
   it('상세와 단계를 함께 그린다', async () => {
@@ -1232,16 +1236,72 @@ const updateRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requests.filter((request) => request.method === 'PUT' && isDetailPath(request.url.pathname));
 
 describe('ApprovalRouteScreen — 등록 폼', () => {
-  it('「새 결재선」을 누르면 new가 서고 고른 결재선이 풀린다', async () => {
+  /* 「새 결재선」을 눌러도 목록 선택과 뒤의 상세가 풀리지 않는다(사용자 지시 2026-11-25). */
+  it('「새 결재선」을 누르면 new가 서고 고른 결재선과 상세는 팝업 뒤에 그대로다', async () => {
     const { user } = renderScreen(allRoutes(), SELECTED);
 
     await waitForForm();
+    await screen.findByRole('region', { name: t.panes.steps });
     await user.click(screen.getByRole('button', { name: t.actions.create }));
 
     await waitFor(() => {
       expect(locationText()).toContain('new=1');
     });
-    expect(locationText()).not.toContain('ar=');
+    expect(locationText()).toContain('ar=9001');
+    expect(await screen.findByRole('dialog', { name: t.panes.create })).toBeInTheDocument();
+    expect(selectRouteButton('폐기 출고', BUSINESS_UNIT_LABEL)).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+
+    const detail = await findDetailPane();
+    expect(within(detail).getByRole('heading', { name: t.panes.basicInfo })).toBeInTheDocument();
+    expect(within(detail).getByRole('region', { name: t.panes.steps })).toBeInTheDocument();
+    expect(within(detail).queryByText(t.empty.noSelectionTitle)).toBeNull();
+  });
+
+  it('고른 결재선 위 팝업을 취소하면 같은 선택 · 같은 고친 값으로 돌아간다', async () => {
+    const { user } = renderScreen(allRoutes(), '?q=SAMPLE&ar=9001');
+
+    await dirtyForm(user, '77');
+    await user.click(screen.getByRole('button', { name: t.actions.create }));
+
+    const dialog = await screen.findByRole('dialog', { name: t.panes.create });
+    // 뒤의 고친 값은 팝업이 열려 있는 동안에도 남아 있다 — 팝업의 칸은 비어 있다.
+    expect(within(dialog).getByLabelText(t.fields.minValue)).toHaveValue('');
+    expect(within(await findDetailPane()).getAllByLabelText(t.fields.minValue)[0]).toHaveValue(
+      '77',
+    );
+
+    await user.click(within(dialog).getByRole('button', { name: messages.common.cancel }));
+
+    await waitFor(() => {
+      expect(locationText()).toBe(`${ROUTE}?q=SAMPLE&ar=9001`);
+    });
+    expect(screen.queryByRole('dialog', { name: t.panes.create })).toBeNull();
+    expect(selectRouteButton('폐기 출고', BUSINESS_UNIT_LABEL)).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('77');
+    expect(saveButton()).toBeEnabled();
+  });
+
+  it('고른 결재선 위 팝업을 Esc로 닫아도 같은 선택으로 돌아간다', async () => {
+    const { user } = renderScreen(allRoutes(), SELECTED);
+
+    await waitForForm();
+    await user.click(screen.getByRole('button', { name: t.actions.create }));
+    const dialog = await screen.findByRole('dialog', { name: t.panes.create });
+
+    // Esc는 native `<dialog>`의 `cancel`로 온다(jsdom은 키를 그 이벤트로 옮기지 않는다).
+    fireEvent(dialog, new Event('cancel', { bubbles: false, cancelable: true }));
+
+    await waitFor(() => {
+      expect(locationText()).toBe(`${ROUTE}${SELECTED}`);
+    });
+    expect(screen.queryByRole('dialog', { name: t.panes.create })).toBeNull();
+    expect(screen.getByRole('region', { name: t.panes.steps })).toBeInTheDocument();
   });
 
   /**

@@ -12,7 +12,7 @@ import type { RouteFilters } from './types';
  * | --- | --- |
  * | 「미사용 포함」 ↔ `activeOnly` **방향 뒤집기**와 **늘 명시해 싣기** | `toRouteListQuery` |
  * | 조건·쪽이 바뀌면 선택(`ar`·`new`)이 사라진다 | `toSearchParams`가 그 자리를 **만들지 않는다** |
- * | 고른 결재선과 등록 중은 **함께 서지 않는다** | `readSelectedRouteId` |
+ * | 등록 팝업은 고른 결재선 **위에** 뜬다 — 열어도 닫아도 선택이 그대로다 | `toCreateSearchParams` |
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
@@ -89,12 +89,10 @@ export const isCreating = (params: URLSearchParams): boolean => params.get(URL_K
 /**
  * 주소가 가리키는 결재선.
  *
- * **등록 중이면 아무것도 고르지 않은 것이다.** 두 자리가 함께 설 수 없다는 규칙이 여기 하나에만
- * 있어야, 「결재선을 고르는 쪽」과 「등록 폼을 여는 쪽」이 서로 다른 규칙을 갖지 않는다.
+ * **등록 중이어도 고른 결재선은 그대로다** — 등록은 팝업이라 뒤의 목록 선택과 상세가 남아 있어야 한다
+ * (사용자 지시 2026-11-25).
  */
 export const readSelectedRouteId = (params: URLSearchParams): number | null => {
-  if (isCreating(params)) return null;
-
   const raw = params.get(URL_KEYS.selected) ?? '';
 
   return isIdentifier(raw) ? Number(raw) : null;
@@ -137,8 +135,7 @@ export const toSearchParams = (
  * **조건과 쪽은 그대로 두고 선택 자리만 다시 세운다** — 결재선을 고르는 것은 보이는 행을
  * 바꾸지 않으므로 조건을 비울 이유가 없다(조건을 비우는 규칙은 `toSearchParams`가 갖는다).
  *
- * **등록 중 표시는 이 함수를 지나며 사라진다.** 두 자리가 함께 서지 않는다는 규칙을
- * 주소를 만드는 쪽과 읽는 쪽이 나눠 갖는다.
+ * **등록 중 표시는 이 함수를 지나며 사라진다** — 팝업을 닫거나 등록을 마친 주소가 이것이다.
  */
 export const toSelectionSearchParams = (
   filters: RouteFilters,
@@ -154,20 +151,21 @@ export const toSelectionSearchParams = (
 };
 
 /**
- * 등록 폼을 연 주소.
+ * 등록 팝업을 연 주소.
  *
- * **`ar`가 함께 서지 않는다** — `toSearchParams`가 선택 자리를 만들지 않으므로 이 함수가
- * 얹는 것은 등록 표시 하나뿐이다. 두 자리가 함께 설 수 없다는 규칙을 주소를 **만드는** 쪽과
- * **읽는** 쪽(`readSelectedRouteId`)이 나눠 갖는다.
+ * **고른 결재선(`ar`)을 함께 싣는다** — 등록은 팝업이라 뒤의 목록 선택과 상세가 그대로 보이고,
+ * 팝업을 닫으면 같은 선택으로 돌아간다(사용자 지시 2026-11-25). 등록 표시는
+ * `toSelectionSearchParams`를 지나며 사라진다.
  *
  * 조건과 쪽은 그대로 둔다 — 등록 폼을 여는 것은 왼쪽 목록에 보이는 행을 바꾸지 않는다.
  */
 export const toCreateSearchParams = (
   filters: RouteFilters,
   page: number,
+  approvalRouteId: number | null,
   size: ListPageSize | null = null,
 ): URLSearchParams => {
-  const next = toSearchParams(filters, page, size);
+  const next = toSelectionSearchParams(filters, page, approvalRouteId, size);
 
   next.set(URL_KEYS.create, ON);
 

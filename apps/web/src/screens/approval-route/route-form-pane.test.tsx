@@ -105,7 +105,9 @@ describe('RouteFormPane — 진행 중 건수 상시 표시', () => {
     renderPane({ route: allUnits });
 
     expect(screen.getByRole('button', { name: t.notes.inProgressNone })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: t.notes.inProgressSome(0) })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: t.notes.inProgressSome(0) }),
+    ).not.toBeInTheDocument();
   });
 
   it('건수를 응답 값에서 가져온다', () => {
@@ -279,6 +281,20 @@ describe('RouteFormPane — 등록 폼', () => {
 
     expect(screen.queryByRole('button', { name: messages.common.deactivate })).toBeNull();
     expect(screen.queryByRole('button', { name: t.actions.activate })).toBeNull();
+  });
+
+  /* 수량 범위는 팝업 너비에 맞춰 줄 전체를 쓴다 — 하한 · 상한이 반씩 나눈다(사용자 지시 2026-11-25). */
+  it('등록 팝업의 수량 범위는 줄 전체를 쓰고, 상세에서는 종전 한 칸이다', () => {
+    const { unmount } = renderPane(createProps);
+
+    const range = screen.getByRole('group', { name: t.fields.valueRange });
+    expect(range).toHaveClass('approval-route-range', 'form-grid-full');
+    unmount();
+
+    renderPane();
+    expect(screen.getByRole('group', { name: t.fields.valueRange })).not.toHaveClass(
+      'form-grid-full',
+    );
   });
 
   /** 등록의 「취소」는 폼을 닫는 것이라 고친 것이 없어도 눌러야 한다. */
@@ -467,6 +483,29 @@ describe('RouteFormPane — 저장이 막힌 자리', () => {
 });
 
 describe('RouteFormPane — 사용 전환 액션', () => {
+  /* 「사용 중지」 · 「다시 사용」은 결재선 기본 정보 제목 줄 오른쪽 끝 — 바닥 줄에는 취소 · 저장만(사용자 지시 2026-11-25). */
+  it.each([
+    ['사용 중지', withUnit, null, messages.common.deactivate],
+    ['다시 사용', inactiveRoute, null, t.actions.activate],
+    ['잠긴 다시 사용', inactiveRoute, t.actionReasons.activateNoSteps, t.actions.activate],
+  ] as const)('%s 단추는 제목 줄 마지막에 서고 바닥 줄에 없다', (_label, route, reason, name) => {
+    const { container } = renderPane({ route, activateDisabledReason: reason });
+
+    const titleRow = container.querySelector('.approval-route-head-title-row') as HTMLElement;
+    const button = within(titleRow).getByRole('button', { name });
+    expect(titleRow.lastElementChild).toContainElement(button);
+    expect(titleRow.lastElementChild).toHaveClass('approval-route-head-action');
+    expect(button.className).toMatch(/_sm_/);
+
+    const footer = container.querySelector('.form-actions') as HTMLElement;
+    expect(within(footer).queryByRole('button', { name })).toBeNull();
+    expect(
+      within(footer)
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual([t.actions.discardChanges, t.actions.saveRoute]);
+  });
+
   it('사용 중인 결재선에는 「사용 중지」만 선다', () => {
     renderPane();
 

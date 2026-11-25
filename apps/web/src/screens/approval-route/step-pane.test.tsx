@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { toApproverOptions } from './approver-options';
-import { ENABLED_APPROVER_TYPE_CODES, toApproverTypeOptions } from './code-options';
 import { APPROVER_OPTION_LABEL, stepDraftFixtures, userFixtures } from './fixtures';
 import { STEP_COLUMN_WIDTH, StepPane, type StepPaneProps } from './step-pane';
 import type { StepDraft } from './step-draft';
@@ -20,7 +19,6 @@ const paneElement = (overrides: Partial<StepPaneProps> = {}) => (
     loadError={null}
     banner={null}
     approverOptions={approverOptions}
-    approverTypeOptions={toApproverTypeOptions(ENABLED_APPROVER_TYPE_CODES)}
     isLocked={false}
     saveDisabledReason={null}
     onAdd={() => undefined}
@@ -316,7 +314,6 @@ describe('StepPane — 추가 줄', () => {
     renderPane();
 
     expect(screen.queryByRole('combobox', { name: t.fields.approverSelect })).toBeNull();
-    expect(screen.queryByRole('combobox', { name: t.fields.approverType })).toBeNull();
 
     const heading = screen.getByRole('heading', { name: /결재 단계/ });
     const headingRow = heading.parentElement as HTMLElement;
@@ -324,13 +321,13 @@ describe('StepPane — 추가 줄', () => {
     expect(headingRow).toHaveTextContent(t.values.stepCountOf(stepDraftFixtures.length));
   });
 
-  it('「단계 추가」를 누르면 표 아래에 결재자 유형 · 결재자 줄이 펼쳐지고 취소로 접힌다', async () => {
+  it('「단계 추가」를 누르면 표 아래에 결재자 줄이 펼쳐지고 취소로 접힌다', async () => {
     const user = userEvent.setup();
     renderPane();
 
     await openAddRow(user);
 
-    expect(screen.getByRole('combobox', { name: t.fields.approverType })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: t.fields.approverSelect })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.actions.addStep })).toHaveAttribute(
       'aria-expanded',
       'true',
@@ -445,41 +442,41 @@ describe('StepPane — 추가 줄', () => {
 });
 
 /**
- * 승인자 구분 — **잠긴 선택지를 감추지 않는다.** 감추면 사용자는 역할·부서 결재가 아예 없는
- * 기능이라고 읽는다(`omf-mes#69`).
+ * 결재자 유형 칸은 걷었다 — 사용자 하나만 고를 수 있는 칸이라 보일 필요가 없다(사용자 지시 2026-11-25).
+ * 단계는 종전대로 사용자 결재자로 저장된다(`step-draft.test.ts`의 치환 본문 단언이 지킨다).
  */
-describe('StepPane — 승인자 구분', () => {
-  /* 「결재자는 사용자만 고를 수 있습니다.」 ⓘ 는 걷었다(사용자 지시 2026-11-25). */
-  it('구분 선택칸 라벨 옆에 ⓘ 가 없다', async () => {
+describe('StepPane — 추가 줄 모양', () => {
+  it('추가 줄에는 결재자 선택칸 하나와 [추가] · [취소]만 선다', async () => {
     const user = userEvent.setup();
-    renderPane();
+    const { container } = renderPane();
     await openAddRow(user);
 
-    const cell = screen
-      .getByRole('combobox', { name: t.fields.approverType })
-      .closest('.field-cell') as HTMLElement;
-    expect(cell.querySelector('.info-tip')).toBeNull();
+    const row = container.querySelector('.approval-route-step-add') as HTMLElement;
+    expect(within(row).getAllByRole('combobox')).toHaveLength(1);
+    expect(
+      within(row).getByRole('combobox', { name: t.fields.approverSelect }),
+    ).toBeInTheDocument();
+    expect(row).not.toHaveTextContent('결재자 유형');
+    expect(
+      within(row)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual([t.actions.confirmAddStep, messages.common.cancel]);
   });
 
-  it('역할·부서 선택지가 보이되 잠겨 있다', async () => {
+  /* [추가]는 채운 단추(「새 결재선」과 같은 기본 모양), [취소]는 외곽선 그대로(사용자 지시 2026-11-25). */
+  it('[추가]는 채운 단추, [취소]는 외곽선 단추다', async () => {
     const user = userEvent.setup();
-
     renderPane();
     await openAddRow(user);
-    await user.click(screen.getByRole('combobox', { name: t.fields.approverType }));
 
-    /* 디자인 시스템이 선택지를 네이티브 요소가 아니라 `role="option"`으로 그린다. */
-    expect(screen.getByRole('option', { name: t.values.approverTypeUser })).not.toHaveAttribute(
-      'aria-disabled',
-    );
-    expect(screen.getByRole('option', { name: t.values.approverTypeRole })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
-    expect(screen.getByRole('option', { name: t.values.approverTypeDepartment })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
+    const add = screen.getByRole('button', { name: t.actions.confirmAddStep });
+    const cancel = screen.getByRole('button', { name: messages.common.cancel });
+    /* 디자인 시스템 모양 클래스는 해시가 붙는다 — 모양 이름 조각만 본다. 크기(md)는 둘이 같다. */
+    expect(add.className).toMatch(/filled/);
+    expect(cancel.className).toMatch(/outlined/);
+    expect(add.className).toMatch(/_md_/);
+    expect(cancel.className).toMatch(/_md_/);
   });
 });
 

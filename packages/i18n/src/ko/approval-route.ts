@@ -44,11 +44,6 @@ export const approvalRoute = {
      * 이 열에 서는 것이 삭제 하나뿐이라 무엇을 하는 열인지 그대로 적는 편이 짧고 정확하다.
      */
     stepRowActions: '관리',
-    /**
-     * 추가 줄의 승인자 구분 선택칸. 1차에는 「사용자」만 고를 수 있고 나머지는 잠긴 채 보인다 —
-     * 감추면 사용자는 역할·부서 결재가 **없는 기능**이라고 읽는다(`omf-mes#69`).
-     */
-    approverType: '결재자 유형',
     /** 추가 줄 결재자 선택칸 이름(사용자 지시 2026-11-25 「결재자 *」). */
     approverSelect: '결재자',
     approverPlaceholder: '결재자를 선택하세요',
@@ -178,13 +173,6 @@ export const approvalRoute = {
      * 내부 번호는 사용자가 쓰지 않는 값이고, 한 번 화면에 서면 그것이 식별자로 읽힌다.
      */
     approverUnknown: '결재자 정보를 확인할 수 없습니다',
-    /**
-     * 승인자 구분의 이름. **계약 enum 값의 뜻을 옮긴 것이지 화면이 지어낸 코드가 아니다** —
-     * 승인 유형과 마찬가지로 계약이 값과 뜻을 함께 못 박았다.
-     */
-    approverTypeUser: '사용자',
-    approverTypeRole: '역할',
-    approverTypeDepartment: '부서',
   },
   notes: {
     /**

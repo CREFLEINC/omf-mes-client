@@ -177,7 +177,10 @@ export const RouteFormPane = ({
        * 하한 · 상한은 한 묶음(사용자 지시 2026-11-24). 이름은 「수량 범위」 한 줄만 두고 하한 · 상한은 칸 안 흐린 글자와
        * 접근 이름으로 — 옆 사업부 칸과 입력칸 윗선이 맞는다(사용자 지시 2026-11-25). 좁으면 묶음이 통째로 다음 줄로 간다.
        */}
-      <fieldset className="approval-route-range">
+      {/* 등록 팝업에서는 줄 전체를 쓴다 — 하한 · 상한이 팝업 너비를 반씩 나눈다(사용자 지시 2026-11-25). */}
+      <fieldset
+        className={isCreate ? 'approval-route-range form-grid-full' : 'approval-route-range'}
+      >
         <legend className="field-label info-label">
           {t.fields.valueRange}
           {/*
@@ -310,6 +313,40 @@ export const RouteFormPane = ({
               }
               placement="right"
             />
+            {/*
+             * 사용 전환은 **폼 저장과 다른 오퍼레이션**이라 액션이 따로 선다 — 제목 줄 오른쪽 끝(사용자 지시 2026-11-25).
+             * 지금 상태에서 할 수 있는 쪽 하나만 낸다 — 둘을 함께 두면 지금 켜져 있는지 꺼져 있는지가 흐려진다.
+             */}
+            {route.isActive ? (
+              /* 다른 마스터 화면(공통코드 부서 등)의 「사용 중지」와 같은 모양 — 작은 외곽선 + 금지 아이콘(사용자 지시 2026-11-25). */
+              <Button
+                className="approval-route-head-action"
+                variant="outlined"
+                size="sm"
+                leadingIcon={<Icon name="block" size={18} />}
+                disabled={isLocked}
+                onClick={onDeactivate}
+              >
+                {messages.common.deactivate}
+              </Button>
+            ) : activateDisabledReason === null ? (
+              <Button
+                className="approval-route-head-action"
+                variant="outlined"
+                size="sm"
+                disabled={isLocked}
+                onClick={onActivate}
+              >
+                {t.actions.activate}
+              </Button>
+            ) : (
+              <DisabledAction
+                label={t.actions.activate}
+                reason={activateDisabledReason}
+                className="approval-route-head-action"
+                size="sm"
+              />
+            )}
           </div>
           <p className="approval-route-head-line">
             <span className="info-label">
@@ -326,39 +363,6 @@ export const RouteFormPane = ({
       {duplicateUnknownNote !== null && <p className="field-note">{duplicateUnknownNote}</p>}
 
       <div className="form-actions">
-        {/*
-         * 사용 전환은 **폼 저장과 다른 오퍼레이션**이라 액션이 따로 선다. 지금 상태에서 할 수
-         * 있는 쪽 하나만 낸다 — 둘을 함께 두면 지금 켜져 있는지 꺼져 있는지가 흐려진다.
-         */}
-        {route !== null &&
-          (route.isActive ? (
-            <div className="field-cell form-actions-secondary">
-              {/* 다른 마스터 화면(공통코드 부서 등)의 「사용 중지」와 같은 모양 — 작은 외곽선 + 금지 아이콘(사용자 지시 2026-11-25). */}
-              <Button
-                variant="outlined"
-                size="sm"
-                leadingIcon={<Icon name="block" size={18} />}
-                disabled={isLocked}
-                onClick={onDeactivate}
-              >
-                {messages.common.deactivate}
-              </Button>
-            </div>
-          ) : activateDisabledReason === null ? (
-            <div className="field-cell form-actions-secondary">
-              <Button variant="outlined" size="sm" disabled={isLocked} onClick={onActivate}>
-                {t.actions.activate}
-              </Button>
-            </div>
-          ) : (
-            <DisabledAction
-              label={t.actions.activate}
-              reason={activateDisabledReason}
-              className="form-actions-secondary"
-              size="sm"
-            />
-          ))}
-
         {/*
          * 활성 중복으로 막혔을 때 **기존 결재선으로 옮겨 가는 길**을 함께 낸다.
          * 막기만 하면 사용자는 「그 기존 결재선이 어느 것인지」를 목록에서 다시 찾아야 하는데,

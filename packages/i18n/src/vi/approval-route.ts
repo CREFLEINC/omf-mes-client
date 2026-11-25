@@ -38,7 +38,6 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     approver: 'Người phê duyệt',
     approverStatus: 'Trạng thái',
     stepRowActions: 'Quản lý',
-    approverType: 'Loại người phê duyệt',
     approverSelect: 'Người phê duyệt',
     approverPlaceholder: 'Hãy chọn người phê duyệt',
     approvalTypePlaceholder: 'Hãy chọn loại phê duyệt',
@@ -116,9 +115,6 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     noSteps: 'Không có bước',
     /** ⛔ 승인자 번호를 대신 내지 않는다 — 한 번 화면에 서면 그것이 식별자로 읽힌다. */
     approverUnknown: 'Không xác nhận được thông tin người phê duyệt',
-    approverTypeUser: 'Người dùng',
-    approverTypeRole: 'Vai trò',
-    approverTypeDepartment: 'Phòng ban',
   },
   notes: {
     valueRangeUnused: 'Không dùng khoảng giá trị này để chọn luồng phê duyệt.',
