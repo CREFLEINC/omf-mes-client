@@ -48,8 +48,6 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     cancel: 'Hủy',
     discard: 'Bỏ thay đổi và chuyển',
     search: 'Tìm',
-    prevPage: 'Trang trước',
-    nextPage: 'Trang sau',
     addPick: 'Thêm',
     addSelected: (count: number): string => `Thêm ${String(count)} người`,
   },
@@ -76,14 +74,16 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     unsavedTitle: 'Có thay đổi chưa lưu',
     unsavedBody: 'Nếu chuyển đi, nội dung đã sửa sẽ mất. Bỏ thay đổi và chuyển?',
     candidatesEmpty: 'Không có kết quả tìm kiếm',
-    pageOf: (page: number, totalPages: number): string => `${String(page)} / ${String(totalPages)}`,
   },
   picker: {
     title: 'Thêm người nhận',
+    departmentAll: 'Tất cả',
     searchLabel: 'Tìm người nhận',
     searchPlaceholder: 'Nhập tên hoặc tên đăng nhập',
     caption: 'Ứng viên người nhận',
     addable: (count: number): string => `Có thể thêm tối đa ${String(count)} người`,
+    truncated:
+      'Có quá nhiều ứng viên nên chỉ hiển thị một phần. Hãy tìm theo tên hoặc tên đăng nhập.',
   },
   errors: {
     inactiveRecipient: 'Không thể đặt người dùng ngừng sử dụng làm người nhận. Hãy xóa rồi lưu.',

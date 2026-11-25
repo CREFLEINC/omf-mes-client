@@ -140,6 +140,11 @@ const setup = (options: SetupOptions = {}) => {
         });
       },
     },
+    /* 수신자 추가 창의 부서 선택지. */
+    {
+      match: (request) => pathOf(request) === '/mdm/departments',
+      respond: () => jsonResponse({ items: [], page: { page: 1, size: 100, total: 0 } }),
+    },
     {
       match: (request) => pathOf(request) === '/app/notification-settings/recipient-candidates',
       respond: () => {

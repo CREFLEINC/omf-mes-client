@@ -40,8 +40,6 @@ export const alarmRecipientSettings = {
     cancel: '취소',
     discard: '버리고 이동',
     search: '검색',
-    prevPage: '이전 쪽',
-    nextPage: '다음 쪽',
     /** 수신자 추가 창 — 고르기 전 「추가」, 고른 뒤 「N명 추가」. */
     addPick: '추가',
     addSelected: (count: number): string => `${String(count)}명 추가`,
@@ -72,16 +70,18 @@ export const alarmRecipientSettings = {
     unsavedTitle: '저장하지 않은 변경이 있습니다',
     unsavedBody: '이동하면 고친 내용이 사라집니다. 버리고 이동할까요?',
     candidatesEmpty: '검색 결과가 없습니다.',
-    pageOf: (page: number, totalPages: number): string => `${String(page)} / ${String(totalPages)}`,
   },
   picker: {
     title: '수신자 추가',
+    departmentAll: '전체',
     searchLabel: '수신자 검색',
     searchPlaceholder: '이름 또는 로그인 아이디를 입력하세요',
     /** 표 이름 — 보이지 않고 읽기 도구에만 쓴다. */
     caption: '수신자 후보',
     /** 상한이 있는 화면(W-CO-14)만 — 지금 고른 사람까지 뺀 남은 자리. */
     addable: (count: number): string => `최대 ${String(count)}명 추가 가능`,
+    /** 후보가 받는 상한(5,000명)을 넘어 끝까지 받지 못했다. */
+    truncated: '후보가 많아 일부만 표시됩니다. 이름이나 로그인 아이디로 검색하세요.',
   },
   errors: {
     /** 서버도 400 으로 막는다 — 화면이 먼저 알린다. */

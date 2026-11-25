@@ -1,19 +1,17 @@
 import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchAllPages, type AllPagesResult } from '../../patterns/fetch-all-pages';
 import { requireIfMatch, useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 import type {
-  CandidatePage,
+  Candidate,
   Department,
   NotificationEvent,
   Setting,
   SettingReplace,
   SettingSummary,
 } from './types';
-
-/** 후보 표 한 쪽의 줄 수. */
-export const CANDIDATE_PAGE_SIZE = 20;
 
 /**
  * 한 행의 상세 경로. **경로형이다** — ETag 보관소가 경로(pathname)만 키로 쓰므로 부서·이벤트를
@@ -30,8 +28,7 @@ export const alarmRecipientKeys = {
     ['alarm-recipient-settings', 'summary', departmentId ?? 0] as const,
   detail: (departmentId: number | null, eventCode: string | null) =>
     ['alarm-recipient-settings', 'detail', departmentId ?? 0, eventCode ?? ''] as const,
-  candidates: (keyword: string, page: number) =>
-    ['alarm-recipient-settings', 'candidates', keyword, page] as const,
+  candidates: (keyword: string) => ['alarm-recipient-settings', 'candidates', keyword] as const,
 };
 
 export const useEvents = (): UseQueryResult<NotificationEvent[]> => {
@@ -93,29 +90,29 @@ export const useSettingDetail = (
   });
 };
 
-/** 수신자 후보 — 활성 사용자 전체. 창이 열려 있을 때만 부른다. */
+/**
+ * 수신자 후보 — 활성 사용자 전체. 창이 열려 있을 때만 부른다.
+ *
+ * **검색어에 맞는 사람을 끝까지 받는다.** 후보 조회에 부서 조건이 없고 후보는 부서 이름만 준다 — 부서로 거르기와
+ * 쪽 나누기를 화면에서 하려면 전체가 있어야 한다(쪽 단위로 거르면 쪽마다 줄 수가 들쭉날쭉하다).
+ */
 export const useRecipientCandidates = (
   keyword: string,
-  page: number,
   enabled: boolean,
-): UseQueryResult<CandidatePage> => {
+): UseQueryResult<AllPagesResult<Candidate>> => {
   const { client } = useApiClient();
   return useQuery({
-    queryKey: alarmRecipientKeys.candidates(keyword, page),
+    queryKey: alarmRecipientKeys.candidates(keyword),
     enabled,
-    /* 쪽을 넘길 때 표가 비었다 차는 깜박임을 막는다. */
+    /* 검색어를 바꿀 때 표가 비었다 차는 깜박임을 막는다. */
     placeholderData: keepPreviousData,
     queryFn: () =>
-      runRequest(() =>
-        client.GET('/app/notification-settings/recipient-candidates', {
-          params: {
-            query: {
-              ...(keyword === '' ? {} : { keyword }),
-              page,
-              size: CANDIDATE_PAGE_SIZE,
-            },
-          },
-        }),
+      fetchAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/app/notification-settings/recipient-candidates', {
+            params: { query: { ...(keyword === '' ? {} : { keyword }), page, size } },
+          }),
+        ),
       ),
   });
 };

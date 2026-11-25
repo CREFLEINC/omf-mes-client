@@ -13426,13 +13426,6 @@ dialog.layout-editor-dialog {
   gap: var(--space-3);
 }
 
-.alarm-picker-pages {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-}
-
 /* 긴 작업 이름(베트남어)은 두 줄로 접는다 — 알림·Zalo·수신자 칸 폭은 줄이지 않는다(시안 상태 C). */
 .handover-type-table .handover-type-button {
   white-space: normal;
@@ -40529,4 +40522,23 @@ body:has(
 
 .notify-zalo-connect > .iqc-inspection-action-note > button:hover {
   background: color-mix(in srgb, var(--on-semantic-info-container) 10%, transparent);
+}
+
+/* 수신자 추가 창 — 부서 선택(14rem) 옆에 검색이 남는 폭을 받는다(사용자 지시 2026-11-25). */
+.alarm-picker-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.alarm-picker-controls > .alarm-picker-department {
+  flex: 0 0 14rem;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.alarm-picker-controls > .alarm-picker-search {
+  flex: 1 1 16rem;
+  min-width: 0;
 }
