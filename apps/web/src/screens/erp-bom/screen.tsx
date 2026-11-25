@@ -223,14 +223,14 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
 
   const columns: Column<BomTreeRow>[] = [
     /*
-     * 네 열 모두 폭을 주어 상자 폭을 그 비율로 나눈다(사용자 지시 2026-11-25 — 품목 칸만 남는 폭을 다 쓰지 않게). 칸 안은 왼쪽 정렬(app.css `.bom-tree-table`)이라
+     * 네 열 모두 폭을 주어 상자 폭을 그 비율로 나눈다(사용자 지시 2026-11-25 — 품목 칸만 남는 폭을 다 쓰지 않게, 품목 반 · 숫자 열 반). 칸 안은 왼쪽 정렬(app.css `.bom-tree-table`)이라
      * 단계마다 들여 쓴 자리 · 연결선이 줄마다 같은 세로선에 선다. 품목은 「코드 · 이름」 한 칸으로 낸다(사용자 지시 2026-11-25 —
      * 품목코드 · 품목명 두 칸을 다시 하나로).
      */
     {
       key: 'item',
       header: t.tree.item,
-      width: '520px',
+      width: '400px',
       render: (row) => {
         const item = itemOf(row.itemId);
         return (
@@ -248,7 +248,7 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
     {
       key: 'requiredQty',
       header: t.componentTable.requiredQty,
-      width: '128px',
+      width: '160px',
       align: 'end',
       render: (row) =>
         row.component === null
@@ -258,7 +258,7 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
     {
       key: 'scrapRate',
       header: t.componentTable.scrapRate,
-      width: '96px',
+      width: '120px',
       align: 'end',
       render: (row) =>
         row.component === null ? t.values.empty : formatRate(row.component.scrapRate),
@@ -267,7 +267,7 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
       key: 'isMandatory',
       header: t.componentTable.isMandatory,
       /* 머리글 「필수 여부」와 끌기 손잡이가 잘리지 않는 폭(사용자 지시 2026-11-24). */
-      width: '104px',
+      width: '120px',
       render: (row) =>
         row.component === null ? (
           t.values.empty
@@ -281,7 +281,7 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
     <ErpListTable
       label={t.panes.components}
       className="bom-tree-table"
-      storageKey="omf-mes:erp-bom:columns:tree"
+      storageKey="omf-mes:erp-bom:columns:tree:v2"
       columns={columns}
       rows={rows}
       getRowId={(row) => row.key}
@@ -345,8 +345,11 @@ const ParentFacts = ({ item, bom }: ParentFactsProps) => {
           {
             key: 'effective',
             label: t.parent.effective,
-            /* 끝이 없는 BOM 은 「~ —」로 — 끝이 비면 잘린 값처럼 보인다. */
-            value: t.parent.effectiveRange(bom.effectiveFrom, bom.effectiveTo ?? t.values.empty),
+            /* 끝이 없는 BOM 은 「~ 미지정」으로(사용자 지시 2026-11-25 — 종전 「~ —」). */
+            value: t.parent.effectiveRange(
+              bom.effectiveFrom,
+              bom.effectiveTo ?? t.values.unspecified,
+            ),
           },
           {
             key: 'baseQty',

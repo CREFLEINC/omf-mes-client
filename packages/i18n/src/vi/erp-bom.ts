@@ -50,6 +50,8 @@ export const erpBom: Translated<typeof ko.erpBom> = {
     empty: '—',
     mandatory: 'Bắt buộc',
     optional: 'Tùy chọn',
+    /** 끝 날짜가 없는 적용 기간 — 「—」 대신(사용자 지시 2026-11-25). */
+    unspecified: 'Chưa xác định',
     loadingName: 'Đang tải',
     failedName: 'Không tải được',
     unknown: 'Mặt hàng chưa đăng ký',

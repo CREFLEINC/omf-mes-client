@@ -54,6 +54,8 @@ export const erpBom = {
     /** 필수 여부 열 — 품목 확장속성의 구성품 표와 같은 말(「예 · 아니오」가 어색하다 — 사용자 지시 2026-11-24). */
     mandatory: '필수',
     optional: '선택',
+    /** 끝 날짜가 없는 적용 기간 — 「—」 대신(사용자 지시 2026-11-25). */
+    unspecified: '미지정',
     loadingName: '불러오는 중',
     failedName: '불러오지 못함',
     unknown: '등록되지 않은 품목',
