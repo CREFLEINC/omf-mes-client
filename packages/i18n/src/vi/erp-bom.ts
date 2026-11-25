@@ -8,6 +8,7 @@ export const erpBom: Translated<typeof ko.erpBom> = {
   fields: {
     hasBom: 'Mặt hàng có BOM',
     itemType: 'Chọn loại',
+    itemTypeAll: 'Tất cả',
     q: 'Tìm mặt hàng',
     qPlaceholder: 'Nhập mã hoặc tên mặt hàng',
   },
@@ -36,6 +37,7 @@ export const erpBom: Translated<typeof ko.erpBom> = {
     isMandatory: 'Bắt buộc',
   },
   tree: {
+    item: 'Mặt hàng',
     depthLimit: 'Không mở thêm các cấp sâu hơn',
     retry: (label: string): string => `Tải lại cấu trúc con của ${label}`,
     expand: (label: string): string => `Mở ${label}`,

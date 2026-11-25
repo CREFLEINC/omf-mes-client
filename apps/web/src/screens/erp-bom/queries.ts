@@ -176,10 +176,10 @@ const useCodeNames = (codeGroupCode: string): NameOf => {
 
 export const useItemTypeNames = (): NameOf => useCodeNames('ITEM_TYPE');
 
-/** 모품목 목록의 조건 — 품목코드 · 품목명 검색어와 유형(제품 · 반제품). */
+/** 모품목 목록의 조건 — 품목코드 · 품목명 검색어와 유형(제품 · 반제품). 유형이 없으면 전체(조건을 보내지 않는다). */
 export interface ParentItemQuery {
   q?: string;
-  itemTypeCode: string;
+  itemTypeCode?: string;
   page?: number;
   /** 쪽 크기를 고른 때만 — 없으면 종전 크기(PARENT_PAGE_SIZE). */
   size?: number;
@@ -203,9 +203,10 @@ export const useParentItems = (query: ParentItemQuery) => {
        * `hasBom` 은 서버에 들어왔지만(#848 · 장부 P-130) 계약 사본에는 아직 없다 — 리터럴로 넘기면 타입이 막아 변수로
        * 넘긴다. 계약에 실리면 이 우회를 걷는다.
        */
+      const { itemTypeCode, ...rest } = query;
       const params = {
-        ...query,
-        itemTypeCode: [query.itemTypeCode],
+        ...rest,
+        ...(itemTypeCode === undefined ? {} : { itemTypeCode: [itemTypeCode] }),
         includeInactive: true,
         size: query.size ?? PARENT_PAGE_SIZE,
       };

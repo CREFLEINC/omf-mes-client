@@ -181,14 +181,17 @@ const renderScreen = (routes: StubRoute[], search = '') => {
 };
 
 describe('ErpBomScreen', () => {
-  it('왼쪽에 제품 모품목 목록을 내고, 고르기 전에는 BOM 을 부르지 않는다', async () => {
+  it('왼쪽에 전체 유형의 모품목 목록을 내고, 고르기 전에는 BOM 을 부르지 않는다', async () => {
     const { urls } = renderScreen([]);
 
     const list = screen.getByRole('region', { name: t.panes.parents });
     expect(await within(list).findByText('SYN-PARENT')).toHaveClass('bom-tree-code');
     const search = urls().find((url) => url.pathname === '/mdm/items');
-    // 처음 유형은 제품이고, 지난 자료도 본다.
-    expect(search?.searchParams.get('itemTypeCode')).toBe('FINISHED');
+    // 처음 유형은 전체라 유형 조건을 싣지 않고(사용자 지시 2026-11-25), 지난 자료도 본다.
+    expect(search?.searchParams.has('itemTypeCode')).toBe(false);
+    expect(screen.getByRole('combobox', { name: t.fields.itemType })).toHaveTextContent(
+      t.fields.itemTypeAll,
+    );
     expect(search?.searchParams.get('includeInactive')).toBe('true');
     // BOM 있는 품목만이 처음부터 켜져 있다.
     expect(search?.searchParams.get('hasBom')).toBe('true');
@@ -222,7 +225,7 @@ describe('ErpBomScreen', () => {
   it('품목코드 · 품목명 검색어를 목록 조건으로 싣는다', async () => {
     const { urls, user } = renderScreen([]);
     await screen.findByText('SYN-PARENT');
-    // 초기화는 바뀐 것이 있을 때만 보인다 — 처음 값(제품 · BOM 있는 품목만)은 바뀐 것이 아니다.
+    // 초기화는 바뀐 것이 있을 때만 보인다 — 처음 값(전체 유형 · BOM 있는 품목만)은 바뀐 것이 아니다.
     expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
 
     await user.type(screen.getByLabelText(t.fields.q), 'SYN');
@@ -234,8 +237,54 @@ describe('ErpBomScreen', () => {
         .filter((url) => url.pathname === '/mdm/items')
         .at(-1);
       expect(last?.searchParams.get('q')).toBe('SYN');
-      expect(last?.searchParams.get('itemTypeCode')).toBe('FINISHED');
+      expect(last?.searchParams.has('itemTypeCode')).toBe(false);
     });
+  });
+
+  it('유형을 고르면 그 유형으로 부르고, 「전체」로 돌리거나 초기화하면 유형 조건 없이 부른다', async () => {
+    const { urls, user } = renderScreen([]);
+    await screen.findByText('SYN-PARENT');
+    const lastSearch = () =>
+      urls()
+        .filter((url) => url.pathname === '/mdm/items')
+        .at(-1);
+
+    await user.click(screen.getByRole('combobox', { name: t.fields.itemType }));
+    await user.click(await screen.findByRole('option', { name: '반제품' }));
+    await waitFor(() => {
+      expect(lastSearch()?.searchParams.get('itemTypeCode')).toBe('SEMI_FINISHED');
+    });
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('combobox', { name: t.fields.itemType }));
+    await user.click(await screen.findByRole('option', { name: t.fields.itemTypeAll }));
+    await waitFor(() => {
+      expect(lastSearch()?.searchParams.has('itemTypeCode')).toBe(false);
+    });
+    expect(screen.queryByRole('button', { name: messages.common.reset })).toBeNull();
+
+    await user.click(screen.getByRole('combobox', { name: t.fields.itemType }));
+    await user.click(await screen.findByRole('option', { name: '제품' }));
+    await waitFor(() => {
+      expect(lastSearch()?.searchParams.get('itemTypeCode')).toBe('FINISHED');
+    });
+    await user.click(screen.getByRole('button', { name: messages.common.reset }));
+    await waitFor(() => {
+      expect(lastSearch()?.searchParams.has('itemTypeCode')).toBe(false);
+    });
+    expect(screen.getByRole('combobox', { name: t.fields.itemType })).toHaveTextContent(
+      t.fields.itemTypeAll,
+    );
+  });
+
+  it('주소에 유형이 있으면(지난 링크 `type=FINISHED`) 그 유형으로 부른다', async () => {
+    const { urls } = renderScreen([], '?type=FINISHED');
+    await screen.findByText('SYN-PARENT');
+
+    const search = urls().find((url) => url.pathname === '/mdm/items');
+    expect(search?.searchParams.get('itemTypeCode')).toBe('FINISHED');
+    expect(screen.getByRole('combobox', { name: t.fields.itemType })).toHaveTextContent('제품');
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeInTheDocument();
   });
 
   it('「BOM이 있는 품목」을 끄면 그 조건 없이 부른다', async () => {
@@ -307,13 +356,17 @@ describe('ErpBomScreen', () => {
     expect(tree().getByText('1,000 SYN-EA')).toBeInTheDocument();
     expect(tree().getByText('5%')).toBeInTheDocument();
 
-    // 품목코드 · 품목명은 두 칸 — 하이라키 칸에 코드, 옆 칸에 이름(사용자 지시 2026-11-24).
-    expect(tree().getAllByRole('columnheader').slice(0, 2).map(headerText)).toEqual([
-      t.parent.itemCode,
-      t.parent.itemName,
+    // 품목은 「코드 · 이름」 한 칸 — 하이라키 칸이 함께 낸다(사용자 지시 2026-11-25).
+    expect(tree().getAllByRole('columnheader').map(headerText)).toEqual([
+      t.tree.item,
+      t.componentTable.requiredQty,
+      t.componentTable.scrapRate,
+      t.componentTable.isMandatory,
     ]);
     const rows = tree().getAllByRole('row').slice(1);
-    expect(rows[1]?.querySelectorAll('td')[1]?.textContent).toBe('합성 자품목 1');
+    const itemCell = rows[1]?.querySelectorAll('td')[0] as HTMLElement;
+    expect(itemCell.querySelector('.bom-tree-code')?.textContent).toBe('SYN-CHILD-1');
+    expect(within(itemCell).getByText('· 합성 자품목 1')).toBeVisible();
     // 뿌리는 모품목, 그 아래 순번 1 이 먼저 선다(서버 순서와 무관).
     expect(rows[0]).toHaveTextContent('SYN-PARENT');
     expect(rows[1]).toHaveTextContent('SYN-CHILD-1');

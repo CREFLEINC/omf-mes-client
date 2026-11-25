@@ -40033,19 +40033,6 @@ body:has(
   grid-template-columns: minmax(0, 1fr);
 }
 
-/*
- * ERP BOM 구성품 표 — 품목코드 · 품목명을 두 칸으로(사용자 지시 2026-11-24). 하이라키 칸은 펼침 단추 이름에 쓰려고 이름도
- * 받지만, 보이는 이름은 옆 「품목명」 칸이 내므로 코드 뒤 「· 이름」을 감춘다(받기 전 · 못 받음 문구는 코드가 없어 그대로 보인다).
- * 칸이 하나 늘어 표 최소 폭도 그만큼 넓힌다.
- */
-.erp-data-list.bom-tree-split .bom-tree-cell > .bom-tree-code + .po-board-one-line {
-  display: none;
-}
-
-.erp-data-sub > .erp-data-list.bom-tree-table.bom-tree-split {
-  min-width: 42rem;
-}
-
 /* 품목 확장 속성 BOM 탭 구성품 표도 같은 모양 — 코드 뒤 「· 이름」은 옆 「품목명」 칸이 낸다(사용자 지시 2026-11-24). */
 .board-table.bom-tree-split .bom-tree-cell > .bom-tree-code + .po-board-one-line {
   display: none;
@@ -40419,6 +40406,10 @@ body:has(
 .action-link-button:focus-visible {
   outline: none;
   box-shadow:
+/* 배포 실패 안내 — 문장 끝 이동 단추가 글에 붙지 않게(밑줄 링크 → 단추 · 사용자 지시 2026-11-25). */
+.erp-wo-release-failures .action-link-button {
+  margin-left: var(--space-2);
+}
     inset 0 0 0 1px var(--outline-variant),
     var(--focus-ring);
 }
@@ -40444,8 +40435,4 @@ body:has(
   )
   :is(.required-mark, [class*='requiredMark']) {
   display: revert;
-}
-/* 배포 실패 안내 — 문장 끝 이동 단추가 글에 붙지 않게(밑줄 링크 → 단추 · 사용자 지시 2026-11-25). */
-.erp-wo-release-failures .action-link-button {
-  margin-left: var(--space-2);
 }

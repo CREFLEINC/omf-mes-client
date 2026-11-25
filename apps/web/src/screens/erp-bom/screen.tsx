@@ -54,9 +54,12 @@ const formatQty = (qty: number, uom: string): string => `${qty.toLocaleString()}
 /** 손실률은 0~1 비율로 온다(A-8) — 퍼센트로 옮겨 낸다. 부동소수 꼬리는 소수 둘째 자리에서 자른다. */
 const formatRate = (rate: number): string => `${String(Math.round(rate * 10000) / 100)}%`;
 
-/** 모품목 목록의 유형 — BOM 이 있는 제품 · 반제품만(원자재 · 상품 · 부자재는 BOM 이 없다). 처음은 제품. */
+/**
+ * 모품목 목록의 유형 — 「전체」(빈 값 · 유형 조건을 보내지 않는다)와 BOM 이 있는 제품 · 반제품. 처음은 전체(사용자 지시
+ * 2026-11-25 「기본값은 전체 품목 유형」).
+ */
 const PARENT_TYPES = ['FINISHED', 'SEMI_FINISHED'] as const;
-const DEFAULT_PARENT_TYPE = 'FINISHED';
+const ALL_TYPES = '';
 
 /** 주소의 조건 — 검색어 · 유형 · 쪽 · 고른 모품목. 새로고침·뒤로가기·공유가 같은 결과를 낸다. */
 interface Filters {
@@ -67,7 +70,7 @@ interface Filters {
 }
 
 /** 화면을 처음 열었을 때의 조건. 「초기화」가 돌아가는 자리이기도 하다. */
-const DEFAULT_FILTERS: Filters = { q: '', type: DEFAULT_PARENT_TYPE, hasBom: true };
+const DEFAULT_FILTERS: Filters = { q: '', type: ALL_TYPES, hasBom: true };
 
 const readId = (value: string | null): number | null => {
   const id = Number(value ?? '');
@@ -78,7 +81,7 @@ const readFilters = (params: URLSearchParams): Filters => {
   const type = params.get('type') ?? '';
   return {
     q: params.get('q') ?? '',
-    type: (PARENT_TYPES as readonly string[]).includes(type) ? type : DEFAULT_PARENT_TYPE,
+    type: (PARENT_TYPES as readonly string[]).includes(type) ? type : ALL_TYPES,
     hasBom: params.get('bom') !== 'all',
   };
 };
@@ -97,7 +100,7 @@ const toSearchParams = (
 ) => {
   const next = new URLSearchParams();
   if (filters.q !== '') next.set('q', filters.q);
-  if (filters.type !== DEFAULT_PARENT_TYPE) next.set('type', filters.type);
+  if (filters.type !== ALL_TYPES) next.set('type', filters.type);
   if (!filters.hasBom) next.set('bom', 'all');
   if (page > 1) next.set('page', String(page));
   if (item !== null) next.set('item', String(item));
@@ -150,7 +153,10 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
         <Select
           id={typeId}
           value={applied.type}
-          options={PARENT_TYPES.map((code) => ({ value: code, label: typeNameOf(code) }))}
+          options={[
+            { value: ALL_TYPES, label: t.fields.itemTypeAll },
+            ...PARENT_TYPES.map((code) => ({ value: code, label: typeNameOf(code) })),
+          ]}
           onChange={(value) => {
             onSearch({ ...applied, q: q.trim(), type: value });
           }}
@@ -217,14 +223,14 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
 
   const columns: Column<BomTreeRow>[] = [
     /*
-     * 다섯 열 모두 폭을 주어 상자 폭을 그 비율로 나눈다(사용자 지시 2026-11-25 — 품목코드 칸만 남는 폭을 다 쓰지 않게). 칸 안은 왼쪽 정렬(app.css `.bom-tree-table`)이라
-     * 단계마다 들여 쓴 자리 · 연결선이 줄마다 같은 세로선에 선다. 품목명은 옆 칸에 따로 둔다(사용자 지시 2026-11-24) —
-     * 이 칸은 펼침 단추 이름에 쓰려고 이름도 넘기고, 보이는 이름은 app.css `.bom-tree-split` 이 감춘다.
+     * 네 열 모두 폭을 주어 상자 폭을 그 비율로 나눈다(사용자 지시 2026-11-25 — 품목 칸만 남는 폭을 다 쓰지 않게). 칸 안은 왼쪽 정렬(app.css `.bom-tree-table`)이라
+     * 단계마다 들여 쓴 자리 · 연결선이 줄마다 같은 세로선에 선다. 품목은 「코드 · 이름」 한 칸으로 낸다(사용자 지시 2026-11-25 —
+     * 품목코드 · 품목명 두 칸을 다시 하나로).
      */
     {
       key: 'item',
-      header: t.parent.itemCode,
-      width: '280px',
+      header: t.tree.item,
+      width: '520px',
       render: (row) => {
         const item = itemOf(row.itemId);
         return (
@@ -237,16 +243,6 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
             onRetry={retryFailed}
           />
         );
-      },
-    },
-    {
-      key: 'itemName',
-      header: t.parent.itemName,
-      width: '240px',
-      render: (row) => {
-        const item = itemOf(row.itemId);
-        /* 받기 전 · 못 받음은 코드 칸이 그 사정을 낸다 — 여기는 비운다. */
-        return item.code === null ? t.values.empty : <OneLine text={item.name} />;
       },
     },
     {
@@ -284,7 +280,7 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
   return (
     <ErpListTable
       label={t.panes.components}
-      className="bom-tree-table bom-tree-split"
+      className="bom-tree-table"
       storageKey="omf-mes:erp-bom:columns:tree"
       columns={columns}
       rows={rows}
@@ -386,7 +382,7 @@ export const ErpBomScreen = () => {
   const parentItemId = readId(searchParams.get('item'));
 
   const parents = useParentItems({
-    itemTypeCode: filters.type,
+    ...(filters.type === ALL_TYPES ? {} : { itemTypeCode: filters.type }),
     ...(filters.hasBom ? { hasBom: true } : {}),
     ...(filters.q === '' ? {} : { q: filters.q }),
     ...(page > 1 ? { page } : {}),

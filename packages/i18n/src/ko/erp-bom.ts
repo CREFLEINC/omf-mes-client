@@ -7,6 +7,7 @@ export const erpBom = {
   fields: {
     hasBom: 'BOM이 있는 품목',
     itemType: '품목 유형 선택',
+    itemTypeAll: '전체',
     q: '품목 검색',
     qPlaceholder: '품목코드 또는 품목명을 입력하세요',
   },
@@ -37,6 +38,7 @@ export const erpBom = {
   },
   /** 하이라키 — 모품목 아래로 자품목, 자품목의 기본 BOM 구성을 한 단계씩 들여 쓴다. */
   tree: {
+    item: '품목',
     /** 깊이 한도(20단계)에 닿아 더 펴지 않는다. */
     depthLimit: '더 깊은 단계는 펴지 않습니다',
     retry: (label: string): string => `${label} 하위 구성 다시 불러오기`,
