@@ -47,6 +47,8 @@ export const splitPrintTargets = (
         uomCode: source.uomCode,
         issueSeq: label.issueSeq,
         workOrderNo: source.workOrderNo ?? '-',
+        /* 반제품 LOT 은 서버가 분리를 막는다(SEMI_FINISHED_LOT · 피처 016) — 늘 제품 LOT 라벨이다. */
+        wip: null,
       }),
     }));
 
