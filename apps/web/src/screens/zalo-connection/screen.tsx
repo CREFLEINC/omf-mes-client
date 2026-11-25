@@ -73,6 +73,8 @@ type SecretField = 'secretKey' | 'refreshToken';
 
 /** 저장 결과(오류 · 저장했습니다)를 보이는 상자 — 저장한 상자 안에 보인다. */
 type FeedbackArea = 'connection' | 'template';
+/** [수정]으로 여는 일반 칸 — 비밀값(앱 비밀 키 · 갱신 토큰)은 따로(`secretRow`). */
+type PlainField = 'appId' | 'paramMaxLength';
 
 const CONNECTION_SECTION: SaveSection = { kind: 'connection' };
 
@@ -90,7 +92,7 @@ interface TemplateRow {
 
 /**
  * W-CO-12 알림 연결 설정 — Zalo 연결 정보와 이벤트별 템플릿 ID(001 신설, 결정 #20).
- * 비밀값은 다시 보이지 않는다. [등록]·[변경]으로 새 값을 넣을 때만 보낸다.
+ * 비밀값은 다시 보이지 않는다. [등록]·[수정]으로 새 값을 넣을 때만 보낸다.
  */
 export const ZaloConnectionScreen = () => {
   const queryClient = useQueryClient();
@@ -117,6 +119,8 @@ export const ZaloConnectionScreen = () => {
   const [kindFilter, setKindFilter] = useState<TemplateRow['kind'] | null>(null);
   /* 오류 안내 줄 오른쪽 「오류 상세」 — 처음엔 접힘. */
   const [errorDetailOpen, setErrorDetailOpen] = useState(false);
+  /* 앱 ID · 변수 값 길이 제한 — 처음엔 값만 보이고 [수정]을 눌러야 입력 칸이 열린다(사용자 지시 2026-11-25). */
+  const [editing, setEditing] = useState<ReadonlySet<PlainField>>(new Set());
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const { splitRef, aboveRef } = useFitToViewport();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -131,6 +135,7 @@ export const ZaloConnectionScreen = () => {
     setHandover(nextHandover);
     setHandoverBaseline(nextHandover);
     setErrors({});
+    setEditing(new Set());
   };
 
   /* 처음 한 번만 채운다 — 저장 뒤 캐시를 바꿔도 다른 상자의 저장 안 한 값을 지우지 않는다(다시 불러오기는 `reload`). */
@@ -165,7 +170,7 @@ export const ZaloConnectionScreen = () => {
 
   const replace = useReplaceConnection((saved) => {
     /*
-     * ⭐ 조회 캐시도 저장 응답으로 바꾼다 — 상태 Chip·「등록됨」은 캐시를 읽으므로, 폼만 다시 채우면
+     * ⭐ 조회 캐시도 저장 응답으로 바꾼다 — 상태 Chip·「등록」은 캐시를 읽으므로, 폼만 다시 채우면
      * 첫 조회(미설정)가 새로 고칠 때까지 남는다(G2 실측).
      */
     queryClient.setQueryData(zaloConnectionKeys.connection, saved);
@@ -186,6 +191,8 @@ export const ZaloConnectionScreen = () => {
       setBaseline(next);
       setHandoverBaseline(nextHandover);
       setErrors({});
+      /* 저장한 상자의 연 칸은 닫는다 — 비밀값 칸이 저장 뒤 「등록 [수정]」으로 돌아가는 것과 같다. */
+      if (pending.section.kind === 'connection') setEditing(new Set());
     }
     setFlash(t.state.saved);
   });
@@ -266,6 +273,7 @@ export const ZaloConnectionScreen = () => {
     if (baseline === null) return;
     setValues((current) => (current === null ? current : withSection(current, baseline, section)));
     setHandover((current) => withHandoverSection(current, handoverBaseline, section));
+    if (section.kind === 'connection') setEditing(new Set());
     touched();
   };
 
@@ -315,7 +323,12 @@ export const ZaloConnectionScreen = () => {
   const fieldError = (key: string): string | undefined => errors[key] ?? replace.fieldErrors[key];
 
   /** 연결 정보 한 줄 — 라벨은 왼쪽 같은 폭, 값은 같은 자리에서 시작한다(앱 ID · 앱 비밀 키 · 갱신 토큰). */
-  const fieldRow = (label: string, value: ReactNode, required = false): ReactNode => (
+  const fieldRow = (
+    label: string,
+    value: ReactNode,
+    required = false,
+    note: ReactNode = null,
+  ): ReactNode => (
     <div className="zalo-field-row">
       <span className="field-label">
         {label}
@@ -326,18 +339,84 @@ export const ZaloConnectionScreen = () => {
         )}
       </span>
       <div className="zalo-field-value">{value}</div>
+      {note}
     </div>
   );
 
-  const secretRow = (field: SecretField, label: string, isSet: boolean): ReactNode => {
-    const value = values?.[field] ?? null;
-    if (value === null) {
-      /* 없으면 「미등록 [등록]」, 있으면 「등록됨 [변경]」. */
+  /**
+   * 앱 ID · 변수 값 길이 제한 — 닫혀 있으면 「저장 값 [수정]」(앱 ID 가 비었으면 「미등록 [등록]」), 열면 입력 칸 · [취소].
+   * [취소]는 칸을 닫고 저장 값으로 되돌린다. 저장 본문 · 검사는 종전 그대로(열지 않으면 저장 값이 실린다).
+   */
+  const plainRow = (
+    field: PlainField,
+    label: string,
+    input: ReactNode,
+    shown: string,
+    required: boolean,
+  ): ReactNode => {
+    if (!editing.has(field)) {
+      const isSet = shown !== '';
       const action = isSet ? t.actions.change : t.actions.register;
       return fieldRow(
         label,
         <div className="zalo-secret">
-          <span>{isSet ? t.values.registered : t.values.notRegistered}</span>
+          <span>{isSet ? shown : t.values.notRegistered}</span>
+          <Button
+            variant="outlined"
+            size="sm"
+            aria-label={`${label} ${action}`}
+            leadingIcon={<Icon name={isSet ? 'edit' : 'add'} size={16} aria-hidden />}
+            onClick={() => setEditing((current) => new Set(current).add(field))}
+          >
+            {action}
+          </Button>
+        </div>,
+        /* 빨간 * 는 입력 칸이 열렸을 때만 — 비밀값 칸과 같다. */
+        false,
+      );
+    }
+    return fieldRow(
+      label,
+      <div className="zalo-secret">
+        {input}
+        <Button
+          variant="outlined"
+          size="sm"
+          aria-label={`${label} ${t.actions.cancelChange}`}
+          leadingIcon={<Icon name="close" size={16} aria-hidden />}
+          onClick={() => {
+            if (baseline !== null) change({ [field]: baseline[field] });
+            setEditing((current) => {
+              const next = new Set(current);
+              next.delete(field);
+              return next;
+            });
+          }}
+        >
+          {t.actions.cancelChange}
+        </Button>
+      </div>,
+      required,
+    );
+  };
+
+  const secretRow = (
+    field: SecretField,
+    label: string,
+    isSet: boolean,
+    note: ReactNode = null,
+  ): ReactNode => {
+    const value = values?.[field] ?? null;
+    if (value === null) {
+      /* 없으면 「미등록 [등록]」, 있으면 「등록 [수정]」. */
+      const action = isSet ? t.actions.change : t.actions.register;
+      return fieldRow(
+        label,
+        <div className="zalo-secret">
+          {/* 「등록」 · 「미등록」은 라벨 모양(사용자 지시 2026-11-25) — 등록은 초록, 미등록은 무채색. */}
+          <Chip size="sm" status={isSet ? 'success' : 'idle'}>
+            {isSet ? t.values.registered : t.values.notRegistered}
+          </Chip>
           <Button
             variant="outlined"
             size="sm"
@@ -348,16 +427,20 @@ export const ZaloConnectionScreen = () => {
             {action}
           </Button>
         </div>,
+        false,
+        note,
       );
     }
 
-    /* [등록]·[변경]으로 연 칸은 비우면 저장을 막는다(secretRequired) — 필수. [취소]는 입력을 닫고 저장 값을 그대로 둔다. */
+    /* [등록]·[수정]으로 연 칸은 비우면 저장을 막는다(secretRequired) — 필수. [취소]는 입력을 닫고 저장 값을 그대로 둔다. */
     return fieldRow(
       label,
       <div className="zalo-secret">
+        {/* 필수인데 비어 있으면 빨간 테두리(사용자 지시 2026-11-25 · 다른 화면 `*-required-empty` 와 같은 방식). */}
         <TextField
           aria-label={label}
           required
+          containerClassName={value.trim() === '' ? 'zalo-required-empty' : undefined}
           type="password"
           autoComplete="new-password"
           value={value}
@@ -375,6 +458,7 @@ export const ZaloConnectionScreen = () => {
         </Button>
       </div>,
       true,
+      note,
     );
   };
 
@@ -541,7 +625,8 @@ export const ZaloConnectionScreen = () => {
         {feedback('connection')}
 
         <div className="zalo-form">
-          {fieldRow(
+          {plainRow(
+            'appId',
             t.fields.appId,
             <TextField
               aria-label={t.fields.appId}
@@ -550,15 +635,36 @@ export const ZaloConnectionScreen = () => {
               onChange={(event) => change({ appId: event.target.value })}
               error={fieldError('appId')}
             />,
+            baseline?.appId ?? '',
+            false,
           )}
           {secretRow('secretKey', t.fields.secretKey, data.secretKeySet)}
-          {secretRow('refreshToken', t.fields.refreshToken, data.refreshTokenSet)}
-          {fieldRow(
+          {/* 토큰 일시는 갱신 토큰 칸 아래 보조 글(사용자 지시 2026-11-25) — 갱신 토큰으로 받는 접속 토큰의 시각이다. */}
+          {secretRow(
+            'refreshToken',
+            t.fields.refreshToken,
+            data.refreshTokenSet,
+            tokenTimes.length > 0 ? (
+              <dl className="zalo-token-times">
+                {tokenTimes.map((item) => (
+                  <div key={item.label}>
+                    <dt>{item.label}</dt>
+                    <dd>{item.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null,
+          )}
+          {plainRow(
+            'paramMaxLength',
             t.fields.paramMaxLength,
             <div className="zalo-param-max">
               <TextField
                 aria-label={t.fields.paramMaxLength}
                 required
+                containerClassName={
+                  values.paramMaxLength.trim() === '' ? 'zalo-required-empty' : undefined
+                }
                 inputMode="numeric"
                 value={values.paramMaxLength}
                 onChange={(event) => change({ paramMaxLength: event.target.value })}
@@ -566,23 +672,14 @@ export const ZaloConnectionScreen = () => {
               />
               <span className="zalo-param-unit">{t.values.charUnit}</span>
             </div>,
+            baseline === null || baseline.paramMaxLength === ''
+              ? ''
+              : `${baseline.paramMaxLength}${t.values.charUnit}`,
             true,
           )}
         </div>
-        {/* 아래 줄 — 왼쪽 토큰 일시, 오른쪽 [취소][저장](시안 2026-11-25). */}
-        <div className="zalo-connection-foot">
-          {tokenTimes.length > 0 && (
-            <dl className="zalo-token-times">
-              {tokenTimes.map((item) => (
-                <div key={item.label}>
-                  <dt>{item.label}</dt>
-                  <dd>{item.value}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-          {sectionActions(CONNECTION_SECTION)}
-        </div>
+        {/* 아래 줄 — 오른쪽 [취소][저장](시안 2026-11-25). */}
+        <div className="zalo-connection-foot">{sectionActions(CONNECTION_SECTION)}</div>
       </>
     );
   };

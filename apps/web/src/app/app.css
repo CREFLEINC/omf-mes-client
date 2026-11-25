@@ -40591,19 +40591,28 @@ body:has(
   border-top: 1px solid var(--outline-variant);
 }
 
-.zalo-connection-foot > .zalo-token-times {
-  gap: var(--space-1) var(--space-5);
+.zalo-connection-foot > .form-actions {
+  margin: 0;
+}
+
+/* 토큰 일시는 갱신 토큰 칸 아래 보조 글 두 줄(사용자 지시 2026-11-25). 아래 줄에는 [취소][저장]만 오른쪽. */
+.zalo-connection-foot {
+  justify-content: flex-end;
+}
+
+.zalo-connection-box .zalo-field-row > .zalo-token-times {
+  display: grid;
+  gap: 2px;
+  margin: 0;
   color: var(--on-surface-variant);
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
 }
 
-.zalo-connection-foot > .zalo-token-times > div {
+.zalo-connection-box .zalo-field-row > .zalo-token-times > div {
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-1);
-}
-
-.zalo-connection-foot > .form-actions {
-  margin: 0 0 0 auto;
 }
 
 /* 비밀값 입력을 연 칸 — 네 칸 배치에서도 [취소]가 입력 칸 옆 한 줄에 남는다. */
@@ -40642,4 +40651,9 @@ body:has(
   gap: var(--space-2);
   margin: 0 0 0 auto;
   white-space: nowrap;
+}
+
+/* 알림 연결 설정 — 필수인데 비어 있는 칸(앱 비밀 키 · 갱신 토큰 입력, 변수 값 길이 제한)은 빨간 테두리(사용자 지시 2026-11-25). */
+.zalo-required-empty > div:has(input) {
+  box-shadow: inset 0 0 0 1px var(--semantic-error);
 }

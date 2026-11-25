@@ -96,6 +96,15 @@ const openTemplate = async (user: ReturnType<typeof userEvent.setup>, name: stri
 
 /** 상자마다 아래 오른쪽 [변경 취소][저장](#358) — 상자 이름으로 그 상자 안 단추를 찾는다. */
 const box = (name: string) => within(screen.getByRole('region', { name }));
+/* 앱 ID · 변수 값 길이 제한은 [수정](비었으면 [등록])을 눌러야 입력 칸이 열린다(사용자 지시 2026-11-25). */
+const openField = async (user: ReturnType<typeof userEvent.setup>, label: string) => {
+  await user.click(
+    await screen.findByRole('button', {
+      name: new RegExp(`^${label} (${t.actions.change}|${t.actions.register})$`),
+    }),
+  );
+  return screen.getByRole('textbox', { name: new RegExp(label) });
+};
 const saveIn = (name: string) => box(name).getByRole('button', { name: t.actions.save });
 
 /** 받은 본문을 그대로 저장한 것처럼 돌려준다 — ETag 는 "6", "7" … 로 오른다. */
@@ -123,7 +132,7 @@ describe('ZaloConnectionScreen', () => {
     const user = userEvent.setup();
     setup();
 
-    await screen.findByRole('textbox', { name: t.fields.appId });
+    await screen.findByRole('button', { name: `${t.fields.appId} ${t.actions.change}` });
     expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
     /* 정상 연결 · 발송 켜짐이면 제목 옆 상태 칩은 없다. */
     expect(screen.queryByRole('group', { name: t.panes.status })).toBeNull();
@@ -220,7 +229,7 @@ describe('ZaloConnectionScreen', () => {
     const user = userEvent.setup();
     setup();
 
-    await screen.findByRole('textbox', { name: t.fields.appId });
+    await screen.findByRole('button', { name: `${t.fields.appId} ${t.actions.change}` });
     expect(
       within(screen.getByRole('region', { name: t.workspace.list })).queryByRole('button', {
         name: t.actions.save,
@@ -246,10 +255,10 @@ describe('ZaloConnectionScreen', () => {
     const user = userEvent.setup();
     setup();
 
-    const appId = await screen.findByRole('textbox', { name: t.fields.appId });
+    const appId = await openField(user, t.fields.appId);
     await user.clear(appId);
     await user.type(appId, '77');
-    const length = screen.getByRole('textbox', { name: new RegExp(t.fields.paramMaxLength) });
+    const length = await openField(user, t.fields.paramMaxLength);
     await user.clear(length);
     await user.type(length, '150');
 
@@ -257,8 +266,11 @@ describe('ZaloConnectionScreen', () => {
       box(t.panes.connection).getByRole('textbox', { name: new RegExp(t.fields.paramMaxLength) }),
     ).toBe(length);
     await user.click(box(t.panes.connection).getByRole('button', { name: t.actions.revert }));
-    expect(appId).toHaveValue('1234567890');
-    expect(length).toHaveValue('100');
+    /* 되돌리면 연 칸도 닫히고 저장 값이 보인다. */
+    expect(appId).not.toBeInTheDocument();
+    expect(length).not.toBeInTheDocument();
+    expect(box(t.panes.connection).getByText('1234567890')).toBeInTheDocument();
+    expect(box(t.panes.connection).getByText(`100${t.values.charUnit}`)).toBeInTheDocument();
     expect(saveIn(t.panes.connection)).toBeDisabled();
   });
 
@@ -266,9 +278,7 @@ describe('ZaloConnectionScreen', () => {
     const user = userEvent.setup();
     const { writes } = setup({ respondPut: echoPut(connection()) });
 
-    const length = await screen.findByRole('textbox', {
-      name: new RegExp(t.fields.paramMaxLength),
-    });
+    const length = await openField(user, t.fields.paramMaxLength);
     await user.clear(length);
     await user.type(length, '150');
     await user.click(saveIn(t.panes.connection));
@@ -284,7 +294,7 @@ describe('ZaloConnectionScreen', () => {
     const { writes } = setup({ respondPut: echoPut(connection()) });
 
     await user.type(await openTemplate(user, '생산 실행'), 'TPL01');
-    const appId = screen.getByRole('textbox', { name: t.fields.appId });
+    const appId = await openField(user, t.fields.appId);
     await user.clear(appId);
     await user.type(appId, '999');
     await user.click(saveIn(t.panes.connection));
@@ -322,10 +332,10 @@ describe('ZaloConnectionScreen', () => {
     const user = userEvent.setup();
     const { writes } = setup({ respondPut: echoPut(connection()) });
 
-    const appId = await screen.findByRole('textbox', { name: t.fields.appId });
+    const appId = await openField(user, t.fields.appId);
     await user.clear(appId);
     await user.type(appId, '777');
-    const length = screen.getByRole('textbox', { name: new RegExp(t.fields.paramMaxLength) });
+    const length = await openField(user, t.fields.paramMaxLength);
     await user.clear(length);
     await user.type(length, '150');
     await user.click(
@@ -438,9 +448,7 @@ describe('ZaloConnectionScreen', () => {
         jsonResponse({ conflictCause: 'user', message: '버전 불일치' }, { status: 409 }),
     });
 
-    await user.clear(
-      await screen.findByRole('textbox', { name: new RegExp(t.fields.paramMaxLength) }),
-    );
+    await user.clear(await openField(user, t.fields.paramMaxLength));
     await user.type(
       screen.getByRole('textbox', { name: new RegExp(t.fields.paramMaxLength) }),
       '120',
@@ -499,7 +507,8 @@ describe('ZaloConnectionScreen', () => {
       }),
     });
 
-    expect(await screen.findAllByText(t.values.notRegistered)).toHaveLength(2);
+    /* 앱 ID · 앱 비밀 키 · 갱신 토큰 셋 다 「미등록」. */
+    expect(await screen.findAllByText(t.values.notRegistered)).toHaveLength(3);
     expect(
       screen.getByRole('button', { name: `${t.fields.refreshToken} ${t.actions.register}` }),
     ).toHaveTextContent(t.actions.register);
@@ -531,7 +540,7 @@ describe('ZaloConnectionScreen', () => {
       }),
     });
 
-    await user.type(await screen.findByRole('textbox', { name: t.fields.appId }), '123');
+    await user.type(await openField(user, t.fields.appId), '123');
     await user.click(
       screen.getByRole('button', { name: `${t.fields.secretKey} ${t.actions.register}` }),
     );
@@ -548,7 +557,8 @@ describe('ZaloConnectionScreen', () => {
     expect(
       screen.getByRole('button', { name: `${t.fields.secretKey} ${t.actions.change}` }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: t.fields.appId })).toHaveValue('123');
+    /* 저장하면 연 칸은 닫히고 저장 값이 보인다. */
+    expect(box(t.panes.connection).getByText('123')).toBeInTheDocument();
     expect(await openTemplate(user, '생산 실행')).toHaveValue('100');
   });
 
@@ -556,7 +566,7 @@ describe('ZaloConnectionScreen', () => {
     const user = userEvent.setup();
     const { router, writes } = setup();
 
-    const appId = await screen.findByRole('textbox', { name: t.fields.appId });
+    const appId = await openField(user, t.fields.appId);
     await user.clear(appId);
     await user.type(appId, '77');
 
@@ -583,7 +593,7 @@ describe('ZaloConnectionScreen', () => {
 
   it('고친 값이 없으면 묻지 않고 옮긴다(#358)', async () => {
     const { router } = setup();
-    await screen.findByRole('textbox', { name: t.fields.appId });
+    await screen.findByRole('button', { name: `${t.fields.appId} ${t.actions.change}` });
 
     await act(async () => {
       await router?.navigate('/system/users-roles');

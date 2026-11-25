@@ -21,7 +21,7 @@ export const zaloConnection = {
     errorMessage: '오류 원문',
   },
   values: {
-    registered: '등록됨',
+    registered: '등록',
     notRegistered: '미등록',
     none: '—',
     charUnit: '자',
