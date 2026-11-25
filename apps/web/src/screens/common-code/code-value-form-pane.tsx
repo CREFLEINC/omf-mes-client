@@ -176,7 +176,7 @@ export const CodeValueFormPane = ({
         {/* 등록 팝업에는 사용 중지 자리를 두지 않는다 — 아직 없는 자원이라 해당하지 않는 액션이다. */}
         {deactivateDisabledReason === null ? (
           <div className="field-cell form-actions-secondary">
-            <Button variant="outlined" onClick={onDeactivate}>
+            <Button variant="outlined" size="sm" onClick={onDeactivate}>
               {messages.common.deactivate}
             </Button>
           </div>
@@ -185,6 +185,7 @@ export const CodeValueFormPane = ({
             label={messages.common.deactivate}
             reason={deactivateDisabledReason}
             className="form-actions-secondary"
+            size="sm"
           />
         )}
 

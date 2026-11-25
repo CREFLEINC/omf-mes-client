@@ -107,6 +107,7 @@ import {
   type TerminalView,
   type TokenView,
 } from './types';
+import './layout.css';
 
 const t = messages.terminalProcessMap;
 
@@ -347,13 +348,16 @@ export const TerminalProcessMapScreen = () => {
     return terminal.registrationStatusCode === 'REGISTERED' ? codeNames.status(text) : text;
   };
 
+  const registrationLabelOf = (terminal: TerminalView): string =>
+    terminal.registrationStatusCode === 'REGISTERED'
+      ? t.list.registrationComplete
+      : terminal.registrationStatusCode === 'UNREGISTERED'
+        ? t.list.registrationPending
+        : t.list.registrationUnknown;
+
   const registrationChip = (terminal: TerminalView) => (
     <Chip size="sm" status={terminal.registrationStatusCode === 'REGISTERED' ? 'success' : 'idle'}>
-      {terminal.registrationStatusCode === 'REGISTERED'
-        ? t.list.registrationComplete
-        : terminal.registrationStatusCode === 'UNREGISTERED'
-          ? t.list.registrationPending
-          : t.list.registrationUnknown}
+      {registrationLabelOf(terminal)}
     </Chip>
   );
 
@@ -605,7 +609,8 @@ export const TerminalProcessMapScreen = () => {
             </div>
             <div className="parts-iqc-fact">
               <dt className="field-label">{t.terminal.registration}</dt>
-              <dd>{registrationChip(selected)}</dd>
+              {/* 상세 요약 상자에서는 운영 상태와 같은 글자로 — 표의 라벨(Chip)은 글이 작아 옆 칸 값과 크기가 달라 보였다(사용자 지시 2026-11-25). */}
+              <dd>{registrationLabelOf(selected)}</dd>
             </div>
             {/* 등록 상태와 등록 일시를 나눈다(사용자 지시 2026-11-20 · #333). */}
             <div className="parts-iqc-fact">

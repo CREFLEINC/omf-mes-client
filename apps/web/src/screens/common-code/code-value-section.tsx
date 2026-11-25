@@ -320,10 +320,10 @@ export const CodeValueSection = ({
    */
   const addAction: ReactNode =
     codeGroupId === null ? (
-      <DisabledAction label={t.actions.add} reason={t.actionReasons.addNeedsGroup} />
+      <DisabledAction label={t.actions.add} reason={t.actionReasons.addNeedsGroup} size="sm" />
     ) : (
       <div className="field-cell">
-        <Button variant="outlined" disabled={isCreating} onClick={handleAdd}>
+        <Button variant="outlined" size="sm" disabled={isCreating} onClick={handleAdd}>
           {t.actions.add}
         </Button>
       </div>

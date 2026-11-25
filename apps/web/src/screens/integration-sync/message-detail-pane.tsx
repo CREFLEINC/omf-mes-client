@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { directionName, documentNoOf, interfaceName } from './message-labels';
 import { formatDateTime, toStatusView } from './message-status';
 import type { MessageDetailView } from './types';
+import './layout.css';
 
 const t = messages.integrationSync;
 

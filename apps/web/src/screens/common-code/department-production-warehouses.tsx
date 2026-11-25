@@ -322,9 +322,10 @@ export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectio
           </h3>
           <InfoTip text={t.help} />
         </div>
-        {/* 상자 안 다른 단추(취소 · 저장)와 같은 크기(사용자 지시 2026-11-25). */}
+        {/* 상세 상자 안 보조 단추는 작은 크기 — 취소 · 저장만 기본 크기(사용자 지시 2026-11-25). */}
         <Button
           variant="outlined"
+          size="sm"
           disabled={editor.isLoading || editor.loadError !== null}
           onClick={() => setPickerOpen(true)}
         >

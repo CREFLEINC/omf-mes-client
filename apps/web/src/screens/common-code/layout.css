@@ -87,3 +87,11 @@ dialog .field-cell.users-roles-required-empty > div > button[aria-haspopup] {
     minmax(min(100%, max(14rem, (100% - var(--space-4)) / 2)), 1fr)
   );
 }
+
+/*
+ * 코드값 상세의 「사용 중지」는 작은 단추(sm)인데 같은 줄의 「취소 · 저장」은 기본 크기다(사용자 지시 2026-11-25). 줄은
+ * 사유 글이 아래로 자라도 취소 · 저장이 윗줄에 남게 위 맞춤이라, 작은 단추만 두 높이 차의 절반만큼 내려 가운데를 맞춘다.
+ */
+.common-code-tab-panel .form-actions > .form-actions-secondary > button:first-child {
+  margin-top: calc((var(--control-height-md) - var(--control-height-sm)) / 2);
+}

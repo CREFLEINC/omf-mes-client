@@ -40058,7 +40058,11 @@ body:has(
  * 아래 입력칸과는 띄운다(사용자 지시 2026-11-25 — 라벨이 입력칸에 붙어 보였다).
  */
 .code-lock-label-row > .code-lock-chip {
-  margin-block: -10px 2px;
+  margin-block: -4px;
+}
+
+.code-lock-label-row:has(> .code-lock-chip) {
+  margin-bottom: var(--space-3);
 }
 
 /* DS 내장 라벨을 쓰던 칸이 잠겨 이름을 밖으로 꺼낸 경우 — 내장 라벨과 같은 간격(이름 · 칸 사이 space-1). */

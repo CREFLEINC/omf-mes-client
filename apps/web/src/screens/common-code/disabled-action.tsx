@@ -1,4 +1,4 @@
-import { Button } from '@crefle/web-ui';
+import { Button, type ButtonSize } from '@crefle/web-ui';
 import { useId } from 'react';
 
 export interface DisabledActionProps {
@@ -7,6 +7,8 @@ export interface DisabledActionProps {
   reason: string;
   /** 액션 줄에서 위치를 정하는 배치 클래스(예: `form-actions-secondary`). */
   className?: string;
+  /** 상세 상자 안 보조 단추(사용 중지 · 추가)는 `sm` — 취소 · 저장만 기본 크기(사용자 지시 2026-11-25). */
+  size?: ButtonSize;
 }
 
 /**
@@ -19,12 +21,12 @@ export interface DisabledActionProps {
  * - 사유는 그 컨트롤 바로 아래 왼쪽 가장자리를 맞춰 놓는다(`.field-cell`).
  * - `variant`는 `outlined`다. `text`는 비활성일 때 흐린 글자만 남아 버튼으로 읽히지 않는다.
  */
-export const DisabledAction = ({ label, reason, className }: DisabledActionProps) => {
+export const DisabledAction = ({ label, reason, className, size }: DisabledActionProps) => {
   const noteId = useId();
 
   return (
     <div className={className === undefined ? 'field-cell' : `field-cell ${className}`}>
-      <Button variant="outlined" disabled aria-describedby={noteId}>
+      <Button variant="outlined" size={size} disabled aria-describedby={noteId}>
         {label}
       </Button>
       <span id={noteId} className="field-note">

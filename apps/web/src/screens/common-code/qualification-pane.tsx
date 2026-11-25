@@ -253,7 +253,7 @@ export const QualificationPane = ({
          * 「이 화면에는 없는 기능」으로 오해하고 다른 곳을 찾는다(배치 규범 4).
          */}
         <div className="filter-bar">
-          <DisabledAction label={t.actions.add} reason={t.actionReasons.needsWorker} />
+          <DisabledAction label={t.actions.add} reason={t.actionReasons.needsWorker} size="sm" />
         </div>
       </section>
     );
@@ -276,7 +276,7 @@ export const QualificationPane = ({
 
       <div className="filter-bar">
         <div className="field-cell">
-          <Button variant="outlined" disabled={isLocked} onClick={onAdd}>
+          <Button variant="outlined" size="sm" disabled={isLocked} onClick={onAdd}>
             {t.actions.add}
           </Button>
         </div>
