@@ -70,8 +70,6 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     code: 'Mã máy quét',
     /** ⛔ 등록 뒤에는 못 바꾼다 — 키다. */
     codeLocked: 'Không thể thay đổi sau khi đăng ký.',
-    /** 수정 팝업의 단말 코드 옆(사용자 지시 2026-11-20 · #333). */
-    codeReadOnly: 'Không thể thay đổi',
     plant: 'Nhà máy',
     type: 'Loại máy quét',
     status: 'Trạng thái vận hành',

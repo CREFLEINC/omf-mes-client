@@ -67,8 +67,6 @@ export const terminalProcessMap = {
     code: '단말 코드',
     /** ⛔ 등록 뒤에는 못 바꾼다 — 키다. */
     codeLocked: '등록 후 변경할 수 없습니다.',
-    /** 수정 팝업의 단말 코드 옆(사용자 지시 2026-11-20 · #333). */
-    codeReadOnly: '변경 불가',
     plant: '공장',
     type: '단말 유형',
     status: '운영 상태',

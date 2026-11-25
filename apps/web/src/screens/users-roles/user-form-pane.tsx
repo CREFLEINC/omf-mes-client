@@ -1,4 +1,4 @@
-import { Button, Icon, IconButton, TextField } from '@crefle/web-ui';
+import { Button, Chip, Icon, IconButton, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId, useState } from 'react';
 
@@ -66,13 +66,10 @@ const ValueField = ({
       <span className="field-label users-roles-locked-label">
         <span id={labelId}>{label}</span>
         {/* 칸 이름 오른쪽 「변경 불가」 라벨 — 기준정보 화면의 잠긴 코드 안내와 같은 모양(사용자 지시 2026-11-20 · #333). */}
-        <span
-          id={lockedId}
-          className="iqc-inspection-action-note inspection-standard-label-hint"
-          data-tone="info"
-        >
+        {/* 회색 상태 라벨 — 다른 화면의 잠긴 코드 「변경 불가」와 같은 모양(사용자 지시 2026-11-25). */}
+        <Chip id={lockedId} variant="status" size="sm" status="idle" className="code-lock-chip">
           {lockedLabel}
-        </span>
+        </Chip>
       </span>
       {/* 입력칸이 아님을 읽기 쉬운 채로 보인다 — 흐린 비활성 입력칸으로 그리면 값이 잘 안 읽힌다. */}
       <p className="readonly-value" aria-labelledby={labelId} aria-describedby={lockedId}>

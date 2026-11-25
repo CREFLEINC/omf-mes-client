@@ -4,7 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
-import { SaveErrorBanner } from '../../patterns/master';
+import { CodeLockLabel, SaveErrorBanner } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 import { FieldLabel } from './field-label';
 import { LoadErrorBanner } from './load-error-banner';
@@ -120,12 +120,19 @@ export const TerminalForm = ({
        */}
       <div className="form-grid terminal-map-form">
         <div className="field-cell">
-          <FieldLabel
-            htmlFor={codeId}
-            label={t.terminal.code}
-            required={isNew}
-            note={isNew ? t.terminal.codeLocked : t.terminal.codeReadOnly}
-          />
+          {/* 수정에서는 칸 이름 오른쪽 회색 「변경 불가」 라벨 — 다른 화면의 잠긴 코드와 같은 모양(사용자 지시 2026-11-25). */}
+          {isNew ? (
+            <FieldLabel
+              htmlFor={codeId}
+              label={t.terminal.code}
+              required
+              note={t.terminal.codeLocked}
+            />
+          ) : (
+            <CodeLockLabel reason={t.terminal.codeLocked} reasonId={`${codeId}-lock`}>
+              <FieldLabel htmlFor={codeId} label={t.terminal.code} required={false} />
+            </CodeLockLabel>
+          )}
           {/* 수정에서는 입력칸이 아니라 글자로만 — 고칠 수 있는 칸처럼 보이지 않게(사용자 지시 2026-11-20 · #333). */}
           {isNew ? (
             <TextField
@@ -138,7 +145,11 @@ export const TerminalForm = ({
               }}
             />
           ) : (
-            <output id={codeId} className="terminal-map-form-static">
+            <output
+              id={codeId}
+              className="terminal-map-form-static"
+              aria-describedby={`${codeId}-lock`}
+            >
               {draft.terminalCode}
             </output>
           )}

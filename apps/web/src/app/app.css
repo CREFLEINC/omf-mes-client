@@ -12689,10 +12689,12 @@ a.erp-send-chips:focus-visible {
 .users-roles-locked-label {
   display: flex;
   align-items: center;
+  gap: var(--space-2);
 }
 
-.users-roles-locked-label > .inspection-standard-label-hint {
-  line-height: 1.2;
+/* 회색 「변경 불가」 라벨(24px)이 이름 글줄보다 높다 — 위아래를 겹쳐 이름 줄 높이를 그대로 둔다(사용자 지시 2026-11-25). */
+.users-roles-locked-label > .code-lock-chip {
+  margin-block: -4px;
 }
 
 /*
