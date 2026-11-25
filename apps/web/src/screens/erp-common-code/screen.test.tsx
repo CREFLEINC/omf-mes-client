@@ -127,11 +127,11 @@ describe('ErpCommonCodeScreen', () => {
 
     const chips = screen.getByRole('group', { name: '사용 여부' });
     expect(within(chips).queryByText(/전체/)).not.toBeInTheDocument();
-    await user.click(within(chips).getByRole('button', { name: '미사용 1건' }));
+    await user.click(within(chips).getByRole('button', { name: '미사용 1' }));
     expect(screen.queryByRole('button', { name: 'PUR_GROUP' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'UNIT' })).toBeInTheDocument();
 
-    await user.click(within(chips).getByRole('button', { name: '미사용 1건' }));
+    await user.click(within(chips).getByRole('button', { name: '미사용 1' }));
     expect(screen.getByRole('button', { name: 'PUR_GROUP' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'UNIT' })).toBeInTheDocument();
   });
@@ -141,7 +141,7 @@ describe('ErpCommonCodeScreen', () => {
     await screen.findByRole('button', { name: 'PUR_GROUP' });
 
     const chips = screen.getByRole('group', { name: '사용 여부' });
-    expect(within(chips).getByRole('button', { name: '사용 2건' })).toBeInTheDocument();
+    expect(within(chips).getByRole('button', { name: '사용 2' })).toBeInTheDocument();
     expect(within(chips).queryByRole('button', { name: /미사용/ })).not.toBeInTheDocument();
   });
 

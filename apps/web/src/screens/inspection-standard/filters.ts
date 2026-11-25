@@ -28,7 +28,7 @@ const URL_KEYS = {
 
 /** 쪽 크기 — 공용 쪽 이동의 20 · 50 · 100. 기본 50 은 서버 기본과 같아 주소 · 요청에 싣지 않는다(#196). */
 export const DEFAULT_PAGE_SIZE = 50;
-const PAGE_SIZE_VALUES = [20, 50, 100];
+const PAGE_SIZE_VALUES = [10, 20, 50];
 
 /** 켜짐을 나타내는 유일한 값. 다른 값은 꺼진 것으로 본다 — 주소를 손으로 고쳐도 뜻이 흔들리지 않는다. */
 const ON = '1';

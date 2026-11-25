@@ -77,7 +77,7 @@ export const AutoPlanResult = ({
             aria-pressed={filter === code}
             onClick={() => onFilterChange(filter === code ? null : code)}
           >
-            {labels[code]} {outcomes.filter((item) => autoPlanResultCode(item) === code).length}건
+            {labels[code]} {outcomes.filter((item) => autoPlanResultCode(item) === code).length}
           </Button>
         ))}
       </div>

@@ -151,7 +151,7 @@ export const ErpProductionOrderFilterBar = ({
          */}
         <div className="field-cell erp-wo-period-field">
           <label className="field-label" htmlFor={periodId}>
-            {t.fields.plannedStartDate}
+            {t.filters.plannedStartDateSearch}
           </label>
           <DatePicker
             id={periodId}

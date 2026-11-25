@@ -431,18 +431,18 @@ describe('W-CO-15 공장 근무일 설정', () => {
     const rows = async () => (await table()).getAllByRole('row').slice(1);
     const group = within(screen.getByRole('group', { name: t.daysFilter.group }));
 
-    expect(await group.findByRole('button', { name: '주 6일제 1건' })).toBeInTheDocument();
-    expect(group.getByRole('button', { name: '주 5일제 1건' })).toBeInTheDocument();
+    expect(await group.findByRole('button', { name: '주 6일제 1' })).toBeInTheDocument();
+    expect(group.getByRole('button', { name: '주 5일제 1' })).toBeInTheDocument();
     expect(group.queryByRole('button', { name: /전체/ })).toBeNull();
 
-    await user.click(group.getByRole('button', { name: '주 6일제 1건' }));
+    await user.click(group.getByRole('button', { name: '주 6일제 1' }));
     await waitFor(async () => expect(await rows()).toHaveLength(1));
-    expect(group.getByRole('button', { name: '주 6일제 1건' })).toHaveAttribute(
+    expect(group.getByRole('button', { name: '주 6일제 1' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
 
-    await user.click(group.getByRole('button', { name: '주 6일제 1건' }));
+    await user.click(group.getByRole('button', { name: '주 6일제 1' }));
     await waitFor(async () => expect(await rows()).toHaveLength(2));
   });
 
@@ -451,7 +451,7 @@ describe('W-CO-15 공장 근무일 설정', () => {
     await table();
     const group = within(screen.getByRole('group', { name: t.daysFilter.group }));
 
-    expect(await group.findByRole('button', { name: '주 5일제 2건' })).toBeInTheDocument();
+    expect(await group.findByRole('button', { name: '주 5일제 2' })).toBeInTheDocument();
     expect(group.queryByRole('button', { name: /주 6일제/ })).toBeNull();
   });
 });

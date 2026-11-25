@@ -138,7 +138,7 @@ describe('검사실적·검사결과 조회 조립', () => {
     });
 
     const chips = screen.getByRole('group', { name: '종합 판정 선택' });
-    expect(await within(chips).findByRole('button', { name: '불합격 3건' })).toBeVisible();
+    expect(await within(chips).findByRole('button', { name: '불합격 3' })).toBeVisible();
     expect(within(chips).queryByRole('button', { name: /전체/ })).toBeNull();
   });
 

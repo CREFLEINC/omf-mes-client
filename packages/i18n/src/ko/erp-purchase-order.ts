@@ -46,6 +46,8 @@ export const erpPurchaseOrder = {
     supplierSelect: '공급사 검색',
     plantSelect: '공장 검색',
     statusSelect: '등록 상태 선택',
+    /** 조회 줄 날짜 칸 이름 — 다른 칸처럼 「검색」을 붙인다(사용자 지시 2026-11-25). 목록 열 이름은 `fields.orderDate` 그대로. */
+    orderDateSearch: '발주일 검색',
     /** 발주일 칸의 흐린 안내(사용자 지시 2026-11-24). */
     orderDatePlaceholder: '발주일을 선택하세요',
     orderTypeSelect: '발주 유형 선택',
@@ -67,7 +69,7 @@ export const erpPurchaseOrder = {
     all: '전체',
     open: '미완료',
     done: '완료',
-    withCount: (label: string, count: number): string => `${label} ${String(count)}건`,
+    withCount: (label: string, count: number): string => `${label} ${String(count)}`,
     status: {
       NOT_STARTED: '입하 전',
       PARTIAL: '일부 입하',

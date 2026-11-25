@@ -128,7 +128,7 @@ export const common = {
     requested: '대기',
     inProgress: '진행',
     completed: '완료',
-    count: (label: string, count: number): string => `${label} ${String(count)}건`,
+    count: (label: string, count: number): string => `${label} ${String(count)}`,
     filterOn: (label: string): string => `${label} 의뢰만 보기`,
     filterOff: (label: string): string => `${label} 거르기 해제`,
     pendingOnly: '대기·진행만 보기', // ui-check-ignore: C-13 사용자 지시 문구(2026-10-26 · #185)

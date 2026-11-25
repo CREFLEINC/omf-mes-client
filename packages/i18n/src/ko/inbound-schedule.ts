@@ -288,8 +288,8 @@ export const inboundSchedule = {
     },
     /** 「검사 대기 4」 — 목록 줄 라벨의 글자. */
     groupCount: (label: string, count: number): string => `${label} ${String(count)}`,
-    /** 「검사 대기 4건」 — 탭 줄 단계 칩의 글자. 목록 줄 라벨(`groupCount`)은 그대로다(사용자 지시 2026-11-24 · #358). */
-    chipCount: (label: string, count: number): string => `${label} ${String(count)}건`,
+    /** 「검사 대기 4」 — 탭 줄 단계 칩의 글자. 라벨에는 「건」을 붙이지 않는다(사용자 지시 2026-11-25 · #358). */
+    chipCount: (label: string, count: number): string => `${label} ${String(count)}`,
     /** 칩을 누르면 그 묶음의 LOT 이 있는 발주만 남는다. 다시 누르면 풀린다. */
     filterOn: (label: string): string => `${label} 발주만 보기`,
     filterOff: (label: string): string => `${label} 조건 해제`,

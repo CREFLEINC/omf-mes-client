@@ -24,7 +24,7 @@ describe('이력 조회 주소 조건', () => {
 
   it('읽고 쓰면 같은 주소가 된다', () => {
     const query =
-      'kind=SHIPMENT&from=2026-10-20&to=2026-10-26&item=7&mlot=A&plot=P&ir=IR-1&wo=WO-1&sh=SH-1&sup=9&cus=4&page=2&size=100';
+      'kind=SHIPMENT&from=2026-10-20&to=2026-10-26&item=7&mlot=A&plot=P&ir=IR-1&wo=WO-1&sh=SH-1&sup=9&cus=4&page=2&size=20';
     expect(toSearchParams(readFilters(params(query))).toString()).toBe(query);
   });
 

@@ -26,8 +26,8 @@ describe('UsageChips (#209)', () => {
       </>,
     );
 
-    expect(await screen.findByRole('button', { name: '사용 7건' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '미사용 2건' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: '사용 7' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '미사용 2' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /전체/ })).not.toBeInTheDocument();
   });
 
@@ -39,7 +39,7 @@ describe('UsageChips (#209)', () => {
       </>,
     );
 
-    expect(await screen.findByRole('button', { name: '사용 7건' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: '사용 7' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /미사용/ })).not.toBeInTheDocument();
 
     rerender(
@@ -52,7 +52,7 @@ describe('UsageChips (#209)', () => {
         />
       </>,
     );
-    expect(await screen.findByRole('button', { name: '미사용 0건' })).toHaveAttribute(
+    expect(await screen.findByRole('button', { name: '미사용 0' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );

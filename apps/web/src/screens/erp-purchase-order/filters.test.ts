@@ -32,13 +32,13 @@ describe('erp-purchase-order filters', () => {
   it('미완료는 `openOnly` 와 `progress=OPEN` 을 함께, 완료는 `progress=COMPLETED` 만 싣는다', () => {
     expect(toListQuery({ ...DEFAULT_FILTERS, progress: 'open' }, 1)).toEqual({
       page: 1,
-      size: 25,
+      size: 20,
       openOnly: true,
       progress: 'OPEN',
     });
     expect(toListQuery({ ...DEFAULT_FILTERS, progress: 'done' }, 1)).toEqual({
       page: 1,
-      size: 25,
+      size: 20,
       progress: 'COMPLETED',
     });
   });
@@ -53,7 +53,7 @@ describe('erp-purchase-order filters', () => {
     const params = new URLSearchParams('page=-1&sel=abc');
     expect(readPage(params)).toBe(1);
     expect(readSelectedId(params)).toBeNull();
-    expect(toListQuery({ ...DEFAULT_FILTERS, supplier: 'x' }, 1)).toEqual({ page: 1, size: 25 });
+    expect(toListQuery({ ...DEFAULT_FILTERS, supplier: 'x' }, 1)).toEqual({ page: 1, size: 20 });
   });
 
   it('빈 조건은 쿼리에 싣지 않는다', () => {
@@ -61,7 +61,7 @@ describe('erp-purchase-order filters', () => {
       toListQuery({ ...DEFAULT_FILTERS, plant: '3101', status: 'POSTED', to: '2026-10-31' }, 2),
     ).toEqual({
       page: 2,
-      size: 25,
+      size: 20,
       plantId: 3101,
       statusCode: 'POSTED',
       orderDateTo: '2026-10-31',
@@ -74,7 +74,7 @@ describe('erp-purchase-order filters', () => {
     expect(readFilters(params).orderType).toBe('PO');
     expect(toListQuery(readFilters(params), 1)).toEqual({
       page: 1,
-      size: 25,
+      size: 20,
       erpOrderTypeCode: 'PO',
     });
     expect(toListQuery(DEFAULT_FILTERS, 1)).not.toHaveProperty('erpOrderTypeCode');

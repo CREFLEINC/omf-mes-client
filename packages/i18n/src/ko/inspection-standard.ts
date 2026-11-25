@@ -238,7 +238,7 @@ export const inspectionStandard = {
     usageLabel: '사용 여부',
     usageActive: '사용',
     usageInactive: '미사용',
-    usageCount: (label: string, count: number): string => `${label} ${String(count)}건`,
+    usageCount: (label: string, count: number): string => `${label} ${String(count)}`,
     /* 품목 조건 — 검사 조회·판정의 품목 검색과 같은 모양(#196). */
     item: '품목 검색',
     itemPlaceholder: '품목을 입력하세요',

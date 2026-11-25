@@ -322,7 +322,7 @@ describe('제품 검사표 조회', () => {
         .filter((r) => r.method === 'GET' && r.path.endsWith('/quality/inspection-sheets'))
         .map((r) => r.query);
     const chips = await screen.findByRole('group', { name: t.list.statuses });
-    expect(await within(chips).findByRole('button', { name: '완료 1건' })).toBeInTheDocument();
+    expect(await within(chips).findByRole('button', { name: '완료 1' })).toBeInTheDocument();
     // 「전체」 칩은 두지 않는다(사용자 지시 2026-11-24).
     expect(within(chips).queryByRole('button', { name: /^전체/ })).not.toBeInTheDocument();
 

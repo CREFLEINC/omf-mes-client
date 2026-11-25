@@ -47,7 +47,7 @@ export const inspectionSheetTemplate = {
     usageLabel: '사용 여부',
     usageActive: '사용',
     usageInactive: '미사용',
-    usageCount: (label: string, count: number): string => `${label} ${String(count)}건`,
+    usageCount: (label: string, count: number): string => `${label} ${String(count)}`,
     add: '기준 추가',
     empty: '등록한 검사표 기준이 없습니다.',
     emptyFiltered: '조건에 맞는 검사표 기준이 없습니다.',

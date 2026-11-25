@@ -36,6 +36,8 @@ export const erpProductionOrder = {
     /** 계획 시작일 칸의 흐린 안내(사용자 지시 2026-11-24). */
     plannedStartDatePlaceholder: '계획 시작일을 선택하세요',
     statusSelect: '상태 선택',
+    /** 조회 줄 날짜 칸 이름 — 다른 칸처럼 「검색」을 붙인다(사용자 지시 2026-11-25). 목록 열 이름은 `fields.plannedStartDate` 그대로. */
+    plannedStartDateSearch: '계획 시작일 검색',
     itemPlaceholder: '품목을 검색해 고르세요',
     itemClear: '품목 지우기',
     itemPick: '고르기',
@@ -51,7 +53,7 @@ export const erpProductionOrder = {
     all: '전체',
     open: '미완료',
     done: '완료',
-    withCount: (label: string, count: number): string => `${label} ${String(count)}건`,
+    withCount: (label: string, count: number): string => `${label} ${String(count)}`,
     status: {
       NOT_STARTED: '생산 전',
       PARTIAL: '생산 중',

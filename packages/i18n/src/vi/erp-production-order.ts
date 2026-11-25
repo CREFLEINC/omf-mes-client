@@ -32,6 +32,7 @@ export const erpProductionOrder: Translated<typeof ko.erpProductionOrder> = {
     itemSelect: 'Tìm mặt hàng',
     plannedStartDatePlaceholder: 'Chọn ngày bắt đầu kế hoạch',
     statusSelect: 'Chọn trạng thái',
+    plannedStartDateSearch: 'Tìm theo ngày bắt đầu kế hoạch',
     itemPlaceholder: 'Tìm và chọn mặt hàng',
     itemClear: 'Xóa mặt hàng',
     itemPick: 'Chọn',

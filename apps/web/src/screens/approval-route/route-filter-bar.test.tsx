@@ -195,7 +195,7 @@ describe('ActiveFilterChips — 위 줄 사용 유무 라벨(사용자 지시 20
     const onChange = vi.fn();
     render(<ActiveFilterChips includeInactive={false} activeCount={4} onChange={onChange} />);
 
-    const chip = screen.getByRole('button', { name: '사용 4건' });
+    const chip = screen.getByRole('button', { name: '사용 4' });
     expect(chip).toHaveAttribute('aria-pressed', 'true');
     expect(screen.queryByRole('button', { name: /전체/ })).not.toBeInTheDocument();
 
@@ -207,7 +207,7 @@ describe('ActiveFilterChips — 위 줄 사용 유무 라벨(사용자 지시 20
     const onChange = vi.fn();
     render(<ActiveFilterChips includeInactive activeCount={4} onChange={onChange} />);
 
-    await userEvent.setup().click(screen.getByRole('button', { name: '사용 4건' }));
+    await userEvent.setup().click(screen.getByRole('button', { name: '사용 4' }));
     expect(onChange).toHaveBeenCalledWith(false);
   });
 
@@ -218,6 +218,6 @@ describe('ActiveFilterChips — 위 줄 사용 유무 라벨(사용자 지시 20
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
 
     rerender(<ActiveFilterChips includeInactive={false} activeCount={0} onChange={vi.fn()} />);
-    expect(screen.getByRole('button', { name: '사용 0건' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '사용 0' })).toBeInTheDocument();
   });
 });

@@ -51,21 +51,16 @@ describe('생산계획 자동 전개 결과', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: '시험 실행' }));
     const result = await screen.findByRole('region', { name: '생산계획 자동 전개 결과' });
-    for (const label of [
-      '계획 확정 1건',
-      '미확정 계획 1건',
-      '자동 전개 미처리 1건',
-      '실행 실패 1건',
-    ])
+    for (const label of ['계획 확정 1', '미확정 계획 1', '자동 전개 미처리 1', '실행 실패 1'])
       expect(within(result).getByRole('button', { name: label })).toBeVisible();
     expect(within(result).getAllByRole('row')).toHaveLength(5);
     const draft = within(result).getByText('ERP-2').closest('tr');
     expect(draft).toHaveTextContent(reasonLabel('LINE_UNKNOWN'));
     expect(draft).toHaveTextContent(reasonLabel('PLAN_NOT_CONFIRMED'));
-    await user.click(within(result).getByRole('button', { name: '미확정 계획 1건' }));
+    await user.click(within(result).getByRole('button', { name: '미확정 계획 1' }));
     expect(within(result).getByText('ERP-2')).toBeVisible();
     expect(within(result).queryByText('ERP-3')).toBeNull();
-    await user.click(within(result).getByRole('button', { name: '계획 확정 1건' }));
+    await user.click(within(result).getByRole('button', { name: '계획 확정 1' }));
     expect(within(result).getByText('ERP-1')).toBeVisible();
     expect(within(result).getByRole('link', { name: 'ERP-1 계획 확인' })).toHaveAttribute(
       'href',

@@ -51,11 +51,11 @@ export const readPage = (params: URLSearchParams): number => {
   return Number.isSafeInteger(page) && page > 0 ? page : 1;
 };
 
-/** 목록 쪽 크기 선택지 — 처음 값(25)은 종전 고정 크기 그대로다. */
-export const LIST_PAGE_SIZES = [25, 50, 100] as const;
+/** 목록 쪽 크기 선택지 — 처음 값은 20이다. */
+export const LIST_PAGE_SIZES = [10, 20, 50] as const;
 export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
 
-/** 고른 쪽 크기. 고른 적이 없거나 선택지에 없으면 `null`(처음 값 25). */
+/** 고른 쪽 크기. 고른 적이 없거나 선택지에 없으면 `null`(처음 값 20). */
 export const readSize = (params: URLSearchParams): ListPageSize | null => {
   const size = Number(params.get('size'));
   return LIST_PAGE_SIZES.find((option) => option === size) ?? null;
@@ -125,7 +125,7 @@ export interface SalesOrderListQuery {
   size?: number;
 }
 
-export const LIST_PAGE_SIZE = 25;
+export const LIST_PAGE_SIZE = 20;
 
 /** 주소의 조건을 계약의 쿼리로 옮긴다. 빈 조건은 싣지 않는다. */
 export const toListQuery = (

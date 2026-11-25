@@ -108,7 +108,7 @@ const normalRoutes: StubRoute[] = [
   ...references,
   {
     match: (request) => exact(request, '/logistics/purchase-orders'),
-    respond: () => jsonResponse({ items: [header], page: { page: 1, size: 25, total: 1 } }),
+    respond: () => jsonResponse({ items: [header], page: { page: 1, size: 20, total: 1 } }),
   },
   {
     match: (request) => exact(request, '/logistics/purchase-orders/901'),
@@ -280,7 +280,7 @@ describe('ErpPurchaseOrderScreen', () => {
         respond: (request) => {
           const progress = new URL(request.url).searchParams.get('progress');
           const total = progress === 'OPEN' ? 3 : progress === 'COMPLETED' ? 0 : 3;
-          return jsonResponse({ items: [header], page: { page: 1, size: 25, total } });
+          return jsonResponse({ items: [header], page: { page: 1, size: 20, total } });
         },
       },
     ];
@@ -288,7 +288,7 @@ describe('ErpPurchaseOrderScreen', () => {
     renderWithProviders(<ErpPurchaseOrderScreen />, { fetch, route: '/?supplier=4101' });
 
     const group = await screen.findByRole('group', { name: t.progress.group });
-    expect(await within(group).findByRole('button', { name: '미완료 3건' })).toBeInTheDocument();
+    expect(await within(group).findByRole('button', { name: '미완료 3' })).toBeInTheDocument();
     expect(within(group).queryByRole('button', { name: /^완료/ })).toBeNull();
     /* 건수 요청도 지금 조건(공급사)을 지킨다. */
     const counts = requests
@@ -391,7 +391,12 @@ describe('ErpPurchaseOrderScreen', () => {
     const user = userEvent.setup();
 
     await screen.findByRole('button', { name: 'SYN-PO-901' });
-    await pickRange(user, screen.getByLabelText(t.fields.orderDate), '2026-10-01', '2026-10-15');
+    await pickRange(
+      user,
+      screen.getByLabelText(t.filters.orderDateSearch),
+      '2026-10-01',
+      '2026-10-15',
+    );
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     await waitFor(() =>
@@ -443,7 +448,7 @@ describe('ErpPurchaseOrderScreen', () => {
         respond: () =>
           jsonResponse({
             items: [withProgress, withoutProgress],
-            page: { page: 1, size: 25, total: 2 },
+            page: { page: 1, size: 20, total: 2 },
           }),
       },
     ]);
@@ -493,7 +498,7 @@ describe('ErpPurchaseOrderScreen', () => {
       ...references,
       {
         match: (request) => exact(request, '/logistics/purchase-orders'),
-        respond: () => jsonResponse({ items: [bare], page: { page: 1, size: 25, total: 1 } }),
+        respond: () => jsonResponse({ items: [bare], page: { page: 1, size: 20, total: 1 } }),
       },
       {
         match: (request) => exact(request, '/logistics/purchase-orders/901'),
@@ -534,7 +539,7 @@ describe('ErpPurchaseOrderScreen', () => {
       {
         match: (request) => exact(request, '/logistics/purchase-orders'),
         respond: () =>
-          jsonResponse({ items: [legacyHeader], page: { page: 1, size: 25, total: 1 } }),
+          jsonResponse({ items: [legacyHeader], page: { page: 1, size: 20, total: 1 } }),
       },
       {
         match: (request) => exact(request, '/logistics/purchase-orders/901'),
@@ -620,7 +625,7 @@ describe('ErpPurchaseOrderScreen — 외자 발주 통관번호', () => {
     ...references,
     {
       match: (request) => exact(request, '/logistics/purchase-orders'),
-      respond: () => jsonResponse({ items: [order], page: { page: 1, size: 25, total: 1 } }),
+      respond: () => jsonResponse({ items: [order], page: { page: 1, size: 20, total: 1 } }),
     },
     {
       match: (request) => exact(request, '/logistics/purchase-orders/901'),

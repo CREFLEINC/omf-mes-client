@@ -88,7 +88,7 @@ const normalRoutes: StubRoute[] = [
   {
     match: (request) => exact(request, LIST_PATH),
     respond: () =>
-      jsonResponse({ items: [order, bareOrder], page: { page: 1, size: 25, total: 2 } }),
+      jsonResponse({ items: [order, bareOrder], page: { page: 1, size: 20, total: 2 } }),
   },
 ];
 
@@ -272,7 +272,7 @@ describe('ErpProductionOrderScreen', () => {
         respond: (request) => {
           const progress = new URL(request.url).searchParams.get('progress');
           const total = progress === 'OPEN' ? 0 : progress === 'COMPLETED' ? 4 : 4;
-          return jsonResponse({ items: [order], page: { page: 1, size: 25, total } });
+          return jsonResponse({ items: [order], page: { page: 1, size: 20, total } });
         },
       },
     ];
@@ -280,7 +280,7 @@ describe('ErpProductionOrderScreen', () => {
     renderWithProviders(<ErpProductionOrderScreen />, { fetch, route: '/?status=UPDATED' });
 
     const group = await screen.findByRole('group', { name: t.progress.group });
-    expect(await within(group).findByRole('button', { name: '완료 4건' })).toBeInTheDocument();
+    expect(await within(group).findByRole('button', { name: '완료 4' })).toBeInTheDocument();
     expect(within(group).queryByRole('button', { name: /^미완료/ })).toBeNull();
     /* 건수 요청도 지금 조건(상태)을 지킨다. */
     const counts = requests
@@ -346,7 +346,7 @@ describe('ErpProductionOrderScreen', () => {
     /* 계획 시작일은 기간 한 칸이다(C-12) — 시작과 종료를 한 달력에서 고른다. */
     await pickRange(
       user,
-      screen.getByLabelText(t.fields.plannedStartDate),
+      screen.getByLabelText(t.filters.plannedStartDateSearch),
       '2026-10-05',
       '2026-10-09',
     );
@@ -396,11 +396,11 @@ describe('ErpProductionOrderScreen', () => {
     expect(screen.queryByRole('button', { name: removeStatus })).toBeNull();
   });
 
-  it('쪽 크기는 처음 25 를 싣고, 주소에 고른 크기가 있으면 그 크기를 서버에 그대로 싣는다', async () => {
+  it('쪽 크기는 처음 20 을 싣고, 주소에 고른 크기가 있으면 그 크기를 서버에 그대로 싣는다', async () => {
     const first = recordingFetch(normalRoutes);
     const { unmount } = renderWithProviders(<ErpProductionOrderScreen />, { fetch: first.fetch });
     await findRow('SYN-EWO-901');
-    expect(listUrls(first.requests)[0]?.searchParams.get('size')).toBe('25');
+    expect(listUrls(first.requests)[0]?.searchParams.get('size')).toBe('20');
     unmount();
 
     const chosen = recordingFetch(normalRoutes);

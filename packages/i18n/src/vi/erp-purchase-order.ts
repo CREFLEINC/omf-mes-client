@@ -43,6 +43,7 @@ export const erpPurchaseOrder: Translated<typeof ko.erpPurchaseOrder> = {
     supplierSelect: 'Tìm nhà cung cấp',
     plantSelect: 'Tìm nhà máy',
     statusSelect: 'Chọn trạng thái đăng ký',
+    orderDateSearch: 'Tìm theo ngày đặt hàng',
     orderDatePlaceholder: 'Chọn ngày đặt hàng',
     orderTypeSelect: 'Chọn loại đơn mua',
     chip: (label: string, value: string): string => `${label}: ${value}`,

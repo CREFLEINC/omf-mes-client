@@ -51,8 +51,8 @@ export const readPage = (params: URLSearchParams): number => {
   return Number.isSafeInteger(page) && page > 0 ? page : 1;
 };
 
-/** 쪽 크기 — 고를 수 있는 값(처음 값 25 포함). 주소에 없거나 모르는 값이면 `null`(처음 값). */
-export const LIST_PAGE_SIZES = [25, 50, 100] as const;
+/** 쪽 크기 — 고를 수 있는 값(처음 값 20 포함). 주소에 없거나 모르는 값이면 `null`(처음 값). */
+export const LIST_PAGE_SIZES = [10, 20, 50] as const;
 export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
 
 export const readSize = (params: URLSearchParams): ListPageSize | null => {
@@ -93,7 +93,7 @@ export const isIsoDate = (value: string): boolean => {
   return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
 };
 
-export const LIST_PAGE_SIZE = 25;
+export const LIST_PAGE_SIZE = 20;
 
 /** 주소의 조건을 질의로 옮긴다. 빈 조건·읽히지 않는 값은 싣지 않는다. */
 export const toListQuery = (
