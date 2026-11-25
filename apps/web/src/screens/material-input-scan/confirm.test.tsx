@@ -1780,7 +1780,7 @@ describe('MaterialInputScanScreen — 공정 반제품 투입(피처 016)', () =
     expect(sent[0]?.body).toMatchObject({ lotId: 7351, inputQty: 40, uomId: 7401 });
   });
 
-  it('US2-1 줄여서 나눠 넣으면 그 양만 보내고, 다시 스캔하면 남은 양을 채운다', async () => {
+  it('US2-1 · Q7 줄여서 나눠 넣으면 그 양만 보내고, 줄 근거가 「투입 · 남은」을 따라가며, 다시 스캔하면 남은 양을 채운다', async () => {
     const user = userEvent.setup();
     const sent = renderScreen(
       [wipLot(), lot()],
@@ -1797,6 +1797,14 @@ describe('MaterialInputScanScreen — 공정 반제품 투입(피처 016)', () =
       expect(sent).toHaveLength(1);
     });
     expect(sent[0]?.body).toMatchObject({ lotId: 7351, inputQty: 30 });
+    /* 보낸 뒤 줄 근거는 이 화면이 보낸 30 을 반영한다(스캔 때 값 「투입 60 · 남은 40」 그대로가 아님). */
+    await waitFor(() => {
+      expect(
+        within(rowOf(WIP_LOT_NO)).getByText('실적 100 · 투입 90 · 남은 수량 10 EA'),
+      ).toBeTruthy();
+    });
+    /* 반제품은 불출이 없으니 서버가 「출고 미귀속」으로 기록해도 칩을 붙이지 않는다. */
+    expect(within(rowOf(WIP_LOT_NO)).queryByText(t.scanned.unlinkedIssue)).toBeNull();
 
     /* 같은 라벨을 다시 읽으면(조회하지 않고 담긴 값) 이 화면이 보낸 30 을 빼고 10 을 채운다. */
     await user.type(screen.getByLabelText(t.scan.label), `${WIP_LOT_NO}{Enter}`);

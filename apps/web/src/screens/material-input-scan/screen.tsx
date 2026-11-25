@@ -1306,6 +1306,7 @@ export const MaterialInputScanScreen = () => {
               notes={notes}
               pendingLotIds={armedLotIds}
               recordedQtyOf={recordedQtyOf}
+              wipLeftOf={wipLeftOf}
               selectedLotId={editingRow?.lotId ?? null}
               selectedRecords={editingRow === null ? [] : recordsOf(editingRow.lotId)}
               revealKey={resortTick}
