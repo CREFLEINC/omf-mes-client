@@ -40589,8 +40589,8 @@ body:has(
 
 .shift-management-pair {
   display: grid;
-  /* 시안(사용자 2026-11-25) — 공장 넓게 · 교대 코드 좁게 · 교대명 가장 넓게. */
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 3fr);
+  /* 공장 · 교대 코드 · 교대명 — 교대 코드와 교대명은 같은 폭(사용자 지시 2026-11-25). */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
   align-items: start;
 }
