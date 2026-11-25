@@ -397,7 +397,8 @@ describe('ZaloConnectionScreen', () => {
     ).toBeNull();
   });
 
-  it('[변경]으로 연 비밀값 칸은 [취소]로 닫고 저장 값을 그대로 둔다', async () => {
+  /* 칸별 [취소]는 없다 — 상자 아래 [취소]가 연 칸을 닫는다(사용자 지시 2026-11-25). */
+  it('[수정]으로 연 비밀값 칸은 상자 아래 [취소]로 닫고 저장 값을 그대로 둔다', async () => {
     const user = userEvent.setup();
     setup();
 
@@ -406,9 +407,12 @@ describe('ZaloConnectionScreen', () => {
     );
     await user.type(screen.getByLabelText(t.fields.secretKey), 'sk');
     expect(saveIn(t.panes.connection)).toBeEnabled();
-    await user.click(
-      screen.getByRole('button', { name: `${t.fields.secretKey} ${t.actions.cancelChange}` }),
-    );
+    expect(
+      screen.queryByRole('button', {
+        name: new RegExp(`^${t.fields.secretKey} ${t.actions.revert}`),
+      }),
+    ).toBeNull();
+    await user.click(box(t.panes.connection).getByRole('button', { name: t.actions.revert }));
     expect(screen.queryByLabelText(t.fields.secretKey)).toBeNull();
     expect(screen.getAllByText(t.values.registered)).toHaveLength(2);
     expect(saveIn(t.panes.connection)).toBeDisabled();
@@ -448,16 +452,20 @@ describe('ZaloConnectionScreen', () => {
     expect('secretKey' in body).toBe(false);
   });
 
-  it('바꾸기를 열고 비워 두면 보내지 않고 그 칸에 오류를 보인다', async () => {
+  /* 필수 칸이 비어 있으면 [저장]이 막힌다(사용자 지시 2026-11-25). */
+  it('비밀값 칸을 열고 비워 두거나 길이 제한을 비우면 [저장]이 막히고 보내지 않는다', async () => {
     const user = userEvent.setup();
     const { writes } = setup();
 
     await user.click(
       await screen.findByRole('button', { name: `${t.fields.secretKey} ${t.actions.change}` }),
     );
-    await user.click(saveIn(t.panes.connection));
+    expect(saveIn(t.panes.connection)).toBeDisabled();
+    await user.type(screen.getByLabelText(t.fields.secretKey), 'sk');
+    expect(saveIn(t.panes.connection)).toBeEnabled();
 
-    expect(await screen.findByText(t.errors.secretRequired)).toBeInTheDocument();
+    await user.clear(await openField(user, t.fields.paramMaxLength));
+    expect(saveIn(t.panes.connection)).toBeDisabled();
     expect(writes).toHaveLength(0);
   });
 

@@ -285,13 +285,20 @@ export const ZaloConnectionScreen = () => {
   /** 상자 아래 오른쪽 [취소][저장] — 다른 화면과 같은 자리. */
   const sectionActions = (section: SaveSection): ReactNode => {
     const dirty = isDirty(section);
+    /* 필수 칸(연 비밀값 · 변수 값 길이 제한)이 비어 있으면 [저장]을 막는다(사용자 지시 2026-11-25). */
+    const missingRequired =
+      section.kind === 'connection' &&
+      values !== null &&
+      (values.secretKey?.trim() === '' ||
+        values.refreshToken?.trim() === '' ||
+        values.paramMaxLength.trim() === '');
     return (
       <div className="form-actions">
         <Button variant="outlined" disabled={!dirty} onClick={() => revert(section)}>
           {t.actions.revert}
         </Button>
         <Button
-          disabled={!dirty || replace.isSaving}
+          disabled={!dirty || missingRequired || replace.isSaving}
           loading={replace.isSaving && feedbackAt === areaOf(section)}
           onClick={() => save(section)}
         >
@@ -350,7 +357,7 @@ export const ZaloConnectionScreen = () => {
 
   /**
    * 앱 ID · 변수 값 길이 제한 — 닫혀 있으면 「저장 값 [수정]」(앱 ID 가 비었으면 「미등록 [등록]」), 열면 입력 칸 · [취소].
-   * [취소]는 칸을 닫고 저장 값으로 되돌린다. 저장 본문 · 검사는 종전 그대로(열지 않으면 저장 값이 실린다).
+   * 칸별 [취소]는 없다 — 상자 아래 [취소]가 연 칸을 닫고 저장 값으로 되돌린다. 저장 본문 · 검사는 종전 그대로.
    */
   const plainRow = (
     field: PlainField,
@@ -380,29 +387,7 @@ export const ZaloConnectionScreen = () => {
         false,
       );
     }
-    return fieldRow(
-      label,
-      <div className="zalo-secret">
-        {input}
-        <Button
-          variant="outlined"
-          size="sm"
-          aria-label={`${label} ${t.actions.cancelChange}`}
-          leadingIcon={<Icon name="close" size={16} aria-hidden />}
-          onClick={() => {
-            if (baseline !== null) change({ [field]: baseline[field] });
-            setEditing((current) => {
-              const next = new Set(current);
-              next.delete(field);
-              return next;
-            });
-          }}
-        >
-          {t.actions.cancelChange}
-        </Button>
-      </div>,
-      required,
-    );
+    return fieldRow(label, <div className="zalo-secret">{input}</div>, required);
   };
 
   const secretRow = (
@@ -437,7 +422,10 @@ export const ZaloConnectionScreen = () => {
       );
     }
 
-    /* [등록]·[수정]으로 연 칸은 비우면 저장을 막는다(secretRequired) — 필수. [취소]는 입력을 닫고 저장 값을 그대로 둔다. */
+    /*
+     * [등록]·[수정]으로 연 칸은 필수 — 비어 있으면 [저장]이 막힌다. 칸별 [취소]는 두지 않는다(사용자 지시 2026-11-25):
+     * 상자 아래 [취소]가 연 칸을 모두 닫고 저장 값으로 되돌린다.
+     */
     return fieldRow(
       label,
       <div className="zalo-secret">
@@ -452,15 +440,6 @@ export const ZaloConnectionScreen = () => {
           onChange={(event) => change({ [field]: event.target.value })}
           error={fieldError(field)}
         />
-        <Button
-          variant="outlined"
-          size="sm"
-          aria-label={`${label} ${t.actions.cancelChange}`}
-          leadingIcon={<Icon name="close" size={16} aria-hidden />}
-          onClick={() => change({ [field]: null })}
-        >
-          {t.actions.cancelChange}
-        </Button>
       </div>,
       true,
       note,

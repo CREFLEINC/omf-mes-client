@@ -27,10 +27,9 @@ export const zaloConnection = {
     charUnit: '자',
   },
   actions: {
-    /** 비밀값 — 없으면 [등록], 있으면 [수정]. 연 칸을 닫는 단추는 [취소]. */
+    /** 비밀값 — 없으면 [등록], 있으면 [수정]. 연 칸은 상자 아래 [취소]로 닫는다. */
     register: '등록',
     change: '수정',
-    cancelChange: '취소',
     copy: '변수명 복사',
     copyFor: (eventName: string): string => `${eventName} 변수명 복사`,
     revert: '취소',

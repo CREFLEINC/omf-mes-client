@@ -33,7 +33,6 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
   actions: {
     register: 'Đăng ký',
     change: 'Sửa',
-    cancelChange: 'Hủy',
     copy: 'Sao chép tên biến',
     copyFor: (eventName: string): string => `Sao chép tên biến ${eventName}`,
     revert: 'Hủy',

@@ -40602,17 +40602,33 @@ body:has(
 
 .zalo-connection-box .zalo-field-row > .zalo-token-times {
   display: grid;
-  gap: 2px;
-  margin: 0;
-  color: var(--on-surface-variant);
+  gap: 0;
+  margin: var(--space-1) 0 0;
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
 }
 
+/* 이름 왼쪽 · 일시 오른쪽 끝, 두 줄 사이 가는 선(사용자 이미지 2026-11-25). */
 .zalo-connection-box .zalo-field-row > .zalo-token-times > div {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-1);
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) 0;
+}
+
+.zalo-connection-box .zalo-field-row > .zalo-token-times > div + div {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.zalo-connection-box .zalo-field-row > .zalo-token-times dt {
+  color: var(--on-surface-variant);
+}
+
+.zalo-connection-box .zalo-field-row > .zalo-token-times dd {
+  margin: 0 0 0 auto;
+  color: var(--on-surface);
+  font-variant-numeric: tabular-nums;
 }
 
 /* 비밀값 입력을 연 칸 — 네 칸 배치에서도 [취소]가 입력 칸 옆 한 줄에 남는다. */
@@ -40674,4 +40690,14 @@ body:has(
 .zalo-template-id-head > .iqc-inspection-action-note[data-tone] {
   width: fit-content;
   margin: 0;
+}
+
+/* 변수 값 길이 제한 입력 칸 — 앱 ID 입력 칸처럼 칸 폭을 채운다(「자」는 오른쪽 끝, 사용자 지시 2026-11-25). */
+.zalo-connection-box .zalo-secret > .zalo-param-max {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.zalo-connection-box .zalo-param-max > [class*='_field_'] {
+  flex: 1 1 auto;
 }
