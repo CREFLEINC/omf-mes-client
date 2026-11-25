@@ -40164,3 +40164,12 @@ body:has(
 .code-lock-field > .code-lock-label-row {
   margin-bottom: 0;
 }
+
+/* ERP 사원 · 품목 · 거래처 목록 — 줄을 눌러 하는 일이 없으므로 눌리는 것처럼 보이지 않게 한다(사용자 지시 2026-11-25). */
+.users-roles-list.erp-data-list-static tbody tr {
+  cursor: default;
+}
+
+.users-roles-list.erp-data-list-static tbody tr:nth-child(n):hover {
+  background: transparent;
+}

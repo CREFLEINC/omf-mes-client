@@ -293,6 +293,7 @@ export const ErpItemScreen = () => {
               <ErpListTable
                 label={t.panes.list}
                 storageKey="omf-mes:erp-item:columns:items"
+                className="erp-data-list-static"
                 columns={columns}
                 rows={rows}
                 getRowId={(row) => String(row.itemId)}

@@ -324,6 +324,7 @@ export const ErpEmployeeScreen = () => {
               <ErpListTable
                 label={t.panes.list}
                 storageKey="omf-mes:erp-employee:columns:workers"
+                className="erp-data-list-static"
                 columns={columns}
                 rows={rows}
                 getRowId={(row) => String(row.workerId)}

@@ -303,6 +303,7 @@ export const ErpPartnerScreen = () => {
               <ErpListTable
                 label={t.panes.list}
                 storageKey="omf-mes:erp-partner:columns:partners"
+                className="erp-data-list-static"
                 columns={columns}
                 rows={rows}
                 getRowId={(row) => String(row.partnerId)}
