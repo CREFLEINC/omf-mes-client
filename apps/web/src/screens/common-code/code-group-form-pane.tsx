@@ -207,13 +207,14 @@ export const CodeGroupFormPane = ({
     <section className="pane" aria-label={t.panes.codeGroupForm}>
       {/*
        * 사용자 관리 상세와 같은 머리 — 제목 줄 오른쪽에 「사용 중지」(사용자 지시 2026-11-24). 폼 값 저장과 따로 서버에
-       * 바로 나가는 작업이라 아래 「취소 · 저장」과 떨어져 선다. 단추 크기는 상자 안 다른 단추(취소 · 저장)와 같다(2026-11-25).
+       * 바로 나가는 작업이라 아래 「취소 · 저장」과 떨어져 선다.
        */}
       <div className="pane-heading-row users-roles-heading">
         <h3 className="pane-title">{t.panes.codeGroupForm}</h3>
         <div className="users-roles-account-actions">
           <Button
             variant="outlined"
+            size="sm"
             disabled={deactivateDisabledReason !== null}
             title={deactivateDisabledReason ?? undefined}
             leadingIcon={<Icon name="block" size={18} />}
