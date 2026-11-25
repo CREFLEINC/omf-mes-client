@@ -43,7 +43,7 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
   },
   state: {
     saved: 'Đã lưu',
-    copied: 'Đã sao chép tên biến mẫu',
+    copied: 'Đã sao chép biến mẫu.',
     reauth: 'Hãy nhận mã làm mới mới từ người phụ trách Zalo của khách hàng rồi đăng ký bằng [Sửa]',
     lastError: (code: string): string =>
       code === '-124' ? 'Mã truy cập Zalo không hợp lệ.' : 'Đã xảy ra lỗi khi kết nối Zalo.',
@@ -72,6 +72,7 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
     name: 'Tên mẫu',
     templateId: 'ID mẫu',
     kindWithCount: (label: string, count: number): string => `${label} ${String(count)}`,
+    detailTitle: 'Chi tiết mẫu tin',
     kinds: { event: 'Sự kiện', handover: 'Công việc bàn giao' },
     empty: 'Không có mẫu phù hợp với điều kiện.',
     hasError: 'Cần kiểm tra',

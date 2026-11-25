@@ -145,12 +145,32 @@ describe('ZaloConnectionScreen', () => {
     expect(screen.getByText(t.workspace.selectTitle)).toBeInTheDocument();
 
     expect(await openTemplate(user, '생산 중단')).toBeInTheDocument();
+    /* 상세 제목은 「템플릿 상세」, 구분 · 템플릿명은 상세 상자 안 정보 칸(사용자 지시 2026-11-25). */
+    const detail = box('생산 중단');
+    expect(detail.getByRole('heading', { name: t.workspace.detailTitle })).toBeInTheDocument();
+    expect(detail.getByText(t.workspace.kind).nextElementSibling).toHaveTextContent(
+      t.workspace.kinds.event,
+    );
+    expect(detail.getByText(t.workspace.name).nextElementSibling).toHaveTextContent('생산 중단');
     expect(screen.getByText('line, work_order, event_time, reason')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.actions.copyFor('생산 중단') })).toHaveTextContent(
       t.actions.copy,
     );
     /* 이벤트 템플릿에는 인계 작업 도움말이 없다. */
     expect(screen.queryByText(t.handover.templateIdHelp)).toBeNull();
+  });
+
+  /* 변수명 복사 알림은 화면 오른쪽 아래 잠깐 뜨는 알림(사용자 지시 2026-11-25) — 상세 상자 안에는 뜨지 않는다. */
+  it('변수명을 복사하면 「템플릿 변수를 복사했습니다.」 알림이 뜬다', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    await openTemplate(user, '생산 중단');
+    await user.click(screen.getByRole('button', { name: t.actions.copyFor('생산 중단') }));
+
+    expect(await screen.findByText(t.state.copied)).toBeInTheDocument();
+    expect(box('생산 중단').queryByText(t.state.copied)).toBeNull();
+    expect(await navigator.clipboard.readText()).toBe('line, work_order, event_time, reason');
   });
 
   it('고른 템플릿을 한 번 더 누르면 선택이 풀린다', async () => {

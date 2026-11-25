@@ -9,6 +9,7 @@ import {
   Table,
   TextField,
   type Column,
+  useToast,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
@@ -20,6 +21,7 @@ import {
   useHandoverAlertTypes,
 } from '../../patterns/handover-alert-types';
 import { useClientPage } from '../../patterns/client-page';
+import { ErpDetailFields } from '../erp-item/erp-data-parts';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
@@ -68,6 +70,8 @@ const leave = messages.common.unsavedLeave;
 
 /** 템플릿명 검색 칸 — 왼쪽 라벨(「템플릿명」)과 잇는다. */
 const SEARCH_ID = 'zalo-template-search';
+const TEMPLATE_ID_FIELD = 'zalo-template-id';
+const TEMPLATE_ID_HELP = 'zalo-template-id-help';
 
 type SecretField = 'secretKey' | 'refreshToken';
 
@@ -251,14 +255,15 @@ export const ZaloConnectionScreen = () => {
     });
   };
 
+  const toast = useToast();
   const copy = async (params: string): Promise<void> => {
     /* 보안 연결이 아니면 클립보드가 없다 — 파라미터는 화면에 보이므로 조용히 둔다. */
     try {
       await navigator.clipboard.writeText(params);
-      setFeedbackAt('template');
-      setFlash(t.state.copied);
+      /* 복사 알림은 화면 오른쪽 아래 잠깐 뜨는 알림으로(사용자 지시 2026-11-25) — 상세 상자 안 안내 줄은 쓰지 않는다. */
+      toast.show({ variant: 'success', description: t.state.copied });
     } catch {
-      setFlash(null);
+      /* 실패는 조용히 둔다(종전과 같다). */
     }
   };
 
@@ -808,10 +813,35 @@ export const ZaloConnectionScreen = () => {
         : { kind: 'handover', code: row.code };
     return (
       <div className="zalo-template-detail">
-        <h2 className="pane-title">{row.name}</h2>
+        {/* 제목은 「템플릿 상세」, 구분 · 템플릿명은 정보 표시 상자로(사용자 지시 2026-11-25 · 공통코드 상세와 같은 모양). */}
+        <div className="erp-data-detail erp-data-detail-fill">
+          <ErpDetailFields
+            title={w.detailTitle}
+            fields={[
+              { key: 'kind', label: w.kind, value: w.kinds[row.kind] },
+              { key: 'name', label: w.name, value: row.name },
+            ]}
+          />
+        </div>
         {feedback('template')}
+        {/*
+         * 「템플릿 ID」 이름 오른쪽에 인계 작업 도움말을 파란 안내 라벨로(사용자 지시 2026-11-25) — 입력 칸 아래 도움말 대신.
+         * 입력 칸의 설명(aria-describedby)으로 이어 둔다.
+         */}
+        <div className="zalo-template-id-head">
+          <label className="field-label" htmlFor={TEMPLATE_ID_FIELD}>
+            {t.fields.templateId}
+          </label>
+          {row.kind === 'handover' && (
+            <p id={TEMPLATE_ID_HELP} className="iqc-inspection-action-note" data-tone="info">
+              <Icon name="info" size={16} aria-hidden />
+              {t.handover.templateIdHelp}
+            </p>
+          )}
+        </div>
         <TextField
-          label={t.fields.templateId}
+          id={TEMPLATE_ID_FIELD}
+          aria-describedby={row.kind === 'handover' ? TEMPLATE_ID_HELP : undefined}
           value={templateIdOf(row)}
           onChange={(event) => {
             if (row.kind === 'event') {
@@ -821,8 +851,6 @@ export const ZaloConnectionScreen = () => {
             }
           }}
           error={templateErrorOf(row)}
-          /* 인계 작업 — 입력 칸 아래 도움말(ID 를 넣는 법 · 비워 두면 어떻게 되는지). */
-          helperText={row.kind === 'handover' ? t.handover.templateIdHelp : undefined}
         />
         {/* 템플릿 변수 — 라벨 아래 변수 이름과 [변수명 복사]를 나란히. 복사하는 글은 그대로다. */}
         <div className="field-cell">

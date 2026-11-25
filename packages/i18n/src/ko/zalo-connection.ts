@@ -40,7 +40,7 @@ export const zaloConnection = {
   },
   state: {
     saved: '저장했습니다',
-    copied: '템플릿 변수 이름을 복사했습니다',
+    copied: '템플릿 변수를 복사했습니다.',
     reauth: '고객사 Zalo 담당자에게 새 갱신 토큰을 받아 [수정]으로 등록하세요',
     /** Zalo 오류 코드를 사람 말로 — 모르는 코드는 일반 문구, 코드와 원문은 「오류 상세」에 둔다. */
     lastError: (code: string): string =>
@@ -76,6 +76,7 @@ export const zaloConnection = {
     name: '템플릿명',
     templateId: '템플릿 ID',
     kindWithCount: (label: string, count: number): string => `${label} ${String(count)}건`,
+    detailTitle: '템플릿 상세',
     kinds: { event: '이벤트', handover: '인계 작업' },
     empty: '조건에 맞는 템플릿이 없습니다.',
     hasError: '확인 필요',

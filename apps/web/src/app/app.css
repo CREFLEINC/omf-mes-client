@@ -40657,3 +40657,21 @@ body:has(
 .zalo-required-empty > div:has(input) {
   box-shadow: inset 0 0 0 1px var(--semantic-error);
 }
+
+/* 알림 연결 설정 — 템플릿 상세 「템플릿 ID」 이름 오른쪽 안내 라벨(인계 작업, 사용자 지시 2026-11-25). 라벨 폭은 글에 맞춘다. */
+.zalo-template-id-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: calc(var(--space-2) * -1);
+}
+
+.zalo-template-id-head > .field-label {
+  margin: 0;
+}
+
+.zalo-template-id-head > .iqc-inspection-action-note[data-tone] {
+  width: fit-content;
+  margin: 0;
+}
