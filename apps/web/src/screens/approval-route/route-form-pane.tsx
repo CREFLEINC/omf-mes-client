@@ -345,7 +345,7 @@ export const RouteFormPane = ({
             </div>
           ) : activateDisabledReason === null ? (
             <div className="field-cell form-actions-secondary">
-              <Button variant="outlined" disabled={isLocked} onClick={onActivate}>
+              <Button variant="outlined" size="sm" disabled={isLocked} onClick={onActivate}>
                 {t.actions.activate}
               </Button>
             </div>
@@ -354,6 +354,7 @@ export const RouteFormPane = ({
               label={t.actions.activate}
               reason={activateDisabledReason}
               className="form-actions-secondary"
+              size="sm"
             />
           ))}
 
@@ -364,7 +365,7 @@ export const RouteFormPane = ({
          */}
         {onOpenExisting !== null && (
           <div className="field-cell">
-            <Button variant="outlined" disabled={isLocked} onClick={onOpenExisting}>
+            <Button variant="outlined" size="sm" disabled={isLocked} onClick={onOpenExisting}>
               {t.actions.openExisting}
             </Button>
           </div>

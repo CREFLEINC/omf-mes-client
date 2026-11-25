@@ -551,6 +551,7 @@ export const TerminalProcessMapScreen = () => {
               {selected.isActive ? (
                 <Button
                   variant="outlined"
+                  size="sm"
                   leadingIcon={<Icon name="block" size={18} aria-hidden />}
                   disabled={deactivate.isSaving}
                   onClick={() => {
@@ -562,6 +563,7 @@ export const TerminalProcessMapScreen = () => {
               ) : (
                 <Button
                   variant="outlined"
+                  size="sm"
                   leadingIcon={<Icon name="restart_alt" size={18} aria-hidden />}
                   loading={activate.isSaving}
                   disabled={activate.isSaving}
@@ -574,12 +576,14 @@ export const TerminalProcessMapScreen = () => {
               )}
               <Button
                 variant="outlined"
+                size="sm"
                 leadingIcon={<Icon name="edit" size={18} aria-hidden />}
                 onClick={openEdit}
               >
                 {t.terminal.edit}
               </Button>
               <Button
+                size="sm"
                 leadingIcon={<Icon name="key" size={18} aria-hidden />}
                 disabled={issueToken.isSaving}
                 onClick={() => {
