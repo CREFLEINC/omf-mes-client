@@ -72,11 +72,15 @@ const plantIdQuery = (value: string): { plantId: number } | Record<string, never
  *
  * size는 보내지 않고 서버 기본값을 따른다. 잘림은 page.total로 드러내 안내한다.
  */
-export const useGroupList = (filters: GroupFilters): UseQueryResult<GroupListResponse> => {
+export const useGroupList = (
+  filters: GroupFilters,
+  enabled = true,
+): UseQueryResult<GroupListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey: groupKeys.list(filters),
+    enabled,
     queryFn: () =>
       runRequest(() =>
         client.GET('/mdm/equipment-groups', {
@@ -426,8 +430,8 @@ export const useDepartmentOptions = (): DepartmentOptionsResult => {
 export const inspectionKeys = {
   all: ['equipment-inspection-items'] as const,
   master: (q: string) => ['equipment-inspection-items', 'master', q] as const,
-  masterList: (filters: InspectionItemFilters) =>
-    ['equipment-inspection-items', 'master-list', filters] as const,
+  masterList: (filters: InspectionItemFilters, plantId: string) =>
+    ['equipment-inspection-items', 'master-list', filters, plantId] as const,
   masterDetail: (equipmentInspectionItemId: number) =>
     ['equipment-inspection-items', 'master-detail', equipmentInspectionItemId] as const,
   groupAssignments: (equipmentGroupId: number) =>
@@ -534,11 +538,12 @@ export const useInspectionItemList = (
   filters: InspectionItemFilters,
   /** 이 뷰가 열려 있는가. ⛔ 보이지 않는 목록을 미리 부르지 않는다 */
   enabled: boolean,
+  plantId = '',
 ): UseQueryResult<{ items: EquipmentInspectionItem[]; page: PageMeta }> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: inspectionKeys.masterList(filters),
+    queryKey: inspectionKeys.masterList(filters, plantId),
     enabled,
     queryFn: () =>
       runRequest(() =>
@@ -546,6 +551,7 @@ export const useInspectionItemList = (
           params: {
             query: {
               ...(filters.q === '' ? {} : { q: filters.q }),
+              ...plantIdQuery(plantId),
               ...(filters.inspectionTypeCode === ''
                 ? {}
                 : { inspectionTypeCode: filters.inspectionTypeCode }),

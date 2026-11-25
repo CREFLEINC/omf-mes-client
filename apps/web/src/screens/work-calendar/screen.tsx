@@ -3,6 +3,7 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { useMasterDataPlant, useOnMasterDataPlantChange } from '../../patterns/master-data-plant';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
@@ -51,6 +52,7 @@ import {
   useEffectiveCalendar,
   useEquipmentGroupTargets,
   useEquipmentTargets,
+  useOtherPlantCalendarIds,
   usePlantApplications,
   usePlantTargets,
 } from './queries';
@@ -224,6 +226,10 @@ export const WorkCalendarScreen = ({
   /** 해석 미리보기에서 고른 설비. 고르기 전에는 빈 글자다 */
   const [effectiveEquipmentId, setEffectiveEquipmentId] = useState('');
 
+  const plant = useMasterDataPlant();
+  const plantId = plant.plantId === '' ? null : Number(plant.plantId);
+  const otherPlant = useOtherPlantCalendarIds(plantId);
+  useOnMasterDataPlantChange(plant, () => setSelected(null));
   const calendars = useCalendarList(filters);
   /* 계약이 기간을 반드시 요구한다 — 보이는 달의 처음과 끝을 그대로 싣는다. */
   const range = monthRange(yearMonth);
@@ -231,22 +237,29 @@ export const WorkCalendarScreen = ({
   const applications = useCalendarApplications(selected?.workCalendarId ?? null);
   /* ⭐ 「미지정 공장」은 이 캘린더가 아니라 **전체 공장 적용**으로 센다. */
   const plantApplications = usePlantApplications();
-  const plantTargets = usePlantTargets();
-  const equipmentTargets = useEquipmentTargets(selected !== null);
+  const plantTargets = usePlantTargets().filter(
+    (target) => plant.plantIds === null || plant.plantIds.has(Number(target.value)),
+  );
+  const equipmentTargets = useEquipmentTargets(selected !== null, plantId);
   const effective = useEffectiveCalendar(
     effectiveEquipmentId === '' ? null : Number(effectiveEquipmentId),
   );
   const equipmentGroupTargets = useEquipmentGroupTargets(
     assigning && targetTypeCode === TARGET_TYPES.equipmentGroup,
+    plantId,
   );
 
   /* 창을 열 때만 상세를 조회한다 — 목록 응답에는 잠금 토큰도 코드 편집 가부도 없다. */
   const editingId = dialog?.mode === 'edit' ? dialog.workCalendarId : null;
   const detail = useCalendarDetail(editingId);
 
-  const items = calendars.data?.items ?? NO_ITEMS;
+  const received = calendars.data?.items ?? NO_ITEMS;
+  const isPlantPending = plant.isChecking || otherPlant.isPending;
+  const items = isPlantPending
+    ? NO_ITEMS
+    : received.filter((item) => !otherPlant.ids.has(item.workCalendarId));
   const listTruncated =
-    calendars.data !== undefined && isTruncated(calendars.data.page, items.length);
+    calendars.data !== undefined && isTruncated(calendars.data.page, received.length);
 
   const isCreate = dialog?.mode === 'create';
 
@@ -473,7 +486,7 @@ export const WorkCalendarScreen = ({
       {listTruncated && (
         <div className="banner-slot">
           <AlertBanner variant="warning">
-            {t.listTruncated(items.length, calendars.data?.page.total ?? items.length)}
+            {t.listTruncated(received.length, calendars.data?.page.total ?? received.length)}
           </AlertBanner>
         </div>
       )}
@@ -487,7 +500,7 @@ export const WorkCalendarScreen = ({
       <div className="pane-stack work-calendar-workspace">
         <CalendarListPane
           items={items}
-          isLoading={calendars.isLoading}
+          isLoading={calendars.isLoading || isPlantPending}
           appliedFilters={filters}
           onApplyFilters={setFilters}
           onAdd={openCreate}

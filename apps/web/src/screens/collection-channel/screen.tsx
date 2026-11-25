@@ -5,6 +5,7 @@ import { useState } from 'react';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { useMasterDataPlant, useOnMasterDataPlantChange } from '../../patterns/master-data-plant';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest, toApiError } from '../../patterns/request';
@@ -173,8 +174,10 @@ const reasonOf = (caught: unknown, channelKey: string): string | null => {
  * 여기 있지 않다. 가변부는 채널↔검사 항목 매핑뿐이다.
  */
 export const CollectionChannelScreen = () => {
-  const [equipmentFilters, setEquipmentFilters] =
+  const [requestedFilters, setEquipmentFilters] =
     useState<EquipmentFilters>(defaultEquipmentFilters);
+  const plant = useMasterDataPlant(requestedFilters.plantId);
+  const equipmentFilters = { ...requestedFilters, plantId: plant.picked };
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<number | null>(null);
   const [channelFilters, setChannelFilters] = useState<ChannelFilters>(defaultChannelFilters);
   const [dialog, setDialog] = useState<DialogState | null>(null);
@@ -202,7 +205,12 @@ export const CollectionChannelScreen = () => {
   const { client } = useApiClient();
   const toast = useToast();
 
-  const equipments = useEquipmentList(equipmentFilters);
+  const equipments = useEquipmentList(
+    { ...equipmentFilters, plantId: plant.plantId },
+    !plant.isChecking,
+  );
+  /* 사업부를 바꾸면 다른 공장의 설비 선택을 푼다. */
+  useOnMasterDataPlantChange(plant, () => setSelectedEquipmentId(null));
   const channels = useChannelList(selectedEquipmentId, channelFilters.includeInactive);
   const plantLookup = usePlantLookup();
   const scopeProcesses = useScopeProcessLookup();
@@ -521,6 +529,7 @@ export const CollectionChannelScreen = () => {
     appliedFilters: equipmentFilters,
     onApplyFilters: setEquipmentFilters,
     plantOptions: plantLookup.plants,
+    plant,
     selectedEquipmentId,
     onSelect: setSelectedEquipmentId,
     loadError: equipmentError,

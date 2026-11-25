@@ -20,7 +20,7 @@ import { useColumnWidths } from '../../patterns/column-resize';
 import { InfoTip } from '../../patterns/info-tip';
 import { PageNav } from '../../patterns/page-nav';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
-import { useOaAccess, useScopedPlants } from '../../patterns/oa-access';
+import { useMasterDataPlant } from '../../patterns/master-data-plant';
 import { SaveErrorBanner } from '../../patterns/master';
 import { useSession } from '../../patterns/session';
 import { Select } from '../../patterns/select';
@@ -51,34 +51,28 @@ export const ShiftManagementScreen = () => {
   const { session } = useSession();
   const plants = usePlants(session?.scopes ?? NO_SCOPES);
   /*
-   * 공장은 사용자 설정을 따라 자동으로 고른다 — 계정 범위 공장 중 위 줄에서 고른 동작(OA · 부품)의 공장.
-   * 그 공장이 여럿이면 고를 수 있다. 판단 근거를 못 받으면 범위 공장 전체를 후보로 둔다.
+   * 위 줄에서 고른 사업부의 공장 교대만 본다(사용자 결정 2026-11-25 — 공장이 지정되지 않은 계정의 「전체」를 거둔다).
+   * 그 공장이 여럿이면 고를 수 있다. 판단 근거를 못 받으면 범위 공장 전체를 후보로 두고 「전체」를 낸다.
    */
-  const access = useOaAccess();
-  const scoped = useScopedPlants();
-  const kindIds =
-    scoped.status === 'ready' && (access === 'oa' || access === 'not-oa')
-      ? new Set((access === 'oa' ? scoped.oa : scoped.parts).map((each) => each.plantId))
-      : null;
-  const candidates = (plants.data ?? []).filter(
-    (each) => kindIds === null || kindIds.has(each.plantId),
-  );
-  /*
-   * 공장이 지정되지 않은 계정(범위 줄에 공장이 없음)은 「전체」로 볼 수 있는 모든 공장의 교대를 본다(사용자 지시 2026-11-25).
-   * 지정된 계정은 위 규칙대로 그 공장을 자동으로 고른다.
-   */
-  const designated = (session?.scopes ?? NO_SCOPES).some((scope) => scope.plantId !== undefined);
-  const plantOptions = designated ? candidates : (plants.data ?? []);
   const [pickedPlant, setPickedPlant] = useState<number | null>(null);
-  const plant = designated
-    ? (candidates.find((each) => each.plantId === pickedPlant) ?? candidates[0] ?? null)
-    : (plantOptions.find((each) => each.plantId === pickedPlant) ?? null);
+  const modePlant = useMasterDataPlant(pickedPlant === null ? '' : String(pickedPlant));
+  const decided = modePlant.plantIds !== null;
+  const designated =
+    decided || (session?.scopes ?? NO_SCOPES).some((scope) => scope.plantId !== undefined);
+  const plantOptions = (plants.data ?? []).filter(
+    (each) => modePlant.plantIds === null || modePlant.plantIds.has(each.plantId),
+  );
+  const plant =
+    plantOptions.find((each) => each.plantId === pickedPlant) ??
+    (designated ? (plantOptions[0] ?? null) : null);
   const showAll = !designated && plant === null;
   const plantId = plant?.plantId ?? null;
-  const list = useShifts(showAll ? (plants.data === undefined ? null : 'all') : plantId);
+  const list = useShifts(
+    modePlant.isChecking ? null : showAll ? (plants.data === undefined ? null : 'all') : plantId,
+  );
   const plantName = new Map(plantOptions.map((each) => [each.plantId, each.plantName]));
-  /* 추가 창이 처음 고를 공장 — 고른 공장, 「전체」면 위 줄 동작(OA · 부품)의 첫 공장. */
-  const defaultPlant = plant ?? candidates[0] ?? plantOptions[0] ?? null;
+  /* 추가 창이 처음 고를 공장 — 고른 공장, 「전체」면 첫 공장. */
+  const defaultPlant = plant ?? plantOptions[0] ?? null;
   /** 교대 코드 · 교대명 검색 — 칸에 친 글(`searchDraft`)은 [조회] · Enter 때 목록에 건다(`query`). */
   const [searchDraft, setSearchDraft] = useState('');
   const [query, setQuery] = useState('');
@@ -286,28 +280,31 @@ export const ShiftManagementScreen = () => {
         aria-label={t.filters.label}
       >
         <div className="filter-bar users-roles-filter-row shift-management-filter">
-          <div className="field-cell shift-management-plant">
-            <span className="field-label">
-              <label htmlFor={plantFieldId}>{t.filters.plant}</label>
-            </span>
-            <Select
-              id={plantFieldId}
-              searchable
-              searchPlaceholder={t.filters.plantSearchPlaceholder}
-              value={plantId === null ? '' : String(plantId)}
-              options={[
-                ...(designated ? [] : [{ value: '', label: t.filters.all }]),
-                ...plantOptions.map((each) => ({
-                  value: String(each.plantId),
-                  label: each.plantName,
-                })),
-              ]}
-              onChange={(value) => {
-                setPickedPlant(value === '' ? null : Number(value));
-                setStatusFilter(null);
-              }}
-            />
-          </div>
+          {/* 사업부가 공장 하나를 정하면 고를 것이 없다. */}
+          {!(decided && plantOptions.length <= 1) && (
+            <div className="field-cell shift-management-plant">
+              <span className="field-label">
+                <label htmlFor={plantFieldId}>{t.filters.plant}</label>
+              </span>
+              <Select
+                id={plantFieldId}
+                searchable
+                searchPlaceholder={t.filters.plantSearchPlaceholder}
+                value={plantId === null ? '' : String(plantId)}
+                options={[
+                  ...(designated ? [] : [{ value: '', label: t.filters.all }]),
+                  ...plantOptions.map((each) => ({
+                    value: String(each.plantId),
+                    label: each.plantName,
+                  })),
+                ]}
+                onChange={(value) => {
+                  setPickedPlant(value === '' ? null : Number(value));
+                  setStatusFilter(null);
+                }}
+              />
+            </div>
+          )}
           <SearchInput
             containerClassName="shift-management-search"
             label={t.filters.search}
