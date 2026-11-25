@@ -40567,13 +40567,6 @@ body:has(
   flex: 0 0 auto;
 }
 
-/* 고르기 전 상세 — 한 줄만. */
-.zalo-detail-empty {
-  margin: 0;
-  color: var(--on-surface-variant);
-  font: var(--type-body-md);
-}
-
 /* 좌우 배치 — 상세는 내용 높이만. */
 .zalo-split:not(.is-stacked) > .list-detail-detail {
   align-self: start;
@@ -40602,4 +40595,14 @@ body:has(
 .zalo-field-row > .field-label {
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
+}
+
+/* 알림 연결 설정 — 템플릿명 줄 [조회]·[초기화]는 오른쪽 끝(사용자 지시 2026-11-25). */
+.zalo-template-box > .zalo-field-row.zalo-template-search {
+  grid-template-columns: 9rem minmax(0, 30rem) minmax(0, 1fr);
+}
+
+.zalo-template-search > .zalo-search-actions {
+  justify-content: flex-end;
+  margin: 0;
 }

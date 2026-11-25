@@ -190,6 +190,32 @@ describe('ZaloConnectionScreen', () => {
     expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
   });
 
+  /* 구분 거르기 라벨 — 누르면 그 구분만, 다시 누르면 전체(사용자 지시 2026-11-25). */
+  it('구분 라벨로 이벤트 · 인계 작업 템플릿만 거른다', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    const list = await screen.findByRole('region', { name: t.workspace.list });
+    await within(list).findAllByRole('row');
+    const kindCells = () =>
+      within(list)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => within(row).getAllByRole('cell')[0]?.textContent);
+    expect(new Set(kindCells())).toEqual(
+      new Set([t.workspace.kinds.event, t.workspace.kinds.handover]),
+    );
+
+    const chips = within(screen.getByRole('group', { name: t.workspace.kind }));
+    await user.click(chips.getByText(new RegExp(`^${t.workspace.kinds.handover} \\d+`)));
+    expect(new Set(kindCells())).toEqual(new Set([t.workspace.kinds.handover]));
+
+    await user.click(chips.getByText(new RegExp(`^${t.workspace.kinds.handover} \\d+`)));
+    expect(new Set(kindCells())).toEqual(
+      new Set([t.workspace.kinds.event, t.workspace.kinds.handover]),
+    );
+  });
+
   it('[취소][저장]은 상자마다 아래에 서고, 템플릿 ID 를 고치면 상세의 저장만 열린다(#358)', async () => {
     const user = userEvent.setup();
     setup();

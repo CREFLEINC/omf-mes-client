@@ -114,6 +114,8 @@ export const ZaloConnectionScreen = () => {
   /* 템플릿 이름 검색 — 화면 안에서만 거른다(#358). 입력 중인 글과 [조회]로 건 글을 따로 든다. */
   const [search, setSearch] = useState('');
   const [keyword, setKeyword] = useState('');
+  /* 구분 거르기 라벨 — 누르면 바로 걸리고, 다시 누르면 풀린다(사용자 지시 2026-11-25). */
+  const [kindFilter, setKindFilter] = useState<TemplateRow['kind'] | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const { splitRef, aboveRef } = useFitToViewport();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -390,7 +392,9 @@ export const ZaloConnectionScreen = () => {
   ];
   const needle = keyword.trim().toLowerCase();
   const shownTemplates = allTemplates.filter(
-    (row) => needle === '' || row.name.toLowerCase().includes(needle),
+    (row) =>
+      (needle === '' || row.name.toLowerCase().includes(needle)) &&
+      (kindFilter === null || row.kind === kindFilter),
   );
   const templatePage = useClientPage(shownTemplates);
   const selectedRow = allTemplates.find((row) => row.key === selectedKey);
@@ -602,6 +606,9 @@ export const ZaloConnectionScreen = () => {
           onSearch={(value) => setKeyword(value)}
           clearLabel={messages.common.clear}
         />
+      </div>
+      {/* [조회]·[초기화]는 줄 오른쪽 끝 — 위 줄 [취소][저장]과 같은 세로선(사용자 지시 2026-11-25). */}
+      <div className="filter-actions zalo-search-actions">
         <Button onClick={() => setKeyword(search)}>{w.apply}</Button>
         {/* 초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */}
         {hasChangedFilters({ q: '' }, { q: search }, { q: keyword }) && (
@@ -619,10 +626,48 @@ export const ZaloConnectionScreen = () => {
     </div>
   );
 
+  /*
+   * 구분 거르기 라벨 — 화면 위 줄 「⋯」 바로 왼쪽(사용자 지시 2026-11-25).
+   * 누르면 바로 걸리고 다시 누르면 풀린다. 건수는 검색어로 거른 뒤의 수다.
+   */
+  const kindChips = (
+    <div className="inspection-hub-counts" role="group" aria-label={w.kind}>
+      {(['event', 'handover'] as const).map((kind) => (
+        <Chip
+          key={kind}
+          variant="filter"
+          size="sm"
+          selected={kindFilter === kind}
+          aria-pressed={kindFilter === kind}
+          onSelectedChange={() => setKindFilter(kindFilter === kind ? null : kind)}
+        >
+          {w.kindWithCount(
+            w.kinds[kind],
+            allTemplates.filter(
+              (row) =>
+                row.kind === kind && (needle === '' || row.name.toLowerCase().includes(needle)),
+            ).length,
+          )}
+        </Chip>
+      ))}
+    </div>
+  );
+
   const templateDetail = (): ReactNode => {
     if (selectedRow === undefined || values === null) {
-      /* 고르기 전에는 한 줄만. */
-      return <p className="zalo-detail-empty">{w.selectTitle}</p>;
+      /* 고르기 전 — 다른 알림 화면과 같은 빈 안내(아이콘 + 한 줄, 사용자 지시 2026-11-25). */
+      return (
+        <EmptyState
+          size="sm"
+          className="users-roles-pick-empty"
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="notifications" size={20} />
+            </span>
+          }
+          title={w.selectTitle}
+        />
+      );
     }
 
     const row = selectedRow;
@@ -693,6 +738,7 @@ export const ZaloConnectionScreen = () => {
       />
       {/* 머리글(경로 · 화면 이름)은 두지 않는다 — 사이드바가 위치를 말한다(단말 관리와 같은 틀 · #358). */}
       <div className="list-detail-toolbar">
+        {kindChips}
         <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} inline />
       </div>
 

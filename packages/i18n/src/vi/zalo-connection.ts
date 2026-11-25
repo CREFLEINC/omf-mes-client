@@ -72,6 +72,7 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
     kind: 'Loại',
     name: 'Tên mẫu',
     templateId: 'ID mẫu',
+    kindWithCount: (label: string, count: number): string => `${label} ${String(count)}`,
     kinds: { event: 'Sự kiện', handover: 'Công việc bàn giao' },
     empty: 'Không có mẫu phù hợp với điều kiện.',
     hasError: 'Cần kiểm tra',
