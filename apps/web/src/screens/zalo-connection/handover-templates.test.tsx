@@ -148,10 +148,15 @@ describe('ZaloConnectionScreen — 인계 작업 템플릿(피처 002)', () => {
 
     const pickingId = await openTemplate(user, '자재 출고 피킹');
     expect(pickingId).toHaveValue('200002');
-    /* 안내는 템플릿 ID 칸 아래 도움말로 선다. */
+    /* 안내는 「템플릿 ID」 이름 오른쪽 안내 라벨 — 입력 칸의 설명으로 이어진다. */
     expect(pickingId).toHaveAccessibleDescription(t.handover.templateIdHelp);
     await openTemplate(user, 'IQC 수입검사');
-    expect(screen.getByText('receipt_no, lot_count, supplier, event_time')).toBeInTheDocument();
+    /* 상세 정보 칸 · 목록 「템플릿 변수」 열 두 곳에 같은 글이 선다. */
+    expect(
+      within(screen.getByRole('region', { name: 'IQC 수입검사' })).getByText(
+        'receipt_no, lot_count, supplier, event_time',
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: t.handover.copyFor('IQC 수입검사') }),
     ).toBeInTheDocument();

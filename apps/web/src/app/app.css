@@ -40536,7 +40536,8 @@ body:has(
  * 칸 사이 세로선. 아래 가로선 밑 한 줄 — 왼쪽 토큰 일시, 오른쪽 [취소][저장].
  */
 .zalo-connection-box > .zalo-form {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* 갱신 토큰 칸은 토큰 일시를 옆에 두므로 넓게(사용자 지시 2026-11-25). */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
   gap: var(--space-4) 0;
 }
 
@@ -40617,10 +40618,6 @@ body:has(
   padding: var(--space-2) 0;
 }
 
-.zalo-connection-box .zalo-field-row > .zalo-token-times > div + div {
-  border-top: 1px solid var(--outline-variant);
-}
-
 .zalo-connection-box .zalo-field-row > .zalo-token-times dt {
   color: var(--on-surface-variant);
 }
@@ -40656,8 +40653,8 @@ body:has(
 }
 
 .zalo-search-cell > .zalo-search-input {
-  /* 돋보기 40px + 흐린 문구 「템플릿명을 입력하세요」 약 151px + 오른쪽 여백 — 실측 2026-11-25. */
-  width: 13.5rem;
+  /* 돋보기 40px + 흐린 문구 「템플릿명 또는 템플릿 변수를 입력하세요」 약 265px + 오른쪽 여백 — 실측 2026-11-25. */
+  width: 20.5rem;
   max-width: 100%;
 }
 
@@ -40700,4 +40697,76 @@ body:has(
 
 .zalo-connection-box .zalo-param-max > [class*='_field_'] {
   flex: 1 1 auto;
+}
+
+/*
+ * 갱신 토큰 칸 — 「등록 [수정]」 오른쪽에 세로선, 그 옆에 토큰 일시 두 줄(이름 · 일시 두 열, 사용자 이미지 2026-11-25).
+ * 좁으면 일시가 아래로 내려간다.
+ */
+.zalo-connection-box > .zalo-form > .zalo-field-row:has(> .zalo-token-times) {
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--space-4);
+}
+
+.zalo-connection-box > .zalo-form > .zalo-field-row:has(> .zalo-token-times) > .field-label {
+  grid-column: 1 / -1;
+}
+
+.zalo-connection-box .zalo-field-row > .zalo-token-times {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  align-content: center;
+  gap: var(--space-1) var(--space-5);
+  margin: 0;
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+}
+
+.zalo-connection-box .zalo-field-row > .zalo-token-times > div {
+  display: contents;
+}
+
+.zalo-connection-box .zalo-field-row > .zalo-token-times dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* 1400 이하에서는 칸이 좁아 일시가 두 줄로 꺾인다 — 「등록 [수정]」 아래로 내린다. */
+@media (width <= 1400px) {
+  .zalo-connection-box > .zalo-form > .zalo-field-row:has(> .zalo-token-times) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .zalo-connection-box .zalo-field-row > .zalo-token-times {
+    padding: var(--space-2) 0 0;
+    border-left: 0;
+  }
+}
+
+/* 템플릿 상세 정보 상자(사용자 지시 2026-11-25) — 템플릿명 오른쪽 구분 라벨, 템플릿 ID 는 상자 안 한 줄을 다 쓴다. */
+.zalo-template-facts > .parts-iqc-fact > .zalo-template-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.zalo-template-facts > .zalo-template-id-fact {
+  flex: 1 1 100%;
+}
+
+.zalo-template-facts > .zalo-template-id-fact > .zalo-template-id-head {
+  margin: 0;
+}
+
+.zalo-template-facts > .zalo-template-id-fact > .zalo-template-id-head > .field-label {
+  margin: 0;
+}
+
+/* 템플릿 ID 입력 칸은 정보 상자 폭을 채운다. */
+.zalo-template-facts > .zalo-template-id-fact > dd,
+.zalo-template-facts > .zalo-template-id-fact > dd > * {
+  width: 100%;
+  max-width: none;
 }

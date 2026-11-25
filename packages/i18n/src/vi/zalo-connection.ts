@@ -63,7 +63,7 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
   },
   workspace: {
     search: 'Tìm tên mẫu',
-    searchPlaceholder: 'Nhập tên mẫu',
+    searchPlaceholder: 'Nhập tên mẫu hoặc biến mẫu',
     apply: 'Tra cứu',
     clear: 'Đặt lại',
     list: 'Danh sách mẫu',

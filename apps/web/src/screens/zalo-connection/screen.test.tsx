@@ -148,11 +148,20 @@ describe('ZaloConnectionScreen', () => {
     /* 상세 제목은 「템플릿 상세」, 구분 · 템플릿명은 상세 상자 안 정보 칸(사용자 지시 2026-11-25). */
     const detail = box('생산 중단');
     expect(detail.getByRole('heading', { name: t.workspace.detailTitle })).toBeInTheDocument();
-    expect(detail.getByText(t.workspace.kind).nextElementSibling).toHaveTextContent(
-      t.workspace.kinds.event,
-    );
-    expect(detail.getByText(t.workspace.name).nextElementSibling).toHaveTextContent('생산 중단');
-    expect(screen.getByText('line, work_order, event_time, reason')).toBeInTheDocument();
+    /* 구분은 템플릿명 오른쪽 라벨, 템플릿 ID 입력도 같은 정보 상자 안(사용자 지시 2026-11-25). */
+    const nameValue = detail.getByText(t.workspace.name).nextElementSibling;
+    expect(nameValue).toHaveTextContent('생산 중단');
+    expect(nameValue).toHaveTextContent(t.workspace.kinds.event);
+    expect(
+      detail.getByRole('textbox', { name: t.fields.templateId }).closest('.zalo-template-facts'),
+    ).not.toBeNull();
+    /* 목록에도 템플릿 변수 열이 선다(사용자 지시 2026-11-25) — 상세의 정보 칸과 같은 글. */
+    expect(
+      within(screen.getByRole('region', { name: t.workspace.list })).getByRole('columnheader', {
+        name: t.fields.params,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText('line, work_order, event_time, reason')).toHaveLength(2);
     expect(screen.getByRole('button', { name: t.actions.copyFor('생산 중단') })).toHaveTextContent(
       t.actions.copy,
     );
@@ -171,6 +180,21 @@ describe('ZaloConnectionScreen', () => {
     expect(await screen.findByText(t.state.copied)).toBeInTheDocument();
     expect(box('생산 중단').queryByText(t.state.copied)).toBeNull();
     expect(await navigator.clipboard.readText()).toBe('line, work_order, event_time, reason');
+  });
+
+  /* 템플릿명 검색은 템플릿 변수로도 찾는다(사용자 지시 2026-11-25). */
+  it('템플릿 변수 이름으로 검색하면 그 변수를 쓰는 템플릿만 남는다', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    const search = await screen.findByRole('searchbox', { name: t.workspace.search });
+    const list = within(screen.getByRole('region', { name: t.workspace.list }));
+    expect(await list.findByRole('button', { name: '생산 실행' })).toBeInTheDocument();
+    await user.type(search, 'reason');
+    await user.click(screen.getByRole('button', { name: t.workspace.apply }));
+
+    expect(list.getByRole('button', { name: '생산 중단' })).toBeInTheDocument();
+    expect(list.queryByRole('button', { name: '생산 실행' })).toBeNull();
   });
 
   it('고른 템플릿을 한 번 더 누르면 선택이 풀린다', async () => {

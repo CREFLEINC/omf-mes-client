@@ -21,7 +21,7 @@ import {
   useHandoverAlertTypes,
 } from '../../patterns/handover-alert-types';
 import { useClientPage } from '../../patterns/client-page';
-import { ErpDetailFields } from '../erp-item/erp-data-parts';
+import '../erp-item/erp-data-parts.css';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
@@ -462,10 +462,15 @@ export const ZaloConnectionScreen = () => {
     })),
   ];
   const needle = keyword.trim().toLowerCase();
+  /* 템플릿명 또는 템플릿 변수로 찾는다(사용자 지시 2026-11-25). */
+  const paramsOfRow = (row: TemplateRow): string =>
+    row.kind === 'event' ? paramsOf(row.code) : handoverParamsOf(row.code);
+  const matches = (row: TemplateRow): boolean =>
+    needle === '' ||
+    row.name.toLowerCase().includes(needle) ||
+    paramsOfRow(row).toLowerCase().includes(needle);
   const shownTemplates = allTemplates.filter(
-    (row) =>
-      (needle === '' || row.name.toLowerCase().includes(needle)) &&
-      (kindFilter === null || row.kind === kindFilter),
+    (row) => matches(row) && (kindFilter === null || row.kind === kindFilter),
   );
   const templatePage = useClientPage(shownTemplates);
   const selectedRow = allTemplates.find((row) => row.key === selectedKey);
@@ -497,6 +502,13 @@ export const ZaloConnectionScreen = () => {
           {row.name}
         </button>
       ),
+    },
+    {
+      /* 템플릿 변수 — 상세의 「템플릿 변수」와 같은 글(사용자 지시 2026-11-25). 길면 열 폭에서 줄임표. */
+      key: 'params',
+      align: 'center',
+      header: t.fields.params,
+      render: paramsOfRow,
     },
     {
       key: 'templateId',
@@ -757,10 +769,7 @@ export const ZaloConnectionScreen = () => {
         >
           {w.kindWithCount(
             w.kinds[kind],
-            allTemplates.filter(
-              (row) =>
-                row.kind === kind && (needle === '' || row.name.toLowerCase().includes(needle)),
-            ).length,
+            allTemplates.filter((row) => row.kind === kind && matches(row)).length,
           )}
         </Chip>
       ))}
@@ -792,18 +801,27 @@ export const ZaloConnectionScreen = () => {
         : { kind: 'handover', code: row.code };
     return (
       <div className="zalo-template-detail">
-        {/* 제목은 「템플릿 상세」, 구분 · 템플릿명 · 템플릿 변수는 정보 표시 상자로(사용자 지시 2026-11-25 · 공통코드 상세와 같은 모양). */}
+        {/*
+         * 「템플릿 상세」 — 정보 표시 상자 하나(공통코드 상세와 같은 모양): 템플릿명(오른쪽에 구분 라벨) · 템플릿 변수 ·
+         * 템플릿 ID 입력(사용자 지시 2026-11-25). 템플릿 ID 는 상자 안 한 줄을 다 쓴다. 이름 오른쪽 안내 라벨은 인계 작업만 —
+         * 입력 칸의 설명(aria-describedby)으로 이어 둔다.
+         */}
         <div className="erp-data-detail erp-data-detail-fill">
-          <ErpDetailFields
-            title={w.detailTitle}
-            fields={[
-              { key: 'kind', label: w.kind, value: w.kinds[row.kind] },
-              { key: 'name', label: w.name, value: row.name },
-              /* 템플릿 변수 — 정보 칸 안에 변수 이름과 [변수명 복사]를 나란히(사용자 지시 2026-11-25). 복사하는 글은 그대로다. */
-              {
-                key: 'params',
-                label: t.fields.params,
-                value: (
+          <div className="erp-data-detail">
+            <h2 className="pane-title">{w.detailTitle}</h2>
+            <dl className="parts-iqc-facts iqc-inbound-facts erp-data-detail-fields zalo-template-facts">
+              <div className="parts-iqc-fact">
+                <dt className="field-label">{w.name}</dt>
+                <dd className="zalo-template-name">
+                  {row.name}
+                  <Chip size="sm" status={row.kind === 'event' ? 'info' : 'idle'}>
+                    {w.kinds[row.kind]}
+                  </Chip>
+                </dd>
+              </div>
+              <div className="parts-iqc-fact">
+                <dt className="field-label">{t.fields.params}</dt>
+                <dd>
                   <span className="zalo-template-params">
                     <code>{params}</code>
                     <Button
@@ -819,40 +837,46 @@ export const ZaloConnectionScreen = () => {
                       {t.actions.copy}
                     </Button>
                   </span>
-                ),
-              },
-            ]}
-          />
+                </dd>
+              </div>
+              <div className="parts-iqc-fact zalo-template-id-fact">
+                <dt className="zalo-template-id-head">
+                  <label className="field-label" htmlFor={TEMPLATE_ID_FIELD}>
+                    {t.fields.templateId}
+                  </label>
+                  {row.kind === 'handover' && (
+                    <span
+                      id={TEMPLATE_ID_HELP}
+                      className="iqc-inspection-action-note"
+                      data-tone="info"
+                    >
+                      <Icon name="info" size={16} aria-hidden />
+                      {t.handover.templateIdHelp}
+                    </span>
+                  )}
+                </dt>
+                <dd>
+                  <TextField
+                    id={TEMPLATE_ID_FIELD}
+                    aria-describedby={row.kind === 'handover' ? TEMPLATE_ID_HELP : undefined}
+                    value={templateIdOf(row)}
+                    onChange={(event) => {
+                      if (row.kind === 'event') {
+                        change({
+                          templates: { ...values.templates, [row.code]: event.target.value },
+                        });
+                      } else {
+                        changeHandover(row.code, event.target.value);
+                      }
+                    }}
+                    error={templateErrorOf(row)}
+                  />
+                </dd>
+              </div>
+            </dl>
+          </div>
         </div>
         {feedback('template')}
-        {/*
-         * 「템플릿 ID」 이름 오른쪽에 인계 작업 도움말을 파란 안내 라벨로(사용자 지시 2026-11-25) — 입력 칸 아래 도움말 대신.
-         * 입력 칸의 설명(aria-describedby)으로 이어 둔다.
-         */}
-        <div className="zalo-template-id-head">
-          <label className="field-label" htmlFor={TEMPLATE_ID_FIELD}>
-            {t.fields.templateId}
-          </label>
-          {row.kind === 'handover' && (
-            <p id={TEMPLATE_ID_HELP} className="iqc-inspection-action-note" data-tone="info">
-              <Icon name="info" size={16} aria-hidden />
-              {t.handover.templateIdHelp}
-            </p>
-          )}
-        </div>
-        <TextField
-          id={TEMPLATE_ID_FIELD}
-          aria-describedby={row.kind === 'handover' ? TEMPLATE_ID_HELP : undefined}
-          value={templateIdOf(row)}
-          onChange={(event) => {
-            if (row.kind === 'event') {
-              change({ templates: { ...values.templates, [row.code]: event.target.value } });
-            } else {
-              changeHandover(row.code, event.target.value);
-            }
-          }}
-          error={templateErrorOf(row)}
-        />
         {/* 이 템플릿의 ID 만 저장한다 — 다른 템플릿 · 연결 정보에서 고친 값은 싣지 않는다. */}
         {sectionActions(section)}
       </div>
