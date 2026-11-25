@@ -6,6 +6,7 @@ export const shiftManagement = {
   filters: {
     label: '조건',
     plant: '공장',
+    all: '전체',
   },
   /** 위 줄 오른쪽 사용 유무 라벨 — 누르면 그 상태만 보이고 다시 누르면 풀린다. 0건 라벨은 숨긴다. */
   chips: {
@@ -20,6 +21,7 @@ export const shiftManagement = {
   tableLabel: '교대 목록',
   empty: '등록된 교대가 없습니다. [교대 추가]로 주간과 야간 교대를 등록하세요.',
   columns: {
+    plant: '공장',
     code: '교대 코드',
     name: '교대명',
     start: '시작 시간',

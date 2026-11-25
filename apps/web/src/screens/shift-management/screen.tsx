@@ -58,10 +58,22 @@ export const ShiftManagementScreen = () => {
   const candidates = (plants.data ?? []).filter(
     (each) => kindIds === null || kindIds.has(each.plantId),
   );
+  /*
+   * 공장이 지정되지 않은 계정(범위 줄에 공장이 없음)은 「전체」로 볼 수 있는 모든 공장의 교대를 본다(사용자 지시 2026-11-25).
+   * 지정된 계정은 위 규칙대로 그 공장을 자동으로 고른다.
+   */
+  const designated = (session?.scopes ?? NO_SCOPES).some((scope) => scope.plantId !== undefined);
+  const plantOptions = designated ? candidates : (plants.data ?? []);
   const [pickedPlant, setPickedPlant] = useState<number | null>(null);
-  const plant = candidates.find((each) => each.plantId === pickedPlant) ?? candidates[0] ?? null;
+  const plant = designated
+    ? (candidates.find((each) => each.plantId === pickedPlant) ?? candidates[0] ?? null)
+    : (plantOptions.find((each) => each.plantId === pickedPlant) ?? null);
+  const showAll = !designated && plant === null;
   const plantId = plant?.plantId ?? null;
-  const list = useShifts(plantId);
+  const list = useShifts(showAll ? (plants.data === undefined ? null : 'all') : plantId);
+  const plantName = new Map(plantOptions.map((each) => [each.plantId, each.plantName]));
+  /* 추가 창이 처음 고를 공장 — 고른 공장, 「전체」면 위 줄 동작(OA · 부품)의 첫 공장. */
+  const defaultPlant = plant ?? candidates[0] ?? plantOptions[0] ?? null;
   /** 사용 유무 라벨 — `null` 이면 둘 다 보인다. 공장을 바꾸면 풀린다. */
   const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | null>(null);
 
@@ -77,6 +89,16 @@ export const ShiftManagementScreen = () => {
   });
 
   const baseColumns: Column<Shift>[] = [
+    ...(showAll
+      ? [
+          {
+            key: 'plant',
+            header: t.columns.plant,
+            align: 'center' as const,
+            render: (row: Shift) => plantName.get(row.plantId) ?? '',
+          },
+        ]
+      : []),
     { key: 'code', header: t.columns.code, align: 'center', render: (row) => row.shiftCode },
     { key: 'name', header: t.columns.name, render: (row) => row.shiftName },
     {
@@ -137,7 +159,8 @@ export const ShiftManagementScreen = () => {
   const resizable = useColumnWidths('omf-mes:shift-management:columns:v2', ordered);
   const fit = useFitColumns(resizable.columns);
 
-  const allRows = list.data ?? [];
+  /* 「전체」는 조건 없이 받으므로 볼 수 있는 공장의 교대만 남긴다. */
+  const allRows = (list.data ?? []).filter((row) => plantName.has(row.plantId));
   const activeCount = allRows.filter((row) => row.isActive).length;
   const counts = { active: activeCount, inactive: allRows.length - activeCount };
   const rows =
@@ -153,7 +176,7 @@ export const ShiftManagementScreen = () => {
     if (plants.isError)
       return <LoadErrorAlert error={plants.error} onRetry={() => void plants.refetch()} />;
     if (plants.isPending) return <Skeleton variant="rect" height="12rem" />;
-    if (plant === null) return <EmptyState size="sm" title={t.noPlant} />;
+    if (defaultPlant === null) return <EmptyState size="sm" title={t.noPlant} />;
     if (list.isError)
       return <LoadErrorAlert error={list.error} onRetry={() => void list.refetch()} />;
     if (list.isPending) return <Skeleton variant="rect" height="12rem" />;
@@ -212,19 +235,22 @@ export const ShiftManagementScreen = () => {
             </span>
             <Select
               id={plantFieldId}
-              value={plantId === null ? null : String(plantId)}
-              options={candidates.map((each) => ({
-                value: String(each.plantId),
-                label: each.plantName,
-              }))}
+              value={plantId === null ? '' : String(plantId)}
+              options={[
+                ...(designated ? [] : [{ value: '', label: t.filters.all }]),
+                ...plantOptions.map((each) => ({
+                  value: String(each.plantId),
+                  label: each.plantName,
+                })),
+              ]}
               onChange={(value) => {
-                setPickedPlant(Number(value));
+                setPickedPlant(value === '' ? null : Number(value));
                 setStatusFilter(null);
               }}
             />
           </div>
           {/* 볼 수 있는 공장이 없으면 목록이 그 사유를 말한다 — 추가 단추는 두지 않는다. */}
-          {plant !== null && (
+          {defaultPlant !== null && (
             <Button
               className="shift-management-add"
               leadingIcon={<Icon name="add" size={18} />}
@@ -248,12 +274,19 @@ export const ShiftManagementScreen = () => {
         </div>
         {listBody()}
       </section>
-      {editing !== null && plant !== null && (
+      {editing !== null && defaultPlant !== null && (
         <EditDialog
-          plantId={plant.plantId}
-          plantName={plant.plantName}
+          plants={editing === 'new' && showAll ? plantOptions : []}
+          plant={
+            editing === 'new'
+              ? defaultPlant
+              : {
+                  plantId: editing.plantId,
+                  plantName: plantName.get(editing.plantId) ?? '',
+                }
+          }
           shift={editing === 'new' ? null : editing}
-          existingCodes={allRows.map((row) => row.shiftCode)}
+          existingShifts={allRows}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);

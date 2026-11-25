@@ -50,18 +50,28 @@ export const usePlants = (scopes: readonly SessionScope[]): UseQueryResult<Plant
   });
 };
 
-/** 공장의 교대 — 사용 중지한 것까지(기존 조회 API `includeInactive` · 시작 시각 차례). 사용 유무 라벨이 화면에서 거른다. */
-export const useShifts = (plantId: number | null): UseQueryResult<Shift[]> => {
+/**
+ * 공장의 교대 — 사용 중지한 것까지(기존 조회 API `includeInactive` · 시작 시각 차례). 사용 유무 라벨이 화면에서 거른다.
+ * `'all'` 이면 공장 조건 없이 모두 받는다(공장이 지정되지 않은 계정 · 화면이 볼 수 있는 공장으로 다시 거른다).
+ */
+export const useShifts = (plantId: number | 'all' | null): UseQueryResult<Shift[]> => {
   const { client } = useApiClient();
   return useQuery({
-    queryKey: shiftKeys.list(plantId ?? 0),
+    queryKey: shiftKeys.list(plantId === 'all' ? 0 : (plantId ?? -1)),
     enabled: plantId !== null,
     queryFn: async () =>
       (
         await fetchAllPages((page, size) =>
           runRequest(() =>
             client.GET('/mdm/shifts', {
-              params: { query: { plantId: plantId ?? 0, includeInactive: true, page, size } },
+              params: {
+                query: {
+                  ...(typeof plantId === 'number' ? { plantId } : {}),
+                  includeInactive: true,
+                  page,
+                  size,
+                },
+              },
             }),
           ),
         )
@@ -69,6 +79,7 @@ export const useShifts = (plantId: number | null): UseQueryResult<Shift[]> => {
     select: (shifts) =>
       [...shifts].sort(
         (left, right) =>
+          left.plantId - right.plantId ||
           left.startTime.localeCompare(right.startTime) ||
           left.shiftCode.localeCompare(right.shiftCode),
       ),

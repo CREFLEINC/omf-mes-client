@@ -7,6 +7,7 @@ export const shiftManagement: Translated<typeof ko.shiftManagement> = {
   filters: {
     label: 'Điều kiện',
     plant: 'Nhà máy',
+    all: 'Tất cả',
   },
   chips: {
     label: 'Trạng thái sử dụng',
@@ -20,6 +21,7 @@ export const shiftManagement: Translated<typeof ko.shiftManagement> = {
   tableLabel: 'Danh sách ca',
   empty: 'Chưa có ca nào. Hãy bấm [Thêm ca] để đăng ký ca ngày và ca đêm.',
   columns: {
+    plant: 'Nhà máy',
     code: 'Mã ca',
     name: 'Tên ca',
     start: 'Giờ bắt đầu',

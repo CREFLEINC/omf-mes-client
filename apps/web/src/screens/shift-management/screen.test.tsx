@@ -56,6 +56,8 @@ const setup = (
   options: {
     referenceCount?: number;
     shifts?: ReturnType<typeof shift>[];
+    /** 계정 범위 — 기본은 공장이 지정된 계정. */
+    scopes?: { businessUnitId: number; plantId?: number }[];
     respondWrite?: (path: string) => Response | undefined;
   } = {},
 ) => {
@@ -118,7 +120,7 @@ const setup = (
       dataRouter: true,
       session: {
         ...SYNTHETIC_SESSION,
-        scopes: [{ businessUnitId: 8301 }],
+        scopes: options.scopes ?? [{ businessUnitId: 8301, plantId: 8401 }],
         permissions: ['W-06-26'],
       },
     },
@@ -310,6 +312,16 @@ describe('ShiftManagementScreen — 교대 관리 W-06-26 (#318)', () => {
 
     expect(await dialog.findByText('이미 있는 교대 코드입니다.')).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: td.addTitle })).toBeInTheDocument();
+  });
+});
+
+describe('ShiftManagementScreen — 공장이 지정되지 않은 계정', () => {
+  it('「전체」로 공장 조건 없이 모든 교대를 보이고 공장 열을 둔다', async () => {
+    const { listQueries } = setup({ scopes: [{ businessUnitId: 8301 }] });
+    const grid = await table();
+    expect(grid.getByRole('columnheader', { name: t.columns.plant })).toBeInTheDocument();
+    expect(grid.getAllByText(PLANT.plantName)).toHaveLength(2);
+    expect(listQueries[0]?.searchParams.has('plantId')).toBe(false);
   });
 });
 

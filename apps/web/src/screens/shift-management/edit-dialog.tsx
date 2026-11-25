@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from 'react';
 
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { SaveErrorBanner } from '../../patterns/master';
+import { Select } from '../../patterns/select';
 import { TimeField, type TimeFieldLabels } from '../../patterns/time-field';
 import { useSaveShift, useShiftDetail, type Shift } from './queries';
 
@@ -63,31 +64,47 @@ export const nextShiftCode = (existingCodes: readonly string[]): string => {
   }
 };
 
-export interface EditDialogProps {
+interface PlantChoice {
   plantId: number;
   plantName: string;
+}
+
+export interface EditDialogProps {
+  /** 처음 공장(수정 창은 그 교대의 공장). */
+  plant: PlantChoice;
+  /** 추가 창에서 고를 수 있는 공장 — 비면 `plant` 로 고정(목록이 「전체」일 때만 고른다). */
+  plants: readonly PlantChoice[];
   /** 고칠 교대. 없으면 추가 창. */
   shift: Shift | null;
-  /** 이 공장의 교대 코드 — 추가 창의 코드 미리 채우기에 쓴다. */
-  existingCodes: readonly string[];
+  /** 목록의 교대 — 고른 공장의 코드로 추가 창의 코드를 미리 채운다. */
+  existingShifts: readonly Shift[];
   onClose: () => void;
   onSaved: () => void;
 }
 
 /** 교대 추가 · 수정 창. 수정 창은 상세를 받아 잠금 토큰과 코드 수정 가부를 쓴다. */
 export const EditDialog = ({
-  plantId,
-  plantName,
+  plant,
+  plants,
   shift,
-  existingCodes,
+  existingShifts,
   onClose,
   onSaved,
 }: EditDialogProps) => {
   const shiftId = shift?.shiftId ?? null;
+  const [plantId, setPlantId] = useState(plant.plantId);
+  const plantFieldId = useId();
+  const codesOf = (id: number) =>
+    existingShifts.filter((each) => each.plantId === id).map((each) => each.shiftCode);
   const detail = useShiftDetail(shiftId);
   const [draft, setDraft] = useState<Draft>(
     shift === null
-      ? { shiftCode: nextShiftCode(existingCodes), shiftName: '', startTime: '', endTime: '' }
+      ? {
+          shiftCode: nextShiftCode(codesOf(plant.plantId)),
+          shiftName: '',
+          startTime: '',
+          endTime: '',
+        }
       : draftOf(shift),
   );
   const save = useSaveShift(shiftId, onSaved);
@@ -155,10 +172,37 @@ export const EditDialog = ({
     return (
       <div className="shift-management-form">
         {save.error !== null && <SaveErrorBanner error={save.error} />}
-        <dl className="shift-management-head">
-          <dt>{td.plant}</dt>
-          <dd>{plantName}</dd>
-        </dl>
+        {plants.length > 1 ? (
+          <div className="field-cell shift-management-dialog-plant">
+            <span className="field-label">
+              <label htmlFor={plantFieldId}>{td.plant}</label>
+              <span className="required-mark" aria-hidden="true">
+                {' '}
+                *
+              </span>
+            </span>
+            <Select
+              id={plantFieldId}
+              value={String(plantId)}
+              options={plants.map((each) => ({
+                value: String(each.plantId),
+                label: each.plantName,
+              }))}
+              onChange={(value) => {
+                const next = Number(value);
+                /* 자동으로 넣은 코드를 그대로 두었으면 새 공장의 다음 코드로 바꾼다. */
+                if (draft.shiftCode === nextShiftCode(codesOf(plantId)))
+                  update({ shiftCode: nextShiftCode(codesOf(next)) });
+                setPlantId(next);
+              }}
+            />
+          </div>
+        ) : (
+          <dl className="shift-management-head">
+            <dt>{td.plant}</dt>
+            <dd>{plant.plantName}</dd>
+          </dl>
+        )}
         {/* 교대 코드 · 교대명은 한 줄(사용자 지시 2026-11-25). */}
         <div className="shift-management-pair">
           <div className="shift-management-code">
