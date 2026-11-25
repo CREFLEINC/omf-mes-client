@@ -344,6 +344,7 @@ export const commonCode: Translated<typeof ko.commonCode> = {
    */
   codeValue: {
     paneTitle: 'Giá trị mã',
+    listTitle: 'Danh sách giá trị mã',
     formPaneTitle: 'Thông tin giá trị mã',
     pageNavLabel: 'Chuyển trang giá trị mã',
     actions: {

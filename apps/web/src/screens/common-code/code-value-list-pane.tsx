@@ -212,6 +212,9 @@ export const CodeValueListPane = ({
         </div>
       )}
 
+      {/* 무슨 목록인지 조회 상자 위에 제목으로 밝힌다(사용자 지시 2026-11-25). */}
+      <h3 className="pane-title">{t.listTitle}</h3>
+
       {/* 상세 안 조회 조건도 테두리 상자에 담는다 — 다른 화면 상세 안 조회 상자와 같은 모양(사용자 지시 2026-11-25). */}
       <div className="filter-bar common-code-detail-filter">
         {/* 해제 축이라 변경 즉시 적용한다. 상자 안 조건이 이것 하나라 라벨 층만큼 내리지 않는다. */}

@@ -460,6 +460,8 @@ export const commonCode = {
    */
   codeValue: {
     paneTitle: '코드값',
+    /** 조회 상자 위 목록 제목(사용자 지시 2026-11-25). */
+    listTitle: '코드값 목록',
     formPaneTitle: '코드값 정보',
     pageNavLabel: '코드값 쪽 이동',
     actions: {
