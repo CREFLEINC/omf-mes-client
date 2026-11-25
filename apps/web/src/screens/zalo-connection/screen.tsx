@@ -72,13 +72,12 @@ const SEARCH_ID = 'zalo-template-search';
 type SecretField = 'secretKey' | 'refreshToken';
 
 /** 저장 결과(오류 · 저장했습니다)를 보이는 상자 — 저장한 상자 안에 보인다. */
-type FeedbackArea = 'connection' | 'common' | 'template';
+type FeedbackArea = 'connection' | 'template';
 
 const CONNECTION_SECTION: SaveSection = { kind: 'connection' };
-const COMMON_SECTION: SaveSection = { kind: 'common' };
 
 const areaOf = (section: SaveSection): FeedbackArea =>
-  section.kind === 'connection' ? 'connection' : section.kind === 'common' ? 'common' : 'template';
+  section.kind === 'connection' ? 'connection' : 'template';
 
 /** 템플릿 목록 한 줄 — 이벤트별 템플릿과 인계 작업 템플릿을 한 목록에 둔다(#358). */
 interface TemplateRow {
@@ -140,7 +139,7 @@ export const ZaloConnectionScreen = () => {
   }, [connection.data]);
 
   /*
-   * 위 상자(연결 정보 · 템플릿 설정 · 조회 조건)의 높이가 바뀌면 목록 | 상세의 윗변을 다시 잰다 — 창 바닥까지 채우는
+   * 위 상자(Zalo 발송 설정 · 템플릿 조회)의 높이가 바뀌면 목록 | 상세의 윗변을 다시 잰다 — 창 바닥까지 채우는
    * 높이가 어긋나지 않게(ListDetailWorkspace 와 같다).
    */
   useLayoutEffect(() => {
@@ -462,7 +461,7 @@ export const ZaloConnectionScreen = () => {
     count: connection.data === undefined ? undefined : shownTemplates.length,
   };
 
-  /** 고정 상자 — 연결 상태 · 연결 정보. 아래 오른쪽 [취소][저장]은 앱 ID · 앱 비밀 키 · 갱신 토큰만 저장한다. */
+  /** 고정 상자 — 연결 상태 · 연결 정보. 아래 오른쪽 [취소][저장]은 앱 ID · 앱 비밀 키 · 갱신 토큰 · 변수 값 길이 제한만 저장한다. */
   const connectionBox = (): ReactNode => {
     if (connection.isError) {
       return <LoadErrorAlert error={connection.error} onRetry={() => void connection.refetch()} />;
@@ -554,6 +553,21 @@ export const ZaloConnectionScreen = () => {
           )}
           {secretRow('secretKey', t.fields.secretKey, data.secretKeySet)}
           {secretRow('refreshToken', t.fields.refreshToken, data.refreshTokenSet)}
+          {fieldRow(
+            t.fields.paramMaxLength,
+            <div className="zalo-param-max">
+              <TextField
+                aria-label={t.fields.paramMaxLength}
+                required
+                inputMode="numeric"
+                value={values.paramMaxLength}
+                onChange={(event) => change({ paramMaxLength: event.target.value })}
+                error={fieldError('paramMaxLength')}
+              />
+              <span className="zalo-param-unit">{t.values.charUnit}</span>
+            </div>,
+            true,
+          )}
         </div>
         {/* 아래 줄 — 왼쪽 토큰 일시, 오른쪽 [취소][저장](시안 2026-11-25). */}
         <div className="zalo-connection-foot">
@@ -608,13 +622,14 @@ export const ZaloConnectionScreen = () => {
     );
   };
 
-  /* 템플릿명 검색 — 라벨 · 입력 칸 · [조회] · [초기화]를 한 줄에 붙여 둔다(템플릿 설정 상자 안). */
+  /* 템플릿명 검색 — 라벨 · 입력 칸 · [조회] · [초기화]를 한 줄에 붙여 둔다(템플릿 조회 상자 안). */
   const listSearch = (
-    <div className="zalo-field-row zalo-template-search">
-      <label className="field-label" htmlFor={SEARCH_ID}>
-        {w.search}
-      </label>
-      <div className="zalo-field-value">
+    <div className="filter-bar zalo-template-search">
+      {/* 이름은 입력 칸 위(다른 화면 조회 칸과 같다 · 사용자 지시 2026-11-25). */}
+      <div className="field-cell zalo-search-cell">
+        <label className="field-label" htmlFor={SEARCH_ID}>
+          {w.search}
+        </label>
         <SearchInput
           id={SEARCH_ID}
           containerClassName="zalo-search-input"
@@ -625,8 +640,8 @@ export const ZaloConnectionScreen = () => {
           clearLabel={messages.common.clear}
         />
       </div>
-      {/* [조회]·[초기화]는 줄 오른쪽 끝 — 위 줄 [취소][저장]과 같은 세로선(사용자 지시 2026-11-25). */}
-      <div className="filter-actions zalo-search-actions">
+      {/* [조회]·[초기화]는 줄 오른쪽 끝(사용자 지시 2026-11-25). */}
+      <div className="filter-actions field-cell-unlabeled zalo-search-actions">
         <Button onClick={() => setKeyword(search)}>{w.apply}</Button>
         {/* 초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */}
         {hasChangedFilters({ q: '' }, { q: search }, { q: keyword }) && (
@@ -760,44 +775,21 @@ export const ZaloConnectionScreen = () => {
         <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} inline />
       </div>
 
-      {/* 위 — Zalo 연결 정보. 아래 오른쪽 [취소][저장]은 이 상자의 칸만 저장한다. */}
-      <section className="pane zalo-pane zalo-connection-box" aria-label={t.panes.connection}>
-        {connectionBox()}
+      {/*
+       * 템플릿 조회 — 템플릿명 검색 · [조회]만(길이 제한은 Zalo 발송 설정 상자로 옮겼다 · 사용자 지시 2026-11-25).
+       * 목록 · 상세에는 저장 단추를 두지 않는다(상세 저장은 고른 템플릿 상자 안).
+       */}
+      <section className="pane zalo-template-box" aria-label={t.panes.templates}>
+        {listSearch}
       </section>
 
-      {/*
-       * 템플릿 설정 — 상자 하나. 맨 위 줄은 모든 템플릿 공통 「변수 값 길이 제한 [100] 자」와 그 줄 오른쪽 끝 [취소][저장],
-       * 아래 줄은 템플릿명 검색 · [조회]. 목록 · 상세에는 저장 단추를 두지 않는다(상세 저장은 고른 템플릿 상자 안).
-       */}
-      <section ref={aboveRef} className="pane zalo-template-box" aria-label={t.panes.templates}>
-        {values !== null && (
-          <>
-            <div className="zalo-template-common-row">
-              <div className="zalo-field-row">
-                <span className="field-label">
-                  {t.fields.paramMaxLength}
-                  <span className="required-mark" aria-hidden="true">
-                    *
-                  </span>
-                </span>
-                <div className="zalo-field-value zalo-param-max">
-                  <TextField
-                    aria-label={t.fields.paramMaxLength}
-                    required
-                    inputMode="numeric"
-                    value={values.paramMaxLength}
-                    onChange={(event) => change({ paramMaxLength: event.target.value })}
-                    error={fieldError('paramMaxLength')}
-                  />
-                  <span className="zalo-param-unit">{t.values.charUnit}</span>
-                </div>
-              </div>
-              {sectionActions(COMMON_SECTION)}
-            </div>
-            {feedback('common')}
-          </>
-        )}
-        {listSearch}
+      {/* 템플릿 조회 아래 — Zalo 발송 설정(연결 정보 + 변수 값 길이 제한). 아래 오른쪽 [취소][저장]은 이 상자의 칸만 저장한다. */}
+      <section
+        ref={aboveRef}
+        className="pane zalo-pane zalo-connection-box"
+        aria-label={t.panes.connection}
+      >
+        {connectionBox()}
       </section>
 
       <div

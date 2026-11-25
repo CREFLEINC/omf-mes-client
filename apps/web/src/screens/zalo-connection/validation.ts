@@ -94,9 +94,9 @@ export const withSection = (
         appId: draft.appId,
         secretKey: draft.secretKey,
         refreshToken: draft.refreshToken,
+        /* 변수 값 길이 제한도 Zalo 발송 설정 상자 안 — 같이 저장 · 되돌린다(사용자 지시 2026-11-25). */
+        paramMaxLength: draft.paramMaxLength,
       };
-    case 'common':
-      return { ...base, paramMaxLength: draft.paramMaxLength };
     case 'event':
       return {
         ...base,

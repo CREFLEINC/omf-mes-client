@@ -226,23 +226,23 @@ describe('ZaloConnectionScreen', () => {
         name: t.actions.save,
       }),
     ).toBeNull();
-    /* 화면 위 오른쪽의 한꺼번 저장은 없다 — 연결 정보 · 템플릿 설정 · 템플릿 상세 상자마다 하나씩. */
+    /* 화면 위 오른쪽의 한꺼번 저장은 없다 — Zalo 발송 설정 · 템플릿 상세 상자마다 하나씩. 템플릿 조회 상자에는 없다. */
     expect(saveIn(t.panes.connection)).toBeDisabled();
-    expect(saveIn(t.panes.templates)).toBeDisabled();
+    expect(box(t.panes.templates).queryByRole('button', { name: t.actions.save })).toBeNull();
 
     await user.type(await openTemplate(user, '생산 실행'), 'TPL01');
     const save = saveIn('생산 실행');
     expect(save).toBeEnabled();
     expect(saveIn(t.panes.connection)).toBeDisabled();
-    expect(saveIn(t.panes.templates)).toBeDisabled();
-    expect(screen.getAllByRole('button', { name: t.actions.save })).toHaveLength(3);
+    expect(screen.getAllByRole('button', { name: t.actions.save })).toHaveLength(2);
 
     await user.click(box('생산 실행').getByRole('button', { name: t.actions.revert }));
     expect(screen.getByRole('textbox', { name: t.fields.templateId })).toHaveValue('');
     expect(save).toBeDisabled();
   });
 
-  it('앱 ID 를 고쳤다가 [취소]하면 연결 정보만 되돌리고, 고치던 최대 길이는 남는다', async () => {
+  /* 변수 값 길이 제한은 Zalo 발송 설정 상자 안 — [취소]는 앱 ID 와 함께 되돌린다(사용자 지시 2026-11-25). */
+  it('앱 ID · 변수 값 길이 제한을 고쳤다가 [취소]하면 둘 다 되돌린다', async () => {
     const user = userEvent.setup();
     setup();
 
@@ -253,11 +253,30 @@ describe('ZaloConnectionScreen', () => {
     await user.clear(length);
     await user.type(length, '150');
 
+    expect(
+      box(t.panes.connection).getByRole('textbox', { name: new RegExp(t.fields.paramMaxLength) }),
+    ).toBe(length);
     await user.click(box(t.panes.connection).getByRole('button', { name: t.actions.revert }));
     expect(appId).toHaveValue('1234567890');
+    expect(length).toHaveValue('100');
     expect(saveIn(t.panes.connection)).toBeDisabled();
-    expect(length).toHaveValue('150');
-    expect(saveIn(t.panes.templates)).toBeEnabled();
+  });
+
+  it('변수 값 길이 제한은 Zalo 발송 설정의 [저장]으로 저장된다', async () => {
+    const user = userEvent.setup();
+    const { writes } = setup({ respondPut: echoPut(connection()) });
+
+    const length = await screen.findByRole('textbox', {
+      name: new RegExp(t.fields.paramMaxLength),
+    });
+    await user.clear(length);
+    await user.type(length, '150');
+    await user.click(saveIn(t.panes.connection));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    const body = (await (writes[0] as Request).json()) as Record<string, unknown>;
+    expect(body.paramMaxLength).toBe(150);
+    expect(await box(t.panes.connection).findByText(t.state.saved)).toBeInTheDocument();
   });
 
   it('연결 정보를 저장해도 고치던 템플릿 ID 는 싣지 않고, 고친 채 남았다가 새 ETag 로 따로 저장된다', async () => {
@@ -333,7 +352,6 @@ describe('ZaloConnectionScreen', () => {
     expect(length).toHaveValue('150');
     expect(screen.getByLabelText(t.fields.refreshToken)).toHaveValue('rt');
     expect(saveIn(t.panes.connection)).toBeEnabled();
-    expect(saveIn(t.panes.templates)).toBeEnabled();
   });
 
   it('US7-1 비밀값은 다시 보이지 않고 「등록됨 [변경]」으로만 보인다', async () => {
@@ -427,9 +445,9 @@ describe('ZaloConnectionScreen', () => {
       screen.getByRole('textbox', { name: new RegExp(t.fields.paramMaxLength) }),
       '120',
     );
-    await user.click(saveIn(t.panes.templates));
+    await user.click(saveIn(t.panes.connection));
 
-    expect(await box(t.panes.templates).findByText(t.state.conflict)).toBeInTheDocument();
+    expect(await box(t.panes.connection).findByText(t.state.conflict)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.actions.reload })).toBeInTheDocument();
   });
 

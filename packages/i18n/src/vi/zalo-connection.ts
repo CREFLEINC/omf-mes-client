@@ -5,8 +5,8 @@ import type { Translated } from './translated';
 export const zaloConnection: Translated<typeof ko.zaloConnection> = {
   panes: {
     status: 'Trạng thái kết nối',
-    connection: 'Thông tin kết nối Zalo',
-    templates: 'Thiết lập mẫu tin',
+    connection: 'Cài đặt gửi Zalo',
+    templates: 'Tra cứu mẫu tin',
   },
   chips: {
     connectionError: 'Lỗi kết nối',
@@ -63,7 +63,7 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
     templateId: 'ID mẫu tin gồm 1–40 chữ cái tiếng Anh hoặc chữ số, hoặc để trống.',
   },
   workspace: {
-    search: 'Tên mẫu',
+    search: 'Tìm tên mẫu',
     searchPlaceholder: 'Nhập tên mẫu',
     apply: 'Tra cứu',
     clear: 'Đặt lại',

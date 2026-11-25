@@ -1,6 +1,7 @@
 /** W-CO-12 알림 연결 설정 — Zalo 연결 정보와 이벤트별 템플릿(001 신설, 결정 #20). */
 export const zaloConnection = {
-  panes: { status: '연결 상태', connection: 'Zalo 연결 정보', templates: '템플릿 설정' },
+  /** 연결 정보 + 변수 값 길이 제한을 한 상자로(사용자 지시 2026-11-25). 템플릿 상자는 템플릿명 조회만. */
+  panes: { status: '연결 상태', connection: 'Zalo 발송 설정', templates: '템플릿 조회' },
   /** 제목 옆 상태 칩 — 해당할 때만. 연결 오류(재등록 필요 · 마지막 오류)는 경고색, 발송 꺼짐은 무채색. */
   chips: {
     connectionError: '연결 오류',
@@ -10,7 +11,7 @@ export const zaloConnection = {
     appId: '앱 ID',
     secretKey: '앱 비밀 키',
     refreshToken: '갱신 토큰',
-    /** 템플릿 변수 값 자르기 길이 — 모든 템플릿 공통(계약 `paramMaxLength`). 템플릿 설정 상자 맨 위 한 줄. */
+    /** 템플릿 변수 값 자르기 길이 — 모든 템플릿 공통(계약 `paramMaxLength`). Zalo 발송 설정 상자 네 번째 칸. */
     paramMaxLength: '변수 값 길이 제한',
     templateId: '템플릿 ID',
     expiresAt: '액세스 토큰 만료 일시',
@@ -66,7 +67,7 @@ export const zaloConnection = {
   },
   /** 연결 정보 · 템플릿 설정(목록 · 상세) 통일 배치(omf-all-around#358). 검색은 템플릿 설정 상자 안. */
   workspace: {
-    search: '템플릿명',
+    search: '템플릿명 검색',
     searchPlaceholder: '템플릿명을 입력하세요',
     apply: '조회',
     clear: '초기화',

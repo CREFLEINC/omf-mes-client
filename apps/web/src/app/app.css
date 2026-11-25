@@ -40237,8 +40237,15 @@ body:has(
   min-width: 0;
 }
 
-.zalo-field-value.zalo-param-max > [class*='_field_'] {
-  flex: 0 0 8rem;
+.zalo-param-max {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.zalo-param-max > [class*='_field_'] {
+  flex: 0 1 8rem;
+  min-width: 0;
 }
 
 .zalo-param-unit {
@@ -40256,6 +40263,8 @@ body:has(
 
 .zalo-error-toggle {
   flex: none;
+  /* 단추가 줄을 키우지 않게 — 줄 높이가 글자 높이 그대로여야 왼쪽 ! 아이콘과 글자가 한 줄에 맞는다. */
+  margin-block: -6px;
   margin-left: auto;
   border-color: color-mix(in srgb, var(--on-semantic-error-container) 45%, transparent);
   background: transparent;
@@ -40391,23 +40400,6 @@ body:has(
   margin-top: 0;
 }
 
-.zalo-template-common-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.zalo-template-common-row > .zalo-field-row {
-  flex: 1 1 24rem;
-  min-width: 0;
-}
-
-.zalo-template-common-row > .form-actions {
-  margin: 0 0 0 auto;
-}
-
 /*
  * 알림 수신자 · 인계작업 알림 목록 — 이름 열(이벤트 · 작업명)도 다른 열처럼 가운데, 고른 줄도 보통 굵기
  * (검사 조회·판정 목록과 같은 모양 · 사용자 지시 2026-11-25). 고른 줄 바탕 · 왼쪽 선은 `.inspection-queue-table` 공용 규칙.
@@ -40498,8 +40490,7 @@ body:has(
   gap: var(--space-2);
 }
 
-.zalo-connection-box .zalo-field-row,
-.zalo-template-box .zalo-field-row {
+.zalo-connection-box .zalo-field-row {
   align-items: center;
 }
 
@@ -40507,30 +40498,6 @@ body:has(
   display: grid;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
-}
-
-.zalo-template-box > .zalo-template-common-row {
-  align-items: center;
-}
-
-.zalo-template-box > .zalo-template-search {
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--outline-variant);
-}
-
-.zalo-template-search > .zalo-field-value {
-  flex-wrap: nowrap;
-  align-items: center;
-}
-
-.zalo-template-search > .zalo-field-value > .zalo-search-input {
-  flex: 0 1 16rem;
-  width: 16rem;
-  min-width: 0;
-}
-
-.zalo-template-search > .zalo-field-value > button {
-  flex: 0 0 auto;
 }
 
 /* 좌우 배치 — 상세는 내용 높이만. */
@@ -40563,23 +40530,14 @@ body:has(
   letter-spacing: var(--type-label-sm-tracking);
 }
 
-/* 알림 연결 설정 — 템플릿명 줄 [조회]·[초기화]는 오른쪽 끝(사용자 지시 2026-11-25). */
-.zalo-template-box > .zalo-field-row.zalo-template-search {
-  grid-template-columns: 9rem minmax(0, 30rem) minmax(0, 1fr);
-}
-
-.zalo-template-search > .zalo-search-actions {
-  justify-content: flex-end;
-  margin: 0;
-}
 
 /*
  * 알림 연결 설정 — Zalo 연결 정보 상자(시안 2026-11-25): 앱 ID · 앱 비밀 키 · 갱신 토큰 세 칸을 나란히(이름은 값 위),
  * 칸 사이 세로선. 아래 가로선 밑 한 줄 — 왼쪽 토큰 일시, 오른쪽 [취소][저장].
  */
 .zalo-connection-box > .zalo-form {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3) 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4) 0;
 }
 
 .zalo-connection-box > .zalo-form > .zalo-field-row {
@@ -40600,7 +40558,19 @@ body:has(
   align-items: center;
 }
 
-@media (width <= 1000px) {
+/* 좁으면 두 칸씩 두 줄 — 줄 첫 칸에는 세로선을 두지 않는다. 1280 에서는 네 칸 그대로(상자가 높아지면 목록이 눌린다). */
+@media (width <= 1150px) {
+  .zalo-connection-box > .zalo-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .zalo-connection-box > .zalo-form > .zalo-field-row:nth-child(odd) {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
+@media (width <= 760px) {
   .zalo-connection-box > .zalo-form {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -40634,4 +40604,42 @@ body:has(
 
 .zalo-connection-foot > .form-actions {
   margin: 0 0 0 auto;
+}
+
+/* 비밀값 입력을 연 칸 — 네 칸 배치에서도 [취소]가 입력 칸 옆 한 줄에 남는다. */
+.zalo-connection-box .zalo-field-value > .zalo-secret {
+  flex-wrap: nowrap;
+}
+
+/*
+ * 알림 연결 설정 — 템플릿 조회 상자(사용자 지시 2026-11-25): 「템플릿명 검색」 이름은 입력 칸 위, 입력 칸 폭은 흐린 문구에 맞춘다.
+ * [조회]·[초기화]는 줄 오른쪽 끝.
+ */
+.zalo-template-box > .zalo-template-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+  margin: 0;
+}
+
+.zalo-template-box > .zalo-template-search > .zalo-search-cell {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.zalo-search-cell > .zalo-search-input {
+  /* 돋보기 40px + 흐린 문구 「템플릿명을 입력하세요」 약 151px + 오른쪽 여백 — 실측 2026-11-25. */
+  width: 13.5rem;
+  max-width: 100%;
+}
+
+.zalo-template-box > .zalo-template-search > .zalo-search-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-2);
+  margin: 0 0 0 auto;
+  white-space: nowrap;
 }

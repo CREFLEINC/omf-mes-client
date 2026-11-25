@@ -28,7 +28,4 @@ export interface ConnectionFormValues {
  * 고친 값만 얹는다 — 다른 상자의 저장 안 한 값은 실리지 않는다.
  */
 export type SaveSection =
-  | { kind: 'connection' }
-  | { kind: 'common' }
-  | { kind: 'event'; code: string }
-  | { kind: 'handover'; code: string };
+  { kind: 'connection' } | { kind: 'event'; code: string } | { kind: 'handover'; code: string };
