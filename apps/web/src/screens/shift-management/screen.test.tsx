@@ -63,6 +63,7 @@ const setup = (
 ) => {
   const writes: Write[] = [];
   const listQueries: URL[] = [];
+  const detailGets: string[] = [];
   const pathOf = (request: Request) => new URL(request.url).pathname;
   const isGet = (request: Request, path: string) =>
     request.method === 'GET' && pathOf(request) === path;
@@ -80,10 +81,13 @@ const setup = (
     },
     {
       match: (r) => r.method === 'GET' && /^\/mdm\/shifts\/\d+$/.test(pathOf(r)),
-      respond: (r) =>
-        jsonResponse(
+      respond: (r) => {
+        detailGets.push(pathOf(r));
+        return jsonResponse(
           {
-            shift: SHIFTS.find((each) => String(each.shiftId) === pathOf(r).split('/').at(-1)),
+            shift: (options.shifts ?? SHIFTS).find(
+              (each) => String(each.shiftId) === pathOf(r).split('/').at(-1),
+            ),
             editability: {
               codeEditable: referenceCount === 0,
               reason: referenceCount === 0 ? 'EDITABLE' : 'REFERENCED',
@@ -91,7 +95,8 @@ const setup = (
             },
           },
           { headers: { ETag: '5' } },
-        ),
+        );
+      },
     },
     {
       match: (r) => r.method !== 'GET' && pathOf(r).startsWith('/mdm/shifts'),
@@ -126,7 +131,7 @@ const setup = (
     },
   );
 
-  return { user: userEvent.setup(), writes, listQueries };
+  return { user: userEvent.setup(), writes, listQueries, detailGets };
 };
 
 const table = async () => within(await screen.findByRole('table', { name: t.tableLabel }));
@@ -177,7 +182,12 @@ describe('ShiftManagementScreen — 교대 관리 W-06-26 (#318)', () => {
     const rows = (await table()).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(1);
     /* 사용 중지한 교대는 관리 단추가 없다. */
-    expect(within(rows[0] as HTMLElement).queryByRole('button')).toBeNull();
+    /* 미사용 줄은 [재사용] 단추 하나만 있다. */
+    expect(
+      within(rows[0] as HTMLElement)
+        .getAllByRole('button')
+        .map((button) => button.getAttribute('aria-label')),
+    ).toEqual([t.activateRow('합성 폐지')]);
   });
 
   it('미사용이 0건이면 미사용 라벨은 보이지 않는다', async () => {
@@ -284,17 +294,17 @@ describe('ShiftManagementScreen — 교대 관리 W-06-26 (#318)', () => {
     );
   });
 
-  it('서버가 거절하면 창을 닫지 않고 칸 옆에 이유를 보인다', async () => {
+  it('서버가 코드 중복으로 거절하면 창을 닫지 않고 교대 코드 칸에 알린다', async () => {
     const { user } = setup({
       respondWrite: () =>
         jsonResponse(
           {
             errors: [
               {
-                scope: 'field',
-                field: 'shiftCode',
-                code: 'DUPLICATE',
-                message: '이미 있는 교대 코드입니다.',
+                scope: 'screen',
+                code: 'UNIQUE_VIOLATION',
+                message: '이미 있는 값입니다.',
+                uniqueScope: ['plantId', 'shiftCode'],
               },
             ],
           },
@@ -304,14 +314,78 @@ describe('ShiftManagementScreen — 교대 관리 W-06-26 (#318)', () => {
     await user.click(await screen.findByRole('button', { name: t.add }));
     const dialog = within(await screen.findByRole('dialog', { name: td.addTitle }));
     await user.clear(dialog.getByLabelText(td.code, { exact: false }));
-    await user.type(dialog.getByLabelText(td.code, { exact: false }), 'D');
+    await user.type(dialog.getByLabelText(td.code, { exact: false }), 'X');
     await user.type(dialog.getByLabelText(td.name, { exact: false }), '주간');
     await pickTime(user, 'start', '08:00');
     await pickTime(user, 'end', '20:00');
     await user.click(dialog.getByRole('button', { name: td.save }));
 
-    expect(await dialog.findByText('이미 있는 교대 코드입니다.')).toBeInTheDocument();
+    expect(await dialog.findByText(td.codeTaken)).toBeInTheDocument();
+    expect(dialog.queryByText('이미 있는 값입니다.')).toBeNull();
     expect(screen.getByRole('dialog', { name: td.addTitle })).toBeInTheDocument();
+    /* 코드를 고치면 안내가 사라진다. */
+    await user.type(dialog.getByLabelText(td.code, { exact: false }), '2');
+    expect(dialog.queryByText(td.codeTaken)).toBeNull();
+  });
+
+  it('같은 공장에 이미 있는 코드(사용 중지 포함)는 저장 전에 칸에서 알리고 [저장]을 끈다', async () => {
+    const { user, writes } = setup({
+      shifts: [
+        ...SHIFTS,
+        { ...shift(3, 'X', '합성 예전', '06:00:00', '14:00:00'), isActive: false },
+      ],
+    });
+    await user.click(await screen.findByRole('button', { name: t.add }));
+    const dialog = within(await screen.findByRole('dialog', { name: td.addTitle }));
+    await user.clear(dialog.getByLabelText(td.code, { exact: false }));
+    await user.type(dialog.getByLabelText(td.code, { exact: false }), 'X');
+    await user.type(dialog.getByLabelText(td.name, { exact: false }), '오후');
+    await pickTime(user, 'start', '14:00');
+    await pickTime(user, 'end', '22:00');
+    expect(dialog.getByText(td.codeTaken)).toBeInTheDocument();
+    expect(dialog.getByRole('button', { name: td.save })).toBeDisabled();
+    expect(writes).toHaveLength(0);
+  });
+
+  it('저장 충돌이면 [최신 불러오기]로 상세를 다시 받는다', async () => {
+    const { user, detailGets } = setup({
+      respondWrite: () =>
+        jsonResponse(
+          { conflictCause: 'user', message: '다른 사용자가 먼저 저장했습니다.' },
+          { status: 409 },
+        ),
+    });
+    await user.click((await table()).getByRole('button', { name: t.editRow('합성 주간') }));
+    const dialog = within(await screen.findByRole('dialog', { name: td.editTitle }));
+    await waitFor(() => expect(dialog.getByRole('button', { name: td.save })).toBeEnabled());
+    await user.click(dialog.getByRole('button', { name: td.save }));
+    const reload = await dialog.findByRole('button', { name: messages.conflict.reloadAction });
+    const before = detailGets.length;
+    await user.click(reload);
+    await waitFor(() => expect(detailGets.length).toBeGreaterThan(before));
+  });
+
+  it('미사용 교대는 [재사용]만 있고 확인 뒤 :activate 를 ETag 와 함께 보낸다', async () => {
+    const { user, writes } = setup({
+      shifts: [
+        shift(1, 'D', '합성 주간', '08:00:00', '20:00:00'),
+        { ...shift(2, 'N', '합성 야간', '20:00:00', '08:00:00'), isActive: false },
+      ],
+    });
+    const rows = await table();
+    expect(rows.queryByRole('button', { name: t.editRow('합성 야간') })).toBeNull();
+    await user.click(rows.getByRole('button', { name: t.activateRow('합성 야간') }));
+    const confirm = within(
+      await screen.findByRole('dialog', { name: t.activateDialog.title('합성 야간') }),
+    );
+    expect(confirm.getByText(t.activateDialog.body('합성 야간'))).toBeInTheDocument();
+    await waitFor(() =>
+      expect(confirm.getByRole('button', { name: t.activateDialog.confirm })).toBeEnabled(),
+    );
+    await user.click(confirm.getByRole('button', { name: t.activateDialog.confirm }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]).toMatchObject({ method: 'POST', path: '/mdm/shifts/2:activate' });
+    expect(writes[0]?.headers.get('If-Match')).toBe('5');
   });
 });
 

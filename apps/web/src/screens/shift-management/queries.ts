@@ -86,12 +86,17 @@ export const useShifts = (plantId: number | 'all' | null): UseQueryResult<Shift[
   });
 };
 
-/** 수정 창을 열 때 — 잠금 토큰과 코드 수정 가부를 받는다. */
+/**
+ * 수정 창을 열 때 — 잠금 토큰과 코드 수정 가부를 받는다.
+ * 창을 열 때마다 새로 받는다(남겨 두지 않음) — 남긴 값을 쓰면 그 사이 누가 고친 내용을 못 보고 저장이 충돌한다.
+ */
 export const useShiftDetail = (shiftId: number | null): UseQueryResult<ShiftDetailResponse> => {
   const { client } = useApiClient();
   return useQuery({
     queryKey: shiftKeys.detail(shiftId ?? 0),
     enabled: shiftId !== null,
+    staleTime: 0,
+    gcTime: 0,
     queryFn: () =>
       runRequest(() =>
         client.GET('/mdm/shifts/{shiftId}', { params: { path: { shiftId: shiftId ?? 0 } } }),
@@ -134,23 +139,26 @@ export const useSaveShift = (
   });
 };
 
-/** 교대 사용 중지 — 본문이 빈 액션이라 멱등 키 수명은 기본값(`per-attempt`)이다. */
-export const useDeactivateShift = (
+/** 교대 사용 중지(`off`) · 재사용(`on`) — 본문이 빈 액션이라 멱등 키 수명은 기본값(`per-attempt`)이다. */
+export const useToggleShift = (
   shiftId: number | null,
+  to: 'on' | 'off',
   onSuccess: () => void,
 ): MasterWriteResult<void> => {
   const { client } = useApiClient();
   return useMasterWrite<void, Shift>({
-    request: (_variables, headers) =>
-      client.POST('/mdm/shifts/{shiftId}:deactivate', {
-        params: {
-          path: { shiftId: shiftId ?? 0 },
-          header: {
-            'Idempotency-Key': headers['Idempotency-Key'],
-            'If-Match': headers['If-Match'] ?? '',
-          },
+    request: (_variables, headers) => {
+      const params = {
+        path: { shiftId: shiftId ?? 0 },
+        header: {
+          'Idempotency-Key': headers['Idempotency-Key'],
+          'If-Match': headers['If-Match'] ?? '',
         },
-      }),
+      };
+      return to === 'off'
+        ? client.POST('/mdm/shifts/{shiftId}:deactivate', { params })
+        : client.POST('/mdm/shifts/{shiftId}:activate', { params });
+    },
     etagPath: shiftId === null ? null : shiftDetailPath(shiftId),
     invalidateKeys: [shiftKeys.all],
     knownFields: [],

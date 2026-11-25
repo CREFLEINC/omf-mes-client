@@ -42,6 +42,8 @@ export const shiftManagement: Translated<typeof ko.shiftManagement> = {
   editRow: (name: string) => `Sửa ca ${name}`,
   deactivate: 'Ngừng sử dụng',
   deactivateRow: (name: string) => `Ngừng sử dụng ca ${name}`,
+  activate: 'Dùng lại',
+  activateRow: (name: string) => `Dùng lại ca ${name}`,
   dialog: {
     addTitle: 'Thêm ca',
     editTitle: 'Sửa ca',
@@ -49,6 +51,7 @@ export const shiftManagement: Translated<typeof ko.shiftManagement> = {
     plantLocked: 'Không thể đổi',
     code: 'Mã ca',
     codePlaceholder: 'Nhập mã ca',
+    codeTaken: 'Mã ca này đã có ở nhà máy này. Hãy nhập mã khác.',
     codeLocked: (count: number) =>
       `Ca đã được dùng ở ${count} công việc hoặc kết quả nên không thể đổi mã.`,
     name: 'Tên ca',
@@ -75,8 +78,16 @@ export const shiftManagement: Translated<typeof ko.shiftManagement> = {
     cancel: 'Hủy',
     confirm: 'Ngừng sử dụng',
   },
+  activateDialog: {
+    title: (name: string) => `Dùng lại ca ${name}`,
+    body: (name: string) =>
+      `Khi dùng lại, ca ${name} sẽ được đưa lại vào danh sách chọn ca và việc xác định ca theo giờ làm.`,
+    cancel: 'Hủy',
+    confirm: 'Dùng lại',
+  },
   toast: {
     saved: 'Đã lưu.',
     deactivated: 'Đã ngừng sử dụng.',
+    activated: 'Đã dùng lại.',
   },
 };

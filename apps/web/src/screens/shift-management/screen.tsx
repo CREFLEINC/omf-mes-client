@@ -25,7 +25,7 @@ import { SaveErrorBanner } from '../../patterns/master';
 import { useSession } from '../../patterns/session';
 import { Select } from '../../patterns/select';
 import { EditDialog } from './edit-dialog';
-import { useDeactivateShift, usePlants, useShiftDetail, useShifts, type Shift } from './queries';
+import { usePlants, useShiftDetail, useShifts, useToggleShift, type Shift } from './queries';
 
 type SessionScope = components['schemas']['SessionScope'];
 
@@ -98,14 +98,25 @@ export const ShiftManagementScreen = () => {
 
   /** 열린 창 — `null` 닫힘, `'new'` 추가. */
   const [editing, setEditing] = useState<Shift | 'new' | null>(null);
-  const [retiring, setRetiring] = useState<Shift | null>(null);
-  /* 사용 중지는 상세의 잠금 토큰(ETag)으로 보낸다 — 확인 창이 열리면 상세를 받는다. */
+  /** 사용 중지(`off`) · 재사용(`on`) 확인 창. */
+  const [toggling, setToggling] = useState<{ shift: Shift; to: 'on' | 'off' } | null>(null);
+  const retiring = toggling?.shift ?? null;
+  const turningOn = toggling?.to === 'on';
+  const toggleText = turningOn ? t.activateDialog : t.deactivateDialog;
+  /* 사용 중지 · 재사용은 상세의 잠금 토큰(ETag)으로 보낸다 — 확인 창이 열리면 상세를 받는다. */
   const retiringDetail = useShiftDetail(retiring?.shiftId ?? null);
 
-  const deactivate = useDeactivateShift(retiring?.shiftId ?? null, () => {
-    setRetiring(null);
-    toast.show({ variant: 'success', description: t.toast.deactivated });
+  const deactivate = useToggleShift(retiring?.shiftId ?? null, toggling?.to ?? 'off', () => {
+    setToggling(null);
+    toast.show({
+      variant: 'success',
+      description: turningOn ? t.toast.activated : t.toast.deactivated,
+    });
   });
+  const openToggle = (shift: Shift, to: 'on' | 'off') => {
+    deactivate.reset();
+    setToggling({ shift, to });
+  };
 
   const baseColumns: Column<Shift>[] = [
     ...(showAll
@@ -149,9 +160,21 @@ export const ShiftManagementScreen = () => {
       align: 'center',
       /* [수정] [사용 중지] 두 단추가 잘리지 않는 폭. */
       width: '240px',
-      /* 사용 중지한 교대는 다시 쓰게 하는 기능이 없어 관리 단추를 두지 않는다(#318 범위). */
+      /* 사용 중지한 교대는 [재사용]만 둔다 — 같은 코드로 새로 등록할 수 없어 되살리는 길이다(사용자 지시 2026-11-25). */
       render: (row) =>
-        !row.isActive ? null : (
+        !row.isActive ? (
+          <span className="shift-management-row-actions">
+            <Button
+              variant="outlined"
+              size="sm"
+              leadingIcon={<Icon name="restart_alt" size={18} aria-hidden />}
+              aria-label={t.activateRow(row.shiftName)}
+              onClick={() => openToggle(row, 'on')}
+            >
+              {t.activate}
+            </Button>
+          </span>
+        ) : (
           /* 단말 관리의 [수정]과 같은 아이콘 + 글자 단추(사용자 지시 2026-11-25). */
           <span className="shift-management-row-actions">
             <Button
@@ -168,10 +191,7 @@ export const ShiftManagementScreen = () => {
               size="sm"
               leadingIcon={<Icon name="block" size={18} aria-hidden />}
               aria-label={t.deactivateRow(row.shiftName)}
-              onClick={() => {
-                deactivate.reset();
-                setRetiring(row);
-              }}
+              onClick={() => openToggle(row, 'off')}
             >
               {t.deactivate}
             </Button>
@@ -383,35 +403,42 @@ export const ShiftManagementScreen = () => {
       )}
       <Dialog
         open={retiring !== null}
-        onClose={() => setRetiring(null)}
-        title={t.deactivateDialog.title(retiring?.shiftName ?? '')}
+        onClose={() => setToggling(null)}
+        title={toggleText.title(retiring?.shiftName ?? '')}
         size="md"
         showCloseButton={false}
         footer={
           <>
-            <Button variant="outlined" onClick={() => setRetiring(null)}>
-              {t.deactivateDialog.cancel}
+            <Button variant="outlined" onClick={() => setToggling(null)}>
+              {toggleText.cancel}
             </Button>
             <Button
               loading={deactivate.isSaving}
               disabled={retiringDetail.data === undefined}
               onClick={() => deactivate.write()}
             >
-              {t.deactivateDialog.confirm}
+              {toggleText.confirm}
             </Button>
           </>
         }
       >
-        {retiring !== null && (
-          <p className="dialog-text">{t.deactivateDialog.body(retiring.shiftName)}</p>
-        )}
+        {retiring !== null && <p className="dialog-text">{toggleText.body(retiring.shiftName)}</p>}
         {retiringDetail.isError && (
           <LoadErrorAlert
             error={retiringDetail.error}
             onRetry={() => void retiringDetail.refetch()}
           />
         )}
-        {deactivate.error !== null && <SaveErrorBanner error={deactivate.error} />}
+        {deactivate.error !== null && (
+          /* 저장 충돌이면 [최신 불러오기]로 잠금 토큰을 새로 받고 다시 누른다. */
+          <SaveErrorBanner
+            error={deactivate.error}
+            onReload={() => {
+              deactivate.reset();
+              void retiringDetail.refetch();
+            }}
+          />
+        )}
       </Dialog>
     </>
   );

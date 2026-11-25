@@ -121,6 +121,24 @@ export const EditDialog = ({
   const codeLocked = shift !== null && editability?.codeEditable === false;
   const waiting = shift !== null && detail.data === undefined;
 
+  /*
+   * 같은 공장에 이미 있는 코드(사용 중지한 것 포함)는 저장 전에 칸에서 알린다.
+   * 목록을 받은 뒤 남이 먼저 쓴 코드는 서버가 거절(UNIQUE_VIOLATION)하고, 그것도 같은 칸에 낸다.
+   */
+  const codeTakenLocally =
+    !codeLocked &&
+    existingShifts.some(
+      (each) =>
+        each.plantId === plantId &&
+        each.shiftId !== shiftId &&
+        each.shiftCode === draft.shiftCode.trim(),
+    );
+  const codeTakenByServer =
+    save.error?.kind === 'validation' &&
+    save.error.errors.length > 0 &&
+    save.error.errors.every((item) => item.code === 'UNIQUE_VIOLATION');
+  const codeTaken = codeTakenLocally || codeTakenByServer;
+
   /* 비어 있는 필수 칸은 처음부터 빨간 테두리 — 다 채워야 [저장]이 켜진다. */
   const missing: Record<DraftField, boolean> = {
     shiftCode: draft.shiftCode.trim() === '',
@@ -132,11 +150,12 @@ export const EditDialog = ({
 
   const update = (patch: Partial<Draft>) => {
     for (const field of Object.keys(patch)) save.clearFieldError(field);
+    if (patch.shiftCode !== undefined && codeTakenByServer) save.reset();
     setDraft((current) => ({ ...current, ...patch }));
   };
 
   const submit = () => {
-    if (!complete) return;
+    if (!complete || codeTaken) return;
     const times = { startTime: withSeconds(draft.startTime), endTime: withSeconds(draft.endTime) };
     if (shift === null) {
       save.write({
@@ -172,7 +191,19 @@ export const EditDialog = ({
     if (waiting) return <Skeleton variant="rect" height="12rem" aria-label={td.loading} />;
     return (
       <div className="shift-management-form">
-        {save.error !== null && <SaveErrorBanner error={save.error} />}
+        {save.error !== null && !codeTakenByServer && (
+          /* 저장 충돌이면 [최신 불러오기]로 남이 고친 내용을 다시 받아 채운다. */
+          <SaveErrorBanner
+            error={save.error}
+            onReload={() => {
+              save.reset();
+              /* 받은 값이 앞과 같아도(남이 같은 값으로 저장) 입력을 그 값으로 되돌린다. */
+              void detail.refetch().then((result) => {
+                if (result.data !== undefined) setDraft(draftOf(result.data.shift));
+              });
+            }}
+          />
+        )}
         {/* 공장 · 교대 코드 · 교대명은 한 줄(사용자 지시 2026-11-25). */}
         <div className="shift-management-pair">
           {plants.length > 1 ? (
@@ -199,6 +230,7 @@ export const EditDialog = ({
                   /* 자동으로 넣은 코드를 그대로 두었으면 새 공장의 다음 코드로 바꾼다. */
                   if (draft.shiftCode === nextShiftCode(codesOf(plantId)))
                     update({ shiftCode: nextShiftCode(codesOf(next)) });
+                  if (codeTakenByServer) save.reset();
                   setPlantId(next);
                 }}
               />
@@ -238,7 +270,7 @@ export const EditDialog = ({
                 ? td.codeLocked(editability.referenceCount ?? 0)
                 : undefined
             }
-            error={save.fieldErrors.shiftCode}
+            error={save.fieldErrors.shiftCode ?? (codeTaken ? td.codeTaken : undefined)}
             onChange={(event) => update({ shiftCode: event.target.value })}
           />
           <TextField
@@ -312,7 +344,11 @@ export const EditDialog = ({
           <Button variant="outlined" onClick={onClose}>
             {td.cancel}
           </Button>
-          <Button loading={save.isSaving} disabled={waiting || !complete} onClick={submit}>
+          <Button
+            loading={save.isSaving}
+            disabled={waiting || !complete || codeTaken}
+            onClick={submit}
+          >
             {td.save}
           </Button>
         </>

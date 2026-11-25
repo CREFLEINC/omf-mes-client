@@ -14973,6 +14973,101 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/mdm/shifts/{shiftId}:activate': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        shiftId: number;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 교대 다시 사용
+     * @description 사용 중지한 교대를 다시 쓴다. 같은 공장에 같은 코드가 남아 있어 새로 등록할 수 없으므로 되살리는 길을 둔다. 이미 사용 중이면 그대로 200. 근거: 공유계약 B-4 · omf-all-around#318
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. 같은 키로 다시 보내면 두 번 결재하지 않는다. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다. 근거: 공유계약 B-1 · B-1-1 */
+          'If-Match': components['parameters']['IfMatchVersion'];
+        };
+        path: {
+          shiftId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 처리됨 */
+        200: {
+          headers: {
+            /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+            ETag?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Shift'];
+          };
+        };
+        /** @description 업무 규칙 위반 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 교대 관리(W-06-26) 권한이 없거나 공장이 데이터 범위 밖이다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 교대 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 저장 충돌 — 다른 사용자가 먼저 고쳤다. 업무 규칙 위반(상태 잠김·참조 존재)은 409 가 아니라 400 이다 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ConflictResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/mdm/item-resource-maps': {
     parameters: {
       query?: never;

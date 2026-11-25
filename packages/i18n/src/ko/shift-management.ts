@@ -43,6 +43,9 @@ export const shiftManagement = {
   editRow: (name: string) => `${name} 교대 수정`,
   deactivate: '사용 중지',
   deactivateRow: (name: string) => `${name} 교대 사용 중지`,
+  /** 사용 중지의 반대(사용자 정정 2026-11-25 「재사용」). */
+  activate: '재사용',
+  activateRow: (name: string) => `${name} 교대 재사용`,
   dialog: {
     addTitle: '교대 추가',
     editTitle: '교대 수정',
@@ -50,7 +53,9 @@ export const shiftManagement = {
     plantLocked: '변경 불가',
     code: '교대 코드',
     codePlaceholder: '교대 코드를 입력하세요',
-    codeLocked: (count: number) => `작업이나 실적에 ${count}건 쓰인 교대라 코드는 바꿀 수 없습니다.`,
+    codeTaken: '이 공장에 이미 있는 교대 코드입니다. 다른 코드를 입력하세요.',
+    codeLocked: (count: number) =>
+      `작업이나 실적에 ${count}건 쓰인 교대라 코드는 바꿀 수 없습니다.`,
     name: '교대명',
     namePlaceholder: '교대명을 입력하세요',
     start: '시작 시간',
@@ -75,8 +80,16 @@ export const shiftManagement = {
     cancel: '취소',
     confirm: '사용 중지',
   },
+  activateDialog: {
+    title: (name: string) => `${name} 교대 재사용`,
+    body: (name: string) =>
+      `재사용하면 ${name} 교대가 교대 선택 목록과 작업 시간 판정에 다시 포함됩니다.`,
+    cancel: '취소',
+    confirm: '재사용',
+  },
   toast: {
     saved: '저장했습니다.',
     deactivated: '사용 중지했습니다.',
+    activated: '재사용했습니다.',
   },
 };
