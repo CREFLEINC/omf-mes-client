@@ -811,6 +811,57 @@ main > * + * {
   color: var(--on-surface-variant);
 }
 
+/*
+ * 빈 목록(사용자 결정 2026-11-25) — 표 머리줄은 두고, 빈 줄 안은 오른쪽 상세의 「고르기 전」 안내와 같은 모양(둥근
+ * 바탕 아이콘 + 굵은 제목 + 회색 보조 문구)으로. 표 바탕을 빼 구획 바탕 위에 안내만 보이게 하고(밝거나 어두운 큰
+ * 상자 없이) 위아래 여백은 알맞게 줄인다. 대상은 DS 빈 안내(EmptyState)를 넣은 빈 줄이다 — 대시보드 카드의 작은
+ * 표(`.dash-empty`)는 그대로다.
+ */
+table:has(> tbody > tr[class*='_emptyCell'] > td > div:not(.dash-empty) > p) {
+  background: transparent;
+}
+
+tr[class*='_emptyCell'] > td:has(> div:not(.dash-empty) > p),
+table tr.list-empty-row > td {
+  padding: var(--space-5) var(--space-4);
+  border-bottom: 0;
+  background: transparent;
+  white-space: normal;
+  text-align: center;
+}
+
+/* 직접 그린 표(`ListEmptyRow`)도 빈 줄은 구획 바탕 위에 — 표 바탕 · 줄 위 칠하기를 뺀다. */
+table:has(> tbody > tr.list-empty-row) {
+  background: transparent;
+}
+
+table tr.list-empty-row:hover > td {
+  background: transparent;
+}
+
+/* 아이콘을 따로 주지 않은 빈 안내(첫 자식이 제목)에는 목록 아이콘을 같은 둥근 바탕으로 채운다(`ListEmpty` 와 같은 모양). */
+tr[class*='_emptyCell'] > td > div:not(.dash-empty):has(> p:first-child)::before {
+  content: 'assignment' / '';
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  font-family: 'Material Symbols Rounded';
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  direction: ltr;
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
 .inspection-standard-detail-card {
   display: grid;
   /* 카드 폭을 넘지 않는다 — 열이 가장 넓은 내용(요약 상자 · 검사 항목 표) 폭으로 늘면 카드 밖으로 삐져나간다(#196). */
@@ -42246,4 +42297,87 @@ body:has(
 .shift-management-dialog [class*='_panel_'],
 .shift-management-dialog [class*='_body_'] {
   overflow: visible;
+}
+
+/* 갱신 토큰이 미등록이면(토큰 일시가 없으면) 네 칸을 같은 폭으로 — 빈 칸만 넓지 않게(사용자 지시 2026-11-25). */
+.zalo-connection-box > .zalo-form:not(:has(.zalo-token-times)) {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* 템플릿 목록 — 표와 쪽 넘김 사이 간격(사용자 지시 2026-11-25). */
+.zalo-template-list > .page-nav {
+  margin-top: var(--space-3);
+}
+
+/*
+ * 표 구획 — 위아래로 쌓일 때(좁은 창 · 상하 배치)도 창 높이 안에 든다(사용자 지시 2026-11-25 「아래로 스크롤해야 보이면
+ * 안 돼」). 창 안 윗변을 재는 구획(`useFitToViewport` 가 `--split-top` 을 싣는 곳)에만 건다. 페이지는 구르지 않고 칸마다
+ * 안에서 구른다. 앞 칸(목록)은 끌어 정한 높이, 없으면 60%까지 · 뒤 칸(상세)은 남은 높이.
+ */
+@media (max-width: 1439.98px) {
+  main .po-board-split[style*='--split-top'],
+  main .po-board-split.is-stacked[style*='--split-top'] {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    height: max(24rem, calc(100dvh - var(--split-top, 20rem) - var(--space-6)));
+    min-height: 0;
+  }
+
+  main .po-board-split[style*='--split-top'] > * {
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+
+  main .po-board-split[style*='--split-top'] > :first-child {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 140px;
+    height: auto;
+    overflow: hidden;
+  }
+
+  main .po-board-split[style*='--split-top'] > :first-child:not(:last-child) {
+    max-height: var(--stacked-list-height, 60%);
+  }
+
+  main .po-board-split[style*='--split-top'] > :last-child:not(:first-child) {
+    flex: 1 1 0;
+    align-self: stretch;
+    width: auto;
+    min-height: 8rem;
+    max-height: none;
+    overflow: auto;
+  }
+
+  main .po-board-split[style*='--split-top'] > :first-child .po-board-table,
+  main .po-board-split[style*='--split-top'] > :first-child > .board-table {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+}
+
+main .po-board-split.is-stacked[style*='--split-top'] {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  height: max(24rem, calc(100dvh - var(--split-top, 20rem) - var(--space-6)));
+  min-height: 0;
+}
+
+main .po-board-split.is-stacked[style*='--split-top'] > :first-child:not(:last-child) {
+  flex: 0 1 auto;
+  height: auto;
+  min-height: 140px;
+  max-height: var(--stacked-list-height, 60%);
+}
+
+main .po-board-split.is-stacked[style*='--split-top'] > :last-child:not(:first-child) {
+  flex: 1 1 0;
+  align-self: stretch;
+  width: auto;
+  min-height: 8rem;
+  overflow: auto;
 }

@@ -31,6 +31,8 @@ export const common = {
   created: '등록했습니다',
   retry: '다시 시도',
   includeInactive: '미사용 포함',
+  /** 조건에 맞는 것이 없는 빈 목록의 회색 보조 문구(`patterns/list-empty.tsx`). */
+  listEmptyHint: '조회 조건을 바꿔 보세요.',
   /** 조회 조건 줄의 「조건 더보기」(C-6) — 자주 쓰는 세 칸 밖의 조건을 접어 둔다(`patterns/filter-more.tsx`). */
   filterMore: {
     open: '조건 더보기',

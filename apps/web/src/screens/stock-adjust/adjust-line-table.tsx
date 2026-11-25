@@ -1,5 +1,6 @@
 import { Chip, type Column, IconButton, Table, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
 import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
@@ -58,6 +59,8 @@ export interface AdjustLineTableProps {
   isLocked?: boolean;
   onPatch: (key: string, patch: Partial<Omit<AdjustLineDraft, 'key'>>) => void;
   onRemove: (key: string) => void;
+  /** 줄이 없을 때 머리줄 아래 빈 줄에 내는 안내. */
+  empty?: ReactNode;
 }
 
 /**
@@ -107,6 +110,7 @@ export const AdjustLineTable = ({
   isLocked = false,
   onPatch,
   onRemove,
+  empty,
 }: AdjustLineTableProps) => {
   const errorOf = (row: AdjustLineRow, field: LineFieldName): string | undefined =>
     errors[lineFieldId(row.draft.key, field)];
@@ -332,7 +336,13 @@ export const AdjustLineTable = ({
        * **`getRowId`가 초안 키를 쓴다**(사본 체크리스트 2번). 인덱스가 키가 되면 가운데 줄을
        * 지울 때 치고 있던 칸의 DOM 노드가 대신 지워져 입력과 포커스가 다른 줄로 옮겨 붙는다.
        */}
-      <Table density="compact" columns={columns} rows={rows} getRowId={(row) => row.draft.key} />
+      <Table
+        density="compact"
+        columns={columns}
+        rows={rows}
+        getRowId={(row) => row.draft.key}
+        empty={empty}
+      />
     </div>
   );
 };

@@ -23,6 +23,7 @@ export const common: Translated<typeof ko.common> = {
   created: 'Đã đăng ký',
   retry: 'Thử lại',
   includeInactive: 'Gồm cả mục ngừng dùng',
+  listEmptyHint: 'Hãy thử đổi điều kiện tra cứu.',
   filterMore: {
     open: 'Thêm điều kiện',
     close: 'Thu gọn điều kiện',

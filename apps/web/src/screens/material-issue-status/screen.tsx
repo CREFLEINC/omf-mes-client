@@ -22,6 +22,7 @@ import {
 import { DateRangeFields } from '../../patterns/date-range-fields';
 import { plantToday } from '../../patterns/plant-time';
 import { InfoTip } from '../../patterns/info-tip';
+import { ListEmptyRow } from '../../patterns/list-empty';
 import { ScreenHeader } from '../../patterns/screen-header';
 import { Select } from '../../patterns/select';
 import { DetailPanel } from './detail-panel';
@@ -352,10 +353,6 @@ export const MaterialIssueStatusScreen = () => {
       return <LoadErrorAlert error={list.error} onRetry={() => void list.refetch()} />;
     }
     if (list.data === undefined) return <Skeleton variant="rect" height="16rem" />;
-    if (list.data.items.length === 0) {
-      return <EmptyState size="sm" title={t.empty.title} description={t.empty.description} />;
-    }
-
     const items = list.data.items;
     const groups: PlanGroup[] = filters.groupByPlan
       ? groupByPlan(items)
@@ -379,6 +376,11 @@ export const MaterialIssueStatusScreen = () => {
               <th scope="col">{t.columns.shortage}</th>
             </tr>
           </thead>
+          {items.length === 0 ? (
+            <tbody>
+              <ListEmptyRow colSpan={9} title={t.empty.title} description={t.empty.description} />
+            </tbody>
+          ) : null}
           {groups.map((group) => (
             <tbody key={group.key}>
               {filters.groupByPlan && (
@@ -398,25 +400,27 @@ export const MaterialIssueStatusScreen = () => {
             </tbody>
           ))}
         </table>
-        <div className="material-issue-status-pager">
-          <span className="field-note">{t.pager.total(total)}</span>
-          <Button
-            variant="outlined"
-            size="sm"
-            disabled={page <= 1}
-            onClick={() => go('list', filters, page - 1)}
-          >
-            {t.pager.previous}
-          </Button>
-          <Button
-            variant="outlined"
-            size="sm"
-            disabled={page >= lastPage}
-            onClick={() => go('list', filters, page + 1)}
-          >
-            {t.pager.next}
-          </Button>
-        </div>
+        {items.length === 0 ? null : (
+          <div className="material-issue-status-pager">
+            <span className="field-note">{t.pager.total(total)}</span>
+            <Button
+              variant="outlined"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => go('list', filters, page - 1)}
+            >
+              {t.pager.previous}
+            </Button>
+            <Button
+              variant="outlined"
+              size="sm"
+              disabled={page >= lastPage}
+              onClick={() => go('list', filters, page + 1)}
+            >
+              {t.pager.next}
+            </Button>
+          </div>
+        )}
       </>
     );
   };

@@ -33,6 +33,7 @@ import {
 } from '../../patterns/fit-placeholder-width';
 import { InfoTip } from '../../patterns/info-tip';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
+import { ListEmpty } from '../../patterns/list-empty';
 import { SaveErrorBanner } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
 import { useSession } from '../../patterns/session';
@@ -465,7 +466,7 @@ export const HandoverAlertSettingsScreen = () => {
   const typeList = () => {
     if (plants.isError) return loadError(plants.error, () => void plants.refetch());
     if (plants.isPending) return <Skeleton variant="rect" height="12rem" />;
-    if (plantId === null) return <EmptyState size="sm" title={t.state.noPlants} />;
+    if (plantId === null) return <ListEmpty icon="factory" title={t.state.noPlants} />;
     if (types.isError || summary.isError) {
       return loadError(types.error ?? summary.error, () => {
         void types.refetch();

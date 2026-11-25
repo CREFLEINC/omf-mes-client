@@ -1,8 +1,9 @@
-import { Chip, EmptyState, IconButton, type Column } from '@crefle/web-ui';
+import { Chip, IconButton, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { BoardTable } from '../../patterns/board-table';
 import { useColumnOrder } from '../../patterns/column-grip-order';
+import { ListEmpty } from '../../patterns/list-empty';
 
 const t = messages.alarmRecipientSettings;
 
@@ -83,7 +84,7 @@ export const RecipientTable = ({ storageKey, rows, onRemove }: RecipientTablePro
       columns={ordered}
       rows={rows}
       getRowId={(row) => row.id}
-      empty={<EmptyState size="sm" title={t.state.noRecipients} />}
+      empty={<ListEmpty icon="group" title={t.state.noRecipients} />}
     />
   );
 };

@@ -2,7 +2,6 @@ import {
   AlertBanner,
   Button,
   Chip,
-  EmptyState,
   Radio,
   RadioGroup,
   SearchInput,
@@ -25,6 +24,7 @@ import {
   useFitPlaceholderWidth,
 } from '../../patterns/fit-placeholder-width';
 import { InfoTip } from '../../patterns/info-tip';
+import { ListEmpty } from '../../patterns/list-empty';
 import { SaveErrorBanner } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
 import { useFitToViewport } from '../../patterns/po-board';
@@ -244,7 +244,6 @@ export const PlantWorkingDaysScreen = () => {
     if (plants.isError) return loadError(plants.error, () => void plants.refetch());
     if (policies.isError) return loadError(policies.error, () => void policies.refetch());
     if (plants.isPending || policies.isPending) return <Skeleton variant="rect" height="12rem" />;
-    if (rows.length === 0) return <EmptyState size="sm" title={t.state.noPlants} />;
 
     return (
       <>
@@ -275,10 +274,10 @@ export const PlantWorkingDaysScreen = () => {
             getRowId={(row) => String(row.plant.plantId)}
             className="plant-working-days-table"
             aria-label={t.tableLabel}
-            empty={<EmptyState size="sm" title={w.empty} />}
+            empty={<ListEmpty title={rows.length === 0 ? t.state.noPlants : w.empty} />}
           />
         </div>
-        <PageNav {...plantPage.nav} buttonSize="md" />
+        {rows.length === 0 ? null : <PageNav {...plantPage.nav} buttonSize="md" />}
       </>
     );
   };

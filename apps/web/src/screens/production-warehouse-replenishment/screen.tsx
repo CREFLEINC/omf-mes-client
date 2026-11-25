@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
+import { ListEmpty } from '../../patterns/list-empty';
 import { plantToday } from '../../patterns/plant-time';
 import { ScreenHeader } from '../../patterns/screen-header';
 import { Select } from '../../patterns/select';
@@ -90,8 +91,8 @@ export const ProductionWarehouseReplenishmentScreen = () => {
     if (settings.isPending) return <Skeleton variant="rect" height="16rem" />;
     if (productionWarehouses.length === 0) {
       return (
-        <EmptyState
-          size="sm"
+        <ListEmpty
+          icon="warehouse"
           title={t.noProductionWarehouse.title}
           description={t.noProductionWarehouse.description}
           action={

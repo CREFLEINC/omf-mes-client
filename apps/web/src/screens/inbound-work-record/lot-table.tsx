@@ -2,6 +2,7 @@ import { Chip, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { Fragment, type ReactNode } from 'react';
 
+import { ListEmptyRow } from '../../patterns/list-empty';
 import { OneLine } from '../../patterns/po-board';
 import type { WorkRecordLot } from './forward-contract';
 import { formatAt, formatQty, matchParts, reasonOf, shortDate, type View } from './types';
@@ -77,11 +78,14 @@ export const LotTable = ({
   rows,
   openId,
   onOpen,
+  emptyTitle,
 }: {
   view: View;
   rows: readonly WorkRecordLot[];
   openId: number | null;
   onOpen: (inboundLotId: number) => void;
+  /** 줄이 없을 때 머리줄 아래 빈 줄에 내는 안내. */
+  emptyTitle: string;
 }) => (
   <div className="wide-table iwr-table-scroll">
     <table className="iwr-table" aria-label={tl.label}>
@@ -106,6 +110,7 @@ export const LotTable = ({
         </tr>
       </thead>
       <tbody>
+        {rows.length === 0 ? <ListEmptyRow colSpan={10} title={emptyTitle} /> : null}
         {rows.map((lot) => {
           const open = (): void => onOpen(lot.inboundLotId);
           return (

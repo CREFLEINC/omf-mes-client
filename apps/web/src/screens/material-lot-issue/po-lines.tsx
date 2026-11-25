@@ -1,7 +1,8 @@
-import { EmptyState, SkeletonText } from '@crefle/web-ui';
+import { SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { InfoTip } from '../../patterns/info-tip';
+import { ListEmptyRow } from '../../patterns/list-empty';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { formatBaseQty } from '../../patterns/package-qty';
 import { formatDotDate } from '../../patterns/po-board';
@@ -30,7 +31,6 @@ export const PoLines = ({ plantId, group, uomId }: PoLinesProps) => {
       return <LoadErrorAlert error={lines.error} onRetry={() => void lines.refetch()} />;
     }
     if (lines.isPending) return <SkeletonText lines={2} />;
-    if (lines.data.length === 0) return <EmptyState size="sm" title={tp.empty} />;
 
     return (
       <div className="mlot-issue-table-scroll">
@@ -49,6 +49,7 @@ export const PoLines = ({ plantId, group, uomId }: PoLinesProps) => {
             </tr>
           </thead>
           <tbody>
+            {lines.data.length === 0 ? <ListEmptyRow colSpan={5} title={tp.empty} /> : null}
             {lines.data.map((line) => (
               <tr key={line.purchaseOrderLineId}>
                 <td className="mlot-issue-code">{line.purchaseOrderNo}</td>

@@ -219,11 +219,11 @@ export const InboundWorkRecordScreen = () => {
     if (current.isError)
       return <LoadErrorAlert error={current.error} onRetry={() => void current.refetch()} />;
     if (current.isPending) return <Skeleton variant="rect" height="16rem" />;
-    if (rows.length === 0) return <EmptyState size="sm" title={t.list.empty(viewName(view))} />;
     return (
       <LotTable
         view={view}
         rows={rows}
+        emptyTitle={t.list.empty(viewName(view))}
         openId={openId}
         onOpen={(inboundLotId) => update({ open: String(inboundLotId) })}
       />

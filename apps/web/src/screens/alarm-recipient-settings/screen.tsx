@@ -23,6 +23,7 @@ import { useColumnWidths } from '../../patterns/column-resize';
 import { hasChangedFilters } from '../../patterns/filter-more';
 import { InfoTip } from '../../patterns/info-tip';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
+import { ListEmpty } from '../../patterns/list-empty';
 import { SaveErrorBanner } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
 import { useSession } from '../../patterns/session';
@@ -410,7 +411,8 @@ export const AlarmRecipientSettingsScreen = () => {
   };
 
   const eventList = () => {
-    if (departmentId === null) return <EmptyState size="sm" title={t.state.selectDepartment} />;
+    if (departmentId === null)
+      return <ListEmpty icon="apartment" title={t.state.selectDepartment} />;
     if (events.isError || summary.isError) {
       return loadError(events.error ?? summary.error, () => {
         void events.refetch();

@@ -4928,13 +4928,14 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
    * 열 없는 격자는 라벨 칸만 남은 빈 표가 된다. 이것은 「부여가 0건」이 아니라
    * **「줄 수 있는 후보가 0건」**이다 — 그 둘을 가려 말한다.
    */
-  it('후보가 0건이면 격자 대신 빈 상태와 안내가 나온다', async () => {
+  it('후보가 0건이면 격자 머리줄 아래 빈 상태와 안내가 나온다', async () => {
     await openRole(gridRoutes([], []));
 
     expect(
       await within(permissionPane()).findByText('부여할 수 있는 기능 권한이 없습니다'),
     ).toBeInTheDocument();
-    expect(within(permissionPane()).queryByRole('table')).not.toBeInTheDocument();
+    /* 빈 목록 통일(2026-11-25) — 머리줄 + 빈 줄 하나뿐, 권한 줄은 없다. */
+    expect(within(within(permissionPane()).getByRole('table')).getAllByRole('row')).toHaveLength(2);
   });
 
   /** 실패를 빈 상태로 내면 「부여된 권한이 없습니다」가 되어 없는 사실을 단정한다. */

@@ -539,7 +539,8 @@ describe('StockAdjustScreen — 메뉴로 다시 들어오기(같은 라우트 �
 
     await waitForLocation(ROUTE);
     await waitFor(() => {
-      expect(within(linesPane()).queryByRole('table')).not.toBeInTheDocument();
+      /* 줄이 없으면 표 머리줄 아래 빈 줄 안내만 남는다(빈 목록 통일 · 2026-11-25). */
+      expect(within(linesPane()).getByText(t.empty.noLinesTitle)).toBeInTheDocument();
     });
     expect(screen.getByText(t.empty.noLinesTitle)).toBeInTheDocument();
   });
@@ -572,7 +573,8 @@ describe('StockAdjustScreen — 메뉴로 다시 들어오기(같은 라우트 �
 
     await waitForLocation(`${ROUTE}?count=9102`);
     await waitFor(() => {
-      expect(within(linesPane()).queryByRole('table')).not.toBeInTheDocument();
+      /* 줄이 없으면 표 머리줄 아래 빈 줄 안내만 남는다(빈 목록 통일 · 2026-11-25). */
+      expect(within(linesPane()).getByText(t.empty.noLinesTitle)).toBeInTheDocument();
     });
     /* 갈래는 실사 그대로다 — 주소가 여전히 실사를 가리킨다. */
     expect(screen.getByRole('radio', { name: t.source.count })).toBeChecked();
@@ -597,7 +599,8 @@ describe('StockAdjustScreen — 메뉴로 다시 들어오기(같은 라우트 �
 
     await waitForLocation(`${ROUTE}?count=9101`);
     await waitFor(() => {
-      expect(within(linesPane()).queryByRole('table')).not.toBeInTheDocument();
+      /* 줄이 없으면 표 머리줄 아래 빈 줄 안내만 남는다(빈 목록 통일 · 2026-11-25). */
+      expect(within(linesPane()).getByText(t.empty.noLinesTitle)).toBeInTheDocument();
     });
     expect(screen.getByRole('radio', { name: t.source.count })).toBeChecked();
   });
@@ -642,7 +645,8 @@ describe('StockAdjustScreen — 원천 전환', () => {
     await loadVariance(user);
     await user.click(screen.getByRole('radio', { name: t.source.direct }));
 
-    expect(within(linesPane()).queryByRole('table')).not.toBeInTheDocument();
+    /* 줄이 없으면 표 머리줄 아래 빈 줄 안내만 남는다(빈 목록 통일 · 2026-11-25). */
+    expect(within(linesPane()).getByText(t.empty.noLinesTitle)).toBeInTheDocument();
     expect(screen.getByText(t.empty.noLinesTitle)).toBeInTheDocument();
   });
 
@@ -663,7 +667,8 @@ describe('StockAdjustScreen — 원천 전환', () => {
     await user.click(countField());
     await user.click(screen.getByRole('option', { name: 'SAMPLE-IC-9102 · 2026-08-18' }));
 
-    expect(within(linesPane()).queryByRole('table')).not.toBeInTheDocument();
+    /* 줄이 없으면 표 머리줄 아래 빈 줄 안내만 남는다(빈 목록 통일 · 2026-11-25). */
+    expect(within(linesPane()).getByText(t.empty.noLinesTitle)).toBeInTheDocument();
   });
 });
 

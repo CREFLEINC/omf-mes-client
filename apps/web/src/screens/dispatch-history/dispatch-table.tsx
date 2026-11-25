@@ -1,9 +1,10 @@
-import { Chip, EmptyState, Table, type Column } from '@crefle/web-ui';
+import { Chip, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { ListEmpty } from '../../patterns/list-empty';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import type { Dispatch } from './types';
 
@@ -103,7 +104,7 @@ export const DispatchTable = ({ rows, selectedId, eventName, onSelect }: Dispatc
         rows={rows}
         getRowId={(row) => String(row.notificationEventId)}
         caption={t.panes.dispatches}
-        empty={<EmptyState size="sm" title={t.state.empty} />}
+        empty={<ListEmpty title={t.state.empty} description={messages.common.listEmptyHint} />}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Checkbox, Dialog, EmptyState, Skeleton } from '@crefle/web-ui';
+import { AlertBanner, Button, Checkbox, Dialog, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useState, type ReactNode } from 'react';
@@ -20,6 +20,7 @@ import { OriginChip } from './progress-view';
 import { PAGE_SIZE, replenishmentKeys, useArrivalList, useLocationNames } from './queries';
 import { ReceiveDialog } from './receive-dialog';
 import { plantMinute, qtyWithUom } from './types';
+import { ListEmptyRow } from '../../patterns/list-empty';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 
 const t = messages.productionWarehouseReplenishment;
@@ -199,7 +200,6 @@ export const ArrivalView = ({
       return <LoadErrorAlert error={list.error} onRetry={() => void list.refetch()} />;
     }
     if (list.data === undefined) return <Skeleton variant="rect" height="16rem" />;
-    if (rows.length === 0) return <EmptyState size="sm" title={ta.empty} />;
 
     const total = list.data.page.total;
     const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -240,6 +240,7 @@ export const ArrivalView = ({
               </tr>
             </thead>
             <tbody>
+              {rows.length === 0 ? <ListEmptyRow colSpan={11} title={ta.empty} /> : null}
               {rows.map((row) => {
                 const [only] = row.lines;
                 const late = row.elapsedDays >= ELAPSED_WARN_DAYS;
@@ -299,46 +300,50 @@ export const ArrivalView = ({
             </tbody>
           </table>
         </div>
-        <div className="replenishment-actions">
-          <span className="replenishment-actions-end">
-            {blocked && (
-              <span id={blockId} className="field-note">
-                {ta.bulkBlocked}
+        {rows.length === 0 ? null : (
+          <>
+            <div className="replenishment-actions">
+              <span className="replenishment-actions-end">
+                {blocked && (
+                  <span id={blockId} className="field-note">
+                    {ta.bulkBlocked}
+                  </span>
+                )}
+                <Button
+                  disabled={blocked}
+                  aria-describedby={blocked ? blockId : undefined}
+                  onClick={() => {
+                    bulk.reset();
+                    setBulkStep('confirm');
+                  }}
+                >
+                  {ta.bulk(selected.length)}
+                </Button>
+                {/* 수령은 재고를 옮기지 않고 도착만 기록한다 — 수령 단추 옆 ⓘ(관리웹 정리 시안 A). */}
+                <InfoTip text={ta.footNote} />
               </span>
-            )}
-            <Button
-              disabled={blocked}
-              aria-describedby={blocked ? blockId : undefined}
-              onClick={() => {
-                bulk.reset();
-                setBulkStep('confirm');
-              }}
-            >
-              {ta.bulk(selected.length)}
-            </Button>
-            {/* 수령은 재고를 옮기지 않고 도착만 기록한다 — 수령 단추 옆 ⓘ(관리웹 정리 시안 A). */}
-            <InfoTip text={ta.footNote} />
-          </span>
-        </div>
-        <div className="replenishment-pager">
-          <span className="field-note">{t.progress.pager.total(total)}</span>
-          <Button
-            variant="outlined"
-            size="sm"
-            disabled={page <= 1}
-            onClick={() => onPage(page - 1)}
-          >
-            {t.progress.pager.previous}
-          </Button>
-          <Button
-            variant="outlined"
-            size="sm"
-            disabled={page >= lastPage}
-            onClick={() => onPage(page + 1)}
-          >
-            {t.progress.pager.next}
-          </Button>
-        </div>
+            </div>
+            <div className="replenishment-pager">
+              <span className="field-note">{t.progress.pager.total(total)}</span>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => onPage(page - 1)}
+              >
+                {t.progress.pager.previous}
+              </Button>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={page >= lastPage}
+                onClick={() => onPage(page + 1)}
+              >
+                {t.progress.pager.next}
+              </Button>
+            </div>
+          </>
+        )}
       </>
     );
   };
