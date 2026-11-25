@@ -798,7 +798,7 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
     // 단계 구획은 상세가 도착해야 선다 — 자리 표시 구획과 이름이 겹치지 않는 유일한 신호다.
     await screen.findByRole('region', { name: t.panes.steps });
 
-    expect(screen.getByText(t.notes.inProgressSome(3))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.notes.inProgressSome(3) })).toBeInTheDocument();
     expect(screen.getByText('합성 승인자1 · 합성부서 가')).toBeInTheDocument();
     expect(screen.getByText(t.values.approverUnknown)).toBeInTheDocument();
   });

@@ -86,32 +86,32 @@ describe('RouteFormPane — 진행 중 건수 상시 표시', () => {
   it('진행 중인 요청이 있으면 건수와 함께 그 요청들이 옛 결재선으로 끝난다고 말한다', () => {
     renderPane();
 
-    expect(screen.getByText(t.notes.inProgressSome(3))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.notes.inProgressSome(3) })).toBeInTheDocument();
   });
 
-  /* 안내 알약은 「결재선 기본 정보」 제목 오른쪽 같은 줄이다(사용자 지시 2026-11-25). */
-  it('진행 중 안내는 기본 정보 제목과 같은 줄에 선다', () => {
+  /* 안내는 「결재선 기본 정보」 제목 오른쪽 ⓘ — 마우스를 올리면 문구가 보인다(사용자 지시 2026-11-25). */
+  it('진행 중 안내는 기본 정보 제목 옆 ⓘ 로 선다', () => {
     renderPane();
 
     const heading = screen.getByRole('heading', { name: t.panes.basicInfo });
-    const note = screen.getByText(t.notes.inProgressSome(3));
+    const tip = screen.getByRole('button', { name: t.notes.inProgressSome(3) });
 
-    expect(heading.nextElementSibling).toBe(note);
-    expect(note).toHaveClass('iqc-inspection-action-note');
-    expect(note).toHaveAttribute('data-tone', 'info');
+    expect(heading.parentElement).toContainElement(tip);
+    expect(tip).toHaveClass('info-tip');
+    expect(screen.queryByText(t.notes.inProgressSome(3))).not.toBeInTheDocument();
   });
 
   it('진행 중인 요청이 없어도 그 사실을 말한다', () => {
     renderPane({ route: allUnits });
 
-    expect(screen.getByText(t.notes.inProgressNone)).toBeInTheDocument();
-    expect(screen.queryByText(t.notes.inProgressSome(0))).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.notes.inProgressNone })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.notes.inProgressSome(0) })).not.toBeInTheDocument();
   });
 
   it('건수를 응답 값에서 가져온다', () => {
     renderPane({ route: { ...withUnit, inProgressCount: 7 } });
 
-    expect(screen.getByText(t.notes.inProgressSome(7))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.notes.inProgressSome(7) })).toBeInTheDocument();
   });
 
   /**
@@ -122,14 +122,14 @@ describe('RouteFormPane — 진행 중 건수 상시 표시', () => {
     renderPane({ route: { ...inactiveRoute, inProgressCount: 2 } });
 
     expect(screen.getByText(t.values.inactive)).toBeInTheDocument();
-    expect(screen.getByText(t.notes.inProgressSome(2))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.notes.inProgressSome(2) })).toBeInTheDocument();
   });
 
   /** 등록에는 아직 자원이 없다 — 없는 건수를 0으로 채워 보이면 사용자가 자료로 읽는다. */
   it('등록 폼에는 진행 중 안내가 없다', () => {
     renderPane({ mode: 'create', route: null, values: emptyRouteFormValues() });
 
-    expect(screen.queryByText(t.notes.inProgressNone)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.notes.inProgressNone })).not.toBeInTheDocument();
     expect(screen.queryByText(t.values.active)).not.toBeInTheDocument();
   });
 });

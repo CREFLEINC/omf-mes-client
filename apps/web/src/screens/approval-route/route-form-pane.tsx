@@ -298,17 +298,18 @@ export const RouteFormPane = ({
          */
         <div className="approval-route-head">
           {/*
-           * 진행 중인 요청 안내는 제목 오른쪽 같은 줄, 글자 폭만큼의 파란 알약(사용자 지시 2026-11-25 — 종전엔 입력란 아래
-           * 카드 너비 전체). 문구는 그대로다.
+           * 진행 중인 요청 안내는 제목 오른쪽 ⓘ — 마우스를 올리면 문구가 보인다(사용자 지시 2026-11-25). 문구는 그대로다.
            */}
           <div className="approval-route-head-title-row">
             <h2 className="pane-title">{t.panes.basicInfo}</h2>
-            <p className="iqc-inspection-action-note approval-route-progress-note" data-tone="info">
-              <Icon name="info" size={14} aria-hidden />
-              {route.inProgressCount === 0
-                ? t.notes.inProgressNone
-                : t.notes.inProgressSome(route.inProgressCount)}
-            </p>
+            <InfoTip
+              text={
+                route.inProgressCount === 0
+                  ? t.notes.inProgressNone
+                  : t.notes.inProgressSome(route.inProgressCount)
+              }
+              placement="right"
+            />
           </div>
           <p className="approval-route-head-line">
             <span className="info-label">
