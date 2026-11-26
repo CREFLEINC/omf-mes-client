@@ -8,6 +8,7 @@ import { useColumnWidths } from '../../patterns/column-resize';
 import { TAB_PAGE_SIZES, type TabPageSize } from '../../patterns/client-page';
 import { useApiClient } from '../../patterns/api-context';
 import { hasChangedFilters } from '../../patterns/filter-more';
+import { type MasterDataPlant, plantIdQuery } from '../../patterns/master-data-plant';
 import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
 import { runRequest } from '../../patterns/request';
 import { PagedSelect } from '../../patterns/select';
@@ -39,7 +40,17 @@ export interface ItemFilterBarProps {
   appliedFilters: ItemFilters;
   /** 조회 버튼·Enter·칩 제거·초기화가 호출 */
   onApplyFilters: (next: ItemFilters) => void;
+  /**
+   * 위 줄 사업부의 공장(`useMasterDataPlant`) — 목록과 같은 공장 품목에서 찾고 센다. `plantId` 가 비면 공장으로
+   * 거르지 않고, 공장을 정하는 동안(`isChecking`)은 세지 않는다.
+   */
+  plant?: Pick<MasterDataPlant, 'plantId' | 'isChecking'>;
 }
+
+const UNRESTRICTED: Pick<MasterDataPlant, 'plantId' | 'isChecking'> = {
+  plantId: '',
+  isChecking: false,
+};
 
 export interface ItemPaneProps {
   items: Item[];
@@ -72,7 +83,11 @@ const hasAnyFilter = (filters: ItemFilters): boolean =>
  * 품목 조회 조건 — 목록 위 조회 상자에 선다(검사 조회·판정과 같은 짜임 · omf-all-around#231).
  * 결과가 없어도 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다.
  */
-export const ItemFilterBar = ({ appliedFilters, onApplyFilters }: ItemFilterBarProps) => {
+export const ItemFilterBar = ({
+  appliedFilters,
+  onApplyFilters,
+  plant = UNRESTRICTED,
+}: ItemFilterBarProps) => {
   const { client } = useApiClient();
   const searchId = useId();
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시. 편집 중인 값은 draft에만 있다.
@@ -112,6 +127,7 @@ export const ItemFilterBar = ({ appliedFilters, onApplyFilters }: ItemFilterBarP
             'item-select',
             appliedFilters.onlyWithoutRouting,
             appliedFilters.latestStatus,
+            plant.plantId,
           ]}
           fetchPage={async (q, page) => {
             const data = await runRequest(() =>
@@ -124,6 +140,7 @@ export const ItemFilterBar = ({ appliedFilters, onApplyFilters }: ItemFilterBarP
                     ...(appliedFilters.latestStatus === ''
                       ? {}
                       : { latestRoutingStatus: appliedFilters.latestStatus }),
+                    ...plantIdQuery(plant.plantId),
                     page,
                     size: SEARCH_PAGE_SIZE,
                   },
@@ -180,11 +197,17 @@ const selectedStatusChip = (filters: ItemFilters): ItemStatusChip =>
  * 진행 상태 칩 「작성중 N · 확정 N · 폐기 N · 미등록 N」(사용자 지시 · #231) — 검사 조회·판정의 판정 칩과 같은 자리 · 모양.
  * 누르면 그 상태로 바로 거르고, 고른 칩을 다시 누르면 거르기를 푼다. 건수는 지금 검색어로 센다. 탭 묶음 밖이면 조회 상자 위에 선다.
  */
-export const ItemStatusChips = ({ appliedFilters, onApplyFilters }: ItemFilterBarProps) => {
+export const ItemStatusChips = ({
+  appliedFilters,
+  onApplyFilters,
+  plant = UNRESTRICTED,
+}: ItemFilterBarProps) => {
   const target = useHubActionsTarget();
   const counts = useItemStatusCounts(
     appliedFilters.q,
     STATUS_CHIPS.map((chip) => chip.value),
+    plant.plantId,
+    !plant.isChecking,
   );
   const selected = selectedStatusChip(appliedFilters);
   const group = (

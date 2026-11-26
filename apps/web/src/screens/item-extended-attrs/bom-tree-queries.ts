@@ -4,6 +4,7 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import type { BomTreeSource } from '../../patterns/bom-tree';
+import { plantIdQuery } from '../../patterns/master-data-plant';
 import { runRequest, toApiError } from '../../patterns/request';
 import { bomKeys } from './bom-queries';
 import { itemKeys } from './item-queries';
@@ -17,18 +18,28 @@ const t = messages.itemExtendedAttrs.bomTab;
  * 경로 리터럴은 이 파일에만 둔다 — `openapi-fetch`가 경로를 리터럴 타입으로 요구한다.
  */
 
-/** 하이라키의 조회 키 — 구성품 저장 · 기본 지정 뒤 이 키로 다시 받는다(`bomKeys.all` 아래). */
+/**
+ * 하이라키의 조회 키 — 구성품 저장 · 기본 지정 뒤 이 키로 다시 받는다(`bomKeys.all` 아래).
+ * 목록은 공장마다 다르다 — 같은 모품목도 사업부를 바꾸면 그 공장 BOM 만 받는다.
+ */
 export const bomTreeKeys = {
-  list: (itemId: number) => [...bomKeys.all, 'tree-list', itemId] as const,
+  list: (itemId: number, plantId: string) =>
+    [...bomKeys.all, 'tree-list', itemId, plantId] as const,
   components: (bomId: number) => [...bomKeys.all, 'tree-components', bomId] as const,
 };
 
-export const ITEM_BOM_TREE: BomTreeSource = {
-  listKey: bomTreeKeys.list,
+/**
+ * 하이라키의 읽기. BOM 목록은 위 줄 사업부의 공장 BOM 과 공장이 빈(공통) BOM 만 받는다(서버 #1156) — 자품목의
+ * BOM 도 같은 공장 것으로 편다. `plantId` 가 비면 공장을 가리지 않는다.
+ */
+export const itemBomTree = (plantId: string): BomTreeSource => ({
+  listKey: (itemId) => bomTreeKeys.list(itemId, plantId),
   componentsKey: bomTreeKeys.components,
   fetchList: async ({ client }, parentItemId) => {
     const data = await runRequest(() =>
-      client.GET('/planning/boms', { params: { query: { parentItemId } } }),
+      client.GET('/planning/boms', {
+        params: { query: { parentItemId, ...plantIdQuery(plantId) } },
+      }),
     );
     return data.items;
   },
@@ -38,14 +49,14 @@ export const ITEM_BOM_TREE: BomTreeSource = {
     );
     return data.items;
   },
-};
+});
 
 /** 모품목의 BOM 헤더 전체 — 하이라키가 같은 조회 키로 뿌리 품목의 목록을 다시 부르지 않는다. */
-export const useBomTreeList = (parentItemId: number) => {
+export const useBomTreeList = (parentItemId: number, plantId: string) => {
   const api = useApiClient();
   return useQuery({
-    queryKey: bomTreeKeys.list(parentItemId),
-    queryFn: () => ITEM_BOM_TREE.fetchList(api, parentItemId),
+    queryKey: bomTreeKeys.list(parentItemId, plantId),
+    queryFn: () => itemBomTree(plantId).fetchList(api, parentItemId),
   });
 };
 
@@ -54,8 +65,13 @@ export interface ParentItemQuery {
   q?: string;
   itemTypeCode: string;
   page?: number;
-  /** BOM 이 있는 품목만(서버 #848 · 장부 P-130). 켜짐일 때만 싣는다 — 그 밖의 값은 400 이다. */
+  /**
+   * BOM 이 있는 품목만(서버 #848). 켜짐일 때만 싣는다 — 끄면 BOM 이 없는 품목까지 전부다.
+   * `plantId` 와 함께면 그 공장 BOM 이나 공장이 빈 BOM 을 가진 모품목만이다(서버 #1156).
+   */
   hasBom?: true;
+  /** 위 줄 사업부의 공장 품목만(서버 #1156 — 품목의 공장은 BOM 으로 정한다). */
+  plantId?: number;
 }
 
 export const PARENT_PAGE_SIZE = 50;
@@ -64,24 +80,25 @@ export const PARENT_PAGE_SIZE = 50;
  * 왼쪽 모품목 목록 — 「BOM 조회 (ERP)」와 같은 조건이다(사용자 지시 2026-10-28). 사용 중지된 품목도 낸다 —
  * 그 품목의 BOM 구성품도 확장 열을 단다.
  */
-export const useParentItems = (query: ParentItemQuery) => {
+export const useParentItems = (query: ParentItemQuery, enabled = true) => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey: [...itemKeys.all, 'parents', query] as const,
-    queryFn: () => {
-      /*
-       * `hasBom` 은 서버에 들어왔지만(#848 · 장부 P-130) 계약 사본에는 아직 없다 — 리터럴로 넘기면 타입이 막아 변수로
-       * 넘긴다. 계약에 실리면 이 우회를 걷는다.
-       */
-      const params = {
-        ...query,
-        itemTypeCode: [query.itemTypeCode],
-        includeInactive: true,
-        size: PARENT_PAGE_SIZE,
-      };
-      return runRequest(() => client.GET('/mdm/items', { params: { query: params } }));
-    },
+    enabled,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/items', {
+          params: {
+            query: {
+              ...query,
+              itemTypeCode: [query.itemTypeCode],
+              includeInactive: true,
+              size: PARENT_PAGE_SIZE,
+            },
+          },
+        }),
+      ),
   });
 };
 
