@@ -1270,7 +1270,7 @@ const InspectionForm = (props: FormProps) => {
 
       {!noPlan && (
         <MeasurementTable
-          headNote={specs.length > 0 ? <PlanNote text={t.dialog.planVersionNote} /> : null}
+          headNote={specs.length > 0 ? <InfoTip text={t.dialog.planVersionNote} /> : null}
           items={dimensions}
           uomCodeOf={uoms.codeOf}
           values={form.values}
