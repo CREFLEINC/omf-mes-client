@@ -461,6 +461,27 @@ export const ApprovalRouteScreen = () => {
     setSearchParams(next);
   };
 
+  /**
+   * 다시 조회 — **목록만 부르지 않는다.** 조건 그대로 [조회]를 누르면(주소가 같으면) 이 길을 지난다.
+   *
+   * 목록만 다시 부르면 갱신된 목록 값과 낡은 상세·단계가 한 화면에 섞인다.
+   * 고르지 않았으면 상세·단계는 부를 대상이 없다 — **읽는 자리에서 판정한다.**
+   *
+   * **조준 조회는 여기서 부르지 않는다.** 그것은 보이는 자료가 아니라 저장 직전의 판정이고,
+   * 모든 쓰기가 성공 뒤 `routeKeys.all`을 무효화하므로 저장과 저장 사이에 낡지 않는다.
+   */
+  const handleReload = (): void => {
+    void list.refetch();
+    businessUnits.refetch();
+
+    if (selectedRouteId !== null) {
+      void detail.refetch();
+      void steps.refetch();
+      /* 승인자 후보도 참조다 — 사람이 들고 나는 동안 낡는다. 고른 뒤에만 부르므로 여기 안이다. */
+      approvers.refetch();
+    }
+  };
+
   const reloadDetail = (): void => {
     void detail.refetch();
   };
@@ -714,7 +735,24 @@ export const ApprovalRouteScreen = () => {
 
   const handleSearch = (next: RouteFilters): void => {
     // 조건·쪽·선택을 **한 patch로** 갱신한다. 나누면 그 사이에 어느 쪽도 아닌 한 프레임이 생긴다.
-    confirmUserNavigation(toSearchParams(next, 1, size));
+    const nextParams = toSearchParams(next, 1, size);
+
+    /*
+     * 주소가 그대로면 옮길 것이 없다 — 대신 다시 조회한다(「다시 조회」 단추를 걷은 뒤의 길, #358).
+     * 고친 값이 있거나 저장이 나가는 중이면 기존 [조회] 처리(묻는 창 · 잠금)를 그대로 지난다.
+     */
+    if (
+      nextParams.toString() === searchParams.toString() &&
+      !isLocked &&
+      !isEditDirty &&
+      !isStepDirty
+    ) {
+      setMissingContextKey(null);
+      handleReload();
+      return;
+    }
+
+    confirmUserNavigation(nextParams);
   };
 
   const handleChangePage = (nextPage: number): void => {

@@ -342,7 +342,8 @@ export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectio
 
   /* 종전 창에서 그 창고를 체크한 것과 같다 — 초안에만 넣고 저장은 부서 「저장」이 한다. */
   const handleAdd = (): void => {
-    if (addValue === '') return;
+    /* 넣기만 한다 — `toggle` 은 이미 연결된 창고면 빼므로, 연결된 창고는 넘기지 않는다. */
+    if (addValue === '' || editor.isLinked(Number(addValue))) return;
     editor.toggle(Number(addValue));
     closeAddRow();
   };

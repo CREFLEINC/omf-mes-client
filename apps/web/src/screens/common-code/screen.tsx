@@ -2218,7 +2218,13 @@ export const CommonCodeScreen = () => {
           businessUnitOptions,
           departmentFormState.values.businessUnitId,
         )}
-        productionWarehouses={<ProductionWarehouseSection editor={productionWarehouses} />}
+        productionWarehouses={
+          /* 부서를 바꾸면 추가 줄(열림 · 고른 창고)을 새로 시작한다 — 앞 부서에서 고른 값이 남지 않게. */
+          <ProductionWarehouseSection
+            key={String(selectedDepartmentParam)}
+            editor={productionWarehouses}
+          />
+        }
         isDirty={isDepartmentDirty || productionWarehouses.isDirty}
         /* **막는 것은 전역** — 남의 저장 중에도 새 저장이 시작되지 않는다(사유는 페인이 낸다). */
         isLocked={isDepartmentLocked}

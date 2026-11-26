@@ -260,6 +260,19 @@ describe('ErpOutboundScreen — 송신 예정 목록', () => {
     );
   });
 
+  it('고른 항목을 다시 눌러 풀어도 등록일 조건 · 쪽 크기는 주소에 남는다', async () => {
+    const { user } = renderScreen(
+      [settingsRoute, messagesRoute()],
+      '?item=GOODS_RECEIPT&from=2026-11-01&to=2026-11-07&size=50',
+    );
+
+    await user.click(await itemsPane().findByText('입고 (G/R)'));
+
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      `${ROUTE}?item=&from=2026-11-01&to=2026-11-07&size=50`,
+    );
+  });
+
   it('항목 줄을 누르면 그 항목의 송신 예정을 주소에 남기고 목록으로 낸다', async () => {
     const { requests, user } = renderScreen([settingsRoute, messagesRoute()]);
 

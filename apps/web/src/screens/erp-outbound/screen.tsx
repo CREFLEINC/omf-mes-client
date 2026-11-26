@@ -270,7 +270,7 @@ export const ErpOutboundScreen = () => {
   const selected =
     requestedCode === ''
       ? null
-      : (itemRows.find((item) => item.outboundItemCode === requestedCode) ?? itemRows[0] ?? null);
+      : (itemRows.find((item) => item.outboundItemCode === requestedCode) ?? shownItems[0] ?? null);
   const page = readPage(searchParams.get('page'));
   const size = readSize(searchParams.get('size'));
   /*
@@ -322,8 +322,12 @@ export const ErpOutboundScreen = () => {
     }
     setSearchParams(next);
   };
+  /** 고른 항목만 푼다 — 생성일 조건 · 쪽 크기는 남긴다(`select` 와 같다). */
   const unselect = (): void => {
-    setSearchParams(new URLSearchParams({ item: '' }));
+    const next = new URLSearchParams(searchParams);
+    next.set('item', '');
+    next.delete('page');
+    setSearchParams(next);
   };
   const changePage = (nextPage: number): void => {
     const next = new URLSearchParams(searchParams);

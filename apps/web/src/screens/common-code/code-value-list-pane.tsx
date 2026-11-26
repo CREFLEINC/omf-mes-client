@@ -91,7 +91,7 @@ export const CodeValueListPane = ({
     {
       key: 'code',
       header: t.fields.code,
-      width: '160px',
+      width: '140px',
       /* 줄 고르기 단추 — 코드그룹 목록과 같다. 줄 어디를 눌러도 이 단추로 넘긴다(사용자 지시 2026-11-25). */
       render: (row) => (
         <button
@@ -112,14 +112,14 @@ export const CodeValueListPane = ({
     {
       key: 'displayOrder',
       header: t.fields.displayOrder,
-      width: '96px',
+      width: '104px',
       align: 'end',
       render: (row) => String(row.displayOrder),
     },
     {
       key: 'effectivePeriod',
       header: t.fields.effectivePeriod,
-      width: '200px',
+      width: '180px',
       render: (row) => formatPeriod(row.effectiveFrom, row.effectiveTo),
     },
     {
@@ -129,7 +129,7 @@ export const CodeValueListPane = ({
        */
       key: 'manage',
       header: t.fields.manage,
-      width: '220px',
+      width: '190px',
       render: (row) => (
         <span className="common-code-value-actions">
           <Button
@@ -167,7 +167,7 @@ export const CodeValueListPane = ({
    * 2026-11-25 — 종전 `.wide-table` 최소 폭이 상자보다 넓어 「유효기간」이 잘리고 표 안에 스크롤이 생겼다).
    */
   const ordered = useColumnOrder('omf-mes:common-code:columns:code-values:order', baseColumns);
-  const resizable = useColumnWidths('omf-mes:common-code:columns:code-values:v2', ordered);
+  const resizable = useColumnWidths('omf-mes:common-code:columns:code-values:v3', ordered);
   const fit = useFitColumns(resizable.columns);
 
   /**

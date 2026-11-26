@@ -2363,8 +2363,9 @@ export const UsersRolesScreen = () => {
       </div>
 
       {/* 저장하지 않은 변경을 두고 다른 화면으로(사이드바 · 뒤로가기) 갈 때도 같은 창으로 묻는다(#358). */}
+      {/* 사용자 추가 팝업에 입력한 값도 다른 화면으로 갈 때 묻는다 — 팝업이 뒤 화면을 막아 화면 안 이동은 따로 묻지 않는다. */}
       <LeaveGuard
-        when={hasUnsavedChanges}
+        when={hasUnsavedChanges || isCreateUserDirty}
         discardTitle={t.discard.title}
         discardBody={t.discard.body}
         stayLabel={t.discard.keep}

@@ -21,7 +21,7 @@ import type { SelectOption } from './types';
 const t = messages.dashboard;
 
 export interface DashboardFilterBarProps {
-  /** 주소에 반영된(= 조회에 쓰인) 조건. 이 부품은 편집 중인 값을 따로 들지 않는다. */
+  /** 주소에 반영된(= 조회에 쓰인) 조건. 기간 두 칸을 고치는 동안의 초안만 이 부품이 따로 든다. */
   filters: DashboardFilters;
   plantOptions: SelectOption[];
   plantNote?: string;
@@ -89,6 +89,11 @@ export const DashboardFilterBar = ({
   const [problem, setProblem] = useState<PeriodProblem | null>(null);
   /* 「직접 지정」을 고른 상태 — 지금 기간이 빠른 항목과 같아도 달력을 켜 둔다. */
   const [customPicked, setCustomPicked] = useState(false);
+  /*
+   * 두 칸을 고치는 동안의 초안 — 한 칸만 바꾼 값은 여기 들고 있다가 두 값이 맞는 기간이 될 때만 적용한다
+   * (종전 기간 달력이 두 날을 다 고른 뒤 한 번 적용하던 것과 같다). 맞지 않으면 버리지 않고 안내만 한다.
+   */
+  const [draft, setDraft] = useState<{ from: string; to: string } | null>(null);
   const shownFrom = filters.dateFrom === '' ? today : filters.dateFrom;
   const shownTo = filters.dateTo === '' ? today : filters.dateTo;
   const periodNote = problem === null ? periodError : problemText(problem);
@@ -104,7 +109,17 @@ export const DashboardFilterBar = ({
   const applyPeriod = (from: string, to: string): void => {
     const found = periodProblemOf(from, to, today);
     setProblem(found);
-    if (found === null) onChange({ ...filters, dateFrom: from, dateTo: to });
+    if (found === null) {
+      setDraft(null);
+      onChange({ ...filters, dateFrom: from, dateTo: to });
+    }
+  };
+
+  /* 칸 하나를 바꿨을 때 — 초안에 담고, 두 값이 모두 있을 때만 적용을 시도한다. */
+  const editPeriod = (from: string, to: string): void => {
+    setDraft({ from, to });
+    if (from === '' || to === '') return;
+    applyPeriod(from, to);
   };
 
   return (
@@ -146,14 +161,12 @@ export const DashboardFilterBar = ({
             startLabel={messages.common.startDate}
             endLabel={messages.common.endDate}
             max={today}
-            from={shownFrom}
-            to={shownTo}
+            from={draft?.from ?? shownFrom}
+            to={draft?.to ?? shownTo}
             disabled={selected !== 'custom'}
             invalid={periodNote !== undefined}
             describedBy={periodNote === undefined ? undefined : periodNoteId}
-            onChange={(from, to) => {
-              applyPeriod(from, to);
-            }}
+            onChange={editPeriod}
           />
         </div>
         {periodNote !== undefined && (

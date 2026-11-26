@@ -596,6 +596,53 @@ describe('ApprovalRouteScreen — 조회 조건', () => {
 
     expect(screen.getByLabelText(t.fields.q)).toHaveValue('SAMPLE');
   });
+
+  /**
+   * 「다시 조회」 단추를 걷은 뒤(#358) 같은 조건의 [조회]가 그 일을 맡는다 — 주소가 그대로여도
+   * 목록과 사업부 참조를 다시 부르고, 주소는 바꾸지 않는다.
+   */
+  it('조건 그대로 [조회]를 누르면 목록과 사업부 참조를 다시 부른다', async () => {
+    const { requests, user } = renderScreen(allRoutes(), '?q=SAMPLE');
+
+    await waitForList();
+
+    const businessUnitCount = (): number =>
+      requests.filter((request) => request.url.pathname === BUSINESS_UNITS_PATH).length;
+    const before = { list: listRequests(requests).length, businessUnits: businessUnitCount() };
+
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(listRequests(requests).length).toBe(before.list + 1);
+    });
+    await waitFor(() => {
+      expect(businessUnitCount()).toBe(before.businessUnits + 1);
+    });
+    expect(locationText()).toBe(`${ROUTE}?q=SAMPLE`);
+  });
+
+  it('참조가 실패해도 같은 조건의 [조회]로 이름을 되살릴 수 있다', async () => {
+    let hasFailed = false;
+    const flakyBusinessUnits: StubRoute = {
+      match: (request) => isGet(request, BUSINESS_UNITS_PATH),
+      respond: () => {
+        if (hasFailed) return jsonResponse(listBody(businessUnitFixtures));
+        hasFailed = true;
+
+        return jsonResponse({ message: '' }, { status: 500 });
+      },
+    };
+
+    const { user } = renderScreen(allRoutes([flakyBusinessUnits]));
+
+    await waitForList();
+    expect(await screen.findByText(t.filters.lookupFailed)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    expect(await screen.findByText(BUSINESS_UNIT_LABEL)).toBeInTheDocument();
+    expect(screen.queryByText(t.filters.lookupFailed)).not.toBeInTheDocument();
+  });
 });
 
 describe('ApprovalRouteScreen — 목록', () => {
@@ -1208,7 +1255,7 @@ describe('ApprovalRouteScreen — 이 회차의 경계', () => {
     const { requests, user } = renderScreen(allRoutes(), SELECTED);
 
     await screen.findByRole('region', { name: t.panes.steps });
-    /* 조건을 바꿔 조회해야 목록 요청이 새로 나간다 — 같은 조건의 조회는 주소가 그대로라 다시 부르지 않는다. */
+    /* 조건을 바꿔 조회한다 — 목록 요청이 새로 나가는 것을 확인한 뒤 쓰기가 없음을 잰다. */
     await user.type(screen.getByLabelText(t.fields.q), 'SAMPLE');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
     await waitFor(() => {

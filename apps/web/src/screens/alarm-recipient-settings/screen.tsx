@@ -34,7 +34,6 @@ import {
   addRecipients,
   hasInactiveRecipient,
   isApproverEvent,
-  lacksRecipients,
   noPhoneCount,
   removeRecipient,
   sameDraft,

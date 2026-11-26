@@ -46,7 +46,6 @@ import { SelectField } from '../alarm-recipient-settings/select-field';
 import {
   addRecipients,
   inactiveCount,
-  lacksRecipients,
   noPhoneCount,
   removeRecipient,
   sameDraft,
