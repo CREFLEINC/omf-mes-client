@@ -1629,11 +1629,11 @@ export const InspectionStandardScreen = () => {
               setVersionTransition('obsolete');
             }}
           >
-            {t.actions.obsolete}
+            {t.actions.obsoleteVersion}
           </Button>
         </div>
       ) : (
-        <DisabledAction label={t.actions.obsolete} reason={obsoleteDisabledReason} />
+        <DisabledAction label={t.actions.obsoleteVersion} reason={obsoleteDisabledReason} />
       )}
 
       {/* 버전 비교 · 변경 이력은 버전 고르기 줄로 옮겼다(#196). */}
