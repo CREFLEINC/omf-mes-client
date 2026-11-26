@@ -38,6 +38,9 @@ export interface BomAvailabilityContext {
 }
 
 const flag = (value: boolean | undefined) => (value == null ? '미제공' : value ? '예' : '아니요');
+/** BOM 상세 펼침 칸 — 예/아니요 대신 뜻이 바로 읽히는 말. */
+const said = (value: boolean | undefined, yes: string, no: string) =>
+  value == null ? '정보 없음' : value ? yes : no;
 
 const Properties = ({ values }: { values: [string, string][] }) => (
   <dl className="erp-wo-revision-properties">
@@ -291,40 +294,33 @@ export const BomContents = ({
           </Chip>
         )}
       </div>
-      <dl className="bom-detail-summary" aria-label="BOM 기본 정보">
-        <div>
-          <dt>모품목</dt>
-          <dd>
+      {/* 기본 정보 상자는 검사 조회·판정 상세 요약(parts-iqc-facts)과 같은 모양. */}
+      <dl className="parts-iqc-facts iqc-inbound-facts" aria-label="BOM 기본 정보">
+        <div className="parts-iqc-fact">
+          <dt className="field-label">모품목</dt>
+          <dd className="parts-iqc-fact-key">
             {parent ? (
               <>
-                <strong>{parent.itemName}</strong>
-                <span>{parent.itemCode}</span>
+                {parent.itemName}
+                <span className="parts-iqc-fact-sub">{parent.itemCode}</span>
               </>
             ) : (
-              <strong>{parentFallback}</strong>
+              parentFallback
             )}
           </dd>
         </div>
-        <div>
-          <dt>기준 수량</dt>
-          <dd>
-            <strong>
-              {bom.baseQty} {unit(bom.baseUomId)}
-            </strong>
-          </dd>
-        </div>
-        <div>
-          <dt>유효 시작일</dt>
-          <dd>
-            <strong>{bom.effectiveFrom ?? '미설정'}</strong>
-          </dd>
-        </div>
-        <div>
-          <dt>유효 종료일</dt>
-          <dd>
-            <strong>{bom.effectiveTo ?? '종료일 없음'}</strong>
-          </dd>
-        </div>
+        {(
+          [
+            ['기준 수량', `${bom.baseQty} ${unit(bom.baseUomId)}`],
+            ['유효 시작일', bom.effectiveFrom ?? '미설정'],
+            ['유효 종료일', bom.effectiveTo ?? '종료일 없음'],
+          ] as const
+        ).map(([label, value]) => (
+          <div className="parts-iqc-fact" key={label}>
+            <dt className="field-label">{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
       </dl>
       <div className="bom-detail-heading">
         <h3>자품목 {sorted.length}개</h3>
@@ -403,14 +399,16 @@ export const BomContents = ({
                               ['관리 공정', linkedName(operations, row.routingOperationId)],
                               ['실제 사용 공정', linkedName(processes, row.actualUseProcessId)],
                               ['로스율', `${Number((row.scrapRate * 100).toFixed(6))}%`],
-                              ['필수 자재', flag(row.isMandatory)],
-                              ['LOT 추적', flag(row.lotTraceRequired)],
-                              ['자동 차감 허용', flag(row.backflushAllowed)],
+                              ['필수 자재', said(row.isMandatory, '필수', '선택')],
+                              ['LOT 추적', said(row.lotTraceRequired, '필요', '필요 없음')],
+                              ['자동 차감', said(row.backflushAllowed, '사용', '사용 안 함')],
                             ] as const
                           ).map(([label, value]) => (
                             <div key={label}>
                               <dt>{label}</dt>
-                              <dd data-enabled={value === '예'}>{value}</dd>
+                              <dd data-enabled={label === '필수 자재' && value === '필수'}>
+                                {value}
+                              </dd>
                             </div>
                           ))}
                         </dl>
@@ -687,6 +685,7 @@ export const RevisionDetailButton = ({
           <Dialog
             open
             size="lg"
+            className={kind === 'BOM' ? 'bom-detail-dialog' : undefined}
             title={`${kind} 상세`}
             showCloseButton={false}
             onClose={() => setOpen(false)}

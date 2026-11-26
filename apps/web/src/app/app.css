@@ -34716,49 +34716,21 @@ main > .process-page:has(.erp-wo-summary) {
   font-variant-numeric: tabular-nums;
 }
 /* BOM 상세 창 (omf-all-around#320) */
+/* 자품목 표(여섯 칸)가 가로로 밀리지 않게 DS 「lg」보다 넓힌다. 화면이 좁으면 화면 폭까지만. */
+dialog.bom-detail-dialog {
+  width: min(64rem, calc(100vw - var(--space-8)));
+  max-width: min(64rem, calc(100vw - var(--space-8)));
+}
 .bom-detail-title {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
-  padding-bottom: var(--space-3);
-  border-bottom: 1px solid var(--outline-variant);
 }
 .bom-detail-title > strong {
   font: var(--type-title-md);
   margin-inline-end: var(--space-2);
 }
-.bom-detail-summary {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
-  margin: 0;
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--outline-variant);
-}
-.bom-detail-summary > div {
-  min-width: 0;
-  padding: 0 var(--space-4);
-}
-.bom-detail-summary > div + div {
-  border-inline-start: 1px solid var(--outline-variant);
-}
-.bom-detail-summary > div:first-child {
-  padding-inline-start: var(--space-1);
-}
-.bom-detail-summary dt,
-.bom-detail-props dt {
-  color: var(--on-surface-variant);
-  font: var(--type-label-sm);
-}
-.bom-detail-summary dd {
-  margin: var(--space-1) 0 0;
-  display: grid;
-  overflow-wrap: anywhere;
-}
-.bom-detail-summary dd strong {
-  font: var(--type-title-sm);
-}
-.bom-detail-summary dd span,
 .bom-detail-item span {
   color: var(--on-surface-variant);
   font: var(--type-body-sm);
@@ -34835,12 +34807,10 @@ main > .process-page:has(.erp-wo-summary) {
   color: var(--primary);
 }
 @media (max-width: 800px) {
-  .bom-detail-summary,
   .bom-detail-props {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     row-gap: var(--space-3);
   }
-  .bom-detail-summary > div:nth-child(odd),
   .bom-detail-props > div:nth-child(odd) {
     border-inline-start: 0;
   }

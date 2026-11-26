@@ -93,6 +93,8 @@ describe('선택 개정 읽기 전용 상세', () => {
     await userEvent.setup().click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(dialog).toHaveTextContent('관리 공정');
+    expect(dialog).toHaveTextContent(/필수 자재\s*필수/);
+    expect(dialog).not.toHaveTextContent('아니요');
     expect(dialog).toHaveTextContent('실제 사용 공정');
     expect(dialog).not.toHaveTextContent('조회 미지원');
     expect(dialog).toHaveTextContent('2%');
