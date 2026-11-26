@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import type { SalesOrderView } from './types';
 
 const t = messages.shipmentRequestCreate;
@@ -49,6 +50,7 @@ export const SourceListTable = ({
       render: (row) => (
         <Button
           variant="text"
+          className={ROW_PICK_CLASS}
           aria-label={t.table.selectRow(row.salesOrderNo)}
           aria-pressed={row.salesOrderId === selectedSalesOrderId}
           onClick={() => {
@@ -119,12 +121,15 @@ export const SourceListTable = ({
   };
 
   return (
-    <Table
-      density="compact"
-      columns={columns}
-      rows={rows}
-      getRowId={(row) => String(row.salesOrderId)}
-      empty={emptySlot()}
-    />
+    /* 줄 아무 곳이나 눌러 고른다(#360) — 배치에 끼지 않는 상자(`display: contents`)가 누름만 받는다. */
+    <div className="row-pick-box" {...rowPickHandlers}>
+      <Table
+        density="compact"
+        columns={columns}
+        rows={rows}
+        getRowId={(row) => String(row.salesOrderId)}
+        empty={emptySlot()}
+      />
+    </div>
   );
 };

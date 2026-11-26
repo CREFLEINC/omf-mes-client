@@ -13,6 +13,7 @@ import { EMPTY_PROGRESS, type ProgressFilters } from './filters';
 import { PAGE_SIZE, replenishmentKeys, useProgressList } from './queries';
 import { RunTable } from './run-table';
 import { ListEmptyRow } from '../../patterns/list-empty';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import {
   FILTER_STATUSES,
@@ -214,7 +215,7 @@ export const ProgressView = ({
     const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
     return (
       <>
-        <div className="replenishment-table-scroll">
+        <div className="replenishment-table-scroll" {...rowPickHandlers}>
           <table className="replenishment-table is-sticky-first" aria-label={tp.listLabel}>
             <thead>
               <tr>
@@ -249,7 +250,7 @@ export const ProgressView = ({
                   <td>
                     <button
                       type="button"
-                      className="link-cell"
+                      className={`link-cell ${ROW_PICK_CLASS}`}
                       aria-current={request.id === selectedId ? 'true' : undefined}
                       onClick={() => onSelect(request.id)}
                     >

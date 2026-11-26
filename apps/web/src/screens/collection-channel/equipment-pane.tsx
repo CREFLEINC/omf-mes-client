@@ -6,6 +6,7 @@ import { type MasterDataPlant, plantSelectOf } from '../../patterns/master-data-
 import { hasChangedFilters } from '../../patterns/filter-more';
 
 import { UsageName } from '../../patterns/usage-chip';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { type CodeOption, defaultEquipmentFilters } from './options';
 import { SelectField } from './select-field';
 import type { Equipment, EquipmentFilters } from './types';
@@ -90,7 +91,7 @@ export const useEquipmentPane = ({
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className={`link-cell ${ROW_PICK_CLASS}`}
           aria-current={row.equipmentId === selectedEquipmentId ? 'true' : undefined}
           aria-label={t.equipment.selectLabel(row.equipmentCode, row.equipmentName)}
           onClick={() => onSelect(row.equipmentId)}
@@ -140,7 +141,10 @@ export const useEquipmentPane = ({
     }
 
     return (
-      <div className="wide-table collection-channel-table collection-channel-equipment-table">
+      <div
+        className="wide-table collection-channel-table collection-channel-equipment-table"
+        {...rowPickHandlers}
+      >
         <Table
           density="compact"
           caption={

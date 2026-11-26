@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import { formatQty, type ShipmentRow } from './types';
@@ -49,6 +50,7 @@ export const ShipmentList = ({
         <Button
           variant="text"
           size="sm"
+          className={ROW_PICK_CLASS}
           aria-label={t.actions.selectRow(row.shipmentNo)}
           aria-pressed={row.shipmentId === selectedShipmentId}
           onClick={() => onSelect(row)}
@@ -126,7 +128,7 @@ export const ShipmentList = ({
   }
 
   return (
-    <div className="return-receipt-table">
+    <div className="return-receipt-table" {...rowPickHandlers}>
       <Table
         density="compact"
         caption={<span className="return-receipt-table-caption">{t.panes.search}</span>}

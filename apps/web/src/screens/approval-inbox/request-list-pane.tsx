@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { approvalTypeLabelOf, requestStatusLabelOf } from './code-options';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import type { RequestRow } from './types';
@@ -90,7 +91,7 @@ export const RequestListPane = ({
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className={`link-cell ${ROW_PICK_CLASS}`}
           /*
            * 보이는 글자(요청번호)를 그대로 담아 음성 조작이 그 말로 이 버튼을 부를 수 있게 한다.
            * 계약이 요청번호를 UNIQUE로 두어 행마다 이름이 갈린다.
@@ -192,7 +193,7 @@ export const RequestListPane = ({
        * (배치 규범 문서의 `.wide-table`). 넘침이 곧 가로 스크롤이 되는 상자는 디자인 시스템
        * `Table`이 이미 갖고 있다 — 우리가 만들지 않는다.
        */}
-      <div className="wide-table approval-inbox-table">
+      <div className="wide-table approval-inbox-table" {...rowPickHandlers}>
         <Table
           density="compact"
           columns={columns}

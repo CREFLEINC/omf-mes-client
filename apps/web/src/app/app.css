@@ -1811,14 +1811,14 @@ h2:has(> .inspection-standard-dialog-title) {
 .inspection-standard-plan-rows
   tbody
   tr:nth-child(n):has(.inspection-standard-plan-open[aria-current='true']) {
-  background: var(--surface-container-high);
+  background: var(--semantic-info-container);
 }
 
 .inspection-standard-plan-rows
   tbody
   tr:has(.inspection-standard-plan-open[aria-current='true'])
   > td:first-child {
-  box-shadow: inset 3px 0 0 var(--primary);
+  box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 
 /* 기준 코드 — 링크 모양 없이 본문 글자. 누를 수 있다는 것은 커서와 줄 바탕으로 보인다. */
@@ -3481,11 +3481,11 @@ dialog.routing-history-dialog {
 
 /* ERP W/O 목록 — 지금 고른 행을 행 전체로 드러낸다. */
 .production-order-list-table tbody tr:has(.link-cell[aria-current='true']) > td {
-  background: var(--primary-container);
+  background: var(--semantic-info-container);
 }
 
 .production-order-list-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
-  box-shadow: inset 3px 0 0 var(--primary);
+  box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 
 /* 번호·수량·날짜·표식은 접지 않는다 — 품목명과 ERP 원번호만 줄을 바꾼다. */
@@ -4266,7 +4266,7 @@ dialog.routing-history-dialog {
 
 /* 고른 줄은 배경으로 알린다 — 어느 W/O 를 보고 있는지 목록에서 바로 읽힌다. */
 .work-order-assignment-list-pane tbody tr:has([aria-current='true']) {
-  background: var(--surface-container-high);
+  background: var(--semantic-info-container);
 }
 
 /* 우선순위 칸은 가운데 정렬한 칸 안에서도 제 폭을 지킨다. */
@@ -6001,7 +6001,7 @@ dialog.routing-history-dialog {
  * 배경을 칠하지 않는 이유: 품질 상태 배지와 같은 바탕이 되어 배지가 묻힌다.
  */
 .lot-status-transition-table tr:has(.link-cell[aria-current='true']) > td:first-child {
-  box-shadow: inset 3px 0 0 var(--primary);
+  box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 
 .lot-status-transition-table {
@@ -12763,7 +12763,7 @@ a.erp-send-chips:focus-visible {
 }
 
 .users-roles-list tbody tr:nth-child(n):has(.users-roles-row-pick[aria-current='true']) {
-  background: var(--surface-container-high);
+  background: var(--semantic-info-container);
 }
 
 .users-roles-list tbody tr:has(.users-roles-row-pick[aria-current='true']) > td:first-child {
@@ -13907,7 +13907,7 @@ dialog.layout-editor-dialog {
 }
 
 .material-issue-status-table tr[aria-selected='true'] > td {
-  background: var(--surface-container-high);
+  background: var(--semantic-info-container);
 }
 
 .material-issue-status-group > th {
@@ -14114,7 +14114,7 @@ dialog.layout-editor-dialog {
 }
 
 .replenishment-table tr[aria-selected='true'] > td {
-  background: var(--surface-container-high);
+  background: var(--semantic-info-container);
 }
 
 .replenishment-table.is-sticky-first th:first-child,
@@ -19950,7 +19950,7 @@ dialog.terminal-map-wizard:has(.terminal-map-matrix) {
 .iqc-inspection-queue-rows
   tbody
   tr:nth-child(n):has(.iqc-inspection-queue-item[aria-current='true']) {
-  background: var(--surface-container-high);
+  background: var(--semantic-info-container);
 }
 
 /* 표 줄(tr)에는 그림자가 안 그려진다 — 강조선은 첫 칸에 긋는다. */
@@ -19958,7 +19958,7 @@ dialog.terminal-map-wizard:has(.terminal-map-matrix) {
   tbody
   tr:has(.iqc-inspection-queue-item[aria-current='true'])
   > td:first-child {
-  box-shadow: inset 3px 0 0 var(--primary);
+  box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 
 /*
@@ -21561,14 +21561,14 @@ dialog.terminal-map-wizard:has(.terminal-map-matrix) {
 .oqc-inspection-queue-rows
   tbody
   tr:nth-child(n):has(.oqc-inspection-queue-open[aria-current='true']) {
-  background: var(--surface-container-high);
+  background: var(--semantic-info-container);
 }
 
 .oqc-inspection-queue-rows
   tbody
   tr:has(.oqc-inspection-queue-open[aria-current='true'])
   > td:first-child {
-  box-shadow: inset 3px 0 0 var(--primary);
+  box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 
 /* 의뢰번호는 본문색 · 굵게 — 누를 수 있다는 것은 커서와 줄 바탕으로 보인다. */
@@ -23639,12 +23639,30 @@ main:has(> .oqc-inspection-panes) {
   outline-offset: -2px;
 }
 
-.selectable-table tbody > tr.is-active > td {
-  background: var(--primary-container);
+/*
+ * 목록에서 고른 줄 — 모든 관리웹 목록이 같은 파랑(사용자 지시 2026-11-26 · omf-all-around#360). 옅은 정보 바탕 +
+ * 첫 칸 정보 색 막대. 붉은 계열(primary)은 오류로 읽혀 쓰지 않는다. 마우스를 올려도 남는다.
+ * `.row-pick` 은 줄마다 상세를 여는 단추(patterns/row-pick.ts) — 그 단추가 있는 줄은 아무 곳이나 눌러 고른다.
+ */
+.selectable-table tbody > tr.is-active > td,
+.selectable-table.is-clickable tbody > tr.selectable-table-row.is-active:hover > td,
+tbody tr:has(.row-pick:is([aria-current='true'], [aria-pressed='true'])) > td,
+tbody tr:has(.row-pick:is([aria-current='true'], [aria-pressed='true'])):hover > td {
+  background: var(--semantic-info-container);
 }
 
-.selectable-table tbody > tr.is-active > td:first-child {
-  box-shadow: inset 3px 0 0 var(--primary);
+.selectable-table tbody > tr.is-active > td:first-child,
+tbody tr:has(.row-pick:is([aria-current='true'], [aria-pressed='true'])) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--semantic-info);
+}
+
+tbody tr:has(.row-pick:not(:disabled)) {
+  cursor: pointer;
+}
+
+/* 표를 곧바로 그리는 목록에서 누름만 받는 상자 — 배치에 끼지 않는다. */
+.row-pick-box {
+  display: contents;
 }
 
 .selectable-table.has-sticky-last td:last-child {
@@ -25468,7 +25486,7 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 }
 
 .inspection-sheet-list tbody tr:has([aria-current='true']) {
-  background: var(--surface-container-high);
+  background: var(--semantic-info-container);
 }
 
 /* 시리얼 — 키보드로도 여는 글자 단추. 겉모양은 보통 글자. */
@@ -25795,14 +25813,14 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 .inspection-sheet-template-rows
   tbody
   tr:nth-child(n):has(.inspection-sheet-template-open[aria-current='true']) {
-  background: var(--surface-container-high);
+  background: var(--semantic-info-container);
 }
 
 .inspection-sheet-template-rows
   tbody
   tr:has(.inspection-sheet-template-open[aria-current='true'])
   > td:first-child {
-  box-shadow: inset 3px 0 0 var(--primary);
+  box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 
 /* 모델 칸 — 「코드 이름」 한 줄, 이름은 흐리게 말줄임. 링크 모양 없이 본문 글자(검사 기준 탭과 같다). */
@@ -29445,21 +29463,12 @@ body:has(.iqc-inspection-step-measure [aria-expanded='true'])
 }
 
 /*
- * 목록 행 — 검사 조회·판정 목록과 같은 표시: 줄무늬 없음, 올리면 옅게, 고른 행은 정보 파랑 바탕 + 첫 칸 왼쪽 파란 선
- * (`.inspection-queue-table` 고른 줄과 같다 · #350).
+ * 목록 행 — 검사 조회·판정 목록과 같은 표시: 줄무늬 없음, 올리면 옅게. 고른 행의 파랑은 공용
+ * `.selectable-table tbody > tr.is-active` 규칙이 준다(#360).
  */
 .lot-trace-list-rows tbody tr,
 .lot-trace-list-rows tbody tr:nth-child(even) {
   background: transparent;
-}
-
-.lot-trace-list-rows .selectable-table tbody > tr.is-active > td,
-.lot-trace-list-rows .selectable-table tbody > tr.is-active:hover > td {
-  background: var(--semantic-info-container);
-}
-
-.lot-trace-list-rows .selectable-table tbody > tr.is-active > td:first-child {
-  box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 
 /* LOT 번호 — 한 줄. 모자라면 앞 마디만 줄이고 끝 마디(일련번호)는 남긴다(trace-table.tsx). */
@@ -37094,9 +37103,17 @@ body:has(
   cursor: pointer;
 }
 
-.iwr-table tr.is-clickable:hover > td,
-.iwr-table tr[aria-selected='true'] > td {
+.iwr-table tr.is-clickable:hover > td {
   background: var(--surface-container-high);
+}
+
+.iwr-table tr[aria-selected='true'] > td,
+.iwr-table tr[aria-selected='true']:hover > td {
+  background: var(--semantic-info-container);
+}
+
+.iwr-table tr[aria-selected='true'] > td:first-child {
+  box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 
 .iwr-table [data-invalid='true'] {

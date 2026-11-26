@@ -1,6 +1,7 @@
 import { Button, Chip, EmptyState, Skeleton, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import {
   DONE_STATUS,
   formatMoment,
@@ -75,7 +76,7 @@ export const FailureTable = ({
           <span>
             <button
               type="button"
-              className="link-cell"
+              className={`link-cell ${ROW_PICK_CLASS}`}
               aria-current={row.breakdownId === selectedId ? 'true' : undefined}
               onClick={() => {
                 onSelect(row.breakdownId);
@@ -127,13 +128,16 @@ export const FailureTable = ({
 
   /* ⛔ `.wide-table`로 감싸지 않는다 — 좁은 칸에 최소 폭을 주면 뒤쪽 열이 화면 밖으로 나간다. */
   return (
-    <Table
-      caption={<span className="equipment-failure-table-caption">{t.panes.list}</span>}
-      columns={columns}
-      rows={rows}
-      getRowId={(row) => String(row.breakdownId)}
-      density="compact"
-      empty={<EmptyState size="sm" live title={t.table.emptyTitle} description={t.table.empty} />}
-    />
+    /* 줄 아무 곳이나 눌러 고른다(#360) — 배치에 끼지 않는 상자(`display: contents`)가 누름만 받는다. */
+    <div className="row-pick-box" {...rowPickHandlers}>
+      <Table
+        caption={<span className="equipment-failure-table-caption">{t.panes.list}</span>}
+        columns={columns}
+        rows={rows}
+        getRowId={(row) => String(row.breakdownId)}
+        density="compact"
+        empty={<EmptyState size="sm" live title={t.table.emptyTitle} description={t.table.empty} />}
+      />
+    </div>
   );
 };

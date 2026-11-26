@@ -279,6 +279,7 @@ export const ShipmentScheduleScreen = () => {
                 applyQuery(period, filters, sortKey);
               }}
               onRetryReferences={retryReferences}
+              openedId={detailRequestId}
               onOpenDetail={(shipmentRequestId) => {
                 setIsPrinting(false);
                 setDetailRequestId(shipmentRequestId);

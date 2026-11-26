@@ -23,6 +23,7 @@ import {
   useFilterMore,
 } from '../../patterns/filter-more';
 import { InfoTip } from '../../patterns/info-tip';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
 import { AckPanel } from './ack-panel';
@@ -249,6 +250,8 @@ export const NoticeScreen = () => {
         <Button
           variant="text"
           size="sm"
+          className={ROW_PICK_CLASS}
+          aria-current={row.noticeId === selectedId ? 'true' : undefined}
           onClick={() => {
             /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
             selectNotice(row.noticeId === selectedId ? null : row.noticeId);
@@ -460,7 +463,7 @@ export const NoticeScreen = () => {
               ) : notices.isPending ? (
                 <Skeleton variant="rect" height="12rem" />
               ) : (
-                <div className="wide-table notice-table">
+                <div className="wide-table notice-table" {...rowPickHandlers}>
                   <Table
                     columns={columns}
                     rows={rows}

@@ -2,6 +2,7 @@ import { type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { splitCodeName } from '../../patterns/split-code-name';
 import { PageNav } from '../work-order/page-nav';
 import type { WorkOrderPageView } from '../work-order/pagination';
@@ -54,7 +55,7 @@ export const WorkOrderCloseCandidateListPane = ({
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className={`link-cell ${ROW_PICK_CLASS}`}
           aria-label={t.actions.select(row.workOrderNo)}
           aria-current={selectedWorkOrderId === row.workOrderId ? true : undefined}
           onClick={() => {
@@ -106,7 +107,7 @@ export const WorkOrderCloseCandidateListPane = ({
   return (
     <section className="pane work-order-close-list-pane" aria-label={copy.pane}>
       {head ?? <h2 className="pane-title">{copy.pane}</h2>}
-      <div className="wide-table work-order-close-table">
+      <div className="wide-table work-order-close-table" {...rowPickHandlers}>
         <Table
           density="compact"
           caption={<span className="work-order-close-table-caption">{copy.pane}</span>}

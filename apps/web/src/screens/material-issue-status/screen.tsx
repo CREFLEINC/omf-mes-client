@@ -23,6 +23,7 @@ import { DateRangeFields } from '../../patterns/date-range-fields';
 import { plantToday } from '../../patterns/plant-time';
 import { InfoTip } from '../../patterns/info-tip';
 import { ListEmptyRow } from '../../patterns/list-empty';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { ScreenHeader } from '../../patterns/screen-header';
 import { Select } from '../../patterns/select';
 import { DetailPanel } from './detail-panel';
@@ -313,7 +314,7 @@ export const MaterialIssueStatusScreen = () => {
       <td>
         <button
           type="button"
-          className="link-cell"
+          className={`link-cell ${ROW_PICK_CLASS}`}
           aria-current={request.materialIssueRequestId === selectedId ? 'true' : undefined}
           onClick={() => select(request.materialIssueRequestId)}
         >
@@ -362,7 +363,11 @@ export const MaterialIssueStatusScreen = () => {
 
     return (
       <>
-        <table className="material-issue-status-table" aria-label={t.views.list}>
+        <table
+          className="material-issue-status-table"
+          aria-label={t.views.list}
+          {...rowPickHandlers}
+        >
           <thead>
             <tr>
               <th scope="col">{t.columns.requestNo}</th>

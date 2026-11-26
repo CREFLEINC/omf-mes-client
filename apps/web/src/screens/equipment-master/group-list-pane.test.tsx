@@ -60,7 +60,7 @@ describe('GroupListPane', () => {
 
     const codeCells = screen
       .getAllByRole('button')
-      .filter((node) => node.className === 'link-cell')
+      .filter((node) => node.classList.contains('link-cell'))
       .map((node) => node.textContent);
 
     expect(codeCells).toEqual(['GRP-A', 'GRP-A-01', 'GRP-A-02', 'GRP-B']);

@@ -15,6 +15,7 @@ import { type MasterDataPlant, plantSelectOf } from '../../patterns/master-data-
 import { hasChangedFilters } from '../../patterns/filter-more';
 import type { LookupSource } from '../../patterns/lookup-display';
 import { UsageChip } from '../../patterns/usage-chip';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { type CodeOption, defaultGroupFilters, groupTypeLabel, lookupLabel } from './code-options';
 import type { GroupTreeRow } from './group-tree';
 import { SelectField } from './select-field';
@@ -142,7 +143,7 @@ export const useGroupListPane = ({
             )}
             <button
               type="button"
-              className="link-cell"
+              className={`link-cell ${ROW_PICK_CLASS}`}
               aria-current={row.group.equipmentGroupId === selectedGroupId ? 'true' : undefined}
               onClick={() => onSelect(row.group.equipmentGroupId)}
             >
@@ -211,7 +212,7 @@ export const useGroupListPane = ({
     }
 
     return (
-      <div className="equipment-master-table equipment-master-group-table">
+      <div className="equipment-master-table equipment-master-group-table" {...rowPickHandlers}>
         <Table
           density="compact"
           caption={<span className="equipment-master-table-caption">{t.panes.groupList}</span>}

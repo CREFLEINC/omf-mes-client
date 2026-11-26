@@ -10,6 +10,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { describeReference, toReference, type ReferenceSource } from './lookups';
 import { CONTRACT_SORT_KEYS, toSortState, type SortKey } from './sort';
 import { progressLabel } from './status-options';
@@ -38,6 +39,8 @@ export interface ShipmentTableProps {
   onRetryReferences: () => void;
   /** 피처 010 — 지시서 번호를 누르면 상세 창을 연다. */
   onOpenDetail: (shipmentRequestId: number) => void;
+  /** 상세 창을 연 지시서 — 그 줄을 파랗게 칠한다(#360). */
+  openedId?: number | null;
   /** 피처 012 — ERP 송신 칩으로 거른 중이면 빈 문구가 그 거르기를 풀라고 말한다(시안 W0402-After 빈 상태). */
   erpFiltered?: boolean;
 }
@@ -181,6 +184,7 @@ export const ShipmentTable = ({
   onFirstPage,
   onRetryReferences,
   onOpenDetail,
+  openedId = null,
   erpFiltered = false,
 }: ShipmentTableProps) => {
   /* 「지연」 판단의 오늘 — 화면을 연 기기의 날짜(#342). */
@@ -204,7 +208,9 @@ export const ShipmentTable = ({
         <Button
           variant="text"
           size="sm"
+          className={ROW_PICK_CLASS}
           aria-label={t.table.openDetail(row.shipmentRequestNo)}
+          aria-current={row.shipmentRequestId === openedId ? 'true' : undefined}
           onClick={() => {
             onOpenDetail(row.shipmentRequestId);
           }}
@@ -379,7 +385,7 @@ export const ShipmentTable = ({
   return (
     <>
       {/* 폭 규칙은 래퍼에 건다 — 디자인 시스템이 className 을 <table> 자신에 붙인다. */}
-      <div className="wide-table shipment-schedule-table">
+      <div className="wide-table shipment-schedule-table" {...rowPickHandlers}>
         <Table
           density="compact"
           columns={columns}

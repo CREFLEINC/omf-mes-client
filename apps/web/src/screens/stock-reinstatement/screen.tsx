@@ -59,6 +59,7 @@ import {
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { locationOptionLabel } from '../../patterns/location-label';
 import { ListCollapseTab, PaneListHead, usePaneSplit } from '../../patterns/po-board';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 
 const t = messages.stockReinstatement;
 const PAGE_SIZE = 50;
@@ -414,7 +415,7 @@ export const StockReinstatementScreen = () => {
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className={`link-cell ${ROW_PICK_CLASS}`}
           aria-label={t.actions.selectRow(row.lotNo)}
           aria-current={row.dispositionDecisionId === selectedId ? 'true' : undefined}
           disabled={row.lotId === null}
@@ -521,7 +522,7 @@ export const StockReinstatementScreen = () => {
           ) : candidates.isError ? (
             <AlertBanner variant="error">{messages.httpError.description}</AlertBanner>
           ) : (
-            <div className="stock-reinstatement-table">
+            <div className="stock-reinstatement-table" {...rowPickHandlers}>
               <Table
                 density="compact"
                 caption={t.panes.candidates}

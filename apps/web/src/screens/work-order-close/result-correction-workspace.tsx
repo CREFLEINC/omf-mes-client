@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { Select } from '../../patterns/select';
 import { WORK_ORDER_CLOSE_CODE_GROUPS, toWorkOrderCloseCodeLabel } from './code-options';
 import {
@@ -370,7 +371,7 @@ export const WorkOrderResultCorrectionWorkspace = ({
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className={`link-cell ${ROW_PICK_CLASS}`}
           aria-label={t.actions.select(row.resultSequence)}
           aria-current={selectedId === row.productionResultId ? true : undefined}
           onClick={() => {
@@ -432,7 +433,10 @@ export const WorkOrderResultCorrectionWorkspace = ({
           {!workers.isPending && hasUnknownWorker && (
             <AlertBanner variant="warning">{t.workersUnavailable}</AlertBanner>
           )}
-          <div className="wide-table work-order-close-table production-result-correction-table">
+          <div
+            className="wide-table work-order-close-table production-result-correction-table"
+            {...rowPickHandlers}
+          >
             <Table
               density="compact"
               caption={

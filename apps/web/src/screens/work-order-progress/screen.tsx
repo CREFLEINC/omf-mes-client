@@ -207,6 +207,7 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
             rows={rows}
             sort={sort}
             statusLabel={(statusCode) => statuses.labelOf(statusCode)}
+            selectedWorkOrderId={selectedWorkOrderId}
             onSelect={(workOrderId) => {
               setSearchParams(withSelectedWorkOrder(searchParams, workOrderId));
             }}

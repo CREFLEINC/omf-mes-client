@@ -24,6 +24,7 @@ import {
   type ChangeNotification,
 } from './types';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 
 const t = messages.poChangeReview;
 
@@ -74,7 +75,7 @@ export const NotificationList = ({
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className={`link-cell ${ROW_PICK_CLASS}`}
           aria-label={t.list.selectRow(row.productionOrderNo)}
           aria-current={row.productionOrderId === selectedId ? 'true' : undefined}
           onClick={() => onSelect(row.productionOrderId)}
@@ -112,17 +113,20 @@ export const NotificationList = ({
   }
 
   return (
-    <Table
-      className="po-change-review-table po-change-review-list"
-      caption={<span className="po-change-review-table-caption">{t.panes.list}</span>}
-      density="compact"
-      columns={columns}
-      rows={rows}
-      getRowId={(row) => String(row.productionOrderId)}
-      empty={
-        <EmptyState size="sm" live title={t.list.empty} description={t.list.emptyDescription} />
-      }
-    />
+    /* 줄 아무 곳이나 눌러 고른다(#360) — 배치에 끼지 않는 상자(`display: contents`)가 누름만 받는다. */
+    <div className="row-pick-box" {...rowPickHandlers}>
+      <Table
+        className="po-change-review-table po-change-review-list"
+        caption={<span className="po-change-review-table-caption">{t.panes.list}</span>}
+        density="compact"
+        columns={columns}
+        rows={rows}
+        getRowId={(row) => String(row.productionOrderId)}
+        empty={
+          <EmptyState size="sm" live title={t.list.empty} description={t.list.emptyDescription} />
+        }
+      />
+    </div>
   );
 };
 

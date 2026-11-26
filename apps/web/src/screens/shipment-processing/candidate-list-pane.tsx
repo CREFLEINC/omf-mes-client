@@ -2,6 +2,7 @@ import { type Column, Chip, EmptyState, SkeletonText, Table } from '@crefle/web-
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import type { ShipmentGateBlocker } from './candidate-gate';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
@@ -68,7 +69,7 @@ export const ShipmentProcessingCandidateListPane = ({
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className={`link-cell ${ROW_PICK_CLASS}`}
           aria-label={t.actions.select(row.shipmentRequestNo)}
           aria-current={selectedShipmentRequestId === row.shipmentRequestId ? true : undefined}
           onClick={() => {
@@ -121,7 +122,7 @@ export const ShipmentProcessingCandidateListPane = ({
 
   return (
     <section className="pane" aria-label={t.pane}>
-      <div className="wide-table">
+      <div className="wide-table" {...rowPickHandlers}>
         <Table
           density="compact"
           columns={columns}
