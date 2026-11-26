@@ -59,6 +59,11 @@ const linkedName = (source: LookupResult, id: number | null | undefined) => {
   const found = source.entries.find((entry) => entry.value === String(id));
   return found?.label ?? (source.isLoading ? '조회 중' : '연결 정보 확인 필요');
 };
+const STATUS_CHIP: Record<string, ChipStatus> = {
+  CONFIRMED: 'success',
+  DRAFT: 'warning',
+  OBSOLETE: 'idle',
+};
 const statusLabel = (status: string) =>
   ({ CONFIRMED: '확정', DRAFT: '작성중', OBSOLETE: '폐기' })[status] ?? status;
 
@@ -260,11 +265,6 @@ export const BomContents = ({
   const parent = codeNames.get(bom.parentItemId);
   const parentFallback =
     names.items.find((item) => item.itemId === bom.parentItemId)?.label ?? '품목 정보 확인 필요';
-  const statusChip: Record<string, ChipStatus> = {
-    CONFIRMED: 'success',
-    DRAFT: 'warning',
-    OBSOLETE: 'idle',
-  };
   const columns = [
     '자품목',
     '기준 소요량',
@@ -285,7 +285,7 @@ export const BomContents = ({
         <Chip size="sm" status="info">
           Rev {bom.bomVersion}
         </Chip>
-        <Chip variant="status" size="sm" status={statusChip[bom.statusCode] ?? 'idle'}>
+        <Chip variant="status" size="sm" status={STATUS_CHIP[bom.statusCode] ?? 'idle'}>
           {statusLabel(bom.statusCode)}
         </Chip>
         {bom.isDefault && (
