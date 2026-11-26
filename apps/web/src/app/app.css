@@ -13067,6 +13067,11 @@ a.erp-send-chips:focus-visible {
   gap: var(--space-1);
 }
 
+/* 창이 좁아 문장이 왼쪽으로 뜬다 — 창 본문 폭 안에서 줄을 바꾼다(본문 밖은 잘린다). */
+.users-roles-question-row .info-tip-anchor > [role='tooltip'] {
+  max-width: 16rem;
+}
+
 /* 라벨·입력·(오류)·보조 문구를 한 묶음으로 촘촘히 — 오류는 TextField 안(입력칸 바로 아래), 보조 문구는 그 아래. */
 .users-roles-worker-dialog-field {
   display: grid;
