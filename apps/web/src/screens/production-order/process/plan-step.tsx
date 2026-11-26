@@ -617,9 +617,17 @@ export const PlanStep = ({
           ) : (
             <>
               <div className="erp-wo-week-heading">
-                <span>
-                  {week[0]} — {week.at(-1)}
-                </span>
+                <div className="erp-wo-week-heading-context">
+                  <span className={compactCalendar && showAll ? 'visually-hidden' : undefined}>
+                    {week[0]} — {week.at(-1)}
+                  </span>
+                  {showAll && (
+                    <div className="erp-wo-week-legend" aria-label="편성 범례">
+                      <span>현재 편성</span>
+                      <span className="is-other">다른 ERP W/O</span>
+                    </div>
+                  )}
+                </div>
                 <div className="erp-wo-week-actions">
                   <Button
                     size="sm"
@@ -685,16 +693,10 @@ export const PlanStep = ({
                   </Button>
                 </div>
               )}
-              {showAll && (
-                <div className="erp-wo-week-legend">
-                  <span>현재 편성</span>
-                  <span className="is-other">다른 ERP W/O</span>
-                </div>
-              )}
               {showAll && context.isPending && (
-                <p role="status" className="field-note">
+                <span role="status" className="visually-hidden">
                   전체 편성 조회 중
-                </p>
+                </span>
               )}
               {showAll && context.isError && (
                 <AlertBanner
