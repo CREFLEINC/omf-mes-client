@@ -38560,6 +38560,20 @@ body:has(
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
+.erp-wo-distribution-result-table .erp-wo-result-quantity {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.erp-wo-distribution-result-table .erp-wo-result-added {
+  background: var(--surface-container-low);
+}
+.erp-wo-result-quantity-editor {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
 .erp-wo-distribution-calendar-summary {
   margin: var(--space-2) 0 0;
   color: var(--on-surface-variant);

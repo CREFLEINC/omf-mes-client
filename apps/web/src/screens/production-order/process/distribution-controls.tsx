@@ -12,7 +12,6 @@ import {
 import { useEffect, useId, useRef, useState } from 'react';
 import { AlertBanner, Button, Dialog, TextField } from '@crefle/web-ui';
 import { DistributionPeriodPicker } from './distribution-period-picker';
-import { InfoTip } from '../../../patterns/info-tip';
 import { PageNav } from '../../../patterns/page-nav';
 import { Select } from '../../../patterns/select';
 import { DistributionHelp } from './distribution-help';
@@ -83,7 +82,7 @@ export const DistributionControls = ({
   const [resultPage, setResultPage] = useState(1);
   const [dailyPages, setDailyPages] = useState<Record<string, number>>({});
   const [orderPage, setOrderPage] = useState(1);
-  const [totalsPage, setTotalsPage] = useState(1);
+  const [editingResultKey, setEditingResultKey] = useState<string | null>(null);
   const [rows, setRows] = useState<DistributionSegment[]>([]);
   const baseline = useRef<DistributionSegment[]>([]);
   const canBulkEdit = rows.length > 1;
@@ -184,6 +183,18 @@ export const DistributionControls = ({
             a.plannedLineId.localeCompare(b.plannedLineId),
         )
     : [];
+  const visibleResultRows = previewRows.filter(
+    (row) => Number(row.plannedQty) !== 0 || resultKey(row) === editingResultKey,
+  );
+  const visibleResultPage = Math.min(
+    resultPage,
+    Math.max(1, Math.ceil(visibleResultRows.length / 10)),
+  );
+  const existingByResultKey = new Map<string, number>();
+  for (const row of existing) {
+    const key = resultKey(row);
+    existingByResultKey.set(key, (existingByResultKey.get(key) ?? 0) + Number(row.plannedQty));
+  }
   let reviewResult = preview?.result;
   let resultError = '';
   if (preview && Object.keys(resultQuantities).length) {
@@ -961,7 +972,7 @@ export const DistributionControls = ({
                         setAcknowledged(false);
                         setResultPage(1);
                         setOrderPage(1);
-                        setTotalsPage(1);
+                        setEditingResultKey(null);
                         setMessage('');
                       } catch (error) {
                         setPreview(null);
@@ -1057,105 +1068,86 @@ export const DistributionControls = ({
                   />
                 )}
                 <div className="erp-wo-preview-scroll">
-                  <table>
+                  <table className="erp-wo-distribution-result-table">
                     <caption>날짜와 라인별 결과</caption>
                     <thead>
                       <tr>
                         <th>ERP W/O</th>
                         <th>날짜</th>
                         <th>생산 라인</th>
-                        <th>추가 수량</th>
+                        <th className="erp-wo-result-quantity">기존 수량</th>
+                        <th className="erp-wo-result-quantity erp-wo-result-added">추가 수량</th>
+                        <th className="erp-wo-result-quantity">적용 후 합계</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {previewRows.slice((resultPage - 1) * 10, resultPage * 10).map((row) => (
-                        <tr key={`${row.owner}-${row.planDate}-${row.plannedLineId}`}>
-                          <td>{orders.find((order) => order.id === row.owner)?.label}</td>
-                          <td>
-                            {row.planDate}
-                            {row.holidayLabel && (
-                              <span className="erp-wo-holiday-day-label">{row.holidayLabel}</span>
-                            )}
-                          </td>
-                          <td>
-                            {
-                              orders
-                                .find((order) => order.id === row.owner)
-                                ?.lines.find((line) => String(line.id) === row.plannedLineId)?.name
-                            }
-                          </td>
-                          <td>
-                            <TextField
-                              size="md"
-                              inputMode="decimal"
-                              aria-label={`${row.owner} ${row.planDate} ${row.plannedLineId} 생산량`}
-                              value={row.plannedQty}
-                              onChange={(event) => {
-                                setResultQuantities((current) => ({
-                                  ...current,
-                                  [resultKey(row)]: event.target.value,
-                                }));
-                                setAcknowledged(false);
-                              }}
-                            />{' '}
-                            {orders.find((order) => order.id === row.owner)?.unit}
-                          </td>
-                        </tr>
-                      ))}
+                      {visibleResultRows
+                        .slice((visibleResultPage - 1) * 10, visibleResultPage * 10)
+                        .map((row) => {
+                          const key = resultKey(row);
+                          const order = orders.find((entry) => entry.id === row.owner);
+                          const existingQty = existingByResultKey.get(key) ?? 0;
+                          const addedQty = Number(row.plannedQty);
+                          const unit = order?.unit;
+                          return (
+                            <tr key={key}>
+                              <td>{order?.label}</td>
+                              <td>
+                                {row.planDate}
+                                {row.holidayLabel && (
+                                  <span className="erp-wo-holiday-day-label">
+                                    {row.holidayLabel}
+                                  </span>
+                                )}
+                              </td>
+                              <td>
+                                {
+                                  order?.lines.find((line) => String(line.id) === row.plannedLineId)
+                                    ?.name
+                                }
+                              </td>
+                              <td className="erp-wo-result-quantity">
+                                {formatQty(existingQty)} {unit}
+                              </td>
+                              <td className="erp-wo-result-quantity erp-wo-result-added">
+                                <div className="erp-wo-result-quantity-editor">
+                                  <TextField
+                                    size="md"
+                                    inputMode="decimal"
+                                    aria-label={`${row.owner} ${row.planDate} ${row.plannedLineId} 생산량`}
+                                    value={row.plannedQty}
+                                    onFocus={() => setEditingResultKey(key)}
+                                    onBlur={() => setEditingResultKey(null)}
+                                    onChange={(event) => {
+                                      setResultQuantities((current) => ({
+                                        ...current,
+                                        [key]: event.target.value,
+                                      }));
+                                      setAcknowledged(false);
+                                    }}
+                                  />
+                                  <span>{unit}</span>
+                                </div>
+                              </td>
+                              <td className="erp-wo-result-quantity">
+                                <strong>
+                                  {Number.isFinite(addedQty)
+                                    ? `${formatQty(existingQty + addedQty)} ${unit ?? ''}`
+                                    : '—'}
+                                </strong>
+                              </td>
+                            </tr>
+                          );
+                        })}
                     </tbody>
                   </table>
                 </div>
-                {previewRows.length > 10 && (
+                {visibleResultRows.length > 10 && (
                   <PageNav
-                    meta={{ page: resultPage, size: 10, total: previewRows.length }}
+                    meta={{ page: visibleResultPage, size: 10, total: visibleResultRows.length }}
                     onChangePage={setResultPage}
                   />
                 )}
-                <section aria-label="선택 ERP W/O의 날짜별 라인 합계">
-                  {/* 합계가 무엇을 세는지는 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
-                  <h3 className="section-title erp-wo-title-with-info">
-                    선택 ERP W/O의 날짜별 라인 합계
-                    <InfoTip text="선택한 ERP W/O의 계획만 집계합니다. 생산능력 검증 결과는 아닙니다." />
-                  </h3>
-                  <div className="erp-wo-preview-scroll">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>날짜</th>
-                          <th>라인</th>
-                          <th>기존</th>
-                          <th>추가</th>
-                          <th>합계</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {reviewResult!.totals
-                          .slice((totalsPage - 1) * 10, totalsPage * 10)
-                          .map((row) => (
-                            <tr key={`${row.date}-${row.lineId}-${row.unit}`}>
-                              <td>{row.date}</td>
-                              <td>{row.lineLabel}</td>
-                              <td>
-                                {row.existing} {row.unit}
-                              </td>
-                              <td>
-                                {row.added} {row.unit}
-                              </td>
-                              <td>
-                                {Number((row.existing + row.added).toFixed(6))} {row.unit}
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  {reviewResult!.totals.length > 10 && (
-                    <PageNav
-                      meta={{ page: totalsPage, size: 10, total: reviewResult!.totals.length }}
-                      onChangePage={setTotalsPage}
-                    />
-                  )}
-                </section>
                 {!!reviewResult!.warnings.length && (
                   <>
                     <AlertBanner variant="warning">

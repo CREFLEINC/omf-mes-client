@@ -111,15 +111,7 @@ describe('분배 조건과 미리보기 적용', () => {
     expect(screen.queryByRole('textbox', { name: '조건 2 수량' })).toBeNull();
     expect(screen.queryByRole('button', { name: '분배 미리보기' })).toBeNull();
     expect(screen.getByRole('region', { name: '분배 미리보기 결과' })).toBeVisible();
-    /* 라인 합계가 무엇을 세는지는 늘 펼쳐 두지 않고 제목 옆 ⓘ 로 읽힌다. */
-    expect(
-      screen.getByRole('button', {
-        name: '선택한 ERP W/O의 계획만 집계합니다. 생산능력 검증 결과는 아닙니다.',
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText('선택한 ERP W/O의 계획만 집계합니다. 생산능력 검증 결과는 아닙니다.'),
-    ).toBeNull();
+    expect(screen.getByRole('table', { name: '날짜와 라인별 결과' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: '조건 수정' }));
     expect(screen.getByRole('textbox', { name: '조건 2 수량' })).toHaveValue('2');
     expect(screen.queryByRole('region', { name: '분배 미리보기 결과' })).toBeNull();
@@ -329,6 +321,9 @@ it('분배 수량이 0인 휴일 행은 숨기고 제외 안내와 합계를 보
   const user = await configure();
   expect(await screen.findByText(/휴일 2일 제외/)).toBeVisible();
   const resultTable = screen.getByRole('table', { name: '날짜와 라인별 결과' });
+  for (const name of ['기존 수량', '추가 수량', '적용 후 합계']) {
+    expect(within(resultTable).getByRole('columnheader', { name })).toBeVisible();
+  }
   expect(within(resultTable).queryByText('주말 · 휴일')).not.toBeInTheDocument();
   expect(
     within(resultTable)
