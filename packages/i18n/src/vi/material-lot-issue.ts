@@ -138,6 +138,8 @@ export const materialLotIssue: Translated<typeof ko.materialLotIssue> = {
     summaryTail: (pattern: string) => `Ví dụ số: ${pattern}`,
     summaryEmpty:
       'Nhập số lượng tồn kho và số lượng LOT thì các LOT quản lý vật tư sẽ được phát hành hiện ở đây.',
+    summaryEmptyPackaged:
+      'Nhập đơn vị đóng gói, số kiện, số lượng mỗi kiện, số lượng tồn kho và số lượng LOT thì các LOT quản lý vật tư sẽ được phát hành hiện ở đây.',
     cancel: 'Hủy',
     submit: (count: number | null) => (count === null ? 'Phát hành' : `Phát hành ${count} LOT`),
   },

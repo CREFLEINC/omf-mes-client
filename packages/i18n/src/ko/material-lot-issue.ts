@@ -150,6 +150,9 @@ export const materialLotIssue = {
       }`,
     summaryTail: (pattern: string) => `번호 예: ${pattern}`,
     summaryEmpty: '재고 수량과 LOT 수를 넣으면 발행될 자재 관리 LOT가 여기 보입니다.',
+    /** 「패키징 유무」를 켰을 때 — 패키징 세 칸도 채워야 미리보기가 선다(사용자 지시 2026-11-26). */
+    summaryEmptyPackaged:
+      '패키징 단위·패키징 수·패키징당 수량과 재고 수량, LOT 수를 넣으면 발행될 자재 관리 LOT가 여기 보입니다.',
     cancel: '취소',
     submit: (count: number | null) => (count === null ? '발행' : `${count}건 발행`),
   },
