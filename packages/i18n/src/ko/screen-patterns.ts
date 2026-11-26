@@ -79,6 +79,13 @@ export const screenPatterns = {
     hourLabel: '시',
     minuteLabel: '분',
   },
+  /** 시각 칸(`patterns/time-field`) — 시계 아이콘으로 여는 시·분 고르기 창의 단추. */
+  timeField: {
+    open: (label: string): string => `${label} 고르기`,
+    clear: '비우기',
+    cancel: '취소',
+    confirm: '확인',
+  },
   /** C-17 자동으로 채운 값 */
   autoValue: {
     chip: '자동',

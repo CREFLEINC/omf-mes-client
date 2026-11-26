@@ -883,18 +883,11 @@ const ProcessFormSlot = ({
               }
               {...(codeLockReason === null ? {} : { 'aria-describedby': codeLockNoteId })}
             />
-            {/* 코드 잠금 사유는 긴 문장 대신 라벨로(Routing 코드와 같다 · #231) — 문장은 라벨 위 마우스 · 숨긴 글. */}
+            {/* 코드 잠금 사유는 화면에 펼치지 않고 숨긴 글로만 — 「변경 불가」 라벨은 두지 않는다(omf-all-around#360). */}
             {codeLockReason !== null && (
-              <>
-                <span title={codeLockReason}>
-                  <Chip variant="status" status="idle" aria-hidden="true">
-                    {t.values.codeLockedBadge}
-                  </Chip>
-                </span>
-                <span id={codeLockNoteId} className="visually-hidden">
-                  {codeLockReason}
-                </span>
-              </>
+              <span id={codeLockNoteId} className="visually-hidden">
+                {codeLockReason}
+              </span>
             )}
           </div>
         </div>

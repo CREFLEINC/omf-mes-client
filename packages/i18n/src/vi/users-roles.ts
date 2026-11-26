@@ -151,7 +151,6 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     hidePassword: 'Ẩn mật khẩu',
     /** 부서를 고르지 않은 상태. 계약이 널을 허용하므로 **비우는 것이 정상 값이다.** */
     departmentNone: 'Không chỉ định',
-    loginIdLocked: 'Không thể đổi',
     empty: {
       noneTitle: 'Chưa đăng ký người dùng nào',
       noneDescription: 'Hãy đăng ký người dùng đầu tiên bằng «Thêm người dùng».',

@@ -262,8 +262,6 @@ export const routing = {
     revision: (version: number): string => `Rev ${version}`,
     /** 품목 목록 「진행 상태」 — Rev 가 하나도 없는 품목(#231). */
     unregistered: '미등록',
-    /** 코드 잠금 · 선후행 막힘을 긴 문장 대신 보이는 짧은 라벨(#231). 문장은 라벨 위 마우스로 본다. */
-    codeLockedBadge: '사용 중 · 변경 불가',
     /** 폐기 개정 — 카드 머리 라벨(#231). */
     lockedBadge: '수정 · 변경 불가',
     dependenciesBlockedBadge: '공정 2개 이상 등록 시 사용 가능',

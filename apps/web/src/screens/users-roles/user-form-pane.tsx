@@ -1,4 +1,4 @@
-import { Button, Chip, Icon, IconButton, TextField } from '@crefle/web-ui';
+import { Button, Icon, IconButton, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId, useState } from 'react';
 
@@ -49,30 +49,22 @@ export interface UserFormPaneProps {
 const ValueField = ({
   label,
   value,
-  lockedLabel,
   className,
 }: {
   label: string;
   value: string;
-  /** 칸 이름 오른쪽의 짧은 라벨(「변경 불가」). */
-  lockedLabel: string;
   className: string;
 }) => {
   const labelId = useId();
-  const lockedId = useId();
 
   return (
     <div className={`field-cell ${className}`}>
+      {/* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다 — 회색 값 칸으로만 구분(팝업 디자인 시안 2026-11-26 · omf-all-around#360). */}
       <span className="field-label users-roles-locked-label">
         <span id={labelId}>{label}</span>
-        {/* 칸 이름 오른쪽 「변경 불가」 라벨 — 기준정보 화면의 잠긴 코드 안내와 같은 모양(사용자 지시 2026-11-20 · #333). */}
-        {/* 회색 상태 라벨 — 다른 화면의 잠긴 코드 「변경 불가」와 같은 모양(사용자 지시 2026-11-25). */}
-        <Chip id={lockedId} variant="status" size="sm" status="idle" className="code-lock-chip">
-          {lockedLabel}
-        </Chip>
       </span>
       {/* 입력칸이 아님을 읽기 쉬운 채로 보인다 — 흐린 비활성 입력칸으로 그리면 값이 잘 안 읽힌다. */}
-      <p className="readonly-value" aria-labelledby={labelId} aria-describedby={lockedId}>
+      <p className="readonly-value" aria-labelledby={labelId}>
         {value}
       </p>
     </div>
@@ -203,12 +195,7 @@ export const UserFormPane = ({
             />
           </div>
         ) : (
-          <ValueField
-            className="urf-login"
-            label={t.user.fields.loginId}
-            value={values.loginId}
-            lockedLabel={t.user.loginIdLocked}
-          />
+          <ValueField className="urf-login" label={t.user.fields.loginId} value={values.loginId} />
         )}
 
         {/*

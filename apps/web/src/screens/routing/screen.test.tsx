@@ -522,7 +522,8 @@ describe('RoutingScreen — 헤더 상세 조회와 상태 잠금', () => {
 
     const value = await screen.findByLabelText('Routing 코드');
     expect(value).toHaveAttribute('aria-readonly', 'true');
-    expect(screen.getByText('사용 중 · 변경 불가')).toBeInTheDocument();
+    /* 「사용 중 · 변경 불가」 라벨은 두지 않는다(omf-all-around#360). */
+    expect(screen.queryByText('사용 중 · 변경 불가')).toBeNull();
     expect(value).toHaveAccessibleDescription(
       '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
     );

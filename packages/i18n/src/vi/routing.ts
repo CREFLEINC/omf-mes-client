@@ -246,8 +246,6 @@ export const routing: Translated<typeof ko.routing> = {
     revision: (version: number): string => `Rev ${version}`,
     /** 품목 목록 「진행 상태」 — Rev 가 하나도 없는 품목(#231). */
     unregistered: 'Chưa đăng ký',
-    /** 코드 잠금 · 선후행 막힘을 긴 문장 대신 보이는 짧은 라벨(#231). 문장은 라벨 위 마우스로 본다. */
-    codeLockedBadge: 'Đang dùng · không đổi được',
     lockedBadge: 'Không thể sửa · thay đổi',
     dependenciesBlockedBadge: 'Cần từ 2 công đoạn',
     /** 이력 관리 — 기본 Rev 고르기 칸 · 확인 창(#231). */

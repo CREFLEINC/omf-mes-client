@@ -107,10 +107,8 @@ describe('RoleFormPane 역할 코드 잠금', () => {
 
     expect(codeField()).toBeDisabled();
     /* 잠기면 이름 오른쪽 「변경 불가」 라벨 — 문장은 마우스 · 화면 읽기로(사용자 지시 2026-11-24). */
-    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
-      'title',
-      '사용 중인 코드는 바꿀 수 없습니다.',
-    );
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 숨긴 설명으로만. */
+    expect(screen.queryByText('변경 불가')).toBeNull();
     expect(codeField()).toHaveAccessibleDescription('사용 중인 코드는 바꿀 수 없습니다.');
   });
 

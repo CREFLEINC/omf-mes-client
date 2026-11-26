@@ -764,10 +764,8 @@ describe('EquipmentMasterScreen — 그룹 등록·수정', () => {
     const nameInput = await openGroup(user);
 
     expect(form().getByRole('textbox', { name: new RegExp(t.fields.groupCode) })).toBeDisabled();
-    expect(form().getByText(messages.editability.badge).closest('[title]')).toHaveAttribute(
-      'title',
-      messages.editability.referenced(3),
-    );
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 숨긴 설명으로만. */
+    expect(form().queryByText('변경 불가')).toBeNull();
     expect(
       form().getByRole('textbox', { name: new RegExp(t.fields.groupCode) }),
     ).toHaveAccessibleDescription(messages.editability.referenced(3));
@@ -2206,9 +2204,8 @@ describe('EquipmentMasterScreen — 설비 등록·수정', () => {
     expect(
       equipmentForm().getByRole('textbox', { name: new RegExp(t.fields.equipmentCode) }),
     ).toBeDisabled();
-    expect(
-      equipmentForm().getByText(messages.editability.badge).closest('[title]'),
-    ).toHaveAttribute('title', messages.editability.referenced(3));
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 숨긴 설명으로만. */
+    expect(equipmentForm().queryByText('변경 불가')).toBeNull();
     expect(
       equipmentForm().getByRole('textbox', { name: new RegExp(t.fields.equipmentCode) }),
     ).toHaveAccessibleDescription(messages.editability.referenced(3));
@@ -2231,9 +2228,8 @@ describe('EquipmentMasterScreen — 설비 등록·수정', () => {
     expect(
       equipmentForm().getByRole('textbox', { name: new RegExp(t.fields.equipmentCode) }),
     ).toBeDisabled();
-    expect(
-      equipmentForm().getByText(messages.editability.badge).closest('[title]'),
-    ).toHaveAttribute('title', t.actionReasons.codeLockUnknown);
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 숨긴 설명으로만. */
+    expect(equipmentForm().queryByText('변경 불가')).toBeNull();
     expect(
       equipmentForm().getByRole('textbox', { name: new RegExp(t.fields.equipmentCode) }),
     ).toHaveAccessibleDescription(t.actionReasons.codeLockUnknown);

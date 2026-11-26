@@ -467,10 +467,8 @@ describe('W-05-09 작업 캘린더 — 등록·수정', () => {
     await openEditOf(user, 'CAL-A');
 
     expect(within(formDialog()).getByRole('textbox', { name: /캘린더 코드/ })).toBeDisabled();
-    expect(screen.getByText(messages.editability.badge).closest('[title]')).toHaveAttribute(
-      'title',
-      messages.editability.referenced(3),
-    );
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 숨긴 설명으로만. */
+    expect(screen.queryByText('변경 불가')).toBeNull();
     expect(
       within(formDialog()).getByRole('textbox', { name: /캘린더 코드/ }),
     ).toHaveAccessibleDescription(messages.editability.referenced(3));

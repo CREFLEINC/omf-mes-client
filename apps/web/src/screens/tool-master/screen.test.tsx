@@ -955,10 +955,8 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
     await openEditOf(user, 'TL-01');
 
     expect(screen.getByRole('textbox', { name: /툴코드/ })).toBeDisabled();
-    expect(screen.getByText(messages.editability.badge).closest('[title]')).toHaveAttribute(
-      'title',
-      messages.editability.labelIssued(null),
-    );
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 숨긴 설명으로만. */
+    expect(screen.queryByText('변경 불가')).toBeNull();
     expect(screen.getByRole('textbox', { name: /툴코드/ })).toHaveAccessibleDescription(
       messages.editability.labelIssued(null),
     );
@@ -992,10 +990,8 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
     await openEditOf(user, 'TL-01');
 
     expect(screen.getByRole('textbox', { name: /툴코드/ })).toBeDisabled();
-    expect(screen.getByText(messages.editability.badge).closest('[title]')).toHaveAttribute(
-      'title',
-      messages.editability.referenced(3),
-    );
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 숨긴 설명으로만. */
+    expect(screen.queryByText('변경 불가')).toBeNull();
     expect(screen.getByRole('textbox', { name: /툴코드/ })).toHaveAccessibleDescription(
       messages.editability.referenced(3),
     );

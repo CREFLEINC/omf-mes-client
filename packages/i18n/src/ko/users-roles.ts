@@ -204,8 +204,6 @@ export const usersRoles = {
     hidePassword: '비밀번호 숨기기',
     /* 부서를 고르지 않은 상태. 계약이 널을 허용하므로 비우는 것이 정상 값이다. */
     departmentNone: '미지정',
-    /** 로그인 아이디 칸 이름 오른쪽 라벨(omf-all-around#333). */
-    loginIdLocked: '변경 불가',
     empty: {
       noneTitle: '등록된 사용자가 없습니다',
       noneDescription: '「사용자 추가」로 첫 사용자를 등록하세요.',

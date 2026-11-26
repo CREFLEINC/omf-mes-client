@@ -1,13 +1,12 @@
-import { Chip, TextField, type TextFieldProps } from '@crefle/web-ui';
-import { messages } from '@omf-mes/i18n';
+import { TextField, type TextFieldProps } from '@crefle/web-ui';
 import { type ReactNode, useId } from 'react';
 
 /**
- * 잠긴 코드 칸 이름 오른쪽의 「변경 불가」 상태 라벨(사용자 지시 2026-11-24 — 「지금은 코드를 바꿀 수 없습니다 …」 같은
- * 잠금 사유 문장 대신). 사유 문장은 화면에 펼치지 않는다 — 라벨에 마우스를 올리면 보이고(`title`), 입력칸은
- * `reasonId` 의 숨긴 글을 `aria-describedby` 로 가리켜 화면 읽기 프로그램이 읽는다.
+ * 잠긴 코드 칸의 이름. 이름 옆 「변경 불가」 라벨은 두지 않는다(팝업 디자인 시안 2026-11-26 · omf-all-around#360) —
+ * 잠긴 칸은 회색(잠긴) 칸 모양으로만 구분한다. 잠금 사유 문장은 화면에 펼치지 않고, 이름에 마우스를 올리면 보이며(`title`),
+ * 입력칸은 `reasonId` 의 숨긴 글을 `aria-describedby` 로 가리켜 화면 읽기 프로그램이 읽는다.
  *
- * `children` 은 그 칸의 이름(필수 표시 포함) — 별은 이름 바로 뒤, 라벨은 그 오른쪽이다. 잠기지 않았으면 이름만 낸다.
+ * `children` 은 그 칸의 이름(필수 표시 포함). 잠기지 않았으면 이름만 낸다.
  */
 export const CodeLockLabel = ({
   reason,
@@ -21,11 +20,8 @@ export const CodeLockLabel = ({
   if (reason === null) return children;
 
   return (
-    <span className="code-lock-label-row">
+    <span className="code-lock-label-row" title={reason}>
       {children}
-      <Chip variant="status" size="sm" status="idle" className="code-lock-chip" title={reason}>
-        {messages.editability.badge}
-      </Chip>
       <span id={reasonId} className="visually-hidden">
         {reason}
       </span>

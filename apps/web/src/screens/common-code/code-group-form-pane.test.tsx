@@ -86,10 +86,8 @@ describe('CodeGroupFormPane — 코드 잠금', () => {
     renderPane({ codeLockReason: '이미 다른 자료에서 사용 중이라 코드를 바꿀 수 없습니다.' });
 
     expect(screen.getByLabelText('그룹코드')).toBeDisabled();
-    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
-      'title',
-      '이미 다른 자료에서 사용 중이라 코드를 바꿀 수 없습니다.',
-    );
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 숨긴 설명으로만. */
+    expect(screen.queryByText('변경 불가')).toBeNull();
     expect(screen.getByLabelText('그룹코드')).toHaveAccessibleDescription(
       '이미 다른 자료에서 사용 중이라 코드를 바꿀 수 없습니다.',
     );

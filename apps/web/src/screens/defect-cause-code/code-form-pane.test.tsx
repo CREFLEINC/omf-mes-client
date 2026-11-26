@@ -117,10 +117,8 @@ describe('CodeFormPane — 잠금과 사유', () => {
     });
 
     expect(screen.getByLabelText('불량코드')).toBeDisabled();
-    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
-      'title',
-      '이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.',
-    );
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 숨긴 설명으로만. */
+    expect(screen.queryByText('변경 불가')).toBeNull();
     expect(screen.getByLabelText('불량코드')).toHaveAccessibleDescription(
       '이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.',
     );
@@ -184,10 +182,8 @@ describe('CodeFormPane — 잠긴 코드 (#209 시안)', () => {
     const code = screen.getByLabelText('불량코드');
     expect(code).toBeDisabled();
     expect(code).not.toHaveAttribute('aria-required', 'true');
-    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
-      'title',
-      '이 코드는 이미 다른 기록에서 쓰이고 있어서 바꿀 수 없습니다.',
-    );
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 숨긴 설명으로만. */
+    expect(screen.queryByText('변경 불가')).toBeNull();
     expect(code).toHaveAccessibleDescription(
       '이 코드는 이미 다른 기록에서 쓰이고 있어서 바꿀 수 없습니다.',
     );
