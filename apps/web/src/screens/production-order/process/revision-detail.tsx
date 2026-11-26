@@ -1,11 +1,20 @@
 import { Link } from 'react-router';
 import { createPortal } from 'react-dom';
-import { useState, type ReactNode } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertBanner, Button, Dialog, Icon, IconButton, SkeletonText } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Chip,
+  Dialog,
+  IconButton,
+  SkeletonText,
+  type ChipStatus,
+} from '@crefle/web-ui';
 import { useApiClient } from '../../../patterns/api-context';
 import { runRequest } from '../../../patterns/request';
-import { useProductionOrderItemNames } from '../item-lookups';
+import { useItemCodeNames, useProductionOrderItemNames } from '../item-lookups';
+import { AdjustableNativeTable } from './adjustable-table';
 import { useUomReferenceLookup } from '../reference-lookups';
 import { useRoutingOperations, useRoutingDetail } from '../../routing/queries';
 import {
@@ -97,6 +106,11 @@ export const BomContents = ({
     plantId != null && quantity != null && quantity > 0 && row.requiredQty > 0
       ? { plantId, bomComponentId: row.bomComponentId, quantity }
       : null;
+  const codeNames = useItemCodeNames([
+    ...(rows.data?.items ?? []).map((row) => row.componentItemId),
+    ...(header.data?.bom.parentItemId ? [header.data.bom.parentItemId] : []),
+  ]);
+  const [expanded, setExpanded] = useState<Set<number>>(() => new Set());
   const availability = useMaterialAvailability(
     withAvailability
       ? (rows.data?.items ?? []).flatMap((row) => {
@@ -239,133 +253,175 @@ export const BomContents = ({
         </details>
       </>
     );
+  const sorted = [...rows.data.items].sort((a, b) => a.sequenceNo - b.sequenceNo);
+  const parent = codeNames.get(bom.parentItemId);
+  const parentFallback =
+    names.items.find((item) => item.itemId === bom.parentItemId)?.label ?? '품목 정보 확인 필요';
+  const statusChip: Record<string, ChipStatus> = {
+    CONFIRMED: 'success',
+    DRAFT: 'warning',
+    OBSOLETE: 'idle',
+  };
+  const columns = [
+    '자품목',
+    '기준 소요량',
+    ...(withAvailability ? ['필요 수량', '가용 수량', '재고 상태'] : []),
+    '상세',
+  ];
+  const toggle = (id: number) =>
+    setExpanded((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   return (
     <>
-      <p>
-        <strong>
-          {bom.bomCode} (Rev {bom.bomVersion})
-        </strong>
-      </p>
-      <section className="erp-wo-origin-summary" aria-label="MES 변환 및 개정 정보">
-        <h3 className="section-title">MES 변환 및 개정 정보</h3>
-        <Properties
-          values={[
-            [
-              '모품목 · MES 품목 연결',
-              names.items.find((item) => item.itemId === bom.parentItemId)?.label ??
-                '품목 정보 확인 필요',
-            ],
-            ['공통 기준 수량', `${bom.baseQty} ${unit(bom.baseUomId)}`],
-            ['개정 상태', statusLabel(bom.statusCode)],
-            ['기본 개정', flag(bom.isDefault)],
-            ['유효 시작일', bom.effectiveFrom ?? '미설정'],
-            ['유효 종료일', bom.effectiveTo ?? '종료일 없음'],
-          ]}
-        />
-      </section>
-      {!rows.data.items.length ? (
+      <div className="bom-detail-title">
+        <strong>{bom.bomCode}</strong>
+        <Chip size="sm" status="info">
+          Rev {bom.bomVersion}
+        </Chip>
+        <Chip variant="status" size="sm" status={statusChip[bom.statusCode] ?? 'idle'}>
+          {statusLabel(bom.statusCode)}
+        </Chip>
+        {bom.isDefault && (
+          <Chip size="sm" status="idle">
+            기본 개정
+          </Chip>
+        )}
+      </div>
+      <dl className="bom-detail-summary" aria-label="BOM 기본 정보">
+        <div>
+          <dt>모품목</dt>
+          <dd>
+            {parent ? (
+              <>
+                <strong>{parent.itemName}</strong>
+                <span>{parent.itemCode}</span>
+              </>
+            ) : (
+              <strong>{parentFallback}</strong>
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>기준 수량</dt>
+          <dd>
+            <strong>
+              {bom.baseQty} {unit(bom.baseUomId)}
+            </strong>
+          </dd>
+        </div>
+        <div>
+          <dt>유효 시작일</dt>
+          <dd>
+            <strong>{bom.effectiveFrom ?? '미설정'}</strong>
+          </dd>
+        </div>
+        <div>
+          <dt>유효 종료일</dt>
+          <dd>
+            <strong>{bom.effectiveTo ?? '종료일 없음'}</strong>
+          </dd>
+        </div>
+      </dl>
+      <div className="bom-detail-heading">
+        <h3>자품목 {sorted.length}개</h3>
+        {withAvailability && (
+          <span>
+            필요 수량은 {(quantity ?? 0).toLocaleString(undefined, { maximumFractionDigits: 6 })}{' '}
+            {unit(bom.baseUomId)} 생산 기준입니다.
+          </span>
+        )}
+      </div>
+      {withAvailability && <AvailabilityError availability={availability} />}
+      {!sorted.length ? (
         <p>등록된 구성 자재가 없습니다.</p>
       ) : (
-        <div className="erp-wo-revision-table">
-          {withAvailability && (
-            <>
-              <p className="iqc-inspection-action-note" data-tone="info">
-                <Icon name="info" size={14} aria-hidden />
-                필요 수량은{' '}
-                {(quantity ?? 0).toLocaleString(undefined, { maximumFractionDigits: 6 })}{' '}
-                {unit(bom.baseUomId)} 기준이고, 가용 수량은 공장 자재창고와 생산 창고 재고
-                합계입니다.
-              </p>
-              <AvailabilityError availability={availability} />
-            </>
-          )}
-          <table>
-            <caption>ERP 수신 정보와 MES 적용 정보</caption>
-            <thead>
-              <tr>
-                {[
-                  'ERP 수신 · 품목 연결',
-                  'MES 환산 소요량',
-                  ...(withAvailability ? ['재고'] : []),
-                  'MES 추가 속성',
-                ].map((label) => (
-                  <th key={label}>{label}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {[...rows.data.items]
-                .sort((a, b) => a.sequenceNo - b.sequenceNo)
-                .map((row) => {
-                  const name = names.items.find((item) => item.itemId === row.componentItemId);
-                  return (
-                    <tr key={row.bomComponentId}>
-                      <td data-label="ERP 수신 · 품목 연결" className="erp-wo-revision-material">
-                        <p className="field-note">
-                          ERP 자품목 순번:{' '}
-                          {row.erpChildItemSeq == null ? '보관값 없음' : row.erpChildItemSeq}
-                        </p>
-                        {name?.label ??
-                          (name?.status === 'loading' ? '자재 조회 중' : '자재 정보 확인 필요')}
-                      </td>
-                      <td data-label="MES 환산 소요량" className="erp-wo-revision-quantity">
-                        <strong>{row.requiredQty}</strong> {unit(row.uomId)}
-                        <p className="field-note">
-                          공통 기준 {bom.baseQty} {unit(bom.baseUomId)}당
-                        </p>
-                        <p className="field-note">MES 표시 순서 {row.sequenceNo}</p>
-                      </td>
-                      {withAvailability && (
-                        <td data-label="재고">
-                          <dl className="erp-wo-revision-properties">
-                            <div>
-                              <dt>필요 수량</dt>
-                              <dd>
-                                <RequiredCell
-                                  availability={availability}
-                                  request={requestOf(row)}
-                                />
-                              </dd>
-                            </div>
-                            <div>
-                              <dt>가용 수량</dt>
-                              <dd>
-                                <AvailableCell
-                                  availability={availability}
-                                  request={requestOf(row)}
-                                />
-                              </dd>
-                            </div>
-                            <div>
-                              <dt>재고 상태</dt>
-                              <dd>
-                                <AvailabilityStatusCell
-                                  availability={availability}
-                                  request={requestOf(row)}
-                                />
-                              </dd>
-                            </div>
-                          </dl>
-                        </td>
+        <AdjustableNativeTable
+          storageKey={withAvailability ? 'bom-detail-components-stock' : 'bom-detail-components'}
+          className="bom-detail-table"
+          labels={columns}
+          widths={withAvailability ? [260, 120, 120, 120, 120, 64] : [320, 140, 64]}
+        >
+          <tbody>
+            {sorted.map((row) => {
+              const item = codeNames.get(row.componentItemId);
+              const name = names.items.find((entry) => entry.itemId === row.componentItemId);
+              const open = expanded.has(row.bomComponentId);
+              const request = requestOf(row);
+              const detailId = `bom-detail-${id}-${row.bomComponentId}`;
+              return (
+                <Fragment key={row.bomComponentId}>
+                  <tr>
+                    <td className="bom-detail-item">
+                      {item ? (
+                        <>
+                          <strong>{item.itemName}</strong>
+                          <span>{item.itemCode}</span>
+                        </>
+                      ) : (
+                        (name?.label ??
+                        (name?.status === 'loading' ? '자재 조회 중' : '자재 정보 확인 필요'))
                       )}
-                      <td data-label="MES 추가 속성">
-                        <Properties
-                          values={[
-                            ['관리 공정', linkedName(operations, row.routingOperationId)],
-                            ['실제 사용 공정', linkedName(processes, row.actualUseProcessId)],
-                            ['로스율', `${Number((row.scrapRate * 100).toFixed(6))}%`],
-                            ['필수 자재', flag(row.isMandatory)],
-                            ['LOT 추적', flag(row.lotTraceRequired)],
-                            ['자동 차감 허용', flag(row.backflushAllowed)],
-                          ]}
-                        />
+                    </td>
+                    <td className="numeric">
+                      {row.requiredQty} {unit(row.uomId)}
+                    </td>
+                    {withAvailability && (
+                      <>
+                        <td className="numeric">
+                          <RequiredCell availability={availability} request={request} />
+                        </td>
+                        <td className="numeric">
+                          <AvailableCell availability={availability} request={request} />
+                        </td>
+                        <td>
+                          <AvailabilityStatusCell availability={availability} request={request} />
+                        </td>
+                      </>
+                    )}
+                    <td>
+                      <IconButton
+                        icon={open ? 'expand_less' : 'expand_more'}
+                        size="sm"
+                        variant="standard"
+                        aria-label={`${item?.itemCode ?? '자품목'} 상세 ${open ? '접기' : '펼치기'}`}
+                        aria-expanded={open}
+                        aria-controls={detailId}
+                        onClick={() => toggle(row.bomComponentId)}
+                      />
+                    </td>
+                  </tr>
+                  {open && (
+                    <tr className="bom-detail-expanded" id={detailId}>
+                      <td colSpan={columns.length}>
+                        <dl className="bom-detail-props">
+                          {(
+                            [
+                              ['관리 공정', linkedName(operations, row.routingOperationId)],
+                              ['실제 사용 공정', linkedName(processes, row.actualUseProcessId)],
+                              ['로스율', `${Number((row.scrapRate * 100).toFixed(6))}%`],
+                              ['필수 자재', flag(row.isMandatory)],
+                              ['LOT 추적', flag(row.lotTraceRequired)],
+                              ['자동 차감 허용', flag(row.backflushAllowed)],
+                            ] as const
+                          ).map(([label, value]) => (
+                            <div key={label}>
+                              <dt>{label}</dt>
+                              <dd data-enabled={value === '예'}>{value}</dd>
+                            </div>
+                          ))}
+                        </dl>
                       </td>
                     </tr>
-                  );
-                })}
-            </tbody>
-          </table>
-        </div>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </AdjustableNativeTable>
       )}
     </>
   );
@@ -632,6 +688,7 @@ export const RevisionDetailButton = ({
             open
             size="lg"
             title={`${kind} 상세`}
+            showCloseButton={false}
             onClose={() => setOpen(false)}
             footer={
               <>

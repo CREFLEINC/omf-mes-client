@@ -82,11 +82,16 @@ describe('선택 개정 읽기 전용 상세', () => {
     renderWithProviders(<RevisionDetailButton kind="BOM" value="7" />, { fetch });
     await userEvent.setup().click(screen.getByRole('button', { name: 'BOM 상세 보기' }));
     const dialog = screen.getByRole('dialog', { name: 'BOM 상세' });
-    await within(dialog).findByText(/원료/);
+    await within(dialog).findAllByText('원료');
     expect(dialog).toHaveTextContent(/기준 수량\s*100/);
     expect(dialog).toHaveTextContent('2.5');
-    expect(dialog).toHaveTextContent('ERP 자품목 순번: 0');
-    expect(within(dialog).getByRole('columnheader', { name: 'MES 환산 소요량' })).toBeVisible();
+    expect(within(dialog).getByRole('columnheader', { name: '기준 소요량' })).toBeVisible();
+    expect(within(dialog).queryByRole('columnheader', { name: '재고 상태' })).toBeNull();
+    expect(within(dialog).getAllByRole('button', { name: '닫기' })).toHaveLength(1);
+    expect(dialog).not.toHaveTextContent('관리 공정');
+    const toggle = within(dialog).getByRole('button', { name: 'MAT9 상세 펼치기' });
+    await userEvent.setup().click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(dialog).toHaveTextContent('관리 공정');
     expect(dialog).toHaveTextContent('실제 사용 공정');
     expect(dialog).not.toHaveTextContent('조회 미지원');
@@ -154,10 +159,12 @@ describe('선택 개정 읽기 전용 상세', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'BOM 상세 보기' }));
     const dialog = screen.getByRole('dialog', { name: 'BOM 상세' });
     expect(await within(dialog).findByText('부족')).toBeVisible();
-    expect(within(dialog).getByRole('columnheader', { name: '재고' })).toBeVisible();
-    expect(dialog).toHaveTextContent('필요 수량1 KG');
-    expect(dialog).toHaveTextContent('가용 수량0.5 KG');
-    expect(dialog).toHaveTextContent('재고 상태');
+    for (const name of ['자품목', '기준 소요량', '필요 수량', '가용 수량', '재고 상태', '상세'])
+      expect(within(dialog).getByRole('columnheader', { name })).toBeVisible();
+    expect(dialog).toHaveTextContent('필요 수량은 40 KG 생산 기준입니다.');
+    const cells = within(within(dialog).getAllByRole('row')[1]!).getAllByRole('cell');
+    expect(cells[2]).toHaveTextContent('1 KG');
+    expect(cells[3]).toHaveTextContent('0.5 KG');
   });
   it('개정이 없으면 상세 버튼을 사용할 수 없다', () => {
     renderWithProviders(<RevisionDetailButton kind="BOM" value="" />);
