@@ -59,14 +59,12 @@ const row = (
 });
 
 describe('DepartmentListPane — 목록 표시', () => {
-  /* 003(US8) — 「생산 창고」 수 열이 더해졌다(screens/W-06-06.md). */
-  it('부서코드·부서명·생산 창고 세 열만 낸다', () => {
+  it('부서코드·부서명 두 열만 낸다', () => {
     renderPane();
 
     expect(screen.getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual([
       '부서코드',
       '부서명',
-      '생산 창고',
     ]);
   });
 

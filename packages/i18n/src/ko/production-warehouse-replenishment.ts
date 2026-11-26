@@ -21,8 +21,8 @@ export const productionWarehouseReplenishment = {
   noProductionWarehouse: {
     title: '이 공장에는 생산 창고가 없어 쓸 수 없습니다',
     description:
-      '부서에 생산 창고를 연결하면(기준정보 관리 › 조직 관리) 이 화면에서 자재 창고에 보충을 요청할 수 있습니다. 그동안 출고 요청은 지금처럼 추가 출고 요청 화면에서 냅니다.',
-    action: '조직 관리 열기',
+      '창고 유형을 생산창고로 지정하면(기준정보 관리 › 창고·위치) 이 화면에서 자재 창고에 보충을 요청할 수 있습니다. 그동안 출고 요청은 지금처럼 추가 출고 요청 화면에서 냅니다.',
+    action: '창고·위치 열기',
   },
   noPlant: '사용 중인 공장이 없습니다.',
   origin: { DIRECT: '직접', AUTO: '자동' },
