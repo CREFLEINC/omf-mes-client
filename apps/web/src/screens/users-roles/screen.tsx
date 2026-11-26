@@ -299,9 +299,9 @@ export const UsersRolesScreen = () => {
   /**
    * 목록으로 화면 접근을 확인하기 전에는 URL의 지난 선택을 조회하지 않는다.
    * 재조회 중에는 기존 데이터를 유지하고, 403이면 기존 데이터가 있어도 즉시 가린다.
+   * 사용자 추가 팝업이 열려 있어도 고른 사용자는 그대로다 — 뒤의 목록 선택과 상세가 남는다(omf-all-around#358).
    */
-  const selectedAppUserId =
-    isCreatingUser || userList.data === undefined || userListForbidden ? null : selectedParam;
+  const selectedAppUserId = userList.data === undefined || userListForbidden ? null : selectedParam;
   const users = userList.data?.items ?? [];
 
   /*
@@ -343,9 +343,7 @@ export const UsersRolesScreen = () => {
    * 등록 출처를 주소에서 파생시키는 것이 핵심이다 — 그래야 새로고침·공유·뒤로가기로
    * `?new=user`에 바로 들어온 사용자에게도 폼이 선다.
    */
-  const userFormSource: UserFormSource | null = isCreatingUser
-    ? 'create:user'
-    : (userDetail.data ?? null);
+  const userFormSource: UserFormSource | null = userDetail.data ?? null;
 
   if (userFormSource === null) {
     if (formState !== null) setFormState(null);
@@ -362,10 +360,32 @@ export const UsersRolesScreen = () => {
     });
   }
 
+  /*
+   * 사용자 추가 팝업의 폼 — 고른 사용자의 폼(`formState`)과 따로 든다. 팝업은 고른 사용자 **위에** 뜨므로
+   * 열고 닫아도 뒤의 선택과 상세가 남아야 한다(omf-all-around#358). 열림 여부는 주소(`new=user`)가 정한다.
+   */
+  const [createFormState, setCreateFormState] = useState<UserFormState | null>(null);
+
+  if (!isCreatingUser) {
+    if (createFormState !== null) setCreateFormState(null);
+  } else if (createFormState === null) {
+    const seeded = emptyUserFormValues();
+    setCreateFormState({
+      source: 'create:user',
+      baseline: seeded,
+      values: seeded,
+      isPasswordTouched: false,
+    });
+  }
+
   const isUserDirty = formState !== null && !isSameUserValues(formState.values, formState.baseline);
+  const isCreateUserDirty =
+    createFormState !== null && !isSameUserValues(createFormState.values, createFormState.baseline);
 
   /** 보내기 전에 화면에서 잡은 오류. 저장을 누른 뒤에만 세운다 — 입력 도중에 붉은 글씨를 띄우지 않는다. */
   const [userFieldErrors, setUserFieldErrors] = useState<Record<string, string>>({});
+  /** 추가 팝업의 같은 오류 — 뒤의 수정 폼에 번지지 않게 따로 둔다(omf-all-around#358). */
+  const [createUserFieldErrors, setCreateUserFieldErrors] = useState<Record<string, string>>({});
 
   /**
    * 초기 비밀번호 칸에 **지금** 설 한 문장. 없으면 `undefined`.
@@ -398,11 +418,11 @@ export const UsersRolesScreen = () => {
    * 없고, 그릴 자리 없는 오류는 저장만 막는 침묵이 된다.
    */
   const liveInitialPasswordError = ((): string | undefined => {
-    if (!isCreatingUser || formState === null) return undefined;
+    if (!isCreatingUser || createFormState === null) return undefined;
 
-    const value = formState.values.password;
+    const value = createFormState.values.password;
 
-    if (value === '' && !formState.isPasswordTouched) return undefined;
+    if (value === '' && !createFormState.isPasswordTouched) return undefined;
 
     return validateInitialPassword(value);
   })();
@@ -756,7 +776,7 @@ export const UsersRolesScreen = () => {
      */
     knownFields: USER_CREATE_FORM_FIELDS,
     onSuccess: (saved) => {
-      setUserFieldErrors({});
+      setCreateUserFieldErrors({});
       /*
        * 201에는 ETag가 없다 — 새 사용자를 고르면 상세를 다시 조회하게 되고
        * 그 조회가 잠금 토큰을 확보한다. 여기서 옮기지 않으면 사용자가 방금 만든 계정을 직접 찾아야 한다.
@@ -1027,12 +1047,6 @@ export const UsersRolesScreen = () => {
   });
 
   /**
-   * 지금 모드의 쓰기. 등록과 수정이 **한 폼 상태**를 쓰므로 저장·오류·진행 표시도
-   * 한 곳에서 골라 쓴다 — 두 훅의 상태를 화면에서 합치면 어느 저장의 실패인지 흐려진다.
-   */
-  const activeUserWrite = isCreatingUser ? userCreateWrite : userWrite;
-
-  /**
    * 편집 중이던 상태를 통째로 비운다 — 창·초안·인라인 오류·저장 실패 배너.
    *
    * **직접 부르지 않는다.** 아래 effect 한 곳만 부른다(선택 수명 규칙의 유일한 실행 지점).
@@ -1061,12 +1075,12 @@ export const UsersRolesScreen = () => {
   resetUserEditingRef.current = resetUserEditing;
 
   /**
-   * 「지금 무엇을 편집하고 있는가」를 한 값으로 모은다.
+   * 「지금 무엇을 편집하고 있는가」 — 고른 사용자.
    *
-   * 고른 사용자와 등록 폼은 **함께 성립하지 않는 하나의 자리**다 — 둘을 따로 감시하면
-   * 등록 폼을 닫는 것과 사용자를 바꾸는 것이 서로 다른 규칙을 갖게 된다.
+   * 사용자 추가 팝업은 고른 사용자 **위에** 뜬다 — 팝업을 열고 닫아도 뒤의 선택 · 상세 · 고친 값은 그대로다
+   * (omf-all-around#358). 팝업의 정리는 아래 따로 둔 effect 가 맡는다.
    */
-  const editingTargetKey = isCreatingUser ? 'create' : String(selectedAppUserId ?? '');
+  const editingTargetKey = String(selectedAppUserId ?? '');
 
   /**
    * 선택 수명 규칙의 **유일한 실행 지점**. 클릭 핸들러가 아니라 편집 대상에 묶는다.
@@ -1079,6 +1093,20 @@ export const UsersRolesScreen = () => {
   useEffect(() => {
     resetUserEditingRef.current();
   }, [editingTargetKey]);
+
+  /*
+   * 추가 팝업을 열거나 닫으면 팝업의 저장 실패 · 인라인 오류를 걷는다 — 다시 열면 빈 폼으로 선다(omf-all-around#358).
+   * 팝업의 입력값은 렌더 중 동기화(`createFormState`)가 맡는다. 뒤로가기 등 핸들러를 거치지 않는 길도 여기를 지난다.
+   */
+  const resetUserCreate = () => {
+    userCreateWrite.reset();
+    setCreateUserFieldErrors({});
+  };
+  const resetUserCreateRef = useRef(resetUserCreate);
+  resetUserCreateRef.current = resetUserCreate;
+  useEffect(() => {
+    resetUserCreateRef.current();
+  }, [isCreatingUser]);
 
   /**
    * 역할 쪽의 같은 규칙. **자원마다 실행 지점이 하나씩**이다 —
@@ -1132,21 +1160,29 @@ export const UsersRolesScreen = () => {
     });
   };
 
+  /*
+   * 사용자 추가 — 팝업만 연다. 목록에서 고른 사용자와 뒤의 상세는 그대로 둔다(omf-all-around#358 · 역할 추가와 같다).
+   * 고친 내용이 있으면 먼저 묻는다 — 추가가 끝나면 새 사용자로 옮겨 가 고친 내용이 사라지기 때문이다.
+   * 「저장하지 않고 나가기」면 고친 내용을 실제로 되돌린다.
+   */
   const handleAddUser = () => {
-    // 등록 폼이 열려 있는 동안 고른 사용자의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
     leaveSafely(() => {
+      handleCancelAll();
       setCreateWorkerNo('');
       setCreateWorkerError(null);
       patchSearchParams((next) => {
-        applySelection(next, { kind: 'createUser' });
+        applySelection(next, { kind: 'createUser', appUserId: selectedParam });
       });
     });
   };
 
-  /** 등록 폼을 닫는다. 편집 상태 정리는 편집 대상이 바뀌면서 위 effect가 맡는다. */
+  /** 추가 팝업을 닫는다 — 등록 표시만 걷고 고른 사용자는 남긴다(omf-all-around#358). 팝업 정리는 위 effect가 맡는다. */
   const closeUserCreateForm = () => {
     patchSearchParams((next) => {
-      applySelection(next, { kind: 'none' });
+      applySelection(
+        next,
+        selectedParam === null ? { kind: 'none' } : { kind: 'user', appUserId: selectedParam },
+      );
     });
   };
 
@@ -1173,7 +1209,28 @@ export const UsersRolesScreen = () => {
       return next;
     });
 
-    for (const key of Object.keys(patch)) activeUserWrite.clearFieldError(key);
+    for (const key of Object.keys(patch)) userWrite.clearFieldError(key);
+  };
+
+  /** 추가 팝업의 값 고치기 — 수정 폼과 같은 규칙, 팝업의 상태만 만진다(omf-all-around#358). */
+  const changeCreateUserValues = (patch: Partial<UserFormValues>) => {
+    setCreateFormState((prev) =>
+      prev === null
+        ? prev
+        : {
+            ...prev,
+            values: { ...prev.values, ...patch },
+            isPasswordTouched: prev.isPasswordTouched || 'password' in patch,
+          },
+    );
+
+    setCreateUserFieldErrors((prev) => {
+      const next = { ...prev };
+      for (const key of Object.keys(patch)) delete next[key];
+      return next;
+    });
+
+    for (const key of Object.keys(patch)) userCreateWrite.clearFieldError(key);
   };
 
   /**
@@ -1182,10 +1239,10 @@ export const UsersRolesScreen = () => {
    */
   /** 사용자 추가 — 사번을 적었으면 먼저 찾아 보고, 찾았을 때만 등록한다. */
   const handleCreateUser = async (): Promise<void> => {
-    if (formState === null || isCheckingWorker) return;
+    if (createFormState === null || isCheckingWorker) return;
 
-    const errors = validateUserForm(formState.values, 'create');
-    setUserFieldErrors(errors);
+    const errors = validateUserForm(createFormState.values, 'create');
+    setCreateUserFieldErrors(errors);
     pendingWorkerIdRef.current = null;
     setCreateWorkerError(null);
 
@@ -1203,18 +1260,19 @@ export const UsersRolesScreen = () => {
       pendingWorkerIdRef.current = result.workerId;
     }
 
-    userCreateWrite.write(formState.values);
+    userCreateWrite.write(createFormState.values);
   };
 
+  /** 추가 팝업 폼의 저장(폼 자체 단추는 감춘다 — 팝업 아래 줄이 [사용자 추가]를 맡는다). */
   const handleSaveUser = () => {
-    if (formState === null) return;
+    if (createFormState === null) return;
 
-    const errors = validateUserForm(formState.values, isCreatingUser ? 'create' : 'edit');
-    setUserFieldErrors(errors);
+    const errors = validateUserForm(createFormState.values, 'create');
+    setCreateUserFieldErrors(errors);
 
     if (Object.keys(errors).length > 0) return;
 
-    activeUserWrite.write(formState.values);
+    userCreateWrite.write(createFormState.values);
   };
 
   /** 수정 취소는 **서버를 부르지 않는다** — 초안을 기준값으로 되돌릴 뿐이다. */
@@ -1336,7 +1394,7 @@ export const UsersRolesScreen = () => {
       if (Object.keys(errors).length > 0) return;
     }
 
-    if (isUserDirty && formState !== null) activeUserWrite.write(formState.values);
+    if (isUserDirty && formState !== null) userWrite.write(formState.values);
     if (isRoleAssignDirty) handleSaveRoleAssign();
     if (isDataScopeDirty) handleSaveDataScopes();
   };
@@ -1486,9 +1544,9 @@ export const UsersRolesScreen = () => {
    * 폼이 쓰는 부서 선택지. **빈 값을 앞에 둔다** — 계약이 널을 허용하므로
    * 고른 부서를 다시 비우는 것이 정상 조작이고, 그 「지정하지 않음」도 고른 값이다.
    */
-  const userDepartmentOptions = [
+  const userDepartmentOptionsFor = (values: UserFormValues | undefined) => [
     { value: '', label: t.user.departmentNone },
-    ...selectableOptions(departmentOptions, formState?.values.departmentId ?? ''),
+    ...selectableOptions(departmentOptions, values?.departmentId ?? ''),
   ];
 
   const statusDisabledReason = userStatusOptions.isError
@@ -1499,103 +1557,100 @@ export const UsersRolesScreen = () => {
         ? t.actionReasons.statusLookupEmpty
         : null;
 
-  const userStatusSelectOptions = selectableOptions(
-    userStatusOptions,
-    formState?.values.statusCode ?? '',
-  );
+  const userStatusSelectOptionsFor = (values: UserFormValues | undefined) =>
+    selectableOptions(userStatusOptions, values?.statusCode ?? '');
 
   /**
    * 우 칸 — 사용자 정보.
    *
    * 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
-   * 등록·선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
+   * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다. 추가 폼은 팝업이 따로 그린다(`renderUserCreateForm`).
    */
-  const renderUserFormPane = (): ReactNode => {
-    if (isCreatingUser) {
-      if (formState === null) return null;
+  /** 사용자 추가 팝업의 폼 — 고른 사용자의 폼과 따로 선다(omf-all-around#358 · 역할 추가 팝업과 같다). */
+  const renderUserCreateForm = (): ReactNode => {
+    if (createFormState === null) return null;
 
-      return (
-        <UserFormPane
-          mode="create"
-          values={formState.values}
-          onChange={changeUserValues}
-          /*
-           * 병합 순서 — **로컬 검증이 서버 오류를 덮는다**(수정 폼과 같은 순서다). 지금 고칠 수
-           * 있는 것을 먼저 보인다.
-           *
-           * ⚠ **형제 화면(`password-change`)은 반대로 「서버 진술이 이긴다」를 실측 근거까지 달아
-           * 두었다.** 여기서 순서를 뒤집지 않는 근거는 **이 칸에서 서버가 낼 수 있는 말이 길이와
-           * 형식 둘뿐이고**(8자 미만 → `RANGE`, 문자열 아님 → `INVALID` — `initial-password.ts`의
-           * 실측), **그 둘이 화면 규칙이 이미 포함하는 부분집합**이라는 것이다. 가려도 잃는 정보가
-           * 없으므로 그쪽 화면이 막으려던 사고(서버가 거절한 값을 사용자가 그대로 되보낸다)가
-           * 여기서는 성립하지 않는다. 그쪽은 현재 비밀번호가 맞는지를 **서버만 아는** 칸이라
-           * 사정이 다르다.
-           *
-           * 값이 화면 규칙을 통과하면 파생값이 `undefined`가 되어 **서버 오류가 다시 보인다** —
-           * 화면이 재지 않는 축(예: 확인되지 않은 상한)을 서버가 가진다면 그 말이 제자리에 선다.
-           *
-           * ⛔ **`password: undefined`를 얹지 않는다.** `fieldErrors`는 `Record<string, string>`
-           * 이고 디자인 시스템의 `error`는 truthy 판정을 하므로 키가 있기만 해도 형이 어긋난다.
-           * 그래서 **있을 때만** 키를 만든다.
-           */
-          fieldErrors={{
-            ...userCreateWrite.fieldErrors,
-            ...userFieldErrors,
-            ...(liveInitialPasswordError === undefined
-              ? {}
-              : { password: liveInitialPasswordError }),
-          }}
-          /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
-          banner={<SaveErrorBanner error={userCreateWrite.error} />}
-          departmentOptions={userDepartmentOptions}
-          statusOptions={userStatusSelectOptions}
-          statusDisabledReason={statusDisabledReason}
-          isDeactivateDisabled={false}
-          isDirty={isUserDirty}
-          isSaving={userCreateWrite.isSaving}
-          onSave={handleSaveUser}
-          onCancel={closeUserCreateForm}
-          /* 팝업이 제목과 [취소][사용자 추가]를 맡는다(사용자 지시 2026-11-20 · #333). */
-          showHeading={false}
-          createExtraField={
-            <>
-              <div className="field-cell users-roles-create-worker">
-                <FieldLabel
-                  htmlFor={createWorkerInputId}
-                  label={t.workerLink.createLabel}
-                  optionalMark={t.user.optionalMark}
-                />
-                <TextField
-                  id={createWorkerInputId}
-                  fullWidth
-                  value={createWorkerNo}
-                  onChange={(event) => {
-                    setCreateWorkerNo(event.target.value);
-                    setCreateWorkerError(null);
-                  }}
-                  /* 칸은 빨간 테두리만, 읽어 주는 문장은 숨김 — 보이는 안내는 아래 줄 왼쪽 끝에 둔다. */
-                  error={
-                    createWorkerError === null ? undefined : (
-                      <span className="visually-hidden">{createWorkerError}</span>
-                    )
-                  }
-                />
+    return (
+      <UserFormPane
+        mode="create"
+        values={createFormState.values}
+        onChange={changeCreateUserValues}
+        /*
+         * 병합 순서 — **로컬 검증이 서버 오류를 덮는다**(수정 폼과 같은 순서다). 지금 고칠 수
+         * 있는 것을 먼저 보인다.
+         *
+         * ⚠ **형제 화면(`password-change`)은 반대로 「서버 진술이 이긴다」를 실측 근거까지 달아
+         * 두었다.** 여기서 순서를 뒤집지 않는 근거는 **이 칸에서 서버가 낼 수 있는 말이 길이와
+         * 형식 둘뿐이고**(8자 미만 → `RANGE`, 문자열 아님 → `INVALID` — `initial-password.ts`의
+         * 실측), **그 둘이 화면 규칙이 이미 포함하는 부분집합**이라는 것이다. 가려도 잃는 정보가
+         * 없으므로 그쪽 화면이 막으려던 사고(서버가 거절한 값을 사용자가 그대로 되보낸다)가
+         * 여기서는 성립하지 않는다. 그쪽은 현재 비밀번호가 맞는지를 **서버만 아는** 칸이라
+         * 사정이 다르다.
+         *
+         * 값이 화면 규칙을 통과하면 파생값이 `undefined`가 되어 **서버 오류가 다시 보인다** —
+         * 화면이 재지 않는 축(예: 확인되지 않은 상한)을 서버가 가진다면 그 말이 제자리에 선다.
+         *
+         * ⛔ **`password: undefined`를 얹지 않는다.** `fieldErrors`는 `Record<string, string>`
+         * 이고 디자인 시스템의 `error`는 truthy 판정을 하므로 키가 있기만 해도 형이 어긋난다.
+         * 그래서 **있을 때만** 키를 만든다.
+         */
+        fieldErrors={{
+          ...userCreateWrite.fieldErrors,
+          ...createUserFieldErrors,
+          ...(liveInitialPasswordError === undefined ? {} : { password: liveInitialPasswordError }),
+        }}
+        /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
+        banner={<SaveErrorBanner error={userCreateWrite.error} />}
+        departmentOptions={userDepartmentOptionsFor(createFormState.values)}
+        statusOptions={userStatusSelectOptionsFor(createFormState.values)}
+        statusDisabledReason={statusDisabledReason}
+        isDeactivateDisabled={false}
+        isDirty={isCreateUserDirty}
+        isSaving={userCreateWrite.isSaving}
+        onSave={handleSaveUser}
+        onCancel={closeUserCreateForm}
+        /* 팝업이 제목과 [취소][사용자 추가]를 맡는다(사용자 지시 2026-11-20 · #333). */
+        showHeading={false}
+        createExtraField={
+          <>
+            <div className="field-cell users-roles-create-worker">
+              <FieldLabel
+                htmlFor={createWorkerInputId}
+                label={t.workerLink.createLabel}
+                optionalMark={t.user.optionalMark}
+              />
+              <TextField
+                id={createWorkerInputId}
+                fullWidth
+                value={createWorkerNo}
+                onChange={(event) => {
+                  setCreateWorkerNo(event.target.value);
+                  setCreateWorkerError(null);
+                }}
+                /* 칸은 빨간 테두리만, 읽어 주는 문장은 숨김 — 보이는 안내는 아래 줄 왼쪽 끝에 둔다. */
+                error={
+                  createWorkerError === null ? undefined : (
+                    <span className="visually-hidden">{createWorkerError}</span>
+                  )
+                }
+              />
+            </div>
+            {/* 사번 안내는 창 왼쪽 끝에서 한 줄로(사용자 지시 2026-11-20 · #333). */}
+            {createWorkerError !== null && (
+              <div className="users-roles-create-worker-error" aria-hidden>
+                <WorkerNoError message={createWorkerError} />
               </div>
-              {/* 사번 안내는 창 왼쪽 끝에서 한 줄로(사용자 지시 2026-11-20 · #333). */}
-              {createWorkerError !== null && (
-                <div className="users-roles-create-worker-error" aria-hidden>
-                  <WorkerNoError message={createWorkerError} />
-                </div>
-              )}
-            </>
-          }
-          showActions={false}
-          onDeactivate={() => undefined}
-          onResetPassword={() => undefined}
-        />
-      );
-    }
+            )}
+          </>
+        }
+        showActions={false}
+        onDeactivate={() => undefined}
+        onResetPassword={() => undefined}
+      />
+    );
+  };
 
+  const renderUserFormPane = (): ReactNode => {
     /*
      * 고르기 전 — 사용자 정보 카드와 같은 모양(표제 + 구분선)으로 한 번만 안내한다. 역할 부여·
      * 데이터 접근범위 카드는 여기서 서지 않는다(`renderRoleAssignPane` 등).
@@ -1630,8 +1685,8 @@ export const UsersRolesScreen = () => {
         // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
         fieldErrors={{ ...userWrite.fieldErrors, ...userFieldErrors }}
         banner={<SaveErrorBanner error={userWrite.error} onReload={reloadUserDetail} />}
-        departmentOptions={userDepartmentOptions}
-        statusOptions={userStatusSelectOptions}
+        departmentOptions={userDepartmentOptionsFor(formState.values)}
+        statusOptions={userStatusSelectOptionsFor(formState.values)}
         statusDisabledReason={statusDisabledReason}
         isDeactivateDisabled={userDetail.data.appUser.isActive === false}
         isDirty={isUserDirty}
@@ -1827,8 +1882,8 @@ export const UsersRolesScreen = () => {
         )}
 
         <section className="pane users-roles-settings" aria-label={t.panes.userSettings}>
-          {/* 추가는 팝업에서 한다 — 그동안 오른쪽은 고르기 전 안내 그대로다(사용자 지시 2026-11-20 · #333). */}
-          {isCreatingUser || selectedAppUserId === null ? (
+          {/* 추가는 팝업에서 한다 — 그동안 오른쪽은 고른 사용자의 상세를 그대로 보인다(omf-all-around#358). */}
+          {selectedAppUserId === null ? (
             /*
              * 빈 상세 — 수입검사 상세와 같은 아이콘 + 제목 + 보조 문구. 목록이 비었으면 「고르라」 대신
              * 고를 사용자가 없다는 것을 말한다(사용자 지시 2026-11-20 · #333).
@@ -1863,8 +1918,8 @@ export const UsersRolesScreen = () => {
               {renderUserFormPane()}
               {renderRoleAssignPane()}
               {renderDataScopePane()}
-              {/* 수정에서만 — 등록은 정보 칸 하나라 그 칸의 [취소][사용자 추가]가 곧 아래 줄이다. */}
-              {!isCreatingUser && userDetail.data !== undefined && (
+              {/* 고른 사용자의 [취소][저장] — 추가는 팝업 아래 줄이 맡는다. */}
+              {userDetail.data !== undefined && (
                 <div className="form-actions users-roles-settings-actions">
                   <Button
                     variant="outlined"
@@ -1889,7 +1944,7 @@ export const UsersRolesScreen = () => {
       </div>
 
       {/* 사용자 추가 팝업(사용자 지시 2026-11-20 · #333) — 주소의 등록 상태를 그대로 쓰고, 닫으면 등록을 접는다. */}
-      {isCreatingUser && formState !== null && (
+      {isCreatingUser && createFormState !== null && (
         <Dialog
           open
           onClose={closeUserCreateForm}
@@ -1905,9 +1960,9 @@ export const UsersRolesScreen = () => {
               <Button
                 /* 필수 칸(로그인 아이디 · 초기 비밀번호 · 이름)이 모두 차면 바로 누를 수 있다(사용자 지시 2026-11-20 · #333). */
                 disabled={
-                  formState.values.loginId.trim() === '' ||
-                  formState.values.password === '' ||
-                  formState.values.userName.trim() === '' ||
+                  createFormState.values.loginId.trim() === '' ||
+                  createFormState.values.password === '' ||
+                  createFormState.values.userName.trim() === '' ||
                   userCreateWrite.isSaving ||
                   isCheckingWorker
                 }
@@ -1919,7 +1974,7 @@ export const UsersRolesScreen = () => {
             </>
           }
         >
-          <div className="users-roles-create-dialog">{renderUserFormPane()}</div>
+          <div className="users-roles-create-dialog">{renderUserCreateForm()}</div>
         </Dialog>
       )}
     </div>

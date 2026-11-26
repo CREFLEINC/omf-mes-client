@@ -621,6 +621,31 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
     expect(screen.queryByText('코드를 선택하세요')).not.toBeInTheDocument();
   });
 
+  it('고른 줄이 추가 팝업을 열고 닫아도 유지된다(omf-all-around#358)', async () => {
+    const { user } = renderScreen(
+      [defectOptionsRoute(), defectListRoute(activeDefectFixtures), defectDetailRoute()],
+      '?sel=1001',
+    );
+    await screen.findByRole('button', { name: '수정' });
+    expect(screen.getByRole('button', { name: 'DF-10' })).toHaveAttribute('aria-current', 'true');
+
+    await user.click(screen.getByRole('button', { name: '대분류 추가' }));
+    const dialog = await screen.findByRole('dialog', { name: '대분류 불량코드 추가' });
+    // 창이 열려 있는 동안에도 목록의 고른 줄 표시가 풀리지 않는다.
+    expect(screen.getByRole('button', { name: 'DF-10', hidden: true })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+
+    await user.click(within(dialog).getByRole('button', { name: '취소' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+    expect(currentLocation()).toContain('sel=1001');
+    expect(screen.getByRole('button', { name: 'DF-10' })).toHaveAttribute('aria-current', 'true');
+    const card = screen.getByRole('region', { name: '불량코드 상세' });
+    expect(within(card).getByText('DF-10')).toBeInTheDocument();
+  });
+
   it('상세 추가 창이 열려 있어도 뒤의 상세 카드는 고른 대분류를 그대로 보인다(#209 버그 수정)', async () => {
     const { user } = renderScreen(
       [defectOptionsRoute(), defectListRoute(activeDefectFixtures), defectDetailRoute()],

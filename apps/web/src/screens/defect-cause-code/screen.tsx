@@ -447,7 +447,8 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       isLoading={list.isPending}
       appliedFilters={filters}
       onApplyFilters={handleApplyFilters}
-      selectedId={selectedId}
+      /* 추가 창이 열려 있어도 고른 줄은 그대로 표시한다 — 보이는 코드(`viewId`)로 판정한다(omf-all-around#358 버그 수정). */
+      selectedId={viewId}
       pageMeta={list.data?.page ?? { page: filters.page, size: filters.size, total: 0 }}
       onChangePage={(page) => updateParams({ page: page === 1 ? null : String(page) })}
       onChangePageSize={(size) =>

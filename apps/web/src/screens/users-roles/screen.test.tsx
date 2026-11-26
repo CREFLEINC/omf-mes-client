@@ -669,7 +669,8 @@ describe('UsersRolesScreen 조건과 주소', () => {
     expect(params.has('new')).toBe(false);
   });
 
-  it('등록 폼을 열면 고른 사용자가 주소에서 빠진다 — 둘은 함께 성립하지 않는다', async () => {
+  /* 추가는 팝업이라 뒤의 고른 사용자가 남는다(omf-all-around#358 — 종전엔 주소에서 빠졌다). */
+  it('추가 팝업을 열어도 고른 사용자가 주소에 남는다', async () => {
     const { requests, search, user } = renderScreen(
       [userListRoute(), departmentsRoute(), ...roleRoutes()],
       '?usr=1001',
@@ -682,7 +683,7 @@ describe('UsersRolesScreen 조건과 주소', () => {
     await waitFor(() => {
       expect(new URLSearchParams(search()).get('new')).toBe('user');
     });
-    expect(new URLSearchParams(search()).has('usr')).toBe(false);
+    expect(new URLSearchParams(search()).get('usr')).toBe('1001');
   });
 
   it('사용자를 고르면 등록 폼이 주소에서 빠진다', async () => {
@@ -979,6 +980,33 @@ const openUserDetail = async (
 };
 
 describe('UsersRolesScreen 상세 열기', () => {
+  it('고른 줄이 추가 팝업을 열고 닫아도 유지된다(omf-all-around#358)', async () => {
+    const { requests, search, user } = await openUserDetail();
+    const row = () =>
+      within(userListPane()).getByRole('button', { name: 'SYN-LOGIN-01', hidden: true });
+    expect(row()).toHaveAttribute('aria-current', 'true');
+
+    await user.click(within(userSearchPane()).getByRole('button', { name: '사용자 추가' }));
+    await screen.findByRole('dialog', { name: '사용자 추가' });
+    // 팝업이 열려 있는 동안에도 목록의 고른 줄 표시와 뒤의 상세가 그대로다.
+    expect(row()).toHaveAttribute('aria-current', 'true');
+    expect(within(settingsPane()).getAllByText('SYN-LOGIN-01').length).toBeGreaterThan(0);
+
+    await user.click(within(createDialog()).getByRole('button', { name: '취소' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: '사용자 추가' })).not.toBeInTheDocument();
+    });
+
+    const params = new URLSearchParams(search());
+    expect(params.get('usr')).toBe('1001');
+    expect(params.has('new')).toBe(false);
+    expect(row()).toHaveAttribute('aria-current', 'true');
+    expect(within(userFormPane()).getByText('SYN-LOGIN-01')).toBeInTheDocument();
+    expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toBeInTheDocument();
+    // 상세를 다시 부르지 않는다 — 선택이 한 번도 풀리지 않았다.
+    expect(detailRequests(requests)).toHaveLength(1);
+  });
+
   /* 고른 줄을 다시 누르면 선택이 풀린다(사용자 지시 2026-11-20 · #333). */
   it('고른 줄을 다시 누르면 선택이 풀리고 안내로 돌아간다', async () => {
     const { search, user } = await openUserDetail();
