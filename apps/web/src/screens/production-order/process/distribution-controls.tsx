@@ -71,7 +71,7 @@ export const DistributionControls = ({
   const [calendarNotes, setCalendarNotes] = useState<string[]>([]);
   const [resultQuantities, setResultQuantities] = useState<Record<string, string>>({});
   const resultKey = (row: OwnedDraft) => `${row.owner}:${row.planDate}:${row.plannedLineId}`;
-  const [holidayRows, setHolidayRows] = useState<(OwnedDraft & { holidayLabel: string })[]>([]);
+  const [holidayLabels, setHolidayLabels] = useState(new Map<string, string>());
   const latestSignature = useRef('');
   const sequence = useRef(0);
   const lock = useRef(false);
@@ -171,31 +171,11 @@ export const DistributionControls = ({
   );
   const stale = preview !== null && preview.signature !== signature;
   const previewRows = preview
-    ? [
-        ...preview.result.drafts,
-        ...new Map(
-          holidayRows
-            .filter(
-              (row) =>
-                !preview.result.drafts.some(
-                  (draft) =>
-                    draft.owner === row.owner &&
-                    draft.planDate === row.planDate &&
-                    draft.plannedLineId === row.plannedLineId,
-                ),
-            )
-            .map((row) => [`${row.owner}:${row.planDate}:${row.plannedLineId}`, row]),
-        ).values(),
-      ]
+    ? preview.result.drafts
         .map((row) => ({
           ...row,
           plannedQty: resultQuantities[resultKey(row)] ?? row.plannedQty,
-          ...(holidayRows.find((holiday) => resultKey(holiday) === resultKey(row))
-            ? {
-                holidayLabel: holidayRows.find((holiday) => resultKey(holiday) === resultKey(row))!
-                  .holidayLabel,
-              }
-            : {}),
+          holidayLabel: holidayLabels.get(resultKey(row)),
         }))
         .sort(
           (a, b) =>
@@ -922,7 +902,7 @@ export const DistributionControls = ({
                           return;
                         const bySegment = new Map<string, PlanningDay[]>();
                         const notes: string[] = [];
-                        const holidayDisplay: (OwnedDraft & { holidayLabel: string })[] = [];
+                        const holidayDisplay = new Map<string, string>();
                         for (const row of active) {
                           const order = orders.find((order) => order.id === row.owner);
                           if (!order?.plantId) {
@@ -944,17 +924,14 @@ export const DistributionControls = ({
                             notes.push(`${order.label}: 표준 C/T 미설정`);
                           const holidays = days.filter((day) => day.statusCode === 'HOLIDAY');
                           for (const day of holidays) {
-                            holidayDisplay.push({
-                              owner: row.owner,
-                              planDate: day.date,
-                              plannedLineId: row.lineId,
-                              plannedQty: '0',
-                              holidayLabel: planningHolidayLabel(day),
-                            });
+                            holidayDisplay.set(
+                              `${row.owner}:${day.date}:${row.lineId}`,
+                              planningHolidayLabel(day),
+                            );
                           }
                           if (row.mode === 'equal' && holidays.length)
                             notes.push(
-                              `${order.label}: 휴일 ${holidays.length}일 ${row.includeHolidays ? '포함' : '기본 수량 0'} (${holidays.map((day) => day.date).join(', ')})`,
+                              `${order.label}: 휴일 ${holidays.length}일 ${row.includeHolidays ? '포함' : '제외'} (${holidays.map((day) => day.date).join(', ')})`,
                             );
                           if (row.mode === 'daily')
                             holidays
@@ -978,7 +955,7 @@ export const DistributionControls = ({
                           plantToday(),
                         );
                         setCalendarNotes(notes);
-                        setHolidayRows(holidayDisplay);
+                        setHolidayLabels(holidayDisplay);
                         setResultQuantities({});
                         setPreview({ signature, result });
                         setAcknowledged(false);
@@ -1096,10 +1073,8 @@ export const DistributionControls = ({
                           <td>{orders.find((order) => order.id === row.owner)?.label}</td>
                           <td>
                             {row.planDate}
-                            {'holidayLabel' in row && (
-                              <span className="erp-wo-holiday-day-label">
-                                {String(row.holidayLabel)}
-                              </span>
+                            {row.holidayLabel && (
+                              <span className="erp-wo-holiday-day-label">{row.holidayLabel}</span>
                             )}
                           </td>
                           <td>

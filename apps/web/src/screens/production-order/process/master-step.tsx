@@ -1,5 +1,5 @@
 import { MasterDetails } from './master-details';
-import { AlertBanner, Button, Chip, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Button, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { plantToday } from '../../../patterns/plant-time';
@@ -65,16 +65,8 @@ export const MasterStep = ({
     t.effective(from ?? '', to ?? t.periodOpen);
 
   const selectedRouting = routings.items.find((item) => String(item.routingId) === routingId);
-  const checked =
-    boms.items.some((item) => String(item.bomId) === bomId) &&
-    routings.items.some((item) => String(item.routingId) === routingId);
   return (
     <section className="erp-wo-master-workspace" aria-label={t.heading}>
-      <div className="section-heading-row">
-        <Chip size="sm" variant="status" status={checked ? 'success' : 'warning'}>
-          {checked ? t.checked : t.needsCheck}
-        </Chip>
-      </div>
       <MasterDetails
         bomId={bomId}
         routingId={routingId}

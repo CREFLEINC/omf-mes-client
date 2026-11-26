@@ -309,7 +309,7 @@ describe('분배 조건과 미리보기 적용', () => {
   });
 });
 
-it('휴일 0 수량을 직접 수정하면 사용자 지정 계획으로 적용하고 합계를 보존한다', async () => {
+it('분배 수량이 0인 휴일 행은 숨기고 제외 안내와 합계를 보존한다', async () => {
   const { planningDaysResponse } = await import('../../../test/planning-day-fixture');
   const onApply = vi.fn();
   renderWithProviders(
@@ -327,30 +327,16 @@ it('휴일 0 수량을 직접 수정하면 사용자 지정 계획으로 적용�
     },
   );
   const user = await configure();
-  expect(await screen.findAllByText('주말 · 휴일')).not.toHaveLength(0);
+  expect(await screen.findByText(/휴일 2일 제외/)).toBeVisible();
   const resultTable = screen.getByRole('table', { name: '날짜와 라인별 결과' });
-  const holidayRow = within(resultTable).getAllByText('주말 · 휴일')[0]!.closest('tr')!;
-  const holidayInput = within(holidayRow).getByRole('textbox');
-  const weekdayInput = within(resultTable)
-    .getAllByRole('textbox')
-    .find((input) => Number((input as HTMLInputElement).value) > 0)!;
-  await user.clear(holidayInput);
-  await user.type(holidayInput, '1');
-  expect(screen.getByRole('button', { name: '분배안 적용' })).toBeDisabled();
-  await user.clear(weekdayInput);
-  await user.type(weekdayInput, '0');
-
+  expect(within(resultTable).queryByText('주말 · 휴일')).not.toBeInTheDocument();
+  expect(
+    within(resultTable)
+      .getAllByRole('textbox')
+      .every((input) => Number((input as HTMLInputElement).value) > 0),
+  ).toBe(true);
   await user.click(screen.getByRole('button', { name: '분배안 적용' }));
   expect(onApply).toHaveBeenCalledOnce();
-  expect(onApply.mock.calls[0]![0]).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({
-        planDate: holidayInput.getAttribute('aria-label')!.split(' ')[1],
-        plannedQty: '1',
-        planDateSourceCode: 'USER',
-      }),
-    ]),
-  );
   expect(
     onApply.mock.calls[0]![0].every((row: { plannedQty: string }) => Number(row.plannedQty) > 0),
   ).toBe(true);

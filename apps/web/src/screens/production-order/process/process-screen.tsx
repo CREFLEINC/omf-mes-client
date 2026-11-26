@@ -1006,9 +1006,11 @@ export const ProcessWorkspace = ({
           remaining={
             step === 'plan' && distributionDirty
               ? '분배 미리보기를 적용하거나 조건 변경을 취소하세요.'
-              : (guidance?.text ?? null)
+              : step === 'master' && master.complete
+                ? tp.master.checked
+                : (guidance?.text ?? null)
           }
-          remainingLink={remainingLink}
+          remainingLink={step === 'master' && master.complete ? undefined : remainingLink}
           remainingId={remainingId}
           leading={
             step === 'release' || step === 'done' ? (
