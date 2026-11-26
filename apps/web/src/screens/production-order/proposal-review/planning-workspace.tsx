@@ -351,6 +351,8 @@ export const ProposalPlanningWorkspace = ({
                         : [{ value: String(plan.routingId), label: plan.routing }]
                   }
                   onRoutingChange={(value) => void changeRouting(value)}
+                  plantId={row.plantId ?? null}
+                  quantity={Number(plan.quantity) > 0 ? Number(plan.quantity) : null}
                 />
               ) : (
                 <>

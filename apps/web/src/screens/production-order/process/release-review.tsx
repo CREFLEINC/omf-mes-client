@@ -224,6 +224,7 @@ const ReviewPlan = ({
                         kind="BOM"
                         value={String(plan.bomId)}
                         content={plan.revisionContent?.bom}
+                        availabilityContext={{ plantId, quantity: plan.plannedQty }}
                       />
                     )}{' '}
                     {label === 'Routing' && (

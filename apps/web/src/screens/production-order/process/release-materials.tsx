@@ -9,6 +9,13 @@ import { useApiClient } from '../../../patterns/api-context';
 import { runRequest } from '../../../patterns/request';
 import type { ReleaseTarget } from '../release-runner';
 import { AdjustableNativeTable } from './adjustable-table';
+import {
+  AvailabilityError,
+  AvailabilityStatusCell,
+  AvailableCell,
+  useMaterialAvailability,
+  type AvailabilityRequest,
+} from './material-availability';
 
 export type MaterialRequirement = MaterialComponents['schemas']['WorkOrderMaterialRequirement'];
 export type MaterialConfirmation = NonNullable<
@@ -85,6 +92,14 @@ export const useReleaseMaterials = (targets: readonly ReleaseTarget[], enabled: 
       }),
     };
   });
+  const availability = useMaterialAvailability(
+    groups.flatMap(({ target, rows }) =>
+      rows.flatMap(({ row }) => {
+        const request = availabilityRequestOf(target, row);
+        return request === null ? [] : [request];
+      }),
+    ),
+  );
   const ready =
     !enabled ||
     groups.every(
@@ -107,8 +122,16 @@ export const useReleaseMaterials = (targets: readonly ReleaseTarget[], enabled: 
         })),
     ]),
   );
-  return { groups, ready, confirmations };
+  return { groups, ready, confirmations, availability };
 };
+/** 가용 수량은 W/O 수량 기준으로 서버가 판정한다(omf-all-around#320) — 공장·수량을 모르면 묻지 않는다. */
+const availabilityRequestOf = (
+  target: ReleaseTarget,
+  row: MaterialRequirement,
+): AvailabilityRequest | null =>
+  target.plantId != null && target.orderQty != null && target.orderQty > 0
+    ? { plantId: target.plantId, bomComponentId: row.bomComponentId, quantity: target.orderQty }
+    : null;
 export type MaterialReview = ReturnType<typeof useReleaseMaterials>;
 export const ReleaseMaterials = ({
   review,
@@ -153,15 +176,18 @@ export const ReleaseMaterials = ({
             <p>출고요청 대상 자재 없음</p>
           ) : (
             <>
+              <AvailabilityError availability={review.availability} />
               <div className="erp-wo-table-scroll">
                 <AdjustableNativeTable
-                  storageKey="omf-release-materials"
+                  storageKey="omf-release-materials-availability"
                   className="erp-wo-final-table"
                   labels={[
                     '자재 코드',
                     '자재명',
                     'BOM 소요량',
                     '출고 기준 소요량',
+                    '가용 수량',
+                    '재고 상태',
                     rows.some(({ row }) => row.confirmationRequired && editableRate(row)) ? (
                       <>
                         환산 비율
@@ -173,7 +199,7 @@ export const ReleaseMaterials = ({
                       '환산 비율'
                     ),
                   ]}
-                  widths={[135, 195, 110, 135, 260]}
+                  widths={[135, 195, 110, 135, 130, 90, 260]}
                 >
                   <tbody>
                     {rows.map(({ row, choice, rate, set }) => (
@@ -192,6 +218,18 @@ export const ReleaseMaterials = ({
                               ? '—'
                               : quantityText(row.stockQty)}{' '}
                           {row.stockUomCode}
+                        </td>
+                        <td>
+                          <AvailableCell
+                            availability={review.availability}
+                            request={availabilityRequestOf(target, row)}
+                          />
+                        </td>
+                        <td>
+                          <AvailabilityStatusCell
+                            availability={review.availability}
+                            request={availabilityRequestOf(target, row)}
+                          />
                         </td>
                         <td>
                           {row.conversionSource === null ? (

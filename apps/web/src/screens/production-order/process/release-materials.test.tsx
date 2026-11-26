@@ -176,4 +176,42 @@ describe('자재 환산 확인', () => {
     expect(screen.getByRole('button', { name: '다시 조회' })).toBeEnabled();
     expect(screen.getByRole('button', { name: '배포' })).toBeDisabled();
   });
+  it('공장·W/O 수량이 있으면 W/O 수량 기준 가용 수량과 판정을 보이고 배포는 막지 않는다', async () => {
+    const requests: unknown[] = [];
+    const Availability = () => {
+      const review = useReleaseMaterials(
+        [{ workOrderId: 1, workOrderNo: 'SYN-WO', plantId: 7, orderQty: 10 }],
+        true,
+      );
+      return <ReleaseMaterials review={review} />;
+    };
+    renderWithProviders(<Availability />, {
+      fetch: async (req: Request) => {
+        if (req.method === 'POST') {
+          requests.push(await req.json());
+          return jsonResponse({
+            items: [
+              {
+                bomComponentId: 1,
+                quantity: 10,
+                itemId: 2,
+                itemCode: 'SYN-RESIN',
+                itemName: '시험 자재',
+                requiredQty: 367,
+                bomUomCode: 'GR',
+                stockUomCode: 'KG',
+                requiredStockQty: 0.367,
+                availableQty: 0.2,
+                statusCode: 'SHORT',
+              },
+            ],
+          });
+        }
+        return jsonResponse({ items: [row] });
+      },
+    });
+    expect(await screen.findByText('부족')).toBeVisible();
+    expect(screen.getByRole('cell', { name: '0.2 KG' })).toBeVisible();
+    expect(requests).toEqual([{ plantId: 7, lines: [{ bomComponentId: 1, quantity: 10 }] }]);
+  });
 });

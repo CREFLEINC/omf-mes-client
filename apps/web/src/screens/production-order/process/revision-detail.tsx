@@ -1,11 +1,20 @@
 import { Link } from 'react-router';
 import { createPortal } from 'react-dom';
-import { useState, type ReactNode } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertBanner, Button, Dialog, IconButton, SkeletonText } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Chip,
+  Dialog,
+  IconButton,
+  SkeletonText,
+  type ChipStatus,
+} from '@crefle/web-ui';
 import { useApiClient } from '../../../patterns/api-context';
 import { runRequest } from '../../../patterns/request';
 import { useItemCodeNames, useProductionOrderItemNames } from '../item-lookups';
+import { AdjustableNativeTable } from './adjustable-table';
 import { useUomReferenceLookup } from '../reference-lookups';
 import { useRoutingOperations, useRoutingDetail } from '../../routing/queries';
 import {
@@ -13,8 +22,25 @@ import {
   useRoutingOperationOptions,
   type LookupResult,
 } from '../../item-extended-attrs/lookups';
+import {
+  AvailabilityError,
+  AvailabilityStatusCell,
+  AvailableCell,
+  RequiredCell,
+  useMaterialAvailability,
+  type AvailabilityRequest,
+} from './material-availability';
+
+/** BOM 상세에 재고 칸을 보일 공장·만들 수량(omf-all-around#320). */
+export interface BomAvailabilityContext {
+  plantId?: number | null;
+  quantity?: number | null;
+}
 
 const flag = (value: boolean | undefined) => (value == null ? '미제공' : value ? '예' : '아니요');
+/** BOM 상세 펼침 칸 — 예/아니요 대신 뜻이 바로 읽히는 말. */
+const said = (value: boolean | undefined, yes: string, no: string) =>
+  value == null ? '정보 없음' : value ? yes : no;
 
 const Properties = ({ values }: { values: [string, string][] }) => (
   <dl className="erp-wo-revision-properties">
@@ -33,10 +59,23 @@ const linkedName = (source: LookupResult, id: number | null | undefined) => {
   const found = source.entries.find((entry) => entry.value === String(id));
   return found?.label ?? (source.isLoading ? '조회 중' : '연결 정보 확인 필요');
 };
+const STATUS_CHIP: Record<string, ChipStatus> = {
+  CONFIRMED: 'success',
+  DRAFT: 'warning',
+  OBSOLETE: 'idle',
+};
 const statusLabel = (status: string) =>
   ({ CONFIRMED: '확정', DRAFT: '작성중', OBSOLETE: '폐기' })[status] ?? status;
 
-export const BomContents = ({ id, plain = false }: { id: number; plain?: boolean }) => {
+export const BomContents = ({
+  id,
+  plain = false,
+  availabilityContext,
+}: {
+  id: number;
+  plain?: boolean;
+  availabilityContext?: BomAvailabilityContext;
+}) => {
   const { client } = useApiClient();
   const header = useQuery({
     queryKey: ['plan-revision-detail', 'bom', id],
@@ -68,6 +107,29 @@ export const BomContents = ({ id, plain = false }: { id: number; plain?: boolean
   const unit = (id: number) =>
     uoms.entries.find((entry) => entry.value === String(id))?.label ??
     (uoms.isLoading ? '단위 조회 중' : '단위 확인 필요');
+  const plantId = availabilityContext?.plantId;
+  const quantity = availabilityContext?.quantity;
+  const withAvailability = !plain && plantId != null && quantity != null && quantity > 0;
+  const requestOf = (row: {
+    bomComponentId: number;
+    requiredQty: number;
+  }): AvailabilityRequest | null =>
+    plantId != null && quantity != null && quantity > 0 && row.requiredQty > 0
+      ? { plantId, bomComponentId: row.bomComponentId, quantity }
+      : null;
+  const codeNames = useItemCodeNames([
+    ...(rows.data?.items ?? []).map((row) => row.componentItemId),
+    ...(header.data?.bom.parentItemId ? [header.data.bom.parentItemId] : []),
+  ]);
+  const [expanded, setExpanded] = useState<Set<number>>(() => new Set());
+  const availability = useMaterialAvailability(
+    withAvailability
+      ? (rows.data?.items ?? []).flatMap((row) => {
+          const request = requestOf(row);
+          return request === null ? [] : [request];
+        })
+      : [],
+  );
   if (header.isError || rows.isError)
     return (
       <AlertBanner
@@ -205,85 +267,165 @@ export const BomContents = ({ id, plain = false }: { id: number; plain?: boolean
         </details>
       </>
     );
+  const sorted = [...rows.data.items].sort((a, b) => a.sequenceNo - b.sequenceNo);
+  const parent = codeNames.get(bom.parentItemId);
+  const parentFallback =
+    names.items.find((item) => item.itemId === bom.parentItemId)?.label ?? '품목 정보 확인 필요';
+  const columns = [
+    '자품목',
+    '기준 소요량',
+    ...(withAvailability ? ['필요 수량', '가용 수량', '재고 상태'] : []),
+    '상세',
+  ];
+  const toggle = (id: number) =>
+    setExpanded((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   return (
     <>
-      <p>
-        <strong>
-          {bom.bomCode} (Rev {bom.bomVersion})
-        </strong>
-      </p>
-      <section className="erp-wo-origin-summary" aria-label="MES 변환 및 개정 정보">
-        <h3 className="section-title">MES 변환 및 개정 정보</h3>
-        <Properties
-          values={[
-            [
-              '모품목코드',
-              items.get(bom.parentItemId)?.itemCode ?? '품목 정보 확인 필요',
-            ],
-            ['모품목명', items.get(bom.parentItemId)?.itemName ?? '—'],
-            ['공통 기준 수량', `${bom.baseQty} ${unit(bom.baseUomId)}`],
-            ['개정 상태', statusLabel(bom.statusCode)],
-            ['기본 개정', flag(bom.isDefault)],
+      <div className="bom-detail-title">
+        <strong>{bom.bomCode}</strong>
+        <Chip size="sm" status="info">
+          Rev {bom.bomVersion}
+        </Chip>
+        <Chip variant="status" size="sm" status={STATUS_CHIP[bom.statusCode] ?? 'idle'}>
+          {statusLabel(bom.statusCode)}
+        </Chip>
+        {bom.isDefault && (
+          <Chip size="sm" status="idle">
+            기본 개정
+          </Chip>
+        )}
+      </div>
+      {/* 기본 정보 상자는 검사 조회·판정 상세 요약(parts-iqc-facts)과 같은 모양. */}
+      <dl className="parts-iqc-facts iqc-inbound-facts" aria-label="BOM 기본 정보">
+        <div className="parts-iqc-fact">
+          <dt className="field-label">모품목</dt>
+          <dd className="parts-iqc-fact-key">
+            {parent ? (
+              <>
+                {parent.itemName}
+                <span className="parts-iqc-fact-sub">{parent.itemCode}</span>
+              </>
+            ) : (
+              parentFallback
+            )}
+          </dd>
+        </div>
+        {(
+          [
+            ['기준 수량', `${bom.baseQty} ${unit(bom.baseUomId)}`],
             ['유효 시작일', bom.effectiveFrom ?? '미설정'],
             ['유효 종료일', bom.effectiveTo ?? '종료일 없음'],
-          ]}
-        />
-      </section>
-      {!rows.data.items.length ? (
+          ] as const
+        ).map(([label, value]) => (
+          <div className="parts-iqc-fact" key={label}>
+            <dt className="field-label">{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="bom-detail-heading">
+        <h3>자품목 {sorted.length}개</h3>
+        {withAvailability && (
+          <span>
+            필요 수량은 {(quantity ?? 0).toLocaleString(undefined, { maximumFractionDigits: 6 })}{' '}
+            {unit(bom.baseUomId)} 생산 기준입니다.
+          </span>
+        )}
+      </div>
+      {withAvailability && <AvailabilityError availability={availability} />}
+      {!sorted.length ? (
         <p>등록된 구성 자재가 없습니다.</p>
       ) : (
-        <div className="erp-wo-revision-table erp-wo-split-item">
-          <table>
-            <caption>ERP 수신 정보와 MES 적용 정보</caption>
-            <thead>
-              <tr>
-                {['ERP 수신 · 품목코드', '품목명', 'MES 환산 소요량', 'MES 추가 속성'].map((label) => (
-                  <th key={label}>{label}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {[...rows.data.items]
-                .sort((a, b) => a.sequenceNo - b.sequenceNo)
-                .map((row) => {
-                  const name = names.items.find((item) => item.itemId === row.componentItemId);
-                  const item = items.get(row.componentItemId);
-                  return (
-                    <tr key={row.bomComponentId}>
-                      <td data-label="ERP 수신 · 품목코드" className="erp-wo-revision-material">
-                        <p className="field-note">
-                          ERP 자품목 순번:{' '}
-                          {row.erpChildItemSeq == null ? '보관값 없음' : row.erpChildItemSeq}
-                        </p>
-                        {item?.itemCode ??
-                          (name?.status === 'loading' ? '자재 조회 중' : '자재 정보 확인 필요')}
-                      </td>
-                      <td data-label="품목명">{item?.itemName ?? '—'}</td>
-                      <td data-label="MES 환산 소요량" className="erp-wo-revision-quantity">
-                        <strong>{row.requiredQty}</strong> {unit(row.uomId)}
-                        <p className="field-note">
-                          공통 기준 {bom.baseQty} {unit(bom.baseUomId)}당
-                        </p>
-                        <p className="field-note">MES 표시 순서 {row.sequenceNo}</p>
-                      </td>
-                      <td data-label="MES 추가 속성">
-                        <Properties
-                          values={[
-                            ['관리 공정', linkedName(operations, row.routingOperationId)],
-                            ['실제 사용 공정', linkedName(processes, row.actualUseProcessId)],
-                            ['로스율', `${Number((row.scrapRate * 100).toFixed(6))}%`],
-                            ['필수 자재', flag(row.isMandatory)],
-                            ['LOT 추적', flag(row.lotTraceRequired)],
-                            ['자동 차감 허용', flag(row.backflushAllowed)],
-                          ]}
-                        />
+        <AdjustableNativeTable
+          storageKey={withAvailability ? 'bom-detail-components-stock' : 'bom-detail-components'}
+          className="bom-detail-table"
+          labels={columns}
+          widths={withAvailability ? [260, 120, 120, 120, 120, 64] : [320, 140, 64]}
+        >
+          <tbody>
+            {sorted.map((row) => {
+              const item = codeNames.get(row.componentItemId);
+              const name = names.items.find((entry) => entry.itemId === row.componentItemId);
+              const open = expanded.has(row.bomComponentId);
+              const request = requestOf(row);
+              const detailId = `bom-detail-${id}-${row.bomComponentId}`;
+              return (
+                <Fragment key={row.bomComponentId}>
+                  <tr>
+                    <td className="bom-detail-item">
+                      {item ? (
+                        <>
+                          <strong>{item.itemName}</strong>
+                          <span>{item.itemCode}</span>
+                        </>
+                      ) : (
+                        (name?.label ??
+                        (name?.status === 'loading' ? '자재 조회 중' : '자재 정보 확인 필요'))
+                      )}
+                    </td>
+                    <td className="numeric">
+                      {row.requiredQty} {unit(row.uomId)}
+                    </td>
+                    {withAvailability && (
+                      <>
+                        <td className="numeric">
+                          <RequiredCell availability={availability} request={request} />
+                        </td>
+                        <td className="numeric">
+                          <AvailableCell availability={availability} request={request} />
+                        </td>
+                        <td>
+                          <AvailabilityStatusCell availability={availability} request={request} />
+                        </td>
+                      </>
+                    )}
+                    <td>
+                      <IconButton
+                        icon={open ? 'expand_less' : 'expand_more'}
+                        size="sm"
+                        variant="standard"
+                        aria-label={`${item?.itemCode ?? '자품목'} 상세 ${open ? '접기' : '펼치기'}`}
+                        aria-expanded={open}
+                        aria-controls={detailId}
+                        onClick={() => toggle(row.bomComponentId)}
+                      />
+                    </td>
+                  </tr>
+                  {open && (
+                    <tr className="bom-detail-expanded" id={detailId}>
+                      <td colSpan={columns.length}>
+                        <dl className="bom-detail-props">
+                          {(
+                            [
+                              ['관리 공정', linkedName(operations, row.routingOperationId)],
+                              ['실제 사용 공정', linkedName(processes, row.actualUseProcessId)],
+                              ['로스율', `${Number((row.scrapRate * 100).toFixed(6))}%`],
+                              ['필수 자재', said(row.isMandatory, '필수', '선택')],
+                              ['LOT 추적', said(row.lotTraceRequired, '필요', '필요 없음')],
+                              ['자동 차감', said(row.backflushAllowed, '사용', '사용 안 함')],
+                            ] as const
+                          ).map(([label, value]) => (
+                            <div key={label}>
+                              <dt>{label}</dt>
+                              <dd data-enabled={label === '필수 자재' && value === '필수'}>
+                                {value}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
                       </td>
                     </tr>
-                  );
-                })}
-            </tbody>
-          </table>
-        </div>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </AdjustableNativeTable>
       )}
     </>
   );
@@ -505,6 +647,7 @@ export const RevisionDetailButton = ({
   itemId,
   iconOnly = false,
   content,
+  availabilityContext,
 }: {
   kind: 'BOM' | 'Routing';
   value: string;
@@ -512,6 +655,8 @@ export const RevisionDetailButton = ({
   itemId?: number;
   iconOnly?: boolean;
   content?: ReactNode;
+  /** BOM 상세에 구성 자재 재고(필요·가용 수량, 재고 상태)를 함께 보인다(omf-all-around#320). */
+  availabilityContext?: BomAvailabilityContext;
 }) => {
   const [open, setOpen] = useState(false);
   const id = Number(value);
@@ -546,7 +691,9 @@ export const RevisionDetailButton = ({
           <Dialog
             open
             size="lg"
+            className={kind === 'BOM' ? 'bom-detail-dialog' : undefined}
             title={`${kind} 상세`}
+            showCloseButton={false}
             onClose={() => setOpen(false)}
             footer={
               <>
@@ -570,7 +717,7 @@ export const RevisionDetailButton = ({
             <div className="erp-wo-revision-detail">
               {content ??
                 (kind === 'BOM' ? (
-                  <BomContents id={id} />
+                  <BomContents id={id} availabilityContext={availabilityContext} />
                 ) : (
                   <RoutingContents id={id} label={label} />
                 ))}

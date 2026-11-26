@@ -169,6 +169,7 @@ export const ProductionOrderScreen = ({
   const targets: BulkTarget[] = checkedRows.map((row) => ({
     productionOrderId: row.fact.productionOrderId,
     productionOrderNo: row.fact.productionOrderNo,
+    plantId: row.fact.plantId,
   }));
   /* 두 일괄 동작이 같은 사유로 잠긴다. 사유는 버튼 아래 한 줄로 보이고 두 버튼이 함께 가리킨다(C-4). */
   const bulkReason = bulk.isRunning

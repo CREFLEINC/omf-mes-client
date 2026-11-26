@@ -752,6 +752,8 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                       options={entry.routingOptions}
                       onRoutingChange={entry.onRoutingChange}
                       disabled={busy}
+                      plantId={entry.order.plantId}
+                      quantity={entry.order.orderQty}
                     />
                   </div>
                 ) : null;

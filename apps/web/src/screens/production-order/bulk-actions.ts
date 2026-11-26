@@ -25,6 +25,8 @@ export type BulkKind = 'release' | 'autoPlan';
 export interface BulkTarget {
   productionOrderId: number;
   productionOrderNo: string;
+  /** 배포 확인 자재의 가용 수량을 셀 공장(omf-all-around#320). */
+  plantId?: number | null;
 }
 
 export interface BulkRun {
