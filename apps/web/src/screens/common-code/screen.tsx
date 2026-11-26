@@ -258,7 +258,11 @@ export const CommonCodeScreen = () => {
 
   const isCreatingCodeGroup = isCodeTab && searchParams.get('new') === 'group';
   const selectedParam = isCodeTab ? readSelectedId(searchParams, 'grp') : null;
-  /** 등록 폼이 열려 있는 동안에는 상세를 조회하지 않는다 — 만들고 있는 자원에는 상세가 없다. */
+  /**
+   * 등록 폼이 열려 있는 동안 **쓰기 · 폼이 보는** 코드그룹은 없다 — 만들고 있는 자원에는 상세가 없다.
+   * 다만 목록에서 고른 줄(`selectedParam`)은 주소에 그대로 남는다 — 등록은 팝업이라 열고 닫아도(취소)
+   * 고른 줄과 뒤 상세가 풀리면 안 된다(사용자 보고 2026-11-26).
+   */
   const selectedCodeGroupId = isCreatingCodeGroup ? null : selectedParam;
 
   /**
@@ -287,7 +291,8 @@ export const CommonCodeScreen = () => {
     codeGroups.length,
   );
 
-  const codeGroupDetail = useCodeGroupDetail(selectedCodeGroupId);
+  /* 등록 팝업 뒤에도 고른 그룹의 상세가 그대로 서도록 고른 줄 기준으로 든다(캐시를 그대로 쓴다). */
+  const codeGroupDetail = useCodeGroupDetail(selectedParam);
 
   /*
    * 코드값 한 벌에 넘길 상태. 좌 목록과 **다른 주소 키**를 쓴다 —
@@ -625,11 +630,11 @@ export const CommonCodeScreen = () => {
     resetCodeGroupEditing();
 
     patchSearchParams((next) => {
+      /*
+       * 등록은 팝업이다 — 고른 그룹 · 코드값은 주소에 남겨 팝업을 닫으면(취소) 그대로 돌아온다(사용자 보고 2026-11-26).
+       * 팝업이 떠 있는 동안 뒤 상세는 손댈 수 없어 어느 쪽을 고치는지 헷갈리지 않는다. 저장에 성공하면 새 그룹을 고른다.
+       */
       next.set('new', 'group');
-      // 등록 폼이 열려 있는 동안 고른 그룹의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
-      next.delete('grp');
-      next.delete('val');
-      next.delete('vpage');
     });
   };
 
@@ -668,9 +673,8 @@ export const CommonCodeScreen = () => {
 
   const openCodeValueCreate = () => {
     patchSearchParams((next) => {
+      /* 등록은 팝업이다 — 고른 코드값은 주소에 남겨 팝업을 닫으면(취소) 그대로 돌아온다(사용자 보고 2026-11-26). */
       next.set('new', 'value');
-      // 등록 폼이 열려 있는 동안 고른 코드값의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
-      next.delete('val');
     });
   };
 
@@ -716,6 +720,7 @@ export const CommonCodeScreen = () => {
 
   const isCreatingDepartment = isOrgTab && searchParams.get('new') === 'dept';
   const selectedDepartmentParam = isOrgTab ? readSelectedId(searchParams, 'dep') : null;
+  /* 코드그룹과 같다 — 등록 중 쓰기 · 폼이 보는 부서는 없고, 목록에서 고른 줄은 주소에 남는다(사용자 보고 2026-11-26). */
   const selectedDepartmentId = isCreatingDepartment ? null : selectedDepartmentParam;
 
   /**
@@ -754,7 +759,8 @@ export const CommonCodeScreen = () => {
     departmentRows.length,
   );
 
-  const departmentDetail = useDepartmentDetail(selectedDepartmentId);
+  /* 등록 팝업 뒤에도 고른 부서의 상세가 그대로 서도록 고른 줄 기준으로 든다(캐시를 그대로 쓴다). */
+  const departmentDetail = useDepartmentDetail(selectedDepartmentParam);
 
   /** 부서 정보 폼이 화면에 있는가 — 상위 선택지는 그때만 조회한다. */
   const isDepartmentFormOpen = isCreatingDepartment || selectedDepartmentId !== null;
@@ -1106,9 +1112,8 @@ export const CommonCodeScreen = () => {
     resetDepartmentEditing();
 
     patchSearchParams((next) => {
+      /* 등록은 팝업이다 — 고른 부서는 주소에 남겨 팝업을 닫으면(취소) 그대로 돌아온다(사용자 보고 2026-11-26). */
       next.set('new', 'dept');
-      // 등록 폼이 열려 있는 동안 고른 부서의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
-      next.delete('dep');
     });
   };
 
@@ -1787,6 +1792,33 @@ export const CommonCodeScreen = () => {
    * 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
    * 등록·선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
    */
+  /**
+   * 등록 팝업 뒤의 상세 자리 — 고른 그룹이 있으면 그 그룹의 저장된 값을 그대로 낸다(사용자 보고 2026-11-26).
+   * 폼 상태는 팝업의 초안이 쓰므로 이 자리는 상세 응답에서 바로 그린다. 모달 팝업이 떠 있는 동안
+   * 뒤 화면은 손댈 수 없어 조작은 받지 않는다. 팝업을 닫으면 종전 수정 폼이 이 자리에 다시 선다.
+   */
+  const renderCodeGroupPaneBehindCreate = (): ReactNode => {
+    if (selectedParam === null || codeGroupDetail.data === undefined) return codeGroupEmptyPane;
+
+    return (
+      <CodeGroupFormPane
+        mode="edit"
+        values={codeGroupToFormValues(codeGroupDetail.data.codeGroup)}
+        onChange={() => undefined}
+        fieldErrors={{}}
+        banner={null}
+        codeLockReason={codeLockMessage(codeGroupDetail.data.editability)}
+        deactivateDisabledReason={deactivateDisabledReason}
+        isDirty={false}
+        isLocked={isCodeGroupLocked}
+        isSaving={false}
+        onSave={() => undefined}
+        onCancel={() => undefined}
+        onDeactivate={() => undefined}
+      />
+    );
+  };
+
   const renderCodeGroupFormPane = (): ReactNode => {
     if (isCreatingCodeGroup) {
       if (formState === null) return null;
@@ -1799,8 +1831,8 @@ export const CommonCodeScreen = () => {
        */
       return (
         <>
-          {/* 등록은 팝업이다(사용자 지시 2026-11-25) — 뒤의 상세 자리는 고르기 전과 같은 빈 안내로 둔다. */}
-          {codeGroupEmptyPane}
+          {/* 등록은 팝업이다(사용자 지시 2026-11-25) — 뒤의 상세 자리는 고른 그룹 그대로 둔다(고르기 전이면 빈 안내). */}
+          {renderCodeGroupPaneBehindCreate()}
           <CodeGroupFormPane
             mode="create"
             values={formState.values}
@@ -1908,7 +1940,8 @@ export const CommonCodeScreen = () => {
       pageMeta={codeGroupList.data?.page ?? null}
       onChangePage={guarded(isCodeGroupSwitchDirty, changeCodeGroupPage)}
       onChangePageSize={guarded(isCodeGroupSwitchDirty, changeCodeGroupPageSize)}
-      selectedCodeGroupId={selectedCodeGroupId}
+      /* 등록 팝업이 떠 있어도 고른 줄 표시는 남는다(사용자 보고 2026-11-26). */
+      selectedCodeGroupId={selectedParam}
       onSelect={(codeGroupId) => {
         /* 코드그룹을 바꾸면 그 그룹의 코드값 편집도 함께 사라진다(#358). */
         confirmSwitch(isCodeGroupSwitchDirty, () => handleSelectCodeGroup(codeGroupId));
@@ -1952,9 +1985,10 @@ export const CommonCodeScreen = () => {
                    * 코드그룹을 고르기 전에는 코드값 구획을 두지 않는다 — 빈 안내 하나만(사용자 관리와 같다 · 사용자 지시
                    * 2026-11-24). 종전에는 「먼저 고르세요」 안내가 구획마다 겹쳐 섰다.
                    */}
-                  {selectedCodeGroupId !== null && (
+                  {/* 그룹 등록 팝업 뒤에도 고른 그룹의 코드값 목록이 그대로 선다(사용자 보고 2026-11-26). */}
+                  {selectedParam !== null && (
                     <CodeValueSection
-                      codeGroupId={selectedCodeGroupId}
+                      codeGroupId={selectedParam}
                       selectedCodeValueId={selectedCodeValueId}
                       onSelectCodeValue={selectCodeValue}
                       isCreating={isCreatingCodeValue}
@@ -2023,6 +2057,48 @@ export const CommonCodeScreen = () => {
    * 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
    * 등록·선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
    */
+  /**
+   * 등록 팝업 뒤의 상세 자리 — 코드그룹과 같다(사용자 보고 2026-11-26). 고른 부서의 저장된 값을 상세 응답에서
+   * 바로 그리고 조작은 받지 않는다(모달 팝업 뒤라 손댈 수 없다). 생산 창고 편집은 수정 폼에만 있어 여기서는 내지 않는다.
+   */
+  const renderDepartmentPaneBehindCreate = (): ReactNode => {
+    if (selectedDepartmentParam === null || departmentDetail.data === undefined) {
+      return departmentEmptyPane;
+    }
+
+    const values = departmentToFormValues(departmentDetail.data.department);
+    return (
+      <DepartmentFormPane
+        mode="edit"
+        values={values}
+        onChange={() => undefined}
+        fieldErrors={{}}
+        banner={null}
+        codeLockReason={codeLockMessage(departmentDetail.data.editability)}
+        deactivateDisabledReason={
+          departmentDetail.data.department.isActive === false
+            ? t.actionReasons.deactivateAlreadyDone(t.targets.department)
+            : null
+        }
+        parentOptions={selectableOptions(
+          {
+            ...departmentOptions,
+            entries: parentOptionsFor(departmentOptions.entries, selectedDepartmentParam),
+          },
+          values.parentDepartmentId,
+        )}
+        parentDisabledReason={null}
+        businessUnitOptions={selectableOptions(businessUnitOptions, values.businessUnitId)}
+        isDirty={false}
+        isLocked={isDepartmentLocked}
+        isSaving={false}
+        onSave={() => undefined}
+        onCancel={() => undefined}
+        onDeactivate={() => undefined}
+      />
+    );
+  };
+
   const renderDepartmentFormPane = (): ReactNode => {
     if (isCreatingDepartment) {
       if (departmentFormState === null) return null;
@@ -2035,8 +2111,8 @@ export const CommonCodeScreen = () => {
        */
       return (
         <>
-          {/* 등록은 팝업이다(사용자 지시 2026-11-25) — 뒤의 상세 자리는 고르기 전과 같은 빈 안내로 둔다. */}
-          {departmentEmptyPane}
+          {/* 등록은 팝업이다(사용자 지시 2026-11-25) — 뒤의 상세 자리는 고른 부서 그대로 둔다(고르기 전이면 빈 안내). */}
+          {renderDepartmentPaneBehindCreate()}
           <DepartmentFormPane
             mode="create"
             values={departmentFormState.values}
@@ -2185,7 +2261,8 @@ export const CommonCodeScreen = () => {
       pageMeta={departmentList.data?.page ?? null}
       onChangePage={guarded(isDepartmentSwitchDirty, changeDepartmentPage)}
       onChangePageSize={guarded(isDepartmentSwitchDirty, changeDepartmentPageSize)}
-      selectedDepartmentId={selectedDepartmentId}
+      /* 등록 팝업이 떠 있어도 고른 줄 표시는 남는다(사용자 보고 2026-11-26). */
+      selectedDepartmentId={selectedDepartmentParam}
       onSelect={(departmentId) => {
         confirmSwitch(isDepartmentSwitchDirty, () => handleSelectDepartmentRow(departmentId));
       }}

@@ -17,7 +17,6 @@ const renderPane = (overrides: Partial<Parameters<typeof CodeValueFormPane>[0]> 
   const onChange = vi.fn<(patch: Partial<CodeValueFormValues>) => void>();
   const onSave = vi.fn<() => void>();
   const onCancel = vi.fn<() => void>();
-  const onDeactivate = vi.fn<() => void>();
 
   render(
     <CodeValueFormPane
@@ -27,17 +26,15 @@ const renderPane = (overrides: Partial<Parameters<typeof CodeValueFormPane>[0]> 
       fieldErrors={{}}
       banner={null}
       codeLockReason={null}
-      deactivateDisabledReason={null}
       isDirty={false}
       isSaving={false}
       onSave={onSave}
       onCancel={onCancel}
-      onDeactivate={onDeactivate}
       {...overrides}
     />,
   );
 
-  return { onChange, onSave, onCancel, onDeactivate, user: userEvent.setup() };
+  return { onChange, onSave, onCancel, user: userEvent.setup() };
 };
 
 describe('CodeValueFormPane — 필드', () => {
@@ -144,32 +141,14 @@ describe('CodeValueFormPane — 액션', () => {
     expect(screen.queryByRole('button', { name: '저장' })).not.toBeInTheDocument();
   });
 
-  it('등록 폼에는 사용 중지 자리가 없다', () => {
+  it('등록 · 수정 팝업에는 사용 중지 자리가 없다 — 표 줄의 단추가 맡는다(2026-11-26)', () => {
     renderPane({ mode: 'create' });
-
     expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
   });
 
-  it('사용 중지를 누르면 알린다', async () => {
-    const { onDeactivate, user } = renderPane();
-
-    await user.click(screen.getByRole('button', { name: '사용 중지' }));
-
-    expect(onDeactivate).toHaveBeenCalledTimes(1);
-  });
-
-  it('사용 중지가 막히면 사유가 보이고 버튼에 이어진다', () => {
-    renderPane({
-      deactivateDisabledReason: '사용 중지는 이미 미사용인 코드값에 다시 할 수 없습니다.',
-    });
-
-    const button = screen.getByRole('button', { name: '사용 중지' });
-    expect(button).toBeDisabled();
-
-    const noteId = button.getAttribute('aria-describedby');
-    expect(noteId).not.toBeNull();
-    expect(document.getElementById(noteId as string)).toHaveTextContent(
-      '사용 중지는 이미 미사용인 코드값에 다시 할 수 없습니다.',
-    );
+  it('수정은 「코드값 수정」 팝업이다', () => {
+    renderPane();
+    expect(screen.getByRole('dialog', { name: '코드값 수정' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
   });
 });

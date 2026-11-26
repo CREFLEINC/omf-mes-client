@@ -6,7 +6,6 @@ import { CodeLockLabel } from '../../patterns/master';
 import { requiredEmptyClass } from '../users-roles/required-empty';
 import type { CodeValueFormValues } from './code-value-types';
 import { DateField } from './date-field';
-import { DisabledAction } from './disabled-action';
 import { FieldLabel } from './field-label';
 
 const t = messages.commonCode.codeValue;
@@ -24,13 +23,10 @@ export interface CodeValueFormPaneProps {
   banner: ReactNode;
   /** null이면 코드를 편집할 수 있다. */
   codeLockReason: string | null;
-  /** null이면 사용 중지를 누를 수 있다. 값이 있으면 그것이 비활성 사유다. */
-  deactivateDisabledReason: string | null;
   isDirty: boolean;
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
-  onDeactivate: () => void;
 }
 
 /**
@@ -54,12 +50,10 @@ export const CodeValueFormPane = ({
   fieldErrors,
   banner,
   codeLockReason,
-  deactivateDisabledReason,
   isDirty,
   isSaving,
   onSave,
   onCancel,
-  onDeactivate,
 }: CodeValueFormPaneProps) => {
   const codeId = useId();
   const nameId = useId();
@@ -137,67 +131,31 @@ export const CodeValueFormPane = ({
   );
 
   /*
-   * 등록은 팝업 — 사용자 추가 팝업과 같은 모양(사용자 지시 2026-11-25 · #333). 열고 닫힘은 종전대로 주소의 등록 상태가
-   * 쥐고, 닫기(취소)는 등록 폼을 접는 같은 처리로 간다. 등록 단추의 막힘 조건(고친 것 없음 · 저장 중)도 그대로다.
+   * 등록 · 수정 모두 팝업 — 사용자 추가 팝업과 같은 모양(등록 2026-11-25 · 수정 2026-11-26 사용자 지시 · #333).
+   * 표 아래에 상세 · 편집 칸을 두지 않는다. 사용 중지는 표 줄의 [사용 중지]가 맡는다.
+   * 열고 닫힘은 종전대로 바깥(등록은 주소의 등록 상태, 수정은 고른 줄)이 쥐고, 저장 단추의 막힘 조건(고친 것 없음 · 저장 중)도 그대로다.
    */
-  if (mode === 'create') {
-    return (
-      <Dialog
-        open
-        onClose={onCancel}
-        size="lg"
-        title={t.actions.add}
-        closeOnBackdropClick={false}
-        showCloseButton={false}
-        footer={
-          <>
-            <Button variant="outlined" onClick={onCancel}>
-              {messages.common.cancel}
-            </Button>
-            <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
-              {t.actions.add}
-            </Button>
-          </>
-        }
-      >
-        {banner}
-        {formGrid}
-      </Dialog>
-    );
-  }
-
   return (
-    <section className="pane" aria-label={t.formPaneTitle}>
+    <Dialog
+      open
+      onClose={onCancel}
+      size="lg"
+      title={mode === 'create' ? t.actions.add : t.actions.editTitle}
+      closeOnBackdropClick={false}
+      showCloseButton={false}
+      footer={
+        <>
+          <Button variant="outlined" onClick={onCancel}>
+            {messages.common.cancel}
+          </Button>
+          <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
+            {mode === 'create' ? t.actions.add : messages.common.save}
+          </Button>
+        </>
+      }
+    >
       {banner}
-
       {formGrid}
-
-      <div className="form-actions">
-        {/* 등록 팝업에는 사용 중지 자리를 두지 않는다 — 아직 없는 자원이라 해당하지 않는 액션이다. */}
-        {deactivateDisabledReason === null ? (
-          <div className="field-cell form-actions-secondary">
-            <Button variant="outlined" size="sm" onClick={onDeactivate}>
-              {messages.common.deactivate}
-            </Button>
-          </div>
-        ) : (
-          <DisabledAction
-            label={messages.common.deactivate}
-            reason={deactivateDisabledReason}
-            className="form-actions-secondary"
-            size="sm"
-          />
-        )}
-
-        {/* 수정에서 「취소」는 기준값으로 되돌리고 읽기 전용 보기로 돌아간다(사용자 지시 2026-11-25) — 고친 것이 없어도 누른다. */}
-        <Button variant="outlined" onClick={onCancel}>
-          {messages.common.cancel}
-        </Button>
-
-        <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
-          {messages.common.save}
-        </Button>
-      </div>
-    </section>
+    </Dialog>
   );
 };

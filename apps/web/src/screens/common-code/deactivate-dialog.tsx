@@ -11,6 +11,8 @@ export interface DeactivateDialogProps {
   onClose: () => void;
   onConfirm: () => void;
   isSaving: boolean;
+  /** 확인을 아직 누를 수 없을 때(예: 잠금 토큰을 줄 상세를 받는 중). 「취소」는 잠그지 않는다. */
+  confirmDisabled?: boolean;
   /** 저장 실패 배너 슬롯. 창을 닫지 않고 이유를 보여야 다시 시도할 수 있다. */
   banner: ReactNode;
 }
@@ -38,6 +40,7 @@ export const DeactivateDialog = ({
   onClose,
   onConfirm,
   isSaving,
+  confirmDisabled = false,
   banner,
 }: DeactivateDialogProps) => (
   <Dialog
@@ -52,7 +55,7 @@ export const DeactivateDialog = ({
         <Button variant="outlined" disabled={isSaving} onClick={onClose}>
           {messages.common.cancel}
         </Button>
-        <Button loading={isSaving} disabled={isSaving} onClick={onConfirm}>
+        <Button loading={isSaving} disabled={isSaving || confirmDisabled} onClick={onConfirm}>
           {messages.common.deactivate}
         </Button>
       </>

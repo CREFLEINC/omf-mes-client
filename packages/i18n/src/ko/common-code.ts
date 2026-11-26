@@ -468,6 +468,8 @@ export const commonCode = {
       add: '코드값 추가',
       /** 읽기 전용 정보를 고치는 폼으로 바꾼다(사용자 지시 2026-11-25). */
       edit: '수정',
+      /** 줄의 [수정]이 여는 팝업 제목(사용자 지시 2026-11-26). */
+      editTitle: '코드값 수정',
     },
     actionReasons: {
       /* 계약이 `codeGroupId`를 필수 쿼리로 두었다 — 그룹 없이는 만들 자리 자체가 없다. */
@@ -499,6 +501,8 @@ export const commonCode = {
       effectivePeriod: '유효기간',
       effectiveFrom: '유효 시작',
       effectiveTo: '유효 종료',
+      /** 표 끝 열 — 줄마다 [사용 중지] · [수정](사용자 지시 2026-11-26). */
+      manage: '관리',
     },
     empty: {
       groupNotSelected: '좌측에서 코드그룹을 먼저 고르세요',

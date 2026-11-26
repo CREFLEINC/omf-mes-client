@@ -11,6 +11,8 @@ const renderPane = (overrides: Partial<Parameters<typeof CodeValueListPane>[0]> 
   const onIncludeInactiveChange = vi.fn<(includeInactive: boolean) => void>();
   const onChangePage = vi.fn<(page: number) => void>();
   const onSelect = vi.fn<(codeValueId: number) => void>();
+  const onEdit = vi.fn<(codeValueId: number) => void>();
+  const onDeactivate = vi.fn<(codeValueId: number) => void>();
 
   render(
     <CodeValueListPane
@@ -24,13 +26,22 @@ const renderPane = (overrides: Partial<Parameters<typeof CodeValueListPane>[0]> 
       onChangePage={onChangePage}
       selectedCodeValueId={null}
       onSelect={onSelect}
+      onEdit={onEdit}
+      onDeactivate={onDeactivate}
       addAction={<button type="button">코드값 추가</button>}
       loadError={null}
       {...overrides}
     />,
   );
 
-  return { onIncludeInactiveChange, onChangePage, onSelect, user: userEvent.setup() };
+  return {
+    onIncludeInactiveChange,
+    onChangePage,
+    onSelect,
+    onEdit,
+    onDeactivate,
+    user: userEvent.setup(),
+  };
 };
 
 const codeCells = (): string[] =>
@@ -40,14 +51,15 @@ const codeCells = (): string[] =>
     .map((row) => within(row).getAllByRole('cell')[0]?.textContent ?? '');
 
 describe('CodeValueListPane — 목록 표시', () => {
-  it('코드·코드명·정렬 순서·유효기간 네 열을 낸다', () => {
+  /* 마지막 열 「관리」 — 줄마다 [사용 중지] · [수정](표 아래 상세 칸을 걷었다 · 사용자 지시 2026-11-26). */
+  it('코드·코드명·정렬 순서·유효기간·관리 다섯 열을 낸다', () => {
     renderPane();
 
     // 열 순서를 바꾸는 손잡이 아이콘 글자(`drag_indicator`)는 빼고 본다.
     const headers = screen
       .getAllByRole('columnheader')
       .map((cell) => cell.textContent?.replace('drag_indicator', ''));
-    expect(headers).toEqual(['코드', '코드명', '정렬 순서', '유효기간']);
+    expect(headers).toEqual(['코드', '코드명', '정렬 순서', '유효기간', '관리']);
   });
 
   /* C26 — 계약이 목록의 정렬을 명시하지 않았다. 받은 순서를 그대로 쓰면 순서가 서버 재량이 된다. */
@@ -117,6 +129,24 @@ describe('CodeValueListPane — 목록 표시', () => {
 
     expect(onSelect).toHaveBeenCalledTimes(1);
     expect(onSelect).toHaveBeenCalledWith(2001);
+  });
+
+  it('줄의 [수정] · [사용 중지]는 그 코드값 번호를 알리고 줄 고르기는 따로 부르지 않는다', async () => {
+    const { onSelect, onEdit, onDeactivate, user } = renderPane();
+
+    await user.click(screen.getByRole('button', { name: 'SYN-CV-02 수정' }));
+    await user.click(screen.getByRole('button', { name: 'SYN-CV-01 사용 중지' }));
+
+    expect(onEdit).toHaveBeenCalledWith(2002);
+    expect(onDeactivate).toHaveBeenCalledWith(2001);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('이미 미사용인 줄은 [사용 중지]가 잠기고 [수정]은 열려 있다', () => {
+    renderPane();
+
+    expect(screen.getByRole('button', { name: 'SYN-CV-03 사용 중지' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'SYN-CV-03 수정' })).toBeEnabled();
   });
 });
 

@@ -1,8 +1,10 @@
 import {
   AlertBanner,
+  Button,
   Checkbox,
   type Column,
   EmptyState,
+  Icon,
   SkeletonText,
   Table,
 } from '@crefle/web-ui';
@@ -33,6 +35,10 @@ export interface CodeValueListPaneProps {
   onChangePage: (page: number) => void;
   selectedCodeValueId: number | null;
   onSelect: (codeValueId: number) => void;
+  /** 줄의 [수정] — 그 코드값의 수정 팝업을 연다(사용자 지시 2026-11-26). */
+  onEdit: (codeValueId: number) => void;
+  /** 줄의 [사용 중지] — 확인 창을 연다. 이미 미사용인 줄은 단추가 잠긴다. */
+  onDeactivate: (codeValueId: number) => void;
   /** 「코드값 추가」 자리. 그룹을 고르지 않았을 때의 비활성 처리는 조립부가 정한다 */
   addAction: ReactNode;
   /**
@@ -74,6 +80,8 @@ export const CodeValueListPane = ({
   onChangePage,
   selectedCodeValueId,
   onSelect,
+  onEdit,
+  onDeactivate,
   addAction,
   loadError,
 }: CodeValueListPaneProps) => {
@@ -114,13 +122,52 @@ export const CodeValueListPane = ({
       width: '200px',
       render: (row) => formatPeriod(row.effectiveFrom, row.effectiveTo),
     },
+    {
+      /*
+       * 관리 — 줄마다 [사용 중지] · [수정](표 아래 상세 칸을 걷었다 · 사용자 지시 2026-11-26). 두 단추는 같은 크기 · 테두리 ·
+       * 아이콘 모양. 이미 미사용인 줄의 [사용 중지]는 잠그고 사유는 마우스를 올리면 보인다.
+       */
+      key: 'manage',
+      header: t.fields.manage,
+      width: '220px',
+      render: (row) => (
+        <span className="common-code-value-actions">
+          <Button
+            variant="outlined"
+            size="sm"
+            leadingIcon={<Icon name="block" size={16} aria-hidden />}
+            disabled={!row.isActive}
+            title={row.isActive ? undefined : t.actionReasons.deactivateAlreadyDone}
+            aria-label={`${row.code} ${messages.common.deactivate}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onDeactivate(row.codeValueId);
+            }}
+          >
+            {messages.common.deactivate}
+          </Button>
+          <Button
+            variant="outlined"
+            size="sm"
+            leadingIcon={<Icon name="edit" size={16} aria-hidden />}
+            aria-label={`${row.code} ${t.actions.edit}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onEdit(row.codeValueId);
+            }}
+          >
+            {t.actions.edit}
+          </Button>
+        </span>
+      ),
+    },
   ];
   /*
    * 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다 — 코드그룹 목록과 같다. 열 폭은 상세 상자 폭에 맞춘다(사용자 지시
    * 2026-11-25 — 종전 `.wide-table` 최소 폭이 상자보다 넓어 「유효기간」이 잘리고 표 안에 스크롤이 생겼다).
    */
   const ordered = useColumnOrder('omf-mes:common-code:columns:code-values:order', baseColumns);
-  const resizable = useColumnWidths('omf-mes:common-code:columns:code-values', ordered);
+  const resizable = useColumnWidths('omf-mes:common-code:columns:code-values:v2', ordered);
   const fit = useFitColumns(resizable.columns);
 
   /**

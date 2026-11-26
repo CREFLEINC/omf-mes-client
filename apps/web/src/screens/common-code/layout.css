@@ -172,3 +172,11 @@ dialog .field-cell.users-roles-required-empty > div > button[aria-haspopup] {
   grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
   gap: var(--space-2) var(--space-4);
 }
+
+/* 코드값 표 관리 열 — [사용 중지] · [수정] 한 줄(사용자 지시 2026-11-26). */
+.common-code-value-actions {
+  display: inline-flex;
+  gap: var(--space-2);
+  justify-content: center;
+  white-space: nowrap;
+}

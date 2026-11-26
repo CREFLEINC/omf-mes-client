@@ -350,6 +350,7 @@ export const commonCode: Translated<typeof ko.commonCode> = {
     actions: {
       add: 'Thêm giá trị mã',
       edit: 'Sửa',
+      editTitle: 'Sửa giá trị mã',
     },
     actionReasons: {
       addNeedsGroup: 'Thêm giá trị mã chỉ thực hiện được sau khi chọn nhóm mã ở bên trái.',
@@ -374,6 +375,7 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       effectivePeriod: 'Thời hạn hiệu lực',
       effectiveFrom: 'Hiệu lực từ',
       effectiveTo: 'Hiệu lực đến',
+      manage: 'Quản lý',
     },
     empty: {
       groupNotSelected: 'Hãy chọn nhóm mã ở bên trái trước',
