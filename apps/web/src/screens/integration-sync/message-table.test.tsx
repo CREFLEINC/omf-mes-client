@@ -10,6 +10,7 @@ const NOW = new Date('2026-08-06T12:00:00+09:00');
 const renderTable = (props: Partial<Parameters<typeof MessageTable>[0]> = {}) => {
   const onFirstPage = vi.fn();
   const onOpenDetail = vi.fn();
+  const onCloseDetail = vi.fn();
   const onRetry = vi.fn();
   const onSelectionChange = vi.fn();
   render(
@@ -20,6 +21,7 @@ const renderTable = (props: Partial<Parameters<typeof MessageTable>[0]> = {}) =>
       isBeyondLast={false}
       onFirstPage={onFirstPage}
       onOpenDetail={onOpenDetail}
+      onCloseDetail={onCloseDetail}
       onRetry={onRetry}
       retryingId={null}
       selectedIds={[]}
@@ -29,7 +31,14 @@ const renderTable = (props: Partial<Parameters<typeof MessageTable>[0]> = {}) =>
     />,
   );
 
-  return { onFirstPage, onOpenDetail, onRetry, onSelectionChange, user: userEvent.setup() };
+  return {
+    onFirstPage,
+    onOpenDetail,
+    onCloseDetail,
+    onRetry,
+    onSelectionChange,
+    user: userEvent.setup(),
+  };
 };
 
 describe('MessageTable', () => {
@@ -37,7 +46,7 @@ describe('MessageTable', () => {
     renderTable({ isLoading: true });
 
     expect(
-      screen.getByRole('status', { name: '연계 메시지 목록을 불러오는 중' }),
+      screen.getByRole('status', { name: '연동 이력 목록을 불러오는 중' }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
@@ -45,15 +54,15 @@ describe('MessageTable', () => {
   it('기간을 정한 뒤 0건이면 없다고만 낸다 — 고치라는 안내문은 두지 않는다', () => {
     renderTable({ rows: [] });
 
-    expect(screen.getByText('조건에 맞는 기록이 없습니다')).toBeInTheDocument();
+    expect(screen.getByText('조건에 맞는 연동 이력이 없습니다')).toBeInTheDocument();
     expect(screen.queryByText(/다시 조회하세요/)).toBeNull();
   });
 
   it('기간이 없어 아직 조회하지 않았으면 다른 안내를 낸다 — 결과가 없는 것과 다르다', () => {
     renderTable({ rows: [], hasPeriod: false });
 
-    expect(screen.getByText('기간을 고르고 조회하세요')).toBeInTheDocument();
-    expect(screen.queryByText('조건에 맞는 기록이 없습니다')).not.toBeInTheDocument();
+    expect(screen.getByText('연동일을 고르고 조회하세요')).toBeInTheDocument();
+    expect(screen.queryByText('조건에 맞는 연동 이력이 없습니다')).not.toBeInTheDocument();
   });
 
   it('null이 섞인 행도 셀을 비우지 않는다', () => {
@@ -69,15 +78,18 @@ describe('MessageTable', () => {
       ],
     });
 
+    // 빈 값이 섞여도 보이는 칸은 비지 않는다(오류 내용 등 빈 값이 많은 칸은 상세로 옮겼다 · #358).
     const row = screen.getAllByRole('row')[1] as HTMLElement;
-    expect(within(row).getByText('—')).toBeInTheDocument();
+    for (const cell of within(row).getAllByRole('cell').slice(1)) {
+      expect(cell.textContent?.trim()).not.toBe('');
+    }
   });
 
   it('시도 횟수가 0이어도 그대로 보인다 — 0을 빈 칸으로 접으면 안 된다', () => {
     renderTable({ rows: [messageRow({ retryCount: 0 })] });
 
     const row = screen.getAllByRole('row')[1] as HTMLElement;
-    expect(within(row).getByText('0')).toBeInTheDocument();
+    expect(within(row).getByText('0회')).toBeInTheDocument();
   });
 
   it('정렬 가능한 머리글을 두지 않는다 — 계약에 정렬 파라미터가 없다', () => {
@@ -96,6 +108,15 @@ describe('MessageTable', () => {
     await user.click(screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 상세 열기' }));
 
     expect(onOpenDetail).toHaveBeenCalledWith(9001);
+  });
+
+  it('열린 줄을 다시 누르면 상세를 닫는다', async () => {
+    const { onOpenDetail, onCloseDetail, user } = renderTable({ openedId: 9001 });
+
+    await user.click(screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 상세 열기' }));
+
+    expect(onCloseDetail).toHaveBeenCalledTimes(1);
+    expect(onOpenDetail).not.toHaveBeenCalled();
   });
 
   it('재처리 버튼은 상태와 무관하게 언제나 누를 수 있다', async () => {
@@ -153,7 +174,7 @@ describe('MessageTable', () => {
     const { onFirstPage, user } = renderTable({ rows: [], isBeyondLast: true });
 
     expect(screen.getByText('이 쪽에는 결과가 없습니다')).toBeInTheDocument();
-    expect(screen.queryByText('조건에 맞는 기록이 없습니다')).not.toBeInTheDocument();
+    expect(screen.queryByText('조건에 맞는 연동 이력이 없습니다')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '첫 쪽으로' }));
 

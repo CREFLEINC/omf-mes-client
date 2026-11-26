@@ -124,10 +124,9 @@ export const defectCauseCode = {
   /** 탭 줄 오른쪽 사용 여부 칩(사용자 지시 2026-10-29 · #209) */
   usage: {
     label: '사용 여부로 거르기',
-    all: '전체',
     active: '사용',
     inactive: '미사용',
-    /** 칩 글 — 「사용 6」처럼 건수를 붙인다(사용자 지시 · #209) */
+    /** 칩 글 — 「사용 6」처럼 건수만 붙인다(사용자 지시 2026-11-25 — 라벨에는 「건」을 빼고 · #358) */
     count: (label: string, count: number): string => `${label} ${String(count)}`,
   },
   /** 표 머리 문구(사용자 지시 2026-10-29 · #209). 폼 · 상세 이름표는 `fields` 를 그대로 쓴다. */
@@ -135,7 +134,7 @@ export const defectCauseCode = {
     defectCode: '불량코드',
     defectName: '불량명',
     kind: '구분',
-    isActive: '사용 여부',
+    isActive: '사용 유무',
   },
   /** 상세 카드(omf-all-around#209) — 제목 · 상태 칩 · 이름표 상자, 수정은 창에서. */
   detail: {

@@ -3,6 +3,10 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useState, type ReactNode } from 'react';
 
 import { hasChangedFilters } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
 import { codeNote, codePlaceholder } from './code-options';
 import { DEFAULT_FILTERS } from './filters';
 import { SelectField } from './select-field';
@@ -36,7 +40,7 @@ export interface RouteFilterBarProps {
  * **조건 칩을 두지 않는다**(C-6). 네 조건이 모두 조건 줄에 보여 칩으로 겹쳐 적을 것이 없다 —
  * 한 줄에 들어가 「조건 더보기」로 접을 것도 없다. 「초기화」는 바뀐 것이 있을 때만 보인다.
  *
- * **「미사용 포함」이 화면 어휘다.** 계약 파라미터(`activeOnly`)는 방향이 반대이고 기본값이
+ * **「미사용 포함」이 화면 어휘다(조회 줄 체크칸 · 사용자 지시 2026-11-25).** 계약 파라미터(`activeOnly`)는 방향이 반대이고 기본값이
  * 없지만, 그것은 계약의 사정이며 뒤집는 자리는 `filters.ts` 한 곳이다.
  *
  * **승인 유형 선택지는 고정 OpenAPI가 닫은 enum을 그대로 쓴다.** 비어 있는
@@ -105,12 +109,16 @@ export const RouteFilterBar = ({
    */
   const typeOptions = approvalTypeOptions.length === 0 ? [] : withAll(approvalTypeOptions);
 
+  const searchRef = useFitPlaceholderWidth(t.filters.qPlaceholder);
+
   const isChanged = hasChangedFilters(DEFAULT_FILTERS, filters, appliedFilters);
 
   return (
-    <div className="filter-bar">
+    <div className="filter-bar approval-route-filter">
       <SelectField
-        label={t.fields.approvalTypeCode}
+        label={t.filters.approvalTypeSelect}
+        /* 승인 유형은 열한 개뿐이라 검색칸 없이 펼치기만 한다(사용자 지시 2026-11-24). */
+        searchable={false}
         options={typeOptions}
         value={filters.approvalTypeCode}
         note={codeNote(approvalTypeOptions)}
@@ -124,9 +132,10 @@ export const RouteFilterBar = ({
        * 규범 3-2 — 선택칸이 「코드 · 이름」을 고른다. 최소 폭을 주지 않으면
        * 선택지 목록이 트리거 폭에 갇혀 잘리고, 무엇을 고르는지 읽을 수 없다.
        */}
+      {/* 사업부 칸은 좁음(160px · 사용자 지시 2026-11-24) — 넓은 칸(`wide`)을 뺐다. */}
       <SelectField
-        wide
-        label={t.fields.businessUnit}
+        className="approval-route-business-unit"
+        label={t.filters.businessUnitSelect}
         options={withAll(businessUnitOptions)}
         value={filters.businessUnitId}
         note={businessUnitNote}
@@ -136,7 +145,10 @@ export const RouteFilterBar = ({
       />
 
       <SearchInput
+        containerClassName={FIT_PLACEHOLDER_CLASS}
         label={t.fields.q}
+        placeholder={t.filters.qPlaceholder}
+        ref={searchRef}
         value={filters.q}
         onChange={(event) => {
           setFilters((prev) => ({ ...prev, q: event.target.value }));
@@ -146,6 +158,7 @@ export const RouteFilterBar = ({
         clearLabel={messages.common.clear}
       />
 
+      {/* 「미사용 포함」 체크칸 — 켜면 사용 · 미사용을 모두 본다(사용자 지시 2026-11-25 · 위 줄 「사용」 라벨을 대신한다). */}
       <div className="field-cell field-cell-unlabeled">
         <Checkbox
           checked={filters.includeInactive}

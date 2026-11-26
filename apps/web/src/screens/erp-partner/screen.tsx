@@ -3,12 +3,17 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { BoardFrame } from '../../patterns/board-frame';
-import { BoardTable } from '../../patterns/board-table';
 import { hasChangedFilters } from '../../patterns/filter-more';
-import { OneLine } from '../../patterns/po-board';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
+import { OneLine, useFitToViewport } from '../../patterns/po-board';
+import { PAGE_SIZES, PageNav, type PageSize } from '../../patterns/page-nav';
 import { Select } from '../../patterns/select';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
+import { UsageChip } from '../../patterns/usage-chip';
+import { ErpFilterActions, ErpListTable } from '../erp-item/erp-data-parts';
 import {
   type Partner,
   type PartnerListQuery,
@@ -24,8 +29,6 @@ const t = messages.erpPartner;
 /** 값이 없는 칸은 비워 두지 않는다 — 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
 const orEmpty = (value: string | number | null | undefined): ReactNode =>
   value === null || value === undefined || value === '' ? t.values.empty : String(value);
-
-const activeLabel = (isActive: boolean): string => (isActive ? t.values.active : t.values.inactive);
 
 /** 역할 칸. 불러오는 중·실패·없음을 서로 다른 문구로 낸다 — 실패를 「역할 없음」으로 보이면 안 된다. */
 const rolesText = (state: RolesState | undefined): string => {
@@ -60,20 +63,28 @@ const readPage = (params: URLSearchParams): number => {
   return Number.isInteger(page) && page > 1 ? page : 1;
 };
 
-const toSearchParams = (filters: Filters, page = 1) => {
+/** 쪽 크기 — 고른 적이 없으면 `null`(서버 기본값). */
+const readSize = (params: URLSearchParams): PageSize | null => {
+  const size = Number(params.get('size') ?? '');
+  return PAGE_SIZES.find((option) => option === size) ?? null;
+};
+
+const toSearchParams = (filters: Filters, page = 1, size: PageSize | null = null) => {
   const next = new URLSearchParams();
   if (filters.q !== '') next.set('q', filters.q);
   if (filters.role !== '') next.set('role', filters.role);
   if (filters.includeInactive) next.set('inactive', '1');
   if (page > 1) next.set('page', String(page));
+  if (size !== null) next.set('size', String(size));
   return next;
 };
 
-const toListQuery = (filters: Filters, page: number): PartnerListQuery => ({
+const toListQuery = (filters: Filters, page: number, size: PageSize | null): PartnerListQuery => ({
   ...(filters.q !== '' ? { q: filters.q } : {}),
   ...(filters.role !== '' ? { roleTypeCode: filters.role } : {}),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
+  ...(size !== null ? { size } : {}),
 });
 
 const ROLE_OPTIONS = [
@@ -90,6 +101,7 @@ interface FilterBarProps {
 /** 입력 중인 값은 이 줄이 갖고, 「조회」를 눌러야 주소로 옮긴다 — 글자마다 요청이 나가지 않게 한다. */
 const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
   const [draft, setDraft] = useState<Filters>(applied);
+  const searchRef = useFitPlaceholderWidth(t.fields.qPlaceholder);
   const roleId = useId();
   const { q, role, includeInactive } = applied;
 
@@ -106,23 +118,18 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
     setDraft(EMPTY_FILTERS);
     onReset();
   };
+
   const isChanged = hasChangedFilters(EMPTY_FILTERS, draft, applied);
 
   return (
     <form
-      className="filter-bar"
+      className="filter-bar erp-data-filter-row"
       onSubmit={(event) => {
         event.preventDefault();
         onSearch({ ...draft, q: draft.q.trim() });
       }}
     >
-      <TextField
-        label={t.fields.q}
-        value={draft.q}
-        onChange={(event) => {
-          setDraft((prev) => ({ ...prev, q: event.target.value }));
-        }}
-      />
+      {/* 역할 선택 · 거래처 검색 · 미사용 포함 순서(사용자 지시 2026-11-24). */}
       <div className="field-cell">
         <label className="field-label" htmlFor={roleId}>
           {t.fields.role}
@@ -136,6 +143,16 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
           }}
         />
       </div>
+      <TextField
+        containerClassName={FIT_PLACEHOLDER_CLASS}
+        label={t.fields.q}
+        placeholder={t.fields.qPlaceholder}
+        ref={searchRef}
+        value={draft.q}
+        onChange={(event) => {
+          setDraft((prev) => ({ ...prev, q: event.target.value }));
+        }}
+      />
       <div className="field-cell field-cell-unlabeled">
         <Checkbox
           checked={draft.includeInactive}
@@ -147,58 +164,52 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
           {t.fields.includeInactive}
         </Checkbox>
       </div>
-      <div className="field-cell field-cell-unlabeled">
-        <div className="filter-actions">
-          <Button type="submit">{messages.common.search}</Button>
-          {isChanged && (
-            <Button variant="outlined" onClick={reset}>
-              {messages.common.reset}
-            </Button>
-          )}
-        </div>
-      </div>
+      <ErpFilterActions onReset={reset} showReset={isChanged} />
     </form>
   );
 };
 
+const EMPTY_ROWS: Partner[] = [];
+
 /**
  * 거래처 조회 (ERP). ERP 가 보낸 거래처와 역할(공급사·고객사…)을 읽기만 한다 — 쓰기 조작이 없다.
  *
- * 입고 관리 짜임이다(사용자 지시 2026-10-27): 위에 조회 조건, 아래에 거래처 목록 한 구획. 상세는 두지 않는다 — 상세가
- * 목록 줄과 같은 내용이라(사용자 지시 2026-10-27) 줄을 고르는 일도 없다. 조건·쪽을 전부 주소에 둔다. 역할은 목록
- * 응답에 없어 보이는 행마다 따로 조회한다(`usePartnerRoles`).
+ * 조회 조건 · 목록만 둔다(omf-all-around#358) — ERP 가 준 칸은 모두 목록 열에 있어 상세 칸은 두지 않는다(사용자 지시
+ * 2026-11-24). 조건·쪽을 전부 주소에 둔다. 역할은 목록 응답에 없어 보이는 행마다 따로 조회한다(`usePartnerRoles` · 종전 그대로).
  */
 export const ErpPartnerScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  /* 목록이 창 바닥에서 멈추게 윗변을 잰다(ERP 수신 탭과 같은 아래 여백). */
+  const { splitRef, aboveRef } = useFitToViewport();
 
   const filters = readFilters(searchParams);
   const page = readPage(searchParams);
+  const size = readSize(searchParams);
 
-  const list = usePartnerList(toListQuery(filters, page));
-  const rows = list.data?.items ?? [];
+  const list = usePartnerList(toListQuery(filters, page, size));
+  const rows = list.data?.items ?? EMPTY_ROWS;
   const roles = usePartnerRoles(rows.map((row) => row.partnerId));
-  const meta = list.data?.page ?? { page, size: 0, total: 0 };
+  const meta = list.data?.page ?? { page, size: size ?? 0, total: 0 };
 
   // 서버가 준 쪽을 정본으로 쓴다. size가 0이면 나눗셈이 무한대가 되므로 하한을 둔다.
-  const size = meta.size > 0 ? meta.size : 1;
   const shownPage = meta.page > 0 ? meta.page : 1;
-  const totalPages = Math.ceil(meta.total / size);
-  const start = (shownPage - 1) * size + 1;
+  const totalPages = Math.ceil(meta.total / (meta.size > 0 ? meta.size : 1));
   const isBeyondLast = meta.total > 0 && shownPage > totalPages;
 
   /** 조건·쪽을 주소로 옮긴다 — 주소가 바뀌면 목록을 다시 조회한다. */
-  const applyQuery = (nextFilters: Filters, nextPage = 1) => {
-    setSearchParams(toSearchParams(nextFilters, nextPage));
+  const applyQuery = (nextFilters: Filters, nextPage = 1, nextSize = size) => {
+    setSearchParams(toSearchParams(nextFilters, nextPage, nextSize));
   };
 
   const columns: Column<Partner>[] = [
     { key: 'partnerCode', header: t.table.partnerCode, width: '120px' },
-    /* 남는 폭을 이 열이 다 받는다 — 폭을 주지 않는 열은 이것 하나다. */
     {
       key: 'partnerName',
       header: t.table.partnerName,
+      width: '180px',
       render: (row) => <OneLine text={row.partnerName} />,
     },
+    /* ERP 거래처 코드 · 국가 — 레이아웃 통일(055c65e62)에서 빠졌던 열을 종전 모양 그대로 되살린다(사용자 지시 2026-11-24). */
     {
       key: 'erpPartnerCode',
       header: t.table.erpPartnerCode,
@@ -214,14 +225,14 @@ export const ErpPartnerScreen = () => {
     {
       key: 'roles',
       header: t.table.roles,
-      width: '180px',
+      width: '160px',
       render: (row) => <OneLine text={rolesText(roles.get(row.partnerId))} />,
     },
     {
       key: 'isActive',
       header: t.table.isActive,
       width: '72px',
-      render: (row) => activeLabel(row.isActive),
+      render: (row) => <UsageChip isActive={row.isActive} />,
     },
   ];
 
@@ -245,78 +256,73 @@ export const ErpPartnerScreen = () => {
     <EmptyState size="sm" live title={t.empty.noResultTitle} />
   );
 
+  /*
+   * 조회 상자 + 목록 한 상자 — 상세 칸은 두지 않는다(목록에 같은 값이 모두 열로 있다 · 사용자 지시 2026-11-24).
+   * 상자 짜임 · 클래스는 같은 묶음의 ERP 수신 탭과 같다. 줄 고르기도 없다 — 고를 상세가 없다.
+   */
   return (
-    <BoardFrame
-      above={{
-        label: t.panes.filter,
-        content: (
-          <>
-            {list.isError && (
-              <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
+    <div className="list-detail-workspace">
+      <section
+        ref={aboveRef}
+        className="pane po-board-filter list-detail-filter"
+        aria-label={t.panes.filter}
+      >
+        {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
+        <FilterBar
+          applied={filters}
+          onSearch={(next) => {
+            applyQuery(next);
+          }}
+          onReset={() => {
+            applyQuery(EMPTY_FILTERS);
+          }}
+        />
+      </section>
+      <div ref={splitRef} className="po-board-split list-detail-split erp-data-list-only-split">
+        <section className="pane list-detail-list" aria-label={t.panes.list}>
+          <div className="po-board-list-head">
+            <h2 className="pane-title">{t.panes.list}</h2>
+            {list.data !== undefined && (
+              <span className="po-board-list-count">
+                {messages.common.paneList.count(list.data.page.total)}
+              </span>
             )}
-            {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-            <div className="pane po-board-filter">
-              <FilterBar
-                applied={filters}
-                onSearch={(next) => {
-                  applyQuery(next);
+          </div>
+          {/*
+           * 조회에 실패했으면 표 자리에 오류 배너만 낸다 — 실패를 「없습니다」로 보이면 안 된다. 배너는 목록 상자 안(ERP 수신
+           * 탭과 같은 자리 · 사용자 지시 2026-11-24).
+           */}
+          {list.isError ? (
+            <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
+          ) : list.isPending ? (
+            <div role="status" aria-label={t.loading.list}>
+              <SkeletonText lines={3} />
+            </div>
+          ) : (
+            <>
+              <ErpListTable
+                label={t.panes.list}
+                storageKey="omf-mes:erp-partner:columns:partners"
+                className="erp-data-list-static"
+                columns={columns}
+                rows={rows}
+                getRowId={(row) => String(row.partnerId)}
+                empty={emptySlot}
+              />
+              <PageNav
+                meta={meta}
+                buttonSize="md"
+                onChangePage={(nextPage) => {
+                  applyQuery(filters, nextPage);
                 }}
-                onReset={() => {
-                  applyQuery(EMPTY_FILTERS);
+                onChangeSize={(nextSize) => {
+                  applyQuery(filters, 1, nextSize);
                 }}
               />
-            </div>
-          </>
-        ),
-      }}
-      list={{
-        label: t.panes.list,
-        /* 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「없습니다」로 보이면 안 된다. */
-        content: list.isError ? null : list.isPending ? (
-          <div role="status" aria-label={t.loading.list}>
-            <SkeletonText lines={3} />
-          </div>
-        ) : (
-          <>
-            <BoardTable
-              label={t.panes.list}
-              widthKey="omf-mes:erp-partner:columns:partners"
-              minWidth="47rem"
-              columns={columns}
-              rows={rows}
-              getRowId={(row) => String(row.partnerId)}
-              empty={emptySlot}
-            />
-            <nav className="form-actions" aria-label={t.pageNav.label}>
-              <p className="field-note form-actions-secondary">
-                {rows.length > 0
-                  ? t.pageNav.range(start, start + rows.length - 1, meta.total)
-                  : t.pageNav.totalOnly(meta.total)}
-              </p>
-              <Button
-                variant="outlined"
-                size="sm"
-                disabled={shownPage <= 1}
-                onClick={() => {
-                  applyQuery(filters, shownPage - 1);
-                }}
-              >
-                {t.actions.prevPage}
-              </Button>
-              <Button
-                variant="outlined"
-                size="sm"
-                disabled={shownPage >= totalPages}
-                onClick={() => {
-                  applyQuery(filters, shownPage + 1);
-                }}
-              >
-                {t.actions.nextPage}
-              </Button>
-            </nav>
-          </>
-        ),
-      }}
-    />
+            </>
+          )}
+        </section>
+      </div>
+    </div>
   );
 };

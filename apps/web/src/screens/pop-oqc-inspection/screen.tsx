@@ -704,7 +704,8 @@ export const PopOqcInspectionScreen = () => {
               listRef={listRef}
               uomOf={uoms.codeOf}
               onSelect={(id) => {
-                if (!save.isSaving) setSelectedId(id);
+                /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+                if (!save.isSaving) setSelectedId((current) => (current === id ? null : id));
               }}
             />
           )}

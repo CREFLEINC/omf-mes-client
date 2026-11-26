@@ -18,7 +18,8 @@ export const equipmentFailure = {
   filters: {
     equipment: '설비',
     status: '상태',
-    period: '보고 기간',
+    periodFrom: '보고 시작일',
+    periodTo: '보고 종료일',
     openOnly: '미처리만',
     withoutOrder: '보전 지시 없는 건만',
     all: '전체',

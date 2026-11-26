@@ -147,6 +147,8 @@ export const stockAdjust = {
    */
   historyFields: {
     period: '전기일',
+    periodFrom: '전기 시작일',
+    periodTo: '전기 종료일',
     count: '대상 실사',
     reason: '조정 사유',
   },
@@ -214,7 +216,8 @@ export const stockAdjust = {
    */
   historyLineTable: {
     lineNo: '줄',
-    item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     lot: '자재 LOT',
     bookQty: '장부',
     actualQty: '실물',

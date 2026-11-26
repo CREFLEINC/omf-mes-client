@@ -10,7 +10,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import { pickRange } from '../../test/date-picker';
+import { pickDateRange } from '../../test/date-picker';
 import { auditEventFixtures } from './fixtures';
 import { MasterChangeScreen } from './screen';
 
@@ -254,7 +254,13 @@ describe('MasterChangeScreen — 기간 필수 조회', () => {
     await screen.findByText('SAMPLE_EVENT_A');
 
     // 시작·종료를 **모두** 적용값과 다른 날로 옮긴다 — 한끝만 옮기면 나머지 한끝이 무보증으로 남는다.
-    await pickRange(user, screen.getByLabelText('조회 기간'), '2026-07-20', '2026-07-25');
+    await pickDateRange(
+      user,
+      screen.getByLabelText('조회 시작일'),
+      screen.getByLabelText('조회 종료일'),
+      '2026-07-20',
+      '2026-07-25',
+    );
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(currentLocation()).toContain('from=2026-07-20');
@@ -278,7 +284,7 @@ describe('MasterChangeScreen — 기간 필수 조회', () => {
     expect(screen.getByRole('button', { name: '조회' })).toBeDisabled();
     expect(requestsTo(requests, LIST_PATH)).toHaveLength(0);
     // 기본 기간으로 덮어쓰지 않았다 — 사용자가 적어 넣은 시작이 그대로 남아 있다.
-    expect(screen.getByLabelText('조회 기간')).toHaveTextContent('2026-08-01');
+    expect(screen.getByLabelText('조회 시작일')).toHaveTextContent('2026-08-01');
   });
 
   it('주소의 기간이 비어 있으면 조회하지 않고 기간을 고르라고 안내한다', async () => {
@@ -300,13 +306,21 @@ describe('MasterChangeScreen — 기간 필수 조회', () => {
     );
     await screen.findByRole('status', { name: '변경 이력 목록을 불러오는 중' });
 
-    await pickRange(user, screen.getByLabelText('조회 기간'), '2026-07-20', '2026-07-25');
-    expect(screen.getByLabelText('조회 기간')).toHaveTextContent('2026-07-20 ~ 2026-07-25');
+    await pickDateRange(
+      user,
+      screen.getByLabelText('조회 시작일'),
+      screen.getByLabelText('조회 종료일'),
+      '2026-07-20',
+      '2026-07-25',
+    );
+    expect(screen.getByLabelText('조회 시작일')).toHaveTextContent('2026-07-20');
+    expect(screen.getByLabelText('조회 종료일')).toHaveTextContent('2026-07-25');
 
     release();
     await screen.findByText('SAMPLE_EVENT_A');
 
-    expect(screen.getByLabelText('조회 기간')).toHaveTextContent('2026-07-20 ~ 2026-07-25');
+    expect(screen.getByLabelText('조회 시작일')).toHaveTextContent('2026-07-20');
+    expect(screen.getByLabelText('조회 종료일')).toHaveTextContent('2026-07-25');
   });
 
   /*

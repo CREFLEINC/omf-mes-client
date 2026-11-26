@@ -153,6 +153,7 @@ export const ProposalWarehouseField = ({
           ) : (
             <ReferenceField
               label="입고 위치"
+              required
               valueLabel={manualLocation?.name ?? ''}
               source={{
                 title: '입고 위치 선택',

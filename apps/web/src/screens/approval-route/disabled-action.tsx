@@ -1,4 +1,4 @@
-import { Button } from '@crefle/web-ui';
+import { Button, type ButtonSize } from '@crefle/web-ui';
 import { useId } from 'react';
 
 export interface DisabledActionProps {
@@ -12,6 +12,8 @@ export interface DisabledActionProps {
    * 활성일 때와 같은 위계로 보여야 사용자가 「어느 버튼이 원래 주 액션인지」를 잃지 않는다.
    */
   variant?: 'filled' | 'outlined';
+  /** 상세 상자 안 보조 단추(다시 사용 등)는 `sm` — 취소 · 저장만 기본 크기(사용자 지시 2026-11-25). */
+  size?: ButtonSize;
 }
 
 /**
@@ -29,12 +31,13 @@ export const DisabledAction = ({
   reason,
   className,
   variant = 'outlined',
+  size,
 }: DisabledActionProps) => {
   const noteId = useId();
 
   return (
     <div className={className === undefined ? 'field-cell' : `field-cell ${className}`}>
-      <Button variant={variant} disabled aria-describedby={noteId}>
+      <Button variant={variant} size={size} disabled aria-describedby={noteId}>
         {label}
       </Button>
       <span id={noteId} className="field-note">

@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { HUB_ACTIONS_ID } from '../../patterns/hub-actions';
 import { plantToday } from '../../patterns/plant-time';
 import { SessionProvider, type Session } from '../../patterns/session';
-import { pickRange } from '../../test/date-picker';
+import { pickDateRange } from '../../test/date-picker';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import {
   createStubFetch,
@@ -710,6 +710,23 @@ describe('InboundScheduleScreen — 두 표', () => {
     expect(within(linesPane()).getByText('SAMPLE-PO-0002')).toBeInTheDocument();
   });
 
+  it('고른 발주 줄을 다시 누르면 고르기를 풀고 오른쪽이 「고르세요」로 돌아간다', async () => {
+    const { user } = renderScreen([listRoute(), linesRoute(), ...lookupRoutes()]);
+
+    await screen.findByText('SAMPLE-PO-0002');
+    await user.click(within(rowOf('SAMPLE-PO-0002')).getByText('합성 공급사 다'));
+    await waitFor(() => {
+      expect(currentLocation()).toContain('po=7102');
+    });
+
+    await user.click(within(rowOf('SAMPLE-PO-0002')).getByText('합성 공급사 다'));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('po=7102');
+    });
+    expect(within(linesPane()).getByText(t.empty.noOrderTitle)).toBeInTheDocument();
+  });
+
   it('왼쪽 표는 상태·납기·발주번호·진행·공급사명·미입고 품목이다', async () => {
     renderScreen([listRoute(), ...lookupRoutes()]);
 
@@ -992,7 +1009,13 @@ describe('InboundScheduleScreen — 빠른 조회', () => {
 
     await screen.findByText('SAMPLE-PO-0001');
     // 납기는 한 칸(기간 달력)이다 — 시작과 끝을 함께 골라야 값이 나간다(C-12).
-    await pickRange(user, screen.getByLabelText(t.fields.period), from, to);
+    await pickDateRange(
+      user,
+      screen.getByLabelText(t.fields.periodFrom),
+      screen.getByLabelText(t.fields.periodTo),
+      from,
+      to,
+    );
 
     await waitFor(() => {
       const query = requestsTo(requests, LIST_PATH).at(-1)?.url.searchParams;
@@ -1008,7 +1031,8 @@ describe('InboundScheduleScreen — 빠른 조회', () => {
 
     await screen.findByText('SAMPLE-PO-0001');
 
-    expect(screen.getByLabelText(t.fields.period)).toBeDisabled();
+    expect(screen.getByLabelText(t.fields.periodFrom)).toBeDisabled();
+    expect(screen.getByLabelText(t.fields.periodTo)).toBeDisabled();
   });
 
   it('「지연」은 켜는 즉시 납기 기간과 상관없이 지연만 조회한다', async () => {
@@ -1468,7 +1492,7 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     /* 칩 줄 맨 앞에 라벨 발행 대기가 선다. */
     const chips = screen.getByRole('group', { name: t.stage.label });
     expect(within(chips).getAllByRole('button')[0]).toHaveTextContent(
-      t.stage.groupCount(t.stage.group.LABEL, 1),
+      t.stage.chipCount(t.stage.group.LABEL, 1),
     );
   });
 
@@ -1658,8 +1682,8 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     const { requests, user } = renderScreen(progressRoutes(), '');
 
     const chips = await screen.findByRole('group', { name: t.stage.label });
-    expect(chips).toHaveTextContent(t.stage.groupCount(t.stage.group.RECEIPT, 5));
-    expect(chips).toHaveTextContent(t.stage.groupCount(t.stage.group.HELD, 2));
+    expect(chips).toHaveTextContent(t.stage.chipCount(t.stage.group.RECEIPT, 5));
+    expect(chips).toHaveTextContent(t.stage.chipCount(t.stage.group.HELD, 2));
     /* 앞선 서버는 라벨 발행 대기를 세지 않는다 — 그 칩만 빠진다. */
     expect(chips).not.toHaveTextContent(t.stage.group.LABEL);
 

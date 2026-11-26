@@ -86,7 +86,7 @@ describe('selectableOptions', () => {
   it('지금 고른 값이면 쓰지 않는 것도 표식과 함께 남긴다', () => {
     expect(selectableOptions(lookupSource(entries), '13')).toContainEqual({
       value: '13',
-      label: `제3공장${messages.toolMaster.values.inactiveSuffix}`,
+      label: `제3공장${messages.common.reference.inactiveSuffix}`,
     });
   });
 

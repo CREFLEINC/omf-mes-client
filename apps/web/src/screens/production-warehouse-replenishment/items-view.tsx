@@ -1,4 +1,4 @@
-import { Button, Checkbox, Chip, EmptyState, Skeleton } from '@crefle/web-ui';
+import { Button, Checkbox, Chip, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState, type ReactNode } from 'react';
 
@@ -12,6 +12,7 @@ import { ItemDialog } from './items-dialog';
 import { PAGE_SIZE, sourceOptions, useItemList, useWarehouses } from './queries';
 import { RunTimePanel } from './run-time-panel';
 import { formatQty } from './types';
+import { ListEmptyRow } from '../../patterns/list-empty';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 
 const t = messages.productionWarehouseReplenishment;
@@ -130,10 +131,7 @@ export const ItemsView = ({
       return <LoadErrorAlert error={list.error} onRetry={() => void list.refetch()} />;
     }
     if (list.data === undefined) return <Skeleton variant="rect" height="16rem" />;
-    if (list.data.items.length === 0) {
-      const filtered = JSON.stringify(filters) !== JSON.stringify(EMPTY_ITEMS);
-      return <EmptyState size="sm" title={filtered ? ti.emptyFiltered : ti.empty} />;
-    }
+    const filtered = JSON.stringify(filters) !== JSON.stringify(EMPTY_ITEMS);
     const total = list.data.page.total;
     const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
     return (
@@ -146,7 +144,8 @@ export const ItemsView = ({
             <thead>
               <tr>
                 <th scope="col">{ti.columns.productionWarehouse}</th>
-                <th scope="col">{ti.columns.item}</th>
+                <th scope="col">{ti.columns.itemCode}</th>
+                <th scope="col">{ti.columns.itemName}</th>
                 <th scope="col" className="is-number">
                   {ti.columns.point}
                 </th>
@@ -171,6 +170,13 @@ export const ItemsView = ({
               </tr>
             </thead>
             <tbody>
+              {list.data.items.length === 0 ? (
+                <ListEmptyRow
+                  colSpan={12}
+                  title={filtered ? ti.emptyFiltered : ti.empty}
+                  description={filtered ? messages.common.listEmptyHint : undefined}
+                />
+              ) : null}
               {list.data.items.map((row) => (
                 /* 행 어디를 눌러도 수정 창(screens/W-02-12.md 보기 4). 키보드는 품목 링크가 맡는다. */
                 <tr
@@ -179,7 +185,7 @@ export const ItemsView = ({
                   onClick={() => setEditing(row)}
                 >
                   <td>{row.productionWarehouseName}</td>
-                  <td className="is-wrap">
+                  <td>
                     <button
                       type="button"
                       className="link-cell"
@@ -188,9 +194,10 @@ export const ItemsView = ({
                         setEditing(row);
                       }}
                     >
-                      <span className="replenishment-code">{row.itemCode}</span> {row.itemName}
+                      <span className="replenishment-code">{row.itemCode}</span>
                     </button>
                   </td>
+                  <td className="is-wrap">{row.itemName}</td>
                   <td className="is-number">{formatQty(row.reorderPointQty)}</td>
                   <td className="is-number">{formatQty(row.targetQty)}</td>
                   <td>{row.uomCode}</td>
@@ -209,25 +216,29 @@ export const ItemsView = ({
             </tbody>
           </table>
         </div>
-        <div className="replenishment-pager">
-          <span className="field-note">{t.progress.pager.total(total)}</span>
-          <Button
-            variant="outlined"
-            size="sm"
-            disabled={page <= 1}
-            onClick={() => onPage(page - 1)}
-          >
-            {t.progress.pager.previous}
-          </Button>
-          <Button
-            variant="outlined"
-            size="sm"
-            disabled={page >= lastPage}
-            onClick={() => onPage(page + 1)}
-          >
-            {t.progress.pager.next}
-          </Button>
-        </div>
+        {list.data.items.length === 0 ? null : (
+          <>
+            <div className="replenishment-pager">
+              <span className="field-note">{t.progress.pager.total(total)}</span>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => onPage(page - 1)}
+              >
+                {t.progress.pager.previous}
+              </Button>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={page >= lastPage}
+                onClick={() => onPage(page + 1)}
+              >
+                {t.progress.pager.next}
+              </Button>
+            </div>
+          </>
+        )}
       </>
     );
   };

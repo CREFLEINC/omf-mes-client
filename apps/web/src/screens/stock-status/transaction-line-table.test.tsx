@@ -91,7 +91,8 @@ describe('TransactionLineTable — 열 구성', () => {
     renderTable();
 
     expect(headerNames()).toEqual([
-      t.history.lines.item,
+      t.history.lines.itemCode,
+      t.history.lines.itemName,
       t.history.lines.lot,
       t.history.lines.qty,
       t.history.lines.uom,
@@ -105,9 +106,12 @@ describe('TransactionLineTable — 열 구성', () => {
   it('축 열이 200px 이상이고 모든 열이 폭을 지정한다', () => {
     const all = columns();
 
-    expect(toPx(all.find((column) => column.key === 'item')?.width)).toBeGreaterThanOrEqual(
-      CODE_NAME_COLUMN_PX,
-    );
+    /* 품목은 품목코드 · 품목명 두 열로 나눴다(사용자 지시 2026-11-24) — 두 열 합으로 잰다. */
+    const itemWidth =
+      toPx(all.find((column) => column.key === 'item')?.width) +
+      toPx(all.find((column) => column.key === 'itemName')?.width);
+
+    expect(itemWidth).toBeGreaterThanOrEqual(CODE_NAME_COLUMN_PX);
     expect(all.every((column) => column.width !== undefined)).toBe(true);
   });
 

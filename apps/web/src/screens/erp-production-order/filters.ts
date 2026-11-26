@@ -51,10 +51,20 @@ export const readPage = (params: URLSearchParams): number => {
   return Number.isSafeInteger(page) && page > 0 ? page : 1;
 };
 
-/** 조건·쪽을 주소로 옮긴다. 빈 값은 적지 않아 주소가 짧게 남는다. */
+/** 쪽 크기 — 고를 수 있는 값(처음 값 20 포함). 주소에 없거나 모르는 값이면 `null`(처음 값). */
+export const LIST_PAGE_SIZES = [10, 20, 50] as const;
+export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
+
+export const readSize = (params: URLSearchParams): ListPageSize | null => {
+  const size = Number(params.get('size') ?? '');
+  return LIST_PAGE_SIZES.find((option) => option === size) ?? null;
+};
+
+/** 조건·쪽을 주소로 옮긴다. 빈 값은 적지 않아 주소가 짧게 남는다. 쪽 크기는 고른 때만 적는다. */
 export const toSearchParams = (
   filters: ErpProductionOrderFilters,
   page: number,
+  size: ListPageSize | null = null,
 ): URLSearchParams => {
   const params = new URLSearchParams();
   KEYS.forEach((key) => {
@@ -63,6 +73,7 @@ export const toSearchParams = (
   });
   if (filters.progress !== 'all') params.set('progress', filters.progress);
   if (page > 1) params.set('page', String(page));
+  if (size !== null) params.set('size', String(size));
   return params;
 };
 
@@ -82,14 +93,15 @@ export const isIsoDate = (value: string): boolean => {
   return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
 };
 
-export const LIST_PAGE_SIZE = 25;
+export const LIST_PAGE_SIZE = 20;
 
 /** 주소의 조건을 질의로 옮긴다. 빈 조건·읽히지 않는 값은 싣지 않는다. */
 export const toListQuery = (
   filters: ErpProductionOrderFilters,
   page: number,
+  size: ListPageSize | null = null,
 ): ErpProductionOrderListQuery => {
-  const query: ErpProductionOrderListQuery = { page, size: LIST_PAGE_SIZE };
+  const query: ErpProductionOrderListQuery = { page, size: size ?? LIST_PAGE_SIZE };
   const q = filters.q.trim();
   if (q !== '') query.q = q;
   const itemId = toId(filters.item);

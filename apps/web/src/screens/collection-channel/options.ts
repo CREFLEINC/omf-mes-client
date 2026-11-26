@@ -1,5 +1,3 @@
-import { messages } from '@omf-mes/i18n';
-
 import type { ChannelFilters, EquipmentFilters } from './types';
 
 /** 선택칸 한 줄. 디자인 시스템 `Select` 가 받는 형태 그대로다. */
@@ -27,7 +25,3 @@ export const defaultChannelFilters: ChannelFilters = {
  */
 export const codeLabel = (code: string, options: readonly CodeOption[]): string =>
   options.find((option) => option.value === code)?.label ?? code;
-
-/** 미사용 설비·채널의 이름에 붙는 표식. 칸을 하나 더 두지 않고 이름에 담는다. */
-export const withInactiveSuffix = (name: string, isActive: boolean): string =>
-  isActive ? name : `${name}${messages.collectionChannel.values.inactiveSuffix}`;

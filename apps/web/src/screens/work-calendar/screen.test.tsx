@@ -231,8 +231,13 @@ describe('W-05-09 작업 캘린더 — 목록', () => {
 
     await screen.findByRole('button', { name: 'CAL-A' });
 
-    expect(screen.getByText(t.values.active)).toBeInTheDocument();
-    expect(screen.getByText(t.values.inactive)).toBeInTheDocument();
+    /* 「사용 / 미사용」 라벨(사용자 지시 2026-11-24) — 열 머리 「사용」과 갈라 칸 안의 라벨만 센다. */
+    const inCells = (text: string) =>
+      screen
+        .getAllByText(text, { exact: true })
+        .filter((element) => element.closest('td') !== null);
+    expect(inCells(messages.common.usage.active)).not.toHaveLength(0);
+    expect(inCells(messages.common.usage.inactive)).not.toHaveLength(0);
   });
 
   it('처음에는 사용 중인 것만 조회한다', async () => {
@@ -462,7 +467,13 @@ describe('W-05-09 작업 캘린더 — 등록·수정', () => {
     await openEditOf(user, 'CAL-A');
 
     expect(within(formDialog()).getByRole('textbox', { name: /캘린더 코드/ })).toBeDisabled();
-    expect(screen.getByText(messages.editability.referenced(3))).toBeInTheDocument();
+    expect(screen.getByText(messages.editability.badge).closest('[title]')).toHaveAttribute(
+      'title',
+      messages.editability.referenced(3),
+    );
+    expect(
+      within(formDialog()).getByRole('textbox', { name: /캘린더 코드/ }),
+    ).toHaveAccessibleDescription(messages.editability.referenced(3));
   });
 
   it('등록은 멱등 키만 싣고 잠금 토큰은 싣지 않는다', async () => {
@@ -795,6 +806,17 @@ describe('W-05-09 작업 캘린더 — 달력 그리드', () => {
 
     expect(within(gridPane()).getByText(t.grid.pickCalendar)).toBeInTheDocument();
     expect(within(gridPane()).queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('고른 캘린더를 한 번 더 누르면 선택이 풀리고 고르라는 안내로 돌아간다', async () => {
+    const { user } = renderScreen();
+
+    await selectCalendar(user, 'CAL-A');
+    expect(screen.getByRole('button', { name: 'CAL-A' })).toHaveAttribute('aria-current', 'true');
+
+    await user.click(screen.getByRole('button', { name: 'CAL-A' }));
+    expect(screen.getByRole('button', { name: 'CAL-A' })).not.toHaveAttribute('aria-current');
+    expect(within(gridPane()).getByText(t.grid.pickCalendar)).toBeInTheDocument();
   });
 
   it('고르기 전에는 일자를 조회하지 않는다', async () => {

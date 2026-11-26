@@ -46,7 +46,7 @@ export const PqcSkippedOverview = ({
     <SkippedOverview
       title={tp.skipped.titlePqc}
       {...(tabs === undefined ? {} : { tabs })}
-      itemLabel={tp.skipped.item}
+      itemLabels={{ code: tp.skipped.itemCode, name: tp.skipped.itemName }}
       itemParts={
         itemCode === undefined ? null : { code: itemCode, name: item.data?.itemName ?? '-' }
       }

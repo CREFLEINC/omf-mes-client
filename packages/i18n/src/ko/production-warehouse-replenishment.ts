@@ -29,7 +29,7 @@ export const productionWarehouseReplenishment = {
   status: {
     WAITING: '대기',
     RELEASED: '배포',
-    IN_PROGRESS: '진행 중',
+    IN_PROGRESS: '진행',
     DONE: '완료',
     CLOSED: '마감',
     CANCELLED: '취소',
@@ -103,7 +103,8 @@ export const productionWarehouseReplenishment = {
       item: '품목',
       origin: '구분',
       status: '상태',
-      period: '요청일',
+      periodFrom: '요청 시작일',
+      periodTo: '요청 종료일',
     },
     columns: {
       requestNo: '요청번호',
@@ -143,7 +144,8 @@ export const productionWarehouseReplenishment = {
     autoActor: '자동 보충',
     lines: {
       label: '요청 줄',
-      item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       requested: '요청',
       picked: '집음',
       issued: '출고',
@@ -247,7 +249,8 @@ export const productionWarehouseReplenishment = {
     listLabel: '관리 품목 목록',
     columns: {
       productionWarehouse: '생산 창고',
-      item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       point: '보충 시점',
       target: '유지량',
       uom: '단위',
@@ -267,7 +270,8 @@ export const productionWarehouseReplenishment = {
     filters: {
       label: '도착 대기 조건',
       productionWarehouse: '생산 창고',
-      period: '출고일',
+      periodFrom: '출고 시작일',
+      periodTo: '출고 종료일',
     },
     lead: '창고 보충 요청에서 나간 출고만 보입니다. 생산 현장으로 나간 출고는 모바일 생산창고 입고에서 받습니다.',
     listLabel: '도착 대기 출고 목록',
@@ -314,7 +318,14 @@ export const productionWarehouseReplenishment = {
   receiveDialog: {
     title: (no: string): string => `수령, ${no}`,
     linesLabel: '수령 줄',
-    columns: { itemLot: '품목, LOT', issued: '출고', received: '받은 수량', reason: '차이 사유' },
+    columns: {
+      itemCode: '품목코드',
+      itemName: '품목명',
+      lot: 'LOT',
+      issued: '출고',
+      received: '받은 수량',
+      reason: '차이 사유',
+    },
     receivedLabel: (item: string): string => `${item} 받은 수량`,
     reasonLabel: (item: string): string => `${item} 차이 사유`,
     reasonPlaceholder: '사유 고르기',
@@ -368,7 +379,8 @@ export const productionWarehouseReplenishment = {
     noRerun: '오늘은 다시 실행하지 않습니다. 필요하면 직접 요청하세요.',
     linesLabel: (when: string): string => `${when} 실행 결과`,
     columns: {
-      item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       result: '결과',
       usable: '쓸 수 있는 양',
       requested: '요청',
@@ -389,6 +401,8 @@ export const productionWarehouseReplenishment = {
     editTitle: '관리 품목 고치기',
     productionWarehouse: '생산 창고',
     item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     point: '보충 시점',
     target: '유지량',
     source: '출고 자재 창고',

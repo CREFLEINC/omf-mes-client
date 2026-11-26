@@ -264,15 +264,12 @@ export const MeasurementGrid = ({
         {rows.length > 0 && (
           <FilterChips
             label={t.filterLabel}
-            options={[
-              { value: null, label: t.filterAll },
-              ...JUDGMENT_FILTERS.map((code) => ({
-                value: code,
-                label: t.judgmentNames[code] ?? code,
-              })),
-            ]}
+            options={JUDGMENT_FILTERS.map((code) => ({
+              value: code,
+              label: t.judgmentNames[code] ?? code,
+            }))}
             value={judgmentFilter}
-            countOf={(code) => (code === null ? rows.length : countOf(code))}
+            countOf={countOf}
             onChange={setJudgmentFilter}
           />
         )}

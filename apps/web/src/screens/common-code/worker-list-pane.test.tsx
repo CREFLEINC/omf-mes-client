@@ -25,7 +25,9 @@ const renderPane = (overrides: Partial<Parameters<typeof WorkerListPane>[0]> = {
         { page: 1, size: 50, total: workerFixtures.length },
         workerFixtures.length,
       )}
+      pageMeta={{ page: 1, size: 50, total: workerFixtures.length }}
       onChangePage={onChangePage}
+      onChangePageSize={vi.fn()}
       selectedWorkerId={null}
       onSelect={onSelect}
       loadError={null}
@@ -40,16 +42,21 @@ describe('WorkerListPane — 목록 표시', () => {
   it('사번·성명 두 열만 낸다', () => {
     renderPane();
 
-    expect(screen.getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual([
-      '사번',
-      '성명',
-    ]);
+    expect(
+      screen
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent?.replace('drag_indicator', '')),
+    ).toEqual(['사번', '성명']);
   });
 
-  it('미사용 행은 열을 늘리지 않고 이름 뒤 접미로 알린다', () => {
+  it('미사용 행은 열을 늘리지 않고 이름 옆 「미사용」 라벨로 알린다', () => {
     renderPane();
 
-    expect(screen.getByText('합성 작업자 C (미사용)')).toBeInTheDocument();
+    expect(
+      within(screen.getByText('합성 작업자 C').closest('.usage-name') as HTMLElement).getByText(
+        '미사용',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('사번을 누르면 그 작업자 번호를 알린다', async () => {
@@ -84,6 +91,17 @@ describe('WorkerListPane — 목록 표시', () => {
 });
 
 describe('WorkerListPane — 조건', () => {
+  /* 사용자 지시 2026-11-26 — 조회 조건은 「부서 선택」 → 「작업자 검색」 순서다. */
+  it('부서 선택이 작업자 검색보다 앞에 선다', () => {
+    renderPane();
+
+    const department = screen.getByRole('combobox', { name: '부서 선택' });
+    const search = screen.getByLabelText('작업자 검색');
+    expect(
+      department.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it('검색어를 고치고 조회를 누르면 그 조건을 알린다', async () => {
     const { onApplyFilters, user } = renderPane();
 

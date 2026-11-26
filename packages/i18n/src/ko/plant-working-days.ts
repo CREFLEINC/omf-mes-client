@@ -3,20 +3,16 @@
  * 고른다. 출고 작업일(생산일의 1근무일 전) 계산에 쓴다.
  */
 export const plantWorkingDays = {
-  /* 설계 W-CO-15 · 사이드바와 같은 글자다. */
-  title: '공장 근무일 설정',
-  breadcrumbRoot: '시스템 관리',
   /** 「공장별 근무일」 구획 제목 옆 ⓘ — 머리 아래에 늘 펼쳐 두지 않는다(관리웹 정리 시안 A). */
   description:
-    '출고 작업일(생산일 하루 전 근무일)을 셀 때 쓰는 공장별 주간 근무일입니다. 주말만 빼고 세며 공휴일은 따지지 않습니다. 설정하지 않은 공장은 주 5일로 셉니다.',
+    '출고 작업일은 공장별 근무 요일을 기준으로 생산일 직전 근무일로 정합니다. 공휴일은 별도로 제외하지 않습니다. 미설정 공장은 주 5일 근무 기준을 적용합니다.',
   tableLabel: '공장별 근무일',
   columns: {
     plant: '공장',
     days: '주간 근무일',
     off: '휴일',
-    example: (date: string, weekday: string): string =>
-      `예: 생산일 ${date}(${weekday})의 출고 작업일`,
-    lastChanged: '마지막 변경',
+    example: '출고 작업일 예시',
+    lastChanged: '최근 변경일',
   },
   options: {
     five: '주 5일제 (월~금)',
@@ -26,18 +22,21 @@ export const plantWorkingDays = {
   /** 0 = 일 … 6 = 토. */
   weekdays: ['일', '월', '화', '수', '목', '금', '토'],
   values: {
-    /** 예시 열 — 건너뛴 휴일을 함께 보인다. */
-    example: (date: string, weekday: string, skipped: string): string =>
-      skipped === '' ? `${date}(${weekday})` : `${date}(${weekday}) — ${skipped}을 건너뜀`,
-    lastChanged: (date: string): string => `${date}부터 적용`,
+    /** 예시 열 — 날짜만. 건너뛴 휴일은 옆 보조 글(사용자 지시 2026-11-26). */
+    example: (date: string, weekday: string): string => `${date}(${weekday})`,
+    skipped: (days: string): string => `${days} 제외`,
     none: '—',
   },
+  /** 표 위 안내 한 줄 — 예시 생산일과 계산 기준(사용자 지시 2026-11-26). */
+  exampleNote: {
+    lead: (date: string, weekday: string): string => `예시 생산일 ${date}(${weekday})`,
+    body: '출고 작업일은 공장별 근무 요일을 기준으로 생산일 직전 근무일로 계산합니다.',
+  },
   tags: {
-    default: '기본값',
-    changed: '바뀜',
+    changed: '수정',
   },
   actions: {
-    revert: '되돌리기',
+    revert: '변경 취소',
     save: '저장',
     reload: '다시 불러오기',
   },
@@ -46,8 +45,27 @@ export const plantWorkingDays = {
     conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 고치세요.',
     noPlants: '설정할 공장이 없습니다.',
   },
+  /** 사용자 관리 화면과 같은 창(사용자 지시 2026-11-24). */
   discard: {
-    title: '저장하지 않은 변경이 있습니다',
-    body: '지금 옮기면 바꾼 근무일이 저장되지 않고 사라집니다. 남기려면 「계속 편집」을 누른 뒤 저장하세요.',
+    title: '저장되지 않은 변경 사항',
+    body: '저장하지 않고 나가면 변경 사항이 사라집니다.',
+    keep: '계속 편집',
+    confirm: '저장하지 않고 나가기',
+  },
+  /** 위 줄 주간 근무일 라벨(사용자 지시 2026-11-24) — 저장된 값으로 거른다. */
+  daysFilter: {
+    group: '주간 근무일',
+    five: '주 5일제',
+    six: '주 6일제',
+  },
+  /** 조회 조건 · 목록 통일 배치(omf-all-around#358) — 상세 상자 없이 목록 하나. */
+  workspace: {
+    filter: '조회 조건',
+    list: '공장 목록',
+    search: '공장 이름 검색',
+    searchPlaceholder: '공장 이름을 입력하세요',
+    apply: '조회',
+    clear: '초기화',
+    empty: '조건에 맞는 공장이 없습니다.',
   },
 };

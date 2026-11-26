@@ -3,19 +3,16 @@ import type { Translated } from './translated';
 
 /** W-CO-13 알림 발송 이력. 사이드바 라벨(`nav-tree.ts`)과 제목 글자가 같아야 한다. */
 export const dispatchHistory: Translated<typeof ko.dispatchHistory> = {
-  title: 'Lịch sử gửi thông báo',
-  breadcrumbRoot: 'Quản trị hệ thống',
-  description:
-    'Xem từng sự kiện đã gửi thông báo chưa, nếu không thì vì sao, và kết quả Zalo theo người nhận.',
   panes: { dispatches: 'Kết quả xử lý sự kiện', deliveries: 'Chi tiết gửi Zalo' },
   filters: {
-    period: 'Khoảng thời gian',
     event: 'Sự kiện',
     department: 'Phòng ban',
     result: 'Kết quả',
     deliveryStatus: 'Trạng thái',
     all: 'Tất cả',
     search: 'Tra cứu',
+    eventSelect: 'Chọn sự kiện',
+    departmentSelect: 'Chọn phòng ban',
     chipDepartment: (name: string): string => `Phòng ban: ${name}`,
     eventGroup: 'Sự kiện',
     handoverGroup: 'Công việc bàn giao',
@@ -57,17 +54,23 @@ export const dispatchHistory: Translated<typeof ko.dispatchHistory> = {
     attempts: 'Lần thử',
     error: 'Lỗi',
     sentAt: 'Thời điểm gửi',
-    trackingId: 'tracking id',
+    trackingId: 'Mã theo dõi',
   },
   actions: { prevPage: 'Trang trước', nextPage: 'Trang sau' },
   state: {
     empty: 'Không có thông báo khớp điều kiện',
     deliveriesEmpty: 'Không có lượt gửi Zalo',
-    pageOf: (page: number, totalPages: number): string => `${String(page)} / ${String(totalPages)}`,
   },
   errors: {
     periodRequired: 'Hãy nhập khoảng thời gian.',
     periodReversed: 'Ngày kết thúc không được trước ngày bắt đầu.',
     periodTooLong: 'Chỉ tra cứu được khoảng thời gian tối đa 31 ngày',
+  },
+  workspace: {
+    filter: 'Điều kiện tra cứu',
+    list: 'Danh sách kết quả xử lý',
+    clear: 'Đặt lại',
+    selectTitle: 'Hãy chọn một thông báo.',
+    select: 'Có thể xem kết quả gửi Zalo theo từng người nhận của mục đã chọn.',
   },
 };

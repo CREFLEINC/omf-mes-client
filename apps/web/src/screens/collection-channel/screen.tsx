@@ -531,7 +531,10 @@ export const CollectionChannelScreen = () => {
     plantOptions: plantLookup.plants,
     plant,
     selectedEquipmentId,
-    onSelect: setSelectedEquipmentId,
+    /* 고른 설비를 다시 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+    onSelect: (equipmentId) => {
+      setSelectedEquipmentId((prev) => (prev === equipmentId ? null : equipmentId));
+    },
     loadError: equipmentError,
   });
 

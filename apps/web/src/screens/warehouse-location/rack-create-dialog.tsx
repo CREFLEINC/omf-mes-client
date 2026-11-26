@@ -438,6 +438,7 @@ export const RackCreateDialog = ({
             <div className="form-grid rack-layout-counts">
               <TextField
                 label={t.rackLayout.levelCount}
+                required
                 inputMode="numeric"
                 value={levelText}
                 onChange={(event) => setLevelText(event.target.value)}
@@ -446,6 +447,7 @@ export const RackCreateDialog = ({
               />
               <TextField
                 label={t.rackLayout.cellCount}
+                required={!rackOnly}
                 inputMode="numeric"
                 value={rackOnly ? '0' : cellText}
                 onChange={(event) => setCellText(event.target.value)}

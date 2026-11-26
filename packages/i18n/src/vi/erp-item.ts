@@ -10,8 +10,9 @@ export const erpItem: Translated<typeof ko.erpItem> = {
     list: 'Danh sách mặt hàng',
   },
   fields: {
-    q: 'Mã·Tên mặt hàng',
-    itemType: 'Loại mặt hàng',
+    q: 'Tìm mặt hàng',
+    qPlaceholder: 'Nhập mã hoặc tên mặt hàng',
+    itemType: 'Chọn loại mặt hàng',
     includeInactive: 'Bao gồm ngừng sử dụng',
   },
   filters: {
@@ -28,19 +29,9 @@ export const erpItem: Translated<typeof ko.erpItem> = {
   },
   values: {
     empty: '—',
-    active: 'Sử dụng',
-    inactive: 'Ngừng sử dụng',
   },
   actions: {
-    prevPage: 'Trước',
-    nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
-  },
-  pageNav: {
-    label: 'Chuyển trang',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / Tổng ${String(total)}`,
-    totalOnly: (total: number): string => `Tổng ${String(total)}`,
   },
   loading: {
     list: 'Đang tải danh sách mặt hàng',

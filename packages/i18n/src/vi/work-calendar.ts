@@ -34,10 +34,6 @@ export const workCalendar: Translated<typeof ko.workCalendar> = {
     isActive: 'Sử dụng',
     applicationCount: 'Đối tượng theo lịch',
   },
-  values: {
-    active: 'Đang sử dụng',
-    inactive: 'Ngừng dùng',
-  },
   form: {
     createTitle: 'Đăng ký lịch',
     editTitle: 'Sửa lịch',

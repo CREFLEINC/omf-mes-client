@@ -4,7 +4,12 @@ export const lotGenealogy = {
     loading: 'Đang tải vật tư đã đưa vào.',
     loadFailed: 'Không tải được vật tư đã đưa vào.',
     none: 'Không có vật tư đưa vào nào gắn với LOT sản xuất này.',
-    columns: { item: 'Vật tư', lot: 'LOT vật tư', fourM: 'Thay đổi 4M' },
+    columns: {
+      itemCode: 'Mã vật tư',
+      itemName: 'Tên vật tư',
+      lot: 'LOT vật tư',
+      fourM: 'Thay đổi 4M',
+    },
   },
   usage: {
     heading: 'Lịch sử đưa vào sản xuất',

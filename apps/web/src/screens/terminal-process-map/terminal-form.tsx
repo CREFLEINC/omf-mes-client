@@ -4,7 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
-import { SaveErrorBanner } from '../../patterns/master';
+import { CodeLockLabel, SaveErrorBanner } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 import { LoadErrorBanner } from './load-error-banner';
 import {
@@ -305,7 +305,21 @@ export const TerminalForm = ({
          * 바꿀 수 없는 둘을 맨 위에 글자로, 아래에 고칠 수 있는 칸.
          */
         <div className="form-grid terminal-map-form">
-          {readOnlyField(codeId, t.terminal.code, draft.terminalCode)}
+          {/* 단말 코드는 칸 이름 오른쪽 회색 「변경 불가」 라벨 — 다른 화면의 잠긴 코드와 같은 모양(사용자 지시 2026-11-25 · #358). */}
+          <div className="field-cell">
+            <CodeLockLabel reason={t.terminal.codeLocked} reasonId={`${codeId}-lock`}>
+              <span className="field-label">
+                <label htmlFor={codeId}>{t.terminal.code}</label>
+              </span>
+            </CodeLockLabel>
+            <output
+              id={codeId}
+              className="terminal-map-form-static"
+              aria-describedby={`${codeId}-lock`}
+            >
+              {draft.terminalCode}
+            </output>
+          </div>
           {readOnlyField(`${baseId}-type`, t.terminal.type, codeNames.type(draft.terminalTypeCode))}
           {plantField}
           {warehouseField}

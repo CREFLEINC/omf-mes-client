@@ -1,9 +1,12 @@
-import { AlertBanner, Button, Checkbox, Chip, SkeletonText } from '@crefle/web-ui';
+import { Button, Checkbox, Chip, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
-import { DisabledAction } from './disabled-action';
+import { InfoTip } from '../../patterns/info-tip';
+import { UsageChip } from '../../patterns/usage-chip';
+import { ErpDetailFields } from '../erp-item/erp-data-parts';
 import type { PartnerRoleChoice } from './partner-role-draft';
+import { type PartnerRoleKey, partnerRoleKeyOf } from './partner-role-vocab';
 import type { Partner } from './types';
 
 const t = messages.commonCode;
@@ -48,26 +51,6 @@ const orEmptyMark = (value: string | null | undefined): string =>
   value === null || value === undefined || value === '' ? t.values.empty : value;
 
 /**
- * 라벨과 값 한 쌍. **폼 컨트롤이 아니다** — 잠긴 입력칸은 「언젠가 열린다」는 뜻이 된다.
- *
- * 같은 슬라이스의 작업자 기본 정보가 세운 형태를 그대로 쓴다. 그쪽 부품은 그 파일 안의
- * 지역 부품이라 여기서 자기 사본을 갖는다 — 한 자리로 모으는 것은 그 파일까지 건드리는
- * 별건의 정리이고, 이 회차의 목적(거래처 역할 편집)에 섞지 않는다.
- */
-const ValueField = ({ label, value }: { label: string; value: string }) => {
-  const labelId = useId();
-
-  return (
-    <div className="field-cell">
-      <span className="field-label" id={labelId}>
-        {label}
-      </span>
-      <p aria-labelledby={labelId}>{value}</p>
-    </div>
-  );
-};
-
-/**
  * 우 칸 — 거래처 기본 정보(읽기)와 그 거래처의 역할(편집).
  *
  * **기본 정보는 값 표기만 있다**(결정 12 — 표시 방법 정정). 거래처 본체는 ERP 수신 마스터라
@@ -103,12 +86,15 @@ export const PartnerRolePane = ({
   onCancel,
 }: PartnerRolePaneProps) => {
   const unknownNoteId = useId();
+  /** 역할마다 무엇을 정하는지 — 근거가 있는 역할만 문구가 있다(i18n 주석). */
+  const roleDescriptions: Partial<Record<PartnerRoleKey, string>> = t.partnerRole.descriptions;
+  const descriptionOf = (code: string): string | undefined => {
+    const key = partnerRoleKeyOf(code);
+    return key === undefined ? undefined : roleDescriptions[key];
+  };
   const hasUnknown = choices.some((choice) => !choice.isKnown);
 
-  /**
-   * 저장 자리의 네 상태. **잠긴 자리에는 반드시 사유가 붙는다**(배치 규범 4) —
-   * 사유 없는 비활성은 사용자에게 「고장」으로 읽힌다.
-   */
+  /** 저장 자리. 잠긴 까닭을 단추 아래 문구로 내지 않는다 — 꺼진 단추로만(사용자 지시 2026-11-25). */
   const saveAction = (): ReactNode => {
     /* 내 저장이 나가는 중이면 진행 표시가 사유 자리를 대신한다. */
     if (isSaving) {
@@ -119,26 +105,15 @@ export const PartnerRolePane = ({
       );
     }
 
-    /* 남의 저장이 나가는 중이다 — 잠그되 **무엇을 기다리는지** 밝힌다. */
-    if (isLocked) {
-      return (
-        <DisabledAction
-          label={messages.common.save}
-          reason={t.partnerRole.actionReasons.saveLockedByOtherPartner}
-        />
-      );
-    }
-
-    if (!isDirty) {
-      return (
-        <DisabledAction
-          label={messages.common.save}
-          reason={t.partnerRole.actionReasons.saveNoChanges}
-        />
-      );
-    }
-
-    return <Button onClick={onSave}>{messages.common.save}</Button>;
+    /*
+     * 남의 저장이 나가는 중이거나 고친 것이 없으면 잠그기만 한다 — 저장 단추 아래 사유 문구는 두지 않는다
+     * (사용자 지시 2026-11-25).
+     */
+    return (
+      <Button disabled={isLocked || !isDirty} onClick={onSave}>
+        {messages.common.save}
+      </Button>
+    );
   };
 
   const roleSlot = (): ReactNode => {
@@ -169,30 +144,41 @@ export const PartnerRolePane = ({
           </p>
         )}
 
-        <div className="check-group">
-          {choices.map((choice) => (
-            <Checkbox
-              key={choice.roleTypeCode}
-              checked={choice.isSelected}
-              /* 나가는 중에 체크가 바뀌면 확인한 것과 다른 것이 저장된 것처럼 보인다. */
-              disabled={isLocked}
-              /* 여러 확인칸이 함께 보는 안내라 각 칸에 되풀이하지 않고 하나를 잇는다. */
-              aria-describedby={choice.isKnown ? undefined : unknownNoteId}
-              onChange={() => {
-                onToggleRole(choice.roleTypeCode);
-              }}
-            >
-              {choice.label}
-              {!choice.isKnown && (
-                <>
-                  {/* 이름과 표식이 붙어 읽히지 않게 낱말 사이 공백 하나를 둔다. */}{' '}
-                  <Chip variant="status" status="warning" size="sm">
-                    {t.partnerRole.unknownBadge}
-                  </Chip>
-                </>
-              )}
-            </Checkbox>
-          ))}
+        {/* 역할 확인칸은 상자 폭만큼 가로로 흐르고 모자라면 다음 줄로(사용자 지시 2026-11-25 · layout.css). */}
+        <div className="check-group common-code-partner-roles">
+          {choices.map((choice) => {
+            const description = descriptionOf(choice.roleTypeCode);
+
+            return (
+              /*
+               * 역할 이름 옆 ⓘ — 그 역할이면 어느 화면에서 고를 수 있는지는 마우스를 올리면 보인다(사용자 지시 2026-11-26).
+               * ⓘ 는 체크칸 라벨 밖에 두어 눌러도 체크가 바뀌지 않는다. 설명이 없는 역할은 ⓘ 도 없다.
+               */
+              <div key={choice.roleTypeCode} className="common-code-partner-role">
+                <Checkbox
+                  checked={choice.isSelected}
+                  /* 나가는 중에 체크가 바뀌면 확인한 것과 다른 것이 저장된 것처럼 보인다. */
+                  disabled={isLocked}
+                  /* 여러 확인칸이 함께 보는 안내라 각 칸에 되풀이하지 않고 하나를 잇는다. */
+                  aria-describedby={choice.isKnown ? undefined : unknownNoteId}
+                  onChange={() => {
+                    onToggleRole(choice.roleTypeCode);
+                  }}
+                >
+                  {choice.label}
+                  {!choice.isKnown && (
+                    <>
+                      {/* 이름과 표식이 붙어 읽히지 않게 낱말 사이 공백 하나를 둔다. */}{' '}
+                      <Chip variant="status" status="warning" size="sm">
+                        {t.partnerRole.unknownBadge}
+                      </Chip>
+                    </>
+                  )}
+                </Checkbox>
+                {description !== undefined && <InfoTip text={description} />}
+              </div>
+            );
+          })}
         </div>
 
         {/*
@@ -225,32 +211,53 @@ export const PartnerRolePane = ({
   return (
     <>
       <section className="pane" aria-label={t.panes.partnerDetail}>
-        <div className="banner-slot">
-          <AlertBanner variant="info">{messages.editability.receivedFromErp(null)}</AlertBanner>
+        {/*
+         * 작업자 탭과 같은 구획 제목(사용자 지시 2026-11-26). 오른쪽 위 「외부 시스템에서 받은 자료라…」 안내는 걷었다 —
+         * 입력칸 · 단추가 없어 고칠 수 없다는 것이 이미 보인다.
+         */}
+        <div className="pane-heading-row users-roles-heading">
+          <h3 className="pane-title">{t.panes.partnerDetail}</h3>
         </div>
 
-        <div className="form-grid">
-          <ValueField
-            label={t.partner.fields.partnerCode}
-            value={orEmptyMark(partner.partnerCode)}
-          />
-          <ValueField
-            label={t.partner.fields.partnerName}
-            value={orEmptyMark(partner.partnerName)}
-          />
-          <ValueField label={t.partner.fields.country} value={orEmptyMark(partner.countryCode)} />
-          <ValueField
-            label={t.partner.fields.erpPartnerCode}
-            value={orEmptyMark(partner.erpPartnerCode)}
-          />
-          <ValueField
-            label={t.partner.fields.isActive}
-            value={partner.isActive ? t.partner.values.active : t.partner.values.inactive}
+        {/* ERP 조회 화면의 정보 표시 상자와 같은 모양(사용자 지시 2026-11-25). 사용 여부는 상태 칩 그대로. */}
+        <div className="erp-data-detail erp-data-detail-fill">
+          <ErpDetailFields
+            fields={[
+              {
+                key: 'partnerCode',
+                label: t.partner.fields.partnerCode,
+                value: orEmptyMark(partner.partnerCode),
+              },
+              {
+                key: 'partnerName',
+                label: t.partner.fields.partnerName,
+                value: orEmptyMark(partner.partnerName),
+              },
+              {
+                key: 'country',
+                label: t.partner.fields.country,
+                value: orEmptyMark(partner.countryCode),
+              },
+              {
+                key: 'erpPartnerCode',
+                label: t.partner.fields.erpPartnerCode,
+                value: orEmptyMark(partner.erpPartnerCode),
+              },
+              {
+                key: 'isActive',
+                label: t.partner.fields.isActive,
+                value: <UsageChip isActive={partner.isActive} />,
+              },
+            ]}
           />
         </div>
       </section>
 
       <section className="pane" aria-label={t.panes.partnerRoles}>
+        {/* 무엇을 설정하는 구획인지 제목으로 밝힌다 — 생산 창고 · 자격·인증 구획 제목과 같은 모양(사용자 지시 2026-11-26). */}
+        <div className="section-heading-row">
+          <h3 className="subsection-title">{t.panes.partnerRoles}</h3>
+        </div>
         {banner}
         {roleSlot()}
       </section>

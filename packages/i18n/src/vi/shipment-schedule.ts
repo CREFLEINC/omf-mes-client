@@ -165,7 +165,8 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
     lines: 'Dòng',
     lineColumns: {
       lineNo: 'Dòng',
-      item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       inspection: 'Kiểm tra xuất hàng',
       requested: 'Yêu cầu',
       target: 'Mục tiêu',

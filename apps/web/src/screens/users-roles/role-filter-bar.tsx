@@ -3,6 +3,10 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useState } from 'react';
 
 import { hasChangedFilters } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
 
 import type { RoleFilters } from './types';
 
@@ -38,6 +42,7 @@ export const RoleFilterBar = ({
    * 편집 중인 값은 draft에만 있다. 조건이 모두 조건 줄 · 탭 줄 라벨에 보여 조건 칩을 두지 않는다(C-6 · main #1712).
    */
   const [draft, setDraft] = useState<RoleFilters>(appliedFilters);
+  const searchRef = useFitPlaceholderWidth(t.filters.roleSearchPlaceholder);
   const {
     q: appliedQ,
     includeInactive: appliedIncludeInactive,
@@ -62,9 +67,10 @@ export const RoleFilterBar = ({
     <>
       <div className="filter-bar users-roles-filter-row">
         <SearchInput
-          containerClassName="users-roles-search-input users-roles-role-search-input"
+          containerClassName={`users-roles-search-input ${FIT_PLACEHOLDER_CLASS}`}
           label={t.filters.roleSearchLabel}
           placeholder={t.filters.roleSearchPlaceholder}
+          ref={searchRef}
           value={draft.q}
           onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
           onSearch={(value) => onApplyFilters({ ...draft, q: value })}

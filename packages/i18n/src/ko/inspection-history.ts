@@ -3,7 +3,6 @@ export const inspectionHistory = {
   heading: '검사 이력',
   /** 판정 거르기 칩(#185). */
   filterLabel: '판정 거르기',
-  filterAll: '전체',
   filterOther: '기타',
   loading: '검사 이력을 불러오는 중입니다.',
   loadFailed: '검사 이력을 불러오지 못했습니다.',

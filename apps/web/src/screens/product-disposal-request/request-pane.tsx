@@ -100,6 +100,7 @@ export const RequestPane = ({
         htmlFor={requestReasonId}
         label={t.request.reasonLabel}
         info={t.request.reasonHelp}
+        required
       />
       <TextArea
         id={requestReasonId}
@@ -143,9 +144,14 @@ export const RequestPane = ({
           <dd>{lookupDisplayLabel(issueTypes, ISSUE_TYPE_OTHER)}</dd>
         </dl>
         <div className="field-cell wide-select">
-          <label className="field-label" id={reasonId} htmlFor={reasonSelectId}>
-            {t.issue.reasonLabel}
-          </label>
+          <span className="field-label">
+            <label id={reasonId} htmlFor={reasonSelectId}>
+              {t.issue.reasonLabel}
+            </label>
+            <span className="required-mark" aria-hidden="true">
+              {' *'}
+            </span>
+          </span>
           <Select
             id={reasonSelectId}
             options={issueReasons.entries.map((entry) => ({
@@ -194,9 +200,15 @@ export const RequestPane = ({
       </div>
 
       <div className="field-cell wide-select">
-        <label className="field-label" htmlFor={partnerId}>
-          {t.issue.partnerLabel}
-        </label>
+        <span className="field-label">
+          <label htmlFor={partnerId}>{t.issue.partnerLabel}</label>
+          {/* 자체 폐기가 아니면 거래처를 골라야 요청된다 — 그때만 필수 표시. */}
+          {!draft.isSelfDisposal && (
+            <span className="required-mark" aria-hidden="true">
+              {' *'}
+            </span>
+          )}
+        </span>
         <Select
           id={partnerId}
           options={partners.map((partner) => ({

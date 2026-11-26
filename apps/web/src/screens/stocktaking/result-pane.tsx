@@ -196,7 +196,10 @@ export const ResultPane = ({ result }: ResultPaneProps): ReactNode => {
        */}
       {layout.adjustmentEntry !== null && (
         <div className="field-cell">
-          <Link to={stockAdjustEntryPath(layout.adjustmentEntry.inventoryCountId)}>
+          <Link
+            className="action-link-button"
+            to={stockAdjustEntryPath(layout.adjustmentEntry.inventoryCountId)}
+          >
             {t.actions.adjustment}
           </Link>
           <span className="field-note">

@@ -677,6 +677,17 @@ describe('RepackLabelIssueScreen — 대상 포장', () => {
    *    접는다」 · 사용자 지적 2026-09-11). 이 화면의 세로 예산은 슬랙 0 이라 쓰지 않는 칸
    *    하나가 아래 구획을 밀어낸다.
    */
+  it('고른 포장을 한 번 더 누르면 선택이 풀리고 오른쪽이 안내로 돌아간다', async () => {
+    renderScreen();
+    const row = await screen.findByRole('button', { name: new RegExp(HANDLING_UNIT_NO) });
+    await userEvent.click(row);
+    await waitFor(() => expect(row).toHaveAttribute('aria-pressed', 'true'));
+
+    await userEvent.click(row);
+    expect(row).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByText(t.entry.missingHandlingUnit)).toBeInTheDocument();
+  });
+
   it('최초 발행이면 재발행 사유 칸을 세우지 않는다', async () => {
     await renderSelectedScreen();
 

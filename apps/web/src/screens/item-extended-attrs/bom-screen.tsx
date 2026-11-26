@@ -379,10 +379,13 @@ const BomTreeTable = ({ bom, uoms, processes, onEdit }: BomTreeTableProps) => {
   };
 
   const columns: Column<BomTreeRow>[] = [
-    /* 폭을 주지 않는 유일한 열 — 들여 쓴 품목 이름이 남는 폭을 다 쓴다. */
+    /*
+     * 폭을 주지 않는 유일한 열 — 들여 쓴 품목코드가 남는 폭을 다 쓴다. 품목명은 옆 칸에 따로 둔다(사용자 지시 2026-11-24 ·
+     * ERP BOM 과 같은 모양) — 이 칸은 펼침 단추 이름에 쓰려고 이름도 넘기고, 보이는 이름은 app.css `.bom-tree-split` 이 감춘다.
+     */
     {
       key: 'item',
-      header: tb.columns.item,
+      header: t.origin.fields.itemCode,
       render: (row) => {
         const item = itemOf(row.itemId);
         return (
@@ -395,6 +398,16 @@ const BomTreeTable = ({ bom, uoms, processes, onEdit }: BomTreeTableProps) => {
             onRetry={retryFailed}
           />
         );
+      },
+    },
+    {
+      key: 'itemName',
+      header: t.origin.fields.itemName,
+      width: '180px',
+      render: (row) => {
+        const item = itemOf(row.itemId);
+        /* 받기 전 · 못 받음은 코드 칸이 그 사정을 낸다 — 여기는 비운다. */
+        return item.code === null ? t.values.empty : <OneLine text={item.name} />;
       },
     },
     {
@@ -490,10 +503,13 @@ const BomTreeTable = ({ bom, uoms, processes, onEdit }: BomTreeTableProps) => {
   return (
     <BoardTable
       label={t.component.paneTitle}
-      className="bom-tree-table"
+      className="bom-tree-table bom-tree-split"
       widthKey="omf-mes:item-boms:columns:tree"
-      /* 열을 좁힌 뒤 품목 열이 300px 안팎 남는 폭 — 그보다 좁은 창에서만 표 상자 안 가로 스크롤(2026-11-24). */
-      minWidth="48rem"
+      /*
+       * 열을 좁힌 뒤 품목 열이 300px 안팎 남는 폭 — 그보다 좁은 창에서만 표 상자 안 가로 스크롤(2026-11-24).
+       * 품목명 열(180px)을 따로 둔 만큼 더한다(품목코드/품목명 분리 · #358).
+       */
+      minWidth="59rem"
       columns={columns}
       rows={rows}
       getRowId={(row) => row.key}
@@ -822,6 +838,9 @@ export const ItemBomScreen = () => {
             currentId: parentItemId === null ? null : String(parentItemId),
             onPick: (row) => {
               setSearchParams(toSearchParams(filters, page, row.itemId));
+            },
+            onUnpick: () => {
+              setSearchParams(toSearchParams(filters, page));
             },
           }}
           empty={

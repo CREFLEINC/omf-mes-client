@@ -11,7 +11,8 @@ const renderDialog = (overrides: Partial<Parameters<typeof DeactivateDialog>[0]>
   render(
     <DeactivateDialog
       open
-      title="이 코드그룹을 사용 중지할까요?"
+      title="코드그룹을 사용 중지할까요?"
+      description="사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 코드그룹이 그대로 표시됩니다."
       onClose={onClose}
       onConfirm={onConfirm}
       isSaving={false}
@@ -28,19 +29,24 @@ describe('DeactivateDialog', () => {
     renderDialog();
 
     expect(
-      within(screen.getByRole('dialog')).getByText('이 코드그룹을 사용 중지할까요?'),
+      within(screen.getByRole('dialog')).getByText('코드그룹을 사용 중지할까요?'),
     ).toBeInTheDocument();
   });
 
-  /* 계약에 되살리는 경로가 없다 — 누르기 전에 그 사실을 밝힌다. */
-  it('되돌리는 경로가 없다는 사실을 본문이 밝힌다', () => {
+  /* 사용자 지시 2026-11-26 — 제목 아래 대상 줄 없이 설명 · 주의 줄 순서. */
+  it('대상 줄 없이 설명 · 주의 줄을 차례로 낸다', () => {
     renderDialog();
 
+    const dialog = within(screen.getByRole('dialog'));
+    expect(dialog.queryByText(/\(SYN-/)).toBeNull();
+    const description = dialog.getByText(
+      '사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 코드그룹이 그대로 표시됩니다.',
+    );
+    const warning = dialog.getByText('사용 중지 후에는 사용을 재개할 수 없습니다.');
+    expect(warning).toHaveAttribute('data-tone', 'warning');
     expect(
-      within(screen.getByRole('dialog')).getByText(
-        '사용 중지하면 새 선택지에서 빠지고 이미 쓰인 자료는 그대로 남습니다. 되돌리는 경로가 없습니다.',
-      ),
-    ).toBeInTheDocument();
+      description.compareDocumentPosition(warning) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   /*
@@ -77,6 +83,29 @@ describe('DeactivateDialog', () => {
     expect(
       within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }),
     ).toBeDisabled();
+    /* 결재선 정의의 사용 전환 창과 같다 — 나가는 중에는 취소로도 빠지지 않는다. */
+    expect(within(screen.getByRole('dialog')).getByRole('button', { name: '취소' })).toBeDisabled();
+  });
+
+  /* 결재선 정의의 확인 창과 같은 모양 — 닫기(X) 없이 바닥 단추 둘로만 나간다(사용자 지시 2026-11-25). */
+  /* 사용자 지시 2026-11-26 — 빨간색은 [사용 중지]만. [취소]는 앱의 중립 outlined 단추 모양이다. */
+  it('[취소]는 중립색 단추이고 [사용 중지]는 기본 단추다', () => {
+    renderDialog();
+
+    const dialog = within(screen.getByRole('dialog'));
+    expect(dialog.getByRole('button', { name: '취소' })).toHaveClass('app-button-neutral');
+    expect(dialog.getByRole('button', { name: '사용 중지' })).not.toHaveClass('app-button-neutral');
+  });
+
+  it('창 머리에 닫기(X)가 없다', () => {
+    renderDialog();
+
+    const dialog = within(screen.getByRole('dialog'));
+    expect(dialog.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
+    expect(dialog.getAllByRole('button').map((button) => button.textContent)).toEqual([
+      '취소',
+      '사용 중지',
+    ]);
   });
 
   it('실패 배너를 창 안에 담는다 — 닫지 않고 이유를 보여야 다시 시도할 수 있다', () => {

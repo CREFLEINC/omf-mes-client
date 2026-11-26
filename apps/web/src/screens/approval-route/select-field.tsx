@@ -1,3 +1,4 @@
+import { Select as PlainSelect } from '@crefle/web-ui';
 import { useId } from 'react';
 
 import { Select } from '../../patterns/select';
@@ -35,6 +36,10 @@ export interface SelectFieldProps {
    * **판단 기준은 코드값이 아니라 선택지 문구 길이다.**
    */
   wide?: boolean;
+  /** 검색칸 없이 펼치기만 한다(사용자 지시 2026-11-24 · 승인 유형). 기본은 선택지가 많으면 검색칸이 붙는다. */
+  searchable?: boolean;
+  /** 칸 폭 클래스(예: `filter-field-sm`). */
+  className?: string;
 }
 
 /**
@@ -61,6 +66,8 @@ export const SelectField = ({
   error,
   placeholder,
   wide = false,
+  searchable = true,
+  className,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
@@ -72,11 +79,16 @@ export const SelectField = ({
    * 그때는 자리표시로 대신하지 않는다.
    */
   const hasEmptyOption = options.some((option) => option.value === '');
+  const SelectControl = searchable ? Select : PlainSelect;
 
   return (
-    <div className={wide ? 'field-cell wide-select' : 'field-cell'}>
+    <div
+      className={['field-cell', wide ? 'wide-select' : '', className ?? '']
+        .filter(Boolean)
+        .join(' ')}
+    >
       <FieldLabel htmlFor={id} label={label} required={required} info={info} />
-      <Select
+      <SelectControl
         id={id}
         options={options}
         value={value === '' && !hasEmptyOption ? null : value}

@@ -156,7 +156,7 @@ describe('W-CO-15 공장 근무일 설정', () => {
     expect(rows).toHaveLength(2);
     const first = await rowOf('합성 1공장');
     expect(first.getByRole('radio', { name: t.options.five })).toBeChecked();
-    expect(first.getByText(t.tags.default)).toBeInTheDocument();
+    expect(first.queryByText('기본값')).not.toBeInTheDocument();
     expect(first.getByText('토, 일')).toBeInTheDocument();
     expect(screen.queryByText('합성 3공장')).not.toBeInTheDocument();
   });
@@ -168,9 +168,28 @@ describe('W-CO-15 공장 근무일 설정', () => {
 
     const title = screen.getByRole('heading', { level: 2 });
 
-    expect(title).toHaveTextContent(t.tableLabel);
+    /* 목록 상자 제목 줄 「공장 목록 N건」(#358) — 머리글(h1)은 없다. */
+    expect(title).toHaveTextContent(t.workspace.list);
     expect(within(title).getByRole('button', { name: t.description })).toBeInTheDocument();
     expect(screen.queryByText(t.description)).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+    expect(screen.getByText('2건')).toBeInTheDocument();
+  });
+
+  it('공장 이름 검색은 화면 안에서 거르고 [초기화]로 다시 모두 보인다(#358)', async () => {
+    const user = userEvent.setup();
+    setup();
+    const rows = async () => (await table()).getAllByRole('row').slice(1);
+
+    expect(await rows()).toHaveLength(2);
+    /* 초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */
+    expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
+    await user.type(screen.getByRole('searchbox', { name: t.workspace.search }), '2공장');
+    await user.click(screen.getByRole('button', { name: t.workspace.apply }));
+    await waitFor(async () => expect(await rows()).toHaveLength(1));
+    await user.click(screen.getByRole('button', { name: t.workspace.clear }));
+    await waitFor(async () => expect(await rows()).toHaveLength(2));
+    expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
   });
 
   it('US7-3 6 으로 바꾸면 바뀐 줄 표시 · 예시를 다시 세고, 저장하면 오늘부터 적용 행을 더한 뒤 다시 열어도 6', async () => {
@@ -181,7 +200,7 @@ describe('W-CO-15 공장 근무일 설정', () => {
 
     expect(row.getByText(t.tags.changed)).toBeInTheDocument();
     expect(row.getByText('일')).toBeInTheDocument();
-    expect(row.getByText(/— 일을 건너뜀$/)).toBeInTheDocument();
+    expect(row.getByText(t.values.skipped('일'))).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
@@ -201,7 +220,7 @@ describe('W-CO-15 공장 근무일 설정', () => {
     const after = await rowOf('합성 2공장');
     await waitFor(() => expect(after.getByRole('radio', { name: t.options.six })).toBeChecked());
     expect(after.queryByText(t.tags.changed)).not.toBeInTheDocument();
-    expect(after.getByText(t.values.lastChanged(TODAY.slice(5)))).toBeInTheDocument();
+    expect(after.getByText(TODAY)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
   });
 
@@ -245,8 +264,7 @@ describe('W-CO-15 공장 근무일 설정', () => {
 
     const row = await rowOf('합성 1공장');
     expect(row.getByRole('radio', { name: t.options.six })).toBeChecked();
-    expect(row.queryByText(t.tags.default)).not.toBeInTheDocument();
-    expect(row.getByText(t.values.lastChanged('10-15'))).toBeInTheDocument();
+    expect(row.getByText(/-10-15$/)).toBeInTheDocument();
   });
 
   it('바뀐 공장만 저장하고, 오늘 시작한 행이 있으면 새 행 대신 그 행을 고친다', async () => {
@@ -275,7 +293,7 @@ describe('W-CO-15 공장 근무일 설정', () => {
     expect(writes[0]?.headers.get('If-Match')).toBe('"7"');
   });
 
-  it('되돌리기는 고친 값을 버린다', async () => {
+  it('변경 취소는 고친 값을 버린다', async () => {
     const { user, writes } = setup();
     const row = await rowOf('합성 1공장');
 
@@ -285,6 +303,27 @@ describe('W-CO-15 공장 근무일 설정', () => {
     expect(row.getByRole('radio', { name: t.options.five })).toBeChecked();
     expect(row.queryByText(t.tags.changed)).not.toBeInTheDocument();
     expect(writes).toHaveLength(0);
+  });
+
+  it('바꿨다가 처음 값으로 되돌리면 「수정」 표시가 사라지고 저장할 것이 없다(기본값 공장 포함)', async () => {
+    const { user, router } = setup();
+
+    for (const name of ['합성 1공장', '합성 2공장']) {
+      const row = await rowOf(name);
+      await user.click(row.getByRole('radio', { name: t.options.six }));
+      expect(row.getByText(t.tags.changed)).toBeInTheDocument();
+      await user.click(row.getByRole('radio', { name: t.options.five }));
+      expect(row.queryByText(t.tags.changed)).not.toBeInTheDocument();
+    }
+
+    expect(t.tags.changed).toBe('수정');
+    expect((await rowOf('합성 1공장')).queryByText('기본값')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.revert })).toBeDisabled();
+    await act(async () => {
+      await router?.navigate('/notification/handover-settings');
+    });
+    expect(screen.queryByRole('dialog', { name: t.discard.title })).not.toBeInTheDocument();
   });
 
   it('충돌(409)이면 「다른 사람이 먼저 저장했습니다」와 다시 불러오기를 보인다', async () => {
@@ -394,5 +433,45 @@ describe('W-CO-15 공장 근무일 설정', () => {
     expect(await screen.findByText(t.state.saved)).toHaveTextContent(
       '이후 만드는 출고 요청부터 적용됩니다',
     );
+  });
+
+  /* 위 줄 주간 근무일 라벨 — 「전체」 없이 「이름 N건」, 0건 감춤, 다시 누르면 전체(사용자 지시 2026-11-24). */
+  it('근무일 라벨은 건수를 붙이고 0건은 감추며, 고른 라벨을 다시 누르면 전체로 돌아간다', async () => {
+    const { user } = setup({
+      policies: [
+        {
+          operationPolicyId: 61,
+          policyCode: WEEKLY,
+          plantId: 8401,
+          valueNumeric: 6,
+          effectiveFrom: '2026-10-15',
+        },
+      ],
+    });
+    const rows = async () => (await table()).getAllByRole('row').slice(1);
+    const group = within(screen.getByRole('group', { name: t.daysFilter.group }));
+
+    expect(await group.findByRole('button', { name: '주 6일제 1' })).toBeInTheDocument();
+    expect(group.getByRole('button', { name: '주 5일제 1' })).toBeInTheDocument();
+    expect(group.queryByRole('button', { name: /전체/ })).toBeNull();
+
+    await user.click(group.getByRole('button', { name: '주 6일제 1' }));
+    await waitFor(async () => expect(await rows()).toHaveLength(1));
+    expect(group.getByRole('button', { name: '주 6일제 1' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    await user.click(group.getByRole('button', { name: '주 6일제 1' }));
+    await waitFor(async () => expect(await rows()).toHaveLength(2));
+  });
+
+  it('0건인 근무일 라벨은 감춘다', async () => {
+    setup();
+    await table();
+    const group = within(screen.getByRole('group', { name: t.daysFilter.group }));
+
+    expect(await group.findByRole('button', { name: '주 5일제 2' })).toBeInTheDocument();
+    expect(group.queryByRole('button', { name: /주 6일제/ })).toBeNull();
   });
 });

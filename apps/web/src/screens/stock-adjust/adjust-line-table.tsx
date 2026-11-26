@@ -1,5 +1,6 @@
 import { Chip, type Column, IconButton, Table, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
 import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
@@ -58,6 +59,8 @@ export interface AdjustLineTableProps {
   isLocked?: boolean;
   onPatch: (key: string, patch: Partial<Omit<AdjustLineDraft, 'key'>>) => void;
   onRemove: (key: string) => void;
+  /** 줄이 없을 때 머리줄 아래 빈 줄에 내는 안내. */
+  empty?: ReactNode;
 }
 
 /**
@@ -107,6 +110,7 @@ export const AdjustLineTable = ({
   isLocked = false,
   onPatch,
   onRemove,
+  empty,
 }: AdjustLineTableProps) => {
   const errorOf = (row: AdjustLineRow, field: LineFieldName): string | undefined =>
     errors[lineFieldId(row.draft.key, field)];
@@ -126,7 +130,14 @@ export const AdjustLineTable = ({
   const columns: Column<AdjustLineRow>[] = [
     {
       key: 'location',
-      header: t.lineTable.location,
+      header: (
+        <>
+          {t.lineTable.location}
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </>
+      ),
       width: '152px',
       render: (row, rowIndex) =>
         isInherited(row) ? (
@@ -152,7 +163,14 @@ export const AdjustLineTable = ({
     },
     {
       key: 'item',
-      header: t.lineTable.item,
+      header: (
+        <>
+          {t.lineTable.item}
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </>
+      ),
       /*
        * **품목과 단위가 한 칸에 산다.** 단위 열을 따로 두면 세 수량 열 사이에 끼어 「장부 ·
        * 실물 · 차이」가 끊기고, 그 셋이 한눈에 짝지어 읽히는 것이 이 화면의 요점이다.
@@ -256,7 +274,14 @@ export const AdjustLineTable = ({
     },
     {
       key: 'adjustmentQty',
-      header: t.lineTable.adjustmentQty,
+      header: (
+        <>
+          {t.lineTable.adjustmentQty}
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </>
+      ),
       width: '152px',
       /*
        * **이 표의 유일한 입력칸이다.** `type="number"`를 쓰지 않는다 — 브라우저가 「-」만 친
@@ -269,6 +294,7 @@ export const AdjustLineTable = ({
             fullWidth
             inputMode="decimal"
             aria-label={t.lineTable.adjustmentQtyLabel(rowIndex + 1)}
+            aria-required="true"
             value={row.draft.adjustmentQtyText}
             disabled={isLocked}
             error={errorOf(row, 'adjustmentQty')}
@@ -310,7 +336,13 @@ export const AdjustLineTable = ({
        * **`getRowId`가 초안 키를 쓴다**(사본 체크리스트 2번). 인덱스가 키가 되면 가운데 줄을
        * 지울 때 치고 있던 칸의 DOM 노드가 대신 지워져 입력과 포커스가 다른 줄로 옮겨 붙는다.
        */}
-      <Table density="compact" columns={columns} rows={rows} getRowId={(row) => row.draft.key} />
+      <Table
+        density="compact"
+        columns={columns}
+        rows={rows}
+        getRowId={(row) => row.draft.key}
+        empty={empty}
+      />
     </div>
   );
 };

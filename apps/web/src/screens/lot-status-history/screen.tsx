@@ -58,8 +58,6 @@ interface StatusChipsProps {
   options: readonly FilterOption[];
   /** 상태별 LOT 건수(상태 조건을 뺀 같은 조회). 아직 모르면 `undefined` — 건수 없이 이름만. */
   counts: ReadonlyMap<string, number> | undefined;
-  /** 「전체」 건수 — 주지 않으면 상태별 합. */
-  total?: number;
   value: string;
   note?: string;
   /** 잠근다 — LOT 상태 변경 탭이 확인 창을 띄운 동안. */
@@ -69,12 +67,12 @@ interface StatusChipsProps {
 
 /**
  * 현재 상태 단추 — 조회 카드 위쪽 줄에서 누르면 바로 그 상태로 거른다(사용자 2026-10-30). 조건 줄의 현재 상태 칸을
- * 대신한다. 「전체」는 상태 조건을 푼다.
+ * 대신한다. 「전체」 단추는 두지 않는다 — 고른 단추를 다시 누르면 상태 조건을 푼다. 0건 단추는 감춘다(고른 단추는 남긴다 ·
+ * 사용자 지시 2026-11-24).
  */
 export const StatusChips = ({
   options,
   counts,
-  total,
   value,
   note,
   disabled,
@@ -82,28 +80,31 @@ export const StatusChips = ({
 }: StatusChipsProps) => (
   /* 눈에 보이는 「현재 상태」 글자는 두지 않는다(사용자 2026-10-30) — 이름은 화면 읽기용으로만 남긴다. */
   <div className="lot-status-status-chips" role="group" aria-label={t.lotFilter.fields.status}>
-    {[{ value: '', label: t.values.all }, ...options].map((option) => (
-      <Chip
-        key={option.value}
-        variant="filter"
-        size="sm"
-        selected={value === option.value}
-        disabled={disabled}
-        onSelectedChange={() => {
-          if (value !== option.value) onChange(option.value);
-        }}
-      >
-        {option.label}
-        {/* 건수도 함께(사용자 2026-10-30). 「전체」는 상태별 합이다. */}
-        {counts !== undefined && (
-          <span className="lot-status-chip-count">
-            {option.value === ''
-              ? (total ?? [...counts.values()].reduce((sum, count) => sum + count, 0))
-              : (counts.get(option.value) ?? 0)}
-          </span>
-        )}
-      </Chip>
-    ))}
+    {options
+      .filter(
+        (option) =>
+          value === option.value || counts === undefined || (counts.get(option.value) ?? 0) > 0,
+      )
+      .map((option) => (
+        <Chip
+          key={option.value}
+          variant="filter"
+          size="sm"
+          selected={value === option.value}
+          disabled={disabled}
+          onSelectedChange={() => {
+            onChange(value === option.value ? '' : option.value);
+          }}
+        >
+          {option.label}
+          {/* 건수도 함께(사용자 2026-10-30) — 「N건」(사용자 지시 2026-11-24). */}
+          {counts !== undefined && (
+            <span className="lot-status-chip-count">
+              {t.values.chipCount(counts.get(option.value) ?? 0)}
+            </span>
+          )}
+        </Chip>
+      ))}
     {note !== undefined && <span className="field-note">{note}</span>}
   </div>
 );
@@ -427,7 +428,6 @@ const HistoryMode = ({
     <StatusChips
       options={toCodeOptions(lotStatuses.data?.items)}
       counts={statusCounts}
-      total={history.data?.entries.length}
       value={statusFilter}
       onChange={(status) => {
         setStatusFilter(status);
@@ -584,7 +584,12 @@ export const LotStatusHistoryScreen = ({ fixedMode }: { fixedMode?: ScreenMode }
         onPageChange={changePage}
         pageSize={pageSize}
         onPageSizeChange={(size) => setSearchParams((current) => withLotPageSize(current, size))}
-        onSelectLot={(lotId) => setSearchParams((current) => withSelectedLot(current, lotId))}
+        /* 고른 줄을 다시 누르면 선택을 푼다. */
+        onSelectLot={(lotId) =>
+          setSearchParams((current) =>
+            withSelectedLot(current, lotId === selectedLotId ? null : lotId),
+          )
+        }
       />
     ) : (
       <HistoryMode

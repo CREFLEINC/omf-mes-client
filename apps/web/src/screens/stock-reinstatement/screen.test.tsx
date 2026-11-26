@@ -105,6 +105,17 @@ describe('StockReinstatementScreen', () => {
     expect(paths).toContain('/trace/lots/6101');
   });
 
+  it('고른 줄을 한 번 더 누르면 선택이 풀린다', async () => {
+    const user = renderScreen();
+    await chooseTarget(user);
+    const row = screen.getByRole('button', { name: t.actions.selectRow('LOT-SYNTH-6101') });
+    expect(row).toHaveAttribute('aria-current', 'true');
+
+    await user.click(row);
+    await waitFor(() => expect(row).not.toHaveAttribute('aria-current'));
+    expect(screen.getByText(t.empty.selectionTitle)).toBeInTheDocument();
+  });
+
   it('한 번의 재등록 POST만 보내고 토큰은 본문에 싣는다', async () => {
     const user = renderScreen();
     await chooseTarget(user);

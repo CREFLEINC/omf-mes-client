@@ -20,7 +20,6 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
   filters: {
     pane: 'Điều kiện tra cứu',
     period: 'Kỳ',
-    periodPlaceholder: 'Ngày bắt đầu ~ ngày kết thúc',
     item: 'Mặt hàng',
     itemPicker: 'Chọn mặt hàng',
     itemCode: 'Mã mặt hàng',
@@ -175,7 +174,8 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
       shipment: 'Xuất hàng',
     },
     facts: {
-      item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       lotStatus: 'Trạng thái LOT',
       receivedQty: 'Số lượng nhập kho',
       goodQty: 'Số lượng đạt',

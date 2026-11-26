@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
+import { CodeLockTextField } from '../../patterns/master';
 import type { ActionAvailability } from './asset-actions';
 
 import {
@@ -193,14 +194,13 @@ export const ToolFormDialog = ({
             {t.form.sections.basic}
           </h3>
           <div className="form-grid tool-form-grid">
-            <TextField
+            <CodeLockTextField
+              lockReason={codeLockReason}
               label={t.fields.toolCode}
               required
               value={values.moldCode}
               onChange={(event) => onChange({ moldCode: event.target.value })}
               containerClassName={emptyRequired(values.moldCode, true, codeLockReason !== null)}
-              disabled={codeLockReason !== null}
-              disabledReason={codeLockReason ?? undefined}
               error={fieldErrors.moldCode}
             />
 

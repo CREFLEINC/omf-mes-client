@@ -48,6 +48,8 @@ export const workOrderClose = {
     fields: {
       workOrderNo: 'W/O 번호',
       item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       status: '상태',
       quantity: '지시 수량',
       goodQty: '양품',
@@ -90,8 +92,8 @@ export const workOrderClose = {
   filter: {
     pane: '마감 후보 조회 조건',
     productionOrder: 'P/O',
-    plannedStart: '계획 시작일',
-    plannedStartPlaceholder: '시작일 ~ 종료일',
+    plannedStartFrom: '계획 시작일(부터)',
+    plannedStartTo: '계획 시작일(까지)',
     status: '마감 상태',
     judgment: '판정',
     judgmentUnavailable:

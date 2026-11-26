@@ -1,7 +1,7 @@
-import { Button, EmptyState, SkeletonText, useToast } from '@crefle/web-ui';
+import { Button, Icon, useToast } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
@@ -70,6 +70,10 @@ export interface CodeValueSectionProps {
   onIncludeInactiveChange: (includeInactive: boolean) => void;
   page: number;
   onPageChange: (page: number) => void;
+  /** 저장하지 않은 코드값 편집이 있는지 — 소비 화면이 다른 화면으로 옮기기 전에 묻는 데 쓴다(#358). */
+  onDirtyChange?: (isDirty: boolean) => void;
+  /** 다른 코드값 · 쪽 · 조건 · 등록으로 옮기기 전에 소비 화면이 고친 것을 버릴지 묻는다 — 주지 않으면 곧바로 옮긴다(#358). */
+  confirmSwitch?: (action: () => void) => void;
 }
 
 /**
@@ -98,6 +102,8 @@ export const CodeValueSection = ({
   onIncludeInactiveChange,
   page,
   onPageChange,
+  onDirtyChange,
+  confirmSwitch = (action) => action(),
 }: CodeValueSectionProps) => {
   const toast = useToast();
   const { client } = useApiClient();
@@ -137,10 +143,23 @@ export const CodeValueSection = ({
   const isDirty =
     formState !== null && !isSameCodeValueValues(formState.values, formState.baseline);
 
+  /* 구획이 사라지면(코드그룹 선택 해제) 고친 것도 함께 사라지므로 `false` 로 되돌린다. */
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    return () => onDirtyChange?.(false);
+  }, [isDirty, onDirtyChange]);
+
   /** 보내기 전에 화면에서 잡은 오류. 저장을 누른 뒤에만 세운다. */
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
+
+  /**
+   * 편집 폼을 연 코드값 번호. 고른 코드값은 읽기 전용으로 보이고 [수정]을 눌러야 폼이 된다(사용자 지시 2026-11-25).
+   * 번호로 두어 다른 코드값을 고르면(뒤로가기 포함) 저절로 읽기 전용으로 돌아간다.
+   */
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const isEditing = editingId !== null && editingId === selectedCodeValueId;
 
   /**
    * 코드값 수정 — **이 행 하나만 보낸다.**
@@ -170,6 +189,7 @@ export const CodeValueSection = ({
       setFieldErrors({});
       const next = codeValueToFormValues(saved);
       setFormState((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
+      setEditingId(null);
       toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
@@ -241,6 +261,7 @@ export const CodeValueSection = ({
     setIsDeactivateOpen(false);
     setFormState(null);
     setFieldErrors({});
+    setEditingId(null);
   };
 
   /*
@@ -248,23 +269,49 @@ export const CodeValueSection = ({
    * 뒤로가기가 사용자가 본 적 없는 중간 상태로 떨어지지 않는다.
    */
   const handleSelect = (codeValueId: number) => {
-    resetEditing();
-    onSelectCodeValue(codeValueId);
+    confirmSwitch(() => {
+      resetEditing();
+      onSelectCodeValue(codeValueId);
+    });
+  };
+
+  /* 줄의 [수정] — 그 줄을 고르고 수정 팝업을 연다(사용자 지시 2026-11-26). 고친 것이 있으면 같은 확인을 거친다. */
+  const handleEdit = (codeValueId: number) => {
+    confirmSwitch(() => {
+      resetEditing();
+      if (codeValueId !== selectedCodeValueId) onSelectCodeValue(codeValueId);
+      setEditingId(codeValueId);
+    });
+  };
+
+  /* 줄의 [사용 중지] — 그 줄을 고르고 확인 창을 연다. 보내는 요청 · 잠금 토큰은 종전 그대로(고른 코드값의 상세). */
+  const handleDeactivate = (codeValueId: number) => {
+    confirmSwitch(() => {
+      resetEditing();
+      if (codeValueId !== selectedCodeValueId) onSelectCodeValue(codeValueId);
+      setIsDeactivateOpen(true);
+    });
   };
 
   const handleIncludeInactiveChange = (next: boolean) => {
-    resetEditing();
-    onIncludeInactiveChange(next);
+    confirmSwitch(() => {
+      resetEditing();
+      onIncludeInactiveChange(next);
+    });
   };
 
   const handlePageChange = (next: number) => {
-    resetEditing();
-    onPageChange(next);
+    confirmSwitch(() => {
+      resetEditing();
+      onPageChange(next);
+    });
   };
 
   const handleAdd = () => {
-    resetEditing();
-    onOpenCreate();
+    confirmSwitch(() => {
+      resetEditing();
+      onOpenCreate();
+    });
   };
 
   const closeCreateForm = () => {
@@ -322,24 +369,25 @@ export const CodeValueSection = ({
     codeGroupId === null ? (
       <DisabledAction label={t.actions.add} reason={t.actionReasons.addNeedsGroup} />
     ) : (
-      <div className="field-cell">
-        <Button variant="outlined" disabled={isCreating} onClick={handleAdd}>
+      /* 미사용 포함 상자 안 오른쪽 끝 · 빨간 기본 단추(사용자 지시 2026-11-25). */
+      <div className="field-cell common-code-value-add">
+        <Button
+          leadingIcon={<Icon name="add" size={18} />}
+          disabled={isCreating}
+          onClick={handleAdd}
+        >
           {t.actions.add}
         </Button>
       </div>
     );
 
-  const deactivateDisabledReason =
-    detail.data?.codeValue.isActive === false ? t.actionReasons.deactivateAlreadyDone : null;
-
   /**
-   * 코드값 정보 구획. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
-   * 등록·선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
+   * 표 아래에는 아무것도 두지 않는다 — 등록 · 수정은 팝업, 사용 중지는 줄의 단추(사용자 지시 2026-11-26).
+   * 수정 팝업은 고른 코드값의 상세를 받은 뒤에 선다(잠금 토큰 · 코드 잠금 판정이 상세에서 온다).
    */
   const renderFormPane = (): ReactNode => {
     if (isCreating) {
       if (formState === null) return null;
-
       return (
         <CodeValueFormPane
           mode="create"
@@ -350,26 +398,15 @@ export const CodeValueSection = ({
           banner={<SaveErrorBanner error={createWrite.error} />}
           /* 등록에서는 코드 칸이 열려 있다 — 아직 참조할 자료가 없다. */
           codeLockReason={null}
-          deactivateDisabledReason={null}
           isDirty={isDirty}
           isSaving={createWrite.isSaving}
           onSave={handleSave}
           onCancel={closeCreateForm}
-          onDeactivate={() => undefined}
         />
       );
     }
 
-    if (selectedCodeValueId === null) {
-      return (
-        <section className="pane" aria-label={t.formPaneTitle}>
-          <EmptyState
-            size="sm"
-            title={codeGroupId === null ? t.empty.groupNotSelected : t.empty.notSelected}
-          />
-        </section>
-      );
-    }
+    if (!isEditing) return null;
 
     if (detail.isError) {
       return (
@@ -379,15 +416,7 @@ export const CodeValueSection = ({
       );
     }
 
-    if (detail.data === undefined || formState === null) {
-      return (
-        <section className="pane" aria-label={t.formPaneTitle}>
-          <div role="status" aria-label={t.loading.detail}>
-            <SkeletonText lines={4} />
-          </div>
-        </section>
-      );
-    }
+    if (detail.data === undefined || formState === null) return null;
 
     return (
       <CodeValueFormPane
@@ -402,7 +431,6 @@ export const CodeValueSection = ({
          * 코드값의 코드는 전 하류가 문자열로만 참조해 참조 건수를 셀 수 없어 늘 잠긴다.
          */
         codeLockReason={codeLockMessage(detail.data.editability)}
-        deactivateDisabledReason={deactivateDisabledReason}
         isDirty={isDirty}
         isSaving={updateWrite.isSaving}
         onSave={handleSave}
@@ -410,10 +438,7 @@ export const CodeValueSection = ({
           setFieldErrors({});
           updateWrite.reset();
           setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
-        }}
-        onDeactivate={() => {
-          deactivateWrite.reset();
-          setIsDeactivateOpen(true);
+          setEditingId(null);
         }}
       />
     );
@@ -429,9 +454,12 @@ export const CodeValueSection = ({
         includeInactive={includeInactive}
         onIncludeInactiveChange={handleIncludeInactiveChange}
         pageView={pageView}
+        pageMeta={list.data?.page ?? null}
         onChangePage={handlePageChange}
         selectedCodeValueId={selectedCodeValueId}
         onSelect={handleSelect}
+        onEdit={handleEdit}
+        onDeactivate={handleDeactivate}
         addAction={addAction}
         loadError={
           list.isError ? (
@@ -450,14 +478,22 @@ export const CodeValueSection = ({
         <DeactivateDialog
           open
           title={t.dialog.deactivateTitle}
+          description={t.dialog.deactivateDescription}
           onClose={() => {
             setIsDeactivateOpen(false);
             deactivateWrite.reset();
           }}
           onConfirm={() => {
+            /* 잠금 토큰은 고른 코드값의 상세에서 온다 — 아직 받기 전이면 보내지 않는다. */
+            if (detail.data === undefined) return;
             deactivateWrite.write(undefined);
           }}
           isSaving={deactivateWrite.isSaving}
+          /*
+           * 줄의 [사용 중지]는 고르지 않은 줄에서도 바로 창을 연다 — 그 줄의 상세(잠금 토큰)를 받기 전에는 확인을 잠근다.
+           * 잠그지 않으면 눌러도 아무 일이 없다(아래 `onConfirm`이 상세 없이는 보내지 않는다).
+           */
+          confirmDisabled={detail.data === undefined}
           /* 충돌은 상세를 다시 받아 잠금 토큰을 갱신하면 풀린다. 버릴 입력이 없다. */
           banner={<SaveErrorBanner error={deactivateWrite.error} onReload={reloadDetail} />}
         />

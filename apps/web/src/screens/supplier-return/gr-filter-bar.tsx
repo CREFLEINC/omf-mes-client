@@ -1,7 +1,8 @@
-import { Button, DatePicker, SearchInput } from '@crefle/web-ui';
+import { Button, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useState } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import {
   FilterMoreButton,
   HiddenFilterChips,
@@ -9,7 +10,6 @@ import {
   useFilterMore,
   type HiddenFilterChip,
 } from '../../patterns/filter-more';
-import { InfoLabel } from '../../patterns/info-tip';
 
 import { codeNote, codePlaceholder } from './code-options';
 import {
@@ -91,7 +91,6 @@ export const GrFilterBar = ({
   onRemoveFilter,
   onReset,
 }: GrFilterBarProps) => {
-  const periodId = useId();
   const more = useFilterMore();
   const [filters, setFilters] = useState<ReceiptFilters>(appliedFilters);
 
@@ -188,32 +187,18 @@ export const GrFilterBar = ({
           }}
         />
 
-        {/*
-         * 기간은 **한 컨트롤**이다 — 시작·종료 두 칸이 아니라 `mode="range"` 하나다.
-         * 주소 키(`from`·`to`)와 요청 파라미터는 그대로다. 바뀐 것은 고르는 수단뿐이다.
-         *
-         * 컴포넌트가 **완결된 쌍만, 그것도 from ≤ to로만** 방출한다. 그래서 이 컨트롤을 거친
-         * 역전은 생기지 않지만 `filters.ts`의 날짜 판정은 그대로 둔다 — 조회 조건의 정본은
-         * 주소이고 주소는 사용자가 직접 고칠 수 있다. 컨트롤이 막는 것과 화면이 막는 것은
-         * 다른 층이다.
-         *
-         * 기본 기간이 없다는 사실은 라벨 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A).
-         */}
-        <div className="field-cell">
-          <InfoLabel htmlFor={periodId} label={t.fields.period} info={t.filters.periodNote} />
-          <DatePicker
-            id={periodId}
-            mode="range"
-            placeholder={messages.common.selectDate}
-            value={[
-              filters.from === '' ? null : filters.from,
-              filters.to === '' ? null : filters.to,
-            ]}
-            onChange={([from, to]) => {
-              setFilters((prev) => ({ ...prev, from, to }));
-            }}
-          />
-        </div>
+        <DateRangeFields
+          clearable
+          startLabel={t.fields.periodFrom}
+          endLabel={t.fields.periodTo}
+          info={t.filters.periodNote}
+          placeholder={messages.common.selectDate}
+          from={filters.from}
+          to={filters.to}
+          onChange={(from, to) => {
+            setFilters((prev) => ({ ...prev, from, to }));
+          }}
+        />
 
         <SearchInput
           label={t.fields.q}

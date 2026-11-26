@@ -107,8 +107,6 @@ export const gaugeMaster = {
     isActive: '사용',
   },
   values: {
-    active: '사용 중',
-    inactive: '미사용',
     inactiveSuffix: ' (미사용)',
   },
   /**

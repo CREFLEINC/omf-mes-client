@@ -441,6 +441,21 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
     expect(await screen.findByText(t.print.printed(1))).toBeInTheDocument();
   });
 
+  it('고른 창고를 한 번 더 누르면 선택이 풀리고 창고를 고르라는 안내로 돌아간다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await chooseWarehouse(user);
+    const row = screen.getByRole('button', { name: /S230/u });
+    expect(row).toHaveAttribute('aria-pressed', 'true');
+    expect(await screen.findByText('S230-01')).toBeInTheDocument();
+
+    await user.click(row);
+    expect(row).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByText('S230-01')).toBeNull();
+    expect(screen.getByText(t.location.awaitingWarehouse)).toBeInTheDocument();
+  });
+
   /* 세 번째 열은 「상태」 — 모든 줄에 사용 여부를 적는다(사용자 지시 2026-09-18 · omf-all-around#11). */
   it('상태 열에 사용·미사용을 모든 줄에 적는다', async () => {
     const user = userEvent.setup();

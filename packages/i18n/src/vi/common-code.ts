@@ -20,20 +20,18 @@ export const commonCode: Translated<typeof ko.commonCode> = {
   },
   panes: {
     codeGroup: 'Nhóm mã',
-    codeGroupForm: 'Thông tin nhóm mã',
+    codeGroupForm: 'Thông tin chi tiết nhóm mã',
     department: 'Phòng ban',
-    departmentForm: 'Thông tin phòng ban',
+    departmentForm: 'Thông tin chi tiết phòng ban',
     worker: 'Công nhân',
-    workerDetail: 'Thông tin cơ bản của công nhân',
+    workerDetail: 'Thông tin chi tiết công nhân',
     partner: 'Đối tác',
-    partnerDetail: 'Thông tin cơ bản của đối tác',
+    partnerDetail: 'Thông tin chi tiết đối tác',
     partnerRoles: 'Vai trò đối tác',
     /** 목록 옆 상세 칸(통일 배치 · #350) — 안에 정보 · 하위 구획을 쌓는다. */
     detail: 'Chi tiết',
   },
   actions: {
-    prevPage: 'Trước',
-    nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
     addCodeGroup: 'Thêm nhóm',
     addDepartment: 'Thêm phòng ban',
@@ -47,10 +45,13 @@ export const commonCode: Translated<typeof ko.commonCode> = {
   },
   /** 사용 중지 확인 창. 참조 건수를 내지 않는다. */
   dialog: {
-    deactivateCodeGroupTitle: 'Ngừng sử dụng nhóm mã này?',
-    deactivateDepartmentTitle: 'Ngừng sử dụng phòng ban này?',
-    deactivateDescription:
-      'Khi ngừng sử dụng, mục này bị loại khỏi các lựa chọn mới và dữ liệu đã dùng vẫn giữ nguyên. Không có đường quay lại.',
+    deactivateCodeGroupTitle: 'Ngừng sử dụng nhóm mã?',
+    deactivateDepartmentTitle: 'Ngừng sử dụng phòng ban?',
+    deactivateCodeGroupDescription:
+      'Khi ngừng sử dụng sẽ không thể chọn mới. Các bản ghi hiện có vẫn hiển thị nhóm mã này.',
+    deactivateDepartmentDescription:
+      'Khi ngừng sử dụng sẽ không thể chọn mới. Các bản ghi hiện có vẫn hiển thị phòng ban này.',
+    deactivateWarning: 'Sau khi ngừng sử dụng sẽ không thể tiếp tục sử dụng lại.',
   },
   optionsTruncated:
     'Chỉ hiển thị một phần danh sách chọn. Không thấy giá trị cần tìm thì hãy báo người phụ trách.',
@@ -65,17 +66,17 @@ export const commonCode: Translated<typeof ko.commonCode> = {
   },
   filters: {
     codeGroupSearchLabel: 'Tìm nhóm mã',
-    codeGroupSearchPlaceholder: 'Mã nhóm hoặc tên nhóm',
+    codeGroupSearchPlaceholder: 'Nhập mã nhóm hoặc tên nhóm',
     departmentSearchLabel: 'Tìm phòng ban',
-    departmentSearchPlaceholder: 'Mã phòng ban hoặc tên phòng ban',
-    businessUnit: 'Đơn vị kinh doanh',
+    departmentSearchPlaceholder: 'Nhập mã phòng ban hoặc tên phòng ban',
+    businessUnit: 'Chọn đơn vị kinh doanh',
     businessUnitAll: 'Tất cả đơn vị kinh doanh',
     workerSearchLabel: 'Tìm công nhân',
-    workerSearchPlaceholder: 'Mã nhân viên hoặc họ tên',
-    department: 'Phòng ban',
+    workerSearchPlaceholder: 'Nhập mã nhân viên hoặc họ tên',
+    department: 'Chọn phòng ban',
     departmentAll: 'Tất cả phòng ban',
     partnerSearchLabel: 'Tìm đối tác',
-    partnerSearchPlaceholder: 'Mã đối tác hoặc tên đối tác',
+    partnerSearchPlaceholder: 'Nhập mã đối tác hoặc tên đối tác',
   },
   loading: {
     codeGroups: 'Đang tải danh sách nhóm mã',
@@ -100,7 +101,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
   },
   values: {
     empty: '—',
-    inactiveSuffix: ' (ngừng dùng)',
     /* 내부 식별자를 그대로 내지 않는다 — 보이면 자료로 읽힌다. */
     unknown: 'Không rõ',
   },
@@ -116,7 +116,8 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       noMatchTitle: 'Không có nhóm mã khớp điều kiện',
       noMatchDescription: 'Hãy giảm bớt hoặc đặt lại điều kiện rồi tra cứu lại.',
       /* 코드값 구획이 같은 자리에서 «먼저 고르세요»를 내므로 여기는 무엇이 채워지는지로 말한다. */
-      notSelected: 'Chọn nhóm mã ở bên trái thì thông tin của nhóm đó hiện ở đây',
+      notSelected: 'Hãy chọn nhóm mã.',
+      notSelectedDescription: 'Thông tin và giá trị mã của nhóm đã chọn sẽ hiển thị.',
     },
     validation: {
       required: 'Đây là mục bắt buộc.',
@@ -124,14 +125,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       groupNameBlank: 'Tên nhóm không được chỉ gồm khoảng trắng.',
       groupCodeTooLong: 'Mã nhóm không được vượt quá 50 ký tự.',
       groupNameTooLong: 'Tên nhóm không được vượt quá 200 ký tự.',
-    },
-    actionReasons: {
-      /* 잠금 사유가 갈린다 — 이 문구는 «다른 코드그룹의 저장»이라는 다른 사실을 말한다. */
-      saveLockedByOtherCodeGroup:
-        'Lưu chỉ thực hiện được sau khi việc lưu của nhóm mã khác kết thúc.',
-      /* 같은 사실이되 컨트롤 이름이 달라 문면이 둘이다 — 이름으로 시작해야 어느 버튼인지 복원된다. */
-      addLockedByOtherCodeGroup:
-        'Thêm nhóm chỉ thực hiện được sau khi việc lưu của nhóm mã khác kết thúc.',
     },
   },
   department: {
@@ -157,16 +150,13 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       noneDescription: 'Hãy đăng ký phòng ban đầu tiên bằng «Thêm phòng ban».',
       noMatchTitle: 'Không có phòng ban khớp điều kiện',
       noMatchDescription: 'Hãy giảm bớt hoặc đặt lại điều kiện rồi tra cứu lại.',
-      notSelected: 'Chọn phòng ban ở bên trái thì thông tin của phòng ban đó hiện ở đây',
+      notSelected: 'Hãy chọn phòng ban.',
+      notSelectedDescription: 'Thông tin và kho sản xuất của phòng ban đã chọn sẽ hiển thị.',
     },
     actionReasons: {
       /* 목록에 자기 하나뿐이면 상위로 고를 대상이 없다 — 감추지 않고 사유를 밝힌다. */
       parentNeedsOthers:
         'Phòng ban cấp trên không chỉ định được vì không có phòng ban khác để chọn. Đăng ký thêm một phòng ban thì có thể dùng ô này.',
-      saveLockedByOtherDepartment:
-        'Lưu chỉ thực hiện được sau khi việc lưu của phòng ban khác kết thúc.',
-      addLockedByOtherDepartment:
-        'Thêm phòng ban chỉ thực hiện được sau khi việc lưu của phòng ban khác kết thúc.',
     },
     validation: {
       required: 'Đây là mục bắt buộc.',
@@ -194,15 +184,15 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       /* 계정 연결은 연결 여부만 낸다 — 내부 식별자를 그대로 내면 사용자가 쓸 수 없다. */
       appUserLinked: 'Đã liên kết',
       appUserNotLinked: 'Chưa liên kết',
-      active: 'Đang dùng',
-      inactive: 'Ngừng dùng',
     },
     empty: {
       noneTitle: 'Chưa đăng ký công nhân',
       noneDescription: 'Công nhân được nhận về từ hệ thống ngoài. Hãy kiểm tra hệ thống gốc.',
       noMatchTitle: 'Không có công nhân khớp điều kiện',
       noMatchDescription: 'Hãy giảm bớt hoặc đặt lại điều kiện rồi tra cứu lại.',
-      notSelected: 'Chọn công nhân ở bên trái thì thông tin của công nhân đó hiện ở đây',
+      notSelected: 'Hãy chọn công nhân.',
+      notSelectedDescription:
+        'Thông tin và chứng chỉ · chứng nhận của công nhân đã chọn sẽ hiển thị.',
     },
   },
   /** 자격·인증 — 이 화면에서 편집 가능한 유일한 작업자 자료. 저장은 전체 치환이다. */
@@ -217,7 +207,7 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       validFrom: 'Hiệu lực từ',
       validTo: 'Hiệu lực đến',
       certifiedBy: 'Người chứng nhận',
-      edit: 'Sửa',
+      manage: 'Quản lý',
     },
     values: {
       /** 공정을 비운 자격은 모든 공정에 걸린다. */
@@ -232,11 +222,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       removeRow: (label: string): string => `Xóa chứng chỉ ${label}`,
     },
     actionReasons: {
-      needsWorker: 'Thêm chứng chỉ chỉ thực hiện được sau khi chọn công nhân ở bên trái.',
-      saveBlockedByInvalid:
-        'Lưu không thực hiện được vì có dòng trùng cặp loại chứng chỉ và công đoạn. Sửa hoặc xóa dòng đó thì có thể lưu.',
-      saveLockedByOtherWorker:
-        'Lưu chỉ thực hiện được sau khi việc lưu của công nhân khác kết thúc.',
       certifierLookupLoading:
         'Trong lúc đang tải danh sách người chứng nhận thì không đổi được người chứng nhận.',
       certifierLookupFailed:
@@ -247,12 +232,9 @@ export const commonCode: Translated<typeof ko.commonCode> = {
     dialog: {
       addTitle: 'Thêm chứng chỉ',
       editTitle: 'Sửa chứng chỉ',
-      notSavedNotice:
-        'Xác nhận ở cửa sổ này không phải là lưu. Sau khi phản ánh vào bảng, phải bấm «Lưu» thì mới gửi lên máy chủ.',
       confirm: 'Xác nhận',
     },
     empty: {
-      notSelected: 'Chọn công nhân ở bên trái thì chứng chỉ · chứng nhận của người đó hiện ra',
       noneTitle: 'Chưa đăng ký chứng chỉ · chứng nhận',
       noneDescription: 'Hãy đăng ký chứng chỉ đầu tiên bằng «Thêm chứng chỉ».',
     },
@@ -277,17 +259,14 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       erpPartnerCode: 'Mã ERP',
       isActive: 'Trạng thái sử dụng',
     },
-    values: {
-      active: 'Đang dùng',
-      inactive: 'Ngừng dùng',
-    },
     empty: {
       noneTitle: 'Chưa đăng ký đối tác',
       /* «거래처 추가»가 없다 — 없는 조치를 지시하지 않고 어디서 오는 자료인지만 밝힌다. */
       noneDescription: 'Đối tác được nhận về từ hệ thống ngoài. Hãy kiểm tra hệ thống gốc.',
       noMatchTitle: 'Không có đối tác khớp điều kiện',
       noMatchDescription: 'Hãy giảm bớt hoặc đặt lại điều kiện rồi tra cứu lại.',
-      notSelected: 'Chọn đối tác ở bên trái thì vai trò của đối tác đó hiện ở đây',
+      notSelected: 'Hãy chọn đối tác.',
+      notSelectedDescription: 'Thông tin và vai trò của đối tác đã chọn sẽ hiển thị.',
       /* 못 불러온 것과 없는 것은 할 수 있는 조치가 다르다 — 재시도가 아니라 다시 고르기로 안내한다. */
       notFoundTitle: 'Không tìm thấy đối tác đã chọn',
       notFoundDescription:
@@ -303,6 +282,13 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       disposal: 'Đơn vị xử lý hủy',
       other: 'Khác',
     },
+    descriptions: {
+      customer:
+        'Có thể chọn làm khách hàng ở Đăng ký nhập hàng trả lại·khiếu nại và Tra cứu lịch sử sản xuất LOT.',
+      supplier: 'Có thể chọn làm nhà cung cấp ở Tra cứu lịch sử sản xuất LOT.',
+      disposal:
+        'Có thể chọn làm đơn vị xử lý hủy ở Phê duyệt hủy·xuất khác và Yêu cầu hủy sản phẩm.',
+    },
     /* 통째 교체 저장에서 목록에 없는 역할은 조용히 해제되므로 감추지 않는다. */
     unknownBadge: 'Vai trò màn hình này không biết',
     unknownNote:
@@ -313,11 +299,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
      */
     saveTokenUnavailable:
       'Thông tin cần cho việc lưu vẫn chưa được máy chủ cung cấp nên bây giờ chưa lưu được. Bấm lại cũng cho kết quả như vậy. Nếu lặp lại thì hãy báo người phụ trách.',
-    actionReasons: {
-      saveNoChanges: 'Lưu chỉ thực hiện được sau khi sửa vai trò.',
-      saveLockedByOtherPartner:
-        'Lưu chỉ thực hiện được sau khi việc lưu của đối tác khác kết thúc.',
-    },
     /* 잃는 것이 있을 때만 서는 창. 버튼 문구가 «확인/취소»가 아니다 — 무엇을 누르는지 알아야 한다. */
     dialog: {
       title: 'Có vai trò sẽ bị gỡ',
@@ -337,10 +318,13 @@ export const commonCode: Translated<typeof ko.commonCode> = {
    */
   codeValue: {
     paneTitle: 'Giá trị mã',
+    listTitle: 'Danh sách giá trị mã',
     formPaneTitle: 'Thông tin giá trị mã',
     pageNavLabel: 'Chuyển trang giá trị mã',
     actions: {
       add: 'Thêm giá trị mã',
+      edit: 'Sửa',
+      editTitle: 'Sửa giá trị mã',
     },
     actionReasons: {
       addNeedsGroup: 'Thêm giá trị mã chỉ thực hiện được sau khi chọn nhóm mã ở bên trái.',
@@ -365,6 +349,7 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       effectivePeriod: 'Thời hạn hiệu lực',
       effectiveFrom: 'Hiệu lực từ',
       effectiveTo: 'Hiệu lực đến',
+      manage: 'Quản lý',
     },
     empty: {
       groupNotSelected: 'Hãy chọn nhóm mã ở bên trái trước',
@@ -381,7 +366,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       /** 한쪽만 있는 것도 계약이 허용한다 — 없는 쪽을 지어내지 않는다. */
       period: (from: string, to: string): string => `${from} ~ ${to}`,
       empty: '—',
-      inactiveSuffix: ' (ngừng dùng)',
     },
     validation: {
       required: 'Đây là mục bắt buộc.',
@@ -394,7 +378,9 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       effectiveRangeReversed: 'Hiệu lực đến phải bằng hoặc sau hiệu lực từ.',
     },
     dialog: {
-      deactivateTitle: 'Ngừng sử dụng giá trị mã này?',
+      deactivateTitle: 'Ngừng sử dụng giá trị mã?',
+      deactivateDescription:
+        'Khi ngừng sử dụng sẽ không thể chọn mới. Các bản ghi hiện có vẫn hiển thị giá trị mã này.',
     },
   },
 };

@@ -292,8 +292,6 @@ export const LotStatusTransitionCandidateScreen = () => {
    */
   const itemSource = (itemId: number) =>
     itemNames.get(itemId) ?? { entries: [], isError: false, isLoading: true };
-  const itemLabel = (itemId: number): string =>
-    lookupDisplayLabelWithInactive(itemSource(itemId), itemId);
   const itemParts = (itemId: number): { code: string; name: string } =>
     itemCodeAndName(itemSource(itemId), itemId);
   const statusLabel = (code: string): string =>
@@ -500,6 +498,10 @@ export const LotStatusTransitionCandidateScreen = () => {
               <div className="field-cell lot-status-date-cell">
                 <span className="field-label" aria-hidden="true">
                   {tHistory.historyFilter.fields.fromLabel}
+                  {/* 비우면 조회를 막는다 — 조회 필수 표시. */}
+                  <span className="required-mark" aria-hidden="true">
+                    {' *'}
+                  </span>
                 </span>
                 <DatePicker
                   className="lot-status-date-field"
@@ -514,6 +516,9 @@ export const LotStatusTransitionCandidateScreen = () => {
               <div className="field-cell lot-status-date-cell">
                 <span className="field-label" aria-hidden="true">
                   {tHistory.historyFilter.fields.toLabel}
+                  <span className="required-mark" aria-hidden="true">
+                    {' *'}
+                  </span>
                 </span>
                 <DatePicker
                   className="lot-status-date-field"
@@ -713,21 +718,9 @@ export const LotStatusTransitionCandidateScreen = () => {
                   <dl className="lot-status-transition-lot-facts">
                     {(
                       [
-                        [
-                          tSelected.item,
-                          /* 「코드 · 이름」을 두 줄로 — 코드 아래 이름. */
-                          itemLabel(selected.itemId)
-                            .split(' · ')
-                            .map((part, index, parts) =>
-                              index === 0 ? (
-                                <span key="code">{part}</span>
-                              ) : index === 1 ? (
-                                <span key="name" className="lot-status-transition-item-name">
-                                  {parts.slice(1).join(' · ')}
-                                </span>
-                              ) : null,
-                            ),
-                        ],
+                        /* 품목은 품목코드 · 품목명 두 칸(품목 표기 분리 · 표와 같다). */
+                        [tSelected.itemCode, itemParts(selected.itemId).code],
+                        [tSelected.itemName, itemParts(selected.itemId).name],
                         [tSelected.latestTransition, formatDateTime(selected.latestTransitionAt)],
                         [
                           tSelected.latestReason,

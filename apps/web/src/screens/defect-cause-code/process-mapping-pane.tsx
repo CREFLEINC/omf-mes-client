@@ -399,8 +399,8 @@ export const ProcessMappingPane = () => {
       );
   }
 
-  const linkOptions: readonly { value: MappingLink; label: string }[] = [
-    { value: 'all', label: t.usage.all },
+  /* 「전체」 라벨은 두지 않는다 — 고른 라벨을 다시 누르면 전체로, 0건 라벨은 감춘다(고른 라벨은 남긴다 · 사용자 지시 2026-11-24). */
+  const linkOptions: readonly { value: Exclude<MappingLink, 'all'>; label: string }[] = [
     { value: 'linked', label: t.mappingView.linked },
     { value: 'unlinked', label: t.mappingView.unlinked },
   ];
@@ -415,22 +415,30 @@ export const ProcessMappingPane = () => {
             role="group"
             aria-label={t.mappingView.linkLabel}
           >
-            {linkOptions.map((option) => (
-              <Chip
-                key={option.value}
-                variant="filter"
-                size="sm"
-                selected={link === option.value}
-                aria-pressed={link === option.value}
-                onSelectedChange={() => {
-                  if (link !== option.value) setLink(option.value);
-                }}
-              >
-                {isLoading || loadError !== null
-                  ? option.label
-                  : t.usage.count(option.label, linkCounts[option.value])}
-              </Chip>
-            ))}
+            {linkOptions
+              .filter(
+                (option) =>
+                  link === option.value ||
+                  isLoading ||
+                  loadError !== null ||
+                  linkCounts[option.value] !== 0,
+              )
+              .map((option) => (
+                <Chip
+                  key={option.value}
+                  variant="filter"
+                  size="sm"
+                  selected={link === option.value}
+                  aria-pressed={link === option.value}
+                  onSelectedChange={() => {
+                    setLink(link === option.value ? 'all' : option.value);
+                  }}
+                >
+                  {isLoading || loadError !== null
+                    ? option.label
+                    : t.usage.count(option.label, linkCounts[option.value])}
+                </Chip>
+              ))}
           </div>
         </HubActions>
       )}

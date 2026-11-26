@@ -12,6 +12,8 @@ export interface SelectFieldProps {
   /** 선택지의 한계(값 목록 미확정·고를 수 없는 항목)를 밝히는 보조 문구. */
   note?: string;
   placeholder?: string;
+  /** 비우면 조회가 되지 않는 칸 — 라벨 옆 빨간 *. */
+  required?: boolean;
 }
 
 /**
@@ -37,6 +39,7 @@ export const SelectField = ({
   onChange,
   note,
   placeholder,
+  required = false,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
@@ -48,13 +51,14 @@ export const SelectField = ({
 
   return (
     <div className="field-cell">
-      <FieldLabel htmlFor={id} label={label} />
+      <FieldLabel htmlFor={id} label={label} required={required} />
       <Select
         id={id}
         options={options}
         value={value === '' && !hasEmptyOption ? null : value}
         onChange={onChange}
         placeholder={placeholder}
+        aria-required={required || undefined}
         aria-describedby={note === undefined ? undefined : noteId}
       />
       {note !== undefined && (

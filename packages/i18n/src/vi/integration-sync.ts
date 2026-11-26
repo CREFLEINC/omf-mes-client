@@ -13,8 +13,8 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
   menuPath: 'Quản trị hệ thống › Tình trạng · lịch sử liên kết ERP › Tình trạng · lịch sử liên kết',
   panes: {
     filter: 'Điều kiện tra cứu',
-    list: 'Danh sách bản tin liên kết',
-    detail: 'Chi tiết bản tin liên kết',
+    list: 'Danh sách lịch sử liên kết',
+    detail: 'Chi tiết lịch sử liên kết',
   },
   splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
   listCollapse: 'Thu gọn danh sách',
@@ -45,12 +45,13 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     },
   },
   fields: {
-    periodFrom: 'Bắt đầu kỳ',
-    periodTo: 'Kết thúc kỳ',
-    status: 'Trạng thái',
-    interfaceCode: 'Hạng mục',
-    direction: 'Phân loại',
-    retryMin: 'Số lần thử lại (từ)',
+    periodFrom: 'Ngày phát sinh từ',
+    periodTo: 'Ngày phát sinh đến',
+    status: 'Chọn trạng thái',
+    interfaceCode: 'Chọn hạng mục liên kết',
+    direction: 'Chọn gửi/nhận',
+    retryMin: 'Số lần thử lại tối thiểu',
+    retryMinPlaceholder: 'Nhập số',
   },
   actions: {
     prevPage: 'Trước',
@@ -60,27 +61,30 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     /* 행 버튼의 접근 이름. 보이는 글자(`Xử lý lại`)를 그대로 담아 음성 조작이 부를 수 있게 둔다. */
     retryRow: (title: string): string => `Xử lý lại ${title}`,
     reload: 'Tra cứu lại',
-    batchRetry: 'Xử lý lại theo lô mục đã chọn',
+    batchRetry: 'Xử lý lại theo lô',
   },
   /** 부분 실패를 허용하는 일괄 재처리라 성공 건수와 실패 사유를 함께 낸다. */
   batch: {
     selectionCount: (count: number): string => `Đã chọn ${String(count)}`,
-    confirmTitle: (count: number): string => `Gửi lại ${String(count)} mục đã chọn?`,
-    confirmDescription: 'Có thể chỉ một phần thành công. Kết quả được báo theo từng mục.',
+    confirmTitle: (count: number): string => `Xử lý lại ${String(count)} mục đã chọn?`,
+    targetLabel: 'Đối tượng',
+    confirmDescription: 'Xử lý lại các mục liên kết đã chọn. Không tạo mục liên kết mới.',
+    confirmNote: 'Có thể chỉ một phần được xử lý. Kết quả được báo theo từng mục.',
     resultTitle: 'Kết quả xử lý lại',
-    failedListLabel: 'Mục không gửi được',
-    allSucceeded: (count: number): string => `Đã gửi lại ${String(count)} mục.`,
+    failedListLabel: 'Mục không xử lý lại được',
+    allSucceeded: (count: number): string => `Đã yêu cầu xử lý lại ${String(count)} mục.`,
     partial: (succeeded: number, failed: number): string =>
-      `Đã gửi lại ${String(succeeded)} mục. ${String(failed)} mục không gửi được.`,
+      `Đã yêu cầu xử lý lại ${String(succeeded)} mục. ${String(failed)} mục không yêu cầu được.`,
     /** 서버가 준 위치 번호가 보낸 건수 밖일 때. 그 항목을 버리지 않고 이렇게 밝힌다. */
     unknownItem: 'Không rõ là mục nào.',
     noReason: 'Không nhận được lý do.',
   },
   /** 재처리는 같은 메시지 키로 다시 보내는 것이라 새 건을 만들지 않는다고 못 박는다. */
   retry: {
-    confirmTitle: 'Gửi lại?',
-    confirmDescription: 'Gửi lại cùng mục này. Không tạo mục mới.',
-    requested: 'Đã yêu cầu gửi lại',
+    confirmTitle: 'Xử lý lại mục liên kết này?',
+    targetLabel: 'Số chứng từ',
+    confirmDescription: 'Xử lý lại mục liên kết hiện có. Không tạo mục liên kết mới.',
+    requested: 'Đã yêu cầu xử lý lại',
   },
   /** 이 화면의 쓰기는 저장이 아니라 재처리 요청이라 「저장」 어휘를 쓰지 않는다. */
   retryError: {
@@ -98,35 +102,38 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
   },
   /** 목록 표의 머리글. 열 구성의 근거는 screens/integration-sync/message-table.tsx에 있다. */
   table: {
-    direction: 'Phân loại',
-    interfaceCode: 'Hạng mục',
-    messageKey: 'Số',
+    direction: 'Gửi/nhận',
+    interfaceCode: 'Hạng mục liên kết',
+    messageKey: 'Số chứng từ',
     status: 'Trạng thái',
-    retryCount: 'Thử lại',
+    retryCount: 'Số lần thử lại',
     createdAt: 'Thời điểm phát sinh',
     lastErrorMessage: 'Nội dung lỗi',
     retry: 'Xử lý lại',
+    retryTimes: (count: number): string => `${String(count)} lần`,
   },
   /** 비활성 사유는 그 컨트롤의 이름으로 시작한다. */
   reasons: {
     searchNeedsPeriod:
-      'Tra cứu chỉ dùng được sau khi điền đủ kỳ. Hãy chọn ngày bắt đầu và ngày kết thúc.',
-    periodReversed: 'Kết thúc kỳ không được sớm hơn bắt đầu kỳ.',
+      'Tra cứu chỉ dùng được sau khi điền đủ ngày phát sinh. Hãy chọn ngày phát sinh từ và đến.',
+    periodReversed: 'Ngày phát sinh đến không được sớm hơn ngày phát sinh từ.',
   },
   loading: {
-    messages: 'Đang tải danh sách bản tin liên kết',
-    messageDetail: 'Đang tải thông tin bản tin liên kết',
+    messages: 'Đang tải danh sách lịch sử liên kết',
+    messageDetail: 'Đang tải thông tin lịch sử liên kết',
   },
   /** 상세. 전송 내용은 구획만 두고 값을 그리지 않는다 — 열람 범위가 정해지지 않았다. */
   detail: {
-    title: 'Chi tiết bản tin liên kết',
-    pick: 'Hãy chọn một bản tin trong danh sách',
+    title: 'Chi tiết lịch sử liên kết',
+    pick: 'Hãy chọn một lịch sử liên kết.',
+    pickDescription: 'Có thể xem trạng thái xử lý và nội dung lỗi của lịch sử liên kết đã chọn.',
     openAction: (title: string): string => `Mở chi tiết ${title}`,
     retryCount: 'Số lần thử lại',
-    availableAt: 'Lần thử tiếp theo',
+    availableAt: 'Thời điểm thử lại tiếp theo',
     sentAt: 'Thời điểm gửi',
     completedAt: 'Thời điểm hoàn tất',
-    lockedBy: 'Đang xử lý',
+    linkInfo: 'Thông tin liên kết',
+    processTimes: 'Thời điểm xử lý',
   },
   /** 계약이 정의한 사실만 옮긴다 — 「잠금이 오래됐다」 같은 판정은 하지 않는다. */
   status: {
@@ -140,12 +147,12 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
   filters: {
     all: 'Tất cả',
     chipStatus: (value: string): string => `Trạng thái: ${value}`,
-    chipInterface: (value: string): string => `Hạng mục: ${value}`,
-    chipDirection: (value: string): string => `Phân loại: ${value}`,
+    chipInterface: (value: string): string => `Hạng mục liên kết: ${value}`,
+    chipDirection: (value: string): string => `Gửi/nhận: ${value}`,
     chipRetryMin: (value: string): string => `Thử lại từ ${value} lần`,
     chipRemoveStatus: 'Bỏ điều kiện trạng thái',
-    chipRemoveInterface: 'Bỏ điều kiện hạng mục',
-    chipRemoveDirection: 'Bỏ điều kiện phân loại',
+    chipRemoveInterface: 'Bỏ điều kiện hạng mục liên kết',
+    chipRemoveDirection: 'Bỏ điều kiện gửi/nhận',
     chipRemoveRetryMin: 'Bỏ điều kiện số lần thử lại',
   },
   /** 쪽 이동. 번호 목록을 두지 않는다 — 조건을 좁히는 것이 정상 경로다. */
@@ -157,8 +164,8 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     totalOnly: (total: number): string => `Tổng ${String(total)}`,
   },
   empty: {
-    noResultTitle: 'Không có bản ghi khớp điều kiện',
-    noPeriodTitle: 'Hãy chọn kỳ rồi tra cứu',
+    noResultTitle: 'Không có lịch sử liên kết khớp điều kiện',
+    noPeriodTitle: 'Hãy chọn ngày phát sinh rồi tra cứu',
     beyondLastTitle: 'Trang này không có kết quả',
   },
   values: {

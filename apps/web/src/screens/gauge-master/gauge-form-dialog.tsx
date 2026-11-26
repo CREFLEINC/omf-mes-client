@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
+import { CodeLockTextField } from '../../patterns/master';
 import type { ActionAvailability } from './asset-actions';
 import { type CodeOption, codeLabel } from './code-options';
 import { FieldLabel } from './field-label';
@@ -139,13 +140,12 @@ export const GaugeFormDialog = ({
       <div className="form-grid dialog-scroll">
         {banner}
 
-        <TextField
+        <CodeLockTextField
+          lockReason={codeLockReason}
           label={t.fields.gaugeCode}
           required
           value={values.equipmentCode}
           onChange={(event) => onChange({ equipmentCode: event.target.value })}
-          disabled={codeLockReason !== null}
-          disabledReason={codeLockReason ?? undefined}
           error={fieldErrors.equipmentCode}
         />
 
@@ -235,8 +235,10 @@ export const GaugeFormDialog = ({
         />
 
         {/* 정밀도도 짝이다 — 「0.01」만으로는 mm 인지 μm 인지 알 수 없다. 다만 필수는 아니다. */}
+        {/* 한쪽을 채우면 다른 쪽이 필수가 된다 — 그때만 * 를 단다. */}
         <TextField
           label={t.fields.precisionValue}
+          required={values.precisionUomId !== ''}
           inputMode="decimal"
           value={values.precisionValue}
           onChange={(event) => onChange({ precisionValue: event.target.value })}
@@ -245,6 +247,7 @@ export const GaugeFormDialog = ({
 
         <SelectField
           label={t.fields.precisionUom}
+          required={values.precisionValue.trim() !== ''}
           options={uomOptions}
           value={values.precisionUomId}
           onChange={(value) => onChange({ precisionUomId: value })}

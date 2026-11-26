@@ -1,4 +1,4 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -6,11 +6,15 @@ const t = messages.commonCode.dialog;
 
 export interface DeactivateDialogProps {
   open: boolean;
-  /** 어느 자원을 중지하는지. 세 자원이 이 props로 이름만 바꿔 쓴다. */
+  /** 어느 자원을 중지하는지. 세 자원이 같은 틀에 제목 · 설명만 바꿔 쓴다(사용자 지시 2026-11-26). */
   title: string;
+  /** 중지하면 무엇이 달라지는지 — 자원 이름만 다르다. */
+  description: string;
   onClose: () => void;
   onConfirm: () => void;
   isSaving: boolean;
+  /** 확인을 아직 누를 수 없을 때(예: 잠금 토큰을 줄 상세를 받는 중). 「취소」는 잠그지 않는다. */
+  confirmDisabled?: boolean;
   /** 저장 실패 배너 슬롯. 창을 닫지 않고 이유를 보여야 다시 시도할 수 있다. */
   banner: ReactNode;
 }
@@ -23,18 +27,23 @@ export interface DeactivateDialogProps {
  * 「코드 필드를 고칠 수 있는지」의 근거이지 「이 행을 참조하는 자료의 수」가 아니다 —
  * 두 뜻을 섞으면 화면이 지어낸다. 건수를 내려면 계약에 그 값을 담을 자리가 먼저 필요하다.
  *
- * **되돌리는 경로가 없다는 사실을 본문이 먼저 밝힌다.** 계약에 되살리는 오퍼레이션이 없고
+ * **되돌리는 경로가 없다는 사실을 마지막 주의 줄이 밝힌다.** 계약에 되살리는 오퍼레이션이 없고
  * 수정 본문에도 사용 여부가 없다.
  *
  * 스크림 클릭으로 닫히지 않게 한다. 되돌릴 수 없는 액션의 확인 창이 실수로 사라지면
  * 사용자는 자기가 무엇을 취소했는지 모른다.
+ *
+ * 모양은 결재선 정의의 사용 전환 확인 창(`approval-route/activation-dialog.tsx`)과 같다 — 닫기(X) 없이 바닥 단추
+ * 둘로만 나가고, 전송 중에는 「취소」도 잠근다(사용자 지시 2026-11-25). Esc 는 종전대로 닫는다.
  */
 export const DeactivateDialog = ({
   open,
   title,
+  description,
   onClose,
   onConfirm,
   isSaving,
+  confirmDisabled = false,
   banner,
 }: DeactivateDialogProps) => (
   <Dialog
@@ -43,18 +52,31 @@ export const DeactivateDialog = ({
     size="sm"
     title={title}
     closeOnBackdropClick={false}
+    showCloseButton={false}
     footer={
       <>
-        <Button variant="outlined" onClick={onClose}>
+        {/* [취소]는 중립색 — 빨간색은 [사용 중지]만(사용자 지시 2026-11-26 · 사용자 관리 화면과 같은 방식). */}
+        <Button
+          variant="outlined"
+          className="app-button-neutral"
+          disabled={isSaving}
+          onClick={onClose}
+        >
           {messages.common.cancel}
         </Button>
-        <Button loading={isSaving} disabled={isSaving} onClick={onConfirm}>
+        <Button loading={isSaving} disabled={isSaving || confirmDisabled} onClick={onConfirm}>
           {messages.common.deactivate}
         </Button>
       </>
     }
   >
     {banner}
-    <p>{t.deactivateDescription}</p>
+    <div className="common-code-deactivate-body">
+      <p>{description}</p>
+      <p className="iqc-inspection-action-note common-code-deactivate-note" data-tone="warning">
+        <Icon name="warning" size={16} aria-hidden />
+        {t.deactivateWarning}
+      </p>
+    </div>
   </Dialog>
 );

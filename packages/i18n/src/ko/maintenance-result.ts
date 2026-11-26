@@ -33,7 +33,7 @@ export const maintenanceResult = {
     closed: '마감',
     parts: '예비품',
     notAvailable: '—',
-    ongoing: '진행 중',
+    ongoing: '진행',
     partCount: (count: number): string => `${String(count)}건`,
     emptyTitle: '실적이 없습니다',
     empty: '조건에 맞는 실적이 없습니다. 조건을 줄이거나 기간을 넓혀 보세요.',

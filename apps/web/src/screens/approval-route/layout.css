@@ -10,3 +10,65 @@
 .approval-route-list tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
   box-shadow: inset 3px 0 0 var(--semantic-info);
 }
+
+/*
+ * 「수량 범위」 ⓘ 의 두 문장은 줄을 나눠 오른쪽으로 띄운다(사용자 지시 2026-11-25) — 공용 툴팁은 줄바꿈을 접는다.
+ * 상세 칸 오른쪽 끝에 가까워도 칸 밖으로 잘리지 않게 폭을 좁혀 접는다(공용 22rem → 16rem).
+ */
+.approval-route-range .info-tip-anchor > [role='tooltip'] {
+  max-width: 16rem;
+  white-space: pre-line;
+}
+
+/*
+ * 결재 단계 제목 줄 — 「결재 단계 · 총 N단계 · [최소 1개] 라벨」 왼쪽, [단계 추가] 오른쪽 끝(사용자 지시 2026-11-25).
+ * 공용 `.pane-heading-row` 는 양 끝 벌리기라 왼쪽부터 붙이고 단추만 끝으로 민다.
+ */
+.pane-heading-row.approval-route-steps-heading {
+  align-items: center;
+  justify-content: flex-start;
+  column-gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.approval-route-steps-heading > .approval-route-steps-add {
+  margin-left: auto;
+}
+
+/* 펼친 추가 줄의 [추가] · [취소] — 공용 `.field-cell` 은 세로 쌓기라 가로로 돌린다. */
+.filter-bar.approval-route-step-add > .field-cell.approval-route-step-add-actions {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/*
+ * 결재선 기본 정보 제목 줄 — 제목 오른쪽에 진행 중인 요청 안내 알약(사용자 지시 2026-11-25). 알약은 글자 폭만큼, 글자는
+ * 본문 크기. 문장이 길면 알약 안에서 줄을 바꿔 제목 옆 자리를 지킨다.
+ */
+.approval-route-head-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+.approval-route-head-title-row > .pane-title {
+  flex: none;
+  margin-bottom: 0;
+}
+
+/*
+ * 「사용 중지」 · 「다시 사용」은 결재선 기본 정보 제목 줄 오른쪽 끝(사용자 지시 2026-11-25). 막혀 사유가 붙으면
+ * 사유가 단추 아래로 오른쪽에 맞춰 선다 — 제목은 첫 줄(단추 높이)에 맞춘다.
+ */
+.approval-route-head-title-row > .approval-route-head-action {
+  margin-left: auto;
+}
+
+.approval-route-head-title-row > .field-cell.approval-route-head-action {
+  align-self: flex-start;
+  align-items: flex-end;
+  min-height: 0;
+  text-align: right;
+}

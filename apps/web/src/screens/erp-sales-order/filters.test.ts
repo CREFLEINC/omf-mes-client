@@ -25,15 +25,15 @@ describe('erp-sales-order filters', () => {
     expect(params.toString()).toBe('progress=done');
     expect(readFilters(params).progress).toBe('done');
     expect(readFilters(new URLSearchParams('progress=weird')).progress).toBe('all');
-    expect(toListQuery(DEFAULT_FILTERS, 1)).toEqual({ page: 1, size: 25 });
+    expect(toListQuery(DEFAULT_FILTERS, 1)).toEqual({ page: 1, size: 20 });
     expect(toListQuery({ ...DEFAULT_FILTERS, progress: 'open' }, 1)).toEqual({
       page: 1,
-      size: 25,
+      size: 20,
       progress: 'OPEN',
     });
     expect(toListQuery({ ...DEFAULT_FILTERS, progress: 'done' }, 1)).toEqual({
       page: 1,
-      size: 25,
+      size: 20,
       progress: 'COMPLETED',
     });
   });
@@ -48,7 +48,7 @@ describe('erp-sales-order filters', () => {
     const params = new URLSearchParams('page=-1&sel=abc');
     expect(readPage(params)).toBe(1);
     expect(readSelectedId(params)).toBeNull();
-    expect(toListQuery({ ...DEFAULT_FILTERS, customer: 'x' }, 1)).toEqual({ page: 1, size: 25 });
+    expect(toListQuery({ ...DEFAULT_FILTERS, customer: 'x' }, 1)).toEqual({ page: 1, size: 20 });
   });
 
   it('빈 조건은 쿼리에 싣지 않는다', () => {
@@ -56,7 +56,7 @@ describe('erp-sales-order filters', () => {
       toListQuery({ ...DEFAULT_FILTERS, customer: '3101', status: 'OPEN', to: '2026-10-31' }, 2),
     ).toEqual({
       page: 2,
-      size: 25,
+      size: 20,
       customerId: 3101,
       statusCode: 'OPEN',
       orderDateTo: '2026-10-31',

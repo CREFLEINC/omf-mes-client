@@ -43,15 +43,17 @@ describe('IssueFormPane', () => {
   it('⛔ 품목을 여기서 고르지 않는다 — 고른 결과만 보인다', () => {
     renderPane();
 
-    expect(screen.getByText(/SYN-ITEM-0001/)).toBeInTheDocument();
-    expect(screen.queryByRole('textbox', { name: t.item })).not.toBeInTheDocument();
+    /* 품목코드 · 품목명은 두 칸(사용자 지시 2026-11-24). */
+    expect(screen.getByText(t.itemCode).closest('.field-cell')).toHaveTextContent('SYN-ITEM-0001');
+    expect(screen.getByText(t.itemName).closest('.field-cell')).toHaveTextContent('합성 품목');
+    expect(screen.queryByRole('textbox', { name: t.itemCode })).not.toBeInTheDocument();
   });
 
   it('고르기 전에는 품목 자리를 비운 것으로 보인다', () => {
     renderPane({ item: null });
 
-    const cell = screen.getByText(t.item).closest('.field-cell');
-    expect(cell).toHaveTextContent('—');
+    expect(screen.getByText(t.itemCode).closest('.field-cell')).toHaveTextContent('—');
+    expect(screen.getByText(t.itemName).closest('.field-cell')).toHaveTextContent('—');
   });
 
   /*

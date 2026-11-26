@@ -82,10 +82,14 @@ export const LevelDialog = ({
       {/* 품목 · 검사 수준 · 사유를 한 열로 — 위에서 아래로 읽고 고른다(#133). */}
       <div className="form-grid inspection-level-form">
         <div className="field-cell">
-          <span className="field-label">{t.dialog.item}</span>
-          {/* 품목은 이 창의 대상이라 값을 한 단계 크게(#133). 품목 코드는 제목에 되풀이하지 않는다. */}
-          <p className="inspection-level-form-item">{`${item.itemCode} · ${item.itemName}`}</p>
+          <span className="field-label">{t.dialog.itemCode}</span>
+          {/* 품목은 이 창의 대상이라 값을 한 단계 크게(#133). 품목코드 · 품목명 두 칸으로 나눠 보인다(#358). */}
+          <p className="inspection-level-form-item">{item.itemCode}</p>
           {fieldErrors.itemId && <span className="field-error">{fieldErrors.itemId}</span>}
+        </div>
+        <div className="field-cell">
+          <span className="field-label">{t.dialog.itemName}</span>
+          <p className="inspection-level-form-item">{item.itemName}</p>
         </div>
 
         <div className="field-cell">

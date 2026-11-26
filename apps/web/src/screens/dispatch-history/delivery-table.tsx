@@ -1,7 +1,8 @@
-import { Chip, EmptyState, Table, type ChipStatus, type Column } from '@crefle/web-ui';
+import { Chip, EmptyState, type ChipStatus, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { ErpListTable } from '../erp-item/erp-data-parts';
 import type { Delivery, DeliveryStatus } from './types';
 
 const t = messages.dispatchHistory;
@@ -29,7 +30,7 @@ export const DeliveryTable = ({ rows }: { rows: Delivery[] }) => {
       render: (row) => {
         const view = toDeliveryView(row.status);
         return (
-          <Chip size="sm" status={CHIP[view]}>
+          <Chip variant="status" size="sm" status={CHIP[view]}>
             {t.deliveryStatus[view]}
           </Chip>
         );
@@ -58,13 +59,14 @@ export const DeliveryTable = ({ rows }: { rows: Delivery[] }) => {
     { key: 'trackingId', header: t.columns.trackingId, render: (row) => row.trackingId },
   ];
 
+  /* 상세 안 하위 표 — 다른 화면 상세 표와 같은 열 폭 끌기 · 순서 바꾸기 · 폭 맞추기 표(ERP 상세 라인 표와 같은 부품 · #358). */
   return (
-    <Table
+    <ErpListTable
+      label={t.panes.deliveries}
+      storageKey="omf-mes:dispatch-history:columns:deliveries"
       columns={columns}
       rows={rows}
       getRowId={(row) => String(row.zaloDeliveryId)}
-      density="compact"
-      caption={t.panes.deliveries}
       empty={<EmptyState size="sm" title={t.state.deliveriesEmpty} />}
     />
   );

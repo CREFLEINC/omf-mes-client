@@ -183,10 +183,12 @@ describe('PopMaterialDefectScreen (P-02-14)', () => {
 
     await user.type(screen.getByRole('textbox', { name: t.lot.label }), `${LOT.lotNo}{Enter}`);
 
-    expect(await screen.findByText('RM-3001 · 볼트', { selector: 'dd' })).toBeInTheDocument();
+    expect(await screen.findByText('RM-3001', { selector: 'dd' })).toBeInTheDocument();
+    expect(screen.getByText('볼트', { selector: 'dd' })).toBeInTheDocument();
     /* 상태는 「자재 정보」 제목 줄 오른쪽 알약이다(POP 통일 시안). */
     expect(await screen.findByText('정상')).toBeInTheDocument();
-    expect(screen.getByText(t.lot.item, { selector: 'dt' })).toBeInTheDocument();
+    expect(screen.getByText(t.lot.itemCode, { selector: 'dt' })).toBeInTheDocument();
+    expect(screen.getByText(t.lot.itemName, { selector: 'dt' })).toBeInTheDocument();
     expect(screen.queryByText('NORMAL')).not.toBeInTheDocument();
   });
 

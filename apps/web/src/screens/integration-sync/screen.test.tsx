@@ -76,11 +76,28 @@ const LocationProbe = () => {
   return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
 };
 
+/** 상세를 열면 그 건을 부른다 — 시험이 따로 주지 않았으면 같은 번호의 픽스처로 답한다(재처리 단추가 상세에 있다 · #358). */
+const fallbackDetailRoute: StubRoute = {
+  match: (request) =>
+    request.method === 'GET' &&
+    /^\/integration\/messages\/\d+$/.test(new URL(request.url).pathname),
+  respond: (request) => {
+    const id = Number(new URL(request.url).pathname.split('/').pop());
+    return jsonResponse(
+      messageRowFixtures.find((row) => row.integrationMessageId === id) ?? messageRowFixtures[0],
+    );
+  },
+};
+
+/** 건별 재처리 단추 — 목록 줄의 [재처리](#358). */
+const rowRetryButton = async (_user: ReturnType<typeof userEvent.setup>): Promise<HTMLElement> =>
+  screen.findByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' });
+
 const renderScreen = (
   routes: StubRoute[],
   search = '',
 ): { requests: RecordedRequest[]; user: ReturnType<typeof userEvent.setup> } => {
-  const { fetch, requests } = createRecordingFetch(routes);
+  const { fetch, requests } = createRecordingFetch([...routes, fallbackDetailRoute]);
 
   renderWithProviders(
     <>
@@ -93,8 +110,12 @@ const renderScreen = (
   return { requests, user: userEvent.setup() };
 };
 
+/** 위 줄 송수신 구분 라벨의 건수 조회(`size=1`) — 목록 · 선택지 조회와 따로 센다(#358). */
+const isDirectionCount = (request: RecordedRequest): boolean =>
+  request.url.searchParams.get('size') === '1';
+
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
-  requests.filter((request) => request.url.pathname === pathname);
+  requests.filter((request) => request.url.pathname === pathname && !isDirectionCount(request));
 
 /** 목록과 선택지가 같은 경로를 쓴다. 조건이 실렸는지로 가른다. */
 const NARROWING_KEYS = ['statusCode', 'interfaceCode', 'directionCode', 'retryCountMin', 'page'];
@@ -110,9 +131,9 @@ const plainRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requestsTo(requests, LIST_PATH).filter((request) => !isNarrowed(request));
 
 /** 연계 메시지 목록 구획. 표·행·글자는 이 안에서 찾는다. */
-const messageList = () => within(screen.getByRole('region', { name: '연계 메시지 목록' }));
+const messageList = () => within(screen.getByRole('region', { name: '연동 이력 목록' }));
 /** 오른쪽 상세 구획 — 늘 선다. 고르기 전에는 고르라는 안내만 있다. */
-const detailPane = () => within(screen.getByRole('region', { name: '연계 메시지 상세' }));
+const detailPane = () => within(screen.getByRole('region', { name: '연동 이력 상세' }));
 
 const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
 
@@ -178,8 +199,8 @@ describe('IntegrationSyncScreen — 기간 필수 조회', () => {
     const { requests, user } = renderScreen([listRoute()], '?from=2026-08-01&to=2026-08-06');
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.clear(screen.getByLabelText('기간 시작'));
-    await user.type(screen.getByLabelText('기간 시작'), '2026-07-20');
+    await user.clear(screen.getByLabelText('연동 시작일'));
+    await user.type(screen.getByLabelText('연동 시작일'), '2026-07-20');
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(currentLocation()).toContain('from=2026-07-20');
@@ -192,14 +213,14 @@ describe('IntegrationSyncScreen — 기간 필수 조회', () => {
     const { requests, user } = renderScreen([listRoute()], '?from=2026-08-01&to=2026-08-06');
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.clear(screen.getByLabelText('기간 시작'));
+    await user.clear(screen.getByLabelText('연동 시작일'));
 
     const searchButton = screen.getByRole('button', { name: '조회' });
     expect(searchButton).toBeDisabled();
 
     const reasonId = searchButton.getAttribute('aria-describedby') ?? '';
     expect(document.getElementById(reasonId)).toHaveTextContent(
-      '조회는 기간을 모두 채운 뒤에 쓸 수 있습니다.',
+      '조회는 연동일을 모두 채운 뒤에 쓸 수 있습니다.',
     );
     expect(requestsTo(requests, LIST_PATH)).toHaveLength(1);
   });
@@ -208,22 +229,22 @@ describe('IntegrationSyncScreen — 기간 필수 조회', () => {
     const { user } = renderScreen([listRoute()], '?from=2026-08-01&to=2026-08-06');
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.clear(screen.getByLabelText('기간 종료'));
-    await user.type(screen.getByLabelText('기간 종료'), '2026-07-01');
+    await user.clear(screen.getByLabelText('연동 종료일'));
+    await user.type(screen.getByLabelText('연동 종료일'), '2026-07-01');
 
     const searchButton = screen.getByRole('button', { name: '조회' });
     expect(searchButton).toBeDisabled();
 
     const reasonId = searchButton.getAttribute('aria-describedby') ?? '';
     expect(document.getElementById(reasonId)).toHaveTextContent(
-      '기간 종료는 기간 시작보다 앞설 수 없습니다.',
+      '연동 종료일은 연동 시작일보다 앞설 수 없습니다.',
     );
   });
 
   it('주소의 기간이 비어 있으면 조회하지 않고 기간을 고르라고 안내한다', async () => {
     const { requests } = renderScreen([listRoute()], '?from=&to=');
 
-    expect(await screen.findByText('기간을 고르고 조회하세요')).toBeInTheDocument();
+    expect(await screen.findByText('연동일을 고르고 조회하세요')).toBeInTheDocument();
     expect(requestsTo(requests, LIST_PATH)).toHaveLength(0);
   });
 
@@ -238,7 +259,7 @@ describe('IntegrationSyncScreen — 기간 필수 조회', () => {
 });
 
 describe('IntegrationSyncScreen — 목록 표시', () => {
-  it('선택 열과 일곱 열, 응답 건수만큼의 행이 나온다', async () => {
+  it('선택 열과 여섯 열, 응답 건수만큼의 행이 나온다', async () => {
     renderScreen([listRoute()]);
 
     expect(await screen.findByText('SAMPLE-KEY-0001')).toBeInTheDocument();
@@ -246,29 +267,32 @@ describe('IntegrationSyncScreen — 목록 표시', () => {
     const table = messageList().getByRole('table');
     const headers = within(table)
       .getAllByRole('columnheader')
-      .map((cell) => cell.textContent);
+      /* 열 순서 끌기 손잡이(아이콘 글자 `drag_indicator`)는 빼고 이름만 본다(#358). */
+      .map((cell) => cell.textContent?.replace('drag_indicator', ''));
 
     // 첫 칸은 디자인 시스템이 렌더하는 선택 열이라 머리글 글자가 없다.
     expect(headers).toEqual([
       '',
-      '구분',
-      '항목',
-      '번호',
+      '송수신 구분',
+      '연동 항목',
+      '문서 번호',
       '상태',
-      '재시도',
-      '발생일시',
-      '오류 내용',
+      '재시도 횟수',
+      '연동일시',
       '재처리',
     ]);
     expect(within(table).getAllByRole('row')).toHaveLength(messageRowFixtures.length + 1);
   });
 
   it('값이 없는 칸은 비워 두지 않고 「—」로 낸다', async () => {
-    renderScreen([listRoute([messageRow({ lastErrorMessage: null })])]);
+    renderScreen([listRoute([messageRow({ lastErrorMessage: null, lockedBy: null })])]);
     await screen.findByText('SAMPLE-KEY-0001');
 
-    const row = messageList().getAllByRole('row')[1];
-    expect(within(row as HTMLElement).getByText('—')).toBeInTheDocument();
+    // 빈 값이 섞여도 보이는 칸은 비지 않는다(빈 값이 많은 오류 내용은 상세로 옮겼다 · #358).
+    const row = messageList().getAllByRole('row')[1] as HTMLElement;
+    for (const cell of within(row).getAllByRole('cell').slice(1)) {
+      expect(cell.textContent?.trim()).not.toBe('');
+    }
   });
 
   it('생성 시각을 공장 시각(UTC+7)으로 옮겨 낸다', async () => {
@@ -286,16 +310,23 @@ describe('IntegrationSyncScreen — 목록 표시', () => {
     expect(messageList().getAllByText('실패')).toHaveLength(2);
   });
 
-  it('워커가 잡고 있는 행에는 처리 중 보조 문구가 붙는다', async () => {
-    renderScreen([listRoute()]);
+  it('워커가 잡고 있는 건은 상세에 처리 중 보조 문구가 붙는다(목록은 배지만 · #358)', async () => {
+    const { user } = renderScreen([listRoute()]);
+    await user.click(
+      await screen.findByRole('button', { name: 'IF-SAMPLE-B SAMPLE-KEY-0002 상세 열기' }),
+    );
 
     expect(await screen.findByText('2026-08-04 09:20부터 처리 중')).toBeInTheDocument();
   });
 
-  it('다음 시도가 미래인 행에는 자동 재시도 보조 문구가 붙는다', async () => {
-    renderScreen([listRoute()]);
+  it('다음 시도가 미래인 건은 상세에 자동 재시도 보조 문구가 붙는다(목록은 배지만 · #358)', async () => {
+    const { user } = renderScreen([listRoute()]);
+    await user.click(
+      await screen.findByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0003 상세 열기' }),
+    );
 
-    expect(await screen.findByText('2099-12-31 21:30 자동 재시도')).toBeInTheDocument();
+    const cell = (await screen.findByText('다음 재시도 일시')).closest('.parts-iqc-fact');
+    expect(cell?.textContent).toBe('다음 재시도 일시2099-12-31 21:30');
   });
 });
 
@@ -303,7 +334,7 @@ describe('IntegrationSyncScreen — 빈 상태와 실패', () => {
   it('0건이면 조건을 고치라는 빈 상태가 나온다', async () => {
     renderScreen([listRoute([])]);
 
-    expect(await screen.findByText('조건에 맞는 기록이 없습니다')).toBeInTheDocument();
+    expect(await screen.findByText('조건에 맞는 연동 이력이 없습니다')).toBeInTheDocument();
   });
 
   it('조회에 실패하면 표와 빈 상태 대신 오류 배너와 다시 시도가 나온다', async () => {
@@ -312,7 +343,7 @@ describe('IntegrationSyncScreen — 빈 상태와 실패', () => {
     expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
     expect(messageList().queryByRole('table')).not.toBeInTheDocument();
-    expect(screen.queryByText('조건에 맞는 기록이 없습니다')).not.toBeInTheDocument();
+    expect(screen.queryByText('조건에 맞는 연동 이력이 없습니다')).not.toBeInTheDocument();
     // 서버가 빈 message를 줘도 배너에 제목만 남으면 안 된다 — 무엇을 하라는 안내가 사라진다.
     expect(
       screen.getByText('잠시 뒤 재시도하세요. 지속적인 요청 불가 시 담당자에게 문의하세요.'),
@@ -345,11 +376,11 @@ describe('IntegrationSyncScreen — 조건으로 좁히기', () => {
     const { requests, user } = renderScreen([listRoute()], PERIOD);
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.click(screen.getByRole('combobox', { name: '상태' }));
+    await user.click(screen.getByRole('combobox', { name: '상태 선택' }));
     await user.click(screen.getByRole('option', { name: 'ERROR' }));
     /* 재시도 횟수는 「조건 더보기」 안에 접혀 있다(C-6). */
     await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
-    await user.type(screen.getByLabelText('재시도 횟수(이상)'), '2');
+    await user.type(screen.getByLabelText('최소 재시도 횟수'), '2');
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     const last = narrowedRequests(requests).at(-1);
@@ -394,7 +425,7 @@ describe('IntegrationSyncScreen — 조건으로 좁히기', () => {
     const { user } = renderScreen([listRoute()], `${PERIOD}&status=FAILED`);
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.click(screen.getByRole('combobox', { name: '상태' }));
+    await user.click(screen.getByRole('combobox', { name: '상태 선택' }));
 
     // 아는 상태는 업무 이름(실패), 모르는 코드는 코드 그대로(ERROR).
     expect(screen.getByRole('option', { name: 'ERROR' })).toBeInTheDocument();
@@ -405,24 +436,24 @@ describe('IntegrationSyncScreen — 조건으로 좁히기', () => {
     const { user } = renderScreen([listRoute()], `${PERIOD}&status=GONE_CODE`);
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.click(screen.getByRole('combobox', { name: '상태' }));
+    await user.click(screen.getByRole('combobox', { name: '상태 선택' }));
 
     expect(screen.getByRole('option', { name: 'GONE_CODE' })).toBeInTheDocument();
   });
 
   it('접힌 조건 칩의 ×는 그 조건만 풀고 다시 조회한다', async () => {
-    const { requests, user } = renderScreen([listRoute()], `${PERIOD}&status=FAILED&dir=OUTBOUND`);
+    const { requests, user } = renderScreen([listRoute()], `${PERIOD}&status=FAILED&retryMin=2`);
     await screen.findByText('SAMPLE-KEY-0001');
-    /* 보이는 칸(상태)의 조건은 칩이 없다 — 접힌 구분만 칩이다(C-6). */
+    /* 보이는 칸(상태)의 조건은 칩이 없다 — 접힌 재시도 횟수만 칩이다(C-6). */
     expect(screen.queryByRole('button', { name: '상태 조건 제거' })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '구분 조건 제거' }));
+    await user.click(screen.getByRole('button', { name: '재시도 횟수 조건 제거' }));
 
-    expect(currentLocation()).not.toContain('dir=');
+    expect(currentLocation()).not.toContain('retryMin=');
     expect(currentLocation()).toContain('status=FAILED');
 
     const last = narrowedRequests(requests).at(-1);
-    expect(last?.url.searchParams.has('directionCode')).toBe(false);
+    expect(last?.url.searchParams.has('retryCountMin')).toBe(false);
     expect(last?.url.searchParams.get('statusCode')).toBe('FAILED');
   });
 
@@ -466,13 +497,45 @@ describe('IntegrationSyncScreen — 쪽 이동', () => {
     expect(requestsTo(requests, LIST_PATH)[0]?.url.searchParams.has('page')).toBe(false);
   });
 
-  it('지금 위치를 받은 건수와 전체 건수로 계산해 낸다', async () => {
+  it('지금 쪽 / 전체 쪽과 전체 건수를 낸다(공용 쪽 넘김 · #358)', async () => {
     renderScreen(
       [listRoute(messageRowFixtures, { page: 3, size: 3, total: 10 })],
       `${PERIOD}&page=3`,
     );
 
-    expect(await screen.findByText('7–9 / 전체 10건')).toBeInTheDocument();
+    expect(await screen.findByText('3 / 4')).toBeInTheDocument();
+    expect(screen.getByText('총 10건')).toBeInTheDocument();
+  });
+
+  it('처음 · 마지막으로 한 번에 옮긴다', async () => {
+    const { requests, user } = renderScreen(
+      [listRoute(messageRowFixtures, { page: 2, size: 3, total: 10 })],
+      `${PERIOD}&page=2`,
+    );
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    await user.click(screen.getByRole('button', { name: '마지막' }));
+    expect(currentLocation()).toContain('page=4');
+    expect(narrowedRequests(requests).at(-1)?.url.searchParams.get('page')).toBe('4');
+
+    await user.click(screen.getByRole('button', { name: '처음' }));
+    expect(currentLocation()).not.toContain('page=');
+  });
+
+  it('쪽 크기를 고르면 첫 쪽으로 가고 크기가 주소와 요청에 실린다 — 고르기 전에는 싣지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [listRoute(messageRowFixtures, { page: 2, size: 20, total: 60 })],
+      `${PERIOD}&page=2`,
+    );
+    await screen.findByText('SAMPLE-KEY-0001');
+    expect(requestsTo(requests, LIST_PATH)[0]?.url.searchParams.has('size')).toBe(false);
+
+    await user.click(screen.getByRole('combobox', { name: '페이지 크기' }));
+    await user.click(screen.getByRole('option', { name: '50건' }));
+
+    expect(currentLocation()).toContain('size=50');
+    expect(currentLocation()).not.toContain('page=');
+    expect(requestsTo(requests, LIST_PATH).at(-1)?.url.searchParams.get('size')).toBe('50');
   });
 
   it('마지막 쪽에서는 다음이 잠긴다', async () => {
@@ -498,7 +561,7 @@ describe('IntegrationSyncScreen — 쪽 이동', () => {
   it('0건이면 전체 0건이 보이고 양쪽 이동이 다 잠긴다', async () => {
     renderScreen([listRoute([], { page: 1, size: 50, total: 0 })], PERIOD);
 
-    expect(await screen.findByText('전체 0건')).toBeInTheDocument();
+    expect(await screen.findByText('총 0건')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '이전' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '다음' })).toBeDisabled();
   });
@@ -523,7 +586,7 @@ describe('IntegrationSyncScreen — 쪽 이동', () => {
     );
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.click(screen.getByRole('combobox', { name: '상태' }));
+    await user.click(screen.getByRole('combobox', { name: '상태 선택' }));
     await user.click(screen.getByRole('option', { name: 'ERROR' }));
     await user.click(screen.getByRole('button', { name: '조회' }));
 
@@ -579,20 +642,27 @@ describe('IntegrationSyncScreen — 상세', () => {
     expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(0);
   });
 
+  it('위 줄에 송수신 구분 라벨을 두지 않는다 — 구분은 「조건 더보기」의 선택칸이 거른다(#358)', async () => {
+    renderScreen([listRoute(), detailRoute()], PERIOD);
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    expect(screen.queryByRole('group', { name: '송수신 구분으로 거르기' })).toBeNull();
+  });
+
   it('고르기 전에는 오른쪽 상세 구획이 메시지를 고르라고만 말한다', async () => {
     renderScreen([listRoute(), detailRoute()], PERIOD);
     await screen.findByText('SAMPLE-KEY-0001');
 
-    expect(detailPane().getByText('목록에서 메시지를 고르세요')).toBeInTheDocument();
+    expect(detailPane().getByText('연동 이력을 선택하세요.')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('메시지 키를 누르면 오른쪽 구획에 상세가 서고, 그 줄이 칠해지며 주소에 남는다', async () => {
+  it('메시지 키를 누르면 오른쪽 구획에 상세가 서고(창은 뜨지 않는다), 그 줄이 칠해지며 주소에 남는다', async () => {
     const { requests, user } = renderScreen([listRoute(), detailRoute()], PERIOD);
     await openFirstDetail(user);
 
     expect(
-      await detailPane().findByRole('heading', { name: '연계 메시지 상세' }),
+      await detailPane().findByRole('heading', { name: 'SAMPLE-KEY-0001' }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(
@@ -606,7 +676,7 @@ describe('IntegrationSyncScreen — 상세', () => {
     const { requests } = renderScreen([listRoute(), detailRoute()], `${PERIOD}&sel=9001`);
 
     expect(
-      await detailPane().findByRole('heading', { name: '연계 메시지 상세' }),
+      await detailPane().findByRole('heading', { name: 'SAMPLE-KEY-0001' }),
     ).toBeInTheDocument();
     expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(1);
   });
@@ -616,7 +686,7 @@ describe('IntegrationSyncScreen — 상세', () => {
     const { requests } = renderScreen([listRoute(), detailRoute()], '?sel=9001');
 
     expect(
-      await detailPane().findByRole('heading', { name: '연계 메시지 상세' }),
+      await detailPane().findByRole('heading', { name: 'SAMPLE-KEY-0001' }),
     ).toBeInTheDocument();
     await waitFor(() => {
       expect(currentLocation()).toMatch(/from=.*to=/);
@@ -628,7 +698,7 @@ describe('IntegrationSyncScreen — 상세', () => {
   it('전문이 실려 와도 화면 어디에도 나오지 않는다', async () => {
     const { user } = renderScreen([listRoute(), detailRoute()], PERIOD);
     await openFirstDetail(user);
-    await detailPane().findByRole('heading', { name: '연계 메시지 상세' });
+    await detailPane().findByRole('heading', { name: 'SAMPLE-KEY-0001' });
 
     expect(screen.queryByText(PAYLOAD_MARKER)).not.toBeInTheDocument();
     expect(document.body.textContent).not.toContain(PAYLOAD_MARKER);
@@ -666,12 +736,12 @@ describe('IntegrationSyncScreen — 상세', () => {
 
   it('조건을 바꾸면 열려 있던 상세도 닫힌다 — 그 건이 새 결과에 없을 수 있다', async () => {
     const { user } = renderScreen([listRoute(), detailRoute()], `${PERIOD}&sel=9001`);
-    await detailPane().findByRole('heading', { name: '연계 메시지 상세' });
+    await detailPane().findByRole('heading', { name: 'SAMPLE-KEY-0001' });
 
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(currentLocation()).not.toContain('sel=');
-    expect(detailPane().getByText('목록에서 메시지를 고르세요')).toBeInTheDocument();
+    expect(detailPane().getByText('연동 이력을 선택하세요.')).toBeInTheDocument();
   });
 });
 
@@ -689,19 +759,17 @@ describe('IntegrationSyncScreen — 단건 재처리', () => {
   const okRetry = retryRoute(() => jsonResponse(messageRowFixtures[0]));
 
   const confirmRetry = async (user: ReturnType<typeof userEvent.setup>) => {
-    await user.click(
-      await screen.findByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' }),
-    );
+    await user.click(await rowRetryButton(user));
     await user.click(await screen.findByRole('button', { name: '재처리' }));
   };
 
   it('확인을 거쳐야 요청이 나간다', async () => {
     const { requests, user } = renderScreen([listRoute(), okRetry], PERIOD);
 
-    await user.click(
-      await screen.findByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' }),
-    );
-    expect(within(screen.getByRole('dialog')).getByText('다시 보낼까요?')).toBeInTheDocument();
+    await user.click(await rowRetryButton(user));
+    expect(
+      within(screen.getByRole('dialog')).getByText('이 연동 건을 재처리할까요?'),
+    ).toBeInTheDocument();
     expect(requestsTo(requests, RETRY_PATH)).toHaveLength(0);
 
     await user.click(screen.getByRole('button', { name: '재처리' }));
@@ -726,7 +794,7 @@ describe('IntegrationSyncScreen — 단건 재처리', () => {
 
     await confirmRetry(user);
 
-    expect(await screen.findByText('다시 보내도록 요청했습니다')).toBeInTheDocument();
+    expect(await screen.findByText('재처리를 요청했습니다')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() => {
       expect(requestsTo(requests, LIST_PATH).length).toBeGreaterThan(before);
@@ -748,9 +816,7 @@ describe('IntegrationSyncScreen — 단건 재처리', () => {
       PERIOD,
     );
 
-    await user.click(
-      await screen.findByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' }),
-    );
+    await user.click(await rowRetryButton(user));
     const confirm = await screen.findByRole('button', { name: '재처리' });
     await user.click(confirm);
     await user.click(confirm);
@@ -778,7 +844,9 @@ describe('IntegrationSyncScreen — 단건 재처리', () => {
       ),
     ).toBeInTheDocument();
     // 실패했으면 창을 닫지 않는다 — 사유를 보고 다음 행동을 정해야 한다.
-    expect(within(screen.getByRole('dialog')).getByText('다시 보낼까요?')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('dialog')).getByText('이 연동 건을 재처리할까요?'),
+    ).toBeInTheDocument();
   });
 
   it('다른 사용자 충돌은 다른 문구로 나온다', async () => {
@@ -902,14 +970,14 @@ describe('IntegrationSyncScreen — 선택 일괄 재처리', () => {
   };
 
   const openBatch = async (user: ReturnType<typeof userEvent.setup>) => {
-    await user.click(screen.getByRole('button', { name: '선택 일괄 재처리' }));
+    await user.click(screen.getByRole('button', { name: '일괄 재처리' }));
   };
 
   it('고르기 전에는 일괄 재처리가 잠긴다 — 사유 안내 줄은 두지 않는다', async () => {
     renderScreen([listRoute()], PERIOD);
     await screen.findByText('SAMPLE-KEY-0001');
 
-    const button = screen.getByRole('button', { name: '선택 일괄 재처리' });
+    const button = screen.getByRole('button', { name: '일괄 재처리' });
     expect(button).toBeDisabled();
     expect(screen.getByText('선택 0건')).toBeInTheDocument();
     expect(screen.queryByText(/건을 고른 뒤에 쓸 수 있습니다/)).toBeNull();
@@ -921,7 +989,7 @@ describe('IntegrationSyncScreen — 선택 일괄 재처리', () => {
     await selectRow(user, 2);
 
     expect(screen.getByText('선택 2건')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '선택 일괄 재처리' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '일괄 재처리' })).toBeEnabled();
   });
 
   it('확인하면 고른 식별자가 표에 보이는 순서 그대로 실린다', async () => {
@@ -933,7 +1001,7 @@ describe('IntegrationSyncScreen — 선택 일괄 재처리', () => {
     await selectRow(user, 0);
     await openBatch(user);
     await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+      within(screen.getByRole('dialog')).getByRole('button', { name: '일괄 재처리' }),
     );
 
     const request = requestsTo(requests, BATCH_PATH)[0];
@@ -951,10 +1019,10 @@ describe('IntegrationSyncScreen — 선택 일괄 재처리', () => {
     const before = requestsTo(requests, LIST_PATH).length;
     await openBatch(user);
     await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+      within(screen.getByRole('dialog')).getByRole('button', { name: '일괄 재처리' }),
     );
 
-    expect(await screen.findByText('1건을 다시 보냈습니다.')).toBeInTheDocument();
+    expect(await screen.findByText('1건의 재처리를 요청했습니다.')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() => {
       expect(requestsTo(requests, LIST_PATH).length).toBeGreaterThan(before);
@@ -971,12 +1039,12 @@ describe('IntegrationSyncScreen — 선택 일괄 재처리', () => {
     const before = requestsTo(requests, LIST_PATH).length;
     await openBatch(user);
     await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+      within(screen.getByRole('dialog')).getByRole('button', { name: '일괄 재처리' }),
     );
 
     const dialog = await screen.findByRole('dialog');
     expect(
-      within(dialog).getByText('1건을 다시 보냈습니다. 1건은 보내지 못했습니다.'),
+      within(dialog).getByText('1건의 재처리를 요청했습니다. 1건은 요청하지 못했습니다.'),
     ).toBeInTheDocument();
     // 건은 「항목 번호」로 부른다 — 모르는 연계 코드는 코드 그대로.
     expect(within(dialog).getByText('IF-SAMPLE-B SAMPLE-KEY-0002')).toBeInTheDocument();
@@ -995,11 +1063,11 @@ describe('IntegrationSyncScreen — 선택 일괄 재처리', () => {
     await selectRow(user, 0);
     await openBatch(user);
     await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+      within(screen.getByRole('dialog')).getByRole('button', { name: '일괄 재처리' }),
     );
 
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).queryByText(/다시 보냈습니다/)).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(/재처리를 요청했습니다/)).not.toBeInTheDocument();
     expect(within(dialog).getByText('IF-SAMPLE-A SAMPLE-KEY-0001')).toBeInTheDocument();
   });
 
@@ -1012,7 +1080,7 @@ describe('IntegrationSyncScreen — 선택 일괄 재처리', () => {
     await selectRow(user, 0);
     await openBatch(user);
     await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+      within(screen.getByRole('dialog')).getByRole('button', { name: '일괄 재처리' }),
     );
 
     const dialog = await screen.findByRole('dialog');
@@ -1030,7 +1098,7 @@ describe('IntegrationSyncScreen — 선택 일괄 재처리', () => {
     await selectRow(user, 0);
     await openBatch(user);
     await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+      within(screen.getByRole('dialog')).getByRole('button', { name: '일괄 재처리' }),
     );
 
     expect(
@@ -1046,7 +1114,7 @@ describe('IntegrationSyncScreen — 선택 일괄 재처리', () => {
     await selectRow(user, 0);
     await openBatch(user);
     await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+      within(screen.getByRole('dialog')).getByRole('button', { name: '일괄 재처리' }),
     );
 
     const dialog = await screen.findByRole('dialog');
@@ -1070,7 +1138,7 @@ describe('IntegrationSyncScreen — 선택 일괄 재처리', () => {
     await selectRow(user, 0);
     await openBatch(user);
     await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+      within(screen.getByRole('dialog')).getByRole('button', { name: '일괄 재처리' }),
     );
 
     expect(
@@ -1088,7 +1156,7 @@ describe('IntegrationSyncScreen — 선택 일괄 재처리', () => {
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(screen.getByText('선택 0건')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '선택 일괄 재처리' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '일괄 재처리' })).toBeDisabled();
   });
 
   it('쪽을 옮기면 선택이 비워진다', async () => {
@@ -1120,7 +1188,11 @@ describe('IntegrationSyncScreen — 선택의 수명', () => {
 
     return {
       match: (request) => isGet(request, LIST_PATH),
-      respond: () => {
+      respond: (request) => {
+        // 위 줄 송수신 구분 라벨의 건수 조회는 세지 않는다(#358).
+        if (new URL(request.url).searchParams.get('size') === '1') {
+          return jsonResponse(listBody(messageRowFixtures));
+        }
         calls += 1;
         // 두 번째 조회부터 첫 행이 사라진다 — 워커가 그 사이에 처리했다는 뜻이다.
         const items = calls === 1 ? messageRowFixtures : messageRowFixtures.slice(1);
@@ -1130,7 +1202,7 @@ describe('IntegrationSyncScreen — 선택의 수명', () => {
     };
   };
 
-  it('상세를 열어도 선택이 그대로다 — 보이는 행이 달라지지 않았다', async () => {
+  it('줄을 눌러 상세를 열면 그 줄도 체크되고, 다시 누르면 상세를 닫고 그 줄의 체크만 푼다(#358)', async () => {
     /*
      * 고른 행(9001)과 상세를 여는 행(9002)을 일부러 다르게 둔다 — 선택과 상세가
      * 서로 다른 축임을 드러낸다. 스텁 경로는 **여는 행에 맞춘다.**
@@ -1153,10 +1225,15 @@ describe('IntegrationSyncScreen — 선택의 수명', () => {
 
     // 정상 경로로 열렸는지 확인한다 — 실패 배너가 아니라 상세 항목이 보여야 한다.
     expect(
-      await detailPane().findByRole('heading', { name: '연계 메시지 상세' }),
+      await detailPane().findByRole('heading', { name: 'SAMPLE-KEY-0002' }),
     ).toBeInTheDocument();
     expect(detailPane().queryByText('목록을 불러오지 못했습니다')).not.toBeInTheDocument();
-    expect(screen.getByText('선택 1건')).toBeInTheDocument();
+    expect(screen.getByText('선택 2건')).toBeInTheDocument();
+
+    // 열린 줄을 다시 누르면 상세를 닫고 그 줄의 체크도 푼다 — 먼저 고른 줄은 그대로(사용자 지시 2026-11-24).
+    await user.click(screen.getByRole('button', { name: 'IF-SAMPLE-B SAMPLE-KEY-0002 상세 열기' }));
+    expect(await screen.findByText('선택 1건')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'SAMPLE-KEY-0002' })).not.toBeInTheDocument();
   });
 
   it('다시 조회하면 선택이 비워진다 — 행이 달라질 수 있다', async () => {
@@ -1174,7 +1251,7 @@ describe('IntegrationSyncScreen — 선택의 수명', () => {
     await selectRow(user, 1);
     expect(screen.getByText('선택 1건')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' }));
+    await user.click(await rowRetryButton(user));
     await user.click(await screen.findByRole('button', { name: '재처리' }));
     await user.click(await screen.findByRole('button', { name: '다시 조회' }));
 
@@ -1198,7 +1275,7 @@ describe('IntegrationSyncScreen — 선택의 수명', () => {
     expect(screen.getByText('선택 3건')).toBeInTheDocument();
 
     // 재처리에 성공하면 목록을 다시 조회한다. 그 결과에서 9001이 사라진다.
-    await user.click(screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' }));
+    await user.click(await rowRetryButton(user));
     await user.click(await screen.findByRole('button', { name: '재처리' }));
 
     // 남은 두 건만 선택으로 남는다 — 보이지 않는 건이 일괄 요청에 실리면 안 된다.
@@ -1209,7 +1286,7 @@ describe('IntegrationSyncScreen — 선택의 수명', () => {
 describe('IntegrationSyncScreen — 선택칸 폭', () => {
   const PERIOD = '?from=2026-08-01&to=2026-08-06';
 
-  it('코드값을 고르는 세 칸이 넓은 선택칸으로 표시된다', async () => {
+  it('코드값을 고르는 두 칸이 넓은 선택칸으로 표시된다', async () => {
     /*
      * 디자인 시스템 선택 목록은 트리거 상자에 못 박혀 있어(left:0; right:0) 값이 길면 잘린다.
      * 바깥 칸에 최소 폭을 주는 것이 지금의 우회이고, 그 표시가 떨어지면 다시 잘린다.
@@ -1218,7 +1295,7 @@ describe('IntegrationSyncScreen — 선택칸 폭', () => {
     renderScreen([listRoute()], PERIOD);
     await screen.findByText('SAMPLE-KEY-0001');
 
-    for (const label of ['구분', '항목', '상태']) {
+    for (const label of ['연동 항목 선택', '상태 선택']) {
       expect(screen.getByLabelText(label).closest('.field-cell')).toHaveClass('wide-select');
     }
   });
@@ -1227,7 +1304,7 @@ describe('IntegrationSyncScreen — 선택칸 폭', () => {
     renderScreen([listRoute()], PERIOD);
     await screen.findByText('SAMPLE-KEY-0001');
 
-    expect(screen.getByLabelText('재시도 횟수(이상)').closest('.field-cell')).not.toHaveClass(
+    expect(screen.getByLabelText('최소 재시도 횟수').closest('.field-cell')).not.toHaveClass(
       'wide-select',
     );
   });
@@ -1251,12 +1328,12 @@ describe('IntegrationSyncScreen — 선택의 수명 · 일괄 창', () => {
     await selectAll(user);
     expect(screen.getByText('선택 3건')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '선택 일괄 재처리' }));
+    await user.click(screen.getByRole('button', { name: '일괄 재처리' }));
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '취소' }));
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.getByText('선택 3건')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '선택 일괄 재처리' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '일괄 재처리' })).toBeEnabled();
     expect(requestsTo(requests, BATCH_PATH)).toHaveLength(0);
   });
 
@@ -1270,12 +1347,12 @@ describe('IntegrationSyncScreen — 선택의 수명 · 일괄 창', () => {
       PERIOD,
     );
     await selectAll(user);
-    await user.click(screen.getByRole('button', { name: '선택 일괄 재처리' }));
+    await user.click(screen.getByRole('button', { name: '일괄 재처리' }));
     await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+      within(screen.getByRole('dialog')).getByRole('button', { name: '일괄 재처리' }),
     );
 
-    expect(await screen.findByText('3건을 다시 보냈습니다.')).toBeInTheDocument();
+    expect(await screen.findByText('3건의 재처리를 요청했습니다.')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.getByText('선택 3건')).toBeInTheDocument();
   });
@@ -1299,9 +1376,9 @@ describe('IntegrationSyncScreen — 선택의 수명 · 일괄 창', () => {
       PERIOD,
     );
     await selectAll(user);
-    await user.click(screen.getByRole('button', { name: '선택 일괄 재처리' }));
+    await user.click(screen.getByRole('button', { name: '일괄 재처리' }));
     await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+      within(screen.getByRole('dialog')).getByRole('button', { name: '일괄 재처리' }),
     );
 
     expect(await screen.findByText('선택 1건')).toBeInTheDocument();
@@ -1343,9 +1420,9 @@ describe('IntegrationSyncScreen — 선택의 수명 · 일괄 창', () => {
       PERIOD,
     );
     await selectAll(user);
-    await user.click(screen.getByRole('button', { name: '선택 일괄 재처리' }));
+    await user.click(screen.getByRole('button', { name: '일괄 재처리' }));
     await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+      within(screen.getByRole('dialog')).getByRole('button', { name: '일괄 재처리' }),
     );
 
     // 부분 실패라 창이 남는다.
@@ -1359,7 +1436,7 @@ describe('IntegrationSyncScreen — 선택의 수명 · 일괄 창', () => {
 
     // 실패해 남은 두 건은 고른 채로 둔다 — 곧바로 다시 시도할 수 있어야 한다.
     expect(await screen.findByText('선택 2건')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '선택 일괄 재처리' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '일괄 재처리' })).toBeEnabled();
   });
 });
 
@@ -1395,6 +1472,8 @@ describe('IntegrationSyncScreen — 조회를 기다리는 동안의 선택', ()
 
     const stub = createStubFetch([listRoute()]);
     const fetch: StubFetch = async (request) => {
+      // 위 줄 송수신 구분 라벨의 건수 조회는 세지도 붙잡지도 않는다(#358).
+      if (new URL(request.url).searchParams.get('size') === '1') return stub(request);
       calls += 1;
       // 두 번째 조회부터 붙잡아 둔다 — 결과를 기다리는 순간을 관찰할 수 있게 한다.
       if (calls > 1) await gate;

@@ -26,9 +26,9 @@ export const terminalProcessMap = {
     includeInactive: '미사용 포함',
     apply: '조회',
     clear: '초기화',
-    type: '단말 유형',
-    equipment: '설치 설비',
-    warehouse: '창고',
+    type: '단말 유형 선택',
+    equipment: '설치 설비 선택',
+    warehouse: '창고 선택',
     all: '전체',
   },
 
@@ -67,8 +67,6 @@ export const terminalProcessMap = {
     code: '단말 코드',
     /** ⛔ 등록 뒤에는 못 바꾼다 — 키다. */
     codeLocked: '등록 후 변경할 수 없습니다.',
-    /** 수정 팝업의 단말 코드 옆(사용자 지시 2026-11-20 · #333). */
-    codeReadOnly: '변경 불가',
     plant: '공장',
     type: '단말 유형',
     status: '운영 상태',
@@ -206,11 +204,5 @@ export const terminalProcessMap = {
     canPrintLabel: '라벨 발행',
     canCancelInput: '투입 취소',
     canReturnMaterial: '자재 반납',
-  },
-
-  /** 저장하지 않은 기능 구성을 두고 다른 단말로 옮길 때(사용자 역할 권한 관리와 같은 창 · #333). */
-  discard: {
-    title: '저장하지 않은 변경 사항이 있습니다',
-    body: '지금 나가면 수정한 공정별 기능 설정이 사라집니다.',
   },
 } as const;

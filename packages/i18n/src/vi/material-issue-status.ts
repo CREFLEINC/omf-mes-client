@@ -15,8 +15,10 @@ export const materialIssueStatus: Translated<typeof ko.materialIssueStatus> = {
   filters: {
     label: 'Điều kiện tra cứu',
     plant: 'Nhà máy',
-    issueWorkDate: 'Ngày xuất kho',
-    productionDate: 'Ngày sản xuất',
+    issueWorkDateFrom: 'Từ ngày xuất kho',
+    issueWorkDateTo: 'Đến ngày xuất kho',
+    productionDateFrom: 'Từ ngày sản xuất',
+    productionDateTo: 'Đến ngày sản xuất',
     workOrder: 'W/O',
     workOrderPlaceholder: 'Số W/O',
     sourceWarehouse: 'Kho sản xuất xuất đi',
@@ -99,7 +101,8 @@ export const materialIssueStatus: Translated<typeof ko.materialIssueStatus> = {
     },
     lines: {
       label: 'Mặt hàng yêu cầu',
-      item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       requested: 'Yêu cầu',
       picked: 'Đã lấy',
       issued: 'Đã xuất',
@@ -204,7 +207,8 @@ export const materialIssueStatus: Translated<typeof ko.materialIssueStatus> = {
     tableLabel: 'Thiếu ở kho sản xuất',
     columns: {
       warehouse: 'Kho sản xuất',
-      item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       available: 'Khả dụng',
       planned: 'Dự kiến xuất',
       shortage: 'Thiếu',

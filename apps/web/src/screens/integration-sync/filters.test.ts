@@ -127,8 +127,8 @@ describe('toFilterChips · hasAnyFilter', () => {
     expect(chips.map((chip) => chip.key)).toEqual(['status', 'iface', 'direction', 'retryMin']);
     // 코드 대신 업무 이름 — 모르는 연계 코드는 코드 그대로.
     expect(chips[0]?.label).toBe('상태: 실패');
-    expect(chips[1]?.label).toBe('항목: IF-SAMPLE-A');
-    expect(chips[2]?.label).toBe('구분: 송신');
+    expect(chips[1]?.label).toBe('연동 항목: IF-SAMPLE-A');
+    expect(chips[2]?.label).toBe('송수신 구분: 송신');
     expect(chips[3]?.label).toBe('재시도 3회 이상');
   });
 

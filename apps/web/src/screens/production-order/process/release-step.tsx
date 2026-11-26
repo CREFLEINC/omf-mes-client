@@ -3,7 +3,7 @@ import './release-selection.css';
 import { AdjustableLayout, useAdjustableOrientation } from './adjustable-layout';
 import { AdjustableTable } from './adjustable-table';
 import { TerminalConnections } from './terminal-connections';
-import { AlertBanner, Button, SkeletonText, type Column } from '@crefle/web-ui';
+import { AlertBanner, Button, EmptyState, SkeletonText, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useQueries, useQuery } from '@tanstack/react-query';
@@ -230,7 +230,7 @@ const ReleaseTargetList = ({
 }: {
   columns: Column<ReleaseLine>[];
   lines: ReleaseLine[];
-  selectedId: number;
+  selectedId: number | null;
   onSelect: (id: string) => void;
 }) => {
   const orientation = useAdjustableOrientation();
@@ -244,7 +244,7 @@ const ReleaseTargetList = ({
       }
       rows={lines}
       getRowId={(line) => String(line.workOrder.workOrderId)}
-      activeId={String(selectedId)}
+      activeId={selectedId === null ? null : String(selectedId)}
       onActivate={(line) => onSelect(String(line.workOrder.workOrderId))}
       rowLabel={(line) => `${line.workOrder.workOrderNo} 배포 상세`}
     />
@@ -252,15 +252,20 @@ const ReleaseTargetList = ({
 };
 
 export interface ReleaseStepProps {
-  onSelectedWorkOrderChange?: (id: number) => void;
+  /** `null` 은 고른 작업지시를 다시 눌러 푼 것. */
+  onSelectedWorkOrderChange?: (id: number | null) => void;
   selectedWorkOrderId?: number | null;
+  /** 고른 작업지시를 풀었다 — 첫 작업지시로 되돌리지 않는다. 없으면 이 단계가 스스로 기억한다. */
+  workOrderCleared?: boolean;
   readOnly?: boolean;
   materialReview?: (workOrderId: number) => import('react').ReactNode;
   plantId?: number;
   reviewPlans?: ReleaseReviewPlan[];
   lines: ReleaseLine[] | undefined;
   orderNo?: string;
-  itemLabel?: string;
+  /** 품목코드 · 품목명은 두 칸으로 보인다(사용자 지시 2026-11-24). */
+  itemCode?: string;
+  itemName?: string;
   planDateOf?: (planId: number) => string | null;
   lineNameOf?: (lineId: number | null) => string;
   uomLabelOf: (uomId: number) => string;
@@ -277,13 +282,15 @@ export interface ReleaseStepProps {
 export const ReleaseStep = ({
   onSelectedWorkOrderChange,
   selectedWorkOrderId,
+  workOrderCleared,
   readOnly = false,
   materialReview,
   plantId,
   reviewPlans,
   lines,
   orderNo,
-  itemLabel,
+  itemCode,
+  itemName,
   planDateOf,
   lineNameOf,
   uomLabelOf,
@@ -292,15 +299,29 @@ export const ReleaseStep = ({
   revealErrors,
 }: ReleaseStepProps) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [localCleared, setLocalCleared] = useState(false);
+  const cleared = workOrderCleared ?? localCleared;
   const detailRef = useRef<HTMLDivElement>(null);
   const lastSelection = useRef<number | null>(null);
-  const selected =
-    lines?.find(
-      (line) =>
-        String(line.workOrder.workOrderId) ===
-        (selectedWorkOrderId == null ? selectedId : String(selectedWorkOrderId)),
-    ) ?? lines?.[0];
+  const selected = cleared
+    ? undefined
+    : (lines?.find(
+        (line) =>
+          String(line.workOrder.workOrderId) ===
+          (selectedWorkOrderId == null ? selectedId : String(selectedWorkOrderId)),
+      ) ?? lines?.[0]);
   const activeWorkOrderId = selected?.workOrder.workOrderId ?? null;
+  /* 고른 작업지시를 다시 누르면 푼다(목록 공통). */
+  const pick = (workOrderId: number) => {
+    if (workOrderId === activeWorkOrderId) {
+      setLocalCleared(true);
+      onSelectedWorkOrderChange?.(null);
+      return;
+    }
+    setLocalCleared(false);
+    setSelectedId(String(workOrderId));
+    onSelectedWorkOrderChange?.(workOrderId);
+  };
   useLayoutEffect(() => {
     if (activeWorkOrderId === null) return;
     const changed = lastSelection.current !== null && lastSelection.current !== activeWorkOrderId;
@@ -310,8 +331,8 @@ export const ReleaseStep = ({
   }, [activeWorkOrderId]);
   if (lines === undefined) return <SkeletonText lines={4} />;
   const totalLots = lines.reduce((sum, line) => sum + (line.lotCount ?? 0), 0);
-  if (selected === undefined) return <p className="empty-line">{t.empty}</p>;
-  const wo = selected.workOrder;
+  if (lines.length === 0) return <p className="empty-line">{t.empty}</p>;
+  const wo = selected?.workOrder;
   const monthDay = (iso: string | null | undefined): string => (iso == null ? '' : iso.slice(5));
   /*
    * 생산 창고 공장의 효과 문구 — 날짜만(검토 14). 출고 작업일이 오늘 이하면 「바로 출고」.
@@ -368,11 +389,8 @@ export const ReleaseStep = ({
             variant="text"
             size="sm"
             aria-label={`${target.workOrderNo} 상세 확인`}
-            aria-pressed={target.workOrderId === wo.workOrderId}
-            onClick={() => {
-              setSelectedId(String(target.workOrderId));
-              onSelectedWorkOrderChange?.(target.workOrderId);
-            }}
+            aria-pressed={target.workOrderId === wo?.workOrderId}
+            onClick={() => pick(target.workOrderId)}
           >
             {target.workOrderNo}
           </Button>
@@ -454,11 +472,8 @@ export const ReleaseStep = ({
             <ReleaseTargetList
               columns={columns}
               lines={lines}
-              selectedId={wo.workOrderId}
-              onSelect={(id) => {
-                setSelectedId(id);
-                onSelectedWorkOrderChange?.(Number(id));
-              }}
+              selectedId={wo?.workOrderId ?? null}
+              onSelect={(id) => pick(Number(id))}
             />
           </div>
         </section>
@@ -469,81 +484,91 @@ export const ReleaseStep = ({
           aria-label="선택 작업지시 배포 상세"
         >
           <h3 className="section-title">선택 작업지시 상세</h3>
-          <ReleaseInformationTable
-            label="작업지시 정보"
-            rows={[
-              ['작업지시 번호', wo.workOrderNo],
-              ['공정', wo.operationName],
-            ]}
-          />
-          {reviewPlans && (
-            <ReleaseReview
-              plans={reviewPlans}
-              lines={[selected]}
-              plantId={plantId ?? null}
-              lineNameOf={lineNameOf}
-              uomLabelOf={uomLabelOf}
-            />
-          )}
-          {issueDates && (
-            <table className="erp-release-information-table">
-              <tbody>
-                <tr>
-                  <th scope="row">{pw.issueWorkDate}</th>
-                  <td>
-                    {issueDates.get(wo.workOrderId)?.undetermined
-                      ? pw.decidedAtRelease
-                      : (issueDates.get(wo.workOrderId)?.issueWorkDate ?? '—')}
-                  </td>
-                </tr>
-                <tr>
-                  <th scope="row">{pw.productionDate}</th>
-                  <td>{issueDates.get(wo.workOrderId)?.productionDate ?? '—'}</td>
-                </tr>
-              </tbody>
-            </table>
-          )}
-          {materialReview?.(wo.workOrderId)}
-          {!reviewPlans && (
-            <section className="pane erp-wo-release-detail" aria-label={t.selectedTarget}>
-              <h3 className="section-title">작업지시 정보</h3>
-              <table className="erp-release-information-table">
-                <tbody>
-                  <tr>
-                    <th scope="row">{t.orderNo}</th>
-                    <td>{orderNo ?? '—'}</td>
-                  </tr>
-                  <tr>
-                    <th scope="row">{t.item}</th>
-                    <td>{itemLabel ?? '—'}</td>
-                  </tr>
-                  <tr>
-                    <th scope="row">{t.columns.operation}</th>
-                    <td>{wo.operationName}</td>
-                  </tr>
-                  <tr>
-                    <th scope="row">{t.columns.orderQty}</th>
-                    <td>
-                      {formatQty(wo.orderQty)} {uomLabelOf(wo.uomId)}
-                    </td>
-                  </tr>
-                  <tr>
-                    <th scope="row">{t.planDate}</th>
-                    <td>{planDateOf?.(wo.productionPlanId) ?? '—'}</td>
-                  </tr>
-                  <tr>
-                    <th scope="row">{t.line}</th>
-                    <td>{lineNameOf?.(wo.productionLineId ?? null) ?? '—'}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </section>
-          )}
-          {plantId != null && (
-            <section className="pane erp-wo-release-terminals" aria-label="연결 단말기 확인">
-              <h3 className="section-title">연결 단말기 확인</h3>
-              <TerminalConnections key={wo.workOrderId} plantId={plantId} workOrder={wo} />
-            </section>
+          {selected === undefined || wo === undefined ? (
+            <EmptyState size="sm" title={t.selectPrompt} />
+          ) : (
+            <>
+              <ReleaseInformationTable
+                label="작업지시 정보"
+                rows={[
+                  ['작업지시 번호', wo.workOrderNo],
+                  ['공정', wo.operationName],
+                ]}
+              />
+              {reviewPlans && (
+                <ReleaseReview
+                  plans={reviewPlans}
+                  lines={[selected]}
+                  plantId={plantId ?? null}
+                  lineNameOf={lineNameOf}
+                  uomLabelOf={uomLabelOf}
+                />
+              )}
+              {issueDates && (
+                <table className="erp-release-information-table">
+                  <tbody>
+                    <tr>
+                      <th scope="row">{pw.issueWorkDate}</th>
+                      <td>
+                        {issueDates.get(wo.workOrderId)?.undetermined
+                          ? pw.decidedAtRelease
+                          : (issueDates.get(wo.workOrderId)?.issueWorkDate ?? '—')}
+                      </td>
+                    </tr>
+                    <tr>
+                      <th scope="row">{pw.productionDate}</th>
+                      <td>{issueDates.get(wo.workOrderId)?.productionDate ?? '—'}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
+              {materialReview?.(wo.workOrderId)}
+              {!reviewPlans && (
+                <section className="pane erp-wo-release-detail" aria-label={t.selectedTarget}>
+                  <h3 className="section-title">작업지시 정보</h3>
+                  <table className="erp-release-information-table">
+                    <tbody>
+                      <tr>
+                        <th scope="row">{t.orderNo}</th>
+                        <td>{orderNo ?? '—'}</td>
+                      </tr>
+                      <tr>
+                        <th scope="row">{t.itemCode}</th>
+                        <td>{itemCode ?? '—'}</td>
+                      </tr>
+                      <tr>
+                        <th scope="row">{t.itemName}</th>
+                        <td>{itemName ?? '—'}</td>
+                      </tr>
+                      <tr>
+                        <th scope="row">{t.columns.operation}</th>
+                        <td>{wo.operationName}</td>
+                      </tr>
+                      <tr>
+                        <th scope="row">{t.columns.orderQty}</th>
+                        <td>
+                          {formatQty(wo.orderQty)} {uomLabelOf(wo.uomId)}
+                        </td>
+                      </tr>
+                      <tr>
+                        <th scope="row">{t.planDate}</th>
+                        <td>{planDateOf?.(wo.productionPlanId) ?? '—'}</td>
+                      </tr>
+                      <tr>
+                        <th scope="row">{t.line}</th>
+                        <td>{lineNameOf?.(wo.productionLineId ?? null) ?? '—'}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </section>
+              )}
+              {plantId != null && (
+                <section className="pane erp-wo-release-terminals" aria-label="연결 단말기 확인">
+                  <h3 className="section-title">연결 단말기 확인</h3>
+                  <TerminalConnections key={wo.workOrderId} plantId={plantId} workOrder={wo} />
+                </section>
+              )}
+            </>
           )}
           {!readOnly && (
             <section className="erp-wo-release-effects">
@@ -576,7 +601,13 @@ export const ReleaseStep = ({
                       <li key={failure.key}>
                         {failure.text}
                         {failure.links.map((link) => (
-                          <Link key={link.to} to={link.to} target="_blank" rel="noreferrer">
+                          <Link
+                            key={link.to}
+                            className="action-link-button"
+                            to={link.to}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
                             {link.label}
                           </Link>
                         ))}

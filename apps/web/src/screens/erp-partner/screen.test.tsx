@@ -50,6 +50,13 @@ const rowOf = (cell: HTMLElement): HTMLElement => {
   return row;
 };
 
+/** 화면 한 벌(조회 상자 + 목록 상자). */
+const workspace = (): HTMLElement => {
+  const el = document.querySelector<HTMLElement>('.list-detail-workspace');
+  if (el === null) throw new Error('화면이 그려지지 않았습니다.');
+  return el;
+};
+
 const isGet = (request: Request, pathname: string): boolean =>
   request.method === 'GET' && new URL(request.url).pathname === pathname;
 
@@ -93,17 +100,46 @@ describe('ErpPartnerScreen', () => {
     const rowA = rowOf(await screen.findByText('예시 거래처 A'));
     expect(await within(rowA).findByText('고객사, 공급사')).toBeInTheDocument();
 
+    // ERP 거래처 코드 · 국가 열이 목록에 있다(사용자 지시 2026-11-24).
+    const table = screen.getByRole('table');
+    expect(
+      within(table).getByRole('columnheader', { name: 'ERP 거래처 코드' }),
+    ).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: '국가' })).toBeInTheDocument();
+    expect(within(rowA).getAllByText('SAMPLE-P1')).toHaveLength(2);
+
     const rowB = rowOf(screen.getByText('예시 거래처 B'));
-    // ERP 코드·국가·역할이 모두 비어 있다.
+    // ERP 거래처 코드 · 국가 · 역할이 비어 있다.
     expect(await within(rowB).findAllByText('—')).toHaveLength(3);
-    expect(within(rowB).getByText('미사용')).toBeInTheDocument();
+    // 사용 여부는 상태 라벨로 낸다(사용자 지시 2026-11-24).
+    expect(within(rowB).getByText('미사용').parentElement?.className).toMatch(/status-idle/);
 
     const rowC = rowOf(screen.getByText('예시 거래처 C'));
     expect(await within(rowC).findByText('불러오지 못함')).toBeInTheDocument();
 
-    expect(screen.getByText('1–3 / 전체 3건')).toBeInTheDocument();
+    expect(screen.getByText('총 3건')).toBeInTheDocument();
     // 쓰기 조작이 없다.
     expect(screen.queryByRole('button', { name: /저장|등록|삭제/ })).not.toBeInTheDocument();
+  });
+
+  it('목록 아래 쪽 넘김 줄을 두고, 다음 쪽은 page 를 서버에 싣는다', async () => {
+    const { urls, user } = renderScreen([listRoute(ROWS, 120), rolesRoute]);
+    await screen.findByText('예시 거래처 A');
+
+    /* 쪽 넘김 줄 — 왼쪽 「총 N건」 + 쪽 크기, 오른쪽 [처음] [이전] n / N [다음] [마지막](ERP 수신 묶음 공통 · 사용자 지시 2026-11-24). */
+    const nav = within(screen.getByRole('navigation', { name: '쪽 이동' }));
+    expect(nav.getByText('총 120건')).toBeInTheDocument();
+    expect(nav.getByRole('combobox', { name: '페이지 크기' })).toHaveTextContent('50건');
+    expect(nav.getByText('1 / 3')).toBeInTheDocument();
+    for (const name of ['처음', '이전', '다음', '마지막']) {
+      expect(nav.getByRole('button', { name })).toBeInTheDocument();
+    }
+
+    await user.click(nav.getByRole('button', { name: '다음' }));
+    await waitFor(() => {
+      const last = urls.filter((url) => url.pathname === LIST_PATH).at(-1);
+      expect(last?.searchParams.get('page')).toBe('2');
+    });
   });
 
   it('검색어·역할·미사용 포함을 조회 조건으로 싣는다', async () => {
@@ -112,9 +148,9 @@ describe('ErpPartnerScreen', () => {
     // 초기화는 바뀐 것이 있을 때만 보인다.
     expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
 
-    await user.type(screen.getByLabelText('거래처 코드·명'), 'SAMPLE');
+    await user.type(screen.getByLabelText('거래처 검색'), 'SAMPLE');
     expect(screen.getByRole('button', { name: '초기화' })).toBeInTheDocument();
-    await user.click(screen.getByRole('combobox', { name: '역할' }));
+    await user.click(screen.getByRole('combobox', { name: '역할 선택' }));
     await user.click(screen.getByRole('option', { name: '공급사' }));
     await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
     await user.click(screen.getByRole('button', { name: '조회' }));
@@ -135,17 +171,43 @@ describe('ErpPartnerScreen', () => {
     expect(first?.searchParams.has('roleTypeCode')).toBe(false);
   });
 
-  it('상세 구획 없이 목록 한 구획만 서고, 줄을 눌러도 상세를 부르지 않는다', async () => {
+  it('상세 칸이 없다 — 줄을 눌러도 상세가 생기지 않고, 배치 · 목록 접기 조작도 없다(사용자 지시 2026-11-24)', async () => {
     const { urls, user } = renderScreen([listRoute(), rolesRoute]);
 
-    await user.click(await screen.findByText('예시 거래처 A'));
-
-    expect(screen.getByRole('region', { name: '거래처 목록' })).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: '거래처 상세' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /상세 보기/ })).not.toBeInTheDocument();
+    const table = await screen.findByRole('table');
+    const rowA = rowOf(await within(table).findByText('예시 거래처 A'));
+    expect(await within(rowA).findByText('고객사, 공급사')).toBeInTheDocument();
+    /* 화면 몫의 구획만 센다(알림 구획은 앱 몫이다). */
+    const regionNames = () =>
+      within(workspace())
+        .queryAllByRole('region')
+        .map((el) => el.getAttribute('aria-label'));
+    expect(regionNames()).toEqual(['조회 조건', '거래처 목록']);
     expect(screen.queryByRole('separator')).not.toBeInTheDocument();
-    // 행마다 역할만 부르고, 거래처 한 건 조회는 나가지 않는다.
-    expect(urls.some((url) => url.pathname === `${LIST_PATH}/7001`)).toBe(false);
+    expect(screen.queryByRole('button', { name: '목록 접기' })).not.toBeInTheDocument();
+    // 줄 고르기 단추가 없다.
+    expect(table.querySelector('.users-roles-row-pick')).toBeNull();
+    const before = urls.length;
+
+    await user.click(within(table).getByText('예시 거래처 B'));
+    await user.click(within(table).getByText('예시 거래처 A'));
+
+    expect(regionNames()).toEqual(['조회 조건', '거래처 목록']);
+    expect(screen.queryByText('거래처 상세')).not.toBeInTheDocument();
+    expect(table.querySelector('[aria-current]')).toBeNull();
+    // 역할은 목록 칸 한 곳에만 있다 — 다른 곳에 값이 다시 그려지지 않고, 요청도 더 나가지 않는다.
+    expect(screen.getAllByText('고객사, 공급사')).toHaveLength(1);
+    expect(urls.length).toBe(before);
+  });
+
+  it('주소에 옛 선택 값이 남아 와도 화면이 깨지지 않고 조회 인자에 싣지 않는다', async () => {
+    const { urls } = renderScreen([listRoute(), rolesRoute], '?partner=7001&selected=7001');
+
+    expect(await screen.findByText('예시 거래처 B')).toBeInTheDocument();
+    const first = urls.find((url) => url.pathname === LIST_PATH);
+    expect(first?.searchParams.has('partner')).toBe(false);
+    expect(first?.searchParams.has('selected')).toBe(false);
+    expect(within(workspace()).getAllByRole('region')).toHaveLength(2);
   });
 
   it('결과가 없으면 빈 상태를 낸다', async () => {
@@ -164,5 +226,16 @@ describe('ErpPartnerScreen', () => {
 
     expect(await screen.findByRole('button', { name: '다시 시도' })).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    // 배너는 목록 상자 안 표 자리에 선다(ERP 수신 탭과 같은 자리) — 조회 상자에는 없다.
+    expect(
+      within(screen.getByRole('region', { name: '거래처 목록' })).getByRole('button', {
+        name: '다시 시도',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: '조회 조건' })).queryByRole('button', {
+        name: '다시 시도',
+      }),
+    ).not.toBeInTheDocument();
   });
 });

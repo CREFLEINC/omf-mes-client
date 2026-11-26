@@ -18,10 +18,12 @@ export const common: Translated<typeof ko.common> = {
   selectLoading: 'Đang tải…',
   selectLoadFailed: 'Không tải được danh sách',
   deactivate: 'Ngừng sử dụng',
+  usage: { active: 'Sử dụng', inactive: 'Không sử dụng' },
   saved: 'Đã lưu',
   created: 'Đã đăng ký',
   retry: 'Thử lại',
   includeInactive: 'Gồm cả mục ngừng dùng',
+  listEmptyHint: 'Hãy thử đổi điều kiện tra cứu.',
   filterMore: {
     open: 'Thêm điều kiện',
     close: 'Thu gọn điều kiện',
@@ -123,6 +125,8 @@ export const common: Translated<typeof ko.common> = {
     layoutNarrow: 'Cửa sổ hẹp nên hiển thị trên dưới.',
   },
   selectDate: 'Chọn ngày',
+  startDate: 'Từ ngày',
+  endDate: 'Đến ngày',
   popWorker: {
     label: 'Mã nhân viên',
     unknown: 'Chưa xác nhận mã nhân viên',
@@ -134,5 +138,11 @@ export const common: Translated<typeof ko.common> = {
       `Đối tượng hiện tại là ${before}. Đổi sang ${after} vừa đọc chứ?`,
     keep: 'Giữ nguyên',
     replace: 'Dùng giá trị vừa đọc',
+  },
+  unsavedLeave: {
+    title: 'Thay đổi chưa lưu',
+    body: 'Nếu rời đi mà không lưu, các thay đổi sẽ bị mất.',
+    keep: 'Tiếp tục chỉnh sửa',
+    confirm: 'Rời đi không lưu',
   },
 };

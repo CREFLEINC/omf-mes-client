@@ -5,7 +5,7 @@ export const lotGenealogy = {
     loading: '투입 자재를 불러오는 중입니다.',
     loadFailed: '투입 자재를 불러오지 못했습니다.',
     none: '이 생산 LOT 에 이어진 투입 자재가 없습니다.',
-    columns: { item: '자재', lot: '자재 LOT', fourM: '4M 변경' },
+    columns: { itemCode: '자재코드', itemName: '자재명', lot: '자재 LOT', fourM: '4M 변경' },
   },
   usage: {
     heading: '투입 이력',

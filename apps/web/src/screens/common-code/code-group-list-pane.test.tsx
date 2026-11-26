@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -20,7 +20,9 @@ const renderPane = (overrides: Partial<Parameters<typeof CodeGroupListPane>[0]> 
       appliedFilters={EMPTY_CODE_GROUP_FILTERS}
       onApplyFilters={onApplyFilters}
       pageView={toPageView({ page: 1, size: 50, total: 3 }, 3)}
+      pageMeta={{ page: 1, size: 50, total: 3 }}
       onChangePage={onChangePage}
+      onChangePageSize={vi.fn()}
       selectedCodeGroupId={null}
       onSelect={onSelect}
       isCreating={false}
@@ -37,15 +39,21 @@ describe('CodeGroupListPane — 목록 표시', () => {
   it('그룹코드·그룹명 두 열만 낸다', () => {
     renderPane();
 
-    const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
+    const headers = screen
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent?.replace('drag_indicator', ''));
     expect(headers).toEqual(['그룹코드', '그룹명']);
   });
 
   /* 좁은 좌 페인에서 「사용 여부」 열을 더 두면 이름 열이 짓눌린다(결정 11). */
-  it('미사용 행은 열을 늘리지 않고 이름 뒤 접미로 알린다', () => {
+  it('미사용 행은 열을 늘리지 않고 이름 옆 「미사용」 라벨로 알린다', () => {
     renderPane();
 
-    expect(screen.getByText('합성 코드그룹 C (미사용)')).toBeInTheDocument();
+    expect(
+      within(screen.getByText('합성 코드그룹 C').closest('.usage-name') as HTMLElement).getByText(
+        '미사용',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText('합성 코드그룹 A')).toBeInTheDocument();
   });
 
@@ -200,6 +208,7 @@ describe('CodeGroupListPane — 쪽 이동', () => {
   it('다음을 누르면 다음 쪽을 알린다', async () => {
     const { onChangePage, user } = renderPane({
       pageView: toPageView({ page: 2, size: 50, total: 240 }, 50),
+      pageMeta: { page: 2, size: 50, total: 240 },
     });
 
     await user.click(screen.getByRole('button', { name: '다음' }));

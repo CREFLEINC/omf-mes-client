@@ -4,20 +4,26 @@ import { useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router';
 
-import { BoardFrame } from '../../patterns/board-frame';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { sessionKeys, type Session } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
 import { CustomsClearanceAction } from './customs-clearance-action';
+import { ERP_DATA_ORIENTATION_KEY } from '../erp-item/erp-data-parts';
 import { ErpPurchaseOrderDetailPane, type DetailState } from './detail-pane';
 import { ErpPurchaseOrderFilterBar } from './filter-bar';
+import { ProgressHubChips } from './progress';
 import {
   DEFAULT_FILTERS,
   LIST_PAGE_SIZE,
   readFilters,
   readPage,
   readSelectedId,
+  readListSort,
+  readSize,
+  withListSort,
   toListQuery,
   toSearchParams,
+  toClearedSelectionSearchParams,
   toSelectionSearchParams,
 } from './filters';
 import { ErpPurchaseOrderListPane } from './list-pane';
@@ -29,7 +35,6 @@ import {
   useSupplierLookup,
   useUomLookup,
 } from './lookups';
-import { toPageView } from './pagination';
 import { usePurchaseOrderDetail, usePurchaseOrderList } from './queries';
 import { isForeignOrder, type PurchaseOrderListItem } from './types';
 
@@ -42,7 +47,7 @@ const ERP_SYNC_PATH = '/master-data/integration-sync';
 /**
  * 구매발주 조회(ERP) — ERP 가 내려 준 P/O(구매오더)를 **읽기만** 한다.
  *
- * 입고 관리 짜임이다(사용자 지시 2026-10-27): 위에 조건 줄, 왼쪽 헤더 목록 | 오른쪽 고른 건의 상세·라인. 조건·쪽·고른
+ * 조회 · 목록 | 상세 통일 배치(#358): 위에 조건 상자, 왼쪽 헤더 목록 | 오른쪽 고른 건의 상세·라인. 조건·쪽·고른
  * 건은 전부 주소가 소유한다. **쓰기 조작이 하나도 없다** — ERP 에서 온 P/O 는 서버가 수정을 거절한다(읽기 전용 안내
  * 문구는 두지 않는다 — 사용자 지시 2026-10-27).
  */
@@ -50,9 +55,27 @@ export const ErpPurchaseOrderScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = useMemo(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
+  const size = readSize(searchParams);
   const selectedId = readSelectedId(searchParams);
 
-  const list = usePurchaseOrderList(toListQuery(filters, page));
+  const sort = readListSort(searchParams);
+  const list = usePurchaseOrderList({
+    ...toListQuery(filters, page, size),
+    ...(sort === null ? {} : { sort }),
+  });
+  /* 진행 라벨의 건수 — 같은 조건에 진행만 바꿔 총 건수만 읽는다(한 줄만 받는다 · 사용자 지시 2026-11-24). */
+  const openCount = usePurchaseOrderList({
+    ...toListQuery({ ...filters, progress: 'open' }, 1),
+    size: 1,
+  });
+  const doneCount = usePurchaseOrderList({
+    ...toListQuery({ ...filters, progress: 'done' }, 1),
+    size: 1,
+  });
+  /* 조건 · 쪽을 다시 적어도 정렬은 이어 간다. */
+  const go = (params: URLSearchParams): void => {
+    setSearchParams(withListSort(params, sort));
+  };
   const detail = usePurchaseOrderDetail(selectedId);
   const suppliers = useSupplierLookup();
   const plants = usePlantLookup();
@@ -75,10 +98,7 @@ export const ErpPurchaseOrderScreen = () => {
     ) : null;
 
   const rows = list.data?.items ?? EMPTY_ROWS;
-  const pageView = toPageView(
-    list.data?.page ?? { page, size: LIST_PAGE_SIZE, total: 0 },
-    rows.length,
-  );
+  const meta = list.data?.page ?? { page, size: size ?? LIST_PAGE_SIZE, total: 0 };
 
   const detailState: DetailState =
     selectedId === null
@@ -90,11 +110,11 @@ export const ErpPurchaseOrderScreen = () => {
           : { kind: 'ready', data: detail.data };
 
   return (
-    <BoardFrame
-      splitKey="omf-mes:erp-purchase-order:split"
+    <ListDetailWorkspace
+      storageKey="omf-mes:erp-purchase-order"
+      orientationKey={ERP_DATA_ORIENTATION_KEY}
       initialRatio={0.55}
-      splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
-      above={{
+      filter={{
         label: t.panes.filters,
         content: (
           <>
@@ -104,35 +124,49 @@ export const ErpPurchaseOrderScreen = () => {
                 {t.loadFailedDescription}
               </AlertBanner>
             )}
-            <div className="pane po-board-filter">
-              <ErpPurchaseOrderFilterBar
-                appliedFilters={filters}
-                plantOptions={plants.options}
-                statusOptions={status.options}
-                orderTypeOptions={orderTypes.options}
-                onSearch={(next) => setSearchParams(toSearchParams(next, 1))}
-                onReset={() => setSearchParams(toSearchParams(DEFAULT_FILTERS, 1))}
-              />
-            </div>
+            {/* 진행 「미완료 N건 · 완료 N건」은 탭 줄 위 라벨(사용자 지시 2026-11-24). */}
+            <ProgressHubChips
+              value={filters.progress}
+              counts={{ open: openCount.data?.page.total, done: doneCount.data?.page.total }}
+              onChange={(progress) => go(toSearchParams({ ...filters, progress }, 1, size))}
+            />
+            <ErpPurchaseOrderFilterBar
+              appliedFilters={filters}
+              plantOptions={plants.options}
+              statusOptions={status.options}
+              orderTypeOptions={orderTypes.options}
+              onSearch={(next) => go(toSearchParams(next, 1, size))}
+              onReset={() => go(toSearchParams(DEFAULT_FILTERS, 1, size))}
+            />
           </>
         ),
       }}
       list={{
         label: t.panes.list,
+        title: t.panes.list,
         count: list.data?.page.total,
         content: list.isError ? null : (
           <ErpPurchaseOrderListPane
             rows={rows}
             isLoading={list.isPending}
-            page={pageView}
+            meta={meta}
             selectedId={selectedId}
             supplierNameOf={suppliers.nameOf}
             plantNameOf={plants.nameOf}
-            statusNameOf={status.nameOf}
             orderTypeNameOf={orderTypes.nameOf}
             purchaseGroupNameOf={purchaseGroups.nameOf}
+            statusNameOf={status.nameOf}
             onSelect={(id) => setSearchParams(toSelectionSearchParams(searchParams, id))}
-            onChangePage={(nextPage) => setSearchParams(toSearchParams(filters, nextPage))}
+            onUnselect={() => setSearchParams(toClearedSelectionSearchParams(searchParams))}
+            onChangePage={(nextPage) => go(toSearchParams(filters, nextPage, size))}
+            onChangeSize={(nextSize) => go(toSearchParams(filters, 1, nextSize))}
+            sort={sort}
+            onChangeSort={(next) => {
+              const params = toSearchParams(filters, 1, size);
+              const selected = searchParams.get('sel');
+              if (selected !== null) params.set('sel', selected);
+              setSearchParams(withListSort(params, next));
+            }}
           />
         ),
       }}

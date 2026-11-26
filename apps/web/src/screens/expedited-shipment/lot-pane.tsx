@@ -5,6 +5,7 @@ import { useId } from 'react';
 import { InfoLabel } from '../../patterns/info-tip';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { Select } from '../../patterns/select';
+import { splitCodeName } from '../../patterns/split-code-name';
 import type { ExpeditedLookup, ItemNameLookup } from './lookups';
 import type { LotReleaseState } from './lot-release';
 import { formatQty } from './quantity';
@@ -74,6 +75,14 @@ export const LotPane = ({
     value: String(lot.lotId),
     label: `${lot.lotNo} · ${lookupDisplayLabel(items.of(lot.itemId), lot.itemId)} · ${formatQty(lot.initialQty)}`,
   }));
+  /** 고른 LOT 의 품목코드 · 품목명 두 칸(사용자 지시 2026-11-24). 못 푼 안내는 품목코드 칸에 둔다. */
+  const selectedItem =
+    selected === null
+      ? null
+      : splitCodeName(
+          lookupDisplayLabel(items.of(selected.itemId), selected.itemId),
+          messages.common.reference.empty,
+        );
 
   return (
     <section className="pane" aria-label={t.panes.lot}>
@@ -89,7 +98,12 @@ export const LotPane = ({
         <>
           <div className="field-cell wide-select">
             {/* §5-4 — 이 LOT이 왜 여기 있는지는 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
-            <InfoLabel htmlFor={selectId} label={t.lot.label} info={t.lot.unreceivedNotice} />
+            <InfoLabel
+              htmlFor={selectId}
+              label={t.lot.label}
+              info={t.lot.unreceivedNotice}
+              required
+            />
             <Select
               id={selectId}
               options={options}
@@ -113,8 +127,12 @@ export const LotPane = ({
               <dd>{selected.lotNo}</dd>
             </div>
             <div className="field-cell">
-              <dt className="field-label">{t.lot.fields.item}</dt>
-              <dd>{lookupDisplayLabel(items.of(selected.itemId), selected.itemId)}</dd>
+              <dt className="field-label">{t.lot.fields.itemCode}</dt>
+              <dd>{selectedItem?.code}</dd>
+            </div>
+            <div className="field-cell">
+              <dt className="field-label">{t.lot.fields.itemName}</dt>
+              <dd>{selectedItem?.name}</dd>
             </div>
             <div className="field-cell">
               <dt className="field-label">{t.lot.fields.qty}</dt>

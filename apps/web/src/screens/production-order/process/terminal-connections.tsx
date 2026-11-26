@@ -3,6 +3,7 @@ import { AlertBanner, Button, SkeletonText } from '@crefle/web-ui';
 import { useApiClient } from '../../../patterns/api-context';
 import { fetchAllPages } from '../../../patterns/fetch-all-pages';
 import { runRequest } from '../../../patterns/request';
+import { UsageChip } from '../../../patterns/usage-chip';
 import { useWorkOrderEquipment } from '../../work-order/resource-queries';
 import type { OrderWorkOrder } from './queries';
 
@@ -146,7 +147,7 @@ export const TerminalConnections = ({
                         )}
                       </td>
                       <td>
-                        {terminal.isActive ? '사용' : '사용 중지'} /{' '}
+                        <UsageChip isActive={terminal.isActive} /> /{' '}
                         {terminal.statusCode === 'RUNNING'
                           ? '가동 중'
                           : terminal.statusCode === 'STOPPED'

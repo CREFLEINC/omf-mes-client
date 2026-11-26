@@ -6,6 +6,7 @@ import type { WorkOrderCrew } from './queries';
 import type { WorkOrder } from './types';
 import { FourMInputsPanel } from '../four-m-inputs/panel';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { splitCodeName } from '../../patterns/split-code-name';
 
 export interface DetailDialogProps {
   /** 고른 W/O. 고르지 않았으면 `null` — 창이 열리지 않는다. */
@@ -79,7 +80,15 @@ export const DetailDialog = ({
             [
               [t.workOrderNo, workOrder.workOrderNo],
               [t.statusCode, statusLabel(workOrder.statusCode)],
-              [messages.workOrderProgress.list.columns.itemId, itemLabel(String(workOrder.itemId))],
+              /* 품목코드 · 품목명은 두 칸(사용자 지시 2026-11-24). */
+              [
+                messages.workOrderProgress.list.columns.itemCode,
+                splitCodeName(itemLabel(String(workOrder.itemId)), blank).code,
+              ],
+              [
+                messages.workOrderProgress.list.columns.itemName,
+                splitCodeName(itemLabel(String(workOrder.itemId)), blank).name,
+              ],
               [t.orderQty, String(workOrder.orderQty)],
               [t.plannedStartAt, dateTimeText(workOrder.plannedStartAt)],
               [t.plannedEndAt, dateTimeText(workOrder.plannedEndAt)],

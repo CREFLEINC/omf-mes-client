@@ -1,4 +1,4 @@
-import { AlertBanner, EmptyState, SkeletonText, useToast } from '@crefle/web-ui';
+import { AlertBanner, EmptyState, Icon, SkeletonText, useToast } from '@crefle/web-ui';
 import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
@@ -59,11 +59,14 @@ import {
   readPartnerFilters,
   readScopedFilters,
   readSelectedId,
+  readSize,
+  type ListPageSize,
   toPartnerSearchParams,
   toScopedSearchParams,
   toSearchParams,
 } from './filters';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
+import { DiscardDialog, LeaveGuard } from '../routing/leave-guard';
 import {
   useActiveUserOptions,
   useBusinessUnitOptions,
@@ -130,6 +133,7 @@ type DepartmentDetailResponse = components['schemas']['DepartmentDetailResponse'
 type WorkerQualificationListResponse = components['schemas']['WorkerQualificationListResponse'];
 
 const t = messages.commonCode;
+const leave = messages.common.unsavedLeave;
 
 /** 좌우 · 상하 배치는 네 탭(공통코드 · 조직 · 작업자 · 거래처)이 함께 쓴다 — 「⋯」 이 같은 탭 줄에 선다(#350 리뷰). */
 const ORIENTATION_KEY = 'omf-mes:common-code:split-orientation';
@@ -245,10 +249,16 @@ export const CommonCodeScreen = () => {
     [searchParams],
   );
   const page = readPage(searchParams);
+  /* 목록 쪽 크기 — 고르지 않았으면 `null`(서버 기본값 · 주소 · 요청에 싣지 않는다 · omf-all-around#358). */
+  const size = readSize(searchParams);
 
   const isCreatingCodeGroup = isCodeTab && searchParams.get('new') === 'group';
   const selectedParam = isCodeTab ? readSelectedId(searchParams, 'grp') : null;
-  /** 등록 폼이 열려 있는 동안에는 상세를 조회하지 않는다 — 만들고 있는 자원에는 상세가 없다. */
+  /**
+   * 등록 폼이 열려 있는 동안 **쓰기 · 폼이 보는** 코드그룹은 없다 — 만들고 있는 자원에는 상세가 없다.
+   * 다만 목록에서 고른 줄(`selectedParam`)은 주소에 그대로 남는다 — 등록은 팝업이라 열고 닫아도(취소)
+   * 고른 줄과 뒤 상세가 풀리면 안 된다(사용자 보고 2026-11-26).
+   */
   const selectedCodeGroupId = isCreatingCodeGroup ? null : selectedParam;
 
   /**
@@ -265,7 +275,7 @@ export const CommonCodeScreen = () => {
   currentCodeGroupIdRef.current = selectedCodeGroupId;
   isCreatingCodeGroupRef.current = isCreatingCodeGroup;
 
-  const codeGroupList = useCodeGroupList(filters, page, isCodeTab);
+  const codeGroupList = useCodeGroupList(filters, page, size, isCodeTab);
   const codeGroups = codeGroupList.data?.items ?? [];
 
   /*
@@ -277,7 +287,8 @@ export const CommonCodeScreen = () => {
     codeGroups.length,
   );
 
-  const codeGroupDetail = useCodeGroupDetail(selectedCodeGroupId);
+  /* 등록 팝업 뒤에도 고른 그룹의 상세가 그대로 서도록 고른 줄 기준으로 든다(캐시를 그대로 쓴다). */
+  const codeGroupDetail = useCodeGroupDetail(selectedParam);
 
   /*
    * 코드값 한 벌에 넘길 상태. 좌 목록과 **다른 주소 키**를 쓴다 —
@@ -340,6 +351,8 @@ export const CommonCodeScreen = () => {
 
   const isCodeGroupDirty =
     formState !== null && !isSameCodeGroupValues(formState.values, formState.baseline);
+  /** 코드값 구획(`CodeValueSection`)이 알려 주는 저장하지 않은 편집 — 다른 화면으로 옮기기 전에 묻는다(#358). */
+  const [isCodeValueDirty, setIsCodeValueDirty] = useState(false);
 
   /** 보내기 전에 화면에서 잡은 오류. 저장을 누른 뒤에만 세운다 — 입력 도중에 붉은 글씨를 띄우지 않는다. */
   const [codeGroupFieldErrors, setCodeGroupFieldErrors] = useState<Record<string, string>>({});
@@ -581,16 +594,31 @@ export const CommonCodeScreen = () => {
    */
   const applyFilters = (next: CodeGroupFilters) => {
     resetCodeGroupEditing();
-    setSearchParams(toSearchParams(tab.id, next, 1));
+    setSearchParams(toSearchParams(tab.id, next, 1, size));
   };
 
   const changeCodeGroupPage = (nextPage: number) => {
     resetCodeGroupEditing();
-    setSearchParams(toSearchParams(tab.id, filters, nextPage));
+    setSearchParams(toSearchParams(tab.id, filters, nextPage, size));
+  };
+
+  /** 쪽 크기를 바꾸면 첫 쪽으로 간다 — 쪽을 옮길 때와 같이 선택도 함께 비운다. */
+  const changeCodeGroupPageSize = (nextSize: ListPageSize) => {
+    resetCodeGroupEditing();
+    setSearchParams(toSearchParams(tab.id, filters, 1, nextSize));
   };
 
   const handleSelectCodeGroup = (codeGroupId: number) => {
     resetCodeGroupEditing();
+    /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24 · 모든 목록 같은 동작). */
+    if (codeGroupId === selectedCodeGroupId) {
+      patchSearchParams((next) => {
+        next.delete('grp');
+        next.delete('val');
+        next.delete('vpage');
+      });
+      return;
+    }
     selectCodeGroup(codeGroupId);
   };
 
@@ -598,11 +626,11 @@ export const CommonCodeScreen = () => {
     resetCodeGroupEditing();
 
     patchSearchParams((next) => {
+      /*
+       * 등록은 팝업이다 — 고른 그룹 · 코드값은 주소에 남겨 팝업을 닫으면(취소) 그대로 돌아온다(사용자 보고 2026-11-26).
+       * 팝업이 떠 있는 동안 뒤 상세는 손댈 수 없어 어느 쪽을 고치는지 헷갈리지 않는다. 저장에 성공하면 새 그룹을 고른다.
+       */
       next.set('new', 'group');
-      // 등록 폼이 열려 있는 동안 고른 그룹의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
-      next.delete('grp');
-      next.delete('val');
-      next.delete('vpage');
     });
   };
 
@@ -629,6 +657,11 @@ export const CommonCodeScreen = () => {
 
   const selectCodeValue = (codeValueId: number) => {
     patchSearchParams((next) => {
+      /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24 · 모든 목록 같은 동작). */
+      if (next.get('val') === String(codeValueId)) {
+        next.delete('val');
+        return;
+      }
       next.set('val', String(codeValueId));
       clearCodeValueCreating(next);
     });
@@ -636,9 +669,8 @@ export const CommonCodeScreen = () => {
 
   const openCodeValueCreate = () => {
     patchSearchParams((next) => {
+      /* 등록은 팝업이다 — 고른 코드값은 주소에 남겨 팝업을 닫으면(취소) 그대로 돌아온다(사용자 보고 2026-11-26). */
       next.set('new', 'value');
-      // 등록 폼이 열려 있는 동안 고른 코드값의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
-      next.delete('val');
     });
   };
 
@@ -684,6 +716,7 @@ export const CommonCodeScreen = () => {
 
   const isCreatingDepartment = isOrgTab && searchParams.get('new') === 'dept';
   const selectedDepartmentParam = isOrgTab ? readSelectedId(searchParams, 'dep') : null;
+  /* 코드그룹과 같다 — 등록 중 쓰기 · 폼이 보는 부서는 없고, 목록에서 고른 줄은 주소에 남는다(사용자 보고 2026-11-26). */
   const selectedDepartmentId = isCreatingDepartment ? null : selectedDepartmentParam;
 
   /**
@@ -700,7 +733,7 @@ export const CommonCodeScreen = () => {
   currentDepartmentIdRef.current = selectedDepartmentId;
   isCreatingDepartmentRef.current = isCreatingDepartment;
 
-  const departmentList = useDepartmentList(departmentFilters, page, isOrgTab);
+  const departmentList = useDepartmentList(departmentFilters, page, size, isOrgTab);
 
   /*
    * 계약 표현을 화면 표현으로 옮기며 **자기참조를 여기서 한 번만 접는다** —
@@ -722,7 +755,8 @@ export const CommonCodeScreen = () => {
     departmentRows.length,
   );
 
-  const departmentDetail = useDepartmentDetail(selectedDepartmentId);
+  /* 등록 팝업 뒤에도 고른 부서의 상세가 그대로 서도록 고른 줄 기준으로 든다(캐시를 그대로 쓴다). */
+  const departmentDetail = useDepartmentDetail(selectedDepartmentParam);
 
   /** 부서 정보 폼이 화면에 있는가 — 상위 선택지는 그때만 조회한다. */
   const isDepartmentFormOpen = isCreatingDepartment || selectedDepartmentId !== null;
@@ -756,6 +790,30 @@ export const CommonCodeScreen = () => {
     }
 
     return null;
+  };
+
+  /**
+   * 같은 사실을 제목 옆 알약으로 — 작업자 상세 제목 오른쪽에 글 폭만큼(결재선 정의의 진행 중 안내와 같은 자리 ·
+   * 사용자 지시 2026-11-25). 보이는 조건 · 경고색은 위 배너와 같다.
+   */
+  const renderOptionsNote = (lookups: LookupResult[]): ReactNode => {
+    const text = lookups.some((lookup) => lookup.isError)
+      ? t.optionsLoadFailed
+      : lookups.some((lookup) => lookup.truncated)
+        ? t.optionsTruncated
+        : null;
+    if (text === null) return null;
+
+    return (
+      <p
+        className="iqc-inspection-action-note common-code-heading-note"
+        data-tone="warning"
+        role="note"
+      >
+        <Icon name="warning" size={14} aria-hidden />
+        {text}
+      </p>
+    );
   };
 
   /**
@@ -998,18 +1056,32 @@ export const CommonCodeScreen = () => {
 
   const applyDepartmentFilters = (next: ScopedFilters) => {
     resetDepartmentEditing();
-    setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.businessUnit, next, 1));
+    setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.businessUnit, next, 1, size));
   };
 
   const changeDepartmentPage = (nextPage: number) => {
     resetDepartmentEditing();
     setSearchParams(
-      toScopedSearchParams(tab.id, SCOPE_KEYS.businessUnit, departmentFilters, nextPage),
+      toScopedSearchParams(tab.id, SCOPE_KEYS.businessUnit, departmentFilters, nextPage, size),
+    );
+  };
+
+  const changeDepartmentPageSize = (nextSize: ListPageSize) => {
+    resetDepartmentEditing();
+    setSearchParams(
+      toScopedSearchParams(tab.id, SCOPE_KEYS.businessUnit, departmentFilters, 1, nextSize),
     );
   };
 
   const handleSelectDepartmentRow = (departmentId: number) => {
     resetDepartmentEditing();
+    /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24 · 모든 목록 같은 동작). */
+    if (departmentId === selectedDepartmentId) {
+      patchSearchParams((next) => {
+        next.delete('dep');
+      });
+      return;
+    }
     handleSelectDepartment(departmentId);
   };
 
@@ -1017,9 +1089,8 @@ export const CommonCodeScreen = () => {
     resetDepartmentEditing();
 
     patchSearchParams((next) => {
+      /* 등록은 팝업이다 — 고른 부서는 주소에 남겨 팝업을 닫으면(취소) 그대로 돌아온다(사용자 보고 2026-11-26). */
       next.set('new', 'dept');
-      // 등록 폼이 열려 있는 동안 고른 부서의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
-      next.delete('dep');
     });
   };
 
@@ -1079,7 +1150,7 @@ export const CommonCodeScreen = () => {
 
   const selectedWorkerId = isWorkerTab ? readSelectedId(searchParams, 'wkr') : null;
 
-  const workerList = useWorkerList(workerFilters, page, isWorkerTab);
+  const workerList = useWorkerList(workerFilters, page, size, isWorkerTab);
   const workers = workerList.data?.items ?? [];
 
   const workerPageView = toPageView(
@@ -1237,18 +1308,29 @@ export const CommonCodeScreen = () => {
     resetQualificationEditing();
 
     patchSearchParams((next) => {
-      next.set('wkr', String(workerId));
+      /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24 · 모든 목록 같은 동작). */
+      if (workerId === selectedWorkerId) next.delete('wkr');
+      else next.set('wkr', String(workerId));
     });
   };
 
   const applyWorkerFilters = (next: ScopedFilters) => {
     resetQualificationEditing();
-    setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.department, next, 1));
+    setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.department, next, 1, size));
   };
 
   const changeWorkerPage = (nextPage: number) => {
     resetQualificationEditing();
-    setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.department, workerFilters, nextPage));
+    setSearchParams(
+      toScopedSearchParams(tab.id, SCOPE_KEYS.department, workerFilters, nextPage, size),
+    );
+  };
+
+  const changeWorkerPageSize = (nextSize: ListPageSize) => {
+    resetQualificationEditing();
+    setSearchParams(
+      toScopedSearchParams(tab.id, SCOPE_KEYS.department, workerFilters, 1, nextSize),
+    );
   };
 
   const changeQualificationDrafts = (
@@ -1280,7 +1362,7 @@ export const CommonCodeScreen = () => {
 
   const selectedPartnerId = isPartnerTab ? readSelectedId(searchParams, PARTNER_SELECT_KEY) : null;
 
-  const partnerList = usePartnerList(partnerFilters, page, isPartnerTab);
+  const partnerList = usePartnerList(partnerFilters, page, size, isPartnerTab);
   const partners = partnerList.data?.items ?? [];
 
   const partnerPageView = toPageView(
@@ -1482,18 +1564,25 @@ export const CommonCodeScreen = () => {
     resetPartnerRoleEditing();
 
     patchSearchParams((next) => {
-      next.set(PARTNER_SELECT_KEY, String(partnerId));
+      /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24 · 모든 목록 같은 동작). */
+      if (partnerId === selectedPartnerId) next.delete(PARTNER_SELECT_KEY);
+      else next.set(PARTNER_SELECT_KEY, String(partnerId));
     });
   };
 
   const applyPartnerFilters = (next: PartnerFilters) => {
     resetPartnerRoleEditing();
-    setSearchParams(toPartnerSearchParams(tab.id, next, 1));
+    setSearchParams(toPartnerSearchParams(tab.id, next, 1, size));
   };
 
   const changePartnerPage = (nextPage: number) => {
     resetPartnerRoleEditing();
-    setSearchParams(toPartnerSearchParams(tab.id, partnerFilters, nextPage));
+    setSearchParams(toPartnerSearchParams(tab.id, partnerFilters, nextPage, size));
+  };
+
+  const changePartnerPageSize = (nextSize: ListPageSize) => {
+    resetPartnerRoleEditing();
+    setSearchParams(toPartnerSearchParams(tab.id, partnerFilters, 1, nextSize));
   };
 
   const togglePartnerRoleChoice = (roleTypeCode: string) => {
@@ -1529,16 +1618,62 @@ export const CommonCodeScreen = () => {
     writePartnerRoles(partnerRoleState.selected);
   };
 
+  /* 어느 탭이든 저장하지 않은 편집이 있으면 다른 화면으로(사이드바 · 뒤로가기) 가기 전에 묻는다(#358). */
+  const hasUnsavedChanges =
+    isCodeGroupDirty ||
+    isCodeValueDirty ||
+    isDepartmentDirty ||
+    isQualificationDirty ||
+    isPartnerRoleDirty;
+
+  /**
+   * 화면 안에서 고친 것이 사라지는 이동(다른 줄 · 다른 코드그룹 · 탭)을 미뤄 둔 것 — 다른 화면으로 갈 때와 같은
+   * 창으로 묻고, 「저장하지 않고 나가기」를 누르면 그때 옮긴다(#358). 「계속 편집」은 고친 값과 선택을 그대로 둔다.
+   */
+  const [pendingSwitch, setPendingSwitch] = useState<(() => void) | null>(null);
+
+  /*
+   * 화면 안 이동에서 묻는 편집 — **저장이 나가는 중인 편집은 묻지 않는다.** 고친 값은 이미 서버로 가고 있어
+   * 「사라진다」가 사실이 아니고, 나가는 중에 다른 줄로 옮기는 종전 흐름(되먹임 · 잠금)을 그대로 둔다.
+   */
+  const isCodeGroupSwitchDirty = (isCodeGroupDirty && !isCodeGroupLocked) || isCodeValueDirty;
+  const isDepartmentSwitchDirty = isDepartmentDirty && !isDepartmentLocked;
+  const isQualificationSwitchDirty = isQualificationDirty && !isQualificationLocked;
+  const isPartnerRoleSwitchDirty = isPartnerRoleDirty && !isPartnerRoleLocked;
+
+  /** 고친 것이 있으면 묻고, 없으면 곧바로 옮긴다. 저장 · 되돌리기 동작은 건드리지 않는다. */
+  const confirmSwitch = (isDirty: boolean, action: () => void) => {
+    if (!isDirty) {
+      action();
+      return;
+    }
+    setPendingSwitch(() => action);
+  };
+
+  /** 목록 · 조건 · 추가 단추에 넘기는 조작을 `confirmSwitch`로 감싼다 — 선택이나 등록 폼이 바뀌면 고친 것이 사라진다(#358). */
+  const guarded =
+    <A extends unknown[]>(isDirty: boolean, action: (...args: A) => void) =>
+    (...args: A) => {
+      confirmSwitch(isDirty, () => action(...args));
+    };
+
   /*
    * 탭이 바뀌면 그 탭의 처음 상태로 간다. 한쪽 탭의 조건·선택이 남으면
    * 그 탭에 없는 자원을 조회하게 된다.
    */
   const changeTab = (value: string) => {
-    resetCodeGroupEditing();
-    resetDepartmentEditing();
-    resetQualificationEditing();
-    resetPartnerRoleEditing();
-    setSearchParams(tabSearchParams(value));
+    const isDirty =
+      isCodeGroupSwitchDirty ||
+      isDepartmentSwitchDirty ||
+      isQualificationSwitchDirty ||
+      isPartnerRoleSwitchDirty;
+    confirmSwitch(isDirty, () => {
+      resetCodeGroupEditing();
+      resetDepartmentEditing();
+      resetQualificationEditing();
+      resetPartnerRoleEditing();
+      setSearchParams(tabSearchParams(value));
+    });
   };
 
   /** 값을 고치는 중에 옛 오류가 남아 있으면 무엇을 고쳐야 하는지 알 수 없다. */
@@ -1591,12 +1726,57 @@ export const CommonCodeScreen = () => {
       ? t.actionReasons.deactivateAlreadyDone(t.targets.codeGroup)
       : null;
 
+  /* 다른 탭(부서 · 작업자 · 거래처)처럼 상자 안에 안내를 둔다(#350). 등록 팝업이 떠 있는 동안에도 뒤에 선다. */
+  const codeGroupEmptyPane = (
+    <section className="pane" aria-label={t.panes.codeGroupForm}>
+      {/* 단말 관리의 빈 상세와 같은 모양 — 원 안 아이콘 · 제목 · 설명 한 줄(omf-all-around#358). */}
+      <EmptyState
+        size="sm"
+        className="users-roles-pick-empty"
+        icon={
+          <span className="inspection-standard-empty-icon">
+            <Icon name="category" size={20} />
+          </span>
+        }
+        title={t.codeGroup.empty.notSelected}
+        description={t.codeGroup.empty.notSelectedDescription}
+      />
+    </section>
+  );
+
   /**
    * 우 칸 위쪽 — 코드그룹 정보.
    *
    * 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
    * 등록·선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
    */
+  /**
+   * 등록 팝업 뒤의 상세 자리 — 고른 그룹이 있으면 그 그룹의 저장된 값을 그대로 낸다(사용자 보고 2026-11-26).
+   * 폼 상태는 팝업의 초안이 쓰므로 이 자리는 상세 응답에서 바로 그린다. 모달 팝업이 떠 있는 동안
+   * 뒤 화면은 손댈 수 없어 조작은 받지 않는다. 팝업을 닫으면 종전 수정 폼이 이 자리에 다시 선다.
+   */
+  const renderCodeGroupPaneBehindCreate = (): ReactNode => {
+    if (selectedParam === null || codeGroupDetail.data === undefined) return codeGroupEmptyPane;
+
+    return (
+      <CodeGroupFormPane
+        mode="edit"
+        values={codeGroupToFormValues(codeGroupDetail.data.codeGroup)}
+        onChange={() => undefined}
+        fieldErrors={{}}
+        banner={null}
+        codeLockReason={codeLockMessage(codeGroupDetail.data.editability)}
+        deactivateDisabledReason={deactivateDisabledReason}
+        isDirty={false}
+        isLocked={isCodeGroupLocked}
+        isSaving={false}
+        onSave={() => undefined}
+        onCancel={() => undefined}
+        onDeactivate={() => undefined}
+      />
+    );
+  };
+
   const renderCodeGroupFormPane = (): ReactNode => {
     if (isCreatingCodeGroup) {
       if (formState === null) return null;
@@ -1608,43 +1788,40 @@ export const CommonCodeScreen = () => {
        * 지나야 남는 자리가 없다(배너 · 필드 오류 · 진행 표시).
        */
       return (
-        <CodeGroupFormPane
-          mode="create"
-          values={formState.values}
-          onChange={changeCodeGroupValues}
-          fieldErrors={{
-            ...(isCodeGroupCreateWriteMine ? codeGroupCreateWrite.fieldErrors : {}),
-            ...codeGroupFieldErrors,
-          }}
-          /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
-          banner={
-            isCodeGroupCreateWriteMine ? (
-              <SaveErrorBanner error={codeGroupCreateWrite.error} />
-            ) : null
-          }
-          /* 등록에서는 코드 칸이 열려 있다 — 아직 참조할 자료가 없다. */
-          codeLockReason={null}
-          deactivateDisabledReason={null}
-          isDirty={isCodeGroupDirty}
-          /* **막는 것은 전역** — 수정 저장이 나가는 중에 열린 등록 폼도 잠긴다(사유는 페인이 낸다). */
-          isLocked={isCodeGroupLocked}
-          /* **가리는 것은 초안 축** — 버린 초안의 진행 표시가 새 초안 위에서 돌지 않는다. */
-          isSaving={isCodeGroupCreateWriteMine && codeGroupCreateWrite.isSaving}
-          onSave={handleSaveCodeGroup}
-          onCancel={closeCodeGroupCreateForm}
-          onDeactivate={() => undefined}
-        />
+        <>
+          {/* 등록은 팝업이다(사용자 지시 2026-11-25) — 뒤의 상세 자리는 고른 그룹 그대로 둔다(고르기 전이면 빈 안내). */}
+          {renderCodeGroupPaneBehindCreate()}
+          <CodeGroupFormPane
+            mode="create"
+            values={formState.values}
+            onChange={changeCodeGroupValues}
+            fieldErrors={{
+              ...(isCodeGroupCreateWriteMine ? codeGroupCreateWrite.fieldErrors : {}),
+              ...codeGroupFieldErrors,
+            }}
+            /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
+            banner={
+              isCodeGroupCreateWriteMine ? (
+                <SaveErrorBanner error={codeGroupCreateWrite.error} />
+              ) : null
+            }
+            /* 등록에서는 코드 칸이 열려 있다 — 아직 참조할 자료가 없다. */
+            codeLockReason={null}
+            deactivateDisabledReason={null}
+            isDirty={isCodeGroupDirty}
+            /* **막는 것은 전역** — 수정 저장이 나가는 중에 열린 등록 폼도 잠긴다(사유는 페인이 낸다). */
+            isLocked={isCodeGroupLocked}
+            /* **가리는 것은 초안 축** — 버린 초안의 진행 표시가 새 초안 위에서 돌지 않는다. */
+            isSaving={isCodeGroupCreateWriteMine && codeGroupCreateWrite.isSaving}
+            onSave={handleSaveCodeGroup}
+            onCancel={closeCodeGroupCreateForm}
+            onDeactivate={() => undefined}
+          />
+        </>
       );
     }
 
-    if (selectedCodeGroupId === null) {
-      /* 다른 탭(부서 · 작업자 · 거래처)처럼 상자 안에 안내를 둔다(#350). */
-      return (
-        <section className="pane" aria-label={t.panes.codeGroupForm}>
-          <EmptyState size="sm" title={t.codeGroup.empty.notSelected} />
-        </section>
-      );
-    }
+    if (selectedCodeGroupId === null) return codeGroupEmptyPane;
 
     if (codeGroupDetail.isError) {
       return (
@@ -1716,13 +1893,19 @@ export const CommonCodeScreen = () => {
       codeGroups={codeGroups}
       isLoading={codeGroupList.isPending}
       appliedFilters={filters}
-      onApplyFilters={applyFilters}
+      onApplyFilters={guarded(isCodeGroupSwitchDirty, applyFilters)}
       pageView={codeGroupPageView}
-      onChangePage={changeCodeGroupPage}
-      selectedCodeGroupId={selectedCodeGroupId}
-      onSelect={handleSelectCodeGroup}
+      pageMeta={codeGroupList.data?.page ?? null}
+      onChangePage={guarded(isCodeGroupSwitchDirty, changeCodeGroupPage)}
+      onChangePageSize={guarded(isCodeGroupSwitchDirty, changeCodeGroupPageSize)}
+      /* 등록 팝업이 떠 있어도 고른 줄 표시는 남는다(사용자 보고 2026-11-26). */
+      selectedCodeGroupId={selectedParam}
+      onSelect={(codeGroupId) => {
+        /* 코드그룹을 바꾸면 그 그룹의 코드값 편집도 함께 사라진다(#358). */
+        confirmSwitch(isCodeGroupSwitchDirty, () => handleSelectCodeGroup(codeGroupId));
+      }}
       isCreating={isCreatingCodeGroup}
-      onAddCodeGroup={handleAddCodeGroup}
+      onAddCodeGroup={guarded(isCodeGroupSwitchDirty, handleAddCodeGroup)}
       loadError={
         codeGroupList.isError ? (
           <LoadErrorBanner
@@ -1735,6 +1918,7 @@ export const CommonCodeScreen = () => {
         <ListDetailWorkspace
           storageKey="omf-mes:common-code:code"
           orientationKey={ORIENTATION_KEY}
+          /* 배치는 늘 보이는 단추 둘(「좌우 배치」 · 「상하 배치」) — 단말 관리와 같다(omf-all-around#358). */
           filter={{ label: messages.common.paneList.filter, content: filter }}
           list={{
             label: t.panes.codeGroup,
@@ -1742,9 +1926,10 @@ export const CommonCodeScreen = () => {
             count: codeGroupList.data?.page.total,
             content: list,
           }}
+          /* 상세는 상자 하나 — 안의 구획은 테두리 없이 구분선으로 잇는다(단말 관리와 같다 · omf-all-around#358). */
           detail={{
             label: t.panes.detail,
-            bare: true,
+            className: 'common-code-detail',
             content: (
               <>
                 {/*
@@ -1754,18 +1939,27 @@ export const CommonCodeScreen = () => {
                 <div className="pane-stack">
                   {renderCodeGroupFormPane()}
 
-                  <CodeValueSection
-                    codeGroupId={selectedCodeGroupId}
-                    selectedCodeValueId={selectedCodeValueId}
-                    onSelectCodeValue={selectCodeValue}
-                    isCreating={isCreatingCodeValue}
-                    onOpenCreate={openCodeValueCreate}
-                    onCloseCreate={closeCodeValueCreate}
-                    includeInactive={codeValueIncludeInactive}
-                    onIncludeInactiveChange={changeCodeValueIncludeInactive}
-                    page={codeValuePage}
-                    onPageChange={changeCodeValuePage}
-                  />
+                  {/*
+                   * 코드그룹을 고르기 전에는 코드값 구획을 두지 않는다 — 빈 안내 하나만(사용자 관리와 같다 · 사용자 지시
+                   * 2026-11-24). 종전에는 「먼저 고르세요」 안내가 구획마다 겹쳐 섰다.
+                   */}
+                  {/* 그룹 등록 팝업 뒤에도 고른 그룹의 코드값 목록이 그대로 선다(사용자 보고 2026-11-26). */}
+                  {selectedParam !== null && (
+                    <CodeValueSection
+                      codeGroupId={selectedParam}
+                      selectedCodeValueId={selectedCodeValueId}
+                      onSelectCodeValue={selectCodeValue}
+                      isCreating={isCreatingCodeValue}
+                      onOpenCreate={openCodeValueCreate}
+                      onCloseCreate={closeCodeValueCreate}
+                      includeInactive={codeValueIncludeInactive}
+                      onIncludeInactiveChange={changeCodeValueIncludeInactive}
+                      page={codeValuePage}
+                      onPageChange={changeCodeValuePage}
+                      onDirtyChange={setIsCodeValueDirty}
+                      confirmSwitch={(action) => confirmSwitch(isCodeValueDirty, action)}
+                    />
+                  )}
                 </div>
               </>
             ),
@@ -1798,12 +1992,71 @@ export const CommonCodeScreen = () => {
     ],
   );
 
+  const departmentEmptyPane = (
+    <section className="pane" aria-label={t.panes.departmentForm}>
+      {/* 단말 관리의 빈 상세와 같은 모양 — 원 안 아이콘 · 제목 · 설명 한 줄(omf-all-around#358). */}
+      <EmptyState
+        size="sm"
+        className="users-roles-pick-empty"
+        icon={
+          <span className="inspection-standard-empty-icon">
+            <Icon name="apartment" size={20} />
+          </span>
+        }
+        title={t.department.empty.notSelected}
+        description={t.department.empty.notSelectedDescription}
+      />
+    </section>
+  );
+
   /**
    * 우 칸 — 부서 정보.
    *
    * 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
    * 등록·선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
    */
+  /**
+   * 등록 팝업 뒤의 상세 자리 — 코드그룹과 같다(사용자 보고 2026-11-26). 고른 부서의 저장된 값을 상세 응답에서
+   * 바로 그리고 조작은 받지 않는다(모달 팝업 뒤라 손댈 수 없다). 생산 창고 편집은 수정 폼에만 있어 여기서는 내지 않는다.
+   */
+  const renderDepartmentPaneBehindCreate = (): ReactNode => {
+    if (selectedDepartmentParam === null || departmentDetail.data === undefined) {
+      return departmentEmptyPane;
+    }
+
+    const values = departmentToFormValues(departmentDetail.data.department);
+    return (
+      <DepartmentFormPane
+        mode="edit"
+        values={values}
+        onChange={() => undefined}
+        fieldErrors={{}}
+        banner={null}
+        codeLockReason={codeLockMessage(departmentDetail.data.editability)}
+        deactivateDisabledReason={
+          departmentDetail.data.department.isActive === false
+            ? t.actionReasons.deactivateAlreadyDone(t.targets.department)
+            : null
+        }
+        parentOptions={selectableOptions(
+          {
+            ...departmentOptions,
+            entries: parentOptionsFor(departmentOptions.entries, selectedDepartmentParam),
+          },
+          values.parentDepartmentId,
+        )}
+        parentDisabledReason={null}
+        businessUnitOptions={selectableOptions(businessUnitOptions, values.businessUnitId)}
+        isDirty={false}
+        isLocked={isDepartmentLocked}
+        isSaving={false}
+        onSave={() => undefined}
+        onCancel={() => undefined}
+        onDeactivate={() => undefined}
+      />
+    );
+  };
+
   const renderDepartmentFormPane = (): ReactNode => {
     if (isCreatingDepartment) {
       if (departmentFormState === null) return null;
@@ -1815,52 +2068,50 @@ export const CommonCodeScreen = () => {
        * 지나야 남는 자리가 없다(배너 · 필드 오류 · 진행 표시).
        */
       return (
-        <DepartmentFormPane
-          mode="create"
-          values={departmentFormState.values}
-          onChange={changeDepartmentValues}
-          fieldErrors={{
-            ...(isDepartmentCreateWriteMine ? departmentCreateWrite.fieldErrors : {}),
-            ...departmentFieldErrors,
-          }}
-          /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
-          banner={
-            isDepartmentCreateWriteMine ? (
-              <SaveErrorBanner error={departmentCreateWrite.error} />
-            ) : null
-          }
-          /* 등록에서는 부서코드 칸이 열려 있다 — 아직 참조할 자료가 없다. */
-          codeLockReason={null}
-          deactivateDisabledReason={null}
-          parentOptions={parentDepartmentOptions}
-          parentDisabledReason={
-            parentDepartmentOptions.length === 0
-              ? t.department.actionReasons.parentNeedsOthers
-              : null
-          }
-          businessUnitOptions={selectableOptions(
-            businessUnitOptions,
-            departmentFormState.values.businessUnitId,
-          )}
-          isDirty={isDepartmentDirty}
-          /* **막는 것은 전역** — 수정 저장이 나가는 중에 열린 등록 폼도 잠긴다(사유는 페인이 낸다). */
-          isLocked={isDepartmentLocked}
-          /* **가리는 것은 초안 축** — 버린 초안의 진행 표시가 새 초안 위에서 돌지 않는다. */
-          isSaving={isDepartmentCreateWriteMine && departmentCreateWrite.isSaving}
-          onSave={handleSaveDepartment}
-          onCancel={closeDepartmentCreateForm}
-          onDeactivate={() => undefined}
-        />
+        <>
+          {/* 등록은 팝업이다(사용자 지시 2026-11-25) — 뒤의 상세 자리는 고른 부서 그대로 둔다(고르기 전이면 빈 안내). */}
+          {renderDepartmentPaneBehindCreate()}
+          <DepartmentFormPane
+            mode="create"
+            values={departmentFormState.values}
+            onChange={changeDepartmentValues}
+            fieldErrors={{
+              ...(isDepartmentCreateWriteMine ? departmentCreateWrite.fieldErrors : {}),
+              ...departmentFieldErrors,
+            }}
+            /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
+            banner={
+              isDepartmentCreateWriteMine ? (
+                <SaveErrorBanner error={departmentCreateWrite.error} />
+              ) : null
+            }
+            /* 등록에서는 부서코드 칸이 열려 있다 — 아직 참조할 자료가 없다. */
+            codeLockReason={null}
+            deactivateDisabledReason={null}
+            parentOptions={parentDepartmentOptions}
+            parentDisabledReason={
+              parentDepartmentOptions.length === 0
+                ? t.department.actionReasons.parentNeedsOthers
+                : null
+            }
+            businessUnitOptions={selectableOptions(
+              businessUnitOptions,
+              departmentFormState.values.businessUnitId,
+            )}
+            isDirty={isDepartmentDirty}
+            /* **막는 것은 전역** — 수정 저장이 나가는 중에 열린 등록 폼도 잠긴다(사유는 페인이 낸다). */
+            isLocked={isDepartmentLocked}
+            /* **가리는 것은 초안 축** — 버린 초안의 진행 표시가 새 초안 위에서 돌지 않는다. */
+            isSaving={isDepartmentCreateWriteMine && departmentCreateWrite.isSaving}
+            onSave={handleSaveDepartment}
+            onCancel={closeDepartmentCreateForm}
+            onDeactivate={() => undefined}
+          />
+        </>
       );
     }
 
-    if (selectedDepartmentId === null) {
-      return (
-        <section className="pane" aria-label={t.panes.departmentForm}>
-          <EmptyState size="sm" title={t.department.empty.notSelected} />
-        </section>
-      );
-    }
+    if (selectedDepartmentId === null) return departmentEmptyPane;
 
     if (departmentDetail.isError) {
       return (
@@ -1952,7 +2203,7 @@ export const CommonCodeScreen = () => {
       byId={departmentById}
       isLoading={departmentList.isPending}
       appliedFilters={departmentFilters}
-      onApplyFilters={applyDepartmentFilters}
+      onApplyFilters={guarded(isDepartmentSwitchDirty, applyDepartmentFilters)}
       businessUnitOptions={selectableOptions(businessUnitOptions, departmentFilters.scopeId)}
       /*
        * 조건 칩에는 번호가 아니라 이름을 낸다. 목록을 받는 중·실패·다 받은 뒤 미확인을
@@ -1961,11 +2212,16 @@ export const CommonCodeScreen = () => {
        */
       optionsNotice={renderOptionsNotice([businessUnitOptions])}
       pageView={departmentPageView}
-      onChangePage={changeDepartmentPage}
-      selectedDepartmentId={selectedDepartmentId}
-      onSelect={handleSelectDepartmentRow}
+      pageMeta={departmentList.data?.page ?? null}
+      onChangePage={guarded(isDepartmentSwitchDirty, changeDepartmentPage)}
+      onChangePageSize={guarded(isDepartmentSwitchDirty, changeDepartmentPageSize)}
+      /* 등록 팝업이 떠 있어도 고른 줄 표시는 남는다(사용자 보고 2026-11-26). */
+      selectedDepartmentId={selectedDepartmentParam}
+      onSelect={(departmentId) => {
+        confirmSwitch(isDepartmentSwitchDirty, () => handleSelectDepartmentRow(departmentId));
+      }}
       isCreating={isCreatingDepartment}
-      onAddDepartment={handleAddDepartment}
+      onAddDepartment={guarded(isDepartmentSwitchDirty, handleAddDepartment)}
       loadError={
         departmentList.isError ? (
           <LoadErrorBanner
@@ -1978,6 +2234,7 @@ export const CommonCodeScreen = () => {
         <ListDetailWorkspace
           storageKey="omf-mes:common-code:org"
           orientationKey={ORIENTATION_KEY}
+          /* 배치는 늘 보이는 단추 둘(「좌우 배치」 · 「상하 배치」) — 단말 관리와 같다(omf-all-around#358). */
           filter={{ label: messages.common.paneList.filter, content: filter }}
           list={{
             label: t.panes.department,
@@ -1985,9 +2242,10 @@ export const CommonCodeScreen = () => {
             count: departmentList.data?.page.total,
             content: list,
           }}
+          /* 상세는 상자 하나 — 안의 구획은 테두리 없이 구분선으로 잇는다(단말 관리와 같다 · omf-all-around#358). */
           detail={{
             label: t.panes.detail,
-            bare: true,
+            className: 'common-code-detail',
             content: renderDepartmentFormPane(),
           }}
         />
@@ -2003,7 +2261,18 @@ export const CommonCodeScreen = () => {
     if (selectedWorkerId === null) {
       return (
         <section className="pane" aria-label={t.panes.workerDetail}>
-          <EmptyState size="sm" title={t.worker.empty.notSelected} />
+          {/* 단말 관리의 빈 상세와 같은 모양 — 원 안 아이콘 · 제목 · 설명 한 줄(omf-all-around#358). */}
+          <EmptyState
+            size="sm"
+            className="users-roles-pick-empty"
+            icon={
+              <span className="inspection-standard-empty-icon">
+                <Icon name="badge" size={20} />
+              </span>
+            }
+            title={t.worker.empty.notSelected}
+            description={t.worker.empty.notSelectedDescription}
+          />
         </section>
       );
     }
@@ -2032,6 +2301,8 @@ export const CommonCodeScreen = () => {
         businessUnits={workerBusinessUnits}
         plants={plantOptions}
         departments={workerDepartmentOptions}
+        /* 자격 표의 공정 · 인증자 선택지 안내 — 종전엔 자격 표 위 배너였다(사용자 지시 2026-11-25). */
+        headingNote={renderOptionsNote([processOptions, certifierOptions])}
       />
     );
   };
@@ -2041,13 +2312,17 @@ export const CommonCodeScreen = () => {
       workers={workers}
       isLoading={workerList.isPending}
       appliedFilters={workerFilters}
-      onApplyFilters={applyWorkerFilters}
+      onApplyFilters={guarded(isQualificationSwitchDirty, applyWorkerFilters)}
       departmentOptions={selectableOptions(workerDepartmentOptions, workerFilters.scopeId)}
       optionsNotice={renderOptionsNotice([workerDepartmentOptions])}
       pageView={workerPageView}
-      onChangePage={changeWorkerPage}
+      pageMeta={workerList.data?.page ?? null}
+      onChangePage={guarded(isQualificationSwitchDirty, changeWorkerPage)}
+      onChangePageSize={guarded(isQualificationSwitchDirty, changeWorkerPageSize)}
       selectedWorkerId={selectedWorkerId}
-      onSelect={handleSelectWorker}
+      onSelect={(workerId) => {
+        confirmSwitch(isQualificationSwitchDirty, () => handleSelectWorker(workerId));
+      }}
       loadError={
         workerList.isError ? (
           <LoadErrorBanner error={workerList.error} onRetry={() => void workerList.refetch()} />
@@ -2057,6 +2332,7 @@ export const CommonCodeScreen = () => {
         <ListDetailWorkspace
           storageKey="omf-mes:common-code:worker"
           orientationKey={ORIENTATION_KEY}
+          /* 배치는 늘 보이는 단추 둘(「좌우 배치」 · 「상하 배치」) — 단말 관리와 같다(omf-all-around#358). */
           filter={{ label: messages.common.paneList.filter, content: filter }}
           list={{
             label: t.panes.worker,
@@ -2064,61 +2340,65 @@ export const CommonCodeScreen = () => {
             count: workerList.data?.page.total,
             content: list,
           }}
+          /* 상세는 상자 하나 — 안의 구획은 테두리 없이 구분선으로 잇는다(단말 관리와 같다 · omf-all-around#358). */
           detail={{
             label: t.panes.detail,
-            bare: true,
+            className: 'common-code-detail',
             content: (
               <div className="pane-stack">
                 {renderWorkerDetailPane()}
 
-                <QualificationPane
-                  drafts={qualificationDrafts}
-                  // 작업자를 고르기 전에는 아무것도 기다리지 않는다 — 조회가 나가지도 않았다.
-                  isLoading={selectedWorkerId !== null && qualificationList.isPending}
-                  isWorkerSelected={selectedWorkerId !== null}
-                  processes={processOptions}
-                  certifiers={certifierOptions}
-                  optionsNotice={renderOptionsNotice([processOptions, certifierOptions])}
-                  loadError={
-                    qualificationList.isError ? (
-                      <LoadErrorBanner
-                        error={qualificationList.error}
-                        onRetry={() => void qualificationList.refetch()}
-                      />
-                    ) : null
-                  }
-                  /*
-                   * **남의 실패는 아예 그리지 않는다**(`isQualificationWriteMine`) — 뒤늦게 온 앞
-                   * 작업자의 실패가 지금 구획에 서면 사용자는 손댄 적 없는 작업자가 막힌 줄 안다.
-                   */
-                  banner={
-                    isQualificationWriteMine ? (
-                      <SaveErrorBanner error={qualificationWrite.error} />
-                    ) : null
-                  }
-                  isDirty={isQualificationDirty}
-                  /* **막는 것은 전역** — 남의 저장 중에도 새 저장이 시작되지 않는다(사유는 페인이 낸다). */
-                  isLocked={isQualificationLocked}
-                  /* **가리는 것은 대상 축** — 진행 표시는 자기 저장에만 돈다. */
-                  isSaving={isQualificationWriteMine && qualificationWrite.isSaving}
-                  onAdd={() => openQualificationDialog(createQualificationDraft(), true)}
-                  onEdit={(draftId) => {
-                    const found = qualificationDrafts.find((item) => item.draftId === draftId);
-                    if (found !== undefined) openQualificationDialog(found, false);
-                  }}
-                  onRemove={(draftId) => {
-                    changeQualificationDrafts((drafts) =>
-                      removeQualificationDraft(drafts, draftId),
-                    );
-                  }}
-                  onSave={handleSaveQualifications}
-                  onCancel={() => {
-                    resetIfIdle(qualificationWrite);
-                    setQualificationState((prev) =>
-                      prev === null ? prev : { ...prev, drafts: prev.baseline },
-                    );
-                  }}
-                />
+                {/*
+                 * 작업자를 고르기 전에는 자격 구획을 두지 않는다 — 위 「작업자를 선택하세요.」 안내 하나만(사용자 지시 2026-11-26 ·
+                 * 코드그룹 전 코드값 구획과 같다).
+                 */}
+                {selectedWorkerId !== null && (
+                  <QualificationPane
+                    drafts={qualificationDrafts}
+                    isLoading={qualificationList.isPending}
+                    processes={processOptions}
+                    certifiers={certifierOptions}
+                    loadError={
+                      qualificationList.isError ? (
+                        <LoadErrorBanner
+                          error={qualificationList.error}
+                          onRetry={() => void qualificationList.refetch()}
+                        />
+                      ) : null
+                    }
+                    /*
+                     * **남의 실패는 아예 그리지 않는다**(`isQualificationWriteMine`) — 뒤늦게 온 앞
+                     * 작업자의 실패가 지금 구획에 서면 사용자는 손댄 적 없는 작업자가 막힌 줄 안다.
+                     */
+                    banner={
+                      isQualificationWriteMine ? (
+                        <SaveErrorBanner error={qualificationWrite.error} />
+                      ) : null
+                    }
+                    isDirty={isQualificationDirty}
+                    /* **막는 것은 전역** — 남의 저장 중에도 새 저장이 시작되지 않는다(사유는 페인이 낸다). */
+                    isLocked={isQualificationLocked}
+                    /* **가리는 것은 대상 축** — 진행 표시는 자기 저장에만 돈다. */
+                    isSaving={isQualificationWriteMine && qualificationWrite.isSaving}
+                    onAdd={() => openQualificationDialog(createQualificationDraft(), true)}
+                    onEdit={(draftId) => {
+                      const found = qualificationDrafts.find((item) => item.draftId === draftId);
+                      if (found !== undefined) openQualificationDialog(found, false);
+                    }}
+                    onRemove={(draftId) => {
+                      changeQualificationDrafts((drafts) =>
+                        removeQualificationDraft(drafts, draftId),
+                      );
+                    }}
+                    onSave={handleSaveQualifications}
+                    onCancel={() => {
+                      resetIfIdle(qualificationWrite);
+                      setQualificationState((prev) =>
+                        prev === null ? prev : { ...prev, drafts: prev.baseline },
+                      );
+                    }}
+                  />
+                )}
               </div>
             ),
           }}
@@ -2138,7 +2418,18 @@ export const CommonCodeScreen = () => {
     if (selectedPartnerId === null) {
       return (
         <section className="pane" aria-label={t.panes.partnerRoles}>
-          <EmptyState size="sm" title={t.partner.empty.notSelected} />
+          {/* 단말 관리의 빈 상세와 같은 모양 — 원 안 아이콘 · 제목 · 설명 한 줄(omf-all-around#358). */}
+          <EmptyState
+            size="sm"
+            className="users-roles-pick-empty"
+            icon={
+              <span className="inspection-standard-empty-icon">
+                <Icon name="handshake" size={20} />
+              </span>
+            }
+            title={t.partner.empty.notSelected}
+            description={t.partner.empty.notSelectedDescription}
+          />
         </section>
       );
     }
@@ -2237,11 +2528,15 @@ export const CommonCodeScreen = () => {
       partners={partners}
       isLoading={partnerList.isPending}
       appliedFilters={partnerFilters}
-      onApplyFilters={applyPartnerFilters}
+      onApplyFilters={guarded(isPartnerRoleSwitchDirty, applyPartnerFilters)}
       pageView={partnerPageView}
-      onChangePage={changePartnerPage}
+      pageMeta={partnerList.data?.page ?? null}
+      onChangePage={guarded(isPartnerRoleSwitchDirty, changePartnerPage)}
+      onChangePageSize={guarded(isPartnerRoleSwitchDirty, changePartnerPageSize)}
       selectedPartnerId={selectedPartnerId}
-      onSelect={handleSelectPartner}
+      onSelect={(partnerId) => {
+        confirmSwitch(isPartnerRoleSwitchDirty, () => handleSelectPartner(partnerId));
+      }}
       loadError={
         partnerList.isError ? (
           <LoadErrorBanner error={partnerList.error} onRetry={() => void partnerList.refetch()} />
@@ -2251,6 +2546,7 @@ export const CommonCodeScreen = () => {
         <ListDetailWorkspace
           storageKey="omf-mes:common-code:partner"
           orientationKey={ORIENTATION_KEY}
+          /* 배치는 늘 보이는 단추 둘(「좌우 배치」 · 「상하 배치」) — 단말 관리와 같다(omf-all-around#358). */
           filter={{ label: messages.common.paneList.filter, content: filter }}
           list={{
             label: t.panes.partner,
@@ -2258,9 +2554,10 @@ export const CommonCodeScreen = () => {
             count: partnerList.data?.page.total,
             content: list,
           }}
+          /* 상세는 상자 하나 — 안의 구획은 테두리 없이 구분선으로 잇는다(단말 관리와 같다 · omf-all-around#358). */
           detail={{
             label: t.panes.detail,
-            bare: true,
+            className: 'common-code-detail',
             content: <div className="pane-stack">{renderPartnerRolePane()}</div>,
           }}
         />
@@ -2277,6 +2574,30 @@ export const CommonCodeScreen = () => {
 
   return (
     <>
+      <LeaveGuard
+        when={hasUnsavedChanges}
+        discardTitle={leave.title}
+        discardBody={leave.body}
+        stayLabel={leave.keep}
+        leaveLabel={leave.confirm}
+        showCloseButton={false}
+        size="sm"
+      />
+      {pendingSwitch !== null && (
+        <DiscardDialog
+          title={leave.title}
+          body={leave.body}
+          stayLabel={leave.keep}
+          leaveLabel={leave.confirm}
+          showCloseButton={false}
+          size="sm"
+          onStay={() => setPendingSwitch(null)}
+          onLeave={() => {
+            setPendingSwitch(null);
+            pendingSwitch();
+          }}
+        />
+      )}
       {/* 화면 제목 줄은 두지 않는다 — 탭마다 조회 조건 · 목록 · 상세 통일 배치(검사 조회·판정과 같다 · #350). */}
       {/*
        * 탭 줄 — 다른 탭 묶음 화면(검사 조회·판정 등)의 탭 막대와 같은 모양(`hub-bar` · `hub-tab`)이고, 오른쪽 끝 일 단추
@@ -2376,6 +2697,7 @@ export const CommonCodeScreen = () => {
         <DeactivateDialog
           open
           title={t.dialog.deactivateDepartmentTitle}
+          description={t.dialog.deactivateDepartmentDescription}
           onClose={() => {
             setIsDepartmentDeactivateOpen(false);
             resetIfIdle(departmentDeactivateWrite);
@@ -2397,6 +2719,7 @@ export const CommonCodeScreen = () => {
         <DeactivateDialog
           open
           title={t.dialog.deactivateCodeGroupTitle}
+          description={t.dialog.deactivateCodeGroupDescription}
           onClose={() => {
             setIsDeactivateOpen(false);
             resetIfIdle(codeGroupDeactivateWrite);

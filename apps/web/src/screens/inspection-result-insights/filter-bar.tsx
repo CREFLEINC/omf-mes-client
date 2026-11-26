@@ -184,12 +184,15 @@ export const InspectionInsightFilterBar = ({
         <TextField
           type="date"
           label={t.from}
+          /* LOT 번호가 없으면 기간 없이 조회하지 못한다(`periodProblem`) — 그때만 필수 표시. */
+          required={draft.lotNo.trim() === ''}
           value={draft.from}
           onChange={(event) => setDraft((current) => ({ ...current, from: event.target.value }))}
         />
         <TextField
           type="date"
           label={t.to}
+          required={draft.lotNo.trim() === ''}
           value={draft.to}
           onChange={(event) => setDraft((current) => ({ ...current, to: event.target.value }))}
         />

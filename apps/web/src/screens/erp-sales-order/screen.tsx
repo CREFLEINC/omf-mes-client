@@ -3,17 +3,21 @@ import { messages } from '@omf-mes/i18n';
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { BoardFrame } from '../../patterns/board-frame';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
+import { ERP_DATA_ORIENTATION_KEY } from '../erp-item/erp-data-parts';
 import { ErpSalesOrderDetailPane, type DetailState } from './detail-pane';
 import { ErpSalesOrderFilterBar } from './filter-bar';
+import { ProgressHubChips } from './progress';
 import {
   DEFAULT_FILTERS,
   LIST_PAGE_SIZE,
   readFilters,
   readPage,
   readSelectedId,
+  readSize,
   toListQuery,
   toSearchParams,
+  toClearedSelectionSearchParams,
   toSelectionSearchParams,
 } from './filters';
 import { ErpSalesOrderListPane } from './list-pane';
@@ -24,7 +28,6 @@ import {
   useSalesOrderStatusLookup,
   useUomLookup,
 } from './lookups';
-import { toPageView } from './pagination';
 import { useSalesOrderDetail, useSalesOrderList } from './queries';
 import type { SalesOrder } from './types';
 
@@ -34,7 +37,7 @@ const EMPTY_ROWS: SalesOrder[] = [];
 /**
  * 수주정보 조회(ERP) — ERP 가 내려 준 수주를 **읽기만** 한다.
  *
- * 입고 관리 짜임이다(사용자 지시 2026-10-27): 위에 조건 줄, 왼쪽 수주 목록 | 오른쪽 고른 건의 상세·라인. 조건·쪽·고른
+ * 조회 · 목록 | 상세 통일 배치(#358): 위에 조건 상자, 왼쪽 수주 목록 | 오른쪽 고른 건의 상세·라인. 조건·쪽·고른
  * 건은 전부 주소가 소유한다. **쓰기 조작이 하나도 없다** — 수주는 연계가 채우고 MES 에는 고치는 경로가 없다(읽기
  * 전용 안내 문구는 두지 않는다 — 사용자 지시 2026-10-27).
  * 출하지시를 만드는 일은 출하요청 화면이 진다 — 이 화면은 원천을 보여 줄 뿐이다.
@@ -43,9 +46,19 @@ export const ErpSalesOrderScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = useMemo(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
+  const size = readSize(searchParams);
   const selectedId = readSelectedId(searchParams);
 
-  const list = useSalesOrderList(toListQuery(filters, page));
+  const list = useSalesOrderList(toListQuery(filters, page, size));
+  /* 진행 라벨의 건수 — 같은 조건에 진행만 바꿔 총 건수만 읽는다(한 줄만 받는다 · 사용자 지시 2026-11-24). */
+  const openCount = useSalesOrderList({
+    ...toListQuery({ ...filters, progress: 'open' }, 1),
+    size: 1,
+  });
+  const doneCount = useSalesOrderList({
+    ...toListQuery({ ...filters, progress: 'done' }, 1),
+    size: 1,
+  });
   const detail = useSalesOrderDetail(selectedId);
   const partners = usePartnerLookup();
   const uoms = useUomLookup(selectedId !== null);
@@ -58,10 +71,7 @@ export const ErpSalesOrderScreen = () => {
   const itemNameOf = useItemNames(lines.map((line) => line.itemId));
 
   const rows = list.data?.items ?? EMPTY_ROWS;
-  const pageView = toPageView(
-    list.data?.page ?? { page, size: LIST_PAGE_SIZE, total: 0 },
-    rows.length,
-  );
+  const meta = list.data?.page ?? { page, size: size ?? LIST_PAGE_SIZE, total: 0 };
 
   const detailState: DetailState =
     selectedId === null
@@ -73,11 +83,11 @@ export const ErpSalesOrderScreen = () => {
           : { kind: 'ready', data: detail.data };
 
   return (
-    <BoardFrame
-      splitKey="omf-mes:erp-sales-order:split"
+    <ListDetailWorkspace
+      storageKey="omf-mes:erp-sales-order"
+      orientationKey={ERP_DATA_ORIENTATION_KEY}
       initialRatio={0.55}
-      splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
-      above={{
+      filter={{
         label: t.panes.filters,
         content: (
           <>
@@ -87,32 +97,41 @@ export const ErpSalesOrderScreen = () => {
                 {t.loadFailedDescription}
               </AlertBanner>
             )}
-            <div className="pane po-board-filter">
-              <ErpSalesOrderFilterBar
-                appliedFilters={filters}
-                statusOptions={status.options}
-                onSearch={(next) => setSearchParams(toSearchParams(next, 1))}
-                onReset={() => setSearchParams(toSearchParams(DEFAULT_FILTERS, 1))}
-              />
-            </div>
+            {/* 진행 「미완료 N건 · 완료 N건」은 탭 줄 위 라벨(사용자 지시 2026-11-24). */}
+            <ProgressHubChips
+              value={filters.progress}
+              counts={{ open: openCount.data?.page.total, done: doneCount.data?.page.total }}
+              onChange={(progress) =>
+                setSearchParams(toSearchParams({ ...filters, progress }, 1, size))
+              }
+            />
+            <ErpSalesOrderFilterBar
+              appliedFilters={filters}
+              statusOptions={status.options}
+              onSearch={(next) => setSearchParams(toSearchParams(next, 1, size))}
+              onReset={() => setSearchParams(toSearchParams(DEFAULT_FILTERS, 1, size))}
+            />
           </>
         ),
       }}
       list={{
         label: t.panes.list,
+        title: t.panes.list,
         count: list.data?.page.total,
         content: list.isError ? null : (
           <ErpSalesOrderListPane
             rows={rows}
             isLoading={list.isPending}
-            page={pageView}
+            meta={meta}
             selectedId={selectedId}
             partnerNameOf={partners.nameOf}
             statusNameOf={status.nameOf}
             orderTypeNameOf={orderTypes.nameOf}
             salesGroupNameOf={salesGroups.nameOf}
             onSelect={(id) => setSearchParams(toSelectionSearchParams(searchParams, id))}
-            onChangePage={(nextPage) => setSearchParams(toSearchParams(filters, nextPage))}
+            onUnselect={() => setSearchParams(toClearedSelectionSearchParams(searchParams))}
+            onChangePage={(nextPage) => setSearchParams(toSearchParams(filters, nextPage, size))}
+            onChangeSize={(nextSize) => setSearchParams(toSearchParams(filters, 1, nextSize))}
           />
         ),
       }}

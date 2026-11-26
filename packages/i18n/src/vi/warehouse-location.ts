@@ -120,8 +120,6 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   },
   values: {
     selectPlaceholder: 'Chọn',
-    active: 'Đang dùng',
-    inactive: 'Ngừng dùng',
     currentParentOutsideList: 'Vị trí cấp trên hiện tại (ngoài danh sách tra cứu)',
     /** 미사용 항목을 선택지에 남길 때 라벨 뒤에 붙인다. */
     inactiveSuffix: ' (ngừng dùng)',

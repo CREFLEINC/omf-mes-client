@@ -1,19 +1,29 @@
-import { Button, Checkbox, type Column, EmptyState, SkeletonText, TextField } from '@crefle/web-ui';
+import { Checkbox, Chip, type Column, EmptyState, SkeletonText, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { BoardFrame } from '../../patterns/board-frame';
-import { BoardTable } from '../../patterns/board-table';
 import { pickBom, useBomTree, type BomTreeRoot, type BomTreeRow } from '../../patterns/bom-tree';
 import { BomTreeCell } from '../../patterns/bom-tree-cell';
 import { hasChangedFilters } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { OneLine } from '../../patterns/po-board';
+import { PAGE_SIZES, PageNav, type PageSize } from '../../patterns/page-nav';
 import { Select } from '../../patterns/select';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
-import { PageNav } from '../integration-sync/page-nav';
-import { toPageView } from '../integration-sync/pagination';
+import { UsageChip } from '../../patterns/usage-chip';
+import {
+  ERP_DATA_ORIENTATION_KEY,
+  ErpDetailFields,
+  ErpFilterActions,
+  ErpListTable,
+  ErpPickEmpty,
+} from '../erp-item/erp-data-parts';
 import {
   ERP_BOM_TREE,
   erpBomKeys,
@@ -25,23 +35,31 @@ import {
   useItemSummaries,
   useParentItems,
   useItemTypeNames,
-  useStatusNames,
   useUomNames,
 } from './queries';
 import type { Bom } from './types';
 
 const t = messages.erpBom;
 
-const yesNo = (value: boolean): string => (value ? t.values.yes : t.values.no);
+/** 필수 여부 — 「필수 · 선택」(「예 · 아니오」가 어색하다 — 사용자 지시 2026-11-24). */
+/** 필수 여부 라벨 — 필수는 파랑, 선택은 회색(사용자 지시 2026-11-25 「필수 여부는 라벨 디자인」). */
+const MandatoryChip = ({ value }: { value: boolean }) => (
+  <Chip variant="status" size="sm" status={value ? 'info' : 'idle'}>
+    {value ? t.values.mandatory : t.values.optional}
+  </Chip>
+);
 
 const formatQty = (qty: number, uom: string): string => `${qty.toLocaleString()} ${uom}`;
 
 /** 손실률은 0~1 비율로 온다(A-8) — 퍼센트로 옮겨 낸다. 부동소수 꼬리는 소수 둘째 자리에서 자른다. */
 const formatRate = (rate: number): string => `${String(Math.round(rate * 10000) / 100)}%`;
 
-/** 모품목 목록의 유형 — BOM 이 있는 제품 · 반제품만(원자재 · 상품 · 부자재는 BOM 이 없다). 처음은 제품. */
+/**
+ * 모품목 목록의 유형 — 「전체」(빈 값 · 유형 조건을 보내지 않는다)와 BOM 이 있는 제품 · 반제품. 처음은 전체(사용자 지시
+ * 2026-11-25 「기본값은 전체 품목 유형」).
+ */
 const PARENT_TYPES = ['FINISHED', 'SEMI_FINISHED'] as const;
-const DEFAULT_PARENT_TYPE = 'FINISHED';
+const ALL_TYPES = '';
 
 /** 주소의 조건 — 검색어 · 유형 · 쪽 · 고른 모품목. 새로고침·뒤로가기·공유가 같은 결과를 낸다. */
 interface Filters {
@@ -52,7 +70,7 @@ interface Filters {
 }
 
 /** 화면을 처음 열었을 때의 조건. 「초기화」가 돌아가는 자리이기도 하다. */
-const DEFAULT_FILTERS: Filters = { q: '', type: DEFAULT_PARENT_TYPE, hasBom: true };
+const DEFAULT_FILTERS: Filters = { q: '', type: ALL_TYPES, hasBom: true };
 
 const readId = (value: string | null): number | null => {
   const id = Number(value ?? '');
@@ -63,18 +81,30 @@ const readFilters = (params: URLSearchParams): Filters => {
   const type = params.get('type') ?? '';
   return {
     q: params.get('q') ?? '',
-    type: (PARENT_TYPES as readonly string[]).includes(type) ? type : DEFAULT_PARENT_TYPE,
+    type: (PARENT_TYPES as readonly string[]).includes(type) ? type : ALL_TYPES,
     hasBom: params.get('bom') !== 'all',
   };
 };
 
-const toSearchParams = (filters: Filters, page = 1, item: number | null = null) => {
+/** 쪽 크기 — 고른 적이 없으면 `null`(종전 크기 그대로). */
+const readSize = (params: URLSearchParams): PageSize | null => {
+  const size = Number(params.get('size') ?? '');
+  return PAGE_SIZES.find((option) => option === size) ?? null;
+};
+
+const toSearchParams = (
+  filters: Filters,
+  page = 1,
+  item: number | null = null,
+  size: PageSize | null = null,
+) => {
   const next = new URLSearchParams();
   if (filters.q !== '') next.set('q', filters.q);
-  if (filters.type !== DEFAULT_PARENT_TYPE) next.set('type', filters.type);
+  if (filters.type !== ALL_TYPES) next.set('type', filters.type);
   if (!filters.hasBom) next.set('bom', 'all');
   if (page > 1) next.set('page', String(page));
   if (item !== null) next.set('item', String(item));
+  if (size !== null) next.set('size', String(size));
   return next;
 };
 
@@ -89,6 +119,7 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
   const typeNameOf = useItemTypeNames();
   const typeId = useId();
   const [q, setQ] = useState(applied.q);
+  const searchRef = useFitPlaceholderWidth(t.fields.qPlaceholder);
 
   // 뒤로가기 등으로 주소가 바뀌면 입력칸도 따라간다.
   useEffect(() => {
@@ -103,16 +134,18 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
     setQ('');
     onReset();
   };
+
   const isChanged = hasChangedFilters(DEFAULT_FILTERS, { ...applied, q }, applied);
 
   return (
     <form
-      className="filter-bar"
+      className="filter-bar erp-data-filter-row"
       onSubmit={(event) => {
         event.preventDefault();
         onSearch({ ...applied, q: q.trim() });
       }}
     >
+      {/* 유형 선택 · 품목 검색 · BOM 있는 품목만 순서(사용자 지시 2026-11-24). */}
       <div className="field-cell">
         <label className="field-label" htmlFor={typeId}>
           {t.fields.itemType}
@@ -120,12 +153,25 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
         <Select
           id={typeId}
           value={applied.type}
-          options={PARENT_TYPES.map((code) => ({ value: code, label: typeNameOf(code) }))}
+          options={[
+            { value: ALL_TYPES, label: t.fields.itemTypeAll },
+            ...PARENT_TYPES.map((code) => ({ value: code, label: typeNameOf(code) })),
+          ]}
           onChange={(value) => {
             onSearch({ ...applied, q: q.trim(), type: value });
           }}
         />
       </div>
+      <TextField
+        containerClassName={FIT_PLACEHOLDER_CLASS}
+        label={t.fields.q}
+        placeholder={t.fields.qPlaceholder}
+        ref={searchRef}
+        value={q}
+        onChange={(event) => {
+          setQ(event.target.value);
+        }}
+      />
       <div className="field-cell field-cell-unlabeled">
         <Checkbox
           checked={applied.hasBom}
@@ -136,23 +182,7 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
           {t.fields.hasBom}
         </Checkbox>
       </div>
-      <TextField
-        label={t.fields.q}
-        value={q}
-        onChange={(event) => {
-          setQ(event.target.value);
-        }}
-      />
-      <div className="field-cell field-cell-unlabeled">
-        <div className="filter-actions">
-          <Button type="submit">{messages.common.search}</Button>
-          {isChanged && (
-            <Button variant="outlined" onClick={reset}>
-              {messages.common.reset}
-            </Button>
-          )}
-        </div>
-      </div>
+      <ErpFilterActions onReset={reset} showReset={isChanged} />
     </form>
   );
 };
@@ -192,10 +222,15 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
   };
 
   const columns: Column<BomTreeRow>[] = [
-    /* 폭을 주지 않는 유일한 열 — 들여 쓴 품목 이름이 남는 폭을 다 쓴다. */
+    /*
+     * 네 열 모두 폭을 주어 상자 폭을 그 비율로 나눈다(사용자 지시 2026-11-25 — 품목 칸만 남는 폭을 다 쓰지 않게, 품목 반 · 숫자 열 반). 칸 안은 왼쪽 정렬(app.css `.bom-tree-table`)이라
+     * 단계마다 들여 쓴 자리 · 연결선이 줄마다 같은 세로선에 선다. 품목은 「코드 · 이름」 한 칸으로 낸다(사용자 지시 2026-11-25 —
+     * 품목코드 · 품목명 두 칸을 다시 하나로).
+     */
     {
       key: 'item',
       header: t.tree.item,
+      width: '400px',
       render: (row) => {
         const item = itemOf(row.itemId);
         return (
@@ -213,7 +248,7 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
     {
       key: 'requiredQty',
       header: t.componentTable.requiredQty,
-      width: '128px',
+      width: '160px',
       align: 'end',
       render: (row) =>
         row.component === null
@@ -223,7 +258,7 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
     {
       key: 'scrapRate',
       header: t.componentTable.scrapRate,
-      width: '80px',
+      width: '120px',
       align: 'end',
       render: (row) =>
         row.component === null ? t.values.empty : formatRate(row.component.scrapRate),
@@ -231,17 +266,22 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
     {
       key: 'isMandatory',
       header: t.componentTable.isMandatory,
-      width: '64px',
-      render: (row) => (row.component === null ? t.values.empty : yesNo(row.component.isMandatory)),
+      /* 머리글 「필수 여부」와 끌기 손잡이가 잘리지 않는 폭(사용자 지시 2026-11-24). */
+      width: '120px',
+      render: (row) =>
+        row.component === null ? (
+          t.values.empty
+        ) : (
+          <MandatoryChip value={row.component.isMandatory} />
+        ),
     },
   ];
 
   return (
-    <BoardTable
+    <ErpListTable
       label={t.panes.components}
       className="bom-tree-table"
-      widthKey="omf-mes:erp-bom:columns:tree"
-      minWidth="38rem"
+      storageKey="omf-mes:erp-bom:columns:tree:v2"
       columns={columns}
       rows={rows}
       getRowId={(row) => row.key}
@@ -251,21 +291,26 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
 
 interface ParentFactsProps {
   item: ItemSummary;
-  bom: Bom;
+  /** 그 품목의 BOM — 받는 중이거나 없으면 `null`(품목 칸만 낸다). */
+  bom: Bom | null;
 }
 
 /**
- * 모품목 상세(사용자 지시 2026-10-27 「모품목 상세 정보는 표시해줘야지」) — 품목 칸과 그 BOM 칸을 하이라키 위에 한 줄로.
- * 입고 관리 라인 머리의 사실 칸과 같은 모양이다.
+ * 모품목 상세(사용자 지시 2026-10-27 「모품목 상세 정보는 표시해줘야지」) — 품목 칸과 그 BOM 칸을 「이름 : 값」으로
+ * 하이라키 위에 낸다(omf-all-around#358).
  */
 const ParentFacts = ({ item, bom }: ParentFactsProps) => {
   const typeNameOf = useItemTypeNames();
-  const statusNameOf = useStatusNames();
   const uomNameOf = useUomNames();
   const detail = item.item;
-  const facts = [
-    { key: 'code', label: t.parent.itemCode, value: item.code ?? item.name, strong: true },
+  const itemFacts = [
+    /* 품목명 · 품목코드 순(사용자 지시 2026-11-24). */
     { key: 'name', label: t.parent.itemName, value: detail?.itemName ?? t.values.empty },
+    {
+      key: 'code',
+      label: t.parent.itemCode,
+      value: <span className="bom-tree-code">{item.code ?? item.name}</span>,
+    },
     {
       key: 'type',
       label: t.parent.itemType,
@@ -281,33 +326,43 @@ const ParentFacts = ({ item, bom }: ParentFactsProps) => {
       label: t.parent.baseUom,
       value: detail === null ? t.values.empty : uomNameOf(detail.baseUomId),
     },
-    { key: 'bom', label: t.parent.bomCode, value: bom.bomCode },
-    { key: 'rev', label: t.parent.bomVersion, value: String(bom.bomVersion) },
-    { key: 'status', label: t.parent.status, value: statusNameOf(bom.statusCode) },
-    {
-      key: 'effective',
-      label: t.parent.effective,
-      /* 끝이 없는 BOM 은 「~ —」로 — 끝이 비면 잘린 값처럼 보인다. */
-      value: t.parent.effectiveRange(bom.effectiveFrom, bom.effectiveTo ?? t.values.empty),
-    },
-    {
-      key: 'baseQty',
-      label: t.parent.baseQty,
-      value: formatQty(bom.baseQty, uomNameOf(bom.baseUomId)),
-    },
   ];
+  const bomFacts =
+    bom === null
+      ? []
+      : [
+          { key: 'bom', label: t.parent.bomCode, value: bom.bomCode },
+          { key: 'rev', label: t.parent.bomVersion, value: String(bom.bomVersion) },
+          /*
+           * 상태는 「사용 / 미사용」 라벨로(사용자 지시 2026-11-24 「전반적인 화면의 상태는 사용/미사용」) — 확정(CONFIRMED) ·
+           * 사용 중(ACTIVE)은 사용, 그 밖(작성중 · 폐기 · 사용 종료)은 미사용.
+           */
+          {
+            key: 'status',
+            label: t.parent.status,
+            value: <UsageChip isActive={IN_USE_STATUSES.has(bom.statusCode)} />,
+          },
+          {
+            key: 'effective',
+            label: t.parent.effective,
+            /* 끝이 없는 BOM 은 「~ 미지정」으로(사용자 지시 2026-11-25 — 종전 「~ —」). */
+            value: t.parent.effectiveRange(
+              bom.effectiveFrom,
+              bom.effectiveTo ?? t.values.unspecified,
+            ),
+          },
+          {
+            key: 'baseQty',
+            label: t.parent.baseQty,
+            value: formatQty(bom.baseQty, uomNameOf(bom.baseUomId)),
+          },
+        ];
 
-  return (
-    <dl className="po-board-order-facts bom-parent-facts" aria-label={t.parent.label}>
-      {facts.map((fact) => (
-        <div key={fact.key}>
-          <dt>{fact.label}</dt>
-          <dd className={fact.strong === true ? 'bom-tree-code' : undefined}>{fact.value}</dd>
-        </div>
-      ))}
-    </dl>
-  );
+  return <ErpDetailFields title={t.parent.label} fields={[...itemFacts, ...bomFacts]} />;
 };
+
+/** 「사용」으로 보는 BOM 상태 — 계약의 확정(CONFIRMED) · 목 자료의 사용 중(ACTIVE). */
+const IN_USE_STATUSES: ReadonlySet<string> = new Set(['CONFIRMED', 'ACTIVE']);
 
 const orEmptyText = (value: string | null | undefined): string =>
   value === null || value === undefined || value === '' ? t.values.empty : value;
@@ -326,19 +381,20 @@ export const ErpBomScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = readFilters(searchParams);
   const page = readId(searchParams.get('page')) ?? 1;
+  const size = readSize(searchParams);
   const parentItemId = readId(searchParams.get('item'));
 
   const parents = useParentItems({
-    itemTypeCode: filters.type,
+    ...(filters.type === ALL_TYPES ? {} : { itemTypeCode: filters.type }),
     ...(filters.hasBom ? { hasBom: true } : {}),
     ...(filters.q === '' ? {} : { q: filters.q }),
     ...(page > 1 ? { page } : {}),
+    ...(size === null ? {} : { size }),
   });
   const parentRows = parents.data?.items ?? [];
-  const pageView = toPageView(
-    parents.data?.page ?? { page, size: PARENT_PAGE_SIZE, total: 0 },
-    parentRows.length,
-  );
+  const meta = parents.data?.page ?? { page, size: size ?? PARENT_PAGE_SIZE, total: 0 };
+  const isBeyondLast =
+    meta.total > 0 && meta.page > Math.ceil(meta.total / (meta.size > 0 ? meta.size : 1));
 
   const list = useBomList(parentItemId === null ? null : { parentItemId });
   const uomNameOf = useUomNames();
@@ -347,7 +403,7 @@ export const ErpBomScreen = () => {
   const bom = pickBom(list.data ?? EMPTY_BOMS) ?? null;
 
   const parentColumns: Column<ParentRow>[] = [
-    /* 고르는 단추 자리(`BoardTable` 의 `pick`) — 품목코드는 굵게. */
+    /* 고르는 단추 자리 — 품목코드는 굵게. */
     {
       key: 'itemCode',
       header: t.parent.itemCode,
@@ -357,13 +413,30 @@ export const ErpBomScreen = () => {
     {
       key: 'itemName',
       header: t.parent.itemName,
+      width: '200px',
       render: (row) => <OneLine text={row.itemName} />,
     },
     {
       key: 'itemTypeCode',
       header: t.parent.itemType,
-      width: '72px',
+      width: '96px',
       render: (row) => typeNameOf(row.itemTypeCode),
+    },
+    /*
+     * 상세의 품목 칸 중 목록 응답(`/mdm/items`)에 있는 값만 — 규격 · 기본 단위(사용자 지시 2026-11-24). BOM 코드 · 개정 번호 ·
+     * 상태 · 기준 수량은 BOM 헤더 조회(줄마다 따로 부름)에만 있어 목록에 두지 않는다.
+     */
+    {
+      key: 'erpSpec',
+      header: t.parent.spec,
+      width: '160px',
+      render: (row) => <OneLine text={orEmptyText(row.erpSpec)} />,
+    },
+    {
+      key: 'baseUomId',
+      header: t.parent.baseUom,
+      width: '96px',
+      render: (row) => uomNameOf(row.baseUomId),
     },
   ];
 
@@ -381,41 +454,46 @@ export const ErpBomScreen = () => {
     }
     return (
       <>
-        <BoardTable
+        <ErpListTable
           label={t.panes.parents}
-          widthKey="omf-mes:erp-bom:columns:parents"
-          minWidth="26rem"
+          storageKey="omf-mes:erp-bom:columns:parents"
           columns={parentColumns}
+          scrollX
           rows={parentRows}
           getRowId={(row) => String(row.itemId)}
           pick={{
             columnKey: 'itemCode',
-            label: (row) => t.pickParent(row.itemCode),
             currentId: parentItemId === null ? null : String(parentItemId),
             onPick: (row) => {
-              setSearchParams(toSearchParams(filters, page, row.itemId));
+              setSearchParams(toSearchParams(filters, page, row.itemId, size));
+            },
+            onUnpick: () => {
+              setSearchParams(toSearchParams(filters, page, null, size));
             },
           }}
           empty={
             <EmptyState
               size="sm"
               live
-              title={pageView.isBeyondLast ? t.empty.parentsBeyondLast : t.empty.noParentsTitle}
+              title={isBeyondLast ? t.empty.parentsBeyondLast : t.empty.noParentsTitle}
             />
           }
         />
         <PageNav
-          view={pageView}
-          onChange={(next) => {
-            setSearchParams(toSearchParams(filters, next, parentItemId));
+          meta={meta}
+          buttonSize="md"
+          onChangePage={(next) => {
+            setSearchParams(toSearchParams(filters, next, parentItemId, size));
+          }}
+          onChangeSize={(next) => {
+            setSearchParams(toSearchParams(filters, 1, parentItemId, next));
           }}
         />
       </>
     );
   };
 
-  const detailContent = (): ReactNode => {
-    if (parentItemId === null) return <EmptyState size="sm" title={t.empty.noParentTitle} />;
+  const treeContent = (): ReactNode => {
     if (list.isError) {
       return <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />;
     }
@@ -430,40 +508,62 @@ export const ErpBomScreen = () => {
 
     /* 모품목을 바꾸면 접은 줄을 잊는다 — 다른 BOM 의 경로다. */
     return (
-      <>
-        <ParentFacts item={parentOf(bom.parentItemId)} bom={bom} />
-        <BomTreePane
-          key={bom.bomId}
-          root={{ itemId: bom.parentItemId, bomId: bom.bomId }}
-          uomNameOf={uomNameOf}
+      <BomTreePane
+        key={bom.bomId}
+        root={{ itemId: bom.parentItemId, bomId: bom.bomId }}
+        uomNameOf={uomNameOf}
+      />
+    );
+  };
+
+  const detailContent = (): ReactNode => {
+    if (parentItemId === null) {
+      return (
+        <ErpPickEmpty
+          icon="account_tree"
+          title={t.empty.noParentTitle}
+          description={t.empty.noParentDescription}
         />
-      </>
+      );
+    }
+    return (
+      <div className="erp-data-detail">
+        <ParentFacts item={parentOf(parentItemId)} bom={bom} />
+        <section className="erp-data-sub" aria-label={t.panes.components}>
+          <div className="erp-data-sub-head">
+            <h2 className="pane-title">{t.panes.components}</h2>
+          </div>
+          {treeContent()}
+        </section>
+      </div>
     );
   };
 
   return (
-    <BoardFrame
-      splitKey="omf-mes:erp-bom:split"
-      initialRatio={0.35}
-      splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
-      above={{
+    <ListDetailWorkspace
+      storageKey="omf-mes:erp-bom"
+      orientationKey={ERP_DATA_ORIENTATION_KEY}
+      filter={{
         label: t.panes.filter,
         content: (
-          <div className="pane po-board-filter">
-            <FilterBar
-              applied={filters}
-              onSearch={(next) => {
-                setSearchParams(toSearchParams(next));
-              }}
-              onReset={() => {
-                setSearchParams(toSearchParams(DEFAULT_FILTERS));
-              }}
-            />
-          </div>
+          <FilterBar
+            applied={filters}
+            onSearch={(next) => {
+              setSearchParams(toSearchParams(next, 1, null, size));
+            }}
+            onReset={() => {
+              setSearchParams(toSearchParams(DEFAULT_FILTERS, 1, null, size));
+            }}
+          />
         ),
       }}
-      list={{ label: t.panes.parents, count: parents.data?.page.total, content: listContent() }}
-      detail={{ label: t.panes.components, scroll: false, content: detailContent() }}
+      list={{
+        label: t.panes.parents,
+        title: t.panes.parents,
+        count: parents.data?.page.total,
+        content: listContent(),
+      }}
+      detail={{ label: t.parent.label, content: detailContent() }}
     />
   );
 };

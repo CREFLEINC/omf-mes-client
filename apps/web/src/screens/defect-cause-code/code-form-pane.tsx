@@ -2,6 +2,7 @@ import { AlertBanner, Button, Dialog, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
+import { CodeLockLabel } from '../../patterns/master';
 import { Select } from '../../patterns/select';
 import type { CodeAdapter } from './adapters';
 import type { CodeFormValues, CodeOption } from './types';
@@ -139,7 +140,10 @@ export const CodeFormPane = ({
       <div className="form-grid defect-cause-form-grid">
         <div className="field-cell">
           {/* 잠긴 코드는 고칠 수 없으니 필수 표시를 빼고 칸 안에 자물쇠를 둔다(사용자 시안 · #209). */}
-          {fieldLabel(codeId, adapter.labels.code, !codeLocked)}
+          {/* 잠금 사유는 문장 대신 칸 이름 오른쪽 「변경 불가」 라벨 — 문장은 라벨 위 마우스 · 화면 읽기(사용자 지시 2026-11-24). */}
+          <CodeLockLabel reason={codeLockReason} reasonId={codeLockId}>
+            {fieldLabel(codeId, adapter.labels.code, !codeLocked)}
+          </CodeLockLabel>
           <TextField
             id={codeId}
             placeholder={adapter.labels.codePlaceholder}
@@ -169,19 +173,6 @@ export const CodeFormPane = ({
          * 디자인 시스템 Select에는 label prop이 없다. 라벨을 직접 만들어 htmlFor로 이어야
          * 스크린리더 접근명과 테스트의 라벨 조회가 함께 성립한다(배치 규범 3).
          */}
-        {/* 코드 잠금 안내 — 두 칸 아래 한 줄 전체 폭(사용자 시안 · #209). */}
-        {codeLocked && (
-          /* 정보 안내 — 검사 조회·판정의 안내 줄과 같은 모양(사용자 지시 · #209). */
-          <p
-            id={codeLockId}
-            className="iqc-inspection-action-note defect-cause-form-wide defect-cause-lock-note"
-            data-tone="info"
-          >
-            <Icon name="info" size={14} aria-hidden />
-            {codeLockReason}
-          </p>
-        )}
-
         {/* 한국어명 · 베트남어명 — 고르지 않아도 된다(설계 W-06-03 · 사용자 지시 #209). */}
         <div className="field-cell">
           {fieldLabel(nameKoId, t.fields.nameKo, false)}

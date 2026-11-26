@@ -186,7 +186,8 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     title: 'Tạo LOT quản lý vật tư',
     close: 'Đóng',
     supplier: 'Nhà cung cấp',
-    item: 'Mặt hàng',
+    itemCode: 'Mã mặt hàng',
+    itemName: 'Tên mặt hàng',
     source: {
       item: 'Lấy từ giá trị mặc định của mặt hàng',
       itemStorage:

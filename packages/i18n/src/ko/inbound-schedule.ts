@@ -28,7 +28,8 @@ export const inboundSchedule = {
     lines: '발주 라인',
   },
   fields: {
-    period: '납기',
+    periodFrom: '납기 시작일',
+    periodTo: '납기 종료일',
     supplier: '공급사',
     plant: '공장',
     item: '품목',
@@ -214,7 +215,6 @@ export const inboundSchedule = {
       receiptNo: '입하번호',
       receiptDate: '입하일',
       supplier: '공급사',
-      item: '품목',
       itemCode: '품목코드',
       itemName: '품목명',
       lot: 'LOT',
@@ -287,8 +287,10 @@ export const inboundSchedule = {
       RECEIPT: '입고 대기',
       PUTAWAY: '적치 대기',
     },
-    /** 「검사 대기 4」 — 칩의 글자. */
+    /** 「검사 대기 4」 — 목록 줄 라벨의 글자. */
     groupCount: (label: string, count: number): string => `${label} ${String(count)}`,
+    /** 「검사 대기 4」 — 탭 줄 단계 칩의 글자. 라벨에는 「건」을 붙이지 않는다(사용자 지시 2026-11-25 · #358). */
+    chipCount: (label: string, count: number): string => `${label} ${String(count)}`,
     /** 칩을 누르면 그 묶음의 LOT 이 있는 발주만 남는다. 다시 누르면 풀린다. */
     filterOn: (label: string): string => `${label} 발주만 보기`,
     filterOff: (label: string): string => `${label} 조건 해제`,

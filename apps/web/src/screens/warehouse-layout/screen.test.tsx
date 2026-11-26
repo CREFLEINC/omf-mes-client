@@ -219,6 +219,24 @@ describe('W-CO-08 조회 화면 — 읽기 전용 · [수정] (US2)', () => {
     );
   });
 
+  it('고른 위치를 목록에서 한 번 더 누르면 선택이 풀리고 표식 강조도 꺼진다', async () => {
+    const { user } = renderScreen({ layouts: [withDrawing()] });
+
+    await loaded();
+    await user.click(locationButton('SYN-LOC-07'));
+    expect(within(board()).getByRole('button', { name: pinName('SYN-LOC-07') })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    await user.click(locationButton('SYN-LOC-07'));
+    expect(within(board()).getByRole('button', { name: pinName('SYN-LOC-07') })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    expect(locationButton('SYN-LOC-07')).not.toHaveAttribute('aria-current');
+  });
+
   it('US2-3 SC-006 ⛔ 세션 권한에 W-CO-08 이 없으면 [수정]이 없다', async () => {
     renderScreen(
       { layouts: [withDrawing()] },

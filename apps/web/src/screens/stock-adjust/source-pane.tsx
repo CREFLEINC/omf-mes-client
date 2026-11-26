@@ -117,6 +117,7 @@ export const SourcePane = ({
         <>
           <SelectField
             label={t.source.countField}
+            required
             options={countOptions}
             value={countId}
             note={countNote}

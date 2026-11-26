@@ -1,7 +1,8 @@
-import { Button, Checkbox, DatePicker, SearchInput } from '@crefle/web-ui';
+import { Button, Checkbox, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import {
   FilterMoreButton,
   HiddenFilterChips,
@@ -16,7 +17,6 @@ import {
   type FilterChipNames,
   type ScheduleFilters,
 } from './filters';
-import { FieldLabel } from './field-label';
 import { validatePeriod, type PeriodInput } from './period';
 import { SelectField } from './select-field';
 import type { SelectOption } from './types';
@@ -73,7 +73,6 @@ export const ScheduleFilterBar = ({
   quickMore,
 }: ScheduleFilterBarProps) => {
   const reasonId = useId();
-  const periodId = useId();
   const more = useFilterMore();
 
   const [period, setPeriod] = useState<PeriodInput>(appliedPeriod);
@@ -163,24 +162,18 @@ export const ScheduleFilterBar = ({
        * 납기는 고르는 즉시 조회하고(`changePeriod`), 빠른 조회도 즉시 반영된다.
        */}
       <div className="filter-bar">
-        {/*
-         * 납기는 **한 컨트롤**이다 — 시작·종료 두 칸이 아니라 `mode="range"` 하나다(C-12 — 브라우저 날짜 칸을 쓰지 않는다).
-         * 주소 키(`from`·`to`)와 요청 파라미터는 그대로다. 컴포넌트가 완결된 쌍만, `from ≤ to` 로만 방출하므로 고르는 즉시
-         * 조회해도 반쪽 기간이 나가지 않는다. 주소로 들어온 깨진 기간은 그대로 보이고 조회 단추 아래 사유가 막는다.
-         */}
-        <div className="field-cell filter-field-md">
-          <FieldLabel htmlFor={periodId} label={t.fields.period} />
-          <DatePicker
-            id={periodId}
-            mode="range"
-            placeholder={messages.common.selectDate}
-            disabled={overdueOnly}
-            value={[period.from === '' ? null : period.from, period.to === '' ? null : period.to]}
-            onChange={([from, to]) => {
-              changePeriod({ from, to });
-            }}
-          />
-        </div>
+        <DateRangeFields
+          clearable
+          startLabel={t.fields.periodFrom}
+          endLabel={t.fields.periodTo}
+          placeholder={messages.common.selectDate}
+          disabled={overdueOnly}
+          from={period.from}
+          to={period.to}
+          onChange={(from, to) => {
+            changePeriod({ from, to });
+          }}
+        />
         {quick}
         {/*
          * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶고(배치 규범 2-1), 비활성 사유는 그 아래에 둔다.

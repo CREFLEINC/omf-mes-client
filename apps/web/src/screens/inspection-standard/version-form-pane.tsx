@@ -90,6 +90,8 @@ export const VersionFormPane = ({
   const isFullInspection = values.samplingMethodCode === FULL_INSPECTION;
   /* AQL 샘플링은 시료 수 · 판정 수를 검사할 때 LOT 수량으로 표에서 정한다(omf-all-around#264). */
   const isAql = values.samplingMethodCode === AQL_SAMPLING;
+  /* 샘플 방식은 비율 또는 개수 중 하나가 필수다 — 검증(samplingRatioRequired)과 같은 조건. */
+  const isSamplingRequired = values.samplingMethodCode !== '' && !isFullInspection;
   const changeSamplingMethod = (samplingMethodCode: string) => {
     if (samplingMethodCode === AQL_SAMPLING) {
       onChange({
@@ -216,6 +218,7 @@ export const VersionFormPane = ({
               <FieldLabel
                 htmlFor={samplingBasis === 'ratio' ? samplingRatioId : samplingQtyId}
                 label={samplingBasis === 'ratio' ? t.fields.samplingRatio : t.fields.samplingQty}
+                required={isSamplingRequired}
               />
               <div
                 className="inspection-standard-sampling-basis"
@@ -261,6 +264,7 @@ export const VersionFormPane = ({
                 value={values.samplingRatio}
                 onChange={(event) => onChange({ samplingRatio: event.target.value })}
                 disabled={isLocked || isFullInspection}
+                aria-required={isSamplingRequired || undefined}
                 error={fieldErrors.samplingRatio}
               />
             ) : (
@@ -272,6 +276,7 @@ export const VersionFormPane = ({
                 value={values.samplingQty}
                 onChange={(event) => onChange({ samplingQty: event.target.value })}
                 disabled={isLocked || isFullInspection}
+                aria-required={isSamplingRequired || undefined}
                 error={fieldErrors.samplingQty ?? fieldErrors.samplingRatio}
               />
             )}

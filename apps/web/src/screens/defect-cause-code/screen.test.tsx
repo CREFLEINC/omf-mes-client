@@ -382,6 +382,21 @@ describe('DefectCauseCodeScreen — 2계층 표시', () => {
     expect(screen.getByRole('button', { name: 'DF-11' })).toHaveAttribute('aria-current', 'true');
   });
 
+  it('고른 코드를 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
+    const { user } = renderScreen([
+      defectOptionsRoute(),
+      defectListRoute(),
+      defectDetailRoute(defectCodeFixtures[1]),
+    ]);
+
+    await user.click(await screen.findByRole('button', { name: 'DF-11' }));
+    await user.click(screen.getByRole('button', { name: 'DF-11' }));
+
+    expect(currentLocation()).not.toContain('sel=');
+    expect(screen.getByRole('button', { name: 'DF-11' })).not.toHaveAttribute('aria-current');
+    expect(await screen.findByText('코드를 선택하세요')).toBeInTheDocument();
+  });
+
   it('고르기 전에는 우측이 선택 안내를 낸다', async () => {
     renderScreen([defectListRoute()]);
     await screen.findByRole('button', { name: 'DF-10' });
@@ -604,6 +619,31 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
     const card = screen.getByRole('region', { name: '불량코드 상세', hidden: true });
     expect(within(card).getByText('DF-10')).toBeInTheDocument();
     expect(screen.queryByText('코드를 선택하세요')).not.toBeInTheDocument();
+  });
+
+  it('고른 줄이 추가 팝업을 열고 닫아도 유지된다(omf-all-around#358)', async () => {
+    const { user } = renderScreen(
+      [defectOptionsRoute(), defectListRoute(activeDefectFixtures), defectDetailRoute()],
+      '?sel=1001',
+    );
+    await screen.findByRole('button', { name: '수정' });
+    expect(screen.getByRole('button', { name: 'DF-10' })).toHaveAttribute('aria-current', 'true');
+
+    await user.click(screen.getByRole('button', { name: '대분류 추가' }));
+    const dialog = await screen.findByRole('dialog', { name: '대분류 불량코드 추가' });
+    // 창이 열려 있는 동안에도 목록의 고른 줄 표시가 풀리지 않는다.
+    expect(screen.getByRole('button', { name: 'DF-10', hidden: true })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+
+    await user.click(within(dialog).getByRole('button', { name: '취소' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+    expect(currentLocation()).toContain('sel=1001');
+    expect(screen.getByRole('button', { name: 'DF-10' })).toHaveAttribute('aria-current', 'true');
+    const card = screen.getByRole('region', { name: '불량코드 상세' });
+    expect(within(card).getByText('DF-10')).toBeInTheDocument();
   });
 
   it('상세 추가 창이 열려 있어도 뒤의 상세 카드는 고른 대분류를 그대로 보인다(#209 버그 수정)', async () => {
@@ -954,9 +994,13 @@ describe('DefectCauseCodeScreen — 상세 조회', () => {
 
     await openEdit();
     expect(await screen.findByLabelText('불량코드')).toBeDisabled();
-    expect(
-      screen.getByText('지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
+      'title',
+      '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
+    );
+    expect(screen.getByLabelText('불량코드')).toHaveAccessibleDescription(
+      '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
+    );
   });
 
   it('codeEditable이 참이면 코드 입력이 열려 있다', async () => {

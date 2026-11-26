@@ -6,14 +6,12 @@ export const erpBom: Translated<typeof ko.erpBom> = {
   title: 'Tra cứu BOM (ERP)',
   breadcrumbRoot: 'Quản trị hệ thống',
   fields: {
-    hasBom: 'Chỉ mặt hàng có BOM',
-    itemType: 'Loại',
-    q: 'Mã·tên mặt hàng',
+    hasBom: 'Mặt hàng có BOM',
+    itemType: 'Chọn loại',
+    itemTypeAll: 'Tất cả',
+    q: 'Tìm mặt hàng',
+    qPlaceholder: 'Nhập mã hoặc tên mặt hàng',
   },
-  splitter: 'Kéo để điều chỉnh độ rộng danh sách mặt hàng cha·BOM',
-  listCollapse: 'Thu gọn danh sách mặt hàng cha',
-  listExpand: 'Mở danh sách mặt hàng cha',
-  pickParent: (itemCode: string): string => `Chọn ${itemCode}`,
   panes: {
     parents: 'Danh sách mặt hàng cha',
     filter: 'Điều kiện tra cứu',
@@ -39,22 +37,24 @@ export const erpBom: Translated<typeof ko.erpBom> = {
     isMandatory: 'Bắt buộc',
   },
   tree: {
+    item: 'Mặt hàng',
     depthLimit: 'Không mở thêm các cấp sâu hơn',
     retry: (label: string): string => `Tải lại cấu trúc con của ${label}`,
-    item: 'Mặt hàng',
     expand: (label: string): string => `Mở ${label}`,
     collapse: (label: string): string => `Thu gọn ${label}`,
     loading: 'Đang tải',
     failed: 'Không tải được cấu trúc con',
-    cycle: 'Trùng mặt hàng ở cấp trên',
+    cycle: 'Đã có mặt hàng này ở cấp trên, không mở thêm',
   },
   values: {
     empty: '—',
-    yes: 'Có',
-    no: 'Không',
+    mandatory: 'Bắt buộc',
+    optional: 'Tùy chọn',
+    /** 끝 날짜가 없는 적용 기간 — 「—」 대신(사용자 지시 2026-11-25). */
+    unspecified: 'Chưa xác định',
     loadingName: 'Đang tải',
     failedName: 'Không tải được',
-    unknown: 'Không xác định',
+    unknown: 'Mặt hàng chưa đăng ký',
   },
   loading: {
     parents: 'Đang tải danh sách mặt hàng cha',
@@ -63,7 +63,9 @@ export const erpBom: Translated<typeof ko.erpBom> = {
   empty: {
     parentsBeyondLast: 'Trang này không có mặt hàng cha',
     noParentsTitle: 'Không có mặt hàng cha phù hợp',
-    noParentTitle: 'Hãy chọn mặt hàng cha',
+    noParentTitle: 'Hãy chọn mặt hàng cha.',
+    noParentDescription:
+      'Chọn mặt hàng cha trong danh sách để xem thông tin mặt hàng · BOM và linh kiện.',
     noBomTitle: 'Mặt hàng này không có BOM',
   },
 };

@@ -2,7 +2,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { toRouteListQuery, type ApprovalTypeCode } from './filters';
+import { toRouteListQuery, type ApprovalTypeCode, type ListPageSize } from './filters';
 import type { ApprovalRoute, ApprovalRouteStep, PageMeta, RouteFilters } from './types';
 
 /**
@@ -30,12 +30,14 @@ export const routeKeys = {
    * 조준 조회도 이 아래에 있어 저장 뒤 판정이 낡은 채로 남지 않는다.
    */
   all: ['approval-routes'] as const,
-  list: (filters: RouteFilters, page: number) =>
-    ['approval-routes', 'list', filters, page] as const,
+  list: (filters: RouteFilters, page: number, size: ListPageSize | null = null) =>
+    ['approval-routes', 'list', filters, page, size] as const,
   detail: (approvalRouteId: number) => ['approval-routes', 'detail', approvalRouteId] as const,
   steps: (approvalRouteId: number) => ['approval-routes', 'steps', approvalRouteId] as const,
   duplicateProbe: (approvalTypeCode: string) =>
     ['approval-routes', 'duplicate-probe', approvalTypeCode] as const,
+  /** 등록 팝업 승인 유형 선택지에서 뺄 유형을 가리는 사용 중 결재선 전부(사용자 지시 2026-11-25). */
+  activeForCreate: ['approval-routes', 'active-for-create'] as const,
 };
 
 /**
@@ -65,14 +67,17 @@ export const DUPLICATE_PROBE_SIZE = 100;
 export const useRouteList = (
   filters: RouteFilters,
   page: number,
+  size: ListPageSize | null = null,
 ): UseQueryResult<RouteListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: routeKeys.list(filters, page),
+    queryKey: routeKeys.list(filters, page, size),
     queryFn: () =>
       runRequest(() =>
-        client.GET('/app/approval-routes', { params: { query: toRouteListQuery(filters, page) } }),
+        client.GET('/app/approval-routes', {
+          params: { query: toRouteListQuery(filters, page, size) },
+        }),
       ),
   });
 };
@@ -167,6 +172,28 @@ export const useDuplicateProbe = (
               size: DUPLICATE_PROBE_SIZE,
             },
           },
+        }),
+      ),
+  });
+};
+
+/**
+ * 등록 팝업의 승인 유형 선택지에서 **이미 쓰는 유형을 빼기 위한** 사용 중 결재선 조회(사용자 지시 2026-11-25).
+ *
+ * 조준 조회와 같은 경로 · 같은 크기다. 승인 유형도 사업부도 싣지 않는다 — 쿼리로는 「전 사업부 공통」(`null`)을
+ * 표현할 수 없어 사업부는 클라이언트가 맞춘다(`takenApprovalTypeCodes`). 사업부를 바꿔도 다시 부르지 않는다.
+ * 잘리거나 실패하면 아무것도 빼지 않는다 — 저장 직전 조준 조회와 서버 검사가 그대로 남는다.
+ */
+export const useActiveRoutesForCreate = (enabled: boolean): UseQueryResult<RouteListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: routeKeys.activeForCreate,
+    enabled,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/app/approval-routes', {
+          params: { query: { activeOnly: true, size: DUPLICATE_PROBE_SIZE } },
         }),
       ),
   });

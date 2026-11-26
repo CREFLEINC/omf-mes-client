@@ -35,6 +35,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
   },
   values: {
     all: 'Tất cả',
+    chipCount: (count: number): string => String(count),
     inactive: (label: string): string => `${label} (ngừng dùng)`,
     unlisted: (value: string): string => `${value} (chưa có trong danh sách)`,
     empty: '—',
@@ -253,7 +254,8 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     },
     fields: {
       lotNo: 'Số LOT',
-      item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       lotType: 'Loại LOT',
       status: 'Trạng thái',
       initialQty: 'Số lượng ban đầu',

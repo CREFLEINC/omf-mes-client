@@ -139,6 +139,7 @@ export const DisposalForm = ({
 
     return (
       <SelectField
+        required
         label={label}
         options={options}
         value={values.codes[key]}
@@ -169,6 +170,7 @@ export const DisposalForm = ({
             htmlFor={issuedDateId}
             label={t.formFields.issuedDate}
             info={t.form.businessDateDerived}
+            required
           />
           <DatePicker
             id={issuedDateId}
@@ -194,6 +196,7 @@ export const DisposalForm = ({
           <TextField
             type="time"
             label={t.formFields.issuedTime}
+            required
             value={values.issuedTime}
             disabled={isLocked}
             aria-invalid={issuedError !== undefined}
@@ -241,6 +244,7 @@ export const DisposalForm = ({
 
         <SelectField
           label={t.formFields.disposalPartner}
+          required={!values.isSelfDisposal}
           options={[...disposalPartnerOptions]}
           value={values.disposalPartnerId}
           note={partnerNote}
@@ -275,6 +279,7 @@ export const DisposalForm = ({
         <TextField
           fullWidth
           label={t.formFields.submitReason}
+          required
           value={values.reason}
           placeholder={t.form.reasonPlaceholder}
           disabled={isLocked}

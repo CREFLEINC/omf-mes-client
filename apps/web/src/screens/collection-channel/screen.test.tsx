@@ -182,12 +182,13 @@ describe('W-05-07 수집 채널 매핑 — 첫 조회', () => {
     ).toBeInTheDocument();
   });
 
-  /** 사용 여부는 칸이 아니라 이름에 붙는 표식이다 — 좁은 페인에 칸을 더 두지 않는다. */
-  it('미사용 설비는 이름에 표식이 붙는다', async () => {
+  /** 사용 여부는 칸이 아니라 이름 옆 「미사용」 라벨이다 — 좁은 페인에 칸을 더 두지 않는다(#358). */
+  it('미사용 설비는 이름 옆에 「미사용」 라벨이 붙는다', async () => {
     renderScreen();
 
+    const name = await within(equipmentPane()).findByText('가상 검사기 1호');
     expect(
-      await within(equipmentPane()).findByText(`가상 검사기 1호${t.values.inactiveSuffix}`),
+      within(name.closest('.usage-name') as HTMLElement).getByText('미사용'),
     ).toBeInTheDocument();
   });
 
@@ -233,6 +234,19 @@ describe('W-05-07 — 설비를 고르면', () => {
     expect(
       screen.getByRole('button', { name: t.equipment.selectLabel('EQ-102', '가상 성형기 2호') }),
     ).not.toHaveAttribute('aria-current');
+  });
+
+  it('고른 설비를 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
+    renderScreen();
+    await pickFirstEquipment();
+
+    const chosen = await screen.findByRole('button', {
+      name: t.equipment.selectLabel('EQ-101', '가상 성형기 1호'),
+    });
+    await waitFor(() => expect(chosen).toHaveAttribute('aria-current', 'true'));
+    await userEvent.setup().click(chosen);
+
+    await waitFor(() => expect(chosen).not.toHaveAttribute('aria-current'));
   });
 
   it('고른 설비를 페인 머리에 남긴다', async () => {

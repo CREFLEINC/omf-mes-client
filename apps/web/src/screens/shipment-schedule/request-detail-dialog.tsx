@@ -5,6 +5,7 @@ import { Fragment, useId, type ReactNode } from 'react';
 import { InfoTip } from '../../patterns/info-tip';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { LoadErrorBanner } from './load-error-banner';
+import type { ItemCodeName } from './queries';
 import {
   blockerTarget,
   linesOf,
@@ -140,7 +141,7 @@ export interface RequestDetailDialogProps {
   onRetry: () => void;
   customerName: string;
   shipToPartnerName: string;
-  itemLabel: (itemId: number) => string | null;
+  itemLabel: (itemId: number) => ItemCodeName | null;
   onPrint: () => void;
   onClose: () => void;
   /** 피처 012 — 머리 바로 아래 · 라인 표 위의 「출하」 칸(T059). 완료 출하가 없으면 `null`. */
@@ -170,7 +171,13 @@ export const RequestDetailDialog = ({
   shipmentSection = null,
   linkedBanner = null,
 }: RequestDetailDialogProps) => {
-  const item = (itemId: number): string => itemLabel(itemId) ?? String(itemId);
+  /** 품목코드 · 품목명 두 칸(사용자 지시 2026-11-24). 못 풀면 번호를 코드 칸에 둔다(종전과 같다). */
+  const itemCodeName = (itemId: number): ItemCodeName =>
+    itemLabel(itemId) ?? { code: String(itemId), name: t.values.empty };
+  const item = (itemId: number): string => {
+    const label = itemLabel(itemId);
+    return label === null ? String(itemId) : `${label.code} ${label.name}`;
+  };
   const printNoteId = useId();
 
   return (
@@ -332,7 +339,8 @@ export const RequestDetailDialog = ({
                   <thead>
                     <tr>
                       <th scope="col">{t.detail.lineColumns.lineNo}</th>
-                      <th scope="col">{t.detail.lineColumns.item}</th>
+                      <th scope="col">{t.detail.lineColumns.itemCode}</th>
+                      <th scope="col">{t.detail.lineColumns.itemName}</th>
                       <th scope="col">{t.detail.lineColumns.uom}</th>
                       <th scope="col">{t.detail.lineColumns.inspection}</th>
                       <th scope="col">{t.detail.lineColumns.requested}</th>
@@ -348,7 +356,8 @@ export const RequestDetailDialog = ({
                   <tbody>
                     <tr>
                       <td>{line.lineNo}</td>
-                      <td>{item(line.itemId)}</td>
+                      <td>{itemCodeName(line.itemId).code}</td>
+                      <td>{itemCodeName(line.itemId).name}</td>
                       <td>{line.uomCode === '' ? t.values.empty : line.uomCode}</td>
                       <td>
                         {line.shippingInspectionRequired

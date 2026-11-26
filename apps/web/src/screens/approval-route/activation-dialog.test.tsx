@@ -99,6 +99,14 @@ describe('ActivationDialog — 창의 경계', () => {
    * **창 안에 펼침 목록을 두지 않는다**(#45). 짝 방향으로 잰다 —
    * 아무것도 그리지 않아도 통과하는 단언이 되지 않게 본문이 실제로 섰는지를 먼저 본다.
    */
+  /* 이 화면의 모든 창은 닫기(X)가 없다 — 취소 · Esc 로 닫는다(사용자 지시 2026-11-25). */
+  it('닫기(X) 단추가 없다', () => {
+    renderDialog();
+
+    expect(screen.getByText(t.dialog.deactivateReversible)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '닫기' })).toBeNull();
+  });
+
   it('선택칸이 없다', () => {
     renderDialog();
 

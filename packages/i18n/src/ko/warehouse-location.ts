@@ -118,7 +118,7 @@ export const warehouseLocation = {
     isExternal: '외부 창고',
     isDefect: '불량 창고',
 
-    isActive: '사용 상태',
+    isActive: '사용 유무',
     warehouse: '창고',
     parentLocation: '상위 위치',
     locationCode: '위치 코드',
@@ -129,8 +129,6 @@ export const warehouseLocation = {
   values: {
     /** 등록 선택칸이 비었을 때. */
     selectPlaceholder: '선택',
-    active: '사용 중',
-    inactive: '미사용',
     currentParentOutsideList: '현재 상위 위치 (조회 목록 밖)',
     /** 미사용 항목을 선택지에 남길 때 라벨 뒤에 붙인다. */
     inactiveSuffix: ' (미사용)',

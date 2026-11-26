@@ -352,12 +352,14 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
               <FieldLabel
                 htmlFor={inputId}
                 label={pickMode === 'change' ? t.inputLabelChange : t.inputLabelConnect}
+                required
               />
               <TextField
                 ref={inputRef}
                 id={inputId}
                 fullWidth
                 autoFocus
+                aria-required="true"
                 placeholder={
                   pickMode === 'change' ? t.inputPlaceholderChange : t.inputPlaceholderConnect
                 }

@@ -1114,7 +1114,9 @@ describe('WorkOrderCloseCandidateScreen', () => {
     expect(
       api.urls.find((url) => url.pathname === paths.uoms)?.searchParams.get('includeInactive'),
     ).toBe('true');
-    expect(await screen.findByText('SYN-ITEM · Synthetic Item')).toBeVisible();
+    /* 품목코드 · 품목명은 두 열(사용자 지시 2026-11-24). */
+    expect(await screen.findByText('Synthetic Item')).toBeVisible();
+    expect(screen.getByText('SYN-ITEM')).toBeVisible();
     expect(screen.getByText('12.5 SYN-EA · Synthetic Each')).toBeVisible();
     expect(screen.queryByText('910001')).not.toBeInTheDocument();
     expect(screen.queryByText('920001')).not.toBeInTheDocument();
@@ -1181,6 +1183,21 @@ describe('WorkOrderCloseCandidateScreen', () => {
     expect(screen.queryByRole('region', { name: t.outboundItems.pane })).not.toBeInTheDocument();
     expect(candidateUrls(api.urls).at(-1)?.searchParams.has('productionOrderId')).toBe(false);
     expect(candidateUrls(api.urls).at(-1)?.searchParams.get('page')).toBe('1');
+  });
+
+  it('고른 줄을 한 번 더 누르면 선택이 풀린다', async () => {
+    const user = userEvent.setup();
+    const api = makeApi();
+    renderWithProviders(<WorkOrderCloseCandidateScreen />, { fetch: api.fetch });
+    const row = await screen.findByRole('button', { name: 'SYN-WO-701 선택' });
+    await user.click(row);
+    expect(row).toHaveAttribute('aria-current', 'true');
+    await screen.findByText('SYN-WO-DETAIL-701');
+
+    await user.click(row);
+    expect(row).not.toHaveAttribute('aria-current');
+    expect(screen.getByText('마감할 W/O를 선택하세요.')).toBeVisible();
+    expect(screen.queryByText('SYN-WO-DETAIL-701')).not.toBeInTheDocument();
   });
 
   it('hides stale rows on refetch failure and retries only the candidate request', async () => {

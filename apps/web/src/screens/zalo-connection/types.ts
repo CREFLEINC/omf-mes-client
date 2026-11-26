@@ -22,3 +22,10 @@ export interface ConnectionFormValues {
   /** 이벤트 코드 → 템플릿 ID. 비우면 미설정(null) */
   templates: Record<string, string>;
 }
+
+/**
+ * 저장 단위 — 고치는 상자마다 따로 저장한다(#358). 본문은 늘 전체(PUT)지만, 마지막 저장 값 위에 이 단위의
+ * 고친 값만 얹는다 — 다른 상자의 저장 안 한 값은 실리지 않는다.
+ */
+export type SaveSection =
+  { kind: 'connection' } | { kind: 'event'; code: string } | { kind: 'handover'; code: string };

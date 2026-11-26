@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router';
 
 import { BoardFrame } from '../../patterns/board-frame';
 import { BoardTable } from '../../patterns/board-table';
+import { ListEmpty } from '../../patterns/list-empty';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { useUomOptions } from '../../patterns/material-lot-batch';
 import { useMaterialLotPairs } from '../../patterns/material-lot-precreate';
@@ -204,7 +205,6 @@ export const MaterialLotIssueScreen = () => {
     if (plants.isPending) return <Skeleton variant="rect" height="16rem" />;
     if (plantId === null) return <EmptyState size="sm" title={t.noPlant} />;
     if (pairs.isPending) return <Skeleton variant="rect" height="16rem" />;
-    if (rows.length === 0) return <EmptyState size="sm" title={tl.empty} />;
 
     return (
       <>
@@ -215,6 +215,7 @@ export const MaterialLotIssueScreen = () => {
           columns={columns}
           rows={rows}
           getRowId={pairKey}
+          empty={<ListEmpty title={tl.empty} />}
           pick={{
             columnKey: 'supplier',
             label: (pair) => tl.open(pair.supplier.name, `${pair.item.code} ${pair.item.name}`),
@@ -223,12 +224,16 @@ export const MaterialLotIssueScreen = () => {
               setOpenedPair(pair);
               update({ open: pairKey(pair) });
             },
+            /* 고른 줄을 다시 누르면 고르기를 푼다(#358). */
+            onUnpick: () => update({ open: null }),
           }}
         />
-        <PageNav
-          meta={{ page: pageParam, size: LIST_PAGE_SIZE, total }}
-          onChangePage={(next) => update({ page: next === 1 ? null : String(next) })}
-        />
+        {rows.length === 0 ? null : (
+          <PageNav
+            meta={{ page: pageParam, size: LIST_PAGE_SIZE, total }}
+            onChangePage={(next) => update({ page: next === 1 ? null : String(next) })}
+          />
+        )}
       </>
     );
   };

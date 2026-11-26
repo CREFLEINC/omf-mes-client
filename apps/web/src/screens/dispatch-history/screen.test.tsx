@@ -58,6 +58,8 @@ const setup = (
   } = {},
 ) => {
   const dispatchQueries: URL[] = [];
+  /* 위 줄 결과 칩의 건수 조회(한 줄만 · size=1) — 목록 조회와 따로 모은다. */
+  const countQueries: URL[] = [];
   const deliveryQueries: URL[] = [];
   const items = options.dispatches ?? [dispatch(9001)];
   renderWithProviders(<DispatchHistoryScreen />, {
@@ -65,7 +67,14 @@ const setup = (
       {
         match: (request) => new URL(request.url).pathname === '/app/notification-dispatches',
         respond: (request) => {
-          dispatchQueries.push(new URL(request.url));
+          const url = new URL(request.url);
+          if (url.searchParams.get('size') === '1') {
+            countQueries.push(url);
+            const status = url.searchParams.get('status');
+            const total = items.filter((item) => item.dispatchStatus === status).length;
+            return jsonResponse({ items: [], page: { page: 1, size: 1, total } });
+          }
+          dispatchQueries.push(url);
           return jsonResponse({ items, page: { page: 1, size: 50, total: items.length } });
         },
       },
@@ -115,11 +124,17 @@ const setup = (
     ]),
     route: options.route ?? ROUTE,
   });
-  return { dispatchQueries, deliveryQueries };
+  return { dispatchQueries, countQueries, deliveryQueries };
 };
 
-const dispatchPane = () => within(screen.getByRole('region', { name: t.panes.dispatches }));
+/* 조회 조건 · 목록 · 상세 통일 배치(#358) — 목록 상자 「처리 결과 목록」, 상세 상자는 고른 건의 대상 이름. */
+const dispatchPane = () => within(screen.getByRole('region', { name: t.workspace.list }));
 const deliveryPane = () => within(screen.getByRole('region', { name: t.panes.deliveries }));
+/* 위 줄 오른쪽 결과 칩 묶음(#358 — 종전 「결과 선택」 칸 자리). */
+const resultChips = () => within(screen.getByRole('group', { name: t.filters.result }));
+/* 고른 줄 — 다른 목록 | 상세 화면처럼 줄 안 고르는 단추의 aria-current 로 짚는다. */
+const isPicked = (row: HTMLElement): boolean =>
+  row.querySelector('.users-roles-row-pick[aria-current="true"]') !== null;
 
 describe('period', () => {
   it('31일까지는 조회할 수 있고 넘으면 막는다', () => {
@@ -195,17 +210,68 @@ describe('DispatchHistoryScreen', () => {
     expect(params.get('page')).toBe('2');
   });
 
-  it('필터를 바꿔 조회하면 그 조건을 쿼리에 싣는다', async () => {
+  it('결과는 위 줄 칩으로 거른다 — 누르면 그 결과로 곧바로 다시 부르고, 다시 누르면 전체로 돌아간다(#358)', async () => {
     const user = userEvent.setup();
-    const { dispatchQueries } = setup();
+    const { dispatchQueries } = setup({
+      dispatches: [
+        dispatch(9001),
+        dispatch(9002, { dispatchStatus: 'SKIPPED', skipReasonCode: 'EVENT_DISABLED' }),
+      ],
+    });
 
-    await dispatchPane().findByText('WO-20261021-001');
-    await user.click(screen.getByRole('combobox', { name: t.filters.result }));
-    await user.click(await screen.findByRole('option', { name: t.results.SKIPPED }));
-    await user.click(screen.getByRole('button', { name: t.filters.search }));
+    await dispatchPane().findByText(t.skipped(t.skipReasons.EVENT_DISABLED));
+    /* 조회 상자에는 결과 칸이 없다. */
+    expect(screen.queryByRole('combobox', { name: /결과/ })).toBeNull();
+    const skipped = await resultChips().findByRole('button', {
+      name: messages.common.inspectionHub.count(t.results.SKIPPED, 1),
+    });
+    await user.click(skipped);
 
     await waitFor(() =>
       expect((dispatchQueries.at(-1) as URL).searchParams.get('status')).toBe('SKIPPED'),
+    );
+    expect(skipped).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(skipped);
+    await waitFor(() =>
+      expect((dispatchQueries.at(-1) as URL).searchParams.get('status')).toBeNull(),
+    );
+  });
+
+  it('결과 칩 건수는 결과만 빼고 지금 걸린 조건으로 세고(「건」 없이), 0건 칩은 걸린 칩이 아니면 감춘다(#358)', async () => {
+    const { countQueries } = setup({ route: `${ROUTE}&event=WORK_ORDER_CLOSED&dept=7` });
+
+    expect(
+      await resultChips().findByRole('button', {
+        name: messages.common.inspectionHub.count(t.results.NOTIFIED, 1),
+      }),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(countQueries).toHaveLength(2));
+    for (const url of countQueries) {
+      expect(url.searchParams.get('eventCode')).toBe('WORK_ORDER_CLOSED');
+      expect(url.searchParams.get('departmentId')).toBe('7');
+      expect(url.searchParams.get('from')).toMatch(/^2026-10-15T00:00:00[+-]\d{2}:\d{2}$/);
+    }
+    expect(countQueries.map((url) => url.searchParams.get('status')).sort()).toEqual([
+      'NOTIFIED',
+      'SKIPPED',
+    ]);
+    /* 발송 생략 0건 — 감춘다. */
+    expect(resultChips().queryByRole('button', { name: new RegExp(t.results.SKIPPED) })).toBeNull();
+  });
+
+  it('주소에 걸린 결과는 0건이어도 칩이 남아 눌러 풀 수 있다(#358)', async () => {
+    const user = userEvent.setup();
+    const { dispatchQueries } = setup({ route: `${ROUTE}&result=SKIPPED` });
+
+    const skipped = await resultChips().findByRole('button', {
+      name: messages.common.inspectionHub.count(t.results.SKIPPED, 0),
+    });
+    expect(skipped).toHaveAttribute('aria-pressed', 'true');
+    await user.click(skipped);
+
+    await waitFor(() =>
+      expect((dispatchQueries.at(-1) as URL).searchParams.get('status')).toBeNull(),
     );
   });
 
@@ -224,7 +290,8 @@ describe('DispatchHistoryScreen', () => {
 
     await dispatchPane().findByText(t.errors.periodTooLong);
     expect(document.querySelector('input[type="date"]')).toBeNull();
-    expect(screen.getByLabelText(t.filters.period)).toBeInTheDocument();
+    expect(screen.getByLabelText(messages.common.startDate)).toBeInTheDocument();
+    expect(screen.getByLabelText(messages.common.endDate)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.filters.search })).toHaveAccessibleDescription(
       t.errors.periodTooLong,
     );
@@ -237,17 +304,17 @@ describe('DispatchHistoryScreen', () => {
     await dispatchPane().findByText('WO-20261021-001');
     expect(t.zaloSummary(2, 1, 0, 0, 3)).toBe('성공 2, 실패 1, 대기 0, 만료 0, 번호없음 3');
     await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
-    await user.click(screen.getByRole('combobox', { name: t.filters.department }));
+    await user.click(screen.getByRole('combobox', { name: t.filters.departmentSelect }));
     expect(await screen.findByRole('option', { name: '생산1팀 (D-PRD1)' })).toBeInTheDocument();
   });
 
-  /* 보이는 조건은 셋(C-6) — 부서는 접혀 있고, 걸려 있으면 칩이 알린다. 보이는 칸(결과)은 칩이 없다. */
+  /* 보이는 조건은 둘(C-6) — 부서는 접혀 있고, 걸려 있으면 칩이 알린다. 결과는 위 줄 칩이 거른다. */
   it('부서는 조건 더보기에 접히고, 걸린 부서는 칩으로 보이며 × 가 그 조건만 풀어 다시 조회한다', async () => {
     const user = userEvent.setup();
     const { dispatchQueries } = setup({ route: `${ROUTE}&dept=7&result=SKIPPED` });
 
     await dispatchPane().findByText('WO-20261021-001');
-    expect(screen.queryByRole('combobox', { name: t.filters.department })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: t.filters.departmentSelect })).toBeNull();
     expect(await screen.findByText(t.filters.chipDepartment('생산1팀 (D-PRD1)'))).toBeVisible();
     expect(screen.getAllByRole('button', { name: /조건 제거$/ })).toHaveLength(1);
 
@@ -273,9 +340,10 @@ describe('DispatchHistoryScreen', () => {
       ],
     });
 
-    /* 고르기 전에는 드로어가 없다 — 목록 아래에 안내 자리도 두지 않는다(C-2). */
+    /* 고르기 전에는 상세 상자가 「알림 건을 선택하세요.」 빈 상태다(#358). */
     await dispatchPane().findByText('WO-20261021-001');
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByText(t.workspace.selectTitle)).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.panes.deliveries })).toBeNull();
     await user.click(dispatchPane().getByText('WO-20261021-001'));
 
     await waitFor(() =>
@@ -311,30 +379,75 @@ describe('DispatchHistoryScreen', () => {
     expect(deliveryPane().getByText('수신자 3')).toBeInTheDocument();
   });
 
-  /** T-W-A — 드로어가 목록을 덮으므로 머리가 어느 건의 상세인지 말해야 한다(omf-all-around#183). */
-  it('행을 고르면 오른쪽 드로어 머리에 대상·이벤트·발생 시각을 보이고 행을 선택으로 표시한다', async () => {
+  /** 상세 머리가 어느 건의 상세인지 말한다(종전 드로어 머리 · #183 → 상세 상자 · #358). */
+  it('행을 고르면 오른쪽 상세 상자 제목에 대상, 요약 상자에 이벤트·발생 시각을 보이고 행을 선택으로 표시한다', async () => {
     const user = userEvent.setup();
     setup({ dispatches: [dispatch(9001), dispatch(9002, { targetLabel: 'WO-20261021-002' })] });
 
     await user.click(await dispatchPane().findByText('WO-20261021-002'));
 
-    const drawer = await screen.findByRole('dialog', { name: 'WO-20261021-002' });
-    expect(within(drawer).getByText(/생산 마감, /)).toBeInTheDocument();
+    const detail = await screen.findByRole('region', { name: 'WO-20261021-002' });
+    expect(within(detail).getByRole('heading', { name: 'WO-20261021-002' })).toBeInTheDocument();
+    /* 요약 상자 — 「이름 위 · 값 아래」 쌍(다른 화면 상세와 같다 · #358). */
+    const fact = (label: string) =>
+      within(detail).getByText(label, { selector: 'dt' }).nextElementSibling as HTMLElement;
+    expect(fact(t.columns.event)).toHaveTextContent('생산 마감');
+    expect(fact(t.columns.occurredAt).textContent).toMatch(/^2026-10-21 /);
+    expect(within(detail).getByRole('heading', { name: t.panes.deliveries })).toBeInTheDocument();
     const row = dispatchPane().getByText('WO-20261021-002').closest('tr') as HTMLElement;
-    expect(row).toHaveAttribute('aria-selected', 'true');
+    expect(isPicked(row)).toBe(true);
+    expect(isPicked(dispatchPane().getByText('WO-20261021-001').closest('tr') as HTMLElement)).toBe(
+      false,
+    );
   });
 
-  it('주소의 selected 로 열면 드로어가 열린 채로 오고, 닫으면 선택이 풀린다', async () => {
+  it('고른 행을 한 번 더 누르면 선택이 풀리고 상세 상자가 닫힌다', async () => {
     const user = userEvent.setup();
+    setup({ dispatches: [dispatch(9001), dispatch(9002, { targetLabel: 'WO-20261021-002' })] });
+
+    await user.click(await dispatchPane().findByText('WO-20261021-002'));
+    await screen.findByRole('region', { name: 'WO-20261021-002' });
+    const row = dispatchPane().getByText('WO-20261021-002').closest('tr') as HTMLElement;
+    expect(isPicked(row)).toBe(true);
+
+    await user.click(dispatchPane().getByText('WO-20261021-002'));
+    await waitFor(() => expect(isPicked(row)).toBe(false));
+    expect(screen.queryByRole('region', { name: 'WO-20261021-002' })).toBeNull();
+  });
+
+  it('주소의 selected 로 열면 상세 상자가 그 건으로 열리고 행이 선택으로 보인다', async () => {
     setup({ route: `${ROUTE}&selected=9001` });
 
-    const drawer = await screen.findByRole('dialog', { name: 'WO-20261021-001' });
-    await within(drawer).findByText('수신자 1');
-    await user.click(within(drawer).getByRole('button', { name: /닫기|close/i }));
+    const detail = await screen.findByRole('region', { name: 'WO-20261021-001' });
+    await within(detail).findByText('수신자 1');
+    const row = (await dispatchPane().findByText('WO-20261021-001')).closest('tr') as HTMLElement;
+    expect(isPicked(row)).toBe(true);
+  });
 
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    const row = dispatchPane().getByText('WO-20261021-001').closest('tr') as HTMLElement;
-    expect(row).not.toHaveAttribute('aria-selected', 'true');
+  it('[초기화]는 기본 7일 · 조건 없음으로 되돌려 다시 조회한다(#358)', async () => {
+    const user = userEvent.setup();
+    const { dispatchQueries } = setup({ route: `${ROUTE}&result=SKIPPED` });
+
+    await dispatchPane().findByText('WO-20261021-001');
+    expect((dispatchQueries.at(-1) as URL).searchParams.get('status')).toBe('SKIPPED');
+    await user.click(screen.getByRole('button', { name: t.workspace.clear }));
+
+    await waitFor(() =>
+      expect((dispatchQueries.at(-1) as URL).searchParams.get('status')).toBeNull(),
+    );
+    /* 처음 값으로 돌아왔으니 초기화는 다시 숨는다. */
+    expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
+  });
+
+  it('[초기화]는 처음 값(기본 7일 · 조건 없음)이면 없고, 조회 단추 오른쪽에 조건 더보기가 선다(#358)', async () => {
+    setup({ route: '/notification/dispatch-history' });
+
+    await dispatchPane().findByText('WO-20261021-001');
+    expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
+    const search = screen.getByRole('button', { name: t.filters.search });
+    const more = screen.getByRole('button', { name: messages.common.filterMore.open });
+    expect(search.parentElement).toBe(more.parentElement);
+    expect(search.compareDocumentPosition(more) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('결과가 없으면 빈 안내를 보인다', async () => {

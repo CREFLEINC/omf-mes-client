@@ -15,7 +15,6 @@ export const lotTrace = {
   filters: {
     pane: '조회 조건',
     period: '기간',
-    periodPlaceholder: '시작일 ~ 종료일',
     item: '품목',
     itemPicker: '품목 선택',
     itemCode: '품목 코드',
@@ -174,7 +173,8 @@ export const lotTrace = {
       shipment: '출하',
     },
     facts: {
-      item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       lotStatus: 'LOT 상태',
       receivedQty: '입고 수량',
       goodQty: '양품 수량',

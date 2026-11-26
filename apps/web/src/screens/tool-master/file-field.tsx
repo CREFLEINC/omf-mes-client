@@ -16,6 +16,8 @@ export interface FileFieldProps {
   disabled?: boolean;
   /** 알아 둘 규칙 — 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
   info?: string;
+  /** 필수 칸 — 라벨 밖에 빨간 * 를 둔다. 검증(잠금)은 쓰는 쪽이 한다. */
+  required?: boolean;
   onSelect: (file: File | null) => void;
 }
 
@@ -42,6 +44,7 @@ export const FileField = ({
   accept,
   disabled = false,
   info,
+  required = false,
   onSelect,
 }: FileFieldProps) => {
   const id = useId();
@@ -49,11 +52,12 @@ export const FileField = ({
 
   return (
     <div className="field-cell">
-      <FieldLabel htmlFor={id} label={label} info={info} />
+      <FieldLabel htmlFor={id} label={label} info={info} required={required} />
       <input
         ref={inputRef}
         id={id}
         type="file"
+        aria-required={required || undefined}
         accept={accept}
         disabled={disabled}
         className="file-input"

@@ -55,10 +55,10 @@ export interface SelectOption {
   label: string;
 }
 
-export const displayItem = (decision: DecisionView): string =>
-  [decision.itemCode, decision.itemName]
-    .filter((value) => value !== null && value !== '')
-    .join(' · ') || '—';
+/** 품목코드 · 품목명은 두 칸으로 나눠 보인다(사용자 지시 2026-11-24). 없으면 「—」. */
+export const displayItemCode = (decision: DecisionView): string => decision.itemCode || '—';
+
+export const displayItemName = (decision: DecisionView): string => decision.itemName || '—';
 
 /** 특채 적용이 남긴 처분 — 보류 없이 불량창고 재고만 정상 창고로 옮긴다(omf-all-around#207). */
 export const isConcession = (decision: Pick<DecisionView, 'dispositionTypeCode'>): boolean =>

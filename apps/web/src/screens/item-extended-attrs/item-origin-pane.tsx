@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { UsageChip } from '../../patterns/usage-chip';
 import { codeValueName, lookupLabel, type CodeValueOption } from './options';
 import type { Item, LookupEntry } from './types';
 
@@ -77,7 +78,7 @@ export const ItemOriginFacts = ({
     {
       key: 'active',
       label: t.attrs.fields.isActive,
-      value: item.isActive ? t.attrs.values.active : t.attrs.values.inactive,
+      value: <UsageChip isActive={item.isActive} />,
     },
   ];
 

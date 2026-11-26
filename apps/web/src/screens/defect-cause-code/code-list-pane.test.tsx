@@ -216,7 +216,7 @@ describe('CodeListPane — 표 머리 문구 (#209)', () => {
   it('불량코드 표는 불량코드 · 불량명 · 구분 · 사용 여부로 적는다', () => {
     renderPane();
 
-    for (const header of ['불량코드', '불량명', '구분', '사용 여부']) {
+    for (const header of ['불량코드', '불량명', '구분', '사용 유무']) {
       expect(screen.getByRole('columnheader', { name: header })).toBeInTheDocument();
     }
   });

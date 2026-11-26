@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -81,13 +81,18 @@ describe('CodeGroupFormPane — 필드', () => {
 });
 
 describe('CodeGroupFormPane — 코드 잠금', () => {
-  it('잠금 사유가 있으면 그룹코드 칸이 잠기고 사유가 보인다', () => {
+  /* 사유 문장 대신 그룹코드 이름 오른쪽 「변경 불가」 라벨 — 문장은 마우스 · 화면 읽기로(사용자 지시 2026-11-24). */
+  it('잠금 사유가 있으면 그룹코드 칸이 잠기고 「변경 불가」 라벨에 사유가 붙는다', () => {
     renderPane({ codeLockReason: '이미 다른 자료에서 사용 중이라 코드를 바꿀 수 없습니다.' });
 
     expect(screen.getByLabelText('그룹코드')).toBeDisabled();
-    expect(
-      screen.getByText('이미 다른 자료에서 사용 중이라 코드를 바꿀 수 없습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
+      'title',
+      '이미 다른 자료에서 사용 중이라 코드를 바꿀 수 없습니다.',
+    );
+    expect(screen.getByLabelText('그룹코드')).toHaveAccessibleDescription(
+      '이미 다른 자료에서 사용 중이라 코드를 바꿀 수 없습니다.',
+    );
   });
 
   it('잠금 사유가 없으면 그룹코드를 고칠 수 있다', () => {
@@ -126,6 +131,37 @@ describe('CodeGroupFormPane — 액션', () => {
     expect(screen.queryByRole('button', { name: '저장' })).not.toBeInTheDocument();
   });
 
+  /* 등록은 팝업이다(사용자 지시 2026-11-25) — 창의 취소는 등록 폼을 접는 같은 처리로 간다. */
+  it('등록 폼은 「그룹 추가」 팝업으로 뜨고 취소가 닫기를 알린다', async () => {
+    const { onCancel, user } = renderPane({ mode: 'create' });
+
+    const dialog = screen.getByRole('dialog', { name: '그룹 추가' });
+    expect(within(dialog).getByLabelText('그룹코드')).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: '취소' }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  /* 필수 칸이 비면 빨간 테두리(사용자 역할 화면과 같은 방식 · #333). 잠긴 칸에는 걸지 않는다. */
+  it('비어 있는 필수 칸에만 빨간 테두리 표시가 붙는다', () => {
+    renderPane({ mode: 'create', values: { groupCode: '', groupName: '이름', description: '' } });
+
+    const shell = (label: string) => screen.getByLabelText(label).closest('.field-cell');
+    expect(shell('그룹코드')?.querySelector('.users-roles-required-empty')).not.toBeNull();
+    expect(shell('그룹명')?.querySelector('.users-roles-required-empty')).toBeNull();
+    expect(shell('설명')?.querySelector('.users-roles-required-empty')).toBeNull();
+  });
+
+  it('잠긴 그룹코드 칸에는 빈 칸 테두리를 걸지 않는다', () => {
+    renderPane({ values: { ...values, groupCode: '' }, codeLockReason: '사유' });
+
+    expect(
+      screen
+        .getByLabelText('그룹코드')
+        .closest('.field-cell')
+        ?.querySelector('.users-roles-required-empty'),
+    ).toBeNull();
+  });
+
   /* 아직 없는 자원이라 「언젠가 풀린다」가 아니라 애초에 해당하지 않는 액션이다. */
   it('등록 폼에는 사용 중지 자리가 없다', () => {
     renderPane({ mode: 'create' });
@@ -142,7 +178,8 @@ describe('CodeGroupFormPane — 액션', () => {
   });
 
   /* 배치 규범 4 — 비활성 컨트롤은 포커스를 받지 못해 사유를 시각으로만 두면 닿을 수 없다. */
-  it('사용 중지가 막히면 사유가 보이고 버튼에 이어진다', () => {
+  /* 사용자 관리처럼 제목 줄 오른쪽 작은 버튼 — 사유는 버튼 설명(마우스를 올리면 보임)으로 붙는다(2026-11-24). */
+  it('사용 중지가 막히면 비활성이고 사유가 버튼 설명으로 붙는다', () => {
     renderPane({
       deactivateDisabledReason: '사용 중지는 이미 미사용인 코드그룹에 다시 할 수 없습니다.',
     });
@@ -150,9 +187,7 @@ describe('CodeGroupFormPane — 액션', () => {
     const button = screen.getByRole('button', { name: '사용 중지' });
     expect(button).toBeDisabled();
 
-    const noteId = button.getAttribute('aria-describedby');
-    expect(noteId).not.toBeNull();
-    expect(document.getElementById(noteId as string)).toHaveTextContent(
+    expect(button).toHaveAccessibleDescription(
       '사용 중지는 이미 미사용인 코드그룹에 다시 할 수 없습니다.',
     );
   });
@@ -179,9 +214,7 @@ describe('CodeGroupFormPane — 다른 코드그룹의 저장이 나가는 중',
     const save = screen.getByRole('button', { name: '저장' });
 
     expect(save).toBeDisabled();
-    expect(
-      screen.getByText('저장은 다른 코드그룹의 저장이 끝난 뒤에 할 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
     expect(save).not.toHaveAttribute('aria-busy', 'true');
     expect(screen.getByLabelText('그룹명')).toBeEnabled();
     expect(screen.getByLabelText('설명')).toBeEnabled();
@@ -212,9 +245,7 @@ describe('CodeGroupFormPane — 다른 코드그룹의 저장이 나가는 중',
     const add = screen.getByRole('button', { name: '그룹 추가' });
 
     expect(add).toBeDisabled();
-    expect(
-      screen.getByText('그룹 추가는 다른 코드그룹의 저장이 끝난 뒤에 할 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '그룹 추가' })).toBeDisabled();
     /* 수정 자리의 문면이 여기 서면 사용자는 「저장」이라는 없는 버튼을 찾는다. */
     expect(screen.queryByText(/^저장은 다른 코드그룹의/)).not.toBeInTheDocument();
   });

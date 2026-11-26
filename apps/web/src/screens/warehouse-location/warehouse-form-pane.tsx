@@ -4,7 +4,9 @@ import type { ReactNode } from 'react';
 import { useId, useState } from 'react';
 
 import { InfoTip } from '../../patterns/info-tip';
+import { CodeLockTextField } from '../../patterns/master';
 import { Select } from '../../patterns/select';
+import { UsageChip } from '../../patterns/usage-chip';
 import {
   ConfirmTarget,
   IdentityHeader,
@@ -221,13 +223,12 @@ const WarehouseCreateFields = ({
         onChange={(value) => onChange({ plantId: value })}
         error={fieldErrors.plantId}
       />
-      <TextField
+      <CodeLockTextField
+        lockReason={codeLockReason}
         label={t.fields.warehouseCode}
         required
         value={values.warehouseCode}
         onChange={(event) => onChange({ warehouseCode: event.target.value })}
-        disabled={codeLockReason !== null}
-        disabledReason={codeLockReason}
         error={fieldErrors.warehouseCode}
       />
       <TextField
@@ -330,6 +331,7 @@ export const WarehouseFormPane = ({
     {
       label: t.fields.businessUnit,
       value: labelOf(lookups.businessUnits, values.businessUnitId),
+      required: true,
       error: fieldErrors.businessUnitId,
       changed: changed('businessUnitId'),
       edit: {
@@ -340,6 +342,7 @@ export const WarehouseFormPane = ({
     {
       label: t.fields.warehouseType,
       value: labelOf(lookups.warehouseTypes, values.warehouseTypeCode),
+      required: true,
       error: fieldErrors.warehouseTypeCode,
       changed: changed('warehouseTypeCode'),
       edit: {
@@ -431,9 +434,7 @@ export const WarehouseFormPane = ({
             /* 사용 중지는 저장과 다른 일이라 바닥이 아니라 본문에 — 지금 상태와 바꾸는 단추를 한 줄에. */
             <div className="warehouse-info-state">
               <span className="warehouse-info-state-label">{t.fields.isActive}</span>
-              <Chip size="sm" status={isActive ? 'success' : 'idle'}>
-                {isActive ? t.values.active : t.values.inactive}
-              </Chip>
+              <UsageChip isActive={isActive} />
               <Button
                 variant="outlined"
                 size="sm"

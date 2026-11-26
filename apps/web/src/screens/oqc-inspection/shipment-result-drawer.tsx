@@ -435,12 +435,14 @@ const ShipmentResultForm = ({
 
       <section className="parts-iqc-block" aria-label={t.target.heading}>
         <dl className="parts-iqc-facts">
+          {/* 품목은 품목코드 · 품목명 두 칸(품목 표기 분리 · #358). */}
           <div className="parts-iqc-fact">
-            <dt className="field-label">{s.facts.item}</dt>
-            <dd className="parts-iqc-fact-key">
-              {itemParts?.name ?? '-'}
-              {itemParts !== null && <span className="parts-iqc-fact-sub">{itemParts.code}</span>}
-            </dd>
+            <dt className="field-label">{s.facts.itemCode}</dt>
+            <dd className="parts-iqc-fact-key">{itemParts?.code ?? '-'}</dd>
+          </div>
+          <div className="parts-iqc-fact">
+            <dt className="field-label">{s.facts.itemName}</dt>
+            <dd>{itemParts?.name ?? '-'}</dd>
           </div>
           <div className="parts-iqc-fact">
             <dt className="field-label">{t.target.plan}</dt>

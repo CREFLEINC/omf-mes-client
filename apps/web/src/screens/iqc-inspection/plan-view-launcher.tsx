@@ -48,7 +48,10 @@ export const PlanViewLauncher = ({
           specs={[...specs.data].sort((a, b) => a.sequenceNo - b.sequenceNo)}
           uomCodeOf={uoms.codeOf}
           drawings={<DrawingImages drawings={drawings.data ?? []} />}
-          itemLabel={messages.partsIqcInspection.skipped.item}
+          itemLabels={{
+            code: messages.partsIqcInspection.skipped.itemCode,
+            name: messages.partsIqcInspection.skipped.itemName,
+          }}
           onClose={() => setIsOpen(false)}
           onEdit={(href) => {
             setIsOpen(false);

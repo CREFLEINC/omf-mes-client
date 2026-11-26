@@ -29,7 +29,9 @@ import { toBalanceView } from './types';
 
 const t = messages.supplierReturn;
 
-const ITEM_LABEL = 'SAMPLE-ITEM-01 · 합성 품목 가';
+/* 품목은 품목코드 · 품목명 두 열로 나눠 보인다(사용자 지시 2026-11-24). */
+const ITEM_CODE = 'SAMPLE-ITEM-01';
+const ITEM_NAME = '합성 품목 가';
 const UOM_LABEL = 'SAMPLE-EA · 합성 단위 개';
 const LOCATION_LABEL = 'SAMPLE-LOC-A1 · 합성 열 가1';
 
@@ -191,15 +193,17 @@ describe('buildGrLineColumns — 열 폭 예산', () => {
       0,
     );
 
-    expect(fixed).toBe(720);
-    expect(TABLE_MIN_WIDTH_PX - fixed).toBeGreaterThanOrEqual(184);
+    /* 품목코드 열(120px)을 떼어 냈다 — 흡수 열(품목명)이 표 하한에서 받는 폭은 88px. */
+    expect(fixed).toBe(840);
+    expect(TABLE_MIN_WIDTH_PX - fixed).toBe(88);
   });
 
-  /** 선택·보유 수량·반품 수량 세 열이 붙어 일곱이 됐다(계획 §5.5). */
-  it('열이 일곱이고 차례가 정해져 있다', () => {
+  /** 선택·보유 수량·반품 수량 세 열이 붙고 품목이 품목코드 · 품목명 둘로 나뉘어 여덟이다. */
+  it('열이 여덟이고 차례가 정해져 있다', () => {
     expect(columns.map((column) => column.key)).toEqual([
       'select',
       'item',
+      'itemName',
       'lot',
       'location',
       'receiptQty',
@@ -218,7 +222,8 @@ describe('GrLineTable — 참조 표기', () => {
   it('품목·LOT·위치를 이름으로 풀고 수량에 단위를 붙인다', () => {
     renderTable();
 
-    expect(screen.getAllByText(ITEM_LABEL).length).toBe(2);
+    expect(screen.getAllByText(ITEM_CODE).length).toBe(2);
+    expect(screen.getAllByText(ITEM_NAME).length).toBe(2);
     expect(screen.getByText('LOT-2026-900010')).toBeInTheDocument();
     expect(screen.getByText(LOCATION_LABEL)).toBeInTheDocument();
     expect(screen.getByText(t.lineTable.receiptQtyPair(100, UOM_LABEL))).toBeInTheDocument();
@@ -237,7 +242,7 @@ describe('GrLineTable — 참조 표기', () => {
 
     if (row === undefined) throw new Error('9403의 줄이 없다');
 
-    expect(within(row).getAllByRole('cell')[4]?.textContent).toBe(
+    expect(within(row).getAllByRole('cell')[5]?.textContent).toBe(
       t.lineTable.receiptQtyPair(0, t.values.unknown),
     );
   });
@@ -246,7 +251,7 @@ describe('GrLineTable — 참조 표기', () => {
   it('라인 표에 내부 번호가 없다', () => {
     const { container } = renderTable();
 
-    expect(screen.getAllByText(ITEM_LABEL).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(ITEM_NAME).length).toBeGreaterThan(0);
 
     for (const id of INTERNAL_IDS) {
       expect(container.textContent ?? '').not.toContain(id);

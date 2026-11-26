@@ -1,7 +1,8 @@
-import { DiffRow, Dialog, EmptyState } from '@crefle/web-ui';
+import { DiffRow, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { ListEmpty } from '../../patterns/list-empty';
 import { toDiffEntries } from './diff-entries';
 import { formatDateTime } from './event-format';
 import type { AuditEventView } from './types';
@@ -36,7 +37,10 @@ const toItems = (row: AuditEventView): DetailItem[] => [
     value: orEmptyMark(row.performedBy === null ? null : String(row.performedBy)),
   },
   { label: t.fields.correlationId, value: orEmptyMark(row.correlationId) },
-  { label: t.diff.terminalId, value: orEmptyMark(row.terminalId === null ? null : String(row.terminalId)) },
+  {
+    label: t.diff.terminalId,
+    value: orEmptyMark(row.terminalId === null ? null : String(row.terminalId)),
+  },
   { label: t.diff.auditEventId, value: String(row.auditEventId) },
   /*
    * 사유는 **읽기만 한다.** 이슈가 금지한 것은 입력이며, 응답에 실려 온 값을 감추라는 뜻이 아니다.
@@ -68,13 +72,7 @@ export const ChangeDetailDialog = ({ row, onClose }: ChangeDetailDialogProps) =>
      * 빈 표를 내거나 값을 지어내지 않고 받지 못했다는 사실을 밝힌다.
      */
     if (entries.length === 0) {
-      return (
-        <EmptyState
-          size="sm"
-          title={t.diff.noValuesTitle}
-          description={t.diff.noValuesDescription}
-        />
-      );
+      return <ListEmpty title={t.diff.noValuesTitle} description={t.diff.noValuesDescription} />;
     }
 
     return entries.map((entry) => (

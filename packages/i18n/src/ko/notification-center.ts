@@ -20,8 +20,9 @@ export const notificationCenter = {
     list: '알림을 불러오는 중',
   },
   fields: {
-    /** 기간은 **한 컨트롤**이다(`DatePicker mode="range"`) — 라벨도 하나다. */
-    period: '조회 기간',
+    /** 기간은 시작일 · 종료일 두 칸이다(사용자 지시 2026-11-25) — 칸마다 이름이 있다. */
+    periodFrom: '조회 시작일',
+    periodTo: '조회 종료일',
     /**
      * 「안 읽음만」은 **켜진 채로 시작한다**(화면 스펙 §4의 배치).
      *

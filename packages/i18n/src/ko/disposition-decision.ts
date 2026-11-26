@@ -9,7 +9,7 @@ export const dispositionDecision = {
   listCollapse: '목록 접기',
   listExpand: '목록 펼치기',
   breadcrumbRoot: '품질 관리',
-  /** 탭 줄 오른쪽 상태 칩 — 「판정 대기 3」. 건수를 아직 모르면 이름만(#223). */
+  /** 탭 줄 오른쪽 상태 칩 — 「판정 대기 3」(라벨에는 「건」을 빼고 · 사용자 지시 2026-11-25). 건수를 아직 모르면 이름만(#223). */
   statusChip: (label: string, count: number | undefined): string =>
     count === undefined ? label : `${label} ${String(count)}`,
   panes: {

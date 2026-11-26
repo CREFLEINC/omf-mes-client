@@ -3,7 +3,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { toDepartmentListQuery } from './filters';
+import { toDepartmentListQuery, type ListPageSize } from './filters';
 import type { Department, PageMeta, ScopedFilters } from './types';
 
 type DepartmentDetailResponse = components['schemas']['DepartmentDetailResponse'];
@@ -26,8 +26,8 @@ export interface DepartmentListResponse {
  */
 export const departmentKeys = {
   all: ['common-code-departments'] as const,
-  list: (filters: ScopedFilters, page: number) =>
-    ['common-code-departments', 'list', filters, page] as const,
+  list: (filters: ScopedFilters, page: number, size: ListPageSize | null = null) =>
+    ['common-code-departments', 'list', filters, page, size] as const,
   detail: (departmentId: number) => ['common-code-departments', 'detail', departmentId] as const,
   /** 상위 선택지·작업자 필터가 쓰는 전체 목록. 조회 조건과 무관하다 */
   options: ['common-code-departments', 'options'] as const,
@@ -42,18 +42,19 @@ export const departmentKeys = {
 export const useDepartmentList = (
   filters: ScopedFilters,
   page: number,
+  size: ListPageSize | null,
   enabled: boolean,
 ): UseQueryResult<DepartmentListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: departmentKeys.list(filters, page),
+    queryKey: departmentKeys.list(filters, page, size),
     // 다른 탭에 있는 동안에는 조회하지 않는다 — 보이지 않는 목록을 받아 둘 이유가 없다.
     enabled,
     queryFn: () =>
       runRequest(() =>
         client.GET('/mdm/departments', {
-          params: { query: toDepartmentListQuery(filters, page) },
+          params: { query: toDepartmentListQuery(filters, page, size) },
         }),
       ),
   });

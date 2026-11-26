@@ -6,6 +6,7 @@ import {
   readFilters,
   readPage,
   readSelectedRouteId,
+  readSize,
   toCreateSearchParams,
   toRouteListQuery,
   toSearchParams,
@@ -72,11 +73,10 @@ describe('readSelectedRouteId · isCreating', () => {
     expect(readSelectedRouteId(params(`?ar=${raw}`))).toBeNull();
   });
 
-  it('등록 중이면 아무것도 고르지 않은 것이다', () => {
-    // 두 자리가 함께 서지 않는다 — 배타 규칙이 이 함수 하나에만 있어야 한다.
-    expect(readSelectedRouteId(params('?ar=9001'))).toBe(9001);
-    expect(readSelectedRouteId(params('?ar=9001&new=1'))).toBeNull();
+  it('등록 중이어도 고른 결재선은 그대로다 — 등록은 그 위에 뜨는 팝업이다', () => {
+    expect(readSelectedRouteId(params('?ar=9001&new=1'))).toBe(9001);
     expect(isCreating(params('?ar=9001&new=1'))).toBe(true);
+    expect(readSelectedRouteId(params('?new=1'))).toBeNull();
   });
 
   it('등록 표시는 1일 때만 참이다', () => {
@@ -140,31 +140,42 @@ describe('toSelectionSearchParams', () => {
   });
 
   it('등록 중 표시를 남기지 않는다', () => {
-    // 두 자리가 함께 서지 않는다 — 주소를 만드는 쪽도 그 규칙을 지킨다.
+    // 팝업을 닫거나 등록을 마친 주소가 이것이다.
     expect(toSelectionSearchParams(filters(), 1, 9001).has('new')).toBe(false);
   });
 });
 
 describe('toCreateSearchParams', () => {
   it('조건과 쪽을 그대로 두고 등록 표시만 얹는다', () => {
-    const next = toCreateSearchParams(filters({ q: 'SAMPLE' }), 3);
+    const next = toCreateSearchParams(filters({ q: 'SAMPLE' }), 3, null);
 
     expect(next.get('q')).toBe('SAMPLE');
     expect(next.get('page')).toBe('3');
     expect(next.get('new')).toBe('1');
+    expect(next.has('ar')).toBe(false);
   });
 
-  it('고른 결재선을 남기지 않는다', () => {
-    // 두 자리는 함께 서지 않는다 — 주소를 만드는 쪽도 그 규칙을 지킨다.
-    expect(toCreateSearchParams(filters(), 1).has('ar')).toBe(false);
-  });
+  it('고른 결재선을 그대로 싣는다 — 팝업 뒤 선택이 풀리지 않는다', () => {
+    const next = toCreateSearchParams(filters(), 1, 9001);
 
-  it('등록 표시가 켜지면 고른 결재선이 없는 것으로 읽힌다', () => {
     // 짝 방향 — 만드는 쪽과 읽는 쪽이 같은 규칙을 갖는지까지 잰다.
-    const next = toCreateSearchParams(filters(), 1);
-
     expect(isCreating(next)).toBe(true);
-    expect(readSelectedRouteId(next)).toBeNull();
+    expect(readSelectedRouteId(next)).toBe(9001);
+  });
+
+  it('팝업을 닫은 주소는 같은 선택으로 돌아간다', () => {
+    const opened = toCreateSearchParams(filters({ q: 'SAMPLE' }), 2, 9001, 10);
+    const closed = toSelectionSearchParams(
+      filters({ q: 'SAMPLE' }),
+      2,
+      readSelectedRouteId(opened),
+      10,
+    );
+
+    expect(closed.toString()).toBe(
+      toSelectionSearchParams(filters({ q: 'SAMPLE' }), 2, 9001, 10).toString(),
+    );
+    expect(isCreating(closed)).toBe(false);
   });
 });
 
@@ -229,8 +240,27 @@ describe('toRouteListQuery', () => {
     expect(toRouteListQuery(filters(), 2).page).toBe(2);
   });
 
-  it('쪽 크기를 싣지 않는다', () => {
+  it('쪽 크기를 고르지 않았으면 싣지 않는다', () => {
     // 서버 기본값을 쓴다 — 화면이 정한 크기를 심으면 그것이 계약처럼 굳는다.
     expect(Object.keys(toRouteListQuery(filters(), 2))).not.toContain('size');
+  });
+
+  it('사용자가 고른 쪽 크기는 싣는다(#358)', () => {
+    expect(toRouteListQuery(filters(), 1, 10).size).toBe(10);
+  });
+});
+
+describe('쪽 크기(#358)', () => {
+  it('주소에 고른 크기만 남기고, 선택지 밖 값은 고르지 않은 것으로 본다', () => {
+    expect(toSearchParams(filters(), 1).has('size')).toBe(false);
+    expect(toSearchParams(filters(), 1, 20).get('size')).toBe('20');
+    expect(readSize(new URLSearchParams('size=20'))).toBe(20);
+    expect(readSize(new URLSearchParams('size=7'))).toBeNull();
+    expect(readSize(new URLSearchParams())).toBeNull();
+  });
+
+  it('선택 · 등록 주소도 쪽 크기를 이어 간다', () => {
+    expect(toSelectionSearchParams(filters(), 1, 9001, 10).get('size')).toBe('10');
+    expect(toCreateSearchParams(filters(), 1, null, 50).get('size')).toBe('50');
   });
 });

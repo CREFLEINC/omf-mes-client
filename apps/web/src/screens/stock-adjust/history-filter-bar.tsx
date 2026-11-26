@@ -1,14 +1,14 @@
-import { Button, DatePicker } from '@crefle/web-ui';
+import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useState } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import {
   HiddenFilterChips,
   hasChangedFilters,
   type HiddenFilterChip,
 } from '../../patterns/filter-more';
 
-import { FieldLabel } from './field-label';
 import {
   DEFAULT_ADJUSTMENT_FILTERS,
   toAdjustmentFilterChips,
@@ -86,7 +86,6 @@ export const HistoryFilterBar = ({
   onRemoveFilter,
   onReset,
 }: HistoryFilterBarProps) => {
-  const periodId = useId();
   const [filters, setFilters] = useState<AdjustmentFilters>(appliedFilters);
 
   /*
@@ -159,26 +158,18 @@ export const HistoryFilterBar = ({
   return (
     <>
       <div className="filter-bar">
-        {/*
-         * 기간은 **한 컨트롤**이다 — `mode="range"` 하나가 두 값을 준다. 주소 키(`hfrom`·`hto`)와
-         * 요청 파라미터는 그대로이고 바뀐 것은 고르는 수단뿐이다.
-         */}
-        <div className="field-cell">
-          <FieldLabel htmlFor={periodId} label={t.historyFields.period} />
-          <DatePicker
-            id={periodId}
-            mode="range"
-            placeholder={messages.common.selectDate}
-            disabled={isLocked}
-            value={[
-              filters.from === '' ? null : filters.from,
-              filters.to === '' ? null : filters.to,
-            ]}
-            onChange={([from, to]) => {
-              setFilters((prev) => ({ ...prev, from, to }));
-            }}
-          />
-        </div>
+        <DateRangeFields
+          clearable
+          startLabel={t.historyFields.periodFrom}
+          endLabel={t.historyFields.periodTo}
+          placeholder={messages.common.selectDate}
+          disabled={isLocked}
+          from={filters.from}
+          to={filters.to}
+          onChange={(from, to) => {
+            setFilters((prev) => ({ ...prev, from, to }));
+          }}
+        />
 
         <SelectField
           label={t.historyFields.count}

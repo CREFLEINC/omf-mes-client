@@ -101,7 +101,8 @@ export const stockStatus = {
   },
   /** 잔액 표의 머리글. 열 구성과 폭의 근거는 screens/stock-status/balance-table.tsx에 있다. */
   table: {
-    item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     lot: 'LOT',
     location: '위치',
     onHandQty: '보유',
@@ -303,7 +304,8 @@ export const stockStatus = {
     },
     lines: {
       title: '거래 라인',
-      item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       lot: 'LOT',
       qty: '수량',
       uom: '단위',

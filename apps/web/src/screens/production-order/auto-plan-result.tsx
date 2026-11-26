@@ -77,7 +77,7 @@ export const AutoPlanResult = ({
             aria-pressed={filter === code}
             onClick={() => onFilterChange(filter === code ? null : code)}
           >
-            {labels[code]} {outcomes.filter((item) => autoPlanResultCode(item) === code).length}건
+            {labels[code]} {outcomes.filter((item) => autoPlanResultCode(item) === code).length}
           </Button>
         ))}
       </div>
@@ -110,6 +110,7 @@ export const AutoPlanResult = ({
                     </td>
                     <td>
                       <Link
+                        className="action-link-button"
                         to={item.fixHref ?? processPath(item.label)}
                         aria-label={`${item.label} 계획 확인`}
                       >

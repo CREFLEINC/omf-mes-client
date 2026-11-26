@@ -4,6 +4,7 @@ import { useQueries } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import { splitCodeName } from '../../patterns/split-code-name';
 
 import type { PlannedStockConflict } from './mutations';
 
@@ -55,11 +56,14 @@ export const PlannedStockDialog = ({
         ).item,
     })),
   });
-  const labelOf = (itemId: number): string => {
+  /** 품목코드 · 품목명 두 칸(사용자 지시 2026-11-24). 못 찾으면 번호를 코드 칸에 둔다(종전과 같다). */
+  const codeNameOf = (itemId: number): { code: string; name: string } => {
     const known = itemLabel(itemId);
-    if (known !== undefined) return known;
+    if (known !== undefined) return splitCodeName(known, t.values.empty);
     const item = itemDetails[unknownItems.indexOf(itemId)]?.data;
-    return item === undefined ? String(itemId) : `${item.itemCode} ${item.itemName}`;
+    return item === undefined
+      ? { code: String(itemId), name: t.values.empty }
+      : { code: item.itemCode, name: item.itemName };
   };
 
   /*
@@ -120,7 +124,8 @@ export const PlannedStockDialog = ({
       <table className="material-issue-request-conflict" aria-label={t.override.tableLabel}>
         <thead>
           <tr>
-            <th scope="col">{t.override.columns.item}</th>
+            <th scope="col">{t.override.columns.itemCode}</th>
+            <th scope="col">{t.override.columns.itemName}</th>
             <th scope="col">{t.override.columns.warehouse}</th>
             <th scope="col">{t.override.columns.requested}</th>
             <th scope="col">{t.override.columns.free}</th>
@@ -131,7 +136,8 @@ export const PlannedStockDialog = ({
         <tbody>
           {conflict.details.map((detail) => (
             <tr key={`${String(detail.itemId)}-${String(detail.sourceWarehouseId ?? 0)}`}>
-              <td>{labelOf(detail.itemId)}</td>
+              <td>{codeNameOf(detail.itemId).code}</td>
+              <td>{codeNameOf(detail.itemId).name}</td>
               <td>
                 {detail.noStockedWarehouse === true
                   ? t.override.noStockedRow

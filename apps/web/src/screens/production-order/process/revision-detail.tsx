@@ -89,10 +89,13 @@ export const BomContents = ({
         client.GET('/planning/boms/{bomId}/components', { params: { path: { bomId: id } } }),
       ),
   });
-  const names = useProductionOrderItemNames([
+  const itemIds = [
     ...(rows.data?.items ?? []).map((row) => row.componentItemId),
     ...(header.data?.bom.parentItemId ? [header.data.bom.parentItemId] : []),
-  ]);
+  ];
+  const names = useProductionOrderItemNames(itemIds);
+  /* 품목코드 · 품목명을 두 칸으로 나눠 보인다(사용자 지시 2026-11-24) — 같은 품목 상세 캐시를 쓴다. */
+  const items = useItemCodeNames(itemIds);
   const operations = useRoutingOperationOptions(
     header.data?.bom.parentItemId ?? null,
     (rows.data?.items ?? []).some((row) => row.routingOperationId != null),
@@ -169,12 +172,13 @@ export const BomContents = ({
           </strong>
         </div>
         {rows.data.items.length ? (
-          <div className="erp-wo-revision-table erp-wo-plain-materials">
+          <div className="erp-wo-revision-table erp-wo-plain-materials erp-wo-split-item">
             <table>
               <caption className="visually-hidden">자재별 필요 수량</caption>
               <thead>
                 <tr>
-                  <th>자재</th>
+                  <th>품목코드</th>
+                  <th>품목명</th>
                   <th>필요 수량</th>
                   <th>필수 여부</th>
                 </tr>
@@ -184,9 +188,11 @@ export const BomContents = ({
                   .sort((a, b) => a.sequenceNo - b.sequenceNo)
                   .map((row) => (
                     <tr key={row.bomComponentId}>
-                      <td data-label="자재">
-                        {names.items.find((item) => item.itemId === row.componentItemId)?.label ??
-                          '자재 정보 확인 중'}
+                      <td data-label="품목코드">
+                        {items.get(row.componentItemId)?.itemCode ?? '자재 정보 확인 중'}
+                      </td>
+                      <td data-label="품목명">
+                        {items.get(row.componentItemId)?.itemName ?? '—'}
                       </td>
                       <td data-label="필요 수량">
                         <strong>
@@ -696,7 +702,7 @@ export const RevisionDetailButton = ({
                     to={`/master-data/routing?item=${itemId}&rev=${id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="erp-wo-revision-master-link"
+                    className="action-link-button erp-wo-revision-master-link"
                     aria-label="Routing 관리 화면 열기 (새 탭)"
                   >
                     Routing 관리 화면 열기 ↗

@@ -117,11 +117,12 @@ export const isCreating = (params: URLSearchParams, target: CreateTarget): boole
  * 지금 무엇을 편집하고 있는가. **세 값은 함께 성립하지 않는 하나의 자리다** —
  * 고른 사용자(`usr`) · 사용자 등록(`new=user`) · 고른 역할(`rol`).
  * 역할 등록은 주소가 아니라 팝업이 값을 쥔다 — 열어도 고른 역할이 남아야 한다(#333).
+ * 사용자 등록도 팝업이라 뒤의 고른 사용자(`appUserId`)를 함께 남긴다 — 열고 닫아도 고른 줄이 풀리지 않는다(omf-all-around#358).
  */
 export type Selection =
   | { kind: 'user'; appUserId: number }
   | { kind: 'role'; roleId: number }
-  | { kind: 'createUser' }
+  | { kind: 'createUser'; appUserId: number | null }
   | { kind: 'none' };
 
 /**
@@ -145,6 +146,9 @@ export const applySelection = (params: URLSearchParams, selection: Selection): v
       break;
     case 'createUser':
       params.set(URL_KEYS.create, CREATE_VALUES.user);
+      if (selection.appUserId !== null) {
+        params.set(URL_KEYS.appUserId, String(selection.appUserId));
+      }
       break;
     case 'none':
       break;

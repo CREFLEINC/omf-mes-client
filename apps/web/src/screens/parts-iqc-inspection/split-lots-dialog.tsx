@@ -285,7 +285,12 @@ export const SplitLotsDialog = ({
     >
       <div className="iqc-split">
         <div className="iqc-split-lots-head">
-          <strong>{t.lotList}</strong>
+          <span>
+            <strong>{t.lotList}</strong>
+            <span className="required-mark" aria-hidden="true">
+              {' *'}
+            </span>
+          </span>
           <span className="iqc-split-muted">{t.pickedCount(selected.length, lots.length)}</span>
         </div>
         <ul className="iqc-split-lots" aria-label={t.lotList}>

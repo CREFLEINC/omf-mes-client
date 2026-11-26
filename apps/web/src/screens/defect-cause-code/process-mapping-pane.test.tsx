@@ -254,22 +254,31 @@ describe('DefectCauseCodeScreen — 공정 매핑', () => {
     const user = userEvent.setup();
     await screen.findByRole('rowheader', { name: /DF-11 · 스크래치/ });
 
-    // 상세 코드 4개 중 DF-11 만 사출에 연결돼 있다.
-    expect(await screen.findByRole('button', { name: '전체 4' })).toHaveAttribute(
+    // 상세 코드 4개 중 DF-11 만 사출에 연결돼 있다. 「전체」 칩은 없고 아무 칩도 눌려 있지 않다(사용자 지시 2026-11-24).
+    expect(await screen.findByRole('button', { name: '매핑 1' })).toHaveAttribute(
       'aria-pressed',
-      'true',
+      'false',
     );
+    expect(screen.queryByRole('button', { name: /^전체/ })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '매핑 1' }));
     expect(screen.getByRole('rowheader', { name: /DF-11 · 스크래치/ })).toBeInTheDocument();
     expect(screen.queryByRole('rowheader', { name: /DF-12/ })).not.toBeInTheDocument();
+
+    // 고른 칩을 다시 누르면 전체로 풀린다.
+    await user.click(screen.getByRole('button', { name: '매핑 1' }));
+    expect(screen.getByRole('button', { name: '매핑 1' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('rowheader', { name: /DF-12/ })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '매핑 해제 3' }));
     expect(screen.queryByRole('rowheader', { name: /DF-11 · 스크래치/ })).not.toBeInTheDocument();
     expect(screen.getByRole('rowheader', { name: /DF-12/ })).toBeInTheDocument();
 
-    // 초기화는 칩도 「전체」로 되돌린다(#209 버그 수정).
+    // 초기화는 칩도 전체로 되돌린다(#209 버그 수정).
     await user.click(screen.getByRole('button', { name: '초기화' }));
-    expect(screen.getByRole('button', { name: '전체 4' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '매핑 해제 3' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
     expect(screen.getByRole('rowheader', { name: /DF-11 · 스크래치/ })).toBeInTheDocument();
   });
 

@@ -30,6 +30,8 @@ export const dispositionRequest = {
     keyword: '검색어',
     lotNo: 'LOT',
     item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     qty: '수량',
     uom: '단위',
     receiptNo: '입고번호',
@@ -187,7 +189,7 @@ export const dispositionRequest = {
     unavailable: '처분 목록을 표시할 수 없습니다',
     /** 부분 처분이 정상이다(스펙 §5-5) — 여러 행이 올 수 있음을 머리에 적는다. */
     partialNote: '한 부적합에 처분이 여러 건일 수 있습니다. 처분마다 후속이 다릅니다.',
-    approvalPending: '결재 진행 중',
+    approvalPending: '결재 진행',
     /** 후속 버튼의 비활성 사유 — 규범 4: 컨트롤 이름으로 시작하고 풀리는 조건을 함께 적는다. */
     followUp: {
       reinstateUnavailable:

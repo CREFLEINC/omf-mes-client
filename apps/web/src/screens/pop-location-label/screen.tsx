@@ -309,7 +309,10 @@ export const PopLocationLabelScreen = () => {
                 aria-pressed={warehouse.warehouseId === warehouseId}
                 disabled={isBusy}
                 onClick={() => {
-                  setWarehouseId(warehouse.warehouseId);
+                  /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+                  setWarehouseId(
+                    warehouse.warehouseId === warehouseId ? null : warehouse.warehouseId,
+                  );
                   /* 창고가 바뀌면 앞서 고른 자리는 이 창고의 것이 아니다. */
                   setSelectedIds([]);
                   setBatchPage(1);

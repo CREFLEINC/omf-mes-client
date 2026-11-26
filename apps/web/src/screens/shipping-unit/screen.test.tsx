@@ -793,6 +793,22 @@ describe('P-04-05 출하 단위 구성', () => {
     expect(screen.queryByRole('button', { name: t.actions.next })).toBeNull();
   });
 
+  it('구성 완료 탭에서 고른 단위를 한 번 더 누르면 선택이 풀린다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await user.click(await screen.findByRole('tab', { name: new RegExp(t.tabs.done, 'u') }));
+    const row = await screen.findByRole('button', { name: /SU-20260916-0003/u });
+    await user.click(row);
+    expect(await screen.findByText('HU-CLOSED-1')).toBeInTheDocument();
+    expect(row).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(row);
+    expect(row).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByText('HU-CLOSED-1')).toBeNull();
+    expect(screen.getByText(t.closed.pick)).toBeInTheDocument();
+  });
+
   /*
    * ⭐ 「구성 완료」 단위도 납품 라벨을 다시 뽑는다 — 출하 라벨 화면 재발행과 같은 길
    *    (`POST /app/document-issues` + 재발행 사유). 사유를 고르기 전에는 나가지 않는다.

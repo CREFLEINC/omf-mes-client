@@ -1,17 +1,23 @@
 import {
   AlertBanner,
+  Button,
   Checkbox,
   type Column,
   EmptyState,
+  Icon,
   SkeletonText,
   Table,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useColumnWidths } from '../../patterns/column-resize';
+import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
+import { UsageName } from '../../patterns/usage-chip';
 import { hasDuplicateDisplayOrder, sortForDisplay } from './code-value-order';
 import type { CodeValue } from './code-value-types';
-import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 
 const t = messages.commonCode.codeValue;
@@ -24,9 +30,15 @@ export interface CodeValueListPaneProps {
   includeInactive: boolean;
   onIncludeInactiveChange: (includeInactive: boolean) => void;
   pageView: PageView;
+  /** 서버가 준 쪽 정보. 받기 전 · 실패면 `null` — 셀 것이 없으면 쪽 이동을 그리지 않는다. */
+  pageMeta: PageNavMeta | null;
   onChangePage: (page: number) => void;
   selectedCodeValueId: number | null;
   onSelect: (codeValueId: number) => void;
+  /** 줄의 [수정] — 그 코드값의 수정 팝업을 연다(사용자 지시 2026-11-26). */
+  onEdit: (codeValueId: number) => void;
+  /** 줄의 [사용 중지] — 확인 창을 연다. 이미 미사용인 줄은 단추가 잠긴다. */
+  onDeactivate: (codeValueId: number) => void;
   /** 「코드값 추가」 자리. 그룹을 고르지 않았을 때의 비활성 처리는 조립부가 정한다 */
   addAction: ReactNode;
   /**
@@ -64,23 +76,27 @@ export const CodeValueListPane = ({
   includeInactive,
   onIncludeInactiveChange,
   pageView,
+  pageMeta,
   onChangePage,
   selectedCodeValueId,
   onSelect,
+  onEdit,
+  onDeactivate,
   addAction,
   loadError,
 }: CodeValueListPaneProps) => {
   const rows = sortForDisplay(codeValues);
 
-  const columns: Column<CodeValue>[] = [
+  const baseColumns: Column<CodeValue>[] = [
     {
       key: 'code',
       header: t.fields.code,
-      width: '160px',
+      width: '140px',
+      /* 줄 고르기 단추 — 코드그룹 목록과 같다. 줄 어디를 눌러도 이 단추로 넘긴다(사용자 지시 2026-11-25). */
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className="users-roles-row-pick"
           aria-current={row.codeValueId === selectedCodeValueId ? 'true' : undefined}
           onClick={() => onSelect(row.codeValueId)}
         >
@@ -91,22 +107,68 @@ export const CodeValueListPane = ({
     {
       key: 'codeName',
       header: t.fields.codeName,
-      render: (row) => (row.isActive ? row.codeName : `${row.codeName}${t.values.inactiveSuffix}`),
+      render: (row) => <UsageName isActive={row.isActive}>{row.codeName}</UsageName>,
     },
     {
       key: 'displayOrder',
       header: t.fields.displayOrder,
-      width: '96px',
+      width: '104px',
       align: 'end',
       render: (row) => String(row.displayOrder),
     },
     {
       key: 'effectivePeriod',
       header: t.fields.effectivePeriod,
-      width: '200px',
+      width: '180px',
       render: (row) => formatPeriod(row.effectiveFrom, row.effectiveTo),
     },
+    {
+      /*
+       * 관리 — 줄마다 [사용 중지] · [수정](표 아래 상세 칸을 걷었다 · 사용자 지시 2026-11-26). 두 단추는 같은 크기 · 테두리 ·
+       * 아이콘 모양. 이미 미사용인 줄의 [사용 중지]는 잠그고 사유는 마우스를 올리면 보인다.
+       */
+      key: 'manage',
+      header: t.fields.manage,
+      width: '190px',
+      render: (row) => (
+        <span className="common-code-value-actions">
+          <Button
+            variant="outlined"
+            size="sm"
+            leadingIcon={<Icon name="block" size={16} aria-hidden />}
+            disabled={!row.isActive}
+            title={row.isActive ? undefined : t.actionReasons.deactivateAlreadyDone}
+            aria-label={`${row.code} ${messages.common.deactivate}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onDeactivate(row.codeValueId);
+            }}
+          >
+            {messages.common.deactivate}
+          </Button>
+          <Button
+            variant="outlined"
+            size="sm"
+            leadingIcon={<Icon name="edit" size={16} aria-hidden />}
+            aria-label={`${row.code} ${t.actions.edit}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onEdit(row.codeValueId);
+            }}
+          >
+            {t.actions.edit}
+          </Button>
+        </span>
+      ),
+    },
   ];
+  /*
+   * 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다 — 코드그룹 목록과 같다. 열 폭은 상세 상자 폭에 맞춘다(사용자 지시
+   * 2026-11-25 — 종전 `.wide-table` 최소 폭이 상자보다 넓어 「유효기간」이 잘리고 표 안에 스크롤이 생겼다).
+   */
+  const ordered = useColumnOrder('omf-mes:common-code:columns:code-values:order', baseColumns);
+  const resizable = useColumnWidths('omf-mes:common-code:columns:code-values:v3', ordered);
+  const fit = useFitColumns(resizable.columns);
 
   /**
    * 빈 상태는 세 갈래다 — 셋을 뭉치면 사실과 다른 안내가 된다.
@@ -154,20 +216,35 @@ export const CodeValueListPane = ({
 
     return (
       <>
-        {/*
-         * 열이 넷이라 좁은 칸에서는 짓눌린다 — 지정 폭 합 456px이 `.wide-table`의
-         * 최소 폭 안에 들어가므로 모자라면 짓누르는 대신 가로로 넘긴다.
-         */}
-        <div className="wide-table">
+        {/* 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 단추로 넘긴다(코드그룹 목록과 같다). */}
+        <div
+          ref={fit.ref}
+          className="users-roles-list inspection-queue-table"
+          style={resizable.style}
+          onClick={(event) => {
+            const target = event.target;
+            if (!(target instanceof Element)) return;
+            if (target.closest('button, a, input, select, textarea') !== null) return;
+            target
+              .closest('tbody tr')
+              ?.querySelector<HTMLButtonElement>('.users-roles-row-pick')
+              ?.click();
+          }}
+        >
           <Table
             density="compact"
-            columns={columns}
+            columns={fit.columns}
             rows={rows}
             getRowId={(row) => String(row.codeValueId)}
             empty={emptySlot}
           />
         </div>
-        <PageNav view={pageView} onChange={onChangePage} label={t.pageNavLabel} />
+        {/* 공용 쪽 이동(#358). 한 화면에 쪽 이동이 둘이라 묶음 이름으로 어느 목록의 이동인지 가른다. */}
+        {pageMeta !== null && (
+          <div role="group" aria-label={t.pageNavLabel}>
+            <PageNav meta={pageMeta} buttonSize="md" onChangePage={onChangePage} />
+          </div>
+        )}
       </>
     );
   };
@@ -203,9 +280,13 @@ export const CodeValueListPane = ({
         </div>
       )}
 
-      <div className="filter-bar">
-        {/* 해제 축이라 변경 즉시 적용한다. */}
-        <div className="field-cell field-cell-unlabeled">
+      {/* 무슨 목록인지 조회 상자 위에 제목으로 밝힌다(사용자 지시 2026-11-25). */}
+      <h3 className="pane-title">{t.listTitle}</h3>
+
+      {/* 상세 안 조회 조건도 테두리 상자에 담는다 — 다른 화면 상세 안 조회 상자와 같은 모양(사용자 지시 2026-11-25). */}
+      <div className="filter-bar common-code-detail-filter">
+        {/* 해제 축이라 변경 즉시 적용한다. 상자 안 조건이 이것 하나라 라벨 층만큼 내리지 않는다. */}
+        <div className="field-cell">
           <Checkbox
             checked={includeInactive}
             onChange={(event) => onIncludeInactiveChange(event.target.checked)}
@@ -213,11 +294,10 @@ export const CodeValueListPane = ({
             {messages.common.includeInactive}
           </Checkbox>
         </div>
+        {addAction}
       </div>
 
       {listSlot()}
-
-      <div className="filter-bar">{addAction}</div>
     </section>
   );
 };

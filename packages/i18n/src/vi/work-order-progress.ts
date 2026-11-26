@@ -55,6 +55,8 @@ export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
     columns: {
       workOrderNo: 'Số W/O',
       itemId: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       orderQty: 'Lệnh',
       goodQty: 'Đạt',
       defectQty: 'Lỗi',

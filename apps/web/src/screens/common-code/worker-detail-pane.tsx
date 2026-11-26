@@ -1,8 +1,10 @@
-import { AlertBanner } from '@crefle/web-ui';
+import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import type { LookupSource } from '../../patterns/lookup-display';
+import { UsageChip } from '../../patterns/usage-chip';
 import { lookupLabel } from './code-options';
 import type { LookupEntry, Worker } from './types';
 
@@ -13,10 +15,12 @@ export interface WorkerDetailPaneProps {
   businessUnits: LookupSource<LookupEntry>;
   plants: LookupSource<LookupEntry>;
   departments: LookupSource<LookupEntry>;
+  /** 제목 오른쪽 안내 알약(선택 목록이 잘렸거나 못 불러왔을 때). 없으면 null. */
+  headingNote?: ReactNode;
 }
 
 /** 라벨과 값 한 쌍. **폼 컨트롤이 아니다** — 잠긴 입력칸은 「언젠가 열린다」는 뜻이 된다. */
-const ValueField = ({ label, value }: { label: string; value: string }) => {
+const ValueField = ({ label, value }: { label: string; value: ReactNode }) => {
   const labelId = useId();
 
   return (
@@ -24,7 +28,7 @@ const ValueField = ({ label, value }: { label: string; value: string }) => {
       <span className="field-label" id={labelId}>
         {label}
       </span>
-      <p aria-labelledby={labelId}>{value}</p>
+      <div aria-labelledby={labelId}>{value}</div>
     </div>
   );
 };
@@ -50,10 +54,19 @@ export const WorkerDetailPane = ({
   businessUnits,
   plants,
   departments,
+  headingNote = null,
 }: WorkerDetailPaneProps) => (
   <section className="pane" aria-label={t.panes.workerDetail}>
-    <div className="banner-slot">
-      <AlertBanner variant="info">{t.worker.readOnlyNotice}</AlertBanner>
+    {/*
+     * 사용자 관리 상세와 같은 머리(제목 줄). 읽기 전용 안내는 제목 옆 ⓘ — 마우스를 올리면 같은 문구가 보인다
+     * (생산 창고 제목 옆 ⓘ 와 같은 방식 · 사용자 지시 2026-11-26).
+     */}
+    <div className="pane-heading-row users-roles-heading common-code-heading-with-note common-code-heading-wrap">
+      <div className="info-label">
+        <h3 className="pane-title">{t.panes.workerDetail}</h3>
+        <InfoTip text={t.worker.readOnlyNotice} />
+      </div>
+      {headingNote}
     </div>
 
     <div className="form-grid">
@@ -72,14 +85,20 @@ export const WorkerDetailPane = ({
       <ValueField
         label={t.worker.fields.appUser}
         value={
-          worker.appUserId === null || worker.appUserId === undefined
-            ? t.worker.values.appUserNotLinked
-            : t.worker.values.appUserLinked
+          worker.appUserId === null || worker.appUserId === undefined ? (
+            <Chip variant="status" size="sm" status="idle">
+              {t.worker.values.appUserNotLinked}
+            </Chip>
+          ) : (
+            <Chip variant="status" size="sm" status="success">
+              {t.worker.values.appUserLinked}
+            </Chip>
+          )
         }
       />
       <ValueField
         label={t.worker.fields.isActive}
-        value={worker.isActive ? t.worker.values.active : t.worker.values.inactive}
+        value={<UsageChip isActive={worker.isActive} />}
       />
     </div>
   </section>

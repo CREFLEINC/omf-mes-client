@@ -35,6 +35,8 @@ export interface OrderTableProps {
   today: string;
   selectedId: number | null;
   onSelect: (purchaseOrderId: number) => void;
+  /** 고른 줄을 다시 누르면 고르기를 푼다. */
+  onClearSelection: () => void;
   onFirstPage: () => void;
   /** 걸린 열 정렬(주소의 `sort` · `dir`). 없으면 서버 기본 순서. */
   sort: OrderSort | null;
@@ -92,6 +94,7 @@ export const OrderTable = ({
   today,
   selectedId,
   onSelect,
+  onClearSelection,
   onFirstPage,
   sort,
   onSortChange,
@@ -218,6 +221,7 @@ export const OrderTable = ({
         onPick: (row) => {
           onSelect(row.purchaseOrderId);
         },
+        onUnpick: onClearSelection,
       }}
       sort={sort === null ? null : { key: columnOfSortKey(sort.key), direction: sort.direction }}
       onSortChange={(next: SortState | null) => {

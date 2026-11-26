@@ -39,7 +39,6 @@ export const inspectionDocuments = {
   searchPlaceholder: 'Nhập tên tệp',
   kindLabel: 'Loại tệp',
   kinds: {
-    all: 'Tất cả',
     image: 'Hình ảnh',
     pdf: 'PDF',
     excel: 'Excel',

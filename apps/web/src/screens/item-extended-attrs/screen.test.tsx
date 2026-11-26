@@ -181,14 +181,6 @@ const bomListRoute = (items = bomFixtures): StubRoute => ({
   respond: () => jsonResponse({ items }),
 });
 
-/** 기본 지정 — 응답은 **지정한 BOM 하나만** 돌려준다(기존 기본의 해제는 응답에 없다). */
-const setDefaultRoute = (bomId = 2001): StubRoute => ({
-  match: (request) =>
-    request.method === 'POST' && new URL(request.url).pathname === setDefaultPath(bomId),
-  respond: () =>
-    jsonResponse({ ...bomFixtures.find((row) => row.bomId === bomId), isDefault: true }),
-});
-
 const setDefaultFailureRoute = (status: number, body: unknown, bomId = 2001): StubRoute => ({
   match: (request) =>
     request.method === 'POST' && new URL(request.url).pathname === setDefaultPath(bomId),
@@ -1027,7 +1019,7 @@ describe('ItemExtendedAttrsScreen — 품목 선택 변경 (§5.4 3행)', () => 
     expect(screen.getByRole('button', { name: '저장' })).toBeEnabled();
   });
 
-  it('같은 품목을 다시 눌러도 주소가 달라지지 않는다', async () => {
+  it('고친 것이 없으면 같은 품목을 다시 눌러 고르기를 푼다', async () => {
     const { history, user } = renderScreen(
       [itemListRoute(), itemDetailRoute(), uomsRoute()],
       '?item=1001',
@@ -1037,7 +1029,7 @@ describe('ItemExtendedAttrsScreen — 품목 선택 변경 (§5.4 3행)', () => 
 
     await user.click(screen.getByRole('button', { name: 'SYN-ITEM-01 선택' }));
 
-    expect(history.search()).toBe('?item=1001');
+    expect(history.search()).toBe('');
   });
 
   /*

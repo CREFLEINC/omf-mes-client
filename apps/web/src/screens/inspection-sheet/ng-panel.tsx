@@ -262,7 +262,7 @@ export const NgPanel = ({ sheet, disabled, isSaving, onSave }: NgPanelProps) => 
               value={draft.ngContent}
               disabled={disabled}
               error={errors[draft.key] || undefined}
-              aria-required
+              required
               onChange={(event) => set(draft.key, { ngContent: event.target.value })}
             />
             {field(

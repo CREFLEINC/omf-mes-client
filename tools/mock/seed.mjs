@@ -2632,6 +2632,14 @@ export const createSeed = (now = new Date()) => {
     samplingRatio: 30,
     effectiveFrom: iso(-30),
     effectiveTo: null,
+    /*
+     * 계약상 필수 칸 — 비어 있으면 검사기준 관리 화면이 버전 상태를 읽다가 멈춘다(「Cannot read properties of undefined
+     * (reading 'trim')」). 사용 중인 확정 버전으로 둔다.
+     */
+    statusCode: 'CONFIRMED',
+    samplingMethodCode: 'PENDING',
+    inspectionFrequencyCode: 'PENDING',
+    guideText: null,
     isActive: true,
   };
 

@@ -283,7 +283,9 @@ describe('제품 검사표 조회', () => {
     const fourM = screen.getByRole('table', { name: t.detail.fourM });
     const fourMRow = await within(fourM).findByRole('row', { name: /ML-4M/ });
     expect(fourMRow).toHaveTextContent('자재');
-    expect(fourMRow).toHaveTextContent('PCB ASSY (F537)');
+    // 자재는 자재코드 · 자재명 두 칸(품목 표기 분리).
+    expect(within(fourMRow).getByRole('cell', { name: 'F537' })).toBeInTheDocument();
+    expect(within(fourMRow).getByRole('cell', { name: 'PCB ASSY' })).toBeInTheDocument();
     expect(fourMRow).toHaveTextContent('공급처 변경');
     // 서명 필요 여부는 칸으로 따로.
     const steps = screen.getByRole('table', { name: t.detail.stepsCaption });
@@ -320,7 +322,9 @@ describe('제품 검사표 조회', () => {
         .filter((r) => r.method === 'GET' && r.path.endsWith('/quality/inspection-sheets'))
         .map((r) => r.query);
     const chips = await screen.findByRole('group', { name: t.list.statuses });
-    expect(await within(chips).findByRole('button', { name: '전체 1' })).toBeInTheDocument();
+    expect(await within(chips).findByRole('button', { name: '완료 1' })).toBeInTheDocument();
+    // 「전체」 칩은 두지 않는다(사용자 지시 2026-11-24).
+    expect(within(chips).queryByRole('button', { name: /^전체/ })).not.toBeInTheDocument();
 
     await user.click(within(chips).getByRole('button', { name: /^완료/ }));
     await waitFor(() =>
@@ -332,6 +336,13 @@ describe('제품 검사표 조회', () => {
       'aria-pressed',
       'true',
     );
+    // 고른 칩을 다시 누르면 상태 조건이 풀린다.
+    await user.click(within(chips).getByRole('button', { name: /^완료/ }));
+    expect(within(chips).getByRole('button', { name: /^완료/ })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    await user.click(within(chips).getByRole('button', { name: /^완료/ }));
 
     // 스캔 칸 하나 — 그 LOT 의 검사표가 있으면 LOT 번호로, 없으면 시리얼로 거른다(사용자 지시 2026-11-02).
     await user.type(screen.getByLabelText(t.list.scan), 'PL-001');
@@ -354,9 +365,9 @@ describe('제품 검사표 조회', () => {
     );
     await user.click(screen.getByRole('button', { name: t.list.reset }));
     expect(screen.getByLabelText(t.list.scan)).toHaveValue('');
-    expect(within(chips).getByRole('button', { name: /^전체/ })).toHaveAttribute(
+    expect(within(chips).getByRole('button', { name: /^완료/ })).toHaveAttribute(
       'aria-pressed',
-      'true',
+      'false',
     );
   });
 

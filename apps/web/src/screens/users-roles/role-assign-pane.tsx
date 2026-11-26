@@ -1,7 +1,8 @@
-import { Button, Checkbox, EmptyState, SkeletonText } from '@crefle/web-ui';
+import { Button, Checkbox, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
+import { ListEmpty } from '../../patterns/list-empty';
 import type { RoleChoice } from './role-assign-draft';
 
 const t = messages.usersRoles;
@@ -71,9 +72,9 @@ export const RoleAssignPane = ({
 
     if (choices.length === 0) {
       return (
-        <EmptyState
-          size="sm"
+        <ListEmpty
           live
+          icon="badge"
           title={t.assign.empty.none}
           description={t.assign.empty.noneDescription}
         />

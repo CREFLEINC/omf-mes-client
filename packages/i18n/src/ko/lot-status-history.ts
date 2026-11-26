@@ -32,6 +32,8 @@ export const lotStatusHistory = {
   },
   values: {
     all: '전체',
+    /** 현재 상태 단추의 건수(사용자 지시 2026-11-24 「N건」). */
+    chipCount: (count: number): string => `${String(count)}건`,
     /** 더 쓰지 않는 기준값. 지난 자료에는 남아 있어 목록에서 감추지 않는다. */
     inactive: (label: string): string => `${label} (미사용)`,
     /** 기준값 목록에 없는 코드. 코드를 감추면 무엇이 어긋났는지 알 길이 없다. */
@@ -279,7 +281,8 @@ export const lotStatusHistory = {
     },
     fields: {
       lotNo: 'LOT 번호',
-      item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       lotType: 'LOT 유형',
       status: '상태',
       initialQty: '초기 수량',

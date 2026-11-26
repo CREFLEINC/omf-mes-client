@@ -117,6 +117,9 @@ export const partnerRoleLabel = (code: string, roleTypeName?: string | null): st
     : roleTypeName;
 };
 
+/** 코드 → 어휘 열쇠. 어휘 밖 코드면 `undefined`(체크칸 설명 문구를 고르는 데 쓴다). */
+export const partnerRoleKeyOf = (code: string): PartnerRoleKey | undefined => KEY_BY_CODE.get(code);
+
 /** 어휘 밖 코드는 다섯 뒤에 선다. 다섯 안에서는 `PARTNER_ROLE_ORDER`의 자리가 곧 차례다. */
 const orderIndexOf = (code: string): number => {
   const key = KEY_BY_CODE.get(code);

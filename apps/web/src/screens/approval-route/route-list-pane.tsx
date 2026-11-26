@@ -1,13 +1,24 @@
-import { Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { Button, Chip, type Column, EmptyState, Icon, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useColumnWidths } from '../../patterns/column-resize';
+import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
 import { approvalTypeLabelOf } from './code-options';
-import { PageNav } from './page-nav';
+import { LIST_PAGE_SIZES, type ListPageSize } from './filters';
 import type { PageView } from './pagination';
 import type { RouteView } from './types';
 
 const t = messages.approvalRoute;
+
+/** 사용 유무 라벨 — 목록 · 기본 정보 카드가 같은 모양을 쓴다(사용자 지시 2026-11-24). */
+export const ActiveChip = ({ isActive }: { isActive: boolean }) => (
+  <Chip variant="status" size="sm" status={isActive ? 'success' : 'idle'}>
+    {isActive ? t.values.active : t.values.inactive}
+  </Chip>
+);
 
 /**
  * 좌 칸 표의 열 폭.
@@ -28,7 +39,11 @@ export interface RouteListPaneProps {
   routes: RouteView[];
   isLoading: boolean;
   pageView: PageView;
+  /** 서버가 준 쪽 정보. 받기 전 · 실패면 `null` — 셀 것이 없으면 쪽 이동을 그리지 않는다. */
+  pageMeta: PageNavMeta | null;
   onChangePage: (page: number) => void;
+  /** 쪽 크기(10 · 20 · 50) — 바꾸면 첫 쪽으로 간다(단말 관리와 같다 · omf-all-around#358). */
+  onChangePageSize: (size: ListPageSize) => void;
   selectedRouteId: number | null;
   onSelect: (approvalRouteId: number) => void;
   /**
@@ -61,20 +76,25 @@ export const RouteListPane = ({
   routes,
   isLoading,
   pageView,
+  pageMeta,
   onChangePage,
+  onChangePageSize,
   selectedRouteId,
   onSelect,
   businessUnitLabel,
   loadError,
 }: RouteListPaneProps) => {
-  const columns: Column<RouteView>[] = [
+  /* 머리글과 칸은 가운데 — 단말 관리 · 사용자 목록과 같다(omf-all-around#358). */
+  const baseColumns: Column<RouteView>[] = [
     {
       key: 'approvalTypeCode',
+      align: 'center',
       header: t.fields.approvalTypeCode,
+      /* 링크처럼 보이지 않는다 — 줄 아무 곳이나 눌러 고른다. 이 단추는 키보드 · 화면 낭독기가 줄을 고르는 자리다. */
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className="users-roles-row-pick"
           aria-label={t.actions.selectRow(
             approvalTypeLabelOf(row.approvalTypeCode),
             businessUnitLabel(row.businessUnitId),
@@ -90,6 +110,7 @@ export const RouteListPane = ({
     },
     {
       key: 'businessUnit',
+      align: 'center',
       header: t.fields.businessUnit,
       width: ROUTE_COLUMN_WIDTH.businessUnit,
       render: (row) => businessUnitLabel(row.businessUnitId),
@@ -98,7 +119,7 @@ export const RouteListPane = ({
       key: 'stepCount',
       header: t.fields.stepCount,
       width: ROUTE_COLUMN_WIDTH.stepCount,
-      align: 'end',
+      align: 'center',
       /* 단계가 0이면 그 유형의 상신이 거부된다 — 수치가 아니라 사실로 읽혀야 한다. */
       render: (row) => (row.stepCount === 0 ? t.values.noSteps : String(row.stepCount)),
     },
@@ -106,17 +127,22 @@ export const RouteListPane = ({
       key: 'inProgressCount',
       header: t.fields.inProgressCount,
       width: ROUTE_COLUMN_WIDTH.inProgressCount,
-      align: 'end',
+      align: 'center',
       render: (row) => String(row.inProgressCount),
     },
     {
       key: 'status',
+      align: 'center',
       header: t.fields.status,
       width: ROUTE_COLUMN_WIDTH.status,
-      /* 비활성 표현을 배지로 그리지 않는다 — 설치본의 배지에는 비활성 변형이 없다. */
-      render: (row) => (row.isActive ? t.values.active : t.values.inactive),
+      /* 사용 · 미사용 라벨(사용자 지시 2026-11-24) — 사용은 초록, 미사용은 회색. */
+      render: (row) => <ActiveChip isActive={row.isActive} />,
     },
   ];
+  /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(단말 관리 목록과 같다 · omf-all-around#358). */
+  const ordered = useColumnOrder('omf-mes:approval-route:columns:order', baseColumns);
+  const resizable = useColumnWidths('omf-mes:approval-route:columns', ordered);
+  const fit = useFitColumns(resizable.columns);
 
   /**
    * 빈 상태는 두 갈래다 — 사용자가 할 조치가 다르다.
@@ -130,6 +156,11 @@ export const RouteListPane = ({
     <EmptyState
       size="sm"
       live
+      icon={
+        <span className="inspection-standard-empty-icon">
+          <Icon name="last_page" size={20} />
+        </span>
+      }
       title={t.empty.beyondLastTitle}
       description={t.empty.beyondLastDescription}
       action={
@@ -147,33 +178,68 @@ export const RouteListPane = ({
     <EmptyState
       size="sm"
       live
+      icon={
+        <span className="inspection-standard-empty-icon">
+          <Icon name="search_off" size={20} />
+        </span>
+      }
       title={t.empty.noResultTitle}
       description={t.empty.noResultDescription}
     />
   );
 
   /** 조회 실패 → 로딩 → 표 순서로 하나만 낸다. 실패했는데 빈 표를 함께 보이면 안 된다. */
-  if (loadError !== null && loadError !== undefined) return <>{loadError}</>;
+  const listSlot = (): ReactNode => {
+    if (loadError !== null && loadError !== undefined) return loadError;
 
-  if (isLoading) {
+    if (isLoading) {
+      return (
+        <div role="status" aria-label={t.loading.list}>
+          <SkeletonText lines={3} />
+        </div>
+      );
+    }
+
     return (
-      <div role="status" aria-label={t.loading.list}>
-        <SkeletonText lines={3} />
+      /* 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 단추로 넘긴다(단말 관리와 같다). */
+      <div
+        ref={fit.ref}
+        className="users-roles-list inspection-queue-table"
+        style={resizable.style}
+        onClick={(event) => {
+          const target = event.target;
+          if (!(target instanceof Element)) return;
+          if (target.closest('button, a, input, select, textarea') !== null) return;
+          target
+            .closest('tbody tr')
+            ?.querySelector<HTMLButtonElement>('.users-roles-row-pick')
+            ?.click();
+        }}
+      >
+        <Table
+          density="compact"
+          columns={fit.columns}
+          rows={routes}
+          getRowId={(row) => String(row.approvalRouteId)}
+          /* 0건을 바깥에서 가르지 않는다 — 가르면 표의 빈 자리가 닿을 수 없는 가지가 된다. */
+          empty={emptySlot}
+        />
       </div>
     );
-  }
+  };
 
   return (
     <>
-      <Table
-        density="compact"
-        columns={columns}
-        rows={routes}
-        getRowId={(row) => String(row.approvalRouteId)}
-        /* 0건을 바깥에서 가르지 않는다 — 가르면 표의 빈 자리가 닿을 수 없는 가지가 된다. */
-        empty={emptySlot}
-      />
-      <PageNav view={pageView} onChange={onChangePage} />
+      <div className="users-roles-list-body">{listSlot()}</div>
+      {pageMeta !== null && loadError === null && (
+        <PageNav<ListPageSize>
+          meta={pageMeta}
+          sizes={LIST_PAGE_SIZES}
+          buttonSize="md"
+          onChangePage={onChangePage}
+          onChangeSize={onChangePageSize}
+        />
+      )}
     </>
   );
 };

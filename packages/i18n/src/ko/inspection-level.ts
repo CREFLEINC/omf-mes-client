@@ -10,6 +10,8 @@ export const inspectionLevel = {
   dialog: {
     addTitle: '검사 수준 지정',
     item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     level: '검사 수준',
     reason: '사유',
     reasonPlaceholder: '사유를 입력하세요(선택)',

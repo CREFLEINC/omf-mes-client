@@ -18,6 +18,11 @@ import { useSearchParams } from 'react-router';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { hasChangedFilters } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
 import { SaveErrorBanner } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
 import {
@@ -26,7 +31,11 @@ import {
   useFitToViewport,
   usePaneSplit,
 } from '../../patterns/po-board';
-import { PaneHeightSplitter, useSplitOrientation } from '../../patterns/split-orientation';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import {
   EMPTY_FILTERS,
   LIST_PAGE_SIZES,
@@ -35,7 +44,7 @@ import {
   toSearchParams,
   type ListPageSize,
 } from './filters';
-import { DiscardDialog } from '../routing/leave-guard';
+import { DiscardDialog, LeaveGuard } from '../routing/leave-guard';
 import type { FlagKey } from './flags';
 import {
   addProcess,
@@ -50,7 +59,6 @@ import {
   type GridDraft,
 } from './grid-draft';
 import { ActiveChips } from './active-chips';
-import { LayoutToggle } from './layout-toggle';
 import { LoadErrorBanner } from './load-error-banner';
 import {
   codeSelectOptions,
@@ -98,8 +106,10 @@ import {
   type TerminalView,
   type TokenView,
 } from './types';
+import './layout.css';
 
 const t = messages.terminalProcessMap;
+const leave = messages.common.unsavedLeave;
 
 const EMPTY_ROWS: TerminalView[] = [];
 /** 공정별 기능 구성을 쓰는 단말 유형 — 작업장 단말만 공정에서 일한다. */
@@ -133,6 +143,7 @@ export const TerminalProcessMapScreen = () => {
   const selectedId = readSelected(searchParams);
 
   const [search, setSearch] = useState(filters.q);
+  const searchRef = useFitPlaceholderWidth(t.filters.searchPlaceholder);
   const [formMode, setFormMode] = useState<FormMode>('closed');
   const [terminalDraft, setTerminalDraft] = useState<TerminalDraft>(EMPTY_TERMINAL);
   const [terminalErrors, setTerminalErrors] = useState<TerminalErrors>({});
@@ -553,12 +564,14 @@ export const TerminalProcessMapScreen = () => {
               {/* 사용 중지 · 재개는 [단말 수정] 창 본문 맨 아래에(사용자 지시 2026-11-24). */}
               <Button
                 variant="outlined"
+                size="sm"
                 leadingIcon={<Icon name="edit" size={18} aria-hidden />}
                 onClick={openEdit}
               >
                 {t.terminal.edit}
               </Button>
               <Button
+                size="sm"
                 leadingIcon={<Icon name="key" size={18} aria-hidden />}
                 disabled={issueToken.isSaving}
                 onClick={() => {
@@ -746,7 +759,7 @@ export const TerminalProcessMapScreen = () => {
             });
           }}
         />
-        <LayoutToggle orientation={layout.orientation} onChange={layout.change} />
+        <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} inline />
       </div>
 
       <div className="users-roles-workspace">
@@ -804,10 +817,11 @@ export const TerminalProcessMapScreen = () => {
               />
             </div>
             <SearchInput
-              containerClassName="users-roles-search-input terminal-map-search-input"
+              containerClassName={`users-roles-search-input ${FIT_PLACEHOLDER_CLASS}`}
               label={t.filters.search}
               value={search}
               placeholder={t.filters.searchPlaceholder}
+              ref={searchRef}
               onChange={(event) => {
                 setSearch(event.target.value);
               }}
@@ -832,7 +846,7 @@ export const TerminalProcessMapScreen = () => {
                 {t.filters.includeInactive}
               </Checkbox>
             </div>
-            {/* 조회와 초기화는 짝이라 함께 둔다. 초기화는 늘 보인다(사용자 지시 2026-11-20 · #333). */}
+            {/* 조회와 초기화는 짝이라 함께 둔다. 초기화는 조건이 처음 값과 다를 때만 보인다 — 쪽 · 쪽 크기는 조건이 아니다(#358). */}
             <div className="filter-actions field-cell-unlabeled">
               <Button
                 onClick={() => {
@@ -843,19 +857,25 @@ export const TerminalProcessMapScreen = () => {
               >
                 {t.filters.apply}
               </Button>
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  leaveSafely(() => {
-                    setSearch('');
-                    setSearchParams(
-                      toSearchParams({ ...EMPTY_FILTERS, size: filters.size }, selectedId),
-                    );
-                  });
-                }}
-              >
-                {t.filters.clear}
-              </Button>
+              {hasChangedFilters(
+                { ...EMPTY_FILTERS, page: filters.page, size: filters.size },
+                { ...filters, q: search },
+                filters,
+              ) && (
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    leaveSafely(() => {
+                      setSearch('');
+                      setSearchParams(
+                        toSearchParams({ ...EMPTY_FILTERS, size: filters.size }, selectedId),
+                      );
+                    });
+                  }}
+                >
+                  {t.filters.clear}
+                </Button>
+              )}
             </div>
             <Button
               className="users-roles-add-user"
@@ -1079,12 +1099,26 @@ export const TerminalProcessMapScreen = () => {
         </div>
       </Dialog>
 
-      {/* 저장하지 않은 기능 구성 — 다른 화면과 같은 나가기 확인 창(시안 문구 · 사용자 지시 2026-11-20 · #333). */}
+      {/* 저장하지 않은 기능 구성을 두고 다른 화면으로(사이드바 · 뒤로가기) 갈 때 묻는다(#358). */}
+      <LeaveGuard
+        when={isGridDirty}
+        discardTitle={leave.title}
+        discardBody={leave.body}
+        stayLabel={leave.keep}
+        leaveLabel={leave.confirm}
+        showCloseButton={false}
+        size="sm"
+      />
+
+      {/* 저장하지 않은 기능 구성 — 다른 화면과 같은 나가기 확인 창 · 문구(#333 · #358). */}
       {pendingLeave !== null && (
         <DiscardDialog
-          title={t.discard.title}
-          body={t.discard.body}
+          title={leave.title}
+          body={leave.body}
+          stayLabel={leave.keep}
+          leaveLabel={leave.confirm}
           showCloseButton={false}
+          size="sm"
           onStay={() => {
             setPendingLeave(null);
           }}

@@ -53,6 +53,8 @@ const LOT_VIEW = '?wh=9101&view=lot&item=9301';
 
 const WAREHOUSE_LABEL = 'SAMPLE-WH-01 · 합성 자재창고 가';
 const ITEM_LABEL = 'SAMPLE-ITEM-01 · 합성 품목 가';
+/* 잔액 표는 품목코드 · 품목명을 두 열로 나눠 보인다(사용자 지시 2026-11-24). */
+const ITEM_NAME = '합성 품목 가';
 
 interface RecordedRequest {
   method: string;
@@ -486,7 +488,7 @@ describe('StockStatusScreen — 품목 이름', () => {
       WITH_WAREHOUSE,
     );
 
-    expect(await screen.findByText('A5C1M50101 · PI SENSOR-SG2A241')).toBeInTheDocument();
+    expect(await screen.findByText('PI SENSOR-SG2A241')).toBeInTheDocument();
     /* 표에 선 번호만, 그것도 번호마다 한 번씩 부른다 — 줄마다 부르지도 목록을 훑지도 않는다. */
     const detailRequests = requests.filter((each) => /^\/mdm\/items\/\d+$/.test(each.url.pathname));
     const askedIds = new Set(detailRequests.map((each) => each.url.pathname));
@@ -499,7 +501,7 @@ describe('StockStatusScreen — 품목 이름', () => {
   it('상세에도 없는 품목은 알 수 없음으로 남는다', async () => {
     renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findByText(ITEM_LABEL);
+    await screen.findByText(ITEM_NAME);
 
     expect(screen.getAllByText(t.values.unknown).length).toBeGreaterThan(0);
   });
@@ -509,7 +511,7 @@ describe('StockStatusScreen — 창고를 고른 뒤', () => {
   it('잔액 요청이 1회 나가고 창고가 실린다', async () => {
     const { requests } = renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findByText(ITEM_LABEL);
+    await screen.findByText(ITEM_NAME);
 
     const list = requestsTo(requests, BALANCES_PATH);
 
@@ -521,7 +523,7 @@ describe('StockStatusScreen — 창고를 고른 뒤', () => {
   it('기본값(page·size·groupBy·includeZero)을 싣지 않는다', async () => {
     const { requests } = renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findByText(ITEM_LABEL);
+    await screen.findByText(ITEM_NAME);
 
     const query = lastQuery(requests, BALANCES_PATH);
 
@@ -536,7 +538,7 @@ describe('StockStatusScreen — 창고를 고른 뒤', () => {
       '?wh=9101&item=9301&lot=9401&loc=9201&qs=SAMPLE_Q_A&is=SAMPLE_I_A&own=SAMPLE_OWN_A&zero=true',
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     const query = lastQuery(requests, BALANCES_PATH);
 
@@ -560,7 +562,7 @@ describe('StockStatusScreen — 창고를 고른 뒤', () => {
       '?wh=9101&item=0&lot=1.5&loc=-3&page=0',
     );
 
-    await screen.findByText(ITEM_LABEL);
+    await screen.findByText(ITEM_NAME);
 
     const query = lastQuery(requests, BALANCES_PATH);
 
@@ -595,7 +597,7 @@ describe('StockStatusScreen — 창고를 고른 뒤', () => {
   it('쓰기 요청을 하나도 보내지 않는다', async () => {
     const { requests } = renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findByText(ITEM_LABEL);
+    await screen.findByText(ITEM_NAME);
 
     expect(requests.every((request) => request.method === 'GET')).toBe(true);
   });
@@ -603,7 +605,7 @@ describe('StockStatusScreen — 창고를 고른 뒤', () => {
   it('조건 줄에서 조회하면 주소와 요청에 함께 나타난다', async () => {
     const { requests, user } = renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findByText(ITEM_LABEL);
+    await screen.findByText(ITEM_NAME);
 
     await user.click(screen.getByLabelText(t.fields.item));
     await user.click(await screen.findByRole('option', { name: ITEM_LABEL }));
@@ -627,7 +629,7 @@ describe('StockStatusScreen — 창고를 고른 뒤', () => {
       `${WITH_WAREHOUSE}&page=2`,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     await user.click(screen.getByLabelText(t.fields.item));
     await user.click(await screen.findByRole('option', { name: ITEM_LABEL }));
@@ -658,7 +660,7 @@ describe('StockStatusScreen — 창고를 고른 뒤', () => {
       `${WITH_WAREHOUSE}&item=9301&zero=true&sort=onHandQty`,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     // 선행 단언 — 초기화 전에는 그 열이 실제로 정렬 표시를 갖는다.
     expect(sortedHeaderNames()).toEqual([t.table.onHandQty]);
@@ -689,7 +691,7 @@ describe('StockStatusScreen — 창고를 고른 뒤', () => {
       `${WITH_WAREHOUSE}&item=9301&sort=onHandQty&page=2`,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     await user.click(screen.getByRole('button', { name: messages.common.reset }));
 
@@ -703,7 +705,7 @@ describe('StockStatusScreen — 보기 전환', () => {
   it('보기 탭 셋이 있다', async () => {
     renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     const tabs = screen.getByRole('tablist', { name: t.views.label });
 
@@ -714,7 +716,7 @@ describe('StockStatusScreen — 보기 전환', () => {
   it('품목별 보기는 groupBy를 싣지 않고 주소에도 적지 않는다', async () => {
     const { requests } = renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(lastQuery(requests, BALANCES_PATH)?.has('groupBy')).toBe(false);
     expect(currentLocation()).not.toContain('view=');
@@ -723,7 +725,7 @@ describe('StockStatusScreen — 보기 전환', () => {
   it('위치별로 바꾸면 주소와 요청에 함께 실린다', async () => {
     const { requests, user } = renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     await user.click(screen.getByRole('tab', { name: t.views.location }));
 
@@ -740,7 +742,7 @@ describe('StockStatusScreen — 보기 전환', () => {
       `${WITH_WAREHOUSE}&item=9301`,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     await user.click(screen.getByRole('tab', { name: t.views.lot }));
 
@@ -756,7 +758,7 @@ describe('StockStatusScreen — 보기 전환', () => {
       `${WITH_WAREHOUSE}&view=xyz`,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(lastQuery(requests, BALANCES_PATH)?.has('groupBy')).toBe(false);
     expect(screen.getByRole('tab', { name: t.views.item })).toHaveAttribute(
@@ -775,7 +777,7 @@ describe('StockStatusScreen — 보기 전환', () => {
       `${WITH_WAREHOUSE}&item=9301&zero=true`,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     await user.click(screen.getByRole('tab', { name: t.views.location }));
 
@@ -801,7 +803,7 @@ describe('StockStatusScreen — 보기 전환', () => {
       `${WITH_WAREHOUSE}&page=3`,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     await user.click(screen.getByRole('tab', { name: t.views.location }));
 
@@ -822,7 +824,7 @@ describe('StockStatusScreen — 보기 전환', () => {
       `${WITH_WAREHOUSE}&sort=onHandQty`,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     await user.click(screen.getByRole('tab', { name: t.views.location }));
 
@@ -841,7 +843,7 @@ describe('StockStatusScreen — 보기 전환', () => {
   it('품목이 없으면 LOT별 탭이 잠기고 사유가 보인다', async () => {
     renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     /* 디자인 시스템 `Tabs`는 `aria-disabled`로 잠근다(실측) — 탭 로빙에서 건너뛴다. */
     expect(screen.getByRole('tab', { name: t.views.lot })).toHaveAttribute('aria-disabled', 'true');
@@ -851,7 +853,7 @@ describe('StockStatusScreen — 보기 전환', () => {
   it('잠긴 LOT별 탭을 눌러도 보기가 바뀌지 않는다', async () => {
     const { requests, user } = renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     await user.click(screen.getByRole('tab', { name: t.views.lot }));
 
@@ -862,7 +864,7 @@ describe('StockStatusScreen — 보기 전환', () => {
   it('품목을 고르면 LOT별 탭이 열린다', async () => {
     renderScreen([balanceRoute(), ...lookupRoutes()], `${WITH_WAREHOUSE}&item=9301`);
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(screen.getByRole('tab', { name: t.views.lot })).not.toHaveAttribute('aria-disabled');
     expect(screen.queryByText(t.reasons.lotViewNeedsItem)).not.toBeInTheDocument();
@@ -872,7 +874,7 @@ describe('StockStatusScreen — 보기 전환', () => {
   it('활성 보기의 표만 그린다', async () => {
     renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(screen.getAllByRole('table')).toHaveLength(1);
   });
@@ -886,7 +888,7 @@ describe('StockStatusScreen — 정렬', () => {
   it('머리글을 누르면 열만 실리고 방향 키가 실리지 않는다', async () => {
     const { requests, user } = renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     await user.click(screen.getByRole('button', { name: t.table.onHandQty }));
 
@@ -910,7 +912,7 @@ describe('StockStatusScreen — 정렬', () => {
       `${WITH_WAREHOUSE}&page=3`,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     await user.click(screen.getByRole('button', { name: t.table.onHandQty }));
 
@@ -931,7 +933,7 @@ describe('StockStatusScreen — 정렬', () => {
       `${WITH_WAREHOUSE}&sort=onHandQty`,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     await user.click(screen.getByRole('button', { name: t.table.onHandQty }));
 
@@ -949,7 +951,7 @@ describe('StockStatusScreen — 정렬', () => {
       `${WITH_WAREHOUSE}&sort=nope`,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(lastQuery(requests, BALANCES_PATH)?.has('sort')).toBe(false);
   });
@@ -961,7 +963,7 @@ describe('StockStatusScreen — 정렬', () => {
       `${WITH_WAREHOUSE}&sort=locationCode`,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(lastQuery(requests, BALANCES_PATH)?.has('sort')).toBe(false);
   });
@@ -988,7 +990,7 @@ describe('StockStatusScreen — 정렬', () => {
   it('조회하면 같은 정렬이 표에 표시된다', async () => {
     renderScreen([balanceRoute(), ...lookupRoutes()], `${WITH_WAREHOUSE}&sort=onHandQty`);
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(sortedHeaderNames()).toEqual([t.table.onHandQty]);
   });
@@ -1001,7 +1003,7 @@ describe('StockStatusScreen — 쪽 이동', () => {
       WITH_WAREHOUSE,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
 
@@ -1019,7 +1021,7 @@ describe('StockStatusScreen — 쪽 이동', () => {
       `${WITH_WAREHOUSE}&page=2`,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     await user.click(screen.getByRole('button', { name: t.actions.prevPage }));
 
@@ -1132,7 +1134,7 @@ describe('StockStatusScreen — 참조 값의 네 갈래', () => {
   it('참조 목록이 오면 이름으로 보인다', async () => {
     renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    expect(await screen.findAllByText(ITEM_LABEL)).not.toHaveLength(0);
+    expect(await screen.findAllByText(ITEM_NAME)).not.toHaveLength(0);
   });
 
   /*
@@ -1153,13 +1155,13 @@ describe('StockStatusScreen — 참조 값의 네 갈래', () => {
 
     release();
 
-    expect(await screen.findAllByText(ITEM_LABEL)).not.toHaveLength(0);
+    expect(await screen.findAllByText(ITEM_NAME)).not.toHaveLength(0);
   });
 
   it('참조 목록에 없는 번호는 「알 수 없음」이다', async () => {
     renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     // 9302 품목이 참조 목록에 없다.
     expect(balanceTable()).toHaveTextContent(t.values.unknown);
@@ -1275,7 +1277,7 @@ describe('StockStatusScreen — 매달린 참조', () => {
   it('위치 참조는 창고를 고른 뒤에만 부른다', async () => {
     const { requests } = renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(requestsTo(requests, LOCATIONS_PATH)).toHaveLength(1);
     expect(lastQuery(requests, LOCATIONS_PATH)?.get('warehouseId')).toBe('9101');
@@ -1288,7 +1290,7 @@ describe('StockStatusScreen — 매달린 참조', () => {
       `${WITH_WAREHOUSE}&item=9301`,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(requestsTo(requests, LOTS_PATH)).toHaveLength(0);
   });
@@ -1299,7 +1301,7 @@ describe('StockStatusScreen — 매달린 참조', () => {
       `${WITH_WAREHOUSE}&item=9301&view=lot`,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     await waitFor(() => {
       expect(requestsTo(requests, LOTS_PATH)).toHaveLength(1);
@@ -1320,7 +1322,7 @@ describe('StockStatusScreen — 매달린 참조', () => {
       `${WITH_WAREHOUSE}&view=lot`,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(requestsTo(requests, LOTS_PATH)).toHaveLength(0);
 
@@ -1332,7 +1334,7 @@ describe('StockStatusScreen — 매달린 참조', () => {
     expect(lastQuery(requests, BALANCES_PATH)?.has('groupBy')).toBe(false);
 
     // 짝 단언 ② — 이름이 보이고, 「값이 잘못됐다」를 뜻하는 표기가 표를 덮지 않는다.
-    expect(within(balanceTable()).getAllByText(ITEM_LABEL)).not.toHaveLength(0);
+    expect(within(balanceTable()).getAllByText(ITEM_NAME)).not.toHaveLength(0);
     expect(within(balanceTable()).queryByText(t.values.noLot)).not.toBeInTheDocument();
   });
 
@@ -1483,7 +1485,7 @@ describe('StockStatusScreen — 참조 선택지의 한계', () => {
   it('목록이 다 왔으면 잘림 안내를 내지 않는다', async () => {
     renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(screen.queryByText(t.filters.lookupTruncated)).not.toBeInTheDocument();
   });
@@ -1513,7 +1515,7 @@ describe('StockStatusScreen — 참조 선택지의 한계', () => {
   it('미사용 참조는 선택지에만 표식이 붙고 표 칸에는 붙지 않는다', async () => {
     const { user } = renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(balanceTable()).not.toHaveTextContent(t.values.inactiveSuffix.trim());
 
@@ -1536,7 +1538,7 @@ describe('StockStatusScreen — 코드 선택지', () => {
   it('조회 결과에서 관측한 코드가 선택지가 된다', async () => {
     const { user } = renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     await user.click(screen.getByLabelText(t.fields.qualityStatus));
 
@@ -1553,7 +1555,7 @@ describe('StockStatusScreen — 코드 선택지', () => {
       `${WITH_WAREHOUSE}&qs=SAMPLE_Q_Z`,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     await user.click(screen.getByLabelText(t.fields.qualityStatus));
 
@@ -1581,7 +1583,7 @@ describe('StockStatusScreen — 조건 초안의 수명', () => {
 
     release();
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(screen.getByLabelText(t.fields.item)).toHaveTextContent(ITEM_LABEL);
     // 아직 조회하지 않았으므로 주소는 그대로다.
@@ -1596,7 +1598,7 @@ describe('StockStatusScreen — 조건 초안의 수명', () => {
       'wh=9101&item=9301',
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     await user.click(screen.getByRole('button', { name: '주소 이동' }));
 
@@ -1614,7 +1616,7 @@ describe('StockStatusScreen — 기준 시각과 새로고침', () => {
   it('조회한 뒤 기준 시각이 보이고 다시 그려도 값이 바뀌지 않는다', async () => {
     const { user } = renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     const asOf = await screen.findByTestId('as-of');
     const first = asOf.textContent;
@@ -1636,7 +1638,7 @@ describe('StockStatusScreen — 기준 시각과 새로고침', () => {
   it('기준 시각이 live 영역이 아니다', async () => {
     renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     const asOf = await screen.findByTestId('as-of');
 
@@ -1659,7 +1661,7 @@ describe('StockStatusScreen — 기준 시각과 새로고침', () => {
       `${WITH_WAREHOUSE}&item=9301&sort=onHandQty&page=2`,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     const before = currentLocation();
     const requestCount = requestsTo(requests, BALANCES_PATH).length;
@@ -1740,7 +1742,7 @@ describe('StockStatusScreen — 기준 시각과 새로고침', () => {
   it('아무것도 하지 않으면 요청이 늘지 않는다', async () => {
     const { requests, user } = renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     const before = requestsTo(requests, BALANCES_PATH).length;
 
@@ -1762,7 +1764,7 @@ describe('StockStatusScreen — 요약과 집계', () => {
   it('합계 행이 없다', async () => {
     renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(balanceTable().querySelector('tfoot')).toBeNull();
   });
@@ -1771,7 +1773,7 @@ describe('StockStatusScreen — 요약과 집계', () => {
   it('가용 수량을 서버가 준 값 그대로 그린다', async () => {
     renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(within(balanceTable()).getAllByText('77')).not.toHaveLength(0);
     expect(within(balanceTable()).queryByText('85')).not.toBeInTheDocument();
@@ -1924,7 +1926,7 @@ describe('StockStatusScreen — LOT 고르기', () => {
       WITH_WAREHOUSE,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(screen.queryByRole('region', { name: t.panes.detail })).not.toBeInTheDocument();
   });
@@ -1998,7 +2000,7 @@ describe('StockStatusScreen — 고른 LOT의 수명', () => {
       `${WITH_WAREHOUSE}&sel=9401`,
     );
 
-    await screen.findAllByText(ITEM_LABEL);
+    await screen.findAllByText(ITEM_NAME);
 
     expect(lotDetailRequests(requests)).toHaveLength(0);
     /* 주소는 고쳐 쓰지 않는다 — 보기를 되돌리면 그 선택이 되살아난다. */

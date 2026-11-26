@@ -319,6 +319,7 @@ export const ResultFormPane = ({
       />
       <Select
         id={fieldId}
+        aria-required
         options={judgmentOptions}
         value={judgment}
         placeholder={t.judgmentPlaceholder}

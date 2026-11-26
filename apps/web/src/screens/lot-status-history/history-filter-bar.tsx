@@ -101,6 +101,10 @@ export const HistoryFilterBar = ({
             <div className="field-cell lot-status-date-cell">
               <span className="field-label" aria-hidden="true">
                 {t.historyFilter.fields.fromLabel}
+                {/* 비우면 조회를 막는다 — 조회 필수 표시. */}
+                <span className="required-mark" aria-hidden="true">
+                  {' *'}
+                </span>
               </span>
               <DatePicker
                 className="lot-status-date-field"
@@ -114,6 +118,9 @@ export const HistoryFilterBar = ({
             <div className="field-cell lot-status-date-cell">
               <span className="field-label" aria-hidden="true">
                 {t.historyFilter.fields.toLabel}
+                <span className="required-mark" aria-hidden="true">
+                  {' *'}
+                </span>
               </span>
               <DatePicker
                 className="lot-status-date-field"

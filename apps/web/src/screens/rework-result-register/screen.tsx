@@ -393,7 +393,10 @@ export const ReworkResultRegisterScreen = () => {
               type="button"
               className={`pu-item rwu-item${isSelected ? ' is-selected' : ''}`}
               aria-pressed={isSelected}
-              onClick={() => setSelectedId(row.workOrderId)}
+              /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+              onClick={() =>
+                setSelectedId((current) => (current === row.workOrderId ? null : row.workOrderId))
+              }
             >
               <div className="pu-item-top">
                 <span className="no">{row.workOrderNo}</span>

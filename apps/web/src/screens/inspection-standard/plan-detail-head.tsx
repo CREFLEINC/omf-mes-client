@@ -4,15 +4,15 @@ import type { ReactNode } from 'react';
 
 import { inspectionTypeLabel } from './code-options';
 import { RoutingSummary } from './plan-pane';
-import type { RoutingRevision } from './queries';
+import type { ItemNameParts, RoutingRevision } from './queries';
 import type { InspectionPlan } from './types';
 
 const t = messages.inspectionStandard;
 
 export interface PlanDetailHeadProps {
   plan: InspectionPlan;
-  /** 품목 표시 이름. 비었으면(전 품목 공통 기준) 「품목 미지정」 */
-  itemLabel: string | null;
+  /** 품목 이름 · 코드. 비었으면(전 품목 공통 기준) 「품목 미지정」 */
+  itemParts: ItemNameParts | null;
   /** 기준의 라우팅 Rev. 없거나 아직 받지 못했으면 undefined — 「없음」 */
   routingRevision: RoutingRevision | undefined;
   onEdit: () => void;
@@ -36,7 +36,7 @@ export interface PlanDetailHeadProps {
  */
 export const PlanDetailHead = ({
   plan,
-  itemLabel,
+  itemParts,
   routingRevision,
   onEdit,
   onOpenRouting,
@@ -95,7 +95,9 @@ export const PlanDetailHead = ({
         {/* 순서 — 어떤 기준인지(유형 · 품목)를 먼저, 이름 · 코드는 뒤(omf-all-around#256). */}
         {[
           { label: t.fields.inspectionType, value: inspectionTypeLabel(plan.inspectionTypeCode) },
-          { label: t.fields.item, value: itemLabel ?? t.detail.itemUnset },
+          /* 품목은 품목코드 · 품목명 두 칸(품목 표기 분리 · 목록 표와 같다). 부르는 중 · 실패 안내는 이름 칸에. */
+          { label: t.listColumns.itemCode, value: itemParts?.code ?? t.values.empty },
+          { label: t.listColumns.itemName, value: itemParts?.name ?? t.detail.itemUnset },
         ].map((fact) => (
           <div key={fact.label}>
             <dt className="field-label">{fact.label}</dt>

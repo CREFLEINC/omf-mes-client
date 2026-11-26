@@ -17,20 +17,18 @@ export const commonCode = {
   },
   panes: {
     codeGroup: '코드그룹',
-    codeGroupForm: '코드그룹 정보',
+    codeGroupForm: '코드그룹 상세 정보',
     department: '부서',
-    departmentForm: '부서 정보',
+    departmentForm: '부서 상세 정보',
     worker: '작업자',
-    workerDetail: '작업자 기본 정보',
+    workerDetail: '작업자 상세 정보',
     partner: '거래처',
-    partnerDetail: '거래처 기본 정보',
+    partnerDetail: '거래처 상세 정보',
     partnerRoles: '거래처 역할',
     /** 목록 옆 상세 칸(통일 배치 · #350) — 안에 정보 · 하위 구획을 쌓는다. */
     detail: '상세',
   },
   actions: {
-    prevPage: '이전',
-    nextPage: '다음',
     goFirstPage: '첫 쪽으로',
     addCodeGroup: '그룹 추가',
     addDepartment: '부서 추가',
@@ -47,16 +45,20 @@ export const commonCode = {
       `사용 중지는 ${target}을 먼저 등록해야 할 수 있습니다.`,
   },
   /**
-   * 사용 중지 확인 창. 세 자원이 제목만 바꿔 쓰고 본문은 공유한다.
+   * 사용 중지 확인 창. 세 자원이 같은 틀(제목 · 설명 · 주의 줄)을 쓰고
+   * 제목 · 설명만 자원마다 다르다(사용자 지시 2026-11-26). 코드값의 제목 · 설명은 `codeValue.dialog`에 있다.
    *
    * **참조 건수를 내지 않는다**(결정 10) — 화면이 쓸 수 있는 건수는 「코드 필드를 고칠 수 있는지」의
    * 근거이지 「이 행을 참조하는 자료의 수」가 아니다. 두 뜻을 섞으면 화면이 지어낸다.
    */
   dialog: {
-    deactivateCodeGroupTitle: '이 코드그룹을 사용 중지할까요?',
-    deactivateDepartmentTitle: '이 부서를 사용 중지할까요?',
-    deactivateDescription:
-      '사용 중지하면 새 선택지에서 빠지고 이미 쓰인 자료는 그대로 남습니다. 되돌리는 경로가 없습니다.',
+    deactivateCodeGroupTitle: '코드그룹을 사용 중지할까요?',
+    deactivateDepartmentTitle: '부서를 사용 중지할까요?',
+    deactivateCodeGroupDescription:
+      '사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 코드그룹이 그대로 표시됩니다.',
+    deactivateDepartmentDescription:
+      '사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 부서가 그대로 표시됩니다.',
+    deactivateWarning: '사용 중지 후에는 사용을 재개할 수 없습니다.',
   },
   /*
    * 선택 목록이 잘리거나 실패했다는 사실을 감추지 않는다 —
@@ -77,10 +79,10 @@ export const commonCode = {
   },
   filters: {
     codeGroupSearchLabel: '코드그룹 검색',
-    codeGroupSearchPlaceholder: '그룹코드 또는 그룹명',
+    codeGroupSearchPlaceholder: '그룹코드 또는 그룹명을 입력하세요',
     departmentSearchLabel: '부서 검색',
-    departmentSearchPlaceholder: '부서코드 또는 부서명',
-    businessUnit: '사업부',
+    departmentSearchPlaceholder: '부서코드 또는 부서명을 입력하세요',
+    businessUnit: '사업부 선택',
     /* 선택지에 빈 값을 두어 고른 사업부를 다시 「전체」로 되돌릴 수 있게 한다. */
     businessUnitAll: '전체 사업부',
     /*
@@ -88,15 +90,15 @@ export const commonCode = {
      * 검색어(사번·성명) + 부서 + 미사용 포함 셋으로 좁힌다.
      */
     workerSearchLabel: '작업자 검색',
-    workerSearchPlaceholder: '사번 또는 성명',
-    department: '부서',
+    workerSearchPlaceholder: '사번 또는 성명을 입력하세요',
+    department: '부서 선택',
     departmentAll: '전체 부서',
     /*
      * 거래처 탭에는 선택 축 필터가 없다 — **역할로 좁히지 않는다.**
      * 이 탭은 역할을 붙이는 곳이라 역할이 아직 없는 거래처가 반드시 보여야 한다.
      */
     partnerSearchLabel: '거래처 검색',
-    partnerSearchPlaceholder: '거래처코드 또는 거래처명',
+    partnerSearchPlaceholder: '거래처코드 또는 거래처명을 입력하세요',
   },
   loading: {
     codeGroups: '코드그룹 목록을 불러오는 중',
@@ -126,11 +128,6 @@ export const commonCode = {
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
     empty: '—',
     /*
-     * 좁은 좌 페인에서 「사용 여부」 열을 따로 두면 이름 열이 짓눌린다 —
-     * 이름 뒤 접미로 붙여 열을 늘리지 않는다.
-     */
-    inactiveSuffix: ' (미사용)',
-    /*
      * 값은 있는데 그 번호를 선택 목록에서 찾지 못했다. **번호를 그대로 내지 않는다** —
      * 내부 식별자라 사용자가 쓸 수 없고, 보이면 자료로 읽힌다.
      */
@@ -151,7 +148,8 @@ export const commonCode = {
        * 코드값 구획도 같은 자리에서 「먼저 고르세요」를 낸다 — 같은 문장을 두 번 쌓으면
        * 무엇을 하라는 안내인지 오히려 흐려진다. 이 구획은 무엇이 채워지는지로 말한다.
        */
-      notSelected: '좌측에서 코드그룹을 고르면 여기에 그 그룹의 정보가 보입니다',
+      notSelected: '코드그룹을 선택하세요.',
+      notSelectedDescription: '선택한 코드그룹의 정보와 코드값이 표시됩니다.',
     },
     validation: {
       required: '필수 입력 항목입니다.',
@@ -159,21 +157,6 @@ export const commonCode = {
       groupNameBlank: '그룹명은 공백만으로 지정할 수 없습니다.',
       groupCodeTooLong: '그룹코드는 50자를 넘을 수 없습니다.',
       groupNameTooLong: '그룹명은 200자를 넘을 수 없습니다.',
-    },
-    actionReasons: {
-      /*
-       * **잠금 사유가 갈린다.** 「내 저장이 나가는 중」은 진행 표시가 말하고, 이 문구는
-       * **다른 코드그룹의 저장이 나가는 중**이라는 다른 사실을 말한다 — 한 문구로 뭉개면
-       * 사용자가 무엇을 기다리는지 알 수 없다. 저장이 하나뿐인 이유는 훅 하나에 요청 하나라
-       * 두 번째를 내면 앞 저장의 성공·실패가 통째로 사라지기 때문이다.
-       */
-      saveLockedByOtherCodeGroup: '저장은 다른 코드그룹의 저장이 끝난 뒤에 할 수 있습니다.',
-      /*
-       * **같은 사실을 두 문면으로 두는 이유는 컨트롤 이름이 둘이기 때문이다.** 등록 폼의 주
-       * 액션은 「그룹 추가」이고, 비활성 사유는 그 컨트롤의 이름으로 시작해야 한다(배치 규범 4-5) —
-       * 사유가 시각적으로 끊겼을 때 어느 버튼의 것인지 복원할 단서가 이름뿐이다.
-       */
-      addLockedByOtherCodeGroup: '그룹 추가는 다른 코드그룹의 저장이 끝난 뒤에 할 수 있습니다.',
     },
   },
   department: {
@@ -207,25 +190,13 @@ export const commonCode = {
       noneDescription: '「부서 추가」로 첫 부서를 등록하세요.',
       noMatchTitle: '조건에 맞는 부서가 없습니다',
       noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
-      notSelected: '좌측에서 부서를 고르면 여기에 그 부서의 정보가 보입니다',
+      notSelected: '부서를 선택하세요.',
+      notSelectedDescription: '선택한 부서의 정보와 생산 창고가 표시됩니다.',
     },
     actionReasons: {
       /* 목록에 자기 하나뿐이면 상위로 고를 대상이 없다 — 감추지 않고 사유를 밝힌다. */
       parentNeedsOthers:
         '상위 부서는 고를 수 있는 다른 부서가 없어 지정할 수 없습니다. 부서를 하나 더 등록하면 이 칸을 쓸 수 있습니다.',
-      /*
-       * **잠금 사유가 갈린다.** 「내 저장이 나가는 중」은 진행 표시가 말하고, 이 문구는
-       * **다른 부서의 저장이 나가는 중**이라는 다른 사실을 말한다 — 한 문구로 뭉개면
-       * 사용자가 무엇을 기다리는지 알 수 없다. 저장이 하나뿐인 이유는 훅 하나에 요청 하나라
-       * 두 번째를 내면 앞 저장의 성공·실패가 통째로 사라지기 때문이다.
-       */
-      saveLockedByOtherDepartment: '저장은 다른 부서의 저장이 끝난 뒤에 할 수 있습니다.',
-      /*
-       * **같은 사실을 두 문면으로 두는 이유는 컨트롤 이름이 둘이기 때문이다.** 등록 폼의 주
-       * 액션은 「부서 추가」이고, 비활성 사유는 그 컨트롤의 이름으로 시작해야 한다(배치 규범 4-5) —
-       * 사유가 시각적으로 끊겼을 때 어느 버튼의 것인지 복원할 단서가 이름뿐이다.
-       */
-      addLockedByOtherDepartment: '부서 추가는 다른 부서의 저장이 끝난 뒤에 할 수 있습니다.',
     },
     validation: {
       required: '필수 입력 항목입니다.',
@@ -255,7 +226,7 @@ export const commonCode = {
       department: '부서',
       status: '상태',
       appUser: '계정 연결',
-      isActive: '사용 여부',
+      isActive: '사용 유무',
     },
     values: {
       /*
@@ -264,15 +235,14 @@ export const commonCode = {
        */
       appUserLinked: '연결됨',
       appUserNotLinked: '연결 안 됨',
-      active: '사용 중',
-      inactive: '미사용',
     },
     empty: {
       noneTitle: '등록된 작업자가 없습니다',
       noneDescription: '작업자는 외부 시스템에서 받아 옵니다. 원본 시스템을 확인하세요.',
       noMatchTitle: '조건에 맞는 작업자가 없습니다',
       noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
-      notSelected: '좌측에서 작업자를 고르면 여기에 그 작업자의 정보가 보입니다',
+      notSelected: '작업자를 선택하세요.',
+      notSelectedDescription: '선택한 작업자의 정보와 자격 · 인증이 표시됩니다.',
     },
   },
   /**
@@ -291,7 +261,8 @@ export const commonCode = {
       validFrom: '유효 시작',
       validTo: '유효 종료',
       certifiedBy: '인증자',
-      edit: '편집',
+      /** 행 수정 · 삭제 단추 열 — 생산 창고 · 결재 단계 표와 같은 「관리」(사용자 지시 2026-11-25). */
+      manage: '관리',
     },
     values: {
       /** 공정을 비운 자격은 모든 공정에 걸린다 — 계약이 그 뜻을 널로 표현한다(A-7). */
@@ -306,20 +277,6 @@ export const commonCode = {
       removeRow: (label: string): string => `${label} 자격 삭제`,
     },
     actionReasons: {
-      needsWorker: '자격 추가는 좌측에서 작업자를 고른 뒤에 할 수 있습니다.',
-      /*
-       * 서버가 준 목록에 이미 중복 짝이 있으면 그대로 보내도 서버가 거부한다 —
-       * 사용자가 먼저 그 줄을 고쳐야 한다.
-       */
-      saveBlockedByInvalid:
-        '저장은 자격 유형과 공정 짝이 겹치는 줄이 있어 할 수 없습니다. 그 줄을 고치거나 지우면 저장할 수 있습니다.',
-      /*
-       * **잠금 사유가 갈린다.** 「내 저장이 나가는 중」은 진행 표시가 말하고, 이 문구는
-       * **다른 작업자의 저장이 나가는 중**이라는 다른 사실을 말한다 — 한 문구로 뭉개면
-       * 사용자가 무엇을 기다리는지 알 수 없다. 저장이 하나뿐인 이유는 훅 하나에 요청 하나라
-       * 두 번째를 내면 앞 저장의 성공·실패가 통째로 사라지기 때문이다.
-       */
-      saveLockedByOtherWorker: '저장은 다른 작업자의 저장이 끝난 뒤에 할 수 있습니다.',
       certifierLookupLoading: '인증자 목록을 불러오는 동안에는 인증자를 변경할 수 없습니다.',
       certifierLookupFailed:
         '인증자 목록을 불러오지 못해 새 인증자를 선택할 수 없습니다. 기존 값은 유지됩니다.',
@@ -332,11 +289,9 @@ export const commonCode = {
     dialog: {
       addTitle: '자격 추가',
       editTitle: '자격 수정',
-      notSavedNotice: '확인한 뒤 「저장」을 눌러야 저장됩니다.',
       confirm: '확인',
     },
     empty: {
-      notSelected: '좌측에서 작업자를 고르면 그 작업자의 자격·인증이 보입니다',
       noneTitle: '등록된 자격·인증이 없습니다',
       noneDescription: '「자격 추가」로 첫 자격을 등록하세요.',
     },
@@ -369,11 +324,7 @@ export const commonCode = {
       partnerName: '거래처명',
       country: '국가',
       erpPartnerCode: 'ERP 코드',
-      isActive: '사용 여부',
-    },
-    values: {
-      active: '사용 중',
-      inactive: '미사용',
+      isActive: '사용 유무',
     },
     empty: {
       noneTitle: '등록된 거래처가 없습니다',
@@ -381,7 +332,8 @@ export const commonCode = {
       noneDescription: '거래처는 외부 시스템에서 받아 옵니다. 원본 시스템을 확인하세요.',
       noMatchTitle: '조건에 맞는 거래처가 없습니다',
       noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
-      notSelected: '좌측에서 거래처를 고르면 여기에 그 거래처의 역할이 보입니다',
+      notSelected: '거래처를 선택하세요.',
+      notSelectedDescription: '선택한 거래처의 정보와 역할이 표시됩니다.',
       /*
        * 단건 조회가 **없다**고 답한 경우. 다시 시도해도 나타나지 않으므로 재시도를 권하지 않고
        * 다시 고르기로 안내한다 — 못 불러온 것과 없는 것은 할 수 있는 조치가 다르다.
@@ -410,6 +362,17 @@ export const commonCode = {
       other: '기타',
     },
     /*
+     * 체크칸마다 무엇을 정하는지(사용자 지시 2026-11-26). 그 역할로 거래처 선택지를 좁히는 화면이 코드에 있는 것만 적는다 —
+     * 근거: 고객사 return-receipt/lookups.ts · lot-trace/queries.ts, 공급사
+     * lot-trace/queries.ts, 폐기 업체 disposal-issue/lookups.ts · product-disposal-request/queries.ts.
+     * 외주 제작사 · 기타는 그런 화면이 없어 적지 않는다.
+     */
+    descriptions: {
+      customer: '반품·클레임 입고 등록과 LOT 생산 이력 조회에서 고객사로 고를 수 있습니다.',
+      supplier: 'LOT 생산 이력 조회에서 공급사로 고를 수 있습니다.',
+      disposal: '폐기 품의·기타출고와 제품 폐기 요청에서 폐기 업체로 고를 수 있습니다.',
+    },
+    /*
      * 계약이 값 목록을 다섯으로 확정했지만(#173) 서버가 그 밖의 코드를 아직 들고 있을 수 있다 —
      * 계약은 구현보다 앞선다. **감추지 않는다** — 통째 교체 저장에서 목록에 없는 역할은
      * 조용히 해제되기 때문이다.
@@ -421,8 +384,7 @@ export const commonCode = {
      * 그것을 실은 요청을 만들 수 없다. 해제되면 이 화면에는 다시 붙일 수단이 없으므로
      * 그 비대칭을 미리 밝힌다.
      */
-    unknownNote:
-      '목록에 없는 역할은 저장할 때 빠집니다. 빠진 역할은 여기서 다시 붙일 수 없습니다.',
+    unknownNote: '목록에 없는 역할은 저장할 때 빠집니다. 빠진 역할은 여기서 다시 붙일 수 없습니다.',
     /*
      * 잠금 토큰을 얻지 못해 저장이 멈춘 경우 — **이 자원에서만 공통 문구를 쓰지 않는다.**
      *
@@ -441,16 +403,6 @@ export const commonCode = {
      */
     saveTokenUnavailable:
       '저장에 필요한 정보가 없어 지금은 저장할 수 없습니다. 담당자에게 알려 주세요.',
-    actionReasons: {
-      saveNoChanges: '저장은 역할을 고친 뒤에 할 수 있습니다.',
-      /*
-       * **잠금 사유가 갈린다.** 「내 저장이 나가는 중」은 진행 표시가 말하고, 이 문구는
-       * **다른 거래처의 저장이 나가는 중**이라는 다른 사실을 말한다 — 한 문구로 뭉개면
-       * 사용자가 무엇을 기다리는지 알 수 없다. 저장이 하나뿐인 이유는 훅 하나에 요청 하나라
-       * 두 번째를 내면 앞 저장의 성공·실패가 통째로 사라지기 때문이다.
-       */
-      saveLockedByOtherPartner: '저장은 다른 거래처의 저장이 끝난 뒤에 할 수 있습니다.',
-    },
     /*
      * **잃는 것이 있을 때만 서는 확인 창**(결정 10). 추가만 하는 저장에까지 창을 세우면
      * 확인이 습관이 되어 정작 잃는 저장에서도 읽히지 않는다.
@@ -478,10 +430,16 @@ export const commonCode = {
    */
   codeValue: {
     paneTitle: '코드값',
+    /** 조회 상자 위 목록 제목(사용자 지시 2026-11-25). */
+    listTitle: '코드값 목록',
     formPaneTitle: '코드값 정보',
     pageNavLabel: '코드값 쪽 이동',
     actions: {
       add: '코드값 추가',
+      /** 읽기 전용 정보를 고치는 폼으로 바꾼다(사용자 지시 2026-11-25). */
+      edit: '수정',
+      /** 줄의 [수정]이 여는 팝업 제목(사용자 지시 2026-11-26). */
+      editTitle: '코드값 수정',
     },
     actionReasons: {
       /* 계약이 `codeGroupId`를 필수 쿼리로 두었다 — 그룹 없이는 만들 자리 자체가 없다. */
@@ -513,6 +471,8 @@ export const commonCode = {
       effectivePeriod: '유효기간',
       effectiveFrom: '유효 시작',
       effectiveTo: '유효 종료',
+      /** 표 끝 열 — 줄마다 [사용 중지] · [수정](사용자 지시 2026-11-26). */
+      manage: '관리',
     },
     empty: {
       groupNotSelected: '좌측에서 코드그룹을 먼저 고르세요',
@@ -533,8 +493,6 @@ export const commonCode = {
       period: (from: string, to: string): string => `${from} ~ ${to}`,
       /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
       empty: '—',
-      /** 좁은 칸에서 「사용 여부」 열을 따로 두면 이름 열이 짓눌린다 — 이름 뒤 접미로 붙인다. */
-      inactiveSuffix: ' (미사용)',
     },
     validation: {
       required: '필수 입력 항목입니다.',
@@ -548,7 +506,9 @@ export const commonCode = {
       effectiveRangeReversed: '유효 종료는 유효 시작과 같거나 그 뒤여야 합니다.',
     },
     dialog: {
-      deactivateTitle: '이 코드값을 사용 중지할까요?',
+      deactivateTitle: '코드값을 사용 중지할까요?',
+      deactivateDescription:
+        '사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 코드값이 그대로 표시됩니다.',
     },
   },
 } as const;

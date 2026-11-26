@@ -275,12 +275,14 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
                     />
                     <TextField
                       label={td.packageCount}
+                      required
                       inputMode="numeric"
                       value={draft.packageCount}
                       onChange={(event) => edit({ packageCount: event.target.value })}
                     />
                     <TextField
                       label={td.qtyPerPackage(uomCode)}
+                      required
                       inputMode="decimal"
                       value={draft.qtyPerPackage}
                       onChange={(event) => edit({ qtyPerPackage: event.target.value })}
@@ -307,6 +309,7 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
 
             <TextField
               label={td.lotQty}
+              required
               inputMode="decimal"
               value={lotQtyValue}
               trailingIcon={<span title={td.unitLocked}>{uomCode}</span>}
@@ -322,9 +325,10 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
             />
             {/* 개수 범위는 라벨 옆 ⓘ 로 — 칸 아래 설명문을 두지 않는다(관리웹 정리 시안 A). 넘으면 오류 문구가 범위를 말한다. */}
             <div className="field-cell">
-              <InfoLabel htmlFor={lotCountId} label={td.lotCount} info={td.lotCountHelp} />
+              <InfoLabel htmlFor={lotCountId} label={td.lotCount} info={td.lotCountHelp} required />
               <TextField
                 id={lotCountId}
+                aria-required="true"
                 fullWidth
                 inputMode="numeric"
                 value={draft.lotCount}

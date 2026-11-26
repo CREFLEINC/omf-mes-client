@@ -83,6 +83,8 @@ export const EquipmentOccupancy = ({
 }) => {
   const query = useEquipmentOccupancy(equipmentId, selfId);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  /* 고른 배정을 다시 눌러 풀었다 — 겹치는 배정·첫 배정을 저절로 다시 고르지 않는다. */
+  const [cleared, setCleared] = useState(false);
   const codeNames = useProductionOrderCodeNames();
   if (equipmentId === null) return null;
   const allRows = query.data ?? [];
@@ -96,10 +98,11 @@ export const EquipmentOccupancy = ({
     const to = formatPlantDateTime(row.plannedEndAt)?.slice(0, 10) ?? '';
     return from <= end.slice(0, 10) && to >= start.slice(0, 10);
   });
-  const selected =
-    rows.find((row) => row.workOrderId === selectedId) ??
-    rows.find((row) => allocationOverlap(row, start, end)) ??
-    rows[0];
+  const selected = cleared
+    ? undefined
+    : (rows.find((row) => row.workOrderId === selectedId) ??
+      rows.find((row) => allocationOverlap(row, start, end)) ??
+      rows[0]);
   const columns: Column<EquipmentAllocation>[] = [
     {
       key: 'erp',
@@ -199,7 +202,10 @@ export const EquipmentOccupancy = ({
             rows={rows}
             getRowId={(row) => String(row.workOrderId)}
             activeId={selected ? String(selected.workOrderId) : null}
-            onActivate={(row) => setSelectedId(row.workOrderId)}
+            onActivate={(row) => {
+              setCleared(row.workOrderId === selected?.workOrderId);
+              setSelectedId(row.workOrderId);
+            }}
             rowLabel={(row) => `${row.productionOrderNo ?? ''} ${row.workOrderNo} 배정 상세`}
             empty="등록된 배정이 없습니다."
           />
@@ -376,7 +382,7 @@ export const EquipmentAssignmentPicker = ({
             getRowId={(row) => String(row.id)}
             activeId={selected ? String(selected.id) : null}
             onActivate={(row) => {
-              setSelected(row);
+              setSelected(row.id === selected?.id ? null : row);
               setError('');
             }}
             rowLabel={(row) => `${row.code} ${row.name} 배정 내역 확인`}

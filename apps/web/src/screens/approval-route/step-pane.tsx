@@ -1,9 +1,17 @@
-import { Button, type Column, EmptyState, IconButton, SkeletonText, Table } from '@crefle/web-ui';
+import {
+  Button,
+  Chip,
+  type Column,
+  EmptyState,
+  Icon,
+  IconButton,
+  SkeletonText,
+  Table,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type ReactNode } from 'react';
 
-import { InfoTip } from '../../patterns/info-tip';
-
+import { UsageChip } from '../../patterns/usage-chip';
 import type { ApproverOption } from './approver-options';
 import { DisabledAction } from './disabled-action';
 import { describeApprover } from './lookups';
@@ -14,28 +22,21 @@ import {
   stepRemoveBlockedReason,
   type StepDraft,
 } from './step-draft';
-import type { SelectOption } from './types';
 
 const t = messages.approvalRoute;
 
 /**
  * 우 칸 단계 표의 열 폭.
  *
- * **흡수 열은 승인자 하나뿐이다** — 「이름 · 부서」와 경고 문구를 담는다.
- * 순서 이동 열은 디자인 시스템이 붙이고 인라인 폭 대신 자기 클래스를 쓰므로 여기 담기지
- * 않는다. 예산에는 `REORDER_COLUMN_WIDTH`로 따로 더한다.
+ * **흡수 열은 승인자 하나뿐이다** — 「이름 · 부서」와 경고 문구를 담는다. 나머지 열은 상자 폭에 대한
+ * 비율이라 상자가 넓든 좁든 표가 상자를 채운다(사용자 지시 2026-11-25).
  */
 export const STEP_COLUMN_WIDTH = {
-  stepNo: '64px',
-  approverStatus: '96px',
-  rowActions: '88px',
+  stepNo: '12%',
+  approverStatus: '18%',
+  /* 위로 · 아래로 · 삭제 세 단추(사용자 지시 2026-11-24). */
+  rowActions: '24%',
 } as const;
-
-/**
- * 디자인 시스템이 붙이는 순서 이동 열의 폭. **우리가 지정하는 값이 아니라 예산에 더할 값이다** —
- * 열은 `columns`에 없으므로 폭 합을 셀 때 손으로 더하지 않으면 예산이 조용히 틀린다.
- */
-export const REORDER_COLUMN_WIDTH = '96px';
 
 export interface StepPaneProps {
   /**
@@ -52,8 +53,6 @@ export interface StepPaneProps {
   approverOptions: ApproverOption[];
   /** 승인자 목록이 잘리거나 실패했다는 안내. */
   approverNote?: string;
-  approverTypeOptions: SelectOption[];
-  approverTypeNote?: string;
   isLocked: boolean;
   saveDisabledReason: string | null;
   onAdd: (approver: ApproverOption) => void;
@@ -62,17 +61,6 @@ export interface StepPaneProps {
   onReorder: (from: number, to: number) => void;
   onSave: () => void;
 }
-
-/**
- * 결재 단계 제목 옆 ⓘ 의 문장 — 전체 교체(계약에 개별 추가·삭제 경로가 없어 배열이 곧 최종 순서다) ·
- * 승인자 부재 · 소급하지 않음 · 반려 후 재상신.
- */
-export const STEP_RULES = [
-  t.notes.stepReplaceWholeList,
-  t.notes.stepGuideApproverAbsent,
-  t.notes.stepGuideNotRetroactive,
-  t.notes.stepGuideRejectResubmit,
-].join(' ');
 
 /**
  * 고른 결재선의 결재 단계 — **추가·삭제·순서 이동과 전체 치환 저장**.
@@ -90,9 +78,6 @@ export const STEP_RULES = [
  * 단계는 (순서, 승인자) 둘뿐이라 「바꾸기」가 「지우고 넣고 옮기기」와 같고, 조작을 하나 줄이면
  * 초안 규칙도 하나 줄어든다.
  *
- * **규칙 네 가지는 구획 제목 옆 ⓘ 에 둔다.** 전체 교체 · 승인자 부재 · 소급하지 않음 · 반려 후 재상신은
- * 결재선을 보는 내내 참인 사실이라 성공 알림에 붙이지 않는다 — 다만 늘 펼쳐 두지도 않는다(관리웹 정리 시안 A).
- *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 export const StepPane = ({
@@ -102,8 +87,6 @@ export const StepPane = ({
   banner,
   approverOptions,
   approverNote,
-  approverTypeOptions,
-  approverTypeNote,
   isLocked,
   saveDisabledReason,
   onAdd,
@@ -119,6 +102,8 @@ export const StepPane = ({
    * 앞 결재선에 넣으려던 승인자가 다음 결재선의 추가 줄에 남아 있으면 안 된다.
    */
   const [approverValue, setApproverValue] = useState('');
+  /* 추가 줄은 제목 줄 「단계 추가」를 눌러야 펼쳐진다(사용자 지시 2026-11-25). 이 구획 안에서만 쓰는 화면 상태다. */
+  const [isAdding, setIsAdding] = useState(false);
   const removeReasonId = useId();
 
   const selectedApprover = approverOptions.find((option) => option.value === approverValue) ?? null;
@@ -131,13 +116,15 @@ export const StepPane = ({
       key: 'stepNo',
       header: t.fields.stepNo,
       width: STEP_COLUMN_WIDTH.stepNo,
-      align: 'end',
+      /* 표의 모든 열은 가운데 맞춤(사용자 지시 2026-11-25). */
+      align: 'center',
       /* 순서는 **배열의 위치**다. 서버가 준 값을 그리면 행을 옮긴 뒤 표시와 자료가 어긋난다. */
       render: (_step, index) => String(index + 1),
     },
     {
       key: 'approver',
       header: t.fields.approver,
+      align: 'center',
       render: (step) => (
         <>
           <span>{describeApprover(step)}</span>
@@ -155,31 +142,53 @@ export const StepPane = ({
       key: 'approverStatus',
       header: t.fields.approverStatus,
       width: STEP_COLUMN_WIDTH.approverStatus,
-      render: (step) =>
-        step.approverIsActive ? t.values.approverActive : t.values.approverInactive,
+      align: 'center',
+      render: (step) => <UsageChip isActive={step.approverIsActive} />,
     },
     {
       key: 'rowActions',
       header: t.fields.stepRowActions,
       width: STEP_COLUMN_WIDTH.rowActions,
+      align: 'center',
+      /* 순서 이동과 삭제를 「관리」 열에 모은다(사용자 지시 2026-11-24). 이동은 디자인 시스템 열 대신 이 단추가 맡는다. */
       render: (step, index) => (
-        <IconButton
-          icon="delete"
-          size="sm"
-          aria-label={t.actions.removeStep(index + 1)}
-          /*
-           * 마지막 한 단계는 지울 수 없다. 사유는 이 버튼의 접근 설명으로 잇는다 —
-           * 비활성 컨트롤은 포커스를 받지 못해 툴팁만으로는 닿을 수 없다(배치 규범 4).
-           */
-          disabled={isLocked || removeDisabledReason !== null}
-          aria-describedby={removeDisabledReason === null ? undefined : removeReasonId}
-          onClick={() => {
-            /* 누르는 자리가 스스로 한 번 더 본다 — 버튼의 잠금만 믿지 않는다. */
-            if (removeDisabledReason !== null) return;
+        <span className="approval-route-step-actions">
+          <IconButton
+            icon="arrow_upward"
+            size="sm"
+            aria-label={t.actions.moveUp}
+            disabled={isLocked || index === 0}
+            onClick={() => {
+              onReorder(index, index - 1);
+            }}
+          />
+          <IconButton
+            icon="arrow_downward"
+            size="sm"
+            aria-label={t.actions.moveDown}
+            disabled={isLocked || index === (drafts?.length ?? 0) - 1}
+            onClick={() => {
+              onReorder(index, index + 1);
+            }}
+          />
+          <IconButton
+            icon="delete"
+            size="sm"
+            aria-label={t.actions.removeStep(index + 1)}
+            /*
+             * 마지막 한 단계는 지울 수 없다. 사유는 이 버튼의 접근 설명으로 잇는다 —
+             * 비활성 컨트롤은 포커스를 받지 못해 툴팁만으로는 닿을 수 없다(배치 규범 4).
+             */
+            disabled={isLocked || removeDisabledReason !== null}
+            aria-describedby={removeDisabledReason === null ? undefined : removeReasonId}
+            onClick={() => {
+              /* 누르는 자리가 스스로 한 번 더 본다 — 버튼의 잠금만 믿지 않는다. */
+              if (removeDisabledReason !== null) return;
 
-            onRemove(step.draftId);
-          }}
-        />
+              onRemove(step.draftId);
+            }}
+          />
+        </span>
       ),
     },
   ];
@@ -206,8 +215,6 @@ export const StepPane = ({
          * 전송 중에는 이 열 자체를 내지 않는다 — 디자인 시스템에 「이동만 비활성」 스위치가 없고,
          * 눌러도 아무 일이 없는 버튼을 남기는 것보다 없는 편이 정직하다.
          */
-        reorderable={!isLocked}
-        onRowReorder={onReorder}
         empty={
           <EmptyState
             size="sm"
@@ -225,60 +232,72 @@ export const StepPane = ({
     if (selectedApprover === null) return;
 
     onAdd(selectedApprover);
-    /* 같은 사람을 잇달아 두 번 넣는 실수를 줄인다 — 넣은 것은 이미 표에 보인다. */
+    /* 같은 사람을 잇달아 두 번 넣는 실수를 줄인다 — 넣은 것은 이미 표에 보인다. 넣은 뒤 줄을 접는다. */
     setApproverValue('');
+    setIsAdding(false);
+  };
+
+  const handleCancelAdd = (): void => {
+    setApproverValue('');
+    setIsAdding(false);
   };
 
   return (
-    <section className="pane" aria-label={t.panes.steps}>
-      {/* 표 아래 네 줄이던 규칙은 제목 옆 ⓘ 하나로 모은다(관리웹 정리 시안 A). */}
-      <h2 className="pane-title info-label">
-        {t.panes.steps}
-        <InfoTip text={STEP_RULES} />
-      </h2>
+    <section className="pane approval-route-steps" aria-label={t.panes.steps}>
+      {/*
+       * 제목 줄 — 왼쪽 「결재 단계 · 총 N단계 · [최소 1개] 라벨」, 오른쪽 끝 [단계 추가](사용자 지시 2026-11-25).
+       * 단계 수는 다른 화면 목록 제목 옆 건수(`po-board-list-count`)와 같은 모양이다.
+       */}
+      <div className="pane-heading-row approval-route-steps-heading">
+        <h2 className="pane-title">{t.panes.steps}</h2>
+        {/* 단계 수는 표와 같은 기준(지금 보이는 줄 수)으로 센다(사용자 지시 2026-11-24). */}
+        {drafts !== null && drafts.length > 0 && (
+          <span className="po-board-list-count">{t.values.stepCountOf(drafts.length)}</span>
+        )}
+        {/*
+         * 사유를 담는 자리 — 제목 옆 라벨(사용자 지시 2026-11-25). 행마다 삭제 버튼이 서지만 사유는 하나라
+         * 한 번만 렌더하고 `aria-describedby`로 잇는다.
+         *
+         * **지울 것이 없으면 내지 않는다.** 사유는 삭제 버튼의 설명이라 그 버튼이 없으면 가리킬
+         * 대상이 없다. 판정 함수는 건드리지 않는다 — 핸들러와 버튼의 잠금이 같은 함수를 보고 있다.
+         */}
+        {drafts !== null && drafts.length > 0 && removeDisabledReason !== null && (
+          <Chip variant="status" status="info" size="sm">
+            <span id={removeReasonId}>{removeDisabledReason}</span>
+          </Chip>
+        )}
+        {drafts !== null && (
+          <Button
+            className="approval-route-steps-add"
+            variant="outlined"
+            size="sm"
+            leadingIcon={<Icon name="add" size={18} />}
+            disabled={isLocked}
+            aria-expanded={isAdding}
+            onClick={() => {
+              setIsAdding(true);
+            }}
+          >
+            {t.actions.addStep}
+          </Button>
+        )}
+      </div>
       <div className="banner-slot">{banner}</div>
 
       {stepsSlot()}
 
-      {/*
-       * 사유를 담는 자리. 행마다 버튼이 서지만 사유는 하나라 한 번만 렌더하고 `aria-describedby`로
-       * 잇는다 — 행마다 같은 문장을 되풀이하면 스크린리더가 목록을 읽는 내내 그것을 반복한다.
-       *
-       * **지울 것이 없으면 내지 않는다.** 사유는 삭제 버튼의 설명이라 그 버튼이 없으면 가리킬
-       * 대상이 없고, 빈 상태 안내 옆에 서면 「지울 것도 없는데 지울 수 없다」가 된다.
-       * 판정 함수는 건드리지 않는다 — 핸들러와 버튼의 잠금이 같은 함수를 보고 있다.
-       */}
-      {drafts !== null && drafts.length > 0 && removeDisabledReason !== null && (
-        <span id={removeReasonId} className="field-note">
-          {removeDisabledReason}
-        </span>
-      )}
-
-      {drafts !== null && (
-        <div className="filter-bar">
-          {/*
-           * 승인자 구분 — 1차에는 사용자만 열린다. **잠긴 선택지를 감추지 않는다**(`omf-mes#69`).
-           * 값이 하나뿐이라 고를 것이 없지만, 그 사실을 보이는 것이 이 칸의 일이다. 「사용자만 고를 수
-           * 있다」는 칸 아래가 아니라 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A).
-           *
-           * **`disabledReason`을 주지 않는다.** 그 prop이 묻는 것은 「왜 잠겼는가」인데 여기
-           * 담을 값(역할·부서를 열지 않았다 · 목록이 잘렸다)은 그 답이 아니다 — 이 칸이 잠기는
-           * 이유는 **전송 중**이고, 그것은 저장 버튼의 진행 표시가 이미 말한다. 잠긴 동안은
-           * 고를 수 없으므로 「무엇을 고를 수 있는가」의 안내도 그 사이에는 읽을 일이 없다.
-           */}
+      {drafts !== null && isAdding && (
+        /*
+         * 결재자 선택 · [추가] · [취소]를 한 줄로(사용자 지시 2026-11-24) — 좁으면 읽는 순서대로 접힌다.
+         * 제목 줄 「단계 추가」를 눌렀을 때만 표 아래에 펼친다(2026-11-25). 결재자 유형 칸은 사용자 하나만 고를 수 있어
+         * 걷었다(사용자 지시 2026-11-25) — 단계는 종전대로 사용자 결재자로 저장된다(`toStepsReplaceBody`).
+         */
+        <div className="filter-bar approval-route-step-add">
           <SelectField
-            label={t.fields.approverType}
-            options={approverTypeOptions}
-            value="USER"
-            info={approverTypeNote}
-            disabled={isLocked}
-            onChange={() => {
-              /* 열린 값이 하나뿐이라 바뀔 값이 없다. 치환 본문의 구분은 상수이며 이 칸을 읽지 않는다. */
-            }}
-          />
-
-          <SelectField
-            label={t.fields.approver}
+            className="approval-route-approver-field"
+            required
+            label={t.fields.approverSelect}
+            placeholder={t.fields.approverPlaceholder}
             options={approverOptions}
             value={approverValue}
             note={approverNote}
@@ -286,15 +305,16 @@ export const StepPane = ({
             onChange={setApproverValue}
           />
 
-          {addDisabledReason === null ? (
-            <div className="field-cell">
-              <Button variant="outlined" disabled={isLocked} onClick={handleAdd}>
-                {t.actions.addStep}
-              </Button>
-            </div>
-          ) : (
-            <DisabledAction label={t.actions.addStep} reason={addDisabledReason} />
-          )}
+          {/* 결재자를 고르기 전에는 꺼진 단추로만 — 칸의 「결재자를 선택하세요」가 이미 말한다. */}
+          <div className="field-cell field-cell-unlabeled approval-route-step-add-actions">
+            {/* [추가]는 채운 빨간 단추 — 「새 결재선」과 같은 기본 모양(사용자 지시 2026-11-25). */}
+            <Button disabled={isLocked || addDisabledReason !== null} onClick={handleAdd}>
+              {t.actions.confirmAddStep}
+            </Button>
+            <Button variant="outlined" disabled={isLocked} onClick={handleCancelAdd}>
+              {messages.common.cancel}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -302,6 +322,11 @@ export const StepPane = ({
         <div className="form-actions">
           {saveDisabledReason === null ? (
             <Button variant="filled" loading={isLocked} disabled={isLocked} onClick={onSave}>
+              {t.actions.saveSteps}
+            </Button>
+          ) : saveDisabledReason === t.actionReasons.stepSaveNoChanges ? (
+            /* 고친 단계가 없을 때는 꺼진 단추로만 — 같은 안내를 되풀이하지 않는다(사용자 지시 2026-11-24). */
+            <Button variant="filled" disabled>
               {t.actions.saveSteps}
             </Button>
           ) : (

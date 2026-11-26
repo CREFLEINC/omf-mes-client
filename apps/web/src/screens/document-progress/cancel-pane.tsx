@@ -209,6 +209,7 @@ export const CancelPane = ({
         <TextField
           fullWidth
           label={t.cancelRequest.reason}
+          required
           value={reason}
           placeholder={t.cancelRequest.reasonPlaceholder}
           disabled={isLocked}

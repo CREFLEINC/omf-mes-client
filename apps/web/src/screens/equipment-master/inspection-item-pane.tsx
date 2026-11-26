@@ -10,12 +10,12 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useState, type ReactNode } from 'react';
 
+import { UsageChip } from '../../patterns/usage-chip';
 import type { CodeOption } from './code-options';
 import { SelectField } from './select-field';
 import type { EquipmentInspectionItem, InspectionItemFilters } from './types';
 
 const t = messages.equipmentMaster.inspectionItem;
-const tv = messages.equipmentMaster.values;
 
 export interface InspectionItemPaneProps {
   items: EquipmentInspectionItem[];
@@ -115,7 +115,7 @@ export const useInspectionItemPane = ({
       key: 'isActive',
       header: t.fields.isActive,
       width: '84px',
-      render: (row) => (row.isActive ? tv.active : tv.inactive),
+      render: (row) => <UsageChip isActive={row.isActive} />,
     },
   ];
 

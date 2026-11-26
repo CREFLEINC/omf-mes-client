@@ -21,7 +21,8 @@ export const expeditedShipment: Translated<typeof ko.expeditedShipment> = {
     loadFailed: 'Không tải được danh sách phần đã sản xuất xong',
     fields: {
       lotNo: 'LOT',
-      item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       qty: 'Số lượng',
       status: 'Lot Status',
     },
@@ -50,7 +51,8 @@ export const expeditedShipment: Translated<typeof ko.expeditedShipment> = {
     noLine: 'Lệnh này không có dòng nào của mặt hàng đã chọn',
     fields: {
       shipmentRequestNo: 'Số lệnh xuất hàng',
-      requestedShipDate: 'Ngày xuất hàng',
+      requestedShipDateFrom: 'Từ ngày xuất hàng',
+      requestedShipDateTo: 'Đến ngày xuất hàng',
       allocatedQty: 'Phân bổ',
       remainingQty: 'Phân bổ còn lại',
       qty: 'Số lượng',

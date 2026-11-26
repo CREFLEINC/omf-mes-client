@@ -4,8 +4,7 @@
  * ⚠ 용어 — 이 화면의 대상은 「ERP W/O」다. P/O(구매오더)·W/O(MES 작업지시)와 다르다.
  * 생산오더·제조오더·작업지시라고 부르지 않는다(서버 CONTEXT.md).
  *
- * 상세는 두지 않는다 — 상세가 목록 줄과 겹쳐 두지 않는다(사용자 지시 2026-10-27). 목록 한 구획뿐이라 고르기
- * 문구도 없다.
+ * 목록은 식별 열만, 고른 W/O 의 모든 칸은 오른쪽 상세에 「이름 : 값」으로 보인다(omf-all-around#358).
  */
 export const erpProductionOrder = {
   title: 'ERP W/O 조회',
@@ -13,42 +12,50 @@ export const erpProductionOrder = {
   fields: {
     productionOrderNo: 'ERP W/O 번호',
     item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     orderQty: '지시 수량',
     plannedStartDate: '계획 시작일',
-    dueDate: '납기',
-    operationNo: '공정번호',
+    dueDate: '납기일',
+    operationNo: '공정 번호',
     storageLocation: '창고',
-    rework: '재작업',
+    rework: '재작업 여부',
     status: '상태',
-    progress: '진행',
-    q: 'ERP W/O 번호',
+    progress: '진행 상태',
+    q: 'ERP W/O 번호 검색',
   },
   panes: {
     filters: 'ERP W/O 조회 조건',
     list: 'ERP W/O 목록',
+    detail: 'ERP W/O 상세',
   },
   filters: {
+    plannedStartDateFromPlaceholder: '계획 시작일(부터)을 입력하세요',
+    plannedStartDateToPlaceholder: '계획 시작일(까지)을 입력하세요',
     all: '전체',
+    /* 조회 상자 선택칸 이름(#358). 목록 열 · 칩은 `fields` 이름 그대로. */
+    itemSelect: '품목 검색',
+    /** 계획 시작일 칸의 흐린 안내(사용자 지시 2026-11-24). */
+    statusSelect: '상태 선택',
+    /** 조회 줄 날짜 칸 이름 — 다른 칸처럼 「검색」을 붙인다(사용자 지시 2026-11-25). 목록 열 이름은 `fields.plannedStartDate` 그대로. */
+    plannedStartDateFrom: '계획 시작일(부터)',
+    plannedStartDateTo: '계획 시작일(까지)',
     itemPlaceholder: '품목을 검색해 고르세요',
     itemClear: '품목 지우기',
     itemPick: '고르기',
     /** 「조건 더보기」에 접힌 조건의 칩 — 「상태: 반려」처럼 칸 이름과 값을 한 줄로. */
     chip: (label: string, value: string): string => `${label}: ${value}`,
   },
-  actions: {
-    firstPage: '첫 쪽',
-    prevPage: '이전',
-    nextPage: '다음',
-  },
   /**
    * 진행 — 이 W/O 에서 펼친 MES 작업지시가 다 닫혔는가(사용자 지시 2026-10-28). 조건 단추와 목록 열이 같은 낱말을 쓴다.
    * 표지는 서버 `progressStatusCode` 의 넷이다.
    */
   progress: {
-    group: '진행 조건',
+    group: '진행 상태',
     all: '전체',
     open: '미완료',
     done: '완료',
+    withCount: (label: string, count: number): string => `${label} ${String(count)}`,
     status: {
       NOT_STARTED: '생산 전',
       PARTIAL: '생산 중',
@@ -57,9 +64,9 @@ export const erpProductionOrder = {
     },
   },
   values: {
-    searchPlaceholder: 'ERP W/O 번호 일부',
+    searchPlaceholder: 'ERP W/O 번호를 입력하세요',
     missing: '-',
-    unknown: '알 수 없음',
+    unknown: '등록 정보 없음',
     loadingName: '불러오는 중',
     failedName: '불러오지 못함',
     reworkYes: '예',
@@ -73,10 +80,4 @@ export const erpProductionOrder = {
   loading: 'ERP W/O 를 불러오는 중',
   listLoadFailedTitle: 'ERP W/O 목록을 불러오지 못했습니다',
   loadFailedDescription: '잠시 후 다시 시도하세요. 계속되면 관리자에게 문의하세요.',
-  page: {
-    label: 'ERP W/O 쪽 이동',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
-    total: (total: number): string => `전체 ${String(total)}건`,
-  },
 } as const;

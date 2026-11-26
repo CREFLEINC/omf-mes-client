@@ -62,6 +62,16 @@ export const readPage = (params: URLSearchParams): number => {
   return Number.isSafeInteger(page) && page > 0 ? page : 1;
 };
 
+/** 목록 쪽 크기 선택지 — 처음 값은 20이다. */
+export const LIST_PAGE_SIZES = [10, 20, 50] as const;
+export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
+
+/** 고른 쪽 크기. 고른 적이 없거나 선택지에 없으면 `null`(처음 값 20). */
+export const readSize = (params: URLSearchParams): ListPageSize | null => {
+  const size = Number(params.get('size'));
+  return LIST_PAGE_SIZES.find((option) => option === size) ?? null;
+};
+
 export const readSelectedId = (params: URLSearchParams): number | null => {
   const id = Number(params.get('sel'));
   return Number.isSafeInteger(id) && id > 0 ? id : null;
@@ -71,7 +81,11 @@ export const readSelectedId = (params: URLSearchParams): number | null => {
  * 조건·쪽을 주소로 옮긴다. **조건이 바뀌면 고른 건을 놓는다** — 새 결과에 그 건이 없을 수 있다.
  * 빈 값은 적지 않아 주소가 짧게 남는다.
  */
-export const toSearchParams = (filters: PurchaseOrderFilters, page: number): URLSearchParams => {
+export const toSearchParams = (
+  filters: PurchaseOrderFilters,
+  page: number,
+  size: ListPageSize | null = null,
+): URLSearchParams => {
   const params = new URLSearchParams();
   TEXT_KEYS.forEach((key) => {
     const value = filters[key].trim();
@@ -81,6 +95,7 @@ export const toSearchParams = (filters: PurchaseOrderFilters, page: number): URL
   if (orderType !== '') params.set(ORDER_TYPE_KEY, orderType);
   if (filters.progress !== 'all') params.set('progress', filters.progress);
   if (page > 1) params.set('page', String(page));
+  if (size !== null) params.set('size', String(size));
   return params;
 };
 
@@ -91,6 +106,13 @@ export const toSelectionSearchParams = (
 ): URLSearchParams => {
   const next = new URLSearchParams(current);
   next.set('sel', String(purchaseOrderId));
+  return next;
+};
+
+/** 고른 건을 푼 주소 — 조건 · 쪽은 그대로 둔다. */
+export const toClearedSelectionSearchParams = (current: URLSearchParams): URLSearchParams => {
+  const next = new URLSearchParams(current);
+  next.delete('sel');
   return next;
 };
 
@@ -118,18 +140,44 @@ export type PurchaseOrderListQuery = Pick<
   | 'orderDateTo'
   | 'openOnly'
   | 'progress'
+  | 'sort'
   | 'page'
   | 'size'
 >;
 
-export const LIST_PAGE_SIZE = 25;
+/*
+ * 목록 정렬 — 일자 열(발주일 · 입고 예정일)만 오름/내림으로 서버에 맡긴다(사용자 지시 2026-11-24). 주소 `sort` 에
+ * 계약 값 그대로 적고, 없으면 서버 기본(발주일 최신순)이다. 모르는 값은 읽지 않는다.
+ */
+export const SORTABLE_KEYS = ['orderDate', 'expectedReceiptDate'] as const;
+export type SortableKey = (typeof SORTABLE_KEYS)[number];
+export type ListSort = `${SortableKey},${'asc' | 'desc'}`;
+
+export const readListSort = (params: URLSearchParams): ListSort | null => {
+  const raw = params.get('sort') ?? '';
+  const [key, direction] = raw.split(',');
+  return SORTABLE_KEYS.some((sortable) => sortable === key) &&
+    (direction === 'asc' || direction === 'desc')
+    ? (raw as ListSort)
+    : null;
+};
+
+/** 조건 · 쪽을 다시 적은 주소에 지금 정렬을 이어 붙인다 — 조회 · 쪽 넘김이 정렬을 잃지 않게. */
+export const withListSort = (params: URLSearchParams, sort: ListSort | null): URLSearchParams => {
+  if (sort === null) params.delete('sort');
+  else params.set('sort', sort);
+  return params;
+};
+
+export const LIST_PAGE_SIZE = 20;
 
 /** 주소의 조건을 계약의 쿼리로 옮긴다. 빈 조건은 싣지 않는다. */
 export const toListQuery = (
   filters: PurchaseOrderFilters,
   page: number,
+  size: ListPageSize | null = null,
 ): PurchaseOrderListQuery => {
-  const query: PurchaseOrderListQuery = { page, size: LIST_PAGE_SIZE };
+  const query: PurchaseOrderListQuery = { page, size: size ?? LIST_PAGE_SIZE };
   const q = filters.q.trim();
   if (q !== '') query.q = q;
   const supplierId = toId(filters.supplier);

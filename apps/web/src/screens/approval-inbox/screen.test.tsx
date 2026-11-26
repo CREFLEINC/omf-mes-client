@@ -12,7 +12,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import { pickRange } from '../../test/date-picker';
+import { pickDateRange } from '../../test/date-picker';
 import {
   SECOND_LINE_OF_MULTILINE_REASON,
   contradictoryMyTurnDetail,
@@ -541,7 +541,13 @@ describe('조회 조건', () => {
     await waitForList();
 
     await user.type(screen.getByLabelText(t.fields.q), 'SYNTH-REQ-002');
-    await pickRange(user, screen.getByLabelText(t.fields.period), '2026-07-20', '2026-07-25');
+    await pickDateRange(
+      user,
+      screen.getByLabelText(t.fields.periodFrom),
+      screen.getByLabelText(t.fields.periodTo),
+      '2026-07-20',
+      '2026-07-25',
+    );
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => {

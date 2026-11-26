@@ -33,13 +33,13 @@ export const StockTable = ({ label, rows, uomLookup, qualityStatusName }: StockT
     },
     {
       key: 'item',
-      header: t.stock.item,
-      render: (row) => (
-        <div className="layout-stock-item">
-          <span className="layout-stock-code">{row.itemCode}</span>
-          <span className="field-note layout-stock-item-name">{row.itemName}</span>
-        </div>
-      ),
+      header: t.stock.itemCode,
+      render: (row) => <span className="layout-stock-code">{row.itemCode}</span>,
+    },
+    {
+      key: 'itemName',
+      header: t.stock.itemName,
+      render: (row) => <span className="layout-stock-item-name">{row.itemName}</span>,
     },
     {
       key: 'lot',

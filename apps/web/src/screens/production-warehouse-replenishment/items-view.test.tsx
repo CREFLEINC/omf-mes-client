@@ -34,7 +34,8 @@ describe('W-02-12 생산 창고 보충 — 관리 품목 보기', () => {
     const cells = label.getAllByRole('cell').map((cell) => cell.textContent);
     expect(cells).toEqual([
       '합성 생산창고 A',
-      'SYN-IT-2 합성 라벨지',
+      'SYN-IT-2',
+      '합성 라벨지',
       '400',
       '1,000',
       'EA',

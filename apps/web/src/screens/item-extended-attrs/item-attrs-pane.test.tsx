@@ -117,8 +117,8 @@ describe('ItemAttrsPane — 고치지 않는 값은 폼에 없다', () => {
     renderPane();
 
     expect(screen.queryByText('MES 구분')).not.toBeInTheDocument();
-    expect(screen.queryByText('사용 여부')).not.toBeInTheDocument();
-    expect(screen.queryByRole('switch', { name: '사용 여부' })).not.toBeInTheDocument();
+    expect(screen.queryByText('사용 유무')).not.toBeInTheDocument();
+    expect(screen.queryByRole('switch', { name: '사용 유무' })).not.toBeInTheDocument();
   });
 });
 

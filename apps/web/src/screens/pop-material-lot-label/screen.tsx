@@ -289,8 +289,11 @@ export const PopMaterialLotLabelScreen = () => {
 
   /** 공급사를 고르면 품목 표가 그 공급사 품목으로 바뀐다 — 품목은 고르지 않는다(고르면 LOT 이 생긴다). */
   const chooseSupplier = (row: MaterialLotSupplier): void => {
-    if (pickedSupplier?.supplierId === row.supplier.supplierId) return;
-    setPickedSupplier({ supplierId: row.supplier.supplierId, name: row.supplier.name });
+    /* 고른 공급사를 다시 누르면 푼다(목록 공통 · #358). */
+    const again = pickedSupplier?.supplierId === row.supplier.supplierId;
+    setPickedSupplier(
+      again ? null : { supplierId: row.supplier.supplierId, name: row.supplier.name },
+    );
     setItemPage(1);
     setPicked(null);
     setTab('UNPRINTED');
@@ -308,8 +311,8 @@ export const PopMaterialLotLabelScreen = () => {
   };
 
   const choosePair = (next: PickedPair): void => {
-    if (pickedKey === keyOfRef(next.ref)) return;
-    setPicked(next);
+    /* 고른 품목을 다시 누르면 푼다(목록 공통 · #358). */
+    setPicked(pickedKey === keyOfRef(next.ref) ? null : next);
     setTab('UNPRINTED');
     setLotPage(1);
     setScanned(null);

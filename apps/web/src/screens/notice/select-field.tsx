@@ -28,6 +28,8 @@ export interface SelectFieldProps {
    * 고장 난 것으로 읽는다(배치 규범 4).
    */
   disabled?: boolean;
+  /** 빨간 필수 표시 — 라벨 밖 `required-mark` 와 선택칸의 `aria-required`. */
+  required?: boolean;
 }
 
 /**
@@ -54,6 +56,7 @@ export const SelectField = ({
   placeholder,
   wide = false,
   disabled = false,
+  required = false,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
@@ -63,13 +66,14 @@ export const SelectField = ({
 
   return (
     <div className={wide ? 'field-cell wide-select' : 'field-cell'}>
-      <FieldLabel htmlFor={id} label={label} info={info} />
+      <FieldLabel htmlFor={id} label={label} info={info} required={required} />
       <Select
         id={id}
         options={options}
         value={value === '' && !hasEmptyOption ? null : value}
         onChange={onChange}
         disabled={disabled}
+        aria-required={required || undefined}
         placeholder={placeholder}
         invalid={error !== undefined}
         aria-describedby={

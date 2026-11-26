@@ -167,10 +167,6 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
     cycleRequired: 'Đã đưa ngày vào tiêu chí đánh giá thì hãy nhập cả khoảng chu kỳ và đơn vị.',
     intervalPositiveInteger: 'Hãy nhập khoảng chu kỳ là số nguyên từ 1 trở lên.',
   },
-  values: {
-    /** 미사용 표식은 칸이 아니라 이름에 붙는다 — 표가 넓어지지 않게 짧게 둔다. */
-    inactiveSuffix: ' (ngừng dùng)',
-  },
   shots: {
     guaranteedMissing: 'Không có số nhát dập đảm bảo',
     notCalculable: 'Không tính được',

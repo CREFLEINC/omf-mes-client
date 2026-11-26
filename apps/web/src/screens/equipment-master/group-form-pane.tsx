@@ -3,6 +3,8 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useId } from 'react';
 
+import { UsageChip } from '../../patterns/usage-chip';
+import { CodeLockTextField } from '../../patterns/master';
 import { GROUP_TYPE_OPTIONS, type CodeOption } from './code-options';
 import { SelectField } from './select-field';
 import type { GroupFormValues } from './types';
@@ -91,13 +93,12 @@ export const GroupFormPane = ({
           error={fieldErrors.plantId}
         />
 
-        <TextField
+        <CodeLockTextField
+          lockReason={codeLockReason}
           label={t.fields.groupCode}
           required
           value={values.groupCode}
           onChange={(event) => onChange({ groupCode: event.target.value })}
-          disabled={codeLockReason !== null}
-          disabledReason={codeLockReason ?? undefined}
           error={fieldErrors.groupCode}
         />
 
@@ -159,7 +160,9 @@ export const GroupFormPane = ({
           <span className="field-label" id={activeLabelId}>
             {t.fields.isActive}
           </span>
-          <p aria-labelledby={activeLabelId}>{isActive ? t.values.active : t.values.inactive}</p>
+          <p aria-labelledby={activeLabelId}>
+            <UsageChip isActive={isActive} />
+          </p>
           {/* 아직 등록되지 않은 그룹에는 사용 중지할 대상이 없다. 이미 중지된 것도 마찬가지다. */}
           {mode === 'edit' && isActive && (
             <div className="field-cell">

@@ -196,6 +196,8 @@ export const PlanStep = ({
   const [contextSelection, setContextSelection] = useState<number | null>(null);
   const [splitOpen, setSplitOpen] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  /* 고른 계획을 다시 눌러 풀었다 — 값은 그때 보던 주(계획일). 첫 계획을 저절로 다시 고르지 않는다. */
+  const [clearedWeekOf, setClearedWeekOf] = useState<string | null>(null);
   const [selectAdded, setSelectAdded] = useState(false);
   const beforeAdded = useRef<ReadonlySet<string> | null>(null);
   const previousAddRequest = useRef(addRequest);
@@ -215,7 +217,11 @@ export const PlanStep = ({
   }
 
   const selected =
-    rows.find((row) => row.key === selectedKey) ?? rows.find((row) => !row.confirmed) ?? rows[0];
+    clearedWeekOf !== null
+      ? undefined
+      : (rows.find((row) => row.key === selectedKey) ??
+        rows.find((row) => !row.confirmed) ??
+        rows[0]);
   const selectedRowKey = selected?.key;
   useEffect(() => {
     if (selectedRowKey) onSelectedKeyChange?.(selectedRowKey);
@@ -231,6 +237,7 @@ export const PlanStep = ({
     const added = rows.find((row) => !beforeAdded.current?.has(row.key));
     if (!added) return;
     setContextSelection(null);
+    setClearedWeekOf(null);
     setSelectedKey(added.key);
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(revealEditor);
     setSelectAdded(false);
@@ -250,7 +257,7 @@ export const PlanStep = ({
           ? `생산 라인 ID ${value}`
           : ui.unassigned;
   };
-  const week = planWeek(anchor ?? (selected?.draft.planDate || plantToday()));
+  const week = planWeek(anchor ?? (selected?.draft.planDate || clearedWeekOf || plantToday()));
   const visibleWeek = compactCalendar ? week.slice(dayOffset, dayOffset + 3) : week;
   const selectedDate = selected?.draft.planDate;
   const weekStart = week[0];
@@ -327,9 +334,19 @@ export const PlanStep = ({
     qty == null ? '—' : `${formatQty(qty)} ${uomLabel}`;
   const choose = (row: ProductionPlanEditorStateRow) => {
     setContextSelection(null);
+    setClearedWeekOf(null);
     setSelectedKey(row.key);
     onSelectedKeyChange?.(row.key);
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(revealEditor);
+  };
+  /* 고른 계획(다른 ERP W/O 계획 포함)을 다시 누르면 푼다 — 보던 주는 그대로 둔다(목록 공통). */
+  const unpick = () => {
+    setContextSelection(null);
+    setClearedWeekOf(week[0] ?? plantToday());
+  };
+  const toggle = (row: ProductionPlanEditorStateRow) => {
+    if (!contextPlan && row.key === selected?.key) unpick();
+    else choose(row);
   };
   const columns: Column<ProductionPlanEditorStateRow>[] = [
     ...(orderNameOf && !planGroups
@@ -565,7 +582,7 @@ export const PlanStep = ({
                           getRowId={(row) => row.key}
                           activeId={selected?.key}
                           rowLabel={(row) => nameOf(row)}
-                          onActivate={choose}
+                          onActivate={toggle}
                           empty={<p className="empty-line">{t.empty}</p>}
                         />
                       )}
@@ -582,7 +599,7 @@ export const PlanStep = ({
                 getRowId={(row) => row.key}
                 activeId={selected?.key}
                 rowLabel={(row) => nameOf(row)}
-                onActivate={choose}
+                onActivate={toggle}
                 empty={<p className="empty-line">{t.empty}</p>}
               />
             )
@@ -738,7 +755,7 @@ export const PlanStep = ({
                                   selected={!contextPlan && selected?.key === row.key}
                                   label={ui.selectPlan(nameOf(row))}
                                   controls={editorId}
-                                  onSelect={() => choose(row)}
+                                  onSelect={() => toggle(row)}
                                 />
                               ))}
                             {contextRows
@@ -768,6 +785,10 @@ export const PlanStep = ({
                                   label={`${plan.planNo} 상세 확인`}
                                   controls={editorId}
                                   onSelect={() => {
+                                    if (contextPlan?.productionPlanId === plan.productionPlanId) {
+                                      unpick();
+                                      return;
+                                    }
                                     setContextSelection(plan.productionPlanId);
                                     requestAnimationFrame(revealEditor);
                                   }}
@@ -884,11 +905,17 @@ export const PlanStep = ({
               <div className="erp-wo-plan-edit-fields">
                 {' '}
                 <div className="field-cell">
-                  <label className="field-label">{t.columns.planDate}</label>
+                  <span className="field-label">
+                    <label>{t.columns.planDate}</label>
+                    <span className="required-mark" aria-hidden="true">
+                      {' *'}
+                    </span>
+                  </span>
                   <DatePicker
                     min={plantToday()}
                     size="md"
                     aria-label={t.fieldLabel(nameOf(selected), t.columns.planDate)}
+                    aria-required="true"
                     value={selected.draft.planDate || null}
                     invalid={errorText(selected.errors, 'planDate') !== undefined}
                     disabled={editDisabled}
@@ -922,6 +949,7 @@ export const PlanStep = ({
                   containerClassName="erp-wo-plan-quantity-field"
                   size="md"
                   label={t.columns.plannedQty}
+                  required
                   aria-label={t.fieldLabel(nameOf(selected), t.columns.plannedQty)}
                   inputMode="decimal"
                   helperText={rowUomLabelOf ? `단위 ${unitOf(selected)}` : undefined}

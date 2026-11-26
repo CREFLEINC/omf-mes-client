@@ -7,23 +7,20 @@ import { useApiClient } from '../../patterns/api-context';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { DiscardDialog, LeaveGuard } from '../routing/leave-guard';
 import { ActivationDialog, type ActivationIntent } from './activation-dialog';
 import { approverNote, useApproverLookup, type ApproverOption } from './approver-options';
-import {
-  ENABLED_APPROVER_TYPE_CODES,
-  PLACEHOLDER_APPROVAL_TYPE_CODES,
-  approverTypeNote,
-  toApprovalTypeOptions,
-  toApproverTypeOptions,
-} from './code-options';
+import { PLACEHOLDER_APPROVAL_TYPE_CODES, toApprovalTypeOptions } from './code-options';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
-import { judgeDuplicate, type DuplicateProbe } from './duplicate-check';
+import { judgeDuplicate, takenApprovalTypeCodes, type DuplicateProbe } from './duplicate-check';
 import {
   DEFAULT_FILTERS,
   isCreating as readIsCreating,
   readFilters,
   readPage,
   readSelectedRouteId,
+  readSize,
+  type ListPageSize,
   toCreateSearchParams,
   toSearchParams,
   toSelectionSearchParams,
@@ -41,6 +38,7 @@ import { toPageView } from './pagination';
 import {
   routeDetailPath,
   routeKeys,
+  useActiveRoutesForCreate,
   useDuplicateProbe,
   useRouteDetail,
   useRouteList,
@@ -66,6 +64,7 @@ import {
 } from './route-validation';
 import {
   createStepDraft,
+  isSameStepDrafts,
   moveStepDraft,
   removeStepDraft,
   stepRemoveBlockedReason,
@@ -85,6 +84,7 @@ import {
 import './layout.css';
 
 const t = messages.approvalRoute;
+const leave = messages.common.unsavedLeave;
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 읽는 판정이 매번 달라 보인다. */
 const EMPTY_ROUTES: ApprovalRoute[] = [];
@@ -160,7 +160,6 @@ interface StepDraftState {
  * | 7 | 폼 입력 | 유지 | 유지 | 유지 | 유지 | 바뀐다 | **유지** | 유지 | **유지** | 유지 |
  * | 8 | **단계 추가·삭제·순서 이동** | 유지 | 유지 | 유지 | 유지 | **유지** | 바뀐다 | 유지 | 유지 | **유지** |
  * | 9 | 목록·상세·단계·참조 **응답 도착** | 유지 | 유지 | 유지 | 유지 | **건드리지 않는다** | **건드리지 않는다** | 유지 | 유지 | 유지 |
- * | 10 | **다시 조회**(새로고침) | 유지 | 유지 | 유지 | 유지 | **유지** | **유지** | 유지 | 유지 | 유지 |
  * | 11 | **폼 저장 성공(수정)** | 유지 | 유지 | 유지 | 끈다 | **서버 응답으로 다시 세운다** | 유지 | 닫혀 있다 | 비운다 | 유지 |
  * | 12 | **폼 저장 성공(등록)** | 유지 | 유지 | **새 번호를 넣는다** | **끈다** | 새 대상에서 다시 세운다 | **새 대상에서 세운다** | 닫혀 있다 | 비운다 | 비운다 |
  * | 13 | 폼 저장 실패 | 유지 | 유지 | 유지 | 유지 | **유지** | 유지 | 닫혀 있다 | **세운다** | 유지 |
@@ -235,10 +234,12 @@ export const ApprovalRouteScreen = () => {
 
   const filters = useMemo(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
+  /* 쪽 크기 — 고르지 않았으면 `null`(서버 기본값 · 주소 · 요청에 싣지 않는다 · omf-all-around#358). */
+  const size = readSize(searchParams);
   const selectedRouteId = readSelectedRouteId(searchParams);
   const isCreating = readIsCreating(searchParams);
 
-  const list = useRouteList(filters, page);
+  const list = useRouteList(filters, page, size);
   const detail = useRouteDetail(selectedRouteId);
   const steps = useRouteSteps(selectedRouteId);
   const businessUnits = useBusinessUnitLookup();
@@ -249,7 +250,7 @@ export const ApprovalRouteScreen = () => {
    * 404 안내가 매인 대상. **조건·쪽의 서명**이며, 그것이 바뀌면 안내가 가리킬 것이 없다.
    * 조작마다 따로 지우면 뒤로가기·주소 직접 편집이 그 길을 지나지 않아 안내가 살아남는다.
    */
-  const listContextKey = toSearchParams(filters, page).toString();
+  const listContextKey = toSearchParams(filters, page, size).toString();
   const [missingContextKey, setMissingContextKey] = useState<string | null>(null);
 
   const detailError = detail.isError ? toApiError(detail.error) : null;
@@ -290,7 +291,8 @@ export const ApprovalRouteScreen = () => {
    * **지금 편집 중인 대상.** 배너·인라인 오류·창·초안이 **같은 이름 하나**를 본다 —
    * 각자 다른 값을 보게 두면 「어느 조작이 무엇을 지우는가」가 자리마다 갈린다(전례 PR #91 R3-6).
    *
-   * 고른 결재선과 등록 폼은 **함께 성립하지 않는 하나의 자리**다(`filters.ts`가 그 규칙을 갖는다).
+   * 등록 팝업이 열려 있으면 편집 대상은 팝업(`'new'`)이다 — 뒤의 고른 결재선은 보이기만 하고(사용자 지시
+   * 2026-11-25) 그 초안은 아래 `editDraft`가 고른 결재선 번호에 매여 따로 지킨다.
    */
   const editTargetKey: string | null = isCreating
     ? 'new'
@@ -299,12 +301,18 @@ export const ApprovalRouteScreen = () => {
       : String(selectedRouteId);
 
   /**
-   * 단계 초안이 매인 대상. **`editTargetKey`와 갈린다** — 등록 중에는 단계 구획이 아예 없다
+   * 단계 초안 · 수정 초안이 매인 대상. **`editTargetKey`와 갈린다** — 등록 팝업이 열려도 뒤의 고른 결재선은 그대로다.
+   * 등록 팝업에는 단계 구획이 아예 없다
    * (등록 본문에 단계를 실을 수 없고 치환은 결재선 번호를 요구한다 — 붙일 자원이 없다).
    */
   const stepTargetKey: string | null = selectedRouteId === null ? null : String(selectedRouteId);
 
-  const [draft, setDraft] = useState<FormDraft | null>(null);
+  /*
+   * 수정 초안과 등록 초안을 따로 든다 — 등록 팝업은 고른 결재선 **위에** 뜨므로(사용자 지시 2026-11-25) 팝업을 열고
+   * 닫아도 뒤의 고친 값이 사라지지 않아야 한다. 조작은 지금 대상의 초안(`draft`) 하나만 본다.
+   */
+  const [editDraft, setEditDraft] = useState<FormDraft | null>(null);
+  const [createDraft, setCreateDraft] = useState<FormDraft | null>(null);
   const [stepDraft, setStepDraft] = useState<StepDraftState | null>(null);
   /** 보내기 전에 화면에서 잡은 오류. 저장을 누른 뒤에만 세운다 — 입력 도중에 붉은 글씨를 띄우지 않는다. */
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -317,24 +325,36 @@ export const ApprovalRouteScreen = () => {
    * 두 걸음으로 나눈 이유: 대상이 바뀌는 순간과 새 값을 얻는 순간이 **다르다.** 상세가
    * 도착하기 전에는 세울 값이 없고, 그때 앞 초안을 남겨 두면 그것이 새 대상의 값처럼 보인다.
    */
-  if (editTargetKey === null) {
-    if (draft !== null) setDraft(null);
-  } else if (draft !== null && draft.key !== editTargetKey) {
-    setDraft(null);
-  } else if (draft === null) {
-    if (isCreating) {
-      /* 등록 폼은 **빈 값으로** 선다 — 기본값을 지어내면 사용자가 고르지 않은 값이 저장된다. */
-      const seeded = emptyRouteFormValues();
+  if (stepTargetKey === null) {
+    if (editDraft !== null) setEditDraft(null);
+  } else if (editDraft !== null && editDraft.key !== stepTargetKey) {
+    setEditDraft(null);
+  } else if (editDraft === null && route !== null) {
+    const seeded = routeToFormValues(route);
 
-      setDraft({ key: editTargetKey, baseline: seeded, values: seeded });
-    } else if (route !== null) {
-      const seeded = routeToFormValues(route);
-
-      setDraft({ key: editTargetKey, baseline: seeded, values: seeded });
-    }
+    setEditDraft({ key: stepTargetKey, baseline: seeded, values: seeded });
   }
 
+  if (!isCreating) {
+    if (createDraft !== null) setCreateDraft(null);
+  } else if (createDraft === null) {
+    /* 등록 폼은 **빈 값으로** 선다 — 기본값을 지어내면 사용자가 고르지 않은 값이 저장된다. */
+    const seeded = emptyRouteFormValues();
+
+    setCreateDraft({ key: 'new', baseline: seeded, values: seeded });
+  }
+
+  /** 지금 편집 대상의 초안 — 팝업이 열려 있으면 등록 초안, 아니면 고른 결재선의 수정 초안. */
+  const draft = isCreating ? createDraft : editDraft;
+  const setDraft = isCreating ? setCreateDraft : setEditDraft;
+
   const isDirty = draft !== null && !isSameRouteValues(draft.values, draft.baseline);
+  /** 뒤의 고른 결재선 폼이 고쳐졌는가 — 등록 팝업이 떠 있어도 그 값을 본다. */
+  const isEditDirty =
+    editDraft !== null && !isSameRouteValues(editDraft.values, editDraft.baseline);
+  /** 등록 팝업에 친 값이 있는가 — 다른 화면으로 옮기기 전에 묻는 데만 쓴다(#358). */
+  const isCreateDirty =
+    createDraft !== null && !isSameRouteValues(createDraft.values, createDraft.baseline);
 
   /*
    * 단계 초안도 같은 규율로 세운다 — 다만 **매인 대상이 다르다.** 단계는 등록 중에 존재하지
@@ -366,8 +386,13 @@ export const ApprovalRouteScreen = () => {
    * `isStepDirty`를 남겨 두면 다음 사람이 「쓰려다 만 자리」로 읽고 되살리기 때문이다.
    */
 
+  /**
+   * 단계 초안이 고쳐졌는가 — **다른 화면으로 옮기기 전에 묻는 데만** 쓴다(#358). 위 결정(화면 안 되돌리기는
+   * 폼의 취소뿐)은 그대로다 — 저장하지 않은 단계 순서를 두고 화면을 떠나면 확인 없이 사라지므로 그 길만 막는다.
+   */
+  const isStepDirty = stepDraft !== null && !isSameStepDrafts(stepDraft.values, stepDraft.baseline);
+
   const approvalTypeOptions = toApprovalTypeOptions(PLACEHOLDER_APPROVAL_TYPE_CODES);
-  const approverTypeOptions = toApproverTypeOptions(ENABLED_APPROVER_TYPE_CODES);
 
   /**
    * 활성 중복 **조준 조회**가 필요한 자리는 셋뿐이다 — 등록(유형을 골랐다) · 수정(고친 것이
@@ -389,6 +414,20 @@ export const ApprovalRouteScreen = () => {
     isLoading: duplicateProbe.isPending,
     isError: duplicateProbe.isError,
   };
+
+  /**
+   * 등록 팝업에서 **그 사업부에 이미 사용 중인 결재선이 있는 승인 유형**은 선택지에서 뺀다(사용자 지시 2026-11-25).
+   * 판정 못 함(불러오는 중 · 실패 · 잘림)이면 빼지 않는다 — 위 조준 조회 · 서버 검사가 그대로 남는다.
+   */
+  const activeForCreate = useActiveRoutesForCreate(isCreating);
+  const activeForCreateState: DuplicateProbe = {
+    items: activeForCreate.data?.items ?? EMPTY_ROUTES,
+    total: activeForCreate.data?.page.total ?? 0,
+    isLoading: activeForCreate.isPending,
+    isError: activeForCreate.isError,
+  };
+  const takenTypesFor = (businessUnitId: string): ReadonlySet<string> =>
+    takenApprovalTypeCodes(activeForCreateState, toBusinessUnitId(businessUnitId));
 
   /**
    * 저장이 만들려는 (유형, 사업부)의 중복. **사업부는 폼 값**이다 — 저장하면 그 값이 된다.
@@ -423,7 +462,7 @@ export const ApprovalRouteScreen = () => {
   };
 
   /**
-   * 다시 조회 — **목록만 부르지 않는다.**
+   * 다시 조회 — **목록만 부르지 않는다.** 조건 그대로 [조회]를 누르면(주소가 같으면) 이 길을 지난다.
    *
    * 목록만 다시 부르면 갱신된 목록 값과 낡은 상세·단계가 한 화면에 섞인다.
    * 고르지 않았으면 상세·단계는 부를 대상이 없다 — **읽는 자리에서 판정한다.**
@@ -505,7 +544,7 @@ export const ApprovalRouteScreen = () => {
        * 아니다 — 보내는 사이에 사용자가 다른 데로 갔더라도 그 자원은 여전히 사용 중이고
        * 단계가 0이라 상신을 막는다. 옮겨 가지 않으면 그것을 아는 사람이 없다.
        */
-      applySearchParams(toSelectionSearchParams(filters, page, saved.approvalRouteId));
+      applySearchParams(toSelectionSearchParams(filters, page, saved.approvalRouteId, size));
       toast.show({ variant: 'success', description: messages.common.created });
     },
   });
@@ -545,7 +584,7 @@ export const ApprovalRouteScreen = () => {
       /* **서버 응답이 정본이다.** 보낸 값을 그대로 두면 서버가 조정한 결과를 놓친다. */
       const next = routeToFormValues(toRouteView(saved));
 
-      setDraft((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
+      setEditDraft((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
     },
   });
 
@@ -679,26 +718,75 @@ export const ApprovalRouteScreen = () => {
     applySearchParams(next);
   };
 
+  /**
+   * 고른 결재선의 고친 값(기본 정보 · 단계)이 사라지는 이동(다른 줄 · 조건 · 쪽)을 미뤄 둔 것 — 다른 화면으로 갈 때와
+   * 같은 창으로 묻고, 「저장하지 않고 나가기」를 누르면 그때 옮긴다(#358). 「계속 편집」은 고친 값과 선택을 그대로 둔다.
+   */
+  const [pendingSwitch, setPendingSwitch] = useState<URLSearchParams | null>(null);
+
+  /** 저장이 나가는 중이면 묻지 않는다 — 그때는 아래 `applyUserNavigation`이 이동 자체를 막는다. */
+  const confirmUserNavigation = (next: URLSearchParams): void => {
+    if (!isLocked && (isEditDirty || isStepDirty)) {
+      setPendingSwitch(next);
+      return;
+    }
+    applyUserNavigation(next);
+  };
+
   const handleSearch = (next: RouteFilters): void => {
     // 조건·쪽·선택을 **한 patch로** 갱신한다. 나누면 그 사이에 어느 쪽도 아닌 한 프레임이 생긴다.
-    applyUserNavigation(toSearchParams(next, 1));
+    const nextParams = toSearchParams(next, 1, size);
+
+    /*
+     * 주소가 그대로면 옮길 것이 없다 — 대신 다시 조회한다(「다시 조회」 단추를 걷은 뒤의 길, #358).
+     * 고친 값이 있거나 저장이 나가는 중이면 기존 [조회] 처리(묻는 창 · 잠금)를 그대로 지난다.
+     */
+    if (
+      nextParams.toString() === searchParams.toString() &&
+      !isLocked &&
+      !isEditDirty &&
+      !isStepDirty
+    ) {
+      setMissingContextKey(null);
+      handleReload();
+      return;
+    }
+
+    confirmUserNavigation(nextParams);
   };
 
   const handleChangePage = (nextPage: number): void => {
-    applyUserNavigation(toSearchParams(filters, nextPage));
+    confirmUserNavigation(toSearchParams(filters, nextPage, size));
   };
 
+  /** 쪽 크기를 바꾸면 첫 쪽으로 간다 — 조건과 같이 보이는 줄이 바뀌므로 선택도 함께 비운다. */
+  const handleChangePageSize = (nextSize: ListPageSize): void => {
+    confirmUserNavigation(toSearchParams(filters, 1, nextSize));
+  };
+
+  /** 고른 줄을 다시 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
   const handleSelect = (approvalRouteId: number): void => {
-    applyUserNavigation(toSelectionSearchParams(filters, page, approvalRouteId));
+    confirmUserNavigation(
+      toSelectionSearchParams(
+        filters,
+        page,
+        approvalRouteId === selectedRouteId ? null : approvalRouteId,
+        size,
+      ),
+    );
   };
 
+  /*
+   * 등록 팝업은 고른 결재선 위에 뜬다 — 목록 선택과 뒤의 상세(고친 값 포함)를 그대로 둔다(사용자 지시 2026-11-25).
+   * 뒤의 고친 값은 버리지 않으므로 묻는 창 없이 연다.
+   */
   const handleCreate = (): void => {
-    applyUserNavigation(toCreateSearchParams(filters, page));
+    applyUserNavigation(toCreateSearchParams(filters, page, selectedRouteId, size));
   };
 
-  /** 등록 폼을 닫는다. 선택 자리도 등록 표시도 함께 비운다 — 두 자리는 하나의 자리다. */
+  /** 등록 팝업을 닫는다 — 등록 표시만 걷고 열기 전의 선택으로 돌아간다. */
   const closeCreateForm = (): void => {
-    applyUserNavigation(toSelectionSearchParams(filters, page, null));
+    applyUserNavigation(toSelectionSearchParams(filters, page, selectedRouteId, size));
   };
 
   /**
@@ -741,7 +829,16 @@ export const ApprovalRouteScreen = () => {
     resetEditingRef.current();
   }, [editTargetKey]);
 
-  const changeValues = (patch: Partial<RouteFormValues>): void => {
+  const changeValues = (requested: Partial<RouteFormValues>): void => {
+    /* 등록에서 사업부를 바꿔 고른 승인 유형이 그 사업부에서 이미 쓰이면 유형을 비운다(사용자 지시 2026-11-25). */
+    const patch =
+      isCreating &&
+      requested.businessUnitId !== undefined &&
+      draft !== null &&
+      takenTypesFor(requested.businessUnitId).has(draft.values.approvalTypeCode)
+        ? { ...requested, approvalTypeCode: '' }
+        : requested;
+
     setDraft((prev) => (prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } }));
 
     // 고치는 즉시 그 칸의 오류를 지운다 — 고친 값 옆에 낡은 오류가 남으면 안 된다.
@@ -821,16 +918,17 @@ export const ApprovalRouteScreen = () => {
     setDialog(null);
     setFieldErrors({});
     resetIfIdle(activeWrite);
-    resetIfIdle(stepsWrite);
-    setStepDraft((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
 
+    /* 등록 팝업의 파기는 팝업만 닫는다 — 뒤의 고른 결재선 초안(단계 포함)은 건드리지 않는다. */
     if (isCreating) {
       closeCreateForm();
 
       return;
     }
 
-    setDraft((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
+    resetIfIdle(stepsWrite);
+    setStepDraft((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
+    setEditDraft((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
   };
 
   /**
@@ -843,7 +941,7 @@ export const ApprovalRouteScreen = () => {
       : stepSaveBlockedReason({
           drafts: stepDraft.values,
           baseline: stepDraft.baseline,
-          isRouteFormDirty: isDirty,
+          isRouteFormDirty: isEditDirty,
         });
 
   /** 단계 초안을 갈아 끼우는 **유일한 자리**. 순서를 다루는 규칙은 전부 `step-draft.ts`가 갖는다. */
@@ -860,6 +958,8 @@ export const ApprovalRouteScreen = () => {
     if (created === null) return;
 
     changeStepDrafts([...stepDraft.values, created]);
+    /* 오른쪽 아래 알림만 — 저장 전 초안에 넣은 것이다(사용자 지시 2026-11-25). */
+    toast.show({ variant: 'success', description: t.notes.stepAdded });
   };
 
   const handleRemoveStep = (draftId: string): void => {
@@ -904,7 +1004,7 @@ export const ApprovalRouteScreen = () => {
    *
    * 창이 열려 있는 동안 세 가지가 달라질 수 있다 — 대상이 **사라지고**(주소가 바뀐다),
    * 켜기의 **잠금 사유가 생기고**(조준 조회가 늦게 도착한다), 대상의 **사용 여부가 뒤집힌다**
-   * (「다시 조회」는 잠기지 않고, 다른 사람이 먼저 바꿀 수도 있다). 셋 다 보내지 않고 창을 닫는다.
+   * (다른 사람이 먼저 바꿀 수도 있다). 셋 다 보내지 않고 창을 닫는다.
    *
    * 사용 여부가 뒤집힌 자리를 보지 않으면 **이미 꺼진 것에 `:deactivate`가, 이미 켜진 것에
    * `:activate`가** 나간다 — 뒤엣것은 계약이 400으로 막아 사용자가 이유를 알 수 없는 거절을 받는다.
@@ -970,7 +1070,54 @@ export const ApprovalRouteScreen = () => {
   /** 인라인 오류도 같은 문을 지난다 — 배너만 감추면 새 대상의 칸 옆에 남의 오류가 붙는다. */
   const serverFieldErrors = isWriteResultMine ? activeWrite.fieldErrors : {};
 
+  /**
+   * 등록 팝업 **뒤에** 보이는 고른 결재선 폼(사용자 지시 2026-11-25). 팝업이 화면을 막고 있어 조작할 수 없으므로
+   * 고친 값(`editDraft`)을 그대로 보이기만 한다 — 저장 실패 · 중복 판정처럼 팝업이 지금 쓰는 자리는 싣지 않고,
+   * 팝업을 닫으면 아래 `formPane('edit')`가 다시 맡는다.
+   */
+  const backgroundFormPane = () => {
+    if (editDraft === null || route === null) return null;
+
+    const noop = (): void => undefined;
+    const clear = { kind: 'clear' } as const;
+
+    return (
+      <RouteFormPane
+        mode="edit"
+        route={route}
+        values={editDraft.values}
+        onChange={noop}
+        fieldErrors={{}}
+        banner={null}
+        approvalTypeOptions={approvalTypeOptions}
+        businessUnitOptions={toBusinessUnitOptions(businessUnits.entries)}
+        businessUnitNote={lookupNote(businessUnits)}
+        duplicateUnknownNote={null}
+        onOpenExisting={null}
+        saveDisabledReason={saveBlockedReason({
+          mode: 'edit',
+          values: editDraft.values,
+          approvalTypeOptionCount: approvalTypeOptions.length,
+          isDirty: isEditDirty,
+          duplicate: clear,
+        })}
+        activateDisabledReason={
+          route.isActive
+            ? null
+            : activateBlockedReason({ stepCount: route.stepCount, duplicate: clear })
+        }
+        isDirty={isEditDirty}
+        isLocked={isLocked}
+        onSave={noop}
+        onCancel={noop}
+        onDeactivate={noop}
+        onActivate={noop}
+      />
+    );
+  };
+
   const formPane = (mode: 'create' | 'edit') => {
+    if (mode === 'edit' && isCreating) return backgroundFormPane();
     if (draft === null) return null;
 
     return (
@@ -988,6 +1135,9 @@ export const ApprovalRouteScreen = () => {
             : writeFailureSlot(updateWrite, reloadDetail)
         }
         approvalTypeOptions={approvalTypeOptions}
+        hiddenApprovalTypeCodes={
+          mode === 'create' ? takenTypesFor(draft.values.businessUnitId) : undefined
+        }
         businessUnitOptions={toBusinessUnitOptions(businessUnits.entries)}
         businessUnitNote={lookupNote(businessUnits)}
         /*
@@ -996,9 +1146,20 @@ export const ApprovalRouteScreen = () => {
          * 「밝힐 때만 밝힌다」 — 안내가 걸리는 자리를 저장 판정이 걸리는 자리와 맞춘다.
          */
         duplicateUnknownNote={
-          (isCreating || isDirty) && saveDuplicate.kind === 'unknown'
-            ? t.notes.duplicateUnknown
-            : null
+          isCreating
+            ? /*
+               * 등록 팝업은 승인 유형을 고른 뒤 확인이 실제로 실패했을(못 받았거나 잘렸을) 때만 낸다(사용자 지시
+               * 2026-11-25). 유형을 고르기 전에는 조준 조회가 나가지 않아 「불러오는 중」으로 남는다 — 그때 내면
+               * 확인할 것도 없는데 확인하지 못했다고 말하게 된다. 판정 자체는 그대로다.
+               */
+              probeTypeCode !== '' &&
+              saveDuplicate.kind === 'unknown' &&
+              saveDuplicate.reason !== 'loading'
+              ? t.notes.duplicateUnknownCreate
+              : null
+            : isDirty && saveDuplicate.kind === 'unknown'
+              ? t.notes.duplicateUnknown
+              : null
         }
         onOpenExisting={
           existingDuplicateRouteId === null
@@ -1027,10 +1188,35 @@ export const ApprovalRouteScreen = () => {
     );
   };
 
-  const detailSlot = () => {
-    /* 등록 중에는 상세도 단계도 부를 대상이 없다 — 붙일 자원이 아직 만들어지지 않았다. */
-    if (isCreating) return formPane('create');
+  const pickEmpty = (
+    <section className="pane">
+      {/* 단말 관리의 빈 상세와 같은 모양 — 원 안 아이콘 · 제목 · 설명 한 줄(omf-all-around#358). */}
+      <EmptyState
+        size="sm"
+        className="users-roles-pick-empty"
+        icon={
+          <span className="inspection-standard-empty-icon">
+            <Icon name="account_tree" size={20} />
+          </span>
+        }
+        title={t.empty.noSelectionTitle}
+        description={t.empty.noSelectionDescription}
+      />
+    </section>
+  );
 
+  /*
+   * 등록 폼은 팝업이라(사용자 지시 2026-11-25 · 공통코드와 같다) 뒤의 상세 자리는 **고른 결재선 그대로** 둔다 —
+   * 열어도 목록 선택과 상세가 풀리지 않는다(사용자 지시 2026-11-25). 고른 것이 없으면 종전대로 빈 안내다.
+   */
+  const detailSlot = () => (
+    <>
+      {routeDetailSlot()}
+      {isCreating && formPane('create')}
+    </>
+  );
+
+  const routeDetailSlot = () => {
     if (isRouteNotFound || isRouteMissing) {
       return (
         <section className="pane">
@@ -1044,17 +1230,7 @@ export const ApprovalRouteScreen = () => {
       );
     }
 
-    if (selectedRouteId === null) {
-      return (
-        <section className="pane">
-          <EmptyState
-            size="sm"
-            title={t.empty.noSelectionTitle}
-            description={t.empty.noSelectionDescription}
-          />
-        </section>
-      );
-    }
+    if (selectedRouteId === null) return pickEmpty;
 
     if (detail.isError) {
       return (
@@ -1064,7 +1240,7 @@ export const ApprovalRouteScreen = () => {
       );
     }
 
-    if (route === null || draft === null) {
+    if (route === null || editDraft === null) {
       return (
         <section className="pane">
           <div role="status" aria-label={t.loading.detail}>
@@ -1100,8 +1276,6 @@ export const ApprovalRouteScreen = () => {
           banner={writeFailureSlot(stepsWrite, reloadDetail)}
           approverOptions={approvers.options}
           approverNote={approverNote(approvers)}
-          approverTypeOptions={approverTypeOptions}
-          approverTypeNote={approverTypeNote(approverTypeOptions)}
           isLocked={isLocked}
           saveDisabledReason={stepSaveDisabledReason}
           onAdd={handleAddStep}
@@ -1118,6 +1292,7 @@ export const ApprovalRouteScreen = () => {
       {/* 화면 제목 줄은 두지 않는다 — 조회 조건 · 목록 · 상세 통일 배치(검사 조회·판정과 같다 · #350). */}
       <ListDetailWorkspace
         storageKey="omf-mes:approval-route"
+        /* 배치는 늘 보이는 단추 둘(「좌우 배치」 · 「상하 배치」) — 단말 관리와 같다(omf-all-around#358). */
         filter={{
           label: messages.common.paneList.filter,
           content: (
@@ -1131,18 +1306,13 @@ export const ApprovalRouteScreen = () => {
                 handleSearch(DEFAULT_FILTERS);
               }}
               actions={
-                <>
-                  <Button variant="outlined" onClick={handleReload}>
-                    {t.actions.reload}
-                  </Button>
-                  <Button
-                    leadingIcon={<Icon name="add" size={18} />}
-                    disabled={isLocked}
-                    onClick={handleCreate}
-                  >
-                    {t.actions.create}
-                  </Button>
-                </>
+                <Button
+                  leadingIcon={<Icon name="add" size={18} />}
+                  disabled={isLocked}
+                  onClick={handleCreate}
+                >
+                  {t.actions.create}
+                </Button>
               }
             />
           ),
@@ -1157,7 +1327,9 @@ export const ApprovalRouteScreen = () => {
               routes={routes}
               isLoading={list.isPending}
               pageView={pageView}
+              pageMeta={list.data?.page ?? null}
               onChangePage={handleChangePage}
+              onChangePageSize={handleChangePageSize}
               selectedRouteId={selectedRouteId}
               onSelect={handleSelect}
               businessUnitLabel={businessUnitLabelOf}
@@ -1175,7 +1347,12 @@ export const ApprovalRouteScreen = () => {
           ),
         }}
         /* 상세 칸 껍데기가 「고른 결재선」 구획 이름을 갖는다 — 안쪽 상자에는 같은 이름을 겹쳐 달지 않는다(#350 리뷰). */
-        detail={{ label: t.panes.detail, content: detailSlot(), bare: true }}
+        detail={{
+          label: t.panes.detail,
+          content: detailSlot(),
+          bare: true,
+          className: 'approval-route-detail',
+        }}
       />
 
       {/*
@@ -1203,6 +1380,33 @@ export const ApprovalRouteScreen = () => {
             resetIfIdle(activationWrite);
           }}
           onConfirm={handleConfirmActivation}
+        />
+      )}
+
+      {/* 저장하지 않은 수정 · 단계 · 등록 팝업 값을 두고 다른 화면으로(사이드바 · 뒤로가기) 갈 때 묻는다(#358). */}
+      <LeaveGuard
+        when={isEditDirty || isStepDirty || isCreateDirty}
+        discardTitle={leave.title}
+        discardBody={leave.body}
+        stayLabel={leave.keep}
+        leaveLabel={leave.confirm}
+        showCloseButton={false}
+        size="sm"
+      />
+
+      {pendingSwitch !== null && (
+        <DiscardDialog
+          title={leave.title}
+          body={leave.body}
+          stayLabel={leave.keep}
+          leaveLabel={leave.confirm}
+          showCloseButton={false}
+          size="sm"
+          onStay={() => setPendingSwitch(null)}
+          onLeave={() => {
+            setPendingSwitch(null);
+            applyUserNavigation(pendingSwitch);
+          }}
         />
       )}
 

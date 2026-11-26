@@ -188,7 +188,16 @@ export const ReleaseMaterials = ({
                     '출고 기준 소요량',
                     '가용 수량',
                     '재고 상태',
-                    '환산 비율',
+                    rows.some(({ row }) => row.confirmationRequired && editableRate(row)) ? (
+                      <>
+                        환산 비율
+                        <span className="required-mark" aria-hidden="true">
+                          {' *'}
+                        </span>
+                      </>
+                    ) : (
+                      '환산 비율'
+                    ),
                   ]}
                   widths={[135, 195, 110, 135, 130, 90, 260]}
                 >
@@ -238,6 +247,7 @@ export const ReleaseMaterials = ({
                                       size="sm"
                                       inputMode="decimal"
                                       aria-label={`${target.workOrderNo} ${row.itemCode} 환산 비율`}
+                                      aria-required={row.confirmationRequired || undefined}
                                       value={choice.rate ?? String(row.conversionRate ?? '')}
                                       disabled={disabled}
                                       aria-invalid={choice.rate !== null && rate === null}

@@ -13,7 +13,25 @@ const URL_KEYS = {
   q: 'q',
   includeInactive: 'inactive',
   page: 'page',
+  size: 'size',
 } as const;
+
+/**
+ * 목록 아래 쪽 크기 선택지(단말 관리 · 사용자 역할 권한 관리와 같다 · omf-all-around#358).
+ * 고르지 않았으면(`null`) 주소에도 요청에도 싣지 않는다 — 서버 기본값을 그대로 쓴다.
+ */
+export const LIST_PAGE_SIZES = [10, 20, 50] as const;
+export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
+
+/** 주소가 고른 쪽 크기. 선택지 밖의 값은 고르지 않은 것으로 본다. */
+export const readSize = (params: URLSearchParams): ListPageSize | null =>
+  LIST_PAGE_SIZES.find((size) => String(size) === params.get(URL_KEYS.size)) ?? null;
+
+const withSize = (next: URLSearchParams, size: ListPageSize | null): URLSearchParams => {
+  if (size !== null) next.set(URL_KEYS.size, String(size));
+
+  return next;
+};
 
 /**
  * 탭마다 다른 선택 축의 주소 키. 조직 탭은 사업부, 작업자 탭은 부서다.
@@ -103,6 +121,7 @@ export const toSearchParams = (
   tabId: string,
   filters: CodeGroupFilters,
   page: number,
+  size: ListPageSize | null = null,
 ): URLSearchParams => {
   const next = new URLSearchParams({ [URL_KEYS.tab]: tabId });
 
@@ -110,7 +129,7 @@ export const toSearchParams = (
   if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
   if (page > 1) next.set(URL_KEYS.page, String(page));
 
-  return next;
+  return withSize(next, size);
 };
 
 /**
@@ -122,6 +141,7 @@ export const toScopedSearchParams = (
   scopeKey: ScopeKey,
   filters: ScopedFilters,
   page: number,
+  size: ListPageSize | null = null,
 ): URLSearchParams => {
   const next = new URLSearchParams({ [URL_KEYS.tab]: tabId });
 
@@ -130,7 +150,7 @@ export const toScopedSearchParams = (
   if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
   if (page > 1) next.set(URL_KEYS.page, String(page));
 
-  return next;
+  return withSize(next, size);
 };
 
 /** 계약이 쓰는 쿼리 이름. 값이 없는 조건은 키 자체를 넣지 않는다. */
@@ -138,6 +158,7 @@ export interface CodeGroupListQuery {
   q?: string;
   includeInactive?: boolean;
   page?: number;
+  size?: number;
 }
 
 /**
@@ -150,10 +171,12 @@ export interface CodeGroupListQuery {
 export const toCodeGroupListQuery = (
   filters: CodeGroupFilters,
   page: number,
+  size: ListPageSize | null = null,
 ): CodeGroupListQuery => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
+  ...(size === null ? {} : { size }),
 });
 
 export interface DepartmentListQuery {
@@ -161,17 +184,20 @@ export interface DepartmentListQuery {
   businessUnitId?: number;
   includeInactive?: boolean;
   page?: number;
+  size?: number;
 }
 
 /** 부서 목록 조회 쿼리. 규칙은 코드그룹과 같다 — 빈 값·꺼진 확인칸·첫 쪽을 싣지 않는다. */
 export const toDepartmentListQuery = (
   filters: ScopedFilters,
   page: number,
+  size: ListPageSize | null = null,
 ): DepartmentListQuery => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
   ...(filters.scopeId === '' ? {} : { businessUnitId: Number(filters.scopeId) }),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
+  ...(size === null ? {} : { size }),
 });
 
 export interface WorkerListQuery {
@@ -179,6 +205,7 @@ export interface WorkerListQuery {
   departmentId?: number;
   includeInactive?: boolean;
   page?: number;
+  size?: number;
 }
 
 /**
@@ -187,11 +214,16 @@ export interface WorkerListQuery {
  * **공장·사업부를 싣지 않는다** — 계약에 `plantId`·`businessUnitId`가 있으나 좌 페인에
  * 필터 컨트롤 넷을 놓으면 표가 짓눌린다. 화면에 없는 조건을 요청에 실으면 되돌릴 수단이 없다.
  */
-export const toWorkerListQuery = (filters: ScopedFilters, page: number): WorkerListQuery => ({
+export const toWorkerListQuery = (
+  filters: ScopedFilters,
+  page: number,
+  size: ListPageSize | null = null,
+): WorkerListQuery => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
   ...(filters.scopeId === '' ? {} : { departmentId: Number(filters.scopeId) }),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
+  ...(size === null ? {} : { size }),
 });
 
 /**
@@ -202,6 +234,7 @@ export const toPartnerSearchParams = (
   tabId: string,
   filters: PartnerFilters,
   page: number,
+  size: ListPageSize | null = null,
 ): URLSearchParams => {
   const next = new URLSearchParams({ [URL_KEYS.tab]: tabId });
 
@@ -209,13 +242,14 @@ export const toPartnerSearchParams = (
   if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
   if (page > 1) next.set(URL_KEYS.page, String(page));
 
-  return next;
+  return withSize(next, size);
 };
 
 export interface PartnerListQuery {
   q?: string;
   includeInactive?: boolean;
   page?: number;
+  size?: number;
 }
 
 /**
@@ -225,10 +259,15 @@ export interface PartnerListQuery {
  * 역할이 아직 없는 거래처가 반드시 보여야 한다 — 좁히면 「역할이 없는 거래처에는 역할을
  * 붙일 수 없는」 화면이 된다. 좁힘은 선택지를 고르는 화면(W-01-06)의 몫이다.
  */
-export const toPartnerListQuery = (filters: PartnerFilters, page: number): PartnerListQuery => ({
+export const toPartnerListQuery = (
+  filters: PartnerFilters,
+  page: number,
+  size: ListPageSize | null = null,
+): PartnerListQuery => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
+  ...(size === null ? {} : { size }),
 });
 
 /** 거래처 탭에 조건이 걸려 있는가. 빈 상태의 안내가 이 판정으로 갈린다. */

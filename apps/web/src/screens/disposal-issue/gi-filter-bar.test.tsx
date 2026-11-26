@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { pickRange } from '../../test/date-picker';
+import { pickDateRange } from '../../test/date-picker';
 import { GiFilterBar, type GiFilterBarProps } from './gi-filter-bar';
 import { DEFAULT_ISSUE_FILTERS, type IssueFilters } from './history-filters';
 
@@ -27,7 +27,8 @@ const renderBar = (overrides: Partial<GiFilterBarProps> = {}) => {
   return { ...props, ...result, user: userEvent.setup() };
 };
 
-const periodTrigger = (): HTMLElement => screen.getByLabelText(t.historyFields.period);
+const startTrigger = (): HTMLElement => screen.getByLabelText(t.historyFields.periodFrom);
+const endTrigger = (): HTMLElement => screen.getByLabelText(t.historyFields.periodTo);
 
 const applied = (overrides: Partial<IssueFilters> = {}): IssueFilters => ({
   ...DEFAULT_ISSUE_FILTERS,
@@ -59,19 +60,20 @@ describe('GiFilterBar — 모아서 적용', () => {
     expect(onSearch).toHaveBeenCalledWith(applied({ q: 'GI-2026' }));
   });
 
-  it('기간을 한 컨트롤에서 고르고 조회에 함께 싣는다', async () => {
+  it('기간을 시작일 · 종료일 두 칸에서 고르고 조회에 함께 싣는다', async () => {
     const { onSearch, user } = renderBar();
 
-    await pickRange(user, periodTrigger(), '2026-08-01', '2026-08-05');
+    await pickDateRange(user, startTrigger(), endTrigger(), '2026-08-01', '2026-08-05');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     expect(onSearch).toHaveBeenCalledWith(applied({ from: '2026-08-01', to: '2026-08-05' }));
   });
 
-  it('기간 칸이 하나뿐이다', () => {
+  it('기간이 시작일 · 종료일 두 칸이다', () => {
     renderBar();
 
-    expect(screen.getAllByLabelText(t.historyFields.period)).toHaveLength(1);
+    expect(screen.getAllByLabelText(t.historyFields.periodFrom)).toHaveLength(1);
+    expect(screen.getAllByLabelText(t.historyFields.periodTo)).toHaveLength(1);
   });
 
   /* 기본 기간이 없다는 사실은 출고일 라벨 옆 ⓘ 로 읽힌다 — 늘 펼쳐 두지 않는다(관리웹 정리 시안 A). */
@@ -87,7 +89,8 @@ describe('GiFilterBar — 모아서 적용', () => {
    * 이름의 컨트롤이 둘이 되고, 이름으로 집는 조작·시험이 어느 것을 집었는지 알 수 없게 된다.
    */
   it('라벨이 대상 조건 줄과 다르다', () => {
-    expect(t.historyFields.period).not.toBe(t.fields.period);
+    expect(t.historyFields.periodFrom).not.toBe(t.fields.periodFrom);
+    expect(t.historyFields.periodTo).not.toBe(t.fields.periodTo);
     expect(t.historyFields.q).not.toBe(t.fields.q);
   });
 
@@ -108,7 +111,7 @@ describe('GiFilterBar — 초기화', () => {
     const { onReset, onSearch, user } = renderBar();
 
     await user.type(screen.getByLabelText(t.historyFields.q), 'GI-2026');
-    await pickRange(user, periodTrigger(), '2026-08-01', '2026-08-05');
+    await pickDateRange(user, startTrigger(), endTrigger(), '2026-08-01', '2026-08-05');
     await user.click(screen.getByRole('button', { name: messages.common.reset }));
 
     expect(onReset).toHaveBeenCalledTimes(1);

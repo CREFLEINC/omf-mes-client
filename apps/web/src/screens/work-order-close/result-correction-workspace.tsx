@@ -111,6 +111,7 @@ const CorrectionDialog = ({
           <TextField
             key={field}
             label={`${quantityLabels[field]} (${String(result[field])})`}
+            required
             inputMode="decimal"
             value={draft[field]}
             error={localErrors[field] ?? serverErrors[field]}
@@ -118,11 +119,15 @@ const CorrectionDialog = ({
           />
         ))}
         <div className="field-cell wide-select production-result-correction-reason">
-          <label className="field-label" htmlFor={reasonId}>
-            {t.fields.reason}
-          </label>
+          <span className="field-label">
+            <label htmlFor={reasonId}>{t.fields.reason}</label>
+            <span className="required-mark" aria-hidden="true">
+              {' *'}
+            </span>
+          </span>
           <Select
             id={reasonId}
+            aria-required="true"
             value={draft.reasonCode === '' ? null : draft.reasonCode}
             options={reasonOptions}
             disabled={reasonUnavailable}
@@ -186,6 +191,7 @@ const ApprovalDialog = ({
     </div>
     <TextArea
       label={t.approval.reason}
+      required
       rows={4}
       value={reason}
       error={error}
@@ -364,7 +370,13 @@ export const WorkOrderResultCorrectionWorkspace = ({
           className="link-cell"
           aria-label={t.actions.select(row.resultSequence)}
           aria-current={selectedId === row.productionResultId ? true : undefined}
-          onClick={() => setSelectedId(row.productionResultId)}
+          onClick={() => {
+            /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+            if (selectedId === row.productionResultId) {
+              setSelectedId(null);
+              setEditing(false);
+            } else setSelectedId(row.productionResultId);
+          }}
         >
           {row.resultSequence}
         </button>

@@ -16,7 +16,6 @@ export const downtimeSummary: Translated<typeof ko.downtimeSummary> = {
   },
 
   filters: {
-    period: 'Khoảng thời gian',
     plant: 'Nhà máy',
     equipmentGroup: 'Nhóm thiết bị',
     equipment: 'Thiết bị',

@@ -7,7 +7,7 @@ import { plantToday } from '../../patterns/plant-time';
 import { SessionProvider } from '../../patterns/session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
-import { pickRange } from '../../test/date-picker';
+import { pickDateRange } from '../../test/date-picker';
 import { defaultPeriod } from './period';
 import { LotTraceScreen } from './screen';
 import { traceRoutes } from './trace-fixtures';
@@ -375,6 +375,21 @@ describe('W-02-09 LOT 생산 이력 조회: 이력 목록', () => {
     expect(navState()).toContain('line=MATERIAL-1');
   });
 
+  it('고른 줄을 한 번 더 누르면 선택이 풀리고 상세 창이 안내로 돌아간다', async () => {
+    const user = userEvent.setup();
+    setup({ route: `${ROUTE}&kind=MATERIAL` });
+    const name = 'GR-SYN-0001 ITEM-A|500|261023|SUP-A|0001 상세 보기';
+
+    await user.click(await screen.findByRole('row', { name }));
+    await waitFor(() => expect(navState()).toContain('line=MATERIAL-1'));
+
+    await user.click(screen.getByRole('row', { name }));
+    await waitFor(() => expect(navState()).not.toContain('line='));
+    expect(navState()).not.toContain('selected=');
+    expect(screen.getByRole('row', { name })).not.toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('LOT을 고르세요')).toBeInTheDocument();
+  });
+
   it('LOT이 여럿인 출하 줄을 누르면 상세 머리에 그 줄의 LOT 고르기가 서고, 고르면 그 LOT으로 바뀐다', async () => {
     const user = userEvent.setup();
     const { traceCalls } = setup({ route: `${ROUTE}&kind=SHIPMENT` });
@@ -537,7 +552,13 @@ describe('W-02-09 LOT 생산 이력 조회: 조건 바로 반영', () => {
     const { receiptQueries } = setup({ route: `${ROUTE}&kind=MATERIAL&page=2` });
     await screen.findByText('GR-SYN-0001');
 
-    await pickRange(user, screen.getByLabelText(/^기간/), '2026-10-21', '2026-10-24');
+    await pickDateRange(
+      user,
+      screen.getByLabelText(/^시작일/),
+      screen.getByLabelText(/^종료일/),
+      '2026-10-21',
+      '2026-10-24',
+    );
 
     await waitFor(() =>
       expect(listQueries(receiptQueries).at(-1)?.searchParams.get('receiptDateFrom')).toBe(

@@ -70,6 +70,8 @@ export const stockAdjust: Translated<typeof ko.stockAdjust> = {
   },
   historyFields: {
     period: 'Ngày ghi sổ',
+    periodFrom: 'Từ ngày ghi sổ',
+    periodTo: 'Đến ngày ghi sổ',
     count: 'Kiểm kê liên quan',
     reason: 'Lý do điều chỉnh',
   },
@@ -105,7 +107,8 @@ export const stockAdjust: Translated<typeof ko.stockAdjust> = {
   },
   historyLineTable: {
     lineNo: 'Dòng',
-    item: 'Mặt hàng',
+    itemCode: 'Mã mặt hàng',
+    itemName: 'Tên mặt hàng',
     lot: 'LOT vật tư',
     bookQty: 'Sổ sách',
     actualQty: 'Thực tế',

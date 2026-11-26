@@ -62,19 +62,17 @@ export const RequestDetailPane = ({
       value: detail.inspectionRequestNo,
       emphasized: true,
     },
+    /* 품목은 코드 · 이름 두 칸(품목 표기 분리). 못 풀면 풀이 안내를 코드 칸에 두고 이름 칸은 비운다. */
     {
       key: 'item',
-      label: t.fields.itemId,
-      value:
-        /* IQC 상세와 같게 — 코드 옆에 이름을 한 줄로(사용자 지시 2026-11-16 · #274). */
-        itemParts === null ? (
-          itemNames.labelOf(detail.itemId)
-        ) : (
-          <>
-            {itemParts.code}
-            <span className="parts-iqc-fact-sub">{itemParts.name}</span>
-          </>
-        ),
+      label: t.fields.itemCode,
+      value: itemParts === null ? itemNames.labelOf(detail.itemId) : itemParts.code,
+      emphasized: true,
+    },
+    {
+      key: 'itemName',
+      label: t.fields.itemName,
+      value: itemParts === null ? queueT.emptyValue : itemParts.name,
       emphasized: true,
     },
     {

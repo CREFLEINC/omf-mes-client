@@ -447,7 +447,8 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       isLoading={list.isPending}
       appliedFilters={filters}
       onApplyFilters={handleApplyFilters}
-      selectedId={selectedId}
+      /* 추가 창이 열려 있어도 고른 줄은 그대로 표시한다 — 보이는 코드(`viewId`)로 판정한다(omf-all-around#358 버그 수정). */
+      selectedId={viewId}
       pageMeta={list.data?.page ?? { page: filters.page, size: filters.size, total: 0 }}
       onChangePage={(page) => updateParams({ page: page === 1 ? null : String(page) })}
       onChangePageSize={(size) =>
@@ -456,7 +457,8 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       processLabelOf={processLabelOf}
       onSelect={(id) => {
         setIsEditOpen(false);
-        updateParams({ sel: String(id), mode: null, as: null });
+        /* 고른 줄을 다시 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+        updateParams({ sel: id === selectedId ? null : String(id), mode: null, as: null });
       }}
       loadError={
         list.isError ? (

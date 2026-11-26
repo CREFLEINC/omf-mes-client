@@ -200,7 +200,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
     chipRemoveInspectionType: 'Bỏ điều kiện loại kiểm tra',
     usageLabel: 'Sử dụng',
-    usageAll: 'Tất cả',
     usageActive: 'Đang dùng',
     usageInactive: 'Ngừng dùng',
     usageCount: (label: string, count: number): string => `${label} ${String(count)}`,

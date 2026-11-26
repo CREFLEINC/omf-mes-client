@@ -12,6 +12,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 
 import { hasChangedFilters } from '../../patterns/filter-more';
 
+import { UsageChip } from '../../patterns/usage-chip';
 import { defaultCalendarFilters } from './filters';
 import type { CalendarFilters, WorkCalendar } from './types';
 
@@ -113,7 +114,7 @@ export const CalendarListPane = ({
       key: 'isActive',
       header: t.fields.isActive,
       width: '96px',
-      render: (row) => (row.isActive ? t.values.active : t.values.inactive),
+      render: (row) => <UsageChip isActive={row.isActive} />,
     },
   ];
 

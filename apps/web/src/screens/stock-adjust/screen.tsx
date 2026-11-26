@@ -11,6 +11,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { ListEmpty } from '../../patterns/list-empty';
 import { SaveErrorBanner } from '../../patterns/master';
 import { usePageHub } from '../../patterns/page-hub';
 import { AdjustLineTable, type AdjustLineRow } from './adjust-line-table';
@@ -2028,10 +2029,6 @@ export const StockAdjustScreen = () => {
       );
     }
 
-    if (rows.length === 0) {
-      return <EmptyState size="sm" title={t.empty.noLinesTitle} />;
-    }
-
     return (
       <>
         <AdjustLineTable
@@ -2050,6 +2047,7 @@ export const StockAdjustScreen = () => {
           isLocked={isFormLocked}
           onPatch={patchLine}
           onRemove={removeLine}
+          empty={<ListEmpty title={t.empty.noLinesTitle} />}
         />
 
         {/* 차이 0인 줄은 **막지 않고** 무엇이 일어나는지만 밝힌다(D-4). */}

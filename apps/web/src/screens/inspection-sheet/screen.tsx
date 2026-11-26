@@ -164,8 +164,8 @@ const decideBlockOf = (sheet: InspectionSheet): string | null => {
 
 type CancelKind = 'all' | 'approve' | 'check';
 
-/** 상태 칩 차례 — 「전체」 다음 작성중 · 완료. */
-const CHIP_STATUSES = [undefined, 'IN_PROGRESS', 'COMPLETED'] as const;
+/** 상태 칩 차례 — 작성중 · 완료. 「전체」 칩은 두지 않는다(사용자 지시 2026-11-24). */
+const CHIP_STATUSES = ['IN_PROGRESS', 'COMPLETED'] as const;
 
 /** 상태 표식 색 — 완료 초록, 작성중 주황(검사 실적의 판정 표식과 같은 모양 · #217). */
 const StatusChip = ({ status }: { status: InspectionSheet['statusCode'] }) => (
@@ -217,8 +217,9 @@ const SheetProgress = ({ sheet }: { sheet: InspectionSheet }) => {
 };
 
 /**
- * 상태 칩 「전체 N · 작성중 N · 완료 N」 — 조회 조건의 「상태」 선택을 대신한다(검사 실적의 판정 칩과 같은 자리 · 모양 · #217).
- * 누르면 그 상태로 바로 거르고, 「전체」는 거르기를 푼다. 건수는 지금 조건에서 상태만 바꿔 센다.
+ * 상태 칩 「작성중 N건 · 완료 N건」 — 조회 조건의 「상태」 선택을 대신한다(검사 실적의 판정 칩과 같은 자리 · 모양 · #217).
+ * 누르면 그 상태로 바로 거르고, 고른 칩을 다시 누르면 거르기를 푼다. 건수는 지금 조건에서 상태만 바꿔 센다.
+ * 「전체」 칩은 두지 않고 0건 칩은 감춘다(고른 칩은 남긴다 · 사용자 지시 2026-11-24).
  */
 const StatusChips = ({
   filter,
@@ -233,18 +234,18 @@ const StatusChips = ({
   const group = (
     <div className="inspection-hub-counts" role="group" aria-label={t.list.statuses}>
       {CHIP_STATUSES.map((status, index) => {
-        const value = status ?? '';
-        const label = status === undefined ? t.list.statusAll : (t.statuses[status] ?? status);
+        const label = t.statuses[status] ?? status;
         const count = counts[index];
-        const isActive = filter.status === value;
+        const isActive = filter.status === status;
+        if (count === 0 && !isActive) return null;
         return (
           <Chip
-            key={value}
+            key={status}
             variant="filter"
             size="sm"
             selected={isActive}
             aria-pressed={isActive}
-            onSelectedChange={() => onChange(value)}
+            onSelectedChange={() => onChange(isActive ? '' : status)}
           >
             {count === undefined ? label : hubText.count(label, count)}
           </Chip>
@@ -440,10 +441,17 @@ const InspectionSheetScreenBody = () => {
     },
     {
       key: 'model',
-      header: t.columns.model,
+      header: t.columns.modelCode,
       align: 'center',
-      width: '200px',
-      render: (row) => <Ellipsis text={`${row.itemName} (${row.itemCode})`} />,
+      width: '120px',
+      render: (row) => <Ellipsis text={row.itemCode} />,
+    },
+    {
+      key: 'modelName',
+      header: t.columns.modelName,
+      align: 'center',
+      width: '160px',
+      render: (row) => <Ellipsis text={row.itemName} />,
     },
     {
       key: 'lot',
@@ -981,12 +989,12 @@ const InspectionSheetScreenBody = () => {
         >
           <p>{t.reopenDialog.body[cancelKind]}</p>
           {/* 필수 칸 — 이름 옆 빨간 *(공용 `.required-mark`). */}
-          <label className="field-label" htmlFor={ids.reason}>
-            {t.reopenDialog.reason}
+          <span className="field-label">
+            <label htmlFor={ids.reason}>{t.reopenDialog.reason}</label>
             <span aria-hidden="true" className="required-mark">
               {' *'}
             </span>
-          </label>
+          </span>
           <TextArea
             id={ids.reason}
             aria-label={t.reopenDialog.reason}

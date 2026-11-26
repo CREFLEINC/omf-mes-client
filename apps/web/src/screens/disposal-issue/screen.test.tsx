@@ -13,7 +13,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import { pickDate, pickRange } from '../../test/date-picker';
+import { pickDate, pickDateRange } from '../../test/date-picker';
 import {
   approvalRequestDetailFixture,
   balanceResponseFixturesByItem,
@@ -199,6 +199,8 @@ const APPROVAL_LIST_PATH = '/app/approval-requests';
 const WAREHOUSE_LABEL = 'SAMPLE-WH-01 · 합성 폐기창고 가';
 const OTHER_WAREHOUSE_LABEL = 'SAMPLE-WH-02 · 합성 자재창고 나';
 const ITEM_LABEL = 'SAMPLE-ITEM-01 · 합성 자재 가';
+/* 라인 표는 품목코드 · 품목명을 두 열로 나눠 보인다(사용자 지시 2026-11-24). */
+const ITEM_NAME = '합성 자재 가';
 const UOM_LABEL = 'SAMPLE-UOM-EA · 합성 낱개';
 const LOCATION_LABEL = 'SAMPLE-LOC-01 · 합성 적치 가';
 
@@ -985,7 +987,13 @@ describe('DisposalIssueScreen — 주소가 조건을 소유한다', () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await waitForList();
-    await pickRange(user, screen.getByLabelText(t.fields.period), '2026-08-01', '2026-08-05');
+    await pickDateRange(
+      user,
+      screen.getByLabelText(t.fields.periodFrom),
+      screen.getByLabelText(t.fields.periodTo),
+      '2026-08-01',
+      '2026-08-05',
+    );
     await search(user);
 
     await waitFor(() => {
@@ -1577,7 +1585,7 @@ describe('DisposalIssueScreen — 고른 전표의 상세 조회', () => {
    * 짝 방향으로 그 응답에만 있는 수량이 화면에 없음을 함께 잰다.
    */
   it('라인 전용 경로를 부르지 않는다', async () => {
-    const { requests, user } = renderScreen(allRoutes(), '?gr=9001');
+    const { requests } = renderScreen(allRoutes(), '?gr=9001');
 
     await waitForLines();
 
@@ -1867,7 +1875,7 @@ describe('DisposalIssueScreen — 라인 표와 폐기 수량', () => {
     const pane = linesPane();
 
     expect(within(pane).getByText('GR-2026-900001')).toBeInTheDocument();
-    expect(within(pane).getAllByText(ITEM_LABEL).length).toBeGreaterThan(0);
+    expect(within(pane).getAllByText(ITEM_NAME).length).toBeGreaterThan(0);
     expect(within(pane).getByText('SAMPLE-LOT-0001')).toBeInTheDocument();
     expect(within(pane).getAllByText(LOCATION_LABEL).length).toBeGreaterThan(0);
     expect(within(pane).getByText(t.lineTable.receiptQtyPair(100, UOM_LABEL))).toBeInTheDocument();
@@ -2575,7 +2583,7 @@ describe('DisposalIssueScreen — 고른 품의의 상세 조회', () => {
     expect(within(pane).getByText('GI-2026-950001')).toBeInTheDocument();
     expect(within(pane).getByText('2026-08-08 12:20')).toBeInTheDocument();
     expect(within(pane).getByText(WAREHOUSE_LABEL)).toBeInTheDocument();
-    expect(within(pane).getByText(ITEM_LABEL)).toBeInTheDocument();
+    expect(within(pane).getByText(ITEM_NAME)).toBeInTheDocument();
     expect(within(pane).getByText(t.values.posted)).toBeInTheDocument();
     expect(within(pane).getByText(t.values.notPosted)).toBeInTheDocument();
   });
@@ -2862,7 +2870,7 @@ describe('DisposalIssueScreen — 결재 진행', () => {
 
     /* 짝 방향 — 업무 번호와 이름은 실제로 보인다(아무것도 안 그려서 통과한 것이 아니다). */
     expect(within(historyListPane()).getByText('GI-2026-950001')).toBeInTheDocument();
-    expect(within(historyDetailPane()).getByText(ITEM_LABEL)).toBeInTheDocument();
+    expect(within(historyDetailPane()).getByText(ITEM_NAME)).toBeInTheDocument();
 
     for (const pane of [historyListPane(), historyDetailPane()]) {
       for (const id of INTERNAL_IDS) {
@@ -2899,7 +2907,7 @@ describe('DisposalIssueScreen — 결재 진행을 못 읽었을 때', () => {
 
     expect(await within(pane).findByText(t.progress.forbiddenTitle)).toBeVisible();
     expect(within(pane).getByText('GI-2026-950001')).toBeInTheDocument();
-    expect(within(pane).getByText(ITEM_LABEL)).toBeInTheDocument();
+    expect(within(pane).getByText(ITEM_NAME)).toBeInTheDocument();
     expect(screen.queryByText(messages.httpError.loadTitle)).not.toBeInTheDocument();
     /* 403에는 다시 시도를 내지 않는다 — 같은 권한으로 다시 불러도 같은 답이 온다. */
     expect(
@@ -3190,7 +3198,7 @@ describe('DisposalIssueScreen — 「승인 요청」이 열리는 조건', () =
 
   /** **둘째 방향** — 채우면 살아나지 않는 자리표시는 죽은 가지다. */
   it('값 목록을 채우고 다 넣으면 열린다', async () => {
-    const { user } = await setupReadyToSubmit();
+    await setupReadyToSubmit();
 
     expect(submitButton()).toBeEnabled();
   });
@@ -3211,7 +3219,7 @@ describe('DisposalIssueScreen — 「승인 요청」이 열리는 조건', () =
 
   /** 사유는 **막는 곳이 화면뿐이다** — 목이 공백만인 사유를 202로 받는다(감지기 M56). */
   it('상신 사유가 공백만이면 잠기고 그 사유가 보인다', async () => {
-    const { user } = await setupReadyToSubmit(allRoutes(chainRoutes()), '   ');
+    await setupReadyToSubmit(allRoutes(chainRoutes()), '   ');
 
     expect(submitButton()).toBeDisabled();
     expect(submitButton()).toHaveAccessibleDescription(t.actionReasons.needsReason);

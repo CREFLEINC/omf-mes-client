@@ -250,7 +250,8 @@ export const NoticeScreen = () => {
           variant="text"
           size="sm"
           onClick={() => {
-            selectNotice(row.noticeId);
+            /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+            selectNotice(row.noticeId === selectedId ? null : row.noticeId);
           }}
         >
           {row.title}

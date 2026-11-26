@@ -16,8 +16,10 @@ export const materialIssueStatus = {
   filters: {
     label: '조회 조건',
     plant: '공장',
-    issueWorkDate: '출고 작업일',
-    productionDate: '생산일',
+    issueWorkDateFrom: '출고 작업 시작일',
+    issueWorkDateTo: '출고 작업 종료일',
+    productionDateFrom: '생산 시작일',
+    productionDateTo: '생산 종료일',
     workOrder: 'W/O',
     workOrderPlaceholder: 'W/O 번호',
     sourceWarehouse: '출발 생산 창고',
@@ -46,7 +48,7 @@ export const materialIssueStatus = {
   status: {
     WAITING: '대기',
     RELEASED: '배포',
-    IN_PROGRESS: '진행 중',
+    IN_PROGRESS: '진행',
     DONE: '완료',
     CANCELLED: '취소',
   },
@@ -102,7 +104,8 @@ export const materialIssueStatus = {
     } as Record<string, string>,
     lines: {
       label: '요청 품목',
-      item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       requested: '요청',
       picked: '집음',
       issued: '출고',
@@ -216,7 +219,8 @@ export const materialIssueStatus = {
     tableLabel: '생산 창고 부족',
     columns: {
       warehouse: '생산 창고',
-      item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       available: '가용',
       planned: '출고 예정',
       shortage: '부족',

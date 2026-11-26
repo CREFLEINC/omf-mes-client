@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { CompareLabels } from './version-compare';
 
 const t = messages.inspectionStandard;
+const usage = messages.common.usage;
 
 /** 서버 `AuditEvent` 가운데 이 화면이 쓰는 것. 전/후 값은 계약 필드 이름의 바뀐 키만 담긴다. */
 export interface VersionAuditEvent {
@@ -20,6 +21,8 @@ export interface HistoryChange {
   before?: string;
   after?: string;
   note?: 'added' | 'removed';
+  /** 사용 여부 칸 — 전/후 값을 「사용 / 미사용」 라벨로 그린다(사용자 지시 2026-11-24 · #358). */
+  usage?: true;
 }
 
 export interface HistoryRow {
@@ -33,6 +36,10 @@ export interface HistoryRow {
 type Fields = Record<string, unknown>;
 
 const EMPTY = t.values.empty;
+
+/** 사용 여부 값 — 「예 / 아니요」 대신 「사용 / 미사용」(사용자 지시 2026-11-24 · #358). */
+const usageText = (value: unknown): string =>
+  typeof value === 'boolean' ? (value ? usage.active : usage.inactive) : raw(value);
 
 const raw = (value: unknown): string => {
   if (value === null || value === undefined || value === '') return EMPTY;
@@ -80,7 +87,7 @@ const versionFields = (
 
 const itemFields = (
   labels: CompareLabels,
-): Record<string, { label: string; format: (value: unknown) => string }> => {
+): Record<string, { label: string; format: (value: unknown) => string; usage?: true }> => {
   const code = (find: (value: string) => string) => (value: unknown) =>
     value === null || value === undefined || value === '' ? EMPTY : find(String(value));
   return {
@@ -100,7 +107,7 @@ const itemFields = (
       format: code(labels.equipment),
     },
     requiredFlag: { label: t.dialog.requiredFlagLabel, format: raw },
-    automaticJudgment: { label: t.dialog.automaticJudgmentLabel, format: raw },
+    automaticJudgment: { label: t.dialog.automaticJudgmentLabel, format: usageText, usage: true },
     sequenceNo: { label: t.fields.sequence, format: raw },
   };
 };
@@ -153,6 +160,7 @@ const itemLines = (before: Fields, after: Fields, labels: CompareLabels): Histor
         label: t.history.itemField(codeOf(item), field?.label ?? key),
         before: format(old[key]),
         after: format(item[key]),
+        ...(field?.usage === true ? { usage: true as const } : {}),
       });
     }
   }

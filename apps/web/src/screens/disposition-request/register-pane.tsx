@@ -63,9 +63,12 @@ export const RegisterPane = ({
       <SaveErrorBanner error={writeError} onReload={onReload} />
 
       <div className="field-cell">
-        <label className="field-label" htmlFor={severityId}>
-          {t.register.severityLabel}
-        </label>
+        <span className="field-label">
+          <label htmlFor={severityId}>{t.register.severityLabel}</label>
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </span>
         {/* G-2 — 값 목록이 비면 선택지를 지어내지 않고 비활성 + 사유. 저장 버튼도 같은 사유로 잠긴다. */}
         <Select
           id={severityId}
@@ -92,6 +95,7 @@ export const RegisterPane = ({
           htmlFor={descriptionId}
           label={t.register.descriptionLabel}
           info={t.register.descriptionHelp}
+          required
         />
         <TextArea
           id={descriptionId}

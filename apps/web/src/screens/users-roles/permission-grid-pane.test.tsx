@@ -266,11 +266,12 @@ describe('PermissionGridPane 빈 상태와 실패', () => {
    * ⭐ **행이 0개면 「줄 수 있는 권한이 없다」다** — 「부여된 권한이 없다」가 아니다.
    * 후보 목록이 비었거나 못 받은 것이고, 부여분이 0건인 것과는 다른 사실이다.
    */
-  it('행이 하나도 없으면 표 대신 빈 상태가 나온다', () => {
+  it('행이 하나도 없으면 표 머리줄 아래 빈 상태가 나온다', () => {
     renderPane({ groups: [] });
 
     expect(within(pane()).getByText('부여할 수 있는 기능 권한이 없습니다')).toBeInTheDocument();
-    expect(within(pane()).queryByRole('table')).toBeNull();
+    /* 빈 목록 통일(2026-11-25) — 머리줄 + 빈 줄 하나뿐, 권한 줄은 없다. */
+    expect(within(within(pane()).getByRole('table')).getAllByRole('row')).toHaveLength(2);
   });
 
   /**

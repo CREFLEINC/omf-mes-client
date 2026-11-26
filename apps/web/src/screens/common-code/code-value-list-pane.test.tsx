@@ -11,6 +11,8 @@ const renderPane = (overrides: Partial<Parameters<typeof CodeValueListPane>[0]> 
   const onIncludeInactiveChange = vi.fn<(includeInactive: boolean) => void>();
   const onChangePage = vi.fn<(page: number) => void>();
   const onSelect = vi.fn<(codeValueId: number) => void>();
+  const onEdit = vi.fn<(codeValueId: number) => void>();
+  const onDeactivate = vi.fn<(codeValueId: number) => void>();
 
   render(
     <CodeValueListPane
@@ -20,16 +22,26 @@ const renderPane = (overrides: Partial<Parameters<typeof CodeValueListPane>[0]> 
       includeInactive
       onIncludeInactiveChange={onIncludeInactiveChange}
       pageView={toPageView({ page: 1, size: 50, total: 3 }, 3)}
+      pageMeta={{ page: 1, size: 50, total: 3 }}
       onChangePage={onChangePage}
       selectedCodeValueId={null}
       onSelect={onSelect}
+      onEdit={onEdit}
+      onDeactivate={onDeactivate}
       addAction={<button type="button">코드값 추가</button>}
       loadError={null}
       {...overrides}
     />,
   );
 
-  return { onIncludeInactiveChange, onChangePage, onSelect, user: userEvent.setup() };
+  return {
+    onIncludeInactiveChange,
+    onChangePage,
+    onSelect,
+    onEdit,
+    onDeactivate,
+    user: userEvent.setup(),
+  };
 };
 
 const codeCells = (): string[] =>
@@ -39,11 +51,15 @@ const codeCells = (): string[] =>
     .map((row) => within(row).getAllByRole('cell')[0]?.textContent ?? '');
 
 describe('CodeValueListPane — 목록 표시', () => {
-  it('코드·코드명·정렬 순서·유효기간 네 열을 낸다', () => {
+  /* 마지막 열 「관리」 — 줄마다 [사용 중지] · [수정](표 아래 상세 칸을 걷었다 · 사용자 지시 2026-11-26). */
+  it('코드·코드명·정렬 순서·유효기간·관리 다섯 열을 낸다', () => {
     renderPane();
 
-    const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
-    expect(headers).toEqual(['코드', '코드명', '정렬 순서', '유효기간']);
+    // 열 순서를 바꾸는 손잡이 아이콘 글자(`drag_indicator`)는 빼고 본다.
+    const headers = screen
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent?.replace('drag_indicator', ''));
+    expect(headers).toEqual(['코드', '코드명', '정렬 순서', '유효기간', '관리']);
   });
 
   /* C26 — 계약이 목록의 정렬을 명시하지 않았다. 받은 순서를 그대로 쓰면 순서가 서버 재량이 된다. */
@@ -53,10 +69,14 @@ describe('CodeValueListPane — 목록 표시', () => {
     expect(codeCells()).toEqual(['SYN-CV-02', 'SYN-CV-03', 'SYN-CV-01']);
   });
 
-  it('미사용 행은 열을 늘리지 않고 이름 뒤 접미로 알린다', () => {
+  it('미사용 행은 열을 늘리지 않고 이름 옆 「미사용」 라벨로 알린다', () => {
     renderPane();
 
-    expect(screen.getByText('합성 코드값 C (미사용)')).toBeInTheDocument();
+    expect(
+      within(screen.getByText('합성 코드값 C').closest('.usage-name') as HTMLElement).getByText(
+        '미사용',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('유효기간을 한 칸에 담고, 없는 쪽은 지어내지 않는다', () => {
@@ -99,6 +119,34 @@ describe('CodeValueListPane — 목록 표시', () => {
     await user.click(screen.getByRole('button', { name: 'SYN-CV-03' }));
 
     expect(onSelect).toHaveBeenCalledWith(2003);
+  });
+
+  /* 사용자 지시 2026-11-25 — 코드 글자만이 아니라 줄 어디를 눌러도 고른다. */
+  it('줄의 다른 칸을 눌러도 그 코드값 번호를 알린다', async () => {
+    const { onSelect, user } = renderPane();
+
+    await user.click(screen.getByText('2026-07-01 ~ 2026-12-31'));
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith(2001);
+  });
+
+  it('줄의 [수정] · [사용 중지]는 그 코드값 번호를 알리고 줄 고르기는 따로 부르지 않는다', async () => {
+    const { onSelect, onEdit, onDeactivate, user } = renderPane();
+
+    await user.click(screen.getByRole('button', { name: 'SYN-CV-02 수정' }));
+    await user.click(screen.getByRole('button', { name: 'SYN-CV-01 사용 중지' }));
+
+    expect(onEdit).toHaveBeenCalledWith(2002);
+    expect(onDeactivate).toHaveBeenCalledWith(2001);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('이미 미사용인 줄은 [사용 중지]가 잠기고 [수정]은 열려 있다', () => {
+    renderPane();
+
+    expect(screen.getByRole('button', { name: 'SYN-CV-03 사용 중지' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'SYN-CV-03 수정' })).toBeEnabled();
   });
 });
 
@@ -196,12 +244,13 @@ describe('CodeValueListPane — 조건과 쪽', () => {
   it('쪽 이동에 코드값 전용 접근 이름이 붙는다', () => {
     renderPane();
 
-    expect(screen.getByRole('navigation', { name: '코드값 쪽 이동' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: '코드값 쪽 이동' })).toBeInTheDocument();
   });
 
   it('다음을 누르면 다음 쪽을 알린다', async () => {
     const { onChangePage, user } = renderPane({
       pageView: toPageView({ page: 1, size: 2, total: 10 }, 2),
+      pageMeta: { page: 1, size: 2, total: 10 },
     });
 
     await user.click(screen.getByRole('button', { name: '다음' }));

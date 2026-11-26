@@ -1,9 +1,11 @@
 import { AlertBanner, Chip, type Column, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
-import { BoardTable } from '../../patterns/board-table';
+import { useClientPage, type TabPageSize } from '../../patterns/client-page';
+import { PageNav } from '../../patterns/page-nav';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { OneLine } from '../../patterns/po-board';
+import { ErpDetailFields, ErpListTable, ErpPickEmpty } from '../erp-item/erp-data-parts';
 
 import type { SalesOrder, SalesOrderLine } from './types';
 
@@ -33,6 +35,14 @@ export interface ErpSalesOrderDetailPaneProps {
   storageLocationNameOf: (code: string | null | undefined) => string;
 }
 
+/** 「코드 · 이름」을 두 칸으로 나눈다(사용자 지시 2026-11-24). 이름을 못 풀었으면(불러오는 중 · 없음) 안내를 코드 칸에 둔다. */
+const splitCodeName = (label: string): { code: string; name: string } => {
+  const at = label.indexOf(' · ');
+  return at < 0
+    ? { code: label, name: t.values.missing }
+    : { code: label.slice(0, at), name: label.slice(at + 3) };
+};
+
 /** 라인 취소 표시 — 취소 표지와 ERP 가 취소를 보낸 시각(공장 시각). 취소되지 않았으면 「-」 */
 const renderCancelled = (cancelledAt: string | null | undefined) => {
   if (cancelledAt === null || cancelledAt === undefined || cancelledAt === '') {
@@ -60,10 +70,11 @@ export const ErpSalesOrderDetailPane = ({
 }: ErpSalesOrderDetailPaneProps) => {
   if (state.kind === 'idle') {
     return (
-      <>
-        <h2 className="pane-title">{t.panes.detail}</h2>
-        <EmptyState size="sm" title={t.empty.notSelectedTitle} />
-      </>
+      <ErpPickEmpty
+        icon="receipt_long"
+        title={t.empty.notSelectedTitle}
+        description={t.empty.notSelectedDescription}
+      />
     );
   }
 
@@ -105,36 +116,44 @@ export const ErpSalesOrderDetailPane = ({
     },
   ];
 
-  /* 잔량은 서버가 내리지 않는다 — 수주에서 출하를 뺀 값을 표시로만 보인다(0 아래로 내리지 않는다). */
+  /* 미출하 수량은 서버가 내리지 않는다 — 수주에서 출하를 뺀 값을 표시로만 보인다(0 아래로 내리지 않는다). */
+  /* 수량은 단위를 붙여 보인다 — 단위 칸은 따로 두지 않는다(사용자 지시 2026-11-24). */
+  const withUom = (qty: number, uomId: number): string => `${formatQty(qty)} ${uomNameOf(uomId)}`;
   const columns: Column<SalesOrderLine>[] = [
-    { key: 'lineNo', header: t.fields.lineNo, width: '56px', align: 'end' },
+    { key: 'lineNo', header: t.fields.lineNo, width: '72px', align: 'end' },
     {
       key: 'itemId',
-      header: t.fields.item,
-      render: (row) => <OneLine text={itemNameOf(row.itemId)} />,
+      header: t.fields.itemCode,
+      width: '120px',
+      render: (row) => <OneLine text={splitCodeName(itemNameOf(row.itemId)).code} />,
+    },
+    {
+      key: 'itemName',
+      header: t.fields.itemName,
+      width: '160px',
+      render: (row) => <OneLine text={splitCodeName(itemNameOf(row.itemId)).name} />,
     },
     {
       key: 'orderedQty',
       header: t.fields.orderedQty,
-      width: '88px',
+      width: '104px',
       align: 'end',
-      render: (row) => formatQty(row.orderedQty),
+      render: (row) => withUom(row.orderedQty, row.uomId),
     },
     {
       key: 'shippedQty',
       header: t.fields.shippedQty,
-      width: '88px',
+      width: '104px',
       align: 'end',
-      render: (row) => formatQty(row.shippedQty),
+      render: (row) => withUom(row.shippedQty, row.uomId),
     },
     {
       key: 'remainingQty',
       header: t.fields.remainingQty,
-      width: '88px',
+      width: '112px',
       align: 'end',
-      render: (row) => formatQty(Math.max(0, row.orderedQty - row.shippedQty)),
+      render: (row) => withUom(Math.max(0, row.orderedQty - row.shippedQty), row.uomId),
     },
-    { key: 'uomId', header: t.fields.uom, width: '64px', render: (row) => uomNameOf(row.uomId) },
     {
       key: 'requestedDeliveryDate',
       header: t.fields.requestedDeliveryDate,
@@ -155,34 +174,40 @@ export const ErpSalesOrderDetailPane = ({
     },
   ];
 
-  /*
-   * 화면 틀(`BoardFrame`)의 오른쪽 구획 내용 — 머리 사실 칸(입고 관리 라인 머리와 같은 모양) 다음 라인 표. 구획이 통째로
-   * 스크롤한다.
-   */
+  /* 머리 칸은 「이름 : 값」, 그 아래 라인 표(열 조절 · 화면 안 쪽 넘김 · #358). 상자가 통째로 스크롤한다. */
   return (
-    <>
-      <h2 className="pane-title">{t.panes.detail}</h2>
-      <dl className="po-board-order-facts">
-        {fields.map((field) => (
-          <div key={field.key}>
-            <dt>{field.label}</dt>
-            <dd>{field.value}</dd>
-          </div>
-        ))}
-      </dl>
-      <section className="board-frame-sub" aria-label={t.panes.lines}>
+    <div className="erp-data-detail erp-data-detail-fill">
+      <ErpDetailFields title={t.panes.detail} fields={fields} />
+      <Lines columns={columns} rows={lines} />
+    </div>
+  );
+};
+
+/** 라인 표 — 다 받은 라인을 화면에서 쪽으로 나눈다. 고른 건이 바뀌면 상자가 새로 서므로 첫 쪽부터다. */
+const Lines = ({
+  columns,
+  rows,
+}: {
+  columns: Column<SalesOrderLine>[];
+  rows: SalesOrderLine[];
+}) => {
+  const paged = useClientPage(rows);
+  return (
+    <section className="erp-data-sub" aria-label={t.panes.lines}>
+      <div className="erp-data-sub-head">
         <h2 className="pane-title">{t.panes.lines}</h2>
-        <BoardTable
+      </div>
+      <div className="erp-data-sub-scroll">
+        <ErpListTable
           label={t.panes.lines}
-          widthKey="omf-mes:erp-sales-order:columns:lines"
-          minWidth="59rem"
+          storageKey="omf-mes:erp-sales-order:columns:lines"
           columns={columns}
-          rows={lines}
+          rows={paged.rows}
           getRowId={(row) => String(row.salesOrderLineId)}
-          sort={null}
           empty={<EmptyState size="sm" title={t.empty.linesTitle} />}
         />
-      </section>
-    </>
+      </div>
+      <PageNav<TabPageSize> {...paged.nav} buttonSize="md" />
+    </section>
   );
 };

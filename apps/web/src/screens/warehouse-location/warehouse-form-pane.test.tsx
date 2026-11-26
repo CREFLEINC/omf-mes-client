@@ -191,10 +191,11 @@ describe('WarehouseFormPane', () => {
     expect(screen.queryByRole('button', { name: '취소' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Location' })).not.toBeInTheDocument();
 
-    const stateRow = screen.getByText('사용 상태').closest('.warehouse-info-state');
+    const stateRow = screen.getByText('사용 유무').closest('.warehouse-info-state');
     expect(stateRow).not.toBeNull();
     /* 상태 칩은 이 줄에 한 번만 — 머리에 두 번 두지 않는다. */
-    expect(screen.getAllByText('사용 중')).toHaveLength(1);
+    /* 사용 여부는 전 화면 같은 「사용 / 미사용」 라벨(#358). */
+    expect(screen.getAllByText('사용', { exact: true })).toHaveLength(1);
     await user.click(within(stateRow as HTMLElement).getByRole('button', { name: '사용 중지' }));
     expect(onDeactivate).toHaveBeenCalledOnce();
   });
@@ -207,12 +208,14 @@ describe('WarehouseFormPane', () => {
     ).toBeInTheDocument();
   });
 
-  it('codeLockReason을 주입하면 창고코드가 비활성이고 사유가 화면 텍스트로 보인다', () => {
+  /* 사유 문장 대신 칸 이름 오른쪽 「변경 불가」 라벨 — 문장은 마우스 · 화면 읽기로(사용자 지시 2026-11-24). */
+  it('codeLockReason을 주입하면 창고코드가 비활성이고 「변경 불가」 라벨에 사유가 붙는다', () => {
     const reason = '이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.';
     renderPane({ mode: 'create', codeLockReason: reason });
 
     expect(screen.getByLabelText('창고 코드')).toBeDisabled();
-    expect(screen.getByText(reason)).toBeInTheDocument();
+    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute('title', reason);
+    expect(screen.getByLabelText('창고 코드')).toHaveAccessibleDescription(reason);
   });
 
   /* 고칠 수 없는 값은 흐린 입력칸이 아니라 글자로 보인다(사용자 지시 2026-10-29). */
@@ -329,7 +332,7 @@ describe('WarehouseFormPane', () => {
   it('사용 상태는 칩으로, 사용 중지는 단추로 따로 보인다', () => {
     renderPane();
 
-    expect(screen.getByText('사용 중')).toBeInTheDocument();
+    expect(screen.getByText('사용', { exact: true })).toBeInTheDocument();
     // 상태를 바꾸는 단추는 폼 칸이 아니라 바닥글에 있다(omf-all-around#17 3차).
     expect(
       screen.getByRole('button', { name: '사용 중지' }).closest('.form-actions'),

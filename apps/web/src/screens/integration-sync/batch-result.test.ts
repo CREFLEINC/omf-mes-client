@@ -29,7 +29,7 @@ describe('toBatchResultView — 전건 성공', () => {
     const view = toBatchResultView(result(3, []), REQUESTED);
 
     expect(view.isAllSucceeded).toBe(true);
-    expect(view.summary).toBe('3건을 다시 보냈습니다.');
+    expect(view.summary).toBe('3건의 재처리를 요청했습니다.');
     expect(view.failed).toEqual([]);
   });
 });
@@ -39,7 +39,7 @@ describe('toBatchResultView — 부분 실패', () => {
     const view = toBatchResultView(result(2, [failure(1)]), REQUESTED);
 
     expect(view.isAllSucceeded).toBe(false);
-    expect(view.summary).toBe('2건을 다시 보냈습니다. 1건은 보내지 못했습니다.');
+    expect(view.summary).toBe('2건의 재처리를 요청했습니다. 1건은 요청하지 못했습니다.');
   });
 
   it('위치 번호로 어느 건인지 되짚는다 — 배열 순서로 매기면 엉뚱한 건에 사유가 붙는다', () => {

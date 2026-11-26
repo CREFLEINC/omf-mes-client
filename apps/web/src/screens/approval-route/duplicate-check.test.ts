@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { judgeDuplicate, type DuplicateProbe } from './duplicate-check';
+import { judgeDuplicate, takenApprovalTypeCodes, type DuplicateProbe } from './duplicate-check';
 import type { ApprovalRoute } from './types';
 
 const route = (overrides: Partial<ApprovalRoute> = {}): ApprovalRoute => ({
@@ -156,5 +156,47 @@ describe('judgeDuplicate — 「활성 중복」의 뜻', () => {
     const judged = judgeDuplicate(probe([route({ approvalRouteId: 9007 })]), target());
 
     expect(judged).toMatchObject({ kind: 'blocked', existingRouteId: 9007 });
+  });
+});
+
+/* 등록 팝업 승인 유형 선택지에서 뺄 유형(사용자 지시 2026-11-25). */
+describe('takenApprovalTypeCodes', () => {
+  it('그 사업부의 사용 중 결재선 유형만 고른다', () => {
+    const taken = takenApprovalTypeCodes(
+      probe([
+        route({ approvalTypeCode: 'PURCHASE_ORDER', businessUnitId: 9101 }),
+        route({ approvalRouteId: 9002, approvalTypeCode: 'SHIPMENT_CANCEL', businessUnitId: 9102 }),
+        route({ approvalRouteId: 9003, approvalTypeCode: 'IQC_SKIP', isActive: false }),
+      ]),
+      9101,
+    );
+
+    expect([...taken]).toEqual(['PURCHASE_ORDER']);
+  });
+
+  it('전체 사업부(null)는 사업부 없는 결재선만 본다 — 비운 값과 없는 값은 같은 뜻', () => {
+    const items = [
+      route({ approvalTypeCode: 'PURCHASE_ORDER', businessUnitId: null }),
+      route({ approvalRouteId: 9002, approvalTypeCode: 'SHIPMENT_CANCEL' }),
+    ];
+    delete (items[1] as Partial<ApprovalRoute>).businessUnitId;
+    items.push(
+      route({ approvalRouteId: 9003, approvalTypeCode: 'IQC_SKIP', businessUnitId: 9101 }),
+    );
+
+    expect([...takenApprovalTypeCodes(probe(items), null)].sort()).toEqual([
+      'PURCHASE_ORDER',
+      'SHIPMENT_CANCEL',
+    ]);
+  });
+
+  it('불러오는 중 · 실패 · 잘림이면 아무것도 빼지 않는다', () => {
+    const items = [route({ approvalTypeCode: 'PURCHASE_ORDER', businessUnitId: null })];
+
+    expect(takenApprovalTypeCodes(probe(items, { isLoading: true }), null).size).toBe(0);
+    expect(takenApprovalTypeCodes(probe(items, { isError: true }), null).size).toBe(0);
+    expect(takenApprovalTypeCodes(probe(items, { total: 101 }), null).size).toBe(0);
+    /* 짝 방향 — 온전하면 뺀다. */
+    expect(takenApprovalTypeCodes(probe(items), null).has('PURCHASE_ORDER')).toBe(true);
   });
 });

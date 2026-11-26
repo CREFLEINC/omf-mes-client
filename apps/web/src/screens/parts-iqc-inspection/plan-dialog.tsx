@@ -35,8 +35,8 @@ export interface PlanDialogProps {
    * 「수정」 — 넘기지 않으면 검사 기준 화면으로 바로 옮긴다. PQC · OQC 는 저장 안 한 입력을 먼저 묻는 길(`useLeaveFor`)로 넘긴다(#353).
    */
   onEdit?: (href: string) => void;
-  /** 첫 칸 이름 — IQC 는 「자재명」(기본), PQC · OQC 는 「품목」(#353). */
-  itemLabel?: string;
+  /** 품목 두 칸 이름 — IQC 는 「자재 코드 No.」·「자재명」(기본), PQC · OQC 는 「품목코드」·「품목명」(#353). */
+  itemLabels?: { code: string; name: string };
 }
 
 /**
@@ -54,7 +54,7 @@ export const PlanDialog = ({
   drawings,
   onClose,
   onEdit,
-  itemLabel = t.target.itemName,
+  itemLabels = { code: t.target.itemCode, name: t.target.itemName },
 }: PlanDialogProps) => {
   const { session } = useSession();
   const navigate = useNavigate();
@@ -70,13 +70,10 @@ export const PlanDialog = ({
 
   /* 검사 화면 위쪽 기본 정보와 같은 칸 — 이름표 위 · 값 아래, 칸 사이 세로선(#247 · 사용자 지시 2026-11-10). */
   /* 긴 자재명은 첫 줄을 통째로, 짧은 값은 둘째 줄에 나란히 — 한 칸만 외따로 내려가지 않게(사용자 지시 2026-11-23 · #353). */
-  const facts: { label: string; value: string; sub?: string; wide?: boolean }[] = [
-    {
-      label: itemLabel,
-      value: itemParts?.name ?? '-',
-      ...(itemParts === null ? {} : { sub: itemParts.code }),
-      wide: true,
-    },
+  /* 품목은 이름 · 코드 두 칸(품목 표기 분리) — 긴 이름이 첫 줄을 통째로, 코드는 둘째 줄 첫 칸. */
+  const facts: { label: string; value: string; emphasized?: boolean; wide?: boolean }[] = [
+    { label: itemLabels.name, value: itemParts?.name ?? '-', emphasized: true, wide: true },
+    { label: itemLabels.code, value: itemParts?.code ?? '-' },
     { label: t.plan.facts.planCode, value: planCode },
     { label: t.plan.version, value: t.plan.versionNo(version.planVersion) },
     ...(seqNo === undefined
@@ -124,9 +121,8 @@ export const PlanDialog = ({
               }
             >
               <dt className="field-label">{fact.label}</dt>
-              <dd className={fact.sub === undefined ? undefined : 'parts-iqc-fact-key'}>
+              <dd className={fact.emphasized === true ? 'parts-iqc-fact-key' : undefined}>
                 {fact.value}
-                {fact.sub !== undefined && <span className="parts-iqc-fact-sub">{fact.sub}</span>}
               </dd>
             </div>
           ))}

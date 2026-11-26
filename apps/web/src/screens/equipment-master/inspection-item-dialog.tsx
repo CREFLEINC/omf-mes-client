@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { InfoTip } from '../../patterns/info-tip';
+import { CodeLockTextField } from '../../patterns/master';
 import type { CodeOption } from './code-options';
 import { isMeasurement } from './inspection-item-validation';
 import { SelectField } from './select-field';
@@ -78,14 +79,13 @@ export const InspectionItemDialog = ({
           disabled={mode === 'edit'}
           disabledReason={mode === 'edit' ? t.plantFixed : undefined}
         />
-        <TextField
+        <CodeLockTextField
+          lockReason={codeLockReason}
           label={t.fields.itemCode}
           required
           value={values.itemCode}
           onChange={(event) => onChange({ itemCode: event.target.value })}
           error={fieldErrors.itemCode}
-          disabled={codeLockReason !== null}
-          helperText={codeLockReason ?? undefined}
         />
         <TextField
           label={t.fields.itemName}

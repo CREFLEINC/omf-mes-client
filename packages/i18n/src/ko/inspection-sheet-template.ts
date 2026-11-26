@@ -44,8 +44,7 @@ export const inspectionSheetTemplate = {
     chipStatus: (label: string): string => `상태: ${label}`,
     chipRemoveLayout: '양식 조건 제거',
     chipRemoveStatus: '상태 조건 제거',
-    usageLabel: '사용 여부',
-    usageAll: '전체',
+    usageLabel: '사용 유무',
     usageActive: '사용',
     usageInactive: '미사용',
     usageCount: (label: string, count: number): string => `${label} ${String(count)}`,
@@ -61,14 +60,15 @@ export const inspectionSheetTemplate = {
   },
 
   columns: {
-    model: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     version: '버전',
     layout: '양식',
     status: '상태',
     confirmedAt: '확정 일시',
     material: '재료',
     confirmedBy: '확정자',
-    usage: '사용 여부',
+    usage: '사용 유무',
   },
 
   versionBar: {
@@ -117,6 +117,8 @@ export const inspectionSheetTemplate = {
     readOnly: '확정되었거나 사용 중지된 버전은 고칠 수 없습니다.',
     basicSection: '기본 정보',
     model: '품목',
+    subjectItemCode: '품목코드',
+    subjectItemName: '품목명',
     pickModel: '품목 선택',
     pickConfirm: '선택',
     pickLotConfirm: '이 자재로',

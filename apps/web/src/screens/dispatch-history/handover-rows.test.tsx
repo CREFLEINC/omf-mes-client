@@ -123,7 +123,7 @@ describe('DispatchHistoryScreen — 인계 사건(피처 002)', () => {
     const { queries } = setup();
 
     await rowOf('WO-합성-01');
-    await user.click(screen.getByRole('combobox', { name: t.filters.event }));
+    await user.click(screen.getByRole('combobox', { name: t.filters.eventSelect }));
     const listbox = await screen.findByRole('listbox');
     const groups = within(listbox).getAllByRole('group');
     expect(groups).toHaveLength(2);

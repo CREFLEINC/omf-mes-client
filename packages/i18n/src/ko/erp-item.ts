@@ -11,37 +11,28 @@ export const erpItem = {
     list: '품목 목록',
   },
   fields: {
-    q: '품목코드·품목명',
-    itemType: '품목유형',
+    q: '품목 검색',
+    qPlaceholder: '품목 코드 또는 품목명을 입력하세요',
+    itemType: '품목 유형 선택',
     includeInactive: '미사용 포함',
   },
   filters: {
     all: '전체',
   },
   table: {
-    itemCode: '품목코드',
+    itemCode: '품목 코드',
     itemName: '품목명',
-    itemType: '품목유형',
+    itemType: '품목 유형',
     erpSpec: '규격',
-    erpItemGroupCode: '품목그룹',
+    erpItemGroupCode: '품목 그룹',
     baseUom: '기준 단위',
-    isActive: '사용',
+    isActive: '사용 유무',
   },
   values: {
     empty: '—',
-    active: '사용',
-    inactive: '미사용',
   },
   actions: {
-    prevPage: '이전',
-    nextPage: '다음',
     goFirstPage: '첫 쪽으로',
-  },
-  pageNav: {
-    label: '쪽 이동',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
-    totalOnly: (total: number): string => `전체 ${String(total)}건`,
   },
   loading: {
     list: '품목 목록을 불러오는 중',

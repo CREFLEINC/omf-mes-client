@@ -5,7 +5,8 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { type MasterDataPlant, plantSelectOf } from '../../patterns/master-data-plant';
 import { hasChangedFilters } from '../../patterns/filter-more';
 
-import { type CodeOption, defaultEquipmentFilters, withInactiveSuffix } from './options';
+import { UsageName } from '../../patterns/usage-chip';
+import { type CodeOption, defaultEquipmentFilters } from './options';
 import { SelectField } from './select-field';
 import type { Equipment, EquipmentFilters } from './types';
 
@@ -101,8 +102,8 @@ export const useEquipmentPane = ({
     {
       key: 'equipmentName',
       header: t.fields.equipmentName,
-      /* 사용 여부는 칸이 아니라 이름에 붙는 표식이다 — 좁은 페인에 칸을 하나 더 두지 않는다. */
-      render: (row) => withInactiveSuffix(row.equipmentName, row.isActive),
+      /* 사용 여부는 칸이 아니라 이름 옆 「미사용」 라벨이다 — 좁은 페인에 칸을 하나 더 두지 않는다(#358). */
+      render: (row) => <UsageName isActive={row.isActive}>{row.equipmentName}</UsageName>,
     },
   ];
 

@@ -127,6 +127,16 @@ export const LineTable = ({
   const errorOf = (row: ShipmentRequestLineDraft, field: LineFieldName): string | undefined =>
     errors[lineFieldId(row.key, field)];
 
+  /** 필수 열 머리 — 빨간 * 는 이름 밖(aria-hidden)이라 열 머리 접근 이름이 그대로다. */
+  const requiredHeader = (label: string) => (
+    <>
+      {label}
+      <span className="required-mark" aria-hidden="true">
+        {' *'}
+      </span>
+    </>
+  );
+
   /**
    * 그 줄의 단위 이름 — **단위 열이 쓰는 유일한 자리**다.
    *
@@ -148,7 +158,7 @@ export const LineTable = ({
   const columns: Column<ShipmentRequestLineDraft>[] = [
     {
       key: 'item',
-      header: t.lineTable.item,
+      header: isFromOrder ? t.lineTable.item : requiredHeader(t.lineTable.item),
       width: WIDTH.item,
       /*
        * ⭐ **두 모드가 같은 모양이다** — 「코드 · 이름」 읽기 전용(사용자 결정 2026-09-18).
@@ -164,9 +174,7 @@ export const LineTable = ({
         if (row.splitOf !== null) {
           /* 나눈 줄 — 품목은 원 줄과 같다. 어느 S/O 줄에서 나왔는지만 적는다(시안 W0401-After). */
           return (
-            <span className="sr-split-row">
-              {t.lineTable.splitRowLabel(sourceRefOf(row))}
-            </span>
+            <span className="sr-split-row">{t.lineTable.splitRowLabel(sourceRefOf(row))}</span>
           );
         }
 
@@ -205,7 +213,7 @@ export const LineTable = ({
     },
     {
       key: 'requestedQty',
-      header: t.lineTable.requestedQty,
+      header: isFromOrder ? t.lineTable.requestedQty : requiredHeader(t.lineTable.requestedQty),
       align: 'end',
       width: WIDTH.requestedQty,
       render: (row, rowIndex) =>
@@ -219,6 +227,7 @@ export const LineTable = ({
             fullWidth
             inputMode="decimal"
             aria-label={t.lineTable.requestedQtyLabel(rowIndex + 1)}
+            aria-required="true"
             value={row.requestedQty}
             disabled={isLocked}
             error={errorOf(row, 'requestedQty')}
@@ -230,7 +239,7 @@ export const LineTable = ({
     },
     {
       key: 'uom',
-      header: t.lineTable.uom,
+      header: isFromOrder ? t.lineTable.uom : requiredHeader(t.lineTable.uom),
       width: WIDTH.uom,
       render: (row, rowIndex) =>
         isFromOrder ? (
@@ -243,6 +252,7 @@ export const LineTable = ({
             invalid={errorOf(row, 'uomId') !== undefined}
             disabled={isLocked}
             aria-label={t.lineTable.uomLabel(rowIndex + 1)}
+            aria-required="true"
             onChange={(value) => {
               onPatch(row.key, { uomId: value });
             }}
@@ -296,6 +306,9 @@ export const LineTable = ({
       header: (
         <span className="info-label">
           {t.lineTable.warehouse}
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
           <InfoTip text={t.notes.warehouseRule} />
         </span>
       ),
@@ -313,7 +326,13 @@ export const LineTable = ({
             : t.lineTable.warehousePlaceholder;
 
         return (
-          <div className={row.warehouseCleared ? 'field-cell sr-warehouse is-cleared' : 'field-cell sr-warehouse'}>
+          <div
+            className={
+              row.warehouseCleared
+                ? 'field-cell sr-warehouse is-cleared'
+                : 'field-cell sr-warehouse'
+            }
+          >
             <Select
               size="sm"
               options={warehouseOptions}
@@ -322,6 +341,7 @@ export const LineTable = ({
               invalid={error !== undefined}
               disabled={isLocked || !hasBusinessUnit}
               aria-label={t.lineTable.warehouseLabel(rowIndex + 1)}
+              aria-required="true"
               onChange={(value) => {
                 onChangeWarehouse(row.key, value);
               }}

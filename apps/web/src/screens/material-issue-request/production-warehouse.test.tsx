@@ -358,7 +358,9 @@ describe('W-02-10 생산 창고 공장', () => {
     await user.click(screen.getByRole('button', { name: t.actions.publish }));
 
     const dialog = within(await screen.findByRole('dialog', { name: t.override.title }));
-    expect(await dialog.findByText('SAMPLE-ITEM-09 합성 품목 자')).toBeInTheDocument();
+    /* 품목코드 · 품목명 두 칸으로 나눠 보인다(사용자 지시 2026-11-24). */
+    expect(await dialog.findByText('SAMPLE-ITEM-09')).toBeInTheDocument();
+    expect(dialog.getByText('합성 품목 자')).toBeInTheDocument();
     expect(dialog.queryByText('7409')).not.toBeInTheDocument();
   });
 

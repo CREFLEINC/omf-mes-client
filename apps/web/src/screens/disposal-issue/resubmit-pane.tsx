@@ -66,6 +66,7 @@ export const ResubmitPane = ({
           <TextField
             fullWidth
             label={t.formFields.submitReason}
+            required
             value={reason}
             placeholder={t.form.reasonPlaceholder}
             disabled={isLocked}

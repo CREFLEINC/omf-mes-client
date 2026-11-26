@@ -31,12 +31,14 @@ const renderDialog = (overrides: Partial<Parameters<typeof QualificationFormDial
 };
 
 describe('QualificationFormDialog — 확인은 저장이 아니다 (C65)', () => {
-  it('창 안에 표에만 반영된다는 안내가 있다', () => {
+  /* 안내 문구 · 닫기(X) 없이 바닥 단추로만 나간다(사용자 지시 2026-11-25). */
+  it('창 안에 저장 안내 문구와 닫기(X)가 없고 [취소] · [확인]만 있다', () => {
     renderDialog();
 
-    expect(
-      screen.getByText('확인한 뒤 「저장」을 눌러야 저장됩니다.'),
-    ).toBeInTheDocument();
+    expect(screen.queryByText('확인한 뒤 「저장」을 눌러야 저장됩니다.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '취소' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '확인' })).toBeEnabled();
   });
 
   it('확인을 누르면 고친 줄을 바깥에 알린다', async () => {

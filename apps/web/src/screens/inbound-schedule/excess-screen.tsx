@@ -148,9 +148,24 @@ export const InboundExcessScreen = () => {
     link.reset();
   };
 
+  const unpickExcess = (): void => {
+    if (isSaving) return;
+    setSelectedExcessId(null);
+    setSelectedLineId(null);
+    setDone(null);
+    link.reset();
+  };
+
   const pickLine = (row: ExcessCandidate): void => {
     if (isSaving) return;
     setSelectedLineId(row.purchaseOrderLineId);
+    setDone(null);
+    link.reset();
+  };
+
+  const unpickLine = (): void => {
+    if (isSaving) return;
+    setSelectedLineId(null);
     setDone(null);
     link.reset();
   };
@@ -305,7 +320,10 @@ export const InboundExcessScreen = () => {
    */
   const newFlowNotice = (
     <p className="field-note">
-      {t.newFlowNotice} <Link to={WORK_RECORD_PATH}>{t.newFlowLink}</Link>
+      {t.newFlowNotice}{' '}
+      <Link className="action-link-button" to={WORK_RECORD_PATH}>
+        {t.newFlowLink}
+      </Link>
     </p>
   );
 
@@ -343,6 +361,7 @@ export const InboundExcessScreen = () => {
             label: (row) => t.pickExcess(row.inboundReceiptNo, row.lineNo),
             currentId: selectedExcessId === null ? null : String(selectedExcessId),
             onPick: pickExcess,
+            onUnpick: unpickExcess,
           }}
           empty={<EmptyState size="sm" title={t.emptyTitle} />}
         />
@@ -383,6 +402,7 @@ export const InboundExcessScreen = () => {
           label: (row) => t.pickLine(row.purchaseOrderNo, row.lineNo),
           currentId: selectedLineId === null ? null : String(selectedLineId),
           onPick: pickLine,
+          onUnpick: unpickLine,
         }}
         empty={
           <EmptyState
@@ -430,8 +450,12 @@ export const InboundExcessScreen = () => {
               <dd>{orEmpty(selectedExcess.supplierName)}</dd>
             </div>
             <div>
-              <dt>{t.table.item}</dt>
-              <dd>{`${selectedExcess.itemCode} · ${selectedExcess.itemName}`}</dd>
+              <dt>{t.table.itemCode}</dt>
+              <dd>{selectedExcess.itemCode}</dd>
+            </div>
+            <div>
+              <dt>{t.table.itemName}</dt>
+              <dd>{selectedExcess.itemName}</dd>
             </div>
             <div>
               <dt>{t.table.excessQty}</dt>

@@ -21,7 +21,7 @@ const renderPane = (props: Partial<Parameters<typeof MessageDetailPane>[0]> = {}
 
 /** 라벨이 붙은 칸의 값만 읽는다. 「—」가 여럿이라 화면 전체에서 찾으면 어느 칸인지 알 수 없다. */
 const fieldValue = (label: string): string => {
-  const cell = screen.getByText(label).closest('.field-cell');
+  const cell = screen.getByText(label).closest('.parts-iqc-fact');
 
   return (cell?.textContent ?? '').replace(label, '');
 };
@@ -37,15 +37,19 @@ describe('MessageDetailPane — 항목', () => {
         completedAt: '2026-08-04T09:15:00+09:00',
         lockedBy: 'sync-worker-01',
         lockedAt: '2026-08-04T11:20:00+09:00',
+        availableAt: '2026-08-07T09:20:00+09:00',
       }),
     });
 
-    expect(fieldValue('구분')).toBe('수신');
-    expect(fieldValue('보낸 일시')).toBe('2026-08-04 07:13');
-    expect(fieldValue('완료일시')).toBe('2026-08-04 07:15');
+    // 머리 줄에 문서 번호 · 배지 · 처리 중 보조 줄, 연동 정보 줄에 연동 항목 · 송수신 구분 · 재시도 횟수(#358).
+    expect(screen.getByRole('heading', { name: 'SAMPLE-KEY-0001' })).toBeInTheDocument();
+    expect(fieldValue('연동 항목')).toBe('IF-SAMPLE-A');
+    expect(fieldValue('송수신 구분')).toBe('수신');
+    expect(screen.getByText('2026-08-04 09:20부터 처리 중')).toBeInTheDocument();
+    expect(fieldValue('전송 일시')).toBe('2026-08-04 07:13');
+    expect(fieldValue('완료 일시')).toBe('2026-08-04 07:15');
     // 처리하는 워커 이름 · 대상 코드 같은 시스템 값은 보이지 않는다(사용자 지시 2026-10-27).
-    expect(fieldValue('처리 중')).toBe('2026-08-04 09:20부터 처리 중');
-    expect(fieldValue('다음 시도')).toBe('2026-08-04 07:20');
+    expect(fieldValue('다음 재시도 일시')).toBe('2026-08-07 07:20');
     expect(screen.queryByText('대상')).toBeNull();
     expect(screen.queryByText(/sync-worker-01/)).toBeNull();
     expect(screen.queryByText(/SAMPLE_TARGET/)).toBeNull();
@@ -62,24 +66,59 @@ describe('MessageDetailPane — 항목', () => {
       }),
     });
 
-    expect(fieldValue('보낸 일시')).toBe('—');
-    expect(fieldValue('완료일시')).toBe('—');
-    expect(fieldValue('처리 중')).toBe('—');
-    expect(fieldValue('오류 내용')).toBe('—');
+    expect(fieldValue('전송 일시')).toBe('—');
+    expect(fieldValue('완료 일시')).toBe('—');
+    // 처리 중이 아니면 처리 중 줄을, 재시도가 예정돼 있지 않으면 「다음 재시도 일시」 칸을 두지 않는다.
+    expect(screen.queryByText(/처리 중/)).toBeNull();
+    expect(screen.queryByText('다음 재시도 일시')).toBeNull();
+    // 오류 내용은 값이 있을 때만 선다(#358).
+    expect(screen.queryByText('오류 내용')).toBeNull();
+  });
+
+  it('오류 내용이 있으면 정보 상자 바로 아래에 전체 폭으로 선다(#358)', () => {
+    renderPane({ view: messageRow({ lastErrorMessage: 'ERP 응답 없음' }) });
+
+    const error = screen.getByText('ERP 응답 없음').closest('.integration-sync-detail-error');
+    expect(error).not.toBeNull();
+    expect(error?.previousElementSibling).toHaveClass('parts-iqc-facts');
+  });
+
+  it('상자 맨 위에 「연동 이력 상세」 제목이 선다(#358)', () => {
+    renderPane();
+
+    expect(screen.getByRole('heading', { level: 2, name: '연동 이력 상세' })).toBeInTheDocument();
+  });
+
+  it('정보 상자 하나에 문서 번호 → 연동 항목 · 송수신 구분 · 재시도 횟수 → 발생 · 전송 · 완료 일시 순으로 선다(#358)', () => {
+    renderPane();
+
+    const boxes = document.querySelectorAll('.parts-iqc-facts');
+    expect(boxes).toHaveLength(1);
+    const labels = [...(boxes[0] as HTMLElement).querySelectorAll('dt')].map(
+      (dt) => dt.textContent,
+    );
+    expect(labels).toEqual([
+      '문서 번호',
+      '연동 항목',
+      '송수신 구분',
+      '재시도 횟수',
+      '연동일시',
+      '전송 일시',
+      '완료 일시',
+    ]);
   });
 
   it('시도 횟수가 0이어도 그대로 보인다', () => {
     renderPane({ view: messageRow({ retryCount: 0 }) });
 
-    expect(fieldValue('재시도 횟수')).toBe('0');
+    expect(fieldValue('재시도 횟수')).toBe('0회');
   });
 
   it('처리 중인데 시작 시각이 없으면 「처리 중」만 낸다 — 시각을 지어내지 않는다', () => {
     renderPane({ view: messageRow({ lockedBy: 'sync-worker-01', lockedAt: null }) });
 
-    // 이름표와 값이 같은 글자다 — 그 칸의 두 글자를 함께 본다.
-    const cell = screen.getAllByText('처리 중')[0]?.closest('.field-cell');
-    expect(cell?.textContent).toBe('처리 중처리 중');
+    expect(screen.getByText('처리 중')).toBeInTheDocument();
+    expect(screen.queryByText(/부터 처리 중/)).toBeNull();
   });
 });
 
@@ -123,7 +162,7 @@ describe('MessageDetailPane — 불러오는 중과 실패', () => {
     renderPane({ view: undefined, isLoading: true });
 
     expect(
-      screen.getByRole('status', { name: '연계 메시지 정보를 불러오는 중' }),
+      screen.getByRole('status', { name: '연동 이력 정보를 불러오는 중' }),
     ).toBeInTheDocument();
     expect(screen.queryByText('방향')).not.toBeInTheDocument();
   });

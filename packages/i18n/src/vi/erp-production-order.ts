@@ -10,6 +10,8 @@ export const erpProductionOrder: Translated<typeof ko.erpProductionOrder> = {
   fields: {
     productionOrderNo: 'Số ERP W/O',
     item: 'Mặt hàng',
+    itemCode: 'Mã mặt hàng',
+    itemName: 'Tên mặt hàng',
     orderQty: 'Số lượng chỉ thị',
     plannedStartDate: 'Ngày bắt đầu kế hoạch',
     dueDate: 'Hạn giao',
@@ -18,29 +20,32 @@ export const erpProductionOrder: Translated<typeof ko.erpProductionOrder> = {
     rework: 'Làm lại',
     status: 'Trạng thái',
     progress: 'Tiến độ',
-    q: 'Số ERP W/O',
+    q: 'Tìm số W/O',
   },
   panes: {
     filters: 'Điều kiện tra cứu ERP W/O',
     list: 'Danh sách ERP W/O',
+    detail: 'Chi tiết ERP W/O',
   },
   filters: {
+    plannedStartDateFromPlaceholder: 'Nhập từ ngày bắt đầu kế hoạch',
+    plannedStartDateToPlaceholder: 'Nhập đến ngày bắt đầu kế hoạch',
     all: 'Tất cả',
+    itemSelect: 'Tìm mặt hàng',
+    statusSelect: 'Chọn trạng thái',
+    plannedStartDateFrom: 'Từ ngày bắt đầu kế hoạch',
+    plannedStartDateTo: 'Đến ngày bắt đầu kế hoạch',
     itemPlaceholder: 'Tìm và chọn mặt hàng',
     itemClear: 'Xóa mặt hàng',
     itemPick: 'Chọn',
     chip: (label: string, value: string): string => `${label}: ${value}`,
-  },
-  actions: {
-    firstPage: 'Trang đầu',
-    prevPage: 'Trước',
-    nextPage: 'Sau',
   },
   progress: {
     group: 'Điều kiện tiến độ',
     all: 'Tất cả',
     open: 'Chưa xong',
     done: 'Đã xong',
+    withCount: (label: string, count: number): string => `${label} ${String(count)}`,
     status: {
       NOT_STARTED: 'Chưa sản xuất',
       PARTIAL: 'Đang sản xuất',
@@ -49,7 +54,7 @@ export const erpProductionOrder: Translated<typeof ko.erpProductionOrder> = {
     },
   },
   values: {
-    searchPlaceholder: 'Một phần số ERP W/O',
+    searchPlaceholder: 'Nhập số ERP W/O',
     missing: '-',
     unknown: 'Không xác định',
     loadingName: 'Đang tải',
@@ -65,10 +70,4 @@ export const erpProductionOrder: Translated<typeof ko.erpProductionOrder> = {
   loading: 'Đang tải ERP W/O',
   listLoadFailedTitle: 'Không tải được danh sách ERP W/O',
   loadFailedDescription: 'Hãy thử lại sau giây lát. Nếu vẫn lỗi, hãy liên hệ quản trị viên.',
-  page: {
-    label: 'Chuyển trang ERP W/O',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / Tổng ${String(total)}`,
-    total: (total: number): string => `Tổng ${String(total)}`,
-  },
 };

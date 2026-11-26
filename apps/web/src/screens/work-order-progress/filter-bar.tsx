@@ -1,4 +1,4 @@
-import { Button, TextField } from '@crefle/web-ui';
+import { Button, Field, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type FormEvent, useEffect, useId, useState } from 'react';
 
@@ -106,29 +106,38 @@ export const ProgressFilterBar = ({
   return (
     <form aria-label={t.legend} className="filter-bar work-order-progress-filter" onSubmit={submit}>
       <div className="field-cell">
-        <TextField
-          aria-describedby={blockedReason === null ? undefined : periodNoteId}
-          aria-required
-          label={t.from}
-          type="date"
-          value={draft.from}
-          onChange={(event) => {
-            setDraft((current) => ({ ...current, from: event.target.value }));
-          }}
-        />
+        {/* 폼 안이라 native required 대신 Field 가 빨간 * 를 그린다(검증·제출 동작 그대로). */}
+        <Field label={t.from} required>
+          {({ controlId }) => (
+            <TextField
+              id={controlId}
+              aria-describedby={blockedReason === null ? undefined : periodNoteId}
+              aria-required
+              type="date"
+              value={draft.from}
+              onChange={(event) => {
+                setDraft((current) => ({ ...current, from: event.target.value }));
+              }}
+            />
+          )}
+        </Field>
       </div>
 
       <div className="field-cell">
-        <TextField
-          aria-describedby={blockedReason === null ? undefined : periodNoteId}
-          aria-required
-          label={t.to}
-          type="date"
-          value={draft.to}
-          onChange={(event) => {
-            setDraft((current) => ({ ...current, to: event.target.value }));
-          }}
-        />
+        <Field label={t.to} required>
+          {({ controlId }) => (
+            <TextField
+              id={controlId}
+              aria-describedby={blockedReason === null ? undefined : periodNoteId}
+              aria-required
+              type="date"
+              value={draft.to}
+              onChange={(event) => {
+                setDraft((current) => ({ ...current, to: event.target.value }));
+              }}
+            />
+          )}
+        </Field>
       </div>
 
       <FilterSelect

@@ -24,7 +24,7 @@ const t = messages.disposalIssue;
 export interface ReceiptFilters {
   /** 창고 번호. 정수만 뜻이 있다 — 계약이 `warehouseId`를 정수로 요구한다. */
   warehouse: string;
-  /** 입고일 범위. `DatePicker mode="range"` 한 컨트롤이 `YYYY-MM-DD` 두 값을 준다. */
+  /** 입고일 범위. 시작일 · 종료일 두 칸(`patterns/date-range-fields`)이 `YYYY-MM-DD` 두 값을 준다. */
   from: string;
   to: string;
   /** 입고 유형 코드. 선택지가 자리표시라 지금은 주소를 손으로 고칠 때만 들어온다(결정 8). */

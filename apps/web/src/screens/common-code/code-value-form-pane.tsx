@@ -1,10 +1,11 @@
-import { Button, TextField } from '@crefle/web-ui';
+import { Button, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
+import { CodeLockLabel } from '../../patterns/master';
+import { requiredEmptyClass } from '../users-roles/required-empty';
 import type { CodeValueFormValues } from './code-value-types';
 import { DateField } from './date-field';
-import { DisabledAction } from './disabled-action';
 import { FieldLabel } from './field-label';
 
 const t = messages.commonCode.codeValue;
@@ -22,13 +23,10 @@ export interface CodeValueFormPaneProps {
   banner: ReactNode;
   /** null이면 코드를 편집할 수 있다. */
   codeLockReason: string | null;
-  /** null이면 사용 중지를 누를 수 있다. 값이 있으면 그것이 비활성 사유다. */
-  deactivateDisabledReason: string | null;
   isDirty: boolean;
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
-  onDeactivate: () => void;
 }
 
 /**
@@ -52,115 +50,112 @@ export const CodeValueFormPane = ({
   fieldErrors,
   banner,
   codeLockReason,
-  deactivateDisabledReason,
   isDirty,
   isSaving,
   onSave,
   onCancel,
-  onDeactivate,
 }: CodeValueFormPaneProps) => {
   const codeId = useId();
   const nameId = useId();
   const orderId = useId();
 
-  return (
-    <section className="pane" aria-label={t.formPaneTitle}>
-      {banner}
-
-      <div className="form-grid">
-        {/*
-         * 필수 표시는 디자인 시스템 내장 라벨에 끼울 자리가 없어 라벨을 직접 붙인다(배치 규범 3).
-         * 검증이 필수로 막는 칸에 표시가 없으면 저장을 눌러야 필수임을 알게 된다.
-         */}
-        <div className="field-cell">
+  const formGrid = (
+    <div className="form-grid">
+      {/*
+       * 필수 표시는 디자인 시스템 내장 라벨에 끼울 자리가 없어 라벨을 직접 붙인다(배치 규범 3).
+       * 검증이 필수로 막는 칸에 표시가 없으면 저장을 눌러야 필수임을 알게 된다.
+       */}
+      <div className="field-cell">
+        {/* 잠긴 코드는 사유 문장 대신 칸 이름 오른쪽 「변경 불가」 라벨(사용자 지시 2026-11-24). */}
+        <CodeLockLabel reason={codeLockReason} reasonId={`${codeId}-lock`}>
           <FieldLabel htmlFor={codeId} label={t.fields.code} required />
-          <TextField
-            id={codeId}
-            value={values.code}
-            onChange={(event) => onChange({ code: event.target.value })}
-            disabled={codeLockReason !== null}
-            disabledReason={codeLockReason}
-            error={fieldErrors.code}
-            aria-required
-          />
-        </div>
-
-        <div className="field-cell">
-          <FieldLabel htmlFor={nameId} label={t.fields.codeName} required />
-          <TextField
-            id={nameId}
-            value={values.codeName}
-            onChange={(event) => onChange({ codeName: event.target.value })}
-            error={fieldErrors.codeName}
-            aria-required
-          />
-        </div>
-
-        {/* 하한을 두지 않는다 — 계약에 하한이 없어 음수도 허용값이다. */}
-        <div className="field-cell">
-          <FieldLabel htmlFor={orderId} label={t.fields.displayOrder} required />
-          <TextField
-            id={orderId}
-            type="number"
-            step={1}
-            value={values.displayOrder}
-            onChange={(event) => onChange({ displayOrder: event.target.value })}
-            error={fieldErrors.displayOrder}
-            aria-required
-          />
-        </div>
-
-        {/*
-         * 날짜 입력은 DS `DatePicker`다(변경 통지 #63).
-         * 계약이 널을 허용한다 — 비우는 것이 정상 값이라 필수 표시를 붙이지 않는다.
-         */}
-        <DateField
-          label={t.fields.effectiveFrom}
-          value={values.effectiveFrom}
-          onChange={(effectiveFrom) => onChange({ effectiveFrom })}
-          error={fieldErrors.effectiveFrom}
-        />
-
-        <DateField
-          label={t.fields.effectiveTo}
-          value={values.effectiveTo}
-          onChange={(effectiveTo) => onChange({ effectiveTo })}
-          error={fieldErrors.effectiveTo}
+        </CodeLockLabel>
+        <TextField
+          id={codeId}
+          value={values.code}
+          onChange={(event) => onChange({ code: event.target.value })}
+          disabled={codeLockReason !== null}
+          aria-describedby={codeLockReason === null ? undefined : `${codeId}-lock`}
+          /* 필수 칸이 비면 빨간 테두리 — 사용자 역할 화면과 같은 방식(#333). 잠긴 칸은 고칠 수 없어 뺀다. */
+          containerClassName={codeLockReason === null ? requiredEmptyClass(values.code) : undefined}
+          error={fieldErrors.code}
+          aria-required
         />
       </div>
 
-      <div className="form-actions">
-        {/*
-         * 등록 폼에는 사용 중지 자리를 두지 않는다 — 아직 없는 자원이라
-         * 「언젠가 풀린다」가 아니라 애초에 해당하지 않는 액션이다.
-         */}
-        {mode === 'edit' &&
-          (deactivateDisabledReason === null ? (
-            <div className="field-cell form-actions-secondary">
-              <Button variant="outlined" onClick={onDeactivate}>
-                {messages.common.deactivate}
-              </Button>
-            </div>
-          ) : (
-            <DisabledAction
-              label={messages.common.deactivate}
-              reason={deactivateDisabledReason}
-              className="form-actions-secondary"
-            />
-          ))}
-
-        {/*
-         * 등록에서 「취소」는 **폼을 닫는 것**이라 고친 것이 없어도 눌러야 한다.
-         * 수정에서는 **기준값으로 되돌리는 것**이라 고친 것이 있을 때만 의미가 있다.
-         */}
-        <Button variant="outlined" disabled={mode === 'edit' && !isDirty} onClick={onCancel}>
-          {messages.common.cancel}
-        </Button>
-
-        <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
-          {mode === 'create' ? t.actions.add : messages.common.save}
-        </Button>
+      <div className="field-cell">
+        <FieldLabel htmlFor={nameId} label={t.fields.codeName} required />
+        <TextField
+          id={nameId}
+          value={values.codeName}
+          onChange={(event) => onChange({ codeName: event.target.value })}
+          containerClassName={requiredEmptyClass(values.codeName)}
+          error={fieldErrors.codeName}
+          aria-required
+        />
       </div>
-    </section>
+
+      {/* 하한을 두지 않는다 — 계약에 하한이 없어 음수도 허용값이다. */}
+      <div className="field-cell">
+        <FieldLabel htmlFor={orderId} label={t.fields.displayOrder} required />
+        <TextField
+          id={orderId}
+          type="number"
+          step={1}
+          value={values.displayOrder}
+          onChange={(event) => onChange({ displayOrder: event.target.value })}
+          containerClassName={requiredEmptyClass(values.displayOrder)}
+          error={fieldErrors.displayOrder}
+          aria-required
+        />
+      </div>
+
+      {/*
+       * 날짜 입력은 DS `DatePicker`다(변경 통지 #63).
+       * 계약이 널을 허용한다 — 비우는 것이 정상 값이라 필수 표시를 붙이지 않는다.
+       */}
+      <DateField
+        label={t.fields.effectiveFrom}
+        value={values.effectiveFrom}
+        onChange={(effectiveFrom) => onChange({ effectiveFrom })}
+        error={fieldErrors.effectiveFrom}
+      />
+
+      <DateField
+        label={t.fields.effectiveTo}
+        value={values.effectiveTo}
+        onChange={(effectiveTo) => onChange({ effectiveTo })}
+        error={fieldErrors.effectiveTo}
+      />
+    </div>
+  );
+
+  /*
+   * 등록 · 수정 모두 팝업 — 사용자 추가 팝업과 같은 모양(등록 2026-11-25 · 수정 2026-11-26 사용자 지시 · #333).
+   * 표 아래에 상세 · 편집 칸을 두지 않는다. 사용 중지는 표 줄의 [사용 중지]가 맡는다.
+   * 열고 닫힘은 종전대로 바깥(등록은 주소의 등록 상태, 수정은 고른 줄)이 쥐고, 저장 단추의 막힘 조건(고친 것 없음 · 저장 중)도 그대로다.
+   */
+  return (
+    <Dialog
+      open
+      onClose={onCancel}
+      size="lg"
+      title={mode === 'create' ? t.actions.add : t.actions.editTitle}
+      closeOnBackdropClick={false}
+      showCloseButton={false}
+      footer={
+        <>
+          <Button variant="outlined" onClick={onCancel}>
+            {messages.common.cancel}
+          </Button>
+          <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
+            {mode === 'create' ? t.actions.add : messages.common.save}
+          </Button>
+        </>
+      }
+    >
+      {banner}
+      {formGrid}
+    </Dialog>
   );
 };

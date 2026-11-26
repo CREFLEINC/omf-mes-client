@@ -31,7 +31,8 @@ export const expeditedShipment = {
     loadFailed: '생산 완료분 목록을 불러오지 못했습니다',
     fields: {
       lotNo: 'LOT',
-      item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       qty: '수량',
       status: 'Lot Status',
     },
@@ -76,7 +77,8 @@ export const expeditedShipment = {
     noLine: '이 지시에 고른 품목의 라인이 없습니다',
     fields: {
       shipmentRequestNo: '출하작업지시번호',
-      requestedShipDate: '출하일',
+      requestedShipDateFrom: '출하 시작일',
+      requestedShipDateTo: '출하 종료일',
       allocatedQty: '배정',
       remainingQty: '배정 잔여',
       qty: '수량',

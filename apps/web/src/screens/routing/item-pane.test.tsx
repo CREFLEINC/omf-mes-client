@@ -192,7 +192,8 @@ describe('ItemPane', () => {
       'aria-pressed',
       'true',
     );
-    expect(await screen.findByRole('button', { name: '폐기 0' })).toBeInTheDocument();
+    /* 0건 칩은 감춘다(사용자 지시 2026-11-24). */
+    expect(screen.queryByRole('button', { name: /^폐기/ })).not.toBeInTheDocument();
     expect(await screen.findByRole('button', { name: '미등록 4' })).toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: '공정 경로 미등록' })).not.toBeInTheDocument();
   });

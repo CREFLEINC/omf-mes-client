@@ -43,15 +43,23 @@ export const InfoLabel = ({
   htmlFor,
   label,
   info,
+  required = false,
 }: {
   htmlFor: string;
   label: string;
   info: string;
+  /** 필수 칸이면 이름 옆 빨간 *(라벨 밖, 접근 이름 그대로). 표시만 한다. */
+  required?: boolean;
 }) => (
   <span className="info-label">
     <label className="field-label" htmlFor={htmlFor}>
       {label}
     </label>
+    {required && (
+      <span className="required-mark" aria-hidden="true">
+        *
+      </span>
+    )}
     <InfoTip text={info} />
   </span>
 );

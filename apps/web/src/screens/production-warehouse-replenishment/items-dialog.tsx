@@ -189,12 +189,15 @@ export const ItemDialog = ({ item, settings, warehouses, onClose }: ItemDialogPr
             <dl className="replenishment-head">
               <dt>{ti.productionWarehouse}</dt>
               <dd>{item.productionWarehouseName}</dd>
-              <dt>{ti.item}</dt>
-              <dd>{`${itemText} (${item.uomCode})`}</dd>
+              <dt>{ti.itemCode}</dt>
+              <dd>{item.itemCode}</dd>
+              <dt>{ti.itemName}</dt>
+              <dd>{`${item.itemName} (${item.uomCode})`}</dd>
             </dl>
           )}
           <TextField
             label={ti.point}
+            required
             inputMode="decimal"
             value={point}
             error={rangeOk ? undefined : t.errors.range}
@@ -205,6 +208,7 @@ export const ItemDialog = ({ item, settings, warehouses, onClose }: ItemDialogPr
           />
           <TextField
             label={ti.target}
+            required
             inputMode="decimal"
             value={target}
             onChange={(event) => {

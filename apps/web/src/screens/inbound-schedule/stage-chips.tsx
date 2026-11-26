@@ -17,7 +17,7 @@ export interface StageChipsProps {
 }
 
 /**
- * 탭 줄 오른쪽의 **단계 건수 칩** — 「라벨 발행 대기 1 · 검사 대기 4 · 보류 2 · 입고 대기 5 · 적치 대기 3」(C-17 머리 건수).
+ * 탭 줄 오른쪽의 **단계 건수 칩** — 「라벨 발행 대기 1건 · 검사 대기 4건 · 보류 2건 · 적치 대기 3건」(C-17 머리 건수 · #358).
  * 누르면 그 묶음의 LOT 이 있는 발주만 남고, 다시 누르면 풀린다 — 조건 줄의 조건과 함께 걸린다.
  *
  * **수가 있는 묶음만 세운다**(`chipGroups`) — 0 인 칩은 늘 서 있어도 할 일이 없다는 말뿐이라 걷었다(관리웹 화면 정리 시안 A ·
@@ -46,7 +46,7 @@ export const StageChips = ({ counts, active, onChange }: StageChipsProps) => (
             onChange(selected ? group : '');
           }}
         >
-          {t.stage.groupCount(label, counts[group] ?? 0)}
+          {t.stage.chipCount(label, counts[group] ?? 0)}
         </Chip>
       );
     })}

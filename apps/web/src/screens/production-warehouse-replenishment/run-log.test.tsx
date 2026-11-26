@@ -138,7 +138,8 @@ describe('W-02-12 생산 창고 보충 — 자동 보충 실행', () => {
     /* 일부만 요청 줄 — 요청 100, 부족 60. */
     const shortRow = within(lines.getByText('SYN-MIR-32').closest('tr') as HTMLElement);
     expect(shortRow.getAllByRole('cell').map((cell) => cell.textContent)).toEqual([
-      'SYN-IT-2 합성 품목 2',
+      'SYN-IT-2',
+      '합성 품목 2',
       tl.results.SHORTAGE,
       '40',
       '100',

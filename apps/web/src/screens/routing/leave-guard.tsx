@@ -12,6 +12,10 @@ export interface DiscardDialogProps {
   title?: string;
   /** 오른쪽 위 닫기(×) — 주지 않으면 둔다 */
   showCloseButton?: boolean;
+  /** 단추 글 · 창 크기 — 주지 않으면 라우팅 화면 그대로. 다른 화면이 사용자 관리 창과 맞출 때 준다(#358). */
+  stayLabel?: string;
+  leaveLabel?: string;
+  size?: 'sm' | 'md';
   onStay: () => void;
   onLeave: () => void;
 }
@@ -21,20 +25,24 @@ export const DiscardDialog = ({
   body = t.body,
   title = t.title,
   showCloseButton,
+  stayLabel = t.stay,
+  leaveLabel = t.confirm,
+  size,
   onStay,
   onLeave,
 }: DiscardDialogProps) => (
   <Dialog
     open
     title={title}
+    {...(size === undefined ? {} : { size })}
     showCloseButton={showCloseButton}
     onClose={onStay}
     footer={
       <>
         <Button variant="outlined" onClick={onStay}>
-          {t.stay}
+          {stayLabel}
         </Button>
-        <Button onClick={onLeave}>{t.confirm}</Button>
+        <Button onClick={onLeave}>{leaveLabel}</Button>
       </>
     }
   >
@@ -54,6 +62,9 @@ export interface LeaveGuardProps {
   discardBody?: ReactNode;
   discardTitle?: string;
   showCloseButton?: boolean;
+  stayLabel?: string;
+  leaveLabel?: string;
+  size?: 'sm' | 'md';
 }
 
 /**
@@ -67,6 +78,9 @@ export const LeaveGuard = ({
   discardBody,
   discardTitle,
   showCloseButton,
+  stayLabel,
+  leaveLabel,
+  size,
 }: LeaveGuardProps) => {
   const blocker = useBlocker(({ currentLocation, nextLocation }) => {
     if (!when || bypassRef?.current === true) return false;
@@ -87,6 +101,9 @@ export const LeaveGuard = ({
       body={discardBody}
       title={discardTitle}
       showCloseButton={showCloseButton}
+      stayLabel={stayLabel}
+      leaveLabel={leaveLabel}
+      size={size}
       onStay={() => blocker.reset()}
       onLeave={() => blocker.proceed()}
     />

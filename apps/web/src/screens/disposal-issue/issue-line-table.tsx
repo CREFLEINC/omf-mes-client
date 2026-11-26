@@ -1,6 +1,7 @@
 import { Button, type Column, EmptyState, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { splitCodeName } from '../../patterns/split-code-name';
 import { isLinePosted } from './approval-progress';
 import {
   describeReference,
@@ -31,7 +32,7 @@ export interface IssueLineColumnsInput {
 }
 
 /**
- * 품의 라인 표의 열 구성 — **다섯이고 전부 읽기다.**
+ * 품의 라인 표의 열 구성 — **여섯이고 전부 읽기다.**
  *
  * **이 표에는 입력칸도 선택칸도 없다.** 이미 만들어진 전표의 라인이라 이 화면에서 고치지
  * 않는다 — 계약에 라인 치환 경로가 있으나 「전기된 전표의 라인은 바꿀 수 없다」이고, 무엇보다
@@ -46,18 +47,25 @@ export interface IssueLineColumnsInput {
  *
  * | 열 | 폭 | 근거 |
  * | --- | ---: | --- |
- * | **품목** | **미지정** | 「코드 · 이름」을 담고 남는 폭을 흡수한다(예산 200px) |
+ * | 품목코드 | 120px | 품목코드(사용자 지시 2026-11-24 — 품목코드 · 품목명을 두 열로 나눈다) |
+ * | **품목명** | **미지정** | 이름을 담고 남는 폭을 흡수한다(예산 200px) |
  * | 자재 LOT | 168px | LOT 번호 15자 113px + 4갈래 표기 + **보류 표식** |
  * | 위치 | 136px | 「코드 · 이름」 |
  * | 폐기 수량 | 120px | 수 + 단위 표기 |
  * | **전기** | 112px | 「전기됨 / 전기 전」 |
- * | **지정 폭 합** | **536px** | |
- * | 흡수 열 예산 | 200px | 「코드 · 이름」이 접히지 않고 읽히는 하한 |
- * | **합** | **736px** | `58rem`(928px) 안에 들어간다 |
+ * | **지정 폭 합** | **656px** | |
+ * | 흡수 열 예산 | 200px | 이름이 접히지 않고 읽히는 하한 |
+ * | **합** | **856px** | `58rem`(928px) 안에 들어간다 |
  *
- * **흡수 열이 실제로 받는 폭은 392px**(928 − 536)로 예산 200px보다 넓다 — 열 폭 합만 세는
+ * **흡수 열이 실제로 받는 폭은 272px**(928 − 656)로 예산 200px보다 넓다 — 열 폭 합만 세는
  * 단언은 흡수 열이 몇십 px밖에 못 받는 어긋남을 놓치므로 **남는 폭까지 함께 단언한다**(C46).
  */
+const itemCodeNameOf = (
+  itemNames: ItemNameLookup,
+  itemId: number,
+): { code: string; name: string } =>
+  splitCodeName(describeReference(itemNames.of(itemId)), messages.common.reference.empty);
+
 export const buildIssueLineColumns = ({
   itemNames,
   uomLookup,
@@ -66,12 +74,19 @@ export const buildIssueLineColumns = ({
 }: IssueLineColumnsInput): Column<IssueLineView>[] => [
   {
     key: 'item',
-    header: t.issueLineTable.item,
+    header: t.issueLineTable.itemCode,
+    width: '120px',
     /*
      * **번호를 문자열로 바꾸는 자리가 없다**(`omf-mes#44`). 이름으로 풀 수 없는 세 갈래
      * (미도착·목록에 없음·실패)는 전부 문구로 갈리며, 어느 갈래에도 원시 번호가 담기지 않는다.
+     * 못 푼 안내는 품목코드 칸에, 품목명 칸은 빈 값 표시(`splitCodeName`).
      */
-    render: (row) => describeReference(itemNames.of(row.itemId)),
+    render: (row) => itemCodeNameOf(itemNames, row.itemId).code,
+  },
+  {
+    key: 'itemName',
+    header: t.issueLineTable.itemName,
+    render: (row) => itemCodeNameOf(itemNames, row.itemId).name,
   },
   {
     key: 'lot',

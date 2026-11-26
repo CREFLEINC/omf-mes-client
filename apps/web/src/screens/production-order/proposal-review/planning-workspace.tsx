@@ -6,7 +6,8 @@ import { runRequest } from '../../../patterns/request';
 import { useRoutingReferenceQuery } from '../../production-plan/reference-queries';
 import { useProductionLineReferenceQuery } from '../../production-plan/reference-queries';
 import { useRef, useState } from 'react';
-import { AlertBanner, Button, Tabs } from '@crefle/web-ui';
+import { AlertBanner, Button, EmptyState, Tabs } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import {
   ReferenceField,
   type ReferenceSource,
@@ -95,12 +96,16 @@ export const ProposalPlanningWorkspace = ({
     ]);
   };
   const [activeOperation, setActiveOperation] = useState<string | null>(null);
+  /* 고른 작업지시를 다시 눌러 풀었다 — 첫 작업지시를 저절로 다시 고르지 않는다. */
+  const [operationCleared, setOperationCleared] = useState(false);
   const [activePlan, setActivePlan] = useState<string | null>(null);
   const plan = row.plans.find((p) => p.key === activePlan) ?? row.plans[0];
   const operations = row.plans.flatMap((p) =>
     p.operations.map((op) => ({ plan: p, op, key: `${p.key}:${op.key}` })),
   );
-  const selected = operations.find((entry) => entry.key === activeOperation) ?? operations[0];
+  const selected = operationCleared
+    ? undefined
+    : (operations.find((entry) => entry.key === activeOperation) ?? operations[0]);
   const lineReference = useProductionLineReferenceQuery(row.plantId ?? null);
   const lines = [
     ...new Map(
@@ -575,12 +580,20 @@ export const ProposalPlanningWorkspace = ({
                   getRowId={(entry) => entry.key}
                   activeId={selected?.key ?? null}
                   rowLabel={(entry) => `${entry.op.sequence} ${entry.op.name} 배정`}
-                  onActivate={(entry) => setActiveOperation(entry.key)}
+                  onActivate={(entry) => {
+                    setOperationCleared(entry.key === selected?.key);
+                    setActiveOperation(entry.key);
+                  }}
                 />
               </section>
               <section className="pane erp-wo-assign-editor" aria-label="4M 배정 입력">
                 <h3 className="section-title">4M 배정</h3>
-                {selected && (
+                {selected === undefined ? (
+                  <EmptyState
+                    size="sm"
+                    title={messages.erpWorkOrderFlow.process.assign.selectPrompt}
+                  />
+                ) : (
                   <>
                     <p>
                       {selected.op.sequence}. {selected.op.name} / {selected.plan.date}

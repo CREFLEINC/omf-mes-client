@@ -73,7 +73,7 @@ describe('WorkOrderCloseCandidateListPane', () => {
       within(screen.getByRole('table', { name: t.pane }))
         .getAllByRole('columnheader')
         .map((header) => header.textContent ?? ''),
-    ).toEqual(['W/O 번호', '품목', '상태', '지시 수량', '양품', '달성률', '판정']);
+    ).toEqual(['W/O 번호', '품목코드', '품목명', '상태', '지시 수량', '양품', '달성률', '판정']);
     expect(bodyRows()[0]).toHaveTextContent('SYN-WO-BRAVO');
     expect(bodyRows()[1]).toHaveTextContent('SYN-WO-ALPHA');
   });

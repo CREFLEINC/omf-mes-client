@@ -25,10 +25,14 @@ export const common = {
   selectLoading: '불러오는 중…',
   selectLoadFailed: '목록을 불러오지 못했습니다',
   deactivate: '사용 중지',
+  /** 쓰는지 여부 라벨 — 관리웹 모든 화면이 「사용 / 미사용」 한 가지로 쓴다(사용자 지시 2026-11-24 · `patterns/usage-chip.tsx`). */
+  usage: { active: '사용', inactive: '미사용' },
   saved: '저장했습니다',
   created: '등록했습니다',
   retry: '다시 시도',
   includeInactive: '미사용 포함',
+  /** 조건에 맞는 것이 없는 빈 목록의 회색 보조 문구(`patterns/list-empty.tsx`). */
+  listEmptyHint: '조회 조건을 바꿔 보세요.',
   /** 조회 조건 줄의 「조건 더보기」(C-6) — 자주 쓰는 세 칸 밖의 조건을 접어 둔다(`patterns/filter-more.tsx`). */
   filterMore: {
     open: '조건 더보기',
@@ -46,7 +50,8 @@ export const common = {
     notice:
       '이 화면은 OA 사업부 전용입니다. 로그인 계정의 공장 범위에 OA 공장이 없습니다. 필요하면 시스템 관리자에게 공장 범위를 요청하세요.',
     /** OA·부품 공장을 모두 가진 계정이 맨 위에서 「부품」을 고른 때(omf-all-around#336). */
-    partsModeNotice: '이 화면은 OA 사업부 전용입니다. 맨 위에서 「OA 사업부」를 고르면 볼 수 있습니다.',
+    partsModeNotice:
+      '이 화면은 OA 사업부 전용입니다. 맨 위에서 「OA 사업부」를 고르면 볼 수 있습니다.',
   },
   /** OA·부품 공장을 모두 가진 계정의 동작 고르기 — 상단 바(omf-all-around#336). */
   plantMode: {
@@ -191,6 +196,9 @@ export const common = {
    * 마스크를 그려 줬지만 `DatePicker`의 트리거는 우리가 넣지 않으면 빈 칸으로 남는다.
    */
   selectDate: '날짜 선택',
+  /** 기간을 시작 · 종료 두 칸으로 나눌 때, 날짜 이름이 따로 없는 「기간」의 두 칸 이름(`patterns/date-range-fields`). */
+  startDate: '시작일',
+  endDate: '종료일',
 
   /**
    * POP 머리줄의 사번. 화면마다 같은 말로 적는다(`patterns/pop-worker-tag`).
@@ -215,5 +223,14 @@ export const common = {
       `지금 대상은 ${before} 입니다. 새로 읽은 ${after} 로 바꿀까요?`,
     keep: '그대로 두기',
     replace: '새로 읽은 값으로',
+  },
+  /**
+   * 저장하지 않은 편집을 두고 다른 화면으로 옮길 때(사이드바 · 뒤로가기) 묻는 창 — 사용자 역할 권한 관리 창과 같은 문구(#358).
+   */
+  unsavedLeave: {
+    title: '저장되지 않은 변경 사항',
+    body: '저장하지 않고 나가면 변경 사항이 사라집니다.',
+    keep: '계속 편집',
+    confirm: '저장하지 않고 나가기',
   },
 } as const;

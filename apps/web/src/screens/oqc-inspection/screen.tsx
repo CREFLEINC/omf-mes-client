@@ -850,17 +850,7 @@ const OqcInspectionView = ({ kindSelect }: { kindSelect: ReactNode }) => {
         inspectionRequestId={selectedId}
         itemParts={itemNames.partsOf(detail.data.itemId)}
         skippedTabs={historyTabItems}
-        itemLabel={((): ReactNode => {
-          const parts = itemNames.partsOf(detail.data.itemId);
-          return parts === null ? (
-            itemNames.labelOf(detail.data.itemId)
-          ) : (
-            <>
-              {parts.code}
-              <span className="parts-iqc-fact-sub">{parts.name}</span>
-            </>
-          );
-        })()}
+        itemLabel={itemNames.labelOf(detail.data.itemId)}
         uomCode={uomCode}
       />
     ) : (

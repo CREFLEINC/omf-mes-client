@@ -108,7 +108,6 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
   },
   usage: {
     label: 'Lọc theo trạng thái sử dụng',
-    all: 'Tất cả',
     active: 'Sử dụng',
     inactive: 'Ngừng dùng',
     count: (label: string, count: number): string => `${label} ${String(count)}`,

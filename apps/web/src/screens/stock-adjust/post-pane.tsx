@@ -175,6 +175,7 @@ export const PostPane = ({
                 <TextField
                   type="date"
                   label={t.post.businessDate}
+                  required
                   value={draft.businessDate}
                   disabled={isPosting}
                   error={errors.businessDate ?? fieldErrors.businessDate}
@@ -186,6 +187,7 @@ export const PostPane = ({
                 <TextField
                   type="datetime-local"
                   label={t.post.occurredAt}
+                  required
                   value={draft.occurredAtLocal}
                   disabled={isPosting}
                   error={errors.occurredAt ?? fieldErrors.occurredAt}

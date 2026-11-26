@@ -19,6 +19,8 @@ import './release-result.css';
 
 interface Props {
   focusedWorkOrderId?: number | null;
+  /** 고른 작업지시를 다시 눌러 풀었다 — 첫 작업지시로 되돌리지 않는다. */
+  focusCleared?: boolean;
   orderNo: string;
   itemCode?: string;
   itemName?: string;
@@ -55,7 +57,7 @@ const issueStatus = (status: string) =>
   ({
     WAITING: '대기',
     RELEASED: '배포',
-    IN_PROGRESS: '진행 중',
+    IN_PROGRESS: '진행',
     DONE: '완료',
     CANCELLED: '취소',
     REGISTERED: '등록',
@@ -218,11 +220,19 @@ const SelectedResult = ({
 export const ReleaseResult = (props: Props) => {
   const retryReasonId = useId();
   const [selected, setSelected] = useState<number | null>(null);
+  const [cleared, setCleared] = useState(false);
   const [stacked, setStacked] = useState(false);
   const row =
-    props.workOrders.find(
-      (entry) => entry.workOrderId === (props.focusedWorkOrderId ?? selected),
-    ) ?? props.workOrders[0];
+    (props.focusCleared ?? cleared)
+      ? undefined
+      : (props.workOrders.find(
+          (entry) => entry.workOrderId === (props.focusedWorkOrderId ?? selected),
+        ) ?? props.workOrders[0]);
+  /* 고른 작업지시를 다시 누르면 푼다(목록 공통). */
+  const pick = (workOrderId: number) => {
+    setCleared(workOrderId === row?.workOrderId);
+    setSelected(workOrderId);
+  };
   const immediate = props.attempts.length > 0;
   const failures = props.attempts.filter((entry) => entry.status !== 'released');
   const pending = props.workOrders.filter(
@@ -339,14 +349,14 @@ export const ReleaseResult = (props: Props) => {
                         className={
                           row?.workOrderId === entry.workOrderId ? 'is-selected' : undefined
                         }
-                        onClick={() => setSelected(entry.workOrderId)}
+                        onClick={() => pick(entry.workOrderId)}
                       >
                         <td>
                           <button
                             type="button"
                             className="erp-wo-release-result-pick"
                             aria-pressed={row?.workOrderId === entry.workOrderId}
-                            onClick={() => setSelected(entry.workOrderId)}
+                            onClick={() => pick(entry.workOrderId)}
                           >
                             {entry.workOrderNo}
                           </button>
@@ -380,7 +390,11 @@ export const ReleaseResult = (props: Props) => {
         <AlertBanner
           variant="warning"
           title="배포 완료 / 자재 확인 필요"
-          action={<Link to={MATERIAL_ISSUE_SHORTAGE_PATH}>자재 부족분 확인</Link>}
+          action={
+            <Link className="action-link-button" to={MATERIAL_ISSUE_SHORTAGE_PATH}>
+              자재 부족분 확인
+            </Link>
+          }
         >
           <ul>
             {props.shortages.map((text) => (

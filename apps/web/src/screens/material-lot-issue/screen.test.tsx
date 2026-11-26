@@ -514,6 +514,16 @@ describe('W-01-14 상세 — 탭 넷(피처 014 Q17)', () => {
     expect(pane.queryByRole('button', { name: /라벨|인쇄/ })).not.toBeInTheDocument();
   });
 
+  it('고른 줄을 다시 누르면 고르기를 풀고 오른쪽이 「고르세요」로 돌아간다', async () => {
+    const { user } = setup();
+    await openDetail(user, 'SYN-CAP');
+
+    await user.click(await rowOf('SYN-CAP'));
+
+    const pane = await screen.findByRole('region', { name: t.detail.label });
+    expect(await within(pane).findByText(t.detail.choose)).toBeInTheDocument();
+  });
+
   it('US2-3 조회 · 생성 중에는 로딩 문구를 보인다', async () => {
     let open = (): void => undefined;
     const lotsGate = new Promise<void>((resolve) => {

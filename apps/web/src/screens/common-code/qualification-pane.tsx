@@ -3,6 +3,7 @@ import {
   Button,
   type Column,
   EmptyState,
+  Icon,
   IconButton,
   SkeletonText,
   Table,
@@ -11,7 +12,6 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
-import { DisabledAction } from './disabled-action';
 import type { QualificationDraft } from './qualification-draft';
 import { duplicateDraftIds } from './qualification-validation';
 import type { LookupEntry } from './types';
@@ -21,13 +21,10 @@ const t = messages.commonCode.qualification;
 export interface QualificationPaneProps {
   drafts: QualificationDraft[];
   isLoading: boolean;
-  isWorkerSelected: boolean;
   /** 공정 번호를 사람이 읽는 이름으로. 비운 값은 「(전체 공정)」이다 */
   processes: LookupSource<LookupEntry>;
   /** 인증자 번호를 활성 사용자 이름으로 표시한다. 기존 값은 조회 실패 때도 원본을 보존한다 */
   certifiers: LookupSource<LookupEntry>;
-  /** 선택 목록이 잘렸거나 실패했다는 안내 슬롯 */
-  optionsNotice: ReactNode;
   loadError: ReactNode;
   /** 저장 실패 배너 슬롯 */
   banner: ReactNode;
@@ -71,10 +68,8 @@ const orEmptyMark = (value: string): string =>
 export const QualificationPane = ({
   drafts,
   isLoading,
-  isWorkerSelected,
   processes,
   certifiers,
-  optionsNotice,
   loadError,
   banner,
   isDirty,
@@ -101,51 +96,50 @@ export const QualificationPane = ({
   };
 
   /*
-   * 지정 폭의 합은 **692px**(140+160+200+96+96)이라 `.wide-table`의 최소 폭(58rem = 928px)
-   * 안에 들어간다 — 「자격 유형」만 폭을 지정하지 않고 남는 폭을 흡수한다.
-   *
-   * 계획 결정 11은 자격 유형에 140px을 줘 832px로 잡았으나 그 열을 흡수 열로 돌렸다.
-   * 자격 유형은 **값 목록이 미정**이라(§8-5) 어떤 길이의 문구가 들어올지 아직 모르는데,
-   * 좁은 고정 폭을 주면 목록이 확정된 뒤 그 열부터 짓눌린다.
+   * 상세 상자 폭에 맞춘다(사용자 지시 2026-11-25) — 종전 `.wide-table` 최소 폭(58rem)이 상세보다 넓어 첫 열이 잘리고
+   * 가로로 밀렸다. 열은 모두 가운데 맞춤(생산 창고 표와 같다), 유효기간 · 인증자는 줄을 바꾸지 않는다(layout.css).
+   * 「관리」 열만 폭을 정하고 나머지는 글자 폭대로 나눈다 — 자격 유형은 값 목록이 미정(§8-5)이라 고정 폭을 두지 않는다.
    */
   const columns: Column<QualificationDraft>[] = [
     {
       key: 'qualificationTypeCode',
       header: t.fields.qualificationType,
+      align: 'center',
       render: (row) => orEmptyMark(row.qualificationTypeCode),
     },
     {
       key: 'processId',
       header: t.fields.process,
-      width: '140px',
+      align: 'center',
       render: (row) => processLabel(row.processId),
     },
     {
       key: 'certificateNo',
       header: t.fields.certificateNo,
-      width: '160px',
+      align: 'center',
       render: (row) => orEmptyMark(row.certificateNo),
     },
     {
       key: 'validPeriod',
       header: t.fields.validPeriod,
-      width: '200px',
+      align: 'center',
       render: (row) => periodLabel(row),
     },
     {
       key: 'certifiedBy',
       header: t.fields.certifiedBy,
-      width: '96px',
-      align: 'end',
+      align: 'center',
       render: (row) => lookupDisplayLabel(certifiers, row.certifiedBy),
     },
     {
       key: 'edit',
-      header: t.fields.edit,
+      /* 생산 창고 · 결재 단계 표와 같은 「관리」 열(사용자 지시 2026-11-25). */
+      header: t.fields.manage,
+      align: 'center',
       width: '96px',
       /* 나가는 중에 표가 바뀌면 확인한 것과 다른 것이 저장된 것처럼 보인다. */
       render: (row) => (
-        <>
+        <span className="users-roles-row-actions">
           <IconButton
             icon="edit"
             size="sm"
@@ -160,22 +154,12 @@ export const QualificationPane = ({
             aria-label={t.actions.removeRow(orEmptyMark(row.qualificationTypeCode))}
             onClick={() => onRemove(row.draftId)}
           />
-        </>
+        </span>
       ),
     },
   ];
 
-  /**
-   * 저장 자리의 네 상태. **잠금에서 오는 비활성에는 반드시 사유가 붙는다**(배치 규범 4) —
-   * 남의 저장이 왜 내 저장을 막는지는 이 구획 어디에도 드러나지 않아, 사유가 없으면
-   * 사용자에게 「고장」으로 읽힌다.
-   *
-   * **넷째 갈래에는 사유를 두지 않는다.** 그 비활성은 잠김(남의 사정)이 아니라
-   * **고친 것이 없음**(자기 사정)이라 원인이 사용자가 방금 한 일에 그대로 있다.
-   * 형제 구획(거래처 역할)은 그 자리에도 사유를 두지만 이 구획에는 그 문구가 없고
-   * D-9가 새 키를 **잠금 사유 하나만** 승인했다 — 갈래 순서 ①②③은 전례와 같고
-   * 넷째만 이 구획의 기존 형태를 지킨다.
-   */
+  /** 저장 자리. 잠긴 까닭을 단추 아래 문구로 내지 않는다 — 꺼진 단추로만(사용자 지시 2026-11-25). */
   const saveAction = (): ReactNode => {
     /* 내 저장이 나가는 중이면 진행 표시가 사유 자리를 대신한다. */
     if (isSaving) {
@@ -186,28 +170,12 @@ export const QualificationPane = ({
       );
     }
 
-    /* 남의 저장이 나가는 중이다 — 잠그되 **무엇을 기다리는지** 밝힌다. */
-    if (isLocked) {
-      return (
-        <DisabledAction
-          label={messages.common.save}
-          reason={t.actionReasons.saveLockedByOtherWorker}
-        />
-      );
-    }
-
-    /* 서버가 준 목록에 이미 겹친 짝이 있으면 그대로 보내도 서버가 거부한다. */
-    if (duplicates.size > 0) {
-      return (
-        <DisabledAction
-          label={messages.common.save}
-          reason={t.actionReasons.saveBlockedByInvalid}
-        />
-      );
-    }
-
+    /*
+     * 남의 저장이 나가는 중이거나, 서버가 준 목록에 이미 겹친 짝이 있거나(그대로 보내면 서버가 거부한다 — 위 경고
+     * 배너가 밝힌다), 고친 것이 없으면 잠그기만 한다. 저장 단추 아래 사유 문구는 두지 않는다(사용자 지시 2026-11-25).
+     */
     return (
-      <Button disabled={!isDirty} onClick={onSave}>
+      <Button disabled={isLocked || duplicates.size > 0 || !isDirty} onClick={onSave}>
         {messages.common.save}
       </Button>
     );
@@ -225,7 +193,7 @@ export const QualificationPane = ({
     }
 
     return (
-      <div className="wide-table">
+      <div className="wide-table common-code-qualification-table">
         <Table
           density="compact"
           columns={columns}
@@ -244,25 +212,9 @@ export const QualificationPane = ({
     );
   };
 
-  if (!isWorkerSelected) {
-    return (
-      <section className="pane" aria-label={t.paneTitle}>
-        <EmptyState size="sm" title={t.empty.notSelected} />
-        {/*
-         * 작업자를 고르기 전에도 「자격 추가」를 감추지 않는다 — 감추면 사용자가
-         * 「이 화면에는 없는 기능」으로 오해하고 다른 곳을 찾는다(배치 규범 4).
-         */}
-        <div className="filter-bar">
-          <DisabledAction label={t.actions.add} reason={t.actionReasons.needsWorker} />
-        </div>
-      </section>
-    );
-  }
-
   return (
     <section className="pane" aria-label={t.paneTitle}>
       {banner}
-      {optionsNotice}
 
       {/*
        * 서버가 준 목록에 이미 겹친 짝이 있을 수 있다(옛 자료) — 그대로 보내면 서버가 거부한다.
@@ -274,12 +226,15 @@ export const QualificationPane = ({
         </div>
       )}
 
-      <div className="filter-bar">
-        <div className="field-cell">
-          <Button variant="outlined" disabled={isLocked} onClick={onAdd}>
-            {t.actions.add}
-          </Button>
-        </div>
+      {/*
+       * 무슨 목록인지 구획 제목 「자격·인증」 — 생산 창고 · 거래처 역할 구획 제목과 같은 모양(사용자 지시 2026-11-26).
+       * 「자격 추가」(기본 크기 빨간 단추 · 2026-11-25)는 그 제목 줄 오른쪽 끝(생산 창고의 「창고 추가」와 같은 배치).
+       */}
+      <div className="section-heading-row common-code-qualification-add-row">
+        <h3 className="subsection-title">{t.paneTitle}</h3>
+        <Button leadingIcon={<Icon name="add" size={18} />} disabled={isLocked} onClick={onAdd}>
+          {t.actions.add}
+        </Button>
       </div>
 
       {listSlot()}

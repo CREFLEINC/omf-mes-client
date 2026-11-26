@@ -61,6 +61,8 @@ export const inspectionResultInsights = {
       inspectionRequestNo: '의뢰번호',
       inspectionType: '검사 유형',
       item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       lotNo: 'LOT 번호',
       quantities: '검사 수량 / 판정 수량',
       judgment: '종합 판정',

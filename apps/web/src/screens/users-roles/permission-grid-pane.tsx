@@ -1,15 +1,8 @@
-import {
-  Button,
-  Checkbox,
-  EmptyState,
-  Icon,
-  SkeletonText,
-  Table,
-  type Column,
-} from '@crefle/web-ui';
+import { Button, Checkbox, Icon, SkeletonText, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useState } from 'react';
 
+import { ListEmpty } from '../../patterns/list-empty';
 import { DisabledAction } from './disabled-action';
 import { toPermissionRows, type PermissionGroup, type PermissionRow } from './permission-catalog';
 
@@ -139,17 +132,6 @@ export const PermissionGridPane = ({
       );
     }
 
-    if (rows.length === 0) {
-      return (
-        <EmptyState
-          size="sm"
-          live
-          title={t.permission.empty.none}
-          description={t.permission.empty.noneDescription}
-        />
-      );
-    }
-
     /*
      * ⭐ **표만 구른다.** 페인 전체가 구르면 아래 액션 줄이 화면 밖으로 밀려, 고른 뒤 저장을
      * 찾아 다시 끝까지 내려가야 한다. 높이 제한과 스크롤은 `.permission-table-scroll` 이 준다.
@@ -162,6 +144,13 @@ export const PermissionGridPane = ({
           columns={columns}
           rows={rows}
           getRowId={(row) => row.code}
+          empty={
+            <ListEmpty
+              live
+              title={t.permission.empty.none}
+              description={t.permission.empty.noneDescription}
+            />
+          }
           groupBy={(row) => row.groupKey}
           renderGroupHeader={(groupKey, groupRows) => {
             const isOpen = expanded.has(groupKey);

@@ -141,10 +141,10 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
     const chips = await screen.findByRole('group', {
       name: messages.inspectionStandard.filters.usageLabel,
     });
-    const total = String(inspectionPlanFixtures.length);
+    /* 「전체」 라벨은 없다 — 처음엔 「사용 N건」이 켜져 있다(사용자 지시 2026-11-24 · #358). */
     await waitFor(() => {
       expect(
-        within(chips).getByRole('button', { pressed: false, name: new RegExp(`^전체.*${total}`) }),
+        within(chips).getByRole('button', { pressed: true, name: /^사용 \d+/ }),
       ).toBeInTheDocument();
     });
   });
@@ -1035,9 +1035,13 @@ describe('InspectionStandardScreen — 기준 상세 조회', () => {
 
     expect(await findPlanField('기준코드')).toBeDisabled();
     expect(screen.getByLabelText('기준명')).toBeEnabled();
-    expect(
-      screen.getByText('지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
+      'title',
+      '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
+    );
+    expect(await findPlanField('기준코드')).toHaveAccessibleDescription(
+      '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
+    );
   });
 
   /*
@@ -1346,7 +1350,8 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
       '?plan=3002',
     );
 
-    await screen.findByText(/\(SYN-ITEM-01\)/);
+    /* 상세 머리의 품목코드 칸(품목 표기 분리) — 품목 상세가 풀린 뒤 단추를 누른다. */
+    await screen.findAllByText('SYN-ITEM-01');
     await user.click(await screen.findByRole('button', { name: '라우팅 조회' }));
 
     expect(router?.state.location.pathname).toBe('/master-data/routing');
@@ -2696,7 +2701,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
   it('「확정」은 확인 창을 거쳐 본문 없이 If-Match도 없이 나간다', async () => {
     const { requests, user } = renderSelectedVersion([versionTransitionRoute('confirm')]);
 
-    const form = await awaitVersionForm();
+    await awaitVersionForm();
     await user.click(screen.getByRole('button', { name: '확정' }));
 
     expect(await dialog()).toBeInTheDocument();
@@ -2716,7 +2721,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
   it('전이에 성공하면 버전 목록·상세·항목을 다시 조회한다', async () => {
     const { requests, user } = renderSelectedVersion([versionTransitionRoute('confirm')]);
 
-    const form = await awaitVersionForm();
+    await awaitVersionForm();
     const before = {
       detail: requestsTo(requests, VERSION_DETAIL_PATH).length,
       items: requestsTo(requests, ITEMS_PATH).length,
@@ -2746,7 +2751,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
       ),
     ]);
 
-    const form = await awaitVersionForm();
+    await awaitVersionForm();
     await user.click(screen.getByRole('button', { name: '확정' }));
     await user.click(within(await dialog()).getByRole('button', { name: '확정' }));
 
@@ -2760,7 +2765,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
   it('저장된 항목이 0건이면 확정이 비활성이고 사유가 보인다', async () => {
     renderSelectedVersion([itemListRoute(4002, [])]);
 
-    const form = await awaitVersionForm();
+    await awaitVersionForm();
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '확정' })).toBeDisabled();
@@ -3956,14 +3961,15 @@ describe('InspectionStandardScreen — 상세 표시 순서(#256)', () => {
   };
 
   /* 사용 칩을 이 상자로 옮기고 칸 이름을 「~ 여부」로(사용자 지시 · #258). 승인 여부는 걷었다(#357). */
-  /* IQC 기준은 품목 다음에 품목 검사 수준이 선다(omf-all-around#357). */
-  it('기준 상세는 검사 유형 · 품목 · 검사 수준(IQC) · 기준명 · 기준코드 · 기본 생략 여부 · 사용 여부 순서다', async () => {
+  /* IQC 기준은 품목 다음에 품목 검사 수준이 선다(omf-all-around#357). 품목은 품목코드 · 품목명 두 칸(#358). */
+  it('기준 상세는 검사 유형 · 품목코드 · 품목명 · 검사 수준(IQC) · 기준명 · 기준코드 · 기본 생략 여부 · 사용 여부 순서다', async () => {
     renderSelectedVersion();
     await awaitVersionForm();
 
-    expect(labelsIn('.inspection-standard-plan-facts').slice(0, 7)).toEqual([
+    expect(labelsIn('.inspection-standard-plan-facts').slice(0, 8)).toEqual([
       t.fields.inspectionType,
-      t.fields.item,
+      t.listColumns.itemCode,
+      t.listColumns.itemName,
       t.itemLevel.label,
       t.fields.inspectionPlanName,
       t.fields.inspectionPlanCode,

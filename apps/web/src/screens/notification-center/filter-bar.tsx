@@ -1,7 +1,7 @@
-import { Checkbox, DatePicker } from '@crefle/web-ui';
+import { Checkbox } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import type { NotificationFilters } from './filters';
 import type { NotificationPeriod } from './period';
 import { SelectField } from './select-field';
@@ -25,8 +25,8 @@ export interface NotificationFilterBarProps {
  * 조회 조건 줄 — 기간 · 「안 읽음만」 · 유형 셋.
  *
  * ⭐ **「조회」 버튼을 두지 않는다.** 세 컨트롤이 전부 **완결된 값만 방출**하기 때문이다 —
- * `DatePicker mode="range"`는 완결 쌍만, 그것도 `from ≤ to`로만 내보내고(디자인 시스템이
- * 보장한다 · 실측), 체크상자와 선택칸은 애초에 중간 상태가 없다.
+ * 기간은 시작일 · 종료일 두 칸이지만 둘 다 늘 차 있고(필수 · 지우기 없음) 달력 한계가 시작 ≤ 종료를
+ * 지켜, 한 칸을 바꿔도 완결된 기간이 나간다. 체크상자와 선택칸은 애초에 중간 상태가 없다.
  *
  * 전례 둘(`master-change`·`integration-sync`)이 「모아서 적용」을 쓰는 이유는 **자유 입력 칸이
  * 있어** 치는 도중의 반쪽 값으로 요청이 나가기 때문이다. 이 화면에는 그 칸이 하나도 없으므로
@@ -49,31 +49,19 @@ export const NotificationFilterBar = ({
   onChangePeriod,
   onChangeFilters,
 }: NotificationFilterBarProps) => {
-  const periodId = useId();
-
   return (
     <div className="filter-bar notification-center-filter">
-      {/*
-       * 기간은 **한 컨트롤**이다 — 시작·종료 두 칸이 아니라 `mode="range"` 하나다.
-       * 주소 키(`from`·`to`)와 요청 인자는 그대로다. 바뀐 것은 고르는 수단뿐이다.
-       *
-       * 컨트롤이 역전·반쪽을 만들지 못하지만 `resolvePeriod`의 그 갈래는 그대로 둔다 —
-       * 주소는 사용자가 직접 고칠 수 있고 조회 조건의 정본은 주소다. 컨트롤이 막는 것과
-       * 화면이 막는 것은 다른 층이다.
-       */}
-      <div className="field-cell">
-        <label className="field-label" htmlFor={periodId}>
-          {t.fields.period}
-        </label>
-        <DatePicker
-          id={periodId}
-          mode="range"
-          value={[period.from === '' ? null : period.from, period.to === '' ? null : period.to]}
-          onChange={([from, to]) => {
-            onChangePeriod({ from, to });
-          }}
-        />
-      </div>
+      {/* 기간은 계약상 필수 조회 조건 — 두 칸 모두 빨간 * 는 `<label>` 밖(접근 이름 그대로). */}
+      <DateRangeFields
+        required
+        startLabel={t.fields.periodFrom}
+        endLabel={t.fields.periodTo}
+        from={period.from}
+        to={period.to}
+        onChange={(from, to) => {
+          onChangePeriod({ from, to });
+        }}
+      />
 
       {/*
        * 「안 읽음만」은 체크상자다.

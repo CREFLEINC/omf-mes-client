@@ -1,7 +1,8 @@
-import { Button, DatePicker, SearchInput } from '@crefle/web-ui';
+import { Button, SearchInput } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import {
   FilterMoreButton,
   HiddenFilterChips,
@@ -88,7 +89,6 @@ export const FilterBar = ({
   const [picked, setPicked] = useState<Picked>({});
   const [periodError, setPeriodError] = useState<string | null>(null);
   const more = useFilterMore();
-  const periodId = useId();
   const periodErrorId = useId();
 
   const appliedKey = JSON.stringify(draftOf(applied));
@@ -207,33 +207,25 @@ export const FilterBar = ({
           submit();
         }}
       >
-        <div className="field-cell filter-field-lg">
-          <label className="field-label" htmlFor={periodId}>
-            {t.period}
-            <span className="required-mark" aria-hidden="true">
-              {' '}
-              *
-            </span>
-          </label>
-          <DatePicker
-            id={periodId}
-            mode="range"
-            clearable
-            value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
-            placeholder={t.periodPlaceholder}
-            aria-required
-            invalid={periodError !== null}
-            aria-describedby={periodError === null ? undefined : periodErrorId}
-            onChange={(value) =>
-              commit({ from: value === null ? '' : value[0], to: value === null ? '' : value[1] })
-            }
-          />
-          {periodError !== null && (
-            <span id={periodErrorId} className="field-error" role="alert">
-              {periodError}
-            </span>
-          )}
-        </div>
+        <DateRangeFields
+          required
+          clearable
+          startLabel={messages.common.startDate}
+          endLabel={messages.common.endDate}
+          placeholder={messages.common.selectDate}
+          invalid={periodError !== null}
+          describedBy={periodError === null ? undefined : periodErrorId}
+          from={draft.from}
+          to={draft.to}
+          onChange={(from, to) => commit({ from, to })}
+          note={
+            periodError !== null && (
+              <span id={periodErrorId} className="field-error" role="alert">
+                {periodError}
+              </span>
+            )
+          }
+        />
         <div className="filter-field-md">
           <ReferenceField
             label={t.item}

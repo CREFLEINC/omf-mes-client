@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -12,6 +12,7 @@ import {
 import { TerminalProcessMapScreen } from './screen';
 
 const t = messages.terminalProcessMap;
+const leave = messages.common.unsavedLeave;
 const path = (request: Request): string => new URL(request.url).pathname;
 const page = (items: unknown[]) => ({ items, page: { page: 1, size: 50, total: items.length } });
 
@@ -86,6 +87,7 @@ const renderScreen = (route = '/system/terminal-process-map') =>
     fetch: createStubFetch(routes),
     route,
     session: null,
+    dataRouter: true,
   });
 
 describe('TerminalProcessMapScreen 표시', () => {
@@ -146,7 +148,7 @@ describe('TerminalProcessMapScreen 표시', () => {
 });
 
 describe('TerminalProcessMapScreen 조회 조건', () => {
-  it('초기화는 늘 보이고, 누르면 치던 검색어와 걸린 조건을 비운다', async () => {
+  it('초기화는 조건이 처음 값과 다를 때만 보이고, 누르면 치던 검색어와 걸린 조건을 비운다', async () => {
     const user = userEvent.setup();
     renderScreen('/system/terminal-process-map?includeInactive=1');
     await screen.findByRole('button', { name: 'SYN-TERM-01' });
@@ -158,20 +160,30 @@ describe('TerminalProcessMapScreen 조회 조건', () => {
 
     expect(search).toHaveValue('');
     expect(screen.getByRole('checkbox', { name: t.filters.includeInactive })).not.toBeChecked();
+    expect(screen.queryByRole('button', { name: t.filters.clear })).toBeNull();
+  });
+
+  it('조건이 처음 그대로면 초기화가 없고, 검색어를 치면 나타난다', async () => {
+    const user = userEvent.setup();
+    renderScreen('/system/terminal-process-map');
+    await screen.findByRole('button', { name: 'SYN-TERM-01' });
+    expect(screen.queryByRole('button', { name: t.filters.clear })).toBeNull();
+
+    await user.type(screen.getByPlaceholderText(t.filters.searchPlaceholder), 'SYN');
     expect(screen.getByRole('button', { name: t.filters.clear })).toBeInTheDocument();
   });
 
-  it('좌우 · 상하 배치 단추가 조회 줄에 늘 보이고, 상하를 누르면 위아래로 쌓인다', async () => {
+  it('위 줄 「⋯」 에서 상하 배치를 고르면 위아래로 쌓인다', async () => {
     const user = userEvent.setup();
     renderScreen();
     await screen.findByRole('button', { name: 'SYN-TERM-01' });
 
+    await user.click(screen.getByRole('button', { name: messages.common.shell.moreActions }));
     const stacked = screen.getByRole('button', {
       name: messages.common.inspectionHub.layoutStacked,
     });
     await user.click(stacked);
 
-    expect(stacked).toHaveAttribute('aria-pressed', 'true');
     expect(document.querySelector('.po-board-split.is-stacked')).not.toBeNull();
   });
 
@@ -196,6 +208,7 @@ describe('TerminalProcessMapScreen 조회 조건', () => {
       ]),
       route: '/system/terminal-process-map',
       session: null,
+      dataRouter: true,
     });
     await screen.findByRole('button', { name: 'SYN-TERM-01' });
 
@@ -345,6 +358,8 @@ describe('TerminalProcessMapScreen 단말 추가 단계 (사용자 결정 2026-1
       ]),
       route: '/system/terminal-process-map',
       session: null,
+      /* 기능 구성 나가기 확인(LeaveGuard · #358)은 데이터 라우터가 있어야 선다. */
+      dataRouter: true,
     });
     return { calls, puts };
   };
@@ -425,12 +440,13 @@ describe('TerminalProcessMapScreen 기능 구성 저장', () => {
         respond: () => jsonResponse(page(rows), { headers: { ETag: '"1"' } }),
       },
     ];
-    renderWithProviders(<TerminalProcessMapScreen />, {
+    const view = renderWithProviders(<TerminalProcessMapScreen />, {
       fetch: createStubFetch([...extra, ...routes]),
       route: '/system/terminal-process-map?terminal=701',
       session: null,
+      dataRouter: true,
     });
-    return { puts, user: userEvent.setup() };
+    return { puts, user: userEvent.setup(), router: view.router };
   };
   const flag = (processName: string, key: keyof typeof t.flags) =>
     screen.getByRole('checkbox', { name: `${processName} ${t.flags[key]}` });
@@ -519,15 +535,44 @@ describe('TerminalProcessMapScreen 기능 구성 저장', () => {
     await user.click(flag('합성 사출', 'canCompleteWork'));
     await user.click(screen.getByRole('button', { name: 'SYN-TERM-02' }));
 
-    const dialog = await screen.findByRole('dialog', { name: t.discard.title });
-    await user.click(within(dialog).getByRole('button', { name: messages.routing.discard.stay }));
+    const dialog = await screen.findByRole('dialog', { name: leave.title });
+    await user.click(within(dialog).getByRole('button', { name: leave.keep }));
 
-    expect(screen.queryByRole('dialog', { name: t.discard.title })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: leave.title })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'SYN-TERM-01' })).toHaveAttribute(
       'aria-current',
       'true',
     );
     expect(flag('합성 사출', 'canCompleteWork')).toBeChecked();
+  });
+
+  it('저장하지 않은 구성을 두고 다른 화면으로 가면 묻고, 계속 편집은 남고 나가기는 옮긴다(#358)', async () => {
+    const { user, router, puts } = renderWith([
+      processRow(11, '합성 사출', { canStartWork: true }),
+    ]);
+
+    await screen.findByRole('button', { name: t.grid.save });
+    await user.click(flag('합성 사출', 'canCompleteWork'));
+
+    await act(async () => {
+      await router?.navigate('/system/users-roles');
+    });
+    const dialog = within(await screen.findByRole('dialog', { name: leave.title }));
+    expect(dialog.getByText(leave.body)).toBeInTheDocument();
+    await user.click(dialog.getByRole('button', { name: leave.keep }));
+    expect(router?.state.location.pathname).toBe('/system/terminal-process-map');
+    expect(flag('합성 사출', 'canCompleteWork')).toBeChecked();
+
+    await act(async () => {
+      await router?.navigate('/system/users-roles');
+    });
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.confirm,
+      }),
+    );
+    await waitFor(() => expect(router?.state.location.pathname).toBe('/system/users-roles'));
+    expect(puts).toHaveLength(0);
   });
 
   it('저장하지 않고 나가면 고른 단말이 바뀐다', async () => {
@@ -536,10 +581,8 @@ describe('TerminalProcessMapScreen 기능 구성 저장', () => {
     await screen.findByRole('button', { name: t.grid.save });
     await user.click(flag('합성 사출', 'canCompleteWork'));
     await user.click(screen.getByRole('button', { name: 'SYN-TERM-02' }));
-    const dialog = await screen.findByRole('dialog', { name: t.discard.title });
-    await user.click(
-      within(dialog).getByRole('button', { name: messages.routing.discard.confirm }),
-    );
+    const dialog = await screen.findByRole('dialog', { name: leave.title });
+    await user.click(within(dialog).getByRole('button', { name: leave.confirm }));
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'SYN-TERM-02' })).toHaveAttribute(

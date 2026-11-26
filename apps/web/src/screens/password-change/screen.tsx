@@ -1,4 +1,4 @@
-import { Breadcrumb, Button, PageHeader, TextField, useToast } from '@crefle/web-ui';
+import { Breadcrumb, Button, Field, PageHeader, TextField, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router';
@@ -243,17 +243,23 @@ export const PasswordChangeScreen = () => {
            * 이 칸의 오류는 **서버만 안다** — 화면이 스스로 잡을 규칙이 없다. 그래서 401이 이 칸에
            * 인라인으로 선다(배너로 올리지 않는다 — 이미 인증된 본인이라 붙은 자리가 흘릴 것이 없다).
            */}
-          <TextField
-            label={t.fields.currentPassword}
-            type="password"
-            value={draft.currentPassword}
-            autoComplete="current-password"
-            error={errors.currentPassword}
-            fullWidth
-            onChange={(event) => {
-              changeDraft({ currentPassword: event.target.value });
-            }}
-          />
+          {/* 폼 안이라 native required 대신 Field 가 빨간 * 를 그린다(검증·제출 동작 그대로). */}
+          <Field label={t.fields.currentPassword} required fullWidth>
+            {({ controlId }) => (
+              <TextField
+                id={controlId}
+                aria-required="true"
+                type="password"
+                value={draft.currentPassword}
+                autoComplete="current-password"
+                error={errors.currentPassword}
+                fullWidth
+                onChange={(event) => {
+                  changeDraft({ currentPassword: event.target.value });
+                }}
+              />
+            )}
+          </Field>
 
           {/*
            * 규칙 안내는 칸 이름 옆 ⓘ 로 둔다(관리웹 정리 시안 A). DS `TextField` 라벨은 글자만 받아
@@ -264,9 +270,11 @@ export const PasswordChangeScreen = () => {
               htmlFor={newPasswordId}
               label={t.fields.newPassword}
               info={t.notice(MIN_NEW_PASSWORD_LENGTH)}
+              required
             />
             <TextField
               id={newPasswordId}
+              aria-required="true"
               type="password"
               value={draft.newPassword}
               autoComplete="new-password"
@@ -278,17 +286,22 @@ export const PasswordChangeScreen = () => {
             />
           </div>
 
-          <TextField
-            label={t.fields.confirmPassword}
-            type="password"
-            value={draft.confirmPassword}
-            autoComplete="new-password"
-            error={errors.confirmPassword}
-            fullWidth
-            onChange={(event) => {
-              changeDraft({ confirmPassword: event.target.value });
-            }}
-          />
+          <Field label={t.fields.confirmPassword} required fullWidth>
+            {({ controlId }) => (
+              <TextField
+                id={controlId}
+                aria-required="true"
+                type="password"
+                value={draft.confirmPassword}
+                autoComplete="new-password"
+                error={errors.confirmPassword}
+                fullWidth
+                onChange={(event) => {
+                  changeDraft({ confirmPassword: event.target.value });
+                }}
+              />
+            )}
+          </Field>
         </div>
 
         {/*

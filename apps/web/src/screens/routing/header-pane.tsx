@@ -88,6 +88,7 @@ export const HeaderPane = ({
   showActions = true,
 }: HeaderPaneProps) => {
   const itemLabelId = useId();
+  const itemNameLabelId = useId();
   const revisionLabelId = useId();
   const pqcPlanLabelId = useId();
   const statusLabelId = useId();
@@ -112,12 +113,21 @@ export const HeaderPane = ({
 
       <div className="form-grid">
         {/* 값을 보여 주기만 하면 되는 자리는 폼 컨트롤을 잠그지 말고 값 표기로 낸다. */}
+        {/* 품목코드 · 품목명은 두 칸(사용자 지시 2026-11-24). */}
         {showSubject && (
           <div>
             <span className="field-label" id={itemLabelId}>
-              {t.fields.item}
+              {t.fields.itemCode}
             </span>
-            <p aria-labelledby={itemLabelId}>{itemLabel}</p>
+            <p aria-labelledby={itemLabelId}>{itemParts?.code ?? itemLabel}</p>
+          </div>
+        )}
+        {showSubject && (
+          <div>
+            <span className="field-label" id={itemNameLabelId}>
+              {t.fields.itemName}
+            </span>
+            <p aria-labelledby={itemNameLabelId}>{itemParts?.name ?? t.values.empty}</p>
           </div>
         )}
 

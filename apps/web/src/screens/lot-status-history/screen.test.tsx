@@ -429,11 +429,15 @@ describe('Lot Status 화면 shell', () => {
     /* 현재 상태는 카드 위쪽 단추로 고르고, 누르면 바로 거른다(사용자 2026-10-30). 조건 줄에는 칸이 없다. */
     expect(screen.getByLabelText('현재 상태')).toHaveAttribute('role', 'group');
     const statuses = within(screen.getByRole('group', { name: '현재 상태' }));
-    expect(statuses.getByRole('button', { name: /^전체\s*\d*$/, pressed: true })).toBeVisible();
-    await user.click(await statuses.findByRole('button', { name: /^합성 정상 \(미사용\)\s*\d*$/ }));
+    /* 「전체」 단추는 없다 — 아무 단추도 눌려 있지 않으면 전체다(사용자 지시 2026-11-24). */
+    expect(statuses.queryByRole('button', { name: /^전체/ })).toBeNull();
+    expect(statuses.queryByRole('button', { pressed: true })).toBeNull();
+    await user.click(
+      await statuses.findByRole('button', { name: /^합성 정상 \(미사용\)\s*\d*건?$/ }),
+    );
     await waitFor(() => expect(locationSearch().get('status')).toBe('SAMPLE_NORMAL'));
     expect(
-      statuses.getByRole('button', { name: /^합성 정상 \(미사용\)\s*\d*$/, pressed: true }),
+      statuses.getByRole('button', { name: /^합성 정상 \(미사용\)\s*\d*건?$/, pressed: true }),
     ).toBeVisible();
     expect(locationSearch().get('lotType')).toBe('SAMPLE_MATERIAL');
     expect(locationSearch().get('q')).toBe('SAMPLE-LOT-001');
@@ -909,6 +913,22 @@ describe('Lot Status 화면 shell', () => {
     expect(within(row).getByText('SAMPLE-LOT-Z')).toHaveAttribute('aria-current', 'true');
   });
 
+  it('고른 LOT 줄을 다시 누르면 선택을 푼다', async () => {
+    const rows = [{ ...statusRow, lotId: 401, lotNo: 'SAMPLE-LOT-Z' }];
+    renderScreen('/quality/lot-status?lotType=SAMPLE_MATERIAL', 'ready', [
+      ...qualityRoutes(200, 200, rows, 1),
+      ...detailRoutes(),
+    ]);
+    const user = userEvent.setup();
+    const table = await screen.findByRole('table', { name: 'LOT 현황' });
+    const row = await within(table).findByRole('row', { name: /SAMPLE-LOT-Z/ });
+
+    await user.click(within(row).getAllByRole('cell')[2]!);
+    await waitFor(() => expect(locationSearch().get('lot')).toBe('401'));
+    await user.click(within(row).getAllByRole('cell')[2]!);
+    await waitFor(() => expect(locationSearch().get('lot')).toBeNull());
+  });
+
   it('세 열만 서버 정렬하고 정렬 변경 시 첫 쪽으로 돌아간다', async () => {
     const rows = [
       { ...statusRow, lotId: 401, lotNo: 'SAMPLE-LOT-Z' },
@@ -1069,7 +1089,9 @@ describe('Lot Status 화면 shell', () => {
     const detail = await screen.findByRole('region', { name: 'LOT 상세' });
     expect(within(detail).getByText('합성 자재')).toBeVisible();
     expect(within(detail).getByText('합성 불량')).toBeVisible();
-    expect(within(detail).getByText('SAMPLE-ITEM-01 · 합성 품목 (미사용)')).toBeVisible();
+    /* 품목은 품목코드 · 품목명 두 칸(품목 표기 분리). */
+    expect(within(detail).getByText('SAMPLE-ITEM-01')).toBeVisible();
+    expect(within(detail).getByText('합성 품목 (미사용)')).toBeVisible();
     expect(within(detail).getByText('SAMPLE-LOT-001')).toBeVisible();
     expect(within(detail).getByText('120')).toBeVisible();
     expect(within(detail).getByText('2027-08-20')).toBeVisible();
@@ -1106,7 +1128,8 @@ describe('Lot Status 화면 shell', () => {
     expect(within(detail).queryByText('999')).not.toBeInTheDocument();
     expect(within(detail).getByText('SAMPLE_UNKNOWN_TYPE (목록 미확정)')).toBeVisible();
     expect(within(detail).getByText('SAMPLE_UNKNOWN_STATUS (목록 미확정)')).toBeVisible();
-    expect(within(detail).getAllByText('—')).toHaveLength(3); // 유효기한 · 제조 시각 · 4M 변경품(변경품이 아니면 「—」)
+    // 품목명(못 푼 품목은 안내가 품목코드 칸에) · 유효기한 · 제조 시각 · 4M 변경품(변경품이 아니면 「—」)
+    expect(within(detail).getAllByText('—')).toHaveLength(4);
   });
 
   it('상세가 품목 이름보다 먼저 오면 알 수 없음 대신 로딩 상태를 보인다', async () => {

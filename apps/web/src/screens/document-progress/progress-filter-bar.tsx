@@ -1,7 +1,8 @@
-import { Button, Checkbox, DatePicker, SearchInput } from '@crefle/web-ui';
+import { Button, Checkbox, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useState } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import {
   FilterMoreButton,
   HiddenFilterChips,
@@ -10,7 +11,6 @@ import {
   type HiddenFilterChip,
 } from '../../patterns/filter-more';
 
-import { FieldLabel } from './field-label';
 import { DEFAULT_PROGRESS_FILTERS, type ProgressFilters } from './filters';
 import { SelectField } from './select-field';
 import type { SelectOption } from './types';
@@ -66,7 +66,6 @@ export const ProgressFilterBar = ({
   onRemoveFilter,
   onReset,
 }: ProgressFilterBarProps) => {
-  const periodId = useId();
   const more = useFilterMore();
   const [filters, setFilters] = useState<ProgressFilters>(appliedFilters);
 
@@ -149,6 +148,7 @@ export const ProgressFilterBar = ({
       <div className="filter-bar">
         {/* 유형은 「전체」로 조회할 수 없다 — 「전체」를 두지 않고 하나를 고르게 한다. */}
         <SelectField
+          required
           label={t.fields.documentType}
           options={documentTypeOptions}
           value={filters.documentType}
@@ -159,26 +159,17 @@ export const ProgressFilterBar = ({
           }}
         />
 
-        {/*
-         * 기간은 **한 컨트롤**이다 — `mode="range"` 하나가 두 값을 준다. 컴포넌트가 완결된 쌍만
-         * 방출하므로(`from <= to`도 컴포넌트가 보장한다) 화면에 순서 검증을 두지 않고,
-         * 시작만 고른 중간 상태는 `value`가 반쪽으로 받아 그대로 보인다.
-         */}
-        <div className="field-cell">
-          <FieldLabel htmlFor={periodId} label={t.fields.period} />
-          <DatePicker
-            id={periodId}
-            mode="range"
-            placeholder={messages.common.selectDate}
-            value={[
-              filters.from === '' ? null : filters.from,
-              filters.to === '' ? null : filters.to,
-            ]}
-            onChange={([from, to]) => {
-              setFilters((prev) => ({ ...prev, from, to }));
-            }}
-          />
-        </div>
+        <DateRangeFields
+          clearable
+          startLabel={t.fields.periodFrom}
+          endLabel={t.fields.periodTo}
+          placeholder={messages.common.selectDate}
+          from={filters.from}
+          to={filters.to}
+          onChange={(from, to) => {
+            setFilters((prev) => ({ ...prev, from, to }));
+          }}
+        />
 
         <SearchInput
           label={t.fields.q}

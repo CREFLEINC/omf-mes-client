@@ -3,6 +3,7 @@ import {
   Checkbox,
   type Column,
   EmptyState,
+  Icon,
   SearchInput,
   SkeletonText,
   Table,
@@ -10,10 +11,18 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
+import { useFitColumns } from '../../patterns/column-fit';
 import { hasChangedFilters } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useColumnWidths } from '../../patterns/column-resize';
+import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
+import { UsageName } from '../../patterns/usage-chip';
 import { EMPTY_SCOPED_FILTERS } from './department-list-pane';
-import { hasAnyScopedFilter } from './filters';
-import { PageNav } from './page-nav';
+import { hasAnyScopedFilter, LIST_PAGE_SIZES, type ListPageSize } from './filters';
 import type { PageView } from './pagination';
 import { SelectField } from './select-field';
 import type { ScopedFilters, SelectOption, Worker } from './types';
@@ -29,7 +38,11 @@ export interface WorkerListPaneProps {
   /** 선택 목록이 잘렸거나 실패했다는 안내 슬롯 */
   optionsNotice: ReactNode;
   pageView: PageView;
+  /** 서버가 준 쪽 정보. 받기 전 · 실패면 `null` — 셀 것이 없으면 쪽 이동을 그리지 않는다. */
+  pageMeta: PageNavMeta | null;
   onChangePage: (page: number) => void;
+  /** 쪽 크기(10 · 20 · 50) — 바꾸면 첫 쪽으로 간다(단말 관리와 같다 · omf-all-around#358). */
+  onChangePageSize: (size: ListPageSize) => void;
   selectedWorkerId: number | null;
   onSelect: (workerId: number) => void;
   loadError: ReactNode;
@@ -58,7 +71,9 @@ export const WorkerListPane = ({
   departmentOptions,
   optionsNotice,
   pageView,
+  pageMeta,
   onChangePage,
+  onChangePageSize,
   selectedWorkerId,
   onSelect,
   loadError,
@@ -66,6 +81,7 @@ export const WorkerListPane = ({
 }: WorkerListPaneProps) => {
   /* 트리거 모델: 편집은 모아서 적용, 해제는 즉시. */
   const [draft, setDraft] = useState<ScopedFilters>(appliedFilters);
+  const searchRef = useFitPlaceholderWidth(t.filters.workerSearchPlaceholder);
   const {
     q: appliedQ,
     scopeId: appliedScopeId,
@@ -76,15 +92,17 @@ export const WorkerListPane = ({
     setDraft({ q: appliedQ, scopeId: appliedScopeId, includeInactive: appliedIncludeInactive });
   }, [appliedQ, appliedScopeId, appliedIncludeInactive]);
 
-  const columns: Column<Worker>[] = [
+  /* 머리글과 칸은 가운데 — 단말 관리 목록과 같다(omf-all-around#358). */
+  const baseColumns: Column<Worker>[] = [
     {
       key: 'workerNo',
+      align: 'center',
       header: t.worker.fields.workerNo,
       width: '140px',
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className="users-roles-row-pick"
           aria-current={row.workerId === selectedWorkerId ? 'true' : undefined}
           onClick={() => onSelect(row.workerId)}
         >
@@ -94,11 +112,15 @@ export const WorkerListPane = ({
     },
     {
       key: 'workerName',
+      align: 'center',
       header: t.worker.fields.workerName,
-      render: (row) =>
-        row.isActive ? row.workerName : `${row.workerName}${t.values.inactiveSuffix}`,
+      render: (row) => <UsageName isActive={row.isActive}>{row.workerName}</UsageName>,
     },
   ];
+  /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(단말 관리 목록과 같다 · omf-all-around#358). */
+  const ordered = useColumnOrder('omf-mes:common-code:columns:workers:order', baseColumns);
+  const resizable = useColumnWidths('omf-mes:common-code:columns:workers', ordered);
+  const fit = useFitColumns(resizable.columns);
 
   /**
    * 빈 상태는 세 갈래다 — 셋을 뭉치면 사실과 다른 안내가 된다.
@@ -113,6 +135,11 @@ export const WorkerListPane = ({
         <EmptyState
           size="sm"
           live
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="last_page" size={20} />
+            </span>
+          }
           title={t.empty.beyondLastTitle}
           description={t.empty.beyondLastDescription}
           action={
@@ -129,6 +156,11 @@ export const WorkerListPane = ({
         <EmptyState
           size="sm"
           live
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="search_off" size={20} />
+            </span>
+          }
           title={t.worker.empty.noMatchTitle}
           description={t.worker.empty.noMatchDescription}
           action={
@@ -144,6 +176,11 @@ export const WorkerListPane = ({
       <EmptyState
         size="sm"
         live
+        icon={
+          <span className="inspection-standard-empty-icon">
+            <Icon name="badge" size={20} />
+          </span>
+        }
         title={t.worker.empty.noneTitle}
         description={t.worker.empty.noneDescription}
       />
@@ -163,16 +200,29 @@ export const WorkerListPane = ({
     }
 
     return (
-      <>
+      /* 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 단추로 넘긴다(단말 관리와 같다). */
+      <div
+        ref={fit.ref}
+        className="users-roles-list inspection-queue-table"
+        style={resizable.style}
+        onClick={(event) => {
+          const target = event.target;
+          if (!(target instanceof Element)) return;
+          if (target.closest('button, a, input, select, textarea') !== null) return;
+          target
+            .closest('tbody tr')
+            ?.querySelector<HTMLButtonElement>('.users-roles-row-pick')
+            ?.click();
+        }}
+      >
         <Table
           density="compact"
-          columns={columns}
+          columns={fit.columns}
           rows={workers}
           getRowId={(row) => String(row.workerId)}
           empty={emptySlot}
         />
-        <PageNav view={pageView} onChange={onChangePage} />
-      </>
+      </div>
     );
   };
 
@@ -183,16 +233,8 @@ export const WorkerListPane = ({
     <>
       {optionsNotice}
 
-      <div className="filter-bar">
-        <SearchInput
-          label={t.filters.workerSearchLabel}
-          placeholder={t.filters.workerSearchPlaceholder}
-          value={draft.q}
-          onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
-          onSearch={(value) => onApplyFilters({ ...draft, q: value })}
-          clearLabel={messages.common.clear}
-        />
-
+      <div className="filter-bar common-code-filter">
+        {/* 순서는 「부서 선택」 → 「작업자 검색」(사용자 지시 2026-11-26). */}
         {/*
          * 규범 3-2 — 「SYN-DEPT-01 · 합성 부서 A」는 트리거 폭에 갇혀 잘린다
          * (디자인 시스템 이슈 #62). 판단 기준은 코드값이 아니라 선택지 문구다.
@@ -203,6 +245,17 @@ export const WorkerListPane = ({
           options={[{ value: '', label: t.filters.departmentAll }, ...departmentOptions]}
           value={draft.scopeId}
           onChange={(value) => setDraft((prev) => ({ ...prev, scopeId: value }))}
+        />
+
+        <SearchInput
+          containerClassName={FIT_PLACEHOLDER_CLASS}
+          label={t.filters.workerSearchLabel}
+          placeholder={t.filters.workerSearchPlaceholder}
+          ref={searchRef}
+          value={draft.q}
+          onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
+          onSearch={(value) => onApplyFilters({ ...draft, q: value })}
+          clearLabel={messages.common.clear}
         />
 
         {/* 해제 축이라 변경 즉시 적용한다. */}
@@ -235,7 +288,20 @@ export const WorkerListPane = ({
     </>
   );
 
-  const list = listSlot();
+  const list = (
+    <>
+      <div className="users-roles-list-body">{listSlot()}</div>
+      {pageMeta !== null && (loadError === null || loadError === undefined) && (
+        <PageNav<ListPageSize>
+          meta={pageMeta}
+          sizes={LIST_PAGE_SIZES}
+          buttonSize="md"
+          onChangePage={onChangePage}
+          onChangeSize={onChangePageSize}
+        />
+      )}
+    </>
+  );
 
   if (layout !== undefined) return layout({ filter, list });
 

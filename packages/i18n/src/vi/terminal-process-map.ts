@@ -30,9 +30,9 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     includeInactive: 'Gồm cả không sử dụng',
     apply: 'Tra cứu',
     clear: 'Đặt lại',
-    type: 'Loại thiết bị',
-    equipment: 'Thiết bị lắp đặt',
-    warehouse: 'Kho',
+    type: 'Chọn loại thiết bị',
+    equipment: 'Chọn thiết bị lắp đặt',
+    warehouse: 'Chọn kho',
     all: 'Tất cả',
   },
 
@@ -70,8 +70,6 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     code: 'Mã máy quét',
     /** ⛔ 등록 뒤에는 못 바꾼다 — 키다. */
     codeLocked: 'Không thể thay đổi sau khi đăng ký.',
-    /** 수정 팝업의 단말 코드 옆(사용자 지시 2026-11-20 · #333). */
-    codeReadOnly: 'Không thể thay đổi',
     plant: 'Nhà máy',
     type: 'Loại máy quét',
     status: 'Trạng thái vận hành',
@@ -193,10 +191,5 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     canPrintLabel: 'Phát hành nhãn',
     canCancelInput: 'Hủy đưa vào',
     canReturnMaterial: 'Trả lại vật tư',
-  },
-
-  discard: {
-    title: 'Thay đổi chưa được lưu',
-    body: 'Nếu rời đi mà không lưu, các thay đổi sẽ bị mất.',
   },
 };

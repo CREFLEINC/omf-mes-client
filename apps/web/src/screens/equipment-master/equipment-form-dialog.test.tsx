@@ -171,7 +171,14 @@ describe('EquipmentFormDialog', () => {
     renderDialog({ codeLockReason: '이미 3건에서 사용 중입니다.' });
 
     expect(screen.getByRole('textbox', { name: /설비코드/ })).toBeDisabled();
-    expect(screen.getByText('이미 3건에서 사용 중입니다.')).toBeInTheDocument();
+    /* 사유 문장 대신 칸 이름 오른쪽 「변경 불가」 라벨 — 문장은 마우스 · 화면 읽기로(사용자 지시 2026-11-24). */
+    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
+      'title',
+      '이미 3건에서 사용 중입니다.',
+    );
+    expect(screen.getByRole('textbox', { name: /설비코드/ })).toHaveAccessibleDescription(
+      '이미 3건에서 사용 중입니다.',
+    );
   });
 
   /*

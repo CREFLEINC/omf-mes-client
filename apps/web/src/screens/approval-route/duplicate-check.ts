@@ -78,3 +78,22 @@ export const judgeDuplicate = (probe: DuplicateProbe, target: DuplicateTarget): 
 
   return { kind: 'blocked', existingCount: clashes.length, existingRouteId: first.approvalRouteId };
 };
+
+/**
+ * 그 사업부에 **이미 사용 중인 결재선이 있는 승인 유형** — 등록 팝업 선택지에서 뺀다(사용자 지시 2026-11-25).
+ *
+ * 판정하지 못하는 갈래(불러오는 중 · 실패 · 잘림)는 **아무것도 빼지 않는다.** 못 본 것을 있다고 단정해
+ * 선택지를 감추면 등록할 수 있는 유형이 사라진다 — 저장 직전 조준 조회와 서버 검사가 안전망이다.
+ */
+export const takenApprovalTypeCodes = (
+  probe: DuplicateProbe,
+  businessUnitId: number | null,
+): ReadonlySet<string> => {
+  if (probe.isError || probe.isLoading || probe.total > probe.items.length) return new Set();
+
+  return new Set(
+    probe.items
+      .filter((item) => item.isActive && (item.businessUnitId ?? null) === businessUnitId)
+      .map((item) => item.approvalTypeCode),
+  );
+};

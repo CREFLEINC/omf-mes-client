@@ -379,7 +379,8 @@ describe('BalanceFilterBar — 선택칸 최소 폭 (규범 3-2)', () => {
       const cell = cellOf(label);
 
       expect(cell).toHaveClass('wide-select');
-      expect(cell).toHaveStyle({ minWidth: '18.5rem' });
+      /* 18.5rem 하한은 걷었다 — 조회 줄 선택칸은 전 화면 같은 폭(176px · 사용자 지시 2026-11-24). */
+      expect(cell?.style.minWidth).toBe('');
     }
   });
 

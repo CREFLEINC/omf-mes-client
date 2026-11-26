@@ -146,8 +146,8 @@ export const erpWorkOrderFlow = {
     pane: '조회 조건',
     q: '번호 검색',
     qPlaceholder: 'ERP W/O 번호',
-    due: '납기 기간',
-    duePlaceholder: '시작일 ~ 종료일',
+    dueFrom: '납기 시작일',
+    dueTo: '납기 종료일',
     plant: '공장',
     allPlants: '전체',
     /** 「조건 더보기」에 접힌 공장 조건의 칩(C-6). */
@@ -353,6 +353,7 @@ export const erpWorkOrderFlow = {
       bom: 'BOM',
       routing: 'Routing',
       placeholder: '개정을 고르세요',
+      selectPrompt: 'ERP W/O를 선택하세요.',
       revision: (code: string, version: number, status: string): string =>
         `${code} Rev ${String(version)} (${status})`,
       effective: (from: string, to: string): string => `유효기간 ${from} ~ ${to}`,
@@ -528,8 +529,11 @@ export const erpWorkOrderFlow = {
     release: {
       lotsPending: '생성 예정 LOT 수: 품목 기본 LOT 크기 설정 후 확인',
       selectedTarget: '선택 작업지시 정보',
+      selectPrompt: '작업지시를 선택하세요.',
       orderNo: 'ERP W/O',
       item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       planDate: '계획일',
       line: '생산 라인',
       empty: '배포할 작업지시가 없습니다.',

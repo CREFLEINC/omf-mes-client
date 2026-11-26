@@ -99,6 +99,7 @@ export const JudgmentChange = ({
           <FieldLabel htmlFor={reasonId} label={t.reason} required />
           <TextField
             id={reasonId}
+            aria-required="true"
             fullWidth
             /* 칸에는 빨간 테두리만 — 누락 안내 글은 접근 이름으로만 남긴다(IQC #133 과 같다 · #136). */
             containerClassName="oqc-inspection-border-only"

@@ -216,6 +216,5 @@ export const collectionChannel: Translated<typeof ko.collectionChannel> = {
   values: {
     active: 'Đang sử dụng',
     inactive: 'Ngừng dùng',
-    inactiveSuffix: ' (ngừng dùng)',
   },
 };

@@ -389,10 +389,13 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * 클릭 핸들러가 하는 정리를 하나도 거치지 않는다 — 그래서 따로 밟아 봐야 한다.
  */
 let probeSearch = '';
+let probePathname = '';
 let probeNavigate: ((to: string) => void) | null = null;
 
 const RouterProbe = () => {
-  probeSearch = useLocation().search;
+  const location = useLocation();
+  probeSearch = location.search;
+  probePathname = location.pathname;
   probeNavigate = useNavigate();
 
   return null;
@@ -409,7 +412,7 @@ const renderScreen = (routes: StubRoute[], search = '') => {
       <UsersRolesScreen />
       <RouterProbe />
     </>,
-    { fetch, route: `${ROUTE}${search}` },
+    { fetch, route: `${ROUTE}${search}`, dataRouter: true },
   );
 
   const goTo = (to: string) => {
@@ -418,7 +421,14 @@ const renderScreen = (routes: StubRoute[], search = '') => {
     });
   };
 
-  return { requests, search: () => probeSearch, goTo, queryClient, user: userEvent.setup() };
+  return {
+    requests,
+    search: () => probeSearch,
+    pathname: () => probePathname,
+    goTo,
+    queryClient,
+    user: userEvent.setup(),
+  };
 };
 
 /**
@@ -569,7 +579,7 @@ describe('UsersRolesScreen 조건과 주소', () => {
 
     await user.type(within(userSearchPane()).getByLabelText('사용자 검색'), 'syn');
     // 디자인 시스템 `Select`는 네이티브 `<select>`가 아니라 트리거를 누른 뒤 선택지를 누른다.
-    await user.click(within(userSearchPane()).getByLabelText('소속 부서'));
+    await user.click(within(userSearchPane()).getByLabelText('소속 부서 선택'));
     await user.click(await screen.findByRole('option', { name: /SYN-DEPT-01/ }));
     await user.click(within(userSearchPane()).getByRole('button', { name: '조회' }));
 
@@ -659,7 +669,8 @@ describe('UsersRolesScreen 조건과 주소', () => {
     expect(params.has('new')).toBe(false);
   });
 
-  it('등록 폼을 열면 고른 사용자가 주소에서 빠진다 — 둘은 함께 성립하지 않는다', async () => {
+  /* 추가는 팝업이라 뒤의 고른 사용자가 남는다(omf-all-around#358 — 종전엔 주소에서 빠졌다). */
+  it('추가 팝업을 열어도 고른 사용자가 주소에 남는다', async () => {
     const { requests, search, user } = renderScreen(
       [userListRoute(), departmentsRoute(), ...roleRoutes()],
       '?usr=1001',
@@ -672,7 +683,7 @@ describe('UsersRolesScreen 조건과 주소', () => {
     await waitFor(() => {
       expect(new URLSearchParams(search()).get('new')).toBe('user');
     });
-    expect(new URLSearchParams(search()).has('usr')).toBe(false);
+    expect(new URLSearchParams(search()).get('usr')).toBe('1001');
   });
 
   it('사용자를 고르면 등록 폼이 주소에서 빠진다', async () => {
@@ -969,6 +980,33 @@ const openUserDetail = async (
 };
 
 describe('UsersRolesScreen 상세 열기', () => {
+  it('고른 줄이 추가 팝업을 열고 닫아도 유지된다(omf-all-around#358)', async () => {
+    const { requests, search, user } = await openUserDetail();
+    const row = () =>
+      within(userListPane()).getByRole('button', { name: 'SYN-LOGIN-01', hidden: true });
+    expect(row()).toHaveAttribute('aria-current', 'true');
+
+    await user.click(within(userSearchPane()).getByRole('button', { name: '사용자 추가' }));
+    await screen.findByRole('dialog', { name: '사용자 추가' });
+    // 팝업이 열려 있는 동안에도 목록의 고른 줄 표시와 뒤의 상세가 그대로다.
+    expect(row()).toHaveAttribute('aria-current', 'true');
+    expect(within(settingsPane()).getAllByText('SYN-LOGIN-01').length).toBeGreaterThan(0);
+
+    await user.click(within(createDialog()).getByRole('button', { name: '취소' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: '사용자 추가' })).not.toBeInTheDocument();
+    });
+
+    const params = new URLSearchParams(search());
+    expect(params.get('usr')).toBe('1001');
+    expect(params.has('new')).toBe(false);
+    expect(row()).toHaveAttribute('aria-current', 'true');
+    expect(within(userFormPane()).getByText('SYN-LOGIN-01')).toBeInTheDocument();
+    expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toBeInTheDocument();
+    // 상세를 다시 부르지 않는다 — 선택이 한 번도 풀리지 않았다.
+    expect(detailRequests(requests)).toHaveLength(1);
+  });
+
   /* 고른 줄을 다시 누르면 선택이 풀린다(사용자 지시 2026-11-20 · #333). */
   it('고른 줄을 다시 누르면 선택이 풀리고 안내로 돌아간다', async () => {
     const { search, user } = await openUserDetail();
@@ -2170,6 +2208,33 @@ describe('UsersRolesScreen 초안 수명', () => {
         '합성 사용자 B',
       );
     });
+  });
+
+  /** #358 — 저장하지 않은 변경을 두고 다른 화면(사이드바 · 뒤로가기)으로 가도 같은 창으로 묻는다. */
+  it('고치던 중 다른 화면으로 가면 묻고, 계속 편집은 남고 나가기는 옮긴다', async () => {
+    const { goTo, pathname, user } = await openUserDetail();
+
+    await user.clear(within(userFormPane()).getByRole('textbox', { name: '이름' }));
+    await user.type(within(userFormPane()).getByRole('textbox', { name: '이름' }), '고치던 값');
+
+    goTo('/system/approval-route');
+    await user.click(
+      within(await screen.findByRole('dialog', { name: '저장되지 않은 변경 사항' })).getByRole(
+        'button',
+        { name: '계속 편집' },
+      ),
+    );
+    expect(pathname()).toBe(ROUTE);
+    expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toHaveValue('고치던 값');
+
+    goTo('/system/approval-route');
+    await user.click(
+      within(await screen.findByRole('dialog', { name: '저장되지 않은 변경 사항' })).getByRole(
+        'button',
+        { name: '저장하지 않고 나가기' },
+      ),
+    );
+    await waitFor(() => expect(pathname()).toBe('/system/approval-route'));
   });
 
   /** omf-all-around#333 — 저장하지 않은 변경이 사용자 전환으로 말없이 사라지지 않는다. */
@@ -3748,7 +3813,7 @@ describe('UsersRolesScreen 역할 상세 열기', () => {
     const { requests, search, user } = renderScreen([roleListRoute()], ROLES_TAB);
 
     await waitForRoleList(requests);
-    const group = await screen.findByRole('group', { name: '사용 상태' });
+    const group = await screen.findByRole('group', { name: '사용 유무' });
     await user.click(within(group).getByRole('button', { name: /^사용/ }));
 
     await waitFor(() => {
@@ -4048,7 +4113,7 @@ describe('UsersRolesScreen 역할 등록', () => {
   });
 
   it('등록에 성공하면 방금 만든 역할이 열린다', async () => {
-    const { requests, search, user } = await openAndFill();
+    const { search, user } = await openAndFill();
 
     await user.click(within(roleCreateDialog()).getByRole('button', { name: '역할 추가' }));
 
@@ -4263,7 +4328,7 @@ describe('UsersRolesScreen 역할 초안·창의 수명', () => {
     await waitForRoleForm('SYN-ROLE-01');
     await user.type(roleNameField(), 'X');
 
-    const group = await screen.findByRole('group', { name: '사용 상태' });
+    const group = await screen.findByRole('group', { name: '사용 유무' });
     await user.click(within(group).getByRole('button', { name: /^사용/ }));
 
     const dialog = await screen.findByRole('dialog', { name: '저장되지 않은 변경 사항' });
@@ -4891,13 +4956,14 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
    * 열 없는 격자는 라벨 칸만 남은 빈 표가 된다. 이것은 「부여가 0건」이 아니라
    * **「줄 수 있는 후보가 0건」**이다 — 그 둘을 가려 말한다.
    */
-  it('후보가 0건이면 격자 대신 빈 상태와 안내가 나온다', async () => {
+  it('후보가 0건이면 격자 머리줄 아래 빈 상태와 안내가 나온다', async () => {
     await openRole(gridRoutes([], []));
 
     expect(
       await within(permissionPane()).findByText('부여할 수 있는 기능 권한이 없습니다'),
     ).toBeInTheDocument();
-    expect(within(permissionPane()).queryByRole('table')).not.toBeInTheDocument();
+    /* 빈 목록 통일(2026-11-25) — 머리줄 + 빈 줄 하나뿐, 권한 줄은 없다. */
+    expect(within(within(permissionPane()).getByRole('table')).getAllByRole('row')).toHaveLength(2);
   });
 
   /** 실패를 빈 상태로 내면 「부여된 권한이 없습니다」가 되어 없는 사실을 단정한다. */

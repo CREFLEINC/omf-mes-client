@@ -98,7 +98,7 @@ export const toolPmResult = {
     shotAfter: '시작값',
     closed: '마감',
     notAvailable: '—',
-    ongoing: '진행 중',
+    ongoing: '진행',
     emptyTitle: '실적이 없습니다',
     empty: '이 툴에 등록된 실적이 없습니다.',
     selectToolTitle: '툴을 고르세요',

@@ -14,6 +14,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { type MasterDataPlant, plantSelectOf } from '../../patterns/master-data-plant';
 import { hasChangedFilters } from '../../patterns/filter-more';
 import type { LookupSource } from '../../patterns/lookup-display';
+import { UsageChip } from '../../patterns/usage-chip';
 import { type CodeOption, defaultGroupFilters, groupTypeLabel, lookupLabel } from './code-options';
 import type { GroupTreeRow } from './group-tree';
 import { SelectField } from './select-field';
@@ -171,7 +172,7 @@ export const useGroupListPane = ({
     {
       key: 'isActive',
       header: t.fields.isActive,
-      render: (row) => (row.group.isActive ? t.values.active : t.values.inactive),
+      render: (row) => <UsageChip isActive={row.group.isActive} />,
     },
   ];
 

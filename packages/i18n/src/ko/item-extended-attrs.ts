@@ -88,8 +88,6 @@ export const itemExtendedAttrs = {
   values: {
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
     empty: '—',
-    /** 좁은 좌 페인에서 「사용 여부」 열을 따로 두면 이름 열이 짓눌린다 — 이름 뒤 접미로 붙인다. */
-    inactiveSuffix: ' (미사용)',
     /*
      * 값은 있는데 그 번호를 선택 목록에서 찾지 못했다. **번호를 그대로 내지 않는다** —
      * 내부 식별자라 사용자가 쓸 수 없고, 보이면 자료로 읽힌다.
@@ -159,7 +157,7 @@ export const itemExtendedAttrs = {
       negativeStockAllowed: '마이너스 재고 허용',
       storageCondition: '보관 조건',
       openedShelfLifeHours: '개봉 후 유효시간(시간)',
-      isActive: '사용 여부',
+      isActive: '사용 유무',
       /** 신재·재생재. 이름은 코드 그룹 `MES_CATEGORY`가 준다 — 화면이 짓지 않는다 */
       mesCategory: 'MES 구분',
     },
@@ -176,8 +174,6 @@ export const itemExtendedAttrs = {
     inspectionRequiredSyncNote:
       '검사 기준의 IQC ‘기본 생략’과 함께 바뀝니다. 이 품목 전용 IQC 기준이 없으면 바꿀 때 새로 만들어지고, 그 전까지는 전 품목 공통 IQC 기준을 따릅니다.',
     values: {
-      active: '사용 중',
-      inactive: '미사용',
       unspecified: '지정하지 않음',
     },
     validation: {
@@ -271,7 +267,7 @@ export const itemExtendedAttrs = {
       equipment: '설비',
       mold: '금형',
       priorityNo: '추천 순서',
-      isActive: '사용 여부',
+      isActive: '사용 유무',
       remarks: '비고',
       actions: '작업',
     },
@@ -279,8 +275,6 @@ export const itemExtendedAttrs = {
       /* 공정을 비운 줄. 빈 칸으로 두면 빠뜨린 것으로 읽힌다. */
       allProcesses: '전체 공정',
       isDefault: '★',
-      active: '사용',
-      inactive: '미사용',
     },
     actions: {
       add: '추가',

@@ -876,14 +876,16 @@ describe('NotificationCenterScreen — 조건 줄의 수명', () => {
     await screen.findByText('합성 서버 사유');
 
     expect(screen.getByRole('checkbox', { name: t.fields.unreadOnly })).toBeInTheDocument();
-    expect(screen.getByLabelText(t.fields.period)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.fields.periodFrom)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.fields.periodTo)).toBeInTheDocument();
   });
 
   it('막힌 기간에서도 조건 줄이 남는다', async () => {
     renderScreen('/?from=2026-08-07&to=2026-08-01');
 
     expect(await screen.findByText(t.reasons.periodReversed)).toBeInTheDocument();
-    expect(screen.getByLabelText(t.fields.period)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.fields.periodFrom)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.fields.periodTo)).toBeInTheDocument();
   });
 
   it('결과가 0건이어도 조건 줄이 남는다', async () => {
@@ -955,8 +957,8 @@ describe('NotificationCenterScreen — 화면과 조건 줄의 이음매', () =>
 
     await waitForCards();
 
-    expect(screen.getByLabelText(t.fields.period)).toHaveTextContent('2026-08-01');
-    expect(screen.getByLabelText(t.fields.period)).toHaveTextContent('2026-08-07');
+    expect(screen.getByLabelText(t.fields.periodFrom)).toHaveTextContent('2026-08-01');
+    expect(screen.getByLabelText(t.fields.periodTo)).toHaveTextContent('2026-08-07');
   });
 });
 

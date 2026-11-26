@@ -320,11 +320,19 @@ describe('applySelection', () => {
     expect(next.has('rol')).toBe(false);
   });
 
-  it('사용자 등록을 열면 고른 사용자와 역할 선택이 함께 빠진다', () => {
-    const next = applied('usr=1001&rol=5001', { kind: 'createUser' });
+  it('사용자 등록을 열 때 남길 사용자가 없으면 고른 사용자와 역할 선택이 함께 빠진다', () => {
+    const next = applied('usr=1001&rol=5001', { kind: 'createUser', appUserId: null });
 
     expect(next.get('new')).toBe('user');
     expect(next.has('usr')).toBe(false);
+    expect(next.has('rol')).toBe(false);
+  });
+
+  it('사용자 등록 팝업을 열어도 뒤의 고른 사용자는 남는다(omf-all-around#358)', () => {
+    const next = applied('usr=1001&rol=5001', { kind: 'createUser', appUserId: 1001 });
+
+    expect(next.get('new')).toBe('user');
+    expect(next.get('usr')).toBe('1001');
     expect(next.has('rol')).toBe(false);
   });
 

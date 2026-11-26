@@ -66,8 +66,6 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
   },
   values: {
     empty: '—',
-    /** 좁은 좌 페인이라 열을 더하지 않고 이름 뒤 접미로 붙인다. */
-    inactiveSuffix: ' (ngừng dùng)',
     unknown: 'Không rõ',
     /** 「알 수 없음」과 가른다 - 둘을 같은 말로 내면 자료가 잘못 담긴 것으로 읽힌다. */
     loading: 'Đang tải…',
@@ -129,8 +127,6 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
     inspectionRequiredSyncNote:
       'Thay đổi cùng với ‘Bỏ qua mặc định’ IQC trong tiêu chuẩn kiểm tra. Nếu mặt hàng này chưa có tiêu chuẩn IQC riêng, tiêu chuẩn đó sẽ được tạo khi thay đổi; trước đó mặt hàng theo tiêu chuẩn IQC chung cho mọi mặt hàng.',
     values: {
-      active: 'Đang dùng',
-      inactive: 'Ngừng dùng',
       unspecified: 'Không chỉ định',
     },
     validation: {
@@ -221,8 +217,6 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
     values: {
       allProcesses: 'Mọi công đoạn',
       isDefault: '★',
-      active: 'Đang dùng',
-      inactive: 'Ngừng dùng',
     },
     actions: {
       add: 'Thêm',

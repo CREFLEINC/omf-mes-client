@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { directionName, documentNoOf, interfaceName } from './message-labels';
 import { formatDateTime, toStatusView } from './message-status';
 import type { MessageDetailView } from './types';
+import './layout.css';
 
 const t = messages.integrationSync;
 
@@ -26,82 +27,91 @@ interface DetailItem {
 /** 값이 없는 칸은 비워 두지 않는다 — 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
 const orEmptyMark = (value: string | null): string => value ?? t.values.empty;
 
-const toItems = (view: MessageDetailView, now: Date): DetailItem[] => {
-  const status = toStatusView(view, now);
+/** 재시도가 앞으로 잡혀 있는가 — 지난 시각이면 「예정」이 아니다. */
+const isScheduled = (value: string | null | undefined, now: Date): boolean => {
+  if (value === null || value === undefined) return false;
+  const at = new Date(value).getTime();
+  return !Number.isNaN(at) && at > now.getTime();
+};
 
-  const lockedAt = formatDateTime(view.lockedAt);
-
-  /*
-   * 코드 대신 업무 이름(사용자 지시 2026-10-27). 메시지 키 · 대상(ERP 수신 표 이름 · 순번) · 처리하는 워커 이름 같은
-   * 시스템 값은 보이지 않는다 — 번호와 항목이 그 건을 부른다.
-   */
-  return [
-    { label: t.table.direction, value: directionName(view.directionCode) },
-    { label: t.table.interfaceCode, value: interfaceName(view.interfaceCode) },
-    { label: t.table.messageKey, value: documentNoOf(view) },
-    {
-      label: t.table.status,
-      value: (
-        <Chip variant="status" size="sm" status={status.tone}>
-          {status.label}
-        </Chip>
-      ),
-    },
-    { label: t.detail.retryCount, value: String(view.retryCount) },
+/** 처리 일시 — 발생 → 전송 → 완료 순. 「다음 재시도 일시」는 재시도가 예정돼 있을 때만 덧붙인다. */
+const toTimeItems = (view: MessageDetailView, now: Date): DetailItem[] => {
+  const availableAt = formatDateTime(view.availableAt);
+  const items: DetailItem[] = [
     { label: t.table.createdAt, value: orEmptyMark(formatDateTime(view.createdAt)) },
-    { label: t.detail.availableAt, value: orEmptyMark(formatDateTime(view.availableAt)) },
     { label: t.detail.sentAt, value: orEmptyMark(formatDateTime(view.sentAt)) },
     { label: t.detail.completedAt, value: orEmptyMark(formatDateTime(view.completedAt)) },
-    {
-      label: t.detail.lockedBy,
-      /* 처리를 시작한 시각만 낸다 — 「잠금이 오래됐다」 같은 판정은 하지 않는다. */
-      value:
-        (view.lockedBy ?? '') === ''
-          ? t.values.empty
-          : lockedAt === null
-            ? t.status.processingNoTime
-            : t.status.processing(lockedAt),
-    },
-    { label: t.table.lastErrorMessage, value: orEmptyMark(view.lastErrorMessage ?? null) },
   ];
+  if (availableAt !== null && isScheduled(view.availableAt, now)) {
+    items.push({ label: t.detail.availableAt, value: availableAt });
+  }
+  return items;
 };
 
 /**
- * 상세 — 목록에 없는 항목을 보이는 자리. 목록 오른쪽 구획이다(입고 관리와 같은 짜임 · 사용자 지시 2026-10-27).
- * 옛 판은 창(Dialog)으로 떠 목록을 가렸다.
+ * 오른쪽 상세 상자(#358) — 정보 상자 하나(검사 조회·판정과 같은 모양) → 오류 내용(있을 때만).
+ * 재처리는 목록 줄의 [재처리]가 맡는다.
  *
- * **전송 내용(전문)은 그리지 않는다.** 서버는 전문을 언제나 실어 보내지만 거래처·수량 등이 들어 있어 누구에게까지
- * 보일지가 정해지지 않았다. 화면은 응답에서 그 값을 꺼내지도 않는다 — 꺼내 두면 언젠가 그려진다. 늘 잠긴 「전송 내용
- * 보기」 단추와 그 사유 안내는 걷어 냈다(사용자 지시 2026-10-27 「불필요한 안내문 제거」).
+ * **전송 내용(전문)은 그리지 않는다.** 거래처·수량 등이 들어 있어 누구에게까지 보일지가 정해지지 않았다.
  */
 export const MessageDetailPane = ({ view, isLoading, loadError, now }: MessageDetailPaneProps) => {
-  const body = (): ReactNode => {
-    if (loadError !== null && loadError !== undefined) return loadError;
+  if (loadError !== null && loadError !== undefined) return <>{loadError}</>;
 
-    if (isLoading || view === undefined) {
-      return (
-        <div role="status" aria-label={t.loading.messageDetail}>
-          <SkeletonText lines={4} />
-        </div>
-      );
-    }
-
+  if (isLoading || view === undefined) {
     return (
-      <div className="form-grid">
-        {toItems(view, now).map((item) => (
-          <div className="field-cell" key={item.label}>
-            <span className="field-label">{item.label}</span>
-            <span>{item.value}</span>
-          </div>
-        ))}
+      <div role="status" aria-label={t.loading.messageDetail}>
+        <SkeletonText lines={4} />
       </div>
     );
-  };
+  }
+
+  const status = toStatusView(view, now);
+  const errorMessage = view.lastErrorMessage ?? '';
+
+  const items: DetailItem[] = [
+    { label: t.table.interfaceCode, value: interfaceName(view.interfaceCode) },
+    { label: t.table.direction, value: directionName(view.directionCode) },
+    { label: t.detail.retryCount, value: t.table.retryTimes(view.retryCount) },
+    ...toTimeItems(view, now),
+  ];
 
   return (
-    <>
+    <div className="integration-sync-detail">
+      {/* 상자 제목 — 목록 상자의 「연동 이력 목록」과 짝(사용자 지시 2026-11-24). */}
       <h2 className="pane-title">{t.detail.title}</h2>
-      {body()}
-    </>
+      {/*
+       * 정보 상자 하나 — 검사 조회·판정과 같은 모양(첫 칸에 번호 + 상태 배지, 칸 사이 세로선 · #358).
+       * 칸 순서: 문서 번호 → 연동 항목 · 송수신 구분 · 재시도 횟수 → 발생 · 전송 · 완료 일시.
+       */}
+      <dl className="parts-iqc-facts iqc-inbound-facts integration-sync-facts">
+        <div className="parts-iqc-fact">
+          <dt className="field-label">{t.table.messageKey}</dt>
+          <dd className="iqc-inbound-lot-key">
+            <h3 className="parts-iqc-fact-key">{documentNoOf(view)}</h3>
+            <Chip variant="status" size="sm" status={status.tone}>
+              {status.label}
+            </Chip>
+            {/* 「언제부터 처리 중」 — 처리를 시작한 시각만 낸다(「잠금이 오래됐다」 같은 판정은 하지 않는다). */}
+            {(view.lockedBy ?? '') !== '' && status.note !== null && (
+              <span className="parts-iqc-fact-sub">{status.note}</span>
+            )}
+          </dd>
+        </div>
+        {items.map((item) => (
+          <div className="parts-iqc-fact" key={item.label}>
+            <dt className="field-label">{item.label}</dt>
+            <dd>{item.value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      {/* 오류 내용은 값이 있을 때만, 정보 상자 바로 아래 전체 폭으로(#358). */}
+      {errorMessage !== '' && (
+        <div className="integration-sync-detail-error">
+          <span className="field-label">{t.table.lastErrorMessage}</span>
+          <p>{errorMessage}</p>
+        </div>
+      )}
+    </div>
   );
 };

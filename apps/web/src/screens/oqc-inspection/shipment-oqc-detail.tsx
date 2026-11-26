@@ -41,7 +41,7 @@ const lotOfRow = (row: LotRow): InspectionLotForward =>
 
 export interface ShipmentOqcDetailProps {
   inspectionRequestId: number;
-  /** 품목 「코드 · 이름」 — 화면이 품목 풀이를 이미 읽어 두었다. 못 풀었으면 표기 글 하나. */
+  /** 품목 풀이를 못 했을 때 코드 칸에 보일 표기 글(불러오는 중 · 없음 · 실패). */
   itemLabel: ReactNode;
   /** 품목 이름 · 코드 — 생략 건 요약(IQC 와 같은 틀 · #353)이 이름 · 코드 차례로 쓴다. 못 풀었으면 null. */
   itemParts: { code: string; name: string } | null;
@@ -121,7 +121,10 @@ export const ShipmentOqcDetail = ({
         <SkippedOverview
           title={messages.partsIqcInspection.skipped.titleOqc}
           {...(skippedTabs === undefined ? {} : { tabs: skippedTabs })}
-          itemLabel={messages.partsIqcInspection.skipped.item}
+          itemLabels={{
+            code: messages.partsIqcInspection.skipped.itemCode,
+            name: messages.partsIqcInspection.skipped.itemName,
+          }}
           itemParts={itemParts}
           planCode={planCode}
           planAction={
@@ -160,7 +163,19 @@ export const ShipmentOqcDetail = ({
       emphasized: true,
     },
     { key: 'customer', label: s.facts.customer, value: refData?.customerName ?? '—' },
-    { key: 'item', label: s.facts.item, value: itemLabel, emphasized: true },
+    /* 품목은 코드 · 이름 두 칸(품목 표기 분리). 못 풀면 풀이 안내를 코드 칸에 두고 이름 칸은 비운다. */
+    {
+      key: 'item',
+      label: s.facts.itemCode,
+      value: itemParts === null ? itemLabel : itemParts.code,
+      emphasized: true,
+    },
+    {
+      key: 'itemName',
+      label: s.facts.itemName,
+      value: itemParts === null ? '—' : itemParts.name,
+      emphasized: true,
+    },
     {
       key: 'tp',
       label: s.facts.targetPicked,

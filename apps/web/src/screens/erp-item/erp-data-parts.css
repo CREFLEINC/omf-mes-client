@@ -1,0 +1,8 @@
+/*
+ * ERP 조회 상세 상자의 「칸 채우기」 모양 — 바깥 상자에 `erp-data-detail-fill` 을 붙인 화면(공통코드 · 구매발주 · 수주)만
+ * 칸이 상자 폭을 나눠 채운다(넓은 화면에서 왼쪽에 몰리지 않게 · 사용자 지시 2026-11-25). 좁으면 다음 줄로 넘기고, 줄 첫
+ * 칸의 세로선은 공용 규칙대로 상자 밖으로 숨는다. 붙이지 않은 화면은 글 폭만큼 그대로다.
+ */
+.erp-data-detail-fill .parts-iqc-facts.iqc-inbound-facts.erp-data-detail-fields > .parts-iqc-fact {
+  flex: 1 1 auto;
+}

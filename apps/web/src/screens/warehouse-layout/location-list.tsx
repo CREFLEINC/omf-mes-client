@@ -26,6 +26,8 @@ export interface LocationListProps {
   isPlaced: (locationId: number) => boolean;
   selectedLocationId: number | null;
   onPick: (locationId: number) => void;
+  /** 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+  onUnpick?: () => void;
   /** 펼친 위치들. 펼침은 쓰는 쪽이 가진다 — 조회 화면과 편집 창이 따로 가진다(R-10). */
   expandedIds: ReadonlySet<number>;
   onExpandedChange: (ids: ReadonlySet<number>) => void;
@@ -65,6 +67,7 @@ export const LocationList = ({
   isPlaced,
   selectedLocationId,
   onPick,
+  onUnpick,
   expandedIds,
   onExpandedChange,
   empty,
@@ -246,6 +249,7 @@ export const LocationList = ({
         onPick: (row) => {
           onPick(row.location.locationId);
         },
+        ...(onUnpick === undefined ? {} : { onUnpick }),
       }}
       empty={empty ?? <EmptyState size="sm" live title={t.locations.emptyTitle} />}
     />

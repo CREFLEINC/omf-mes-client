@@ -344,6 +344,17 @@ describe('ReworkResultRegisterScreen — 본문 통일 시안(#295)', () => {
     expect(screen.queryByText(t.pickTitle)).toBeNull();
   });
 
+  it('고른 W/O 를 한 번 더 누르면 선택이 풀리고 가운데가 빈 화면으로 돌아간다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+    const row = screen.getByRole('button', { name: /SYN-WO-R012/ });
+    expect(row).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(row);
+    expect(row).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByText(t.pickTitle)).toBeInTheDocument();
+  });
+
   /* ⭐ 정보 띠는 스펙 §3 ①의 세 줄이다 — 기존 LOT 번호(번호+수량) · 처분 · 근거. 식별자 숫자는 새지 않는다. */
   it('정보 띠가 기존 LOT 번호 · 처분 · 근거 세 줄로 선다', async () => {
     const { user } = renderScreen();

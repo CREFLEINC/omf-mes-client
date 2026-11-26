@@ -131,7 +131,13 @@ export const BulkFormDialog = ({
 
         <div className="form-grid-full">
           <fieldset className="field-cell">
-            <legend className="field-label">{t.dayForm.dayType}</legend>
+            <legend className="field-label">
+              {t.dayForm.dayType}
+              {/* 고르지 않으면 저장이 막힌다 — 빨간 * 는 aria-hidden 이라 묶음 이름은 그대로다. */}
+              <span className="required-mark" aria-hidden="true">
+                {' *'}
+              </span>
+            </legend>
             <div className="check-group">
               {DAY_TYPES.map((type) => (
                 <Radio

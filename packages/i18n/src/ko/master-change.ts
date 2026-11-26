@@ -10,11 +10,9 @@ export const masterChange = {
   title: '마스터 변경관리',
   breadcrumbRoot: '기준정보 관리',
   fields: {
-    /*
-     * 기간은 **한 컨트롤**이다(변경 통지 #63) — 시작·종료 두 칸이 `DatePicker mode="range"`
-     * 하나로 합쳐졌다. 라벨도 하나여야 해서 두 칸 시절의 이름을 그대로 둘 수 없다.
-     */
-    period: '조회 기간',
+    /* 기간은 시작일 · 종료일 두 칸이다(사용자 지시 2026-11-25) — 칸마다 이름이 있다. */
+    periodFrom: '조회 시작일',
+    periodTo: '조회 종료일',
     targetType: '대상 종류',
     targetId: '대상',
     eventType: '사건 종류',

@@ -1,18 +1,10 @@
-import {
-  AlertBanner,
-  Button,
-  Checkbox,
-  Chip,
-  Dialog,
-  EmptyState,
-  SkeletonText,
-  Tabs,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, Checkbox, Chip, Dialog, SkeletonText, Tabs } from '@crefle/web-ui';
 import type { MaterialLotTab, MaterialLotVoidResult } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 
+import { ListEmpty } from '../../patterns/list-empty';
 import { SaveErrorBanner } from '../../patterns/master';
 import {
   useItemStorageIsBase,
@@ -191,7 +183,7 @@ export const DetailPane = ({
     }
     if (rows.length === 0) {
       return generation !== null && generation.status !== 'OK' ? null : (
-        <EmptyState size="sm" title={tp.empty[tab]} />
+        <ListEmpty title={tp.empty[tab]} />
       );
     }
     const hasCheck = voidableTab(tab);

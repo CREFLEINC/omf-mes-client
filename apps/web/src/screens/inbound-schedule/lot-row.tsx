@@ -205,7 +205,7 @@ export const LotMainCell = ({
             <span className="po-board-lot-meta">{packageText(lot.package)}</span>
           )}
           {isNewFlow && lot.inboundLotId !== null && canOpenWorkRecord && (
-            <Link className="po-board-lot-meta" to={workRecordHref(lot.inboundLotId)}>
+            <Link className="action-link-button" to={workRecordHref(lot.inboundLotId)}>
               {t.lot.workRecordLink}
             </Link>
           )}

@@ -221,6 +221,7 @@ export const BalanceFilterBar = ({
          */}
         <SelectField
           fixedWidth
+          required
           label={t.fields.warehouse}
           options={withAll(warehouseOptions)}
           value={filters.warehouse}

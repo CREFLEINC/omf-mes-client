@@ -12,8 +12,9 @@ export const erpPartner = {
     list: '거래처 목록',
   },
   fields: {
-    q: '거래처 코드·명',
-    role: '역할',
+    q: '거래처 검색',
+    qPlaceholder: '거래처 코드 또는 거래처명을 입력하세요',
+    role: '역할 선택',
     includeInactive: '미사용 포함',
   },
   table: {
@@ -22,7 +23,7 @@ export const erpPartner = {
     erpPartnerCode: 'ERP 거래처 코드',
     countryCode: '국가',
     roles: '역할',
-    isActive: '사용',
+    isActive: '사용 유무',
   },
   roleNames: {
     customer: '고객사',
@@ -34,22 +35,12 @@ export const erpPartner = {
   values: {
     all: '전체',
     empty: '—',
-    active: '사용',
-    inactive: '미사용',
     rolesLoading: '불러오는 중',
     rolesFailed: '불러오지 못함',
     roleSeparator: ', ',
   },
   actions: {
-    prevPage: '이전',
-    nextPage: '다음',
     goFirstPage: '첫 쪽으로',
-  },
-  pageNav: {
-    label: '쪽 이동',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
-    totalOnly: (total: number): string => `전체 ${String(total)}건`,
   },
   loading: {
     list: '거래처 목록을 불러오는 중',

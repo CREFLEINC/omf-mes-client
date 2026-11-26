@@ -2,6 +2,7 @@ import { Button, type Column, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { splitCodeName } from '../../patterns/split-code-name';
 import { describeActualQty, describeBookQty, describeQty } from './balances';
 import {
   describeReference,
@@ -54,14 +55,15 @@ export interface HistoryLineColumnsInput {
  * | 열 | 폭 | 근거 |
  * | --- | ---: | --- |
  * | 줄 | 64px | 서버가 부여한 줄번호 |
- * | **품목** | **미지정** | 「코드 · 이름」을 담고 남는 폭을 흡수한다 |
+ * | 품목코드 | 120px | 품목코드(사용자 지시 2026-11-24 — 품목코드 · 품목명을 두 열로 나눈다) |
+ * | **품목명** | **미지정** | 이름을 담고 남는 폭을 흡수한다 |
  * | 자재 LOT | 136px | LOT 번호 |
  * | 장부 | 112px | 수 + 단위 표기(지금은 「—」) |
  * | 실물 | 112px | 같은 위 |
  * | 차이 | 112px | 수 + 단위 표기 · **음수가 정상이다** |
- * | **지정 폭 합** | **536px** | |
- * | 흡수 열 예산 | 184px | 「코드 · 이름」이 접히지 않고 읽히는 하한 |
- * | **합** | **720px** | `58rem`(928px) 안에 든다 |
+ * | **지정 폭 합** | **656px** | |
+ * | 흡수 열 예산 | 184px | 이름이 접히지 않고 읽히는 하한 |
+ * | **합** | **840px** | `58rem`(928px) 안에 든다 |
  */
 export const buildHistoryLineColumns = ({
   itemLookup,
@@ -77,13 +79,22 @@ export const buildHistoryLineColumns = ({
 
     return state.kind === 'named' ? state.label : '';
   };
+  /** 품목코드 · 품목명 두 칸(사용자 지시 2026-11-24). 못 푼 안내는 품목코드 칸에 둔다. */
+  const itemCodeNameOf = (row: AdjustmentLineView): { code: string; name: string } =>
+    splitCodeName(describeReference(toReference(itemLookup, row.itemId)), t.values.empty);
 
   return [
     { key: 'lineNo', header: t.historyLineTable.lineNo, width: '64px' },
     {
       key: 'item',
-      header: t.historyLineTable.item,
-      render: (row) => describeReference(toReference(itemLookup, row.itemId)),
+      header: t.historyLineTable.itemCode,
+      width: '120px',
+      render: (row) => itemCodeNameOf(row).code,
+    },
+    {
+      key: 'itemName',
+      header: t.historyLineTable.itemName,
+      render: (row) => itemCodeNameOf(row).name,
     },
     {
       key: 'lot',

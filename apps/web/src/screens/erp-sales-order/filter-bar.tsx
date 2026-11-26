@@ -1,7 +1,8 @@
-import { Button, Checkbox, DatePicker, SearchInput } from '@crefle/web-ui';
+import { Button, Checkbox, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import {
   FilterMoreButton,
   HiddenFilterChips,
@@ -9,16 +10,19 @@ import {
   useFilterMore,
   type HiddenFilterChip,
 } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
 import { PartnerSelect } from '../../patterns/partner-select';
 import { Select } from '../../patterns/select';
 import { DEFAULT_FILTERS, type SalesOrderFilters } from './filters';
-import { ProgressFilterField } from './progress';
 import type { SelectOption } from './types';
 
 const t = messages.erpSalesOrder;
 
-/** 「조건 더보기」에 접는 조건 — 진행 · 상태 · 미편성만. */
-type HiddenKey = 'progress' | 'status' | 'unassignedOnly';
+/** 「조건 더보기」에 접는 조건 — 상태 · 미편성만. 진행은 탭 줄 위 라벨이다(#358). */
+type HiddenKey = 'status' | 'unassignedOnly';
 
 export interface ErpSalesOrderFilterBarProps {
   appliedFilters: SalesOrderFilters;
@@ -31,14 +35,14 @@ export interface ErpSalesOrderFilterBarProps {
 /**
  * 조건 줄. 고치는 동안은 초안(`draft`)에만 담고 「조회」를 눌러야 주소로 간다.
  *
- * 진행 단추만은 누르는 즉시 건다 — 걸린 조건에 진행만 바꿔 얹고, 고치던 초안은 그대로 둔다.
+ * 진행은 탭 줄 위 라벨(`ProgressHubChips`)이 누르는 즉시 건다 — 걸린 조건에 진행만 바꿔 얹는다(#358).
  *
  * 상태 선택지는 공통코드 `SALES_ORDER_STATUS` 에서 온다(서버 #737 · 장부 P-68). 화면에 값을 박지 않는다.
  *
- * **보이는 칸은 셋이다**(C-6) — 수주일 · 고객사 · 수주번호. 칸 폭은 C-19 고정 폭이라 값을 넣어도 그대로다 — 기간 · 고객사는
- * 보통, 수주번호는 좁음이다(보통 셋에 조회 · 초기화 · 조건 더보기를 더하면 1280 에서 한 줄을 넘는다).
- * 진행 · 상태 · 미편성만은 「조건 더보기」에 접고, 접힌 칸에 걸린 조건은 칩으로만 알린다. 「초기화」는 바뀐 것이 있을
- * 때만 보인다.
+ * **보이는 칸은 셋이다**(C-6) — 수주일 · 고객사 · 수주번호. 수주일은 흐린 문구 길이만큼, 선택칸(고객사 · 상태)은 같은
+ * 폭, 수주번호는 좁음이다(구매발주 탭과 같다 · 사용자 지시 2026-11-24).
+ * 상태 · 미편성만은 「조건 더보기」에 접고, 접힌 칸에 걸린 조건은 칩으로만 알린다. 「초기화」는 바뀐 것이 있을
+ * 때만 보인다. [조회][초기화][조건 더보기]는 줄 오른쪽 끝(#358).
  */
 export const ErpSalesOrderFilterBar = ({
   appliedFilters,
@@ -47,7 +51,7 @@ export const ErpSalesOrderFilterBar = ({
   onReset,
 }: ErpSalesOrderFilterBarProps) => {
   const [draft, setDraft] = useState(appliedFilters);
-  const periodId = useId();
+  const searchRef = useFitPlaceholderWidth(t.values.searchPlaceholder);
   const customerId = useId();
   const statusId = useId();
   const more = useFilterMore();
@@ -75,14 +79,6 @@ export const ErpSalesOrderFilterBar = ({
   /* 진행은 초안을 거치지 않으므로 걸린 값으로 견준다 — 초안에 남은 옛 진행이 「바뀜」으로 읽히지 않게. */
   const isChanged = hasChangedFilters(DEFAULT_FILTERS, { ...draft, progress }, appliedFilters);
   const hiddenChips: HiddenFilterChip<HiddenKey>[] = [];
-  /* 진행은 처음 값(전체)과 다를 때만 칩이 된다 — × 는 처음 값으로 되돌리고 다시 조회한다. */
-  if (progress !== DEFAULT_FILTERS.progress) {
-    hiddenChips.push({
-      key: 'progress',
-      label: t.filters.chip(t.fields.progress, t.progress[progress]),
-      removeLabel: messages.common.filterMore.remove(t.fields.progress),
-    });
-  }
   if (status !== '') {
     hiddenChips.push({
       key: 'status',
@@ -104,33 +100,21 @@ export const ErpSalesOrderFilterBar = ({
 
   return (
     <>
-      <div className="filter-bar">
-        {/*
-         * 기간은 **한 컨트롤**이다(C-12 — 브라우저 날짜 칸을 쓰지 않는다). 컴포넌트가 완결된 쌍만, 그것도
-         * 시작 ≤ 종료로만 내보내 이 칸을 거친 역전은 생기지 않는다. 주소 키(`from`·`to`)와 요청 파라미터는 그대로다.
-         */}
-        <div className="field-cell filter-field-md">
-          <label className="field-label" htmlFor={periodId}>
-            {t.fields.orderDate}
-          </label>
-          <DatePicker
-            id={periodId}
-            mode="range"
-            clearable
-            value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
-            placeholder={messages.common.selectDate}
-            onChange={(value) =>
-              setDraft((current) => ({
-                ...current,
-                from: value === null ? '' : value[0],
-                to: value === null ? '' : value[1],
-              }))
-            }
-          />
-        </div>
-        <div className="field-cell filter-field-md">
+      <div className="filter-bar erp-data-filter-row">
+        {/* 수주일 · 고객사 검색 · 수주 번호 검색 순서(구매발주 탭과 같다 · 사용자 지시 2026-11-24). */}
+        <DateRangeFields
+          clearable
+          className="erp-so-period-field"
+          startLabel={t.filters.orderDateFrom}
+          endLabel={t.filters.orderDateTo}
+          placeholders={[t.filters.orderDateFromPlaceholder, t.filters.orderDateToPlaceholder]}
+          from={draft.from}
+          to={draft.to}
+          onChange={(from, to) => setDraft((current) => ({ ...current, from, to }))}
+        />
+        <div className="field-cell erp-so-select-field">
           <label className="field-label" htmlFor={customerId}>
-            {t.fields.customer}
+            {t.filters.customerSelect}
           </label>
           {/* 거래처는 천여 건이라 칸이 쪽 단위로 받는다(사용자 지시 2026-10-29). */}
           <PartnerSelect
@@ -144,36 +128,31 @@ export const ErpSalesOrderFilterBar = ({
         <SearchInput
           label={t.fields.q}
           placeholder={t.values.searchPlaceholder}
+          ref={searchRef}
           value={draft.q}
           onChange={(event) => update('q', event.target.value)}
           onSearch={search}
           clearLabel={messages.common.clear}
-          containerClassName="filter-field-sm erp-order-search"
+          containerClassName={`filter-field-sm erp-order-search ${FIT_PLACEHOLDER_CLASS}`}
         />
-        <div className="field-cell field-cell-unlabeled">
-          <div className="filter-actions">
-            <Button onClick={search}>{messages.common.search}</Button>
-            {isChanged && (
-              <Button variant="outlined" onClick={reset}>
-                {messages.common.reset}
-              </Button>
-            )}
-            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
-          </div>
+        {/* 조회 · 초기화 · 조건 더보기는 줄 오른쪽 끝(단말 관리와 같다 · #358). 초기화는 바뀐 것이 있을 때만. */}
+        <div className="filter-actions field-cell-unlabeled">
+          <Button onClick={search}>{messages.common.search}</Button>
+          {isChanged && (
+            <Button variant="outlined" onClick={reset}>
+              {messages.common.reset}
+            </Button>
+          )}
+          <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
         </div>
       </div>
 
       {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
-      <div id={more.id} hidden={!more.isOpen}>
+      <div id={more.id} className="erp-so-more" hidden={!more.isOpen}>
         <div className="filter-bar">
-          {/* 진행은 누르는 즉시 건다 — 접힌 칸 안에서도 「조회」를 기다리지 않는다. */}
-          <ProgressFilterField
-            value={progress}
-            onChange={(next) => onSearch({ ...appliedFilters, progress: next })}
-          />
-          <div className="field-cell filter-field-sm">
+          <div className="field-cell erp-so-select-field">
             <label className="field-label" htmlFor={statusId}>
-              {t.fields.status}
+              {t.filters.statusSelect}
             </label>
             <Select
               id={statusId}

@@ -375,8 +375,11 @@ export const DecisionPane = ({ draft, showError, warnings, onChange }: DecisionP
       </h2>
 
       <div className="field-cell" role="group" aria-label={t.decision.label}>
-        <span className="field-label" id={labelId}>
-          {t.decision.label}
+        <span className="field-label">
+          <span id={labelId}>{t.decision.label}</span>
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
         </span>
         <RadioGroup
           name="po-change-decision"

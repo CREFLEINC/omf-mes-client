@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { keepPreviousData, useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -18,6 +18,8 @@ export const dispatchHistoryKeys = {
   dispatches: (query: DispatchQuery | null) => ['dispatch-history', 'dispatches', query] as const,
   deliveries: (notificationEventId: number | null, period: { from: string; to: string } | null) =>
     ['dispatch-history', 'deliveries', notificationEventId ?? 0, period] as const,
+  resultCount: (query: DispatchQuery | null, status: DispatchResult) =>
+    ['dispatch-history', 'result-count', query, status] as const,
   events: ['dispatch-history', 'events'] as const,
   departments: ['dispatch-history', 'departments'] as const,
 };
@@ -36,6 +38,35 @@ export const useDispatches = (query: DispatchQuery | null): UseQueryResult<Dispa
         }),
       ),
   });
+};
+
+export type DispatchResult = NonNullable<DispatchQuery['status']>;
+
+/**
+ * 위 줄 결과 칩의 건수 — 결과마다 지금 걸린 다른 조건(기간 · 이벤트 · 부서) 그대로 한 줄만 받아 쪽 정보의 전체 건수를
+ * 쓴다(다른 화면 칩과 같은 방식 · #358). `base` 가 `null`(기간 오류)이면 세지 않는다. 결과 순서대로 돌려준다.
+ */
+export const useDispatchResultCounts = (
+  base: Omit<DispatchQuery, 'status' | 'page' | 'size'> | null,
+  results: readonly DispatchResult[],
+): (number | undefined)[] => {
+  const { client } = useApiClient();
+  const counts = useQueries({
+    queries: results.map((status) => {
+      const query = base === null ? null : { ...base, status, page: 1, size: 1 };
+      return {
+        queryKey: dispatchHistoryKeys.resultCount(query, status),
+        enabled: query !== null,
+        queryFn: () =>
+          runRequest(() =>
+            client.GET('/app/notification-dispatches', {
+              params: { query: query ?? { from: '', to: '' } },
+            }),
+          ).then((response) => response.page.total),
+      };
+    }),
+  });
+  return counts.map((count) => count.data);
 };
 
 /**

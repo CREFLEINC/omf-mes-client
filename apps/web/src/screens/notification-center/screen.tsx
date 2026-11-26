@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { ListEmpty } from '../../patterns/list-empty';
 import { formatAsOf } from './as-of';
 import { NotificationFilterBar } from './filter-bar';
 import {
@@ -352,14 +353,7 @@ export const NotificationCenterScreen = () => {
     }
 
     if (rows.length === 0) {
-      return (
-        <EmptyState
-          size="sm"
-          live
-          title={t.empty.noneTitle}
-          description={t.empty.noneDescription}
-        />
-      );
+      return <ListEmpty live title={t.empty.noneTitle} description={t.empty.noneDescription} />;
     }
 
     /*

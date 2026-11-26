@@ -288,6 +288,19 @@ describe('RoutingScreen — 품목 검색·선택', () => {
       'true',
     );
   });
+
+  it('고른 품목을 한 번 더 누르면 선택이 풀리고 「품목을 선택하세요」로 돌아간다', async () => {
+    const { user, router } = renderScreen([itemListRoute()], '?item=5002');
+    const row = await screen.findByRole('button', { name: 'ITM-002' });
+    expect(row).toHaveAttribute('aria-current', 'true');
+
+    await user.click(row);
+    await waitFor(() => {
+      expect(router?.state.location.search ?? '').not.toContain('item=');
+    });
+    expect(screen.getByRole('button', { name: 'ITM-002' })).not.toHaveAttribute('aria-current');
+    expect(screen.getAllByText('품목을 선택하세요')).toHaveLength(1);
+  });
 });
 
 describe('RoutingScreen — 품목 목록 접기(#350)', () => {
@@ -2280,7 +2293,8 @@ describe('RoutingScreen — 저장하지 않고 옮기기', () => {
     expect(screen.getByRole('button', { name: 'ITM-003' })).toHaveAttribute('aria-current', 'true');
   });
 
-  it('같은 품목을 다시 눌러도 묻지 않고, 그 뒤 뒤로가기는 여전히 묻는다', async () => {
+  /* 고른 품목을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24) — 저장하지 않은 편집이 있으면 먼저 묻는다. */
+  it('같은 품목을 다시 누르면 저장하지 않은 편집을 먼저 묻고, 머물면 그 뒤 뒤로가기도 여전히 묻는다', async () => {
     /* 앞 기록을 남기려고 Rev 2 에서 시작해 Rev 3 으로 옮긴다(품목만 고르면 개정이 자동으로 열려 기록이 늘지 않는다). */
     const { user, router } = renderScreen(
       [itemListRoute(), revisionListRoute(), routingDetailRoute()],
@@ -2294,7 +2308,10 @@ describe('RoutingScreen — 저장하지 않고 옮기기', () => {
     });
     await user.type(await screen.findByLabelText('Routing 코드'), '-X');
     await user.click(screen.getByRole('button', { name: 'ITM-001' }));
+    const asked = await screen.findByRole('dialog', { name: discard.title });
+    await user.click(within(asked).getByRole('button', { name: discard.stay }));
     expect(screen.queryByRole('dialog', { name: discard.title })).toBeNull();
+    expect(router.state.location.search).toContain('item=5001');
 
     await act(async () => {
       await router.navigate(-1);

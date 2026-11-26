@@ -46,6 +46,8 @@ export const inspectionSheet = {
   columns: {
     serialNo: 'Sê-ri',
     model: 'Model',
+    modelCode: 'Mã model',
+    modelName: 'Tên model',
     lotNo: 'LOT sản xuất',
     workOrder: 'Lệnh sản xuất',
     progress: 'Công đoạn đã nhập',
@@ -86,7 +88,8 @@ export const inspectionSheet = {
       waitInspection: 'Có thể phê duyệt khi đã hoàn tất mọi kiểm tra công đoạn.',
     },
     serialNo: 'Số sê-ri',
-    model: 'Model',
+    modelCode: 'Mã model',
+    modelName: 'Tên model',
     lot: 'LOT sản xuất',
     workOrder: 'Lệnh sản xuất',
     layout: 'Mẫu',
@@ -120,7 +123,8 @@ export const inspectionSheet = {
     fourMNone: 'Không có hàng thay đổi đã đưa vào.',
     fourMColumns: {
       changeType: 'Loại thay đổi',
-      item: 'Vật tư',
+      itemCode: 'Mã vật tư',
+      itemName: 'Tên vật tư',
       lot: 'LOT vật tư',
       remarks: 'Ghi chú',
     },

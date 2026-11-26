@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { BoardTable } from '../../patterns/board-table';
 import { type LookupSource, lookupDisplayLabel } from '../../patterns/lookup-display';
 import { OneLine } from '../../patterns/po-board';
+import { UsageChip } from '../../patterns/usage-chip';
 import { codeLabel, defaultWarehouseFilters } from './code-options';
 import type { LookupEntry, Warehouse, WarehouseFilters } from './types';
 
@@ -83,9 +84,7 @@ export const WarehouseListPane = ({
             {t.fields.isExternal}
           </Chip>
         ) : (
-          <Chip size="sm" status={row.isActive ? 'success' : 'idle'}>
-            {row.isActive ? t.values.active : t.values.inactive}
-          </Chip>
+          <UsageChip isActive={row.isActive} />
         ),
     },
   ];

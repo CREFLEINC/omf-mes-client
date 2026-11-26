@@ -23,7 +23,7 @@ export interface ProgressFilters {
   documentType: string;
   /** 상태 코드. 선택지는 공통코드 `LOGISTICS_DOCUMENT_STATUS` 다. */
   status: string;
-  /** 문서 일자 범위. `DatePicker mode="range"` 한 컨트롤이 `YYYY-MM-DD` 두 값을 준다. */
+  /** 문서 일자 범위. 시작일 · 종료일 두 칸(`patterns/date-range-fields`)이 `YYYY-MM-DD` 두 값을 준다. */
   from: string;
   to: string;
   /**

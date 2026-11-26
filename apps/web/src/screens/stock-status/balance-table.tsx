@@ -10,6 +10,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { splitCodeName } from '../../patterns/split-code-name';
 import { formatTransactionAt } from './as-of';
 import type { InboundLotRef } from './filters';
 import { describeReference, toReference, type ReferenceSource } from './lookups';
@@ -41,7 +42,8 @@ const t = messages.stockStatus;
  *
  * | 열 | 폭 | 근거 |
  * | --- | ---: | --- |
- * | 축 열(품목 · 위치) | **200px** | 「코드 · 이름」이 한 줄에 들어가는 폭. W-06-02 「항목」·W-01-09 흡수 예산과 같은 값 |
+ * | 축 열(위치) | **200px** | 「코드 · 이름」이 한 줄에 들어가는 폭. W-06-02 「항목」·W-01-09 흡수 예산과 같은 값 |
+ * | 품목코드 · 품목명 | 120px · 160px | 품목은 두 열로 나눈다(사용자 지시 2026-11-24) — 합 280px |
  * | LOT | 144px | `LOT-2026-000045` 15자 113px + 셀 여백 32px |
  * | 보유 | 120px | 수 아래 「음수 보유」 칩(4한글 56 + 공백 4 + 칩 여백 24 = 84) + 32 |
  * | 가용 | 88px | 여섯 자리 수 45 + 32. 아래에 쌓이는 것이 없다 |
@@ -55,9 +57,9 @@ const t = messages.stockStatus;
  *
  * | 보기 | 축 열 | 합 |
  * | --- | --- | ---: |
- * | 품목별 | 품목 | **1,176px** |
- * | LOT별 | 품목 · LOT · 입하 LOT | **1,576px**(상세 · 입하 LOT 열 포함) |
- * | 위치별 | 위치 · 품목 | **1,376px** |
+ * | 품목별 | 품목코드 · 품목명 | **1,256px** |
+ * | LOT별 | 품목코드 · 품목명 · LOT · 입하 LOT | **1,656px**(상세 · 입하 LOT 열 포함) |
+ * | 위치별 | 위치 · 품목코드 · 품목명 | **1,456px** |
  *
  * **세 합이 모두 928px을 넘는다.** 열이 9~10개인 표를 928px에 넣으려면 열마다 66~91px이라
  * 칩 하나도 한 줄에 들어가지 않는다 — 이 표는 그 하한에 들어가지 않는다.
@@ -67,6 +69,8 @@ const t = messages.stockStatus;
  */
 const WIDTH = {
   axis: '200px',
+  itemCode: '120px',
+  itemName: '160px',
   lot: '144px',
   onHandQty: '120px',
   availableQty: '88px',
@@ -143,6 +147,12 @@ export const buildBalanceColumns = ({
    * **번호를 문자열로 바꾸는 자리가 없다**(#44). 이름으로 풀 수 없는 세 갈래(미도착·목록에
    * 없음·실패)는 전부 문구로 갈리며, 어느 갈래에도 원시 번호가 담기지 않는다.
    */
+  const itemCodeNameOf = (row: BalanceView): { code: string; name: string } =>
+    splitCodeName(
+      describeReference(toReference(itemNames.get(row.itemId) ?? itemLookup, row.itemId)),
+      t.values.empty,
+    );
+
   const itemColumn: Column<BalanceView> = {
     /*
      * **열 `key`를 계약의 정렬 열거값과 같게 둔다.** 제어 정렬이 `SortState.key`로 열을 가리키고
@@ -150,10 +160,17 @@ export const buildBalanceColumns = ({
      * 어느 머리글에도 붙지 않는다. 정렬되지 않는 열만 뜻이 읽히는 이름을 쓴다.
      */
     key: 'itemCode',
-    header: t.table.item,
-    width: WIDTH.axis,
-    render: (row) =>
-      describeReference(toReference(itemNames.get(row.itemId) ?? itemLookup, row.itemId)),
+    header: t.table.itemCode,
+    width: WIDTH.itemCode,
+    render: (row) => itemCodeNameOf(row).code,
+  };
+
+  /** 품목명 칸 — 품목코드와 나눠 둔다(사용자 지시 2026-11-24). 정렬 열거값이 없어 정렬하지 않는다. */
+  const itemNameColumn: Column<BalanceView> = {
+    key: 'itemName',
+    header: t.table.itemName,
+    width: WIDTH.itemName,
+    render: (row) => itemCodeNameOf(row).name,
   };
 
   const lotColumn: Column<BalanceView> = {
@@ -249,9 +266,9 @@ export const buildBalanceColumns = ({
 
   /** 축 열 — 보기가 정한다. 「코드 · 이름」이 한 줄에 들어가는 폭을 **지정한다**(위 표). */
   const axisColumns: Column<BalanceView>[] = {
-    item: [itemColumn],
-    lot: [itemColumn, lotColumn, inboundLotColumn],
-    location: [locationColumn, itemColumn],
+    item: [itemColumn, itemNameColumn],
+    lot: [itemColumn, itemNameColumn, lotColumn, inboundLotColumn],
+    location: [locationColumn, itemColumn, itemNameColumn],
   }[view];
 
   const columns: Column<BalanceView>[] = [

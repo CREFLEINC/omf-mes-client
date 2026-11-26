@@ -260,6 +260,12 @@ export const ProcessWorkspace = ({
     (entry) => entry.workOrderId === firstBlockedReadiness?.workOrderId,
   );
   const [assignSelected, setAssignSelected] = useState<number | null>(null);
+  /* 고른 W/O를 다시 눌러 풀었다 — 첫 W/O를 저절로 다시 고르지 않는다. */
+  const [assignCleared, setAssignCleared] = useState(false);
+  const selectAssign = (workOrderId: number | null) => {
+    setAssignCleared(workOrderId === null);
+    setAssignSelected(workOrderId);
+  };
   const [assignDirty, setAssignDirty] = useState(false);
   const [pendingStep, setPendingStep] = useState<ProcessStepKey | null>(null);
   const selectedWorkOrder = unreleased.data?.find((entry) => entry.workOrderId === assignSelected);
@@ -323,6 +329,12 @@ export const ProcessWorkspace = ({
   /* 단계 */
   const [step, setStep] = useState<ScreenStep | null>(null);
   const [releaseSelectedId, setReleaseSelectedId] = useState<number | null>(null);
+  /* 고른 작업지시를 다시 눌러 풀었다 — 첫 작업지시를 저절로 다시 고르지 않는다. */
+  const [releaseCleared, setReleaseCleared] = useState(false);
+  const selectRelease = (workOrderId: number | null) => {
+    setReleaseCleared(workOrderId === null);
+    setReleaseSelectedId(workOrderId);
+  };
   const materials = useReleaseMaterials(
     (releaseLines ?? []).map((line) => ({ ...line.workOrder, plantId: order.plantId })),
     step === 'release' || step === 'done',
@@ -372,11 +384,11 @@ export const ProcessWorkspace = ({
     step,
   ]);
   useEffect(() => {
-    if (step === 'assign' && assignSelected === null) {
+    if (step === 'assign' && assignSelected === null && !assignCleared) {
       const first = firstBlocked ?? unreleased.data?.[0];
       if (first !== undefined) setAssignSelected(first.workOrderId);
     }
-  }, [assignSelected, firstBlocked, step, unreleased.data]);
+  }, [assignCleared, assignSelected, firstBlocked, step, unreleased.data]);
 
   /* 계획을 확정하면 서버가 자동 계획 결과(머리 칩)를 다시 정한다. 머리 요약을 그 값으로 맞춘다. */
   const plansUpdatedAt = editor.plans.dataUpdatedAt;
@@ -449,6 +461,7 @@ export const ProcessWorkspace = ({
           queryKey: ['work-orders', 'by-order', order.productionOrderId],
         });
         setAssignSelected(null);
+        setAssignCleared(false);
         setStep('assign');
       } else {
         toast.show({ variant: 'success', description: messages.common.saved });
@@ -553,9 +566,13 @@ export const ProcessWorkspace = ({
   const remainingLink =
     (step === 'master' && master.blockedOutside === 'bom') ||
     (step === 'plan' && invalidRow?.master === 'bom') ? (
-      <Link to="/system/erp-data/boms">{tp.links.bom}</Link>
+      <Link className="action-link-button" to="/system/erp-data/boms">
+        {tp.links.bom}
+      </Link>
     ) : step === 'master' && master.blockedOutside === 'routing' ? (
-      <Link to="/master-data/routing">{tp.links.routing}</Link>
+      <Link className="action-link-button" to="/master-data/routing">
+        {tp.links.routing}
+      </Link>
     ) : undefined;
 
   /*
@@ -590,8 +607,9 @@ export const ProcessWorkspace = ({
 
   const releaseInformation = (readOnly: boolean) => (
     <ReleaseStep
-      onSelectedWorkOrderChange={setReleaseSelectedId}
+      onSelectedWorkOrderChange={selectRelease}
       selectedWorkOrderId={releaseSelectedId}
+      workOrderCleared={releaseCleared}
       materialReview={(workOrderId) =>
         !readOnly && (
           <ReleaseMaterials
@@ -624,7 +642,8 @@ export const ProcessWorkspace = ({
       plantId={order.plantId ?? undefined}
       lines={readOnly ? toReleaseLines(allWorkOrders.data ?? [], {}, defaultLots) : releaseLines}
       orderNo={order.productionOrderNo}
-      itemLabel={item === undefined ? undefined : named(item.itemName, item.itemCode)}
+      itemCode={item?.itemCode}
+      itemName={item?.itemName}
       planDateOf={(planId) =>
         planFacts.find((entry) => entry.productionPlanId === planId)?.planDate ?? null
       }
@@ -771,7 +790,8 @@ export const ProcessWorkspace = ({
             }}
             uomLabelOf={uomLabelOf}
             selectedId={assignSelected}
-            onSelect={setAssignSelected}
+            cleared={assignCleared}
+            onSelect={selectAssign}
             onDirtyChange={setAssignDirty}
           />
         );
@@ -794,6 +814,7 @@ export const ProcessWorkspace = ({
             {releaseInformation(true)}
             <ReleaseResult
               focusedWorkOrderId={releaseSelectedId}
+              focusCleared={releaseCleared}
               orderNo={order.productionOrderNo}
               itemCode={item?.itemCode}
               itemName={item?.itemName}
@@ -820,19 +841,20 @@ export const ProcessWorkspace = ({
     step === 'done'
       ? (allWorkOrders.data ?? [])
       : (releaseLines ?? []).map((line) => line.workOrder);
-  const releaseNavigationIndex = Math.max(
-    0,
-    releaseNavigationOrders.findIndex((row) => row.workOrderId === releaseSelectedId),
-  );
+  /* 풀었으면 -1 — [다음 작업지시]가 첫 작업지시를 연다. */
+  const releaseNavigationIndex = releaseCleared
+    ? -1
+    : Math.max(
+        0,
+        releaseNavigationOrders.findIndex((row) => row.workOrderId === releaseSelectedId),
+      );
   const releaseNavigation = (
     <div className="erp-release-work-order-navigation" role="group" aria-label="배포 작업지시 이동">
       <Button
         variant="outlined"
-        disabled={releasing || releaseNavigationOrders.length === 0 || releaseNavigationIndex === 0}
+        disabled={releasing || releaseNavigationOrders.length === 0 || releaseNavigationIndex <= 0}
         onClick={() =>
-          setReleaseSelectedId(
-            releaseNavigationOrders[releaseNavigationIndex - 1]?.workOrderId ?? null,
-          )
+          selectRelease(releaseNavigationOrders[releaseNavigationIndex - 1]?.workOrderId ?? null)
         }
       >
         이전 작업지시
@@ -845,9 +867,7 @@ export const ProcessWorkspace = ({
         variant="outlined"
         disabled={releasing || releaseNavigationIndex >= releaseNavigationOrders.length - 1}
         onClick={() =>
-          setReleaseSelectedId(
-            releaseNavigationOrders[releaseNavigationIndex + 1]?.workOrderId ?? null,
-          )
+          selectRelease(releaseNavigationOrders[releaseNavigationIndex + 1]?.workOrderId ?? null)
         }
       >
         다음 작업지시

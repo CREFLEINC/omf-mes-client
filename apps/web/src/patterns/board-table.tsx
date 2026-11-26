@@ -21,6 +21,11 @@ export interface BoardTablePick<T> {
   /** 지금 고른 줄(`getRowId` 값). 없으면 `null`. */
   currentId: string | null;
   onPick: (row: T) => void;
+  /**
+   * 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24 · 모든 목록 같은 동작). 주지 않으면 종전처럼
+   * 같은 줄을 다시 고른다.
+   */
+  onUnpick?: () => void;
   /** 고를 수 없는 줄 — 단추를 세우지 않는다. 없으면 다 고른다. */
   canPick?: (row: T) => boolean;
 }
@@ -164,7 +169,9 @@ export const BoardTable = <T,>({
     const id = target.closest('tbody tr')?.querySelector<HTMLElement>(`.${PICK_CLASS}`)
       ?.dataset.boardRow;
     const row = id === undefined ? undefined : rows.find((each) => getRowId(each) === id);
-    if (row !== undefined) pick.onPick(row);
+    if (row === undefined) return;
+    if (id === pick.currentId && pick.onUnpick !== undefined) pick.onUnpick();
+    else pick.onPick(row);
   };
 
   const boxClass = [

@@ -193,9 +193,13 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
         )}
         {/* 규범 3 — Select 에 label prop 이 없어 라벨을 직접 세운다. 잠긴 사유는 상시 텍스트(규범 4). */}
         <div className="field-cell wide-select">
-          <label className="field-label" htmlFor={reasonId}>
-            {tReason.holdLabel}
-          </label>
+          <span className="field-label">
+            <label htmlFor={reasonId}>{tReason.holdLabel}</label>
+            {/* 필수 표시는 라벨 밖 — 칸 이름에 `*` 가 섞이지 않게 한다. */}
+            <span className="required-mark" aria-hidden="true">
+              {' *'}
+            </span>
+          </span>
           <Select
             id={reasonId}
             options={reasons.options}

@@ -21,9 +21,6 @@ const t = messages.stocktaking;
 /** `.wide-table`이 표에 주는 최소 폭(58rem). */
 const WIDE_TABLE_MIN_PX = 928;
 
-/** 「코드 · 이름」이 한 줄에 들어가는 폭(`docs/layout-conventions.md`의 선례 값). */
-const CODE_NAME_COLUMN_PX = 184;
-
 const REASON_CODE = 'SAMPLE_VARIANCE_REASON_D';
 
 const REASON_OPTIONS: SelectOption[] = [{ value: REASON_CODE, label: REASON_CODE }];
@@ -123,10 +120,11 @@ const qtyField = (lineNo: number): HTMLElement =>
   screen.getByLabelText(t.lineTable.countedQtyLabel(lineNo));
 
 describe('buildCountLineColumns — 열 구성과 폭', () => {
-  it('비블라인드에서 열이 일곱이다', () => {
+  it('비블라인드에서 열이 여덟이다', () => {
     expect(columnsWith().map((column) => column.key)).toEqual([
       'lineNo',
       'item',
+      'itemName',
       'lot',
       'systemQty',
       'countedQty',
@@ -145,8 +143,8 @@ describe('buildCountLineColumns — 열 구성과 폭', () => {
 
     expect(keys).not.toContain('systemQty');
     expect(keys).not.toContain('variance');
-    /* 짝 방향 — 나머지 다섯은 그대로 있다(열이 통째로 사라져서 통과하는 것이 아니다). */
-    expect(keys).toEqual(['lineNo', 'item', 'lot', 'countedQty', 'reason']);
+    /* 짝 방향 — 나머지 여섯은 그대로 있다(열이 통째로 사라져서 통과하는 것이 아니다). */
+    expect(keys).toEqual(['lineNo', 'item', 'itemName', 'lot', 'countedQty', 'reason']);
   });
 
   /*
@@ -160,22 +158,22 @@ describe('buildCountLineColumns — 열 구성과 폭', () => {
     const absorbing = columnsWith({ isBlind }).filter((column) => column.width === undefined);
 
     expect(absorbing).toHaveLength(1);
-    expect(absorbing[0]?.key).toBe('item');
+    expect(absorbing[0]?.key).toBe('itemName');
   });
 
-  it.each<[string, boolean]>([
-    ['비블라인드', false],
-    ['블라인드', true],
-  ])('%s에서 지정 폭 합에 흡수 열 예산을 더해도 표 하한 안이다', (_label, isBlind) => {
-    expect(specifiedWidthOf(columnsWith({ isBlind })) + CODE_NAME_COLUMN_PX).toBeLessThanOrEqual(
-      WIDE_TABLE_MIN_PX,
-    );
+  /*
+   * 품목코드 열(120px)을 떼어 냈다(사용자 지시 2026-11-24 — 품목코드 · 품목명을 두 열로).
+   * 흡수 열(품목명)이 표 하한에서 받는 폭은 비블라인드 64px · 블라인드 272px 이다.
+   */
+  it.each<[string, boolean, number]>([
+    ['비블라인드', false, 864],
+    ['블라인드', true, 656],
+  ])('%s에서 지정 폭 합이 정해져 있다', (_label, isBlind, expected) => {
+    expect(specifiedWidthOf(columnsWith({ isBlind }))).toBe(expected);
   });
 
-  it('흡수 열이 실제로 받는 폭이 예산보다 좁지 않다', () => {
-    expect(WIDE_TABLE_MIN_PX - specifiedWidthOf(columnsWith())).toBeGreaterThanOrEqual(
-      CODE_NAME_COLUMN_PX,
-    );
+  it('흡수 열(품목명)이 표 하한에서 받는 폭', () => {
+    expect(WIDE_TABLE_MIN_PX - specifiedWidthOf(columnsWith())).toBe(64);
   });
 
   /** 계약의 라인 조회에 `sort` 쿼리가 없다(실측 — 어긋남 3). 목록 표와 같은 규칙이다. */
@@ -188,8 +186,10 @@ describe('CountLineTable — 값 표기', () => {
   it('줄마다 품목 이름이 참조로 풀린다', () => {
     renderTable();
 
-    expect(screen.getByText('SAMPLE-ITEM-01 · 합성 품목 가')).toBeInTheDocument();
-    expect(screen.getByText('SAMPLE-ITEM-02 · 합성 품목 나')).toBeInTheDocument();
+    expect(screen.getByText('SAMPLE-ITEM-01')).toBeInTheDocument();
+    expect(screen.getByText('합성 품목 가')).toBeInTheDocument();
+    expect(screen.getByText('SAMPLE-ITEM-02')).toBeInTheDocument();
+    expect(screen.getByText('합성 품목 나')).toBeInTheDocument();
   });
 
   /*
@@ -202,7 +202,7 @@ describe('CountLineTable — 값 표기', () => {
   it('참조 목록에 없는 품목과 LOT이 알 수 없음으로 갈린다', () => {
     renderTable();
 
-    expect(screen.getByText('SAMPLE-ITEM-01 · 합성 품목 가')).toBeInTheDocument();
+    expect(screen.getByText('합성 품목 가')).toBeInTheDocument();
     expect(screen.getAllByText(t.values.unknown)).toHaveLength(2);
   });
 
@@ -224,7 +224,8 @@ describe('CountLineTable — 값 표기', () => {
     renderTable();
 
     expect(screen.getByText('LOT-2026-900010')).toBeInTheDocument();
-    expect(screen.getByText(t.values.empty)).toBeInTheDocument();
+    /* LOT 없는 줄 하나 + 품목을 못 푼 셋째 줄의 품목명 칸(안내는 품목코드 칸에 선다) 하나. */
+    expect(screen.getAllByText(t.values.empty)).toHaveLength(2);
   });
 
   /** 단위 열을 따로 두지 않고 **수량 표기에 붙인다**(W-01-03이 세운 처리). */
@@ -244,7 +245,7 @@ describe('CountLineTable — 값 표기', () => {
     const text = container.textContent ?? '';
 
     /* 짝 방향 — 표는 실제로 그려졌다. */
-    expect(screen.getByText('SAMPLE-ITEM-01 · 합성 품목 가')).toBeInTheDocument();
+    expect(screen.getByText('합성 품목 가')).toBeInTheDocument();
 
     for (const internalId of ['9401', '9402', '9403', '9701', '9301', '9302', '9501', '9601']) {
       expect(text).not.toContain(internalId);

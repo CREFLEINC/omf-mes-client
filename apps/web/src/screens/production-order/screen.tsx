@@ -329,15 +329,15 @@ export const ProductionOrderScreen = ({
         <div className="erp-wo-status-filters">
           {/*
            * 0 건으로 센 상태는 세우지 않는다 — 「취소 0」 같은 탭이 늘 서 있어도 할 일이 없다는 말뿐이다(관리웹 화면 정리 시안 A ·
-           * 2026-11-20). 「전체」와 지금 고른 상태는 0 이어도 남긴다. 건수를 아직 · 끝내 모르면(권한 없음) 이름만으로 세운다 —
+           * 2026-11-20). 지금 고른 상태는 0 이어도 남긴다. 건수를 아직 · 끝내 모르면(권한 없음) 이름만으로 세운다 —
            * 감추면 상태를 고를 길이 없다. 좁은 창의 선택 칸은 모든 상태를 그대로 둔다.
+           * 「전체」 단추는 두지 않는다 — 고른 상태를 다시 누르면 전체로 돌아간다(사용자 지시 2026-11-24).
            */}
           {stateFilters
             .filter(
               (entry) =>
-                entry.state === 'ALL' ||
-                (!showingResultRows && filters.state === entry.state) ||
-                entry.count !== 0,
+                entry.state !== 'ALL' &&
+                ((!showingResultRows && filters.state === entry.state) || entry.count !== 0),
             )
             .map((entry) => (
               <button
@@ -348,7 +348,14 @@ export const ProductionOrderScreen = ({
                   entry.count === undefined ? entry.name : `${entry.name} ${entry.count}건`
                 }
                 aria-pressed={!showingResultRows && filters.state === entry.state}
-                onClick={() => apply({ ...filters, state: entry.state, page: 1 })}
+                onClick={() =>
+                  apply({
+                    ...filters,
+                    state:
+                      !showingResultRows && filters.state === entry.state ? 'ALL' : entry.state,
+                    page: 1,
+                  })
+                }
               >
                 <span className="erp-wo-status-name">{entry.name}</span>
                 {entry.count !== undefined && (

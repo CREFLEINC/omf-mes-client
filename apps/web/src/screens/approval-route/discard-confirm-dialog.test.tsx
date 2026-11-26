@@ -11,7 +11,23 @@ describe('DiscardConfirmDialog', () => {
   it('무엇을 잃는지 묻는다', () => {
     render(<DiscardConfirmDialog onConfirm={vi.fn()} onClose={vi.fn()} />);
 
-    expect(screen.getByText(messages.common.discardChangesConfirm)).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: t.dialog.discardTitle })).toBeInTheDocument();
+    expect(screen.getByText(t.dialog.discardBody)).toBeInTheDocument();
+  });
+
+  /* 사용자 관리 · 주간 근무일 화면의 저장 안 한 변경 창과 같은 문구 · 닫기(X) 없음(사용자 지시 2026-11-25). */
+  it('다른 화면과 같은 문구이고 닫기(X) 단추가 없다', () => {
+    render(<DiscardConfirmDialog onConfirm={vi.fn()} onClose={vi.fn()} />);
+
+    expect(t.dialog.discardTitle).toBe(messages.usersRoles.discard.title);
+    expect(t.dialog.discardBody).toBe(messages.usersRoles.discard.body);
+    expect(t.actions.keepEditing).toBe(messages.usersRoles.discard.keep);
+    expect(t.actions.discardDraft).toBe(messages.usersRoles.discard.confirm);
+    expect(screen.queryByRole('button', { name: '닫기' })).toBeNull();
+    expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
+      t.actions.keepEditing,
+      t.actions.discardDraft,
+    ]);
   });
 
   /** 「확인/취소」로 두면 어느 쪽이 파기인지 창을 다시 읽어야 안다. */
@@ -64,7 +80,7 @@ describe('DiscardConfirmDialog', () => {
   it('선택칸이 없다', () => {
     render(<DiscardConfirmDialog onConfirm={vi.fn()} onClose={vi.fn()} />);
 
-    expect(screen.getByText(messages.common.discardChangesConfirm)).toBeInTheDocument();
+    expect(screen.getByText(t.dialog.discardBody)).toBeInTheDocument();
     expect(screen.queryAllByRole('combobox')).toHaveLength(0);
   });
 });

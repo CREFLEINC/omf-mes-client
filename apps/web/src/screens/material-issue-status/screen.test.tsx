@@ -346,7 +346,7 @@ describe('W-02-11 출고 요청 현황 — 목록', () => {
     expect(row.getByText('합성 생산창고 A')).toBeInTheDocument();
     expect(row.getByText('합성 조립 현장')).toBeInTheDocument();
     expect(row.getByText('대기')).toBeInTheDocument();
-    expect((await rowOf('SYN-MIR-02')).getByText('진행 중')).toBeInTheDocument();
+    expect((await rowOf('SYN-MIR-02')).getByText('진행')).toBeInTheDocument();
     expect((await rowOf('SYN-MIR-04')).getByText('완료, W/O 취소')).toBeInTheDocument();
     expect((await rowOf('SYN-MIR-05')).getByText(t.releaseFailed)).toBeInTheDocument();
   });

@@ -80,7 +80,8 @@ export const inspectionStandard = {
      * 확정·사용 중지 버전에서는 검사 항목도 잠긴다. 여러 컨트롤(추가·수정·삭제·순서 이동·저장)이
      * 공유하는 안내라 컨트롤 이름이 아니라 무엇에 대한 안내인지로 시작한다(배치 규범 4의 이탈 조건).
      */
-    versionLocked: '검사 항목은 작성중 버전에서만 고칠 수 있습니다. 바꾸려면 「신규 버전 발행」을 누르세요.',
+    versionLocked:
+      '검사 항목은 작성중 버전에서만 고칠 수 있습니다. 바꾸려면 「신규 버전 발행」을 누르세요.',
     /*
      * 항목을 저장하면 버전 정보도 다시 불러온다 — 그때 저장하지 않은 버전 편집이
      * 서버 값으로 되돌아간다. 조용히 잃지 않도록 먼저 막는다.
@@ -224,8 +225,7 @@ export const inspectionStandard = {
     chipInspectionType: (label: string): string => `검사 유형: ${label}`,
     chipRemoveKeyword: '검색어 조건 제거',
     chipRemoveInspectionType: '검사 유형 조건 제거',
-    usageLabel: '사용 여부',
-    usageAll: '전체',
+    usageLabel: '사용 유무',
     usageActive: '사용',
     usageInactive: '미사용',
     usageCount: (label: string, count: number): string => `${label} ${String(count)}`,
@@ -273,7 +273,7 @@ export const inspectionStandard = {
     close: '닫기',
     /* 상세 정보 상자의 칸 이름 — 여부를 묻는 값임을 밝힌다(사용자 지시 · #258). 등록 · 수정 창의 이름은 그대로. */
     defaultSkipLabel: '기본 생략 여부',
-    activeLabel: '사용 여부',
+    activeLabel: '사용 유무',
   },
   /* 상세 카드의 버전 구획(omf-all-around#196) — 버전 고르기 · 요약 · 탭(검사 항목 / 버전 설정 / 이력). */
   versionSection: {
@@ -343,7 +343,7 @@ export const inspectionStandard = {
     /** 품목은 코드 · 이름 두 칸으로 나눠 보인다(사용자 지시 2026-11-20). */
     itemCode: '품목코드',
     itemName: '품목명',
-    active: '사용 여부',
+    active: '사용 유무',
   },
   /* 버전 비교 창 — 두 버전의 설정 · 검사 항목 차이(사용자 지시 · #196). 서버 비교 경로 없이 두 버전을 불러 화면이 견준다. */
   compare: {

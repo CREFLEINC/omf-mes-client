@@ -13,7 +13,8 @@ export const returnReceipt: Translated<typeof ko.returnReceipt> = {
   },
   fields: {
     customer: 'Khách hàng',
-    shipDate: 'Ngày xuất hàng',
+    shipDateFrom: 'Từ ngày xuất hàng',
+    shipDateTo: 'Đến ngày xuất hàng',
     keyword: 'Từ khóa',
     shipmentNo: 'Số xuất hàng',
     shippedAt: 'Ngày xuất hàng',
@@ -21,6 +22,8 @@ export const returnReceipt: Translated<typeof ko.returnReceipt> = {
     items: 'Mặt hàng',
     lots: 'LOT gốc',
     item: 'Mặt hàng',
+    itemCode: 'Mã mặt hàng',
+    itemName: 'Tên mặt hàng',
     lotNo: 'LOT gốc',
     shippedQty: 'Xuất hàng',
     returnQty: 'Trả hàng',

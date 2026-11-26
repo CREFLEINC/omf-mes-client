@@ -17,7 +17,6 @@ const renderPane = (overrides: Partial<Parameters<typeof CodeValueFormPane>[0]> 
   const onChange = vi.fn<(patch: Partial<CodeValueFormValues>) => void>();
   const onSave = vi.fn<() => void>();
   const onCancel = vi.fn<() => void>();
-  const onDeactivate = vi.fn<() => void>();
 
   render(
     <CodeValueFormPane
@@ -27,17 +26,15 @@ const renderPane = (overrides: Partial<Parameters<typeof CodeValueFormPane>[0]> 
       fieldErrors={{}}
       banner={null}
       codeLockReason={null}
-      deactivateDisabledReason={null}
       isDirty={false}
       isSaving={false}
       onSave={onSave}
       onCancel={onCancel}
-      onDeactivate={onDeactivate}
       {...overrides}
     />,
   );
 
-  return { onChange, onSave, onCancel, onDeactivate, user: userEvent.setup() };
+  return { onChange, onSave, onCancel, user: userEvent.setup() };
 };
 
 describe('CodeValueFormPane — 필드', () => {
@@ -95,18 +92,15 @@ describe('CodeValueFormPane — 필드', () => {
 });
 
 describe('CodeValueFormPane — 코드 잠금', () => {
-  it('잠금 사유가 있으면 코드 칸이 잠기고 사유가 보인다', () => {
-    renderPane({
-      codeLockReason:
-        '이 코드를 참조하는 자료의 수를 확인할 수 없어 코드를 잠급니다. 변경이 필요하면 담당자에게 문의하세요.',
-    });
+  /* 사유 문장 대신 코드 이름 오른쪽 「변경 불가」 라벨 — 문장은 마우스 · 화면 읽기로(사용자 지시 2026-11-24). */
+  it('잠금 사유가 있으면 코드 칸이 잠기고 「변경 불가」 라벨에 사유가 붙는다', () => {
+    const reason =
+      '이 코드를 참조하는 자료의 수를 확인할 수 없어 코드를 잠급니다. 변경이 필요하면 담당자에게 문의하세요.';
+    renderPane({ codeLockReason: reason });
 
     expect(screen.getByLabelText('코드')).toBeDisabled();
-    expect(
-      screen.getByText(
-        '이 코드를 참조하는 자료의 수를 확인할 수 없어 코드를 잠급니다. 변경이 필요하면 담당자에게 문의하세요.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute('title', reason);
+    expect(screen.getByLabelText('코드')).toHaveAccessibleDescription(reason);
   });
 
   /* 아직 참조할 자료가 없다 — 등록에서 잠그면 코드를 넣을 수 없다. */
@@ -118,11 +112,12 @@ describe('CodeValueFormPane — 코드 잠금', () => {
 });
 
 describe('CodeValueFormPane — 액션', () => {
-  it('고친 것이 없으면 저장·취소가 막힌다', () => {
-    renderPane();
+  it('고친 것이 없으면 저장이 막히고, 취소는 읽기 전용으로 돌아가는 길이라 눌린다', async () => {
+    const { onCancel, user } = renderPane();
 
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: '취소' }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
   it('고친 것이 있으면 저장할 수 있다', async () => {
@@ -146,32 +141,14 @@ describe('CodeValueFormPane — 액션', () => {
     expect(screen.queryByRole('button', { name: '저장' })).not.toBeInTheDocument();
   });
 
-  it('등록 폼에는 사용 중지 자리가 없다', () => {
+  it('등록 · 수정 팝업에는 사용 중지 자리가 없다 — 표 줄의 단추가 맡는다(2026-11-26)', () => {
     renderPane({ mode: 'create' });
-
     expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
   });
 
-  it('사용 중지를 누르면 알린다', async () => {
-    const { onDeactivate, user } = renderPane();
-
-    await user.click(screen.getByRole('button', { name: '사용 중지' }));
-
-    expect(onDeactivate).toHaveBeenCalledTimes(1);
-  });
-
-  it('사용 중지가 막히면 사유가 보이고 버튼에 이어진다', () => {
-    renderPane({
-      deactivateDisabledReason: '사용 중지는 이미 미사용인 코드값에 다시 할 수 없습니다.',
-    });
-
-    const button = screen.getByRole('button', { name: '사용 중지' });
-    expect(button).toBeDisabled();
-
-    const noteId = button.getAttribute('aria-describedby');
-    expect(noteId).not.toBeNull();
-    expect(document.getElementById(noteId as string)).toHaveTextContent(
-      '사용 중지는 이미 미사용인 코드값에 다시 할 수 없습니다.',
-    );
+  it('수정은 「코드값 수정」 팝업이다', () => {
+    renderPane();
+    expect(screen.getByRole('dialog', { name: '코드값 수정' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
   });
 });

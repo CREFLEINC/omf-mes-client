@@ -20,7 +20,8 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     lines: 'Dòng đơn đặt hàng',
   },
   fields: {
-    period: 'Hạn giao',
+    periodFrom: 'Từ hạn giao',
+    periodTo: 'Đến hạn giao',
     supplier: 'Nhà cung cấp',
     plant: 'Nhà máy',
     item: 'Mặt hàng',
@@ -150,7 +151,6 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
       receiptNo: 'Số nhập hàng',
       receiptDate: 'Ngày nhập hàng',
       supplier: 'Nhà cung cấp',
-      item: 'Mặt hàng',
       itemCode: 'Mã mặt hàng',
       itemName: 'Tên mặt hàng',
       lot: 'LOT',
@@ -209,6 +209,7 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
       PUTAWAY: 'Chờ xếp kho',
     },
     groupCount: (label: string, count: number): string => `${label} ${String(count)}`,
+    chipCount: (label: string, count: number): string => `${label} ${String(count)}`,
     filterOn: (label: string): string => `Chỉ xem đơn ${label}`,
     filterOff: (label: string): string => `Bỏ điều kiện ${label}`,
     code: {

@@ -11,16 +11,24 @@ export const erpEmployee = {
     list: '사원 목록',
   },
   fields: {
-    q: '사번·성명',
+    q: '사원 검색',
+    qPlaceholder: '사번 또는 이름을 입력하세요',
+    plant: '공장 선택',
+    department: '부서 선택',
     includeInactive: '퇴사자 포함',
+  },
+  filters: {
+    allPlants: '전체 공장',
+    allDepartments: '전체 부서',
   },
   table: {
     workerNo: '사번',
-    workerName: '성명',
+    workerName: '이름',
+    businessUnitId: '사업장',
     plantId: '공장',
     departmentId: '부서',
     statusCode: 'ERP 상태',
-    isActive: '재직',
+    isActive: '재직 상태',
   },
   values: {
     empty: '—',
@@ -28,15 +36,7 @@ export const erpEmployee = {
     inactive: '퇴사',
   },
   actions: {
-    prevPage: '이전',
-    nextPage: '다음',
     goFirstPage: '첫 쪽으로',
-  },
-  pageNav: {
-    label: '쪽 이동',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
-    totalOnly: (total: number): string => `전체 ${String(total)}건`,
   },
   loading: {
     list: '사원 목록을 불러오는 중',

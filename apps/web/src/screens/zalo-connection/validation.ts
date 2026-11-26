@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
-import type { Connection, ConnectionFormValues, ConnectionReplace } from './types';
+import type { Connection, ConnectionFormValues, ConnectionReplace, SaveSection } from './types';
 
 const t = messages.zaloConnection.errors;
 
@@ -76,4 +76,62 @@ export const sameValues = (left: ConnectionFormValues, right: ConnectionFormValu
   left.paramMaxLength === right.paramMaxLength &&
   Object.keys({ ...left.templates, ...right.templates }).every(
     (code) => (left.templates[code] ?? '') === (right.templates[code] ?? ''),
+  );
+
+/**
+ * `base` 위에 `section` 의 칸만 `draft` 값으로 얹는다. 저장 본문(마지막 저장 값 + 이 단위의 고친 값),
+ * 단위별 [변경 취소](고친 값 + 이 단위만 저장 값), 단위별 고침 여부에 함께 쓴다(#358).
+ */
+export const withSection = (
+  base: ConnectionFormValues,
+  draft: ConnectionFormValues,
+  section: SaveSection,
+): ConnectionFormValues => {
+  switch (section.kind) {
+    case 'connection':
+      return {
+        ...base,
+        appId: draft.appId,
+        secretKey: draft.secretKey,
+        refreshToken: draft.refreshToken,
+        /* 변수 값 길이 제한도 Zalo 발송 설정 상자 안 — 같이 저장 · 되돌린다(사용자 지시 2026-11-25). */
+        paramMaxLength: draft.paramMaxLength,
+      };
+    case 'event':
+      return {
+        ...base,
+        templates: { ...base.templates, [section.code]: draft.templates[section.code] ?? '' },
+      };
+    case 'handover':
+      return base;
+  }
+};
+
+const keepEdited = <V>(draft: V, before: V, after: V): V => (draft === before ? after : draft);
+
+/**
+ * 한 단위를 저장한 뒤 — 저장한 단위는 새 저장 값으로, 다른 단위는 고친 칸만 그대로 두고 고치지 않은 칸은
+ * 새 저장 값으로 바꾼다(고친 표시가 남고, 다음 저장은 새 값 · 새 ETag 위에 얹힌다).
+ */
+export const rebaseValues = (
+  draft: ConnectionFormValues,
+  before: ConnectionFormValues,
+  after: ConnectionFormValues,
+  saved: SaveSection,
+): ConnectionFormValues =>
+  withSection(
+    {
+      appId: keepEdited(draft.appId, before.appId, after.appId),
+      secretKey: keepEdited(draft.secretKey, before.secretKey, after.secretKey),
+      refreshToken: keepEdited(draft.refreshToken, before.refreshToken, after.refreshToken),
+      paramMaxLength: keepEdited(draft.paramMaxLength, before.paramMaxLength, after.paramMaxLength),
+      templates: Object.fromEntries(
+        Object.entries(after.templates).map(([code, value]) => [
+          code,
+          keepEdited(draft.templates[code] ?? '', before.templates[code] ?? '', value),
+        ]),
+      ),
+    },
+    after,
+    saved,
   );

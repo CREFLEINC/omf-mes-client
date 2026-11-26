@@ -1,0 +1,12 @@
+/*
+ * 단말 관리 화면 전용 모양.
+ */
+
+/*
+ * 「단말 정보」 요약 상자 — 칸이 상자 폭을 나눠 채운다(넓은 화면에서 왼쪽에 몰리지 않게 · 사용자 지시 2026-11-25).
+ * 좁으면 다음 줄로 넘기고, 넘어간 줄의 칸도 그 줄 폭을 나눠 채운다. 줄 첫 칸의 세로선은 공용 규칙대로 상자 밖으로 숨는다.
+ * ERP 송신 · ERP 조회 상세 상자(`erp-outbound-facts` · `erp-data-detail-fill`)와 같은 처리다.
+ */
+.parts-iqc-facts.iqc-inbound-facts.terminal-map-info > .parts-iqc-fact {
+  flex: 1 1 auto;
+}

@@ -25,6 +25,8 @@ export interface SelectFieldProps {
    * 조회 조건 칸은 잠그지 않는다 — 잠그면 지금 걸린 조건을 해제할 방법이 사라진다.
    */
   disabled?: boolean;
+  /** 필수 칸 — 라벨 옆 빨간 *. 검증은 부르는 쪽이 한다. */
+  required?: boolean;
 }
 
 /** 그룹 안까지 훑는다 — 빈 값 선택지는 그룹 안에 들어 있을 수도 있다. */
@@ -60,6 +62,7 @@ export const SelectField = ({
   placeholder,
   wide = false,
   disabled = false,
+  required = false,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
@@ -76,7 +79,7 @@ export const SelectField = ({
 
   return (
     <div className={wide ? 'field-cell wide-select' : 'field-cell'}>
-      <FieldLabel htmlFor={id} label={label} />
+      <FieldLabel htmlFor={id} label={label} required={required} />
       <Select
         id={id}
         options={options}
@@ -85,6 +88,7 @@ export const SelectField = ({
         placeholder={placeholder}
         disabled={disabled}
         invalid={error !== undefined}
+        aria-required={required || undefined}
         aria-describedby={describedBy === '' ? undefined : describedBy}
       />
       {note !== undefined && (

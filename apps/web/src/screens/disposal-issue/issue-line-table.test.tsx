@@ -26,7 +26,9 @@ import type {
 
 const t = messages.disposalIssue;
 
-const ITEM_LABEL = 'SAMPLE-ITEM-01 · 합성 자재 가';
+/* 품목은 품목코드 · 품목명 두 열로 나눠 보인다(사용자 지시 2026-11-24). */
+const ITEM_CODE = 'SAMPLE-ITEM-01';
+const ITEM_NAME = '합성 자재 가';
 const LOT_LABEL = 'SAMPLE-LOT-0001';
 const HELD_LOT_LABEL = 'SAMPLE-LOT-0003';
 const LOCATION_LABEL = 'SAMPLE-LOC-01 · 합성 적치 가';
@@ -133,15 +135,16 @@ describe('buildIssueLineColumns — 열 폭 예산', () => {
       0,
     );
 
-    expect(fixed).toBe(536);
-    expect(ISSUE_LINE_TABLE_MIN_WIDTH_PX - fixed).toBe(392);
+    expect(fixed).toBe(656);
+    expect(ISSUE_LINE_TABLE_MIN_WIDTH_PX - fixed).toBe(272);
     expect(ISSUE_LINE_TABLE_MIN_WIDTH_PX - fixed).toBeGreaterThanOrEqual(200);
   });
 
   /* 줄번호·단위 열을 두지 않았다 — 열을 늘리는 것보다 줄이는 것이 먼저다. */
-  it('열이 다섯이다', () => {
+  it('열이 여섯이다', () => {
     expect(columns.map((column) => column.key)).toEqual([
       'item',
+      'itemName',
       'lot',
       'location',
       'issueQty',
@@ -154,7 +157,8 @@ describe('IssueLineTable — 행 표기', () => {
   it('품목·LOT·위치를 이름으로 푼다', () => {
     renderTable();
 
-    expect(screen.getByText(ITEM_LABEL)).toBeInTheDocument();
+    expect(screen.getByText(ITEM_CODE)).toBeInTheDocument();
+    expect(screen.getByText(ITEM_NAME)).toBeInTheDocument();
     expect(screen.getByText(LOT_LABEL)).toBeInTheDocument();
     expect(screen.getAllByText(LOCATION_LABEL).length).toBeGreaterThan(0);
   });
@@ -170,7 +174,7 @@ describe('IssueLineTable — 행 표기', () => {
   it('내부 번호를 어느 칸에도 내지 않는다', () => {
     const { container } = renderTable();
 
-    expect(screen.getByText(ITEM_LABEL)).toBeInTheDocument();
+    expect(screen.getByText(ITEM_NAME)).toBeInTheDocument();
 
     for (const id of INTERNAL_IDS) {
       expect(container.textContent ?? '').not.toContain(id);

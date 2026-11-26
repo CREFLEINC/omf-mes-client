@@ -320,18 +320,13 @@ export const PqcWebResultDrawer = ({
     uomCode === null ? String(target.targetQty) : `${String(target.targetQty)} ${uomCode}`;
 
   const facts: { key: string; label: string; value: ReactNode }[] = [
+    /* 품목은 품목코드 · 품목명 두 칸(품목 표기 분리 · #358). */
     {
-      key: 'item',
-      label: t.summary.item,
-      value: (
-        <span className="parts-iqc-fact-key">
-          {itemName ?? itemCode ?? empty}
-          {itemName !== undefined && itemCode !== undefined && (
-            <span className="parts-iqc-fact-sub">{itemCode}</span>
-          )}
-        </span>
-      ),
+      key: 'itemCode',
+      label: t.summary.itemCode,
+      value: <span className="parts-iqc-fact-key">{itemCode ?? empty}</span>,
     },
+    { key: 'itemName', label: t.summary.itemName, value: itemName ?? empty },
     {
       key: 'plan',
       label: tIqc.target.plan,

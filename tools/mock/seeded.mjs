@@ -193,6 +193,338 @@ const on = (method, pattern, handle) => {
   routes.push({ method, matcher: new RegExp(`^${source}$`), keys, handle });
 };
 
+/* ── ERP 연동 현황·이력(W-06-10 · omf-all-around#358) ───────────────────────────── */
+
+/*
+ * 연동 이력 — Prism 예시는 「줄 1개 · 전체 137건」 고정이라 쪽 넘김 · 조건 · 건수가 맞는지 볼 수 없었다(#358).
+ * 오늘부터 14일 전까지 송신 · 수신 건을 고르게 깔고, 화면이 거는 조건(기간 · 상태 · 연동 항목 · 방향 · 재시도 횟수)을
+ * 그대로 건다. 재처리는 「대기」로 되돌리고 재시도 횟수를 올린다. 워커가 잡고 있는 건(lockedBy)은 409 workerLease.
+ */
+const INTEGRATION_INTERFACES = [
+  ['IF-GR-SEND', 'OUTBOUND', 'GR'],
+  ['IF-WO-CLOSE-SEND', 'OUTBOUND', 'WO'],
+  ['IF-SHIPMENT-PGI-SEND', 'OUTBOUND', 'PGI'],
+  ['IF-ERP-ITEM-RECV', 'INBOUND', 'ITEM'],
+  ['IF-ERP-PO-RECV', 'INBOUND', 'PO'],
+  ['IF-ERP-SO-RECV', 'INBOUND', 'SO'],
+  ['IF-ERP-BP-RECV', 'INBOUND', 'BP'],
+  ['IF-ERP-PRODORD-RECV', 'INBOUND', 'PRODORD'],
+];
+const INTEGRATION_ERRORS = [
+  '연동 대상 시스템이 30초 동안 응답하지 않았습니다.',
+  'ERP 품목 코드 미등록',
+  '필수 항목 누락: 창고 코드',
+  'ERP 전표 마감 기간',
+];
+
+const integrationMessages = (() => {
+  const rows = [];
+  const now = Date.now();
+  const hour = 60 * 60 * 1000;
+  for (let index = 0; index < 96; index += 1) {
+    const [interfaceCode, directionCode, prefix] =
+      INTEGRATION_INTERFACES[index % INTEGRATION_INTERFACES.length];
+    const createdMs = now - (index * 3 + 1) * hour - (index % 7) * 11 * 60 * 1000;
+    const created = new Date(createdMs);
+    const ymd = created.toISOString().slice(0, 10).replaceAll('-', '');
+    const docNo = `${prefix}-${ymd}-${String(1000 + index).slice(1)}`;
+    /* 대략 완료 70% · 실패 15% · 대기 10% · 처리 중 5%. */
+    const roll = index % 20;
+    const statusCode =
+      roll < 14 ? 'DONE' : roll < 17 ? 'FAILED' : roll < 19 ? 'PENDING' : 'PROCESSING';
+    const iso = (ms) => new Date(ms).toISOString();
+    const retryCount =
+      statusCode === 'FAILED' ? 1 + (index % 4) : statusCode === 'DONE' && index % 9 === 0 ? 1 : 0;
+    rows.push({
+      integrationMessageId: 70001 + index,
+      messageKey: `${interfaceCode}:${docNo}`,
+      interfaceCode,
+      directionCode,
+      targetTypeCode: prefix,
+      targetId: 5000 + index,
+      statusCode,
+      retryCount,
+      lastErrorMessage:
+        statusCode === 'FAILED' ? INTEGRATION_ERRORS[index % INTEGRATION_ERRORS.length] : null,
+      createdAt: iso(createdMs),
+      availableAt:
+        statusCode === 'FAILED' && index % 2 === 0
+          ? iso(now + ((index % 5) + 1) * 10 * 60 * 1000)
+          : iso(createdMs),
+      sentAt: statusCode === 'PENDING' ? null : iso(createdMs + 60 * 1000),
+      completedAt: statusCode === 'DONE' ? iso(createdMs + 2 * 60 * 1000) : null,
+      lockedAt: statusCode === 'PROCESSING' ? iso(now - 5 * 60 * 1000) : null,
+      lockedBy: statusCode === 'PROCESSING' ? 'sync-worker-01' : null,
+    });
+  }
+
+  return rows;
+})();
+
+const integrationMatches = (row, query) => {
+  const from = query.get('createdFrom');
+  const to = query.get('createdTo');
+  const at = Date.parse(row.createdAt);
+  if (from !== null && at < Date.parse(from)) return false;
+  if (to !== null && at > Date.parse(to)) return false;
+  for (const key of ['statusCode', 'interfaceCode', 'directionCode', 'targetTypeCode']) {
+    const value = query.get(key);
+    if (value !== null && value !== '' && row[key] !== value) return false;
+  }
+  const retryMin = query.get('retryCountMin');
+  if (retryMin !== null && retryMin !== '' && row.retryCount < Number(retryMin)) return false;
+
+  return true;
+};
+
+on('GET', '/integration/messages', (_params, query) => {
+  if (query.get('createdFrom') === null || query.get('createdTo') === null) {
+    return fieldError('createdFrom', 'REQUIRED', '조회 기간을 정하세요.');
+  }
+  const rows = integrationMessages
+    .filter((row) => integrationMatches(row, query))
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+
+  return page(rows, query);
+});
+
+on('GET', '/integration/messages/{integrationMessageId}', (params) => {
+  const row = integrationMessages.find(
+    (entry) => entry.integrationMessageId === Number(params.integrationMessageId),
+  );
+  if (row === undefined)
+    return { status: 404, created: { message: '연동 이력을 찾을 수 없습니다.' } };
+
+  /* 전문(payload)은 화면이 그리지 않는다 — 합성값만 싣는다. */
+  return { ...row, payload: { sample: true } };
+});
+
+/** 한 건 재처리 — 성공이면 그 행, 거절이면 `{ status, created }`. */
+const retryIntegration = (id) => {
+  const row = integrationMessages.find((entry) => entry.integrationMessageId === id);
+  if (row === undefined)
+    return { status: 404, created: { message: '연동 이력을 찾을 수 없습니다.' } };
+  if (row.lockedBy !== null) {
+    return {
+      status: 409,
+      created: {
+        conflictCause: 'workerLease',
+        lockedAt: row.lockedAt,
+        message: '처리 중인 건입니다.',
+      },
+    };
+  }
+  if (row.statusCode === 'DONE') {
+    return {
+      status: 400,
+      created: {
+        errors: [
+          { scope: 'screen', code: 'NOT_RETRYABLE', message: '완료된 건은 다시 보낼 수 없습니다.' },
+        ],
+      },
+    };
+  }
+  row.statusCode = 'PENDING';
+  row.retryCount += 1;
+  row.availableAt = new Date().toISOString();
+
+  return row;
+};
+
+on('POST', '/integration/messages/{integrationMessageId}:retry', (params) =>
+  retryIntegration(Number(params.integrationMessageId)),
+);
+
+on('POST', '/integration/messages:retry-batch', (_params, _query, body) => {
+  const ids = Array.isArray(body?.integrationMessageIds) ? body.integrationMessageIds : [];
+  const failed = [];
+  let succeeded = 0;
+  ids.forEach((id, index) => {
+    const result = retryIntegration(Number(id));
+    if (result !== null && typeof result === 'object' && 'status' in result) {
+      failed.push({
+        index,
+        key: String(id),
+        errors: result.created.errors ?? [
+          { scope: 'screen', code: 'CONFLICT', message: result.created.message },
+        ],
+      });
+    } else {
+      succeeded += 1;
+    }
+  });
+
+  return { succeeded, failed };
+});
+
+/*
+ * ERP 수신 — 받는 표 여덟(기준정보 다섯 · 전표 셋 · #358). Prism 예시는 「수주」 한 줄뿐이라 목록 · 상태 · 쪽 넘김을
+ * 볼 수 없었다. 「지금 읽기」를 누르면 요청 시각이 걸리고, 4초 뒤 다음 조회 때 다 읽은 것으로 접는다.
+ */
+const erpSyncTables = (() => {
+  const now = Date.now();
+  const at = (hoursAgo) => new Date(now - hoursAgo * 3600_000).toISOString();
+  const table = (interfaceCode, name, laneCode, extra = {}) => ({
+    interfaceCode,
+    name,
+    laneCode,
+    laneName: laneCode === 'MASTER' ? '기준정보' : '전표',
+    running: false,
+    requestedAt: null,
+    lastStartedAt: at(1.02),
+    lastFinishedAt: at(1),
+    lastStatusCode: 'SUCCEEDED',
+    lastReadCount: 24,
+    lastAppliedCount: 24,
+    lastFailedCount: 0,
+    lastHeldCount: 0,
+    lastErrorMessage: null,
+    nextRunAt: at(-1),
+    ...extra,
+  });
+  return [
+    table('IF-ERP-ITEM-RECV', '품목', 'MASTER', {
+      lastReadCount: 120,
+      lastAppliedCount: 118,
+      lastHeldCount: 2,
+    }),
+    table('IF-ERP-BP-RECV', '거래처', 'MASTER', { lastReadCount: 36, lastAppliedCount: 36 }),
+    table('IF-ERP-BOM-RECV', 'BOM', 'MASTER', {
+      lastStatusCode: 'FAILED',
+      lastReadCount: 0,
+      lastAppliedCount: 0,
+      lastErrorMessage: 'ERP 응답 시간 초과(timeout 30s)',
+    }),
+    table('IF-ERP-CODE-RECV', '공통코드', 'MASTER', { lastReadCount: 8, lastAppliedCount: 8 }),
+    table('IF-ERP-EMP-RECV', '사원', 'MASTER', {
+      lastStartedAt: null,
+      lastFinishedAt: null,
+      lastStatusCode: null,
+      lastReadCount: null,
+      lastAppliedCount: null,
+      lastFailedCount: null,
+      lastHeldCount: null,
+    }),
+    table('IF-ERP-PO-RECV', '구매발주', 'ORDER', {
+      lastReadCount: 52,
+      lastAppliedCount: 49,
+      lastFailedCount: 3,
+    }),
+    table('IF-ERP-SO-RECV', '수주', 'ORDER', { lastReadCount: 41, lastAppliedCount: 41 }),
+    table('IF-ERP-WO-RECV', 'ERP W/O', 'ORDER', { lastReadCount: 17, lastAppliedCount: 17 }),
+  ];
+})();
+
+on('GET', '/integration/erp-sync/tables', () => {
+  const now = Date.now();
+  for (const row of erpSyncTables) {
+    if (row.requestedAt !== null && now - new Date(row.requestedAt).getTime() > 4000) {
+      row.lastStartedAt = row.requestedAt;
+      row.lastFinishedAt = new Date(now).toISOString();
+      row.requestedAt = null;
+      row.lastStatusCode = 'SUCCEEDED';
+      row.lastReadCount = row.lastReadCount ?? 10;
+      row.lastAppliedCount = row.lastReadCount;
+      row.lastFailedCount = 0;
+      row.lastHeldCount = 0;
+      row.lastErrorMessage = null;
+    }
+  }
+  return { enabled: true, items: erpSyncTables };
+});
+
+on('POST', '/integration/erp-sync/tables/{interfaceCode}:run', (params) => {
+  const row = erpSyncTables.find((entry) => entry.interfaceCode === params.interfaceCode);
+  if (row === undefined)
+    return { status: 404, created: { message: '받는 표를 찾을 수 없습니다.' } };
+  row.requestedAt = row.requestedAt ?? new Date().toISOString();
+  return {
+    status: 202,
+    created: { interfaceCode: row.interfaceCode, requestedAt: row.requestedAt },
+  };
+});
+
+/*
+ * ERP 송신 — 송신 항목 다섯(생산 실적 · 입고 · 출하 · 반품 · 실사 조정 · #358). Prism 예시는 「입고」 한 줄뿐이었다.
+ * 짝인 송신 인터페이스가 있는 셋은 연동 이력 목의 건수를 그대로 센다. 송신 대기 건이 몇 개 안 돼 항목마다 6건씩 보탠다.
+ */
+const OUTBOUND_ITEM_SETTINGS = [
+  [
+    'PRODUCTION_RESULT',
+    '생산 실적',
+    'IF-WO-CLOSE-SEND',
+    true,
+    true,
+    '작업지시 마감 직후 건별 송신',
+  ],
+  ['GOODS_RECEIPT', '입고', 'IF-GR-SEND', true, false, '수입검사 합격 직후 건별 송신'],
+  ['SHIPMENT_PGI', '출하', 'IF-SHIPMENT-PGI-SEND', true, false, '출하 처리 완료 직후 건별 송신'],
+  ['RETURN', '반품', null, false, false, null],
+  ['STOCK_ADJUSTMENT', '실사 조정', null, false, false, null],
+];
+
+(() => {
+  const now = Date.now();
+  const prefixOf = { 'IF-WO-CLOSE-SEND': 'WO', 'IF-GR-SEND': 'GR', 'IF-SHIPMENT-PGI-SEND': 'PGI' };
+  let id = 70501;
+  for (const [, , interfaceCode] of OUTBOUND_ITEM_SETTINGS) {
+    if (interfaceCode === null) continue;
+    for (let index = 0; index < 6; index += 1) {
+      const createdMs = now - (index * 47 + 5) * 60 * 1000;
+      const ymd = new Date(createdMs).toISOString().slice(0, 10).replaceAll('-', '');
+      const docNo = `${prefixOf[interfaceCode]}-${ymd}-${String(500 + index)}`;
+      integrationMessages.push({
+        integrationMessageId: id,
+        messageKey: `${interfaceCode}:${docNo}`,
+        interfaceCode,
+        directionCode: 'OUTBOUND',
+        targetTypeCode: prefixOf[interfaceCode],
+        targetId: 9000 + id,
+        statusCode: 'PENDING',
+        retryCount: index % 3 === 0 ? 1 : 0,
+        lastErrorMessage:
+          index % 3 === 0 ? '연동 대상 시스템이 30초 동안 응답하지 않았습니다.' : null,
+        createdAt: new Date(createdMs).toISOString(),
+        availableAt: new Date(now + (index + 1) * 5 * 60 * 1000).toISOString(),
+        sentAt: null,
+        completedAt: null,
+        lockedAt: null,
+        lockedBy: null,
+      });
+      id += 1;
+    }
+  }
+})();
+
+on('GET', '/integration/outbound-item-settings', () => {
+  const countOf = (interfaceCode, statusCode) =>
+    interfaceCode === null
+      ? 0
+      : integrationMessages.filter(
+          (row) => row.interfaceCode === interfaceCode && row.statusCode === statusCode,
+        ).length;
+  return {
+    sendEnabled: true,
+    items: OUTBOUND_ITEM_SETTINGS.map(
+      (
+        [outboundItemCode, outboundItemName, interfaceCode, enabled, locked, sendTimingNote],
+        index,
+      ) => ({
+        outboundItemCode,
+        outboundItemName,
+        enabled,
+        locked,
+        lockReason: locked ? '생산 실적 송신은 필수입니다' : null,
+        sendTimingNote,
+        interfaceDefinitionId: interfaceCode === null ? null : 1001 + index,
+        interfaceCode,
+        pendingMessageCount: countOf(interfaceCode, 'PENDING'),
+        failedMessageCount: countOf(interfaceCode, 'FAILED'),
+      }),
+    ),
+  };
+});
+
 /* ── 사용자·역할·권한(W-CO-02) ───────────────────────────── */
 
 /**
@@ -332,6 +664,15 @@ const APP_PERMISSIONS = [
   { code: 'W-06-11', name: '마스터 변경관리 (신규 Rev 발행)', groupCode: '06' },
   { code: 'W-06-12', name: 'MES', groupCode: '06' },
   { code: 'W-06-15', name: '결재선 정의', groupCode: '06' },
+  /* ERP 데이터 탭(W-06-16~23 · 「ERP 연동 현황·이력」 묶음) — 목 권한 목록에 빠져 탭이 안 보였다(#358). */
+  { code: 'W-06-16', name: '사원정보 조회(ERP)', groupCode: '06' },
+  { code: 'W-06-17', name: '품목정보 조회(ERP)', groupCode: '06' },
+  { code: 'W-06-18', name: 'BOM 조회(ERP)', groupCode: '06' },
+  { code: 'W-06-19', name: '거래처 조회(ERP)', groupCode: '06' },
+  { code: 'W-06-20', name: '공통코드 조회(ERP)', groupCode: '06' },
+  { code: 'W-06-21', name: '구매발주 조회(ERP)', groupCode: '06' },
+  { code: 'W-06-22', name: '수주정보 조회(ERP)', groupCode: '06' },
+  { code: 'W-06-23', name: 'ERP W/O 조회(ERP)', groupCode: '06' },
   { code: 'M-CO-01', name: '기기 등록·사번 인증', groupCode: 'CO' },
   { code: 'P-CO-01', name: '사번 경량 인증', groupCode: 'CO' },
   { code: 'W-CO-01', name: '계정 로그인', groupCode: 'CO' },
@@ -344,6 +685,34 @@ const APP_PERMISSIONS = [
   { code: 'W-CO-09', name: '결재함(승인 요청 목록)', groupCode: 'CO' },
   { code: 'W-CO-10', name: '비밀번호 변경', groupCode: 'CO' },
   { code: 'W-CO-11', name: '알람 수신자 설정', groupCode: 'CO' },
+  /* 화면 목록(web-screen-catalog)에 있는데 빠져 있던 관리웹 화면 — 목에서도 메뉴가 서게 넣는다(#358). */
+  { code: 'W-01-14', name: '자재 관리 LOT 발행', groupCode: '01' },
+  { code: 'W-01-16', name: '입하/입고 작업 기록', groupCode: '01' },
+  { code: 'W-02-11', name: '출고 요청 현황', groupCode: '02' },
+  { code: 'W-02-12', name: '생산 창고 보충', groupCode: '02' },
+  { code: 'W-02-13', name: '자재 기준 생산 추적', groupCode: '02' },
+  { code: 'W-02-14', name: '제품 기준 역추적', groupCode: '02' },
+  { code: 'W-03-13', name: '제품 검사표 조회', groupCode: '03' },
+  { code: 'W-06-24', name: '검사표 기준', groupCode: '06' },
+  { code: 'W-06-25', name: '공급사·품목 기본 정보', groupCode: '06' },
+  { code: 'W-06-26', name: '교대 관리', groupCode: '06' },
+  { code: 'W-CO-12', name: '알림 연결 설정', groupCode: 'CO' },
+  { code: 'W-CO-13', name: '알림 발송 이력', groupCode: 'CO' },
+  { code: 'W-CO-14', name: '인계작업 알림 설정', groupCode: 'CO' },
+  { code: 'W-CO-15', name: '공장 근무일 설정', groupCode: 'CO' },
+];
+
+/*
+ * 목에서는 시스템 운영자(역할 4)에게 모든 화면 권한을 준다 — 로컬 확인 때 메뉴가 빠지지 않게(사용자 지시 2026-11-25 · #358).
+ * 다른 역할의 부여분은 씨앗 그대로 둔다.
+ */
+state.rolePermissions = [
+  ...state.rolePermissions.filter((row) => row.roleId !== 4),
+  ...APP_PERMISSIONS.map((permission, at) => ({
+    rolePermissionId: 5001 + at,
+    roleId: 4,
+    permissionCode: permission.code,
+  })),
 ];
 
 /** 후보에 있는가를 O(1)로 본다 — 격자는 체크박스 117개를 한 번에 보낸다. */
@@ -365,6 +734,108 @@ const grantsOf = (roleId) => state.rolePermissions.filter((row) => row.roleId ==
  *    쪽이 나뉘면, 둘째 쪽을 못 받았을 때 격자에서 열이 조용히 사라진다.
  */
 on('GET', '/app/permissions', () => ({ items: APP_PERMISSIONS }));
+
+/*
+ * W-06-26 교대 관리 — 조회 · 추가 · 수정(#358 목 보강). 저장 값이 다시 읽히도록 상태를 바꾼다.
+ * 공장마다 주간 · 야간 두 줄로 시작한다. 수정은 상세의 ETag 로 잠근다(어긋나면 409).
+ */
+const shifts = [
+  { shiftId: 1, plantId: 1001, shiftCode: 'DAY', shiftName: '주간', startTime: '08:00', endTime: '20:00', crossesMidnight: false, isActive: true },
+  { shiftId: 2, plantId: 1001, shiftCode: 'NIGHT', shiftName: '야간', startTime: '20:00', endTime: '08:00', crossesMidnight: true, isActive: true },
+];
+const shiftVersions = new Map(shifts.map((row) => [row.shiftId, 1]));
+const crossesMidnight = (start, end) => String(end) <= String(start);
+const shiftDetail = (shift) => ({
+  status: 200,
+  created: {
+    shift,
+    editability: { codeEditable: true, reason: 'EDITABLE', referenceCount: 0 },
+  },
+  headers: { ETag: resourceEtag('shift', shift.shiftId, shiftVersions) },
+});
+const shiftInputError = (body) => {
+  for (const field of ['shiftCode', 'shiftName', 'startTime', 'endTime']) {
+    if (typeof body?.[field] !== 'string' || body[field].trim() === '') {
+      return fieldError(field, 'REQUIRED', '필수 입력 항목입니다.');
+    }
+  }
+  return null;
+};
+
+on('GET', '/mdm/shifts', (_params, query) => {
+  const plantId = query.get('plantId');
+  const includeInactive = query.get('includeInactive') === 'true';
+  return page(
+    shifts.filter(
+      (row) =>
+        (plantId === null || row.plantId === Number(plantId)) && (includeInactive || row.isActive),
+    ),
+    query,
+  );
+});
+
+on('GET', '/mdm/shifts/{shiftId}', (params) => {
+  const shift = shifts.find((row) => row.shiftId === Number(params.shiftId));
+  return shift === undefined ? null : shiftDetail(shift);
+});
+
+on('POST', '/mdm/shifts', (_params, _query, body) => {
+  const invalid = shiftInputError(body);
+  if (invalid !== null) return invalid;
+  if (shifts.some((row) => row.plantId === Number(body.plantId) && row.shiftCode === body.shiftCode.trim())) {
+    return fieldError('shiftCode', 'DUPLICATE', '이미 있는 교대 코드입니다.');
+  }
+  const shift = {
+    shiftId: Math.max(0, ...shifts.map((row) => row.shiftId)) + 1,
+    plantId: Number(body.plantId),
+    shiftCode: body.shiftCode.trim(),
+    shiftName: body.shiftName.trim(),
+    startTime: body.startTime,
+    endTime: body.endTime,
+    crossesMidnight: crossesMidnight(body.startTime, body.endTime),
+    isActive: true,
+  };
+  shifts.push(shift);
+  shiftVersions.set(shift.shiftId, 1);
+  return { ...shiftDetail(shift), status: 201 };
+});
+
+on('PUT', '/mdm/shifts/{shiftId}', (params, _query, body, headers) => {
+  const shift = shifts.find((row) => row.shiftId === Number(params.shiftId));
+  if (shift === undefined) return null;
+  const ifMatch = headers?.['if-match'] ?? headers?.['If-Match'];
+  if (ifMatch !== undefined && ifMatch !== resourceEtag('shift', shift.shiftId, shiftVersions)) {
+    return conflict();
+  }
+  const invalid = shiftInputError({ shiftCode: shift.shiftCode, ...body });
+  if (invalid !== null) return invalid;
+  Object.assign(shift, {
+    ...(typeof body.shiftCode === 'string' ? { shiftCode: body.shiftCode.trim() } : {}),
+    shiftName: body.shiftName.trim(),
+    startTime: body.startTime,
+    endTime: body.endTime,
+    crossesMidnight: crossesMidnight(body.startTime, body.endTime),
+  });
+  shiftVersions.set(shift.shiftId, (shiftVersions.get(shift.shiftId) ?? 1) + 1);
+  return shiftDetail(shift);
+});
+
+for (const [action, isActive] of [
+  ['deactivate', false],
+  ['activate', true],
+]) {
+  on('POST', `/mdm/shifts/{shiftId}:${action}`, (params, _query, _body, headers) => {
+    const shift = shifts.find((row) => row.shiftId === Number(params.shiftId));
+    if (shift === undefined) return null;
+    const ifMatch = headers?.['if-match'] ?? headers?.['If-Match'];
+    if (ifMatch !== undefined && ifMatch !== '' && ifMatch !== resourceEtag('shift', shift.shiftId, shiftVersions)) {
+      return conflict();
+    }
+    shift.isActive = isActive;
+    shiftVersions.set(shift.shiftId, (shiftVersions.get(shift.shiftId) ?? 1) + 1);
+    return shiftDetail(shift);
+  });
+}
 
 /*
  * ⭐ **`q` 는 부분 일치·대소문자 불문이다**(2026-09-06 게이트 승인). 역할코드와 역할명 두 축을
@@ -628,19 +1099,33 @@ const currentSession = () => ({
 
 on('GET', '/app/sessions/current', () => (signedIn ? currentSession() : unauthenticated()));
 
-on('POST', '/app/sessions', (_params, _query, _body, headers) =>
-  idempotent('login', headers, () => {
+/*
+ * ⚠ **로그인하면 세션 쿠키를 내려 준다**(#358 · 사용자 지적 2026-11-24 「로그인이 안 된다」). 목에 없는 경로는
+ * Prism 으로 넘어가는데 Prism 은 `omf_session` 쿠키가 없으면 401 을 낸다 — 쿠키가 없는 브라우저는 로그인에
+ * 성공해도 첫 화면의 요청(알림 이벤트 등)이 401 이 되어 다시 로그인 화면으로 돌아갔다. 실서버도 로그인 응답에서
+ * 쿠키를 심으므로 같은 흐름이다.
+ */
+const SESSION_COOKIE = 'omf_session=mock; Path=/; HttpOnly; SameSite=Lax';
+const CLEAR_SESSION_COOKIE = 'omf_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0';
+
+on('POST', '/app/sessions', (_params, _query, _body, headers) => {
+  const result = idempotent('login', headers, () => {
     signedIn = true;
     return currentSession();
-  }),
-);
+  });
+  if (result !== null && typeof result === 'object' && 'status' in result) return result;
+  return { status: 200, created: result, headers: { 'Set-Cookie': SESSION_COOKIE } };
+});
 
-on('DELETE', '/app/sessions/current', (_params, _query, _body, headers) =>
-  idempotent('logout', headers, () => {
+on('DELETE', '/app/sessions/current', (_params, _query, _body, headers) => {
+  const result = idempotent('logout', headers, () => {
     signedIn = false;
     return { status: 204, created: undefined };
-  }),
-);
+  });
+  return result?.status === 204
+    ? { ...result, headers: { 'Set-Cookie': CLEAR_SESSION_COOKIE } }
+    : result;
+});
 
 /* ── 기준정보 ─────────────────────────────────────────────── */
 
@@ -651,10 +1136,138 @@ on('DELETE', '/app/sessions/current', (_params, _query, _body, headers) =>
  */
 on('GET', '/mdm/workers', (_p, query) =>
   page(
-    keep(state.workers, [byText(query, 'workerNo', 'workerNo'), contains(query, 'q', 'workerNo')]),
+    keep(state.workers, [
+      byText(query, 'workerNo', 'workerNo'),
+      contains(query, 'q', 'workerNo'),
+      byNum(query, 'plantId', 'plantId'),
+      byNum(query, 'departmentId', 'departmentId'),
+    ]),
     query,
   ),
 );
+
+/* 사원 탭 부서 거르기 확인용(#358) — 씨앗 작업자가 모두 부서 1001 이라 거르기가 드러나지 않았다. */
+for (const [workerId, departmentId] of [
+  [1003, 1003],
+  [1004, 1002],
+]) {
+  const row = state.workers.find((worker) => worker.workerId === workerId);
+  if (row !== undefined) row.departmentId = departmentId;
+}
+
+/*
+ * ERP BOM 확인용 자료(#358) — 계약 예시 BOM 은 없는 품목(1001)을 가리켜 구성품이 「알 수 없음」으로만 보였다.
+ * 완제품 둘 · 반제품 둘과 그 BOM 을 세우고, 품목 목록이 유형(itemTypeCode) · BOM 있는 품목만(hasBom)을 걸게 한다.
+ * 먼저 등록한 처리가 이기므로 아래 기존 `/mdm/items` 보다 앞에 둔다.
+ */
+{
+  const base = state.items[0];
+  const extra = [
+    [2101, 'FG-2001', '스마트 도어락 본체', 'FINISHED'],
+    [2102, 'FG-2002', '차량용 충전기', 'FINISHED'],
+    [2103, 'SF-3001', '메인 PCB 조립품', 'SEMI_FINISHED'],
+    [2104, 'SF-3002', '하우징 조립품', 'SEMI_FINISHED'],
+    [2105, 'RM-4001', 'PCB 기판', 'MATERIAL'],
+    [2106, 'RM-4002', '커넥터', 'MATERIAL'],
+  ];
+  for (const [itemId, itemCode, itemName, itemTypeCode] of extra) {
+    if (!state.items.some((row) => row.itemId === itemId)) {
+      state.items.push({ ...base, itemId, itemCode, itemName, labelName: itemName, itemTypeCode });
+    }
+  }
+}
+const ERP_BOMS = [
+  {
+    bomId: 5001,
+    parentItemId: 2101,
+    children: [
+      [2103, 1],
+      [2104, 1],
+      [2106, 2],
+    ],
+  },
+  {
+    bomId: 5002,
+    parentItemId: 2102,
+    children: [
+      [2103, 1],
+      [2001, 0.2],
+    ],
+  },
+  {
+    bomId: 5003,
+    parentItemId: 2103,
+    children: [
+      [2105, 1],
+      [2106, 4],
+    ],
+  },
+  {
+    bomId: 5004,
+    parentItemId: 2104,
+    children: [
+      [2001, 0.35],
+      [2002, 1],
+    ],
+  },
+];
+const bomHeader = (bom) => ({
+  bomId: bom.bomId,
+  parentItemId: bom.parentItemId,
+  bomCode: 'STANDARD',
+  bomVersion: 1,
+  statusCode: 'ACTIVE',
+  isDefault: true,
+  effectiveFrom: '2026-01-01',
+  effectiveTo: '2099-12-31',
+  baseQty: 1,
+  baseUomId: 1001,
+});
+on('GET', '/planning/boms', (_p, query) => {
+  const parent = Number(query.get('parentItemId'));
+  return { items: ERP_BOMS.filter((bom) => bom.parentItemId === parent).map(bomHeader) };
+});
+on('GET', '/planning/boms/{bomId}/components', (params) => {
+  const bom = ERP_BOMS.find((each) => each.bomId === Number(params.bomId));
+  return {
+    items: (bom?.children ?? []).map(([componentItemId, requiredQty], index) => ({
+      bomComponentId: bom.bomId * 10 + index,
+      bomId: bom.bomId,
+      componentItemId,
+      routingOperationId: null,
+      actualUseProcessId: null,
+      requiredQty,
+      uomId: 1001,
+      scrapRate: index === 0 ? 0 : 0.015,
+      isMandatory: true,
+      lotTraceRequired: false,
+      backflushAllowed: false,
+      sequenceNo: index + 1,
+      erpChildItemSeq: (index + 1) * 10,
+    })),
+  };
+});
+on('GET', '/mdm/items', (_p, query) => {
+  const types = query
+    .getAll('itemTypeCode')
+    .flatMap((value) => value.split(','))
+    .filter(Boolean);
+  const hasBom = bool(query, 'hasBom');
+  const needle = query.get('q')?.trim().toUpperCase();
+  return page(
+    keep(state.items, [
+      (row) =>
+        needle === undefined ||
+        needle === '' ||
+        row.itemCode.toUpperCase().includes(needle) ||
+        row.itemName.toUpperCase().includes(needle),
+      (row) => bool(query, 'includeInactive') === true || row.isActive,
+      (row) => types.length === 0 || types.includes(row.itemTypeCode),
+      (row) => hasBom !== true || ERP_BOMS.some((bom) => bom.parentItemId === row.itemId),
+    ]),
+    query,
+  );
+});
 
 on('GET', '/mdm/items', (_p, query) =>
   page(
@@ -681,6 +1294,92 @@ on('GET', '/mdm/items/{itemId}', (params) => {
 on('GET', '/mdm/uoms', (_p, query) => page(state.uoms, query));
 on('GET', '/mdm/plants', (_p, query) => page(state.plants, query));
 on('GET', '/mdm/business-units', (_p, query) => page(state.businessUnits, query));
+
+/*
+ * 결재선 정의(W-06-15) — 목이 이 오퍼레이션을 몰라 계약 예시(1줄인데 「총 137건」)로 응답하던 것을 씨앗 자료로 바꾼다
+ * (사용자 지시 2026-11-25 「결재선 정의 화면 데이터도 이상하다」 · #358). 읽기 세 오퍼레이션만 — 쓰기는 계약 예시 그대로다.
+ * 화면이 다루는 승인 유형 8개(code-options.ts)마다 제조사업부 결재선 하나, 폐기 출고 · 재고조정은 전 사업부 공통도 하나,
+ * 출고 취소 · 출하 취소는 미사용.
+ */
+const APPROVAL_ROUTE_TYPES = [
+  'GOODS_ISSUE_DISPOSAL',
+  'INVENTORY_ADJUSTMENT',
+  'PURCHASE_ORDER',
+  'INBOUND_RECEIPT_CANCEL',
+  'GOODS_RECEIPT_CANCEL',
+  'GOODS_ISSUE_CANCEL',
+  'SHIPMENT_CANCEL',
+  'PRODUCTION_RESULT_CORRECT',
+];
+const APPROVAL_ROUTE_APPROVERS = [
+  { approverUserId: 1002, approverName: '김품질', approverDepartmentId: 1003, approverDepartmentName: '품질팀' },
+  { approverUserId: 1003, approverName: '이구매', approverDepartmentId: 1004, approverDepartmentName: '구매팀' },
+  { approverUserId: 1001, approverName: '홍길동', approverDepartmentId: 1001, approverDepartmentName: '생산1팀' },
+];
+const approvalRoutes = [
+  ...APPROVAL_ROUTE_TYPES.map((approvalTypeCode, index) => ({
+    approvalRouteId: 1001 + index,
+    approvalTypeCode,
+    businessUnitId: 1001,
+    minValue: null,
+    maxValue: null,
+    isActive: !['GOODS_ISSUE_CANCEL', 'SHIPMENT_CANCEL'].includes(approvalTypeCode),
+    stepCount: (index % 3) + 1,
+    inProgressCount: index === 0 ? 3 : 0,
+  })),
+  ...['GOODS_ISSUE_DISPOSAL', 'INVENTORY_ADJUSTMENT'].map((approvalTypeCode, index) => ({
+    approvalRouteId: 1101 + index,
+    approvalTypeCode,
+    businessUnitId: null,
+    minValue: null,
+    maxValue: null,
+    isActive: true,
+    stepCount: 1,
+    inProgressCount: 0,
+  })),
+];
+const approvalRouteOf = (params) =>
+  approvalRoutes.find((row) => row.approvalRouteId === Number(params.approvalRouteId));
+
+on('GET', '/app/approval-routes', (_p, query) => {
+  const type = query.get('approvalTypeCode');
+  const businessUnitId = query.get('businessUnitId');
+  const activeOnly = query.get('activeOnly') !== 'false';
+  const q = (query.get('q') ?? '').trim();
+  return page(
+    approvalRoutes.filter(
+      (row) =>
+        (type === null || row.approvalTypeCode === type) &&
+        (businessUnitId === null || row.businessUnitId === Number(businessUnitId)) &&
+        (!activeOnly || row.isActive) &&
+        (q === '' || row.approvalTypeCode.includes(q.toUpperCase())),
+    ),
+    query,
+  );
+});
+on('GET', '/app/approval-routes/{approvalRouteId}', (params) => {
+  const route = approvalRouteOf(params);
+  if (route === undefined) return null;
+  return {
+    status: 200,
+    created: route,
+    headers: { ETag: `"approval-route-${String(route.approvalRouteId)}-v1"` },
+  };
+});
+on('GET', '/app/approval-routes/{approvalRouteId}/steps', (params) => {
+  const route = approvalRouteOf(params);
+  if (route === undefined) return null;
+  return {
+    items: APPROVAL_ROUTE_APPROVERS.slice(0, route.stepCount).map((approver, index) => ({
+      approvalRouteStepId: route.approvalRouteId * 10 + index,
+      stepNo: index + 1,
+      approverTypeCode: 'USER',
+      approverRoleId: null,
+      approverIsActive: true,
+      ...approver,
+    })),
+  };
+});
 
 on('GET', '/mdm/warehouses', (_p, query) => {
   const q = query.get('q');
@@ -1166,6 +1865,39 @@ const allowedLocationsFor = (warehouseId, itemId) => {
   return humanMade.length === 0 && whole !== undefined ? [allowedView(whole)] : [];
 };
 
+/*
+ * ERP 품목 · 거래처 확인용 원본 칸(#358) — 서버는 품목에 erpSpec · erpItemGroupCode, 거래처에 erpPartnerCode ·
+ * countryCode 를 싣는다. 씨앗에 없어 목록 열이 「—」로만 보였다. 이미 값이 있으면 건드리지 않는다.
+ */
+{
+  const itemErp = {
+    'RM-1001': ['PP 수지 1kg', 'IG-RAW'],
+    'FG-2001': ['DL-500 / 120x70x30', 'IG-FG'],
+    'FG-2002': ['12V 2A USB-C', 'IG-FG'],
+    'SF-3001': ['4층 PCB 80x60', 'IG-SEMI'],
+    'SF-3002': ['ABS 하우징 조립', 'IG-SEMI'],
+    'RM-4001': ['FR-4 1.6t', 'IG-RAW'],
+    'RM-4002': ['2.54mm 10P', 'IG-RAW'],
+  };
+  for (const row of state.items) {
+    const erp = itemErp[row.itemCode];
+    if (erp === undefined) continue;
+    if (row.erpSpec === undefined) row.erpSpec = erp[0];
+    if (row.erpItemGroupCode === undefined) row.erpItemGroupCode = erp[1];
+  }
+  const partnerErp = {
+    'SUP-001': ['V10001', 'KR'],
+    'CUS-002': ['C20002', 'VN'],
+    'CUS-001': ['C20001', 'KR'],
+    'DSP-001': ['D30001', 'KR'],
+  };
+  for (const row of state.partners) {
+    const erp = partnerErp[row.partnerCode];
+    if (erp === undefined) continue;
+    if (row.erpPartnerCode === undefined) row.erpPartnerCode = erp[0];
+    if (row.countryCode === undefined) row.countryCode = erp[1];
+  }
+}
 on('GET', '/mdm/partners', (_p, query) =>
   page(keep(state.partners, [byText(query, 'roleTypeCode', 'roleTypeCode')]), query),
 );
@@ -1261,6 +1993,626 @@ on('GET', '/mdm/equipments/{equipmentId}/inspection-items', (params) => {
   };
 });
 
+/*
+ * ERP 공통코드 여덟 그룹 + 품목 유형 · BOM 상태 이름(#358 확인용). 씨앗에 없어 「ERP 공통코드」 화면이 비고 BOM 유형이
+ * 영문 코드로 보였다. 이름은 ERP 수신본을 흉내 낸 예시다 — 실서버 값은 ERP 가 보낸다.
+ */
+const ERP_CODE_SEEDS = {
+  TRANS_TYPE: [
+    ['I11', '정상 입고'],
+    ['I44', '생산 입고'],
+    ['O11', '정상 출고'],
+    ['O44', '생산 출고'],
+  ],
+  COST_TYPE: [
+    ['C10', '재료비'],
+    ['C20', '노무비'],
+    ['C30', '경비'],
+  ],
+  SL_TYPE: [
+    ['S510', '자재 창고'],
+    ['S520', '제품 창고'],
+    ['S530', '반제품 창고'],
+  ],
+  UNIT: [
+    ['EA', '개'],
+    ['KG', '킬로그램'],
+    ['M', '미터'],
+    ['BOX', '박스'],
+  ],
+  SO_TYPE: [
+    ['ESOA', '일반 수주'],
+    ['ESOB', '수출 수주'],
+  ],
+  ORDER_TYPE: [
+    ['NB', '일반 발주'],
+    ['IM', '수입 발주'],
+  ],
+  SALE_GROUP: [
+    ['S21', '국내 영업'],
+    ['S22', '해외 영업'],
+  ],
+  PUR_GROUP: [
+    ['P10', '원자재 구매'],
+    ['P20', '부자재 구매'],
+  ],
+  ITEM_TYPE: [
+    ['FINISHED', '완제품'],
+    ['SEMI_FINISHED', '반제품'],
+    ['PRODUCT', '제품'],
+    ['MATERIAL', '원자재'],
+  ],
+  MASTER_VERSION_STATUS: [
+    ['DRAFT', '작성 중'],
+    ['ACTIVE', '사용 중'],
+    ['RETIRED', '사용 종료'],
+  ],
+};
+const ERP_GROUP_NAMES = {
+  TRANS_TYPE: '입출고 유형',
+  COST_TYPE: '원가 유형',
+  SL_TYPE: '창고 유형',
+  UNIT: '단위',
+  SO_TYPE: '수주 유형',
+  ORDER_TYPE: '발주 유형',
+  SALE_GROUP: '영업 그룹',
+  PUR_GROUP: '구매 그룹',
+  ITEM_TYPE: '품목 유형',
+  MASTER_VERSION_STATUS: 'BOM 상태',
+};
+for (const [group, values] of Object.entries(ERP_CODE_SEEDS)) {
+  if (state.codeValues[group] === undefined || state.codeValues[group].length === 0) {
+    state.codeValues[group] = values;
+  }
+}
+
+/* 코드 그룹 목록 — 씨앗의 코드값 그룹 전부(종전에는 계약 예시 한 줄뿐이었다). */
+on('GET', '/mdm/code-groups', (_p, query) => {
+  const q = (query.get('q') ?? '').toLowerCase();
+  const groups = Object.keys(state.codeValues)
+    .sort()
+    .map((groupCode, index) => ({
+      codeGroupId: 3000 + index,
+      groupCode,
+      groupName: ERP_GROUP_NAMES[groupCode] ?? groupCode,
+      description: null,
+      /* 공통코드 조회 (ERP) 의 「사용 N건 · 미사용 N건」 라벨을 볼 수 있게 한 그룹은 미사용(#358 · 2026-11-24). */
+      isActive: groupCode !== 'SALE_GROUP',
+    }))
+    .filter(
+      (group) =>
+        q === '' ||
+        group.groupCode.toLowerCase().includes(q) ||
+        group.groupName.toLowerCase().includes(q),
+    );
+  return page(groups, query);
+});
+
+/*
+ * 수주 · ERP W/O 확인용 자료(#358) — 계약 예시는 한 줄(상태 「string」 · 번호 「값」 · 없는 고객사/품목)이라 화면 모양을
+ * 볼 수 없었다. 수주 여섯 · W/O 여섯을 세우고 상태 코드 이름을 넣는다. 조건은 번호 · 고객사/품목 · 기간 · 상태만 건다.
+ */
+for (const [group, values] of Object.entries({
+  SALES_ORDER_STATUS: [
+    ['OPEN', '진행'],
+    ['CLOSED', '완료'],
+    ['CANCELLED', '취소'],
+  ],
+  PRODUCTION_ORDER_STATUS: [
+    ['RELEASED', '지시'],
+    ['IN_PROGRESS', '생산 중'],
+    ['COMPLETED', '완료'],
+  ],
+  LOGISTICS_DOCUMENT_STATUS: [
+    ['OPEN', '진행'],
+    ['CLOSED', '완료'],
+    ['CANCELLED', '취소'],
+  ],
+})) {
+  if ((state.codeValues[group] ?? []).length === 0) state.codeValues[group] = values;
+}
+const inRange = (value, from, to) =>
+  (from === null || from === '' || value >= from) && (to === null || to === '' || value <= to);
+const ERP_SALES_ORDERS = [
+  [7001, 'SO-2026-1102-0001', 4002, '2026-11-02', 'CLOSED', 2101, 50, 50],
+  [7002, 'SO-2026-1105-0002', 4003, '2026-11-05', 'OPEN', 2102, 200, 80],
+  [7003, 'SO-2026-1110-0003', 4002, '2026-11-10', 'OPEN', 2101, 120, 0],
+  [7004, 'SO-2026-1114-0004', 4003, '2026-11-14', 'OPEN', 2003, 300, 120],
+  [7005, 'SO-2026-1118-0005', 4002, '2026-11-18', 'CANCELLED', 2102, 40, 0],
+  [7006, 'SO-2026-1121-0006', 4003, '2026-11-21', 'OPEN', 2101, 80, 0],
+].map(
+  ([
+    salesOrderId,
+    salesOrderNo,
+    customerId,
+    orderDate,
+    statusCode,
+    itemId,
+    orderedQty,
+    shippedQty,
+  ]) => ({
+    salesOrderId,
+    salesOrderNo,
+    erpSalesOrderNo: salesOrderNo.replace('SO-', 'ERP-SO-'),
+    customerId,
+    shipToPartnerId: customerId,
+    orderDate,
+    statusCode,
+    lines: [
+      {
+        salesOrderLineId: salesOrderId * 10 + 1,
+        lineNo: 1,
+        itemId,
+        orderedQty,
+        uomId: 1001,
+        requestedDeliveryDate: orderDate,
+        shippedQty,
+        erpStorageLocationCode: 'S520',
+        cancelledAt: null,
+      },
+    ],
+    versionNo: 1,
+    erpOrderTypeCode: 'ESOA',
+    erpMovementTypeCode: 'O11',
+    erpSalesGroupCode: 'S21',
+  }),
+);
+/* 진행(미완료 · 완료) — 서버 #851 그대로: 취소가 아니고 출하가 덜 된 라인이 있으면 미완료(화면 확인용 · 2026-11-24). */
+const soProgressMatches = (row, progress) => {
+  const done =
+    row.statusCode === 'CANCELLED' ||
+    (row.lines ?? []).every(
+      (each) => each.cancelledAt !== null || each.shippedQty >= each.orderedQty,
+    );
+  return progress === 'OPEN' ? !done : progress === 'COMPLETED' ? done : true;
+};
+on('GET', '/logistics/sales-orders', (_p, query) => {
+  const needle = (query.get('q') ?? '').trim().toUpperCase();
+  const customer = Number(query.get('customerId') ?? 0);
+  const status = query.get('statusCode') ?? '';
+  return page(
+    ERP_SALES_ORDERS.filter(
+      (row) =>
+        soProgressMatches(row, query.get('progress')) &&
+        (needle === '' || row.salesOrderNo.toUpperCase().includes(needle)) &&
+        (customer === 0 || row.customerId === customer) &&
+        (status === '' || row.statusCode === status) &&
+        inRange(row.orderDate, query.get('orderDateFrom'), query.get('orderDateTo')),
+    ),
+    query,
+  );
+});
+on(
+  'GET',
+  '/logistics/sales-orders/{salesOrderId}',
+  (params) =>
+    ERP_SALES_ORDERS.find((row) => row.salesOrderId === Number(params.salesOrderId)) ?? null,
+);
+const WO_BASE = {
+  productionOrderId: 1001,
+  productionOrderNo: '값',
+  erpOrderNo: 'string',
+  parentProductionOrderId: 1001,
+  bomLevel: 1,
+  businessUnitId: 1001,
+  plantId: 1001,
+  itemId: 1001,
+  orderQty: 120,
+  uomId: 1001,
+  dueDate: '2026-08-11',
+  statusCode: 'string',
+  acknowledgedAt: '2026-08-11T09:12:00+09:00',
+  acknowledgedBy: 1001,
+  acknowledgeDecisionCode: 'APPLY',
+  remarks: '값',
+  versionNo: 1,
+  expandedWorkOrderCount: 3,
+  plannedWorkOrderCount: 3,
+  autoPlan: { status: 'DONE', reasons: ['BOM_MISSING'] },
+  worklistState: 'BEFORE_PLAN',
+  worklistReasons: [{ code: 'DRAFT_PLAN_PENDING', workOrderCount: 1 }],
+  masterDataReasons: ['BOM_DEFAULT_REQUIRED'],
+  releasePendingWorkOrderCount: 1,
+  liveWorkOrderCount: 2,
+  confirmedPlanQty: 60,
+  draftPlanQty: 30,
+  remainingQty: 10,
+  planStatusCode: 'UNPLANNED',
+  itemGroupCode: 'ZZ400',
+  itemGroupName: 'Resin',
+  plannedStartDate: '2026-08-11',
+  lastChange: {
+    receivedAt: '2026-08-05T09:12:00+09:00',
+    changedFields: [
+      { field: 'ORDER_QTY', label: '수량', beforeText: '5000', afterText: '4000', beforeQty: 5000 },
+    ],
+  },
+  erpOperationNo: '010',
+  erpStorageLocationCode: 'S510',
+  erpStorageWarehouse: { id: 1001, code: 'S510', name: '완제품창고' },
+  erpReworkFlag: 'N',
+};
+const ERP_PRODUCTION_ORDERS = [
+  [8001, 'WO-2026-1103-001', 2101, 100, '2026-11-03', 'COMPLETED'],
+  [8002, 'WO-2026-1108-002', 2103, 200, '2026-11-08', 'COMPLETED'],
+  [8003, 'WO-2026-1112-003', 2102, 150, '2026-11-12', 'IN_PROGRESS'],
+  [8004, 'WO-2026-1117-004', 2104, 120, '2026-11-17', 'IN_PROGRESS'],
+  [8005, 'WO-2026-1120-005', 2101, 80, '2026-11-20', 'RELEASED'],
+  [8006, 'WO-2026-1124-006', 2103, 60, '2026-11-24', 'RELEASED'],
+].map(([productionOrderId, productionOrderNo, itemId, orderQty, plannedStartDate, statusCode]) => ({
+  ...WO_BASE,
+  productionOrderId,
+  productionOrderNo,
+  erpOrderNo: productionOrderNo,
+  parentProductionOrderId: null,
+  itemId,
+  orderQty,
+  plannedStartDate,
+  dueDate: plannedStartDate,
+  statusCode,
+  remarks: null,
+}));
+/* 진행(미완료 · 완료) — 목 자료의 W/O 상태 COMPLETED 를 완료로 본다(화면 확인용 · 2026-11-24). */
+const woProgressMatches = (row, progress) =>
+  progress === 'OPEN'
+    ? row.statusCode !== 'COMPLETED'
+    : progress === 'COMPLETED'
+      ? row.statusCode === 'COMPLETED'
+      : true;
+on('GET', '/planning/production-orders', (_p, query) => {
+  const needle = (query.get('q') ?? '').trim().toUpperCase();
+  const item = Number(query.get('itemId') ?? 0);
+  const status = query.get('statusCode') ?? '';
+  return page(
+    ERP_PRODUCTION_ORDERS.filter(
+      (row) =>
+        woProgressMatches(row, query.get('progress')) &&
+        (needle === '' || row.productionOrderNo.toUpperCase().includes(needle)) &&
+        (item === 0 || row.itemId === item) &&
+        (status === '' || row.statusCode === status) &&
+        inRange(
+          row.plannedStartDate,
+          query.get('plannedStartDateFrom'),
+          query.get('plannedStartDateTo'),
+        ),
+    ),
+    query,
+  );
+});
+
+/*
+ * 사용자 · 부서 목록(#358 확인용) — 계약 예시는 한 줄에 「전체 137건」이라 화면이 선택 목록이 잘렸다고 안내했다
+ * (「선택 목록이 일부만 표시됩니다」). 실제 건수와 맞는 목록을 세운다.
+ */
+const DEPT_BASE = {
+  departmentId: 1001,
+  departmentCode: 'DEPT-P1',
+  departmentName: '생산1팀',
+  nameKo: '표시명',
+  nameVi: 'Ten hien thi',
+  parentDepartmentId: 1001,
+  businessUnitId: 1001,
+  isActive: true,
+  sourceSystemCode: 'ERP',
+  productionWarehouseCount: 2,
+};
+const MOCK_DEPARTMENTS = [
+  [1001, 'DEPT-P1', '생산1팀'],
+  [1002, 'DEPT-P2', '생산2팀'],
+  [1003, 'DEPT-QC', '품질팀'],
+  [1004, 'DEPT-PU', '구매팀'],
+  [1005, 'DEPT-LG', '물류팀'],
+].map(([departmentId, departmentCode, departmentName]) => ({
+  ...DEPT_BASE,
+  departmentId,
+  departmentCode,
+  departmentName,
+  nameKo: departmentName,
+  parentDepartmentId: null,
+}));
+on('GET', '/mdm/departments', (_p, query) => page(MOCK_DEPARTMENTS, query));
+const USER_BASE = {
+  appUserId: 1001,
+  loginId: 'hong.gd',
+  userName: '표시명',
+  departmentId: 1001,
+  email: '문자열',
+  phoneNumber: '84912345678',
+  statusCode: 'ACTIVE',
+  isActive: true,
+};
+const MOCK_USERS = [
+  [1001, 'hong.gd', '홍길동', 1001, 'EMPLOYED'],
+  [1002, 'kim.qc', '김품질', 1003, 'EMPLOYED'],
+  [1003, 'lee.pu', '이구매', 1004, 'EMPLOYED'],
+  [1004, 'park.lg', '박물류', 1005, 'EMPLOYED'],
+  [1005, 'choi.p2', '최생산', 1002, 'ON_LEAVE'],
+  [1006, 'jung.old', '정퇴사', 1001, 'RESIGNED'],
+].map(([appUserId, loginId, userName, departmentId, statusCode]) => ({
+  ...USER_BASE,
+  appUserId,
+  loginId,
+  userName,
+  departmentId,
+  email: `${loginId}@example.com`,
+  statusCode,
+  isActive: statusCode !== 'RESIGNED',
+}));
+on('GET', '/app/users', (_p, query) => {
+  const needle = (query.get('q') ?? '').trim().toLowerCase();
+  const dept = Number(query.get('departmentId') ?? 0);
+  const status = query.get('statusCode') ?? '';
+  return page(
+    MOCK_USERS.filter(
+      (row) =>
+        (needle === '' ||
+          row.loginId.toLowerCase().includes(needle) ||
+          row.userName.includes(needle)) &&
+        (dept === 0 || row.departmentId === dept) &&
+        (status === '' || row.statusCode === status) &&
+        (bool(query, 'includeInactive') === true || row.isActive),
+    ),
+    query,
+  );
+});
+
+/*
+ * 알림 연결 설정 · 인계 작업 종류(#358 확인용) — 계약 예시는 「미설정」인데 설정 셋이 다 있고 오류도 있는 어긋난
+ * 조합이고, 인계 작업 종류는 한 줄뿐이라 나머지가 코드로 보였다. 서버 정의(handover-alert-types.ts)와 같은 이름을 쓴다.
+ */
+const MOCK_HANDOVER_TYPES = [
+  [
+    'IQC_INSPECTION_REQUESTED',
+    'IQC 수입검사',
+    'Kiểm tra IQC',
+    '입하 등록으로 IQC 의뢰가 생길 때(입하 1건에 1회)',
+    'INBOUND_RECEIPT',
+  ],
+  [
+    'PUTAWAY_REQUESTED',
+    '적치',
+    'Cất hàng',
+    '입고 처리로 적치 지시가 생길 때(입고 1건마다)',
+    'GOODS_RECEIPT',
+  ],
+  [
+    'MATERIAL_PICKING_REQUESTED',
+    '자재 출고 피킹',
+    'Lấy nguyên vật liệu xuất kho',
+    '출고 요청으로 피킹 지시가 생길 때(피킹 지시마다)',
+    'PICKING_ORDER',
+  ],
+  [
+    'STOCK_TRANSFER_ARRIVAL_PENDING',
+    '창고 이동 도착',
+    'Xác nhận đến kho chuyển',
+    '창고 이동이 등록(반출)될 때',
+    'STOCK_TRANSFER',
+  ],
+  ['WORK_ORDER_RELEASED', '작업 시작', 'Bắt đầu sản xuất', '일반 W/O 가 배포될 때', 'WORK_ORDER'],
+  [
+    'EMERGENCY_WORK_ORDER_RELEASED',
+    '긴급 W/O',
+    'W/O khẩn cấp',
+    '긴급 W/O 가 배포될 때',
+    'WORK_ORDER',
+  ],
+  [
+    'REWORK_WORK_ORDER_CREATED',
+    '재작업 실적',
+    'Kết quả làm lại',
+    '부적합 처분으로 재작업 W/O 가 생길 때',
+    'WORK_ORDER',
+  ],
+  [
+    'OQC_INSPECTION_REQUESTED',
+    'OQC 출하검사',
+    'Kiểm tra OQC',
+    '출하지시 등록으로 OQC 의뢰가 생길 때(출하지시 1건에 1회)',
+    'SHIPMENT_REQUEST',
+  ],
+  [
+    'SHIPMENT_PICKING_REQUESTED',
+    '제품 출하 피킹',
+    'Lấy hàng xuất thành phẩm',
+    '출하지시가 공장이 정해진 채 등록되거나 공장이 처음 정해질 때',
+    'SHIPMENT_REQUEST',
+  ],
+  [
+    'SHIPMENT_PACKING_REQUESTED',
+    '출하 포장',
+    'Đóng gói xuất hàng',
+    '출하 처리로 출하가 생길 때',
+    'SHIPMENT',
+  ],
+].map(([alertTypeCode, name, nameVi, description, targetTypeCode]) => ({
+  alertTypeCode,
+  name,
+  nameVi,
+  description,
+  targetTypeCode,
+}));
+on('GET', '/app/handover-alert-types', () => ({ items: MOCK_HANDOVER_TYPES }));
+/* 연결 오류(-124) + 발송 꺼짐을 함께 보이는 상태. 저장하면 보낸 값을 그대로 남긴다. */
+let mockZalo = {
+  appId: '1234567890',
+  secretKeySet: true,
+  refreshTokenSet: true,
+  status: 'REAUTH_REQUIRED',
+  accessTokenExpiresAt: '2026-10-21T07:30:00Z',
+  lastRefreshedAt: '2026-10-21T07:30:00Z',
+  lastErrorCode: '-124',
+  lastErrorMessage: 'Access token is invalid',
+  paramMaxLength: 100,
+  templates: [{ eventCode: 'string', templateId: '231234' }],
+  handoverTemplates: MOCK_HANDOVER_TYPES.map((type) => ({
+    alertTypeCode: type.alertTypeCode,
+    templateId: null,
+  })),
+  deliveryEnabled: false,
+};
+/* 응답에 `status` 칸이 있어 목이 응답 코드 묶음으로 읽는다 — 200 으로 감싸 보낸다. */
+let mockZaloVersion = 1;
+const zaloTag = () => ({ ETag: `"zalo-v${String(mockZaloVersion)}"` });
+on('GET', '/app/zalo-connection', () => ({ status: 200, created: mockZalo, headers: zaloTag() }));
+on('PUT', '/app/zalo-connection', (_p, _q, body) => {
+  mockZalo = {
+    ...mockZalo,
+    appId: body.appId ?? mockZalo.appId,
+    secretKeySet: body.secretKey === undefined ? mockZalo.secretKeySet : true,
+    refreshTokenSet: body.refreshToken === undefined ? mockZalo.refreshTokenSet : true,
+    paramMaxLength: body.paramMaxLength ?? mockZalo.paramMaxLength,
+    templates: body.templates ?? mockZalo.templates,
+    handoverTemplates: body.handoverTemplates ?? mockZalo.handoverTemplates,
+  };
+  mockZaloVersion += 1;
+  return { status: 200, created: mockZalo, headers: zaloTag() };
+});
+/*
+ * 알림 수신자 설정 · 인계작업 알림 설정(#358 확인용) — Prism 예시는 목록 요약(코드 `string` · 끔)과 상세(켬 · 수신자 1명)가
+ * 서로 다른 고정 값이라 목록은 OFF · 0명인데 상세는 켜짐 · 1명으로 보였고, 저장해도 남지 않았다. 행을 상태로 들고
+ * 요약 · 상세 · 저장이 같은 값을 쓰게 한다. 행이 없으면 서버 미설정 기본값(끔 · 끔 · 0명)이다.
+ */
+const NO_PHONE_USER_IDS = new Set([1004]);
+const recipientOf = (userId) => {
+  const user = MOCK_USERS.find((row) => row.appUserId === userId);
+  const department = MOCK_DEPARTMENTS.find((row) => row.departmentId === user?.departmentId);
+  return {
+    userId,
+    loginId: user?.loginId ?? `user${String(userId)}`,
+    name: user?.userName ?? `사용자 ${String(userId)}`,
+    departmentName: department?.departmentName ?? null,
+    active: user?.isActive ?? true,
+    hasPhone: !NO_PHONE_USER_IDS.has(userId),
+  };
+};
+on('GET', '/app/notification-settings/recipient-candidates', (_p, query) => {
+  const needle = (query.get('q') ?? '').trim().toLowerCase();
+  return page(
+    MOCK_USERS.filter(
+      (row) =>
+        row.isActive &&
+        (needle === '' || row.loginId.toLowerCase().includes(needle) || row.userName.includes(needle)),
+    ).map((row) => {
+      const recipient = recipientOf(row.appUserId);
+      return {
+        appUserId: row.appUserId,
+        loginId: row.loginId,
+        userName: row.userName,
+        departmentName: recipient.departmentName,
+        hasPhone: recipient.hasPhone,
+      };
+    }),
+    query,
+  );
+});
+/* 행 열쇠 → { enabled, zaloEnabled, userIds, version } */
+const handoverSettings = new Map([
+  ['1001:IQC_INSPECTION_REQUESTED', { enabled: true, zaloEnabled: true, userIds: [1001], version: 1 }],
+]);
+const handoverDetail = (plantId, code) => {
+  const row = handoverSettings.get(`${String(plantId)}:${code}`);
+  const body = {
+    plantId,
+    alertTypeCode: code,
+    enabled: row?.enabled ?? false,
+    zaloEnabled: row?.zaloEnabled ?? false,
+    recipients: (row?.userIds ?? []).map(recipientOf),
+  };
+  return row === undefined
+    ? { status: 200, created: body }
+    : { status: 200, created: body, headers: { ETag: `"handover-${String(plantId)}-${code}-v${String(row.version)}"` } };
+};
+on('GET', '/app/handover-alert-settings', (_p, query) => {
+  const plantId = Number(query.get('plantId') ?? 0);
+  const plant = state.plants.find((row) => row.plantId === plantId);
+  const items = [...handoverSettings.entries()]
+    .filter(([key]) => key.startsWith(`${String(plantId)}:`))
+    .map(([key, row]) => {
+      const recipients = row.userIds.map(recipientOf);
+      return {
+        alertTypeCode: key.slice(key.indexOf(':') + 1),
+        enabled: row.enabled,
+        zaloEnabled: row.zaloEnabled,
+        recipientCount: recipients.length,
+        noPhoneCount: recipients.filter((item) => !item.hasPhone).length,
+        inactiveCount: recipients.filter((item) => !item.active).length,
+      };
+    });
+  return { plantId, plantName: plant?.plantName ?? '', zaloStatus: mockZalo.status, items };
+});
+on('GET', '/app/handover-alert-settings/{plantId}/{alertTypeCode}', ({ plantId, alertTypeCode }) =>
+  handoverDetail(Number(plantId), alertTypeCode),
+);
+on('PUT', '/app/handover-alert-settings/{plantId}/{alertTypeCode}', ({ plantId, alertTypeCode }, _q, body) => {
+  const key = `${plantId}:${alertTypeCode}`;
+  const previous = handoverSettings.get(key);
+  handoverSettings.set(key, {
+    enabled: body.enabled === true,
+    zaloEnabled: body.enabled === true && body.zaloEnabled === true,
+    userIds: body.recipientUserIds ?? [],
+    version: (previous?.version ?? 0) + 1,
+  });
+  return handoverDetail(Number(plantId), alertTypeCode);
+});
+/* 부서 × 이벤트. 예시 이벤트(코드 `string`)에 생산1팀 행 하나 — 종전 상세 예시와 같은 값(켬 · 끔 · 홍길동). */
+const notificationSettings = new Map([
+  ['1001:string', { enabled: true, zaloEnabled: false, userIds: [1001], version: 1 }],
+]);
+const notificationDetail = (departmentId, eventCode) => {
+  const row = notificationSettings.get(`${String(departmentId)}:${eventCode}`);
+  const body = {
+    departmentId,
+    eventCode,
+    enabled: row?.enabled ?? false,
+    zaloEnabled: row?.zaloEnabled ?? false,
+    recipients: (row?.userIds ?? []).map((userId) => {
+      const recipient = recipientOf(userId);
+      return {
+        appUserId: userId,
+        loginId: recipient.loginId,
+        userName: recipient.name,
+        departmentName: recipient.departmentName,
+        active: recipient.active,
+        hasPhone: recipient.hasPhone,
+      };
+    }),
+  };
+  return row === undefined
+    ? { status: 200, created: body }
+    : { status: 200, created: body, headers: { ETag: `"notify-${String(departmentId)}-${eventCode}-v${String(row.version)}"` } };
+};
+on('GET', '/app/notification-settings', (_p, query) => {
+  const departmentId = Number(query.get('departmentId') ?? 0);
+  const department = MOCK_DEPARTMENTS.find((row) => row.departmentId === departmentId);
+  const items = [...notificationSettings.entries()]
+    .filter(([key]) => key.startsWith(`${String(departmentId)}:`))
+    .map(([key, row]) => {
+      const recipients = row.userIds.map(recipientOf);
+      return {
+        eventCode: key.slice(key.indexOf(':') + 1),
+        enabled: row.enabled,
+        zaloEnabled: row.zaloEnabled,
+        recipientCount: recipients.length,
+        noPhoneCount: recipients.filter((item) => !item.hasPhone).length,
+      };
+    });
+  return { departmentId, departmentName: department?.departmentName ?? '', zaloStatus: mockZalo.status, items };
+});
+on('GET', '/app/notification-settings/{departmentId}/{eventCode}', ({ departmentId, eventCode }) =>
+  notificationDetail(Number(departmentId), eventCode),
+);
+on('PUT', '/app/notification-settings/{departmentId}/{eventCode}', ({ departmentId, eventCode }, _q, body) => {
+  const key = `${departmentId}:${eventCode}`;
+  const previous = notificationSettings.get(key);
+  notificationSettings.set(key, {
+    enabled: body.enabled === true,
+    zaloEnabled: body.zaloEnabled === true,
+    userIds: body.recipientUserIds ?? [],
+    version: (previous?.version ?? 0) + 1,
+  });
+  return notificationDetail(Number(departmentId), eventCode);
+});
 on('GET', '/mdm/code-values', (_p, query) => {
   const group = query.get('codeGroupCode') ?? '';
   const values = state.codeValues[group] ?? [];
@@ -2351,7 +3703,22 @@ on('GET', '/logistics/purchase-orders', (_p, query) =>
     keep(state.purchaseOrders, [
       byText(query, 'statusCode', 'statusCode'),
       contains(query, 'q', 'purchaseOrderNo'),
-    ]).map((each) => ({ ...each, inboundStageCounts: {} })),
+    ])
+      /* 진행(미완료 · 완료)과 일자 정렬 — 계약 그대로(화면 확인용 · 2026-11-24). */
+      .filter((each) =>
+        query.get('progress') === 'OPEN'
+          ? each.receiptStatusCode !== 'COMPLETED' && each.receiptStatusCode !== 'CANCELLED'
+          : query.get('progress') === 'COMPLETED'
+            ? each.receiptStatusCode === 'COMPLETED' || each.receiptStatusCode === 'CANCELLED'
+            : true,
+      )
+      .sort((a, b) => {
+        const [key = 'orderDate', direction = 'desc'] = String(query.get('sort') ?? 'orderDate,desc').split(',');
+        const x = String(a[key] ?? '');
+        const y = String(b[key] ?? '');
+        return (x < y ? -1 : x > y ? 1 : 0) * (direction === 'asc' ? 1 : -1);
+      })
+      .map((each) => ({ ...each, inboundStageCounts: {} })),
     query,
   ),
 );

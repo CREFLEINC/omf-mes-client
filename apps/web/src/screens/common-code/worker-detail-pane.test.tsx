@@ -51,21 +51,34 @@ describe('WorkerDetailPane — 쓰기 경로가 없다 (결정 9)', () => {
   it('버튼이 하나도 없다 — 저장도 수정도 사용 중지도 없다', () => {
     renderPane();
 
-    expect(screen.queryAllByRole('button')).toHaveLength(0);
+    /* 제목 옆 ⓘ(안내 툴팁)는 조작 단추가 아니라 뺀다(사용자 지시 2026-11-26). */
+    expect(
+      screen.queryAllByRole('button').filter((button) => !button.classList.contains('info-tip')),
+    ).toHaveLength(0);
   });
 
   /*
    * C60 — 이 안내는 `editability`가 아니라 **고정 문구**다.
    * 계약은 「항상 RECEIVED_FROM_ERP」라고 적었으나 목 서버는 `reason:'EDITABLE'`을 준다.
    */
-  it('구획 머리에 외부 수신본 안내가 보인다', () => {
+  /*
+   * 사용자 지시 2026-11-26 — 안내는 라벨 대신 제목 옆 ⓘ(제목 요소 밖, 같은 묶음). 마우스를 올리면 같은 문구가 뜨고
+   * 그 문구가 단추의 이름이다. 늘 펼쳐 둔 안내 줄은 없다.
+   */
+  it('구획 머리 제목 옆 ⓘ 에 외부 수신본 안내가 있다', () => {
     renderPane();
 
+    const tip = screen.getByRole('button', {
+      name: '외부 시스템에서 받은 자료라 여기서 수정할 수 없습니다. 원본 시스템에서 변경하세요.',
+    });
+    const title = screen.getByRole('heading', { name: '작업자 상세 정보' });
+    expect(title.contains(tip)).toBe(false);
+    expect(title.parentElement?.contains(tip)).toBe(true);
     expect(
-      screen.getByText(
+      screen.queryByText(
         '외부 시스템에서 받은 자료라 여기서 수정할 수 없습니다. 원본 시스템에서 변경하세요.',
       ),
-    ).toBeInTheDocument();
+    ).toBeNull();
   });
 });
 
@@ -144,7 +157,7 @@ describe('WorkerDetailPane — 값 표기', () => {
 
   it('사용 여부를 값으로 낸다', () => {
     renderPane();
-    expect(screen.getByText('사용 중')).toBeInTheDocument();
+    expect(screen.getByText('사용', { exact: true })).toBeInTheDocument();
   });
 
   it('미사용 작업자는 미사용으로 낸다', () => {

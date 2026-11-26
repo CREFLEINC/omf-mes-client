@@ -41,10 +41,8 @@ const renderPane = (overrides: Partial<Parameters<typeof QualificationPane>[0]> 
   const props: Parameters<typeof QualificationPane>[0] = {
     drafts: [draft()],
     isLoading: false,
-    isWorkerSelected: true,
     processes: source(),
     certifiers: source(certifierEntries),
-    optionsNotice: null,
     loadError: null,
     banner: null,
     isDirty: true,
@@ -64,6 +62,18 @@ const renderPane = (overrides: Partial<Parameters<typeof QualificationPane>[0]> 
 };
 
 describe('QualificationPane — 표', () => {
+  /* 사용자 지시 2026-11-26 — 표 위 구획 제목 「자격·인증」, [자격 추가]는 그 제목 줄 오른쪽 끝. */
+  it('표 위에 구획 제목이 서고 자격 추가가 그 제목 줄에 있다', () => {
+    renderPane();
+
+    const title = screen.getByRole('heading', { name: '자격·인증' });
+    expect(title).toHaveClass('subsection-title');
+    expect(title.parentElement).toContainElement(screen.getByRole('button', { name: '자격 추가' }));
+    expect(
+      title.compareDocumentPosition(screen.getByRole('table')) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it('여섯 열을 낸다', () => {
     renderPane();
 
@@ -73,7 +83,7 @@ describe('QualificationPane — 표', () => {
       '인증번호',
       '유효기간',
       '인증자',
-      '편집',
+      '관리',
     ]);
   });
 
@@ -145,23 +155,7 @@ describe('QualificationPane — 표', () => {
   });
 });
 
-describe('QualificationPane — 작업자 선택 전', () => {
-  /* 감추면 사용자가 「이 화면에는 없는 기능」으로 오해하고 다른 곳을 찾는다(배치 규범 4). */
-  it('작업자를 고르기 전에는 자격 추가가 비활성이고 사유가 붙는다', () => {
-    renderPane({ isWorkerSelected: false, drafts: [] });
-
-    expect(screen.getByRole('button', { name: '자격 추가' })).toBeDisabled();
-    expect(
-      screen.getByText('자격 추가는 좌측에서 작업자를 고른 뒤에 할 수 있습니다.'),
-    ).toBeInTheDocument();
-  });
-
-  it('작업자를 고르기 전에는 표를 그리지 않는다', () => {
-    renderPane({ isWorkerSelected: false, drafts: [] });
-
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
-  });
-});
+/* 작업자를 고르기 전의 모습은 화면이 정한다 — 자격 구획 자체를 두지 않는다(screen.test.tsx · 사용자 지시 2026-11-26). */
 
 describe('QualificationPane — 겹친 짝', () => {
   /*
@@ -172,7 +166,7 @@ describe('QualificationPane — 겹친 짝', () => {
     renderPane({ drafts: [draft({ processId: '' }), draft({ processId: '' })] });
 
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(screen.getByText(/저장은 자격 유형과 공정 짝이 겹치는 줄이 있어/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
   it('겹친 짝이 있으면 표 위에도 그 사실을 알린다', () => {
@@ -237,9 +231,7 @@ describe('QualificationPane — 저장이 나가는 중', () => {
     expect(screen.getByRole('button', { name: 'PENDING 자격 삭제' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
     expect(save).toBeDisabled();
-    expect(
-      screen.getByText('저장은 다른 작업자의 저장이 끝난 뒤에 할 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
     expect(save).not.toHaveAttribute('aria-busy', 'true');
   });
 

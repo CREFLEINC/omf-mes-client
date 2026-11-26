@@ -26,10 +26,10 @@ interface FilterChangeCase {
 }
 
 const FILTER_CHANGE_CASES: FilterChangeCase[] = [
-  { key: 'status', label: '상태', value: 'FAILED', shown: '실패' },
-  { key: 'iface', label: '항목', value: 'IF-GR-SEND', shown: '입고 (G/R)' },
-  { key: 'direction', label: '구분', value: 'OUTBOUND', shown: '송신' },
-  { key: 'retryMin', label: '재시도 횟수(이상)', value: '5', shown: '5' },
+  { key: 'status', label: '상태 선택', value: 'FAILED', shown: '실패' },
+  { key: 'iface', label: '연동 항목 선택', value: 'IF-GR-SEND', shown: '입고 (G/R)' },
+  { key: 'direction', label: '송수신 구분 선택', value: 'OUTBOUND', shown: '송신' },
+  { key: 'retryMin', label: '최소 재시도 횟수', value: '5', shown: '5' },
 ];
 
 const renderBar = ({
@@ -76,8 +76,8 @@ describe('MessageFilterBar — 기간', () => {
   it('적용된 기간이 입력칸에 채워진다', () => {
     renderBar();
 
-    expect(screen.getByLabelText('기간 시작')).toHaveValue('2026-08-01');
-    expect(screen.getByLabelText('기간 종료')).toHaveValue('2026-08-06');
+    expect(screen.getByLabelText('연동 시작일')).toHaveValue('2026-08-01');
+    expect(screen.getByLabelText('연동 종료일')).toHaveValue('2026-08-06');
   });
 
   it('바깥에서 기간이 바뀌면 입력칸이 따라간다 — 초기화·뒤로가기가 화면에 반영돼야 한다', () => {
@@ -85,34 +85,34 @@ describe('MessageFilterBar — 기간', () => {
 
     rerenderWithPeriod({ from: '2026-07-01', to: '2026-07-31' });
 
-    expect(screen.getByLabelText('기간 시작')).toHaveValue('2026-07-01');
+    expect(screen.getByLabelText('연동 시작일')).toHaveValue('2026-07-01');
   });
 
   it('같은 기간·조건 값의 새 객체가 와도 편집 중인 값을 보존한다', async () => {
     const { rerenderWithApplied, user } = renderBar();
 
-    await user.clear(screen.getByLabelText('기간 종료'));
-    await user.type(screen.getByLabelText('기간 종료'), '2026-08-10');
+    await user.clear(screen.getByLabelText('연동 종료일'));
+    await user.type(screen.getByLabelText('연동 종료일'), '2026-08-10');
     await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
-    await user.type(screen.getByLabelText('재시도 횟수(이상)'), '3');
+    await user.type(screen.getByLabelText('최소 재시도 횟수'), '3');
 
     rerenderWithApplied({ ...APPLIED }, { ...EMPTY_FILTERS });
 
-    expect(screen.getByLabelText('기간 종료')).toHaveValue('2026-08-10');
-    expect(screen.getByLabelText('재시도 횟수(이상)')).toHaveValue(3);
+    expect(screen.getByLabelText('연동 종료일')).toHaveValue('2026-08-10');
+    expect(screen.getByLabelText('최소 재시도 횟수')).toHaveValue(3);
   });
 
   it.each([
     {
       field: 'from',
       next: { from: '2026-07-01', to: APPLIED.to },
-      label: '기간 시작',
+      label: '연동 시작일',
       expected: '2026-07-01',
     },
     {
       field: 'to',
       next: { from: APPLIED.from, to: '2026-07-31' },
-      label: '기간 종료',
+      label: '연동 종료일',
       expected: '2026-07-31',
     },
   ] satisfies { field: keyof PeriodInput; next: PeriodInput; label: string; expected: string }[])(
@@ -129,8 +129,8 @@ describe('MessageFilterBar — 기간', () => {
   it('고치는 동안에는 조회가 나가지 않고 조회를 누를 때 고친 값이 넘어간다', async () => {
     const { onSearch, user } = renderBar();
 
-    await user.clear(screen.getByLabelText('기간 종료'));
-    await user.type(screen.getByLabelText('기간 종료'), '2026-08-10');
+    await user.clear(screen.getByLabelText('연동 종료일'));
+    await user.type(screen.getByLabelText('연동 종료일'), '2026-08-10');
     expect(onSearch).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: '조회' }));
@@ -141,7 +141,7 @@ describe('MessageFilterBar — 기간', () => {
   it('기간이 갖춰지지 않으면 조회를 잠그고 사유를 이어 준다', async () => {
     const { onSearch, user } = renderBar();
 
-    await user.clear(screen.getByLabelText('기간 시작'));
+    await user.clear(screen.getByLabelText('연동 시작일'));
 
     const button = screen.getByRole('button', { name: '조회' });
     expect(button).toBeDisabled();
@@ -164,12 +164,12 @@ describe('MessageFilterBar — 기간', () => {
 
     expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('combobox', { name: '상태' }));
+    await user.click(screen.getByRole('combobox', { name: '상태 선택' }));
     await user.click(screen.getByRole('option', { name: '실패' }));
     await user.click(screen.getByRole('button', { name: '초기화' }));
 
     /* 걸린 조건이 처음 그대로여도 고르던 값을 되돌리고 단추를 거둔다. */
-    expect(screen.getByRole('combobox', { name: '상태' })).toHaveTextContent('전체');
+    expect(screen.getByRole('combobox', { name: '상태 선택' })).toHaveTextContent('전체');
     expect(screen.queryByRole('button', { name: '초기화' })).not.toBeInTheDocument();
   });
 });
@@ -178,7 +178,7 @@ describe('MessageFilterBar — 조건 4종', () => {
   it('선택칸마다 눈에 보이는 라벨이 붙는다', () => {
     renderBar();
 
-    for (const label of ['구분', '항목', '상태', '재시도 횟수(이상)']) {
+    for (const label of ['송수신 구분 선택', '연동 항목 선택', '상태 선택', '최소 재시도 횟수']) {
       expect(screen.getByLabelText(label)).toBeInTheDocument();
     }
     // 대상 유형 칸은 두지 않는다 — 값이 시스템 코드라 읽을 수 없고 항목과 짝이다.
@@ -196,8 +196,8 @@ describe('MessageFilterBar — 조건 4종', () => {
     ({ key, label, value, shown }) => {
       const { rerenderWithApplied } = renderBar({
         statusOptions: ['FAILED'],
-        interfaceOptions: ['IF-GR-SEND'],
         directionOptions: ['OUTBOUND'],
+        interfaceOptions: ['IF-GR-SEND'],
       });
 
       rerenderWithApplied({ ...APPLIED }, { ...EMPTY_FILTERS, [key]: value });
@@ -215,7 +215,7 @@ describe('MessageFilterBar — 조건 4종', () => {
     const { onSearch, user } = renderBar();
 
     await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
-    await user.type(screen.getByLabelText('재시도 횟수(이상)'), '3');
+    await user.type(screen.getByLabelText('최소 재시도 횟수'), '3');
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(onSearch).toHaveBeenCalledWith(APPLIED, { ...EMPTY_FILTERS, retryMin: '3' });
@@ -228,7 +228,7 @@ describe('MessageFilterBar — 조건 4종', () => {
       directionOptions: ['OUTBOUND'],
     });
 
-    expect(screen.getByText('구분: 송신')).toBeInTheDocument();
+    expect(screen.getByText('송수신 구분: 송신')).toBeInTheDocument();
     expect(screen.getByText('재시도 2회 이상')).toBeInTheDocument();
     /* 보이는 칸(상태)의 조건은 칩으로 겹쳐 적지 않는다. */
     expect(screen.queryByText('상태: 실패')).not.toBeInTheDocument();
@@ -241,7 +241,19 @@ describe('MessageFilterBar — 조건 4종', () => {
   it('조건이 없으면 칩을 만들지 않는다', () => {
     renderBar();
 
-    expect(screen.queryByRole('button', { name: '구분 조건 제거' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '재시도 횟수 조건 제거' })).not.toBeInTheDocument();
+  });
+
+  it('연동 항목 칸은 선택지가 많아도 검색창 없이 펼친다(#358)', async () => {
+    const { user } = renderBar({
+      interfaceOptions: ['IF-A', 'IF-B', 'IF-C', 'IF-D', 'IF-E', 'IF-F', 'IF-G'],
+    });
+
+    await user.click(screen.getByRole('combobox', { name: '연동 항목 선택' }));
+
+    expect(screen.getAllByRole('option').length).toBeGreaterThan(5);
+    expect(screen.queryByRole('searchbox')).toBeNull();
+    expect(screen.queryByRole('textbox')).toBeNull();
   });
 });
 
@@ -251,15 +263,15 @@ describe('MessageFilterBar — 조건 더보기(C-6)', () => {
     const more = screen.getByRole('button', { name: messages.common.filterMore.open });
 
     expect(more).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.getByRole('combobox', { name: '항목' })).toBeVisible();
-    expect(screen.getByRole('combobox', { name: '상태' })).toBeVisible();
-    expect(screen.queryByRole('combobox', { name: '구분' })).toBeNull();
-    expect(screen.queryByRole('spinbutton', { name: '재시도 횟수(이상)' })).toBeNull();
+    expect(screen.getByRole('combobox', { name: '연동 항목 선택' })).toBeVisible();
+    expect(screen.getByRole('combobox', { name: '상태 선택' })).toBeVisible();
+    expect(screen.queryByRole('combobox', { name: '송수신 구분 선택' })).toBeNull();
+    expect(screen.queryByRole('spinbutton', { name: '최소 재시도 횟수' })).toBeNull();
 
     await user.click(more);
 
-    expect(screen.getByRole('combobox', { name: '구분' })).toBeVisible();
-    expect(screen.getByRole('spinbutton', { name: '재시도 횟수(이상)' })).toBeVisible();
+    expect(screen.getByRole('combobox', { name: '송수신 구분 선택' })).toBeVisible();
+    expect(screen.getByRole('spinbutton', { name: '최소 재시도 횟수' })).toBeVisible();
   });
 
   it('펼치면 칸에 값이 보이므로 칩을 거둔다', async () => {
@@ -269,6 +281,6 @@ describe('MessageFilterBar — 조건 더보기(C-6)', () => {
     await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
 
     expect(screen.queryByText('재시도 2회 이상')).toBeNull();
-    expect(screen.getByLabelText('재시도 횟수(이상)')).toHaveValue(2);
+    expect(screen.getByLabelText('최소 재시도 횟수')).toHaveValue(2);
   });
 });

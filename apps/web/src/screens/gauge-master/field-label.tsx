@@ -21,6 +21,10 @@ export interface FieldLabelProps {
 export const FieldLabel = ({ htmlFor, label, required = false }: FieldLabelProps) => (
   <span className="field-label">
     <label htmlFor={htmlFor}>{label}</label>
-    {required && <span aria-hidden="true"> *</span>}
+    {required && (
+      <span className="required-mark" aria-hidden="true">
+        {' *'}
+      </span>
+    )}
   </span>
 );

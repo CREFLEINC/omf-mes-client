@@ -12,6 +12,8 @@ export interface InspectionQtyField {
   /** 숫자 색 — 합격 초록 · 보류 노랑 · 불합격 빨강, 검사 수량은 기본색(IQC 와 같다). */
   kind: 'accepted' | 'held' | 'rejected' | 'inspected';
   error?: string;
+  /** 필수 칸이면 이름 옆 빨간 *(라벨 밖, 접근 이름 그대로). 표시만 하고 검증은 부르는 쪽 규칙 그대로다. */
+  required?: boolean;
 }
 
 /** 수량 줄 오른쪽 입력 현황 — 셀 수 없으면 `uncountable`, 넘치면 `over`, 아니면 남은 양(0 이면 중립색). */
@@ -71,6 +73,11 @@ export const InspectionQtyLine = ({
                 <div key={field.key} className="iqc-inspection-qty-input" data-kind={field.kind}>
                   <span className="field-label">
                     <label htmlFor={id}>{field.label}</label>
+                    {field.required === true && (
+                      <span className="required-mark" aria-hidden="true">
+                        {' *'}
+                      </span>
+                    )}
                   </span>
                   <TextField
                     id={id}
@@ -79,6 +86,7 @@ export const InspectionQtyLine = ({
                     value={field.value}
                     disabled={disabled}
                     aria-describedby={describedBy}
+                    aria-required={field.required === true || undefined}
                     error={field.error}
                     trailingIcon={
                       uomCode === null ? undefined : (

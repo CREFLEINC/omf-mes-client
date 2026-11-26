@@ -195,7 +195,8 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
         <table className="replenishment-table" aria-label={td.lines.label}>
           <thead>
             <tr>
-              <th scope="col">{td.lines.item}</th>
+              <th scope="col">{td.lines.itemCode}</th>
+              <th scope="col">{td.lines.itemName}</th>
               <th scope="col" className="is-number">
                 {td.lines.requested}
               </th>
@@ -218,10 +219,8 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
               const closedQty = lineClosedQty(request, line);
               return (
                 <tr key={line.id}>
-                  <td>
-                    <span className="replenishment-code">{line.itemCode}</span>{' '}
-                    <span>{line.itemName}</span>
-                  </td>
+                  <td className="replenishment-code">{line.itemCode}</td>
+                  <td>{line.itemName}</td>
                   <td className="is-number">{qtyWithUom(line.requested, line.uomCode)}</td>
                   <td className="is-number">{formatQty(line.picked)}</td>
                   <td className="is-number">{formatQty(line.issued)}</td>

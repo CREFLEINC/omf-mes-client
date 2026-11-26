@@ -1,8 +1,9 @@
-import { Button, Chip, DatePicker, EmptyState, Skeleton } from '@crefle/web-ui';
+import { Button, Chip, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
 import type { ReplenishmentOriginCode, ReplenishmentSettings } from './api-types';
@@ -11,6 +12,7 @@ import { DetailPanel } from './detail-panel';
 import { EMPTY_PROGRESS, type ProgressFilters } from './filters';
 import { PAGE_SIZE, replenishmentKeys, useProgressList } from './queries';
 import { RunTable } from './run-table';
+import { ListEmptyRow } from '../../patterns/list-empty';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import {
   FILTER_STATUSES,
@@ -153,13 +155,14 @@ export const ProgressView = ({
           value={draft.item === '' ? null : draft.item}
           onChange={(value) => setDraft({ ...draft, item: value })}
         />
-        <DatePicker
-          mode="range"
+        <DateRangeFields
+          hideLabels
           clearable
-          aria-label={tp.filters.period}
-          placeholder={tp.filters.period}
-          value={draft.from === '' ? null : [draft.from, draft.to]}
-          onChange={(value) => setDraft({ ...draft, from: value?.[0] ?? '', to: value?.[1] ?? '' })}
+          startLabel={tp.filters.periodFrom}
+          endLabel={tp.filters.periodTo}
+          from={draft.from}
+          to={draft.to}
+          onChange={(from, to) => setDraft({ ...draft, from, to })}
         />
         <Button onClick={() => search(draft)}>{t.common.search}</Button>
         {isChanged && (
@@ -206,7 +209,6 @@ export const ProgressView = ({
       return <LoadErrorAlert error={list.error} onRetry={() => void list.refetch()} />;
     }
     if (list.data === undefined) return <Skeleton variant="rect" height="16rem" />;
-    if (list.data.items.length === 0) return <EmptyState size="sm" title={tp.empty} />;
 
     const total = list.data.page.total;
     const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -241,6 +243,7 @@ export const ProgressView = ({
               </tr>
             </thead>
             <tbody>
+              {list.data.items.length === 0 ? <ListEmptyRow colSpan={12} title={tp.empty} /> : null}
               {list.data.items.map((request) => (
                 <tr key={request.id} aria-selected={request.id === selectedId}>
                   <td>
@@ -281,25 +284,29 @@ export const ProgressView = ({
             </tbody>
           </table>
         </div>
-        <div className="replenishment-pager">
-          <span className="field-note">{tp.pager.total(total)}</span>
-          <Button
-            variant="outlined"
-            size="sm"
-            disabled={page <= 1}
-            onClick={() => onPage(page - 1)}
-          >
-            {tp.pager.previous}
-          </Button>
-          <Button
-            variant="outlined"
-            size="sm"
-            disabled={page >= lastPage}
-            onClick={() => onPage(page + 1)}
-          >
-            {tp.pager.next}
-          </Button>
-        </div>
+        {list.data.items.length === 0 ? null : (
+          <>
+            <div className="replenishment-pager">
+              <span className="field-note">{tp.pager.total(total)}</span>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => onPage(page - 1)}
+              >
+                {tp.pager.previous}
+              </Button>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={page >= lastPage}
+                onClick={() => onPage(page + 1)}
+              >
+                {tp.pager.next}
+              </Button>
+            </div>
+          </>
+        )}
       </>
     );
   };

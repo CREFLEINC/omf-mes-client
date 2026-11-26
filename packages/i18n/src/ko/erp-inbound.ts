@@ -11,19 +11,32 @@ export const erpInbound = {
   /** 탭 막대 오른쪽 칩 — 이 서버의 수신 켜짐(ERP_SYNC_ENABLED). */
   chips: {
     label: 'ERP 수신 상태',
-    receiveOn: '수신 켜짐',
-    receiveOff: '수신 꺼짐',
+    receiveOn: '수신 ON',
+    receiveOff: '수신 OFF',
+    /** 받는 표 전체의 최근 수신 건수 합 — 0건이면 세우지 않는다(송신의 「송신 대기 N」과 같은 꼴 · #358). */
+    applied: (count: number): string => `수신 반영 ${count.toLocaleString()}`,
+    failed: (count: number): string => `수신 실패 ${count.toLocaleString()}`,
+    held: (count: number): string => `수신 보류 ${count.toLocaleString()}`,
+  },
+  /** 목록 상자 | 상세 상자(#358). */
+  panes: {
+    list: 'ERP 수신 목록',
   },
   table: {
     label: 'ERP 수신 표',
-    name: '표',
+    /** ERP에서 받아 오는 자료의 종류(품목 · 거래처 · 수주 …) — 「표」는 시스템 말이라 바꿨다(#358). */
+    name: '수신 항목',
     state: '상태',
-    lastFinishedAt: '마지막 읽음',
+    lastFinishedAt: '최근 수신 일시',
     read: '읽음',
     applied: '반영',
     failed: '실패',
     held: '보류',
-    nextRunAt: '다음 예정',
+    nextRunAt: '다음 수신 예정 일시',
+    /** 묶음 — 기준정보 · 전표(#358). */
+    lane: '구분',
+    /** 마지막 읽기의 실패 사유(#358). */
+    lastErrorMessage: '오류 내용',
     action: '지금 읽기',
   },
   actions: {

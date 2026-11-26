@@ -194,6 +194,7 @@ describe('W-CO-06 단말 창고(피처 002)', () => {
         },
       ]),
       route: '/system/terminal-process-map',
+      dataRouter: true,
     });
 
     expect(await screen.findByRole('columnheader', { name: t.list.warehouse })).toBeInTheDocument();

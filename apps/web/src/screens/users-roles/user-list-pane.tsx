@@ -7,6 +7,7 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
 
+import { UsageName } from '../../patterns/usage-chip';
 import { hasAnyUserFilter } from './filters';
 import type { ListPageSize } from './filters';
 import type { PageView } from './pagination';
@@ -115,7 +116,7 @@ export const UserListPane = ({
       key: 'userName',
       align: 'center',
       header: t.user.fields.userName,
-      render: (row) => (row.isActive ? row.userName : `${row.userName}${t.values.inactiveSuffix}`),
+      render: (row) => <UsageName isActive={row.isActive}>{row.userName}</UsageName>,
     },
     {
       key: 'departmentId',

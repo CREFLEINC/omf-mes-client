@@ -8,22 +8,18 @@ import type { Translated } from './translated';
  * 긴 작업 이름은 표가 두 줄로 접는다(시안 WCO14-States 상태 C).
  */
 export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> = {
-  title: 'Thiết lập thông báo công việc bàn giao',
-  breadcrumbRoot: 'Quản trị hệ thống',
-  intro:
-    'Ban đầu tất cả đều tắt. Bật Zalo sẽ làm tăng lượng tin Zalo của khách hàng (phí và hạn mức ngày).',
   panes: {
     types: 'Công việc bàn giao',
-    setting: (typeName: string): string => `Thiết lập: ${typeName}`,
+    setting: (typeName: string): string => `Thiết lập thông báo: ${typeName}`,
   },
   fields: {
-    plant: 'Nhà máy',
+    plant: 'Chọn nhà máy',
+    plantPlaceholder: 'Chọn nhà máy',
     when: 'Khi nào',
     where: 'Xử lý',
-    enabled: 'Nhận thông báo',
-    zalo: 'Gửi cả qua Zalo',
-    recipients: (count: number, max: number): string =>
-      `Người nhận (${String(count)}/${String(max)})`,
+    enabled: 'Dùng thông báo',
+    zalo: 'Gửi Zalo',
+    recipients: (count: number): string => `Người nhận ${String(count)} người`,
   },
   columns: {
     type: 'Công việc',
@@ -32,53 +28,48 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
     recipients: 'N.nhận',
   },
   values: {
-    on: 'Bật',
-    off: 'Tắt',
+    on: 'ON',
+    off: 'OFF',
+    /** Zalo 연결이 ACTIVE 가 아닐 때 Zalo 발송 옆 노란 칩. */
+    notConnected: 'Chưa kết nối',
     noPhone: 'Không có số điện thoại — chỉ nhận ở trung tâm thông báo',
     inactive: 'Ngừng sử dụng',
     noPhoneCount: (count: number): string => `${String(count)} người nhận không có số điện thoại`,
+    recipientCount: (count: number): string => `${String(count)} người`,
   },
   actions: {
-    add: 'Thêm',
-    remove: 'Bỏ',
-    revert: 'Hoàn tác',
+    add: 'Thêm người nhận',
+    remove: 'Xóa',
+    revert: 'Hủy',
     save: 'Lưu',
     reload: 'Tải lại',
-    openConnection: 'Mở thiết lập kết nối thông báo',
-    cancel: 'Hủy',
-    discard: 'Bỏ thay đổi và chuyển',
+    openConnection: 'Thiết lập kết nối Zalo',
   },
   state: {
     noPlants: 'Không có nhà máy để chọn.',
     noTypes: 'Không có công việc bàn giao để thiết lập.',
     noRecipients: 'Chưa chọn người nhận.',
-    noRecipientsWarning: 'Không có người phụ trách nên thông báo sẽ không được gửi.',
     limitReached: (max: number): string =>
-      `Chỉ được chọn tối đa ${String(max)} người. Hãy bỏ một người trước khi đổi.`,
+      `Chỉ được chọn tối đa ${String(max)} người. Hãy xóa một người trước khi đổi.`,
     noPhoneNotice: (count: number): string =>
       `${String(count)} người nhận không có số điện thoại chỉ nhận ở trung tâm thông báo`,
-    zaloHelp:
-      'Gửi tin Zalo tiếng Anh cho người nhận có số điện thoại. Nếu gửi lỗi, trung tâm thông báo vẫn nhận.',
-    zaloNeedsEnabled: 'Chỉ bật được Zalo sau khi bật thông báo.',
-    zaloNotActive: 'Chưa thiết lập kết nối Zalo nên hiện chỉ gửi đến trung tâm thông báo',
+    zaloNeedsEnabled: 'Chỉ bật được Zalo sau khi bật dùng thông báo.',
+    zaloNotActive:
+      'Zalo chưa được kết nối nên sẽ không gửi Zalo. Trung tâm thông báo vẫn nhận ngay.',
+    zaloQuota:
+      'Phí gửi được trừ vào số dư ZBS. Thông báo vượt hạn mức gửi hằng ngày sẽ được gửi lúc 7 giờ sáng hôm sau (giờ nhà máy).',
+    unsaved: 'Có thay đổi chưa lưu',
     saved: 'Đã lưu',
     conflict: 'Người khác đã lưu trước. Hãy tải lại rồi sửa.',
-    unsavedTitle: 'Có thay đổi chưa lưu',
-    unsavedBody: 'Nếu chuyển đi, nội dung đã sửa sẽ mất. Bỏ thay đổi và chuyển?',
   },
   errors: {
     inactiveRecipients: (count: number): string =>
-      `Có ${String(count)} tài khoản ngừng sử dụng. Hãy bỏ trước khi lưu.`,
-  },
-  picker: {
-    slotsLeft: (left: number, max: number): string =>
-      `Còn ${String(left)} chỗ — mỗi công việc tối đa ${String(max)} người`,
-    full: (max: number): string => `Đã đủ ${String(max)} người — không chọn thêm được`,
+      `Có ${String(count)} tài khoản ngừng sử dụng. Hãy xóa trước khi lưu.`,
   },
   types: {
     IQC_INSPECTION_REQUESTED: {
-      when: 'Khi đăng ký LOT nhập hàng tạo yêu cầu IQC — 1 lần cho mỗi phiếu nhập (kèm số LOT)',
-      where: 'Web quản trị › Quản lý chất lượng › Tra cứu · đánh giá kiểm tra (tab IQC)',
+      when: 'Khi tạo yêu cầu kiểm tra IQC — gửi 1 lần cho mỗi phiếu nhập, thông báo ghi số LOT',
+      where: 'Quản lý chất lượng › Tra cứu · đánh giá kiểm tra › IQC',
     },
     IQC_INSPECTION_REJECTED: {
       when: 'Khi kết quả IQC được xác nhận là không đạt — 1 lần cho mỗi LOT không đạt',
@@ -124,5 +115,14 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
       when: 'Khi xử lý xuất hàng trên web quản trị tạo phiếu xuất',
       where: 'POP › Đóng gói xuất hàng',
     },
+  },
+  workspace: {
+    list: 'Danh sách công việc bàn giao',
+    search: 'Tìm tên công việc',
+    searchPlaceholder: 'Nhập tên công việc',
+    apply: 'Tra cứu',
+    clear: 'Đặt lại',
+    selectTypeTitle: 'Hãy chọn công việc bàn giao.',
+    selectType: 'Có thể thiết lập dùng thông báo, gửi Zalo và người nhận cho công việc đã chọn.',
   },
 };

@@ -446,13 +446,13 @@ describe('W-05-13 툴 마스터 — 목록', () => {
    * ⭐ 「미사용 포함」을 켜면 **그 조건이 무엇을 데려왔는지 알 수 있어야 한다.**
    * 표식이 없으면 미사용 툴이 쓰는 툴과 같은 모양으로 서고, 조건이 아무 뜻도 갖지 못한다.
    */
-  it('미사용 툴은 이름에 표식을 붙인다', async () => {
+  it('미사용 툴은 이름 옆에 「미사용」 라벨을 붙인다', async () => {
     renderScreen();
 
-    expect(
-      within(await rowOf('TL-06')).getByText(`TL-06 툴${t.values.inactiveSuffix}`),
-    ).toBeInTheDocument();
+    expect(within(await rowOf('TL-06')).getByText('TL-06 툴')).toBeInTheDocument();
+    expect(within(await rowOf('TL-06')).getByText('미사용')).toBeInTheDocument();
     expect(within(await rowOf('TL-01')).getByText('TL-01 툴')).toBeInTheDocument();
+    expect(within(await rowOf('TL-01')).queryByText('미사용')).not.toBeInTheDocument();
   });
 
   /*
@@ -955,7 +955,13 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
     await openEditOf(user, 'TL-01');
 
     expect(screen.getByRole('textbox', { name: /툴코드/ })).toBeDisabled();
-    expect(screen.getByText(messages.editability.labelIssued(null))).toBeInTheDocument();
+    expect(screen.getByText(messages.editability.badge).closest('[title]')).toHaveAttribute(
+      'title',
+      messages.editability.labelIssued(null),
+    );
+    expect(screen.getByRole('textbox', { name: /툴코드/ })).toHaveAccessibleDescription(
+      messages.editability.labelIssued(null),
+    );
   });
 
   /* 잠금 사유 문구만으로는 「몇 장이 현장에 나가 있는가」를 알 수 없다. */
@@ -986,7 +992,13 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
     await openEditOf(user, 'TL-01');
 
     expect(screen.getByRole('textbox', { name: /툴코드/ })).toBeDisabled();
-    expect(screen.getByText(messages.editability.referenced(3))).toBeInTheDocument();
+    expect(screen.getByText(messages.editability.badge).closest('[title]')).toHaveAttribute(
+      'title',
+      messages.editability.referenced(3),
+    );
+    expect(screen.getByRole('textbox', { name: /툴코드/ })).toHaveAccessibleDescription(
+      messages.editability.referenced(3),
+    );
   });
 
   /* 공장을 옮기는 것은 자산을 옮기는 일이라 이 화면의 일이 아니다 — 계약도 받지 않는다. */

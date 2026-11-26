@@ -358,7 +358,9 @@ export const TemplateEditor = ({
           {[
             { label: t.editor.templateCode, value: draft.templateCode || '-' },
             { label: t.editor.templateName, value: draft.templateName || '-' },
-            { label: t.editor.model, value: draft.itemLabel || '—' },
+            /* 품목 표시 `이름 (코드)`를 품목코드 · 품목명 두 칸으로 나눈다(품목 표기 분리). */
+            { label: t.editor.subjectItemCode, value: splitLabel(draft.itemLabel)[0] || '—' },
+            { label: t.editor.subjectItemName, value: splitLabel(draft.itemLabel)[1] || '—' },
             {
               label: t.editor.businessUnit,
               value:

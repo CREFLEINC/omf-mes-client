@@ -1,7 +1,8 @@
-import { AlertBanner, Button, Dialog, TextField } from '@crefle/web-ui';
+import { Button, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { requiredEmptyClass } from '../users-roles/required-empty';
 import { DateField } from './date-field';
 import { FieldLabel } from './field-label';
 import type { QualificationDraft } from './qualification-draft';
@@ -92,6 +93,8 @@ export const QualificationFormDialog = ({
       onClose={onClose}
       size="md"
       title={isNew ? t.dialog.addTitle : t.dialog.editTitle}
+      /* 닫기(X) 없이 바닥 단추로만 — Esc 는 종전대로 닫는다(사용자 지시 2026-11-25). */
+      showCloseButton={false}
       footer={
         <>
           <Button variant="outlined" onClick={onClose}>
@@ -101,17 +104,14 @@ export const QualificationFormDialog = ({
         </>
       }
     >
-      {/* 확인이 저장이라고 오해하면 창을 닫고 화면을 떠난다. */}
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.dialog.notSavedNotice}</AlertBanner>
-      </div>
-
       <div className="form-grid">
         <SelectField
           label={t.fields.qualificationType}
           required
           options={QUALIFICATION_TYPE_OPTIONS}
           value={values.qualificationTypeCode}
+          /* 필수 칸이 비면 빨간 테두리 — 사용자 역할 화면과 같은 방식(#333 · 사용자 지시 2026-11-25). */
+          containerClassName={requiredEmptyClass(values.qualificationTypeCode)}
           onChange={(value) => change({ qualificationTypeCode: value })}
           error={errors.qualificationTypeCode}
         />
@@ -140,6 +140,7 @@ export const QualificationFormDialog = ({
           label={t.fields.validFrom}
           required
           value={values.validFrom}
+          containerClassName={requiredEmptyClass(values.validFrom)}
           onChange={(validFrom) => change({ validFrom })}
           error={errors.validFrom}
         />

@@ -11,8 +11,9 @@ export const masterChange: Translated<typeof ko.masterChange> = {
   title: 'Quản lý thay đổi dữ liệu gốc',
   breadcrumbRoot: 'Quản lý dữ liệu gốc',
   fields: {
-    /* 기간은 한 컨트롤이다(변경 통지 #63) — 시작·종료가 한 칸으로 합쳐져 라벨도 하나다. */
-    period: 'Kỳ tra cứu',
+    /* 기간은 시작일 · 종료일 두 칸이다(사용자 지시 2026-11-25) — 칸마다 이름이 있다. */
+    periodFrom: 'Ngày bắt đầu tra cứu',
+    periodTo: 'Ngày kết thúc tra cứu',
     targetType: 'Loại đối tượng',
     targetId: 'Đối tượng',
     eventType: 'Loại sự kiện',

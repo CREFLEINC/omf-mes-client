@@ -217,6 +217,7 @@ export const ToolPmResultScreen = () => {
             error={errors.tool ?? create.fieldErrors.targetId}
             placeholder={t.tool.selectPlaceholder}
             wide
+            required
             onChange={selectTool}
           />
           {tool !== null && (
@@ -274,7 +275,7 @@ export const ToolPmResultScreen = () => {
           />
 
           <div className="field-cell">
-            <FieldLabel htmlFor={startedId} label={t.form.startedAt} />
+            <FieldLabel htmlFor={startedId} label={t.form.startedAt} required />
             <DatePicker
               id={startedId}
               mode="single"
@@ -307,9 +308,10 @@ export const ToolPmResultScreen = () => {
           </div>
 
           <div className="field-cell form-grid-full">
-            <FieldLabel htmlFor={noteId} label={t.form.resultNote} />
+            <FieldLabel htmlFor={noteId} label={t.form.resultNote} required />
             <TextField
               id={noteId}
+              aria-required="true"
               value={draft.resultNote}
               error={errors.resultNote ?? create.fieldErrors.resultNote}
               onChange={(event) => {
@@ -342,15 +344,22 @@ export const ToolPmResultScreen = () => {
             placeholder={t.form.selectPlaceholder}
             disabled={draft.isOutsourced}
             wide
+            /* 자체 수행이면 수행자, 외주면 외주처가 필수다(짝 제약). */
+            required={!draft.isOutsourced}
             onChange={(value) => {
               set({ performer: value });
             }}
           />
 
           <div className="field-cell">
-            <FieldLabel htmlFor={vendorId} label={t.form.vendorName} />
+            <FieldLabel
+              htmlFor={vendorId}
+              label={t.form.vendorName}
+              required={draft.isOutsourced}
+            />
             <TextField
               id={vendorId}
+              aria-required={draft.isOutsourced ? 'true' : undefined}
               value={draft.vendorName}
               disabled={!draft.isOutsourced}
               error={errors.vendorName ?? create.fieldErrors.outsourceVendorName}

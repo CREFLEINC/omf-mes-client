@@ -120,9 +120,15 @@ export const PlanAddDialog = ({
           확인하세요.
         </p>
         <div className="field-cell">
-          <span className="field-label">계획을 추가할 ERP W/O</span>
+          <span className="field-label">
+            계획을 추가할 ERP W/O
+            <span className="required-mark" aria-hidden="true">
+              {' *'}
+            </span>
+          </span>
           <Select
             aria-label="계획을 추가할 ERP W/O"
+            aria-required="true"
             value={id}
             options={targets
               .filter((target) => target.remaining > 0)
@@ -145,11 +151,17 @@ export const PlanAddDialog = ({
         )}
         <div className="erp-wo-plan-add-fields">
           <div className="field-cell">
-            <span className="field-label">계획일</span>
+            <span className="field-label">
+              계획일
+              <span className="required-mark" aria-hidden="true">
+                {' *'}
+              </span>
+            </span>
             <DatePicker
               min={plantToday()}
               placeholder="계획일 선택"
               aria-label="추가할 계획일"
+              aria-required="true"
               value={draft.planDate}
               disabled={!target}
               onChange={(planDate) =>
@@ -163,6 +175,7 @@ export const PlanAddDialog = ({
           </div>
           <TextField
             label="추가할 계획 수량"
+            required
             inputMode="decimal"
             disabled={!target}
             value={draft.plannedQty}

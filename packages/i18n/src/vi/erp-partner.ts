@@ -10,8 +10,9 @@ export const erpPartner: Translated<typeof ko.erpPartner> = {
     list: 'Danh sách đối tác',
   },
   fields: {
-    q: 'Mã·Tên đối tác',
-    role: 'Vai trò',
+    q: 'Tìm đối tác',
+    qPlaceholder: 'Nhập mã hoặc tên đối tác',
+    role: 'Chọn vai trò',
     includeInactive: 'Bao gồm ngừng sử dụng',
   },
   table: {
@@ -32,22 +33,12 @@ export const erpPartner: Translated<typeof ko.erpPartner> = {
   values: {
     all: 'Tất cả',
     empty: '—',
-    active: 'Sử dụng',
-    inactive: 'Ngừng sử dụng',
     rolesLoading: 'Đang tải',
     rolesFailed: 'Không tải được',
     roleSeparator: ', ',
   },
   actions: {
-    prevPage: 'Trước',
-    nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
-  },
-  pageNav: {
-    label: 'Chuyển trang',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / Tổng ${String(total)}`,
-    totalOnly: (total: number): string => `Tổng ${String(total)}`,
   },
   loading: {
     list: 'Đang tải danh sách đối tác',

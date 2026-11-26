@@ -294,6 +294,7 @@ export const TransactionPane = ({
         <TextField
           type="date"
           label={t.history.periodFrom}
+          required
           value={period.from}
           onChange={(event) => {
             setPeriod((prev) => ({ ...prev, from: event.target.value }));
@@ -302,6 +303,7 @@ export const TransactionPane = ({
         <TextField
           type="date"
           label={t.history.periodTo}
+          required
           value={period.to}
           onChange={(event) => {
             setPeriod((prev) => ({ ...prev, to: event.target.value }));

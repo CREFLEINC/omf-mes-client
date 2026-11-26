@@ -152,14 +152,16 @@ export const DetailPane = ({
           placeholder={t.codes.selectPlaceholder}
           disabled={PLACEHOLDER_CAUSE_CODES.length === 0 || saveReason !== null}
           wide
+          required
           onChange={onChangeCause}
         />
 
         <div className="field-cell form-grid-full">
-          <FieldLabel htmlFor={noteId} label={t.detail.handlingNote} />
+          <FieldLabel htmlFor={noteId} label={t.detail.handlingNote} required />
           {/* 오류 문구는 `TextField`가 스스로 그린다 — 밖에서 또 그리면 같은 말이 두 번 선다. */}
           <TextField
             id={noteId}
+            aria-required="true"
             value={handlingNote}
             disabled={saveReason !== null}
             error={fieldErrors.handlingNote}

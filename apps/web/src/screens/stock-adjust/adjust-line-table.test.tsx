@@ -114,7 +114,12 @@ const diffBox = (lineNo: number): HTMLElement =>
 const headerTexts = (): string[] =>
   within(screen.getByRole('table'))
     .getAllByRole('columnheader')
-    .map((cell) => cell.textContent ?? '');
+    .map((cell) => {
+      /* 필수 칸 머리의 빨간 *(aria-hidden)는 열 이름이 아니다 — 빼고 읽는다. */
+      const copy = cell.cloneNode(true) as HTMLElement;
+      copy.querySelectorAll('.required-mark').forEach((mark) => mark.remove());
+      return copy.textContent ?? '';
+    });
 
 const bodyRows = (): HTMLElement[] =>
   within(screen.getByRole('table')).getAllByRole('row').slice(1);

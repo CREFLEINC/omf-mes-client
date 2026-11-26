@@ -1,6 +1,8 @@
 import type { paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { PAGE_SIZES, type PageSize } from '../../patterns/page-nav';
+
 import { directionName, interfaceName, statusName } from './message-labels';
 import type { PeriodInput } from './period';
 
@@ -57,6 +59,13 @@ export const readPage = (params: URLSearchParams): number => {
 };
 
 /**
+ * 주소가 가리키는 쪽 크기(omf-all-around#358 — 목록 아래 쪽 크기 선택). 고른 적이 없으면 `null` — 그때는 요청에 싣지 않아
+ * 서버 기본 크기를 그대로 쓴다. 고를 수 있는 값 밖이면 고르지 않은 것으로 본다.
+ */
+export const readSize = (params: URLSearchParams): PageSize | null =>
+  PAGE_SIZES.find((size) => String(size) === params.get('size')) ?? null;
+
+/**
  * 조건 전체를 주소로 옮긴다. **빈 조건은 키 자체를 두지 않는다** —
  * 주소가 조건을 그대로 드러내야 무엇으로 조회했는지 읽을 수 있다.
  *
@@ -66,6 +75,7 @@ export const toSearchParams = (
   period: PeriodInput,
   filters: MessageFilters,
   page: number,
+  size: PageSize | null = null,
 ): URLSearchParams => {
   const next = new URLSearchParams({ from: period.from, to: period.to });
 
@@ -81,6 +91,7 @@ export const toSearchParams = (
   }
 
   if (page > 1) next.set('page', String(page));
+  if (size !== null) next.set('size', String(size));
 
   return next;
 };

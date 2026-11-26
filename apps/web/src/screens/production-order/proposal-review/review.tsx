@@ -476,7 +476,10 @@ export const ProposalReview = ({
                   rows={pageRows}
                   getRowId={(row) => row.id}
                   activeId={active}
-                  onActivate={(row) => setActive(row.id)}
+                  onActivate={(row) =>
+                    /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+                    setActive((current) => (current === row.id ? '' : row.id))
+                  }
                   rowLabel={(row) => `${row.number} 상세`}
                 />
                 <PageNav
@@ -656,7 +659,10 @@ export const ProposalReview = ({
                     (selected.autoWorkOrder?.lastAttemptedAt
                       ? `최근 처리 ${selected.autoWorkOrder.lastAttemptedAt}`
                       : '처리 이력 없음')}
-                  <Link to={`/production/production-orders/${encodeURIComponent(selected.number)}`}>
+                  <Link
+                    className="action-link-button"
+                    to={`/production/production-orders/${encodeURIComponent(selected.number)}`}
+                  >
                     작업계획 확인
                   </Link>
                 </AlertBanner>
@@ -703,7 +709,10 @@ export const ProposalReview = ({
                       ? '이미 확정된 ERP W/O입니다'
                       : '확정 완료'}
                   </h3>
-                  <Link to={`/production/production-orders/${encodeURIComponent(selected.number)}`}>
+                  <Link
+                    className="action-link-button"
+                    to={`/production/production-orders/${encodeURIComponent(selected.number)}`}
+                  >
                     작업계획에서 확정 결과 확인
                   </Link>
                   {selected.resultPlans?.map((plan) => (
@@ -935,6 +944,7 @@ export const ProposalReview = ({
                       action={
                         selected.serverKind === 'KEEP_CONFIRMED' ? (
                           <Link
+                            className="action-link-button"
                             to={`/production/production-orders/${encodeURIComponent(selected.number)}`}
                           >
                             기존 작업계획 보기
@@ -973,6 +983,7 @@ export const ProposalReview = ({
                                   <div className="proposal-plan-line">
                                     <ReferenceField
                                       label="생산 라인"
+                                      required
                                       wrapValue
                                       placeholder="생산 라인 선택"
                                       valueLabel={
@@ -1025,6 +1036,7 @@ export const ProposalReview = ({
                                   <div className="proposal-plan-routing">
                                     <ReferenceField
                                       label="Routing"
+                                      required
                                       wrapValue
                                       valueLabel={plan.routing || ''}
                                       placeholder="Routing 선택"

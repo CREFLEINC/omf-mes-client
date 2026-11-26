@@ -45,7 +45,14 @@ export const ShipmentLinesPane = ({
   const columns: Column<ShipmentLineAllocationRow>[] = [
     {
       key: 'lot',
-      header: t.fields.lot,
+      header: (
+        <>
+          {t.fields.lot}
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </>
+      ),
       render: (row) => {
         if (row.isPlaceholder) return t.values.noAllocations;
 
@@ -60,6 +67,7 @@ export const ShipmentLinesPane = ({
           <Select
             aria-label={`${t.fields.lot} · ${t.fields.line} ${String(row.lineNo)}`}
             placeholder={t.lotSelectPlaceholder}
+            aria-required="true"
             disabled={candidates?.isLoading ?? true}
             options={options}
             value={row.lotId === null ? null : String(row.lotId)}
@@ -72,12 +80,20 @@ export const ShipmentLinesPane = ({
     },
     {
       key: 'qty',
-      header: t.fields.qty,
+      header: (
+        <>
+          {t.fields.qty}
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </>
+      ),
       align: 'end',
       render: (row) =>
         row.isPlaceholder ? null : (
           <TextField
             aria-label={`${t.fields.qty} · ${t.fields.line} ${String(row.lineNo)}`}
+            aria-required="true"
             type="number"
             min="0"
             value={row.qty}
@@ -139,6 +155,7 @@ export const ShipmentLinesPane = ({
                 <div className="field-cell">
                   <TextField
                     label={t.fields.shippedQty}
+                    required
                     type="number"
                     min="0"
                     value={line.shippedQty}

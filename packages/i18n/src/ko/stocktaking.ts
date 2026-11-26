@@ -30,7 +30,7 @@ export const stocktaking = {
     plannedDateTo: '계획일 종료',
     /** 개시 입력의 실사 유형. 값 목록이 확정되지 않아 선택지가 비어 있다. */
     countType: '실사 유형',
-    inProgressOnly: '진행 중만',
+    inProgressOnly: '진행만',
     /*
      * 아래는 **개시 입력**. 사용자가 정하는 것은 이 넷뿐이다 — 라인은 서버가 장부에서 만들고
      * 실사번호·상태는 서버가 붙인다. 조회 조건의 「창고」와 이름이 같지만
@@ -264,7 +264,8 @@ export const stocktaking = {
    */
   lineTable: {
     lineNo: '줄번호',
-    item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     lot: '자재 LOT',
     systemQty: '장부 수량',
     countedQty: '실물 수량',

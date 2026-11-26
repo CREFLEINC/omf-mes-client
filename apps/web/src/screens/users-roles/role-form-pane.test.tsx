@@ -66,7 +66,7 @@ describe('RoleFormPane 입력칸', () => {
   it('사용 여부를 고치는 칸이 없다 — 전용 액션으로만 바뀐다', () => {
     renderPane();
 
-    expect(screen.queryByLabelText(/사용 여부/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/사용 유무/)).not.toBeInTheDocument();
   });
 
   it('고치면 그 칸만 상위에 올라간다', async () => {
@@ -106,8 +106,11 @@ describe('RoleFormPane 역할 코드 잠금', () => {
     renderPane({ editability: { codeEditable: false, reason: 'REFERENCED', referenceCount: 3 } });
 
     expect(codeField()).toBeDisabled();
-    /* 쓰이는 중이라 잠기면 이름 오른쪽 라벨로 짧게 알린다(사용자 지시 2026-11-20 · #333). */
-    expect(screen.getByText('사용 중인 코드는 바꿀 수 없습니다.')).toBeInTheDocument();
+    /* 잠기면 이름 오른쪽 「변경 불가」 라벨 — 문장은 마우스 · 화면 읽기로(사용자 지시 2026-11-24). */
+    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
+      'title',
+      '사용 중인 코드는 바꿀 수 없습니다.',
+    );
     expect(codeField()).toHaveAccessibleDescription('사용 중인 코드는 바꿀 수 없습니다.');
   });
 

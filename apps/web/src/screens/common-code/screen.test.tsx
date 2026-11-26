@@ -114,8 +114,9 @@ interface HistoryProbe {
   back: () => void;
 }
 
-let probeNavigate: ((delta: number) => void) | null = null;
+let probeNavigate: ReturnType<typeof useNavigate> | null = null;
 let probeSearch = '';
+let probePathname = '';
 let probeKeys: string[] = [];
 
 const RouterProbe = () => {
@@ -123,6 +124,7 @@ const RouterProbe = () => {
 
   probeNavigate = useNavigate();
   probeSearch = location.search;
+  probePathname = location.pathname;
   // 같은 칸을 여러 번 렌더해도 한 번만 센다. 라우터는 칸마다 다른 열쇠를 준다.
   if (probeKeys.at(-1) !== location.key) probeKeys.push(location.key);
 
@@ -141,7 +143,7 @@ const renderScreen = (routes: StubRoute[], search = '') => {
       <CommonCodeScreen />
       <RouterProbe />
     </>,
-    { fetch, route: `${ROUTE}${search}` },
+    { fetch, route: `${ROUTE}${search}`, dataRouter: true },
   );
 
   const history: HistoryProbe = {
@@ -149,12 +151,36 @@ const renderScreen = (routes: StubRoute[], search = '') => {
     entries: () => probeKeys.length,
     back: () => {
       act(() => {
-        probeNavigate?.(-1);
+        void probeNavigate?.(-1);
       });
     },
   };
 
-  return { requests, queryClient, history, user: userEvent.setup() };
+  /** 다른 화면으로 옮긴다 — 사이드바 메뉴를 누른 것과 같은 이동(#358). */
+  const goTo = (to: string) => {
+    act(() => {
+      void probeNavigate?.(to);
+    });
+  };
+
+  return {
+    requests,
+    queryClient,
+    history,
+    goTo,
+    pathname: () => probePathname,
+    user: userEvent.setup(),
+  };
+};
+
+/** 고친 채 화면 안에서 옮기면 서는 확인 창에서 「저장하지 않고 나가기」를 누른다(#358). */
+const confirmDiscardSwitch = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  const leave = messages.common.unsavedLeave;
+  await user.click(
+    within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+      name: leave.confirm,
+    }),
+  );
 };
 
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
@@ -168,9 +194,31 @@ const filterPane = (): HTMLElement => screen.getByRole('region', { name: '조회
 
 const codeGroupPane = (): HTMLElement => screen.getByRole('region', { name: '코드그룹' });
 
-const codeGroupFormPane = (): HTMLElement => screen.getByRole('region', { name: '코드그룹 정보' });
+const codeGroupFormPane = (): HTMLElement =>
+  screen.getByRole('region', { name: '코드그룹 상세 정보' });
+
+/** 코드그룹 등록은 팝업이다(사용자 지시 2026-11-25). */
+const codeGroupCreateDialog = (): HTMLElement => screen.getByRole('dialog', { name: '그룹 추가' });
+
+/** 코드값 등록도 팝업이다(사용자 지시 2026-11-25). */
+const codeValueCreateDialog = (): HTMLElement =>
+  screen.getByRole('dialog', { name: '코드값 추가' });
 
 const codeValuePane = (): HTMLElement => screen.getByRole('region', { name: '코드값' });
+
+/** 코드값 수정은 팝업이다 — 표 아래 상세 칸 없이 줄의 [수정]이 연다(사용자 지시 2026-11-26). */
+const codeValueEditDialog = (): HTMLElement => screen.getByRole('dialog', { name: '코드값 수정' });
+
+/** 줄의 [수정]을 눌러 「코드값 수정」 팝업을 연다. 팝업은 그 줄의 상세를 받은 뒤에 선다. */
+const openCodeValueEdit = async (
+  user: ReturnType<typeof userEvent.setup>,
+  code = 'SYN-CV-01',
+): Promise<void> => {
+  await user.click(await screen.findByRole('button', { name: `${code} 수정` }));
+  await within(await screen.findByRole('dialog', { name: '코드값 수정' })).findByRole('textbox', {
+    name: '코드명',
+  });
+};
 
 /** 코드값 목록 — 계약이 `codeGroupId`를 필수 쿼리로 둔다. */
 const codeValueListRoute = (
@@ -284,7 +332,11 @@ const departmentRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
 
 const departmentPane = (): HTMLElement => screen.getByRole('region', { name: '부서' });
 
-const departmentFormPane = (): HTMLElement => screen.getByRole('region', { name: '부서 정보' });
+const departmentFormPane = (): HTMLElement =>
+  screen.getByRole('region', { name: '부서 상세 정보' });
+
+/** 부서 등록은 팝업이다(사용자 지시 2026-11-25). */
+const departmentCreateDialog = (): HTMLElement => screen.getByRole('dialog', { name: '부서 추가' });
 
 /** 조직 탭의 기본 스텁 묶음. 탭이 열리면 부서 목록과 사업부 선택지가 함께 필요하다. */
 const orgRoutes = (): StubRoute[] => [departmentListRoute(), businessUnitsRoute()];
@@ -518,6 +570,7 @@ describe('CommonCodeScreen — 조회 실패 (C10)', () => {
     renderWithProviders(<CommonCodeScreen />, {
       fetch: () => Promise.reject(new Error('네트워크 실패')),
       route: ROUTE,
+      dataRouter: true,
     });
 
     expect(
@@ -595,7 +648,8 @@ describe('CommonCodeScreen — 쪽 이동 (C7·C8)', () => {
   it('전체가 0건이면 범위를 지어내지 않는다', async () => {
     renderScreen([codeGroupListRoute([], { page: 1, size: 50, total: 0 })]);
 
-    expect(await screen.findByText('전체 0건')).toBeInTheDocument();
+    /* 공용 쪽 이동(#358)은 범위 대신 총 건수만 낸다. */
+    expect(await screen.findByText('총 0건')).toBeInTheDocument();
   });
 
   /* C8 — 쪽을 옮기면 선택이 사라진다. 보이는 행이 달라지기 때문이다. */
@@ -612,9 +666,7 @@ describe('CommonCodeScreen — 쪽 이동 (C7·C8)', () => {
     await user.click(within(codeGroupPane()).getByRole('button', { name: '다음' }));
 
     // 선택이 남아 있었다면 상세 조회가 이어졌을 것이다 — 스텁에 없는 요청은 하네스가 던진다.
-    expect(
-      await screen.findByText('좌측에서 코드그룹을 고르면 여기에 그 그룹의 정보가 보입니다'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('코드그룹을 선택하세요.')).toBeInTheDocument();
     expect(codeGroupRequests(requests).at(-1)?.url.searchParams.get('page')).toBe('2');
   });
 });
@@ -634,9 +686,7 @@ describe('CommonCodeScreen — 조건 변경과 선택 (C6·C11)', () => {
     const last = codeGroupRequests(requests).at(-1);
     expect(last?.url.searchParams.has('page')).toBe(false);
     expect(last?.url.searchParams.get('q')).toBe('SYN');
-    expect(
-      await screen.findByText('좌측에서 코드그룹을 고르면 여기에 그 그룹의 정보가 보입니다'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('코드그룹을 선택하세요.')).toBeInTheDocument();
   });
 
   /* C11 */
@@ -655,9 +705,7 @@ describe('CommonCodeScreen — 조건 변경과 선택 (C6·C11)', () => {
   it('고르기 전에는 우 칸이 선택 전 안내를 낸다', async () => {
     renderScreen([codeGroupListRoute()]);
 
-    expect(
-      await screen.findByText('좌측에서 코드그룹을 고르면 여기에 그 그룹의 정보가 보입니다'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('코드그룹을 선택하세요.')).toBeInTheDocument();
   });
 });
 
@@ -670,7 +718,7 @@ describe('CommonCodeScreen — 코드그룹 상세 (C14·C15·C19)', () => {
     expect(requestsTo(requests, `${CODE_GROUPS_PATH}/1001`)).toHaveLength(0);
 
     await user.click(screen.getByRole('button', { name: 'SYN-GRP-01' }));
-    await screen.findByRole('region', { name: '코드그룹 정보' });
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
 
     expect(requestsTo(requests, `${CODE_GROUPS_PATH}/1001`)).toHaveLength(1);
   });
@@ -692,7 +740,7 @@ describe('CommonCodeScreen — 코드그룹 상세 (C14·C15·C19)', () => {
       [codeGroupListRoute(), codeGroupDetailRoute()],
       '?grp=1001',
     );
-    await screen.findByRole('region', { name: '코드그룹 정보' });
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
 
     await user.type(screen.getByLabelText('그룹명'), '-편집중');
 
@@ -722,9 +770,13 @@ describe('CommonCodeScreen — 코드그룹 상세 (C14·C15·C19)', () => {
     );
 
     expect(await screen.findByLabelText('그룹코드')).toBeDisabled();
-    expect(
-      screen.getByText('지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
+      'title',
+      '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
+    );
+    expect(screen.getByLabelText('그룹코드')).toHaveAccessibleDescription(
+      '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
+    );
   });
 
   it('codeEditable이 참이면 그룹코드를 고칠 수 있다', async () => {
@@ -746,7 +798,7 @@ describe('CommonCodeScreen — 코드그룹 상세 (C14·C15·C19)', () => {
     );
 
     expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: '코드그룹 정보' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '코드그룹 상세 정보' })).not.toBeInTheDocument();
   });
 });
 
@@ -766,7 +818,7 @@ describe('CommonCodeScreen — 코드그룹 수정 (C16·C17·C18·C20)', () => 
       [codeGroupListRoute(), codeGroupDetailRoute(), updateRoute],
       '?grp=1001',
     );
-    await screen.findByRole('region', { name: '코드그룹 정보' });
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
 
     return rendered;
   };
@@ -860,7 +912,7 @@ describe('CommonCodeScreen — 코드그룹 수정 (C16·C17·C18·C20)', () => 
       ],
       '?grp=1001',
     );
-    await screen.findByRole('region', { name: '코드그룹 정보' });
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
 
     await user.type(screen.getByLabelText('그룹명'), 'X');
     await user.click(within(codeGroupFormPane()).getByRole('button', { name: '저장' }));
@@ -904,7 +956,7 @@ describe('CommonCodeScreen — 코드그룹 수정 (C16·C17·C18·C20)', () => 
       ],
       '?grp=1001',
     );
-    await screen.findByRole('region', { name: '코드그룹 정보' });
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
 
     await user.type(screen.getByLabelText('그룹명'), 'X');
     await user.click(within(codeGroupFormPane()).getByRole('button', { name: '저장' }));
@@ -956,7 +1008,7 @@ describe('CommonCodeScreen — 코드그룹 등록 (C21)', () => {
     await screen.findByRole('button', { name: 'SYN-GRP-01' });
 
     await rendered.user.click(screen.getByRole('button', { name: '그룹 추가' }));
-    await screen.findByRole('region', { name: '코드그룹 정보' });
+    await screen.findByRole('dialog', { name: '그룹 추가' });
 
     return rendered;
   };
@@ -966,7 +1018,7 @@ describe('CommonCodeScreen — 코드그룹 등록 (C21)', () => {
 
     await user.type(screen.getByLabelText('그룹코드'), 'SYN-GRP-09');
     await user.type(screen.getByLabelText('그룹명'), '합성 코드그룹 I');
-    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '그룹 추가' }));
+    await user.click(within(codeGroupCreateDialog()).getByRole('button', { name: '그룹 추가' }));
 
     const post = await waitFor(() => {
       const found = requests.find((request) => request.method === 'POST');
@@ -984,7 +1036,7 @@ describe('CommonCodeScreen — 코드그룹 등록 (C21)', () => {
 
     await user.type(screen.getByLabelText('그룹코드'), 'SYN-GRP-09');
     await user.type(screen.getByLabelText('그룹명'), '합성 코드그룹 I');
-    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '그룹 추가' }));
+    await user.click(within(codeGroupCreateDialog()).getByRole('button', { name: '그룹 추가' }));
 
     // 새 그룹의 상세를 조회한다 = grp가 새 번호가 되고 new가 사라졌다.
     await waitFor(() => {
@@ -999,7 +1051,7 @@ describe('CommonCodeScreen — 코드그룹 등록 (C21)', () => {
 
     await user.type(screen.getByLabelText('그룹코드'), 'SYN-GRP-09');
     await user.type(screen.getByLabelText('그룹명'), '합성 코드그룹 I');
-    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '그룹 추가' }));
+    await user.click(within(codeGroupCreateDialog()).getByRole('button', { name: '그룹 추가' }));
 
     await waitFor(() => {
       expect(
@@ -1008,18 +1060,21 @@ describe('CommonCodeScreen — 코드그룹 등록 (C21)', () => {
     });
   });
 
-  /* 등록 폼이 열려 있는 동안 고른 그룹의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다. */
+  /*
+   * 등록 팝업 뒤에는 고른 그룹의 상세가 그대로 남는다(사용자 보고 2026-11-26) — 받아 둔 것을 쓰고 다시 조회하지 않는다.
+   * 팝업은 빈 초안으로 선다.
+   */
   it('등록 폼을 열면 고른 그룹의 상세를 조회하지 않는다', async () => {
     const { requests, user } = renderScreen(
       [codeGroupListRoute(), codeGroupDetailRoute()],
       '?grp=1001',
     );
-    await screen.findByRole('region', { name: '코드그룹 정보' });
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
     const before = requestsTo(requests, `${CODE_GROUPS_PATH}/1001`).length;
 
     await user.click(screen.getByRole('button', { name: '그룹 추가' }));
 
-    expect(screen.getByLabelText('그룹코드')).toHaveValue('');
+    expect(within(codeGroupCreateDialog()).getByLabelText('그룹코드')).toHaveValue('');
     expect(requestsTo(requests, `${CODE_GROUPS_PATH}/1001`)).toHaveLength(before);
   });
 });
@@ -1037,7 +1092,7 @@ describe('CommonCodeScreen — 코드그룹 사용 중지 (C22)', () => {
       [codeGroupListRoute(), codeGroupDetailRoute(), ...routes],
       '?grp=1001',
     );
-    await screen.findByRole('region', { name: '코드그룹 정보' });
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
 
     return rendered;
   };
@@ -1051,6 +1106,23 @@ describe('CommonCodeScreen — 코드그룹 사용 중지 (C22)', () => {
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(requests.some((request) => request.method === 'POST')).toBe(false);
+  });
+
+  /* 사용자 지시 2026-11-26 — 코드값 창과 같은 틀. 대상은 이미 받은 상세 값이다. */
+  it('확인 창이 제목 · 설명 · 주의 줄을 내고 대상 줄은 없다', async () => {
+    const { user } = await openEditForm();
+
+    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '사용 중지' }));
+
+    const dialog = within(screen.getByRole('dialog', { name: '코드그룹을 사용 중지할까요?' }));
+    // 제목 아래 대상 줄은 두지 않는다(사용자 지시 2026-11-26).
+    expect(dialog.queryByText('합성 코드그룹 A (SYN-GRP-01)')).toBeNull();
+    expect(
+      dialog.getByText(
+        '사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 코드그룹이 그대로 표시됩니다.',
+      ),
+    ).toBeInTheDocument();
+    expect(dialog.getByText('사용 중지 후에는 사용을 재개할 수 없습니다.')).toBeInTheDocument();
   });
 
   it('확인하면 :deactivate로 나가고 멱등 키와 If-Match가 둘 다 실린다', async () => {
@@ -1121,13 +1193,13 @@ describe('CommonCodeScreen — 코드그룹 사용 중지 (C22)', () => {
 
   it('이미 미사용이면 사용 중지가 비활성이고 사유가 붙는다', async () => {
     renderScreen([codeGroupListRoute(), codeGroupDetailRoute(1003)], '?grp=1003');
-    await screen.findByRole('region', { name: '코드그룹 정보' });
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
 
     const button = within(codeGroupFormPane()).getByRole('button', { name: '사용 중지' });
     expect(button).toBeDisabled();
-    expect(
-      screen.getByText('사용 중지는 이미 미사용인 코드그룹에 다시 할 수 없습니다.'),
-    ).toBeInTheDocument();
+    expect(button).toHaveAccessibleDescription(
+      '사용 중지는 이미 미사용인 코드그룹에 다시 할 수 없습니다.',
+    );
   });
 
   /* 닫힌 창을 남겨 두면 지난 값이 그대로 살아 있다. */
@@ -1196,12 +1268,12 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
   });
 
   const addCodeGroupButton = (): HTMLElement =>
-    within(codeGroupFormPane()).getByRole('button', { name: '그룹 추가' });
+    within(codeGroupCreateDialog()).getByRole('button', { name: '그룹 추가' });
 
   /** 등록 폼을 열고 필수 두 칸을 채운 뒤 등록을 낸다. */
   const startCreate = async (user: ReturnType<typeof userEvent.setup>, groupName: string) => {
     await user.click(within(filterPane()).getByRole('button', { name: '그룹 추가' }));
-    await screen.findByRole('region', { name: '코드그룹 정보' });
+    await screen.findByRole('dialog', { name: '그룹 추가' });
     await user.type(screen.getByLabelText('그룹코드'), 'SYN-GRP-09');
     await user.type(screen.getByLabelText('그룹명'), groupName);
     await user.click(addCodeGroupButton());
@@ -1212,14 +1284,14 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
     user: ReturnType<typeof userEvent.setup>,
     groupName: string,
   ) => {
-    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '취소' }));
+    await user.click(within(codeGroupCreateDialog()).getByRole('button', { name: '취소' }));
     await user.click(within(filterPane()).getByRole('button', { name: '그룹 추가' }));
     await user.type(screen.getByLabelText('그룹명'), groupName);
   };
 
   /** 1001의 그룹명을 고쳐 저장을 낸다 — 초안을 고치는 가장 짧은 길이다. */
   const startSaveOnFirstGroup = async (user: ReturnType<typeof userEvent.setup>) => {
-    await screen.findByRole('region', { name: '코드그룹 정보' });
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
     await user.type(screen.getByLabelText('그룹명'), 'X');
     await user.click(codeGroupSaveButton());
   };
@@ -1253,11 +1325,7 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
     const save = codeGroupSaveButton();
 
     expect(save).toBeDisabled();
-    expect(
-      within(codeGroupFormPane()).getByText(
-        '저장은 다른 코드그룹의 저장이 끝난 뒤에 할 수 있습니다.',
-      ),
-    ).toBeInTheDocument();
+    expect(within(codeGroupFormPane()).getByRole('button', { name: '저장' })).toBeDisabled();
     /* 남의 저장으로 스피너를 돌리면 화면이 손댄 적 없는 코드그룹을 「저장 중」이라고 말한다. */
     expect(save).not.toHaveAttribute('aria-busy', 'true');
   });
@@ -1282,9 +1350,7 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
      * 그래야 잠금이 풀리는 순간을 「저장이 다시 열린다」는 **양성**으로 잡을 수 있다.
      */
     await user.type(screen.getByLabelText('그룹명'), 'Y');
-    expect(
-      within(codeGroupFormPane()).getByText(/저장은 다른 코드그룹의 저장이 끝난 뒤에/),
-    ).toBeInTheDocument();
+    expect(within(codeGroupFormPane()).getByRole('button', { name: '저장' })).toBeDisabled();
 
     await act(async () => {
       deferred.release({
@@ -1456,7 +1522,7 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
     await user.click(await within(filterPane()).findByRole('button', { name: '그룹 추가' }));
     await user.type(screen.getByLabelText('그룹코드'), 'SYN-GRP-09');
     await user.type(screen.getByLabelText('그룹명'), '합성 코드그룹 I');
-    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '그룹 추가' }));
+    await user.click(within(codeGroupCreateDialog()).getByRole('button', { name: '그룹 추가' }));
 
     await waitFor(() => {
       expect(requests.filter((request) => request.method === 'POST')).toHaveLength(1);
@@ -1506,9 +1572,7 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
     await user.click(codeGroupSaveButton());
 
     expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
-    expect(
-      within(codeGroupFormPane()).getByText(/저장은 다른 코드그룹의 저장이 끝난 뒤에/),
-    ).toBeInTheDocument();
+    expect(within(codeGroupFormPane()).getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
   /*
@@ -1590,8 +1654,8 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
      */
     expect(addCodeGroupButton()).not.toHaveAttribute('aria-busy', 'true');
     expect(
-      within(codeGroupFormPane()).getByText(/그룹 추가는 다른 코드그룹의 저장이 끝난 뒤에/),
-    ).toBeInTheDocument();
+      within(codeGroupCreateDialog()).getByRole('button', { name: '그룹 추가' }),
+    ).toBeDisabled();
 
     await act(async () => {
       deferred.release(createFailure);
@@ -1604,9 +1668,11 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
     await waitFor(() => {
       expect(addCodeGroupButton()).toBeEnabled();
     });
-    expect(within(codeGroupFormPane()).queryByText('저장할 수 없습니다.')).not.toBeInTheDocument();
     expect(
-      within(codeGroupFormPane()).queryByText('이미 있는 그룹명입니다.'),
+      within(codeGroupCreateDialog()).queryByText('저장할 수 없습니다.'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(codeGroupCreateDialog()).queryByText('이미 있는 그룹명입니다.'),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText('그룹명')).toHaveValue('새 초안');
   });
@@ -1633,7 +1699,7 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
     await selectSecondGroup(user);
     history.back();
 
-    await screen.findByRole('region', { name: '코드그룹 정보' });
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
     await user.type(screen.getByLabelText('그룹명'), '되돌아온 초안');
 
     await act(async () => {
@@ -1643,9 +1709,11 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
     await waitFor(() => {
       expect(addCodeGroupButton()).toBeEnabled();
     });
-    expect(within(codeGroupFormPane()).queryByText('저장할 수 없습니다.')).not.toBeInTheDocument();
     expect(
-      within(codeGroupFormPane()).queryByText('이미 있는 그룹명입니다.'),
+      within(codeGroupCreateDialog()).queryByText('저장할 수 없습니다.'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(codeGroupCreateDialog()).queryByText('이미 있는 그룹명입니다.'),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText('그룹명')).toHaveValue('되돌아온 초안');
   });
@@ -1659,8 +1727,12 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
 
     await startCreate(user, '합성 코드그룹 I');
 
-    expect(await within(codeGroupFormPane()).findByText('저장할 수 없습니다.')).toBeInTheDocument();
-    expect(within(codeGroupFormPane()).getByText('이미 있는 그룹명입니다.')).toBeInTheDocument();
+    expect(
+      await within(codeGroupCreateDialog()).findByText('저장할 수 없습니다.'),
+    ).toBeInTheDocument();
+    expect(
+      within(codeGroupCreateDialog()).getByText('이미 있는 그룹명입니다.'),
+    ).toBeInTheDocument();
   });
 
   /*
@@ -1706,9 +1778,9 @@ describe('CommonCodeScreen — 코드값 목록 (C23·C24·C25·C29)', () => {
     await screen.findByRole('button', { name: 'SYN-GRP-01' });
 
     expect(codeValueRequests(requests)).toHaveLength(0);
-    expect(
-      within(codeValuePane()).getByText('좌측에서 코드그룹을 먼저 고르세요'),
-    ).toBeInTheDocument();
+    /* 고르기 전에는 코드값 구획을 두지 않고 빈 안내 하나만 둔다(사용자 관리와 같다 · 2026-11-24). */
+    expect(screen.queryByRole('region', { name: '코드값' })).not.toBeInTheDocument();
+    expect(screen.getByText('코드그룹을 선택하세요.')).toBeInTheDocument();
   });
 
   it('그룹을 고르면 codeGroupId를 실어 한 번 조회한다', async () => {
@@ -1909,13 +1981,16 @@ describe('CommonCodeScreen — 코드값 상세와 수정 (C30·C31·C32·C33·C
       ],
       `?grp=1001&val=${String(codeValueId)}`,
     );
-    // 구획은 불러오는 중에도 있다 — 입력칸이 나와야 상세가 도착한 것이다.
-    await screen.findByLabelText('코드명');
+    // 줄의 [수정]으로 수정 팝업을 연다.
+    await openCodeValueEdit(
+      rendered.user,
+      codeValueFixtures.find((row) => row.codeValueId === codeValueId)?.code,
+    );
 
     return rendered;
   };
 
-  const codeValueFormPane = (): HTMLElement => screen.getByRole('region', { name: '코드값 정보' });
+  const codeValueFormPane = codeValueEditDialog;
 
   /* C30 */
   it('코드값을 고르면 상세 요청이 한 번 나간다', async () => {
@@ -1933,9 +2008,79 @@ describe('CommonCodeScreen — 코드값 상세와 수정 (C30·C31·C32·C33·C
     expect(requestsTo(requests, `${CODE_VALUES_PATH}/2002`)).toHaveLength(0);
 
     await user.click(screen.getByRole('button', { name: 'SYN-CV-02' }));
-    await screen.findByLabelText('코드명');
 
+    await waitFor(() => expect(requestsTo(requests, `${CODE_VALUES_PATH}/2002`)).toHaveLength(1));
+  });
+
+  /*
+   * 사용자 지시 2026-11-26 — 표 아래 읽기 전용 상세 칸이 없다. 줄의 [수정]이 수정 팝업을 열고,
+   * [취소]는 고친 값을 버리고 팝업을 닫는다(고른 줄은 그대로).
+   */
+  it('고른 코드값은 표 아래에 상세가 없고 줄의 [수정]으로 팝업이 열리며 [취소]로 닫힌다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute(), codeValueDetailRoute()],
+      '?grp=1001&val=2001',
+    );
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
+
+    expect(screen.queryByRole('region', { name: '코드값 정보' })).toBeNull();
+    expect(screen.queryByRole('textbox', { name: '코드명' })).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('button', { name: 'SYN-CV-01 사용 중지' })).toBeEnabled();
+
+    await openCodeValueEdit(user);
+    expect(within(codeValueFormPane()).getByRole('textbox', { name: '코드명' })).toHaveValue(
+      '합성 코드값 A',
+    );
+    expect(within(codeValueFormPane()).queryByRole('button', { name: '사용 중지' })).toBeNull();
+    await user.type(within(codeValueFormPane()).getByRole('textbox', { name: '코드명' }), 'X');
+
+    await user.click(within(codeValueFormPane()).getByRole('button', { name: '취소' }));
+    expect(screen.queryByRole('dialog', { name: '코드값 수정' })).toBeNull();
+    expect(history.search()).toBe('?grp=1001&val=2001');
+
+    // 고친 값은 버리고 저장된 값으로 다시 연다.
+    await openCodeValueEdit(user);
+    expect(within(codeValueFormPane()).getByRole('textbox', { name: '코드명' })).toHaveValue(
+      '합성 코드값 A',
+    );
+  });
+
+  it('고르지 않은 줄의 [수정]은 그 줄을 고르고 그 코드값의 수정 팝업을 연다', async () => {
+    const { history, requests, user } = renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(),
+        codeValueListRoute(),
+        codeValueDetailRoute(2002),
+      ],
+      '?grp=1001',
+    );
+
+    await openCodeValueEdit(user, 'SYN-CV-02');
+
+    expect(history.search()).toContain('val=2002');
     expect(requestsTo(requests, `${CODE_VALUES_PATH}/2002`)).toHaveLength(1);
+    expect(within(codeValueFormPane()).getByLabelText('코드')).toHaveValue('SYN-CV-02');
+  });
+
+  /* 사용자 지시 2026-11-25 — 코드 글자만이 아니라 줄 어디를 눌러도 그 코드값을 연다. */
+  it('코드값 줄의 다른 칸을 눌러도 그 코드값을 연다', async () => {
+    const { history, user } = renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(),
+        codeValueListRoute(),
+        codeValueDetailRoute(2002),
+      ],
+      '?grp=1001',
+    );
+    const row = (await screen.findByRole('button', { name: 'SYN-CV-02' })).closest('tr');
+    const cells = within(row as HTMLElement).getAllByRole('cell');
+
+    await user.click(cells[cells.length - 1] as HTMLElement);
+
+    await waitFor(() => expect(history.search()).toContain('val=2002'));
   });
 
   it('폼이 상세 값으로 채워진다', async () => {
@@ -2127,6 +2272,276 @@ describe('CommonCodeScreen — 코드값 상세와 수정 (C30·C31·C32·C33·C
   });
 });
 
+describe('CommonCodeScreen — 저장하지 않은 편집을 두고 다른 화면으로 (#358)', () => {
+  const leave = messages.common.unsavedLeave;
+
+  const expectLeaveFlow = async ({
+    goTo,
+    pathname,
+    user,
+  }: Pick<ReturnType<typeof renderScreen>, 'goTo' | 'pathname' | 'user'>) => {
+    goTo('/system/users-roles');
+    const dialog = within(await screen.findByRole('dialog', { name: leave.title }));
+    expect(dialog.getByText(leave.body)).toBeInTheDocument();
+    await user.click(dialog.getByRole('button', { name: leave.keep }));
+    expect(pathname()).toBe(ROUTE);
+
+    goTo('/system/users-roles');
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.confirm,
+      }),
+    );
+    await waitFor(() => expect(pathname()).toBe('/system/users-roles'));
+  };
+
+  it('코드그룹 정보를 고친 채 다른 화면으로 가면 묻고, 계속 편집은 남고 나가기는 옮긴다', async () => {
+    const rendered = renderScreen([codeGroupListRoute(), codeGroupDetailRoute()], '?grp=1001');
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
+    await rendered.user.type(screen.getByLabelText('그룹명'), '-편집중');
+
+    await expectLeaveFlow(rendered);
+  });
+
+  it('코드값 정보를 고친 채 다른 화면으로 가도 묻는다', async () => {
+    const rendered = renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(),
+        codeValueListRoute(),
+        codeValueDetailRoute(2001),
+      ],
+      '?grp=1001&val=2001',
+    );
+    await openCodeValueEdit(rendered.user);
+    await rendered.user.type(screen.getByLabelText('코드명'), 'X');
+
+    await expectLeaveFlow(rendered);
+  });
+
+  it('코드그룹 정보를 고친 채 다른 줄을 누르면 묻고, 계속 편집은 고친 값과 선택을 남기고 나가기는 옮긴다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeGroupDetailRoute(1002)],
+      '?grp=1001',
+    );
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
+    await user.type(screen.getByLabelText('그룹명'), '-편집중');
+    const edited = (screen.getByLabelText('그룹명') as HTMLInputElement).value;
+
+    await user.click(screen.getByRole('button', { name: 'SYN-GRP-02' }));
+    const dialog = within(await screen.findByRole('dialog', { name: leave.title }));
+    expect(dialog.getByText(leave.body)).toBeInTheDocument();
+    expect(dialog.queryByRole('button', { name: /닫기/ })).toBeNull();
+    await user.click(dialog.getByRole('button', { name: leave.keep }));
+    expect(screen.queryByRole('dialog', { name: leave.title })).toBeNull();
+    expect(history.search()).toBe('?grp=1001');
+    expect(screen.getByLabelText('그룹명')).toHaveValue(edited);
+
+    await user.click(screen.getByRole('button', { name: 'SYN-GRP-02' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.confirm,
+      }),
+    );
+    await waitFor(() => expect(history.search()).toBe('?grp=1002'));
+    await waitFor(() =>
+      expect(screen.getByLabelText('그룹명')).toHaveValue(codeGroupFixtures[1]?.groupName),
+    );
+  });
+
+  it('코드값 정보를 고친 채 다른 코드값을 누르면 묻고, 계속 편집은 남고 나가기는 옮긴다', async () => {
+    const { history, user } = renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(),
+        codeValueListRoute(),
+        codeValueDetailRoute(2001),
+        codeValueDetailRoute(2002),
+      ],
+      '?grp=1001&val=2001',
+    );
+    await openCodeValueEdit(user);
+    await user.type(screen.getByLabelText('코드명'), 'X');
+
+    await user.click(screen.getByRole('button', { name: 'SYN-CV-02' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.keep,
+      }),
+    );
+    expect(history.search()).toBe('?grp=1001&val=2001');
+    expect(screen.getByLabelText('코드명')).toHaveValue('합성 코드값 AX');
+
+    await user.click(screen.getByRole('button', { name: 'SYN-CV-02' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.confirm,
+      }),
+    );
+    await waitFor(() => expect(history.search()).toBe('?grp=1001&val=2002'));
+  });
+
+  it('고친 채 탭을 바꾸려 하면 묻고, 계속 편집은 탭을 그대로 두고 나가기는 바꾼다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), ...orgRoutes()],
+      '?grp=1001',
+    );
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
+    await user.type(screen.getByLabelText('그룹명'), '-편집중');
+
+    await user.click(screen.getByRole('tab', { name: '조직(부서)' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.keep,
+      }),
+    );
+    expect(history.search()).toBe('?grp=1001');
+    expect(screen.getByRole('tab', { name: '공통코드' })).toHaveAttribute('aria-selected', 'true');
+    expect((screen.getByLabelText('그룹명') as HTMLInputElement).value).toMatch(/-편집중$/);
+
+    await user.click(screen.getByRole('tab', { name: '조직(부서)' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.confirm,
+      }),
+    );
+    await waitFor(() => expect(history.search()).toBe('?tab=org'));
+    expect(await screen.findByRole('button', { name: 'SYN-DEPT-01' })).toBeInTheDocument();
+  });
+
+  /** 확인 창에서 「계속 편집」을 누른다. */
+  const keepEditing = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+    const dialog = within(await screen.findByRole('dialog', { name: leave.title }));
+    expect(dialog.getByText(leave.body)).toBeInTheDocument();
+    await user.click(dialog.getByRole('button', { name: leave.keep }));
+    expect(screen.queryByRole('dialog', { name: leave.title })).toBeNull();
+  };
+
+  const renderEditedGroup = async (routes: StubRoute[] = [codeGroupListRoute()]) => {
+    const rendered = renderScreen([...routes, codeGroupDetailRoute()], '?grp=1001');
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
+    await rendered.user.type(screen.getByLabelText('그룹명'), '-편집중');
+    return rendered;
+  };
+
+  it('코드그룹 정보를 고친 채 「그룹 추가」를 누르면 묻고, 계속 편집은 남고 나가기는 등록 창을 연다', async () => {
+    const { history, user } = await renderEditedGroup();
+
+    await user.click(within(filterPane()).getByRole('button', { name: '그룹 추가' }));
+    await keepEditing(user);
+    expect(history.search()).toBe('?grp=1001');
+    expect(screen.queryByRole('dialog', { name: '그룹 추가' })).toBeNull();
+    expect(screen.getByLabelText('그룹명')).toHaveValue('합성 코드그룹 A-편집중');
+
+    await user.click(within(filterPane()).getByRole('button', { name: '그룹 추가' }));
+    await confirmDiscardSwitch(user);
+    expect(await screen.findByRole('dialog', { name: '그룹 추가' })).toBeInTheDocument();
+    // 고른 그룹은 주소에 남는다 — 팝업을 닫으면 그대로 돌아온다(사용자 보고 2026-11-26).
+    expect(history.search()).toBe('?grp=1001&new=group');
+  });
+
+  it('코드그룹 정보를 고친 채 「미사용 포함」을 바꾸면 묻고, 계속 편집은 조건을 그대로 둔다', async () => {
+    const { history, user } = await renderEditedGroup();
+
+    await user.click(within(filterPane()).getByRole('checkbox', { name: '미사용 포함' }));
+    await keepEditing(user);
+    expect(history.search()).toBe('?grp=1001');
+    expect(within(filterPane()).getByRole('checkbox', { name: '미사용 포함' })).not.toBeChecked();
+    expect(screen.getByLabelText('그룹명')).toHaveValue('합성 코드그룹 A-편집중');
+
+    await user.click(within(filterPane()).getByRole('checkbox', { name: '미사용 포함' }));
+    await confirmDiscardSwitch(user);
+    await waitFor(() => expect(history.search()).toBe('?tab=code&inactive=1'));
+  });
+
+  it('코드그룹 정보를 고친 채 조회를 누르면 묻는다', async () => {
+    const { history, user } = await renderEditedGroup();
+
+    await user.click(within(filterPane()).getByRole('button', { name: '조회' }));
+    await keepEditing(user);
+    expect(history.search()).toBe('?grp=1001');
+
+    await user.click(within(filterPane()).getByRole('button', { name: '조회' }));
+    await confirmDiscardSwitch(user);
+    await waitFor(() => expect(history.search()).not.toContain('grp='));
+  });
+
+  it('코드그룹 정보를 고친 채 쪽을 옮기면 묻는다', async () => {
+    const { history, user } = await renderEditedGroup([
+      codeGroupListRoute(codeGroupFixtures, { page: 1, size: 2, total: 10 }),
+    ]);
+
+    await user.click(within(codeGroupPane()).getByRole('button', { name: '다음' }));
+    await keepEditing(user);
+    expect(history.search()).toBe('?grp=1001');
+
+    await user.click(within(codeGroupPane()).getByRole('button', { name: '다음' }));
+    await confirmDiscardSwitch(user);
+    await waitFor(() => expect(history.search()).toBe('?tab=code&page=2'));
+  });
+
+  it('코드값 정보를 고친 채 「코드값 추가」 · 「미사용 포함」을 누르면 묻는다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute(), codeValueDetailRoute()],
+      '?grp=1001&val=2001',
+    );
+    await openCodeValueEdit(user);
+    await user.type(screen.getByLabelText('코드명'), 'X');
+
+    await user.click(within(codeValuePane()).getByRole('button', { name: '코드값 추가' }));
+    await keepEditing(user);
+    expect(history.search()).toBe('?grp=1001&val=2001');
+    expect(screen.getByLabelText('코드명')).toHaveValue('합성 코드값 AX');
+
+    await user.click(within(codeValuePane()).getByRole('checkbox', { name: '미사용 포함' }));
+    await keepEditing(user);
+    expect(history.search()).toBe('?grp=1001&val=2001');
+
+    await user.click(within(codeValuePane()).getByRole('button', { name: '코드값 추가' }));
+    await confirmDiscardSwitch(user);
+    expect(await screen.findByRole('dialog', { name: '코드값 추가' })).toBeInTheDocument();
+  });
+
+  it('부서 정보를 고친 채 「부서 추가」를 누르면 묻고, 나가기는 등록 창을 연다', async () => {
+    const { history, user } = renderScreen(orgDetailRoutes(), '?tab=org&dep=3001');
+    await screen.findByDisplayValue('합성 부서 A');
+    await user.type(screen.getByLabelText('부서명'), '-편집중');
+
+    await user.click(within(filterPane()).getByRole('button', { name: '부서 추가' }));
+    await keepEditing(user);
+    expect(history.search()).toBe('?tab=org&dep=3001');
+    expect(screen.getByLabelText('부서명')).toHaveValue('합성 부서 A-편집중');
+
+    await user.click(within(filterPane()).getByRole('button', { name: '부서 추가' }));
+    await confirmDiscardSwitch(user);
+    expect(await screen.findByRole('dialog', { name: '부서 추가' })).toBeInTheDocument();
+  });
+
+  it('고친 것이 없으면 다른 줄을 눌러도 묻지 않는다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeGroupDetailRoute(1002)],
+      '?grp=1001',
+    );
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
+
+    await user.click(screen.getByRole('button', { name: 'SYN-GRP-02' }));
+    await waitFor(() => expect(history.search()).toBe('?grp=1002'));
+    expect(screen.queryByRole('dialog', { name: leave.title })).toBeNull();
+  });
+
+  it('고친 것이 없으면 묻지 않고 옮긴다', async () => {
+    const { goTo, pathname } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute()],
+      '?grp=1001',
+    );
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
+
+    goTo('/system/users-roles');
+    await waitFor(() => expect(pathname()).toBe('/system/users-roles'));
+    expect(screen.queryByRole('dialog', { name: leave.title })).toBeNull();
+  });
+});
+
 describe('CommonCodeScreen — 코드값 등록 (C37·C38)', () => {
   const createdCodeValue = {
     codeValueId: 2009,
@@ -2157,21 +2572,13 @@ describe('CommonCodeScreen — 코드값 등록 (C37·C38)', () => {
       ),
   };
 
-  const codeValueFormPane = (): HTMLElement => screen.getByRole('region', { name: '코드값 정보' });
-
   /* C38 — 계약이 그룹 번호를 필수 쿼리로 두어 그룹 없이는 만들 자리 자체가 없다. */
-  it('그룹을 고르지 않았으면 코드값 추가가 비활성이고 사유가 붙는다', async () => {
+  /* 고르기 전에는 코드값 구획 자체를 두지 않는다 — 누를 수 없는 「코드값 추가」도 없다(2026-11-24). */
+  it('그룹을 고르지 않았으면 코드값 추가가 보이지 않는다', async () => {
     renderScreen([codeGroupListRoute()]);
     await screen.findByRole('button', { name: 'SYN-GRP-01' });
 
-    const button = within(codeValuePane()).getByRole('button', { name: '코드값 추가' });
-    expect(button).toBeDisabled();
-
-    const noteId = button.getAttribute('aria-describedby');
-    expect(noteId).not.toBeNull();
-    expect(document.getElementById(noteId as string)).toHaveTextContent(
-      '코드값 추가는 좌측에서 코드그룹을 고른 뒤에 할 수 있습니다.',
-    );
+    expect(screen.queryByRole('button', { name: '코드값 추가' })).not.toBeInTheDocument();
   });
 
   it('등록 저장이 POST로 나가고 본문에 고른 그룹 번호가 실리며 If-Match가 없다', async () => {
@@ -2191,7 +2598,7 @@ describe('CommonCodeScreen — 코드값 등록 (C37·C38)', () => {
 
     await user.type(await screen.findByLabelText('코드'), 'SYN-CV-09');
     await user.type(screen.getByLabelText('코드명'), '합성 코드값 I');
-    await user.click(within(codeValueFormPane()).getByRole('button', { name: '코드값 추가' }));
+    await user.click(within(codeValueCreateDialog()).getByRole('button', { name: '코드값 추가' }));
 
     const post = await waitFor(() => {
       const found = requests.find((request) => request.method === 'POST');
@@ -2224,7 +2631,7 @@ describe('CommonCodeScreen — 코드값 등록 (C37·C38)', () => {
 
     await user.type(await screen.findByLabelText('코드'), 'SYN-CV-09');
     await user.type(screen.getByLabelText('코드명'), '합성 코드값 I');
-    await user.click(within(codeValueFormPane()).getByRole('button', { name: '코드값 추가' }));
+    await user.click(within(codeValueCreateDialog()).getByRole('button', { name: '코드값 추가' }));
 
     await waitFor(() => {
       expect(requestsTo(requests, `${CODE_VALUES_PATH}/2009`)).toHaveLength(1);
@@ -2253,12 +2660,12 @@ describe('CommonCodeScreen — 코드값 등록 (C37·C38)', () => {
       ],
       '?grp=1001&val=2001',
     );
-    await screen.findByLabelText('코드명');
+    await waitFor(() => expect(requestsTo(requests, `${CODE_VALUES_PATH}/2001`)).toHaveLength(1));
     const before = requestsTo(requests, `${CODE_VALUES_PATH}/2001`).length;
 
     await user.click(within(codeValuePane()).getByRole('button', { name: '코드값 추가' }));
 
-    expect(screen.getByLabelText('코드')).toHaveValue('');
+    expect(within(codeValueCreateDialog()).getByLabelText('코드')).toHaveValue('');
     expect(requestsTo(requests, `${CODE_VALUES_PATH}/2001`)).toHaveLength(before);
   });
 });
@@ -2288,12 +2695,21 @@ describe('CommonCodeScreen — 코드값 사용 중지 (C39)', () => {
       [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute(), detailRoute, ...routes],
       '?grp=1001&val=2001',
     );
-    await screen.findByLabelText('코드명');
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
 
     return rendered;
   };
 
-  const codeValueFormPane = (): HTMLElement => screen.getByRole('region', { name: '코드값 정보' });
+  /** 줄의 [사용 중지] — 표 아래 상세 칸이 없어 줄의 단추가 확인 창을 연다(사용자 지시 2026-11-26). */
+  const rowDeactivate = (): HTMLElement =>
+    screen.getByRole('button', { name: 'SYN-CV-01 사용 중지' });
+
+  /** 확인 창의 [사용 중지] — 그 줄의 상세(잠금 토큰)를 받은 뒤에 눌린다. */
+  const confirmDeactivate = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+    const confirm = within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' });
+    await waitFor(() => expect(confirm).toBeEnabled());
+    await user.click(confirm);
+  };
 
   /*
    * 계약 서술은 「확인 다이얼로그 없이」이지만 그 이유가 「참조 건수를 셀 수 없어」다 —
@@ -2304,7 +2720,7 @@ describe('CommonCodeScreen — 코드값 사용 중지 (C39)', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
-    await user.click(within(codeValueFormPane()).getByRole('button', { name: '사용 중지' }));
+    await user.click(rowDeactivate());
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(requests.some((request) => request.method === 'POST')).toBe(false);
@@ -2313,8 +2729,8 @@ describe('CommonCodeScreen — 코드값 사용 중지 (C39)', () => {
   it('확인하면 :deactivate로 나가고 멱등 키와 If-Match가 둘 다 실린다', async () => {
     const { requests, user } = await openForm();
 
-    await user.click(within(codeValueFormPane()).getByRole('button', { name: '사용 중지' }));
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }));
+    await user.click(rowDeactivate());
+    await confirmDeactivate(user);
 
     const post = await waitFor(() => {
       const found = requests.find((request) => request.method === 'POST');
@@ -2327,10 +2743,72 @@ describe('CommonCodeScreen — 코드값 사용 중지 (C39)', () => {
     expect(post.headers.get('If-Match')).toBe('W/"3"');
   });
 
+  it('이미 미사용인 줄은 [사용 중지]가 잠긴다', async () => {
+    renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(),
+        codeValueListRoute(
+          codeValueFixtures.map((row) =>
+            row.codeValueId === 2001 ? { ...row, isActive: false } : row,
+          ),
+        ),
+      ],
+      '?grp=1001',
+    );
+
+    expect(await screen.findByRole('button', { name: 'SYN-CV-01 사용 중지' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'SYN-CV-02 사용 중지' })).toBeEnabled();
+  });
+
+  it('고르지 않은 줄의 [사용 중지]는 그 줄을 고르고 그 코드값으로 :deactivate를 보낸다', async () => {
+    const { history, requests, user } = renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(),
+        codeValueListRoute(),
+        detailRoute,
+        deactivateRoute,
+      ],
+      '?grp=1001',
+    );
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
+
+    await user.click(rowDeactivate());
+    expect(history.search()).toContain('val=2001');
+    await confirmDeactivate(user);
+
+    const post = await waitFor(() => {
+      const found = requests.find((request) => request.method === 'POST');
+      expect(found).toBeDefined();
+      return found as RecordedRequest;
+    });
+    expect(post.url.pathname).toBe(`${CODE_VALUES_PATH}/2001:deactivate`);
+    expect(post.headers.get('Idempotency-Key')).toMatch(UUID);
+    expect(post.headers.get('If-Match')).toBe('W/"3"');
+  });
+
+  /* 사용자 지시 2026-11-26 — 제목 · 대상 「코드명 (코드)」 · 설명 · 주의 줄. 대상은 이미 받은 목록 값이다. */
+  it('확인 창이 제목 · 설명 · 주의 줄을 내고 대상 줄은 없다', async () => {
+    const { user } = await openForm();
+
+    await user.click(rowDeactivate());
+
+    const dialog = within(screen.getByRole('dialog', { name: '코드값을 사용 중지할까요?' }));
+    // 제목 아래 대상 줄은 두지 않는다(사용자 지시 2026-11-26).
+    expect(dialog.queryByText('합성 코드값 A (SYN-CV-01)')).toBeNull();
+    expect(
+      dialog.getByText(
+        '사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 코드값이 그대로 표시됩니다.',
+      ),
+    ).toBeInTheDocument();
+    expect(dialog.getByText('사용 중지 후에는 사용을 재개할 수 없습니다.')).toBeInTheDocument();
+  });
+
   it('확인 창에 참조 건수를 내지 않는다', async () => {
     const { user } = await openForm();
 
-    await user.click(within(codeValueFormPane()).getByRole('button', { name: '사용 중지' }));
+    await user.click(rowDeactivate());
 
     expect(screen.getByRole('dialog').textContent).not.toMatch(/\d+\s*건/);
   });
@@ -2340,8 +2818,8 @@ describe('CommonCodeScreen — 코드값 사용 중지 (C39)', () => {
     const beforeList = codeValueRequests(requests).length;
     const beforeDetail = requestsTo(requests, `${CODE_VALUES_PATH}/2001`).length;
 
-    await user.click(within(codeValueFormPane()).getByRole('button', { name: '사용 중지' }));
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }));
+    await user.click(rowDeactivate());
+    await confirmDeactivate(user);
 
     await waitFor(() => {
       expect(codeValueRequests(requests).length).toBeGreaterThan(beforeList);
@@ -2359,8 +2837,8 @@ describe('CommonCodeScreen — 코드값 사용 중지 (C39)', () => {
       },
     ]);
 
-    await user.click(within(codeValueFormPane()).getByRole('button', { name: '사용 중지' }));
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }));
+    await user.click(rowDeactivate());
+    await confirmDeactivate(user);
 
     expect(
       await within(screen.getByRole('dialog')).findByText(
@@ -2391,10 +2869,10 @@ describe('CommonCodeScreen — 주소만으로 등록 폼이 살아난다 (리�
   it('?new=group으로 직접 들어와도 코드그룹 등록 폼이 뜬다', async () => {
     renderScreen([codeGroupListRoute()], '?new=group');
 
-    expect(await screen.findByRole('region', { name: '코드그룹 정보' })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: '그룹 추가' })).toBeInTheDocument();
     expect(screen.getByLabelText('그룹코드')).toHaveValue('');
     expect(
-      within(screen.getByRole('region', { name: '코드그룹 정보' })).getByRole('button', {
+      within(codeGroupCreateDialog()).getByRole('button', {
         name: '그룹 추가',
       }),
     ).toBeInTheDocument();
@@ -2406,10 +2884,10 @@ describe('CommonCodeScreen — 주소만으로 등록 폼이 살아난다 (리�
       '?grp=1001&new=value',
     );
 
-    expect(await screen.findByRole('region', { name: '코드값 정보' })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: '코드값 추가' })).toBeInTheDocument();
     expect(screen.getByLabelText('코드')).toHaveValue('');
     expect(
-      within(screen.getByRole('region', { name: '코드값 정보' })).getByRole('button', {
+      within(codeValueCreateDialog()).getByRole('button', {
         name: '코드값 추가',
       }),
     ).toBeInTheDocument();
@@ -2421,9 +2899,7 @@ describe('CommonCodeScreen — 주소만으로 등록 폼이 살아난다 (리�
     await screen.findByRole('button', { name: 'SYN-GRP-01' });
 
     expect(screen.queryByLabelText('코드')).not.toBeInTheDocument();
-    expect(
-      within(codeValuePane()).getByText('좌측에서 코드그룹을 먼저 고르세요'),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '코드값' })).not.toBeInTheDocument();
   });
 
   it('직접 들어온 등록 폼에서 그대로 저장할 수 있다', async () => {
@@ -2455,7 +2931,7 @@ describe('CommonCodeScreen — 주소만으로 등록 폼이 살아난다 (리�
     await user.type(await screen.findByLabelText('코드'), 'SYN-CV-09');
     await user.type(screen.getByLabelText('코드명'), '합성 코드값 I');
     await user.click(
-      within(screen.getByRole('region', { name: '코드값 정보' })).getByRole('button', {
+      within(codeValueCreateDialog()).getByRole('button', {
         name: '코드값 추가',
       }),
     );
@@ -2466,17 +2942,138 @@ describe('CommonCodeScreen — 주소만으로 등록 폼이 살아난다 (리�
   });
 });
 
+/*
+ * 사용자 보고 2026-11-26 — 「그룹 추가 시에 목록에서 고른 줄이 풀린다」. 등록은 팝업이므로
+ * 팝업을 열고 닫아도(취소) 고른 줄과 뒤 상세가 그대로 남아야 한다. 저장 성공 시 새 것을 고르는 동작은 종전대로다.
+ */
+describe('CommonCodeScreen — 등록 팝업을 열고 닫아도 고른 줄이 남는다', () => {
+  it('코드그룹을 고른 채 그룹 추가 팝업을 열고 취소해도 고른 그룹과 뒤 상세가 남는다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute()],
+      '?grp=1001',
+    );
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
+
+    await user.click(within(filterPane()).getByRole('button', { name: '그룹 추가' }));
+    const dialog = await screen.findByRole('dialog', { name: '그룹 추가' });
+
+    expect(history.search()).toBe('?grp=1001&new=group');
+    expect(screen.getByRole('button', { name: 'SYN-GRP-01' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    // 팝업 뒤에도 고른 그룹의 정보와 코드값 목록이 그대로 선다.
+    expect(within(codeGroupFormPane()).getByLabelText('그룹명')).toHaveValue(
+      codeGroupFixtures[0]?.groupName,
+    );
+    expect(within(codeValuePane()).getByRole('button', { name: 'SYN-CV-01' })).toBeInTheDocument();
+    // 팝업은 빈 초안으로 선다.
+    expect(within(dialog).getByLabelText('그룹명')).toHaveValue('');
+
+    await user.click(within(dialog).getByRole('button', { name: '취소' }));
+
+    expect(screen.queryByRole('dialog', { name: '그룹 추가' })).toBeNull();
+    expect(history.search()).toBe('?grp=1001');
+    expect(screen.getByRole('button', { name: 'SYN-GRP-01' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(screen.getByLabelText('그룹명')).toHaveValue(codeGroupFixtures[0]?.groupName);
+    expect(within(codeValuePane()).getByRole('button', { name: 'SYN-CV-01' })).toBeInTheDocument();
+  });
+
+  it('코드그룹 · 코드값을 고른 채 그룹 추가 팝업을 닫으면 고른 코드값도 남는다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute(), codeValueDetailRoute()],
+      '?grp=1001&val=2001',
+    );
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
+
+    await user.click(within(filterPane()).getByRole('button', { name: '그룹 추가' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: '그룹 추가' })).getByRole('button', {
+        name: '취소',
+      }),
+    );
+
+    expect(history.search()).toBe('?grp=1001&val=2001');
+    expect(screen.getByRole('button', { name: 'SYN-CV-01' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+  });
+
+  it('코드값을 고른 채 코드값 추가 팝업을 열고 취소해도 고른 코드값이 남는다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute(), codeValueDetailRoute()],
+      '?grp=1001&val=2001',
+    );
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
+
+    await user.click(within(codeValuePane()).getByRole('button', { name: '코드값 추가' }));
+    const dialog = await screen.findByRole('dialog', { name: '코드값 추가' });
+
+    expect(new URLSearchParams(history.search()).get('val')).toBe('2001');
+    expect(new URLSearchParams(history.search()).get('new')).toBe('value');
+    expect(screen.getByRole('button', { name: 'SYN-CV-01' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+
+    await user.click(within(dialog).getByRole('button', { name: '취소' }));
+
+    expect(screen.queryByRole('dialog', { name: '코드값 추가' })).toBeNull();
+    expect(history.search()).toBe('?grp=1001&val=2001');
+    expect(screen.getByRole('button', { name: 'SYN-CV-01' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'SYN-GRP-01' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+  });
+
+  it('부서를 고른 채 부서 추가 팝업을 열고 취소해도 고른 부서와 뒤 상세가 남는다', async () => {
+    const { history, user } = renderScreen(orgDetailRoutes(), '?tab=org&dep=3001');
+    await screen.findByDisplayValue('합성 부서 A');
+
+    await user.click(within(filterPane()).getByRole('button', { name: '부서 추가' }));
+    const dialog = await screen.findByRole('dialog', { name: '부서 추가' });
+
+    expect(new URLSearchParams(history.search()).get('dep')).toBe('3001');
+    expect(new URLSearchParams(history.search()).get('new')).toBe('dept');
+    expect(screen.getByRole('button', { name: 'SYN-DEPT-01' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(within(departmentFormPane()).getByLabelText('부서명')).toHaveValue('합성 부서 A');
+    expect(within(dialog).getByLabelText('부서명')).toHaveValue('');
+
+    await user.click(within(dialog).getByRole('button', { name: '취소' }));
+
+    expect(screen.queryByRole('dialog', { name: '부서 추가' })).toBeNull();
+    expect(history.search()).toBe('?tab=org&dep=3001');
+    expect(screen.getByRole('button', { name: 'SYN-DEPT-01' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(screen.getByLabelText('부서명')).toHaveValue('합성 부서 A');
+  });
+});
+
 describe('CommonCodeScreen — 한 조작은 히스토리 한 칸이다 (리뷰 Major ②)', () => {
   it('코드값 추가를 누른 뒤 뒤로가기 한 번이면 직전 주소로 돌아간다', async () => {
     const { history, user } = renderScreen(
       [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute(), codeValueDetailRoute()],
       '?grp=1001&val=2001',
     );
-    await screen.findByLabelText('코드명');
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
 
     const before = history.search();
     await user.click(within(codeValuePane()).getByRole('button', { name: '코드값 추가' }));
-    await screen.findByRole('region', { name: '코드값 정보' });
+    await screen.findByRole('dialog', { name: '코드값 추가' });
 
     history.back();
     expect(history.search()).toBe(before);
@@ -2501,7 +3098,7 @@ describe('CommonCodeScreen — 한 조작은 히스토리 한 칸이다 (리뷰 
       [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute(), codeValueDetailRoute()],
       '?grp=1001&val=2001',
     );
-    await screen.findByLabelText('코드명');
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
 
     const before = history.search();
     await user.click(within(codeValuePane()).getByRole('checkbox', { name: '미사용 포함' }));
@@ -2520,7 +3117,7 @@ describe('CommonCodeScreen — 한 조작은 히스토리 한 칸이다 (리뷰 
       ],
       '?grp=1001&val=2001',
     );
-    await screen.findByLabelText('코드명');
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
 
     const before = history.search();
     await user.click(within(codeValuePane()).getByRole('button', { name: '다음' }));
@@ -2534,31 +3131,32 @@ describe('CommonCodeScreen — 한 조작은 히스토리 한 칸이다 (리뷰 
       [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute()],
       '?grp=1001',
     );
-    await screen.findByRole('region', { name: '코드그룹 정보' });
+    await screen.findByRole('region', { name: '코드그룹 상세 정보' });
 
     const before = history.search();
 
     await user.click(within(filterPane()).getByRole('button', { name: '그룹 추가' }));
-    await screen.findByLabelText('그룹코드');
+    await within(await screen.findByRole('dialog', { name: '그룹 추가' })).findByLabelText(
+      '그룹코드',
+    );
 
     history.back();
     expect(history.search()).toBe(before);
   });
 
   /* 같은 값을 다시 쓰면 주소가 달라지지 않는다 — 달라지지 않는 갱신은 칸만 늘린다. */
-  it('이미 고른 코드값을 다시 눌러도 히스토리가 늘지 않는다', async () => {
+  /* 고른 줄을 한 번 더 누르면 고르기를 푼다 — 주소 갱신 한 번(사용자 지시 2026-11-24). */
+  it('이미 고른 코드값을 다시 누르면 고르기가 풀린다', async () => {
     const { history, user } = renderScreen(
       [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute(), codeValueDetailRoute()],
       '?grp=1001&val=2001',
     );
-    await screen.findByLabelText('코드명');
-
-    const entriesBefore = history.entries();
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
 
     await user.click(screen.getByRole('button', { name: 'SYN-CV-01' }));
 
-    // 주소가 달라지지 않는 갱신은 칸만 늘린다 — 아예 갱신하지 않는다.
-    expect(history.entries()).toBe(entriesBefore);
+    expect(new URLSearchParams(history.search()).get('val')).toBeNull();
+    expect(new URLSearchParams(history.search()).get('grp')).toBe('1001');
   });
 
   /*
@@ -2608,11 +3206,13 @@ describe('CommonCodeScreen — 한 조작은 히스토리 한 칸이다 (리뷰 
     const before = history.search();
 
     await user.click(
-      within(screen.getByRole('region', { name: '코드값 정보' })).getByRole('button', {
+      within(codeValueCreateDialog()).getByRole('button', {
         name: '코드값 추가',
       }),
     );
-    await screen.findByDisplayValue('SYN-CV-09');
+    // 등록한 코드값을 고르고 팝업이 닫힌다 — 표 아래 상세 칸은 없다(사용자 지시 2026-11-26).
+    await waitFor(() => expect(history.search()).toBe('?grp=1001&val=2009'));
+    expect(screen.queryByRole('dialog', { name: '코드값 추가' })).toBeNull();
 
     history.back();
     expect(history.search()).toBe(before);
@@ -2657,7 +3257,7 @@ describe('CommonCodeScreen — 한 조작은 히스토리 한 칸이다 (리뷰 
     const before = history.search();
 
     await user.click(
-      within(screen.getByRole('region', { name: '코드그룹 정보' })).getByRole('button', {
+      within(codeGroupCreateDialog()).getByRole('button', {
         name: '그룹 추가',
       }),
     );
@@ -2714,7 +3314,7 @@ describe('CommonCodeScreen — 부서 목록 조회 (C41·C45·C47)', () => {
     await screen.findByRole('button', { name: 'SYN-DEPT-01' });
 
     expect(requestsTo(requests, BUSINESS_UNITS_PATH)).toHaveLength(1);
-    expect(screen.getByLabelText('사업부')).toBeInTheDocument();
+    expect(screen.getByLabelText('사업부 선택')).toBeInTheDocument();
   });
 
   /* C45 — 잘림을 감추면 사용자는 찾는 값이 왜 없는지 알 수 없다. */
@@ -2948,7 +3548,8 @@ describe('CommonCodeScreen — 부서 조건과 선택 (C46)', () => {
     const before = history.search();
 
     await user.click(within(filterPane()).getByRole('button', { name: '부서 추가' }));
-    expect(history.search()).toBe('?tab=org&new=dept');
+    // 고른 부서는 주소에 남는다 — 팝업을 닫으면 그대로 돌아온다(사용자 보고 2026-11-26).
+    expect(history.search()).toBe('?tab=org&dep=3002&new=dept');
 
     history.back();
     expect(history.search()).toBe(before);
@@ -3285,9 +3886,9 @@ describe('CommonCodeScreen — 부서 등록 (C55)', () => {
   it('주소로 바로 들어와도 등록 폼이 선다', async () => {
     renderScreen(orgDetailRoutes(), '?tab=org&new=dept');
 
-    const pane = await screen.findByRole('region', { name: '부서 정보' });
-    expect(within(pane).getByLabelText('부서코드')).toHaveValue('');
-    expect(within(pane).getByRole('button', { name: '부서 추가' })).toBeInTheDocument();
+    const dialog = await screen.findByRole('dialog', { name: '부서 추가' });
+    expect(within(dialog).getByLabelText('부서코드')).toHaveValue('');
+    expect(within(dialog).getByRole('button', { name: '부서 추가' })).toBeInTheDocument();
   });
 
   /* C55 — 아직 없는 자원이라 잠글 대상이 없다. */
@@ -3303,7 +3904,7 @@ describe('CommonCodeScreen — 부서 등록 (C55)', () => {
 
     await user.type(await screen.findByLabelText('부서코드'), 'SYN-DEPT-09');
     await user.type(screen.getByLabelText('부서명'), '합성 부서 I');
-    await user.click(within(departmentFormPane()).getByRole('button', { name: '부서 추가' }));
+    await user.click(within(departmentCreateDialog()).getByRole('button', { name: '부서 추가' }));
 
     await waitFor(() => {
       expect(requests.filter((request) => request.method === 'POST')).toHaveLength(1);
@@ -3327,7 +3928,7 @@ describe('CommonCodeScreen — 부서 등록 (C55)', () => {
 
     await user.type(await screen.findByLabelText('부서코드'), 'SYN-DEPT-09');
     await user.type(screen.getByLabelText('부서명'), '합성 부서 I');
-    await user.click(within(departmentFormPane()).getByRole('button', { name: '부서 추가' }));
+    await user.click(within(departmentCreateDialog()).getByRole('button', { name: '부서 추가' }));
 
     await waitFor(() => {
       expect(requests.filter((request) => request.method === 'POST')).toHaveLength(1);
@@ -3354,7 +3955,7 @@ describe('CommonCodeScreen — 부서 등록 (C55)', () => {
 
     await user.type(await screen.findByLabelText('부서코드'), 'SYN-DEPT-09');
     await user.type(screen.getByLabelText('부서명'), '합성 부서 I');
-    await user.click(within(departmentFormPane()).getByRole('button', { name: '부서 추가' }));
+    await user.click(within(departmentCreateDialog()).getByRole('button', { name: '부서 추가' }));
 
     /*
      * 주소가 바뀌기를 기다린다. 화면에 선 SYN-DEPT-09 로는 가를 수 없다 - 방금 사람이 친
@@ -3382,7 +3983,7 @@ describe('CommonCodeScreen — 부서 등록 (C55)', () => {
 
     const before = history.search();
 
-    await user.click(within(departmentFormPane()).getByRole('button', { name: '부서 추가' }));
+    await user.click(within(departmentCreateDialog()).getByRole('button', { name: '부서 추가' }));
     await waitFor(() => {
       expect(history.search()).toBe('?tab=org&dep=3009');
     });
@@ -3421,8 +4022,17 @@ describe('CommonCodeScreen — 부서 사용 중지 (C56)', () => {
 
     await user.click(within(departmentFormPane()).getByRole('button', { name: '사용 중지' }));
 
-    const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByText(/되돌리는 경로가 없습니다/)).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: '부서를 사용 중지할까요?' });
+    // 제목 아래 대상 줄은 두지 않는다(사용자 지시 2026-11-26).
+    expect(within(dialog).queryByText('합성 부서 A (SYN-DEPT-01)')).toBeNull();
+    expect(
+      within(dialog).getByText(
+        '사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 부서가 그대로 표시됩니다.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText('사용 중지 후에는 사용을 재개할 수 없습니다.'),
+    ).toBeInTheDocument();
     expect(within(dialog).queryByText(/3건/)).not.toBeInTheDocument();
   });
 
@@ -3498,10 +4108,11 @@ describe('CommonCodeScreen — 부서 사용 중지 (C56)', () => {
     );
 
     expect(await screen.findByDisplayValue('SYN-DEPT-04')).toBeInTheDocument();
-    expect(within(departmentFormPane()).getByRole('button', { name: '사용 중지' })).toBeDisabled();
-    expect(
-      screen.getByText('사용 중지는 이미 미사용인 부서에 다시 할 수 없습니다.'),
-    ).toBeInTheDocument();
+    const button = within(departmentFormPane()).getByRole('button', { name: '사용 중지' });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription(
+      '사용 중지는 이미 미사용인 부서에 다시 할 수 없습니다.',
+    );
   });
 });
 
@@ -3510,7 +4121,7 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
     within(departmentFormPane()).getByRole('button', { name: '저장' });
 
   const addDepartmentButton = (): HTMLElement =>
-    within(departmentFormPane()).getByRole('button', { name: '부서 추가' });
+    within(departmentCreateDialog()).getByRole('button', { name: '부서 추가' });
 
   /**
    * 두 부서의 수정 경로를 **둘 다** 스텁할 수 있게 대상을 인자로 받는다. 3002 쪽을 비워 두면
@@ -3586,7 +4197,7 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
     user: ReturnType<typeof userEvent.setup>,
     departmentName: string,
   ) => {
-    await user.click(within(departmentFormPane()).getByRole('button', { name: '취소' }));
+    await user.click(within(departmentCreateDialog()).getByRole('button', { name: '취소' }));
     await user.click(within(filterPane()).getByRole('button', { name: '부서 추가' }));
     await user.type(await screen.findByLabelText('부서명'), departmentName);
   };
@@ -3627,9 +4238,7 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
     const save = departmentSaveButton();
 
     expect(save).toBeDisabled();
-    expect(
-      within(departmentFormPane()).getByText('저장은 다른 부서의 저장이 끝난 뒤에 할 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(within(departmentFormPane()).getByRole('button', { name: '저장' })).toBeDisabled();
     /* 남의 저장으로 스피너를 돌리면 화면이 손댄 적 없는 부서를 「저장 중」이라고 말한다. */
     expect(save).not.toHaveAttribute('aria-busy', 'true');
   });
@@ -3654,9 +4263,7 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
      * 그래야 잠금이 풀리는 순간을 「저장이 다시 열린다」는 **양성**으로 잡을 수 있다.
      */
     await user.type(screen.getByLabelText('부서명'), 'Y');
-    expect(
-      within(departmentFormPane()).getByText(/저장은 다른 부서의 저장이 끝난 뒤에/),
-    ).toBeInTheDocument();
+    expect(within(departmentFormPane()).getByRole('button', { name: '저장' })).toBeDisabled();
 
     await act(async () => {
       deferred.release({
@@ -3881,9 +4488,7 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
     await user.click(departmentSaveButton());
 
     expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
-    expect(
-      within(departmentFormPane()).getByText(/저장은 다른 부서의 저장이 끝난 뒤에/),
-    ).toBeInTheDocument();
+    expect(within(departmentFormPane()).getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
   /*
@@ -3972,8 +4577,8 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
      */
     expect(addDepartmentButton()).not.toHaveAttribute('aria-busy', 'true');
     expect(
-      within(departmentFormPane()).getByText(/부서 추가는 다른 부서의 저장이 끝난 뒤에/),
-    ).toBeInTheDocument();
+      within(departmentCreateDialog()).getByRole('button', { name: '부서 추가' }),
+    ).toBeDisabled();
 
     await act(async () => {
       deferred.release(createFailure);
@@ -3986,9 +4591,11 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
     await waitFor(() => {
       expect(addDepartmentButton()).toBeEnabled();
     });
-    expect(within(departmentFormPane()).queryByText('저장할 수 없습니다.')).not.toBeInTheDocument();
     expect(
-      within(departmentFormPane()).queryByText('이미 있는 부서명입니다.'),
+      within(departmentCreateDialog()).queryByText('저장할 수 없습니다.'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(departmentCreateDialog()).queryByText('이미 있는 부서명입니다.'),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText('부서명')).toHaveValue('새 초안');
   });
@@ -4029,9 +4636,11 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
     await waitFor(() => {
       expect(addDepartmentButton()).toBeEnabled();
     });
-    expect(within(departmentFormPane()).queryByText('저장할 수 없습니다.')).not.toBeInTheDocument();
     expect(
-      within(departmentFormPane()).queryByText('이미 있는 부서명입니다.'),
+      within(departmentCreateDialog()).queryByText('저장할 수 없습니다.'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(departmentCreateDialog()).queryByText('이미 있는 부서명입니다.'),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText('부서명')).toHaveValue('되돌아온 초안');
   });
@@ -4051,9 +4660,11 @@ describe('CommonCodeScreen — 나가는 중인 부서 저장의 매임과 잠�
     await startCreate(user, '합성 부서 I');
 
     expect(
-      await within(departmentFormPane()).findByText('저장할 수 없습니다.'),
+      await within(departmentCreateDialog()).findByText('저장할 수 없습니다.'),
     ).toBeInTheDocument();
-    expect(within(departmentFormPane()).getByText('이미 있는 부서명입니다.')).toBeInTheDocument();
+    expect(
+      within(departmentCreateDialog()).getByText('이미 있는 부서명입니다.'),
+    ).toBeInTheDocument();
   });
 
   /*
@@ -4147,7 +4758,7 @@ const workerRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
 const workerPane = (): HTMLElement => screen.getByRole('region', { name: '작업자' });
 
 const workerDetailPane = (): HTMLElement =>
-  screen.getByRole('region', { name: '작업자 기본 정보' });
+  screen.getByRole('region', { name: '작업자 상세 정보' });
 
 /**
  * 기본 정보가 **다 채워질 때까지** 기다린다.
@@ -4156,7 +4767,7 @@ const workerDetailPane = (): HTMLElement =>
  * 이 구획에서만 나오는 고정 안내가 보일 때가 채워진 시점이다.
  */
 const findLoadedWorkerDetailPane = async (): Promise<HTMLElement> => {
-  await screen.findByText(/외부 시스템에서 받은 자료라/);
+  await screen.findByRole('button', { name: /외부 시스템에서 받은 자료라/ });
   return workerDetailPane();
 };
 
@@ -4263,7 +4874,12 @@ describe('CommonCodeScreen — 작업자 선택과 기본 정보 (C58~C63)', () 
     expect(within(pane).queryAllByRole('textbox')).toHaveLength(0);
     expect(within(pane).queryAllByRole('combobox')).toHaveLength(0);
     expect(within(pane).queryAllByRole('checkbox')).toHaveLength(0);
-    expect(within(pane).queryAllByRole('button')).toHaveLength(0);
+    /* 제목 옆 ⓘ(안내 툴팁) 하나뿐이다 — 저장 · 수정 같은 조작 단추는 없다(사용자 지시 2026-11-26). */
+    expect(
+      within(pane)
+        .queryAllByRole('button')
+        .filter((button) => !button.classList.contains('info-tip')),
+    ).toHaveLength(0);
   });
 
   /* C60 — `editability`가 `EDITABLE`을 줘도 고정 문구를 낸다. */
@@ -4279,10 +4895,11 @@ describe('CommonCodeScreen — 작업자 선택과 기본 정보 (C58~C63)', () 
       '?tab=worker&wkr=5001',
     );
 
+    /* 제목 옆 ⓘ — 마우스를 올리면 보이는 같은 문구가 그 단추의 이름이다(사용자 지시 2026-11-26). */
     expect(
-      await screen.findByText(
-        '외부 시스템에서 받은 자료라 여기서 수정할 수 없습니다. 원본 시스템에서 변경하세요.',
-      ),
+      await screen.findByRole('button', {
+        name: '외부 시스템에서 받은 자료라 여기서 수정할 수 없습니다. 원본 시스템에서 변경하세요.',
+      }),
     ).toBeInTheDocument();
   });
 
@@ -4515,11 +5132,16 @@ describe('CommonCodeScreen — 자격 조회 (C64·C75)', () => {
     await screen.findByRole('button', { name: 'SYN-W-0001' });
 
     expect(requestsTo(requests, qualificationsPath(5001))).toHaveLength(0);
+    /* 고르기 전에는 자격 구획 자체가 없고 「작업자를 선택하세요.」 안내 하나만 선다(사용자 지시 2026-11-26). */
+    expect(screen.getByText('작업자를 선택하세요.')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '자격·인증' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '자격 추가' })).toBeNull();
 
     await user.click(screen.getByRole('button', { name: 'SYN-W-0001' }));
     await screen.findByText('SYN-CERT-01');
 
     expect(requestsTo(requests, qualificationsPath(5001))).toHaveLength(1);
+    expect(screen.getByRole('region', { name: '자격·인증' })).toBeInTheDocument();
   });
 
   /* C75 — 공정 선택지가 실제 조회로 채워진다. */
@@ -4539,7 +5161,7 @@ describe('CommonCodeScreen — 자격 조회 (C64·C75)', () => {
     expect(await screen.findByText('(전체 공정)')).toBeInTheDocument();
   });
 
-  it('공정 선택지 조회가 실패하면 그 사실을 표 위에 알린다', async () => {
+  it('공정 선택지 조회가 실패하면 그 사실을 작업자 상세 제목 옆에 알린다', async () => {
     renderScreen(
       [
         ...workerRoutes(),
@@ -4552,9 +5174,12 @@ describe('CommonCodeScreen — 자격 조회 (C64·C75)', () => {
       '?tab=worker&wkr=5001',
     );
 
-    expect(
-      await screen.findByText('선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.'),
-    ).toBeInTheDocument();
+    const note = await screen.findByText(
+      '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
+    );
+    /* 제목 「작업자 상세 정보」와 같은 줄 — 자격 표 위 배너가 아니다(사용자 지시 2026-11-25). */
+    expect(note.parentElement).toHaveTextContent('작업자 상세 정보');
+    expect(within(qualificationPane()).queryByText(/선택 목록을/)).not.toBeInTheDocument();
   });
 
   it('자격이 0건이면 빈 상태를 낸다', async () => {
@@ -4598,14 +5223,15 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
     expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(0);
   });
 
-  it('창 안에 확인이 저장이 아니라는 안내가 있다', async () => {
+  it('창 안에 저장 안내 문구와 닫기(X)가 없다(사용자 지시 2026-11-25)', async () => {
     const { user } = renderScreen(qualificationRoutes(), '?tab=worker&wkr=5001');
 
     const dialog = await openEditDialog(user);
 
     expect(
-      within(dialog).getByText('확인한 뒤 「저장」을 눌러야 저장됩니다.'),
-    ).toBeInTheDocument();
+      within(dialog).queryByText('확인한 뒤 「저장」을 눌러야 저장됩니다.'),
+    ).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
   });
 
   /* 창은 열 때만 마운트한다 — 닫힌 창을 남기면 지난 값이 살아 있다. */
@@ -4911,7 +5537,7 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
     await screen.findAllByText('(전체 공정)');
 
     expect(within(qualificationPane()).getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(screen.getByText(/저장은 자격 유형과 공정 짝이 겹치는 줄이 있어/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
   /* 저장 실패는 삼키지 않는다 — 무엇이 막았는지 밝힌다. */
@@ -4974,6 +5600,7 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
     // 조건을 바꾸면 보이는 작업자가 달라진다 — 주소에서 wkr가 사라진다.
     await user.type(screen.getByLabelText('작업자 검색'), 'SYN');
     await user.click(within(filterPane()).getByRole('button', { name: '조회' }));
+    await confirmDiscardSwitch(user);
     expect(history.search()).toBe('?tab=worker&q=SYN');
 
     history.back();
@@ -5004,6 +5631,7 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
     await screen.findByText('SYN-CERT-77');
 
     await user.click(screen.getByRole('button', { name: 'SYN-W-0002' }));
+    await confirmDiscardSwitch(user);
 
     expect(await screen.findByText('등록된 자격·인증이 없습니다')).toBeInTheDocument();
     expect(screen.queryByText('SYN-CERT-77')).not.toBeInTheDocument();
@@ -5088,9 +5716,7 @@ describe('CommonCodeScreen — 나가는 중인 자격 저장의 매임과 잠�
     const save = qualificationSaveButton();
 
     expect(save).toBeDisabled();
-    expect(
-      within(pane).getByText('저장은 다른 작업자의 저장이 끝난 뒤에 할 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(within(pane).getByRole('button', { name: '저장' })).toBeDisabled();
     /* 남의 저장으로 스피너를 돌리면 화면이 손댄 적 없는 작업자를 「저장 중」이라고 말한다. */
     expect(save).not.toHaveAttribute('aria-busy', 'true');
   });
@@ -5110,9 +5736,7 @@ describe('CommonCodeScreen — 나가는 중인 자격 저장의 매임과 잠�
     await selectSecondWorker(user);
 
     /* 도착 전 — 남의 저장이 나가는 중이라 이 구획이 그 사유로 잠겨 있다. */
-    expect(
-      within(qualificationPane()).getByText(/저장은 다른 작업자의 저장이 끝난 뒤에/),
-    ).toBeInTheDocument();
+    expect(within(qualificationPane()).getByRole('button', { name: '저장' })).toBeDisabled();
 
     await act(async () => {
       deferred.release({
@@ -5242,9 +5866,7 @@ describe('CommonCodeScreen — 나가는 중인 자격 저장의 매임과 잠�
     await user.click(qualificationSaveButton());
 
     expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
-    expect(
-      within(qualificationPane()).getByText(/저장은 다른 작업자의 저장이 끝난 뒤에/),
-    ).toBeInTheDocument();
+    expect(within(qualificationPane()).getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
   /*
@@ -5295,7 +5917,7 @@ describe('CommonCodeScreen — 탭마다 자기 선택 축 키를 쓴다', () =>
     const { requests, history, user } = renderScreen(workerRoutes(), '?tab=worker');
     await screen.findByRole('button', { name: 'SYN-W-0001' });
 
-    await user.click(within(filterPane()).getByLabelText('부서'));
+    await user.click(within(filterPane()).getByLabelText('부서 선택'));
     await user.click(screen.getByRole('option', { name: /SYN-DEPT-01/ }));
     await user.click(within(filterPane()).getByRole('button', { name: '조회' }));
 
@@ -5312,7 +5934,7 @@ describe('CommonCodeScreen — 탭마다 자기 선택 축 키를 쓴다', () =>
     const { requests, history, user } = renderScreen(orgRoutes(), '?tab=org');
     await screen.findByRole('button', { name: 'SYN-DEPT-01' });
 
-    await user.click(within(filterPane()).getByLabelText('사업부'));
+    await user.click(within(filterPane()).getByLabelText('사업부 선택'));
     await user.click(screen.getByRole('option', { name: /SYN-BU-01/ }));
     await user.click(within(filterPane()).getByRole('button', { name: '조회' }));
 
@@ -5441,6 +6063,15 @@ const partnerPane = (): HTMLElement => screen.getByRole('region', { name: '거�
 
 const partnerRolePane = (): HTMLElement => screen.getByRole('region', { name: '거래처 역할' });
 
+/** 정보 표시 상자(`dl`)에서 이름(`dt`) 바로 옆 값(`dd`) — 값마다 이름이 붙어 있는지를 잰다(사용자 지시 2026-11-25). */
+const factValue = (pane: HTMLElement, label: string): HTMLElement => {
+  const term = within(pane).getByText(label, { selector: 'dt' });
+  const value = term.nextElementSibling;
+  if (!(value instanceof HTMLElement) || value.tagName !== 'DD')
+    throw new Error(`${label} 값 없음`);
+  return value;
+};
+
 const partnerRoutes = (): StubRoute[] => [
   partnerListRoute(),
   partnerDetailRoute(),
@@ -5560,25 +6191,21 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
   it('고른 거래처의 기본 정보가 값 표기와 사유로 선다', async () => {
     renderScreen(partnerRoutes(), '?tab=partner&ptn=9001');
 
-    const pane = await screen.findByRole('region', { name: '거래처 기본 정보' });
+    const pane = await screen.findByRole('region', { name: '거래처 상세 정보' });
 
-    expect(within(pane).getByLabelText('거래처코드')).toHaveTextContent('SAMPLE-PTNR-A');
+    expect(factValue(pane, '거래처코드')).toHaveTextContent('SAMPLE-PTNR-A');
     expect(within(pane).queryAllByRole('textbox')).toHaveLength(0);
     expect(within(pane).queryAllByRole('button')).toHaveLength(0);
-    expect(
-      within(pane).getByText(
-        '외부 시스템에서 받은 자료라 여기서 수정할 수 없습니다. 원본 시스템에서 변경하세요.',
-      ),
-    ).toBeInTheDocument();
+    /* 오른쪽 위 외부 수신본 안내는 걷었다(사용자 지시 2026-11-26). */
+    expect(within(pane).queryByText(/외부 시스템에서 받은 자료라/)).toBeNull();
+    expect(within(pane).getByRole('heading', { name: '거래처 상세 정보' })).toBeInTheDocument();
   });
 
   it('고르기 전에는 무엇이 채워지는지 안내한다', async () => {
     renderScreen(partnerRoutes(), '?tab=partner');
     await screen.findByRole('button', { name: 'SAMPLE-PTNR-A' });
 
-    expect(
-      screen.getByText('좌측에서 거래처를 고르면 여기에 그 거래처의 역할이 보입니다'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('거래처를 선택하세요.')).toBeInTheDocument();
   });
 
   /*
@@ -5599,9 +6226,9 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
       '?tab=partner&ptn=9999',
     );
 
-    const pane = await screen.findByRole('region', { name: '거래처 기본 정보' });
+    const pane = await screen.findByRole('region', { name: '거래처 상세 정보' });
 
-    expect(within(pane).getByLabelText('거래처코드')).toHaveTextContent('SAMPLE-PTNR-Z');
+    expect(factValue(pane, '거래처코드')).toHaveTextContent('SAMPLE-PTNR-Z');
     expect(await screen.findByText('고객사')).toBeInTheDocument();
   });
 
@@ -5622,9 +6249,9 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
       '?tab=partner&ptn=9001',
     );
 
-    const pane = await screen.findByRole('region', { name: '거래처 기본 정보' });
+    const pane = await screen.findByRole('region', { name: '거래처 상세 정보' });
 
-    expect(within(pane).getByLabelText('거래처코드')).toHaveTextContent('SAMPLE-PTNR-A');
+    expect(factValue(pane, '거래처코드')).toHaveTextContent('SAMPLE-PTNR-A');
     expect(await screen.findByText('고객사')).toBeInTheDocument();
     /* 목록 실패는 좌 목록이 낸다 — 우 칸이 대신 말하지 않는다. */
     expect(within(partnerPane()).getByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
@@ -5640,7 +6267,7 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
     expect(
       within(partnerRolePane()).getByRole('status', { name: '거래처 정보를 불러오는 중' }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: '거래처 기본 정보' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '거래처 상세 정보' })).not.toBeInTheDocument();
   });
 
   /* C14 — 실패를 「없는 거래처」로 보이면 사실과 다른 안내가 된다. 조치도 다르다(재시도 대 다시 고르기). */
@@ -5723,7 +6350,7 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
       '?tab=partner&ptn=9001',
     );
 
-    expect(await screen.findByRole('region', { name: '거래처 기본 정보' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: '거래처 상세 정보' })).toBeInTheDocument();
     expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
     expect(screen.queryByText('지정된 역할이 없습니다')).not.toBeInTheDocument();
   });
@@ -6532,7 +7159,7 @@ describe('CommonCodeScreen — 나가는 중인 저장의 매임 (M-1·F-1)', ()
      * 진행 표시를 도는 갈래에는 **사유가 없다** — 사유가 보인다는 것이 곧 이 구획이
      * 남의 저장으로 스피너를 돌리고 있지 않다는 뜻이다.
      */
-    expect(within(pane).getByText(/저장은 다른 거래처의 저장이 끝난 뒤에/)).toBeInTheDocument();
+    expect(within(pane).getByRole('button', { name: '저장' })).toBeDisabled();
     expect(within(pane).queryByText(/저장은 역할을 고친 뒤에/)).not.toBeInTheDocument();
   });
 
@@ -6560,9 +7187,7 @@ describe('CommonCodeScreen — 나가는 중인 저장의 매임 (M-1·F-1)', ()
     await user.click(partnerSaveButton());
 
     expect(putRequests(requests)).toHaveLength(1);
-    expect(
-      within(partnerRolePane()).getByText(/저장은 다른 거래처의 저장이 끝난 뒤에/),
-    ).toBeInTheDocument();
+    expect(within(partnerRolePane()).getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
   /*
@@ -6625,9 +7250,7 @@ describe('CommonCodeScreen — 나가는 중인 저장의 매임 (M-1·F-1)', ()
     await screen.findByText('지정된 역할이 없습니다');
 
     /* 도착 전 — 남의 저장이 나가는 중이라 이 구획이 그 사유로 잠겨 있다. */
-    expect(
-      within(partnerRolePane()).getByText(/저장은 다른 거래처의 저장이 끝난 뒤에/),
-    ).toBeInTheDocument();
+    expect(within(partnerRolePane()).getByRole('button', { name: '저장' })).toBeDisabled();
 
     await act(async () => {
       deferred.release({
@@ -6637,12 +7260,11 @@ describe('CommonCodeScreen — 나가는 중인 저장의 매임 (M-1·F-1)', ()
     });
 
     /*
-     * **잠금 사유가 갈리는 것으로 실패가 도착한 것을 안다** — 「다른 거래처의 저장이 끝난 뒤에」가
-     * 「역할을 고친 뒤에」로 바뀌는 순간은 나가는 중이던 저장이 끝났을 때뿐이다.
-     * 도착 전에 음성 단언을 하면 늘 통과한다.
+     * **잠금이 풀리는 것으로 실패가 도착한 것을 안다** — 잠긴 동안 꺼져 있던 역할 확인칸이 다시 켜지는 순간은
+     * 나가는 중이던 저장이 끝났을 때뿐이다. 도착 전에 음성 단언을 하면 늘 통과한다.
      */
     await waitFor(() => {
-      expect(within(partnerRolePane()).getByText(/저장은 역할을 고친 뒤에/)).toBeInTheDocument();
+      expect(roleCheckbox('고객사')).toBeEnabled();
     });
     expect(within(partnerRolePane()).queryByText('저장이 막혔습니다.')).not.toBeInTheDocument();
   });
@@ -6801,6 +7423,7 @@ describe('CommonCodeScreen — 저장 실패와 초안 수명 (C32·C34)', () =>
     await within(partnerRolePane()).findByText('저장이 막혔습니다.');
 
     await user.click(screen.getByRole('button', { name: 'SAMPLE-PTNR-B' }));
+    await confirmDiscardSwitch(user);
     await screen.findByText('지정된 역할이 없습니다');
 
     expect(within(partnerRolePane()).queryByText('저장이 막혔습니다.')).not.toBeInTheDocument();
@@ -6818,6 +7441,7 @@ describe('CommonCodeScreen — 저장 실패와 초안 수명 (C32·C34)', () =>
 
     await user.click(roleCheckbox('공급사'));
     await user.click(screen.getByRole('tab', { name: '공통코드' }));
+    await confirmDiscardSwitch(user);
     await screen.findByRole('button', { name: 'SYN-GRP-01' });
 
     await user.click(screen.getByRole('tab', { name: '거래처 역할' }));
@@ -6835,8 +7459,9 @@ describe('CommonCodeScreen — 저장 실패와 초안 수명 (C32·C34)', () =>
 
     await user.click(roleCheckbox('공급사'));
     await user.click(within(filterPane()).getByRole('checkbox', { name: '미사용 포함' }));
+    await confirmDiscardSwitch(user);
 
-    await screen.findByText('좌측에서 거래처를 고르면 여기에 그 거래처의 역할이 보입니다');
+    await screen.findByText('거래처를 선택하세요.');
     expect(screen.queryByRole('checkbox', { name: '공급사' })).not.toBeInTheDocument();
   });
 });

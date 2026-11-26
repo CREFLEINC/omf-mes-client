@@ -43,11 +43,15 @@ const pad = (value: number, length: number): string => String(value).padStart(le
  * 형식이 깨진 값은 **비어 있는 것과 같이** 다룬다 — 그대로 보내면 서버가 400을 돌려주고
  * 사용자는 무엇이 잘못됐는지 알 수 없다.
  */
-export const validatePeriod = (input: PeriodInput): string | null => {
-  if (!isDate(input.from) || !isDate(input.to)) return t.reasons.searchNeedsPeriod;
+export const validatePeriod = (
+  input: PeriodInput,
+  /** 사유 문구 — 다른 화면이 이 검사를 빌려 쓸 때 그 화면의 칸 이름으로(ERP 송신 생성일 · #358). */
+  reasons: { searchNeedsPeriod: string; periodReversed: string } = t.reasons,
+): string | null => {
+  if (!isDate(input.from) || !isDate(input.to)) return reasons.searchNeedsPeriod;
 
   // 자릿수가 고정된 `YYYY-MM-DD`라 문자열 비교가 곧 날짜 비교다.
-  if (input.to < input.from) return t.reasons.periodReversed;
+  if (input.to < input.from) return reasons.periodReversed;
 
   return null;
 };

@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 
 import { renderWithProviders } from '../../../test/api-harness';
 import { plantToday } from '../../../patterns/plant-time';
@@ -88,6 +89,29 @@ describe('배포 확인 단계 — 생산 창고 공장', () => {
     expect(link).toHaveAttribute('href', RELEASE_BLOCK_LINKS.PRODUCTION_WAREHOUSE_MISSING);
     expect(link).toHaveAttribute('target', '_blank');
     expect(screen.getAllByRole('link')).toHaveLength(2);
+  });
+
+  it('고른 작업지시를 다시 누르면 상세가 풀리고 첫 작업지시를 저절로 다시 고르지 않는다', async () => {
+    const user = userEvent.setup();
+    const onSelectedWorkOrderChange = vi.fn();
+    renderStep({ onSelectedWorkOrderChange });
+
+    const detail = screen.getByRole('region', { name: '선택 작업지시 배포 상세' });
+    await user.click(screen.getByRole('button', { name: 'SYN-WO-1 상세 확인', pressed: true }));
+    expect(onSelectedWorkOrderChange).toHaveBeenLastCalledWith(null);
+    expect(within(detail).getByText(t.selectPrompt)).toBeInTheDocument();
+    expect(within(detail).queryByText('SYN-WO-1')).not.toBeInTheDocument();
+    /* 전체 배포 반영 사항은 고른 작업지시와 상관없이 남는다. */
+    expect(screen.getByText(t.effects.materials)).toBeInTheDocument();
+    expect(screen.getByRole('row', { name: 'SYN-WO-1 배포 상세' })).not.toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+
+    await user.click(screen.getByRole('row', { name: 'SYN-WO-2 배포 상세' }));
+    expect(onSelectedWorkOrderChange).toHaveBeenLastCalledWith(2);
+    expect(within(detail).queryByText(t.selectPrompt)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'SYN-WO-2 상세 확인', pressed: true })).toBeVisible();
   });
 
   it('그 밖의 실패는 지금처럼 서버 문구 한 줄이고 바로가기가 없다', () => {

@@ -14,7 +14,8 @@ export const inboundWorkRecord = {
   filters: {
     label: '조회 조건',
     plant: '공장',
-    period: '입하일',
+    periodFrom: '입하 시작일',
+    periodTo: '입하 종료일',
     supplier: '공급사',
     supplierAll: '전체',
     query: '품목 · 입하 LOT', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-16.md)
@@ -26,7 +27,7 @@ export const inboundWorkRecord = {
   views: {
     label: '보기',
     ready: '마감 승인 대기',
-    prog: '진행 중',
+    prog: '진행',
     final: '최종 마감',
   },
   list: {
@@ -34,7 +35,8 @@ export const inboundWorkRecord = {
     columns: {
       inboundLot: '입하 LOT',
       supplier: '공급사',
-      item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       receivingDate: '입하일',
       lotCount: '자재 관리 LOT',
       receivedQty: '입하 수량',
@@ -70,11 +72,12 @@ export const inboundWorkRecord = {
     close: '닫기',
     status: {
       ready: '마감 승인 대기',
-      prog: '진행 중',
+      prog: '진행',
       final: '최종 마감',
     },
     supplier: '공급사',
-    item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     receivingDate: '입하일',
     receiptClosed: '입하 마감',
     notClosed: '마감 전',
@@ -118,8 +121,8 @@ export const inboundWorkRecord = {
       receiptCancelPending: '입고 취소 요청 중',
       returned: '반품 처분 끝',
       disposed: '폐기 처분 끝',
-      dispositionInProgress: '처분 진행 중',
-      iqcInProgress: 'IQC 진행 중',
+      dispositionInProgress: '처분 진행',
+      iqcInProgress: 'IQC 진행',
       inspectionHold: '검사 대기 · 보류', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-16.md)
       waitingReceipt: '입고 대기',
     },

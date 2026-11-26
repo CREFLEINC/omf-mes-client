@@ -11,6 +11,7 @@ import {
   statusLabel,
 } from './code-options';
 import { InfoTip } from '../../patterns/info-tip';
+import { CodeLockTextField } from '../../patterns/master';
 import { FieldLabel } from './field-label';
 import { groupAssignmentNote, hierarchyText, type EquipmentHierarchy } from './hierarchy-text';
 import { SelectField } from './select-field';
@@ -179,13 +180,12 @@ export const EquipmentFormDialog = ({
       )}
 
       <div className="form-grid">
-        <TextField
+        <CodeLockTextField
+          lockReason={codeLockReason}
           label={t.fields.equipmentCode}
           required
           value={values.equipmentCode}
           onChange={(event) => onChange({ equipmentCode: event.target.value })}
-          disabled={codeLockReason !== null}
-          disabledReason={codeLockReason ?? undefined}
           error={fieldErrors.equipmentCode}
         />
 

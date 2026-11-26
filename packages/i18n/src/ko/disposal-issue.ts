@@ -47,10 +47,11 @@ export const disposalIssue = {
   fields: {
     warehouse: '창고',
     /**
-     * 계약의 `receiptDateFrom`·`receiptDateTo`를 **한 컨트롤**이 함께 고른다.
+     * 계약의 `receiptDateFrom`·`receiptDateTo`를 시작일 · 종료일 두 칸이 고른다.
      * **기본 기간을 심지 않는다**(W-01-09가 세운 규칙).
      */
-    period: '입고일',
+    periodFrom: '입고 시작일',
+    periodTo: '입고 종료일',
     /** 값 목록이 확정되지 않아 선택지가 비어 있다 — 안내는 `pendingCode`가 맡는다. */
     receiptType: '입고 유형',
     status: '상태',
@@ -172,7 +173,8 @@ export const disposalIssue = {
    * **폐기 사유**다(계획 §5.5) — 창고는 열로만 보인다. 조건을 늘리는 것보다 줄이는 것이 먼저다.
    */
   historyFields: {
-    period: '출고일',
+    periodFrom: '출고 시작일',
+    periodTo: '출고 종료일',
     issueType: '출고 유형',
     reason: '폐기 사유',
     status: '상태',
@@ -293,7 +295,8 @@ export const disposalIssue = {
    */
   lineTable: {
     select: '선택',
-    item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     lot: '자재 LOT',
     location: '위치',
     receiptQty: '입고 수량',
@@ -763,7 +766,8 @@ export const disposalIssue = {
    * 수량 표기에 붙인다(W-01-03이 세운 처리).
    */
   issueLineTable: {
-    item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     lot: '자재 LOT',
     location: '위치',
     issueQty: '폐기 수량',

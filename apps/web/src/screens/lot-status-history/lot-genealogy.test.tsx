@@ -54,7 +54,9 @@ describe('ProductionLotInputs', () => {
     });
 
     expect(await screen.findByText('ML-77')).toBeInTheDocument();
-    expect(screen.getByText('PCB ASSY (F537)')).toBeInTheDocument();
+    /* 자재는 자재코드 · 자재명 두 칸(품목 표기 분리). */
+    expect(screen.getByText('F537')).toBeInTheDocument();
+    expect(screen.getByText('PCB ASSY')).toBeInTheDocument();
     expect(await screen.findByText('자재, 공급처 변경')).toBeInTheDocument();
   });
 

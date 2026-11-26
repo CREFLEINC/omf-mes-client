@@ -9,7 +9,7 @@ import { Select } from '../select';
  */
 const t = messages.screenPatterns.pageNav;
 
-export const PAGE_SIZES = [20, 50, 100] as const;
+export const PAGE_SIZES = [10, 20, 50] as const;
 export type PageSize = (typeof PAGE_SIZES)[number];
 
 export interface PageNavMeta {
@@ -23,7 +23,7 @@ export interface PageNavProps<S extends number = PageSize> {
   onChangePage: (page: number) => void;
   /** 주지 않으면 페이지 크기 선택을 그리지 않는다. */
   onChangeSize?: (size: S) => void;
-  /** 고를 페이지 크기. 기본은 `PAGE_SIZES`(20 · 50 · 100). */
+  /** 고를 페이지 크기. 기본은 `PAGE_SIZES`(10 · 20 · 50). */
   sizes?: readonly S[];
   /** 처음 · 이전 · 다음 · 마지막 단추 크기만 따로 — 주지 않으면 `controlSize` 를 따른다(검사 기준 목록 · #196). */
   buttonSize?: 'sm' | 'md';

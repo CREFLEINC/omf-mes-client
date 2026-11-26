@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { pickDate } from '../../test/date-picker';
 import { DashboardFilterBar, type DashboardFilterBarProps } from './dashboard-filter-bar';
 import { DASHBOARD_REFRESH_INTERVAL_MS } from './queries';
 
@@ -84,7 +85,8 @@ describe('DashboardFilterBar — 기간', () => {
 
     const select = screen.getByRole('combobox', { name: t.period });
     expect(select).toHaveTextContent(t.quick.today);
-    expect(screen.getByRole('button', { name: t.customPeriod })).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.startDate })).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.endDate })).toBeDisabled();
 
     await user.click(select);
     await user.click(screen.getByRole('option', { name: t.quick.last7 }));
@@ -99,7 +101,8 @@ describe('DashboardFilterBar — 기간', () => {
     renderBar({ filters: { dateFrom: '2026-10-02', dateTo: '2026-10-05', plant: '' } });
 
     expect(screen.getByRole('combobox', { name: t.period })).toHaveTextContent(t.customPeriod);
-    expect(screen.getByRole('button', { name: t.customPeriod })).toBeEnabled();
+    expect(screen.getByRole('button', { name: messages.common.startDate })).toBeEnabled();
+    expect(screen.getByRole('button', { name: messages.common.endDate })).toBeEnabled();
   });
 
   it('「직접 지정」을 고르면 지금 기간 그대로 날짜 칸을 켠다', async () => {
@@ -109,8 +112,32 @@ describe('DashboardFilterBar — 기간', () => {
 
     await user.click(screen.getByRole('combobox', { name: t.period }));
     await user.click(screen.getByRole('option', { name: t.customPeriod }));
-    expect(screen.getByRole('button', { name: t.customPeriod })).toBeEnabled();
+    expect(screen.getByRole('button', { name: messages.common.startDate })).toBeEnabled();
+    expect(screen.getByRole('button', { name: messages.common.endDate })).toBeEnabled();
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('한 칸만 바꿔 92일을 넘으면 값을 버리지 않고 안내만 한다 · 나머지 칸을 고쳐 맞으면 그때 한 번 적용한다', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderBar({ onChange, filters: { dateFrom: '2026-10-02', dateTo: '2026-10-05', plant: '' } });
+    const start = screen.getByRole('button', { name: messages.common.startDate });
+    const end = screen.getByRole('button', { name: messages.common.endDate });
+
+    await pickDate(user, start, '2026-06-01');
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent(t.periodTooLong(92));
+    expect(start).toHaveTextContent('2026-06-01');
+
+    /* 종료 칸 하한은 초안 시작일(06-01) — 기존 시작일(10-02)보다 앞도 고를 수 있다. */
+    await pickDate(user, end, '2026-06-30');
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith({
+      dateFrom: '2026-06-01',
+      dateTo: '2026-06-30',
+      plant: '',
+    });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('서버가 기간을 거절한 이유는 날짜 칸 옆에 선다', () => {

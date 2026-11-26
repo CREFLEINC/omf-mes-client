@@ -30,6 +30,8 @@ export const DirectLotEntry = ({ isSearching, message, isLocked, onFind }: Direc
     <div className="return-receipt-lot-entry">
       <TextField
         label={t.lot.label}
+        /* 비우면 [LOT 찾기]가 잠긴다 — 필수 표시(DS 빨간 *). */
+        required
         value={lotNo}
         placeholder={t.lot.placeholder}
         fullWidth

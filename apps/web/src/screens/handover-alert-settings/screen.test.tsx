@@ -1,6 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -18,6 +18,7 @@ type HandoverAlertRecipient = components['schemas']['HandoverAlertSetting']['rec
 type HandoverAlertSetting = components['schemas']['HandoverAlertSetting'];
 
 const t = messages.handoverAlertSettings;
+const leave = messages.common.unsavedLeave;
 
 /**
  * 인계 종류 10종 — 서버가 주는 차례를 일부러 흔든다. 화면은 업무 흐름 순서로 세워야 한다
@@ -82,6 +83,9 @@ interface SetupOptions {
   candidates?: number[];
   /** 서버가 더한 종류(피처 009 의 적치 대기 등) — 10종 뒤에 붙는다 */
   extraTypes?: typeof TYPES;
+  /** 요약 응답의 Zalo 연결 상태. 주지 않으면 싣지 않는다 */
+  zaloStatus?: string;
+  permissions?: string[];
 }
 
 const setup = (options: SetupOptions = {}) => {
@@ -122,6 +126,7 @@ const setup = (options: SetupOptions = {}) => {
       respond: (request) => {
         summaryQueries.push(new URL(request.url));
         return jsonResponse({
+          ...(options.zaloStatus === undefined ? {} : { zaloStatus: options.zaloStatus }),
           items: Object.entries(settings).map(([alertTypeCode, setting]) => ({
             alertTypeCode,
             enabled: setting.enabled,
@@ -132,6 +137,11 @@ const setup = (options: SetupOptions = {}) => {
           })),
         });
       },
+    },
+    /* 수신자 추가 창의 부서 선택지. */
+    {
+      match: (request) => pathOf(request) === '/mdm/departments',
+      respond: () => jsonResponse({ items: [], page: { page: 1, size: 100, total: 0 } }),
     },
     {
       match: (request) => pathOf(request) === '/app/notification-settings/recipient-candidates',
@@ -174,17 +184,20 @@ const setup = (options: SetupOptions = {}) => {
     {
       fetch: createStubFetch(routes),
       route: options.route ?? '/notification/handover-settings',
+      /* 화면이 나가기 확인(`LeaveGuard` · `useBlocker`)을 써서 늘 데이터 라우터로 렌더한다(#358). */
+      dataRouter: true,
       session: {
         ...SYNTHETIC_SESSION,
         scopes: options.scopes ?? [{ businessUnitId: 8301 }],
-        permissions: ['W-CO-14'],
+        permissions: options.permissions ?? ['W-CO-14'],
       },
     },
   );
   return { ...view, writes, summaryQueries };
 };
 
-const typesPane = () => within(screen.getByRole('region', { name: t.panes.types }));
+/* 조회 조건 · 목록 · 상세 통일 배치(#358) — 목록 상자 이름은 「인계 작업 목록」. */
+const typesPane = () => within(screen.getByRole('region', { name: t.workspace.list }));
 const settingPane = (name: string) =>
   within(screen.getByRole('region', { name: t.panes.setting(name) }));
 
@@ -210,7 +223,7 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     expect(rows.map((row) => within(row).getByRole('button').textContent)).toEqual(FLOW_ORDER);
     for (const row of rows) {
       expect(within(row).getAllByText(t.values.off)).toHaveLength(2);
-      expect(within(row).getByText('0')).toBeInTheDocument();
+      expect(within(row).getByText(t.values.recipientCount(0))).toBeInTheDocument();
     }
     /* 첫 행이 열리고 URL 이 그 자리를 든다. */
     expect(within(rows[0] as HTMLElement).getByRole('button')).toHaveAttribute(
@@ -219,18 +232,57 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     );
     const pane = settingPane('IQC 수입검사');
     expect(await pane.findByRole('switch', { name: t.fields.enabled })).not.toBeChecked();
-    expect(pane.getByText(t.fields.recipients(0, 5))).toBeInTheDocument();
+    expect(pane.getByText(t.fields.recipients(0))).toBeInTheDocument();
+    expect(pane.queryByText('최대 5명')).toBeNull();
   });
 
-  it('발송량 안내와 「언제」·「처리」 안내를 보인다', async () => {
+  it('요금 · 일일 한도 안내는 Zalo 발송 옆 ⓘ 에, 「언제」·「처리」 안내는 제목 아래에 보인다', async () => {
     const user = userEvent.setup();
     setup();
 
-    /* 발송량 안내는 「인계 작업」 제목 옆 ⓘ 의 설명이다(관리웹 정리 시안 A). */
-    expect(await screen.findByRole('button', { name: t.intro })).toBeInTheDocument();
     const pane = await openType(user, '자재 출고 피킹');
+    expect(pane.getByRole('button', { name: t.state.zaloQuota })).toBeInTheDocument();
+    /* 스위치 아래 문장은 걷었다. */
+    expect(pane.queryByText(t.state.zaloQuota)).toBeNull();
     expect(pane.getByText(t.types.MATERIAL_PICKING_REQUESTED.when)).toBeInTheDocument();
     expect(pane.getByText(t.types.MATERIAL_PICKING_REQUESTED.where)).toBeInTheDocument();
+  });
+
+  it('Zalo 미연결이면 Zalo 발송 옆 「미연결」 칩과 한 줄 안내 라벨 + 오른쪽 [Zalo 연결 설정] 단추를 두고, 누르면 알림 연결 설정에 간다', async () => {
+    const user = userEvent.setup();
+    const { router } = setup({
+      zaloStatus: 'NOT_CONFIGURED',
+      permissions: ['W-CO-14', 'W-CO-12'],
+    });
+
+    const pane = within(
+      await screen.findByRole('region', { name: t.panes.setting('IQC 수입검사') }),
+    );
+    expect(await pane.findByText(t.values.notConnected)).toBeInTheDocument();
+    /* 안내 문구는 걷었다 — 미연결은 칩과 [Zalo 연결 설정] 단추만(사용자 지시 2026-11-25). */
+    expect(pane.queryByText(t.state.zaloNotActive)).toBeNull();
+    /* 종전 긴 노란 줄 · 글 링크는 걷었다. 스위치는 미연결이어도 켤 수 있다(서버가 막지 않는다). */
+    expect(screen.queryByRole('note')).toBeNull();
+    expect(screen.queryByRole('link', { name: t.actions.openConnection })).toBeNull();
+    const button = pane.getByRole('button', { name: t.actions.openConnection });
+    expect(button.closest('.notify-switch-label')).not.toBeNull();
+    await user.click(button);
+    await waitFor(() =>
+      expect(router?.state.location.pathname).toBe('/notification/zalo-connection'),
+    );
+  });
+
+  it('Zalo 가 연결돼 있으면 미연결 안내와 이동 단추가 없다', async () => {
+    setup({ zaloStatus: 'ACTIVE', permissions: ['W-CO-14', 'W-CO-12'] });
+
+    const pane = within(
+      await screen.findByRole('region', { name: t.panes.setting('IQC 수입검사') }),
+    );
+    expect(await pane.findByRole('switch', { name: t.fields.zalo })).toBeInTheDocument();
+    expect(screen.queryByRole('note')).toBeNull();
+    expect(screen.queryByText(t.state.zaloNotActive, { exact: false })).toBeNull();
+    expect(screen.queryByText(t.values.notConnected)).toBeNull();
+    expect(screen.queryByRole('button', { name: t.actions.openConnection })).toBeNull();
   });
 
   /* 피처 009(omf-all-around#294) — 「적치 대기」 새 유형과 바뀐 「검사 불합격」 처리 안내. */
@@ -247,6 +299,14 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
       ],
     });
 
+    /* 11종이면 둘째 쪽으로 넘어간다 — 작업 이름 검색으로 거른다(화면 안 거르기 · #358). */
+    const search = await screen.findByRole('searchbox', { name: t.workspace.search });
+    /* 초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */
+    expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
+    await user.type(search, '적치 대기');
+    expect(screen.getByRole('button', { name: t.workspace.clear })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.workspace.apply }));
+    await waitFor(() => expect(typesPane().getAllByRole('row')).toHaveLength(2));
     const pane = await openType(user, '적치 대기');
     expect(pane.getByText(t.types.PUTAWAY_PENDING.when)).toBeInTheDocument();
     expect(pane.getByText(t.types.PUTAWAY_PENDING.where)).toBeInTheDocument();
@@ -295,6 +355,29 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     });
   });
 
+  it('초기화는 공장이 처음 값(첫 공장)과 다를 때 보이고, 누르면 첫 공장 · 빈 검색어로 돌아가 다시 조회한다', async () => {
+    const user = userEvent.setup();
+    const { summaryQueries } = setup({ plants: [PLANT_A, PLANT_B] });
+
+    await typeRows();
+    expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
+    await user.click(screen.getByRole('combobox', { name: t.fields.plant }));
+    await user.click(await screen.findByRole('option', { name: 'G2 합성 2공장' }));
+    await user.type(screen.getByRole('searchbox', { name: t.workspace.search }), '자재 출고');
+    await user.click(screen.getByRole('button', { name: t.workspace.apply }));
+    await waitFor(() => expect(typesPane().getAllByRole('row')).toHaveLength(2));
+
+    await user.click(screen.getByRole('button', { name: t.workspace.clear }));
+
+    await waitFor(() => {
+      expect(summaryQueries.at(-1)?.searchParams.get('plantId')).toBe(String(PLANT_A.plantId));
+    });
+    expect(screen.getByRole('combobox', { name: t.fields.plant })).toHaveTextContent('G1');
+    expect(screen.getByRole('searchbox', { name: t.workspace.search })).toHaveValue('');
+    await typeRows();
+    expect(screen.queryByRole('button', { name: t.workspace.clear })).toBeNull();
+  });
+
   it('US2-3 SC-004 5명이 차면 추가가 잠기고 「최대 5명」 안내가 보인다', async () => {
     const user = userEvent.setup();
     setup({
@@ -307,7 +390,7 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     });
 
     const pane = await openType(user, '적치');
-    expect(pane.getByText(t.fields.recipients(5, 5))).toBeInTheDocument();
+    expect(pane.getByText(t.fields.recipients(5))).toBeInTheDocument();
     expect(pane.getByRole('button', { name: `+ ${t.actions.add}` })).toBeDisabled();
     expect(pane.getByText(t.state.limitReached(5))).toBeInTheDocument();
   });
@@ -326,15 +409,12 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     const pane = await openType(user, '적치');
     await user.click(pane.getByRole('button', { name: `+ ${t.actions.add}` }));
     const dialog = within(await screen.findByRole('dialog'));
-    expect(await dialog.findByText(t.picker.slotsLeft(1, 5))).toBeInTheDocument();
-
-    await user.click(dialog.getByRole('checkbox', { name: '후보 61 선택' }));
-    expect(dialog.getByText(t.picker.full(5))).toBeInTheDocument();
+    await user.click(await dialog.findByRole('checkbox', { name: '후보 61 선택' }));
     expect(dialog.getByRole('checkbox', { name: '후보 62 선택' })).toBeDisabled();
     expect(dialog.getByRole('checkbox', { name: '후보 63 선택' })).toBeDisabled();
 
-    await user.click(dialog.getByRole('button', { name: '추가 (1)' }));
-    expect(pane.getByText(t.fields.recipients(5, 5))).toBeInTheDocument();
+    await user.click(dialog.getByRole('button', { name: '1명 추가' }));
+    expect(pane.getByText(t.fields.recipients(5))).toBeInTheDocument();
     await user.click(pane.getByRole('button', { name: t.actions.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -357,8 +437,8 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     const rows = await typeRows();
     expect(within(rows[2] as HTMLElement).getByText('⚠1')).toBeInTheDocument();
     const pane = await openType(user, '자재 출고 피킹');
-    expect(pane.getByText('📵 전화번호 없음 — 알림센터로만 받음')).toBeInTheDocument();
-    expect(pane.getByText(t.state.noPhoneNotice(1))).toBeInTheDocument();
+    expect(pane.getByText('📵 전화번호 없음')).toBeInTheDocument();
+    expect(pane.getByRole('button', { name: t.state.noPhoneNotice(1) })).toBeInTheDocument();
   });
 
   it('US2-5 알림을 켜고 담당자가 0명이면 안내가 보이고 저장은 된다', async () => {
@@ -368,7 +448,9 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     const pane = await openType(user, '적치');
     await user.click(pane.getByRole('switch', { name: t.fields.enabled }));
 
-    expect(pane.getByText(t.state.noRecipientsWarning)).toBeInTheDocument();
+    // 수신자 0명은 「지정한 수신자가 없습니다.」 라벨 하나 — 알림이 켜져 있으면 경고색이다.
+    const table = await pane.findByRole('table', { name: t.columns.recipients });
+    expect(within(table).getByText(t.state.noRecipients)).toBeInTheDocument();
     await user.click(pane.getByRole('button', { name: t.actions.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
   });
@@ -449,6 +531,26 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     expect(pane.getByRole('switch', { name: t.fields.zalo })).not.toBeChecked();
   });
 
+  it('고치면 「저장되지 않은 변경 사항」이 보이고, [취소]는 마지막 저장값으로 되돌린다', async () => {
+    const user = userEvent.setup();
+    setup({
+      settings: {
+        PUTAWAY_REQUESTED: { enabled: true, zaloEnabled: false, recipients: [person(41)] },
+      },
+    });
+
+    const pane = await openType(user, '적치');
+    expect(pane.queryByText(t.state.unsaved)).toBeNull();
+    await user.click(pane.getByRole('switch', { name: t.fields.zalo }));
+    expect(pane.getByText(t.state.unsaved)).toBeInTheDocument();
+
+    await user.click(pane.getByRole('button', { name: t.actions.revert }));
+    expect(pane.getByRole('switch', { name: t.fields.zalo })).not.toBeChecked();
+    expect(pane.getByRole('switch', { name: t.fields.enabled })).toBeChecked();
+    expect(pane.getByText(t.fields.recipients(1))).toBeInTheDocument();
+    expect(pane.queryByText(t.state.unsaved)).toBeNull();
+  });
+
   it('저장하지 않은 변경이 있으면 다른 작업으로 갈 때 확인한다', async () => {
     const user = userEvent.setup();
     setup();
@@ -457,10 +559,55 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     await user.click(pane.getByRole('switch', { name: t.fields.enabled }));
     await user.click(screen.getByRole('button', { name: '긴급 W/O' }));
 
-    expect(await screen.findByText(t.state.unsavedBody)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: t.actions.discard }));
+    expect(await screen.findByText(leave.body)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: leave.confirm }));
     expect(
       await screen.findByRole('region', { name: t.panes.setting('긴급 W/O') }),
     ).toBeInTheDocument();
+  });
+
+  it('고른 작업을 다시 누르면 고르기를 푼다 — 저장하지 않은 변경이 있으면 먼저 확인한다', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    const pane = await openType(user, '적치');
+    await user.click(pane.getByRole('switch', { name: t.fields.enabled }));
+    await user.click(screen.getByRole('button', { name: '적치' }));
+
+    expect(await screen.findByText(leave.body)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: leave.confirm }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('region', { name: t.panes.setting('적치') }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole('button', { name: '적치' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('저장하지 않은 변경을 두고 다른 화면으로 가면 묻고, 계속 편집은 남고 나가기는 옮긴다(#358)', async () => {
+    const user = userEvent.setup();
+    const { router } = setup();
+
+    const pane = await openType(user, '자재 출고 피킹');
+    await user.click(pane.getByRole('switch', { name: t.fields.enabled }));
+
+    await act(async () => {
+      await router?.navigate('/system/users-roles');
+    });
+    const dialog = within(await screen.findByRole('dialog', { name: leave.title }));
+    expect(dialog.getByText(leave.body)).toBeInTheDocument();
+    await user.click(dialog.getByRole('button', { name: leave.keep }));
+    expect(router?.state.location.pathname).toBe('/notification/handover-settings');
+    expect(pane.getByRole('switch', { name: t.fields.enabled })).toBeInTheDocument();
+
+    await act(async () => {
+      await router?.navigate('/system/users-roles');
+    });
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.confirm,
+      }),
+    );
+    await waitFor(() => expect(router?.state.location.pathname).toBe('/system/users-roles'));
   });
 });

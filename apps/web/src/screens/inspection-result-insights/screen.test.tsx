@@ -92,7 +92,7 @@ describe('검사실적·검사결과 조회 조립', () => {
   });
 
   /* 종합 판정은 조회 조건 칸이 아니라 칩이다 — 누르면 바로 걸리고 「전체」로 풀린다(사용자 2026-10-30 · #217). */
-  it('종합 판정 칩(전체 · 판정별)으로 바로 거르고 「전체」로 푼다', async () => {
+  it('종합 판정 칩(「전체」 없이 판정별)으로 바로 거르고, 고른 칩을 다시 누르면 푼다', async () => {
     const user = userEvent.setup();
     renderWithProviders(
       <>
@@ -108,9 +108,9 @@ describe('검사실적·검사결과 조회 조립', () => {
     await waitFor(() =>
       expect(screen.getByLabelText('현재 주소')).toHaveTextContent('judgment=REJECTED'),
     );
-    // 「전체」를 누르면 거르기가 풀린다 — 칩은 하나만 눌려 있다.
-    expect(within(chips).getByRole('button', { name: '전체', pressed: false })).toBeVisible();
-    await user.click(within(chips).getByRole('button', { name: '전체' }));
+    // 「전체」 칩은 없다 — 고른 칩을 다시 누르면 거르기가 풀린다(사용자 지시 2026-11-24).
+    expect(within(chips).queryByRole('button', { name: /전체/ })).toBeNull();
+    await user.click(within(chips).getByRole('button', { name: '불합격', pressed: true }));
     await waitFor(() =>
       expect(screen.getByLabelText('현재 주소')).not.toHaveTextContent('judgment='),
     );
@@ -138,8 +138,32 @@ describe('검사실적·검사결과 조회 조립', () => {
     });
 
     const chips = screen.getByRole('group', { name: '종합 판정 선택' });
-    expect(await within(chips).findByRole('button', { name: '전체 12' })).toBeVisible();
     expect(await within(chips).findByRole('button', { name: '불합격 3' })).toBeVisible();
+    expect(within(chips).queryByRole('button', { name: /전체/ })).toBeNull();
+  });
+
+  it('0건인 종합 판정 칩은 감춘다', async () => {
+    renderWithProviders(<InspectionResultInsightsScreen lookups={lookups} />, {
+      route: '/?from=2026-08-01&to=2026-08-31',
+      fetch: (request) => {
+        const url = new URL(request.url);
+        if (
+          url.pathname === '/quality/inspection-results' &&
+          url.searchParams.get('size') === '1'
+        ) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ items: [], page: { page: 1, size: 1, total: 0 } }), {
+              headers: { 'content-type': 'application/json' },
+            }),
+          );
+        }
+        return new Promise(() => undefined);
+      },
+    });
+
+    const chips = screen.getByRole('group', { name: '종합 판정 선택' });
+    expect(within(chips).getByRole('button', { name: '불합격' })).toBeVisible();
+    await waitFor(() => expect(within(chips).queryByRole('button')).toBeNull());
   });
 
   /* 조건 없이 들어오면 시작일 · 종료일을 오늘로 채운다(사용자 지시 · omf-all-around#217). */

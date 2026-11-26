@@ -10,6 +10,8 @@ export const inspectionLevel = {
   dialog: {
     addTitle: 'Chỉ định mức kiểm tra',
     item: 'Vật tư',
+    itemCode: 'Mã vật tư',
+    itemName: 'Tên vật tư',
     level: 'Mức kiểm tra',
     reason: 'Lý do',
     reasonPlaceholder: 'Nhập lý do (không bắt buộc)',

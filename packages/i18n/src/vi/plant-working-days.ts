@@ -7,17 +7,14 @@ import type { Translated } from './translated';
  * ⚠ **화면 이름은 사이드바와 글자가 같아야 한다** — `apps/web/src/app/nav-tree.ts` 의 `labelVi`.
  */
 export const plantWorkingDays: Translated<typeof ko.plantWorkingDays> = {
-  title: 'Thiết lập ngày làm việc nhà máy',
-  breadcrumbRoot: 'Quản trị hệ thống',
   description:
-    'Số ngày làm việc trong tuần của từng nhà máy, dùng để tính ngày xuất kho (1 ngày làm việc trước ngày sản xuất). Chỉ bỏ qua cuối tuần — không dùng ngày lễ và lịch làm việc. Nhà máy chưa thiết lập được tính theo 5 ngày/tuần.',
+    'Ngày xuất kho được xác định là ngày làm việc ngay trước ngày sản xuất, theo các ngày làm việc trong tuần của từng nhà máy. Không loại trừ riêng ngày lễ. Nhà máy chưa thiết lập áp dụng chuẩn làm việc 5 ngày/tuần.',
   tableLabel: 'Ngày làm việc theo nhà máy',
   columns: {
     plant: 'Nhà máy',
     days: 'Ngày làm việc trong tuần',
     off: 'Ngày nghỉ',
-    example: (date: string, weekday: string): string =>
-      `Ví dụ: ngày xuất kho của ngày sản xuất ${date} (${weekday})`,
+    example: 'Ví dụ ngày xuất kho',
     lastChanged: 'Thay đổi gần nhất',
   },
   options: {
@@ -27,17 +24,19 @@ export const plantWorkingDays: Translated<typeof ko.plantWorkingDays> = {
   groupLabel: (plant: string): string => `Ngày làm việc trong tuần của ${plant}`,
   weekdays: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'],
   values: {
-    example: (date: string, weekday: string, skipped: string): string =>
-      skipped === '' ? `${date} (${weekday})` : `${date} (${weekday}) — bỏ qua ${skipped}`,
-    lastChanged: (date: string): string => `Áp dụng từ ${date}`,
+    example: (date: string, weekday: string): string => `${date} (${weekday})`,
+    skipped: (days: string): string => `bỏ qua ${days}`,
     none: '—',
   },
+  exampleNote: {
+    lead: (date: string, weekday: string): string => `Ngày sản xuất ví dụ ${date} (${weekday})`,
+    body: 'Ngày xuất kho là ngày làm việc ngay trước ngày sản xuất, theo ngày làm việc của từng nhà máy.',
+  },
   tags: {
-    default: 'Mặc định',
-    changed: 'Đã đổi',
+    changed: 'Đã sửa',
   },
   actions: {
-    revert: 'Hoàn tác',
+    revert: 'Hủy thay đổi',
     save: 'Lưu',
     reload: 'Tải lại',
   },
@@ -47,7 +46,23 @@ export const plantWorkingDays: Translated<typeof ko.plantWorkingDays> = {
     noPlants: 'Không có nhà máy để thiết lập.',
   },
   discard: {
-    title: 'Có thay đổi chưa lưu',
-    body: 'Nếu chuyển đi bây giờ, ngày làm việc đã đổi sẽ không được lưu và bị mất. Để giữ lại, nhấn «Tiếp tục chỉnh sửa» rồi lưu.',
+    title: 'Thay đổi chưa lưu',
+    body: 'Nếu rời đi mà không lưu, các thay đổi sẽ bị mất.',
+    keep: 'Tiếp tục chỉnh sửa',
+    confirm: 'Rời đi không lưu',
+  },
+  daysFilter: {
+    group: 'Ngày làm việc trong tuần',
+    five: '5 ngày/tuần',
+    six: '6 ngày/tuần',
+  },
+  workspace: {
+    filter: 'Điều kiện tra cứu',
+    list: 'Danh sách nhà máy',
+    search: 'Tìm tên nhà máy',
+    searchPlaceholder: 'Nhập tên nhà máy',
+    apply: 'Tra cứu',
+    clear: 'Đặt lại',
+    empty: 'Không có nhà máy phù hợp với điều kiện.',
   },
 };

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -18,7 +18,9 @@ const baseProps = (
     { page: 1, size: 50, total: partnerFixtures.length },
     partnerFixtures.length,
   ),
+  pageMeta: { page: 1, size: 50, total: partnerFixtures.length },
   onChangePage: vi.fn<(page: number) => void>(),
+  onChangePageSize: vi.fn(),
   selectedPartnerId: null,
   onSelect: vi.fn<(partnerId: number) => void>(),
   loadError: null,
@@ -36,15 +38,21 @@ describe('PartnerListPane — 목록 표시', () => {
   it('거래처코드·거래처명 두 열만 낸다', () => {
     renderPane();
 
-    const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
+    const headers = screen
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent?.replace('drag_indicator', ''));
     expect(headers).toEqual(['거래처코드', '거래처명']);
   });
 
   /* 좁은 좌 페인에서 「사용 여부」 열을 더 두면 이름 열이 짓눌린다. */
-  it('미사용 행은 열을 늘리지 않고 이름 뒤 접미로 알린다', () => {
+  it('미사용 행은 열을 늘리지 않고 이름 옆 「미사용」 라벨로 알린다', () => {
     renderPane();
 
-    expect(screen.getByText('샘플 거래처 다 (미사용)')).toBeInTheDocument();
+    expect(
+      within(screen.getByText('샘플 거래처 다').closest('.usage-name') as HTMLElement).getByText(
+        '미사용',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText('샘플 거래처 가')).toBeInTheDocument();
   });
 
@@ -213,6 +221,7 @@ describe('PartnerListPane — 쪽 이동', () => {
   it('다음을 누르면 다음 쪽을 알린다', async () => {
     const { onChangePage, user } = renderPane({
       pageView: toPageView({ page: 2, size: 50, total: 240 }, 50),
+      pageMeta: { page: 2, size: 50, total: 240 },
     });
 
     await user.click(screen.getByRole('button', { name: '다음' }));
@@ -238,8 +247,10 @@ describe('PartnerListPane — 만들 수 없는 것', () => {
       'SAMPLE-PTNR-A',
       'SAMPLE-PTNR-B',
       'SAMPLE-PTNR-C',
+      '처음',
       '이전',
       '다음',
+      '마지막',
     ]);
   });
 });

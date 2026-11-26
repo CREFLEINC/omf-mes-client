@@ -13,6 +13,7 @@ import { BoardTable } from '../../patterns/board-table';
 import { hasChangedFilters } from '../../patterns/filter-more';
 import { OneLine } from '../../patterns/po-board';
 import { Select } from '../../patterns/select';
+import { UsageName } from '../../patterns/usage-chip';
 import { EMPTY_ITEM_FILTERS, hasAnyFilter } from './filters';
 import type { ItemTypeOption } from './item-queries';
 import { codeValueName } from './options';
@@ -158,6 +159,8 @@ export interface ItemListPaneProps {
   onChangePage: (page: number) => void;
   selectedItemId: number | null;
   onSelect: (itemId: number) => void;
+  /** 고른 줄을 다시 누르면 고르기를 푼다. */
+  onClearSelection: () => void;
   loadError: ReactNode;
   itemTypeOptions?: ItemTypeOption[];
 }
@@ -179,6 +182,7 @@ export const ItemListPane = ({
   onChangePage,
   selectedItemId,
   onSelect,
+  onClearSelection,
   loadError,
   itemTypeOptions = NO_ITEM_TYPES,
 }: ItemListPaneProps) => {
@@ -194,7 +198,9 @@ export const ItemListPane = ({
       key: 'itemName',
       header: t.origin.fields.itemName,
       render: (row) => (
-        <OneLine text={row.isActive ? row.itemName : `${row.itemName}${t.values.inactiveSuffix}`} />
+        <UsageName isActive={row.isActive}>
+          <OneLine text={row.itemName} />
+        </UsageName>
       ),
     },
     {
@@ -278,6 +284,7 @@ export const ItemListPane = ({
           onPick: (row) => {
             onSelect(row.itemId);
           },
+          onUnpick: onClearSelection,
         }}
         empty={emptySlot}
       />

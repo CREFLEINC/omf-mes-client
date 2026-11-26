@@ -357,14 +357,14 @@ export const InboundDetail = ({
                         )}
                       </dd>
                     </div>
+                    {/* 품목은 코드 · 이름 두 칸(품목 표기 분리). */}
                     <div className="parts-iqc-fact">
-                      <dt className="field-label">{t.facts.item}</dt>
-                      <dd className="parts-iqc-fact-key">
-                        {itemParts?.code ?? '-'}
-                        {itemParts === null ? null : (
-                          <span className="parts-iqc-fact-sub">{itemParts.name}</span>
-                        )}
-                      </dd>
+                      <dt className="field-label">{t.facts.itemCode}</dt>
+                      <dd className="parts-iqc-fact-key">{itemParts?.code ?? '-'}</dd>
+                    </div>
+                    <div className="parts-iqc-fact">
+                      <dt className="field-label">{t.facts.itemName}</dt>
+                      <dd className="parts-iqc-fact-key">{itemParts?.name ?? '-'}</dd>
                     </div>
                     <div className="parts-iqc-fact">
                       <dt className="field-label">{t.facts.supplier}</dt>

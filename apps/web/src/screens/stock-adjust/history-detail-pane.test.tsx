@@ -17,7 +17,9 @@ import { toAdjustmentDetailView } from './types';
 
 const t = messages.stockAdjust;
 
-const ITEM_LABEL = 'SAMPLE-ITEM-A · 합성 품목 가';
+/* 품목은 품목코드 · 품목명 두 칸으로 나눠 보인다(사용자 지시 2026-11-24). */
+const ITEM_CODE = 'SAMPLE-ITEM-A';
+const ITEM_NAME = '합성 품목 가';
 const UOM_LABEL = 'SAMPLE-EA · 합성 단위 개';
 const LOT_LABEL = 'SAMPLE-LOT-0001';
 const COUNT_NAME = 'SAMPLE-IC-A · 2026-08-17';
@@ -110,10 +112,11 @@ describe('buildHistoryLineColumns — 세 열과 폭 예산', () => {
    * ⭐ 조심 ③ · C44의 자리. **장부 · 실물 · 차이 세 열을 그대로 둔다** — 차이 하나만 남기면
    * 그 수가 「조정 뒤의 수량」으로 읽히는 길이 열린다.
    */
-  it('열이 여섯이고 장부·실물·차이가 그 차례로 있다', () => {
+  it('열이 일곱이고 장부·실물·차이가 그 차례로 있다', () => {
     expect(columns.map((column) => column.key)).toEqual([
       'lineNo',
       'item',
+      'itemName',
       'lot',
       'bookQty',
       'actualQty',
@@ -138,7 +141,7 @@ describe('buildHistoryLineColumns — 세 열과 폭 예산', () => {
     );
 
     expect(columns.filter((column) => column.width === undefined)).toHaveLength(1);
-    expect(fixed).toBe(536);
+    expect(fixed).toBe(656);
     expect(HISTORY_LINE_TABLE_MIN_WIDTH_PX - fixed).toBeGreaterThanOrEqual(
       HISTORY_LINE_ABSORBING_COLUMN_BUDGET_PX,
     );
@@ -208,8 +211,9 @@ describe('HistoryDetailPane — 라인 표', () => {
 
     expect(cellsOf(0)[0]).toBe('1');
     expect(cellsOf(1)[0]).toBe('2');
-    expect(cellsOf(0)[1]).toBe(ITEM_LABEL);
-    expect(cellsOf(0)[2]).toBe(LOT_LABEL);
+    expect(cellsOf(0)[1]).toBe(ITEM_CODE);
+    expect(cellsOf(0)[2]).toBe(ITEM_NAME);
+    expect(cellsOf(0)[3]).toBe(LOT_LABEL);
   });
 
   /**
@@ -219,16 +223,16 @@ describe('HistoryDetailPane — 라인 표', () => {
   it('차이는 서버 값 그대로이고 장부·실물은 「—」다', () => {
     renderPane();
 
-    expect(cellsOf(0)[5]).toBe(`-20 ${UOM_LABEL}`);
-    expect(cellsOf(0)[3]).toBe(t.values.empty);
+    expect(cellsOf(0)[6]).toBe(`-20 ${UOM_LABEL}`);
     expect(cellsOf(0)[4]).toBe(t.values.empty);
+    expect(cellsOf(0)[5]).toBe(t.values.empty);
   });
 
   /** ⭐ 조심 ②의 자리 — 줄이는 조정이 정상 경로라 부호를 다듬지 않는다. */
   it('음수 차이의 부호를 다듬지 않는다', () => {
     renderPane();
 
-    expect(cellsOf(0)[5]).toContain('-20');
+    expect(cellsOf(0)[6]).toContain('-20');
   });
 
   /**
@@ -241,17 +245,17 @@ describe('HistoryDetailPane — 라인 표', () => {
   it('LOT이 없는 줄은 「—」다 — 「알 수 없음」이 아니다', () => {
     renderPane();
 
-    expect(cellsOf(0)[2]).toBe(LOT_LABEL);
-    expect(cellsOf(1)[2]).toBe(t.values.empty);
-    expect(cellsOf(1)[2]).not.toBe(t.values.unknown);
+    expect(cellsOf(0)[3]).toBe(LOT_LABEL);
+    expect(cellsOf(1)[3]).toBe(t.values.empty);
+    expect(cellsOf(1)[3]).not.toBe(t.values.unknown);
   });
 
   /** 짝 방향 — **있는데 목록에서 못 푼 줄**만 「알 수 없음」이다. 두 갈래가 한 시험에 든다. */
   it('LOT이 있는데 못 풀면 「알 수 없음」이고 없는 줄은 그대로 「—」다', () => {
     renderPane({ lotLookup: lotSource({ entries: [] }) });
 
-    expect(cellsOf(0)[2]).toBe(t.values.unknown);
-    expect(cellsOf(1)[2]).toBe(t.values.empty);
+    expect(cellsOf(0)[3]).toBe(t.values.unknown);
+    expect(cellsOf(1)[3]).toBe(t.values.empty);
   });
 
   /**

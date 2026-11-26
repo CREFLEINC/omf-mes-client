@@ -15,7 +15,8 @@ export interface SkippedOverviewFact {
 export interface SkippedOverviewProps {
   /** PQC · OQC 는 제목 줄(제목 + 안내)을 이 부품이 그린다. IQC 는 상세 머리줄에 이미 있어 비운다. */
   title?: string;
-  itemLabel: string;
+  /** 품목코드 · 품목명 두 칸의 이름(품목 표기 분리). */
+  itemLabels: { code: string; name: string };
   itemParts: { code: string; name: string } | null;
   planCode: string;
   planAction: ReactNode;
@@ -88,15 +89,14 @@ export const SkippedOverview = (props: SkippedOverviewProps) => {
 const SkippedCards = (props: SkippedOverviewProps) => (
   <section className="parts-iqc-block parts-iqc-skipped" aria-label={t.target.heading}>
     <dl className="parts-iqc-facts">
+      {/* 품목은 코드 · 이름 두 칸(품목 표기 분리). */}
       <div className="parts-iqc-fact">
-        <dt className="field-label">{props.itemLabel}</dt>
-        {/* 이름 · 코드를 한 줄에. */}
-        <dd className="parts-iqc-fact-key parts-iqc-fact-inline">
-          {props.itemParts?.name ?? '-'}
-          {props.itemParts !== null && (
-            <span className="parts-iqc-fact-sub">{props.itemParts.code}</span>
-          )}
-        </dd>
+        <dt className="field-label">{props.itemLabels.code}</dt>
+        <dd className="parts-iqc-fact-key">{props.itemParts?.code ?? '-'}</dd>
+      </div>
+      <div className="parts-iqc-fact">
+        <dt className="field-label">{props.itemLabels.name}</dt>
+        <dd className="parts-iqc-fact-key">{props.itemParts?.name ?? '-'}</dd>
       </div>
       <div className="parts-iqc-fact">
         <dt className="field-label">{t.target.plan}</dt>

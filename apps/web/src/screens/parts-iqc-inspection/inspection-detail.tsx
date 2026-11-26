@@ -272,7 +272,7 @@ export const InspectionDetail = ({
       return (
         <>
           <SkippedOverview
-            itemLabel={t.target.itemName}
+            itemLabels={{ code: t.target.itemCode, name: t.target.itemName }}
             itemParts={items.partsOf(detail.data.itemId)}
             planCode={plan.data?.inspectionPlanCode ?? '-'}
             requestNo={detail.data.inspectionRequestNo}
@@ -1124,14 +1124,14 @@ const InspectionForm = (props: FormProps) => {
       <section className="parts-iqc-block" aria-label={t.target.heading}>
         {/* 기본 정보 — OQC 상세의 기본 정보와 같은 짜임: 테두리 상자 안에 칸을 나란히, 칸 사이 세로선(사용자 시안 2026-10-29) */}
         <dl className="parts-iqc-facts">
+          {/* 자재는 코드 · 이름 두 칸(품목 표기 분리). */}
+          <div className="parts-iqc-fact">
+            <dt className="field-label">{t.target.itemCode}</dt>
+            <dd className="parts-iqc-fact-key">{props.itemParts?.code ?? '-'}</dd>
+          </div>
           <div className="parts-iqc-fact">
             <dt className="field-label">{t.target.itemName}</dt>
-            <dd className="parts-iqc-fact-key">
-              {props.itemParts?.name ?? '-'}
-              {props.itemParts !== null && (
-                <span className="parts-iqc-fact-sub">{props.itemParts.code}</span>
-              )}
-            </dd>
+            <dd className="parts-iqc-fact-key">{props.itemParts?.name ?? '-'}</dd>
           </div>
           <div className="parts-iqc-fact">
             <dt className="field-label">{t.target.plan}</dt>
@@ -1229,12 +1229,7 @@ const InspectionForm = (props: FormProps) => {
           <div className="parts-iqc-lot-inspected">
             {/* 시각은 입고 화면과 같은 시·분 고르기(공용 패턴) — 글자 입력 대신 DS 모양으로(사용자 지시 2026-10-29). */}
             <div className="field-cell date-time-field">
-              <label className="field-label" htmlFor={inspectedAtId}>
-                {t.lot.inspectedAt}
-                <span className="required-mark" aria-hidden="true">
-                  {' *'}
-                </span>
-              </label>
+              <FieldLabel htmlFor={inspectedAtId} label={t.lot.inspectedAt} required />
               <div className="date-time-field-controls">
                 <DatePicker
                   id={inspectedAtId}
@@ -1257,6 +1252,7 @@ const InspectionForm = (props: FormProps) => {
               <FieldLabel htmlFor="parts-iqc-inspected-qty" label={t.lot.inspectedQty} required />
               <TextField
                 id="parts-iqc-inspected-qty"
+                aria-required="true"
                 inputMode="numeric"
                 value={form.visualInspectedQty}
                 trailingIcon={<span>{t.visual.unit}</span>}
@@ -1335,14 +1331,15 @@ const InspectionForm = (props: FormProps) => {
             )}
           </div>
           <div className="parts-iqc-inline-field parts-iqc-overall">
-            <span className="field-label" id="parts-iqc-overall">
-              {t.verdict.overall}
+            <span className="field-label">
+              <span id="parts-iqc-overall">{t.verdict.overall}</span>
               <span className="required-mark" aria-hidden="true">
                 {' *'}
               </span>
             </span>
             <Select
               aria-labelledby="parts-iqc-overall"
+              aria-required
               value={overall}
               disabled={suggested === null && !noPlan}
               options={['ACCEPTED', 'REJECTED', 'HELD'].map((value) => ({
@@ -1362,6 +1359,7 @@ const InspectionForm = (props: FormProps) => {
             </span>
             <TextArea
               id="parts-iqc-reason"
+              aria-required="true"
               fullWidth
               value={reason}
               maxLength={500}

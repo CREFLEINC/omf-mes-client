@@ -10,12 +10,20 @@ export const erpEmployee: Translated<typeof ko.erpEmployee> = {
     list: 'Danh sách nhân viên',
   },
   fields: {
-    q: 'Mã NV·Họ tên',
+    q: 'Tìm nhân viên',
+    qPlaceholder: 'Nhập mã NV hoặc họ tên',
+    plant: 'Chọn nhà máy',
+    department: 'Chọn bộ phận',
     includeInactive: 'Bao gồm đã nghỉ việc',
+  },
+  filters: {
+    allPlants: 'Tất cả nhà máy',
+    allDepartments: 'Tất cả bộ phận',
   },
   table: {
     workerNo: 'Mã NV',
     workerName: 'Họ tên',
+    businessUnitId: 'Đơn vị kinh doanh',
     plantId: 'Nhà máy',
     departmentId: 'Bộ phận',
     statusCode: 'Trạng thái ERP',
@@ -27,15 +35,7 @@ export const erpEmployee: Translated<typeof ko.erpEmployee> = {
     inactive: 'Đã nghỉ việc',
   },
   actions: {
-    prevPage: 'Trước',
-    nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
-  },
-  pageNav: {
-    label: 'Chuyển trang',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / Tổng ${String(total)}`,
-    totalOnly: (total: number): string => `Tổng ${String(total)}`,
   },
   loading: {
     list: 'Đang tải danh sách nhân viên',

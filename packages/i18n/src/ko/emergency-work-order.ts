@@ -74,6 +74,8 @@ export const emergencyWorkOrder = {
   form: {
     title: '발행 정보',
     item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     orderQty: '수량',
     plannedEnd: '납기',
     reason: '발행 사유',

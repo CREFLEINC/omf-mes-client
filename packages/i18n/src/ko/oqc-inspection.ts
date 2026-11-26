@@ -137,7 +137,9 @@ export const oqcInspection = {
       /** 대상 유형 · 대상번호를 한 칸으로(「출하요청 #12」 · #136). */
       target: '대상',
       lotId: '대상 LOT',
-      itemId: '품목',
+      /** 품목은 코드 · 이름 두 칸으로 나눠 보인다(품목 표기 분리). */
+      itemCode: '품목코드',
+      itemName: '품목명',
       targetQty: '총 검사량',
       /**
        * ⚠ 감추지 않는다. 검사 시점의 기준 버전이 그 검사에 **고정되고** 이후 기준이 바뀌어도
@@ -459,7 +461,8 @@ export const oqcInspection = {
       shipmentRequest: '출하 지시서',
       customer: '고객',
       shipTo: '납품처',
-      item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       targetPicked: '목표 / 피킹',
       inspectionType: '검사 유형',
       inspectionTypeValue: '출하검사',

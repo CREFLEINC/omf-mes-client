@@ -1,12 +1,11 @@
 import {
   AlertBanner,
-  Breadcrumb,
   Button,
   Chip,
-  EmptyState,
-  PageHeader,
+  Icon,
   Radio,
   RadioGroup,
+  SearchInput,
   Skeleton,
   Table,
   useToast,
@@ -16,8 +15,20 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { useClientPage } from '../../patterns/client-page';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useColumnWidths } from '../../patterns/column-resize';
+import { hasChangedFilters } from '../../patterns/filter-more';
+import {
+  FIT_PLACEHOLDER_CLASS,
+  useFitPlaceholderWidth,
+} from '../../patterns/fit-placeholder-width';
 import { InfoTip } from '../../patterns/info-tip';
+import { ListEmpty } from '../../patterns/list-empty';
 import { SaveErrorBanner } from '../../patterns/master';
+import { PageNav } from '../../patterns/page-nav';
+import { useFitToViewport } from '../../patterns/po-board';
 import { useSession } from '../../patterns/session';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { LeaveGuard } from '../routing/leave-guard';
@@ -36,6 +47,7 @@ import {
 type Plant = components['schemas']['Plant'];
 
 const t = messages.plantWorkingDays;
+const w = t.workspace;
 const NO_SCOPES: readonly DataScope[] = [];
 
 /** `YYYY-MM-DD` → `MM-DD`. */
@@ -46,8 +58,6 @@ interface Row {
   plant: Plant;
   today: string;
   saved: WeeklyWorkingDays;
-  /** 오늘 적용되는 정책 행이 없다 — 서버가 주 5일제로 계산한다. */
-  isDefault: boolean;
   /** 지금 적용 중인 행의 시작일. 행이 없으면 null. */
   since: string | null;
 }
@@ -59,6 +69,14 @@ interface Row {
  * 운영 정책 `WEEKLY_WORKING_DAYS` 의 「그날부터 적용」 행으로 남는다(R-10). 머리 · 안내 배너 · 저장 규칙은
  * W-CO-14 를 따른다.
  */
+type DaysFilter = 'all' | '5' | '6';
+
+/* 「전체」 라벨은 두지 않는다 — 고른 라벨을 다시 누르면 전체로 돌아간다(사용자 지시 2026-11-24). */
+const DAYS_FILTERS: { value: Exclude<DaysFilter, 'all'>; label: string }[] = [
+  { value: '5', label: t.daysFilter.five },
+  { value: '6', label: t.daysFilter.six },
+];
+
 export const PlantWorkingDaysScreen = () => {
   const toast = useToast();
   const { session } = useSession();
@@ -66,6 +84,11 @@ export const PlantWorkingDaysScreen = () => {
   const policies = useWorkingDayPolicies();
   /** 공장별로 고친 값. 저장한 값과 같으면 지운다. */
   const [edits, setEdits] = useState<ReadonlyMap<number, WeeklyWorkingDays>>(new Map());
+  /* 공장 이름 검색 — 화면 안에서만 거른다(#358). 저장은 거른 것과 무관하게 바뀐 공장 전부다(종전과 같다). */
+  const [search, setSearch] = useState('');
+  const searchRef = useFitPlaceholderWidth(w.searchPlaceholder);
+  const [keyword, setKeyword] = useState('');
+  const [daysFilter, setDaysFilter] = useState<DaysFilter>('all');
 
   const save = useSaveWorkingDays(policies.data, () => {
     setEdits(new Map());
@@ -80,27 +103,27 @@ export const PlantWorkingDaysScreen = () => {
         plant,
         today,
         saved: toWorkingDays(policy?.valueNumeric),
-        isDefault: policy === undefined,
         since: policy?.effectiveFrom ?? null,
       };
     }) ?? [];
 
   const valueOf = (row: Row): WeeklyWorkingDays => edits.get(row.plant.plantId) ?? row.saved;
   /*
-   * 고친 값이 지금 저장된 값과 다를 때만 「바뀜」이다 — 여러 공장 저장이 중간에 멈추면 앞 공장은 저장돼
-   * 다시 받은 값과 같아지므로 바뀐 줄에서 빠진다.
+   * 고친 값이 지금 저장된 값과 다를 때만 「수정」이다 — 처음 값으로 되돌리면(기본값 공장 포함) 빠지고,
+   * 여러 공장 저장이 중간에 멈추면 앞 공장은 저장돼 다시 받은 값과 같아지므로 바뀐 줄에서 빠진다.
    */
   const isChanged = (row: Row): boolean => {
     const edit = edits.get(row.plant.plantId);
-    return edit !== undefined && (row.isDefault || edit !== row.saved);
+    return edit !== undefined && edit !== row.saved;
   };
   const isDirty = rows.some(isChanged);
+  const { splitRef, aboveRef } = useFitToViewport();
 
   const choose = (row: Row, days: WeeklyWorkingDays): void => {
     save.reset();
     setEdits((prev) => {
       const next = new Map(prev);
-      if (!row.isDefault && days === row.saved) next.delete(row.plant.plantId);
+      if (days === row.saved) next.delete(row.plant.plantId);
       else next.set(row.plant.plantId, days);
       return next;
     });
@@ -122,6 +145,7 @@ export const PlantWorkingDaysScreen = () => {
   const columns: Column<Row>[] = [
     {
       key: 'plant',
+      width: '180px',
       header: t.columns.plant,
       render: (row) => {
         const dirty = isChanged(row);
@@ -130,11 +154,6 @@ export const PlantWorkingDaysScreen = () => {
             className={dirty ? 'plant-working-days-plant is-changed' : 'plant-working-days-plant'}
           >
             <strong>{row.plant.plantName}</strong>
-            {row.isDefault && !dirty && (
-              <Chip size="sm" status="idle">
-                {t.tags.default}
-              </Chip>
-            )}
             {dirty && (
               <Chip size="sm" status="warning">
                 {t.tags.changed}
@@ -146,6 +165,8 @@ export const PlantWorkingDaysScreen = () => {
     },
     {
       key: 'days',
+      /* 주 5일제 · 주 6일제 고르개가 잘리지 않는 폭(#358 — 열 폭 끌기를 단 뒤 기본 폭). */
+      width: '340px',
       header: t.columns.days,
       render: (row) => (
         <RadioGroup
@@ -162,6 +183,7 @@ export const PlantWorkingDaysScreen = () => {
     },
     {
       key: 'off',
+      width: '110px',
       header: t.columns.off,
       render: (row) =>
         offDays(valueOf(row))
@@ -170,23 +192,48 @@ export const PlantWorkingDaysScreen = () => {
     },
     {
       key: 'example',
-      header: t.columns.example(monthDay(exampleDate), weekdayOf(exampleDate)),
+      header: t.columns.example,
+      /* 날짜만 굵게 · 건너뛴 휴일은 옆 흐린 보조 글(사용자 지시 2026-11-26). 계산은 종전 그대로. */
       render: (row) => {
         const { date, skipped } = previousWorkingDay(exampleDate, valueOf(row));
-        return t.values.example(
-          monthDay(date),
-          weekdayOf(date),
-          [...skipped].reverse().map(weekdayOf).join(', '),
+        return (
+          <span className="plant-working-days-example">
+            <span>{t.values.example(monthDay(date), weekdayOf(date))}</span>
+            {skipped.length > 0 && (
+              <span className="plant-working-days-skipped">
+                {t.values.skipped([...skipped].reverse().map(weekdayOf).join('·'))}
+              </span>
+            )}
+          </span>
         );
       },
     },
     {
       key: 'lastChanged',
+      width: '140px',
       header: t.columns.lastChanged,
-      render: (row) =>
-        row.since === null ? t.values.none : t.values.lastChanged(monthDay(row.since)),
+      /* 지금 적용 중인 설정을 저장한 날(저장하면 그날부터 적용된다). 서버가 시각은 주지 않아 날짜까지만. */
+      render: (row) => row.since ?? t.values.none,
     },
   ];
+
+  /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(단말 관리와 같다 · #358). */
+  const orderedColumns = useColumnOrder('omf-mes:plant-working-days:columns:order', columns);
+  const resizable = useColumnWidths('omf-mes:plant-working-days:columns', orderedColumns);
+  const fit = useFitColumns(resizable.columns);
+  const needle = keyword.trim().toLowerCase();
+  const keywordRows = rows.filter(
+    (row) => needle === '' || row.plant.plantName.toLowerCase().includes(needle),
+  );
+  const shownRows = keywordRows.filter(
+    (row) => daysFilter === 'all' || String(row.saved) === daysFilter,
+  );
+  /* 라벨 건수 — 지금 검색어에 맞는 공장 중 저장된 값이 그 근무일인 수(사용자 지시 2026-11-24). 다 받기 전에는 세지 않는다. */
+  const isReady = !plants.isPending && !policies.isPending && !plants.isError && !policies.isError;
+  const daysCountOf = (value: Exclude<DaysFilter, 'all'>): number =>
+    keywordRows.filter((row) => String(row.saved) === value).length;
+  /* 공장은 한 번에 다 받는 작은 목록이라 화면 안에서 쪽을 나눈다. */
+  const plantPage = useClientPage(shownRows);
 
   const loadError = (error: unknown, onRetry: () => void) => (
     <LoadErrorAlert error={error} onRetry={onRetry} />
@@ -196,7 +243,6 @@ export const PlantWorkingDaysScreen = () => {
     if (plants.isError) return loadError(plants.error, () => void plants.refetch());
     if (policies.isError) return loadError(policies.error, () => void policies.refetch());
     if (plants.isPending || policies.isPending) return <Skeleton variant="rect" height="12rem" />;
-    if (rows.length === 0) return <EmptyState size="sm" title={t.state.noPlants} />;
 
     return (
       <>
@@ -216,60 +262,159 @@ export const PlantWorkingDaysScreen = () => {
         ) : (
           <SaveErrorBanner error={save.error} />
         )}
-        <Table
-          columns={columns}
-          rows={rows}
-          getRowId={(row) => String(row.plant.plantId)}
-          className="plant-working-days-table"
-          aria-label={t.tableLabel}
-        />
-        <div className="form-actions">
-          <Button variant="outlined" disabled={!isDirty || save.isSaving} onClick={revert}>
-            {t.actions.revert}
-          </Button>
-          <Button
-            disabled={!isDirty || save.isSaving}
-            loading={save.isSaving}
-            onClick={() =>
-              save.write(
-                rows.filter(isChanged).map((row) => ({
-                  plantId: row.plant.plantId,
-                  days: valueOf(row),
-                  today: row.today,
-                })),
-              )
-            }
-          >
-            {t.actions.save}
-          </Button>
+        <div
+          ref={fit.ref}
+          className="inspection-queue-table plant-working-days-list"
+          style={resizable.style}
+        >
+          <Table
+            columns={fit.columns}
+            rows={plantPage.rows}
+            getRowId={(row) => String(row.plant.plantId)}
+            className="plant-working-days-table"
+            aria-label={t.tableLabel}
+            empty={<ListEmpty title={rows.length === 0 ? t.state.noPlants : w.empty} />}
+          />
         </div>
+        {rows.length === 0 ? null : <PageNav {...plantPage.nav} buttonSize="md" />}
       </>
     );
   };
 
+  /* 표가 설 때만 건수 · 되돌리기 · 저장을 단다(종전: 표 아래 단추도 표가 설 때만). */
+  const canSave =
+    !plants.isError &&
+    !policies.isError &&
+    !plants.isPending &&
+    !policies.isPending &&
+    rows.length > 0;
+
   return (
-    <>
-      <LeaveGuard when={isDirty} discardTitle={t.discard.title} discardBody={t.discard.body} />
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
+    <div className="plant-working-days-workspace">
+      {/* 저장 안 한 변경 창은 사용자 관리 화면과 같은 모양 · 문구(사용자 지시 2026-11-24). */}
+      <LeaveGuard
+        when={isDirty}
+        discardTitle={t.discard.title}
+        discardBody={t.discard.body}
+        stayLabel={t.discard.keep}
+        leaveLabel={t.discard.confirm}
+        showCloseButton={false}
+        size="sm"
       />
-      <section className="pane plant-working-days-pane" aria-label={t.tableLabel}>
+      {/*
+       * 주간 근무일 라벨 — 위 줄 오른쪽, 누르는 즉시 거른다(저장된 값 기준 · 사용자 지시 2026-11-24). 「이름 N건」, 0건 라벨은
+       * 감추고(고른 라벨은 남긴다) 고른 라벨을 다시 누르면 전체로 돌아간다. 목록을 받기 전에는 이름만.
+       */}
+      <div className="list-detail-toolbar">
+        <div className="inspection-hub-counts" role="group" aria-label={t.daysFilter.group}>
+          {DAYS_FILTERS.filter(
+            (option) => !isReady || daysFilter === option.value || daysCountOf(option.value) > 0,
+          ).map((option) => (
+            <Chip
+              key={option.value}
+              variant="filter"
+              size="sm"
+              selected={daysFilter === option.value}
+              aria-pressed={daysFilter === option.value}
+              onSelectedChange={() =>
+                setDaysFilter(daysFilter === option.value ? 'all' : option.value)
+              }
+            >
+              {isReady
+                ? messages.common.inspectionHub.count(option.label, daysCountOf(option.value))
+                : option.label}
+            </Chip>
+          ))}
+        </div>
+      </div>
+      {/*
+       * 머리글(경로 · 화면 이름)은 두지 않는다 — 사이드바가 위치를 말한다(단말 관리와 같은 틀 · #358).
+       * 사용자 지시: 상세 상자가 없다 — 조회 조건 상자 + 목록 상자 하나. 나눌 상세가 없어 배치 단추 · 목록 접기도 두지 않는다.
+       */}
+      <section
+        ref={aboveRef}
+        className="pane po-board-filter list-detail-filter"
+        aria-label={w.filter}
+      >
+        <div className="filter-bar notify-filter-row">
+          <SearchInput
+            containerClassName={`notify-search-input ${FIT_PLACEHOLDER_CLASS}`}
+            label={w.search}
+            value={search}
+            placeholder={w.searchPlaceholder}
+            ref={searchRef}
+            onChange={(event) => setSearch(event.target.value)}
+            onSearch={(value) => setKeyword(value)}
+            clearLabel={messages.common.clear}
+          />
+          <div className="filter-actions field-cell-unlabeled">
+            <Button onClick={() => setKeyword(search)}>{w.apply}</Button>
+            {/* 초기화는 검색어가 처음 값(빈칸)과 다를 때만 보인다. */}
+            {hasChangedFilters({ q: '' }, { q: search }, { q: keyword }) && (
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setSearch('');
+                  setKeyword('');
+                }}
+              >
+                {w.clear}
+              </Button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* 목록 상자는 창 바닥까지 — 다른 시스템 관리 화면과 같은 아래 여백(#358). */}
+      <section ref={splitRef} className="pane plant-working-days-pane" aria-label={w.list}>
         {/*
-         * 주간 근무일이 무엇을 세는 값인지 — 머리 아래 설명 줄 대신 구획 제목 옆 ⓘ(관리웹 정리 시안 A).
-         * 표 머리에 두면 표의 가로 넘김 상자가 툴팁을 자른다.
+         * 제목 줄 「공장 목록 N건」 — 주간 근무일이 무엇을 세는 값인지는 제목 옆 ⓘ(관리웹 정리 시안 A).
+         * 되돌리기 · 저장은 제목 줄 오른쪽 끝(저장 범위 · 동작은 종전과 같다: 바뀐 공장 전부).
          */}
-        <h2 className="pane-title info-label">
-          {t.tableLabel}
-          <InfoTip text={t.description} />
-        </h2>
+        <div className="po-board-list-head plant-working-days-head">
+          <h2 className="pane-title info-label">
+            {w.list}
+            <InfoTip text={t.description} />
+          </h2>
+          {canSave && (
+            <span className="po-board-list-count">
+              {messages.common.paneList.count(shownRows.length)}
+            </span>
+          )}
+          {canSave && (
+            <div className="form-actions plant-working-days-actions">
+              <Button variant="outlined" disabled={!isDirty || save.isSaving} onClick={revert}>
+                {t.actions.revert}
+              </Button>
+              <Button
+                disabled={!isDirty || save.isSaving}
+                loading={save.isSaving}
+                onClick={() =>
+                  save.write(
+                    rows.filter(isChanged).map((row) => ({
+                      plantId: row.plant.plantId,
+                      days: valueOf(row),
+                      today: row.today,
+                    })),
+                  )
+                }
+              >
+                {t.actions.save}
+              </Button>
+            </div>
+          )}
+        </div>
+        {/* 계산 기준은 표 위에 한 번만(사용자 지시 2026-11-26) — 표 칸에는 출고 작업일만. */}
+        <p className="iqc-inspection-action-note plant-working-days-note" data-tone="info">
+          <Icon name="info" size={14} aria-hidden />
+          <span>
+            <strong>{t.exampleNote.lead(monthDay(exampleDate), weekdayOf(exampleDate))}</strong>
+            {' · '}
+            {t.exampleNote.body}
+          </span>
+        </p>
         {body()}
       </section>
-    </>
+    </div>
   );
 };

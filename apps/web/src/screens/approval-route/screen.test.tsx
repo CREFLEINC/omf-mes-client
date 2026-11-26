@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -97,8 +97,11 @@ const isGet = (request: Request, pathname: string): boolean =>
  *
  * 두 조회를 갈라 세어야 「목록을 1회 불렀다」와 「조준 조회가 1회 나갔다」가 서로를 가리지 않는다.
  */
+/** 위 줄 「사용」 라벨의 건수 조회(`size=1`)는 조준 조회가 아니다(사용자 지시 2026-11-24). */
+const isProbeQuery = (params: URLSearchParams): boolean =>
+  params.has('size') && params.get('size') !== '1';
 const isProbe = (request: Request): boolean =>
-  isGet(request, ROUTES_PATH) && new URL(request.url).searchParams.has('size');
+  isGet(request, ROUTES_PATH) && isProbeQuery(new URL(request.url).searchParams);
 
 const listBody = (
   items: unknown[],
@@ -152,7 +155,7 @@ const listRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   );
 const probeRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requests.filter(
-    (request) => request.url.pathname === ROUTES_PATH && request.url.searchParams.has('size'),
+    (request) => request.url.pathname === ROUTES_PATH && isProbeQuery(request.url.searchParams),
   );
 /** 쓰기로 나간 요청 전부. **경로를 가리지 않고 센다** — 잘못된 경로로 나간 쓰기도 잡아야 한다. */
 const writeRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
@@ -370,23 +373,35 @@ const renderScreen = (
   requests: RecordedRequest[];
   release: () => void;
   user: ReturnType<typeof userEvent.setup>;
+  router: ReturnType<typeof renderWithProviders>['router'];
 } => {
   const { fetch, requests, release } = createRecordingFetch(routes, hold);
 
-  renderWithProviders(
+  /* 화면이 나가기 확인(`LeaveGuard` · `useBlocker`)을 써서 늘 데이터 라우터로 렌더한다(#358). */
+  const { router } = renderWithProviders(
     <>
       <ApprovalRouteScreen />
       <LocationProbe />
       <BackProbe />
       <SearchProbe to={navigateTo} />
     </>,
-    { fetch, route: `${ROUTE}${search}` },
+    { fetch, route: `${ROUTE}${search}`, dataRouter: true },
   );
 
-  return { requests, release, user: userEvent.setup() };
+  return { requests, release, user: userEvent.setup(), router };
 };
 
 const locationText = (): string => screen.getByTestId('location').textContent ?? '';
+
+/** 고친 채 다른 결재선 · 조건으로 옮기면 서는 확인 창에서 「저장하지 않고 나가기」를 누른다(#358). */
+const confirmDiscardSwitch = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  const leave = messages.common.unsavedLeave;
+  await user.click(
+    within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+      name: leave.confirm,
+    }),
+  );
+};
 
 const selectRouteButton = (approvalTypeCode: string, businessUnitLabel: string): HTMLElement =>
   screen.getByRole('button', { name: t.actions.selectRow(approvalTypeCode, businessUnitLabel) });
@@ -397,7 +412,7 @@ const waitForList = async (): Promise<void> => {
 
 const waitForForm = async (): Promise<HTMLElement> => screen.findByLabelText(t.fields.minValue);
 
-const saveButton = (): HTMLElement => screen.getByRole('button', { name: messages.common.save });
+const saveButton = (): HTMLElement => screen.getByRole('button', { name: t.actions.saveRoute });
 
 /** 값 구간 하한을 고쳐 폼을 더럽힌다. 「고친 것이 없다」 잠금을 푸는 가장 짧은 길이다. */
 const dirtyForm = async (user: ReturnType<typeof userEvent.setup>, text = '7'): Promise<void> => {
@@ -420,7 +435,7 @@ const clearBusinessUnit = async (user: ReturnType<typeof userEvent.setup>): Prom
   const pane = await findDetailPane();
 
   await user.click(within(pane).getByRole('combobox', { name: t.fields.businessUnit }));
-  await user.click(screen.getByRole('option', { name: t.values.allBusinessUnits }));
+  await user.click(screen.getByRole('option', { name: t.values.allBusinessUnitsOption }));
 };
 
 describe('ApprovalRouteScreen — 조회 조건', () => {
@@ -545,7 +560,7 @@ describe('ApprovalRouteScreen — 조회 조건', () => {
     );
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+    await user.click(screen.getByRole('button', { name: messages.screenPatterns.pageNav.next }));
 
     await waitFor(() => {
       expect(locationText()).toContain('page=2');
@@ -568,7 +583,11 @@ describe('ApprovalRouteScreen — 조회 조건', () => {
       return fetch(request);
     };
 
-    renderWithProviders(<ApprovalRouteScreen />, { fetch: holding, route: ROUTE });
+    renderWithProviders(<ApprovalRouteScreen />, {
+      fetch: holding,
+      route: ROUTE,
+      dataRouter: true,
+    });
 
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(t.fields.q), 'SAMPLE');
@@ -576,6 +595,53 @@ describe('ApprovalRouteScreen — 조회 조건', () => {
     await waitForList();
 
     expect(screen.getByLabelText(t.fields.q)).toHaveValue('SAMPLE');
+  });
+
+  /**
+   * 「다시 조회」 단추를 걷은 뒤(#358) 같은 조건의 [조회]가 그 일을 맡는다 — 주소가 그대로여도
+   * 목록과 사업부 참조를 다시 부르고, 주소는 바꾸지 않는다.
+   */
+  it('조건 그대로 [조회]를 누르면 목록과 사업부 참조를 다시 부른다', async () => {
+    const { requests, user } = renderScreen(allRoutes(), '?q=SAMPLE');
+
+    await waitForList();
+
+    const businessUnitCount = (): number =>
+      requests.filter((request) => request.url.pathname === BUSINESS_UNITS_PATH).length;
+    const before = { list: listRequests(requests).length, businessUnits: businessUnitCount() };
+
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(listRequests(requests).length).toBe(before.list + 1);
+    });
+    await waitFor(() => {
+      expect(businessUnitCount()).toBe(before.businessUnits + 1);
+    });
+    expect(locationText()).toBe(`${ROUTE}?q=SAMPLE`);
+  });
+
+  it('참조가 실패해도 같은 조건의 [조회]로 이름을 되살릴 수 있다', async () => {
+    let hasFailed = false;
+    const flakyBusinessUnits: StubRoute = {
+      match: (request) => isGet(request, BUSINESS_UNITS_PATH),
+      respond: () => {
+        if (hasFailed) return jsonResponse(listBody(businessUnitFixtures));
+        hasFailed = true;
+
+        return jsonResponse({ message: '' }, { status: 500 });
+      },
+    };
+
+    const { user } = renderScreen(allRoutes([flakyBusinessUnits]));
+
+    await waitForList();
+    expect(await screen.findByText(t.filters.lookupFailed)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    expect(await screen.findByText(BUSINESS_UNIT_LABEL)).toBeInTheDocument();
+    expect(screen.queryByText(t.filters.lookupFailed)).not.toBeInTheDocument();
   });
 });
 
@@ -622,7 +688,11 @@ describe('ApprovalRouteScreen — 목록', () => {
       return stub(request);
     };
 
-    renderWithProviders(<ApprovalRouteScreen />, { fetch: holding, route: ROUTE });
+    renderWithProviders(<ApprovalRouteScreen />, {
+      fetch: holding,
+      route: ROUTE,
+      dataRouter: true,
+    });
 
     await waitForList();
 
@@ -669,8 +739,11 @@ describe('ApprovalRouteScreen — 목록', () => {
 
     await waitForList();
 
-    expect(screen.getByText('1–3 / 전체 45건')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.actions.prevPage })).toBeDisabled();
+    /* 공용 쪽 이동(「총 N건 · 처음 · 이전 · n/N · 다음 · 마지막」 · #358) — 서버가 준 1쪽으로 읽힌다. */
+    expect(screen.getByText(messages.screenPatterns.pageNav.position(1, 3))).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: messages.screenPatterns.pageNav.prev }),
+    ).toBeDisabled();
   });
 
   it('참조 목록이 잘리면 그 사실을 밝힌다', async () => {
@@ -713,7 +786,7 @@ describe('ApprovalRouteScreen — 목록', () => {
 
     await waitForList();
 
-    await user.click(screen.getByRole('combobox', { name: t.fields.approvalTypeCode }));
+    await user.click(screen.getByRole('combobox', { name: t.filters.approvalTypeSelect }));
 
     expect(screen.getAllByRole('option')).toHaveLength(9); // 전체 + 승인 유형 8개(IQC·PQC 생략은 #353 폐지)
     expect(screen.queryByRole('option', { name: 'PQC_SKIP' })).toBeNull();
@@ -748,6 +821,18 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
     expect(locationText()).toContain('ar=9001');
   });
 
+  it('고른 결재선을 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await waitForList();
+    await user.click(selectRouteButton('폐기 출고', BUSINESS_UNIT_LABEL));
+    await screen.findByRole('region', { name: t.panes.steps });
+    await user.click(selectRouteButton('폐기 출고', BUSINESS_UNIT_LABEL));
+
+    expect(await screen.findByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+    expect(locationText()).not.toContain('ar=');
+  });
+
   it('고르기는 조건과 쪽을 건드리지 않는다', async () => {
     const { user } = renderScreen(
       allRoutes([listRoute(routeFixtures, { page: 2, total: 45 })]),
@@ -764,14 +849,18 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
     expect(locationText()).toContain('page=2');
   });
 
-  it('등록 중이면 상세를 부르지 않는다', async () => {
-    // `ar`와 `new`는 함께 서지 않는다 — 주소를 손으로 고쳐도 그 규칙이 지켜져야 한다.
+  it('고른 결재선 위에 등록 팝업이 열린 주소면 상세 · 단계를 그대로 부르고 팝업을 띄운다', async () => {
+    // 등록 팝업은 고른 결재선 위에 뜬다(사용자 지시 2026-11-25) — 주소로 바로 들어와도 같다.
     const { requests } = renderScreen(allRoutes(), '?ar=9001&new=1');
 
-    await waitForList();
-
-    expect(detailRequests(requests)).toHaveLength(0);
-    expect(stepsRequests(requests)).toHaveLength(0);
+    expect(await screen.findByRole('dialog', { name: t.panes.create })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: t.panes.steps })).toBeInTheDocument();
+    expect(selectRouteButton('폐기 출고', BUSINESS_UNIT_LABEL)).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(detailRequests(requests).length).toBeGreaterThan(0);
+    expect(stepsRequests(requests).length).toBeGreaterThan(0);
   });
 
   it('상세와 단계를 함께 그린다', async () => {
@@ -780,7 +869,7 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
     // 단계 구획은 상세가 도착해야 선다 — 자리 표시 구획과 이름이 겹치지 않는 유일한 신호다.
     await screen.findByRole('region', { name: t.panes.steps });
 
-    expect(screen.getByText(t.notes.inProgressSome(3))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.notes.inProgressSome(3) })).toBeInTheDocument();
     expect(screen.getByText('합성 승인자1 · 합성부서 가')).toBeInTheDocument();
     expect(screen.getByText(t.values.approverUnknown)).toBeInTheDocument();
   });
@@ -825,24 +914,27 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
    * 없다」로 결론짓는다.
    */
   it('승인자 목록이 잘리면 그 사실을 밝힌다', async () => {
-    renderScreen(
+    const { user } = renderScreen(
       allRoutes([usersRoute(userFixtures, { total: userFixtures.length + 1 })]),
       SELECTED,
     );
 
-    await screen.findByRole('region', { name: t.panes.steps });
+    /* 추가 줄은 「단계 추가」로 펼쳐야 선다(사용자 지시 2026-11-25) — 안내는 그 줄의 결재자 칸 아래다. */
+    await openAddRow(user);
 
     expect(await screen.findByText(t.notes.approverListTruncated)).toBeInTheDocument();
   });
 
   /** 짝 방향 — 잘리지 않았으면 밝히지 않는다. 늘 세워 두면 안내가 배경이 된다. */
   it('승인자 목록이 온전하면 잘림 표식이 없다', async () => {
-    renderScreen(allRoutes(), SELECTED);
+    const { user } = renderScreen(allRoutes(), SELECTED);
 
-    const pane = await screen.findByRole('region', { name: t.panes.steps });
+    const pane = await openAddRow(user);
 
     // 선행 단언 — 선택지가 실제로 서 있어야 「표식이 없다」가 뜻을 갖는다.
-    expect(within(pane).getByRole('combobox', { name: t.fields.approver })).toBeInTheDocument();
+    expect(
+      within(pane).getByRole('combobox', { name: t.fields.approverSelect }),
+    ).toBeInTheDocument();
     expect(screen.queryByText(t.notes.approverListTruncated)).not.toBeInTheDocument();
   });
 
@@ -1072,118 +1164,6 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
   });
 });
 
-describe('ApprovalRouteScreen — 다시 조회', () => {
-  it('목록만이 아니라 상세와 단계도 함께 부른다', async () => {
-    const { requests, user } = renderScreen(allRoutes(), SELECTED);
-
-    await screen.findByRole('region', { name: t.panes.steps });
-
-    const before = {
-      list: listRequests(requests).length,
-      detail: detailRequests(requests).length,
-      steps: stepsRequests(requests).length,
-    };
-
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-
-    await waitFor(() => {
-      expect(listRequests(requests).length).toBe(before.list + 1);
-    });
-    await waitFor(() => {
-      expect(detailRequests(requests).length).toBe(before.detail + 1);
-    });
-    await waitFor(() => {
-      expect(stepsRequests(requests).length).toBe(before.steps + 1);
-    });
-  });
-
-  /**
-   * **참조도 함께 다시 부른다.**
-   *
-   * 사업부 참조가 실패하면 조건 줄에 「선택지를 불러오지 못했습니다」가 서고 목록의 사업부
-   * 칸이 「이름을 불러오지 못했습니다」로 바뀌는데, 그 안내에는 재시도 버튼이 없다.
-   * 「다시 조회」의 이 한 줄이 **참조 실패의 유일한 복구 경로**다.
-   */
-  it('사업부 참조도 함께 다시 부른다', async () => {
-    const { requests, user } = renderScreen(allRoutes());
-
-    await waitForList();
-
-    const before = requests.filter(
-      (request) => request.url.pathname === BUSINESS_UNITS_PATH,
-    ).length;
-
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-
-    await waitFor(() => {
-      expect(
-        requests.filter((request) => request.url.pathname === BUSINESS_UNITS_PATH).length,
-      ).toBe(before + 1);
-    });
-  });
-
-  /**
-   * **승인자 선택지도 참조다.** 사람이 들고 나는 동안 낡는데, 이 목록에는 재시도 버튼이 없다 —
-   * 「다시 조회」가 그 복구 경로다. 결재선을 고른 뒤에만 부르므로 그 안에서 잰다.
-   */
-  it('승인자 선택지도 함께 다시 부른다', async () => {
-    const { requests, user } = renderScreen(allRoutes(), SELECTED);
-
-    await screen.findByRole('region', { name: t.panes.steps });
-
-    const usersCount = (): number =>
-      requests.filter((request) => request.url.pathname === USERS_PATH).length;
-
-    // 선행 단언 — 고른 뒤 한 번은 이미 나갔어야 「한 번 더 나갔다」가 뜻을 갖는다.
-    await waitFor(() => {
-      expect(usersCount()).toBe(1);
-    });
-
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-
-    await waitFor(() => {
-      expect(usersCount()).toBe(2);
-    });
-  });
-
-  it('참조가 실패해도 「다시 조회」로 이름을 되살릴 수 있다', async () => {
-    // 짝 방향 — 복구 경로가 실제로 이름을 되살리는지까지 잰다.
-    let hasFailed = false;
-    const flakyBusinessUnits: StubRoute = {
-      match: (request) => isGet(request, BUSINESS_UNITS_PATH),
-      respond: () => {
-        if (hasFailed) return jsonResponse(listBody(businessUnitFixtures));
-        hasFailed = true;
-
-        return jsonResponse({ message: '' }, { status: 500 });
-      },
-    };
-
-    const { user } = renderScreen(allRoutes([flakyBusinessUnits]));
-
-    await waitForList();
-    expect(await screen.findByText(t.filters.lookupFailed)).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-
-    expect(await screen.findByText(BUSINESS_UNIT_LABEL)).toBeInTheDocument();
-    expect(screen.queryByText(t.filters.lookupFailed)).not.toBeInTheDocument();
-  });
-
-  it('고르지 않았으면 상세·단계를 부르지 않는다', async () => {
-    const { requests, user } = renderScreen(allRoutes());
-
-    await waitForList();
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-
-    await waitFor(() => {
-      expect(listRequests(requests).length).toBe(2);
-    });
-    expect(detailRequests(requests)).toHaveLength(0);
-    expect(stepsRequests(requests)).toHaveLength(0);
-  });
-});
-
 describe('ApprovalRouteScreen — 빈 상태와 실패', () => {
   it('빈 상태 네 갈래가 서로 다른 안내를 낸다', async () => {
     const titles = new Set([
@@ -1275,7 +1255,8 @@ describe('ApprovalRouteScreen — 이 회차의 경계', () => {
     const { requests, user } = renderScreen(allRoutes(), SELECTED);
 
     await screen.findByRole('region', { name: t.panes.steps });
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    /* 조건을 바꿔 조회한다 — 목록 요청이 새로 나가는 것을 확인한 뒤 쓰기가 없음을 잰다. */
+    await user.type(screen.getByLabelText(t.fields.q), 'SAMPLE');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
     await waitFor(() => {
       expect(listRequests(requests).length).toBeGreaterThan(1);
@@ -1322,16 +1303,72 @@ const updateRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requests.filter((request) => request.method === 'PUT' && isDetailPath(request.url.pathname));
 
 describe('ApprovalRouteScreen — 등록 폼', () => {
-  it('「새 결재선」을 누르면 new가 서고 고른 결재선이 풀린다', async () => {
+  /* 「새 결재선」을 눌러도 목록 선택과 뒤의 상세가 풀리지 않는다(사용자 지시 2026-11-25). */
+  it('「새 결재선」을 누르면 new가 서고 고른 결재선과 상세는 팝업 뒤에 그대로다', async () => {
     const { user } = renderScreen(allRoutes(), SELECTED);
 
     await waitForForm();
+    await screen.findByRole('region', { name: t.panes.steps });
     await user.click(screen.getByRole('button', { name: t.actions.create }));
 
     await waitFor(() => {
       expect(locationText()).toContain('new=1');
     });
-    expect(locationText()).not.toContain('ar=');
+    expect(locationText()).toContain('ar=9001');
+    expect(await screen.findByRole('dialog', { name: t.panes.create })).toBeInTheDocument();
+    expect(selectRouteButton('폐기 출고', BUSINESS_UNIT_LABEL)).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+
+    const detail = await findDetailPane();
+    expect(within(detail).getByRole('heading', { name: t.panes.basicInfo })).toBeInTheDocument();
+    expect(within(detail).getByRole('region', { name: t.panes.steps })).toBeInTheDocument();
+    expect(within(detail).queryByText(t.empty.noSelectionTitle)).toBeNull();
+  });
+
+  it('고른 결재선 위 팝업을 취소하면 같은 선택 · 같은 고친 값으로 돌아간다', async () => {
+    const { user } = renderScreen(allRoutes(), '?q=SAMPLE&ar=9001');
+
+    await dirtyForm(user, '77');
+    await user.click(screen.getByRole('button', { name: t.actions.create }));
+
+    const dialog = await screen.findByRole('dialog', { name: t.panes.create });
+    // 뒤의 고친 값은 팝업이 열려 있는 동안에도 남아 있다 — 팝업의 칸은 비어 있다.
+    expect(within(dialog).getByLabelText(t.fields.minValue)).toHaveValue('');
+    expect(within(await findDetailPane()).getAllByLabelText(t.fields.minValue)[0]).toHaveValue(
+      '77',
+    );
+
+    await user.click(within(dialog).getByRole('button', { name: messages.common.cancel }));
+
+    await waitFor(() => {
+      expect(locationText()).toBe(`${ROUTE}?q=SAMPLE&ar=9001`);
+    });
+    expect(screen.queryByRole('dialog', { name: t.panes.create })).toBeNull();
+    expect(selectRouteButton('폐기 출고', BUSINESS_UNIT_LABEL)).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('77');
+    expect(saveButton()).toBeEnabled();
+  });
+
+  it('고른 결재선 위 팝업을 Esc로 닫아도 같은 선택으로 돌아간다', async () => {
+    const { user } = renderScreen(allRoutes(), SELECTED);
+
+    await waitForForm();
+    await user.click(screen.getByRole('button', { name: t.actions.create }));
+    const dialog = await screen.findByRole('dialog', { name: t.panes.create });
+
+    // Esc는 native `<dialog>`의 `cancel`로 온다(jsdom은 키를 그 이벤트로 옮기지 않는다).
+    fireEvent(dialog, new Event('cancel', { bubbles: false, cancelable: true }));
+
+    await waitFor(() => {
+      expect(locationText()).toBe(`${ROUTE}${SELECTED}`);
+    });
+    expect(screen.queryByRole('dialog', { name: t.panes.create })).toBeNull();
+    expect(screen.getByRole('region', { name: t.panes.steps })).toBeInTheDocument();
   });
 
   /**
@@ -1344,7 +1381,7 @@ describe('ApprovalRouteScreen — 등록 폼', () => {
     await waitForList();
     await user.click(screen.getByRole('button', { name: t.actions.create }));
 
-    expect(await screen.findByRole('region', { name: t.panes.create })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: t.panes.create })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: t.panes.steps })).toBeNull();
     expect(detailRequests(requests)).toHaveLength(0);
     expect(stepsRequests(requests)).toHaveLength(0);
@@ -1356,7 +1393,7 @@ describe('ApprovalRouteScreen — 등록 폼', () => {
     await waitForList();
     await user.click(screen.getByRole('button', { name: t.actions.create }));
 
-    const createPane = await screen.findByRole('region', { name: t.panes.create });
+    const createPane = await screen.findByRole('dialog', { name: t.panes.create });
     const approvalType = within(createPane).getByRole('combobox', {
       name: t.fields.approvalTypeCode,
     });
@@ -1422,7 +1459,7 @@ describe('ApprovalRouteScreen — 등록 폼', () => {
     await dirtyForm(user, '77');
     await user.click(screen.getByRole('button', { name: t.actions.create }));
 
-    const pane = await screen.findByRole('region', { name: t.panes.create });
+    const pane = await screen.findByRole('dialog', { name: t.panes.create });
 
     expect(within(pane).getByLabelText(t.fields.minValue)).toHaveValue('');
     expect(within(pane).getByLabelText(t.fields.maxValue)).toHaveValue('');
@@ -1434,7 +1471,7 @@ describe('ApprovalRouteScreen — 등록 폼', () => {
 
     await waitForList();
     await user.click(screen.getByRole('button', { name: t.actions.create }));
-    await screen.findByRole('region', { name: t.panes.create });
+    await screen.findByRole('dialog', { name: t.panes.create });
 
     await user.click(screen.getByRole('button', { name: messages.common.cancel }));
 
@@ -1442,6 +1479,33 @@ describe('ApprovalRouteScreen — 등록 폼', () => {
       expect(locationText()).not.toContain('new=');
     });
     expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: t.panes.create })).toBeNull();
+  });
+
+  /*
+   * 등록은 팝업이다(사용자 지시 2026-11-25 · 공통코드와 같다) — 열린 동안 뒤의 상세 자리는 고르기 전과 같은 빈 안내이고,
+   * 팝업 바닥에 [취소][등록]이 선다. 승인 유형을 고르기 전에는 중복 확인 안내를 내지 않는다.
+   */
+  it('「새 결재선」은 등록 팝업을 열고 상세 자리는 빈 안내로 남는다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await waitForList();
+    expect(screen.queryByRole('dialog', { name: t.panes.create })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: t.actions.create }));
+
+    const dialog = await screen.findByRole('dialog', { name: t.panes.create });
+    const detail = await findDetailPane();
+
+    expect(detail).toContainElement(screen.getByText(t.empty.noSelectionTitle));
+    expect(within(dialog).queryByText(t.empty.noSelectionTitle)).toBeNull();
+    expect(within(dialog).getByRole('button', { name: messages.common.cancel })).toBeEnabled();
+    expect(within(dialog).getByRole('button', { name: t.actions.submitCreate })).toBeDisabled();
+    expect(
+      within(dialog).getByRole('combobox', { name: t.fields.approvalTypeCode }),
+    ).toHaveTextContent(t.fields.approvalTypePlaceholder);
+    expect(within(dialog).queryByText(t.notes.duplicateUnknownCreate)).toBeNull();
+    expect(within(dialog).queryByText(t.notes.duplicateUnknown)).toBeNull();
   });
 });
 
@@ -1551,16 +1615,16 @@ describe('ApprovalRouteScreen — 수정 저장', () => {
     });
     expect(screen.getByLabelText(t.fields.maxValue)).toHaveValue('999');
     // 다시 세웠으므로 고친 것이 없는 상태다.
-    expect(screen.getByRole('button', { name: messages.common.save })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.saveRoute })).toBeDisabled();
   });
 
-  it('고친 것이 없으면 저장이 잠기고 사유가 보인다', async () => {
+  it('고친 것이 없으면 저장이 잠기고 같은 안내를 되풀이하지 않는다', async () => {
     renderScreen(allRoutes(), SELECTED);
 
     await waitForForm();
 
     expect(saveButton()).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.saveNoChanges)).toBeInTheDocument();
+    expect(screen.queryByText(t.actionReasons.saveNoChanges)).toBeNull();
   });
 
   /**
@@ -1596,16 +1660,17 @@ describe('ApprovalRouteScreen — 수정 저장', () => {
     expect(writeRequests(requests)).toHaveLength(0);
   });
 
-  /** 비운 칸의 뜻은 **폼 안에서** 읽힌다 — 창을 하나 더 늘리지 않는다(계획 §13-4). */
-  it('사업부를 비우면 그 뜻이 폼 안에서 읽힌다', async () => {
+  /* 비운 칸의 뜻은 칸 아래 문구 대신 선택지 이름 「전체 사업부」가 말한다(사용자 지시 2026-11-25). */
+  it('사업부를 비우면 칸에 「전체 사업부」가 읽힌다', async () => {
     const { user } = renderScreen(allRoutes(), SELECTED);
 
     await waitForForm();
-    expect(screen.queryByText(t.notes.businessUnitEmpty)).not.toBeInTheDocument();
-
     await clearBusinessUnit(user);
 
-    expect(await screen.findByText(t.notes.businessUnitEmpty)).toBeInTheDocument();
+    const pane = await findDetailPane();
+    expect(within(pane).getByRole('combobox', { name: t.fields.businessUnit })).toHaveTextContent(
+      t.values.allBusinessUnitsOption,
+    );
   });
 });
 
@@ -1726,6 +1791,7 @@ describe('ApprovalRouteScreen — 활성 중복 선검사', () => {
     await screen.findByText(t.actionReasons.duplicateActive);
 
     await user.click(screen.getByRole('button', { name: t.actions.openExisting }));
+    await confirmDiscardSwitch(user);
 
     await waitFor(() => {
       expect(locationText()).toContain('ar=9005');
@@ -2208,6 +2274,7 @@ describe('ApprovalRouteScreen — 배너 매임과 초안 수명', () => {
     const { user } = await failThenSelect();
 
     await user.click(selectRouteButton('재고 조정', INACTIVE_BUSINESS_UNIT_LABEL));
+    await confirmDiscardSwitch(user);
 
     await waitFor(() => {
       expect(screen.queryByText(messages.conflict.user)).not.toBeInTheDocument();
@@ -2243,66 +2310,13 @@ describe('ApprovalRouteScreen — 배너 매임과 초안 수명', () => {
     expect(screen.getByText(messages.conflict.user)).toBeInTheDocument();
   });
 
-  /**
-   * **렌더마다·응답마다 지워지지도 않는다.** 정리 effect의 의존성에 응답을 넣거나 배열을
-   * 비우면 배너가 서자마자 사라져 사용자가 이유를 볼 수 없다.
-   *
-   * **응답이 실제로 달라져야 이 감지기가 뜻을 갖는다.** 같은 값을 돌려주면 캐시가 객체
-   * 동일성을 지켜 주어(구조 공유) 「응답을 의존성에 넣었다」는 오류가 드러나지 않는다.
-   */
-  it('실패 배너가 다른 응답이 도착해도 남는다', async () => {
-    let hits = 0;
-    const changingDetail: StubRoute = {
-      match: (request) => request.method === 'GET' && isDetailPath(new URL(request.url).pathname),
-      respond: () => {
-        hits += 1;
-
-        return jsonResponse(
-          { ...routeFixtures[0], inProgressCount: hits },
-          { headers: { ETag: `token-${String(hits)}` } },
-        );
-      },
-    };
-
-    const { user } = await failThenSelect([changingDetail]);
-
-    const beforeHits = hits;
-
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-
-    /* 상세가 **다른 값**으로 다시 도착한 것을 먼저 확인한다. */
-    await waitFor(() => {
-      expect(hits).toBeGreaterThan(beforeHits);
-    });
-    await waitFor(() => {
-      expect(screen.getByText(t.notes.inProgressSome(hits))).toBeInTheDocument();
-    });
-
-    expect(screen.getByText(messages.conflict.user)).toBeInTheDocument();
-  });
-
-  /**
-   * **#43** — 초안은 응답 객체가 아니라 **대상 키**에 매여 있다. 응답 배열이나 파생 객체에
-   * 매면 목록이 갱신될 때마다 치던 값이 사라진다.
-   */
-  it('폼 초안이 응답 도착에 되돌아가지 않는다', async () => {
-    const { user } = renderScreen(allRoutes(), SELECTED);
-
-    await dirtyForm(user, '77');
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-
-    await waitFor(() => {
-      expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('77');
-    });
-    expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('77');
-  });
-
   /** 대상이 바뀌면 초안은 새 대상의 값으로 다시 선다 — 앞 결재선의 값이 남으면 안 된다. */
   it('대상이 바뀌면 초안이 새 결재선의 값으로 다시 선다', async () => {
     const { user } = renderScreen(allRoutes([detailRoute(routeFixtures[2])]), SELECTED);
 
     await dirtyForm(user, '77');
     await user.click(selectRouteButton('재고 조정', INACTIVE_BUSINESS_UNIT_LABEL));
+    await confirmDiscardSwitch(user);
 
     await waitFor(() => {
       expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('0');
@@ -2310,13 +2324,13 @@ describe('ApprovalRouteScreen — 배너 매임과 초안 수명', () => {
   });
 
   /** 되돌리면 친 값이 사라진다 — 되돌릴 수 없는 조작 앞에 한 걸음을 둔다. */
-  it('취소는 파기를 확인한 뒤에 되돌린다', async () => {
+  it('변경 취소는 파기를 확인한 뒤에 되돌린다', async () => {
     const { requests, user } = renderScreen(allRoutes(), SELECTED);
 
     await dirtyForm(user, '77');
-    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+    await user.click(screen.getByRole('button', { name: t.actions.discardChanges }));
 
-    expect(await screen.findByText(messages.common.discardChangesConfirm)).toBeInTheDocument();
+    expect(await screen.findByText(t.dialog.discardBody)).toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('77');
 
     await user.click(screen.getByRole('button', { name: t.actions.discardDraft }));
@@ -2332,11 +2346,11 @@ describe('ApprovalRouteScreen — 배너 매임과 초안 수명', () => {
     const { user } = renderScreen(allRoutes(), SELECTED);
 
     await dirtyForm(user, '77');
-    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+    await user.click(screen.getByRole('button', { name: t.actions.discardChanges }));
     await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
 
     await waitFor(() => {
-      expect(screen.queryByText(messages.common.discardChangesConfirm)).not.toBeInTheDocument();
+      expect(screen.queryByText(t.dialog.discardBody)).not.toBeInTheDocument();
     });
     expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('77');
   });
@@ -2493,54 +2507,6 @@ describe('ApprovalRouteScreen — 전송 중 바깥 주소 이동', () => {
 });
 
 describe('ApprovalRouteScreen — 확인 창이 열린 사이 상태가 뒤집히면', () => {
-  /**
-   * **열린 창의 뜻은 열 때 정해지고, 대상의 상태는 그 뒤에도 바뀐다.**
-   *
-   * 「다시 조회」는 잠기지 않고 다른 사람이 먼저 상태를 바꿀 수도 있다. 그때 폼의 액션은
-   * 반대쪽으로 바뀌지만 **열린 창의 뜻은 그대로**라, 확인하면 이미 꺼진 것에 `:deactivate`가,
-   * 이미 켜진 것에 `:activate`가 나간다 — 뒤엣것은 계약이 400으로 막아 **사용자가 이유를 알
-   * 수 없는 거절**이 된다.
-   */
-  it('끄기 창이 열린 사이 이미 꺼졌으면 보내지 않고 창을 닫는다', async () => {
-    let flipped = false;
-    const flippingDetail: StubRoute = {
-      match: (request) => request.method === 'GET' && isDetailPath(new URL(request.url).pathname),
-      respond: () => {
-        const body = flipped ? { ...routeFixtures[0], isActive: false } : routeFixtures[0];
-
-        flipped = true;
-
-        return jsonResponse(body, { headers: { ETag: 'token-0' } });
-      },
-    };
-
-    const { requests, user } = renderScreen(
-      allRoutes([
-        flippingDetail,
-        probeRoute(),
-        activationRoute('deactivate', { ...routeFixtures[0], isActive: false }),
-      ]),
-      SELECTED,
-    );
-
-    await waitForForm();
-    await user.click(screen.getByRole('button', { name: messages.common.deactivate }));
-    expect(activationDialog()).toBeInTheDocument();
-
-    /* 창이 열린 채 상세가 다시 온다 — 그 사이 다른 사람이 이미 껐다. */
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-    await screen.findByRole('button', { name: t.actions.activate });
-
-    await user.click(
-      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
-    );
-
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).toBeNull();
-    });
-    expect(writeRequests(requests)).toHaveLength(0);
-  });
-
   /** 짝 방향 — 상태가 그대로면 확인이 그대로 나간다. 안 그러면 「아무것도 안 보낸다」와 같아진다. */
   it('상태가 그대로면 확인이 요청을 보낸다', async () => {
     const { requests, user } = renderScreen(
@@ -2742,7 +2708,8 @@ describe('ApprovalRouteScreen — 되먹임의 매임은 실패에도 같은 축
 const stepPane = async (): Promise<HTMLElement> =>
   screen.findByRole('region', { name: t.panes.steps });
 
-const addStepButton = (): HTMLElement => screen.getByRole('button', { name: t.actions.addStep });
+const addStepButton = (): HTMLElement =>
+  screen.getByRole('button', { name: t.actions.confirmAddStep });
 
 /** **단계 표의 줄만 센다** — 화면에는 결재선 목록 표가 함께 서 있어 바깥에서 세면 둘이 섞인다. */
 const stepRows = (): HTMLElement[] =>
@@ -2750,14 +2717,23 @@ const stepRows = (): HTMLElement[] =>
 const saveStepsButton = (): HTMLElement =>
   screen.getByRole('button', { name: t.actions.saveSteps });
 
+/** 제목 줄 「단계 추가」로 추가 줄을 펼친다(사용자 지시 2026-11-25 — 기본은 접혀 있다). */
+const openAddRow = async (user: ReturnType<typeof userEvent.setup>): Promise<HTMLElement> => {
+  const pane = await stepPane();
+
+  await user.click(within(pane).getByRole('button', { name: t.actions.addStep }));
+
+  return pane;
+};
+
 /** 추가 줄에서 승인자를 골라 한 단계를 더한다. 표를 더럽히는 가장 짧은 길이다. */
 const addStep = async (
   user: ReturnType<typeof userEvent.setup>,
   label = APPROVER_OPTION_LABEL,
 ): Promise<void> => {
-  const pane = await stepPane();
+  const pane = await openAddRow(user);
 
-  await user.click(within(pane).getByRole('combobox', { name: t.fields.approver }));
+  await user.click(within(pane).getByRole('combobox', { name: t.fields.approverSelect }));
   await user.click(screen.getByRole('option', { name: label }));
   await user.click(addStepButton());
 };
@@ -2790,6 +2766,19 @@ describe('ApprovalRouteScreen — 단계 편집', () => {
     expect(
       within(stepRows()[1] as HTMLElement).getByText('합성 승인자1 · 합성부서 가'),
     ).toBeInTheDocument();
+  });
+
+  /* [추가] 뒤 오른쪽 아래 알림 — 저장 요청은 아직 나가지 않는다(사용자 지시 2026-11-25). */
+  it('단계를 더하면 「추가되었습니다.」 알림이 뜨고 저장 요청은 나가지 않는다', async () => {
+    const { requests, user } = renderScreen(allRoutes(), SELECTED);
+
+    await stepPane();
+    expect(screen.queryByText(t.notes.stepAdded)).toBeNull();
+
+    await addStep(user);
+
+    expect(await screen.findByText(t.notes.stepAdded)).toBeInTheDocument();
+    expect(writeRequests(requests)).toHaveLength(0);
   });
 
   /** **그 행만** 지운다 — 옆줄이 함께 사라지면 사용자는 저장하기 전까지 알 수 없다. */
@@ -3104,79 +3093,6 @@ describe('ApprovalRouteScreen — 단계 치환 저장', () => {
 });
 
 describe('ApprovalRouteScreen — 단계 초안 수명', () => {
-  /**
-   * **응답 도착이 초안을 되돌리면 「고치던 순서가 사라진다」가 재현된다.** 초안은 응답 객체가
-   * 아니라 대상 키에 매여 있다.
-   */
-  it('다시 조회로 단계가 다시 와도 고친 순서가 남는다', async () => {
-    const { requests, user } = renderScreen(allRoutes(), SELECTED);
-
-    await stepPane();
-    await user.click(screen.getAllByRole('button', { name: '아래로 이동' })[0] as HTMLElement);
-
-    const before = stepsRequests(requests).length;
-
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-    await waitFor(() => {
-      expect(stepsRequests(requests).length).toBeGreaterThan(before);
-    });
-
-    expect(
-      within(stepRows()[1] as HTMLElement).getByText('합성 승인자2 · 합성부서 나'),
-    ).toBeInTheDocument();
-  });
-
-  /**
-   * **서버가 다른 내용을 준 재조회에도 되돌아가지 않는다.**
-   *
-   * 앞 감지기는 **같은 내용**의 재조회까지만 문다 — 캐시가 구조 공유로 객체 동일성을 지켜
-   * 주기 때문에, 응답을 의존성 삼아 초안을 다시 세우는 형태(현실에서 가장 흔한 오류)가
-   * 그 잣대를 그대로 지나간다. **내용이 실제로 달라진 재조회**로 재야 그 형태가 붙잡힌다.
-   */
-  it('서버가 다른 단계를 준 재조회도 고치던 순서를 덮지 않는다', async () => {
-    let stepHits = 0;
-    const changingSteps: StubRoute = {
-      match: (request) => request.method === 'GET' && isStepsPath(new URL(request.url).pathname),
-      respond: () => {
-        stepHits += 1;
-
-        /* 두 번째부터는 **한 줄만** 준다 — 초안을 덮으면 표가 1줄로 줄어 곧바로 드러난다. */
-        return jsonResponse({ items: stepHits === 1 ? stepFixtures : [stepFixtures[0]] });
-      },
-    };
-    let detailHits = 0;
-    const changingDetail: StubRoute = {
-      match: (request) => request.method === 'GET' && isDetailPath(new URL(request.url).pathname),
-      respond: () => {
-        detailHits += 1;
-
-        return jsonResponse(
-          { ...routeFixtures[0], inProgressCount: detailHits },
-          { headers: { ETag: `token-${String(detailHits)}` } },
-        );
-      },
-    };
-
-    const { user } = renderScreen(allRoutes([changingSteps, changingDetail]), SELECTED);
-
-    await stepPane();
-    await user.click(screen.getAllByRole('button', { name: '아래로 이동' })[0] as HTMLElement);
-
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-
-    /* 선행 단언 — 다시 조회가 실제로 끝났고 서버가 **다른 자료**를 줬다. */
-    await waitFor(() => {
-      expect(screen.getByText(t.notes.inProgressSome(detailHits))).toBeInTheDocument();
-    });
-    expect(stepHits).toBeGreaterThan(1);
-
-    /* 그런데도 고치던 순서가 그대로다 — 초안은 응답이 아니라 대상 키에 매여 있다. */
-    expect(stepRows()).toHaveLength(stepFixtures.length + 1);
-    expect(
-      within(stepRows()[1] as HTMLElement).getByText('합성 승인자2 · 합성부서 나'),
-    ).toBeInTheDocument();
-  });
-
   /** 폼과 단계는 **다른 오퍼레이션**이다 — 한쪽을 고치는 중에 다른 쪽이 되돌아가면 안 된다. */
   it('폼을 고쳐도 단계 초안이 그대로다', async () => {
     const { user } = renderScreen(allRoutes(), SELECTED);
@@ -3228,13 +3144,13 @@ describe('ApprovalRouteScreen — 단계 초안 수명', () => {
       expect(locationText()).toContain('ar=9001');
     });
 
-    const pane = await stepPane();
+    const pane = await openAddRow(user);
 
-    await user.click(within(pane).getByRole('combobox', { name: t.fields.approver }));
+    await user.click(within(pane).getByRole('combobox', { name: t.fields.approverSelect }));
     await user.click(screen.getByRole('option', { name: APPROVER_OPTION_LABEL }));
 
     // 선행 단언 — 실제로 골라져 있어야 「사라졌다」가 뜻을 갖는다.
-    expect(within(pane).getByRole('combobox', { name: t.fields.approver })).toHaveTextContent(
+    expect(within(pane).getByRole('combobox', { name: t.fields.approverSelect })).toHaveTextContent(
       APPROVER_OPTION_LABEL,
     );
 
@@ -3243,9 +3159,11 @@ describe('ApprovalRouteScreen — 단계 초안 수명', () => {
       expect(locationText()).toContain('ar=9003');
     });
 
+    /* 대상이 바뀌면 추가 줄도 접힌 채 새로 선다 — 다시 펼쳐도 앞 결재선에서 고른 사람이 없다. */
+    await openAddRow(user);
     expect(
       within(screen.getByRole('region', { name: t.panes.steps })).getByRole('combobox', {
-        name: t.fields.approver,
+        name: t.fields.approverSelect,
       }),
     ).not.toHaveTextContent(APPROVER_OPTION_LABEL);
   });
@@ -3257,7 +3175,7 @@ describe('ApprovalRouteScreen — 단계 초안 수명', () => {
     await stepPane();
     await user.click(screen.getByRole('button', { name: t.actions.removeStep(3) }));
     await dirtyForm(user);
-    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+    await user.click(screen.getByRole('button', { name: t.actions.discardChanges }));
     await user.click(screen.getByRole('button', { name: t.actions.discardDraft }));
 
     await waitFor(() => {
@@ -3378,7 +3296,7 @@ describe('ApprovalRouteScreen — 단계 저장이 나가는 중', () => {
       holdStepsReplace,
     );
 
-    await stepPane();
+    await openAddRow(user);
     await user.click(screen.getAllByRole('button', { name: '아래로 이동' })[0] as HTMLElement);
     await user.click(saveStepsButton());
     await waitFor(() => {
@@ -3388,7 +3306,8 @@ describe('ApprovalRouteScreen — 단계 저장이 나가는 중', () => {
     /* 첫째 겹 — 이 구획에서 눈에 보이는 것들이 닫혔다. */
     expect(saveStepsButton()).toBeDisabled();
     expect(screen.getByRole('button', { name: t.actions.removeStep(1) })).toBeDisabled();
-    expect(screen.getByRole('combobox', { name: t.fields.approver })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: t.fields.approverSelect })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.addStep })).toBeDisabled();
 
     await user.click(saveStepsButton());
 
@@ -3465,5 +3384,136 @@ describe('ApprovalRouteScreen — 단계 저장이 나가는 중', () => {
     await screen.findByText(messages.common.saved);
 
     expect(screen.queryByText('합성 승인자9 · 합성부서 다')).not.toBeInTheDocument();
+  });
+});
+
+describe('ApprovalRouteScreen — 저장하지 않은 편집을 두고 다른 화면으로 (#358)', () => {
+  const leave = messages.common.unsavedLeave;
+  const OTHER = '/system/users-roles';
+
+  const goTo = async (router: ReturnType<typeof renderScreen>['router']): Promise<void> => {
+    await act(async () => {
+      await router?.navigate(OTHER);
+    });
+  };
+
+  const expectLeaveFlow = async ({
+    router,
+    user,
+  }: Pick<ReturnType<typeof renderScreen>, 'router' | 'user'>): Promise<void> => {
+    await goTo(router);
+    const dialog = within(await screen.findByRole('dialog', { name: leave.title }));
+    expect(dialog.getByText(leave.body)).toBeInTheDocument();
+    expect(dialog.queryByRole('button', { name: /닫기/ })).toBeNull();
+    await user.click(dialog.getByRole('button', { name: leave.keep }));
+    expect(router?.state.location.pathname).toBe(ROUTE);
+    expect(screen.queryByRole('dialog', { name: leave.title })).toBeNull();
+
+    await goTo(router);
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.confirm,
+      }),
+    );
+    await waitFor(() => expect(router?.state.location.pathname).toBe(OTHER));
+  };
+
+  it('고른 결재선 정보를 고친 채 다른 화면으로 가면 묻고, 계속 편집은 남고 나가기는 옮긴다', async () => {
+    const rendered = renderScreen(allRoutes(), SELECTED);
+
+    await dirtyForm(rendered.user, '77');
+    await expectLeaveFlow(rendered);
+  });
+
+  it('계속 편집을 누르면 고친 값이 그대로 남는다', async () => {
+    const { router, user } = renderScreen(allRoutes(), SELECTED);
+
+    await dirtyForm(user, '77');
+    await goTo(router);
+    await user.click(
+      within(await screen.findByRole('dialog', { name: leave.title })).getByRole('button', {
+        name: leave.keep,
+      }),
+    );
+
+    expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('77');
+  });
+
+  it('단계만 고친 채 다른 화면으로 가도 묻는다', async () => {
+    const rendered = renderScreen(allRoutes(), SELECTED);
+
+    await stepPane();
+    await addStep(rendered.user);
+    await expectLeaveFlow(rendered);
+  });
+
+  it('등록 팝업에 값을 넣은 채 다른 화면으로 가도 묻는다', async () => {
+    const rendered = renderScreen(allRoutes());
+
+    await screen.findByText('재고 조정');
+    await rendered.user.click(screen.getByRole('button', { name: t.actions.create }));
+    const pane = await screen.findByRole('dialog', { name: t.panes.create });
+    await rendered.user.type(within(pane).getByLabelText(t.fields.minValue), '5');
+
+    await expectLeaveFlow(rendered);
+  });
+
+  const keepEditing = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+    const dialog = within(await screen.findByRole('dialog', { name: leave.title }));
+    expect(dialog.getByText(leave.body)).toBeInTheDocument();
+    expect(dialog.queryByRole('button', { name: /닫기/ })).toBeNull();
+    await user.click(dialog.getByRole('button', { name: leave.keep }));
+    expect(screen.queryByRole('dialog', { name: leave.title })).toBeNull();
+  };
+
+  it('고친 채 다른 결재선 줄을 누르면 묻고, 계속 편집은 선택 · 값을 남기고 나가기는 옮긴다', async () => {
+    const { user } = renderScreen(allRoutes(), SELECTED);
+
+    await dirtyForm(user, '77');
+    await user.click(selectRouteButton('재고 조정', INACTIVE_BUSINESS_UNIT_LABEL));
+    await keepEditing(user);
+    expect(locationText()).toBe(`${ROUTE}${SELECTED}`);
+    expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('77');
+
+    await user.click(selectRouteButton('재고 조정', INACTIVE_BUSINESS_UNIT_LABEL));
+    await confirmDiscardSwitch(user);
+    await waitFor(() => expect(locationText()).not.toBe(`${ROUTE}${SELECTED}`));
+    expect(locationText()).toContain('ar=');
+  });
+
+  it('단계만 고친 채 다른 결재선 줄을 눌러도 묻는다', async () => {
+    const { user } = renderScreen(allRoutes(), SELECTED);
+
+    await stepPane();
+    await addStep(user);
+    await user.click(selectRouteButton('재고 조정', INACTIVE_BUSINESS_UNIT_LABEL));
+    await keepEditing(user);
+    expect(locationText()).toBe(`${ROUTE}${SELECTED}`);
+    expect(stepRows()).toHaveLength(stepFixtures.length + 2);
+  });
+
+  it('고친 채 조회 조건을 적용하면 묻고, 나가기는 조건을 적용한다', async () => {
+    const { user } = renderScreen(allRoutes(), SELECTED);
+
+    await dirtyForm(user, '77');
+    await user.type(screen.getByLabelText(t.fields.q), 'SAMPLE');
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+    await keepEditing(user);
+    expect(locationText()).toBe(`${ROUTE}${SELECTED}`);
+
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+    await confirmDiscardSwitch(user);
+    await waitFor(() => expect(locationText()).toContain('SAMPLE'));
+  });
+
+  it('고친 것이 없으면 묻지 않고 옮긴다', async () => {
+    const { router } = renderScreen(allRoutes(), SELECTED);
+
+    await waitForForm();
+    await stepPane();
+    await goTo(router);
+
+    await waitFor(() => expect(router?.state.location.pathname).toBe(OTHER));
+    expect(screen.queryByRole('dialog', { name: leave.title })).toBeNull();
   });
 });

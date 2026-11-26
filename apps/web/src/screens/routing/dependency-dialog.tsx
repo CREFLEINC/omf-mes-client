@@ -222,10 +222,20 @@ export const DependencyDialog = ({
       </span>
     );
 
+  /** 필수 열 머리 — 빨간 * 는 이름 밖(aria-hidden)이라 열 머리 접근 이름이 그대로다. */
+  const requiredHeader = (label: string) => (
+    <>
+      {label}
+      <span className="required-mark" aria-hidden="true">
+        {' *'}
+      </span>
+    </>
+  );
+
   const editColumns: Column<DependencyDraft>[] = [
     {
       key: 'predecessor',
-      header: td.predecessor,
+      header: requiredHeader(td.predecessor),
       render: (row, rowIndex) => (
         <div className="routing-dependency-cell">
           <Select
@@ -242,7 +252,7 @@ export const DependencyDialog = ({
     },
     {
       key: 'successor',
-      header: td.successor,
+      header: requiredHeader(td.successor),
       render: (row, rowIndex) => (
         <div className="routing-dependency-cell">
           <Select

@@ -125,7 +125,7 @@ export const workHoldRegister = {
 
   /** 세션 상태 표시명 — 계약이 확정한 셋. */
   sessionStatus: {
-    RUNNING: '진행 중',
+    RUNNING: '진행',
     STOPPED: '중단',
     ENDED: '종료',
   },

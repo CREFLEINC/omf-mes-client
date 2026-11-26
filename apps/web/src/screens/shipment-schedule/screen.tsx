@@ -348,7 +348,10 @@ export const ShipmentScheduleScreen = () => {
             ),
             businessUnit:
               requestDetail.data.businessUnit?.businessUnitName ?? t.bu012.noBusinessUnit,
-            item: (itemId) => itemLabel(itemId) ?? String(itemId),
+            item: (itemId) => {
+              const label = itemLabel(itemId);
+              return label === null ? String(itemId) : `${label.code} ${label.name}`;
+            },
             printedBy: session?.userName ?? '',
           }}
           onClose={() => {

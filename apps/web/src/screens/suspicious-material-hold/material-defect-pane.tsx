@@ -601,12 +601,12 @@ const DefectRecordDialog = ({
           </div>
           <div className="suspicious-material-hold-defect-row">
             <div className="field-cell">
-              <label className="field-label" htmlFor={majorFieldId}>
-                {tHere.major}{' '}
+              <span className="field-label">
+                <label htmlFor={majorFieldId}>{tHere.major}</label>
                 <span className="required-mark" aria-hidden="true">
-                  *
+                  {' *'}
                 </span>
-              </label>
+              </span>
               <Select
                 id={majorFieldId}
                 searchable
@@ -623,12 +623,12 @@ const DefectRecordDialog = ({
             </div>
             {minors.length > 0 && (
               <div className="field-cell">
-                <label className="field-label" htmlFor={minorFieldId}>
-                  {t.code.minor}{' '}
+                <span className="field-label">
+                  <label htmlFor={minorFieldId}>{t.code.minor}</label>
                   <span className="required-mark" aria-hidden="true">
-                    *
+                    {' *'}
                   </span>
-                </label>
+                </span>
                 <Select
                   id={minorFieldId}
                   ref={minorRef}

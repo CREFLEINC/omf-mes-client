@@ -236,6 +236,21 @@ describe('ShipmentRequestCreateScreen — 지시서 경유(완료 조건 C2)', (
     expect(await within(linesPane).findByText('SAMPLE-ITEM-01 · 합성 품목 가')).toBeInTheDocument();
     expect(within(linesPane).queryByText('SAMPLE-ITEM-02 · 합성 품목 나')).not.toBeInTheDocument();
   });
+
+  it('고른 지시서를 한 번 더 누르면 선택이 풀리고 빈 안내로 돌아간다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen({ fetch: createStubFetch(baseRoutes()) });
+
+    const row = await screen.findByRole('button', { name: t.table.selectRow('SAMPLE-SO-0001') });
+    await user.click(row);
+    await screen.findByRole('region', { name: t.panes.header });
+    expect(row).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(row);
+    expect(row).not.toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('region', { name: t.panes.header })).toBeNull();
+  });
 });
 
 describe('ShipmentRequestCreateScreen — 단독 생성(완료 조건 C3)', () => {
@@ -440,7 +455,9 @@ describe('ShipmentRequestCreateScreen — 사업부·출고 창고(피처 012)',
     const headerPane = screen.getByRole('region', { name: t.panes.header });
 
     expect(
-      await within(headerPane).findByRole('combobox', { name: new RegExp(t.fields.businessUnit, 'u') }),
+      await within(headerPane).findByRole('combobox', {
+        name: new RegExp(t.fields.businessUnit, 'u'),
+      }),
     ).toHaveTextContent('합성 사업부 X');
     expect(within(headerPane).getByText(t.notes.businessUnitAutoFilled)).toBeInTheDocument();
     /* 「출하 담당 공장」 칸은 없다(FR-007). */
@@ -472,7 +489,9 @@ describe('ShipmentRequestCreateScreen — 사업부·출고 창고(피처 012)',
 
     await user.click(screen.getByRole('combobox', { name: t.lineTable.warehouseLabel(1) }));
 
-    expect(await screen.findByRole('option', { name: '합성 창고 A (합성 1공장)' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('option', { name: '합성 창고 A (합성 1공장)' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('option', { name: '합성 창고 C (합성 1공장)' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: '합성 창고 B (합성 2공장)' })).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: /불량창고/u })).not.toBeInTheDocument();
@@ -485,10 +504,12 @@ describe('ShipmentRequestCreateScreen — 사업부·출고 창고(피처 012)',
     renderScreen({ fetch: createStubFetch(baseRoutes()) });
     await openOrder(user);
 
-    expect(await screen.findByText(t.lineTable.erpWarehouseHint('SAMPLE-ERP-WH'))).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: t.lineTable.warehouseLabel(1) })).not.toHaveTextContent(
-      /합성 창고/u,
-    );
+    expect(
+      await screen.findByText(t.lineTable.erpWarehouseHint('SAMPLE-ERP-WH')),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: t.lineTable.warehouseLabel(1) }),
+    ).not.toHaveTextContent(/합성 창고/u);
   });
 
   it('US1-6·Q5 창고를 고르지 않은 줄이 있으면 「출고 창고를 고르세요: 라인 1」로 막힌다', async () => {

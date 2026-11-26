@@ -504,7 +504,10 @@ export const WorkCalendarScreen = ({
           appliedFilters={filters}
           onApplyFilters={setFilters}
           onAdd={openCreate}
-          onSelect={setSelected}
+          /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+          onSelect={(row) =>
+            setSelected((current) => (current?.workCalendarId === row.workCalendarId ? null : row))
+          }
           selectedId={selected?.workCalendarId ?? null}
           loadError={
             calendars.isError ? (

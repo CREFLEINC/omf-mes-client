@@ -30,7 +30,8 @@ export const documentProgress: Translated<typeof ko.documentProgress> = {
   fields: {
     documentType: 'Loại chứng từ',
     status: 'Trạng thái',
-    period: 'Ngày chứng từ',
+    periodFrom: 'Từ ngày chứng từ',
+    periodTo: 'Đến ngày chứng từ',
     cancellableOnly: 'Chỉ phiếu hiện hủy được',
     q: 'Số chứng từ',
   },

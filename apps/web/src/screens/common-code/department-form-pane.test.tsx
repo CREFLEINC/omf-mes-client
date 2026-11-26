@@ -75,13 +75,18 @@ describe('DepartmentFormPane — 코드 잠금', () => {
    * 판정의 주인은 서버가 준 편집 가능 여부다 — 화면이 스스로 잠그지 않는다.
    * 상위가 만든 사유를 그대로 받아 붙인다.
    */
-  it('잠금 사유가 있으면 부서코드 칸이 잠기고 사유가 붙는다', () => {
+  /* 사유 문장 대신 부서코드 이름 오른쪽 「변경 불가」 라벨 — 문장은 마우스 · 화면 읽기로(사용자 지시 2026-11-24). */
+  it('잠금 사유가 있으면 부서코드 칸이 잠기고 「변경 불가」 라벨에 사유가 붙는다', () => {
     renderPane({ codeLockReason: '이 코드는 다른 자료가 참조 중이라 고칠 수 없습니다.' });
 
     expect(screen.getByLabelText('부서코드')).toBeDisabled();
-    expect(
-      screen.getByText('이 코드는 다른 자료가 참조 중이라 고칠 수 없습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
+      'title',
+      '이 코드는 다른 자료가 참조 중이라 고칠 수 없습니다.',
+    );
+    expect(screen.getByLabelText('부서코드')).toHaveAccessibleDescription(
+      '이 코드는 다른 자료가 참조 중이라 고칠 수 없습니다.',
+    );
   });
 
   /* 잠기는 것은 코드 칸뿐이다 — 서버가 잠그지 않은 칸까지 화면이 잠그면 안 된다. */
@@ -139,10 +144,12 @@ describe('DepartmentFormPane — 액션', () => {
       deactivateDisabledReason: '사용 중지는 이미 미사용인 부서에 다시 할 수 없습니다.',
     });
 
-    expect(screen.getByRole('button', { name: '사용 중지' })).toBeDisabled();
-    expect(
-      screen.getByText('사용 중지는 이미 미사용인 부서에 다시 할 수 없습니다.'),
-    ).toBeInTheDocument();
+    const button = screen.getByRole('button', { name: '사용 중지' });
+    expect(button).toBeDisabled();
+    /* 제목 줄 작은 버튼 — 사유는 버튼 설명(마우스를 올리면 보임)으로 붙는다(2026-11-24). */
+    expect(button).toHaveAccessibleDescription(
+      '사용 중지는 이미 미사용인 부서에 다시 할 수 없습니다.',
+    );
   });
 
   it('고친 것이 없으면 저장을 누를 수 없다', () => {
@@ -189,9 +196,7 @@ describe('DepartmentFormPane — 다른 부서의 저장이 나가는 중', () =
     const save = screen.getByRole('button', { name: '저장' });
 
     expect(save).toBeDisabled();
-    expect(
-      screen.getByText('저장은 다른 부서의 저장이 끝난 뒤에 할 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
     expect(save).not.toHaveAttribute('aria-busy', 'true');
     expect(screen.getByLabelText('부서명')).toBeEnabled();
     expect(screen.getByLabelText('상위 부서')).toBeEnabled();
@@ -222,9 +227,7 @@ describe('DepartmentFormPane — 다른 부서의 저장이 나가는 중', () =
     const add = screen.getByRole('button', { name: '부서 추가' });
 
     expect(add).toBeDisabled();
-    expect(
-      screen.getByText('부서 추가는 다른 부서의 저장이 끝난 뒤에 할 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '부서 추가' })).toBeDisabled();
     /* 수정 자리의 문면이 여기 서면 사용자는 「저장」이라는 없는 버튼을 찾는다. */
     expect(screen.queryByText(/^저장은 다른 부서의/)).not.toBeInTheDocument();
   });

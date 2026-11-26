@@ -15,7 +15,8 @@ export const shipmentRequestCreate = {
   },
   filters: {
     customer: '고객',
-    period: '주문일',
+    periodFrom: '주문 시작일',
+    periodTo: '주문 종료일',
     unassignedOnly: '미편성만',
     search: '조회',
     reset: '초기화',

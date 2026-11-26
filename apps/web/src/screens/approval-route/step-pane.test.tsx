@@ -4,47 +4,37 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { toApproverOptions } from './approver-options';
-import {
-  ENABLED_APPROVER_TYPE_CODES,
-  approverTypeNote,
-  toApproverTypeOptions,
-} from './code-options';
 import { APPROVER_OPTION_LABEL, stepDraftFixtures, userFixtures } from './fixtures';
-import {
-  REORDER_COLUMN_WIDTH,
-  STEP_COLUMN_WIDTH,
-  STEP_RULES,
-  StepPane,
-  type StepPaneProps,
-} from './step-pane';
+import { STEP_COLUMN_WIDTH, StepPane, type StepPaneProps } from './step-pane';
 import type { StepDraft } from './step-draft';
 
 const t = messages.approvalRoute;
 
-/** 우 칸의 폭 예산. 1280px 창에서 약 560px이다. */
-const RIGHT_PANE_BUDGET = 560;
-
 const approverOptions = toApproverOptions(userFixtures);
 
-const renderPane = (overrides: Partial<StepPaneProps> = {}) =>
-  render(
-    <StepPane
-      drafts={stepDraftFixtures}
-      isLoading={false}
-      loadError={null}
-      banner={null}
-      approverOptions={approverOptions}
-      approverTypeOptions={toApproverTypeOptions(ENABLED_APPROVER_TYPE_CODES)}
-      approverTypeNote={approverTypeNote(toApproverTypeOptions(ENABLED_APPROVER_TYPE_CODES))}
-      isLocked={false}
-      saveDisabledReason={null}
-      onAdd={() => undefined}
-      onRemove={() => undefined}
-      onReorder={() => undefined}
-      onSave={() => undefined}
-      {...overrides}
-    />,
-  );
+const paneElement = (overrides: Partial<StepPaneProps> = {}) => (
+  <StepPane
+    drafts={stepDraftFixtures}
+    isLoading={false}
+    loadError={null}
+    banner={null}
+    approverOptions={approverOptions}
+    isLocked={false}
+    saveDisabledReason={null}
+    onAdd={() => undefined}
+    onRemove={() => undefined}
+    onReorder={() => undefined}
+    onSave={() => undefined}
+    {...overrides}
+  />
+);
+
+const renderPane = (overrides: Partial<StepPaneProps> = {}) => render(paneElement(overrides));
+
+/** 제목 줄 「단계 추가」로 추가 줄을 펼친다(사용자 지시 2026-11-25 — 기본은 접혀 있다). */
+const openAddRow = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(screen.getByRole('button', { name: t.actions.addStep }));
+};
 
 const rowOf = (text: string): HTMLElement =>
   screen.getAllByRole('row').find((row) => within(row).queryByText(text) !== null) as HTMLElement;
@@ -96,7 +86,7 @@ describe('StepPane — 단계 표', () => {
 
     const row = rowOf('합성 승인자2 · 합성부서 나');
 
-    expect(within(row).getByText(t.values.approverInactive)).toBeInTheDocument();
+    expect(within(row).getByText(messages.common.usage.inactive)).toBeInTheDocument();
     expect(within(row).getByText(t.notes.approverInactiveWarning)).toBeInTheDocument();
   });
 
@@ -105,7 +95,7 @@ describe('StepPane — 단계 표', () => {
 
     const row = rowOf('합성 승인자1 · 합성부서 가');
 
-    expect(within(row).getByText(t.values.approverActive)).toBeInTheDocument();
+    expect(within(row).getByText(messages.common.usage.active)).toBeInTheDocument();
     expect(within(row).queryByText(t.notes.approverInactiveWarning)).not.toBeInTheDocument();
   });
 });
@@ -193,11 +183,31 @@ describe('StepPane — 순서 이동', () => {
   });
 
   /** 전송 중에는 열 자체를 내지 않는다 — 눌러도 아무 일이 없는 버튼을 남기는 것보다 정직하다. */
-  it('전송 중에는 이동 열을 내지 않는다', () => {
+  it('전송 중에는 이동 버튼이 모두 잠긴다', () => {
     renderPane({ isLocked: true });
 
-    expect(screen.queryByRole('button', { name: '위로 이동' })).toBeNull();
-    expect(screen.queryByRole('button', { name: '아래로 이동' })).toBeNull();
+    for (const button of [
+      ...screen.getAllByRole('button', { name: '위로 이동' }),
+      ...screen.getAllByRole('button', { name: '아래로 이동' }),
+    ]) {
+      expect(button).toBeDisabled();
+    }
+  });
+
+  /* 단계 수는 표와 같은 기준으로 카드 제목 옆에 낸다(사용자 지시 2026-11-24). */
+  /* 제목 바로 뒤에 다른 화면 목록 건수와 같은 모양으로, [단계 추가]는 오른쪽 끝(사용자 지시 2026-11-25). */
+  it('카드 제목 바로 뒤에 표의 줄 수만큼 「총 N단계」를 건수 모양으로 낸다', () => {
+    renderPane();
+
+    const count = screen.getByText(t.values.stepCountOf(stepDraftFixtures.length));
+    const heading = screen.getByRole('heading', { name: t.panes.steps });
+    const addButton = screen.getByRole('button', { name: t.actions.addStep });
+
+    expect(count).toHaveClass('po-board-list-count');
+    expect(heading.nextElementSibling).toBe(count);
+    expect(count.parentElement).toBe(heading.parentElement);
+    expect(addButton.parentElement).toBe(heading.parentElement);
+    expect(heading.parentElement?.lastElementChild).toBe(addButton);
   });
 });
 
@@ -270,6 +280,28 @@ describe('StepPane — 삭제', () => {
 
     expect(screen.getByText(t.actionReasons.stepRemoveLast)).toBeInTheDocument();
   });
+
+  /* 사유는 제목 줄의 라벨이다 — 「총 N단계」 뒤, [단계 추가] 앞(사용자 지시 2026-11-25). */
+  it('삭제 사유는 제목 줄에 「총 N단계」 다음 라벨로 선다', () => {
+    renderPane({ drafts: [draftOf(9301, 'a')] });
+
+    const heading = screen.getByRole('heading', { name: t.panes.steps });
+    const headingRow = heading.parentElement as HTMLElement;
+    const reason = within(headingRow).getByText(t.actionReasons.stepRemoveLast);
+    const count = within(headingRow).getByText(t.values.stepCountOf(1));
+    const chip = count.nextElementSibling as HTMLElement;
+
+    expect(chip).toContainElement(reason);
+    expect(chip.nextElementSibling).toBe(
+      within(headingRow).getByRole('button', { name: t.actions.addStep }),
+    );
+  });
+
+  it('단계가 둘 이상이면 삭제 사유 라벨이 서지 않는다', () => {
+    renderPane();
+
+    expect(screen.queryByText(t.actionReasons.stepRemoveLast)).toBeNull();
+  });
 });
 
 /**
@@ -277,101 +309,174 @@ describe('StepPane — 삭제', () => {
  * 상자 경계에서 잘릴 수 있다 — 이 저장소 이슈 #45와 같은 형태의 자리를 만들지 않는다.
  */
 describe('StepPane — 추가 줄', () => {
-  it('승인자 선택칸이 표 밖에 있다', () => {
+  /* 추가 줄은 접혀 있다가 제목 줄 「단계 추가」로 펼친다(사용자 지시 2026-11-25). */
+  it('처음에는 추가 줄이 접혀 있고 「단계 추가」가 제목 줄에 선다', () => {
     renderPane();
 
+    expect(screen.queryByRole('combobox', { name: t.fields.approverSelect })).toBeNull();
+
+    const heading = screen.getByRole('heading', { name: /결재 단계/ });
+    const headingRow = heading.parentElement as HTMLElement;
+    expect(within(headingRow).getByRole('button', { name: t.actions.addStep })).toBeInTheDocument();
+    expect(headingRow).toHaveTextContent(t.values.stepCountOf(stepDraftFixtures.length));
+  });
+
+  it('「단계 추가」를 누르면 표 아래에 결재자 줄이 펼쳐지고 취소로 접힌다', async () => {
+    const user = userEvent.setup();
+    renderPane();
+
+    await openAddRow(user);
+
+    expect(screen.getByRole('combobox', { name: t.fields.approverSelect })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.actions.addStep })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+
+    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+
+    expect(screen.queryByRole('combobox', { name: t.fields.approverSelect })).toBeNull();
+    expect(screen.getByRole('button', { name: t.actions.addStep })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  });
+
+  it('승인자 선택칸이 표 밖에 있다', async () => {
+    const user = userEvent.setup();
+    renderPane();
+    await openAddRow(user);
+
     const table = screen.getByRole('table');
-    const combobox = screen.getByRole('combobox', { name: t.fields.approver });
+    const combobox = screen.getByRole('combobox', { name: t.fields.approverSelect });
 
     // 선행 단언 — 표와 선택칸이 둘 다 있어야 「표 밖이다」가 뜻을 갖는다.
     expect(table).toBeInTheDocument();
     expect(table.contains(combobox)).toBe(false);
   });
 
-  it('표 셀 안에 선택칸이 없다', () => {
+  it('표 셀 안에 선택칸이 없다', async () => {
+    const user = userEvent.setup();
     renderPane();
+    await openAddRow(user);
 
     expect(within(screen.getByRole('table')).queryAllByRole('combobox')).toHaveLength(0);
   });
 
-  it('고른 승인자로 추가를 알린다', async () => {
+  it('고른 승인자로 추가를 알리고 줄을 접는다', async () => {
     const onAdd = vi.fn();
     const user = userEvent.setup();
 
     renderPane({ onAdd });
-    await user.click(screen.getByRole('combobox', { name: t.fields.approver }));
+    await openAddRow(user);
+    await user.click(screen.getByRole('combobox', { name: t.fields.approverSelect }));
     await user.click(screen.getByRole('option', { name: APPROVER_OPTION_LABEL }));
-    await user.click(screen.getByRole('button', { name: t.actions.addStep }));
+    await user.click(screen.getByRole('button', { name: t.actions.confirmAddStep }));
 
     expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ appUserId: 9304 }));
+    expect(screen.queryByRole('combobox', { name: t.fields.approverSelect })).toBeNull();
   });
 
-  it('추가한 뒤 선택칸을 비운다 — 같은 사람을 두 번 넣는 실수를 줄인다', async () => {
+  it('추가한 뒤 다시 펼치면 선택칸이 비어 있다 — 같은 사람을 두 번 넣는 실수를 줄인다', async () => {
     const user = userEvent.setup();
 
     renderPane();
-    await user.click(screen.getByRole('combobox', { name: t.fields.approver }));
+    await openAddRow(user);
+    await user.click(screen.getByRole('combobox', { name: t.fields.approverSelect }));
     await user.click(screen.getByRole('option', { name: APPROVER_OPTION_LABEL }));
-    await user.click(screen.getByRole('button', { name: t.actions.addStep }));
+    await user.click(screen.getByRole('button', { name: t.actions.confirmAddStep }));
+    await openAddRow(user);
 
-    expect(screen.getByRole('combobox', { name: t.fields.approver })).not.toHaveTextContent(
+    expect(screen.getByRole('combobox', { name: t.fields.approverSelect })).not.toHaveTextContent(
       APPROVER_OPTION_LABEL,
     );
   });
 
-  it('승인자를 고르지 않으면 추가가 잠기고 사유가 그 버튼의 설명이 된다', () => {
-    renderPane();
+  it('취소하면 고르던 사람도 함께 버리고 추가를 알리지 않는다', async () => {
+    const onAdd = vi.fn();
+    const user = userEvent.setup();
 
-    const button = screen.getByRole('button', { name: t.actions.addStep });
+    renderPane({ onAdd });
+    await openAddRow(user);
+    await user.click(screen.getByRole('combobox', { name: t.fields.approverSelect }));
+    await user.click(screen.getByRole('option', { name: APPROVER_OPTION_LABEL }));
+    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+    await openAddRow(user);
 
-    expect(button).toBeDisabled();
-    expect(button).toHaveAccessibleDescription(t.actionReasons.stepAddNoApprover);
+    expect(onAdd).not.toHaveBeenCalled();
+    expect(screen.getByRole('combobox', { name: t.fields.approverSelect })).not.toHaveTextContent(
+      APPROVER_OPTION_LABEL,
+    );
   });
 
-  it('승인자 목록이 잘리면 그 사실을 밝힌다', () => {
+  /* 결재자 칸의 「결재자를 선택하세요」가 이미 말하므로 사유 글 없이 꺼진 단추만 둔다(사용자 지시 2026-11-24). */
+  it('결재자를 고르지 않으면 추가가 잠긴다', async () => {
+    const user = userEvent.setup();
+    renderPane();
+    await openAddRow(user);
+
+    expect(screen.getByRole('button', { name: t.actions.confirmAddStep })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: t.fields.approverSelect })).toHaveTextContent(
+      t.fields.approverPlaceholder,
+    );
+  });
+
+  it('승인자 목록이 잘리면 그 사실을 밝힌다', async () => {
+    const user = userEvent.setup();
     renderPane({ approverNote: t.notes.approverListTruncated });
+    await openAddRow(user);
 
     expect(screen.getByText(t.notes.approverListTruncated)).toBeInTheDocument();
   });
 
-  it('전송 중에는 추가 줄이 잠긴다', () => {
-    renderPane({ isLocked: true });
+  it('전송 중에는 「단계 추가」와 펼친 추가 줄이 잠긴다', async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderPane();
+    await openAddRow(user);
 
-    expect(screen.getByRole('combobox', { name: t.fields.approver })).toBeDisabled();
+    rerender(paneElement({ isLocked: true }));
+
+    expect(screen.getByRole('button', { name: t.actions.addStep })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: t.fields.approverSelect })).toBeDisabled();
   });
 });
 
 /**
- * 승인자 구분 — **잠긴 선택지를 감추지 않는다.** 감추면 사용자는 역할·부서 결재가 아예 없는
- * 기능이라고 읽는다(`omf-mes#69`).
+ * 결재자 유형 칸은 걷었다 — 사용자 하나만 고를 수 있는 칸이라 보일 필요가 없다(사용자 지시 2026-11-25).
+ * 단계는 종전대로 사용자 결재자로 저장된다(`step-draft.test.ts`의 치환 본문 단언이 지킨다).
  */
-describe('StepPane — 승인자 구분', () => {
-  /* 칸 아래 문장 대신 라벨 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */
-  it('구분 선택칸 라벨 옆 ⓘ 에 고를 수 있는 것을 밝힌다', () => {
-    renderPane();
+describe('StepPane — 추가 줄 모양', () => {
+  it('추가 줄에는 결재자 선택칸 하나와 [추가] · [취소]만 선다', async () => {
+    const user = userEvent.setup();
+    const { container } = renderPane();
+    await openAddRow(user);
 
-    expect(screen.getByRole('button', { name: t.notes.approverTypePending })).toBeInTheDocument();
-    expect(screen.queryByText(t.notes.approverTypePending)).toBeNull();
+    const row = container.querySelector('.approval-route-step-add') as HTMLElement;
+    expect(within(row).getAllByRole('combobox')).toHaveLength(1);
+    expect(
+      within(row).getByRole('combobox', { name: t.fields.approverSelect }),
+    ).toBeInTheDocument();
+    expect(row).not.toHaveTextContent('결재자 유형');
+    expect(
+      within(row)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual([t.actions.confirmAddStep, messages.common.cancel]);
   });
 
-  it('역할·부서 선택지가 보이되 잠겨 있다', async () => {
+  /* [추가]는 채운 단추(「새 결재선」과 같은 기본 모양), [취소]는 외곽선 그대로(사용자 지시 2026-11-25). */
+  it('[추가]는 채운 단추, [취소]는 외곽선 단추다', async () => {
     const user = userEvent.setup();
-
     renderPane();
-    await user.click(screen.getByRole('combobox', { name: t.fields.approverType }));
+    await openAddRow(user);
 
-    /* 디자인 시스템이 선택지를 네이티브 요소가 아니라 `role="option"`으로 그린다. */
-    expect(screen.getByRole('option', { name: t.values.approverTypeUser })).not.toHaveAttribute(
-      'aria-disabled',
-    );
-    expect(screen.getByRole('option', { name: t.values.approverTypeRole })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
-    expect(screen.getByRole('option', { name: t.values.approverTypeDepartment })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
+    const add = screen.getByRole('button', { name: t.actions.confirmAddStep });
+    const cancel = screen.getByRole('button', { name: messages.common.cancel });
+    /* 디자인 시스템 모양 클래스는 해시가 붙는다 — 모양 이름 조각만 본다. 크기(md)는 둘이 같다. */
+    expect(add.className).toMatch(/filled/);
+    expect(cancel.className).toMatch(/outlined/);
+    expect(add.className).toMatch(/_md_/);
+    expect(cancel.className).toMatch(/_md_/);
   });
 });
 
@@ -408,43 +513,13 @@ describe('StepPane — 저장', () => {
   });
 });
 
-describe('StepPane — 규칙 ⓘ', () => {
-  /**
-   * 전체 교체 · 승인자 부재 · 소급하지 않음 · 반려 후 재상신 — 결재선을 보는 내내 참인 사실이다.
-   * 표 아래 네 줄로 늘 펼쳐 두지 않고 구획 제목 옆 ⓘ 하나로 모은다(관리웹 정리 시안 A).
-   */
-  it('네 규칙을 제목 옆 ⓘ 의 설명으로 두고 표 아래에는 펼치지 않는다', () => {
+describe('StepPane — 제목 ⓘ', () => {
+  /* 제목 옆 규칙 ⓘ 는 걷었다(사용자 지시 2026-11-25). */
+  it('결재 단계 제목 줄에 ⓘ 단추가 없다', () => {
     renderPane();
 
-    const tip = screen.getByRole('button', { name: STEP_RULES });
-
-    expect(within(screen.getByRole('heading', { level: 2 })).getByRole('button')).toBe(tip);
-    for (const rule of [
-      t.notes.stepReplaceWholeList,
-      t.notes.stepGuideApproverAbsent,
-      t.notes.stepGuideNotRetroactive,
-      t.notes.stepGuideRejectResubmit,
-    ]) {
-      expect(STEP_RULES).toContain(rule);
-      expect(screen.queryByText(rule)).toBeNull();
-    }
-  });
-
-  /** **표가 무엇으로 채워졌는지와 무관하다** — 표에 딸린 것으로 두면 표가 비는 순간 함께 사라진다. */
-  it('단계가 없어도 · 조회에 실패해도 · 불러오는 중에도 ⓘ 가 남는다', () => {
-    const { unmount } = renderPane({ drafts: [] });
-    expect(screen.getByRole('button', { name: STEP_RULES })).toBeInTheDocument();
-    unmount();
-
-    const failed = renderPane({ drafts: null, loadError: <p>단계 조회 실패 배너</p> });
-    // 선행 단언 — 실제로 실패 상태여야 이 감지기가 뜻을 갖는다.
-    expect(screen.getByText('단계 조회 실패 배너')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: STEP_RULES })).toBeInTheDocument();
-    failed.unmount();
-
-    renderPane({ drafts: null, isLoading: true });
-    expect(screen.getByRole('status', { name: t.loading.steps })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: STEP_RULES })).toBeInTheDocument();
+    const heading = screen.getByRole('heading', { name: t.panes.steps });
+    expect(within(heading).queryByRole('button')).toBeNull();
   });
 });
 
@@ -491,22 +566,33 @@ describe('StepPane — 표의 경계', () => {
   });
 
   /**
-   * 폭 없는 흡수 열은 승인자 하나뿐이다. 디자인 시스템이 붙이는 이동 열은 인라인 폭 대신
-   * 자기 클래스를 쓰므로 그 열을 흡수 열로 세지 않는다 — 예산에는 별도로 더한다.
+   * 폭 없는 흡수 열은 승인자 하나뿐이다. 나머지 열은 상자 폭에 대한 비율이고(사용자 지시 2026-11-25) 그 합이
+   * 상자를 넘지 않아야 결재자 열이 남는 폭을 갖는다.
    */
-  it('폭 없는 흡수 열이 하나뿐이고 지정 폭 합이 예산 안이다', () => {
+  it('폭 없는 흡수 열이 하나뿐이고 지정 비율 합이 상자 안이다', () => {
     const { container } = renderPane();
 
     const cols = [...container.querySelectorAll('col')];
 
     expect(cols.filter((col) => col.style.width === '' && col.className === '')).toHaveLength(1);
 
-    const sum =
-      Object.values(STEP_COLUMN_WIDTH).reduce(
-        (total, width) => total + Number.parseInt(width, 10),
-        0,
-      ) + Number.parseInt(REORDER_COLUMN_WIDTH, 10);
+    const widths = Object.values(STEP_COLUMN_WIDTH);
+    expect(widths.every((width) => width.endsWith('%'))).toBe(true);
 
-    expect(sum).toBeLessThan(RIGHT_PANE_BUDGET);
+    const sum = widths.reduce((total, width) => total + Number.parseFloat(width), 0);
+
+    expect(sum).toBeLessThan(60);
+  });
+
+  /* 모든 열은 가운데 맞춤(사용자 지시 2026-11-25) — 결재자 열 포함. */
+  it('표의 머리 칸이 모두 가운데 맞춤이다', () => {
+    renderPane();
+
+    const headers = screen.getAllByRole('columnheader');
+
+    expect(headers).toHaveLength(4);
+    for (const header of headers) {
+      expect(header).toHaveAttribute('data-align', 'center');
+    }
   });
 });

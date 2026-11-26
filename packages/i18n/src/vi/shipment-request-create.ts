@@ -11,7 +11,8 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
   },
   filters: {
     customer: 'Khách hàng',
-    period: 'Ngày đặt hàng',
+    periodFrom: 'Từ ngày đặt hàng',
+    periodTo: 'Đến ngày đặt hàng',
     unassignedOnly: 'Chỉ chưa lập lệnh',
     search: 'Tra cứu',
     reset: 'Đặt lại',

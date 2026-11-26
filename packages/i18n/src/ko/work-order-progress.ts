@@ -81,6 +81,8 @@ export const workOrderProgress = {
     columns: {
       workOrderNo: 'W/O 번호',
       itemId: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       orderQty: '지시',
       goodQty: '양품',
       defectQty: '불량',
@@ -163,7 +165,7 @@ export const workOrderProgress = {
       session: (sessionNo: number): string => `세션 ${String(sessionNo)}`,
       startedAt: '시작',
       endedAt: '종료',
-      ongoing: '진행 중',
+      ongoing: '진행',
       empty: '작업 세션이 없습니다.',
       noParticipants: '참여자가 없습니다.',
       columns: {

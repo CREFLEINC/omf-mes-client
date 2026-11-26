@@ -448,7 +448,6 @@ export const iqcInspection = {
     judgmentNames: { ACCEPTED: '합격', REJECTED: '불합격' } as Record<string, string>,
     /** 판정 거르기 칩(#185). */
     filterLabel: '판정 거르기',
-    filterAll: '전체',
     /** 「2회차」 — 이 항목을 기준이 정한 횟수만큼 잴 때 몇 번째인가(#133). */
     sampleOf: (sampleNo: number): string => `${String(sampleNo)}회차`,
     /** 예/아니오 항목의 결과 — 부품 화면과 같은 OK · NG(#247 · 사용자 지시 2026-11-10). */

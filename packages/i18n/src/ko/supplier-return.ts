@@ -25,10 +25,11 @@ export const supplierReturn = {
   fields: {
     warehouse: '창고',
     /**
-     * 계약의 `receiptDateFrom`·`receiptDateTo`를 **한 컨트롤**이 함께 고른다.
+     * 계약의 `receiptDateFrom`·`receiptDateTo`를 시작일 · 종료일 두 칸이 고른다.
      * **기본 기간을 심지 않는다**(W-01-09가 세운 규칙).
      */
-    period: '입고일',
+    periodFrom: '입고 시작일',
+    periodTo: '입고 종료일',
     /** 값 목록이 확정되지 않아 선택지가 비어 있다 — 안내는 `pendingCode`가 맡는다. */
     receiptType: '입고 유형',
     status: '상태',
@@ -228,7 +229,8 @@ export const supplierReturn = {
   /** 라인 표의 머리글과 칸 문구. 폭의 근거는 screens/supplier-return/gr-line-table.tsx에 있다. */
   lineTable: {
     select: '선택',
-    item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
     lot: '자재 LOT',
     location: '위치',
     receiptQty: '입고 수량',

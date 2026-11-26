@@ -3,7 +3,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { toWorkerListQuery } from './filters';
+import { toWorkerListQuery, type ListPageSize } from './filters';
 import type { PageMeta, ScopedFilters, Worker } from './types';
 
 type WorkerDetailResponse = components['schemas']['WorkerDetailResponse'];
@@ -26,8 +26,8 @@ export interface WorkerListResponse {
 
 export const workerKeys = {
   all: ['common-code-workers'] as const,
-  list: (filters: ScopedFilters, page: number) =>
-    ['common-code-workers', 'list', filters, page] as const,
+  list: (filters: ScopedFilters, page: number, size: ListPageSize | null = null) =>
+    ['common-code-workers', 'list', filters, page, size] as const,
   detail: (workerId: number) => ['common-code-workers', 'detail', workerId] as const,
   qualifications: (workerId: number) =>
     ['common-code-workers', 'qualifications', workerId] as const,
@@ -50,17 +50,18 @@ export const workerQualificationsPath = (workerId: number): string =>
 export const useWorkerList = (
   filters: ScopedFilters,
   page: number,
+  size: ListPageSize | null,
   enabled: boolean,
 ): UseQueryResult<WorkerListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: workerKeys.list(filters, page),
+    queryKey: workerKeys.list(filters, page, size),
     // 다른 탭에 있는 동안에는 조회하지 않는다.
     enabled,
     queryFn: () =>
       runRequest(() =>
-        client.GET('/mdm/workers', { params: { query: toWorkerListQuery(filters, page) } }),
+        client.GET('/mdm/workers', { params: { query: toWorkerListQuery(filters, page, size) } }),
       ),
   });
 };
