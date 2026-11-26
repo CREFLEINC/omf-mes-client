@@ -57,6 +57,8 @@ export const partsIqcInspection = {
     okNg: 'OK / NG',
     items: '검사 항목',
     itemCount: (n: number) => `(${String(n)}개)`,
+    /** 등록된 검사 항목이 없을 때 — 「도면 미등록」과 같은 자리(사용자 지시 2026-11-26). */
+    itemsNone: '검사 항목 미등록',
   },
 
   dialog: {

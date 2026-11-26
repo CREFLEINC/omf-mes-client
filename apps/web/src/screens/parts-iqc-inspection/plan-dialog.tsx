@@ -131,62 +131,71 @@ export const PlanDialog = ({
         <section className="parts-iqc-card" aria-labelledby="parts-iqc-plan-items">
           <div className="parts-iqc-block-head">
             <h3 id="parts-iqc-plan-items">
-              {t.plan.items}{' '}
-              <span className="parts-iqc-muted">{t.plan.itemCount(specs.length)}</span>
+              {t.plan.items}
+              {specs.length > 0 && (
+                <>
+                  {' '}
+                  <span className="parts-iqc-muted">{t.plan.itemCount(specs.length)}</span>
+                </>
+              )}
             </h3>
+            {/* 항목이 없으면 빈 표 대신 「검사 항목 미등록」 — 아래 「도면 미등록」과 같은 모양(사용자 지시 2026-11-26). */}
+            {specs.length === 0 && <span className="parts-iqc-muted">{t.plan.itemsNone}</span>}
           </div>
-          <div className="parts-iqc-grid-scroll">
-            {/* 검사 화면 표와 같은 칸 선 · 가운데 정렬. 방법 칸은 항목 유형 라벨(선택형 · 수치형 · 텍스트형). */}
-            <table className="parts-iqc-grid parts-iqc-plan-table">
-              <thead>
-                <tr>
-                  <th scope="col" className="parts-iqc-item">
-                    {t.plan.no}
-                  </th>
-                  <th scope="col">{t.visual.checkItem}</th>
-                  <th scope="col">{t.plan.method}</th>
-                  <th scope="col">{t.dimension.spec}</th>
-                  <th scope="col">{t.plan.count}</th>
-                  <th scope="col">{t.plan.acceptance}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {specs.map((spec, index) => {
-                  const [nominal, range] = specLines(spec);
-                  /* 단위는 항목 이름이 아니라 규격 값 뒤에(사용자 지시 2026-11-19 · omf-all-around#296). */
-                  const unit =
-                    spec.uomId == null || uomCodeOf === undefined ? null : uomCodeOf(spec.uomId);
-                  const withUnit = (value: string): string =>
-                    value === '-' ? value : withUom(value, unit);
-                  return (
-                    <tr key={spec.inspectionItemSpecId}>
-                      <td>{index + 1}</td>
-                      <td>{spec.inspectionItemName}</td>
-                      <td>
-                        <Chip
-                          variant="status"
-                          size="sm"
-                          status={spec.dataTypeCode === 'BOOLEAN' ? 'info' : 'idle'}
-                        >
-                          {t.plan.dataTypeOf[spec.dataTypeCode] ?? spec.dataTypeCode}
-                        </Chip>
-                      </td>
-                      <td className="parts-iqc-plan-spec">
-                        {spec.dataTypeCode === 'NUMERIC'
-                          ? nominal === '' || range === nominal
-                            ? withUnit(nominal || range)
-                            : `${withUnit(nominal)} (${withUnit(range)})`
-                          : t.plan.okNg}
-                      </td>
-                      {/* 「차수」 — 항목마다 정한 측정 횟수를 숫자만(사용자 지시 2026-11-19 · omf-all-around#296). */}
-                      <td>{spec.measurementCount}</td>
-                      <td>{spec.acceptanceNumber ?? '—'}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          {specs.length > 0 && (
+            <div className="parts-iqc-grid-scroll">
+              {/* 검사 화면 표와 같은 칸 선 · 가운데 정렬. 방법 칸은 항목 유형 라벨(선택형 · 수치형 · 텍스트형). */}
+              <table className="parts-iqc-grid parts-iqc-plan-table">
+                <thead>
+                  <tr>
+                    <th scope="col" className="parts-iqc-item">
+                      {t.plan.no}
+                    </th>
+                    <th scope="col">{t.visual.checkItem}</th>
+                    <th scope="col">{t.plan.method}</th>
+                    <th scope="col">{t.dimension.spec}</th>
+                    <th scope="col">{t.plan.count}</th>
+                    <th scope="col">{t.plan.acceptance}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {specs.map((spec, index) => {
+                    const [nominal, range] = specLines(spec);
+                    /* 단위는 항목 이름이 아니라 규격 값 뒤에(사용자 지시 2026-11-19 · omf-all-around#296). */
+                    const unit =
+                      spec.uomId == null || uomCodeOf === undefined ? null : uomCodeOf(spec.uomId);
+                    const withUnit = (value: string): string =>
+                      value === '-' ? value : withUom(value, unit);
+                    return (
+                      <tr key={spec.inspectionItemSpecId}>
+                        <td>{index + 1}</td>
+                        <td>{spec.inspectionItemName}</td>
+                        <td>
+                          <Chip
+                            variant="status"
+                            size="sm"
+                            status={spec.dataTypeCode === 'BOOLEAN' ? 'info' : 'idle'}
+                          >
+                            {t.plan.dataTypeOf[spec.dataTypeCode] ?? spec.dataTypeCode}
+                          </Chip>
+                        </td>
+                        <td className="parts-iqc-plan-spec">
+                          {spec.dataTypeCode === 'NUMERIC'
+                            ? nominal === '' || range === nominal
+                              ? withUnit(nominal || range)
+                              : `${withUnit(nominal)} (${withUnit(range)})`
+                            : t.plan.okNg}
+                        </td>
+                        {/* 「차수」 — 항목마다 정한 측정 횟수를 숫자만(사용자 지시 2026-11-19 · omf-all-around#296). */}
+                        <td>{spec.measurementCount}</td>
+                        <td>{spec.acceptanceNumber ?? '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
 
         {drawings}
