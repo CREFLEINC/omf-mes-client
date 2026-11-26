@@ -53,6 +53,7 @@ import { automaticBomId, automaticRoutingId } from './master-step';
 import { PlanStep, type PlanLine } from './plan-step';
 import { deletePlan, runPlanStep } from './plan-runner';
 import { manualPlanDefaults } from './manual-plan-defaults';
+import { bottleneckCycleTime } from './segmented-distribution-model';
 import { DistributionControls } from './distribution-controls';
 
 import { LeaveGuard, DiscardDialog } from './leave-guard';
@@ -75,6 +76,7 @@ interface Controller {
   pastConfirmedPlanIds: number[];
   hasPastPlans: boolean;
   operations: string[];
+  bottleneckCycleTimeSec?: number | null;
   bomId: string;
   routingId: string;
   locked: boolean;
@@ -348,6 +350,12 @@ const ReadyOrderSession = ({
         row.confirmed && row.productionPlanId !== null ? [row.productionPlanId] : [],
       ),
       operations: operationNames,
+      bottleneckCycleTimeSec:
+        operations.data === undefined
+          ? undefined
+          : bottleneckCycleTime(
+              operations.data.items.map((operation) => operation.standardCycleTimeSec),
+            ),
       bomId,
       routingId,
       locked,
@@ -784,6 +792,9 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                   label: `${entry.order.productionOrderNo} / ${entry.item}`,
                   unit: entry.unit,
                   decimalScale: entry.decimalScale,
+                  bottleneckCycleTimeSec: entry.bottleneckCycleTimeSec,
+                  cycleTimeUnavailable:
+                    Boolean(entry.routingId) && entry.bottleneckCycleTimeSec === undefined,
                   pending: toSchedule(entry),
                   availableQty: getRemaining(entry),
                   orderNo: entry.order.productionOrderNo,
@@ -907,6 +918,12 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
         {stage === 'plan' && target && (
           <div className="erp-wo-multi-plan-week">
             <PlanStep
+              cycleTimeFor={(row) => {
+                const owner = ownerOf(row.key);
+                return owner?.routingId === row.draft.routingId
+                  ? owner.bottleneckCycleTimeSec
+                  : undefined;
+              }}
               currentOrderIds={entries.map((entry) => entry.order.productionOrderId)}
               contextUnitLabelOf={(id) =>
                 contextUnits.entries.find((unit) => unit.value === String(id))?.label ?? ''

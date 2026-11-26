@@ -39,6 +39,10 @@ export const DistributionHelp = ({ onClose }: { onClose: () => void }) => (
       </section>
       <section aria-labelledby="distribution-help-modes">
         <h3 id="distribution-help-modes">두 가지 분배 방식</h3>
+        <p>
+          Routing의 모든 공정에 표준 C/T가 있으면, 자동 배분은 병목 공정과 교대 가동 시간으로 계산한
+          날짜별 최대 수량을 사용합니다. 잔량은 다음 근무일에 배정합니다.
+        </p>
         <div className="erp-wo-distribution-help-modes">
           <div>
             <h4>균등 배분</h4>

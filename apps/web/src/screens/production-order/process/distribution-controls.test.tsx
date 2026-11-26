@@ -67,6 +67,8 @@ describe('분배 조건과 미리보기 적용', () => {
       />,
     );
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
+    expect(screen.queryByRole('checkbox', { name: '분배 조건 1 선택' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '일괄 변경' })).not.toBeInTheDocument();
     expect(screen.getByLabelText('조건 1 분배 기간')).toHaveTextContent('2099-11-10');
     expect(screen.getByLabelText('조건 1 분배 기간')).toHaveTextContent('2099-11-16');
     expect(
@@ -97,7 +99,10 @@ describe('분배 조건과 미리보기 적용', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
     expect(screen.getAllByRole('group', { name: /^분배 조건 \d+$/ })).toHaveLength(1);
-    await user.click(screen.getByRole('row', { name: 'ERP W/O B / 품목 B 분배 조건' }));
+    const secondOrder = screen.getByRole('row', { name: 'ERP W/O B / 품목 B 분배 조건' });
+    secondOrder.focus();
+    await user.keyboard('{Enter}');
+    expect(secondOrder).toHaveAttribute('aria-current', 'true');
     expect(screen.queryByLabelText('조건 1 수량')).toBeNull();
     const quantity = screen.getByRole('textbox', { name: '조건 2 수량' });
     await user.clear(quantity);
@@ -133,7 +138,7 @@ describe('분배 조건과 미리보기 적용', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
     expect(screen.queryByRole('button', { name: '조건 6' })).toBeNull();
-    await user.click(screen.getByRole('button', { name: 'ERP W/O 6' }));
+    await user.click(screen.getByRole('row', { name: 'ERP W/O 6 분배 조건' }));
     expect(screen.getByRole('textbox', { name: '조건 6 수량' })).toHaveValue('3');
     await user.click(screen.getByRole('button', { name: '분배 미리보기' }));
     const table = screen.getByRole('table', { name: '날짜와 라인별 결과' });
@@ -272,8 +277,10 @@ describe('분배 조건과 미리보기 적용', () => {
       />,
     );
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
-    expect(screen.getByRole('heading', { name: /^선택 항목 일괄 입력/ })).toBeVisible();
+    expect(screen.getByRole('button', { name: '일괄 변경' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '선택 항목에 적용' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('checkbox', { name: '분배 조건 1 선택' }));
+    await user.click(screen.getByRole('button', { name: '일괄 변경' }));
     await user.click(screen.getByRole('button', { name: '공통 생산 라인 선택' }));
     await user.click(
       within(await screen.findByRole('dialog', { name: '생산 라인 선택' })).getByText('라인 1', {
@@ -366,14 +373,15 @@ it('공통 휴일 설정은 선택한 조건만 바꾸며 기간은 유지한다
     />,
   );
   await user.click(screen.getByRole('button', { name: '자동 분배' }));
-  expect(screen.getByRole('button', { name: '선택 항목에 적용' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: '일괄 변경' })).toBeDisabled();
   await user.click(screen.getByRole('checkbox', { name: '분배 조건 1 선택' }));
+  await user.click(screen.getByRole('button', { name: '일괄 변경' }));
   await user.click(screen.getByRole('combobox', { name: '공통 휴일 편성' }));
   await user.click(screen.getByRole('option', { name: /^포함$/ }));
   await user.click(screen.getByRole('button', { name: '선택 항목에 적용' }));
   expect(screen.getByRole('checkbox', { name: '분배 조건 1 휴일 포함' })).toBeChecked();
   expect(screen.getByRole('button', { name: '공통 분배 기간' })).toHaveTextContent('변경하지 않음');
-  await user.click(screen.getByRole('button', { name: 'ERP W/O B' }));
+  await user.click(screen.getByRole('row', { name: 'ERP W/O B 분배 조건' }));
   expect(screen.getByRole('checkbox', { name: '분배 조건 2 휴일 포함' })).not.toBeChecked();
 });
 
@@ -396,7 +404,7 @@ it('ERP W/O의 여러 조건을 같은 화면에서 편집하고 분배 수량�
   await user.type(screen.getByRole('textbox', { name: '조건 2 수량' }), '1');
   const row = screen.getByRole('row', { name: 'ERP W/O A / 품목 A 분배 조건' });
   expect(within(row).getAllByRole('cell')[3]).toHaveTextContent('3 EA');
-  await user.click(screen.getByRole('button', { name: 'ERP W/O B' }));
+  await user.click(screen.getByRole('row', { name: 'ERP W/O B 분배 조건' }));
   expect(screen.getByText('이 ERP W/O에 분배 조건이 없습니다.')).toBeVisible();
   expect(screen.getByRole('button', { name: '분배 조건 추가' })).toBeDisabled();
 });

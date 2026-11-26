@@ -21,6 +21,8 @@ export interface DistributionTarget {
   startDate?: string;
   lineId?: string;
   decimalScale?: number;
+  bottleneckCycleTimeSec?: number | null;
+  cycleTimeUnavailable?: boolean;
   lines: readonly PlanLine[];
 }
 export interface DistributionSegment {
@@ -51,6 +53,11 @@ export interface SegmentPreview {
   }[];
   warnings: string[];
 }
+export const bottleneckCycleTime = (times: readonly (number | null | undefined)[]) => {
+  if (!times.length || times.some((time) => time == null || !Number.isFinite(time) || time <= 0))
+    return null;
+  return Math.max(...times.map((time) => time!));
+};
 const SCALE = 1_000_000;
 const amount = (value: string | number): number => {
   const text =
@@ -127,7 +134,10 @@ export const previewSegments = (
   targets: readonly DistributionTarget[],
   segments: readonly DistributionSegment[],
   existing: readonly OwnedDraft[],
-  calendarBySegment?: ReadonlyMap<string, readonly { date: string; statusCode: string }[]>,
+  calendarBySegment?: ReadonlyMap<
+    string,
+    readonly { date: string; statusCode: string; capacityQty?: number }[]
+  >,
   minDate?: string,
 ): SegmentPreview => {
   const result: SegmentPreview = { drafts: [], orders: [], totals: [], warnings: [] };
@@ -151,6 +161,12 @@ export const previewSegments = (
       (!Number.isInteger(target.decimalScale) || target.decimalScale < 0 || target.decimalScale > 6)
     )
       throw new Error(`${target.label}: 단위 소수 자릿수를 확인하세요.`);
+    const calendar = calendarBySegment?.get(segment.id);
+    if (segment.mode === 'equal' && target.cycleTimeUnavailable)
+      throw new Error(`${target.label}: Routing의 표준 C/T를 조회한 뒤 다시 분배하세요.`);
+    const limited = segment.mode === 'equal' && target.bottleneckCycleTimeSec != null;
+    if (limited && !calendar?.length)
+      throw new Error(`${target.label}: 가동 시간 조회가 필요합니다.`);
     let pieces: ReturnType<typeof expandSegment>;
     try {
       pieces = expandSegment(
@@ -169,6 +185,37 @@ export const previewSegments = (
       throw new Error(
         `${target.label}: ${error instanceof Error ? error.message : '기간과 수량을 확인하세요.'}`,
       );
+    }
+    if (limited) {
+      let remaining = amount(segment.quantity);
+      const capacityByDate = new Map(calendar!.map((day) => [day.date, day.capacityQty]));
+      pieces = pieces.map(({ date }) => {
+        const capacity = capacityByDate.get(date);
+        if (capacity === undefined)
+          throw new Error(`${target.label} / ${date}: 최대 수량을 확인할 수 없습니다.`);
+        const key = JSON.stringify([target.id, date, segment.lineId]);
+        const alreadyPlanned = existing.reduce(
+          (sum, row) =>
+            row.owner === target.id && row.planDate === date && row.plannedLineId === segment.lineId
+              ? add(sum, amount(row.plannedQty))
+              : sum,
+          0,
+        );
+        const headroom = Math.max(
+          0,
+          Math.min(Number.MAX_SAFE_INTEGER, Math.round(capacity * SCALE)) -
+            alreadyPlanned -
+            (generated.get(key)?.quantity ?? 0),
+        );
+        const quantity = Math.min(remaining, headroom);
+        remaining -= quantity;
+        return { date, quantity: String(quantity / SCALE) };
+      });
+      if (remaining > 0) {
+        throw new Error(
+          `${target.label}: 기간 내 가동 시간이 부족해 ${remaining / SCALE} ${target.unit}를 배정할 수 없습니다. 분배 기간을 연장하세요.`,
+        );
+      }
     }
     if (
       target.decimalScale !== undefined &&

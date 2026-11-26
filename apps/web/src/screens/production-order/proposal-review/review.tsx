@@ -1,3 +1,4 @@
+import { durationLabel } from './duration-label';
 import { ProposalAuditHistory } from './audit-history';
 import { ProposalPlanningWorkspace } from './planning-workspace';
 import { Link } from 'react-router';
@@ -1126,6 +1127,7 @@ export const ProposalReview = ({
                                   </td>
                                   <td className="proposal-nowrap">
                                     {op.end || '미지정'}
+                                    <div>{durationLabel(op.expectedDurationSec)}</div>
                                     {plan.recalculationRequired && ' (변경 전 제안)'}
                                   </td>
                                 </tr>

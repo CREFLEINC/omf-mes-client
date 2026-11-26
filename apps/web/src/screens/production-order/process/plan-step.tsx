@@ -1,3 +1,5 @@
+import { CycleTimeSummary } from './cycle-time-summary';
+import { cycleTimeLabel, durationLabel } from '../proposal-review/duration-label';
 import { isPastPlanningDate, pastPlanningDateMessage } from './planning-date-policy';
 import { usePlanningDays, planningDayKey, PlanningDayNotice } from './planning-working-days';
 import { WeeklyPlanCard } from './weekly-plan-card';
@@ -46,6 +48,7 @@ export interface PlanOrderGroup {
   onAdd: () => void;
 }
 export interface PlanStepProps {
+  cycleTimeFor?: (row: ProductionPlanEditorStateRow) => number | null | undefined;
   pastConfirmedPlanIds?: readonly number[];
   planningTools?: ReactNode;
   currentOrderIds?: readonly number[];
@@ -87,6 +90,8 @@ export interface PlanStepProps {
   distributionStartDate?: string;
   distributionLines?: readonly PlanLine[];
   distributionDecimalScale?: number;
+  distributionCycleTimeSec?: number | null;
+  distributionCycleTimeUnavailable?: boolean;
   onDistributionDirtyChange?: (dirty: boolean) => void;
   onSplit?: (row: ProductionPlanEditorStateRow, parts: PlanSplitPart[]) => void;
   onChange: (key: string, field: ProductionPlanDraftField, value: string) => void;
@@ -104,6 +109,7 @@ const errorText = (errors: ProductionPlanDraftErrors, field: ProductionPlanDraft
 
 /** T-W-C: 조회·편집 보기만 바꾸며 저장·확정은 기존 편집 세션과 하단 바를 그대로 쓴다. */
 export const PlanStep = ({
+  cycleTimeFor,
   rows,
   pastConfirmedPlanIds = [],
   orderQty,
@@ -129,6 +135,8 @@ export const PlanStep = ({
   distributionStartDate,
   distributionLines,
   distributionDecimalScale,
+  distributionCycleTimeSec,
+  distributionCycleTimeUnavailable,
   onDistributionDirtyChange,
   onSplit,
   hideTotals = false,
@@ -366,6 +374,28 @@ export const PlanStep = ({
       align: 'end',
       render: (row) => `${formatQty(Number(row.draft.plannedQty) || 0)} ${unitOf(row)}`,
     },
+    ...(cycleTimeFor
+      ? [
+          {
+            key: 'standardCycleTime',
+            header: '표준 C/T',
+            render: (row: ProductionPlanEditorStateRow) => {
+              const cycle = cycleTimeFor(row);
+              return cycle === undefined ? '—' : cycleTimeLabel(cycle);
+            },
+          },
+          {
+            key: 'cycleTime',
+            header: '예상 소요시간',
+            render: (row: ProductionPlanEditorStateRow) => {
+              const cycle = cycleTimeFor(row);
+              return cycle === undefined
+                ? '—'
+                : durationLabel(cycle === null ? null : cycle * Number(row.draft.plannedQty));
+            },
+          },
+        ]
+      : []),
     {
       key: 'line',
       header: t.columns.line,
@@ -403,6 +433,9 @@ export const PlanStep = ({
       {!hideHeading && (
         <div className="erp-wo-plan-toolbar">
           <h2 className="section-title">{t.heading}</h2>
+          {distributionCycleTimeSec !== undefined && (
+            <CycleTimeSummary seconds={distributionCycleTimeSec} unit={uomLabel} />
+          )}
         </div>
       )}
       {!hideTotals && (
@@ -449,6 +482,8 @@ export const PlanStep = ({
                     label: distributionOrderLabel ?? '현재 ERP W/O',
                     unit: uomLabel,
                     decimalScale: distributionDecimalScale,
+                    bottleneckCycleTimeSec: distributionCycleTimeSec,
+                    cycleTimeUnavailable: distributionCycleTimeUnavailable,
                     pending: Math.max(0, remaining ?? orderQty - total),
                     lines: distributionLines ?? lines,
                     startDate: distributionStartDate,

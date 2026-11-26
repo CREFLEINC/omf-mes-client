@@ -148,3 +148,36 @@ describe('ERP W/O별 다중 구간 분배', () => {
     expect(result.warnings.join('')).toContain('합산');
   });
 });
+
+describe('표준 C/T 자동 분배 상한', () => {
+  const capped = [{ ...targets[0]!, bottleneckCycleTimeSec: 12 }];
+  const calendar = new Map([
+    [
+      '1',
+      [
+        { date: '2026-11-02', statusCode: 'WORKING', capacityQty: 6 },
+        { date: '2026-11-03', statusCode: 'HOLIDAY', capacityQty: 6 },
+        { date: '2026-11-04', statusCode: 'WORKING', capacityQty: 6 },
+      ],
+    ],
+  ]);
+
+  it('기존 편성량을 상한에서 빼고 휴일을 건너 다음 근무일로 이월한다', () => {
+    const result = previewSegments(
+      capped,
+      [segment()],
+      [{ owner: 'A', planDate: '2026-11-02', plannedLineId: '1', plannedQty: '2' }],
+      calendar,
+    );
+    expect(result.drafts.map((row) => [row.planDate, row.plannedQty])).toEqual([
+      ['2026-11-02', '4'],
+      ['2026-11-04', '6'],
+    ]);
+  });
+
+  it('기간 용량 초과 시 미배정량을 알려준다', () => {
+    expect(() => previewSegments(capped, [segment({ quantity: '13' })], [], calendar)).toThrow(
+      '1 EA를 배정할 수 없습니다',
+    );
+  });
+});
