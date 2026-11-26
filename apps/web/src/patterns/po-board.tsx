@@ -37,6 +37,9 @@ export const useFitToViewport = (remeasureKey?: string) => {
     /* 시험 환경(jsdom)에는 `ResizeObserver` 가 없다 — 없으면 창 크기 변화만 따른다. */
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
     if (aboveRef.current !== null) observer?.observe(aboveRef.current);
+    /* 탭 줄 — 상태 칩이 늦게 붙어 좁은 창에서 두 줄이 되면 표 구획이 내려간다. 그때도 다시 잰다(2026-11-26). */
+    const hubBar = split.closest('main')?.querySelector('.hub-bar');
+    if (hubBar instanceof HTMLElement) observer?.observe(hubBar);
     window.addEventListener('resize', measure);
 
     return () => {

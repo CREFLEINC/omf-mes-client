@@ -68,7 +68,15 @@ export const useSplitOrientation = (storageKey: string) => {
     listHeight === null ? {} : { '--stacked-list-height': `${String(listHeight)}px` }
   ) as CSSProperties;
 
-  return { orientation, change, listHeight, changeListHeight, style };
+  /*
+   * 창이 좁으면 고른 배치와 상관없이 위아래로 쌓인다(app.css). 화면이 그 사실을 알아야 상하 배치의 높이 조절 막대를
+   * 그린다 — 몰라서 좌우 막대(좁은 창에선 숨는다)만 남아 조절 손잡이가 빠졌었다(사용자 보고 2026-11-26).
+   * 저장한 값은 그대로 두어, 창을 다시 넓히면 고른 배치로 돌아간다.
+   */
+  const fits = useSideBySideFits();
+  const effective: SplitOrientation = fits ? orientation : 'column';
+
+  return { orientation: effective, change, listHeight, changeListHeight, style };
 };
 
 /** 상하 배치에서 목록이 이보다 낮아지지 않는다(머리줄 + 두어 줄). */

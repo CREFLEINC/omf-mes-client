@@ -76,7 +76,6 @@ export const zaloConnection = {
     name: '템플릿명',
     templateId: '템플릿 ID',
     kindWithCount: (label: string, count: number): string => `${label} ${String(count)}건`,
-    manage: '관리',
     kinds: { event: '이벤트', handover: '인계 작업' },
     empty: '조건에 맞는 템플릿이 없습니다.',
   },

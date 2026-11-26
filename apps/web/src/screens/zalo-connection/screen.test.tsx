@@ -152,7 +152,8 @@ describe('ZaloConnectionScreen', () => {
     /* 템플릿 상세 상자는 없다 — 「템플릿 ID」 안내는 목록 제목 옆 안내 라벨(사용자 지시 2026-11-25). */
     expect(screen.queryByRole('heading', { name: '템플릿 상세' })).toBeNull();
     expect(list.getByText(t.handover.templateIdHelp)).toBeInTheDocument();
-    for (const header of [t.fields.params, t.workspace.templateId, t.workspace.manage]) {
+    expect(list.queryByRole('columnheader', { name: '관리' })).toBeNull();
+    for (const header of [t.fields.params, t.workspace.templateId]) {
       expect(list.getByRole('columnheader', { name: header })).toBeInTheDocument();
     }
     expect(list.getByText('line, work_order, event_time, reason')).toBeInTheDocument();

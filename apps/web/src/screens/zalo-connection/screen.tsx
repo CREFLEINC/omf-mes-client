@@ -484,11 +484,30 @@ export const ZaloConnectionScreen = () => {
       render: (row) => row.name,
     },
     {
-      /* 템플릿 변수 — 길면 열 폭에서 줄임표(사용자 지시 2026-11-25). */
+      /*
+       * 템플릿 변수 — 길면 열 폭에서 줄임표(사용자 지시 2026-11-25). [변수명 복사]는 변수 바로 오른쪽(관리 열을 걷었다 ·
+       * 사용자 지시 2026-11-26). 복사하는 값은 종전 그대로 이 줄의 변수명이다.
+       */
       key: 'params',
       align: 'center',
       header: t.fields.params,
-      render: paramsOfRow,
+      width: '420px',
+      render: (row) => (
+        <span className="zalo-row-actions zalo-params-cell">
+          <span className="zalo-params-text">{paramsOfRow(row)}</span>
+          <Button
+            variant="outlined"
+            size="sm"
+            aria-label={
+              row.kind === 'event' ? t.actions.copyFor(row.name) : t.handover.copyFor(row.name)
+            }
+            leadingIcon={<Icon name="content_copy" size={16} aria-hidden />}
+            onClick={() => void copy(paramsOfRow(row))}
+          >
+            {t.actions.copy}
+          </Button>
+        </span>
+      ),
     },
     {
       key: 'templateId',
@@ -561,32 +580,10 @@ export const ZaloConnectionScreen = () => {
         );
       },
     },
-    {
-      /* 관리 — [변수명 복사]만. [수정]은 템플릿 ID 칸 오른쪽으로 옮겼다(사용자 지시 2026-11-26). */
-      key: 'manage',
-      align: 'center',
-      header: w.manage,
-      width: '160px',
-      render: (row) => (
-        <span className="zalo-row-actions">
-          <Button
-            variant="outlined"
-            size="sm"
-            aria-label={
-              row.kind === 'event' ? t.actions.copyFor(row.name) : t.handover.copyFor(row.name)
-            }
-            leadingIcon={<Icon name="content_copy" size={16} aria-hidden />}
-            onClick={() => void copy(paramsOfRow(row))}
-          >
-            {t.actions.copy}
-          </Button>
-        </span>
-      ),
-    },
   ];
   /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(단말 관리와 같다 · #358). */
   const orderedColumns = useColumnOrder('omf-mes:zalo-connection:columns:order', templateColumns);
-  const resizable = useColumnWidths('omf-mes:zalo-connection:columns:v2', orderedColumns);
+  const resizable = useColumnWidths('omf-mes:zalo-connection:columns:v3', orderedColumns);
   const fit = useFitColumns(resizable.columns);
 
   /** 고정 상자 — 연결 상태 · 연결 정보. 아래 오른쪽 [취소][저장]은 앱 ID · 앱 비밀 키 · 갱신 토큰 · 변수 값 길이 제한만 저장한다. */
