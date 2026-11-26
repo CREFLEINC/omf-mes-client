@@ -8,7 +8,7 @@ import type { Translated } from './translated';
  */
 export const plantWorkingDays: Translated<typeof ko.plantWorkingDays> = {
   description:
-    'Ngày xuất kho được xác định là ngày làm việc ngay trước ngày sản xuất, theo các ngày làm việc trong tuần của từng nhà máy. Không loại trừ riêng ngày lễ. Nhà máy chưa thiết lập áp dụng chuẩn làm việc 5 ngày/tuần.',
+    'Ngày xuất kho được xác định là ngày làm việc ngay trước ngày sản xuất, theo các ngày làm việc trong tuần của từng nhà máy.\nKhông loại trừ riêng ngày lễ.\nNhà máy chưa thiết lập áp dụng chuẩn làm việc 5 ngày/tuần.',
   tableLabel: 'Ngày làm việc theo nhà máy',
   columns: {
     plant: 'Nhà máy',
@@ -30,7 +30,6 @@ export const plantWorkingDays: Translated<typeof ko.plantWorkingDays> = {
   },
   exampleNote: {
     lead: (date: string, weekday: string): string => `Ngày sản xuất ví dụ ${date} (${weekday})`,
-    body: 'Ngày xuất kho là ngày làm việc ngay trước ngày sản xuất, theo ngày làm việc của từng nhà máy.',
   },
   tags: {
     changed: 'Đã sửa',
