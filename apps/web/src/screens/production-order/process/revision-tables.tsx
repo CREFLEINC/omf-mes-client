@@ -11,8 +11,8 @@ import {
   AvailabilityError,
   AvailabilityStatusCell,
   AvailableCell,
+  RequiredCell,
   useMaterialAvailability,
-  type AvailabilityLine,
   type AvailabilityRequest,
 } from './material-availability';
 import { useRoutingDetail, useRoutingOperations } from '../../routing/queries';
@@ -178,16 +178,11 @@ const Grid = ({
 };
 const quantityText = (value: number) =>
   value.toLocaleString(undefined, { maximumFractionDigits: 6 });
-/** 필요 수량 — 재고 단위가 다르면 바꾼 값을 함께 보인다(환산이 없으면 BOM 단위만). */
-const requiredText = (line: AvailabilityLine) =>
-  line.stockUomCode === line.bomUomCode || line.requiredStockQty === null
-    ? `${quantityText(line.requiredQty)} ${line.bomUomCode}`
-    : `${quantityText(line.requiredQty)} ${line.bomUomCode} (${quantityText(line.requiredStockQty)} ${line.stockUomCode})`;
 const mode = (value: boolean | undefined, yes = '사용', no = '미사용') =>
   value == null ? '미제공' : value ? yes : no;
 
 /**
- * `plantId`·`quantity` 를 주면 구성 자재마다 필요 수량·가용 수량·판정 칸을 더한다(omf-all-around#320).
+ * `plantId`·`quantity` 를 주면 구성 자재마다 필요 수량·가용 수량·재고 상태 칸을 더한다(omf-all-around#320).
  * 필요 수량은 `quantity`(만들 모품목 수량) 기준이고 부족해도 경고만 한다.
  */
 export const BomTable = ({
@@ -307,7 +302,7 @@ export const BomTable = ({
             '자재명',
             '소요량',
             '단위',
-            ...(withAvailability ? ['필요 수량', '가용 수량', '판정'] : []),
+            ...(withAvailability ? ['필요 수량', '가용 수량', '재고 상태'] : []),
             '로스율',
             '필수 여부',
             '관리 공정',
@@ -334,7 +329,6 @@ export const BomTable = ({
           {shown.map((row) => {
             const item = items.get(row.componentItemId);
             const request = requestOf(row);
-            const line = request === null ? undefined : availability.lineOf(request);
             return (
               <tr key={row.bomComponentId}>
                 <td className="fixed-code">
@@ -348,13 +342,7 @@ export const BomTable = ({
                 {withAvailability && (
                   <>
                     <td className="numeric">
-                      {request === null
-                        ? '—'
-                        : line
-                          ? requiredText(line)
-                          : availability.failedOf(request)
-                            ? '조회 실패'
-                            : '조회 중'}
+                      <RequiredCell availability={availability} request={request} />
                     </td>
                     <td className="numeric">
                       <AvailableCell availability={availability} request={request} />

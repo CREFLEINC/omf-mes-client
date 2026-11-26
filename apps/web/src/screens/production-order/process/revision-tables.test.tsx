@@ -129,14 +129,14 @@ describe('대량 BOM Routing 표', () => {
     expect(within(row).getByRole('cell', { name: 'Cong doan 11' })).toBeVisible();
     expect(within(row).getByRole('cell', { name: '20초' })).toBeVisible();
   });
-  it('공장·수량을 주면 필요 수량·가용 수량·판정 칸을 더하고 부족은 경고로만 보인다', async () => {
+  it('공장·수량을 주면 필요 수량·가용 수량·재고 상태 칸을 더하고 부족은 경고로만 보인다', async () => {
     renderWithProviders(<BomTable id={1} plantId={7} quantity={10} />, {
       fetch: availabilityFetch(false),
     });
     const table = await screen.findByRole('table', { name: 'BOM 구성' });
     expect(within(table).getByRole('columnheader', { name: '필요 수량' })).toBeVisible();
     expect(within(table).getByRole('columnheader', { name: '가용 수량' })).toBeVisible();
-    expect(within(table).getByRole('columnheader', { name: '판정' })).toBeVisible();
+    expect(within(table).getByRole('columnheader', { name: '재고 상태' })).toBeVisible();
     const first = (await within(table).findByRole('cell', { name: 'MAT-1' })).closest('tr')!;
     expect(await within(first).findByText('충분')).toBeVisible();
     expect(within(first).getByRole('cell', { name: '10 EA' })).toBeVisible();

@@ -41,6 +41,10 @@ export const PlanSummary = ({
                 iconOnly
                 kind="BOM"
                 value={String(plan.bomId ?? '')}
+                availabilityContext={{
+                  plantId: row.plantId ?? null,
+                  quantity: Number(plan.quantity) > 0 ? Number(plan.quantity) : null,
+                }}
                 content={
                   plan.bomId ? undefined : plan.bomComponents ? (
                     <AdjustableNativeTable

@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import { createPortal } from 'react-dom';
 import { useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertBanner, Button, Dialog, IconButton, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, Icon, IconButton, SkeletonText } from '@crefle/web-ui';
 import { useApiClient } from '../../../patterns/api-context';
 import { runRequest } from '../../../patterns/request';
 import { useProductionOrderItemNames } from '../item-lookups';
@@ -13,6 +13,20 @@ import {
   useRoutingOperationOptions,
   type LookupResult,
 } from '../../item-extended-attrs/lookups';
+import {
+  AvailabilityError,
+  AvailabilityStatusCell,
+  AvailableCell,
+  RequiredCell,
+  useMaterialAvailability,
+  type AvailabilityRequest,
+} from './material-availability';
+
+/** BOM 상세에 재고 칸을 보일 공장·만들 수량(omf-all-around#320). */
+export interface BomAvailabilityContext {
+  plantId?: number | null;
+  quantity?: number | null;
+}
 
 const flag = (value: boolean | undefined) => (value == null ? '미제공' : value ? '예' : '아니요');
 
@@ -36,7 +50,15 @@ const linkedName = (source: LookupResult, id: number | null | undefined) => {
 const statusLabel = (status: string) =>
   ({ CONFIRMED: '확정', DRAFT: '작성중', OBSOLETE: '폐기' })[status] ?? status;
 
-export const BomContents = ({ id, plain = false }: { id: number; plain?: boolean }) => {
+export const BomContents = ({
+  id,
+  plain = false,
+  availabilityContext,
+}: {
+  id: number;
+  plain?: boolean;
+  availabilityContext?: BomAvailabilityContext;
+}) => {
   const { client } = useApiClient();
   const header = useQuery({
     queryKey: ['plan-revision-detail', 'bom', id],
@@ -65,6 +87,24 @@ export const BomContents = ({ id, plain = false }: { id: number; plain?: boolean
   const unit = (id: number) =>
     uoms.entries.find((entry) => entry.value === String(id))?.label ??
     (uoms.isLoading ? '단위 조회 중' : '단위 확인 필요');
+  const plantId = availabilityContext?.plantId;
+  const quantity = availabilityContext?.quantity;
+  const withAvailability = !plain && plantId != null && quantity != null && quantity > 0;
+  const requestOf = (row: {
+    bomComponentId: number;
+    requiredQty: number;
+  }): AvailabilityRequest | null =>
+    plantId != null && quantity != null && quantity > 0 && row.requiredQty > 0
+      ? { plantId, bomComponentId: row.bomComponentId, quantity }
+      : null;
+  const availability = useMaterialAvailability(
+    withAvailability
+      ? (rows.data?.items ?? []).flatMap((row) => {
+          const request = requestOf(row);
+          return request === null ? [] : [request];
+        })
+      : [],
+  );
   if (header.isError || rows.isError)
     return (
       <AlertBanner
@@ -227,11 +267,28 @@ export const BomContents = ({ id, plain = false }: { id: number; plain?: boolean
         <p>등록된 구성 자재가 없습니다.</p>
       ) : (
         <div className="erp-wo-revision-table">
+          {withAvailability && (
+            <>
+              <p className="iqc-inspection-action-note" data-tone="info">
+                <Icon name="info" size={14} aria-hidden />
+                필요 수량은{' '}
+                {(quantity ?? 0).toLocaleString(undefined, { maximumFractionDigits: 6 })}{' '}
+                {unit(bom.baseUomId)} 기준이고, 가용 수량은 공장 자재창고와 생산 창고 재고
+                합계입니다.
+              </p>
+              <AvailabilityError availability={availability} />
+            </>
+          )}
           <table>
             <caption>ERP 수신 정보와 MES 적용 정보</caption>
             <thead>
               <tr>
-                {['ERP 수신 · 품목 연결', 'MES 환산 소요량', 'MES 추가 속성'].map((label) => (
+                {[
+                  'ERP 수신 · 품목 연결',
+                  'MES 환산 소요량',
+                  ...(withAvailability ? ['재고'] : []),
+                  'MES 추가 속성',
+                ].map((label) => (
                   <th key={label}>{label}</th>
                 ))}
               </tr>
@@ -258,6 +315,39 @@ export const BomContents = ({ id, plain = false }: { id: number; plain?: boolean
                         </p>
                         <p className="field-note">MES 표시 순서 {row.sequenceNo}</p>
                       </td>
+                      {withAvailability && (
+                        <td data-label="재고">
+                          <dl className="erp-wo-revision-properties">
+                            <div>
+                              <dt>필요 수량</dt>
+                              <dd>
+                                <RequiredCell
+                                  availability={availability}
+                                  request={requestOf(row)}
+                                />
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>가용 수량</dt>
+                              <dd>
+                                <AvailableCell
+                                  availability={availability}
+                                  request={requestOf(row)}
+                                />
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>재고 상태</dt>
+                              <dd>
+                                <AvailabilityStatusCell
+                                  availability={availability}
+                                  request={requestOf(row)}
+                                />
+                              </dd>
+                            </div>
+                          </dl>
+                        </td>
+                      )}
                       <td data-label="MES 추가 속성">
                         <Properties
                           values={[
@@ -497,6 +587,7 @@ export const RevisionDetailButton = ({
   itemId,
   iconOnly = false,
   content,
+  availabilityContext,
 }: {
   kind: 'BOM' | 'Routing';
   value: string;
@@ -504,6 +595,8 @@ export const RevisionDetailButton = ({
   itemId?: number;
   iconOnly?: boolean;
   content?: ReactNode;
+  /** BOM 상세에 구성 자재 재고(필요·가용 수량, 재고 상태)를 함께 보인다(omf-all-around#320). */
+  availabilityContext?: BomAvailabilityContext;
 }) => {
   const [open, setOpen] = useState(false);
   const id = Number(value);
@@ -562,7 +655,7 @@ export const RevisionDetailButton = ({
             <div className="erp-wo-revision-detail">
               {content ??
                 (kind === 'BOM' ? (
-                  <BomContents id={id} />
+                  <BomContents id={id} availabilityContext={availabilityContext} />
                 ) : (
                   <RoutingContents id={id} label={label} />
                 ))}

@@ -87,6 +87,25 @@ const STATUS: Record<AvailabilityLine['statusCode'], { text: string; chip: ChipS
 const quantityText = (value: number) =>
   value.toLocaleString(undefined, { maximumFractionDigits: 6 });
 
+/** 필요 수량 — 재고 단위가 다르면 바꾼 값을 함께 보인다(환산이 없으면 BOM 단위만). */
+export const requiredText = (line: AvailabilityLine) =>
+  line.stockUomCode === line.bomUomCode || line.requiredStockQty === null
+    ? `${quantityText(line.requiredQty)} ${line.bomUomCode}`
+    : `${quantityText(line.requiredQty)} ${line.bomUomCode} (${quantityText(line.requiredStockQty)} ${line.stockUomCode})`;
+
+export const RequiredCell = ({
+  availability,
+  request,
+}: {
+  availability: MaterialAvailability;
+  request: AvailabilityRequest | null;
+}) => {
+  if (request === null) return <>—</>;
+  const line = availability.lineOf(request);
+  if (line) return <>{requiredText(line)}</>;
+  return <>{availability.failedOf(request) ? '조회 실패' : '조회 중'}</>;
+};
+
 /** 가용 수량 칸 — 조회 실패를 0 으로 보이지 않는다. */
 export const AvailableCell = ({
   availability,
@@ -101,7 +120,7 @@ export const AvailableCell = ({
   return <>{availability.failedOf(request) ? '조회 실패' : '조회 중'}</>;
 };
 
-/** 판정 칸 — 부족은 경고 색. 비교 불가는 재고 단위 환산이 없을 때다. */
+/** 재고 상태 칸 — 부족은 경고 색. 비교 불가는 재고 단위 환산이 없을 때다. */
 export const AvailabilityStatusCell = ({
   availability,
   request,
