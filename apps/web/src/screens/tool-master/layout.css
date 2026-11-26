@@ -47,3 +47,23 @@
     grid-column: auto;
   }
 }
+
+/* 위 줄 사업부가 공장을 정하면 공장 칸이 없다 — 검색 · 유형 · 단추 세 칸을 한 줄로. */
+@container (width > 36rem) {
+  .filter-bar.tool-master-filter.is-no-plant {
+    grid-template-columns: minmax(14rem, 1.6fr) minmax(10rem, 1fr) auto;
+    grid-template-areas: 'search type actions';
+  }
+
+  .filter-bar.tool-master-filter.is-no-plant > :nth-child(2) {
+    grid-area: type;
+  }
+
+  .filter-bar.tool-master-filter.is-no-plant > .tool-master-search-actions {
+    grid-area: actions;
+  }
+
+  .filter-bar.tool-master-filter.is-no-plant > :nth-child(1) {
+    grid-area: search;
+  }
+}

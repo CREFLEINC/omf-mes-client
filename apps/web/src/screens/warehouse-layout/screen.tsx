@@ -4,6 +4,7 @@ import { MarkerOverlay, type OverlayMarker } from '@omf-mes/ui';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { useMasterDataPlant, useOnMasterDataPlantChange } from '../../patterns/master-data-plant';
 import { BoardFrame } from '../../patterns/board-frame';
 import { InfoTip } from '../../patterns/info-tip';
 import { locationMarkerLabel, locationOptionLabel } from '../../patterns/location-label';
@@ -85,8 +86,9 @@ export const WarehouseLayoutScreen = () => {
 
   /* 창고 조회 조건 — 창고·Location 과 같은 조건 상자(사용자 지시 2026-10-30). 화면을 떠나면 처음 값으로 돌아간다. */
   const [filters, setFilters] = useState<WarehouseFilters>(defaultWarehouseFilters);
+  const plant = useMasterDataPlant(filters.plantId);
   const filterOptions = useWarehouseFilterOptions(filters);
-  const warehouses = useWarehouseOptions(filters);
+  const warehouses = useWarehouseOptions({ ...filters, plantId: plant.plantId }, !plant.isChecking);
   /*
    * 고른 창고가 조건에 걸러져 빠져도 선택칸이 비지 않게 — 한 번 본 창고의 이름을 기억해 두고 선택지 끝에 남긴다.
    */
@@ -183,6 +185,13 @@ export const WarehouseLayoutScreen = () => {
     setFlash(null);
     setSelectedLocation(null);
   };
+
+  /* 사업부를 바꾸면 다른 공장의 창고 선택을 푼다 — 편집 창이 열린 동안은 바꾸지 않는다(명세 예외 6). */
+  useOnMasterDataPlantChange(plant, () => {
+    if (editing) return;
+    selectWarehouse('');
+    setFilters((previous) => ({ ...previous, plantId: '' }));
+  });
 
   /** 고른 위치 · 재고 머리의 이름 — 「코드 · 별칭」 또는 「코드 · 이름」(`locationOptionLabel`, #267). */
   const nameOf = (locationId: number): string => {
@@ -289,6 +298,7 @@ export const WarehouseLayoutScreen = () => {
                   appliedFilters={filters}
                   onApplyFilters={setFilters}
                   plantOptions={filterOptions.plantOptions}
+                  plant={plant}
                   warehouseTypeOptions={filterOptions.warehouseTypeOptions}
                   showSearch={false}
                   afterType={

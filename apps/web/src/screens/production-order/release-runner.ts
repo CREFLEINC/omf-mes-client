@@ -31,7 +31,6 @@ export type ReleaseUnsourcedShortage = NonNullable<
 
 /** 배포 400 의 출고 요청 기준정보 사유(계약 §2) — 화면이 문구와 바로가기를 고르는 차례. */
 export const RELEASE_BLOCK_CODES = [
-  'LINE_DEPARTMENT_MISSING',
   'PRODUCTION_WAREHOUSE_MISSING',
   'PRODUCTION_FLOOR_LOCATION_MISSING',
 ] as const;

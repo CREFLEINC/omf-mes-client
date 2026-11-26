@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import {
   createStubFetch,
   jsonResponse,
@@ -102,7 +103,12 @@ const routes = (options: Options): StubRoute[] => [
 ];
 
 const renderScreen = (options: Options = {}) =>
-  renderWithProviders(<ShotConversionScreen />, { fetch: createStubFetch(routes(options)) });
+  renderWithProviders(
+    <SessionProvider>
+      <ShotConversionScreen />
+    </SessionProvider>,
+    { session: null, fetch: createStubFetch(routes(options)) },
+  );
 
 const pane = (): HTMLElement => screen.getByRole('region', { name: t.ratioList.paneTitle });
 const dialog = () => within(screen.getByRole('dialog'));
@@ -393,7 +399,12 @@ describe('W-05-01 ③ — 끝낸 뒤 목록', () => {
       ...routes({}),
     ];
 
-    renderWithProviders(<ShotConversionScreen />, { fetch: createStubFetch(custom) });
+    renderWithProviders(
+      <SessionProvider>
+        <ShotConversionScreen />
+      </SessionProvider>,
+      { session: null, fetch: createStubFetch(custom) },
+    );
     await openEnd();
 
     await user.type(dialog().getByLabelText(te.dateLabel), '2026-06-30');

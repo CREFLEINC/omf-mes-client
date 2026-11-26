@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
   calendarDefault,
@@ -174,7 +175,12 @@ const renderScreen = (options: RenderOptions = {}) => {
 
   const user = userEvent.setup();
   /* 달을 인자로 고정한다 — 오늘이 언제든 시험이 같은 달을 연다. */
-  const view = renderWithProviders(<WorkCalendarScreen initialMonth={TEST_MONTH} />, { fetch });
+  const view = renderWithProviders(
+    <SessionProvider>
+      <WorkCalendarScreen initialMonth={TEST_MONTH} />
+    </SessionProvider>,
+    { session: null, fetch },
+  );
 
   return {
     ...view,

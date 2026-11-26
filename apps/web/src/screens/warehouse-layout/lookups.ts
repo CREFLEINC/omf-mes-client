@@ -42,10 +42,11 @@ export const lookupKeys = {
 };
 
 /** 조건 상자(창고·Location 과 같은 것)로 거른 창고 — 그 가운데 하나를 고른다. */
-export const useWarehouseOptions = (filters: WarehouseFilters): LookupResult => {
+export const useWarehouseOptions = (filters: WarehouseFilters, enabled = true): LookupResult => {
   const { client } = useApiClient();
   const query = useQuery({
     queryKey: lookupKeys.warehouses(filters),
+    enabled,
     queryFn: () =>
       runRequest(() =>
         client.GET('/mdm/warehouses', { params: { query: warehouseListQuery(filters) } }),

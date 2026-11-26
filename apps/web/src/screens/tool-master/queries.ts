@@ -40,11 +40,15 @@ const plantIdQuery = (value: string): { plantId: number } | Record<string, never
  *
  * ⛔ **거짓인 참·거짓 조건을 싣지 않는다** — 끄면 조건 자체를 빼야 서버 기본값과 다투지 않는다.
  */
-export const useToolList = (filters: ToolFilters): UseQueryResult<ToolListResponse> => {
+export const useToolList = (
+  filters: ToolFilters,
+  enabled = true,
+): UseQueryResult<ToolListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey: toolKeys.list(filters),
+    enabled,
     queryFn: () =>
       runRequest(() =>
         client.GET('/mdm/molds', {

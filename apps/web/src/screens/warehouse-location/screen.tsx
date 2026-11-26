@@ -13,6 +13,7 @@ import {
   parentLocationIds,
 } from '../../patterns/location-tree';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import { useMasterDataPlant, useOnMasterDataPlantChange } from '../../patterns/master-data-plant';
 import { ApiRequestError, runRequest } from '../../patterns/request';
 import { isPutawayStaging, isSystemLocation } from '../../patterns/system-location';
 import { visibleWarehouses, WarehouseFilterBar } from '../../patterns/warehouse-filter-bar';
@@ -144,20 +145,21 @@ export const WarehouseLocationScreen = () => {
   const { client, etags, baseUrl } = useApiClient();
   const canWriteLocations = useCanWriteLocations();
 
+  const plant = useMasterDataPlant(searchParams.get('plant') ?? '');
   const filters = useMemo<WarehouseFilters>(
     () => ({
       q: searchParams.get('q') ?? '',
-      plantId: searchParams.get('plant') ?? '',
+      plantId: plant.picked,
       warehouseTypeCode: searchParams.get('type') ?? '',
       includeInactive: searchParams.get('inactive') === '1',
     }),
-    [searchParams],
+    [searchParams, plant.picked],
   );
 
   const isCreateMode = searchParams.get('mode') === 'create';
   const selectedWarehouseId = isCreateMode ? null : Number(searchParams.get('wh') ?? '') || null;
 
-  const warehouseList = useWarehouseList(filters);
+  const warehouseList = useWarehouseList({ ...filters, plantId: plant.plantId }, !plant.isChecking);
   const warehouses = useMemo(
     () => visibleWarehouses(warehouseList.data?.items ?? [], filters),
     [warehouseList.data, filters],
@@ -585,6 +587,11 @@ export const WarehouseLocationScreen = () => {
     }
     setSearchParams(next);
   };
+
+  /* 사업부를 바꾸면 다른 공장의 창고 선택을 푼다 — 고치던 값이 있으면 그대로 둔다. */
+  useOnMasterDataPlantChange(plant, () => {
+    if (!isDirty) updateParams({ wh: null, plant: null });
+  });
 
   // 조회 조건은 화면 상태가 아니라 URL이 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다.
   const handleApplyFilters = (next: WarehouseFilters) => {
@@ -1376,6 +1383,7 @@ export const WarehouseLocationScreen = () => {
                   filters.warehouseTypeCode,
                 )}
                 plantOptions={selectableOptions(lookups.sources.plants, filters.plantId)}
+                plant={plant}
               />
               <WarehouseListPane
                 items={warehouses}

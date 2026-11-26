@@ -6,6 +6,7 @@ import { useSearchParams } from 'react-router';
 
 import './layout.css';
 
+import { useMasterDataPlant, useOnMasterDataPlantChange } from '../../patterns/master-data-plant';
 import { useApiClient } from '../../patterns/api-context';
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
@@ -182,13 +183,14 @@ export const EquipmentMasterScreen = () => {
   const toast = useToast();
   const { client } = useApiClient();
 
+  const plant = useMasterDataPlant(searchParams.get('plant') ?? '');
   const filters = useMemo<GroupFilters>(
     () => ({
       q: searchParams.get('q') ?? '',
-      plantId: searchParams.get('plant') ?? '',
+      plantId: plant.picked,
       includeInactive: searchParams.get('inactive') === '1',
     }),
-    [searchParams],
+    [searchParams, plant.picked],
   );
 
   /* 화면 수준 뷰 — 기본은 자산이라 주소에 남기지 않는다. */
@@ -211,7 +213,7 @@ export const EquipmentMasterScreen = () => {
   const isCreateMode = searchParams.get('mode') === 'create';
   const selectedGroupId = isCreateMode ? null : Number(searchParams.get('grp') ?? '') || null;
 
-  const groupList = useGroupList(filters);
+  const groupList = useGroupList({ ...filters, plantId: plant.plantId }, !plant.isChecking);
   const groupItems = useMemo(() => groupList.data?.items ?? [], [groupList.data]);
   const lookups = useLookupOptions();
   const departments = useDepartmentOptions();
@@ -499,7 +501,8 @@ export const EquipmentMasterScreen = () => {
 
   const inspectionItemList = useInspectionItemList(
     inspectionItemFilters,
-    activeView === 'inspection-items',
+    activeView === 'inspection-items' && !plant.isChecking,
+    plant.plantId,
   );
   const editingItemId =
     inspectionItemDialog?.mode === 'edit' ? inspectionItemDialog.equipmentInspectionItemId : null;
@@ -574,7 +577,7 @@ export const EquipmentMasterScreen = () => {
   const openInspectionItemCreate = (): void => {
     resetIfIdle(inspectionItemWrite);
     setInspectionItemErrors({});
-    setInspectionItemValues(emptyInspectionItemValues(filters.plantId));
+    setInspectionItemValues(emptyInspectionItemValues(plant.plantId));
     setInspectionItemDialog({ mode: 'create' });
   };
 
@@ -1038,6 +1041,11 @@ export const EquipmentMasterScreen = () => {
     navigateWithDraftGuard({ mode: 'create', grp: null, tab: null });
   };
 
+  /* 사업부를 바꾸면 다른 공장의 그룹 선택을 푼다 — 고치던 값이 있으면 그대로 둔다. */
+  useOnMasterDataPlantChange(plant, () => {
+    if (!isDirty) updateParams({ grp: null, plant: null });
+  });
+
   // 조회 조건은 화면 상태가 아니라 URL이 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다.
   const handleApplyFilters = (next: GroupFilters) => {
     updateParams({
@@ -1334,6 +1342,7 @@ export const EquipmentMasterScreen = () => {
     appliedFilters: filters,
     onApplyFilters: handleApplyFilters,
     plantOptions: selectableOptions(lookups.sources.plants, filters.plantId),
+    plant,
     plants: lookups.sources.plants,
     expandedIds,
     onToggleExpand: handleToggleExpand,

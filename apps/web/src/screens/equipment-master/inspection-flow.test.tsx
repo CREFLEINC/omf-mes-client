@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import {
   createStubFetch,
   jsonResponse,
@@ -158,10 +159,12 @@ const routes = (options: Options): StubRoute[] => [
 ];
 
 const renderAt = (options: Options = {}) =>
-  renderWithProviders(<EquipmentMasterScreen />, {
-    route: '/?grp=101&tab=inspection',
-    fetch: createStubFetch(routes(options)),
-  });
+  renderWithProviders(
+    <SessionProvider>
+      <EquipmentMasterScreen />
+    </SessionProvider>,
+    { session: null, route: '/?grp=101&tab=inspection', fetch: createStubFetch(routes(options)) },
+  );
 
 const pane = async (): Promise<HTMLElement> => screen.findByRole('region', { name: ti.paneTitle });
 const dialog = (): HTMLElement => screen.getByRole('dialog');
@@ -432,10 +435,12 @@ describe('W-05-12 점검 항목 — 부여를 고친다', () => {
  */
 describe('W-05-12 점검 항목 — 설비의 부여', () => {
   const renderEquipmentTab = (options: Options = {}) =>
-    renderWithProviders(<EquipmentMasterScreen />, {
-      route: '/?grp=101&tab=equipment',
-      fetch: createStubFetch(routes(options)),
-    });
+    renderWithProviders(
+      <SessionProvider>
+        <EquipmentMasterScreen />
+      </SessionProvider>,
+      { session: null, route: '/?grp=101&tab=equipment', fetch: createStubFetch(routes(options)) },
+    );
 
   const openEquipmentDialog = async (
     user: ReturnType<typeof userEvent.setup>,

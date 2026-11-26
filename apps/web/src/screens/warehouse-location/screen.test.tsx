@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { useNavigationType } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import {
   createStubFetch,
   jsonResponse,
@@ -135,7 +136,12 @@ const renderScreen = (
   search = '',
 ): { requests: RecordedRequest[]; user: ReturnType<typeof userEvent.setup> } => {
   const { fetch, requests } = createRecordingFetch(routes);
-  renderWithProviders(<WarehouseLocationScreen />, { fetch, route: `${ROUTE}${search}` });
+  renderWithProviders(
+    <SessionProvider>
+      <WarehouseLocationScreen />
+    </SessionProvider>,
+    { session: null, fetch, route: `${ROUTE}${search}` },
+  );
 
   return { requests, user: userEvent.setup() };
 };
@@ -2448,7 +2454,12 @@ describe('WarehouseLocationScreen — 서버에 닿지 못할 때', () => {
   });
 
   it('연결이 거부되면 좌측이 스켈레톤에 머물지 않고 오류 배너로 바뀐다', async () => {
-    renderWithProviders(<WarehouseLocationScreen />, { fetch: refusingFetch, route: ROUTE });
+    renderWithProviders(
+      <SessionProvider>
+        <WarehouseLocationScreen />
+      </SessionProvider>,
+      { session: null, fetch: refusingFetch, route: ROUTE },
+    );
 
     expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
     expect(
@@ -2467,7 +2478,12 @@ describe('WarehouseLocationScreen — 서버에 닿지 못할 때', () => {
   it('브라우저가 오프라인으로 보고해도 조회 실패가 오류로 드러난다', async () => {
     onlineManager.setOnline(false);
 
-    renderWithProviders(<WarehouseLocationScreen />, { fetch: refusingFetch, route: ROUTE });
+    renderWithProviders(
+      <SessionProvider>
+        <WarehouseLocationScreen />
+      </SessionProvider>,
+      { session: null, fetch: refusingFetch, route: ROUTE },
+    );
 
     expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
     expect(

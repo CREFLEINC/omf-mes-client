@@ -77,11 +77,13 @@ export const plantIdQuery = (value: string): { plantId: number } | Record<string
 /** 왼쪽 설비 목록. 매핑을 매다는 대상이라 조건은 검색어와 공장 둘뿐이다. */
 export const useEquipmentList = (
   filters: EquipmentFilters,
+  enabled = true,
 ): UseQueryResult<EquipmentListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey: equipmentKeys.list(filters),
+    enabled,
     queryFn: () =>
       runRequest(() =>
         client.GET('/mdm/equipments', {

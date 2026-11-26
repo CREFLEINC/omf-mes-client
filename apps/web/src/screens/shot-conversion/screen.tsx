@@ -2,6 +2,7 @@ import { AlertBanner, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { useMasterDataPlant } from '../../patterns/master-data-plant';
 import { useApiClient } from '../../patterns/api-context';
 import { type LookupSource, selectableLookupOptions } from '../../patterns/lookup-display';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
@@ -115,6 +116,7 @@ export const ShotConversionScreen = () => {
   const { client } = useApiClient();
   const toast = useToast();
 
+  const plant = useMasterDataPlant();
   const ratios = useRatioPolicies(filters);
   const enabledPolicies = useEnabledPolicies();
   const tools = useToolLookup();
@@ -133,7 +135,18 @@ export const ShotConversionScreen = () => {
   const editingId = dialog?.mode === 'edit' ? dialog.operationPolicyId : null;
   const editingDetail = useOperationPolicy(editingId);
 
-  const rows = ratios.data?.items ?? NO_POLICIES;
+  /* 공장을 정하지 않은 정책은 공통이라 남긴다. 서버의 공장 조건은 공통을 빼므로 받은 목록에서 거른다. */
+  const received = ratios.data?.items ?? NO_POLICIES;
+  const rows = plant.isChecking
+    ? NO_POLICIES
+    : received.filter(
+        (policy) =>
+          plant.plantIds === null ||
+          (policy.plantId ?? null) === null ||
+          plant.plantIds.has(policy.plantId!),
+      );
+  const hiddenCount = received.length - rows.length;
+  const total = ratios.data === undefined ? null : ratios.data.page.total - hiddenCount;
 
   const lookups: ScopeLookups = {
     itemId: items,
@@ -483,17 +496,17 @@ export const ShotConversionScreen = () => {
         list={{
           label: t.ratioList.paneTitle,
           title: t.ratioList.paneTitle,
-          count: ratios.data?.page.total,
+          count: total ?? undefined,
           className: 'shot-conversion-pane',
           content: (
             <RatioListPane
               items={rows}
-              isLoading={ratios.isPending}
+              isLoading={ratios.isPending || plant.isChecking}
               /*
                * ⛔ **여기서 잘림을 판정하지 않는다** — 표가 그 일을 이미 한다(`total > items.length`).
                * 두 곳에서 판정하면 한쪽을 고쳐도 다른 쪽이 덮어 주어 고장이 드러나지 않는다.
                */
-              total={ratios.data?.page.total ?? null}
+              total={total}
               appliedFilters={filters}
               onApplyFilters={setFilters}
               lookups={lookups}
