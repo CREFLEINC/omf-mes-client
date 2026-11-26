@@ -530,7 +530,7 @@ describe('ZaloConnectionScreen', () => {
   });
 
   /* 연결 오류는 안내 줄 하나에 한글 요약 + 재등록 안내, 코드 · 원문은 「오류 상세」 안(사용자 지시 2026-11-24). */
-  it('재등록 필요면 제목 옆 「연결 오류」 · 「발송 꺼짐」 칩과 오류 안내 한 줄, 오류 상세를 보인다', async () => {
+  it('재등록 필요면 제목 옆 「연결 오류」 · 「발송 OFF」 칩과 오류 안내 한 줄, 오류 상세를 보인다', async () => {
     setup({
       data: connection({
         status: 'REAUTH_REQUIRED',
@@ -557,7 +557,7 @@ describe('ZaloConnectionScreen', () => {
     expect(screen.getByText('갱신 토큰이 무효입니다')).toBeInTheDocument();
   });
 
-  it('발송만 꺼져 있으면 「발송 꺼짐」 칩만 보인다', async () => {
+  it('발송만 꺼져 있으면 「발송 OFF」 칩만 보인다', async () => {
     setup({ data: connection({ deliveryEnabled: false }) });
 
     const chips = within(await screen.findByRole('group', { name: t.panes.status }));

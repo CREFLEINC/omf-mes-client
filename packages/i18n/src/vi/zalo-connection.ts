@@ -10,7 +10,7 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
   },
   chips: {
     connectionError: 'Lỗi kết nối',
-    deliveryOff: 'Đã tắt gửi',
+    deliveryOff: 'Gửi OFF',
   },
   fields: {
     appId: 'ID ứng dụng',

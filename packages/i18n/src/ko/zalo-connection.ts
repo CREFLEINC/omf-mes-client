@@ -5,7 +5,7 @@ export const zaloConnection = {
   /** 제목 옆 상태 칩 — 해당할 때만. 연결 오류(재등록 필요 · 마지막 오류)는 경고색, 발송 꺼짐은 무채색. */
   chips: {
     connectionError: '연결 오류',
-    deliveryOff: '발송 꺼짐',
+    deliveryOff: '발송 OFF',
   },
   fields: {
     appId: '앱 ID',

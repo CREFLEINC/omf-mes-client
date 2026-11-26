@@ -349,7 +349,14 @@ export const ZaloConnectionScreen = () => {
       return fieldRow(
         label,
         <div className="zalo-secret">
-          <span>{isSet ? shown : t.values.notRegistered}</span>
+          {/* 미등록은 비밀값 칸과 같은 무채색 라벨(사용자 지시 2026-11-26). */}
+          {isSet ? (
+            <span>{shown}</span>
+          ) : (
+            <Chip size="sm" status="idle">
+              {t.values.notRegistered}
+            </Chip>
+          )}
           <Button
             variant="outlined"
             size="sm"
@@ -487,11 +494,17 @@ export const ZaloConnectionScreen = () => {
       key: 'templateId',
       align: 'center',
       header: w.templateId,
-      width: '200px',
+      width: '360px',
       render: (row) => {
-        /* [수정]으로 연 줄은 입력 칸 — 오류는 칸 테두리 · 문구로 보인다. */
+        /*
+         * [수정]은 템플릿 ID 바로 오른쪽(사용자 지시 2026-11-26). 누르면 그 자리가 입력 칸이 되고 옆 단추는 [취소] · [저장].
+         * 오류는 칸 테두리 · 문구로 보인다. 저장은 그 줄의 ID 만 싣는다(종전 그대로).
+         */
+        const section = sectionOf(row);
         if (editingRows.has(row.key)) {
+          const dirty = isDirty(section);
           return (
+            <span className="zalo-row-actions zalo-template-id-cell">
             <TextField
               aria-label={t.fields.templateIdFor(row.name)}
               aria-describedby={TEMPLATE_ID_HELP}
@@ -507,27 +520,6 @@ export const ZaloConnectionScreen = () => {
               }}
               error={templateErrorOf(row)}
             />
-          );
-        }
-        const id = templateIdOf(row).trim();
-        return id === '' ? t.values.none : id;
-      },
-    },
-    {
-      /*
-       * 관리 — [변수명 복사] · [수정](템플릿 상세 상자를 걷고 목록 줄에서 바로, 사용자 지시 2026-11-25).
-       * [수정]을 누르면 그 줄의 템플릿 ID 가 입력 칸이 되고 단추는 [취소] · [저장]으로 바뀐다. 저장은 그 줄의 ID 만 싣는다.
-       */
-      key: 'manage',
-      align: 'center',
-      header: w.manage,
-      width: '220px',
-      render: (row) => {
-        const section = sectionOf(row);
-        if (editingRows.has(row.key)) {
-          const dirty = isDirty(section);
-          return (
-            <span className="zalo-row-actions">
               <Button
                 variant="outlined"
                 size="sm"
@@ -552,20 +544,10 @@ export const ZaloConnectionScreen = () => {
             </span>
           );
         }
-        const params = paramsOfRow(row);
+        const id = templateIdOf(row).trim();
         return (
-          <span className="zalo-row-actions">
-            <Button
-              variant="outlined"
-              size="sm"
-              aria-label={
-                row.kind === 'event' ? t.actions.copyFor(row.name) : t.handover.copyFor(row.name)
-              }
-              leadingIcon={<Icon name="content_copy" size={16} aria-hidden />}
-              onClick={() => void copy(params)}
-            >
-              {t.actions.copy}
-            </Button>
+          <span className="zalo-row-actions zalo-template-id-cell">
+            <span>{id === '' ? t.values.none : id}</span>
             <Button
               variant="outlined"
               size="sm"
@@ -579,10 +561,32 @@ export const ZaloConnectionScreen = () => {
         );
       },
     },
+    {
+      /* 관리 — [변수명 복사]만. [수정]은 템플릿 ID 칸 오른쪽으로 옮겼다(사용자 지시 2026-11-26). */
+      key: 'manage',
+      align: 'center',
+      header: w.manage,
+      width: '160px',
+      render: (row) => (
+        <span className="zalo-row-actions">
+          <Button
+            variant="outlined"
+            size="sm"
+            aria-label={
+              row.kind === 'event' ? t.actions.copyFor(row.name) : t.handover.copyFor(row.name)
+            }
+            leadingIcon={<Icon name="content_copy" size={16} aria-hidden />}
+            onClick={() => void copy(paramsOfRow(row))}
+          >
+            {t.actions.copy}
+          </Button>
+        </span>
+      ),
+    },
   ];
   /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(단말 관리와 같다 · #358). */
   const orderedColumns = useColumnOrder('omf-mes:zalo-connection:columns:order', templateColumns);
-  const resizable = useColumnWidths('omf-mes:zalo-connection:columns', orderedColumns);
+  const resizable = useColumnWidths('omf-mes:zalo-connection:columns:v2', orderedColumns);
   const fit = useFitColumns(resizable.columns);
 
   /** 고정 상자 — 연결 상태 · 연결 정보. 아래 오른쪽 [취소][저장]은 앱 ID · 앱 비밀 키 · 갱신 토큰 · 변수 값 길이 제한만 저장한다. */
@@ -607,7 +611,7 @@ export const ZaloConnectionScreen = () => {
 
     return (
       <>
-        {/* 제목 옆 상태 칩 — 해당할 때만 「연결 오류」(경고색) · 「발송 꺼짐」(무채색). */}
+        {/* 제목 옆 상태 칩 — 해당할 때만 「연결 오류」(경고색) · 「발송 OFF」(무채색). */}
         <div className="zalo-connection-head">
           <h2 className="pane-title">{t.panes.connection}</h2>
           {(hasConnectionError || !data.deliveryEnabled) && (

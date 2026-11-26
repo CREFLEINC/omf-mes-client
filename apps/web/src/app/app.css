@@ -41613,6 +41613,21 @@ body:has(
   white-space: nowrap;
 }
 
+/* 템플릿 ID 칸 — ID · [수정] 한 줄. 연 줄은 입력 칸이 남는 폭을 받고 [취소] · [저장]이 옆에(사용자 지시 2026-11-26). */
+.zalo-template-id-cell {
+  display: flex;
+  align-items: center;
+}
+
+.zalo-template-id-cell > :not(button) {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.zalo-template-id-cell:has(input) > :not(button) {
+  flex: 1 1 auto;
+}
+
 .zalo-template-table td .text-field,
 .zalo-template-table td input {
   width: 100%;
@@ -42237,6 +42252,19 @@ body:has(
 /* 갱신 토큰이 미등록이면(토큰 일시가 없으면) 네 칸을 같은 폭으로 — 빈 칸만 넓지 않게(사용자 지시 2026-11-25). */
 .zalo-connection-box > .zalo-form:not(:has(.zalo-token-times)) {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* 템플릿 목록 — 줄을 눌러 여는 상세가 없다. 누르는 줄처럼 보이지 않게(사용자 지시 2026-11-26). */
+.zalo-template-table tbody tr {
+  cursor: default;
+}
+
+.zalo-template-table tbody tr:nth-child(n):hover td {
+  background: transparent;
+}
+
+.zalo-template-table tbody tr[data-parity='even']:nth-child(n):hover td {
+  background: var(--surface-container-low);
 }
 
 /* 템플릿 목록 — 표와 쪽 넘김 사이 간격(사용자 지시 2026-11-25). */
