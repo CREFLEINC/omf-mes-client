@@ -75,7 +75,6 @@ export const alarmRecipientSettings = {
     /** 표 이름 — 보이지 않고 읽기 도구에만 쓴다. */
     caption: '수신자 후보',
     /** 상한이 있는 화면(W-CO-14)만 — 지금 고른 사람까지 뺀 남은 자리. */
-    addable: (count: number): string => `최대 ${String(count)}명 추가 가능`,
     /** 후보가 받는 상한(5,000명)을 넘어 끝까지 받지 못했다. */
     truncated: '후보가 많아 일부만 표시됩니다. 이름이나 로그인 아이디로 검색하세요.',
   },

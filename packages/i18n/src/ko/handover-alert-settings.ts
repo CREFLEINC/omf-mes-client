@@ -17,7 +17,6 @@ export const handoverAlertSettings = {
     enabled: '알림 사용',
     zalo: 'Zalo 발송',
     recipients: (count: number): string => `수신자 ${String(count)}명`,
-    recipientMax: (max: number): string => `최대 ${String(max)}명`,
   },
   columns: {
     type: '작업명',

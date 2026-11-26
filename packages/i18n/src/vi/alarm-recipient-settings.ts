@@ -77,7 +77,6 @@ export const alarmRecipientSettings: Translated<typeof ko.alarmRecipientSettings
     searchLabel: 'Tìm người nhận',
     searchPlaceholder: 'Nhập tên hoặc tên đăng nhập',
     caption: 'Ứng viên người nhận',
-    addable: (count: number): string => `Có thể thêm tối đa ${String(count)} người`,
     truncated:
       'Có quá nhiều ứng viên nên chỉ hiển thị một phần. Hãy tìm theo tên hoặc tên đăng nhập.',
   },

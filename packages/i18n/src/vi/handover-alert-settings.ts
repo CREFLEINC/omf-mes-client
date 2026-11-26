@@ -20,7 +20,6 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
     enabled: 'Dùng thông báo',
     zalo: 'Gửi Zalo',
     recipients: (count: number): string => `Người nhận ${String(count)} người`,
-    recipientMax: (max: number): string => `Tối đa ${String(max)} người`,
   },
   columns: {
     type: 'Công việc',

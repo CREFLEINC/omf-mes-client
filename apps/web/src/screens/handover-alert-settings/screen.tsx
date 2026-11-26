@@ -381,6 +381,16 @@ export const HandoverAlertSettingsScreen = () => {
                   {t.values.notConnected}
                 </Chip>
               )}
+              {/* Zalo 미연결 — [Zalo 연결 설정] 단추는 미연결 표시 바로 오른쪽(사용자 지시 2026-11-26). */}
+              {zaloNotActive && canOpenConnection && (
+                <Button
+                  variant="outlined"
+                  size="sm"
+                  onClick={() => void navigate(ZALO_CONNECTION_PATH)}
+                >
+                  {t.actions.openConnection}
+                </Button>
+              )}
             </span>
             <Switch
               id={zaloId}
@@ -389,18 +399,6 @@ export const HandoverAlertSettingsScreen = () => {
               onChange={(event) => change({ ...draft, zaloEnabled: event.target.checked })}
             />
           </div>
-          {/* Zalo 미연결 — [Zalo 연결 설정] 단추만(안내 문구는 걷었다 · 사용자 지시 2026-11-25). */}
-          {zaloNotActive && canOpenConnection && (
-            <div className="notify-zalo-connect">
-              <Button
-                variant="outlined"
-                size="sm"
-                onClick={() => void navigate(ZALO_CONNECTION_PATH)}
-              >
-                {t.actions.openConnection}
-              </Button>
-            </div>
-          )}
         </div>
 
         <div className="alarm-recipients">
@@ -408,7 +406,6 @@ export const HandoverAlertSettingsScreen = () => {
             <h3>{t.fields.recipients(draft.recipients.length)}</h3>
             {/* 전화번호 없는 수신자 안내는 건수 옆 ⓘ 로(사용자 지시 2026-11-25). */}
             {missingPhones > 0 && <InfoTip text={t.state.noPhoneNotice(missingPhones)} />}
-            <span className="notify-recipient-max">{t.fields.recipientMax(MAX_RECIPIENTS)}</span>
             <Button
               variant="outlined"
               size="sm"

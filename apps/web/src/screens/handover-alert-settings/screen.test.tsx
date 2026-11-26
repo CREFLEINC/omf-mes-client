@@ -19,7 +19,6 @@ type HandoverAlertSetting = components['schemas']['HandoverAlertSetting'];
 
 const t = messages.handoverAlertSettings;
 const leave = messages.common.unsavedLeave;
-const picker = messages.alarmRecipientSettings.picker;
 
 /**
  * 인계 종류 10종 — 서버가 주는 차례를 일부러 흔든다. 화면은 업무 흐름 순서로 세워야 한다
@@ -234,7 +233,7 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     const pane = settingPane('IQC 수입검사');
     expect(await pane.findByRole('switch', { name: t.fields.enabled })).not.toBeChecked();
     expect(pane.getByText(t.fields.recipients(0))).toBeInTheDocument();
-    expect(pane.getByText(t.fields.recipientMax(5))).toBeInTheDocument();
+    expect(pane.queryByText('최대 5명')).toBeNull();
   });
 
   it('요금 · 일일 한도 안내는 Zalo 발송 옆 ⓘ 에, 「언제」·「처리」 안내는 제목 아래에 보인다', async () => {
@@ -266,7 +265,7 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     expect(screen.queryByRole('note')).toBeNull();
     expect(screen.queryByRole('link', { name: t.actions.openConnection })).toBeNull();
     const button = pane.getByRole('button', { name: t.actions.openConnection });
-    expect(button.closest('.notify-zalo-connect')).not.toBeNull();
+    expect(button.closest('.notify-switch-label')).not.toBeNull();
     await user.click(button);
     await waitFor(() =>
       expect(router?.state.location.pathname).toBe('/notification/zalo-connection'),
@@ -410,10 +409,7 @@ describe('HandoverAlertSettingsScreen — 공장 × 인계 작업', () => {
     const pane = await openType(user, '적치');
     await user.click(pane.getByRole('button', { name: `+ ${t.actions.add}` }));
     const dialog = within(await screen.findByRole('dialog'));
-    expect(await dialog.findByText(picker.addable(1))).toBeInTheDocument();
-
-    await user.click(dialog.getByRole('checkbox', { name: '후보 61 선택' }));
-    expect(dialog.getByText(picker.addable(0))).toBeInTheDocument();
+    await user.click(await dialog.findByRole('checkbox', { name: '후보 61 선택' }));
     expect(dialog.getByRole('checkbox', { name: '후보 62 선택' })).toBeDisabled();
     expect(dialog.getByRole('checkbox', { name: '후보 63 선택' })).toBeDisabled();
 

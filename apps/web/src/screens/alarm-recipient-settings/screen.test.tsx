@@ -555,7 +555,7 @@ describe('AlarmRecipientSettingsScreen — 부서 × 이벤트', () => {
     });
 
     const button = await screen.findByRole('button', { name: t.actions.openConnection });
-    expect(button.closest('.notify-zalo-connect')).not.toBeNull();
+    expect(button.closest('.notify-switch-label')).not.toBeNull();
     expect(screen.queryByRole('link', { name: t.actions.openConnection })).toBeNull();
     await user.click(button);
     await waitFor(() =>

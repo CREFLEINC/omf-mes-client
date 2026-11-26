@@ -224,10 +224,6 @@ export const RecipientPicker = ({
       showCloseButton={false}
       footer={
         <>
-          {/* 상한이 있는 화면만 — 왼쪽 끝에 남은 자리(지금 고른 사람까지 뺀 수). */}
-          {slotsLeft !== null && (
-            <span className="alarm-picker-limit">{t.picker.addable(slotsLeft)}</span>
-          )}
           <Button variant="outlined" onClick={onClose}>
             {t.actions.cancel}
           </Button>
