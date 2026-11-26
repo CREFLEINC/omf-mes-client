@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Chip, Dialog, Icon, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Checkbox, Chip, Dialog, TextField } from '@crefle/web-ui';
 import type { MaterialLotBatchCreated } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
@@ -241,31 +241,22 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
 
             <section className="mlot-issue-package" aria-label={td.package}>
               <div className="mlot-issue-package-head">
-                {/* 「패키징 (선택)」 ⓘ 한 줄 — ⓘ 에 마우스를 올리면 기본값 없음 안내(사용자 지시 2026-11-26). */}
+                {/*
+                 * 「패키징 유무 (선택)」 체크칸 + ⓘ 한 줄(사용자 지시 2026-11-26) — 켜면 패키징 세 칸이 보이고, 끄면
+                 * 넣던 패키징을 취소한다. 값(`packageOn`)과 검사 · 발행 규칙은 그대로. ⓘ 에 마우스를 올리면 기본값 없음 안내.
+                 */}
                 <span className="mlot-issue-package-title">
-                  <strong>
-                    {td.package} <span className="field-note">{td.packageOptional}</span>
-                  </strong>
+                  <Checkbox
+                    checked={draft.packageOn}
+                    onChange={(event) => edit({ packageOn: event.target.checked })}
+                  >
+                    <span className="mlot-issue-package-label">
+                      <strong>{td.package}</strong>{' '}
+                      <span className="field-note">{td.packageOptional}</span>
+                    </span>
+                  </Checkbox>
                   {filled.source === 'none' && <InfoTip text={td.source.none} />}
                 </span>
-                {/*
-                 * 선택 항목이라 빨간 강조 없이 단추 하나(사용자 지시 2026-11-26) — 없으면 [+ 패키징 추가], 넣었으면
-                 * [패키징 빼기]. 값(`packageOn`)과 검사 · 발행 규칙은 그대로.
-                 */}
-                {draft.packageOn ? (
-                  <Button size="sm" variant="outlined" onClick={() => edit({ packageOn: false })}>
-                    {td.packageOff}
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outlined"
-                    leadingIcon={<Icon name="add" size={18} />}
-                    onClick={() => edit({ packageOn: true })}
-                  >
-                    {td.packageOn}
-                  </Button>
-                )}
               </div>
               {draft.packageOn ? (
                 <>

@@ -36978,7 +36978,11 @@ body:has(
   white-space: nowrap;
 }
 
-.mlot-issue-package-title > strong > .field-note {
+.mlot-issue-package-label {
+  white-space: nowrap;
+}
+
+.mlot-issue-package-label > .field-note {
   display: inline;
   margin: 0 0 0 var(--space-1);
 }

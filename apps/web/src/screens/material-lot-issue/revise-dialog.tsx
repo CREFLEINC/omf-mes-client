@@ -1,4 +1,4 @@
-import { Button, Chip, Dialog, Icon, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, Chip, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState } from 'react';
@@ -142,26 +142,21 @@ export const ReviseDialog = ({
 
         <section className="mlot-issue-package" aria-label={t.package}>
           <div className="mlot-issue-package-head">
-            <strong>{t.package}</strong>
-            {/* 발행 창과 같이 단추 하나 — 없으면 [+ 패키징 추가], 넣었으면 [패키징 빼기](사용자 지시 2026-11-26). 값 처리는 그대로. */}
-            {draft.packageOn ? (
-              <Button
-                size="sm"
-                variant="outlined"
-                onClick={() => edit({ packageOn: false, lotQtyEdited: true, lotQty: shownQty })}
+            {/* 발행 창과 같이 「패키징 유무」 체크칸(사용자 지시 2026-11-26) — 켜고 끌 때 값 처리는 종전 단추와 같다. */}
+            <span className="mlot-issue-package-title">
+              <Checkbox
+                checked={draft.packageOn}
+                onChange={(event) =>
+                  edit(
+                    event.target.checked
+                      ? { packageOn: true, lotQtyEdited: false }
+                      : { packageOn: false, lotQtyEdited: true, lotQty: shownQty },
+                  )
+                }
               >
-                {t.packageOff}
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                variant="outlined"
-                leadingIcon={<Icon name="add" size={18} />}
-                onClick={() => edit({ packageOn: true, lotQtyEdited: false })}
-              >
-                {t.packageOn}
-              </Button>
-            )}
+                <strong>{t.package}</strong>
+              </Checkbox>
+            </span>
           </div>
           {draft.packageOn ? (
             <div className="mlot-issue-package-fields">
