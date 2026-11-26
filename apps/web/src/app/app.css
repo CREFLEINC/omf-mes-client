@@ -42344,3 +42344,20 @@ main .po-board-split.is-stacked[style*='--split-top'] > :last-child:not(:first-c
   min-height: 8rem;
   overflow: auto;
 }
+
+/* 공장 근무일 — 출고 작업일 예시: 날짜 옆 흐린 보조 글(건너뛴 휴일). 표 위 안내 한 줄과 표 사이 간격(사용자 지시 2026-11-26). */
+.plant-working-days-example {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.plant-working-days-skipped {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.plant-working-days-pane > .plant-working-days-note {
+  margin: 0 0 var(--space-3);
+}

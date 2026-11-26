@@ -14,8 +14,7 @@ export const plantWorkingDays: Translated<typeof ko.plantWorkingDays> = {
     plant: 'Nhà máy',
     days: 'Ngày làm việc trong tuần',
     off: 'Ngày nghỉ',
-    example: (date: string, weekday: string): string =>
-      `Ví dụ: ngày xuất kho của ngày sản xuất ${date} (${weekday})`,
+    example: 'Ví dụ ngày xuất kho',
     lastChanged: 'Thay đổi gần nhất',
   },
   options: {
@@ -25,13 +24,15 @@ export const plantWorkingDays: Translated<typeof ko.plantWorkingDays> = {
   groupLabel: (plant: string): string => `Ngày làm việc trong tuần của ${plant}`,
   weekdays: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'],
   values: {
-    example: (date: string, weekday: string, skipped: string): string =>
-      skipped === '' ? `${date} (${weekday})` : `${date} (${weekday}) — bỏ qua ${skipped}`,
-    lastChanged: (date: string): string => `Áp dụng từ ${date}`,
+    example: (date: string, weekday: string): string => `${date} (${weekday})`,
+    skipped: (days: string): string => `bỏ qua ${days}`,
     none: '—',
   },
+  exampleNote: {
+    lead: (date: string, weekday: string): string => `Ngày sản xuất ví dụ ${date} (${weekday})`,
+    body: 'Ngày xuất kho là ngày làm việc ngay trước ngày sản xuất, theo ngày làm việc của từng nhà máy.',
+  },
   tags: {
-    default: 'Mặc định',
     changed: 'Đã sửa',
   },
   actions: {

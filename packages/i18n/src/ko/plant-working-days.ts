@@ -11,9 +11,8 @@ export const plantWorkingDays = {
     plant: '공장',
     days: '주간 근무일',
     off: '휴일',
-    example: (date: string, weekday: string): string =>
-      `예: 생산일 ${date}(${weekday})의 출고 작업일`,
-    lastChanged: '마지막 변경',
+    example: '출고 작업일 예시',
+    lastChanged: '최근 변경일',
   },
   options: {
     five: '주 5일제 (월~금)',
@@ -23,14 +22,17 @@ export const plantWorkingDays = {
   /** 0 = 일 … 6 = 토. */
   weekdays: ['일', '월', '화', '수', '목', '금', '토'],
   values: {
-    /** 예시 열 — 건너뛴 휴일을 함께 보인다. */
-    example: (date: string, weekday: string, skipped: string): string =>
-      skipped === '' ? `${date}(${weekday})` : `${date}(${weekday}) — ${skipped}을 건너뜀`,
-    lastChanged: (date: string): string => `${date}부터 적용`,
+    /** 예시 열 — 날짜만. 건너뛴 휴일은 옆 보조 글(사용자 지시 2026-11-26). */
+    example: (date: string, weekday: string): string => `${date}(${weekday})`,
+    skipped: (days: string): string => `${days} 제외`,
     none: '—',
   },
+  /** 표 위 안내 한 줄 — 예시 생산일과 계산 기준(사용자 지시 2026-11-26). */
+  exampleNote: {
+    lead: (date: string, weekday: string): string => `예시 생산일 ${date}(${weekday})`,
+    body: '출고 작업일은 공장별 근무 요일을 기준으로 생산일 직전 근무일로 계산합니다.',
+  },
   tags: {
-    default: '기본값',
     changed: '수정',
   },
   actions: {

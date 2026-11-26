@@ -156,7 +156,7 @@ describe('W-CO-15 공장 근무일 설정', () => {
     expect(rows).toHaveLength(2);
     const first = await rowOf('합성 1공장');
     expect(first.getByRole('radio', { name: t.options.five })).toBeChecked();
-    expect(first.getByText(t.tags.default)).toBeInTheDocument();
+    expect(first.queryByText('기본값')).not.toBeInTheDocument();
     expect(first.getByText('토, 일')).toBeInTheDocument();
     expect(screen.queryByText('합성 3공장')).not.toBeInTheDocument();
   });
@@ -200,7 +200,7 @@ describe('W-CO-15 공장 근무일 설정', () => {
 
     expect(row.getByText(t.tags.changed)).toBeInTheDocument();
     expect(row.getByText('일')).toBeInTheDocument();
-    expect(row.getByText(/— 일을 건너뜀$/)).toBeInTheDocument();
+    expect(row.getByText(t.values.skipped('일'))).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
@@ -220,7 +220,7 @@ describe('W-CO-15 공장 근무일 설정', () => {
     const after = await rowOf('합성 2공장');
     await waitFor(() => expect(after.getByRole('radio', { name: t.options.six })).toBeChecked());
     expect(after.queryByText(t.tags.changed)).not.toBeInTheDocument();
-    expect(after.getByText(t.values.lastChanged(TODAY.slice(5)))).toBeInTheDocument();
+    expect(after.getByText(TODAY)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
   });
 
@@ -264,8 +264,7 @@ describe('W-CO-15 공장 근무일 설정', () => {
 
     const row = await rowOf('합성 1공장');
     expect(row.getByRole('radio', { name: t.options.six })).toBeChecked();
-    expect(row.queryByText(t.tags.default)).not.toBeInTheDocument();
-    expect(row.getByText(t.values.lastChanged('10-15'))).toBeInTheDocument();
+    expect(row.getByText(/-10-15$/)).toBeInTheDocument();
   });
 
   it('바뀐 공장만 저장하고, 오늘 시작한 행이 있으면 새 행 대신 그 행을 고친다', async () => {
@@ -318,7 +317,7 @@ describe('W-CO-15 공장 근무일 설정', () => {
     }
 
     expect(t.tags.changed).toBe('수정');
-    expect((await rowOf('합성 1공장')).getByText(t.tags.default)).toBeInTheDocument();
+    expect((await rowOf('합성 1공장')).queryByText('기본값')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
     expect(screen.getByRole('button', { name: t.actions.revert })).toBeDisabled();
     await act(async () => {

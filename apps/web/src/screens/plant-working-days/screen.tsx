@@ -2,6 +2,7 @@ import {
   AlertBanner,
   Button,
   Chip,
+  Icon,
   Radio,
   RadioGroup,
   SearchInput,
@@ -57,8 +58,6 @@ interface Row {
   plant: Plant;
   today: string;
   saved: WeeklyWorkingDays;
-  /** 오늘 적용되는 정책 행이 없다 — 서버가 주 5일제로 계산한다. */
-  isDefault: boolean;
   /** 지금 적용 중인 행의 시작일. 행이 없으면 null. */
   since: string | null;
 }
@@ -104,7 +103,6 @@ export const PlantWorkingDaysScreen = () => {
         plant,
         today,
         saved: toWorkingDays(policy?.valueNumeric),
-        isDefault: policy === undefined,
         since: policy?.effectiveFrom ?? null,
       };
     }) ?? [];
@@ -156,11 +154,6 @@ export const PlantWorkingDaysScreen = () => {
             className={dirty ? 'plant-working-days-plant is-changed' : 'plant-working-days-plant'}
           >
             <strong>{row.plant.plantName}</strong>
-            {row.isDefault && !dirty && (
-              <Chip size="sm" status="idle">
-                {t.tags.default}
-              </Chip>
-            )}
             {dirty && (
               <Chip size="sm" status="warning">
                 {t.tags.changed}
@@ -199,13 +192,19 @@ export const PlantWorkingDaysScreen = () => {
     },
     {
       key: 'example',
-      header: t.columns.example(monthDay(exampleDate), weekdayOf(exampleDate)),
+      header: t.columns.example,
+      /* 날짜만 굵게 · 건너뛴 휴일은 옆 흐린 보조 글(사용자 지시 2026-11-26). 계산은 종전 그대로. */
       render: (row) => {
         const { date, skipped } = previousWorkingDay(exampleDate, valueOf(row));
-        return t.values.example(
-          monthDay(date),
-          weekdayOf(date),
-          [...skipped].reverse().map(weekdayOf).join(', '),
+        return (
+          <span className="plant-working-days-example">
+            <span>{t.values.example(monthDay(date), weekdayOf(date))}</span>
+            {skipped.length > 0 && (
+              <span className="plant-working-days-skipped">
+                {t.values.skipped([...skipped].reverse().map(weekdayOf).join('·'))}
+              </span>
+            )}
+          </span>
         );
       },
     },
@@ -213,8 +212,8 @@ export const PlantWorkingDaysScreen = () => {
       key: 'lastChanged',
       width: '140px',
       header: t.columns.lastChanged,
-      render: (row) =>
-        row.since === null ? t.values.none : t.values.lastChanged(monthDay(row.since)),
+      /* 지금 적용 중인 설정을 저장한 날(저장하면 그날부터 적용된다). 서버가 시각은 주지 않아 날짜까지만. */
+      render: (row) => row.since ?? t.values.none,
     },
   ];
 
@@ -405,6 +404,15 @@ export const PlantWorkingDaysScreen = () => {
             </div>
           )}
         </div>
+        {/* 계산 기준은 표 위에 한 번만(사용자 지시 2026-11-26) — 표 칸에는 출고 작업일만. */}
+        <p className="iqc-inspection-action-note plant-working-days-note" data-tone="info">
+          <Icon name="info" size={14} aria-hidden />
+          <span>
+            <strong>{t.exampleNote.lead(monthDay(exampleDate), weekdayOf(exampleDate))}</strong>
+            {' · '}
+            {t.exampleNote.body}
+          </span>
+        </p>
         {body()}
       </section>
     </div>
