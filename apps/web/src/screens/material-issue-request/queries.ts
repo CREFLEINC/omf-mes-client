@@ -40,7 +40,7 @@ export const materialIssueRequestKeys = {
 };
 
 /**
- * W/O 상세 — 피처 003 의 공장 모드(`productionWarehouseMode`)와 라인 부서 생산 창고(`productionWarehouses`,
+ * W/O 상세 — 피처 003 의 공장 모드(`productionWarehouseMode`)와 이 공장의 생산 창고(`productionWarehouses`,
  * 계약 §2)와, W-02-11 「보충 요청」으로 열 때 고를 W/O 자체. 모드가 아니면 화면이 지금 그대로다(FR-009a).
  * 조회가 실패해도 지금 방식으로 둔다 — 이 칸 때문에 요청 발행을 막지 않는다.
  */

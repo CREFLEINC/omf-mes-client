@@ -133,7 +133,7 @@ export interface Option {
   label: string;
 }
 
-/** 출발 생산 창고로 고를 수 있는 창고 — 그 공장의 사용 중인 창고(서버가 부서 연결을 다시 본다). */
+/** 출발 생산 창고로 고를 수 있는 창고 — 그 공장의 사용 중인 창고(서버가 창고 유형을 다시 본다). */
 export const useWarehouseOptions = (plantId: number | null): UseQueryResult<Option[]> => {
   const { client } = useApiClient();
   return useQuery({
@@ -157,7 +157,7 @@ export const useWarehouseOptions = (plantId: number | null): UseQueryResult<Opti
   });
 };
 
-/** 새 규칙 요청의 출발 생산 창고 후보 — W/O 라인 부서의 이 공장 생산 창고(계약 §2, FR-010). */
+/** 새 규칙 요청의 출발 생산 창고 후보 — W/O 공장의 생산 창고(계약 §2, FR-010). */
 export const useWorkOrderWarehouseOptions = (
   workOrderId: number | null,
 ): UseQueryResult<Option[]> => {

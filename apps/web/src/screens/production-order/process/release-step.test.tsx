@@ -63,18 +63,16 @@ const renderStep = (props: Partial<Parameters<typeof ReleaseStep>[0]> = {}) =>
   );
 
 describe('배포 확인 단계 — 생산 창고 공장', () => {
-  it('US2-5 400 출고 요청 기준정보 사유 3종을 W/O 마다 문구와 새 탭 바로가기로 보인다', () => {
+  it('US2-5 400 출고 요청 기준정보 사유 2종을 W/O 마다 문구와 새 탭 바로가기로 보인다', () => {
     const blocks = releaseBlocksOf({
       kind: 'validation',
       errors: [
-        { scope: 'screen', code: 'LINE_DEPARTMENT_MISSING', message: 'a' },
         { scope: 'screen', code: 'PRODUCTION_WAREHOUSE_MISSING', message: 'b' },
         { scope: 'screen', code: 'PRODUCTION_FLOOR_LOCATION_MISSING', message: 'c' },
         { scope: 'screen', code: 'OTHER', message: 'd' },
       ],
     });
     expect(blocks).toEqual([
-      'LINE_DEPARTMENT_MISSING',
       'PRODUCTION_WAREHOUSE_MISSING',
       'PRODUCTION_FLOOR_LOCATION_MISSING',
     ]);
@@ -89,7 +87,7 @@ describe('배포 확인 단계 — 생산 창고 공장', () => {
     const link = screen.getByRole('link', { name: pw.blockLinks.PRODUCTION_WAREHOUSE_MISSING });
     expect(link).toHaveAttribute('href', RELEASE_BLOCK_LINKS.PRODUCTION_WAREHOUSE_MISSING);
     expect(link).toHaveAttribute('target', '_blank');
-    expect(screen.getAllByRole('link')).toHaveLength(3);
+    expect(screen.getAllByRole('link')).toHaveLength(2);
   });
 
   it('그 밖의 실패는 지금처럼 서버 문구 한 줄이고 바로가기가 없다', () => {

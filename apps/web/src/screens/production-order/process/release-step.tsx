@@ -34,8 +34,7 @@ export const MATERIAL_ISSUE_SHORTAGE_PATH = '/production/material-issue-status?v
 
 /** 배포 막힘 사유마다 고칠 자리(screens/W-02-01-release.md 「배포 막힘 사유」, 검토 6 가정 포함). */
 export const RELEASE_BLOCK_LINKS: Record<string, string> = {
-  LINE_DEPARTMENT_MISSING: '/equipment/master',
-  PRODUCTION_WAREHOUSE_MISSING: '/master-data/common-code?tab=org',
+  PRODUCTION_WAREHOUSE_MISSING: '/master-data/warehouse-location',
   PRODUCTION_FLOOR_LOCATION_MISSING: '/production/work-order-assignments',
 };
 
