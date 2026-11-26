@@ -30,7 +30,7 @@ import {
 } from './segmented-distribution-model';
 
 interface CalendarNote {
-  order: string;
+  owner: string;
   summary: string;
   dates?: string[];
 }
@@ -87,7 +87,6 @@ export const DistributionControls = ({
   const [activeOwner, setActiveOwner] = useState('');
   const [resultPage, setResultPage] = useState(1);
   const [dailyPages, setDailyPages] = useState<Record<string, number>>({});
-  const [orderPage, setOrderPage] = useState(1);
   const [editingResultKey, setEditingResultKey] = useState<string | null>(null);
   const [rows, setRows] = useState<DistributionSegment[]>([]);
   const baseline = useRef<DistributionSegment[]>([]);
@@ -196,6 +195,12 @@ export const DistributionControls = ({
     resultPage,
     Math.max(1, Math.ceil(visibleResultRows.length / 10)),
   );
+  const resultRowsByOrder = new Map<string, typeof visibleResultRows>();
+  for (const row of visibleResultRows.slice((visibleResultPage - 1) * 10, visibleResultPage * 10)) {
+    const orderRows = resultRowsByOrder.get(row.owner) ?? [];
+    orderRows.push(row);
+    resultRowsByOrder.set(row.owner, orderRows);
+  }
   const existingByResultKey = new Map<string, number>();
   for (const row of existing) {
     const key = resultKey(row);
@@ -705,7 +710,7 @@ export const DistributionControls = ({
                                   setPreview(null);
                                 }}
                               >
-                                −
+                                삭제
                               </Button>
                             </div>
                           </div>
@@ -911,10 +916,9 @@ export const DistributionControls = ({
                         const holidayDisplay = new Map<string, string>();
                         for (const row of active) {
                           const order = orders.find((order) => order.id === row.owner);
-                          const orderLabel = order?.orderNo ?? order?.label ?? row.owner;
                           if (!order?.plantId) {
                             notes.push({
-                              order: orderLabel,
+                              owner: row.owner,
                               summary: '근무일 판정 불가 (공장 미지정)',
                             });
                             continue;
@@ -931,7 +935,7 @@ export const DistributionControls = ({
                           );
                           bySegment.set(row.id, days);
                           if (row.mode === 'equal' && order.bottleneckCycleTimeSec === null)
-                            notes.push({ order: orderLabel, summary: '표준 C/T 미설정' });
+                            notes.push({ owner: row.owner, summary: '표준 C/T 미설정' });
                           const holidays = days.filter((day) => day.statusCode === 'HOLIDAY');
                           for (const day of holidays) {
                             holidayDisplay.set(
@@ -941,7 +945,7 @@ export const DistributionControls = ({
                           }
                           if (row.mode === 'equal' && holidays.length)
                             notes.push({
-                              order: orderLabel,
+                              owner: row.owner,
                               summary: `휴일 ${holidays.length}일 ${row.includeHolidays ? '포함' : '제외'}`,
                               dates: holidays.map((day) => day.date),
                             });
@@ -950,7 +954,7 @@ export const DistributionControls = ({
                               .filter((day) => Number(row.daily[day.date]) > 0)
                               .forEach((day) =>
                                 notes.push({
-                                  order: orderLabel,
+                                  owner: row.owner,
                                   summary: planningDayMessage(day) ?? '휴일',
                                   dates: [day.date],
                                 }),
@@ -960,7 +964,7 @@ export const DistributionControls = ({
                           ).length;
                           if (unknown)
                             notes.push({
-                              order: orderLabel,
+                              owner: row.owner,
                               summary: `근무일 판정 불가 ${unknown}일 (미설정)`,
                             });
                         }
@@ -979,7 +983,6 @@ export const DistributionControls = ({
                         setPreview({ signature, result });
                         setAcknowledged(false);
                         setResultPage(1);
-                        setOrderPage(1);
                         setEditingResultKey(null);
                         setMessage('');
                       } catch (error) {
@@ -1007,7 +1010,7 @@ export const DistributionControls = ({
                       setAcknowledged(false);
                     }}
                   >
-                    조건 변경 취소
+                    조건 초기화
                   </Button>
                 </div>
               </>
@@ -1028,43 +1031,6 @@ export const DistributionControls = ({
                     분배 조건 수정
                   </Button>
                 </div>
-                {calendarNotes.length > 0 && (
-                  <div className="erp-wo-preview-scroll">
-                    <table className="erp-wo-distribution-calendar-table">
-                      <caption>분배 기준 및 반영 내역</caption>
-                      <thead>
-                        <tr>
-                          <th scope="col">ERP W/O</th>
-                          <th scope="col">반영 내역</th>
-                          <th scope="col">해당 날짜</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {calendarNotes.map((note) => (
-                          <tr key={JSON.stringify(note)}>
-                            <td>{note.order}</td>
-                            <td>
-                              <strong>{note.summary}</strong>
-                            </td>
-                            <td>
-                              {note.dates?.length ? (
-                                <span className="erp-wo-calendar-result-dates">
-                                  {note.dates.map((date) => (
-                                    <time key={date} dateTime={date}>
-                                      {date}
-                                    </time>
-                                  ))}
-                                </span>
-                              ) : (
-                                '—'
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
                 {resultError && <AlertBanner variant="error">{resultError}</AlertBanner>}
                 {stale && (
                   <AlertBanner variant="warning">
@@ -1072,44 +1038,10 @@ export const DistributionControls = ({
                   </AlertBanner>
                 )}
                 <div className="erp-wo-preview-scroll">
-                  <table>
-                    <caption>ERP W/O별 편성 수량</caption>
-                    <thead>
-                      <tr>
-                        <th>ERP W/O / 품목</th>
-                        <th>이번 추가</th>
-                        <th>적용 후 편성 대기</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {reviewResult!.orders
-                        .slice((orderPage - 1) * 10, orderPage * 10)
-                        .map((order) => (
-                          <tr key={order.id}>
-                            <td>{order.label}</td>
-                            <td>
-                              {order.added} {order.unit}
-                            </td>
-                            <td>
-                              {order.pending} {order.unit}
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-                {reviewResult!.orders.length > 10 && (
-                  <PageNav
-                    meta={{ page: orderPage, size: 10, total: reviewResult!.orders.length }}
-                    onChangePage={setOrderPage}
-                  />
-                )}
-                <div className="erp-wo-preview-scroll">
                   <table className="erp-wo-distribution-result-table">
                     <caption>날짜와 라인별 결과</caption>
                     <thead>
                       <tr>
-                        <th>ERP W/O</th>
                         <th>날짜</th>
                         <th>생산 라인</th>
                         <th className="erp-wo-result-quantity">기존 수량</th>
@@ -1117,66 +1049,115 @@ export const DistributionControls = ({
                         <th className="erp-wo-result-quantity">적용 후 합계</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      {visibleResultRows
-                        .slice((visibleResultPage - 1) * 10, visibleResultPage * 10)
-                        .map((row) => {
-                          const key = resultKey(row);
-                          const order = orders.find((entry) => entry.id === row.owner);
-                          const existingQty = existingByResultKey.get(key) ?? 0;
-                          const addedQty = Number(row.plannedQty);
-                          const unit = order?.unit;
-                          return (
-                            <tr key={key}>
-                              <td>{order?.label}</td>
-                              <td>
-                                {row.planDate}
-                                {row.holidayLabel && (
-                                  <span className="erp-wo-holiday-day-label">
-                                    {row.holidayLabel}
-                                  </span>
-                                )}
-                              </td>
-                              <td>
-                                {
-                                  order?.lines.find((line) => String(line.id) === row.plannedLineId)
-                                    ?.name
-                                }
-                              </td>
-                              <td className="erp-wo-result-quantity">
-                                {formatQty(existingQty)} {unit}
-                              </td>
-                              <td className="erp-wo-result-quantity erp-wo-result-added">
-                                <div className="erp-wo-result-quantity-editor">
-                                  <TextField
-                                    size="md"
-                                    inputMode="decimal"
-                                    aria-label={`${row.owner} ${row.planDate} ${row.plannedLineId} 생산량`}
-                                    value={row.plannedQty}
-                                    onFocus={() => setEditingResultKey(key)}
-                                    onBlur={() => setEditingResultKey(null)}
-                                    onChange={(event) => {
-                                      setResultQuantities((current) => ({
-                                        ...current,
-                                        [key]: event.target.value,
-                                      }));
-                                      setAcknowledged(false);
-                                    }}
-                                  />
-                                  <span>{unit}</span>
+                    {Array.from(resultRowsByOrder, ([owner, orderRows]) => {
+                      const order = orders.find((entry) => entry.id === owner);
+                      const summary = reviewResult?.orders.find((entry) => entry.id === owner);
+                      const notes = calendarNotes.filter((note) => note.owner === owner);
+                      const unit = order?.unit;
+                      return (
+                        <tbody key={owner} aria-label={order?.orderNo ?? order?.label ?? owner}>
+                          <tr className="erp-wo-result-order">
+                            <td colSpan={5}>
+                              <div className="erp-wo-result-order-header">
+                                <div>
+                                  <strong>{order?.orderNo ?? order?.label ?? owner}</strong>
+                                  {order?.itemCode && <span>{order.itemCode}</span>}
                                 </div>
-                              </td>
-                              <td className="erp-wo-result-quantity">
-                                <strong>
-                                  {Number.isFinite(addedQty)
-                                    ? `${formatQty(existingQty + addedQty)} ${unit ?? ''}`
-                                    : '—'}
-                                </strong>
+                                {summary && (
+                                  <div>
+                                    <span>
+                                      이번 분배{' '}
+                                      <strong>
+                                        {formatQty(summary.added)} {unit}
+                                      </strong>
+                                    </span>
+                                    <span>
+                                      미배분{' '}
+                                      <strong>
+                                        {formatQty(summary.pending)} {unit}
+                                      </strong>
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                          {orderRows.map((row) => {
+                            const key = resultKey(row);
+                            const existingQty = existingByResultKey.get(key) ?? 0;
+                            const addedQty = Number(row.plannedQty);
+                            return (
+                              <tr key={key}>
+                                <td>
+                                  {row.planDate}
+                                  {row.holidayLabel && (
+                                    <span className="erp-wo-holiday-day-label">
+                                      {row.holidayLabel}
+                                    </span>
+                                  )}
+                                </td>
+                                <td>
+                                  {
+                                    order?.lines.find(
+                                      (line) => String(line.id) === row.plannedLineId,
+                                    )?.name
+                                  }
+                                </td>
+                                <td className="erp-wo-result-quantity">
+                                  {formatQty(existingQty)} {unit}
+                                </td>
+                                <td className="erp-wo-result-quantity erp-wo-result-added">
+                                  <div className="erp-wo-result-quantity-editor">
+                                    <TextField
+                                      size="md"
+                                      inputMode="decimal"
+                                      aria-label={`${row.owner} ${row.planDate} ${row.plannedLineId} 생산량`}
+                                      value={row.plannedQty}
+                                      onFocus={() => setEditingResultKey(key)}
+                                      onBlur={() => setEditingResultKey(null)}
+                                      onChange={(event) => {
+                                        setResultQuantities((current) => ({
+                                          ...current,
+                                          [key]: event.target.value,
+                                        }));
+                                        setAcknowledged(false);
+                                      }}
+                                    />
+                                    <span>{unit}</span>
+                                  </div>
+                                </td>
+                                <td className="erp-wo-result-quantity">
+                                  <strong>
+                                    {Number.isFinite(addedQty)
+                                      ? `${formatQty(existingQty + addedQty)} ${unit ?? ''}`
+                                      : '—'}
+                                  </strong>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          {notes.length > 0 && (
+                            <tr className="erp-wo-result-order-notes">
+                              <td colSpan={5}>
+                                {notes.map((note) => (
+                                  <div
+                                    className="erp-wo-calendar-result-dates"
+                                    key={JSON.stringify(note)}
+                                  >
+                                    <strong>{note.summary}</strong>
+                                    {note.dates?.map((date) => (
+                                      <time key={date} dateTime={date}>
+                                        {date}
+                                      </time>
+                                    ))}
+                                  </div>
+                                ))}
                               </td>
                             </tr>
-                          );
-                        })}
-                    </tbody>
+                          )}
+                        </tbody>
+                      );
+                    })}
                   </table>
                 </div>
                 {visibleResultRows.length > 10 && (
@@ -1206,19 +1187,6 @@ export const DistributionControls = ({
                   </>
                 )}
                 <div className="erp-wo-distribution-footer">
-                  <Button
-                    variant="outlined"
-                    disabled={disabled || !dirty}
-                    onClick={() => {
-                      setRows(baseline.current);
-                      setPreview(null);
-                      setMessage('');
-                      setDirty(false);
-                      setAcknowledged(false);
-                    }}
-                  >
-                    조건 변경 취소
-                  </Button>
                   <Button
                     aria-describedby={`${id}-note`}
                     disabled={

@@ -134,9 +134,9 @@ describe('분배 조건과 미리보기 적용', () => {
     expect(screen.getByRole('textbox', { name: '조건 6 수량' })).toHaveValue('3');
     await user.click(screen.getByRole('button', { name: '분배 미리보기' }));
     const table = screen.getByRole('table', { name: '날짜와 라인별 결과' });
-    expect(within(table).getAllByRole('row')).toHaveLength(11);
+    expect(within(table).getAllByRole('textbox')).toHaveLength(10);
     await user.click(screen.getByRole('button', { name: '다음' }));
-    expect(within(table).getAllByRole('row')).toHaveLength(9);
+    expect(within(table).getAllByRole('textbox')).toHaveLength(8);
     await user.click(screen.getByRole('button', { name: '분배안 적용' }));
     expect(apply).toHaveBeenCalledTimes(1);
     expect(apply.mock.calls[0]?.[0]).toHaveLength(18);
@@ -246,7 +246,8 @@ describe('분배 조건과 미리보기 적용', () => {
     );
     const user = await configure();
     expect(dirty).toHaveBeenLastCalledWith(true);
-    await user.click(screen.getByRole('button', { name: '조건 변경 취소' }));
+    await user.click(screen.getByRole('button', { name: '분배 조건 수정' }));
+    await user.click(screen.getByRole('button', { name: '조건 초기화' }));
     expect(dirty).toHaveBeenLastCalledWith(false);
     expect(screen.queryByRole('region', { name: '분배 미리보기 결과' })).toBeNull();
   });
@@ -319,9 +320,9 @@ it('분배 수량이 0인 휴일 행은 숨기고 제외 안내와 합계를 보
     },
   );
   const user = await configure();
-  const calendarTable = await screen.findByRole('table', { name: '분배 기준 및 반영 내역' });
-  expect(within(calendarTable).getByText('휴일 2일 제외')).toBeVisible();
-  const resultTable = screen.getByRole('table', { name: '날짜와 라인별 결과' });
+  const resultTable = await screen.findByRole('table', { name: '날짜와 라인별 결과' });
+  expect(within(resultTable).getByText('휴일 2일 제외')).toBeVisible();
+  expect(screen.queryByRole('button', { name: '조건 초기화' })).not.toBeInTheDocument();
   for (const name of ['기존 수량', '추가 수량', '적용 후 합계']) {
     expect(within(resultTable).getByRole('columnheader', { name })).toBeVisible();
   }

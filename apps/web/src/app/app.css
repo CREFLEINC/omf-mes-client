@@ -38532,11 +38532,6 @@ body:has(
 .erp-wo-distribution-condition-actions {
   flex-shrink: 0;
 }
-.erp-wo-distribution-dialog .erp-wo-distribution-condition-actions > button {
-  min-width: 40px;
-  width: 40px;
-  padding-inline: 0;
-}
 .erp-wo-distribution-dialog .erp-wo-segment-fields {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -38559,6 +38554,26 @@ body:has(
   color: var(--on-surface);
   font-weight: 650;
   font-variant-numeric: tabular-nums;
+}
+.erp-wo-result-order-header,
+.erp-wo-result-order-header > div {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.erp-wo-result-order-header {
+  justify-content: space-between;
+}
+.erp-wo-distribution-result-table .erp-wo-result-order > td {
+  background: var(--surface-container);
+}
+.erp-wo-result-order-header span,
+.erp-wo-result-order-notes {
+  color: var(--on-surface-variant);
+}
+.erp-wo-result-order-header span strong {
+  color: var(--on-surface);
 }
 .erp-wo-calendar-result-dates {
   display: flex;
