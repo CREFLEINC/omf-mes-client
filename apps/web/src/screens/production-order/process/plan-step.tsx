@@ -77,7 +77,6 @@ export interface PlanStepProps {
   hideTotals?: boolean;
   hideBoardTotal?: boolean;
   hideTools?: boolean;
-  hideHeading?: boolean;
   addRequest?: number;
   onSelectedKeyChange?: (key: string) => void;
   orderNameOf?: (row: ProductionPlanEditorStateRow) => string;
@@ -142,7 +141,6 @@ export const PlanStep = ({
   hideTotals = false,
   hideBoardTotal = hideTotals,
   hideTools = false,
-  hideHeading = false,
   addRequest = 0,
   onSelectedKeyChange,
   viewMode,
@@ -430,14 +428,6 @@ export const PlanStep = ({
       );
   return (
     <section className="erp-wo-plan-workspace" aria-label={t.heading}>
-      {!hideHeading && (
-        <div className="erp-wo-plan-toolbar">
-          <h2 className="section-title">{t.heading}</h2>
-          {distributionCycleTimeSec !== undefined && (
-            <CycleTimeSummary seconds={distributionCycleTimeSec} unit={uomLabel} />
-          )}
-        </div>
-      )}
       {!hideTotals && (
         <dl className="erp-wo-plan-totals">
           {[
@@ -496,6 +486,9 @@ export const PlanStep = ({
                 onApply={(drafts) => onAppend(drafts)}
               />
             ))}
+          {distributionCycleTimeSec !== undefined && (
+            <CycleTimeSummary seconds={distributionCycleTimeSec} unit={uomLabel} />
+          )}
         </PlanCreationTools>
       )}
       {pastDraft && (

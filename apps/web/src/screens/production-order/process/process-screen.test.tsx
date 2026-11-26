@@ -869,7 +869,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     await user.click(screen.getByRole('tab', { name: /BOM·Routing/ }));
     expect(await screen.findByRole('region', { name: tp.master.heading })).toBeVisible();
     await user.click(screen.getByRole('tab', { name: /생산계획/ }));
-    expect(await screen.findByRole('heading', { name: tp.plan.heading, level: 2 })).toBeVisible();
+    expect(await screen.findByRole('region', { name: tp.plan.heading })).toBeVisible();
     expect(screen.queryByRole('button', { name: tp.plan.confirm })).toBeNull();
     expect(screen.getByRole('button', { name: '계획 추가' })).toBeDisabled();
     await user.click(screen.getByRole('tab', { name: /4M 배정/ }));

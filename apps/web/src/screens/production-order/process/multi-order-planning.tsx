@@ -737,7 +737,6 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
           </section>
         )}
 
-        {stage === 'plan' && <h2 className="section-title">생산계획 편성</h2>}
         {stage === 'plan' && target && (
           <>
             <div className="erp-wo-multi-quantity-summary">
@@ -937,7 +936,6 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                 };
               }}
               hideTools
-              hideHeading
               addRequest={addRequest}
               onSelectedKeyChange={inspectSelectedPlan}
               rows={combined}
