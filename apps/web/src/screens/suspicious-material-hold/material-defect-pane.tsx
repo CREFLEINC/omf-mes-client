@@ -635,6 +635,7 @@ const DefectRecordDialog = ({
                   searchable
                   options={minors.map(optionOf)}
                   value={code.minorId}
+                  placeholder={tHere.minorPlaceholder}
                   disabled={disabled}
                   onChange={(value) => {
                     setCode({ ...code, minorId: value });

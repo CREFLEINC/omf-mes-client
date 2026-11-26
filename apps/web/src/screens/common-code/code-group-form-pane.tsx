@@ -115,6 +115,7 @@ export const CodeGroupFormPane = ({
         <TextField
           id={codeId}
           value={values.groupCode}
+          placeholder={t.codeGroup.placeholders.groupCode}
           onChange={(event) => onChange({ groupCode: event.target.value })}
           disabled={codeLockReason !== null}
           aria-describedby={codeLockReason === null ? undefined : `${codeId}-lock`}
@@ -132,6 +133,7 @@ export const CodeGroupFormPane = ({
         <TextField
           id={nameId}
           value={values.groupName}
+          placeholder={t.codeGroup.placeholders.groupName}
           onChange={(event) => onChange({ groupName: event.target.value })}
           containerClassName={requiredEmptyClass(values.groupName)}
           error={fieldErrors.groupName}
@@ -145,6 +147,7 @@ export const CodeGroupFormPane = ({
         <TextField
           id={descriptionId}
           value={values.description}
+          placeholder={t.codeGroup.placeholders.description}
           onChange={(event) => onChange({ description: event.target.value })}
           error={fieldErrors.description}
         />

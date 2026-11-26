@@ -11,6 +11,10 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   splitter: 'Kéo để chỉnh độ rộng danh sách · chi tiết',
   listCollapse: 'Thu gọn danh sách kho',
   listExpand: 'Mở danh sách kho',
+  placeholders: {
+    enter: (label: string): string => `Hãy nhập ${label.charAt(0).toLowerCase()}${label.slice(1)}`,
+    select: (label: string): string => `Hãy chọn ${label.charAt(0).toLowerCase()}${label.slice(1)}`,
+  },
   panes: {
     filters: 'Điều kiện tra cứu kho',
     list: 'Danh sách kho',
@@ -232,6 +236,8 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   rackLayout: {
     levelCount: 'Hàng (số tầng)',
     cellCount: 'Cột (số ô mỗi tầng)',
+    levelCountPlaceholder: 'Hãy nhập số tầng',
+    cellCountPlaceholder: 'Hãy nhập số ô mỗi tầng',
     countInvalid: (min: number, max: number): string =>
       `Nhập số từ ${String(min)} đến ${String(max)}.`,
     previewLabel: 'Bố trí tầng·ô',
@@ -259,6 +265,7 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     title: 'Phát hành lại nhãn',
     alreadyIssued: (count: number): string => `${String(count)} mục đã được phát hành.`,
     reason: 'Lý do phát hành lại',
+    reasonPlaceholder: 'Hãy chọn lý do phát hành lại',
     confirm: 'Phát hành lại',
   },
   /** 라벨 일괄 출력(사용자 지시 2026-10-29) — 발행한 그림을 모아 보고 인쇄한다. */

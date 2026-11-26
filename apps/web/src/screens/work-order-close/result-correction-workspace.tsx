@@ -111,6 +111,7 @@ const CorrectionDialog = ({
           <TextField
             key={field}
             label={`${quantityLabels[field]} (${String(result[field])})`}
+            placeholder={t.placeholders[field]}
             required
             inputMode="decimal"
             value={draft[field]}
@@ -128,6 +129,7 @@ const CorrectionDialog = ({
           <Select
             id={reasonId}
             aria-required="true"
+            placeholder={t.placeholders.reason}
             value={draft.reasonCode === '' ? null : draft.reasonCode}
             options={reasonOptions}
             disabled={reasonUnavailable}
@@ -139,6 +141,7 @@ const CorrectionDialog = ({
         </div>
         <TextArea
           label={t.fields.note}
+          placeholder={t.placeholders.note}
           rows={3}
           value={draft.note}
           error={localErrors.note ?? serverErrors.note}

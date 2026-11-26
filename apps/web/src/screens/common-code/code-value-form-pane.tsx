@@ -73,6 +73,7 @@ export const CodeValueFormPane = ({
         <TextField
           id={codeId}
           value={values.code}
+          placeholder={t.placeholders.code}
           onChange={(event) => onChange({ code: event.target.value })}
           disabled={codeLockReason !== null}
           aria-describedby={codeLockReason === null ? undefined : `${codeId}-lock`}
@@ -88,6 +89,7 @@ export const CodeValueFormPane = ({
         <TextField
           id={nameId}
           value={values.codeName}
+          placeholder={t.placeholders.codeName}
           onChange={(event) => onChange({ codeName: event.target.value })}
           containerClassName={requiredEmptyClass(values.codeName)}
           error={fieldErrors.codeName}
@@ -103,6 +105,7 @@ export const CodeValueFormPane = ({
           type="number"
           step={1}
           value={values.displayOrder}
+          placeholder={t.placeholders.displayOrder}
           onChange={(event) => onChange({ displayOrder: event.target.value })}
           containerClassName={requiredEmptyClass(values.displayOrder)}
           error={fieldErrors.displayOrder}

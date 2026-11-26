@@ -189,6 +189,7 @@ export const ItemResourceMapFormDialog = ({
             type="number"
             min={0}
             step={1}
+            placeholder={t.placeholders.priorityNo}
             value={values.priorityNo}
             onChange={(event) => change({ priorityNo: event.target.value })}
             error={shownErrors.priorityNo}
@@ -211,6 +212,7 @@ export const ItemResourceMapFormDialog = ({
           <FieldLabel htmlFor={remarksId} label={t.fields.remarks} />
           <TextField
             id={remarksId}
+            placeholder={t.placeholders.remarks}
             value={values.remarks}
             onChange={(event) => change({ remarks: event.target.value })}
             error={shownErrors.remarks}

@@ -139,6 +139,12 @@ export const commonCode = {
       groupName: '그룹명',
       description: '설명',
     },
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+    placeholders: {
+      groupCode: '그룹코드를 입력하세요',
+      groupName: '그룹명을 입력하세요',
+      description: '설명을 입력하세요',
+    },
     empty: {
       noneTitle: '등록된 코드그룹이 없습니다',
       noneDescription: '「그룹 추가」로 첫 코드그룹을 등록하세요.',
@@ -165,6 +171,11 @@ export const commonCode = {
       departmentName: '부서명',
       parentDepartment: '상위 부서',
       businessUnit: '사업부',
+    },
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+    placeholders: {
+      departmentCode: '부서코드를 입력하세요',
+      departmentName: '부서명을 입력하세요',
     },
     values: {
       /** 계층 그룹 머리글 — 그 그룹을 대표하는 부서. */
@@ -263,6 +274,11 @@ export const commonCode = {
       certifiedBy: '인증자',
       /** 행 수정 · 삭제 단추 열 — 생산 창고 · 결재 단계 표와 같은 「관리」(사용자 지시 2026-11-25). */
       manage: '관리',
+    },
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+    placeholders: {
+      qualificationType: '자격 유형을 고르세요',
+      certificateNo: '인증번호를 입력하세요',
     },
     values: {
       /** 공정을 비운 자격은 모든 공정에 걸린다 — 계약이 그 뜻을 널로 표현한다(A-7). */
@@ -473,6 +489,12 @@ export const commonCode = {
       effectiveTo: '유효 종료',
       /** 표 끝 열 — 줄마다 [사용 중지] · [수정](사용자 지시 2026-11-26). */
       manage: '관리',
+    },
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+    placeholders: {
+      code: '코드를 입력하세요',
+      codeName: '코드명을 입력하세요',
+      displayOrder: '정렬 순서를 입력하세요',
     },
     empty: {
       groupNotSelected: '좌측에서 코드그룹을 먼저 고르세요',

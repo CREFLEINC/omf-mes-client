@@ -108,6 +108,12 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
     plantPlaceholder: 'Hãy chọn nhà máy',
     typePlaceholder: 'Hãy chọn loại công cụ',
     cycleUnitPlaceholder: 'Hãy chọn đơn vị chu kỳ',
+    codePlaceholder: 'Hãy nhập mã công cụ',
+    namePlaceholder: 'Hãy nhập tên công cụ',
+    cavityCountPlaceholder: 'Hãy nhập số khoang khuôn',
+    guaranteedShotCountPlaceholder: 'Hãy nhập số nhát dập đảm bảo',
+    pmTriggerTypePlaceholder: 'Hãy chọn tiêu chí đánh giá bảo trì phòng ngừa',
+    pmCycleIntervalPlaceholder: 'Hãy nhập khoảng chu kỳ bảo trì phòng ngừa',
     labelIssued: (count: number): string => `${count} lần`,
   },
   /** 계약이 네 값과 뜻을 함께 못박았다 — 화면이 지어낸 값이 아니다. */

@@ -118,6 +118,21 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
      */
     itemLocalNote: 'Bấm Xác nhận thì thêm vào danh sách, bấm Lưu thì mới áp dụng chính thức.',
     planCodePlaceholder: 'Để trống để tự động cấp mã',
+    planPlaceholders: {
+      inspectionPlanName: 'Nhập tên tiêu chuẩn',
+      inspectionType: 'Chọn loại kiểm tra',
+    },
+    versionPlaceholders: {
+      samplingMethod: 'Chọn phương pháp lấy mẫu',
+      aqlInspectionLevel: 'Chọn mức kiểm tra AQL',
+      samplingRatio: 'Nhập tỷ lệ lấy mẫu',
+      samplingQty: 'Nhập số lượng mẫu',
+      aqlValueSelect: 'Chọn AQL',
+      aqlValue: 'Nhập AQL',
+      acceptanceNumber: 'Nhập số chấp nhận',
+      rejectionNumber: 'Nhập số bác bỏ',
+    },
+    guideTextPlaceholder: 'Nhập hướng dẫn',
     itemPlaceholders: {
       inspectionItemCode: 'Để trống để tự động cấp mã',
       inspectionItemName: 'Nhập tên hạng mục',
@@ -128,6 +143,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       upperLimit: 'Nhập giới hạn trên',
       inspectionMethod: 'Chọn phương pháp kiểm tra',
       defaultInspectionEquipment: 'Chọn thiết bị kiểm tra chỉ định',
+      measurementCount: 'Nhập số lần đo',
     },
     requiredFlagLabel: 'Hạng mục kiểm tra bắt buộc',
     automaticJudgmentLabel: 'Sử dụng tự động phán định',

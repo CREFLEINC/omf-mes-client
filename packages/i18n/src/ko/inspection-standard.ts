@@ -138,6 +138,24 @@ export const inspectionStandard = {
     /* 칸마다 무엇을 넣을지 알린다(사용자 시안 · #196). */
     /* 등록 · 복사 창의 기준코드 — 비우면 서버가 QP-{YYYYMMDD}-{SEQ4}로 등록한다(omf-all-around#262). */
     planCodePlaceholder: '비우면 자동으로 등록됩니다',
+    /** 기준 등록 · 수정 창 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+    planPlaceholders: {
+      inspectionPlanName: '기준명을 입력하세요',
+      inspectionType: '검사 유형을 선택하세요',
+    },
+    /** 버전 설정 창 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+    versionPlaceholders: {
+      samplingMethod: '검사 방식을 선택하세요',
+      aqlInspectionLevel: 'AQL 검사 수준을 선택하세요',
+      samplingRatio: '샘플 비율을 입력하세요',
+      samplingQty: '샘플 수량을 입력하세요',
+      aqlValueSelect: 'AQL을 선택하세요',
+      aqlValue: 'AQL을 입력하세요',
+      acceptanceNumber: '합격 허용 불량 수를 입력하세요',
+      rejectionNumber: '불합격 판정 불량 수를 입력하세요',
+    },
+    /** 지시문 편집 창 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+    guideTextPlaceholder: '지시문을 입력하세요',
     itemPlaceholders: {
       /* 비우면 서버가 ITEM-{순서}로 등록한다(omf-all-around#262). */
       inspectionItemCode: '비우면 자동으로 등록됩니다',
@@ -149,6 +167,7 @@ export const inspectionStandard = {
       upperLimit: '상한값을 입력하세요',
       inspectionMethod: '검사 방법을 선택하세요',
       defaultInspectionEquipment: '검사 장비를 선택하세요',
+      measurementCount: '측정 횟수를 입력하세요',
     },
     /* 창의 확인칸 이름 — 표의 짧은 라벨(필수 · 자동판정)과 따로 둔다(사용자 지시 · #196). */
     requiredFlagLabel: '필수 검사 항목 여부',

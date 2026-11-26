@@ -120,6 +120,12 @@ export const toolMaster = {
     plantPlaceholder: '공장을 고르세요',
     typePlaceholder: '도구 유형을 고르세요',
     cycleUnitPlaceholder: '주기 단위를 고르세요',
+    codePlaceholder: '툴코드를 입력하세요',
+    namePlaceholder: '툴명을 입력하세요',
+    cavityCountPlaceholder: '캐비티 수를 입력하세요',
+    guaranteedShotCountPlaceholder: '적정타수를 입력하세요',
+    pmTriggerTypePlaceholder: '예방보전 판정 기준을 고르세요',
+    pmCycleIntervalPlaceholder: '예방보전 주기 간격을 입력하세요',
     labelIssued: (count: number): string => `${count}회`,
   },
   /**

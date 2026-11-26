@@ -1623,6 +1623,7 @@ export const UsersRolesScreen = () => {
                 id={createWorkerInputId}
                 fullWidth
                 value={createWorkerNo}
+                placeholder={t.workerLink.inputPlaceholderConnect}
                 onChange={(event) => {
                   setCreateWorkerNo(event.target.value);
                   setCreateWorkerError(null);

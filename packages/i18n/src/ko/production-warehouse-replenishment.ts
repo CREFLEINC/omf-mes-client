@@ -202,6 +202,7 @@ export const productionWarehouseReplenishment = {
     reasonPlaceholder: '사유 고르기',
     reasonRequired: '마감 사유를 고르세요',
     remark: '메모',
+    remarkPlaceholder: '메모를 입력하세요',
     cancel: '취소',
     submit: '마감',
   },
@@ -329,6 +330,7 @@ export const productionWarehouseReplenishment = {
     receivedLabel: (item: string): string => `${item} 받은 수량`,
     reasonLabel: (item: string): string => `${item} 차이 사유`,
     reasonPlaceholder: '사유 고르기',
+    receivedPlaceholder: '받은 수량을 입력하세요',
     qtyInvalid: (item: string, issued: string): string =>
       `${item}: 받은 수량은 0 이상, 출고 ${issued} 이하로 넣으세요.`,
     reasonRequired: (item: string): string => `${item}: 받은 수량이 다르면 차이 사유를 고르세요.`,
@@ -406,6 +408,10 @@ export const productionWarehouseReplenishment = {
     point: '보충 시점',
     target: '유지량',
     source: '출고 자재 창고',
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26 「흐린 문구 추가」). 고르는 칸은 이 화면의 「… 고르기」를 따른다. */
+    productionWarehousePlaceholder: '생산 창고 고르기',
+    pointPlaceholder: '보충 시점을 입력하세요',
+    targetPlaceholder: '유지량을 입력하세요',
     help: '생산 창고에서 쓸 수 있는 양(가용 − 출고 예정)이 보충 시점보다 작아지면, 실행 시각에 「유지량 − 쓸 수 있는 양」을 요청합니다.',
     required: '빈 칸을 채우세요',
     delete: '삭제',

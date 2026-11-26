@@ -296,6 +296,13 @@ export const routing = {
   dialog: {
     operationCreateTitle: '공정 추가',
     operationEditTitle: '공정 수정',
+    /** 공정 추가 · 수정 창 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+    processPlaceholder: '공정을 고르세요',
+    operationNamePlaceholder: '공정명을 입력하세요',
+    cycleTimePlaceholder: '표준 C/T를 입력하세요',
+    yieldRatePlaceholder: '표준 수율을 입력하세요',
+    processCodePlaceholder: '공정코드를 입력하세요',
+    processTypePlaceholder: '공정 유형을 고르세요',
     /*
      * 되돌리기 어려운 전이라 확인을 한 단계 둔다. 무엇이 일어나는지와
      * 그 뒤에 무엇을 할 수 있는지를 먼저 밝힌다.
@@ -330,6 +337,8 @@ export const routing = {
     itemCode: (code: string): string => `품목코드 ${code}`,
     predecessor: '선행 공정',
     successor: '후행 공정',
+    predecessorPlaceholder: '선행 공정을 고르세요',
+    successorPlaceholder: '후행 공정을 고르세요',
     type: '관계',
     remove: (rowNo: number): string => `${String(rowNo)}번째 선후행 삭제`,
     rowField: (rowNo: number, field: string): string => `${String(rowNo)}번째 줄 ${field}`,

@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import './equipment-occupancy.css';
 import {
   AlertBanner,
@@ -68,6 +69,10 @@ const AllocationDetail = ({ row }: { row: EquipmentAllocation }) => {
     </section>
   );
 };
+
+/** 팝업 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+const ph = messages.erpWorkOrderFlow.process.placeholders;
+
 export const EquipmentOccupancy = ({
   equipmentId,
   selfId,
@@ -338,6 +343,7 @@ export const EquipmentAssignmentPicker = ({
           <div className="field-cell">
             <TextField
               label="설비 코드·설비명"
+              placeholder={ph.equipmentKeyword}
               fullWidth
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}

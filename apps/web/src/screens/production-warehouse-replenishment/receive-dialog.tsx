@@ -202,6 +202,7 @@ export const ReceiveDialog = ({ arrival, onClose, onStale }: ReceiveDialogProps)
                         size="sm"
                         inputMode="decimal"
                         aria-label={tr.receivedLabel(labelOf(line))}
+                        placeholder={tr.receivedPlaceholder}
                         aria-required="true"
                         value={draft.received}
                         onChange={(event) =>

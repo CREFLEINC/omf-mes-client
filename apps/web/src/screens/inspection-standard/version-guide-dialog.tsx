@@ -54,6 +54,7 @@ export const VersionGuideDialog = ({
         fullWidth
         label={t.fields[field]}
         value={text}
+        placeholder={t.dialog.guideTextPlaceholder}
         rows={16}
         maxLength={GUIDE_TEXT_MAX}
         showCount

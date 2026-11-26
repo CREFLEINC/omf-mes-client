@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { isPastPlanningDate } from './planning-date-policy';
 import { plantToday } from '../../../patterns/plant-time';
 import { usePlanningDays, planningDayKey, PlanningDayNotice } from './planning-working-days';
@@ -22,6 +23,10 @@ export interface PlanAddTarget {
   defaults: NewProductionPlanDefaults;
   lines: readonly PlanLine[];
 }
+
+/** 팝업 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+const ph = messages.erpWorkOrderFlow.process.placeholders;
+
 export const PlanAddDialog = ({
   targets,
   initialOrder,
@@ -128,6 +133,7 @@ export const PlanAddDialog = ({
           </span>
           <Select
             aria-label="계획을 추가할 ERP W/O"
+            placeholder={ph.addTarget}
             aria-required="true"
             value={id}
             options={targets
@@ -175,6 +181,7 @@ export const PlanAddDialog = ({
           </div>
           <TextField
             label="추가할 계획 수량"
+            placeholder={ph.addQty}
             required
             inputMode="decimal"
             disabled={!target}

@@ -106,6 +106,7 @@ export const CancelRequestDialog = ({
       <InfoLabel htmlFor={reasonId} label={t.reasonLabel} info={t.reasonHelp} required />
       <TextArea
         id={reasonId}
+        placeholder={t.reasonPlaceholder}
         value={reason}
         required
         fullWidth

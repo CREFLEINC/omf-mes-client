@@ -143,6 +143,8 @@ export const collectionChannel: Translated<typeof ko.collectionChannel> = {
     createTitle: 'Đăng ký kênh thu thập',
     editTitle: 'Sửa kênh thu thập',
     unitPlaceholder: 'Hãy chọn đơn vị',
+    channelKeyPlaceholder: 'Hãy nhập tên kênh',
+    signalNamePlaceholder: 'Hãy nhập tên tín hiệu',
     equipmentFixed: (code: string, name: string): string => `${code} · ${name}`,
   },
   /** 계약에 검사 항목의 전체 목록이 없다 — 세 칸을 차례로 좁혀야 항목에 닿는다. */

@@ -121,6 +121,8 @@ export const inspectionSheetTemplate = {
     templateCode: 'Mã tiêu chuẩn',
     templateName: 'Tên tiêu chuẩn',
     templateCodePlaceholder: 'Để trống để tự động cấp mã',
+    templateNamePlaceholder: 'Hãy nhập tên tiêu chuẩn',
+    businessUnitPlaceholder: 'Hãy chọn bộ phận kinh doanh',
     noTemplateName: 'Hãy nhập tên tiêu chuẩn.',
     codeHeading: 'Mã · Tên tiêu chuẩn',
     businessUnit: 'Bộ phận kinh doanh',

@@ -175,6 +175,7 @@ export const shipmentConfirm: Translated<typeof ko.shipmentConfirm> = {
         `Lệnh xuất hàng ${shipmentRequestNo} trở về 「Trước khi hoàn tất xuất hàng」. Bản ghi lấy hàng · OQC được giữ lại và các LOT đã lấy được đặt giữ lại (LOT nào không giữ lại được sẽ hiện là đã nhả).`,
     },
     reasonLabel: 'Lý do hủy',
+    reasonPlaceholder: 'Hãy nhập lý do hủy',
     reasonHelp: 'Hãy ghi lại vì sao hủy. Người duyệt sẽ đọc phần này để quyết định.',
     reasonRequired: 'Hãy nhập lý do hủy',
     reasonTooLong: 'Lý do hủy quá dài. Hãy nhập tối đa 500 ký tự',

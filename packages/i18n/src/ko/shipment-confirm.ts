@@ -134,9 +134,12 @@ export const shipmentConfirm = {
       NOT_SENT_NO_SALES_ORDER: '수주 없이 나간 출하라 ERP 로 보내지 않습니다.',
       CANCELLED: '취소된 출하입니다. ERP 송신 대기도 지워졌습니다.',
     },
-    cancelPendingBanner: '취소 요청이 결재 중이라 ERP 로 보내지 않고 기다립니다. 승인되면 보내지 않고, 반려되면 다음 송신 때 보냅니다.',
-    legacyBanner: '관리웹 출하 처리로 만든 출하입니다. 확정해야 ERP 로 보내집니다. 확정 전에는 취소를 요청할 수 있습니다.',
-    expeditedBanner: '긴급 직행으로 만든 출하입니다. 확정해야 ERP 로 보내집니다. 확정 전에는 취소를 요청할 수 있습니다.',
+    cancelPendingBanner:
+      '취소 요청이 결재 중이라 ERP 로 보내지 않고 기다립니다. 승인되면 보내지 않고, 반려되면 다음 송신 때 보냅니다.',
+    legacyBanner:
+      '관리웹 출하 처리로 만든 출하입니다. 확정해야 ERP 로 보내집니다. 확정 전에는 취소를 요청할 수 있습니다.',
+    expeditedBanner:
+      '긴급 직행으로 만든 출하입니다. 확정해야 ERP 로 보내집니다. 확정 전에는 취소를 요청할 수 있습니다.',
   },
   /** 피킹 LOT 의 OQC 판정 6종(FR-007). */
   oqc: {
@@ -190,6 +193,8 @@ export const shipmentConfirm = {
         `지시서 ${shipmentRequestNo} 은(는) 「출하 완료 전」으로 돌아갑니다. 피킹과 OQC 기록은 남고, 피킹 LOT 은 다시 예약됩니다(다시 잡지 못한 LOT 은 풀린 채로 표시).`,
     },
     reasonLabel: '취소 사유',
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26 「흐린 문구 추가」). */
+    reasonPlaceholder: '취소 사유를 입력하세요',
     reasonHelp: '왜 취소하는지 남기세요. 승인자가 이것을 읽고 판단합니다.',
     reasonRequired: '취소 사유를 입력하세요',
     reasonTooLong: '취소 사유가 너무 깁니다. 500자까지 입력하세요',

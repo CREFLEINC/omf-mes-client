@@ -177,6 +177,7 @@ export const UserFormPane = ({
             <TextField
               id={loginIdId}
               value={values.loginId}
+              placeholder={t.user.placeholders.loginId}
               containerClassName={requiredEmptyClass(values.loginId)}
               /*
                * ⛔ **아래 비밀번호 칸이 생기면서 이 줄이 필요해졌다.** 두 칸을 나란히 두면
@@ -240,6 +241,7 @@ export const UserFormPane = ({
                  */
                 autoComplete="new-password"
                 value={values.password}
+                placeholder={t.user.placeholders.initialPassword}
                 containerClassName={requiredEmptyClass(values.password)}
                 onChange={(event) => onChange({ password: event.target.value })}
                 error={fieldErrors.password}
@@ -262,6 +264,7 @@ export const UserFormPane = ({
           <TextField
             id={userNameId}
             value={values.userName}
+            placeholder={t.user.placeholders.userName}
             containerClassName={requiredEmptyClass(values.userName)}
             onChange={(event) => onChange({ userName: event.target.value })}
             error={fieldErrors.userName}
@@ -295,6 +298,7 @@ export const UserFormPane = ({
           <TextField
             id={emailId}
             value={values.email}
+            placeholder={t.user.placeholders.email}
             onChange={(event) => onChange({ email: event.target.value })}
             error={fieldErrors.email}
           />
@@ -316,6 +320,7 @@ export const UserFormPane = ({
             inputMode="tel"
             autoComplete="off"
             value={values.phoneNumber}
+            placeholder={t.user.placeholders.phoneNumber}
             onChange={(event) => onChange({ phoneNumber: event.target.value })}
             error={fieldErrors.phoneNumber}
           />

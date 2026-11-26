@@ -37,6 +37,8 @@ export const workCalendar: Translated<typeof ko.workCalendar> = {
   form: {
     createTitle: 'Đăng ký lịch',
     editTitle: 'Sửa lịch',
+    codePlaceholder: 'Hãy nhập mã lịch',
+    namePlaceholder: 'Hãy nhập tên lịch',
     /** 「몇이 이 캘린더를 따르는가」 — 사용 중지 판단의 근거가 되는 값이다. */
     applicationCount: (count: number): string => `${count} nơi`,
     applicationNone: 'Không có đối tượng nào theo lịch này.',
@@ -72,6 +74,8 @@ export const workCalendar: Translated<typeof ko.workCalendar> = {
     endTime: 'Thời điểm kết thúc',
     reason: 'Lý do',
     remarks: 'Ghi chú',
+    reasonPlaceholder: 'Hãy nhập lý do',
+    remarksPlaceholder: 'Hãy nhập ghi chú',
     saved: (count: number): string => `Đã lưu ${count} ngày.`,
     /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다. */
     timeNeedsPartial: 'Chọn phân loại «Làm việc một phần» thì mới nhập được giờ.',

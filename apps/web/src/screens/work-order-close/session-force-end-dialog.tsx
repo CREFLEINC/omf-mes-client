@@ -129,6 +129,7 @@ export const SessionForceEndDialog = ({
       <p>{t.notify}</p>
       <TextArea
         label={t.reason}
+        placeholder={t.reasonPlaceholder}
         value={reason}
         rows={2}
         fullWidth

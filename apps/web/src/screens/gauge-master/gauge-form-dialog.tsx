@@ -143,6 +143,7 @@ export const GaugeFormDialog = ({
         <CodeLockTextField
           lockReason={codeLockReason}
           label={t.fields.gaugeCode}
+          placeholder={t.form.codePlaceholder}
           required
           value={values.equipmentCode}
           onChange={(event) => onChange({ equipmentCode: event.target.value })}
@@ -151,6 +152,7 @@ export const GaugeFormDialog = ({
 
         <TextField
           label={t.fields.gaugeName}
+          placeholder={t.form.namePlaceholder}
           required
           value={values.equipmentName}
           onChange={(event) => onChange({ equipmentName: event.target.value })}
@@ -225,6 +227,7 @@ export const GaugeFormDialog = ({
 
         <TextField
           label={t.fields.calibrationCycleInterval}
+          placeholder={t.form.cycleIntervalPlaceholder}
           required={values.calibrationRequired}
           inputMode="numeric"
           value={values.calibrationCycleInterval}
@@ -238,6 +241,7 @@ export const GaugeFormDialog = ({
         {/* 한쪽을 채우면 다른 쪽이 필수가 된다 — 그때만 * 를 단다. */}
         <TextField
           label={t.fields.precisionValue}
+          placeholder={t.form.precisionValuePlaceholder}
           required={values.precisionUomId !== ''}
           inputMode="decimal"
           value={values.precisionValue}

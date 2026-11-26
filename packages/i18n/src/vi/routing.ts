@@ -279,6 +279,12 @@ export const routing: Translated<typeof ko.routing> = {
   dialog: {
     operationCreateTitle: 'Thêm công đoạn',
     operationEditTitle: 'Sửa công đoạn',
+    processPlaceholder: 'Hãy chọn công đoạn',
+    operationNamePlaceholder: 'Hãy nhập tên công đoạn',
+    cycleTimePlaceholder: 'Hãy nhập C/T tiêu chuẩn',
+    yieldRatePlaceholder: 'Hãy nhập tỷ lệ đạt tiêu chuẩn',
+    processCodePlaceholder: 'Hãy nhập mã công đoạn',
+    processTypePlaceholder: 'Hãy chọn loại công đoạn',
     /* 되돌리기 어려운 전이라 무엇이 일어나는지와 그 뒤에 무엇을 할 수 있는지를 먼저 밝힌다. */
     confirmTitle: 'Xác nhận Rev này?',
     confirmDescription:
@@ -308,6 +314,8 @@ export const routing: Translated<typeof ko.routing> = {
     itemCode: (code: string): string => `Mã mặt hàng ${code}`,
     predecessor: 'Công đoạn trước',
     successor: 'Công đoạn sau',
+    predecessorPlaceholder: 'Hãy chọn công đoạn trước',
+    successorPlaceholder: 'Hãy chọn công đoạn sau',
     type: 'Quan hệ',
     remove: (rowNo: number): string => `Xóa quan hệ thứ ${String(rowNo)}`,
     rowField: (rowNo: number, field: string): string => `${field} dòng ${String(rowNo)}`,

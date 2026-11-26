@@ -55,6 +55,7 @@ export const LocationLabelIssueDialog = ({
     <div className="form-grid warehouse-location-label-reissue-form">
       <SelectField
         label={messages.warehouseLocation.labelIssue.reason}
+        placeholder={messages.warehouseLocation.labelIssue.reasonPlaceholder}
         required
         options={reasonOptions}
         value={reasonCode}

@@ -104,6 +104,7 @@ export const UomConversionFormDialog = ({
       <div className="form-grid">
         <SelectField
           label={t.fields.fromUom}
+          placeholder={t.placeholders.fromUom}
           required
           options={uomOptions(values.fromUomId)}
           value={values.fromUomId}
@@ -113,6 +114,7 @@ export const UomConversionFormDialog = ({
 
         <SelectField
           label={t.fields.toUom}
+          placeholder={t.placeholders.toUom}
           required
           options={uomOptions(values.toUomId)}
           value={values.toUomId}
@@ -130,6 +132,7 @@ export const UomConversionFormDialog = ({
             id={rateId}
             type="number"
             step="any"
+            placeholder={t.placeholders.conversionRate}
             value={values.conversionRate}
             onChange={(event) => change({ conversionRate: event.target.value })}
             error={errors.conversionRate}

@@ -135,6 +135,7 @@ export const RoleFormPane = ({
           <TextField
             id={roleCodeId}
             value={values.roleCode}
+            placeholder={t.role.placeholders.roleCode}
             /* 필수 칸이 비면 빨간 테두리 — 사용자 추가 팝업과 같다(사용자 지시 2026-11-20 · #333). 잠긴 칸은 고칠 수 없어 뺀다. */
             containerClassName={
               codeLockReason === null ? requiredEmptyClass(values.roleCode) : undefined
@@ -152,6 +153,7 @@ export const RoleFormPane = ({
           <TextField
             id={roleNameId}
             value={values.roleName}
+            placeholder={t.role.placeholders.roleName}
             containerClassName={requiredEmptyClass(values.roleName)}
             onChange={(event) => onChange({ roleName: event.target.value })}
             error={fieldErrors.roleName}
@@ -169,6 +171,7 @@ export const RoleFormPane = ({
           <TextField
             id={descriptionId}
             value={values.description}
+            placeholder={t.role.placeholders.description}
             onChange={(event) => onChange({ description: event.target.value })}
             error={fieldErrors.description}
           />

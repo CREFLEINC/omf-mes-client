@@ -53,6 +53,10 @@ export const gaugeMaster = {
     plantPlaceholder: '공장을 고르세요',
     cyclePlaceholder: '주기 단위를 고르세요',
     uomPlaceholder: '단위를 고르세요',
+    codePlaceholder: '계측기번호를 입력하세요',
+    namePlaceholder: '계측기명을 입력하세요',
+    cycleIntervalPlaceholder: '검교정 주기 간격을 입력하세요',
+    precisionValuePlaceholder: '정밀도를 입력하세요',
   },
   /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다(공유계약 G-2). */
   actionReasons: {

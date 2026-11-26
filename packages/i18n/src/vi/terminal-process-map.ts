@@ -116,6 +116,7 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     warehouseNeedsPlant: 'Chọn nhà máy trước',
     equipmentPopOnly: 'Chỉ máy quét POP',
     codeNeedsType: 'Tự điền khi chọn loại',
+    codePlaceholder: 'Nhập mã máy quét',
     typeHints: { POP: 'Máy quét tại xưởng', MOBILE: 'Máy quét cầm tay kho' },
   },
 

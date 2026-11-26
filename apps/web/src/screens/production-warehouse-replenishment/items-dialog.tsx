@@ -163,6 +163,7 @@ export const ItemDialog = ({ item, settings, warehouses, onClose }: ItemDialogPr
             <>
               <Select
                 aria-label={ti.productionWarehouse}
+                placeholder={ti.productionWarehousePlaceholder}
                 value={warehouse}
                 options={settings.warehouses.map((row) => ({
                   value: String(row.warehouseId),
@@ -197,6 +198,7 @@ export const ItemDialog = ({ item, settings, warehouses, onClose }: ItemDialogPr
           )}
           <TextField
             label={ti.point}
+            placeholder={ti.pointPlaceholder}
             required
             inputMode="decimal"
             value={point}
@@ -208,6 +210,7 @@ export const ItemDialog = ({ item, settings, warehouses, onClose }: ItemDialogPr
           />
           <TextField
             label={ti.target}
+            placeholder={ti.targetPlaceholder}
             required
             inputMode="decimal"
             value={target}

@@ -203,6 +203,7 @@ export const productionWarehouseReplenishment: Translated<
     reasonPlaceholder: 'Chọn lý do',
     reasonRequired: 'Hãy chọn lý do đóng',
     remark: 'Ghi chú',
+    remarkPlaceholder: 'Hãy nhập ghi chú',
     cancel: 'Hủy',
     submit: 'Đóng',
   },
@@ -331,6 +332,7 @@ export const productionWarehouseReplenishment: Translated<
     receivedLabel: (item: string): string => `Số lượng nhận ${item}`,
     reasonLabel: (item: string): string => `Lý do chênh lệch ${item}`,
     reasonPlaceholder: 'Chọn lý do',
+    receivedPlaceholder: 'Hãy nhập số lượng nhận',
     qtyInvalid: (item: string, issued: string): string =>
       `${item}: số lượng nhận phải từ 0 đến ${issued} đã xuất.`,
     reasonRequired: (item: string): string =>
@@ -410,6 +412,9 @@ export const productionWarehouseReplenishment: Translated<
     point: 'Điểm bổ sung',
     target: 'Mức duy trì',
     source: 'Kho vật tư xuất',
+    productionWarehousePlaceholder: 'Chọn kho sản xuất',
+    pointPlaceholder: 'Hãy nhập điểm bổ sung',
+    targetPlaceholder: 'Hãy nhập mức duy trì',
     help: 'Khi lượng có thể dùng ở kho sản xuất (khả dụng − dự kiến xuất) nhỏ hơn điểm bổ sung, đến giờ chạy sẽ yêu cầu 「mức duy trì − lượng có thể dùng」.',
     required: 'Hãy điền các ô trống',
     delete: 'Xóa',

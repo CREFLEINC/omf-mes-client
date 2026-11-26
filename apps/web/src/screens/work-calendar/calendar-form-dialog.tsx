@@ -74,6 +74,7 @@ export const CalendarFormDialog = ({
         <CodeLockTextField
           lockReason={codeLockReason}
           label={t.fields.calendarCode}
+          placeholder={t.form.codePlaceholder}
           required
           value={values.calendarCode}
           onChange={(event) => onChange({ calendarCode: event.target.value })}
@@ -82,6 +83,7 @@ export const CalendarFormDialog = ({
 
         <TextField
           label={t.fields.calendarName}
+          placeholder={t.form.namePlaceholder}
           required
           value={values.calendarName}
           onChange={(event) => onChange({ calendarName: event.target.value })}

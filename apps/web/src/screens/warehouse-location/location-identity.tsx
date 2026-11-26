@@ -134,6 +134,7 @@ const EditableFact = ({
           size="sm"
           aria-labelledby={labelId}
           options={select.options}
+          placeholder={t.placeholders.select(fact.label)}
           value={select.value}
           disabled={fact.edit.disabled}
           invalid={fact.error !== undefined}
@@ -156,6 +157,7 @@ const EditableFact = ({
         <TextField
           size="sm"
           aria-labelledby={labelId}
+          placeholder={t.placeholders.enter(fact.label)}
           value={fact.value}
           autoFocus
           disabled={fact.edit.disabled}

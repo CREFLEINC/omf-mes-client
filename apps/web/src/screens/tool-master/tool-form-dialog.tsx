@@ -197,6 +197,7 @@ export const ToolFormDialog = ({
             <CodeLockTextField
               lockReason={codeLockReason}
               label={t.fields.toolCode}
+              placeholder={t.form.codePlaceholder}
               required
               value={values.moldCode}
               onChange={(event) => onChange({ moldCode: event.target.value })}
@@ -206,6 +207,7 @@ export const ToolFormDialog = ({
 
             <TextField
               label={t.fields.toolName}
+              placeholder={t.form.namePlaceholder}
               required
               value={values.moldName}
               onChange={(event) => onChange({ moldName: event.target.value })}
@@ -232,6 +234,7 @@ export const ToolFormDialog = ({
              */}
             <TextField
               label={t.fields.cavityCount}
+              placeholder={t.form.cavityCountPlaceholder}
               required
               inputMode="numeric"
               value={values.cavityCount}
@@ -252,6 +255,7 @@ export const ToolFormDialog = ({
              */}
             <TextField
               label={t.fields.guaranteedShotCount}
+              placeholder={t.form.guaranteedShotCountPlaceholder}
               inputMode="numeric"
               value={values.guaranteedShotCount}
               onChange={(event) => onChange({ guaranteedShotCount: event.target.value })}
@@ -294,6 +298,7 @@ export const ToolFormDialog = ({
           <div className="form-grid tool-form-grid tool-form-pm-grid">
             <SelectField
               label={t.fields.pmTriggerType}
+              placeholder={t.form.pmTriggerTypePlaceholder}
               required
               options={triggerOptions}
               value={values.pmTriggerTypeCode}
@@ -308,6 +313,7 @@ export const ToolFormDialog = ({
              */}
             <TextField
               label={t.fields.pmCycleInterval}
+              placeholder={t.form.pmCycleIntervalPlaceholder}
               required={onDateAxis}
               inputMode="numeric"
               value={values.pmCycleInterval}

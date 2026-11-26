@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { formatQty } from './process-model';
 import { useApiClient } from '../../../patterns/api-context';
 import {
@@ -63,6 +64,10 @@ const dailyTotal = (row: DistributionSegment) =>
       .reduce((sum, date) => sum + (Number(row.daily[date]) || 0), 0)
       .toFixed(6),
   );
+
+/** 팝업 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+const ph = messages.erpWorkOrderFlow.process.placeholders;
+
 export const DistributionControls = ({
   orders,
   existing,
@@ -793,6 +798,7 @@ export const DistributionControls = ({
                                 label={`분배 수량 (${target?.unit ?? ''})`}
                                 required
                                 aria-label={`조건 ${index + 1} 수량`}
+                                placeholder={ph.distributionQty}
                                 value={row.quantity}
                                 inputMode="decimal"
                                 disabled={disabled}
@@ -829,6 +835,7 @@ export const DistributionControls = ({
                                       size="md"
                                       label={date}
                                       aria-label={`조건 ${index + 1} ${date} 수량`}
+                                      placeholder={ph.dailyQty}
                                       inputMode="decimal"
                                       value={row.daily[date] ?? ''}
                                       disabled={disabled}
@@ -1123,6 +1130,7 @@ export const DistributionControls = ({
                                       size="md"
                                       inputMode="decimal"
                                       aria-label={`${row.owner} ${row.planDate} ${row.plannedLineId} 생산량`}
+                                      placeholder={ph.plannedQty}
                                       value={row.plannedQty}
                                       onFocus={() => setEditingResultKey(key)}
                                       onBlur={() => setEditingResultKey(null)}

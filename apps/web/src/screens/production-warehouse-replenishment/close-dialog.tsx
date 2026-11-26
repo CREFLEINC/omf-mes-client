@@ -85,6 +85,7 @@ export const CloseDialog = ({ open, detail, close, onClose }: CloseDialogProps) 
       {tried && reason === '' && <AlertBanner variant="error">{tc.reasonRequired}</AlertBanner>}
       <TextField
         label={tc.remark}
+        placeholder={tc.remarkPlaceholder}
         value={remark}
         maxLength={500}
         onChange={(event) => setRemark(event.target.value)}

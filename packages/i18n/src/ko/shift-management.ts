@@ -50,6 +50,7 @@ export const shiftManagement = {
     addTitle: '교대 추가',
     editTitle: '교대 수정',
     plant: '공장',
+    plantPlaceholder: '공장을 고르세요',
     code: '교대 코드',
     codePlaceholder: '교대 코드를 입력하세요',
     codeTaken: '이 공장에 이미 있는 교대 코드입니다. 다른 코드를 입력하세요.',

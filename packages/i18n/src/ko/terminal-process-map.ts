@@ -117,6 +117,8 @@ export const terminalProcessMap = {
     warehouseNeedsPlant: '공장 먼저 선택',
     equipmentPopOnly: 'POP 단말만',
     codeNeedsType: '유형을 고르면 채워짐',
+    /** 유형을 고른 뒤 단말 코드를 비웠을 때의 흐린 안내(사용자 지시 2026-11-26 「흐린 문구 추가」). */
+    codePlaceholder: '단말 코드를 입력하세요',
     /** 유형 카드의 한 줄 설명 — 공통코드에 없는 유형은 설명 없이 이름만. */
     typeHints: { POP: '작업장 단말', MOBILE: '창고 휴대 단말' } as Record<string, string>,
   },

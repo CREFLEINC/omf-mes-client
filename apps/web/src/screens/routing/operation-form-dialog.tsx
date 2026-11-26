@@ -54,6 +54,7 @@ const ProcessSelectField = ({
         options={options}
         value={value === '' ? null : value}
         onChange={onChange}
+        placeholder={t.dialog.processPlaceholder}
         /* 필수인데 비어 있으면 빨간 테두리(사용자 지시 · #231). */
         invalid={error !== undefined || value === ''}
         aria-required
@@ -129,6 +130,7 @@ export const OperationFormDialog = ({
           <FieldLabel htmlFor={operationNameId} label={t.fields.operationName} required />
           <TextField
             id={operationNameId}
+            placeholder={t.dialog.operationNamePlaceholder}
             value={values.operationName}
             onChange={(event) => onChange({ operationName: event.target.value })}
             error={fieldErrors.operationName}
@@ -145,6 +147,7 @@ export const OperationFormDialog = ({
           type="number"
           min={1}
           label={t.fields.standardCycleTimeSec}
+          placeholder={t.dialog.cycleTimePlaceholder}
           value={values.standardCycleTimeSec}
           onChange={(event) => onChange({ standardCycleTimeSec: event.target.value })}
           error={fieldErrors.standardCycleTimeSec}
@@ -157,6 +160,7 @@ export const OperationFormDialog = ({
           max={100}
           step={0.01}
           label={t.fields.standardYieldRate}
+          placeholder={t.dialog.yieldRatePlaceholder}
           value={values.standardYieldRate}
           onChange={(event) => onChange({ standardYieldRate: event.target.value })}
           error={fieldErrors.standardYieldRate}

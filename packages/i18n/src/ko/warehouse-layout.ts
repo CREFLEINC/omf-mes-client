@@ -108,6 +108,8 @@ export const warehouseLayout = {
   aliasPopover: {
     title: (code: string): string => `${code} 별칭`,
     note: '바로 저장됩니다. 배치도 저장과는 따로입니다.',
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26 「흐린 문구 추가」). */
+    placeholder: '별칭을 입력하세요',
   },
   editor: {
     open: '수정',

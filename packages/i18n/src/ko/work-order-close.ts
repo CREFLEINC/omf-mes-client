@@ -242,6 +242,8 @@ export const workOrderClose = {
       '강제 종료하면 그 단말의 작업 세션이 바로 끝납니다. 그 단말에서 중단, 재개, 종료를 누르면 「이미 종료된 작업 세션」으로 거부되고, 작업을 이어 가려면 작업 시작을 다시 해야 합니다. 이미 입력했거나 아직 보내지 못한 실적과 자재 투입은 그대로 저장됩니다.',
     notify: '강제 종료하기 전에 그 단말의 작업자에게 알리세요.',
     reason: '강제 종료 사유',
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26 「흐린 문구 추가」). */
+    reasonPlaceholder: '강제 종료 사유를 입력하세요',
     reasonHelp: '누가 왜 세션을 닫았는지 기록으로 남습니다.',
     reasonRequired: '강제 종료 사유를 입력하세요.',
     reasonTooLong: (max: number): string => `강제 종료 사유를 ${String(max)}자 이하로 줄이세요.`,
@@ -339,6 +341,16 @@ export const workOrderClose = {
       relation: '정정 관계',
       reason: '정정 사유',
       note: '비고',
+    },
+    /** 정정 창 칸 안 흐린 안내(사용자 지시 2026-11-26 「흐린 문구 추가」). 수량 칸은 필드 이름이 키다. */
+    placeholders: {
+      goodQty: '양품 수량을 입력하세요',
+      defectQty: '불량 수량을 입력하세요',
+      holdQty: '보류 수량을 입력하세요',
+      scrapQty: '스크랩 수량을 입력하세요',
+      reworkQty: '재작업 수량을 입력하세요',
+      reason: '정정 사유를 고르세요',
+      note: '비고를 입력하세요',
     },
     values: {
       original: '원본',

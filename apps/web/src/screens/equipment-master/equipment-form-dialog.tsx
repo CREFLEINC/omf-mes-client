@@ -183,6 +183,7 @@ export const EquipmentFormDialog = ({
         <CodeLockTextField
           lockReason={codeLockReason}
           label={t.fields.equipmentCode}
+          placeholder={t.equipmentForm.codePlaceholder}
           required
           value={values.equipmentCode}
           onChange={(event) => onChange({ equipmentCode: event.target.value })}
@@ -191,6 +192,7 @@ export const EquipmentFormDialog = ({
 
         <TextField
           label={t.fields.equipmentName}
+          placeholder={t.equipmentForm.namePlaceholder}
           required
           value={values.equipmentName}
           onChange={(event) => onChange({ equipmentName: event.target.value })}
@@ -199,6 +201,7 @@ export const EquipmentFormDialog = ({
 
         <SelectField
           label={t.fields.equipmentType}
+          placeholder={t.equipmentForm.typePlaceholder}
           required
           options={typeOptions}
           value={values.equipmentTypeCode}

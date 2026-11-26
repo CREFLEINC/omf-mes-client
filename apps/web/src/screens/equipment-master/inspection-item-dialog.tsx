@@ -82,6 +82,7 @@ export const InspectionItemDialog = ({
         <CodeLockTextField
           lockReason={codeLockReason}
           label={t.fields.itemCode}
+          placeholder={t.placeholders.itemCode}
           required
           value={values.itemCode}
           onChange={(event) => onChange({ itemCode: event.target.value })}
@@ -89,6 +90,7 @@ export const InspectionItemDialog = ({
         />
         <TextField
           label={t.fields.itemName}
+          placeholder={t.placeholders.itemName}
           required
           value={values.itemName}
           onChange={(event) => onChange({ itemName: event.target.value })}
@@ -132,6 +134,7 @@ export const InspectionItemDialog = ({
         />
         <TextField
           label={t.fields.lowerLimit}
+          placeholder={t.placeholders.lowerLimit}
           required={measurement}
           value={values.lowerLimit}
           onChange={(event) => onChange({ lowerLimit: event.target.value })}
@@ -140,6 +143,7 @@ export const InspectionItemDialog = ({
         />
         <TextField
           label={t.fields.upperLimit}
+          placeholder={t.placeholders.upperLimit}
           required={measurement}
           value={values.upperLimit}
           onChange={(event) => onChange({ upperLimit: event.target.value })}
@@ -149,12 +153,14 @@ export const InspectionItemDialog = ({
 
         <TextField
           label={t.fields.inspectionPoint}
+          placeholder={t.placeholders.inspectionPoint}
           value={values.inspectionPoint}
           onChange={(event) => onChange({ inspectionPoint: event.target.value })}
           error={fieldErrors.inspectionPoint}
         />
         <TextField
           label={t.fields.sequenceNo}
+          placeholder={t.placeholders.sequenceNo}
           required
           value={values.sequenceNo}
           onChange={(event) => onChange({ sequenceNo: event.target.value })}

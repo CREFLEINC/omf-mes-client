@@ -209,6 +209,7 @@ export const EditDialog = ({
               {/* 공장은 이름으로 찾아 고른다(사용자 지시 2026-11-25). */}
               <Select
                 id={plantFieldId}
+                placeholder={td.plantPlaceholder}
                 searchable
                 searchPlaceholder={t.filters.plantSearchPlaceholder}
                 value={String(plantId)}

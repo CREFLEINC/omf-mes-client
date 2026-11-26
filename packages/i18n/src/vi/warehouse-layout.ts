@@ -93,6 +93,7 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
   aliasPopover: {
     title: (code: string): string => `Tên gọi khác của ${code}`,
     note: 'Lưu ngay. Tách riêng với việc lưu sơ đồ.',
+    placeholder: 'Hãy nhập tên gọi khác',
   },
   editor: {
     open: 'Sửa',

@@ -212,6 +212,12 @@ export const itemExtendedAttrs = {
       effectiveTo: '유효 종료',
       edit: '편집',
     },
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26 「흐린 문구 추가」). */
+    placeholders: {
+      fromUom: '변환 전 단위를 고르세요',
+      toUom: '변환 후 단위를 고르세요',
+      conversionRate: '환산 비율을 입력하세요',
+    },
     values: {
       period: (from: string, to: string): string => `${from} ~ ${to}`,
     },
@@ -270,6 +276,11 @@ export const itemExtendedAttrs = {
       isActive: '사용 유무',
       remarks: '비고',
       actions: '작업',
+    },
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26 「흐린 문구 추가」). */
+    placeholders: {
+      priorityNo: '추천 순서를 입력하세요',
+      remarks: '비고를 입력하세요',
     },
     values: {
       /* 공정을 비운 줄. 빈 칸으로 두면 빠뜨린 것으로 읽힌다. */

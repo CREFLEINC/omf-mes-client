@@ -145,6 +145,13 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       status: 'Tình trạng làm việc',
       initialPassword: 'Mật khẩu ban đầu',
     },
+    placeholders: {
+      loginId: 'Hãy nhập tên đăng nhập',
+      initialPassword: 'Hãy nhập mật khẩu ban đầu',
+      userName: 'Hãy nhập tên',
+      email: 'Hãy nhập thư điện tử',
+      phoneNumber: 'Hãy nhập số điện thoại di động',
+    },
     statusDefault: 'Mặc định (đang làm việc)',
     showPassword: 'Hiện mật khẩu',
     optionalMark: '(tùy chọn)',
@@ -178,6 +185,11 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       roleName: 'Tên vai trò',
       description: 'Mô tả',
       status: 'Trạng thái sử dụng',
+    },
+    placeholders: {
+      roleCode: 'Hãy nhập mã vai trò',
+      roleName: 'Hãy nhập tên vai trò',
+      description: 'Hãy nhập mô tả',
     },
     codeInUse: 'Không thể thay đổi mã đang được sử dụng.',
     empty: {

@@ -110,6 +110,7 @@ export const QualificationFormDialog = ({
           required
           options={QUALIFICATION_TYPE_OPTIONS}
           value={values.qualificationTypeCode}
+          placeholder={t.placeholders.qualificationType}
           /* 필수 칸이 비면 빨간 테두리 — 사용자 역할 화면과 같은 방식(#333 · 사용자 지시 2026-11-25). */
           containerClassName={requiredEmptyClass(values.qualificationTypeCode)}
           onChange={(value) => change({ qualificationTypeCode: value })}
@@ -130,6 +131,7 @@ export const QualificationFormDialog = ({
           <TextField
             id={certificateId}
             value={values.certificateNo}
+            placeholder={t.placeholders.certificateNo}
             onChange={(event) => change({ certificateNo: event.target.value })}
             error={errors.certificateNo}
           />

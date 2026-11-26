@@ -138,6 +138,7 @@ export const InspectionAssignDialog = ({
               <div className="form-grid">
                 <SelectField
                   label={t.fields.cycleType}
+                  placeholder={t.cycleTypePlaceholder}
                   required
                   options={cycleOptions}
                   value={row.cycleTypeCode}
@@ -148,6 +149,7 @@ export const InspectionAssignDialog = ({
                 />
                 <TextField
                   label={t.fields.cycleInterval}
+                  placeholder={t.cycleIntervalPlaceholder}
                   required
                   value={row.cycleInterval}
                   onChange={(event) =>

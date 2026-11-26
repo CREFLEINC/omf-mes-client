@@ -146,6 +146,9 @@ export const equipmentMaster = {
     editTitle: '설비 수정',
     groupNone: '소속 없음',
     processNone: '지정 없음',
+    codePlaceholder: '설비코드를 입력하세요',
+    namePlaceholder: '설비명을 입력하세요',
+    typePlaceholder: '설비유형을 고르세요',
   },
   validation: {
     required: '필수 입력 항목입니다.',
@@ -256,6 +259,8 @@ export const equipmentMaster = {
     dialogLead: '이 창에 남긴 것이 전부가 됩니다 — 지운 줄은 부여가 풀립니다.',
     addLabel: '항목 추가',
     addPlaceholder: '부여할 점검 항목을 고르세요',
+    cycleTypePlaceholder: '주기 단위를 고르세요',
+    cycleIntervalPlaceholder: '주기 간격을 입력하세요',
     /** 고를 것이 없는 것과 목록을 못 받은 것은 다르다 — 앞엣것만 이 문구다. */
     allAssigned: '마스터의 점검 항목을 모두 부여했습니다.',
     /**
@@ -359,6 +364,12 @@ export const equipmentMaster = {
       inspectionType: '점검 유형을 고르세요',
       judgmentMethod: '판정 방식을 고르세요',
       uom: '단위를 고르세요',
+      itemCode: '항목코드를 입력하세요',
+      itemName: '항목명을 입력하세요',
+      lowerLimit: '측정 하한을 입력하세요',
+      upperLimit: '측정 상한을 입력하세요',
+      inspectionPoint: '점검부위를 입력하세요',
+      sequenceNo: '표시 순서를 입력하세요',
     },
     /**
      * ⛔ **짝 제약을 창이 말한다.** 판정 방식이 「측정값」이면 단위·상하한이 함께 필요하다 —

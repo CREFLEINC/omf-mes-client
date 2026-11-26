@@ -1020,6 +1020,7 @@ const ProcessCreateDialog = ({ typeOptions, onClose, onCreated }: ProcessCreateD
             <FieldLabel htmlFor={codeId} label={t.fields.processCode} required />
             <TextField
               id={codeId}
+              placeholder={t.dialog.processCodePlaceholder}
               value={values.processCode}
               onChange={(event) => change({ processCode: event.target.value })}
               error={errors.processCode}
@@ -1034,6 +1035,7 @@ const ProcessCreateDialog = ({ typeOptions, onClose, onCreated }: ProcessCreateD
             <FieldLabel htmlFor={nameId} label={t.fields.processName} required />
             <TextField
               id={nameId}
+              placeholder={t.dialog.operationNamePlaceholder}
               value={values.processName}
               onChange={(event) => change({ processName: event.target.value })}
               error={errors.processName}
@@ -1047,6 +1049,7 @@ const ProcessCreateDialog = ({ typeOptions, onClose, onCreated }: ProcessCreateD
             <FieldLabel htmlFor={typeId} label={t.fields.processType} required />
             <Select
               id={typeId}
+              placeholder={t.dialog.processTypePlaceholder}
               value={values.processTypeCode}
               options={typeOptions}
               onChange={(value) => change({ processTypeCode: value ?? '' })}

@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { isPastPlanningDate } from './planning-date-policy';
 import { plantToday } from '../../../patterns/plant-time';
 import { useApiClient } from '../../../patterns/api-context';
@@ -15,6 +16,9 @@ import type { ProductionPlanEditorStateRow } from '../../production-plan/editor-
 import { validPlanSplit, type PlanSplitPart } from '../../production-plan/quantity-split';
 import { shiftPlanDate } from './plan-view-model';
 import { formatQty } from './process-model';
+
+/** 팝업 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+const ph = messages.erpWorkOrderFlow.process.placeholders;
 
 export const PlanSplitDialog = ({
   row,
@@ -284,6 +288,7 @@ export const PlanSplitDialog = ({
               label="분할 후 계획 건수"
               required={method !== 'fixed'}
               aria-label="분할 후 계획 건수"
+              placeholder={ph.splitCount}
               inputMode="numeric"
               value={count}
               disabled={calendarBusy || method === 'fixed'}
@@ -317,6 +322,7 @@ export const PlanSplitDialog = ({
                 label={`계획당 생산량 (${unit})`}
                 required
                 aria-label="계획당 생산량"
+                placeholder={ph.perPlanQty}
                 inputMode="decimal"
                 value={per}
                 onChange={(event) => {
@@ -463,6 +469,7 @@ export const PlanSplitDialog = ({
                           disabled={calendarBusy}
                           inputMode="decimal"
                           aria-label={day ? `${day.date} 휴일 생산량` : `계획 ${i + 1} 생산량`}
+                          placeholder={ph.plannedQty}
                           aria-required="true"
                           value={part.plannedQty}
                           onChange={(event) =>

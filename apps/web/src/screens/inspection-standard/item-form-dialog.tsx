@@ -253,6 +253,7 @@ export const ItemFormDialog = ({
             min={1}
             step={1}
             value={values.measurementCount}
+            placeholder={ph.measurementCount}
             onChange={(event) => onChange({ measurementCount: event.target.value })}
             {...requiredText('measurementCount', values.measurementCount)}
             aria-required

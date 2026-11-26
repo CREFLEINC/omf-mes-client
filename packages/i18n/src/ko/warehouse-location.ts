@@ -1,3 +1,9 @@
+/** 받침이 있으면 「을」, 없으면 「를」 — 칸 안 흐린 안내에 붙인다. 한글이 아닌 끝 글자는 받침 없음으로 본다. */
+const objectJosa = (word: string): string => {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  return code >= 0 && code <= 11171 && code % 28 !== 0 ? '을' : '를';
+};
+
 export const warehouseLocation = {
   title: '창고·Location',
   breadcrumbRoot: '기준정보 관리',
@@ -5,6 +11,11 @@ export const warehouseLocation = {
   splitter: '끌어서 목록·상세 폭 조절',
   listCollapse: '창고 목록 접기',
   listExpand: '창고 목록 펼치기',
+  /** 칸 안 흐린 안내(사용자 지시 2026-11-26 「흐린 문구 추가」). 칸 이름을 받아 만든다. */
+  placeholders: {
+    enter: (label: string): string => `${label}${objectJosa(label)} 입력하세요`,
+    select: (label: string): string => `${label}${objectJosa(label)} 고르세요`,
+  },
   panes: {
     filters: '창고 조회 조건',
     list: '창고 목록',
@@ -253,6 +264,8 @@ export const warehouseLocation = {
   rackLayout: {
     levelCount: '행 (층 수)',
     cellCount: '열 (층마다 셀 수)',
+    levelCountPlaceholder: '층 수를 입력하세요',
+    cellCountPlaceholder: '층마다 셀 수를 입력하세요',
     countInvalid: (min: number, max: number): string =>
       `${String(min)}부터 ${String(max)}까지 숫자로 입력하세요.`,
     previewLabel: '층·셀 배치',
@@ -280,6 +293,7 @@ export const warehouseLocation = {
     title: '라벨 재발행',
     alreadyIssued: (count: number): string => `${String(count)}건은 이미 발행했습니다.`,
     reason: '재발행 사유',
+    reasonPlaceholder: '재발행 사유를 고르세요',
     confirm: '재발행',
   },
   /** 라벨 일괄 출력(사용자 지시 2026-10-29) — 발행한 그림을 모아 보고 인쇄한다. */

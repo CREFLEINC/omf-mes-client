@@ -126,6 +126,7 @@ export const DayFormDialog = ({
          */}
         <TextField
           label={t.dayForm.reason}
+          placeholder={t.dayForm.reasonPlaceholder}
           value={values.reasonCode}
           onChange={(event) => onChange({ reasonCode: event.target.value })}
           error={fieldErrors.reasonCode}
@@ -133,6 +134,7 @@ export const DayFormDialog = ({
 
         <TextField
           label={t.dayForm.remarks}
+          placeholder={t.dayForm.remarksPlaceholder}
           value={values.remarks}
           onChange={(event) => onChange({ remarks: event.target.value })}
           error={fieldErrors.remarks}

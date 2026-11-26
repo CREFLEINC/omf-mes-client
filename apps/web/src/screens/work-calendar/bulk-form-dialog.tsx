@@ -181,6 +181,7 @@ export const BulkFormDialog = ({
 
         <TextField
           label={t.dayForm.reason}
+          placeholder={t.dayForm.reasonPlaceholder}
           value={values.day.reasonCode}
           onChange={(event) => onChangeDay({ reasonCode: event.target.value })}
           error={fieldErrors.reasonCode}
@@ -188,6 +189,7 @@ export const BulkFormDialog = ({
 
         <TextField
           label={t.dayForm.remarks}
+          placeholder={t.dayForm.remarksPlaceholder}
           value={values.day.remarks}
           onChange={(event) => onChangeDay({ remarks: event.target.value })}
           error={fieldErrors.remarks}

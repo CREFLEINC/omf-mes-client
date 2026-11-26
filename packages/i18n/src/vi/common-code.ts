@@ -110,6 +110,11 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       groupName: 'Tên nhóm',
       description: 'Mô tả',
     },
+    placeholders: {
+      groupCode: 'Hãy nhập mã nhóm',
+      groupName: 'Hãy nhập tên nhóm',
+      description: 'Hãy nhập mô tả',
+    },
     empty: {
       noneTitle: 'Chưa đăng ký nhóm mã',
       noneDescription: 'Hãy đăng ký nhóm mã đầu tiên bằng «Thêm nhóm».',
@@ -133,6 +138,10 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       departmentName: 'Tên phòng ban',
       parentDepartment: 'Phòng ban cấp trên',
       businessUnit: 'Đơn vị kinh doanh',
+    },
+    placeholders: {
+      departmentCode: 'Hãy nhập mã phòng ban',
+      departmentName: 'Hãy nhập tên phòng ban',
     },
     values: {
       groupHeader: (code: string, name: string): string => `${code} · ${name}`,
@@ -208,6 +217,10 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       validTo: 'Hiệu lực đến',
       certifiedBy: 'Người chứng nhận',
       manage: 'Quản lý',
+    },
+    placeholders: {
+      qualificationType: 'Hãy chọn loại chứng chỉ',
+      certificateNo: 'Hãy nhập số chứng nhận',
     },
     values: {
       /** 공정을 비운 자격은 모든 공정에 걸린다. */
@@ -350,6 +363,11 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       effectiveFrom: 'Hiệu lực từ',
       effectiveTo: 'Hiệu lực đến',
       manage: 'Quản lý',
+    },
+    placeholders: {
+      code: 'Hãy nhập mã',
+      codeName: 'Hãy nhập tên mã',
+      displayOrder: 'Hãy nhập thứ tự sắp xếp',
     },
     empty: {
       groupNotSelected: 'Hãy chọn nhóm mã ở bên trái trước',

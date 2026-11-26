@@ -52,6 +52,10 @@ export const gaugeMaster: Translated<typeof ko.gaugeMaster> = {
     plantPlaceholder: 'Hãy chọn nhà máy',
     cyclePlaceholder: 'Hãy chọn đơn vị chu kỳ',
     uomPlaceholder: 'Hãy chọn đơn vị',
+    codePlaceholder: 'Hãy nhập mã thiết bị đo',
+    namePlaceholder: 'Hãy nhập tên thiết bị đo',
+    cycleIntervalPlaceholder: 'Hãy nhập khoảng chu kỳ hiệu chuẩn',
+    precisionValuePlaceholder: 'Hãy nhập độ chính xác',
   },
   /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다. */
   actionReasons: {

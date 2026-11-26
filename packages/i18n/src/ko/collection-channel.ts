@@ -187,6 +187,8 @@ export const collectionChannel = {
     createTitle: '수집 채널 등록',
     editTitle: '수집 채널 수정',
     unitPlaceholder: '단위를 고르세요',
+    channelKeyPlaceholder: '채널명을 입력하세요',
+    signalNamePlaceholder: '신호 이름을 입력하세요',
     /** 등록 창은 «고른 설비»에 매인다 — 어느 설비에 더하는지 창이 스스로 말한다. */
     equipmentFixed: (code: string, name: string): string => `${code} · ${name}`,
   },

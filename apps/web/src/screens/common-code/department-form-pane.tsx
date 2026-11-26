@@ -132,6 +132,7 @@ export const DepartmentFormPane = ({
         <TextField
           id={codeId}
           value={values.departmentCode}
+          placeholder={t.department.placeholders.departmentCode}
           onChange={(event) => onChange({ departmentCode: event.target.value })}
           disabled={codeLockReason !== null}
           aria-describedby={codeLockReason === null ? undefined : `${codeId}-lock`}
@@ -149,6 +150,7 @@ export const DepartmentFormPane = ({
         <TextField
           id={nameId}
           value={values.departmentName}
+          placeholder={t.department.placeholders.departmentName}
           onChange={(event) => onChange({ departmentName: event.target.value })}
           containerClassName={requiredEmptyClass(values.departmentName)}
           error={fieldErrors.departmentName}

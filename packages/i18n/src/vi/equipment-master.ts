@@ -111,6 +111,9 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
     editTitle: 'Sửa thiết bị',
     groupNone: 'Không thuộc nhóm',
     processNone: 'Không chỉ định',
+    codePlaceholder: 'Hãy nhập mã thiết bị',
+    namePlaceholder: 'Hãy nhập tên thiết bị',
+    typePlaceholder: 'Hãy chọn loại thiết bị',
   },
   validation: {
     required: 'Đây là mục bắt buộc nhập.',
@@ -189,6 +192,8 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
     dialogLead: 'Những gì còn lại trong cửa sổ này sẽ là tất cả — dòng đã xóa thì gán được gỡ.',
     addLabel: 'Thêm hạng mục',
     addPlaceholder: 'Hãy chọn hạng mục kiểm tra định kỳ để gán',
+    cycleTypePlaceholder: 'Hãy chọn đơn vị chu kỳ',
+    cycleIntervalPlaceholder: 'Hãy nhập khoảng chu kỳ',
     allAssigned: 'Đã gán hết hạng mục kiểm tra định kỳ của dữ liệu gốc.',
     /** 「어디서 만드나」를 같은 화면의 탭 이름으로 짚는다 — 탭 이름과 글자를 맞춘다. */
     masterEmpty:
@@ -266,6 +271,12 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
       inspectionType: 'Hãy chọn loại kiểm tra định kỳ',
       judgmentMethod: 'Hãy chọn cách đánh giá',
       uom: 'Hãy chọn đơn vị',
+      itemCode: 'Hãy nhập mã hạng mục',
+      itemName: 'Hãy nhập tên hạng mục',
+      lowerLimit: 'Hãy nhập giới hạn dưới',
+      upperLimit: 'Hãy nhập giới hạn trên',
+      inspectionPoint: 'Hãy nhập vị trí kiểm tra định kỳ',
+      sequenceNo: 'Hãy nhập thứ tự hiển thị',
     },
     measurementNote: 'Nếu cách đánh giá là «giá trị đo» thì cần cả đơn vị và giới hạn trên · dưới.',
     plantFixed: 'Nhà máy được định khi đăng ký và không thể chuyển ở màn hình này.',

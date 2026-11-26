@@ -235,6 +235,7 @@ export const PlanPane = ({
             <TextField
               id={nameId}
               value={values.inspectionPlanName}
+              placeholder={t.dialog.planPlaceholders.inspectionPlanName}
               onChange={(event) => onChange({ inspectionPlanName: event.target.value })}
               {...requiredText('inspectionPlanName', values.inspectionPlanName)}
               aria-required
@@ -248,6 +249,7 @@ export const PlanPane = ({
           required
           options={ensureOption(typeOptions, values.inspectionTypeCode)}
           value={values.inspectionTypeCode}
+          placeholder={t.dialog.planPlaceholders.inspectionType}
           onChange={(inspectionTypeCode) => onChange({ inspectionTypeCode })}
           error={shownError('inspectionTypeCode')}
           invalid={isBlank(values.inspectionTypeCode)}

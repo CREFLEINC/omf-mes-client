@@ -291,7 +291,7 @@ export const TerminalForm = ({
               id={codeId}
               value={draft.terminalCode}
               disabled={!hasType}
-              placeholder={hasType ? undefined : t.terminal.codeNeedsType}
+              placeholder={hasType ? t.terminal.codePlaceholder : t.terminal.codeNeedsType}
               error={errors.terminalCode ?? fieldErrors.terminalCode}
               onChange={(event) => {
                 onChange({ terminalCode: event.target.value });

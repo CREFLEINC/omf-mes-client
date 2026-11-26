@@ -150,6 +150,7 @@ export const ChannelFormDialog = ({
         {isCreate ? (
           <TextField
             label={t.fields.channelKey}
+            placeholder={t.form.channelKeyPlaceholder}
             required
             value={values.channelKey}
             onChange={(event) => onChange({ channelKey: event.target.value })}
@@ -165,6 +166,7 @@ export const ChannelFormDialog = ({
 
         <TextField
           label={t.fields.signalName}
+          placeholder={t.form.signalNamePlaceholder}
           value={values.signalName}
           onChange={(event) => onChange({ signalName: event.target.value })}
           error={fieldErrors.signalName}

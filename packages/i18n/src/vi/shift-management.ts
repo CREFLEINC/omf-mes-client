@@ -48,6 +48,7 @@ export const shiftManagement: Translated<typeof ko.shiftManagement> = {
     addTitle: 'Thêm ca',
     editTitle: 'Sửa ca',
     plant: 'Nhà máy',
+    plantPlaceholder: 'Chọn nhà máy',
     code: 'Mã ca',
     codePlaceholder: 'Nhập mã ca',
     codeTaken: 'Mã ca này đã có ở nhà máy này. Hãy nhập mã khác.',

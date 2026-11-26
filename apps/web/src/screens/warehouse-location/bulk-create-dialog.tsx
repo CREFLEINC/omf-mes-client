@@ -176,6 +176,7 @@ export const BulkCreateDialog = ({
         id={info?.id}
         label={info === undefined ? label : undefined}
         required={info === undefined && !disabled}
+        placeholder={t.placeholders.enter(label)}
         aria-required={info !== undefined && !disabled ? 'true' : undefined}
         inputMode="numeric"
         value={value}

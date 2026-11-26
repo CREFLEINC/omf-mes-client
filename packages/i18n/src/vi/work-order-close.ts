@@ -250,6 +250,7 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
       'Khi buộc kết thúc, phiên làm việc của máy đó kết thúc ngay. Nếu bấm tạm dừng, tiếp tục, kết thúc ở máy đó sẽ bị từ chối là «phiên đã kết thúc», và muốn làm tiếp phải bắt đầu công việc lại. Kết quả và việc đưa vật tư đã nhập hoặc chưa gửi vẫn được lưu như cũ.',
     notify: 'Hãy báo cho công nhân ở máy đó trước khi buộc kết thúc.',
     reason: 'Lý do buộc kết thúc',
+    reasonPlaceholder: 'Hãy nhập lý do buộc kết thúc',
     reasonHelp: 'Ai đã đóng phiên và vì sao sẽ được ghi lại.',
     reasonRequired: 'Hãy nhập lý do buộc kết thúc.',
     reasonTooLong: (max: number): string =>
@@ -346,6 +347,15 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
       relation: 'Quan hệ sửa',
       reason: 'Lý do sửa',
       note: 'Ghi chú',
+    },
+    placeholders: {
+      goodQty: 'Hãy nhập số lượng đạt',
+      defectQty: 'Hãy nhập số lượng lỗi',
+      holdQty: 'Hãy nhập số lượng tạm giữ',
+      scrapQty: 'Hãy nhập số lượng phế liệu',
+      reworkQty: 'Hãy nhập số lượng làm lại',
+      reason: 'Hãy chọn lý do sửa',
+      note: 'Hãy nhập ghi chú',
     },
     values: {
       original: 'Bản gốc',
