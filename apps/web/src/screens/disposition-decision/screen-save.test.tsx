@@ -345,7 +345,7 @@ describe('DispositionDecisionScreen 결재 없이 바로 반영(#352)', () => {
 
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText(t.confirm.title)).toBeInTheDocument();
-    expect(within(dialog).getByText(t.confirm.direct)).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: t.confirm.direct })).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: t.confirm.save }));
 
     await waitFor(() => {

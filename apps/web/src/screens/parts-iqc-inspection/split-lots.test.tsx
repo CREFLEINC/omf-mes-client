@@ -114,7 +114,7 @@ describe('W-01-01 자재 관리 LOT 분리 창 (T092 · T093)', () => {
     const user = userEvent.setup();
     const { previewRequests } = setup();
 
-    expect(screen.getByText(t.intro)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.intro })).toBeInTheDocument();
     expect(screen.getByText(t.pickedCount(0, 3))).toBeInTheDocument();
     expect(screen.queryByText(/P\/O 배분/)).toBeNull();
     /* 결과 칩 — 0003 은 결과 1 · 2 에 매칭돼 있다. */

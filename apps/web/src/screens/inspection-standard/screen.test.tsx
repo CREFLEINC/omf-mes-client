@@ -3166,7 +3166,9 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
     await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-09');
     await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
     expect(
-      within(dialogNode).getByText('확인하면 목록에 추가되고, 저장해야 반영됩니다.'),
+      within(dialogNode).getByRole('button', {
+        name: '확인하면 목록에 추가되고, 저장해야 반영됩니다.',
+      }),
     ).toBeInTheDocument();
 
     await user.click(within(dialogNode).getByRole('combobox', { name: '검사값 유형' }));
@@ -3795,7 +3797,7 @@ describe('InspectionStandardScreen — 기준 복사', () => {
     await user.click(await screen.findByRole('button', { name: t.actions.copy }));
     const dialog = await screen.findByRole('dialog', { name: t.detail.copyTitle });
 
-    expect(within(dialog).getByText(t.detail.copyNote(1))).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: t.detail.copyNote(1) })).toBeInTheDocument();
     expect(within(dialog).getByLabelText('기준코드')).toHaveValue('');
     expect(within(dialog).getByLabelText('기준명')).toHaveValue(
       inspectionPlanFixtures[0]!.inspectionPlanName,

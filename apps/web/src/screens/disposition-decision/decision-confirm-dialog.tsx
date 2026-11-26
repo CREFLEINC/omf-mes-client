@@ -1,6 +1,8 @@
-import { Button, Dialog, Icon } from '@crefle/web-ui';
+import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
+
+import { InfoTip } from '../../patterns/info-tip';
 
 const t = messages.dispositionDecision;
 
@@ -36,7 +38,16 @@ export const DecisionConfirmDialog = ({
       open
       onClose={onCancel}
       size="md"
-      title={<span id={titleId}>{t.confirm.title}</span>}
+      /*
+       * 저장 안내는 제목 옆 ⓘ — 마우스를 올리면 뜬다(omf-all-around#360). 본문은 값 줄뿐이라 붙일 머리가 없다.
+       * 창 이름은 `aria-labelledby` 로 제목 글자만 읽힌다.
+       */
+      title={
+        <span className="disposition-confirm-title">
+          <span id={titleId}>{t.confirm.title}</span>
+          <InfoTip text={t.confirm.direct} />
+        </span>
+      }
       aria-labelledby={titleId}
       showCloseButton={false}
       closeOnBackdropClick={false}
@@ -65,10 +76,6 @@ export const DecisionConfirmDialog = ({
             </div>
           ))}
         </dl>
-        <p className="iqc-inspection-action-note" data-tone="info">
-          <Icon name="info" size={14} aria-hidden />
-          {t.confirm.direct}
-        </p>
       </div>
     </Dialog>
   );

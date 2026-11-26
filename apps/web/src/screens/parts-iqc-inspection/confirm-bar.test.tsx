@@ -358,7 +358,7 @@ describe('W-01-01 확정 취소', () => {
     expect(dialog).toHaveTextContent(
       t.cancel.appliedValue(2, formatPlantDateTime('2099-11-12T02:30:00Z') ?? ''),
     );
-    expect(dialog).toHaveTextContent(t.cancel.note);
+    expect(within(dialog).getByRole('button', { name: t.cancel.note })).toBeInTheDocument();
     await user.type(within(dialog).getByLabelText(t.cancel.reason), '합성 사유');
     await user.click(within(dialog).getByRole('button', { name: t.cancel.proceed }));
 

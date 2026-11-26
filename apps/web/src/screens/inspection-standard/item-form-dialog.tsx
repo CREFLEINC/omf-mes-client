@@ -1,7 +1,8 @@
-import { Button, Checkbox, Dialog, Icon, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { FieldLabel } from './field-label';
 import { NUMERIC_DATA_TYPE } from './item-validation';
 import { SelectField } from './select-field';
@@ -61,6 +62,7 @@ export const ItemFormDialog = ({
   onClose,
   onSubmit,
 }: ItemFormDialogProps) => {
+  const titleId = useId();
   const codeId = useId();
   const nameId = useId();
   const measurementCountId = useId();
@@ -123,7 +125,19 @@ export const ItemFormDialog = ({
       size="lg"
       /* 닫기는 「취소」로 한다 — 머리의 ✕는 두지 않는다(사용자 지시 · #196). */
       showCloseButton={false}
-      title={mode === 'create' ? t.dialog.itemCreateTitle : t.dialog.itemEditTitle}
+      /*
+       * 「확인」 · 「저장」 안내는 제목 옆 ⓘ — 마우스를 올리면 뜬다(omf-all-around#360). 본문은 칸뿐이라 붙일 머리가 없다.
+       * 창 이름은 `aria-labelledby` 로 제목 글자만 읽힌다.
+       */
+      title={
+        <span className="inspection-standard-dialog-title-tip">
+          <span id={titleId}>
+            {mode === 'create' ? t.dialog.itemCreateTitle : t.dialog.itemEditTitle}
+          </span>
+          <InfoTip text={t.dialog.itemLocalNote} />
+        </span>
+      }
+      aria-labelledby={titleId}
       footer={
         <>
           <Button variant="outlined" onClick={onClose}>
@@ -278,12 +292,6 @@ export const ItemFormDialog = ({
           error={fieldErrors.defaultInspectionEquipmentId}
         />
       </div>
-
-      {/* 안내 알약 — 품질 기준 정보 탭의 안내와 같은 모양(사용자 시안 · #208). */}
-      <p className="inspection-standard-notice-label inspection-standard-item-local-note">
-        <Icon name="info" size={18} aria-hidden />
-        {t.dialog.itemLocalNote}
-      </p>
 
       {/*
        * 수치를 고르면 뜬다 — 단위만 필수, 기준값·상하한은 선택. 취소하면 단위는 빈 채로 남고

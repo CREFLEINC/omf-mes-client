@@ -4,6 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useState, type ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { InfoTip } from '../../patterns/info-tip';
 import { formatBaseQty, formatPackage, formatQty } from '../../patterns/package-qty';
 import { toApiError } from '../../patterns/request';
 import {
@@ -254,16 +255,7 @@ export const SplitLotsDialog = ({
     <Dialog
       open
       size="lg"
-      title={
-        /* 안내는 제목 옆 정보 라벨로(사용자 지시 2026-11-16 · omf-all-around#274). */
-        <span className="iqc-split-title">
-          {t.title}
-          <span className="iqc-inspection-action-note iqc-split-intro" data-tone="info">
-            <Icon name="info" size={14} aria-hidden />
-            {t.intro}
-          </span>
-        </span>
-      }
+      title={t.title}
       showCloseButton={false}
       closeOnBackdropClick={false}
       onClose={onClose}
@@ -290,6 +282,8 @@ export const SplitLotsDialog = ({
             <span className="required-mark" aria-hidden="true">
               {' *'}
             </span>
+            {/* 분리 안내는 목록 이름 옆 ⓘ — 마우스를 올리면 뜬다(omf-all-around#360). */}
+            <InfoTip text={t.intro} />
           </span>
           <span className="iqc-split-muted">{t.pickedCount(selected.length, lots.length)}</span>
         </div>

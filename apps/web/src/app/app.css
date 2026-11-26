@@ -1218,8 +1218,11 @@ h2:has(> .inspection-standard-dialog-title) {
   text-align: center;
 }
 
-.inspection-standard-item-local-note {
-  margin-top: var(--space-4);
+/* 창 제목 + ⓘ(제목 옆 안내 · omf-all-around#360) — 아이콘을 제목 줄 가운데에 맞춘다. */
+.inspection-standard-dialog-title-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 /*
@@ -17683,6 +17686,13 @@ dialog.terminal-map-form-dialog {
   color: var(--on-surface-variant);
 }
 
+/* 단말 코드 이름 + 필수 + 「자동」 + ⓘ(등록 후 변경 불가 안내 · omf-all-around#360) — 한 줄 가운데 맞춤. */
+.field-label.terminal-map-code-label {
+  display: flex;
+  align-items: center;
+  column-gap: 0.2em;
+}
+
 /* 단말 코드 라벨 옆 「자동」 — 유형으로 채운 값 그대로일 때만. */
 .terminal-map-auto-mark {
   margin-left: var(--space-2);
@@ -17771,14 +17781,7 @@ dialog.terminal-map-wizard:has(.terminal-map-matrix) {
   max-width: min(66rem, calc(100vw - 2rem));
 }
 
-/* 바닥글 왼쪽 — 첫 단계의 코드 잠금 안내 · 둘째 단계의 [이전]. */
-.terminal-map-wizard [class*='_footer_'] > .terminal-map-wizard-footnote {
-  margin: 0 auto 0 0;
-  padding: 2px var(--space-2);
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
-}
-
+/* 바닥글 왼쪽 — 둘째 단계의 [이전]. */
 .terminal-map-wizard [class*='_footer_'] > .terminal-map-wizard-back {
   margin-right: auto;
 }
@@ -33053,6 +33056,9 @@ dialog.layout-editor-dialog .layout-editor-body {
 }
 
 .iqc-cancel-confirm-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   margin: 0;
   color: var(--on-surface);
   font: var(--type-title-sm);
@@ -33087,18 +33093,6 @@ dialog.layout-editor-dialog .layout-editor-body {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2) var(--space-4);
-}
-
-/* 안내 한 줄 — 파란 라벨 띠(사용자 지시 2026-11-19), 글자는 창의 다른 글과 같은 크기. */
-.iqc-inspection-action-note.iqc-cancel-confirm-note {
-  align-items: flex-start;
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
-}
-
-.iqc-cancel-confirm-note > :first-child {
-  flex: none;
-  margin-top: 0.2em;
 }
 
 .iqc-cancel-confirm-reason label,
@@ -33213,25 +33207,19 @@ ul.iqc-inbound-superseded {
   margin-inline-end: var(--space-3);
 }
 
-/* 분리 창 제목 옆 안내 라벨(#274). */
-.iqc-split-title {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-}
-
-.iqc-split-title > .iqc-split-intro {
-  margin: 0;
-  font: var(--type-body-sm);
-}
-
 /* 분리 창 — 목록 제목 왼쪽 · 고른 수 오른쪽(사용자 시안 2026-11-16 · #274). */
 .iqc-split-lots-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+}
+
+/* 목록 이름 + 필수 표시 + ⓘ(분리 안내 · omf-all-around#360) — 한 줄 가운데 맞춤. */
+.iqc-split-lots-head > :first-child {
+  display: inline-flex;
+  align-items: center;
+  column-gap: 0.2em;
 }
 
 /* 필수 입력 표시는 빨간 *(사용자 지시 2026-11-16 · #274) — 결과 추가 창 · 상세 안. */
@@ -33250,13 +33238,6 @@ ul.iqc-inbound-superseded {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-}
-
-.iqc-split-intro {
-  margin: 0;
-  color: var(--on-surface-variant);
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
 }
 
 .iqc-split-lots {
@@ -39795,6 +39776,13 @@ body:has(
 .disposition-confirm {
   display: grid;
   gap: var(--space-3);
+}
+
+/* 확인 창 제목 + ⓘ(저장 안내 · omf-all-around#360) — 아이콘을 제목 줄 가운데에 맞춘다. */
+.disposition-confirm-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .disposition-confirm-rows {
