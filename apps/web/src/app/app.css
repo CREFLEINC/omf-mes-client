@@ -34770,8 +34770,9 @@ dialog.bom-detail-dialog {
 .bom-detail-table td.numeric {
   font-variant-numeric: tabular-nums;
 }
-.bom-detail-item {
-  display: grid;
+.bom-detail-item strong,
+.bom-detail-item span {
+  display: block;
 }
 .bom-detail-item strong {
   font-weight: 600;
