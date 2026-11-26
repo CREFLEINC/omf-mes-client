@@ -199,8 +199,8 @@ describe('IntegrationSyncScreen — 기간 필수 조회', () => {
     const { requests, user } = renderScreen([listRoute()], '?from=2026-08-01&to=2026-08-06');
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.clear(screen.getByLabelText('연동일 시작'));
-    await user.type(screen.getByLabelText('연동일 시작'), '2026-07-20');
+    await user.clear(screen.getByLabelText('연동 시작일'));
+    await user.type(screen.getByLabelText('연동 시작일'), '2026-07-20');
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(currentLocation()).toContain('from=2026-07-20');
@@ -213,7 +213,7 @@ describe('IntegrationSyncScreen — 기간 필수 조회', () => {
     const { requests, user } = renderScreen([listRoute()], '?from=2026-08-01&to=2026-08-06');
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.clear(screen.getByLabelText('연동일 시작'));
+    await user.clear(screen.getByLabelText('연동 시작일'));
 
     const searchButton = screen.getByRole('button', { name: '조회' });
     expect(searchButton).toBeDisabled();
@@ -229,15 +229,15 @@ describe('IntegrationSyncScreen — 기간 필수 조회', () => {
     const { user } = renderScreen([listRoute()], '?from=2026-08-01&to=2026-08-06');
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.clear(screen.getByLabelText('연동일 종료'));
-    await user.type(screen.getByLabelText('연동일 종료'), '2026-07-01');
+    await user.clear(screen.getByLabelText('연동 종료일'));
+    await user.type(screen.getByLabelText('연동 종료일'), '2026-07-01');
 
     const searchButton = screen.getByRole('button', { name: '조회' });
     expect(searchButton).toBeDisabled();
 
     const reasonId = searchButton.getAttribute('aria-describedby') ?? '';
     expect(document.getElementById(reasonId)).toHaveTextContent(
-      '연동일 종료는 연동일 시작보다 앞설 수 없습니다.',
+      '연동 종료일은 연동 시작일보다 앞설 수 없습니다.',
     );
   });
 
@@ -278,7 +278,7 @@ describe('IntegrationSyncScreen — 목록 표시', () => {
       '문서 번호',
       '상태',
       '재시도 횟수',
-      '연동 일시',
+      '연동일시',
       '재처리',
     ]);
     expect(within(table).getAllByRole('row')).toHaveLength(messageRowFixtures.length + 1);

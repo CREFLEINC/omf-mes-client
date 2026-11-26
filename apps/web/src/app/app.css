@@ -19611,6 +19611,24 @@ dialog.terminal-map-wizard:has(.terminal-map-matrix) {
   box-shadow: none;
 }
 
+/*
+ * 좁은 창 — 탭이 한 줄에 다 들지 않으면 오른쪽 일 단추 · 상태 칩을 다음 줄 오른쪽으로 내린다. 탭 글자가 칩 밑에
+ * 잘려 가려 보이지 않게(사용자 지시 2026-11-26). 다 들면 종전처럼 한 줄이다.
+ */
+.hub-bar {
+  flex-wrap: wrap;
+  row-gap: var(--space-1);
+}
+
+.hub-bar > .hub-tabs {
+  flex: 1 1 auto;
+  box-shadow: inset 0 -1px 0 var(--outline-variant);
+}
+
+.hub-bar > .hub-actions {
+  margin-left: auto;
+}
+
 .hub-actions {
   display: flex;
   flex: none;
@@ -42289,6 +42307,8 @@ body:has(
 
   main .po-board-split[style*='--split-top'] > * {
     flex: 0 0 auto;
+    min-width: 0;
+    max-width: 100%;
     min-height: 0;
   }
 
@@ -42303,6 +42323,23 @@ body:has(
 
   main .po-board-split[style*='--split-top'] > :first-child:not(:last-child) {
     max-height: var(--stacked-list-height, 60%);
+  }
+
+  /* 빈 목록 — 안내(아이콘 · 제목)가 표 아래 선에 잘리지 않게 높이를 줄이지 않는다(사용자 지시 2026-11-26). */
+  main .po-board-split[style*='--split-top'] > :first-child:not(:last-child):has(tr[class*='emptyCell']) {
+    flex: 0 0 auto;
+    max-height: none;
+  }
+
+  /* 목록이 비면 상세 칸은 남은 높이만 쓴다(안에서 구른다) — 페이지가 아래로 늘지 않게. */
+  main .po-board-split[style*='--split-top']:has(> :first-child tr[class*='emptyCell']) > :last-child:not(:first-child) {
+    min-height: 0;
+  }
+
+  /* 위아래로 쌓일 때 빈 안내는 위아래 여백만 줄여 상세 칸 자리를 남긴다. */
+  main .po-board-split[style*='--split-top'] > :first-child:not(:last-child) tr[class*='emptyCell'] > td,
+  main .po-board-split[style*='--split-top'] > :first-child:not(:last-child) tr[class*='emptyCell'] > td > div {
+    padding-block: var(--space-1);
   }
 
   main .po-board-split[style*='--split-top'] > :last-child:not(:first-child) {
@@ -42335,6 +42372,21 @@ main .po-board-split.is-stacked[style*='--split-top'] > :first-child:not(:last-c
   height: auto;
   min-height: 140px;
   max-height: var(--stacked-list-height, 60%);
+}
+
+main .po-board-split.is-stacked[style*='--split-top'] > :first-child:not(:last-child):has(tr[class*='emptyCell']) {
+  flex: 0 0 auto;
+  max-height: none;
+}
+
+main .po-board-split.is-stacked[style*='--split-top']:has(> :first-child tr[class*='emptyCell']) > :last-child:not(:first-child) {
+  min-height: 0;
+}
+
+/* 위아래로 쌓일 때 빈 안내는 위아래 여백만 줄여 상세 칸 자리를 남긴다. */
+main .po-board-split.is-stacked[style*='--split-top'] > :first-child:not(:last-child) tr[class*='emptyCell'] > td,
+main .po-board-split.is-stacked[style*='--split-top'] > :first-child:not(:last-child) tr[class*='emptyCell'] > td > div {
+  padding-block: var(--space-1);
 }
 
 main .po-board-split.is-stacked[style*='--split-top'] > :last-child:not(:first-child) {
