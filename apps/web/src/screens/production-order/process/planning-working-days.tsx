@@ -10,9 +10,15 @@ export interface PlanningDayTarget {
   productionLineId?: number | null;
   from: string;
   to: string;
+  capacity?: { cycleTimeSec: number; decimalScale: number };
 }
-export const planningDayKey = (plantId: number, lineId: number | null | undefined, date: string) =>
-  `${plantId}:${lineId ?? ''}:${date}`;
+export const planningDayKey = (
+  plantId: number,
+  lineId: number | null | undefined,
+  date: string,
+  capacity?: PlanningDayTarget['capacity'],
+) =>
+  `${plantId}:${lineId ?? ''}:${date}${capacity ? `:${capacity.cycleTimeSec}:${capacity.decimalScale}` : ''}`;
 export const resolvePlanningDays = async (
   client: ApiClient['client'],
   targets: readonly PlanningDayTarget[],
@@ -35,20 +41,24 @@ export const resolvePlanningDays = async (
     const data = await runRequest(() =>
       client.POST('/planning/working-days:resolve', { body: { targets: batch } }),
     );
-    for (const target of batch) {
-      const item = data.items.find(
-        (r) =>
-          r.plantId === target.plantId &&
-          r.productionLineId === (target.productionLineId ?? null) &&
-          r.from === target.from &&
-          r.to === target.to,
-      );
-      if (!item) throw new Error('휴일 판정 결과를 모두 받지 못했습니다. 다시 조회하세요.');
+    for (const [index, target] of batch.entries()) {
+      const item = data.items[index];
+      if (
+        !item ||
+        item.plantId !== target.plantId ||
+        item.productionLineId !== (target.productionLineId ?? null) ||
+        item.from !== target.from ||
+        item.to !== target.to
+      )
+        throw new Error('휴일 판정 결과를 모두 받지 못했습니다. 다시 조회하세요.');
       const byDate = new Map(item.days.map((day) => [day.date, day]));
       for (let date = target.from; date <= target.to; date = shiftPlanDate(date, 1)) {
         const day = byDate.get(date);
         if (!day) throw new Error('휴일 판정 결과에 누락된 날짜가 있습니다. 다시 조회하세요.');
-        result.set(planningDayKey(target.plantId, target.productionLineId, date), day);
+        result.set(
+          planningDayKey(target.plantId, target.productionLineId, date, target.capacity),
+          day,
+        );
       }
     }
   }

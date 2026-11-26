@@ -58,6 +58,7 @@ import { DiscardDialog, LeaveGuard } from './leave-guard';
 import { PlanConfirmDialog } from './plan-confirm-dialog';
 import { deletePlan, runPlanStep } from './plan-runner';
 import { PlanStep } from './plan-step';
+import { bottleneckCycleTime } from './segmented-distribution-model';
 import {
   canEnter,
   firstOpenStep,
@@ -159,6 +160,9 @@ export const ProcessWorkspace = ({
     routingChoice ??
     (fallbackRouting === undefined || fallbackRouting === null ? '' : String(fallbackRouting));
   const operations = useRoutingOperations(routingId === '' ? null : Number(routingId));
+  const cycleTime =
+    operations.data &&
+    bottleneckCycleTime(operations.data.items.map((operation) => operation.standardCycleTimeSec));
   const master = judgeMaster(
     {
       loading: boms.isPending || routings.isPending,
@@ -701,6 +705,9 @@ export const ProcessWorkspace = ({
               }}
             />
             <PlanStep
+              distributionCycleTimeSec={cycleTime}
+              distributionCycleTimeUnavailable={Boolean(routingId) && cycleTime === undefined}
+              cycleTimeFor={(row) => (row.draft.routingId === routingId ? cycleTime : undefined)}
               currentOrderIds={[order.productionOrderId]}
               contextUnitLabelOf={uomLabelOf}
               rowIdentityOf={() => ({
@@ -1021,9 +1028,11 @@ export const ProcessWorkspace = ({
           remaining={
             step === 'plan' && distributionDirty
               ? '분배 미리보기를 적용하거나 조건 변경을 취소하세요.'
-              : (guidance?.text ?? null)
+              : step === 'master' && master.complete
+                ? tp.master.checked
+                : (guidance?.text ?? null)
           }
-          remainingLink={remainingLink}
+          remainingLink={step === 'master' && master.complete ? undefined : remainingLink}
           remainingId={remainingId}
           leading={
             step === 'release' || step === 'done' ? (

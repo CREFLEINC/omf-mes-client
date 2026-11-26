@@ -67,6 +67,8 @@ describe('분배 조건과 미리보기 적용', () => {
       />,
     );
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
+    expect(screen.queryByRole('checkbox', { name: '분배 조건 1 선택' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '일괄 변경' })).not.toBeInTheDocument();
     expect(screen.getByLabelText('조건 1 분배 기간')).toHaveTextContent('2099-11-10');
     expect(screen.getByLabelText('조건 1 분배 기간')).toHaveTextContent('2099-11-16');
     expect(
@@ -78,7 +80,7 @@ describe('분배 조건과 미리보기 적용', () => {
     await user.clear(quantity);
     await user.type(quantity, '2');
     expect(screen.getByRole('dialog', { name: '자동 분배' })).toBeVisible();
-    await user.click(screen.getByRole('button', { name: '편성 화면으로' }));
+    await user.click(screen.getByRole('button', { name: '닫기' }));
     expect(screen.queryByRole('dialog', { name: '자동 분배' })).toBeNull();
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
     expect(screen.getByRole('textbox', { name: '조건 1 수량' })).toHaveValue('2');
@@ -97,7 +99,10 @@ describe('분배 조건과 미리보기 적용', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
     expect(screen.getAllByRole('group', { name: /^분배 조건 \d+$/ })).toHaveLength(1);
-    await user.click(screen.getByRole('row', { name: 'ERP W/O B / 품목 B 분배 조건' }));
+    const secondOrder = screen.getByRole('row', { name: 'ERP W/O B / 품목 B 분배 조건' });
+    secondOrder.focus();
+    await user.keyboard('{Enter}');
+    expect(secondOrder).toHaveAttribute('aria-current', 'true');
     expect(screen.queryByLabelText('조건 1 수량')).toBeNull();
     const quantity = screen.getByRole('textbox', { name: '조건 2 수량' });
     await user.clear(quantity);
@@ -106,16 +111,8 @@ describe('분배 조건과 미리보기 적용', () => {
     expect(screen.queryByRole('textbox', { name: '조건 2 수량' })).toBeNull();
     expect(screen.queryByRole('button', { name: '분배 미리보기' })).toBeNull();
     expect(screen.getByRole('region', { name: '분배 미리보기 결과' })).toBeVisible();
-    /* 라인 합계가 무엇을 세는지는 늘 펼쳐 두지 않고 제목 옆 ⓘ 로 읽힌다. */
-    expect(
-      screen.getByRole('button', {
-        name: '선택한 ERP W/O의 계획만 집계합니다. 생산능력 검증 결과는 아닙니다.',
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText('선택한 ERP W/O의 계획만 집계합니다. 생산능력 검증 결과는 아닙니다.'),
-    ).toBeNull();
-    await user.click(screen.getByRole('button', { name: '조건 수정' }));
+    expect(screen.getByRole('table', { name: '날짜와 라인별 결과' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '분배 조건 수정' }));
     expect(screen.getByRole('textbox', { name: '조건 2 수량' })).toHaveValue('2');
     expect(screen.queryByRole('region', { name: '분배 미리보기 결과' })).toBeNull();
     expect(apply).not.toHaveBeenCalled();
@@ -133,13 +130,13 @@ describe('분배 조건과 미리보기 적용', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
     expect(screen.queryByRole('button', { name: '조건 6' })).toBeNull();
-    await user.click(screen.getByRole('button', { name: 'ERP W/O 6' }));
+    await user.click(screen.getByRole('row', { name: 'ERP W/O 6 분배 조건' }));
     expect(screen.getByRole('textbox', { name: '조건 6 수량' })).toHaveValue('3');
     await user.click(screen.getByRole('button', { name: '분배 미리보기' }));
     const table = screen.getByRole('table', { name: '날짜와 라인별 결과' });
-    expect(within(table).getAllByRole('row')).toHaveLength(11);
+    expect(within(table).getAllByRole('textbox')).toHaveLength(10);
     await user.click(screen.getByRole('button', { name: '다음' }));
-    expect(within(table).getAllByRole('row')).toHaveLength(9);
+    expect(within(table).getAllByRole('textbox')).toHaveLength(8);
     await user.click(screen.getByRole('button', { name: '분배안 적용' }));
     expect(apply).toHaveBeenCalledTimes(1);
     expect(apply.mock.calls[0]?.[0]).toHaveLength(18);
@@ -249,7 +246,8 @@ describe('분배 조건과 미리보기 적용', () => {
     );
     const user = await configure();
     expect(dirty).toHaveBeenLastCalledWith(true);
-    await user.click(screen.getByRole('button', { name: '조건 변경 취소' }));
+    await user.click(screen.getByRole('button', { name: '분배 조건 수정' }));
+    await user.click(screen.getByRole('button', { name: '조건 초기화' }));
     expect(dirty).toHaveBeenLastCalledWith(false);
     expect(screen.queryByRole('region', { name: '분배 미리보기 결과' })).toBeNull();
   });
@@ -272,8 +270,10 @@ describe('분배 조건과 미리보기 적용', () => {
       />,
     );
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
-    expect(screen.getByRole('heading', { name: /^선택 항목 일괄 입력/ })).toBeVisible();
+    expect(screen.getByRole('button', { name: '일괄 변경' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '선택 항목에 적용' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('checkbox', { name: '분배 조건 1 선택' }));
+    await user.click(screen.getByRole('button', { name: '일괄 변경' }));
     await user.click(screen.getByRole('button', { name: '공통 생산 라인 선택' }));
     await user.click(
       within(await screen.findByRole('dialog', { name: '생산 라인 선택' })).getByText('라인 1', {
@@ -302,7 +302,7 @@ describe('분배 조건과 미리보기 적용', () => {
   });
 });
 
-it('휴일 0 수량을 직접 수정하면 사용자 지정 계획으로 적용하고 합계를 보존한다', async () => {
+it('분배 수량이 0인 휴일 행은 숨기고 제외 안내와 합계를 보존한다', async () => {
   const { planningDaysResponse } = await import('../../../test/planning-day-fixture');
   const onApply = vi.fn();
   renderWithProviders(
@@ -320,30 +320,20 @@ it('휴일 0 수량을 직접 수정하면 사용자 지정 계획으로 적용�
     },
   );
   const user = await configure();
-  expect(await screen.findAllByText('주말 · 휴일')).not.toHaveLength(0);
-  const resultTable = screen.getByRole('table', { name: '날짜와 라인별 결과' });
-  const holidayRow = within(resultTable).getAllByText('주말 · 휴일')[0]!.closest('tr')!;
-  const holidayInput = within(holidayRow).getByRole('textbox');
-  const weekdayInput = within(resultTable)
-    .getAllByRole('textbox')
-    .find((input) => Number((input as HTMLInputElement).value) > 0)!;
-  await user.clear(holidayInput);
-  await user.type(holidayInput, '1');
-  expect(screen.getByRole('button', { name: '분배안 적용' })).toBeDisabled();
-  await user.clear(weekdayInput);
-  await user.type(weekdayInput, '0');
-
+  const resultTable = await screen.findByRole('table', { name: '날짜와 라인별 결과' });
+  expect(within(resultTable).getByText('휴일 2일 제외')).toBeVisible();
+  expect(screen.queryByRole('button', { name: '조건 초기화' })).not.toBeInTheDocument();
+  for (const name of ['기존 수량', '추가 수량', '적용 후 합계']) {
+    expect(within(resultTable).getByRole('columnheader', { name })).toBeVisible();
+  }
+  expect(within(resultTable).queryByText('주말 · 휴일')).not.toBeInTheDocument();
+  expect(
+    within(resultTable)
+      .getAllByRole('textbox')
+      .every((input) => Number((input as HTMLInputElement).value) > 0),
+  ).toBe(true);
   await user.click(screen.getByRole('button', { name: '분배안 적용' }));
   expect(onApply).toHaveBeenCalledOnce();
-  expect(onApply.mock.calls[0]![0]).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({
-        planDate: holidayInput.getAttribute('aria-label')!.split(' ')[1],
-        plannedQty: '1',
-        planDateSourceCode: 'USER',
-      }),
-    ]),
-  );
   expect(
     onApply.mock.calls[0]![0].every((row: { plannedQty: string }) => Number(row.plannedQty) > 0),
   ).toBe(true);
@@ -366,14 +356,15 @@ it('공통 휴일 설정은 선택한 조건만 바꾸며 기간은 유지한다
     />,
   );
   await user.click(screen.getByRole('button', { name: '자동 분배' }));
-  expect(screen.getByRole('button', { name: '선택 항목에 적용' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: '일괄 변경' })).toBeDisabled();
   await user.click(screen.getByRole('checkbox', { name: '분배 조건 1 선택' }));
+  await user.click(screen.getByRole('button', { name: '일괄 변경' }));
   await user.click(screen.getByRole('combobox', { name: '공통 휴일 편성' }));
   await user.click(screen.getByRole('option', { name: /^포함$/ }));
   await user.click(screen.getByRole('button', { name: '선택 항목에 적용' }));
   expect(screen.getByRole('checkbox', { name: '분배 조건 1 휴일 포함' })).toBeChecked();
   expect(screen.getByRole('button', { name: '공통 분배 기간' })).toHaveTextContent('변경하지 않음');
-  await user.click(screen.getByRole('button', { name: 'ERP W/O B' }));
+  await user.click(screen.getByRole('row', { name: 'ERP W/O B 분배 조건' }));
   expect(screen.getByRole('checkbox', { name: '분배 조건 2 휴일 포함' })).not.toBeChecked();
 });
 
@@ -396,7 +387,7 @@ it('ERP W/O의 여러 조건을 같은 화면에서 편집하고 분배 수량�
   await user.type(screen.getByRole('textbox', { name: '조건 2 수량' }), '1');
   const row = screen.getByRole('row', { name: 'ERP W/O A / 품목 A 분배 조건' });
   expect(within(row).getAllByRole('cell')[3]).toHaveTextContent('3 EA');
-  await user.click(screen.getByRole('button', { name: 'ERP W/O B' }));
+  await user.click(screen.getByRole('row', { name: 'ERP W/O B 분배 조건' }));
   expect(screen.getByText('이 ERP W/O에 분배 조건이 없습니다.')).toBeVisible();
   expect(screen.getByRole('button', { name: '분배 조건 추가' })).toBeDisabled();
 });

@@ -216,6 +216,7 @@ export function toLiveProposal(row: PlanProposal, catalog: LiveCatalog): ReviewP
         name: op.operationName,
         processCode: op.processCode ?? `공정 ID ${op.processId}`,
         quantity: op.proposedQty,
+        expectedDurationSec: op.expectedDurationSec,
         predecessors: op.predecessors.map((predecessor) => {
           const value = plan.workOrders.find(
             (item) => item.routingOperationId === predecessor.routingOperationId,

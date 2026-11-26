@@ -15,6 +15,7 @@ export const resourceLabels = {
 } as const;
 export type ResourceField = keyof typeof resourceLabels;
 export interface ReviewOperation {
+  expectedDurationSec?: number | null;
   number?: string;
   routingOperationId?: number;
   plannedTimeSourceCode?: 'SYSTEM' | 'USER';

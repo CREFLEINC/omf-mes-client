@@ -349,7 +349,7 @@ export const erpWorkOrderFlow = {
       checked: '개정 선택 완료',
       needsCheck: '개정 선택 필요',
       // ui-check-ignore: C-13 사용자 확정 단계 이름 「BOM·Routing」을 쓴다
-      heading: 'BOM·Routing 점검',
+      heading: 'BOM·Routing',
       bom: 'BOM',
       routing: 'Routing',
       placeholder: '개정을 고르세요',

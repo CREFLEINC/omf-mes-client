@@ -456,10 +456,6 @@ export const ReleaseStep = ({
 
   return (
     <div className="erp-wo-release-workspace">
-      <div className="section-heading-row">
-        <h2 className="section-title">{t.heading}</h2>
-        <span className="field-note">{t.scope(lines.length)}</span>
-      </div>
       <AdjustableLayout
         storageKey="omf-mes:work-planning:release-layout"
         label="배포 확인"
@@ -467,7 +463,10 @@ export const ReleaseStep = ({
         ratio={0.6}
       >
         <section className="pane erp-wo-release-targets" aria-label="배포 작업지시">
-          <h3 className="section-title">배포 작업지시</h3>
+          <div className="section-heading-row">
+            <h3 className="section-title">배포 작업지시</h3>
+            <span className="field-note">{t.scope(lines.length)}</span>
+          </div>
           <div className="erp-wo-release-selection-table">
             <ReleaseTargetList
               columns={columns}

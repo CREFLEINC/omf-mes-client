@@ -167,6 +167,7 @@ export function applyRevalidation(
               return {
                 ...op,
                 quantity: checkedOp.orderQty,
+                expectedDurationSec: checkedOp.expectedDurationSec,
                 start:
                   op.plannedTimeSourceCode === 'USER'
                     ? op.start

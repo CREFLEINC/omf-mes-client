@@ -37686,9 +37686,19 @@ body:has(
 
 .erp-wo-week-legend {
   display: flex;
-  gap: var(--space-4);
-  margin-block: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.erp-wo-week-legend {
+  margin-bottom: var(--space-1);
   font: var(--type-label-sm);
+}
+.erp-wo-week-legend[data-visible='false'] {
+  visibility: hidden;
+}
+.erp-wo-week-legend > span {
+  white-space: nowrap;
 }
 .erp-wo-week-legend > span {
   border-left: 3px solid var(--primary);
@@ -38113,11 +38123,15 @@ body:has(
   gap: var(--space-2) var(--space-4);
   margin-block: var(--space-3);
 }
+.erp-wo-plan-create-view,
 .erp-wo-plan-create-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
+}
+.erp-wo-plan-create-actions {
+  margin-inline-start: auto;
 }
 .erp-wo-plan-create-actions > .erp-wo-distribution {
   display: contents;
@@ -38638,13 +38652,77 @@ body:has(
   justify-content: space-between;
   gap: var(--space-2);
 }
-.erp-wo-distribution-dialog .erp-wo-distribution-row-head > button {
-  min-width: 40px;
-  width: 40px;
-  padding-inline: 0;
+.erp-wo-distribution-condition-title,
+.erp-wo-distribution-condition-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.erp-wo-distribution-condition-title {
+  flex-wrap: wrap;
+  font-weight: 600;
+}
+.erp-wo-distribution-condition-actions {
+  flex-shrink: 0;
 }
 .erp-wo-distribution-dialog .erp-wo-segment-fields {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.erp-wo-cycle-time-inline {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  white-space: nowrap;
+}
+.erp-wo-cycle-time-inline strong {
+  color: var(--on-surface);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.erp-wo-result-order-header,
+.erp-wo-result-order-header > div {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.erp-wo-result-order-header {
+  justify-content: space-between;
+}
+.erp-wo-distribution-result-table .erp-wo-result-order > td {
+  background: var(--surface-container);
+}
+.erp-wo-result-order-header span,
+.erp-wo-result-order-notes {
+  color: var(--on-surface-variant);
+}
+.erp-wo-result-order-header span strong {
+  color: var(--on-surface);
+}
+.erp-wo-calendar-result-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-variant-numeric: tabular-nums;
+}
+.erp-wo-calendar-result-dates time {
+  white-space: nowrap;
+}
+.erp-wo-distribution-result-table .erp-wo-result-quantity {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.erp-wo-distribution-result-table .erp-wo-result-added {
+  background: var(--surface-container-low);
+}
+.erp-wo-result-quantity-editor {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
 }
 .erp-wo-distribution-calendar-summary {
   margin: var(--space-2) 0 0;
@@ -38664,56 +38742,37 @@ body:has(
 }
 
 .erp-wo-distribution-dialog .erp-wo-common-conditions {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
+}
+.erp-wo-common-conditions-header {
+  display: flex;
   align-items: center;
-}
-.erp-wo-distribution-dialog .erp-wo-common-conditions > h3 {
-  grid-column: 1;
-  grid-row: 1;
-}
-.erp-wo-distribution-dialog .erp-wo-common-conditions > h3 .field-note {
-  margin-left: var(--space-2);
+  justify-content: space-between;
+  gap: var(--space-2);
+  font: var(--type-body-sm);
+  font-weight: 600;
 }
 .erp-wo-distribution-dialog .erp-wo-common-conditions > button {
-  grid-column: 2;
-  grid-row: 1;
-}
-.erp-wo-distribution-dialog .erp-wo-common-conditions > .erp-wo-distribution-fields {
-  grid-column: 1/-1;
-  grid-row: 2;
-}
-.erp-wo-distribution-dialog .erp-wo-common-conditions > p {
-  grid-column: 1/-1;
+  justify-self: end;
 }
 .erp-wo-distribution-focused-order .section-title {
   font: var(--type-body-sm);
   font-weight: 500;
 }
-.erp-wo-distribution-owner-table td button {
+.erp-wo-distribution-owner-table tbody tr {
+  cursor: pointer;
+}
+.erp-wo-distribution-owner-table tbody tr:not([data-active='true']):hover {
+  background: var(--surface-container);
+}
+.erp-wo-distribution-owner-table tbody tr:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+.erp-wo-distribution-owner-number {
   color: var(--on-surface);
-  font-weight: 500;
+  font-weight: 600;
 }
-@media (max-width: 640px) {
-  .erp-wo-distribution-dialog .erp-wo-common-conditions {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .erp-wo-distribution-dialog .erp-wo-common-conditions > button {
-    grid-column: 1;
-    grid-row: 3;
-  }
-}
-
-.erp-wo-distribution-dialog .erp-wo-common-conditions > h3 {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-}
-.erp-wo-distribution-dialog .erp-wo-common-conditions > h3 .field-note {
-  display: inline;
-  margin: 0;
-}
-
 .date-time-field-picker {
   flex-basis: 7.5rem;
 }

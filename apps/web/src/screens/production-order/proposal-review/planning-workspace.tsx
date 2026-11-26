@@ -1,3 +1,4 @@
+import { durationLabel } from './duration-label';
 import { ProposalWarehouseField } from './warehouse-field';
 import { createLocalKey } from '../../../patterns/local-key';
 import { plantToday } from '../../../patterns/plant-time';
@@ -286,7 +287,10 @@ export const ProposalPlanningWorkspace = ({
             </td>
             <td>{op.resources.productionLineId?.name ?? '미지정'}</td>
             <td>{op.start || '미지정'}</td>
-            <td>{op.end || '미지정'}</td>
+            <td>
+              {op.end || '미지정'}
+              <div>{durationLabel(op.expectedDurationSec)}</div>
+            </td>
           </tr>
         ))}
       </tbody>

@@ -230,7 +230,10 @@ const distribute = async (targets: Record<string, string> = {}) => {
   const conditionButtons = within(screen.getByRole('table', { name: 'ERP W/O별 분배 수량' }))
     .getAllByRole('row')
     .slice(1)
-    .filter((row) => !(within(row).getByRole('checkbox') as HTMLInputElement).disabled);
+    .filter(
+      (row) =>
+        targets[row.querySelector('.erp-wo-distribution-owner-number')?.textContent ?? ''] !== '0',
+    );
   for (const [index, button] of conditionButtons.entries()) {
     await user.click(button);
     const group = screen.getByRole('group', { name: `분배 조건 ${index + 1}` });
