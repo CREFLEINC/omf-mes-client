@@ -34817,6 +34817,85 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/planning/boms:material-availability': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * BOM 구성 자재의 가용 수량과 부족 판정
+     * @description 줄(lines)마다 BOM 구성 행과 만들 수량을 받아 필요 수량·가용 수량·판정을 돌려준다(omf-all-around#320). 생산계획 처리 화면 BOM 단계·제안 검토·배포 확인이 같은 결과를 보인다.
+     *
+     *     필요 수량은 배포와 같은 식이다 — 구성 소요량 × quantity ÷ BOM 기준수량(BOM 단위, scrap_rate 를 곱하지 않는다). 재고 단위 환산은 배포 확인(GET /production/work-orders/{workOrderId}/material-requirements)과 같은 규칙(품목 환산 → 공통 환산 → 없음, 재고 단위 자릿수로 올림)이다. 환산이 없으면 requiredStockQty 가 null 이고 판정은 NOT_COMPARABLE — 단위가 다른 수량을 그대로 비교하지 않는다.
+     *
+     *     가용 수량은 공장(plantId)의 자재창고(창고 유형 MATERIAL)와 생산 창고(부서 생산 창고로 연결된 창고) 합이다. 피킹이 집을 수 있는 잔액(정상 품질·가용 상태·풀리지 않은 LOT 보류 없음)의 available_qty(보유 − 예약 − 피킹 − 묶음)를 더한다. 다른 요청의 출고 예정 재고는 빼지 않는다. 재고 단위(품목 기본 단위) 수량이다.
+     *
+     *     판정은 경고용이다 — 부족(SHORT)이어도 계획 확정·배포를 막지 않는다.
+     *
+     *     ⛔ 한도 — lines 는 1~200개. 없는 공장은 400 { field: plantId, code: INVALID }, 없는 BOM 구성 행은 400 { field: lines[i].bomComponentId, code: INVALID }. ⭐ 사용자 데이터 범위 — 400 이 없을 때 범위 밖 공장이면 403 { field: plantId, code: PERMISSION_DENIED }.
+     *     ⛔ 부작용이 없다 — 읽기지만 묶음을 본문에 실어야 해서 POST 다. 저장하지 않으므로 Idempotency-Key 를 받지 않는다.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['PlanningMaterialAvailabilityQuery'];
+        };
+      };
+      responses: {
+        /** @description 줄마다 필요·가용 수량과 판정 — 요청 순서대로 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['PlanningMaterialAvailabilityResult'];
+          };
+        };
+        /** @description lines 가 없거나 200개를 넘는다 · 공장·BOM 구성 행이 없다 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 단말·권한 게이팅에 막혔다 — 생산계획 처리·제안(W-02-01·W-02-02) 또는 배포(W-02-04) 권한. 또는 사용자 데이터 범위 밖 공장(PERMISSION_DENIED) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/planning/production-plans': {
     parameters: {
       query?: never;
@@ -65225,6 +65304,79 @@ export interface components {
     PlanningWorkingDayResolve: {
       /** @description 같은 묶음을 거듭 보내도 거르지 않고 요청 순서대로 낸다 */
       targets: components['schemas']['PlanningWorkingDayTarget'][];
+    };
+    PlanningMaterialAvailabilityQuery: {
+      /**
+       * Format: int64
+       * @description 가용 수량을 셀 공장
+       * @example 1
+       */
+      plantId: number;
+      /** @description 같은 줄을 거듭 보내도 거르지 않고 요청 순서대로 낸다 */
+      lines: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        bomComponentId: number;
+        /**
+         * @description 만들 모품목 수량(BOM 기준 단위) — 계획 수량·W/O 수량
+         * @example 120
+         */
+        quantity: number;
+      }[];
+    };
+    PlanningMaterialAvailabilityResult: {
+      /** @description lines 와 같은 순서·같은 수 */
+      items: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        bomComponentId: number;
+        /**
+         * @description 요청한 모품목 수량
+         * @example 120
+         */
+        quantity: number;
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        itemId: number;
+        /** @example 040101-00064 */
+        itemCode: string;
+        /** @example RESIN PC */
+        itemName: string;
+        /**
+         * @description 필요 수량(BOM 단위) = 구성 소요량 × quantity ÷ BOM 기준수량
+         * @example 4404
+         */
+        requiredQty: number;
+        /** @example GR */
+        bomUomCode: string;
+        /**
+         * @description 재고 단위 = 품목 기본 단위
+         * @example KG
+         */
+        stockUomCode: string;
+        /**
+         * @description 필요 수량을 재고 단위로 바꾼 값(재고 단위 자릿수로 올림). 단위가 같으면 requiredQty 와 같다. 환산이 없으면 null
+         * @example 4.404
+         */
+        requiredStockQty: number | null;
+        /**
+         * @description 공장 자재창고·생산 창고의 가용 수량 합(재고 단위)
+         * @example 25
+         */
+        availableQty: number;
+        /**
+         * @description ENOUGH(가용 ≥ 필요) · SHORT(가용 < 필요 — 경고만, 확정·배포를 막지 않는다) · NOT_COMPARABLE(재고 단위 환산이 없어 비교하지 않음)
+         * @example ENOUGH
+         * @enum {string}
+         */
+        statusCode: 'ENOUGH' | 'SHORT' | 'NOT_COMPARABLE';
+      }[];
     };
     PlanningWorkingDayResolveResult: {
       /** @description targets 와 같은 순서·같은 수 */

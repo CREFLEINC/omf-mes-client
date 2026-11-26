@@ -324,7 +324,7 @@ export const ProcessWorkspace = ({
   const [step, setStep] = useState<ScreenStep | null>(null);
   const [releaseSelectedId, setReleaseSelectedId] = useState<number | null>(null);
   const materials = useReleaseMaterials(
-    (releaseLines ?? []).map((line) => line.workOrder),
+    (releaseLines ?? []).map((line) => ({ ...line.workOrder, plantId: order.plantId })),
     step === 'release' || step === 'done',
   );
 
@@ -666,6 +666,8 @@ export const ProcessWorkspace = ({
             locked={step === 'done' || fixedByPlan}
             statusNameOf={codeNames.masterVersionStatus}
             onRoutingChange={setRoutingChoice}
+            plantId={order.plantId}
+            quantity={order.orderQty}
           />
         );
       case 'plan':

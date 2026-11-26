@@ -41,6 +41,9 @@ export type ReleaseAttemptStatus = 'released' | 'skipped' | 'failed';
 export interface ReleaseTarget {
   workOrderId: number;
   workOrderNo: string;
+  /** 배포 확인 자재의 가용 수량·부족 판정용(omf-all-around#320) — 없으면 그 칸을 비운다. */
+  plantId?: number | null;
+  orderQty?: number;
 }
 
 export interface ReleaseAttempt extends ReleaseTarget {
@@ -293,6 +296,7 @@ export const unreleasedWorkOrdersOf = async (
     .map((item) => ({
       workOrderId: item.workOrderId,
       workOrderNo: item.workOrderNo,
+      orderQty: item.orderQty,
     }));
 };
 

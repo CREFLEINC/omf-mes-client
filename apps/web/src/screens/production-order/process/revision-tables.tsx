@@ -1,4 +1,4 @@
-import { AlertBanner, Button, SkeletonText, type Column } from '@crefle/web-ui';
+import { AlertBanner, Button, Icon, SkeletonText, type Column } from '@crefle/web-ui';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useColumnWidths } from '../../../patterns/column-resize';
@@ -7,6 +7,14 @@ import { runRequest } from '../../../patterns/request';
 import { Select } from '../../../patterns/select';
 import { useItemCodeNames, useProductionOrderItemNames } from '../item-lookups';
 import { useUomReferenceLookup } from '../reference-lookups';
+import {
+  AvailabilityError,
+  AvailabilityStatusCell,
+  AvailableCell,
+  useMaterialAvailability,
+  type AvailabilityLine,
+  type AvailabilityRequest,
+} from './material-availability';
 import { useRoutingDetail, useRoutingOperations } from '../../routing/queries';
 import {
   useProcessOptions,
@@ -82,6 +90,7 @@ const PageControls = ({
 );
 const Grid = ({
   label,
+  storageName = label,
   columns,
   widths,
   children,
@@ -89,6 +98,8 @@ const Grid = ({
   paging,
 }: {
   label: string;
+  /** 열 폭 저장 이름 — 열 구성이 다른 표가 같은 이름으로 폭을 나눠 쓰지 않게 한다. */
+  storageName?: string;
   columns: string[];
   widths: number[];
   children: ReactNode;
@@ -96,7 +107,7 @@ const Grid = ({
   paging: ReturnType<typeof useDisplayPage>;
 }) => {
   const resized = useColumnWidths(
-    `omf-mes:work-planning:revision-columns:${label}`,
+    `omf-mes:work-planning:revision-columns:${storageName}`,
     columns.map((column, index): Column<unknown> => ({
       key: String(index),
       header: column,
@@ -165,10 +176,29 @@ const Grid = ({
     </>
   );
 };
+const quantityText = (value: number) =>
+  value.toLocaleString(undefined, { maximumFractionDigits: 6 });
+/** 필요 수량 — 재고 단위가 다르면 바꾼 값을 함께 보인다(환산이 없으면 BOM 단위만). */
+const requiredText = (line: AvailabilityLine) =>
+  line.stockUomCode === line.bomUomCode || line.requiredStockQty === null
+    ? `${quantityText(line.requiredQty)} ${line.bomUomCode}`
+    : `${quantityText(line.requiredQty)} ${line.bomUomCode} (${quantityText(line.requiredStockQty)} ${line.stockUomCode})`;
 const mode = (value: boolean | undefined, yes = '사용', no = '미사용') =>
   value == null ? '미제공' : value ? yes : no;
 
-export const BomTable = ({ id }: { id: number }) => {
+/**
+ * `plantId`·`quantity` 를 주면 구성 자재마다 필요 수량·가용 수량·판정 칸을 더한다(omf-all-around#320).
+ * 필요 수량은 `quantity`(만들 모품목 수량) 기준이고 부족해도 경고만 한다.
+ */
+export const BomTable = ({
+  id,
+  plantId,
+  quantity,
+}: {
+  id: number;
+  plantId?: number | null;
+  quantity?: number | null;
+}) => {
   const { client } = useApiClient();
   const header = useQuery({
     queryKey: ['plan-revision-detail', 'bom', id],
@@ -183,6 +213,17 @@ export const BomTable = ({ id }: { id: number }) => {
       ),
   });
   const rows = [...(components.data?.items ?? [])].sort((a, b) => a.sequenceNo - b.sequenceNo);
+  const withAvailability = plantId != null && quantity != null && quantity > 0;
+  const requestOf = (row: (typeof rows)[number]): AvailabilityRequest | null =>
+    plantId != null && quantity != null && quantity > 0 && row.requiredQty > 0
+      ? { plantId, bomComponentId: row.bomComponentId, quantity }
+      : null;
+  const availability = useMaterialAvailability(
+    rows.flatMap((row) => {
+      const request = requestOf(row);
+      return request === null ? [] : [request];
+    }),
+  );
   const paging = useDisplayPage(rows.length);
   const shown = rows.slice(paging.start, paging.start + paging.size);
   const items = useItemCodeNames(shown.map((row) => row.componentItemId));
@@ -247,14 +288,26 @@ export const BomTable = ({ id }: { id: number }) => {
         <span>{mode(bom.isDefault, '기본 BOM', '기본 아님')}</span>
         <span>자재 {rows.length}건</span>
       </div>
+      {withAvailability && rows.length > 0 && (
+        <>
+          <p className="iqc-inspection-action-note" data-tone="info">
+            <Icon name="info" size={14} aria-hidden />
+            필요 수량은 {quantityText(quantity ?? 0)} {unit(bom.baseUomId)} 기준이고, 가용 수량은
+            공장 자재창고와 생산 창고 재고 합계입니다.
+          </p>
+          <AvailabilityError availability={availability} />
+        </>
+      )}
       {rows.length ? (
         <Grid
           label="BOM 구성"
+          storageName={withAvailability ? 'BOM 구성 가용 수량' : 'BOM 구성'}
           columns={[
             '자재 코드',
             '자재명',
             '소요량',
             '단위',
+            ...(withAvailability ? ['필요 수량', '가용 수량', '판정'] : []),
             '로스율',
             '필수 여부',
             '관리 공정',
@@ -262,12 +315,26 @@ export const BomTable = ({ id }: { id: number }) => {
             'LOT 추적',
             '자동 차감',
           ]}
-          widths={[104, 180, 105, 52, 65, 65, 135, 135, 70, 70]}
+          widths={[
+            104,
+            180,
+            105,
+            52,
+            ...(withAvailability ? [150, 130, 90] : []),
+            65,
+            65,
+            135,
+            135,
+            70,
+            70,
+          ]}
           total={rows.length}
           paging={paging}
         >
           {shown.map((row) => {
             const item = items.get(row.componentItemId);
+            const request = requestOf(row);
+            const line = request === null ? undefined : availability.lineOf(request);
             return (
               <tr key={row.bomComponentId}>
                 <td className="fixed-code">
@@ -278,6 +345,25 @@ export const BomTable = ({ id }: { id: number }) => {
                 </td>
                 <td className="numeric">{row.requiredQty}</td>
                 <td>{unit(row.uomId)}</td>
+                {withAvailability && (
+                  <>
+                    <td className="numeric">
+                      {request === null
+                        ? '—'
+                        : line
+                          ? requiredText(line)
+                          : availability.failedOf(request)
+                            ? '조회 실패'
+                            : '조회 중'}
+                    </td>
+                    <td className="numeric">
+                      <AvailableCell availability={availability} request={request} />
+                    </td>
+                    <td>
+                      <AvailabilityStatusCell availability={availability} request={request} />
+                    </td>
+                  </>
+                )}
                 <td className="numeric">{Number((row.scrapRate * 100).toFixed(6))}%</td>
                 <td>{mode(row.isMandatory, '필수', '선택')}</td>
                 <td>{named(operations, row.routingOperationId)}</td>

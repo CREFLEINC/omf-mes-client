@@ -47,7 +47,9 @@ export const WorklistBulkDialog = ({
   }, [forecast, kind, targets]);
 
   const materials = useReleaseMaterials(
-    (entries ?? []).flatMap((entry) => entry.forecast?.targets ?? []),
+    (entries ?? []).flatMap((entry) =>
+      (entry.forecast?.targets ?? []).map((target) => ({ ...target, plantId: entry.plantId })),
+    ),
     kind === 'release',
   );
   const counts = { processed: 0, partial: 0, skipped: 0, failed: 0 };

@@ -21,6 +21,8 @@ export const MasterDetails = ({
   itemId,
   onRoutingChange,
   disabled = false,
+  plantId,
+  quantity,
 }: {
   bomId: string;
   routingId: string;
@@ -29,6 +31,9 @@ export const MasterDetails = ({
   itemId?: number;
   onRoutingChange: (value: string) => void;
   disabled?: boolean;
+  /** 둘 다 주면 BOM 구성에 가용 수량·부족 판정을 보인다(omf-all-around#320). */
+  plantId?: number | null;
+  quantity?: number | null;
 }) => {
   const [preview, setPreview] = useState(routingId);
   useEffect(() => setPreview(routingId), [routingId]);
@@ -50,7 +55,7 @@ export const MasterDetails = ({
           </span>
         </div>
         {Number(bomId) > 0 ? (
-          <BomTable key={bomId} id={Number(bomId)} />
+          <BomTable key={bomId} id={Number(bomId)} plantId={plantId} quantity={quantity} />
         ) : (
           <p>사용 가능한 ERP 기본 BOM이 없습니다.</p>
         )}
