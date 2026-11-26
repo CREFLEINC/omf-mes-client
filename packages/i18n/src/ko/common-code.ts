@@ -45,16 +45,22 @@ export const commonCode = {
       `사용 중지는 ${target}을 먼저 등록해야 할 수 있습니다.`,
   },
   /**
-   * 사용 중지 확인 창. 세 자원이 제목만 바꿔 쓰고 본문은 공유한다.
+   * 사용 중지 확인 창. 세 자원이 같은 틀(제목 · 대상 「이름 (코드)」 · 설명 · 주의 줄)을 쓰고
+   * 제목 · 설명만 자원마다 다르다(사용자 지시 2026-11-26). 코드값의 제목 · 설명은 `codeValue.dialog`에 있다.
    *
    * **참조 건수를 내지 않는다**(결정 10) — 화면이 쓸 수 있는 건수는 「코드 필드를 고칠 수 있는지」의
    * 근거이지 「이 행을 참조하는 자료의 수」가 아니다. 두 뜻을 섞으면 화면이 지어낸다.
    */
   dialog: {
-    deactivateCodeGroupTitle: '이 코드그룹을 사용 중지할까요?',
-    deactivateDepartmentTitle: '이 부서를 사용 중지할까요?',
-    deactivateDescription:
-      '사용 중지하면 새 선택지에서 빠지고 이미 쓰인 자료는 그대로 남습니다. 되돌리는 경로가 없습니다.',
+    deactivateCodeGroupTitle: '코드그룹을 사용 중지할까요?',
+    deactivateDepartmentTitle: '부서를 사용 중지할까요?',
+    deactivateCodeGroupDescription:
+      '사용 중지하면 이 코드그룹을 새로 선택할 수 없습니다. 기존 기록에는 이미 선택된 코드그룹이 그대로 표시됩니다.',
+    deactivateDepartmentDescription:
+      '사용 중지하면 이 부서를 새로 선택할 수 없습니다. 기존 기록에는 이미 선택된 부서가 그대로 표시됩니다.',
+    /** 대상 줄 — 이미 받은 목록 · 상세 값에서 낸다. */
+    deactivateTarget: (name: string, code: string): string => `${name} (${code})`,
+    deactivateWarning: '사용 중지 후에는 다시 사용할 수 없습니다.',
   },
   /*
    * 선택 목록이 잘리거나 실패했다는 사실을 감추지 않는다 —
@@ -203,7 +209,7 @@ export const commonCode = {
       /** 목록 표 열 — 연결한 창고 수. */
       countColumn: '생산 창고',
       help: '이 부서 라인의 W/O 자재는 여기 연결한 생산 창고에서 출고합니다. 자재마다 재고가 있고 쓸 수 있는 양이 가장 많은 창고에서 나갑니다. 어느 창고에도 재고가 없는 자재는 출고 요청에 넣지 않고 부족으로 보입니다.',
-      none: '연결한 생산 창고가 없습니다. 이 부서 라인의 W/O 는 배포 때 막힙니다(공장에 생산 창고가 하나라도 있을 때).',
+      none: '연결한 생산 창고가 없습니다',
       tableLabel: '연결한 생산 창고',
       columns: {
         plant: '공장',
@@ -316,7 +322,6 @@ export const commonCode = {
       removeRow: (label: string): string => `${label} 자격 삭제`,
     },
     actionReasons: {
-      needsWorker: '자격 추가는 좌측에서 작업자를 고른 뒤에 할 수 있습니다.',
       certifierLookupLoading: '인증자 목록을 불러오는 동안에는 인증자를 변경할 수 없습니다.',
       certifierLookupFailed:
         '인증자 목록을 불러오지 못해 새 인증자를 선택할 수 없습니다. 기존 값은 유지됩니다.',
@@ -332,7 +337,6 @@ export const commonCode = {
       confirm: '확인',
     },
     empty: {
-      notSelected: '좌측에서 작업자를 고르면 그 작업자의 자격·인증이 보입니다',
       noneTitle: '등록된 자격·인증이 없습니다',
       noneDescription: '「자격 추가」로 첫 자격을 등록하세요.',
     },
@@ -536,7 +540,9 @@ export const commonCode = {
       effectiveRangeReversed: '유효 종료는 유효 시작과 같거나 그 뒤여야 합니다.',
     },
     dialog: {
-      deactivateTitle: '이 코드값을 사용 중지할까요?',
+      deactivateTitle: '코드값을 사용 중지할까요?',
+      deactivateDescription:
+        '사용 중지하면 이 코드값을 새로 선택할 수 없습니다. 기존 기록에는 이미 선택된 코드값이 그대로 표시됩니다.',
     },
   },
 } as const;

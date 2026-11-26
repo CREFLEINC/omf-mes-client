@@ -312,11 +312,15 @@ describe('W-06-06 생산 창고 구획', () => {
     expect(JSON.parse(writes()[1]?.body ?? '{}')).toEqual({ warehouseIds: [7001, 7003] });
   });
 
-  it('연결한 생산 창고가 없으면 배포 때 막힌다고 안내한다', async () => {
+  /* 사용자 지시 2026-11-26 — 배포 때 막힌다는 문구를 걷고, 표 머리줄은 그대로 두고 표 안에 빈 안내를 둔다. */
+  it('연결한 생산 창고가 없어도 표 머리줄을 그리고 표 안에 빈 안내를 낸다', async () => {
     setup({ linked: [] });
 
-    expect(await screen.findByText(t.none)).toBeInTheDocument();
-    expect(section().getByText(t.none)).toBeInTheDocument();
+    expect(await screen.findByText('연결한 생산 창고가 없습니다')).toBeInTheDocument();
+    const table = section().getByRole('table');
+    expect(within(table).getAllByRole('columnheader').length).toBeGreaterThan(0);
+    expect(within(table).getByText('연결한 생산 창고가 없습니다')).toBeInTheDocument();
+    expect(section().queryByText(/배포 때 막힙니다/)).toBeNull();
   });
 
   it('US8-1 부서 목록 「생산 창고」 열에 연결 수(0 포함)를 보이고, 칸이 없을 때만 「—」', async () => {

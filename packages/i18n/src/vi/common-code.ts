@@ -45,10 +45,14 @@ export const commonCode: Translated<typeof ko.commonCode> = {
   },
   /** 사용 중지 확인 창. 참조 건수를 내지 않는다. */
   dialog: {
-    deactivateCodeGroupTitle: 'Ngừng sử dụng nhóm mã này?',
-    deactivateDepartmentTitle: 'Ngừng sử dụng phòng ban này?',
-    deactivateDescription:
-      'Khi ngừng sử dụng, mục này bị loại khỏi các lựa chọn mới và dữ liệu đã dùng vẫn giữ nguyên. Không có đường quay lại.',
+    deactivateCodeGroupTitle: 'Ngừng sử dụng nhóm mã?',
+    deactivateDepartmentTitle: 'Ngừng sử dụng phòng ban?',
+    deactivateCodeGroupDescription:
+      'Sau khi ngừng sử dụng, không thể chọn mới nhóm mã này. Các bản ghi hiện có vẫn hiển thị nhóm mã đã được chọn.',
+    deactivateDepartmentDescription:
+      'Sau khi ngừng sử dụng, không thể chọn mới phòng ban này. Các bản ghi hiện có vẫn hiển thị phòng ban đã được chọn.',
+    deactivateTarget: (name: string, code: string): string => `${name} (${code})`,
+    deactivateWarning: 'Sau khi ngừng sử dụng sẽ không thể sử dụng lại.',
   },
   optionsTruncated:
     'Chỉ hiển thị một phần danh sách chọn. Không thấy giá trị cần tìm thì hãy báo người phụ trách.',
@@ -159,7 +163,7 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       title: 'Kho sản xuất',
       countColumn: 'Kho sản xuất',
       help: 'Vật tư của W/O thuộc chuyền của phòng ban này được xuất từ các kho sản xuất liên kết tại đây. Mỗi vật tư được xuất từ kho còn tồn và có lượng dùng được nhiều nhất. Vật tư không còn tồn ở kho nào sẽ không đưa vào yêu cầu xuất mà hiển thị là thiếu.',
-      none: 'Chưa liên kết kho sản xuất nào. W/O của chuyền thuộc phòng ban này sẽ bị chặn khi phát hành (khi nhà máy có ít nhất một kho sản xuất).',
+      none: 'Chưa liên kết kho sản xuất nào',
       tableLabel: 'Kho sản xuất đã liên kết',
       columns: {
         plant: 'Nhà máy',
@@ -253,7 +257,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       removeRow: (label: string): string => `Xóa chứng chỉ ${label}`,
     },
     actionReasons: {
-      needsWorker: 'Thêm chứng chỉ chỉ thực hiện được sau khi chọn công nhân ở bên trái.',
       certifierLookupLoading:
         'Trong lúc đang tải danh sách người chứng nhận thì không đổi được người chứng nhận.',
       certifierLookupFailed:
@@ -267,7 +270,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       confirm: 'Xác nhận',
     },
     empty: {
-      notSelected: 'Chọn công nhân ở bên trái thì chứng chỉ · chứng nhận của người đó hiện ra',
       noneTitle: 'Chưa đăng ký chứng chỉ · chứng nhận',
       noneDescription: 'Hãy đăng ký chứng chỉ đầu tiên bằng «Thêm chứng chỉ».',
     },
@@ -404,7 +406,9 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       effectiveRangeReversed: 'Hiệu lực đến phải bằng hoặc sau hiệu lực từ.',
     },
     dialog: {
-      deactivateTitle: 'Ngừng sử dụng giá trị mã này?',
+      deactivateTitle: 'Ngừng sử dụng giá trị mã?',
+      deactivateDescription:
+        'Sau khi ngừng sử dụng, không thể chọn mới giá trị mã này. Các bản ghi hiện có vẫn hiển thị giá trị mã đã được chọn.',
     },
   },
 };

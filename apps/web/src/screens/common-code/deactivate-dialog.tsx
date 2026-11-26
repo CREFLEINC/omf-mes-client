@@ -1,4 +1,4 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -6,8 +6,12 @@ const t = messages.commonCode.dialog;
 
 export interface DeactivateDialogProps {
   open: boolean;
-  /** 어느 자원을 중지하는지. 세 자원이 이 props로 이름만 바꿔 쓴다. */
+  /** 어느 자원을 중지하는지. 세 자원이 같은 틀에 제목 · 대상 · 설명만 바꿔 쓴다(사용자 지시 2026-11-26). */
   title: string;
+  /** 대상 줄 「이름 (코드)」 — 부르는 쪽이 이미 받은 목록 · 상세 값으로 만든다(새 요청을 내지 않는다). */
+  target: string;
+  /** 중지하면 무엇이 달라지는지 — 자원 이름만 다르다. */
+  description: string;
   onClose: () => void;
   onConfirm: () => void;
   isSaving: boolean;
@@ -25,7 +29,7 @@ export interface DeactivateDialogProps {
  * 「코드 필드를 고칠 수 있는지」의 근거이지 「이 행을 참조하는 자료의 수」가 아니다 —
  * 두 뜻을 섞으면 화면이 지어낸다. 건수를 내려면 계약에 그 값을 담을 자리가 먼저 필요하다.
  *
- * **되돌리는 경로가 없다는 사실을 본문이 먼저 밝힌다.** 계약에 되살리는 오퍼레이션이 없고
+ * **되돌리는 경로가 없다는 사실을 마지막 주의 줄이 밝힌다.** 계약에 되살리는 오퍼레이션이 없고
  * 수정 본문에도 사용 여부가 없다.
  *
  * 스크림 클릭으로 닫히지 않게 한다. 되돌릴 수 없는 액션의 확인 창이 실수로 사라지면
@@ -37,6 +41,8 @@ export interface DeactivateDialogProps {
 export const DeactivateDialog = ({
   open,
   title,
+  target,
+  description,
   onClose,
   onConfirm,
   isSaving,
@@ -62,6 +68,13 @@ export const DeactivateDialog = ({
     }
   >
     {banner}
-    <p>{t.deactivateDescription}</p>
+    <div className="common-code-deactivate-body">
+      <p className="common-code-deactivate-target">{target}</p>
+      <p>{description}</p>
+      <p className="iqc-inspection-action-note common-code-deactivate-note" data-tone="warning">
+        <Icon name="warning" size={16} aria-hidden />
+        {t.deactivateWarning}
+      </p>
+    </div>
   </Dialog>
 );

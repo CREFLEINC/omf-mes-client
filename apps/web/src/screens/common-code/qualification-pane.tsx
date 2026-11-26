@@ -12,7 +12,6 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
-import { DisabledAction } from './disabled-action';
 import type { QualificationDraft } from './qualification-draft';
 import { duplicateDraftIds } from './qualification-validation';
 import type { LookupEntry } from './types';
@@ -22,7 +21,6 @@ const t = messages.commonCode.qualification;
 export interface QualificationPaneProps {
   drafts: QualificationDraft[];
   isLoading: boolean;
-  isWorkerSelected: boolean;
   /** 공정 번호를 사람이 읽는 이름으로. 비운 값은 「(전체 공정)」이다 */
   processes: LookupSource<LookupEntry>;
   /** 인증자 번호를 활성 사용자 이름으로 표시한다. 기존 값은 조회 실패 때도 원본을 보존한다 */
@@ -70,7 +68,6 @@ const orEmptyMark = (value: string): string =>
 export const QualificationPane = ({
   drafts,
   isLoading,
-  isWorkerSelected,
   processes,
   certifiers,
   loadError,
@@ -214,21 +211,6 @@ export const QualificationPane = ({
       </div>
     );
   };
-
-  if (!isWorkerSelected) {
-    return (
-      <section className="pane" aria-label={t.paneTitle}>
-        <EmptyState size="sm" title={t.empty.notSelected} />
-        {/*
-         * 작업자를 고르기 전에도 「자격 추가」를 감추지 않는다 — 감추면 사용자가
-         * 「이 화면에는 없는 기능」으로 오해하고 다른 곳을 찾는다(배치 규범 4).
-         */}
-        <div className="filter-bar">
-          <DisabledAction label={t.actions.add} reason={t.actionReasons.needsWorker} size="sm" />
-        </div>
-      </section>
-    );
-  }
 
   return (
     <section className="pane" aria-label={t.paneTitle}>

@@ -58,14 +58,17 @@ describe('WorkerDetailPane — 쓰기 경로가 없다 (결정 9)', () => {
    * C60 — 이 안내는 `editability`가 아니라 **고정 문구**다.
    * 계약은 「항상 RECEIVED_FROM_ERP」라고 적었으나 목 서버는 `reason:'EDITABLE'`을 준다.
    */
-  it('구획 머리에 외부 수신본 안내가 보인다', () => {
+  /* 사용자 지시 2026-11-26 — 안내 라벨은 제목 「작업자 상세 정보」 바로 오른쪽 같은 줄(제목 줄 안)에 선다. */
+  it('구획 머리에 외부 수신본 안내가 제목 오른쪽 같은 줄에 보인다', () => {
     renderPane();
 
-    expect(
-      screen.getByText(
-        '외부 시스템에서 받은 자료라 여기서 수정할 수 없습니다. 원본 시스템에서 변경하세요.',
-      ),
-    ).toBeInTheDocument();
+    const note = screen.getByText(
+      '외부 시스템에서 받은 자료라 여기서 수정할 수 없습니다. 원본 시스템에서 변경하세요.',
+    );
+    const title = screen.getByRole('heading', { name: '작업자 상세 정보' });
+    expect(note.parentElement).toBe(title.parentElement);
+    expect(title.nextElementSibling).toBe(note);
+    expect(note).toHaveAttribute('data-tone', 'info');
   });
 });
 

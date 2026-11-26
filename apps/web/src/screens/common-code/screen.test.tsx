@@ -1125,6 +1125,22 @@ describe('CommonCodeScreen — 코드그룹 사용 중지 (C22)', () => {
     expect(requests.some((request) => request.method === 'POST')).toBe(false);
   });
 
+  /* 사용자 지시 2026-11-26 — 코드값 창과 같은 틀. 대상은 이미 받은 상세 값이다. */
+  it('확인 창이 제목 · 대상 · 설명 · 주의 줄을 낸다', async () => {
+    const { user } = await openEditForm();
+
+    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '사용 중지' }));
+
+    const dialog = within(screen.getByRole('dialog', { name: '코드그룹을 사용 중지할까요?' }));
+    expect(dialog.getByText('합성 코드그룹 A (SYN-GRP-01)')).toBeInTheDocument();
+    expect(
+      dialog.getByText(
+        '사용 중지하면 이 코드그룹을 새로 선택할 수 없습니다. 기존 기록에는 이미 선택된 코드그룹이 그대로 표시됩니다.',
+      ),
+    ).toBeInTheDocument();
+    expect(dialog.getByText('사용 중지 후에는 다시 사용할 수 없습니다.')).toBeInTheDocument();
+  });
+
   it('확인하면 :deactivate로 나가고 멱등 키와 If-Match가 둘 다 실린다', async () => {
     const { requests, user } = await openEditForm();
 
@@ -2788,6 +2804,22 @@ describe('CommonCodeScreen — 코드값 사용 중지 (C39)', () => {
     expect(post.headers.get('If-Match')).toBe('W/"3"');
   });
 
+  /* 사용자 지시 2026-11-26 — 제목 · 대상 「코드명 (코드)」 · 설명 · 주의 줄. 대상은 이미 받은 목록 값이다. */
+  it('확인 창이 제목 · 대상 · 설명 · 주의 줄을 낸다', async () => {
+    const { user } = await openForm();
+
+    await user.click(rowDeactivate());
+
+    const dialog = within(screen.getByRole('dialog', { name: '코드값을 사용 중지할까요?' }));
+    expect(dialog.getByText('합성 코드값 A (SYN-CV-01)')).toBeInTheDocument();
+    expect(
+      dialog.getByText(
+        '사용 중지하면 이 코드값을 새로 선택할 수 없습니다. 기존 기록에는 이미 선택된 코드값이 그대로 표시됩니다.',
+      ),
+    ).toBeInTheDocument();
+    expect(dialog.getByText('사용 중지 후에는 다시 사용할 수 없습니다.')).toBeInTheDocument();
+  });
+
   it('확인 창에 참조 건수를 내지 않는다', async () => {
     const { user } = await openForm();
 
@@ -4005,8 +4037,16 @@ describe('CommonCodeScreen — 부서 사용 중지 (C56)', () => {
 
     await user.click(within(departmentFormPane()).getByRole('button', { name: '사용 중지' }));
 
-    const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByText(/되돌리는 경로가 없습니다/)).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: '부서를 사용 중지할까요?' });
+    expect(within(dialog).getByText('합성 부서 A (SYN-DEPT-01)')).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        '사용 중지하면 이 부서를 새로 선택할 수 없습니다. 기존 기록에는 이미 선택된 부서가 그대로 표시됩니다.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText('사용 중지 후에는 다시 사용할 수 없습니다.'),
+    ).toBeInTheDocument();
     expect(within(dialog).queryByText(/3건/)).not.toBeInTheDocument();
   });
 
@@ -5100,11 +5140,16 @@ describe('CommonCodeScreen — 자격 조회 (C64·C75)', () => {
     await screen.findByRole('button', { name: 'SYN-W-0001' });
 
     expect(requestsTo(requests, qualificationsPath(5001))).toHaveLength(0);
+    /* 고르기 전에는 자격 구획 자체가 없고 「작업자를 선택하세요.」 안내 하나만 선다(사용자 지시 2026-11-26). */
+    expect(screen.getByText('작업자를 선택하세요.')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '자격·인증' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '자격 추가' })).toBeNull();
 
     await user.click(screen.getByRole('button', { name: 'SYN-W-0001' }));
     await screen.findByText('SYN-CERT-01');
 
     expect(requestsTo(requests, qualificationsPath(5001))).toHaveLength(1);
+    expect(screen.getByRole('region', { name: '자격·인증' })).toBeInTheDocument();
   });
 
   /* C75 — 공정 선택지가 실제 조회로 채워진다. */

@@ -444,6 +444,13 @@ export const CodeValueSection = ({
     );
   };
 
+  const deactivateRow =
+    codeValues.find((row) => row.codeValueId === selectedCodeValueId) ?? detail.data?.codeValue;
+  const deactivateTarget =
+    deactivateRow === undefined
+      ? ''
+      : messages.commonCode.dialog.deactivateTarget(deactivateRow.codeName, deactivateRow.code);
+
   return (
     <>
       <CodeValueListPane
@@ -478,6 +485,9 @@ export const CodeValueSection = ({
         <DeactivateDialog
           open
           title={t.dialog.deactivateTitle}
+          /* 대상 줄 — 창을 연 줄은 지금 목록에 있다. 이미 받은 목록 값으로 내고 새 요청을 만들지 않는다. */
+          target={deactivateTarget}
+          description={t.dialog.deactivateDescription}
           onClose={() => {
             setIsDeactivateOpen(false);
             deactivateWrite.reset();

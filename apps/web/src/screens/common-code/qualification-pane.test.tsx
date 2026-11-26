@@ -41,7 +41,6 @@ const renderPane = (overrides: Partial<Parameters<typeof QualificationPane>[0]> 
   const props: Parameters<typeof QualificationPane>[0] = {
     drafts: [draft()],
     isLoading: false,
-    isWorkerSelected: true,
     processes: source(),
     certifiers: source(certifierEntries),
     loadError: null,
@@ -144,23 +143,7 @@ describe('QualificationPane — 표', () => {
   });
 });
 
-describe('QualificationPane — 작업자 선택 전', () => {
-  /* 감추면 사용자가 「이 화면에는 없는 기능」으로 오해하고 다른 곳을 찾는다(배치 규범 4). */
-  it('작업자를 고르기 전에는 자격 추가가 비활성이고 사유가 붙는다', () => {
-    renderPane({ isWorkerSelected: false, drafts: [] });
-
-    expect(screen.getByRole('button', { name: '자격 추가' })).toBeDisabled();
-    expect(
-      screen.getByText('자격 추가는 좌측에서 작업자를 고른 뒤에 할 수 있습니다.'),
-    ).toBeInTheDocument();
-  });
-
-  it('작업자를 고르기 전에는 표를 그리지 않는다', () => {
-    renderPane({ isWorkerSelected: false, drafts: [] });
-
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
-  });
-});
+/* 작업자를 고르기 전의 모습은 화면이 정한다 — 자격 구획 자체를 두지 않는다(screen.test.tsx · 사용자 지시 2026-11-26). */
 
 describe('QualificationPane — 겹친 짝', () => {
   /*

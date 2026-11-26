@@ -2394,53 +2394,57 @@ export const CommonCodeScreen = () => {
               <div className="pane-stack">
                 {renderWorkerDetailPane()}
 
-                <QualificationPane
-                  drafts={qualificationDrafts}
-                  // 작업자를 고르기 전에는 아무것도 기다리지 않는다 — 조회가 나가지도 않았다.
-                  isLoading={selectedWorkerId !== null && qualificationList.isPending}
-                  isWorkerSelected={selectedWorkerId !== null}
-                  processes={processOptions}
-                  certifiers={certifierOptions}
-                  loadError={
-                    qualificationList.isError ? (
-                      <LoadErrorBanner
-                        error={qualificationList.error}
-                        onRetry={() => void qualificationList.refetch()}
-                      />
-                    ) : null
-                  }
-                  /*
-                   * **남의 실패는 아예 그리지 않는다**(`isQualificationWriteMine`) — 뒤늦게 온 앞
-                   * 작업자의 실패가 지금 구획에 서면 사용자는 손댄 적 없는 작업자가 막힌 줄 안다.
-                   */
-                  banner={
-                    isQualificationWriteMine ? (
-                      <SaveErrorBanner error={qualificationWrite.error} />
-                    ) : null
-                  }
-                  isDirty={isQualificationDirty}
-                  /* **막는 것은 전역** — 남의 저장 중에도 새 저장이 시작되지 않는다(사유는 페인이 낸다). */
-                  isLocked={isQualificationLocked}
-                  /* **가리는 것은 대상 축** — 진행 표시는 자기 저장에만 돈다. */
-                  isSaving={isQualificationWriteMine && qualificationWrite.isSaving}
-                  onAdd={() => openQualificationDialog(createQualificationDraft(), true)}
-                  onEdit={(draftId) => {
-                    const found = qualificationDrafts.find((item) => item.draftId === draftId);
-                    if (found !== undefined) openQualificationDialog(found, false);
-                  }}
-                  onRemove={(draftId) => {
-                    changeQualificationDrafts((drafts) =>
-                      removeQualificationDraft(drafts, draftId),
-                    );
-                  }}
-                  onSave={handleSaveQualifications}
-                  onCancel={() => {
-                    resetIfIdle(qualificationWrite);
-                    setQualificationState((prev) =>
-                      prev === null ? prev : { ...prev, drafts: prev.baseline },
-                    );
-                  }}
-                />
+                {/*
+                 * 작업자를 고르기 전에는 자격 구획을 두지 않는다 — 위 「작업자를 선택하세요.」 안내 하나만(사용자 지시 2026-11-26 ·
+                 * 코드그룹 전 코드값 구획과 같다).
+                 */}
+                {selectedWorkerId !== null && (
+                  <QualificationPane
+                    drafts={qualificationDrafts}
+                    isLoading={qualificationList.isPending}
+                    processes={processOptions}
+                    certifiers={certifierOptions}
+                    loadError={
+                      qualificationList.isError ? (
+                        <LoadErrorBanner
+                          error={qualificationList.error}
+                          onRetry={() => void qualificationList.refetch()}
+                        />
+                      ) : null
+                    }
+                    /*
+                     * **남의 실패는 아예 그리지 않는다**(`isQualificationWriteMine`) — 뒤늦게 온 앞
+                     * 작업자의 실패가 지금 구획에 서면 사용자는 손댄 적 없는 작업자가 막힌 줄 안다.
+                     */
+                    banner={
+                      isQualificationWriteMine ? (
+                        <SaveErrorBanner error={qualificationWrite.error} />
+                      ) : null
+                    }
+                    isDirty={isQualificationDirty}
+                    /* **막는 것은 전역** — 남의 저장 중에도 새 저장이 시작되지 않는다(사유는 페인이 낸다). */
+                    isLocked={isQualificationLocked}
+                    /* **가리는 것은 대상 축** — 진행 표시는 자기 저장에만 돈다. */
+                    isSaving={isQualificationWriteMine && qualificationWrite.isSaving}
+                    onAdd={() => openQualificationDialog(createQualificationDraft(), true)}
+                    onEdit={(draftId) => {
+                      const found = qualificationDrafts.find((item) => item.draftId === draftId);
+                      if (found !== undefined) openQualificationDialog(found, false);
+                    }}
+                    onRemove={(draftId) => {
+                      changeQualificationDrafts((drafts) =>
+                        removeQualificationDraft(drafts, draftId),
+                      );
+                    }}
+                    onSave={handleSaveQualifications}
+                    onCancel={() => {
+                      resetIfIdle(qualificationWrite);
+                      setQualificationState((prev) =>
+                        prev === null ? prev : { ...prev, drafts: prev.baseline },
+                      );
+                    }}
+                  />
+                )}
               </div>
             ),
           }}
@@ -2739,6 +2743,16 @@ export const CommonCodeScreen = () => {
         <DeactivateDialog
           open
           title={t.dialog.deactivateDepartmentTitle}
+          /* 대상 줄 — 창은 수정 폼(상세를 받은 뒤)에서만 열린다. 이미 받은 상세 값으로 낸다. */
+          target={
+            departmentDetail.data === undefined
+              ? ''
+              : t.dialog.deactivateTarget(
+                  departmentDetail.data.department.departmentName,
+                  departmentDetail.data.department.departmentCode,
+                )
+          }
+          description={t.dialog.deactivateDepartmentDescription}
           onClose={() => {
             setIsDepartmentDeactivateOpen(false);
             resetIfIdle(departmentDeactivateWrite);
@@ -2760,6 +2774,16 @@ export const CommonCodeScreen = () => {
         <DeactivateDialog
           open
           title={t.dialog.deactivateCodeGroupTitle}
+          /* 대상 줄 — 창은 수정 폼(상세를 받은 뒤)에서만 열린다. 이미 받은 상세 값으로 낸다. */
+          target={
+            codeGroupDetail.data === undefined
+              ? ''
+              : t.dialog.deactivateTarget(
+                  codeGroupDetail.data.codeGroup.groupName,
+                  codeGroupDetail.data.codeGroup.groupCode,
+                )
+          }
+          description={t.dialog.deactivateCodeGroupDescription}
           onClose={() => {
             setIsDeactivateOpen(false);
             resetIfIdle(codeGroupDeactivateWrite);

@@ -17,6 +17,7 @@ import {
 } from './department-production-warehouse-queries';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { SelectField } from './select-field';
+import { ListEmpty } from '../../patterns/list-empty';
 
 type DepartmentProductionWarehouse = components['schemas']['DepartmentProductionWarehouse'];
 const t = messages.commonCode.department.productionWarehouses;
@@ -310,12 +311,12 @@ export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectio
         </p>
       );
     }
-    if (editor.rows.length === 0) return <p className="field-note">{t.none}</p>;
-
+    /* 창고가 없어도 머리줄은 그리고 빈 안내는 표 안에 둔다 — 앱의 빈 목록 통일 모양(사용자 지시 2026-11-26). */
     return (
       <Table
         columns={columns}
         rows={editor.rows}
+        empty={<ListEmpty icon="warehouse" title={t.none} />}
         getRowId={(row) => String(row.warehouseId)}
         density="compact"
         aria-label={t.tableLabel}
