@@ -16,6 +16,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { hasChangedFilters } from '../../patterns/filter-more';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
+import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest, type ApiCallResult } from '../../patterns/request';
 import { Select } from '../../patterns/select';
@@ -526,17 +527,14 @@ export const ProcessMappingPane = () => {
         <div className="inspection-standard-plan-head">
           <div className="inspection-standard-plan-chips">
             <h2 className="pane-title">{t.panes.mapping}</h2>
+            {/* 고르는 법 안내는 제목 옆 ⓘ — 마우스를 올리면 뜬다(사용자 지시 · omf-all-around#360). */}
+            <InfoTip text={t.mapping.description} />
             {!isLoading && loadError === null && (
               <span className="defect-cause-child-count">
                 {t.mappingView.counts(shownDefects.length, shownProcesses.length)}
               </span>
             )}
           </div>
-          {/* 안내 문구는 제목 줄 맨 오른쪽(사용자 지시 2026-10-29 · #209). 둥근 표시가 연결 여부를 보여 범례는 두지 않는다. */}
-          <p className="iqc-inspection-action-note defect-cause-mapping-note" data-tone="info">
-            <Icon name="info" size={14} aria-hidden />
-            {t.mapping.description}
-          </p>
         </div>
         {truncated && (
           <div className="banner-slot">

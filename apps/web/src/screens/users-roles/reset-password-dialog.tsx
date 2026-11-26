@@ -1,6 +1,8 @@
-import { AlertBanner, Button, Dialog, Icon } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
+
+import { InfoTip } from '../../patterns/info-tip';
 
 const t = messages.usersRoles.dialog;
 
@@ -49,12 +51,11 @@ export const ResetPasswordDialog = ({
     }
   >
     {banner}
-    {/* 묻는 문장 + 라벨 모양 안내(사용자 시안 2026-11-20 · #333). */}
+    {/* 묻는 문장 끝 ⓘ — 안내는 마우스를 올리거나 초점을 주면 뜬다(omf-all-around#360). */}
     <div className="users-roles-worker-dialog">
-      <p>{t.resetPasswordQuestion}</p>
-      <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
-        <Icon name="info" size={16} aria-hidden />
-        {t.resetPasswordDescription}
+      <p className="users-roles-question-row">
+        {t.resetPasswordQuestion}
+        <InfoTip text={t.resetPasswordDescription} />
       </p>
     </div>
   </Dialog>

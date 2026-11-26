@@ -1,3 +1,5 @@
+import { InfoTip } from '../../patterns/info-tip';
+
 export interface FieldLabelProps {
   /** 이 라벨이 가리키는 컨트롤의 id */
   htmlFor: string;
@@ -5,6 +7,8 @@ export interface FieldLabelProps {
   required?: boolean;
   /** 라벨 뒤에 「(선택)」 같은 표시를 붙인다. 라벨 밖이라 접근 이름은 그대로다. */
   optionalMark?: string;
+  /** 라벨 옆 ⓘ — 마우스를 올리거나 초점을 주면 뜨는 안내(omf-all-around#360). */
+  info?: string;
 }
 
 /**
@@ -20,16 +24,33 @@ export interface FieldLabelProps {
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const FieldLabel = ({ htmlFor, label, required = false, optionalMark }: FieldLabelProps) => (
-  <span className="field-label">
-    <label htmlFor={htmlFor}>{label}</label>
-    {/* `required-mark` — 다른 화면과 같은 빨간 필수 표시(사용자 지시 2026-11-20 · #333). */}
-    {required && (
-      <span className="required-mark" aria-hidden="true">
-        {' '}
-        *
-      </span>
-    )}
-    {optionalMark !== undefined && <span className="optional-mark"> {optionalMark}</span>}
-  </span>
-);
+export const FieldLabel = ({
+  htmlFor,
+  label,
+  required = false,
+  optionalMark,
+  info,
+}: FieldLabelProps) => {
+  const labelNode = (
+    <span className="field-label">
+      <label htmlFor={htmlFor}>{label}</label>
+      {/* `required-mark` — 다른 화면과 같은 빨간 필수 표시(사용자 지시 2026-11-20 · #333). */}
+      {required && (
+        <span className="required-mark" aria-hidden="true">
+          {' '}
+          *
+        </span>
+      )}
+      {optionalMark !== undefined && <span className="optional-mark"> {optionalMark}</span>}
+    </span>
+  );
+
+  if (info === undefined) return labelNode;
+
+  return (
+    <span className="info-label">
+      {labelNode}
+      <InfoTip text={info} />
+    </span>
+  );
+};

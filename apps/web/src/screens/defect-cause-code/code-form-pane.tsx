@@ -2,6 +2,7 @@ import { AlertBanner, Button, Dialog, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
+import { InfoLabel } from '../../patterns/info-tip';
 import { CodeLockLabel } from '../../patterns/master';
 import { Select } from '../../patterns/select';
 import type { CodeAdapter } from './adapters';
@@ -59,8 +60,6 @@ export const CodeFormPane = ({
 }: CodeFormPaneProps) => {
   const parentId = useId();
   const parentErrorId = `${parentId}-error`;
-  const parentLockId = `${parentId}-lock`;
-  const parentNoteId = `${parentId}-note`;
   const codeId = useId();
   const codeLockId = `${codeId}-lock`;
   const nameId = useId();
@@ -69,13 +68,7 @@ export const CodeFormPane = ({
   const codeLocked = codeLockReason !== null;
 
   const parentError = fieldErrors.parentId;
-  const describedBy = [
-    parentError === undefined ? null : parentErrorId,
-    parentLockReason === null ? null : parentLockId,
-    parentLockReason === null ? parentNoteId : null,
-  ]
-    .filter((id): id is string => id !== null)
-    .join(' ');
+  const describedBy = parentError === undefined ? undefined : parentErrorId;
 
   /*
    * 대분류는 되돌리기 어려운 축이다. 상위를 비운 채 등록하려 할 때만 경고한다 —
@@ -198,7 +191,16 @@ export const CodeFormPane = ({
 
         {/* 상위 대분류는 줄 전체 폭(사용자 시안 · #209). */}
         <div className="field-cell defect-cause-form-wide">
-          {fieldLabel(parentId, adapter.labels.parent, parentRequired)}
+          {/*
+           * 잠긴 사유 · 대분류 목록이 임시라는 안내는 이름 옆 ⓘ — 마우스를 올리거나 초점을 주면 뜬다(omf-all-around#360).
+           * 잠기면 고를 것이 없으니 잠긴 사유만 낸다(#209). ⓘ 는 단추라 잠긴 칸이어도 초점이 닿는다.
+           */}
+          <InfoLabel
+            htmlFor={parentId}
+            label={adapter.labels.parent}
+            info={parentLockReason ?? t.parentListProvisional}
+            required={parentRequired}
+          />
           <Select
             id={parentId}
             options={[{ value: '', label: t.values.noParent }, ...parentOptions]}
@@ -211,34 +213,6 @@ export const CodeFormPane = ({
           {parentError !== undefined && (
             <span id={parentErrorId} className="field-error">
               {parentError}
-            </span>
-          )}
-          {/*
-           * 배치 규범 4 — 비활성 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더한다.
-           * 비활성 컨트롤은 포커스를 받지 못해 툴팁만으로는 닿을 수 없다.
-           */}
-          {parentLockReason !== null && (
-            <span
-              id={parentLockId}
-              className="iqc-inspection-action-note defect-cause-info-note"
-              data-tone="info"
-            >
-              <Icon name="info" size={14} aria-hidden />
-              {parentLockReason}
-            </span>
-          )}
-          {/*
-           * 대분류 목록이 확정되기 전이라는 사실을 감추지 않는다 — 고를 수 있을 때만(잠기면 고를 것이 없다 · #209).
-           * 정보 안내 — 검사 조회·판정의 안내 줄과 같은 모양(사용자 지시 2026-10-29 · #209).
-           */}
-          {parentLockReason === null && (
-            <span
-              id={parentNoteId}
-              className="iqc-inspection-action-note defect-cause-info-note"
-              data-tone="info"
-            >
-              <Icon name="info" size={14} aria-hidden />
-              {t.parentListProvisional}
             </span>
           )}
         </div>

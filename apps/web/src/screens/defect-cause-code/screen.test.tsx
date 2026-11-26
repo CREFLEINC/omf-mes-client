@@ -478,7 +478,7 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
     expect(screen.getByLabelText('불량코드')).toHaveValue('');
     expect(screen.getByText('대분류는 모든 현장에서 공통으로 사용됩니다.')).toBeInTheDocument();
     expect(
-      screen.getByText('대분류 목록은 임시이며, 확정 후 변경될 수 있습니다.'),
+      screen.getByRole('button', { name: '대분류 목록은 임시이며, 확정 후 변경될 수 있습니다.' }),
     ).toBeInTheDocument();
   });
 
@@ -1048,7 +1048,9 @@ describe('DefectCauseCodeScreen — 수정 중의 상위 선택', () => {
 
     expect(screen.getByRole('combobox', { name: '상위 대분류' })).toBeDisabled();
     expect(
-      screen.getByText('이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다.'),
+      screen.getByRole('button', {
+        name: '이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다.',
+      }),
     ).toBeInTheDocument();
   });
 
@@ -1090,7 +1092,7 @@ describe('DefectCauseCodeScreen — 수정 저장', () => {
 
     await openEdit();
     const dialog = await screen.findByRole('dialog');
-    const parentLabel = within(dialog).getByText('상위 대분류').closest('.field-label');
+    const parentLabel = within(dialog).getByText('상위 대분류').closest('.info-label');
     expect(parentLabel?.querySelector('.required-mark')).toBeNull();
   });
 
@@ -1101,7 +1103,7 @@ describe('DefectCauseCodeScreen — 수정 저장', () => {
     );
 
     const dialog = await screen.findByRole('dialog');
-    const parentLabel = within(dialog).getByText('상위 대분류').closest('.field-label');
+    const parentLabel = within(dialog).getByText('상위 대분류').closest('.info-label');
     expect(parentLabel?.querySelector('.required-mark')).not.toBeNull();
   });
 
@@ -1339,7 +1341,9 @@ describe('DefectCauseCodeScreen — 이미 3계층인 기존 데이터', () => {
 
     expect(screen.getByRole('combobox', { name: '상위 대분류' })).toBeDisabled();
     expect(
-      screen.getByText(/이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다/),
+      screen.getByRole('button', {
+        name: '이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다.',
+      }),
     ).toBeInTheDocument();
   });
 

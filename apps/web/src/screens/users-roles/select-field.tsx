@@ -17,6 +17,8 @@ export interface SelectFieldProps {
   disabledReason?: string;
   /** 값 목록이 확정되지 않았다는 안내 등. 오류가 있으면 오류가 우선한다. */
   note?: string;
+  /** 라벨 옆 ⓘ 안내 — `FieldLabel` 로 넘긴다(omf-all-around#360). */
+  info?: string;
   error?: string;
   placeholder?: string;
   /**
@@ -51,6 +53,7 @@ export const SelectField = ({
   disabled = false,
   disabledReason,
   note,
+  info,
   error,
   placeholder,
   wide = false,
@@ -75,7 +78,13 @@ export const SelectField = ({
         .filter((name) => name !== null && name !== undefined)
         .join(' ')}
     >
-      <FieldLabel htmlFor={id} label={label} required={required} optionalMark={optionalMark} />
+      <FieldLabel
+        htmlFor={id}
+        label={label}
+        required={required}
+        optionalMark={optionalMark}
+        info={info}
+      />
       <Select
         id={id}
         options={options}

@@ -47,18 +47,22 @@ describe('DataScopeFormDialog', () => {
     expect(screen.getByRole('dialog', { name: '접근 범위 수정' })).toBeInTheDocument();
   });
 
-  /* 추가 창에만 무엇을 고르는지 한 줄 안내가 선다(사용자 시안 2026-11-20 · #333). */
+  /* 추가 창에만 무엇을 고르는지 안내가 선다 — 첫 칸 이름 옆 ⓘ(#333 · #360). */
   it('추가 창에는 고르라는 안내가 서고 수정 창에는 없다', () => {
     renderDialog();
 
-    expect(screen.getByText('추가할 사업부와 공장을 선택하세요.')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '추가할 사업부와 공장을 선택하세요.' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '추가' })).toBeInTheDocument();
   });
 
   it('수정 창의 확정 단추는 「변경 적용」이다', () => {
     renderDialog({ isNew: false, draft: { ...emptyDraft, businessUnitId: '2001' } });
 
-    expect(screen.queryByText('추가할 사업부와 공장을 선택하세요.')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '추가할 사업부와 공장을 선택하세요.' }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '변경 적용' })).toBeInTheDocument();
   });
 
