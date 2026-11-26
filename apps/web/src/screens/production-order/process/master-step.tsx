@@ -71,7 +71,6 @@ export const MasterStep = ({
   return (
     <section className="erp-wo-master-workspace" aria-label={t.heading}>
       <div className="section-heading-row">
-        <h2 className="section-title">{t.heading}</h2>
         <Chip size="sm" variant="status" status={checked ? 'success' : 'warning'}>
           {checked ? t.checked : t.needsCheck}
         </Chip>
