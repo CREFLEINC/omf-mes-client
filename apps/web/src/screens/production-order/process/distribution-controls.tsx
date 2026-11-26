@@ -29,6 +29,12 @@ import {
   type SegmentPreview,
 } from './segmented-distribution-model';
 
+interface CalendarNote {
+  order: string;
+  summary: string;
+  dates?: string[];
+}
+
 export interface DistributionControlsProps {
   orders: readonly DistributionTarget[];
   existing: readonly OwnedDraft[];
@@ -67,7 +73,7 @@ export const DistributionControls = ({
   const id = useId();
   const { client } = useApiClient();
   const [calendarBusy, setCalendarBusy] = useState(false);
-  const [calendarNotes, setCalendarNotes] = useState<string[]>([]);
+  const [calendarNotes, setCalendarNotes] = useState<CalendarNote[]>([]);
   const [resultQuantities, setResultQuantities] = useState<Record<string, string>>({});
   const resultKey = (row: OwnedDraft) => `${row.owner}:${row.planDate}:${row.plannedLineId}`;
   const [holidayLabels, setHolidayLabels] = useState(new Map<string, string>());
@@ -319,17 +325,6 @@ export const DistributionControls = ({
             previewEpoch.current++;
             setOpen(false);
           }}
-          footer={
-            <Button
-              variant="outlined"
-              onClick={() => {
-                previewEpoch.current++;
-                setOpen(false);
-              }}
-            >
-              편성 화면으로
-            </Button>
-          }
         >
           <div id={`${id}-conditions`} className="erp-wo-distribution-settings">
             <ol className="erp-wo-distribution-steps" aria-label="자동 분배 진행 단계">
@@ -912,12 +907,16 @@ export const DistributionControls = ({
                         )
                           return;
                         const bySegment = new Map<string, PlanningDay[]>();
-                        const notes: string[] = [];
+                        const notes: CalendarNote[] = [];
                         const holidayDisplay = new Map<string, string>();
                         for (const row of active) {
                           const order = orders.find((order) => order.id === row.owner);
+                          const orderLabel = order?.orderNo ?? order?.label ?? row.owner;
                           if (!order?.plantId) {
-                            notes.push(`${order?.label ?? ''}: 근무일 판정 불가 (공장 미지정)`);
+                            notes.push({
+                              order: orderLabel,
+                              summary: '근무일 판정 불가 (공장 미지정)',
+                            });
                             continue;
                           }
                           const days = segmentDates(row.start, row.end).map((date) =>
@@ -932,7 +931,7 @@ export const DistributionControls = ({
                           );
                           bySegment.set(row.id, days);
                           if (row.mode === 'equal' && order.bottleneckCycleTimeSec === null)
-                            notes.push(`${order.label}: 표준 C/T 미설정`);
+                            notes.push({ order: orderLabel, summary: '표준 C/T 미설정' });
                           const holidays = days.filter((day) => day.statusCode === 'HOLIDAY');
                           for (const day of holidays) {
                             holidayDisplay.set(
@@ -941,22 +940,29 @@ export const DistributionControls = ({
                             );
                           }
                           if (row.mode === 'equal' && holidays.length)
-                            notes.push(
-                              `${order.label}: 휴일 ${holidays.length}일 ${row.includeHolidays ? '포함' : '제외'} (${holidays.map((day) => day.date).join(', ')})`,
-                            );
+                            notes.push({
+                              order: orderLabel,
+                              summary: `휴일 ${holidays.length}일 ${row.includeHolidays ? '포함' : '제외'}`,
+                              dates: holidays.map((day) => day.date),
+                            });
                           if (row.mode === 'daily')
                             holidays
                               .filter((day) => Number(row.daily[day.date]) > 0)
                               .forEach((day) =>
-                                notes.push(
-                                  `${order.label} / ${day.date}: ${planningDayMessage(day)}`,
-                                ),
+                                notes.push({
+                                  order: orderLabel,
+                                  summary: planningDayMessage(day) ?? '휴일',
+                                  dates: [day.date],
+                                }),
                               );
                           const unknown = days.filter(
                             (day) => day.statusCode === 'UNDETERMINED',
                           ).length;
                           if (unknown)
-                            notes.push(`${order.label}: 근무일 판정 불가 ${unknown}일 (미설정)`);
+                            notes.push({
+                              order: orderLabel,
+                              summary: `근무일 판정 불가 ${unknown}일 (미설정)`,
+                            });
                         }
                         const result = previewSegments(
                           orders,
@@ -965,7 +971,9 @@ export const DistributionControls = ({
                           bySegment,
                           plantToday(),
                         );
-                        setCalendarNotes(notes);
+                        setCalendarNotes([
+                          ...new Map(notes.map((note) => [JSON.stringify(note), note])).values(),
+                        ]);
                         setHolidayLabels(holidayDisplay);
                         setResultQuantities({});
                         setPreview({ signature, result });
@@ -1010,7 +1018,6 @@ export const DistributionControls = ({
                 <div className="erp-wo-distribution-heading">
                   <h2 className="section-title">분배 결과</h2>
                   <Button
-                    variant="outlined"
                     disabled={disabled}
                     onClick={() => {
                       setPreview(null);
@@ -1018,14 +1025,44 @@ export const DistributionControls = ({
                       setAcknowledged(false);
                     }}
                   >
-                    조건 수정
+                    분배 조건 수정
                   </Button>
                 </div>
                 {calendarNotes.length > 0 && (
-                  <div className="erp-wo-planning-day-notice" role="status">
-                    {calendarNotes.map((note) => (
-                      <p key={note}>{note}</p>
-                    ))}
+                  <div className="erp-wo-preview-scroll">
+                    <table className="erp-wo-distribution-calendar-table">
+                      <caption>분배 기준 및 반영 내역</caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">ERP W/O</th>
+                          <th scope="col">반영 내역</th>
+                          <th scope="col">해당 날짜</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {calendarNotes.map((note) => (
+                          <tr key={JSON.stringify(note)}>
+                            <td>{note.order}</td>
+                            <td>
+                              <strong>{note.summary}</strong>
+                            </td>
+                            <td>
+                              {note.dates?.length ? (
+                                <span className="erp-wo-calendar-result-dates">
+                                  {note.dates.map((date) => (
+                                    <time key={date} dateTime={date}>
+                                      {date}
+                                    </time>
+                                  ))}
+                                </span>
+                              ) : (
+                                '—'
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
                 {resultError && <AlertBanner variant="error">{resultError}</AlertBanner>}

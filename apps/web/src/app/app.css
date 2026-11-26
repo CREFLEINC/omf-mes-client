@@ -38560,6 +38560,15 @@ body:has(
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
+.erp-wo-calendar-result-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-variant-numeric: tabular-nums;
+}
+.erp-wo-calendar-result-dates time {
+  white-space: nowrap;
+}
 .erp-wo-distribution-result-table .erp-wo-result-quantity {
   text-align: right;
   white-space: nowrap;
