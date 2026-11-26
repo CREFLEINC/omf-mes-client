@@ -38008,11 +38008,15 @@ body:has(
   gap: var(--space-2) var(--space-4);
   margin-block: var(--space-3);
 }
+.erp-wo-plan-create-view,
 .erp-wo-plan-create-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
+}
+.erp-wo-plan-create-actions {
+  margin-inline-start: auto;
 }
 .erp-wo-plan-create-actions > .erp-wo-distribution {
   display: contents;

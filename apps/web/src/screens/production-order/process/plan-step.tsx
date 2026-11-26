@@ -453,6 +453,11 @@ export const PlanStep = ({
               <PlanViewSwitch value={view} onChange={setView} layoutToolsId={layoutToolsId} />
             ) : undefined
           }
+          context={
+            distributionCycleTimeSec !== undefined && (
+              <CycleTimeSummary seconds={distributionCycleTimeSec} unit={uomLabel} />
+            )
+          }
           disabled={disabled}
           addDisabled={addDisabled || (!hideTotals && remaining <= 0)}
           onAdd={() => {
@@ -486,9 +491,6 @@ export const PlanStep = ({
                 onApply={(drafts) => onAppend(drafts)}
               />
             ))}
-          {distributionCycleTimeSec !== undefined && (
-            <CycleTimeSummary seconds={distributionCycleTimeSec} unit={uomLabel} />
-          )}
         </PlanCreationTools>
       )}
       {pastDraft && (
