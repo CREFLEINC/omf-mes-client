@@ -45,11 +45,13 @@ export const warehouseDetailPath = (warehouseId: number): string =>
  */
 export const useWarehouseList = (
   filters: WarehouseFilters,
+  enabled = true,
 ): UseQueryResult<WarehouseListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey: warehouseKeys.list(filters),
+    enabled,
     queryFn: () =>
       runRequest(() =>
         client.GET('/mdm/warehouses', {

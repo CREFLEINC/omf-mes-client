@@ -206,7 +206,7 @@ export const MaterialIssueRequestScreen = () => {
   const submission = usePublishSubmission();
 
   /*
-   * 피처 003 — W/O 담당 부서의 생산 창고. 있으면 생산 창고 공장(새 규칙): 출발 생산 창고 칸, 「창고」 칸 숨김,
+   * 피처 003 — W/O 공장의 생산 창고(유형이 생산창고인 창고). 있으면 생산 창고 공장(새 규칙): 출발 생산 창고 칸, 「창고」 칸 숨김,
    * 입고지 선택(비우면 서버가 채움). 없거나 못 받으면 지금 화면 그대로(FR-009a).
    */
   const workOrderDetail = useWorkOrderDetail(
@@ -218,7 +218,7 @@ export const MaterialIssueRequestScreen = () => {
     selectedWorkOrder !== null &&
     workOrderDetail.data?.workOrderId === selectedWorkOrder.workOrderId &&
     workOrderDetail.data.productionWarehouseMode === true;
-  /** 새 규칙 공장인데 이 W/O 라인 부서에 생산 창고가 없다 — 알리고 만들기를 막는다(서버도 400). */
+  /** 새 규칙 공장인데 사용 중인 생산 창고가 없다 — 알리고 만들기를 막는다(서버도 400). */
   const lacksProductionWarehouse = usesProductionWarehouses && productionWarehouses.length === 0;
   /* 남은 수량을 물을 품목 — 줄의 품목 번호(중복 없이 정렬, 조회 열쇠가 줄 순서로 흔들리지 않게). */
   const lineItemIds = [

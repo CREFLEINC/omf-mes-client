@@ -22,8 +22,8 @@ export const productionWarehouseReplenishment: Translated<
   noProductionWarehouse: {
     title: 'Nhà máy này không có kho sản xuất nên không dùng được',
     description:
-      'Khi liên kết kho sản xuất cho bộ phận (Quản lý dữ liệu gốc › Quản lý tổ chức), có thể yêu cầu bổ sung từ kho vật tư trên màn hình này. Trong lúc đó, yêu cầu xuất kho vẫn tạo ở màn hình yêu cầu xuất kho bổ sung như hiện tại.',
-    action: 'Mở quản lý tổ chức',
+      'Khi đặt loại kho là kho sản xuất (Quản lý dữ liệu gốc › Kho · vị trí), có thể yêu cầu bổ sung từ kho vật tư trên màn hình này. Trong lúc đó, yêu cầu xuất kho vẫn tạo ở màn hình yêu cầu xuất kho bổ sung như hiện tại.',
+    action: 'Mở Kho · vị trí',
   },
   noPlant: 'Không có nhà máy đang sử dụng.',
   origin: { DIRECT: 'Trực tiếp', AUTO: 'Tự động' },

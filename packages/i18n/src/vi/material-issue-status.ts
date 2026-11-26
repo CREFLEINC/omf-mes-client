@@ -192,7 +192,7 @@ export const materialIssueStatus: Translated<typeof ko.materialIssueStatus> = {
   },
   errors: {
     sourceWarehouseInvalid:
-      'Kho sản xuất xuất đi chỉ được chọn trong các kho sản xuất của phòng ban phụ trách chuyền của W/O này. Hãy tải lại rồi chọn.',
+      'Kho sản xuất xuất đi chỉ được chọn trong các kho sản xuất của nhà máy của W/O này. Hãy tải lại rồi chọn.',
     belowIssued: 'Số lượng yêu cầu không được nhỏ hơn số đã xuất.',
     versionConflict: 'Người khác đã đổi yêu cầu này trước. Hãy tải lại rồi sửa.',
     stateLocked: 'Trong lúc đó đã bắt đầu lấy hàng nên không lưu được thay đổi này. Đã tải lại.',
@@ -217,7 +217,7 @@ export const materialIssueStatus: Translated<typeof ko.materialIssueStatus> = {
     unsourcedTitle: 'Không có kho sản xuất còn tồn',
     unsourcedCount: (count: number): string => `${String(count)} W/O`,
     unsourcedNote:
-      'Vật tư không đưa vào yêu cầu xuất vì khi phát hành không kho sản xuất nào của phòng ban còn tồn. Hãy bổ sung kho sản xuất rồi yêu cầu bổ sung. Có tồn rồi cũng không tự yêu cầu.',
+      'Vật tư không đưa vào yêu cầu xuất vì khi phát hành không kho sản xuất nào còn tồn. Hãy bổ sung kho sản xuất rồi yêu cầu bổ sung. Có tồn rồi cũng không tự yêu cầu.',
     none: 'Không có',
     warehouseGroup: 'Thiếu theo kho sản xuất',
     warehouseGroupCount: (count: number): string => `${String(count)} mặt hàng`,

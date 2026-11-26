@@ -158,40 +158,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       parentNeedsOthers:
         'Phòng ban cấp trên không chỉ định được vì không có phòng ban khác để chọn. Đăng ký thêm một phòng ban thì có thể dùng ô này.',
     },
-    productionWarehouses: {
-      title: 'Kho sản xuất',
-      countColumn: 'Kho sản xuất',
-      help: 'Vật tư của W/O thuộc chuyền của phòng ban này được xuất từ các kho sản xuất liên kết tại đây. Mỗi vật tư được xuất từ kho còn tồn và có lượng dùng được nhiều nhất. Vật tư không còn tồn ở kho nào sẽ không đưa vào yêu cầu xuất mà hiển thị là thiếu.',
-      none: 'Chưa liên kết kho sản xuất nào',
-      tableLabel: 'Kho sản xuất đã liên kết',
-      columns: {
-        plant: 'Nhà máy',
-        warehouse: 'Kho',
-        stock: 'Tồn kho',
-        manage: 'Quản lý',
-        remove: 'Gỡ',
-      },
-      newlyLinked: 'Chưa lưu',
-      add: 'Thêm kho',
-      viewStock: 'Xem tồn kho',
-      viewStockLabel: (warehouse: string): string => `Xem tồn kho ${warehouse}`,
-      removeLabel: (warehouse: string): string => `Gỡ liên kết ${warehouse}`,
-      addRow: {
-        label: 'Kho cần thêm',
-        placeholder: 'Chọn kho',
-        empty: 'Không có kho nào để chọn. Chỉ chọn được kho đang sử dụng.',
-        confirm: 'Thêm',
-      },
-      confirm: {
-        title: 'Gỡ liên kết kho sản xuất',
-        body: (warehouse: string, count: number): string =>
-          `Gỡ liên kết ${warehouse}. ${String(count)} phiếu yêu cầu xuất đang chờ hoặc đã phát hành từ kho này vẫn tiếp tục. W/O mới sẽ không dùng kho này.`,
-        cancel: 'Hủy',
-        submit: 'Gỡ liên kết',
-      },
-      loading: 'Đang tải kho sản xuất',
-      unknownPlant: 'Nhà máy không xác định',
-    },
     validation: {
       required: 'Đây là mục bắt buộc.',
       departmentCodeBlank: 'Mã phòng ban không được chỉ gồm khoảng trắng.',
@@ -319,8 +285,7 @@ export const commonCode: Translated<typeof ko.commonCode> = {
     descriptions: {
       customer:
         'Có thể chọn làm khách hàng ở Đăng ký nhập hàng trả lại·khiếu nại và Tra cứu lịch sử sản xuất LOT.',
-      supplier:
-        'Có thể chọn làm nhà cung cấp ở Thông tin mặc định nhà cung cấp·mặt hàng và Tra cứu lịch sử sản xuất LOT.',
+      supplier: 'Có thể chọn làm nhà cung cấp ở Tra cứu lịch sử sản xuất LOT.',
       disposal:
         'Có thể chọn làm đơn vị xử lý hủy ở Phê duyệt hủy·xuất khác và Yêu cầu hủy sản phẩm.',
     },

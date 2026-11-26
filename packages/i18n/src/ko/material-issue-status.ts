@@ -201,9 +201,9 @@ export const materialIssueStatus = {
       `${requestNo} 를 취소했습니다. 출고 예정을 풀었습니다`,
   },
   errors: {
-    /** 400 `sourceWarehouseId` INVALID(서버 S9) — 라인 담당 부서의 생산 창고가 아니다. */
+    /** 400 `sourceWarehouseId` INVALID(서버 S9) — 이 공장의 생산 창고가 아니다. */
     sourceWarehouseInvalid:
-      '출발 생산 창고는 이 W/O 라인 담당 부서의 생산 창고만 고를 수 있습니다. 다시 불러온 뒤 고르세요.',
+      '출발 생산 창고는 이 W/O 공장의 생산 창고만 고를 수 있습니다. 다시 불러온 뒤 고르세요.',
     /** 400 `RANGE` — 기출고 미만 수량. */
     belowIssued: '요청 수량은 기출고량보다 적을 수 없습니다.',
     versionConflict: '다른 사람이 먼저 이 요청을 바꿨습니다. 다시 불러온 뒤 고치세요.',
@@ -230,7 +230,7 @@ export const materialIssueStatus = {
     unsourcedCount: (count: number): string => `W/O ${String(count)}건`,
     /** 묶음 제목 옆 ⓘ. */
     unsourcedNote:
-      '배포 때 부서의 어느 생산 창고에도 재고가 없어 출고 요청에 넣지 못한 자재입니다. 생산 창고를 채운 뒤 보충 요청하세요. 재고가 생겨도 자동으로 요청하지 않습니다.',
+      '배포 때 어느 생산 창고에도 재고가 없어 출고 요청에 넣지 못한 자재입니다. 생산 창고를 채운 뒤 보충 요청하세요. 재고가 생겨도 자동으로 요청하지 않습니다.',
     none: '없음',
     warehouseGroup: '생산 창고별 부족',
     warehouseGroupCount: (count: number): string => `품목 ${String(count)}건`,

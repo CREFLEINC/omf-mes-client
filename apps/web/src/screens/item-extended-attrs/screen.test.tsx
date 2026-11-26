@@ -11,8 +11,6 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { pickDate } from '../../test/date-picker';
-import { SessionProvider } from '../../patterns/session';
-import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import {
   bomComponentFixtures,
   bomFixtures,
@@ -314,12 +312,6 @@ const codeValuesRoute = (): StubRoute => ({
   },
 });
 
-/** 소포장 줄의 공장 목록 — 비워 둔다(소포장을 묻지 않는다). 소포장 표기는 공급사·품목 기본 정보 시험이 잰다. */
-const plantsRoute = (): StubRoute => ({
-  match: (request) => isGet(request, '/mdm/plants'),
-  respond: () => jsonResponse({ items: [], page: { page: 1, size: 100, total: 0 } }),
-});
-
 const codeValueGets = (requests: RecordedRequest[], codeGroupCode: string): RecordedRequest[] =>
   requests.filter(
     (request) =>
@@ -328,18 +320,17 @@ const codeValueGets = (requests: RecordedRequest[], codeGroupCode: string): Reco
   );
 
 const renderScreen = (routes: StubRoute[], search = '') => {
-  const { fetch, requests } = createRecordingFetch([...routes, codeValuesRoute(), plantsRoute()]);
+  const { fetch, requests } = createRecordingFetch([...routes, codeValuesRoute()]);
 
   probeNavigate = null;
   probeSearch = '';
 
   const { queryClient } = renderWithProviders(
-    /* 소포장 줄이 데이터 범위(세션)로 공장을 고른다 — 공급사·품목 기본 정보 화면 시험과 같은 받침. */
-    <SessionProvider>
+    <>
       <ItemExtendedAttrsScreen />
       <RouterProbe />
-    </SessionProvider>,
-    { fetch, route: `${ROUTE}${search}`, session: SYNTHETIC_SESSION },
+    </>,
+    { fetch, route: `${ROUTE}${search}` },
   );
 
   const history: HistoryProbe = {

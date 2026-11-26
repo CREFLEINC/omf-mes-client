@@ -224,13 +224,13 @@ describe('W-CO-08 조회 화면 — 읽기 전용 · [수정] (US2)', () => {
 
     await loaded();
     await user.click(locationButton('SYN-LOC-07'));
-    expect(within(board()).getByRole('button', { name: 'SYN-LOC-07' })).toHaveAttribute(
+    expect(within(board()).getByRole('button', { name: pinName('SYN-LOC-07') })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
 
     await user.click(locationButton('SYN-LOC-07'));
-    expect(within(board()).getByRole('button', { name: 'SYN-LOC-07' })).toHaveAttribute(
+    expect(within(board()).getByRole('button', { name: pinName('SYN-LOC-07') })).toHaveAttribute(
       'aria-pressed',
       'false',
     );

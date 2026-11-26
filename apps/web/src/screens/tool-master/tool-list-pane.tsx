@@ -11,6 +11,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 
+import { type MasterDataPlant, plantSelectOf } from '../../patterns/master-data-plant';
 import {
   FilterMoreButton,
   HiddenFilterChips,
@@ -41,6 +42,8 @@ export interface ToolListPaneProps {
   appliedFilters: ToolFilters;
   onApplyFilters: (next: ToolFilters) => void;
   plantOptions: CodeOption[];
+  /** 위 줄 사업부가 정한 공장 — 하나면 공장 칸을 감춘다. */
+  plant?: MasterDataPlant;
   /** 도구 유형 — 서버 공통코드가 정본이다(omf-all-around#52). */
   typeSource: LookupSource;
   /** 유형 선택지의 한계 안내(값 없음·조회 실패). 없으면 붙이지 않는다 */
@@ -98,6 +101,7 @@ export const useToolListPane = ({
   appliedFilters,
   onApplyFilters,
   plantOptions,
+  plant,
   typeSource,
   typeNote,
   statusOptions,
@@ -323,9 +327,14 @@ export const useToolListPane = ({
     );
   };
 
+  const plantSelect = plantSelectOf(plant, draft.plantId, [
+    { value: '', label: t.filters.plantAll },
+    ...plantOptions,
+  ]);
+
   const filter = (
     <>
-      <div className="filter-bar tool-master-filter">
+      <div className={`filter-bar tool-master-filter${plantSelect === null ? ' is-no-plant' : ''}`}>
         <SearchInput
           label={t.filters.searchLabel}
           placeholder={t.filters.searchPlaceholder}
@@ -334,12 +343,14 @@ export const useToolListPane = ({
           onSearch={(value) => applyDraft({ q: value })}
           clearLabel={messages.common.clear}
         />
-        <SelectField
-          label={t.fields.plant}
-          options={[{ value: '', label: t.filters.plantAll }, ...plantOptions]}
-          value={draft.plantId}
-          onChange={(value) => setDraft((prev) => ({ ...prev, plantId: value }))}
-        />
+        {plantSelect !== null && (
+          <SelectField
+            label={t.fields.plant}
+            options={plantSelect.options}
+            value={plantSelect.value}
+            onChange={(value) => setDraft((prev) => ({ ...prev, plantId: value }))}
+          />
+        )}
         <SelectField
           label={t.fields.toolType}
           options={[

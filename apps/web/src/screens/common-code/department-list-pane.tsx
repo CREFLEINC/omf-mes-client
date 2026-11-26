@@ -146,17 +146,6 @@ export const DepartmentListPane = ({
       header: t.department.fields.departmentName,
       render: (row) => <UsageName isActive={row.isActive}>{row.departmentName}</UsageName>,
     },
-    /* 003 · US8 — 연결한 생산 창고 수. 서버가 칸을 싣지 않았을 때만 「—」. */
-    {
-      key: 'productionWarehouseCount',
-      align: 'center',
-      header: t.department.productionWarehouses.countColumn,
-      width: '96px',
-      render: (row) =>
-        row.productionWarehouseCount === undefined
-          ? t.values.empty
-          : String(row.productionWarehouseCount),
-    },
   ];
   /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(단말 관리 목록과 같다 · omf-all-around#358). */
   const ordered = useColumnOrder('omf-mes:common-code:columns:departments:order', baseColumns);

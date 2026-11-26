@@ -13,7 +13,6 @@ import {
   toBatchBody,
   useItemLotDefault,
   useItemStorageUnit,
-  useSupplierItemDefault,
   useUomOptions,
   type BatchDraft,
   type BatchSource,
@@ -39,7 +38,6 @@ export interface IssueDialogProps {
 
 const SOURCE_STATUS: Record<BatchSource, 'success' | 'info' | 'idle'> = {
   item: 'success',
-  default: 'success',
   itemStorage: 'info',
   none: 'idle',
 };
@@ -58,7 +56,6 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
   const target =
     group === null ? null : { plantId, supplierId: group.supplierId, itemId: group.itemId };
 
-  const defaults = useSupplierItemDefault(target);
   const storage = useItemStorageUnit(group?.itemId ?? null);
   const itemDefault = useItemLotDefault(group?.itemId ?? null);
   const uoms = useUomOptions();
@@ -71,13 +68,9 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
   } | null>(null);
   const [draft, setDraft] = useState<BatchDraft | null>(null);
   const key = group === null ? null : groupKey(group);
-  const ready = group !== null && !defaults.isPending && !storage.isPending;
+  const ready = group !== null && !storage.isPending;
   if (ready && key !== null && filled?.key !== key) {
-    const prefill = prefillBatch(
-      itemDefault.data ?? null,
-      defaults.data ?? null,
-      storage.data ?? null,
-    );
+    const prefill = prefillBatch(itemDefault.data ?? null, storage.data ?? null);
     setFilled({ key, source: prefill.source, noPackage: prefill.defaultWithoutPackage });
     setDraft(prefill.draft);
   }
@@ -232,7 +225,7 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
           />
         )}
 
-        {defaults.isError && <AlertBanner variant="warning">{td.defaultsFailed}</AlertBanner>}
+        {storage.isError && <AlertBanner variant="warning">{td.defaultsFailed}</AlertBanner>}
 
         {showDraft && draft !== null && filled !== null && (
           <>

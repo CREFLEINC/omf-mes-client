@@ -2,7 +2,6 @@ import type {
   MaterialLotLifecycleCode,
   MaterialLotPair,
   MaterialLotTabRow,
-  SupplierItemDefault,
 } from '@omf-mes/api-client';
 
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
@@ -12,7 +11,6 @@ import { toPlantDateTimeParts } from '../../patterns/plant-time';
  */
 export type Pair = MaterialLotPair;
 export type Lot = MaterialLotTabRow;
-export type Defaults = SupplierItemDefault;
 export type Lifecycle = MaterialLotLifecycleCode;
 
 /**

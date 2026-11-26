@@ -2,6 +2,7 @@ import { AlertBanner, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { useMasterDataPlant } from '../../patterns/master-data-plant';
 import { useApiClient } from '../../patterns/api-context';
 import type { LookupSource } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
@@ -155,7 +156,9 @@ const useRetireWrite = (
 export const ToolMasterScreen = () => {
   const { client } = useApiClient();
   const toast = useToast();
-  const [filters, setFilters] = useState<ToolFilters>(defaultToolFilters);
+  const [requestedFilters, setFilters] = useState<ToolFilters>(defaultToolFilters);
+  const plant = useMasterDataPlant(requestedFilters.plantId);
+  const filters = { ...requestedFilters, plantId: plant.picked };
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [values, setValues] = useState<ToolFormValues>(() => emptyFormValues(''));
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
@@ -168,7 +171,7 @@ export const ToolMasterScreen = () => {
   /** 서버가 돌려준 올리기 결과. 아직 안 올렸으면 `null` */
   const [importResult, setImportResult] = useState<BatchResult | null>(null);
 
-  const tools = useToolList(filters);
+  const tools = useToolList({ ...filters, plantId: plant.plantId }, !plant.isChecking);
   const plants = usePlantLookup();
   const statusValues = useCodeValues(CODE_GROUPS.assetStatus);
   const typeValues = useCodeValues(CODE_GROUPS.toolType);
@@ -284,7 +287,7 @@ export const ToolMasterScreen = () => {
   const openCreate = (): void => {
     resetEditing();
     setLocalErrors({});
-    setValues(emptyFormValues(filters.plantId));
+    setValues(emptyFormValues(plant.plantId));
     setDialog({ mode: 'create' });
   };
 
@@ -344,10 +347,11 @@ export const ToolMasterScreen = () => {
 
   const toolPane = useToolListPane({
     items,
-    isLoading: tools.isLoading,
+    isLoading: tools.isPending,
     appliedFilters: filters,
     onApplyFilters: setFilters,
     plantOptions: selectableOptions(plantSource, filters.plantId),
+    plant,
     typeSource,
     typeNote,
     statusOptions,
@@ -356,7 +360,7 @@ export const ToolMasterScreen = () => {
     onImport: () => {
       resetIfIdle(importWrite);
       setImportFile(null);
-      setImportPlantId('');
+      setImportPlantId(plant.plantId);
       setImportResult(null);
       setImporting(true);
     },

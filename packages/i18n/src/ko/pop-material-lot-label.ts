@@ -42,7 +42,7 @@ export const popMaterialLotLabel = {
     label: '공급사·품목', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     /** 공급사명 줄 오른쪽 끝의 라벨 미출력 수. */
     unprinted: (count: number) => `라벨 미출력 ${count}`,
-    /** 목록은 열린 발주 · 발행 이력에서 나온다 — 메뉴에서 숨긴 「공급사·품목 기본 정보」로 보내지 않는다. */
+    /** 목록은 열린 발주 · 발행 이력에서 나온다. */
     empty: '발행할 공급사·품목이 없습니다. 발주가 등록되면 나타납니다.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     noMatch: '찾는 공급사·품목이 없습니다.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
   },
@@ -238,12 +238,11 @@ export const popMaterialLotLabel = {
     /** 기본값을 어디서 채웠나(US1-1 · US1-3). */
     source: {
       item: '품목 기본값에서 가져옴',
-      default: '기본 정보에서 가져옴',
-      itemStorage: '공급사·품목 기본 정보 없음 — 품목 기본 보관 단위로 채움', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
-      none: '기본 정보 없음 — 직접 입력',
+      itemStorage: '품목 기본값 없음 — 품목 기본 보관 단위로 채움',
+      none: '품목 기본값 없음 — 직접 입력',
     },
-    loading: '기본 정보를 불러오는 중입니다.',
-    defaultsFailed: '기본 정보를 불러오지 못했습니다 — 값을 직접 넣으세요.',
+    loading: '품목 기본값을 불러오는 중입니다.',
+    defaultsFailed: '품목 기본값을 불러오지 못했습니다 — 값을 직접 넣으세요.',
     package: '포장',
     optional: '(선택)',
     packageOn: '포장 넣기',

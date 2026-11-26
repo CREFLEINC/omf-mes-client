@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
   codeValuesResponse,
@@ -86,139 +87,149 @@ const renderScreen = (options: RenderOptions = {}) => {
   const defaultWrite = (request: Request): Response =>
     jsonResponse(makeGroup(901, 'GRP-NEW'), { status: request.method === 'POST' ? 201 : 200 });
 
-  const view = renderWithProviders(<EquipmentMasterScreen />, {
-    route: options.route ?? '/',
-    fetch: createStubFetch([
-      {
-        match: (request) => request.method === 'GET' && isPath(request, '/mdm/equipment-groups'),
-        respond: (request) => {
-          sent.push(new URL(request.url));
-          return (options.respondGroups ?? (() => jsonResponse(groupsResponse())))(request);
+  const view = renderWithProviders(
+    <SessionProvider>
+      <EquipmentMasterScreen />
+    </SessionProvider>,
+    {
+      session: null,
+      route: options.route ?? '/',
+      fetch: createStubFetch([
+        {
+          match: (request) => request.method === 'GET' && isPath(request, '/mdm/equipment-groups'),
+          respond: (request) => {
+            sent.push(new URL(request.url));
+            return (options.respondGroups ?? (() => jsonResponse(groupsResponse())))(request);
+          },
         },
-      },
-      {
-        match: (request) => request.method === 'POST' && isPath(request, '/mdm/equipment-groups'),
-        respond: (request) => {
-          writes.push(request.clone());
-          return (options.respondWrite ?? defaultWrite)(request);
+        {
+          match: (request) => request.method === 'POST' && isPath(request, '/mdm/equipment-groups'),
+          respond: (request) => {
+            writes.push(request.clone());
+            return (options.respondWrite ?? defaultWrite)(request);
+          },
         },
-      },
-      {
-        match: (request) => request.method === 'GET' && isUnder(request, '/mdm/equipment-groups/'),
-        respond: (request) => (options.respondDetail ?? defaultDetail)(request),
-      },
-      {
-        match: (request) => request.method === 'PUT' && isUnder(request, '/mdm/equipment-groups/'),
-        respond: (request) => {
-          writes.push(request.clone());
-          return (options.respondWrite ?? defaultWrite)(request);
+        {
+          match: (request) =>
+            request.method === 'GET' && isUnder(request, '/mdm/equipment-groups/'),
+          respond: (request) => (options.respondDetail ?? defaultDetail)(request),
         },
-      },
-      {
-        /*
-         * ⚠ 자원을 함께 못박는다. `endsWith(':deactivate')` 만 보면 «설비» 사용 중지까지
-         * 이 스텁이 삼켜, 설비 쪽 감지기가 그룹 응답을 받고 헛통과한다.
-         */
-        match: (request) =>
-          request.method === 'POST' &&
-          isUnder(request, '/mdm/equipment-groups/') &&
-          new URL(request.url).pathname.endsWith(':deactivate'),
-        respond: (request) => {
-          writes.push(request.clone());
-          deactivated = true;
-          return (
-            options.respondDeactivate ??
-            (() => jsonResponse(makeGroup(101, 'GRP-A', { isActive: false })))
-          )(request);
+        {
+          match: (request) =>
+            request.method === 'PUT' && isUnder(request, '/mdm/equipment-groups/'),
+          respond: (request) => {
+            writes.push(request.clone());
+            return (options.respondWrite ?? defaultWrite)(request);
+          },
         },
-      },
-      {
-        match: (request) => request.method === 'GET' && isPath(request, '/mdm/equipments'),
-        respond: (request) => {
-          equipmentSent.push(new URL(request.url));
-          return (options.respondEquipments ?? (() => jsonResponse(equipmentsResponse())))(request);
+        {
+          /*
+           * ⚠ 자원을 함께 못박는다. `endsWith(':deactivate')` 만 보면 «설비» 사용 중지까지
+           * 이 스텁이 삼켜, 설비 쪽 감지기가 그룹 응답을 받고 헛통과한다.
+           */
+          match: (request) =>
+            request.method === 'POST' &&
+            isUnder(request, '/mdm/equipment-groups/') &&
+            new URL(request.url).pathname.endsWith(':deactivate'),
+          respond: (request) => {
+            writes.push(request.clone());
+            deactivated = true;
+            return (
+              options.respondDeactivate ??
+              (() => jsonResponse(makeGroup(101, 'GRP-A', { isActive: false })))
+            )(request);
+          },
         },
-      },
-      {
-        match: (request) => request.method === 'POST' && isPath(request, '/mdm/equipments'),
-        respond: (request) => {
-          writes.push(request.clone());
-          return (
-            options.respondEquipmentWrite ??
-            (() => jsonResponse(makeEquipment(2009, 'EQ-NEW'), { status: 201 }))
-          )(request);
+        {
+          match: (request) => request.method === 'GET' && isPath(request, '/mdm/equipments'),
+          respond: (request) => {
+            equipmentSent.push(new URL(request.url));
+            return (options.respondEquipments ?? (() => jsonResponse(equipmentsResponse())))(
+              request,
+            );
+          },
         },
-      },
-      {
-        match: (request) => request.method === 'GET' && isUnder(request, '/mdm/equipments/'),
-        respond: (request) => (options.respondEquipmentDetail ?? defaultEquipmentDetail)(request),
-      },
-      {
-        match: (request) =>
-          request.method === 'POST' && new URL(request.url).pathname.endsWith(':dispose'),
-        respond: (request) => {
-          writes.push(request.clone());
-          return (
-            options.respondDispose ??
-            (() => jsonResponse(makeEquipment(2001, 'EQ-01', { statusCode: 'DISPOSED' })))
-          )(request);
+        {
+          match: (request) => request.method === 'POST' && isPath(request, '/mdm/equipments'),
+          respond: (request) => {
+            writes.push(request.clone());
+            return (
+              options.respondEquipmentWrite ??
+              (() => jsonResponse(makeEquipment(2009, 'EQ-NEW'), { status: 201 }))
+            )(request);
+          },
         },
-      },
-      {
-        match: (request) =>
-          request.method === 'POST' &&
-          new URL(request.url).pathname.startsWith('/mdm/equipments/') &&
-          new URL(request.url).pathname.endsWith(':deactivate'),
-        respond: (request) => {
-          writes.push(request.clone());
-          return (
-            options.respondEquipmentDeactivate ??
-            (() => jsonResponse(makeEquipment(2001, 'EQ-01', { isActive: false })))
-          )(request);
+        {
+          match: (request) => request.method === 'GET' && isUnder(request, '/mdm/equipments/'),
+          respond: (request) => (options.respondEquipmentDetail ?? defaultEquipmentDetail)(request),
         },
-      },
-      {
-        match: (request) => request.method === 'PUT' && isUnder(request, '/mdm/equipments/'),
-        respond: (request) => {
-          writes.push(request.clone());
-          return (
-            options.respondEquipmentWrite ?? (() => jsonResponse(makeEquipment(2001, 'EQ-01')))
-          )(request);
+        {
+          match: (request) =>
+            request.method === 'POST' && new URL(request.url).pathname.endsWith(':dispose'),
+          respond: (request) => {
+            writes.push(request.clone());
+            return (
+              options.respondDispose ??
+              (() => jsonResponse(makeEquipment(2001, 'EQ-01', { statusCode: 'DISPOSED' })))
+            )(request);
+          },
         },
-      },
-      {
-        match: (request) => isPath(request, '/mdm/plants'),
-        respond: () => (options.respondPlants ?? (() => jsonResponse(plantsResponse())))(),
-      },
-      {
-        match: (request) => isPath(request, '/mdm/code-values'),
-        respond: (request) => {
-          const url = new URL(request.url);
+        {
+          match: (request) =>
+            request.method === 'POST' &&
+            new URL(request.url).pathname.startsWith('/mdm/equipments/') &&
+            new URL(request.url).pathname.endsWith(':deactivate'),
+          respond: (request) => {
+            writes.push(request.clone());
+            return (
+              options.respondEquipmentDeactivate ??
+              (() => jsonResponse(makeEquipment(2001, 'EQ-01', { isActive: false })))
+            )(request);
+          },
+        },
+        {
+          match: (request) => request.method === 'PUT' && isUnder(request, '/mdm/equipments/'),
+          respond: (request) => {
+            writes.push(request.clone());
+            return (
+              options.respondEquipmentWrite ?? (() => jsonResponse(makeEquipment(2001, 'EQ-01')))
+            )(request);
+          },
+        },
+        {
+          match: (request) => isPath(request, '/mdm/plants'),
+          respond: () => (options.respondPlants ?? (() => jsonResponse(plantsResponse())))(),
+        },
+        {
+          match: (request) => isPath(request, '/mdm/code-values'),
+          respond: (request) => {
+            const url = new URL(request.url);
 
-          codeValueSent.push(url);
+            codeValueSent.push(url);
 
-          if (options.respondCodeValues !== undefined) return options.respondCodeValues();
+            if (options.respondCodeValues !== undefined) return options.respondCodeValues();
 
-          /* ⛔ 그룹마다 다른 값을 준다 — 한 벌로 답하면 계열 조건이 헛통과한다. */
-          return jsonResponse(
-            codeValuesResponse(
-              url.searchParams.get('codeGroupCode') === 'EQUIPMENT_TYPE'
-                ? equipmentTypeCodeValues
-                : statusCodeValues,
-            ),
-          );
+            /* ⛔ 그룹마다 다른 값을 준다 — 한 벌로 답하면 계열 조건이 헛통과한다. */
+            return jsonResponse(
+              codeValuesResponse(
+                url.searchParams.get('codeGroupCode') === 'EQUIPMENT_TYPE'
+                  ? equipmentTypeCodeValues
+                  : statusCodeValues,
+              ),
+            );
+          },
         },
-      },
-      {
-        match: (request) => isPath(request, '/mdm/processes'),
-        respond: () => (options.respondProcesses ?? (() => jsonResponse(processesResponse())))(),
-      },
-      {
-        match: (request) => isPath(request, '/mdm/departments'),
-        respond: () => jsonResponse(departmentsResponse()),
-      },
-    ]),
-  });
+        {
+          match: (request) => isPath(request, '/mdm/processes'),
+          respond: () => (options.respondProcesses ?? (() => jsonResponse(processesResponse())))(),
+        },
+        {
+          match: (request) => isPath(request, '/mdm/departments'),
+          respond: () => jsonResponse(departmentsResponse()),
+        },
+      ]),
+    },
+  );
 
   return { ...view, sent, equipmentSent, codeValueSent, writes };
 };
@@ -1431,7 +1442,12 @@ describe('EquipmentMasterScreen — 나가는 중인 쓰기', () => {
       throw new Error(`스텁에 없는 요청입니다: ${request.method} ${request.url}`);
     };
 
-    renderWithProviders(<EquipmentMasterScreen />, { route: '/', fetch: fetchStub });
+    renderWithProviders(
+      <SessionProvider>
+        <EquipmentMasterScreen />
+      </SessionProvider>,
+      { session: null, route: '/', fetch: fetchStub },
+    );
 
     const nameInput = await openGroup(user);
     await user.clear(nameInput);
@@ -2402,7 +2418,12 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
       throw new Error(`스텁에 없는 요청입니다: ${request.method} ${request.url}`);
     };
 
-    renderWithProviders(<EquipmentMasterScreen />, { route: '/', fetch: fetchStub });
+    renderWithProviders(
+      <SessionProvider>
+        <EquipmentMasterScreen />
+      </SessionProvider>,
+      { session: null, route: '/', fetch: fetchStub },
+    );
 
     await user.click(await screen.findByRole('button', { name: 'GRP-A' }));
     await user.click(await screen.findByRole('tab', { name: t.tabs.equipment }));

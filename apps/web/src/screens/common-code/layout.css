@@ -101,26 +101,6 @@ dialog .field-cell.users-roles-required-empty > div > button[aria-haspopup] {
   margin-left: auto;
 }
 
-/* 생산 창고 표 — 열 폭을 내용이 아니라 지정 폭으로 나눈다. 창고를 넣거나 추가 줄이 서도 모양이 그대로다(사용자 지시 2026-11-26). */
-.production-warehouse-section table {
-  table-layout: fixed;
-}
-
-/* 생산 창고 표 안 추가 줄 — 창고 선택칸은 칸 폭을 다 쓰고, [추가] · [취소] 는 가로로 붙인다. */
-.production-warehouse-add-cell {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  width: 100%;
-  text-align: left;
-}
-
-.production-warehouse-add-actions {
-  display: inline-flex;
-  gap: var(--space-2);
-  white-space: nowrap;
-}
-
 /* 「자격 추가」 — 자격 표 위 줄 오른쪽 끝(사용자 지시 2026-11-25). */
 .common-code-qualification-add-row {
   margin-bottom: var(--space-3);

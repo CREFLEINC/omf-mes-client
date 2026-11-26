@@ -2,6 +2,7 @@ import { Button, type Column, EmptyState, SearchInput, SkeletonText, Table } fro
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
+import { type MasterDataPlant, plantSelectOf } from '../../patterns/master-data-plant';
 import { hasChangedFilters } from '../../patterns/filter-more';
 
 import { UsageName } from '../../patterns/usage-chip';
@@ -19,6 +20,8 @@ export interface EquipmentPaneProps {
   appliedFilters: EquipmentFilters;
   onApplyFilters: (next: EquipmentFilters) => void;
   plantOptions: CodeOption[];
+  /** 위 줄 사업부가 정한 공장 — 하나면 공장 칸을 감춘다. */
+  plant?: MasterDataPlant;
   selectedEquipmentId: number | null;
   onSelect: (equipmentId: number) => void;
   /** 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 */
@@ -51,6 +54,7 @@ export const useEquipmentPane = ({
   appliedFilters,
   onApplyFilters,
   plantOptions,
+  plant,
   selectedEquipmentId,
   onSelect,
   loadError,
@@ -153,6 +157,11 @@ export const useEquipmentPane = ({
 
   const truncated = total !== null && total > items.length;
 
+  const plantSelect = plantSelectOf(plant, draft.plantId, [
+    { value: '', label: t.equipment.plantAll },
+    ...plantOptions,
+  ]);
+
   const filter = (
     <div className="filter-bar">
       <SearchInput
@@ -163,12 +172,14 @@ export const useEquipmentPane = ({
         onSearch={(value) => applyDraft({ q: value })}
         clearLabel={messages.common.clear}
       />
-      <SelectField
-        label={t.fields.plant}
-        options={[{ value: '', label: t.equipment.plantAll }, ...plantOptions]}
-        value={draft.plantId}
-        onChange={(value) => setDraft((prev) => ({ ...prev, plantId: value }))}
-      />
+      {plantSelect !== null && (
+        <SelectField
+          label={t.fields.plant}
+          options={plantSelect.options}
+          value={plantSelect.value}
+          onChange={(value) => setDraft((prev) => ({ ...prev, plantId: value }))}
+        />
+      )}
       {/* 규범 2-1 — 뜻이 짝인 액션이 줄바꿈으로 갈라지지 않게 한 덩어리로 묶는다. */}
       <div className="field-cell field-cell-unlabeled">
         <div className="filter-actions">

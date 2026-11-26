@@ -98,11 +98,10 @@ export const materialLotIssue = {
       `${supplier} · ${itemCode} ${itemName} (${uom})`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
     source: {
       item: '품목 기본값에서 가져옴',
-      default: '기본 정보에서 가져옴',
-      itemStorage: '공급사·품목 기본 정보 없음 — 품목 기본 보관 단위로 채움', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
-      none: '기본 정보 없음 — 직접 입력',
+      itemStorage: '품목 기본값 없음 — 품목 기본 보관 단위로 채움',
+      none: '품목 기본값 없음 — 직접 입력',
     },
-    defaultsFailed: '기본 정보를 불러오지 못했습니다. 직접 넣어 발행할 수 있습니다.',
+    defaultsFailed: '품목 기본값을 불러오지 못했습니다. 직접 넣어 발행할 수 있습니다.',
     package: '패키징',
     packageOptional: '(선택)',
     packageOn: '패키징 넣기',

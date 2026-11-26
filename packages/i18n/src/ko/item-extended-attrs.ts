@@ -136,8 +136,6 @@ export const itemExtendedAttrs = {
       lot: 'LOT 기본값',
       shelfLife: '유효기한·선출',
       inventory: '검사·재고',
-      /** 공급사별 소포장(읽기만, 고치는 곳은 공급사·품목 기본 정보). */
-      package: '소포장',
     },
     fields: {
       nameKo: '품목명(한국어)',
@@ -177,9 +175,6 @@ export const itemExtendedAttrs = {
       '검사 기준의 IQC ‘기본 생략’과 함께 바뀝니다. 이 품목 전용 IQC 기준이 없으면 바꿀 때 새로 만들어지고, 그 전까지는 전 품목 공통 IQC 기준을 따릅니다.',
     values: {
       unspecified: '지정하지 않음',
-      noPackage: '등록된 소포장이 없습니다',
-      packageLoading: '소포장을 불러오는 중',
-      packageLoadFailed: '소포장을 불러오지 못했습니다',
     },
     validation: {
       required: '필수 입력 항목입니다.',

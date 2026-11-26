@@ -198,49 +198,6 @@ export const commonCode = {
       parentNeedsOthers:
         '상위 부서는 고를 수 있는 다른 부서가 없어 지정할 수 없습니다. 부서를 하나 더 등록하면 이 칸을 쓸 수 있습니다.',
     },
-    /**
-     * 생산 창고 구획(003 계획 기반 출고 요청, omf-all-around#66 · US8). 이 부서 라인의 W/O 자재가
-     * 나가는 창고다. 저장은 부서 정보와 같은 「저장」이 함께 낸다.
-     */
-    productionWarehouses: {
-      title: '생산 창고',
-      /** 목록 표 열 — 연결한 창고 수. */
-      countColumn: '생산 창고',
-      help: '이 부서 라인의 W/O 자재는 여기 연결한 생산 창고에서 출고합니다. 자재마다 재고가 있고 쓸 수 있는 양이 가장 많은 창고에서 나갑니다. 어느 창고에도 재고가 없는 자재는 출고 요청에 넣지 않고 부족으로 보입니다.',
-      none: '연결한 생산 창고가 없습니다',
-      tableLabel: '연결한 생산 창고',
-      columns: {
-        plant: '공장',
-        warehouse: '창고',
-        stock: '재고',
-        manage: '관리',
-        remove: '해제',
-      },
-      newlyLinked: '저장 전',
-      add: '창고 추가',
-      /** W-01-07 재고 현황을 그 창고 조건으로 연다. */
-      viewStock: '재고 조회',
-      viewStockLabel: (warehouse: string): string => `${warehouse} 재고 조회`,
-      removeLabel: (warehouse: string): string => `${warehouse} 연결 해제`,
-      /** 표 아래에 펼치는 추가 줄 — 결재선 정의의 결재 단계 추가 줄과 같은 모양(사용자 지시 2026-11-25). */
-      addRow: {
-        label: '추가할 창고',
-        placeholder: '창고를 선택하세요',
-        empty: '고를 수 있는 창고가 없습니다. 사용 중인 창고만 고를 수 있습니다.',
-        confirm: '추가',
-      },
-      confirm: {
-        title: '생산 창고 연결 빼기',
-        /* 설계 문구 「대기·배포」는 가운뎃점 나열(C-13)이라 풀어 쓴다. */
-        body: (warehouse: string, count: number): string =>
-          `${warehouse} 연결을 뺍니다. 이 창고에서 나갈 대기 또는 배포 상태의 출고 요청 ${String(count)}장은 그대로 진행됩니다. 새 W/O 는 이 창고를 쓰지 않습니다.`,
-        cancel: '취소',
-        submit: '연결 빼기',
-      },
-      loading: '생산 창고를 불러오는 중',
-      /** 공장 목록에서 이름을 찾지 못한 공장 — 번호를 이름처럼 보이지 않는다. */
-      unknownPlant: '알 수 없는 공장',
-    },
     validation: {
       required: '필수 입력 항목입니다.',
       departmentCodeBlank: '부서코드는 공백만으로 지정할 수 없습니다.',
@@ -406,13 +363,13 @@ export const commonCode = {
     },
     /*
      * 체크칸마다 무엇을 정하는지(사용자 지시 2026-11-26). 그 역할로 거래처 선택지를 좁히는 화면이 코드에 있는 것만 적는다 —
-     * 근거: 고객사 return-receipt/lookups.ts · lot-trace/queries.ts, 공급사 supplier-item-default/edit-dialog.tsx ·
+     * 근거: 고객사 return-receipt/lookups.ts · lot-trace/queries.ts, 공급사
      * lot-trace/queries.ts, 폐기 업체 disposal-issue/lookups.ts · product-disposal-request/queries.ts.
      * 외주 제작사 · 기타는 그런 화면이 없어 적지 않는다.
      */
     descriptions: {
       customer: '반품·클레임 입고 등록과 LOT 생산 이력 조회에서 고객사로 고를 수 있습니다.',
-      supplier: '공급사·품목 기본 정보와 LOT 생산 이력 조회에서 공급사로 고를 수 있습니다.',
+      supplier: 'LOT 생산 이력 조회에서 공급사로 고를 수 있습니다.',
       disposal: '폐기 품의·기타출고와 제품 폐기 요청에서 폐기 업체로 고를 수 있습니다.',
     },
     /*

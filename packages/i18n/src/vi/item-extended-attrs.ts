@@ -95,7 +95,6 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       lot: 'Mặc định LOT',
       shelfLife: 'Hạn sử dụng · thứ tự xuất',
       inventory: 'Kiểm tra · tồn kho',
-      package: 'Đóng gói nhỏ',
     },
     fields: {
       nameKo: 'Tên mặt hàng (tiếng Hàn)',
@@ -129,9 +128,6 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       'Thay đổi cùng với ‘Bỏ qua mặc định’ IQC trong tiêu chuẩn kiểm tra. Nếu mặt hàng này chưa có tiêu chuẩn IQC riêng, tiêu chuẩn đó sẽ được tạo khi thay đổi; trước đó mặt hàng theo tiêu chuẩn IQC chung cho mọi mặt hàng.',
     values: {
       unspecified: 'Không chỉ định',
-      noPackage: 'Chưa có đóng gói nhỏ',
-      packageLoading: 'Đang tải đóng gói nhỏ',
-      packageLoadFailed: 'Không tải được đóng gói nhỏ',
     },
     validation: {
       required: 'Đây là mục bắt buộc.',

@@ -120,6 +120,7 @@ export const applicationKeys = {
   all: ['work-calendar-applications'] as const,
   ofCalendar: (workCalendarId: number) =>
     ['work-calendar-applications', 'calendar', workCalendarId] as const,
+  ofPlant: (plantId: number | null) => ['work-calendar-applications', 'plant', plantId] as const,
   ofType: (targetTypeCode: string) =>
     ['work-calendar-applications', 'type', targetTypeCode] as const,
 };
@@ -170,6 +171,57 @@ export const usePlantApplications = (): UseQueryResult<ApplicationListResponse> 
   });
 };
 
+/** 적용을 한 번에 받는 건수 — 넘치면 공장으로 거르지 않는다. */
+const APPLICATION_PAGE_SIZE = 200;
+
+/** 적용 전부(`null`) 또는 그 공장의 적용(설비 그룹 포함 — 서버가 공장으로 푼다). */
+const usePlantScopedApplications = (
+  plantId: number | null,
+  enabled: boolean,
+): UseQueryResult<ApplicationListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: applicationKeys.ofPlant(plantId),
+    enabled,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/work-calendar-applications', {
+          params: {
+            query: { ...(plantId === null ? {} : { plantId }), size: APPLICATION_PAGE_SIZE },
+          },
+        }),
+      ),
+  });
+};
+
+/**
+ * 이 공장의 목록에서 뺄 캘린더 — 다른 공장에만 적용된 것. 캘린더에는 공장 값이 없어 적용으로 가른다.
+ * 아직 아무 데도 적용되지 않은 캘린더는 공통이라 남는다. 판단할 수 없으면(조회 실패 · 잘림) 빼지 않는다.
+ */
+export const useOtherPlantCalendarIds = (
+  plantId: number | null,
+): { isPending: boolean; ids: ReadonlySet<number> } => {
+  const all = usePlantScopedApplications(null, plantId !== null);
+  const mine = usePlantScopedApplications(plantId, plantId !== null);
+  const isPending = plantId !== null && (all.isPending || mine.isPending);
+
+  if (
+    all.data === undefined ||
+    mine.data === undefined ||
+    all.data.page.total > all.data.items.length
+  ) {
+    return { isPending, ids: NO_CALENDAR_IDS };
+  }
+  const kept = new Set(mine.data.items.map((item) => item.workCalendarId));
+  return {
+    isPending,
+    ids: new Set(all.data.items.map((item) => item.workCalendarId).filter((id) => !kept.has(id))),
+  };
+};
+
+const NO_CALENDAR_IDS: ReadonlySet<number> = new Set();
+
 export interface TargetOption {
   value: string;
   label: string;
@@ -202,11 +254,14 @@ export const usePlantTargets = (): TargetOption[] => {
  * 「설비 그룹」이지만 목록은 생산라인 경로에서 온다. 한 칸이 상황에 따라 다른 표를 가리키므로
  * 화면이 짐작하지 않고 계약이 정한 대응을 따른다.
  */
-export const useEquipmentGroupTargets = (enabled: boolean): TargetOption[] => {
+export const useEquipmentGroupTargets = (
+  enabled: boolean,
+  plantId: number | null = null,
+): TargetOption[] => {
   const { client } = useApiClient();
 
   const lines = useQuery({
-    queryKey: ['lookups', 'production-lines'] as const,
+    queryKey: ['lookups', 'production-lines', plantId] as const,
     /*
      * ⭐ **고를 자리가 열렸을 때만 받는다.** 공장은 「미지정 공장」을 세느라 늘 필요하지만
      * 설비 그룹은 지정 창에서만 쓴다 — 화면을 열 때마다 받으면 아무도 안 보는 목록을 나른다.
@@ -214,7 +269,9 @@ export const useEquipmentGroupTargets = (enabled: boolean): TargetOption[] => {
     enabled,
     queryFn: () =>
       runRequest(() =>
-        client.GET('/mdm/production-lines', { params: { query: { includeInactive: true } } }),
+        client.GET('/mdm/production-lines', {
+          params: { query: { ...(plantId === null ? {} : { plantId }), includeInactive: true } },
+        }),
       ),
   });
 
@@ -256,13 +313,21 @@ export const useEffectiveCalendar = (
 };
 
 /** 설비 선택 목록. 해석 미리보기가 쓴다 — 고를 자리가 열렸을 때만 받는다. */
-export const useEquipmentTargets = (enabled: boolean): TargetOption[] => {
+export const useEquipmentTargets = (
+  enabled: boolean,
+  plantId: number | null = null,
+): TargetOption[] => {
   const { client } = useApiClient();
 
   const equipments = useQuery({
-    queryKey: ['lookups', 'equipments'] as const,
+    queryKey: ['lookups', 'equipments', plantId] as const,
     enabled,
-    queryFn: () => runRequest(() => client.GET('/mdm/equipments', { params: { query: {} } })),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/equipments', {
+          params: { query: plantId === null ? {} : { plantId } },
+        }),
+      ),
   });
 
   return (

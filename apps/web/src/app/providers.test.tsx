@@ -6,6 +6,8 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ApiClientProvider } from '../patterns/api-context';
+import { SessionProvider, sessionKeys } from '../patterns/session';
+import { SYNTHETIC_SESSION } from '../test/session-harness';
 import { WarehouseLocationScreen } from '../screens/warehouse-location/screen';
 import { appQueryDefaults } from './providers';
 
@@ -37,13 +39,17 @@ afterEach(() => {
 const renderWithAppDefaults = () => {
   const queryClient = new QueryClient({ defaultOptions: appQueryDefaults });
   const apiClient = createApiClient({ baseUrl: 'http://api.test', fetch: refusingFetch });
+  /* 기준정보 목록은 세션의 사업부로 공장을 고른다(#1771) — 세션은 미리 넣어 두고 서버 조회는 그대로 거부한다. */
+  queryClient.setQueryData(sessionKeys.current, SYNTHETIC_SESSION);
 
   render(
     <QueryClientProvider client={queryClient}>
       <ApiClientProvider client={apiClient}>
         <ToastProvider>
           <MemoryRouter initialEntries={['/master-data/warehouse-location']}>
-            <WarehouseLocationScreen />
+            <SessionProvider>
+              <WarehouseLocationScreen />
+            </SessionProvider>
           </MemoryRouter>
         </ToastProvider>
       </ApiClientProvider>

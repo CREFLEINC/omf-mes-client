@@ -5,6 +5,7 @@ import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 import { useApiClient } from './api-context';
 import { type LookupEntry, type LookupSource, selectableLookupOptions } from './lookup-display';
+import { type MasterDataPlant, plantSelectOf } from './master-data-plant';
 import { runRequest } from './request';
 import { Select } from './select';
 
@@ -129,6 +130,8 @@ export interface WarehouseFilterBarProps {
   warehouseTypeOptions: { value: string; label: string }[];
   /** 공장 선택지. 미사용 공장은 지금 고른 값일 때만 남는다 */
   plantOptions: { value: string; label: string }[];
+  /** 위 줄 사업부가 정한 공장 — 하나면 공장 칸을 감춘다. */
+  plant?: MasterDataPlant;
   /** 검색칸 — 창고 배치도는 창고를 선택칸으로 고르므로 끈다(사용자 지시 2026-11-24). 기본 켬. */
   showSearch?: boolean;
   /** 유형 선택칸 바로 오른쪽에 둘 칸 — 창고 배치도의 창고 선택. */
@@ -157,6 +160,7 @@ export const WarehouseFilterBar = ({
   onApplyFilters,
   warehouseTypeOptions,
   plantOptions,
+  plant,
   showSearch = true,
   afterType,
   extra,
@@ -164,6 +168,10 @@ export const WarehouseFilterBar = ({
 }: WarehouseFilterBarProps) => {
   const [draftQ, setDraftQ] = useState(appliedFilters.q);
   const appliedQ = appliedFilters.q;
+  const plantSelect = plantSelectOf(plant, appliedFilters.plantId, [
+    { value: '', label: t.filters.plantAll },
+    ...plantOptions,
+  ]);
   /** 이 칸이 마지막으로 보낸 검색어 — 그 값이 적용돼 돌아올 때는 입력칸을 덮지 않는다. */
   const sentQ = useRef(appliedQ);
   /* 타이머가 늦게 불려도 그때의 조건(공장 · 유형 · 미사용)에 검색어만 얹는다. */
@@ -206,14 +214,16 @@ export const WarehouseFilterBar = ({
             clearLabel={messages.common.clear}
           />
         )}
-        <div className="warehouse-filter-select">
-          <Select
-            aria-label={t.fields.plant}
-            options={[{ value: '', label: t.filters.plantAll }, ...plantOptions]}
-            value={appliedFilters.plantId}
-            onChange={(value) => onApplyFilters({ ...appliedFilters, plantId: value })}
-          />
-        </div>
+        {plantSelect !== null && (
+          <div className="warehouse-filter-select">
+            <Select
+              aria-label={t.fields.plant}
+              options={plantSelect.options}
+              value={plantSelect.value}
+              onChange={(value) => onApplyFilters({ ...appliedFilters, plantId: value })}
+            />
+          </div>
+        )}
         <div className="warehouse-filter-select">
           <Select
             aria-label={t.fields.warehouseType}

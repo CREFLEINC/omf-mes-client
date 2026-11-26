@@ -32,8 +32,8 @@ import { LoadErrorAlert } from '../../patterns/load-error-banner';
 
 const t = messages.productionWarehouseReplenishment;
 
-/** 조직 관리(부서 생산 창고 연결) — W-06-06. */
-export const ORGANIZATION_PATH = '/master-data/common-code';
+/** 창고·위치(창고 유형을 생산창고로 지정) — W-06-07. */
+export const WAREHOUSE_PATH = '/master-data/warehouse-location';
 
 /**
  * W-02-12 생산 창고 보충(004, omf-all-around#230). 「구매 / 자재 관리 › 출고 관리」의 탭, W-02-11 다음.
@@ -96,7 +96,7 @@ export const ProductionWarehouseReplenishmentScreen = () => {
           title={t.noProductionWarehouse.title}
           description={t.noProductionWarehouse.description}
           action={
-            <Button variant="outlined" onClick={() => void navigate(ORGANIZATION_PATH)}>
+            <Button variant="outlined" onClick={() => void navigate(WAREHOUSE_PATH)}>
               {t.noProductionWarehouse.action}
             </Button>
           }

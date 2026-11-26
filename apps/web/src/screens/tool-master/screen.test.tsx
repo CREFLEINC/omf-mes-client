@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
   closedPlant,
@@ -135,7 +136,12 @@ const renderScreen = (options: RenderOptions = {}) => {
   ]);
 
   const user = userEvent.setup();
-  const view = renderWithProviders(<ToolMasterScreen />, { fetch });
+  const view = renderWithProviders(
+    <SessionProvider>
+      <ToolMasterScreen />
+    </SessionProvider>,
+    { session: null, fetch },
+  );
 
   return { ...view, user, sent, plantSent, codeValueSent, writes };
 };

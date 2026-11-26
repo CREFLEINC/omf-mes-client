@@ -126,7 +126,7 @@ export const materialIssueRequest: Translated<typeof ko.materialIssueRequest> = 
     unsourcedNote: 'Dòng đó trong danh sách thiếu sẽ đổi thành «Đã yêu cầu bổ sung».',
   },
   sourceWarehouse: {
-    none: 'Phòng ban phụ trách chuyền của W/O này chưa liên kết kho sản xuất nên không yêu cầu được. Hãy liên kết kho sản xuất ở Tổ chức (phòng ban).',
+    none: 'Nhà máy này chưa có kho sản xuất đang sử dụng nên không yêu cầu được. Hãy đặt loại kho là kho sản xuất ở Kho · vị trí.',
     label: 'Kho sản xuất xuất đi',
     auto: 'Tự động — kho sản xuất còn tồn và có lượng dùng được nhiều nhất cho từng vật tư',
     autoHelp: (count: number): string =>

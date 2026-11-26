@@ -217,7 +217,7 @@ describe('PartnerRolePane — 역할 체크칸', () => {
     expect(pane.getByRole('heading', { name: '거래처 역할' })).toHaveClass('subsection-title');
     const texts = [
       '반품·클레임 입고 등록과 LOT 생산 이력 조회에서 고객사로 고를 수 있습니다.',
-      '공급사·품목 기본 정보와 LOT 생산 이력 조회에서 공급사로 고를 수 있습니다.',
+      'LOT 생산 이력 조회에서 공급사로 고를 수 있습니다.',
       '폐기 품의·기타출고와 제품 폐기 요청에서 폐기 업체로 고를 수 있습니다.',
     ];
     const tips = pane.getAllByRole('button', { name: /고를 수 있습니다\.$/ });

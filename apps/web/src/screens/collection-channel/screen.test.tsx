@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import {
   createStubFetch,
   jsonResponse,
@@ -89,7 +90,12 @@ const stub = (options: StubOptions = {}): StubRoute[] => [
 ];
 
 const renderScreen = (options: StubOptions = {}) =>
-  renderWithProviders(<CollectionChannelScreen />, { fetch: createStubFetch(stub(options)) });
+  renderWithProviders(
+    <SessionProvider>
+      <CollectionChannelScreen />
+    </SessionProvider>,
+    { session: null, fetch: createStubFetch(stub(options)) },
+  );
 
 const equipmentPane = (): HTMLElement =>
   screen.getByRole('region', { name: t.equipment.paneTitle });
@@ -151,7 +157,12 @@ describe('W-05-07 수집 채널 매핑 — 첫 조회', () => {
       ...stub(),
     ];
 
-    renderWithProviders(<CollectionChannelScreen />, { fetch: createStubFetch(spied) });
+    renderWithProviders(
+      <SessionProvider>
+        <CollectionChannelScreen />
+      </SessionProvider>,
+      { session: null, fetch: createStubFetch(spied) },
+    );
     await screen.findByText('EQ-101');
 
     expect(queryOf(only(requests)).has('q')).toBe(false);
@@ -453,7 +464,12 @@ describe('W-05-07 — 조회 조건과 빈 상태', () => {
       ...routes,
     ];
 
-    renderWithProviders(<CollectionChannelScreen />, { fetch: createStubFetch(spied) });
+    renderWithProviders(
+      <SessionProvider>
+        <CollectionChannelScreen />
+      </SessionProvider>,
+      { session: null, fetch: createStubFetch(spied) },
+    );
     await screen.findByText('EQ-101');
 
     await user.type(
@@ -481,7 +497,12 @@ describe('W-05-07 — 조회 조건과 빈 상태', () => {
       ...stub(),
     ];
 
-    renderWithProviders(<CollectionChannelScreen />, { fetch: createStubFetch(spied) });
+    renderWithProviders(
+      <SessionProvider>
+        <CollectionChannelScreen />
+      </SessionProvider>,
+      { session: null, fetch: createStubFetch(spied) },
+    );
     await screen.findByText('EQ-101');
 
     const pane = within(filterBox());
@@ -651,7 +672,12 @@ describe('W-05-07 — 고른 설비를 붙드는 자리', () => {
       },
     ];
 
-    renderWithProviders(<CollectionChannelScreen />, { fetch: createStubFetch(routes) });
+    renderWithProviders(
+      <SessionProvider>
+        <CollectionChannelScreen />
+      </SessionProvider>,
+      { session: null, fetch: createStubFetch(routes) },
+    );
     await pickEquipmentAt(0);
     await within(channelPane()).findByText('CYCLE_TIME');
 
@@ -684,25 +710,37 @@ describe('W-05-07 — 공장 선택 목록', () => {
   ];
 
   it('불러오지 못하면 그 사실을 말한다', async () => {
-    renderWithProviders(<CollectionChannelScreen />, {
-      fetch: createStubFetch(withPlants(() => jsonResponse({ errors: [] }, { status: 500 }))),
-    });
+    renderWithProviders(
+      <SessionProvider>
+        <CollectionChannelScreen />
+      </SessionProvider>,
+      {
+        session: null,
+        fetch: createStubFetch(withPlants(() => jsonResponse({ errors: [] }, { status: 500 }))),
+      },
+    );
 
     expect(await screen.findByText(t.optionsLoadFailed)).toBeInTheDocument();
   });
 
   /** ⭐ 실패가 잘림보다 앞선다 — 아무것도 못 받은 것이 더 큰 사실이다. */
   it('잘렸을 뿐이면 잘렸다고만 말한다', async () => {
-    renderWithProviders(<CollectionChannelScreen />, {
-      fetch: createStubFetch(
-        withPlants(() =>
-          jsonResponse({
-            items: [{ plantId: 11, plantCode: 'P1', plantName: '가상 1공장', isActive: true }],
-            page: { page: 1, size: 100, total: 9 },
-          }),
+    renderWithProviders(
+      <SessionProvider>
+        <CollectionChannelScreen />
+      </SessionProvider>,
+      {
+        session: null,
+        fetch: createStubFetch(
+          withPlants(() =>
+            jsonResponse({
+              items: [{ plantId: 11, plantCode: 'P1', plantName: '가상 1공장', isActive: true }],
+              page: { page: 1, size: 100, total: 9 },
+            }),
+          ),
         ),
-      ),
-    });
+      },
+    );
 
     expect(await screen.findByText(t.optionsTruncated)).toBeInTheDocument();
     expect(screen.queryByText(t.optionsLoadFailed)).not.toBeInTheDocument();

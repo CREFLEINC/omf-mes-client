@@ -18,7 +18,6 @@ import {
 } from './item-attrs-validation';
 import { ItemFilterBar, ItemListPane } from './item-list-pane';
 import { ItemOriginFacts } from './item-origin-pane';
-import { useItemPackages } from './item-package-queries';
 import { ItemResourceMapSection } from './item-resource-map-section';
 import {
   itemDetailPath,
@@ -132,12 +131,6 @@ export const ItemExtendedAttrsScreen = () => {
   const pageView = toPageView(itemList.data?.page ?? { page, size: 0, total: 0 }, items.length);
 
   const itemDetail = useItemDetail(selectedItemId);
-  /* 소포장은 원자재 · 부자재만 — 그 밖의 품목은 묻지 않는다(사용자 지시 2026-11-24). */
-  const selectedTypeCode = itemDetail.data?.item.itemTypeCode ?? null;
-  const itemPackages = useItemPackages(
-    selectedTypeCode !== null && isMaterialType(selectedTypeCode) ? selectedItemId : null,
-  );
-
   /*
    * 단위 목록은 **원본 구획의 기준 단위 이름에만** 쓴다 —
    * 목록만 훑는 동안 쓰지 않을 목록을 받아 둘 이유가 없다.
@@ -502,7 +495,6 @@ export const ItemExtendedAttrsScreen = () => {
         isDirty={isDirty}
         isSaving={attrsWrite.isSaving}
         onSave={handleSaveAttrs}
-        packages={isMaterialType(formState.source.item.itemTypeCode) ? itemPackages : undefined}
         onCancel={() => {
           setAttrsFieldErrors({});
           attrsWrite.reset();
@@ -685,7 +677,3 @@ export const ItemExtendedAttrsScreen = () => {
     </>
   );
 };
-
-/** 공급사에서 사 오는 품목 — 소포장(공급사·품목 기본 정보)이 있는 유형. */
-const isMaterialType = (itemTypeCode: string): boolean =>
-  itemTypeCode === 'RAW_MATERIAL' || itemTypeCode === 'SUBSIDIARY_MATERIAL';

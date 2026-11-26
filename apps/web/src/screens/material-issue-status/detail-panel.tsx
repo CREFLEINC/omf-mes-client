@@ -105,7 +105,7 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
 
   const request = detail.data?.materialIssueRequest;
   const scope = request === undefined ? 'none' : editScope(request);
-  /* 출발 창고 후보는 W/O 라인 부서의 생산 창고만(FR-010, G2 13). */
+  /* 출발 창고 후보는 W/O 공장의 생산 창고만(FR-010, G2 13). */
   const warehouses = useWorkOrderWarehouseOptions(
     scope === 'all' ? (request?.workOrderId ?? null) : null,
   );
@@ -255,7 +255,7 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
     const errorBanner = (() => {
       const error = update.error ?? cancel.error;
       if (error === null || hasErrorCode(error, HOLIDAY_ACK_REQUIRED)) return null;
-      /* 400 을 알아듣게(서버 S9) — 출발 창고가 라인 부서 생산 창고가 아님, 기출고 미만(RANGE). */
+      /* 400 을 알아듣게(서버 S9) — 출발 창고가 이 공장 생산 창고가 아님, 기출고 미만(RANGE). */
       if (error.kind === 'validation') {
         if (error.errors.some((item) => item.field === 'sourceWarehouseId')) {
           return (

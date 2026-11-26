@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import {
   createStubFetch,
   jsonResponse,
@@ -111,7 +112,12 @@ const routes = (options: Options): StubRoute[] => [
 ];
 
 const renderScreen = (options: Options = {}) =>
-  renderWithProviders(<ShotConversionScreen />, { fetch: createStubFetch(routes(options)) });
+  renderWithProviders(
+    <SessionProvider>
+      <ShotConversionScreen />
+    </SessionProvider>,
+    { session: null, fetch: createStubFetch(routes(options)) },
+  );
 
 const pane = (): HTMLElement => screen.getByRole('region', { name: t.ratioList.paneTitle });
 

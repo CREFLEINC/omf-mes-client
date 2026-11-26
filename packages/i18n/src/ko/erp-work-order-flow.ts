@@ -581,13 +581,11 @@ export const erpWorkOrderFlow = {
         pickingNow: '피킹 지시와 인계 작업 알림(바로)',
         blockedTitle: '배포하지 못했습니다. 출고 요청에 필요한 기준정보가 빠졌습니다',
         blocks: {
-          LINE_DEPARTMENT_MISSING: '생산 라인에 담당 부서가 없습니다.',
-          PRODUCTION_WAREHOUSE_MISSING: '라인 담당 부서에 연결된 생산 창고가 없습니다.',
+          PRODUCTION_WAREHOUSE_MISSING: '이 공장에 사용 중인 생산창고 유형 창고가 없습니다.',
           PRODUCTION_FLOOR_LOCATION_MISSING: '생산 라인에 생산 현장 위치가 없습니다.',
         } as Record<string, string>,
         blockLinks: {
-          LINE_DEPARTMENT_MISSING: '설비 그룹에서 담당 부서 지정',
-          PRODUCTION_WAREHOUSE_MISSING: '조직(부서)에서 생산 창고 연결',
+          PRODUCTION_WAREHOUSE_MISSING: '창고·위치에서 창고 유형 지정',
           PRODUCTION_FLOOR_LOCATION_MISSING: '4M 자원배정에서 설정',
         } as Record<string, string>,
         unsourced: (workOrderNo: string, count: number, items: string): string =>
