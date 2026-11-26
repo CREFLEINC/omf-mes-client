@@ -150,7 +150,7 @@ export const materialLotIssue = {
         // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
         supplierLot === null ? '' : ` · 공급사 LOT ${supplierLot}`
       }`,
-    summaryTail: (pattern: string) => `번호 예: ${pattern} …`,
+    summaryTail: (pattern: string) => `번호 예: ${pattern}`,
     summaryEmpty: '재고 수량과 개수를 넣으면 발행될 자재 관리 LOT가 여기 보입니다.',
     cancel: '취소',
     submit: (count: number | null) => (count === null ? '발행' : `${count}개 발행`),

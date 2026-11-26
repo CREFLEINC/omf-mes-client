@@ -137,7 +137,7 @@ export const materialLotIssue: Translated<typeof ko.materialLotIssue> = {
       `${count} LOT quản lý vật tư · mỗi LOT ${each}${pkg === null ? '' : ` (${pkg})`} · Tổng ${total}${
         supplierLot === null ? '' : ` · LOT nhà cung cấp ${supplierLot}`
       }`,
-    summaryTail: (pattern: string) => `Ví dụ số: ${pattern} …`,
+    summaryTail: (pattern: string) => `Ví dụ số: ${pattern}`,
     summaryEmpty:
       'Nhập số lượng tồn kho và số lượng LOT thì các LOT quản lý vật tư sẽ được phát hành hiện ở đây.',
     cancel: 'Hủy',
