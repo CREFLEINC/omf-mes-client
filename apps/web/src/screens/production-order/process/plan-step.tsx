@@ -617,17 +617,9 @@ export const PlanStep = ({
           ) : (
             <>
               <div className="erp-wo-week-heading">
-                <div className="erp-wo-week-heading-context">
-                  <span className={compactCalendar && showAll ? 'visually-hidden' : undefined}>
-                    {week[0]} — {week.at(-1)}
-                  </span>
-                  {showAll && (
-                    <div className="erp-wo-week-legend" aria-label="편성 범례">
-                      <span>현재 편성</span>
-                      <span className="is-other">다른 ERP W/O</span>
-                    </div>
-                  )}
-                </div>
+                <span>
+                  {week[0]} — {week.at(-1)}
+                </span>
                 <div className="erp-wo-week-actions">
                   <Button
                     size="sm"
@@ -711,6 +703,15 @@ export const PlanStep = ({
                   현재 편성은 계속 편집할 수 있습니다.
                 </AlertBanner>
               )}
+              <div
+                className="erp-wo-week-legend"
+                aria-label="편성 범례"
+                data-visible={showAll}
+                aria-hidden={!showAll}
+              >
+                <span>현재 편성</span>
+                <span className="is-other">다른 ERP W/O</span>
+              </div>
               <div className={`erp-wo-week-scroll${compactCalendar ? ' is-compact' : ''}`}>
                 <AdjustableNativeTable
                   storageKey={`omf-mes:work-planning:week-columns:v4:${compactCalendar ? 'compact' : 'wide'}`}
