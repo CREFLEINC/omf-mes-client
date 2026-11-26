@@ -82,16 +82,91 @@ describe('선택 개정 읽기 전용 상세', () => {
     renderWithProviders(<RevisionDetailButton kind="BOM" value="7" />, { fetch });
     await userEvent.setup().click(screen.getByRole('button', { name: 'BOM 상세 보기' }));
     const dialog = screen.getByRole('dialog', { name: 'BOM 상세' });
-    await within(dialog).findByText(/원료/);
+    await within(dialog).findAllByText('원료');
     expect(dialog).toHaveTextContent(/기준 수량\s*100/);
     expect(dialog).toHaveTextContent('2.5');
-    expect(dialog).toHaveTextContent('ERP 자품목 순번: 0');
-    expect(within(dialog).getByRole('columnheader', { name: 'MES 환산 소요량' })).toBeVisible();
+    expect(within(dialog).getByRole('columnheader', { name: '기준 소요량' })).toBeVisible();
+    expect(within(dialog).queryByRole('columnheader', { name: '재고 상태' })).toBeNull();
+    expect(within(dialog).getAllByRole('button', { name: '닫기' })).toHaveLength(1);
+    expect(dialog).not.toHaveTextContent('관리 공정');
+    const toggle = within(dialog).getByRole('button', { name: 'MAT9 상세 펼치기' });
+    await userEvent.setup().click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(dialog).toHaveTextContent('관리 공정');
+    expect(dialog).toHaveTextContent(/필수 자재\s*필수/);
+    expect(dialog).not.toHaveTextContent('아니요');
     expect(dialog).toHaveTextContent('실제 사용 공정');
     expect(dialog).not.toHaveTextContent('조회 미지원');
     expect(dialog).toHaveTextContent('2%');
     expect(dialog).not.toHaveTextContent('환산한 값이 아닙니다');
+  });
+  it('공장·수량을 주면 BOM 상세에 필요 수량·가용 수량·재고 상태를 함께 보인다', async () => {
+    const fetch = vi.fn(async (request: Request) => {
+      const path = new URL(request.url).pathname;
+      if (request.method === 'POST') {
+        expect(path).toBe('/planning/boms:material-availability');
+        expect(await request.json()).toEqual({
+          plantId: 2,
+          lines: [{ bomComponentId: 1, quantity: 40 }],
+        });
+        return jsonResponse({
+          items: [
+            {
+              bomComponentId: 1,
+              quantity: 40,
+              itemId: 9,
+              itemCode: 'MAT9',
+              itemName: '원료',
+              requiredQty: 1,
+              bomUomCode: 'KG',
+              stockUomCode: 'KG',
+              requiredStockQty: 1,
+              availableQty: 0.5,
+              statusCode: 'SHORT',
+            },
+          ],
+        });
+      }
+      if (path.endsWith('/components'))
+        return jsonResponse({
+          items: [
+            {
+              bomComponentId: 1,
+              componentItemId: 9,
+              requiredQty: 2.5,
+              uomId: 3,
+              scrapRate: 0,
+              isMandatory: true,
+              sequenceNo: 1,
+            },
+          ],
+        });
+      if (path.includes('/boms/'))
+        return jsonResponse({ bom: { bomCode: 'B7', bomVersion: 2, baseQty: 100, baseUomId: 3 } });
+      if (path.includes('/items/'))
+        return jsonResponse({ item: { itemCode: 'MAT9', itemName: '원료' } });
+      return jsonResponse({
+        items: [{ uomId: 3, uomCode: 'KG', uomName: '킬로그램' }],
+        page: { total: 1 },
+      });
+    });
+    renderWithProviders(
+      <RevisionDetailButton
+        kind="BOM"
+        value="7"
+        availabilityContext={{ plantId: 2, quantity: 40 }}
+      />,
+      { fetch },
+    );
+    await userEvent.setup().click(screen.getByRole('button', { name: 'BOM 상세 보기' }));
+    const dialog = screen.getByRole('dialog', { name: 'BOM 상세' });
+    expect(await within(dialog).findByText('부족')).toBeVisible();
+    for (const name of ['자품목', '기준 소요량', '필요 수량', '가용 수량', '재고 상태', '상세'])
+      expect(within(dialog).getByRole('columnheader', { name })).toBeVisible();
+    expect(dialog).toHaveTextContent('필요 수량은 40 KG 생산 기준입니다.');
+    const cells = within(within(dialog).getAllByRole('row')[1]!).getAllByRole('cell');
+    expect(cells[2]).toHaveTextContent('1 KG');
+    expect(cells[3]).toHaveTextContent('0.5 KG');
   });
   it('개정이 없으면 상세 버튼을 사용할 수 없다', () => {
     renderWithProviders(<RevisionDetailButton kind="BOM" value="" />);
