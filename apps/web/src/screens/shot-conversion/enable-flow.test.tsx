@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import {
   createStubFetch,
   jsonResponse,
@@ -104,7 +105,12 @@ const routes = (options: Options): StubRoute[] => [
 ];
 
 const renderScreen = (options: Options = {}) =>
-  renderWithProviders(<ShotConversionScreen />, { fetch: createStubFetch(routes(options)) });
+  renderWithProviders(
+    <SessionProvider>
+      <ShotConversionScreen />
+    </SessionProvider>,
+    { session: null, fetch: createStubFetch(routes(options)) },
+  );
 
 const pane = (): HTMLElement => screen.getByRole('region', { name: te.paneTitle });
 const toggle = (): HTMLElement => within(pane()).getByRole('switch', { name: te.switchLabel });
@@ -175,7 +181,12 @@ describe('W-05-01 ④ — 사용 여부 조회', () => {
       ...routes({}),
     ];
 
-    renderWithProviders(<ShotConversionScreen />, { fetch: createStubFetch(spied) });
+    renderWithProviders(
+      <SessionProvider>
+        <ShotConversionScreen />
+      </SessionProvider>,
+      { session: null, fetch: createStubFetch(spied) },
+    );
     await within(pane()).findByText(te.notSetTitle);
 
     const first = reads[0];
@@ -407,7 +418,12 @@ describe('W-05-01 ④ — 낙관적 잠금', () => {
       ...routes({ enabled: [makeEnabled(8001, true)] }),
     ];
 
-    renderWithProviders(<ShotConversionScreen />, { fetch: createStubFetch(custom) });
+    renderWithProviders(
+      <SessionProvider>
+        <ShotConversionScreen />
+      </SessionProvider>,
+      { session: null, fetch: createStubFetch(custom) },
+    );
     await waitFor(() => expect(toggle()).toBeEnabled());
 
     await user.click(toggle());
@@ -427,7 +443,12 @@ describe('W-05-01 ④ — 낙관적 잠금', () => {
       ...routes({ enabled: [makeEnabled(8001, true)] }),
     ];
 
-    renderWithProviders(<ShotConversionScreen />, { fetch: createStubFetch(custom) });
+    renderWithProviders(
+      <SessionProvider>
+        <ShotConversionScreen />
+      </SessionProvider>,
+      { session: null, fetch: createStubFetch(custom) },
+    );
 
     await waitFor(() => expect(toggle()).toBeInTheDocument());
     /*

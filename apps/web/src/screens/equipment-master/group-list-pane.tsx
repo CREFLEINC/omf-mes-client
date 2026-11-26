@@ -11,6 +11,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
+import { type MasterDataPlant, plantSelectOf } from '../../patterns/master-data-plant';
 import { hasChangedFilters } from '../../patterns/filter-more';
 import type { LookupSource } from '../../patterns/lookup-display';
 import { type CodeOption, defaultGroupFilters, groupTypeLabel, lookupLabel } from './code-options';
@@ -28,6 +29,8 @@ export interface GroupListPaneProps {
   onApplyFilters: (next: GroupFilters) => void;
   /** 공장 선택지. 미사용 공장은 지금 고른 값일 때만 남는다 */
   plantOptions: CodeOption[];
+  /** 위 줄 사업부가 정한 공장 — 하나면 공장 칸을 감춘다. */
+  plant?: MasterDataPlant;
   /** 공장 이름 풀이용 원본 — 선택지가 좁혀져 있어도 표의 공장 칸은 전체에서 이름을 찾는다 */
   plants: LookupSource<LookupEntry>;
   expandedIds: ReadonlySet<number>;
@@ -77,6 +80,7 @@ export const useGroupListPane = ({
   appliedFilters,
   onApplyFilters,
   plantOptions,
+  plant,
   plants,
   expandedIds,
   onToggleExpand,
@@ -219,6 +223,11 @@ export const useGroupListPane = ({
     );
   };
 
+  const plantSelect = plantSelectOf(plant, draft.plantId, [
+    { value: '', label: t.filters.plantAll },
+    ...plantOptions,
+  ]);
+
   /* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */
   const filter = (
     <div className="filter-bar">
@@ -231,12 +240,14 @@ export const useGroupListPane = ({
         clearLabel={messages.common.clear}
       />
       {/* 같은 화면 안에서 라벨 붙은 선택칸을 두 가지로 만들지 않는다 — 부품 하나가 그 규약을 갖는다. */}
-      <SelectField
-        label={t.fields.plant}
-        options={[{ value: '', label: t.filters.plantAll }, ...plantOptions]}
-        value={draft.plantId}
-        onChange={(value) => setDraft((prev) => ({ ...prev, plantId: value }))}
-      />
+      {plantSelect !== null && (
+        <SelectField
+          label={t.fields.plant}
+          options={plantSelect.options}
+          value={plantSelect.value}
+          onChange={(value) => setDraft((prev) => ({ ...prev, plantId: value }))}
+        />
+      )}
       {/* 해제 축이라 변경 즉시 적용한다. */}
       <div className="field-cell field-cell-unlabeled">
         <Checkbox

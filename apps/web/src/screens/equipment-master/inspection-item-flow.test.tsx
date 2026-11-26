@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import {
   createStubFetch,
   jsonResponse,
@@ -121,10 +122,12 @@ const routes = (options: Options): StubRoute[] => [
 ];
 
 const renderAt = (options: Options = {}, route = '/?view=inspection-items') =>
-  renderWithProviders(<EquipmentMasterScreen />, {
-    route,
-    fetch: createStubFetch(routes(options)),
-  });
+  renderWithProviders(
+    <SessionProvider>
+      <EquipmentMasterScreen />
+    </SessionProvider>,
+    { session: null, route, fetch: createStubFetch(routes(options)) },
+  );
 
 const pane = async (): Promise<HTMLElement> => screen.findByRole('region', { name: ti.paneTitle });
 /* 조회 줄과 「점검 항목 추가」는 목록 위 조회 조건 상자에 선다(#350). */

@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import {
   createStubFetch,
   jsonResponse,
@@ -124,7 +125,12 @@ const stub = (options: WriteStubOptions): StubRoute[] => [
 ];
 
 const renderScreen = (options: WriteStubOptions) =>
-  renderWithProviders(<CollectionChannelScreen />, { fetch: createStubFetch(stub(options)) });
+  renderWithProviders(
+    <SessionProvider>
+      <CollectionChannelScreen />
+    </SessionProvider>,
+    { session: null, fetch: createStubFetch(stub(options)) },
+  );
 
 const channelPane = (): HTMLElement => screen.getByRole('region', { name: t.channels.paneTitle });
 const formDialog = (): HTMLElement => screen.getByRole('dialog');
@@ -570,9 +576,12 @@ describe('W-05-07 ② — 창 안의 선택 목록', () => {
       ...routes,
     ];
 
-    renderWithProviders(<CollectionChannelScreen />, {
-      fetch: createStubFetch(withFailingUoms),
-    });
+    renderWithProviders(
+      <SessionProvider>
+        <CollectionChannelScreen />
+      </SessionProvider>,
+      { session: null, fetch: createStubFetch(withFailingUoms) },
+    );
     await pickFirstEquipment();
     await user.click(within(channelPane()).getByRole('button', { name: t.actions.addChannel }));
 
@@ -593,9 +602,12 @@ describe('W-05-07 ② — 창 안의 선택 목록', () => {
       ...stub({ writes: [] }),
     ];
 
-    renderWithProviders(<CollectionChannelScreen />, {
-      fetch: createStubFetch(withFailingProcesses),
-    });
+    renderWithProviders(
+      <SessionProvider>
+        <CollectionChannelScreen />
+      </SessionProvider>,
+      { session: null, fetch: createStubFetch(withFailingProcesses) },
+    );
     await pickFirstEquipment();
     await user.click(within(channelPane()).getByRole('button', { name: t.actions.addChannel }));
 

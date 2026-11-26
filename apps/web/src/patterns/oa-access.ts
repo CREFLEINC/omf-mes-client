@@ -49,6 +49,7 @@ interface PlantRow {
   plantCode: string;
   plantName?: string;
   businessUnitId?: number | null;
+  isActive?: boolean;
 }
 
 /** 계정 범위가 덮는 공장 — 공장 없는 범위는 그 사업부의 모든 공장, 범위 줄이 없으면 모든 공장(`coversOaPlant` 와 같은 규칙). */
@@ -67,7 +68,7 @@ export const plantsInScope = <T extends PlantRow>(
   );
 
 /** 공장 목록과 OA 공장 코드 — OA 판정과 부품 공장 고르기(omf-all-around#211)가 같은 조회를 나눠 쓴다. */
-const usePlantsAndOaCodes = () => {
+export const usePlantsAndOaCodes = () => {
   const { client } = useApiClient();
   const { session } = useSession();
   return useQuery({
