@@ -5175,6 +5175,15 @@ export interface paths {
           hasRouting?: boolean;
           /** @description 가장 최근 Rev(routingVersion 이 가장 큰 개정)의 상태로 거른다 — 공정 경로 관리 품목 목록의 진행 상태 칩(omf-all-around#231). Routing 이 없는 품목은 어느 값에도 들지 않는다(그 품목은 hasRouting=false 로 거른다) */
           latestRoutingStatus?: 'DRAFT' | 'CONFIRMED' | 'OBSOLETE';
+          /**
+           * Format: int64
+           * @description 공장으로 거른다 — 관리웹 품목·BOM·Routing 목록이 사업부 공장(OA PL13 · 부품 PL11) 품목만 보인다(클라이언트 요청 2026-11-26). 품목의 공장은 BOM 으로 정한다 — 모품목이나 구성품으로 든 BOM 중 공장이 이 값인 것이 있으면 그 공장 품목이다. 두 공장 BOM 에 다 들면 두 공장에서 나온다. 공장이 정해진 BOM 에 한 번도 들지 않은 품목은 어느 공장으로 걸러도 나온다. hasBom 과 함께 오면 hasBom 의 뜻이 그 공장으로 좁혀진다(hasBom 설명)
+           */
+          plantId?: number;
+          /** @description 이 품목을 모품목으로 하는 BOM 이 있는가로 거른다 — ERP 연동 현황 › BOM 탭(W-06-18)의 모품목 목록. false 면 그런 BOM 이 없는 품목만 낸다. plantId 와 함께 오면 「그 공장 BOM 이나 공장이 빈 BOM」만 센다 — true 는 그 공장 BOM 탭에 설 모품목, false 는 같은 공장 품목 중 나머지다 */
+          hasBom?: boolean;
+          /** @description 수입검사 대상(Item.inspectionRequired)인가로 거른다 — 품목 탭(W-06-05)의 IQC 대상 Y/N 거르기 */
+          inspectionRequired?: boolean;
           includeInactive?: boolean;
           page?: number;
           size?: number;
@@ -5786,6 +5795,11 @@ export interface paths {
           bomCode?: string;
           /** @description 지금 새 작업지시에 걸 수 있는 개정만 낸다. 판정은 서버가 한다 — 화면은 상태 문자열을 알 필요가 없고 알아서도 안 된다(공유계약 G-8). 보내지 않으면 종전대로 전부 낸다 — 자재 명세 헤더 목록(W-06-05)은 폐기 개정까지 보여야 하므로 이 파라미터를 쓰지 않는다. 긴급 발행 화면(W-02-07)이 쓴다. 근거: W-02-07 §5-9 · omf-mes#259 */
           usableOnly?: boolean;
+          /**
+           * Format: int64
+           * @description 그 공장 BOM 과 공장이 빈 BOM 만 낸다 — 공장이 빈 BOM 은 공통으로 본다. 두 공장 BOM 을 가진 모품목에서 사업부 공장 것만 받는다(클라이언트 요청 2026-11-26). 보내지 않으면 공장을 가리지 않는다
+           */
+          plantId?: number;
         };
         header?: never;
         path?: never;

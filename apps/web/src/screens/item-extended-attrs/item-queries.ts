@@ -2,6 +2,7 @@ import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { plantIdQuery } from '../../patterns/master-data-plant';
 import { runRequest } from '../../patterns/request';
 import { CODE_GROUPS, useCodeValueOptions } from './code-values';
 import { toItemListQuery } from './filters';
@@ -40,8 +41,8 @@ export interface ItemListResponse {
  */
 export const itemKeys = {
   all: ['item-extended-attrs-items'] as const,
-  list: (filters: ItemFilters, page: number) =>
-    ['item-extended-attrs-items', 'list', filters, page] as const,
+  list: (filters: ItemFilters, page: number, plantId: string) =>
+    ['item-extended-attrs-items', 'list', filters, page, plantId] as const,
   /**
    * 상세의 키. **행 단위 이름 조회가 이 키를 함께 쓴다**(결정 12) —
    * 같은 품목이 여러 행·여러 표에 나와도 한 번만 받게 하려는 것이다.
@@ -74,14 +75,20 @@ export const useItemTypeOptions = (): UseQueryResult<ItemTypeOption[]> =>
 export const useItemList = (
   filters: ItemFilters,
   page: number,
+  /** 위 줄 사업부의 공장(`useMasterDataPlant`) — 비면 공장으로 거르지 않는다. */
+  plantId = '',
+  enabled = true,
 ): UseQueryResult<ItemListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: itemKeys.list(filters, page),
+    queryKey: itemKeys.list(filters, page, plantId),
+    enabled,
     queryFn: () =>
       runRequest(() =>
-        client.GET('/mdm/items', { params: { query: toItemListQuery(filters, page) } }),
+        client.GET('/mdm/items', {
+          params: { query: { ...toItemListQuery(filters, page), ...plantIdQuery(plantId) } },
+        }),
       ),
   });
 };

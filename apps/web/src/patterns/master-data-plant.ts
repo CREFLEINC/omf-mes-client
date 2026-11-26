@@ -94,3 +94,7 @@ export const useOnMasterDataPlantChange = (plant: MasterDataPlant, onChange: () 
     if (before !== null && before !== decided) latest.current();
   }, [decided]);
 };
+
+/** 목록 질의의 공장 조건 — 빈 값이면 싣지 않는다(공장으로 거르지 않는다). */
+export const plantIdQuery = (plantId: string): { plantId?: number } =>
+  plantId === '' ? {} : { plantId: Number(plantId) };

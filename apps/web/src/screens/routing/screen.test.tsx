@@ -538,9 +538,10 @@ describe('RoutingScreen — 헤더 상세 조회와 상태 잠금', () => {
 
     /* 설정 탭 요약 줄에 품목코드 · 품목명을 칸을 나눠 보인다(#231). */
     const card = await screen.findByRole('region', { name: '라우팅' });
-    expect((await within(card).findByText('품목코드')).parentElement).toHaveTextContent(
-      '품목코드ITM-001',
-    );
+    /* 품목 목록은 사업부 공장을 정한 뒤에 받는다 — 값이 들 때까지 기다린다. */
+    await waitFor(() => {
+      expect(within(card).getByText('품목코드').parentElement).toHaveTextContent('품목코드ITM-001');
+    });
     expect(within(card).getByText('품목명').parentElement).toHaveTextContent('품목명하우징 커버');
   });
 

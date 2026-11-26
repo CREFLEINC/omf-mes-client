@@ -7,6 +7,7 @@ import { useSearchParams } from 'react-router';
 import { useApiClient } from '../../patterns/api-context';
 import { BoardFrame } from '../../patterns/board-frame';
 import { SaveErrorBanner, requireIfMatch, useMasterWrite } from '../../patterns/master';
+import { useMasterDataPlant, useOnMasterDataPlantChange } from '../../patterns/master-data-plant';
 import { planKeys } from '../inspection-standard/queries';
 import { ITEM_KEY, readItemFilters, readPage, readSelectedId, toSearchParams } from './filters';
 import { ItemAttrsPane } from './item-attrs-pane';
@@ -119,7 +120,9 @@ export const ItemExtendedAttrsScreen = () => {
   /** 단위 환산은 그 탭을 열 때 받는다 — 초안은 화면이 들고 있어 탭을 옮겨도 남는다(§5.4). */
   const isUomTab = tab.id === 'uom';
 
-  const itemList = useItemList(filters, page);
+  /* 위 줄 사업부의 공장 품목만 — 공장은 서버가 BOM 으로 정한다(서버 #1156). 공장을 정하는 동안은 조회를 미룬다. */
+  const plant = useMasterDataPlant();
+  const itemList = useItemList(filters, page, plant.plantId, !plant.isChecking);
   const items = itemList.data?.items ?? [];
   // 유형 선택지를 못 받아도 목록은 그대로 쓴다 — 「전체」와 주소에 실린 코드만 고를 수 있다.
   const itemTypes = useItemTypeOptions();
@@ -359,6 +362,11 @@ export const ItemExtendedAttrsScreen = () => {
   const changePage = (nextPage: number) => {
     setSearchParams(toSearchParams(tab.id, filters, nextPage));
   };
+
+  /* 사업부를 바꾸면 첫 쪽부터 보고 다른 공장의 품목 선택을 푼다 — 고치던 값이 있으면 그대로 둔다. */
+  useOnMasterDataPlantChange(plant, () => {
+    if (!isDirty && !isUomConversionDirty) setSearchParams(toSearchParams(tab.id, filters, 1));
+  });
 
   /**
    * 품목을 고른다. **주소 갱신 한 번으로 끝낸다** — 나눠 부르면 뒤로가기가
