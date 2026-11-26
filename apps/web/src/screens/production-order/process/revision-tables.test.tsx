@@ -142,7 +142,7 @@ describe('대량 BOM Routing 표', () => {
     expect(within(first).getByRole('cell', { name: '10 EA' })).toBeVisible();
     expect(within(first).getByRole('cell', { name: '25 EA' })).toBeVisible();
     const second = within(table).getByRole('cell', { name: 'MAT-2' }).closest('tr')!;
-    expect(within(second).getByText('비교 불가')).toBeVisible();
+    expect(within(second).getByText('재고 정보 확인 불가')).toBeVisible();
     const third = within(table).getByRole('cell', { name: 'MAT-3' }).closest('tr')!;
     expect(within(third).getByText('부족')).toBeVisible();
     expect(within(third).getByRole('cell', { name: '30 GR (0.03 KG)' })).toBeVisible();

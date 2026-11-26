@@ -82,7 +82,7 @@ export type MaterialAvailability = ReturnType<typeof useMaterialAvailability>;
 const STATUS: Record<AvailabilityLine['statusCode'], { text: string; chip: ChipStatus }> = {
   ENOUGH: { text: '충분', chip: 'success' },
   SHORT: { text: '부족', chip: 'warning' },
-  NOT_COMPARABLE: { text: '비교 불가', chip: 'idle' },
+  NOT_COMPARABLE: { text: '재고 정보 확인 불가', chip: 'idle' },
 };
 const quantityText = (value: number) =>
   value.toLocaleString(undefined, { maximumFractionDigits: 6 });
@@ -120,7 +120,7 @@ export const AvailableCell = ({
   return <>{availability.failedOf(request) ? '조회 실패' : '조회 중'}</>;
 };
 
-/** 재고 상태 칸 — 부족은 경고 색. 비교 불가는 재고 단위 환산이 없을 때다. */
+/** 재고 상태 칸 — 부족은 경고 색. 재고 정보 확인 불가는 재고 단위 환산이 없을 때다. */
 export const AvailabilityStatusCell = ({
   availability,
   request,
