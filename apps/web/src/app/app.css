@@ -42292,6 +42292,13 @@ body:has(
   letter-spacing: var(--type-body-md-tracking);
 }
 
+/* 목록 제목 옆 ⓘ 말풍선 — 한 문장씩 줄을 바꾸고, 문장이 중간에 꺾이지 않게 넓게(사용자 지시 2026-11-26). */
+.plant-working-days-head .info-tip-anchor [class*='_tooltip_'] {
+  white-space: pre-line;
+  width: max-content;
+  max-width: min(56rem, calc(100vw - 4rem));
+}
+
 /* 창 아래 단추 줄 왼쪽 안내 라벨 — 단추를 오른쪽으로 민다. */
 .shift-management-footer-note {
   margin-inline-end: auto;
@@ -42454,8 +42461,4 @@ main .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-to
   color: var(--on-surface-variant);
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
-}
-
-.plant-working-days-pane > .plant-working-days-note {
-  margin: 0 0 var(--space-3);
 }

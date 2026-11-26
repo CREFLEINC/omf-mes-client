@@ -2,7 +2,6 @@ import {
   AlertBanner,
   Button,
   Chip,
-  Icon,
   Radio,
   RadioGroup,
   SearchInput,
@@ -374,7 +373,10 @@ export const PlantWorkingDaysScreen = () => {
         <div className="po-board-list-head plant-working-days-head">
           <h2 className="pane-title info-label">
             {w.list}
-            <InfoTip text={t.description} />
+            {/* 예시 생산일 · 계산 기준도 ⓘ 하나에 — 표 위 안내 줄은 두지 않는다(사용자 지시 2026-11-26). */}
+            <InfoTip
+              text={`${t.exampleNote.lead(monthDay(exampleDate), weekdayOf(exampleDate))}\n${t.description}`}
+            />
           </h2>
           {canSave && (
             <span className="po-board-list-count">
@@ -404,15 +406,6 @@ export const PlantWorkingDaysScreen = () => {
             </div>
           )}
         </div>
-        {/* 계산 기준은 표 위에 한 번만(사용자 지시 2026-11-26) — 표 칸에는 출고 작업일만. */}
-        <p className="iqc-inspection-action-note plant-working-days-note" data-tone="info">
-          <Icon name="info" size={14} aria-hidden />
-          <span>
-            <strong>{t.exampleNote.lead(monthDay(exampleDate), weekdayOf(exampleDate))}</strong>
-            {' · '}
-            {t.exampleNote.body}
-          </span>
-        </p>
         {body()}
       </section>
     </div>

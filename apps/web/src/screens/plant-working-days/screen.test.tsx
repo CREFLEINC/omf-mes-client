@@ -170,8 +170,10 @@ describe('W-CO-15 공장 근무일 설정', () => {
 
     /* 목록 상자 제목 줄 「공장 목록 N건」(#358) — 머리글(h1)은 없다. */
     expect(title).toHaveTextContent(t.workspace.list);
-    expect(within(title).getByRole('button', { name: t.description })).toBeInTheDocument();
+    expect(within(title).getByRole('button', { name: new RegExp(`^예시 생산일 .*\n${t.description}$`) })).toBeInTheDocument();
     expect(screen.queryByText(t.description)).not.toBeInTheDocument();
+    /* 표 위 안내 줄은 없다 — 예시 생산일은 ⓘ 안에만(사용자 지시 2026-11-26). */
+    expect(screen.queryByText(/^예시 생산일/)).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
     expect(screen.getByText('2건')).toBeInTheDocument();
   });
