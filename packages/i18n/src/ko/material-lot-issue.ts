@@ -96,17 +96,31 @@ export const materialLotIssue = {
     targetPlaceholder: '공급사·품목을 고르세요', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
     targetOption: (supplier: string, itemCode: string, itemName: string, uom: string) =>
       `${supplier} · ${itemCode} ${itemName} (${uom})`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
+    /** 상세 창에서 연 고정 조합 — 공급사 · 품목을 따로 적고 단위는 품목 옆에 붙인다(사용자 지시 2026-11-26). */
+    supplier: '공급사',
+    item: '품목',
+    itemWithUnit: (itemCode: string, itemName: string, uom: string) =>
+      `${itemCode} ${itemName} · 단위 ${uom}`,
     source: {
       item: '품목 기본값에서 가져옴',
       itemStorage: '품목 기본값 없음 — 품목 기본 보관 단위로 채움',
-      none: '품목 기본값 없음 — 직접 입력',
+      none: '품목에 등록된 기본 패키징 정보가 없습니다. 패키징 정보가 필요한 경우 직접 입력해 주세요.',
     },
     defaultsFailed: '품목 기본값을 불러오지 못했습니다. 직접 넣어 발행할 수 있습니다.',
     package: '패키징',
     packageOptional: '(선택)',
-    packageOn: '패키징 넣기',
-    packageOff: '패키징 없음',
+    packageOn: '패키징 추가',
+    packageOff: '패키징 빼기',
     packageUom: '패키징 단위',
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26 「흐린 문구 추가」). */
+    placeholders: {
+      packageUom: '패키징 단위를 고르세요',
+      packageCount: '패키징 수를 입력하세요',
+      qtyPerPackage: '패키징당 수량을 입력하세요',
+      lotQty: '재고 수량을 입력하세요',
+      supplierLotNo: '공급사 LOT 번호를 입력하세요',
+      lotCount: '개수를 입력하세요',
+    },
     packageCount: '패키징 수',
     qtyPerPackage: (uom: string) => `패키징당 수량 (${uom})`,
     lotQty: '자재 관리 LOT당 재고 수량',
@@ -137,7 +151,7 @@ export const materialLotIssue = {
         supplierLot === null ? '' : ` · 공급사 LOT ${supplierLot}`
       }`,
     summaryTail: (pattern: string) => `번호 예: ${pattern} …`,
-    summaryEmpty: '개수를 넣으면 발행될 자재 관리 LOT가 여기 보입니다.',
+    summaryEmpty: '재고 수량과 개수를 넣으면 발행될 자재 관리 LOT가 여기 보입니다.',
     cancel: '취소',
     submit: (count: number | null) => (count === null ? '발행' : `${count}개 발행`),
   },
@@ -213,8 +227,8 @@ export const materialLotIssue = {
       qty: '자재 관리 LOT당 재고 수량',
       qtyFixed: '품목 기본 단위로 고정',
       package: '패키징',
-      packageOn: '패키징 넣기',
-      packageOff: '패키징 없음',
+      packageOn: '패키징 추가',
+      packageOff: '패키징 빼기',
       packageUom: '패키징 단위',
       packageCount: '패키징 수',
       qtyPerPackage: (uom: string) => `패키징당 수량 (${uom})`,

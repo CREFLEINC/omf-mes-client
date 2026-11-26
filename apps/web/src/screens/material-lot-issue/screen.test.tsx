@@ -696,7 +696,8 @@ describe('W-01-14 발행 창(수동)', () => {
     const { user } = setup();
     const dialog = await openIssue(user, 'SYN-RES');
 
-    expect(await dialog.findByText(t.dialog.source.none)).toBeInTheDocument();
+    /* 기본값 없음 안내는 「패키징 (선택)」 옆 ⓘ 의 이름으로 — 마우스를 올리면 뜬다. */
+    expect(await dialog.findByRole('button', { name: t.dialog.source.none })).toBeInTheDocument();
     expect(dialog.getByLabelText(t.dialog.lotQty)).toHaveValue('');
   });
 });

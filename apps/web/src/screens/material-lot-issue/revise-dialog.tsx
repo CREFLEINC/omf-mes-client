@@ -1,7 +1,7 @@
-import { Button, Chip, Dialog, TextField } from '@crefle/web-ui';
+import { Button, Chip, Dialog, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { isIntegerUom, type BatchDraft, type UomOption } from '../../patterns/material-lot-batch';
@@ -20,6 +20,8 @@ import type { Group, Lot } from './types';
 
 const tp = messages.materialLotIssue.precreate;
 const t = tp.revise;
+/** 칸 안 흐린 안내는 발행 창과 같은 글(사용자 지시 2026-11-26). */
+const ph = messages.materialLotIssue.dialog.placeholders;
 
 export interface ReviseDialogProps {
   group: Group;
@@ -44,6 +46,7 @@ export const ReviseDialog = ({
   onSaved,
   onRejected,
 }: ReviseDialogProps) => {
+  const packageUomId = useId();
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState<BatchDraft>(() => reviseDraftOf(lot, null));
   const uomCode = group.uomCode;
@@ -95,7 +98,7 @@ export const ReviseDialog = ({
       open
       onClose={onClose}
       title={t.title}
-      size="md"
+      size="lg"
       footer={
         <>
           <Button variant="outlined" onClick={onClose}>
@@ -128,6 +131,7 @@ export const ReviseDialog = ({
 
         <TextField
           label={t.qty}
+          placeholder={ph.lotQty}
           inputMode="decimal"
           value={shownQty}
           trailingIcon={<span title={t.qtyFixed}>{uomCode}</span>}
@@ -139,39 +143,46 @@ export const ReviseDialog = ({
         <section className="mlot-issue-package" aria-label={t.package}>
           <div className="mlot-issue-package-head">
             <strong>{t.package}</strong>
-            <div role="group" aria-label={t.package} className="mlot-issue-switch">
+            {/* 발행 창과 같이 단추 하나 — 없으면 [+ 패키징 추가], 넣었으면 [패키징 빼기](사용자 지시 2026-11-26). 값 처리는 그대로. */}
+            {draft.packageOn ? (
               <Button
                 size="sm"
-                variant={draft.packageOn ? 'filled' : 'outlined'}
-                aria-pressed={draft.packageOn}
-                onClick={() => edit({ packageOn: true, lotQtyEdited: false })}
-              >
-                {t.packageOn}
-              </Button>
-              <Button
-                size="sm"
-                variant={draft.packageOn ? 'outlined' : 'filled'}
-                aria-pressed={!draft.packageOn}
+                variant="outlined"
                 onClick={() => edit({ packageOn: false, lotQtyEdited: true, lotQty: shownQty })}
               >
                 {t.packageOff}
               </Button>
-            </div>
+            ) : (
+              <Button
+                size="sm"
+                variant="outlined"
+                leadingIcon={<Icon name="add" size={18} />}
+                onClick={() => edit({ packageOn: true, lotQtyEdited: false })}
+              >
+                {t.packageOn}
+              </Button>
+            )}
           </div>
           {draft.packageOn ? (
             <div className="mlot-issue-package-fields">
-              <Select
-                aria-label={t.packageUom}
-                placeholder={t.packageUom}
-                value={draft.packageUomId === null ? null : String(draft.packageUomId)}
-                options={packageUoms.map((row) => ({
-                  value: String(row.uomId),
-                  label: row.uomName.trim() === '' ? row.uomCode : row.uomName,
-                }))}
-                onChange={(value) => edit({ packageUomId: Number(value) })}
-              />
+              <div className="field-cell">
+                <span className="field-label">
+                  <label htmlFor={packageUomId}>{t.packageUom}</label>
+                </span>
+                <Select
+                  id={packageUomId}
+                  placeholder={ph.packageUom}
+                  value={draft.packageUomId === null ? null : String(draft.packageUomId)}
+                  options={packageUoms.map((row) => ({
+                    value: String(row.uomId),
+                    label: row.uomName.trim() === '' ? row.uomCode : row.uomName,
+                  }))}
+                  onChange={(value) => edit({ packageUomId: Number(value) })}
+                />
+              </div>
               <TextField
                 label={t.packageCount}
+                placeholder={ph.packageCount}
                 inputMode="numeric"
                 value={draft.packageCount}
                 onChange={(event) =>
@@ -180,6 +191,7 @@ export const ReviseDialog = ({
               />
               <TextField
                 label={t.qtyPerPackage(uomCode)}
+                placeholder={ph.qtyPerPackage}
                 inputMode="decimal"
                 value={draft.qtyPerPackage}
                 onChange={(event) =>

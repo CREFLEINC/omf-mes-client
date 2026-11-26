@@ -36969,15 +36969,32 @@ body:has(
   gap: var(--space-2);
 }
 
-.mlot-issue-package-head > strong {
+/* 「패키징 (선택)」 ⓘ 를 한 줄로(사용자 지시 2026-11-26) — ⓘ 에 마우스를 올리면 기본값 없음 안내가 뜬다. */
+.mlot-issue-package-title {
   flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: nowrap;
 }
 
-.mlot-issue-switch,
-.mlot-issue-package-fields {
+.mlot-issue-package-title > strong > .field-note {
+  display: inline;
+  margin: 0 0 0 var(--space-1);
+}
+
+.mlot-issue-switch {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
+  gap: var(--space-2);
+}
+
+/* 패키징 단위 · 패키징 수 · 패키징당 수량을 한 줄 세 칸으로(사용자 지시 2026-11-26). */
+.mlot-issue-package-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
   gap: var(--space-2);
 }
 
