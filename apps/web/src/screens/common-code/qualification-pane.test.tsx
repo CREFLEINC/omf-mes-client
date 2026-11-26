@@ -62,6 +62,18 @@ const renderPane = (overrides: Partial<Parameters<typeof QualificationPane>[0]> 
 };
 
 describe('QualificationPane — 표', () => {
+  /* 사용자 지시 2026-11-26 — 표 위 구획 제목 「자격·인증」, [자격 추가]는 그 제목 줄 오른쪽 끝. */
+  it('표 위에 구획 제목이 서고 자격 추가가 그 제목 줄에 있다', () => {
+    renderPane();
+
+    const title = screen.getByRole('heading', { name: '자격·인증' });
+    expect(title).toHaveClass('subsection-title');
+    expect(title.parentElement).toContainElement(screen.getByRole('button', { name: '자격 추가' }));
+    expect(
+      title.compareDocumentPosition(screen.getByRole('table')) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it('여섯 열을 낸다', () => {
     renderPane();
 

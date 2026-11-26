@@ -101,33 +101,28 @@ dialog .field-cell.users-roles-required-empty > div > button[aria-haspopup] {
   margin-left: auto;
 }
 
-/* 생산 창고 추가 줄의 [추가] · [취소] — 결재 단계 추가 줄(`.approval-route-step-add`)과 같다. 공용 `.field-cell` 은 세로 쌓기라 가로로 돌린다. */
-.filter-bar.production-warehouse-add {
-  margin-top: var(--space-3);
+/* 생산 창고 표 — 열 폭을 내용이 아니라 지정 폭으로 나눈다. 창고를 넣거나 추가 줄이 서도 모양이 그대로다(사용자 지시 2026-11-26). */
+.production-warehouse-section table {
+  table-layout: fixed;
 }
 
-/* 창고 이름이 길어 조회 줄 선택칸 폭(176px · app.css)을 풀고 결재자 선택칸처럼 줄 폭을 나눠 쓴다. */
-.production-warehouse-section .filter-bar.production-warehouse-add > .field-cell:first-child {
-  flex: 1 1 14rem;
-  width: auto;
-  min-width: 0;
-  max-width: none;
-}
-
-.filter-bar.production-warehouse-add > .field-cell:first-child > :not(.field-label, .field-note) {
+/* 생산 창고 표 안 추가 줄 — 창고 선택칸은 칸 폭을 다 쓰고, [추가] · [취소] 는 가로로 붙인다. */
+.production-warehouse-add-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
   width: 100%;
+  text-align: left;
 }
 
-.filter-bar.production-warehouse-add > .field-cell.production-warehouse-add-actions {
-  flex-direction: row;
-  align-items: center;
+.production-warehouse-add-actions {
+  display: inline-flex;
   gap: var(--space-2);
+  white-space: nowrap;
 }
 
 /* 「자격 추가」 — 자격 표 위 줄 오른쪽 끝(사용자 지시 2026-11-25). */
 .common-code-qualification-add-row {
-  display: flex;
-  justify-content: flex-end;
   margin-bottom: var(--space-3);
 }
 
@@ -179,6 +174,14 @@ dialog .field-cell.users-roles-required-empty > div > button[aria-haspopup] {
   gap: var(--space-2) var(--space-4);
 }
 
+/* 역할 체크칸 + 이름 옆 ⓘ 한 줄(사용자 지시 2026-11-26). ⓘ 는 체크칸 라벨 밖 형제라 눌러도 체크가 바뀌지 않는다. */
+.common-code-partner-role {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
 /* 코드값 표 관리 열 — [사용 중지] · [수정] 한 줄(사용자 지시 2026-11-26). */
 .common-code-value-actions {
   display: inline-flex;
@@ -187,7 +190,7 @@ dialog .field-cell.users-roles-required-empty > div > button[aria-haspopup] {
   white-space: nowrap;
 }
 
-/* 사용 중지 확인 창 — 대상(굵게 · 한 단계 크게) · 설명 · 주의 줄(경고 안내 줄)(사용자 지시 2026-11-26). */
+/* 사용 중지 확인 창 — 설명 · 주의 줄(경고 안내 줄)(사용자 지시 2026-11-26). */
 .common-code-deactivate-body {
   display: grid;
   gap: var(--space-3);
@@ -197,12 +200,6 @@ dialog .field-cell.users-roles-required-empty > div > button[aria-haspopup] {
 .common-code-deactivate-body > p {
   max-width: none;
   margin: 0;
-}
-
-.common-code-deactivate-target {
-  font: var(--type-title-sm);
-  font-weight: 600;
-  letter-spacing: var(--type-title-sm-tracking);
 }
 
 .iqc-inspection-action-note.common-code-deactivate-note[data-tone] {

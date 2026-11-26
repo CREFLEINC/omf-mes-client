@@ -227,9 +227,11 @@ export const QualificationPane = ({
       )}
 
       {/*
-       * 「자격 추가」 — 기본 크기 빨간 단추를 줄 오른쪽 끝에(「+ 새 결재선」과 같은 모양 · 사용자 지시 2026-11-25).
+       * 무슨 목록인지 구획 제목 「자격·인증」 — 생산 창고 · 거래처 역할 구획 제목과 같은 모양(사용자 지시 2026-11-26).
+       * 「자격 추가」(기본 크기 빨간 단추 · 2026-11-25)는 그 제목 줄 오른쪽 끝(생산 창고의 「창고 추가」와 같은 배치).
        */}
-      <div className="common-code-qualification-add-row">
+      <div className="section-heading-row common-code-qualification-add-row">
+        <h3 className="subsection-title">{t.paneTitle}</h3>
         <Button leadingIcon={<Icon name="add" size={18} />} disabled={isLocked} onClick={onAdd}>
           {t.actions.add}
         </Button>

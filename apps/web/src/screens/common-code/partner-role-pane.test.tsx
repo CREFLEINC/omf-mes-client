@@ -40,7 +40,7 @@ const renderPane = (overrides: Partial<PartnerRolePaneProps> = {}) => {
   return { props, user: userEvent.setup() };
 };
 
-const detailPane = (): HTMLElement => screen.getByRole('region', { name: '거래처 기본 정보' });
+const detailPane = (): HTMLElement => screen.getByRole('region', { name: '거래처 상세 정보' });
 
 const rolePane = (): HTMLElement => screen.getByRole('region', { name: '거래처 역할' });
 
@@ -73,15 +73,14 @@ describe('PartnerRolePane — 기본 정보는 고칠 수 없다 (결정 12)', (
     expect(within(pane).queryAllByRole('spinbutton')).toHaveLength(0);
   });
 
-  /* 「할 수 없다」를 감추지 않는다 — 구획 머리에 사유를 상시 표시한다. */
-  it('구획 머리에 외부 수신본 안내가 보인다', () => {
+  /* 사용자 지시 2026-11-26 — 작업자 탭과 같은 구획 제목을 두고, 오른쪽 위 외부 수신본 안내는 걷었다. */
+  it('구획 제목 「거래처 상세 정보」가 서고 외부 수신본 안내는 없다', () => {
     renderPane();
 
     expect(
-      within(detailPane()).getByText(
-        '외부 시스템에서 받은 자료라 여기서 수정할 수 없습니다. 원본 시스템에서 변경하세요.',
-      ),
+      within(detailPane()).getByRole('heading', { name: '거래처 상세 정보' }),
     ).toBeInTheDocument();
+    expect(within(detailPane()).queryByText(/외부 시스템에서 받은 자료라/)).toBeNull();
   });
 
   it('거래처코드와 거래처명을 그대로 낸다', () => {
@@ -205,6 +204,44 @@ describe('PartnerRolePane — 역할 체크칸', () => {
       note.getAttribute('id'),
     );
     expect(roleCheckbox('고객사').getAttribute('aria-describedby')).toBeNull();
+  });
+
+  /*
+   * 사용자 지시 2026-11-26 — 무엇을 정하는 구획인지 제목으로 밝히고, 역할마다 이름 옆 ⓘ 에 설명을 둔다(늘 펼쳐 두지 않는다).
+   * 설명은 그 역할로 거래처 선택지를 좁히는 화면이 있는 역할에만 있다(외주 제작사 · 기타는 근거가 없어 ⓘ 도 없다).
+   */
+  it('역할 구획에 제목이 서고 근거가 있는 역할 이름 옆에만 ⓘ 가 선다', () => {
+    renderPane();
+
+    const pane = within(rolePane());
+    expect(pane.getByRole('heading', { name: '거래처 역할' })).toHaveClass('subsection-title');
+    const texts = [
+      '반품·클레임 입고 등록과 LOT 생산 이력 조회에서 고객사로 고를 수 있습니다.',
+      '공급사·품목 기본 정보와 LOT 생산 이력 조회에서 공급사로 고를 수 있습니다.',
+      '폐기 품의·기타출고와 제품 폐기 요청에서 폐기 업체로 고를 수 있습니다.',
+    ];
+    const tips = pane.getAllByRole('button', { name: /고를 수 있습니다\.$/ });
+    expect(tips.map((tip) => tip.getAttribute('aria-label'))).toEqual(texts);
+    // 늘 펼쳐 둔 설명 줄은 없다 — 문장은 ⓘ 의 이름으로만 있다.
+    for (const text of texts) expect(pane.queryByText(text)).toBeNull();
+    // ⓘ 는 체크칸 라벨 밖이라 그 칸과 같은 줄의 형제로 선다.
+    expect(
+      roleCheckbox('고객사')
+        .closest('label')
+        ?.contains(tips[0] ?? null),
+    ).toBe(false);
+  });
+
+  it('ⓘ 를 눌러도 체크가 바뀌지 않는다', async () => {
+    const { props, user } = renderPane();
+
+    await user.click(
+      within(rolePane()).getByRole('button', {
+        name: '반품·클레임 입고 등록과 LOT 생산 이력 조회에서 고객사로 고를 수 있습니다.',
+      }),
+    );
+
+    expect(props.onToggleRole).not.toHaveBeenCalled();
   });
 
   it('어휘 밖 역할이 없으면 그 안내를 내지 않는다', () => {
@@ -366,8 +403,10 @@ describe('PartnerRolePane — 화면이 역할 코드를 지어내지 않는다 
   it('역할을 개별로 더하거나 지우는 버튼이 없다', () => {
     renderPane({ isDirty: true });
 
+    /* 역할 이름 옆 ⓘ(설명 툴팁)는 조작 단추가 아니라 뺀다(사용자 지시 2026-11-26). */
     const names = within(rolePane())
       .getAllByRole('button')
+      .filter((button) => !button.classList.contains('info-tip'))
       .map((button) => button.textContent);
 
     expect(names).toEqual(['취소', '저장']);

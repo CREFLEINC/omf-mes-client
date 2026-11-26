@@ -2,7 +2,7 @@ import { Button, Chip, Dialog, IconButton, Table, useToast, type Column } from '
 import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useRef, useState } from 'react';
-import { useHref } from 'react-router';
+import { useNavigate } from 'react-router';
 
 import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -16,7 +16,7 @@ import {
   type WarehouseCandidate,
 } from './department-production-warehouse-queries';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
-import { SelectField } from './select-field';
+import { Select } from '../../patterns/select';
 import { ListEmpty } from '../../patterns/list-empty';
 
 type DepartmentProductionWarehouse = components['schemas']['DepartmentProductionWarehouse'];
@@ -208,75 +208,122 @@ export const useProductionWarehouseEditor = (
   };
 };
 
+/** 표 안 추가 줄 자리 — 실제 창고 id 와 겹치지 않는 값. */
+const ADD_ROW_ID = -1;
+const ADD_ROW: LinkedWarehouseRow = {
+  warehouseId: ADD_ROW_ID,
+  warehouseCode: '',
+  warehouseName: '',
+  plantId: ADD_ROW_ID,
+  isNew: false,
+};
+const isAddRow = (row: LinkedWarehouseRow): boolean => row.warehouseId === ADD_ROW_ID;
+
 export interface ProductionWarehouseSectionProps {
   editor: ProductionWarehouseEditor;
 }
 
 /**
  * 부서 정보 칸 안의 「생산 창고」 구획 — 연결 목록 · 창고 추가 · 해제.
- * 「재고 보기」는 W-01-07 을 새 탭으로 연다 — 편집 중인 폼을 잃지 않게. 권한은 그 화면이 막는다.
+ * 「재고 조회」는 같은 창에서 W-01-07 로 옮긴다(사용자 지시 2026-11-26). 권한은 그 화면이 막는다.
  */
 export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectionProps) => {
-  /* 표 아래 추가 줄 — 「창고 추가」를 눌렀을 때만 펼친다(결재선 정의의 결재 단계 추가 줄과 같다 · 사용자 지시 2026-11-25). */
+  /* 표 안 맨 아래 추가 줄 — 「창고 추가」를 눌렀을 때만 선다(사용자 지시 2026-11-25 · 표 안으로 2026-11-26). */
   const [isAdding, setIsAdding] = useState(false);
   const [addValue, setAddValue] = useState('');
-  /* 라우터 기준 주소(basename)를 붙인 W-01-07 주소 — 종전 링크(`Link to`)가 내던 주소와 같다. */
-  const stockStatusHref = useHref(STOCK_STATUS_PATH);
+  const navigate = useNavigate();
 
   const columns: Column<LinkedWarehouseRow>[] = [
     {
       key: 'plant',
       header: t.columns.plant,
+      /* 열 폭을 고정한다 — 창고를 넣거나 추가 줄이 서도 표 모양이 바뀌지 않게(사용자 지시 2026-11-26). */
+      width: '20%',
       align: 'center',
-      render: (row) => editor.plantName(row.plantId),
+      render: (row) => {
+        if (!isAddRow(row)) return editor.plantName(row.plantId);
+        /* 고른 창고의 공장 — 고르기 전에는 빈 칸 표기. */
+        const picked = editor.candidates.find(
+          (warehouse) => String(warehouse.warehouseId) === addValue,
+        );
+        return picked === undefined ? '—' : editor.plantName(picked.plantId);
+      },
     },
     {
       key: 'warehouse',
       header: t.columns.warehouse,
       align: 'center',
-      render: (row) => (
-        <span className="production-warehouse-name">
-          {`${row.warehouseCode} ${row.warehouseName}`}
-          {row.isNew && (
-            <Chip size="sm" status="info">
-              {t.newlyLinked}
-            </Chip>
-          )}
-        </span>
-      ),
+      render: (row) =>
+        isAddRow(row) ? (
+          <span className="production-warehouse-add-cell">
+            <Select
+              aria-label={t.addRow.label}
+              options={addOptions}
+              value={addValue === '' ? null : addValue}
+              onChange={setAddValue}
+              placeholder={t.addRow.placeholder}
+              disabled={addOptions.length === 0}
+            />
+            {addOptions.length === 0 && <span className="field-note">{t.addRow.empty}</span>}
+          </span>
+        ) : (
+          <span className="production-warehouse-name">
+            {`${row.warehouseCode} ${row.warehouseName}`}
+            {row.isNew && (
+              <Chip size="sm" status="info">
+                {t.newlyLinked}
+              </Chip>
+            )}
+          </span>
+        ),
     },
     {
       key: 'stock',
       header: t.columns.stock,
+      width: '20%',
       align: 'center',
-      render: (row) => (
-        /* 밑줄 글자 링크 대신 일반 단추 모양(사용자 지시 2026-11-25). 새 탭으로 여는 동작은 종전과 같다. */
-        <Button
-          variant="outlined"
-          size="sm"
-          aria-label={t.viewStockLabel(`${row.warehouseCode} ${row.warehouseName}`)}
-          onClick={() =>
-            window.open(`${stockStatusHref}?wh=${String(row.warehouseId)}`, '_blank', 'noreferrer')
-          }
-        >
-          {t.viewStock}
-        </Button>
-      ),
+      render: (row) =>
+        isAddRow(row) ? null : (
+          /*
+           * 일반 단추 모양(사용자 지시 2026-11-25). 새 탭 대신 같은 창에서 재고 조회 화면으로 옮긴다(사용자 지시 2026-11-26) —
+           * 고친 채 떠나면 화면의 이탈 확인이 먼저 묻는다.
+           */
+          <Button
+            variant="outlined"
+            size="sm"
+            aria-label={t.viewStockLabel(`${row.warehouseCode} ${row.warehouseName}`)}
+            onClick={() => navigate(`${STOCK_STATUS_PATH}?wh=${String(row.warehouseId)}`)}
+          >
+            {t.viewStock}
+          </Button>
+        ),
     },
     {
       key: 'remove',
       /* 다른 화면 표처럼 「관리」 열 · 휴지통(사용자 지시 2026-11-25). */
       header: t.columns.manage,
       align: 'center',
-      width: '96px',
-      render: (row) => (
-        <IconButton
-          icon="delete"
-          size="sm"
-          aria-label={t.removeLabel(`${row.warehouseCode} ${row.warehouseName}`)}
-          onClick={() => editor.toggle(row.warehouseId)}
-        />
-      ),
+      /* 추가 줄의 [추가] · [취소] 가 들어갈 폭으로 늘 고정한다 — 추가 줄이 서도 열 폭이 바뀌지 않게(사용자 지시 2026-11-26). */
+      width: '144px',
+      render: (row) =>
+        isAddRow(row) ? (
+          <span className="production-warehouse-add-actions">
+            {/* 창고를 고르기 전에는 꺼진 단추로만 — 칸의 「창고를 선택하세요」가 이미 말한다. */}
+            <Button variant="outlined" size="sm" disabled={addValue === ''} onClick={handleAdd}>
+              {t.addRow.confirm}
+            </Button>
+            <Button variant="outlined" size="sm" onClick={closeAddRow}>
+              {messages.common.cancel}
+            </Button>
+          </span>
+        ) : (
+          <IconButton
+            icon="delete"
+            size="sm"
+            aria-label={t.removeLabel(`${row.warehouseCode} ${row.warehouseName}`)}
+            onClick={() => editor.toggle(row.warehouseId)}
+          />
+        ),
     },
   ];
 
@@ -315,7 +362,7 @@ export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectio
     return (
       <Table
         columns={columns}
-        rows={editor.rows}
+        rows={isAdding ? [...editor.rows, ADD_ROW] : editor.rows}
         empty={<ListEmpty icon="warehouse" title={t.none} />}
         getRowId={(row) => String(row.warehouseId)}
         density="compact"
@@ -350,29 +397,6 @@ export const ProductionWarehouseSection = ({ editor }: ProductionWarehouseSectio
       </div>
       <SaveErrorBanner error={editor.error} />
       {body()}
-
-      {isAdding && editor.loadError === null && !editor.isLoading && (
-        <div className="filter-bar production-warehouse-add">
-          <SelectField
-            label={t.addRow.label}
-            placeholder={t.addRow.placeholder}
-            options={addOptions}
-            value={addValue}
-            onChange={setAddValue}
-            disabled={addOptions.length === 0}
-            disabledReason={t.addRow.empty}
-          />
-          {/* 창고를 고르기 전에는 꺼진 단추로만 — 칸의 「창고를 선택하세요」가 이미 말한다. */}
-          <div className="field-cell field-cell-unlabeled production-warehouse-add-actions">
-            <Button variant="outlined" disabled={addValue === ''} onClick={handleAdd}>
-              {t.addRow.confirm}
-            </Button>
-            <Button variant="outlined" onClick={closeAddRow}>
-              {messages.common.cancel}
-            </Button>
-          </div>
-        </div>
-      )}
 
       <Dialog
         open={editor.pendingConfirm !== null}

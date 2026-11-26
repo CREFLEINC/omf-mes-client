@@ -26,7 +26,7 @@ export const commonCode: Translated<typeof ko.commonCode> = {
     worker: 'Công nhân',
     workerDetail: 'Thông tin chi tiết công nhân',
     partner: 'Đối tác',
-    partnerDetail: 'Thông tin cơ bản của đối tác',
+    partnerDetail: 'Thông tin chi tiết đối tác',
     partnerRoles: 'Vai trò đối tác',
     /** 목록 옆 상세 칸(통일 배치 · #350) — 안에 정보 · 하위 구획을 쌓는다. */
     detail: 'Chi tiết',
@@ -48,11 +48,10 @@ export const commonCode: Translated<typeof ko.commonCode> = {
     deactivateCodeGroupTitle: 'Ngừng sử dụng nhóm mã?',
     deactivateDepartmentTitle: 'Ngừng sử dụng phòng ban?',
     deactivateCodeGroupDescription:
-      'Sau khi ngừng sử dụng, không thể chọn mới nhóm mã này. Các bản ghi hiện có vẫn hiển thị nhóm mã đã được chọn.',
+      'Khi ngừng sử dụng sẽ không thể chọn mới. Các bản ghi hiện có vẫn hiển thị nhóm mã này.',
     deactivateDepartmentDescription:
-      'Sau khi ngừng sử dụng, không thể chọn mới phòng ban này. Các bản ghi hiện có vẫn hiển thị phòng ban đã được chọn.',
-    deactivateTarget: (name: string, code: string): string => `${name} (${code})`,
-    deactivateWarning: 'Sau khi ngừng sử dụng sẽ không thể sử dụng lại.',
+      'Khi ngừng sử dụng sẽ không thể chọn mới. Các bản ghi hiện có vẫn hiển thị phòng ban này.',
+    deactivateWarning: 'Sau khi ngừng sử dụng sẽ không thể tiếp tục sử dụng lại.',
   },
   optionsTruncated:
     'Chỉ hiển thị một phần danh sách chọn. Không thấy giá trị cần tìm thì hãy báo người phụ trách.',
@@ -172,7 +171,7 @@ export const commonCode: Translated<typeof ko.commonCode> = {
         manage: 'Quản lý',
         remove: 'Gỡ',
       },
-      newlyLinked: 'Mới liên kết',
+      newlyLinked: 'Chưa lưu',
       add: 'Thêm kho',
       viewStock: 'Xem tồn kho',
       viewStockLabel: (warehouse: string): string => `Xem tồn kho ${warehouse}`,
@@ -317,6 +316,14 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       disposal: 'Đơn vị xử lý hủy',
       other: 'Khác',
     },
+    descriptions: {
+      customer:
+        'Có thể chọn làm khách hàng ở Đăng ký nhập hàng trả lại·khiếu nại và Tra cứu lịch sử sản xuất LOT.',
+      supplier:
+        'Có thể chọn làm nhà cung cấp ở Thông tin mặc định nhà cung cấp·mặt hàng và Tra cứu lịch sử sản xuất LOT.',
+      disposal:
+        'Có thể chọn làm đơn vị xử lý hủy ở Phê duyệt hủy·xuất khác và Yêu cầu hủy sản phẩm.',
+    },
     /* 통째 교체 저장에서 목록에 없는 역할은 조용히 해제되므로 감추지 않는다. */
     unknownBadge: 'Vai trò màn hình này không biết',
     unknownNote:
@@ -408,7 +415,7 @@ export const commonCode: Translated<typeof ko.commonCode> = {
     dialog: {
       deactivateTitle: 'Ngừng sử dụng giá trị mã?',
       deactivateDescription:
-        'Sau khi ngừng sử dụng, không thể chọn mới giá trị mã này. Các bản ghi hiện có vẫn hiển thị giá trị mã đã được chọn.',
+        'Khi ngừng sử dụng sẽ không thể chọn mới. Các bản ghi hiện có vẫn hiển thị giá trị mã này.',
     },
   },
 };

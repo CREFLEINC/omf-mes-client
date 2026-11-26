@@ -1,7 +1,8 @@
-import { Chip, Icon } from '@crefle/web-ui';
+import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import type { LookupSource } from '../../patterns/lookup-display';
 import { UsageChip } from '../../patterns/usage-chip';
 import { lookupLabel } from './code-options';
@@ -57,19 +58,14 @@ export const WorkerDetailPane = ({
 }: WorkerDetailPaneProps) => (
   <section className="pane" aria-label={t.panes.workerDetail}>
     {/*
-     * 사용자 관리 상세와 같은 머리(제목 줄). 읽기 전용 안내 라벨은 제목 바로 오른쪽 같은 줄 — 좁으면 다음 줄로
-     * 내려간다(사용자 지시 2026-11-26).
+     * 사용자 관리 상세와 같은 머리(제목 줄). 읽기 전용 안내는 제목 옆 ⓘ — 마우스를 올리면 같은 문구가 보인다
+     * (생산 창고 제목 옆 ⓘ 와 같은 방식 · 사용자 지시 2026-11-26).
      */}
     <div className="pane-heading-row users-roles-heading common-code-heading-with-note common-code-heading-wrap">
-      <h3 className="pane-title">{t.panes.workerDetail}</h3>
-      <p
-        className="iqc-inspection-action-note common-code-heading-note common-code-readonly-note"
-        data-tone="info"
-        role="note"
-      >
-        <Icon name="info" size={16} aria-hidden />
-        {t.worker.readOnlyNotice}
-      </p>
+      <div className="info-label">
+        <h3 className="pane-title">{t.panes.workerDetail}</h3>
+        <InfoTip text={t.worker.readOnlyNotice} />
+      </div>
       {headingNote}
     </div>
 

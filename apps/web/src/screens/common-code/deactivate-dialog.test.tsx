@@ -12,8 +12,7 @@ const renderDialog = (overrides: Partial<Parameters<typeof DeactivateDialog>[0]>
     <DeactivateDialog
       open
       title="코드그룹을 사용 중지할까요?"
-      target="합성 코드그룹 A (SYN-GRP-01)"
-      description="사용 중지하면 이 코드그룹을 새로 선택할 수 없습니다. 기존 기록에는 이미 선택된 코드그룹이 그대로 표시됩니다."
+      description="사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 코드그룹이 그대로 표시됩니다."
       onClose={onClose}
       onConfirm={onConfirm}
       isSaving={false}
@@ -34,21 +33,17 @@ describe('DeactivateDialog', () => {
     ).toBeInTheDocument();
   });
 
-  /* 사용자 지시 2026-11-26 — 대상(굵게) · 설명 · 주의 줄 순서. */
-  it('대상 「이름 (코드)」 · 설명 · 주의 줄을 차례로 낸다', () => {
+  /* 사용자 지시 2026-11-26 — 제목 아래 대상 줄 없이 설명 · 주의 줄 순서. */
+  it('대상 줄 없이 설명 · 주의 줄을 차례로 낸다', () => {
     renderDialog();
 
     const dialog = within(screen.getByRole('dialog'));
-    const target = dialog.getByText('합성 코드그룹 A (SYN-GRP-01)');
-    expect(target).toHaveClass('common-code-deactivate-target');
+    expect(dialog.queryByText(/\(SYN-/)).toBeNull();
     const description = dialog.getByText(
-      '사용 중지하면 이 코드그룹을 새로 선택할 수 없습니다. 기존 기록에는 이미 선택된 코드그룹이 그대로 표시됩니다.',
+      '사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 코드그룹이 그대로 표시됩니다.',
     );
-    const warning = dialog.getByText('사용 중지 후에는 다시 사용할 수 없습니다.');
+    const warning = dialog.getByText('사용 중지 후에는 사용을 재개할 수 없습니다.');
     expect(warning).toHaveAttribute('data-tone', 'warning');
-    expect(
-      target.compareDocumentPosition(description) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
     expect(
       description.compareDocumentPosition(warning) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
@@ -93,6 +88,15 @@ describe('DeactivateDialog', () => {
   });
 
   /* 결재선 정의의 확인 창과 같은 모양 — 닫기(X) 없이 바닥 단추 둘로만 나간다(사용자 지시 2026-11-25). */
+  /* 사용자 지시 2026-11-26 — 빨간색은 [사용 중지]만. [취소]는 앱의 중립 outlined 단추 모양이다. */
+  it('[취소]는 중립색 단추이고 [사용 중지]는 기본 단추다', () => {
+    renderDialog();
+
+    const dialog = within(screen.getByRole('dialog'));
+    expect(dialog.getByRole('button', { name: '취소' })).toHaveClass('app-button-neutral');
+    expect(dialog.getByRole('button', { name: '사용 중지' })).not.toHaveClass('app-button-neutral');
+  });
+
   it('창 머리에 닫기(X)가 없다', () => {
     renderDialog();
 

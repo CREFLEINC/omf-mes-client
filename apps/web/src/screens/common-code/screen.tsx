@@ -2743,15 +2743,6 @@ export const CommonCodeScreen = () => {
         <DeactivateDialog
           open
           title={t.dialog.deactivateDepartmentTitle}
-          /* 대상 줄 — 창은 수정 폼(상세를 받은 뒤)에서만 열린다. 이미 받은 상세 값으로 낸다. */
-          target={
-            departmentDetail.data === undefined
-              ? ''
-              : t.dialog.deactivateTarget(
-                  departmentDetail.data.department.departmentName,
-                  departmentDetail.data.department.departmentCode,
-                )
-          }
           description={t.dialog.deactivateDepartmentDescription}
           onClose={() => {
             setIsDepartmentDeactivateOpen(false);
@@ -2774,15 +2765,6 @@ export const CommonCodeScreen = () => {
         <DeactivateDialog
           open
           title={t.dialog.deactivateCodeGroupTitle}
-          /* 대상 줄 — 창은 수정 폼(상세를 받은 뒤)에서만 열린다. 이미 받은 상세 값으로 낸다. */
-          target={
-            codeGroupDetail.data === undefined
-              ? ''
-              : t.dialog.deactivateTarget(
-                  codeGroupDetail.data.codeGroup.groupName,
-                  codeGroupDetail.data.codeGroup.groupCode,
-                )
-          }
           description={t.dialog.deactivateCodeGroupDescription}
           onClose={() => {
             setIsDeactivateOpen(false);

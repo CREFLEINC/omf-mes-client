@@ -155,7 +155,7 @@ const setup = (options: SetupOptions = {}) => {
   ];
   const stub = createStubFetch(routes);
 
-  renderWithProviders(<CommonCodeScreen />, {
+  const rendered = renderWithProviders(<CommonCodeScreen />, {
     fetch: async (request) => {
       requests.push({
         method: request.method,
@@ -169,7 +169,7 @@ const setup = (options: SetupOptions = {}) => {
   });
 
   const writes = () => requests.filter((request) => request.method === 'PUT');
-  return { user: userEvent.setup(), requests, writes };
+  return { user: userEvent.setup(), requests, writes, router: rendered.router };
 };
 
 const section = () => within(screen.getByRole('region', { name: t.title }));
@@ -194,22 +194,24 @@ const saveButton = () =>
   });
 
 describe('W-06-06 생산 창고 구획', () => {
-  it('US8-1 연결한 생산 창고를 공장과 창고로 보이고 「재고 보기」가 W-01-07 을 그 창고 조건으로 연다', async () => {
-    const { user } = setup();
-    /* 「재고 보기」는 링크 글자 대신 단추 모양이다(사용자 지시 2026-11-25) — 여는 주소 · 새 탭은 종전과 같다. */
+  it('US8-1 연결한 생산 창고를 공장과 창고로 보이고 「재고 조회」가 같은 창에서 W-01-07 을 그 창고 조건으로 연다', async () => {
+    const { user, router } = setup();
+    /* 「재고 조회」는 새 탭이 아니라 화면 이동이다(사용자 지시 2026-11-26). */
     const open = vi.spyOn(window, 'open').mockReturnValue(null);
 
     const table = await linkedTable();
     expect(table.getAllByRole('row')).toHaveLength(3);
     expect(table.getAllByText('합성 1공장')).toHaveLength(2);
     expect(table.getByText('SYN-PW-A 합성 생산창고 A')).toBeInTheDocument();
+    /* 출고 창고를 고르는 규칙은 제목 옆 ⓘ 의 설명으로 읽힌다(관리웹 정리 시안 A). */
+    expect(screen.getByRole('button', { name: t.help })).toBeInTheDocument();
     await user.click(
       table.getByRole('button', { name: t.viewStockLabel('SYN-PW-A 합성 생산창고 A') }),
     );
-    expect(open).toHaveBeenCalledWith('/logistics/stock-status?wh=7001', '_blank', 'noreferrer');
+    expect(open).not.toHaveBeenCalled();
     open.mockRestore();
-    /* 출고 창고를 고르는 규칙은 제목 옆 ⓘ 의 설명으로 읽힌다(관리웹 정리 시안 A). */
-    expect(screen.getByRole('button', { name: t.help })).toBeInTheDocument();
+    expect(router?.state.location.pathname).toBe('/logistics/stock-status');
+    expect(router?.state.location.search).toBe('?wh=7001');
   });
 
   it('US8-1 창고 추가로 여럿을 고르고 저장하면 전체 교체가 고른 창고를 모두 싣는다(뺀 것이 없으면 확인 없이)', async () => {

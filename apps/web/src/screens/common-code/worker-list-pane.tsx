@@ -234,17 +234,7 @@ export const WorkerListPane = ({
       {optionsNotice}
 
       <div className="filter-bar common-code-filter">
-        <SearchInput
-          containerClassName={FIT_PLACEHOLDER_CLASS}
-          label={t.filters.workerSearchLabel}
-          placeholder={t.filters.workerSearchPlaceholder}
-          ref={searchRef}
-          value={draft.q}
-          onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
-          onSearch={(value) => onApplyFilters({ ...draft, q: value })}
-          clearLabel={messages.common.clear}
-        />
-
+        {/* 순서는 「부서 선택」 → 「작업자 검색」(사용자 지시 2026-11-26). */}
         {/*
          * 규범 3-2 — 「SYN-DEPT-01 · 합성 부서 A」는 트리거 폭에 갇혀 잘린다
          * (디자인 시스템 이슈 #62). 판단 기준은 코드값이 아니라 선택지 문구다.
@@ -255,6 +245,17 @@ export const WorkerListPane = ({
           options={[{ value: '', label: t.filters.departmentAll }, ...departmentOptions]}
           value={draft.scopeId}
           onChange={(value) => setDraft((prev) => ({ ...prev, scopeId: value }))}
+        />
+
+        <SearchInput
+          containerClassName={FIT_PLACEHOLDER_CLASS}
+          label={t.filters.workerSearchLabel}
+          placeholder={t.filters.workerSearchPlaceholder}
+          ref={searchRef}
+          value={draft.q}
+          onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
+          onSearch={(value) => onApplyFilters({ ...draft, q: value })}
+          clearLabel={messages.common.clear}
         />
 
         {/* 해제 축이라 변경 즉시 적용한다. */}

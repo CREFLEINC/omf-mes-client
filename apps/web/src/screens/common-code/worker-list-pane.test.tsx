@@ -91,6 +91,17 @@ describe('WorkerListPane — 목록 표시', () => {
 });
 
 describe('WorkerListPane — 조건', () => {
+  /* 사용자 지시 2026-11-26 — 조회 조건은 「부서 선택」 → 「작업자 검색」 순서다. */
+  it('부서 선택이 작업자 검색보다 앞에 선다', () => {
+    renderPane();
+
+    const department = screen.getByRole('combobox', { name: '부서 선택' });
+    const search = screen.getByLabelText('작업자 검색');
+    expect(
+      department.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it('검색어를 고치고 조회를 누르면 그 조건을 알린다', async () => {
     const { onApplyFilters, user } = renderPane();
 

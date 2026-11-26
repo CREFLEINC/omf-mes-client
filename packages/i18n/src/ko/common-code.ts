@@ -23,7 +23,7 @@ export const commonCode = {
     worker: '작업자',
     workerDetail: '작업자 상세 정보',
     partner: '거래처',
-    partnerDetail: '거래처 기본 정보',
+    partnerDetail: '거래처 상세 정보',
     partnerRoles: '거래처 역할',
     /** 목록 옆 상세 칸(통일 배치 · #350) — 안에 정보 · 하위 구획을 쌓는다. */
     detail: '상세',
@@ -45,7 +45,7 @@ export const commonCode = {
       `사용 중지는 ${target}을 먼저 등록해야 할 수 있습니다.`,
   },
   /**
-   * 사용 중지 확인 창. 세 자원이 같은 틀(제목 · 대상 「이름 (코드)」 · 설명 · 주의 줄)을 쓰고
+   * 사용 중지 확인 창. 세 자원이 같은 틀(제목 · 설명 · 주의 줄)을 쓰고
    * 제목 · 설명만 자원마다 다르다(사용자 지시 2026-11-26). 코드값의 제목 · 설명은 `codeValue.dialog`에 있다.
    *
    * **참조 건수를 내지 않는다**(결정 10) — 화면이 쓸 수 있는 건수는 「코드 필드를 고칠 수 있는지」의
@@ -55,12 +55,10 @@ export const commonCode = {
     deactivateCodeGroupTitle: '코드그룹을 사용 중지할까요?',
     deactivateDepartmentTitle: '부서를 사용 중지할까요?',
     deactivateCodeGroupDescription:
-      '사용 중지하면 이 코드그룹을 새로 선택할 수 없습니다. 기존 기록에는 이미 선택된 코드그룹이 그대로 표시됩니다.',
+      '사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 코드그룹이 그대로 표시됩니다.',
     deactivateDepartmentDescription:
-      '사용 중지하면 이 부서를 새로 선택할 수 없습니다. 기존 기록에는 이미 선택된 부서가 그대로 표시됩니다.',
-    /** 대상 줄 — 이미 받은 목록 · 상세 값에서 낸다. */
-    deactivateTarget: (name: string, code: string): string => `${name} (${code})`,
-    deactivateWarning: '사용 중지 후에는 다시 사용할 수 없습니다.',
+      '사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 부서가 그대로 표시됩니다.',
+    deactivateWarning: '사용 중지 후에는 사용을 재개할 수 없습니다.',
   },
   /*
    * 선택 목록이 잘리거나 실패했다는 사실을 감추지 않는다 —
@@ -218,11 +216,11 @@ export const commonCode = {
         manage: '관리',
         remove: '해제',
       },
-      newlyLinked: '새로 연결',
+      newlyLinked: '저장 전',
       add: '창고 추가',
       /** W-01-07 재고 현황을 그 창고 조건으로 연다. */
-      viewStock: '재고 보기',
-      viewStockLabel: (warehouse: string): string => `${warehouse} 재고 보기`,
+      viewStock: '재고 조회',
+      viewStockLabel: (warehouse: string): string => `${warehouse} 재고 조회`,
       removeLabel: (warehouse: string): string => `${warehouse} 연결 해제`,
       /** 표 아래에 펼치는 추가 줄 — 결재선 정의의 결재 단계 추가 줄과 같은 모양(사용자 지시 2026-11-25). */
       addRow: {
@@ -407,6 +405,17 @@ export const commonCode = {
       other: '기타',
     },
     /*
+     * 체크칸마다 무엇을 정하는지(사용자 지시 2026-11-26). 그 역할로 거래처 선택지를 좁히는 화면이 코드에 있는 것만 적는다 —
+     * 근거: 고객사 return-receipt/lookups.ts · lot-trace/queries.ts, 공급사 supplier-item-default/edit-dialog.tsx ·
+     * lot-trace/queries.ts, 폐기 업체 disposal-issue/lookups.ts · product-disposal-request/queries.ts.
+     * 외주 제작사 · 기타는 그런 화면이 없어 적지 않는다.
+     */
+    descriptions: {
+      customer: '반품·클레임 입고 등록과 LOT 생산 이력 조회에서 고객사로 고를 수 있습니다.',
+      supplier: '공급사·품목 기본 정보와 LOT 생산 이력 조회에서 공급사로 고를 수 있습니다.',
+      disposal: '폐기 품의·기타출고와 제품 폐기 요청에서 폐기 업체로 고를 수 있습니다.',
+    },
+    /*
      * 계약이 값 목록을 다섯으로 확정했지만(#173) 서버가 그 밖의 코드를 아직 들고 있을 수 있다 —
      * 계약은 구현보다 앞선다. **감추지 않는다** — 통째 교체 저장에서 목록에 없는 역할은
      * 조용히 해제되기 때문이다.
@@ -542,7 +551,7 @@ export const commonCode = {
     dialog: {
       deactivateTitle: '코드값을 사용 중지할까요?',
       deactivateDescription:
-        '사용 중지하면 이 코드값을 새로 선택할 수 없습니다. 기존 기록에는 이미 선택된 코드값이 그대로 표시됩니다.',
+        '사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 코드값이 그대로 표시됩니다.',
     },
   },
 } as const;

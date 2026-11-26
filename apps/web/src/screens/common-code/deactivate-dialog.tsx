@@ -6,10 +6,8 @@ const t = messages.commonCode.dialog;
 
 export interface DeactivateDialogProps {
   open: boolean;
-  /** 어느 자원을 중지하는지. 세 자원이 같은 틀에 제목 · 대상 · 설명만 바꿔 쓴다(사용자 지시 2026-11-26). */
+  /** 어느 자원을 중지하는지. 세 자원이 같은 틀에 제목 · 설명만 바꿔 쓴다(사용자 지시 2026-11-26). */
   title: string;
-  /** 대상 줄 「이름 (코드)」 — 부르는 쪽이 이미 받은 목록 · 상세 값으로 만든다(새 요청을 내지 않는다). */
-  target: string;
   /** 중지하면 무엇이 달라지는지 — 자원 이름만 다르다. */
   description: string;
   onClose: () => void;
@@ -41,7 +39,6 @@ export interface DeactivateDialogProps {
 export const DeactivateDialog = ({
   open,
   title,
-  target,
   description,
   onClose,
   onConfirm,
@@ -58,7 +55,13 @@ export const DeactivateDialog = ({
     showCloseButton={false}
     footer={
       <>
-        <Button variant="outlined" disabled={isSaving} onClick={onClose}>
+        {/* [취소]는 중립색 — 빨간색은 [사용 중지]만(사용자 지시 2026-11-26 · 사용자 관리 화면과 같은 방식). */}
+        <Button
+          variant="outlined"
+          className="app-button-neutral"
+          disabled={isSaving}
+          onClick={onClose}
+        >
           {messages.common.cancel}
         </Button>
         <Button loading={isSaving} disabled={isSaving || confirmDisabled} onClick={onConfirm}>
@@ -69,7 +72,6 @@ export const DeactivateDialog = ({
   >
     {banner}
     <div className="common-code-deactivate-body">
-      <p className="common-code-deactivate-target">{target}</p>
       <p>{description}</p>
       <p className="iqc-inspection-action-note common-code-deactivate-note" data-tone="warning">
         <Icon name="warning" size={16} aria-hidden />

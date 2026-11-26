@@ -1126,19 +1126,20 @@ describe('CommonCodeScreen — 코드그룹 사용 중지 (C22)', () => {
   });
 
   /* 사용자 지시 2026-11-26 — 코드값 창과 같은 틀. 대상은 이미 받은 상세 값이다. */
-  it('확인 창이 제목 · 대상 · 설명 · 주의 줄을 낸다', async () => {
+  it('확인 창이 제목 · 설명 · 주의 줄을 내고 대상 줄은 없다', async () => {
     const { user } = await openEditForm();
 
     await user.click(within(codeGroupFormPane()).getByRole('button', { name: '사용 중지' }));
 
     const dialog = within(screen.getByRole('dialog', { name: '코드그룹을 사용 중지할까요?' }));
-    expect(dialog.getByText('합성 코드그룹 A (SYN-GRP-01)')).toBeInTheDocument();
+    // 제목 아래 대상 줄은 두지 않는다(사용자 지시 2026-11-26).
+    expect(dialog.queryByText('합성 코드그룹 A (SYN-GRP-01)')).toBeNull();
     expect(
       dialog.getByText(
-        '사용 중지하면 이 코드그룹을 새로 선택할 수 없습니다. 기존 기록에는 이미 선택된 코드그룹이 그대로 표시됩니다.',
+        '사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 코드그룹이 그대로 표시됩니다.',
       ),
     ).toBeInTheDocument();
-    expect(dialog.getByText('사용 중지 후에는 다시 사용할 수 없습니다.')).toBeInTheDocument();
+    expect(dialog.getByText('사용 중지 후에는 사용을 재개할 수 없습니다.')).toBeInTheDocument();
   });
 
   it('확인하면 :deactivate로 나가고 멱등 키와 If-Match가 둘 다 실린다', async () => {
@@ -2805,19 +2806,20 @@ describe('CommonCodeScreen — 코드값 사용 중지 (C39)', () => {
   });
 
   /* 사용자 지시 2026-11-26 — 제목 · 대상 「코드명 (코드)」 · 설명 · 주의 줄. 대상은 이미 받은 목록 값이다. */
-  it('확인 창이 제목 · 대상 · 설명 · 주의 줄을 낸다', async () => {
+  it('확인 창이 제목 · 설명 · 주의 줄을 내고 대상 줄은 없다', async () => {
     const { user } = await openForm();
 
     await user.click(rowDeactivate());
 
     const dialog = within(screen.getByRole('dialog', { name: '코드값을 사용 중지할까요?' }));
-    expect(dialog.getByText('합성 코드값 A (SYN-CV-01)')).toBeInTheDocument();
+    // 제목 아래 대상 줄은 두지 않는다(사용자 지시 2026-11-26).
+    expect(dialog.queryByText('합성 코드값 A (SYN-CV-01)')).toBeNull();
     expect(
       dialog.getByText(
-        '사용 중지하면 이 코드값을 새로 선택할 수 없습니다. 기존 기록에는 이미 선택된 코드값이 그대로 표시됩니다.',
+        '사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 코드값이 그대로 표시됩니다.',
       ),
     ).toBeInTheDocument();
-    expect(dialog.getByText('사용 중지 후에는 다시 사용할 수 없습니다.')).toBeInTheDocument();
+    expect(dialog.getByText('사용 중지 후에는 사용을 재개할 수 없습니다.')).toBeInTheDocument();
   });
 
   it('확인 창에 참조 건수를 내지 않는다', async () => {
@@ -4038,14 +4040,15 @@ describe('CommonCodeScreen — 부서 사용 중지 (C56)', () => {
     await user.click(within(departmentFormPane()).getByRole('button', { name: '사용 중지' }));
 
     const dialog = screen.getByRole('dialog', { name: '부서를 사용 중지할까요?' });
-    expect(within(dialog).getByText('합성 부서 A (SYN-DEPT-01)')).toBeInTheDocument();
+    // 제목 아래 대상 줄은 두지 않는다(사용자 지시 2026-11-26).
+    expect(within(dialog).queryByText('합성 부서 A (SYN-DEPT-01)')).toBeNull();
     expect(
       within(dialog).getByText(
-        '사용 중지하면 이 부서를 새로 선택할 수 없습니다. 기존 기록에는 이미 선택된 부서가 그대로 표시됩니다.',
+        '사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 부서가 그대로 표시됩니다.',
       ),
     ).toBeInTheDocument();
     expect(
-      within(dialog).getByText('사용 중지 후에는 다시 사용할 수 없습니다.'),
+      within(dialog).getByText('사용 중지 후에는 사용을 재개할 수 없습니다.'),
     ).toBeInTheDocument();
     expect(within(dialog).queryByText(/3건/)).not.toBeInTheDocument();
   });
@@ -4781,7 +4784,7 @@ const workerDetailPane = (): HTMLElement =>
  * 이 구획에서만 나오는 고정 안내가 보일 때가 채워진 시점이다.
  */
 const findLoadedWorkerDetailPane = async (): Promise<HTMLElement> => {
-  await screen.findByText(/외부 시스템에서 받은 자료라/);
+  await screen.findByRole('button', { name: /외부 시스템에서 받은 자료라/ });
   return workerDetailPane();
 };
 
@@ -4888,7 +4891,12 @@ describe('CommonCodeScreen — 작업자 선택과 기본 정보 (C58~C63)', () 
     expect(within(pane).queryAllByRole('textbox')).toHaveLength(0);
     expect(within(pane).queryAllByRole('combobox')).toHaveLength(0);
     expect(within(pane).queryAllByRole('checkbox')).toHaveLength(0);
-    expect(within(pane).queryAllByRole('button')).toHaveLength(0);
+    /* 제목 옆 ⓘ(안내 툴팁) 하나뿐이다 — 저장 · 수정 같은 조작 단추는 없다(사용자 지시 2026-11-26). */
+    expect(
+      within(pane)
+        .queryAllByRole('button')
+        .filter((button) => !button.classList.contains('info-tip')),
+    ).toHaveLength(0);
   });
 
   /* C60 — `editability`가 `EDITABLE`을 줘도 고정 문구를 낸다. */
@@ -4904,10 +4912,11 @@ describe('CommonCodeScreen — 작업자 선택과 기본 정보 (C58~C63)', () 
       '?tab=worker&wkr=5001',
     );
 
+    /* 제목 옆 ⓘ — 마우스를 올리면 보이는 같은 문구가 그 단추의 이름이다(사용자 지시 2026-11-26). */
     expect(
-      await screen.findByText(
-        '외부 시스템에서 받은 자료라 여기서 수정할 수 없습니다. 원본 시스템에서 변경하세요.',
-      ),
+      await screen.findByRole('button', {
+        name: '외부 시스템에서 받은 자료라 여기서 수정할 수 없습니다. 원본 시스템에서 변경하세요.',
+      }),
     ).toBeInTheDocument();
   });
 
@@ -6199,16 +6208,14 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
   it('고른 거래처의 기본 정보가 값 표기와 사유로 선다', async () => {
     renderScreen(partnerRoutes(), '?tab=partner&ptn=9001');
 
-    const pane = await screen.findByRole('region', { name: '거래처 기본 정보' });
+    const pane = await screen.findByRole('region', { name: '거래처 상세 정보' });
 
     expect(factValue(pane, '거래처코드')).toHaveTextContent('SAMPLE-PTNR-A');
     expect(within(pane).queryAllByRole('textbox')).toHaveLength(0);
     expect(within(pane).queryAllByRole('button')).toHaveLength(0);
-    expect(
-      within(pane).getByText(
-        '외부 시스템에서 받은 자료라 여기서 수정할 수 없습니다. 원본 시스템에서 변경하세요.',
-      ),
-    ).toBeInTheDocument();
+    /* 오른쪽 위 외부 수신본 안내는 걷었다(사용자 지시 2026-11-26). */
+    expect(within(pane).queryByText(/외부 시스템에서 받은 자료라/)).toBeNull();
+    expect(within(pane).getByRole('heading', { name: '거래처 상세 정보' })).toBeInTheDocument();
   });
 
   it('고르기 전에는 무엇이 채워지는지 안내한다', async () => {
@@ -6236,7 +6243,7 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
       '?tab=partner&ptn=9999',
     );
 
-    const pane = await screen.findByRole('region', { name: '거래처 기본 정보' });
+    const pane = await screen.findByRole('region', { name: '거래처 상세 정보' });
 
     expect(factValue(pane, '거래처코드')).toHaveTextContent('SAMPLE-PTNR-Z');
     expect(await screen.findByText('고객사')).toBeInTheDocument();
@@ -6259,7 +6266,7 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
       '?tab=partner&ptn=9001',
     );
 
-    const pane = await screen.findByRole('region', { name: '거래처 기본 정보' });
+    const pane = await screen.findByRole('region', { name: '거래처 상세 정보' });
 
     expect(factValue(pane, '거래처코드')).toHaveTextContent('SAMPLE-PTNR-A');
     expect(await screen.findByText('고객사')).toBeInTheDocument();
@@ -6277,7 +6284,7 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
     expect(
       within(partnerRolePane()).getByRole('status', { name: '거래처 정보를 불러오는 중' }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: '거래처 기본 정보' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '거래처 상세 정보' })).not.toBeInTheDocument();
   });
 
   /* C14 — 실패를 「없는 거래처」로 보이면 사실과 다른 안내가 된다. 조치도 다르다(재시도 대 다시 고르기). */
@@ -6360,7 +6367,7 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
       '?tab=partner&ptn=9001',
     );
 
-    expect(await screen.findByRole('region', { name: '거래처 기본 정보' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: '거래처 상세 정보' })).toBeInTheDocument();
     expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
     expect(screen.queryByText('지정된 역할이 없습니다')).not.toBeInTheDocument();
   });
