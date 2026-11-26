@@ -199,8 +199,8 @@ describe('IntegrationSyncScreen — 기간 필수 조회', () => {
     const { requests, user } = renderScreen([listRoute()], '?from=2026-08-01&to=2026-08-06');
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.clear(screen.getByLabelText('발생일 시작'));
-    await user.type(screen.getByLabelText('발생일 시작'), '2026-07-20');
+    await user.clear(screen.getByLabelText('연동일 시작'));
+    await user.type(screen.getByLabelText('연동일 시작'), '2026-07-20');
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(currentLocation()).toContain('from=2026-07-20');
@@ -213,14 +213,14 @@ describe('IntegrationSyncScreen — 기간 필수 조회', () => {
     const { requests, user } = renderScreen([listRoute()], '?from=2026-08-01&to=2026-08-06');
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.clear(screen.getByLabelText('발생일 시작'));
+    await user.clear(screen.getByLabelText('연동일 시작'));
 
     const searchButton = screen.getByRole('button', { name: '조회' });
     expect(searchButton).toBeDisabled();
 
     const reasonId = searchButton.getAttribute('aria-describedby') ?? '';
     expect(document.getElementById(reasonId)).toHaveTextContent(
-      '조회는 발생일을 모두 채운 뒤에 쓸 수 있습니다.',
+      '조회는 연동일을 모두 채운 뒤에 쓸 수 있습니다.',
     );
     expect(requestsTo(requests, LIST_PATH)).toHaveLength(1);
   });
@@ -229,22 +229,22 @@ describe('IntegrationSyncScreen — 기간 필수 조회', () => {
     const { user } = renderScreen([listRoute()], '?from=2026-08-01&to=2026-08-06');
     await screen.findByText('SAMPLE-KEY-0001');
 
-    await user.clear(screen.getByLabelText('발생일 종료'));
-    await user.type(screen.getByLabelText('발생일 종료'), '2026-07-01');
+    await user.clear(screen.getByLabelText('연동일 종료'));
+    await user.type(screen.getByLabelText('연동일 종료'), '2026-07-01');
 
     const searchButton = screen.getByRole('button', { name: '조회' });
     expect(searchButton).toBeDisabled();
 
     const reasonId = searchButton.getAttribute('aria-describedby') ?? '';
     expect(document.getElementById(reasonId)).toHaveTextContent(
-      '발생일 종료는 발생일 시작보다 앞설 수 없습니다.',
+      '연동일 종료는 연동일 시작보다 앞설 수 없습니다.',
     );
   });
 
   it('주소의 기간이 비어 있으면 조회하지 않고 기간을 고르라고 안내한다', async () => {
     const { requests } = renderScreen([listRoute()], '?from=&to=');
 
-    expect(await screen.findByText('발생일을 고르고 조회하세요')).toBeInTheDocument();
+    expect(await screen.findByText('연동일을 고르고 조회하세요')).toBeInTheDocument();
     expect(requestsTo(requests, LIST_PATH)).toHaveLength(0);
   });
 
@@ -278,7 +278,7 @@ describe('IntegrationSyncScreen — 목록 표시', () => {
       '문서 번호',
       '상태',
       '재시도 횟수',
-      '발생일시',
+      '연동 일시',
       '재처리',
     ]);
     expect(within(table).getAllByRole('row')).toHaveLength(messageRowFixtures.length + 1);

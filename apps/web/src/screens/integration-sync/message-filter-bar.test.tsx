@@ -76,8 +76,8 @@ describe('MessageFilterBar — 기간', () => {
   it('적용된 기간이 입력칸에 채워진다', () => {
     renderBar();
 
-    expect(screen.getByLabelText('발생일 시작')).toHaveValue('2026-08-01');
-    expect(screen.getByLabelText('발생일 종료')).toHaveValue('2026-08-06');
+    expect(screen.getByLabelText('연동일 시작')).toHaveValue('2026-08-01');
+    expect(screen.getByLabelText('연동일 종료')).toHaveValue('2026-08-06');
   });
 
   it('바깥에서 기간이 바뀌면 입력칸이 따라간다 — 초기화·뒤로가기가 화면에 반영돼야 한다', () => {
@@ -85,20 +85,20 @@ describe('MessageFilterBar — 기간', () => {
 
     rerenderWithPeriod({ from: '2026-07-01', to: '2026-07-31' });
 
-    expect(screen.getByLabelText('발생일 시작')).toHaveValue('2026-07-01');
+    expect(screen.getByLabelText('연동일 시작')).toHaveValue('2026-07-01');
   });
 
   it('같은 기간·조건 값의 새 객체가 와도 편집 중인 값을 보존한다', async () => {
     const { rerenderWithApplied, user } = renderBar();
 
-    await user.clear(screen.getByLabelText('발생일 종료'));
-    await user.type(screen.getByLabelText('발생일 종료'), '2026-08-10');
+    await user.clear(screen.getByLabelText('연동일 종료'));
+    await user.type(screen.getByLabelText('연동일 종료'), '2026-08-10');
     await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     await user.type(screen.getByLabelText('최소 재시도 횟수'), '3');
 
     rerenderWithApplied({ ...APPLIED }, { ...EMPTY_FILTERS });
 
-    expect(screen.getByLabelText('발생일 종료')).toHaveValue('2026-08-10');
+    expect(screen.getByLabelText('연동일 종료')).toHaveValue('2026-08-10');
     expect(screen.getByLabelText('최소 재시도 횟수')).toHaveValue(3);
   });
 
@@ -106,13 +106,13 @@ describe('MessageFilterBar — 기간', () => {
     {
       field: 'from',
       next: { from: '2026-07-01', to: APPLIED.to },
-      label: '발생일 시작',
+      label: '연동일 시작',
       expected: '2026-07-01',
     },
     {
       field: 'to',
       next: { from: APPLIED.from, to: '2026-07-31' },
-      label: '발생일 종료',
+      label: '연동일 종료',
       expected: '2026-07-31',
     },
   ] satisfies { field: keyof PeriodInput; next: PeriodInput; label: string; expected: string }[])(
@@ -129,8 +129,8 @@ describe('MessageFilterBar — 기간', () => {
   it('고치는 동안에는 조회가 나가지 않고 조회를 누를 때 고친 값이 넘어간다', async () => {
     const { onSearch, user } = renderBar();
 
-    await user.clear(screen.getByLabelText('발생일 종료'));
-    await user.type(screen.getByLabelText('발생일 종료'), '2026-08-10');
+    await user.clear(screen.getByLabelText('연동일 종료'));
+    await user.type(screen.getByLabelText('연동일 종료'), '2026-08-10');
     expect(onSearch).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: '조회' }));
@@ -141,7 +141,7 @@ describe('MessageFilterBar — 기간', () => {
   it('기간이 갖춰지지 않으면 조회를 잠그고 사유를 이어 준다', async () => {
     const { onSearch, user } = renderBar();
 
-    await user.clear(screen.getByLabelText('발생일 시작'));
+    await user.clear(screen.getByLabelText('연동일 시작'));
 
     const button = screen.getByRole('button', { name: '조회' });
     expect(button).toBeDisabled();

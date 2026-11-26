@@ -61,7 +61,7 @@ describe('MessageTable', () => {
   it('기간이 없어 아직 조회하지 않았으면 다른 안내를 낸다 — 결과가 없는 것과 다르다', () => {
     renderTable({ rows: [], hasPeriod: false });
 
-    expect(screen.getByText('발생일을 고르고 조회하세요')).toBeInTheDocument();
+    expect(screen.getByText('연동일을 고르고 조회하세요')).toBeInTheDocument();
     expect(screen.queryByText('조건에 맞는 연동 이력이 없습니다')).not.toBeInTheDocument();
   });
 

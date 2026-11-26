@@ -53,8 +53,8 @@ export const integrationSync = {
     } as Readonly<Record<string, string>>,
   },
   fields: {
-    periodFrom: '발생일 시작',
-    periodTo: '발생일 종료',
+    periodFrom: '연동일 시작',
+    periodTo: '연동일 종료',
     status: '상태 선택',
     interfaceCode: '연동 항목 선택',
     direction: '송수신 구분 선택',
@@ -129,7 +129,7 @@ export const integrationSync = {
     messageKey: '문서 번호',
     status: '상태',
     retryCount: '재시도 횟수',
-    createdAt: '발생일시',
+    createdAt: '연동 일시',
     lastErrorMessage: '오류 내용',
     retry: '재처리',
     /** 재시도 횟수 값 — 「0회」(#358). */
@@ -138,8 +138,8 @@ export const integrationSync = {
   /** 비활성 사유는 그 컨트롤의 이름으로 시작한다. */
   reasons: {
     searchNeedsPeriod:
-      '조회는 발생일을 모두 채운 뒤에 쓸 수 있습니다. 발생일 시작과 종료를 고르세요.',
-    periodReversed: '발생일 종료는 발생일 시작보다 앞설 수 없습니다.',
+      '조회는 연동일을 모두 채운 뒤에 쓸 수 있습니다. 연동일 시작과 종료를 고르세요.',
+    periodReversed: '연동일 종료는 연동일 시작보다 앞설 수 없습니다.',
   },
   loading: {
     messages: '연동 이력 목록을 불러오는 중',
@@ -203,7 +203,7 @@ export const integrationSync = {
   },
   empty: {
     noResultTitle: '조건에 맞는 연동 이력이 없습니다',
-    noPeriodTitle: '발생일을 고르고 조회하세요',
+    noPeriodTitle: '연동일을 고르고 조회하세요',
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
   },
   values: {
