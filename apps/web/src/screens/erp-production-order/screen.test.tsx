@@ -129,7 +129,6 @@ const findRow = async (orderNo: string): Promise<HTMLElement> => {
 describe('ErpProductionOrderScreen', () => {
   it('주소의 조건을 계약 밖 질의까지 실어 목록을 부르고, 값을 이름으로 풀어 목록에 보인다', async () => {
     const { fetch, requests } = recordingFetch(normalRoutes);
-    const user = userEvent.setup();
     renderWithProviders(<ErpProductionOrderScreen />, {
       fetch,
       route: '/?status=UPDATED&item=7101&from=2026-10-01&to=2026-10-31&q=SYN',

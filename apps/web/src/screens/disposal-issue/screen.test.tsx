@@ -1585,7 +1585,7 @@ describe('DisposalIssueScreen — 고른 전표의 상세 조회', () => {
    * 짝 방향으로 그 응답에만 있는 수량이 화면에 없음을 함께 잰다.
    */
   it('라인 전용 경로를 부르지 않는다', async () => {
-    const { requests, user } = renderScreen(allRoutes(), '?gr=9001');
+    const { requests } = renderScreen(allRoutes(), '?gr=9001');
 
     await waitForLines();
 
@@ -3198,7 +3198,7 @@ describe('DisposalIssueScreen — 「승인 요청」이 열리는 조건', () =
 
   /** **둘째 방향** — 채우면 살아나지 않는 자리표시는 죽은 가지다. */
   it('값 목록을 채우고 다 넣으면 열린다', async () => {
-    const { user } = await setupReadyToSubmit();
+    await setupReadyToSubmit();
 
     expect(submitButton()).toBeEnabled();
   });
@@ -3219,7 +3219,7 @@ describe('DisposalIssueScreen — 「승인 요청」이 열리는 조건', () =
 
   /** 사유는 **막는 곳이 화면뿐이다** — 목이 공백만인 사유를 202로 받는다(감지기 M56). */
   it('상신 사유가 공백만이면 잠기고 그 사유가 보인다', async () => {
-    const { user } = await setupReadyToSubmit(allRoutes(chainRoutes()), '   ');
+    await setupReadyToSubmit(allRoutes(chainRoutes()), '   ');
 
     expect(submitButton()).toBeDisabled();
     expect(submitButton()).toHaveAccessibleDescription(t.actionReasons.needsReason);

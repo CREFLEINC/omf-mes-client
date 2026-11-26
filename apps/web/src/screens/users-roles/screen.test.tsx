@@ -4113,7 +4113,7 @@ describe('UsersRolesScreen 역할 등록', () => {
   });
 
   it('등록에 성공하면 방금 만든 역할이 열린다', async () => {
-    const { requests, search, user } = await openAndFill();
+    const { search, user } = await openAndFill();
 
     await user.click(within(roleCreateDialog()).getByRole('button', { name: '역할 추가' }));
 

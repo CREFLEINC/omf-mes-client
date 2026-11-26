@@ -181,14 +181,6 @@ const bomListRoute = (items = bomFixtures): StubRoute => ({
   respond: () => jsonResponse({ items }),
 });
 
-/** 기본 지정 — 응답은 **지정한 BOM 하나만** 돌려준다(기존 기본의 해제는 응답에 없다). */
-const setDefaultRoute = (bomId = 2001): StubRoute => ({
-  match: (request) =>
-    request.method === 'POST' && new URL(request.url).pathname === setDefaultPath(bomId),
-  respond: () =>
-    jsonResponse({ ...bomFixtures.find((row) => row.bomId === bomId), isDefault: true }),
-});
-
 const setDefaultFailureRoute = (status: number, body: unknown, bomId = 2001): StubRoute => ({
   match: (request) =>
     request.method === 'POST' && new URL(request.url).pathname === setDefaultPath(bomId),

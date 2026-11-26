@@ -4,7 +4,6 @@ import {
   Chip,
   EmptyState,
   Icon,
-  IconButton,
   SearchInput,
   Skeleton,
   Switch,

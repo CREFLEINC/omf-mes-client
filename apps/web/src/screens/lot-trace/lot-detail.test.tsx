@@ -418,11 +418,6 @@ describe('W-02-09 LOT 생산 이력 조회: 제품 LOT 상세', () => {
 });
 
 const FORBIDDEN_TITLE = 'LOT 생산 이력 조회 권한이 없습니다';
-const PERMISSION_DENIED = {
-  errors: [
-    { scope: 'screen', code: 'PERMISSION_DENIED', message: '이 기능을 쓸 권한이 없습니다.' },
-  ],
-};
 
 describe('W-02-09 LOT 생산 이력 조회: 권한 없음과 없는 LOT', () => {
   it('추적이 403이면 상세에 권한 안내를 보이고 [다시 조회]를 두지 않는다', async () => {

@@ -710,7 +710,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
       }),
     );
     await currentStep(tp.steps.assign);
-    const editor = await screen.findByRole('region', {
+    await screen.findByRole('region', {
       name: tp.assign.editorLabel('SYN-WO-9001'),
     });
     /*
@@ -795,7 +795,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     renderAt(`${WORKLIST}/${ORDER_NO}`, state);
     await currentStep(tp.steps.assign);
     expect(await screen.findByText(t.reasons.WORK_ORDER_LOCATION_MISSING)).toBeVisible();
-    const editor = await screen.findByRole('region', {
+    await screen.findByRole('region', {
       name: tp.assign.editorLabel('SYN-WO-9001'),
     });
     const save = await screen.findByRole('button', { name: tp.assign.actions.save });

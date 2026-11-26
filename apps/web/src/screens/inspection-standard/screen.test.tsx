@@ -2701,7 +2701,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
   it('「확정」은 확인 창을 거쳐 본문 없이 If-Match도 없이 나간다', async () => {
     const { requests, user } = renderSelectedVersion([versionTransitionRoute('confirm')]);
 
-    const form = await awaitVersionForm();
+    await awaitVersionForm();
     await user.click(screen.getByRole('button', { name: '확정' }));
 
     expect(await dialog()).toBeInTheDocument();
@@ -2721,7 +2721,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
   it('전이에 성공하면 버전 목록·상세·항목을 다시 조회한다', async () => {
     const { requests, user } = renderSelectedVersion([versionTransitionRoute('confirm')]);
 
-    const form = await awaitVersionForm();
+    await awaitVersionForm();
     const before = {
       detail: requestsTo(requests, VERSION_DETAIL_PATH).length,
       items: requestsTo(requests, ITEMS_PATH).length,
@@ -2751,7 +2751,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
       ),
     ]);
 
-    const form = await awaitVersionForm();
+    await awaitVersionForm();
     await user.click(screen.getByRole('button', { name: '확정' }));
     await user.click(within(await dialog()).getByRole('button', { name: '확정' }));
 
@@ -2765,7 +2765,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
   it('저장된 항목이 0건이면 확정이 비활성이고 사유가 보인다', async () => {
     renderSelectedVersion([itemListRoute(4002, [])]);
 
-    const form = await awaitVersionForm();
+    await awaitVersionForm();
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '확정' })).toBeDisabled();
