@@ -1,7 +1,8 @@
-import { Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { Button, type Column, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { SelectableTable } from '../../patterns/selectable-table';
 import { describeReference, toReference, type ReferenceSource } from './lookups';
 import { describeBlindCount, type CountView } from './types';
 
@@ -18,7 +19,7 @@ export interface CountColumnsInput {
 /**
  * 실사 목록의 열 구성.
  *
- * **열이 일곱이다.** 계약의 실사 헤더는 필드가 일곱뿐이고 그중 여섯이 여기 있다 —
+ * **열이 여섯이다.** 계약의 실사 헤더는 필드가 일곱뿐이고 그중 여섯이 여기 있다 —
  * 빠진 하나(`warehouseId`)는 이름으로 풀려 창고 열이 된다. 내부 번호는 어디에도 내지 않는다(#44).
  *
  * 열 폭의 도출(`docs/layout-conventions.md`의 방식 — 흡수 열에도 예산을 잡는다):
@@ -31,21 +32,17 @@ export interface CountColumnsInput {
  * | 계획일 | 120px | `YYYY-MM-DD` 10자 75px + 셀 여백 32px |
  * | 블라인드 | 88px | 「예」/「아니오」 |
  * | 상태 | 128px | 코드 문자열 |
- * | 선택 | 88px | `sm` 버튼 하나 |
- * | **지정 폭 합** | **720px** | |
+ * | **지정 폭 합** | **632px** | |
  * | 흡수 열 예산 | 200px | 「코드 · 이름」이 접히지 않고 읽히는 하한 |
- * | **합** | **920px** | `58rem`(928px) 안에 들어간다 — 8px 여유 |
+ * | **합** | **832px** | `58rem`(928px) 안에 들어간다 — 96px 여유 |
  *
- * **흡수 열이 실제로 받는 폭은 208px**(928 − 720)로 예산 200px보다 넓다. 지정 폭 합이 표
+ * **흡수 열이 실제로 받는 폭은 296px**(928 − 632)로 예산 200px보다 넓다. 지정 폭 합이 표
  * 하한에 가까우면 흡수 열이 몇십 px밖에 못 받아 「코드 · 이름」이 낱말 단위로 쪼개진다.
  * 그 어긋남은 열 폭 합만 세는 단언을 통과하므로 **남는 폭까지 함께 단언한다**.
  */
 export const buildCountColumns = ({
-  selectedCountId,
   warehouseLookup,
-  isLocked,
-  onToggleSelect,
-}: CountColumnsInput): Column<CountView>[] => [
+}: Pick<CountColumnsInput, 'warehouseLookup'>): Column<CountView>[] => [
   { key: 'inventoryCountNo', header: t.table.inventoryCountNo, width: '168px' },
   {
     key: 'warehouse',
@@ -75,36 +72,6 @@ export const buildCountColumns = ({
      * 배지(`Chip`)를 쓰지 않는 것은 이 화면이 비활성 표현에서 `Chip`을 피하는 것과 같은 줄기다
      * (설치본의 `StatusChipProps`에 `disabled`가 없어 표현이 어긋나는 갭 — 계획 §5.2).
      */
-  },
-  {
-    key: 'select',
-    header: t.table.select,
-    width: '88px',
-    render: (row) => {
-      const selected = row.inventoryCountId === selectedCountId;
-
-      return (
-        /*
-         * 접근 이름에 **실사번호**를 넣는다 — 「선택」이 행마다 되풀이되면 어느 건인지 알 수 없다.
-         * 내부 번호를 넣지 않는 이유는 그것이 화면 밖으로 새는 또 하나의 경로이기 때문이다.
-         */
-        <Button
-          variant="outlined"
-          size="sm"
-          disabled={isLocked}
-          aria-label={
-            selected
-              ? t.actions.deselectRow(row.inventoryCountNo)
-              : t.actions.selectRow(row.inventoryCountNo)
-          }
-          onClick={() => {
-            onToggleSelect(row.inventoryCountId);
-          }}
-        >
-          {selected ? t.actions.deselect : t.actions.select}
-        </Button>
-      );
-    },
   },
 ];
 
@@ -141,7 +108,7 @@ export const CountTable = ({
   onToggleSelect,
   onRetryReferences,
 }: CountTableProps) => {
-  const columns = buildCountColumns({ selectedCountId, warehouseLookup, isLocked, onToggleSelect });
+  const columns = buildCountColumns({ warehouseLookup });
 
   if (isLoading) {
     return (
@@ -174,17 +141,23 @@ export const CountTable = ({
        * 스크롤 상자는 디자인 시스템 `Table`이 이미 갖고 있어 우리가 만들지 않는다.
        */}
       <div className="wide-table">
-        <Table
-          density="compact"
+        {/*
+         * 행 아무 곳이나 누르면 그 실사를 고른다(사용자 지시 2026-11-26 「선택 단추가 아니라 행 클릭」 · 공용
+         * `SelectableTable`). 고른 행을 다시 누르면 선택을 푼다 — 종전 [선택 해제] 단추와 같은 동작. 잠금 중에는 누르지 않는다.
+         */}
+        <SelectableTable
           columns={columns}
           rows={rows}
-          /*
-           * 선택 열을 쓰지 않아도 지정한다 — 미지정이면 인덱스가 React key가 되어
-           * 쪽이 바뀔 때 앞 쪽의 행이 남아 보일 수 있다.
-           *
-           * **여기의 `String()`은 화면에 나오지 않는다** — React key로만 쓰이며 셀 텍스트가 되지 않는다.
-           */
           getRowId={(row) => String(row.inventoryCountId)}
+          activeId={selectedCountId === null ? null : String(selectedCountId)}
+          rowLabel={(row) =>
+            row.inventoryCountId === selectedCountId
+              ? t.actions.deselectRow(row.inventoryCountNo)
+              : t.actions.selectRow(row.inventoryCountNo)
+          }
+          onActivate={(row) => {
+            if (!isLocked) onToggleSelect(row.inventoryCountId);
+          }}
           empty={emptySlot()}
         />
       </div>

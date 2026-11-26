@@ -5847,7 +5847,7 @@ describe('StockAdjustScreen — 이력 목록의 줄', () => {
 describe('StockAdjustScreen — 이력 상세', () => {
   const selectSecondRow = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('row', {
         name: t.actions.selectAdjustmentRow('SAMPLE-IA-9302'),
       }),
     );

@@ -43,11 +43,7 @@ const renderTable = (overrides: Partial<GrTableProps> = {}) => {
 };
 
 describe('buildGrColumns — 열 폭 예산', () => {
-  const columns = buildGrColumns({
-    selectedReceiptId: null,
-    warehouseLookup: warehouseSource(),
-    onToggleSelect: vi.fn(),
-  });
+  const columns = buildGrColumns({ warehouseLookup: warehouseSource() });
 
   /**
    * 흡수 열이 둘이 되거나 지정 폭이 커지면 표가 하한을 넘겨 늘 가로 스크롤이 된다.
@@ -63,20 +59,19 @@ describe('buildGrColumns — 열 폭 예산', () => {
       0,
     );
 
-    expect(fixed).toBe(680);
+    expect(fixed).toBe(592);
     /* 흡수 열이 실제로 받는 폭이 예산(200px)보다 넓어야 「코드 · 이름」이 접히지 않는다. */
-    expect(TABLE_MIN_WIDTH_PX - fixed).toBe(248);
+    expect(TABLE_MIN_WIDTH_PX - fixed).toBe(336);
     expect(TABLE_MIN_WIDTH_PX - fixed).toBeGreaterThanOrEqual(200);
   });
 
-  it('열이 여섯이다', () => {
+  it('열이 다섯이다 — 선택 열 없이 행을 눌러 고른다', () => {
     expect(columns.map((column) => column.key)).toEqual([
       'goodsReceiptNo',
       'warehouse',
       'receiptTypeCode',
       'receiptDatetime',
       'statusCode',
-      'select',
     ]);
   });
 });
@@ -130,20 +125,20 @@ describe('GrTable — 행 표기', () => {
 });
 
 describe('GrTable — 고르기', () => {
-  it('행마다 어느 건인지 밝히는 선택 버튼이 있다', async () => {
+  it('행 아무 곳이나 누르면 그 전표를 고른다 — 행 이름이 어느 건인지 밝힌다', async () => {
     const { onToggleSelect, user } = renderTable();
 
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900001') }));
+    await user.click(screen.getByRole('row', { name: t.actions.selectRow('GR-2026-900001') }));
 
     expect(onToggleSelect).toHaveBeenCalledWith(9001);
   });
 
-  it('고른 행은 해제 버튼이 된다', () => {
+  it('고른 행은 강조되고 이름이 해제로 바뀐다', () => {
     renderTable({ selectedReceiptId: 9001 });
 
     expect(
-      screen.getByRole('button', { name: t.actions.deselectRow('GR-2026-900001') }),
-    ).toBeInTheDocument();
+      screen.getByRole('row', { name: t.actions.deselectRow('GR-2026-900001') }),
+    ).toHaveAttribute('aria-selected', 'true');
   });
 });
 

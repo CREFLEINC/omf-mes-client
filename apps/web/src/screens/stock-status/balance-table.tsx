@@ -10,6 +10,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { splitCodeName } from '../../patterns/split-code-name';
 import { formatTransactionAt } from './as-of';
 import type { InboundLotRef } from './filters';
@@ -52,13 +53,12 @@ const t = messages.stockStatus;
  * | 품질 상태 · 재고 상태 | 각 120px | 코드 배지 하나(8자 60 + 24 = 84) + 32 |
  * | 소유 | 128px | 「(자사 소유)」 또는 거래처명 아래에 소유 구분 코드 배지가 쌓인다 |
  * | 최근 거래 | 168px | **`yyyy-MM-dd HH:mm`** 16자 120 + 32(`as-of.ts`가 그 형태로 줄인다 · 사용자 지시 2026-10-19) |
- * | 상세(LOT별만) | 88px | 「선택 해제」 버튼 하나 |
  * | 입하 LOT(LOT별만 · 005 FR-035) | 168px | `IL-20261112-0001` 16자 120 + 글자 단추 여백 16 + 32 |
  *
  * | 보기 | 축 열 | 합 |
  * | --- | --- | ---: |
  * | 품목별 | 품목코드 · 품목명 | **1,256px** |
- * | LOT별 | 품목코드 · 품목명 · LOT · 입하 LOT | **1,656px**(상세 · 입하 LOT 열 포함) |
+ * | LOT별 | 품목코드 · 품목명 · LOT · 입하 LOT | **1,568px**(입하 LOT 열 포함) |
  * | 위치별 | 위치 · 품목코드 · 품목명 | **1,456px** |
  *
  * **세 합이 모두 928px을 넘는다.** 열이 9~10개인 표를 928px에 넣으려면 열마다 66~91px이라
@@ -79,7 +79,6 @@ const WIDTH = {
   code: '120px',
   ownership: '128px',
   lastTransactionAt: '168px',
-  select: '88px',
   inboundLot: '168px',
 } as const;
 
@@ -181,8 +180,34 @@ export const buildBalanceColumns = ({
      * **`null`이 확정된 뜻을 갖는 자리다**(계획 결정 10) — `toReference`에 그냥 넘기면
      * 「알 수 없음」이 되어 *값이 잘못됐다*는 뜻으로 뒤집힌다. 넘기기 전에 갈라낸다.
      */
-    render: (row) =>
-      row.lotId === null ? t.values.noLot : describeReference(toReference(lotLookup, row.lotId)),
+    render: (row) => {
+      if (row.lotId === null) return t.values.noLot;
+
+      const lotId = row.lotId;
+      const name = describeReference(toReference(lotLookup, lotId));
+      const isSelected = lotId === selectedLotId;
+
+      /*
+       * LOT 칸이 곧 상세를 여는 손잡이다(사용자 지시 2026-11-26 · 「선택」 열 대신 줄 아무 곳이나 눌러 연다 —
+       * 표 상자의 `rowPickHandlers` 가 줄 누름을 이 단추로 넘긴다). 고른 LOT 을 다시 누르면 상세를 닫는다.
+       *
+       * 접근 이름에 **LOT 이름**을 넣는다 — 어느 LOT을 여는지 알 수 있게. **번호를 넣지 않는다**(#44): 이름을
+       * 못 푼 줄에는 LOT 칸과 **같은 대체 표기**가 들어가, 눈으로 읽는 값과 보조기술이 읽는 값이 어긋나지 않는다.
+       */
+      return (
+        <button
+          type="button"
+          className={`link-cell ${ROW_PICK_CLASS}`}
+          aria-current={isSelected ? 'true' : undefined}
+          aria-label={isSelected ? t.actions.deselectRow(name) : t.actions.selectRow(name)}
+          onClick={() => {
+            onToggleSelect(lotId);
+          }}
+        >
+          {name}
+        </button>
+      );
+    },
   };
 
   const locationColumn: Column<BalanceView> = {
@@ -197,41 +222,6 @@ export const buildBalanceColumns = ({
       row.locationId === null
         ? t.values.empty
         : describeReference(toReference(locationLookup, row.locationId)),
-  };
-
-  /**
-   * 상세 열 — **LOT별 보기에만 붙는다.** 고르면 아래 구획에 그 LOT의 상세가 열린다
-   * (드로어도 창도 아니다 — 계획 결정 2. 목록이 계속 보인다).
-   *
-   * 접근 이름에 **LOT 이름**을 넣는다 — 「선택」이 줄마다 되풀이되면 어느 LOT을 여는지
-   * 알 수 없다. **번호를 넣지 않는다**(#44): 이름을 못 푼 줄에는 LOT 칸과 **같은 대체 표기**가
-   * 들어가, 눈으로 읽는 값과 보조기술이 읽는 값이 어긋나지 않는다.
-   */
-  const selectColumn: Column<BalanceView> = {
-    key: 'select',
-    header: t.table.select,
-    width: WIDTH.select,
-    render: (row) => {
-      /* 계약상 LOT별 보기에는 늘 채워진다. 비면 가리킬 대상이 없어 버튼을 만들지 않는다. */
-      if (row.lotId === null) return t.values.empty;
-
-      const lotId = row.lotId;
-      const name = describeReference(toReference(lotLookup, lotId));
-      const isSelected = lotId === selectedLotId;
-
-      return (
-        <Button
-          variant="outlined"
-          size="sm"
-          aria-label={isSelected ? t.actions.deselectRow(name) : t.actions.selectRow(name)}
-          onClick={() => {
-            onToggleSelect(lotId);
-          }}
-        >
-          {isSelected ? t.actions.deselect : t.actions.select}
-        </Button>
-      );
-    },
   };
 
   /**
@@ -369,11 +359,6 @@ export const buildBalanceColumns = ({
       width: WIDTH.lastTransactionAt,
       render: (row) => orEmptyMark(formatTransactionAt(row.lastTransactionAt)),
     },
-    /*
-     * **상세 열은 LOT별 보기에만 둔다.** 다른 두 보기의 줄은 계약상 `lotId`가 비어 있어
-     * 가리킬 LOT이 없다 — 열을 두면 누를 수 없는 버튼이 줄마다 생긴다.
-     */
-    ...(view === 'lot' ? [selectColumn] : []),
   ];
 
   /*
@@ -524,7 +509,8 @@ export const BalanceTable = ({
        * `.wide-table`이 표에 최소 폭을 준다 — 폭이 모자라면 짓누르는 대신 가로로 넘긴다.
        * 스크롤 상자는 디자인 시스템 `Table`이 이미 갖고 있어 우리가 만들지 않는다.
        */}
-      <div className="wide-table">
+      {/* 줄 아무 곳이나 누르면 그 LOT 의 상세를 연다(LOT별 보기 · 사용자 지시 2026-11-26). */}
+      <div className="wide-table" {...rowPickHandlers}>
         <Table
           density="compact"
           columns={columns}

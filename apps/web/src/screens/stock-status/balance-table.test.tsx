@@ -113,15 +113,15 @@ const SELECTION = { selectedLotId: null, onToggleSelect: (): void => undefined }
 
 describe('buildBalanceColumns — 보기마다의 열 구성', () => {
   /*
-   * 축 열만 보기마다 다르고 나머지 여덟은 세 보기가 공유한다. **LOT별에만 상세 열이 하나 더
-   * 붙는다** — 다른 두 보기의 줄은 LOT을 가리키지 않아 고를 대상이 없다.
+   * 축 열만 보기마다 다르고 나머지 여덟은 세 보기가 공유한다. 상세 열은 없다 — LOT별 보기는 줄을 눌러
+   * 상세를 연다(사용자 지시 2026-11-26).
    */
   /* FR-035 — LOT별 보기에 「입하 LOT」 열이 더해져 열한 열에서 열두 열이 됐다. */
   /* 품목이 품목코드 · 품목명 두 열로 나뉘어 보기마다 한 열씩 늘었다(사용자 지시 2026-11-24). */
-  it('품목별은 열 열, 위치별은 열한 열, LOT별은 열세 열이다', () => {
+  it('품목별은 열 열, 위치별은 열한 열, LOT별은 열두 열이다', () => {
     expect(buildBalanceColumns({ view: 'item', ...LOOKUPS, ...SELECTION })).toHaveLength(10);
     expect(buildBalanceColumns({ view: 'location', ...LOOKUPS, ...SELECTION })).toHaveLength(11);
-    expect(buildBalanceColumns({ view: 'lot', ...LOOKUPS, ...SELECTION })).toHaveLength(13);
+    expect(buildBalanceColumns({ view: 'lot', ...LOOKUPS, ...SELECTION })).toHaveLength(12);
   });
 
   /*
@@ -656,13 +656,23 @@ describe('BalanceTable — 배치', () => {
 
 describe('BalanceTable — LOT 고르기', () => {
   /*
-   * **LOT별 보기에만 상세 열이 있다.** 품목별·위치별의 줄은 계약상 `lotId`가 비어 있어
-   * 가리킬 LOT이 없다 — 열을 두면 누를 수 없는 버튼이 줄마다 생긴다.
+   * **상세 열을 두지 않는다**(사용자 지시 2026-11-26) — LOT별 보기는 줄 아무 곳이나 눌러 그 LOT 의 상세를 연다.
+   * LOT 칸의 글자 단추가 키보드 · 보조기술의 손잡이다.
    */
-  it('LOT별에만 상세 열이 있다', () => {
-    renderTable({ view: 'lot', rows: lotViewFixtures });
+  it('LOT별에도 상세 열이 없다 — 줄 아무 곳이나 누르면 그 LOT 을 고른다', async () => {
+    const { onToggleSelect, user } = renderTable({ view: 'lot', rows: lotViewFixtures });
 
-    expect(headerNames()).toContain(t.table.select);
+    expect(headerNames()).not.toContain(t.table.select);
+
+    const row = screen
+      .getByRole('button', { name: t.actions.selectRow('SAMPLE-LOT-0002') })
+      .closest('tr');
+    const lastCell = row?.cells[row.cells.length - 1];
+    if (lastCell === undefined) throw new Error('행이 없다');
+    await user.click(lastCell);
+
+    expect(onToggleSelect).toHaveBeenCalledTimes(1);
+    expect(onToggleSelect).toHaveBeenCalledWith(9402);
   });
 
   it('품목별에는 상세 열이 없다', () => {

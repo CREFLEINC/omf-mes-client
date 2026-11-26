@@ -831,7 +831,7 @@ const selectReceipt = async (
   user: ReturnType<typeof userEvent.setup>,
   goodsReceiptNo: string,
 ): Promise<void> => {
-  await user.click(screen.getByRole('button', { name: t.actions.selectRow(goodsReceiptNo) }));
+  await user.click(screen.getByRole('row', { name: t.actions.selectRow(goodsReceiptNo) }));
 };
 
 const search = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
@@ -1182,7 +1182,7 @@ describe('DisposalIssueScreen — 수명 표', () => {
     const { user } = renderScreen(allRoutes(), '?gr=9001');
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: t.actions.deselectRow('GR-2026-900001') }));
+    await user.click(screen.getByRole('row', { name: t.actions.deselectRow('GR-2026-900001') }));
 
     await waitFor(() => {
       expect(currentLocation()).toBe(ROUTE);
@@ -2138,7 +2138,7 @@ describe('DisposalIssueScreen — 줄 초안의 수명', () => {
     await user.type(qtyInput(1), '5');
 
     /* 같은 전표를 풀었다 다시 고르는 것도 「대상이 바뀐 것」이다. */
-    await user.click(screen.getByRole('button', { name: t.actions.deselectRow('GR-2026-900001') }));
+    await user.click(screen.getByRole('row', { name: t.actions.deselectRow('GR-2026-900001') }));
 
     await waitFor(() => {
       expect(currentLocation()).toBe(ROUTE);
@@ -2222,7 +2222,7 @@ const selectIssue = async (
   user: ReturnType<typeof userEvent.setup>,
   goodsIssueNo: string,
 ): Promise<void> => {
-  await user.click(screen.getByRole('button', { name: t.actions.selectIssueRow(goodsIssueNo) }));
+  await user.click(screen.getByRole('row', { name: t.actions.selectIssueRow(goodsIssueNo) }));
 };
 
 const openTab = async (user: ReturnType<typeof userEvent.setup>, label: string): Promise<void> => {
@@ -3782,7 +3782,7 @@ describe('DisposalIssueScreen — 배너와 결과의 매임', () => {
     await confirmSubmit(user);
     await screen.findByText(messages.httpError.forbidden);
 
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900002') }));
+    await user.click(screen.getByRole('row', { name: t.actions.selectRow('GR-2026-900002') }));
 
     await waitFor(() => {
       expect(screen.queryByText(messages.httpError.forbidden)).not.toBeInTheDocument();
@@ -4676,9 +4676,7 @@ describe('DisposalIssueScreen — 복구 경로를 끝까지 밟은 뒤', () => 
     /* 이력 탭에서 **다른** 미상신 전표(9502)를 골라 올린다. */
     fireEvent.click(screen.getByRole('tab', { name: t.tabs.history }));
     await screen.findByText('GI-2026-950002');
-    await user.click(
-      screen.getByRole('button', { name: t.actions.selectIssueRow('GI-2026-950002') }),
-    );
+    await user.click(screen.getByRole('row', { name: t.actions.selectIssueRow('GI-2026-950002') }));
     await screen.findByRole('region', { name: t.resubmit.label });
     await user.type(screen.getByLabelText(t.formFields.submitReason), '다른 전표를 올린다');
     await user.click(resubmitButton());
@@ -5048,7 +5046,7 @@ describe('DisposalIssueScreen — 떠난 뒤 돌아왔을 때', () => {
      * 고를 수 있는 시점(행 버튼의 잠금 해제)을 기다린다. 임의 시간 대신 화면 계약을 동기화
      * 지점으로 삼아 「잠긴 버튼을 눌러 아무 일도 없었던」경쟁 조건을 만들지 않는다.
      */
-    const previousReceipt = screen.getByRole('button', {
+    const previousReceipt = screen.getByRole('row', {
       name: t.actions.selectRow('GR-2026-900001'),
     });
 

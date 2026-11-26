@@ -6229,8 +6229,9 @@ dialog.routing-history-dialog {
 .lot-status-transition-pane .link-cell[aria-current='true'] {
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
-  background: var(--primary-container);
-  color: var(--on-primary-container);
+  /* 고른 줄은 파랑(#360) — 줄 바탕과 같은 정보 파랑. */
+  background: var(--semantic-info-container);
+  color: var(--semantic-info);
   text-decoration: none;
 }
 
@@ -31889,8 +31890,14 @@ dialog.layout-editor-dialog .layout-editor-body {
   background: var(--surface-container-high);
 }
 
-.parts-iqc-history tbody tr.is-open > td {
-  background: var(--surface-container-high);
+/* 펼친 줄은 목록의 고른 줄과 같은 파랑(#360). */
+.parts-iqc-history tbody tr.is-open > td,
+.parts-iqc-history > tbody > tr.is-open:hover > td {
+  background: var(--semantic-info-container);
+}
+
+.parts-iqc-history tbody tr.is-open > td:first-child {
+  box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 
 .parts-iqc-history-detail > td {

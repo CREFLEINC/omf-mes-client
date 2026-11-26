@@ -578,7 +578,7 @@ const selectCount = async (
   user: ReturnType<typeof userEvent.setup>,
   inventoryCountNo: string,
 ): Promise<void> => {
-  await user.click(screen.getByRole('button', { name: t.actions.selectRow(inventoryCountNo) }));
+  await user.click(screen.getByRole('row', { name: t.actions.selectRow(inventoryCountNo) }));
 };
 
 /**
@@ -1196,7 +1196,7 @@ describe('StocktakingScreen — 실사 고르기와 요약', () => {
 
     await screen.findByRole('group', { name: t.detail.summaryLabel });
 
-    await user.click(screen.getByRole('button', { name: t.actions.deselectRow('IC-2026-900011') }));
+    await user.click(screen.getByRole('row', { name: t.actions.deselectRow('IC-2026-900011') }));
 
     await waitFor(() => {
       expect(currentLocation()).toBe(ROUTE);
@@ -1986,9 +1986,7 @@ describe('StocktakingScreen — 개시 요청', () => {
 
     expect(openButton()).toBeDisabled();
     expect(within(listPane()).getByRole('button', { name: messages.common.search })).toBeDisabled();
-    expect(
-      within(listPane()).getByRole('button', { name: t.actions.selectRow('IC-2026-900011') }),
-    ).toBeDisabled();
+    /* 행 선택 잠금은 CountTable 테스트가 잰다 — 행에는 disabled 가 없다(행 클릭 · 사용자 지시 2026-11-26). */
     expect(within(openPane()).getByLabelText(t.fields.countType)).toBeDisabled();
     /*
      * **취소도 함께 잠긴다.** 이 한 줄이 `requestDiscardOpenDraft`의 핸들러 가드를 「등가」로
@@ -3343,9 +3341,7 @@ describe('StocktakingScreen — 저장 중 잠금', () => {
     expect(qtyField(1)).toBeDisabled();
     expect(screen.getByLabelText(t.lineTable.reasonLabel(1))).toBeDisabled();
     expect(within(listPane()).getByRole('button', { name: messages.common.search })).toBeDisabled();
-    expect(
-      within(listPane()).getByRole('button', { name: t.actions.deselectRow('IC-2026-900011') }),
-    ).toBeDisabled();
+    /* 행 선택 잠금은 CountTable 테스트가 잰다 — 행에는 disabled 가 없다(행 클릭 · 사용자 지시 2026-11-26). */
     expect(
       within(detailPane()).getByRole('button', { name: messages.common.cancel }),
     ).toBeDisabled();
@@ -4445,9 +4441,7 @@ describe('StocktakingScreen — 마감 중 잠금', () => {
     expect(qtyField(1)).toBeDisabled();
     expect(saveButton()).toBeDisabled();
     expect(within(listPane()).getByRole('button', { name: messages.common.search })).toBeDisabled();
-    expect(
-      within(listPane()).getByRole('button', { name: t.actions.deselectRow('IC-2026-900011') }),
-    ).toBeDisabled();
+    /* 행 선택 잠금은 CountTable 테스트가 잰다 — 행에는 disabled 가 없다(행 클릭 · 사용자 지시 2026-11-26). */
 
     await user.click(closeButton());
 
