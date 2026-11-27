@@ -97,7 +97,7 @@ export const DetailPane = ({
 
       {children}
 
-      <StepsPane steps={detail.steps} />
+      <StepsPane steps={detail.steps} stepName={statusName} />
 
       <SuccessorsPane successors={detail.successors} routes={routes} onOpen={onOpen} />
     </>

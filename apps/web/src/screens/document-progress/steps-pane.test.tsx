@@ -7,13 +7,16 @@ import { buildStepColumns, formatStepAt, StepsPane } from './steps-pane';
 
 const t = messages.documentProgress;
 
+/* 이름을 모르는 코드 이름 — 코드를 그대로 돌려준다(`useCodeNames` 가 이름을 못 찾았을 때와 같다). */
+const keepCode = (code: string): string => code;
+
 const rowTexts = (stepCode: string): string[] =>
   [...screen.getByRole('row', { name: new RegExp(stepCode) }).querySelectorAll('td')].map(
     (cell) => cell.textContent ?? '',
   );
 
 describe('buildStepColumns — 열 구성과 폭', () => {
-  const columns = buildStepColumns();
+  const columns = buildStepColumns(keepCode);
 
   it('네 열이다 — 단계 · 시각 · 처리자 · 원장', () => {
     expect(columns.map((column) => column.key)).toEqual([
@@ -32,7 +35,7 @@ describe('buildStepColumns — 열 구성과 폭', () => {
   });
 
   it('선언한 폭이 렌더 산출물의 열 폭과 같다', () => {
-    const { container } = render(<StepsPane steps={progressStepFixtures} />);
+    const { container } = render(<StepsPane stepName={keepCode} steps={progressStepFixtures} />);
     const rendered = [...container.querySelectorAll('col')].map((col) => col.style.width);
 
     expect(rendered).toEqual(columns.map((column) => column.width ?? ''));
@@ -62,7 +65,7 @@ describe('StepsPane', () => {
    * 두 단계 차례가 서버와 갈린다 — 사용자에게는 「경과가 뒤집힌」 화면이 된다.
    */
   it('응답 차례 그대로 그린다', () => {
-    render(<StepsPane steps={progressStepFixtures} />);
+    render(<StepsPane stepName={keepCode} steps={progressStepFixtures} />);
 
     const rows = screen.getAllByRole('row').slice(1);
 
@@ -74,15 +77,31 @@ describe('StepsPane', () => {
     ]);
   });
 
-  /* 단계 코드는 **그대로** 낸다 — 값 목록이 공통코드 소관이라 화면이 뜻을 붙이면 조용히 틀린다. */
-  it('단계 코드를 그대로 낸다', () => {
-    render(<StepsPane steps={[progressStep({ stepCode: 'SYN_STEP_UNKNOWN' })]} />);
+  /* 단계는 전표 상태와 같은 값집합이다 — 「상태」 칸과 같은 코드 이름으로 낸다. */
+  it('단계를 상태 코드 이름으로 낸다', () => {
+    const names = new Map([['SYN_STEP_POSTED', '전기완료']]);
+    render(
+      <StepsPane
+        stepName={(code) => names.get(code) ?? code}
+        steps={[progressStep({ stepCode: 'SYN_STEP_POSTED' })]}
+      />,
+    );
+
+    expect(screen.getByText('전기완료')).toBeInTheDocument();
+    expect(screen.queryByText('SYN_STEP_POSTED')).not.toBeInTheDocument();
+  });
+
+  /* 이름을 모르는 값은 **코드 그대로** 낸다 — 화면이 값을 삼키지 않는다. */
+  it('이름을 모르는 단계는 코드를 그대로 낸다', () => {
+    render(
+      <StepsPane stepName={keepCode} steps={[progressStep({ stepCode: 'SYN_STEP_UNKNOWN' })]} />,
+    );
 
     expect(screen.getByText('SYN_STEP_UNKNOWN')).toBeInTheDocument();
   });
 
   it('행위자 이름을 그대로 낸다', () => {
-    render(<StepsPane steps={progressStepFixtures} />);
+    render(<StepsPane stepName={keepCode} steps={progressStepFixtures} />);
 
     expect(rowTexts('SYN_STEP_REGISTERED')).toContain('홍길동');
   });
@@ -92,7 +111,7 @@ describe('StepsPane', () => {
    * 계약이 「사람이 한 것이 아니면 비어 있다」라고 적었으므로 그 사실을 옮긴다.
    */
   it('행위자 이름이 비면 사람이 하지 않은 단계라고 적는다', () => {
-    render(<StepsPane steps={progressStepFixtures} />);
+    render(<StepsPane stepName={keepCode} steps={progressStepFixtures} />);
 
     const texts = rowTexts('SYN_STEP_POSTED');
 
@@ -106,7 +125,7 @@ describe('StepsPane', () => {
    * 번호만으로는 찾을 수 없다.
    */
   it('원장 번호와 영업일이 한 칸에 함께 보인다', () => {
-    render(<StepsPane steps={progressStepFixtures} />);
+    render(<StepsPane stepName={keepCode} steps={progressStepFixtures} />);
 
     const ledgerCell = rowTexts('SYN_STEP_REGISTERED').at(-1) ?? '';
 
@@ -115,20 +134,20 @@ describe('StepsPane', () => {
   });
 
   it('영업일이 없으면 그 사실이 번호와 함께 보인다', () => {
-    render(<StepsPane steps={progressStepFixtures} />);
+    render(<StepsPane stepName={keepCode} steps={progressStepFixtures} />);
 
     expect(rowTexts('SYN_STEP_CHECKED').at(-1)).toBe(t.ledger.noBusinessDate('SYN-TX-9003'));
   });
 
   it('원장을 만들지 않은 단계는 값 없음 표식이다', () => {
-    render(<StepsPane steps={progressStepFixtures} />);
+    render(<StepsPane stepName={keepCode} steps={progressStepFixtures} />);
 
     expect(rowTexts('SYN_STEP_CLOSED').at(-1)).toBe(t.values.empty);
   });
 
   /* 원장 **진입을 만들지 않는다** — 원장 조회 화면이 이 저장소에 없다. 그 사실을 적던 안내 줄도 걷었다. */
   it('원장으로 가는 손잡이와 안내 줄이 없다', () => {
-    const { container } = render(<StepsPane steps={progressStepFixtures} />);
+    const { container } = render(<StepsPane stepName={keepCode} steps={progressStepFixtures} />);
 
     expect(container.querySelector('p.field-note')).toBeNull();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
@@ -137,7 +156,7 @@ describe('StepsPane', () => {
 
   /* 경과가 0건인 문서도 실재한다 — 표를 늘 그리고 `empty` 슬롯이 그 갈래를 맡는다. */
   it('경과가 없으면 빈 상태 문구가 보인다', () => {
-    render(<StepsPane steps={[]} />);
+    render(<StepsPane stepName={keepCode} steps={[]} />);
 
     expect(screen.getByText(t.steps.emptyTitle)).toBeInTheDocument();
   });
@@ -148,10 +167,10 @@ describe('StepsPane', () => {
    * 노드가 대신 지워진다(사본 체크리스트 2번).
    */
   it('앞 줄이 사라져도 뒷줄의 DOM 노드가 그대로 남는다', () => {
-    const { rerender } = render(<StepsPane steps={progressStepFixtures} />);
+    const { rerender } = render(<StepsPane stepName={keepCode} steps={progressStepFixtures} />);
     const kept = screen.getByRole('row', { name: /SYN_STEP_CLOSED/ });
 
-    rerender(<StepsPane steps={progressStepFixtures.slice(1)} />);
+    rerender(<StepsPane stepName={keepCode} steps={progressStepFixtures.slice(1)} />);
 
     expect(screen.getByRole('row', { name: /SYN_STEP_CLOSED/ })).toBe(kept);
   });
@@ -169,10 +188,10 @@ describe('StepsPane', () => {
     /* +09:00 18:00 은 공장 시각(UTC+7) 16:00 으로 보인다. */
     const late = progressStep({ occurredAt: '2026-08-06T18:00:00+09:00' });
 
-    const { rerender } = render(<StepsPane steps={[early, late]} />);
+    const { rerender } = render(<StepsPane stepName={keepCode} steps={[early, late]} />);
     const before = screen.getByRole('row', { name: /16:00/ });
 
-    rerender(<StepsPane steps={[late]} />);
+    rerender(<StepsPane stepName={keepCode} steps={[late]} />);
 
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(2);
     expect(screen.getByRole('row', { name: /16:00/ })).toBe(before);

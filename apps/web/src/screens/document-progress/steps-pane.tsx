@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 
 import { BoardTable } from '../../patterns/board-table';
 import { describeLedgerRef, readLedgerRef } from './ledger-ref';
+import type { CodeNameOf } from './queries';
 import type { DocumentProgressStepView } from './types';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
@@ -28,13 +29,16 @@ export const formatStepAt = (value: string): string => {
  *
  * 원장 칸은 번호와 영업일이 **한 칸에 짝으로** 나와 가장 길다 — 남는 폭을 다 받는다.
  */
-export const buildStepColumns = (): Column<DocumentProgressStepView>[] => [
+export const buildStepColumns = (stepName: CodeNameOf): Column<DocumentProgressStepView>[] => [
   {
     key: 'stepCode',
     header: t.steps.stepCode,
     width: '136px',
-    /* 코드를 **그대로** 낸다 — 값 목록이 공통코드 소관이라 화면이 뜻을 붙이면 조용히 틀린다. */
-    render: (step) => step.stepCode,
+    /*
+     * 단계는 전표 상태와 **같은 값집합**이다(계약 `DocumentProgressStep.stepCode` — `LOGISTICS_DOCUMENT_STATUS`).
+     * 「상태」 칸과 같은 공통코드 이름을 쓴다 — 화면이 이름을 따로 두면 두 칸이 갈린다. 모르는 값은 코드 그대로다.
+     */
+    render: (step) => stepName(step.stepCode),
   },
   {
     key: 'occurredAt',
@@ -65,6 +69,8 @@ export const buildStepColumns = (): Column<DocumentProgressStepView>[] => [
 
 export interface StepsPaneProps {
   steps: DocumentProgressStepView[];
+  /** 단계 이름 — 「상태」 칸과 같은 코드 이름(`LOGISTICS_DOCUMENT_STATUS`). */
+  stepName: CodeNameOf;
 }
 
 /**
@@ -78,14 +84,14 @@ export interface StepsPaneProps {
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const StepsPane = ({ steps }: StepsPaneProps) => (
+export const StepsPane = ({ steps, stepName }: StepsPaneProps) => (
   <section className="board-frame-sub" aria-label={t.steps.caption}>
     <h2 className="pane-title">{t.steps.caption}</h2>
     <BoardTable
       label={t.steps.caption}
       widthKey="omf-mes:document-progress:columns:steps"
-      minWidth="40rem"
-      columns={buildStepColumns()}
+      fit
+      columns={buildStepColumns(stepName)}
       rows={steps}
       /*
        * **단계 코드만으로는 행을 가릴 수 없다** — 같은 코드가 여러 번 일어날 수 있어 시각을 함께 잇는다.

@@ -10344,6 +10344,11 @@ dl.filter-bar.approval-inbox-detail-facts {
   min-width: max(var(--board-table-min, 38rem), var(--col-fixed, 0px) + 80px);
 }
 
+/* 상자 폭에 맞추는 표(`BoardTable` 의 `fit`) — 열 폭을 `useFitColumns` 가 상자에 맞추므로 표의 최소 폭을 풀어 칸 밖으로 밀리지 않게 한다. */
+.wide-table.board-table.board-table-fit table {
+  min-width: 0;
+}
+
 .wide-table.po-board-orders table {
   min-width: max(38rem + var(--col-grow, 0px), var(--col-floor, 0px));
 }
