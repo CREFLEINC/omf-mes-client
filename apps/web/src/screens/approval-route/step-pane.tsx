@@ -1,6 +1,5 @@
 import {
   Button,
-  Chip,
   type Column,
   EmptyState,
   Icon,
@@ -262,9 +261,10 @@ export const StepPane = ({
          * 대상이 없다. 판정 함수는 건드리지 않는다 — 핸들러와 버튼의 잠금이 같은 함수를 보고 있다.
          */}
         {drafts !== null && drafts.length > 0 && removeDisabledReason !== null && (
-          <Chip variant="status" status="info" size="sm">
-            <span id={removeReasonId}>{removeDisabledReason}</span>
-          </Chip>
+          /* 잠긴 까닭은 화면 읽기 도구에만 — 보이는 라벨은 두지 않는다(사용자 지시 2026-11-27 · #360). */
+          <span id={removeReasonId} className="visually-hidden">
+            {removeDisabledReason}
+          </span>
         )}
         {drafts !== null && (
           <Button
