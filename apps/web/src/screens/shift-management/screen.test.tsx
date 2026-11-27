@@ -273,7 +273,16 @@ describe('ShiftManagementScreen — 교대 관리 W-06-26 (#318)', () => {
     const dialog = within(await screen.findByRole('dialog', { name: td.editTitle }));
 
     await waitFor(() => expect(dialog.getByLabelText(td.code, { exact: false })).toBeDisabled());
-    expect(dialog.getByText(td.codeLocked(3))).toBeInTheDocument();
+    // 까닭은 칸 아래 글로 펼치지 않고 자물쇠 툴팁 · 화면 읽기 설명으로만 남는다(#360).
+    expect(dialog.getByLabelText(td.code, { exact: false })).toHaveAccessibleDescription(
+      td.codeLocked(3),
+    );
+    expect(dialog.getByText(td.codeLocked(3))).toHaveClass('visually-hidden');
+    expect(
+      dialog
+        .getAllByTitle(td.codeLocked(3))
+        .some((el) => el.classList.contains('locked-field-icon')),
+    ).toBe(true);
     await user.click(dialog.getByRole('button', { name: td.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));

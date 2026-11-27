@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
-import { SaveErrorBanner } from '../../patterns/master';
+import { CodeLockTextField, LockedFieldIcon, SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
 import { TimeField, type TimeFieldLabels } from '../../patterns/time-field';
 import { useSaveShift, useShiftDetail, type Shift } from './queries';
@@ -230,30 +230,27 @@ export const EditDialog = ({
           ) : (
             /*
              * 고를 공장이 하나뿐이면(공장이 정해진 목록 · 수정) 입력칸이 아니라 회색 값 칸으로 보인다 —
-             * 사용자 역할 권한 관리의 로그인 ID와 같은 모양. 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360).
+             * 이름 옆 「변경 불가」 라벨은 두지 않고, 시안 「잠긴 칸」처럼 오른쪽 끝에 자물쇠를 둔다(omf-all-around#360).
              */
             <div className="field-cell">
               <span className="field-label shift-management-locked-label">
                 <span id={plantLabelId}>{td.plant}</span>
               </span>
-              <p className="readonly-value" aria-labelledby={plantLabelId}>
-                {plant.plantName}
+              <p className="readonly-value locked-value" aria-labelledby={plantLabelId}>
+                <span className="locked-value-text">{plant.plantName}</span>
+                <LockedFieldIcon />
               </p>
             </div>
           )}
-          <TextField
+          {/* 잠긴 까닭은 칸 아래에 펼치지 않고 자물쇠에 마우스를 올리면 보인다(사용자 지시 2026-11-27 · #360). */}
+          <CodeLockTextField
             label={td.code}
             fullWidth
             required
             placeholder={td.codePlaceholder}
             maxLength={50}
             value={draft.shiftCode}
-            disabled={codeLocked}
-            helperText={
-              codeLocked && editability !== undefined
-                ? td.codeLocked(editability.referenceCount ?? 0)
-                : undefined
-            }
+            lockReason={codeLocked ? td.codeLocked(editability?.referenceCount ?? 0) : null}
             error={save.fieldErrors.shiftCode ?? (codeTaken ? td.codeTaken : undefined)}
             onChange={(event) => update({ shiftCode: event.target.value })}
           />

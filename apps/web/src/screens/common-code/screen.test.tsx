@@ -773,7 +773,9 @@ describe('CommonCodeScreen — 코드그룹 상세 (C14·C15·C19)', () => {
     /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 이름의 title · 숨긴 설명으로. */
     expect(screen.queryByText('변경 불가')).toBeNull();
     expect(
-      screen.getByTitle('지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.'),
+      screen.getAllByTitle(
+        '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
+      )[0],
     ).toHaveTextContent(/^그룹코드/);
     expect(screen.getByLabelText('그룹코드')).toHaveAccessibleDescription(
       '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',

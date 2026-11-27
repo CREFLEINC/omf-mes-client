@@ -1,4 +1,4 @@
-import { TextField, type TextFieldProps } from '@crefle/web-ui';
+import { Icon, TextField, type TextFieldProps } from '@crefle/web-ui';
 import { type ReactNode, useId } from 'react';
 
 /**
@@ -28,6 +28,16 @@ export const CodeLockLabel = ({
     </span>
   );
 };
+
+/**
+ * 잠긴 칸 오른쪽 끝 자물쇠(팝업 디자인 시안 「잠긴 칸」 · omf-all-around#360). 사유는 마우스를 올리면 보인다(`title`) —
+ * 화면 읽기 프로그램은 칸의 `aria-describedby` 로 읽으므로 아이콘은 숨긴다. 모양은 app.css `.locked-field-icon`.
+ */
+export const LockedFieldIcon = ({ reason }: { reason?: string }) => (
+  <span className="locked-field-icon" title={reason} aria-hidden="true">
+    <Icon name="lock" size={16} />
+  </span>
+);
 
 /**
  * 디자인 시스템 `TextField` 의 내장 라벨(`label`)을 쓰는 코드 칸용. 내장 라벨은 문자열이라 옆에 라벨을 끼울 자리가
@@ -63,14 +73,9 @@ export const CodeLockTextField = ({
   return (
     <div className="code-lock-field">
       <CodeLockLabel reason={lockReason} reasonId={reasonId}>
+        {/* 잠긴 칸은 이름만 — 고칠 수 없는 칸에 필수 * 를 달지 않는다(팝업 시안 라벨 규칙 · #360). */}
         <span className="field-label">
           <label htmlFor={inputId}>{label}</label>
-          {required === true && (
-            <span className="required-mark" aria-hidden="true">
-              {' '}
-              *
-            </span>
-          )}
         </span>
       </CodeLockLabel>
       <TextField
@@ -79,6 +84,7 @@ export const CodeLockTextField = ({
         required={required}
         disabled
         aria-describedby={[describedBy, reasonId].filter(Boolean).join(' ')}
+        trailingIcon={<LockedFieldIcon reason={lockReason} />}
       />
     </div>
   );
