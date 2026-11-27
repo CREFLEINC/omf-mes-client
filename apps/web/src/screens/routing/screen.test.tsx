@@ -1379,6 +1379,45 @@ describe('RoutingScreen — 작성 취소', () => {
     await waitFor(() => expect(router.state.location.search).toContain('rev=7002'));
   });
 
+  /*
+   * 사용자 보고(#360) — 작성중 Rev 하나뿐인 품목에서 작성 취소하면, 목록을 다시 받기 전 낡은 캐시를
+   * 「Rev 자동 고르기」가 다시 골라 지운 Rev 가 그대로 떠 있었다. 다시 받기가 늦어도 지운 Rev 를 고르지 않는다.
+   */
+  it('작성중 Rev 하나뿐일 때 작성 취소하면 지운 Rev 를 다시 열지 않는다', async () => {
+    const draftOnly = routingFixtures.filter((row) => row.routingId === 7003);
+    let discarded = false;
+    const { router, user } = renderScreen(
+      [
+        itemListRoute(),
+        {
+          match: (request) => isGet(request, '/planning/routings'),
+          /* 지운 뒤 다시 받기는 끝나지 않는다 — 캐시만으로 화면이 정해지는지 본다. */
+          respond: () =>
+            discarded ? new Promise<Response>(() => {}) : jsonResponse({ items: draftOnly }),
+        },
+        routingDetailRoute(),
+        operationListRoute(),
+        processListRoute(),
+        dependencyListRoute(),
+        discardRoute(() => {
+          discarded = true;
+          return new Response(null, { status: 204 });
+        }),
+      ],
+      '?item=5001&rev=7003',
+    );
+    if (router === null) throw new Error('데이터 라우터가 없습니다');
+    await screen.findByText('1차 사출');
+
+    await user.click(screen.getByRole('button', { name: '작성 취소' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Rev 3 작성 취소' });
+    await user.click(within(dialog).getByRole('button', { name: '작성 취소' }));
+
+    expect(await screen.findByText('작성을 취소했습니다.')).toBeInTheDocument();
+    await waitFor(() => expect(router.state.location.search).not.toContain('rev='));
+    expect(screen.queryByText('1차 사출')).not.toBeInTheDocument();
+  });
+
   it('확정 Rev 에는 작성 취소 단추가 없다', async () => {
     renderScreen(
       [

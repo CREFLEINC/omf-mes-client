@@ -2616,17 +2616,6 @@ h2:has(> .inspection-standard-dialog-title) {
   font: var(--type-title-sm);
 }
 
-/* 폐기 확인 — 결과 한 줄은 본문 크기, 이력 유지 안내는 그 아래 보조 글(사용자 시안 · #231). */
-.routing-obsolete-description {
-  margin: 0 0 var(--space-2);
-  color: var(--on-surface);
-}
-
-.routing-obsolete-note {
-  margin: 0;
-  color: var(--on-surface-variant);
-  font: var(--type-body-sm);
-}
 
 /* 공정 연결 창 — 제목 아래 품목코드, 연결이 없으면 빈 표 대신 안내 상자(사용자 시안 · #231). */
 .routing-dependency-subtitle {
@@ -2791,35 +2780,6 @@ dialog.routing-history-dialog {
   background: var(--state-hover-neutral);
 }
 
-/* 공정 사용 중지 확인 — 영향 상자: 이름 왼쪽 · 값 오른쪽, 줄 사이 옅은 선(사용자 시안 · #231). */
-.routing-impact-box {
-  display: grid;
-  margin: var(--space-3) 0 0;
-  padding: 0 var(--space-4);
-  border-radius: var(--radius-lg);
-  background: var(--surface-container-low, var(--surface-container));
-}
-
-.routing-impact-box > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-3) 0;
-}
-
-.routing-impact-box > div + div {
-  border-top: 1px solid var(--outline-variant);
-}
-
-.routing-impact-box dt {
-  color: var(--on-surface-variant);
-}
-
-.routing-impact-box dd {
-  margin: 0;
-  color: var(--on-surface);
-}
 
 /* 공정 추가 팝업 — 공정코드 · 공정명 · 공정 유형을 한 칸씩 위아래로(사용자 지시 · #231). */
 .form-grid.routing-process-create-form {
@@ -27185,13 +27145,6 @@ dialog.reference-picker-wide {
   align-items: stretch;
 }
 
-.pqc-web-label-hint {
-  margin-left: var(--space-2);
-  color: var(--on-surface-muted);
-  font: var(--type-label-sm);
-  font-weight: 400;
-}
-
 .pqc-web-disposition-field {
   gap: var(--space-2);
 }
@@ -30783,15 +30736,6 @@ dialog.layout-editor-dialog .layout-editor-body {
 .location-restrict-label {
   font: var(--type-label-lg);
   font-weight: 600;
-}
-
-.location-restrict-lock {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin: 0;
-  color: var(--on-surface-variant);
-  font: var(--type-body-sm);
 }
 
 /* 위치 목록 — 「지정 품목만 받기」를 켠 위치의 코드 뒤 자물쇠(피처 009). */
@@ -41395,13 +41339,6 @@ body:has(
   color: var(--semantic-error-text);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-}
-
-/* 일괄 재처리 확인 창의 덧붙임 한 줄(부분 처리 안내). */
-.integration-sync-confirm-note {
-  margin: 0;
-  font: var(--type-body-sm);
-  color: var(--on-surface-variant);
 }
 
 /* 재처리 확인 창의 대상 줄 — 「문서 번호 [GR-…]」 · 「대상 [N건]」. */
