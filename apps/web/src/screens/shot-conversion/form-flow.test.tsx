@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import { plantToday } from '../../patterns/plant-time';
 import { SessionProvider } from '../../patterns/session';
 import {
   createStubFetch,
@@ -10,6 +11,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { pickDate } from '../../test/date-picker';
 import {
   POLICY_ETAG,
   businessUnitsResponse,
@@ -168,16 +170,50 @@ describe('W-05-01 ② — 정책을 더한다', () => {
     expect(dialog().getByRole('button', { name: t.form.scopeNote })).toBeInTheDocument();
   });
 
-  it('비율 없이 저장하면 막고 그 칸에 표시한다', async () => {
+  /** 필수 칸(비율·유효 시작일)이 다 차야 저장이 열린다. 적용 범위는 비워도 「전체」라 막지 않는다. */
+  it('비율이 비어 있으면 저장이 잠기고 채우면 열린다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen();
+    await openCreate();
+
+    const save = dialog().getByRole('button', { name: messages.common.save });
+
+    expect(save).toBeDisabled();
+
+    await user.type(dialog().getByRole('textbox', { name: /비율/ }), '0.25');
+
+    expect(save).toBeEnabled();
+  });
+
+  /** ⭐ 유효 시작일은 오늘(공장 시각)로 채워 연다 — 고르지 않아도 그 날짜로 나간다. */
+  it('유효 시작일이 오늘로 채워져 등록 요청에 실린다', async () => {
     const user = userEvent.setup();
     const writes: Request[] = [];
 
     renderScreen({ writes });
     await openCreate();
+
+    await user.type(dialog().getByRole('textbox', { name: /비율/ }), '0.25');
     await user.click(dialog().getByRole('button', { name: messages.common.save }));
 
-    expect(dialog().getByRole('textbox', { name: /비율/ })).toBeInvalid();
-    expect(writes).toHaveLength(0);
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect((await bodyOf(onlyWrite(writes))).effectiveFrom).toBe(plantToday());
+  });
+
+  it('채워 둔 유효 시작일을 바꾸면 바꾼 날짜가 실린다', async () => {
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+
+    renderScreen({ writes });
+    await openCreate();
+
+    await user.type(dialog().getByRole('textbox', { name: /비율/ }), '0.25');
+    await pickDate(user, dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
+    await user.click(dialog().getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect((await bodyOf(onlyWrite(writes))).effectiveFrom).toBe('2026-01-01');
   });
 
   /** ⛔ 0이면 타발수가 늘 0이라 예방보전이 영영 오지 않는다 — 그 결과까지 말한다. */
@@ -189,7 +225,7 @@ describe('W-05-01 ② — 정책을 더한다', () => {
     await openCreate();
 
     await user.type(dialog().getByRole('textbox', { name: /비율/ }), '0');
-    await user.type(dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
+    await pickDate(user, dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
     await user.click(dialog().getByRole('button', { name: messages.common.save }));
 
     expect(dialog().getByText(t.validation.ratioPositive)).toBeInTheDocument();
@@ -207,7 +243,7 @@ describe('W-05-01 ② — 정책을 더한다', () => {
     await user.type(dialog().getByRole('textbox', { name: /비율/ }), '4');
     expect(dialog().getByText(t.validation.ratioOverOne)).toBeInTheDocument();
 
-    await user.type(dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
+    await pickDate(user, dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
     await user.click(dialog().getByRole('button', { name: messages.common.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -221,8 +257,8 @@ describe('W-05-01 ② — 정책을 더한다', () => {
     await openCreate();
 
     await user.type(dialog().getByRole('textbox', { name: /비율/ }), '0.25');
-    await user.type(dialog().getByLabelText(t.form.effectiveFrom), '2026-06-01');
-    await user.type(dialog().getByLabelText(t.form.effectiveTo), '2026-01-01');
+    await pickDate(user, dialog().getByLabelText(t.form.effectiveFrom), '2026-06-01');
+    await pickDate(user, dialog().getByLabelText(t.form.effectiveTo), '2026-01-01');
     await user.click(dialog().getByRole('button', { name: messages.common.save }));
 
     expect(dialog().getByText(t.validation.periodOrder)).toBeInTheDocument();
@@ -239,7 +275,7 @@ describe('W-05-01 ② — 정책을 더한다', () => {
     await user.click(dialog().getByRole('combobox', { name: t.scope.itemId }));
     await user.click(await screen.findByRole('option', { name: 'ITM-201 · 가상 하우징' }));
     await user.type(dialog().getByRole('textbox', { name: /비율/ }), '0.25');
-    await user.type(dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
+    await pickDate(user, dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
     await user.click(dialog().getByRole('button', { name: messages.common.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -265,7 +301,7 @@ describe('W-05-01 ② — 정책을 더한다', () => {
     await openCreate();
 
     await user.type(dialog().getByRole('textbox', { name: /비율/ }), '0.25');
-    await user.type(dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
+    await pickDate(user, dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
     await user.click(dialog().getByRole('button', { name: messages.common.save }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
@@ -279,7 +315,7 @@ describe('W-05-01 ② — 정책을 더한다', () => {
     await openCreate();
 
     await user.type(dialog().getByRole('textbox', { name: /비율/ }), '0.25');
-    await user.type(dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
+    await pickDate(user, dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
     await user.click(dialog().getByRole('button', { name: messages.common.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -295,7 +331,7 @@ describe('W-05-01 ② — 정책을 더한다', () => {
     await openCreate();
 
     await user.type(dialog().getByRole('textbox', { name: /비율/ }), '0.25');
-    await user.type(dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
+    await pickDate(user, dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
     await user.click(dialog().getByRole('button', { name: messages.common.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -387,7 +423,7 @@ describe('W-05-01 ② — 저장이 실패하면', () => {
     await openCreate();
 
     await user.type(dialog().getByRole('textbox', { name: /비율/ }), '0.25');
-    await user.type(dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
+    await pickDate(user, dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
     await user.click(dialog().getByRole('button', { name: messages.common.save }));
 
     expect(
@@ -412,7 +448,7 @@ describe('W-05-01 ② — 저장이 실패하면', () => {
     await openCreate();
 
     await user.type(dialog().getByRole('textbox', { name: /비율/ }), '0.25');
-    await user.type(dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
+    await pickDate(user, dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
     await user.click(dialog().getByRole('button', { name: messages.common.save }));
 
     await waitFor(() =>
@@ -425,10 +461,11 @@ describe('W-05-01 ② — 저장이 실패하면', () => {
 
     renderScreen();
     await openCreate();
+    await user.type(dialog().getByRole('textbox', { name: /비율/ }), '0');
     await user.click(dialog().getByRole('button', { name: messages.common.save }));
     expect(dialog().getByRole('textbox', { name: /비율/ })).toBeInvalid();
 
-    await user.type(dialog().getByRole('textbox', { name: /비율/ }), '0.25');
+    await user.type(dialog().getByRole('textbox', { name: /비율/ }), '.25');
 
     expect(dialog().getByRole('textbox', { name: /비율/ })).not.toBeInvalid();
   });
@@ -449,7 +486,7 @@ describe('W-05-01 ② — 저장이 실패하면', () => {
     await openCreate();
 
     await user.type(dialog().getByRole('textbox', { name: /비율/ }), '0.25');
-    await user.type(dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
+    await pickDate(user, dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
     await user.click(dialog().getByRole('button', { name: messages.common.save }));
     expect(await screen.findByText('지금은 저장할 수 없습니다.')).toBeInTheDocument();
 
@@ -514,7 +551,7 @@ describe('W-05-01 ② — 저장한 뒤', () => {
     await openCreate();
 
     await user.type(dialog().getByRole('textbox', { name: /비율/ }), '0.25');
-    await user.type(dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
+    await pickDate(user, dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
     await user.click(dialog().getByRole('button', { name: messages.common.save }));
 
     expect(
@@ -544,7 +581,7 @@ describe('W-05-01 ② — 서버가 붙인 오류', () => {
     await openCreate();
 
     await user.type(dialog().getByRole('textbox', { name: /비율/ }), '0.25');
-    await user.type(dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
+    await pickDate(user, dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
     await user.click(dialog().getByRole('button', { name: messages.common.save }));
     expect(await dialog().findByText('같은 범위의 정책이 이미 있습니다.')).toBeInTheDocument();
 
@@ -561,7 +598,7 @@ describe('W-05-01 ② — 서버가 붙인 오류', () => {
     await openCreate();
 
     await user.type(dialog().getByRole('textbox', { name: /비율/ }), '0.25');
-    await user.type(dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
+    await pickDate(user, dialog().getByLabelText(t.form.effectiveFrom), '2026-01-01');
     await user.click(dialog().getByRole('button', { name: messages.common.save }));
     expect(await dialog().findByText('같은 범위의 정책이 이미 있습니다.')).toBeInTheDocument();
 

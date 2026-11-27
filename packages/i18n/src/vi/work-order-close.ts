@@ -128,12 +128,15 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
       'Không xác nhận được trạng thái đang thực hiện nên chưa bắt đầu tra cứu lần đầu được. Nếu tải lại trang vẫn vậy, hãy báo quản trị hệ thống.',
   },
   confirm: {
-    title: (workOrderNo: string) => `Đóng lệnh sản xuất — ${workOrderNo}`,
-    target: (workOrderNo: string) => `Lệnh sản xuất đích: ${workOrderNo}`,
+    title: 'Đóng lệnh sản xuất',
+    question: 'Đóng lệnh sản xuất này?',
+    workOrderNo: 'Số lệnh sản xuất',
     irreversible:
-      'Đóng lệnh sản xuất không hoàn tác được. Nếu cần sửa thì hãy xử lý bù trừ kết quả sản xuất.',
-    erp: (menuPath: string): string =>
-      `Kết quả sản xuất sẽ vào hàng đợi gửi sang ERP cùng lúc đóng. Hãy xem kết quả gửi ở ${menuPath}.`,
+      'Sau khi đóng thì không hủy được việc đóng lệnh sản xuất. Nếu cần sửa kết quả, hãy xử lý sửa kết quả sản xuất.',
+    erp: {
+      queued: 'Khi đóng, kết quả sản xuất được đăng ký ở trạng thái chờ gửi sang ERP.',
+      menu: 'Tình trạng · lịch sử liên kết ERP',
+    },
     fields: {
       judgment: 'Đánh giá',
       remainder: 'Xử lý lượng còn lại',
@@ -144,6 +147,8 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
       `${String(count)} LOT phát trước chưa có kết quả sẽ bị hủy số cùng lúc đóng.`,
     openLots: (count: number, lotNos: string): string =>
       `${String(count)} LOT chưa đóng (${lotNos}) sẽ giữ nguyên trạng thái.`,
+    openLotsHeading: (count: number): string => `${String(count)} LOT chưa đóng`,
+    openLotsNote: 'Dù đóng lệnh sản xuất, các LOT dưới đây vẫn ở trạng thái chưa đóng.',
     openLotsChecking: 'Đang kiểm tra LOT đang thực hiện. Kiểm tra xong mới đóng được.',
     openLotsUnknown:
       'Chưa kiểm tra được LOT đang thực hiện. Dù đóng, LOT đang thực hiện vẫn giữ nguyên trạng thái.',
@@ -246,11 +251,16 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
   },
   forceEnd: {
     title: 'Buộc kết thúc phiên làm việc?',
-    effect:
-      'Khi buộc kết thúc, phiên làm việc của máy đó kết thúc ngay. Nếu bấm tạm dừng, tiếp tục, kết thúc ở máy đó sẽ bị từ chối là «phiên đã kết thúc», và muốn làm tiếp phải bắt đầu công việc lại. Kết quả và việc đưa vật tư đã nhập hoặc chưa gửi vẫn được lưu như cũ.',
-    notify: 'Hãy báo cho công nhân ở máy đó trước khi buộc kết thúc.',
+    effectBefore: 'Phiên làm việc kết thúc ngay. Muốn làm tiếp phải bấm ',
+    effectAction: 'Bắt đầu công việc',
+    effectAfter: ' lại ở máy đó.',
+    effectKept: 'Kết quả và vật tư đã đưa vào được giữ lại đến phần trước khi gửi.',
+    notify: 'Hãy báo cho công nhân ở máy đó trước khi kết thúc.',
+    startedAt: 'Thời điểm bắt đầu',
+    RUNNING: 'Đang làm',
     reason: 'Lý do buộc kết thúc',
-    reasonHelp: 'Ai đã đóng phiên và vì sao sẽ được ghi lại.',
+    reasonPlaceholder: 'Hãy nhập lý do kết thúc',
+    reasonHelp: 'Người xử lý và lý do kết thúc được lưu vào lịch sử.',
     reasonRequired: 'Hãy nhập lý do buộc kết thúc.',
     reasonTooLong: (max: number): string =>
       `Hãy rút gọn lý do buộc kết thúc còn ${String(max)} ký tự trở xuống.`,
@@ -346,6 +356,15 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
       relation: 'Quan hệ sửa',
       reason: 'Lý do sửa',
       note: 'Ghi chú',
+    },
+    placeholders: {
+      goodQty: 'Hãy nhập số lượng đạt',
+      defectQty: 'Hãy nhập số lượng lỗi',
+      holdQty: 'Hãy nhập số lượng tạm giữ',
+      scrapQty: 'Hãy nhập số lượng phế liệu',
+      reworkQty: 'Hãy nhập số lượng làm lại',
+      reason: 'Hãy chọn lý do sửa',
+      note: 'Hãy nhập ghi chú',
     },
     values: {
       original: 'Bản gốc',

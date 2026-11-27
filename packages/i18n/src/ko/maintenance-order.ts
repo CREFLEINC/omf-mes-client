@@ -92,7 +92,6 @@ export const maintenanceOrder = {
 
   confirm: {
     title: '이 지시를 발행할까요?',
-    lead: '아래 내용으로 지시 하나가 만들어집니다.',
     triggerCount: (count: number): string => `트리거 ${String(count)}건`,
     itemCount: (count: number): string => `항목 ${String(count)}개`,
     submit: '발행',

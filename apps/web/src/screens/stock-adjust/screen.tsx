@@ -5,6 +5,7 @@ import {
   PageHeader,
   SkeletonText,
   Tabs,
+  useToast,
   type TabItem,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
@@ -12,6 +13,7 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'rea
 import { useSearchParams } from 'react-router';
 
 import { ListEmpty } from '../../patterns/list-empty';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
 import { usePageHub } from '../../patterns/page-hub';
 import { AdjustLineTable, type AdjustLineRow } from './adjust-line-table';
@@ -36,7 +38,10 @@ import {
   DEFAULT_ADJUSTMENT_FILTERS,
   HISTORY_SELECTION_KEYS,
   readAdjustmentFilters,
+  LIST_PAGE_SIZES,
+  PAGE_SIZE,
   readAdjustmentPage,
+  readPageSize,
   readSelectedAdjustmentId,
   toAdjustmentFilterQuery,
   toHistorySearchParams,
@@ -89,7 +94,7 @@ import {
   useStockAdjustments,
 } from './queries';
 import { readReason, toApprovalRequest } from './reason-draft';
-import { useAdjustReasonLookup } from './reason-options';
+import { adjustReasonName, useAdjustReasonLookup } from './reason-options';
 import { RegisterConfirmDialog, type RegisterSummary } from './register-confirm-dialog';
 import { ResultPane, type SubmitPhase } from './result-pane';
 import { applySourceChange, initialSourceKind, type AdjustSourceKind } from './source';
@@ -117,6 +122,17 @@ import type {
 import { excludedLineCount, validateLines } from './validation';
 
 const t = messages.stockAdjust;
+
+/**
+ * 입력으로 풀 수 없는 잠금 — 이것만 보이는 글로 알리고, 나머지 까닭은 화면 읽기 도구에만 둔다
+ * (사용자 지시 2026-11-27 · #360).
+ */
+const STATE_REASONS: ReadonlySet<string> = new Set([
+  t.actionReasons.addLineCountSource,
+  t.actionReasons.alreadyRegistered,
+  t.actionReasons.registerVarianceTruncated,
+]);
+const isStateReason = (reason: string): boolean => STATE_REASONS.has(reason);
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_IDS: number[] = [];
@@ -271,6 +287,7 @@ const CLOSED_POST_PANEL: PostPanelState = {
 export const StockAdjustScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const hub = usePageHub();
+  const toast = useToast();
 
   const urlCountId = readInventoryCountId(searchParams);
 
@@ -293,6 +310,7 @@ export const StockAdjustScreen = () => {
     [searchParams],
   );
   const historyPage = readAdjustmentPage(searchParams);
+  const historyPageSize = readPageSize(searchParams);
   const selectedAdjustmentId = readSelectedAdjustmentId(searchParams);
 
   const counts = useInventoryCounts();
@@ -309,6 +327,7 @@ export const StockAdjustScreen = () => {
   const historyQuery = {
     ...toAdjustmentFilterQuery(historyFilters),
     ...(historyPage > 1 ? { page: historyPage } : {}),
+    ...(historyPageSize === PAGE_SIZE ? {} : { size: historyPageSize }),
   };
 
   const historyList = useStockAdjustments(historyQuery, isHistoryTab);
@@ -712,6 +731,11 @@ export const StockAdjustScreen = () => {
       }
 
       setPending(null);
+      /* 등록 성공은 오른쪽 아래 알림으로(#360) — 전표번호는 결과 구획 표에 남는다. */
+      toast.show({
+        variant: 'success',
+        description: t.result.createdTitle(created.created.inventoryAdjustmentNo),
+      });
     },
   });
 
@@ -873,6 +897,11 @@ export const StockAdjustScreen = () => {
       }
 
       setPending(null);
+      /* 전기 성공은 오른쪽 아래 알림으로(#360) — 전기일시·전기 후 상태는 전기 구획에 남는다. */
+      toast.show({
+        variant: 'success',
+        description: t.post.postedTitle(target.inventoryAdjustmentNo),
+      });
     },
   });
 
@@ -1026,6 +1055,7 @@ export const StockAdjustScreen = () => {
     tab: StockAdjustTab;
     filters: AdjustmentFilters;
     page: number;
+    pageSize: number;
     adjustmentId: number | null;
   }): URLSearchParams => {
     const params =
@@ -1037,7 +1067,7 @@ export const StockAdjustScreen = () => {
 
     if (tabParam !== null) params.set(TAB_KEY, tabParam);
 
-    for (const [key, value] of toHistorySearchParams(next.filters, next.page)) {
+    for (const [key, value] of toHistorySearchParams(next.filters, next.page, next.pageSize)) {
       params.set(key, value);
     }
 
@@ -1053,6 +1083,7 @@ export const StockAdjustScreen = () => {
     tab,
     filters: historyFilters,
     page: historyPage,
+    pageSize: historyPageSize,
     adjustmentId: selectedAdjustmentId,
   };
 
@@ -1083,11 +1114,16 @@ export const StockAdjustScreen = () => {
    * **고른 전표를 싣지 않아** 조건·쪽이 바뀌면 함께 풀린다 — 새 결과에 없을 수 있는 전표를
    * 고른 채로 두면 아래 구획이 목록에 없는 전표를 그린다.
    */
-  const applyHistoryQuery = (nextFilters: AdjustmentFilters, nextPage = 1): void => {
+  const applyHistoryQuery = (
+    nextFilters: AdjustmentFilters,
+    nextPage = 1,
+    nextSize = historyPageSize,
+  ): void => {
     const moved = applyUserNavigation({
       ...currentAddress,
       filters: nextFilters,
       page: nextPage,
+      pageSize: nextSize,
       adjustmentId: null,
     });
 
@@ -1637,7 +1673,7 @@ export const StockAdjustScreen = () => {
    * 것」과 「요청에 실리는 것」이 갈린다.
    */
   const registerSummary = (): RegisterSummary => ({
-    reasonCode: header.reasonCode,
+    reasonName: adjustReasonName(reasonLookup, header.reasonCode),
     sendToErp: header.sendToErp,
     includedCount: lineSummary.includedCount,
     excludedCount: lineSummary.excludedCount,
@@ -2184,7 +2220,10 @@ export const StockAdjustScreen = () => {
               {t.actions.addLine}
             </Button>
             {addLineReason !== null && (
-              <span id={addLineReasonId} className="field-note">
+              <span
+                id={addLineReasonId}
+                className={isStateReason(addLineReason) ? 'field-note' : 'visually-hidden'}
+              >
                 {addLineReason}
               </span>
             )}
@@ -2231,7 +2270,10 @@ export const StockAdjustScreen = () => {
               {t.actions.register}
             </Button>
             {registerReason !== null && (
-              <span id={registerReasonId} className="field-note">
+              <span
+                id={registerReasonId}
+                className={isStateReason(registerReason) ? 'field-note' : 'visually-hidden'}
+              >
                 {registerReason}
               </span>
             )}
@@ -2253,7 +2295,7 @@ export const StockAdjustScreen = () => {
               {t.actions.discard}
             </Button>
             {discardReason !== null && (
-              <span id={discardReasonId} className="field-note">
+              <span id={discardReasonId} className="visually-hidden">
                 {discardReason}
               </span>
             )}
@@ -2486,71 +2528,87 @@ export const StockAdjustScreen = () => {
    */
   const historyTabContent = (
     <>
-      <section className="pane" aria-label={t.panes.history}>
-        <HistoryFilterBar
-          appliedFilters={historyFilters}
-          chipNames={{
-            count: describeReference(
-              toReference(
-                countLookup,
-                historyFilters.count === '' ? null : Number(historyFilters.count),
-              ),
-            ),
-          }}
-          countOptions={countOptions}
-          reasonOptions={reasonOptions}
-          reasonNote={reasonNote}
-          countNote={countList?.truncated === true ? t.lookups.truncated : undefined}
-          isLocked={isNavigationLocked}
-          onSearch={(nextFilters) => {
-            applyHistoryQuery(nextFilters);
-          }}
-          onRemoveFilter={(key: RemovableAdjustmentChipKey) => {
-            applyHistoryQuery(clearAdjustmentFilter(historyFilters, key));
-          }}
-          onReset={() => {
-            applyHistoryQuery(DEFAULT_ADJUSTMENT_FILTERS);
-          }}
-        />
-
-        {historyList.isError ? (
-          <LoadErrorBanner
-            error={historyList.error}
-            onRetry={() => {
-              void historyList.refetch();
-            }}
-          />
-        ) : (
-          <>
-            <HistoryTable
-              rows={historyRows}
-              isLoading={historyList.isPending}
-              isBeyondLast={historyPageView.isBeyondLast}
-              selectedAdjustmentId={selectedAdjustmentId}
-              countLookup={countLookup}
-              isLocked={isNavigationLocked}
-              onFirstPage={() => {
-                applyHistoryQuery(historyFilters);
-              }}
-              onToggleSelect={toggleSelectAdjustment}
-            />
-
-            {!historyList.isPending && (
-              <PageNav
-                view={historyPageView}
+      {/*
+       * 목록 | 상세 — 공용 분할(가운데 폭 막대 · 상하 배치의 높이 막대 · 「⋯」 좌우/상하 배치 · 목록 접기 · #360).
+       * 상자 안 조회 · 목록 · 상세는 그대로 옮겼다.
+       */}
+      <ListDetailWorkspace
+        storageKey="omf-mes:stock-adjust:history"
+        list={{
+          label: t.panes.history,
+          title: t.panes.history,
+          count: historyList.data?.page.total,
+          content: (
+            <>
+              <HistoryFilterBar
+                appliedFilters={historyFilters}
+                chipNames={{
+                  count: describeReference(
+                    toReference(
+                      countLookup,
+                      historyFilters.count === '' ? null : Number(historyFilters.count),
+                    ),
+                  ),
+                }}
+                countOptions={countOptions}
+                reasonOptions={reasonOptions}
+                reasonNote={reasonNote}
+                countNote={countList?.truncated === true ? t.lookups.truncated : undefined}
                 isLocked={isNavigationLocked}
-                onChange={(nextPage) => {
-                  applyHistoryQuery(historyFilters, nextPage);
+                onSearch={(nextFilters) => {
+                  applyHistoryQuery(nextFilters);
+                }}
+                onRemoveFilter={(key: RemovableAdjustmentChipKey) => {
+                  applyHistoryQuery(clearAdjustmentFilter(historyFilters, key));
+                }}
+                onReset={() => {
+                  applyHistoryQuery(DEFAULT_ADJUSTMENT_FILTERS);
                 }}
               />
-            )}
-          </>
-        )}
-      </section>
 
-      <section className="pane" aria-label={t.panes.historyDetail}>
-        {historyDetailContent()}
-      </section>
+              {historyList.isError ? (
+                <LoadErrorBanner
+                  error={historyList.error}
+                  onRetry={() => {
+                    void historyList.refetch();
+                  }}
+                />
+              ) : (
+                <>
+                  <HistoryTable
+                    rows={historyRows}
+                    isLoading={historyList.isPending}
+                    isBeyondLast={historyPageView.isBeyondLast}
+                    selectedAdjustmentId={selectedAdjustmentId}
+                    countLookup={countLookup}
+                    isLocked={isNavigationLocked}
+                    onFirstPage={() => {
+                      applyHistoryQuery(historyFilters);
+                    }}
+                    onToggleSelect={toggleSelectAdjustment}
+                  />
+
+                  {!historyList.isPending && (
+                    <PageNav
+                      view={historyPageView}
+                      isLocked={isNavigationLocked}
+                      onChange={(nextPage) => {
+                        applyHistoryQuery(historyFilters, nextPage);
+                      }}
+                      sizes={LIST_PAGE_SIZES}
+                      onChangeSize={(nextSize) => {
+                        /* 쪽 이동과 같다 — 첫 쪽부터 그 크기로 다시 받는다. */
+                        applyHistoryQuery(historyFilters, 1, nextSize);
+                      }}
+                    />
+                  )}
+                </>
+              )}
+            </>
+          ),
+        }}
+        detail={{ label: t.panes.historyDetail, content: historyDetailContent() }}
+      />
     </>
   );
 

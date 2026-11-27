@@ -27,7 +27,8 @@ describe('DeactivateConfirmDialog', () => {
   it('무엇이 일어나는지 먼저 밝힌다', () => {
     renderDialog();
 
-    expect(screen.getByText('사용 중지할까요?')).toBeInTheDocument();
+    expect(screen.getByText('불량코드 사용 중지')).toBeInTheDocument();
+    expect(screen.getByText('이 불량코드의 사용을 중지하시겠습니까?')).toBeInTheDocument();
     expect(
       screen.getByText(
         '사용 중지하면 새 작업에서 이 코드를 선택할 수 없습니다. 기존 데이터는 유지됩니다.',
@@ -45,6 +46,14 @@ describe('DeactivateConfirmDialog', () => {
     fireEvent.click(screen.getByRole('dialog'));
 
     expect(props.onClose).not.toHaveBeenCalled();
+  });
+
+  it('대상 코드 · 이름을 대상 상자에 보인다', () => {
+    renderDialog({ target: { code: 'DF-10', name: '외관 불량' } });
+
+    expect(screen.getByText('사용 중지 대상')).toBeInTheDocument();
+    expect(screen.getByText('외관 불량')).toBeInTheDocument();
+    expect(screen.getByText('DF-10')).toBeInTheDocument();
   });
 
   it('하위가 있는 대분류이면 그 건수를 함께 보인다', () => {

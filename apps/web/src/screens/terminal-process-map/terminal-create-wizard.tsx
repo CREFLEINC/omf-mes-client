@@ -237,10 +237,6 @@ export const TerminalCreateWizard = ({
   const footer =
     step === 'info' ? (
       <>
-        <p className="iqc-inspection-action-note terminal-map-wizard-footnote" data-tone="info">
-          <Icon name="info" size={14} aria-hidden />
-          {t.terminal.codeLockedFooter}
-        </p>
         <Button variant="outlined" disabled={isBusy} onClick={close}>
           {t.terminal.cancel}
         </Button>

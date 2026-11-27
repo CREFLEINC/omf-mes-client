@@ -240,6 +240,7 @@ export const DependencyDialog = ({
         <div className="routing-dependency-cell">
           <Select
             aria-label={td.rowField(rowIndex + 1, td.predecessor)}
+            placeholder={td.predecessorPlaceholder}
             options={operationOptions}
             value={row.predecessorId === '' ? null : row.predecessorId}
             onChange={(predecessorId) => changeRow(row.draftId, { predecessorId })}
@@ -257,6 +258,7 @@ export const DependencyDialog = ({
         <div className="routing-dependency-cell">
           <Select
             aria-label={td.rowField(rowIndex + 1, td.successor)}
+            placeholder={td.successorPlaceholder}
             options={operationOptions}
             value={row.successorId === '' ? null : row.successorId}
             onChange={(successorId) => changeRow(row.draftId, { successorId })}
@@ -420,6 +422,7 @@ export const DependencyDialog = ({
 
       {isDiscardOpen && (
         <Dialog
+          className="dialog-icon-undo"
           open
           size="sm"
           closeOnBackdropClick={false}

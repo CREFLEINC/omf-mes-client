@@ -13,6 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useId, useState, type ReactNode } from 'react';
 
 import { PageNav } from '../page-nav';
+import { pageSizesWith } from '../page-nav/page-size-param';
 import { Select } from '../select';
 import { SelectableTable } from '../selectable-table';
 
@@ -53,7 +54,18 @@ export interface ReferenceSource {
   columns: { code: string; name: string; group?: string };
   /** 분류 필터(위치의 창고 등). 없으면 그리지 않는다. */
   filter?: ReferenceFilter;
-  search: (term: string, page: number, filterValue: string) => Promise<ReferenceSearchPage>;
+  /**
+   * 한 쪽 건수 — 팝업이 쪽 크기 선택(10 · 20 · 50)으로 바꿔 넘긴다(품질 화면과 같다 · #360). 원천이 받지 않던 시절의 3인자
+   * 호출과 맞도록 선택 인자다.
+   */
+  search: (
+    term: string,
+    page: number,
+    filterValue: string,
+    size?: number,
+  ) => Promise<ReferenceSearchPage>;
+  /** 이 원천의 기본 쪽 크기 — 종전에 보내던 값. 없으면 `REFERENCE_PAGE_SIZE`(20). */
+  pageSize?: number;
   /** 팝업을 넓게(생산 라인 선택 · 사용자 지시 #360). */
   wide?: boolean;
 }
@@ -73,11 +85,14 @@ export const PickerDialog = ({ source, onClose, onPick, wrapValue = false }: Pic
   const [keyword, setKeyword] = useState('');
   const [term, setTerm] = useState('');
   const [page, setPage] = useState(1);
+  /* 쪽 크기 — 기본은 원천이 종전에 보내던 값(#360). */
+  const defaultSize = source.pageSize ?? REFERENCE_PAGE_SIZE;
+  const [size, setSize] = useState(defaultSize);
   const [filterValue, setFilterValue] = useState(source.filter?.value ?? '');
   const [picked, setPicked] = useState<ReferenceRow | null>(null);
   const result = useQuery({
-    queryKey: [...source.key, 'reference-picker', term, page, filterValue],
-    queryFn: () => source.search(term, page, filterValue),
+    queryKey: [...source.key, 'reference-picker', term, page, filterValue, size],
+    queryFn: () => source.search(term, page, filterValue, size),
   });
   const rows = result.data?.items ?? [];
   const columns: Column<ReferenceRow>[] = [
@@ -206,8 +221,14 @@ export const PickerDialog = ({ source, onClose, onPick, wrapValue = false }: Pic
           }
         />
         <PageNav
-          meta={{ page, size: REFERENCE_PAGE_SIZE, total: result.data?.total ?? 0 }}
+          meta={{ page, size, total: result.data?.total ?? 0 }}
+          sizes={pageSizesWith(defaultSize)}
           onChangePage={changePage}
+          onChangeSize={(next) => {
+            /* 쪽 크기를 바꾸면 첫 쪽으로 — 쪽을 넘길 때처럼 고른 행도 푼다. */
+            setSize(next);
+            changePage(1);
+          }}
         />
       </div>
     </Dialog>

@@ -12,6 +12,7 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 
 import { formatTransactionAt } from './as-of';
 import { resolveBusinessPeriod, type BusinessPeriod } from './business-period';
+import { LIST_PAGE_SIZES, type ListPageSize } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
@@ -182,6 +183,8 @@ export interface TransactionPaneProps extends TransactionColumnDeps {
   onRetry: () => void;
   onSearch: (period: BusinessPeriod) => void;
   onChangePage: (page: number) => void;
+  /** 쪽 크기(10 · 20 · 50건)를 고른다 — 첫 쪽부터 다시 받는다(품질 목록과 같다 · #360). */
+  onChangePageSize?: (size: ListPageSize) => void;
 }
 
 /**
@@ -217,6 +220,7 @@ export const TransactionPane = ({
   onSearch,
   onToggleSelect,
   onChangePage,
+  onChangePageSize,
 }: TransactionPaneProps) => {
   const reasonId = useId();
 
@@ -364,7 +368,14 @@ export const TransactionPane = ({
             />
           </div>
 
-          {hasQuery && <PageNav view={pageView} onChange={onChangePage} />}
+          {hasQuery && (
+            <PageNav
+              view={pageView}
+              onChange={onChangePage}
+              sizes={LIST_PAGE_SIZES}
+              onChangeSize={onChangePageSize}
+            />
+          )}
         </>
       )}
     </>

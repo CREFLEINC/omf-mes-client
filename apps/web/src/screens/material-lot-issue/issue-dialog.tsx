@@ -1,9 +1,9 @@
-import { AlertBanner, Button, Chip, Dialog, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Checkbox, Chip, Dialog, TextField } from '@crefle/web-ui';
 import type { MaterialLotBatchCreated } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
-import { InfoLabel } from '../../patterns/info-tip';
+import { InfoLabel, InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import {
   checkBatch,
@@ -36,6 +36,9 @@ export interface IssueDialogProps {
   onIssued: (created: MaterialLotBatchCreated, group: Group) => void;
 }
 
+/** 발행 미리보기에 줄로 보일 LOT 수 — 넘으면 「외 N건」. */
+const PREVIEW_ROWS = 5;
+
 const SOURCE_STATUS: Record<BatchSource, 'success' | 'info' | 'idle'> = {
   item: 'success',
   itemStorage: 'info',
@@ -49,6 +52,7 @@ const SOURCE_STATUS: Record<BatchSource, 'success' | 'info' | 'idle'> = {
 export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: IssueDialogProps) => {
   const reasonId = useId();
   const lotCountId = useId();
+  const packageUomId = useId();
   const [pickedKey, setPickedKey] = useState<string | null>(
     fixed !== null ? groupKey(fixed) : null,
   );
@@ -149,10 +153,14 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
         )
       : null;
 
+  /*
+   * 회색 상자 맨 위에 「발행 예정 LOT」 — 입력 전에는 그 아래 안내 한 줄, 다 넣으면 같은 자리에 발행 예정 LOT 목록
+   * (사용자 지시 2026-11-27). 목록은 앞 `PREVIEW_ROWS` 건만 — 번호 끝 일련번호는 서버가 정하므로 짓지 않는다.
+   */
   const summary =
     check?.ok === true && check.lotQty !== null && check.lotCount !== null && group !== null ? (
       <>
-        <strong>
+        <span>
           {td.summary(
             check.lotCount,
             formatBaseQty(check.lotQty, uomCode),
@@ -160,14 +168,27 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
             formatBaseQty(check.lotQty * check.lotCount, uomCode),
             check.supplierLotNo,
           )}
-        </strong>
-        <br />
-        {td.summaryTail(
-          lotNoPattern(group.itemCode, check.lotQty, group.supplierCode, plantToday()),
+        </span>
+        <ol className="mlot-issue-preview-list">
+          {Array.from({ length: Math.min(check.lotCount, PREVIEW_ROWS) }, (_, index) => (
+            <li key={index}>
+              <span className="mlot-issue-preview-no">{index + 1}</span>
+              <span>{formatBaseQty(check.lotQty ?? 0, uomCode)}</span>
+              {pkgText !== null && <span className="field-note">{pkgText}</span>}
+            </li>
+          ))}
+        </ol>
+        {check.lotCount > PREVIEW_ROWS && (
+          <span className="field-note">{td.previewMore(check.lotCount - PREVIEW_ROWS)}</span>
         )}
+        <span className="field-note">
+          {td.summaryTail(
+            lotNoPattern(group.itemCode, check.lotQty, group.supplierCode, plantToday()),
+          )}
+        </span>
       </>
     ) : (
-      td.summaryEmpty
+      <span className="field-note">{td.summaryEmpty}</span>
     );
 
   const submit = (): void => {
@@ -180,10 +201,11 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
 
   return (
     <Dialog
+      className="dialog-icon-add"
       open
       onClose={onClose}
       title={td.title}
-      size="md"
+      size="lg"
       footer={
         <>
           <Button variant="outlined" onClick={onClose}>
@@ -204,10 +226,10 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
         {issue.error !== null && <SaveErrorBanner error={issue.error} />}
         {fixed !== null ? (
           <dl className="mlot-issue-facts">
-            <dt>{td.target}</dt>
-            <dd>
-              {td.targetOption(fixed.supplierName, fixed.itemCode, fixed.itemName, fixed.uomCode)}
-            </dd>
+            <dt>{td.supplier}</dt>
+            <dd>{fixed.supplierName}</dd>
+            <dt>{td.item}</dt>
+            <dd>{td.itemWithUnit(fixed.itemCode, fixed.itemName, fixed.uomCode)}</dd>
           </dl>
         ) : (
           <Select
@@ -229,53 +251,63 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
 
         {showDraft && draft !== null && filled !== null && (
           <>
-            <div>
-              <Chip size="sm" status={SOURCE_STATUS[filled.source]}>
-                {td.source[filled.source]}
-              </Chip>
-            </div>
+            {/* 기본값이 없을 때의 안내는 아래 「패키징 (선택)」 옆 ⓘ 로(사용자 지시 2026-11-26). */}
+            {filled.source !== 'none' && (
+              <div>
+                <Chip size="sm" status={SOURCE_STATUS[filled.source]}>
+                  {td.source[filled.source]}
+                </Chip>
+              </div>
+            )}
 
             <section className="mlot-issue-package" aria-label={td.package}>
               <div className="mlot-issue-package-head">
-                <strong>
-                  {td.package} <span className="field-note">{td.packageOptional}</span>
-                </strong>
-                <div role="group" aria-label={td.package} className="mlot-issue-switch">
-                  <Button
-                    size="sm"
-                    variant={draft.packageOn ? 'filled' : 'outlined'}
-                    aria-pressed={draft.packageOn}
-                    onClick={() => edit({ packageOn: true })}
+                {/*
+                 * 「패키징 유무 (선택)」 체크칸 + ⓘ 한 줄(사용자 지시 2026-11-26) — 켜면 패키징 세 칸이 보이고, 끄면
+                 * 넣던 패키징을 취소한다. 값(`packageOn`)과 검사 · 발행 규칙은 그대로. ⓘ 에 마우스를 올리면 기본값 없음 안내.
+                 */}
+                <span className="mlot-issue-package-title">
+                  <Checkbox
+                    checked={draft.packageOn}
+                    onChange={(event) => edit({ packageOn: event.target.checked })}
                   >
-                    {td.packageOn}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={draft.packageOn ? 'outlined' : 'filled'}
-                    aria-pressed={!draft.packageOn}
-                    onClick={() => edit({ packageOn: false })}
-                  >
-                    {td.packageOff}
-                  </Button>
-                </div>
+                    <span className="mlot-issue-package-label">
+                      <strong>{td.package}</strong>{' '}
+                      <span className="field-note">{td.packageOptional}</span>
+                    </span>
+                  </Checkbox>
+                  {filled.source === 'none' && <InfoTip text={td.source.none} />}
+                </span>
               </div>
               {draft.packageOn ? (
                 <>
-                  <div className="mlot-issue-package-fields">
-                    <Select
-                      aria-label={td.packageUom}
-                      placeholder={td.packageUom}
-                      value={draft.packageUomId === null ? null : String(draft.packageUomId)}
-                      options={packageUoms.map((row) => ({
-                        value: String(row.uomId),
-                        /* 패키징 단위는 이름(「봉지」)으로 — 이름이 비면 코드(G2 L17). */
-                        label: row.uomName.trim() === '' ? row.uomCode : row.uomName,
-                      }))}
-                      onChange={(value) => edit({ packageUomId: Number(value) })}
-                    />
+                  {/* 세 칸 한 줄 · 패키징 단위도 이름표를 단다(사용자 지시 2026-11-26). */}
+                  <div className="mlot-issue-package-fields mlot-issue-package-row">
+                    <div className="field-cell">
+                      <span className="field-label">
+                        <label htmlFor={packageUomId}>{td.packageUom}</label>
+                        <span className="required-mark" aria-hidden="true">
+                          {' '}
+                          *
+                        </span>
+                      </span>
+                      <Select
+                        id={packageUomId}
+                        aria-required="true"
+                        placeholder={td.placeholders.packageUom}
+                        value={draft.packageUomId === null ? null : String(draft.packageUomId)}
+                        options={packageUoms.map((row) => ({
+                          value: String(row.uomId),
+                          /* 패키징 단위는 이름(「봉지」)으로 — 이름이 비면 코드(G2 L17). */
+                          label: row.uomName.trim() === '' ? row.uomCode : row.uomName,
+                        }))}
+                        onChange={(value) => edit({ packageUomId: Number(value) })}
+                      />
+                    </div>
                     <TextField
                       label={td.packageCount}
                       required
+                      placeholder={td.placeholders.packageCount}
                       inputMode="numeric"
                       value={draft.packageCount}
                       onChange={(event) => edit({ packageCount: event.target.value })}
@@ -283,6 +315,7 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
                     <TextField
                       label={td.qtyPerPackage(uomCode)}
                       required
+                      placeholder={td.placeholders.qtyPerPackage}
                       inputMode="decimal"
                       value={draft.qtyPerPackage}
                       onChange={(event) => edit({ qtyPerPackage: event.target.value })}
@@ -310,6 +343,7 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
             <TextField
               label={td.lotQty}
               required
+              placeholder={td.placeholders.lotQty}
               inputMode="decimal"
               value={lotQtyValue}
               trailingIcon={<span title={td.unitLocked}>{uomCode}</span>}
@@ -320,6 +354,7 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
             />
             <TextField
               label={td.supplierLotNo}
+              placeholder={td.placeholders.supplierLotNo}
               value={draft.supplierLotNo}
               onChange={(event) => edit({ supplierLotNo: event.target.value })}
             />
@@ -330,6 +365,7 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
                 id={lotCountId}
                 aria-required="true"
                 fullWidth
+                placeholder={td.placeholders.lotCount}
                 inputMode="numeric"
                 value={draft.lotCount}
                 error={lotCountError ?? undefined}
@@ -339,9 +375,10 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
           </>
         )}
 
-        <p id={reasonId} className="mlot-issue-summary" aria-live="polite">
+        <div id={reasonId} className="mlot-issue-summary" aria-live="polite">
+          <strong className="mlot-issue-preview-title">{td.previewTitle}</strong>
           {summary}
-        </p>
+        </div>
       </div>
     </Dialog>
   );

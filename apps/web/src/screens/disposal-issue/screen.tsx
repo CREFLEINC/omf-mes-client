@@ -2,6 +2,7 @@ import {
   Breadcrumb,
   Button,
   EmptyState,
+  Icon,
   PageHeader,
   SkeletonText,
   Tabs,
@@ -11,8 +12,13 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { useDeselectConfirm } from '../../patterns/deselect-confirm';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
+import { plantNowLocal } from '../../patterns/plant-time';
 import { ScreenHeader } from '../../patterns/screen-header';
+import { splitCodeName } from '../../patterns/split-code-name';
+import { applyDisposalAutoFill, NO_DISPOSAL_AUTO_VALUES, onlyOptionValue } from './auto-fill';
 
 import {
   hasPostedLine,
@@ -28,10 +34,12 @@ import {
   DEFECT_WAREHOUSE_TYPE_CODES,
   DISPOSAL_PARTNER_ROLE_CODE,
   isDisposalPartnerRolePending,
+  isRequiredCodeListPending,
   narrowToDefectWarehouses,
-  PLACEHOLDER_DISPOSAL_ISSUE_CODES,
   readDisposalPartnerCondition,
+  toCodeNameOf,
   toCodeOptionSets,
+  useDisposalCodeLists,
 } from './code-options';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import { DisposalForm } from './disposal-form';
@@ -39,8 +47,11 @@ import { describeDisposalSelection, toDisposalLineRows } from './disposal-select
 import {
   clearFilter,
   DEFAULT_FILTERS,
+  LIST_PAGE_SIZES,
+  PAGE_SIZE,
   readFilters,
   readPage,
+  readPageSize,
   readSelectedReceiptId,
   SELECTION_KEYS,
   toFilterQuery,
@@ -59,6 +70,7 @@ import {
   HISTORY_SELECTION_KEYS,
   readIssueFilters,
   readIssuePage,
+  readIssuePageSize,
   readSelectedIssueId,
   toHistorySearchParams,
   toIssueFilterQuery,
@@ -465,6 +477,7 @@ export const DisposalIssueScreen = () => {
 
   const filters = useMemo<ReceiptFilters>(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
+  const pageSize = readPageSize(searchParams);
   const selectedReceiptId = readSelectedReceiptId(searchParams);
 
   const historyFilters = useMemo<IssueFilters>(
@@ -472,6 +485,7 @@ export const DisposalIssueScreen = () => {
     [searchParams],
   );
   const historyPage = readIssuePage(searchParams);
+  const historyPageSize = readIssuePageSize(searchParams);
   const selectedIssueId = readSelectedIssueId(searchParams);
 
   /*
@@ -480,7 +494,11 @@ export const DisposalIssueScreen = () => {
    *
    * **기본 기간도 기본 창고도 심지 않는다** — 첫 요청에 조건이 하나도 실리지 않는다.
    */
-  const listQuery = { ...toFilterQuery(filters), ...(page > 1 ? { page } : {}) };
+  const listQuery = {
+    ...toFilterQuery(filters),
+    ...(page > 1 ? { page } : {}),
+    ...(pageSize === PAGE_SIZE ? {} : { size: pageSize }),
+  };
 
   const list = useGoodsReceipts(listQuery, isDisposalTab);
   const rows = list.data?.items ?? EMPTY_ROWS;
@@ -498,6 +516,7 @@ export const DisposalIssueScreen = () => {
   const historyQuery = {
     ...toIssueFilterQuery(historyFilters),
     ...(historyPage > 1 ? { page: historyPage } : {}),
+    ...(historyPageSize === PAGE_SIZE ? {} : { size: historyPageSize }),
   };
 
   const issueList = useGoodsIssues(historyQuery, isHistoryTab);
@@ -632,8 +651,10 @@ export const DisposalIssueScreen = () => {
     tab: DisposalIssueTab;
     filters: ReceiptFilters;
     page: number;
+    pageSize: number;
     historyFilters: IssueFilters;
     historyPage: number;
+    historyPageSize: number;
     goodsReceiptId: number | null;
     goodsIssueId: number | null;
   }): URLSearchParams => {
@@ -642,9 +663,15 @@ export const DisposalIssueScreen = () => {
 
     if (tabParam !== null) params.set(TAB_KEY, tabParam);
 
-    for (const [key, value] of toSearchParams(next.filters, next.page)) params.set(key, value);
+    for (const [key, value] of toSearchParams(next.filters, next.page, next.pageSize)) {
+      params.set(key, value);
+    }
 
-    for (const [key, value] of toHistorySearchParams(next.historyFilters, next.historyPage)) {
+    for (const [key, value] of toHistorySearchParams(
+      next.historyFilters,
+      next.historyPage,
+      next.historyPageSize,
+    )) {
       params.set(key, value);
     }
 
@@ -664,8 +691,10 @@ export const DisposalIssueScreen = () => {
     tab,
     filters,
     page,
+    pageSize,
     historyFilters,
     historyPage,
+    historyPageSize,
     goodsReceiptId: selectedReceiptId,
     goodsIssueId: selectedIssueId,
   };
@@ -942,11 +971,12 @@ export const DisposalIssueScreen = () => {
    * **`gr`를 싣지 않아** 조건·쪽이 바뀌면 고른 전표가 함께 풀리고(수명 표 1~3행),
    * **`gi`와 이력 조건은 그대로 나른다** — 다른 탭의 대상은 이 조작과 무관하다.
    */
-  const applyQuery = (nextFilters: ReceiptFilters, nextPage = 1): void => {
+  const applyQuery = (nextFilters: ReceiptFilters, nextPage = 1, nextSize = pageSize): void => {
     const moved = applyUserNavigation({
       ...currentAddress,
       filters: nextFilters,
       page: nextPage,
+      pageSize: nextSize,
       goodsReceiptId: null,
     });
 
@@ -959,24 +989,38 @@ export const DisposalIssueScreen = () => {
   };
 
   /** 고르고 푸는 것은 **보이는 행을 바꾸지 않는다**(수명 표 4행). */
-  const toggleSelectReceipt = (goodsReceiptId: number): void => {
-    const moved = applyUserNavigation({
-      ...currentAddress,
-      goodsReceiptId: goodsReceiptId === selectedReceiptId ? null : goodsReceiptId,
-    });
+  const deselectConfirm = useDeselectConfirm();
 
-    if (moved) setNotFoundNotice(false);
+  const toggleSelectReceipt = (goodsReceiptId: number): void => {
+    const apply = (): void => {
+      const moved = applyUserNavigation({
+        ...currentAddress,
+        goodsReceiptId: goodsReceiptId === selectedReceiptId ? null : goodsReceiptId,
+      });
+
+      if (moved) setNotFoundNotice(false);
+    };
+
+    /* 고른 전표를 다시 눌러 풀면 줄 초안이 비워진다 — 적은 값이 있으면 먼저 묻는다(사용자 지시 2026-11-27 · #360). */
+    if (goodsReceiptId === selectedReceiptId)
+      deselectConfirm.request(hasAnyLineDraftValue(lineDraft), apply);
+    else apply();
   };
 
   /**
    * 이력 조건·쪽을 적용한다. **`gi`를 싣지 않아** 고른 품의가 함께 풀리고(수명 표 9행),
    * **`gr`와 대상 조건·쪽은 그대로 나른다** — 범위 있는 규칙은 잣대도 같은 범위로.
    */
-  const applyHistoryQuery = (nextFilters: IssueFilters, nextPage = 1): void => {
+  const applyHistoryQuery = (
+    nextFilters: IssueFilters,
+    nextPage = 1,
+    nextSize = historyPageSize,
+  ): void => {
     const moved = applyUserNavigation({
       ...currentAddress,
       historyFilters: nextFilters,
       historyPage: nextPage,
+      historyPageSize: nextSize,
       goodsIssueId: null,
     });
 
@@ -984,12 +1028,19 @@ export const DisposalIssueScreen = () => {
   };
 
   const toggleSelectIssue = (goodsIssueId: number): void => {
-    const moved = applyUserNavigation({
-      ...currentAddress,
-      goodsIssueId: goodsIssueId === selectedIssueId ? null : goodsIssueId,
-    });
+    const apply = (): void => {
+      const moved = applyUserNavigation({
+        ...currentAddress,
+        goodsIssueId: goodsIssueId === selectedIssueId ? null : goodsIssueId,
+      });
 
-    if (moved) setIssueNotFoundNotice(false);
+      if (moved) setIssueNotFoundNotice(false);
+    };
+
+    /* 고른 품의를 다시 눌러 풀면 재상신 사유가 비워진다 — 적은 값이 있으면 먼저 묻는다(#360). */
+    if (goodsIssueId === selectedIssueId)
+      deselectConfirm.request(resubmitReason.trim() !== '', apply);
+    else apply();
   };
 
   /**
@@ -1330,7 +1381,15 @@ export const DisposalIssueScreen = () => {
    * 값 목록이 확정되지 않은 코드의 선택지. **화면이 만들어 조건 줄에 넘긴다** —
    * 배열이 차는 순간 화면이 달라지는 것을 화면 수준에서 잴 수 있게 하기 위해서다.
    */
-  const codeOptions = toCodeOptionSets(PLACEHOLDER_DISPOSAL_ISSUE_CODES);
+  const codeLists = useDisposalCodeLists();
+  const codeOptions = toCodeOptionSets(codeLists.values, codeLists.names);
+  /* 처리 이력의 출고 유형 조건은 거르기라 폼처럼 좁히지 않는다(계약 issueTypeCode 설명 · #360). */
+  const historyIssueTypeOptions = toCodeOptionSets(
+    { ...codeLists.values, issueType: codeLists.historyIssueTypes },
+    codeLists.names,
+  ).issueType;
+  /* 표·상세의 코드 → 서버 코드값 이름(없으면 코드 그대로 · #360). */
+  const codeName = toCodeNameOf(codeLists.names);
 
   /**
    * 폐기 거래처 선택지 — **조회가 준 것을 그대로 넘긴다**(변경 통지 #128).
@@ -1355,6 +1414,54 @@ export const DisposalIssueScreen = () => {
     disposalPartners,
     isDisposalPartnerRolePending(DISPOSAL_PARTNER_ROLE_CODE),
   );
+
+  /*
+   * **폐기 요청 정보 자동 채움**(사용자 지시 2026-11-27 · #360 「자동 키인」). 전표를 고르면 화면이
+   * 아는 값을 칸에 넣는다 — 출고 유형 · 원천 문서 유형 = 고를 값이 하나뿐일 때 그 값(계약상
+   * 기타출고 · 입고 전표), 출고 일자 · 시각 = 고른 순간의 공장 시각, 폐기 거래처 = 등록된 곳이
+   * 하나뿐일 때만. 폐기 사유 · 요청 사유는 사람이 정한다. 입고 전표 자체에는 이 폼에 옮길 값이 없다.
+   *
+   * 사용자가 고친 값은 덮지 않는다(`auto-fill.ts`). **고른 전표가 바뀌거나 채울 값이 도착할 때만**
+   * 돈다 — 「입력 지우기」·요청 성공으로 비운 칸을 곧바로 다시 채우지 않는다.
+   */
+  const autoIssueType = onlyOptionValue(codeOptions.issueType);
+  const autoSourceDocumentType = onlyOptionValue(codeOptions.sourceDocumentType);
+  const autoDisposalPartner =
+    disposalPartnerCondition === 'ready' ? onlyOptionValue(disposalPartners.entries) : '';
+  const autoFilledRef = useRef(NO_DISPOSAL_AUTO_VALUES);
+  const autoNowRef = useRef<{ receiptId: number | null; date: string; time: string }>({
+    receiptId: null,
+    date: '',
+    time: '',
+  });
+
+  useEffect(() => {
+    if (!isDisposalTab || selectedReceiptId === null) return;
+
+    if (autoNowRef.current.receiptId !== selectedReceiptId) {
+      const [date = '', time = ''] = plantNowLocal().split('T');
+
+      autoNowRef.current = { receiptId: selectedReceiptId, date, time };
+    }
+
+    const previous = autoFilledRef.current;
+    const next = {
+      issueType: autoIssueType,
+      sourceDocumentType: autoSourceDocumentType,
+      issuedDate: autoNowRef.current.date,
+      issuedTime: autoNowRef.current.time,
+      disposalPartnerId: autoDisposalPartner,
+    };
+
+    autoFilledRef.current = next;
+    setDisposalDraft((prev) => applyDisposalAutoFill(prev, previous, next));
+  }, [
+    isDisposalTab,
+    selectedReceiptId,
+    autoIssueType,
+    autoSourceDocumentType,
+    autoDisposalPartner,
+  ]);
 
   /**
    * 표가 그릴 줄. **판정을 여기서 만들지 않는다**(감지기 M24·M31) — 고를 수 있는가·골라졌는가·
@@ -1395,12 +1502,20 @@ export const DisposalIssueScreen = () => {
    * 순번은 **보낼 줄 안에서의 차례**다. 창은 순번을 글자로 내지 않고 줄을 가르는 데만 쓰므로
    * (내부 번호를 쓰지 않기 위한 것이다 · `omf-mes#44`) 표의 순번과 달라도 뜻을 잃지 않는다.
    */
-  const submitLines: SubmitLineSummary[] = submitInputs.map((line, index) => ({
-    ordinal: index + 1,
-    item: itemNameOf(line.itemId),
-    lot: lotNameOf(line.lotId),
-    qty: qtyTextOf(line.issueQty, line.uomId),
-  }));
+  const submitLines: SubmitLineSummary[] = submitInputs.map((line, index) => {
+    /* 「코드 · 이름」을 나눈다 — 못 풀었으면(불러오는 중 등) 그 글을 이름 자리에 두고 코드는 비운다. */
+    const item = splitCodeName(itemNameOf(line.itemId), '');
+    /* 단위는 코드만 한 번(「1 EA」) — 「EA · 개」를 그대로 붙이면 단위가 두 번 읽힌다(#360). */
+    const uom = splitCodeName(describeReference(toReference(uoms, line.uomId)), '').code;
+
+    return {
+      ordinal: index + 1,
+      itemName: item.name === '' ? item.code : item.name,
+      itemCode: item.name === '' ? '' : item.code,
+      lot: lotNameOf(line.lotId),
+      qty: t.lineTable.receiptQtyPair(line.issueQty, uom),
+    };
+  });
 
   /**
    * 결과 구획이 보일 값 — **서버가 되돌려 준 전표에서 나온다**(계획 결정 15).
@@ -1410,7 +1525,7 @@ export const DisposalIssueScreen = () => {
    */
   const toResultSummary = (created: IssueDetailResult) => ({
     goodsIssueNo: created.issue.goodsIssueNo,
-    statusCode: created.issue.statusCode,
+    statusCode: codeName('issueStatus', created.issue.statusCode),
     lines: created.lines.map((line, index): ResultLineSummary => ({
       ordinal: index + 1,
       item: itemNameOf(line.itemId),
@@ -1811,287 +1926,346 @@ export const DisposalIssueScreen = () => {
         />
       )}
 
-      <section className="pane" aria-label={t.panes.list}>
-        {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-        <GrFilterBar
-          appliedFilters={filters}
-          isLocked={isLocked}
-          warehouseOptions={warehouseOptions}
-          warehouseNote={warehouseNote}
-          receiptTypeOptions={codeOptions.receiptType}
-          statusOptions={codeOptions.status}
-          chipNames={{ warehouse: describeReference(warehouseReference) }}
-          onSearch={(nextFilters) => {
-            applyQuery(nextFilters);
-          }}
-          onRemoveFilter={(key: RemovableChipKey) => {
-            applyQuery(clearFilter(filters, key));
-          }}
-          onReset={() => {
-            applyQuery(DEFAULT_FILTERS);
-          }}
-        />
-
-        {!list.isError && (
-          <>
-            <GrTable
-              rows={rows}
-              isLoading={list.isPending}
-              isLocked={isLocked}
-              isBeyondLast={pageView.isBeyondLast}
-              selectedReceiptId={selectedReceiptId}
-              warehouseLookup={warehouses}
-              onFirstPage={() => {
-                applyQuery(filters);
-              }}
-              onToggleSelect={toggleSelectReceipt}
-              onRetryReferences={retryReferences}
-            />
-            {!list.isPending && (
-              <PageNav
-                view={pageView}
+      {/*
+       * 목록 | 상세 — 공용 분할(가운데 폭 막대 · 상하 배치의 높이 막대 · 「⋯」 좌우/상하 배치 · 목록 접기 · #360).
+       * 상자 안 조회 · 목록 · 상세 입력은 그대로 옮겼다.
+       */}
+      <ListDetailWorkspace
+        storageKey="omf-mes:disposal-issue:disposal"
+        list={{
+          label: t.panes.list,
+          title: t.panes.list,
+          count: list.data?.page.total,
+          content: (
+            <>
+              {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
+              <GrFilterBar
+                appliedFilters={filters}
                 isLocked={isLocked}
-                onChange={(nextPage) => {
-                  applyQuery(filters, nextPage);
+                warehouseOptions={warehouseOptions}
+                warehouseNote={warehouseNote}
+                receiptTypeOptions={codeOptions.receiptType}
+                statusOptions={codeOptions.status}
+                chipNames={{ warehouse: describeReference(warehouseReference) }}
+                onSearch={(nextFilters) => {
+                  applyQuery(nextFilters);
+                }}
+                onRemoveFilter={(key: RemovableChipKey) => {
+                  applyQuery(clearFilter(filters, key));
+                }}
+                onReset={() => {
+                  applyQuery(DEFAULT_FILTERS);
                 }}
               />
-            )}
-          </>
-        )}
-      </section>
 
-      {/*
-       * 아래 구획 — **네 갈래를 가른다**: 없음 안내(S4) · 고르기 전(S0) · 불러오는 중 · 고른 뒤(S1·S2).
-       *
-       * 「없음」이 「고르기 전」보다 앞선다 — 404로 `gr`를 정리하고 나면 주소가 같아져, 순서를
-       * 뒤집으면 사용자가 **자기가 무엇을 눌렀는지 되짚을 수 없다.**
-       *
-       * **상세 실패의 다른 갈래를 여기서 가르지 않는다.** 계약의 입고 상세 응답은 200과 404
-       * 둘뿐이고(실측) **403이 없다** — 만들면 닿을 수 없는 가지가 된다. 네트워크 끊김은
-       * 골격이 서 있는 동안 화면이 조용히 기다리고, 사용자가 「다시 조회」로 되살린다.
-       */}
-      <section className="pane" aria-label={t.panes.lines}>
-        {hasNotFoundNotice && selectedReceiptId === null && (
-          <EmptyState
-            size="sm"
-            live
-            title={t.empty.notFoundTitle}
-            description={t.empty.notFoundDescription}
-          />
-        )}
+              {!list.isError && (
+                <>
+                  <GrTable
+                    /* 입고 유형 · 상태는 서버 코드값 이름으로 보인다(표시만 · #360). */
+                    rows={rows.map((row) => ({
+                      ...row,
+                      receiptTypeCode: codeName('receiptType', row.receiptTypeCode),
+                      statusCode: codeName('status', row.statusCode),
+                    }))}
+                    isLoading={list.isPending}
+                    isLocked={isLocked}
+                    isBeyondLast={pageView.isBeyondLast}
+                    selectedReceiptId={selectedReceiptId}
+                    warehouseLookup={warehouses}
+                    onFirstPage={() => {
+                      applyQuery(filters);
+                    }}
+                    onToggleSelect={toggleSelectReceipt}
+                    onRetryReferences={retryReferences}
+                  />
+                  {!list.isPending && (
+                    <PageNav
+                      view={pageView}
+                      isLocked={isLocked}
+                      onChange={(nextPage) => {
+                        applyQuery(filters, nextPage);
+                      }}
+                      sizes={LIST_PAGE_SIZES}
+                      onChangeSize={(nextSize) => {
+                        /* 쪽 이동과 같다 — 첫 쪽부터 그 크기로 다시 받는다. */
+                        applyQuery(filters, 1, nextSize);
+                      }}
+                    />
+                  )}
+                </>
+              )}
+            </>
+          ),
+        }}
+        detail={{
+          label: `${t.panes.lines} · ${t.result.label}`,
+          bare: true,
+          content: (
+            <>
+              {/*
+               * 아래 구획 — **네 갈래를 가른다**: 없음 안내(S4) · 고르기 전(S0) · 불러오는 중 · 고른 뒤(S1·S2).
+               *
+               * 「없음」이 「고르기 전」보다 앞선다 — 404로 `gr`를 정리하고 나면 주소가 같아져, 순서를
+               * 뒤집으면 사용자가 **자기가 무엇을 눌렀는지 되짚을 수 없다.**
+               *
+               * **상세 실패의 다른 갈래를 여기서 가르지 않는다.** 계약의 입고 상세 응답은 200과 404
+               * 둘뿐이고(실측) **403이 없다** — 만들면 닿을 수 없는 가지가 된다. 네트워크 끊김은
+               * 골격이 서 있는 동안 화면이 조용히 기다리고, 사용자가 「다시 조회」로 되살린다.
+               */}
+              <section className="pane" aria-label={t.panes.lines}>
+                {hasNotFoundNotice && selectedReceiptId === null && (
+                  <EmptyState
+                    size="sm"
+                    live
+                    title={t.empty.notFoundTitle}
+                    description={t.empty.notFoundDescription}
+                  />
+                )}
 
-        {!hasNotFoundNotice && selectedReceiptId === null && (
-          <EmptyState
-            size="sm"
-            title={t.empty.noSelectionTitle}
-            description={t.empty.noSelectionDescription}
-          />
-        )}
+                {!hasNotFoundNotice && selectedReceiptId === null && (
+                  <EmptyState
+                    size="sm"
+                    title={t.empty.noSelectionTitle}
+                    description={t.empty.noSelectionDescription}
+                  />
+                )}
 
-        {selectedReceiptId !== null && detailData === undefined && (
-          <div role="status" aria-label={t.loading.detail}>
-            <SkeletonText lines={3} />
-          </div>
-        )}
+                {selectedReceiptId !== null && detailData === undefined && (
+                  <div role="status" aria-label={t.loading.detail}>
+                    <SkeletonText lines={3} />
+                  </div>
+                )}
 
-        {detailData !== undefined && (
-          <>
-            <ReceiptSummaryPane receipt={detailData.receipt} warehouseName={detailWarehouseName} />
+                {detailData !== undefined && (
+                  <>
+                    <ReceiptSummaryPane
+                      receipt={{
+                        ...detailData.receipt,
+                        receiptTypeCode: codeName(
+                          'receiptType',
+                          detailData.receipt.receiptTypeCode,
+                        ),
+                        statusCode: codeName('status', detailData.receipt.statusCode),
+                      }}
+                      warehouseName={detailWarehouseName}
+                    />
 
-            <GrLineTable
-              rows={lineTableRows}
-              itemNames={items}
-              uomLookup={uoms}
-              lotLookup={lots}
-              locationLookup={locations}
-              hasBalanceError={balances.isError}
-              hasBalanceTruncated={balances.truncated}
-              isLocked={isLocked}
-              selection={selection}
-              onToggleSelect={(goodsReceiptLineId) => {
-                setLineDraft((prev) => toggleLineSelection(prev, goodsReceiptLineId));
-              }}
-              onChangeQty={(goodsReceiptLineId, text) => {
-                setLineDraft((prev) => setDraftQty(prev, goodsReceiptLineId, text));
-              }}
-              onRetryReferences={retryLineReferences}
-              onRetryBalances={() => {
-                balances.refetch();
-              }}
-            />
+                    <GrLineTable
+                      rows={lineTableRows}
+                      itemNames={items}
+                      uomLookup={uoms}
+                      lotLookup={lots}
+                      locationLookup={locations}
+                      hasBalanceError={balances.isError}
+                      hasBalanceTruncated={balances.truncated}
+                      isLocked={isLocked}
+                      selection={selection}
+                      onToggleSelect={(goodsReceiptLineId) => {
+                        setLineDraft((prev) => toggleLineSelection(prev, goodsReceiptLineId));
+                      }}
+                      onChangeQty={(goodsReceiptLineId, text) => {
+                        setLineDraft((prev) => setDraftQty(prev, goodsReceiptLineId, text));
+                      }}
+                      onRetryReferences={retryLineReferences}
+                      onRetryBalances={() => {
+                        balances.refetch();
+                      }}
+                    />
 
-            {/*
-             * 폐기 요청 정보 — **어떤 전표로·언제·왜·어디로 폐기하는가.** 창이 아니라 구획인
-             * 이유는 선택칸이 여럿이라 창에 넣으면 펼침 목록이 잘리는 결함(`omf-mes#45`)에
-             * 걸리기 때문이다. 고칠 수 없는 결함은 **걸릴 자리를 만들지 않는 것**으로 피한다.
-             */}
-            <DisposalForm
-              values={disposalDraft}
-              codeOptions={codeOptions}
-              disposalPartnerOptions={disposalPartnerOptions}
-              disposalPartnerCondition={disposalPartnerCondition}
-              fieldErrors={formFieldErrors}
-              isLocked={isLocked}
-              onChangeCode={(key: DisposalCodeKey, value) => {
-                setDisposalDraft((prev) => ({ ...prev, codes: { ...prev.codes, [key]: value } }));
-              }}
-              onChangeIssuedDate={(value) => {
-                setDisposalDraft((prev) => ({ ...prev, issuedDate: value }));
-              }}
-              onChangeIssuedTime={(value) => {
-                setDisposalDraft((prev) => ({ ...prev, issuedTime: value }));
-              }}
-              onChangeRemarks={(value) => {
-                setDisposalDraft((prev) => ({ ...prev, remarks: value }));
-              }}
-              /*
-               * **비움까지 한 전이로 처리한다**(`withSelfDisposal`) — 체크만 반영하고 값을
-               * 따로 비우면 두 자리가 갈려 한쪽만 도는 경로가 생긴다.
-               */
-              onToggleSelfDisposal={(value) => {
-                setDisposalDraft((prev) => withSelfDisposal(prev, value));
-              }}
-              onChangeDisposalPartner={(value) => {
-                setDisposalDraft((prev) => ({ ...prev, disposalPartnerId: value }));
-              }}
-              onChangeReason={(value) => {
-                setDisposalDraft((prev) => ({ ...prev, reason: value }));
-              }}
-            />
+                    {/*
+                     * 폐기 요청 정보 — **어떤 전표로·언제·왜·어디로 폐기하는가.** 창이 아니라 구획인
+                     * 이유는 선택칸이 여럿이라 창에 넣으면 펼침 목록이 잘리는 결함(`omf-mes#45`)에
+                     * 걸리기 때문이다. 고칠 수 없는 결함은 **걸릴 자리를 만들지 않는 것**으로 피한다.
+                     */}
+                    <DisposalForm
+                      values={disposalDraft}
+                      codeOptions={codeOptions}
+                      disposalPartnerOptions={disposalPartnerOptions}
+                      disposalPartnerCondition={disposalPartnerCondition}
+                      fieldErrors={formFieldErrors}
+                      isLocked={isLocked}
+                      onChangeCode={(key: DisposalCodeKey, value) => {
+                        setDisposalDraft((prev) => ({
+                          ...prev,
+                          codes: { ...prev.codes, [key]: value },
+                        }));
+                      }}
+                      onChangeIssuedDate={(value) => {
+                        setDisposalDraft((prev) => ({ ...prev, issuedDate: value }));
+                      }}
+                      onChangeIssuedTime={(value) => {
+                        setDisposalDraft((prev) => ({ ...prev, issuedTime: value }));
+                      }}
+                      onChangeRemarks={(value) => {
+                        setDisposalDraft((prev) => ({ ...prev, remarks: value }));
+                      }}
+                      /*
+                       * **비움까지 한 전이로 처리한다**(`withSelfDisposal`) — 체크만 반영하고 값을
+                       * 따로 비우면 두 자리가 갈려 한쪽만 도는 경로가 생긴다.
+                       */
+                      onToggleSelfDisposal={(value) => {
+                        setDisposalDraft((prev) => withSelfDisposal(prev, value));
+                      }}
+                      onChangeDisposalPartner={(value) => {
+                        setDisposalDraft((prev) => ({ ...prev, disposalPartnerId: value }));
+                      }}
+                      onChangeReason={(value) => {
+                        setDisposalDraft((prev) => ({ ...prev, reason: value }));
+                      }}
+                    />
 
-            {/*
-             * 저장 실패는 **네 갈래**다(계획 결정 16). 배너가 검증 실패(400)·권한 없음(403)·
-             * 저장 충돌(409)·응답 없음(네트워크)의 문구를 갈라 내고, **409에만** 「최신
-             * 불러오기」가 붙는다 — 다시 읽어 풀리는 것은 충돌뿐이라 다른 갈래에 내면 입력만
-             * 버리게 된다. **결재선이 없어 오는 400도 여기 온다**(계약 명시) — 코드로 분기해
-             * 원인을 지어내지 않고 서버 문구를 그대로 낸다.
-             */}
-            <SaveErrorBanner error={registerError} onReload={reloadRegisterTarget} />
+                    {/*
+                     * 저장 실패는 **네 갈래**다(계획 결정 16). 배너가 검증 실패(400)·권한 없음(403)·
+                     * 저장 충돌(409)·응답 없음(네트워크)의 문구를 갈라 내고, **409에만** 「최신
+                     * 불러오기」가 붙는다 — 다시 읽어 풀리는 것은 충돌뿐이라 다른 갈래에 내면 입력만
+                     * 버리게 된다. **결재선이 없어 오는 400도 여기 온다**(계약 명시) — 코드로 분기해
+                     * 원인을 지어내지 않고 서버 문구를 그대로 낸다.
+                     */}
+                    <SaveErrorBanner error={registerError} onReload={reloadRegisterTarget} />
 
-            {/*
-             * **응답을 받지 못한 실패에만 한 줄을 더한다.** 공통 문구는 「다시 시도하세요」로
-             * 끝나는데, 확인 없이 다시 보내면 같은 품의가 전표 두 벌로 남는다 — 공통 쓰기 훅이
-             * 호출마다 새 멱등 키를 만들어 서버가 재전송으로 보지 못한다(`omf-mes#55`).
-             */}
-            {registerError?.kind === 'network' && (
-              <p className="field-error">{t.notes.submitRecheck}</p>
-            )}
+                    {/*
+                     * **응답을 받지 못한 실패에만 한 줄을 더한다.** 공통 문구는 「다시 시도하세요」로
+                     * 끝나는데, 확인 없이 다시 보내면 같은 품의가 전표 두 벌로 남는다 — 공통 쓰기 훅이
+                     * 호출마다 새 멱등 키를 만들어 서버가 재전송으로 보지 못한다(`omf-mes#55`).
+                     */}
+                    {registerError?.kind === 'network' && (
+                      <p className="field-error">{t.notes.submitRecheck}</p>
+                    )}
 
-            {/* 다시 읽기의 실패는 쓰기의 실패와 **갈라 낸다** — 사용자가 할 조치가 다르다. */}
-            {hasReloadFailure && <p className="field-error">{t.notes.reloadFailed}</p>}
+                    {/* 다시 읽기의 실패는 쓰기의 실패와 **갈라 낸다** — 사용자가 할 조치가 다르다. */}
+                    {hasReloadFailure && <p className="field-error">{t.notes.reloadFailed}</p>}
 
-            {/* 「재고는 승인 뒤 기타출고 처리에서 빠진다」는 확인 창에서만 말한다(사용자 지시 2026-11-20). */}
-            <div className="form-actions">
-              {/* 지우기가 상신보다 앞에 선다 — 되돌릴 수 없는 것이 손 가까이 있으면 안 된다. */}
-              <div className="field-cell">
-                <Button
-                  variant="text"
-                  disabled={!hasDraft || isLocked}
-                  aria-describedby={hasDraft ? undefined : discardReasonId}
-                  onClick={() => {
-                    setDiscardOpen(true);
+                    {/* 「재고는 승인 뒤 기타출고 처리에서 빠진다」는 확인 창에서만 말한다(사용자 지시 2026-11-20). */}
+                    <div className="form-actions">
+                      {/* 지우기가 상신보다 앞에 선다 — 되돌릴 수 없는 것이 손 가까이 있으면 안 된다. */}
+                      <div className="field-cell">
+                        <Button
+                          variant="text"
+                          disabled={!hasDraft || isLocked}
+                          aria-describedby={hasDraft ? undefined : discardReasonId}
+                          onClick={() => {
+                            setDiscardOpen(true);
+                          }}
+                        >
+                          {t.actions.discardDrafts}
+                        </Button>
+                        {!hasDraft && (
+                          /* 사유 글자는 화면 읽기용으로만 둔다 — 보이는 안내는 걷었다(사용자 지시 2026-11-27 · #360). */
+                          <span id={discardReasonId} className="visually-hidden">
+                            {t.actionReasons.nothingToDiscard}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="field-cell">
+                        <Button
+                          disabled={blockReason !== null || isLocked}
+                          loading={isLocked}
+                          aria-describedby={blockReason === null ? undefined : actionReasonId}
+                          onClick={openSubmitConfirm}
+                        >
+                          {t.actions.submitDisposal}
+                        </Button>
+                        {/*
+                         * 잠금 사유는 화면 읽기용으로만 둔다(사용자 지시 2026-11-27 · #360). **코드 목록이
+                         * 없는 사정만 보이게 남긴다** — 사용자가 칸을 채워 풀 수 있는 것이 아니다.
+                         */}
+                        {blockReason !== null && (
+                          <span
+                            id={actionReasonId}
+                            className={
+                              isRequiredCodeListPending(codeOptions)
+                                ? 'field-note'
+                                : 'visually-hidden'
+                            }
+                          >
+                            {blockReason}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* **창은 열 때만 붙인다** — 닫혀도 남아 있으면 지난 값이 DOM에 살아 있게 된다. */}
+                    {isSubmitConfirmOpen && (
+                      <SubmitConfirmDialog
+                        summary={{
+                          goodsReceiptNo: detailData.receipt.goodsReceiptNo,
+                          warehouseName: detailWarehouseName,
+                          issueTypeName: codeName('issueType', disposalDraft.codes.issueType),
+                          /* 공통코드 그룹이 아닌 구조 값 — 계약 설명의 이름(없으면 코드 그대로). */
+                          sourceDocumentTypeName:
+                            t.codeNames.sourceDocumentType[
+                              disposalDraft.codes.sourceDocumentType
+                            ] ?? disposalDraft.codes.sourceDocumentType,
+                          reasonName: codeName('reason', disposalDraft.codes.reason),
+                          issuedAt: formatDateTime(toIssuedLocal(disposalDraft)),
+                          businessDate: toBusinessDate(toIssuedLocal(disposalDraft)),
+                          remarks: disposalDraft.remarks,
+                          /* 「자체 폐기」 또는 고른 거래처 — **나가는 값과 같은 판정에서 나온다.** */
+                          destination: describeDisposalDestination(
+                            disposalDestination,
+                            disposalPartnerLabel,
+                          ),
+                          lines: submitLines,
+                          reason: disposalDraft.reason,
+                          /* 상한을 확인하지 못한 줄이 **보낼 줄에 섞여 있을 때만** 밝힌다. */
+                          hasUnknownOnHand: selection.selectedRows.some(
+                            (row) => row.onHand.kind !== 'known',
+                          ),
+                        }}
+                        onConfirm={() => {
+                          startSubmitChain(detailData.receipt);
+                        }}
+                        onClose={() => {
+                          setSubmitConfirmOpen(false);
+                        }}
+                      />
+                    )}
+
+                    {isDiscardOpen && (
+                      <DiscardConfirmDialog
+                        onConfirm={discardDrafts}
+                        onClose={() => {
+                          setDiscardOpen(false);
+                        }}
+                      />
+                    )}
+                  </>
+                )}
+              </section>
+
+              {/*
+               * 상신 결과 — **화면이 확인한 것만 말한다**(계획 결정 15). 라인 표 구획 **밖**에 두는
+               * 이유는 이 결과가 고른 입고 전표가 아니라 **만들어진 품의**에 대한 것이기 때문이다.
+               *
+               * **자기 대상보다 오래 살지 않는다** — 매임 이름(`chainTargetKey`)이 지금 고른 전표와
+               * 다르면 서지 않는다.
+               */}
+              {chain.kind !== 'none' && isChainForCurrentTarget && (
+                <RegisterResultPane
+                  outcome={
+                    chain.kind === 'submitted'
+                      ? { kind: 'submitted', issue: toResultSummary(chain.issue) }
+                      : {
+                          /*
+                           * **부분 실패를 갈라 내는 자리.** 상신이 실패했다는 사실은 훅의 되먹임에서
+                           * 오고, 그전까지는 「올리는 중」이다 — 실패를 성공처럼도, 진행 중을 실패처럼도
+                           * 말하지 않는다.
+                           */
+                          kind: hasSubmitFailure ? 'partial' : 'submitting',
+                          issue: toResultSummary(chain.issue),
+                        }
+                  }
+                  isLocked={isLocked}
+                  onOpenIssue={() => {
+                    openCreatedIssue(chain.issue.issue.goodsIssueId);
                   }}
-                >
-                  {t.actions.discardDrafts}
-                </Button>
-                {!hasDraft && (
-                  <span id={discardReasonId} className="field-note">
-                    {t.actionReasons.nothingToDiscard}
-                  </span>
-                )}
-              </div>
-
-              <div className="field-cell">
-                <Button
-                  disabled={blockReason !== null || isLocked}
-                  loading={isLocked}
-                  aria-describedby={blockReason === null ? undefined : actionReasonId}
-                  onClick={openSubmitConfirm}
-                >
-                  {t.actions.submitDisposal}
-                </Button>
-                {blockReason !== null && (
-                  <span id={actionReasonId} className="field-note">
-                    {blockReason}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* **창은 열 때만 붙인다** — 닫혀도 남아 있으면 지난 값이 DOM에 살아 있게 된다. */}
-            {isSubmitConfirmOpen && (
-              <SubmitConfirmDialog
-                summary={{
-                  goodsReceiptNo: detailData.receipt.goodsReceiptNo,
-                  warehouseName: detailWarehouseName,
-                  issueTypeCode: disposalDraft.codes.issueType,
-                  sourceDocumentTypeCode: disposalDraft.codes.sourceDocumentType,
-                  reasonCode: disposalDraft.codes.reason,
-                  issuedAt: formatDateTime(toIssuedLocal(disposalDraft)),
-                  businessDate: toBusinessDate(toIssuedLocal(disposalDraft)),
-                  remarks: disposalDraft.remarks,
-                  /* 「자체 폐기」 또는 고른 거래처 — **나가는 값과 같은 판정에서 나온다.** */
-                  destination: describeDisposalDestination(
-                    disposalDestination,
-                    disposalPartnerLabel,
-                  ),
-                  lines: submitLines,
-                  reason: disposalDraft.reason,
-                  reasonFirstLine: firstLineOf(disposalDraft.reason),
-                  /* 상한을 확인하지 못한 줄이 **보낼 줄에 섞여 있을 때만** 밝힌다. */
-                  hasUnknownOnHand: selection.selectedRows.some(
-                    (row) => row.onHand.kind !== 'known',
-                  ),
-                }}
-                onConfirm={() => {
-                  startSubmitChain(detailData.receipt);
-                }}
-                onClose={() => {
-                  setSubmitConfirmOpen(false);
-                }}
-              />
-            )}
-
-            {isDiscardOpen && (
-              <DiscardConfirmDialog
-                onConfirm={discardDrafts}
-                onClose={() => {
-                  setDiscardOpen(false);
-                }}
-              />
-            )}
-          </>
-        )}
-      </section>
-
-      {/*
-       * 상신 결과 — **화면이 확인한 것만 말한다**(계획 결정 15). 라인 표 구획 **밖**에 두는
-       * 이유는 이 결과가 고른 입고 전표가 아니라 **만들어진 품의**에 대한 것이기 때문이다.
-       *
-       * **자기 대상보다 오래 살지 않는다** — 매임 이름(`chainTargetKey`)이 지금 고른 전표와
-       * 다르면 서지 않는다.
-       */}
-      {chain.kind !== 'none' && isChainForCurrentTarget && (
-        <RegisterResultPane
-          outcome={
-            chain.kind === 'submitted'
-              ? { kind: 'submitted', issue: toResultSummary(chain.issue) }
-              : {
-                  /*
-                   * **부분 실패를 갈라 내는 자리.** 상신이 실패했다는 사실은 훅의 되먹임에서
-                   * 오고, 그전까지는 「올리는 중」이다 — 실패를 성공처럼도, 진행 중을 실패처럼도
-                   * 말하지 않는다.
-                   */
-                  kind: hasSubmitFailure ? 'partial' : 'submitting',
-                  issue: toResultSummary(chain.issue),
-                }
-          }
-          isLocked={isLocked}
-          onOpenIssue={() => {
-            openCreatedIssue(chain.issue.issue.goodsIssueId);
-          }}
-        />
-      )}
+                />
+              )}
+            </>
+          ),
+        }}
+      />
     </>
   );
 
@@ -2106,243 +2280,286 @@ export const DisposalIssueScreen = () => {
         />
       )}
 
-      <section className="pane" aria-label={t.panes.historyList}>
-        <GiFilterBar
-          appliedFilters={historyFilters}
-          isLocked={isLocked}
-          /*
-           * **출고 유형·폐기 사유는 폐기 정보 폼과 같은 값 목록을 쓴다** — 같은 공통코드라
-           * 갈라 두면 값이 확정될 때 채울 자리가 둘이 된다(`code-options.ts`).
-           * **상태만 따로다** — 출고 전표의 상태는 입고 전표의 상태와 다른 값 목록이다.
-           */
-          issueTypeOptions={codeOptions.issueType}
-          reasonOptions={codeOptions.reason}
-          statusOptions={codeOptions.issueStatus}
-          onSearch={(nextFilters) => {
-            applyHistoryQuery(nextFilters);
-          }}
-          onRemoveFilter={(key: RemovableIssueChipKey) => {
-            applyHistoryQuery(clearIssueFilter(historyFilters, key));
-          }}
-          onReset={() => {
-            applyHistoryQuery(DEFAULT_ISSUE_FILTERS);
-          }}
-        />
-
-        {!issueList.isError && (
-          <>
-            <GiTable
-              rows={issueRows}
-              isLoading={issueList.isPending}
-              isLocked={isLocked}
-              isBeyondLast={issuePageView.isBeyondLast}
-              selectedIssueId={selectedIssueId}
-              warehouseLookup={warehouses}
-              onFirstPage={() => {
-                applyHistoryQuery(historyFilters);
-              }}
-              onToggleSelect={toggleSelectIssue}
-              onRetryReferences={retryReferences}
-            />
-            {!issueList.isPending && (
-              <PageNav
-                view={issuePageView}
+      {/*
+       * 목록 | 상세 — 공용 분할(가운데 폭 막대 · 상하 배치의 높이 막대 · 「⋯」 좌우/상하 배치 · 목록 접기 · #360).
+       * 상자 안 조회 · 목록 · 상세 입력은 그대로 옮겼다.
+       */}
+      <ListDetailWorkspace
+        storageKey="omf-mes:disposal-issue:history"
+        list={{
+          label: t.panes.historyList,
+          title: t.panes.historyList,
+          count: issueList.data?.page.total,
+          content: (
+            <>
+              <GiFilterBar
+                appliedFilters={historyFilters}
                 isLocked={isLocked}
-                onChange={(nextPage) => {
-                  applyHistoryQuery(historyFilters, nextPage);
-                }}
-              />
-            )}
-          </>
-        )}
-      </section>
-
-      {/* 아래 구획 — 미선택·404·그 밖의 실패·로딩·정상의 다섯 갈래다. */}
-      <section className="pane" aria-label={t.panes.historyDetail}>
-        {hasIssueNotFoundNotice && selectedIssueId === null && (
-          <EmptyState
-            size="sm"
-            live
-            title={t.empty.issueNotFoundTitle}
-            description={t.empty.issueNotFoundDescription}
-          />
-        )}
-
-        {!hasIssueNotFoundNotice && selectedIssueId === null && (
-          <EmptyState
-            size="sm"
-            title={t.empty.historyNoSelectionTitle}
-            description={t.empty.historyNoSelectionDescription}
-          />
-        )}
-
-        {selectedIssueId !== null && issueDetail.isError && !isIssueDetailNotFound && (
-          <LoadErrorBanner
-            error={issueDetail.error}
-            onRetry={() => {
-              void issueDetail.refetch();
-            }}
-          />
-        )}
-
-        {selectedIssueId !== null && !issueDetail.isError && issueDetailData === undefined && (
-          <div role="status" aria-label={t.loading.issueDetail}>
-            <SkeletonText lines={3} />
-          </div>
-        )}
-
-        {!issueDetail.isError && issueDetailData !== undefined && (
-          <>
-            <IssueDetailPane issue={issueDetailData.issue} warehouseName={issueWarehouseName} />
-
-            <IssueLineTable
-              rows={issueLineRows}
-              itemNames={items}
-              uomLookup={uoms}
-              lotLookup={lots}
-              locationLookup={locations}
-              hasReferenceError={hasLineReferenceError}
-              onRetryReferences={retryLineReferences}
-            />
-
-            {/*
-             * 결재 진행. **못 읽어도 위 두 구획은 그대로 산다**(수명 표 26행) —
-             * 판단을 돕는 자료이지 이 품의를 다루는 전제가 아니다.
-             */}
-            <ApprovalProgressPane
-              state={approvalState}
-              /*
-               * **자리표시를 화면이 읽어 넘긴다** — 부품이 상수를 직접 읽으면 「채워지면 무엇이
-               * 달라지는가」를 화면 수준에서 잴 수 없어 그 자리가 죽은 가지가 된다.
-               */
-              isJudgePending={isApprovalJudgePending(APPROVED_APPROVAL_STATUS_CODES)}
-              hasPosted={hasPostedLine(issueLineRows)}
-              onRetry={() => {
-                void approvalRequest.refetch();
-              }}
-            />
-
-            {/*
-             * 상신 — **미상신 전표를 이어서 결재에 올리는 자리다**(승인 기록 정정 1-1).
-             *
-             * 「승인 요청」의 연쇄가 둘째 요청에서 실패하면 **전표만 남는데**, 이 구획이 없으면
-             * 그 전표는 이 화면의 정상 경로로 되살릴 수 없다. 상신 자리를 **한 곳**에 두는
-             * 규칙(계획 결정 6)이 지켜지는 자리이기도 하다 — 발의 탭의 버튼은 전표를 만드는
-             * 조작이고, **이미 있는 전표를 올리는 자리는 여기 하나다.**
-             */}
-            <ResubmitPane
-              submission={submission.kind}
-              reason={resubmitReason}
-              reasonError={localResubmitError ?? resubmitFieldError}
-              blockReason={resubmitBlock}
-              isLocked={isLocked}
-              onChangeReason={(value) => {
-                setResubmitReason(value);
-              }}
-              onOpenConfirm={openResubmitConfirm}
-            />
-
-            <SaveErrorBanner error={resubmitError} onReload={refreshAll} />
-
-            {resubmitError?.kind === 'network' && (
-              <p className="field-error">{t.notes.submitRecheck}</p>
-            )}
-
-            {/*
-             * 기타출고 처리 — **재고가 실제로 움직이는 자리다.**
-             *
-             * **미상신 전표에서도 잠긴 채로 선다**(재상신 구획과 같은 판단) — 감추면
-             * 「왜 여기서는 처리할 수 없는가」에 화면이 답하지 못하고, 사용자는 승인을 받아 놓고
-             * 어디서 처리하는지 찾아 헤맨다.
-             *
-             * **승인이 끝났는지 화면이 판정하지 못하는 동안에도 잠그지 않는다**(승인 기록
-             * §13-2 안 1) — 잠그면 승인된 건까지 막혀 화면이 통째로 무용해진다. 막는 것은
-             * 서버이고 계약이 그 사실을 적었다.
-             */}
-            <PostPane
-              blockReason={postBlock}
-              /*
-               * **그 전표가 어디로 가는가**(변경 통지 #128 · 완료 조건 C26). 이름은 **좁히지
-               * 않은** 참조에서 푼다 — 좁힌 선택지로 풀면 좁힘 밖 거래처가 「알 수 없음」이 된다.
-               * 부품은 글자만 받는다(제목줄이 창고 이름을 받는 것과 같은 형태).
-               */
-              destination={describeIssueDestination(issueDetailData.issue, partnerNames)}
-              isLocked={isLocked}
-              onOpenConfirm={openPostConfirm}
-            />
-
-            <SaveErrorBanner error={postError} onReload={refreshAll} />
-
-            {/*
-             * **응답을 받지 못한 처리에만** 한 줄을 더한다(다섯째 겹). 확인 없이 다시 보내면
-             * 같은 전표가 두 번 전기될 수 있다 — 공통 쓰기 훅이 호출마다 새 멱등 키를 만들어
-             * 서버가 재전송으로 보지 못한다(`omf-mes#55`). **확인할 것이 상신과 다르다**:
-             * 전표가 만들어졌는가가 아니라 **재고가 움직였는가**다.
-             */}
-            {postError?.kind === 'network' && <p className="field-error">{t.notes.postRecheck}</p>}
-
-            {/* **창은 열 때만 붙인다** — 닫혀도 남아 있으면 지난 값이 DOM에 살아 있게 된다. */}
-            {isPostConfirmOpen && (
-              <PostConfirmDialog
-                summary={{
-                  goodsIssueNo: issueDetailData.issue.goodsIssueNo,
-                  lineCount: issueLineRows.length,
-                  totalQtyText: issueTotalQtyText,
-                  reason: postReasonSummary,
-                  /*
-                   * **자리표시가 비었다는 사실을 창이 다시 적는다.** 구획의 상시 안내를 읽고
-                   * 지나쳤어도 확인 직전에 한 번 더 만난다.
-                   */
-                  isJudgePending: isApprovalJudgePending(APPROVED_APPROVAL_STATUS_CODES),
-                  /* 값 유무로만 판정한다 — 상태 코드로 읽으면 조용히 틀린다(계획 결정 7). */
-                  hasPostedLine: hasPostedLine(issueLineRows),
-                }}
-                onConfirm={() => {
-                  sendPost(issueDetailData.issue);
-                }}
-                onClose={() => {
-                  setPostConfirmOpen(false);
-                }}
-              />
-            )}
-
-            {/*
-             * 처리 결과 — **자기 대상보다 오래 살지 않는다.** 매임 이름이 지금 고른 품의와
-             * 다르면 서지 않는다.
-             */}
-            {postResult !== null && isPostForCurrentTarget && (
-              <PostResultPane
                 /*
-                 * **낼 값만 골라 넘긴다**(`omf-mes#44`). 응답 전체를 그대로 넘기면 그 안에
-                 * 내부 번호가 함께 들어가고, 뒤에 한 줄을 더 그릴 때 그것이 화면으로 새는 길이
-                 * 열린다 — 상신 결과 구획(`toResultSummary`)과 같은 형태다.
+                 * **출고 유형·폐기 사유는 폐기 정보 폼과 같은 값 목록을 쓴다** — 같은 공통코드라
+                 * 갈라 두면 값이 확정될 때 채울 자리가 둘이 된다(`code-options.ts`).
+                 * **상태만 따로다** — 출고 전표의 상태는 입고 전표의 상태와 다른 값 목록이다.
                  */
-                issue={{
-                  goodsIssueNo: postResult.goodsIssueNo,
-                  statusCode: postResult.statusCode,
-                  erpMessageQueued: postResult.erpMessageQueued,
+                issueTypeOptions={historyIssueTypeOptions}
+                reasonOptions={codeOptions.reason}
+                statusOptions={codeOptions.issueStatus}
+                onSearch={(nextFilters) => {
+                  applyHistoryQuery(nextFilters);
+                }}
+                onRemoveFilter={(key: RemovableIssueChipKey) => {
+                  applyHistoryQuery(clearIssueFilter(historyFilters, key));
+                }}
+                onReset={() => {
+                  applyHistoryQuery(DEFAULT_ISSUE_FILTERS);
                 }}
               />
-            )}
 
-            {isResubmitConfirmOpen && (
-              <ResubmitConfirmDialog
-                summary={{
-                  goodsIssueNo: issueDetailData.issue.goodsIssueNo,
-                  lineCount: issueLineRows.length,
-                  totalQtyText: issueTotalQtyText,
-                  reason: resubmitReason,
-                  reasonFirstLine: firstLineOf(resubmitReason),
-                }}
-                onConfirm={sendResubmit}
-                onClose={() => {
-                  setResubmitConfirmOpen(false);
-                }}
-              />
-            )}
-          </>
-        )}
-      </section>
+              {!issueList.isError && (
+                <>
+                  <GiTable
+                    /* 폐기 사유 · 상태는 서버 코드값 이름으로 보인다(표시만 · #360). */
+                    rows={issueRows.map((row) => ({
+                      ...row,
+                      reasonCode:
+                        row.reasonCode === null ? null : codeName('reason', row.reasonCode),
+                      statusCode: codeName('issueStatus', row.statusCode),
+                    }))}
+                    isLoading={issueList.isPending}
+                    isLocked={isLocked}
+                    isBeyondLast={issuePageView.isBeyondLast}
+                    selectedIssueId={selectedIssueId}
+                    warehouseLookup={warehouses}
+                    onFirstPage={() => {
+                      applyHistoryQuery(historyFilters);
+                    }}
+                    onToggleSelect={toggleSelectIssue}
+                    onRetryReferences={retryReferences}
+                  />
+                  {!issueList.isPending && (
+                    <PageNav
+                      view={issuePageView}
+                      isLocked={isLocked}
+                      onChange={(nextPage) => {
+                        applyHistoryQuery(historyFilters, nextPage);
+                      }}
+                      sizes={LIST_PAGE_SIZES}
+                      onChangeSize={(nextSize) => {
+                        applyHistoryQuery(historyFilters, 1, nextSize);
+                      }}
+                    />
+                  )}
+                </>
+              )}
+            </>
+          ),
+        }}
+        detail={{
+          label: t.panes.historyDetail,
+          content: (
+            <>
+              {/* 아래 구획 — 미선택·404·그 밖의 실패·로딩·정상의 다섯 갈래다. */}
+              {hasIssueNotFoundNotice && selectedIssueId === null && (
+                <EmptyState
+                  size="sm"
+                  live
+                  title={t.empty.issueNotFoundTitle}
+                  description={t.empty.issueNotFoundDescription}
+                />
+              )}
+
+              {!hasIssueNotFoundNotice && selectedIssueId === null && (
+                <EmptyState
+                  size="sm"
+                  title={t.empty.historyNoSelectionTitle}
+                  description={t.empty.historyNoSelectionDescription}
+                />
+              )}
+
+              {selectedIssueId !== null && issueDetail.isError && !isIssueDetailNotFound && (
+                <LoadErrorBanner
+                  error={issueDetail.error}
+                  onRetry={() => {
+                    void issueDetail.refetch();
+                  }}
+                />
+              )}
+
+              {selectedIssueId !== null &&
+                !issueDetail.isError &&
+                issueDetailData === undefined && (
+                  <div role="status" aria-label={t.loading.issueDetail}>
+                    <SkeletonText lines={3} />
+                  </div>
+                )}
+
+              {!issueDetail.isError && issueDetailData !== undefined && (
+                <>
+                  <IssueDetailPane
+                    issue={{
+                      ...issueDetailData.issue,
+                      issueTypeCode: codeName('issueType', issueDetailData.issue.issueTypeCode),
+                      reasonCode:
+                        issueDetailData.issue.reasonCode === null
+                          ? null
+                          : codeName('reason', issueDetailData.issue.reasonCode),
+                      statusCode: codeName('issueStatus', issueDetailData.issue.statusCode),
+                    }}
+                    warehouseName={issueWarehouseName}
+                  />
+
+                  <IssueLineTable
+                    rows={issueLineRows}
+                    itemNames={items}
+                    uomLookup={uoms}
+                    lotLookup={lots}
+                    locationLookup={locations}
+                    hasReferenceError={hasLineReferenceError}
+                    onRetryReferences={retryLineReferences}
+                  />
+
+                  {/*
+                   * 결재 진행. **못 읽어도 위 두 구획은 그대로 산다**(수명 표 26행) —
+                   * 판단을 돕는 자료이지 이 품의를 다루는 전제가 아니다.
+                   */}
+                  <ApprovalProgressPane
+                    state={approvalState}
+                    /*
+                     * **자리표시를 화면이 읽어 넘긴다** — 부품이 상수를 직접 읽으면 「채워지면 무엇이
+                     * 달라지는가」를 화면 수준에서 잴 수 없어 그 자리가 죽은 가지가 된다.
+                     */
+                    isJudgePending={isApprovalJudgePending(APPROVED_APPROVAL_STATUS_CODES)}
+                    hasPosted={hasPostedLine(issueLineRows)}
+                    onRetry={() => {
+                      void approvalRequest.refetch();
+                    }}
+                  />
+
+                  {/*
+                   * 상신 — **미상신 전표를 이어서 결재에 올리는 자리다**(승인 기록 정정 1-1).
+                   *
+                   * 「승인 요청」의 연쇄가 둘째 요청에서 실패하면 **전표만 남는데**, 이 구획이 없으면
+                   * 그 전표는 이 화면의 정상 경로로 되살릴 수 없다. 상신 자리를 **한 곳**에 두는
+                   * 규칙(계획 결정 6)이 지켜지는 자리이기도 하다 — 발의 탭의 버튼은 전표를 만드는
+                   * 조작이고, **이미 있는 전표를 올리는 자리는 여기 하나다.**
+                   */}
+                  <ResubmitPane
+                    submission={submission.kind}
+                    reason={resubmitReason}
+                    reasonError={localResubmitError ?? resubmitFieldError}
+                    blockReason={resubmitBlock}
+                    isLocked={isLocked}
+                    onChangeReason={(value) => {
+                      setResubmitReason(value);
+                    }}
+                    onOpenConfirm={openResubmitConfirm}
+                  />
+
+                  <SaveErrorBanner error={resubmitError} onReload={refreshAll} />
+
+                  {resubmitError?.kind === 'network' && (
+                    <p className="field-error">{t.notes.submitRecheck}</p>
+                  )}
+
+                  {/*
+                   * 기타출고 처리 — **재고가 실제로 움직이는 자리다.**
+                   *
+                   * **미상신 전표에서도 잠긴 채로 선다**(재상신 구획과 같은 판단) — 감추면
+                   * 「왜 여기서는 처리할 수 없는가」에 화면이 답하지 못하고, 사용자는 승인을 받아 놓고
+                   * 어디서 처리하는지 찾아 헤맨다.
+                   *
+                   * **승인이 끝났는지 화면이 판정하지 못하는 동안에도 잠그지 않는다**(승인 기록
+                   * §13-2 안 1) — 잠그면 승인된 건까지 막혀 화면이 통째로 무용해진다. 막는 것은
+                   * 서버이고 계약이 그 사실을 적었다.
+                   */}
+                  <PostPane
+                    blockReason={postBlock}
+                    /*
+                     * **그 전표가 어디로 가는가**(변경 통지 #128 · 완료 조건 C26). 이름은 **좁히지
+                     * 않은** 참조에서 푼다 — 좁힌 선택지로 풀면 좁힘 밖 거래처가 「알 수 없음」이 된다.
+                     * 부품은 글자만 받는다(제목줄이 창고 이름을 받는 것과 같은 형태).
+                     */
+                    destination={describeIssueDestination(issueDetailData.issue, partnerNames)}
+                    isLocked={isLocked}
+                    onOpenConfirm={openPostConfirm}
+                  />
+
+                  <SaveErrorBanner error={postError} onReload={refreshAll} />
+
+                  {/*
+                   * **응답을 받지 못한 처리에만** 한 줄을 더한다(다섯째 겹). 확인 없이 다시 보내면
+                   * 같은 전표가 두 번 전기될 수 있다 — 공통 쓰기 훅이 호출마다 새 멱등 키를 만들어
+                   * 서버가 재전송으로 보지 못한다(`omf-mes#55`). **확인할 것이 상신과 다르다**:
+                   * 전표가 만들어졌는가가 아니라 **재고가 움직였는가**다.
+                   */}
+                  {postError?.kind === 'network' && (
+                    <p className="field-error">{t.notes.postRecheck}</p>
+                  )}
+
+                  {/* **창은 열 때만 붙인다** — 닫혀도 남아 있으면 지난 값이 DOM에 살아 있게 된다. */}
+                  {isPostConfirmOpen && (
+                    <PostConfirmDialog
+                      summary={{
+                        goodsIssueNo: issueDetailData.issue.goodsIssueNo,
+                        lineCount: issueLineRows.length,
+                        totalQtyText: issueTotalQtyText,
+                        reason: postReasonSummary,
+                        /*
+                         * **자리표시가 비었다는 사실을 창이 다시 적는다.** 구획의 상시 안내를 읽고
+                         * 지나쳤어도 확인 직전에 한 번 더 만난다.
+                         */
+                        isJudgePending: isApprovalJudgePending(APPROVED_APPROVAL_STATUS_CODES),
+                        /* 값 유무로만 판정한다 — 상태 코드로 읽으면 조용히 틀린다(계획 결정 7). */
+                        hasPostedLine: hasPostedLine(issueLineRows),
+                      }}
+                      onConfirm={() => {
+                        sendPost(issueDetailData.issue);
+                      }}
+                      onClose={() => {
+                        setPostConfirmOpen(false);
+                      }}
+                    />
+                  )}
+
+                  {/*
+                   * 처리 결과 — **자기 대상보다 오래 살지 않는다.** 매임 이름이 지금 고른 품의와
+                   * 다르면 서지 않는다.
+                   */}
+                  {postResult !== null && isPostForCurrentTarget && (
+                    <PostResultPane
+                      /*
+                       * **낼 값만 골라 넘긴다**(`omf-mes#44`). 응답 전체를 그대로 넘기면 그 안에
+                       * 내부 번호가 함께 들어가고, 뒤에 한 줄을 더 그릴 때 그것이 화면으로 새는 길이
+                       * 열린다 — 상신 결과 구획(`toResultSummary`)과 같은 형태다.
+                       */
+                      issue={{
+                        goodsIssueNo: postResult.goodsIssueNo,
+                        statusCode: codeName('issueStatus', postResult.statusCode),
+                        erpMessageQueued: postResult.erpMessageQueued,
+                      }}
+                    />
+                  )}
+
+                  {isResubmitConfirmOpen && (
+                    <ResubmitConfirmDialog
+                      summary={{
+                        goodsIssueNo: issueDetailData.issue.goodsIssueNo,
+                        lineCount: issueLineRows.length,
+                        totalQtyText: issueTotalQtyText,
+                        reason: resubmitReason,
+                        reasonFirstLine: firstLineOf(resubmitReason),
+                      }}
+                      onConfirm={sendResubmit}
+                      onClose={() => {
+                        setResubmitConfirmOpen(false);
+                      }}
+                    />
+                  )}
+                </>
+              )}
+            </>
+          ),
+        }}
+      />
     </>
   );
 
@@ -2386,13 +2603,22 @@ export const DisposalIssueScreen = () => {
         }
         actions={
           /* 전송 중에는 다시 부르지 않는다 — 나가는 중인 쓰기가 곧 그 자료를 바꾼다. */
-          <Button variant="outlined" size="sm" disabled={isLocked} onClick={refreshAll}>
+          /* 모양은 통합 대시보드 · 재고 현황의 「갱신」과 같다(#360). */
+          <Button
+            variant="outlined"
+            size="sm"
+            className="stock-status-refresh-button"
+            leadingIcon={<Icon name="refresh" size={18} />}
+            disabled={isLocked}
+            onClick={refreshAll}
+          >
             {t.actions.refresh}
           </Button>
         }
       />
       {/* 탭 줄 위 상시 안내(승인 기록 정정 1-2)는 걷었다 — 필수가 아닌 문장은 두지 않는다(사용자 지시 2026-11-20). */}
       <Tabs aria-label={t.tabs.label} items={tabItems} value={tab} onChange={changeTab} />
+      {deselectConfirm.dialog}
     </>
   );
 };

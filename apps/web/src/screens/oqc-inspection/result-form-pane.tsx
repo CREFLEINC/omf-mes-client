@@ -247,6 +247,12 @@ export const ResultFormPane = ({
               ? t.judgmentChange.required
               : serialBlockedReason;
 
+  /** 입력으로 풀 수 없는 잠금(확정·다른 곳 작성 중·판정 값 목록 없음)만 보이는 글로 알린다(#360). */
+  const isStateBlock =
+    saveBlockedReason === t.blockedByConfirmed ||
+    saveBlockedReason === t.blockedByDraftElsewhere ||
+    saveBlockedReason === t.blockedByJudgmentOptions;
+
   /** 저장을 누른다 — **여는 것뿐이다.** 쓰기는 확인 창의 버튼에서 나간다. */
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
@@ -491,11 +497,17 @@ export const ResultFormPane = ({
              * 막혔으면 «무엇이» 막혔는지 단추 바로 왼쪽 한 줄로 밝힌다(공유계약 G-23) — 잠긴 단추만 두지 않는다.
              * 확정된 회차에서도 낸다 — 사유가 재검사 단추를 가리키므로 그 자리에서 할 일이 이어진다.
              */}
-            {saveBlockedReason !== null && (
+            {saveBlockedReason !== null && isStateBlock && (
               <p id={blockedNoteId} className="oqc-inspection-action-note" data-tone="info">
                 <Icon name="info" size={18} aria-hidden />
                 {saveBlockedReason}
               </p>
+            )}
+            {/* 입력으로 풀리는 까닭은 화면 읽기 도구에만 — 보이는 안내 문구는 두지 않는다(사용자 지시 2026-11-27 · #360). */}
+            {saveBlockedReason !== null && !isStateBlock && (
+              <span id={blockedNoteId} className="visually-hidden">
+                {saveBlockedReason}
+              </span>
             )}
             {/* 저장이 곧 확정이다 — 누르기 전에 되돌릴 수 없다는 사실을 경고색 한 줄로. 막힌 동안에는 막힌 까닭 하나만. */}
             {!isLocked && saveBlockedReason === null && (

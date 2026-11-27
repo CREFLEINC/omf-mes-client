@@ -127,11 +127,6 @@ export const productionWarehouseReplenishment: Translated<
     issuedPartial: 'Một phần',
     issuedFull: 'Toàn bộ',
     receipt: (received: number, issued: number): string => `${String(received)}/${String(issued)}`,
-    pager: {
-      total: (count: number): string => `Tổng ${String(count)}`,
-      previous: 'Trước',
-      next: 'Sau',
-    },
   },
   detail: {
     label: 'Chi tiết yêu cầu bổ sung kho',
@@ -196,6 +191,8 @@ export const productionWarehouseReplenishment: Translated<
   },
   closeDialog: {
     title: 'Đóng phần còn lại',
+    question: 'Đóng phần còn lại chứ?',
+    caption: 'Yêu cầu cần đóng',
     line: (item: string, requested: string, issued: string, remaining: string): string =>
       `${item}: yêu cầu ${requested}, đã xuất ${issued}, đóng ${remaining} còn lại.`,
     body: 'Lượng còn lại được bỏ khỏi dự kiến xuất của kho vật tư và các dòng còn lại của chỉ thị lấy hàng cũng bị đóng. Các phiếu đã xuất vẫn nhận được như cũ.',
@@ -203,6 +200,7 @@ export const productionWarehouseReplenishment: Translated<
     reasonPlaceholder: 'Chọn lý do',
     reasonRequired: 'Hãy chọn lý do đóng',
     remark: 'Ghi chú',
+    remarkPlaceholder: 'Hãy nhập ghi chú',
     cancel: 'Hủy',
     submit: 'Đóng',
   },
@@ -331,13 +329,13 @@ export const productionWarehouseReplenishment: Translated<
     receivedLabel: (item: string): string => `Số lượng nhận ${item}`,
     reasonLabel: (item: string): string => `Lý do chênh lệch ${item}`,
     reasonPlaceholder: 'Chọn lý do',
+    receivedPlaceholder: 'Hãy nhập số lượng nhận',
     qtyInvalid: (item: string, issued: string): string =>
       `${item}: số lượng nhận phải từ 0 đến ${issued} đã xuất.`,
     reasonRequired: (item: string): string =>
       `${item}: số lượng nhận khác thì hãy chọn lý do chênh lệch.`,
     diff: (qty: string): string =>
       `Ghi nhận chênh lệch ${qty}. Tồn kho không đổi. Hàng đã vào khi xuất nên chênh lệch hãy điều chỉnh tồn kho.`,
-    note: 'Việc nhận chỉ ghi nhận. Tồn kho đã vào khi xuất, chênh lệch được điều chỉnh bằng điều chỉnh tồn kho.',
     cancel: 'Hủy',
     submit: 'Nhận',
     already: 'Phiếu xuất này đã được nhận trước đó. Tải lại danh sách.',
@@ -410,6 +408,9 @@ export const productionWarehouseReplenishment: Translated<
     point: 'Điểm bổ sung',
     target: 'Mức duy trì',
     source: 'Kho vật tư xuất',
+    productionWarehousePlaceholder: 'Chọn kho sản xuất',
+    pointPlaceholder: 'Hãy nhập điểm bổ sung',
+    targetPlaceholder: 'Hãy nhập mức duy trì',
     help: 'Khi lượng có thể dùng ở kho sản xuất (khả dụng − dự kiến xuất) nhỏ hơn điểm bổ sung, đến giờ chạy sẽ yêu cầu 「mức duy trì − lượng có thể dùng」.',
     required: 'Hãy điền các ô trống',
     delete: 'Xóa',

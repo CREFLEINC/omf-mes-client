@@ -508,7 +508,9 @@ describe('W-04-03 출하 OQC 새 흐름 — 상세', () => {
     /* 입력 중 [취소] — 한 번 묻는다. */
     await user.click(drawer.getByRole('button', { name: s.drawer.cancel }));
     expect(await screen.findByText(s.drawer.discardBody)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: s.drawer.discardStay }));
+    /* 묻는 창의 [취소] — 서랍 바닥의 [취소]와 이름이 같아 묻는 창 안에서 찾는다. */
+    const ask = screen.getByText(s.drawer.discardBody).closest('dialog') as HTMLElement;
+    await user.click(within(ask).getByRole('button', { name: s.drawer.discardStay }));
     expect(screen.queryByText(s.drawer.discardBody)).toBeNull();
     expect(writes).toHaveLength(0);
   });

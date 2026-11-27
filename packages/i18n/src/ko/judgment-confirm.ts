@@ -2,8 +2,9 @@
  * 판정 확정 확인 창 — OQC · PQC 관리웹이 같은 모양을 쓴다(사용자 시안 2026-11-17 · omf-all-around#286).
  */
 export const judgmentConfirm = {
-  title: '판정을 확정하시겠습니까?',
-  target: (inspectionRequestNo: string): string => `검사 의뢰 번호: ${inspectionRequestNo}`,
+  title: '판정 확정',
+  question: '판정을 확정하시겠습니까?',
+  requestNo: '검사 의뢰 번호',
   judgmentHeading: '최종 판정',
   resultRow: '검사 결과',
   accepted: '합격',

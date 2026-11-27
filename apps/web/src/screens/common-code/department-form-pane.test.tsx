@@ -80,10 +80,11 @@ describe('DepartmentFormPane — 코드 잠금', () => {
     renderPane({ codeLockReason: '이 코드는 다른 자료가 참조 중이라 고칠 수 없습니다.' });
 
     expect(screen.getByLabelText('부서코드')).toBeDisabled();
-    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
-      'title',
-      '이 코드는 다른 자료가 참조 중이라 고칠 수 없습니다.',
-    );
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 이름의 title · 숨긴 설명으로. */
+    expect(screen.queryByText('변경 불가')).toBeNull();
+    expect(
+      screen.getAllByTitle('이 코드는 다른 자료가 참조 중이라 고칠 수 없습니다.')[0],
+    ).toHaveTextContent(/^부서코드/);
     expect(screen.getByLabelText('부서코드')).toHaveAccessibleDescription(
       '이 코드는 다른 자료가 참조 중이라 고칠 수 없습니다.',
     );
@@ -110,6 +111,19 @@ describe('DepartmentFormPane — 상위 부서', () => {
     expect(
       screen.getByText('상위 부서는 고를 수 있는 다른 부서가 없어 지정할 수 없습니다.'),
     ).toBeInTheDocument();
+  });
+
+  it('등록 팝업에서는 비활성 사유 문장을 내지 않는다(#360)', () => {
+    renderPane({
+      mode: 'create',
+      parentOptions: [],
+      parentDisabledReason: '상위 부서는 고를 수 있는 다른 부서가 없어 지정할 수 없습니다.',
+    });
+
+    expect(screen.getByLabelText('상위 부서')).toBeDisabled();
+    expect(
+      screen.queryByText('상위 부서는 고를 수 있는 다른 부서가 없어 지정할 수 없습니다.'),
+    ).toBeNull();
   });
 
   /* 비우는 것이 정상 값이다 — 계약이 널을 허용하고 그것이 곧 뿌리 부서다. */

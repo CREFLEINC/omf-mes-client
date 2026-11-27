@@ -4,6 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { InfoTip } from '../../patterns/info-tip';
 import { CodeLockLabel, SaveErrorBanner } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 import { LoadErrorBanner } from './load-error-banner';
@@ -279,19 +280,21 @@ export const TerminalForm = ({
           {warehouseField}
           {equipmentField}
           <div className="field-cell">
-            <span className="field-label">
+            {/* 등록 후 못 바꾼다는 안내는 칸 이름 옆 ⓘ — 마우스를 올리면 뜬다(omf-all-around#360). */}
+            <span className="field-label terminal-map-code-label">
               <label htmlFor={codeId}>{t.terminal.code}</label>
               <span className="required-mark" aria-hidden="true">
                 {' '}
                 *
               </span>
               {codeIsAuto && <span className="terminal-map-auto-mark">{t.terminal.autoMark}</span>}
+              <InfoTip text={t.terminal.codeLockedFooter} />
             </span>
             <TextField
               id={codeId}
               value={draft.terminalCode}
               disabled={!hasType}
-              placeholder={hasType ? undefined : t.terminal.codeNeedsType}
+              placeholder={hasType ? t.terminal.codePlaceholder : t.terminal.codeNeedsType}
               error={errors.terminalCode ?? fieldErrors.terminalCode}
               onChange={(event) => {
                 onChange({ terminalCode: event.target.value });

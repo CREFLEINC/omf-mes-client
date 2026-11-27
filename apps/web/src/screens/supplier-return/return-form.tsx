@@ -3,12 +3,14 @@ import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
 import { InfoLabel, InfoTip } from '../../patterns/info-tip';
+import { TimeField } from '../../patterns/time-field';
 import { codeNote, codePlaceholder, type CodeOptionSets } from './code-options';
 import { SelectField } from './select-field';
 import type { ReturnCodeKey, ReturnDraft, SelectOption } from './types';
 import { CODE_FIELD_NAMES } from './validation';
 
 const t = messages.supplierReturn;
+const dt = messages.screenPatterns.dateTimeField;
 
 export interface ReturnFormProps {
   values: ReturnDraft;
@@ -51,9 +53,9 @@ export interface ReturnFormProps {
  * 값(`issuedAt`)이라 **오류도 한 자리에 한 번만** 그리고 두 컨트롤이 함께 그것을 가리킨다 —
  * 같은 문장을 두 번 그리면 화면이 같은 말을 되풀이한다.
  *
- * **미리 채우는 값이 없다.** 출고 일시를 지금 시각으로 채우면 사용자가 확인하지 않은 시각이
- * 되돌릴 수 없는 전표에 실리고, 어제 나간 것을 오늘 등록하는 흔한 경우에 조용히 틀린다.
- * ERP 송신만 참으로 시작한다(착수 이슈 §4가 「기본값을 켜짐으로 고정」이라 적었다).
+ * **화면이 아는 값은 미리 채워 온다**(사용자 지시 2026-11-27 · #360 「자동 키인」) — 공급사 ·
+ * 출고 유형 · 원천 문서 유형 · 도착지 유형 · 출고 일자 · 시각(`screen.tsx` · `auto-fill.ts`).
+ * 이 부품은 받은 값을 그릴 뿐이다. ERP 송신은 참으로 시작한다(착수 이슈 §4).
  *
  * **칸 아래 설명문을 두지 않는다**(관리웹 정리 시안 A). 영업일이 출고 일자에서 나온다는 사실은
  * 출고 일자 라벨 옆 ⓘ, 대체입고 예정이 표시로만 남는다는 사실은 체크 옆 ⓘ 로 읽힌다.
@@ -107,10 +109,7 @@ export const ReturnForm = ({
   return (
     <>
       <div className="form-grid">
-        {/*
-         * **공급사를 자동으로 끌어오지 않는다**(계획 결정 11). 입고 전표에 공급사 필드가 없고,
-         * 원천을 따라 올라가려면 원천 문서 유형 값 목록이 있어야 하는데 그것이 없다.
-         */}
+        {/* 공급사는 화면이 고른 전표의 원천 입하에서 미리 채워 온다(#360). */}
         <SelectField
           wide
           required
@@ -150,23 +149,36 @@ export const ReturnForm = ({
 
         <div className="field-cell">
           {/*
-           * **시각은 시각 입력칸이다.** 날짜를 달력으로 통일한 뒤에도 시각은 그 위젯이 다루지
-           * 않는다 — 네이티브 속성을 그대로 받는 입력칸에 `type="time"`을 준다.
+           * **시각은 공용 시각 칸이다**(patterns/time-field · #360) — 숫자만 쳐도 `HH:MM` 으로 다듬고, 시계
+           * 단추로 고를 수도 있다. 값은 종전과 같은 `HH:MM` 이다.
            *
            * 오류 문구를 이 칸이 그리지 않고 **아래 한 자리**에서 그린다. 두 칸이 한 값이라
            * 각자 그리면 같은 문장이 두 번 서고, 그때 두 문장의 `id`가 달라 날짜 칸이 자기
            * 오류를 가리킬 수 없게 된다.
            */}
-          <TextField
-            type="time"
-            label={t.fields.issuedTime}
-            required
-            value={values.issuedTime}
+          <span className="field-label" aria-hidden="true">
+            {t.fields.issuedTime}
+            <span className="required-mark">{' *'}</span>
+          </span>
+          <TimeField
+            labels={{
+              field: t.fields.issuedTime,
+              hourList: dt.hour(t.fields.issuedTime),
+              minuteList: dt.minute(t.fields.issuedTime),
+              hourHead: dt.hourLabel,
+              minuteHead: dt.minuteLabel,
+              placeholder: dt.timePlaceholder,
+            }}
+            hour={values.issuedTime.slice(0, 2)}
+            minute={values.issuedTime.slice(3, 5)}
             disabled={isLocked}
-            aria-invalid={issuedError !== undefined}
-            aria-describedby={issuedError === undefined ? undefined : issuedErrorId}
-            onChange={(event) => {
-              onChangeIssuedTime(event.target.value);
+            invalid={issuedError !== undefined}
+            describedBy={issuedError === undefined ? undefined : issuedErrorId}
+            onChange={(hour, minute) => {
+              onChangeIssuedTime(`${hour}:${minute}`);
+            }}
+            onClear={() => {
+              onChangeIssuedTime('');
             }}
           />
           {issuedError !== undefined && (

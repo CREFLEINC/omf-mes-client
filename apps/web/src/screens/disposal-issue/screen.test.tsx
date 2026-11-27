@@ -88,6 +88,19 @@ vi.mock('./code-options', async (importOriginal) => {
   return {
     ...actual,
     PLACEHOLDER_DISPOSAL_ISSUE_CODES: codeValues,
+    /* 서버 코드값 조회(`useDisposalCodeLists`)를 배열로 갈아 끼운다 — 이름은 비워 코드가 그대로 보인다(#360). */
+    useDisposalCodeLists: () => ({
+      values: codeValues,
+      names: {
+        issueType: new Map<string, string>(),
+        sourceDocumentType: new Map<string, string>(),
+        reason: new Map<string, string>(),
+        receiptType: new Map<string, string>(),
+        status: new Map<string, string>(),
+        issueStatus: new Map<string, string>(),
+      },
+      historyIssueTypes: codeValues.issueType,
+    }),
     DEFECT_WAREHOUSE_TYPE_CODES: defectTypeCodes,
     /**
      * 역할 코드는 **글자 하나**라 배열처럼 내용만 바꿀 그릇이 없다 — 접근자로 낸다.
@@ -198,7 +211,6 @@ const APPROVAL_LIST_PATH = '/app/approval-requests';
 
 const WAREHOUSE_LABEL = 'SAMPLE-WH-01 · 합성 폐기창고 가';
 const OTHER_WAREHOUSE_LABEL = 'SAMPLE-WH-02 · 합성 자재창고 나';
-const ITEM_LABEL = 'SAMPLE-ITEM-01 · 합성 자재 가';
 /* 라인 표는 품목코드 · 품목명을 두 열로 나눠 보인다(사용자 지시 2026-11-24). */
 const ITEM_NAME = '합성 자재 가';
 const UOM_LABEL = 'SAMPLE-UOM-EA · 합성 낱개';
@@ -831,7 +843,7 @@ const selectReceipt = async (
   user: ReturnType<typeof userEvent.setup>,
   goodsReceiptNo: string,
 ): Promise<void> => {
-  await user.click(screen.getByRole('button', { name: t.actions.selectRow(goodsReceiptNo) }));
+  await user.click(screen.getByRole('row', { name: t.actions.selectRow(goodsReceiptNo) }));
 };
 
 const search = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
@@ -1182,7 +1194,7 @@ describe('DisposalIssueScreen — 수명 표', () => {
     const { user } = renderScreen(allRoutes(), '?gr=9001');
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: t.actions.deselectRow('GR-2026-900001') }));
+    await user.click(screen.getByRole('row', { name: t.actions.deselectRow('GR-2026-900001') }));
 
     await waitFor(() => {
       expect(currentLocation()).toBe(ROUTE);
@@ -1202,7 +1214,7 @@ describe('DisposalIssueScreen — 수명 표', () => {
     await refresh(user);
 
     await waitFor(() => {
-      expect(screen.getByText(t.pageNav.range(1, 3, 5))).toBeInTheDocument();
+      expect(screen.getByText(messages.screenPatterns.pageNav.total(5))).toBeInTheDocument();
     });
 
     expect(screen.getByLabelText(t.fields.q)).toHaveValue('GR-2026');
@@ -1977,7 +1989,9 @@ describe('DisposalIssueScreen — 라인 표와 폐기 수량', () => {
     await waitForLines();
     await user.click(lineCheckbox(1));
 
-    expect(screen.getByText(t.reasons.selectQtyMissing)).toBeInTheDocument();
+    /* 표 아래 사유는 걷었다(사용자 지시 2026-11-27 · #360) — 단추는 그대로 잠긴다. */
+    expect(screen.queryByText(t.reasons.selectQtyMissing)).not.toBeInTheDocument();
+    expect(submitButton()).toBeDisabled();
 
     await user.type(qtyInput(1), '5');
 
@@ -2137,8 +2151,26 @@ describe('DisposalIssueScreen — 줄 초안의 수명', () => {
     await user.click(lineCheckbox(1));
     await user.type(qtyInput(1), '5');
 
-    /* 같은 전표를 풀었다 다시 고르는 것도 「대상이 바뀐 것」이다. */
-    await user.click(screen.getByRole('button', { name: t.actions.deselectRow('GR-2026-900001') }));
+    /*
+     * 같은 전표를 풀었다 다시 고르는 것도 「대상이 바뀐 것」이다. 친 값이 있어 풀기 전에 확인 팝업을 거친다
+     * (사용자 지시 2026-11-27 · #360) — [취소]면 그대로, [해제]면 풀린다.
+     */
+    await user.click(screen.getByRole('row', { name: t.actions.deselectRow('GR-2026-900001') }));
+    const confirm = messages.common.deselectConfirm;
+    await user.click(
+      within(await screen.findByRole('dialog', { name: confirm.title })).getByRole('button', {
+        name: confirm.cancel,
+      }),
+    );
+    expect(currentLocation()).toBe(`${ROUTE}?gr=9001`);
+    expect(qtyInput(1)).toHaveValue('5');
+
+    await user.click(screen.getByRole('row', { name: t.actions.deselectRow('GR-2026-900001') }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: confirm.title })).getByRole('button', {
+        name: confirm.confirm,
+      }),
+    );
 
     await waitFor(() => {
       expect(currentLocation()).toBe(ROUTE);
@@ -2222,7 +2254,7 @@ const selectIssue = async (
   user: ReturnType<typeof userEvent.setup>,
   goodsIssueNo: string,
 ): Promise<void> => {
-  await user.click(screen.getByRole('button', { name: t.actions.selectIssueRow(goodsIssueNo) }));
+  await user.click(screen.getByRole('row', { name: t.actions.selectIssueRow(goodsIssueNo) }));
 };
 
 const openTab = async (user: ReturnType<typeof userEvent.setup>, label: string): Promise<void> => {
@@ -2825,7 +2857,9 @@ describe('DisposalIssueScreen — 결재 진행', () => {
      * 배열 인덱스+1로 다시 매기는 결함이 여기서 값으로 갈린다 — 연속이면 가려진다.
      */
     expect(within(progress).getByText('4')).toBeInTheDocument();
-    expect(within(progress).getByText('APPROVED')).toBeInTheDocument();
+    expect(
+      within(progress).getByText(messages.approvalInbox.requestStatusNames.APPROVED ?? ''),
+    ).toBeInTheDocument();
     expect(within(progress).getByText(t.progress.waitingCurrent)).toBeInTheDocument();
   });
 
@@ -3101,8 +3135,12 @@ const openSubmitConfirm = async (user: ReturnType<typeof userEvent.setup>): Prom
   await user.click(submitButton());
 };
 
+/** 승인 요청 창은 「결재 요청」, 재상신 창은 「요청」 — 떠 있는 쪽을 누른다. */
 const confirmSubmit = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-  await user.click(screen.getByRole('button', { name: t.actions.confirmSubmit }));
+  await user.click(
+    screen.queryByRole('button', { name: t.actions.requestApproval }) ??
+      screen.getByRole('button', { name: t.actions.confirmSubmit }),
+  );
 };
 
 /** 실제로 나간 쓰기. **경로와 method를 함께** 본다 — 한쪽만 세면 다른 경로의 쓰기를 놓친다. */
@@ -3262,11 +3300,13 @@ describe('DisposalIssueScreen — 확인 창을 지나야 나간다', () => {
     expect(within(dialog).getByText(SAMPLE_FORM_CODES.issueType)).toBeInTheDocument();
     expect(within(dialog).getByText(SAMPLE_FORM_CODES.reason)).toBeInTheDocument();
     expect(within(dialog).getByText('2026-08-11 09:30')).toBeInTheDocument();
-    expect(within(dialog).getByText(t.dialog.lineCount(1))).toBeInTheDocument();
-    expect(
-      within(dialog).getByText(t.dialog.linePair(ITEM_LABEL, 'SAMPLE-LOT-0001', `10 ${UOM_LABEL}`)),
-    ).toBeInTheDocument();
-    expect(within(dialog).getByText(t.dialog.reasonSummaryNote)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.dialog.targetHead(1))).toBeInTheDocument();
+    /* 품목은 이름 · 코드를 나눠, 수량은 단위 코드 한 번(「10 SAMPLE-UOM-EA」). */
+    expect(within(dialog).getByText(ITEM_NAME)).toBeInTheDocument();
+    expect(within(dialog).getByText('SAMPLE-ITEM-01')).toBeInTheDocument();
+    expect(within(dialog).getByText(`${t.lineTable.lot} SAMPLE-LOT-0001`)).toBeInTheDocument();
+    expect(within(dialog).getByText('10 SAMPLE-UOM-EA')).toBeInTheDocument();
+    expect(within(dialog).queryByText(new RegExp(UOM_LABEL))).not.toBeInTheDocument();
     expect(within(dialog).getByText(t.dialog.submitEffects)).toBeInTheDocument();
   });
 
@@ -3406,7 +3446,7 @@ describe('DisposalIssueScreen — 연쇄가 실제로 보내는 것', () => {
 
     const dialog = await screen.findByRole('dialog');
 
-    expect(within(dialog).getByText(t.formFields.destination)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.formFields.disposalPartner)).toBeInTheDocument();
     expect(within(dialog).getByText(t.values.selfDisposal)).toBeInTheDocument();
 
     await confirmSubmit(user);
@@ -3782,7 +3822,7 @@ describe('DisposalIssueScreen — 배너와 결과의 매임', () => {
     await confirmSubmit(user);
     await screen.findByText(messages.httpError.forbidden);
 
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900002') }));
+    await user.click(screen.getByRole('row', { name: t.actions.selectRow('GR-2026-900002') }));
 
     await waitFor(() => {
       expect(screen.queryByText(messages.httpError.forbidden)).not.toBeInTheDocument();
@@ -4572,11 +4612,18 @@ describe('DisposalIssueScreen — 버릴 것이 있는가', () => {
 
     await waitForLines();
 
+    /*
+     * 전표를 고르면 자동으로 채운 값이 있어 지울 것이 있다(#360) — 한 번 지워 빈 상태를 만든다.
+     * 짝 방향 — 아무것도 없을 때는 잠기고 사유가 화면 읽기용으로만 붙는다.
+     */
+    await user.click(screen.getByRole('button', { name: t.actions.discardDrafts }));
+    await user.click(screen.getByRole('button', { name: t.actions.confirmDiscard }));
+
     const discard = screen.getByRole('button', { name: t.actions.discardDrafts });
 
-    /* 짝 방향 — 아무것도 없을 때는 잠기고 사유가 붙는다. */
     expect(discard).toBeDisabled();
     expect(discard).toHaveAccessibleDescription(t.actionReasons.nothingToDiscard);
+    expect(screen.getByText(t.actionReasons.nothingToDiscard)).toHaveClass('visually-hidden');
 
     await user.click(lineCheckbox(1));
 
@@ -4676,9 +4723,7 @@ describe('DisposalIssueScreen — 복구 경로를 끝까지 밟은 뒤', () => 
     /* 이력 탭에서 **다른** 미상신 전표(9502)를 골라 올린다. */
     fireEvent.click(screen.getByRole('tab', { name: t.tabs.history }));
     await screen.findByText('GI-2026-950002');
-    await user.click(
-      screen.getByRole('button', { name: t.actions.selectIssueRow('GI-2026-950002') }),
-    );
+    await user.click(screen.getByRole('row', { name: t.actions.selectIssueRow('GI-2026-950002') }));
     await screen.findByRole('region', { name: t.resubmit.label });
     await user.type(screen.getByLabelText(t.formFields.submitReason), '다른 전표를 올린다');
     await user.click(resubmitButton());
@@ -5048,7 +5093,7 @@ describe('DisposalIssueScreen — 떠난 뒤 돌아왔을 때', () => {
      * 고를 수 있는 시점(행 버튼의 잠금 해제)을 기다린다. 임의 시간 대신 화면 계약을 동기화
      * 지점으로 삼아 「잠긴 버튼을 눌러 아무 일도 없었던」경쟁 조건을 만들지 않는다.
      */
-    const previousReceipt = screen.getByRole('button', {
+    const previousReceipt = screen.getByRole('row', {
       name: t.actions.selectRow('GR-2026-900001'),
     });
 
@@ -6350,7 +6395,8 @@ describe('DisposalIssueScreen — 폐기 거래처 선택지가 열리는 조건
    * 고를 것이 없을 때 「고르세요」라고 말하면 사용자는 자기가 놓친 것을 찾다가 화면을 고장으로
    * 읽는다. 선택지가 살아나는 순간 그 문구가 통지 문면으로 바뀐다.
    */
-  it('역할 코드를 채우면 버튼의 잠금 사유가 「고르거나 체크하십시오」로 바뀐다', async () => {
+  /* 고를 수 있는 폐기 거래처가 하나뿐이면 그 거래처를 미리 채운다(사용자 지시 2026-11-27 · #360). */
+  it('역할 코드를 채우면 하나뿐인 폐기 거래처가 미리 채워져 승인 요청이 열린다', async () => {
     fillFormCodeLists();
     fillPartnerRole();
 
@@ -6362,9 +6408,9 @@ describe('DisposalIssueScreen — 폐기 거래처 선택지가 열리는 조건
     await fillDisposalForm(user, '불량 판정분 폐기', false);
 
     await waitFor(() => {
-      expect(submitButton()).toHaveAccessibleDescription(t.actionReasons.needsDisposalDestination);
+      expect(submitButton()).toBeEnabled();
     });
-    expect(submitButton()).toBeDisabled();
+    expect(screen.getByText(PARTNER_LABEL)).toBeInTheDocument();
   });
 
   /**

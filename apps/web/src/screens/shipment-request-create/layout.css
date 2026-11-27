@@ -18,3 +18,84 @@
 .sr-create-source-list tbody tr:has(button[aria-pressed='true']) > td:first-child {
   box-shadow: inset 3px 0 0 var(--semantic-info);
 }
+
+/*
+ * ERP S/O 없이 생성 팝업(#360) — 넓은 등록 팝업. 라인 표(품목 · 요청 수량 · 단위 · 가용 · 배정 · 출고 창고 · 검사 · 삭제)가
+ * 가로로 밀리지 않게 DS 「lg」보다 넓힌다. 화면이 좁으면 화면 폭까지만.
+ */
+dialog.sr-create-dialog {
+  width: min(80rem, calc(100vw - var(--space-8)));
+  max-width: min(80rem, calc(100vw - var(--space-8)));
+}
+
+.sr-create-dialog-lines {
+  margin-top: var(--space-5);
+}
+
+/* [라인 추가]는 표 제목 줄 오른쪽 끝. */
+.sr-create-dialog-lines .sr-create-add-line {
+  margin-inline-start: auto;
+}
+
+/*
+ * 출하 품목 표는 다른 목록처럼 모두 가운데 정렬(사용자 지시 · #360 — 종전 수량 열 오른쪽 정렬을 바꿈).
+ * 칸 안 입력칸 · 선택칸은 열 폭을 다 채워 칸마다 가운데에 고르게 놓이고, 수량 입력 글자도 가운데.
+ */
+.sr-create-dialog
+  td
+  :is(.field-cell, [class*='_field_'], [class*='_root_']):has(
+    button[role='combobox'],
+    input:not([type='checkbox'])
+  ) {
+  width: 100%;
+  min-width: 0;
+}
+
+.sr-create-dialog td :is([class*='_inputWrap_'], button[role='combobox']) {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.sr-create-dialog td input[inputmode='decimal'] {
+  text-align: center;
+}
+
+/*
+ * 비어 있는 필수 칸(사용자 지시 · #360 — 팝업 시안 「연한 빨간 바탕」) — 머리 칸(사업부 · 고객 · 납품처 · 출하 요청일)은 앱 공통
+ * 규칙이 칠하고, 표 안 칸(품목 · 단위 · 출고 창고 선택칸)은 칸 이름이 머리줄에 있어 공통 규칙에 걸리지 않으므로 여기서 칠한다.
+ */
+.sr-create-dialog
+  td
+  button[role='combobox'][aria-required='true']:not(:disabled):has(> [class*='_placeholder_']) {
+  background: var(--semantic-error-container);
+}
+
+/* 좁은 화면 — 표만 가로로 민다(열 폭 합만큼 최소 폭). 팝업 본문 세로 넘침은 DS 팝업이 본문만 스크롤한다. */
+.sr-create-dialog .wide-table table {
+  min-width: 74.5rem;
+}
+
+/* 가용 부족(사용자 개선안 · #360) — 줄은 배정 칸 아래 작은 황갈색 글자(칸 높이는 다른 줄과 같게 겹쳐 띄움), 표 아래는 한 줄 안내. */
+.sr-create-dialog td .field-cell:has(> .sr-shortage-note),
+.shipment-request-create td .field-cell:has(> .sr-shortage-note) {
+  position: relative;
+}
+.sr-shortage-note {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 2px;
+  color: color-mix(in srgb, var(--semantic-warning) 70%, var(--on-semantic-warning-container));
+  font-size: 0.75rem;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+}
+tr:has(.sr-shortage-note) > td {
+  padding-bottom: 1.25rem;
+}
+.sr-shortage-summary {
+  flex-wrap: wrap;
+  column-gap: var(--space-2);
+}

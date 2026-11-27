@@ -1,24 +1,11 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { PageNav, toPageView, type PageView } from './page-nav';
+import { PageNav, toPageView } from './page-nav';
 
 const t = messages.stockAdjust;
-
-const view = (overrides: Partial<PageView> = {}): PageView => ({
-  page: 2,
-  totalPages: 5,
-  rangeLabel: t.pageNav.range(51, 100, 220),
-  canPrev: true,
-  canNext: true,
-  isBeyondLast: false,
-  ...overrides,
-});
-
-const prevButton = (): HTMLElement => screen.getByRole('button', { name: t.actions.prevPage });
-const nextButton = (): HTMLElement => screen.getByRole('button', { name: t.actions.nextPage });
 
 describe('toPageView — 서버가 준 쪽이 정본이다', () => {
   it('보고 있는 쪽과 전체 쪽 수를 서버 응답에서 낸다', () => {
@@ -84,56 +71,59 @@ describe('toPageView — 서버가 준 쪽이 정본이다', () => {
   });
 });
 
-describe('PageNav — 쪽 이동', () => {
-  it('지금 보고 있는 범위를 글자로 보인다', () => {
-    render(<PageNav view={view()} onChange={vi.fn()} />);
+type Meta = Parameters<typeof toPageView>[0];
 
-    expect(screen.getByRole('navigation', { name: t.pageNav.label })).toHaveTextContent(
-      t.pageNav.range(51, 100, 220),
-    );
+const renderNav = (meta: Meta, shown: number, isLocked = false) => {
+  const onChange = vi.fn<(page: number) => void>();
+
+  render(<PageNav view={toPageView(meta, shown)} isLocked={isLocked} onChange={onChange} />);
+
+  return { onChange, user: userEvent.setup() };
+};
+
+/* 공용 쪽 이동 줄(총 N건 · [처음] [이전] n / m [다음] [마지막])로 그린다 — 1쪽 · 0건이어도 늘 보인다(#360). */
+describe('PageNav — 공용 쪽 이동 줄', () => {
+  it('총 건수와 지금 위치를 보인다', () => {
+    renderNav({ page: 2, size: 20, total: 45 }, 20);
+
+    expect(screen.getByRole('navigation', { name: '쪽 이동' })).toBeInTheDocument();
+    expect(screen.getByText('총 45건')).toBeInTheDocument();
+    expect(screen.getByText('2 / 3')).toBeInTheDocument();
   });
 
-  it('이전·다음을 누르면 그 쪽으로 옮긴다', async () => {
-    const onChange = vi.fn();
-    const user = userEvent.setup();
+  it('처음 · 이전 · 다음 · 마지막이 옮길 쪽을 알린다', async () => {
+    const { onChange, user } = renderNav({ page: 2, size: 20, total: 45 }, 20);
 
-    render(<PageNav view={view()} onChange={onChange} />);
+    await user.click(screen.getByRole('button', { name: '처음' }));
+    await user.click(screen.getByRole('button', { name: '이전' }));
+    await user.click(screen.getByRole('button', { name: '다음' }));
+    await user.click(screen.getByRole('button', { name: '마지막' }));
 
-    await user.click(nextButton());
-    await user.click(prevButton());
-
-    expect(onChange).toHaveBeenNthCalledWith(1, 3);
-    expect(onChange).toHaveBeenNthCalledWith(2, 1);
+    expect(onChange.mock.calls).toEqual([[1], [1], [3], [3]]);
   });
 
-  it('갈 수 없는 쪽의 버튼은 잠긴다', () => {
-    render(<PageNav view={view({ canPrev: false, canNext: false })} onChange={vi.fn()} />);
+  it('1쪽뿐이어도 줄은 보이고 단추만 잠긴다', () => {
+    renderNav({ page: 1, size: 20, total: 5 }, 5);
 
-    expect(prevButton()).toBeDisabled();
-    expect(nextButton()).toBeDisabled();
+    expect(screen.getByText('총 5건')).toBeInTheDocument();
+    expect(screen.getByText('1 / 1')).toBeInTheDocument();
+    for (const name of ['처음', '이전', '다음', '마지막']) {
+      expect(screen.getByRole('button', { name })).toBeDisabled();
+    }
   });
 
-  /**
-   * **쪽을 옮기면 고른 전표가 풀린다** — 나가는 중인 쓰기가 있으면 그 되먹임이 다른 맥락에
-   * 도착한다. 양성 앵커(열려 있는 상태)를 먼저 재고 그 뒤에 잠금을 잰다.
-   */
-  it('잠기면 갈 수 있는 쪽의 버튼도 잠긴다', () => {
-    const { rerender } = render(<PageNav view={view()} onChange={vi.fn()} />);
+  it('0건이어도 줄이 보인다', () => {
+    renderNav({ page: 1, size: 20, total: 0 }, 0);
 
-    expect(nextButton()).toBeEnabled();
-
-    rerender(<PageNav view={view()} isLocked onChange={vi.fn()} />);
-
-    expect(prevButton()).toBeDisabled();
-    expect(nextButton()).toBeDisabled();
+    expect(screen.getByText('총 0건')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '다음' })).toBeDisabled();
   });
 
-  /** 쪽 번호 목록을 만들지 않는다 — 버튼은 이전·다음 둘뿐이다. */
-  it('쪽 번호 버튼을 만들지 않는다', () => {
-    render(<PageNav view={view()} onChange={vi.fn()} />);
+  it('잠기면 갈 수 있는 쪽의 단추도 잠긴다', () => {
+    renderNav({ page: 2, size: 20, total: 45 }, 20, true);
 
-    const nav = screen.getByRole('navigation', { name: t.pageNav.label });
-
-    expect(within(nav).getAllByRole('button')).toHaveLength(2);
+    for (const name of ['처음', '이전', '다음', '마지막']) {
+      expect(screen.getByRole('button', { name })).toBeDisabled();
+    }
   });
 });

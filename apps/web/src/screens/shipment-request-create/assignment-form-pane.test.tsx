@@ -1,12 +1,37 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen } from '@testing-library/react';
+import { createApiClient } from '@omf-mes/api-client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render as rtlRender, screen } from '@testing-library/react';
+import type { ReactElement, ReactNode } from 'react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AssignmentFormPane, type AssignmentFormPaneProps } from './assignment-form-pane';
 import { emptyLineDraft } from './line-draft';
 
+import { ApiClientProvider } from '../../patterns/api-context';
+
 const t = messages.shipmentRequestCreate;
+
+/** 품목 칸(`ItemSelect`)은 서버에 품목을 묻는다 — 빈 목록을 내려주는 합성 서버로 감싼다(#360). */
+const render = (ui: ReactElement) => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const apiClient = createApiClient({
+    baseUrl: 'http://test.invalid',
+    fetch: () =>
+      Promise.resolve(
+        new Response(JSON.stringify({ items: [], page: { page: 1, size: 50, total: 0 } }), {
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+  });
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <ApiClientProvider client={apiClient}>{children}</ApiClientProvider>
+    </QueryClientProvider>
+  );
+  return rtlRender(ui, { wrapper });
+};
 
 const customerLookup = {
   entries: [{ value: '8201', label: 'SAMPLE-CUST-01 · 합성 고객 가', isActive: true }],
@@ -38,7 +63,7 @@ const baseProps = (overrides: Partial<AssignmentFormPaneProps> = {}): Assignment
   lineErrors: {},
   uomLookup: { entries: [], isError: false, isLoading: false },
   itemNames: { of: () => ({ kind: 'unknown' }) as const },
-  onPickItem: () => undefined,
+  onSelectItem: () => undefined,
   uomOptions: [],
   availableQty: { of: () => ({ kind: 'unasked' }), refetchAll: () => undefined },
   onPatchLine: vi.fn(),

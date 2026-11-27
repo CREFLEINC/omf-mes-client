@@ -4,6 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useState, type ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { InfoTip } from '../../patterns/info-tip';
 import { formatBaseQty, formatPackage, formatQty } from '../../patterns/package-qty';
 import { toApiError } from '../../patterns/request';
 import {
@@ -254,16 +255,7 @@ export const SplitLotsDialog = ({
     <Dialog
       open
       size="lg"
-      title={
-        /* 안내는 제목 옆 정보 라벨로(사용자 지시 2026-11-16 · omf-all-around#274). */
-        <span className="iqc-split-title">
-          {t.title}
-          <span className="iqc-inspection-action-note iqc-split-intro" data-tone="info">
-            <Icon name="info" size={14} aria-hidden />
-            {t.intro}
-          </span>
-        </span>
-      }
+      title={t.title}
       showCloseButton={false}
       closeOnBackdropClick={false}
       onClose={onClose}
@@ -290,6 +282,8 @@ export const SplitLotsDialog = ({
             <span className="required-mark" aria-hidden="true">
               {' *'}
             </span>
+            {/* 분리 안내는 목록 이름 옆 ⓘ — 마우스를 올리면 뜬다(omf-all-around#360). */}
+            <InfoTip text={t.intro} />
           </span>
           <span className="iqc-split-muted">{t.pickedCount(selected.length, lots.length)}</span>
         </div>
@@ -335,8 +329,8 @@ export const SplitLotsDialog = ({
             {t.allSelected}
           </AlertBanner>
         ) : lockReason !== null ? (
-          /* 아무것도 안 고른 때의 안내는 화면에서 뺀다(위 「0/n개 선택」이 대신) — [분리] 잠긴 까닭으로는 남긴다(#274). */
-          <p id={reasonId} className={selected.length === 0 ? 'visually-hidden' : 'iqc-split-hint'}>
+          /* [분리] 잠긴 까닭은 화면에 펼치지 않고 화면 읽기용으로만 남긴다(#274 · omf-all-around#360). */
+          <p id={reasonId} className="visually-hidden">
             {lockReason}
           </p>
         ) : null}

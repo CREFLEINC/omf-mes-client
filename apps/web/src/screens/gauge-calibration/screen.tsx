@@ -1,8 +1,8 @@
 import { Breadcrumb, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router';
 
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
 import { ScreenHeader } from '../../patterns/screen-header';
 import { CalibrationFilterBar } from './calibration-filter-bar';
@@ -27,12 +27,17 @@ import { HistoryTable } from './history-table';
 import { LoadErrorBanner } from './load-error-banner';
 import { equipmentNote, useEquipmentOptions } from './lookups';
 import { PageNav } from './page-nav';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { toPageView } from './pagination';
 import { useCalibrationCreate, useCalibrationList } from './queries';
 import { SaveConfirmDialog } from './save-confirm-dialog';
 import { byRecentFirst, type CalibrationView, type SelectOption } from './types';
 
 const t = messages.gaugeCalibration;
+
+/** 목록 쪽 크기 기본 — 계약 `size` 기본 50(종전에는 싣지 않아 이 값이었다 · #360). */
+const LIST_PAGE_SIZE = 50;
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ROWS: CalibrationView[] = [];
@@ -59,11 +64,19 @@ const EMPTY_ROWS: CalibrationView[] = [];
  * | 3 | 이력 저장 | 그대로 — 목록만 다시 받는다 |
  */
 export const GaugeCalibrationScreen = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(계약 기본 50)은 싣지도 적지도 않는다(#360). */
+  const { searchParams, setSearchParams, pageSize, changePageSize } =
+    usePageSizeSearchParams(LIST_PAGE_SIZE);
 
   const filters = useMemo<CalibrationFilters>(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
-  const listQuery = useMemo(() => toListQuery(filters, page), [filters, page]);
+  const listQuery = useMemo(
+    () => ({
+      ...toListQuery(filters, page),
+      ...(pageSize === LIST_PAGE_SIZE ? {} : { size: pageSize }),
+    }),
+    [filters, page, pageSize],
+  );
 
   const [draft, setDraft] = useState<CalibrationDraft>(EMPTY_DRAFT);
   const [errors, setErrors] = useState<DraftErrors>({});
@@ -152,65 +165,83 @@ export const GaugeCalibrationScreen = () => {
         />
       )}
 
-      <div className="gauge-calibration-workspace">
-        <section className="pane gauge-calibration-pane" aria-label={t.panes.filters}>
-          <h2 className="pane-title">{t.panes.filters}</h2>
-          <CalibrationFilterBar
-            appliedFilters={filters}
-            equipmentOptions={equipmentOptions}
-            equipmentNote={equipmentNote(equipments)}
-            onSearch={(next) => {
-              apply(next);
-            }}
-            onReset={() => {
-              apply(EMPTY_FILTERS);
-            }}
-          />
-        </section>
-
-        {!list.isError && (
-          <section className="pane gauge-calibration-pane" aria-label={t.panes.list}>
-            <h2 className="pane-title">{t.panes.list}</h2>
-            <HistoryTable
-              rows={rows}
-              isLoading={list.isPending}
-              isBeyondLast={pageView.isBeyondLast}
-              onFirstPage={() => {
-                apply(filters);
-              }}
-            />
-            {!list.isPending && !pageView.isBeyondLast && (
-              <PageNav
-                view={pageView}
-                onChange={(nextPage) => {
-                  apply(filters, nextPage);
+      {/* 조회 조건 · 이력 목록 | 이력 등록 — 다른 목록 · 상세 화면과 같은 공용 분할(가운데 막대 · 「⋯」 좌우/상하 배치 · #360). */}
+      <ListDetailWorkspace
+        storageKey="omf-mes:gauge-calibration"
+        filter={{
+          label: t.panes.filters,
+          content: (
+            <>
+              <h2 className="pane-title">{t.panes.filters}</h2>
+              <CalibrationFilterBar
+                appliedFilters={filters}
+                equipmentOptions={equipmentOptions}
+                equipmentNote={equipmentNote(equipments)}
+                onSearch={(next) => {
+                  apply(next);
+                }}
+                onReset={() => {
+                  apply(EMPTY_FILTERS);
                 }}
               />
-            )}
-          </section>
-        )}
-
-        <section className="pane gauge-calibration-pane" aria-label={t.panes.form}>
-          <h2 className="pane-title">{t.panes.form}</h2>
-          <SaveErrorBanner error={create.error} />
-          <HistoryForm
-            draft={draft}
-            errors={mergedErrors}
-            equipmentOptions={equipmentOptions}
-            equipmentNote={equipmentNote(equipments)}
-            isSaving={create.isSaving}
-            onChange={(next) => {
-              setDraft(next);
-            }}
-            onSubmit={requestSave}
-            onReset={() => {
-              setDraft(EMPTY_DRAFT);
-              setErrors({});
-              create.reset();
-            }}
-          />
-        </section>
-      </div>
+            </>
+          ),
+        }}
+        list={{
+          label: t.panes.list,
+          title: t.panes.list,
+          count: list.data?.page.total,
+          className: 'gauge-calibration-pane',
+          content: !list.isError && (
+            <>
+              <HistoryTable
+                rows={rows}
+                isLoading={list.isPending}
+                isBeyondLast={pageView.isBeyondLast}
+                onFirstPage={() => {
+                  apply(filters);
+                }}
+              />
+              {!list.isPending && !pageView.isBeyondLast && (
+                <PageNav
+                  view={pageView}
+                  onChange={(nextPage) => {
+                    apply(filters, nextPage);
+                  }}
+                  sizes={PAGE_SIZES}
+                  onChangeSize={changePageSize}
+                />
+              )}
+            </>
+          ),
+        }}
+        detail={{
+          label: t.panes.form,
+          className: 'gauge-calibration-pane',
+          content: (
+            <>
+              <h2 className="pane-title">{t.panes.form}</h2>
+              <SaveErrorBanner error={create.error} />
+              <HistoryForm
+                draft={draft}
+                errors={mergedErrors}
+                equipmentOptions={equipmentOptions}
+                equipmentNote={equipmentNote(equipments)}
+                isSaving={create.isSaving}
+                onChange={(next) => {
+                  setDraft(next);
+                }}
+                onSubmit={requestSave}
+                onReset={() => {
+                  setDraft(EMPTY_DRAFT);
+                  setErrors({});
+                  create.reset();
+                }}
+              />
+            </>
+          ),
+        }}
+      />
 
       <SaveConfirmDialog
         open={isConfirming}

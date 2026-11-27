@@ -13,6 +13,8 @@ export const equipmentMaster = {
     disposeEquipment: '폐기 처리',
     keepEditing: '계속 편집',
     discardChanges: '변경 버리기',
+    /** 설비 그룹 등록 팝업의 등록 단추. */
+    register: '등록',
   },
   actionReasons: {
     plantFixedAfterCreate:
@@ -47,16 +49,6 @@ export const equipmentMaster = {
      */
     codeLockUnknown: '설비 정보를 아직 불러오지 못해 코드를 바꿀 수 없습니다.',
     equipmentPlantFixed: '설비의 공장은 소속 그룹의 공장을 따릅니다.',
-    /**
-     * ⚠ 폐기를 지금 쓸 수 없는 이유. 자산 수명주기 상태의 값 목록도 그 공통코드 그룹 이름도
-     * 아직 없어(설계 질의 omf-mes#185) **이미 폐기된 자산인지 화면이 판정할 수 없다** —
-     * 판정 없이 버튼을 열면 이미 끝난 자산에도 눌리는 컨트롤이 된다.
-     */
-    /**
-     * ⚠ 시드가 아직 들어가지 않아 값 목록이 빌 수 있다(설계 `omf-mes#182`).
-     * 그때 감추지 않고 비활성 + 사유로 둔다(G-2) — 목록이 들어오면 이 잠금은 저절로 풀린다.
-     */
-    disposeUnavailable: '등록된 자산 상태가 없어 폐기할 수 없습니다.',
     deactivateNeedsCleanForm:
       '사용 중지는 저장하지 않은 변경이 있으면 쓸 수 없습니다. 먼저 저장하거나 취소하세요.',
   },
@@ -109,20 +101,25 @@ export const equipmentMaster = {
    * ⚠ 계약에 다시 켜는 경로가 없다 — 이 화면에서 되돌릴 수 없다는 사실을 감추지 않는다.
    */
   dispose: {
-    title: '폐기 처리할까요?',
-    target: (label: string): string => `${label} 을(를) 폐기 처리합니다.`,
+    title: '설비 폐기 처리',
+    caption: '폐기 대상',
+    question: '이 설비를 폐기 처리하시겠습니까?',
     /** 사용 중지와 «다른 축» 이다 — 그것은 감추는 것이고 이것은 자산이 끝난 것이다. */
     impact:
       '사용 중지와 다른 처리입니다. 사용 중지는 목록에서 감추는 것이고, 폐기는 자산이 끝난 것입니다.',
     notReversible: '되돌릴 수 없습니다. 폐기한 뒤에는 다시 불러와도 편집이 풀리지 않습니다.',
     confirm: '폐기 처리',
+    /** 폐기한 설비 수정 창의 잠긴 [저장] 에 마우스를 올리면 보인다(#360 점검). */
+    lockedReason: '폐기한 설비는 수정할 수 없습니다.',
   },
   deactivate: {
-    title: '사용 중지할까요?',
-    equipmentTitle: '설비를 사용 중지할까요?',
+    title: '설비 그룹 사용 중지',
+    equipmentTitle: '설비 사용 중지',
+    caption: '사용 중지 대상',
+    question: '이 설비 그룹의 사용을 중지하시겠습니까?',
+    equipmentQuestion: '이 설비의 사용을 중지하시겠습니까?',
     /** 설비를 중지해도 그 설비가 남긴 기록은 그대로다 — 감추는 것과 지우는 것은 다르다. */
     equipmentImpact: '이 설비가 남긴 기록은 그대로 남고, 새로 고를 때만 목록에서 빠집니다.',
-    target: (label: string): string => `${label} 을(를) 사용 중지합니다.`,
     membersNone: '이 그룹에 소속된 설비가 없습니다.',
     /** 소속 설비는 그대로 남는다 — 그룹이 목록에서 빠질 뿐이다. */
     members: (count: number): string =>
@@ -135,8 +132,11 @@ export const equipmentMaster = {
     editTitle: '설비 그룹 정보',
     parentNone: '없음 (최상위)',
     locationNone: '지정 없음',
-    locationNeedsPlant: '공장을 고르면 그 공장의 위치가 나옵니다.',
     departmentNone: '지정 없음',
+    plantPlaceholder: '공장을 선택하세요',
+    codePlaceholder: '그룹코드를 입력하세요',
+    namePlaceholder: '그룹명을 입력하세요',
+    typePlaceholder: '그룹유형을 선택하세요',
     /** 알림 대상 판정 근거 — 상위 그룹에서 이어받지 않는다는 것을 함께 밝힌다(001 W-05-12). */
     departmentHelp:
       '이 라인의 W/O와 설비에서 생기는 알림이 이 부서의 알림 설정으로 갑니다. 상위 그룹의 부서는 이어받지 않습니다.',
@@ -146,6 +146,9 @@ export const equipmentMaster = {
     editTitle: '설비 수정',
     groupNone: '소속 없음',
     processNone: '지정 없음',
+    codePlaceholder: '설비코드를 입력하세요',
+    namePlaceholder: '설비명을 입력하세요',
+    typePlaceholder: '설비유형을 고르세요',
   },
   validation: {
     required: '필수 입력 항목입니다.',
@@ -248,22 +251,22 @@ export const equipmentMaster = {
     emptyDescription: '점검 항목을 부여하면 이 그룹의 설비가 그 항목을 돕니다.',
     editAction: '점검 항목 부여',
     dialogTitle: '점검 항목 부여',
+    /** 부여 창 머리의 대상 상자 제목 — 아래에 이름 · 코드가 선다(#360). */
+    targetCaption: '부여 대상',
     /**
      * ⛔ **묶음 통째 교체라는 사실을 감추지 않는다**(계약의 `PUT`). 「지운 줄은 지워진다」를
      * 말하지 않으면 사용자는 더한 것만 반영된다고 읽는다.
      */
-    dialogLead: '이 창에 남긴 것이 전부가 됩니다 — 지운 줄은 부여가 풀립니다.',
     addLabel: '항목 추가',
     addPlaceholder: '부여할 점검 항목을 고르세요',
+    cycleTypePlaceholder: '주기 단위를 고르세요',
+    cycleIntervalPlaceholder: '주기 간격을 입력하세요',
     /** 고를 것이 없는 것과 목록을 못 받은 것은 다르다 — 앞엣것만 이 문구다. */
-    allAssigned: '마스터의 점검 항목을 모두 부여했습니다.',
     /**
      * ⚠ **「어떻게 풀 것인가」를 함께 적는다**(공유계약 G-3 · 설계 회신 `omf-mes#220`).
      * 「없습니다」에서 멈추면 사용자는 어디로 가야 할지 모른다 — 만드는 자리가 «같은 화면»
      * 안이므로 그 탭 이름을 말한다.
      */
-    masterEmpty:
-      '등록된 점검 항목이 없습니다. 위의 「점검 항목」 탭에서 항목을 만든 뒤 부여하세요.',
     masterLoadFailed: '점검 항목 목록을 불러오지 못했습니다.',
     removeAction: '부여 해제',
     removeLabel: (itemName: string): string => `${itemName} 부여 해제`,
@@ -349,23 +352,27 @@ export const equipmentMaster = {
       lowerLimit: '측정 하한',
       upperLimit: '측정 상한',
       requiredFlag: '필수 여부',
-      inspectionPoint: '점검부위',
+      inspectionPoint: '점검 부위',
       sequenceNo: '표시 순서',
       isActive: '사용',
     },
     placeholders: {
-      plant: '공장을 고르세요',
-      inspectionType: '점검 유형을 고르세요',
-      judgmentMethod: '판정 방식을 고르세요',
-      uom: '단위를 고르세요',
+      plant: '공장을 선택하세요',
+      inspectionType: '점검 유형을 선택하세요',
+      judgmentMethod: '판정 방식을 선택하세요',
+      uom: '단위를 선택하세요',
+      itemCode: '항목코드를 입력하세요',
+      itemName: '항목명을 입력하세요',
+      lowerLimit: '측정 하한을 입력하세요',
+      upperLimit: '측정 상한을 입력하세요',
+      inspectionPoint: '점검 부위를 입력하세요',
+      sequenceNo: '표시 순서를 입력하세요',
     },
     /**
      * ⛔ **짝 제약을 창이 말한다.** 판정 방식이 「측정값」이면 단위·상하한이 함께 필요하다 —
      * 말하지 않으면 사용자는 세 칸이 왜 갑자기 필수가 됐는지 모른다.
      */
     measurementNote: '판정 방식이 「측정값」이면 단위와 상·하한이 함께 필요합니다.',
-    /** ⛔ 계약의 수정 본문에 공장이 없다 — 옮길 수 없다는 뜻이다. */
-    plantFixed: '공장은 등록할 때 정해지며 나중에 바꿀 수 없습니다.',
     /** ⭐ 지운 것이 아니라 잠근 것이다 — 부여된 곳이 있으면 코드를 바꿀 수 없다. */
     assignmentCount: (count: number): string =>
       count === 0

@@ -1,4 +1,4 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -42,6 +42,7 @@ export const ActivationDialog = ({
 
   return (
     <Dialog
+      className={isDeactivate ? 'dialog-icon-block' : 'dialog-icon-restart'}
       open
       onClose={onClose}
       closeOnBackdropClick={false}
@@ -59,16 +60,28 @@ export const ActivationDialog = ({
         </>
       }
     >
-      <div className="form-grid dialog-scroll">
-        {banner !== null && banner !== undefined && <div className="form-grid-full">{banner}</div>}
+      {banner}
 
-        <div className="form-grid-full">
-          <p>{t.target(channelKey)}</p>
-          <p>{isDeactivate ? t.deactivateImpact : t.resumeImpact}</p>
-          {isDeactivate && <p>{t.deactivateReversible}</p>}
-          {/* 모르면 잠근다 — 잠근 이유를 함께 낸다(공유계약 G-2). */}
-          {isLoadingTarget && <p className="field-note">{t.loadingTarget}</p>}
+      {/* 단말 사용 중지 창과 같은 짜임 — 대상 상자 · 질문 · 안내 줄(#360). 채널은 이름이 없어 키 한 줄이다. */}
+      <div className="users-roles-worker-dialog">
+        <div className="users-roles-worker-block">
+          <span className="users-roles-worker-block-caption">
+            {isDeactivate ? t.deactivateCaption : t.resumeCaption}
+          </span>
+          <strong>{channelKey}</strong>
         </div>
+        <p>{isDeactivate ? t.deactivateQuestion : t.resumeQuestion}</p>
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+          <Icon name="info" size={16} aria-hidden />
+          {isDeactivate ? t.deactivateImpact : t.resumeImpact}
+        </p>
+        {isDeactivate && (
+          <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+            <Icon name="info" size={16} aria-hidden />
+            {t.deactivateReversible}
+          </p>
+        )}
+        {/* 모르면 잠근다 — 잠긴 까닭 문장은 걷었다(사용자 지시 · #360). */}
       </div>
     </Dialog>
   );

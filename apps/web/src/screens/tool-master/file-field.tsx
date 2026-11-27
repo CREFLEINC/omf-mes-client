@@ -1,4 +1,4 @@
-import { Button } from '@crefle/web-ui';
+import { Button, Icon } from '@crefle/web-ui';
 import { useId, useRef } from 'react';
 
 import { FieldLabel } from './field-label';
@@ -9,8 +9,6 @@ export interface FileFieldProps {
   buttonLabel: string;
   /** 고른 파일의 이름. 고르지 않았으면 `null` */
   fileName: string | null;
-  /** 고르지 않았을 때 그 자리에 설 문장. 빈칸으로 두지 않는다(G-9) */
-  emptyText: string;
   /** 받아들일 확장자 목록(`accept`). 걸러 주기만 하고 **막지는 못한다** */
   accept?: string;
   disabled?: boolean;
@@ -35,12 +33,14 @@ export interface FileFieldProps {
  *
  * ⭐ **고른 파일 이름을 보이는 글자로 낸다.** 이름이 없으면 사용자는 무엇을 올리는지 모른 채
  * 되돌릴 수 없는 쓰기를 누르게 된다.
+ *
+ * 모양은 검사 기준 엑셀 업로드 창의 파일 상자와 같다(사용자 지시 2026-11-27 · #360) — 테두리 상자 안에 파일 표식 ·
+ * 고른 파일 이름 · 오른쪽 작은 외곽선 단추. 고르기 전에는 안내 문장 없이 단추만 선다.
  */
 export const FileField = ({
   label,
   buttonLabel,
   fileName,
-  emptyText,
   accept,
   disabled = false,
   info,
@@ -51,7 +51,7 @@ export const FileField = ({
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="field-cell">
+    <div className="field-cell tool-master-file-field">
       <FieldLabel htmlFor={id} label={label} info={info} required={required} />
       <input
         ref={inputRef}
@@ -63,15 +63,21 @@ export const FileField = ({
         className="file-input"
         onChange={(event) => onSelect(event.target.files?.[0] ?? null)}
       />
-      <Button
-        type="button"
-        variant="outlined"
-        disabled={disabled}
-        onClick={() => inputRef.current?.click()}
-      >
-        {buttonLabel}
-      </Button>
-      <span className="field-note">{fileName ?? emptyText}</span>
+      <div className="inspection-standard-import-box">
+        <div className="inspection-standard-import-box-head">
+          <Icon name="file_copy" size={20} aria-hidden />
+          {fileName !== null && <strong title={fileName}>{fileName}</strong>}
+          <Button
+            type="button"
+            variant="outlined"
+            size="sm"
+            disabled={disabled}
+            onClick={() => inputRef.current?.click()}
+          >
+            {buttonLabel}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };

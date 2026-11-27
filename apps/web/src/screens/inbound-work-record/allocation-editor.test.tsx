@@ -135,7 +135,7 @@ describe('W-01-16 매칭 수정', () => {
     ).toBeVisible();
     const save = within(dialog).getByRole('button', { name: te.save });
     expect(save).toBeDisabled();
-    expect(save).toHaveAccessibleDescription(te.saveLocked);
+    expect(within(dialog).queryByText('오류를 고쳐야 저장할 수 있습니다')).toBeNull();
     expect(recorded.some((call) => call.method === 'PUT')).toBe(false);
   });
 

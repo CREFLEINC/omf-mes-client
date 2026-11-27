@@ -485,7 +485,7 @@ export const erpWorkOrderFlow = {
         `${workOrderNo} ${operation}`,
       discard: {
         title: '변경 저장 안 함',
-        body: '저장하지 않은 변경이 있습니다. 저장하지 않고 다른 W/O로 옮기면 변경이 사라집니다.',
+        body: '저장하지 않은 변경이 있습니다. 저장하지 않고 이동하면 변경이 사라집니다.',
         confirm: '저장 안 하고 이동',
       },
       groups: {

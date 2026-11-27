@@ -1,7 +1,9 @@
-import { Button, Dialog, TextField } from '@crefle/web-ui';
+import { Button, Chip, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import { InfoFacts } from '../../patterns/info-facts';
+import { InfoLabel } from '../../patterns/info-tip';
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { CodeLockTextField } from '../../patterns/master';
 import type { ActionAvailability } from './asset-actions';
@@ -12,7 +14,6 @@ import {
   type CodeOption,
   codeLabel,
   ensureOption,
-  MOLD_TOOL_TYPE_CODE,
   selectableOptions,
   usesDateAxis,
   usesShotAxis,
@@ -23,33 +24,6 @@ import { countText, figureText, ratioText } from './shot-text';
 import type { ToolFormValues } from './types';
 
 const t = messages.toolMaster;
-
-/** 값이 없는 읽기 전용 칸. 빈칸으로 두지 않고 「기록 없음」을 밝힌다(공유계약 G-9). */
-const readOnlyText = (value: string | null): string =>
-  value === null || value.trim() === '' ? t.fields.notRecorded : value;
-
-interface StatusItemProps {
-  label: string;
-  value: string | null;
-}
-
-/**
- * 「현재 상태」 한 묶음 — 작은 이름 바로 아래 값.
- *
- * **폼 컨트롤을 잠그지 않고 값 표기로 낸다** — 잠긴 입력칸은 「언젠가 여기서 고칠 수 있다」를
- * 뜻하는데, 이 값들은 이 화면이 영영 정하지 않는다. 값은 이름표로 이어 둔다 — 화면 낭독기와
- * 시험이 「어느 값이 무엇인가」를 이름으로 찾는다.
- */
-const StatusItem = ({ label, value }: StatusItemProps) => {
-  const labelId = useId();
-
-  return (
-    <div className="tool-form-status-item">
-      <dt id={labelId}>{label}</dt>
-      <dd aria-labelledby={labelId}>{readOnlyText(value)}</dd>
-    </div>
-  );
-};
 
 export interface ToolFormDialogProps {
   mode: 'create' | 'edit';
@@ -126,7 +100,6 @@ export const ToolFormDialog = ({
   onDeactivate,
   onDispose,
 }: ToolFormDialogProps) => {
-  const retireNoteId = useId();
   const sectionId = useId();
   /*
    * ⭐ 비어 있는 필수 입력칸 표식 — 테두리만 빨갛게 칠한다(사용자 지정 2026-09-22). 디자인
@@ -138,6 +111,8 @@ export const ToolFormDialog = ({
   const plantName = lookupDisplayLabel(plantSource, values.plantId);
 
   const onDateAxis = usesDateAxis(values.pmTriggerTypeCode);
+  const onShotAxis = usesShotAxis(values.pmTriggerTypeCode);
+  const guaranteedShotId = useId();
 
   /*
    * ⭐ 지금 걸려 있는 값이 선택지에 없어도 **칸이 비어 보이면 안 된다.** 서버 자료에 계약이
@@ -154,6 +129,7 @@ export const ToolFormDialog = ({
 
   return (
     <Dialog
+      className={mode === 'create' ? 'dialog-icon-add' : 'dialog-icon-edit'}
       open
       onClose={onClose}
       closeOnBackdropClick={false}
@@ -197,6 +173,7 @@ export const ToolFormDialog = ({
             <CodeLockTextField
               lockReason={codeLockReason}
               label={t.fields.toolCode}
+              placeholder={t.form.codePlaceholder}
               required
               value={values.moldCode}
               onChange={(event) => onChange({ moldCode: event.target.value })}
@@ -206,6 +183,7 @@ export const ToolFormDialog = ({
 
             <TextField
               label={t.fields.toolName}
+              placeholder={t.form.namePlaceholder}
               required
               value={values.moldName}
               onChange={(event) => onChange({ moldName: event.target.value })}
@@ -225,43 +203,51 @@ export const ToolFormDialog = ({
             />
 
             {/*
-             * ⚠ **잠그지 않고 뜻을 밝힌다.** 캐비티 수는 금형에서만 뜻이 있으나(스펙 §6), 잠그면 유형을
-             * 잘못 고른 채로는 고칠 수 없는 자리가 생긴다. 뜻은 짧은 도움말로만 남긴다.
-             * ⭐ 도움말은 **금형이 아닌 유형을 골랐을 때만** 선다(사용자 지정 2026-09-22) — 설명은 입력을
-             *   정하는 데 필요할 때만 낸다. 늘 서면 그 칸만 키가 커져 옆 칸 밑이 비고 다음 줄이 밀렸다.
+             * ⚠ **잠그지도 감추지도 않는다.** 캐비티 수는 금형에서만 뜻이 있으나(스펙 §6) 모든 유형에서 필수이고
+             * 늘 보낸다 — 감추면 보이지 않는 칸이 검증에 걸린다. 「금형에만 적용됩니다.」 도움말은 걷었다(사용자 지시
+             * 2026-11-27 · #360).
              */}
             <TextField
               label={t.fields.cavityCount}
+              placeholder={t.form.cavityCountPlaceholder}
               required
               inputMode="numeric"
               value={values.cavityCount}
               onChange={(event) => onChange({ cavityCount: event.target.value })}
               containerClassName={emptyRequired(values.cavityCount, true)}
-              helperText={
-                values.toolTypeCode !== '' && values.toolTypeCode !== MOLD_TOOL_TYPE_CODE
-                  ? t.notes.cavityMeaningfulForMold
-                  : undefined
-              }
               error={fieldErrors.cavityCount}
             />
 
             {/*
-             * ⭐ **비워 두는 것을 막지 않는다** — 「적정 타수 미설정」 조회 조건이 그 상태를 전제한다.
-             * 대신 비어 있을 때 **무엇이 서지 않는지**를 말한다. 타발수 축을 쓰기로 해 놓고 비워 둔
-             * 경우가 그 말이 가장 필요한 자리다.
+             * 비워 두는 것을 막지 않는다 — 「적정 타수 미설정」 조회 조건이 그 상태를 전제한다. 칸 아래 안내는 걷었다(사용자 지시 · #360).
+             * 판정 기준이 타발수 축을 쓸 때만 이름 옆 ⓘ 로 「비우면 도래를 계산하지 않는다」를 알린다(#360).
              */}
-            <TextField
-              label={t.fields.guaranteedShotCount}
-              inputMode="numeric"
-              value={values.guaranteedShotCount}
-              onChange={(event) => onChange({ guaranteedShotCount: event.target.value })}
-              helperText={
-                values.guaranteedShotCount.trim() === '' && usesShotAxis(values.pmTriggerTypeCode)
-                  ? t.notes.guaranteedMissingBlocksShotAxis
-                  : undefined
-              }
-              error={fieldErrors.guaranteedShotCount}
-            />
+            {onShotAxis ? (
+              <div className="field-cell">
+                <InfoLabel
+                  htmlFor={guaranteedShotId}
+                  label={t.fields.guaranteedShotCount}
+                  info={t.form.guaranteedShotCountInfo}
+                />
+                <TextField
+                  id={guaranteedShotId}
+                  placeholder={t.form.guaranteedShotCountPlaceholder}
+                  inputMode="numeric"
+                  value={values.guaranteedShotCount}
+                  onChange={(event) => onChange({ guaranteedShotCount: event.target.value })}
+                  error={fieldErrors.guaranteedShotCount}
+                />
+              </div>
+            ) : (
+              <TextField
+                label={t.fields.guaranteedShotCount}
+                placeholder={t.form.guaranteedShotCountPlaceholder}
+                inputMode="numeric"
+                value={values.guaranteedShotCount}
+                onChange={(event) => onChange({ guaranteedShotCount: event.target.value })}
+                error={fieldErrors.guaranteedShotCount}
+              />
+            )}
 
             {/*
              * ⭐ **공장은 등록에서만 고른다.** 계약이 수정 본문에 받지 않는다 — 공장을 옮기는 것은
@@ -294,6 +280,7 @@ export const ToolFormDialog = ({
           <div className="form-grid tool-form-grid tool-form-pm-grid">
             <SelectField
               label={t.fields.pmTriggerType}
+              placeholder={t.form.pmTriggerTypePlaceholder}
               required
               options={triggerOptions}
               value={values.pmTriggerTypeCode}
@@ -308,6 +295,7 @@ export const ToolFormDialog = ({
              */}
             <TextField
               label={t.fields.pmCycleInterval}
+              placeholder={t.form.pmCycleIntervalPlaceholder}
               required={onDateAxis}
               inputMode="numeric"
               value={values.pmCycleInterval}
@@ -341,9 +329,7 @@ export const ToolFormDialog = ({
                * 줄까지 함께 붙어 줄이 두 층이 되고, 창이 뷰포트를 넘어 「저장」과 「취소」까지 화면 밖으로
                * 밀려난다(W-05-11 브라우저 확인에서 실측). 운용상태를 바꾸는 자리라 「현재 상태」에 둔다.
                *
-               * ⭐ **감추지 않고 잠그고 사유를 붙인다**(공유계약 G-2). 사라진 버튼은 「원래 없는
-               * 기능」과 구분되지 않아, 왜 못 하는지도 어디서 할 수 있는지도 알 수 없다.
-               * 사유는 보이는 DOM 텍스트로 낸다 — 잠긴 버튼은 포커스를 못 받아 툴팁이 닿지 않는다.
+               * ⭐ **감추지 않고 잠근다**(공유계약 G-2). 잠긴 단추 아래 까닭 문장은 걷었다(사용자 지시 · #360).
                */}
               {/*
                * ⭐ 상태를 바꾸는 두 액션은 **「현재 상태」 제목 줄 오른쪽**에 둔다(사용자 지정 2026-09-22) —
@@ -351,41 +337,29 @@ export const ToolFormDialog = ({
                *   외곽선이라 바닥 줄의 [저장]보다 앞서지 않는다.
                */}
               <div className="tool-form-retire">
-                <div className="tool-form-retire-action">
+                {/* 잠긴 까닭은 마우스를 올리면 뜬다 — 잠긴 단추는 마우스 이벤트를 받지 않아 감싼 칸에 단다(#360). */}
+                <div
+                  className="tool-form-retire-action"
+                  title={deactivate.enabled ? undefined : (deactivate.reason ?? undefined)}
+                >
                   <Button
                     variant="outlined"
                     size="sm"
                     disabled={isSaving || !deactivate.enabled}
-                    aria-describedby={
-                      deactivate.reason === null ? undefined : `${retireNoteId}-off`
-                    }
                     onClick={onDeactivate}
                   >
                     {t.retire.deactivateConfirm}
                   </Button>
-                  {deactivate.reason !== null && (
-                    <span id={`${retireNoteId}-off`} className="field-note">
-                      {deactivate.reason}
-                    </span>
-                  )}
                 </div>
                 <div className="tool-form-retire-action">
                   <Button
                     variant="outlined"
                     size="sm"
                     disabled={isSaving || !dispose.enabled}
-                    aria-describedby={
-                      dispose.reason === null ? undefined : `${retireNoteId}-dispose`
-                    }
                     onClick={onDispose}
                   >
                     {t.retire.disposeConfirm}
                   </Button>
-                  {dispose.reason !== null && (
-                    <span id={`${retireNoteId}-dispose`} className="field-note">
-                      {dispose.reason}
-                    </span>
-                  )}
                 </div>
               </div>
             </div>
@@ -394,31 +368,44 @@ export const ToolFormDialog = ({
              * 초과율·예방보전일·라벨 발행 회차도 이 자리에 선다(라벨 회차는 참조 0건인데도 코드가
              * 잠기는 까닭이다).
              */}
-            <dl className="tool-form-status">
-              <StatusItem label={t.fields.plant} value={plantName} />
-              <StatusItem
-                label={t.fields.status}
-                value={statusCode === null ? null : codeLabel(statusCode, statusOptions)}
-              />
-              <StatusItem
-                label={t.fields.currentShotCount}
-                value={currentShotCount === null ? null : countText(currentShotCount)}
-              />
-              <StatusItem
-                label={t.fields.availableShotCount}
-                value={figures === null ? null : figureText(availableShots(figures), countText)}
-              />
-              <StatusItem
-                label={t.fields.shotUsageRatio}
-                value={figures === null ? null : figureText(shotUsage(figures), ratioText)}
-              />
-              <StatusItem
-                label={t.fields.labelIssueCount}
-                value={labelIssueCount === null ? null : t.form.labelIssued(labelIssueCount)}
-              />
-              <StatusItem label={t.fields.lastPmDate} value={lastPmDate} />
-              <StatusItem label={t.fields.nextPmDate} value={nextPmDate} />
-            </dl>
+            {/*
+             * 시안 정보 상자(공용 InfoFacts — 팝업 디자인 시안 2026-11-27 · #360): 연회색 둥근 상자, 이름 위 · 값 아래,
+             * 세로선으로 가른다. 운용상태는 칩, 빈 값은 회색 「—」.
+             */}
+            <InfoFacts
+              rows={[
+                [
+                  { label: t.fields.plant, value: plantName },
+                  {
+                    label: t.fields.status,
+                    value:
+                      statusCode === null ? null : (
+                        <Chip size="sm">{codeLabel(statusCode, statusOptions)}</Chip>
+                      ),
+                  },
+                  {
+                    label: t.fields.currentShotCount,
+                    value: currentShotCount === null ? null : countText(currentShotCount),
+                  },
+                  {
+                    label: t.fields.availableShotCount,
+                    value: figures === null ? null : figureText(availableShots(figures), countText),
+                  },
+                ],
+                [
+                  {
+                    label: t.fields.shotUsageRatio,
+                    value: figures === null ? null : figureText(shotUsage(figures), ratioText),
+                  },
+                  {
+                    label: t.fields.labelIssueCount,
+                    value: labelIssueCount === null ? null : t.form.labelIssued(labelIssueCount),
+                  },
+                  { label: t.fields.lastPmDate, value: lastPmDate },
+                  { label: t.fields.nextPmDate, value: nextPmDate },
+                ],
+              ]}
+            />
           </section>
         )}
       </div>

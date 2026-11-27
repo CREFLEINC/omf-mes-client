@@ -80,6 +80,7 @@ const URL_KEYS = {
 const VIEW_KEY = 'view';
 const SORT_KEY = 'sort';
 const PAGE_KEY = 'page';
+const SIZE_KEY = 'size';
 
 /**
  * **`toSearchParams`가 만들지 않는 키들.** 고르는 쪽이 덧붙인다(수명 표 6·9·10·11행).
@@ -93,6 +94,7 @@ export const SELECTION_KEYS = {
   historyFrom: 'hfrom',
   historyTo: 'hto',
   historyPage: 'hpage',
+  historySize: 'hsize',
   transaction: 'tx',
 } as const;
 
@@ -214,6 +216,17 @@ export const readPage = (params: URLSearchParams): number => {
   return POSITIVE_INTEGER.test(raw) ? Number(raw) : 1;
 };
 
+/** 목록 한 쪽 건수 기본 — 서버 기본값(50)이라 싣지 않는다. 주소에 적지 않는다. */
+export const PAGE_SIZE = 50;
+
+/** 고를 쪽 크기 — 품질 목록과 같은 10 · 20 · 50건(#360). */
+export const LIST_PAGE_SIZES = [10, 20, 50] as const;
+export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
+
+/** 쪽 크기. 고를 수 있는 값이 아니면 기본(50)으로 읽는다. */
+export const readPageSize = (params: URLSearchParams): ListPageSize =>
+  LIST_PAGE_SIZES.find((size) => String(size) === params.get(SIZE_KEY)) ?? PAGE_SIZE;
+
 /**
  * 고른 LOT의 번호. **잔액 요청에 실리지 않는다** — LOT 상세 경로의 조각으로만 쓴다.
  *
@@ -244,6 +257,11 @@ export const readHistoryPage = (params: URLSearchParams): number => {
 
   return POSITIVE_INTEGER.test(raw) ? Number(raw) : 1;
 };
+
+/** 수불 이력 쪽 크기 — 잔액 목록과 따로 고른다. 고를 수 있는 값이 아니면 기본(50)이다(#360). */
+export const readHistoryPageSize = (params: URLSearchParams): ListPageSize =>
+  LIST_PAGE_SIZES.find((size) => String(size) === params.get(SELECTION_KEYS.historySize)) ??
+  PAGE_SIZE;
 
 /**
  * 고른 거래. **영업일과 번호가 둘 다 성해야 한다** — 계약이 둘을 함께 경로 조각으로 받아
@@ -285,6 +303,8 @@ export const toSearchParams = (
   filters: BalanceFilters,
   sort: SortKey | null,
   page: number,
+  /** 고른 쪽 크기 — 기본(50)이면 적지 않는다. */
+  size: number = PAGE_SIZE,
 ): URLSearchParams => {
   const next = new URLSearchParams();
 
@@ -308,6 +328,7 @@ export const toSearchParams = (
   if (view !== DEFAULT_VIEW) next.set(VIEW_KEY, view);
   if (sort !== null) next.set(SORT_KEY, sort);
   if (page > 1) next.set(PAGE_KEY, String(page));
+  if (size !== PAGE_SIZE) next.set(SIZE_KEY, String(size));
 
   return next;
 };
@@ -375,6 +396,10 @@ export interface FilterChipNames {
   item: string;
   lot: string;
   location: string;
+  /** 고른 코드의 이름(서버 코드 목록 · omf-all-around#360). 없으면 코드 그대로. */
+  qualityStatus?: string;
+  inventoryStatus?: string;
+  ownership?: string;
 }
 
 /** 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다. */
@@ -398,17 +423,17 @@ export const toFilterChips = (filters: BalanceFilters, names: FilterChipNames): 
     },
     {
       key: 'qualityStatus',
-      label: t.filters.chipQualityStatus(filters.qualityStatus),
+      label: t.filters.chipQualityStatus(names.qualityStatus ?? filters.qualityStatus),
       removeLabel: t.filters.chipRemoveQualityStatus,
     },
     {
       key: 'inventoryStatus',
-      label: t.filters.chipInventoryStatus(filters.inventoryStatus),
+      label: t.filters.chipInventoryStatus(names.inventoryStatus ?? filters.inventoryStatus),
       removeLabel: t.filters.chipRemoveInventoryStatus,
     },
     {
       key: 'ownership',
-      label: t.filters.chipOwnership(filters.ownership),
+      label: t.filters.chipOwnership(names.ownership ?? filters.ownership),
       removeLabel: t.filters.chipRemoveOwnership,
     },
     {

@@ -21,6 +21,8 @@ export interface DeactivateConfirmDialogProps {
   childCount: number | null;
   /** 저장 실패 배너 슬롯. 다이얼로그를 닫지 않고 이유를 보여야 다시 시도할 수 있다. */
   banner: ReactNode;
+  /** 대상 코드 · 이름 — 대상 상자에 보인다(#360). 상세를 받기 전이면 없고, 그때는 상자를 두지 않는다. */
+  target?: { code: string; name: string } | undefined;
 }
 
 /**
@@ -38,11 +40,13 @@ export const DeactivateConfirmDialog = ({
   isSaving,
   childCount,
   banner,
+  target,
 }: DeactivateConfirmDialogProps) => {
   const t = texts[mode];
 
   return (
     <Dialog
+      className="dialog-icon-block"
       open={open}
       onClose={onClose}
       size="sm"
@@ -62,15 +66,28 @@ export const DeactivateConfirmDialog = ({
       }
     >
       {banner}
-      <p>{t.description}</p>
-      {/* 하위가 딸린 대분류를 중지하면 영향 범위가 넓다. 누르기 전에 그 사실을 보인다. */}
-      {/* 정보 안내 — 검사 조회·판정의 안내 줄과 같은 모양(사용자 지시 · #209). */}
-      {mode === 'deactivate' && childCount !== null && (
-        <p className="iqc-inspection-action-note defect-cause-dialog-note" data-tone="info">
-          <Icon name="info" size={14} aria-hidden />
-          {texts.deactivate.childCount(childCount)}
+      {/* 단말 사용 중지 창과 같은 짜임 — 대상 상자 · 질문 · 안내 줄(#360). */}
+      <div className="users-roles-worker-dialog">
+        {target !== undefined && (
+          <div className="users-roles-worker-block">
+            <span className="users-roles-worker-block-caption">{t.caption}</span>
+            <strong>{target.name}</strong>
+            <span>{target.code}</span>
+          </div>
+        )}
+        <p>{t.question}</p>
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+          <Icon name="info" size={16} aria-hidden />
+          {t.description}
         </p>
-      )}
+        {/* 하위가 딸린 대분류를 중지하면 영향 범위가 넓다. 누르기 전에 그 사실을 보인다. */}
+        {mode === 'deactivate' && childCount !== null && (
+          <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+            <Icon name="info" size={16} aria-hidden />
+            {texts.deactivate.childCount(childCount)}
+          </p>
+        )}
+      </div>
     </Dialog>
   );
 };

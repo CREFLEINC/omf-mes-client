@@ -92,7 +92,7 @@ export const CalibrationHistoryPane = ({
   return (
     <section className="pane" aria-label={t.title}>
       <h3>{t.title}</h3>
-      <p className="field-note">{t.readOnlyNote}</p>
+      {/* 읽기 전용 안내 문장은 걷었다 — 검교정 일자 칸 ⓘ 가 같은 말을 한다(사용자 지시 · #360). */}
       {limitNote !== null && <AlertBanner variant="warning">{limitNote}</AlertBanner>}
       {body()}
     </section>

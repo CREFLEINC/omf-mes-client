@@ -192,6 +192,7 @@ export const dispositionDecision = {
     periodText: (from: string, to: string | null): string => `${from} ~ ${to ?? '제한 없음'}`,
     reason: '판정 사유',
     direct: '저장하면 바로 반영됩니다.',
+    question: '이 내용으로 판정을 저장하시겠습니까?',
     save: '판정 저장',
   },
   /** 결재자가 보는 부적합 정보(omf-all-around#352) — 품질 승인 처리 · 결재함 상세에 선다. */

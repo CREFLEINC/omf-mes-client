@@ -199,7 +199,10 @@ describe('PostPane — 전기 결과', () => {
       }),
     });
 
-    expect(within(pane()).getByText(t.post.postedTitle('SAMPLE-IA-9301'))).toBeVisible();
+    /* 성공 문장은 오른쪽 아래 알림으로 나가고 구획에는 서지 않는다(#360). */
+    expect(
+      within(pane()).queryByText(t.post.postedTitle('SAMPLE-IA-9301')),
+    ).not.toBeInTheDocument();
     expect(within(pane()).getByText('2026-08-18 12:05')).toBeVisible();
     expect(within(pane()).getByText('SAMPLE_IA_STATUS_B')).toBeVisible();
   });
@@ -213,7 +216,7 @@ describe('PostPane — 전기 결과', () => {
     });
 
     /* 짝 양성 — 결과가 실제로 섰다. */
-    expect(within(pane()).getByText(t.post.postedTitle('SAMPLE-IA-9301'))).toBeVisible();
+    expect(within(pane()).getByText(t.post.adjustedAt)).toBeVisible();
     expect(within(pane()).queryByLabelText(t.post.businessDate)).not.toBeInTheDocument();
     expect(within(pane()).queryByRole('button', { name: t.actions.post })).not.toBeInTheDocument();
   });
@@ -226,7 +229,7 @@ describe('PostPane — 전기 결과', () => {
   it('전기 시각이 오지 않으면 그 사실을 적는다', () => {
     renderPane({ posting: readPosting({ adjustedAt: null, statusCode: 'SAMPLE_S_B' }) });
 
-    expect(within(pane()).getByText(t.post.postedTitle('SAMPLE-IA-9301'))).toBeVisible();
+    expect(within(pane()).getByText(t.post.adjustedAt)).toBeVisible();
     expect(within(pane()).getByText(t.post.adjustedAtUnknown)).toBeVisible();
   });
 
@@ -241,7 +244,7 @@ describe('PostPane — 전기 결과', () => {
     });
 
     /* 짝 양성 — 결과가 실제로 섰다. */
-    expect(within(pane()).getByText(t.post.postedTitle('SAMPLE-IA-A'))).toBeVisible();
+    expect(within(pane()).getByText(t.post.adjustedAt)).toBeVisible();
     expect(within(pane()).getAllByRole('button')).toHaveLength(1);
     expect(pane().textContent ?? '').not.toContain('9301');
   });

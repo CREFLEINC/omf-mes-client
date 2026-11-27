@@ -482,9 +482,6 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
               {t.detail.cancel}
             </Button>
           )}
-          {scope === 'quantity' && (
-            <span className="field-note form-actions-secondary">{t.detail.cancelLocked}</span>
-          )}
           {scope !== 'none' && (
             <>
               <Button
@@ -509,6 +506,7 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
         </div>
 
         <Dialog
+          className="dialog-icon-edit"
           open={dialog === 'date'}
           onClose={() => setDialog(null)}
           title={t.dateDialog.title}
@@ -571,6 +569,7 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
         </Dialog>
 
         <Dialog
+          className="dialog-icon-cancel"
           open={dialog === 'cancel'}
           onClose={() => setDialog(null)}
           title={t.cancelDialog.title(request.issueRequestNo)}

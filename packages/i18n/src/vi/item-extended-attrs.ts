@@ -159,6 +159,11 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       effectiveTo: 'Hiệu lực đến',
       edit: 'Sửa',
     },
+    placeholders: {
+      fromUom: 'Hãy chọn đơn vị trước quy đổi',
+      toUom: 'Hãy chọn đơn vị sau quy đổi',
+      conversionRate: 'Hãy nhập tỷ lệ quy đổi',
+    },
     values: {
       period: (from: string, to: string): string => `${from} ~ ${to}`,
     },
@@ -213,6 +218,10 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       isActive: 'Trạng thái sử dụng',
       remarks: 'Ghi chú',
       actions: 'Thao tác',
+    },
+    placeholders: {
+      priorityNo: 'Hãy nhập thứ tự gợi ý',
+      remarks: 'Hãy nhập ghi chú',
     },
     values: {
       allProcesses: 'Mọi công đoạn',

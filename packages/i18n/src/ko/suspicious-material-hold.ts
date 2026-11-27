@@ -141,6 +141,7 @@ export const suspiciousMaterialHold = {
     heading: '불량 내역 등록',
     major: '불량 유형',
     majorPlaceholder: '불량 유형을 선택하세요',
+    minorPlaceholder: '불량 상세를 선택하세요',
     noCodesNote: '등록된 불량 코드가 없습니다. 불량 코드를 먼저 등록해 주세요.',
     registerCode: '불량 코드 등록',
     qtyPlaceholder: '수량을 입력하세요',

@@ -130,7 +130,7 @@ export const ItemFilterBar = ({
           {messages.common.includeInactive}
         </Checkbox>
       </div>
-      <div className="field-cell field-cell-unlabeled">
+      <div className="field-cell field-cell-unlabeled filter-actions-end">
         <div className="filter-actions">
           <Button type="submit">{messages.common.search}</Button>
           {isChanged && (
@@ -157,6 +157,9 @@ export interface ItemListPaneProps {
   onApplyFilters: (next: ItemFilters) => void;
   pageView: PageView;
   onChangePage: (page: number) => void;
+  /** 쪽 크기 — 주면 쪽 이동 줄에 「N건 ▾」를 그린다(#360). */
+  pageSizes?: readonly number[];
+  onChangePageSize?: (size: number) => void;
   selectedItemId: number | null;
   onSelect: (itemId: number) => void;
   /** 고른 줄을 다시 누르면 고르기를 푼다. */
@@ -180,6 +183,8 @@ export const ItemListPane = ({
   onApplyFilters,
   pageView,
   onChangePage,
+  pageSizes,
+  onChangePageSize,
   selectedItemId,
   onSelect,
   onClearSelection,
@@ -288,7 +293,12 @@ export const ItemListPane = ({
         }}
         empty={emptySlot}
       />
-      <PageNav view={pageView} onChange={onChangePage} />
+      <PageNav
+        view={pageView}
+        onChange={onChangePage}
+        sizes={pageSizes}
+        onChangeSize={onChangePageSize}
+      />
     </>
   );
 };

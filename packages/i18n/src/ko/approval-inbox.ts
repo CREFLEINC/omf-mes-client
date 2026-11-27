@@ -204,10 +204,13 @@ export const approvalInbox = {
    * 이 창은 「정말 보낼 것인가」만 묻는다.
    */
   dialog: {
-    approveTitle: '이 요청을 승인하시겠습니까?',
-    rejectTitle: '이 요청을 반려하시겠습니까?',
-    /** 무엇을 결재하는지 창 안에서도 밝힌다. 업무 번호라 그대로 낸다 — 내부 번호가 아니다. */
-    subject: (approvalRequestNo: string): string => `요청번호 ${approvalRequestNo}`,
+    approveTitle: '요청 승인',
+    rejectTitle: '요청 반려',
+    approveQuestion: '이 요청을 승인하시겠습니까?',
+    rejectQuestion: '이 요청을 반려하시겠습니까?',
+    /** 대상 상자 위 작은 제목 — 그 아래 업무 번호(내부 번호가 아니다)를 크게 낸다. */
+    approveCaption: '승인할 요청',
+    rejectCaption: '반려할 요청',
     commentHeading: '결재 의견',
     /** 승인은 의견이 선택이라 비어 있을 수 있다. 빈 칸 대신 그 사실을 적는다. */
     noComment: '의견 없이 승인합니다.',

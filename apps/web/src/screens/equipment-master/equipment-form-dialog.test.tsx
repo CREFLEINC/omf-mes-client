@@ -172,10 +172,8 @@ describe('EquipmentFormDialog', () => {
 
     expect(screen.getByRole('textbox', { name: /설비코드/ })).toBeDisabled();
     /* 사유 문장 대신 칸 이름 오른쪽 「변경 불가」 라벨 — 문장은 마우스 · 화면 읽기로(사용자 지시 2026-11-24). */
-    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
-      'title',
-      '이미 3건에서 사용 중입니다.',
-    );
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 숨긴 설명으로만. */
+    expect(screen.queryByText('변경 불가')).toBeNull();
     expect(screen.getByRole('textbox', { name: /설비코드/ })).toHaveAccessibleDescription(
       '이미 3건에서 사용 중입니다.',
     );
@@ -265,18 +263,19 @@ describe('EquipmentFormDialog', () => {
     const toggle = screen.getByRole('switch', { name: t.fields.calibrationRequired });
     expect(toggle).toBeDisabled();
 
-    const describedBy = toggle.getAttribute('aria-describedby');
-    expect(describedBy).not.toBeNull();
-    expect(document.getElementById(describedBy ?? '')).toHaveTextContent(
-      t.actionReasons.calibrationNeedsCycle,
-    );
+    /* 사유는 이름 옆 ⓘ 에 둔다 — 단추 이름이 곧 그 문장이다(사용자 지시 · #360). */
+    expect(
+      screen.getByRole('button', { name: t.actionReasons.calibrationNeedsCycle }),
+    ).toBeInTheDocument();
   });
 
   it('주기가 있으면 검교정 대상을 켤 수 있다', () => {
     renderDialog({ values: { ...values, calibrationRequired: false } });
 
     expect(screen.getByRole('switch', { name: t.fields.calibrationRequired })).toBeEnabled();
-    expect(screen.queryByText(t.actionReasons.calibrationNeedsCycle)).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: t.actionReasons.calibrationNeedsCycle }),
+    ).toBeNull();
   });
 
   /*

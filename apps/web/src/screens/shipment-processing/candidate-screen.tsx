@@ -1,8 +1,17 @@
 import { AlertBanner, Button, EmptyState, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useReducer, useState } from 'react';
+import { useEffect, useReducer, useState, type RefObject } from 'react';
 
+import { useDeselectConfirm } from '../../patterns/deselect-confirm';
+import { useHubActionsTarget } from '../../patterns/hub-actions';
 import { SaveErrorBanner } from '../../patterns/master';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
+import { PAGE_SIZES } from '../../patterns/page-nav';
 import { shipmentGateBlockers, type ShipmentGateBlocker } from './candidate-gate';
 import { ShipmentProcessingCandidateListPane } from './candidate-list-pane';
 import {
@@ -130,6 +139,12 @@ export const ShipmentProcessingCandidateScreen = () => {
     undefined,
     createShipmentProcessingCandidateScreenState,
   );
+  /* 목록 | 상세 공용 분할 — 폭 비율 · 「⋯」 좌우/상하 배치 · 상하일 때 목록 높이(#360). */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:shipment-processing:split', 0.4);
+  const layout = useSplitOrientation('omf-mes:shipment-processing:split-orientation');
+  const isStacked = layout.orientation === 'column';
+  const hubTarget = useHubActionsTarget();
 
   const filters = toShipmentProcessingCandidateFilters(state);
   const candidateQuery = useShipmentRequestCandidates(filters);
@@ -202,6 +217,15 @@ export const ShipmentProcessingCandidateScreen = () => {
 
   const lineDrafts = toSelectedLineDrafts(ownedLineDrafts, state.selectedShipmentRequestId);
   const loadingInfo = toSelectedLoadingInfo(ownedLoadingInfo, state.selectedShipmentRequestId);
+  /* 고른 줄을 다시 눌러 풀 때 적던 출하수량·LOT 배분·적재 정보가 사라지는가 — 있으면 먼저 묻는다(#360). */
+  const deselectConfirm = useDeselectConfirm();
+  const hasDraftInput =
+    Object.values(loadingInfo).some((value) => value !== '') ||
+    lineDrafts.some(
+      (line) =>
+        line.shippedQty !== '' ||
+        line.allocations.some((allocation) => allocation.lotId !== null || allocation.qty !== ''),
+    );
   const itemIds = [...new Set(lineDrafts.map((line) => line.itemId))];
   const pickedLots: Record<number, PickedLot[]> = {};
   if (detailState.kind === 'RESOLVED') {
@@ -294,127 +318,169 @@ export const ShipmentProcessingCandidateScreen = () => {
 
   return (
     <>
-      <ShipmentProcessingFilterBar
-        appliedFilters={state.appliedFilters}
-        onSearch={(next) => {
-          dispatch({ type: 'SEARCH', filters: next });
-        }}
-        onReset={() => {
-          dispatch({ type: 'RESET' });
-        }}
-      />
-      <ShipmentProcessingCandidateListPane
-        rows={rows}
-        selectedShipmentRequestId={state.selectedShipmentRequestId}
-        isLoading={candidateQuery.isFetching}
-        loadError={loadError}
-        page={page}
-        onSelect={(shipmentRequestId) => {
-          /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
-          dispatch(
-            shipmentRequestId === state.selectedShipmentRequestId
-              ? { type: 'CLEAR_SELECTION' }
-              : { type: 'SELECT', shipmentRequestId },
-          );
-        }}
-        onChangePage={(nextPage) => {
-          dispatch({ type: 'CHANGE_PAGE', page: nextPage });
-        }}
-      />
-
-      {detailState.kind === 'NOT_SELECTED' ? (
-        <section className="pane" aria-label={t.panes.lines}>
-          <EmptyState
-            size="sm"
-            title={t.detail.selection.title}
-            description={t.detail.selection.description}
+      {hubTarget === null ? (
+        <div className="list-detail-toolbar">
+          <SplitOrientationToggle
+            orientation={layout.orientation}
+            onChange={layout.change}
+            inline
           />
-        </section>
-      ) : detailState.kind === 'UNAVAILABLE' ? (
-        <section className="pane" aria-label={t.panes.lines}>
-          <LoadErrorAlert error={detailQuery.error} onRetry={() => void detailQuery.refetch()} />
-        </section>
+        </div>
       ) : (
-        <>
-          <ShipmentLinesPane
-            lines={lineDrafts}
-            lotCandidates={lotCandidates}
-            onAddAllocation={(lineId) => {
-              updateLine(lineId, addAllocation);
-            }}
-            onRemoveAllocation={(lineId, draftId) => {
-              updateLine(lineId, (line) => removeAllocation(line, draftId));
-            }}
-            onSetAllocationLot={(lineId, draftId, lotId) => {
-              updateLine(lineId, (line) => setAllocationLot(line, draftId, lotId));
-            }}
-            onSetAllocationQty={(lineId, draftId, qty) => {
-              updateLine(lineId, (line) => setAllocationQty(line, draftId, qty));
-            }}
-            onSetShippedQty={(lineId, qty) => {
-              updateLine(lineId, (line) => setShippedQty(line, qty));
-            }}
-          />
-          <LoadingInfoPane
-            draft={loadingInfo}
-            onChange={(patch) => {
-              setOwnedLoadingInfo((current) => ({
-                shipmentRequestId: state.selectedShipmentRequestId,
-                draft: {
-                  ...toSelectedLoadingInfo(current, state.selectedShipmentRequestId),
-                  ...patch,
-                },
-              }));
-            }}
-            workerLookup={workerLookup}
-            carrierLookup={partnerLookup}
-            warehouseResolution={warehouseResolution}
-          />
-          <OutcomePane />
-
-          <section className="pane" aria-label={t.panes.gate}>
-            {submitBlockers.length === 0 ? (
-              <p aria-live="polite" role="status">
-                {t.gate.complete}
-              </p>
-            ) : (
-              <AlertBanner variant="warning">
-                <ul>
-                  {submitBlockers.map((blocker) => (
-                    <li key={blocker}>{t.gate.blockers[blocker]}</li>
-                  ))}
-                </ul>
-              </AlertBanner>
-            )}
-            <Button
-              disabled={!canSubmit || write.isSaving}
-              onClick={() => {
-                if (payload === null || detailState.kind !== 'RESOLVED') return;
-                write.reset();
-                setConfirmation({
-                  shipmentRequestNo: detailState.detail.shipmentRequestNo,
-                  payload,
-                });
-              }}
-            >
-              {t.submit}
-            </Button>
-          </section>
-
-          {confirmation === null ? null : (
-            <SubmitConfirmDialog
-              shipmentRequestNo={confirmation.shipmentRequestNo}
-              banner={<SaveErrorBanner error={write.error} onReload={reloadAfterConflict} />}
-              isSubmitting={write.isSaving}
-              onClose={closeConfirm}
-              onConfirm={() => {
-                if (write.isSaving) return;
-                write.write(confirmation.payload);
-              }}
-            />
-          )}
-        </>
+        <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
       )}
+      <div ref={aboveRef as RefObject<HTMLDivElement>}>
+        <ShipmentProcessingFilterBar
+          appliedFilters={state.appliedFilters}
+          onSearch={(next) => {
+            dispatch({ type: 'SEARCH', filters: next });
+          }}
+          onReset={() => {
+            dispatch({ type: 'RESET' });
+          }}
+        />
+      </div>
+      {/* 목록 | 상세 공용 분할 — 가운데 막대로 폭, 「⋯」로 좌우/상하 배치, 상하일 때 높이 막대(입고 관리와 같은 짜임 · #360). */}
+      <div
+        ref={splitRef}
+        className={`po-board-split shipment-processing-split${isStacked ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+      >
+        <ShipmentProcessingCandidateListPane
+          rows={rows}
+          selectedShipmentRequestId={state.selectedShipmentRequestId}
+          isLoading={candidateQuery.isFetching}
+          loadError={loadError}
+          page={page}
+          onSelect={(shipmentRequestId) => {
+            /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24) — 적던 것이 있으면 먼저 묻는다(#360). */
+            if (shipmentRequestId === state.selectedShipmentRequestId) {
+              deselectConfirm.request(hasDraftInput, () => dispatch({ type: 'CLEAR_SELECTION' }));
+              return;
+            }
+            dispatch({ type: 'SELECT', shipmentRequestId });
+          }}
+          onChangePage={(nextPage) => {
+            dispatch({ type: 'CHANGE_PAGE', page: nextPage });
+          }}
+          pageSizes={PAGE_SIZES}
+          onChangePageSize={(pageSize) => {
+            dispatch({ type: 'CHANGE_PAGE_SIZE', pageSize });
+          }}
+        />
+
+        <PaneSplitter
+          label={messages.common.inspectionHub.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+        />
+        {isStacked && (
+          <PaneHeightSplitter
+            label={messages.common.inspectionHub.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+          />
+        )}
+        <div className="shipment-processing-detail">
+          {detailState.kind === 'NOT_SELECTED' ? (
+            <section className="pane" aria-label={t.panes.lines}>
+              <EmptyState
+                size="sm"
+                title={t.detail.selection.title}
+                description={t.detail.selection.description}
+              />
+            </section>
+          ) : detailState.kind === 'UNAVAILABLE' ? (
+            <section className="pane" aria-label={t.panes.lines}>
+              <LoadErrorAlert
+                error={detailQuery.error}
+                onRetry={() => void detailQuery.refetch()}
+              />
+            </section>
+          ) : (
+            <>
+              <ShipmentLinesPane
+                lines={lineDrafts}
+                lotCandidates={lotCandidates}
+                onAddAllocation={(lineId) => {
+                  updateLine(lineId, addAllocation);
+                }}
+                onRemoveAllocation={(lineId, draftId) => {
+                  updateLine(lineId, (line) => removeAllocation(line, draftId));
+                }}
+                onSetAllocationLot={(lineId, draftId, lotId) => {
+                  updateLine(lineId, (line) => setAllocationLot(line, draftId, lotId));
+                }}
+                onSetAllocationQty={(lineId, draftId, qty) => {
+                  updateLine(lineId, (line) => setAllocationQty(line, draftId, qty));
+                }}
+                onSetShippedQty={(lineId, qty) => {
+                  updateLine(lineId, (line) => setShippedQty(line, qty));
+                }}
+              />
+              <LoadingInfoPane
+                draft={loadingInfo}
+                onChange={(patch) => {
+                  setOwnedLoadingInfo((current) => ({
+                    shipmentRequestId: state.selectedShipmentRequestId,
+                    draft: {
+                      ...toSelectedLoadingInfo(current, state.selectedShipmentRequestId),
+                      ...patch,
+                    },
+                  }));
+                }}
+                workerLookup={workerLookup}
+                carrierLookup={partnerLookup}
+                warehouseResolution={warehouseResolution}
+              />
+              <OutcomePane />
+
+              <section className="pane" aria-label={t.panes.gate}>
+                {submitBlockers.length === 0 ? (
+                  <p aria-live="polite" role="status">
+                    {t.gate.complete}
+                  </p>
+                ) : (
+                  <AlertBanner variant="warning">
+                    <ul>
+                      {submitBlockers.map((blocker) => (
+                        <li key={blocker}>{t.gate.blockers[blocker]}</li>
+                      ))}
+                    </ul>
+                  </AlertBanner>
+                )}
+                <Button
+                  disabled={!canSubmit || write.isSaving}
+                  onClick={() => {
+                    if (payload === null || detailState.kind !== 'RESOLVED') return;
+                    write.reset();
+                    setConfirmation({
+                      shipmentRequestNo: detailState.detail.shipmentRequestNo,
+                      payload,
+                    });
+                  }}
+                >
+                  {t.submit}
+                </Button>
+              </section>
+
+              {confirmation === null ? null : (
+                <SubmitConfirmDialog
+                  shipmentRequestNo={confirmation.shipmentRequestNo}
+                  banner={<SaveErrorBanner error={write.error} onReload={reloadAfterConflict} />}
+                  isSubmitting={write.isSaving}
+                  onClose={closeConfirm}
+                  onConfirm={() => {
+                    if (write.isSaving) return;
+                    write.write(confirmation.payload);
+                  }}
+                />
+              )}
+            </>
+          )}
+        </div>
+      </div>
+      {deselectConfirm.dialog}
     </>
   );
 };

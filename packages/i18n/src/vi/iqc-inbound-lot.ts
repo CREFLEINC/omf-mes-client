@@ -272,6 +272,7 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
   },
   confirm: {
     open: 'Xác nhận đánh giá',
+    errorTitle: 'Xử lý đánh giá thất bại',
     lockedNoResults: 'Cần ít nhất 1 kết quả',
     lockedNoNewResult: 'Kiểm tra đã được mở lại. Hãy ghi ít nhất 1 kết quả mới',
     lockedNoJudgment: 'Có kết quả chưa đánh giá',
@@ -288,8 +289,9 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
   },
   cancel: {
     open: 'Sửa đánh giá',
-    title: 'Sửa đánh giá?',
-    target: (inboundLotNo: string) => `LOT đối tượng: ${inboundLotNo}`,
+    title: 'Sửa đánh giá',
+    question: 'Sửa đánh giá?',
+    targetCaption: 'LOT đối tượng',
     changesHeading: 'Thay đổi khi hủy',
     lotsLabel: 'LOT quản lý vật tư',
     lotsCount: (count: number) => `${count}`,
@@ -309,7 +311,6 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
     proceed: 'Sửa đánh giá',
     done: 'Đã hủy xác nhận đánh giá. Có thể sửa kết quả lại.',
     blockedTitle: 'Không thể sửa đánh giá',
-    blockedLead: 'Các việc dưới đây đã diễn ra nên không thể sửa đánh giá.',
     blockedTail:
       'Hãy hủy nhập kho hoặc hoàn tác thay đổi trạng thái rồi thử lại. Nếu xử lý · chấp nhận đặc biệt cho hàng không đạt đã bắt đầu, hãy xử lý ở Ra quyết định xử lý.',
     blockedOk: 'Xác nhận',

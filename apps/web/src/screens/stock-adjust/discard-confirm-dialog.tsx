@@ -37,6 +37,7 @@ export const DiscardConfirmDialog = ({
   onClose,
 }: DiscardConfirmDialogProps) => (
   <Dialog
+    className="dialog-icon-undo"
     open
     onClose={onClose}
     size="sm"

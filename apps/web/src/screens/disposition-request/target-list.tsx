@@ -3,7 +3,9 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { splitCodeName } from '../../patterns/split-code-name';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { sourceCodeLabel, stageLabel } from './codes';
+import type { ListPageSize } from './filters';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import type { TargetRow } from './types';
@@ -16,6 +18,9 @@ export interface TargetListProps {
   selectedKey: string | null;
   onSelect: (row: TargetRow) => void;
   onChangePage: (page: number) => void;
+  /** 쪽 크기 선택(10 · 20 · 50건 · #360) — 주면 「N건 ▾」를 그린다. */
+  pageSizes?: readonly ListPageSize[];
+  onChangePageSize?: (size: ListPageSize) => void;
 }
 
 /**
@@ -30,6 +35,8 @@ export const TargetList = ({
   selectedKey,
   onSelect,
   onChangePage,
+  pageSizes,
+  onChangePageSize,
 }: TargetListProps) => {
   const t = messages.dispositionRequest;
   const columns: Column<TargetRow>[] = [
@@ -39,7 +46,7 @@ export const TargetList = ({
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className={`link-cell ${ROW_PICK_CLASS}`}
           aria-label={t.actions.selectRow(row.lotNo)}
           aria-current={row.key === selectedKey ? 'true' : undefined}
           onClick={() => onSelect(row)}
@@ -111,7 +118,7 @@ export const TargetList = ({
 
   return (
     <div className="disposition-request-list">
-      <div className="disposition-request-table">
+      <div className="disposition-request-table" {...rowPickHandlers}>
         <Table
           density="compact"
           caption={<span className="disposition-request-table-caption">{t.panes.list}</span>}
@@ -121,7 +128,12 @@ export const TargetList = ({
           empty={empty}
         />
       </div>
-      <PageNav view={page} label={t.page.label} onChange={onChangePage} />
+      <PageNav
+        view={page}
+        onChange={onChangePage}
+        sizes={pageSizes}
+        onChangeSize={onChangePageSize}
+      />
     </div>
   );
 };

@@ -12,6 +12,9 @@ type WorkOrder = components['schemas']['WorkOrder'];
 type WorkOrderProgress = components['schemas']['WorkOrderProgress'];
 type PreIssuedLotSummary = components['schemas']['PreIssuedLotSummary'];
 type PageMeta = components['schemas']['PageMeta'];
+
+/** 계약 `size` 기본 50 — 종전에는 싣지 않아 이 값이었다. */
+export const WORK_ORDER_CLOSE_PAGE_SIZE = 50;
 type OutboundItemSetting = components['schemas']['OutboundItemSetting'];
 type CodeValue = components['schemas']['CodeValue'];
 type ProductionOrder = components['schemas']['ProductionOrder'];
@@ -47,6 +50,8 @@ export interface WorkOrderCloseFilters {
   plannedStartFrom: string | null;
   plannedStartTo: string | null;
   page: number;
+  /** 한 쪽 건수 — 없거나 서버 기본(50)이면 싣지 않는다(종전 요청 그대로 · #360). */
+  size?: number;
 }
 
 /** 목록 줄도 진척을 싣는다 — 미달 건을 열어 보지 않고 찾게 한다. */
@@ -122,6 +127,7 @@ export const workOrderCloseKeys = {
       filters.plannedStartFrom,
       filters.plannedStartTo,
       filters.page,
+      filters.size ?? WORK_ORDER_CLOSE_PAGE_SIZE,
     ] as const,
   detail: (workOrderId: number | null) => ['work-order-close', 'detail', workOrderId] as const,
   openSession: (workOrderId: number | null) =>
@@ -196,6 +202,9 @@ export const useWorkOrderCloseCandidates = (
                 ? {}
                 : { plannedStartTo: filters.plannedStartTo }),
               page: filters.page,
+              ...(filters.size === undefined || filters.size === WORK_ORDER_CLOSE_PAGE_SIZE
+                ? {}
+                : { size: filters.size }),
             },
           },
         }),

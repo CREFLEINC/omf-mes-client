@@ -203,7 +203,9 @@ describe('ProgressFilterBar — 선택지', () => {
       documentTypeOptions: toDocumentTypeOptions(documentTypeFixtures),
     });
 
-    expect(screen.getByLabelText(t.fields.documentType)).toHaveTextContent(t.filters.choose);
+    expect(screen.getByLabelText(t.fields.documentType)).toHaveTextContent(
+      messages.screenPatterns.referencePicker.select(t.fields.documentType),
+    );
 
     await user.click(screen.getByLabelText(t.fields.documentType));
 

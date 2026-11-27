@@ -169,7 +169,7 @@ export const iqcInboundLot = {
     selectNone: '전부 해제',
     matchRequired: '자재 관리 LOT를 1개 이상 고르세요',
     reasonHeading: '재검 사유',
-    reasonPlaceholder: '재검 사유 선택',
+    reasonPlaceholder: '재검 사유를 선택하세요',
     /** 사유가 필요한 까닭 — 「LOT 0001: 결과 1 불합격 → 합격」을 줄마다. */
     reasonHelp: '이 결과가 아래 자재 관리 LOT 의 판정을 바꿉니다. 재검 사유를 고르세요.',
     reasonLine: (lotTail: string, seqNo: number, before: string, after: string) =>
@@ -187,7 +187,7 @@ export const iqcInboundLot = {
     /** 사용자 지시 2026-11-16 · #274 — 「저장」에서 정정. */
     save: '제출',
     discardBody: '입력한 내용이 사라집니다. 닫을까요?',
-    discardStay: '계속 입력',
+    discardStay: '취소',
     discardLeave: '닫기',
     /** 사용자 지시 2026-11-24 · omf-all-around#356 — 종합 판정 미리 보기 없이 이 문장만. */
     added: '검사 결과를 제출하였습니다.',
@@ -320,6 +320,8 @@ export const iqcInboundLot = {
   },
   confirm: {
     open: '판정 확정',
+    /** 확정 · 판정 수정이 막혔을 때 창 제목 — 무엇이 막혔는지는 본문 경고 줄(#360). */
+    errorTitle: '판정 처리 실패',
     lockedNoResults: '결과가 1건 이상이어야 합니다',
     /** 재작업으로 다시 연 뒤 새 결과가 없다(G2 L2). */
     lockedNoNewResult: '다시 열린 검사입니다. 새 결과를 1건 이상 기록하세요',
@@ -343,8 +345,9 @@ export const iqcInboundLot = {
     /* 단추 이름 「확정 취소」 → 「판정 수정」(사용자 지시 2026-11-18 · omf-all-around#296). 서버 동작(:cancel-confirm)은 같다. */
     open: '판정 수정',
     /* 확인 창(사용자 시안 2026-11-17 · omf-all-around#286) — 질문 제목 · 대상 · 「취소 시 변경 사항」 상자 · 안내 한 줄. */
-    title: '판정을 수정하시겠습니까?',
-    target: (inboundLotNo: string) => `대상 LOT: ${inboundLotNo}`,
+    title: '판정 수정',
+    question: '판정을 수정하시겠습니까?',
+    targetCaption: '대상 LOT',
     changesHeading: '취소하면 바뀌는 것',
     /* 변경 사항 상자 — LOT 묶음(LOT 수 · 품질 상태) · 결과 묶음(사용자 시안 2026-11-19 · omf-all-around#296). */
     lotsLabel: '자재 관리 LOT',
@@ -367,7 +370,6 @@ export const iqcInboundLot = {
     proceed: '판정 수정',
     done: '판정 확정을 취소했습니다. 결과를 다시 고칠 수 있습니다.',
     blockedTitle: '판정을 수정할 수 없습니다',
-    blockedLead: '아래 일이 이미 진행되어 판정을 수정할 수 없습니다.',
     blockedTail:
       '입고를 취소하거나 상태 변경을 되돌린 뒤 다시 시도하세요. 불합격 건의 처분·특채가 시작됐으면 부적합 처분 관리에서 처리합니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
     blockedOk: '확인',

@@ -203,9 +203,9 @@ describe('W-01-01 판정 확정', () => {
       }),
     );
 
-    expect(
-      await screen.findByRole('dialog', { name: `${t.confirm.failed} 합성 서버 문구` }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: t.confirm.errorTitle })).toHaveTextContent(
+      `${t.confirm.failed} 합성 서버 문구`,
+    );
   });
 
   it('US4-5 확정 창(PQC · OQC 와 같은 모양 — 의뢰 번호 · 최종 판정 · 결과 건수 · 적용 · 안내) → `:confirm` 에 판 번호, 확정 뒤 결과는 「확정됨」으로 잠긴다', async () => {
@@ -214,7 +214,7 @@ describe('W-01-01 판정 확정', () => {
 
     await user.click(await screen.findByRole('button', { name: t.confirm.open }));
     const dialog = await screen.findByRole('dialog', { name: tj.title });
-    expect(dialog).toHaveTextContent(tj.target(INSPECTION_REQUEST_NO));
+    expect(dialog).toHaveTextContent(`${tj.requestNo}${INSPECTION_REQUEST_NO}`);
     expect(dialog).toHaveTextContent('합격');
     expect(dialog).toHaveTextContent(`${tj.accepted} 2`);
     expect(dialog).toHaveTextContent(`${tj.lotRow}${tj.lotState.release}`);
@@ -268,7 +268,9 @@ describe('W-01-01 판정 확정', () => {
       }),
     );
 
-    expect(await screen.findByRole('dialog', { name: t.confirm.conflict })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: t.confirm.errorTitle })).toHaveTextContent(
+      t.confirm.conflict,
+    );
     expect(onConfirmed).not.toHaveBeenCalled();
   });
 
@@ -313,7 +315,8 @@ describe('W-01-01 판정 확정', () => {
       }),
     );
 
-    const failed = await screen.findByRole('dialog', { name: t.confirm.conflict });
+    const failed = await screen.findByRole('dialog', { name: t.confirm.errorTitle });
+    expect(failed).toHaveTextContent(t.confirm.conflict);
     expect(within(failed).getByRole('button', { name: t.confirm.reload })).toBeInTheDocument();
   });
 
@@ -347,7 +350,8 @@ describe('W-01-01 확정 취소', () => {
 
     await user.click(await screen.findByRole('button', { name: t.cancel.open }));
     const dialog = await screen.findByRole('dialog', { name: t.cancel.title });
-    expect(dialog).toHaveTextContent(t.cancel.target('IL-20991111-0003'));
+    expect(dialog).toHaveTextContent(`${t.cancel.targetCaption}IL-20991111-0003`);
+    expect(dialog).toHaveTextContent(t.cancel.question);
     expect(dialog).toHaveTextContent(`${t.cancel.lotsLabel}${t.cancel.lotsCount(2)}`);
     expect(dialog).toHaveTextContent(t.cancel.lotsTo);
     /* 검사 결과는 그대로 · 적용 검사 회차와 그 검사 일시(omf-all-around#296). */
@@ -358,7 +362,7 @@ describe('W-01-01 확정 취소', () => {
     expect(dialog).toHaveTextContent(
       t.cancel.appliedValue(2, formatPlantDateTime('2099-11-12T02:30:00Z') ?? ''),
     );
-    expect(dialog).toHaveTextContent(t.cancel.note);
+    expect(within(dialog).getByText(t.cancel.note)).toBeInTheDocument();
     await user.type(within(dialog).getByLabelText(t.cancel.reason), '합성 사유');
     await user.click(within(dialog).getByRole('button', { name: t.cancel.proceed }));
 

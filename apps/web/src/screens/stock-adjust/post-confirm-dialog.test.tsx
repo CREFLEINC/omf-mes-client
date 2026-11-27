@@ -38,7 +38,7 @@ const renderDialog = (
 const dialog = (): HTMLElement => screen.getByRole('dialog');
 
 const confirmButton = (): HTMLElement =>
-  screen.getByRole('button', { name: new RegExp(t.actions.confirmPost) });
+  screen.getByRole('button', { name: t.actions.confirmPost });
 
 /**
  * 전기 확인 — **이 화면에서 재고를 움직이는 유일한 창이다**(D-17).
@@ -50,7 +50,7 @@ describe('PostConfirmDialog — 무엇을 확인시키는가', () => {
   it('어느 전표를 전기하는지와 두 값을 되보인다', () => {
     renderDialog();
 
-    expect(within(dialog()).getByText(t.dialog.postLead)).toBeInTheDocument();
+    expect(within(dialog()).getByText(t.dialog.postNoUndo)).toBeInTheDocument();
     expect(within(dialog()).getByText('SAMPLE-IA-9301')).toBeInTheDocument();
     expect(within(dialog()).getByText('2026-08-18')).toBeInTheDocument();
     expect(within(dialog()).getByText('2026-08-18 14:05')).toBeInTheDocument();
@@ -61,7 +61,7 @@ describe('PostConfirmDialog — 무엇을 확인시키는가', () => {
 
     /* 짝 양성 — 버튼이 실제로 잠긴 상태다. */
     expect(confirmButton()).toBeDisabled();
-    expect(within(dialog()).getByText(t.dialog.postLead)).toBeVisible();
+    expect(within(dialog()).getByText(t.dialog.postNoUndo)).toBeVisible();
   });
 
   /**
@@ -88,7 +88,7 @@ describe('PostConfirmDialog — 무엇을 확인시키는가', () => {
     renderDialog();
 
     /* 짝 양성 — 창이 실제로 섰다(그 뒤에 없음을 잰다). */
-    expect(within(dialog()).getByText(t.dialog.postLead)).toBeVisible();
+    expect(within(dialog()).getByText(t.dialog.postNoUndo)).toBeVisible();
     expect(within(dialog()).queryByText(t.dialog.postDatesApart)).not.toBeInTheDocument();
   });
 

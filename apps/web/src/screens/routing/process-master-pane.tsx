@@ -5,6 +5,7 @@ import {
   type Column,
   Dialog,
   EmptyState,
+  Icon,
   SkeletonText,
   Table,
   TextField,
@@ -30,20 +31,10 @@ import { TAB_PAGE_SIZES, type TabPageSize } from '../../patterns/client-page';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
-import {
-  PaneListHead,
-  PaneSplitter,
-  useFitToViewport,
-  usePaneSplit,
-} from '../../patterns/po-board';
+import { useFitToViewport } from '../../patterns/po-board';
 import { runRequest } from '../../patterns/request';
 import { PagedSelect, Select } from '../../patterns/select';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
-import {
-  PaneHeightSplitter,
-  SplitOrientationToggle,
-  useSplitOrientation,
-} from '../../patterns/split-orientation';
 import {
   emptyProcessFormValues,
   isSameProcessValues,
@@ -64,7 +55,6 @@ import {
   useProcessList,
   useProcessTypeOptions,
 } from './queries';
-import { ROUTING_ORIENTATION_KEY } from './split-layout';
 import type {
   Process,
   ProcessActiveState,
@@ -76,10 +66,9 @@ import { centerColumns } from './table-align';
 import './layout.css';
 
 const t = messages.routing;
-const hubText = messages.common.inspectionHub;
 
-/** 바뀌면 편집 대상(공정 · 추가 중)이 바뀌는 질의 — 「뒤로」로 이 값만 바뀌어도 편집이 사라져 묻는다. */
-const PROCESS_EDIT_TARGET_PARAMS = ['sel', 'mode'] as const;
+/** 바뀌면 편집 창(추가 중)이 닫히는 질의 — 「뒤로」로 이 값만 바뀌어도 편집이 사라져 묻는다. */
+const PROCESS_EDIT_TARGET_PARAMS = ['mode'] as const;
 
 const DEFAULT_FILTERS: ProcessFilters = { q: '', processTypeCode: '', activeState: '' };
 
@@ -100,15 +89,16 @@ interface ProcessFormState {
 
 type ActivationIntent = 'activate' | 'deactivate';
 
-/** W-06-01의 두 번째 축. 품목과 무관한 공정 마스터를 목록과 편집 페인으로 관리한다. */
+/**
+ * W-06-01의 두 번째 축. 품목과 무관한 공정 마스터를 목록 하나로 관리한다 — 오른쪽 상세 상자 · 줄 고르기는 걷고,
+ * 사용 중지/재사용 · 수정은 행 끝 단추, 수정은 추가와 같은 틀의 팝업으로 한다(사용자 지시 · #360).
+ */
 export const ProcessMasterPane = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { client } = useApiClient();
   const toast = useToast();
-  /* 조회 상자 · 목록 | 상세 — 공정 경로 탭과 같은 분할 · 같은 배치(#231). */
+  /* 조회 상자 · 목록 — 목록이 화면 폭을 다 쓰고 창 바닥에서 멈춘다(#360). */
   const { splitRef, aboveRef } = useFitToViewport();
-  const split = usePaneSplit('omf-mes:routing:process-split', 0.45);
-  const layout = useSplitOrientation(ROUTING_ORIENTATION_KEY);
 
   const filters = useMemo<ProcessFilters>(
     () => ({
@@ -131,9 +121,10 @@ export const ProcessMasterPane = () => {
     }),
     [searchParams],
   );
-  /* 공정 추가는 팝업(사용자 지시 · #231) — 뒤에 고른 공정은 그대로 두고 주소의 `mode` 로 연다(뒤로가기로 닫힌다). */
+  /* 공정 추가는 팝업(사용자 지시 · #231) — 주소의 `mode` 로 연다(뒤로가기로 닫힌다). */
   const isCreateOpen = searchParams.get('mode') === 'create';
-  const selectedId = Number(searchParams.get('sel') ?? '') || null;
+  /* 행 끝 단추(수정 · 사용 중지/재사용)가 다루는 공정 — 줄 고르기를 걷어 주소에 두지 않는다(#360). */
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const list = useProcessList(filters, paging);
   const processes = list.data?.items ?? [];
@@ -141,13 +132,8 @@ export const ProcessMasterPane = () => {
   const typeOptions = useProcessTypeOptions();
 
   const [formState, setFormState] = useState<ProcessFormState | null>(null);
-  /* 보기 · 수정 — 다른 공정을 고르면 다시 보기로 연다(#231). */
+  /* 수정 팝업 — 행 끝 [수정]이 상세(잠금 토큰)를 받은 뒤 연다(#360). */
   const [isEditing, setIsEditing] = useState(false);
-  const [editingFor, setEditingFor] = useState(selectedId);
-  if (editingFor !== selectedId) {
-    setEditingFor(selectedId);
-    setIsEditing(false);
-  }
   const formSource: ProcessFormState['source'] | null = detail.data ?? null;
 
   if (formSource === null) {
@@ -163,7 +149,7 @@ export const ProcessMasterPane = () => {
     {},
   );
 
-  /** 저장 직후의 이동(새 공정을 고른 상태로)은 묻지 않는다 — 이동이 끝나면 되돌린다. */
+  /** 저장 직후의 이동(추가 팝업 닫기)은 묻지 않는다 — 이동이 끝나면 되돌린다. */
   const savedMoveRef = useRef(false);
   useEffect(() => {
     savedMoveRef.current = false;
@@ -230,8 +216,13 @@ export const ProcessMasterPane = () => {
     invalidateKeys: [processKeys.all],
     knownFields: [],
     onSuccess: () => {
+      const intent = activationIntent;
       setActivationIntent(null);
-      toast.show({ variant: 'success', description: messages.common.saved });
+      toast.show({
+        variant: 'success',
+        description:
+          intent === 'deactivate' ? t.dialog.processDeactivated : t.dialog.processReactivated,
+      });
     },
   });
 
@@ -245,7 +236,6 @@ export const ProcessMasterPane = () => {
         nextFilters.activeState === '' ? null : nextFilters.activeState === 'ACTIVE' ? '1' : '0',
       /* 조건이 바뀌면 첫 쪽부터 본다. */
       page: null,
-      sel: null,
       mode: null,
     });
   };
@@ -279,27 +269,40 @@ export const ProcessMasterPane = () => {
     void detail.refetch();
   };
 
+  /*
+   * 행 끝 단추(#360) — 그 공정의 상세(잠금 토큰 · 사용 여부 · 참조 건수)를 받은 뒤 창을 연다.
+   * 상세 없이 열면 잠금 토큰이 비어 저장 · 사용 중지가 실패한다(종전 상세 상자와 같은 순서).
+   */
+  const [pendingAction, setPendingAction] = useState<{
+    id: number;
+    kind: 'edit' | 'status';
+  } | null>(null);
+  if (pendingAction !== null && detail.data?.process.processId === pendingAction.id) {
+    setPendingAction(null);
+    if (pendingAction.kind === 'edit') setIsEditing(true);
+    else setActivationIntent(detail.data.process.isActive === false ? 'activate' : 'deactivate');
+  }
+  const startRowAction = (id: number, kind: 'edit' | 'status') => {
+    setIsEditing(false);
+    if (kind === 'edit') {
+      write.reset();
+      setLocalErrors({});
+    } else {
+      activationWrite.reset();
+    }
+    setPendingAction({ id, kind });
+    setSelectedId(id);
+  };
+
   const columns: Column<Process>[] = [
     {
       key: 'processCode',
       header: t.fields.processCode,
-      /* 코드는 본문 글자 — 줄 아무 곳이나 눌러 고른다. 단추는 키보드·화면 낭독기 길이자 고른 줄 표시 자리다(#231). */
+      /* 코드는 본문 글자 — 줄을 눌러 상세를 여는 동작은 걷었다(사용자 지시 · #360). */
       render: (process) => (
-        <button
-          type="button"
-          className="inspection-standard-plan-open routing-process-open"
-          aria-current={process.processId === selectedId ? 'true' : undefined}
-          title={process.processCode}
-          /* 고른 줄을 한 번 더 누르면 선택을 푼다(사용자 지시 · #231). */
-          onClick={() =>
-            updateParams({
-              sel: process.processId === selectedId ? null : String(process.processId),
-              mode: null,
-            })
-          }
-        >
+        <span className="routing-process-open" title={process.processCode}>
           {process.processCode}
-        </button>
+        </span>
       ),
     },
     { key: 'processName', header: t.fields.processName },
@@ -320,15 +323,37 @@ export const ProcessMasterPane = () => {
         </Chip>
       ),
     },
+    /* 상세 상자의 사용 중지 · 재사용 · 수정을 목록 줄로 옮겼다 — 불량코드 목록과 같은 단추 · 아이콘(사용자 지시 · #360). */
+    {
+      key: 'manage',
+      header: t.fields.manage,
+      width: '208px',
+      render: (process) => (
+        <span className="defect-cause-row-actions">
+          <Button
+            variant="outlined"
+            size="sm"
+            leadingIcon={
+              <Icon name={process.isActive ? 'block' : 'restart_alt'} size={16} aria-hidden />
+            }
+            onClick={() => startRowAction(process.processId, 'status')}
+          >
+            {process.isActive ? messages.common.deactivate : t.actions.activateProcess}
+          </Button>
+          <Button
+            variant="outlined"
+            size="sm"
+            leadingIcon={<Icon name="edit" size={16} aria-hidden />}
+            onClick={() => startRowAction(process.processId, 'edit')}
+          >
+            {t.actions.editProcess}
+          </Button>
+        </span>
+      ),
+    },
   ];
 
-  const listCollapse = {
-    collapsed: split.collapsed,
-    onToggle: split.toggleCollapsed,
-    collapseLabel: hubText.listCollapse,
-    expandLabel: hubText.listExpand,
-    count: list.data?.page.total,
-  };
+  const listTotal = list.data?.page.total;
   return (
     <>
       {/*
@@ -342,9 +367,8 @@ export const ProcessMasterPane = () => {
         discardBody={t.discard.bodyProcess}
         showCloseButton={false}
       />
-      {/* 사용 여부 라벨은 탭 줄에서 배치 단추 왼쪽 — 먼저 그려야 같은 자리에서 앞에 선다(공정 경로 탭과 같다 · #231). */}
+      {/* 사용 여부 라벨은 탭 줄 오른쪽(#231). 목록만 남아 좌우·상하 배치 「⋯」는 걷었다(#360). */}
       <ProcessActiveChips filters={filters} onApplyFilters={applyFilters} />
-      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
 
       {/* 조회 조건 — 목록과 다른 상자에 둔다. 「공정 추가」는 조회 · 초기화 뒤 구분선 너머에 선다(#231). */}
       <section
@@ -360,14 +384,33 @@ export const ProcessMasterPane = () => {
         />
       </section>
 
+      {/*
+       * 줄 끝 단추로 받던 상세가 실패하면 알린다 — 상세 상자가 하던 실패 안내를 이어받는다(#360).
+       * 다시 시도로 받으면 기다리던 창이 그대로 열린다.
+       */}
+      {pendingAction !== null && detail.isError && (
+        <div className="banner-slot">
+          <LoadErrorBanner error={detail.error} onRetry={() => void detail.refetch()} />
+        </div>
+      )}
+
+      {/* 목록 하나 — 오른쪽 상세 상자 · 가운데 막대 · 높이 막대를 걷었다(사용자 지시 · #360). */}
       <div
         ref={splitRef}
-        className={`po-board-split inspection-split inspection-standard-split routing-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
-        style={{ ...split.style, ...layout.style }}
-        data-left-collapsed={split.collapsed ? 'true' : undefined}
+        className="po-board-split inspection-split inspection-standard-split routing-split routing-process-split"
       >
         <ProcessListPane
-          head={<PaneListHead title={t.panes.processList} collapse={listCollapse} />}
+          /* 목록 제목 줄 — 「공정 목록 N건」. 접을 상세가 없어 「목록 접기」는 걷었다(#360). */
+          head={
+            <div className="po-board-list-head">
+              <h2 className="pane-title">{t.panes.processList}</h2>
+              {listTotal !== undefined && (
+                <span className="po-board-list-count">
+                  {messages.common.paneList.count(listTotal)}
+                </span>
+              )}
+            </div>
+          }
           processes={processes}
           columns={columns}
           filters={filters}
@@ -383,88 +426,41 @@ export const ProcessMasterPane = () => {
             updateParams({ page: null, size: size === 20 ? null : String(size) })
           }
         />
-
-        <PaneSplitter
-          label={hubText.splitter}
-          ratio={split.ratio}
-          onChange={split.commit}
-          collapse={listCollapse}
-        />
-        {layout.orientation === 'column' && (
-          <PaneHeightSplitter
-            label={hubText.heightSplitter}
-            height={layout.listHeight}
-            onChange={layout.changeListHeight}
-            collapse={listCollapse}
-          />
-        )}
-
-        <div className="inspection-standard-detail routing-detail">
-          {/*
-           * 공정 경로 탭의 상세 카드와 같은 모양(사용자 지시 · #231) — 머리 왼쪽 제목, 오른쪽 「사용 · 미사용」 라벨과
-           * 사용 중지 · 다시 사용 단추. 아래는 입력칸, 맨 아래 오른쪽 [취소][저장].
-           */}
-          <section className="pane routing-detail-card" aria-label={t.panes.processForm}>
-            <div className="routing-card-head">
-              <h2 className="pane-title routing-card-title">{t.panes.processForm}</h2>
-              {detail.data !== undefined && (
-                <div className="routing-card-section-tools">
-                  <Chip variant="status" status={detail.data.process.isActive ? 'success' : 'idle'}>
-                    {detail.data.process.isActive ? t.values.active : t.values.inactive}
-                  </Chip>
-                  <Button
-                    variant="outlined"
-                    onClick={() => {
-                      activationWrite.reset();
-                      setActivationIntent(
-                        detail.data?.process.isActive === false ? 'activate' : 'deactivate',
-                      );
-                    }}
-                  >
-                    {detail.data.process.isActive
-                      ? messages.common.deactivate
-                      : t.actions.activateProcess}
-                  </Button>
-                </div>
-              )}
-            </div>
-            <ProcessFormSlot
-              isEditing={isEditing}
-              onEdit={() => setIsEditing(true)}
-              selectedId={selectedId}
-              detail={detail}
-              formState={formState}
-              values={values}
-              fieldErrors={{ ...write.fieldErrors, ...localErrors }}
-              typeOptions={typeOptions.data ?? []}
-              typeOptionsError={typeOptions.isError}
-              isDirty={isDirty}
-              isSaving={write.isSaving}
-              writeError={write.error}
-              onChange={changeValues}
-              onSave={handleSave}
-              onCancel={() => {
-                write.reset();
-                setLocalErrors({});
-                setFormState((current) =>
-                  current === null ? current : { ...current, values: current.baseline },
-                );
-                setIsEditing(false);
-              }}
-              onReload={reloadDetail}
-            />
-          </section>
-        </div>
       </div>
+
+      {/* 공정 수정 팝업 — 상세 상자의 수정 폼을 공정 추가와 같은 틀로 옮겼다(#360). 저장 요청 · 잠금은 그대로. */}
+      {isEditing && detail.data !== undefined && formState !== null && (
+        <ProcessEditDialog
+          values={values}
+          codeLockReason={codeLockMessage(detail.data.editability)}
+          fieldErrors={{ ...write.fieldErrors, ...localErrors }}
+          typeOptions={typeOptions.data ?? []}
+          typeOptionsError={typeOptions.isError}
+          isDirty={isDirty}
+          isSaving={write.isSaving}
+          writeError={write.error}
+          onChange={changeValues}
+          onSave={handleSave}
+          onCancel={() => {
+            write.reset();
+            setLocalErrors({});
+            setFormState((current) =>
+              current === null ? current : { ...current, values: current.baseline },
+            );
+            setIsEditing(false);
+          }}
+          onReload={reloadDetail}
+        />
+      )}
 
       {isCreateOpen && (
         <ProcessCreateDialog
           typeOptions={typeOptions.data ?? []}
           onClose={() => updateParams({ mode: null })}
-          onCreated={(saved) => {
-            /* 저장하면 팝업을 닫고 새 공정을 골라 오른쪽 상자에 보인다(사용자 지시 · #231). */
+          onCreated={() => {
+            /* 저장하면 팝업을 닫는다 — 줄 고르기 · 상세 상자는 걷었다(#360). */
             savedMoveRef.current = true;
-            updateParams({ mode: null, sel: String(saved.processId) });
+            updateParams({ mode: null });
             toast.show({ variant: 'success', description: messages.common.saved });
           }}
         />
@@ -473,6 +469,7 @@ export const ProcessMasterPane = () => {
       <ProcessActivationDialog
         intent={activationIntent}
         referenceCount={detail.data?.editability.referenceCount ?? null}
+        process={detail.data?.process ?? null}
         isSaving={activationWrite.isSaving}
         banner={<SaveErrorBanner error={activationWrite.error} onReload={reloadDetail} />}
         onClose={() => setActivationIntent(null)}
@@ -651,7 +648,7 @@ interface ProcessListPaneProps {
   filters: ProcessFilters;
   isLoading: boolean;
   loadError: ReactNode;
-  /** 목록 맨 위 제목 줄(건수 · 「목록 접기」 · #350). 화면이 `PaneListHead` 로 넘긴다. */
+  /** 목록 맨 위 제목 줄(「공정 목록 N건」 · #350 · #360). */
   head?: ReactNode;
   /** 쪽 이동 줄 — 총 건수 · 건수 고르기 · 처음/이전/다음/마지막(#231). */
   pageMeta: PageNavMeta;
@@ -706,19 +703,11 @@ const ProcessListPane = ({
     );
   } else {
     listSlot = (
-      /* 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 코드 단추로 넘긴다. */
+      /* 줄을 눌러 고르는 동작은 걷었다 — 행 끝 단추만 동작한다(사용자 지시 · #360). */
       <div
         ref={fit.ref}
-        className="inspection-queue-table inspection-standard-plan-rows inspection-standard-table-box wide-table"
+        className="inspection-queue-table inspection-standard-plan-rows inspection-standard-table-box wide-table routing-process-rows"
         style={resizable.style}
-        onClick={(event) => {
-          const target = event.target as Element;
-          if (target.closest('button, a, input, select, textarea') !== null) return;
-          target
-            .closest('tbody tr')
-            ?.querySelector<HTMLButtonElement>('.routing-process-open')
-            ?.click();
-        }}
       >
         <Table
           density="compact"
@@ -752,14 +741,10 @@ const ProcessListPane = ({
   );
 };
 
-interface ProcessFormSlotProps {
-  /** 고르면 먼저 보기만 하고 [수정]을 눌러야 입력칸이 열린다(사용자 지시 · #231). */
-  isEditing: boolean;
-  onEdit: () => void;
-  selectedId: number | null;
-  detail: ReturnType<typeof useProcessDetail>;
-  formState: ProcessFormState | null;
+interface ProcessEditDialogProps {
   values: ProcessFormValues;
+  /** 코드 잠금 사유 — 있으면 공정코드 칸을 잠근다(종전 상세 상자와 같다). */
+  codeLockReason: string | null;
   fieldErrors: Partial<Record<keyof ProcessFormValues, string>>;
   typeOptions: { value: string; label: string }[];
   typeOptionsError: boolean;
@@ -772,13 +757,13 @@ interface ProcessFormSlotProps {
   onReload: () => void;
 }
 
-const ProcessFormSlot = ({
-  isEditing,
-  onEdit,
-  selectedId,
-  detail,
-  formState,
+/**
+ * 공정 수정 팝업(사용자 지시 · #360) — 공정 추가 팝업과 같은 틀(세 칸을 한 줄에 하나씩 · [취소][저장]).
+ * 값 · 검증 · 저장 요청(If-Match) · 코드 잠금은 종전 상세 상자의 수정 폼과 같다.
+ */
+const ProcessEditDialog = ({
   values,
+  codeLockReason,
   fieldErrors,
   typeOptions,
   typeOptionsError,
@@ -789,143 +774,87 @@ const ProcessFormSlot = ({
   onSave,
   onCancel,
   onReload,
-}: ProcessFormSlotProps): ReactNode => {
+}: ProcessEditDialogProps) => {
   const typeId = useId();
   const codeId = useId();
   const nameId = useId();
   const codeLockNoteId = useId();
   const typeErrorId = `${typeId}-error`;
 
-  if (selectedId === null) {
-    /* 공정 경로 탭의 빈 안내와 같은 모양 — 아이콘 · 제목(#231). */
-    return (
-      <div className="routing-detail-empty">
-        <EmptyState
-          size="sm"
-          icon={<PaneEmptyIcon name="layers" />}
-          title={t.empty.processNotSelected}
-        />
-      </div>
-    );
-  }
-  if (detail.isError) {
-    return <LoadErrorBanner error={detail.error} onRetry={() => void detail.refetch()} />;
-  }
-  if (formState === null) {
-    return (
-      <div role="status" aria-label={t.loading.processDetail}>
-        <SkeletonText lines={4} />
-      </div>
-    );
-  }
-
-  const codeLockReason =
-    detail.data !== undefined ? codeLockMessage(detail.data.editability) : null;
-
-  /* 보기 — 같은 요약 줄에 값만, 아래 오른쪽 [수정](사용자 지시 · #231). */
-  if (!isEditing) {
-    const typeLabel =
-      typeOptions.find((option) => option.value === values.processTypeCode)?.label ??
-      values.processTypeCode;
-    return (
-      <>
-        <div className="routing-code-line routing-process-form">
-          <div className="routing-fact">
-            <span className="field-label">{t.fields.processCode}</span>
-            <span className="routing-code-value">{values.processCode}</span>
-          </div>
-          <div className="routing-fact routing-fact-wide">
-            <span className="field-label">{t.fields.processName}</span>
-            <span className="routing-fact-item-name" title={values.processName}>
-              {values.processName}
-            </span>
-          </div>
-          <div className="routing-fact">
-            <span className="field-label">{t.fields.processType}</span>
-            <span className="routing-code-value">{typeLabel}</span>
-          </div>
-        </div>
-        <div className="form-actions">
-          <Button variant="outlined" onClick={onEdit}>
-            {t.actions.editProcess}
-          </Button>
-        </div>
-      </>
-    );
-  }
-
   return (
-    <>
+    <Dialog
+      className="dialog-icon-edit"
+      open
+      size="sm"
+      closeOnBackdropClick={false}
+      showCloseButton={false}
+      title={t.actions.editProcessTitle}
+      onClose={onCancel}
+      footer={
+        <>
+          {/* 취소 — 고친 값을 되돌리고 닫는다. */}
+          <Button variant="outlined" onClick={onCancel}>
+            {messages.common.cancel}
+          </Button>
+          <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
+            {messages.common.save}
+          </Button>
+        </>
+      }
+    >
       {typeOptionsError && (
         <div className="banner-slot">
           <AlertBanner variant="warning">{t.optionsLoadFailed}</AlertBanner>
         </div>
       )}
       <SaveErrorBanner error={writeError} onReload={onReload} />
-      {/*
-       * 공정코드 · 공정명 · 공정 유형 요약 줄 — 공정 경로 탭의 「품목코드 | 품목명 | Routing 코드」 줄과 같은 모양
-       * (테두리 상자 · 칸마다 이름 위 · 입력 아래 · 칸 사이 세로 구분선 · 사용자 지시 · #231).
-       */}
-      <div className="routing-code-line routing-process-form">
-        <div className="routing-fact">
+      <div className="form-grid routing-process-create-form">
+        <div className="field-cell">
           <FieldLabel htmlFor={codeId} label={t.fields.processCode} required />
-          <div className="routing-fact-value">
-            <TextField
-              id={codeId}
-              value={values.processCode}
-              onChange={(event) => onChange({ processCode: event.target.value })}
-              disabled={codeLockReason !== null}
-              error={fieldErrors.processCode}
-              aria-required
-              /* 필수인데 비어 있으면 빨간 테두리(사용자 지시 · #231). */
-              containerClassName={
-                values.processCode.trim() === '' ? 'routing-required-empty' : undefined
-              }
-              {...(codeLockReason === null ? {} : { 'aria-describedby': codeLockNoteId })}
-            />
-            {/* 코드 잠금 사유는 긴 문장 대신 라벨로(Routing 코드와 같다 · #231) — 문장은 라벨 위 마우스 · 숨긴 글. */}
-            {codeLockReason !== null && (
-              <>
-                <span title={codeLockReason}>
-                  <Chip variant="status" status="idle" aria-hidden="true">
-                    {t.values.codeLockedBadge}
-                  </Chip>
-                </span>
-                <span id={codeLockNoteId} className="visually-hidden">
-                  {codeLockReason}
-                </span>
-              </>
-            )}
-          </div>
+          <TextField
+            id={codeId}
+            value={values.processCode}
+            onChange={(event) => onChange({ processCode: event.target.value })}
+            disabled={codeLockReason !== null}
+            error={fieldErrors.processCode}
+            aria-required
+            /* 필수인데 비어 있으면 빨간 테두리(사용자 지시 · #231). */
+            containerClassName={
+              values.processCode.trim() === '' ? 'routing-required-empty' : undefined
+            }
+            {...(codeLockReason === null ? {} : { 'aria-describedby': codeLockNoteId })}
+          />
+          {/* 코드 잠금 사유는 화면에 펼치지 않고 숨긴 글로만 — 「변경 불가」 라벨은 두지 않는다(omf-all-around#360). */}
+          {codeLockReason !== null && (
+            <span id={codeLockNoteId} className="visually-hidden">
+              {codeLockReason}
+            </span>
+          )}
         </div>
-        <div className="routing-fact routing-fact-wide">
+        <div className="field-cell">
           <FieldLabel htmlFor={nameId} label={t.fields.processName} required />
-          <div className="routing-fact-value">
-            <TextField
-              id={nameId}
-              value={values.processName}
-              onChange={(event) => onChange({ processName: event.target.value })}
-              error={fieldErrors.processName}
-              aria-required
-              containerClassName={
-                values.processName.trim() === '' ? 'routing-required-empty' : undefined
-              }
-            />
-          </div>
+          <TextField
+            id={nameId}
+            value={values.processName}
+            onChange={(event) => onChange({ processName: event.target.value })}
+            error={fieldErrors.processName}
+            aria-required
+            containerClassName={
+              values.processName.trim() === '' ? 'routing-required-empty' : undefined
+            }
+          />
         </div>
-        <div className="routing-fact">
+        <div className="field-cell">
           <FieldLabel htmlFor={typeId} label={t.fields.processType} required />
-          <div className="routing-fact-value">
-            <Select
-              id={typeId}
-              value={values.processTypeCode}
-              options={typeOptions}
-              onChange={(value) => onChange({ processTypeCode: value })}
-              invalid={fieldErrors.processTypeCode !== undefined || values.processTypeCode === ''}
-              aria-required
-              aria-describedby={fieldErrors.processTypeCode === undefined ? undefined : typeErrorId}
-            />
-          </div>
+          <Select
+            id={typeId}
+            value={values.processTypeCode}
+            options={typeOptions}
+            onChange={(value) => onChange({ processTypeCode: value })}
+            invalid={fieldErrors.processTypeCode !== undefined || values.processTypeCode === ''}
+            aria-required
+            aria-describedby={fieldErrors.processTypeCode === undefined ? undefined : typeErrorId}
+          />
           {fieldErrors.processTypeCode !== undefined && (
             <span id={typeErrorId} className="field-error">
               {fieldErrors.processTypeCode}
@@ -933,16 +862,7 @@ const ProcessFormSlot = ({
           )}
         </div>
       </div>
-      <div className="form-actions">
-        {/* 수정 중 취소 — 고친 값을 되돌리고 보기로 돌아간다. */}
-        <Button variant="outlined" onClick={onCancel}>
-          {messages.common.cancel}
-        </Button>
-        <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
-          {messages.common.save}
-        </Button>
-      </div>
-    </>
+    </Dialog>
   );
 };
 
@@ -1003,6 +923,7 @@ const ProcessCreateDialog = ({ typeOptions, onClose, onCreated }: ProcessCreateD
     <>
       <LeaveGuard when={isDirty} discardBody={t.discard.bodyProcess} showCloseButton={false} />
       <Dialog
+        className="dialog-icon-add"
         open
         size="sm"
         closeOnBackdropClick={false}
@@ -1027,6 +948,7 @@ const ProcessCreateDialog = ({ typeOptions, onClose, onCreated }: ProcessCreateD
             <FieldLabel htmlFor={codeId} label={t.fields.processCode} required />
             <TextField
               id={codeId}
+              placeholder={t.dialog.processCodePlaceholder}
               value={values.processCode}
               onChange={(event) => change({ processCode: event.target.value })}
               error={errors.processCode}
@@ -1041,6 +963,7 @@ const ProcessCreateDialog = ({ typeOptions, onClose, onCreated }: ProcessCreateD
             <FieldLabel htmlFor={nameId} label={t.fields.processName} required />
             <TextField
               id={nameId}
+              placeholder={t.dialog.operationNamePlaceholder}
               value={values.processName}
               onChange={(event) => change({ processName: event.target.value })}
               error={errors.processName}
@@ -1054,6 +977,7 @@ const ProcessCreateDialog = ({ typeOptions, onClose, onCreated }: ProcessCreateD
             <FieldLabel htmlFor={typeId} label={t.fields.processType} required />
             <Select
               id={typeId}
+              placeholder={t.dialog.processTypePlaceholder}
               value={values.processTypeCode}
               options={typeOptions}
               onChange={(value) => change({ processTypeCode: value ?? '' })}
@@ -1078,6 +1002,8 @@ const ProcessCreateDialog = ({ typeOptions, onClose, onCreated }: ProcessCreateD
 interface ProcessActivationDialogProps {
   intent: ActivationIntent | null;
   referenceCount: number | null;
+  /** 대상 상자에 담을 공정 — 상세를 받기 전이면 상자를 두지 않는다. */
+  process: { processCode: string; processName: string } | null;
   isSaving: boolean;
   banner: ReactNode;
   onClose: () => void;
@@ -1087,6 +1013,7 @@ interface ProcessActivationDialogProps {
 const ProcessActivationDialog = ({
   intent,
   referenceCount,
+  process,
   isSaving,
   banner,
   onClose,
@@ -1096,6 +1023,7 @@ const ProcessActivationDialog = ({
 
   return (
     <Dialog
+      className={isDeactivate ? 'dialog-icon-block' : 'dialog-icon-restart'}
       open={intent !== null}
       onClose={onClose}
       size="md"
@@ -1115,27 +1043,38 @@ const ProcessActivationDialog = ({
       }
     >
       {banner}
-      {/* 재사용은 영향 상자가 없어 설명을 보조 글로 한 줄(사용자 시안 · #231). 단추는 주 작업 색(빨강) 그대로. */}
-      <p className={isDeactivate ? 'routing-obsolete-description' : 'routing-obsolete-note'}>
-        {isDeactivate ? t.dialog.deactivateProcessDescription : t.dialog.activateProcessDescription}
-      </p>
-      {/*
-       * 사용 중지의 영향 — 기존 확정 경로 유지 여부와 현재 참조 건수를 줄을 나눠 보인다(사용자 시안 · #231).
-       */}
-      {isDeactivate && (
-        <dl className="routing-impact-box">
-          <div>
-            <dt>{t.dialog.deactivateImpactConfirmed}</dt>
-            <dd>{t.dialog.deactivateImpactConfirmedValue}</dd>
+      {/* 단말 사용 중지 창과 같은 짜임 — 대상 상자 · 질문 · 안내 줄(#360). */}
+      <div className="users-roles-worker-dialog">
+        {process !== null && (
+          <div className="users-roles-worker-block">
+            <span className="users-roles-worker-block-caption">
+              {isDeactivate ? t.dialog.deactivateProcessCaption : t.dialog.activateProcessCaption}
+            </span>
+            <strong>{process.processName}</strong>
+            <span>{process.processCode}</span>
           </div>
-          {referenceCount !== null && (
-            <div>
-              <dt>{t.dialog.deactivateImpactReferences}</dt>
-              <dd>{t.dialog.deactivateImpactReferencesValue(referenceCount)}</dd>
-            </div>
-          )}
-        </dl>
-      )}
+        )}
+        <p>
+          {isDeactivate ? t.dialog.deactivateProcessQuestion : t.dialog.activateProcessQuestion}
+        </p>
+        {isDeactivate ? (
+          <>
+            <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+              <Icon name="warning" size={16} aria-hidden />
+              {t.dialog.deactivateProcessDescription}
+            </p>
+            <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+              <Icon name="info" size={16} aria-hidden />
+              {t.dialog.deactivateProcessImpact(referenceCount)}
+            </p>
+          </>
+        ) : (
+          <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+            <Icon name="info" size={16} aria-hidden />
+            {t.dialog.activateProcessDescription}
+          </p>
+        )}
+      </div>
     </Dialog>
   );
 };

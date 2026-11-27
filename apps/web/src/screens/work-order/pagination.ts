@@ -6,6 +6,9 @@ const t = messages.workOrder;
 
 export interface WorkOrderPageView {
   page: number;
+  /** 한 쪽 건수 · 전체 건수 — 공용 쪽 이동 줄(총 N건 · n / m)에 그대로 넘긴다(#360). */
+  size: number;
+  total: number;
   canFirst: boolean;
   canPrev: boolean;
   canNext: boolean;
@@ -29,6 +32,8 @@ export const toWorkOrderPageView = (
 
   return {
     page,
+    size,
+    total,
     canFirst: canMoveBack,
     canPrev: canMoveBack,
     canNext: total > 0 && page < totalPages,

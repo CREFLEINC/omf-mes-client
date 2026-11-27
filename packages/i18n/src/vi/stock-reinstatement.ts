@@ -97,8 +97,11 @@ export const stockReinstatement: Translated<typeof ko.stockReinstatement> = {
         : `Còn lại ${String(days)} ngày. Nếu ngắn hơn hạn sử dụng còn lại tối thiểu của khách hàng thì không xuất hàng được.`,
   },
   confirm: {
-    title: 'Xác nhận đăng ký lại tồn kho',
-    lead: 'Các thay đổi dưới đây được áp dụng cùng lúc chỉ với một lần chốt.',
+    title: 'Đăng ký lại tồn kho chứ?',
+    targetPlace: 'Vị trí đăng ký lại',
+    after: 'Sau khi đăng ký lại, có thể dùng làm tồn kho khả dụng tại vị trí đã chọn.',
+    irreversible:
+      'Sau khi xác nhận, không thể hoàn tác trên màn hình này. Muốn hạn chế sử dụng lại phải qua thủ tục phán định · tạm giữ.',
   },
   success: (qty: number): string => `Đã đăng ký lại ${String(qty)} tồn kho.`,
   empty: {

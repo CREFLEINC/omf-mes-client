@@ -55,6 +55,7 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     okNg: 'OK / NG',
     items: 'Hạng mục kiểm tra',
     itemCount: (n: number) => `(${String(n)})`,
+    itemsNone: 'Chưa đăng ký hạng mục kiểm tra',
   },
 
   dialog: {
@@ -108,6 +109,7 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     hourHead: 'Giờ',
     minuteHead: 'Phút',
     timePlaceholder: 'Chọn giờ',
+    panelTimePlaceholder: 'Chọn giờ',
   },
 
   dimension: {

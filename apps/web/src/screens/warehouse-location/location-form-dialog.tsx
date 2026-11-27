@@ -89,7 +89,7 @@ export const LocationFormDialog = ({
 
   return (
     <Dialog
-      className="location-dialog"
+      className="location-dialog dialog-icon-edit"
       open={open}
       onClose={onClose}
       size="lg"

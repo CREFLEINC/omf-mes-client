@@ -120,23 +120,16 @@ describe('WorkOrderProgressScreen — 주소 수명', () => {
     });
   });
 
-  describe('기준 시각과 새로고침', () => {
+  describe('마지막 갱신 시각과 갱신', () => {
     /* L-5 — 화면에 보이는 수가 언제 것인지 모르면 그 수로 판단할 수 없다. */
     it('기준 시각을 상시 보인다', async () => {
       renderScreen();
 
       await screen.findByText(/SYN-WO-0007/);
-      expect(screen.getByText(/^기준 /)).toBeInTheDocument();
+      expect(screen.getByText(/^마지막 갱신 /)).toBeInTheDocument();
     });
 
-    /* L-6 — 스스로 새로워지지 않는다는 사실을 적지 않으면 최신인 줄 알고 본다. */
-    it('⛔ 자동으로 갱신되지 않는다는 사실은 기준 시각 옆 ⓘ 로 둔다', () => {
-      renderScreen();
-
-      expect(screen.getByRole('button', { name: t.basis.note })).toBeInTheDocument();
-    });
-
-    it('새로고침을 누르면 다시 조회한다', async () => {
+    it('갱신을 누르면 같은 조회를 다시 한다', async () => {
       const { urls, user } = renderScreen();
 
       await screen.findByText(/SYN-WO-0007/);

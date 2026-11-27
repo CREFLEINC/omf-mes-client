@@ -1,4 +1,4 @@
-import { AlertBanner, Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
+import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
@@ -23,6 +23,8 @@ import {
 } from './filters';
 import { useItemNames, useProductionLineLookup, useProductionOrderLookup } from './lookups';
 import { PageNav } from './page-nav';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { readPageSizeParam, toPageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { toPageView } from './pagination';
 import { defaultPeriod } from './period';
 import {
@@ -93,6 +95,8 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
   const { from: periodFrom, to: periodTo } = filters;
   const sort = readSort(searchParams, filters);
   const page = readPage(searchParams);
+  /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(50)은 적지 않는다(#360). */
+  const pageSize = readPageSizeParam(searchParams, PAGE_SIZE);
   const selectedWorkOrderId = readSelectedWorkOrderId(searchParams);
 
   /*
@@ -112,7 +116,9 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
     });
   }, [isPeriodInAddress, periodFrom, periodTo, setSearchParams]);
 
-  const list = useWorkOrderProgressList(toProgressListQuery(filters, sort, page, offsetMinutes));
+  const list = useWorkOrderProgressList(
+    toProgressListQuery(filters, sort, page, offsetMinutes, pageSize),
+  );
   const detail = useWorkOrderDetail(selectedWorkOrderId);
   const crew = useWorkOrderCrew(selectedWorkOrderId);
   const lines = useProductionLineLookup();
@@ -133,7 +139,7 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
     ...workOrders.map((workOrder) => workOrder.itemId),
     ...(detail.data === undefined ? [] : [detail.data.itemId]),
   ]);
-  const pageView = toPageView(list.data?.page ?? { page, size: PAGE_SIZE, total: 0 }, rows.length);
+  const pageView = toPageView(list.data?.page ?? { page, size: pageSize, total: 0 }, rows.length);
 
   /* 「초기화」가 되돌리는 값 — 오늘에 기대므로 같은 함수로 만든다. 이와 다를 때만 「초기화」가 보인다. */
   const initialFilters: ProgressFilters = { ...defaultPeriod(today), ...EMPTY_CONDITIONS };
@@ -144,20 +150,17 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-
+      {/* 화면 제목 줄(경로 · 큰 제목)은 두지 않는다 — 다른 목록 화면과 같다(#360). */}
       <div className="work-order-progress-workspace">
-        <section className="pane work-order-progress-pane" aria-label={t.filters.legend}>
-          <h2 className="pane-title">{t.filters.legend}</h2>
+        {/* L-5·L-6 — 언제 것인지와 갱신 단추를 한 줄에, 조회 조건 위 오른쪽(#360). */}
+        <BasisBar
+          basisAt={basisAt}
+          onRefresh={() => {
+            void queryClient.invalidateQueries({ queryKey: workOrderProgressKeys.all });
+          }}
+        />
 
+        <section className="pane work-order-progress-pane" aria-label={t.filters.legend}>
           {/* ⛔ 결과가 없어도 조건 줄을 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
           <ProgressFilterBar
             appliedFilters={filters}
@@ -171,14 +174,6 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
             onSearch={apply}
           />
         </section>
-
-        {/* L-5·L-6 — 언제 것인지와, 스스로 새로워지지 않는다는 사실을 함께 둔다. */}
-        <BasisBar
-          basisAt={basisAt}
-          onRefresh={() => {
-            void queryClient.invalidateQueries({ queryKey: workOrderProgressKeys.all });
-          }}
-        />
 
         {/* ⛔ 「결과가 없습니다」로만 두면 조건이 잘못된 줄 알고 조건을 더 만지게 된다. */}
         {pageView.isBeyondLast && (
@@ -207,8 +202,15 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
             rows={rows}
             sort={sort}
             statusLabel={(statusCode) => statuses.labelOf(statusCode)}
+            selectedWorkOrderId={selectedWorkOrderId}
             onSelect={(workOrderId) => {
-              setSearchParams(withSelectedWorkOrder(searchParams, workOrderId));
+              /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-27 · #360). */
+              setSearchParams(
+                withSelectedWorkOrder(
+                  searchParams,
+                  workOrderId === selectedWorkOrderId ? null : workOrderId,
+                ),
+              );
             }}
             onSort={(key) => {
               setSearchParams(withSort(searchParams, nextSort(sort, key)));
@@ -224,6 +226,10 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
               view={pageView}
               onChange={(next) => {
                 setSearchParams(withPage(searchParams, next));
+              }}
+              sizes={PAGE_SIZES}
+              onChangeSize={(size) => {
+                setSearchParams(toPageSizeSearchParams(searchParams, size, PAGE_SIZE));
               }}
             />
           )}

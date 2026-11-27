@@ -1,21 +1,4 @@
-import { Breadcrumb, PageHeader } from '@crefle/web-ui';
-import { messages } from '@omf-mes/i18n';
-
 import { WorkOrderCloseCandidateScreen } from './candidate-screen';
 
-const t = messages.workOrderClose;
-
-export const WorkOrderCloseScreen = () => (
-  <>
-    <PageHeader
-      title={t.title}
-      breadcrumb={
-        <Breadcrumb
-          items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-          aria-label={messages.common.shell.breadcrumb}
-        />
-      }
-    />
-    <WorkOrderCloseCandidateScreen />
-  </>
-);
+/* 화면 제목 줄(경로 · 큰 제목)은 두지 않는다 — W/O 진행현황 · 물류 전표 화면과 같다(#360). */
+export const WorkOrderCloseScreen = () => <WorkOrderCloseCandidateScreen />;

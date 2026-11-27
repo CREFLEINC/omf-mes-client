@@ -11,10 +11,12 @@ import {
 } from './candidate-list-pane';
 
 const t = messages.workOrderClose.candidateList;
-const nav = messages.workOrder.pageNav;
+const nav = messages.screenPatterns.pageNav;
 
 const page = (overrides: Partial<WorkOrderPageView> = {}): WorkOrderPageView => ({
   page: 2,
+  size: 20,
+  total: 45,
   rangeLabel: '21–40 / 전체 45건',
   canFirst: true,
   canPrev: true,
@@ -176,12 +178,13 @@ describe('WorkOrderCloseCandidateListPane', () => {
 
   it('passes the supplied page view through and delegates exact navigation targets', async () => {
     const { props, user } = renderPane({
-      page: page({ page: 4, rangeLabel: '61–80 / 전체 100건' }),
+      page: page({ page: 4, total: 100, rangeLabel: '61–80 / 전체 100건' }),
     });
 
-    expect(screen.getByText('61–80 / 전체 100건')).toBeVisible();
+    expect(screen.getByText(nav.total(100))).toBeVisible();
+    expect(screen.getByText(nav.position(4, 5))).toBeVisible();
     await user.click(screen.getByRole('button', { name: nav.first }));
-    await user.click(screen.getByRole('button', { name: nav.previous }));
+    await user.click(screen.getByRole('button', { name: nav.prev }));
     await user.click(screen.getByRole('button', { name: nav.next }));
     expect(props.onChangePage).toHaveBeenNthCalledWith(1, 1);
     expect(props.onChangePage).toHaveBeenNthCalledWith(2, 3);

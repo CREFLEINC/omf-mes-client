@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -13,6 +13,7 @@ import {
 import { PoChangeReviewScreen } from './screen';
 
 const t = messages.poChangeReview;
+const deselect = messages.common.deselectConfirm;
 
 const renderScreen = (options: PoChangeStubOptions = {}) => {
   renderWithProviders(<PoChangeReviewScreen />, {
@@ -39,7 +40,7 @@ describe('PoChangeReviewScreen', () => {
 
     const listPane = screen.getByLabelText(t.panes.list);
     expect(listPane).toHaveClass('po-change-review-pane');
-    expect(listPane.parentElement).toHaveClass('po-change-review-layout');
+    expect(listPane.parentElement).toHaveClass('list-detail-split');
     expect(screen.getByRole('table', { name: t.panes.list })).toHaveClass('po-change-review-table');
     const paths = requestedPaths();
     expect(paths.some((path) => path.includes('unacknowledgedOnly=true'))).toBe(true);
@@ -72,6 +73,22 @@ describe('PoChangeReviewScreen', () => {
     await selectRow(absent.user);
     expect(await screen.findByText(t.diff.noLastChange)).toBeInTheDocument();
     expect(screen.getByText(t.list.changedFieldsUnknown)).toBeInTheDocument();
+    /* 원문 보기는 연계 동기화 현황(ERP 연동 현황·이력)으로 간다(#360). */
+    expect(screen.getByRole('link', { name: t.diff.viewSource })).toHaveAttribute(
+      'href',
+      '/master-data/integration-sync',
+    );
+  });
+
+  /* 변경 내역을 못 받은 건은 서버가 「확인할 변경이 없습니다」로 거절한다 — 누르기 전에 잠그고 주황 한 줄만(#360). */
+  it('⛔ 변경 내역을 못 받은 건은 [처리]를 잠그고 주황 한 줄로 말한다', async () => {
+    const { user } = renderScreen({ lastChange: 'absent' });
+    await selectRow(user);
+    await user.click(await screen.findByRole('radio', { name: t.decision.apply }));
+
+    expect(screen.getByText(t.lock.noChange)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.decision.submit })).toBeDisabled();
+    expect(acknowledgeRequests()).toHaveLength(0);
   });
 
   it('열거 밖 항목만 바뀌면 항목을 낼 수 없다고 적는다', async () => {
@@ -93,11 +110,16 @@ describe('PoChangeReviewScreen', () => {
         ),
       ).toBe(true);
     });
-    expect(await screen.findByText(/1200 이미 생산됨/)).toBeInTheDocument();
-    expect(screen.getByRole('table', { name: t.panes.workOrders })).toHaveClass(
-      'po-change-review-table',
+    /* 생산 실적은 숫자만, 상태는 공통코드 표시명 칩(#360). */
+    const table = await screen.findByRole('table', { name: t.panes.workOrders });
+    expect(table).toHaveClass('po-change-review-table');
+    expect(within(table).getByText('1200')).toBeInTheDocument();
+    expect(within(table).queryByText(/이미 생산됨/)).not.toBeInTheDocument();
+    expect((await screen.findByText('합성 상태 B')).closest('td')).toHaveAttribute(
+      'data-align',
+      'center',
     );
-    expect(screen.getByText('CODE-B').closest('td')).toHaveAttribute('data-align', 'center');
+    expect(screen.getByRole('heading', { name: t.panes.workOrdersCount(1) })).toBeInTheDocument();
   });
 
   it('⚠ 실적이 변경 후 수량을 넘으면 경고하되 막지 않는다', async () => {
@@ -120,7 +142,6 @@ describe('PoChangeReviewScreen', () => {
     await user.click(await screen.findByRole('radio', { name: t.decision.proceed }));
 
     expect(screen.getByRole('button', { name: t.decision.submit })).toBeDisabled();
-    expect(screen.getByText(t.lock.reason)).toBeInTheDocument();
     /* ⓘ 파급을 저장 전에 말한다(G-19). */
     expect(screen.getByText(t.decision.proceedNote)).toBeInTheDocument();
   });
@@ -182,6 +203,25 @@ describe('PoChangeReviewScreen', () => {
     expect(acknowledgeRequests()).toHaveLength(0);
   });
 
+  /* 버그(#360) — 거절 상자가 선택을 바꿔도 남아 있었다. 다시 고르면 지워진다. */
+  it('저장 오류 상자는 선택을 풀고 다시 고르면 사라진다', async () => {
+    const { user } = renderScreen({ omitEtag: true });
+    await selectRow(user);
+    await user.click(await screen.findByRole('radio', { name: t.decision.apply }));
+    await user.click(screen.getByRole('button', { name: t.decision.submit }));
+    expect(await screen.findByText(messages.save.staleToken)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.list.selectRow('SYNTH-PO-0031') }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: deselect.title })).getByRole('button', {
+        name: deselect.confirm,
+      }),
+    );
+    await selectRow(user);
+    await screen.findByRole('radio', { name: t.decision.apply });
+    expect(screen.queryByText(messages.save.staleToken)).not.toBeInTheDocument();
+  });
+
   /*
    * ⭐⭐ **이 화면이 ERP 배치와 부딪치는 첫 화면이다**(§5-3 · §9-2). 부딪치는 상대가 사람이
    * 아니라서 「남이 고쳤다」로 적으면 **사용자가 동료를 찾으러 간다.**
@@ -210,8 +250,15 @@ describe('PoChangeReviewScreen', () => {
     await user.click(await screen.findByRole('radio', { name: t.decision.proceed }));
     expect(screen.getByRole('radio', { name: t.decision.proceed })).toBeChecked();
 
-    /* 같은 행을 다시 눌러도 선택 상태가 새로 서야 한다 — 되돌릴 수 없는 판정이다. */
+    /* 같은 행을 다시 눌러도 선택 상태가 새로 서야 한다 — 되돌릴 수 없는 판정이다. 적던 판정이 있어 먼저 묻는다(#360). */
     await user.click(screen.getByRole('button', { name: t.list.selectRow('SYNTH-PO-0031') }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: deselect.title })).getByRole('button', {
+        name: deselect.confirm,
+      }),
+    );
+    await selectRow(user);
+    expect(await screen.findByRole('radio', { name: t.decision.proceed })).not.toBeChecked();
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.decision.submit })).toBeDisabled();
     });
@@ -224,7 +271,40 @@ describe('PoChangeReviewScreen', () => {
     expect(row).toHaveAttribute('aria-current', 'true');
 
     await user.click(row);
+    /* 적은 것이 없으면 묻지 않고 바로 푼다(#360). */
+    expect(screen.queryByRole('dialog', { name: deselect.title })).not.toBeInTheDocument();
     expect(row).not.toHaveAttribute('aria-current');
+    expect(screen.getAllByText(t.diff.selectFirst).length).toBeGreaterThan(0);
+  });
+
+  /* 적던 판정이 있으면 풀기 전에 묻는다 — [취소]는 선택·입력을 그대로, [해제]는 푼다(사용자 지시 2026-11-27 · #360). */
+  it('적던 판정이 있으면 고른 줄을 다시 눌렀을 때 먼저 묻는다', async () => {
+    const { user } = renderScreen();
+    await selectRow(user);
+    await user.click(await screen.findByRole('radio', { name: t.decision.proceed }));
+    await user.type(screen.getByLabelText(t.decision.reasonLabel), '납기 우선');
+    const row = screen.getByRole('button', { name: t.list.selectRow('SYNTH-PO-0031') });
+
+    await user.click(row);
+    const dialog = await screen.findByRole('dialog', { name: deselect.title });
+    expect(within(dialog).getByText(deselect.body)).toBeInTheDocument();
+    expect(row).toHaveAttribute('aria-current', 'true');
+
+    await user.click(within(dialog).getByRole('button', { name: deselect.cancel }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: deselect.title })).not.toBeInTheDocument();
+    });
+    expect(row).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByRole('radio', { name: t.decision.proceed })).toBeChecked();
+    expect(screen.getByLabelText(t.decision.reasonLabel)).toHaveValue('납기 우선');
+
+    await user.click(row);
+    await user.click(
+      within(await screen.findByRole('dialog', { name: deselect.title })).getByRole('button', {
+        name: deselect.confirm,
+      }),
+    );
+    await waitFor(() => expect(row).not.toHaveAttribute('aria-current'));
     expect(screen.getAllByText(t.diff.selectFirst).length).toBeGreaterThan(0);
   });
 
@@ -265,21 +345,22 @@ describe('PoChangeReviewScreen', () => {
 
     expect(screen.getByText(t.workOrders.adjustNotNumber)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.decision.submit })).toBeDisabled();
-    expect(screen.getByText(t.lock.adjustment)).toBeInTheDocument();
   });
 
   /* 목록 제목 줄 「목록 접기」 · 접힌 「목록 N건」 탭(#350). */
   it('목록을 접으면 탭에 건수가 서고, 펼친 뒤에도 고른 P/O · 고른 판정 · 적어 둔 사유가 그대로다', async () => {
-    const collapsedKey = 'omf-mes:po-change-review:list:collapsed';
+    const collapsedKey = 'omf-mes:po-change-review:split:collapsed';
     window.localStorage.removeItem(collapsedKey);
     const { user } = renderScreen();
     await selectRow(user);
     await user.click(await screen.findByRole('radio', { name: t.decision.proceed }));
     await user.type(screen.getByLabelText(t.decision.reasonLabel), '납기 우선');
-    const layout = document.querySelector('.po-change-review-layout');
+    const layout = document.querySelector('.list-detail-split');
 
     await user.click(
-      screen.getByRole('button', { name: messages.common.inspectionHub.listCollapse }),
+      within(screen.getByLabelText(t.panes.list)).getByRole('button', {
+        name: messages.common.inspectionHub.listCollapse,
+      }),
     );
     expect(layout).toHaveAttribute('data-left-collapsed', 'true');
     const tab = layout!.querySelector<HTMLElement>('.po-board-list-tab');

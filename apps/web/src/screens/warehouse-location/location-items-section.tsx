@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Icon, IconButton, Skeleton, Switch } from '@crefle/web-ui';
+import { AlertBanner, Button, IconButton, Skeleton, Switch } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
@@ -31,7 +31,7 @@ export const isItemsDraftChanged = (
 export interface RestrictionToggleProps {
   checked: boolean;
   onChange?: (checked: boolean) => void;
-  /** 켤 수 없는 까닭 — 있으면 스위치가 잠기고 그 까닭이 선다(켠 것을 끄는 것은 늘 된다 — 여는 쪽이 정한다). */
+  /** 켤 수 없는 까닭 — 있으면 스위치가 잠긴다(까닭 글은 보이지 않는다 · #360. 켠 것을 끄는 것은 늘 된다 — 여는 쪽이 정한다). */
   lockReason?: string | undefined;
   /** 까닭 글 없이 켜기만 잠근다 — 지정 품목이 없을 때(사용자 지시 2026-11-19 — 안내 문장을 걷었다). */
   locked?: boolean;
@@ -68,12 +68,7 @@ export const RestrictionToggle = ({
           {t.restrict.label}
         </label>
       </div>
-      {lockReason !== undefined && (
-        <p className="location-restrict-lock">
-          <Icon name="block" size={16} aria-hidden="true" />
-          <span>{lockReason}</span>
-        </p>
-      )}
+      {/* 잠긴 까닭 줄은 걷었다(사용자 지시 · #360) — 까닭은 스위치를 잠그는 데만 쓴다. */}
       {error !== undefined && <span className="field-error">{error}</span>}
     </div>
   );

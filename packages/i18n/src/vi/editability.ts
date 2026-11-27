@@ -20,5 +20,4 @@ export const editability: Translated<typeof ko.editability> = {
     'Nhóm mã này do hệ thống quản lý nên không sửa được. Cần thay đổi thì hãy hỏi người phụ trách.',
   autoIssued: (_count: number | null): string => 'Mã do máy chủ cấp nên không đổi được.',
   locked: 'Hiện không đổi được mã. Cần thay đổi thì hãy hỏi người phụ trách.',
-  badge: 'Không đổi được',
 };

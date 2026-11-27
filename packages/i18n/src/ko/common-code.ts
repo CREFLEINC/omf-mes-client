@@ -52,8 +52,10 @@ export const commonCode = {
    * 근거이지 「이 행을 참조하는 자료의 수」가 아니다. 두 뜻을 섞으면 화면이 지어낸다.
    */
   dialog: {
-    deactivateCodeGroupTitle: '코드그룹을 사용 중지할까요?',
-    deactivateDepartmentTitle: '부서를 사용 중지할까요?',
+    deactivateCodeGroupTitle: '코드그룹 사용 중지',
+    deactivateDepartmentTitle: '부서 사용 중지',
+    deactivateCodeGroupQuestion: '이 코드그룹의 사용을 중지하시겠습니까?',
+    deactivateDepartmentQuestion: '이 부서의 사용을 중지하시겠습니까?',
     deactivateCodeGroupDescription:
       '사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 코드그룹이 그대로 표시됩니다.',
     deactivateDepartmentDescription:
@@ -139,6 +141,12 @@ export const commonCode = {
       groupName: '그룹명',
       description: '설명',
     },
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+    placeholders: {
+      groupCode: '그룹코드를 입력하세요',
+      groupName: '그룹명을 입력하세요',
+      description: '설명을 입력하세요',
+    },
     empty: {
       noneTitle: '등록된 코드그룹이 없습니다',
       noneDescription: '「그룹 추가」로 첫 코드그룹을 등록하세요.',
@@ -165,6 +173,11 @@ export const commonCode = {
       departmentName: '부서명',
       parentDepartment: '상위 부서',
       businessUnit: '사업부',
+    },
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+    placeholders: {
+      departmentCode: '부서코드를 입력하세요',
+      departmentName: '부서명을 입력하세요',
     },
     values: {
       /** 계층 그룹 머리글 — 그 그룹을 대표하는 부서. */
@@ -263,6 +276,11 @@ export const commonCode = {
       certifiedBy: '인증자',
       /** 행 수정 · 삭제 단추 열 — 생산 창고 · 결재 단계 표와 같은 「관리」(사용자 지시 2026-11-25). */
       manage: '관리',
+    },
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+    placeholders: {
+      qualificationType: '자격 유형을 고르세요',
+      certificateNo: '인증번호를 입력하세요',
     },
     values: {
       /** 공정을 비운 자격은 모든 공정에 걸린다 — 계약이 그 뜻을 널로 표현한다(A-7). */
@@ -410,7 +428,8 @@ export const commonCode = {
      * 버튼 문구가 「확인/취소」가 아니다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다.
      */
     dialog: {
-      title: '해제되는 역할이 있습니다',
+      title: '거래처 역할 해제',
+      question: '이 역할을 해제하고 저장하시겠습니까?',
       lead: '저장하면 아래 역할이 해제됩니다.',
       /* 계약이 빈 배열을 「전부 해제」로 정의한다 — 실제로 만들 수 있는 상태라 미리 밝힌다. */
       noneLeft: '저장하면 이 거래처의 역할이 하나도 남지 않습니다.',
@@ -474,6 +493,12 @@ export const commonCode = {
       /** 표 끝 열 — 줄마다 [사용 중지] · [수정](사용자 지시 2026-11-26). */
       manage: '관리',
     },
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+    placeholders: {
+      code: '코드를 입력하세요',
+      codeName: '코드명을 입력하세요',
+      displayOrder: '정렬 순서를 입력하세요',
+    },
     empty: {
       groupNotSelected: '좌측에서 코드그룹을 먼저 고르세요',
       noneTitle: '이 코드그룹에 등록된 코드값이 없습니다',
@@ -506,7 +531,8 @@ export const commonCode = {
       effectiveRangeReversed: '유효 종료는 유효 시작과 같거나 그 뒤여야 합니다.',
     },
     dialog: {
-      deactivateTitle: '코드값을 사용 중지할까요?',
+      deactivateTitle: '코드값 사용 중지',
+      deactivateQuestion: '이 코드값의 사용을 중지하시겠습니까?',
       deactivateDescription:
         '사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 코드값이 그대로 표시됩니다.',
     },

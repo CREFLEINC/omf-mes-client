@@ -1,6 +1,7 @@
-import { AlertBanner, Table, type Column } from '@crefle/web-ui';
+import { AlertBanner, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { InfoFacts, InfoGroupTitle, InfoTable } from '../../patterns/info-facts';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import {
   QTY_KEYS,
@@ -60,7 +61,7 @@ const defectTypeColumns: Column<DefectTypeRow>[] = [
     key: 'qty',
     header: t.defectTypes.columns.qty,
     align: 'end',
-    render: (row) => String(row.qty),
+    render: (row) => row.qty.toLocaleString('ko-KR'),
   },
 ];
 
@@ -94,7 +95,7 @@ export const CrewSections = ({ crew, isLoading, isError }: CrewSectionsProps) =>
       key,
       header: t.workerResults.columns[key],
       align: 'end',
-      render: (row) => String(row[key]),
+      render: (row) => row[key].toLocaleString('ko-KR'),
     })),
   ];
 
@@ -111,8 +112,9 @@ export const CrewSections = ({ crew, isLoading, isError }: CrewSectionsProps) =>
         </div>
       )}
 
+      {/* 정보 표시 팝업 — 묶음 제목 + 상자, 표는 제목 · 건수 + 공용 표(시안 2026-11-27 · #360). */}
       <section className="work-order-progress-crew" aria-label={t.sessions.heading}>
-        <h3>{t.sessions.heading}</h3>
+        <InfoGroupTitle>{t.sessions.heading}</InfoGroupTitle>
         {crew.sessions.length === 0 ? (
           <p className="field-note">{t.sessions.empty}</p>
         ) : (
@@ -122,26 +124,25 @@ export const CrewSections = ({ crew, isLoading, isError }: CrewSectionsProps) =>
               className="work-order-progress-session"
               aria-label={t.sessions.session(session.sessionNo)}
             >
-              <h4>{t.sessions.session(session.sessionNo)}</h4>
-              <dl className="work-order-progress-session-times">
-                <div className="field-cell">
-                  <dt className="field-label">{t.sessions.startedAt}</dt>
-                  <dd>{timeText(session.startedAt)}</dd>
-                </div>
-                <div className="field-cell">
-                  <dt className="field-label">{t.sessions.endedAt}</dt>
-                  <dd>
-                    {session.endedAt === null ? t.sessions.ongoing : timeText(session.endedAt)}
-                  </dd>
-                </div>
-              </dl>
-              <Table
-                caption={t.sessions.session(session.sessionNo)}
-                density="compact"
+              <InfoFacts
+                rows={[
+                  [
+                    { label: t.sessions.startedAt, value: timeText(session.startedAt) },
+                    {
+                      label: t.sessions.endedAt,
+                      value:
+                        session.endedAt === null ? t.sessions.ongoing : timeText(session.endedAt),
+                    },
+                  ],
+                ]}
+              />
+              <InfoTable
+                title={t.sessions.session(session.sessionNo)}
+                storageKey="omf-mes:work-order-progress:columns:crew-session"
                 columns={participantColumns}
                 rows={session.participants}
                 getRowId={(row) => String(row.workSessionWorkerId)}
-                empty={<p className="field-note">{t.sessions.noParticipants}</p>}
+                emptyTitle={t.sessions.noParticipants}
               />
             </section>
           ))
@@ -149,26 +150,24 @@ export const CrewSections = ({ crew, isLoading, isError }: CrewSectionsProps) =>
       </section>
 
       <section className="work-order-progress-crew" aria-label={t.workerResults.heading}>
-        <h3>{t.workerResults.heading}</h3>
-        <Table
-          caption={t.workerResults.heading}
-          density="compact"
+        <InfoTable
+          title={t.workerResults.heading}
+          storageKey="omf-mes:work-order-progress:columns:crew-results"
           columns={resultColumns}
           rows={crew.workerResults}
           getRowId={(row) => String(row.workerId)}
-          empty={<p className="field-note">{t.workerResults.empty}</p>}
+          emptyTitle={t.workerResults.empty}
         />
       </section>
 
       <section className="work-order-progress-crew" aria-label={t.defectTypes.heading}>
-        <h3>{t.defectTypes.heading}</h3>
-        <Table
-          caption={t.defectTypes.heading}
-          density="compact"
+        <InfoTable
+          title={t.defectTypes.heading}
+          storageKey="omf-mes:work-order-progress:columns:crew-defects"
           columns={defectTypeColumns}
           rows={crew.defectTypes}
           getRowId={(row) => (row.defectCodeId === null ? 'untyped' : String(row.defectCodeId))}
-          empty={<p className="field-note">{t.defectTypes.empty}</p>}
+          emptyTitle={t.defectTypes.empty}
         />
       </section>
     </>

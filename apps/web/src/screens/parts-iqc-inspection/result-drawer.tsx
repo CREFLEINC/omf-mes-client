@@ -206,6 +206,7 @@ export const ResultDrawer = ({
       </Dialog>
       {asking && (
         <Dialog
+          className={editing === null ? 'dialog-icon-add' : 'dialog-icon-edit'}
           open
           size="sm"
           showCloseButton={false}

@@ -2,8 +2,9 @@ import type { ko } from '../ko';
 import type { Translated } from './translated';
 
 export const judgmentConfirm: Translated<typeof ko.judgmentConfirm> = {
-  title: 'Xác nhận đánh giá?',
-  target: (inspectionRequestNo: string): string => `Số yêu cầu kiểm tra: ${inspectionRequestNo}`,
+  title: 'Xác nhận đánh giá',
+  question: 'Xác nhận đánh giá?',
+  requestNo: 'Số yêu cầu kiểm tra',
   judgmentHeading: 'Đánh giá cuối cùng',
   resultRow: 'Kết quả kiểm tra',
   accepted: 'Đạt',

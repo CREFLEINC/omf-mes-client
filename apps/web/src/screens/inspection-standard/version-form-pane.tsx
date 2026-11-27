@@ -189,6 +189,7 @@ export const VersionFormPane = ({
             values.samplingMethodCode,
           )}
           value={values.samplingMethodCode}
+          placeholder={inDialog ? t.dialog.versionPlaceholders.samplingMethod : undefined}
           onChange={changeSamplingMethod}
           disabled={isLocked}
           error={fieldErrors.samplingMethodCode}
@@ -208,6 +209,7 @@ export const VersionFormPane = ({
             required
             options={ensureOption(AQL_LEVEL_OPTIONS, values.aqlInspectionLevelCode)}
             value={values.aqlInspectionLevelCode}
+            placeholder={inDialog ? t.dialog.versionPlaceholders.aqlInspectionLevel : undefined}
             onChange={(aqlInspectionLevelCode) => onChange({ aqlInspectionLevelCode })}
             disabled={isLocked}
             error={fieldErrors.aqlInspectionLevelCode}
@@ -262,6 +264,7 @@ export const VersionFormPane = ({
                 max={100}
                 step="any"
                 value={values.samplingRatio}
+                placeholder={inDialog ? t.dialog.versionPlaceholders.samplingRatio : undefined}
                 onChange={(event) => onChange({ samplingRatio: event.target.value })}
                 disabled={isLocked || isFullInspection}
                 aria-required={isSamplingRequired || undefined}
@@ -274,6 +277,7 @@ export const VersionFormPane = ({
                 min={1}
                 step={1}
                 value={values.samplingQty}
+                placeholder={inDialog ? t.dialog.versionPlaceholders.samplingQty : undefined}
                 onChange={(event) => onChange({ samplingQty: event.target.value })}
                 disabled={isLocked || isFullInspection}
                 aria-required={isSamplingRequired || undefined}
@@ -289,6 +293,7 @@ export const VersionFormPane = ({
             required
             options={ensureOption(AQL_VALUE_OPTIONS, values.aqlValue)}
             value={values.aqlValue}
+            placeholder={inDialog ? t.dialog.versionPlaceholders.aqlValueSelect : undefined}
             onChange={(aqlValue) => onChange({ aqlValue })}
             disabled={isLocked}
             error={fieldErrors.aqlValue}
@@ -299,6 +304,7 @@ export const VersionFormPane = ({
               type="number"
               label={t.fields.aqlValue}
               value={values.aqlValue}
+              placeholder={inDialog ? t.dialog.versionPlaceholders.aqlValue : undefined}
               onChange={(event) => onChange({ aqlValue: event.target.value })}
               disabled={isLocked}
               error={fieldErrors.aqlValue}
@@ -312,6 +318,7 @@ export const VersionFormPane = ({
           min={0}
           label={t.fields.acceptanceNumber}
           value={values.acceptanceNumber}
+          placeholder={inDialog ? t.dialog.versionPlaceholders.acceptanceNumber : undefined}
           onChange={(event) => onChange({ acceptanceNumber: event.target.value })}
           disabled={isLocked || isAql}
           error={fieldErrors.acceptanceNumber}
@@ -323,6 +330,7 @@ export const VersionFormPane = ({
           min={1}
           label={t.fields.rejectionNumber}
           value={values.rejectionNumber}
+          placeholder={inDialog ? t.dialog.versionPlaceholders.rejectionNumber : undefined}
           onChange={(event) => onChange({ rejectionNumber: event.target.value })}
           disabled={isLocked || isAql}
           error={fieldErrors.rejectionNumber}

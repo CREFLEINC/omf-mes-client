@@ -1,6 +1,7 @@
 import { Chip, type ChipStatus } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { requestStatusLabelOf } from './code-options';
 import type { RequestProgressView, StepProgressView } from './progress';
 
 const t = messages.approvalInbox;
@@ -74,7 +75,10 @@ export const ProgressPane = ({ view, isMyTurn = false }: ProgressPaneProps) => {
                   <td>{step.approverLabel}</td>
                   <td>
                     <Chip size="sm" status={STEP_TONE[step.status]}>
-                      {step.decisionCode ?? step.waitingText}
+                      {/* 결정 코드(APPROVED 등)는 상태 이름으로 — 모르는 코드는 그대로(#360). */}
+                      {step.decisionCode === null
+                        ? step.waitingText
+                        : requestStatusLabelOf(step.decisionCode)}
                     </Chip>
                   </td>
                   <td>{step.decisionAtText ?? '-'}</td>

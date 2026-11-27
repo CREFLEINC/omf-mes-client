@@ -7,15 +7,11 @@ import type { Translated } from './translated';
  */
 export const documentProgress: Translated<typeof ko.documentProgress> = {
   title: 'Tra cứu · hủy chứng từ logistics',
-  breadcrumbRoot: 'Quản lý mua hàng / vật tư',
   panes: {
     filters: 'Điều kiện tra cứu',
     list: 'Danh sách chứng từ',
     detail: 'Chứng từ đã chọn',
   },
-  splitter: 'Kéo để điều chỉnh độ rộng danh sách và chi tiết',
-  listCollapse: 'Thu gọn danh sách chứng từ',
-  listExpand: 'Mở rộng danh sách chứng từ',
   documentTypes: {
     PURCHASE_ORDER: 'Đơn mua hàng',
     INBOUND_RECEIPT: 'Nhận hàng',
@@ -45,7 +41,7 @@ export const documentProgress: Translated<typeof ko.documentProgress> = {
   },
   filters: {
     all: 'Tất cả',
-    choose: 'Chọn',
+    qPlaceholder: 'Nhập số chứng từ',
     disabledTypes: (reasons: string): string => `Có loại không chọn được. ${reasons}`,
     chipStatus: (value: string): string => `Trạng thái: ${value}`,
     chipRemoveStatus: 'Bỏ điều kiện trạng thái',
@@ -129,7 +125,7 @@ export const documentProgress: Translated<typeof ko.documentProgress> = {
   cancelRequest: {
     label: 'Yêu cầu hủy',
     reason: 'Lý do hủy',
-    reasonPlaceholder: 'Hãy ghi vì sao hủy',
+    reasonPlaceholder: 'Hãy nhập lý do hủy',
     reasonRequired: 'Phải ghi lý do hủy mới trình được yêu cầu.',
     unsupportedTitle: 'Loại này không hủy được tại đây',
     preparing: 'Đang chuẩn bị yêu cầu hủy',
@@ -143,10 +139,12 @@ export const documentProgress: Translated<typeof ko.documentProgress> = {
     submitted: 'Đã trình yêu cầu hủy. Phê duyệt xong thì thực hiện hủy được.',
   },
   cancelDialog: {
-    title: 'Trình yêu cầu hủy chứ?',
-    target: (documentNo: string): string => `Trình việc hủy ${documentNo} lên phê duyệt.`,
-    noWithdraw: '⚠ Yêu cầu đã trình thì không rút lại được.',
-    confirm: 'Trình yêu cầu hủy',
+    title: (typeName: string | null): string =>
+      typeName === null ? 'Yêu cầu hủy chứng từ chứ?' : `Yêu cầu hủy ${typeName} chứ?`,
+    targetLabel: 'Chứng từ đối tượng',
+    lead: 'Trình việc hủy chứng từ này lên phê duyệt.',
+    noWithdraw: 'Sau khi trình phê duyệt thì không rút lại được.',
+    confirm: 'Trình phê duyệt hủy',
     keepEditing: 'Quay lại',
   },
   approval: {
@@ -182,8 +180,8 @@ export const documentProgress: Translated<typeof ko.documentProgress> = {
     executed: 'Đã thực hiện hủy.',
   },
   executeDialog: {
-    title: 'Thực hiện hủy chứ?',
-    target: (documentNo: string): string => `Thực hiện hủy ${documentNo}.`,
+    title: 'Thực hiện hủy',
+    question: 'Thực hiện hủy chứng từ này chứ?',
     irreversible: '⛔ Thực hiện rồi thì không hoàn tác được.',
     confirm: 'Thực hiện hủy',
     keepEditing: 'Quay lại',

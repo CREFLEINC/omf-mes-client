@@ -16,6 +16,8 @@ export interface CalendarFormDialogProps {
   banner: ReactNode;
   /** null이면 캘린더 코드 편집 가능 */
   codeLockReason: string | null;
+  /** 코드 칸이 화면이 채운 값 그대로인가 — 칸 이름 옆에 「자동」을 단다. 등록 창에서만 참이다 */
+  codeIsAuto: boolean;
   /** 이 캘린더를 따르는 공장·설비 그룹 수. 아직 모르면 `null` */
   applicationCount: number | null;
   isSaving: boolean;
@@ -41,6 +43,7 @@ export const CalendarFormDialog = ({
   fieldErrors,
   banner,
   codeLockReason,
+  codeIsAuto,
   applicationCount,
   isSaving,
   deactivate,
@@ -49,10 +52,11 @@ export const CalendarFormDialog = ({
   onDeactivate,
 }: CalendarFormDialogProps) => {
   const countLabelId = useId();
-  const retireNoteId = useId();
+  const codeId = useId();
 
   return (
     <Dialog
+      className={mode === 'create' ? 'dialog-icon-add' : 'dialog-icon-edit'}
       open
       onClose={onClose}
       closeOnBackdropClick={false}
@@ -71,17 +75,45 @@ export const CalendarFormDialog = ({
       <div className="form-grid dialog-scroll">
         {banner}
 
-        <CodeLockTextField
-          lockReason={codeLockReason}
-          label={t.fields.calendarCode}
-          required
-          value={values.calendarCode}
-          onChange={(event) => onChange({ calendarCode: event.target.value })}
-          error={fieldErrors.calendarCode}
-        />
+        {mode === 'create' ? (
+          /* 등록 — 화면이 채운 코드 그대로면 칸 이름 옆 「자동」(C-17). 고치면 사라진다. */
+          <div className="field-cell">
+            <span className="field-label work-calendar-code-label">
+              <label htmlFor={codeId}>{t.fields.calendarCode}</label>
+              <span className="required-mark" aria-hidden="true">
+                {' '}
+                *
+              </span>
+              {codeIsAuto && (
+                <span className="work-calendar-auto-mark">
+                  {messages.screenPatterns.autoValue.chip}
+                </span>
+              )}
+            </span>
+            <TextField
+              id={codeId}
+              placeholder={t.form.codePlaceholder}
+              required
+              value={values.calendarCode}
+              onChange={(event) => onChange({ calendarCode: event.target.value })}
+              error={fieldErrors.calendarCode}
+            />
+          </div>
+        ) : (
+          <CodeLockTextField
+            lockReason={codeLockReason}
+            label={t.fields.calendarCode}
+            placeholder={t.form.codePlaceholder}
+            required
+            value={values.calendarCode}
+            onChange={(event) => onChange({ calendarCode: event.target.value })}
+            error={fieldErrors.calendarCode}
+          />
+        )}
 
         <TextField
           label={t.fields.calendarName}
+          placeholder={t.form.namePlaceholder}
           required
           value={values.calendarName}
           onChange={(event) => onChange({ calendarName: event.target.value })}
@@ -109,24 +141,17 @@ export const CalendarFormDialog = ({
          * 줄까지 함께 붙어 줄이 두 층이 되고, 창이 뷰포트를 넘어 「저장」과 「취소」까지 화면
          * 밖으로 밀려난다(W-05-11 브라우저 확인에서 실측).
          *
-         * ⭐ **감추지 않고 잠그고 사유를 붙인다**(공유계약 G-2). 사유는 보이는 DOM 텍스트로
-         * 낸다 — 잠긴 버튼은 포커스를 못 받아 툴팁이 닿지 않는다.
+         * ⭐ **감추지 않고 잠근다**(공유계약 G-2). 잠긴 단추 아래 까닭 문장은 걷었다(사용자 지시 · #360).
          */}
         {mode === 'edit' && (
           <div className="field-cell">
             <Button
               variant="outlined"
               disabled={isSaving || !deactivate.enabled}
-              aria-describedby={deactivate.reason === null ? undefined : retireNoteId}
               onClick={onDeactivate}
             >
               {messages.workCalendar.retire.confirm}
             </Button>
-            {deactivate.reason !== null && (
-              <span id={retireNoteId} className="field-note">
-                {deactivate.reason}
-              </span>
-            )}
           </div>
         )}
       </div>

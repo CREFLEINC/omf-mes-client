@@ -116,8 +116,8 @@ export const WorkOrderCloseFilterBar = ({
   ];
 
   return (
+    /* 조회 조건 구획 제목 글자는 두지 않는다 — 영역 이름(`aria-label`)만 남긴다(#360). */
     <section className="pane work-order-close-filter-pane" aria-label={t.pane}>
-      <h2 className="pane-title">{t.pane}</h2>
       <form className="filter-bar work-order-close-filter" onSubmit={submit}>
         <div className="field-cell wide-select">
           <label className="field-label" htmlFor={productionOrderId}>
@@ -179,7 +179,7 @@ export const WorkOrderCloseFilterBar = ({
             </p>
           )}
         </div>
-        <div className="field-cell field-cell-unlabeled">
+        <div className="field-cell field-cell-unlabeled filter-actions-end">
           <div className="filter-actions">
             <Button
               aria-describedby={searchDisabled ? validationId : undefined}

@@ -153,7 +153,7 @@ export const ProgressFilterBar = ({
           options={documentTypeOptions}
           value={filters.documentType}
           note={disabledTypeNote}
-          placeholder={t.filters.choose}
+          placeholder={messages.screenPatterns.referencePicker.select(t.fields.documentType)}
           onChange={(value) => {
             setFilters((prev) => ({ ...prev, documentType: value }));
           }}
@@ -173,6 +173,7 @@ export const ProgressFilterBar = ({
 
         <SearchInput
           label={t.fields.q}
+          placeholder={t.filters.qPlaceholder}
           value={filters.q}
           onChange={(event) => {
             setFilters((prev) => ({ ...prev, q: event.target.value }));
@@ -182,8 +183,8 @@ export const ProgressFilterBar = ({
           clearLabel={messages.common.clear}
         />
 
-        {/* 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다. */}
-        <div className="field-cell field-cell-unlabeled">
+        {/* 조회와 초기화는 짝이라 함께 줄바꿈되게 묶고, 조건 줄 오른쪽 끝에 세운다(#360). */}
+        <div className="field-cell field-cell-unlabeled filter-actions-end">
           <div className="filter-actions">
             <Button onClick={search}>{messages.common.search}</Button>
             {isChanged && (

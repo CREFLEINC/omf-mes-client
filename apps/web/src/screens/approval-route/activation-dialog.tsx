@@ -1,4 +1,4 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -66,6 +66,7 @@ export const ActivationDialog = ({
 
   return (
     <Dialog
+      className={isDeactivate ? 'dialog-icon-block' : 'dialog-icon-restart'}
       open
       onClose={onClose}
       size="sm"
@@ -86,27 +87,43 @@ export const ActivationDialog = ({
     >
       {banner}
 
-      {isDeactivate ? (
-        <>
-          <p>{t.dialog.deactivateBlocks(approvalTypeLabelOf(approvalTypeCode))}</p>
-          {/*
-           * **진행 중 건수를 여기서 되풀이한다.** 폼에도 상시로 서 있지만, 끄기를 결정하는
-           * 순간에 「이미 돌고 있는 것들은 어떻게 되나」가 가장 궁금해지는 자리다.
-           */}
-          <p>
-            {inProgressCount === 0
-              ? t.dialog.deactivateInProgressNone
-              : t.dialog.deactivateInProgress(inProgressCount)}
+      {/* 단말 · 계정 사용 중지 창과 같은 짜임 — 대상 상자 · 질문 · 안내 줄(사용자 지시 · #360). */}
+      <div className="users-roles-worker-dialog">
+        <div className="users-roles-worker-block">
+          <span className="users-roles-worker-block-caption">
+            {isDeactivate ? t.dialog.deactivateCaption : t.dialog.activateCaption}
+          </span>
+          <strong>{approvalTypeLabelOf(approvalTypeCode)}</strong>
+          <span>{t.dialog.targetMeta(stepCount)}</span>
+        </div>
+        <p>{isDeactivate ? t.dialog.deactivateQuestion : t.dialog.activateQuestion}</p>
+        {isDeactivate ? (
+          <>
+            <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+              <Icon name="warning" size={16} aria-hidden />
+              {t.dialog.deactivateBlocks(approvalTypeLabelOf(approvalTypeCode))}
+            </p>
+            {/* 진행 중 건수 · 되돌릴 수 있다는 사실은 그 아래 안내 줄(끄기를 정하는 순간에 궁금한 것). */}
+            <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+              <Icon name="info" size={16} aria-hidden />
+              {/* 안내 줄 안은 한 덩어리 글 — 두 문장이 옆 칸으로 갈라지지 않게 한 span 에 담는다. */}
+              <span>
+                <span>
+                  {inProgressCount === 0
+                    ? t.dialog.deactivateInProgressNone
+                    : t.dialog.deactivateInProgress(inProgressCount)}
+                </span>{' '}
+                <span>{t.dialog.deactivateReversible}</span>
+              </span>
+            </p>
+          </>
+        ) : (
+          <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+            <Icon name="info" size={16} aria-hidden />
+            {t.dialog.activateOpens(approvalTypeLabelOf(approvalTypeCode))}
           </p>
-          {/* 되돌릴 수 있다는 사실이 이 결정의 무게를 정한다 — 물리 삭제와 갈리는 자리다. */}
-          <p>{t.dialog.deactivateReversible}</p>
-        </>
-      ) : (
-        <>
-          <p>{t.dialog.activateOpens(approvalTypeLabelOf(approvalTypeCode))}</p>
-          <p>{t.dialog.activateStepCount(stepCount)}</p>
-        </>
-      )}
+        )}
+      </div>
     </Dialog>
   );
 };

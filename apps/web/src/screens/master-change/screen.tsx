@@ -1,7 +1,6 @@
 import { Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo } from 'react';
-import { useSearchParams } from 'react-router';
 
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { ChangeDetailDialog } from './change-detail-dialog';
@@ -22,11 +21,16 @@ import {
   type EventFilters,
 } from './filters';
 import { PageNav } from './page-nav';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { toPageView } from './pagination';
 import { defaultPeriod, toPeriodQuery, validatePeriod, type PeriodInput } from './period';
 import { useAuditEventList, useFilterOptions } from './queries';
 
 const t = messages.masterChange;
+
+/** 목록 쪽 크기 기본 — 계약 `size` 기본 50(종전에는 싣지 않아 이 값이었다 · #360). */
+const LIST_PAGE_SIZE = 50;
 
 /**
  * W-06-11 컨테이너 — 이 저장소의 **첫 읽기 전용 조회 형 화면**이다.
@@ -35,7 +39,9 @@ const t = messages.masterChange;
  * 조회 조건은 전부 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다.
  */
 export const MasterChangeScreen = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(계약 기본 50)은 싣지도 적지도 않는다(#360). */
+  const { searchParams, setSearchParams, pageSize, changePageSize } =
+    usePageSizeSearchParams(LIST_PAGE_SIZE);
   const newRevisionReasonId = useId();
 
   /**
@@ -111,7 +117,12 @@ export const MasterChangeScreen = () => {
   const listQuery =
     periodQuery === null
       ? null
-      : { ...periodQuery, ...toFilterQuery(filters), ...(page > 1 ? { page } : {}) };
+      : {
+          ...periodQuery,
+          ...toFilterQuery(filters),
+          ...(page > 1 ? { page } : {}),
+          ...(pageSize === LIST_PAGE_SIZE ? {} : { size: pageSize }),
+        };
 
   const list = useAuditEventList(listQuery);
   const rows = list.data?.items ?? [];
@@ -274,6 +285,8 @@ export const MasterChangeScreen = () => {
                 onChange={(nextPage) => {
                   applyQuery(period, filters, nextPage);
                 }}
+                sizes={PAGE_SIZES}
+                onChangeSize={changePageSize}
               />
             )}
           </>

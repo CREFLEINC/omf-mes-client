@@ -17,6 +17,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   },
   actions: {
     reactivate: 'Sử dụng lại',
+    activateConfirm: 'Sử dụng lại',
     copy: 'Sao chép',
     /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
     tempSave: 'Lưu tạm',
@@ -91,21 +92,33 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       'Phiên bản đã ngừng dùng thì không sửa được. Muốn thay đổi thì hãy phát hành phiên bản mới.',
   },
   dialog: {
-    deactivateTitle: 'Bạn có muốn ngừng sử dụng tiêu chuẩn kiểm tra không?',
-    activateTitle: 'Bạn có muốn sử dụng lại tiêu chuẩn kiểm tra không?',
+    deactivateTitle: 'Ngừng sử dụng tiêu chuẩn kiểm tra',
+    deactivateCaption: 'Đối tượng ngừng sử dụng',
+    deactivateQuestion: 'Bạn có muốn ngừng sử dụng tiêu chuẩn kiểm tra không?',
+    activateTitle: 'Sử dụng lại tiêu chuẩn kiểm tra',
+    activateCaption: 'Đối tượng sử dụng lại',
+    activateQuestion: 'Bạn có muốn sử dụng lại tiêu chuẩn kiểm tra không?',
     activateDescription: 'Sử dụng lại thì có thể áp dụng tiêu chuẩn này cho lần kiểm tra mới.',
     deactivateDescription:
       'Khi ngừng dùng, tiêu chuẩn sẽ không áp dụng được cho lần kiểm tra mới. Thông tin tiêu chuẩn kiểm tra không bị xóa.',
-    confirmTitle: 'Xác nhận phiên bản này?',
+    confirmTitle: 'Xác nhận phiên bản',
+    confirmCaption: 'Đối tượng xác nhận',
+    confirmQuestion: 'Xác nhận phiên bản này?',
     confirmDescription:
       'Đã xác nhận thì phiên bản này không sửa được nữa. Muốn thay đổi thì phải phát hành phiên bản mới.',
-    obsoleteTitle: (version: number): string => `Ngừng dùng phiên bản ${String(version)}?`,
+    obsoleteTitle: 'Ngừng dùng phiên bản',
+    obsoleteCaption: 'Đối tượng ngừng sử dụng',
+    obsoleteQuestion: 'Ngừng dùng phiên bản này?',
     obsoleteDescription:
       'Khi ngừng dùng, phiên bản sẽ không áp dụng cho lần kiểm tra mới. Dữ liệu hiện có vẫn được giữ, và có thể dùng lại khi cần.',
-    reactivateVersionTitle: 'Sử dụng lại phiên bản này?',
+    reactivateVersionTitle: 'Sử dụng lại phiên bản',
+    reactivateVersionCaption: 'Đối tượng sử dụng lại',
+    reactivateVersionQuestion: 'Sử dụng lại phiên bản này?',
     reactivateVersionDescription:
       'Sử dụng lại thì phiên bản này trở lại là phiên bản xác nhận và được áp dụng cho lần kiểm tra mới.',
-    discardTitle: 'Hủy phiên bản đang soạn này?',
+    discardTitle: 'Hủy soạn phiên bản',
+    discardCaption: 'Đối tượng hủy soạn',
+    discardQuestion: 'Hủy phiên bản đang soạn này?',
     discardDescription:
       'Phiên bản này và các hạng mục kiểm tra sẽ bị xóa, không khôi phục được. Thay đổi chưa lưu cũng mất.',
     itemCreateTitle: 'Thêm hạng mục kiểm tra',
@@ -117,6 +130,21 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
      */
     itemLocalNote: 'Bấm Xác nhận thì thêm vào danh sách, bấm Lưu thì mới áp dụng chính thức.',
     planCodePlaceholder: 'Để trống để tự động cấp mã',
+    planPlaceholders: {
+      inspectionPlanName: 'Nhập tên tiêu chuẩn',
+      inspectionType: 'Chọn loại kiểm tra',
+    },
+    versionPlaceholders: {
+      samplingMethod: 'Chọn phương pháp lấy mẫu',
+      aqlInspectionLevel: 'Chọn mức kiểm tra AQL',
+      samplingRatio: 'Nhập tỷ lệ lấy mẫu',
+      samplingQty: 'Nhập số lượng mẫu',
+      aqlValueSelect: 'Chọn AQL',
+      aqlValue: 'Nhập AQL',
+      acceptanceNumber: 'Nhập số chấp nhận',
+      rejectionNumber: 'Nhập số bác bỏ',
+    },
+    guideTextPlaceholder: 'Nhập hướng dẫn',
     itemPlaceholders: {
       inspectionItemCode: 'Để trống để tự động cấp mã',
       inspectionItemName: 'Nhập tên hạng mục',
@@ -127,6 +155,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       upperLimit: 'Nhập giới hạn trên',
       inspectionMethod: 'Chọn phương pháp kiểm tra',
       defaultInspectionEquipment: 'Chọn thiết bị kiểm tra chỉ định',
+      measurementCount: 'Nhập số lần đo',
     },
     requiredFlagLabel: 'Hạng mục kiểm tra bắt buộc',
     automaticJudgmentLabel: 'Sử dụng tự động phán định',

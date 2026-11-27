@@ -116,12 +116,20 @@ export const workOrderClose = {
       '진행 상태를 확인할 수 없어 처음 조회를 시작할 수 없습니다. 새로고침한 뒤에도 같으면 시스템 관리자에게 알리세요.',
   },
   confirm: {
-    title: (workOrderNo: string): string => `작업지시 마감 — ${workOrderNo}`,
-    target: (workOrderNo: string): string => `대상 작업지시: ${workOrderNo}`,
-    irreversible: '작업지시 마감은 되돌릴 수 없습니다. 정정이 필요하면 생산실적을 상계 처리하세요.',
-    /* 마감과 함께 송신 대기열에 오를 뿐 보낸 결과는 이 화면에 없다 — 어디서 보는지 함께 말한다. */
-    erp: (menuPath: string): string =>
-      `ERP 실적 송신은 마감과 함께 대기열에 올라갑니다. 송신 결과는 ${menuPath}에서 확인하세요.`,
+    /* 확인 팝업 시안(#360) — 대상 번호는 제목에 넣지 않고 아래 정보 상자에 한 번만. */
+    /* 다른 확인 창(단말 관리 모양)과 같게 — 제목은 짧은 이름, 묻는 말은 본문(사용자 지시 · #360). */
+    title: '작업지시 마감',
+    question: '작업지시를 마감하시겠습니까?',
+    workOrderNo: '작업지시 번호',
+    /* 되돌릴 수 없다는 한 줄 — 정정 절차는 이 화면 「생산실적 정정」(원본을 두고 정정 실적을 더한다)이다. */
+    irreversible:
+      '마감 후에는 작업지시 마감을 취소할 수 없습니다. 실적 정정이 필요하면 생산실적을 정정 처리해 주세요.',
+    /* 마감과 함께 송신 대기열에 오를 뿐 보낸 결과는 이 화면에 없다 — 어디서 보는지 메뉴 링크로 함께 말한다. */
+    erp: {
+      queued: '마감하면 생산실적이 ERP 송신 대기 상태로 등록됩니다.',
+      /** 메뉴 이름 그대로(app/nav-tree.ts 「ERP 연동 현황·이력」). */
+      menu: 'ERP 연동 현황·이력',
+    },
     fields: {
       judgment: '판정',
       remainder: '잔량 처리',
@@ -132,6 +140,9 @@ export const workOrderClose = {
       `실적이 없는 선발행 LOT ${String(count)}건은 마감과 함께 폐번됩니다.`,
     openLots: (count: number, lotNos: string): string =>
       `마감되지 않은 LOT ${String(count)}건(${lotNos})은 그 상태로 남습니다.`,
+    /** 확인 팝업의 남는 LOT 구획 — 번호는 안내 아래 줄마다 하나씩. */
+    openLotsHeading: (count: number): string => `미마감 LOT ${String(count)}건`,
+    openLotsNote: '작업지시를 마감해도 아래 LOT는 미마감 상태로 남습니다.',
     openLotsChecking: '진행 중인 LOT 을 확인하는 중입니다. 확인이 끝나면 마감할 수 있습니다.',
     openLotsUnknown:
       '진행 중인 LOT 을 확인하지 못했습니다. 마감해도 진행 중인 LOT 은 그 상태로 남습니다.',
@@ -237,12 +248,21 @@ export const workOrderClose = {
   },
   /** 관리웹에서 열린 세션을 닫는 주의 창 — 그 단말에 무엇이 일어나는지 누르기 전에 알린다. */
   forceEnd: {
-    title: '작업 세션을 강제로 끝낼까요?',
-    effect:
-      '강제 종료하면 그 단말의 작업 세션이 바로 끝납니다. 그 단말에서 중단, 재개, 종료를 누르면 「이미 종료된 작업 세션」으로 거부되고, 작업을 이어 가려면 작업 시작을 다시 해야 합니다. 이미 입력했거나 아직 보내지 못한 실적과 자재 투입은 그대로 저장됩니다.',
-    notify: '강제 종료하기 전에 그 단말의 작업자에게 알리세요.',
+    /** 제목은 단추 이름과 같은 말(#360). */
+    title: '작업 세션을 강제 종료할까요?',
+    /** 종료 영향 — 짧은 두 문장(사용자 지시 · #360). 「작업 시작」은 굵게. */
+    effectBefore: '작업 세션은 즉시 종료됩니다. 작업을 이어가려면 해당 단말에서 ',
+    effectAction: '작업 시작',
+    effectAfter: '을 다시 눌러야 합니다.',
+    effectKept: '입력한 실적과 자재 투입 내역은 전송 전 내역까지 보존됩니다.',
+    notify: '종료 전에 해당 단말의 작업자에게 알려 주세요.',
+    /** 이 팝업 정보 상자의 칸 이름 · 상태 이름 — 표의 공용 이름(`status.sessions`)은 그대로 둔다(#360). */
+    startedAt: '시작 일시',
+    RUNNING: '진행 중',
     reason: '강제 종료 사유',
-    reasonHelp: '누가 왜 세션을 닫았는지 기록으로 남습니다.',
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26 「흐린 문구 추가」, #360 문구 정정). */
+    reasonPlaceholder: '종료 사유를 입력하세요',
+    reasonHelp: '처리자와 종료 사유가 이력에 남습니다.',
     reasonRequired: '강제 종료 사유를 입력하세요.',
     reasonTooLong: (max: number): string => `강제 종료 사유를 ${String(max)}자 이하로 줄이세요.`,
     cancel: '취소',
@@ -339,6 +359,16 @@ export const workOrderClose = {
       relation: '정정 관계',
       reason: '정정 사유',
       note: '비고',
+    },
+    /** 정정 창 칸 안 흐린 안내(사용자 지시 2026-11-26 「흐린 문구 추가」). 수량 칸은 필드 이름이 키다. */
+    placeholders: {
+      goodQty: '양품 수량을 입력하세요',
+      defectQty: '불량 수량을 입력하세요',
+      holdQty: '보류 수량을 입력하세요',
+      scrapQty: '스크랩 수량을 입력하세요',
+      reworkQty: '재작업 수량을 입력하세요',
+      reason: '정정 사유를 고르세요',
+      note: '비고를 입력하세요',
     },
     values: {
       original: '원본',

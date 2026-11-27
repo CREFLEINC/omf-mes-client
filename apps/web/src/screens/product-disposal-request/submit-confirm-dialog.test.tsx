@@ -29,7 +29,7 @@ describe('SubmitConfirmDialog — 되돌릴 수 없는 쓰기 앞의 한 겹', (
   it('건수와 합계를 보인다', () => {
     open();
 
-    expect(screen.getByText(t.target(2, '160'))).toBeInTheDocument();
+    expect(screen.getByText(t.question(2, '160'))).toBeInTheDocument();
   });
 
   /** ⛔ 되돌릴 수 없다는 사실을 «누르기 전»에 적는다. */
@@ -65,6 +65,6 @@ describe('SubmitConfirmDialog — 되돌릴 수 없는 쓰기 앞의 한 겹', (
   it('합계를 셀 수 없으면 그대로 보인다', () => {
     open({ qtyText: '—' });
 
-    expect(screen.getByText(t.target(2, '—'))).toBeInTheDocument();
+    expect(screen.getByText(t.question(2, '—'))).toBeInTheDocument();
   });
 });

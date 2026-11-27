@@ -1,8 +1,7 @@
-import { AlertBanner, Breadcrumb, PageHeader, type SortState } from '@crefle/web-ui';
+import { AlertBanner, type SortState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router';
 
 import { LoadErrorBanner } from './load-error-banner';
 import {
@@ -19,20 +18,18 @@ import { ErpChips } from './erp-chips';
 import { ShipmentSection } from './shipment-section';
 import { useLinkedRequest } from './shipment-queries';
 import { PageNav } from './page-nav';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { toPageView } from './pagination';
 import {
   EMPTY_PERIOD,
-  readPeriod,
+  readPeriodOrDefault,
   toPeriodQuery,
   validatePeriod,
   type PeriodInput,
 } from './period';
 import { PrintPreviewDialog } from './print-preview';
-import {
-  useItemLabels,
-  useShipmentRequestDetail,
-  useShipmentScheduleList,
-} from './queries';
+import { useItemLabels, useShipmentRequestDetail, useShipmentScheduleList } from './queries';
 import { RequestDetailDialog } from './request-detail-dialog';
 import { sessionKeys, type Session } from '../../patterns/session';
 import { ShipmentFilterBar } from './shipment-filter-bar';
@@ -50,6 +47,9 @@ import {
 } from './filters';
 
 const t = messages.shipmentSchedule;
+
+/** 목록 쪽 크기 기본 — 계약 `size` 기본 50(종전에는 싣지 않아 이 값이었다 · #360). */
+const LIST_PAGE_SIZE = 50;
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ROWS: ShipmentRequestView[] = [];
@@ -92,14 +92,16 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  * 이 화면은 선택(행 고르기) 개념이 없어 W-01-09의 수명 표 3·4행이 성립하지 않는다.
  */
 export const ShipmentScheduleScreen = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(서버 기본 50)은 싣지도 적지도 않는다(#360). */
+  const { searchParams, setSearchParams, pageSize, changePageSize } =
+    usePageSizeSearchParams(LIST_PAGE_SIZE);
   /*
    * 인쇄한 사람 — 로그인 세션의 사용자 이름(시안 Print-Preview). 세션 공급자 밖에서 그리는 시험도 있어
    * 던지는 `useSession` 대신 이미 받아 둔 세션 값을 읽는다(없으면 빈 값).
    */
   const session = useQueryClient().getQueryData<Session>(sessionKeys.current) ?? null;
 
-  const period = useMemo<PeriodInput>(() => readPeriod(searchParams), [searchParams]);
+  const period = useMemo<PeriodInput>(() => readPeriodOrDefault(searchParams), [searchParams]);
   const filters = useMemo<ShipmentFilters>(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
   const sortKey = readSortKey(searchParams.get('sort'));
@@ -116,6 +118,7 @@ export const ShipmentScheduleScreen = () => {
           ...toFilterQuery(filters),
           ...toSortQuery(sortKey),
           ...(page > 1 ? { page } : {}),
+          ...(pageSize === LIST_PAGE_SIZE ? {} : { size: pageSize }),
         }
       : null;
 
@@ -142,7 +145,10 @@ export const ShipmentScheduleScreen = () => {
    */
   const linkApprovalId = readLinkId(searchParams.get('approvalRequestId'));
   const linkShipmentId = readLinkId(searchParams.get('shipmentId'));
-  const linked = useLinkedRequest({ approvalRequestId: linkApprovalId, shipmentId: linkShipmentId });
+  const linked = useLinkedRequest({
+    approvalRequestId: linkApprovalId,
+    shipmentId: linkShipmentId,
+  });
   const [openedFrom, setOpenedFrom] = useState<'approval' | 'shipment' | null>(null);
 
   useEffect(() => {
@@ -199,16 +205,7 @@ export const ShipmentScheduleScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-
+      {/* 화면 제목 줄(경로 · 큰 제목)은 두지 않는다 — 다른 목록 화면과 같다(#360). */}
       {list.isError && (
         <LoadErrorBanner
           error={list.error}
@@ -279,6 +276,7 @@ export const ShipmentScheduleScreen = () => {
                 applyQuery(period, filters, sortKey);
               }}
               onRetryReferences={retryReferences}
+              openedId={detailRequestId}
               onOpenDetail={(shipmentRequestId) => {
                 setIsPrinting(false);
                 setDetailRequestId(shipmentRequestId);
@@ -289,6 +287,10 @@ export const ShipmentScheduleScreen = () => {
                 view={pageView}
                 onChange={(nextPage) => {
                   applyQuery(period, filters, sortKey, nextPage);
+                }}
+                sizes={PAGE_SIZES}
+                onChangeSize={(size) => {
+                  changePageSize(size);
                 }}
               />
             )}

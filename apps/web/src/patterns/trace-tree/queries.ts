@@ -221,7 +221,7 @@ export const usePartnerSource = (role: PartnerRole): ReferenceSource => {
       title: words.partnerPicker,
       key: ['trace-tree', 'reference', 'partner', role],
       columns: { code: words.partnerCode, name: words.partnerName },
-      search: async (term, page) => {
+      search: async (term, page, _filterValue, size = REFERENCE_PAGE_SIZE) => {
         const data = await runRequest(() =>
           client.GET('/mdm/partners', {
             params: {
@@ -230,7 +230,7 @@ export const usePartnerSource = (role: PartnerRole): ReferenceSource => {
                 roleTypeCode: role,
                 includeInactive: true,
                 page,
-                size: REFERENCE_PAGE_SIZE,
+                size,
               },
             },
           }),

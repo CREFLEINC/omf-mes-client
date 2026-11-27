@@ -32,12 +32,7 @@ const source = (overrides: Partial<ReferenceSource> = {}): ReferenceSource => ({
 });
 
 const columnsWith = (warehouseLookup: ReferenceSource = source()): Column<CountView>[] =>
-  buildCountColumns({
-    selectedCountId: null,
-    warehouseLookup,
-    isLocked: false,
-    onToggleSelect: () => undefined,
-  });
+  buildCountColumns({ warehouseLookup, countTypeName: (code) => code });
 
 const rows = countFixtures.map(toCountView);
 
@@ -53,6 +48,7 @@ const renderTable = (overrides: Partial<CountTableProps> = {}) => {
       isBeyondLast={false}
       selectedCountId={null}
       warehouseLookup={source()}
+      countTypeName={(code) => code}
       isLocked={false}
       onFirstPage={onFirstPage}
       onToggleSelect={onToggleSelect}
@@ -65,7 +61,7 @@ const renderTable = (overrides: Partial<CountTableProps> = {}) => {
 };
 
 describe('buildCountColumns — 열 구성과 폭', () => {
-  it('열이 일곱이다', () => {
+  it('열이 여섯이다 — 선택 열 없이 행을 눌러 고른다', () => {
     expect(columnsWith().map((column) => column.key)).toEqual([
       'inventoryCountNo',
       'warehouse',
@@ -73,7 +69,6 @@ describe('buildCountColumns — 열 구성과 폭', () => {
       'plannedDate',
       'blindCount',
       'statusCode',
-      'select',
     ]);
   });
 
@@ -114,8 +109,8 @@ describe('buildCountColumns — 열 구성과 폭', () => {
   it('어느 열도 정렬을 열지 않는다', () => {
     const columns = columnsWith();
 
-    /* 짝 방향 — 열이 실제로 일곱이다(열이 없어서 통과하는 것이 아니다). */
-    expect(columns).toHaveLength(7);
+    /* 짝 방향 — 열이 실제로 여섯이다(열이 없어서 통과하는 것이 아니다). */
+    expect(columns).toHaveLength(6);
     expect(columns.filter((column) => column.sortable === true)).toEqual([]);
   });
 });
@@ -202,10 +197,10 @@ describe('CountTable — 값 표기', () => {
 });
 
 describe('CountTable — 선택과 빈 상태', () => {
-  it('행의 선택 버튼 이름에 실사번호가 들어간다', async () => {
+  it('행 아무 곳이나 누르면 고른다 — 행 이름에 실사번호가 들어간다', async () => {
     const { onToggleSelect, user } = renderTable();
 
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('IC-2026-900011') }));
+    await user.click(screen.getByRole('row', { name: t.actions.selectRow('IC-2026-900011') }));
 
     expect(onToggleSelect).toHaveBeenCalledWith(9001);
   });
@@ -214,7 +209,7 @@ describe('CountTable — 선택과 빈 상태', () => {
     renderTable({ selectedCountId: 9001 });
 
     expect(
-      screen.getByRole('button', { name: t.actions.deselectRow('IC-2026-900011') }),
+      screen.getByRole('row', { name: t.actions.deselectRow('IC-2026-900011') }),
     ).toBeInTheDocument();
   });
 
@@ -222,12 +217,12 @@ describe('CountTable — 선택과 빈 상태', () => {
    * **C26** — 전송 중에는 행의 선택 버튼과 「첫 쪽으로」가 잠긴다(수명 표 18행).
    * 다른 실사로 옮기면 **앞 요청의 결과가 그 실사 맥락에 나타난다.**
    */
-  it('전송 중에는 행 선택이 잠긴다', () => {
-    renderTable({ isLocked: true });
+  it('전송 중에는 행을 눌러도 고르지 않는다', async () => {
+    const { onToggleSelect, user } = renderTable({ isLocked: true });
 
-    expect(
-      screen.getByRole('button', { name: t.actions.selectRow('IC-2026-900011') }),
-    ).toBeDisabled();
+    await user.click(screen.getByRole('row', { name: t.actions.selectRow('IC-2026-900011') }));
+
+    expect(onToggleSelect).not.toHaveBeenCalled();
   });
 
   it('전송 중에는 첫 쪽으로 가는 버튼도 잠긴다', () => {
@@ -237,12 +232,12 @@ describe('CountTable — 선택과 빈 상태', () => {
   });
 
   /* 짝 방향 — 잠기지 않았을 때는 행 선택이 열려 있다. */
-  it('전송 중이 아니면 행 선택이 열려 있다', () => {
-    renderTable();
+  it('전송 중이 아니면 행을 눌러 고른다', async () => {
+    const { onToggleSelect, user } = renderTable();
 
-    expect(
-      screen.getByRole('button', { name: t.actions.selectRow('IC-2026-900011') }),
-    ).not.toBeDisabled();
+    await user.click(screen.getByRole('row', { name: t.actions.selectRow('IC-2026-900011') }));
+
+    expect(onToggleSelect).toHaveBeenCalledWith(9001);
   });
 
   /*
@@ -277,7 +272,12 @@ describe('CountTable — 선택과 빈 상태', () => {
 
   /* 한 쪽에 같은 상태 코드를 가진 행이 둘 있어도 각각 그려진다 — 코드가 접히지 않는다. */
   it('같은 상태 코드를 가진 행이 접히지 않는다', () => {
-    renderTable({ rows: [toCountView(countResponse()), toCountView(countResponse({ inventoryCountId: 9003, inventoryCountNo: 'IC-2026-900013' }))] });
+    renderTable({
+      rows: [
+        toCountView(countResponse()),
+        toCountView(countResponse({ inventoryCountId: 9003, inventoryCountNo: 'IC-2026-900013' })),
+      ],
+    });
 
     expect(screen.getAllByText('SAMPLE_COUNT_STATUS_A')).toHaveLength(2);
   });

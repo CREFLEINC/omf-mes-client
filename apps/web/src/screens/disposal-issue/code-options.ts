@@ -1,5 +1,10 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { useQuery } from '@tanstack/react-query';
+
+import { useApiClient } from '../../patterns/api-context';
+import { masterName } from '../../patterns/master-name';
+import { runRequest } from '../../patterns/request';
 
 import type { DisposalCodeKey, SelectOption, WarehouseEntry } from './types';
 
@@ -169,8 +174,22 @@ export type DisposalPartnerRoleCode = PartnerRoleCode | '';
  */
 export const DISPOSAL_PARTNER_ROLE_CODE: DisposalPartnerRoleCode = 'DISPOSAL';
 
-const toOptions = (values: readonly string[]): SelectOption[] =>
-  values.map((code) => ({ value: code, label: code }));
+/** 코드마다 서버가 준 이름(코드 → 이름). 받기 전이거나 없는 코드는 코드 그대로 보인다. */
+export type CodeNames = Record<DisposalIssueCodeKey, ReadonlyMap<string, string>>;
+
+const NO_NAMES: CodeNames = {
+  issueType: new Map(),
+  sourceDocumentType: new Map(),
+  reason: new Map(),
+  receiptType: new Map(),
+  status: new Map(),
+  issueStatus: new Map(),
+};
+
+const toOptions = (
+  values: readonly string[],
+  names: ReadonlyMap<string, string> = new Map(),
+): SelectOption[] => values.map((code) => ({ value: code, label: names.get(code) ?? code }));
 
 /**
  * 값 목록을 선택지로 옮긴다.
@@ -180,14 +199,118 @@ const toOptions = (values: readonly string[]): SelectOption[] =>
  *
  * **차례를 바꾸지 않는다.** 값 목록이 어떤 차례로 오는지가 뜻일 수 있다(자주 쓰는 것부터 등).
  */
-export const toCodeOptionSets = (values: CodeValueLists): CodeOptionSets => ({
-  issueType: toOptions(values.issueType),
-  sourceDocumentType: toOptions(values.sourceDocumentType),
-  reason: toOptions(values.reason),
-  receiptType: toOptions(values.receiptType),
-  status: toOptions(values.status),
-  issueStatus: toOptions(values.issueStatus),
+export const toCodeOptionSets = (
+  values: CodeValueLists,
+  names: CodeNames = NO_NAMES,
+): CodeOptionSets => ({
+  issueType: toOptions(values.issueType, names.issueType),
+  sourceDocumentType: toOptions(values.sourceDocumentType, names.sourceDocumentType),
+  reason: toOptions(values.reason, names.reason),
+  receiptType: toOptions(values.receiptType, names.receiptType),
+  status: toOptions(values.status, names.status),
+  issueStatus: toOptions(values.issueStatus, names.issueStatus),
 });
+
+/**
+ * 코드 그룹 — 계약 `logistics-01` 설명의 확정 문구(공유계약 G-32): `GoodsIssueCreate.issueTypeCode` →
+ * `ISSUE_TYPE`, `GoodsIssueCreate.reasonCode` → `GOODS_ISSUE_REASON`, `GoodsReceipt.receiptTypeCode` →
+ * `RECEIPT_TYPE`, 입고·출고 `statusCode` → `LOGISTICS_DOCUMENT_STATUS`. 원천 문서 유형은 계약이
+ * 「공통코드 그룹으로 받지 않는다」고 적어 여기 없다(구조 값 `GOODS_RECEIPT` 그대로).
+ * 채번 식별자(`codeGroupId`)는 환경마다 달라 코드로 부른다.
+ */
+export const DISPOSAL_CODE_GROUPS: Partial<Record<DisposalIssueCodeKey, string>> = {
+  issueType: 'ISSUE_TYPE',
+  reason: 'GOODS_ISSUE_REASON',
+  receiptType: 'RECEIPT_TYPE',
+  status: 'LOGISTICS_DOCUMENT_STATUS',
+  issueStatus: 'LOGISTICS_DOCUMENT_STATUS',
+};
+
+/**
+ * 폐기 요청 폼의 출고 유형으로 고를 수 있는 값 — 계약 `GoodsIssueCreate.issueTypeCode` 설명이
+ * 「폐기는 출고 유형이 아니라 기타출고의 사유다(2026-08-31 확정) — issueTypeCode=OTHER 로 두고
+ * reasonCode 로 가른다」고 못박았다. 처리 이력의 출고 유형 조건은 거르기라 좁히지 않는다.
+ */
+export const DISPOSAL_FORM_ISSUE_TYPE_CODES: readonly string[] = ['OTHER'];
+
+interface CodeGroupList {
+  /** 고를 수 있는 값 — 사용 중인 것만, 서버 차례 그대로. */
+  values: string[];
+  /** 지난 전표가 쓴 미사용 값도 이름으로 보이게 전부 담는다. */
+  names: Map<string, string>;
+}
+
+const useCodeGroup = (groupCode: string) => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['disposal-issue-lookups', 'code-values', groupCode],
+    queryFn: async (): Promise<CodeGroupList> => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: { query: { codeGroupCode: groupCode, includeInactive: true, size: 100 } },
+        }),
+      );
+
+      return {
+        values: data.items.filter((item) => item.isActive).map((item) => item.code),
+        names: new Map(data.items.map((item) => [item.code, masterName(item, item.codeName)])),
+      };
+    },
+  });
+};
+
+export interface DisposalCodeLists {
+  /** 받기 전 · 실패면 자리표시 목록(`PLACEHOLDER_DISPOSAL_ISSUE_CODES`)이다 — 값을 지어내지 않는다. */
+  values: CodeValueLists;
+  names: CodeNames;
+  /** 처리 이력 조건의 출고 유형(좁히지 않은 전체) — 폼의 출고 유형과 갈린다. */
+  historyIssueTypes: readonly string[];
+}
+
+/** 출고 유형 · 폐기 사유 · 입고 유형 · 입고/출고 상태의 값 목록과 이름을 서버에서 받는다. */
+export const useDisposalCodeLists = (): DisposalCodeLists => {
+  const fallback = PLACEHOLDER_DISPOSAL_ISSUE_CODES;
+  const issueType = useCodeGroup('ISSUE_TYPE');
+  const reason = useCodeGroup('GOODS_ISSUE_REASON');
+  const receiptType = useCodeGroup('RECEIPT_TYPE');
+  const documentStatus = useCodeGroup('LOGISTICS_DOCUMENT_STATUS');
+  const allIssueTypes = issueType.data?.values ?? fallback.issueType;
+
+  return {
+    values: {
+      /* 서버 목록만 좁힌다 — 받기 전 · 실패 때의 자리표시 목록은 그대로 둔다. */
+      issueType:
+        issueType.data === undefined
+          ? fallback.issueType
+          : issueType.data.values.filter((code) => DISPOSAL_FORM_ISSUE_TYPE_CODES.includes(code)),
+      sourceDocumentType: fallback.sourceDocumentType,
+      reason: reason.data?.values ?? fallback.reason,
+      receiptType: receiptType.data?.values ?? fallback.receiptType,
+      status: documentStatus.data?.values ?? fallback.status,
+      issueStatus: documentStatus.data?.values ?? fallback.issueStatus,
+    },
+    names: {
+      issueType: issueType.data?.names ?? NO_NAMES.issueType,
+      sourceDocumentType: NO_NAMES.sourceDocumentType,
+      reason: reason.data?.names ?? NO_NAMES.reason,
+      receiptType: receiptType.data?.names ?? NO_NAMES.receiptType,
+      status: documentStatus.data?.names ?? NO_NAMES.status,
+      issueStatus: documentStatus.data?.names ?? NO_NAMES.issueStatus,
+    },
+    historyIssueTypes: allIssueTypes,
+  };
+};
+
+/** 코드 → 이름을 내는 함수 꼴 — 표·상세가 받는다. 이름이 없으면 코드를 그대로 낸다. */
+export type CodeNameOf = (key: DisposalIssueCodeKey, code: string) => string;
+
+export const identityCodeName: CodeNameOf = (_key, code) => code;
+
+export const toCodeNameOf =
+  (names: CodeNames): CodeNameOf =>
+  (key, code) =>
+    names[key].get(code) ?? code;
 
 /**
  * 필수 코드 중 **고를 값 자체가 없는** 것이 있는가.

@@ -26,12 +26,17 @@ const OPTIONS: readonly { value: SplitOrientation; icon: string; label: string }
  * 목록 · 상세 배치를 고르고 브라우저에 남긴다(사용자 지시 2026-10-26 · omf-all-around#185).
  * 다시 들어오거나 다시 로그인해도 같은 배치다. 저장소가 막혀 있으면 좌우다.
  */
-export const useSplitOrientation = (storageKey: string) => {
+export const useSplitOrientation = (
+  storageKey: string,
+  /** 아직 고른 적이 없을 때의 배치 — 주지 않으면 좌우. 상세가 넓어야 하는 화면(작업 캘린더의 7열 달력)만 상하로 준다(#360). */
+  initial: SplitOrientation = 'row',
+) => {
   const [orientation, setOrientation] = useState<SplitOrientation>(() => {
     try {
-      return window.localStorage.getItem(storageKey) === 'column' ? 'column' : 'row';
+      const saved = window.localStorage.getItem(storageKey);
+      return saved === 'column' || saved === 'row' ? saved : initial;
     } catch {
-      return 'row';
+      return initial;
     }
   });
 

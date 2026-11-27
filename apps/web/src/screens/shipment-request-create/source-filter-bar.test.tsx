@@ -23,6 +23,7 @@ describe('SourceFilterBar', () => {
         onSearch={onSearch}
         onRemoveFilter={vi.fn()}
         onReset={vi.fn()}
+        onStartStandalone={vi.fn()}
       />,
     );
 
@@ -44,6 +45,7 @@ describe('SourceFilterBar', () => {
         onSearch={vi.fn()}
         onRemoveFilter={vi.fn()}
         onReset={onReset}
+        onStartStandalone={vi.fn()}
       />,
     );
 
@@ -71,6 +73,7 @@ describe('SourceFilterBar', () => {
         onSearch={vi.fn()}
         onRemoveFilter={vi.fn()}
         onReset={vi.fn()}
+        onStartStandalone={vi.fn()}
       />,
     );
 
@@ -93,10 +96,39 @@ describe('SourceFilterBar', () => {
         onSearch={vi.fn()}
         onRemoveFilter={onRemoveFilter}
         onReset={vi.fn()}
+        onStartStandalone={vi.fn()}
       />,
     );
     await user.click(screen.getByRole('button', { name: t.filters.chipRemovePeriod }));
 
     expect(onRemoveFilter).toHaveBeenCalledWith('period');
+  });
+  it('[ERP S/O 없이 생성]은 [조회] 뒤 구분선 너머에 서고, 누르면 상위에 알린다(#360)', async () => {
+    const onStartStandalone = vi.fn<() => void>();
+    const user = userEvent.setup();
+
+    render(
+      <SourceFilterBar
+        appliedFilters={EMPTY_FILTERS}
+        customerOptions={customerOptions}
+        customerName={t.values.empty}
+        onSearch={vi.fn()}
+        onRemoveFilter={vi.fn()}
+        onReset={vi.fn()}
+        onStartStandalone={onStartStandalone}
+      />,
+    );
+
+    const search = screen.getByRole('button', { name: t.filters.search });
+    const start = screen.getByRole('button', { name: t.actions.startStandalone });
+
+    /* 조건을 안 바꿨으니 [초기화]는 없다 — [조회] | 구분선 | [ERP S/O 없이 생성](채움 단추). */
+    const divider = search.nextElementSibling;
+
+    expect(divider).toHaveClass('inspection-standard-filter-divider');
+    expect(divider?.nextElementSibling).toBe(start);
+
+    await user.click(start);
+    expect(onStartStandalone).toHaveBeenCalledTimes(1);
   });
 });

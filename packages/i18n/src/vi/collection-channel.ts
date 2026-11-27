@@ -143,6 +143,8 @@ export const collectionChannel: Translated<typeof ko.collectionChannel> = {
     createTitle: 'Đăng ký kênh thu thập',
     editTitle: 'Sửa kênh thu thập',
     unitPlaceholder: 'Hãy chọn đơn vị',
+    channelKeyPlaceholder: 'Hãy nhập tên kênh',
+    signalNamePlaceholder: 'Hãy nhập tên tín hiệu',
     equipmentFixed: (code: string, name: string): string => `${code} · ${name}`,
   },
   /** 계약에 검사 항목의 전체 목록이 없다 — 세 칸을 차례로 좁혀야 항목에 닿는다. */
@@ -157,14 +159,11 @@ export const collectionChannel: Translated<typeof ko.collectionChannel> = {
     versionOption: (planVersion: number, statusLabel: string): string =>
       `Rev ${String(planVersion)} · ${statusLabel}`,
     unmapAction: 'Gỡ nối',
-    unmapped:
-      'Chưa nối hạng mục kiểm tra nào. Giá trị vào bằng kênh này không được lưu mà bị bỏ đi.',
+    legendInfo:
+      'Nếu không nối hạng mục kiểm tra, giá trị vào bằng kênh này không được lưu mà bị bỏ đi.',
     /** ⚠ 이 말은 「아직 못 찾았을 때」만 한다 — 이름을 알게 된 뒤에는 mappedKnown 이 선다. */
     mappedUnknown:
       'Đã nối hạng mục kiểm tra. Là hạng mục nào thì màn hình này không xác nhận được, muốn biết thì hãy chọn lại ở bên dưới.',
-    mappedKnown: (name: string): string => `Giá trị của kênh này đi vào hạng mục ${name}.`,
-    versionNeedsPlan: 'Chọn tiêu chuẩn kiểm tra trước thì mới chọn được phiên bản.',
-    itemNeedsVersion: 'Chọn phiên bản trước thì mới chọn được hạng mục kiểm tra.',
     noVersions: 'Tiêu chuẩn kiểm tra này chưa có phiên bản.',
     noItems: 'Phiên bản này chưa có hạng mục kiểm tra.',
     plansLoadFailed: 'Không tải được danh sách tiêu chuẩn kiểm tra.',
@@ -186,9 +185,12 @@ export const collectionChannel: Translated<typeof ko.collectionChannel> = {
     resumeAction: 'Dùng lại',
     deactivateLabel: (channelKey: string): string => `Ngừng sử dụng ${channelKey}`,
     resumeLabel: (channelKey: string): string => `Dùng lại ${channelKey}`,
-    deactivateTitle: 'Ngừng sử dụng kênh này?',
-    resumeTitle: 'Bật lại kênh này?',
-    target: (channelKey: string): string => `Xử lý kênh ${channelKey}.`,
+    deactivateTitle: 'Ngừng sử dụng kênh',
+    resumeTitle: 'Tiếp tục sử dụng kênh',
+    deactivateCaption: 'Đối tượng ngừng sử dụng',
+    resumeCaption: 'Đối tượng tiếp tục sử dụng',
+    deactivateQuestion: 'Bạn có muốn ngừng sử dụng kênh này không?',
+    resumeQuestion: 'Bạn có muốn tiếp tục sử dụng kênh này không?',
     /** ⚠ 수집까지 멈추는지 아직 모른다 — 「값이 버려진다」고도 「담긴다」고도 말하지 않는다. */
     deactivateImpact:
       'Ngừng sử dụng thì kênh này không còn trong danh sách. Hạng mục kiểm tra đã nối với kênh không bị xóa.',
@@ -196,7 +198,6 @@ export const collectionChannel: Translated<typeof ko.collectionChannel> = {
       'Đây là tắt chứ không phải xóa. Bật «gồm cả mục ngừng dùng» thì tìm lại và bật lại được.',
     resumeImpact:
       'Bật lại thì kênh này trở lại danh sách. Hạng mục kiểm tra đã nối cũng giữ nguyên.',
-    loadingTarget: 'Đang tải thông tin kênh.',
   },
   /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다. */
   actionReasons: {

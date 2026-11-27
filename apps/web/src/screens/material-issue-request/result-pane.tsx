@@ -19,8 +19,8 @@ export interface ResultPaneProps {
 /**
  * 구획 ④ — 발행 액션과 결과.
  *
- * **되돌릴 수 없는 쓰기를 두 겹으로 막는다** — ① 전송 중 잠금 ② 성공 뒤 잠금. 확인 창은 두지
- * 않는다: 재고를 움직이지 않는 요청 발행이고, 두 겹의 잠금이 연타를 막는다.
+ * **되돌릴 수 없는 쓰기를 두 겹으로 막는다** — ① 전송 중 잠금 ② 성공 뒤 잠금. 누르면 화면이
+ * 확인 창을 먼저 연다(#360, `publish-confirm-dialog.tsx`).
  *
  * **성공 뒤에도 결과를 지우지 않는다.** 이 화면에는 발행한 요청으로 돌아가는 진입점이 없어,
  * 요청번호를 화면에 남겨 두는 것이 사용자가 그 값을 잃지 않는 유일한 방법이다.
@@ -66,12 +66,20 @@ export const ResultPane = ({ publishBlockReason, banner, created, onPublish }: R
       {banner}
 
       {/*
-       * 잠긴 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더해 `aria-describedby`로 잇는다
-       * (배치 규범 4) — 잠긴 버튼은 포커스를 받지 못해 툴팁만으로는 닿을 수 없다.
+       * 잠긴 사유는 `aria-describedby`로 잇는다. 입력으로 풀 수 없는 잠금(생산 창고 없음 · 이미 발행)만
+       * 보이는 글로 두고, 나머지는 화면 읽기 도구에만 둔다(사용자 지시 2026-11-27 · #360).
        */}
       <div className="material-issue-request-publish-row">
         {publishBlockReason !== null && (
-          <span id={reasonId} className="field-note">
+          <span
+            id={reasonId}
+            className={
+              publishBlockReason === t.sourceWarehouse.none ||
+              publishBlockReason === t.actionReasons.alreadyPublished
+                ? 'field-note'
+                : 'visually-hidden'
+            }
+          >
             {publishBlockReason}
           </span>
         )}

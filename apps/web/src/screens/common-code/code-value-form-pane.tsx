@@ -2,7 +2,7 @@ import { Button, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
-import { CodeLockLabel } from '../../patterns/master';
+import { CodeLockLabel, LockedFieldIcon } from '../../patterns/master';
 import { requiredEmptyClass } from '../users-roles/required-empty';
 import type { CodeValueFormValues } from './code-value-types';
 import { DateField } from './date-field';
@@ -73,8 +73,12 @@ export const CodeValueFormPane = ({
         <TextField
           id={codeId}
           value={values.code}
+          placeholder={t.placeholders.code}
           onChange={(event) => onChange({ code: event.target.value })}
           disabled={codeLockReason !== null}
+          trailingIcon={
+            codeLockReason === null ? undefined : <LockedFieldIcon reason={codeLockReason} />
+          }
           aria-describedby={codeLockReason === null ? undefined : `${codeId}-lock`}
           /* 필수 칸이 비면 빨간 테두리 — 사용자 역할 화면과 같은 방식(#333). 잠긴 칸은 고칠 수 없어 뺀다. */
           containerClassName={codeLockReason === null ? requiredEmptyClass(values.code) : undefined}
@@ -88,6 +92,7 @@ export const CodeValueFormPane = ({
         <TextField
           id={nameId}
           value={values.codeName}
+          placeholder={t.placeholders.codeName}
           onChange={(event) => onChange({ codeName: event.target.value })}
           containerClassName={requiredEmptyClass(values.codeName)}
           error={fieldErrors.codeName}
@@ -103,6 +108,7 @@ export const CodeValueFormPane = ({
           type="number"
           step={1}
           value={values.displayOrder}
+          placeholder={t.placeholders.displayOrder}
           onChange={(event) => onChange({ displayOrder: event.target.value })}
           containerClassName={requiredEmptyClass(values.displayOrder)}
           error={fieldErrors.displayOrder}
@@ -137,6 +143,7 @@ export const CodeValueFormPane = ({
    */
   return (
     <Dialog
+      className={mode === 'create' ? 'dialog-icon-add' : 'dialog-icon-edit'}
       open
       onClose={onCancel}
       size="lg"

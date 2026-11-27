@@ -92,7 +92,6 @@ export const maintenanceOrder: Translated<typeof ko.maintenanceOrder> = {
 
   confirm: {
     title: 'Phát hành lệnh này?',
-    lead: 'Một lệnh sẽ được tạo với nội dung bên dưới.',
     triggerCount: (count: number): string => `${String(count)} kích hoạt`,
     itemCount: (count: number): string => `${String(count)} hạng mục`,
     submit: 'Phát hành',

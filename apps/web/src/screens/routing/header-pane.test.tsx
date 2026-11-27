@@ -129,7 +129,8 @@ describe('HeaderPane', () => {
     const value = screen.getByLabelText('Routing 코드');
     expect(value).toHaveAttribute('aria-readonly', 'true');
     /* 긴 문장 대신 값 옆 라벨(#231) — 문장은 숨긴 글로 값에 이어 화면 낭독기가 읽는다. */
-    expect(screen.getByText('사용 중 · 변경 불가')).toBeInTheDocument();
+    /* 「사용 중 · 변경 불가」 라벨은 두지 않는다(omf-all-around#360). */
+    expect(screen.queryByText('사용 중 · 변경 불가')).toBeNull();
     expect(screen.getByText(CODE_LOCK)).toHaveClass('visually-hidden');
     expect(value).toHaveAccessibleDescription(CODE_LOCK);
   });

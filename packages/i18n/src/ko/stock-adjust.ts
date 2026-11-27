@@ -258,20 +258,19 @@ export const stockAdjust = {
     togglePost: '승인 없이 전기',
     /** 펼친 뒤의 실행 손잡이. **여는 손잡이와 이름을 갈라 둔다** — 같으면 어느 것을 누르는지 갈린다 */
     post: '재고 전기',
-    /** 창의 버튼 문구는 「확인/취소」가 아니다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다. */
-    keepEditing: '계속 입력',
-    /** 전기 확인 창의 되돌아가기. 「계속 입력」과 갈라 둔다 — 이 창에는 고칠 칸이 없다 */
-    keepReviewing: '다시 확인',
-    confirmRegister: '등록합니다',
+    /** 입력은 그대로 두고 창만 닫는다 — 문구는 「취소」로 통일(사용자 지시 2026-11-27 · #360). */
+    keepEditing: '취소',
+    /** 전기 확인 창의 되돌아가기 — 문구는 「취소」로 통일(사용자 지시 2026-11-27 · #360). */
+    keepReviewing: '취소',
+    confirmRegister: '전표 등록',
     confirmSubmit: '결재에 올립니다',
-    confirmPost: '재고를 움직입니다',
+    confirmPost: '전기',
     confirmDiscard: '초안을 버립니다',
     /** 처리 이력 탭의 쪽 이동과 고르기. **번호가 아니라 전표번호로 가리킨다**(`omf-mes#44`) */
     prevPage: '이전 쪽',
     nextPage: '다음 쪽',
     goFirstPage: '첫 쪽으로',
     select: '선택',
-    deselect: '선택 해제',
     selectAdjustmentRow: (adjustmentNo: string): string => `${adjustmentNo} 선택`,
     deselectAdjustmentRow: (adjustmentNo: string): string => `${adjustmentNo} 선택 해제`,
   },
@@ -472,25 +471,21 @@ export const stockAdjust = {
    * 창은 연다」이다.
    */
   dialog: {
-    registerTitle: '이 조정을 등록할까요?',
-    registerLead: '아래 내용으로 조정 전표를 만듭니다.',
-    /** 무엇이 실리는지 값으로 되보인다. 창이 다시 세지 않고 화면이 만든 글자를 받는다. */
+    /** 등록 확인(사용자 시안 2026-11-27 · #360) — 제목 · 사실 상자 세 칸 · 빠지는 줄(있을 때만) · 단추 줄 왼쪽 경고. */
+    registerTitle: '재고 조정 전표를 등록할까요?',
     reasonCode: '조정 사유',
-    sendToErp: 'ERP 송신',
-    sendToErpOn: '보냅니다',
-    sendToErpOff: '보내지 않습니다',
+    sendToErp: 'ERP 송신 대상',
+    /** 등록에 실리는 줄 수를 ERP 송신 칸 한 자리에 — 보내지 않으면 그 사실을 앞에 붙인다. */
+    erpTarget: (lineCount: number): string => `조정 항목 ${String(lineCount)}건`,
+    erpTargetOff: (lineCount: number): string => `송신 안 함 · 조정 항목 ${String(lineCount)}건`,
     countRef: '대상 실사',
-    includedLineCount: (lineCount: number): string =>
-      `조정 라인 ${String(lineCount)}행을 함께 보냅니다.`,
     /**
      * **빠지는 줄 수를 창이 밝힌다**(C19). 표에서 「제외」 표식을 못 본 채 확인하는 길이 있고,
-     * 그때 사용자가 확인한 줄 수와 실제로 나가는 줄 수가 갈린다.
+     * 그때 사용자가 확인한 줄 수와 실제로 나가는 줄 수가 갈린다. 빠지는 줄이 없으면 내지 않는다(사용자 시안).
      */
     excludedLineCount: (lineCount: number): string =>
       `차이가 0인 ${String(lineCount)}행은 등록에서 빠집니다.`,
-    /** 짝 방향 — 빠지는 줄이 없다는 것도 사실이라 말한다. 없을 때 침묵하면 확인이 반쪽이 된다. */
-    noExcludedLine: '빠지는 줄은 없습니다.',
-    registerNoUndo: '만들어진 조정 전표는 이 화면에서 되돌릴 수 없습니다.',
+    registerNoUndo: '등록한 전표는 이 화면에서 취소할 수 없습니다.',
     discardTitle: '세운 조정 대상을 버릴까요?',
     discardLead: '표의 줄과 고른 조정 사유가 사라집니다. 실사 차이는 다시 불러올 수 있습니다.',
     /**
@@ -505,8 +500,8 @@ export const stockAdjust = {
      * **사유 전문과 첫 줄을 나눠 보인다**(C30 · A-12). 첫 줄만 보이면 무엇을 보내는지 모르고,
      * 전문만 보이면 어느 줄이 남들에게 요약으로 보일지 모른다.
      */
-    submitTitle: '이 사유로 결재에 올릴까요?',
-    submitLead: '아래 사유로 이 조정 전표의 승인을 요청합니다.',
+    submitTitle: '결재 요청',
+    submitQuestion: '아래 사유로 이 조정 전표의 승인을 요청하시겠습니까?',
     reasonFull: '사유 전문',
     reasonFirstLine: '결재함 목록에 요약으로 보일 첫 줄',
     submitNoUndo: '결재에 올린 뒤에는 이 화면에서 되돌릴 수 없습니다. 취소는 결재함에서 합니다.',
@@ -516,8 +511,9 @@ export const stockAdjust = {
      * 상신 확인 창과 **갈라 둔다.** 그 창이 확인시키는 것은 「이 문장이 결재함 요약이 된다」이고,
      * 여기서 확인시키는 것은 **무엇이 언제 자로 원장에 잡히는가**다.
      */
-    postTitle: '이 조정을 전기할까요?',
-    postLead: '아래 값으로 재고를 움직입니다. 되돌리려면 반대 방향의 조정을 새로 세워야 합니다.',
+    /** 전기 확인(#360) — 제목 · 사실 상자(전표번호 · 영업일 · 발생 일시) · 단추 줄 왼쪽 경고. 등록 확인 창과 같은 짜임. */
+    postTitle: '재고 조정 전표를 전기할까요?',
+    postNoUndo: '전기한 전표는 이 화면에서 취소할 수 없습니다.',
     /**
      * ⭐ **영업일과 발생 일시의 날짜가 갈렸다** — 막지 않고 밝힌다(공유계약 C-8의 야간조 경계).
      *
@@ -537,7 +533,8 @@ export const stockAdjust = {
    */
   result: {
     label: '등록 결과',
-    createdTitle: (adjustmentNo: string): string => `조정 전표 ${adjustmentNo}를 만들었습니다.`,
+    /** 등록 성공 — 오른쪽 아래 알림으로 낸다(#360). 전표번호는 결과 구획 표에 남는다. */
+    createdTitle: (adjustmentNo: string): string => `조정 전표 ${adjustmentNo}를 생성했습니다.`,
     inventoryAdjustmentNo: '조정 전표번호',
     statusCode: '등록 시점 상태',
     lineCount: (lineCount: number): string =>
@@ -622,7 +619,6 @@ export const stockAdjust = {
      * 세우지 않는다(목이 그 값을 채워 준다 — 계획 §5.2.5).
      */
     postedTitle: (adjustmentNo: string): string => `조정 전표 ${adjustmentNo}를 전기했습니다.`,
-    postedDescription: '재고가 움직였습니다. 되돌리려면 반대 방향의 조정을 새로 세워야 합니다.',
     adjustedAt: '전기일시',
     /**
      * 200은 왔는데 **전기 시각이 실려 오지 않았다**(계약이 그 값을 nullable로 두었다).

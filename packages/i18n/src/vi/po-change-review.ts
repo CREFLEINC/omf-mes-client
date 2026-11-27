@@ -15,9 +15,10 @@ export const poChangeReview: Translated<typeof ko.poChangeReview> = {
   breadcrumbRoot: 'Quản lý sản xuất',
   panes: {
     list: 'Danh sách thông báo thay đổi',
-    diff: 'Đã thay đổi những gì',
-    workOrders: 'W/O bị ảnh hưởng',
-    decision: 'Quyết định',
+    diff: 'Nội dung thay đổi',
+    workOrders: 'Lệnh sản xuất bị ảnh hưởng',
+    workOrdersCount: (count: number) => `Lệnh sản xuất bị ảnh hưởng: ${String(count)}`,
+    decision: 'Cách xử lý',
   },
   header: {
     unacknowledged: (count: number) => `${String(count)} mục chưa xác nhận`,
@@ -52,8 +53,8 @@ export const poChangeReview: Translated<typeof ko.poChangeReview> = {
     increase: (qty: string) => `▲ Tăng ${qty}`,
     same: '(Giống nhau)',
     selectFirst: 'Hãy chọn một thông báo trong danh sách thông báo thay đổi',
-    noLastChange:
-      'Nội dung thay đổi không được gửi kèm. Nếu tải lại vẫn không có, hãy xem bản gốc ở màn hình tình trạng đồng bộ liên kết.',
+    noLastChange: 'Chưa nhận được nội dung thay đổi.',
+    viewSource: 'Xem bản gốc',
     outOfScope: 'Không thể hiện mục của thay đổi này — bản gốc xem ở tình trạng đồng bộ liên kết.',
   },
   workOrders: {
@@ -79,20 +80,23 @@ export const poChangeReview: Translated<typeof ko.poChangeReview> = {
     adjustNegative: 'Hãy nhập từ 0 trở lên',
   },
   decision: {
-    label: 'Quyết định',
-    apply: 'Áp dụng thay đổi — điều chỉnh số lượng W/O',
-    proceed: 'Giữ nguyên (tiếp tục) — để lại chỗ không khớp và đi tiếp',
+    label: 'Cách xử lý',
+    apply: 'Áp dụng thay đổi',
+    applyHint: 'Áp dụng số lượng đã thay đổi vào lệnh sản xuất.',
+    proceed: 'Giữ nguyên lệnh sản xuất',
+    proceedHint: 'Giữ số lượng hiện tại và ghi lại chỗ không khớp.',
     reasonLabel: 'Lý do',
     reasonRequired: 'Hãy nhập lý do tiếp tục',
     reasonTooLong: 'Lý do quá dài. Hãy nhập tối đa 500 ký tự',
     proceedNote: 'Nếu tiếp tục, dấu không khớp với P/O sẽ lưu lại trên các W/O bị ảnh hưởng.',
     applyWithoutAdjustment:
       'Lệnh sản xuất không ghi số lượng điều chỉnh sẽ giữ nguyên, và W/O đó sẽ mang dấu không khớp với P/O. Nếu không có số lượng nào để điều chỉnh — như khi áp dụng việc dừng hoặc hủy — thì cứ tiến hành.',
-    submit: 'Xử lý xác nhận',
-    submitted: 'Đã lưu xử lý xác nhận.',
+    submit: 'Xử lý',
+    submitted: 'Đã lưu xử lý.',
   },
   lock: {
     selectNone: 'Hãy chọn một thông báo thay đổi',
+    noChange: 'Không thể xử lý ở trạng thái hiện tại.',
     decisionNone: 'Hãy chọn áp dụng hoặc tiếp tục',
     reason: 'Hãy nhập lý do tiếp tục',
     adjustment: 'Hãy sửa lỗi số lượng điều chỉnh',

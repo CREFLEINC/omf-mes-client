@@ -41,8 +41,8 @@ export interface ItemListResponse {
  */
 export const itemKeys = {
   all: ['item-extended-attrs-items'] as const,
-  list: (filters: ItemFilters, page: number, plantId: string) =>
-    ['item-extended-attrs-items', 'list', filters, page, plantId] as const,
+  list: (filters: ItemFilters, page: number, plantId: string, size: number = ITEM_LIST_PAGE_SIZE) =>
+    ['item-extended-attrs-items', 'list', filters, page, plantId, size] as const,
   /**
    * 상세의 키. **행 단위 이름 조회가 이 키를 함께 쓴다**(결정 12) —
    * 같은 품목이 여러 행·여러 표에 나와도 한 번만 받게 하려는 것이다.
@@ -72,22 +72,33 @@ export const useItemTypeOptions = (): UseQueryResult<ItemTypeOption[]> =>
  * **`POST /mdm/items`를 부르는 자리가 이 화면 어디에도 없다** — 계약에 그 오퍼레이션이 없고,
  * 품목은 외부 정본이라 여기서 만드는 자료가 아니다.
  */
+/** 품목 목록 쪽 크기 기본 — 계약 `size` 기본 50(종전에는 싣지 않아 이 값이었다 · #360). */
+export const ITEM_LIST_PAGE_SIZE = 50;
+
 export const useItemList = (
   filters: ItemFilters,
   page: number,
   /** 위 줄 사업부의 공장(`useMasterDataPlant`) — 비면 공장으로 거르지 않는다. */
   plantId = '',
   enabled = true,
+  /** 고른 쪽 크기(10 · 20 · 50) — 기본이면 싣지 않는다. */
+  size: number = ITEM_LIST_PAGE_SIZE,
 ): UseQueryResult<ItemListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: itemKeys.list(filters, page, plantId),
+    queryKey: itemKeys.list(filters, page, plantId, size),
     enabled,
     queryFn: () =>
       runRequest(() =>
         client.GET('/mdm/items', {
-          params: { query: { ...toItemListQuery(filters, page), ...plantIdQuery(plantId) } },
+          params: {
+            query: {
+              ...toItemListQuery(filters, page),
+              ...plantIdQuery(plantId),
+              ...(size === ITEM_LIST_PAGE_SIZE ? {} : { size }),
+            },
+          },
         }),
       ),
   });

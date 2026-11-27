@@ -158,8 +158,8 @@ export const shipmentProcessing: Translated<typeof ko.shipmentProcessing> = {
     irreversible: 'Không hoàn tác được.',
   },
   confirm: {
-    title: (shipmentRequestNo: string) => `Xử lý xuất hàng ${shipmentRequestNo}`,
-    target: (shipmentRequestNo: string) => `Sẽ xử lý xuất hàng cho ${shipmentRequestNo}.`,
+    title: 'Xử lý xuất hàng',
+    question: 'Xử lý xuất hàng chứ?',
     irreversible:
       'Việc xử lý này không hoàn tác được — tồn kho bị trừ ngay và genealogy của LOT kết thúc.',
     unconfirmedNote:

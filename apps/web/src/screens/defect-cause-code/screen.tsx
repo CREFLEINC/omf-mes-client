@@ -1,33 +1,12 @@
-import {
-  AlertBanner,
-  Breadcrumb,
-  Button,
-  EmptyState,
-  Icon,
-  PageHeader,
-  SkeletonText,
-  useToast,
-} from '@crefle/web-ui';
+import { AlertBanner, Breadcrumb, Button, Icon, PageHeader, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { PAGE_SIZES } from '../../patterns/page-nav';
-import {
-  PaneListHead,
-  PaneSplitter,
-  useFitToViewport,
-  usePaneSplit,
-} from '../../patterns/po-board';
-import {
-  PaneHeightSplitter,
-  SplitOrientationToggle,
-  useSplitOrientation,
-} from '../../patterns/split-orientation';
-import { ChildCodeTable } from './child-code-table';
-import { CodeDetailHead } from './code-detail-head';
+import { useFitToViewport } from '../../patterns/po-board';
 import { CodeFilterBar } from './code-filter-bar';
 import { CodeFormPane } from './code-form-pane';
 import { CodeListPane } from './code-list-pane';
@@ -50,7 +29,13 @@ import {
   toServerFieldName,
 } from './mappers';
 import { UsageChips } from './usage-chips';
-import { useCodeDetail, useCodeList, useCodeOptions, useProcessLabels } from './queries';
+import {
+  useCodeDetail,
+  useCodeList,
+  useCodeOptions,
+  useCodeReferenceCounts,
+  useProcessLabels,
+} from './queries';
 import { ProcessMappingPane } from './process-mapping-pane';
 import { resolveTab } from './tabs';
 import type {
@@ -65,7 +50,6 @@ import { usePageHub } from '../../patterns/page-hub';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
 
 const t = messages.defectCauseCode;
-const hubText = messages.common.inspectionHub;
 
 /**
  * 코드 잠금 사유 — 다른 기록에서 쓰는 코드는 짧은 한 줄로(사용자 시안 · #209), 그 밖(ERP 수신 등)은 공용 문구 그대로.
@@ -76,9 +60,6 @@ const codeLockReasonOf = (editability: Editability): string | null => {
   if (message === null) return null;
   return editability.reason === 'REFERENCED' ? t.actionReasons.codeLockedReferenced : message;
 };
-
-/** 목록 · 상세 배치는 「품질 코드 관리」 묶음의 탭끼리 함께 쓴다(#209). */
-const DEFECT_JUDGMENT_ORIENTATION_KEY = 'omf-mes:defect-judgment-hub:split-orientation';
 
 /**
  * 폼의 현재 값과 그것이 어디서 나왔는지.
@@ -93,8 +74,8 @@ interface CodeFormState {
 }
 
 /**
- * W-06-03 컨테이너. 불량 코드를 그리고,
- * 조회 조건·선택을 주소에 둔다. 어느 코드를 다룰지는 주소(경로)가 정한다(#208).
+ * W-06-03 컨테이너. 불량 코드를 목록 하나로 그리고(오른쪽 상세 상자 · 줄 고르기는 걷었다 · 사용자 지시 #360),
+ * 조회 조건을 주소에 둔다. 어느 코드를 다룰지는 주소(경로)가 정한다(#208).
  */
 const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -104,12 +85,15 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   const tab = resolveTab(kind);
   const adapter = tab.adapter;
 
-  /* 목록 · 상세 배치 — 검사 기준 탭과 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다 · #209). */
+  /* 목록이 화면 폭을 다 쓰고 창 바닥에서 멈춘다 — 표만 상자 안에서 구른다(#360). */
   const { splitRef, aboveRef } = useFitToViewport();
-  const split = usePaneSplit('omf-mes:defect-cause-code:split', 0.45);
-  const layout = useSplitOrientation(DEFECT_JUDGMENT_ORIENTATION_KEY);
-  /* 「수정」 창 — 고른 코드의 값을 고친다(#209). 등록 창은 주소(`mode=create`)가 연다. */
+  /* 「수정」 창 — 행 끝 단추로 고른 코드의 값을 고친다(#209 · #360). 등록 창은 주소(`mode=create`)가 연다. */
   const [isEditOpen, setIsEditOpen] = useState(false);
+  /*
+   * 행 끝 단추(수정 · 사용 중지/재사용)가 다루는 코드 — 상세(잠금 토큰 · 사용 여부)를 이 번호로 받는다.
+   * 줄 고르기를 걷었으므로 주소에 두지 않는다(#360).
+   */
+  const [targetId, setTargetId] = useState<number | null>(null);
 
   const filters = useMemo<CodeFilters>(
     () => ({
@@ -134,15 +118,14 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   );
 
   const isCreateMode = searchParams.get('mode') === 'create';
-  const selectedParam = Number(searchParams.get('sel') ?? '') || null;
-  const selectedId = isCreateMode ? null : selectedParam;
-  /** 「상세 추가」로 열면 그때 고른 대분류가 상위 초기값이 된다. */
+  const selectedId = isCreateMode ? null : targetId;
   /*
-   * 「대분류 추가」는 `as=category` 로 연다 — 고른 코드(`sel`)는 뒤 상세 카드에 그대로 두고, 상위 씨앗으로는 쓰지 않는다
-   * (#209 버그 수정: 대분류 추가를 누르면 상세 카드가 비던 문제).
+   * 「하위 코드 추가」(대분류 줄 끝 단추 · #360)는 `parent=<대분류 번호>` 로 연다 — 그 대분류가 상위 초기값이 된다.
+   * 「대분류 추가」는 `as=category` 로 연다 — 상위 씨앗이 없다.
    */
   const isCategoryCreate = isCreateMode && searchParams.get('as') === 'category';
-  const createParentSeed = isCreateMode && !isCategoryCreate ? selectedParam : null;
+  const createParentSeed =
+    isCreateMode && !isCategoryCreate ? Number(searchParams.get('parent') ?? '') || null : null;
 
   const list = useCodeList(adapter, filters);
   const items = useMemo(() => list.data?.items ?? [], [list.data]);
@@ -158,12 +141,6 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   const selected = selectedId === null ? null : (byId.get(selectedId) ?? null);
 
   const detail = useCodeDetail(adapter, selectedId);
-  /*
-   * 오른쪽 상세 카드가 보이는 코드 — 「상세 추가」 창이 열려 있는 동안에도 고른 대분류를 그대로 보인다(#209 버그 수정).
-   * 수정 · 저장은 `detail` 이 맡는다. 등록이 아니면 같은 키라 요청이 하나 더 나가지 않는다.
-   */
-  const viewId = isCreateMode ? selectedParam : selectedId;
-  const shown = useCodeDetail(adapter, viewId);
 
   /*
    * 폼의 기준값 출처. 수정은 상세 응답 객체가, 등록은 「어느 탭에서 어느 상위로 여는가」가 정한다.
@@ -216,8 +193,8 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       setLocalFieldErrors({});
 
       if (isCreateMode) {
-        // 등록하면 창을 닫고 등록한 코드를 고른다 — 판정 유형 탭과 같다(사용자 지시 · #209).
-        updateParams({ mode: null, as: null, sel: String(saved.id) });
+        // 등록하면 창을 닫는다 — 줄 고르기는 걷었다(#360).
+        updateParams({ mode: null, as: null, parent: null });
         toast.show({ variant: 'success', description: messages.common.created });
         return;
       }
@@ -230,6 +207,14 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   });
 
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
+  /*
+   * 목록 행 끝 단추(수정 · 사용 중지/재사용 · #360) — 그 코드의 상세(잠금 토큰 · 사용 여부)를 받으면 창을 연다.
+   * 상세 없이 열면 사용 중지/재사용 판정과 잠금 토큰이 비어 저장이 실패한다.
+   */
+  const [pendingAction, setPendingAction] = useState<{
+    id: number;
+    kind: 'edit' | 'status';
+  } | null>(null);
   /* 확인 창이 사용 중지인지 재사용인지 — 고른 코드의 사용 여부가 정한다(#209). */
   const statusMode: 'deactivate' | 'activate' =
     detail.data?.code.isActive === false ? 'activate' : 'deactivate';
@@ -254,6 +239,12 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
     },
   });
 
+  if (pendingAction !== null && detail.data?.code.id === pendingAction.id) {
+    setPendingAction(null);
+    if (pendingAction.kind === 'edit') setIsEditOpen(true);
+    else setIsDeactivateOpen(true);
+  }
+
   const updateParams = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(searchParams);
     for (const [key, value] of Object.entries(patch)) {
@@ -266,34 +257,9 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
     setSearchParams(next);
   };
 
-  /*
-   * 조건을 바꿔 고른 코드가 새 결과에서 빠지면 선택을 푼다 — 목록에 없는 코드가 상세 카드에 남지 않게(#209 버그 수정).
-   * 새 결과를 다 받은 뒤에 한 번만 본다. 쪽 이동은 조건 변경이 아니므로 보지 않는다.
-   */
-  const recheckSelection = useRef(false);
-  useEffect(() => {
-    if (!recheckSelection.current || list.isPending || list.isFetching || list.isError) return;
-    recheckSelection.current = false;
-    if (selectedId !== null && !items.some((item) => item.id === selectedId)) {
-      setIsEditOpen(false);
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete('sel');
-        return next;
-      });
-    }
-  }, [list.isPending, list.isFetching, list.isError, items, selectedId, setSearchParams]);
-
   // 조회 조건은 화면 상태가 아니라 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다.
   // 조건을 바꾸면 1쪽으로 돌아간다 — 지난 쪽 번호가 새 결과의 범위 밖일 수 있다(#209).
   const handleApplyFilters = (next: CodeFilters) => {
-    // 조건이 실제로 바뀔 때만 본다 — 같은 조건으로 조회하면 목록이 그대로라 확인이 남아 쪽 이동 때 선택이 풀렸다(#209 버그 수정).
-    recheckSelection.current =
-      next.q !== filters.q ||
-      next.includeInactive !== filters.includeInactive ||
-      next.inactiveOnly !== filters.inactiveOnly ||
-      next.dispositionTypeCode !== filters.dispositionTypeCode ||
-      next.processId !== filters.processId;
     updateParams({
       q: next.q === '' ? null : next.q,
       inactive: next.includeInactive ? '1' : null,
@@ -309,7 +275,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
     write.reset();
     setLocalFieldErrors({});
     setIsEditOpen(false);
-    updateParams({ mode: 'create', as: null, ...patch });
+    updateParams({ mode: 'create', as: null, parent: null, ...patch });
   };
 
   /** 창의 「취소」 — 고친 값을 버리고 닫는다. 등록 창은 주소에서 `mode` 를 지워 닫는다. */
@@ -318,7 +284,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
     write.reset();
     setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
     setIsEditOpen(false);
-    if (isCreateMode) updateParams({ mode: null, as: null });
+    if (isCreateMode) updateParams({ mode: null, as: null, parent: null });
   };
 
   /** 값을 고치는 중에 옛 오류가 남아 있으면 무엇을 고쳐야 하는지 알 수 없다. */
@@ -431,35 +397,59 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
         inactive: options.items.filter((item) => !item.isActive).length,
       };
 
-  const listCollapse = {
-    collapsed: split.collapsed,
-    onToggle: split.toggleCollapsed,
-    collapseLabel: hubText.listCollapse,
-    expandLabel: hubText.listExpand,
-    count: list.data?.page.total,
+  /* 「사용된 기록」 열 — 보이는 줄과 그 대분류 머리 줄의 상세를 읽는다(#360). */
+  const referenceIds = useMemo(
+    () => [
+      ...new Set(
+        rows.flatMap((row) => (row.parentId === null ? [row.id] : [row.id, row.parentId])),
+      ),
+    ],
+    [rows],
+  );
+  const referenceCounts = useCodeReferenceCounts(adapter, referenceIds);
+
+  /** 행 끝 단추 — 그 코드를 대상으로 정하고 상세를 받은 뒤 창을 연다. */
+  const startRowAction = (id: number, kind: 'edit' | 'status') => {
+    setIsEditOpen(false);
+    if (kind === 'edit') {
+      write.reset();
+      setLocalFieldErrors({});
+    } else {
+      deactivateWrite.reset();
+    }
+    setPendingAction({ id, kind });
+    setTargetId(id);
   };
+
+  const listTotal = list.data?.page.total;
   const codeListPane = (
     <CodeListPane
-      head={<PaneListHead title={t.panes.list(adapter.labels.tab)} collapse={listCollapse} />}
+      /* 목록 제목 줄 — 「불량코드 목록 N건」. 접을 상세가 없어 「목록 접기」는 걷었다(#360). */
+      head={
+        <div className="po-board-list-head">
+          <h2 className="pane-title">{t.panes.list(adapter.labels.tab)}</h2>
+          {listTotal !== undefined && (
+            <span className="po-board-list-count">{messages.common.paneList.count(listTotal)}</span>
+          )}
+        </div>
+      }
       adapter={adapter}
       rows={rows}
       byId={byId}
       isLoading={list.isPending}
       appliedFilters={filters}
       onApplyFilters={handleApplyFilters}
-      /* 추가 창이 열려 있어도 고른 줄은 그대로 표시한다 — 보이는 코드(`viewId`)로 판정한다(omf-all-around#358 버그 수정). */
-      selectedId={viewId}
       pageMeta={list.data?.page ?? { page: filters.page, size: filters.size, total: 0 }}
       onChangePage={(page) => updateParams({ page: page === 1 ? null : String(page) })}
       onChangePageSize={(size) =>
         updateParams({ page: null, size: size === 20 ? null : String(size) })
       }
       processLabelOf={processLabelOf}
-      onSelect={(id) => {
-        setIsEditOpen(false);
-        /* 고른 줄을 다시 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
-        updateParams({ sel: id === selectedId ? null : String(id), mode: null, as: null });
-      }}
+      referenceCountOf={(id) => referenceCounts.get(id) ?? null}
+      onEdit={(id) => startRowAction(id, 'edit')}
+      onToggleActive={(id) => startRowAction(id, 'status')}
+      /* 상세 카드의 「하위 코드 추가」를 대분류 줄 끝으로 옮겼다 — 그 대분류가 상위 초기값이 된다(#360). */
+      onAddChild={(id) => openCreateForm({ parent: String(id) })}
       loadError={
         list.isError ? (
           <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
@@ -470,7 +460,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
 
   /*
    * 조회 · 초기화 뒤 구분선 너머의 화면 단추 — 검사 기준 탭의 「기준 추가」 자리와 같다(#209).
-   * 상세 추가는 대분류를 고른 뒤 상세 카드에서 한다(사용자 지시 2026-10-29).
+   * 상세 추가는 대분류 줄 끝 단추로 한다(#360).
    */
   const filterActions = (
     <Button
@@ -535,105 +525,9 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
     return null;
   };
 
-  /** 상위 대분류의 표시(「코드 · 명칭」). 목록이 조건으로 걸러져도 찾게 선택지 목록까지 본다. */
-  const parentLabelOf = (code: HierarchyCode): string | null => {
-    if (code.parentId === null) return null;
-    const parent =
-      byId.get(code.parentId) ?? options.items.find((item) => item.id === code.parentId);
-    return parent === undefined
-      ? String(code.parentId)
-      : t.values.groupHeader(parent.code, parent.name);
-  };
-
-  /**
-   * 우 칸. 상세를 받지 못한 상태에서 빈 카드를 보이면 사용자가 그것을 자료로 읽는다 —
-   * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
-   */
-  const renderDetail = (): ReactNode => {
-    if (viewId === null) {
-      return (
-        <section className="pane" aria-label={t.detail.title(adapter.labels.tab)}>
-          <EmptyState
-            size="sm"
-            /* 둥근 바탕 위 아이콘 · 제목 · 설명 — 검사 기준 탭과 같은 모양(#196). */
-            icon={
-              <span className="inspection-standard-empty-icon">
-                <Icon name="layers" size={20} />
-              </span>
-            }
-            title={t.empty.codeNotSelectedTitle}
-            description={t.empty.codeNotSelectedDescription}
-          />
-        </section>
-      );
-    }
-
-    if (shown.isError) {
-      return (
-        <section className="pane" aria-label={t.detail.title(adapter.labels.tab)}>
-          <LoadErrorBanner error={shown.error} onRetry={() => void shown.refetch()} />
-        </section>
-      );
-    }
-
-    if (shown.data === undefined) {
-      return (
-        <section className="pane" aria-label={t.detail.title(adapter.labels.tab)}>
-          <div role="status" aria-label={t.loading.codeDetail}>
-            <SkeletonText lines={4} />
-          </div>
-        </section>
-      );
-    }
-
-    const code = shown.data.code;
-    return (
-      <section
-        className="pane inspection-standard-detail-card"
-        aria-label={t.detail.title(adapter.labels.tab)}
-      >
-        <CodeDetailHead
-          adapter={adapter}
-          code={code}
-          parentLabel={parentLabelOf(code)}
-          processLabel={processLabelOf(shown.data.processId)}
-          referenceCount={shown.data.editability.referenceCount ?? null}
-          // 대분류를 고르면 상세 카드에서 상세를 추가한다 — 고른 대분류가 상위 초기값이 된다.
-          // 창이 열려 있는 동안에도 뒤 카드의 단추는 그대로 둔다 — 보이는 코드(`viewId`)로 판정한다(#209 버그 수정).
-          onAddChild={isCategory(code) ? () => openCreateForm({}) : undefined}
-          onEdit={() => {
-            write.reset();
-            setLocalFieldErrors({});
-            setIsEditOpen(true);
-          }}
-          onDeactivate={() => {
-            deactivateWrite.reset();
-            setIsDeactivateOpen(true);
-          }}
-          onActivate={() => {
-            deactivateWrite.reset();
-            setIsDeactivateOpen(true);
-          }}
-        />
-        {/* 대분류를 고르면 딸린 하위 코드를 함께 본다(사용자 지시 · #209). 미사용까지 받은 전체 목록 기준. */}
-        {isCategory(code) && (
-          <ChildCodeTable
-            // 다른 대분류를 고르면 쪽을 1로 되돌린다.
-            key={code.id}
-            adapter={adapter}
-            codes={options.items
-              .filter((item) => item.parentId === code.id && item.id !== code.id)
-              .sort((left, right) => left.code.localeCompare(right.code))}
-            processLabelOf={processLabelOf}
-          />
-        )}
-      </section>
-    );
-  };
-
   return (
     <>
-      {/* 탭 줄 오른쪽 — 사용 여부 칩 다음에 좌우·상하 배치(사용자 지시 · #209). 그린 순서대로 선다. */}
+      {/* 탭 줄 오른쪽 — 사용 여부 칩(사용자 지시 · #209). 목록만 남아 좌우·상하 배치는 걷었다(#360). */}
       <UsageChips
         counts={usageCounts}
         value={filters.inactiveOnly ? 'inactive' : filters.includeInactive ? 'all' : 'active'}
@@ -645,7 +539,6 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
           })
         }
       />
-      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
 
       {/* 조회 조건 — 검사 기준 탭처럼 목록과 다른 카드에 둔다(#209). */}
       <section
@@ -662,30 +555,22 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
         />
       </section>
 
+      {/*
+       * 줄 끝 단추로 받던 상세가 실패하면 알린다 — 상세 상자가 하던 실패 안내를 이어받는다(#360).
+       * 다시 시도로 받으면 기다리던 창이 그대로 열린다.
+       */}
+      {pendingAction !== null && detail.isError && (
+        <div className="banner-slot">
+          <LoadErrorBanner error={detail.error} onRetry={() => void detail.refetch()} />
+        </div>
+      )}
+
+      {/* 목록 하나 — 오른쪽 상세 상자 · 가운데 막대 · 높이 막대를 걷었다(사용자 지시 · #360). */}
       <div
         ref={splitRef}
-        className={`po-board-split inspection-split inspection-standard-split defect-cause-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
-        style={{ ...split.style, ...layout.style }}
-        data-left-collapsed={split.collapsed ? 'true' : undefined}
+        className="po-board-split inspection-split inspection-standard-split defect-cause-split"
       >
         {codeListPane}
-
-        <PaneSplitter
-          label={hubText.splitter}
-          ratio={split.ratio}
-          onChange={split.commit}
-          collapse={listCollapse}
-        />
-        {layout.orientation === 'column' && (
-          <PaneHeightSplitter
-            label={hubText.heightSplitter}
-            height={layout.listHeight}
-            onChange={layout.changeListHeight}
-            collapse={listCollapse}
-          />
-        )}
-
-        <div className="inspection-standard-detail">{renderDetail()}</div>
       </div>
 
       {renderFormDialog()}
@@ -697,6 +582,11 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
         onConfirm={() => deactivateWrite.write(undefined)}
         isSaving={deactivateWrite.isSaving}
         childCount={deactivateChildCount}
+        target={
+          detail.data === undefined
+            ? undefined
+            : { code: detail.data.code.code, name: detail.data.code.name }
+        }
         // 충돌은 상세를 다시 받아 잠금 토큰을 갱신하면 풀린다. 버릴 입력이 없다.
         banner={<SaveErrorBanner error={deactivateWrite.error} onReload={handleReloadDetail} />}
       />

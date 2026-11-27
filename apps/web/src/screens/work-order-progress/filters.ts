@@ -119,6 +119,8 @@ export const toProgressListQuery = (
   sort: SortState,
   page: number,
   offsetMinutes: number,
+  /** 고른 쪽 크기(10 · 20 · 50 · #360) — 주지 않으면 종전대로 50. */
+  size: number = PAGE_SIZE,
 ): ProgressListQuery | null => {
   const period = resolvePeriod(filters, offsetMinutes);
   if (period.kind !== 'ready') return null;
@@ -136,7 +138,7 @@ export const toProgressListQuery = (
     ...(optionalText(filters.keyword) === undefined ? {} : { q: filters.keyword }),
     sort: toSortParam(sort, filters),
     ...(page > 1 ? { page } : {}),
-    size: PAGE_SIZE,
+    size,
     withProgress: true,
   };
 };

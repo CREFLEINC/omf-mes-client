@@ -1,10 +1,23 @@
 import { AlertBanner, Button, EmptyState } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer, useState, type RefObject } from 'react';
 
+import { useDeselectConfirm } from '../../patterns/deselect-confirm';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
-import { ListCollapseTab, PaneListHead, usePaneSplit } from '../../patterns/po-board';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { useHubActionsTarget } from '../../patterns/hub-actions';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import { toWorkOrderPageView } from '../work-order/pagination';
 import { WorkOrderCloseCandidateListPane } from './candidate-list-pane';
 import {
@@ -210,7 +223,7 @@ export const toWorkOrderCloseConfirmDetails = (source: {
   const summary = messages.workOrderClose.detailSummary;
   const input = messages.workOrderClose.input;
   const details: WorkOrderCloseConfirmDetail[] = [
-    { label: confirmText.fields.judgment, value: summary.judgments[judgment] },
+    { label: confirmText.fields.judgment, value: summary.judgments[judgment], judgment },
   ];
   const variance = detailState.detail.progress?.varianceQty;
   const unit = detailState.unitLabel ?? summary.values.unitNotConfirmed;
@@ -293,6 +306,10 @@ export const WorkOrderCloseCandidateScreen = () => {
     draft: { ...EMPTY_WORK_ORDER_CLOSE_INPUT_DRAFT },
   }));
   const draft = toWorkOrderCloseSelectedDraft(ownedDraft, state.selectedWorkOrderId);
+  /* 고른 줄을 다시 눌러 풀 때 적던 잔량 처리·차이 사유·비고가 사라지는가 — 있으면 먼저 묻는다(#360). */
+  const deselectConfirm = useDeselectConfirm();
+  const hasDraftInput =
+    draft.remainderDisposition !== null || draft.varianceReasonCode !== '' || draft.remarks !== '';
   useEffect(() => {
     dispatch({ type: 'SYNCHRONIZE_INITIALIZATION', initialization });
   }, [initialization]);
@@ -315,7 +332,12 @@ export const WorkOrderCloseCandidateScreen = () => {
   const openSession = useWorkOrderCloseOpenSession(closeSelectedWorkOrderId);
   const openLots = useWorkOrderCloseOpenLots(closeSelectedWorkOrderId);
   const [forceEndTarget, setForceEndTarget] = useState<WorkOrderCloseOpenSessionView | null>(null);
-  const listSplit = usePaneSplit('omf-mes:work-order-close:list');
+  const listSplit = usePaneSplit('omf-mes:work-order-close:list', 0.4);
+  /* 목록 | 상세 공용 분할 — 「⋯」 좌우/상하 배치와 상하일 때 목록 높이 막대(입고 관리와 같은 짜임 · #360). */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const layout = useSplitOrientation('omf-mes:work-order-close:split-orientation');
+  const isStacked = layout.orientation === 'column';
+  const hubTarget = useHubActionsTarget();
   const snapshot = useMemo(
     () =>
       toWorkOrderCloseCandidateSnapshot({
@@ -479,9 +501,18 @@ export const WorkOrderCloseCandidateScreen = () => {
     draft: inputDraft,
     reasonOptions,
   });
-  const closeWarnings = toWorkOrderCloseWarnings({
+  const openLotsSource = openLots.isError
+    ? 'UNKNOWN'
+    : openLots.isPending
+      ? 'CHECKING'
+      : openLots.data;
+  const closeWarnings = toWorkOrderCloseWarnings({ detailState, openLots: openLotsSource });
+  /* 확인 팝업은 남는 LOT 번호를 안내 문장에서 떼어 줄마다 보인다 — 나머지 안내는 화면 배너와 같다. */
+  const isOpenLotsKnown = detailState.kind === 'RESOLVED' && typeof openLotsSource === 'object';
+  const confirmOpenLotNos = isOpenLotsKnown ? openLotsSource.lotNos : [];
+  const confirmWarnings = toWorkOrderCloseWarnings({
     detailState,
-    openLots: openLots.isError ? 'UNKNOWN' : openLots.isPending ? 'CHECKING' : openLots.data,
+    openLots: isOpenLotsKnown ? { ...openLotsSource, lotNos: [] } : openLotsSource,
   });
   /* 일자별 실적 — 마감 판단과 무관한 읽기 구획이라 고른 W/O 마다 따로 둔다(펼침 상태도 함께 초기화). */
   const dailyUom =
@@ -522,8 +553,8 @@ export const WorkOrderCloseCandidateScreen = () => {
     }));
 
   /*
-   * 목록 접기(#350, app.css `list-collapsible`) — 넓은 창(1440px~)은 왼쪽 48px 세로 탭 + 상세, 그보다 좁으면 상세 위
-   * 가로 탭 + 상세 한 칸.
+   * 목록 접기(#350) — 제목 줄 「목록 접기」 · 가운데 막대의 접기 단추. 접으면 목록 자리에 「목록 N건」 탭이 선다
+   * (공용 분할 `po-board-split` · #360).
    */
   const listCollapse = {
     collapsed: listSplit.collapsed,
@@ -534,23 +565,41 @@ export const WorkOrderCloseCandidateScreen = () => {
   };
   return (
     <div className="work-order-close-workspace">
-      <WorkOrderCloseFilterBar
-        appliedFilters={state.appliedFilters}
-        initialFilters={initialization.initialFilters}
-        productionOrderOptions={toWorkOrderCloseProductionOrderOptions(
-          productionOrders.data?.items ?? [],
-        )}
-        statusOptions={[
-          { value: DEFAULT_STATUS_FILTER, label: messages.workOrderClose.filter.closableStatuses },
-          ...toWorkOrderCloseCodeOptions(status.data?.items ?? []),
-        ]}
-        productionOrderUnavailableReason={productionOrderReason(productionOrders)}
-        statusUnavailableReason={initialization.statusUnavailableReason}
-        onSearch={(next) => dispatch({ type: 'SEARCH', filters: next })}
-        onReset={() => dispatch({ type: 'RESET' })}
-      />
+      {hubTarget === null ? (
+        <div className="list-detail-toolbar">
+          <SplitOrientationToggle
+            orientation={layout.orientation}
+            onChange={layout.change}
+            inline
+          />
+        </div>
+      ) : (
+        <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
+      )}
+      <div ref={aboveRef as RefObject<HTMLDivElement>}>
+        <WorkOrderCloseFilterBar
+          appliedFilters={state.appliedFilters}
+          initialFilters={initialization.initialFilters}
+          productionOrderOptions={toWorkOrderCloseProductionOrderOptions(
+            productionOrders.data?.items ?? [],
+          )}
+          statusOptions={[
+            {
+              value: DEFAULT_STATUS_FILTER,
+              label: messages.workOrderClose.filter.closableStatuses,
+            },
+            ...toWorkOrderCloseCodeOptions(status.data?.items ?? []),
+          ]}
+          productionOrderUnavailableReason={productionOrderReason(productionOrders)}
+          statusUnavailableReason={initialization.statusUnavailableReason}
+          onSearch={(next) => dispatch({ type: 'SEARCH', filters: next })}
+          onReset={() => dispatch({ type: 'RESET' })}
+        />
+      </div>
       <div
-        className="work-order-close-content list-collapsible"
+        ref={splitRef}
+        className={`po-board-split work-order-close-split${isStacked ? ' is-stacked' : ''}`}
+        style={{ ...listSplit.style, ...layout.style }}
         data-left-collapsed={listCollapse.collapsed ? 'true' : undefined}
       >
         <WorkOrderCloseCandidateListPane
@@ -573,17 +622,32 @@ export const WorkOrderCloseCandidateScreen = () => {
           loadError={loadError}
           page={page}
           variant={correctionMode ? 'correction' : 'close'}
-          onSelect={(workOrderId) =>
-            /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
-            dispatch(
-              workOrderId === state.selectedWorkOrderId
-                ? { type: 'CLEAR_SELECTION' }
-                : { type: 'SELECT', workOrderId },
-            )
-          }
+          onSelect={(workOrderId) => {
+            /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24) — 적던 것이 있으면 먼저 묻는다(#360). */
+            if (workOrderId === state.selectedWorkOrderId) {
+              deselectConfirm.request(hasDraftInput, () => dispatch({ type: 'CLEAR_SELECTION' }));
+              return;
+            }
+            dispatch({ type: 'SELECT', workOrderId });
+          }}
           onChangePage={(nextPage) => dispatch({ type: 'CHANGE_PAGE', page: nextPage })}
+          pageSizes={PAGE_SIZES}
+          onChangePageSize={(pageSize) => dispatch({ type: 'CHANGE_PAGE_SIZE', pageSize })}
         />
-        <ListCollapseTab collapse={listCollapse} />
+        <PaneSplitter
+          label={messages.common.inspectionHub.splitter}
+          ratio={listSplit.ratio}
+          onChange={listSplit.commit}
+          collapse={listCollapse}
+        />
+        {isStacked && (
+          <PaneHeightSplitter
+            label={messages.common.inspectionHub.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+            collapse={listCollapse}
+          />
+        )}
         {correctionMode ? (
           <div className="work-order-close-detail">
             {state.selectedWorkOrderId === null ? null : (
@@ -665,6 +729,8 @@ export const WorkOrderCloseCandidateScreen = () => {
                 request={executionRequest}
                 details={confirmDetails}
                 warnings={closeWarnings}
+                openLotNos={confirmOpenLotNos}
+                confirmWarnings={confirmWarnings}
                 onClearSelection={() => dispatch({ type: 'CLEAR_SELECTION' })}
                 onReloadCandidates={candidate.refetch}
                 onReloadDetail={detail.refetch}
@@ -681,6 +747,7 @@ export const WorkOrderCloseCandidateScreen = () => {
           onClose={() => setForceEndTarget(null)}
         />
       )}
+      {deselectConfirm.dialog}
     </div>
   );
 };

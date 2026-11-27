@@ -9,6 +9,8 @@ describe('toPageView', () => {
   it('첫 쪽의 위치와 이동 가능 여부를 낸다', () => {
     expect(toPageView({ page: 1, size: 50, total: 240 }, 50)).toEqual({
       page: 1,
+      size: 50,
+      total: 240,
       totalPages: 5,
       rangeLabel: t.pageNav.range(1, 50, 240),
       canPrev: false,

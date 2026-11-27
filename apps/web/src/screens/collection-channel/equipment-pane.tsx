@@ -6,6 +6,7 @@ import { type MasterDataPlant, plantSelectOf } from '../../patterns/master-data-
 import { hasChangedFilters } from '../../patterns/filter-more';
 
 import { UsageName } from '../../patterns/usage-chip';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { type CodeOption, defaultEquipmentFilters } from './options';
 import { SelectField } from './select-field';
 import type { Equipment, EquipmentFilters } from './types';
@@ -90,7 +91,7 @@ export const useEquipmentPane = ({
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className={`link-cell ${ROW_PICK_CLASS}`}
           aria-current={row.equipmentId === selectedEquipmentId ? 'true' : undefined}
           aria-label={t.equipment.selectLabel(row.equipmentCode, row.equipmentName)}
           onClick={() => onSelect(row.equipmentId)}
@@ -140,7 +141,10 @@ export const useEquipmentPane = ({
     }
 
     return (
-      <div className="wide-table collection-channel-table collection-channel-equipment-table">
+      <div
+        className="wide-table collection-channel-table collection-channel-equipment-table"
+        {...rowPickHandlers}
+      >
         <Table
           density="compact"
           caption={
@@ -181,7 +185,7 @@ export const useEquipmentPane = ({
         />
       )}
       {/* 규범 2-1 — 뜻이 짝인 액션이 줄바꿈으로 갈라지지 않게 한 덩어리로 묶는다. */}
-      <div className="field-cell field-cell-unlabeled">
+      <div className="field-cell field-cell-unlabeled filter-actions-end">
         <div className="filter-actions">
           <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
           {/* 「초기화」는 편집 중이거나 적용된 조건이 처음 값과 다를 때만 보인다(C-6). */}

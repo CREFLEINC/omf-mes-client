@@ -11,6 +11,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import { pickDate } from '../../test/date-picker';
 import {
   blindCountLineResponse,
   CLOSABLE_SUMMARY,
@@ -55,7 +56,14 @@ const { codeValues } = vi.hoisted(() => ({
 vi.mock('./code-options', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./code-options')>();
 
-  return { ...actual, PLACEHOLDER_STOCKTAKING_CODES: codeValues };
+  /* 서버 코드값 조회(`useStocktakingCodeLists`)를 배열로 갈아 끼운다 — 이름은 비워 코드가 그대로 보인다. */
+  return {
+    ...actual,
+    useStocktakingCodeLists: () => ({
+      values: codeValues,
+      names: { countType: new Map<string, string>(), varianceReason: new Map<string, string>() },
+    }),
+  };
 });
 
 /** 지어낸 합성 코드. **계약의 `@example` 값을 쓰지 않는다** — 예시가 확정 값으로 읽히면 안 된다. */
@@ -578,7 +586,7 @@ const selectCount = async (
   user: ReturnType<typeof userEvent.setup>,
   inventoryCountNo: string,
 ): Promise<void> => {
-  await user.click(screen.getByRole('button', { name: t.actions.selectRow(inventoryCountNo) }));
+  await user.click(screen.getByRole('row', { name: t.actions.selectRow(inventoryCountNo) }));
 };
 
 /**
@@ -597,10 +605,37 @@ const waitForList = async (): Promise<void> => {
 const openRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requests.filter((request) => request.method === 'POST' && request.url.pathname === LIST_PATH);
 
+/**
+ * 「실사 개시」 등록 팝업(#360). 조회 조건 줄 [조회] 오른쪽의 [실사 개시]가 연다 —
+ * 개시 구획(`openPane`)은 팝업 안에 서므로 팝업을 연 뒤에만 찾힌다.
+ */
+const openFormTrigger = (): HTMLElement =>
+  within(listPane()).getByRole('button', { name: t.actions.open });
+
+const showOpenForm = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(openFormTrigger());
+};
+
+const openFormDialog = (): HTMLElement => screen.getByRole('dialog', { name: t.actions.open });
+
+const queryOpenFormDialog = (): HTMLElement | null =>
+  screen.queryByRole('dialog', { name: t.actions.open });
+
+/** 팝업 단추 줄의 [실사 개시] — 누르면 개시 확인 창이 먼저 뜬다. */
 const openButton = (): HTMLElement =>
-  within(openPane()).getByRole('button', { name: t.actions.open });
+  within(openFormDialog()).getByRole('button', { name: t.actions.open });
 
 const confirmDialog = (): HTMLElement => screen.getByRole('dialog');
+
+/**
+ * 개시 확인 창. 확인 창이 닫히면 등록 팝업이 다시 보이므로(#360) 「창이 닫혔다」는
+ * `dialog` 하나가 아니라 **확인 창**을 이름으로 짚어 센다.
+ */
+const openConfirmDialog = (): HTMLElement =>
+  screen.getByRole('dialog', { name: t.dialog.openTitle });
+
+const queryOpenConfirmDialog = (): HTMLElement | null =>
+  screen.queryByRole('dialog', { name: t.dialog.openTitle });
 
 const chooseOption = async (
   user: ReturnType<typeof userEvent.setup>,
@@ -612,16 +647,21 @@ const chooseOption = async (
   await user.click(screen.getByRole('option', { name: option }));
 };
 
-/** 개시할 수 있는 상태까지 채운다. **값 목록이 채워진 뒤에만 쓸 수 있다**(그전에는 고를 것이 없다). */
+/**
+ * 개시할 수 있는 상태까지 채운다. **값 목록이 채워진 뒤에만 쓸 수 있다**(그전에는 고를 것이 없다).
+ * 등록 팝업이 닫혀 있으면 먼저 연다(#360).
+ */
 const fillOpenDraft = async (
   user: ReturnType<typeof userEvent.setup>,
   plannedDate = '2026-08-12',
 ): Promise<void> => {
+  if (queryOpenFormDialog() === null) await showOpenForm(user);
+
   await chooseOption(user, openPane(), t.fields.countType, SAMPLE_COUNT_TYPE);
   await chooseOption(user, openPane(), t.fields.warehouse, WAREHOUSE_LABEL);
 
   if (plannedDate !== '') {
-    await user.type(within(openPane()).getByLabelText(t.fields.plannedDate), plannedDate);
+    await pickDate(user, within(openPane()).getByLabelText(t.fields.plannedDate), plannedDate);
   }
 };
 
@@ -1196,7 +1236,7 @@ describe('StocktakingScreen — 실사 고르기와 요약', () => {
 
     await screen.findByRole('group', { name: t.detail.summaryLabel });
 
-    await user.click(screen.getByRole('button', { name: t.actions.deselectRow('IC-2026-900011') }));
+    await user.click(screen.getByRole('row', { name: t.actions.deselectRow('IC-2026-900011') }));
 
     await waitFor(() => {
       expect(currentLocation()).toBe(ROUTE);
@@ -1300,9 +1340,10 @@ describe('StocktakingScreen — 참조 풀이', () => {
    * 「그런 창고가 없다」로 결론짓는다.
    */
   it('창고 목록이 잘리면 그 사실을 밝힌다', async () => {
-    renderScreen(allRoutes([warehousesRoute({ total: 40 })]));
+    const { user } = renderScreen(allRoutes([warehousesRoute({ total: 40 })]));
 
     await waitForList();
+    await showOpenForm(user);
 
     /*
      * **창고를 고르는 자리가 둘이라 둘 다 밝혀야 한다**(PR ②에서 개시 구획이 붙었다).
@@ -1545,22 +1586,31 @@ describe('StocktakingScreen — 개시가 잠겨 있는 동안', () => {
    * 없는 전표**에 그 코드가 실린다 — 그래서 개시가 통째로 잠기고 사유가 보인다.
    */
   it('유형 선택지가 비어 있으면 개시가 잠기고 사유가 보인다', async () => {
-    const { requests } = renderScreen(allRoutes());
+    const { requests, user } = renderScreen(allRoutes());
 
     await waitForList();
+    await showOpenForm(user);
 
     expect(openButton()).toBeDisabled();
     expect(openButton()).toHaveAccessibleDescription(t.actionReasons.openCodeListPending);
     expect(openRequests(requests)).toHaveLength(0);
   });
 
-  /* 사유는 **감추지 않고 항상 보이는 글자**로 둔다 — 툴팁만으로는 키보드 사용자가 닿을 수 없다. */
-  it('잠긴 사유가 화면에 글자로 서 있다', async () => {
-    renderScreen(allRoutes());
+  /*
+   * 사유는 **보이는 안내 문구 없이 접근 설명으로만** 남는다(사용자 지시 2026-11-27 · #360) —
+   * 화면 읽기 도구는 단추에서 그대로 읽는다.
+   */
+  it('잠긴 사유는 보이는 안내 문구 없이 접근 설명으로만 남는다', async () => {
+    const { user } = renderScreen(allRoutes());
 
     await waitForList();
+    await showOpenForm(user);
 
-    expect(within(openPane()).getByText(t.actionReasons.openCodeListPending)).toBeInTheDocument();
+    expect(openButton()).toHaveAccessibleDescription(t.actionReasons.openCodeListPending);
+    expect(within(openFormDialog()).getByText(t.actionReasons.openCodeListPending)).toHaveClass(
+      'visually-hidden',
+    );
+    expect(openFormDialog().querySelector('.field-note')).toBeNull();
   });
 
   /*
@@ -1570,9 +1620,10 @@ describe('StocktakingScreen — 개시가 잠겨 있는 동안', () => {
   it('값 목록이 차면 사유가 「고르세요」로 바뀐다', async () => {
     fillCodeLists();
 
-    renderScreen(allRoutes());
+    const { user } = renderScreen(allRoutes());
 
     await waitForList();
+    await showOpenForm(user);
 
     expect(openButton()).toBeDisabled();
     expect(openButton()).not.toHaveAccessibleDescription(t.actionReasons.openCodeListPending);
@@ -1585,6 +1636,7 @@ describe('StocktakingScreen — 개시가 잠겨 있는 동안', () => {
     const { user } = renderScreen(allRoutes());
 
     await waitForList();
+    await showOpenForm(user);
     await chooseOption(user, openPane(), t.fields.countType, SAMPLE_COUNT_TYPE);
 
     expect(openButton()).toBeDisabled();
@@ -1597,6 +1649,7 @@ describe('StocktakingScreen — 개시가 잠겨 있는 동안', () => {
     const { user } = renderScreen(allRoutes());
 
     await waitForList();
+    await showOpenForm(user);
     await chooseOption(user, openPane(), t.fields.countType, SAMPLE_COUNT_TYPE);
     await chooseOption(user, openPane(), t.fields.warehouse, WAREHOUSE_LABEL);
 
@@ -1615,7 +1668,7 @@ describe('StocktakingScreen — 개시가 잠겨 있는 동안', () => {
     /* 짝 방향 — 열렸다고 저절로 나가지는 않는다. */
     expect(openRequests(requests)).toHaveLength(0);
     expect(
-      within(openPane()).queryByText(t.actionReasons.openCodeListPending),
+      within(openFormDialog()).queryByText(t.actionReasons.openCodeListPending),
     ).not.toBeInTheDocument();
   });
 
@@ -1630,6 +1683,7 @@ describe('StocktakingScreen — 개시가 잠겨 있는 동안', () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await waitForList();
+    await showOpenForm(user);
     await user.click(within(openPane()).getByLabelText(t.fields.countType));
 
     const options = screen.getAllByRole('option');
@@ -1638,7 +1692,7 @@ describe('StocktakingScreen — 개시가 잠겨 있는 동안', () => {
 
     await user.click(options[0] as HTMLElement);
     await chooseOption(user, openPane(), t.fields.warehouse, WAREHOUSE_LABEL);
-    await user.type(within(openPane()).getByLabelText(t.fields.plannedDate), '2026-08-12');
+    await pickDate(user, within(openPane()).getByLabelText(t.fields.plannedDate), '2026-08-12');
 
     expect(openButton()).toBeDisabled();
     expect(openButton()).toHaveAccessibleDescription(t.actionReasons.openNeedsCountType);
@@ -1662,40 +1716,18 @@ describe('StocktakingScreen — 개시가 잠겨 있는 동안', () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await waitForList();
+    await showOpenForm(user);
     await chooseOption(user, openPane(), t.fields.countType, tooLongCode);
     await chooseOption(user, openPane(), t.fields.warehouse, WAREHOUSE_LABEL);
-    await user.type(within(openPane()).getByLabelText(t.fields.plannedDate), '2026-08-12');
+    await pickDate(user, within(openPane()).getByLabelText(t.fields.plannedDate), '2026-08-12');
 
     /* 짝 방향 — 버튼은 실제로 열려 있다(잠겨 있어서 창이 안 뜨는 것이 아니다). */
     expect(openButton()).not.toBeDisabled();
 
     await user.click(openButton());
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(queryOpenConfirmDialog()).not.toBeInTheDocument();
     expect(within(openPane()).getByText(t.errors.codeTooLong(50))).toBeInTheDocument();
-    expect(openRequests(requests)).toHaveLength(0);
-  });
-
-  /*
-   * **C21의 첫 층** — 계획일 칸이 **달력에 없는 날짜를 값으로 받지 않는다.** 네이티브
-   * `type="date"`가 그것을 걸러 값이 비고, 그 뒤는 「계획일을 넣으세요」 사유가 맡는다.
-   *
-   * 둘째 층인 인라인 오류(`validateOpenDraft`)는 **이 층이 없는 브라우저**를 위한 것이라
-   * 여기서는 재지 않는다 — 단위 테스트가 그 판정을 고정한다(M25).
-   */
-  it('달력에 없는 계획일은 칸이 값으로 받지 않고 잠긴 채로 남는다', async () => {
-    fillCodeLists();
-
-    const { requests, user } = renderScreen(allRoutes());
-
-    await waitForList();
-    await chooseOption(user, openPane(), t.fields.countType, SAMPLE_COUNT_TYPE);
-    await chooseOption(user, openPane(), t.fields.warehouse, WAREHOUSE_LABEL);
-    await user.type(within(openPane()).getByLabelText(t.fields.plannedDate), '2026-02-31');
-
-    expect(within(openPane()).getByLabelText(t.fields.plannedDate)).toHaveValue('');
-    expect(openButton()).toBeDisabled();
-    expect(openButton()).toHaveAccessibleDescription(t.actionReasons.openNeedsPlannedDate);
     expect(openRequests(requests)).toHaveLength(0);
   });
 });
@@ -1745,14 +1777,15 @@ describe('StocktakingScreen — 개시 확인 창', () => {
   });
 
   /* 닫으면 요청이 나가지 않고 **초안이 그대로 남는다** — 고칠 것이 있어 닫는 것이다. */
-  it('계속 입력을 누르면 창만 닫히고 초안이 남는다', async () => {
+  it('취소를 누르면 창만 닫히고 초안이 남는다', async () => {
     const { requests, user } = await setupReadyToOpen();
 
     await user.click(openButton());
-    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+    await user.click(within(confirmDialog()).getByRole('button', { name: t.actions.keepEditing }));
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(queryOpenConfirmDialog()).not.toBeInTheDocument();
     expect(openRequests(requests)).toHaveLength(0);
+    /* 등록 팝업이 다시 보이고 초안이 그대로다(#360). */
     expect(within(openPane()).getByLabelText(t.fields.countType)).toHaveTextContent(
       SAMPLE_COUNT_TYPE,
     );
@@ -1768,12 +1801,13 @@ describe('StocktakingScreen — 개시 확인 창', () => {
 
     await user.click(openButton());
 
-    expect(confirmDialog()).toBeInTheDocument();
+    expect(openConfirmDialog()).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '주소 이동' }));
 
+    /* 확인 창이 닫힌다 — 초안을 담은 등록 팝업은 다시 보인다(초안 수명은 주소와 무관 · #360). */
     await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(queryOpenConfirmDialog()).not.toBeInTheDocument();
     });
     expect(openRequests(requests)).toHaveLength(0);
   });
@@ -1832,12 +1866,12 @@ describe('StocktakingScreen — 개시 확인 창', () => {
     await user.click(openButton());
 
     /* 짝 방향 — 조작 전에는 실제로 열려 있었다(원래 안 열려서 통과하는 것이 아니다). */
-    expect(confirmDialog()).toBeInTheDocument();
+    expect(openConfirmDialog()).toBeInTheDocument();
 
     await act(user);
 
     await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(queryOpenConfirmDialog()).not.toBeInTheDocument();
     });
     expect(openRequests(requests)).toHaveLength(0);
   });
@@ -1853,16 +1887,19 @@ describe('StocktakingScreen — 개시 확인 창', () => {
 
     await user.click(openButton());
 
-    /* 창이 열린 채 계획일이 비워진다 — 버튼의 판정은 창을 열 때의 것이라 이미 낡았다. */
-    await user.clear(within(openPane()).getByLabelText(t.fields.plannedDate));
+    /*
+     * 창이 열린 채 유형 값 목록이 비워진다 — 버튼의 판정은 창을 열 때의 것이라 이미 낡았다.
+     * 확인 창이 떠 있는 동안 등록 팝업은 그려지지 않아(#360) 칸을 직접 비울 수 없으므로,
+     * 값 목록을 비우고 갱신으로 다시 그리게 한다.
+     */
+    codeValues.countType = [];
+    await user.click(screen.getByRole('button', { name: t.actions.refresh }));
     await user.click(screen.getByRole('button', { name: t.actions.confirmOpen }));
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(queryOpenConfirmDialog()).not.toBeInTheDocument();
     expect(openRequests(requests)).toHaveLength(0);
     /* 짝 방향 — 초안은 남아 있어 사용자가 이어서 고칠 수 있다. */
-    expect(within(openPane()).getByLabelText(t.fields.countType)).toHaveTextContent(
-      SAMPLE_COUNT_TYPE,
-    );
+    expect(within(openPane()).getByLabelText(t.fields.plannedDate)).toHaveTextContent('2026-08-12');
   });
 });
 
@@ -1883,7 +1920,7 @@ describe('StocktakingScreen — 개시 요청', () => {
   it('취소가 실사 개시보다 앞에 선다', async () => {
     await setupReadyToOpen();
 
-    const cancel = within(openPane()).getByRole('button', { name: messages.common.cancel });
+    const cancel = within(openFormDialog()).getByRole('button', { name: messages.common.cancel });
     const following =
       cancel.compareDocumentPosition(openButton()) & Node.DOCUMENT_POSITION_FOLLOWING;
 
@@ -1964,8 +2001,17 @@ describe('StocktakingScreen — 개시 요청', () => {
       ).toBeGreaterThan(listBefore);
     });
 
-    /* 초안이 비워진다 — 남으면 같은 값으로 한 번 더 보낼 수 있다(중복 전송 완화의 한 층). */
-    expect(within(openPane()).getByLabelText(t.fields.plannedDate)).toHaveValue('');
+    /*
+     * 등록 팝업이 닫히고 초안이 비워진다 — 남으면 같은 값으로 한 번 더 보낼 수 있다(중복 전송
+     * 완화의 한 층). 다시 열어 빈 칸을 확인한다.
+     */
+    expect(queryOpenFormDialog()).not.toBeInTheDocument();
+
+    await showOpenForm(user);
+
+    expect(within(openPane()).getByLabelText(t.fields.plannedDate)).toHaveTextContent(
+      messages.common.selectDate,
+    );
     expect(openButton()).toBeDisabled();
   });
 
@@ -1986,9 +2032,12 @@ describe('StocktakingScreen — 개시 요청', () => {
 
     expect(openButton()).toBeDisabled();
     expect(within(listPane()).getByRole('button', { name: messages.common.search })).toBeDisabled();
-    expect(
-      within(listPane()).getByRole('button', { name: t.actions.selectRow('IC-2026-900011') }),
-    ).toBeDisabled();
+    /* 행에는 disabled 가 없다(행 클릭 · 사용자 지시 2026-11-26) — 다른 실사 행을 눌러도 주소가 바뀌지 않음을 잰다. */
+    const lockedAt = currentLocation();
+    await user.click(
+      within(listPane()).getByRole('row', { name: t.actions.selectRow('IC-2026-900012') }),
+    );
+    expect(currentLocation()).toBe(lockedAt);
     expect(within(openPane()).getByLabelText(t.fields.countType)).toBeDisabled();
     /*
      * **취소도 함께 잠긴다.** 이 한 줄이 `requestDiscardOpenDraft`의 핸들러 가드를 「등가」로
@@ -1996,7 +2045,9 @@ describe('StocktakingScreen — 개시 요청', () => {
      * 무방비면 **두 겹이 함께 조용히 사라진다.** 그러면 전송 중 취소 → 파기가 결과 구획과
      * 실패 배너를 지워 **지금 무엇이 나가는 중인지 화면이 말하지 못한다.**
      */
-    expect(within(openPane()).getByRole('button', { name: messages.common.cancel })).toBeDisabled();
+    expect(
+      within(openFormDialog()).getByRole('button', { name: messages.common.cancel }),
+    ).toBeDisabled();
 
     /* 잠금을 우회하는 길(핸들러 직접 호출)로도 대상이 바뀌지 않는다. */
     await user.click(screen.getByRole('button', { name: '주소 이동' }));
@@ -2032,8 +2083,8 @@ describe('StocktakingScreen — 개시 실패', () => {
 
     expect(await screen.findByText(expected)).toBeInTheDocument();
 
-    /* 입력이 남는다 — 실패했는데 지우면 처음부터 다시 친다. */
-    expect(within(openPane()).getByLabelText(t.fields.plannedDate)).toHaveValue('2026-08-12');
+    /* 입력이 남는다 — 실패했는데 지우면 처음부터 다시 친다. 등록 팝업도 그대로 선다(#360). */
+    expect(within(openPane()).getByLabelText(t.fields.plannedDate)).toHaveTextContent('2026-08-12');
     expect(openRequests(requests)).toHaveLength(1);
 
     /* 결과 구획이 서지 않는다 — 앞 성공의 번호가 남으면 오해한다. */
@@ -2048,7 +2099,7 @@ describe('StocktakingScreen — 개시 실패', () => {
      * 남으면 실패 배너 위에 활성인 「실사 개시 실행」이 서 있고(전송 중 잠금은 응답이
      * 도착하면 풀린다) 다시 누르는 순간 새 멱등 키로 **두 벌째 전표**가 나간다.
      */
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(queryOpenConfirmDialog()).not.toBeInTheDocument();
   });
 
   /*
@@ -2064,7 +2115,7 @@ describe('StocktakingScreen — 개시 실패', () => {
     expect(await screen.findByText(messages.httpError.offline)).toBeInTheDocument();
     expect(screen.getByText(t.notes.openRecheck)).toBeInTheDocument();
     /* **R-2** — 응답이 오지 않은 갈래에서도 창은 닫혀 있다(여기가 두 벌째 전표에 가장 가깝다). */
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(queryOpenConfirmDialog()).not.toBeInTheDocument();
   });
 
   /*
@@ -2099,7 +2150,7 @@ describe('StocktakingScreen — 개시 실패', () => {
      */
     expect(within(detailPane()).getByText(OPENED_COUNT_NO)).toBeInTheDocument();
     /* **R-2** — 둘째 시도가 실패한 뒤에도 창은 닫혀 있다. */
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(queryOpenConfirmDialog()).not.toBeInTheDocument();
   });
 
   /*
@@ -2179,8 +2230,15 @@ describe('StocktakingScreen — 개시 실패', () => {
     expect(await screen.findByText('보낼 수 없는 값이 있습니다.')).toBeInTheDocument();
     expect(within(openPane()).getByText(serverMessage)).toBeInTheDocument();
 
-    await user.click(within(openPane()).getByRole('button', { name: messages.common.cancel }));
+    await user.click(
+      within(openFormDialog()).getByRole('button', { name: messages.common.cancel }),
+    );
     await user.click(screen.getByRole('button', { name: t.actions.discardDraft }));
+
+    /* 버리면 등록 팝업이 닫힌다(#360) — 다시 열어도 배너와 필드 오류가 없다. */
+    expect(queryOpenFormDialog()).not.toBeInTheDocument();
+
+    await showOpenForm(user);
 
     expect(screen.queryByText('보낼 수 없는 값이 있습니다.')).not.toBeInTheDocument();
     expect(within(openPane()).queryByText(serverMessage)).not.toBeInTheDocument();
@@ -2217,7 +2275,7 @@ describe('StocktakingScreen — 개시 초안의 수명', () => {
     await waitFor(() => {
       expect(openButton()).not.toBeDisabled();
     });
-    expect(within(openPane()).getByLabelText(t.fields.plannedDate)).toHaveValue('2026-08-12');
+    expect(within(openPane()).getByLabelText(t.fields.plannedDate)).toHaveTextContent('2026-08-12');
     expect(within(openPane()).getByLabelText(t.fields.countType)).toHaveTextContent(
       SAMPLE_COUNT_TYPE,
     );
@@ -2237,7 +2295,7 @@ describe('StocktakingScreen — 개시 초안의 수명', () => {
 
     await screen.findByRole('group', { name: t.detail.summaryLabel });
 
-    expect(within(openPane()).getByLabelText(t.fields.plannedDate)).toHaveValue('2026-08-12');
+    expect(within(openPane()).getByLabelText(t.fields.plannedDate)).toHaveTextContent('2026-08-12');
     expect(openButton()).not.toBeDisabled();
   });
 
@@ -2248,15 +2306,30 @@ describe('StocktakingScreen — 개시 초안의 수명', () => {
   it('취소를 누르면 파기 확인 창을 거쳐 초안이 비워진다', async () => {
     const { user } = await setupReadyToOpen();
 
-    await user.click(within(openPane()).getByRole('button', { name: messages.common.cancel }));
+    await user.click(
+      within(openFormDialog()).getByRole('button', { name: messages.common.cancel }),
+    );
 
     expect(screen.getByText(messages.common.discardChangesConfirm)).toBeInTheDocument();
-    /* 확인하기 전에는 아직 남아 있다. */
-    expect(within(openPane()).getByLabelText(t.fields.plannedDate)).toHaveValue('2026-08-12');
 
+    /* 확인하기 전에는 아직 남아 있다 — 「계속 입력」이면 등록 팝업이 초안 그대로 다시 보인다. */
+    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+
+    expect(within(openPane()).getByLabelText(t.fields.plannedDate)).toHaveTextContent('2026-08-12');
+
+    await user.click(
+      within(openFormDialog()).getByRole('button', { name: messages.common.cancel }),
+    );
     await user.click(screen.getByRole('button', { name: t.actions.discardDraft }));
 
-    expect(within(openPane()).getByLabelText(t.fields.plannedDate)).toHaveValue('');
+    /* 버리면 등록 팝업이 닫히고, 다시 열면 빈 칸이다. */
+    expect(queryOpenFormDialog()).not.toBeInTheDocument();
+
+    await showOpenForm(user);
+
+    expect(within(openPane()).getByLabelText(t.fields.plannedDate)).toHaveTextContent(
+      messages.common.selectDate,
+    );
     expect(openButton()).toBeDisabled();
   });
 
@@ -2267,8 +2340,12 @@ describe('StocktakingScreen — 개시 초안의 수명', () => {
     const { user } = renderScreen(allRoutes());
 
     await waitForList();
-    await user.click(within(openPane()).getByRole('button', { name: messages.common.cancel }));
+    await showOpenForm(user);
+    await user.click(
+      within(openFormDialog()).getByRole('button', { name: messages.common.cancel }),
+    );
 
+    /* 확인 창 없이 등록 팝업이 바로 닫힌다 — 화면에 창이 하나도 없다. */
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });
@@ -2504,7 +2581,8 @@ describe('StocktakingScreen — 라인 초안', () => {
     [
       '개시 초안을 쳐도',
       async (user) => {
-        await user.type(within(openPane()).getByLabelText(t.fields.plannedDate), '2026-08-12');
+        await showOpenForm(user);
+        await pickDate(user, within(openPane()).getByLabelText(t.fields.plannedDate), '2026-08-12');
       },
     ],
   ])('%s 라인 초안이 남는다', async (_label, act) => {
@@ -2561,7 +2639,8 @@ describe('StocktakingScreen — 라인 초안', () => {
 
     const { user } = await setupAtLocation();
 
-    await user.type(within(openPane()).getByLabelText(t.fields.plannedDate), '2026-08-12');
+    await showOpenForm(user);
+    await pickDate(user, within(openPane()).getByLabelText(t.fields.plannedDate), '2026-08-12');
     await user.type(qtyField(1), '98');
 
     await user.click(within(detailPane()).getByRole('button', { name: messages.common.cancel }));
@@ -2569,7 +2648,7 @@ describe('StocktakingScreen — 라인 초안', () => {
 
     expect(qtyField(1)).toHaveValue('');
     /* 개시 초안은 남는다 — 서로 다른 것을 가리키는 두 초안이다. */
-    expect(within(openPane()).getByLabelText(t.fields.plannedDate)).toHaveValue('2026-08-12');
+    expect(within(openPane()).getByLabelText(t.fields.plannedDate)).toHaveTextContent('2026-08-12');
   });
 
   /*
@@ -3070,7 +3149,8 @@ describe('StocktakingScreen — 저장 성공', () => {
   const saveOne = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
     await fillAllQty(user);
     await user.click(saveButton());
-    await screen.findByRole('status', { name: t.result.savedLabel });
+    /* 성공은 오른쪽 아래 알림으로 선다(사용자 지시 2026-11-27 · #360). */
+    await screen.findByText(t.result.savedToast);
   };
 
   /*
@@ -3106,45 +3186,18 @@ describe('StocktakingScreen — 저장 성공', () => {
     expect(qtyField(1)).toHaveValue('');
   });
 
-  /** 결과 구획이 **서버가 되돌려 준 줄 수**와 위치 이름을 낸다. */
-  it('결과 구획이 치환한 위치와 줄 수를 낸다', async () => {
-    const { user } = await setupAtLocation();
-
-    await saveOne(user);
-
-    const result = screen.getByRole('status', { name: t.result.savedLabel });
-
-    expect(within(result).getByText(LOCATION_LABEL)).toBeInTheDocument();
-    expect(
-      within(result).getByText(t.result.savedCount(countLineFixtures.length)),
-    ).toBeInTheDocument();
-  });
-
   /*
-   * **수명 표 5행 — 결과가 매이는 축이 둘이다.** 같은 실사 안에서 위치만 옮겨도 앞 위치의
-   * 저장 결과가 사라져야 한다. 축을 `ct` 하나로 두면 새 위치의 라인 표 아래에 그대로 서 있다.
+   * 성공은 **알림 한 줄**로 알린다(사용자 지시 2026-11-27 · #360) — 저장 결과 상자는 두지 않는다.
+   * 결과 구획에는 개시·마감 결과만 선다.
    */
-  it('위치를 바꾸면 저장 결과가 사라진다', async () => {
+  it('성공하면 알림이 뜨고 결과 구획은 서지 않는다', async () => {
     const { user } = await setupAtLocation();
 
     await saveOne(user);
 
-    await user.click(screen.getByLabelText(t.fields.location));
-    await user.click(screen.getByRole('option', { name: t.values.locationNotChosen }));
-
-    await waitFor(() => {
-      expect(screen.queryByRole('status', { name: t.result.savedLabel })).not.toBeInTheDocument();
-    });
-  });
-
-  /** **수명 표 10행** — 「다시 조회」는 값을 버리려고 누르는 것이 아니다. 결과가 남는다. */
-  it('다시 조회해도 저장 결과가 남는다', async () => {
-    const { user } = await setupAtLocation();
-
-    await saveOne(user);
-    await user.click(screen.getByRole('button', { name: t.actions.refresh }));
-
-    expect(screen.getByRole('status', { name: t.result.savedLabel })).toBeInTheDocument();
+    expect(screen.getByText(t.result.savedToast)).toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: t.result.closedLabel })).not.toBeInTheDocument();
   });
 });
 
@@ -3173,7 +3226,8 @@ describe('StocktakingScreen — 저장 실패', () => {
     await screen.findByText(expected);
 
     expect(qtyField(1)).toHaveValue('100');
-    expect(screen.queryByRole('status', { name: t.result.savedLabel })).not.toBeInTheDocument();
+    /* 실패에는 성공 알림이 뜨지 않는다. */
+    expect(screen.queryByText(t.result.savedToast)).not.toBeInTheDocument();
   });
 
   /*
@@ -3299,21 +3353,22 @@ describe('StocktakingScreen — 저장 실패', () => {
 
   /*
    * **승계 교훈 — 「성공 뒤 실패」 순서를 만든다.** 실패 테스트가 늘 빈 화면에서 시작하면
-   * 「실패하면 결과 구획을 비운다」(수명 표 14행)가 아무것도 재지 못한다.
+   * 앞 성공이 남긴 것과 실패가 섞이는 판을 재지 못한다. 성공은 알림이라(#360) 결과 구획은
+   * 처음부터 서지 않고, 실패는 배너로만 서며 창이 남지 않는다.
    */
-  it('성공한 뒤 실패하면 결과 구획이 비고 창이 서 있지 않다', async () => {
+  it('성공한 뒤 실패하면 실패 배너가 서고 결과 구획·창이 서 있지 않다', async () => {
     const { user } = await setupAtLocation(allRoutes([replaceThenForbiddenRoute()]));
 
     await fillAllQty(user);
     await user.click(saveButton());
-    await screen.findByRole('status', { name: t.result.savedLabel });
+    await screen.findByText(t.result.savedToast);
 
     await fillAllQty(user);
     await user.click(saveButton());
 
     await screen.findByText(messages.httpError.forbidden);
 
-    expect(screen.queryByRole('status', { name: t.result.savedLabel })).not.toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });
@@ -3343,9 +3398,12 @@ describe('StocktakingScreen — 저장 중 잠금', () => {
     expect(qtyField(1)).toBeDisabled();
     expect(screen.getByLabelText(t.lineTable.reasonLabel(1))).toBeDisabled();
     expect(within(listPane()).getByRole('button', { name: messages.common.search })).toBeDisabled();
-    expect(
-      within(listPane()).getByRole('button', { name: t.actions.deselectRow('IC-2026-900011') }),
-    ).toBeDisabled();
+    /* 행에는 disabled 가 없다(행 클릭 · 사용자 지시 2026-11-26) — 다른 실사 행을 눌러도 주소가 바뀌지 않음을 잰다. */
+    const lockedAt = currentLocation();
+    await user.click(
+      within(listPane()).getByRole('row', { name: t.actions.selectRow('IC-2026-900012') }),
+    );
+    expect(currentLocation()).toBe(lockedAt);
     expect(
       within(detailPane()).getByRole('button', { name: messages.common.cancel }),
     ).toBeDisabled();
@@ -3356,7 +3414,7 @@ describe('StocktakingScreen — 저장 중 잠금', () => {
 
     release();
 
-    await screen.findByRole('status', { name: t.result.savedLabel });
+    await screen.findByText(t.result.savedToast);
   });
 
   /*
@@ -3455,7 +3513,8 @@ describe('StocktakingScreen — 저장 중 잠금', () => {
       expect(requestsTo(requests, DETAIL_PATH).length).toBeGreaterThan(detailBefore);
     });
 
-    expect(screen.queryByRole('status', { name: t.result.savedLabel })).not.toBeInTheDocument();
+    /* 앞 위치의 성공 알림이 뜨지 않는다(#360 — 결과 상자 대신 알림). */
+    expect(screen.queryByText(t.result.savedToast)).not.toBeInTheDocument();
     /* 짝 방향 — 화면은 「위치를 고르지 않았다」를 그대로 말하고 있다. */
     expect(screen.getByText(t.empty.noLocationTitle)).toBeInTheDocument();
   });
@@ -4392,10 +4451,11 @@ describe('StocktakingScreen — 마감 실패', () => {
 
   /*
    * **승계 교훈 — 「성공 뒤 실패」 순서를 만든다.** 실패 테스트가 늘 빈 화면에서 시작하면
-   * 「실패하면 결과 구획을 비운다」(수명 표 16행)가 아무것도 재지 못한다.
+   * 앞 성공 뒤의 실패 판을 재지 못한다.
    *
-   * 마감은 성공하면 다시 누를 수 없으므로(플래그가 막는다) **앞선 저장이 세운 결과** 위에서
-   * 마감을 실패시킨다 — 같은 대상에서 결과 구획이 실제로 거둬지는 유일한 순서다.
+   * 마감은 성공하면 다시 누를 수 없으므로(플래그가 막는다) **앞선 저장이 성공한** 위에서
+   * 마감을 실패시킨다. 저장 성공은 알림이라(#360) 결과 구획은 서지 않고, 마감 실패도
+   * 결과 구획을 세우지 않으며 창이 남지 않는다.
    */
   it('앞선 저장이 성공한 뒤 마감이 실패하면 결과 구획이 비고 창이 서 있지 않다', async () => {
     const { user } = await setupClosable(
@@ -4407,13 +4467,13 @@ describe('StocktakingScreen — 마감 실패', () => {
     await fillAllQty(user);
     await user.click(saveButton());
 
-    /* 저장 결과가 실제로 선다 — 이 뒤라야 「거둔다」를 잴 수 있다. */
-    await screen.findByRole('status', { name: t.result.savedLabel });
+    /* 저장이 실제로 성공한다 — 알림이 선다. */
+    await screen.findByText(t.result.savedToast);
 
     await closeCount(user);
 
     expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
-    expect(screen.queryByRole('status', { name: t.result.savedLabel })).not.toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: t.result.closedLabel })).not.toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });
@@ -4445,9 +4505,12 @@ describe('StocktakingScreen — 마감 중 잠금', () => {
     expect(qtyField(1)).toBeDisabled();
     expect(saveButton()).toBeDisabled();
     expect(within(listPane()).getByRole('button', { name: messages.common.search })).toBeDisabled();
-    expect(
-      within(listPane()).getByRole('button', { name: t.actions.deselectRow('IC-2026-900011') }),
-    ).toBeDisabled();
+    /* 행에는 disabled 가 없다(행 클릭 · 사용자 지시 2026-11-26) — 다른 실사 행을 눌러도 주소가 바뀌지 않음을 잰다. */
+    const lockedAt = currentLocation();
+    await user.click(
+      within(listPane()).getByRole('row', { name: t.actions.selectRow('IC-2026-900012') }),
+    );
+    expect(currentLocation()).toBe(lockedAt);
 
     await user.click(closeButton());
 

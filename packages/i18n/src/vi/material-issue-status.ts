@@ -149,7 +149,6 @@ export const materialIssueStatus: Translated<typeof ko.materialIssueStatus> = {
           : `Lấy phần dự kiến xuất của W/O khác, lý do ${reason}`,
     },
     cancel: 'Hủy yêu cầu',
-    cancelLocked: 'Đã thực hiện một phần nên không thể hủy',
     revert: 'Hoàn tác',
     save: 'Lưu',
   },

@@ -11,8 +11,9 @@ describe('일시의 시·분 선택', () => {
     renderWithProviders(
       <DateTimeField timePicker label="계획 시작" value="2026-11-16T08:00" onChange={onChange} />,
     );
-    expect(screen.queryByRole('textbox', { name: '계획 시작 시각' })).toBeNull();
-    await user.click(screen.getByRole('button', { name: '계획 시작 시각' }));
+    /* 시각은 칸에 바로 칠 수도 있고(24시간), 시계 아이콘으로 고르기 창을 열 수도 있다(omf-all-around#360). */
+    expect(screen.getByRole('textbox', { name: '계획 시작 시각' })).toHaveValue('08:00');
+    await user.click(screen.getByRole('button', { name: '계획 시작 시각 고르기' }));
     await user.click(
       within(screen.getByRole('listbox', { name: '계획 시작 (시)' })).getByRole('option', {
         name: '09',
@@ -37,6 +38,7 @@ describe('일시의 시·분 선택', () => {
         onChange={() => {}}
       />,
     );
-    expect(screen.getByRole('button', { name: '계획 종료 시각' })).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: '계획 종료 시각' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '계획 종료 시각 고르기' })).toBeDisabled();
   });
 });

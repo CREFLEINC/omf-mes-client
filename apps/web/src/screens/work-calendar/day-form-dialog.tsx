@@ -50,6 +50,7 @@ export const DayFormDialog = ({
 
   return (
     <Dialog
+      className="dialog-icon-edit"
       open
       onClose={onClose}
       closeOnBackdropClick={false}
@@ -103,7 +104,6 @@ export const DayFormDialog = ({
           value={values.startTime}
           onChange={(event) => onChange({ startTime: event.target.value })}
           disabled={!onPartial}
-          disabledReason={t.dayForm.timeNeedsPartial}
           error={fieldErrors.startTime}
         />
 
@@ -114,7 +114,6 @@ export const DayFormDialog = ({
           value={values.endTime}
           onChange={(event) => onChange({ endTime: event.target.value })}
           disabled={!onPartial}
-          disabledReason={t.dayForm.timeNeedsPartial}
           error={fieldErrors.endTime}
         />
 
@@ -126,6 +125,7 @@ export const DayFormDialog = ({
          */}
         <TextField
           label={t.dayForm.reason}
+          placeholder={t.dayForm.reasonPlaceholder}
           value={values.reasonCode}
           onChange={(event) => onChange({ reasonCode: event.target.value })}
           error={fieldErrors.reasonCode}
@@ -133,6 +133,7 @@ export const DayFormDialog = ({
 
         <TextField
           label={t.dayForm.remarks}
+          placeholder={t.dayForm.remarksPlaceholder}
           value={values.remarks}
           onChange={(event) => onChange({ remarks: event.target.value })}
           error={fieldErrors.remarks}

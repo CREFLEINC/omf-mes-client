@@ -1,4 +1,4 @@
-import { Button, Chip, Dialog } from '@crefle/web-ui';
+import { Button, Chip, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -43,6 +43,7 @@ export const PartnerRoleConfirmDialog = ({
   onClose,
 }: PartnerRoleConfirmDialogProps) => (
   <Dialog
+    className="dialog-icon-cancel"
     open
     onClose={onClose}
     size="sm"
@@ -62,29 +63,41 @@ export const PartnerRoleConfirmDialog = ({
   >
     {banner}
 
-    <p>{t.dialog.lead}</p>
-
-    <ul>
-      {/* 계약이 (거래처, 역할)을 유일하게 두므로 코드가 곧 안정적인 행 식별자다. */}
-      {released.map((role) => (
-        <li key={role.roleTypeCode}>
-          {role.label}
-          {!role.isKnown && (
-            <>
-              {/*
-               * 이름과 표식이 붙어 읽히지 않게 낱말 사이 공백 하나를 둔다.
-               * 어휘 밖 역할은 **해제하면 이 화면에서 다시 붙일 수 없어** 가장 위험한 자리다 —
-               * 창에서마저 흐려지면 무엇을 잃었는지 되짚을 단서가 남지 않는다.
-               */}{' '}
-              <Chip variant="status" status="warning" size="sm">
-                {t.unknownBadge}
-              </Chip>
-            </>
-          )}
-        </li>
-      ))}
-    </ul>
-
-    {willHaveNoRole && <p>{t.dialog.noneLeft}</p>}
+    {/*
+     * 단말 사용 중지 창과 같은 짜임 — 대상 상자 · 질문 · 안내 줄(#360).
+     * 대상은 해제되는 역할 전부라 상자에 목록을 담고, 상자 위 작은 제목은 종전 안내 문장을 그대로 쓴다.
+     */}
+    <div className="users-roles-worker-dialog">
+      <div className="users-roles-worker-block">
+        <span className="users-roles-worker-block-caption">{t.dialog.lead}</span>
+        <ul>
+          {/* 계약이 (거래처, 역할)을 유일하게 두므로 코드가 곧 안정적인 행 식별자다. */}
+          {released.map((role) => (
+            <li key={role.roleTypeCode}>
+              {role.label}
+              {!role.isKnown && (
+                <>
+                  {/*
+                   * 이름과 표식이 붙어 읽히지 않게 낱말 사이 공백 하나를 둔다.
+                   * 어휘 밖 역할은 **해제하면 이 화면에서 다시 붙일 수 없어** 가장 위험한 자리다 —
+                   * 창에서마저 흐려지면 무엇을 잃었는지 되짚을 단서가 남지 않는다.
+                   */}{' '}
+                  <Chip variant="status" status="warning" size="sm">
+                    {t.unknownBadge}
+                  </Chip>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <p>{t.dialog.question}</p>
+      {willHaveNoRole && (
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+          <Icon name="warning" size={16} aria-hidden />
+          {t.dialog.noneLeft}
+        </p>
+      )}
+    </div>
   </Dialog>
 );

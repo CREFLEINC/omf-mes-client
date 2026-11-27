@@ -1,10 +1,11 @@
-import { Button, Dialog, TextArea, useToast } from '@crefle/web-ui';
+import { Button, Chip, type ChipStatus, Dialog, Icon, TextArea, useToast } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { type JSX, useEffect, useId, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { InfoFacts } from '../../patterns/info-facts';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { workOrderCloseKeys, type WorkOrderCloseOpenSessionView } from './queries';
@@ -74,24 +75,24 @@ export const SessionForceEndDialog = ({
       : trimmed.length > REASON_MAX_LENGTH
         ? t.reasonTooLong(REASON_MAX_LENGTH)
         : null;
+  /* 빈 사유는 단추만 잠근다 — 칸 아래 · 단추 위에 같은 안내를 되풀이하지 않는다(#360). 넘친 글자 수만 알린다. */
+  const tooLongNote = trimmed.length > REASON_MAX_LENGTH ? blockedReason : null;
   const worker =
     session.workerName === null || session.workerNo === null
       ? sessionText.unknown
       : sessionText.workerValue(session.workerName, session.workerNo);
-  const state =
-    session.statusCode === 'RUNNING' || session.statusCode === 'STOPPED'
-      ? sessionText[session.statusCode]
-      : sessionText.unknown;
-  const fields: [label: string, value: string][] = [
-    [sessionText.terminal, terminalOf(session)],
-    [sessionText.worker, worker],
-    [sessionText.startedAt, formatPlantDateTime(session.startedAt) ?? sessionText.unknown],
-    [sessionText.state, state],
-  ];
+  /* 상태는 칩으로 — 진행 중 정보 색, 중단 경고 색, 모르는 값 중립(#360). 「진행 중」은 이 팝업 표시만이다. */
+  const [stateLabel, stateTone]: [string, ChipStatus] =
+    session.statusCode === 'RUNNING'
+      ? [t.RUNNING, 'info']
+      : session.statusCode === 'STOPPED'
+        ? [sessionText.STOPPED, 'warning']
+        : [sessionText.unknown, 'idle'];
 
   return (
     <Dialog
       open
+      className="session-force-end-dialog dialog-icon-cancel"
       title={t.title}
       showCloseButton={false}
       /* 되돌릴 수 없는 일 앞에서 바깥을 눌러 닫히지 않게 한다. */
@@ -106,7 +107,7 @@ export const SessionForceEndDialog = ({
           </Button>
           <Button
             variant="filled"
-            aria-describedby={blockedReason === null ? undefined : noteId}
+            aria-describedby={tooLongNote === null ? undefined : noteId}
             disabled={blockedReason !== null || write.isSaving}
             loading={write.isSaving}
             onClick={() => write.write({ reason: trimmed })}
@@ -116,36 +117,64 @@ export const SessionForceEndDialog = ({
         </>
       }
     >
-      <SaveErrorBanner error={write.error} />
-      <dl className="work-order-close-confirm-details">
-        {fields.map(([label, value]) => (
-          <div key={label}>
-            <dt>{label}</dt>
-            <dd>{value}</dd>
-          </div>
-        ))}
-      </dl>
-      <p>{t.effect}</p>
-      <p>{t.notify}</p>
-      <TextArea
-        label={t.reason}
-        value={reason}
-        rows={2}
-        fullWidth
-        required
-        maxLength={REASON_MAX_LENGTH}
-        helperText={write.fieldErrors.reason === undefined ? t.reasonHelp : undefined}
-        error={write.fieldErrors.reason}
-        onChange={(event) => {
-          setReason(event.target.value);
-          write.clearFieldError('reason');
-        }}
-      />
-      {blockedReason !== null && (
-        <p className="field-note" id={noteId}>
-          {blockedReason}
+      {/* 대상 정보 → 종료 전 안내 → 종료 영향 → 사유 입력 → 단추 차례(사용자 지시 · #360 개선안). */}
+      <div className="users-roles-worker-dialog session-force-end-body">
+        <SaveErrorBanner error={write.error} />
+        {/* 정보 상자 — 정보 표시 팝업 시안 상자, 한 줄 가로 나열(#360). */}
+        <InfoFacts
+          rows={[
+            [
+              { label: sessionText.terminal, value: terminalOf(session) },
+              { label: sessionText.worker, value: worker },
+              {
+                label: t.startedAt,
+                value: formatPlantDateTime(session.startedAt) ?? sessionText.unknown,
+              },
+              {
+                label: sessionText.state,
+                value: (
+                  <Chip size="sm" variant="status" status={stateTone}>
+                    {stateLabel}
+                  </Chip>
+                ),
+              },
+            ],
+          ]}
+        />
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+          <Icon name="warning" size={16} aria-hidden />
+          {t.notify}
         </p>
-      )}
+        <p>
+          {t.effectBefore}
+          <strong>{t.effectAction}</strong>
+          {t.effectAfter}
+          <br />
+          {t.effectKept}
+        </p>
+        <TextArea
+          /* 공백만 친 사유도 빈 칸이다 — 실행 단추가 잠긴 동안 빨간 바탕을 유지한다(#360 점검). */
+          className={trimmed === '' ? 'session-force-end-reason-empty' : undefined}
+          label={t.reason}
+          placeholder={t.reasonPlaceholder}
+          value={reason}
+          rows={2}
+          fullWidth
+          required
+          maxLength={REASON_MAX_LENGTH}
+          helperText={write.fieldErrors.reason === undefined ? t.reasonHelp : undefined}
+          error={write.fieldErrors.reason}
+          onChange={(event) => {
+            setReason(event.target.value);
+            write.clearFieldError('reason');
+          }}
+        />
+        {tooLongNote !== null && (
+          <p className="field-note" id={noteId}>
+            {tooLongNote}
+          </p>
+        )}
+      </div>
     </Dialog>
   );
 };

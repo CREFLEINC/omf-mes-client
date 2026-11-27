@@ -50,6 +50,8 @@ export interface ResultPaneProps {
   result: ReturnResultView;
   /** **`result.lines`를 이름으로 푼 것.** 화면이 센 줄이 아니라 서버가 준 배열에서 나온다 */
   lines: readonly ResultLineSummary[];
+  /** 상태의 서버 코드값 이름(#360). 주지 않으면 코드 그대로. */
+  statusName?: string;
 }
 
 /**
@@ -79,7 +81,7 @@ export interface ResultPaneProps {
  *
  * 기존 디자인 시스템 컴포넌트의 조합이라 이 화면 슬라이스가 소유한다.
  */
-export const ResultPane = ({ result, lines }: ResultPaneProps) => (
+export const ResultPane = ({ result, lines, statusName }: ResultPaneProps) => (
   /* 사용자가 부르지 않은 시점에 나타나는 내용이라 살아 있는 영역으로 알린다. */
   <div role="status" aria-label={t.result.label}>
     <p>{t.result.created}</p>
@@ -92,7 +94,7 @@ export const ResultPane = ({ result, lines }: ResultPaneProps) => (
       <div className="field-cell">
         <dt className="field-label">{t.result.status}</dt>
         {/* 값으로 분기하지 않고 그대로 낸다 — 무슨 뜻인지는 화면이 판정하지 않는다. */}
-        <dd>{result.statusCode}</dd>
+        <dd>{statusName ?? result.statusCode}</dd>
       </div>
     </dl>
 

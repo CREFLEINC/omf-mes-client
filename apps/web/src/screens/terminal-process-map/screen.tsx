@@ -1050,6 +1050,7 @@ export const TerminalProcessMapScreen = () => {
 
       {/* 사용 중지 확인 — 사용자 · 역할 사용 중지 창과 같은 모양(대상 · 질문 · 경고 · #333). */}
       <Dialog
+        className="dialog-icon-block"
         open={isDeactivating}
         size="md"
         onClose={() => {

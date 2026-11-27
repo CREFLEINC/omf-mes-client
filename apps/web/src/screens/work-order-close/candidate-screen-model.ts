@@ -14,12 +14,18 @@ import {
   DEFAULT_STATUS_FILTER,
   type WorkOrderCloseFilterInitialization,
 } from './filter-initialization';
-import type { WorkOrderCloseCandidateFact, WorkOrderCloseFilters } from './queries';
+import {
+  WORK_ORDER_CLOSE_PAGE_SIZE,
+  type WorkOrderCloseCandidateFact,
+  type WorkOrderCloseFilters,
+} from './queries';
 
 export interface WorkOrderCloseCandidateScreenState {
   initializationKind: WorkOrderCloseFilterInitialization['kind'];
   appliedFilters: WorkOrderCloseFilterValues;
   page: number;
+  /** 한 쪽 건수 — 품질 화면과 같은 10 · 20 · 50(#360). 기본은 서버 기본(50)이라 보내지 않는다. */
+  pageSize?: number;
   selectedWorkOrderId: number | null;
 }
 
@@ -37,6 +43,7 @@ export type WorkOrderCloseCandidateScreenAction =
   | { type: 'SEARCH'; filters: WorkOrderCloseFilterValues }
   | { type: 'RESET' }
   | { type: 'CHANGE_PAGE'; page: number }
+  | { type: 'CHANGE_PAGE_SIZE'; pageSize: number }
   | { type: 'SELECT'; workOrderId: number }
   | { type: 'CLEAR_SELECTION' }
   | { type: 'CLEAR_MISSING_SELECTION'; snapshot: WorkOrderCloseCandidateSnapshot };
@@ -51,10 +58,12 @@ const initialFilters = (statusCode = ''): WorkOrderCloseFilterValues => ({
 
 const stateForInitialization = (
   initialization: WorkOrderCloseFilterInitialization,
+  pageSize = WORK_ORDER_CLOSE_PAGE_SIZE,
 ): WorkOrderCloseCandidateScreenState => ({
   initializationKind: initialization.kind,
   appliedFilters: { ...initialization.initialFilters },
   page: 1,
+  pageSize,
   selectedWorkOrderId: null,
 });
 
@@ -71,7 +80,7 @@ export const reduceWorkOrderCloseCandidateScreen = (
       if (action.initialization.kind === 'READY' && state.initializationKind === 'READY') {
         return state;
       }
-      return stateForInitialization(action.initialization);
+      return stateForInitialization(action.initialization, state.pageSize);
     case 'SEARCH':
       if (state.initializationKind !== 'READY') return state;
       return {
@@ -92,6 +101,9 @@ export const reduceWorkOrderCloseCandidateScreen = (
     case 'CHANGE_PAGE':
       if (state.initializationKind !== 'READY') return state;
       return { ...state, page: action.page, selectedWorkOrderId: null };
+    case 'CHANGE_PAGE_SIZE':
+      if (state.initializationKind !== 'READY') return state;
+      return { ...state, pageSize: action.pageSize, page: 1, selectedWorkOrderId: null };
     case 'SELECT':
       if (state.initializationKind !== 'READY') return state;
       return { ...state, selectedWorkOrderId: action.workOrderId };
@@ -137,6 +149,7 @@ export const toWorkOrderCloseCandidateFilters = (
     plannedStartFrom: optionalFilter(state.appliedFilters.plannedStartFrom),
     plannedStartTo: optionalFilter(state.appliedFilters.plannedStartTo),
     page: isValidPage ? state.page : 1,
+    size: state.pageSize,
   };
 };
 

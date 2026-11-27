@@ -134,9 +134,12 @@ export const shipmentConfirm = {
       NOT_SENT_NO_SALES_ORDER: '수주 없이 나간 출하라 ERP 로 보내지 않습니다.',
       CANCELLED: '취소된 출하입니다. ERP 송신 대기도 지워졌습니다.',
     },
-    cancelPendingBanner: '취소 요청이 결재 중이라 ERP 로 보내지 않고 기다립니다. 승인되면 보내지 않고, 반려되면 다음 송신 때 보냅니다.',
-    legacyBanner: '관리웹 출하 처리로 만든 출하입니다. 확정해야 ERP 로 보내집니다. 확정 전에는 취소를 요청할 수 있습니다.',
-    expeditedBanner: '긴급 직행으로 만든 출하입니다. 확정해야 ERP 로 보내집니다. 확정 전에는 취소를 요청할 수 있습니다.',
+    cancelPendingBanner:
+      '취소 요청이 결재 중이라 ERP 로 보내지 않고 기다립니다. 승인되면 보내지 않고, 반려되면 다음 송신 때 보냅니다.',
+    legacyBanner:
+      '관리웹 출하 처리로 만든 출하입니다. 확정해야 ERP 로 보내집니다. 확정 전에는 취소를 요청할 수 있습니다.',
+    expeditedBanner:
+      '긴급 직행으로 만든 출하입니다. 확정해야 ERP 로 보내집니다. 확정 전에는 취소를 요청할 수 있습니다.',
   },
   /** 피킹 LOT 의 OQC 판정 6종(FR-007). */
   oqc: {
@@ -166,7 +169,7 @@ export const shipmentConfirm = {
   },
   confirmDialog: {
     title: '출하 확정',
-    target: (count: number): string => `출하 ${String(count)}건을 확정합니다.`,
+    question: (count: number): string => `출하 ${String(count)}건을 확정하시겠습니까?`,
     list: '확정할 출하',
     irreversible: '확정은 되돌릴 수 없습니다 — 확정 취소 경로가 없습니다.',
     erpQueued: 'ERP 전표 송신이 대기열에 실립니다. 즉시 전송이 아닙니다.',
@@ -174,13 +177,33 @@ export const shipmentConfirm = {
     confirm: '확정',
   },
   cancelDialog: {
-    title: '출하 취소 요청',
+    title: '출하 취소 결재를 요청할까요?',
     target: (shipmentNo: string): string => `${shipmentNo}의 취소를 요청합니다.`,
-    /** §5-8 — 요청과 실행이 다른 액션이다. 그 사실을 요청하는 자리에서 말한다. */
-    approvalNote: '요청은 결재로 올라갑니다. 승인된 뒤에 취소가 실행됩니다.',
+    shipmentNo: '출하 번호',
+    /** §5-8 — 요청과 실행이 다른 액션이다. 승인돼도 저절로 실행되지 않고 이 화면의 [취소 실행]이 실행한다. */
+    approvalNote: '결재가 승인되면 [취소 실행]을 눌러야 출하가 취소됩니다.',
     /** FR-024 — 상신 중에는 러너가 그 출하를 보내지 않는다. */
-    hold: '요청하면 승인되고 실행될 때까지 이 출하는 ERP 로 보내지 않습니다.',
+    hold: '결재를 요청하면 이 출하 건의 ERP 송신이 보류됩니다.',
+    /** 실행 창 목록 제목(실행 창이 같이 쓴다). */
     whatTitle: '취소가 실행되면',
+    /** 요청 창 「출하 취소 후 변경 사항」(팝업 디자인 시안 #360). */
+    effectsTitle: '출하 취소 후 변경 사항',
+    effects: {
+      stockLabel: '재고: ',
+      stock: (qty: string, warehouses: string): string =>
+        `출고한 수량 ${qty}을 출고 창고(${warehouses})에 복원합니다.`,
+      documentsLabel: '출고 전표: ',
+      documents: '전표를 취소하고 ERP 송신 대기 건을 제거합니다.',
+      salesOrderLabel: '수주: ',
+      salesOrder: '해당 출하 수량만큼 차감합니다.',
+      requestLabel: '출하지시: ',
+      request: (shipmentRequestNo: string): string =>
+        `${shipmentRequestNo}을 출하 완료 전 상태로 되돌립니다.`,
+    },
+    records: {
+      title: '피킹 및 검사 기록',
+      body: '피킹과 OQC 기록은 유지됩니다. 피킹 LOT는 다시 예약하며, 예약하지 못한 LOT는 미예약 상태로 표시됩니다.',
+    },
     what: {
       stock: (qty: number, warehouses: string): string =>
         `재고 ${String(qty)} 이(가) 빠진 자리로 돌아갑니다(${warehouses}).`,
@@ -190,6 +213,8 @@ export const shipmentConfirm = {
         `지시서 ${shipmentRequestNo} 은(는) 「출하 완료 전」으로 돌아갑니다. 피킹과 OQC 기록은 남고, 피킹 LOT 은 다시 예약됩니다(다시 잡지 못한 LOT 은 풀린 채로 표시).`,
     },
     reasonLabel: '취소 사유',
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26 「흐린 문구 추가」). */
+    reasonPlaceholder: '취소 사유를 입력하세요',
     reasonHelp: '왜 취소하는지 남기세요. 승인자가 이것을 읽고 판단합니다.',
     reasonRequired: '취소 사유를 입력하세요',
     reasonTooLong: '취소 사유가 너무 깁니다. 500자까지 입력하세요',
@@ -197,12 +222,12 @@ export const shipmentConfirm = {
     erpAlreadySent:
       '취소 요청을 올리지 못했습니다. 요청하는 사이 ERP 송신이 먼저 끝났습니다 — ERP 로 이미 보냈습니다. ERP 에서 처리하세요.',
     cancel: '닫기',
-    submit: '취소 요청',
+    submit: '취소 결재 요청',
   },
   /** 승인된 취소의 실행 확인 창(FR-023 — 결재함은 승인만 하고 실행은 이 화면에서 한다). */
   executeDialog: {
     title: '출하 취소 실행',
-    target: (shipmentNo: string): string => `${shipmentNo}의 승인된 취소를 실행합니다.`,
+    question: '승인된 취소를 실행하시겠습니까?',
     irreversible: '실행하면 되돌릴 수 없습니다. 다시 내보내려면 POP 에서 출하를 다시 완료하세요.',
     erpAlreadySent: '실행하지 못했습니다. 그 사이 ERP 로 이미 보냈습니다. ERP 에서 처리하세요.',
     failed: (message: string): string => `실행하지 못했습니다. ${message}`,

@@ -62,3 +62,20 @@
 .approval-inbox-table tbody tr:has([data-selected='true']) > td:first-child {
   box-shadow: inset 3px 0 0 var(--semantic-info);
 }
+
+/* 결재 처리 — 의견 칸은 남는 폭을 다 쓰고 단추는 같은 줄 오른쪽(칸 아랫선), 좁으면 칸 아래 오른쪽으로(사용자 지시 · #360). */
+.approval-inbox-decision-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
+}
+.approval-inbox-decision-row > .field-cell {
+  flex: 1 1 24rem;
+  min-width: 0;
+  max-width: none;
+}
+.approval-inbox-decision-row > .approval-inbox-actions {
+  flex: 0 0 auto;
+  margin: 0 0 0 auto;
+}

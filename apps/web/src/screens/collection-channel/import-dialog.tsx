@@ -129,6 +129,7 @@ export const ImportDialog = ({
 
   return (
     <Dialog
+      className="dialog-icon-upload"
       open
       onClose={onClose}
       closeOnBackdropClick={false}

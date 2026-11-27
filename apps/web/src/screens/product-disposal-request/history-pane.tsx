@@ -14,6 +14,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { InfoTip } from '../../patterns/info-tip';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { SaveErrorBanner } from '../../patterns/master';
 import { formatDateTime, isProductDisposal, type IssueRow } from './types';
@@ -186,49 +187,69 @@ export const HistoryPane = ({
       />
     );
 
+  /*
+   * 처리 이력 목록 | 고른 전표의 결재 진행 · 기타출고 — 다른 목록 · 상세 화면과 같은 공용 분할(가운데 폭 막대 · 상하 배치의
+   * 높이 막대 · 「⋯」 좌우/상하 배치 · #360). 상자 안 내용과 동작은 그대로다.
+   */
   return (
-    <section className="pane" aria-label={t.panes.history}>
-      {/* A-11 — 자재 폐기 전표가 섞인다는 사실은 «목록 위» 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
-      <h2>
-        <span className="info-label">
-          {t.panes.history}
-          <InfoTip text={t.history.mixedNotice} />
-        </span>
-      </h2>
+    <ListDetailWorkspace
+      storageKey="omf-mes:product-disposal-request:history"
+      list={{
+        label: t.panes.history,
+        /* 제목은 아래 ⓘ 가 붙은 제목 줄이 그대로 말한다 — 머리 줄에는 접기만. */
+        title: '',
+        content: (
+          <>
+            {/* A-11 — 자재 폐기 전표가 섞인다는 사실은 «목록 위» 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+            <h2>
+              <span className="info-label">
+                {t.panes.history}
+                <InfoTip text={t.history.mixedNotice} />
+              </span>
+            </h2>
 
-      {body}
+            {body}
+          </>
+        ),
+      }}
+      detail={{
+        label: t.approval.title,
+        content: (
+          <>
+            <div className="pane-block">
+              {/* ⛔ 승인·반려는 여기 없다(J-10) — 어디서 하는지를 제목 옆 ⓘ 로 둔다. */}
+              <h3>
+                <span className="info-label">
+                  {t.approval.title}
+                  <InfoTip text={t.approvalWhere} />
+                </span>
+              </h3>
+              <ApprovalBlock approval={approval} />
+            </div>
 
-      <div className="pane-block">
-        {/* ⛔ 승인·반려는 여기 없다(J-10) — 어디서 하는지를 제목 옆 ⓘ 로 둔다. */}
-        <h3>
-          <span className="info-label">
-            {t.approval.title}
-            <InfoTip text={t.approvalWhere} />
-          </span>
-        </h3>
-        <ApprovalBlock approval={approval} />
-      </div>
-
-      <div className="pane-block">
-        {/* §5-4 · J-8 — 승인이 끝나도 출고는 «여기서 다시» 누른다는 사실은 제목 옆 ⓘ 로 둔다. */}
-        <h3>
-          <span className="info-label">
-            {t.issue.submit}
-            <InfoTip text={t.issue.unlockNote} />
-          </span>
-        </h3>
-        <SaveErrorBanner error={post.error} />
-        {post.lock !== undefined && (
-          <div className="banner-slot">
-            <AlertBanner variant="info">{post.lock}</AlertBanner>
-          </div>
-        )}
-        <div className="form-actions">
-          <Button disabled={post.lock !== undefined} onClick={post.onPost}>
-            {t.issue.submit}
-          </Button>
-        </div>
-      </div>
-    </section>
+            <div className="pane-block">
+              {/* §5-4 · J-8 — 승인이 끝나도 출고는 «여기서 다시» 누른다는 사실은 제목 옆 ⓘ 로 둔다. */}
+              <h3>
+                <span className="info-label">
+                  {t.issue.submit}
+                  <InfoTip text={t.issue.unlockNote} />
+                </span>
+              </h3>
+              <SaveErrorBanner error={post.error} />
+              {post.lock !== undefined && (
+                <div className="banner-slot">
+                  <AlertBanner variant="info">{post.lock}</AlertBanner>
+                </div>
+              )}
+              <div className="form-actions">
+                <Button disabled={post.lock !== undefined} onClick={post.onPost}>
+                  {t.issue.submit}
+                </Button>
+              </div>
+            </div>
+          </>
+        ),
+      }}
+    />
   );
 };

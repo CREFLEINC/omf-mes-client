@@ -1,3 +1,9 @@
+/** 받침이 있으면 「을」, 없으면 「를」 — 칸 안 흐린 안내에 붙인다. 한글이 아닌 끝 글자는 받침 없음으로 본다. */
+const objectJosa = (word: string): string => {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  return code >= 0 && code <= 11171 && code % 28 !== 0 ? '을' : '를';
+};
+
 export const warehouseLocation = {
   title: '창고·Location',
   breadcrumbRoot: '기준정보 관리',
@@ -5,6 +11,11 @@ export const warehouseLocation = {
   splitter: '끌어서 목록·상세 폭 조절',
   listCollapse: '창고 목록 접기',
   listExpand: '창고 목록 펼치기',
+  /** 칸 안 흐린 안내(사용자 지시 2026-11-26 「흐린 문구 추가」). 칸 이름을 받아 만든다. */
+  placeholders: {
+    enter: (label: string): string => `${label}${objectJosa(label)} 입력하세요`,
+    select: (label: string): string => `${label}${objectJosa(label)} 고르세요`,
+  },
   panes: {
     filters: '창고 조회 조건',
     list: '창고 목록',
@@ -236,6 +247,8 @@ export const warehouseLocation = {
   /** 랙의 층 · 셀 설정 대화상자(사용자 지시 2026-10-29). */
   deleteLocation: {
     title: '위치 삭제',
+    caption: '삭제 대상',
+    question: '이 위치를 삭제하시겠습니까?',
     /** 그 위치와 밑의 위치 수. */
     count: (count: number): string =>
       count > 1 ? `위치 ${String(count)}개가 함께 삭제됩니다.` : '위치 1개가 삭제됩니다.',
@@ -245,6 +258,8 @@ export const warehouseLocation = {
   rackLayout: {
     levelCount: '행 (층 수)',
     cellCount: '열 (층마다 셀 수)',
+    levelCountPlaceholder: '층 수를 입력하세요',
+    cellCountPlaceholder: '층마다 셀 수를 입력하세요',
     countInvalid: (min: number, max: number): string =>
       `${String(min)}부터 ${String(max)}까지 숫자로 입력하세요.`,
     previewLabel: '층·셀 배치',
@@ -272,6 +287,7 @@ export const warehouseLocation = {
     title: '라벨 재발행',
     alreadyIssued: (count: number): string => `${String(count)}건은 이미 발행했습니다.`,
     reason: '재발행 사유',
+    reasonPlaceholder: '재발행 사유를 고르세요',
     confirm: '재발행',
   },
   /** 라벨 일괄 출력(사용자 지시 2026-10-29) — 발행한 그림을 모아 보고 인쇄한다. */
@@ -282,7 +298,10 @@ export const warehouseLocation = {
   },
   /** 되돌리기 어려운 액션이라 확인을 한 단계 둔다. 무엇이 일어나는지 먼저 밝힌다. */
   deactivate: {
-    title: '사용 중지할까요?',
+    title: '위치 사용 중지',
+    caption: '사용 중지 대상',
+    question: '이 위치의 사용을 중지하시겠습니까?',
+    warehouseQuestion: '이 창고의 사용을 중지하시겠습니까?',
     description: '삭제하지 않습니다. 사용 중지하면 새 작업에서 고를 수 없게 됩니다.',
     confirm: '사용 중지',
     count: (count: number): string =>
@@ -295,12 +314,13 @@ export const warehouseLocation = {
     stockCheckFailed: '재고를 확인하지 못했습니다.',
   },
   activate: {
-    title: '다시 사용할까요?',
-    description: '다시 사용하면 새 작업에서 이 항목을 선택할 수 있습니다.',
+    title: '위치 다시 사용',
+    caption: '다시 사용 대상',
+    question: '이 위치를 다시 사용하시겠습니까?',
+    warehouseQuestion: '이 창고를 다시 사용하시겠습니까?',
     confirm: '다시 사용',
     count: (count: number): string =>
       count > 1 ? `위치 ${String(count)}개를 함께 다시 사용합니다.` : '위치 1개를 다시 사용합니다.',
     warehouseTitle: '창고 다시 사용',
-    warehouseLine: '새 작업에서 이 창고를 다시 고를 수 있습니다.',
   },
 } as const;

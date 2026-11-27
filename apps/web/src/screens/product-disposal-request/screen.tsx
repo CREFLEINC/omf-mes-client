@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { InfoTip } from '../../patterns/info-tip';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
 import { ScreenHeader } from '../../patterns/screen-header';
 import { progressSummary, toProgressSteps } from './approval-progress';
@@ -217,132 +218,154 @@ export const ProductDisposalRequestScreen = () => {
    * 두 패널에 내용을 두면 숨은 탭의 표가 접근성 트리에 남고, 이름으로 집는 조작과 시험이
    * 숨은 글자를 잡는다.
    */
+  /*
+   * 폐기 대상 목록 | 폐기 요청(요청 · 올리기 · 승인 후 기타출고) — 다른 목록 · 상세 화면과 같은 공용 분할(가운데 폭 막대 ·
+   * 상하 배치의 높이 막대 · 「⋯」 좌우/상하 배치 · #360). 상자 안 내용과 동작은 그대로다.
+   */
   const requestTab = (
-    <>
-      <section className="pane" aria-label={t.panes.targets}>
-        {/* §5-2 — 판정이 선행이라는 사실은 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
-        <h2>
-          <span className="info-label">
-            {t.panes.targets}
-            <InfoTip text={t.targets.judgmentRequired} />
-          </span>
-        </h2>
-        <TargetList
-          rows={rows}
-          selected={selected}
-          isLoading={list.isPending}
-          error={
-            list.isError ? (
-              <AlertBanner
-                variant="error"
-                action={
-                  <Button variant="outlined" size="sm" onClick={() => void list.refetch()}>
-                    {messages.common.retry}
-                  </Button>
-                }
-              >
-                {t.targets.loadFailed}
-              </AlertBanner>
-            ) : null
-          }
-          items={items}
-          uoms={uoms}
-          onToggle={(id) =>
-            setSelected((current) =>
-              current.includes(id) ? current.filter((one) => one !== id) : [...current, id],
-            )
-          }
-          onToggleAll={() =>
-            setSelected((current) =>
-              current.length > 0 ? [] : rows.map((row) => row.dispositionDecisionId),
-            )
-          }
-        />
-        <p className="field-note">{t.targets.selected(targets.length, qtyText)}</p>
-      </section>
-
-      <RequestPane
-        draft={draft}
-        showError={showError}
-        route={route}
-        qtyText={qtyText}
-        partners={partners.data ?? []}
-        isPartnersPending={partners.isPending}
-        isPartnersError={partners.isError}
-        issueTypes={issueTypes}
-        issueReasons={issueReasons}
-        fieldErrors={write.fieldErrors}
-        onChange={(patch) => {
-          if (patch.reason !== undefined) setIsReasonTouched(true);
-          setDraft((current) => ({ ...current, ...patch }));
-
-          /*
-           * ⛔ **고친 칸의 서버 오류를 함께 지운다.** 화면이 잡은 사정은 입력에서 파생되지만
-           * **서버가 준 오류는 다음 저장까지 남는다** — 지우지 않으면 400 을 받은 칸을 고치는
-           * 순간에도 붉은 글씨가 그 자리에 남아, 사용자는 무엇을 더 고쳐야 하는지 모른다.
-           */
-          for (const field of Object.keys(patch)) write.clearFieldError(field);
-          /* 폐기 사유는 초안의 이름과 계약의 필드 이름이 다르다 — 그 짝을 여기서 잇는다. */
-          if (patch.issueReasonCode !== undefined) write.clearFieldError('reasonCode');
-        }}
-      />
-
-      <section className="pane" aria-label={t.request.submit}>
-        <SaveErrorBanner error={write.error} onReload={() => void list.refetch()} />
-        {submitLock !== undefined && (
-          <div className="banner-slot">
-            {/* ⭐ 다시 부를 수 있는 막힘이면 «그 길»을 낸다 — 없으면 영원히 막힌다. */}
-            <AlertBanner
-              variant={
-                placement.kind === 'blocked' && placement.isRetryable === true ? 'error' : 'info'
+    <ListDetailWorkspace
+      storageKey="omf-mes:product-disposal-request:request"
+      list={{
+        label: t.panes.targets,
+        /* 제목은 아래 ⓘ 가 붙은 제목 줄이 그대로 말한다 — 머리 줄에는 건수 · 접기만. */
+        title: '',
+        count: list.data?.page.total,
+        content: (
+          <>
+            {/* §5-2 — 판정이 선행이라는 사실은 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+            <h2>
+              <span className="info-label">
+                {t.panes.targets}
+                <InfoTip text={t.targets.judgmentRequired} />
+              </span>
+            </h2>
+            <TargetList
+              rows={rows}
+              selected={selected}
+              isLoading={list.isPending}
+              error={
+                list.isError ? (
+                  <AlertBanner
+                    variant="error"
+                    action={
+                      <Button variant="outlined" size="sm" onClick={() => void list.refetch()}>
+                        {messages.common.retry}
+                      </Button>
+                    }
+                  >
+                    {t.targets.loadFailed}
+                  </AlertBanner>
+                ) : null
               }
-              action={
-                placement.kind === 'blocked' && placement.isRetryable === true ? (
-                  <Button variant="outlined" size="sm" onClick={placements.refetch}>
-                    {messages.common.retry}
-                  </Button>
-                ) : undefined
+              items={items}
+              uoms={uoms}
+              onToggle={(id) =>
+                setSelected((current) =>
+                  current.includes(id) ? current.filter((one) => one !== id) : [...current, id],
+                )
               }
-            >
-              {submitLock}
-            </AlertBanner>
-          </div>
-        )}
-        {/* A-11 — 올린 뒤 철회할 길이 없다는 사실은 «올리기 전» 확인 창이 말한다(`confirm.irreversible`). */}
-        <div className="form-actions">
-          <Button
-            disabled={submitLock !== undefined}
-            /* ⭐ 되돌릴 수 없는 쓰기라 «누르기 전»에 한 겹을 둔다 — 창이 무엇이 나가는지 보인다. */
-            onClick={() => {
-              setShowError(true);
-              setIsConfirming(true);
-            }}
-          >
-            {t.request.submit}
-          </Button>
-        </div>
-        {isConfirming && (
-          <SubmitConfirmDialog
-            count={targets.length}
-            qtyText={qtyText}
-            onClose={() => setIsConfirming(false)}
-            onConfirm={() => {
-              setIsConfirming(false);
-              submitRequest();
-            }}
-          />
-        )}
-      </section>
+              onToggleAll={() =>
+                setSelected((current) =>
+                  current.length > 0 ? [] : rows.map((row) => row.dispositionDecisionId),
+                )
+              }
+            />
+            <p className="field-note">{t.targets.selected(targets.length, qtyText)}</p>
+          </>
+        ),
+      }}
+      detail={{
+        label: t.panes.request,
+        bare: true,
+        content: (
+          <>
+            <RequestPane
+              draft={draft}
+              showError={showError}
+              route={route}
+              qtyText={qtyText}
+              partners={partners.data ?? []}
+              isPartnersPending={partners.isPending}
+              isPartnersError={partners.isError}
+              issueTypes={issueTypes}
+              issueReasons={issueReasons}
+              fieldErrors={write.fieldErrors}
+              onChange={(patch) => {
+                if (patch.reason !== undefined) setIsReasonTouched(true);
+                setDraft((current) => ({ ...current, ...patch }));
 
-      {/*
-       * ③ — **읽기 전용 표시만 둔다.** 「기타출고 처리」 버튼은 여기 없다.
-       *
-       * ⛔ **전기는 «고른 전표»에 거는 조작이다.** 요청을 올리면 초안이 비므로 이 탭에는
-       * 걸 대상이 남지 않는다. 사용자는 승인이 끝난 뒤 «다시 와서»(§5-4) 「처리 이력」에서
-       * 그 전표를 골라 전기한다 — 버튼을 그쪽에 둔다.
-       */}
-      <IssuePane draft={draft} partners={partners.data ?? []} />
-    </>
+                /*
+                 * ⛔ **고친 칸의 서버 오류를 함께 지운다.** 화면이 잡은 사정은 입력에서 파생되지만
+                 * **서버가 준 오류는 다음 저장까지 남는다** — 지우지 않으면 400 을 받은 칸을 고치는
+                 * 순간에도 붉은 글씨가 그 자리에 남아, 사용자는 무엇을 더 고쳐야 하는지 모른다.
+                 */
+                for (const field of Object.keys(patch)) write.clearFieldError(field);
+                /* 폐기 사유는 초안의 이름과 계약의 필드 이름이 다르다 — 그 짝을 여기서 잇는다. */
+                if (patch.issueReasonCode !== undefined) write.clearFieldError('reasonCode');
+              }}
+            />
+
+            <section className="pane" aria-label={t.request.submit}>
+              <SaveErrorBanner error={write.error} onReload={() => void list.refetch()} />
+              {submitLock !== undefined && (
+                <div className="banner-slot">
+                  {/* ⭐ 다시 부를 수 있는 막힘이면 «그 길»을 낸다 — 없으면 영원히 막힌다. */}
+                  <AlertBanner
+                    variant={
+                      placement.kind === 'blocked' && placement.isRetryable === true
+                        ? 'error'
+                        : 'info'
+                    }
+                    action={
+                      placement.kind === 'blocked' && placement.isRetryable === true ? (
+                        <Button variant="outlined" size="sm" onClick={placements.refetch}>
+                          {messages.common.retry}
+                        </Button>
+                      ) : undefined
+                    }
+                  >
+                    {submitLock}
+                  </AlertBanner>
+                </div>
+              )}
+              {/* A-11 — 올린 뒤 철회할 길이 없다는 사실은 «올리기 전» 확인 창이 말한다(`confirm.irreversible`). */}
+              <div className="form-actions">
+                <Button
+                  disabled={submitLock !== undefined}
+                  /* ⭐ 되돌릴 수 없는 쓰기라 «누르기 전»에 한 겹을 둔다 — 창이 무엇이 나가는지 보인다. */
+                  onClick={() => {
+                    setShowError(true);
+                    setIsConfirming(true);
+                  }}
+                >
+                  {t.request.submit}
+                </Button>
+              </div>
+              {isConfirming && (
+                <SubmitConfirmDialog
+                  count={targets.length}
+                  qtyText={qtyText}
+                  onClose={() => setIsConfirming(false)}
+                  onConfirm={() => {
+                    setIsConfirming(false);
+                    submitRequest();
+                  }}
+                />
+              )}
+            </section>
+
+            {/*
+             * ③ — **읽기 전용 표시만 둔다.** 「기타출고 처리」 버튼은 여기 없다.
+             *
+             * ⛔ **전기는 «고른 전표»에 거는 조작이다.** 요청을 올리면 초안이 비므로 이 탭에는
+             * 걸 대상이 남지 않는다. 사용자는 승인이 끝난 뒤 «다시 와서»(§5-4) 「처리 이력」에서
+             * 그 전표를 골라 전기한다 — 버튼을 그쪽에 둔다.
+             */}
+            <IssuePane draft={draft} partners={partners.data ?? []} />
+          </>
+        ),
+      }}
+    />
   );
 
   const historyTab = (

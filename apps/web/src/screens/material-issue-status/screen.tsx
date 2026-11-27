@@ -23,6 +23,8 @@ import { DateRangeFields } from '../../patterns/date-range-fields';
 import { plantToday } from '../../patterns/plant-time';
 import { InfoTip } from '../../patterns/info-tip';
 import { ListEmptyRow } from '../../patterns/list-empty';
+import { PageNav } from '../../patterns/page-nav';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { ScreenHeader } from '../../patterns/screen-header';
 import { Select } from '../../patterns/select';
 import { DetailPanel } from './detail-panel';
@@ -36,6 +38,7 @@ import {
   type StatusView,
 } from './filters';
 import {
+  LIST_PAGE_SIZES,
   PAGE_SIZE,
   usePlannedShortage,
   usePlants,
@@ -61,6 +64,10 @@ const readPage = (params: URLSearchParams): number => {
   const page = Number(params.get('page'));
   return Number.isInteger(page) && page > 1 ? page : 1;
 };
+
+/** 쪽 크기. 고를 수 있는 값이 아니면 기본(50)으로 읽는다(#360). */
+const readPageSize = (params: URLSearchParams): number =>
+  LIST_PAGE_SIZES.find((size) => String(size) === params.get('size')) ?? PAGE_SIZE;
 
 interface PlanGroup {
   key: string;
@@ -105,6 +112,7 @@ export const MaterialIssueStatusScreen = () => {
   const view = readView(searchParams);
   const applied = readFilters(searchParams);
   const page = readPage(searchParams);
+  const pageSize = readPageSize(searchParams);
   const selectedId = readSelectedId(searchParams);
 
   const plants = usePlants();
@@ -127,7 +135,7 @@ export const MaterialIssueStatusScreen = () => {
 
   const more = useFilterMore();
 
-  const list = useRequestList(filters, page, view === 'list' && plantId !== null);
+  const list = useRequestList(filters, page, pageSize, view === 'list' && plantId !== null);
   const shortage = usePlannedShortage(plantId);
   const warehouses = useWarehouseOptions(plantId);
 
@@ -135,8 +143,14 @@ export const MaterialIssueStatusScreen = () => {
     (shortage.data?.items.filter((row) => row.shortageQty > 0).length ?? 0) +
     (shortage.data?.unsourced?.length ?? 0);
 
-  const go = (nextView: StatusView, next: StatusFilters, nextPage = 1, id?: number): void => {
-    const params = toSearchParams(nextView, next, nextPage);
+  const go = (
+    nextView: StatusView,
+    next: StatusFilters,
+    nextPage = 1,
+    id?: number,
+    nextSize = pageSize,
+  ): void => {
+    const params = toSearchParams(nextView, next, nextPage, nextSize);
     if (id !== undefined) params.set('id', String(id));
     setSearchParams(params);
   };
@@ -241,13 +255,15 @@ export const MaterialIssueStatusScreen = () => {
             if (event.key === 'Enter') search();
           }}
         />
-        <Button onClick={search}>{t.filters.search}</Button>
-        {isChanged && (
-          <Button variant="outlined" onClick={reset}>
-            {t.filters.reset}
-          </Button>
-        )}
-        <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
+        <div className="filter-actions filter-actions-end">
+          <Button onClick={search}>{t.filters.search}</Button>
+          {isChanged && (
+            <Button variant="outlined" onClick={reset}>
+              {t.filters.reset}
+            </Button>
+          )}
+          <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
+        </div>
       </div>
       {/* `hidden` 은 감싸는 상자에 둔다 — 줄의 display 가 속성을 덮는다. */}
       <div id={more.id} hidden={!more.isOpen}>
@@ -313,9 +329,14 @@ export const MaterialIssueStatusScreen = () => {
       <td>
         <button
           type="button"
-          className="link-cell"
+          className={`link-cell ${ROW_PICK_CLASS}`}
           aria-current={request.materialIssueRequestId === selectedId ? 'true' : undefined}
-          onClick={() => select(request.materialIssueRequestId)}
+          /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-27 · #360). */
+          onClick={() =>
+            select(
+              request.materialIssueRequestId === selectedId ? null : request.materialIssueRequestId,
+            )
+          }
         >
           {request.issueRequestNo}
         </button>
@@ -358,11 +379,14 @@ export const MaterialIssueStatusScreen = () => {
       ? groupByPlan(items)
       : [{ key: 'all', title: '', rows: items }];
     const total = list.data.page.total;
-    const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
     return (
       <>
-        <table className="material-issue-status-table" aria-label={t.views.list}>
+        <table
+          className="material-issue-status-table"
+          aria-label={t.views.list}
+          {...rowPickHandlers}
+        >
           <thead>
             <tr>
               <th scope="col">{t.columns.requestNo}</th>
@@ -400,27 +424,13 @@ export const MaterialIssueStatusScreen = () => {
             </tbody>
           ))}
         </table>
-        {items.length === 0 ? null : (
-          <div className="material-issue-status-pager">
-            <span className="field-note">{t.pager.total(total)}</span>
-            <Button
-              variant="outlined"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => go('list', filters, page - 1)}
-            >
-              {t.pager.previous}
-            </Button>
-            <Button
-              variant="outlined"
-              size="sm"
-              disabled={page >= lastPage}
-              onClick={() => go('list', filters, page + 1)}
-            >
-              {t.pager.next}
-            </Button>
-          </div>
-        )}
+        {/* 공용 쪽 이동 줄 — 1쪽 · 0건이어도 늘 보인다. 쪽 크기를 바꾸면 첫 쪽부터 다시 받는다(#360). */}
+        <PageNav
+          meta={{ page, size: pageSize, total }}
+          onChangePage={(nextPage) => go('list', filters, nextPage)}
+          sizes={LIST_PAGE_SIZES}
+          onChangeSize={(nextSize) => go('list', filters, 1, undefined, nextSize)}
+        />
       </>
     );
   };

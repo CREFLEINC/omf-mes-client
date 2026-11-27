@@ -7,19 +7,13 @@ import { listUrl, renderScreen, WORK_ORDER } from './screen-harness';
 const t = messages.workOrderProgress;
 
 describe('WorkOrderProgressScreen', () => {
-  it('제목과 위치를 보인다', () => {
+  /* 화면 제목 줄(경로 · 큰 제목)과 「조회 조건」 구획 제목은 두지 않는다(#360). 구획은 이름으로 읽힌다. */
+  it('화면 제목과 조회 조건 구획 제목을 세우지 않는다', () => {
     renderScreen();
 
-    expect(screen.getByRole('heading', { name: t.title })).toBeInTheDocument();
-  });
-
-  it('조회 조건을 제목이 있는 구획으로 구분한다', () => {
-    renderScreen();
-
+    expect(screen.queryByRole('heading', { name: t.title })).not.toBeInTheDocument();
     const region = screen.getByRole('region', { name: t.filters.legend });
-    expect(
-      within(region).getByRole('heading', { level: 2, name: t.filters.legend }),
-    ).toBeInTheDocument();
+    expect(within(region).queryByRole('heading')).not.toBeInTheDocument();
   });
 
   /*
@@ -43,7 +37,9 @@ describe('WorkOrderProgressScreen', () => {
     it('필터 전체 건수를 서버가 준 값으로 보인다', async () => {
       renderScreen({ total: 128 });
 
-      expect(await screen.findByText(/^128건 중/)).toBeInTheDocument();
+      expect(
+        await screen.findByText(messages.screenPatterns.pageNav.total(128)),
+      ).toBeInTheDocument();
     });
   });
 

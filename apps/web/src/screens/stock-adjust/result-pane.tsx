@@ -98,9 +98,8 @@ export interface ResultPaneProps {
  * 사실**을 말하게 된다. 그래서 표시 타입(`CreatedAdjustmentView`)에 그 자리가 아예 없고,
  * 갈래를 정하는 것은 **이 화면이 받은 응답**(`phase`)뿐이다.
  *
- * **사라지는 알림으로 내지 않는다.** 전표번호는 적어 두거나 옮겨 적는 값이라 몇 초 뒤에
- * 없어지면 안 된다 — 배너가 살아 있는 영역으로 알리되 글자는 화면에 남는다. **전표번호는 네
- * 갈래 어디에서도 남는다.**
+ * **등록 성공 알림은 오른쪽 아래 알림으로 낸다**(#360). 전표번호는 적어 두거나 옮겨 적는 값이라
+ * 몇 초 뒤에 없어지면 안 되므로 아래 표에 남는다. **전표번호는 네 갈래 어디에서도 남는다.**
  *
  * 기존 디자인 시스템 컴포넌트의 조합이라 이 화면 슬라이스가 소유한다.
  */
@@ -135,15 +134,16 @@ export const ResultPane = ({
           {t.result.submitFailedDescription}
         </AlertBanner>
       ) : (
-        /* 성공 배너 아래 붙던 「재고는 아직 움직이지 않았다」 설명문은 걷었다(사용자 지시 2026-11-18). */
-        <AlertBanner
-          variant="success"
-          title={
-            phase === 'submitted'
-              ? t.result.submittedTitle(created.inventoryAdjustmentNo)
-              : t.result.createdTitle(created.inventoryAdjustmentNo)
-          }
-        />
+        /*
+         * 등록 성공은 화면 안 상자 대신 오른쪽 아래 알림으로 낸다(사용자 지시 2026-11-27 · #360) —
+         * 전표번호·상태·ERP 송신은 아래 표에 남는다. 상신(202) 성공 상자는 그대로 둔다.
+         */
+        phase === 'submitted' && (
+          <AlertBanner
+            variant="success"
+            title={t.result.submittedTitle(created.inventoryAdjustmentNo)}
+          />
+        )
       )}
 
       {/* 나가는 중이라는 사실은 배너를 갈아 끼우지 않고 덧붙인다 — 전표를 만든 사실이 그대로 남는다. */}

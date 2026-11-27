@@ -66,11 +66,11 @@ describe('CodeFormPane — 입력칸', () => {
     expect(props.onChange).toHaveBeenCalledWith({ parentId: '1004' });
   });
 
-  it('상위 선택칸 아래에 임시 목록 안내가 보인다', () => {
+  it('상위 대분류 이름 옆 ⓘ 에 임시 목록 안내가 있다(#360)', () => {
     renderPane();
 
     expect(
-      screen.getByText('대분류 목록은 임시이며, 확정 후 변경될 수 있습니다.'),
+      screen.getByRole('button', { name: '대분류 목록은 임시이며, 확정 후 변경될 수 있습니다.' }),
     ).toBeInTheDocument();
   });
 
@@ -117,17 +117,18 @@ describe('CodeFormPane — 잠금과 사유', () => {
     });
 
     expect(screen.getByLabelText('불량코드')).toBeDisabled();
-    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
-      'title',
-      '이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.',
-    );
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 이름의 title · 숨긴 설명으로. */
+    expect(screen.queryByText('변경 불가')).toBeNull();
+    expect(
+      screen.getByTitle('이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.'),
+    ).toHaveTextContent(/^불량코드/);
     expect(screen.getByLabelText('불량코드')).toHaveAccessibleDescription(
       '이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.',
     );
   });
 
-  /* 배치 규범 4 — 비활성 컨트롤은 포커스를 받지 못해 사유를 DOM 텍스트로 내야 닿을 수 있다. */
-  it('하위가 있으면 상위 선택칸이 비활성이고 사유가 보인다', () => {
+  /* 비활성 칸은 초점을 받지 못한다 — 사유는 이름 옆 ⓘ 단추(초점이 닿는다)로 낸다(#360). */
+  it('하위가 있으면 상위 선택칸이 비활성이고 사유는 이름 옆 ⓘ 에 있다', () => {
     renderPane({
       mode: 'edit',
       parentLockReason: '이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다.',
@@ -135,9 +136,10 @@ describe('CodeFormPane — 잠금과 사유', () => {
 
     const parent = screen.getByRole('combobox', { name: '상위 대분류' });
     expect(parent).toBeDisabled();
-    expect(parent).toHaveAttribute('aria-describedby');
     expect(
-      screen.getByText(/이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다/),
+      screen.getByRole('button', {
+        name: '이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다.',
+      }),
     ).toBeInTheDocument();
   });
 });
@@ -184,10 +186,11 @@ describe('CodeFormPane — 잠긴 코드 (#209 시안)', () => {
     const code = screen.getByLabelText('불량코드');
     expect(code).toBeDisabled();
     expect(code).not.toHaveAttribute('aria-required', 'true');
-    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
-      'title',
-      '이 코드는 이미 다른 기록에서 쓰이고 있어서 바꿀 수 없습니다.',
-    );
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 이름의 title · 숨긴 설명으로. */
+    expect(screen.queryByText('변경 불가')).toBeNull();
+    expect(
+      screen.getByTitle('이 코드는 이미 다른 기록에서 쓰이고 있어서 바꿀 수 없습니다.'),
+    ).toHaveTextContent(/^불량코드/);
     expect(code).toHaveAccessibleDescription(
       '이 코드는 이미 다른 기록에서 쓰이고 있어서 바꿀 수 없습니다.',
     );
@@ -200,10 +203,12 @@ describe('CodeFormPane — 잠긴 코드 (#209 시안)', () => {
     });
 
     expect(
-      screen.getByText('이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다.'),
+      screen.getByRole('button', {
+        name: '이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다.',
+      }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText('대분류 목록은 임시이며, 확정 후 변경될 수 있습니다.'),
+      screen.queryByRole('button', { name: '대분류 목록은 임시이며, 확정 후 변경될 수 있습니다.' }),
     ).not.toBeInTheDocument();
   });
 });

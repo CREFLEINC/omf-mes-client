@@ -11,6 +11,10 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   splitter: 'Kéo để chỉnh độ rộng danh sách · chi tiết',
   listCollapse: 'Thu gọn danh sách kho',
   listExpand: 'Mở danh sách kho',
+  placeholders: {
+    enter: (label: string): string => `Hãy nhập ${label.charAt(0).toLowerCase()}${label.slice(1)}`,
+    select: (label: string): string => `Hãy chọn ${label.charAt(0).toLowerCase()}${label.slice(1)}`,
+  },
   panes: {
     filters: 'Điều kiện tra cứu kho',
     list: 'Danh sách kho',
@@ -216,6 +220,8 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   /** 랙의 층 · 셀 설정 대화상자(사용자 지시 2026-10-29). */
   deleteLocation: {
     title: 'Xóa vị trí',
+    caption: 'Đối tượng xóa',
+    question: 'Bạn có muốn xóa vị trí này không?',
     /** 그 위치와 밑의 위치 수. */
     count: (count: number): string =>
       count > 1 ? `${String(count)} vị trí sẽ cùng bị xóa.` : '1 vị trí sẽ bị xóa.',
@@ -225,6 +231,8 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   rackLayout: {
     levelCount: 'Hàng (số tầng)',
     cellCount: 'Cột (số ô mỗi tầng)',
+    levelCountPlaceholder: 'Hãy nhập số tầng',
+    cellCountPlaceholder: 'Hãy nhập số ô mỗi tầng',
     countInvalid: (min: number, max: number): string =>
       `Nhập số từ ${String(min)} đến ${String(max)}.`,
     previewLabel: 'Bố trí tầng·ô',
@@ -252,6 +260,7 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     title: 'Phát hành lại nhãn',
     alreadyIssued: (count: number): string => `${String(count)} mục đã được phát hành.`,
     reason: 'Lý do phát hành lại',
+    reasonPlaceholder: 'Hãy chọn lý do phát hành lại',
     confirm: 'Phát hành lại',
   },
   /** 라벨 일괄 출력(사용자 지시 2026-10-29) — 발행한 그림을 모아 보고 인쇄한다. */
@@ -262,7 +271,10 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   },
   /** 되돌리기 어려운 액션이라 확인을 한 단계 둔다. 무엇이 일어나는지 먼저 밝힌다. */
   deactivate: {
-    title: 'Ngừng sử dụng?',
+    title: 'Ngừng sử dụng vị trí',
+    caption: 'Đối tượng ngừng sử dụng',
+    question: 'Bạn có muốn ngừng sử dụng vị trí này không?',
+    warehouseQuestion: 'Bạn có muốn ngừng sử dụng kho này không?',
     description: 'Không xóa. Ngừng sử dụng thì không chọn được ở công việc mới.',
     confirm: 'Ngừng sử dụng',
     count: (count: number): string =>
@@ -274,12 +286,13 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     stockCheckFailed: 'Không kiểm tra được tồn kho.',
   },
   activate: {
-    title: 'Dùng lại?',
-    description: 'Dùng lại thì có thể chọn mục này ở công việc mới.',
+    title: 'Dùng lại vị trí',
+    caption: 'Đối tượng dùng lại',
+    question: 'Bạn có muốn dùng lại vị trí này không?',
+    warehouseQuestion: 'Bạn có muốn dùng lại kho này không?',
     confirm: 'Dùng lại',
     count: (count: number): string =>
       count > 1 ? `${String(count)} vị trí sẽ cùng được dùng lại.` : '1 vị trí sẽ được dùng lại.',
     warehouseTitle: 'Dùng lại kho',
-    warehouseLine: 'Có thể chọn lại kho này ở công việc mới.',
   },
 };

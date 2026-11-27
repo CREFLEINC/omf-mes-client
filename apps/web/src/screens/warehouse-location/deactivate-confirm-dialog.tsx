@@ -2,7 +2,6 @@ import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { ConfirmTarget } from './location-identity';
 import type { Location } from './types';
 
 const t = messages.warehouseLocation.deactivate;
@@ -50,10 +49,34 @@ export const DeactivateConfirmDialog = ({
   const deactivating = mode === 'deactivate';
   const copy = deactivating ? t : messages.warehouseLocation.activate;
   const hasTarget = location !== undefined || warehouse !== undefined;
+  const tone = deactivating ? 'warning' : 'info';
+  /*
+   * 대상 상자 · 질문 · 안내 줄 — 창고와 위치가 같은 짜임에 말만 다르다(#360).
+   * 다시 사용의 정보 줄은 질문과 같은 말이라 두지 않는다 — 함께 바뀌는 위치가 여럿일 때만 건수를 보인다(사용자 지시 · #360).
+   */
+  const body =
+    warehouse !== undefined
+      ? {
+          code: warehouse.code,
+          name: warehouse.name,
+          question: copy.warehouseQuestion,
+          note: deactivating ? t.warehouseLine : null,
+        }
+      : location !== undefined
+        ? {
+            code: location.target.locationCode,
+            name: location.target.aliasName,
+            question: copy.question,
+            note: deactivating || location.count > 1 ? copy.count(location.count) : null,
+          }
+        : null;
+  const note = body === null ? (deactivating ? t.description : null) : body.note;
+  /* 별칭이 없으면 null 이다 — 종전 대상 줄(ConfirmTarget)과 같이 비운 것으로 본다. */
+  const alias = body?.name?.trim() ?? '';
 
   return (
     <Dialog
-      className="location-dialog"
+      className={`location-dialog ${deactivating ? 'dialog-icon-block' : 'dialog-icon-restart'}`}
       open={open}
       onClose={onClose}
       size="sm"
@@ -80,27 +103,24 @@ export const DeactivateConfirmDialog = ({
       }
     >
       {banner}
-      {warehouse !== undefined ? (
-        <ConfirmTarget
-          tone={deactivating ? 'warning' : 'success'}
-          icon={deactivating ? 'block' : 'restart_alt'}
-          code={warehouse.code}
-          name={warehouse.name}
-          line={copy.warehouseLine}
-        >
-          {notice}
-        </ConfirmTarget>
-      ) : location !== undefined ? (
-        <ConfirmTarget
-          tone={deactivating ? 'warning' : 'success'}
-          icon={deactivating ? 'warning' : 'restart_alt'}
-          code={location.target.locationCode}
-          name={location.target.aliasName}
-          line={copy.count(location.count)}
-        />
-      ) : (
-        <p>{copy.description}</p>
-      )}
+      {/* 단말 사용 중지 창과 같은 짜임 — 대상 상자 · 질문 · 안내 줄(#360). */}
+      <div className="users-roles-worker-dialog">
+        {body !== null && (
+          <div className="users-roles-worker-block">
+            <span className="users-roles-worker-block-caption">{copy.caption}</span>
+            <strong>{body.code}</strong>
+            {alias !== '' && <span>{alias}</span>}
+            {warehouse !== undefined && notice}
+          </div>
+        )}
+        <p>{body === null ? copy.question : body.question}</p>
+        {note !== null && (
+          <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone={tone}>
+            <Icon name={tone} size={16} aria-hidden />
+            {note}
+          </p>
+        )}
+      </div>
     </Dialog>
   );
 };

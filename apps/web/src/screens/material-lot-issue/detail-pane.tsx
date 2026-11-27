@@ -1,4 +1,13 @@
-import { AlertBanner, Button, Checkbox, Chip, Dialog, SkeletonText, Tabs } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Checkbox,
+  Chip,
+  Dialog,
+  Icon,
+  SkeletonText,
+  Tabs,
+} from '@crefle/web-ui';
 import type { MaterialLotTab, MaterialLotVoidResult } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
@@ -376,10 +385,12 @@ export const DetailPane = ({
       />
 
       <Dialog
+        className="dialog-icon-delete"
         open={confirming}
         onClose={() => setConfirming(false)}
-        title={t.void.title(picked.length)}
+        title={t.void.title}
         size="sm"
+        showCloseButton={false}
         footer={
           <>
             <Button variant="outlined" onClick={() => setConfirming(false)}>
@@ -394,16 +405,28 @@ export const DetailPane = ({
           </>
         }
       >
-        <ul className="mlot-issue-void-list">
-          {picked.map((lot) => (
-            <li key={lot.lotId}>{lot.lotNo}</li>
-          ))}
-        </ul>
-        <p className="dialog-text">{t.void.body}</p>
-        {printedCount > 0 && (
-          <p className="dialog-text mlot-issue-bad">{t.void.printed(printedCount)}</p>
-        )}
         {voidLots.error !== null && <SaveErrorBanner error={voidLots.error} />}
+        {/* 단말 사용 중지 창과 같은 짜임 — 대상 상자(LOT 번호 목록) · 질문 · 경고 줄(#360). */}
+        <div className="users-roles-worker-dialog">
+          <div className="users-roles-worker-block">
+            <span className="users-roles-worker-block-caption">{t.void.caption}</span>
+            <strong>{t.void.target(picked.length)}</strong>
+            <ul className="mlot-issue-void-list">
+              {picked.map((lot) => (
+                <li key={lot.lotId}>{lot.lotNo}</li>
+              ))}
+            </ul>
+          </div>
+          <p>{t.void.question}</p>
+          <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+            <Icon name="warning" size={16} aria-hidden />
+            <span>
+              {t.void.body}
+              {/* 라벨을 이미 출력한 LOT 은 떼어 버리라고 함께 말한다 — 남으면 PDA 가 거부하는 까닭을 현장이 모른다. */}
+              {printedCount > 0 && <strong> {t.void.printed(printedCount)}</strong>}
+            </span>
+          </p>
+        </div>
       </Dialog>
 
       {revising !== null && (

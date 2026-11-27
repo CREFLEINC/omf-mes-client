@@ -95,7 +95,7 @@ describe('잠금 토큰 축 — C3-3', () => {
   });
 
   it('토큰이 준비되면 요청 버튼이 열린다', () => {
-    renderPane();
+    renderPane({ reason: '사유' });
 
     expect(requestButton()).toBeEnabled();
     expect(screen.queryByText(t.cancelRequest.preparing)).not.toBeInTheDocument();
@@ -261,6 +261,24 @@ describe('사유와 요청', () => {
     expect(props.onChangeReason).toHaveBeenCalledWith('가');
   });
 
+  /* 사유가 없거나 공백만이면 버튼이 잠기고, 잠긴 까닭 문구는 보이지 않는다(사용자 지시 2026-11-27). */
+  it.each(['', '   '])('사유가 %j 이면 요청 버튼이 잠긴다', (reason) => {
+    renderPane({ reason });
+
+    expect(requestButton()).toBeDisabled();
+    expect(requestButton()).not.toHaveAttribute('aria-describedby');
+    expect(screen.queryByText(t.cancelRequest.reasonRequired)).not.toBeInTheDocument();
+  });
+
+  it('흐린 문구가 「취소 사유를 입력하세요」다', () => {
+    renderPane();
+
+    expect(screen.getByLabelText(t.cancelRequest.reason)).toHaveAttribute(
+      'placeholder',
+      '취소 사유를 입력하세요',
+    );
+  });
+
   /** 화면이 잡은 오류와 서버가 준 오류가 **같은 칸에** 붙는다. */
   it('사유 오류가 칸 옆에 붙는다', () => {
     renderPane({ reasonError: t.cancelRequest.reasonRequired });
@@ -270,7 +288,7 @@ describe('사유와 요청', () => {
 
   it('요청 버튼을 누르면 확인 창을 열라고 알린다', async () => {
     const user = userEvent.setup();
-    const { props } = renderPane();
+    const { props } = renderPane({ reason: '사유' });
 
     await user.click(requestButton());
 

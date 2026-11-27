@@ -2697,6 +2697,7 @@ export const CommonCodeScreen = () => {
         <DeactivateDialog
           open
           title={t.dialog.deactivateDepartmentTitle}
+          question={t.dialog.deactivateDepartmentQuestion}
           description={t.dialog.deactivateDepartmentDescription}
           onClose={() => {
             setIsDepartmentDeactivateOpen(false);
@@ -2719,6 +2720,7 @@ export const CommonCodeScreen = () => {
         <DeactivateDialog
           open
           title={t.dialog.deactivateCodeGroupTitle}
+          question={t.dialog.deactivateCodeGroupQuestion}
           description={t.dialog.deactivateCodeGroupDescription}
           onClose={() => {
             setIsDeactivateOpen(false);

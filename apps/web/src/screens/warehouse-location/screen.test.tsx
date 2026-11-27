@@ -1932,7 +1932,7 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     const editDialog = screen.getByRole('dialog');
     await within(editDialog).findByLabelText('위치 코드');
     await user.click(within(editDialog).getByRole('button', { name: '사용 중지' }));
-    const confirmDialog = screen.getByRole('dialog', { name: '사용 중지할까요?' });
+    const confirmDialog = screen.getByRole('dialog', { name: '위치 사용 중지' });
     await user.click(within(confirmDialog).getByRole('button', { name: '사용 중지' }));
 
     await waitFor(() =>
@@ -2204,15 +2204,15 @@ describe('WarehouseLocationScreen — 서버가 만든 위치', () => {
     expect(
       within(dialog).getByRole('button', { name: messages.common.deactivate }),
     ).toBeInTheDocument();
-    /* 피처 009 — 시스템 자리는 「지정 품목만 받기」를 켤 수 없다. 잠긴 스위치 줄을 까닭과 함께(FR-017c). */
+    /* 피처 009 — 시스템 자리는 「지정 품목만 받기」를 켤 수 없다. 잠긴 스위치 줄만 — 까닭 글은 걷었다(#360). */
     const restrict = within(dialog).getByRole('switch', {
       name: messages.warehouseLocation.itemsSection.restrict.label,
     });
     expect(restrict).toBeDisabled();
     expect(restrict).not.toBeChecked();
     expect(
-      within(dialog).getByText(messages.warehouseLocation.itemsSection.restrict.system),
-    ).toBeInTheDocument();
+      within(dialog).queryByText(messages.warehouseLocation.itemsSection.restrict.system),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -2383,7 +2383,7 @@ describe('WarehouseLocationScreen — 사용 중지 · 삭제는 구역 · 랙 �
 
     // 확인 전에는 나가지 않는다.
     expect(requests.some((request) => request.url.pathname.endsWith(':deactivate'))).toBe(false);
-    const confirm = screen.getByRole('dialog', { name: '사용 중지할까요?' });
+    const confirm = screen.getByRole('dialog', { name: '위치 사용 중지' });
     expect(within(confirm).getByText('A-01-01')).toBeInTheDocument();
     expect(within(confirm).getByText('위치 2개가 함께 사용 중지됩니다.')).toBeInTheDocument();
     await user.click(within(confirm).getByRole('button', { name: '사용 중지' }));

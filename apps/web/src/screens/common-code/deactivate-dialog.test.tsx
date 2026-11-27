@@ -11,7 +11,8 @@ const renderDialog = (overrides: Partial<Parameters<typeof DeactivateDialog>[0]>
   render(
     <DeactivateDialog
       open
-      title="코드그룹을 사용 중지할까요?"
+      title="코드그룹 사용 중지"
+      question="이 코드그룹의 사용을 중지하시겠습니까?"
       description="사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 코드그룹이 그대로 표시됩니다."
       onClose={onClose}
       onConfirm={onConfirm}
@@ -25,25 +26,37 @@ const renderDialog = (overrides: Partial<Parameters<typeof DeactivateDialog>[0]>
 };
 
 describe('DeactivateDialog', () => {
+  /* 아이콘 클래스는 창(제목 앞 아이콘)에 — [취소] 단추에 붙지 않는다(#360). */
+  it('제목 아이콘 클래스는 창에 붙고 [취소] 단추에는 없다', () => {
+    renderDialog();
+
+    expect(screen.getByRole('dialog').closest('dialog')).toHaveClass('dialog-icon-block');
+    const cancel = screen.getByRole('button', { name: '취소' });
+    expect(cancel.className).not.toMatch(/dialog-icon-/);
+  });
+
   it('어느 자원을 중지하는지 제목이 밝힌다', () => {
     renderDialog();
 
-    expect(
-      within(screen.getByRole('dialog')).getByText('코드그룹을 사용 중지할까요?'),
-    ).toBeInTheDocument();
+    expect(within(screen.getByRole('dialog')).getByText('코드그룹 사용 중지')).toBeInTheDocument();
   });
 
   /* 사용자 지시 2026-11-26 — 제목 아래 대상 줄 없이 설명 · 주의 줄 순서. */
-  it('대상 줄 없이 설명 · 주의 줄을 차례로 낸다', () => {
+  it('대상 줄 없이 질문 · 설명 · 주의 줄을 차례로 낸다', () => {
     renderDialog();
 
     const dialog = within(screen.getByRole('dialog'));
     expect(dialog.queryByText(/\(SYN-/)).toBeNull();
+    const question = dialog.getByText('이 코드그룹의 사용을 중지하시겠습니까?');
     const description = dialog.getByText(
       '사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 코드그룹이 그대로 표시됩니다.',
     );
     const warning = dialog.getByText('사용 중지 후에는 사용을 재개할 수 없습니다.');
+    expect(description).toHaveAttribute('data-tone', 'info');
     expect(warning).toHaveAttribute('data-tone', 'warning');
+    expect(
+      question.compareDocumentPosition(description) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(
       description.compareDocumentPosition(warning) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();

@@ -1,5 +1,6 @@
 import { Button, Checkbox, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 
 import { hasChangedFilters } from '../../patterns/filter-more';
@@ -24,6 +25,8 @@ export interface CountFilterBarProps {
   isLocked: boolean;
   onSearch: (filters: CountFilters) => void;
   onReset: () => void;
+  /** [조회] 바로 오른쪽에 서는 단추 — 「실사 개시」 등록 팝업을 연다(사용자 지시 2026-11-27 · #360). */
+  openAction?: ReactNode;
 }
 
 /**
@@ -50,6 +53,7 @@ export const CountFilterBar = ({
   isLocked,
   onSearch,
   onReset,
+  openAction,
 }: CountFilterBarProps) => {
   const [filters, setFilters] = useState<CountFilters>(appliedFilters);
 
@@ -151,12 +155,14 @@ export const CountFilterBar = ({
        * 조건 때문에 잠기는 자리는 없다 — 조건 없이도 조회가 열려 있다.
        * **전송 중에만 잠긴다**(수명 표 18행) — 조회·초기화는 고른 실사를 비우는 길이라,
        * 보내는 동안 열어 두면 앞 요청의 결과가 다른 맥락에 나타난다.
+       * 조건 줄 오른쪽 끝에 선다 — 재고 관리 묶음의 다른 탭과 같다(#360).
        */}
-      <div className="field-cell field-cell-unlabeled">
+      <div className="field-cell field-cell-unlabeled filter-actions-end">
         <div className="filter-actions">
           <Button disabled={isLocked} onClick={search}>
             {messages.common.search}
           </Button>
+          {openAction}
           {isChanged && (
             <Button variant="outlined" disabled={isLocked} onClick={reset}>
               {messages.common.reset}

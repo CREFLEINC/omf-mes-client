@@ -64,6 +64,7 @@ export const BulkFormDialog = ({
 
   return (
     <Dialog
+      className="dialog-icon-edit"
       open
       onClose={onClose}
       closeOnBackdropClick={false}
@@ -164,7 +165,6 @@ export const BulkFormDialog = ({
           value={values.day.startTime}
           onChange={(event) => onChangeDay({ startTime: event.target.value })}
           disabled={!onPartial}
-          disabledReason={t.dayForm.timeNeedsPartial}
           error={fieldErrors.startTime}
         />
 
@@ -175,12 +175,12 @@ export const BulkFormDialog = ({
           value={values.day.endTime}
           onChange={(event) => onChangeDay({ endTime: event.target.value })}
           disabled={!onPartial}
-          disabledReason={t.dayForm.timeNeedsPartial}
           error={fieldErrors.endTime}
         />
 
         <TextField
           label={t.dayForm.reason}
+          placeholder={t.dayForm.reasonPlaceholder}
           value={values.day.reasonCode}
           onChange={(event) => onChangeDay({ reasonCode: event.target.value })}
           error={fieldErrors.reasonCode}
@@ -188,6 +188,7 @@ export const BulkFormDialog = ({
 
         <TextField
           label={t.dayForm.remarks}
+          placeholder={t.dayForm.remarksPlaceholder}
           value={values.day.remarks}
           onChange={(event) => onChangeDay({ remarks: event.target.value })}
           error={fieldErrors.remarks}

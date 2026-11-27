@@ -9,6 +9,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 
 import { InfoTip } from '../../patterns/info-tip';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { splitCodeName } from '../../patterns/split-code-name';
 
 import type { PeriodInput } from './period';
@@ -33,6 +34,8 @@ export interface WorkOrderTableProps {
   statusLabel: (statusCode: string) => string;
   onSort: (key: SortKey) => void;
   onSelect: (workOrderId: number) => void;
+  /** 상세를 연 작업지시 — 그 줄을 파랗게 칠한다(#360). */
+  selectedWorkOrderId?: number | null;
 }
 
 /** DS 의 정렬 표기와 이 화면의 표기를 잇는다 — 방향 낱말이 서로 다르다. */
@@ -67,6 +70,7 @@ export const WorkOrderTable = ({
   statusLabel,
   onSort,
   onSelect,
+  selectedWorkOrderId = null,
 }: WorkOrderTableProps) => {
   const t = messages.workOrderProgress.list;
 
@@ -85,6 +89,8 @@ export const WorkOrderTable = ({
       render: (row) => (
         <Button
           aria-label={t.select(row.workOrderNo)}
+          aria-current={row.workOrderId === selectedWorkOrderId ? 'true' : undefined}
+          className={ROW_PICK_CLASS}
           variant="text"
           onClick={() => {
             onSelect(row.workOrderId);
@@ -184,7 +190,7 @@ export const WorkOrderTable = ({
 
       {isLoading && <p role="status">{t.loading}</p>}
 
-      <div className="work-order-progress-table">
+      <div className="work-order-progress-table" {...rowPickHandlers}>
         <Table
           density="compact"
           caption={t.title}

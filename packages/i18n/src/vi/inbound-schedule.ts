@@ -182,6 +182,14 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     actions: {
       link: 'Liên kết',
     },
+    linkDialog: {
+      title: 'Liên kết với P/O chứ?',
+      receiptLine: 'Dòng nhập hàng',
+      order: 'P/O sẽ liên kết',
+      qty: 'Số lượng liên kết',
+      cancel: 'Hủy',
+      confirm: 'Liên kết',
+    },
     confirmLink: (qty: string, order: string): string => `Phần vượt ${qty} → ${order}`,
     blocked: {
       noExcess: 'Hãy chọn phần vượt cần liên kết.',

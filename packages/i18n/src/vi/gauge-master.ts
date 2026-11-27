@@ -52,11 +52,14 @@ export const gaugeMaster: Translated<typeof ko.gaugeMaster> = {
     plantPlaceholder: 'Hãy chọn nhà máy',
     cyclePlaceholder: 'Hãy chọn đơn vị chu kỳ',
     uomPlaceholder: 'Hãy chọn đơn vị',
+    codePlaceholder: 'Hãy nhập mã thiết bị đo',
+    namePlaceholder: 'Hãy nhập tên thiết bị đo',
+    cycleIntervalPlaceholder: 'Hãy nhập khoảng chu kỳ hiệu chuẩn',
+    precisionValuePlaceholder: 'Hãy nhập độ chính xác',
   },
   /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다. */
   actionReasons: {
     plantFixed: 'Nhà máy được định khi đăng ký và không thể chuyển ở màn hình này.',
-    cycleNeedsCalibration: 'Chỉ định là đối tượng hiệu chuẩn thì mới nhập được chu kỳ.',
     statusOwnedElsewhere: 'Trạng thái vận hành thay đổi qua ngừng sử dụng · xử lý thanh lý.',
     calibrationDateOwnedElsewhere:
       'Ngày hiệu chuẩn được định ở màn hình đăng ký lịch sử hiệu chuẩn.',
@@ -69,14 +72,18 @@ export const gaugeMaster: Translated<typeof ko.gaugeMaster> = {
       'Danh sách giá trị trạng thái tài sản chưa sẵn sàng nên chưa thể xử lý thanh lý.',
   },
   retire: {
-    deactivateTitle: 'Ngừng sử dụng thiết bị đo này?',
+    deactivateTitle: 'Ngừng sử dụng thiết bị đo',
+    deactivateCaption: 'Đối tượng ngừng sử dụng',
+    deactivateQuestion: 'Bạn có muốn ngừng sử dụng thiết bị đo này không?',
     /** 중지해도 그 계측기가 남긴 검교정 기록은 그대로다 — 감추는 것과 지우는 것은 다르다. */
     deactivateImpact:
       'Bản ghi hiệu chuẩn mà thiết bị đo này để lại vẫn còn nguyên, chỉ bị bỏ khỏi danh sách khi chọn mới.',
     deactivateNotReversibleHere:
       'Không xóa. Nhưng màn hình này không có cách bật lại, muốn hoàn tác thì phải nhờ người phụ trách.',
     deactivateConfirm: 'Ngừng sử dụng',
-    disposeTitle: 'Xử lý thanh lý?',
+    disposeTitle: 'Thanh lý thiết bị đo',
+    disposeCaption: 'Đối tượng thanh lý',
+    disposeQuestion: 'Bạn có muốn thanh lý thiết bị đo này không?',
     /** 사용 중지와 «다른 축»이다 — 그것은 감추는 것이고 이것은 자산이 끝난 것이다. */
     disposeImpact:
       'Đây là xử lý khác với ngừng sử dụng. Ngừng sử dụng là ẩn khỏi danh sách, còn thanh lý là tài sản đã kết thúc.',
@@ -84,8 +91,6 @@ export const gaugeMaster: Translated<typeof ko.gaugeMaster> = {
       'Không thể hoàn tác. Sau khi thanh lý thì tải lại cũng không mở được chỉnh sửa.',
     disposeConfirm: 'Xử lý thanh lý',
     target: (label: string): string => `Xử lý ${label}.`,
-    deactivateTarget: (label: string): string => `Ngừng sử dụng ${label}.`,
-    disposeTarget: (label: string): string => `Thanh lý ${label}.`,
   },
   fields: {
     plant: 'Nhà máy',
@@ -120,9 +125,6 @@ export const gaugeMaster: Translated<typeof ko.gaugeMaster> = {
   history: {
     title: 'Lịch sử hiệu chuẩn',
     loading: 'Đang tải lịch sử hiệu chuẩn',
-    /** ⭐ 이 화면은 이력을 읽기만 한다 — 등록은 검교정 이력 등록 화면의 몫이다. */
-    readOnlyNote:
-      'Lịch sử hiệu chuẩn được ghi ở màn hình đăng ký lịch sử hiệu chuẩn. Ở đây chỉ xem được.',
     emptyTitle: 'Không có lịch sử hiệu chuẩn',
     emptyDescription: 'Hiệu chuẩn xong và ghi lại lịch sử thì sẽ hiện ở đây.',
     loadFailed: 'Không tải được lịch sử hiệu chuẩn.',

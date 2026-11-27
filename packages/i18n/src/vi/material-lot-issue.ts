@@ -84,19 +84,29 @@ export const materialLotIssue: Translated<typeof ko.materialLotIssue> = {
     targetPlaceholder: 'Hãy chọn nhà cung cấp · mặt hàng',
     targetOption: (supplier: string, itemCode: string, itemName: string, uom: string) =>
       `${supplier} · ${itemCode} ${itemName} (${uom})`,
+    supplier: 'Nhà cung cấp',
+    item: 'Mặt hàng',
+    itemWithUnit: (itemCode: string, itemName: string, uom: string) =>
+      `${itemCode} ${itemName} · đơn vị ${uom}`,
     source: {
       item: 'Lấy từ giá trị mặc định của mặt hàng',
       itemStorage:
         'Chưa có giá trị mặc định của mặt hàng — điền theo đơn vị bảo quản mặc định của mặt hàng',
-      none: 'Chưa có giá trị mặc định của mặt hàng — nhập tay',
+      none: 'Mặt hàng chưa có thông tin đóng gói mặc định. Nếu cần đóng gói, hãy nhập tay.',
     },
     defaultsFailed:
       'Không tải được giá trị mặc định của mặt hàng. Vẫn có thể nhập tay để phát hành.',
-    package: 'Đóng gói',
+    package: 'Có đóng gói',
     packageOptional: '(tùy chọn)',
-    packageOn: 'Có đóng gói',
-    packageOff: 'Không đóng gói',
     packageUom: 'Đơn vị đóng gói',
+    placeholders: {
+      packageUom: 'Hãy chọn đơn vị đóng gói',
+      packageCount: 'Hãy nhập số kiện đóng gói',
+      qtyPerPackage: 'Hãy nhập số lượng mỗi kiện',
+      lotQty: 'Hãy nhập số lượng tồn kho',
+      supplierLotNo: 'Hãy nhập số LOT của nhà cung cấp',
+      lotCount: 'Hãy nhập số lượng LOT',
+    },
     packageCount: 'Số kiện đóng gói',
     qtyPerPackage: (uom: string) => `Số lượng mỗi kiện đóng gói (${uom})`,
     lotQty: 'Số lượng tồn kho mỗi LOT quản lý vật tư',
@@ -125,13 +135,18 @@ export const materialLotIssue: Translated<typeof ko.materialLotIssue> = {
       `${count} LOT quản lý vật tư · mỗi LOT ${each}${pkg === null ? '' : ` (${pkg})`} · Tổng ${total}${
         supplierLot === null ? '' : ` · LOT nhà cung cấp ${supplierLot}`
       }`,
-    summaryTail: (pattern: string) => `Ví dụ số: ${pattern} …`,
-    summaryEmpty: 'Nhập số lượng LOT thì các LOT quản lý vật tư sẽ được phát hành hiện ở đây.',
+    summaryTail: (pattern: string) => `Ví dụ số: ${pattern}`,
+    summaryEmpty: 'Nhập các mục bắt buộc để xem trước các LOT sẽ phát hành.',
+    previewTitle: 'LOT sẽ phát hành',
+    previewMore: (count: number) => `và ${count} LOT khác`,
     cancel: 'Hủy',
     submit: (count: number | null) => (count === null ? 'Phát hành' : `Phát hành ${count} LOT`),
   },
   void: {
-    title: (count: number) => `Hủy ${count} LOT quản lý vật tư đang chờ?`,
+    title: 'Hủy LOT quản lý vật tư',
+    caption: 'Đối tượng hủy',
+    target: (count: number) => `${count} LOT quản lý vật tư đang chờ`,
+    question: 'Hủy các LOT đã chọn?',
     body: 'Sau khi hủy, LOT bị từ chối khi quét nhập hàng trên PDA và số LOT không được cấp lại.',
     printed: (count: number) =>
       `Nhãn của ${count} LOT đã in nhãn phải được bóc bỏ tại hiện trường.`,
@@ -199,9 +214,7 @@ export const materialLotIssue: Translated<typeof ko.materialLotIssue> = {
       po: 'P/O',
       qty: 'Số lượng tồn mỗi LOT quản lý vật tư',
       qtyFixed: 'Cố định theo đơn vị cơ sở của mặt hàng',
-      package: 'Đóng gói',
-      packageOn: 'Có đóng gói',
-      packageOff: 'Không đóng gói',
+      package: 'Có đóng gói',
       packageUom: 'Đơn vị đóng gói',
       packageCount: 'Số kiện',
       qtyPerPackage: (uom: string) => `Số lượng mỗi kiện (${uom})`,

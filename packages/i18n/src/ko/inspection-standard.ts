@@ -19,6 +19,7 @@ export const inspectionStandard = {
   actions: {
     /* 미사용 기준을 다시 켜는 단추 — 「사용 중지」 자리(사용자 지시 2026-11-04). */
     reactivate: '재사용',
+    activateConfirm: '다시 사용',
     /* 다른 품목으로 복사(omf-all-around#255). */
     copy: '복사',
     /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
@@ -104,24 +105,35 @@ export const inspectionStandard = {
     obsolete: '사용 중지된 버전은 고칠 수 없습니다. 바꾸려면 「신규 버전 발행」을 누르세요.',
   },
   dialog: {
-    deactivateTitle: '검사 기준을 사용 중지하시겠습니까?',
+    /* 확인 창 — 제목은 짧은 이름, 묻는 말은 본문(단말 사용 중지 창과 같은 짜임 · #360). */
+    deactivateTitle: '검사 기준 사용 중지',
+    deactivateCaption: '사용 중지 대상',
+    deactivateQuestion: '검사 기준을 사용 중지하시겠습니까?',
     /* 사용 중지한 기준을 다시 켠다(사용자 지시 2026-11-04). */
-    activateTitle: '검사 기준을 다시 사용하시겠습니까?',
+    activateTitle: '검사 기준 다시 사용',
+    activateCaption: '다시 사용 대상',
+    activateQuestion: '검사 기준을 다시 사용하시겠습니까?',
     activateDescription: '재사용하면 새 검사에 이 기준을 적용할 수 있습니다.',
     deactivateDescription:
       '사용 중지하면 새 검사에 적용할 수 없습니다. 검사 기준 정보는 삭제되지 않습니다.',
-    confirmTitle: '이 버전을 확정할까요?',
+    confirmTitle: '버전 확정',
+    confirmCaption: '확정 대상',
+    confirmQuestion: '이 버전을 확정하시겠습니까?',
     confirmDescription: '확정하면 이 버전은 고칠 수 없습니다. 바꾸려면 새 버전을 발행해야 합니다.',
-    /** 「버전 1을 …」 — 숫자 끝소리에 맞춰 을/를(2·4·5·9 는 「를」 · 사용자 시안 #258). */
-    obsoleteTitle: (version: number): string =>
-      `버전 ${String(version)}${[2, 4, 5, 9].includes(version % 10) ? '를' : '을'} 사용 중지하시겠습니까?`,
+    obsoleteTitle: '버전 사용 중지',
+    obsoleteCaption: '사용 중지 대상',
+    obsoleteQuestion: '이 버전을 사용 중지하시겠습니까?',
     obsoleteDescription:
       '사용 중지하면 새 검사에 적용되지 않습니다. 기존 데이터는 유지되며, 필요하면 다시 사용할 수 있습니다.',
     /* 사용 중지한 버전을 다시 확정으로(omf-all-around#258). */
-    reactivateVersionTitle: '이 버전을 다시 사용할까요?',
+    reactivateVersionTitle: '버전 다시 사용',
+    reactivateVersionCaption: '다시 사용 대상',
+    reactivateVersionQuestion: '이 버전을 다시 사용하시겠습니까?',
     reactivateVersionDescription:
       '재사용하면 이 버전이 다시 확정 버전이 되어 새 검사에 적용됩니다.',
-    discardTitle: '이 작성중 버전을 취소할까요?',
+    discardTitle: '버전 작성 취소',
+    discardCaption: '작성 취소 대상',
+    discardQuestion: '이 작성중 버전을 취소하시겠습니까?',
     discardDescription:
       '이 버전과 검사 항목이 삭제되며 되돌릴 수 없습니다. 저장하지 않은 변경도 함께 사라집니다.',
     itemCreateTitle: '검사 항목 추가',
@@ -136,6 +148,24 @@ export const inspectionStandard = {
     /* 칸마다 무엇을 넣을지 알린다(사용자 시안 · #196). */
     /* 등록 · 복사 창의 기준코드 — 비우면 서버가 QP-{YYYYMMDD}-{SEQ4}로 등록한다(omf-all-around#262). */
     planCodePlaceholder: '비우면 자동으로 등록됩니다',
+    /** 기준 등록 · 수정 창 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+    planPlaceholders: {
+      inspectionPlanName: '기준명을 입력하세요',
+      inspectionType: '검사 유형을 선택하세요',
+    },
+    /** 버전 설정 창 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+    versionPlaceholders: {
+      samplingMethod: '검사 방식을 선택하세요',
+      aqlInspectionLevel: 'AQL 검사 수준을 선택하세요',
+      samplingRatio: '샘플 비율을 입력하세요',
+      samplingQty: '샘플 수량을 입력하세요',
+      aqlValueSelect: 'AQL을 선택하세요',
+      aqlValue: 'AQL을 입력하세요',
+      acceptanceNumber: '합격 허용 불량 수를 입력하세요',
+      rejectionNumber: '불합격 판정 불량 수를 입력하세요',
+    },
+    /** 지시문 편집 창 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+    guideTextPlaceholder: '지시문을 입력하세요',
     itemPlaceholders: {
       /* 비우면 서버가 ITEM-{순서}로 등록한다(omf-all-around#262). */
       inspectionItemCode: '비우면 자동으로 등록됩니다',
@@ -147,6 +177,7 @@ export const inspectionStandard = {
       upperLimit: '상한값을 입력하세요',
       inspectionMethod: '검사 방법을 선택하세요',
       defaultInspectionEquipment: '검사 장비를 선택하세요',
+      measurementCount: '측정 횟수를 입력하세요',
     },
     /* 창의 확인칸 이름 — 표의 짧은 라벨(필수 · 자동판정)과 따로 둔다(사용자 지시 · #196). */
     requiredFlagLabel: '필수 검사 항목 여부',
@@ -350,7 +381,7 @@ export const inspectionStandard = {
     legendChanged: '변경',
     legendAdded: '추가',
     legendRemoved: '삭제',
-    count: (count: number): string => `총 ${String(count)}건`,
+    count: (count: number): string => `${String(count)}건`,
     fieldColumn: '항목',
     statusColumn: '상태',
     itemColumn: '검사 항목',

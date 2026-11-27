@@ -157,11 +157,18 @@ describe('수정 본문', () => {
    * ⚠ **빈 칸을 보내는 길이 이것뿐이다.** 계약이 이 칸을 널 허용으로 두지 않아, 빼면
    * 「그대로 두라」가 되어 한번 적은 이름을 지울 수 없다.
    */
-  it('지운 칸은 빈 문자열로 보낸다', () => {
+  it('지운 신호명은 빈 문자열로 보낸다', () => {
     const body = toChannelUpdate(form({ signalName: '', unitCode: '' }), current);
 
     expect(body.signalName).toBe('');
-    expect(body.unitCode).toBe('');
+  });
+
+  /* 서버가 빈 단위 코드를 400 으로 막는다 — 비운 단위는 아예 빼고 보낸다(#360). */
+  it('비운 단위는 본문에서 뺀다', () => {
+    const body = toChannelUpdate(form({ unitCode: '  ' }), current);
+
+    expect('unitCode' in body).toBe(false);
+    expect(toChannelUpdate(form({ unitCode: ' CELSIUS ' }), current).unitCode).toBe('CELSIUS');
   });
 
   it('적은 값은 다듬어 보낸다', () => {

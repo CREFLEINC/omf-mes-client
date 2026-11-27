@@ -62,6 +62,7 @@ const URL_KEYS = {
   status: 'st',
   q: 'q',
   page: 'page',
+  size: 'size',
 } as const;
 
 /**
@@ -163,6 +164,17 @@ export const readSelectedReceiptId = (params: URLSearchParams): number | null =>
   return raw === '' ? null : Number(raw);
 };
 
+/** 목록 한 쪽 건수 기본 — 서버 기본값(50)이라 싣지 않는다. 주소에 적지 않는다. */
+export const PAGE_SIZE = 50;
+
+/** 고를 쪽 크기 — 품질 목록과 같은 10 · 20 · 50건(#360). */
+export const LIST_PAGE_SIZES = [10, 20, 50] as const;
+export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
+
+/** 쪽 크기. 고를 수 있는 값이 아니면 기본(50)으로 읽는다. */
+export const readPageSize = (params: URLSearchParams): ListPageSize =>
+  LIST_PAGE_SIZES.find((size) => String(size) === params.get(URL_KEYS.size)) ?? PAGE_SIZE;
+
 /**
  * 조건 전체를 주소로 옮긴다. **빈 조건은 키 자체를 두지 않는다** —
  * 주소가 조건을 그대로 드러내야 무엇으로 조회했는지 읽을 수 있다.
@@ -172,7 +184,12 @@ export const readSelectedReceiptId = (params: URLSearchParams): number | null =>
  * **`gr`를 만들지 않는다.** 조건·쪽이 바뀌면 고른 전표가 새 결과에 없을 수 있어 함께
  * 비워져야 한다(수명 표 1~3행).
  */
-export const toSearchParams = (filters: ReceiptFilters, page: number): URLSearchParams => {
+export const toSearchParams = (
+  filters: ReceiptFilters,
+  page: number,
+  /** 고른 쪽 크기 — 기본(50)이면 적지 않는다. */
+  size: number = PAGE_SIZE,
+): URLSearchParams => {
   const next = new URLSearchParams();
 
   const entries: [string, string][] = [
@@ -189,6 +206,7 @@ export const toSearchParams = (filters: ReceiptFilters, page: number): URLSearch
   }
 
   if (page > 1) next.set(URL_KEYS.page, String(page));
+  if (size !== PAGE_SIZE) next.set(URL_KEYS.size, String(size));
 
   return next;
 };

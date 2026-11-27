@@ -14,17 +14,12 @@
  */
 export const documentProgress = {
   title: '물류 전표 조회·취소',
-  breadcrumbRoot: '구매 / 자재 관리',
   /** 구획 이름 — 입고 관리 짜임(위 조건 · 왼쪽 목록 · 오른쪽 고른 전표). */
   panes: {
     filters: '조회 조건',
     list: '전표 목록',
     detail: '고른 전표',
   },
-  /** 목록 · 상세 사이 막대. */
-  splitter: '끌어서 목록과 상세 폭 조절',
-  listCollapse: '전표 목록 접기',
-  listExpand: '전표 목록 펼치기',
   /** 문서 유형 이름 — 계약이 표시명을 싣지 않고 다국어 사전에 맡겼다(G-33). */
   documentTypes: {
     PURCHASE_ORDER: '발주',
@@ -61,8 +56,8 @@ export const documentProgress = {
   },
   filters: {
     all: '전체',
-    /** 문서 유형은 「전체」로 조회할 수 없다 — 하나를 골라야 목록이 나온다. */
-    choose: '선택',
+    /** 문서번호 검색칸의 흐린 문구(#360). */
+    qPlaceholder: '문서번호를 입력하세요',
     /** 외주 문서처럼 고를 수 없는 유형이 있을 때. 사유를 감추지 않는다. */
     disabledTypes: (reasons: string): string => `고를 수 없는 유형이 있습니다. ${reasons}`,
     /** 「조건 더보기」에 접힌 상태에 걸린 값의 칩(C-6). */
@@ -215,7 +210,7 @@ export const documentProgress = {
   cancelRequest: {
     label: '취소 요청',
     reason: '취소 사유',
-    reasonPlaceholder: '왜 취소하는지 적으세요',
+    reasonPlaceholder: '취소 사유를 입력하세요',
     reasonRequired: '취소 사유를 적어야 요청을 올릴 수 있습니다.',
     /**
      * 이 유형에 취소 경로가 없다. **유형 표에 취소 리소스가 없는 상태**이며, 값이 확정되지 않은
@@ -259,11 +254,22 @@ export const documentProgress = {
    * ⓑ가 이 창의 요점이다: 올린 뒤 무를 수 있다고 읽히면 사용자가 가볍게 누른다.
    */
   cancelDialog: {
-    title: '취소 요청을 올릴까요?',
+    /**
+     * 문서 종류 이름이 있으면 「입고 취소를 요청할까요?」, 없으면 「문서 취소를 요청할까요?」.
+     * 사용자 지시 2026-11-27 · omf-all-around#360.
+     */
+    title: (typeName: string | null): string =>
+      typeName === null ? '문서 취소를 요청할까요?' : `${typeName} 취소를 요청할까요?`,
     /** 어느 문서인지 **문서번호로** 말한다(내부 번호가 아니다 — omf-mes#44). */
-    target: (documentNo: string): string => `${documentNo}의 취소를 승인에 올립니다.`,
-    noWithdraw: '⚠ 올린 요청은 철회할 수 없습니다.',
-    confirm: '취소 요청 올리기',
+    targetLabel: '대상 문서',
+    /**
+     * 승인되어도 취소가 저절로 되지 않는다 — 승인 뒤 취소 실행(`:cancel`)을 사람이 다시 누른다.
+     * 그래서 「승인되면 문서가 취소됩니다」를 붙이지 않는다.
+     */
+    lead: '이 문서의 취소를 결재에 올립니다.',
+    /** 상신을 되무르는 오퍼레이션이 승인 계약에 없다(omf-mes#87). */
+    noWithdraw: '결재 요청 후에는 철회할 수 없습니다.',
+    confirm: '취소 결재 요청',
     keepEditing: '돌아가기',
   },
   /**
@@ -356,9 +362,9 @@ export const documentProgress = {
    * ⚠ **ⓑ를 흐리지 않는다** — 되돌리는 경로가 **없다.** 무를 수 있다고 읽히면 사용자가 가볍게 누른다.
    */
   executeDialog: {
-    title: '취소를 실행할까요?',
-    /** 어느 문서인지 **문서번호로** 말한다(내부 번호가 아니다 — omf-mes#44). */
-    target: (documentNo: string): string => `${documentNo}의 취소를 실행합니다.`,
+    title: '취소 실행',
+    /** 어느 문서인지는 위 상자가 **문서번호로** 말한다(내부 번호가 아니다 — omf-mes#44). */
+    question: '이 문서의 취소를 실행하시겠습니까?',
     irreversible: '⛔ 실행하면 되돌릴 수 없습니다.',
     confirm: '취소 실행하기',
     keepEditing: '돌아가기',

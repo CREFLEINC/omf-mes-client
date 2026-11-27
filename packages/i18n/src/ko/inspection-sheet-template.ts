@@ -127,6 +127,9 @@ export const inspectionSheetTemplate = {
     templateName: '기준명',
     /* 비우면 그 품목이 쓰던 코드, 없으면 서버가 QS-{YYYYMMDD}-{SEQ4}로 등록한다(omf-all-around#262). */
     templateCodePlaceholder: '비우면 자동으로 등록됩니다',
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+    templateNamePlaceholder: '기준명을 입력하세요',
+    businessUnitPlaceholder: '사업부를 고르세요',
     noTemplateName: '기준명을 입력하세요.',
     codeHeading: '기준코드 · 기준명',
     businessUnit: '사업부',

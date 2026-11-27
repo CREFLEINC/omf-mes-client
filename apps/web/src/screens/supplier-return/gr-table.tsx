@@ -1,7 +1,8 @@
-import { Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { Button, type Column, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { SelectableTable } from '../../patterns/selectable-table';
 import { describeReference, toReference, type ReferenceSource } from './lookups';
 import { formatDateTime, type ReceiptView } from './types';
 
@@ -18,6 +19,9 @@ export const TABLE_MIN_WIDTH_PX = 928;
 export interface GrColumnsInput {
   selectedReceiptId: number | null;
   warehouseLookup: ReferenceSource;
+  /** 입고 유형 · 상태 코드 → 서버 코드값 이름(없으면 코드 그대로 · #360). */
+  receiptTypeName?: (code: string) => string;
+  statusName?: (code: string) => string;
   /**
    * 전송 중인가. **전표를 바꾸는 길을 함께 닫는다** — 열어 두면 사용자가 다른 전표로 옮긴 뒤
    * 앞 요청의 결과가 지금 보는 맥락에 나타난다.
@@ -49,7 +53,6 @@ export interface GrColumnsInput {
  * | 입고 유형 | 128px | 코드 문자열 |
  * | 입고 일시 | 168px | `YYYY-MM-DD HH:mm` 16자 120px + 셀 여백 32px |
  * | 상태 | 128px | 코드 문자열 |
- * | 선택 | 88px | `sm` 버튼 하나 |
  * | **지정 폭 합** | **680px** | |
  * | 흡수 열 예산 | 200px | 「코드 · 이름」이 접히지 않고 읽히는 하한 |
  * | **합** | **880px** | `58rem`(928px) 안에 들어간다 — 48px 여유 |
@@ -58,12 +61,16 @@ export interface GrColumnsInput {
  * 하한에 가까우면 흡수 열이 몇십 px밖에 못 받아 「코드 · 이름」이 낱말 단위로 쪼개진다.
  * 그 어긋남은 열 폭 합만 세는 단언을 통과하므로 **남는 폭까지 함께 단언한다.**
  */
+const asIs = (code: string): string => code;
+
 export const buildGrColumns = ({
-  selectedReceiptId,
   warehouseLookup,
-  isLocked,
-  onToggleSelect,
-}: GrColumnsInput): Column<ReceiptView>[] => [
+  receiptTypeName = asIs,
+  statusName = asIs,
+}: Pick<
+  GrColumnsInput,
+  'warehouseLookup' | 'receiptTypeName' | 'statusName'
+>): Column<ReceiptView>[] => [
   { key: 'goodsReceiptNo', header: t.table.goodsReceiptNo, width: '168px' },
   {
     key: 'warehouse',
@@ -82,7 +89,9 @@ export const buildGrColumns = ({
      * **값에 따라 변형을 가르지 않는다.** 값 집합이 확정되지 않아 색을 가르면 뜻을 지어내는
      * 것이 된다. 코드는 번역하지 않고 그대로 낸다 — 칩으로 감싸지 않는 이유는 비활성 표현이
      * 필요한 자리가 생겼을 때 칩이 그 prop을 갖고 있지 않기 때문이다(설치본 실측).
+     * 글자는 서버 코드값 이름으로 낸다(#360).
      */
+    render: (row) => receiptTypeName(row.receiptTypeCode),
   },
   {
     key: 'receiptDatetime',
@@ -90,34 +99,11 @@ export const buildGrColumns = ({
     width: '168px',
     render: (row) => formatDateTime(row.receiptDatetime),
   },
-  { key: 'statusCode', header: t.table.status, width: '128px' },
   {
-    key: 'select',
-    header: t.table.select,
-    width: '88px',
-    render: (row) => {
-      const selected = row.goodsReceiptId === selectedReceiptId;
-
-      return (
-        /*
-         * 접근 이름에 **입고번호**를 넣는다 — 「선택」이 행마다 되풀이되면 어느 건인지 알 수 없다.
-         * 내부 번호를 넣지 않는 이유는 그것이 화면 밖으로 새는 또 하나의 경로이기 때문이다.
-         */
-        <Button
-          variant="outlined"
-          size="sm"
-          aria-label={
-            selected ? t.actions.deselectRow(row.goodsReceiptNo) : t.actions.selectRow(row.goodsReceiptNo)
-          }
-          disabled={isLocked}
-          onClick={() => {
-            onToggleSelect(row.goodsReceiptId);
-          }}
-        >
-          {selected ? t.actions.deselect : t.actions.select}
-        </Button>
-      );
-    },
+    key: 'statusCode',
+    header: t.table.status,
+    width: '128px',
+    render: (row) => statusName(row.statusCode),
   },
 ];
 
@@ -145,12 +131,14 @@ export const GrTable = ({
   isBeyondLast,
   selectedReceiptId,
   warehouseLookup,
+  receiptTypeName,
+  statusName,
   isLocked,
   onFirstPage,
   onToggleSelect,
   onRetryReferences,
 }: GrTableProps) => {
-  const columns = buildGrColumns({ selectedReceiptId, warehouseLookup, isLocked, onToggleSelect });
+  const columns = buildGrColumns({ warehouseLookup, receiptTypeName, statusName });
 
   if (isLoading) {
     return (
@@ -189,17 +177,24 @@ export const GrTable = ({
        * 스크롤 상자는 디자인 시스템 `Table`이 이미 갖고 있어 우리가 만들지 않는다.
        */}
       <div className="wide-table">
-        <Table
-          density="compact"
+        {/*
+         * 행 아무 곳이나 누르면 그 전표를 고른다(사용자 지시 2026-11-26 「선택 단추가 아니라 행 클릭」 · 공용
+         * `SelectableTable`). 고른 행을 다시 누르면 선택을 푼다 — 종전 [선택 해제] 단추와 같은 동작. 전송 중에는 누르지 않는다.
+         */}
+        <SelectableTable
           columns={columns}
           rows={rows}
-          /*
-           * 선택 열을 쓰지 않아도 지정한다 — 미지정이면 인덱스가 React key가 되어
-           * 쪽이 바뀔 때 앞 쪽의 행이 남아 보일 수 있다.
-           *
-           * **여기의 `String()`은 화면에 나오지 않는다** — React key로만 쓰이며 셀 텍스트가 되지 않는다.
-           */
           getRowId={(row) => String(row.goodsReceiptId)}
+          activeId={selectedReceiptId === null ? null : String(selectedReceiptId)}
+          rowLabel={(row) =>
+            row.goodsReceiptId === selectedReceiptId
+              ? t.actions.deselectRow(row.goodsReceiptNo)
+              : t.actions.selectRow(row.goodsReceiptNo)
+          }
+          /* 고른 행을 다시 누르면 푼다(사용자 지시 2026-11-27 · #360) — 적던 입력이 있으면 화면이 먼저 묻는다. */
+          onActivate={(row) => {
+            if (!isLocked) onToggleSelect(row.goodsReceiptId);
+          }}
           empty={emptySlot()}
         />
       </div>

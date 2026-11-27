@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import type { components } from '@omf-mes/api-client';
 
+import { masterName } from '../../patterns/master-name';
 import type { ReturnCodeKey, SelectOption } from './types';
 
 /**
@@ -55,9 +56,16 @@ export type CodeValueLists = Record<SupplierReturnCodeKey, readonly string[]>;
 export type CodeOptionSets = Record<SupplierReturnCodeKey, SelectOption[]>;
 type CodeValue = components['schemas']['CodeValue'];
 
+/**
+ * 코드 그룹 — 계약 설명의 확정 문구(공유계약 G-32): `issueTypeCode` → ISSUE_TYPE, `reasonCode` →
+ * GOODS_ISSUE_REASON, 입고 전표 `receiptTypeCode` → RECEIPT_TYPE, `statusCode` → LOGISTICS_DOCUMENT_STATUS.
+ * 값 목록은 `GET /mdm/code-values?codeGroupCode=…` 로 받는다(#360 — 코드 대신 이름을 보인다).
+ */
 export const SUPPLIER_RETURN_CODE_GROUPS = {
   issueType: 'ISSUE_TYPE',
   reason: 'GOODS_ISSUE_REASON',
+  receiptType: 'RECEIPT_TYPE',
+  status: 'LOGISTICS_DOCUMENT_STATUS',
 } as const;
 
 /** 고정 OpenAPI가 닫은 구조 코드만 채운다. 운영 공통코드 축은 실행 시점 조회 전까지 비워 둔다. */
@@ -77,33 +85,76 @@ const activeCodes = (values: readonly CodeValue[] | undefined): string[] =>
     .sort((left, right) => left.displayOrder - right.displayOrder)
     .map((value) => value.code);
 
-export const withRuntimeSupplierReturnCodes = (values: {
+/** 서버에서 받는 코드 그룹 넷의 응답. */
+export interface RuntimeCodeValues {
   issueType?: readonly CodeValue[];
   reason?: readonly CodeValue[];
-}): CodeValueLists => ({
+  receiptType?: readonly CodeValue[];
+  status?: readonly CodeValue[];
+}
+
+export const withRuntimeSupplierReturnCodes = (values: RuntimeCodeValues): CodeValueLists => ({
   ...PLACEHOLDER_SUPPLIER_RETURN_CODES,
   issueType: activeCodes(values.issueType),
   reason: activeCodes(values.reason),
+  receiptType: activeCodes(values.receiptType),
+  status: activeCodes(values.status),
 });
 
-const toOptions = (values: readonly string[]): SelectOption[] =>
-  values.map((code) => ({ value: code, label: code }));
+/** 코드마다 보일 이름(코드 → 이름). 없는 코드는 코드 그대로 보인다. */
+export type CodeNames = Record<SupplierReturnCodeKey, ReadonlyMap<string, string>>;
+
+const namesOf = (values: readonly CodeValue[] | undefined): Map<string, string> =>
+  new Map((values ?? []).map((value) => [value.code, masterName(value, value.codeName)]));
+
+/**
+ * 코드 이름. 서버 코드값 그룹 넷은 받은 이름(미사용 값 포함 — 지난 전표가 쓴 값도 이름으로 보이게),
+ * 구조 코드 둘(원천 문서 유형 · 도착지 유형)은 계약이 공통코드로 받지 말라고 적은 값이라 계약 설명의
+ * 이름(「입고 전표」·「거래처」)을 사전에서 쓴다. **보내는 값은 코드 그대로다.**
+ */
+export const toSupplierReturnCodeNames = (values: RuntimeCodeValues): CodeNames => ({
+  issueType: namesOf(values.issueType),
+  sourceDocumentType: new Map(Object.entries(messages.supplierReturn.codeNames.sourceDocumentType)),
+  destinationType: new Map(Object.entries(messages.supplierReturn.codeNames.destinationType)),
+  reason: namesOf(values.reason),
+  receiptType: namesOf(values.receiptType),
+  status: namesOf(values.status),
+});
+
+const NO_NAMES: CodeNames = {
+  issueType: new Map(),
+  sourceDocumentType: new Map(),
+  destinationType: new Map(),
+  reason: new Map(),
+  receiptType: new Map(),
+  status: new Map(),
+};
+
+/** 코드 → 이름. 이름이 없으면 코드를 그대로 낸다. */
+export const codeNameOf = (names: ReadonlyMap<string, string>, code: string): string =>
+  names.get(code) ?? code;
+
+const toOptions = (values: readonly string[], names: ReadonlyMap<string, string>): SelectOption[] =>
+  values.map((code) => ({ value: code, label: codeNameOf(names, code) }));
 
 /**
  * 값 목록을 선택지로 옮긴다.
  *
- * **라벨을 지어내지 않는다** — 코드값을 그대로 라벨로 쓴다. 사람이 읽을 이름을 주는 곳이
- * 아직 없는데 화면이 「공급사 반품」 같은 이름을 붙이면 그 뜻도 화면이 지어낸 것이 된다.
+ * **라벨을 지어내지 않는다** — 서버 코드값 이름 · 계약이 적은 이름(`names`)이 있으면 그것을, 없으면
+ * 코드값을 그대로 라벨로 쓴다.
  *
  * **차례를 바꾸지 않는다.** 값 목록이 어떤 차례로 오는지가 뜻일 수 있다(자주 쓰는 것부터 등).
  */
-export const toCodeOptionSets = (values: CodeValueLists): CodeOptionSets => ({
-  issueType: toOptions(values.issueType),
-  sourceDocumentType: toOptions(values.sourceDocumentType),
-  destinationType: toOptions(values.destinationType),
-  reason: toOptions(values.reason),
-  receiptType: toOptions(values.receiptType),
-  status: toOptions(values.status),
+export const toCodeOptionSets = (
+  values: CodeValueLists,
+  names: CodeNames = NO_NAMES,
+): CodeOptionSets => ({
+  issueType: toOptions(values.issueType, names.issueType),
+  sourceDocumentType: toOptions(values.sourceDocumentType, names.sourceDocumentType),
+  destinationType: toOptions(values.destinationType, names.destinationType),
+  reason: toOptions(values.reason, names.reason),
+  receiptType: toOptions(values.receiptType, names.receiptType),
+  status: toOptions(values.status, names.status),
 });
 
 /**

@@ -59,11 +59,7 @@ const cellsOf = (rowIndex: number): string[] =>
     .map((cell) => cell.textContent ?? '');
 
 describe('buildHistoryColumns — 열 폭 예산', () => {
-  const columns = buildHistoryColumns({
-    selectedAdjustmentId: null,
-    countLookup: countSource(),
-    onToggleSelect: vi.fn(),
-  });
+  const columns = buildHistoryColumns({ countLookup: countSource() });
 
   it('흡수 열이 정확히 하나다', () => {
     expect(columns.filter((column) => column.width === undefined)).toHaveLength(1);
@@ -76,21 +72,20 @@ describe('buildHistoryColumns — 열 폭 예산', () => {
       0,
     );
 
-    expect(fixed).toBe(680);
-    expect(HISTORY_TABLE_MIN_WIDTH_PX - fixed).toBe(248);
+    expect(fixed).toBe(592);
+    expect(HISTORY_TABLE_MIN_WIDTH_PX - fixed).toBe(336);
     expect(HISTORY_TABLE_MIN_WIDTH_PX - fixed).toBeGreaterThanOrEqual(
       HISTORY_ABSORBING_COLUMN_BUDGET_PX,
     );
   });
 
-  it('열이 여섯이고 차례가 읽는 차례다', () => {
+  it('열이 다섯이고 차례가 읽는 차례다 — 선택 열 없이 행을 눌러 고른다', () => {
     expect(columns.map((column) => column.key)).toEqual([
       'inventoryAdjustmentNo',
       'countRef',
       'reasonCode',
       'statusCode',
       'adjustedAt',
-      'select',
     ]);
   });
 });
@@ -103,7 +98,7 @@ describe('HistoryTable — 산출물의 열 폭', () => {
       (col) => (col as HTMLTableColElement).style.width,
     );
 
-    expect(widths).toEqual(['168px', '', '128px', '128px', '168px', '88px']);
+    expect(widths).toEqual(['168px', '', '128px', '128px', '168px']);
   });
 });
 
@@ -196,18 +191,18 @@ describe('HistoryTable — 행 표기', () => {
   });
 
   /**
-   * ⛔ C42의 자리. **승인·반려 조작이 없다** — 양성 앵커(선택 버튼이 실제로 있다)를 먼저 재고
-   * 그 뒤에 「그 밖의 버튼이 없다」를 잰다.
+   * ⛔ C42의 자리. **승인·반려 조작이 없다** — 양성 앵커(행을 눌러 고른다 — 행 이름이 고르기다)를 먼저 재고
+   * 그 뒤에 「표 안에 버튼이 없다」를 잰다.
    */
   it('행의 조작이 고르기 하나뿐이다 — 승인·반려 버튼이 없다', () => {
     renderTable();
 
-    const buttons = within(screen.getByRole('table')).getAllByRole('button');
-
-    expect(buttons).toHaveLength(rows.length);
-    expect(
-      buttons.map((button) => button.getAttribute('aria-label') ?? button.textContent ?? ''),
-    ).toEqual(rows.map((row) => t.actions.selectAdjustmentRow(row.inventoryAdjustmentNo)));
+    for (const row of rows) {
+      expect(
+        screen.getByRole('row', { name: t.actions.selectAdjustmentRow(row.inventoryAdjustmentNo) }),
+      ).toBeInTheDocument();
+    }
+    expect(within(screen.getByRole('table')).queryAllByRole('button')).toHaveLength(0);
   });
 });
 
@@ -216,26 +211,29 @@ describe('HistoryTable — 고르기', () => {
     const { onToggleSelect, user } = renderTable();
 
     await user.click(
-      screen.getByRole('button', { name: t.actions.selectAdjustmentRow('SAMPLE-IA-9302') }),
+      screen.getByRole('row', { name: t.actions.selectAdjustmentRow('SAMPLE-IA-9302') }),
     );
 
     expect(onToggleSelect).toHaveBeenCalledWith(9302);
   });
 
-  it('고른 줄은 해제 이름으로 바뀐다 — 접근 이름이 전표번호를 담는다', () => {
+  it('고른 줄은 강조되고 해제 이름으로 바뀐다 — 접근 이름이 전표번호를 담는다', () => {
     renderTable({ selectedAdjustmentId: 9302 });
 
     expect(
-      screen.getByRole('button', { name: t.actions.deselectAdjustmentRow('SAMPLE-IA-9302') }),
-    ).toBeInTheDocument();
+      screen.getByRole('row', { name: t.actions.deselectAdjustmentRow('SAMPLE-IA-9302') }),
+    ).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('잠기면 고르기가 막힌다', () => {
-    renderTable({ isLocked: true });
+  it('잠기면 행을 눌러도 고르지 않는다', async () => {
+    const { onToggleSelect, user } = renderTable({ isLocked: true });
 
-    for (const button of within(screen.getByRole('table')).getAllByRole('button')) {
-      expect(button).toBeDisabled();
+    for (const row of rows) {
+      await user.click(
+        screen.getByRole('row', { name: t.actions.selectAdjustmentRow(row.inventoryAdjustmentNo) }),
+      );
     }
+    expect(onToggleSelect).not.toHaveBeenCalled();
   });
 });
 

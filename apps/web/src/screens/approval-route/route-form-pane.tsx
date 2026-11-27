@@ -261,6 +261,7 @@ export const RouteFormPane = ({
   if (isCreate) {
     return (
       <Dialog
+        className="dialog-icon-add"
         open
         onClose={onCancel}
         size="lg"

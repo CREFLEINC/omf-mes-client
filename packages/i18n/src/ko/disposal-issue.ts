@@ -62,9 +62,8 @@ export const disposalIssue = {
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
     /** 화면이 보고 있는 조회를 전부 다시 한다 — 목록만 다시 부르면 낡은 값과 새 값이 섞인다. */
-    refresh: '다시 조회',
+    refresh: '갱신',
     select: '선택',
-    deselect: '선택 해제',
     /*
      * 행 안의 버튼은 보이는 글자가 행마다 같다. 접근 이름에 입고번호를 넣어 어느 건인지 밝히되,
      * 보이는 글자를 그대로 담는다 — 담지 않으면 음성 조작이 「선택」으로 이 버튼을 부를 수 없다.
@@ -103,6 +102,9 @@ export const disposalIssue = {
     /** 창의 바닥 버튼. 「확인/취소」로 적지 않는다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다. */
     keepEditing: '계속 작성',
     confirmSubmit: '요청',
+    /** 승인 요청 확인 창의 바닥 버튼(#360) — 닫으면 입력값은 그대로 남는다. */
+    backToInput: '입력으로 돌아가기',
+    requestApproval: '결재 요청',
     confirmDiscard: '지우기',
     /** 만들어진 요청을 이력 탭에서 연다. **탭을 말없이 바꾸지 않는다**(계획 결정 6). */
     openIssue: '이 요청 열기',
@@ -158,6 +160,8 @@ export const disposalIssue = {
     chipReceiptType: (code: string): string => `입고 유형: ${code}`,
     chipStatus: (code: string): string => `상태: ${code}`,
     chipQ: (q: string): string => `검색어: ${q}`,
+    /** 입고번호 검색칸 흐린 문구(#360). */
+    qPlaceholder: '입고번호를 입력하세요',
     chipRemoveWarehouse: '창고 조건 해제',
     chipRemoveReceiptType: '입고 유형 조건 해제',
     chipRemoveStatus: '상태 조건 해제',
@@ -190,6 +194,8 @@ export const disposalIssue = {
     chipReason: (code: string): string => `폐기 사유: ${code}`,
     chipStatus: (code: string): string => `상태: ${code}`,
     chipQ: (q: string): string => `검색어: ${q}`,
+    /** 출고번호 검색칸 흐린 문구(#360). */
+    qPlaceholder: '출고번호를 입력하세요',
     chipRemoveIssueType: '출고 유형 조건 해제',
     chipRemoveReason: '폐기 사유 조건 해제',
     chipRemoveStatus: '상태 조건 해제',
@@ -243,8 +249,7 @@ export const disposalIssue = {
      * 한쪽은 실패인 채로 남는데 문구는 둘 다 고쳐질 것처럼 말한다.
      */
     referencesFailed: '창고 이름을 불러오지 못했습니다.',
-    lineReferencesFailed:
-      '품목·단위·자재 LOT·위치 이름을 불러오지 못했습니다.',
+    lineReferencesFailed: '품목·단위·자재 LOT·위치 이름을 불러오지 못했습니다.',
     /**
      * **잘림은 실패와 다르다.** 이름 목록이 앞쪽만 오면 그 뒤의 정상 값이 「알 수 없음」으로
      * 찍히는데, 그 문구는 *값이 잘못됐다*는 뜻이라 사용자가 반대로 읽는다.
@@ -359,7 +364,7 @@ export const disposalIssue = {
     sourceDocumentType: '원천 문서 유형',
     reason: '폐기 사유',
     issuedDate: '출고 일자',
-    issuedTime: '출고일시',
+    issuedTime: '출고 시각',
     /** 확인 창에만 나오는 라벨 — 폼에는 칸이 없다(출고 일자에서 파생한다). */
     businessDate: '영업일',
     remarks: '비고',
@@ -385,6 +390,7 @@ export const disposalIssue = {
      * 몇 글자여야 하는지를 화면이 정하면 그것도 지어내는 것이다(승인 기록 §13-6).
      */
     reasonPlaceholder: '예) 불량 판정분 폐기 — 입고 검사 부적합 12박스',
+    remarksPlaceholder: '비고를 입력하세요',
     /** 사용자가 넣지 않은 값이 전표에 실린다 — 출고 일자 라벨 옆 ⓘ 로 밝힌다(관리웹 정리 시안 A). */
     businessDateDerived: '영업일은 출고 일자에서 만들어 함께 보냅니다 — 따로 적는 칸이 없습니다.',
     /**
@@ -461,8 +467,7 @@ export const disposalIssue = {
      * 찾다가 화면을 고장으로 읽는다. 그래서 지금 실제로 할 수 있는 조치(자체 폐기 체크)만
      * 가리킨다. 선택지가 차면 위 문구로 저절로 바뀐다.
      */
-    disposalPartnerPending:
-      '등록된 폐기 거래처가 없습니다. 자체 폐기를 체크하면 올릴 수 있습니다.',
+    disposalPartnerPending: '등록된 폐기 거래처가 없습니다. 자체 폐기를 체크하면 올릴 수 있습니다.',
     /**
      * 같은 잠금의 **셋째 갈래** — 목록을 부르기는 했으나 **지금 고를 것이 없다**(불러오지
      * 못했거나 · 오는 중이거나 · 0건이거나).
@@ -520,8 +525,7 @@ export const disposalIssue = {
    * 닫고 폼에서 고친다.
    */
   dialog: {
-    submitTitle: '폐기 요청을 올릴까요?',
-    submitLead: '아래 내용으로 폐기 요청 전표를 만들고 이어서 결재에 올립니다.',
+    submitTitle: '폐기 출고 결재를 요청할까요?',
     resubmitTitle: '이 폐기 요청을 결재에 올릴까요?',
     resubmitLead: '이미 만들어진 폐기 요청 전표를 결재에 올립니다. 전표를 새로 만들지 않습니다.',
     discardTitle: '입력한 것을 지울까요?',
@@ -532,21 +536,28 @@ export const disposalIssue = {
      * 화면이 확인하지 않은 것을 말하는 것이 된다 — 줄 수는 그대로 보인다.
      */
     mixedUom: '단위가 섞여 합계를 내지 않습니다',
-    linePair: (item: string, lot: string, qty: string): string => `${item} · ${lot} · ${qty}`,
-    /** 파생값임을 **값 자체가** 밝힌다 — 라벨만으로는 사용자가 자기가 넣은 값으로 읽는다. */
-    businessDateDerived: (businessDate: string): string => `${businessDate} (출고 일자에서 만듦)`,
-    /** 사유 전문과 첫 줄을 **나눠** 보인다(완료 조건 C62) — 요약이 될 줄이 어느 것인지 보여야 한다. */
+    /** 승인 요청 확인 창 맨 위 — 줄마다 품목 · LOT · 폐기 수량(#360). */
+    targetHead: (count: number): string => `폐기 대상 ${String(count)}건`,
+    disposalQty: '폐기 수량',
+    issueInfo: '출고 정보',
+    issuedAt: '출고 일시',
+    /** 확인 빈도가 낮은 값(출고 유형 · 원천 문서 유형 · 영업일)을 접어 둔다. */
+    details: '처리 상세',
+    /** 파생값임을 **값 자체가** 밝힌다 — 사용자가 넣은 적 없는 값이다. */
+    businessDateAuto: (businessDate: string): string => `${businessDate} (자동)`,
+    /** 재상신 확인 창 — 사유 전문과 첫 줄을 **나눠** 보인다(완료 조건 C62). */
     reasonFull: '요청 사유 전문',
     reasonFirstLine: '결재함 목록에 요약으로 보일 첫 줄',
-    reasonSummaryNote: '결재함 목록에는 이 첫 줄만 보입니다.',
-    submitEffects: '승인 요청만으로는 재고가 빠지지 않습니다. 승인된 뒤 「기타출고 처리」를 눌러야 빠집니다.',
+    approvalReason: '결재 요청 사유',
+    submitEffects: '승인 후 [기타출고 처리]를 실행하면 재고가 차감됩니다.',
     /**
-     * **승인 요청은 되돌릴 수 없다.** 계약의 출고 취소는 다시 결재를 타며 이 화면에 없다 —
-     * 반려된 뒤 다시 올리는 것도 **새 요청**이다(스펙 §6).
+     * **승인 요청은 되돌릴 수 없다.** 계약의 승인 요청에는 승인 · 반려만 있고 회수가 없다 —
+     * 반려된 뒤 다시 올리는 것도 **새 요청**이다(스펙 §6 · 공유계약 J-6).
      */
-    submitNoUndo: '올린 요청은 취소할 수 없습니다. 반려되면 새로 올려 주세요.',
+    submitNoUndo: '결재 요청 후에는 취소할 수 없습니다. 반려되면 다시 요청해 주세요.',
     /** 상한을 확인하지 못한 줄이 **보낼 줄에 섞여 있을 때만** 밝힌다. */
-    submitOnHandUnknown: '재고 수량을 확인하지 못한 줄이 있습니다. 재고보다 많으면 요청이 거절됩니다.',
+    submitOnHandUnknown:
+      '재고 수량을 확인하지 못한 줄이 있습니다. 재고보다 많으면 요청이 거절됩니다.',
     /**
      * 기타출고 처리 확인 — **이 화면에서 재고를 움직이는 유일한 창이다.**
      *
@@ -555,9 +566,9 @@ export const disposalIssue = {
      * 「이 버튼이 하는 일」이다.
      */
     postTitle: '기타출고로 처리할까요?',
-    postLead: '아래 폐기 요청을 출고 처리합니다.',
     postDeducts: '확인을 누르면 이 수량만큼 재고가 빠집니다.',
-    postNoUndo: '처리한 뒤에는 여기서 되돌릴 수 없습니다. 되돌리려면 출고 취소를 다시 결재받아야 합니다.',
+    postNoUndo:
+      '처리한 뒤에는 여기서 되돌릴 수 없습니다. 되돌리려면 출고 취소를 다시 결재받아야 합니다.',
     /** 결재 진행을 못 읽은 채 처리하는 갈래(403·404·네트워크·부르는 중). */
     postProgressUnread: '결재 진행을 불러오지 못했습니다. 승인 전이면 처리가 거절됩니다.',
     /**
@@ -620,8 +631,7 @@ export const disposalIssue = {
      */
     postLabel: '처리 결과',
     postedTitle: (goodsIssueNo: string): string => `${goodsIssueNo}를 기타출고로 처리했습니다`,
-    postedDescription:
-      '출고 처리했습니다.',
+    postedDescription: '출고 처리했습니다.',
     /** **화면이 센 줄 수를 적지 않는다** — 전기 응답에 라인이 없다(계약 실측). */
     postedNoLines: '전기 응답에는 줄이 실려 오지 않습니다. 위 라인 표의 전기 표식으로 확인하세요.',
   },
@@ -688,6 +698,13 @@ export const disposalIssue = {
      * 소관이고, 폐기했다고 보류가 풀리지도 않는다. **막지도 않는다**(계획 결정 4와 같은 논거).
      */
     lotHold: '「보류」 표식이 붙은 자재 LOT은 품질 보류 중입니다. 이 화면에서 풀 수 없습니다.',
+  },
+  /**
+   * 구조 코드의 이름 — 원천 문서 유형은 계약이 공통코드 그룹으로 받지 말라고 적은 값이라 계약 설명의
+   * 이름을 쓴다(공급사 반품과 같은 이름 · #360). 보내는 값은 코드다.
+   */
+  codeNames: {
+    sourceDocumentType: { GOODS_RECEIPT: '입고 전표' } as Readonly<Record<string, string>>,
   },
   values: {
     /** 참조를 못 푼 네 갈래 중 셋. **어느 갈래에도 번호를 담지 않는다**(`omf-mes#44`). */

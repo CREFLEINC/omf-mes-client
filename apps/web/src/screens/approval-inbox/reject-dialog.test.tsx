@@ -36,7 +36,9 @@ describe('RejectDialog', () => {
   it('무엇을 반려하는지 업무 번호로 밝힌다', () => {
     renderDialog();
 
-    expect(within(dialog()).getByText(t.dialog.subject(REQUEST_NO))).toBeInTheDocument();
+    expect(within(dialog()).getByText(t.dialog.rejectCaption)).toBeInTheDocument();
+    expect(within(dialog()).getByText(REQUEST_NO)).toBeInTheDocument();
+    expect(within(dialog()).getByText(t.dialog.rejectQuestion)).toBeInTheDocument();
   });
 
   it('되돌릴 수 없고 번복은 새 요청이라고 적는다', () => {

@@ -1,17 +1,20 @@
-import { Button, Dialog, Icon } from '@crefle/web-ui';
+import { Button, Chip, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
+
+import { InfoFacts } from './info-facts';
 
 const t = messages.judgmentConfirm;
 
 /** 판정이 LOT 을 어느 쪽으로 보내는가 — 색과 LOT 상태 글을 고른다. 모르는 코드는 `unknown`. */
 export type JudgmentConfirmDirection = 'release' | 'hold' | 'pending' | 'unknown';
 
-const TONE: Record<JudgmentConfirmDirection, string> = {
+/** 최종 판정 칩 색 — 모르는 코드는 회색. */
+const CHIP_STATUS: Record<JudgmentConfirmDirection, 'success' | 'error' | 'warning' | 'idle'> = {
   release: 'success',
   hold: 'error',
   pending: 'warning',
-  unknown: 'neutral',
+  unknown: 'idle',
 };
 
 /** 0 이 아닌 수량만 색을 입힌다(시안 — 「합격 3」만 초록). */
@@ -43,7 +46,7 @@ export interface JudgmentConfirmDialogProps {
 
 /**
  * 판정 확정 확인 창(사용자 시안 2026-11-17 · omf-all-around#286) — IQC · OQC · PQC 관리웹이 같이 쓴다.
- * 질문 제목 · 의뢰 번호 · 최종 판정 · 검사 결과 / LOT 상태 상자 · 적용 사항 · 되돌릴 수 없음 안내.
+ * 확인 팝업 시안(#360) — 짧은 제목, 사실 상자(의뢰 번호 · 최종 판정 / 검사 결과 · LOT 상태) · 질문 · 적용 사항 · 안내 줄.
  * 쓰기는 이 창의 [판정 확정]에서만 나가고, 보내는 동안에는 닫히지 않는다.
  */
 export const JudgmentConfirmDialog = ({
@@ -81,37 +84,64 @@ export const JudgmentConfirmDialog = ({
       if (!isSaving) onClose();
     }}
   >
-    <div className={className === undefined ? 'judgment-confirm' : `judgment-confirm ${className}`}>
+    <div
+      className={
+        className === undefined
+          ? 'users-roles-worker-dialog judgment-confirm'
+          : `users-roles-worker-dialog judgment-confirm ${className}`
+      }
+    >
       {banner}
-      <p className="judgment-confirm-target">{t.target(inspectionRequestNo)}</p>
-      <div className="judgment-confirm-judgment">
-        <h3>{t.judgmentHeading}</h3>
-        <strong data-tone={TONE[direction]}>{judgmentLabel}</strong>
-      </div>
-      <dl className="judgment-confirm-rows">
-        {quantities === null ? null : (
-          <div className="judgment-confirm-row">
-            <dt>{t.resultRow}</dt>
-            <dd>
-              <span>
-                {t.accepted}{' '}
-                <b data-tone={toneIfAny(quantities.accepted, 'success')}>{quantities.accepted}</b>
-              </span>
-              <span>
-                {t.rejected}{' '}
-                <b data-tone={toneIfAny(quantities.rejected, 'error')}>{quantities.rejected}</b>
-              </span>
-              <span>
-                {t.held} <b>{quantities.held}</b>
-              </span>
-            </dd>
-          </div>
-        )}
-        <div className="judgment-confirm-row">
-          <dt>{t.lotRow}</dt>
-          <dd>{(lotStates ?? (picked ? t.pickedLotState : t.lotState))[direction]}</dd>
-        </div>
-      </dl>
+      <InfoFacts
+        rows={[
+          [
+            { label: t.requestNo, value: inspectionRequestNo, isKey: true },
+            {
+              label: t.judgmentHeading,
+              title: judgmentLabel,
+              value: (
+                <Chip size="sm" variant="status" status={CHIP_STATUS[direction]}>
+                  {judgmentLabel}
+                </Chip>
+              ),
+            },
+          ],
+          [
+            ...(quantities === null
+              ? []
+              : [
+                  {
+                    label: t.resultRow,
+                    title: `${t.accepted} ${quantities.accepted} · ${t.rejected} ${quantities.rejected} · ${t.held} ${quantities.held}`,
+                    value: (
+                      <span className="judgment-confirm-qty">
+                        <span>
+                          {t.accepted}{' '}
+                          <b data-tone={toneIfAny(quantities.accepted, 'success')}>
+                            {quantities.accepted}
+                          </b>
+                        </span>{' '}
+                        <span>
+                          {t.rejected}{' '}
+                          <b data-tone={toneIfAny(quantities.rejected, 'error')}>
+                            {quantities.rejected}
+                          </b>
+                        </span>{' '}
+                        <span>
+                          {t.held} <b>{quantities.held}</b>
+                        </span>
+                      </span>
+                    ),
+                  },
+                ]),
+            {
+              label: t.lotRow,
+              value: (lotStates ?? (picked ? t.pickedLotState : t.lotState))[direction],
+            },
+          ],
+        ]}
+      />
+      <p>{t.question}</p>
       {applyLines.length === 0 ? null : (
         <section className="judgment-confirm-apply" aria-label={t.applyHeading}>
           <h3>{t.applyHeading}</h3>
@@ -125,9 +155,8 @@ export const JudgmentConfirmDialog = ({
           </ul>
         </section>
       )}
-      {/* 경고 라벨 — 화면의 「판정 확정 후 수정이 불가합니다」 줄과 같은 모양(표식 · 글 한 줄 가운데 맞춤 · #286). */}
-      <p className="iqc-inspection-action-note" data-tone="warning">
-        <Icon name="warning" size={18} aria-hidden />
+      <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+        <Icon name="warning" size={16} aria-hidden />
         {note}
       </p>
     </div>

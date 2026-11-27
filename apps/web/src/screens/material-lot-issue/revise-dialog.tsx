@@ -1,7 +1,7 @@
-import { Button, Chip, Dialog, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, Chip, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { isIntegerUom, type BatchDraft, type UomOption } from '../../patterns/material-lot-batch';
@@ -20,6 +20,8 @@ import type { Group, Lot } from './types';
 
 const tp = messages.materialLotIssue.precreate;
 const t = tp.revise;
+/** 칸 안 흐린 안내는 발행 창과 같은 글(사용자 지시 2026-11-26). */
+const ph = messages.materialLotIssue.dialog.placeholders;
 
 export interface ReviseDialogProps {
   group: Group;
@@ -44,6 +46,7 @@ export const ReviseDialog = ({
   onSaved,
   onRejected,
 }: ReviseDialogProps) => {
+  const packageUomId = useId();
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState<BatchDraft>(() => reviseDraftOf(lot, null));
   const uomCode = group.uomCode;
@@ -92,10 +95,11 @@ export const ReviseDialog = ({
 
   return (
     <Dialog
+      className="dialog-icon-edit"
       open
       onClose={onClose}
       title={t.title}
-      size="md"
+      size="lg"
       footer={
         <>
           <Button variant="outlined" onClick={onClose}>
@@ -126,8 +130,11 @@ export const ReviseDialog = ({
           </dd>
         </dl>
 
+        {/* 필수 칸(checkBatch lotQty) — 발행 창과 같이 * (#360). */}
         <TextField
           label={t.qty}
+          required
+          placeholder={ph.lotQty}
           inputMode="decimal"
           value={shownQty}
           trailingIcon={<span title={t.qtyFixed}>{uomCode}</span>}
@@ -138,40 +145,49 @@ export const ReviseDialog = ({
 
         <section className="mlot-issue-package" aria-label={t.package}>
           <div className="mlot-issue-package-head">
-            <strong>{t.package}</strong>
-            <div role="group" aria-label={t.package} className="mlot-issue-switch">
-              <Button
-                size="sm"
-                variant={draft.packageOn ? 'filled' : 'outlined'}
-                aria-pressed={draft.packageOn}
-                onClick={() => edit({ packageOn: true, lotQtyEdited: false })}
+            {/* 발행 창과 같이 「패키징 유무」 체크칸(사용자 지시 2026-11-26) — 켜고 끌 때 값 처리는 종전 단추와 같다. */}
+            <span className="mlot-issue-package-title">
+              <Checkbox
+                checked={draft.packageOn}
+                onChange={(event) =>
+                  edit(
+                    event.target.checked
+                      ? { packageOn: true, lotQtyEdited: false }
+                      : { packageOn: false, lotQtyEdited: true, lotQty: shownQty },
+                  )
+                }
               >
-                {t.packageOn}
-              </Button>
-              <Button
-                size="sm"
-                variant={draft.packageOn ? 'outlined' : 'filled'}
-                aria-pressed={!draft.packageOn}
-                onClick={() => edit({ packageOn: false, lotQtyEdited: true, lotQty: shownQty })}
-              >
-                {t.packageOff}
-              </Button>
-            </div>
+                <strong>{t.package}</strong>
+              </Checkbox>
+            </span>
           </div>
           {draft.packageOn ? (
             <div className="mlot-issue-package-fields">
-              <Select
-                aria-label={t.packageUom}
-                placeholder={t.packageUom}
-                value={draft.packageUomId === null ? null : String(draft.packageUomId)}
-                options={packageUoms.map((row) => ({
-                  value: String(row.uomId),
-                  label: row.uomName.trim() === '' ? row.uomCode : row.uomName,
-                }))}
-                onChange={(value) => edit({ packageUomId: Number(value) })}
-              />
+              {/* 패키징 세 칸은 켜면 필수(checkBatch) — 발행 창과 같이 * (#360). */}
+              <div className="field-cell">
+                <span className="field-label">
+                  <label htmlFor={packageUomId}>{t.packageUom}</label>
+                  <span className="required-mark" aria-hidden="true">
+                    {' '}
+                    *
+                  </span>
+                </span>
+                <Select
+                  id={packageUomId}
+                  aria-required="true"
+                  placeholder={ph.packageUom}
+                  value={draft.packageUomId === null ? null : String(draft.packageUomId)}
+                  options={packageUoms.map((row) => ({
+                    value: String(row.uomId),
+                    label: row.uomName.trim() === '' ? row.uomCode : row.uomName,
+                  }))}
+                  onChange={(value) => edit({ packageUomId: Number(value) })}
+                />
+              </div>
               <TextField
                 label={t.packageCount}
+                required
+                placeholder={ph.packageCount}
                 inputMode="numeric"
                 value={draft.packageCount}
                 onChange={(event) =>
@@ -180,6 +196,8 @@ export const ReviseDialog = ({
               />
               <TextField
                 label={t.qtyPerPackage(uomCode)}
+                required
+                placeholder={ph.qtyPerPackage}
                 inputMode="decimal"
                 value={draft.qtyPerPackage}
                 onChange={(event) =>

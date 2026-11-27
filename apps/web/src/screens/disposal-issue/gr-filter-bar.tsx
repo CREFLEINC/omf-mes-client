@@ -156,11 +156,20 @@ export const GrFilterBar = ({
     key === 'warehouse'
       ? !isWarehouseShown
       : !more.isOpen && (key === 'receiptType' || key === 'status');
-  const hiddenChips = toFilterChips(appliedFilters, chipNames).flatMap(
-    (chip): HiddenFilterChip<RemovableChipKey>[] =>
-      chip.removeLabel !== null && isHidden(chip.key)
-        ? [{ key: chip.key, label: chip.label, removeLabel: chip.removeLabel }]
-        : [],
+  /* 접힌 코드 칸의 칩은 코드 대신 선택지 이름으로 읽힌다(#360) — 거둘 때 쓰는 키는 그대로다. */
+  const nameOf = (options: readonly SelectOption[], code: string): string =>
+    options.find((option) => option.value === code)?.label ?? code;
+  const hiddenChips = toFilterChips(
+    {
+      ...appliedFilters,
+      receiptType: nameOf(receiptTypeOptions, appliedFilters.receiptType),
+      status: nameOf(statusOptions, appliedFilters.status),
+    },
+    chipNames,
+  ).flatMap((chip): HiddenFilterChip<RemovableChipKey>[] =>
+    chip.removeLabel !== null && isHidden(chip.key)
+      ? [{ key: chip.key, label: chip.label, removeLabel: chip.removeLabel }]
+      : [],
   );
   const isChanged = hasChangedFilters(DEFAULT_FILTERS, filters, appliedFilters);
 
@@ -212,6 +221,7 @@ export const GrFilterBar = ({
 
         <SearchInput
           label={t.fields.q}
+          placeholder={t.filters.qPlaceholder}
           value={filters.q}
           disabled={isLocked}
           onChange={(event) => {
@@ -224,9 +234,9 @@ export const GrFilterBar = ({
 
         {/*
          * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1).
-         * 비활성 사유가 붙는 자리가 없다 — 조건 없이도 조회가 열려 있다.
+         * 비활성 사유가 붙는 자리가 없다 — 조건 없이도 조회가 열려 있다. 조건 줄 오른쪽 끝에 선다(#360).
          */}
-        <div className="field-cell field-cell-unlabeled">
+        <div className="field-cell field-cell-unlabeled filter-actions-end">
           <div className="filter-actions">
             <Button disabled={isLocked} onClick={search}>
               {messages.common.search}

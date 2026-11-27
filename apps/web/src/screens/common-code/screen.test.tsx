@@ -770,10 +770,13 @@ describe('CommonCodeScreen — 코드그룹 상세 (C14·C15·C19)', () => {
     );
 
     expect(await screen.findByLabelText('그룹코드')).toBeDisabled();
-    expect(screen.getByText('변경 불가').closest('[title]')).toHaveAttribute(
-      'title',
-      '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
-    );
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 이름의 title · 숨긴 설명으로. */
+    expect(screen.queryByText('변경 불가')).toBeNull();
+    expect(
+      screen.getAllByTitle(
+        '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
+      )[0],
+    ).toHaveTextContent(/^그룹코드/);
     expect(screen.getByLabelText('그룹코드')).toHaveAccessibleDescription(
       '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
     );
@@ -1114,7 +1117,7 @@ describe('CommonCodeScreen — 코드그룹 사용 중지 (C22)', () => {
 
     await user.click(within(codeGroupFormPane()).getByRole('button', { name: '사용 중지' }));
 
-    const dialog = within(screen.getByRole('dialog', { name: '코드그룹을 사용 중지할까요?' }));
+    const dialog = within(screen.getByRole('dialog', { name: '코드그룹 사용 중지' }));
     // 제목 아래 대상 줄은 두지 않는다(사용자 지시 2026-11-26).
     expect(dialog.queryByText('합성 코드그룹 A (SYN-GRP-01)')).toBeNull();
     expect(
@@ -2794,7 +2797,7 @@ describe('CommonCodeScreen — 코드값 사용 중지 (C39)', () => {
 
     await user.click(rowDeactivate());
 
-    const dialog = within(screen.getByRole('dialog', { name: '코드값을 사용 중지할까요?' }));
+    const dialog = within(screen.getByRole('dialog', { name: '코드값 사용 중지' }));
     // 제목 아래 대상 줄은 두지 않는다(사용자 지시 2026-11-26).
     expect(dialog.queryByText('합성 코드값 A (SYN-CV-01)')).toBeNull();
     expect(
@@ -4022,7 +4025,7 @@ describe('CommonCodeScreen — 부서 사용 중지 (C56)', () => {
 
     await user.click(within(departmentFormPane()).getByRole('button', { name: '사용 중지' }));
 
-    const dialog = screen.getByRole('dialog', { name: '부서를 사용 중지할까요?' });
+    const dialog = screen.getByRole('dialog', { name: '부서 사용 중지' });
     // 제목 아래 대상 줄은 두지 않는다(사용자 지시 2026-11-26).
     expect(within(dialog).queryByText('합성 부서 A (SYN-DEPT-01)')).toBeNull();
     expect(

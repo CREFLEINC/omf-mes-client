@@ -124,7 +124,7 @@ describe('StockReinstatementScreen', () => {
     await user.click(screen.getByRole('button', { name: t.actions.confirm }));
 
     const dialog = await screen.findByRole('dialog', { name: t.confirm.title });
-    expect(within(dialog).getByText(t.warning.transition)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.confirm.irreversible)).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: t.actions.submit }));
 
     await waitFor(() => {
@@ -316,15 +316,15 @@ describe('StockReinstatementScreen', () => {
 
   /* 목록 제목 줄 「목록 접기」 · 접힌 「목록 N건」 탭(#350). */
   it('목록을 접으면 탭에 건수가 서고, 펼친 뒤에도 고른 줄 · 적어 둔 비고가 그대로다', async () => {
-    const collapsedKey = 'omf-mes:stock-reinstatement:list:collapsed';
+    const collapsedKey = 'omf-mes:stock-reinstatement:split:collapsed';
     window.localStorage.removeItem(collapsedKey);
     const user = renderScreen();
     await chooseTarget(user);
     await user.type(screen.getByLabelText(t.fields.remarks), '합성 비고');
-    const workspace = document.querySelector('.stock-reinstatement-workspace');
+    const workspace = document.querySelector('.list-detail-split');
 
     await user.click(
-      screen.getByRole('button', { name: messages.common.inspectionHub.listCollapse }),
+      screen.getAllByRole('button', { name: messages.common.inspectionHub.listCollapse })[0]!,
     );
     expect(workspace).toHaveAttribute('data-left-collapsed', 'true');
     const tab = workspace!.querySelector<HTMLElement>('.po-board-list-tab');

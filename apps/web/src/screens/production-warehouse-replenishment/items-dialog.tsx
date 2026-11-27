@@ -3,6 +3,7 @@ import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { InfoLabel } from '../../patterns/info-tip';
 import { ItemSelect } from '../../patterns/item-select';
 import { SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
@@ -47,6 +48,10 @@ export interface ItemDialogProps {
 export const ItemDialog = ({ item, settings, warehouses, onClose }: ItemDialogProps) => {
   const toast = useToast();
   const rangeId = useId();
+  const pointId = useId();
+  const warehouseId = useId();
+  const itemFieldId = useId();
+  const sourceId = useId();
   const [warehouse, setWarehouse] = useState(
     String(item?.productionWarehouseId ?? settings.warehouses[0]?.warehouseId ?? ''),
   );
@@ -128,6 +133,7 @@ export const ItemDialog = ({ item, settings, warehouses, onClose }: ItemDialogPr
         open={!confirmDelete}
         onClose={onClose}
         title={item === null ? ti.addTitle : ti.editTitle}
+        className={item === null ? 'dialog-icon-add' : 'dialog-icon-edit'}
         size="sm"
         footer={
           <>
@@ -161,29 +167,49 @@ export const ItemDialog = ({ item, settings, warehouses, onClose }: ItemDialogPr
           {errorBanner}
           {item === null ? (
             <>
-              <Select
-                aria-label={ti.productionWarehouse}
-                value={warehouse}
-                options={settings.warehouses.map((row) => ({
-                  value: String(row.warehouseId),
-                  label: row.warehouseName,
-                }))}
-                onChange={(value) => {
-                  touch();
-                  setWarehouse(value);
-                  if (value === source) setSource('');
-                }}
-              />
-              <ItemSelect
-                aria-label={ti.item}
-                placeholder={ti.item}
-                itemTypeCodes={MATERIAL_ITEM_TYPES}
-                value={itemId === '' ? null : itemId}
-                onChange={(value) => {
-                  touch();
-                  setItemId(value);
-                }}
-              />
+              {/* 필수 칸 — 이름 옆 빨간 * 와 빈 칸 빨간 바탕(#360 점검). */}
+              <div className="field-cell">
+                <label className="field-label" htmlFor={warehouseId}>
+                  {ti.productionWarehouse}
+                  <span className="required-mark" aria-hidden="true">
+                    {' *'}
+                  </span>
+                </label>
+                <Select
+                  id={warehouseId}
+                  aria-required="true"
+                  placeholder={ti.productionWarehousePlaceholder}
+                  value={warehouse}
+                  options={settings.warehouses.map((row) => ({
+                    value: String(row.warehouseId),
+                    label: row.warehouseName,
+                  }))}
+                  onChange={(value) => {
+                    touch();
+                    setWarehouse(value);
+                    if (value === source) setSource('');
+                  }}
+                />
+              </div>
+              <div className="field-cell">
+                <label className="field-label" htmlFor={itemFieldId}>
+                  {ti.item}
+                  <span className="required-mark" aria-hidden="true">
+                    {' *'}
+                  </span>
+                </label>
+                <ItemSelect
+                  id={itemFieldId}
+                  aria-required="true"
+                  placeholder={ti.item}
+                  itemTypeCodes={MATERIAL_ITEM_TYPES}
+                  value={itemId === '' ? null : itemId}
+                  onChange={(value) => {
+                    touch();
+                    setItemId(value);
+                  }}
+                />
+              </div>
             </>
           ) : (
             <dl className="replenishment-head">
@@ -195,19 +221,25 @@ export const ItemDialog = ({ item, settings, warehouses, onClose }: ItemDialogPr
               <dd>{`${item.itemName} (${item.uomCode})`}</dd>
             </dl>
           )}
-          <TextField
-            label={ti.point}
-            required
-            inputMode="decimal"
-            value={point}
-            error={rangeOk ? undefined : t.errors.range}
-            onChange={(event) => {
-              touch();
-              setPoint(event.target.value);
-            }}
-          />
+          {/* 보충 규칙은 칸 아래 대신 「보충 시점」 이름 옆 ⓘ 로(omf-all-around#360). */}
+          <div className="field-cell">
+            <InfoLabel htmlFor={pointId} label={ti.point} info={ti.help} required />
+            <TextField
+              id={pointId}
+              placeholder={ti.pointPlaceholder}
+              aria-required="true"
+              inputMode="decimal"
+              value={point}
+              error={rangeOk ? undefined : t.errors.range}
+              onChange={(event) => {
+                touch();
+                setPoint(event.target.value);
+              }}
+            />
+          </div>
           <TextField
             label={ti.target}
+            placeholder={ti.targetPlaceholder}
             required
             inputMode="decimal"
             value={target}
@@ -216,25 +248,35 @@ export const ItemDialog = ({ item, settings, warehouses, onClose }: ItemDialogPr
               setTarget(event.target.value);
             }}
           />
-          <Select
-            aria-label={ti.source}
-            placeholder={ti.source}
-            value={source === '' ? null : source}
-            options={sourceOptions(warehouses, warehouse)}
-            onChange={(value) => {
-              touch();
-              setSource(value);
-            }}
-          />
-          <p className="field-note">{ti.help}</p>
+          <div className="field-cell">
+            <label className="field-label" htmlFor={sourceId}>
+              {ti.source}
+              <span className="required-mark" aria-hidden="true">
+                {' *'}
+              </span>
+            </label>
+            <Select
+              id={sourceId}
+              aria-required="true"
+              placeholder={ti.source}
+              value={source === '' ? null : source}
+              options={sourceOptions(warehouses, warehouse)}
+              onChange={(value) => {
+                touch();
+                setSource(value);
+              }}
+            />
+          </div>
+          {/* 잠긴 까닭은 화면에 펼치지 않고 화면 읽기용으로만(omf-all-around#360). */}
           {blocked && (
-            <p id={rangeId} className="field-note">
+            <p id={rangeId} className="visually-hidden">
               {rangeOk ? ti.required : t.errors.range}
             </p>
           )}
         </div>
       </Dialog>
       <Dialog
+        className="dialog-icon-delete"
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         title={ti.deleteTitle}

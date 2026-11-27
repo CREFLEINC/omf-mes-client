@@ -1,4 +1,4 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -8,27 +8,52 @@ export type VersionTransitionKind = 'confirm' | 'obsolete' | 'reactivate' | 'dis
 
 const TEXT: Record<
   VersionTransitionKind,
-  { title: string | ((version: number) => string); action: string; description: string }
+  {
+    title: string;
+    caption: string;
+    question: string;
+    action: string;
+    description: string;
+    tone: 'warning' | 'info';
+    /** 제목 앞 아이콘(app.css `dialog-icon-*` · #360). */
+    icon: string;
+  }
 > = {
   confirm: {
     title: t.dialog.confirmTitle,
+    caption: t.dialog.confirmCaption,
+    question: t.dialog.confirmQuestion,
     action: t.actions.confirm,
     description: t.dialog.confirmDescription,
+    tone: 'warning',
+    icon: 'dialog-icon-check',
   },
   obsolete: {
     title: t.dialog.obsoleteTitle,
+    caption: t.dialog.obsoleteCaption,
+    question: t.dialog.obsoleteQuestion,
     action: t.actions.obsolete,
     description: t.dialog.obsoleteDescription,
+    tone: 'warning',
+    icon: 'dialog-icon-block',
   },
   reactivate: {
     title: t.dialog.reactivateVersionTitle,
+    caption: t.dialog.reactivateVersionCaption,
+    question: t.dialog.reactivateVersionQuestion,
     action: t.actions.reactivate,
     description: t.dialog.reactivateVersionDescription,
+    tone: 'info',
+    icon: 'dialog-icon-restart',
   },
   discard: {
     title: t.dialog.discardTitle,
+    caption: t.dialog.discardCaption,
+    question: t.dialog.discardQuestion,
     action: t.actions.discard,
     description: t.dialog.discardDescription,
+    tone: 'warning',
+    icon: 'dialog-icon-undo',
   },
 };
 
@@ -40,8 +65,10 @@ export interface VersionTransitionDialogProps {
   isSaving: boolean;
   /** 실패 배너 슬롯. 창을 닫지 않고 이유를 보여야 사용자가 다음 행동을 정할 수 있다. */
   banner: ReactNode;
-  /** 대상 버전 번호 — 사용 중지 창 제목에 넣는다(「버전 1을 사용 중지하시겠습니까?」 · 사용자 시안 #258). */
+  /** 대상 버전 번호 — 대상 상자에 「버전 N」으로 담는다(#258 · #360). 0 이면(아직 모름) 상자를 두지 않는다. */
   planVersion: number;
+  /** 대상 상자의 보조 한 줄 — 어느 기준의 버전인지(「기준코드 · 기준명」). */
+  planLabel?: string;
 }
 
 /**
@@ -60,15 +87,16 @@ export const VersionTransitionDialog = ({
   isSaving,
   banner,
   planVersion,
+  planLabel = '',
 }: VersionTransitionDialogProps) => {
-  const { title } = TEXT[kind];
+  const text = TEXT[kind];
   return (
     <Dialog
+      className={text.icon}
       open={open}
       onClose={onClose}
-      /* 사용 중지 창은 제목 · 설명이 한 줄에 가깝게 서도록 넓힌다(사용자 시안 · #258). */
-      size={kind === 'obsolete' ? 'md' : 'sm'}
-      title={typeof title === 'function' ? title(planVersion) : title}
+      size="sm"
+      title={text.title}
       closeOnBackdropClick={false}
       showCloseButton={false}
       footer={
@@ -77,13 +105,27 @@ export const VersionTransitionDialog = ({
             {messages.common.cancel}
           </Button>
           <Button loading={isSaving} disabled={isSaving} onClick={onConfirm}>
-            {TEXT[kind].action}
+            {text.action}
           </Button>
         </>
       }
     >
       {banner}
-      <p>{TEXT[kind].description}</p>
+      {/* 단말 사용 중지 창과 같은 짜임 — 대상 상자 · 질문 · 안내 줄(#360). */}
+      <div className="users-roles-worker-dialog">
+        {planVersion > 0 && (
+          <div className="users-roles-worker-block">
+            <span className="users-roles-worker-block-caption">{text.caption}</span>
+            <strong>{t.values.version(planVersion)}</strong>
+            <span>{planLabel}</span>
+          </div>
+        )}
+        <p>{text.question}</p>
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone={text.tone}>
+          <Icon name={text.tone} size={16} aria-hidden />
+          {text.description}
+        </p>
+      </div>
     </Dialog>
   );
 };

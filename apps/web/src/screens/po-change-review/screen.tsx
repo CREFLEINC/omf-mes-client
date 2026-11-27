@@ -2,9 +2,10 @@ import { AlertBanner, Breadcrumb, Button, Chip, PageHeader, useToast } from '@cr
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useState } from 'react';
 
+import { useDeselectConfirm } from '../../patterns/deselect-confirm';
 import { SaveErrorBanner } from '../../patterns/master';
 import { ScreenHeader } from '../../patterns/screen-header';
-import { ListCollapseTab, PaneListHead, usePaneSplit } from '../../patterns/po-board';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import {
   adjustmentErrors,
   decisionLockReason,
@@ -13,7 +14,7 @@ import {
   toAcknowledgeBody,
   type DecisionDraft,
 } from './decision';
-import { useUomLookup } from './lookups';
+import { useUomLookup, useWorkOrderStatusName } from './lookups';
 import { useAcknowledgeMutation } from './mutations';
 import { DecisionPane, DiffPane, NotificationList, WorkOrderPane } from './panes';
 import { useAffectedWorkOrders, useChangeNotifications, useProductionOrderDetail } from './queries';
@@ -40,10 +41,17 @@ export const PoChangeReviewScreen = () => {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [draft, setDraft] = useState<DecisionDraft>(EMPTY_DECISION);
   const [showError, setShowError] = useState(false);
+  const deselectConfirm = useDeselectConfirm();
+  /* 고른 줄을 다시 눌러 풀 때 적던 판정이 사라지는가 — 있으면 먼저 묻는다(#360). */
+  const hasDraftInput =
+    draft.decision !== null ||
+    draft.reason !== '' ||
+    Object.values(draft.adjustments).some((value) => value !== '');
 
   const list = useChangeNotifications();
   const rows = useMemo(() => list.data?.items ?? [], [list.data]);
   const uoms = useUomLookup();
+  const statusNameOf = useWorkOrderStatusName();
   /* 잠금 토큰은 «그 P/O 의 상세»가 내린다 — 고르면 함께 부른다(B-1-1). */
   const detail = useProductionOrderDetail(selectedId);
   const workOrders = useAffectedWorkOrders(selectedId);
@@ -86,15 +94,6 @@ export const PoChangeReviewScreen = () => {
    */
   const isConflict = write.error?.kind === 'conflict';
 
-  /* 목록 접기(#350, app.css `list-collapsible`) — 넓은 창은 왼쪽 세로 탭 + 상세, 좁으면 상세 위 가로 탭 + 상세 한 칸. */
-  const listSplit = usePaneSplit('omf-mes:po-change-review:list');
-  const listCollapse = {
-    collapsed: listSplit.collapsed,
-    onToggle: listSplit.toggleCollapsed,
-    collapseLabel: messages.common.inspectionHub.listCollapse,
-    expandLabel: messages.common.inspectionHub.listExpand,
-    count: list.data === undefined ? undefined : rows.length,
-  };
   return (
     <>
       <ScreenHeader
@@ -108,112 +107,136 @@ export const PoChangeReviewScreen = () => {
         actions={<Chip status="warning">{t.header.unacknowledged(unacknowledged)}</Chip>}
       />
 
-      <div
-        className="two-pane po-change-review-layout list-collapsible"
-        data-left-collapsed={listCollapse.collapsed ? 'true' : undefined}
-      >
-        <section className="pane po-change-review-pane" aria-label={t.panes.list}>
-          <PaneListHead title={t.panes.list} collapse={listCollapse} />
-          <NotificationList
-            rows={rows}
-            selectedId={selectedId}
-            isLoading={list.isPending}
-            error={
-              list.isError ? (
-                <AlertBanner
-                  variant="error"
-                  action={
-                    <Button variant="outlined" size="sm" onClick={() => void list.refetch()}>
-                      {messages.common.retry}
-                    </Button>
-                  }
-                >
-                  {t.list.loadFailed}
-                </AlertBanner>
-              ) : null
-            }
-            onSelect={(id) => setSelectedId((prev) => (prev === id ? null : id))}
-          />
-        </section>
-        <ListCollapseTab collapse={listCollapse} />
+      {/* 목록 | 상세 공용 분할 — 가운데 막대로 폭, 「⋯」로 좌우/상하 배치, 상하일 때 높이 막대(#360). */}
+      <ListDetailWorkspace
+        storageKey="omf-mes:po-change-review"
+        initialRatio={0.5}
+        list={{
+          label: t.panes.list,
+          title: t.panes.list,
+          count: list.data === undefined ? undefined : rows.length,
+          className: 'po-change-review-pane',
+          content: (
+            <NotificationList
+              rows={rows}
+              selectedId={selectedId}
+              isLoading={list.isPending}
+              error={
+                list.isError ? (
+                  <AlertBanner
+                    variant="error"
+                    action={
+                      <Button variant="outlined" size="sm" onClick={() => void list.refetch()}>
+                        {messages.common.retry}
+                      </Button>
+                    }
+                  >
+                    {t.list.loadFailed}
+                  </AlertBanner>
+                ) : null
+              }
+              onSelect={(id) => {
+                /*
+                 * 앞 건에서 서버가 거절한 빨간 상자가 다른 건으로 옮겨 붙지 않게 지운다(#360) — 종전에는 선택을 바꿔도
+                 * 「지금은 저장할 수 없는 상태입니다」가 계속 떠 있었다.
+                 */
+                if (id === selectedId) {
+                  deselectConfirm.request(hasDraftInput, () => {
+                    write.reset();
+                    setSelectedId(null);
+                  });
+                  return;
+                }
+                write.reset();
+                setSelectedId(id);
+              }}
+            />
+          ),
+        }}
+        detail={{
+          label: t.title,
+          bare: true,
+          content: (
+            <>
+              <DiffPane selected={selected} uoms={uoms} />
 
-        <div className="pane-stack">
-          <DiffPane selected={selected} uoms={uoms} />
+              <WorkOrderPane
+                rows={affected}
+                isLoading={workOrders.isPending && selectedId !== null}
+                isError={workOrders.isError}
+                hasSelection={selectedId !== null}
+                statusNameOf={statusNameOf}
+                overProduced={warnings.overProduced}
+                changedQty={selected?.orderQty ?? null}
+                showAdjustments={draft.decision === 'APPLY'}
+                adjustments={draft.adjustments}
+                adjustmentErrors={adjustmentErrorMap}
+                onChangeAdjustment={(workOrderId, value) =>
+                  setDraft((current) => ({
+                    ...current,
+                    adjustments: { ...current.adjustments, [String(workOrderId)]: value },
+                  }))
+                }
+              />
 
-          <WorkOrderPane
-            rows={affected}
-            isLoading={workOrders.isPending && selectedId !== null}
-            isError={workOrders.isError}
-            hasSelection={selectedId !== null}
-            overProduced={warnings.overProduced}
-            changedQty={selected?.orderQty ?? null}
-            showAdjustments={draft.decision === 'APPLY'}
-            adjustments={draft.adjustments}
-            adjustmentErrors={adjustmentErrorMap}
-            onChangeAdjustment={(workOrderId, value) =>
-              setDraft((current) => ({
-                ...current,
-                adjustments: { ...current.adjustments, [String(workOrderId)]: value },
-              }))
-            }
-          />
+              <DecisionPane
+                draft={draft}
+                showError={showError}
+                warnings={warnings}
+                blockedNote={lock === t.lock.noChange ? lock : undefined}
+                onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
+                footer={
+                  <>
+                    {/* 빨간 상자는 [처리]를 눌러 서버가 거절했을 때만(#360). */}
+                    {isConflict ? (
+                      <div className="banner-slot">
+                        <AlertBanner
+                          variant="error"
+                          title={t.conflict.title}
+                          action={
+                            <Button
+                              variant="outlined"
+                              size="sm"
+                              onClick={() => {
+                                write.reset();
+                                setSelectedId(null);
+                                void list.refetch();
+                              }}
+                            >
+                              {t.conflict.reload}
+                            </Button>
+                          }
+                        >
+                          {t.conflict.description}
+                        </AlertBanner>
+                      </div>
+                    ) : (
+                      <SaveErrorBanner error={write.error} onReload={() => void list.refetch()} />
+                    )}
+                    {/* 잠김 사유 파란 띠는 없앴다 — 필수 표시는 단추 잠금으로 충분하다(사용자 지시 · #360). */}
+                    <div className="form-actions">
+                      <Button
+                        disabled={lock !== undefined || detail.isPending}
+                        onClick={() => {
+                          setShowError(true);
+                          const body = toAcknowledgeBody(gate);
+                          /* 게이트가 열려 있어도 본문이 없으면 멈춘다 — 반쪽짜리 판정을 보내지 않는다. */
+                          if (body === null) return;
+                          write.write(body);
+                        }}
+                      >
+                        {t.decision.submit}
+                      </Button>
+                    </div>
+                  </>
+                }
+              />
+            </>
+          ),
+        }}
+      />
 
-          <DecisionPane
-            draft={draft}
-            showError={showError}
-            warnings={warnings}
-            onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
-          />
-
-          <section className="pane po-change-review-pane" aria-label={t.decision.submit}>
-            {isConflict ? (
-              <div className="banner-slot">
-                <AlertBanner
-                  variant="error"
-                  title={t.conflict.title}
-                  action={
-                    <Button
-                      variant="outlined"
-                      size="sm"
-                      onClick={() => {
-                        write.reset();
-                        setSelectedId(null);
-                        void list.refetch();
-                      }}
-                    >
-                      {t.conflict.reload}
-                    </Button>
-                  }
-                >
-                  {t.conflict.description}
-                </AlertBanner>
-              </div>
-            ) : (
-              <SaveErrorBanner error={write.error} onReload={() => void list.refetch()} />
-            )}
-
-            {lock !== undefined && (
-              <div className="banner-slot">
-                <AlertBanner variant="info">{lock}</AlertBanner>
-              </div>
-            )}
-            <div className="form-actions">
-              <Button
-                disabled={lock !== undefined || detail.isPending}
-                onClick={() => {
-                  setShowError(true);
-                  const body = toAcknowledgeBody(gate);
-                  /* 게이트가 열려 있어도 본문이 없으면 멈춘다 — 반쪽짜리 판정을 보내지 않는다. */
-                  if (body === null) return;
-                  write.write(body);
-                }}
-              >
-                {t.decision.submit}
-              </Button>
-            </div>
-          </section>
-        </div>
-      </div>
+      {deselectConfirm.dialog}
     </>
   );
 };

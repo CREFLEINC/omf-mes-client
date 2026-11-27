@@ -2,7 +2,6 @@ import { AlertBanner, EmptyState, SkeletonText, Tabs, useToast } from '@crefle/w
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { BoardFrame } from '../../patterns/board-frame';
@@ -10,6 +9,8 @@ import { SaveErrorBanner, requireIfMatch, useMasterWrite } from '../../patterns/
 import { useMasterDataPlant, useOnMasterDataPlantChange } from '../../patterns/master-data-plant';
 import { planKeys } from '../inspection-standard/queries';
 import { ITEM_KEY, readItemFilters, readPage, readSelectedId, toSearchParams } from './filters';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { ItemAttrsPane } from './item-attrs-pane';
 import { isSameItemAttrsValues, itemToAttrsFormValues, toItemUpdate } from './item-attrs-mappers';
 import {
@@ -24,6 +25,7 @@ import {
   itemDetailPath,
   itemKeys,
   useItemDetail,
+  ITEM_LIST_PAGE_SIZE,
   useItemList,
   useItemTypeOptions,
 } from './item-queries';
@@ -108,7 +110,9 @@ interface EditingRow<TDraft> {
  * 같은 품목의 다른 면을 오갈 수 있다.
  */
 export const ItemExtendedAttrsScreen = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(계약 기본 50)은 싣지도 적지도 않는다(#360). */
+  const { searchParams, setSearchParams, pageSize, changePageSize } =
+    usePageSizeSearchParams(ITEM_LIST_PAGE_SIZE);
   const toast = useToast();
   const { client } = useApiClient();
 
@@ -122,7 +126,7 @@ export const ItemExtendedAttrsScreen = () => {
 
   /* 위 줄 사업부의 공장 품목만 — 공장은 서버가 BOM 으로 정한다(서버 #1156). 공장을 정하는 동안은 조회를 미룬다. */
   const plant = useMasterDataPlant();
-  const itemList = useItemList(filters, page, plant.plantId, !plant.isChecking);
+  const itemList = useItemList(filters, page, plant.plantId, !plant.isChecking, pageSize);
   const items = itemList.data?.items ?? [];
   // 유형 선택지를 못 받아도 목록은 그대로 쓴다 — 「전체」와 주소에 실린 코드만 고를 수 있다.
   const itemTypes = useItemTypeOptions();
@@ -649,6 +653,8 @@ export const ItemExtendedAttrsScreen = () => {
               onApplyFilters={applyFilters}
               pageView={pageView}
               onChangePage={changePage}
+              pageSizes={PAGE_SIZES}
+              onChangePageSize={changePageSize}
               selectedItemId={selectedItemId}
               onSelect={handleSelectItem}
               onClearSelection={handleClearItem}

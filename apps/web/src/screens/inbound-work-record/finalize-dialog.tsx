@@ -1,10 +1,10 @@
 import { AlertBanner, Button, Checkbox, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState } from 'react';
+import { useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { InfoCodeName, InfoFacts } from '../../patterns/info-facts';
 import type { FinalizeBlocker, WorkRecordDetail, WorkRecordLot } from './forward-contract';
-import { MatchSummary } from './lot-table';
 import { classifyFailure, finalizeInboundLot } from './mutations';
 import { blockersText, formatQty } from './types';
 
@@ -30,7 +30,6 @@ export const FinalizeDialog = ({
   onReload: () => Promise<FinalizeBlocker[] | undefined>;
 }) => {
   const { client } = useApiClient();
-  const lockId = useId();
   const [acknowledged, setAcknowledged] = useState(false);
   const [unallocatedQty, setUnallocatedQty] = useState(detail.unallocatedQty);
   const [busy, setBusy] = useState(false);
@@ -78,63 +77,63 @@ export const FinalizeDialog = ({
     <Dialog
       open
       size="md"
-      className="iwr-finalize-dialog"
+      className="iwr-finalize-dialog dialog-icon-lock"
       title={tf.title}
       onClose={onClose}
       footer={
         <div className="iwr-dialog-actions">
-          {locked && (
-            <span id={lockId} className="field-note">
-              {tf.acknowledgeNeeded}
-            </span>
-          )}
           <Button variant="outlined" disabled={busy} onClick={onClose}>
             {tf.cancel}
           </Button>
-          <Button
-            disabled={locked}
-            loading={busy}
-            aria-describedby={locked ? lockId : undefined}
-            onClick={() => void submit()}
-          >
+          <Button disabled={locked} loading={busy} onClick={() => void submit()}>
             {tf.confirm}
           </Button>
         </div>
       }
     >
       <div className="iwr-finalize-body">
-        <p>
-          <strong className="iwr-code">{detail.inboundLotNo}</strong> {detail.supplierName}{' '}
-          <span className="iwr-code">{detail.itemCode}</span> {detail.itemName}
-        </p>
-        <div className="iwr-finalize-summary">
-          <p>
-            {tf.summary(
-              formatQty(detail.receivedQty),
-              formatQty(detail.goodsReceivedQty),
-              detail.uomCode,
-            )}
-          </p>
-          <p>
-            {tf.matchLabel}
-            <MatchSummary lot={detail} />
-          </p>
-        </div>
-        {needsAck && (
-          <AlertBanner variant="warning">
-            <span className="iwr-ack">
+        {/* 확인 팝업 사실 상자 — 정보 표시 팝업 시안 상자(#360). 첫 줄 입하 LOT · 공급사 · 품목, 둘째 줄 수량. */}
+        <InfoFacts
+          rows={[
+            [
+              { label: t.list.columns.inboundLot, value: detail.inboundLotNo, isKey: true },
+              { label: t.list.columns.supplier, value: detail.supplierName },
+              {
+                label: tf.item,
+                value: <InfoCodeName code={detail.itemCode} name={detail.itemName} />,
+                isKey: true,
+              },
+            ],
+            [
+              {
+                label: tf.receivedQty,
+                value: tf.qty(formatQty(detail.receivedQty), detail.uomCode),
+              },
+              {
+                label: tf.goodsReceivedQty,
+                value: tf.qty(formatQty(detail.goodsReceivedQty), detail.uomCode),
+              },
+            ],
+          ]}
+        />
+        <AlertBanner variant="warning">
+          {needsAck && (
+            <>
               <span>{tf.unallocatedWarning(formatQty(unallocatedQty), detail.uomCode)}</span>
-              <Checkbox
-                checked={acknowledged}
-                disabled={busy}
-                onChange={(event) => setAcknowledged(event.target.checked)}
-              >
-                {tf.acknowledge}
-              </Checkbox>
-            </span>
-          </AlertBanner>
+              <br />
+            </>
+          )}
+          <span>{tf.warning}</span>
+        </AlertBanner>
+        {needsAck && (
+          <Checkbox
+            checked={acknowledged}
+            disabled={busy}
+            onChange={(event) => setAcknowledged(event.target.checked)}
+          >
+            {tf.acknowledge}
+          </Checkbox>
         )}
-        <AlertBanner variant="warning">{tf.warning}</AlertBanner>
         {failure !== null && (
           <AlertBanner
             variant="error"

@@ -1,9 +1,9 @@
-import { Button, Chip, Dialog, Field, Icon, Skeleton, TextField } from '@crefle/web-ui';
+import { Button, Dialog, Field, Skeleton, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
-import { SaveErrorBanner } from '../../patterns/master';
+import { CodeLockTextField, LockedFieldIcon, SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
 import { TimeField, type TimeFieldLabels } from '../../patterns/time-field';
 import { useSaveShift, useShiftDetail, type Shift } from './queries';
@@ -48,10 +48,6 @@ const draftOf = (shift: Shift): Draft => ({
 
 const withSeconds = (value: string): string => `${value}:00`;
 
-/** 종료 ≤ 시작이면 다음 날 끝난다 — 서버가 같은 규칙으로 자정 넘김을 정한다. */
-export const endsNextDay = (startTime: string, endTime: string): boolean =>
-  startTime !== '' && endTime !== '' && endTime <= startTime;
-
 /**
  * 추가 창이 미리 채우는 교대 코드 — 이 공장에서 아직 쓰지 않은 `S01`·`S02`… 중 첫 번째.
  * 사용자가 고칠 수 있다(사용 중지한 교대의 코드는 목록에 없어 겹칠 수 있다 — 그때는 서버가 중복으로 거절한다).
@@ -95,7 +91,6 @@ export const EditDialog = ({
   const [plantId, setPlantId] = useState(plant.plantId);
   const plantFieldId = useId();
   const plantLabelId = useId();
-  const plantLockedId = useId();
   const codesOf = (id: number) =>
     existingShifts.filter((each) => each.plantId === id).map((each) => each.shiftCode);
   const detail = useShiftDetail(shiftId);
@@ -139,7 +134,7 @@ export const EditDialog = ({
     save.error.errors.every((item) => item.code === 'UNIQUE_VIOLATION');
   const codeTaken = codeTakenLocally || codeTakenByServer;
 
-  /* 비어 있는 필수 칸은 처음부터 빨간 테두리 — 다 채워야 [저장]이 켜진다. */
+  /* 필수 칸을 다 채워야 [저장]이 켜진다. 빈 필수 칸은 팝업 공통 모양(연한 빨간 바탕 · app.css)으로 보인다. */
   const missing: Record<DraftField, boolean> = {
     shiftCode: draft.shiftCode.trim() === '',
     shiftName: draft.shiftName.trim() === '',
@@ -181,10 +176,6 @@ export const EditDialog = ({
     });
   };
 
-  /** 빈 칸은 테두리만 붉게(글 없이), 서버가 거절한 칸은 이유 글까지. */
-  const textFieldClass = (field: DraftField): string | undefined =>
-    missing[field] ? 'shift-management-empty' : undefined;
-
   const body = () => {
     if (shift !== null && detail.isError)
       return <LoadErrorAlert error={detail.error} onRetry={() => void detail.refetch()} />;
@@ -218,6 +209,7 @@ export const EditDialog = ({
               {/* 공장은 이름으로 찾아 고른다(사용자 지시 2026-11-25). */}
               <Select
                 id={plantFieldId}
+                placeholder={td.plantPlaceholder}
                 searchable
                 searchPlaceholder={t.filters.plantSearchPlaceholder}
                 value={String(plantId)}
@@ -237,39 +229,28 @@ export const EditDialog = ({
             </div>
           ) : (
             /*
-             * 고를 공장이 하나뿐이면(공장이 정해진 목록 · 수정) 입력칸이 아니라 값으로 보인다 —
-             * 사용자 역할 권한 관리의 로그인 ID와 같은 모양(칸 이름 옆 회색 「변경 불가」 라벨 · 사용자 지시 2026-11-25).
+             * 고를 공장이 하나뿐이면(공장이 정해진 목록 · 수정) 입력칸이 아니라 회색 값 칸으로 보인다 —
+             * 이름 옆 「변경 불가」 라벨은 두지 않고, 시안 「잠긴 칸」처럼 오른쪽 끝에 자물쇠를 둔다(omf-all-around#360).
              */
             <div className="field-cell">
               <span className="field-label shift-management-locked-label">
                 <span id={plantLabelId}>{td.plant}</span>
-                <Chip id={plantLockedId} variant="status" size="sm" status="idle">
-                  {td.plantLocked}
-                </Chip>
               </span>
-              <p
-                className="readonly-value"
-                aria-labelledby={plantLabelId}
-                aria-describedby={plantLockedId}
-              >
-                {plant.plantName}
+              <p className="readonly-value locked-value" aria-labelledby={plantLabelId}>
+                <span className="locked-value-text">{plant.plantName}</span>
+                <LockedFieldIcon />
               </p>
             </div>
           )}
-          <TextField
+          {/* 잠긴 까닭은 칸 아래에 펼치지 않고 자물쇠에 마우스를 올리면 보인다(사용자 지시 2026-11-27 · #360). */}
+          <CodeLockTextField
             label={td.code}
             fullWidth
             required
             placeholder={td.codePlaceholder}
             maxLength={50}
             value={draft.shiftCode}
-            disabled={codeLocked}
-            containerClassName={textFieldClass('shiftCode')}
-            helperText={
-              codeLocked && editability !== undefined
-                ? td.codeLocked(editability.referenceCount ?? 0)
-                : undefined
-            }
+            lockReason={codeLocked ? td.codeLocked(editability?.referenceCount ?? 0) : null}
             error={save.fieldErrors.shiftCode ?? (codeTaken ? td.codeTaken : undefined)}
             onChange={(event) => update({ shiftCode: event.target.value })}
           />
@@ -280,7 +261,6 @@ export const EditDialog = ({
             placeholder={td.namePlaceholder}
             maxLength={200}
             value={draft.shiftName}
-            containerClassName={textFieldClass('shiftName')}
             error={save.fieldErrors.shiftName}
             onChange={(event) => update({ shiftName: event.target.value })}
           />
@@ -295,9 +275,10 @@ export const EditDialog = ({
                 hour={draft.startTime.slice(0, 2)}
                 minute={draft.startTime.slice(3, 5)}
                 disabled={false}
-                invalid={ids.invalid || missing.startTime}
+                invalid={ids.invalid}
                 describedBy={ids.describedById}
                 onChange={(hour, minute) => update({ startTime: `${hour}:${minute}` })}
+                onClear={() => update({ startTime: '' })}
               />
             )}
           </Field>
@@ -309,9 +290,10 @@ export const EditDialog = ({
                 hour={draft.endTime.slice(0, 2)}
                 minute={draft.endTime.slice(3, 5)}
                 disabled={false}
-                invalid={ids.invalid || missing.endTime}
+                invalid={ids.invalid}
                 describedBy={ids.describedById}
                 onChange={(hour, minute) => update({ endTime: `${hour}:${minute}` })}
+                onClear={() => update({ endTime: '' })}
               />
             )}
           </Field>
@@ -327,20 +309,9 @@ export const EditDialog = ({
       title={shift === null ? td.addTitle : td.editTitle}
       size="lg"
       showCloseButton={false}
-      className="shift-management-dialog"
+      className={`shift-management-dialog ${shift === null ? 'dialog-icon-add' : 'dialog-icon-edit'}`}
       footer={
         <>
-          {/* 다음 날 끝나는 교대 안내 — 정보 아이콘 + 파란 바탕 라벨, 단추 줄 왼쪽(사용자 지시 2026-11-25). */}
-          {endsNextDay(draft.startTime, draft.endTime) && (
-            <span
-              className="iqc-inspection-action-note shift-management-footer-note"
-              data-tone="info"
-              role="status"
-            >
-              <Icon name="info" size={14} aria-hidden />
-              {td.nextDayNote}
-            </span>
-          )}
           <Button variant="outlined" onClick={onClose}>
             {td.cancel}
           </Button>

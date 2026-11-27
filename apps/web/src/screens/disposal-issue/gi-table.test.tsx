@@ -43,11 +43,7 @@ const renderTable = (overrides: Partial<GiTableProps> = {}) => {
 };
 
 describe('buildGiColumns — 열 폭 예산', () => {
-  const columns = buildGiColumns({
-    selectedIssueId: null,
-    warehouseLookup: warehouseSource(),
-    onToggleSelect: vi.fn(),
-  });
+  const columns = buildGiColumns({ warehouseLookup: warehouseSource() });
 
   it('흡수 열이 정확히 하나다', () => {
     expect(columns.filter((column) => column.width === undefined)).toHaveLength(1);
@@ -59,21 +55,20 @@ describe('buildGiColumns — 열 폭 예산', () => {
       0,
     );
 
-    expect(fixed).toBe(680);
+    expect(fixed).toBe(592);
     /* 흡수 열이 실제로 받는 폭이 예산(200px)보다 넓어야 「코드 · 이름」이 접히지 않는다. */
-    expect(HISTORY_TABLE_MIN_WIDTH_PX - fixed).toBe(248);
+    expect(HISTORY_TABLE_MIN_WIDTH_PX - fixed).toBe(336);
     expect(HISTORY_TABLE_MIN_WIDTH_PX - fixed).toBeGreaterThanOrEqual(200);
   });
 
   /* 출고 유형·승인 진행 열을 두지 않았다 — 열을 늘리는 것보다 줄이는 것이 먼저다. */
-  it('열이 여섯이다', () => {
+  it('열이 다섯이다 — 선택 열 없이 행을 눌러 고른다', () => {
     expect(columns.map((column) => column.key)).toEqual([
       'goodsIssueNo',
       'warehouse',
       'reasonCode',
       'issuedAt',
       'statusCode',
-      'select',
     ]);
   });
 });
@@ -204,34 +199,32 @@ describe('GiTable — 미상신 표식', () => {
 });
 
 describe('GiTable — 고르기', () => {
-  it('행마다 어느 건인지 밝힌 버튼이 있다', async () => {
+  it('행 아무 곳이나 누르면 그 품의를 고른다 — 행 이름이 어느 건인지 밝힌다', async () => {
     const { onToggleSelect, user } = renderTable();
 
-    await user.click(
-      screen.getByRole('button', { name: t.actions.selectIssueRow('GI-2026-950001') }),
-    );
+    await user.click(screen.getByRole('row', { name: t.actions.selectIssueRow('GI-2026-950001') }));
 
     expect(onToggleSelect).toHaveBeenCalledWith(9501);
   });
 
-  it('고른 행의 버튼은 해제로 바뀐다', () => {
+  it('고른 행은 강조되고 이름이 해제로 바뀐다', () => {
     renderTable({ selectedIssueId: 9501 });
 
     expect(
-      screen.getByRole('button', { name: t.actions.deselectIssueRow('GI-2026-950001') }),
-    ).toBeInTheDocument();
+      screen.getByRole('row', { name: t.actions.deselectIssueRow('GI-2026-950001') }),
+    ).toHaveAttribute('aria-selected', 'true');
     expect(
-      screen.getByRole('button', { name: t.actions.selectIssueRow('GI-2026-950002') }),
+      screen.getByRole('row', { name: t.actions.selectIssueRow('GI-2026-950002') }),
     ).toBeInTheDocument();
   });
 
   /* 접근 이름에도 내부 번호를 넣지 않는다 — 그것이 화면 밖으로 새는 또 하나의 경로다. */
-  it('버튼 이름에 내부 번호가 없다', () => {
+  it('행 이름에 내부 번호가 없다', () => {
     renderTable();
 
-    for (const button of screen.getAllByRole('button')) {
+    for (const row of screen.getAllByRole('row')) {
       for (const id of INTERNAL_IDS) {
-        expect(button.getAttribute('aria-label') ?? '').not.toContain(id);
+        expect(row.getAttribute('aria-label') ?? '').not.toContain(id);
       }
     }
   });

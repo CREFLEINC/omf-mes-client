@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -24,6 +24,12 @@ import { MaterialIssueRequestScreen } from './screen';
 import { HEADER_FORM_FIELDS } from './validation';
 
 const t = messages.materialIssueRequest;
+
+/** [요청 발행] 확인 창에서 [요청 발행]을 누른다(#360). */
+const confirmPublish = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  const dialog = await screen.findByRole('dialog', { name: t.confirm.title });
+  await user.click(within(dialog).getByRole('button', { name: t.confirm.submit }));
+};
 
 /**
  * 집중 갈래 — **화면 배선.** 단위 감지기가 닿지 못한 두 이음매만 연다.
@@ -227,6 +233,7 @@ describe('발행 배선 — 같은 제출을 두 번 시도하면 같은 멱등 
     });
 
     await user.click(publishButton);
+    await confirmPublish(user);
 
     await waitFor(() => {
       expect(capture.keys).toHaveLength(1);
@@ -252,6 +259,7 @@ describe('발행 배선 — 같은 제출을 두 번 시도하면 같은 멱등 
     await user.click(screen.getAllByRole('radio')[0]!);
 
     await user.click(publishButton);
+    await confirmPublish(user);
 
     await waitFor(() => {
       expect(capture.keys).toHaveLength(2);
@@ -341,6 +349,7 @@ describe('거부가 침묵하지 않는다 — 아는 이름마다 문구가 선
       });
 
       await user.click(publishButton);
+      await confirmPublish(user);
 
       /* 어디에 서는지는 자리마다 다르다 — 「어딘가에 선다」만 본다. */
       await waitFor(() => {

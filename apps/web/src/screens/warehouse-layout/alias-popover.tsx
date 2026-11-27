@@ -70,6 +70,7 @@ export const AliasPopover = ({ location, onClose, onSaved }: AliasPopoverProps) 
         size="sm"
         fullWidth
         aria-label={wl.aliasEdit.edit(location.locationCode)}
+        placeholder={t.aliasPopover.placeholder}
         value={text}
         maxLength={ALIAS_MAX_LENGTH}
         disabled={saving}

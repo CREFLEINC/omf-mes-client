@@ -12,7 +12,6 @@
  */
 export const shipmentSchedule = {
   title: '출하 예정 목록',
-  breadcrumbRoot: '영업 / 출하 관리',
   panes: {
     list: '출하 예정 목록',
     fulfillmentPlant: '출하 공장 지정',
@@ -22,8 +21,8 @@ export const shipmentSchedule = {
     period: '출하 기간',
     periodSeparator: '~',
     /** 값이 비었을 때 칸 안에 보이는 말 — 무엇을 고르는 칸인지 칸 스스로 말한다. */
-    periodFromPlaceholder: '시작일 선택',
-    periodToPlaceholder: '종료일 선택',
+    periodFromPlaceholder: '시작일을 선택하세요',
+    periodToPlaceholder: '종료일을 선택하세요',
     periodFrom: '출하일 시작',
     periodTo: '출하일 종료',
     customer: '고객',

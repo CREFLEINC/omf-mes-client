@@ -6,6 +6,7 @@ import { useMasterDataPlant } from '../../patterns/master-data-plant';
 import { useApiClient } from '../../patterns/api-context';
 import { type LookupSource, selectableLookupOptions } from '../../patterns/lookup-display';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import { plantToday } from '../../patterns/plant-time';
 import { toApiError } from '../../patterns/request';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { EnabledPane } from './enabled-pane';
@@ -238,7 +239,8 @@ export const ShotConversionScreen = () => {
   };
 
   const openCreate = (): void => {
-    setValues(emptyRatioForm());
+    /* 유효 시작일은 오늘(공장 시각)로 채워 연다 — 사용자가 바꿀 수 있다. */
+    setValues({ ...emptyRatioForm(), effectiveFrom: plantToday() });
     setDialog({ mode: 'create' });
   };
 

@@ -79,8 +79,13 @@ export const CancelConfirmDialog = ({
       }
     >
       {/* 사용자 시안(2026-11-17 · omf-all-around#286) — 대상 · 변경 사항 상자 · 안내 한 줄 · 사유. 보내는 값은 그대로다. */}
-      <div className="iqc-cancel-confirm">
-        <p className="iqc-cancel-confirm-target">{t.target(inboundLotNo)}</p>
+      {/* 확인 팝업 시안(#360) — 단말 사용 중지 창처럼 대상 상자 · 질문, 변경 사항 상자 아래 안내 줄, 그 아래 사유. */}
+      <div className="users-roles-worker-dialog iqc-cancel-confirm">
+        <div className="users-roles-worker-block">
+          <span className="users-roles-worker-block-caption">{t.targetCaption}</span>
+          <strong>{inboundLotNo}</strong>
+        </div>
+        <p>{t.question}</p>
         <h3 className="iqc-cancel-confirm-heading">{t.changesHeading}</h3>
         {/* 시안(사용자 지시 2026-11-19 · omf-all-around#296) — LOT 묶음 · 결과 묶음을 한 상자에, 묶음 사이만 선. 안내는 한 줄. */}
         <div className="iqc-cancel-confirm-changes">
@@ -127,9 +132,9 @@ export const CancelConfirmDialog = ({
             )}
           </dl>
         </div>
-        <p className="iqc-inspection-action-note iqc-cancel-confirm-note" data-tone="info">
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
           <Icon name="info" size={16} aria-hidden />
-          <span>{t.note}</span>
+          {t.note}
         </p>
         <div className="iqc-cancel-confirm-reason">
           <FieldLabel htmlFor={reasonId} label={t.reason} />
@@ -165,7 +170,6 @@ export const CancelBlockedDialog = ({
     onClose={onClose}
     footer={<Button onClick={onClose}>{t.blockedOk}</Button>}
   >
-    <p className="dialog-text">{t.blockedLead}</p>
     <ul className="iqc-inbound-confirm-lines">
       {blockers.map((blocker) => {
         const text = t.blockers[blocker.code] ?? blocker.code;

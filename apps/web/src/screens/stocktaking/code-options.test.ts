@@ -146,7 +146,30 @@ describe('isVarianceReasonListPending — 차이 사유를 고를 수 있는가'
 
 describe('codePlaceholder', () => {
   /* 선택지가 왜 비었는지 밝히던 안내(`pendingCode.note`)는 걷었다(사용자 지시 2026-11-18). */
-  it('선택칸 트리거에 「선택지 준비 중」을 낸다', () => {
-    expect(codePlaceholder()).toBe(messages.pendingCode.placeholder);
+  it('고를 값이 없으면 「선택지 준비 중」을 낸다', () => {
+    expect(codePlaceholder('실사 유형', [])).toBe(messages.pendingCode.placeholder);
+  });
+
+  it('고를 값이 있으면 「~을/를 선택하세요」를 낸다', () => {
+    expect(codePlaceholder('실사 유형', [{ value: 'A', label: 'A' }])).toBe(
+      '실사 유형을 선택하세요',
+    );
+  });
+});
+
+describe('toCodeOptionSets — 서버 이름', () => {
+  it('서버가 준 이름이 있으면 라벨로 쓰고, 값은 코드 그대로 둔다', () => {
+    const sets = toCodeOptionSets(
+      { countType: ['SAMPLE_COUNT_TYPE_A', 'SAMPLE_COUNT_TYPE_B'], varianceReason: [] },
+      {
+        countType: new Map([['SAMPLE_COUNT_TYPE_A', '합성 유형 가']]),
+        varianceReason: new Map(),
+      },
+    );
+
+    expect(sets.countType).toEqual([
+      { value: 'SAMPLE_COUNT_TYPE_A', label: '합성 유형 가' },
+      { value: 'SAMPLE_COUNT_TYPE_B', label: 'SAMPLE_COUNT_TYPE_B' },
+    ]);
   });
 });

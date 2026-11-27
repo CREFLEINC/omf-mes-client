@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type { LookupResult } from './lookups';
+import type { LookupResult, ReferenceSource } from './lookups';
 import type { LookupEntry, PageMeta } from './types';
 
 /**
@@ -117,6 +117,20 @@ const isTruncated = (page: PageMeta, shown: number): boolean => page.total > sho
  * 화면이 말하는 것은 **불러오지 못했다(실패)** 와 **일부만 받았다(잘림)** 둘뿐이고, 그 문구는
  * 다섯 참조와 같은 자리(`lookupNote`)에서 나온다.
  */
+const REASON_LABEL_JOIN = ' · ';
+
+/**
+ * 고른 조정 사유의 **이름만**(예 `TRANSPORT_DAMAGE` → 「운송 중 파손」) — 등록 확인 창이 쓴다(사용자 시안 2026-11-27).
+ * 선택지 라벨(「코드 · 이름」)에서 앞의 코드를 뗀다. 이름이 비었거나 목록에 없으면 코드를 그대로 낸다.
+ */
+export const adjustReasonName = (lookup: ReferenceSource, code: string): string => {
+  const label = lookup.entries.find((entry) => entry.value === code)?.label ?? '';
+  const prefix = `${code}${REASON_LABEL_JOIN}`;
+  const name = label.startsWith(prefix) ? label.slice(prefix.length).trim() : '';
+
+  return name === '' ? code : name;
+};
+
 export const useAdjustReasonLookup = (): LookupResult => {
   const { client } = useApiClient();
 
@@ -159,7 +173,7 @@ export const useAdjustReasonLookup = (): LookupResult => {
     entries:
       data?.items.map((item) => ({
         value: item.code,
-        label: `${item.code} · ${item.codeName}`,
+        label: `${item.code}${REASON_LABEL_JOIN}${item.codeName}`,
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),

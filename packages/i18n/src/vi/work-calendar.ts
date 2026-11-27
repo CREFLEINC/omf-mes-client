@@ -37,6 +37,8 @@ export const workCalendar: Translated<typeof ko.workCalendar> = {
   form: {
     createTitle: 'Đăng ký lịch',
     editTitle: 'Sửa lịch',
+    codePlaceholder: 'Hãy nhập mã lịch',
+    namePlaceholder: 'Hãy nhập tên lịch',
     /** 「몇이 이 캘린더를 따르는가」 — 사용 중지 판단의 근거가 되는 값이다. */
     applicationCount: (count: number): string => `${count} nơi`,
     applicationNone: 'Không có đối tượng nào theo lịch này.',
@@ -72,9 +74,9 @@ export const workCalendar: Translated<typeof ko.workCalendar> = {
     endTime: 'Thời điểm kết thúc',
     reason: 'Lý do',
     remarks: 'Ghi chú',
+    reasonPlaceholder: 'Hãy nhập lý do',
+    remarksPlaceholder: 'Hãy nhập ghi chú',
     saved: (count: number): string => `Đã lưu ${count} ngày.`,
-    /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다. */
-    timeNeedsPartial: 'Chọn phân loại «Làm việc một phần» thì mới nhập được giờ.',
   },
   bulk: {
     open: 'Áp dụng hàng loạt',
@@ -165,8 +167,9 @@ export const workCalendar: Translated<typeof ko.workCalendar> = {
     pathNote: 'Dò lần lượt từ tầng gần nhất. Dừng ở tầng đầu tiên có chỉ định.',
   },
   retire: {
-    title: 'Ngừng sử dụng lịch này?',
-    target: (label: string): string => `Ngừng sử dụng ${label}.`,
+    title: 'Ngừng sử dụng lịch',
+    caption: 'Đối tượng ngừng sử dụng',
+    question: 'Bạn có muốn ngừng sử dụng lịch này không?',
     /** ⭐ 참조가 있으면 건수를 함께 보인 뒤 부른다 — 물리 삭제가 없는 자원이다. */
     applicationCount: (count: number): string =>
       `Có ${count} nơi đang theo lịch này. Ngừng thì các đối tượng đó sẽ theo tầng trên.`,

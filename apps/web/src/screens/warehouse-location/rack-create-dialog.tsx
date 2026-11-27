@@ -358,7 +358,7 @@ export const RackCreateDialog = ({
 
   return (
     <Dialog
-      className="location-dialog"
+      className={`location-dialog ${editRack === null ? 'dialog-icon-add' : 'dialog-icon-edit'}`}
       open={zone !== null}
       onClose={close}
       title={editRack === null ? t.dialog.createRackTitle : t.dialog.editRackTitle}
@@ -438,6 +438,7 @@ export const RackCreateDialog = ({
             <div className="form-grid rack-layout-counts">
               <TextField
                 label={t.rackLayout.levelCount}
+                placeholder={t.rackLayout.levelCountPlaceholder}
                 required
                 inputMode="numeric"
                 value={levelText}
@@ -447,6 +448,7 @@ export const RackCreateDialog = ({
               />
               <TextField
                 label={t.rackLayout.cellCount}
+                placeholder={t.rackLayout.cellCountPlaceholder}
                 required={!rackOnly}
                 inputMode="numeric"
                 value={rackOnly ? '0' : cellText}

@@ -94,8 +94,10 @@ export const gaugeCalibration: Translated<typeof ko.gaugeCalibration> = {
   },
 
   confirm: {
-    title: 'Lưu lịch sử này?',
-    lead: 'Lưu rồi thì không sửa hay xóa được. Hãy kiểm tra nội dung bên dưới có đúng không.',
+    title: 'Lưu lịch sử hiệu chuẩn',
+    question: 'Lưu lịch sử này chứ?',
+    caption: 'Lịch sử sẽ lưu',
+    lead: 'Lưu rồi thì không sửa hay xóa được. Hãy kiểm tra nội dung bên trên có đúng không.',
     submit: 'Lưu',
     cancel: 'Hủy',
     masterEffect:

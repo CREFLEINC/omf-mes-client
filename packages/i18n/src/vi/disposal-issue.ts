@@ -31,9 +31,8 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
     prevPage: 'Trước',
     nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
-    refresh: 'Tra cứu lại',
+    refresh: 'Làm mới',
     select: 'Chọn',
-    deselect: 'Bỏ chọn',
     selectRow: (goodsReceiptNo: string): string => `Chọn ${goodsReceiptNo}`,
     deselectRow: (goodsReceiptNo: string): string => `Bỏ chọn ${goodsReceiptNo}`,
     selectIssueRow: (goodsIssueNo: string): string => `Chọn ${goodsIssueNo}`,
@@ -46,6 +45,8 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
     discardDrafts: 'Xóa nội dung đã nhập',
     keepEditing: 'Viết tiếp',
     confirmSubmit: 'Yêu cầu',
+    backToInput: 'Quay lại nhập liệu',
+    requestApproval: 'Yêu cầu phê duyệt',
     confirmDiscard: 'Xóa',
     openIssue: 'Mở yêu cầu này',
   },
@@ -71,6 +72,7 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
     chipReceiptType: (code: string): string => `Loại nhập kho: ${code}`,
     chipStatus: (code: string): string => `Trạng thái: ${code}`,
     chipQ: (q: string): string => `Từ khóa: ${q}`,
+    qPlaceholder: 'Nhập số nhập kho',
     chipRemoveWarehouse: 'Gỡ điều kiện kho',
     chipRemoveReceiptType: 'Gỡ điều kiện loại nhập kho',
     chipRemoveStatus: 'Gỡ điều kiện trạng thái',
@@ -93,6 +95,7 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
     chipReason: (code: string): string => `Lý do hủy: ${code}`,
     chipStatus: (code: string): string => `Trạng thái: ${code}`,
     chipQ: (q: string): string => `Từ khóa: ${q}`,
+    qPlaceholder: 'Nhập số xuất kho',
     chipRemoveIssueType: 'Gỡ điều kiện loại xuất kho',
     chipRemoveReason: 'Gỡ điều kiện lý do hủy',
     chipRemoveStatus: 'Gỡ điều kiện trạng thái',
@@ -202,6 +205,7 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
   form: {
     label: 'Thông tin yêu cầu hủy',
     reasonPlaceholder: 'VD) Hủy phần bị đánh giá lỗi — 12 thùng không đạt kiểm tra đầu vào',
+    remarksPlaceholder: 'Nhập ghi chú',
     businessDateDerived:
       'Ngày làm việc được dựng từ ngày xuất kho và gửi kèm — không có ô ghi riêng.',
     selfDisposalChosen: 'Đã chọn tự hủy nên không chọn đối tác hủy.',
@@ -236,27 +240,27 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
     postLocked: 'Trong lúc đang gửi thì không bấm lại được. Xong sẽ mở.',
   },
   dialog: {
-    submitTitle: 'Trình yêu cầu hủy chứ?',
-    submitLead: 'Phiếu yêu cầu hủy sẽ được tạo với nội dung dưới đây rồi trình lên phê duyệt.',
+    submitTitle: 'Yêu cầu phê duyệt xuất hủy chứ?',
     resubmitTitle: 'Trình yêu cầu hủy này lên phê duyệt chứ?',
     resubmitLead: 'Trình lên phê duyệt phiếu yêu cầu hủy đã được tạo. Không tạo phiếu mới.',
     discardTitle: 'Xóa nội dung đã nhập chứ?',
     lineCount: (count: number): string => `${String(count)} dòng sẽ gửi`,
     mixedUom: 'Đơn vị lẫn lộn nên không tính tổng',
-    linePair: (item: string, lot: string, qty: string): string => `${item} · ${lot} · ${qty}`,
-    businessDateDerived: (businessDate: string): string =>
-      `${businessDate} (dựng từ ngày xuất kho)`,
+    targetHead: (count: number): string => `${String(count)} mục cần hủy`,
+    disposalQty: 'Số lượng hủy',
+    issueInfo: 'Thông tin xuất kho',
+    issuedAt: 'Ngày giờ xuất kho',
+    details: 'Chi tiết xử lý',
+    businessDateAuto: (businessDate: string): string => `${businessDate} (tự động)`,
     reasonFull: 'Toàn văn lý do yêu cầu',
     reasonFirstLine: 'Dòng đầu sẽ hiện làm tóm tắt trong hộp phê duyệt',
-    reasonSummaryNote: 'Dòng đầu sẽ thành phần tóm tắt trong danh sách hộp phê duyệt.',
-    submitEffects:
-      'Lúc này tồn kho chưa chuyển động. Sau khi phê duyệt thì chuyển động ở 「Xử lý xuất khác」.',
+    approvalReason: 'Lý do yêu cầu phê duyệt',
+    submitEffects: 'Sau khi phê duyệt, thực hiện [Xử lý xuất khác] thì tồn kho bị trừ.',
     submitNoUndo:
-      'Yêu cầu phê duyệt không hoàn tác được. Bị trả lại thì trình lại được, nhưng khi đó là một yêu cầu mới.',
+      'Sau khi yêu cầu phê duyệt thì không hủy được. Nếu bị trả lại, vui lòng yêu cầu lại.',
     submitOnHandUnknown:
       'Có lẫn dòng chưa xác nhận được số lượng hiện có. Số lượng do máy chủ quyết định cuối cùng.',
     postTitle: 'Xử lý thành xuất khác chứ?',
-    postLead: 'Xử lý yêu cầu hủy dưới đây thành xuất kho thực tế.',
     postDeducts: 'Bấm xác nhận thì tồn kho bị trừ đúng bằng số lượng của phiếu này.',
     postNoUndo:
       'Màn hình này không có cách hoàn tác. Muốn hoàn nguyên thì cần hủy phiếu xuất kho, và việc đó lại phải qua phê duyệt.',
@@ -307,6 +311,9 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
       'Không xác nhận được đã gửi đến nơi hay chưa. Hãy tra cứu lại để kiểm tra các dòng của phiếu này đã ghi sổ chưa rồi mới thử lại.',
     lotHold:
       'LOT vật tư có dấu 「Tạm giữ」 đang bị tạm giữ vì chất lượng. Màn hình này không gỡ được.',
+  },
+  codeNames: {
+    sourceDocumentType: { GOODS_RECEIPT: 'Phiếu nhập kho' },
   },
   values: {
     unknown: 'Không xác định',

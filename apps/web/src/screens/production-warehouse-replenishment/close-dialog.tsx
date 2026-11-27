@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Dialog, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
@@ -40,6 +40,7 @@ export const CloseDialog = ({ open, detail, close, onClose }: CloseDialogProps) 
 
   return (
     <Dialog
+      className="dialog-icon-lock"
       open={open}
       onClose={onClose}
       title={tc.title}
@@ -55,21 +56,32 @@ export const CloseDialog = ({ open, detail, close, onClose }: CloseDialogProps) 
         </>
       }
     >
-      <ul className="replenishment-result-list">
-        {lines
-          .filter((line) => lineClosedQty(preview, line) > 0)
-          .map((line) => (
-            <li key={line.id}>
-              {tc.line(
-                `${line.itemCode} ${line.itemName}`,
-                qtyWithUom(line.requested, line.uomCode),
-                qtyWithUom(line.issued, line.uomCode),
-                qtyWithUom(lineClosedQty(preview, line), line.uomCode),
-              )}
-            </li>
-          ))}
-      </ul>
-      <p className="dialog-text">{tc.body}</p>
+      {/* 확인 팝업 시안(#360) — 대상 상자 · 줄별 남은 양 · 질문 · 안내 줄. 사유 · 메모 칸은 그 아래 그대로. */}
+      <div className="users-roles-worker-dialog">
+        <div className="users-roles-worker-block">
+          <span className="users-roles-worker-block-caption">{tc.caption}</span>
+          <strong>{request.no}</strong>
+        </div>
+        <ul className="replenishment-result-list">
+          {lines
+            .filter((line) => lineClosedQty(preview, line) > 0)
+            .map((line) => (
+              <li key={line.id}>
+                {tc.line(
+                  `${line.itemCode} ${line.itemName}`,
+                  qtyWithUom(line.requested, line.uomCode),
+                  qtyWithUom(line.issued, line.uomCode),
+                  qtyWithUom(lineClosedQty(preview, line), line.uomCode),
+                )}
+              </li>
+            ))}
+        </ul>
+        <p>{tc.question}</p>
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+          <Icon name="info" size={16} aria-hidden />
+          {tc.body}
+        </p>
+      </div>
       {close.error !== null && <SaveErrorBanner error={close.error} />}
       <Select
         aria-label={tc.reason}
@@ -85,6 +97,7 @@ export const CloseDialog = ({ open, detail, close, onClose }: CloseDialogProps) 
       {tried && reason === '' && <AlertBanner variant="error">{tc.reasonRequired}</AlertBanner>}
       <TextField
         label={tc.remark}
+        placeholder={tc.remarkPlaceholder}
         value={remark}
         maxLength={500}
         onChange={(event) => setRemark(event.target.value)}

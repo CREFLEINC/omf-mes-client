@@ -821,10 +821,8 @@ describe('W-05-13 툴 마스터 — 빈 상태와 실패', () => {
     expect(await screen.findByText(t.optionsLoadFailed)).toBeInTheDocument();
     await user.click(await screen.findByRole('button', { name: 'TL-01' }));
 
-    expect(within(formDialog()).getByLabelText(t.fields.plant)).toHaveTextContent(
-      messages.common.reference.failed,
-    );
-    expect(within(formDialog()).getByLabelText(t.fields.plant)).not.toHaveTextContent('11');
+    expect(statusValue(t.fields.plant)).toHaveTextContent(messages.common.reference.failed);
+    expect(statusValue(t.fields.plant)).not.toHaveTextContent('11');
   });
 
   it('선택 목록이 잘리면 그 사실을 밝힌다', async () => {
@@ -838,6 +836,13 @@ describe('W-05-13 툴 마스터 — 빈 상태와 실패', () => {
 
 /** 지금 떠 있는 폼 창. 필터 바에도 같은 이름의 선택칸이 있어 **범위를 좁혀 찾는다.** */
 const formDialog = () => screen.getByRole('dialog');
+
+/** 「현재 상태」 정보 상자(공용 InfoFacts)에서 이름 아래 값 칸. */
+const statusValue = (label: string): HTMLElement => {
+  const region = screen.getByRole('region', { name: t.form.sections.status });
+  const term = within(region).getByText(label, { selector: 'dt' });
+  return term.nextElementSibling as HTMLElement;
+};
 
 const openEditOf = async (
   user: ReturnType<typeof userEvent.setup>,
@@ -860,6 +865,23 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
     await openEditOf(user, 'TL-01');
 
     expect(screen.getByRole('textbox', { name: /툴코드/ })).toHaveValue('TL-01');
+  });
+
+  /* 줄 아무 곳이나 눌러 고른다 · 고른 줄을 다시 누르면 푼다(사용자 지시 2026-11-27 · #360). */
+  it('줄의 빈 칸을 눌러도 고르고 창이 열리며, 고른 줄을 다시 누르면 풀린다', async () => {
+    const { user } = renderScreen();
+
+    await user.click(within(await rowOf('TL-01')).getByText('TL-01 툴'));
+    await screen.findByRole('dialog', { name: t.form.editTitle });
+    expect(screen.getByRole('button', { name: 'TL-01' })).toHaveAttribute('aria-current', 'true');
+
+    await user.click(within(formDialog()).getByRole('button', { name: messages.common.cancel }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByRole('button', { name: 'TL-01' })).toHaveAttribute('aria-current', 'true');
+
+    await user.click(within(await rowOf('TL-01')).getByText('TL-01 툴'));
+    expect(screen.getByRole('button', { name: 'TL-01' })).not.toHaveAttribute('aria-current');
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('툴 등록을 누르면 빈 창이 열린다', async () => {
@@ -891,13 +913,9 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
     expect(
       screen.queryByRole('textbox', { name: new RegExp(t.fields.currentShotCount) }),
     ).not.toBeInTheDocument();
-    expect(screen.getByLabelText(t.fields.currentShotCount)).toHaveTextContent('128,400');
+    expect(statusValue(t.fields.currentShotCount)).toHaveTextContent('128,400');
     /* 칸마다 붙던 「어디서 정해지는가」 설명 대신 구획이 그 뜻을 맡는다(사용자 지정). */
-    expect(
-      within(screen.getByRole('region', { name: t.form.sections.status })).getByLabelText(
-        t.fields.currentShotCount,
-      ),
-    ).toBeInTheDocument();
+    expect(statusValue(t.fields.currentShotCount)).toBeInTheDocument();
   });
 
   /* 마지막 시행일도 같다 — 예방보전 실적 등록이 정한다(스펙 §6). */
@@ -909,21 +927,39 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
     expect(
       screen.queryByRole('textbox', { name: new RegExp(t.fields.lastPmDate) }),
     ).not.toBeInTheDocument();
-    expect(screen.getByLabelText(t.fields.lastPmDate)).toHaveTextContent('2026-01-02');
-    expect(
-      within(screen.getByRole('region', { name: t.form.sections.status })).getByLabelText(
-        t.fields.lastPmDate,
-      ),
-    ).toBeInTheDocument();
+    expect(statusValue(t.fields.lastPmDate)).toHaveTextContent('2026-01-02');
+    expect(statusValue(t.fields.lastPmDate)).toBeInTheDocument();
   });
 
   /* ⛔ 없는 값을 빈칸으로 두면 「없다」와 「아직 안 불러왔다」가 같은 모양이 된다(G-9). */
-  it('마지막 예방보전일이 없으면 「기록 없음」을 밝힌다', async () => {
+  /* 빈 값은 시안 정보 상자의 회색 「—」(공용 InfoFacts · #360). */
+  it('마지막 예방보전일이 없으면 회색 「—」로 밝힌다', async () => {
     const { user } = renderScreen();
 
     await openEditOf(user, 'TL-01');
 
-    expect(screen.getByLabelText(t.fields.lastPmDate)).toHaveTextContent(t.fields.notRecorded);
+    expect(statusValue(t.fields.lastPmDate)).toHaveTextContent('—');
+    expect(statusValue(t.fields.lastPmDate).querySelector('.info-fact-empty')).not.toBeNull();
+  });
+
+  it('「현재 상태」는 시안 정보 상자이고 운용상태는 칩이다', async () => {
+    const { user } = renderScreen();
+
+    await openEditOf(user, 'TL-01');
+
+    const region = screen.getByRole('region', { name: t.form.sections.status });
+    expect(region.querySelector('.info-facts')).not.toBeNull();
+    expect(statusValue(t.fields.status).firstElementChild).not.toBeNull();
+  });
+
+  /* 「금형에만 적용됩니다.」 도움말은 걷었다(사용자 지시 2026-11-27 · #360) — 칸은 그대로 필수다. */
+  it('금형이 아닌 유형에서도 캐비티 수 칸에 도움말이 붙지 않는다', async () => {
+    const { user } = renderScreen();
+
+    await openEditOf(user, 'TL-01');
+
+    expect(screen.getByRole('textbox', { name: /캐비티 수/ })).toBeInTheDocument();
+    expect(screen.queryByText('금형에만 적용됩니다.')).toBeNull();
   });
 
   it('사용 가능 타수와 초과율을 창에서도 셈한 대로 보인다', async () => {
@@ -931,12 +967,8 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
 
     await openEditOf(user, 'TL-04');
 
-    expect(screen.getByLabelText(t.fields.availableShotCount)).toHaveTextContent(
-      t.shots.guaranteedMissing,
-    );
-    expect(screen.getByLabelText(t.fields.shotUsageRatio)).toHaveTextContent(
-      t.shots.guaranteedMissing,
-    );
+    expect(statusValue(t.fields.availableShotCount)).toHaveTextContent(t.shots.guaranteedMissing);
+    expect(statusValue(t.fields.shotUsageRatio)).toHaveTextContent(t.shots.guaranteedMissing);
   });
 
   /*
@@ -955,10 +987,8 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
     await openEditOf(user, 'TL-01');
 
     expect(screen.getByRole('textbox', { name: /툴코드/ })).toBeDisabled();
-    expect(screen.getByText(messages.editability.badge).closest('[title]')).toHaveAttribute(
-      'title',
-      messages.editability.labelIssued(null),
-    );
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 숨긴 설명으로만. */
+    expect(screen.queryByText('변경 불가')).toBeNull();
     expect(screen.getByRole('textbox', { name: /툴코드/ })).toHaveAccessibleDescription(
       messages.editability.labelIssued(null),
     );
@@ -976,9 +1006,7 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
 
     await openEditOf(user, 'TL-01');
 
-    expect(screen.getByLabelText(t.fields.labelIssueCount)).toHaveTextContent(
-      t.form.labelIssued(2),
-    );
+    expect(statusValue(t.fields.labelIssueCount)).toHaveTextContent(t.form.labelIssued(2));
   });
 
   it('참조가 있어도 코드를 잠그고 건수를 밝힌다', async () => {
@@ -992,10 +1020,8 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
     await openEditOf(user, 'TL-01');
 
     expect(screen.getByRole('textbox', { name: /툴코드/ })).toBeDisabled();
-    expect(screen.getByText(messages.editability.badge).closest('[title]')).toHaveAttribute(
-      'title',
-      messages.editability.referenced(3),
-    );
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 숨긴 설명으로만. */
+    expect(screen.queryByText('변경 불가')).toBeNull();
     expect(screen.getByRole('textbox', { name: /툴코드/ })).toHaveAccessibleDescription(
       messages.editability.referenced(3),
     );
@@ -1008,13 +1034,9 @@ describe('W-05-13 툴 마스터 — 등록·수정 창', () => {
     await openEditOf(user, 'TL-01');
 
     expect(within(formDialog()).queryByRole('combobox', { name: /공장/ })).not.toBeInTheDocument();
-    expect(within(formDialog()).getByLabelText(t.fields.plant)).toHaveTextContent('제1공장');
+    expect(statusValue(t.fields.plant)).toHaveTextContent('제1공장');
     /* 긴 설명 대신 「현재 상태」의 글자로 전한다(사용자 지정). */
-    expect(
-      within(screen.getByRole('region', { name: t.form.sections.status })).getByLabelText(
-        t.fields.plant,
-      ),
-    ).toHaveTextContent('제1공장');
+    expect(statusValue(t.fields.plant)).toHaveTextContent('제1공장');
   });
 
   /*
@@ -1112,7 +1134,7 @@ describe('W-05-13 툴 마스터 — 예방보전 주기 짝', () => {
     await openEditOf(user, 'TL-01');
 
     const region = screen.getByRole('region', { name: t.form.sections.status });
-    const list = within(region).getByRole('definition', { name: t.fields.plant }).closest('dl');
+    const list = region.querySelector('.info-facts');
 
     expect(list).not.toBeNull();
     expect(list).not.toContainElement(
@@ -1136,46 +1158,14 @@ describe('W-05-13 툴 마스터 — 예방보전 주기 짝', () => {
     expect(screen.getByRole('textbox', { name: /예방보전 주기 간격/ })).toHaveValue('6');
   });
 
-  /*
-   * ⭐ **막지 않고 알린다.** 「적정타수 없는 것만」 조회 조건이 이 상태를 전제한다 —
-   * 다만 타발수로 판정하겠다고 해 놓고 비워 두면 그 축이 서지 않는다는 사실은 말해야 한다.
-   */
-  it('타발수 축인데 적정타수가 비면 무엇이 서지 않는지 말한다', async () => {
+  /* 적정타수 칸 아래 안내 문구는 두지 않는다(사용자 지시 · #360) — 비워 두는 것은 종전처럼 막지 않는다. */
+  it('적정타수가 비어도 칸 아래 안내 문구를 붙이지 않는다', async () => {
     const { user } = renderScreen();
 
     await openEditOf(user, 'TL-04');
-
-    expect(screen.getByText(t.notes.guaranteedMissingBlocksShotAxis)).toBeInTheDocument();
-  });
-
-  it('적정타수를 채우면 그 안내가 사라진다', async () => {
-    const { user } = renderScreen();
-
-    await openEditOf(user, 'TL-04');
-    await user.type(screen.getByRole('textbox', { name: /적정타수/ }), '100000');
-
-    expect(screen.queryByText(t.notes.guaranteedMissingBlocksShotAxis)).not.toBeInTheDocument();
-  });
-
-  /*
-   * 적정타수가 비어 있는 것만으로는 안내를 붙이지 않는다 — 타발수로 판정하지 않는 툴에는
-   * 그 축이 서지 않는다는 말이 뜻이 없다. **비었다**와 **비어서 축이 안 선다**는 다른 사실이다.
-   */
-  it('타발수 축이 아니면 적정타수가 비어도 안내를 붙이지 않는다', async () => {
-    const dateOnly = makeTool(7001, 'TL-01', {
-      pmTriggerTypeCode: 'DATE',
-      pmCycleInterval: 6,
-      pmCycleUnitCode: 'MONTH',
-    });
-    const { user } = renderScreen({
-      respondTools: () => jsonResponse(toolsResponse([dateOnly])),
-      respondDetail: () => jsonResponse(toolDetail(dateOnly), { headers: { ETag: '9' } }),
-    });
-
-    await openEditOf(user, 'TL-01');
 
     expect(within(formDialog()).getByRole('textbox', { name: /적정타수/ })).toHaveValue('');
-    expect(screen.queryByText(t.notes.guaranteedMissingBlocksShotAxis)).not.toBeInTheDocument();
+    expect(screen.queryByText(/사용 가능 타수와 초과율을 셀 수 없고/u)).not.toBeInTheDocument();
   });
 
   /*
@@ -1484,8 +1474,8 @@ describe('W-05-13 툴 마스터 — 사용 중지·폐기', () => {
     ).not.toBeInTheDocument();
   });
 
-  /* 감추지 않고 잠그고 사유를 붙인다(G-2). */
-  it('이미 중지된 툴은 사용 중지를 잠그고 사유를 보인다', async () => {
+  /* 감추지 않고 잠근다(G-2) — 잠긴 단추 아래 까닭 문장은 걷었다(#360). */
+  it('이미 중지된 툴은 사용 중지를 잠근다(사유 문장 없음)', async () => {
     const { user } = renderScreen();
 
     await openEditOf(user, 'TL-06');
@@ -1493,10 +1483,10 @@ describe('W-05-13 툴 마스터 — 사용 중지·폐기', () => {
     expect(
       within(formDialog()).getByRole('button', { name: t.retire.deactivateConfirm }),
     ).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.alreadyInactive)).toBeInTheDocument();
+    expect(screen.queryByText(t.actionReasons.alreadyInactive)).not.toBeInTheDocument();
   });
 
-  it('이미 폐기된 툴은 폐기를 잠그고 사유를 보인다', async () => {
+  it('이미 폐기된 툴은 폐기를 잠근다(사유 문장 없음)', async () => {
     const { user } = renderScreen();
 
     await openEditOf(user, 'TL-06');
@@ -1504,7 +1494,7 @@ describe('W-05-13 툴 마스터 — 사용 중지·폐기', () => {
     expect(
       within(formDialog()).getByRole('button', { name: t.retire.disposeConfirm }),
     ).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.alreadyDisposed)).toBeInTheDocument();
+    expect(screen.queryByText(t.actionReasons.alreadyDisposed)).not.toBeInTheDocument();
   });
 
   /*
@@ -1536,7 +1526,7 @@ describe('W-05-13 툴 마스터 — 사용 중지·폐기', () => {
     expect(
       within(formDialog()).getByRole('button', { name: t.retire.disposeConfirm }),
     ).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.disposeUnavailable)).toBeInTheDocument();
+    expect(screen.queryByText(t.actionReasons.disposeUnavailable)).not.toBeInTheDocument();
   });
 
   /*
@@ -1747,14 +1737,15 @@ describe('W-05-13 툴 마스터 — 엑셀 올리기', () => {
   });
 
   /* 감추지 않고 잠그고 사유를 말한다(G-2). */
-  it('파일을 고르기 전에는 올리기를 잠그고 사유를 말한다', async () => {
+  it('파일을 고르기 전에는 올리기를 잠그고 안내 문장은 두지 않는다', async () => {
     const { user } = renderScreen();
 
     await openImport(user);
 
     expect(screen.getByRole('button', { name: t.import.submit })).toBeDisabled();
-    expect(screen.getByText(t.import.fileRequired)).toBeInTheDocument();
-    expect(screen.getByText(t.import.fileNone)).toBeInTheDocument();
+    /* 「올릴 파일을 먼저 고르세요.」 · 「고른 파일이 없습니다.」 는 걷었다(사용자 지시 2026-11-27 · #360). */
+    expect(screen.queryByText('올릴 파일을 먼저 고르세요.')).toBeNull();
+    expect(screen.queryByText('고른 파일이 없습니다.')).toBeNull();
   });
 
   it('대상 공장을 명시적으로 고르기 전에는 올리기를 잠근다', async () => {

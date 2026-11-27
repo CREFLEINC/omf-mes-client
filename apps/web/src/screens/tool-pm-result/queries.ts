@@ -30,8 +30,8 @@ type MaintenanceResultCreate = components['schemas']['MaintenanceResultCreate'];
 
 export const toolResultKeys = {
   all: ['tool-pm-result'] as const,
-  results: (moldId: number | null, page: number) =>
-    ['tool-pm-result', 'results', moldId ?? 0, page] as const,
+  results: (moldId: number | null, page: number, size: number = PAGE_SIZE) =>
+    ['tool-pm-result', 'results', moldId ?? 0, page, size] as const,
   tool: (moldId: number | null) => ['tool-pm-result', 'tool', moldId ?? 0] as const,
 };
 
@@ -76,11 +76,13 @@ export const PAGE_SIZE = 20;
 export const useToolResults = (
   moldId: number | null,
   page: number,
+  /** 고른 쪽 크기(10 · 20 · 50 · #360) — 주지 않으면 종전대로 20. */
+  size: number = PAGE_SIZE,
 ): UseQueryResult<ToolResultListResult> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: toolResultKeys.results(moldId, page),
+    queryKey: toolResultKeys.results(moldId, page, size),
     enabled: moldId !== null,
     queryFn: () => {
       if (moldId === null) {
@@ -90,12 +92,12 @@ export const useToolResults = (
       return runRequest(() =>
         client.GET('/maintenance/results', {
           params: {
-            query: { targetTypeCode: 'MOLD', targetId: moldId, page, size: PAGE_SIZE },
+            query: { targetTypeCode: 'MOLD', targetId: moldId, page, size },
           },
         }),
       ).then((data) => ({
         items: data.items.map(toToolResultView),
-        page: data.page ?? { page, size: PAGE_SIZE, total: data.items.length },
+        page: data.page ?? { page, size, total: data.items.length },
       }));
     },
   });

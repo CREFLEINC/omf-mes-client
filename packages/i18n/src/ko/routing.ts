@@ -40,6 +40,8 @@ export const routing = {
     addProcess: '공정 추가',
     editProcess: '수정',
     activateProcess: '재사용',
+    /** 공정 수정 팝업 제목 — 목록 행 끝 [수정]으로 연다(#360). */
+    editProcessTitle: '공정 수정',
     confirm: '확정',
     obsolete: '폐기',
     /** 작성중 Rev 취소(삭제) · #231 */
@@ -165,6 +167,8 @@ export const routing = {
     processName: '공정명',
     processType: '공정 유형',
     isActive: '사용 유무',
+    /** 목록 행 끝 단추 열(사용 중지/재사용 · 수정 · #360). */
+    manage: '관리',
     operationName: '공정명',
     managedItems: '관리 항목',
     /** 단위를 라벨에 적는다 — 값만 보고는 분·초를 구분할 수 없다. */
@@ -262,8 +266,6 @@ export const routing = {
     revision: (version: number): string => `Rev ${version}`,
     /** 품목 목록 「진행 상태」 — Rev 가 하나도 없는 품목(#231). */
     unregistered: '미등록',
-    /** 코드 잠금 · 선후행 막힘을 긴 문장 대신 보이는 짧은 라벨(#231). 문장은 라벨 위 마우스로 본다. */
-    codeLockedBadge: '사용 중 · 변경 불가',
     /** 폐기 개정 — 카드 머리 라벨(#231). */
     lockedBadge: '수정 · 변경 불가',
     dependenciesBlockedBadge: '공정 2개 이상 등록 시 사용 가능',
@@ -298,32 +300,53 @@ export const routing = {
   dialog: {
     operationCreateTitle: '공정 추가',
     operationEditTitle: '공정 수정',
+    /** 공정 추가 · 수정 창 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+    processPlaceholder: '공정을 선택하세요',
+    operationNamePlaceholder: '공정명을 입력하세요',
+    cycleTimePlaceholder: '표준 C/T를 입력하세요',
+    yieldRatePlaceholder: '표준 수율을 입력하세요',
+    processCodePlaceholder: '공정코드를 입력하세요',
+    processTypePlaceholder: '공정 유형을 선택하세요',
     /*
      * 되돌리기 어려운 전이라 확인을 한 단계 둔다. 무엇이 일어나는지와
      * 그 뒤에 무엇을 할 수 있는지를 먼저 밝힌다.
      */
-    confirmTitle: '이 Rev를 확정할까요?',
+    confirmTitle: 'Rev 확정',
+    confirmCaption: '확정 대상',
+    confirmQuestion: '이 Rev를 확정하시겠습니까?',
     confirmDescription: '확정하면 이 Rev는 고칠 수 없습니다. 바꾸려면 신규 Rev를 발행해야 합니다.',
-    obsoleteTitle: (revision: string): string => `${revision}를 폐기하시겠습니까?`,
+    obsoleteTitle: (revision: string): string => `${revision} 폐기`,
+    obsoleteCaption: '폐기 대상',
+    obsoleteQuestion: '이 Rev를 폐기하시겠습니까?',
     obsoleteDescription: '폐기된 Rev는 신규 작업에 사용할 수 없습니다.',
     obsoleteNote: '폐기 후에도 기존 이력은 유지됩니다.',
     /** 작성중 Rev 취소 확인(#231). */
-    discardTitle: (revision: string): string => `${revision} 작성을 취소하시겠습니까?`,
-    discardDescription: '작성중 Rev와 그 공정 구성 · 공정 연결이 삭제됩니다.',
-    discardNote: '삭제 후에는 되돌릴 수 없습니다. 변경 이력에는 남습니다.',
+    discardTitle: (revision: string): string => `${revision} 작성 취소`,
+    discardCaption: '작성 취소 대상',
+    discardQuestion: '이 Rev의 작성을 취소하시겠습니까?',
+    discardDescription: '작성중 Rev와 그 공정 구성 · 공정 연결이 삭제되며 되돌릴 수 없습니다.',
     discardDone: '작성을 취소했습니다.',
+    /** 확정 · 폐기 · 공정 사용 중지 · 재사용 성공 알림 — 「저장했습니다」 대신 한 일을 말한다(#360 점검). */
+    confirmDone: '확정했습니다.',
+    obsoleteDone: '폐기했습니다.',
+    processDeactivated: '공정을 사용 중지했습니다.',
+    processReactivated: '공정을 다시 사용합니다.',
     /** 공정 편집 창 관리 항목 제목 옆 — 켠 항목 수(#231). */
     /** 공정 편집 창 관리 항목 구역 제목(#231). */
     flagsTitle: '관리 설정',
     flagsSelected: (count: number): string => `${String(count)}개 선택`,
-    deactivateProcessTitle: '공정 사용을 중지하시겠습니까?',
+    deactivateProcessTitle: '공정 사용 중지',
+    deactivateProcessCaption: '사용 중지 대상',
+    deactivateProcessQuestion: '이 공정의 사용을 중지하시겠습니까?',
     deactivateProcessDescription: '사용을 중지하면 새로운 라우팅에 해당 공정을 추가할 수 없습니다.',
-    /** 사용 중지 확인 창의 영향 상자 — 기존 확정 경로 유지 · 현재 참조 건수(사용자 시안 · #231). */
-    deactivateImpactConfirmed: '기존 확정 경로',
-    deactivateImpactConfirmedValue: '영향 없음',
-    deactivateImpactReferences: '현재 참조',
-    deactivateImpactReferencesValue: (count: number): string => `${String(count)}건`,
-    activateProcessTitle: '공정을 재사용하시겠습니까?',
+    /** 영향 한 줄 — 기존 확정 경로는 그대로, 참조 건수를 알면 함께(#231 · #360). */
+    deactivateProcessImpact: (count: number | null): string =>
+      count === null
+        ? '기존 확정 경로에는 영향이 없습니다.'
+        : `기존 확정 경로에는 영향이 없습니다. 현재 참조 ${String(count)}건.`,
+    activateProcessTitle: '공정 재사용',
+    activateProcessCaption: '재사용 대상',
+    activateProcessQuestion: '이 공정을 재사용하시겠습니까?',
     activateProcessDescription: '재사용하면 새로운 라우팅에 이 공정을 추가할 수 있습니다.',
   },
   /** 공정 선후행 설정 창. */
@@ -332,6 +355,8 @@ export const routing = {
     itemCode: (code: string): string => `품목코드 ${code}`,
     predecessor: '선행 공정',
     successor: '후행 공정',
+    predecessorPlaceholder: '선행 공정을 선택하세요',
+    successorPlaceholder: '후행 공정을 선택하세요',
     type: '관계',
     remove: (rowNo: number): string => `${String(rowNo)}번째 선후행 삭제`,
     rowField: (rowNo: number, field: string): string => `${String(rowNo)}번째 줄 ${field}`,

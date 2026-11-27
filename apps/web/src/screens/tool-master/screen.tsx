@@ -160,6 +160,11 @@ export const ToolMasterScreen = () => {
   const plant = useMasterDataPlant(requestedFilters.plantId);
   const filters = { ...requestedFilters, plantId: plant.picked };
   const [dialog, setDialog] = useState<DialogState | null>(null);
+  /**
+   * 목록에서 고른 줄(파랑) — 창을 닫아도 남아 어느 툴을 봤는지 보인다. 같은 줄을 다시 누르면 푼다(사용자 지시
+   * 2026-11-27 · #360). 창은 모달이라 열려 있는 동안 목록을 누를 수 없어, 풀 때 적던 입력이 남아 있는 경우가 없다.
+   */
+  const [pickedId, setPickedId] = useState<number | null>(null);
   const [values, setValues] = useState<ToolFormValues>(() => emptyFormValues(''));
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
   /** 확인 창이 떠 있는가. 두 조작이 같은 창을 쓰되 말은 각자 갖는다 */
@@ -356,7 +361,15 @@ export const ToolMasterScreen = () => {
     typeNote,
     statusOptions,
     onAdd: openCreate,
-    onEdit: openEdit,
+    selectedId: pickedId,
+    onPick: (row) => {
+      if (row.moldId === pickedId) {
+        setPickedId(null);
+        return;
+      }
+      setPickedId(row.moldId);
+      openEdit(row);
+    },
     onImport: () => {
       resetIfIdle(importWrite);
       setImportFile(null);
@@ -373,8 +386,8 @@ export const ToolMasterScreen = () => {
     <div className="screen tool-master-screen">
       {/*
        * 화면 제목 줄은 두지 않는다 — 조회 조건 · 목록 통일 배치(검사 조회·판정과 같다 · #350).
-       * 상세 상자는 두지 않는다 — 툴의 등록 · 수정은 창(`ToolFormDialog`)에서 하고, 고른 줄을 붙잡아 두는
-       * 상태가 없다. 창을 상세 상자로 옮기면 여닫기 · 저장 흐름이 바뀐다.
+       * 상세 상자는 두지 않는다 — 툴의 등록 · 수정은 창(`ToolFormDialog`)에서 한다. 줄을 고르면 그 창이 열리고,
+       * 고른 줄은 파랗게 남는다. 창을 상세 상자로 옮기면 여닫기 · 저장 흐름이 바뀐다.
        */}
       {optionsNote !== undefined && (
         <div className="banner-slot">
@@ -453,11 +466,13 @@ export const ToolMasterScreen = () => {
       {retiring !== null && tool !== null && (
         <RetireConfirmDialog
           title={retiring === 'dispose' ? t.retire.disposeTitle : t.retire.deactivateTitle}
-          targetNote={
-            retiring === 'dispose'
-              ? t.retire.disposeTarget(`${tool.moldCode} · ${tool.moldName}`)
-              : t.retire.deactivateTarget(`${tool.moldCode} · ${tool.moldName}`)
-          }
+          iconClass={retiring === 'dispose' ? 'dialog-icon-delete' : 'dialog-icon-block'}
+          target={{
+            caption: retiring === 'dispose' ? t.retire.disposeCaption : t.retire.deactivateCaption,
+            name: tool.moldName,
+            meta: tool.moldCode,
+          }}
+          question={retiring === 'dispose' ? t.retire.disposeQuestion : t.retire.deactivateQuestion}
           referenceNote={referenceNote(detail.data?.editability.referenceCount)}
           outsideNote={labelNote(detail.data?.labelIssueCount ?? null)}
           impactNote={retiring === 'dispose' ? t.retire.disposeImpact : t.retire.deactivateImpact}

@@ -13,6 +13,7 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
     disposeEquipment: 'Xử lý thanh lý',
     keepEditing: 'Tiếp tục sửa',
     discardChanges: 'Bỏ thay đổi',
+    register: 'Đăng ký',
   },
   actionReasons: {
     plantFixedAfterCreate:
@@ -30,8 +31,6 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
       'Trạng thái vận hành chỉ đổi bằng thanh lý. Đây là trục khác với ngừng sử dụng.',
     codeLockUnknown: 'Chưa tải được thông tin thiết bị nên không đổi được mã.',
     equipmentPlantFixed: 'Nhà máy của thiết bị theo nhà máy của nhóm trực thuộc.',
-    disposeUnavailable:
-      'Chưa tải được danh sách giá trị trạng thái tài sản nên không dùng được thanh lý. Khi danh sách sẵn sàng thì dùng được nút này.',
     deactivateNeedsCleanForm:
       'Còn thay đổi chưa lưu thì không dùng được ngừng sử dụng. Hãy lưu hoặc hủy trước.',
   },
@@ -76,19 +75,23 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
     discardTitle: 'Bỏ nội dung đã nhập?',
   },
   dispose: {
-    title: 'Xử lý thanh lý?',
-    target: (label: string): string => `Thanh lý ${label}.`,
+    title: 'Thanh lý thiết bị',
+    caption: 'Đối tượng thanh lý',
+    question: 'Bạn có muốn thanh lý thiết bị này không?',
     impact:
       'Đây là xử lý khác với ngừng sử dụng. Ngừng sử dụng là ẩn khỏi danh sách, còn thanh lý là tài sản đã kết thúc.',
     notReversible: 'Không thể hoàn tác. Sau khi thanh lý thì tải lại cũng không mở được chỉnh sửa.',
     confirm: 'Xử lý thanh lý',
+    lockedReason: 'Không thể sửa thiết bị đã thanh lý.',
   },
   deactivate: {
-    title: 'Ngừng sử dụng?',
-    equipmentTitle: 'Ngừng sử dụng thiết bị?',
+    title: 'Ngừng sử dụng nhóm thiết bị',
+    equipmentTitle: 'Ngừng sử dụng thiết bị',
+    caption: 'Đối tượng ngừng sử dụng',
+    question: 'Bạn có muốn ngừng sử dụng nhóm thiết bị này không?',
+    equipmentQuestion: 'Bạn có muốn ngừng sử dụng thiết bị này không?',
     equipmentImpact:
       'Bản ghi thiết bị này để lại vẫn còn nguyên, chỉ khi chọn mới thì thiết bị mới không còn trong danh sách.',
-    target: (label: string): string => `Ngừng sử dụng ${label}.`,
     membersNone: 'Nhóm này không có thiết bị trực thuộc.',
     members: (count: number): string =>
       `Nhóm này có ${count} thiết bị trực thuộc. Trực thuộc vẫn giữ nguyên, chỉ khi chọn mới thì nhóm này mới không còn trong danh sách.`,
@@ -101,8 +104,11 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
     editTitle: 'Thông tin nhóm thiết bị',
     parentNone: 'Không có (cấp cao nhất)',
     locationNone: 'Không chỉ định',
-    locationNeedsPlant: 'Chọn nhà máy để hiện vị trí của nhà máy đó.',
     departmentNone: 'Không chỉ định',
+    plantPlaceholder: 'Hãy chọn nhà máy',
+    codePlaceholder: 'Hãy nhập mã nhóm',
+    namePlaceholder: 'Hãy nhập tên nhóm',
+    typePlaceholder: 'Hãy chọn loại nhóm',
     departmentHelp:
       'Thông báo phát sinh từ W/O và thiết bị của dây chuyền này sẽ đi theo thiết lập thông báo của phòng ban này. Không kế thừa phòng ban của nhóm cấp trên.',
   },
@@ -111,6 +117,9 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
     editTitle: 'Sửa thiết bị',
     groupNone: 'Không thuộc nhóm',
     processNone: 'Không chỉ định',
+    codePlaceholder: 'Hãy nhập mã thiết bị',
+    namePlaceholder: 'Hãy nhập tên thiết bị',
+    typePlaceholder: 'Hãy chọn loại thiết bị',
   },
   validation: {
     required: 'Đây là mục bắt buộc nhập.',
@@ -185,13 +194,13 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
       'Gán hạng mục kiểm tra định kỳ thì thiết bị của nhóm này sẽ thực hiện hạng mục đó.',
     editAction: 'Gán hạng mục kiểm tra định kỳ',
     dialogTitle: 'Gán hạng mục kiểm tra định kỳ',
-    dialogLead: 'Những gì còn lại trong cửa sổ này sẽ là tất cả — dòng đã xóa thì gán được gỡ.',
+    /** 부여 창 머리의 대상 상자 제목 — 아래에 이름 · 코드가 선다(#360). */
+    targetCaption: 'Đối tượng gán',
     addLabel: 'Thêm hạng mục',
     addPlaceholder: 'Hãy chọn hạng mục kiểm tra định kỳ để gán',
-    allAssigned: 'Đã gán hết hạng mục kiểm tra định kỳ của dữ liệu gốc.',
+    cycleTypePlaceholder: 'Hãy chọn đơn vị chu kỳ',
+    cycleIntervalPlaceholder: 'Hãy nhập khoảng chu kỳ',
     /** 「어디서 만드나」를 같은 화면의 탭 이름으로 짚는다 — 탭 이름과 글자를 맞춘다. */
-    masterEmpty:
-      'Không có hạng mục kiểm tra định kỳ nào được đăng ký. Hãy tạo hạng mục ở tab «Hạng mục kiểm tra định kỳ» phía trên rồi gán.',
     masterLoadFailed: 'Không tải được danh sách hạng mục kiểm tra định kỳ.',
     removeAction: 'Gỡ gán',
     removeLabel: (itemName: string): string => `Gỡ gán ${itemName}`,
@@ -265,9 +274,14 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
       inspectionType: 'Hãy chọn loại kiểm tra định kỳ',
       judgmentMethod: 'Hãy chọn cách đánh giá',
       uom: 'Hãy chọn đơn vị',
+      itemCode: 'Hãy nhập mã hạng mục',
+      itemName: 'Hãy nhập tên hạng mục',
+      lowerLimit: 'Hãy nhập giới hạn dưới',
+      upperLimit: 'Hãy nhập giới hạn trên',
+      inspectionPoint: 'Hãy nhập vị trí kiểm tra định kỳ',
+      sequenceNo: 'Hãy nhập thứ tự hiển thị',
     },
     measurementNote: 'Nếu cách đánh giá là «giá trị đo» thì cần cả đơn vị và giới hạn trên · dưới.',
-    plantFixed: 'Nhà máy được định khi đăng ký và không thể chuyển ở màn hình này.',
     assignmentCount: (count: number): string =>
       count === 0
         ? 'Chưa được gán ở đâu cả.'

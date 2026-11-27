@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { lookupDisplayLabelWithInactive, type LookupSource } from '../../patterns/lookup-display';
 import { ManagedTable } from '../../patterns/managed-table';
+import { PageNav } from '../../patterns/page-nav';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
 import { useInspectionMeasurements, type InspectionMeasurement } from './queries';
@@ -37,10 +38,6 @@ export const MeasurementSection = ({
   const [page, setPage] = useState(1);
   const [calibration, setCalibration] = useState<CalibrationFilter>('');
   const measurements = useInspectionMeasurements(inspectionResultId, page, calibration);
-  const totalPages = Math.max(
-    1,
-    Math.ceil((measurements.data?.page.total ?? 0) / (measurements.data?.page.size ?? 50)),
-  );
   const columns: Column<InspectionMeasurement>[] = [
     {
       key: 'item',
@@ -131,28 +128,17 @@ export const MeasurementSection = ({
               getRowId={(row) => String(row.inspectionMeasurementId)}
               empty={<p className="field-note">{t.empty}</p>}
             />
-            {/* 쪽이 둘 이상일 때만 이동 단추. */}
-            {totalPages > 1 && (
-              <nav className="form-actions" aria-label={t.pagination}>
-                <Button
-                  variant="outlined"
-                  size="sm"
-                  disabled={page <= 1}
-                  onClick={() => setPage(page - 1)}
-                >
-                  {t.previous}
-                </Button>
-                <span>{t.position(page, totalPages)}</span>
-                <Button
-                  variant="outlined"
-                  size="sm"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage(page + 1)}
-                >
-                  {t.next}
-                </Button>
-              </nav>
-            )}
+            {/* 공용 쪽 이동 줄 — 1쪽 · 0건이어도 늘 보인다(#360). 쪽 크기는 서버가 정한 값이라 고르는 칸이 없다. */}
+            <div role="group" aria-label={t.pagination}>
+              <PageNav
+                meta={{
+                  page,
+                  size: measurements.data.page.size,
+                  total: measurements.data.page.total,
+                }}
+                onChangePage={setPage}
+              />
+            </div>
           </>
         )}
     </section>

@@ -56,7 +56,7 @@ export interface AssignmentFormPaneProps {
   lines: ShipmentRequestLineDraft[];
   lineErrors: Record<string, string>;
   itemNames: ItemNameLookup;
-  onPickItem: (key: string) => void;
+  onSelectItem: (key: string, item: { itemId: number; baseUomId: number }) => void;
   uomLookup: ReferenceSource;
   uomOptions: SelectOption[];
   availableQty: AvailableQtyLookup;
@@ -118,7 +118,7 @@ export const AssignmentFormPane = ({
   lines,
   lineErrors,
   itemNames,
-  onPickItem,
+  onSelectItem,
   uomLookup,
   uomOptions,
   availableQty,
@@ -161,7 +161,10 @@ export const AssignmentFormPane = ({
             label={t.fields.businessUnit}
             options={businessUnitOptions}
             value={businessUnitId}
-            note={businessUnitNote ?? (businessUnitAutoFilled ? t.notes.businessUnitAutoFilled : undefined)}
+            note={
+              businessUnitNote ??
+              (businessUnitAutoFilled ? t.notes.businessUnitAutoFilled : undefined)
+            }
             error={headerErrors.businessUnitId}
             disabled={isLocked}
             onChange={(value) => {
@@ -259,7 +262,7 @@ export const AssignmentFormPane = ({
           rows={lines}
           errors={lineErrors}
           itemNames={itemNames}
-          onPickItem={onPickItem}
+          onSelectItem={onSelectItem}
           uomLookup={uomLookup}
           uomOptions={uomOptions}
           availableQty={availableQty}

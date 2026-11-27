@@ -1,6 +1,7 @@
 import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { InfoFacts } from '../../patterns/info-facts';
 import { toVisibleLine } from './approval-progress-pane';
 import { toReasonLines } from './types';
 
@@ -47,6 +48,7 @@ export const ResubmitConfirmDialog = ({
   onClose,
 }: ResubmitConfirmDialogProps) => (
   <Dialog
+    className="dialog-icon-send"
     open
     onClose={onClose}
     size="md"
@@ -64,16 +66,13 @@ export const ResubmitConfirmDialog = ({
   >
     <p>{t.dialog.resubmitLead}</p>
 
-    <dl className="filter-bar">
-      <div className="field-cell">
-        <dt className="field-label">{t.issueSummary.goodsIssueNo}</dt>
-        <dd>{summary.goodsIssueNo}</dd>
-      </div>
-      <div className="field-cell">
-        <dt className="field-label">{t.issueLineTable.issueQty}</dt>
-        <dd>{summary.totalQtyText}</dd>
-      </div>
-    </dl>
+    {/* 사실 상자 — 정보 표시 팝업 시안 상자(#360). */}
+    <InfoFacts
+      rows={[
+        [{ label: t.issueSummary.goodsIssueNo, value: summary.goodsIssueNo, isKey: true }],
+        [{ label: t.issueLineTable.issueQty, value: summary.totalQtyText }],
+      ]}
+    />
 
     <p>{t.dialog.lineCount(summary.lineCount)}</p>
 
@@ -87,7 +86,6 @@ export const ResubmitConfirmDialog = ({
     <section aria-label={t.dialog.reasonFirstLine}>
       <p className="field-label">{t.dialog.reasonFirstLine}</p>
       <p>{summary.reasonFirstLine}</p>
-      <p className="field-note">{t.dialog.reasonSummaryNote}</p>
     </section>
 
     <p>{t.dialog.submitEffects}</p>

@@ -197,16 +197,30 @@ describe('W-05-07 ② — 채널을 더한다', () => {
     ).toBeInTheDocument();
   });
 
-  it('채널명 없이 저장하면 막고 그 칸에 표시한다', async () => {
+  /** 필수 칸(채널명)이 다 차야 [저장] 이 켜진다 — 보내기 전 검증과 같은 기준이다(#360). */
+  it('채널명이 비어 있으면 저장이 꺼져 있고, 채우면 켜진다', async () => {
     const user = userEvent.setup();
     const writes: Request[] = [];
 
     renderScreen({ writes });
     await pickFirstEquipment();
     await user.click(within(channelPane()).getByRole('button', { name: t.actions.addChannel }));
-    await user.click(within(formDialog()).getByRole('button', { name: messages.common.save }));
 
-    expect(within(formDialog()).getByRole('textbox', { name: /채널명/ })).toBeInvalid();
+    const dialog = within(formDialog());
+    const save = dialog.getByRole('button', { name: messages.common.save });
+    const channelKey = dialog.getByRole('textbox', { name: /채널명/ });
+
+    expect(save).toBeDisabled();
+
+    await user.type(channelKey, '   ');
+    expect(save).toBeDisabled();
+
+    await user.clear(channelKey);
+    await user.type(channelKey, 'NEW_CHANNEL');
+    expect(save).toBeEnabled();
+
+    await user.clear(channelKey);
+    expect(save).toBeDisabled();
     expect(writes).toHaveLength(0);
   });
 

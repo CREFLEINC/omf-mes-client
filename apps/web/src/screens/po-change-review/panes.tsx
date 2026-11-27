@@ -3,6 +3,7 @@ import {
   Chip,
   type Column,
   EmptyState,
+  Icon,
   Radio,
   RadioGroup,
   SkeletonText,
@@ -12,6 +13,7 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
+import { Link } from 'react-router';
 
 import { InfoTip } from '../../patterns/info-tip';
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
@@ -24,8 +26,32 @@ import {
   type ChangeNotification,
 } from './types';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 
 const t = messages.poChangeReview;
+
+/** 상세 상자 제목 — 앞에 상자 아이콘(시안 · #360). */
+const PaneTitle = ({ icon, children }: { icon: string; children: ReactNode }) => (
+  <h2 className="po-change-review-title">
+    <Icon name={icon} size={20} aria-hidden />
+    {children}
+  </h2>
+);
+
+/** 원문은 연계 동기화 현황(지금 「ERP 연동 현황·이력」 첫 탭)에서 본다. */
+const SOURCE_PATH = '/master-data/integration-sync';
+
+/**
+ * 작업지시 상태 칩 색 — 진행 중은 파랑, 계획은 회색(사용자 지시 · #360). 이름은 공통코드 마스터에서 받는다.
+ */
+const STATUS_TONE: Readonly<Record<string, 'info' | 'success' | 'warning' | 'error' | 'idle'>> = {
+  IN_PROGRESS: 'info',
+  RELEASED: 'info',
+  COMPLETED: 'success',
+  CLOSED: 'success',
+  SUSPENDED: 'warning',
+  CANCELLED: 'error',
+};
 
 /** 「2026-08-05T09:12:00+09:00」 → 「2026-08-05 07:12」(공장 시각 · `patterns/plant-time`) — 분까지만. 초는 판단에 쓰이지 않는다. */
 const dateTimeText = (value: string): string => {
@@ -74,7 +100,7 @@ export const NotificationList = ({
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className={`link-cell ${ROW_PICK_CLASS}`}
           aria-label={t.list.selectRow(row.productionOrderNo)}
           aria-current={row.productionOrderId === selectedId ? 'true' : undefined}
           onClick={() => onSelect(row.productionOrderId)}
@@ -112,17 +138,20 @@ export const NotificationList = ({
   }
 
   return (
-    <Table
-      className="po-change-review-table po-change-review-list"
-      caption={<span className="po-change-review-table-caption">{t.panes.list}</span>}
-      density="compact"
-      columns={columns}
-      rows={rows}
-      getRowId={(row) => String(row.productionOrderId)}
-      empty={
-        <EmptyState size="sm" live title={t.list.empty} description={t.list.emptyDescription} />
-      }
-    />
+    /* 줄 아무 곳이나 눌러 고른다(#360) — 배치에 끼지 않는 상자(`display: contents`)가 누름만 받는다. */
+    <div className="row-pick-box" {...rowPickHandlers}>
+      <Table
+        className="po-change-review-table po-change-review-list"
+        caption={<span className="po-change-review-table-caption">{t.panes.list}</span>}
+        density="compact"
+        columns={columns}
+        rows={rows}
+        getRowId={(row) => String(row.productionOrderId)}
+        empty={
+          <EmptyState size="sm" live title={t.list.empty} description={t.list.emptyDescription} />
+        }
+      />
+    </div>
   );
 };
 
@@ -155,7 +184,7 @@ export const DiffPane = ({ selected, uoms }: DiffPaneProps) => {
   if (selected === null) {
     return (
       <section className="pane po-change-review-pane" aria-label={t.panes.diff}>
-        <h2>{t.panes.diff}</h2>
+        <PaneTitle icon="description">{t.panes.diff}</PaneTitle>
         <EmptyState size="sm" title={t.diff.selectFirst} />
       </section>
     );
@@ -178,11 +207,16 @@ export const DiffPane = ({ selected, uoms }: DiffPaneProps) => {
 
   return (
     <section className="pane po-change-review-pane" aria-label={t.panes.diff}>
-      <h2>{t.panes.diff}</h2>
+      <PaneTitle icon="description">{t.panes.diff}</PaneTitle>
       {change === null ? (
-        <div className="banner-slot">
-          <AlertBanner variant="info">{t.diff.noLastChange}</AlertBanner>
-        </div>
+        <p className="iqc-inspection-action-note po-change-review-note" data-tone="info">
+          <Icon name="info" size={16} aria-hidden />
+          {t.diff.noLastChange}
+          <span className="po-change-review-note-bar" aria-hidden="true">
+            |
+          </span>
+          <Link to={SOURCE_PATH}>{t.diff.viewSource}</Link>
+        </p>
       ) : (
         <>
           <p className="field-note">{t.diff.receivedAt(dateTimeText(change.receivedAt))}</p>
@@ -213,6 +247,8 @@ export interface WorkOrderPaneProps {
   isLoading: boolean;
   isError: boolean;
   hasSelection: boolean;
+  /** 상태 코드 → 표시명(공통코드 마스터). */
+  statusNameOf: (code: string) => string;
   overProduced: readonly AffectedWorkOrder[];
   changedQty: number | null;
   /** 반영을 골랐을 때만 조정 수량 칸이 열린다. */
@@ -234,6 +270,7 @@ export const WorkOrderPane = ({
   isLoading,
   isError,
   hasSelection,
+  statusNameOf,
   overProduced,
   changedQty,
   showAdjustments,
@@ -245,7 +282,7 @@ export const WorkOrderPane = ({
     {
       key: 'workOrderNo',
       header: t.workOrders.fields.workOrderNo,
-      render: (row) => row.workOrderNo,
+      render: (row) => <span className="nowrap-cell">{row.workOrderNo}</span>,
     },
     {
       key: 'qty',
@@ -257,27 +294,26 @@ export const WorkOrderPane = ({
       key: 'status',
       header: t.workOrders.fields.status,
       align: 'center',
-      render: (row) => row.statusCode,
+      render: (row) => (
+        <Chip size="sm" status={STATUS_TONE[row.statusCode] ?? 'idle'}>
+          {statusNameOf(row.statusCode)}
+        </Chip>
+      ),
     },
     {
       key: 'produced',
       header: t.workOrders.fields.produced,
       align: 'end',
+      /* 숫자만(사용자 지시 · #360) — 실적이 계획을 넘는 경우는 표 아래 경고가 말한다. */
       render: (row) =>
-        row.producedQty === null ? (
-          messages.common.reference.unknown
-        ) : row.producedQty > 0 ? (
-          <Chip status="warning">{`${String(row.producedQty)} ${t.workOrders.alreadyProduced}`}</Chip>
-        ) : (
-          String(row.producedQty)
-        ),
+        row.producedQty === null ? messages.common.reference.unknown : String(row.producedQty),
     },
     {
       key: 'mismatch',
       header: t.workOrders.fields.mismatch,
       align: 'center',
       render: (row) =>
-        row.poMismatch ? <Chip status="error">{t.workOrders.mismatchChip}</Chip> : null,
+        row.poMismatch ? <Chip status="error">{t.workOrders.mismatchChip}</Chip> : '—',
     },
     ...(showAdjustments
       ? [
@@ -303,7 +339,10 @@ export const WorkOrderPane = ({
   return (
     <section className="pane po-change-review-pane" aria-label={t.panes.workOrders}>
       <h2 className="po-change-review-title">
-        {t.panes.workOrders}
+        <Icon name="layers" size={20} aria-hidden />
+        {hasSelection && !isError && !isLoading
+          ? t.panes.workOrdersCount(rows.length)
+          : t.panes.workOrders}
         {/* 조정 수량을 적는 법은 제목 옆 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
         {hasSelection && !isError && !isLoading && showAdjustments && rows.length > 0 && (
           <InfoTip text={t.workOrders.adjustHelp} />
@@ -351,6 +390,10 @@ export interface DecisionPaneProps {
   draft: DecisionDraft;
   showError: boolean;
   warnings: { mismatch: boolean; applyWithoutAdjustment: boolean };
+  /** 처리할 수 없는 건이면 그 한 줄(주황) — 상자 위에 둔다. */
+  blockedNote?: string;
+  /** 맨 아래 오른쪽 [처리] 단추 줄과 서버 거절 상자. */
+  footer: ReactNode;
   onChange: (patch: Partial<DecisionDraft>) => void;
 }
 
@@ -363,58 +406,89 @@ export interface DecisionPaneProps {
  * ⭐ **파급을 저장 «전»에 말한다**(G-19) — 강행하면 불일치 표식이 남고, 반영인데 조정을 하나도
  * 적지 않으면 조정되지 않은 W/O 에 같은 표식이 남는다.
  */
-export const DecisionPane = ({ draft, showError, warnings, onChange }: DecisionPaneProps) => {
+export const DecisionPane = ({
+  draft,
+  showError,
+  warnings,
+  blockedNote,
+  footer,
+  onChange,
+}: DecisionPaneProps) => {
   const labelId = useId();
 
   return (
-    <section className="pane po-change-review-pane" aria-label={t.panes.decision}>
-      <h2 className="po-change-review-title">
-        {t.panes.decision}
-        {/* 중단·취소 반영 뒤 W/O 취소는 건별로 따로 한다는 것 — 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
-        <InfoTip text={t.withdrawn.cancelFollowUp} />
-      </h2>
+    <>
+      {/* 처리할 수 없으면 처리 방식 상자 위에 주황 한 줄만(사용자 지시 · #360). */}
+      {blockedNote !== undefined && (
+        <p
+          className="iqc-inspection-action-note po-change-review-note"
+          data-tone="warning"
+          role="status"
+        >
+          <Icon name="warning" size={16} aria-hidden />
+          {blockedNote}
+        </p>
+      )}
+      <section className="pane po-change-review-pane" aria-label={t.panes.decision}>
+        <h2 className="po-change-review-title">
+          <Icon name="settings" size={20} aria-hidden />
+          <span id={labelId}>{t.panes.decision}</span>
+          {/* 중단·취소 반영 뒤 W/O 취소는 건별로 따로 한다는 것 — 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+          <InfoTip text={t.withdrawn.cancelFollowUp} />
+        </h2>
 
-      <div className="field-cell" role="group" aria-label={t.decision.label}>
-        <span className="field-label">
-          <span id={labelId}>{t.decision.label}</span>
-          <span className="required-mark" aria-hidden="true">
-            {' *'}
-          </span>
-        </span>
         <RadioGroup
           name="po-change-decision"
+          className="po-change-review-choices"
           value={draft.decision ?? ''}
           aria-labelledby={labelId}
           onChange={(next) => onChange({ decision: next as DecisionCode })}
         >
-          <Radio value="APPLY">{t.decision.apply}</Radio>
-          <Radio value="PROCEED">{t.decision.proceed}</Radio>
+          {/* 이름 아래 흐린 설명 한 줄(시안 · #360) — 이름은 aria-label, 설명은 aria-describedby 로 읽힌다. */}
+          <Radio value="APPLY" aria-label={t.decision.apply} aria-describedby={`${labelId}-apply`}>
+            <span className="po-change-review-choice">
+              {t.decision.apply}
+              <small id={`${labelId}-apply`}>{t.decision.applyHint}</small>
+            </span>
+          </Radio>
+          <Radio
+            value="PROCEED"
+            aria-label={t.decision.proceed}
+            aria-describedby={`${labelId}-proceed`}
+          >
+            <span className="po-change-review-choice">
+              {t.decision.proceed}
+              <small id={`${labelId}-proceed`}>{t.decision.proceedHint}</small>
+            </span>
+          </Radio>
         </RadioGroup>
-      </div>
 
-      {draft.decision === 'PROCEED' && (
-        <>
-          <TextArea
-            label={t.decision.reasonLabel}
-            value={draft.reason}
-            required
-            fullWidth
-            rows={3}
-            maxLength={REASON_MAX}
-            error={showError ? reasonError(draft) : undefined}
-            onChange={(event) => onChange({ reason: event.target.value })}
-          />
+        {draft.decision === 'PROCEED' && (
+          <>
+            <TextArea
+              label={t.decision.reasonLabel}
+              value={draft.reason}
+              required
+              fullWidth
+              rows={3}
+              maxLength={REASON_MAX}
+              error={showError ? reasonError(draft) : undefined}
+              onChange={(event) => onChange({ reason: event.target.value })}
+            />
+            <div className="banner-slot">
+              <AlertBanner variant="warning">{t.decision.proceedNote}</AlertBanner>
+            </div>
+          </>
+        )}
+
+        {warnings.applyWithoutAdjustment && (
           <div className="banner-slot">
-            <AlertBanner variant="warning">{t.decision.proceedNote}</AlertBanner>
+            <AlertBanner variant="warning">{t.decision.applyWithoutAdjustment}</AlertBanner>
           </div>
-        </>
-      )}
+        )}
 
-      {warnings.applyWithoutAdjustment && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.decision.applyWithoutAdjustment}</AlertBanner>
-        </div>
-      )}
-    </section>
+        {footer}
+      </section>
+    </>
   );
 };

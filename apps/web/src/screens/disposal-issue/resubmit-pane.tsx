@@ -88,8 +88,17 @@ export const ResubmitPane = ({
           >
             {t.actions.resubmit}
           </Button>
+          {/*
+           * 「요청 사유를 적으세요」는 화면 읽기용으로만 둔다(사용자 지시 2026-11-27 · #360). 이미 올렸거나
+           * 확인할 수 없는 전표라는 **상태 알림은 보이게 남긴다** — 입력으로 풀 수 있는 것이 아니다.
+           */}
           {blockReason !== null && (
-            <span id={blockReasonId} className="field-note">
+            <span
+              id={blockReasonId}
+              className={
+                blockReason === t.actionReasons.needsReason ? 'visually-hidden' : 'field-note'
+              }
+            >
               {blockReason}
             </span>
           )}

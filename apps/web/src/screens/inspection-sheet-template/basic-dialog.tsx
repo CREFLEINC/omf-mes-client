@@ -115,6 +115,7 @@ export const TemplateBasicFields = ({
                 id={ids.name}
                 fullWidth
                 value={values.templateName}
+                placeholder={t.editor.templateNamePlaceholder}
                 onChange={(event) => onChange({ templateName: event.target.value })}
                 error={errors.name}
                 aria-required
@@ -161,6 +162,7 @@ export const TemplateBasicFields = ({
                   aria-required
                   options={scopeOptions}
                   value={String(values.businessUnitId ?? '')}
+                  placeholder={t.editor.businessUnitPlaceholder}
                   onChange={(value) => onChange({ businessUnitId: Number(value) })}
                 />
               )}

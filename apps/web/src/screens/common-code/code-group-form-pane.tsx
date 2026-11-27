@@ -2,7 +2,7 @@ import { Button, Dialog, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
-import { CodeLockLabel } from '../../patterns/master';
+import { CodeLockLabel, LockedFieldIcon } from '../../patterns/master';
 import { requiredEmptyClass } from '../users-roles/required-empty';
 import { FieldLabel } from './field-label';
 import type { CodeGroupFormValues } from './types';
@@ -115,8 +115,12 @@ export const CodeGroupFormPane = ({
         <TextField
           id={codeId}
           value={values.groupCode}
+          placeholder={t.codeGroup.placeholders.groupCode}
           onChange={(event) => onChange({ groupCode: event.target.value })}
           disabled={codeLockReason !== null}
+          trailingIcon={
+            codeLockReason === null ? undefined : <LockedFieldIcon reason={codeLockReason} />
+          }
           aria-describedby={codeLockReason === null ? undefined : `${codeId}-lock`}
           /* 필수 칸이 비면 빨간 테두리 — 사용자 역할 화면과 같은 방식(#333). 잠긴 칸은 고칠 수 없어 뺀다. */
           containerClassName={
@@ -132,6 +136,7 @@ export const CodeGroupFormPane = ({
         <TextField
           id={nameId}
           value={values.groupName}
+          placeholder={t.codeGroup.placeholders.groupName}
           onChange={(event) => onChange({ groupName: event.target.value })}
           containerClassName={requiredEmptyClass(values.groupName)}
           error={fieldErrors.groupName}
@@ -145,6 +150,7 @@ export const CodeGroupFormPane = ({
         <TextField
           id={descriptionId}
           value={values.description}
+          placeholder={t.codeGroup.placeholders.description}
           onChange={(event) => onChange({ description: event.target.value })}
           error={fieldErrors.description}
         />
@@ -159,6 +165,7 @@ export const CodeGroupFormPane = ({
   if (mode === 'create') {
     return (
       <Dialog
+        className="dialog-icon-add"
         open
         onClose={onCancel}
         size="lg"

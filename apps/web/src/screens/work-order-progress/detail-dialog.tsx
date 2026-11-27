@@ -1,12 +1,15 @@
-import { AlertBanner, Dialog } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { CrewSections } from './crew-sections';
 import type { WorkOrderCrew } from './queries';
 import type { WorkOrder } from './types';
 import { FourMInputsPanel } from '../four-m-inputs/panel';
+import { InfoCodeName, InfoFacts, InfoQty, type InfoFact } from '../../patterns/info-facts';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { splitCodeName } from '../../patterns/split-code-name';
+
+import './detail-dialog.css';
 
 export interface DetailDialogProps {
   /** 고른 W/O. 고르지 않았으면 `null` — 창이 열리지 않는다. */
@@ -31,8 +34,19 @@ const dateTimeText = (value: string | undefined): string => {
   return formatPlantDateTime(value) ?? value;
 };
 
-const textOr = (value: string | undefined): string =>
-  value === undefined || value === '' ? blank : value;
+/**
+ * 비고 줄 — 비었거나 공백뿐이면 줄째 뺀다(라벨 · 「—」 · 여백 모두 · #360). 있으면 상자 마지막 줄에 상자 전체 폭으로,
+ * 입력한 줄바꿈 그대로 · 길면 자연 줄바꿈(`.work-order-progress-remarks`).
+ */
+const remarksRow = (remarks: string | undefined): InfoFact[] =>
+  remarks === undefined || remarks.trim() === ''
+    ? []
+    : [
+        {
+          label: t.remarks,
+          value: <span className="work-order-progress-remarks">{remarks}</span>,
+        },
+      ];
 
 /**
  * 고른 W/O 의 상세.
@@ -46,9 +60,8 @@ const textOr = (value: string | undefined): string =>
  *
  * ⛔ **받는 중에도 창은 열려 있다.** 눌렀는데 아무 일도 없다가 나중에 열리면 두 번 누르게 된다.
  *
- * ⛔ **닫기 버튼을 따로 두지 않는다** — 창이 이미 X 를 그린다. 같은 이름의 컨트롤이 둘이면
- * 화면 읽기 도구에서 어느 것을 부르는지 갈리고, 눈으로도 같은 일을 하는 버튼이 둘 있는
- * 셈이다. 닫는 길은 X · Escape · 바깥 누르기 셋으로 이미 넉넉하다.
+ * ⛔ **닫는 단추는 하나다** — 정보 표시 팝업 시안(2026-11-27 · #360)대로 아래 단추 줄 [닫기] 하나만 두고
+ * 제목 줄 X 는 끈다. 같은 이름의 컨트롤이 둘이면 화면 읽기 도구에서 어느 것을 부르는지 갈린다.
  */
 export const DetailDialog = ({
   workOrder,
@@ -64,6 +77,14 @@ export const DetailDialog = ({
     open={isOpen}
     onClose={onClose}
     title={workOrder === null ? t.title : `${t.title} — ${workOrder.workOrderNo}`}
+    size="lg"
+    className="work-order-progress-detail-dialog"
+    showCloseButton={false}
+    footer={
+      <Button variant="outlined" onClick={onClose}>
+        {t.close}
+      </Button>
+    }
   >
     {isLoading && <p role="status">{t.loading}</p>}
 
@@ -75,38 +96,41 @@ export const DetailDialog = ({
 
     {workOrder !== null && (
       <>
-        <dl className="filter-bar">
-          {(
+        {/* 정보 표시 팝업 — 첫 줄 W/O · 품목 · 지시 수량(크게), 둘째 줄 상태 · 일시, 비고가 있으면 마지막 줄(시안 2026-11-27 · #360). */}
+        <InfoFacts
+          rows={[
             [
-              [t.workOrderNo, workOrder.workOrderNo],
-              [t.statusCode, statusLabel(workOrder.statusCode)],
-              /* 품목코드 · 품목명은 두 칸(사용자 지시 2026-11-24). */
-              [
-                messages.workOrderProgress.list.columns.itemCode,
-                splitCodeName(itemLabel(String(workOrder.itemId)), blank).code,
-              ],
-              [
-                messages.workOrderProgress.list.columns.itemName,
-                splitCodeName(itemLabel(String(workOrder.itemId)), blank).name,
-              ],
-              [t.orderQty, String(workOrder.orderQty)],
-              [t.plannedStartAt, dateTimeText(workOrder.plannedStartAt)],
-              [t.plannedEndAt, dateTimeText(workOrder.plannedEndAt)],
-              [t.completedAt, dateTimeText(workOrder.completedAt)],
-              [t.closedAt, dateTimeText(workOrder.closedAt)],
-              [t.remarks, textOr(workOrder.remarks)],
-            ] as const
-          ).map(([label, value]) => (
-            <div className="field-cell" key={label}>
-              <dt className="field-label">{label}</dt>
-              <dd>{value}</dd>
-            </div>
-          ))}
-        </dl>
+              { label: t.workOrderNo, value: workOrder.workOrderNo, isKey: true },
+              {
+                label: messages.workOrderProgress.list.columns.itemId,
+                value: (
+                  <InfoCodeName
+                    code={splitCodeName(itemLabel(String(workOrder.itemId)), blank).code}
+                    name={splitCodeName(itemLabel(String(workOrder.itemId)), blank).name}
+                  />
+                ),
+                title: itemLabel(String(workOrder.itemId)),
+                isKey: true,
+              },
+              { label: t.orderQty, value: <InfoQty value={workOrder.orderQty} />, isKey: true },
+            ],
+            [
+              {
+                label: t.statusCode,
+                value: <Chip size="sm">{statusLabel(workOrder.statusCode)}</Chip>,
+              },
+              { label: t.plannedStartAt, value: dateTimeText(workOrder.plannedStartAt) },
+              { label: t.plannedEndAt, value: dateTimeText(workOrder.plannedEndAt) },
+              { label: t.completedAt, value: dateTimeText(workOrder.completedAt) },
+              { label: t.closedAt, value: dateTimeText(workOrder.closedAt) },
+            ],
+            remarksRow(workOrder.remarks),
+          ]}
+        />
 
         <CrewSections crew={crew.data} isLoading={crew.isLoading} isError={crew.isError} />
 
-        {/* 4M 변경품이 이 W/O 에 투입됐는지(omf-all-around#63 2단계) — 없으면 없다고 적는다. */}
+        {/* 4M 변경 자재가 이 W/O 에 투입됐는지(omf-all-around#63 2단계) — 없으면 「내역 없음」 한 줄. */}
         <FourMInputsPanel workOrderId={workOrder.workOrderId} />
       </>
     )}

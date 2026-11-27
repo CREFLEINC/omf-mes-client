@@ -127,6 +127,7 @@ export const ReceiveDialog = ({ arrival, onClose, onStale }: ReceiveDialogProps)
 
   return (
     <Dialog
+      className="dialog-icon-check replenishment-receive-dialog"
       open
       onClose={onClose}
       title={tr.title(arrival.goodsIssueNo)}
@@ -148,7 +149,6 @@ export const ReceiveDialog = ({ arrival, onClose, onStale }: ReceiveDialogProps)
       }
     >
       <div className="replenishment-form">
-        <p className="dialog-text">{tr.note}</p>
         {already ? (
           <AlertBanner
             variant="warning"
@@ -202,6 +202,7 @@ export const ReceiveDialog = ({ arrival, onClose, onStale }: ReceiveDialogProps)
                         size="sm"
                         inputMode="decimal"
                         aria-label={tr.receivedLabel(labelOf(line))}
+                        placeholder={tr.receivedPlaceholder}
                         aria-required="true"
                         value={draft.received}
                         onChange={(event) =>

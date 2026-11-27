@@ -1,6 +1,8 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
+
+import { InfoFacts } from '../../patterns/info-facts';
 
 const t = messages.documentProgress;
 
@@ -52,6 +54,7 @@ export const ExecuteCancelDialog = ({
   onConfirm,
 }: ExecuteCancelDialogProps) => (
   <Dialog
+    className="dialog-icon-cancel"
     open
     onClose={onClose}
     size="sm"
@@ -72,8 +75,15 @@ export const ExecuteCancelDialog = ({
   >
     {banner}
 
-    <p>{t.executeDialog.target(documentNo)}</p>
-    {/* ⛔ 이 줄이 이 창의 요점이다 — 무를 수 있다고 읽히면 사용자가 가볍게 누른다. */}
-    <p>{t.executeDialog.irreversible}</p>
+    {/* 확인 팝업 시안(#360) — 대상 상자 · 질문 · 경고 줄. */}
+    <div className="users-roles-worker-dialog">
+      <InfoFacts rows={[[{ label: t.detail.documentNo, value: documentNo, isKey: true }]]} />
+      <p>{t.executeDialog.question}</p>
+      {/* ⛔ 이 줄이 이 창의 요점이다 — 무를 수 있다고 읽히면 사용자가 가볍게 누른다. */}
+      <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+        <Icon name="warning" size={16} aria-hidden />
+        {t.executeDialog.irreversible}
+      </p>
+    </div>
   </Dialog>
 );

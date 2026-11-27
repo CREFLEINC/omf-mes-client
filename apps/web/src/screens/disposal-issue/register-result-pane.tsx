@@ -145,7 +145,8 @@ export const RegisterResultPane = ({
             {t.actions.openIssue}
           </Button>
           {isLocked && (
-            <span id={lockedReasonId} className="field-note">
+            /* 보내는 동안의 사유는 화면 읽기용으로만 둔다(사용자 지시 2026-11-27 · #360). */
+            <span id={lockedReasonId} className="visually-hidden">
               {t.actionReasons.openIssueLocked}
             </span>
           )}

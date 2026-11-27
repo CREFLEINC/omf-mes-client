@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -97,6 +97,28 @@ export const useCodeDetail = (
       return adapter.fetchDetail(client, id);
     },
   });
+};
+
+/**
+ * 목록 「사용된 기록」 열(omf-all-around#360) — 목록 응답에는 참조 건수가 없어 보이는 줄의 상세를 같은 캐시 키로 읽는다.
+ * 고른 줄의 상세와 키가 같아 요청이 겹치지 않는다. 아직 못 받았거나 서버가 셀 수 없으면 null.
+ */
+export const useCodeReferenceCounts = (
+  adapter: CodeAdapter,
+  ids: readonly number[],
+): ReadonlyMap<number, number | null> => {
+  const { client } = useApiClient();
+
+  const results = useQueries({
+    queries: ids.map((id) => ({
+      queryKey: adapter.keys.detail(id),
+      queryFn: () => adapter.fetchDetail(client, id),
+    })),
+  });
+
+  return new Map(
+    ids.map((id, index) => [id, results[index]?.data?.editability.referenceCount ?? null]),
+  );
 };
 
 /**

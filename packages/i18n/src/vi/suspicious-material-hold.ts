@@ -142,6 +142,7 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     heading: 'Đăng ký chi tiết lỗi',
     major: 'Loại lỗi',
     majorPlaceholder: 'Chọn loại lỗi',
+    minorPlaceholder: 'Chọn chi tiết lỗi',
     noCodesNote: 'Chưa có mã lỗi. Hãy đăng ký trước ở quản lý mã lỗi.',
     registerCode: 'Đăng ký mã lỗi',
     qtyPlaceholder: 'Hãy nhập số lượng',

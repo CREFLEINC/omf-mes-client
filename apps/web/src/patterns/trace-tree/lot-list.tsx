@@ -139,12 +139,9 @@ export const TraceLotList = ({
         ? t.list.ofTotal(entries.length, condition.total)
         : t.list.count(entries.length);
 
+  /* 최근 목록에는 안내 문장을 두지 않는다 — 필수가 아닌 문장은 걷는다(#360). */
   const foot =
-    mode === 'SCAN'
-      ? t.list.scanFoot
-      : mode === 'CONDITION'
-        ? words.conditionFoot
-        : words.recentFoot;
+    mode === 'SCAN' ? t.list.scanFoot : mode === 'CONDITION' ? words.conditionFoot : null;
 
   return (
     <>
@@ -204,7 +201,7 @@ export const TraceLotList = ({
               </Button>
             </div>
           )}
-          <p className="field-note trace-tree-list-foot">{foot}</p>
+          {foot !== null && <p className="field-note trace-tree-list-foot">{foot}</p>}
         </>
       )}
     </>

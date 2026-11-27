@@ -101,7 +101,7 @@ export const SuccessorsPane = ({ successors, routes, onOpen }: SuccessorsPanePro
     <BoardTable
       label={t.successors.caption}
       widthKey="omf-mes:document-progress:columns:successors"
-      minWidth="32rem"
+      fit
       columns={buildSuccessorColumns(routes, onOpen, successors)}
       rows={successors}
       /*

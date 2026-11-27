@@ -114,9 +114,7 @@ export const expeditedShipment: Translated<typeof ko.expeditedShipment> = {
   },
   confirm: {
     title: 'Chốt xuất hàng thẳng',
-    target: (lotNo: string, shipmentRequestNo: string): string =>
-      `Sẽ xuất hàng thẳng ${lotNo} theo ${shipmentRequestNo}.`,
-    qty: (qty: string): string => `Số lượng ${qty}`,
+    question: 'Xuất hàng thẳng chứ?',
     irreversible:
       'Không hoàn tác được — phiếu nhập kho thành phẩm và phiếu xuất hàng được tạo cùng lúc và tồn kho bị trừ.',
     unconfirmedNote:

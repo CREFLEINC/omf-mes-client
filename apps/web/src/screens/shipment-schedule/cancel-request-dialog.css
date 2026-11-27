@@ -1,0 +1,64 @@
+/* 출하 취소 결재 요청 창(팝업 디자인 시안 · omf-all-around#360) — 이 창 전용. 선택자는 `.ship-cancel-request-dialog` 아래만. */
+
+/*
+ * 앱 공통 「팝업의 빈 필수 칸 연한 빨강」(app.css 2)을 이 창에서만 덮는다(사용자 지시) — 처음 열면 기본 바탕이고,
+ * 빈 사유는 [취소 결재 요청]을 누를 때 칸 아래 오류로 알린다. 공통 규칙의 선택자가 길어 우선순위로 이기기 어렵다.
+ */
+.ship-cancel-request-dialog [class*='_areaWrap_']:has(> textarea:not(:disabled)) {
+  background: transparent !important;
+}
+
+.ship-cancel-request-dialog .iqc-inspection-action-note {
+  display: flex;
+  align-items: flex-start;
+  margin: 0 0 var(--space-4);
+}
+
+.ship-cancel-request-dialog .iqc-inspection-action-note > svg {
+  flex: none;
+  margin-top: 3px;
+}
+
+.ship-cancel-reason {
+  display: grid;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+}
+
+.ship-cancel-effects {
+  margin-bottom: var(--space-3);
+}
+
+.ship-cancel-effects > ul {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding-inline-start: var(--space-5);
+}
+
+/* 긴 창고명 · 번호도 칸 안에서 자연스럽게 줄바꿈한다. */
+.ship-cancel-effects li,
+.ship-cancel-records > p {
+  overflow-wrap: anywhere;
+}
+
+.ship-cancel-effect-name {
+  color: var(--on-surface);
+  font-weight: 600;
+}
+
+/* 보조 영역 — 연한 바탕 상자(변경 사항과 구분). */
+.ship-cancel-records {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.ship-cancel-records > h4 {
+  margin: 0 0 var(--space-1);
+}
+
+.ship-cancel-records > p {
+  margin: 0;
+  font: var(--type-body-md);
+}

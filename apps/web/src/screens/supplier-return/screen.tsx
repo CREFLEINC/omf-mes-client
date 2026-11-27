@@ -1,22 +1,36 @@
-import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
+import { Breadcrumb, Button, EmptyState, Icon, PageHeader, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { useDeselectConfirm } from '../../patterns/deselect-confirm';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
+import { plantNowLocal } from '../../patterns/plant-time';
 import { ScreenHeader } from '../../patterns/screen-header';
 import {
+  applyReturnAutoFill,
+  NO_RETURN_AUTO_VALUES,
+  onlyOptionValue,
+  SUPPLIER_RETURN_ISSUE_TYPE_CODE,
+} from './auto-fill';
+import {
   SUPPLIER_RETURN_CODE_GROUPS,
+  codeNameOf,
   isRequiredCodeListPending,
   toCodeOptionSets,
+  toSupplierReturnCodeNames,
   withRuntimeSupplierReturnCodes,
 } from './code-options';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import {
   clearFilter,
   DEFAULT_FILTERS,
+  LIST_PAGE_SIZES,
+  PAGE_SIZE,
   readFilters,
   readPage,
+  readPageSize,
   readSelectedReceiptId,
   SELECTION_KEYS,
   toFilterQuery,
@@ -43,6 +57,7 @@ import {
   useItemNames,
   useLocationOptions,
   useLotOptions,
+  useInboundReceiptSupplier,
   usePartnerOptions,
   useUomOptions,
   useWarehouseOptions,
@@ -215,6 +230,7 @@ export const SupplierReturnScreen = () => {
    */
   const filters = useMemo<ReceiptFilters>(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
+  const pageSize = readPageSize(searchParams);
   const selectedReceiptId = readSelectedReceiptId(searchParams);
 
   /*
@@ -223,7 +239,11 @@ export const SupplierReturnScreen = () => {
    *
    * **기본 기간을 심지 않는다** — 첫 요청에 날짜 조건이 실리지 않는다.
    */
-  const listQuery = { ...toFilterQuery(filters), ...(page > 1 ? { page } : {}) };
+  const listQuery = {
+    ...toFilterQuery(filters),
+    ...(page > 1 ? { page } : {}),
+    ...(pageSize === PAGE_SIZE ? {} : { size: pageSize }),
+  };
 
   const list = useGoodsReceipts(listQuery);
   const rows = list.data?.items ?? EMPTY_ROWS;
@@ -551,20 +571,29 @@ export const SupplierReturnScreen = () => {
     if (isLocked) return;
 
     setHasNotFoundNotice(false);
-    setSearchParams(toSearchParams(nextFilters, nextPage));
+    setSearchParams(toSearchParams(nextFilters, nextPage, pageSize));
   };
 
   /** 고르고 푸는 것은 **보이는 행을 바꾸지 않는다**(수명 표 4행). */
+  const deselectConfirm = useDeselectConfirm();
+
   const toggleSelectReceipt = (goodsReceiptId: number): void => {
-    setHasNotFoundNotice(false);
+    const apply = (): void => {
+      setHasNotFoundNotice(false);
 
-    const next = toSearchParams(filters, page);
+      const next = toSearchParams(filters, page, pageSize);
 
-    if (goodsReceiptId !== selectedReceiptId) {
-      next.set(SELECTION_KEYS.goodsReceipt, String(goodsReceiptId));
-    }
+      if (goodsReceiptId !== selectedReceiptId) {
+        next.set(SELECTION_KEYS.goodsReceipt, String(goodsReceiptId));
+      }
 
-    setSearchParams(next);
+      setSearchParams(next);
+    };
+
+    /* 고른 전표를 다시 눌러 풀면 줄 초안이 비워진다 — 적은 값이 있으면 먼저 묻는다(사용자 지시 2026-11-27 · #360). */
+    if (goodsReceiptId === selectedReceiptId)
+      deselectConfirm.request(hasAnyLineDraftValue(lineDraft), apply);
+    else apply();
   };
 
   /**
@@ -651,10 +680,76 @@ export const SupplierReturnScreen = () => {
    */
   const issueTypes = useSupplierReturnCodeValues(SUPPLIER_RETURN_CODE_GROUPS.issueType);
   const reasons = useSupplierReturnCodeValues(SUPPLIER_RETURN_CODE_GROUPS.reason);
+  /* 입고 유형 · 상태 — 조회 조건 선택지와 목록 · 제목줄의 이름(계약 확정 그룹 · #360). */
+  const receiptTypes = useSupplierReturnCodeValues(SUPPLIER_RETURN_CODE_GROUPS.receiptType);
+  const statuses = useSupplierReturnCodeValues(SUPPLIER_RETURN_CODE_GROUPS.status);
   const codeLookupError = [issueTypes, reasons].find((lookup) => lookup.isError);
+  const runtimeCodeValues = {
+    issueType: issueTypes.data,
+    reason: reasons.data,
+    receiptType: receiptTypes.data,
+    status: statuses.data,
+  };
+  const codeNames = toSupplierReturnCodeNames(runtimeCodeValues);
   const codeOptions = toCodeOptionSets(
-    withRuntimeSupplierReturnCodes({ issueType: issueTypes.data, reason: reasons.data }),
+    withRuntimeSupplierReturnCodes(runtimeCodeValues),
+    codeNames,
   );
+  const receiptTypeName = (code: string): string => codeNameOf(codeNames.receiptType, code);
+  const statusName = (code: string): string => codeNameOf(codeNames.status, code);
+
+  /*
+   * **반품 정보 자동 채움**(사용자 지시 2026-11-27 · #360 「자동 키인」). 전표를 고르면 화면이 아는
+   * 값을 칸에 넣는다 — 공급사 = 그 전표 원천 입하의 공급사, 출고 유형 = 공급사반품(계약
+   * `issueTypeCode` 확정 값), 원천 문서 유형 · 도착지 유형 = 고를 값이 하나뿐인 구조 값,
+   * 출고 일자 · 시각 = 고른 순간의 공장 시각. 반품 사유는 사람이 정한다.
+   *
+   * 사용자가 고친 값은 덮지 않는다(`auto-fill.ts`). **고른 전표가 바뀌거나 채울 값이 도착할 때만**
+   * 돈다 — 「입력 지우기」·처리 성공으로 비운 칸을 곧바로 다시 채우지 않는다.
+   */
+  const inboundSupplierId = useInboundReceiptSupplier(detailData?.inboundReceiptId ?? null);
+  const supplierOptions = toSelectOptions(partners);
+  const autoSupplier =
+    inboundSupplierId !== null &&
+    supplierOptions.some((option) => option.value === String(inboundSupplierId))
+      ? String(inboundSupplierId)
+      : '';
+  const autoIssueType = codeOptions.issueType.some(
+    (option) => option.value === SUPPLIER_RETURN_ISSUE_TYPE_CODE,
+  )
+    ? SUPPLIER_RETURN_ISSUE_TYPE_CODE
+    : onlyOptionValue(codeOptions.issueType);
+  const autoSourceDocumentType = onlyOptionValue(codeOptions.sourceDocumentType);
+  const autoDestinationType = onlyOptionValue(codeOptions.destinationType);
+  const autoFilledRef = useRef(NO_RETURN_AUTO_VALUES);
+  const autoNowRef = useRef<{ receiptId: number | null; date: string; time: string }>({
+    receiptId: null,
+    date: '',
+    time: '',
+  });
+
+  useEffect(() => {
+    if (selectedReceiptId === null) return;
+
+    if (autoNowRef.current.receiptId !== selectedReceiptId) {
+      const [date = '', time = ''] = plantNowLocal().split('T');
+
+      autoNowRef.current = { receiptId: selectedReceiptId, date, time };
+    }
+
+    const previous = autoFilledRef.current;
+    const next = {
+      supplier: autoSupplier,
+      issueType: autoIssueType,
+      sourceDocumentType: autoSourceDocumentType,
+      destinationType: autoDestinationType,
+      issuedDate: autoNowRef.current.date,
+      issuedTime: autoNowRef.current.time,
+    };
+
+    autoFilledRef.current = next;
+    setReturnDraft((prev) => applyReturnAutoFill(prev, previous, next));
+  }, [selectedReceiptId, autoSupplier, autoIssueType, autoSourceDocumentType, autoDestinationType]);
 
   /** 잠긴 두 버튼의 사유를 잇는 `id`. 사유는 **잠근 자리 옆에서** 읽혀야 한다(배치 규범 4). */
   const blockReasonId = useId();
@@ -812,7 +907,7 @@ export const SupplierReturnScreen = () => {
       <>
         <ReturnForm
           values={returnDraft}
-          supplierOptions={toSelectOptions(partners)}
+          supplierOptions={supplierOptions}
           /*
            * 잘림은 **선택칸에 붙이고** 실패는 복구 버튼과 함께 폼이 따로 낸다 — 잘림은 다시
            * 불러도 같은 쪽이 오므로 사용자가 할 조치가 없고, 실패는 있다.
@@ -872,7 +967,8 @@ export const SupplierReturnScreen = () => {
               {t.actions.discardDrafts}
             </Button>
             {!hasDraft && (
-              <span id={discardReasonId} className="field-note">
+              /* 사유 글자는 화면 읽기용으로만 둔다 — 보이는 안내는 걷었다(사용자 지시 2026-11-27 · #360). */
+              <span id={discardReasonId} className="visually-hidden">
                 {t.actionReasons.nothingToDiscard}
               </span>
             )}
@@ -887,8 +983,18 @@ export const SupplierReturnScreen = () => {
             >
               {t.actions.submit}
             </Button>
+            {/*
+             * 잠금 사유는 화면 읽기용으로만 둔다(사용자 지시 2026-11-27 · #360 — 「되돌려 보낼 공급사를
+             * 고르세요」 같은 안내 제거). **코드 목록이 없는 사정만 보이게 남긴다** — 사용자가 칸을
+             * 채워 풀 수 있는 것이 아니다.
+             */}
             {blockReason !== null && (
-              <span id={blockReasonId} className="field-note">
+              <span
+                id={blockReasonId}
+                className={
+                  isRequiredCodeListPending(codeOptions) ? 'field-note' : 'visually-hidden'
+                }
+              >
                 {blockReason}
               </span>
             )}
@@ -904,10 +1010,16 @@ export const SupplierReturnScreen = () => {
                   returnDraft.supplier === '' ? null : Number(returnDraft.supplier),
                 ),
               ),
-              issueTypeCode: returnDraft.codes.issueType,
-              sourceDocumentTypeCode: returnDraft.codes.sourceDocumentType,
-              destinationTypeCode: returnDraft.codes.destinationType,
-              reasonCode: returnDraft.codes.reason,
+              issueTypeName: codeNameOf(codeNames.issueType, returnDraft.codes.issueType),
+              sourceDocumentTypeName: codeNameOf(
+                codeNames.sourceDocumentType,
+                returnDraft.codes.sourceDocumentType,
+              ),
+              destinationTypeName: codeNameOf(
+                codeNames.destinationType,
+                returnDraft.codes.destinationType,
+              ),
+              reasonName: codeNameOf(codeNames.reason, returnDraft.codes.reason),
               issuedAt: formatDateTime(toIssuedLocal(returnDraft)),
               businessDate: toBusinessDate(toIssuedLocal(returnDraft)),
               replacementExpected: returnDraft.replacementExpected,
@@ -984,6 +1096,8 @@ export const SupplierReturnScreen = () => {
            * 제목줄에 번호를 문자열로 만드는 자리는 어느 쪽에도 없다.
            */
           warehouseName={describeReference(toReference(warehouses, detailData.receipt.warehouseId))}
+          receiptTypeName={receiptTypeName(detailData.receipt.receiptTypeCode)}
+          statusName={statusName(detailData.receipt.statusCode)}
         />
 
         <GrLineTable
@@ -1042,7 +1156,15 @@ export const SupplierReturnScreen = () => {
           />
         }
         actions={
-          <Button variant="outlined" size="sm" disabled={isLocked} onClick={refreshAll}>
+          /* 모양은 통합 대시보드 · 재고 현황 · 폐기 품의의 「갱신」과 같다(사용자 지시 2026-11-27 · #360). */
+          <Button
+            variant="outlined"
+            size="sm"
+            className="stock-status-refresh-button"
+            leadingIcon={<Icon name="refresh" size={18} />}
+            disabled={isLocked}
+            onClick={refreshAll}
+          >
             {t.actions.refresh}
           </Button>
         }
@@ -1067,79 +1189,116 @@ export const SupplierReturnScreen = () => {
         />
       )}
 
-      <section className="pane" aria-label={t.panes.list}>
-        {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-        <GrFilterBar
-          appliedFilters={filters}
-          warehouseOptions={toSelectOptions(warehouses)}
-          warehouseNote={lookupNote(warehouses)}
-          receiptTypeOptions={codeOptions.receiptType}
-          statusOptions={codeOptions.status}
-          chipNames={{ warehouse: describeReference(warehouseReference) }}
-          isLocked={isLocked}
-          onSearch={(nextFilters) => {
-            applyQuery(nextFilters);
-          }}
-          onRemoveFilter={(key: RemovableChipKey) => {
-            applyQuery(clearFilter(filters, key));
-          }}
-          onReset={() => {
-            applyQuery(DEFAULT_FILTERS);
-          }}
-        />
-
-        {!list.isError && (
-          <>
-            <GrTable
-              rows={rows}
-              isLoading={list.isPending}
-              isBeyondLast={pageView.isBeyondLast}
-              selectedReceiptId={selectedReceiptId}
-              warehouseLookup={warehouses}
-              isLocked={isLocked}
-              onFirstPage={() => {
-                applyQuery(filters);
-              }}
-              onToggleSelect={toggleSelectReceipt}
-              onRetryReferences={retryTopReferences}
-            />
-            {!list.isPending && (
-              <PageNav
-                view={pageView}
+      {/*
+       * 목록 | 상세 — 공용 분할(가운데 폭 막대 · 상하 배치의 높이 막대 · 「⋯」 좌우/상하 배치 · 목록 접기 · #360).
+       * 상자 안 조회 · 목록 · 라인 · 반품 정보 · 결과는 그대로 옮겼다.
+       */}
+      <ListDetailWorkspace
+        storageKey="omf-mes:supplier-return"
+        list={{
+          label: t.panes.list,
+          title: t.panes.list,
+          count: list.data?.page.total,
+          content: (
+            <>
+              {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
+              <GrFilterBar
+                appliedFilters={filters}
+                warehouseOptions={toSelectOptions(warehouses)}
+                warehouseNote={lookupNote(warehouses)}
+                receiptTypeOptions={codeOptions.receiptType}
+                statusOptions={codeOptions.status}
+                chipNames={{
+                  warehouse: describeReference(warehouseReference),
+                  receiptTypeName,
+                  statusName,
+                }}
                 isLocked={isLocked}
-                onChange={(nextPage) => {
-                  applyQuery(filters, nextPage);
+                onSearch={(nextFilters) => {
+                  applyQuery(nextFilters);
+                }}
+                onRemoveFilter={(key: RemovableChipKey) => {
+                  applyQuery(clearFilter(filters, key));
+                }}
+                onReset={() => {
+                  applyQuery(DEFAULT_FILTERS);
                 }}
               />
-            )}
-          </>
-        )}
-      </section>
 
-      <section className="pane" aria-label={t.panes.lines}>
-        {detailPane()}
-      </section>
+              {!list.isError && (
+                <>
+                  <GrTable
+                    rows={rows}
+                    isLoading={list.isPending}
+                    isBeyondLast={pageView.isBeyondLast}
+                    selectedReceiptId={selectedReceiptId}
+                    warehouseLookup={warehouses}
+                    receiptTypeName={receiptTypeName}
+                    statusName={statusName}
+                    isLocked={isLocked}
+                    onFirstPage={() => {
+                      applyQuery(filters);
+                    }}
+                    onToggleSelect={toggleSelectReceipt}
+                    onRetryReferences={retryTopReferences}
+                  />
+                  {!list.isPending && (
+                    <PageNav
+                      view={pageView}
+                      isLocked={isLocked}
+                      onChange={(nextPage) => {
+                        applyQuery(filters, nextPage);
+                      }}
+                      sizes={LIST_PAGE_SIZES}
+                      onChangeSize={(nextSize) => {
+                        /* 쪽 이동과 같다 — 첫 쪽부터 그 크기로 다시 받고, 고른 전표는 풀린다(수명 표 1~3행). */
+                        if (isLocked) return;
+                        setSearchParams(toSearchParams(filters, 1, nextSize));
+                      }}
+                    />
+                  )}
+                </>
+              )}
+            </>
+          ),
+        }}
+        detail={{
+          label: `${t.panes.lines} · ${t.panes.form}`,
+          bare: true,
+          content: (
+            <>
+              <section className="pane" aria-label={t.panes.lines}>
+                {detailPane()}
+              </section>
 
-      {/*
-       * 반품 정보는 **라인 표가 그려지는 조건과 같은 조건**으로 연다 — 갈리면 표는 없는데
-       * 폼만 있는 상태가 생기고, 사용자는 무엇에 대한 입력인지 모른 채 값을 넣는다.
-       */}
-      {returnTarget !== null && (
-        <section className="pane" aria-label={t.panes.form}>
-          {returnPane(returnTarget)}
-        </section>
-      )}
+              {/*
+               * 반품 정보는 **라인 표가 그려지는 조건과 같은 조건**으로 연다 — 갈리면 표는 없는데
+               * 폼만 있는 상태가 생기고, 사용자는 무엇에 대한 입력인지 모른 채 값을 넣는다.
+               */}
+              {returnTarget !== null && (
+                <section className="pane" aria-label={t.panes.form}>
+                  {returnPane(returnTarget)}
+                </section>
+              )}
 
-      {/*
-       * 결과는 **따로 선 구획**이다. 반품 정보 폼 안에 두면 다음 처리를 준비하는 입력과 방금
-       * 만들어진 번호가 섞인다. 이름은 부품이 `role="status"`로 갖는다 — 구획에도 같은 이름을
-       * 붙이면 두 번 읽힌다.
-       */}
-      {result !== null && (
-        <section className="pane">
-          <ResultPane result={result} lines={resultLines} />
-        </section>
-      )}
+              {/*
+               * 결과는 **따로 선 구획**이다. 반품 정보 폼 안에 두면 다음 처리를 준비하는 입력과 방금
+               * 만들어진 번호가 섞인다. 이름은 부품이 `role="status"`로 갖는다 — 구획에도 같은 이름을
+               * 붙이면 두 번 읽힌다.
+               */}
+              {result !== null && (
+                <section className="pane">
+                  <ResultPane
+                    result={result}
+                    lines={resultLines}
+                    statusName={statusName(result.statusCode)}
+                  />
+                </section>
+              )}
+            </>
+          ),
+        }}
+      />
 
       {isDiscardOpen && (
         <DiscardConfirmDialog
@@ -1152,6 +1311,7 @@ export const SupplierReturnScreen = () => {
           }}
         />
       )}
+      {deselectConfirm.dialog}
     </>
   );
 };

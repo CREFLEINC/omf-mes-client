@@ -6,6 +6,8 @@ import { FieldLabel } from './field-label';
 import type { CodeOption } from './options';
 
 export interface SelectFieldProps {
+  /** 선택칸(트리거)의 id. 주지 않으면 스스로 만든다 — 화면이 커서를 옮길 때 준다. */
+  id?: string;
   label: string;
   options: CodeOption[];
   value: string;
@@ -19,6 +21,8 @@ export interface SelectFieldProps {
   /** 인라인 오류. **지금 고칠 수 있는 것**이라 안내·잠긴 사유보다 앞선다. */
   error?: string;
   placeholder?: string;
+  /** 칸 이름 옆 ⓘ 설명(#360). */
+  info?: string;
 }
 
 /**
@@ -33,6 +37,7 @@ export interface SelectFieldProps {
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 export const SelectField = ({
+  id: idProp,
   label,
   options,
   value,
@@ -43,8 +48,10 @@ export const SelectField = ({
   note,
   error,
   placeholder,
+  info,
 }: SelectFieldProps) => {
-  const id = useId();
+  const fallbackId = useId();
+  const id = idProp ?? fallbackId;
   const noteId = `${id}-note`;
   /*
    * 지금 고칠 수 있는 것이 먼저다 — 오류가 안내를 밀어낸다. 잠긴 칸에서는 잠긴 사유가
@@ -60,7 +67,7 @@ export const SelectField = ({
 
   return (
     <div className="field-cell">
-      <FieldLabel htmlFor={id} label={label} required={required} />
+      <FieldLabel htmlFor={id} label={label} required={required} info={info} />
       <Select
         id={id}
         options={options}
@@ -81,7 +88,7 @@ export const SelectField = ({
   );
 };
 
-export interface ItemSelectFieldProps extends Omit<SelectFieldProps, 'options' | 'note'> {
+export interface ItemSelectFieldProps extends Omit<SelectFieldProps, 'id' | 'options' | 'note'> {
   /** 목록 맨 앞의 고정 선택지 — 조건 축의 「전체」. */
   leadingOptions?: CodeOption[];
 }

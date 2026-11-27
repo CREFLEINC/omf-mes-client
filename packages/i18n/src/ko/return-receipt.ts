@@ -86,7 +86,7 @@ export const returnReceipt = {
   },
   lot: {
     label: 'LOT 번호',
-    placeholder: 'LOT 번호를 정확히 입력',
+    placeholder: 'LOT 번호를 정확히 입력하세요',
     notFound: (lotNo: string): string => `LOT ${lotNo}을(를) 찾지 못했습니다. 번호를 확인하세요.`,
     alreadyAdded: (lotNo: string): string => `LOT ${lotNo}은(는) 이미 줄에 있습니다.`,
     searching: 'LOT을 찾는 중입니다',

@@ -13,6 +13,7 @@ import type { ReactNode } from 'react';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import type { QualificationDraft } from './qualification-draft';
+import { qualificationTypeLabel } from './qualification-options';
 import { duplicateDraftIds } from './qualification-validation';
 import type { LookupEntry } from './types';
 
@@ -105,7 +106,7 @@ export const QualificationPane = ({
       key: 'qualificationTypeCode',
       header: t.fields.qualificationType,
       align: 'center',
-      render: (row) => orEmptyMark(row.qualificationTypeCode),
+      render: (row) => orEmptyMark(qualificationTypeLabel(row.qualificationTypeCode)),
     },
     {
       key: 'processId',

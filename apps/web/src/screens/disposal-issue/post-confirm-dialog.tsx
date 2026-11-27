@@ -1,6 +1,8 @@
 import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { InfoFacts } from '../../patterns/info-facts';
+
 const t = messages.disposalIssue;
 
 /**
@@ -58,6 +60,7 @@ export interface PostConfirmDialogProps {
  */
 export const PostConfirmDialog = ({ summary, onConfirm, onClose }: PostConfirmDialogProps) => (
   <Dialog
+    className="dialog-icon-check"
     open
     onClose={onClose}
     size="md"
@@ -73,18 +76,13 @@ export const PostConfirmDialog = ({ summary, onConfirm, onClose }: PostConfirmDi
       </>
     }
   >
-    <p>{t.dialog.postLead}</p>
-
-    <dl className="filter-bar">
-      <div className="field-cell">
-        <dt className="field-label">{t.issueSummary.goodsIssueNo}</dt>
-        <dd>{summary.goodsIssueNo}</dd>
-      </div>
-      <div className="field-cell">
-        <dt className="field-label">{t.issueLineTable.issueQty}</dt>
-        <dd>{summary.totalQtyText}</dd>
-      </div>
-    </dl>
+    {/* 사실 상자 — 정보 표시 팝업 시안 상자(#360). */}
+    <InfoFacts
+      rows={[
+        [{ label: t.issueSummary.goodsIssueNo, value: summary.goodsIssueNo, isKey: true }],
+        [{ label: t.issueLineTable.issueQty, value: summary.totalQtyText }],
+      ]}
+    />
 
     <p>{t.dialog.lineCount(summary.lineCount)}</p>
 

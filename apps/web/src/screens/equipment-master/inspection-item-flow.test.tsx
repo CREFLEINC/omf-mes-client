@@ -259,16 +259,43 @@ describe('W-05-12 점검 항목 마스터 — 만든다', () => {
     expect(writes).toHaveLength(0);
   });
 
-  /** ⭐ 감추지 않고 잠근다(G-2) — 감추면 판정 방식을 바꿀 때 칸이 튀어나와 창이 흔들린다. */
-  it('육안 판정이면 측정 세 칸이 잠긴다', async () => {
+  /** ⭐ 측정 세 칸은 「측정값」일 때만 보인다(사용자 지시 · omf-all-around#360). */
+  it('육안 판정이면 측정 세 칸을 감춘다', async () => {
     const user = userEvent.setup();
 
     await openCreate(user);
     await pick(user, /판정 방식/, '육안');
 
-    expect(within(dialog()).getByRole('textbox', { name: /측정 하한/ })).toBeDisabled();
-    expect(within(dialog()).getByRole('textbox', { name: /측정 상한/ })).toBeDisabled();
-    expect(within(dialog()).getByRole('combobox', { name: /측정 단위/ })).toBeDisabled();
+    expect(within(dialog()).queryByRole('textbox', { name: /측정 하한/ })).toBeNull();
+    expect(within(dialog()).queryByRole('textbox', { name: /측정 상한/ })).toBeNull();
+    expect(within(dialog()).queryByRole('combobox', { name: /측정 단위/ })).toBeNull();
+  });
+
+  /** ⛔ 감춘 칸에 적던 값이 저장에 섞이지 않는다 — 육안으로 바꾸면 세 칸을 비워 보낸다. */
+  it('측정값으로 적다가 육안으로 바꾸면 측정 세 칸을 비워 보낸다', async () => {
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+
+    await openCreate(user, { writes });
+
+    await user.type(within(dialog()).getByRole('textbox', { name: /항목코드/ }), 'INS-09');
+    await user.type(within(dialog()).getByRole('textbox', { name: /항목명/ }), '체결 토크');
+    await user.type(within(dialog()).getByRole('textbox', { name: /표시 순서/ }), '3');
+    await pick(user, /공장/, /제1공장/);
+    await pick(user, /점검 유형/, '일상');
+    await pick(user, /판정 방식/, '측정값');
+    await user.type(within(dialog()).getByRole('textbox', { name: /측정 하한/ }), '1');
+    await user.type(within(dialog()).getByRole('textbox', { name: /측정 상한/ }), '5');
+    await pick(user, /판정 방식/, '육안');
+    await user.click(within(dialog()).getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(await bodyOf(writes[0] as Request)).toMatchObject({
+      judgmentMethodCode: 'VISUAL',
+      uomId: null,
+      lowerLimit: null,
+      upperLimit: null,
+    });
   });
 
   it('다 채우면 등록이 나간다', async () => {

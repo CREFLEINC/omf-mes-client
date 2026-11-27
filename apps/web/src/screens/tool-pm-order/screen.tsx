@@ -15,7 +15,8 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router';
+
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 
 import {
   FilterMoreButton,
@@ -38,6 +39,8 @@ import {
   type ToolOrderDraft,
 } from './order-draft';
 import { PageNav } from './page-nav';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { toPageView } from './pagination';
 import { useBulkOrderCreate, useMoldList, type MoldListQuery } from './queries';
 import { SelectField } from './select-field';
@@ -60,6 +63,9 @@ import {
 } from './filters';
 
 const t = messages.toolPmOrder;
+
+/** 목록 쪽 크기 기본 — 계약 `size` 기본 50(종전에는 싣지 않아 이 값이었다 · #360). */
+const LIST_PAGE_SIZE = 50;
 
 /** 「조건 더보기」에 접힌 체크칸. */
 type HiddenFlag = 'dueOnly' | 'withoutOpenOrder' | 'guaranteedMissing';
@@ -90,7 +96,9 @@ const notComputable = (value: number | null, format: (value: number) => string):
  * 좁혀 보고 있는지가 접혀서도 드러난다. 「초기화」는 처음 값과 다를 때만 보인다.
  */
 export const ToolPmOrderScreen = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(계약 기본 50)은 싣지도 적지도 않는다(#360). */
+  const { searchParams, setSearchParams, pageSize, changePageSize } =
+    usePageSizeSearchParams(LIST_PAGE_SIZE);
   const plannedId = useId();
   const baseId = `${plannedId}-base`;
   const noteId = `${plannedId}-note`;
@@ -98,7 +106,13 @@ export const ToolPmOrderScreen = () => {
   const filters = useMemo<ToolFilters>(() => readFilters(searchParams), [searchParams]);
   const more = useFilterMore();
   const page = readPage(searchParams);
-  const listQuery = useMemo<MoldListQuery>(() => toListQuery(filters, page), [filters, page]);
+  const listQuery = useMemo<MoldListQuery>(
+    () => ({
+      ...toListQuery(filters, page),
+      ...(pageSize === LIST_PAGE_SIZE ? {} : { size: pageSize }),
+    }),
+    [filters, page, pageSize],
+  );
 
   const [selected, setSelected] = useState<number[]>([]);
   const [draft, setDraft] = useState<ToolOrderDraft>(EMPTY_DRAFT);
@@ -268,99 +282,112 @@ export const ToolPmOrderScreen = () => {
         />
       )}
 
-      <section className="pane tool-pm-order-pane" aria-label={t.panes.filters}>
-        <h2 className="pane-title">{t.panes.filters}</h2>
-        <div className="filter-bar tool-pm-order-filter">
-          <SelectField
-            label={t.filters.plant}
-            options={[{ value: '', label: t.filters.all }, ...toOptions(plants.entries)]}
-            value={filters.plant}
-            note={lookupNote(plants, t.filters.plantLookupFailed)}
-            placeholder={t.filters.all}
-            wide
-            onChange={(value) => {
-              apply({ ...filters, plant: value });
-            }}
-          />
-
-          <SelectField
-            label={t.filters.sort}
-            options={[
-              { value: 'SHOT_USAGE_DESC', label: t.filters.sortShotUsage },
-              { value: 'NEXT_PM_ASC', label: t.filters.sortNextPm },
-              { value: 'CODE', label: t.filters.sortCode },
-            ]}
-            value={filters.sort}
-            wide
-            onChange={(value) => {
-              apply({ ...filters, sort: value as ToolFilters['sort'] });
-            }}
-          />
-
-          <div className="field-cell field-cell-unlabeled tool-pm-order-filter-actions">
-            <div className="filter-actions">
-              {hasChangedFilters(DEFAULT_FILTERS, filters) && (
-                <Button
-                  variant="outlined"
-                  onClick={() => {
-                    apply(DEFAULT_FILTERS);
+      {/* 조회 조건 · 목록 | 오더 폼 공용 분할 — 가운데 막대로 폭, 「⋯」로 좌우/상하 배치, 상하일 때 높이 막대(#360). */}
+      <ListDetailWorkspace
+        storageKey="omf-mes:tool-pm-order"
+        filter={{
+          label: t.panes.filters,
+          content: (
+            <>
+              <h2 className="pane-title">{t.panes.filters}</h2>
+              <div className="filter-bar tool-pm-order-filter">
+                <SelectField
+                  label={t.filters.plant}
+                  options={[{ value: '', label: t.filters.all }, ...toOptions(plants.entries)]}
+                  value={filters.plant}
+                  note={lookupNote(plants, t.filters.plantLookupFailed)}
+                  placeholder={t.filters.all}
+                  wide
+                  onChange={(value) => {
+                    apply({ ...filters, plant: value });
                   }}
-                >
-                  {t.filters.reset}
-                </Button>
-              )}
-              <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
-            </div>
-          </div>
-        </div>
+                />
 
-        {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
-        <div id={more.id} hidden={!more.isOpen}>
-          <div className="filter-bar tool-pm-order-filter-more">
-            <div className="check-group check-group-row">
-              <Checkbox
-                checked={filters.dueOnly}
-                onChange={(event) => {
-                  apply({ ...filters, dueOnly: event.target.checked });
-                }}
-              >
-                {t.filters.dueOnly}
-              </Checkbox>
-              <Checkbox
-                checked={filters.withoutOpenOrder}
-                onChange={(event) => {
-                  apply({ ...filters, withoutOpenOrder: event.target.checked });
-                }}
-              >
-                {t.filters.withoutOpenOrder}
-              </Checkbox>
-              <Checkbox
-                checked={filters.guaranteedMissing}
-                onChange={(event) => {
-                  apply({ ...filters, guaranteedMissing: event.target.checked });
-                }}
-              >
-                {t.filters.guaranteedMissing}
-              </Checkbox>
-            </div>
-          </div>
-        </div>
+                <SelectField
+                  label={t.filters.sort}
+                  options={[
+                    { value: 'SHOT_USAGE_DESC', label: t.filters.sortShotUsage },
+                    { value: 'NEXT_PM_ASC', label: t.filters.sortNextPm },
+                    { value: 'CODE', label: t.filters.sortCode },
+                  ]}
+                  value={filters.sort}
+                  wide
+                  onChange={(value) => {
+                    apply({ ...filters, sort: value as ToolFilters['sort'] });
+                  }}
+                />
 
-        {/* 조건은 바꾸는 즉시 나가므로 칩의 × 도 그 조건만 풀어 곧바로 다시 조회한다. */}
-        <HiddenFilterChips
-          open={more.isOpen}
-          chips={hiddenChips}
-          onRemove={(key) => {
-            apply({ ...filters, [key]: false });
-          }}
-        />
-        <p className="pane-lead">{t.filters.defaultNote}</p>
-      </section>
+                <div className="field-cell field-cell-unlabeled tool-pm-order-filter-actions">
+                  <div className="filter-actions">
+                    {hasChangedFilters(DEFAULT_FILTERS, filters) && (
+                      <Button
+                        variant="outlined"
+                        onClick={() => {
+                          apply(DEFAULT_FILTERS);
+                        }}
+                      >
+                        {t.filters.reset}
+                      </Button>
+                    )}
+                    <FilterMoreButton
+                      open={more.isOpen}
+                      controlsId={more.id}
+                      onToggle={more.toggle}
+                    />
+                  </div>
+                </div>
+              </div>
 
-      {!molds.isError && (
-        <section className="pane tool-pm-order-pane" aria-label={t.panes.list}>
-          <h2 className="pane-title">{t.panes.list}</h2>
-          {molds.isPending ? (
+              {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+              <div id={more.id} hidden={!more.isOpen}>
+                <div className="filter-bar tool-pm-order-filter-more">
+                  <div className="check-group check-group-row">
+                    <Checkbox
+                      checked={filters.dueOnly}
+                      onChange={(event) => {
+                        apply({ ...filters, dueOnly: event.target.checked });
+                      }}
+                    >
+                      {t.filters.dueOnly}
+                    </Checkbox>
+                    <Checkbox
+                      checked={filters.withoutOpenOrder}
+                      onChange={(event) => {
+                        apply({ ...filters, withoutOpenOrder: event.target.checked });
+                      }}
+                    >
+                      {t.filters.withoutOpenOrder}
+                    </Checkbox>
+                    <Checkbox
+                      checked={filters.guaranteedMissing}
+                      onChange={(event) => {
+                        apply({ ...filters, guaranteedMissing: event.target.checked });
+                      }}
+                    >
+                      {t.filters.guaranteedMissing}
+                    </Checkbox>
+                  </div>
+                </div>
+              </div>
+
+              {/* 조건은 바꾸는 즉시 나가므로 칩의 × 도 그 조건만 풀어 곧바로 다시 조회한다. */}
+              <HiddenFilterChips
+                open={more.isOpen}
+                chips={hiddenChips}
+                onRemove={(key) => {
+                  apply({ ...filters, [key]: false });
+                }}
+              />
+              <p className="pane-lead">{t.filters.defaultNote}</p>
+            </>
+          ),
+        }}
+        list={{
+          label: t.panes.list,
+          title: t.panes.list,
+          count: molds.data?.page.total,
+          className: 'tool-pm-order-pane',
+          content: molds.isError ? null : molds.isPending ? (
             <Skeleton variant="rect" height="14rem" />
           ) : pageView.isBeyondLast ? (
             <EmptyState
@@ -403,180 +430,184 @@ export const ToolPmOrderScreen = () => {
                 onChange={(nextPage) => {
                   apply(filters, nextPage);
                 }}
+                sizes={PAGE_SIZES}
+                onChangeSize={changePageSize}
               />
             </>
-          )}
-        </section>
-      )}
+          ),
+        }}
+        detail={{
+          label: t.panes.form,
+          className: 'tool-pm-order-pane tool-pm-order-form-pane',
+          content: (
+            <>
+              <h2 className="pane-title">{t.panes.form}</h2>
+              <p className="pane-lead">{t.form.selected(effectiveSelection.length)}</p>
+              {/* ⭐ 한 오더 = 한 툴 — 몇 건이 만들어지는지 미리 말한다. */}
+              <p className="pane-lead">{t.form.oneOrderPerTool(effectiveSelection.length)}</p>
 
-      <section
-        className="pane tool-pm-order-pane tool-pm-order-form-pane"
-        aria-label={t.panes.form}
-      >
-        <h2 className="pane-title">{t.panes.form}</h2>
-        <p className="pane-lead">{t.form.selected(effectiveSelection.length)}</p>
-        {/* ⭐ 한 오더 = 한 툴 — 몇 건이 만들어지는지 미리 말한다. */}
-        <p className="pane-lead">{t.form.oneOrderPerTool(effectiveSelection.length)}</p>
+              {create.outcomes.length > 0 && (
+                <div className="banner-slot">
+                  <AlertBanner
+                    variant={failedIds.length === 0 ? 'success' : 'warning'}
+                    title={`${t.result.succeeded(succeededCount)} ${failedIds.length === 0 ? '' : t.result.failed(failedIds.length)}`}
+                  >
+                    {failedIds.length === 0 ? null : t.result.failedKept}
+                  </AlertBanner>
+                </div>
+              )}
 
-        {create.outcomes.length > 0 && (
-          <div className="banner-slot">
-            <AlertBanner
-              variant={failedIds.length === 0 ? 'success' : 'warning'}
-              title={`${t.result.succeeded(succeededCount)} ${failedIds.length === 0 ? '' : t.result.failed(failedIds.length)}`}
-            >
-              {failedIds.length === 0 ? null : t.result.failedKept}
-            </AlertBanner>
-          </div>
-        )}
+              <div className="form-grid tool-pm-order-form-grid">
+                <div className="field-cell">
+                  <FieldLabel htmlFor={plannedId} label={t.form.plannedDate} required />
+                  <DatePicker
+                    id={plannedId}
+                    mode="single"
+                    clearable
+                    placeholder={messages.common.selectDate}
+                    invalid={errors.plannedDate !== undefined}
+                    value={draft.plannedDate === '' ? null : draft.plannedDate}
+                    onChange={(value) => {
+                      setDraft((prev) => ({ ...prev, plannedDate: value ?? '' }));
+                    }}
+                  />
+                  {errors.plannedDate !== undefined && (
+                    <span className="field-error">{errors.plannedDate}</span>
+                  )}
+                </div>
 
-        <div className="form-grid tool-pm-order-form-grid">
-          <div className="field-cell">
-            <FieldLabel htmlFor={plannedId} label={t.form.plannedDate} required />
-            <DatePicker
-              id={plannedId}
-              mode="single"
-              clearable
-              placeholder={messages.common.selectDate}
-              invalid={errors.plannedDate !== undefined}
-              value={draft.plannedDate === '' ? null : draft.plannedDate}
-              onChange={(value) => {
-                setDraft((prev) => ({ ...prev, plannedDate: value ?? '' }));
-              }}
-            />
-            {errors.plannedDate !== undefined && (
-              <span className="field-error">{errors.plannedDate}</span>
-            )}
-          </div>
+                <SelectField
+                  label={t.form.assignee}
+                  options={toOptions(users.entries)}
+                  value={draft.assignee}
+                  note={lookupNote(users, t.form.userLookupFailed)}
+                  error={errors.assignee}
+                  placeholder={t.form.selectPlaceholder}
+                  wide
+                  required
+                  onChange={(value) => {
+                    setDraft((prev) => ({ ...prev, assignee: value }));
+                  }}
+                />
 
-          <SelectField
-            label={t.form.assignee}
-            options={toOptions(users.entries)}
-            value={draft.assignee}
-            note={lookupNote(users, t.form.userLookupFailed)}
-            error={errors.assignee}
-            placeholder={t.form.selectPlaceholder}
-            wide
-            required
-            onChange={(value) => {
-              setDraft((prev) => ({ ...prev, assignee: value }));
-            }}
-          />
+                <div className="field-cell">
+                  <FieldLabel htmlFor={baseId} label={t.form.baseDate} />
+                  <DatePicker
+                    id={baseId}
+                    mode="single"
+                    clearable
+                    placeholder={messages.common.selectDate}
+                    invalid={errors.baseDate !== undefined}
+                    value={draft.baseDate === '' ? null : draft.baseDate}
+                    onChange={(value) => {
+                      setDraft((prev) => ({ ...prev, baseDate: value ?? '' }));
+                    }}
+                  />
+                  <span className="field-note">{t.form.baseDateNote}</span>
+                </div>
 
-          <div className="field-cell">
-            <FieldLabel htmlFor={baseId} label={t.form.baseDate} />
-            <DatePicker
-              id={baseId}
-              mode="single"
-              clearable
-              placeholder={messages.common.selectDate}
-              invalid={errors.baseDate !== undefined}
-              value={draft.baseDate === '' ? null : draft.baseDate}
-              onChange={(value) => {
-                setDraft((prev) => ({ ...prev, baseDate: value ?? '' }));
-              }}
-            />
-            <span className="field-note">{t.form.baseDateNote}</span>
-          </div>
+                <div className="field-cell form-grid-full">
+                  <FieldLabel htmlFor={noteId} label={t.form.orderNote} />
+                  <TextField
+                    id={noteId}
+                    value={draft.orderNote}
+                    onChange={(event) => {
+                      setDraft((prev) => ({ ...prev, orderNote: event.target.value }));
+                    }}
+                  />
+                </div>
+              </div>
 
-          <div className="field-cell form-grid-full">
-            <FieldLabel htmlFor={noteId} label={t.form.orderNote} />
-            <TextField
-              id={noteId}
-              value={draft.orderNote}
-              onChange={(event) => {
-                setDraft((prev) => ({ ...prev, orderNote: event.target.value }));
-              }}
-            />
-          </div>
-        </div>
+              <h3>
+                {t.form.items}
+                {/* 항목이 하나도 없으면 발행이 막힌다 — 필수 표시. */}
+                <span className="required-mark" aria-hidden="true">
+                  {' *'}
+                </span>
+              </h3>
+              {/* ⭐ 툴은 항목 마스터가 없어 이름을 직접 적는다. */}
+              <p className="pane-lead">{t.form.itemsFreeInput}</p>
 
-        <h3>
-          {t.form.items}
-          {/* 항목이 하나도 없으면 발행이 막힌다 — 필수 표시. */}
-          <span className="required-mark" aria-hidden="true">
-            {' *'}
-          </span>
-        </h3>
-        {/* ⭐ 툴은 항목 마스터가 없어 이름을 직접 적는다. */}
-        <p className="pane-lead">{t.form.itemsFreeInput}</p>
+              {draft.items.map((item, index) => (
+                <div key={item.key} className="filter-bar tool-pm-order-item-row">
+                  <div className="field-cell">
+                    <FieldLabel
+                      htmlFor={`${item.key}-name`}
+                      label={`${t.form.itemName} ${String(index + 1)}`}
+                      required
+                    />
+                    <TextField
+                      id={`${item.key}-name`}
+                      aria-required="true"
+                      value={item.name}
+                      onChange={(event) => {
+                        const next = event.target.value;
 
-        {draft.items.map((item, index) => (
-          <div key={item.key} className="filter-bar tool-pm-order-item-row">
-            <div className="field-cell">
-              <FieldLabel
-                htmlFor={`${item.key}-name`}
-                label={`${t.form.itemName} ${String(index + 1)}`}
-                required
-              />
-              <TextField
-                id={`${item.key}-name`}
-                aria-required="true"
-                value={item.name}
-                onChange={(event) => {
-                  const next = event.target.value;
+                        setDraft((prev) => ({
+                          ...prev,
+                          items: prev.items.map((row) =>
+                            row.key === item.key ? { ...row, name: next } : row,
+                          ),
+                        }));
+                      }}
+                    />
+                  </div>
+                  <div className="field-cell field-cell-unlabeled tool-pm-order-item-actions">
+                    <div className="filter-actions">
+                      <Button
+                        variant="text"
+                        onClick={() => {
+                          setDraft((prev) => ({
+                            ...prev,
+                            items: prev.items.filter((row) => row.key !== item.key),
+                          }));
+                        }}
+                      >
+                        {t.form.removeItem}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
 
-                  setDraft((prev) => ({
-                    ...prev,
-                    items: prev.items.map((row) =>
-                      row.key === item.key ? { ...row, name: next } : row,
-                    ),
-                  }));
-                }}
-              />
-            </div>
-            <div className="field-cell field-cell-unlabeled tool-pm-order-item-actions">
-              <div className="filter-actions">
+              <div className="form-actions form-actions-secondary">
                 <Button
-                  variant="text"
+                  variant="outlined"
                   onClick={() => {
                     setDraft((prev) => ({
                       ...prev,
-                      items: prev.items.filter((row) => row.key !== item.key),
+                      items: [...prev.items, { key: createLocalKey(), name: '' }],
                     }));
                   }}
                 >
-                  {t.form.removeItem}
+                  {t.form.addItem}
                 </Button>
               </div>
-            </div>
-          </div>
-        ))}
+              {errors.items !== undefined && <p className="pane-lead">{errors.items}</p>}
 
-        <div className="form-actions form-actions-secondary">
-          <Button
-            variant="outlined"
-            onClick={() => {
-              setDraft((prev) => ({
-                ...prev,
-                items: [...prev.items, { key: createLocalKey(), name: '' }],
-              }));
-            }}
-          >
-            {t.form.addItem}
-          </Button>
-        </div>
-        {errors.items !== undefined && <p className="pane-lead">{errors.items}</p>}
-
-        <div className="form-actions">
-          <Button
-            variant="outlined"
-            disabled={create.isSaving}
-            onClick={() => {
-              setDraft(EMPTY_DRAFT);
-              setErrors({});
-              create.reset();
-            }}
-          >
-            {t.form.reset}
-          </Button>
-          <Button onClick={submit} disabled={create.isSaving}>
-            {create.outcomes.length > 0 && failedIds.length > 0
-              ? t.result.retryFailed
-              : t.form.submit}
-          </Button>
-        </div>
-        {errors.selection !== undefined && <p className="pane-lead">{errors.selection}</p>}
-      </section>
+              <div className="form-actions">
+                <Button
+                  variant="outlined"
+                  disabled={create.isSaving}
+                  onClick={() => {
+                    setDraft(EMPTY_DRAFT);
+                    setErrors({});
+                    create.reset();
+                  }}
+                >
+                  {t.form.reset}
+                </Button>
+                <Button onClick={submit} disabled={create.isSaving}>
+                  {create.outcomes.length > 0 && failedIds.length > 0
+                    ? t.result.retryFailed
+                    : t.form.submit}
+                </Button>
+              </div>
+              {errors.selection !== undefined && <p className="pane-lead">{errors.selection}</p>}
+            </>
+          ),
+        }}
+      />
     </>
   );
 };

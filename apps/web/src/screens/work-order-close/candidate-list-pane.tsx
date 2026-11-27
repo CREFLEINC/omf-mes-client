@@ -2,6 +2,7 @@ import { type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { splitCodeName } from '../../patterns/split-code-name';
 import { PageNav } from '../work-order/page-nav';
 import type { WorkOrderPageView } from '../work-order/pagination';
@@ -27,6 +28,9 @@ export interface WorkOrderCloseCandidateListPaneProps {
   page: WorkOrderPageView;
   onSelect: (workOrderId: number) => void;
   onChangePage: (page: number) => void;
+  /** 쪽 크기 — 주면 쪽 이동 줄에 「N건 ▾」를 그린다(#360). */
+  pageSizes?: readonly number[];
+  onChangePageSize?: (size: number) => void;
   variant?: 'close' | 'correction';
   /** 목록 맨 위 제목 줄(「이름 · 건수 · 목록 접기」 · #350). 화면이 `PaneListHead` 로 넘긴다 — 없으면 종전 제목. */
   head?: ReactNode;
@@ -43,6 +47,8 @@ export const WorkOrderCloseCandidateListPane = ({
   page,
   onSelect,
   onChangePage,
+  pageSizes,
+  onChangePageSize,
   variant = 'close',
   head,
 }: WorkOrderCloseCandidateListPaneProps) => {
@@ -54,7 +60,7 @@ export const WorkOrderCloseCandidateListPane = ({
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className={`link-cell ${ROW_PICK_CLASS}`}
           aria-label={t.actions.select(row.workOrderNo)}
           aria-current={selectedWorkOrderId === row.workOrderId ? true : undefined}
           onClick={() => {
@@ -106,7 +112,7 @@ export const WorkOrderCloseCandidateListPane = ({
   return (
     <section className="pane work-order-close-list-pane" aria-label={copy.pane}>
       {head ?? <h2 className="pane-title">{copy.pane}</h2>}
-      <div className="wide-table work-order-close-table">
+      <div className="wide-table work-order-close-table" {...rowPickHandlers}>
         <Table
           density="compact"
           caption={<span className="work-order-close-table-caption">{copy.pane}</span>}
@@ -126,7 +132,12 @@ export const WorkOrderCloseCandidateListPane = ({
           }
         />
       </div>
-      <PageNav view={page} onChange={onChangePage} />
+      <PageNav
+        view={page}
+        onChange={onChangePage}
+        sizes={pageSizes}
+        onChangeSize={onChangePageSize}
+      />
     </section>
   );
 };

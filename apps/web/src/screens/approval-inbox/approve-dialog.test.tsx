@@ -35,7 +35,9 @@ describe('ApproveDialog', () => {
   it('무엇을 승인하는지 업무 번호로 밝힌다', () => {
     renderDialog();
 
-    expect(within(dialog()).getByText(t.dialog.subject(REQUEST_NO))).toBeInTheDocument();
+    expect(within(dialog()).getByText(t.dialog.approveCaption)).toBeInTheDocument();
+    expect(within(dialog()).getByText(REQUEST_NO)).toBeInTheDocument();
+    expect(within(dialog()).getByText(t.dialog.approveQuestion)).toBeInTheDocument();
   });
 
   /**

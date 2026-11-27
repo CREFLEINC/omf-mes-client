@@ -293,6 +293,7 @@ export const PqcWebSteps = ({
             </span>
             <Select
               aria-labelledby={overallLabelId}
+              aria-required="true"
               options={judgmentOptions}
               value={judgment}
               placeholder={

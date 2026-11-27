@@ -30,6 +30,12 @@ export const common: Translated<typeof ko.common> = {
     remove: (label: string): string => `Bỏ điều kiện ${label}`,
   },
   discardChangesConfirm: 'Nội dung đã nhập chưa được lưu. Bỏ thay đổi?',
+  deselectConfirm: {
+    title: 'Bỏ chọn',
+    body: 'Nội dung đã nhập sẽ bị mất. Bỏ chọn?',
+    cancel: 'Hủy',
+    confirm: 'Bỏ chọn',
+  },
   oaOnly: {
     checking: 'Đang kiểm tra nhà máy có được dùng màn hình này không.',
     notice:

@@ -123,7 +123,7 @@ export const QuickLookupBar = forwardRef<QuickLookupHandle, QuickLookupBarProps>
          * C-19 좁음 — 스캔하는 품목코드 한 칸이다. 납기(보통) · 공급업체(보통)와 조회 · 초기화 · 조건 더보기가 1280 에서 한 줄에
          * 들도록 좁은 폭을 쓴다(C-6). 정한 폭이라 친 값에 따라 칸이 늘지 않는다.
          */}
-        <div className="field-cell filter-field-sm">
+        <div className="field-cell filter-field-sm inbound-quick-item">
           <TextField
             ref={scanRef}
             label={t.quick.item}

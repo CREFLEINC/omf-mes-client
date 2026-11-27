@@ -136,7 +136,6 @@ export const WorkerConnectDialog = ({ appUserId, onClose }: WorkerConnectDialogP
             disabled={isBusy}
             error={inputError}
           />
-          <p className="field-note">{t.noteConnect}</p>
         </div>
         <div className="users-roles-worker-dialog-actions">
           <Button

@@ -32,6 +32,7 @@ export interface CandidateListQuery {
   warehouseId?: number;
   q?: string;
   page?: number;
+  size?: number;
 }
 
 /**
@@ -60,6 +61,7 @@ export interface NonconformanceListQuery {
   sourceCode?: NonconformanceQueryParams['sourceCode'];
   warehouseId?: number;
   page?: number;
+  size?: number;
 }
 
 export type ListQuery =
@@ -78,6 +80,7 @@ const KEYS = {
   stage: 'st',
   q: 'q',
   page: 'page',
+  size: 'size',
   lot: 'lot',
   nonconformanceId: 'nonconformanceId',
 } as const;
@@ -115,6 +118,17 @@ export const readFilters = (params: URLSearchParams): TargetFilters => {
   };
 };
 
+/** 목록 한 쪽 건수 기본 — 서버 기본값(50)이라 싣지 않는다. 주소에 적지 않는다. */
+export const PAGE_SIZE = 50;
+
+/** 고를 쪽 크기 — 품질 목록과 같은 10 · 20 · 50건(#360). */
+export const LIST_PAGE_SIZES = [10, 20, 50] as const;
+export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
+
+/** 쪽 크기. 고를 수 있는 값이 아니면 기본(50)으로 읽는다. */
+export const readPageSize = (params: URLSearchParams): ListPageSize =>
+  LIST_PAGE_SIZES.find((size) => String(size) === params.get(KEYS.size)) ?? PAGE_SIZE;
+
 export const readPage = (params: URLSearchParams): number => {
   const raw = params.get(KEYS.page) ?? '';
   return isIdentifier(raw) ? Number(raw) : 1;
@@ -150,6 +164,8 @@ export const toAppliedSearchParams = (
   current: URLSearchParams,
   filters: TargetFilters,
   page: number,
+  /** 주면 쪽 크기도 바꾼다(기본 50은 적지 않는다). 주지 않으면 지금 주소의 쪽 크기를 그대로 둔다. */
+  size?: number,
 ): URLSearchParams => {
   const next = new URLSearchParams(current);
 
@@ -158,6 +174,7 @@ export const toAppliedSearchParams = (
   replace(next, KEYS.stage, isStage(filters.stage) ? filters.stage : '');
   replace(next, KEYS.q, keywordOf(filters.q));
   replace(next, KEYS.page, page > 1 ? String(page) : '');
+  if (size !== undefined) replace(next, KEYS.size, size === PAGE_SIZE ? '' : String(size));
   // 조건이 바뀌면 앞서 고른 대상은 목록에 없을 수 있다 — 고른 것을 지우고 다시 고르게 한다.
   next.delete(KEYS.lot);
   next.delete(KEYS.nonconformanceId);
@@ -183,13 +200,17 @@ export const withSelection = (current: URLSearchParams, selection: Selection): U
  *   (⛔ 화면이 응답을 걸러 대신하지 않는다 — 쪽 단위라 쪽 안에서만 걸러진다).
  * - 부적합 상태 셋 → 부적합 목록에 `statusCode`로. 검색어는 그 경로에 축이 없어 싣지 않는다.
  */
-export const toListQuery = (filters: TargetFilters, page: number): ListQuery => {
+export const toListQuery = (
+  filters: TargetFilters,
+  page: number,
+  size: number = PAGE_SIZE,
+): ListQuery => {
   const warehouseId =
     filters.warehouseId === '' ? {} : { warehouseId: Number(filters.warehouseId) };
   const sourceCode: { sourceCode?: SourceCode } = isSourceCode(filters.sourceCode)
     ? { sourceCode: filters.sourceCode }
     : {};
-  const pageQuery = page > 1 ? { page } : {};
+  const pageQuery = { ...(page > 1 ? { page } : {}), ...(size === PAGE_SIZE ? {} : { size }) };
   const stage: Stage | '' = isStage(filters.stage) ? filters.stage : '';
 
   if (stage === '' || stage === 'NONE') {

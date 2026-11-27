@@ -94,6 +94,14 @@ describe('QualificationPane — 표', () => {
     expect(screen.getByText('(전체 공정)')).toBeInTheDocument();
   });
 
+  /* 자격 유형 코드는 선택칸과 같은 이름표로(PENDING → 미정 · #360). */
+  it('자격 유형 PENDING 은 「미정」으로 낸다', () => {
+    renderPane();
+
+    expect(screen.getByText('미정')).toBeInTheDocument();
+    expect(screen.queryByText('PENDING')).not.toBeInTheDocument();
+  });
+
   it('공정 번호를 이름으로 낸다', () => {
     renderPane();
 

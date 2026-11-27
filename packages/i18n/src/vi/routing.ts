@@ -39,6 +39,8 @@ export const routing: Translated<typeof ko.routing> = {
     addProcess: 'Thêm công đoạn',
     editProcess: 'Sửa',
     activateProcess: 'Dùng lại',
+    /** 공정 수정 팝업 제목 — 목록 행 끝 [수정]으로 연다(#360). */
+    editProcessTitle: 'Sửa công đoạn',
     confirm: 'Xác nhận',
     obsolete: 'Hủy bỏ',
     discard: 'Hủy bản nháp',
@@ -153,6 +155,8 @@ export const routing: Translated<typeof ko.routing> = {
     processName: 'Tên công đoạn',
     processType: 'Loại công đoạn',
     isActive: 'Trạng thái sử dụng',
+    /** 목록 행 끝 단추 열(사용 중지/재사용 · 수정 · #360). */
+    manage: 'Quản lý',
     operationName: 'Tên công đoạn',
     managedItems: 'Hạng mục quản lý',
     /** 단위를 라벨에 적는다 — 값만 보고는 분·초를 구분할 수 없다. */
@@ -246,8 +250,6 @@ export const routing: Translated<typeof ko.routing> = {
     revision: (version: number): string => `Rev ${version}`,
     /** 품목 목록 「진행 상태」 — Rev 가 하나도 없는 품목(#231). */
     unregistered: 'Chưa đăng ký',
-    /** 코드 잠금 · 선후행 막힘을 긴 문장 대신 보이는 짧은 라벨(#231). 문장은 라벨 위 마우스로 본다. */
-    codeLockedBadge: 'Đang dùng · không đổi được',
     lockedBadge: 'Không thể sửa · thay đổi',
     dependenciesBlockedBadge: 'Cần từ 2 công đoạn',
     /** 이력 관리 — 기본 Rev 고르기 칸 · 확인 창(#231). */
@@ -281,27 +283,47 @@ export const routing: Translated<typeof ko.routing> = {
   dialog: {
     operationCreateTitle: 'Thêm công đoạn',
     operationEditTitle: 'Sửa công đoạn',
+    processPlaceholder: 'Hãy chọn công đoạn',
+    operationNamePlaceholder: 'Hãy nhập tên công đoạn',
+    cycleTimePlaceholder: 'Hãy nhập C/T tiêu chuẩn',
+    yieldRatePlaceholder: 'Hãy nhập tỷ lệ đạt tiêu chuẩn',
+    processCodePlaceholder: 'Hãy nhập mã công đoạn',
+    processTypePlaceholder: 'Hãy chọn loại công đoạn',
     /* 되돌리기 어려운 전이라 무엇이 일어나는지와 그 뒤에 무엇을 할 수 있는지를 먼저 밝힌다. */
-    confirmTitle: 'Xác nhận Rev này?',
+    confirmTitle: 'Xác nhận Rev',
+    confirmCaption: 'Đối tượng xác nhận',
+    confirmQuestion: 'Bạn có muốn xác nhận Rev này không?',
     confirmDescription:
       'Đã xác nhận thì Rev này không sửa được nữa. Muốn thay đổi thì phải phát hành Rev mới.',
-    obsoleteTitle: (revision: string): string => `Hủy bỏ ${revision}?`,
+    obsoleteTitle: (revision: string): string => `Hủy bỏ ${revision}`,
+    obsoleteCaption: 'Đối tượng hủy bỏ',
+    obsoleteQuestion: 'Bạn có muốn hủy bỏ Rev này không?',
     obsoleteDescription: 'Rev đã hủy bỏ không dùng được cho công việc mới.',
     obsoleteNote: 'Sau khi hủy bỏ, lịch sử hiện có vẫn được giữ nguyên.',
-    discardTitle: (revision: string): string => `Hủy bản nháp ${revision}?`,
-    discardDescription: 'Rev nháp cùng cấu hình công đoạn · liên kết công đoạn sẽ bị xóa.',
-    discardNote: 'Không thể khôi phục sau khi xóa. Lịch sử thay đổi vẫn được giữ.',
+    discardTitle: (revision: string): string => `Hủy bản nháp ${revision}`,
+    discardCaption: 'Đối tượng hủy bản nháp',
+    discardQuestion: 'Bạn có muốn hủy bản nháp Rev này không?',
+    discardDescription:
+      'Rev nháp cùng cấu hình công đoạn · liên kết công đoạn sẽ bị xóa và không thể khôi phục.',
     discardDone: 'Đã hủy bản nháp.',
+    confirmDone: 'Đã xác nhận.',
+    obsoleteDone: 'Đã hủy bỏ.',
+    processDeactivated: 'Đã ngừng sử dụng công đoạn.',
+    processReactivated: 'Đã dùng lại công đoạn.',
     flagsTitle: 'Thiết lập quản lý',
     flagsSelected: (count: number): string => `Đã chọn ${String(count)}`,
-    deactivateProcessTitle: 'Ngừng sử dụng công đoạn?',
+    deactivateProcessTitle: 'Ngừng sử dụng công đoạn',
+    deactivateProcessCaption: 'Đối tượng ngừng sử dụng',
+    deactivateProcessQuestion: 'Ngừng sử dụng công đoạn này?',
     deactivateProcessDescription:
       'Sau khi ngừng sử dụng, không thể thêm công đoạn này vào quy trình công đoạn mới.',
-    deactivateImpactConfirmed: 'Quy trình đã xác nhận',
-    deactivateImpactConfirmedValue: 'Không ảnh hưởng',
-    deactivateImpactReferences: 'Đang tham chiếu',
-    deactivateImpactReferencesValue: (count: number): string => `${String(count)}`,
-    activateProcessTitle: 'Dùng lại công đoạn?',
+    deactivateProcessImpact: (count: number | null): string =>
+      count === null
+        ? 'Không ảnh hưởng đến quy trình đã xác nhận.'
+        : `Không ảnh hưởng đến quy trình đã xác nhận. Đang tham chiếu ${String(count)}.`,
+    activateProcessTitle: 'Dùng lại công đoạn',
+    activateProcessCaption: 'Đối tượng dùng lại',
+    activateProcessQuestion: 'Dùng lại công đoạn này?',
     activateProcessDescription:
       'Khi dùng lại, có thể thêm công đoạn này vào quy trình công đoạn mới.',
   },
@@ -310,6 +332,8 @@ export const routing: Translated<typeof ko.routing> = {
     itemCode: (code: string): string => `Mã mặt hàng ${code}`,
     predecessor: 'Công đoạn trước',
     successor: 'Công đoạn sau',
+    predecessorPlaceholder: 'Hãy chọn công đoạn trước',
+    successorPlaceholder: 'Hãy chọn công đoạn sau',
     type: 'Quan hệ',
     remove: (rowNo: number): string => `Xóa quan hệ thứ ${String(rowNo)}`,
     rowField: (rowNo: number, field: string): string => `${field} dòng ${String(rowNo)}`,

@@ -32,7 +32,7 @@ export const sourceQueryKeys = {
     ['shipment-request-create', 'sales-orders', 'detail', salesOrderId] as const,
 };
 
-export type SalesOrderListQuery = SourceFilterQuery & { page?: number };
+export type SalesOrderListQuery = SourceFilterQuery & { page?: number; size?: number };
 
 const fetchSalesOrderList = async (
   client: Client,

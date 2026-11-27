@@ -12,9 +12,11 @@ export const poChangeReview = {
   breadcrumbRoot: '생산 관리',
   panes: {
     list: '변경 알림 목록',
-    diff: '무엇이 바뀌었나',
-    workOrders: '영향 받는 W/O',
-    decision: '판정',
+    /* 상세 세 상자 이름(시안 · #360). */
+    diff: '변경 내역',
+    workOrders: '영향받는 작업지시',
+    workOrdersCount: (count: number): string => `영향받는 작업지시 ${String(count)}건`,
+    decision: '처리 방식',
   },
   header: {
     /** §6 — 미확인이 쌓이는 것을 헤더가 상시 말한다. 알림 엔티티가 아직 없어 건수로 시작한다. */
@@ -53,8 +55,9 @@ export const poChangeReview = {
     same: '(동일)',
     selectFirst: '변경 알림 목록에서 변경 알림을 선택하세요',
     /** 목록은 미확인 기준이라 뜨는데 변경 내역이 함께 오지 않은 갈래 — 다시 불러와도 없으면 원문으로. */
-    noLastChange:
-      '변경 내역이 함께 오지 않았습니다. 다시 불러와도 없으면 연계 동기화 현황에서 원문을 확인하세요.',
+    noLastChange: '변경 내역이 수신되지 않았습니다.',
+    /** 원문은 연계 동기화 현황(지금 「ERP 연동 현황·이력」)에서 본다. */
+    viewSource: '원문 보기',
     /** §5-1 — 항목은 열거 셋(수량·납기·상태)이다. 그 밖이 바뀌면 빈 배열로 오고 화면은 이 사실을 적는다(G-9). */
     outOfScope: '이 변경의 항목을 낼 수 없습니다 — 원문은 연계 동기화 현황에서 봅니다.',
   },
@@ -63,10 +66,10 @@ export const poChangeReview = {
     loadFailed: '영향 받는 W/O를 불러오지 못했습니다',
     empty: '이 P/O로 전개된 W/O가 없습니다',
     fields: {
-      workOrderNo: 'W/O',
-      qty: '수량',
+      workOrderNo: '작업지시 번호',
+      qty: '지시 수량',
       status: '상태',
-      produced: '실적',
+      produced: '생산 실적',
       mismatch: '불일치',
       adjustQty: '조정 수량',
     },
@@ -83,9 +86,11 @@ export const poChangeReview = {
     adjustNegative: '0 이상 입력하세요',
   },
   decision: {
-    label: '판정',
-    apply: '변경 반영 — W/O 수량을 조정한다',
-    proceed: '기존 유지(강행) — 불일치를 남기고 계속한다',
+    label: '처리 방식',
+    apply: '변경 반영',
+    applyHint: '변경된 수량을 작업지시에 반영합니다.',
+    proceed: '기존 작업지시 유지',
+    proceedHint: '현재 수량을 유지하고 불일치를 기록합니다.',
     reasonLabel: '사유',
     reasonRequired: '강행 사유를 입력하세요',
     reasonTooLong: '사유가 너무 깁니다. 500자까지 입력하세요',
@@ -94,11 +99,13 @@ export const poChangeReview = {
     /** §6 — 반영인데 조정을 하나도 적지 않은 상태. 중단·취소 반영이 정당하게 이 상태라 막지 않는다. */
     applyWithoutAdjustment:
       '조정 수량을 적지 않은 작업지시는 그대로 두고, 그 W/O에는 P/O 불일치 표식이 남습니다. 중단·취소 반영처럼 조정할 수량이 없으면 그대로 진행해도 됩니다.',
-    submit: '확인 처리',
-    submitted: '확인 처리를 저장했습니다.',
+    submit: '처리',
+    submitted: '처리를 저장했습니다.',
   },
   lock: {
     selectNone: '변경 알림을 선택하세요',
+    /** 변경 내역을 받지 못한 건 — 서버가 「확인할 변경이 없습니다」로 거절한다. 처리 방식 위 주황 한 줄. */
+    noChange: '현재 상태에서는 처리할 수 없습니다.',
     decisionNone: '반영 또는 강행을 고르세요',
     reason: '강행 사유를 입력하세요',
     adjustment: '조정 수량 오류를 고치세요',

@@ -83,14 +83,19 @@ export interface ApprovalProgressPaneProps {
  * 시각적으로는 색과 아이콘뿐이다. 색으로만 말하면 색을 구분하지 못하는 사용자에게 이 구획은
  * 아무 말도 하지 않는다 — 그래서 결과 코드·시각·의견이 전부 이 자리에 선다.
  *
- * **결재 결과는 코드 그대로다.** 값 목록이 공통코드 소관이라 화면이 「승인」·「반려」로 옮기면
- * 그 뜻을 화면이 지어낸 것이 된다.
+ * **결재 결과는 앱 결재함과 같은 이름으로 보인다**(`messages.approvalInbox.requestStatusNames` · #360) —
+ * 화면이 새로 지어내지 않고, 목록 밖 코드는 그대로 낸다.
  *
  * **「내 단계」 표식이 없다** — 이 화면은 결재하지 않는다.
  */
 const describeStep = (step: StepProgressView): ReactNode => (
   <>
-    <span className="field-note">{step.decisionCode ?? step.waitingText}</span>
+    {/* 결과 코드는 앱 결재함이 쓰는 이름으로 보인다(승인 · 반려 · #360) — 목록 밖 코드는 그대로. */}
+    <span className="field-note">
+      {step.decisionCode === null
+        ? step.waitingText
+        : (messages.approvalInbox.requestStatusNames[step.decisionCode] ?? step.decisionCode)}
+    </span>
     {step.decisionAtText !== null && <span className="field-note">{step.decisionAtText}</span>}
     {step.decisionComment !== null && <span className="field-note">{step.decisionComment}</span>}
   </>
@@ -236,11 +241,14 @@ const ReadyProgress = ({ view, isJudgePending, hasPosted }: ReadyProgressProps) 
         </div>
         <div className="field-cell">
           <dt className="field-label">{t.progress.approvalType}</dt>
-          <dd>{view.approvalTypeCode}</dd>
+          <dd>
+            {messages.approvalInbox.approvalTypeNames[view.approvalTypeCode] ??
+              view.approvalTypeCode}
+          </dd>
         </div>
         <div className="field-cell">
           <dt className="field-label">{t.progress.status}</dt>
-          <dd>{view.statusCode}</dd>
+          <dd>{messages.approvalInbox.requestStatusNames[view.statusCode] ?? view.statusCode}</dd>
         </div>
         <div className="field-cell">
           <dt className="field-label">{t.progress.requester}</dt>

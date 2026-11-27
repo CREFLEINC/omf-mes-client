@@ -23,13 +23,15 @@ type Client = ApiClient['client'];
 /**
  * 목록 조회의 쿼리 전체. **채운 조건만 키가 실린다.**
  *
- * `size`는 싣지 않는다. 서버 기본값을 그대로 쓰고 쪽 크기를 화면이 정하지 않는다.
+ * `size`는 고른 쪽 크기가 기본(서버 기본 50)이 아닐 때만 싣는다(#360).
  */
 export type ShipmentScheduleListQuery = PeriodQuery &
   ShipmentFilterQuery &
   SortQuery & {
     /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
     page?: number;
+    /** 기본(50)이면 싣지 않는다. */
+    size?: number;
   };
 
 export const shipmentScheduleKeys = {

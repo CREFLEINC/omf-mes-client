@@ -144,8 +144,12 @@ export const PostPane = ({
           >
             {t.actions.postIssue}
           </Button>
+          {/*
+           * 보내는 동안의 사유는 화면 읽기용으로만 둔다(사용자 지시 2026-11-27 · #360 — 단추가 이미
+           * 진행 중 표시를 한다). 승인 전이라는 **상태 알림은 보이게 남긴다.**
+           */}
           {reasonText !== null && (
-            <span id={reasonId} className="field-note">
+            <span id={reasonId} className={isLocked ? 'visually-hidden' : 'field-note'}>
               {reasonText}
             </span>
           )}

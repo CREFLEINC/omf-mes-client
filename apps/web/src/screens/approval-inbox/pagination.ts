@@ -12,6 +12,9 @@ import type { PageMeta } from './types';
 export interface PageView {
   /** 1부터 센 현재 쪽 */
   page: number;
+  /** 한 쪽 건수 · 전체 건수 — 공용 쪽 이동 줄(총 N건 · n / m)에 그대로 넘긴다(#360). */
+  size: number;
+  total: number;
   totalPages: number;
   /** 결과가 있는데 이 쪽에는 없다 — 주소 조작·조건 변경으로 생긴다. 빈 상태의 안내가 갈린다. */
   isBeyondLast: boolean;
@@ -25,6 +28,8 @@ export const toPageView = (meta: PageMeta): PageView => {
 
   return {
     page,
+    size,
+    total: meta.total,
     totalPages,
     isBeyondLast: meta.total > 0 && page > totalPages,
   };

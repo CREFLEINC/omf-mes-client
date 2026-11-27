@@ -49,7 +49,6 @@ export const stocktaking = {
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
     select: '선택',
-    deselect: '선택 해제',
     /*
      * 행 안의 버튼은 보이는 글자가 행마다 같다. 접근 이름에 실사번호를 넣어 어느 건인지 밝히되,
      * 보이는 글자를 그대로 담는다 — 담지 않으면 음성 조작이 「선택」으로 이 버튼을 부를 수 없다.
@@ -58,18 +57,20 @@ export const stocktaking = {
     selectRow: (inventoryCountNo: string): string => `${inventoryCountNo} 선택`,
     deselectRow: (inventoryCountNo: string): string => `${inventoryCountNo} 선택 해제`,
     /** 목록과 고른 실사를 **함께** 다시 부른다 — 한쪽만 부르면 낡은 값과 새 값이 섞인다. */
-    refresh: '다시 조회',
+    refresh: '갱신',
+    /** 갱신 단추 옆 마지막 갱신 시각 — 통합 대시보드 · 재고 현황과 같은 모양(#360). */
+    asOf: (at: string): string => `마지막 갱신 ${at}`,
     /** 이 화면의 첫째 쓰기. 누르면 곧바로 나가지 않고 **확인 창이 먼저** 뜬다. */
     open: '실사 개시',
     confirmOpen: '실사 개시 실행',
-    keepEditing: '계속 입력',
+    keepEditing: '취소',
     discardDraft: '입력 버리기',
     /*
      * 이 화면의 **둘째 쓰기**. 「저장」이 아니라 「이 위치 실사 완료」인 것이 치환의 뜻이다 —
      * 보내는 것은 친 줄이 아니라 **그 위치의 전 줄**이고, 여기 없는 줄은 미실사로 되돌아간다.
      * 「저장」이라 적으면 사용자가 친 것만 반영되는 줄 안다.
      */
-    saveLocation: '이 위치 실사 완료',
+    saveLocation: '실사 완료',
     /*
      * 이 화면의 **셋째 쓰기이자 마지막 단계**. 「완료」가 아니라 「마감」인 것이 그 뜻이다 —
      * 되돌릴 수 없고, 다시 여는 오퍼레이션이 계약에 없다. 누르면 곧바로 나가지 않고
@@ -125,8 +126,7 @@ export const stocktaking = {
      * 차이 사유의 코드 목록이 확정되지 않아 **차이가 있는 위치만** 저장이 막힌다(승인 G1).
      * 차이가 없는 위치는 그대로 저장된다 — 그 갈림이 필수도로 갈라 적용한다는 결정의 요점이다.
      */
-    saveReasonListPending:
-      '등록된 차이 사유가 없어 차이가 있는 위치는 저장할 수 없습니다.',
+    saveReasonListPending: '등록된 차이 사유가 없어 차이가 있는 위치는 저장할 수 없습니다.',
     saveNeedsReason: (remaining: number): string =>
       `장부와 수량이 달라 차이 사유를 골라야 하는 줄이 ${String(remaining)}줄 있습니다.`,
     saveInvalidReason: '차이 사유를 다시 골라야 하는 줄이 있습니다.',
@@ -143,8 +143,7 @@ export const stocktaking = {
      * 응답에서 빠질 수 있다 — 라인의 `systemQty`에서 이미 겪은 어긋남이다). 판정할 수 없을
      * 때는 **막는 쪽에 선다** — 열어 두면 되돌릴 수 없는 마감이 근거 없이 나간다.
      */
-    closeSummaryUnavailable:
-      '진행 상황을 불러오지 못했습니다. 다시 조회하세요.',
+    closeSummaryUnavailable: '진행 상황을 불러오지 못했습니다. 다시 조회하세요.',
     /** 요약이 준 건수를 그대로 인용한다 — 화면이 세지 않는다(착수 이슈 §6 ⭐). */
     closeUncounted: (remaining: number): string =>
       `실사하지 않은 ${String(remaining)}건이 남아 있어 마감할 수 없습니다.`,
@@ -152,8 +151,7 @@ export const stocktaking = {
      * 착수 이슈 §4가 「차이가 남으면 마감을 막는다. **우회 경로를 두지 않는다**」로 정했다 —
      * 그래서 이 사유에는 「그래도 마감」 같은 다른 길이 붙지 않는다.
      */
-    closeVariance: (remaining: number): string =>
-      `차이 ${String(remaining)}건을 먼저 조정하세요.`,
+    closeVariance: (remaining: number): string => `차이 ${String(remaining)}건을 먼저 조정하세요.`,
   },
   /** 입력칸 옆에 붙는 오류. 서버가 준 필드 오류도 같은 자리에 낸다. */
   errors: {
@@ -184,37 +182,22 @@ export const stocktaking = {
   },
   dialog: {
     openTitle: '이 내용으로 실사를 개시할까요?',
-    openLead: '아래 값으로 실사 전표를 만듭니다.',
     /** 되돌릴 수 없다는 사실을 창이 밝힌다 — 개시한 실사를 지우거나 취소할 수단이 없다. */
     openIrreversible: '개시한 실사는 지우거나 되돌릴 수 없습니다.',
     discardTitle: '입력한 값을 버릴까요?',
     closeTitle: '이 실사를 마감할까요?',
-    /**
-     * 마감 창은 **보낼 값이 아니라 마감할 대상과 그 진행 상황**을 다시 보인다.
-     *
-     * 보내는 값은 영업일 하나이고 그것마저 화면이 파생한다 — 값을 확인시켜야 할 것이 없다.
-     * 대신 「무엇을 마감하는가」와 「지금 어디까지 됐는가」가 확인의 실질이다.
-     */
-    closeLead: '아래 실사를 마감합니다.',
     /** 되돌릴 수 없다는 사실을 창이 밝힌다 — 다시 여는 오퍼레이션이 계약에 없다(실측). */
     closeIrreversible: '마감하면 이 실사를 더 고칠 수 없습니다.',
   },
   /**
-   * 쓰기 결과. **한 자리에 갈래 하나만 보인다** — 개시·저장·마감 결과를 따로 두면
-   * 셋이 동시에 보이는 상태가 생긴다(계획 결정 14).
+   * 쓰기 결과. **한 자리에 갈래 하나만 보인다** — 개시·마감 결과를 따로 두면
+   * 둘이 동시에 보이는 상태가 생긴다(계획 결정 14). 위치 저장 성공은 알림(`savedToast`)으로 낸다.
    */
   result: {
     label: '실사 개시 결과',
     openedNo: '실사번호',
-    /** 저장 갈래. 라벨이 갈래마다 다른 것이 「한 자리에 갈래 하나」의 실물이다. */
-    savedLabel: '위치 저장 결과',
-    savedLocation: '위치',
-    savedLineCount: '치환한 줄',
-    /**
-     * **서버가 되돌려 준 줄 수를 낸다** — 화면이 센 숫자가 아니다. 둘이 갈리면 그 자리가
-     * 「보낸 것과 저장된 것이 다르다」는 사실을 드러낸다.
-     */
-    savedCount: (lineCount: number): string => `${String(lineCount)}줄`,
+    /** 위치 실사 완료 성공 — 오른쪽 아래 알림(#360). */
+    savedToast: '실사를 완료했습니다.',
     /** 마감 갈래. 라벨이 갈래마다 다른 것이 「한 자리에 갈래 하나」의 실물이다. */
     closedLabel: '실사 마감 결과',
     closedNo: '실사번호',
@@ -359,11 +342,9 @@ export const stocktaking = {
      * **위치는 복구 버튼이 따로 선다.** 위치를 고르지 못하면 라인 표 자체가 열리지 않아,
      * 표 아래에 두면 **보이지도 않는 실패의 복구 버튼**이 된다(W-01-10이 공장에서 겪은 자리).
      */
-    locationReferenceFailed:
-      '위치 목록을 불러오지 못했습니다.',
+    locationReferenceFailed: '위치 목록을 불러오지 못했습니다.',
     /** 라인 표가 이름을 내는 참조 셋(품목·단위·자재 LOT) 중 하나라도 실패했다. */
-    lineReferencesFailed:
-      '품목·단위·자재 LOT의 이름을 불러오지 못했습니다.',
+    lineReferencesFailed: '품목·단위·자재 LOT의 이름을 불러오지 못했습니다.',
     /*
      * **잘림은 경고가 아니라 차단이다**(계획 결정 8). 못 받은 줄이 치환에 실리지 않으면
      * 그 줄이 미실사로 되돌아간다 — 이 표식과 저장 차단 사유가 같은 사실을 두 자리에서 말한다.

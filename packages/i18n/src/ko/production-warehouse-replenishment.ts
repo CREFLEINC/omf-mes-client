@@ -62,7 +62,7 @@ export const productionWarehouseReplenishment = {
     sourceLabel: (row: number): string => `${String(row)}번 줄 출고 자재 창고`,
     qtyLabel: (row: number): string => `${String(row)}번 줄 요청 수량`,
     removeLabel: (row: number): string => `${String(row)}번 줄 빼기`,
-    itemPlaceholder: '품목 검색',
+    itemPlaceholder: '품목을 선택하세요',
     sourcePlaceholder: '출고 자재 창고 고르기',
     managedNote: (point: string, target: string): string =>
       `관리 품목, 보충 시점 ${point}, 유지량 ${target}`,
@@ -126,11 +126,6 @@ export const productionWarehouseReplenishment = {
     issuedPartial: '일부',
     issuedFull: '전량',
     receipt: (received: number, issued: number): string => `${String(received)}/${String(issued)}`,
-    pager: {
-      total: (count: number): string => `전체 ${String(count)}건`,
-      previous: '이전',
-      next: '다음',
-    },
   },
   detail: {
     label: '창고 보충 요청 상세',
@@ -194,7 +189,9 @@ export const productionWarehouseReplenishment = {
     submit: '요청 취소',
   },
   closeDialog: {
-    title: '남은 양을 마감합니다',
+    title: '남은 양 마감',
+    question: '남은 양을 마감하시겠습니까?',
+    caption: '마감할 요청',
     line: (item: string, requested: string, issued: string, remaining: string): string =>
       `${item}: 요청 ${requested}, 출고 ${issued}, 남은 ${remaining} 을 닫습니다.`,
     body: '자재 창고 출고 예정에서 남은 양이 빠지고, 피킹 지시의 남은 줄도 닫힙니다. 이미 출고한 전표는 그대로 받을 수 있습니다.',
@@ -202,6 +199,7 @@ export const productionWarehouseReplenishment = {
     reasonPlaceholder: '사유 고르기',
     reasonRequired: '마감 사유를 고르세요',
     remark: '메모',
+    remarkPlaceholder: '메모를 입력하세요',
     cancel: '취소',
     submit: '마감',
   },
@@ -329,12 +327,12 @@ export const productionWarehouseReplenishment = {
     receivedLabel: (item: string): string => `${item} 받은 수량`,
     reasonLabel: (item: string): string => `${item} 차이 사유`,
     reasonPlaceholder: '사유 고르기',
+    receivedPlaceholder: '받은 수량을 입력하세요',
     qtyInvalid: (item: string, issued: string): string =>
       `${item}: 받은 수량은 0 이상, 출고 ${issued} 이하로 넣으세요.`,
     reasonRequired: (item: string): string => `${item}: 받은 수량이 다르면 차이 사유를 고르세요.`,
     diff: (qty: string): string =>
       `차이 ${qty} 를 기록합니다. 재고는 바뀌지 않습니다. 출고 때 이미 들어왔으니 차이는 재고 조정으로 맞추세요.`,
-    note: '수령은 기록만 합니다. 재고는 출고 때 이미 들어왔고, 차이는 재고 조정으로 맞춥니다.',
     cancel: '취소',
     submit: '수령',
     already: '이 출고는 그사이 이미 받았습니다. 목록을 다시 불러옵니다.',
@@ -406,6 +404,10 @@ export const productionWarehouseReplenishment = {
     point: '보충 시점',
     target: '유지량',
     source: '출고 자재 창고',
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26 「흐린 문구 추가」). 고르는 칸은 이 화면의 「… 고르기」를 따른다. */
+    productionWarehousePlaceholder: '생산 창고 고르기',
+    pointPlaceholder: '보충 시점을 입력하세요',
+    targetPlaceholder: '유지량을 입력하세요',
     help: '생산 창고에서 쓸 수 있는 양(가용 − 출고 예정)이 보충 시점보다 작아지면, 실행 시각에 「유지량 − 쓸 수 있는 양」을 요청합니다.',
     required: '빈 칸을 채우세요',
     delete: '삭제',

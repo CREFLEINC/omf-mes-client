@@ -10,12 +10,6 @@ const t = messages.stocktaking;
 
 const OPENED: ResultView = { kind: 'opened', countNo: 'IC-2026-900014' };
 
-const SAVED: ResultView = {
-  kind: 'saved',
-  locationLabel: 'SAMPLE-LOC-01 · 합성 위치 가',
-  replacedLineCount: 3,
-};
-
 /**
  * 마감 결과. **상태 코드는 서버가 준 값 그대로**이고, 픽스처가 실제로 쓰는 합성 값이다 —
  * 화면이 이 값으로 분기하면 그 자리에서 걸린다(감지기 M59).
@@ -47,8 +41,6 @@ const renderPane = (result: ResultView = OPENED) =>
   );
 
 const resultRegion = (): HTMLElement => screen.getByRole('status', { name: t.result.label });
-
-const savedRegion = (): HTMLElement => screen.getByRole('status', { name: t.result.savedLabel });
 
 const closedRegion = (): HTMLElement => screen.getByRole('status', { name: t.result.closedLabel });
 
@@ -99,66 +91,16 @@ describe('ResultPane — 개시 갈래', () => {
   });
 });
 
-describe('ResultPane — 저장 갈래', () => {
-  /*
-   * **계획 결정 14** — 한 자리에 갈래 하나만 보인다. 구획을 갈래마다 두면 「방금 개시했다」와
-   * 「방금 저장했다」가 나란히 서서 사용자가 무엇이 지금 일어난 일인지 가릴 수 없다.
-   * 라벨까지 갈리는 것이 그 규칙의 실물이다.
-   */
-  it('저장 갈래에는 개시 갈래가 보이지 않는다', () => {
-    renderPane(SAVED);
-
-    expect(savedRegion()).toBeInTheDocument();
-    expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
-  });
-
-  /** 무엇을 어디에 저장했는지 — **위치는 이름으로 온다**(#44). */
-  it('치환한 위치를 이름으로 낸다', () => {
-    renderPane(SAVED);
-
-    expect(within(savedRegion()).getByText(t.result.savedLocation)).toBeInTheDocument();
-    expect(within(savedRegion()).getByText('SAMPLE-LOC-01 · 합성 위치 가')).toBeInTheDocument();
-  });
-
-  /*
-   * **서버가 되돌려 준 줄 수를 낸다** — 화면이 센 숫자가 아니다. 둘이 갈리면 그 자리가
-   * 「보낸 것과 저장된 것이 다르다」는 사실을 드러낸다.
-   */
-  it('치환한 줄 수를 낸다', () => {
-    renderPane(SAVED);
-
-    expect(within(savedRegion()).getByText(t.result.savedLineCount)).toBeInTheDocument();
-    expect(within(savedRegion()).getByText(t.result.savedCount(3))).toBeInTheDocument();
-  });
-
-  /** 저장 갈래에도 내부 번호가 없다 — 위치 번호(9701)가 이름으로 풀려 들어온다. */
-  it('내부 번호를 내지 않는다', () => {
-    const { container } = renderPane(SAVED);
-
-    expect(within(savedRegion()).getByText('SAMPLE-LOC-01 · 합성 위치 가')).toBeInTheDocument();
-    expect(container.textContent ?? '').not.toContain('9701');
-    expect(container.textContent ?? '').not.toContain('9401');
-  });
-
-  it('결과 구획에 이동 수단을 두지 않는다', () => {
-    renderPane(SAVED);
-
-    expect(within(savedRegion()).queryAllByRole('link')).toHaveLength(0);
-    expect(within(savedRegion()).queryAllByRole('button')).toHaveLength(0);
-  });
-});
-
 describe('ResultPane — 마감 갈래', () => {
   /*
-   * **계획 결정 14** — 갈래가 셋이 됐어도 **한 자리에 하나만** 보인다. 라벨까지 갈리는 것이
-   * 그 규칙의 실물이라, 마감 결과가 섰을 때 앞 두 갈래의 라벨·안내가 함께 서 있으면 안 된다.
+   * **계획 결정 14** — **한 자리에 하나만** 보인다. 라벨까지 갈리는 것이
+   * 그 규칙의 실물이라, 마감 결과가 섰을 때 개시 갈래의 라벨·안내가 함께 서 있으면 안 된다.
    */
-  it('마감 갈래에는 앞 두 갈래가 보이지 않는다', () => {
+  it('마감 갈래에는 개시 갈래가 보이지 않는다', () => {
     renderPane(CLOSED);
 
     expect(closedRegion()).toBeInTheDocument();
     expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
-    expect(screen.queryByRole('status', { name: t.result.savedLabel })).not.toBeInTheDocument();
   });
 
   /** 무엇을 마감했는지 — **업무 번호**로 낸다. 사용자가 나중에 이 실사를 찾을 때 쓰는 값이다. */

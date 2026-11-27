@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { useLocation, useSearchParams } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi as vitest } from 'vitest';
 
+import { plantToday } from '../../patterns/plant-time';
 import { pickDate } from '../../test/date-picker';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
 
@@ -150,14 +151,15 @@ const listTable = (): HTMLElement => screen.getAllByRole('table')[0] as HTMLElem
 const SHIP_DATE_FROM = '?shipDateFrom=2026-08-01';
 
 describe('ShipmentScheduleScreen — 출하일 시작 없이는 조회하지 않는다', () => {
-  /* L-3 필수 — W-01-09(기간이 완전히 선택)와 반대다. */
-  it('출하일 시작 없이 진입하면 요청이 나가지 않고 필수 사유가 보인다', async () => {
+  /* L-3 필수 — 처음 들어오면 시작일을 오늘(공장 날짜)로 채워 바로 조회한다(사용자 지시 2026-11-27 · #360). */
+  it('출하일 시작 없이 진입하면 시작일을 오늘로 채워 조회한다', async () => {
     const { requests } = renderScreen([listRoute(), ...partnerRoutes()]);
 
-    await screen.findByText(t.reasons.periodRequired);
+    await screen.findByText('SAMPLE-SR-0001');
 
-    expect(requestsTo(requests, LIST_PATH)).toHaveLength(0);
-    expect(screen.getByText(t.empty.notQueriedTitle)).toBeInTheDocument();
+    const query = requestsTo(requests, LIST_PATH)[0]?.url.searchParams;
+    expect(query?.get('shipDateFrom')).toBe(plantToday());
+    expect(query?.has('shipDateTo')).toBe(false);
   });
 
   it('출하일 시작을 채우면 조회가 나간다', async () => {
@@ -168,10 +170,13 @@ describe('ShipmentScheduleScreen — 출하일 시작 없이는 조회하지 않
     expect(requestsTo(requests, LIST_PATH)).toHaveLength(1);
   });
 
-  it('종료만 채우고 시작이 없으면 여전히 조회하지 않는다', async () => {
-    const { requests } = renderScreen([listRoute(), ...partnerRoutes()], '?shipDateTo=2026-08-31');
+  it('시작일이 종료일보다 뒤면 조회하지 않는다', async () => {
+    const { requests } = renderScreen(
+      [listRoute(), ...partnerRoutes()],
+      '?shipDateFrom=2026-09-01&shipDateTo=2026-08-31',
+    );
 
-    await screen.findByText(t.reasons.periodRequired);
+    await screen.findByText(t.reasons.periodReversed);
 
     expect(requestsTo(requests, LIST_PATH)).toHaveLength(0);
   });

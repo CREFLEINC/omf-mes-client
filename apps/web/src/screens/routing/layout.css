@@ -10,3 +10,36 @@
 .routing-split .page-nav-right {
   margin-left: auto;
 }
+
+/*
+ * 공정 관리 — 오른쪽 상세 상자와 줄 고르기를 걷었다(사용자 지시 · #360). 목록이 화면 폭을 다 쓰고,
+ * 줄은 누르는 자리가 아니라 손가락 커서를 걷는다. 코드는 단추가 아닌 글자라 칸 안에서 말줄임한다.
+ */
+.po-board-split.routing-process-split {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.inspection-standard-plan-rows.routing-process-rows tbody tr {
+  cursor: default;
+}
+
+.routing-process-rows .routing-process-open {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * 공정 연결 창 — 칸 폭을 고정한다. 빈 줄의 흐린 문구 · 오류 문구가 길어도 표가 넓어지지 않아
+ * 오른쪽 삭제 열이 잘리지 않는다(#360 점검).
+ */
+.routing-dependency-rows table {
+  table-layout: fixed;
+  width: 100%;
+}
+.routing-dependency-rows th:last-child,
+.routing-dependency-rows td:last-child {
+  width: 4.5rem;
+}

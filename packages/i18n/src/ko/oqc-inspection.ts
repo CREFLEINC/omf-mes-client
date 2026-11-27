@@ -546,7 +546,7 @@ export const oqcInspection = {
       reasonHelp: '이 결과가 아래 피킹 LOT 의 판정을 바꿉니다. 재검 사유를 고르세요.',
       reasonLine: (lotNo: string, seqNo: number, before: string, after: string): string =>
         `LOT ${lotNo}: ${String(seqNo)}회차 ${before} → 이 회차 ${after}`,
-      reasonPlaceholder: '재검 사유 선택',
+      reasonPlaceholder: '재검 사유를 선택하세요',
       reasonLoadFailed: '재검 사유 목록을 불러오지 못했습니다.',
       ruleErrors: {
         MATCHED_LOT_REQUIRED: '피킹 LOT 을 1개 이상 고르세요',
@@ -563,7 +563,7 @@ export const oqcInspection = {
       confirmedByShipment: '출하 완료로 판정이 확정되어 결과를 기록할 수 없습니다.',
       saveFailed: '결과를 저장하지 못했습니다.',
       discardBody: '입력한 내용이 사라집니다. 닫을까요?',
-      discardStay: '계속 입력',
+      discardStay: '취소',
       discardLeave: '닫기',
       /** IQC 결과 서랍과 같은 안내 — 출하 검사에 맞춘 문장(omf-all-around#356). */
       planVersionNote:

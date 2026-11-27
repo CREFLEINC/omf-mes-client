@@ -3,6 +3,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import { nextCalendarCode } from './calendar-code';
 import type { CalendarFilters, WorkCalendar } from './types';
 
 type PageMeta = components['schemas']['PageMeta'];
@@ -46,6 +47,35 @@ export const useCalendarList = (filters: CalendarFilters): UseQueryResult<Calend
         }),
       ),
   });
+};
+
+/** 코드가 겹치는지 볼 때 한 번에 받는 수 — 이보다 많으면 추측하지 않고 비워 둔다. */
+const CODE_SCAN_SIZE = 200;
+
+/**
+ * 등록 창에 채울 다음 코드. `base` 로 시작하는 코드를 사용 중지까지 받아 다음 번호를 고른다.
+ * 아직 모르거나 목록이 잘렸으면 `null` — 칸을 비워 두고 사용자가 친다.
+ */
+export const useNextCalendarCode = (base: string | null): string | null => {
+  const { client } = useApiClient();
+  const query = useQuery({
+    queryKey: [...calendarKeys.all, 'next-code', base] as const,
+    enabled: base !== null,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/work-calendars', {
+          params: { query: { q: base ?? '', includeInactive: true, size: CODE_SCAN_SIZE } },
+        }),
+      ),
+  });
+  const data = query.data;
+
+  if (base === null || data === undefined || isTruncated(data.page, data.items.length)) return null;
+
+  return nextCalendarCode(
+    base,
+    data.items.map((item) => item.calendarCode),
+  );
 };
 
 export const calendarDayKeys = {

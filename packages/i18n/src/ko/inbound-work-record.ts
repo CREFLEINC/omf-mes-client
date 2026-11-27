@@ -8,6 +8,13 @@
  * IQC·입고·처분이 남은 것. 매칭은 마감 때 발주일 오래된 것부터 잔량 → 허용치 차례로 채우고 남으면 P/O 없음이다. 라인마다
  * 「발주량 + 허용치 − 이전 받은 양」을 넘길 수 없다(오류 문구가 한도를 말한다). 최종 마감하면 ERP 구매입고 대상이 된다(송신은 #265).
  */
+/** 끝 글자 받침 여부 — apps/web `patterns/josa` 와 같은 판단(영문 대문자 L·R·M·N 등은 받침 있음). */
+const hasFinal = (word: string): boolean => {
+  const last = word.trim().slice(-1);
+  const code = last.charCodeAt(0) - 0xac00;
+  return code >= 0 && code <= 11171 ? code % 28 !== 0 : /[013678LRMNlmngktp]/.test(last);
+};
+
 export const inboundWorkRecord = {
   title: '입하/입고 작업 기록',
   noPlant: '쓰는 공장이 없습니다.',
@@ -19,7 +26,8 @@ export const inboundWorkRecord = {
     supplier: '공급사',
     supplierAll: '전체',
     query: '품목 · 입하 LOT', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-16.md)
-    queryPlaceholder: '품목 코드·이름, IL 번호', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-16.md)
+    /** 흐린 문구는 「~을/를 입력하세요」(사용자 지시 2026-11-27 · #360). */
+    queryPlaceholder: '품목 코드·이름 또는 IL 번호를 입력하세요',
     /** 「조건 더보기」에 접힌 공장이 첫 공장이 아닐 때의 칩(C-6). */
     chipPlant: (value: string): string => `공장: ${value}`,
     chipRemovePlant: '공장 조건 제거',
@@ -127,7 +135,6 @@ export const inboundWorkRecord = {
       waitingReceipt: '입고 대기',
     },
     finalize: '최종 마감',
-    finalizeLockedByEdit: '매칭 수정을 먼저 저장하거나 취소하세요',
   },
   editor: {
     qtyLabel: (line: string) => `${line} 이번 매칭`,
@@ -147,21 +154,22 @@ export const inboundWorkRecord = {
       `매칭 합 ${sum} ${uom}가 입하 수량 ${need} ${uom}를 넘습니다(+${diff})`,
     cancel: '취소',
     save: '매칭 저장',
-    saveLocked: '오류를 고쳐야 저장할 수 있습니다',
     saved: (inboundLotNo: string) => `${inboundLotNo} 매칭을 고쳤습니다`,
     saveFailed: '매칭을 저장하지 못했습니다.',
     finalizedLocked: '최종 마감된 입하 LOT 입니다 — 매칭을 고칠 수 없습니다',
   },
   finalizeDialog: {
     title: '최종 마감할까요?',
-    summary: (received: string, goods: string, uom: string) =>
-      `입하 ${received} · 입고 ${goods} ${uom}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-16.md)
-    matchLabel: 'P/O 매칭: ',
+    /** 사실 상자(사용자 시안 2026-11-27). */
+    item: '품목',
+    receivedQty: '입하 수량',
+    goodsReceivedQty: '입고 수량',
+    qty: (qty: string, uom: string) => `${qty} ${uom}`,
+    /** 경고 첫 문장 — P/O 미매칭 수량이 있을 때만(사용자 시안 2026-11-27). 「는/은」은 단위 끝소리에 맞춘다. */
     unallocatedWarning: (qty: string, uom: string) =>
-      `P/O 없음 ${qty} ${uom} 가 남아 있습니다. 그 수량은 ERP 로 가지 않습니다.`,
-    acknowledge: '확인했습니다',
-    acknowledgeNeeded: 'P/O 없음 수량을 확인해야 최종 마감할 수 있습니다.',
-    warning: '최종 마감 뒤에는 입고 취소·마감 취소·매칭 수정을 할 수 없습니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-16.md)
+      `P/O 미매칭 수량 ${qty} ${uom}${hasFinal(uom) ? '은' : '는'} ERP로 전송되지 않습니다.`,
+    acknowledge: 'ERP에 전송되지 않는 수량을 확인했습니다.',
+    warning: '최종 마감 후에는 입고 취소, 마감 취소, P/O 매칭 수정이 불가능합니다.',
     cancel: '취소',
     confirm: '최종 마감',
     done: (inboundLotNo: string) => `${inboundLotNo} 최종 마감`,

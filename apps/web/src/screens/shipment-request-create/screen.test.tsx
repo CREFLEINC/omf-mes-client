@@ -11,6 +11,7 @@ import {
 } from '../../test/api-harness';
 import { SessionProvider, type Session } from '../../patterns/session';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
+import { pickDate } from '../../test/date-picker';
 import {
   businessUnitFixtures,
   itemFixtures,
@@ -145,29 +146,14 @@ const baseRoutes = (): StubRoute[] => [
 
 const tp = messages.itemPicker;
 
-/**
- * 품목 선택 팝업에서 품목을 고른다.
- *
- * ⚠ **「찾기」를 눌러야 결과가 선다** — 검색어를 치는 것만으로는 조회가 나가지 않는다. 그것이
- *   이 창의 규칙이고, 도우미가 그 규칙을 건너뛰면 시험이 규칙을 못 본다.
- */
-const pickItems = async (
+/** 그 줄 품목 검색 선택칸을 펼쳐 품목 하나를 고른다(#360 — 찾기 창 대신 표 안 선택칸). */
+const selectRowItem = async (
   user: ReturnType<typeof userEvent.setup>,
-  term: string,
-  codes: readonly string[],
+  rowIndex: number,
+  code: string,
 ): Promise<void> => {
-  const dialog = within(await screen.findByRole('dialog'));
-
-  await user.type(dialog.getByLabelText(tp.keywordLabel), term);
-  await user.click(dialog.getByRole('button', { name: tp.search }));
-
-  for (const code of codes) {
-    await user.click(await dialog.findByRole('checkbox', { name: code }));
-  }
-
-  await user.click(
-    dialog.getByRole('button', { name: new RegExp(`${tp.add}|${tp.replace}`, 'u') }),
-  );
+  await user.click(screen.getByRole('combobox', { name: t.lineTable.itemLabel(rowIndex) }));
+  await user.click(await screen.findByRole('option', { name: new RegExp(`^${code} · `, 'u') }));
 };
 
 describe('ShipmentRequestCreateScreen — 좌측 목록(완료 조건 C1)', () => {
@@ -264,18 +250,21 @@ describe('ShipmentRequestCreateScreen — 단독 생성(완료 조건 C3)', () =
     const headerPane = await screen.findByRole('region', { name: t.panes.header });
 
     expect(within(headerPane).getByRole('combobox', { name: /고객/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.actions.removeLine(1) })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.dialog.removeLine })).toBeDisabled();
 
-    /* ⭐ 「라인 추가」가 곧바로 줄을 붙이지 않는다 — 팝업에서 품목을 골라야 줄이 생긴다. */
-    await user.click(screen.getByRole('button', { name: t.actions.addLine }));
-    await pickItems(user, 'SAMPLE-ITEM-02', ['SAMPLE-ITEM-02']);
+    /* 「품목 추가」는 찾기 창 없이 표에 빈 줄을 바로 붙인다(#360). */
+    await user.click(screen.getByRole('button', { name: t.dialog.addLine }));
+    expect(screen.queryByRole('dialog', { name: tp.title })).not.toBeInTheDocument();
 
-    expect(screen.getByRole('button', { name: t.actions.removeLine(1) })).toBeEnabled();
-    expect(screen.getByRole('button', { name: t.actions.removeLine(2) })).toBeEnabled();
+    const removeButtons = screen.getAllByRole('button', { name: t.dialog.removeLine });
 
-    await user.click(screen.getByRole('button', { name: t.actions.removeLine(2) }));
+    expect(removeButtons).toHaveLength(2);
+    expect(removeButtons[0]).toBeEnabled();
+    expect(removeButtons[1]).toBeEnabled();
 
-    expect(screen.queryByRole('button', { name: t.actions.removeLine(2) })).not.toBeInTheDocument();
+    await user.click(removeButtons[1]!);
+
+    expect(screen.getAllByRole('button', { name: t.dialog.removeLine })).toHaveLength(1);
   });
 
   /*
@@ -295,12 +284,12 @@ describe('ShipmentRequestCreateScreen — 단독 생성(완료 조건 C3)', () =
     renderScreen({ fetch: createStubFetch(baseRoutes()) });
 
     await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
-    await screen.findByRole('region', { name: t.panes.lines });
+    await screen.findByRole('region', { name: t.dialog.lines });
 
     expect(screen.queryByText('품목을 선택하세요.')).not.toBeInTheDocument();
     expect(screen.queryByText('요청 수량을 입력하세요.')).not.toBeInTheDocument();
 
-    expect(screen.getByRole('button', { name: t.actions.submit })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.dialog.submit })).toBeDisabled();
   });
 
   /*
@@ -318,50 +307,46 @@ describe('ShipmentRequestCreateScreen — 단독 생성(완료 조건 C3)', () =
     expect(await screen.findByText(t.errors.requestedQtyNotPositive)).toBeInTheDocument();
   });
 
-  it('팝업에서 여러 품목을 고르면 그만큼 라인이 붙고 기준 단위가 채워진다', async () => {
+  it('품목 추가로 붙은 빈 줄에서 품목을 고르면 기준 단위가 채워진다', async () => {
     const user = userEvent.setup();
 
     renderScreen({ fetch: createStubFetch(baseRoutes()) });
 
     await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
-    await user.click(screen.getByRole('button', { name: t.actions.addLine }));
-    await pickItems(user, 'SAMPLE-ITEM', ['SAMPLE-ITEM-01', 'SAMPLE-ITEM-02']);
+    await user.click(screen.getByRole('button', { name: t.dialog.addLine }));
+    await selectRowItem(user, 2, 'SAMPLE-ITEM-01');
 
-    /* 빈 줄 하나 + 고른 둘 = 셋. */
+    /* 처음 빈 줄 하나 + 붙인 줄 하나 = 둘. */
+    expect(await screen.findAllByRole('button', { name: t.dialog.removeLine })).toHaveLength(2);
     expect(
-      await screen.findByRole('button', { name: t.actions.removeLine(3) }),
-    ).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: t.lineTable.itemLabel(2) })).toHaveTextContent(
-      'SAMPLE-ITEM-01 · 합성 품목 가',
-    );
+      await screen.findByRole('combobox', { name: t.lineTable.itemLabel(2) }),
+    ).toHaveTextContent('SAMPLE-ITEM-01 · 합성 품목 가');
     expect(screen.getAllByRole('combobox', { name: t.lineTable.uomLabel(2) })[0]).toHaveTextContent(
       /개/u,
     );
   });
 
   /*
-   * ⭐ **품목 셀을 눌러도 같은 팝업이 열린다** — 잘못 고른 줄을 지우고 다시 만들지 않아도 된다.
-   *    이때는 «바꾸기»라 하나만 고른다.
+   * ⭐ **품목 셀은 검색 선택칸이다(#360)** — 잘못 고른 줄을 지우고 다시 만들지 않아도 된다.
+   *    하나만 고르고 그 줄을 바꾼다.
    */
-  it('품목 셀을 누르면 그 줄의 품목을 바꾼다', async () => {
+  it('품목 선택칸에서 고르면 그 줄의 품목을 바꾼다', async () => {
     const user = userEvent.setup();
 
     renderScreen({ fetch: createStubFetch(baseRoutes()) });
 
     await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
-    await user.click(screen.getByRole('button', { name: t.lineTable.itemLabel(1) }));
-    await pickItems(user, 'SAMPLE-ITEM-01', ['SAMPLE-ITEM-01']);
+    await selectRowItem(user, 1, 'SAMPLE-ITEM-01');
 
-    expect(await screen.findByRole('button', { name: t.lineTable.itemLabel(1) })).toHaveTextContent(
-      'SAMPLE-ITEM-01 · 합성 품목 가',
-    );
+    expect(
+      await screen.findByRole('combobox', { name: t.lineTable.itemLabel(1) }),
+    ).toHaveTextContent('SAMPLE-ITEM-01 · 합성 품목 가');
 
-    await user.click(screen.getByRole('button', { name: t.lineTable.itemLabel(1) }));
-    await pickItems(user, 'SAMPLE-ITEM-02', ['SAMPLE-ITEM-02']);
+    await selectRowItem(user, 1, 'SAMPLE-ITEM-02');
 
     /* 줄이 늘지 않는다 — 바꾼 것이지 더한 것이 아니다. */
-    expect(screen.queryByRole('button', { name: t.actions.removeLine(2) })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.lineTable.itemLabel(1) })).toHaveTextContent(
+    expect(screen.getAllByRole('button', { name: t.dialog.removeLine })).toHaveLength(1);
+    expect(screen.getByRole('combobox', { name: t.lineTable.itemLabel(1) })).toHaveTextContent(
       'SAMPLE-ITEM-02 · 합성 품목 나',
     );
   });
@@ -375,8 +360,7 @@ describe('ShipmentRequestCreateScreen — 배정 수량 검증(완료 조건 C4)
 
     await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
 
-    await user.click(screen.getByRole('button', { name: t.lineTable.itemLabel(1) }));
-    await pickItems(user, 'SAMPLE-ITEM-01', ['SAMPLE-ITEM-01']);
+    await selectRowItem(user, 1, 'SAMPLE-ITEM-01');
 
     const requestedInput = screen.getByLabelText(t.lineTable.requestedQtyLabel(1));
 
@@ -387,7 +371,7 @@ describe('ShipmentRequestCreateScreen — 배정 수량 검증(완료 조건 C4)
     await user.type(allocatedInput, '11');
 
     expect(await screen.findByText(t.errors.allocatedQtyOverRequested(10))).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.actions.submit })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.dialog.submit })).toBeDisabled();
   });
 });
 
@@ -414,7 +398,7 @@ describe('ShipmentRequestCreateScreen — 시간대 입력란 없음(완료 조�
 
     await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
 
-    expect(screen.getByLabelText(t.fields.requestedShipDate)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.dialog.requestedShipDate)).toBeInTheDocument();
     expect(screen.queryByLabelText(/시간/)).not.toBeInTheDocument();
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
   });
@@ -576,22 +560,25 @@ describe('ShipmentRequestCreateScreen — 사업부·출고 창고(피처 012)',
     renderScreen({ fetch: createStubFetch(baseRoutes()) });
 
     await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
-    await screen.findByText(t.notes.businessUnitAutoFilled);
-    await user.click(screen.getByRole('button', { name: t.lineTable.itemLabel(1) }));
-    await pickItems(user, 'SAMPLE-ITEM-01', ['SAMPLE-ITEM-01']);
+    /* 팝업에는 「자동으로 채웠습니다」 안내가 없다(#360) — 사업부 칸이 채워지기를 기다린다. */
+    expect(
+      await screen.findByRole('combobox', { name: new RegExp(t.fields.businessUnit, 'u') }),
+    ).toHaveTextContent('합성 사업부 X');
+    expect(screen.queryByText(t.notes.businessUnitAutoFilled)).toBeNull();
+    await selectRowItem(user, 1, 'SAMPLE-ITEM-01');
     await chooseWarehouse(user, 1, '합성 창고 C (합성 1공장)');
 
-    await user.click(screen.getByRole('button', { name: t.actions.addLine }));
-    await pickItems(user, 'SAMPLE-ITEM-02', ['SAMPLE-ITEM-02']);
+    await user.click(screen.getByRole('button', { name: t.dialog.addLine }));
 
     expect(
       await screen.findByRole('combobox', { name: t.lineTable.warehouseLabel(2) }),
     ).toHaveTextContent('합성 창고 C (합성 1공장)');
-    expect(screen.getByText(t.lineTable.warehouseFilledFromFirst)).toBeInTheDocument();
-    /* 새 줄 창고 규칙 · 고를 수 있는 창고 규칙은 늘 보이는 문장이 아니라 ⓘ 다(관리웹 정리 시안 A). */
-    expect(screen.getByRole('button', { name: t.notes.addLineWarehouse })).toBeInTheDocument();
+    expect(screen.queryByText(t.lineTable.warehouseFilledFromFirst)).not.toBeInTheDocument();
+    /* 새 줄 창고 규칙은 출고 창고 칸 이름 옆 ⓘ 에 고를 수 있는 창고 규칙과 함께 적는다(#360 — [라인 추가] 아래 ⓘ 줄을 걷었다). */
+    expect(
+      screen.getByRole('button', { name: `${t.notes.warehouseRule} ${t.notes.addLineWarehouse}` }),
+    ).toBeInTheDocument();
     expect(screen.queryByText(t.notes.addLineWarehouse)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.notes.warehouseRule })).toBeInTheDocument();
   });
 
   it('US1-7·Q5 사업부를 바꾸면 다른 사업부 창고를 고른 줄을 비우고 띠로 다시 고르라 한다', async () => {
@@ -648,5 +635,192 @@ describe('ShipmentRequestCreateScreen — 사업부·출고 창고(피처 012)',
     await waitFor(() => {
       expect(balanceQueries.some((query) => query.get('warehouseId') === '9102')).toBe(true);
     });
+  });
+});
+
+/* ── ERP S/O 없이 생성 팝업(#360) — 자리와 모양만 바꿨다. 보내는 본문 · 잠금 조건은 종전 그대로다. ───────────── */
+
+describe('ShipmentRequestCreateScreen — ERP S/O 없이 생성 팝업(#360)', () => {
+  const openStandalone = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
+
+    return within(await screen.findByRole('dialog', { name: t.dialog.standaloneTitle }));
+  };
+
+  const choose = async (
+    user: ReturnType<typeof userEvent.setup>,
+    combobox: HTMLElement,
+    label: string,
+  ) => {
+    await user.click(combobox);
+    await user.click(await screen.findByRole('option', { name: label }));
+  };
+
+  it('[조회] 뒤 구분선 너머 단추가 팝업을 열고, 상세 자리에는 입력 상자가 서지 않는다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen({ fetch: createStubFetch(baseRoutes()) });
+    const dialog = await openStandalone(user);
+
+    /* [조회] | 구분선 | [ERP S/O 없이 생성] — 조건을 안 바꿨으니 [초기화]는 없다. */
+    const divider = screen.getByRole('button', { name: t.filters.search }).nextElementSibling;
+
+    expect(divider).toHaveClass('inspection-standard-filter-divider');
+    expect(divider?.nextElementSibling).toBe(
+      screen.getByRole('button', { name: t.actions.startStandalone }),
+    );
+    expect(dialog.getByRole('region', { name: t.panes.header })).toBeInTheDocument();
+    expect(dialog.getByRole('region', { name: t.dialog.lines })).toBeInTheDocument();
+    /* 상세 자리는 빈 안내 그대로 — 입력 상자는 팝업 안에만 있다. */
+    expect(screen.getAllByRole('region', { name: t.panes.header })).toHaveLength(1);
+    expect(screen.getByText(t.empty.noTargetTitle)).toBeInTheDocument();
+  });
+
+  it('빈 필수 칸에 오류 글 · 자동 채움 안내 · 잠긴 사유를 적지 않고, 흐린 문구를 보인다 — 단추 잠금은 그대로', async () => {
+    const user = userEvent.setup();
+
+    renderScreen({ fetch: createStubFetch(baseRoutes()) });
+    const dialog = await openStandalone(user);
+
+    expect(
+      await dialog.findByRole('combobox', { name: new RegExp(t.fields.businessUnit, 'u') }),
+    ).toHaveTextContent('합성 사업부 X');
+    expect(
+      dialog.getByRole('combobox', { name: new RegExp(t.fields.customer, 'u') }),
+    ).toHaveTextContent(t.fields.customerPlaceholder);
+    expect(
+      dialog.getByRole('combobox', { name: new RegExp(t.fields.shipToPartner, 'u') }),
+    ).toHaveTextContent(t.fields.shipToPartnerPlaceholder);
+    expect(dialog.getByRole('combobox', { name: t.lineTable.itemLabel(1) })).toHaveTextContent(
+      t.lineTable.itemUnpicked,
+    );
+
+    expect(screen.queryByText(t.notes.businessUnitAutoFilled)).toBeNull();
+    expect(screen.queryByText(t.errors.customerRequired)).toBeNull();
+    expect(screen.queryByText(t.errors.shipToPartnerRequired)).toBeNull();
+    expect(screen.queryByText(t.errors.requestedShipDateRequired)).toBeNull();
+    expect(screen.queryByText(t.actionReasons.noAllocatedLine)).toBeNull();
+    expect(dialog.getByRole('button', { name: t.dialog.submit })).toBeDisabled();
+  });
+
+  it('다 채워 편성하면 종전과 같은 본문을 보내고, 팝업을 닫고 결과를 알림으로 낸다', async () => {
+    const user = userEvent.setup();
+    const bodies: unknown[] = [];
+    const fetch = createStubFetch([
+      {
+        match: (request) =>
+          request.method === 'POST' &&
+          new URL(request.url).pathname === '/logistics/shipment-requests',
+        respond: async (request) => {
+          bodies.push(await request.json());
+
+          return jsonResponse(
+            {
+              shipmentRequestId: 1,
+              shipmentRequestNo: 'SAMPLE-SR-0001',
+              statusCode: 'CREATED',
+              lines: [{}],
+            },
+            { status: 201 },
+          );
+        },
+      },
+      ...baseRoutes(),
+    ]);
+
+    renderScreen({ fetch });
+    const dialog = await openStandalone(user);
+
+    await dialog.findByRole('combobox', { name: new RegExp(t.fields.businessUnit, 'u') });
+    await choose(
+      user,
+      dialog.getByRole('combobox', { name: new RegExp(t.fields.customer, 'u') }),
+      'SAMPLE-CUST-01 · 합성 고객 가',
+    );
+    await choose(
+      user,
+      dialog.getByRole('combobox', { name: new RegExp(t.fields.shipToPartner, 'u') }),
+      'SAMPLE-SHIP-01 · 합성 납품처 가',
+    );
+    await pickDate(user, dialog.getByLabelText(t.dialog.requestedShipDate), '2026-12-01');
+
+    await selectRowItem(user, 1, 'SAMPLE-ITEM-01');
+    await user.type(dialog.getByLabelText(t.lineTable.requestedQtyLabel(1)), '10');
+    await user.type(dialog.getByLabelText(t.lineTable.allocatedQtyLabel(1)), '7');
+    await choose(
+      user,
+      dialog.getByRole('combobox', { name: t.lineTable.warehouseLabel(1) }),
+      '합성 창고 A (합성 1공장)',
+    );
+
+    await user.click(dialog.getByRole('button', { name: t.dialog.submit }));
+
+    await waitFor(() => {
+      expect(bodies).toHaveLength(1);
+    });
+    /* 본문은 종전 단독 생성과 같다 — S/O 번호 없이, 줄마다 창고 · 배정 · 검사 여부. */
+    expect(bodies[0]).toEqual({
+      salesOrderId: null,
+      businessUnitId: 7001,
+      customerId: 8201,
+      shipToPartnerId: 8211,
+      requestedShipDate: '2026-12-01',
+      lines: [
+        {
+          itemId: 8301,
+          requestedQty: 10,
+          allocatedQty: 7,
+          uomId: 8401,
+          warehouseId: 9101,
+          shippingInspectionRequired: false,
+        },
+      ],
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: t.dialog.standaloneTitle })).toBeNull();
+    });
+    expect(await screen.findByText(t.dialog.resultTitle)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `${t.result.shipmentRequestNo('SAMPLE-SR-0001')} · ${t.result.lineCount(1)}`,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('[취소] — 입력이 없으면 바로 닫고, 있으면 버릴지 묻는다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen({ fetch: createStubFetch(baseRoutes()) });
+    let dialog = await openStandalone(user);
+
+    await dialog.findByRole('combobox', { name: new RegExp(t.fields.businessUnit, 'u') });
+    await user.click(dialog.getByRole('button', { name: t.actions.cancel }));
+    expect(screen.queryByRole('dialog', { name: t.dialog.standaloneTitle })).toBeNull();
+
+    dialog = await openStandalone(user);
+    await choose(
+      user,
+      dialog.getByRole('combobox', { name: new RegExp(t.fields.customer, 'u') }),
+      'SAMPLE-CUST-01 · 합성 고객 가',
+    );
+    await user.click(dialog.getByRole('button', { name: t.actions.cancel }));
+
+    const confirm = within(await screen.findByRole('dialog', { name: t.dialog.discardTitle }));
+
+    /* 되묻기의 [취소]는 입력을 그대로 둔다. */
+    await user.click(confirm.getByRole('button', { name: t.actions.cancel }));
+    expect(
+      dialog.getByRole('combobox', { name: new RegExp(t.fields.customer, 'u') }),
+    ).toHaveTextContent('합성 고객 가');
+
+    await user.click(dialog.getByRole('button', { name: t.actions.cancel }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: t.dialog.discardTitle })).getByRole(
+        'button',
+        { name: t.actions.discard },
+      ),
+    );
+    expect(screen.queryByRole('dialog', { name: t.dialog.standaloneTitle })).toBeNull();
   });
 });

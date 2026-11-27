@@ -171,6 +171,17 @@ export const materialIssueRequest = {
     fix: '수량 다시 고치기',
     submit: '그래도 요청',
   },
+  /** [요청 발행] 확인 팝업(#360) — 사실 상자는 화면에 이미 있는 값만 되보인다. */
+  confirm: {
+    title: '출고 요청을 발행할까요?',
+    workOrder: '대상 W/O',
+    warehouse: '창고',
+    destination: '도착 위치',
+    requiredAt: '필요일시',
+    lines: '요청 품목',
+    lineCount: (count: number): string => `${String(count)}건`,
+    submit: '요청 발행',
+  },
   status: {
     WAITING: '대기',
     RELEASED: '배포',

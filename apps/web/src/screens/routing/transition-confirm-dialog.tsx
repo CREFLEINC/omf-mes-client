@@ -1,4 +1,4 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -11,6 +11,8 @@ export interface TransitionConfirmDialogProps {
   kind: RoutingTransitionKind;
   /** 대상 개정(「Rev N」) — 폐기 확인 제목에 담아 무엇을 폐기하는지 못 박는다(#231). */
   revisionLabel: string;
+  /** 어느 품목의 Routing인지(「품목코드 · 품목명」) — 대상 상자의 보조 한 줄(#360). */
+  itemLabel: string;
   onClose: () => void;
   onConfirm: () => void;
   isSaving: boolean;
@@ -32,12 +34,20 @@ export const TransitionConfirmDialog = ({
   open,
   kind,
   revisionLabel,
+  itemLabel,
   onClose,
   onConfirm,
   isSaving,
   banner,
 }: TransitionConfirmDialogProps) => (
   <Dialog
+    className={
+      kind === 'confirm'
+        ? 'dialog-icon-check'
+        : kind === 'obsolete'
+          ? 'dialog-icon-delete'
+          : 'dialog-icon-undo'
+    }
     open={open}
     onClose={onClose}
     size="sm"
@@ -67,18 +77,43 @@ export const TransitionConfirmDialog = ({
     }
   >
     {banner}
-    {kind === 'confirm' ? (
-      <p>{t.dialog.confirmDescription}</p>
-    ) : (
-      /* 폐기 · 작성 취소 — 결과 한 줄(본문) 아래 보조 설명 한 줄(사용자 시안 · #231). */
-      <>
-        <p className="routing-obsolete-description">
-          {kind === 'obsolete' ? t.dialog.obsoleteDescription : t.dialog.discardDescription}
+    {/* 단말 사용 중지 창과 같은 짜임 — 대상 상자 · 질문 · 안내 줄(#360). 개정을 아직 모르면 상자를 두지 않는다. */}
+    <div className="users-roles-worker-dialog">
+      {revisionLabel !== '' && (
+        <div className="users-roles-worker-block">
+          <span className="users-roles-worker-block-caption">
+            {kind === 'confirm'
+              ? t.dialog.confirmCaption
+              : kind === 'obsolete'
+                ? t.dialog.obsoleteCaption
+                : t.dialog.discardCaption}
+          </span>
+          <strong>{revisionLabel}</strong>
+          <span>{itemLabel}</span>
+        </div>
+      )}
+      <p>
+        {kind === 'confirm'
+          ? t.dialog.confirmQuestion
+          : kind === 'obsolete'
+            ? t.dialog.obsoleteQuestion
+            : t.dialog.discardQuestion}
+      </p>
+      {/* 확정 · 작성 취소는 경고 한 줄, 폐기는 경고 아래 이력 유지 안내 한 줄(#231 · #360). */}
+      <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+        <Icon name="warning" size={16} aria-hidden />
+        {kind === 'confirm'
+          ? t.dialog.confirmDescription
+          : kind === 'obsolete'
+            ? t.dialog.obsoleteDescription
+            : t.dialog.discardDescription}
+      </p>
+      {kind === 'obsolete' && (
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+          <Icon name="info" size={16} aria-hidden />
+          {t.dialog.obsoleteNote}
         </p>
-        <p className="routing-obsolete-note">
-          {kind === 'obsolete' ? t.dialog.obsoleteNote : t.dialog.discardNote}
-        </p>
-      </>
-    )}
+      )}
+    </div>
   </Dialog>
 );

@@ -121,6 +121,15 @@ export const poChangeStub = (options: PoChangeStubOptions = {}): StubFetch => {
         }),
     },
     {
+      /* 작업지시 상태 표시명(#360) — 공통코드 마스터. */
+      match: (request: Request) => new URL(request.url).pathname === '/mdm/code-values',
+      respond: () =>
+        jsonResponse({
+          items: [{ code: 'CODE-B', codeName: '합성 상태 B', isActive: true }],
+          page: { page: 1, size: 100, total: 1 },
+        }),
+    },
+    {
       match: (request: Request) => new URL(request.url).pathname.endsWith(':acknowledge'),
       respond: () => options.acknowledgeResponse?.() ?? jsonResponse({ productionOrderId: 31 }),
     },

@@ -1,12 +1,18 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
+
+import { InfoFacts } from '../../patterns/info-facts';
+
+import './request-cancel-dialog.css';
 
 const t = messages.documentProgress;
 
 export interface RequestCancelDialogProps {
   /** 어느 문서인가 — **업무 번호다.** 내부 번호를 창에 들이지 않는다(omf-mes#44). */
   documentNo: string;
+  /** 문서 종류 이름(예: 「입고」). 모르면 `null` — 제목이 「문서 취소를 요청할까요?」가 된다. */
+  documentTypeName: string | null;
   isSaving: boolean;
   /** 저장 실패 배너 슬롯. **창을 닫지 않고** 이유를 보여야 다시 시도할 수 있다. */
   banner: ReactNode;
@@ -40,6 +46,7 @@ export interface RequestCancelDialogProps {
  */
 export const RequestCancelDialog = ({
   documentNo,
+  documentTypeName,
   isSaving,
   banner,
   onClose,
@@ -49,9 +56,10 @@ export const RequestCancelDialog = ({
     open
     onClose={onClose}
     size="sm"
+    className="document-cancel-request-dialog dialog-icon-cancel"
     closeOnBackdropClick={false}
     showCloseButton={false}
-    title={t.cancelDialog.title}
+    title={t.cancelDialog.title(documentTypeName)}
     footer={
       <>
         <Button variant="outlined" disabled={isSaving} onClick={onClose}>
@@ -66,7 +74,17 @@ export const RequestCancelDialog = ({
   >
     {banner}
 
-    <p>{t.cancelDialog.target(documentNo)}</p>
-    <p>{t.cancelDialog.noWithdraw}</p>
+    {/*
+     * 제목 → 대상 문서 → 처리 안내 → 철회 제한 차례(사용자 지시 2026-11-27 · #360).
+     * 대상 문서는 정보 표시 팝업 시안 상자의 핵심 값(크게)으로 낸다.
+     */}
+    <div className="document-cancel-request-body">
+      <InfoFacts rows={[[{ label: t.cancelDialog.targetLabel, value: documentNo, isKey: true }]]} />
+      <p>{t.cancelDialog.lead}</p>
+      <p className="iqc-inspection-action-note" data-tone="warning">
+        <Icon name="warning" size={14} aria-hidden />
+        {t.cancelDialog.noWithdraw}
+      </p>
+    </div>
   </Dialog>
 );

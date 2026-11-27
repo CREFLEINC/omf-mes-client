@@ -1,9 +1,9 @@
-import { Table } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { InfoTable } from '../../patterns/info-facts';
 import { runRequest } from '../../patterns/request';
 
 type Lot = components['schemas']['Lot'];
@@ -43,7 +43,7 @@ export interface FourMInputsPanelProps {
 
 /**
  * 4M 변경 자재 투입(omf-all-around#63 2단계 · 서버 선행 P-86) — 한 작업지시에 투입된 자재 중 IQC 에서
- * 4M 변경품으로 적힌 LOT 을 보인다. 작업지시 진행 상세가 쓴다 — 생산 LOT 은 계보 기준 「투입 자재」를 본다(#166).
+ * 4M 변경 자재로 적힌 LOT 을 보인다. 작업지시 진행 상세가 쓴다 — 생산 LOT 은 계보 기준 「투입 자재」를 본다(#166).
  *
  * ⛔ 읽기 전용이다. 투입을 막거나 상태를 바꾸지 않는다.
  */
@@ -74,25 +74,42 @@ export const FourMInputsPanel = ({ workOrderId }: FourMInputsPanelProps) => {
   });
   const lotNoOf = (lotId: number): string => lots[lotIds.indexOf(lotId)]?.data ?? String(lotId);
 
+  /* 조회가 끝나 0건이면 보조 글 한 줄만 — 제목 · 빈 표 없이(#360). 받는 중 · 실패는 제목 + 종전 안내. */
+  if (inputs.isSuccess && inputs.data.length === 0) {
+    return (
+      <section aria-label={t.heading} className="four-m-inputs">
+        <p className="field-note">{t.none}</p>
+      </section>
+    );
+  }
+
   return (
     <section aria-label={t.heading} className="four-m-inputs">
-      <h3>{t.heading}</h3>
       {inputs.isPending ? (
-        <p className="field-note">{t.loading}</p>
+        <>
+          <h3>{t.heading}</h3>
+          <p className="field-note">{t.loading}</p>
+        </>
       ) : inputs.isError ? (
-        <p className="field-error">{t.loadFailed}</p>
-      ) : inputs.data.length === 0 ? (
-        <p className="field-note">{t.none}</p>
+        <>
+          <h3>{t.heading}</h3>
+          <p className="field-error">{t.loadFailed}</p>
+        </>
       ) : (
-        <Table
-          /* 제목은 위 h3 가 이미 보인다 — 표의 접근 이름으로만 남긴다. */
-          caption={<span className="four-m-inputs-caption">{t.heading}</span>}
-          density="compact"
-          zebra={false}
+        /* 다른 팝업 표처럼 제목 + 건수, 그 아래 공용 표. */
+        <InfoTable
+          title={t.heading}
+          storageKey="omf-mes:work-order-progress:columns:four-m-inputs"
           rows={inputs.data}
           getRowId={(row) => String(row.materialConsumptionId)}
+          emptyTitle={t.none}
           columns={[
-            { key: 'lot', header: t.columns.lot, render: (row) => lotNoOf(row.lotId) },
+            {
+              key: 'lot',
+              header: t.columns.lot,
+              /* 긴 LOT 번호도 끝까지 보이게 칸 안에서 줄을 바꾼다. */
+              render: (row) => <span className="four-m-inputs-lot">{lotNoOf(row.lotId)}</span>,
+            },
             {
               key: 'changeType',
               header: t.columns.changeType,

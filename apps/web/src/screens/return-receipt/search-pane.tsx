@@ -106,7 +106,7 @@ export const SearchPane = ({
             if (event.key === 'Enter' && isUsable(draft)) onApply(draft);
           }}
         />
-        <div className="field-cell field-cell-unlabeled">
+        <div className="field-cell field-cell-unlabeled filter-actions-end">
           <div className="filter-actions">
             <Button disabled={!isUsable(draft)} onClick={() => onApply(draft)}>
               {t.actions.search}

@@ -38,6 +38,7 @@ export const BatchRetryDialog = ({
 
   return (
     <Dialog
+      className={isResultPhase ? undefined : 'dialog-icon-refresh'}
       open={open}
       onClose={onClose}
       closeOnBackdropClick={false}
@@ -74,7 +75,6 @@ export const BatchRetryDialog = ({
             </span>
           </p>
           <p>{t.batch.confirmDescription}</p>
-          <p className="integration-sync-confirm-note">{t.batch.confirmNote}</p>
         </>
       ) : (
         <>

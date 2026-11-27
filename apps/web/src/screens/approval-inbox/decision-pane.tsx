@@ -80,62 +80,69 @@ export const DecisionPane = ({
       </h3>
       {banner}
 
-      <div className="field-cell">
-        {/* 「(반려 시 필수)」가 이름표에 있어 ⓘ 는 두지 않는다(#361). */}
-        <label className="field-label" htmlFor={commentId}>
-          {t.decision.commentLabel}
-        </label>
-        {/* 칸 아래 도움말이 칸 폭을 넓혀 주던 자리 — 걷은 뒤에도 좁아지지 않게 칸(최대 44rem)을 채운다. */}
-        <TextField
-          id={commentId}
-          fullWidth
-          value={comment}
-          disabled={isCommentDisabled}
-          aria-describedby={isNotMyTurn ? turnNoteId : undefined}
-          /*
-           * 잠긴 이유를 갈라 낸다 — 보내는 중이면 여기 적고, 내 차례가 아니면 단추 줄 아래 한 줄
-           * (`turnNoteId`)이 말한다. 같은 문장을 칸 · 단추마다 되풀이하지 않는다.
-           */
-          disabledReason={isLocked ? t.decision.commentSendingReason : undefined}
-          error={commentError}
-          onChange={(event) => {
-            onChangeComment(event.target.value);
-          }}
-        />
-      </div>
+      {/* 의견 칸과 단추는 넓으면 한 줄(단추는 칸 아랫선에 맞춤), 좁으면 단추가 칸 아래로 내려간다(사용자 지시 · #360). */}
+      <div className="approval-inbox-decision-row">
+        <div className="field-cell">
+          {/* 「(반려 시 필수)」가 이름표에 있어 ⓘ 는 두지 않는다(#361). */}
+          <label className="field-label" htmlFor={commentId}>
+            {t.decision.commentLabel}
+          </label>
+          {/* 칸 아래 도움말이 칸 폭을 넓혀 주던 자리 — 걷은 뒤에도 좁아지지 않게 칸(최대 44rem)을 채운다. */}
+          <TextField
+            id={commentId}
+            fullWidth
+            value={comment}
+            disabled={isCommentDisabled}
+            aria-describedby={isNotMyTurn ? turnNoteId : undefined}
+            /*
+             * 잠긴 이유를 갈라 낸다 — 보내는 중이면 여기 적고, 내 차례가 아니면 단추 줄 아래 한 줄
+             * (`turnNoteId`)이 말한다. 같은 문장을 칸 · 단추마다 되풀이하지 않는다.
+             */
+            disabledReason={isLocked ? t.decision.commentSendingReason : undefined}
+            error={commentError}
+            onChange={(event) => {
+              onChangeComment(event.target.value);
+            }}
+          />
+        </div>
 
-      <div className="form-actions approval-inbox-actions">
-        {/* 되돌리기 쪽(반려)이 왼쪽, 흔한 길(승인)이 오른쪽 — 이 저장소의 액션 줄 차례 그대로다. */}
-        {isNotMyTurn ? (
-          <>
-            <Button variant="outlined" disabled aria-describedby={turnNoteId}>
-              {t.decision.reject}
-            </Button>
-            <Button variant="filled" disabled aria-describedby={turnNoteId}>
-              {t.decision.approve}
-            </Button>
-            {/* 잠긴 까닭은 단추 옆 ⓘ 에 올리면 보인다(#361). */}
-            <InfoTip text={t.decision.blockedNotMyTurn(t.decision.approve)} />
-          </>
-        ) : (
-          <>
-            {rejectBlocked === null ? (
-              <Button variant="outlined" disabled={isLocked} onClick={onReject}>
+        <div className="form-actions approval-inbox-actions">
+          {/* 되돌리기 쪽(반려)이 왼쪽, 흔한 길(승인)이 오른쪽 — 이 저장소의 액션 줄 차례 그대로다. */}
+          {isNotMyTurn ? (
+            <>
+              <Button variant="outlined" disabled aria-describedby={turnNoteId}>
                 {t.decision.reject}
               </Button>
-            ) : (
-              <DisabledAction label={t.decision.reject} reason={rejectBlocked} />
-            )}
-
-            {approveBlocked === null ? (
-              <Button variant="filled" disabled={isLocked} onClick={onApprove}>
+              <Button variant="filled" disabled aria-describedby={turnNoteId}>
                 {t.decision.approve}
               </Button>
-            ) : (
-              <DisabledAction variant="filled" label={t.decision.approve} reason={approveBlocked} />
-            )}
-          </>
-        )}
+              {/* 잠긴 까닭은 단추 옆 ⓘ 에 올리면 보인다(#361). */}
+              <InfoTip text={t.decision.blockedNotMyTurn(t.decision.approve)} />
+            </>
+          ) : (
+            <>
+              {rejectBlocked === null ? (
+                <Button variant="outlined" disabled={isLocked} onClick={onReject}>
+                  {t.decision.reject}
+                </Button>
+              ) : (
+                <DisabledAction label={t.decision.reject} reason={rejectBlocked} />
+              )}
+
+              {approveBlocked === null ? (
+                <Button variant="filled" disabled={isLocked} onClick={onApprove}>
+                  {t.decision.approve}
+                </Button>
+              ) : (
+                <DisabledAction
+                  variant="filled"
+                  label={t.decision.approve}
+                  reason={approveBlocked}
+                />
+              )}
+            </>
+          )}
+        </div>
       </div>
       {isNotMyTurn && (
         <p id={turnNoteId} className="visually-hidden">

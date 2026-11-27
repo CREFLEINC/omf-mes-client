@@ -197,6 +197,14 @@ export const usersRoles = {
       status: '재직 상태',
       initialPassword: '초기 비밀번호',
     },
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+    placeholders: {
+      loginId: '로그인 아이디를 입력하세요',
+      initialPassword: '초기 비밀번호를 입력하세요',
+      userName: '이름을 입력하세요',
+      email: '이메일을 입력하세요',
+      phoneNumber: '휴대전화번호를 입력하세요',
+    },
     statusDefault: '기본값(재직)',
     showPassword: '비밀번호 보기',
     /** 선택 입력칸 라벨 뒤 표시(사용자 지시 2026-11-20 · #333) — 다른 화면의 「이름 (선택)」과 같은 모양. */
@@ -204,8 +212,6 @@ export const usersRoles = {
     hidePassword: '비밀번호 숨기기',
     /* 부서를 고르지 않은 상태. 계약이 널을 허용하므로 비우는 것이 정상 값이다. */
     departmentNone: '미지정',
-    /** 로그인 아이디 칸 이름 오른쪽 라벨(omf-all-around#333). */
-    loginIdLocked: '변경 불가',
     empty: {
       noneTitle: '등록된 사용자가 없습니다',
       noneDescription: '「사용자 추가」로 첫 사용자를 등록하세요.',
@@ -245,6 +251,12 @@ export const usersRoles = {
       roleName: '역할명',
       description: '설명',
       status: '사용 유무',
+    },
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+    placeholders: {
+      roleCode: '역할 코드를 입력하세요',
+      roleName: '역할명을 입력하세요',
+      description: '설명을 입력하세요',
     },
     /* 쓰이는 중이라 역할 코드가 잠겼다는 라벨(사용자 지시 2026-11-20 · #333). */
     codeInUse: '사용 중인 코드는 바꿀 수 없습니다.',
@@ -323,8 +335,7 @@ export const usersRoles = {
      * 후보에 없는데 부여돼 있는 열. 서버가 치환에서 후보 밖 코드를 거부하므로 정상적으로는
      * 생기지 않는다 - 생겼다는 사실 자체를 알려야 저장했을 때의 거부를 미리 이해한다.
      */
-    unlistedNotice:
-      '목록에 없는 권한이 이 역할에 남아 있습니다. 그대로 저장하면 빠질 수 있습니다.',
+    unlistedNotice: '목록에 없는 권한이 이 역할에 남아 있습니다. 그대로 저장하면 빠질 수 있습니다.',
     /*
      * 마지막 관리자 차단. 서버가 code=LAST_ADMIN 으로 거부한다.
      * 「왜」가 아니라 「어떻게 풀 것인가」를 담는다(공유계약 G-3).
@@ -461,12 +472,11 @@ export const usersRoles = {
     unlink: '연결 해제',
     /** 수입검사 화면의 작업자 연결 창(`iqc-inspection/worker-connect-dialog`)이 쓰는 문구 — 그 화면은 바꾸지 않는다. */
     inputLabel: '작업자 사번',
-    noteConnect: '연결하면 별도 저장 없이 즉시 적용됩니다.',
     inputLabelChange: '변경할 작업자 사번',
     inputLabelConnect: '연결할 작업자 사번',
     inputPlaceholderConnect: '작업자 사번을 입력하세요',
     currentCaption: '현재 연결된 작업자',
-    inputPlaceholder: '사번 입력',
+    inputPlaceholder: '사번을 입력하세요',
     /* 사용자 역할 권한 화면의 연결 · 변경 창(사용자 시안 2026-11-20 · #333). */
     inputPlaceholderChange: '작업자 사번을 입력하세요',
     submitConnect: '연결',

@@ -118,6 +118,13 @@ describe('InboundExcessScreen — 초과분 발주 연결 탭', () => {
 
     await user.click(within(detailPane()).getByRole('button', { name: te.actions.link }));
 
+    /* 확인 팝업이 먼저 뜬다 — 입하 줄 · 연결할 발주 · 연결 수량을 보이고, [연결] 전에는 보내지 않는다. */
+    const ask = await screen.findByRole('dialog', { name: te.linkDialog.title });
+    expect(within(ask).getByText(ORDER_LINE)).toBeInTheDocument();
+    expect(within(ask).getByText(QTY)).toBeInTheDocument();
+    expect(bodies).toEqual([]);
+    await user.click(within(ask).getByRole('button', { name: te.linkDialog.confirm }));
+
     expect(
       await within(detailPane()).findByText(te.done.linked(QTY, ORDER_LINE)),
     ).toBeInTheDocument();
@@ -275,6 +282,11 @@ describe('InboundExcessScreen — 초과분 발주 연결 탭', () => {
 
     await within(detailPane()).findByText(te.confirmLink(QTY, ORDER_LINE));
     await user.click(within(detailPane()).getByRole('button', { name: te.actions.link }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: te.linkDialog.title })).getByRole('button', {
+        name: te.linkDialog.confirm,
+      }),
+    );
 
     expect(
       await within(detailPane()).findByText('받은 수량 중 배정하지 않은 몫을 넘습니다.'),
@@ -314,6 +326,11 @@ describe('FR-035 InboundExcessScreen — 초과분 탭은 이전 데이터만, �
 
     await within(detailPane()).findByText(te.confirmLink(QTY, ORDER_LINE));
     await user.click(within(detailPane()).getByRole('button', { name: te.actions.link }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: te.linkDialog.title })).getByRole('button', {
+        name: te.linkDialog.confirm,
+      }),
+    );
 
     expect(
       await within(detailPane()).findByText('합성 사유 — W-01-16 에서 조정하세요'),

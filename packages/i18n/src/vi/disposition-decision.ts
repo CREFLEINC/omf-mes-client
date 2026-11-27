@@ -163,6 +163,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     periodText: (from: string, to: string | null): string => `${from} ~ ${to ?? 'Không giới hạn'}`,
     reason: 'Lý do quyết định',
     direct: 'Khi lưu sẽ được áp dụng ngay.',
+    question: 'Lưu quyết định với nội dung này chứ?',
     save: 'Lưu quyết định',
   },
   approvalSummary: {

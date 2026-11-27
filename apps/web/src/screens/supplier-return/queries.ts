@@ -45,6 +45,8 @@ type Client = ApiClient['client'];
 export type ReceiptListQuery = ReceiptFilterQuery & {
   /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
   page?: number;
+  /** 기본(50)이면 싣지 않는다 — 서버 기본값이 50이다(쪽 크기 선택 · #360). */
+  size?: number;
 };
 
 /**
@@ -146,6 +148,10 @@ const fetchGoodsReceiptDetail = async (
   return {
     receipt: toReceiptView(data.goodsReceipt),
     lines: data.lines.map(toReceiptLineView),
+    inboundReceiptId:
+      data.goodsReceipt.sourceDocumentTypeCode === 'INBOUND_RECEIPT'
+        ? (data.goodsReceipt.sourceDocumentId ?? null)
+        : null,
   };
 };
 

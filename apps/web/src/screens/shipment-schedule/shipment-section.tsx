@@ -5,11 +5,15 @@ import { useId, useState } from 'react';
 import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import { formatPlantDateTime, plantToday } from '../../patterns/plant-time';
-import { CancelRequestDialog, cancelReasonError } from './cancel-request-dialog';
+import {
+  CancelRequestDialog,
+  cancelReasonError,
+  type CancelConsequences,
+} from './cancel-request-dialog';
 import { ConfirmDialog } from './confirm-dialog';
 import { summaryMessage } from './confirm-run';
 import { ExecuteCancelDialog } from './execute-cancel-dialog';
-import type { ShipmentRequestDetail } from './request-detail';
+import { uomOfDetail, type ShipmentRequestDetail } from './request-detail';
 import {
   useCancelExecuteMutation,
   useCancelRequestMutation,
@@ -67,6 +71,21 @@ const consequencesOf = (row: ShipmentRow, requestNo: string | null) =>
       }
     : null;
 
+/** 취소 요청 창의 「출하 취소 후 변경 사항」 — 실행 창과 같은 조건(POP 완료 출하만), 수량에 단위를 붙인다. */
+const cancelConsequencesOf = (
+  row: ShipmentRow,
+  requestNo: string | null,
+  unit: string,
+): CancelConsequences | null =>
+  flowOf(row) === 'completed'
+    ? {
+        qty: row.totalQty,
+        unit,
+        warehouses: row.warehouses.map((w) => ({ name: w.warehouseName, qty: w.qty })),
+        shipmentRequestNo: row.shipmentRequestNo ?? requestNo,
+      }
+    : null;
+
 export interface ShipmentSectionProps {
   request: ShipmentRequestDetail;
   /**
@@ -112,6 +131,7 @@ export const ShipmentSection = ({ request, canAct }: ShipmentSectionProps) => {
             key={shipment.shipmentId}
             shipmentId={shipment.shipmentId}
             shipmentRequestNo={request.shipmentRequestNo}
+            unit={uomOfDetail(request)}
             plantOf={(warehouseId) => plantOf.get(warehouseId) ?? null}
             canAct={canAct}
           />
@@ -123,11 +143,19 @@ export const ShipmentSection = ({ request, canAct }: ShipmentSectionProps) => {
 interface ShipmentCardProps {
   shipmentId: number;
   shipmentRequestNo: string;
+  /** 지시서 라인 단위(모두 같을 때만) — 취소 요청 창의 재고 수량에 붙인다. */
+  unit: string;
   plantOf: (warehouseId: number) => string | null;
   canAct: boolean;
 }
 
-const ShipmentCard = ({ shipmentId, shipmentRequestNo, plantOf, canAct }: ShipmentCardProps) => {
+const ShipmentCard = ({
+  shipmentId,
+  shipmentRequestNo,
+  unit,
+  plantOf,
+  canAct,
+}: ShipmentCardProps) => {
   const actionNoteId = useId();
   const detail = useShipmentDetail(shipmentId);
   const cancelApproval = useCancelApproval(shipmentId);
@@ -444,7 +472,7 @@ const ShipmentCard = ({ shipmentId, shipmentRequestNo, plantOf, canAct }: Shipme
       {dialog === 'cancel' && (
         <CancelRequestDialog
           shipmentNo={row.shipmentNo}
-          consequences={consequencesOf(row, shipmentRequestNo)}
+          consequences={cancelConsequencesOf(row, shipmentRequestNo, unit)}
           reason={reason}
           showError={showReasonError}
           banner={

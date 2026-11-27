@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { Select } from '../../patterns/select';
 import { WORK_ORDER_CLOSE_CODE_GROUPS, toWorkOrderCloseCodeLabel } from './code-options';
 import {
@@ -111,6 +112,7 @@ const CorrectionDialog = ({
           <TextField
             key={field}
             label={`${quantityLabels[field]} (${String(result[field])})`}
+            placeholder={t.placeholders[field]}
             required
             inputMode="decimal"
             value={draft[field]}
@@ -128,6 +130,7 @@ const CorrectionDialog = ({
           <Select
             id={reasonId}
             aria-required="true"
+            placeholder={t.placeholders.reason}
             value={draft.reasonCode === '' ? null : draft.reasonCode}
             options={reasonOptions}
             disabled={reasonUnavailable}
@@ -139,6 +142,7 @@ const CorrectionDialog = ({
         </div>
         <TextArea
           label={t.fields.note}
+          placeholder={t.placeholders.note}
           rows={3}
           value={draft.note}
           error={localErrors.note ?? serverErrors.note}
@@ -367,7 +371,7 @@ export const WorkOrderResultCorrectionWorkspace = ({
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className={`link-cell ${ROW_PICK_CLASS}`}
           aria-label={t.actions.select(row.resultSequence)}
           aria-current={selectedId === row.productionResultId ? true : undefined}
           onClick={() => {
@@ -429,7 +433,10 @@ export const WorkOrderResultCorrectionWorkspace = ({
           {!workers.isPending && hasUnknownWorker && (
             <AlertBanner variant="warning">{t.workersUnavailable}</AlertBanner>
           )}
-          <div className="wide-table work-order-close-table production-result-correction-table">
+          <div
+            className="wide-table work-order-close-table production-result-correction-table"
+            {...rowPickHandlers}
+          >
             <Table
               density="compact"
               caption={

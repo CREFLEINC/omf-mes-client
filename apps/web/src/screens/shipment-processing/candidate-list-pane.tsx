@@ -2,6 +2,7 @@ import { type Column, Chip, EmptyState, SkeletonText, Table } from '@crefle/web-
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import type { ShipmentGateBlocker } from './candidate-gate';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
@@ -26,6 +27,9 @@ export interface ShipmentProcessingCandidateListPaneProps {
   page: PageView;
   onSelect: (shipmentRequestId: number) => void;
   onChangePage: (page: number) => void;
+  /** 쪽 크기 — 주면 쪽 이동 줄에 「N건 ▾」를 그린다(#360). */
+  pageSizes?: readonly number[];
+  onChangePageSize?: (size: number) => void;
 }
 
 const customerLabel = (value: ShipmentProcessingCandidateRow['customerLabel']): string =>
@@ -60,6 +64,8 @@ export const ShipmentProcessingCandidateListPane = ({
   page,
   onSelect,
   onChangePage,
+  pageSizes,
+  onChangePageSize,
 }: ShipmentProcessingCandidateListPaneProps) => {
   const columns: Column<ShipmentProcessingCandidateRow>[] = [
     {
@@ -68,7 +74,7 @@ export const ShipmentProcessingCandidateListPane = ({
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className={`link-cell ${ROW_PICK_CLASS}`}
           aria-label={t.actions.select(row.shipmentRequestNo)}
           aria-current={selectedShipmentRequestId === row.shipmentRequestId ? true : undefined}
           onClick={() => {
@@ -121,7 +127,7 @@ export const ShipmentProcessingCandidateListPane = ({
 
   return (
     <section className="pane" aria-label={t.pane}>
-      <div className="wide-table">
+      <div className="wide-table" {...rowPickHandlers}>
         <Table
           density="compact"
           columns={columns}
@@ -138,7 +144,12 @@ export const ShipmentProcessingCandidateListPane = ({
           }
         />
       </div>
-      <PageNav view={page} onChange={onChangePage} />
+      <PageNav
+        view={page}
+        onChange={onChangePage}
+        sizes={pageSizes}
+        onChangeSize={onChangePageSize}
+      />
     </section>
   );
 };

@@ -58,6 +58,7 @@ export const DeactivateDialog = ({
   warning,
 }: DeactivateDialogProps) => (
   <Dialog
+    className="dialog-icon-block"
     open={open}
     onClose={onClose}
     /* 경고 라벨이 한 줄로 들어가게 넓힌다(사용자 지시 2026-11-20 · #333). */

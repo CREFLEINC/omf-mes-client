@@ -57,6 +57,8 @@ export const partsIqcInspection = {
     okNg: 'OK / NG',
     items: '검사 항목',
     itemCount: (n: number) => `(${String(n)}개)`,
+    /** 등록된 검사 항목이 없을 때 — 「도면 미등록」과 같은 자리(사용자 지시 2026-11-26). */
+    itemsNone: '검사 항목 미등록',
   },
 
   dialog: {
@@ -110,7 +112,9 @@ export const partsIqcInspection = {
     inspectedMinute: '검사 시각(분)',
     hourHead: '시',
     minuteHead: '분',
-    timePlaceholder: '시각 선택',
+    timePlaceholder: '시각을 선택하세요',
+    /** 본문(서랍 밖) 검사 양식의 종전 시각 칸 흐린 글자 — 품질 화면 본문은 팝업 디자인 전 그대로(#360). */
+    panelTimePlaceholder: '시각 선택',
   },
 
   dimension: {

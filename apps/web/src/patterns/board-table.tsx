@@ -1,6 +1,7 @@
 import { type Column, type SortState, Table } from '@crefle/web-ui';
 import type { CSSProperties, MouseEvent, ReactNode, Ref } from 'react';
 
+import { useFitColumns } from './column-fit';
 import { useColumnWidths } from './column-resize';
 
 /**
@@ -53,6 +54,11 @@ export interface BoardTableProps<T> {
   empty?: ReactNode;
   /** 표가 이보다 좁아지지 않는다 — 열을 넓힌 만큼 함께 는다. 구획이 더 좁으면 구획 안에서 가로로 넘긴다. */
   minWidth?: string;
+  /**
+   * 상자 폭에 맞춰 열을 비율대로 줄인다(`useFitColumns` — `ManagedTable` 과 같은 방식). 좁은 구획에서도 뒤 열이 칸 밖으로
+   * 밀리지 않는다. 표의 최소 폭을 풀므로 `minWidth` 와 함께 쓰지 않고, 상자를 이 훅이 잡으므로 `boxRef` 와도 함께 쓰지 않는다.
+   */
+  fit?: boolean;
   className?: string;
   /** 그린 뒤 표를 손보는 쪽(라인 표의 칸 병합)이 상자를 잡는다. */
   boxRef?: Ref<HTMLDivElement>;
@@ -120,6 +126,7 @@ export const BoardTable = <T,>({
   onSelectionChange,
   empty,
   minWidth,
+  fit = false,
   className,
   boxRef,
   onBoxClick,
@@ -152,7 +159,10 @@ export const BoardTable = <T,>({
 
   /* 열쇠가 없으면 폭을 끌지 않는다 — 훅은 늘 부르되 그 결과를 쓰지 않는다. */
   const resizable = useColumnWidths(widthKey ?? 'omf-mes:board-table:fixed', pickedColumns);
-  const shown = widthKey === undefined ? pickedColumns : resizable.columns;
+  const widthed = widthKey === undefined ? pickedColumns : resizable.columns;
+  /* 끈 폭을 얹은 뒤에 상자에 맞춘다 — `ManagedTable` 과 같은 차례다. 맞추지 않는 표는 훅의 결과를 쓰지 않는다. */
+  const fitted = useFitColumns(widthed);
+  const shown = fit ? fitted.columns : widthed;
   const style: CSSProperties = {
     ...(widthKey === undefined ? {} : resizable.style),
     ...(minWidth === undefined ? {} : ({ '--board-table-min': minWidth } as CSSProperties)),
@@ -179,6 +189,7 @@ export const BoardTable = <T,>({
     'po-board-table',
     'board-table',
     pick === undefined ? '' : 'board-table-pickable',
+    fit ? 'board-table-fit' : '',
     className ?? '',
   ]
     .filter((name) => name !== '')
@@ -186,7 +197,7 @@ export const BoardTable = <T,>({
 
   return (
     /* 상자는 누름을 받아 줄로 넘기기만 한다 — 키보드는 줄 안의 고르는 단추가 받는다(위 `BoardTablePick` 설명). */
-    <div ref={boxRef} className={boxClass} style={style} onClick={handleClick}>
+    <div ref={fit ? fitted.ref : boxRef} className={boxClass} style={style} onClick={handleClick}>
       <Table
         density="compact"
         caption={<span className="erp-data-table-caption">{label}</span>}

@@ -39,14 +39,12 @@ export const stockStatus: Translated<typeof ko.stockStatus> = {
     goFirstPage: 'Về trang đầu',
     refresh: 'Làm mới',
     select: 'Chọn',
-    deselect: 'Bỏ chọn',
     selectRow: (lotName: string): string => `Chọn ${lotName}`,
     deselectRow: (lotName: string): string => `Bỏ chọn ${lotName}`,
     filterInboundLot: (inboundLotNo: string): string => `Lọc theo LOT nhập hàng ${inboundLotNo}`,
   },
   reasons: {
     warehouseRequired: 'Hãy chọn kho rồi mới tra cứu.',
-    lotViewNeedsItem: 'Cách xem theo LOT chỉ mở khi đã chọn mặt hàng.',
     filterReferencesFailed:
       'Không tải được tên kho, vị trí, mặt hàng và LOT. Lý do sẽ hiện ở chỗ của tên.',
     listReferencesFailed: 'Không tải được tên đơn vị và nơi sở hữu. Lý do sẽ hiện ở chỗ của tên.',
@@ -206,5 +204,5 @@ export const stockStatus: Translated<typeof ko.stockStatus> = {
         'Không tải được tên mặt hàng, LOT, kho, vị trí và đơn vị. Lý do sẽ hiện ở chỗ của tên.',
     },
   },
-  asOf: (at: string): string => `Tại thời điểm ${at}`,
+  asOf: (at: string): string => `Cập nhật lần cuối ${at}`,
 };

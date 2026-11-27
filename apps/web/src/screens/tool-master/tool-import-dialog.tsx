@@ -1,6 +1,6 @@
 import { AlertBanner, Button, type Column, Dialog, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import { InfoTip } from '../../patterns/info-tip';
 import { FileField } from './file-field';
@@ -59,7 +59,6 @@ export const ToolImportDialog = ({
   onClose,
   onSubmit,
 }: ToolImportDialogProps) => {
-  const fileRequiredId = useId();
   const columns: Column<BatchFailure>[] = [
     {
       key: 'index',
@@ -73,9 +72,12 @@ export const ToolImportDialog = ({
 
   return (
     <Dialog
+      className="dialog-icon-upload"
       open
       onClose={onClose}
       closeOnBackdropClick={false}
+      /* 닫기는 바닥 줄의 「닫기」 하나로 둔다 — 검사 기준 엑셀 업로드 창과 같다(사용자 지시 2026-11-27 · #360). */
+      showCloseButton={false}
       title={t.title}
       footer={
         <>
@@ -85,8 +87,6 @@ export const ToolImportDialog = ({
           <Button
             loading={isSaving}
             disabled={isSaving || file === null || plantId === ''}
-            /* 잠긴 버튼은 포커스를 못 받아 툴팁이 닿지 않는다 — 사유를 보이는 글자로 잇는다. */
-            aria-describedby={file === null ? fileRequiredId : undefined}
             onClick={onSubmit}
           >
             {t.submit}
@@ -122,7 +122,6 @@ export const ToolImportDialog = ({
           label={t.fileLabel}
           buttonLabel={t.filePlaceholder}
           fileName={file === null ? null : file.name}
-          emptyText={t.fileNone}
           accept={ACCEPT}
           disabled={isSaving}
           required
@@ -130,12 +129,6 @@ export const ToolImportDialog = ({
           info={t.noLabelNote}
           onSelect={onSelectFile}
         />
-
-        {file === null && (
-          <span id={fileRequiredId} className="field-note">
-            {t.fileRequired}
-          </span>
-        )}
 
         {result !== null && (
           <div className="form-grid-full">

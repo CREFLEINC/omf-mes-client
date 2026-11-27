@@ -9,14 +9,11 @@ import { GROUP_TYPE_OPTIONS, type CodeOption } from './code-options';
 import { SelectField } from './select-field';
 import type { GroupFormValues } from './types';
 
-export type LocationField =
-  'defaultFgLocationId';
+export type LocationField = 'defaultFgLocationId';
 const LOCATION_FIELDS: {
   field: LocationField;
   label: 'defaultFgLocation';
-}[] = [
-  { field: 'defaultFgLocationId', label: 'defaultFgLocation' },
-];
+}[] = [{ field: 'defaultFgLocationId', label: 'defaultFgLocation' }];
 
 export interface GroupFormPaneProps {
   mode: 'create' | 'edit';
@@ -45,6 +42,8 @@ export interface GroupFormPaneProps {
   onSave: () => void;
   onCancel: () => void;
   onDeactivate: () => void;
+  /** 아래 [취소][저장] 줄을 그릴지. 등록 팝업은 팝업 단추 줄이 대신한다. */
+  actions?: boolean;
 }
 
 const t = messages.equipmentMaster;
@@ -68,6 +67,7 @@ export const GroupFormPane = ({
   onSave,
   onCancel,
   onDeactivate,
+  actions = true,
 }: GroupFormPaneProps) => {
   const activeLabelId = useId();
   const deactivateNoteId = useId();
@@ -82,6 +82,7 @@ export const GroupFormPane = ({
       <div className="form-grid">
         <SelectField
           label={t.fields.plant}
+          placeholder={t.form.plantPlaceholder}
           required={mode === 'create'}
           options={plantOptions}
           value={values.plantId}
@@ -94,6 +95,7 @@ export const GroupFormPane = ({
         <CodeLockTextField
           lockReason={codeLockReason}
           label={t.fields.groupCode}
+          placeholder={t.form.codePlaceholder}
           required
           value={values.groupCode}
           onChange={(event) => onChange({ groupCode: event.target.value })}
@@ -102,6 +104,7 @@ export const GroupFormPane = ({
 
         <TextField
           label={t.fields.groupName}
+          placeholder={t.form.namePlaceholder}
           required
           value={values.groupName}
           onChange={(event) => onChange({ groupName: event.target.value })}
@@ -110,6 +113,7 @@ export const GroupFormPane = ({
 
         <SelectField
           label={t.fields.groupType}
+          placeholder={t.form.typePlaceholder}
           required
           options={GROUP_TYPE_OPTIONS}
           value={values.groupTypeCode}
@@ -153,49 +157,53 @@ export const GroupFormPane = ({
           />
         ))}
 
-        {/* 값을 보여 주기만 하면 되는 자리는 폼 컨트롤을 잠그지 말고 값 표기로 낸다. */}
-        <div>
-          <span className="field-label" id={activeLabelId}>
-            {t.fields.isActive}
-          </span>
-          <p aria-labelledby={activeLabelId}>
-            <UsageChip isActive={isActive} />
-          </p>
-          {/* 아직 등록되지 않은 그룹에는 사용 중지할 대상이 없다. 이미 중지된 것도 마찬가지다. */}
-          {mode === 'edit' && isActive && (
-            <div className="field-cell">
-              {/*
-               * ⚠ **저장하지 않은 입력이 있으면 잠근다.** 사용 중지는 상세를 다시 불러오므로
-               * 그때 폼이 새로 세워지고, 사용자가 친 값이 말없이 사라진다.
-               * 감추지 않고 사유를 함께 낸다 — 비활성 컨트롤은 포커스를 받지 못하므로
-               * 사유는 보이는 글자로 두고 `aria-describedby` 로 잇는다.
-               */}
-              <Button
-                variant="outlined"
-                disabled={isDirty}
-                aria-describedby={isDirty ? deactivateNoteId : undefined}
-                onClick={onDeactivate}
-              >
-                {messages.common.deactivate}
-              </Button>
-              {isDirty && (
-                <span id={deactivateNoteId} className="field-note">
-                  {t.actionReasons.deactivateNeedsCleanForm}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
+        {/* 값을 보여 주기만 하면 되는 자리는 폼 컨트롤을 잠그지 말고 값 표기로 낸다. 등록에서는 늘 「사용」이라 두지 않는다(사용자 지시 · #360). */}
+        {mode === 'edit' && (
+          <div>
+            <span className="field-label" id={activeLabelId}>
+              {t.fields.isActive}
+            </span>
+            <p aria-labelledby={activeLabelId}>
+              <UsageChip isActive={isActive} />
+            </p>
+            {/* 아직 등록되지 않은 그룹에는 사용 중지할 대상이 없다. 이미 중지된 것도 마찬가지다. */}
+            {mode === 'edit' && isActive && (
+              <div className="field-cell">
+                {/*
+                 * ⚠ **저장하지 않은 입력이 있으면 잠근다.** 사용 중지는 상세를 다시 불러오므로
+                 * 그때 폼이 새로 세워지고, 사용자가 친 값이 말없이 사라진다.
+                 * 감추지 않고 사유를 함께 낸다 — 비활성 컨트롤은 포커스를 받지 못하므로
+                 * 사유는 화면 읽기 도구에만 두고 `aria-describedby` 로 잇는다(사용자 지시 2026-11-27 · #360).
+                 */}
+                <Button
+                  variant="outlined"
+                  disabled={isDirty}
+                  aria-describedby={isDirty ? deactivateNoteId : undefined}
+                  onClick={onDeactivate}
+                >
+                  {messages.common.deactivate}
+                </Button>
+                {isDirty && (
+                  <span id={deactivateNoteId} className="visually-hidden">
+                    {t.actionReasons.deactivateNeedsCleanForm}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      <div className="form-actions">
-        <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
-          {messages.common.cancel}
-        </Button>
-        <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
-          {messages.common.save}
-        </Button>
-      </div>
+      {actions && (
+        <div className="form-actions">
+          <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
+            {messages.common.cancel}
+          </Button>
+          <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
+            {messages.common.save}
+          </Button>
+        </div>
+      )}
     </section>
   );
 };

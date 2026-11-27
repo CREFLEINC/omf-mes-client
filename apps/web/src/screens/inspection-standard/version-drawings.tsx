@@ -407,6 +407,7 @@ export const VersionDrawings = ({
 
       {isRemoving && (
         <Dialog
+          className="dialog-icon-delete"
           open
           size="md"
           title={t.drawingRemoveTitle}

@@ -5,7 +5,6 @@
 const num = (value: number): string => value.toLocaleString('ko-KR');
 
 export const traceTree = {
-  breadcrumbRoot: '생산 관리',
   material: {
     title: '자재 기준 생산 추적',
     scanLabel: 'LOT 번호',
@@ -18,7 +17,6 @@ export const traceTree = {
     period: '입하일',
     recentDate: '최근 투입',
     conditionDate: '입하일',
-    recentFoot: '아직 투입되지 않은 LOT 은 번호를 스캔하거나 공급사로 찾으세요.',
     conditionFoot: '입하일 최근 순으로 100개씩 불러옵니다. 아직 투입되지 않은 LOT 도 나옵니다.',
     conditionEmptyHint: '공급사나 입하일을 바꿔 보세요.',
     pickHint:
@@ -45,7 +43,6 @@ export const traceTree = {
     period: '출하일',
     recentDate: '기준일',
     conditionDate: '출하일',
-    recentFoot: '창고에 넣지 않은 반제품 LOT 은 번호를 스캔하세요.',
     conditionFoot: '출하 완료분의 배분 제품 LOT 을 출하일 최근 순으로 100개씩 보입니다.',
     conditionEmptyHint: '고객이나 출하일을 바꿔 보세요.',
     pickHint:

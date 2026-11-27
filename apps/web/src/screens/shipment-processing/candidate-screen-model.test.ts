@@ -15,6 +15,7 @@ describe('createShipmentProcessingCandidateScreenState', () => {
     expect(state).toEqual({
       appliedFilters: EMPTY_SHIPMENT_PROCESSING_FILTERS,
       page: 1,
+      pageSize: 50,
       selectedShipmentRequestId: null,
     });
     expect(state.appliedFilters.pickingCompleteOnly).toBe(true);
@@ -25,6 +26,7 @@ describe('reduceShipmentProcessingCandidateScreen', () => {
   const selected: ShipmentProcessingCandidateScreenState = {
     appliedFilters: { shipDateFrom: '2026-08-24', shipDateTo: '', pickingCompleteOnly: false },
     page: 2,
+    pageSize: 50,
     selectedShipmentRequestId: 501,
   };
 

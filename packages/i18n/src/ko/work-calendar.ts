@@ -35,6 +35,8 @@ export const workCalendar = {
   form: {
     createTitle: '캘린더 등록',
     editTitle: '캘린더 수정',
+    codePlaceholder: '캘린더 코드를 입력하세요',
+    namePlaceholder: '캘린더 이름을 입력하세요',
     /** ⭐ 「몇이 이 캘린더를 따르는가」 — 사용 중지 판단의 근거가 되는 값이다. */
     applicationCount: (count: number): string => `${count}곳`,
     applicationNone: '따르는 대상이 없습니다.',
@@ -78,9 +80,9 @@ export const workCalendar = {
     endTime: '종료 시각',
     reason: '사유',
     remarks: '비고',
+    reasonPlaceholder: '사유를 입력하세요',
+    remarksPlaceholder: '비고를 입력하세요',
     saved: (count: number): string => `${count}일을 저장했습니다.`,
-    /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다(공유계약 G-2). */
-    timeNeedsPartial: '구분을 「부분 가동」으로 고르면 시각을 입력할 수 있습니다.',
   },
   /**
    * 일괄 적용. **규칙이 아니라 날짜 목록을 보낸다** — 화면이 바뀔 날을 미리 세어 보이고
@@ -192,8 +194,9 @@ export const workCalendar = {
     pathNote: '가까운 층부터 차례로 훑습니다. 지정이 있는 첫 층에서 멈춥니다.',
   },
   retire: {
-    title: '캘린더를 사용 중지할까요?',
-    target: (label: string): string => `${label} 을(를) 사용 중지합니다.`,
+    title: '캘린더 사용 중지',
+    caption: '사용 중지 대상',
+    question: '이 캘린더의 사용을 중지하시겠습니까?',
     /**
      * ⭐ **참조가 있으면 건수를 함께 보인 뒤 부른다**(계약 주석 · 공유계약 B-4).
      * 물리 삭제가 없는 자원이라 「몇이 이 캘린더를 따르는가」가 판단의 근거다.

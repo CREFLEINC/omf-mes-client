@@ -6,6 +6,7 @@ import { useApiClient } from '../../../patterns/api-context';
 import { runRequest } from '../../../patterns/request';
 import { formatPlantDateTime } from '../../../patterns/plant-time';
 import { PageNav } from '../../../patterns/page-nav';
+import { pageSizesWith } from '../../../patterns/page-nav/page-size-param';
 import { AdjustableNativeTable } from '../process/adjustable-table';
 const object = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
@@ -14,19 +15,22 @@ const eventLabels: Record<string, string> = {
   PLAN_DATE_USER_ON_HOLIDAY: '휴일 계획일 지정',
   FG_WAREHOUSE_OVERRIDDEN: '생산품 입고 창고 변경',
 };
+const AUDIT_PAGE_SIZE = 20;
 export const ProposalAuditHistory = ({ id, number }: { id: string; number: string }) => {
   const { baseUrl } = useApiClient();
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(1);
+  /* 쪽 크기 — 기본은 종전대로 20건(품질 화면과 같은 10 · 20 · 50 선택 · #360). */
+  const [size, setSize] = useState(AUDIT_PAGE_SIZE);
   const query = useQuery({
-    queryKey: ['production-order-proposal-audit', id, page],
+    queryKey: ['production-order-proposal-audit', id, page, size],
     enabled: open,
     retry: false,
     queryFn: () =>
       runRequest(() =>
         createProposalReadClient(baseUrl).GET(
           '/planning/production-orders/{productionOrderId}/audit-events',
-          { params: { path: { productionOrderId: Number(id) }, query: { page, size: 20 } } },
+          { params: { path: { productionOrderId: Number(id) }, query: { page, size } } },
         ),
       ),
   });
@@ -77,7 +81,15 @@ export const ProposalAuditHistory = ({ id, number }: { id: string; number: strin
                 </tbody>
               </AdjustableNativeTable>
               {!query.data.items.length && <p>변경 이력이 없습니다.</p>}
-              <PageNav meta={query.data.page} onChangePage={setPage} />
+              <PageNav
+                meta={query.data.page}
+                sizes={pageSizesWith(AUDIT_PAGE_SIZE)}
+                onChangePage={setPage}
+                onChangeSize={(next) => {
+                  setSize(next);
+                  setPage(1);
+                }}
+              />
             </>
           )}
         </Dialog>

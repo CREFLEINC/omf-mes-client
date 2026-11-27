@@ -12,6 +12,7 @@ const DOCUMENT_NO = 'SYN-GR-2026-0001';
 const renderDialog = (overrides: Partial<RequestCancelDialogProps> = {}) => {
   const props: RequestCancelDialogProps = {
     documentNo: DOCUMENT_NO,
+    documentTypeName: '입고',
     isSaving: false,
     banner: null,
     onClose: vi.fn(),
@@ -29,18 +30,19 @@ describe('RequestCancelDialog — 창이 말하는 것', () => {
    *
    * ⛔ **내부 번호가 아니라 업무 번호다**(omf-mes#44).
    */
-  it('대상 문서번호를 말한다', () => {
+  it('「대상 문서」 아래 문서번호를 크게 낸다', () => {
     renderDialog();
 
-    expect(screen.getByText(t.cancelDialog.target(DOCUMENT_NO))).toBeInTheDocument();
+    expect(screen.getByText(t.cancelDialog.targetLabel)).toBeInTheDocument();
+    expect(screen.getByText(DOCUMENT_NO)).toHaveClass('is-key');
   });
 
   /** 넘겨받은 번호 그대로다 — 창이 지어내지 않는다는 것을 값이 흐르는지로 잰다. */
   it('넘겨받은 문서번호를 그대로 낸다', () => {
     renderDialog({ documentNo: 'SYN-GR-2026-0009' });
 
-    expect(screen.getByText(t.cancelDialog.target('SYN-GR-2026-0009'))).toBeInTheDocument();
-    expect(screen.queryByText(t.cancelDialog.target(DOCUMENT_NO))).not.toBeInTheDocument();
+    expect(screen.getByText('SYN-GR-2026-0009')).toBeInTheDocument();
+    expect(screen.queryByText(DOCUMENT_NO)).not.toBeInTheDocument();
   });
 
   /**
@@ -53,22 +55,30 @@ describe('RequestCancelDialog — 창이 말하는 것', () => {
     expect(screen.getByText(t.cancelDialog.noWithdraw)).toBeInTheDocument();
   });
 
-  /**
-   * 두 문장이 **함께** 서야 뜻이 온전하다 — 무엇을 승인에 올리는지와 철회할 수 없다는 사실.
-   */
-  it('두 문장이 함께 선다', () => {
+  /** 차례 — 대상 문서 → 처리 안내 → 철회 제한(사용자 지시 2026-11-27). */
+  it('대상 문서 · 처리 안내 · 철회 제한 차례로 선다', () => {
     renderDialog();
 
-    for (const line of [t.cancelDialog.target(DOCUMENT_NO), t.cancelDialog.noWithdraw]) {
-      expect(screen.getByText(line)).toBeInTheDocument();
-    }
+    const text = screen.getByRole('dialog').textContent ?? '';
+    const at = [DOCUMENT_NO, t.cancelDialog.lead, t.cancelDialog.noWithdraw].map((line) =>
+      text.indexOf(line),
+    );
+
+    expect(at.every((index) => index >= 0)).toBe(true);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
   });
 
-  /** 제목이 사용자가 가장 먼저 읽는 문장이다 — 무엇을 확인하는 창인지 제목이 정한다. */
-  it('제목이 취소 요청의 물음이다', () => {
+  /** 제목이 문서 종류를 말한다 — 종류를 모르면 「문서」. */
+  it('제목이 문서 종류 취소 요청의 물음이다', () => {
     renderDialog();
 
-    expect(screen.getByRole('dialog', { name: t.cancelDialog.title })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: t.cancelDialog.title('입고') })).toBeInTheDocument();
+  });
+
+  it('문서 종류를 모르면 「문서 취소를 요청할까요?」다', () => {
+    renderDialog({ documentTypeName: null });
+
+    expect(screen.getByRole('dialog', { name: t.cancelDialog.title(null) })).toBeInTheDocument();
   });
 
   /** 확인 버튼의 문구가 「확인」이 아니다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다. */

@@ -29,10 +29,7 @@ export const toolMaster = {
     plantRequired: '올릴 공장을 먼저 고르세요.',
     fileLabel: '툴 엑셀 파일',
     filePlaceholder: '파일 고르기',
-    fileNone: '고른 파일이 없습니다.',
     submit: '올리기',
-    /** ⛔ 고른 파일이 없으면 보낼 것이 없다 — 감추지 않고 잠그고 사유를 말한다(G-2). */
-    fileRequired: '올릴 파일을 먼저 고르세요.',
     resultTitle: '올리기 결과',
     succeeded: (count: number): string => `${count}건을 등록했습니다.`,
     failed: (count: number): string => `${count}건이 실패했습니다.`,
@@ -106,7 +103,6 @@ export const toolMaster = {
     lastPmDate: '마지막 예방보전일',
     nextPmDate: '다음 예방보전 예정일',
     labelIssueCount: '발행한 라벨 회차',
-    notRecorded: '기록 없음',
   },
   form: {
     /** 창의 세 구획 — 「고칠 값 → 예방보전 설정 → 보기만 하는 값」 차례로 읽힌다. */
@@ -120,6 +116,13 @@ export const toolMaster = {
     plantPlaceholder: '공장을 고르세요',
     typePlaceholder: '도구 유형을 고르세요',
     cycleUnitPlaceholder: '주기 단위를 고르세요',
+    codePlaceholder: '툴코드를 입력하세요',
+    namePlaceholder: '툴명을 입력하세요',
+    cavityCountPlaceholder: '캐비티 수를 입력하세요',
+    guaranteedShotCountPlaceholder: '적정타수를 입력하세요',
+    guaranteedShotCountInfo: '비워 두면 타발수 기준 예방보전 도래를 계산하지 않습니다.',
+    pmTriggerTypePlaceholder: '예방보전 판정 기준을 고르세요',
+    pmCycleIntervalPlaceholder: '예방보전 주기 간격을 입력하세요',
     labelIssued: (count: number): string => `${count}회`,
   },
   /**
@@ -138,20 +141,21 @@ export const toolMaster = {
     month: '개월',
   },
   retire: {
-    deactivateTitle: '툴을 사용 중지할까요?',
+    deactivateTitle: '툴 사용 중지',
+    deactivateCaption: '사용 중지 대상',
+    deactivateQuestion: '이 툴의 사용을 중지하시겠습니까?',
     /** 중지해도 그 툴이 남긴 실적은 그대로다 — 감추는 것과 지우는 것은 다르다. */
     deactivateImpact: '이 툴이 남긴 실적은 그대로 남고, 새로 고를 때만 목록에서 빠집니다.',
-    deactivateNotReversibleHere:
-      '삭제되지는 않습니다. 다시 켜려면 담당자에게 요청하세요.',
+    deactivateNotReversibleHere: '삭제되지는 않습니다. 다시 켜려면 담당자에게 요청하세요.',
     deactivateConfirm: '사용 중지',
-    deactivateTarget: (label: string): string => `${label} 을(를) 사용 중지합니다.`,
-    disposeTitle: '폐기 처리할까요?',
+    disposeTitle: '툴 폐기 처리',
+    disposeCaption: '폐기 대상',
+    disposeQuestion: '이 툴을 폐기 처리하시겠습니까?',
     /** 사용 중지와 «다른 축» 이다 — 그것은 감추는 것이고 이것은 자산이 끝난 것이다. */
     disposeImpact:
       '사용 중지와 다른 처리입니다. 사용 중지는 목록에서 감추는 것이고, 폐기는 자산이 끝난 것입니다.',
     disposeNotReversible: '되돌릴 수 없습니다. 폐기한 뒤에는 다시 불러와도 편집이 풀리지 않습니다.',
     disposeConfirm: '폐기 처리',
-    disposeTarget: (label: string): string => `${label} 을(를) 폐기 처리합니다.`,
     /**
      * ⭐ **참조가 있으면 건수를 함께 보인 뒤 부른다**(계약 주석 · 공유계약 B-4).
      * 물리 삭제가 없는 자원이라 「몇이 이 툴에 매여 있는가」가 판단의 근거다.
@@ -176,19 +180,6 @@ export const toolMaster = {
      * 이 잠금은 저절로 풀린다(설계 `omf-mes#182`).
      */
     disposeUnavailable: '등록된 자산 상태가 없어 폐기할 수 없습니다.',
-  },
-  notes: {
-    /**
-     * ⚠ 도구 유형 값 목록이 아직 없어(추적 `omf-mes#145`) **어느 코드가 금형인지 화면이
-     * 판정할 수 없다.** 잠그는 대신 뜻을 밝힌다 — 값 목록이 들어오면 잠글 수 있다.
-     */
-    cavityMeaningfulForMold: '금형에만 적용됩니다.',
-    /**
-     * ⭐ **막지 않고 알린다.** 「적정타수 없는 것만」 조회 조건이 있다는 것은 이 상태로 저장하는
-     * 것을 **업무가 허용한다**는 뜻이다 — 막으면 나중에 채우는 길이 사라진다.
-     */
-    guaranteedMissingBlocksShotAxis:
-      '적정타수가 비어 있으면 사용 가능 타수와 초과율을 셀 수 없고, 타발수로는 예방보전이 도래하지 않습니다.',
   },
   validation: {
     required: '필수 항목입니다.',

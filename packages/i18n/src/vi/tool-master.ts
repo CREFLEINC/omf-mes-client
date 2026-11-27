@@ -22,9 +22,7 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
     plantRequired: 'Hãy chọn nhà máy cần tải lên trước.',
     fileLabel: 'Tệp Excel công cụ',
     filePlaceholder: 'Chọn tệp',
-    fileNone: 'Chưa chọn tệp nào.',
     submit: 'Tải lên',
-    fileRequired: 'Hãy chọn tệp cần tải lên trước.',
     resultTitle: 'Kết quả tải lên',
     succeeded: (count: number): string => `Đã đăng ký ${count} mục.`,
     failed: (count: number): string => `${count} mục thất bại.`,
@@ -94,7 +92,6 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
     lastPmDate: 'Ngày bảo trì phòng ngừa gần nhất',
     nextPmDate: 'Ngày dự kiến bảo trì phòng ngừa kế tiếp',
     labelIssueCount: 'Số lần đã phát hành nhãn',
-    notRecorded: 'Không có ghi nhận',
   },
   form: {
     /** 창의 세 구획 — 「고칠 값 → 예방보전 설정 → 보기만 하는 값」 차례로 읽힌다. */
@@ -108,6 +105,14 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
     plantPlaceholder: 'Hãy chọn nhà máy',
     typePlaceholder: 'Hãy chọn loại công cụ',
     cycleUnitPlaceholder: 'Hãy chọn đơn vị chu kỳ',
+    codePlaceholder: 'Hãy nhập mã công cụ',
+    namePlaceholder: 'Hãy nhập tên công cụ',
+    cavityCountPlaceholder: 'Hãy nhập số khoang khuôn',
+    guaranteedShotCountPlaceholder: 'Hãy nhập số nhát dập đảm bảo',
+    guaranteedShotCountInfo:
+      'Nếu để trống, hệ thống sẽ không tính hạn bảo trì phòng ngừa theo số lần dập.',
+    pmTriggerTypePlaceholder: 'Hãy chọn tiêu chí đánh giá bảo trì phòng ngừa',
+    pmCycleIntervalPlaceholder: 'Hãy nhập khoảng chu kỳ bảo trì phòng ngừa',
     labelIssued: (count: number): string => `${count} lần`,
   },
   /** 계약이 네 값과 뜻을 함께 못박았다 — 화면이 지어낸 값이 아니다. */
@@ -122,21 +127,23 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
     month: 'Tháng',
   },
   retire: {
-    deactivateTitle: 'Ngừng sử dụng công cụ này?',
+    deactivateTitle: 'Ngừng sử dụng công cụ',
+    deactivateCaption: 'Đối tượng ngừng sử dụng',
+    deactivateQuestion: 'Bạn có muốn ngừng sử dụng công cụ này không?',
     deactivateImpact:
       'Kết quả mà công cụ này để lại vẫn giữ nguyên, chỉ khi chọn mới thì nó không còn trong danh sách.',
     deactivateNotReversibleHere:
       'Không xóa. Nhưng màn hình này không có cách bật lại, muốn hoàn tác thì phải nhờ người phụ trách.',
     deactivateConfirm: 'Ngừng sử dụng',
-    deactivateTarget: (label: string): string => `Ngừng sử dụng ${label}.`,
-    disposeTitle: 'Xử lý thanh lý?',
+    disposeTitle: 'Thanh lý công cụ',
+    disposeCaption: 'Đối tượng thanh lý',
+    disposeQuestion: 'Bạn có muốn thanh lý công cụ này không?',
     /** 사용 중지와 다른 축이다 — 그것은 감추는 것이고 이것은 자산이 끝난 것이다. */
     disposeImpact:
       'Đây là xử lý khác với ngừng sử dụng. Ngừng sử dụng là ẩn khỏi danh sách, còn thanh lý là tài sản đã kết thúc.',
     disposeNotReversible:
       'Không thể hoàn tác. Sau khi thanh lý thì tải lại cũng không mở được chỉnh sửa.',
     disposeConfirm: 'Xử lý thanh lý',
-    disposeTarget: (label: string): string => `Thanh lý ${label}.`,
     referenceCount: (count: number): string => `Có ${count} dữ liệu tham chiếu đến công cụ này.`,
     referenceNone: 'Không có dữ liệu nào tham chiếu đến công cụ này.',
     /** ⛔ 모르는 것을 「없다」로 그리지 않는다. */
@@ -151,12 +158,6 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
     targetUnknown: 'Chưa tải được thông tin công cụ.',
     disposeUnavailable:
       'Danh sách giá trị trạng thái tài sản chưa sẵn sàng nên chưa thể xử lý thanh lý.',
-  },
-  notes: {
-    cavityMeaningfulForMold: 'Chỉ áp dụng cho khuôn.',
-    /** ⭐ 막지 않고 알린다 — 막으면 나중에 채우는 길이 사라진다. */
-    guaranteedMissingBlocksShotAxis:
-      'Nếu số nhát dập đảm bảo để trống thì không tính được số nhát dập khả dụng và tỷ lệ vượt, và bảo trì phòng ngừa không đến hạn theo số nhát dập.',
   },
   validation: {
     required: 'Mục bắt buộc.',

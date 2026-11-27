@@ -50,6 +50,8 @@ export interface SourceFilterBarProps {
   onSearch: (filters: SourceFilters) => void;
   onRemoveFilter: (key: FilterChip['key']) => void;
   onReset: () => void;
+  /** [ERP S/O 없이 생성] — 조회 바로 오른쪽(#360). 누르면 입력 팝업이 열린다. */
+  onStartStandalone: () => void;
 }
 
 /**
@@ -72,6 +74,7 @@ export const SourceFilterBar = ({
   onSearch,
   onRemoveFilter,
   onReset,
+  onStartStandalone,
 }: SourceFilterBarProps) => {
   const [filters, setFilters] = useState<SourceFilters>(appliedFilters);
 
@@ -153,7 +156,7 @@ export const SourceFilterBar = ({
           </Checkbox>
         </div>
 
-        <div className="field-cell field-cell-unlabeled">
+        <div className="field-cell field-cell-unlabeled filter-actions-end">
           <div className="filter-actions">
             <Button
               onClick={() => {
@@ -167,6 +170,9 @@ export const SourceFilterBar = ({
                 {t.filters.reset}
               </Button>
             )}
+            {/* 만드는 단추는 조회 · 초기화와 구분선으로 나누고 채움으로 둔다(사용자 지시 2026-11-27 · 툴 마스터와 같은 짜임). */}
+            <span className="inspection-standard-filter-divider" aria-hidden />
+            <Button onClick={onStartStandalone}>{t.actions.startStandalone}</Button>
           </div>
         </div>
       </div>

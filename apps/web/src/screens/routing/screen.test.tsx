@@ -522,7 +522,8 @@ describe('RoutingScreen — 헤더 상세 조회와 상태 잠금', () => {
 
     const value = await screen.findByLabelText('Routing 코드');
     expect(value).toHaveAttribute('aria-readonly', 'true');
-    expect(screen.getByText('사용 중 · 변경 불가')).toBeInTheDocument();
+    /* 「사용 중 · 변경 불가」 라벨은 두지 않는다(omf-all-around#360). */
+    expect(screen.queryByText('사용 중 · 변경 불가')).toBeNull();
     expect(value).toHaveAccessibleDescription(
       '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
     );
@@ -1365,8 +1366,9 @@ describe('RoutingScreen — 작성 취소', () => {
     if (router === null) throw new Error('데이터 라우터가 없습니다');
     await screen.findByText('1차 사출');
 
-    await user.click(within(actionsRegion()).getByRole('button', { name: '작성 취소' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Rev 3 작성을 취소하시겠습니까?' });
+    /* 작성 취소는 카드 머리 「Rev · 작성중」 칩 오른쪽(#360). */
+    await user.click(screen.getByRole('button', { name: '작성 취소' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Rev 3 작성 취소' });
     expect(requests.filter((request) => request.method === 'DELETE')).toHaveLength(0);
     await user.click(within(dialog).getByRole('button', { name: '작성 취소' }));
 
@@ -1375,6 +1377,45 @@ describe('RoutingScreen — 작성 취소', () => {
     expect(deletes).toHaveLength(1);
     expect(deletes[0]?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
     await waitFor(() => expect(router.state.location.search).toContain('rev=7002'));
+  });
+
+  /*
+   * 사용자 보고(#360) — 작성중 Rev 하나뿐인 품목에서 작성 취소하면, 목록을 다시 받기 전 낡은 캐시를
+   * 「Rev 자동 고르기」가 다시 골라 지운 Rev 가 그대로 떠 있었다. 다시 받기가 늦어도 지운 Rev 를 고르지 않는다.
+   */
+  it('작성중 Rev 하나뿐일 때 작성 취소하면 지운 Rev 를 다시 열지 않는다', async () => {
+    const draftOnly = routingFixtures.filter((row) => row.routingId === 7003);
+    let discarded = false;
+    const { router, user } = renderScreen(
+      [
+        itemListRoute(),
+        {
+          match: (request) => isGet(request, '/planning/routings'),
+          /* 지운 뒤 다시 받기는 끝나지 않는다 — 캐시만으로 화면이 정해지는지 본다. */
+          respond: () =>
+            discarded ? new Promise<Response>(() => {}) : jsonResponse({ items: draftOnly }),
+        },
+        routingDetailRoute(),
+        operationListRoute(),
+        processListRoute(),
+        dependencyListRoute(),
+        discardRoute(() => {
+          discarded = true;
+          return new Response(null, { status: 204 });
+        }),
+      ],
+      '?item=5001&rev=7003',
+    );
+    if (router === null) throw new Error('데이터 라우터가 없습니다');
+    await screen.findByText('1차 사출');
+
+    await user.click(screen.getByRole('button', { name: '작성 취소' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Rev 3 작성 취소' });
+    await user.click(within(dialog).getByRole('button', { name: '작성 취소' }));
+
+    expect(await screen.findByText('작성을 취소했습니다.')).toBeInTheDocument();
+    await waitFor(() => expect(router.state.location.search).not.toContain('rev='));
+    expect(screen.queryByText('1차 사출')).not.toBeInTheDocument();
   });
 
   it('확정 Rev 에는 작성 취소 단추가 없다', async () => {
@@ -1391,7 +1432,7 @@ describe('RoutingScreen — 작성 취소', () => {
     );
     await screen.findByText('1차 사출');
 
-    expect(within(actionsRegion()).queryByRole('button', { name: '작성 취소' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '작성 취소' })).toBeNull();
   });
 
   it('서버가 거절하면 창을 닫지 않고 그 사유를 보인다', async () => {
@@ -1414,8 +1455,9 @@ describe('RoutingScreen — 작성 취소', () => {
     const { user } = { user: userEvent.setup() };
     await screen.findByText('1차 사출');
 
-    await user.click(within(actionsRegion()).getByRole('button', { name: '작성 취소' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Rev 3 작성을 취소하시겠습니까?' });
+    /* 작성 취소는 카드 머리 「Rev · 작성중」 칩 오른쪽(#360). */
+    await user.click(screen.getByRole('button', { name: '작성 취소' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Rev 3 작성 취소' });
     await user.click(within(dialog).getByRole('button', { name: '작성 취소' }));
 
     expect(
@@ -1434,7 +1476,7 @@ describe('RoutingScreen — 확정·폐기', () => {
 
     await user.click(within(actionsRegion()).getByRole('button', { name: '확정' }));
 
-    expect(await screen.findByText('이 Rev를 확정할까요?')).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: 'Rev 확정' })).toBeInTheDocument();
     expect(requestsTo(requests, '/planning/routings/7003:confirm')).toHaveLength(0);
   });
 
@@ -1446,7 +1488,7 @@ describe('RoutingScreen — 확정·폐기', () => {
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: '확정' }));
 
-    await screen.findByText('저장했습니다');
+    await screen.findByText('확정했습니다.');
 
     const posts = requestsTo(requests, '/planning/routings/7003:confirm');
     expect(posts).toHaveLength(1);
@@ -1472,7 +1514,7 @@ describe('RoutingScreen — 확정·폐기', () => {
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', { name: '확정' }),
     );
-    await screen.findByText('저장했습니다');
+    await screen.findByText('확정했습니다.');
 
     await waitFor(() => {
       expect(requestsTo(requests, '/planning/routings/7003').length).toBeGreaterThan(before.detail);
@@ -1556,13 +1598,13 @@ describe('RoutingScreen — 확정·폐기', () => {
     await screen.findByText('1차 사출');
 
     await user.click(within(actionsRegion()).getByRole('button', { name: '폐기' }));
-    expect(await screen.findByText('Rev 2를 폐기하시겠습니까?')).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: 'Rev 2 폐기' })).toBeInTheDocument();
     expect(requestsTo(requests, '/planning/routings/7002:obsolete')).toHaveLength(0);
 
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', { name: '폐기' }),
     );
-    await screen.findByText('저장했습니다');
+    await screen.findByText('폐기했습니다.');
 
     const posts = requestsTo(requests, '/planning/routings/7002:obsolete');
     expect(posts).toHaveLength(1);
@@ -1578,7 +1620,7 @@ describe('RoutingScreen — 확정·폐기', () => {
       within(await screen.findByRole('dialog')).getByRole('button', { name: '취소' }),
     );
 
-    expect(screen.queryByText('이 Rev를 확정할까요?')).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Rev 확정' })).not.toBeInTheDocument();
     expect(requestsTo(requests, '/planning/routings/7003:confirm')).toHaveLength(0);
   });
 });

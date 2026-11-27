@@ -432,7 +432,7 @@ describe('DispositionRequestScreen — ③ 결과 수신 후', () => {
 
 describe('DispositionRequestScreen — 목록 접기(#350)', () => {
   afterEach(() => {
-    window.localStorage.removeItem('omf-mes:disposition-request:list:collapsed');
+    window.localStorage.removeItem('omf-mes:disposition-request:split:collapsed');
   });
 
   it('접으면 「목록 N건」 탭이 서고, 펼쳐도 고른 대상 · 적던 내용이 그대로다', async () => {
@@ -444,7 +444,7 @@ describe('DispositionRequestScreen — 목록 접기(#350)', () => {
     const description = () =>
       registerPane().getByLabelText(new RegExp(t.register.descriptionLabel));
     await user.type(description(), '외관 스크래치');
-    const workspace = document.querySelector('.disposition-request-workspace')!;
+    const workspace = document.querySelector('.list-detail-split')!;
 
     await user.click(
       screen.getAllByRole('button', { name: messages.common.inspectionHub.listCollapse })[0]!,

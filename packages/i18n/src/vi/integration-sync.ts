@@ -69,7 +69,6 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     confirmTitle: (count: number): string => `Xử lý lại ${String(count)} mục đã chọn?`,
     targetLabel: 'Đối tượng',
     confirmDescription: 'Xử lý lại các mục liên kết đã chọn. Không tạo mục liên kết mới.',
-    confirmNote: 'Có thể chỉ một phần được xử lý. Kết quả được báo theo từng mục.',
     resultTitle: 'Kết quả xử lý lại',
     failedListLabel: 'Mục không xử lý lại được',
     allSucceeded: (count: number): string => `Đã yêu cầu xử lý lại ${String(count)} mục.`,

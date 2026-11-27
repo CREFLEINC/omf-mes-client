@@ -1,4 +1,4 @@
-import { Button, Checkbox, SearchInput } from '@crefle/web-ui';
+import { Button, Checkbox, Icon, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
@@ -16,6 +16,7 @@ import {
   type BalanceFilters,
   type FilterChipNames,
 } from './filters';
+import type { StockCodeNames } from './code-names';
 import { ItemSelectField, SelectField } from './select-field';
 import type { SelectOption } from './types';
 
@@ -55,6 +56,8 @@ export interface BalanceFilterBarProps {
   /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
   onRemoveFilter: (key: keyof BalanceFilters) => void;
   onReset: () => void;
+  /** 품질 상태 · 재고 상태 · 소유 구분 선택지 이름(서버 코드 목록 · omf-all-around#360). 없으면 코드 그대로. */
+  codeNames?: StockCodeNames;
 }
 
 /**
@@ -96,6 +99,7 @@ export const BalanceFilterBar = ({
   onSearch,
   onRemoveFilter,
   onReset,
+  codeNames,
 }: BalanceFilterBarProps) => {
   const reasonId = useId();
   const more = useFilterMore();
@@ -204,8 +208,12 @@ export const BalanceFilterBar = ({
     ...options,
   ];
 
-  const codeOptions = (codes: readonly string[]): SelectOption[] =>
-    withAll(codes.map((code) => ({ value: code, label: code })));
+  /* 고르는 글자는 서버 코드 목록의 이름(omf-all-around#360) — 보내는 값은 코드 그대로. */
+  const codeOptions = (
+    codes: readonly string[],
+    nameOf?: (code: string) => string,
+  ): SelectOption[] =>
+    withAll(codes.map((code) => ({ value: code, label: nameOf?.(code) ?? code })));
 
   return (
     <>
@@ -226,6 +234,22 @@ export const BalanceFilterBar = ({
           options={withAll(warehouseOptions)}
           value={filters.warehouse}
           note={warehouseNote}
+          /*
+           * 조회를 잠근 사유는 창고 이름 오른쪽 같은 줄의 안내 칩(정보 아이콘 + 파란 바탕)으로 둔다(사용자 지시 2026-11-27 · #360).
+           * 늘 보이는 DOM 텍스트로 그려 조회 단추의 aria-describedby 로 잇는다 — 비활성 단추는 포커스를 받지 못한다.
+           */
+          labelHint={
+            searchReason === null ? undefined : (
+              <span
+                id={reasonId}
+                className="iqc-inspection-action-note stock-status-label-hint"
+                data-tone="info"
+              >
+                <Icon name="info" size={14} aria-hidden />
+                {searchReason}
+              </span>
+            )
+          }
           onChange={(value) => {
             /* 창고를 바꾸면 고른 위치를 비운다 — 다른 창고의 위치가 조건에 남지 않게. */
             setFilters((prev) => ({
@@ -246,12 +270,8 @@ export const BalanceFilterBar = ({
           }}
         />
 
-        {/*
-         * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶고(배치 규범 2-1), 비활성 사유는 그 아래에 둔다.
-         * 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더해 aria-describedby로 잇는다 —
-         * 비활성 컨트롤은 포커스를 받지 못해 툴팁만으로는 키보드·보조기술 사용자가 닿을 수 없다.
-         */}
-        <div className="field-cell field-cell-unlabeled">
+        {/* 조회와 초기화는 짝이라 함께 줄바꿈되게 묶고(배치 규범 2-1), 조건 줄 오른쪽 끝에 세운다(#360). */}
+        <div className="field-cell field-cell-unlabeled filter-actions-end">
           <div className="filter-actions">
             <Button
               disabled={searchReason !== null}
@@ -267,11 +287,6 @@ export const BalanceFilterBar = ({
             )}
             <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
           </div>
-          {searchReason !== null && (
-            <span id={reasonId} className="field-note">
-              {searchReason}
-            </span>
-          )}
         </div>
       </div>
 
@@ -320,7 +335,7 @@ export const BalanceFilterBar = ({
           <SelectField
             optionWidth="code"
             label={t.fields.qualityStatus}
-            options={codeOptions(qualityStatusOptions)}
+            options={codeOptions(qualityStatusOptions, codeNames?.quality)}
             value={filters.qualityStatus}
             onChange={(value) => {
               setFilters((prev) => ({ ...prev, qualityStatus: value }));
@@ -329,7 +344,7 @@ export const BalanceFilterBar = ({
           <SelectField
             optionWidth="code"
             label={t.fields.inventoryStatus}
-            options={codeOptions(inventoryStatusOptions)}
+            options={codeOptions(inventoryStatusOptions, codeNames?.inventory)}
             value={filters.inventoryStatus}
             onChange={(value) => {
               setFilters((prev) => ({ ...prev, inventoryStatus: value }));
@@ -338,7 +353,7 @@ export const BalanceFilterBar = ({
           <SelectField
             optionWidth="code"
             label={t.fields.ownership}
-            options={codeOptions(ownershipOptions)}
+            options={codeOptions(ownershipOptions, codeNames?.ownership)}
             value={filters.ownership}
             onChange={(value) => {
               setFilters((prev) => ({ ...prev, ownership: value }));

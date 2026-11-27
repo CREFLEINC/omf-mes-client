@@ -558,7 +558,7 @@ const ShipmentResultForm = ({
 
       {!noPlan && (
         <MeasurementTable
-          headNote={specs.length > 0 ? <PlanNote text={d.planVersionNote} /> : null}
+          headNote={specs.length > 0 ? <InfoTip text={d.planVersionNote} /> : null}
           items={dimensions}
           uomCodeOf={uoms.codeOf}
           values={form.values}

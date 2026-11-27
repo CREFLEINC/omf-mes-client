@@ -186,7 +186,9 @@ export const collectionChannel = {
   form: {
     createTitle: '수집 채널 등록',
     editTitle: '수집 채널 수정',
-    unitPlaceholder: '단위를 고르세요',
+    unitPlaceholder: '단위를 선택하세요',
+    channelKeyPlaceholder: '채널명을 입력하세요',
+    signalNamePlaceholder: '신호 이름을 입력하세요',
     /** 등록 창은 «고른 설비»에 매인다 — 어느 설비에 더하는지 창이 스스로 말한다. */
     equipmentFixed: (code: string, name: string): string => `${code} · ${name}`,
   },
@@ -198,17 +200,18 @@ export const collectionChannel = {
    */
   itemPicker: {
     legend: '대상 검사 항목',
-    planLabel: '검사기준',
-    versionLabel: '검사기준 버전',
+    planLabel: '검사 기준',
+    versionLabel: '검사 기준 버전',
     itemLabel: '검사 항목',
-    planPlaceholder: '검사기준을 고르세요',
-    versionPlaceholder: '버전을 고르세요',
-    itemPlaceholder: '검사 항목을 고르세요',
+    planPlaceholder: '검사 기준을 선택하세요',
+    versionPlaceholder: '버전을 선택하세요',
+    itemPlaceholder: '검사 항목을 선택하세요',
     versionOption: (planVersion: number, statusLabel: string): string =>
       `Rev ${String(planVersion)} · ${statusLabel}`,
     /** 이 화면은 상태 값 목록을 받지 않는다 — 코드를 그대로 둔다(공유계약 G-9). */
     unmapAction: '연결 해제',
-    unmapped: '이어 둔 검사 항목이 없습니다. 이 채널로 들어오는 값은 저장되지 않고 버려집니다.',
+    /** 「대상 검사 항목」 옆 ⓘ — 이어 두지 않았을 때 무슨 일이 나는지(#360: 값 자리에는 「미지정」만). */
+    legendInfo: '검사 항목을 이어 두지 않으면 이 채널로 들어오는 값은 저장되지 않고 버려집니다.',
     /**
      * ⛔ **아는 척하지 않는다.** 목록도 상세도 항목의 이름을 내려주지 않아, 이어 둔 것이
      * «무엇인지» 화면이 알 수 없다. 감추면 사용자는 확인했다고 믿는다.
@@ -218,12 +221,9 @@ export const collectionChannel = {
      */
     mappedUnknown:
       '검사 항목이 이어져 있습니다. 어느 항목인지는 이 화면에서 확인할 수 없으니, 확인하려면 아래에서 다시 고르세요.',
-    mappedKnown: (name: string): string => `이 채널의 값은 ${name} 항목으로 갑니다.`,
-    versionNeedsPlan: '검사기준을 먼저 고르면 버전을 고를 수 있습니다.',
-    itemNeedsVersion: '버전을 먼저 고르면 검사 항목을 고를 수 있습니다.',
-    noVersions: '이 검사기준에는 아직 버전이 없습니다.',
+    noVersions: '이 검사 기준에는 아직 버전이 없습니다.',
     noItems: '이 버전에는 아직 검사 항목이 없습니다.',
-    plansLoadFailed: '검사기준 목록을 불러오지 못했습니다.',
+    plansLoadFailed: '검사 기준 목록을 불러오지 못했습니다.',
     versionsLoadFailed: '버전 목록을 불러오지 못했습니다.',
     itemsLoadFailed: '검사 항목 목록을 불러오지 못했습니다.',
   },
@@ -254,9 +254,12 @@ export const collectionChannel = {
     resumeAction: '사용 재개',
     deactivateLabel: (channelKey: string): string => `${channelKey} 사용 중지`,
     resumeLabel: (channelKey: string): string => `${channelKey} 사용 재개`,
-    deactivateTitle: '이 채널을 사용 중지할까요?',
-    resumeTitle: '이 채널을 다시 켤까요?',
-    target: (channelKey: string): string => `${channelKey} 채널을 처리합니다.`,
+    deactivateTitle: '채널 사용 중지',
+    resumeTitle: '채널 사용 재개',
+    deactivateCaption: '사용 중지 대상',
+    resumeCaption: '사용 재개 대상',
+    deactivateQuestion: '이 채널의 사용을 중지하시겠습니까?',
+    resumeQuestion: '이 채널의 사용을 재개하시겠습니까?',
     /**
      * ⚠ **「값이 버려진다」고도 「값이 담긴다」고도 말하지 않는다.** 사용 안 함이 수집까지
      * 멈추는지가 아직 확인되지 않았다(설계 질의). **모르는 것을 단정하면 사용자는 그 말을
@@ -268,8 +271,6 @@ export const collectionChannel = {
     deactivateReversible:
       '지우는 것이 아니라 끄는 것입니다. 「미사용 포함」을 켜면 다시 찾아 켤 수 있습니다.',
     resumeImpact: '다시 켜면 이 채널이 목록에 돌아옵니다. 이어 둔 검사 항목도 그대로입니다.',
-    /** 창을 열었지만 아직 대상을 받지 못했다 — 모르면 잠근다(누르면 아무 일도 없는 것보다 낫다). */
-    loadingTarget: '채널 정보를 불러오는 중입니다.',
   },
   /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다(공유계약 G-2). */
   actionReasons: {

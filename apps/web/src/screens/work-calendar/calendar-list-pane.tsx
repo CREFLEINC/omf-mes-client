@@ -13,6 +13,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { hasChangedFilters } from '../../patterns/filter-more';
 
 import { UsageChip } from '../../patterns/usage-chip';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { defaultCalendarFilters } from './filters';
 import type { CalendarFilters, WorkCalendar } from './types';
 
@@ -101,7 +102,7 @@ export const CalendarListPane = ({
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className={`link-cell ${ROW_PICK_CLASS}`}
           aria-current={row.workCalendarId === selectedId ? 'true' : undefined}
           onClick={() => onSelect(row)}
         >
@@ -146,7 +147,7 @@ export const CalendarListPane = ({
     }
 
     return (
-      <div className="wide-table work-calendar-table work-calendar-list-table">
+      <div className="wide-table work-calendar-table work-calendar-list-table" {...rowPickHandlers}>
         <Table
           density="compact"
           caption={<span className="work-calendar-table-caption">{t.listTitle}</span>}

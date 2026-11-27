@@ -1,5 +1,6 @@
 import {
   AlertBanner,
+  Button,
   Breadcrumb,
   Chip,
   EmptyState,
@@ -8,6 +9,7 @@ import {
   Tabs,
   useToast,
 } from '@crefle/web-ui';
+import { useQueryClient } from '@tanstack/react-query';
 import type { ApiClient, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -224,6 +226,7 @@ const RoutingWorkspace = () => {
   /* 보이는 쪽 품목의 기본 Rev · 작성중 Rev · 개정 수 — 품목 목록 열(#231). */
   const revisionSummaries = useItemRevisionSummaries(items.map((item) => item.itemId));
 
+  const queryClient = useQueryClient();
   const revisionList = useRoutingList(selectedItemId);
   const revisions = revisionList.data?.items ?? [];
 
@@ -554,23 +557,24 @@ const RoutingWorkspace = () => {
    * 상태 전이 두 갈래. 실패 배너가 섞이지 않도록 훅을 나눈다 —
    * 하나로 묶으면 확정 실패 문구가 폐기 창에 남는다.
    */
-  const finishTransition = () => {
+  /* 한 일을 말한다 — 확정 · 폐기 모두 「저장했습니다」였다(#360 점검). */
+  const finishTransition = (done: string) => () => {
     setTransition(null);
-    toast.show({ variant: 'success', description: messages.common.saved });
+    toast.show({ variant: 'success', description: done });
   };
 
   const confirmWrite = useRoutingTransition({
     client,
     routingId: selectedRoutingId,
     path: '/planning/routings/{routingId}:confirm',
-    onDone: finishTransition,
+    onDone: finishTransition(t.dialog.confirmDone),
   });
 
   const obsoleteWrite = useRoutingTransition({
     client,
     routingId: selectedRoutingId,
     path: '/planning/routings/{routingId}:obsolete',
-    onDone: finishTransition,
+    onDone: finishTransition(t.dialog.obsoleteDone),
   });
 
   /*
@@ -590,6 +594,20 @@ const RoutingWorkspace = () => {
     invalidateKeys: [routingKeys.list(selectedItemId ?? 0), itemKeys.all],
     knownFields: [],
     onSuccess: () => {
+      /*
+       * 지운 Rev 를 개정 목록 캐시에서 바로 뺀다(사용자 보고 · #360) — 다시 읽기 전 낡은 목록이 남아 있으면
+       * 「Rev 자동 고르기」가 방금 지운 작성중 Rev 를 다시 골라 화면에 그대로 떠 있었다(Rev 1 하나뿐인 품목).
+       */
+      if (selectedItemId !== null && selectedRoutingId !== null) {
+        const deletedId = selectedRoutingId;
+        queryClient.setQueryData<typeof revisionList.data>(
+          routingKeys.list(selectedItemId),
+          (prev) =>
+            prev === undefined
+              ? prev
+              : { ...prev, items: prev.items.filter((row) => row.routingId !== deletedId) },
+        );
+      }
       setTransition(null);
       resetHeaderEditing();
       resetOperationEditing();
@@ -1181,10 +1199,6 @@ const RoutingWorkspace = () => {
                   obsoleteWrite.reset();
                   setTransition('obsolete');
                 }}
-                onDiscard={() => {
-                  discardWrite.reset();
-                  setTransition('discard');
-                }}
               />
             </section>
           )}
@@ -1306,6 +1320,23 @@ const RoutingWorkspace = () => {
                         )}
                       </Chip>
                     )}
+                  {/*
+                   * 작성 취소(저장한 작성중 Rev 삭제)는 「Rev · 작성중」 칩 오른쪽, 빨간 바탕(사용자 지시 · #360 — 종전 아래 단추 줄).
+                   * 세우는 조건 · 확인 창 · 잠금은 종전 그대로다.
+                   */}
+                  {isViewingDraft && createValues === null && formState !== null && (
+                    <Button
+                      disabled={
+                        confirmWrite.isSaving || obsoleteWrite.isSaving || discardWrite.isSaving
+                      }
+                      onClick={() => {
+                        discardWrite.reset();
+                        setTransition('discard');
+                      }}
+                    >
+                      {t.actions.discard}
+                    </Button>
+                  )}
                   {/* 폐기 개정은 고칠 수도 발행할 수도 없다 — 안내 상자 대신 라벨 하나(사용자 지시 · #231). */}
                   {isViewingObsolete && (
                     <Chip variant="status" status="idle">
@@ -1489,6 +1520,7 @@ const RoutingWorkspace = () => {
           revisionLabel={
             detail.data === undefined ? '' : t.values.revision(detail.data.routing.routingVersion)
           }
+          itemLabel={itemLabel}
           onClose={resetTransition}
           onConfirm={() => {
             transitionWrite.write();

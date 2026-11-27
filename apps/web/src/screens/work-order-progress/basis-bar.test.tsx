@@ -34,18 +34,8 @@ describe('BasisBar', () => {
     expect(screen.queryByText(t.label('2026-07-15 09:00'))).not.toBeInTheDocument();
   });
 
-  /*
-   * ⛔ L-6 — 적지 않으면 화면에 떠 있는 수를 「지금」으로 읽는다. 조회 화면에서 가장 비싼
-   * 오해다.
-   */
-  it('⛔ 자동으로 갱신되지 않는다는 사실은 기준 시각 옆 ⓘ 의 설명으로 읽힌다', () => {
-    renderBar();
-
-    expect(screen.getByRole('button', { name: t.note })).toBeInTheDocument();
-  });
-
-  /* 새로고침이 유일한 갱신 수단이다 — 시각 바로 옆에 둔다. */
-  it('새로고침을 누르면 알린다', async () => {
+  /* 갱신 단추가 유일한 갱신 수단이다 — 시각 바로 옆에 둔다. */
+  it('갱신을 누르면 알린다', async () => {
     const { onRefresh, user } = renderBar();
 
     await user.click(screen.getByRole('button', { name: t.refresh }));

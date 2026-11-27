@@ -501,7 +501,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     ).toBeInTheDocument();
   });
 
-  it('결과 창에 적던 것이 있으면 [취소] 때 한 번 묻고, [계속 입력]이면 그대로, [닫기]면 닫는다(#356)', async () => {
+  it('결과 창에 적던 것이 있으면 [취소] 때 한 번 묻고, 묻는 창 [취소]면 그대로, [닫기]면 닫는다(#356)', async () => {
     const user = userEvent.setup();
     renderScreen();
     const pane = await openRequest(user);
@@ -518,7 +518,9 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     await user.click(again.getByRole('button', { name: td.cancel }));
     expect(await screen.findByText(td.discardBody)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: td.discardStay }));
+    /* 묻는 창의 [취소] — 결과 창 바닥의 [취소]와 이름이 같아 묻는 창 안에서 찾는다. */
+    const ask = screen.getByText(td.discardBody).closest('dialog') as HTMLElement;
+    await user.click(within(ask).getByRole('button', { name: td.discardStay }));
     expect(again.getByRole('textbox', { name: web.quantity.rejected })).toHaveValue('1');
 
     await user.click(again.getByRole('button', { name: td.cancel }));

@@ -13,6 +13,9 @@ const t = messages.shipmentRequestCreate;
 
 export interface PageView {
   page: number;
+  /** 한 쪽 건수 · 전체 건수 — 공용 쪽 이동 줄(총 N건 · n / m)에 그대로 넘긴다(#360). */
+  size: number;
+  total: number;
   totalPages: number;
   rangeLabel: string;
   canPrev: boolean;
@@ -30,6 +33,8 @@ export const toPageView = (meta: PageMeta, shown: number): PageView => {
 
   return {
     page,
+    size,
+    total: meta.total,
     totalPages,
     rangeLabel:
       shown > 0

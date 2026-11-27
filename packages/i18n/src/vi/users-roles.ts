@@ -145,13 +145,19 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       status: 'Tình trạng làm việc',
       initialPassword: 'Mật khẩu ban đầu',
     },
+    placeholders: {
+      loginId: 'Hãy nhập tên đăng nhập',
+      initialPassword: 'Hãy nhập mật khẩu ban đầu',
+      userName: 'Hãy nhập tên',
+      email: 'Hãy nhập thư điện tử',
+      phoneNumber: 'Hãy nhập số điện thoại di động',
+    },
     statusDefault: 'Mặc định (đang làm việc)',
     showPassword: 'Hiện mật khẩu',
     optionalMark: '(tùy chọn)',
     hidePassword: 'Ẩn mật khẩu',
     /** 부서를 고르지 않은 상태. 계약이 널을 허용하므로 **비우는 것이 정상 값이다.** */
     departmentNone: 'Không chỉ định',
-    loginIdLocked: 'Không thể đổi',
     empty: {
       noneTitle: 'Chưa đăng ký người dùng nào',
       noneDescription: 'Hãy đăng ký người dùng đầu tiên bằng «Thêm người dùng».',
@@ -179,6 +185,11 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       roleName: 'Tên vai trò',
       description: 'Mô tả',
       status: 'Trạng thái sử dụng',
+    },
+    placeholders: {
+      roleCode: 'Hãy nhập mã vai trò',
+      roleName: 'Hãy nhập tên vai trò',
+      description: 'Hãy nhập mô tả',
     },
     codeInUse: 'Không thể thay đổi mã đang được sử dụng.',
     empty: {
@@ -323,7 +334,6 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     change: 'Đổi người lao động',
     unlink: 'Hủy liên kết',
     inputLabel: 'Mã nhân viên',
-    noteConnect: 'Khi liên kết, thay đổi được áp dụng ngay, không cần lưu riêng.',
     inputLabelChange: 'Mã nhân viên cần đổi',
     inputLabelConnect: 'Mã nhân viên cần liên kết',
     inputPlaceholderConnect: 'Nhập mã nhân viên',

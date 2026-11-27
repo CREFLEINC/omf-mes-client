@@ -311,8 +311,9 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
           )}
           {action === 'close' && (
             <>
+              {/* 잠긴 까닭은 위 안내 줄(집었지만 출고하지 않은 양)이 이미 말한다 — 화면 읽기용으로만 남긴다(omf-all-around#360). */}
               {picked > 0 && (
-                <span id={lockId} className="field-note">
+                <span id={lockId} className="visually-hidden">
                   {td.pickedLock(qtyWithUom(picked, uom))}
                 </span>
               )}
@@ -331,6 +332,7 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
         </div>
 
         <Dialog
+          className="dialog-icon-cancel"
           open={dialog === 'cancel'}
           onClose={() => setDialog(null)}
           title={t.cancelDialog.title(request.no)}

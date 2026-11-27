@@ -1,16 +1,9 @@
-import {
-  AlertBanner,
-  Breadcrumb,
-  EmptyState,
-  PageHeader,
-  SkeletonText,
-  useToast,
-} from '@crefle/web-ui';
+import { AlertBanner, EmptyState, SkeletonText, useToast } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate } from 'react-router';
 
 import {
   APPROVED_APPROVAL_STATUS_CODES,
@@ -25,7 +18,7 @@ import { BlockedExecutionPane } from './blocked-execution-pane';
 import { readCancelAvailability } from './cancel-availability';
 import { isSuccessorBlocked } from './cancel-error';
 import { CancelPane, type CancelLock } from './cancel-pane';
-import { CANCEL_REASON_FIELD, toCancelRequest } from './cancel-reason-draft';
+import { CANCEL_REASON_FIELD, readCancelReason, toCancelRequest } from './cancel-reason-draft';
 import { DetailPane } from './detail-pane';
 import {
   readSelectedDocumentId,
@@ -37,6 +30,7 @@ import {
   cancelTargetOf,
   describeDisabledTypes,
   DOCUMENT_TYPES,
+  documentTypeName,
   isDocumentTypeListPending,
   subTypeGroupOf,
   toDocumentTypeOptions,
@@ -53,6 +47,8 @@ import {
 } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
 import { PageNav } from './page-nav';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { toPageView } from './pagination';
 import { ProgressFilterBar } from './progress-filter-bar';
 import { ProgressTable } from './progress-table';
@@ -72,10 +68,13 @@ import {
 import { RequestCancelDialog } from './request-cancel-dialog';
 import { SCREEN_ROUTES } from './screen-routes';
 import type { CancelExecutionView } from './types';
-import { BoardFrame } from '../../patterns/board-frame';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
 
 const t = messages.documentProgress;
+
+/** 목록 쪽 크기 기본 — 계약 `size` 기본 50(종전에는 싣지 않아 이 값이었다 · #360). */
+const LIST_PAGE_SIZE = 50;
 
 type ApprovalRequestCreate = components['schemas']['ApprovalRequestCreate'];
 
@@ -103,6 +102,8 @@ interface CancelExecutionState {
 interface CancelDialogState {
   /** 확인 당시의 대상. **업무 번호다** — 창이 뜬 뒤 목록이 갱신돼도 확인한 대상이 바뀌지 않는다. */
   documentNo: string;
+  /** 창 제목에 쓸 문서 종류 이름. 표시명을 모르면 `null`. */
+  documentTypeName: string | null;
   /** 그대로 나갈 본문. 사유 하나뿐이다. */
   body: ApprovalRequestCreate;
 }
@@ -131,7 +132,9 @@ interface CancelDialogState {
  * 실행할 곳이 없는** 상태가 사용자에게 보이지 않는다.
  */
 export const DocumentProgressScreen = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(계약 기본 50)은 싣지도 적지도 않는다(#360). */
+  const { searchParams, setSearchParams, pageSize, changePageSize } =
+    usePageSizeSearchParams(LIST_PAGE_SIZE);
   const navigate = useNavigate();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -173,7 +176,14 @@ export const DocumentProgressScreen = () => {
    * ⭐ **조회가 성립하는가를 한 곳에서 정한다.** `toListQuery`가 `null`을 주면 목록 조회는
    * 나가지 않는다 — 표가 비어 있는 동안에는 어떤 주소로 들어와도 `null`이다.
    */
-  const listQuery = toListQuery(filters, documentTypes, page);
+  const baseListQuery = toListQuery(filters, documentTypes, page);
+  const listQuery =
+    baseListQuery === null
+      ? null
+      : {
+          ...baseListQuery,
+          ...(pageSize === LIST_PAGE_SIZE ? {} : { size: pageSize }),
+        };
   const list = useDocumentProgressList(listQuery);
   const statusName = useCodeNames(listQuery === null ? null : 'LOGISTICS_DOCUMENT_STATUS');
   const subTypeName = useCodeNames(
@@ -376,10 +386,15 @@ export const DocumentProgressScreen = () => {
    * ⚠ **이 문단은 정정본이다.** 앞 회차(r2)에 「두 값이 함께 서는 순간이 없다 = 등가」라고 적었으나
    * **틀렸다** — `resetIfIdle`의 첫 줄(`if (write.isSaving) return`)을 수명 표에서 빠뜨렸다.
    * 감지기 「나가는 중 창이 닫힌 뒤 도착한 거절 위에 필수 오류가 선다」가 이 차례를 실제로 문다.
+   *
+   * ⭐ **칸이 비면 서버 거절을 내지 않는다**(2026-11-27 · #360). 사유가 없으면 버튼이 잠겨 ④의
+   * 「다시 누르기」가 없어졌다 — 빈 칸 옆에 낡은 「사유가 짧습니다」가 남지 않게 여기서 거른다.
    */
   const cancelReasonFieldError =
     cancelReasonError ??
-    (isCancelResultMine ? cancelWrite.fieldErrors[CANCEL_REASON_FIELD] : undefined);
+    (isCancelResultMine && readCancelReason(cancelReason).kind === 'ready'
+      ? cancelWrite.fieldErrors[CANCEL_REASON_FIELD]
+      : undefined);
 
   /**
    * 없음 안내가 매인 대상 — **조건·쪽의 서명**이다.
@@ -584,7 +599,7 @@ export const DocumentProgressScreen = () => {
    * 물러나야 하고, 무엇보다 「확인했는데 안 나가는」 자리가 생긴다. 검증 결과(본문)를 창의
    * 상태에 담아 두므로 **확인한 값과 보내는 값이 같은 자리에서 나온다.**
    */
-  const openCancelDialog = (documentNo: string): void => {
+  const openCancelDialog = (documentNo: string, documentTypeCode: string): void => {
     if (isCancelLocked) return;
 
     const body = toCancelRequest(cancelReason);
@@ -596,7 +611,13 @@ export const DocumentProgressScreen = () => {
     }
 
     setCancelReasonError(null);
-    setCancelDialog({ documentNo, body });
+    const typeName = documentTypeName(documentTypeCode);
+
+    setCancelDialog({
+      documentNo,
+      documentTypeName: typeName === documentTypeCode ? null : typeName,
+      body,
+    });
   };
 
   /**
@@ -839,7 +860,7 @@ export const DocumentProgressScreen = () => {
             setCancelReasonError(null);
           }}
           onOpenConfirm={() => {
-            openCancelDialog(progress.documentNo);
+            openCancelDialog(progress.documentNo, progress.documentTypeCode);
           }}
           onRetryLock={() => {
             void cancelLockQuery.refetch();
@@ -899,25 +920,15 @@ export const DocumentProgressScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-
       {/*
-       * **입고 관리 짜임**(사용자 지시 2026-11-19) — 위 조회 조건, 왼쪽 전표 목록, 오른쪽 고른 전표. 두 구획은
-       * 창 바닥에서 멈추고 가운데 막대로 폭을 나눈다(`BoardFrame`).
+       * 화면 제목 줄(경로 · 큰 제목)은 두지 않는다 — 다른 목록 · 상세 화면과 같다(#360).
+       * 조회 조건 · 목록 | 상세는 공용 분할(가운데 폭 막대 · 상하 배치의 높이 막대 · 「⋯」 좌우/상하 배치 · 목록 접기)이다.
+       * 폭 비율 열쇠(`omf-mes:document-progress:split`)는 종전과 같다.
        */}
-      <BoardFrame
-        splitKey="omf-mes:document-progress:split"
+      <ListDetailWorkspace
+        storageKey="omf-mes:document-progress"
         initialRatio={0.6}
-        splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
-        above={{
+        filter={{
           label: t.panes.filters,
           content: (
             <>
@@ -925,32 +936,33 @@ export const DocumentProgressScreen = () => {
                 <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
               )}
               {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-              <div className="pane po-board-filter">
-                <ProgressFilterBar
-                  appliedFilters={filters}
-                  documentTypeOptions={documentTypeOptions}
-                  disabledTypeNote={
-                    disabledReasons === undefined
-                      ? undefined
-                      : t.filters.disabledTypes(disabledReasons)
-                  }
-                  statusOptions={statusOptions}
-                  onSearch={(nextFilters) => {
-                    applyQuery(nextFilters);
-                  }}
-                  onRemoveFilter={(key) => {
-                    applyQuery({ ...filters, [key]: DEFAULT_PROGRESS_FILTERS[key] });
-                  }}
-                  onReset={() => {
-                    applyQuery(DEFAULT_PROGRESS_FILTERS);
-                  }}
-                />
-              </div>
+              <ProgressFilterBar
+                appliedFilters={filters}
+                documentTypeOptions={documentTypeOptions}
+                disabledTypeNote={
+                  disabledReasons === undefined
+                    ? undefined
+                    : t.filters.disabledTypes(disabledReasons)
+                }
+                statusOptions={statusOptions}
+                onSearch={(nextFilters) => {
+                  applyQuery(nextFilters);
+                }}
+                onRemoveFilter={(key) => {
+                  applyQuery({ ...filters, [key]: DEFAULT_PROGRESS_FILTERS[key] });
+                }}
+                onReset={() => {
+                  applyQuery(DEFAULT_PROGRESS_FILTERS);
+                }}
+              />
             </>
           ),
         }}
         list={{
           label: t.panes.list,
+          title: t.panes.list,
+          /* 넓은 표가 목록 상자째 옆으로 밀리지 않고 표만 구르게 — 종전 입고 관리 짜임 표 상자 규칙(`.po-board-pane`)을 그대로 쓴다. */
+          className: 'po-board-pane',
           count: list.data?.page.total,
           /*
            * 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「없습니다」로 보이면 사용자가
@@ -979,6 +991,8 @@ export const DocumentProgressScreen = () => {
                   onChange={(nextPage) => {
                     applyQuery(filters, nextPage);
                   }}
+                  sizes={PAGE_SIZES}
+                  onChangeSize={changePageSize}
                 />
               )}
             </>
@@ -999,6 +1013,7 @@ export const DocumentProgressScreen = () => {
       {cancelDialog !== null && (
         <RequestCancelDialog
           documentNo={cancelDialog.documentNo}
+          documentTypeName={cancelDialog.documentTypeName}
           isSaving={isCancelSavingMine}
           banner={cancelFailureSlot()}
           onClose={closeCancelDialog}

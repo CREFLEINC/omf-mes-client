@@ -1,6 +1,5 @@
 import {
   Button,
-  Chip,
   type Column,
   EmptyState,
   Icon,
@@ -171,23 +170,30 @@ export const StepPane = ({
               onReorder(index, index + 1);
             }}
           />
-          <IconButton
-            icon="delete"
-            size="sm"
-            aria-label={t.actions.removeStep(index + 1)}
-            /*
-             * 마지막 한 단계는 지울 수 없다. 사유는 이 버튼의 접근 설명으로 잇는다 —
-             * 비활성 컨트롤은 포커스를 받지 못해 툴팁만으로는 닿을 수 없다(배치 규범 4).
-             */
-            disabled={isLocked || removeDisabledReason !== null}
-            aria-describedby={removeDisabledReason === null ? undefined : removeReasonId}
-            onClick={() => {
-              /* 누르는 자리가 스스로 한 번 더 본다 — 버튼의 잠금만 믿지 않는다. */
-              if (removeDisabledReason !== null) return;
+          /* 잠기면 마우스를 올렸을 때 까닭이 뜬다 — 잠긴 단추는 마우스 이벤트를 받지 않아 감싼 칸에
+          단다(#360). */
+          <span
+            className="approval-route-step-remove-tip"
+            title={removeDisabledReason ?? undefined}
+          >
+            <IconButton
+              icon="delete"
+              size="sm"
+              aria-label={t.actions.removeStep(index + 1)}
+              /*
+               * 마지막 한 단계는 지울 수 없다. 사유는 이 버튼의 접근 설명으로 잇는다 —
+               * 비활성 컨트롤은 포커스를 받지 못해 툴팁만으로는 닿을 수 없다(배치 규범 4).
+               */
+              disabled={isLocked || removeDisabledReason !== null}
+              aria-describedby={removeDisabledReason === null ? undefined : removeReasonId}
+              onClick={() => {
+                /* 누르는 자리가 스스로 한 번 더 본다 — 버튼의 잠금만 믿지 않는다. */
+                if (removeDisabledReason !== null) return;
 
-              onRemove(step.draftId);
-            }}
-          />
+                onRemove(step.draftId);
+              }}
+            />
+          </span>
         </span>
       ),
     },
@@ -262,9 +268,10 @@ export const StepPane = ({
          * 대상이 없다. 판정 함수는 건드리지 않는다 — 핸들러와 버튼의 잠금이 같은 함수를 보고 있다.
          */}
         {drafts !== null && drafts.length > 0 && removeDisabledReason !== null && (
-          <Chip variant="status" status="info" size="sm">
-            <span id={removeReasonId}>{removeDisabledReason}</span>
-          </Chip>
+          /* 잠긴 까닭은 화면 읽기 도구에만 — 보이는 라벨은 두지 않는다(사용자 지시 2026-11-27 · #360). */
+          <span id={removeReasonId} className="visually-hidden">
+            {removeDisabledReason}
+          </span>
         )}
         {drafts !== null && (
           <Button

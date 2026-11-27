@@ -840,14 +840,14 @@ describe('StockStatusScreen — 보기 전환', () => {
    * **LOT별 보기는 품목을 고른 뒤에만 연다**(계획 결정 11). LOT을 번호 여러 개로 조회할
    * 수단이 없어 품목이 이름을 풀 범위를 정한다 — 열어 두면 표가 「알 수 없음」으로 덮인다.
    */
-  it('품목이 없으면 LOT별 탭이 잠기고 사유가 보인다', async () => {
+  /* 「품목을 고르면 LOT별로 볼 수 있습니다.」 안내는 걷었다(사용자 지시 · #360) — 탭만 잠긴다. */
+  it('품목이 없으면 LOT별 탭이 잠긴다', async () => {
     renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
 
     await screen.findAllByText(ITEM_NAME);
 
     /* 디자인 시스템 `Tabs`는 `aria-disabled`로 잠근다(실측) — 탭 로빙에서 건너뛴다. */
     expect(screen.getByRole('tab', { name: t.views.lot })).toHaveAttribute('aria-disabled', 'true');
-    expect(screen.getByText(t.reasons.lotViewNeedsItem)).toBeInTheDocument();
   });
 
   it('잠긴 LOT별 탭을 눌러도 보기가 바뀌지 않는다', async () => {
@@ -867,7 +867,6 @@ describe('StockStatusScreen — 보기 전환', () => {
     await screen.findAllByText(ITEM_NAME);
 
     expect(screen.getByRole('tab', { name: t.views.lot })).not.toHaveAttribute('aria-disabled');
-    expect(screen.queryByText(t.reasons.lotViewNeedsItem)).not.toBeInTheDocument();
   });
 
   /* 표를 세 벌 그리면 같은 자료가 세 번 렌더되고 접근성 트리에 표가 셋이 된다. */
@@ -1621,7 +1620,7 @@ describe('StockStatusScreen — 기준 시각과 새로고침', () => {
     const asOf = await screen.findByTestId('as-of');
     const first = asOf.textContent;
 
-    expect(first).toMatch(/^기준 \d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+    expect(first).toMatch(/^마지막 갱신 \d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
 
     // 조건 줄을 건드려 화면을 여러 번 다시 그린다.
     await user.click(screen.getByLabelText(t.fields.qualityStatus));

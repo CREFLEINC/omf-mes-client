@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { formatTransactionAt } from './as-of';
+import type { StockCodeNames } from './code-names';
 import { classifyExpiry } from './expiry';
 import { describeReference, toReference, type ReferenceSource } from './lookups';
 import { LotHoldTable } from './lot-hold-table';
@@ -110,6 +111,8 @@ export interface LotDetailPaneProps {
   partnerLookup: ReferenceSource;
   /** 이 구획이 이름을 내는 참조(단위·발급처)의 복구. 조건 줄·목록의 참조는 그쪽이 소유한다. */
   onRetryReferences: () => void;
+  /** LOT 상태 이름(서버 코드 목록 LOT_STATUS · omf-all-around#360). 없으면 코드를 그대로 보인다. */
+  codeNames?: StockCodeNames;
 }
 
 /**
@@ -132,6 +135,7 @@ export const LotDetailPane = ({
   uomLookup,
   partnerLookup,
   onRetryReferences,
+  codeNames,
 }: LotDetailPaneProps) => {
   const { lot } = detail;
   const expiry = classifyExpiry(lot.expiryDate, today);
@@ -159,7 +163,11 @@ export const LotDetailPane = ({
   const attributes: SummaryItem[] = [
     { key: 'lotNo', label: t.fields.lot, value: lot.lotNo },
     { key: 'lotTypeCode', label: t.detail.lotType, value: codeChip(lot.lotTypeCode) },
-    { key: 'statusCode', label: t.detail.status, value: codeChip(lot.statusCode) },
+    {
+      key: 'statusCode',
+      label: t.detail.status,
+      value: codeChip(codeNames?.quality(lot.statusCode) ?? lot.statusCode),
+    },
     {
       key: 'manufacturedAt',
       label: t.detail.manufacturedAt,

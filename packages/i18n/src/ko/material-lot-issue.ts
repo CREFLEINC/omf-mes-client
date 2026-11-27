@@ -53,8 +53,8 @@ export const materialLotIssue = {
     storageNone: '없음',
     defaults: '기본 정보',
     waitingTitle: '대기 자재 관리 LOT',
-    waitingCount: (count: number) => `${count}개 · 아직 입하 스캔 안 됨`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
-    void: (count: number) => (count > 0 ? `${count}개 폐기` : '폐기'),
+    waitingCount: (count: number) => `${count}건 · 아직 입하 스캔 안 됨`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
+    void: (count: number) => (count > 0 ? `${count}건 폐기` : '폐기'),
     issue: '자재 관리 LOT 발행',
     columns: {
       lotNo: '자재 관리 LOT 번호',
@@ -96,24 +96,36 @@ export const materialLotIssue = {
     targetPlaceholder: '공급사·품목을 고르세요', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
     targetOption: (supplier: string, itemCode: string, itemName: string, uom: string) =>
       `${supplier} · ${itemCode} ${itemName} (${uom})`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
+    /** 상세 창에서 연 고정 조합 — 공급사 · 품목을 따로 적고 단위는 품목 옆에 붙인다(사용자 지시 2026-11-26). */
+    supplier: '공급사',
+    item: '품목',
+    itemWithUnit: (itemCode: string, itemName: string, uom: string) =>
+      `${itemCode} ${itemName} · 단위 ${uom}`,
     source: {
       item: '품목 기본값에서 가져옴',
       itemStorage: '품목 기본값 없음 — 품목 기본 보관 단위로 채움',
-      none: '품목 기본값 없음 — 직접 입력',
+      none: '품목에 등록된 기본 패키징 정보가 없습니다. 패키징 정보가 필요한 경우 직접 입력해 주세요.',
     },
     defaultsFailed: '품목 기본값을 불러오지 못했습니다. 직접 넣어 발행할 수 있습니다.',
-    package: '패키징',
+    package: '패키징 유무',
     packageOptional: '(선택)',
-    packageOn: '패키징 넣기',
-    packageOff: '패키징 없음',
     packageUom: '패키징 단위',
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26 「흐린 문구 추가」). */
+    placeholders: {
+      packageUom: '패키징 단위를 고르세요',
+      packageCount: '패키징 수를 입력하세요',
+      qtyPerPackage: '패키징당 수량을 입력하세요',
+      lotQty: '재고 수량을 입력하세요',
+      supplierLotNo: '공급사 LOT 번호를 입력하세요',
+      lotCount: 'LOT 수를 입력하세요',
+    },
     packageCount: '패키징 수',
     qtyPerPackage: (uom: string) => `패키징당 수량 (${uom})`,
     lotQty: '자재 관리 LOT당 재고 수량',
     unitLocked: '품목 기본 단위로 고정',
     supplierLotNo: '공급사 LOT 번호 (선택)',
-    lotCount: '개수',
-    lotCountHelp: '1~200개',
+    lotCount: 'LOT 수',
+    lotCountHelp: '1~200건',
     errors: {
       packageCount: '패키징 수는 1 이상 정수입니다',
       qtyPerPackage: '패키징당 수량은 0보다 커야 합니다',
@@ -122,7 +134,7 @@ export const materialLotIssue = {
       integer: (uom: string) => `${uom}는 정수로 넣습니다`,
       mismatch: (qty: string, pkg: string, product: string) =>
         `${qty} ≠ ${pkg} = ${product} — 맞춰야 발행할 수 있습니다`,
-      lotCount: '개수는 1~200 사이 정수입니다',
+      lotCount: 'LOT 수는 1~200 사이 정수입니다',
     },
     product: (pkg: string, product: string) => `${pkg} = ${product}`,
     summary: (
@@ -132,27 +144,34 @@ export const materialLotIssue = {
       total: string,
       supplierLot: string | null,
     ) =>
-      `자재 관리 LOT ${count}개 · 각 ${each}${pkg === null ? '' : ` (${pkg})`} · 합계 ${total}${
+      `자재 관리 LOT ${count}건 · 각 ${each}${pkg === null ? '' : ` (${pkg})`} · 합계 ${total}${
         // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
         supplierLot === null ? '' : ` · 공급사 LOT ${supplierLot}`
       }`,
-    summaryTail: (pattern: string) => `번호 예: ${pattern} …`,
-    summaryEmpty: '개수를 넣으면 발행될 자재 관리 LOT가 여기 보입니다.',
+    summaryTail: (pattern: string) => `번호 예: ${pattern}`,
+    /* 「발행 예정 LOT」 아래 안내 한 줄(사용자 지시 2026-11-27). */
+    summaryEmpty: '필수 항목을 입력하면 발행 예정 LOT를 미리 볼 수 있습니다.',
+    previewTitle: '발행 예정 LOT',
+    previewMore: (count: number) => `외 ${count}건`,
     cancel: '취소',
-    submit: (count: number | null) => (count === null ? '발행' : `${count}개 발행`),
+    submit: (count: number | null) => (count === null ? '발행' : `${count}건 발행`),
   },
   void: {
-    title: (count: number) => `대기 자재 관리 LOT ${count}개를 폐기할까요?`,
+    /* 제목은 짧은 이름, 묻는 말은 본문(단말 사용 중지 창과 같은 짜임 · #360). */
+    title: '자재 관리 LOT 폐기',
+    caption: '폐기 대상',
+    target: (count: number) => `대기 자재 관리 LOT ${count}건`,
+    question: '선택한 LOT를 폐기하시겠습니까?',
     body: '폐기하면 PDA 입하 스캔에서 거부되고 번호는 다시 매기지 않습니다.',
-    printed: (count: number) => `라벨이 출력된 ${count}개는 현장에서 라벨을 떼어 버려야 합니다.`,
+    printed: (count: number) => `라벨이 출력된 ${count}건는 현장에서 라벨을 떼어 버려야 합니다.`,
     cancel: '취소',
-    confirm: (count: number) => `${count}개 폐기`,
+    confirm: (count: number) => `${count}건 폐기`,
   },
   toast: {
-    issued: (count: number) => `자재 관리 LOT ${count}개를 발행했습니다`,
-    voided: (count: number) => `자재 관리 LOT ${count}개를 폐기했습니다`,
+    issued: (count: number) => `자재 관리 LOT ${count}건를 발행했습니다`,
+    voided: (count: number) => `자재 관리 LOT ${count}건를 폐기했습니다`,
     voidedPartly: (count: number, failed: number) =>
-      `자재 관리 LOT ${count}개 폐기 · 실패 ${failed}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
+      `자재 관리 LOT ${count}건 폐기 · 실패 ${failed}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-14.md · 시안 W0114-After)
   },
   /**
    * 피처 014 — 서버 쪽 목록 · 찾기, 상세 탭 넷(미출력은 P/O 몫을 만들면서) · [수정](omf-all-around#349 · 시안 W0114).
@@ -212,9 +231,7 @@ export const materialLotIssue = {
       po: 'P/O',
       qty: '자재 관리 LOT당 재고 수량',
       qtyFixed: '품목 기본 단위로 고정',
-      package: '패키징',
-      packageOn: '패키징 넣기',
-      packageOff: '패키징 없음',
+      package: '패키징 유무',
       packageUom: '패키징 단위',
       packageCount: '패키징 수',
       qtyPerPackage: (uom: string) => `패키징당 수량 (${uom})`,

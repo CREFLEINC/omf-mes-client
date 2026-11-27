@@ -136,7 +136,8 @@ export const EquipmentFormDialog = ({
 }: EquipmentFormDialogProps) => {
   const hierarchyLabelId = useId();
   const calibrationNoteId = useId();
-  const disposeNoteId = useId();
+  const lockedNoteId = useId();
+  const isDisposed = statusCode === DISPOSED_STATUS_CODE;
 
   /** 주기는 «둘 다» 있어야 성립한다 — 계약이 그렇게 짝을 묶었다. */
   const hasCalibrationCycle =
@@ -146,6 +147,7 @@ export const EquipmentFormDialog = ({
 
   return (
     <Dialog
+      className={mode === 'create' ? 'dialog-icon-add' : 'dialog-icon-edit'}
       open
       onClose={onClose}
       closeOnBackdropClick={false}
@@ -155,9 +157,22 @@ export const EquipmentFormDialog = ({
           <Button variant="outlined" disabled={isSaving} onClick={onClose}>
             {messages.common.cancel}
           </Button>
-          <Button loading={isSaving} disabled={isSaving} onClick={onSave}>
-            {messages.common.save}
-          </Button>
+          {/* 폐기한 설비는 서버가 수정을 거절한다(STATE_LOCKED) — 저장을 잠그고 이유는 마우스를 올리면 보인다(#360 점검). */}
+          <span title={isDisposed ? t.dispose.lockedReason : undefined}>
+            <Button
+              loading={isSaving}
+              disabled={isSaving || isDisposed}
+              aria-describedby={isDisposed ? lockedNoteId : undefined}
+              onClick={onSave}
+            >
+              {messages.common.save}
+            </Button>
+            {isDisposed && (
+              <span id={lockedNoteId} className="visually-hidden">
+                {t.dispose.lockedReason}
+              </span>
+            )}
+          </span>
         </>
       }
     >
@@ -183,6 +198,7 @@ export const EquipmentFormDialog = ({
         <CodeLockTextField
           lockReason={codeLockReason}
           label={t.fields.equipmentCode}
+          placeholder={t.equipmentForm.codePlaceholder}
           required
           value={values.equipmentCode}
           onChange={(event) => onChange({ equipmentCode: event.target.value })}
@@ -191,6 +207,7 @@ export const EquipmentFormDialog = ({
 
         <TextField
           label={t.fields.equipmentName}
+          placeholder={t.equipmentForm.namePlaceholder}
           required
           value={values.equipmentName}
           onChange={(event) => onChange({ equipmentName: event.target.value })}
@@ -199,6 +216,7 @@ export const EquipmentFormDialog = ({
 
         <SelectField
           label={t.fields.equipmentType}
+          placeholder={t.equipmentForm.typePlaceholder}
           required
           options={typeOptions}
           value={values.equipmentTypeCode}
@@ -232,23 +250,22 @@ export const EquipmentFormDialog = ({
          * 있고, 그때 토글까지 잠그면 **사용자가 그 어긋난 상태를 풀 수단이 없다.**
          */}
         <div className="field-cell">
-          <FieldLabel htmlFor={calibrationNoteId} label={t.fields.calibrationRequired} />
+          {/* 켤 수 없는 사유는 토글 아래 문장 대신 이름 옆 ⓘ 로(사용자 지시 · #360). */}
+          <FieldLabel
+            htmlFor={calibrationNoteId}
+            label={t.fields.calibrationRequired}
+            info={
+              !values.calibrationRequired && !hasCalibrationCycle
+                ? t.actionReasons.calibrationNeedsCycle
+                : undefined
+            }
+          />
           <Switch
             id={calibrationNoteId}
             checked={values.calibrationRequired}
             disabled={!values.calibrationRequired && !hasCalibrationCycle}
-            aria-describedby={
-              !values.calibrationRequired && !hasCalibrationCycle
-                ? `${calibrationNoteId}-note`
-                : undefined
-            }
             onChange={(event) => onChange({ calibrationRequired: event.target.checked })}
           />
-          {!values.calibrationRequired && !hasCalibrationCycle && (
-            <span id={`${calibrationNoteId}-note`} className="field-note">
-              {t.actionReasons.calibrationNeedsCycle}
-            </span>
-          )}
         </div>
 
         {mode === 'edit' && (
@@ -304,23 +321,17 @@ export const EquipmentFormDialog = ({
              *
              * ⚠ **값 목록을 못 받으면 잠근다.** 시드가 아직 들어가지 않아 빌 수 있고
              * (설계 omf-mes#182), 그때 열어 두면 이미 끝난 자산에도 눌리는 컨트롤이 된다.
-             * 감추지 않고 사유를 밝힌다(G-2) — 목록이 들어오면 이 잠금은 저절로 풀린다.
+             * 잠긴 까닭 문장은 걷었다 — 꺼진 단추로만(사용자 지시 · #360). 목록이 들어오면 잠금은 저절로 풀린다.
              */}
             {statusCode !== DISPOSED_STATUS_CODE && (
               <div className="field-cell">
                 <Button
                   variant="outlined"
                   disabled={isSaving || statusOptions.length === 0}
-                  aria-describedby={statusOptions.length === 0 ? disposeNoteId : undefined}
                   onClick={onDispose}
                 >
                   {t.actions.disposeEquipment}
                 </Button>
-                {statusOptions.length === 0 && (
-                  <span id={disposeNoteId} className="field-note">
-                    {t.actionReasons.disposeUnavailable}
-                  </span>
-                )}
               </div>
             )}
           </>

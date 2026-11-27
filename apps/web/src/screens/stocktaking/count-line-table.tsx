@@ -212,7 +212,7 @@ export const buildCountLineColumns = ({
             aria-label={t.lineTable.reasonLabel(row.line.lineNo)}
             options={reasonOptions}
             value={row.reasonCode === '' ? null : row.reasonCode}
-            placeholder={codePlaceholder()}
+            placeholder={codePlaceholder(t.lineTable.reason, reasonOptions)}
             disabled={isLocked}
             invalid={
               row.reason.kind === 'invalid' || (row.isReasonRequired && row.reason.kind === 'none')

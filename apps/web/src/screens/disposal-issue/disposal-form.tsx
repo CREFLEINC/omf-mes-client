@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
 import { InfoLabel } from '../../patterns/info-tip';
+import { TimeField } from '../../patterns/time-field';
 import {
   canChooseDisposalPartner,
   codeNote,
@@ -87,8 +88,8 @@ export interface DisposalFormProps {
  * 두면 사용자가 고른 거래처가 **조용히 사라진다** — 되돌릴 수 없는 쓰기 화면에서 가장 나쁜
  * 형태다. 시점이 옮겨졌다는 사실은 보조 문구가 밝히고, 어긋남은 이슈로 올라가 있다.
  *
- * **미리 채우는 값이 없다.** 출고 일시를 지금 시각으로 채우면 사용자가 확인하지 않은 시각이
- * 되돌릴 수 없는 전표에 실리고, 어제 폐기한 것을 오늘 올리는 흔한 경우에 조용히 틀린다.
+ * **화면이 아는 값은 미리 채워 온다**(사용자 지시 2026-11-27 · #360 「자동 키인」) — 출고 유형 ·
+ * 원천 문서 유형 · 출고 일자 · 시각 · (하나뿐이면) 폐기 거래처(`screen.tsx` · `auto-fill.ts`).
  *
  * **ERP 송신 토글을 두지 않는다**(계획 결정 5) — 폐기 출고를 ERP로 보내는지 착수 이슈가 말하지
  * 않아 화면이 정하지 않는다. 정하지 않았다는 사실만 보조 문구가 적는다.
@@ -144,7 +145,11 @@ export const DisposalForm = ({
         options={options}
         value={values.codes[key]}
         note={codeNote(options)}
-        placeholder={options.length === 0 ? codePlaceholder() : undefined}
+        placeholder={
+          options.length === 0
+            ? codePlaceholder()
+            : messages.screenPatterns.referencePicker.select(label)
+        }
         disabled={isLocked || options.length === 0}
         error={fieldErrors[CODE_FIELD_NAMES[key]]}
         onChange={(value) => {
@@ -186,23 +191,38 @@ export const DisposalForm = ({
 
         <div className="field-cell">
           {/*
-           * **시각은 시각 입력칸이다.** 날짜를 달력으로 통일한 뒤에도 시각은 그 위젯이 다루지
-           * 않는다 — 네이티브 속성을 그대로 받는 입력칸에 `type="time"`을 준다.
+           * **시각은 공용 시각 칸이다**(팝업 디자인 시안 · #360) — 숫자만 쳐도 `HH:MM` 이 붙고, 시계
+           * 단추로 고를 수도 있다. 넘기는 값은 종전 `type="time"` 과 같은 `HH:MM` 이다.
            *
            * 오류 문구를 이 칸이 그리지 않고 **아래 한 자리**에서 그린다. 두 칸이 한 값이라
            * 각자 그리면 같은 문장이 두 번 서고, 그때 두 문장의 `id`가 달라 날짜 칸이 자기
            * 오류를 가리킬 수 없게 된다.
            */}
-          <TextField
-            type="time"
-            label={t.formFields.issuedTime}
-            required
-            value={values.issuedTime}
+          <span className="field-label">
+            {t.formFields.issuedTime}
+            <span className="required-mark" aria-hidden="true">
+              {' *'}
+            </span>
+          </span>
+          <TimeField
+            labels={{
+              field: t.formFields.issuedTime,
+              hourList: messages.screenPatterns.dateTimeField.hour(t.formFields.issuedTime),
+              minuteList: messages.screenPatterns.dateTimeField.minute(t.formFields.issuedTime),
+              hourHead: messages.screenPatterns.dateTimeField.hourLabel,
+              minuteHead: messages.screenPatterns.dateTimeField.minuteLabel,
+              placeholder: messages.screenPatterns.dateTimeField.timePlaceholder,
+            }}
+            hour={values.issuedTime.slice(0, 2)}
+            minute={values.issuedTime.slice(3, 5)}
             disabled={isLocked}
-            aria-invalid={issuedError !== undefined}
-            aria-describedby={issuedError === undefined ? undefined : issuedErrorId}
-            onChange={(event) => {
-              onChangeIssuedTime(event.target.value);
+            invalid={issuedError !== undefined}
+            describedBy={issuedError === undefined ? undefined : issuedErrorId}
+            onChange={(hour, minute) => {
+              onChangeIssuedTime(`${hour}:${minute}`);
+            }}
+            onClear={() => {
+              onChangeIssuedTime('');
             }}
           />
           {issuedError !== undefined && (
@@ -216,6 +236,7 @@ export const DisposalForm = ({
           <TextField
             fullWidth
             label={t.formFields.remarks}
+            placeholder={t.form.remarksPlaceholder}
             value={values.remarks}
             disabled={isLocked}
             error={fieldErrors.remarks}
@@ -258,7 +279,10 @@ export const DisposalForm = ({
            * 회차 종료 질문에 이 사실을 함께 올린다.
            */
           error={fieldErrors.destinationId}
-          placeholder={disposalPartnerPlaceholder(disposalPartnerCondition)}
+          placeholder={
+            disposalPartnerPlaceholder(disposalPartnerCondition) ??
+            messages.screenPatterns.referencePicker.select(t.formFields.disposalPartner)
+          }
           /*
            * **체크하면 고를 수 없다**(#128 문면). 값 비움은 화면의 전이(`withSelfDisposal`)가
            * 맡는다 — 여기서 비우면 잠금과 비움이 두 자리로 갈려 한쪽만 도는 경로가 생긴다.

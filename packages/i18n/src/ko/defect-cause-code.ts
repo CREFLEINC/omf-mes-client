@@ -135,6 +135,8 @@ export const defectCauseCode = {
     defectName: '불량명',
     kind: '구분',
     isActive: '사용 유무',
+    /** 행 끝 동작 단추 열(사용 중지 · 재사용 · 수정). */
+    manage: '관리',
   },
   /** 상세 카드(omf-all-around#209) — 제목 · 상태 칩 · 이름표 상자, 수정은 창에서. */
   detail: {
@@ -181,7 +183,9 @@ export const defectCauseCode = {
   },
   /** 되돌리기 어려운 액션이라 확인을 한 단계 둔다. 무엇이 일어나는지 먼저 밝힌다. */
   deactivate: {
-    title: '사용 중지할까요?',
+    title: '불량코드 사용 중지',
+    caption: '사용 중지 대상',
+    question: '이 불량코드의 사용을 중지하시겠습니까?',
     description:
       '사용 중지하면 새 작업에서 이 코드를 선택할 수 없습니다. 기존 데이터는 유지됩니다.',
     confirm: '사용 중지',
@@ -193,7 +197,9 @@ export const defectCauseCode = {
   },
   /** 미사용 코드를 재사용으로 바꾸는 확인 창(사용자 지시 · #209) */
   activate: {
-    title: '재사용할까요?',
+    title: '불량코드 재사용',
+    caption: '재사용 대상',
+    question: '이 불량코드를 재사용하시겠습니까?',
     description: '재사용하면 새 작업에서 이 코드를 다시 선택할 수 있습니다.',
     confirm: '재사용',
   },

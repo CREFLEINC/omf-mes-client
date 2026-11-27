@@ -65,6 +65,8 @@ export interface ParentItemQuery {
   q?: string;
   itemTypeCode: string;
   page?: number;
+  /** 고른 쪽 크기(10 · 20 · 50 · #360) — 없으면 종전대로 50. */
+  size?: number;
   /**
    * BOM 이 있는 품목만(서버 #848). 켜짐일 때만 싣는다 — 끄면 BOM 이 없는 품목까지 전부다.
    * `plantId` 와 함께면 그 공장 BOM 이나 공장이 빈 BOM 을 가진 모품목만이다(서버 #1156).
@@ -94,7 +96,7 @@ export const useParentItems = (query: ParentItemQuery, enabled = true) => {
               ...query,
               itemTypeCode: [query.itemTypeCode],
               includeInactive: true,
-              size: PARENT_PAGE_SIZE,
+              size: query.size ?? PARENT_PAGE_SIZE,
             },
           },
         }),

@@ -168,6 +168,16 @@ export const materialIssueRequest: Translated<typeof ko.materialIssueRequest> = 
     fix: 'Sửa lại số lượng',
     submit: 'Vẫn yêu cầu',
   },
+  confirm: {
+    title: 'Phát hành yêu cầu xuất kho?',
+    workOrder: 'W/O đối tượng',
+    warehouse: 'Kho',
+    destination: 'Vị trí đến',
+    requiredAt: 'Thời điểm cần',
+    lines: 'Mặt hàng yêu cầu',
+    lineCount: (count: number): string => `${String(count)} mục`,
+    submit: 'Phát hành yêu cầu',
+  },
   status: {
     WAITING: 'Chờ',
     RELEASED: 'Đã phát hành',

@@ -30,7 +30,7 @@ export const LocationLabelIssueDialog = ({
   banner,
 }: LocationLabelIssueDialogProps) => (
   <Dialog
-    className="location-dialog"
+    className="location-dialog dialog-icon-print"
     open
     onClose={onClose}
     size="sm"
@@ -55,6 +55,7 @@ export const LocationLabelIssueDialog = ({
     <div className="form-grid warehouse-location-label-reissue-form">
       <SelectField
         label={messages.warehouseLocation.labelIssue.reason}
+        placeholder={messages.warehouseLocation.labelIssue.reasonPlaceholder}
         required
         options={reasonOptions}
         value={reasonCode}

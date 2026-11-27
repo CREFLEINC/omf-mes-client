@@ -50,7 +50,7 @@ describe('SubmitConfirmDialog — 무엇을 확인시키는가', () => {
     renderDialog();
 
     expect(within(dialog()).getByText('SAMPLE-IA-9301')).toBeInTheDocument();
-    expect(within(dialog()).getByText(t.dialog.submitLead)).toBeInTheDocument();
+    expect(within(dialog()).getByText(t.dialog.submitQuestion)).toBeInTheDocument();
   });
 
   /**

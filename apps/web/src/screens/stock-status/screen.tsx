@@ -2,6 +2,7 @@ import {
   Breadcrumb,
   Button,
   EmptyState,
+  Icon,
   PageHeader,
   SkeletonText,
   Tabs,
@@ -13,9 +14,16 @@ import { useSearchParams } from 'react-router';
 
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { usePageHub } from '../../patterns/page-hub';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import { formatAsOf } from './as-of';
 import { BalanceFilterBar } from './balance-filter-bar';
 import { BalanceTable } from './balance-table';
+import { useStockCodeNames } from './code-names';
 import {
   defaultBusinessPeriod,
   resolveBusinessPeriod,
@@ -29,10 +37,14 @@ import {
 } from './code-options';
 import {
   EMPTY_FILTERS,
+  LIST_PAGE_SIZES,
+  PAGE_SIZE,
   readFilters,
   readHistoryPage,
+  readHistoryPageSize,
   readHistoryPeriod,
   readPage,
+  readPageSize,
   readSelectedLotId,
   readSelectedTransaction,
   resolveFilters,
@@ -125,6 +137,23 @@ export const StockStatusScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const hub = usePageHub();
   const hubActionsTarget = useHubActionsTarget();
+  /* 품질 상태 · 재고 상태 · 소유 구분은 서버 코드 목록의 이름으로 보인다(omf-all-around#360). */
+  const codeNames = useStockCodeNames();
+  /*
+   * LOT별 보기의 목록 | 상세 — 다른 목록 · 상세 화면과 같은 공용 분할(가운데 폭 막대 · 상하 배치의 높이 막대 ·
+   * 「⋯」 좌우/상하 배치 · 목록 접기 · #360). 다른 두 보기는 상세가 없어 종전처럼 목록 한 칸이다.
+   * 감싸는 상자와 목록 상자는 보기와 상관없이 같은 자리에 둔다 — 보기를 바꿔도 조회 조건 줄이 다시 그려지지 않는다.
+   */
+  const { splitRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:stock-status:split', 0.5);
+  const layout = useSplitOrientation('omf-mes:stock-status:split-orientation');
+  const isStacked = layout.orientation === 'column';
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: messages.common.inspectionHub.listCollapse,
+    expandLabel: messages.common.inspectionHub.listExpand,
+  };
 
   /**
    * **주소 키의 수명 — 무엇이 바뀔 때 무엇을 비우는가.**
@@ -206,6 +235,7 @@ export const StockStatusScreen = () => {
   const view = resolveViewAxis(readViewParam(searchParams), itemId !== null);
   const sortKey = readSortKey(readSortParam(searchParams), view);
   const page = readPage(searchParams);
+  const pageSize = readPageSize(searchParams);
 
   /*
    * **고른 LOT도 읽는 자리에서 뜻을 판정한다**(`resolveFilters`·`resolveViewAxis`와 같은 갈래).
@@ -254,6 +284,7 @@ export const StockStatusScreen = () => {
           ...toSortQuery(sortKey),
           ...scopeQuery,
           ...(page > 1 ? { page } : {}),
+          ...(pageSize === PAGE_SIZE ? {} : { size: pageSize }),
         };
 
   const list = useBalanceList(listQuery);
@@ -280,6 +311,7 @@ export const StockStatusScreen = () => {
    */
   const historyPeriod = readHistoryPeriod(searchParams);
   const historyPage = readHistoryPage(searchParams);
+  const historyPageSize = readHistoryPageSize(searchParams);
   const resolvedPeriod = resolveBusinessPeriod(historyPeriod);
 
   /**
@@ -299,6 +331,7 @@ export const StockStatusScreen = () => {
           ...resolvedPeriod.query,
           lotId: historyScope.lotId,
           ...(historyPage > 1 ? { page: historyPage } : {}),
+          ...(historyPageSize === PAGE_SIZE ? {} : { size: historyPageSize }),
         };
 
   const history = useTransactionList(historyQuery);
@@ -404,8 +437,9 @@ export const StockStatusScreen = () => {
     nextFilters: BalanceFilters,
     nextSort: SortKey | null,
     nextPage = 1,
+    nextSize = pageSize,
   ): void => {
-    setSearchParams(toSearchParams(nextView, nextFilters, nextSort, nextPage));
+    setSearchParams(toSearchParams(nextView, nextFilters, nextSort, nextPage, nextSize));
   };
 
   /**
@@ -439,7 +473,7 @@ export const StockStatusScreen = () => {
    * 고를 때 첫 쪽으로 튀면 사용자가 3쪽에서 고른 LOT의 상세를 보는 동안 목록은 1쪽이 된다.
    */
   const toggleSelectLot = (lotId: number): void => {
-    const next = toSearchParams(view, filters, sortKey, page);
+    const next = toSearchParams(view, filters, sortKey, page, pageSize);
 
     if (lotId !== selectedLotId) {
       next.set(SELECTION_KEYS.lot, String(lotId));
@@ -469,16 +503,17 @@ export const StockStatusScreen = () => {
    *
    * **잔액 쪽 조건은 하나도 건드리지 않는다.** 이력은 고른 LOT에 대한 다른 질문이다.
    */
-  const applyHistory = (period: BusinessPeriod, nextPage = 1): void => {
+  const applyHistory = (period: BusinessPeriod, nextPage = 1, nextSize = historyPageSize): void => {
     if (selectedLotId === null) return;
 
-    const next = toSearchParams(view, filters, sortKey, page);
+    const next = toSearchParams(view, filters, sortKey, page, pageSize);
 
     next.set(SELECTION_KEYS.lot, String(selectedLotId));
     next.set(SELECTION_KEYS.historyFrom, period.from);
     next.set(SELECTION_KEYS.historyTo, period.to);
 
     if (nextPage > 1) next.set(SELECTION_KEYS.historyPage, String(nextPage));
+    if (nextSize !== PAGE_SIZE) next.set(SELECTION_KEYS.historySize, String(nextSize));
 
     setSearchParams(next);
   };
@@ -602,6 +637,7 @@ export const StockStatusScreen = () => {
       <BalanceTable
         view={view}
         rows={rows}
+        codeNames={codeNames}
         isLoading={list.isPending && listQuery !== null}
         hasQuery={listQuery !== null}
         isBeyondLast={pageView.isBeyondLast}
@@ -629,6 +665,11 @@ export const StockStatusScreen = () => {
           view={pageView}
           onChange={(nextPage) => {
             apply(view, filters, sortKey, nextPage);
+          }}
+          sizes={LIST_PAGE_SIZES}
+          onChangeSize={(nextSize) => {
+            /* 쪽 이동과 같다 — 첫 쪽부터 그 크기로 다시 받는다. */
+            apply(view, filters, sortKey, 1, nextSize);
           }}
         />
       )}
@@ -683,6 +724,7 @@ export const StockStatusScreen = () => {
       <LotDetailPane
         row={selectedRow}
         detail={lotDetail.data}
+        codeNames={codeNames}
         /*
          * **유효기한 판정의 「오늘」도 기준 시각이다.** 목록 응답이 도착한 시각을 쓴다 —
          * 이 구획의 수량이 그 응답에서 왔고 머리글의 「기준 …」이 그 시각을 말한다.
@@ -759,13 +801,16 @@ export const StockStatusScreen = () => {
        * 조회가 끝났음은 표의 빈 상태가 이미 알린다.
        */}
       {asOf !== null && (
-        <span data-testid="as-of" className="field-note">
+        <span data-testid="as-of" className="dashboard-refresh-status">
           {t.asOf(asOf)}
         </span>
       )}
+      {/* 갱신 단추 · 마지막 갱신 시각은 통합 대시보드의 「갱신」과 같은 모양(#360). */}
       <Button
         variant="outlined"
         size="sm"
+        className="stock-status-refresh-button"
+        leadingIcon={<Icon name="refresh" size={18} />}
         disabled={listQuery === null}
         onClick={() => {
           /*
@@ -794,6 +839,60 @@ export const StockStatusScreen = () => {
       </Button>
     </>
   );
+
+  const hasLotDetail = view === 'lot' && !list.isError;
+
+  /*
+   * **셋째 구획 — 고른 LOT을 골랐을 때만 낸다.** 이력은 「이 LOT이 언제 얼마나
+   * 움직였나」라는 물음이라 가리킬 LOT이 없으면 물음 자체가 성립하지 않는다.
+   * 상세 구획처럼 「고르세요」를 두지 않는 이유가 그것이다 — 그 안내는 위 구획이 이미 낸다.
+   *
+   * **상세가 실패해도 낸다.** 이력은 고른 LOT 번호에만 매달리고 상세 응답을 쓰지 않는다 —
+   * 한쪽이 실패했다고 다른 쪽을 감추면 사용자가 쓸 수 있는 것까지 잃는다.
+   */
+  const historySection =
+    historyScope === null || list.isError ? null : (
+      <section className="pane" aria-label={t.panes.history}>
+        {/*
+         * **실패해도 이 구획을 통째로 감추지 않는다.** 배너는 표 자리만 대신하고
+         * 기간 두 칸과 조회는 남는다 — 감추면 사용자가 기간을 고칠 수단을 잃고,
+         * 권한 없음이면 「다시 시도」도 없어 이 구획에서 할 수 있는 조치가 0이 된다.
+         * 잔액 구획이 「조건을 고칠 수단이 사라지면 안 된다」로 쓰는 규칙과 같은 형태다.
+         *
+         * 이력 조회 실패는 **이 구획 안에만** 낸다 — 위 목록과 LOT 상세를 가리지 않는다.
+         */}
+        <TransactionPane
+          appliedPeriod={historyPeriod}
+          rows={historyRows}
+          isLoading={history.isPending && historyQuery !== null}
+          hasQuery={historyQuery !== null}
+          pageView={historyPageView}
+          isError={history.isError}
+          error={history.error}
+          onRetry={() => {
+            void history.refetch();
+          }}
+          selected={selectedTransaction}
+          onSearch={(nextPeriod) => {
+            applyHistory(nextPeriod);
+          }}
+          onToggleSelect={toggleSelectTransaction}
+          /* 이력 쪽 이동(수명 표 11행) — 기간은 그대로 두고 고른 거래를 비운다. */
+          onChangePage={(nextPage) => {
+            applyHistory(historyPeriod, nextPage);
+          }}
+          onChangePageSize={(nextSize) => {
+            applyHistory(historyPeriod, 1, nextSize);
+          }}
+        />
+
+        {/*
+         * 라인은 이력 목록이 실패하면 낼 것이 없다 — 고를 줄이 화면에 없다.
+         * 반대 방향(라인 실패)은 위 이력 목록을 가리지 않는다.
+         */}
+        {!history.isError && transactionLinePane(historyScope.warehouseId)}
+      </section>
+    );
 
   return (
     <>
@@ -829,127 +928,124 @@ export const StockStatusScreen = () => {
         />
       )}
 
-      <section className="pane" aria-label={t.panes.list}>
-        {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-        <BalanceFilterBar
-          appliedFilters={filters}
-          warehouseOptions={toSelectOptions(warehouses)}
-          lotOptions={toSelectOptions(lots)}
-          locationOptions={toSelectOptions(draftLocations)}
-          qualityStatusOptions={toCodeOptions(
-            PLACEHOLDER_QUALITY_STATUS_CODES,
-            rows,
-            (row) => row.qualityStatusCode,
-            filters.qualityStatus,
-          )}
-          inventoryStatusOptions={toCodeOptions(
-            PLACEHOLDER_INVENTORY_STATUS_CODES,
-            rows,
-            (row) => row.inventoryStatusCode,
-            filters.inventoryStatus,
-          )}
-          ownershipOptions={toCodeOptions(
-            PLACEHOLDER_OWNERSHIP_TYPE_CODES,
-            rows,
-            (row) => row.ownershipTypeCode,
-            filters.ownership,
-          )}
-          chipNames={{
-            warehouse: describeReference(toReference(warehouses, warehouseId)),
-            item: describeReference(
-              toReference(itemId === null ? items : (itemNames.get(itemId) ?? items), itemId),
-            ),
-            lot: describeReference(toReference(lots, toLookupId(filters.lot))),
-            location: describeReference(toReference(locations, toLookupId(filters.location))),
-          }}
-          warehouseNote={lookupNote(warehouses)}
-          lotNote={lotNote}
-          /* 「창고를 고르면 채워집니다」 안내는 걷었다(사용자 지시 2026-11-18). */
-          locationNote={draftWarehouseId === null ? undefined : lookupNote(draftLocations)}
-          onWarehouseChange={setDraftWarehouse}
-          referencesFailed={filterReferences.some((reference) => reference.isError)}
-          onRetryReferences={retryFilterReferences}
-          onSearch={(nextFilters) => {
-            apply(view, nextFilters, sortKey);
-          }}
-          onRemoveFilter={(key) => {
-            apply(view, { ...filters, [key]: key === 'includeZero' ? false : '' }, sortKey);
-          }}
-          /*
-           * **초기화는 정렬도 없앤다**(수명 표 3행 — 검증 1회차 F2 정정).
-           * 첫 진입과 같은 상태로 되돌린다: 주소에 `sort`가 없는 것이 곧 「정렬 없음」이다.
-           */
-          onReset={() => {
-            apply(view, EMPTY_FILTERS, null);
-          }}
-        />
-
-        <Tabs aria-label={t.views.label} items={tabItems} value={view} onChange={changeView} />
-
-        {/* 잠긴 탭은 포커스를 받지 못해 사유를 자기 안에 담을 수 없다. 탭 밖에 둔다. */}
-        {!canUseLotView && <p className="field-note">{t.reasons.lotViewNeedsItem}</p>}
-      </section>
-
-      {/*
-       * **LOT별 보기에서만 낸다.** 다른 두 보기에는 고를 대상 자체가 없어, 구획을 두면
-       * 「고르세요」가 할 수 없는 일을 시키는 안내가 된다.
-       *
-       * **목록이 실패하면 내지 않는다** — 상세의 수량 다섯이 목록의 줄에서 오므로 낼 것이 없고,
-       * 배너가 이미 사유와 「다시 시도」를 냈다. 반대 방향(상세 실패)은 위 목록을 가리지 않는다.
-       */}
-      {view === 'lot' && !list.isError && (
-        <section className="pane" aria-label={t.panes.detail}>
-          {detailPane()}
-        </section>
+      {hasLotDetail && (
+        <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
       )}
 
-      {/*
-       * **셋째 구획 — 고른 LOT을 골랐을 때만 낸다.** 이력은 「이 LOT이 언제 얼마나
-       * 움직였나」라는 물음이라 가리킬 LOT이 없으면 물음 자체가 성립하지 않는다.
-       * 상세 구획처럼 「고르세요」를 두지 않는 이유가 그것이다 — 그 안내는 위 구획이 이미 낸다.
-       *
-       * **상세가 실패해도 낸다.** 이력은 고른 LOT 번호에만 매달리고 상세 응답을 쓰지 않는다 —
-       * 한쪽이 실패했다고 다른 쪽을 감추면 사용자가 쓸 수 있는 것까지 잃는다.
-       */}
-      {historyScope !== null && !list.isError && (
-        <section className="pane" aria-label={t.panes.history}>
-          {/*
-           * **실패해도 이 구획을 통째로 감추지 않는다.** 배너는 표 자리만 대신하고
-           * 기간 두 칸과 조회는 남는다 — 감추면 사용자가 기간을 고칠 수단을 잃고,
-           * 권한 없음이면 「다시 시도」도 없어 이 구획에서 할 수 있는 조치가 0이 된다.
-           * 잔액 구획이 「조건을 고칠 수단이 사라지면 안 된다」로 쓰는 규칙과 같은 형태다.
-           *
-           * 이력 조회 실패는 **이 구획 안에만** 낸다 — 위 목록과 LOT 상세를 가리지 않는다.
-           */}
-          <TransactionPane
-            appliedPeriod={historyPeriod}
-            rows={historyRows}
-            isLoading={history.isPending && historyQuery !== null}
-            hasQuery={historyQuery !== null}
-            pageView={historyPageView}
-            isError={history.isError}
-            error={history.error}
-            onRetry={() => {
-              void history.refetch();
+      <div
+        ref={splitRef}
+        className={
+          hasLotDetail
+            ? `po-board-split inspection-split list-detail-split stock-status-split${isStacked ? ' is-stacked' : ''}`
+            : 'stock-status-split'
+        }
+        style={hasLotDetail ? { ...split.style, ...layout.style } : undefined}
+        data-left-collapsed={hasLotDetail && split.collapsed ? 'true' : undefined}
+      >
+        <section
+          className={hasLotDetail ? 'pane list-detail-list' : 'pane'}
+          aria-label={t.panes.list}
+        >
+          {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
+          <BalanceFilterBar
+            appliedFilters={filters}
+            warehouseOptions={toSelectOptions(warehouses)}
+            lotOptions={toSelectOptions(lots)}
+            locationOptions={toSelectOptions(draftLocations)}
+            qualityStatusOptions={toCodeOptions(
+              PLACEHOLDER_QUALITY_STATUS_CODES,
+              rows,
+              (row) => row.qualityStatusCode,
+              filters.qualityStatus,
+            )}
+            inventoryStatusOptions={toCodeOptions(
+              PLACEHOLDER_INVENTORY_STATUS_CODES,
+              rows,
+              (row) => row.inventoryStatusCode,
+              filters.inventoryStatus,
+            )}
+            ownershipOptions={toCodeOptions(
+              PLACEHOLDER_OWNERSHIP_TYPE_CODES,
+              rows,
+              (row) => row.ownershipTypeCode,
+              filters.ownership,
+            )}
+            chipNames={{
+              warehouse: describeReference(toReference(warehouses, warehouseId)),
+              item: describeReference(
+                toReference(itemId === null ? items : (itemNames.get(itemId) ?? items), itemId),
+              ),
+              lot: describeReference(toReference(lots, toLookupId(filters.lot))),
+              location: describeReference(toReference(locations, toLookupId(filters.location))),
+              qualityStatus: codeNames.quality(filters.qualityStatus),
+              inventoryStatus: codeNames.inventory(filters.inventoryStatus),
+              ownership: codeNames.ownership(filters.ownership),
             }}
-            selected={selectedTransaction}
-            onSearch={(nextPeriod) => {
-              applyHistory(nextPeriod);
+            codeNames={codeNames}
+            warehouseNote={lookupNote(warehouses)}
+            lotNote={lotNote}
+            /* 「창고를 고르면 채워집니다」 안내는 걷었다(사용자 지시 2026-11-18). */
+            locationNote={draftWarehouseId === null ? undefined : lookupNote(draftLocations)}
+            onWarehouseChange={setDraftWarehouse}
+            referencesFailed={filterReferences.some((reference) => reference.isError)}
+            onRetryReferences={retryFilterReferences}
+            onSearch={(nextFilters) => {
+              apply(view, nextFilters, sortKey);
             }}
-            onToggleSelect={toggleSelectTransaction}
-            /* 이력 쪽 이동(수명 표 11행) — 기간은 그대로 두고 고른 거래를 비운다. */
-            onChangePage={(nextPage) => {
-              applyHistory(historyPeriod, nextPage);
+            onRemoveFilter={(key) => {
+              apply(view, { ...filters, [key]: key === 'includeZero' ? false : '' }, sortKey);
+            }}
+            /*
+             * **초기화는 정렬도 없앤다**(수명 표 3행 — 검증 1회차 F2 정정).
+             * 첫 진입과 같은 상태로 되돌린다: 주소에 `sort`가 없는 것이 곧 「정렬 없음」이다.
+             */
+            onReset={() => {
+              apply(view, EMPTY_FILTERS, null);
             }}
           />
 
-          {/*
-           * 라인은 이력 목록이 실패하면 낼 것이 없다 — 고를 줄이 화면에 없다.
-           * 반대 방향(라인 실패)은 위 이력 목록을 가리지 않는다.
-           */}
-          {!history.isError && transactionLinePane(historyScope.warehouseId)}
+          <Tabs aria-label={t.views.label} items={tabItems} value={view} onChange={changeView} />
         </section>
-      )}
+        {hasLotDetail && (
+          <PaneSplitter
+            label={messages.common.inspectionHub.splitter}
+            ratio={split.ratio}
+            onChange={split.commit}
+            collapse={listCollapse}
+          />
+        )}
+        {hasLotDetail && isStacked && (
+          <PaneHeightSplitter
+            label={messages.common.inspectionHub.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+            collapse={listCollapse}
+          />
+        )}
+
+        {/*
+         * **LOT별 보기에서만 낸다.** 다른 두 보기에는 고를 대상 자체가 없어, 구획을 두면
+         * 「고르세요」가 할 수 없는 일을 시키는 안내가 된다.
+         *
+         * **목록이 실패하면 내지 않는다** — 상세의 수량 다섯이 목록의 줄에서 오므로 낼 것이 없고,
+         * 배너가 이미 사유와 「다시 시도」를 냈다. 반대 방향(상세 실패)은 위 목록을 가리지 않는다.
+         */}
+        {hasLotDetail && (
+          <div
+            className="list-detail-detail is-bare"
+            role="region"
+            aria-label={`${t.panes.detail} · ${t.panes.history}`}
+          >
+            <section className="pane" aria-label={t.panes.detail}>
+              {detailPane()}
+            </section>
+            {historySection}
+          </div>
+        )}
+      </div>
+
+      {/* LOT별 보기면 위 상세 칸 안에 선다. */}
+      {!hasLotDetail && historySection}
     </>
   );
 };

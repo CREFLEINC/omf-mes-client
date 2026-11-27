@@ -57,7 +57,7 @@ describe('CrewSections', () => {
     expect(
       within(table)
         .getAllByRole('columnheader')
-        .map((cell) => cell.textContent),
+        .map((cell) => cell.textContent?.replace('drag_indicator', '')),
     ).toEqual([
       t.sessions.columns.worker,
       t.sessions.columns.role,
@@ -75,7 +75,7 @@ describe('CrewSections', () => {
     const headers = () =>
       within(screen.getByRole('region', { name: t.workerResults.heading }))
         .getAllByRole('columnheader')
-        .map((cell) => cell.textContent);
+        .map((cell) => cell.textContent?.replace('drag_indicator', ''));
 
     expect(headers()).toEqual([
       t.workerResults.columns.worker,
@@ -104,7 +104,7 @@ describe('CrewSections', () => {
     expect(
       section()
         .getAllByRole('columnheader')
-        .map((cell) => cell.textContent),
+        .map((cell) => cell.textContent?.replace('drag_indicator', '')),
     ).toEqual([t.defectTypes.columns.type, t.defectTypes.columns.qty]);
     expect(section().getByText('외관 › 긁힘')).toBeInTheDocument();
     expect(section().getByText('4')).toBeInTheDocument();

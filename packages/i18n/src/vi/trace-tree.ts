@@ -5,7 +5,6 @@ import type { Translated } from './translated';
 const num = (value: number): string => value.toLocaleString('vi-VN');
 
 export const traceTree: Translated<typeof ko.traceTree> = {
-  breadcrumbRoot: 'Quản lý sản xuất',
   material: {
     title: 'Truy vết sản xuất theo vật tư',
     scanLabel: 'Số LOT',
@@ -18,7 +17,6 @@ export const traceTree: Translated<typeof ko.traceTree> = {
     period: 'Ngày nhập hàng',
     recentDate: 'Đưa vào',
     conditionDate: 'Ngày nhập',
-    recentFoot: 'LOT chưa đưa vào sản xuất: hãy quét số hoặc tìm theo nhà cung cấp.',
     conditionFoot:
       'Tải 100 LOT mỗi lần theo ngày nhập hàng mới nhất. Cả LOT chưa đưa vào sản xuất cũng hiện ra.',
     conditionEmptyHint: 'Hãy đổi nhà cung cấp hoặc ngày nhập hàng.',
@@ -47,7 +45,6 @@ export const traceTree: Translated<typeof ko.traceTree> = {
     period: 'Ngày xuất hàng',
     recentDate: 'Ngày chuẩn',
     conditionDate: 'Ngày xuất',
-    recentFoot: 'LOT bán thành phẩm chưa nhập kho: hãy quét số.',
     conditionFoot:
       'Hiển thị 100 LOT sản phẩm đã phân bổ cho lần xuất đã hoàn tất, theo ngày xuất mới nhất.',
     conditionEmptyHint: 'Hãy đổi khách hàng hoặc ngày xuất hàng.',

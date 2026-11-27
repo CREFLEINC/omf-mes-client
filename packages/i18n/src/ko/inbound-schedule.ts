@@ -104,7 +104,7 @@ export const inboundSchedule = {
   quick: {
     supplier: '공급업체',
     item: '품목코드',
-    itemPlaceholder: '품목코드 입력',
+    itemPlaceholder: '품목코드를 입력하세요',
     scanNotFound: (value: string): string => `「${value}」에 맞는 품목이 없습니다.`,
     scanFailed: '품목을 찾지 못했습니다. 잠시 뒤 다시 스캔하세요.',
     today: '오늘 도착',
@@ -252,6 +252,15 @@ export const inboundSchedule = {
     justRegistered: '방금 등록',
     actions: {
       link: '연결',
+    },
+    /** [연결]을 누르면 먼저 뜨는 확인 팝업(사용자 지시 2026-11-27 · #360). */
+    linkDialog: {
+      title: '발주에 연결할까요?',
+      receiptLine: '입하 줄',
+      order: '연결할 발주',
+      qty: '연결 수량',
+      cancel: '취소',
+      confirm: '연결',
     },
     /** 단추 옆에 늘 보이는 요약. 수량 뒤에 조사를 붙이지 않는다(받침이 단위마다 다르다). */
     confirmLink: (qty: string, order: string): string => `초과분 ${qty} → ${order}`,

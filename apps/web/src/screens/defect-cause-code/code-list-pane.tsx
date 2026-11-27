@@ -29,8 +29,6 @@ export interface CodeListPaneProps {
   pageMeta: PageNavMeta;
   onChangePage: (page: number) => void;
   onChangePageSize: (size: PageSize) => void;
-  selectedId: number | null;
-  onSelect: (id: number) => void;
   /** 공정 번호 → 「공정코드 · 공정명」. 공정이 없으면 null */
   processLabelOf: (processId: number | null | undefined) => string | null;
   /**
@@ -40,6 +38,14 @@ export interface CodeListPaneProps {
   loadError: ReactNode;
   /** 목록 맨 위 제목 줄(「이름 · 건수 · 목록 접기」 · #350). 화면이 `PaneListHead` 로 넘긴다. */
   head?: ReactNode;
+  /** 코드별 「사용된 기록」 건수 — 못 받았거나 서버가 셀 수 없으면 null(「—」). */
+  referenceCountOf: (id: number) => number | null;
+  /** 행 끝 「수정」 — 그 코드의 수정 창을 연다(상세 카드에서 옮겨 옴 · #360). */
+  onEdit: (id: number) => void;
+  /** 행 끝 「사용 중지」 · 「재사용」 — 그 코드의 확인 창을 연다. */
+  onToggleActive: (id: number) => void;
+  /** 사용 중인 대분류 줄 끝 「하위 코드 추가」 — 그 대분류를 상위로 등록 창을 연다(상세 카드에서 옮겨 옴 · #360). */
+  onAddChild: (id: number) => void;
 }
 
 /** 표의 한 줄 — 대분류(머리)이거나 그 아래 상세(가지). 머리의 `code` 가 없으면 대분류를 못 찾은 묶음이다. */
@@ -120,7 +126,7 @@ const EmptyIcon = ({ name }: { name: string }) => (
   </span>
 );
 
-/** 좌 페인 — 코드를 대분류별로 묶어 보이고 골라 상세를 여는 자리. */
+/** 목록 — 코드를 대분류별로 묶어 보인다. 줄을 눌러 고르지 않고, 동작은 행 끝 단추로 한다(#360). */
 export const CodeListPane = ({
   adapter,
   rows,
@@ -131,11 +137,13 @@ export const CodeListPane = ({
   pageMeta,
   onChangePage,
   onChangePageSize,
-  selectedId,
-  onSelect,
   processLabelOf,
   loadError,
   head,
+  referenceCountOf,
+  onEdit,
+  onToggleActive,
+  onAddChild,
 }: CodeListPaneProps) => {
   const orEmpty = (value: string | null | undefined): string =>
     value === null || value === undefined || value === '' ? t.values.empty : value;
@@ -152,7 +160,7 @@ export const CodeListPane = ({
 
   /*
    * 대분류 줄이 곧 그룹 머리다 — 따로 머리글 줄을 두지 않고, 상세는 선으로 이어 그 아래에 둔다(사용자 지시 · #209).
-   * 대분류가 다른 쪽에 있으면 그 대분류를 머리로 세워(값 표시 · 고를 수 있다) 관계가 끊겨 보이지 않게 한다.
+   * 대분류가 다른 쪽에 있으면 그 대분류를 머리로 세워 관계가 끊겨 보이지 않게 한다.
    */
   const tree = useMemo(() => buildTree(rows, byId, collapsed), [rows, byId, collapsed]);
 
@@ -161,21 +169,10 @@ export const CodeListPane = ({
       row.code === null ? (
         <span className="defect-cause-orphan">{t.groupHeaderOrphan}</span>
       ) : (
-        /*
-         * 코드는 링크 모양을 걷고 본문 글자로 둔다 — 줄 아무 곳이나 눌러 고른다(검사 기준 탭과 같다 · #209).
-         * 단추는 남긴다: 키보드·화면 낭독기가 줄을 고르는 길이고, 고른 줄 표시(`aria-current`)가 여기 실린다.
-         */
-        <button
-          type="button"
-          className="inspection-standard-plan-open defect-cause-open"
-          aria-current={row.code.id === selectedId ? 'true' : undefined}
-          title={row.code.code}
-          onClick={() => {
-            if (row.code !== null) onSelect(row.code.id);
-          }}
-        >
+        /* 코드는 본문 글자다 — 줄을 눌러 상세를 여는 동작은 걷었다(사용자 지시 · #360). */
+        <span className="defect-cause-open" title={row.code.code}>
           {row.code.code}
-        </button>
+        </span>
       );
 
     if (row.role === 'child') {
@@ -288,6 +285,59 @@ export const CodeListPane = ({
         </Chip>
       )),
     },
+    /* 상세 카드에 있던 「사용된 기록」 · 사용 중지/재사용 · 수정을 목록으로 옮겼다(사용자 지시 · #360). */
+    {
+      key: 'referenceCount',
+      align: 'center',
+      header: t.fields.referenceCount,
+      width: '104px',
+      render: cell((row) => {
+        const count = referenceCountOf(row.id);
+        return count === null ? t.values.empty : t.values.referenceCount(count);
+      }),
+    },
+    {
+      key: 'manage',
+      align: 'center',
+      header: t.listColumns.manage,
+      width: '360px',
+      render: cell((row) => (
+        <span className="defect-cause-row-actions">
+          {/*
+           * 상세 카드의 「하위 코드 추가」를 사용 중인 대분류 줄로 옮겼다(#360) — 미사용 대분류 · 상세 코드에는 내지 않는다(#209).
+           */}
+          {row.isActive && isCategory(row) && (
+            <Button
+              variant="outlined"
+              size="sm"
+              leadingIcon={<Icon name="add" size={16} aria-hidden />}
+              onClick={() => onAddChild(row.id)}
+            >
+              {t.actions.addChild}
+            </Button>
+          )}
+          {/* 사용 중이면 사용 중지, 미사용이면 같은 자리에 재사용(#209) — 앱의 다른 사용 중지 · 재사용 단추와 같은 아이콘(#360). */}
+          <Button
+            variant="outlined"
+            size="sm"
+            leadingIcon={
+              <Icon name={row.isActive ? 'block' : 'restart_alt'} size={16} aria-hidden />
+            }
+            onClick={() => onToggleActive(row.id)}
+          >
+            {row.isActive ? messages.common.deactivate : t.activate.confirm}
+          </Button>
+          <Button
+            variant="outlined"
+            size="sm"
+            leadingIcon={<Icon name="edit" size={16} aria-hidden />}
+            onClick={() => onEdit(row.id)}
+          >
+            {t.detail.edit}
+          </Button>
+        </span>
+      )),
+    },
   ];
 
   /*
@@ -350,22 +400,11 @@ export const CodeListPane = ({
     if (tree.length === 0) return <div className="defect-cause-list-empty">{emptySlot}</div>;
 
     return (
-      /*
-       * 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 코드 단추로 넘긴다(검사 기준 탭과 같다).
-       * 키보드·화면 낭독기는 그 단추 하나로 고른다(줄마다 탭 멈춤을 늘리지 않는다).
-       */
+      /* 줄을 눌러 고르는 동작은 걷었다 — 행 끝 단추만 동작한다(사용자 지시 · #360). */
       <div
         ref={fit.ref}
         className="inspection-queue-table inspection-standard-plan-rows inspection-standard-table-box defect-cause-rows"
         style={resizable.style}
-        onClick={(event) => {
-          const target = event.target as Element;
-          if (target.closest('button, a, input, select, textarea') !== null) return;
-          target
-            .closest('tbody tr')
-            ?.querySelector<HTMLButtonElement>('.defect-cause-open')
-            ?.click();
-        }}
       >
         <Table
           density="compact"

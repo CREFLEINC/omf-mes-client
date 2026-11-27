@@ -75,6 +75,7 @@ export const PlanConfirmDialog = ({
 
   return (
     <Dialog
+      className="dialog-icon-check"
       open
       size={plans.length > 1 ? 'lg' : 'md'}
       title={t.title}

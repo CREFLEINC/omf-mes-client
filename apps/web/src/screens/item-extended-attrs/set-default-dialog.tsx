@@ -37,6 +37,7 @@ export const SetDefaultDialog = ({
   onConfirm,
 }: SetDefaultDialogProps) => (
   <Dialog
+    className="dialog-icon-check"
     open
     onClose={onClose}
     size="sm"

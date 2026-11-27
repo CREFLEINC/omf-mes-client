@@ -160,6 +160,57 @@ describe('ReturnReceiptScreen — 원 출하가 있는 반품', () => {
     expect(receiptPane().getByText(t.lock.lineErrors)).toBeInTheDocument();
   });
 
+  /* 고른 출하를 다시 누르면 풀린다 — 적은 값이 있으면 먼저 묻는다(사용자 지시 2026-11-27 · #360). */
+  it('입력이 없으면 고른 출하를 다시 눌러 곧바로 푼다', async () => {
+    const { user } = renderScreen();
+    await selectShipment(user);
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SH-TEST-0455') }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.target.shipment('SH-TEST-0455'))).toBeNull();
+    });
+    expect(
+      screen.queryByRole('dialog', { name: messages.common.deselectConfirm.title }),
+    ).toBeNull();
+  });
+
+  it('입력이 있으면 확인 팝업을 거친다 — [취소]는 그대로, [해제]는 푼다', async () => {
+    const { user } = renderScreen();
+    await selectShipment(user);
+    const qty = linesGroup().getByLabelText(`LOT-TEST-0311 ${t.fields.returnQty}`);
+    await user.type(qty, '5');
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SH-TEST-0455') }));
+    const dialog = await screen.findByRole('dialog', {
+      name: messages.common.deselectConfirm.title,
+    });
+    expect(within(dialog).getByText(messages.common.deselectConfirm.body)).toBeInTheDocument();
+
+    await user.click(
+      within(dialog).getByRole('button', { name: messages.common.deselectConfirm.cancel }),
+    );
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: messages.common.deselectConfirm.title }),
+      ).toBeNull();
+    });
+    expect(receiptPane().getByText(t.target.shipment('SH-TEST-0455'))).toBeInTheDocument();
+    expect(linesGroup().getByLabelText(`LOT-TEST-0311 ${t.fields.returnQty}`)).toHaveValue('5');
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SH-TEST-0455') }));
+    const again = await screen.findByRole('dialog', {
+      name: messages.common.deselectConfirm.title,
+    });
+    await user.click(
+      within(again).getByRole('button', { name: messages.common.deselectConfirm.confirm }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.target.shipment('SH-TEST-0455'))).toBeNull();
+    });
+  });
+
   it('⭐ 등록은 원천 문서·배분 번호·보류를 싣고 멱등 키와 함께 나간다', async () => {
     const { user } = renderScreen();
     await selectShipment(user);
@@ -233,16 +284,16 @@ describe('ReturnReceiptScreen — 원 출하가 있는 반품', () => {
   /* G-2 — 사유 코드값이 비면 지어내지 않고 칸을 잠근다. 사유는 선택이라 등록은 막지 않는다. */
   /* 목록 제목 줄 「목록 접기」 · 접힌 「목록 N건」 탭(#350). */
   it('목록을 접으면 탭에 건수가 서고, 펼친 뒤에도 고른 출하 · 적어 둔 수량 · 검색어가 그대로다', async () => {
-    const collapsedKey = 'omf-mes:return-receipt:list:collapsed';
+    const collapsedKey = 'omf-mes:return-receipt:split:collapsed';
     window.localStorage.removeItem(collapsedKey);
     const { user } = renderScreen();
     await selectShipment(user);
     await user.type(linesGroup().getByLabelText(`LOT-TEST-0311 ${t.fields.returnQty}`), '40');
     await user.type(screen.getByLabelText(t.fields.keyword), 'SH-TEST');
-    const workspace = document.querySelector('.return-receipt-workspace');
+    const workspace = document.querySelector('.list-detail-split');
 
     await user.click(
-      screen.getByRole('button', { name: messages.common.inspectionHub.listCollapse }),
+      screen.getAllByRole('button', { name: messages.common.inspectionHub.listCollapse })[0]!,
     );
     expect(workspace).toHaveAttribute('data-left-collapsed', 'true');
     const tab = workspace!.querySelector<HTMLElement>('.po-board-list-tab');

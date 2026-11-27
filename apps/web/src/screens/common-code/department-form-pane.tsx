@@ -2,7 +2,7 @@ import { Button, Dialog, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
-import { CodeLockLabel } from '../../patterns/master';
+import { CodeLockLabel, LockedFieldIcon } from '../../patterns/master';
 import { requiredEmptyClass } from '../users-roles/required-empty';
 import { FieldLabel } from './field-label';
 import { SelectField } from './select-field';
@@ -132,8 +132,12 @@ export const DepartmentFormPane = ({
         <TextField
           id={codeId}
           value={values.departmentCode}
+          placeholder={t.department.placeholders.departmentCode}
           onChange={(event) => onChange({ departmentCode: event.target.value })}
           disabled={codeLockReason !== null}
+          trailingIcon={
+            codeLockReason === null ? undefined : <LockedFieldIcon reason={codeLockReason} />
+          }
           aria-describedby={codeLockReason === null ? undefined : `${codeId}-lock`}
           /* 필수 칸이 비면 빨간 테두리 — 사용자 역할 화면과 같은 방식(#333). 잠긴 칸은 고칠 수 없어 뺀다. */
           containerClassName={
@@ -149,6 +153,7 @@ export const DepartmentFormPane = ({
         <TextField
           id={nameId}
           value={values.departmentName}
+          placeholder={t.department.placeholders.departmentName}
           onChange={(event) => onChange({ departmentName: event.target.value })}
           containerClassName={requiredEmptyClass(values.departmentName)}
           error={fieldErrors.departmentName}
@@ -166,7 +171,8 @@ export const DepartmentFormPane = ({
         value={values.parentDepartmentId}
         onChange={(value) => onChange({ parentDepartmentId: value })}
         disabled={parentDisabledReason !== null}
-        disabledReason={parentDisabledReason ?? undefined}
+        /* 등록 팝업에서는 잠긴 까닭 문장을 내지 않는다 — 꺼진 칸으로만(사용자 지시 · #360). */
+        disabledReason={mode === 'create' ? undefined : (parentDisabledReason ?? undefined)}
         error={fieldErrors.parentDepartmentId}
       />
 
@@ -187,6 +193,7 @@ export const DepartmentFormPane = ({
   if (mode === 'create') {
     return (
       <Dialog
+        className="dialog-icon-add"
         open
         onClose={onCancel}
         size="lg"

@@ -16,11 +16,12 @@ import {
   type InspectionPlanCopyResult,
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocation, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { InfoTip } from '../../patterns/info-tip';
 import { useInspectionDrawings } from '../../patterns/inspection-drawings';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
@@ -485,6 +486,8 @@ export const InspectionStandardScreen = () => {
     versionId: number;
     version: number;
   } | null>(null);
+  /* 복사 창 제목 글자의 id — ⓘ 를 뺀 제목만 창 이름으로 읽힌다(omf-all-around#360). */
+  const copyTitleId = useId();
 
   /* 검사 수준은 기본 정보와 한 요청 · 한 트랜잭션으로 저장한다 — 둘 중 하나만 저장되지 않는다(사용자 지시 · omf-all-around#357). */
   const planWrite = useMasterWrite<PlanSave, InspectionPlan>({
@@ -873,12 +876,31 @@ export const InspectionStandardScreen = () => {
       }),
     // 계약이 이 경로에 If-Match를 요구하지 않는다.
     etagPath: null,
-    invalidateKeys: [versionKeys.all],
+    /*
+     * 다시 읽기는 아래 성공 처리에서 직접 한다 — 여기서 버전 전체를 다시 읽으면 선택이 옮겨 가기 전이라
+     * 방금 지운 버전의 상세 · 항목까지 다시 읽어 404가 났다(사용자 보고 · #360).
+     */
+    invalidateKeys: [],
     knownFields: [],
     onSuccess: () => {
-      const remaining = versions.find(
-        (version) => version.inspectionPlanVersionId !== selectedVersionId,
-      );
+      const deletedId = selectedVersionId;
+      const remaining = versions.find((version) => version.inspectionPlanVersionId !== deletedId);
+      /*
+       * 지운 버전을 목록 캐시에서 바로 뺀다 — 다시 읽기 전 낡은 목록이 남아 있으면 자동 고르기가
+       * 방금 지운 버전을 다시 고른다(라우팅 작성 취소와 같은 원인 · #360).
+       */
+      if (selectedPlanId !== null && deletedId !== null) {
+        queryClient.setQueryData<typeof versionList.data>(
+          versionKeys.list(selectedPlanId),
+          (prev) =>
+            prev === undefined
+              ? prev
+              : {
+                  ...prev,
+                  items: prev.items.filter((row) => row.inspectionPlanVersionId !== deletedId),
+                },
+        );
+      }
       resetVersionEditing();
       if (remaining === undefined) {
         const next = new URLSearchParams(searchParams);
@@ -887,6 +909,15 @@ export const InspectionStandardScreen = () => {
       } else {
         selectVersion(remaining.inspectionPlanVersionId);
       }
+      /* 지운 버전의 상세 · 항목만 빼고 다시 읽는다 — 나머지는 종전과 같다. */
+      void queryClient.invalidateQueries({
+        queryKey: versionKeys.all,
+        predicate: (query) =>
+          !(
+            query.queryKey[2] === deletedId &&
+            (query.queryKey[1] === 'detail' || query.queryKey[1] === 'items')
+          ),
+      });
       toast.show({ variant: 'success', description: t.result.discarded });
     },
   });
@@ -1744,19 +1775,28 @@ export const InspectionStandardScreen = () => {
 
     return (
       <Dialog
+        className="dialog-icon-add"
         open
         size="lg"
         closeOnBackdropClick={false}
         showCloseButton={false}
-        title={copySource === null ? t.detail.createTitle : t.detail.copyTitle}
+        /*
+         * 복사 안내는 제목 옆 ⓘ — 마우스를 올리면 뜬다(omf-all-around#360). 본문은 등록 폼이라 붙일 머리가 없다.
+         * 창 이름은 `aria-labelledby` 로 제목 글자만 읽힌다.
+         */
+        title={
+          copySource === null ? (
+            t.detail.createTitle
+          ) : (
+            <span className="inspection-standard-dialog-title-tip">
+              <span id={copyTitleId}>{t.detail.copyTitle}</span>
+              <InfoTip text={t.detail.copyNote(copySource.version)} />
+            </span>
+          )
+        }
+        {...(copySource === null ? {} : { 'aria-labelledby': copyTitleId })}
         onClose={closeCreate}
       >
-        {copySource !== null && (
-          <p className="iqc-inspection-action-note" data-tone="info">
-            <Icon name="info" size={14} aria-hidden />
-            {t.detail.copyNote(copySource.version)}
-          </p>
-        )}
         <PlanPane
           embedded
           mode="create"
@@ -2021,7 +2061,7 @@ export const InspectionStandardScreen = () => {
             showCloseButton={false}
             title={t.detail.editBasic}
             /* 첫 줄에 기본 생략 · 기준코드 · 기준명이 서도록 창을 넓힌다(사용자 지시 2026-11-04). */
-            className="inspection-standard-plan-edit-dialog"
+            className="inspection-standard-plan-edit-dialog dialog-icon-edit"
             onClose={() => {
               cancelPlanEdit();
               setIsPlanEditOpen(false);
@@ -2155,6 +2195,7 @@ export const InspectionStandardScreen = () => {
         {isVersionEditOpen && versionStatus.isEditable && (
           <Dialog
             open
+            className="dialog-icon-edit"
             size="lg"
             closeOnBackdropClick={false}
             showCloseButton={false}
@@ -2639,6 +2680,14 @@ export const InspectionStandardScreen = () => {
           banner={
             <PlanActionBanner error={planActionWrite.error} onReload={handleReloadPlanDetail} />
           }
+          target={
+            planDetail.data === undefined
+              ? null
+              : {
+                  name: planDetail.data.inspectionPlan.inspectionPlanName,
+                  meta: planDetail.data.inspectionPlan.inspectionPlanCode,
+                }
+          }
         />
       )}
 
@@ -2738,6 +2787,11 @@ export const InspectionStandardScreen = () => {
             versions.find((version) => version.inspectionPlanVersionId === selectedVersionId)
               ?.planVersion ??
             0
+          }
+          planLabel={
+            planDetail.data === undefined
+              ? ''
+              : `${planDetail.data.inspectionPlan.inspectionPlanCode} · ${planDetail.data.inspectionPlan.inspectionPlanName}`
           }
         />
       )}

@@ -16,9 +16,9 @@ const t = messages.disposalIssue;
 const SUMMARY: SubmitSummary = {
   goodsReceiptNo: 'GR-2026-900001',
   warehouseName: 'SAMPLE-WH-01 · 합성 폐기창고 가',
-  issueTypeCode: 'SAMPLE_GI_TYPE_A',
-  sourceDocumentTypeCode: 'INBOUND_RECEIPT',
-  reasonCode: 'SAMPLE_GI_REASON_A',
+  issueTypeName: 'SAMPLE_GI_TYPE_A',
+  sourceDocumentTypeName: 'INBOUND_RECEIPT',
+  reasonName: 'SAMPLE_GI_REASON_A',
   issuedAt: '2026-08-11 09:30',
   businessDate: '2026-08-11',
   remarks: '',
@@ -26,19 +26,20 @@ const SUMMARY: SubmitSummary = {
   lines: [
     {
       ordinal: 1,
-      item: 'SAMPLE-ITEM-01 · 합성 자재 가',
+      itemName: '합성 자재 가',
+      itemCode: 'SAMPLE-ITEM-01',
       lot: 'SAMPLE-LOT-0001',
       qty: '10 SAMPLE-UOM-EA',
     },
     {
       ordinal: 2,
-      item: 'SAMPLE-ITEM-02 · 합성 자재 나',
+      itemName: '합성 자재 나',
+      itemCode: 'SAMPLE-ITEM-02',
       lot: 'SAMPLE-LOT-0003',
       qty: '2 SAMPLE-UOM-BX',
     },
   ],
   reason: '불량 판정분 폐기\n\n  입고 검사 부적합 12박스',
-  reasonFirstLine: '불량 판정분 폐기',
   hasUnknownOnHand: false,
 };
 
@@ -74,7 +75,7 @@ describe('SubmitConfirmDialog 보이는 것', () => {
 
     const dialog = screen.getByRole('dialog');
 
-    expect(within(dialog).getByText(t.formFields.destination)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.formFields.disposalPartner)).toBeInTheDocument();
     expect(within(dialog).getByText(t.values.selfDisposal)).toBeInTheDocument();
   });
 
@@ -86,7 +87,7 @@ describe('SubmitConfirmDialog 보이는 것', () => {
 
     const dialog = screen.getByRole('dialog');
 
-    expect(within(dialog).getByText(t.formFields.destination)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.formFields.disposalPartner)).toBeInTheDocument();
     expect(within(dialog).getByText('SAMPLE-PARTNER-01 · 합성 폐기업체 가')).toBeInTheDocument();
     /* 짝 방향 — 자체 폐기 글자가 함께 서지 않는다(두 갈래가 한 자리를 나눠 쓴다). */
     expect(within(dialog).queryByText(t.values.selfDisposal)).not.toBeInTheDocument();
@@ -109,51 +110,84 @@ describe('SubmitConfirmDialog 보이는 것', () => {
     expect(within(dialog).queryByText(label)).not.toBeInTheDocument();
   });
 
-  /** 사용자가 넣은 적 없는 값이 전표에 실린다 — **값 자체가** 파생임을 밝힌다. */
+  /** 사용자가 넣은 적 없는 값이 전표에 실린다 — **값 자체가** 파생임을 밝힌다(접힌 「처리 상세」 안). */
   it('영업일이 파생임을 값에서 밝힌다', () => {
     renderDialog();
 
-    expect(screen.getByText(t.dialog.businessDateDerived('2026-08-11'))).toBeInTheDocument();
+    expect(screen.getByText(t.dialog.businessDateAuto('2026-08-11'))).toBeInTheDocument();
   });
 
-  it('빈 칸을 비워 두지 않는다', () => {
+  /** 확인 빈도가 낮은 값은 접힌 「처리 상세」 안에 선다. */
+  it('출고 유형 · 원천 문서 유형 · 영업일은 처리 상세 안에 있다', () => {
+    const { container } = renderDialog();
+
+    const details = container.ownerDocument.querySelector('details');
+
+    expect(details).not.toBeNull();
+    expect(details).not.toHaveAttribute('open');
+    expect(details).toHaveTextContent(t.dialog.details);
+    expect(details).toHaveTextContent('SAMPLE_GI_TYPE_A');
+    expect(details).toHaveTextContent('INBOUND_RECEIPT');
+    expect(details).toHaveTextContent(t.dialog.businessDateAuto('2026-08-11'));
+  });
+
+  /** 「출고 정보」 상자 — 입고 번호 · 창고 · 폐기 사유 · 출고 일시 · 폐기 거래처. */
+  it('출고 정보 상자에 다섯 값을 보인다', () => {
     renderDialog();
 
-    expect(screen.getByText(t.values.empty)).toBeInTheDocument();
+    const info = screen.getByRole('region', { name: t.dialog.issueInfo });
+
+    for (const label of [
+      t.summary.goodsReceiptNo,
+      t.summary.warehouse,
+      t.formFields.reason,
+      t.dialog.issuedAt,
+      t.formFields.disposalPartner,
+    ]) {
+      expect(within(info).getByText(label)).toBeInTheDocument();
+    }
+  });
+
+  /** 비고는 값이 있을 때만 — 빈 비고 행은 세우지 않는다. */
+  it('비고는 값이 있을 때만 보인다', () => {
+    const { unmount } = renderDialog();
+
+    expect(screen.queryByText(t.formFields.remarks)).not.toBeInTheDocument();
+    unmount();
+
+    renderDialog({ summary: { ...SUMMARY, remarks: '합성 비고' } });
+
+    const info = screen.getByRole('region', { name: t.dialog.issueInfo });
+
+    expect(within(info).getByText(t.formFields.remarks)).toBeInTheDocument();
+    expect(within(info).getByText('합성 비고')).toBeInTheDocument();
   });
 
   /** 합계만 보이면 어느 줄이 얼마인지 확인할 수 없다 — 줄마다 다시 보인다. */
-  it('보낼 줄을 줄마다 보인다', () => {
+  it('폐기 대상을 줄마다 품목명 · 코드 · LOT · 수량으로 보인다', () => {
     renderDialog();
 
-    expect(screen.getByText(t.dialog.lineCount(2))).toBeInTheDocument();
+    const target = screen.getByRole('region', { name: t.dialog.targetHead(2) });
+    const rows = within(target).getAllByRole('listitem');
+
+    expect(rows).toHaveLength(2);
+    expect(within(rows[0] as HTMLElement).getByText('합성 자재 가')).toBeInTheDocument();
+    expect(within(rows[0] as HTMLElement).getByText('SAMPLE-ITEM-01')).toBeInTheDocument();
     expect(
-      screen.getByText(
-        t.dialog.linePair('SAMPLE-ITEM-01 · 합성 자재 가', 'SAMPLE-LOT-0001', '10 SAMPLE-UOM-EA'),
-      ),
+      within(rows[0] as HTMLElement).getByText(`${t.lineTable.lot} SAMPLE-LOT-0001`),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        t.dialog.linePair('SAMPLE-ITEM-02 · 합성 자재 나', 'SAMPLE-LOT-0003', '2 SAMPLE-UOM-BX'),
-      ),
-    ).toBeInTheDocument();
+    expect(within(rows[0] as HTMLElement).getByText('10 SAMPLE-UOM-EA')).toBeInTheDocument();
+    expect(within(rows[1] as HTMLElement).getByText('2 SAMPLE-UOM-BX')).toBeInTheDocument();
   });
 });
 
 describe('SubmitConfirmDialog 사유', () => {
-  /**
-   * **전문과 첫 줄을 나눠 보인다**(완료 조건 C62). 첫 줄만 보이면 무엇을 보내는지 모르고,
-   * 전문만 보이면 어느 줄이 결재함에서 요약으로 보일지 모른다.
-   */
-  it('전문과 첫 줄을 나눠 보이고 요약 노릇을 밝힌다', () => {
+  /** 사유는 **한 번만** 보인다 — 첫 줄을 따로 되풀이하지 않는다. 첫 줄 안내 문장은 걷었다(사용자 지시 · #360). */
+  it('결재 요청 사유를 한 번만 보인다', () => {
     renderDialog();
 
-    const full = screen.getByRole('region', { name: t.dialog.reasonFull });
-    const first = screen.getByRole('region', { name: t.dialog.reasonFirstLine });
-
-    expect(within(full).getByText('불량 판정분 폐기')).toBeInTheDocument();
-    expect(within(first).getByText('불량 판정분 폐기')).toBeInTheDocument();
-    expect(screen.getByText(t.dialog.reasonSummaryNote)).toBeInTheDocument();
+    expect(screen.getAllByText('불량 판정분 폐기')).toHaveLength(1);
+    expect(screen.queryByText('결재함 목록에는 첫 줄이 표시됩니다.')).not.toBeInTheDocument();
   });
 
   /**
@@ -166,11 +200,12 @@ describe('SubmitConfirmDialog 사유', () => {
   it('전문의 줄바꿈과 들여쓰기를 살린다', () => {
     renderDialog();
 
-    const full = screen.getByRole('region', { name: t.dialog.reasonFull });
-    const lines = [...full.querySelectorAll('p')].map((node) => node.textContent);
+    const reason = screen.getByRole('region', { name: t.dialog.approvalReason });
+    const lines = [...reason.querySelectorAll('.di-confirm-reason > p')].map(
+      (node) => node.textContent,
+    );
 
     expect(lines).toEqual([
-      t.dialog.reasonFull,
       '불량 판정분 폐기',
       NO_BREAK_SPACE,
       `${NO_BREAK_SPACE.repeat(2)}입고 검사 부적합 12박스`,
@@ -224,36 +259,38 @@ describe('SubmitConfirmDialog 창의 규율', () => {
   it('바닥 버튼 둘이 무엇을 하는지 낱말로 말한다', () => {
     renderDialog();
 
-    expect(screen.getByRole('button', { name: t.actions.keepEditing })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.actions.confirmSubmit })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.actions.backToInput })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.actions.requestApproval })).toBeInTheDocument();
   });
 
   /**
-   * **통지가 문면으로 지정한 낱말**(#124) — 확인 창의 바닥 버튼은 「상신」이 아니라 **「요청」**이다.
+   * **사용자가 지정한 낱말**(#360) — 바닥 버튼은 「입력으로 돌아가기」 · 「결재 요청」이다.
    *
-   * 나머지 시험은 이 버튼을 `t.actions.confirmSubmit` **키로 조회**해서 값이 무엇이든 늘
-   * 통과한다. 낱말이 통지 이전으로 되돌아가는 것을 잡으려면 **보이는 글자를 직접 무는 자리**가
-   * 하나 있어야 한다 — 짝이 되는 낱말 셋도 각자 그 컨트롤이 서는 시험에 같은 형태로 있다.
+   * 나머지 시험은 버튼을 키로 조회해서 값이 무엇이든 늘 통과한다. 낱말이 되돌아가는 것을
+   * 잡으려면 **보이는 글자를 직접 무는 자리**가 하나 있어야 한다.
    */
-  it('바닥 버튼의 보이는 글자가 통지 문면 그대로다', () => {
+  it('바닥 버튼의 보이는 글자가 지정 문면 그대로다', () => {
     renderDialog();
 
-    expect(screen.getByRole('button', { name: t.actions.confirmSubmit })).toHaveTextContent(
-      /^요청$/,
+    expect(screen.getByRole('button', { name: t.actions.requestApproval })).toHaveTextContent(
+      /^결재 요청$/,
+    );
+    expect(screen.getByRole('button', { name: t.actions.backToInput })).toHaveTextContent(
+      /^입력으로 돌아가기$/,
     );
   });
 
-  it('상신을 누르면 알리고, 계속 작성을 누르면 닫는다', async () => {
+  it('결재 요청을 누르면 알리고, 입력으로 돌아가기를 누르면 닫는다', async () => {
     const onConfirm = vi.fn();
     const onClose = vi.fn();
     const user = userEvent.setup();
 
     renderDialog({ onConfirm, onClose });
-    await user.click(screen.getByRole('button', { name: t.actions.confirmSubmit }));
+    await user.click(screen.getByRole('button', { name: t.actions.requestApproval }));
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
 
-    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+    await user.click(screen.getByRole('button', { name: t.actions.backToInput }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });

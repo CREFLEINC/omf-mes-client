@@ -158,7 +158,6 @@ export const materialIssueStatus = {
           : `다른 W/O 의 출고 예정분을 가져감, 사유 ${reason}`,
     },
     cancel: '요청 취소',
-    cancelLocked: '일부 진행돼 취소할 수 없습니다',
     revert: '되돌리기',
     save: '저장',
   },

@@ -1,11 +1,12 @@
-import { SkeletonText } from '@crefle/web-ui';
+import { Button, Dialog, SkeletonText, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router';
 
-import { ItemPickerDialog, type ItemRow } from '../../patterns/item-picker';
+import { useDeselectConfirm } from '../../patterns/deselect-confirm';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { useSession } from '../../patterns/session';
 import { AssignmentFormPane } from './assignment-form-pane';
 import { EmptyFormPlaceholder } from './empty-form-placeholder';
@@ -21,7 +22,7 @@ import {
   type SourceFilters,
 } from './filters';
 import {
-  appendItemLines,
+  addLineDraft,
   clearWarehousesOutside,
   emptyLineDraft,
   lineDraftsFromSalesOrder,
@@ -50,6 +51,7 @@ import { toPageView } from './pagination';
 import { useSalesOrderDetail, useSalesOrderList } from './source-queries';
 import { SourceFilterBar } from './source-filter-bar';
 import { SourceListTable } from './source-list-table';
+import { StandaloneCreateDialog } from './standalone-create-dialog';
 import { toShipmentRequestCreateBody } from './shipment-request-create-body';
 import { useShipmentRequestCreateMutation } from './mutations';
 import type {
@@ -67,17 +69,16 @@ import {
 } from './validation';
 import './layout.css';
 
+/** 지시서 목록 쪽 크기 기본 — 계약 `size` 기본 50(종전에는 싣지 않아 이 값이었다). */
+const LIST_PAGE_SIZE = 50;
+
 const t = messages.shipmentRequestCreate;
 
-/**
- * 품목 선택 팝업이 처음 세우는 유형 — **제품**.
- *
- * ⛔ **값 «목록»이 아니라 업무 결정 하나다.** 선택지는 코드 그룹(`ITEM_TYPE`)에서 받고(공유계약
- *    G-32), 화면이 아는 것은 「기본으로 무엇을 보일까」 하나다. 근거는 도메인 04 의 이름
- *    「제품출하」와 설계 `W-04-01` §5-5(가용 = 완제품 창고의 가용 잔액).
- * ⚠ 이 코드가 그 환경의 코드 그룹에 없으면 팝업은 「전체」로 떨어진다 — 길을 막지 않는다.
- */
-const SHIPPABLE_ITEM_TYPE_CODE = 'FINISHED';
+/** 이 PC 의 오늘(`YYYY-MM-DD`) — UTC 로 바꾸면 자정 무렵 하루가 어긋난다. */
+const localTodayIso = (): string => {
+  const now = new Date();
+  return `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+};
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ROWS: SalesOrderView[] = [];
@@ -130,7 +131,9 @@ interface CreatedBinding {
  * 옮겨 간 뒤 늦게 도착한 성공이 새 대상 위에 「편성했습니다」로 서지 않게 한다.
  */
 export const ShipmentRequestCreateScreen = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(서버 기본 50)은 싣지도 적지도 않는다(#360). */
+  const { searchParams, setSearchParams, pageSize, changePageSize } =
+    usePageSizeSearchParams(LIST_PAGE_SIZE);
 
   const filters = readFilters(searchParams);
   const page = readPage(searchParams);
@@ -140,7 +143,11 @@ export const ShipmentRequestCreateScreen = () => {
   const targetSignature: TargetSignature =
     target.kind === 'order' ? `order:${String(target.salesOrderId)}` : target.kind;
 
-  const listQuery = { ...toSourceFilterQuery(filters), ...(page > 1 ? { page } : {}) };
+  const listQuery = {
+    ...toSourceFilterQuery(filters),
+    ...(page > 1 ? { page } : {}),
+    ...(pageSize === LIST_PAGE_SIZE ? {} : { size: pageSize }),
+  };
   const list = useSalesOrderList(listQuery);
   const rows = list.data?.items ?? EMPTY_ROWS;
   const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, rows.length);
@@ -162,16 +169,11 @@ export const ShipmentRequestCreateScreen = () => {
   const [header, setHeader] = useState<HeaderDraft>(EMPTY_HEADER_DRAFT);
   const [lines, setLines] = useState<ShipmentRequestLineDraft[]>([]);
   /**
-   * 품목 선택 팝업이 열려 있는가 — **여는 자리가 둘이다.**
-   *
-   * - `{ kind: 'add' }` 「라인 추가」에서 열었다. 고른 품목마다 줄이 붙는다(여러 개).
-   * - `{ kind: 'replace', key }` 그 줄의 품목 셀에서 열었다. 하나만 고르고 그 줄을 바꾼다.
+   * 품목 선택 팝업이 열려 있는가 — 「라인 추가」에서 연다. 고른 품목마다 줄이 붙는다(여러 개).
+   * 줄의 품목을 바꾸는 것은 표 안 검색 선택칸이 한다(#360).
    *
    * ⛔ **줄 초안에 넣지 않는다.** 서버로 나가는 값이 아니라 「지금 무엇을 고르는 중인가」다.
    */
-  const [picker, setPicker] = useState<{ kind: 'add' } | { kind: 'replace'; key: string } | null>(
-    null,
-  );
 
   const items = useItemNames(
     lines.map((line) => (line.itemId === '' ? null : Number(line.itemId))),
@@ -198,9 +200,28 @@ export const ShipmentRequestCreateScreen = () => {
   const [createdBinding, setCreatedBinding] = useState<CreatedBinding | null>(null);
   const submittingTargetRef = useRef<TargetSignature | null>(null);
 
+  const toast = useToast();
+  /** ERP S/O 없이 생성 팝업의 편성이 끝났다 — 팝업을 닫는다(#360). 닫는 동안에도 폼은 잠가 둔다. */
+  const [standaloneDone, setStandaloneDone] = useState(false);
+
   const create = useShipmentRequestCreateMutation({
     onSuccess: (result) => {
       const boundSignature = submittingTargetRef.current;
+
+      /*
+       * ⭐ ERP S/O 없이 생성은 팝업이다 — 성공하면 팝업을 닫고 결과(작업지시번호 · 라인 수)를 오른쪽 아래 알림으로 낸다(#360).
+       *    성공 띠는 팝업과 함께 사라지므로 매임(`createdBinding`)에 남기지 않는다 — 남기면 다시 열 때 잠긴 채 열린다.
+       */
+      if (boundSignature === 'standalone') {
+        toast.show({
+          variant: 'success',
+          title: t.dialog.resultTitle,
+          description: `${t.result.shipmentRequestNo(result.shipmentRequestNo)} · ${t.result.lineCount(result.lineCount)}`,
+        });
+        setStandaloneDone(true);
+
+        return;
+      }
 
       setCreatedBinding(
         boundSignature === null ? null : { targetSignature: boundSignature, result },
@@ -247,7 +268,8 @@ export const ShipmentRequestCreateScreen = () => {
   useEffect(() => {
     if (!isStandalone) return;
 
-    setHeader(EMPTY_HEADER_DRAFT);
+    /* 출하 요청일은 오늘로 채워 연다(사용자 지시 · #360) — 바꿀 수 있다. */
+    setHeader({ ...EMPTY_HEADER_DRAFT, requestedShipDate: localTodayIso() });
     setLines([emptyLineDraft()]);
     resetIfIdle(create);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -263,7 +285,7 @@ export const ShipmentRequestCreateScreen = () => {
       : null;
 
   const isSaving = create.isSaving;
-  const isLocked = isSaving || boundCreated !== null;
+  const isLocked = isSaving || boundCreated !== null || standaloneDone;
 
   const headerLocalErrors = mode === null ? {} : validateHeader(mode, header);
   const lineValidation = validateLines(lines);
@@ -356,41 +378,15 @@ export const ShipmentRequestCreateScreen = () => {
     setLines((prev) => removeLineDraft(prev, key));
   };
 
-  /*
-   * ⭐ **「라인 추가」가 팝업을 연다**(사용자 결정 2026-09-18). 빈 줄을 먼저 만들고 그 안에서
-   *    품목을 고르던 종전 방식은, 품목 마스터 9,269건을 표 안 선택칸에 담을 수 없어 무너졌다.
-   */
+  /* 「품목 추가」는 표에 빈 줄을 붙이고, 품목은 그 줄의 검색 선택칸에서 고른다(사용자 지시 · #360 — 찾기 창을 띄우지 않는다). */
   const addLine = (): void => {
-    setPicker({ kind: 'add' });
+    setLines((prev) => addLineDraft(prev));
   };
 
-  /** 고른 품목들을 줄로 만든다 — 여는 자리에 따라 붙이거나 바꾼다. */
-  const applyPickedItems = (chosen: readonly ItemRow[]): void => {
-    const target = picker;
-
-    setPicker(null);
-    if (target === null || chosen.length === 0) return;
-
-    if (target.kind === 'add') {
-      /* 새 줄의 창고는 첫 줄 창고다(피처 012 FR-004). */
-      setLines((prev) => appendItemLines(prev, chosen));
-
-      return;
-    }
-
-    /*
-     * ⚠ **바꿀 때 단위도 함께 바꾼다.** 품목이 달라지면 앞 품목의 기준 단위가 남을 이유가 없다 —
-     *   남기면 담당이 고치지 않는 한 엉뚱한 단위로 나간다.
-     */
-    const [first] = chosen;
-
-    if (first === undefined) return;
-
+  /** 표 안 검색 선택칸에서 그 줄의 품목을 바꿨다 — 단위도 그 품목의 기준 단위로 함께 바꾼다(종전 찾기 창과 같다). */
+  const selectItem = (key: string, item: { itemId: number; baseUomId: number }): void => {
     setLines((prev) =>
-      patchLineDraft(prev, target.key, {
-        itemId: String(first.itemId),
-        uomId: String(first.baseUomId),
-      }),
+      patchLineDraft(prev, key, { itemId: String(item.itemId), uomId: String(item.baseUomId) }),
     );
   };
 
@@ -433,21 +429,82 @@ export const ShipmentRequestCreateScreen = () => {
     setSearchParams(toSearchParams(next, 1, target));
   };
 
+  const deselectConfirm = useDeselectConfirm();
+
+  /**
+   * 지시서에서 받아 온 머리 · 줄을 사람이 고쳤는가 — 받아 온 그대로면 풀어도 잃는 것이 없다(#360).
+   * 사업부는 하나뿐이면 저절로 채워지므로 그 값은 고친 것으로 치지 않는다. 이미 편성한 대상은 보낸 뒤라 묻지 않는다.
+   */
+  const hasEditedOrderDraft = (): boolean => {
+    if (detail.data === undefined || boundCreated !== null) return false;
+
+    const withoutKey = (drafts: readonly ShipmentRequestLineDraft[]): string =>
+      JSON.stringify(drafts.map(({ key: _key, ...rest }) => rest));
+
+    return (
+      header.requestedShipDate !== '' ||
+      header.customerId !== String(detail.data.customerId) ||
+      header.shipToPartnerId !== String(detail.data.shipToPartnerId) ||
+      (header.businessUnitId !== '' && header.businessUnitId !== onlyBusinessUnit) ||
+      withoutKey(lines) !== withoutKey(lineDraftsFromSalesOrder(detail.data.lines))
+    );
+  };
+
   const selectSalesOrder = (salesOrderId: number): void => {
-    /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+    /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24) — 고친 초안이 있으면 먼저 묻는다(2026-11-27 · #360). */
+    if (salesOrderId === targetSalesOrderId) {
+      deselectConfirm.request(hasEditedOrderDraft(), () => {
+        setSearchParams(toSearchParams(filters, page, { kind: 'none' }));
+      });
+
+      return;
+    }
+
     setSearchParams(
-      toSearchParams(
-        filters,
-        page,
-        salesOrderId === targetSalesOrderId
-          ? { kind: 'none' }
-          : { kind: 'order', salesOrderId, mode: 'fromOrder' },
-      ),
+      toSearchParams(filters, page, { kind: 'order', salesOrderId, mode: 'fromOrder' }),
     );
   };
 
   const startStandalone = (): void => {
     setSearchParams(toSearchParams(filters, page, { kind: 'standalone', mode: 'standalone' }));
+  };
+
+  const closeStandalone = (): void => {
+    setSearchParams(toSearchParams(filters, page, { kind: 'none' }));
+  };
+
+  /* 편성에 성공하면 팝업을 닫는다 — 그 사이 사용자가 이미 닫았으면 그대로 둔다(#360). */
+  useEffect(() => {
+    if (!standaloneDone) return;
+
+    setStandaloneDone(false);
+    if (isStandalone) closeStandalone();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [standaloneDone]);
+
+  /**
+   * 팝업에 사람이 넣은 값이 있는가 — 있으면 [취소] · Esc 에서 버릴지 묻는다(#360).
+   * 사업부는 하나뿐이면 저절로 채워지므로 그 값은 넣은 것으로 치지 않는다. 처음 빈 줄 하나도 넣은 것이 아니다.
+   */
+  const hasStandaloneInput = (): boolean => {
+    const withoutKey = (drafts: readonly ShipmentRequestLineDraft[]): string =>
+      JSON.stringify(drafts.map(({ key: _key, ...rest }) => rest));
+
+    return (
+      header.customerId !== '' ||
+      header.shipToPartnerId !== '' ||
+      /* 오늘로 채워 연 날짜는 넣은 값으로 치지 않는다. */
+      (header.requestedShipDate !== '' && header.requestedShipDate !== localTodayIso()) ||
+      (header.businessUnitId !== '' && header.businessUnitId !== onlyBusinessUnit) ||
+      withoutKey(lines) !== withoutKey([emptyLineDraft()])
+    );
+  };
+
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+
+  const cancelStandalone = (): void => {
+    if (hasStandaloneInput()) setConfirmingDiscard(true);
+    else closeStandalone();
   };
 
   const businessUnitName = describeReference(
@@ -469,10 +526,11 @@ export const ShipmentRequestCreateScreen = () => {
         ];
 
   const rightColumn = (): ReactNode => {
-    if (target.kind === 'none') {
+    /* ERP S/O 없이 생성은 팝업이다(#360) — 그동안 상세 자리는 빈 안내 그대로. */
+    if (target.kind === 'none' || target.kind === 'standalone') {
       return (
         <section className="pane">
-          <EmptyFormPlaceholder onStartStandalone={startStandalone} />
+          <EmptyFormPlaceholder />
         </section>
       );
     }
@@ -523,9 +581,7 @@ export const ShipmentRequestCreateScreen = () => {
         lines={lines}
         lineErrors={lineValidation.errors}
         itemNames={items}
-        onPickItem={(key) => {
-          setPicker({ kind: 'replace', key });
-        }}
+        onSelectItem={selectItem}
         uomLookup={uoms}
         uomOptions={toSelectOptions(uoms)}
         availableQty={availableQty}
@@ -569,6 +625,7 @@ export const ShipmentRequestCreateScreen = () => {
               onReset={() => {
                 applyFilters(EMPTY_FILTERS);
               }}
+              onStartStandalone={startStandalone}
             />
           ),
         }}
@@ -597,7 +654,16 @@ export const ShipmentRequestCreateScreen = () => {
                   changePage(1);
                 }}
               />
-              {!list.isPending && <PageNav view={pageView} onChange={changePage} />}
+              {!list.isPending && (
+                <PageNav
+                  view={pageView}
+                  onChange={changePage}
+                  sizes={PAGE_SIZES}
+                  onChangeSize={(size) => {
+                    changePageSize(size);
+                  }}
+                />
+              )}
             </>
           ),
         }}
@@ -619,17 +685,77 @@ export const ShipmentRequestCreateScreen = () => {
        *    원자재·부자재가 결과에 섞인다. 「전체」와 다른 유형은 유상사급처럼 자재가 나가는
        *    예외를 위해 열어 둔다.
        */}
-      {picker !== null && (
-        <ItemPickerDialog
-          multiple={picker.kind === 'add'}
-          defaultItemTypeCode={SHIPPABLE_ITEM_TYPE_CODE}
-          addedItemIds={lines.flatMap((line) => (line.itemId === '' ? [] : [Number(line.itemId)]))}
-          onClose={() => {
-            setPicker(null);
-          }}
-          onConfirm={applyPickedItems}
+      {isStandalone && (
+        <StandaloneCreateDialog
+          businessUnitId={header.businessUnitId}
+          customerId={header.customerId}
+          shipToPartnerId={header.shipToPartnerId}
+          requestedShipDate={header.requestedShipDate}
+          businessUnitOptions={toSelectOptions(businessUnits)}
+          customerOptions={toSelectOptions(customers)}
+          shipToPartnerOptions={toSelectOptions(shipToPartners)}
+          businessUnitNote={lookupNote(businessUnits)}
+          customerNote={lookupNote(customers)}
+          shipToPartnerNote={lookupNote(shipToPartners)}
+          /* 칸 아래 오류 글은 실제로 보낸 뒤 서버가 준 것만(#360) — 빈 칸은 연한 빨간 바탕이 알린다. */
+          headerErrors={create.fieldErrors}
+          onChangeHeader={changeHeader}
+          lines={lines}
+          lineErrors={lineValidation.errors}
+          itemNames={items}
+          onSelectItem={selectItem}
+          uomLookup={uoms}
+          uomOptions={toSelectOptions(uoms)}
+          availableQty={availableQty}
+          onPatchLine={patchLine}
+          onRemoveLine={removeLine}
+          onAddLine={addLine}
+          warehouseOptions={warehouseOptions}
+          onChangeWarehouse={changeWarehouse}
+          clearedWarehouseCount={lines.filter((line) => line.warehouseCleared).length}
+          businessUnitName={businessUnitName}
+          isLocked={isLocked}
+          isSubmitBlocked={submitBlockReason() !== null}
+          isSaving={isSaving}
+          banner={<SaveErrorBanner error={create.error} />}
+          onSubmit={submit}
+          onCancel={cancelStandalone}
         />
       )}
+      {confirmingDiscard && (
+        <Dialog
+          className="dialog-icon-undo"
+          open
+          size="sm"
+          title={t.dialog.discardTitle}
+          onClose={() => {
+            setConfirmingDiscard(false);
+          }}
+          footer={
+            <>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setConfirmingDiscard(false);
+                }}
+              >
+                {t.actions.cancel}
+              </Button>
+              <Button
+                onClick={() => {
+                  setConfirmingDiscard(false);
+                  closeStandalone();
+                }}
+              >
+                {t.actions.discard}
+              </Button>
+            </>
+          }
+        >
+          <p>{messages.common.discardChangesConfirm}</p>
+        </Dialog>
+      )}
+      {deselectConfirm.dialog}
     </>
   );
 };

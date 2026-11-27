@@ -1,18 +1,18 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
+
+import { InfoFacts } from '../../patterns/info-facts';
 
 const t = messages.stockAdjust;
 
 /** 확인 창이 되보일 것 전부. **내부 번호는 하나도 담기지 않는다**(`omf-mes#44`). */
 export interface RegisterSummary {
   /**
-   * 고른 헤더 사유 **코드 그대로** — 화면이 코드를 뜻으로 옮기지 않는다(공유계약 G-2).
-   *
-   * ⚠ 선택칸은 마스터가 준 이름을 함께 보인다(#36 회신) — 그 이름을 되보이는 자리에도
-   * 붙일지는 **설계 판단**이라 여기서 정하지 않는다.
+   * 고른 헤더 사유의 **이름** — 선택칸이 받은 마스터 이름을 그대로 쓴다(사용자 시안 2026-11-27 · 예 「운송 중 파손」).
+   * 화면이 코드를 뜻으로 지어내지 않는다(공유계약 G-2) — 이름이 없으면 코드가 온다.
    */
-  reasonCode: string;
+  reasonName: string;
   sendToErp: boolean;
   /** 본문에 실릴 줄 수. **화면이 이미 센 값을 받는다** — 창이 다시 세지 않는다 */
   includedCount: number;
@@ -68,6 +68,7 @@ export const RegisterConfirmDialog = ({
   onClose,
 }: RegisterConfirmDialogProps) => (
   <Dialog
+    className="dialog-icon-add"
     open
     onClose={onClose}
     size="md"
@@ -75,50 +76,49 @@ export const RegisterConfirmDialog = ({
     showCloseButton={false}
     title={t.dialog.registerTitle}
     footer={
-      <>
-        {/* 문구가 「확인/취소」가 아니다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다. */}
-        <Button variant="outlined" disabled={isSaving} onClick={onClose}>
-          {t.actions.keepEditing}
-        </Button>
-        <Button loading={isSaving} disabled={isSaving} onClick={onConfirm}>
-          {t.actions.confirmRegister}
-        </Button>
-      </>
+      /* 되돌릴 수 없다는 한 줄은 단추 줄 왼쪽 끝, 단추는 오른쪽(사용자 지시 2026-11-27). */
+      <div className="confirm-foot">
+        {/* 경고 칩 — 앱 안내 칩(`iqc-inspection-action-note`)의 경고 색(사용자 지시 2026-11-27 · #360). */}
+        <p className="iqc-inspection-action-note" data-tone="warning">
+          <Icon name="warning" size={14} aria-hidden />
+          {t.dialog.registerNoUndo}
+        </p>
+        <span className="confirm-foot-actions">
+          <Button variant="outlined" disabled={isSaving} onClick={onClose}>
+            {t.actions.keepEditing}
+          </Button>
+          <Button loading={isSaving} disabled={isSaving} onClick={onConfirm}>
+            {t.actions.confirmRegister}
+          </Button>
+        </span>
+      </div>
     }
   >
     {banner}
 
-    <p>{t.dialog.registerLead}</p>
+    {/* 사실 상자 — 정보 표시 팝업 시안 상자(#360). 등록에 실리는 줄 수는 「ERP 송신 대상」 칸이 함께 말한다. */}
+    <InfoFacts
+      rows={[
+        [{ label: t.dialog.reasonCode, value: summary.reasonName, isKey: true }],
+        [
+          /* 비어 있는 것이 정상이라 경고 표식을 붙이지 않고 「—」로 둔다(조심 ⑤). */
+          {
+            label: t.dialog.countRef,
+            value: summary.hasCountRef ? t.source.count : t.values.empty,
+          },
+          {
+            label: t.dialog.sendToErp,
+            value: summary.sendToErp
+              ? t.dialog.erpTarget(summary.includedCount)
+              : t.dialog.erpTargetOff(summary.includedCount),
+          },
+        ],
+      ]}
+    />
 
-    <dl className="filter-bar">
-      <div className="field-cell">
-        <dt className="field-label">{t.dialog.reasonCode}</dt>
-        <dd>{summary.reasonCode}</dd>
-      </div>
-      <div className="field-cell">
-        <dt className="field-label">{t.dialog.sendToErp}</dt>
-        <dd>{summary.sendToErp ? t.dialog.sendToErpOn : t.dialog.sendToErpOff}</dd>
-      </div>
-      <div className="field-cell">
-        {/* 비어 있는 것이 정상이라 경고 표식을 붙이지 않고 「—」로 둔다(조심 ⑤). */}
-        <dt className="field-label">{t.dialog.countRef}</dt>
-        <dd>{summary.hasCountRef ? t.source.count : t.values.empty}</dd>
-      </div>
-    </dl>
-
-    <p>{t.dialog.includedLineCount(summary.includedCount)}</p>
-
-    {/* 빠지는 줄이 없다는 것도 사실이다 — 없을 때 침묵하면 확인이 반쪽이 된다. */}
-    <p className="field-note">
-      {summary.excludedCount > 0
-        ? t.dialog.excludedLineCount(summary.excludedCount)
-        : t.dialog.noExcludedLine}
-    </p>
-
-    {/*
-     * 되돌릴 수 없다는 한 줄만 실행 버튼 바로 위에 선다. 「등록만 합니다」 안내는 걷었다
-     * (사용자 지시 2026-11-18).
-     */}
-    <p>{t.dialog.registerNoUndo}</p>
+    {/* 빠지는 줄이 있을 때만 밝힌다(사용자 시안 2026-11-27 — 「빠지는 줄은 없습니다」는 걷었다). */}
+    {summary.excludedCount > 0 && (
+      <p className="field-note">{t.dialog.excludedLineCount(summary.excludedCount)}</p>
+    )}
   </Dialog>
 );

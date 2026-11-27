@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Dialog, Icon, useToast } from '@crefle/web-ui';
+import { Button, Dialog, Icon, useToast } from '@crefle/web-ui';
 import type { InspectionConfirmBlockerCode } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
@@ -214,7 +214,7 @@ export const ConfirmActions = ({
         <Dialog
           open
           size="sm"
-          title={error.text}
+          title={t.errorTitle}
           onClose={() => setError(null)}
           footer={
             <Button
@@ -227,7 +227,13 @@ export const ConfirmActions = ({
             </Button>
           }
         >
-          <AlertBanner variant="error">{error.text}</AlertBanner>
+          {/* 확인 팝업 시안(#360) — 짧은 제목, 서버 · 화면 문구는 본문 경고 줄. */}
+          <div className="users-roles-worker-dialog">
+            <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+              <Icon name="warning" size={16} aria-hidden />
+              {error.text}
+            </p>
+          </div>
         </Dialog>
       )}
 

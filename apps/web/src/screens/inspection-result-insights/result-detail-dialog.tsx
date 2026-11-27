@@ -2,6 +2,7 @@ import { AlertBanner, Button, Chip, Dialog, SkeletonText, Tabs } from '@crefle/w
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { InfoCodeName, InfoFacts } from '../../patterns/info-facts';
 import { lookupDisplayLabelWithInactive } from '../../patterns/lookup-display';
 import {
   useInspectionRequestDetail,
@@ -150,24 +151,33 @@ export const ResultDetailDialog = ({
       {!detail.isError && detail.data !== undefined && (
         <>
           {/*
-           * 머리 — 의뢰번호 · 품목 코드 · 품목 이름을 이름표가 붙은 칸으로(검사 기준 정보의 버전 요약 줄과 같은 모양 · 사용자 2026-11-02).
+           * 머리 — 의뢰번호 · 품목(코드 이름 한 줄)을 정보 표시 팝업 상자로(시안 2026-11-27 · #360).
            * 품목 이름을 못 받으면 조회 조건 목록의 이름으로, 코드는 「미확인」.
            */}
-          <dl className="inspection-standard-facts-line result-detail-facts">
-            {[
-              [t.fields.inspectionRequestNo, detail.data.inspectionRequestNo ?? EMPTY],
-              [t.fields.itemCode, itemName?.code ?? EMPTY],
+          <InfoFacts
+            rows={[
               [
-                t.fields.itemName,
-                itemName?.name ?? lookupDisplayLabelWithInactive(labels.item, detail.data.itemId),
+                {
+                  label: t.fields.inspectionRequestNo,
+                  value: detail.data.inspectionRequestNo ?? EMPTY,
+                  isKey: true,
+                },
+                {
+                  label: t.fields.item,
+                  value: (
+                    <InfoCodeName
+                      code={itemName?.code ?? EMPTY}
+                      name={
+                        itemName?.name ??
+                        lookupDisplayLabelWithInactive(labels.item, detail.data.itemId)
+                      }
+                    />
+                  ),
+                  isKey: true,
+                },
               ],
-            ].map(([label, value]) => (
-              <div key={label}>
-                <dt className="field-label">{label}</dt>
-                <dd>{value}</dd>
-              </div>
-            ))}
-          </dl>
+            ]}
+          />
           {/*
            * 검사 결과 카드(사용자 시안 2026-11-02 · 아이콘 없이) — 제목 · 종합 판정 표식, 네 수량, 합격 · 불합격 비율 막대,
            * 검사일시 · 검사 방식.
@@ -230,15 +240,10 @@ export const ResultDetailDialog = ({
       {detail.data !== undefined && (
         <details className="result-detail-extra result-detail-card">
           <summary>{t.extraTitle}</summary>
-          {/* 기준 버전 · LOT · 공정 · 검사자 — 줄 맞춘 칸, 긴 LOT 번호는 칸 안에서 줄을 바꾼다(사용자 2026-11-02). */}
-          <dl className="inspection-standard-facts-line result-detail-extra-facts">
-            {extraFields.map(([label, value]) => (
-              <div key={label} data-wide={label === t.fields.lotNo ? 'true' : undefined}>
-                <dt className="field-label">{label}</dt>
-                <dd>{value}</dd>
-              </div>
-            ))}
-          </dl>
+          {/* 기준 버전 · LOT · 공정 · 검사자 — 정보 표시 팝업 상자(시안 2026-11-27 · #360). */}
+          <InfoFacts
+            rows={[extraFields.map(([label, value]) => ({ label: label ?? '', value }))]}
+          />
           {/*
            * 항목별 측정 결과 · 처리 이력은 탭으로 나눈다(사용자 시안 2026-11-02). 측정 대상이 아니면(기준에 측정 항목이 없거나
            * 기준이 없으면) 측정 탭을 두지 않는다. 기준에 측정 항목이 있는데 값이 없으면 「측정값 없음」 한 줄.

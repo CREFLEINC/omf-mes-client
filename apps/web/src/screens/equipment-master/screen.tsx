@@ -29,6 +29,7 @@ import {
   LINE_LOCATION_WAREHOUSE_TYPES,
   useWorkOrderLocations,
 } from '../work-order/resource-queries';
+import { GroupFormDialog } from './group-form-dialog';
 import { GroupFormPane, type LocationField } from './group-form-pane';
 import { InspectionAssignDialog } from './inspection-assign-dialog';
 import { InspectionItemDialog } from './inspection-item-dialog';
@@ -211,7 +212,9 @@ export const EquipmentMasterScreen = () => {
   );
 
   const isCreateMode = searchParams.get('mode') === 'create';
-  const selectedGroupId = isCreateMode ? null : Number(searchParams.get('grp') ?? '') || null;
+  /* 등록 팝업을 연 동안에도 목록에서 고른 줄은 그대로 짚는다 — 주소의 grp 가 그 그룹이다(#360). */
+  const listSelectedGroupId = Number(searchParams.get('grp') ?? '') || null;
+  const selectedGroupId = isCreateMode ? null : listSelectedGroupId;
 
   const groupList = useGroupList({ ...filters, plantId: plant.plantId }, !plant.isChecking);
   const groupItems = useMemo(() => groupList.data?.items ?? [], [groupList.data]);
@@ -396,12 +399,9 @@ export const EquipmentMasterScreen = () => {
         label: lineLocationLabel(item),
       })),
   ];
+  /* 「공장을 고르면 위치가 나온다」 안내는 걷었다(사용자 지시 · #360) — 목록이 잘렸을 때만 알린다. */
   const locationNote =
-    formPlantId === null
-      ? t.form.locationNeedsPlant
-      : lineLocations.truncated
-        ? t.optionsTruncated
-        : undefined;
+    formPlantId !== null && lineLocations.truncated ? t.optionsTruncated : undefined;
 
   const parentOptions: CodeOption[] = useMemo(() => {
     const selectable = groupOptions.groups
@@ -458,7 +458,7 @@ export const EquipmentMasterScreen = () => {
          * 등록 응답(201)에는 ETag가 없다. 등록한 그룹의 상세로 옮겨 다시 조회해야
          * 낙관적 잠금 토큰이 확보되고 이어서 수정할 수 있다.
          */
-        updateParams({ mode: null, grp: String(saved.equipmentGroupId) });
+        updateParams({ mode: null, grp: String(saved.equipmentGroupId), tab: null });
         return;
       }
 
@@ -1036,10 +1036,22 @@ export const EquipmentMasterScreen = () => {
     updateParams(patch);
   };
 
-  // 신규 등록은 선택을 지운다 — 어느 그룹의 상세도 아닌 새 폼이다.
+  /*
+   * 신규 등록은 팝업으로 연다(omf-all-around#360). 등록 중에는 어느 그룹의 상세도 아니다 —
+   * 고르던 그룹(grp)은 주소에 남겨 두어, [취소]로 닫으면 그 그룹으로 돌아간다.
+   */
   const handleAddGroup = () => {
-    navigateWithDraftGuard({ mode: 'create', grp: null, tab: null });
+    navigateWithDraftGuard({ mode: 'create' });
   };
+
+  /** 등록 팝업 [취소]·Escape — 입력이 있으면 「입력한 내용을 버릴까요?」를 먼저 묻는다. */
+  const handleCancelCreate = () => {
+    navigateWithDraftGuard({ mode: null });
+  };
+
+  /** 필수 칸이 모두 차야 [등록]이 켜진다 — 누른 뒤의 검증(`handleSaveGroup`)은 그대로다. */
+  const canRegisterGroup =
+    Object.keys(validateGroup(formValues, { mode: 'create', cycleBlockedIds })).length === 0;
 
   /* 사업부를 바꾸면 다른 공장의 그룹 선택을 푼다 — 고치던 값이 있으면 그대로 둔다. */
   useOnMasterDataPlantChange(plant, () => {
@@ -1143,9 +1155,14 @@ export const EquipmentMasterScreen = () => {
     return null;
   })();
 
-  const renderGroupForm = (options: { mode: 'create' | 'edit'; isActive: boolean }) => (
+  const renderGroupForm = (options: {
+    mode: 'create' | 'edit';
+    isActive: boolean;
+    actions?: boolean;
+  }) => (
     <GroupFormPane
       mode={options.mode}
+      actions={options.actions}
       values={formValues}
       onChange={changeFormValues}
       // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
@@ -1194,15 +1211,7 @@ export const EquipmentMasterScreen = () => {
    * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
    */
   const renderDetailPane = () => {
-    if (isCreateMode) {
-      return (
-        <div className="pane equipment-master-pane equipment-master-detail-pane">
-          <h2 className="pane-title">{t.form.createTitle}</h2>
-          {renderGroupForm({ mode: 'create', isActive: true })}
-        </div>
-      );
-    }
-
+    /* 등록은 팝업(`GroupFormDialog`)이 맡는다 — 그동안 상세 자리는 고른 그룹이 없는 모습이다. */
     if (selectedGroupId === null) {
       return (
         <div className="pane equipment-master-pane equipment-master-detail-pane">
@@ -1344,7 +1353,7 @@ export const EquipmentMasterScreen = () => {
     plants: lookups.sources.plants,
     expandedIds,
     onToggleExpand: handleToggleExpand,
-    selectedGroupId,
+    selectedGroupId: listSelectedGroupId,
     /* 고른 줄을 다시 누르면 고르기를 푼다(사용자 지시 2026-11-24) — 고치던 것이 있으면 같은 확인을 지난다. */
     onSelect: (equipmentGroupId) =>
       navigateWithDraftGuard({
@@ -1474,6 +1483,17 @@ export const EquipmentMasterScreen = () => {
         ]}
       />
 
+      {isCreateMode && (
+        <GroupFormDialog
+          canRegister={canRegisterGroup}
+          isSaving={groupWrite.isSaving}
+          onCancel={handleCancelCreate}
+          onRegister={handleSaveGroup}
+        >
+          {renderGroupForm({ mode: 'create', isActive: true, actions: false })}
+        </GroupFormDialog>
+      )}
+
       {pendingParams !== null && (
         <DiscardConfirmDialog onConfirm={handleDiscard} onClose={() => setPendingParams(null)} />
       )}
@@ -1552,9 +1572,13 @@ export const EquipmentMasterScreen = () => {
       {disposeTarget !== null && (
         <DeactivateConfirmDialog
           title={t.dispose.title}
-          targetNote={t.dispose.target(
-            `${disposeTarget.equipmentCode} · ${disposeTarget.equipmentName}`,
-          )}
+          iconClass="dialog-icon-delete"
+          target={{
+            caption: t.dispose.caption,
+            name: disposeTarget.equipmentName,
+            meta: disposeTarget.equipmentCode,
+          }}
+          question={t.dispose.question}
           confirmLabel={t.dispose.confirm}
           impactNote={t.dispose.impact}
           reversibilityNote={t.dispose.notReversible}
@@ -1568,9 +1592,12 @@ export const EquipmentMasterScreen = () => {
       {deactivateTarget !== null && (
         <DeactivateConfirmDialog
           title={t.deactivate.equipmentTitle}
-          targetNote={t.deactivate.target(
-            `${deactivateTarget.equipmentCode} · ${deactivateTarget.equipmentName}`,
-          )}
+          target={{
+            caption: t.deactivate.caption,
+            name: deactivateTarget.equipmentName,
+            meta: deactivateTarget.equipmentCode,
+          }}
+          question={t.deactivate.equipmentQuestion}
           confirmLabel={t.deactivate.confirm}
           impactNote={t.deactivate.equipmentImpact}
           reversibilityNote={t.deactivate.notReversibleHere}
@@ -1589,9 +1616,12 @@ export const EquipmentMasterScreen = () => {
       {isDeactivateOpen && detail.data !== undefined && (
         <DeactivateConfirmDialog
           title={t.deactivate.title}
-          targetNote={t.deactivate.target(
-            `${detail.data.equipmentGroup.groupCode} · ${detail.data.equipmentGroup.groupName}`,
-          )}
+          target={{
+            caption: t.deactivate.caption,
+            name: detail.data.equipmentGroup.groupName,
+            meta: detail.data.equipmentGroup.groupCode,
+          }}
+          question={t.deactivate.question}
           confirmLabel={t.deactivate.confirm}
           impactNote={groupDeactivateImpact(detail.data.memberEquipmentCount)}
           reversibilityNote={t.deactivate.notReversibleHere}
@@ -1654,7 +1684,8 @@ export const EquipmentMasterScreen = () => {
       {inspectionTarget !== null && (
         <InspectionAssignDialog
           title={t.inspection.equipmentDialogTitle}
-          targetLabel={`${inspectionTarget.equipmentCode} · ${inspectionTarget.equipmentName}`}
+          targetCode={inspectionTarget.equipmentCode}
+          targetName={inspectionTarget.equipmentName}
           lead={t.inspection.equipmentDialogLead}
           rows={equipmentRows}
           onChangeRows={(next) => setEquipmentAssignRows(next)}
@@ -1686,8 +1717,8 @@ export const EquipmentMasterScreen = () => {
       {assignRows !== null && detail.data !== undefined && (
         <InspectionAssignDialog
           title={t.inspection.dialogTitle}
-          targetLabel={`${detail.data.equipmentGroup.groupCode} · ${detail.data.equipmentGroup.groupName}`}
-          lead={t.inspection.dialogLead}
+          targetCode={detail.data.equipmentGroup.groupCode}
+          targetName={detail.data.equipmentGroup.groupName}
           rows={assignRows}
           onChangeRows={setAssignRows}
           master={inspectionMaster.data ?? []}

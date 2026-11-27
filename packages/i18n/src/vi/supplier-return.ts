@@ -38,15 +38,14 @@ export const supplierReturn: Translated<typeof ko.supplierReturn> = {
     prevPage: 'Trước',
     nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
-    refresh: 'Tra cứu lại',
+    refresh: 'Làm mới',
     select: 'Chọn',
-    deselect: 'Bỏ chọn',
     selectRow: (goodsReceiptNo: string): string => `Chọn ${goodsReceiptNo}`,
     deselectRow: (goodsReceiptNo: string): string => `Bỏ chọn ${goodsReceiptNo}`,
     submit: 'Xử lý trả hàng',
     discardDrafts: 'Xóa nội dung đã nhập',
-    keepEditing: 'Nhập tiếp',
-    confirmSubmit: 'Thực hiện xử lý trả hàng',
+    keepEditing: 'Hủy',
+    confirmSubmit: 'Xử lý trả hàng',
     confirmDiscard: 'Thực hiện xóa nội dung đã nhập',
   },
   actionReasons: {
@@ -162,17 +161,20 @@ export const supplierReturn: Translated<typeof ko.supplierReturn> = {
     status: 'Trạng thái',
   },
   dialog: {
-    submitTitle: 'Xử lý trả hàng với nội dung này chứ?',
-    submitLead: 'Phiếu trả hàng sẽ được tạo với nội dung dưới đây và ghi sổ ngay.',
-    linePair: (item: string, lot: string, qty: string): string => `${item} · ${lot} · ${qty}`,
-    lineCount: (count: number): string => `Đã chọn ${String(count)} dòng`,
+    submitTitle: 'Xử lý trả hàng chứ?',
+    targetHead: (count: number): string => `Đối tượng trả hàng ${String(count)} mục`,
+    item: 'Mặt hàng',
+    returnQty: 'Số lượng trả',
+    erpPlanned: 'Sẽ gửi',
+    erpOff: 'Không gửi',
+    details: 'Chi tiết xử lý',
     businessDateDerived: (businessDate: string): string =>
       `${businessDate} (giá trị lấy từ ngày xuất kho)`,
-    submitEffects: 'Thao tác này trừ tồn kho, và việc đăng ký với ghi sổ xảy ra cùng một lúc.',
-    submitNoUndoHere: 'Màn hình này không có cách nào để hoàn tác.',
-    submitLotHoldKept: 'Dù đã trả hàng thì phần tạm giữ của LOT vật tư vẫn giữ nguyên.',
+    submitEffects: 'Phiếu trả hàng sẽ được đăng ký và tồn kho bị trừ ngay.',
+    submitNoUndoHere: 'Sau khi xử lý, không thể hủy trên màn hình này.',
+    submitLotHoldKept: 'Trạng thái tạm giữ của LOT vật tư vẫn được giữ nguyên.',
     submitOnHandUnknown:
-      'Có dòng chưa xác nhận được số lượng hiện có. Nếu vượt hạn mức thì máy chủ sẽ trả về 400.',
+      'Có dòng chưa xác nhận được số lượng hiện có. Nếu vượt tồn kho thì việc trả hàng sẽ bị từ chối.',
     discardTitle: 'Xóa nội dung đã nhập chứ?',
   },
   result: {
@@ -196,6 +198,10 @@ export const supplierReturn: Translated<typeof ko.supplierReturn> = {
     businessDateDerived: 'Ngày làm việc được gửi kèm theo giá trị lấy từ ngày xuất kho.',
     replacementExpectedNote:
       'Dự kiến nhập bù chỉ được ghi làm dấu trên phiếu. Không nối sang danh sách kế hoạch nhập hàng.',
+  },
+  codeNames: {
+    sourceDocumentType: { GOODS_RECEIPT: 'Phiếu nhập kho' },
+    destinationType: { PARTNER: 'Đối tác' },
   },
   values: {
     unknown: 'Không xác định',

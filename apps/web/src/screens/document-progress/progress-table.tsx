@@ -186,7 +186,7 @@ export const ProgressTable = ({
     <BoardTable
       label={t.panes.list}
       widthKey="omf-mes:document-progress:columns:list"
-      minWidth="56rem"
+      fit
       columns={buildProgressColumns({ statusName, subTypeName })}
       rows={rows}
       /*

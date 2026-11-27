@@ -1,13 +1,12 @@
-import { Chip, TextField, type TextFieldProps } from '@crefle/web-ui';
-import { messages } from '@omf-mes/i18n';
+import { Icon, TextField, type TextFieldProps } from '@crefle/web-ui';
 import { type ReactNode, useId } from 'react';
 
 /**
- * 잠긴 코드 칸 이름 오른쪽의 「변경 불가」 상태 라벨(사용자 지시 2026-11-24 — 「지금은 코드를 바꿀 수 없습니다 …」 같은
- * 잠금 사유 문장 대신). 사유 문장은 화면에 펼치지 않는다 — 라벨에 마우스를 올리면 보이고(`title`), 입력칸은
- * `reasonId` 의 숨긴 글을 `aria-describedby` 로 가리켜 화면 읽기 프로그램이 읽는다.
+ * 잠긴 코드 칸의 이름. 이름 옆 「변경 불가」 라벨은 두지 않는다(팝업 디자인 시안 2026-11-26 · omf-all-around#360) —
+ * 잠긴 칸은 회색(잠긴) 칸 모양으로만 구분한다. 잠금 사유 문장은 화면에 펼치지 않고, 이름에 마우스를 올리면 보이며(`title`),
+ * 입력칸은 `reasonId` 의 숨긴 글을 `aria-describedby` 로 가리켜 화면 읽기 프로그램이 읽는다.
  *
- * `children` 은 그 칸의 이름(필수 표시 포함) — 별은 이름 바로 뒤, 라벨은 그 오른쪽이다. 잠기지 않았으면 이름만 낸다.
+ * `children` 은 그 칸의 이름(필수 표시 포함). 잠기지 않았으면 이름만 낸다.
  */
 export const CodeLockLabel = ({
   reason,
@@ -21,17 +20,24 @@ export const CodeLockLabel = ({
   if (reason === null) return children;
 
   return (
-    <span className="code-lock-label-row">
+    <span className="code-lock-label-row" title={reason}>
       {children}
-      <Chip variant="status" size="sm" status="idle" className="code-lock-chip" title={reason}>
-        {messages.editability.badge}
-      </Chip>
       <span id={reasonId} className="visually-hidden">
         {reason}
       </span>
     </span>
   );
 };
+
+/**
+ * 잠긴 칸 오른쪽 끝 자물쇠(팝업 디자인 시안 「잠긴 칸」 · omf-all-around#360). 사유는 마우스를 올리면 보인다(`title`) —
+ * 화면 읽기 프로그램은 칸의 `aria-describedby` 로 읽으므로 아이콘은 숨긴다. 모양은 app.css `.locked-field-icon`.
+ */
+export const LockedFieldIcon = ({ reason }: { reason?: string }) => (
+  <span className="locked-field-icon" title={reason} aria-hidden="true">
+    <Icon name="lock" size={16} />
+  </span>
+);
 
 /**
  * 디자인 시스템 `TextField` 의 내장 라벨(`label`)을 쓰는 코드 칸용. 내장 라벨은 문자열이라 옆에 라벨을 끼울 자리가
@@ -67,14 +73,9 @@ export const CodeLockTextField = ({
   return (
     <div className="code-lock-field">
       <CodeLockLabel reason={lockReason} reasonId={reasonId}>
+        {/* 잠긴 칸은 이름만 — 고칠 수 없는 칸에 필수 * 를 달지 않는다(팝업 시안 라벨 규칙 · #360). */}
         <span className="field-label">
           <label htmlFor={inputId}>{label}</label>
-          {required === true && (
-            <span className="required-mark" aria-hidden="true">
-              {' '}
-              *
-            </span>
-          )}
         </span>
       </CodeLockLabel>
       <TextField
@@ -83,6 +84,7 @@ export const CodeLockTextField = ({
         required={required}
         disabled
         aria-describedby={[describedBy, reasonId].filter(Boolean).join(' ')}
+        trailingIcon={<LockedFieldIcon reason={lockReason} />}
       />
     </div>
   );

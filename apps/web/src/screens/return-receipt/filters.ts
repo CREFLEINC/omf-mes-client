@@ -9,6 +9,7 @@ import type { paths } from '@omf-mes/api-client';
  * | `from` · `to` | 출하일 기간 — 비울 수 없다(L-3). 주소에 없으면 최근 한 달 |
  * | `q` | 검색어 — 출하번호·출하 지시서 번호·고객(코드·이름). LOT 은 찾지 않는다(decisions #49) |
  * | `page` | 쪽 |
+ * | `size` | 쪽 크기 — 10 · 20 · 50, 기본(50)이면 적지 않는다(#360) |
  * | `shipment` | 고른 원 출하 |
  * | `mode=direct` | 원 출하 없이 등록 |
  *
@@ -34,6 +35,7 @@ const KEYS = {
   to: 'to',
   q: 'q',
   page: 'page',
+  size: 'size',
   shipment: 'shipment',
   mode: 'mode',
 } as const;
@@ -82,13 +84,28 @@ export const readFilters = (params: URLSearchParams, today: Date): SearchFilters
 export const isUsable = (filters: SearchFilters): boolean =>
   isDate(filters.from) && isDate(filters.to) && filters.from <= filters.to;
 
+/** 목록 한 쪽 건수 기본 — 서버 기본값(50)이라 싣지 않는다. 주소에 적지 않는다. */
+export const PAGE_SIZE = 50;
+
+/** 고를 쪽 크기 — 품질 목록과 같은 10 · 20 · 50건(#360). */
+export const LIST_PAGE_SIZES = [10, 20, 50] as const;
+export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
+
+/** 쪽 크기. 고를 수 있는 값이 아니면 기본(50)으로 읽는다. */
+export const readPageSize = (params: URLSearchParams): ListPageSize =>
+  LIST_PAGE_SIZES.find((size) => String(size) === params.get(KEYS.size)) ?? PAGE_SIZE;
+
 export const readPage = (params: URLSearchParams): number => {
   const value = Number(params.get(KEYS.page) ?? '1');
   return Number.isInteger(value) && value >= 1 ? value : 1;
 };
 
 /** 조회 조건. **기간이 못 쓸 값이면 `null`** — 기간 없이는 부르지 않는다(L-3). */
-export const toListQuery = (filters: SearchFilters, page: number): ShipmentListQuery | null => {
+export const toListQuery = (
+  filters: SearchFilters,
+  page: number,
+  size: number = PAGE_SIZE,
+): ShipmentListQuery | null => {
   if (!isUsable(filters)) return null;
 
   return {
@@ -97,6 +114,7 @@ export const toListQuery = (filters: SearchFilters, page: number): ShipmentListQ
     ...(filters.customerId === '' ? {} : { customerId: Number(filters.customerId) }),
     ...(filters.q.trim() === '' ? {} : { q: filters.q.trim() }),
     ...(page > 1 ? { page } : {}),
+    ...(size === PAGE_SIZE ? {} : { size }),
   };
 };
 
@@ -124,6 +142,8 @@ export const toAppliedSearchParams = (
   current: URLSearchParams,
   filters: SearchFilters,
   page: number,
+  /** 주면 쪽 크기도 바꾼다(기본 50은 적지 않는다). 주지 않으면 지금 주소의 쪽 크기를 그대로 둔다. */
+  size?: number,
 ): URLSearchParams => {
   const next = new URLSearchParams(current);
   const set = (key: string, value: string): void => {
@@ -135,6 +155,7 @@ export const toAppliedSearchParams = (
   set(KEYS.to, filters.to);
   set(KEYS.q, filters.q.trim());
   set(KEYS.page, page > 1 ? String(page) : '');
+  if (size !== undefined) set(KEYS.size, size === PAGE_SIZE ? '' : String(size));
   next.delete(KEYS.shipment);
 
   return next;

@@ -240,6 +240,7 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
       </div>
       {confirmation !== null && (
         <Dialog
+          className="dialog-icon-lock"
           open
           closeOnBackdropClick={false}
           showCloseButton={false}

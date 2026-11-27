@@ -7,6 +7,9 @@ import { toShipmentRequestCandidate, type ShipmentRequestCandidate } from './typ
 
 type PageMeta = components['schemas']['PageMeta'];
 
+/** 계약 `size` 기본 50 — 종전에는 싣지 않아 이 값이었다. */
+export const SHIPMENT_PROCESSING_PAGE_SIZE = 50;
+
 /**
  * 이 화면의 읽기 — 후보 목록과 선택한 건의 상세. 쓰기(`POST /logistics/shipments`)는
  * `mutations.ts`가 갖는다.
@@ -20,6 +23,8 @@ export interface ShipmentProcessingCandidateFilters {
   shipDateTo: string | null;
   pickingCompleteOnly: boolean;
   page: number;
+  /** 한 쪽 건수 — 없거나 서버 기본(50)이면 싣지 않는다(종전 요청 그대로 · #360). */
+  size?: number;
 }
 
 export interface ShipmentProcessingCandidatesResult {
@@ -37,6 +42,7 @@ export const shipmentProcessingKeys = {
       filters.shipDateTo,
       filters.pickingCompleteOnly,
       filters.page,
+      filters.size ?? SHIPMENT_PROCESSING_PAGE_SIZE,
     ] as const,
   detail: (shipmentRequestId: number | null) =>
     ['shipment-processing', 'detail', shipmentRequestId] as const,
@@ -70,6 +76,9 @@ export const useShipmentRequestCandidates = (
               ...(filters.pickingCompleteOnly ? { pickingCompleteOnly: true } : {}),
               shippableRemainderOnly: true,
               page: filters.page,
+              ...(filters.size === undefined || filters.size === SHIPMENT_PROCESSING_PAGE_SIZE
+                ? {}
+                : { size: filters.size }),
             },
           },
         }),

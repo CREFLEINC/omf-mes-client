@@ -13,7 +13,6 @@
  */
 export const workOrderProgress = {
   title: 'W/O 진행현황',
-  breadcrumbRoot: '생산 관리',
 
   /** 조회 조건. */
   filters: {
@@ -197,11 +196,9 @@ export const workOrderProgress = {
     },
   },
 
-  /** L-5 — 집계는 조회 시점의 스냅샷이라 언제 기준인지가 값의 일부다. */
+  /** L-5 — 집계는 조회 시점의 스냅샷이라 언제 기준인지가 값의 일부다. 표기는 통합 대시보드의 「마지막 갱신」과 같다(#360). */
   basis: {
-    label: (at: string): string => `기준 ${at}`,
-    refresh: '새로고침',
-    /** L-6 — 자동 갱신이 없으므로, 화면이 스스로 최신이 되지 않는다는 사실을 알린다. */
-    note: '자동으로 갱신되지 않습니다. 새로고침을 눌러 다시 조회하세요.',
+    label: (at: string): string => `마지막 갱신 ${at}`,
+    refresh: '갱신',
   },
 } as const;

@@ -19,6 +19,9 @@ const t = messages.supplierReturn;
 export interface PageView {
   /** 1부터 센 현재 쪽 */
   page: number;
+  /** 한 쪽 건수 · 전체 건수 — 공용 쪽 이동 줄(총 N건 · n / m)에 그대로 넘긴다(#360). */
+  size: number;
+  total: number;
   totalPages: number;
   /** 「51–100 / 전체 120건」 */
   rangeLabel: string;
@@ -38,6 +41,8 @@ export const toPageView = (meta: PageMeta, shown: number): PageView => {
 
   return {
     page,
+    size,
+    total: meta.total,
     totalPages,
     // 보이는 것이 없으면 범위를 지어내지 않는다. 전체 건수는 그대로 밝힌다.
     rangeLabel:

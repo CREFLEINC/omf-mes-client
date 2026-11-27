@@ -81,7 +81,7 @@ describe('DetailDialog', () => {
 
     expect(within(panel).getByText('상태 SYN_RUN')).toBeInTheDocument();
     expect(within(panel).getByText('품목 5001')).toBeInTheDocument();
-    expect(within(panel).getByText('3000')).toBeInTheDocument();
+    expect(within(panel).getByText('3,000')).toBeInTheDocument();
   });
 
   it('⛔ 식별자를 그대로 보이지 않고 이름으로 바꾼다', () => {
@@ -96,11 +96,33 @@ describe('DetailDialog', () => {
       ['계획 종료', t.plannedEndAt],
       ['완료', t.completedAt],
       ['마감', t.closedAt],
-      ['비고', t.remarks],
     ])('%s 이 없으면 「—」로 둔다', (_name, label) => {
       renderDialog();
 
-      expect(within(dialog()).getByText(label).closest('.field-cell')).toHaveTextContent(blank);
+      expect(within(dialog()).getByText(label).closest('.info-fact, .info-long')).toHaveTextContent(
+        blank,
+      );
+    });
+
+    /* 비고가 비었거나 공백뿐이면 라벨 · 「—」까지 숨긴다(#360). */
+    it.each([
+      ['없음', undefined],
+      ['빈 글', ''],
+      ['공백뿐', '  \n '],
+    ])('비고가 %s 이면 줄째 숨긴다', (_name, remarks) => {
+      renderDialog({ workOrder: workOrder({ remarks }) });
+
+      expect(within(dialog()).queryByText(t.remarks)).not.toBeInTheDocument();
+    });
+
+    it('비고가 있으면 상자 마지막 줄에 줄바꿈 그대로 보인다', () => {
+      renderDialog({ workOrder: workOrder({ remarks: '첫 줄\n둘째 줄' }) });
+      const fact = within(dialog()).getByText(t.remarks).closest('.info-fact');
+
+      expect(fact?.closest('.info-facts')).not.toBeNull();
+      expect(fact?.querySelector('.work-order-progress-remarks')?.textContent).toBe(
+        '첫 줄\n둘째 줄',
+      );
     });
 
     /* 공장 시각(베트남, UTC+7)으로 옮겨 보인다(omf-all-around#20). */

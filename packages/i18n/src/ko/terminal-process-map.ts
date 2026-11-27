@@ -76,7 +76,7 @@ export const terminalProcessMap = {
     registeredAt: '등록 일시',
     equipment: '설치 설비',
     equipmentNone: '미지정',
-    plantPlaceholder: '공장 선택',
+    plantPlaceholder: '공장을 선택하세요',
     typePlaceholder: '유형 선택',
     warehouse: '창고',
     warehouseAll: '공장 전체',
@@ -117,6 +117,8 @@ export const terminalProcessMap = {
     warehouseNeedsPlant: '공장 먼저 선택',
     equipmentPopOnly: 'POP 단말만',
     codeNeedsType: '유형을 고르면 채워짐',
+    /** 유형을 고른 뒤 단말 코드를 비웠을 때의 흐린 안내(사용자 지시 2026-11-26 「흐린 문구 추가」). */
+    codePlaceholder: '단말 코드를 입력하세요',
     /** 유형 카드의 한 줄 설명 — 공통코드에 없는 유형은 설명 없이 이름만. */
     typeHints: { POP: '작업장 단말', MOBILE: '창고 휴대 단말' } as Record<string, string>,
   },
@@ -166,7 +168,7 @@ export const terminalProcessMap = {
     /** 여덟 칸을 하나씩 누르지 않게 한 줄을 통째로 여닫는다. */
     openAll: '모든 기능',
     add: '공정 추가',
-    addPlaceholder: '공정 선택',
+    addPlaceholder: '공정을 선택하세요',
     nothingToAdd: '추가할 공정이 없습니다.',
     /** 공정 행 관리 열 — 기능 칸과 성격이 다르다(이 단말의 구성에서 공정을 뺀다). */
     manage: '공정 제외',

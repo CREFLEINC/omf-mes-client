@@ -28,7 +28,7 @@ export const warehouseLayout = {
 
   warehouse: {
     select: '창고',
-    selectPlaceholder: '창고 선택',
+    selectPlaceholder: '창고를 선택하세요',
     lookupFailed: '창고 목록을 불러오지 못했습니다.',
     lookupTruncated: '목록의 일부만 보입니다.',
     emptyTitle: '창고를 선택하세요',
@@ -70,18 +70,10 @@ export const warehouseLayout = {
     saving: '저장하는 중입니다.',
     saved: '배치도를 저장했습니다.',
     reset: '되돌리기',
-    /** 배치도 조회가 저장의 잠금 토큰을 준다 — 받기 전 · 못 받으면 저장할 수 없다. */
-    lockLoading: '배치도를 불러오는 중입니다.',
-    lockFailed: '배치도를 불러오지 못해 저장할 수 없습니다.',
     upload: '도면 올리기',
     /** ⛔ 요청 전에 화면이 거른다 — 서버가 받는 것은 PNG·JPEG 뿐이다. */
     fileTypeRejected: 'PNG 또는 JPEG 파일만 올릴 수 있습니다.',
     fileTooLarge: '10MB 이하 파일만 올릴 수 있습니다.',
-    /**
-     * ⛔ 저장하지 않은 점 편집이 있으면 올리기를 막는다 — 바로 반영이라 그 점을 함께 보낼지
-     * 버릴지가 사용자 모르게 갈린다.
-     */
-    uploadNeedsCleanDraft: '저장하지 않은 표식 변경이 있습니다.',
     /** ⭐ 올리기와 저장은 이어지는 두 호출이다 — 지금 어느 쪽인지 글자로 말한다. */
     uploadingLabel: '올리는 중…',
     savingDrawingLabel: '저장하는 중…',
@@ -108,6 +100,8 @@ export const warehouseLayout = {
   aliasPopover: {
     title: (code: string): string => `${code} 별칭`,
     note: '바로 저장됩니다. 배치도 저장과는 따로입니다.',
+    /** 칸 안 흐린 안내(사용자 지시 2026-11-26 「흐린 문구 추가」). */
+    placeholder: '별칭을 입력하세요',
   },
   editor: {
     open: '수정',

@@ -593,6 +593,9 @@ const form = (mode: 'create' | 'edit' = 'edit') =>
     screen.getByRole('region', { name: mode === 'create' ? t.form.createTitle : t.form.editTitle }),
   );
 
+/** 등록 팝업 — 단추 줄([취소][등록])은 팝업에 있다. */
+const createDialog = () => within(screen.getByRole('dialog', { name: t.form.createTitle }));
+
 const openGroup = async (user: ReturnType<typeof userEvent.setup>, code = 'GRP-A') => {
   await user.click(await screen.findByRole('button', { name: code }));
   await screen.findByRole('region', { name: t.form.editTitle });
@@ -764,10 +767,8 @@ describe('EquipmentMasterScreen — 그룹 등록·수정', () => {
     const nameInput = await openGroup(user);
 
     expect(form().getByRole('textbox', { name: new RegExp(t.fields.groupCode) })).toBeDisabled();
-    expect(form().getByText(messages.editability.badge).closest('[title]')).toHaveAttribute(
-      'title',
-      messages.editability.referenced(3),
-    );
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 숨긴 설명으로만. */
+    expect(form().queryByText('변경 불가')).toBeNull();
     expect(
       form().getByRole('textbox', { name: new RegExp(t.fields.groupCode) }),
     ).toHaveAccessibleDescription(messages.editability.referenced(3));
@@ -838,7 +839,7 @@ describe('EquipmentMasterScreen — 그룹 등록·수정', () => {
     await user.click(await screen.findByRole('option', { name: t.groupTypes.LINE }));
     await user.click(form('create').getByRole('combobox', { name: t.fields.plant }));
     await user.click(await screen.findByRole('option', { name: /제1공장/ }));
-    await user.click(form('create').getByRole('button', { name: messages.common.save }));
+    await user.click(createDialog().getByRole('button', { name: t.actions.register }));
 
     await waitFor(() => {
       expect(writes).toHaveLength(1);
@@ -856,6 +857,105 @@ describe('EquipmentMasterScreen — 그룹 등록·수정', () => {
 
     // 등록 응답(201)에는 ETag가 없다 — 상세로 옮겨야 이어서 수정할 수 있다.
     expect(await screen.findByRole('region', { name: t.form.editTitle })).toBeInTheDocument();
+    /* 등록이 끝나면 팝업을 닫고 토스트로 알린다(omf-all-around#360). */
+    expect(screen.queryByRole('dialog', { name: t.form.createTitle })).toBeNull();
+    expect(await screen.findByText(messages.common.created)).toBeInTheDocument();
+  });
+
+  /* omf-all-around#360 — 그룹 추가는 등록 팝업으로 연다. */
+  it('「그룹 추가」는 등록 팝업을 열고, 필수 칸이 다 차야 [등록]이 켜진다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await screen.findByRole('button', { name: 'GRP-A' });
+    await user.click(screen.getAllByRole('button', { name: t.actions.addGroup })[0] as HTMLElement);
+
+    const register = createDialog().getByRole('button', { name: t.actions.register });
+    expect(register).toBeDisabled();
+    /* 본문 폼의 [저장]·[취소] 줄은 팝업 안에 두지 않는다 — 팝업 단추 줄이 대신한다. */
+    expect(createDialog().queryByRole('button', { name: messages.common.save })).toBeNull();
+
+    await user.type(
+      form('create').getByRole('textbox', { name: new RegExp(t.fields.groupCode) }),
+      'GRP-NEW',
+    );
+    await user.type(
+      form('create').getByRole('textbox', { name: new RegExp(t.fields.groupName) }),
+      '새 구역',
+    );
+    await user.click(form('create').getByRole('combobox', { name: t.fields.groupType }));
+    await user.click(await screen.findByRole('option', { name: t.groupTypes.LINE }));
+    expect(register).toBeDisabled();
+
+    await user.click(form('create').getByRole('combobox', { name: t.fields.plant }));
+    await user.click(await screen.findByRole('option', { name: /제1공장/ }));
+    expect(register).toBeEnabled();
+  });
+
+  /* 고른 그룹을 두고 「그룹 추가」를 눌러도 목록의 고른 줄이 풀리지 않는다(#360). */
+  it('등록 팝업을 연 동안과 닫은 뒤에도 목록에서 고른 그룹이 그대로다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await openGroup(user);
+    await user.click(screen.getAllByRole('button', { name: t.actions.addGroup })[0] as HTMLElement);
+    await screen.findByRole('dialog', { name: t.form.createTitle });
+
+    expect(screen.getByRole('button', { name: 'GRP-A', hidden: true })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+
+    await user.click(createDialog().getByRole('button', { name: messages.common.cancel }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: t.form.createTitle })).toBeNull();
+    });
+    expect(screen.getByRole('button', { name: 'GRP-A' })).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('등록 팝업 [취소]는 입력이 없으면 바로 닫고 고르던 그룹으로 돌아간다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderScreen();
+
+    await openGroup(user);
+    await user.click(screen.getAllByRole('button', { name: t.actions.addGroup })[0] as HTMLElement);
+    await user.click(createDialog().getByRole('button', { name: messages.common.cancel }));
+
+    expect(screen.queryByRole('dialog', { name: t.dialog.discardTitle })).toBeNull();
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: t.form.createTitle })).toBeNull();
+    });
+    await waitFor(() => {
+      expect(form().getByRole('textbox', { name: new RegExp(t.fields.groupCode) })).toHaveValue(
+        'GRP-A',
+      );
+    });
+    expect(writes).toHaveLength(0);
+  });
+
+  it('등록 팝업 [취소]는 입력이 있으면 「입력한 내용을 버릴까요?」를 먼저 묻는다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderScreen();
+
+    await screen.findByRole('button', { name: 'GRP-A' });
+    await user.click(screen.getAllByRole('button', { name: t.actions.addGroup })[0] as HTMLElement);
+    const codeInput = form('create').getByRole('textbox', {
+      name: new RegExp(t.fields.groupCode),
+    });
+    await user.type(codeInput, 'GRP-NEW');
+    await user.click(createDialog().getByRole('button', { name: messages.common.cancel }));
+
+    expect(await screen.findByRole('dialog', { name: t.dialog.discardTitle })).toBeInTheDocument();
+    /* [계속 편집]이면 친 값이 그대로 남는다. */
+    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+    expect(codeInput).toHaveValue('GRP-NEW');
+
+    await user.click(createDialog().getByRole('button', { name: messages.common.cancel }));
+    await user.click(await screen.findByRole('button', { name: t.actions.discardChanges }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: t.form.createTitle })).toBeNull();
+    });
+    expect(writes).toHaveLength(0);
   });
 
   /*
@@ -1164,7 +1264,9 @@ describe('EquipmentMasterScreen — 그룹 사용 중지', () => {
     await user.click(form().getByRole('button', { name: messages.common.deactivate }));
 
     const dialog = within(await screen.findByRole('dialog', { name: deactivateT.title }));
-    expect(dialog.getByText(deactivateT.target('GRP-A · GRP-A 그룹'))).toBeInTheDocument();
+    expect(dialog.getByText('GRP-A 그룹')).toBeInTheDocument();
+    expect(dialog.getByText('GRP-A')).toBeInTheDocument();
+    expect(dialog.getByText(deactivateT.question)).toBeInTheDocument();
     // 건수를 화면이 세지 않는다 — 상세 응답이 내려 준 값을 그대로 보인다.
     expect(dialog.getByText(deactivateT.members(12))).toBeInTheDocument();
   });
@@ -1920,7 +2022,9 @@ describe('EquipmentMasterScreen — 설비 등록·수정', () => {
     expect(
       equipmentForm().getByRole('switch', { name: t.fields.calibrationRequired }),
     ).toBeDisabled();
-    expect(equipmentForm().getByText(t.actionReasons.calibrationNeedsCycle)).toBeInTheDocument();
+    expect(
+      equipmentForm().getByRole('button', { name: t.actionReasons.calibrationNeedsCycle }),
+    ).toBeInTheDocument();
   });
 
   /* 계측기 마스터가 정한 값을 여기서는 본다 — 잠긴 입력칸이 아니라 값 표기다. */
@@ -2206,9 +2310,8 @@ describe('EquipmentMasterScreen — 설비 등록·수정', () => {
     expect(
       equipmentForm().getByRole('textbox', { name: new RegExp(t.fields.equipmentCode) }),
     ).toBeDisabled();
-    expect(
-      equipmentForm().getByText(messages.editability.badge).closest('[title]'),
-    ).toHaveAttribute('title', messages.editability.referenced(3));
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 숨긴 설명으로만. */
+    expect(equipmentForm().queryByText('변경 불가')).toBeNull();
     expect(
       equipmentForm().getByRole('textbox', { name: new RegExp(t.fields.equipmentCode) }),
     ).toHaveAccessibleDescription(messages.editability.referenced(3));
@@ -2231,9 +2334,8 @@ describe('EquipmentMasterScreen — 설비 등록·수정', () => {
     expect(
       equipmentForm().getByRole('textbox', { name: new RegExp(t.fields.equipmentCode) }),
     ).toBeDisabled();
-    expect(
-      equipmentForm().getByText(messages.editability.badge).closest('[title]'),
-    ).toHaveAttribute('title', t.actionReasons.codeLockUnknown);
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 숨긴 설명으로만. */
+    expect(equipmentForm().queryByText('변경 불가')).toBeNull();
     expect(
       equipmentForm().getByRole('textbox', { name: new RegExp(t.fields.equipmentCode) }),
     ).toHaveAccessibleDescription(t.actionReasons.codeLockUnknown);
@@ -2306,7 +2408,9 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
     await openDeactivate(user);
 
     const dialog = within(await screen.findByRole('dialog', { name: deactivateT.equipmentTitle }));
-    expect(dialog.getByText(deactivateT.target('EQ-01 · EQ-01 설비'))).toBeInTheDocument();
+    expect(dialog.getByText('EQ-01 설비')).toBeInTheDocument();
+    expect(dialog.getByText('EQ-01')).toBeInTheDocument();
+    expect(dialog.getByText(deactivateT.equipmentQuestion)).toBeInTheDocument();
     expect(dialog.getByText(deactivateT.equipmentImpact)).toBeInTheDocument();
     // 되돌릴 수 없다는 사실은 그룹과 같은 문장을 쓴다.
     expect(dialog.getByText(deactivateT.notReversibleHere)).toBeInTheDocument();
@@ -2525,9 +2629,9 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
 
   /*
    * ⚠ 목록을 못 받으면 **이미 폐기된 자산인지 판정할 수 없다** — 열어 두면 이미 끝난
-   * 자산에도 눌리는 컨트롤이 된다. 감추지 않고 사유를 밝힌다(G-2).
+   * 자산에도 눌리는 컨트롤이 된다. 잠긴 까닭 문장은 내지 않는다(사용자 지시 · #360).
    */
-  it('값 목록을 못 받으면 폐기를 잠그고 사유를 낸다', async () => {
+  it('값 목록을 못 받으면 폐기를 잠근다', async () => {
     const user = userEvent.setup();
     renderScreen({ respondCodeValues: () => jsonResponse(codeValuesResponse([])) });
 
@@ -2537,12 +2641,7 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
 
     const dispose = dialog.getByRole('button', { name: t.actions.disposeEquipment });
     expect(dispose).toBeDisabled();
-
-    const describedBy = dispose.getAttribute('aria-describedby');
-    expect(describedBy).not.toBeNull();
-    expect(document.getElementById(describedBy ?? '')).toHaveTextContent(
-      t.actionReasons.disposeUnavailable,
-    );
+    expect(dialog.queryByText('등록된 자산 상태가 없어 폐기할 수 없습니다.')).toBeNull();
   });
 
   /* 이미 끝난 자산에는 폐기할 대상이 없다 — 누를 것이 없는 컨트롤을 두지 않는다. */
@@ -2562,6 +2661,25 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
     await waitFor(() => {
       expect(dialog.queryByRole('button', { name: t.actions.disposeEquipment })).toBeNull();
     });
+  });
+
+  /* 서버가 폐기한 설비의 수정을 거절한다(STATE_LOCKED) — 누르면 실패할 [저장] 을 잠그고 이유를 단다(#360 점검). */
+  it('이미 폐기된 설비의 수정 창은 저장을 잠그고 이유를 단다', async () => {
+    const user = userEvent.setup();
+    const disposed = makeEquipment(2001, 'EQ-01', { statusCode: 'DISPOSED' });
+    renderScreen({
+      respondEquipments: () => jsonResponse(equipmentsResponse([disposed])),
+      respondEquipmentDetail: () =>
+        jsonResponse(equipmentDetail(disposed), { headers: { ETag: '9' } }),
+    });
+
+    const pane = within(await openEquipmentTab(user));
+    await user.click(pane.getByRole('button', { name: 'EQ-01' }));
+    const dialog = within(await screen.findByRole('dialog', { name: t.equipmentForm.editTitle }));
+
+    const save = await dialog.findByRole('button', { name: messages.common.save });
+    await waitFor(() => expect(save).toBeDisabled());
+    expect(save.closest('span')).toHaveAttribute('title', t.dispose.lockedReason);
   });
 
   const disposeT = messages.equipmentMaster.dispose;

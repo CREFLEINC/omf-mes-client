@@ -137,8 +137,8 @@ export const productDisposalRequest: Translated<typeof ko.productDisposalRequest
   },
   confirm: {
     title: 'Yêu cầu hủy',
-    target: (count: number, qty: string): string =>
-      `Sẽ yêu cầu hủy ${String(count)} đối tượng · tổng ${qty}.`,
+    question: (count: number, qty: string): string =>
+      `Yêu cầu hủy ${String(count)} đối tượng · tổng ${qty} chứ?`,
     approvalNote: 'Yêu cầu sẽ đi lên theo luồng phê duyệt. Được duyệt rồi mới xuất kho được.',
     irreversible:
       'Sau khi gửi yêu cầu thì không rút lại được ở màn hình. Muốn lật lại thì dùng phần từ chối ở hộp phê duyệt.',

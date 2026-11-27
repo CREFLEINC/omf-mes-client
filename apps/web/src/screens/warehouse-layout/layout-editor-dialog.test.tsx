@@ -218,7 +218,7 @@ describe('W-CO-08 창고 배치도 — 도면 올리기', () => {
     expect(puts[0]?.body.drawingAttachmentId).toBe(NEW_ATTACHMENT_ID);
   });
 
-  it('⛔ 저장하지 않은 점 변경이 있으면 올리기를 막고 사유를 적는다', async () => {
+  it('⛔ 저장하지 않은 점 변경이 있으면 올리기를 막는다(사유 문장 없음)', async () => {
     const { user, uploads } = renderEditor({ layouts: [withDrawing()] });
 
     await loaded();
@@ -231,7 +231,7 @@ describe('W-CO-08 창고 배치도 — 도면 올리기', () => {
     await waitFor(() => {
       expect(uploadButton()).toBeDisabled();
     });
-    expect(screen.getByText(t.map.uploadNeedsCleanDraft)).toBeInTheDocument();
+    expect(screen.queryByText('저장하지 않은 표식 변경이 있습니다.')).not.toBeInTheDocument();
 
     /* 입력칸도 함께 잠근다 — 버튼만 막으면 자판으로 칸에 닿는 길이 남는다. */
     await user.upload(fileInput(), pngFile());

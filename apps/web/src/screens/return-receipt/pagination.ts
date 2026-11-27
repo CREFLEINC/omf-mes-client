@@ -4,6 +4,9 @@ import type { PageMeta } from './types';
 
 export interface PageView {
   page: number;
+  /** 한 쪽 건수 · 전체 건수 — 공용 쪽 이동 줄(총 N건 · n / m)에 그대로 넘긴다(#360). */
+  size: number;
+  total: number;
   canPrev: boolean;
   canNext: boolean;
   isBeyondLast: boolean;
@@ -22,6 +25,8 @@ export const toPageView = (meta: PageMeta, shown: number): PageView => {
 
   return {
     page,
+    size,
+    total: meta.total,
     canPrev: page > 1,
     canNext: page < totalPages,
     isBeyondLast: meta.total > 0 && page > totalPages,

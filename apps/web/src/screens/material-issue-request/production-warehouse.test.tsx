@@ -22,6 +22,12 @@ import { MaterialIssueRequestScreen } from './screen';
 
 const t = messages.materialIssueRequest;
 
+/** [요청 발행] 확인 창에서 [요청 발행]을 누른다(#360). */
+const confirmPublish = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  const dialog = await screen.findByRole('dialog', { name: t.confirm.title });
+  await user.click(within(dialog).getByRole('button', { name: t.confirm.submit }));
+};
+
 /**
  * W-02-10 생산 창고 공장(피처 003 · tasks T052) — 출발 생산 창고 칸, 예정 재고 경고(US4-7 · US4-8),
  * 창고별 결과, W-02-11 보충 요청으로 채워 열기(US4-6 · US2-12). 값은 모두 합성이다.
@@ -229,10 +235,27 @@ describe('W-02-10 생산 창고 공장', () => {
     expect(screen.getByRole('button', { name: t.reasonHelp })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.actions.publish }));
+    await confirmPublish(user);
 
     await waitFor(() => expect(posts).toHaveLength(1));
     expect(posts[0]).not.toHaveProperty('sourceWarehouseId');
     expect(posts[0]).not.toHaveProperty('acceptPlannedOverride');
+  });
+
+  it('[요청 발행]은 확인 창을 먼저 열고, [취소]하면 아무것도 보내지 않는다(#360)', async () => {
+    const { user, posts } = setup(() => created(1));
+    await readyToPublish(user);
+
+    await user.click(screen.getByRole('button', { name: t.actions.publish }));
+
+    const dialog = await screen.findByRole('dialog', { name: t.confirm.title });
+    expect(within(dialog).getByText(t.confirm.workOrder)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.confirm.lines)).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: messages.common.cancel }));
+
+    expect(screen.queryByRole('dialog', { name: t.confirm.title })).not.toBeInTheDocument();
+    expect(posts).toHaveLength(0);
   });
 
   it('특정 생산 창고를 고르면 모든 줄을 그 창고에서 낸다고 안내하고 sourceWarehouseId 를 싣는다', async () => {
@@ -246,6 +269,7 @@ describe('W-02-10 생산 창고 공장', () => {
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.actions.publish }));
+    await confirmPublish(user);
 
     await waitFor(() => expect(posts).toHaveLength(1));
     expect(posts[0]).toMatchObject({ sourceWarehouseId: 7212 });
@@ -256,6 +280,7 @@ describe('W-02-10 생산 창고 공장', () => {
     await readyToPublish(user);
 
     await user.click(screen.getByRole('button', { name: t.actions.publish }));
+    await confirmPublish(user);
 
     expect(await screen.findByText(t.result.splitTitle(2))).toBeInTheDocument();
     /* 결과 목록 안에서 찾는다 — 품목 표의 출발 생산 창고 열에도 같은 이름이 선다. */
@@ -272,6 +297,7 @@ describe('W-02-10 생산 창고 공장', () => {
     await readyToPublish(user);
 
     await user.click(screen.getByRole('button', { name: t.actions.publish }));
+    await confirmPublish(user);
 
     const dialog = within(await screen.findByRole('dialog', { name: t.override.title }));
     const table = within(dialog.getByRole('table', { name: t.override.tableLabel }));
@@ -290,6 +316,7 @@ describe('W-02-10 생산 창고 공장', () => {
     await readyToPublish(user);
 
     await user.click(screen.getByRole('button', { name: t.actions.publish }));
+    await confirmPublish(user);
 
     const dialog = within(await screen.findByRole('dialog', { name: t.override.blockedTitle }));
     expect(dialog.getByText(t.override.blockedBody)).toBeInTheDocument();
@@ -315,6 +342,7 @@ describe('W-02-10 생산 창고 공장', () => {
       expect(screen.getByLabelText(t.lineTable.requestedQtyLabel(1))).toHaveValue('20'),
     );
     await user.click(screen.getByRole('button', { name: t.actions.publish }));
+    await confirmPublish(user);
 
     await waitFor(() => expect(posts).toHaveLength(1));
     expect(posts[0]).toMatchObject({
@@ -356,6 +384,7 @@ describe('W-02-10 생산 창고 공장', () => {
     );
     await readyToPublish(user);
     await user.click(screen.getByRole('button', { name: t.actions.publish }));
+    await confirmPublish(user);
 
     const dialog = within(await screen.findByRole('dialog', { name: t.override.title }));
     /* 품목코드 · 품목명 두 칸으로 나눠 보인다(사용자 지시 2026-11-24). */
@@ -380,6 +409,7 @@ describe('W-02-10 생산 창고 공장', () => {
     );
     await readyToPublish(user);
     await user.click(screen.getByRole('button', { name: t.actions.publish }));
+    await confirmPublish(user);
 
     const dialog = within(await screen.findByRole('dialog', { name: t.override.shortTitle }));
     expect(dialog.getByText(t.override.shortBody)).toBeInTheDocument();
@@ -418,6 +448,7 @@ describe('W-02-10 생산 창고 공장', () => {
     );
     await readyToPublish(user);
     await user.click(screen.getByRole('button', { name: t.actions.publish }));
+    await confirmPublish(user);
 
     const dialog = within(await screen.findByRole('dialog', { name: t.override.noStockedTitle }));
     expect(dialog.getByText(t.override.noStockedRow)).toBeInTheDocument();
@@ -428,6 +459,7 @@ describe('W-02-10 생산 창고 공장', () => {
     /* 셋째 줄(SAMPLE-ITEM-03)이 재고 없는 품목이다 — 지우고 다시 발행한다. */
     await user.click(screen.getByRole('button', { name: t.actions.removeLine(3) }));
     await user.click(screen.getByRole('button', { name: t.actions.publish }));
+    await confirmPublish(user);
 
     await waitFor(() => expect(posts).toHaveLength(2));
     expect((posts[1]?.lines as { itemId: number }[]).map((line) => line.itemId)).not.toContain(
@@ -469,6 +501,7 @@ describe('W-02-10 생산 창고 공장', () => {
     await readyToPublish(user);
 
     await user.click(screen.getByRole('button', { name: t.actions.publish }));
+    await confirmPublish(user);
 
     await waitFor(() => expect(posts).toHaveLength(1));
     expect(posts[0]).not.toHaveProperty('destinationLocationId');

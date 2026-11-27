@@ -9,10 +9,11 @@ import type { ReplenishmentItem, ReplenishmentSettings } from './api-types';
 import type { ItemFilters } from './filters';
 import { EMPTY_ITEMS } from './filters';
 import { ItemDialog } from './items-dialog';
-import { PAGE_SIZE, sourceOptions, useItemList, useWarehouses } from './queries';
+import { sourceOptions, useItemList, useWarehouses } from './queries';
 import { RunTimePanel } from './run-time-panel';
 import { formatQty } from './types';
 import { ListEmptyRow } from '../../patterns/list-empty';
+import { PageNav } from '../../patterns/page-nav';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 
 const t = messages.productionWarehouseReplenishment;
@@ -26,6 +27,10 @@ export interface ItemsViewProps {
   onSearch: (filters: ItemFilters) => void;
   onReset: () => void;
   onPage: (page: number) => void;
+  /** 한 쪽 건수와 고를 크기(10 · 20 · 50) — 바꾸면 첫 쪽으로 간다(품질 화면과 같다 · #360). */
+  pageSize: number;
+  pageSizes: readonly number[];
+  onPageSize: (size: number) => void;
 }
 
 /** 상태 칩 — 기준 아래(진행 중 보충이 있으면 함께), 기준 이상. */
@@ -56,6 +61,9 @@ export const ItemsView = ({
   onSearch,
   onReset,
   onPage,
+  pageSize,
+  pageSizes,
+  onPageSize,
 }: ItemsViewProps) => {
   const [draft, setDraft] = useState<ItemFilters>(filters);
   const [draftSource, setDraftSource] = useState(filters);
@@ -71,7 +79,7 @@ export const ItemsView = ({
   };
   /** 열린 창 — `null` 은 닫힘, `'new'` 는 추가. */
   const [editing, setEditing] = useState<ReplenishmentItem | 'new' | null>(null);
-  const list = useItemList(plantId, filters, page, true);
+  const list = useItemList(plantId, filters, page, true, pageSize);
   const warehouses = useWarehouses(plantId);
 
   const filterBar = (
@@ -133,7 +141,6 @@ export const ItemsView = ({
     if (list.data === undefined) return <Skeleton variant="rect" height="16rem" />;
     const filtered = JSON.stringify(filters) !== JSON.stringify(EMPTY_ITEMS);
     const total = list.data.page.total;
-    const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
     return (
       <>
         <div className="replenishment-table-scroll">
@@ -218,25 +225,14 @@ export const ItemsView = ({
         </div>
         {list.data.items.length === 0 ? null : (
           <>
-            <div className="replenishment-pager">
-              <span className="field-note">{t.progress.pager.total(total)}</span>
-              <Button
-                variant="outlined"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => onPage(page - 1)}
-              >
-                {t.progress.pager.previous}
-              </Button>
-              <Button
-                variant="outlined"
-                size="sm"
-                disabled={page >= lastPage}
-                onClick={() => onPage(page + 1)}
-              >
-                {t.progress.pager.next}
-              </Button>
-            </div>
+            {/* 쪽 이동은 공용 줄 — 「총 N건 · N건 ▾」 + [처음] [이전] n / m [다음] [마지막](품질 화면과 같다 · #360). */}
+            <PageNav
+              meta={{ page, size: pageSize, total }}
+              sizes={pageSizes}
+              buttonSize="md"
+              onChangePage={onPage}
+              onChangeSize={onPageSize}
+            />
           </>
         )}
       </>

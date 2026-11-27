@@ -701,8 +701,8 @@ describe('W-05-11 계측기 마스터 — 등록·수정', () => {
     expect(within(form()).getByLabelText('정밀도')).toBeEnabled();
   });
 
-  /* 대상이 아니면 주기는 뜻이 없다 — 감추지 않고 잠그고 사유를 붙인다(G-2). */
-  it('검교정 대상이 아니면 주기 칸을 잠그고 사유를 밝힌다', async () => {
+  /* 대상이 아니면 주기는 뜻이 없다 — 감추지 않고 잠근다(G-2). 잠긴 까닭 문장은 내지 않는다(사용자 지시 · #360). */
+  it('검교정 대상이 아니면 주기 칸을 잠근다', async () => {
     const { user } = renderScreen();
 
     await openEdit(user, 'GA-01');
@@ -710,8 +710,8 @@ describe('W-05-11 계측기 마스터 — 등록·수정', () => {
     expect(within(form()).getByLabelText(/검교정 주기 간격/)).toBeDisabled();
     expect(within(form()).getByRole('combobox', { name: /검교정 주기 단위/ })).toBeDisabled();
     expect(
-      within(form()).getAllByText(t.actionReasons.cycleNeedsCalibration).length,
-    ).toBeGreaterThan(0);
+      within(form()).queryByText('검교정 대상으로 지정하면 주기를 입력할 수 있습니다.'),
+    ).toBeNull();
   });
 
   /*
@@ -851,13 +851,15 @@ describe('W-05-11 계측기 마스터 — 등록·수정', () => {
   });
 
   /* 공장을 옮기는 것은 자산을 옮기는 일이다 — 계약도 수정 본문에 받지 않는다. */
-  it('수정에서 공장은 고를 수 없고 사유가 붙는다', async () => {
+  it('수정에서 공장은 고를 수 없고 사유는 이름 옆 ⓘ 에 있다', async () => {
     const { user } = renderScreen();
 
     await openEdit(user, 'GA-01');
 
     expect(within(form()).queryByRole('combobox', { name: /공장/ })).not.toBeInTheDocument();
-    expect(within(form()).getByText(t.actionReasons.plantFixed)).toBeInTheDocument();
+    expect(
+      within(form()).getByRole('button', { name: t.actionReasons.plantFixed }),
+    ).toBeInTheDocument();
   });
 
   it('등록에서는 공장을 고른다', async () => {
@@ -882,7 +884,7 @@ describe('W-05-11 계측기 마스터 — 등록·수정', () => {
       );
     });
     expect(
-      within(form()).getByText(t.actionReasons.calibrationDateOwnedElsewhere),
+      within(form()).getByRole('button', { name: t.actionReasons.calibrationDateOwnedElsewhere }),
     ).toBeInTheDocument();
     /* 잠긴 입력칸이 아니라 값 표기다 — 잠긴 칸은 「언젠가 여기서 고친다」를 뜻한다. */
     expect(
@@ -1332,8 +1334,8 @@ describe('W-05-11 계측기 마스터 — 사용 중지·폐기', () => {
     expect(onlyWrite(writes).headers.get('Idempotency-Key')).not.toBeNull();
   });
 
-  /* ⭐ 감추지 않고 잠그고 사유를 붙인다 — 사라진 버튼은 「원래 없는 기능」과 구분되지 않는다. */
-  it('이미 사용 중지된 계측기는 중지 버튼을 잠그고 사유를 밝힌다', async () => {
+  /* ⭐ 감추지 않고 잠근다 — 잠긴 까닭 문장은 내지 않는다(사용자 지시 · #360). */
+  it('이미 사용 중지된 계측기는 중지 버튼을 잠근다', async () => {
     const off = makeGauge(3040, 'GA-40', { isActive: false });
     const { user } = renderScreen({
       respondGauges: () => jsonResponse(gaugesResponse([off])),
@@ -1347,10 +1349,10 @@ describe('W-05-11 계측기 마스터 — 사용 중지·폐기', () => {
         within(form()).getByRole('button', { name: t.retire.deactivateConfirm }),
       ).toBeDisabled();
     });
-    expect(within(form()).getByText(t.actionReasons.alreadyInactive)).toBeInTheDocument();
+    expect(within(form()).queryByText(t.actionReasons.alreadyInactive)).toBeNull();
   });
 
-  it('이미 폐기된 계측기는 폐기 버튼을 잠그고 사유를 밝힌다', async () => {
+  it('이미 폐기된 계측기는 폐기 버튼을 잠근다', async () => {
     const gone = makeGauge(3041, 'GA-41', { statusCode: 'DISPOSED' });
     const { user } = renderScreen({
       respondGauges: () => jsonResponse(gaugesResponse([gone])),
@@ -1362,11 +1364,11 @@ describe('W-05-11 계측기 마스터 — 사용 중지·폐기', () => {
     await waitFor(() => {
       expect(within(form()).getByRole('button', { name: t.retire.disposeConfirm })).toBeDisabled();
     });
-    expect(within(form()).getByText(t.actionReasons.alreadyDisposed)).toBeInTheDocument();
+    expect(within(form()).queryByText(t.actionReasons.alreadyDisposed)).toBeNull();
   });
 
   /* 시드가 아직 없으면 값 목록이 빈다(설계 omf-mes#182) — 판정 없이 버튼을 열지 않는다. */
-  it('자산 상태 값 목록이 없으면 폐기를 잠그고 사유를 밝힌다', async () => {
+  it('자산 상태 값 목록이 없으면 폐기를 잠근다', async () => {
     const { user } = renderScreen({
       respondCodeValues: () => jsonResponse(codeValuesResponse([])),
     });
@@ -1376,7 +1378,7 @@ describe('W-05-11 계측기 마스터 — 사용 중지·폐기', () => {
     await waitFor(() => {
       expect(within(form()).getByRole('button', { name: t.retire.disposeConfirm })).toBeDisabled();
     });
-    expect(within(form()).getByText(t.actionReasons.disposeUnavailable)).toBeInTheDocument();
+    expect(within(form()).queryByText(t.actionReasons.disposeUnavailable)).toBeNull();
   });
 
   /*
@@ -1544,14 +1546,19 @@ describe('W-05-11 계측기 마스터 — 검교정 이력', () => {
   });
 
   /* ⭐ 등록은 검교정 이력 등록 화면의 몫이다 — 조작이 없는 것과 「여기서는 못 한다」는 다르다. */
-  it('읽기 전용임을 밝히고 조작을 두지 않는다', async () => {
+  it('조작을 두지 않는다 — 읽기 전용 안내 문장도 두지 않는다(#360)', async () => {
     const { user } = renderScreen();
 
     await openEdit(user, 'GA-03');
 
     await waitFor(() => {
-      expect(within(historyPane()).getByText(t.history.readOnlyNote)).toBeInTheDocument();
+      expect(within(form()).getByRole('region', { name: t.history.title })).toBeInTheDocument();
     });
+    expect(
+      within(historyPane()).queryByText(
+        '검교정 이력은 검교정 이력 등록에서 남깁니다. 여기서는 볼 수만 있습니다.',
+      ),
+    ).toBeNull();
     expect(within(historyPane()).queryAllByRole('button')).toHaveLength(0);
   });
 

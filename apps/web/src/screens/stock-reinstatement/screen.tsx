@@ -20,8 +20,10 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { useDeselectConfirm } from '../../patterns/deselect-confirm';
 import { InfoTip } from '../../patterns/info-tip';
 import { isStockableLocation } from '../../patterns/location-level';
+import { PageNav } from '../../patterns/page-nav';
 import { SaveErrorBanner } from '../../patterns/master';
 import { ScreenHeader } from '../../patterns/screen-header';
 import { Select } from '../../patterns/select';
@@ -58,10 +60,13 @@ import {
 } from './types';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { locationOptionLabel } from '../../patterns/location-label';
-import { ListCollapseTab, PaneListHead, usePaneSplit } from '../../patterns/po-board';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 
 const t = messages.stockReinstatement;
 const PAGE_SIZE = 50;
+/** 고를 쪽 크기 — 품질 목록과 같은 10 · 20 · 50건, 기본은 종전대로 50건(주소에 적지 않는다 · #360). */
+const LIST_PAGE_SIZES = [10, 20, PAGE_SIZE] as const;
 
 /**
  * ⭐ **셋만 여기서 되말한다.** `queries.ts`의 `useReinstate`가 이 셋(다시 시도해도 안 풀리는
@@ -180,6 +185,8 @@ const SelectField = ({
 export const StockReinstatementScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const page = positiveInteger(searchParams.get('page')) ?? 1;
+  const pageSize =
+    LIST_PAGE_SIZES.find((size) => String(size) === searchParams.get('size')) ?? PAGE_SIZE;
   const warehouseId = positiveInteger(searchParams.get('warehouse'));
   const selectedId = positiveInteger(searchParams.get('decision'));
   const query = useMemo<CandidateQuery>(
@@ -191,9 +198,9 @@ export const StockReinstatementScreen = () => {
        */
       reinstatable: true,
       ...(page === 1 ? {} : { page }),
-      size: PAGE_SIZE,
+      size: pageSize,
     }),
-    [page, warehouseId],
+    [page, pageSize, warehouseId],
   );
 
   const candidates = useCandidates(query);
@@ -270,6 +277,21 @@ export const StockReinstatementScreen = () => {
       setDraft((current) => ({ ...current, qty: String(heldQty) }));
   }, [draft.qty, heldQty]);
 
+  /*
+   * 고른 줄을 다시 눌러 풀 때 사람이 적은 것이 사라지는가(#360) — 화면이 스스로 채운 보류(하나뿐일 때)와
+   * 수량(보유 수량)은 입력으로 치지 않는다.
+   */
+  const deselectConfirm = useDeselectConfirm();
+  const hasDraftInput =
+    draft.toWarehouseId !== '' ||
+    draft.toLocationId !== '' ||
+    (draft.lotHoldId !== '' &&
+      (onlyHold === undefined || draft.lotHoldId !== String(onlyHold.lotHoldId))) ||
+    (draft.qty !== '' && (heldQty === null || draft.qty !== String(heldQty))) ||
+    draft.releaseReasonCode !== '' ||
+    draft.reasonCode !== '' ||
+    draft.remarks !== '';
+
   const reinstate = useReinstate((result) => {
     setConfirming(false);
     setDraft(EMPTY_DRAFT);
@@ -293,22 +315,27 @@ export const StockReinstatementScreen = () => {
     }
   }, [reinstate.error]);
 
-  const setFilters = (nextWarehouseId: string, nextPage = 1): void => {
+  const setFilters = (nextWarehouseId: string, nextPage = 1, nextSize: number = pageSize): void => {
     const next = new URLSearchParams();
     if (nextWarehouseId !== '') next.set('warehouse', nextWarehouseId);
     if (nextPage > 1) next.set('page', String(nextPage));
+    if (nextSize !== PAGE_SIZE) next.set('size', String(nextSize));
     setSearchParams(next);
   };
 
   const selectDecision = (row: DecisionView): void => {
     if (row.lotId === null) return;
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
-      if (row.dispositionDecisionId === selectedId) next.delete('decision');
-      else next.set('decision', String(row.dispositionDecisionId));
-      return next;
-    });
+    const apply = (): void =>
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+        if (row.dispositionDecisionId === selectedId) next.delete('decision');
+        else next.set('decision', String(row.dispositionDecisionId));
+        return next;
+      });
+    /* 적던 입력이 있으면 풀기 전에 묻는다(#360). 다른 줄을 고르는 것은 그대로다. */
+    if (row.dispositionDecisionId === selectedId) deselectConfirm.request(hasDraftInput, apply);
+    else apply();
   };
 
   const requestConfirm = (): void => {
@@ -414,7 +441,7 @@ export const StockReinstatementScreen = () => {
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className={`link-cell ${ROW_PICK_CLASS}`}
           aria-label={t.actions.selectRow(row.lotNo)}
           aria-current={row.dispositionDecisionId === selectedId ? 'true' : undefined}
           disabled={row.lotId === null}
@@ -452,8 +479,6 @@ export const StockReinstatementScreen = () => {
     },
   ];
   const total = candidates.data?.page.total ?? 0;
-  const start = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const end = Math.min(total, start + (candidates.data?.items.length ?? 0) - 1);
 
   // 위치가 하나뿐이면 본문에 싣지 않아도 서버가 그 위치로 넣으므로, 확인 창에는 그 위치를 보여 준다.
   const toLocation =
@@ -475,15 +500,6 @@ export const StockReinstatementScreen = () => {
     toLocation: toLocation === undefined ? null : locationOptionLabel(toLocation),
   };
 
-  /* 목록 접기(#350, app.css `list-collapsible`) — 넓은 창은 왼쪽 세로 탭 + 상세, 좁으면 상세 위 가로 탭 + 상세 한 칸. */
-  const listSplit = usePaneSplit('omf-mes:stock-reinstatement:list');
-  const listCollapse = {
-    collapsed: listSplit.collapsed,
-    onToggle: listSplit.toggleCollapsed,
-    collapseLabel: messages.common.inspectionHub.listCollapse,
-    expandLabel: messages.common.inspectionHub.listExpand,
-    count: candidates.data?.page.total,
-  };
   return (
     <>
       <ScreenHeader
@@ -496,312 +512,322 @@ export const StockReinstatementScreen = () => {
         }
       />
       {/* 화면 머리의 띠 대신 「재등록 입력」 제목 옆 ⓘ 로 둔다 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
-      <div
-        className="stock-reinstatement-workspace list-collapsible"
-        data-left-collapsed={listCollapse.collapsed ? 'true' : undefined}
-      >
-        <section className="pane stock-reinstatement-pane" aria-label={t.panes.candidates}>
-          <PaneListHead title={t.panes.candidates} collapse={listCollapse} />
-          <div className="stock-reinstatement-filter">
-            <SelectField
-              label={t.fields.sourceWarehouse}
-              value={warehouseId === null ? '' : String(warehouseId)}
-              options={[{ value: '', label: t.filters.allWarehouses }, ...defectWarehouses]}
-              note={lookups.isError ? t.filters.noWarehouse : undefined}
-              onChange={(value) => setFilters(value)}
-            />
-            <Checkbox checked disabled>
-              {t.fields.completedOnly}
-            </Checkbox>
-          </div>
-          {candidates.isPending ? (
-            <div role="status" aria-label={t.accessibility.candidateLoading}>
-              <SkeletonText lines={4} />
-            </div>
-          ) : candidates.isError ? (
-            <AlertBanner variant="error">{messages.httpError.description}</AlertBanner>
-          ) : (
-            <div className="stock-reinstatement-table">
-              <Table
-                density="compact"
-                caption={t.panes.candidates}
-                columns={columns}
-                rows={candidates.data?.items ?? []}
-                getRowId={(row) => String(row.dispositionDecisionId)}
-                empty={
-                  <EmptyState size="sm" title={t.empty.title} description={t.empty.description} />
-                }
-              />
-            </div>
-          )}
-          {!candidates.isPending && !candidates.isError && (
-            <nav className="form-actions" aria-label={t.accessibility.pagination}>
-              <p className="field-note form-actions-secondary">
-                {t.values.page(start, end, total)}
-              </p>
-              <Button
-                size="sm"
-                variant="outlined"
-                disabled={page <= 1}
-                onClick={() =>
-                  setFilters(warehouseId === null ? '' : String(warehouseId), page - 1)
-                }
-              >
-                {t.actions.prevPage}
-              </Button>
-              <Button
-                size="sm"
-                variant="outlined"
-                disabled={end >= total}
-                onClick={() =>
-                  setFilters(warehouseId === null ? '' : String(warehouseId), page + 1)
-                }
-              >
-                {t.actions.nextPage}
-              </Button>
-            </nav>
-          )}
-        </section>
-        <ListCollapseTab collapse={listCollapse} />
-
-        <section className="pane stock-reinstatement-pane" aria-label={t.panes.detail}>
-          <h2 className="pane-title">{t.panes.detail}</h2>
-          {selectedId !== null && decision.isPending && selectedFromList === null ? (
-            <div role="status" aria-label={t.empty.selectionLoading}>
-              <SkeletonText lines={5} />
-            </div>
-          ) : selectedId !== null && decision.isError && selectedFromList === null ? (
-            <AlertBanner variant="error">{t.empty.selectionLoadError}</AlertBanner>
-          ) : selected === null || selected === undefined ? (
-            <EmptyState
-              size="sm"
-              title={t.empty.selectionTitle}
-              description={t.empty.selectionDescription}
-            />
-          ) : (
+      {/*
+       * 목록 | 상세 — 공용 분할(가운데 폭 막대 · 상하 배치의 높이 막대 · 「⋯」 좌우/상하 배치 · 목록 접기 · #360).
+       * 상자 안 조회 · 표 · 입력은 그대로 옮겼다.
+       */}
+      <ListDetailWorkspace
+        storageKey="omf-mes:stock-reinstatement"
+        list={{
+          label: t.panes.candidates,
+          title: t.panes.candidates,
+          count: candidates.data?.page.total,
+          content: (
             <>
-              {relatedReadError && (
-                <AlertBanner variant="error">{t.empty.relatedLoadError}</AlertBanner>
+              <div className="stock-reinstatement-filter">
+                <SelectField
+                  label={t.fields.sourceWarehouse}
+                  value={warehouseId === null ? '' : String(warehouseId)}
+                  options={[{ value: '', label: t.filters.allWarehouses }, ...defectWarehouses]}
+                  note={lookups.isError ? t.filters.noWarehouse : undefined}
+                  onChange={(value) => setFilters(value)}
+                />
+                <Checkbox checked disabled>
+                  {t.fields.completedOnly}
+                </Checkbox>
+              </div>
+              {candidates.isPending ? (
+                <div role="status" aria-label={t.accessibility.candidateLoading}>
+                  <SkeletonText lines={4} />
+                </div>
+              ) : candidates.isError ? (
+                <AlertBanner variant="error">{messages.httpError.description}</AlertBanner>
+              ) : (
+                <div className="stock-reinstatement-table" {...rowPickHandlers}>
+                  <Table
+                    density="compact"
+                    caption={t.panes.candidates}
+                    columns={columns}
+                    rows={candidates.data?.items ?? []}
+                    getRowId={(row) => String(row.dispositionDecisionId)}
+                    empty={
+                      <EmptyState
+                        size="sm"
+                        title={t.empty.title}
+                        description={t.empty.description}
+                      />
+                    }
+                  />
+                </div>
               )}
-              <dl className="stock-reinstatement-summary">
-                <div>
-                  <dt>{lotLabel}</dt>
-                  <dd>{selected.lotNo}</dd>
-                </div>
-                <div>
-                  <dt>{t.fields.itemCode}</dt>
-                  <dd>{displayItemCode(selected)}</dd>
-                </div>
-                <div>
-                  <dt>{t.fields.itemName}</dt>
-                  <dd>{displayItemName(selected)}</dd>
-                </div>
-                <div>
-                  <dt>{t.fields.qty}</dt>
-                  <dd>
-                    {String(maxQty ?? remainingDecisionQty(selected))} {uom}
-                  </dd>
-                </div>
-                <div>
-                  <dt>{t.fields.sourceWarehouse}</dt>
-                  <dd>
-                    {currentWarehouse === undefined
-                      ? t.values.empty
-                      : warehouseLabel(
-                          currentWarehouse.warehouseCode,
-                          currentWarehouse.warehouseName,
-                        )}
-                  </dd>
-                </div>
-                <div>
-                  <dt>{t.fields.expiry}</dt>
-                  <dd>
-                    {lot.data?.lot.expiryDate ?? t.values.noExpiry}
-                    {days === null
-                      ? ''
-                      : ` · ${days >= 0 ? t.values.remainingDays(days) : t.values.expiredDays(Math.abs(days))}`}
-                  </dd>
-                </div>
-              </dl>
-              {days !== null && (
-                <Progress
-                  min={0}
-                  max={365}
-                  value={Math.max(0, Math.min(365, days))}
-                  thresholds={[
-                    { upTo: 30, tone: 'error' },
-                    { upTo: 180, tone: 'warning' },
-                  ]}
-                  tone="success"
-                  size="sm"
-                  label={t.fields.expiry}
-                  valueText={
-                    days >= 0 ? t.values.remainingDays(days) : t.values.expiredDays(Math.abs(days))
+              {!candidates.isPending && !candidates.isError && (
+                /* 공용 쪽 이동 줄 — 1쪽 · 0건이어도 늘 보인다. 쪽 크기를 바꾸면 첫 쪽부터 다시 받는다(#360). */
+                <PageNav
+                  meta={{ page, size: pageSize, total }}
+                  onChangePage={(nextPage) =>
+                    setFilters(warehouseId === null ? '' : String(warehouseId), nextPage)
+                  }
+                  sizes={LIST_PAGE_SIZES}
+                  onChangeSize={(nextSize) =>
+                    setFilters(warehouseId === null ? '' : String(warehouseId), 1, nextSize)
                   }
                 />
               )}
-              <div className="stock-reinstatement-section">
-                <h3>{t.panes.history}</h3>
-                {historySteps.length === 0 ? (
-                  <p className="field-note">{t.history.noSource}</p>
-                ) : (
-                  <Stepper orientation="vertical" size="sm" steps={historySteps} />
-                )}
-              </div>
-              <div className="stock-reinstatement-section">
-                <h3>
-                  <span className="info-label">
-                    {t.panes.form}
-                    <InfoTip text={t.scopeNotice} />
-                  </span>
-                </h3>
-                <div className="form-grid stock-reinstatement-form">
-                  <SelectField
-                    label={t.fields.targetWarehouse}
-                    required
-                    value={draft.toWarehouseId}
-                    options={targetWarehouses}
-                    error={
-                      errors.toWarehouseId ??
-                      reinstate.fieldErrors.toWarehouseId ??
-                      noStockableLocationError
-                    }
-                    onChange={(value) => {
-                      setDraft((current) => ({
-                        ...current,
-                        toWarehouseId: value,
-                        toLocationId: '',
-                      }));
-                      setErrors((current) => ({
-                        ...current,
-                        toWarehouseId: undefined,
-                        toLocationId: undefined,
-                      }));
-                      reinstate.reset();
-                    }}
-                  />
-                  {/* 재고를 둘 위치가 둘 이상일 때만 묻는다 — 하나면 서버가 그 위치로 넣는다. */}
-                  {locationRequired && (
-                    <SelectField
-                      label={t.fields.targetLocation}
-                      required
-                      value={draft.toLocationId}
-                      options={locationOptions}
-                      error={errors.toLocationId ?? reinstate.fieldErrors.toLocationId}
-                      onChange={(value) =>
-                        setDraft((current) => ({ ...current, toLocationId: value }))
-                      }
-                    />
-                  )}
-                  {!concession && (
-                    <SelectField
-                      label={t.fields.hold}
-                      required
-                      value={draft.lotHoldId}
-                      options={holdOptions}
-                      error={errors.lotHoldId ?? reinstate.fieldErrors.lotHoldId}
-                      onChange={(value) =>
-                        setDraft((current) => ({ ...current, lotHoldId: value }))
-                      }
-                    />
-                  )}
-                  <div className="field-cell">
-                    <TextField
-                      label={t.fields.qty}
-                      required
-                      type="number"
-                      min={1}
-                      max={maxQty ?? undefined}
-                      value={draft.qty}
-                      error={errors.qty ?? reinstate.fieldErrors.qty}
-                      helperText={maxQty === null ? t.values.empty : t.values.holdingQty(maxQty)}
-                      fullWidth
-                      onChange={(event) =>
-                        setDraft((current) => ({ ...current, qty: event.target.value }))
-                      }
-                    />
-                  </div>
-                  {!concession && (
-                    <SelectField
-                      label={t.fields.releaseReason}
-                      required
-                      value={draft.releaseReasonCode}
-                      options={lookups.data?.releaseReasons ?? []}
-                      note={lookups.isPending ? t.form.releaseReasonUnavailable : undefined}
-                      error={errors.releaseReasonCode ?? reinstate.fieldErrors.releaseReasonCode}
-                      onChange={(value) =>
-                        setDraft((current) => ({ ...current, releaseReasonCode: value }))
-                      }
-                    />
-                  )}
-                  <SelectField
-                    label={t.fields.reason}
-                    value={draft.reasonCode}
-                    options={lookups.data?.reinstatementReasons ?? []}
-                    note={
-                      !lookups.isPending && (lookups.data?.reinstatementReasons.length ?? 0) === 0
-                        ? t.form.optionalReasonEmpty
-                        : undefined
-                    }
-                    onChange={(value) => setDraft((current) => ({ ...current, reasonCode: value }))}
-                  />
-                  <div className="field-cell stock-reinstatement-remarks">
-                    <TextField
-                      label={t.fields.remarks}
-                      value={draft.remarks}
-                      fullWidth
-                      onChange={(event) =>
-                        setDraft((current) => ({ ...current, remarks: event.target.value }))
-                      }
-                    />
-                  </div>
-                </div>
-                {concession && <p className="field-note">{t.values.concessionNote}</p>}
-                {maxQty !== null && Number(draft.qty) > 0 && (
-                  <p className="field-note">
-                    {Number(draft.qty) < maxQty
-                      ? t.values.partial(maxQty - Number(draft.qty))
-                      : t.values.full}
-                  </p>
-                )}
-                {days !== null && days < 180 && (
-                  <AlertBanner variant="warning">{t.warning.shelfLife(days)}</AlertBanner>
-                )}
-                <AlertBanner
-                  variant="warning"
-                  title={concession ? t.warning.concessionTitle : t.warning.title}
-                >
-                  {!concession && <p>{t.warning.transition}</p>}
-                  <p>
-                    {concession
-                      ? t.warning.concessionStock(Number(draft.qty) || 0)
-                      : t.warning.stock(Number(draft.qty) || 0)}
-                  </p>
-                  <p>{t.warning.noUndo}</p>
-                </AlertBanner>
-                <div className="form-actions">
-                  <Button
-                    disabled={
-                      lotStatus.data === null ||
-                      lotStatus.data === undefined ||
-                      relatedReadError ||
-                      locationsLoading ||
-                      reinstate.isSaving
-                    }
-                    onClick={requestConfirm}
-                  >
-                    {t.actions.confirm}
-                  </Button>
-                </div>
-              </div>
             </>
-          )}
-        </section>
-      </div>
+          ),
+        }}
+        detail={{
+          label: t.panes.detail,
+          className: 'stock-reinstatement-pane',
+          content: (
+            <>
+              <h2 className="pane-title">{t.panes.detail}</h2>
+              {selectedId !== null && decision.isPending && selectedFromList === null ? (
+                <div role="status" aria-label={t.empty.selectionLoading}>
+                  <SkeletonText lines={5} />
+                </div>
+              ) : selectedId !== null && decision.isError && selectedFromList === null ? (
+                <AlertBanner variant="error">{t.empty.selectionLoadError}</AlertBanner>
+              ) : selected === null || selected === undefined ? (
+                <EmptyState
+                  size="sm"
+                  title={t.empty.selectionTitle}
+                  description={t.empty.selectionDescription}
+                />
+              ) : (
+                <>
+                  {relatedReadError && (
+                    <AlertBanner variant="error">{t.empty.relatedLoadError}</AlertBanner>
+                  )}
+                  <dl className="stock-reinstatement-summary">
+                    <div>
+                      <dt>{lotLabel}</dt>
+                      <dd>{selected.lotNo}</dd>
+                    </div>
+                    <div>
+                      <dt>{t.fields.itemCode}</dt>
+                      <dd>{displayItemCode(selected)}</dd>
+                    </div>
+                    <div>
+                      <dt>{t.fields.itemName}</dt>
+                      <dd>{displayItemName(selected)}</dd>
+                    </div>
+                    <div>
+                      <dt>{t.fields.qty}</dt>
+                      <dd>
+                        {String(maxQty ?? remainingDecisionQty(selected))} {uom}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>{t.fields.sourceWarehouse}</dt>
+                      <dd>
+                        {currentWarehouse === undefined
+                          ? t.values.empty
+                          : warehouseLabel(
+                              currentWarehouse.warehouseCode,
+                              currentWarehouse.warehouseName,
+                            )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>{t.fields.expiry}</dt>
+                      <dd>
+                        {lot.data?.lot.expiryDate ?? t.values.noExpiry}
+                        {days === null
+                          ? ''
+                          : ` · ${days >= 0 ? t.values.remainingDays(days) : t.values.expiredDays(Math.abs(days))}`}
+                      </dd>
+                    </div>
+                  </dl>
+                  {days !== null && (
+                    <Progress
+                      min={0}
+                      max={365}
+                      value={Math.max(0, Math.min(365, days))}
+                      thresholds={[
+                        { upTo: 30, tone: 'error' },
+                        { upTo: 180, tone: 'warning' },
+                      ]}
+                      tone="success"
+                      size="sm"
+                      label={t.fields.expiry}
+                      valueText={
+                        days >= 0
+                          ? t.values.remainingDays(days)
+                          : t.values.expiredDays(Math.abs(days))
+                      }
+                    />
+                  )}
+                  <div className="stock-reinstatement-section">
+                    <h3>{t.panes.history}</h3>
+                    {historySteps.length === 0 ? (
+                      <p className="field-note">{t.history.noSource}</p>
+                    ) : (
+                      <Stepper orientation="vertical" size="sm" steps={historySteps} />
+                    )}
+                  </div>
+                  <div className="stock-reinstatement-section">
+                    <h3>
+                      <span className="info-label">
+                        {t.panes.form}
+                        <InfoTip text={t.scopeNotice} />
+                      </span>
+                    </h3>
+                    <div className="form-grid stock-reinstatement-form">
+                      <SelectField
+                        label={t.fields.targetWarehouse}
+                        required
+                        value={draft.toWarehouseId}
+                        options={targetWarehouses}
+                        error={
+                          errors.toWarehouseId ??
+                          reinstate.fieldErrors.toWarehouseId ??
+                          noStockableLocationError
+                        }
+                        onChange={(value) => {
+                          setDraft((current) => ({
+                            ...current,
+                            toWarehouseId: value,
+                            toLocationId: '',
+                          }));
+                          setErrors((current) => ({
+                            ...current,
+                            toWarehouseId: undefined,
+                            toLocationId: undefined,
+                          }));
+                          reinstate.reset();
+                        }}
+                      />
+                      {/* 재고를 둘 위치가 둘 이상일 때만 묻는다 — 하나면 서버가 그 위치로 넣는다. */}
+                      {locationRequired && (
+                        <SelectField
+                          label={t.fields.targetLocation}
+                          required
+                          value={draft.toLocationId}
+                          options={locationOptions}
+                          error={errors.toLocationId ?? reinstate.fieldErrors.toLocationId}
+                          onChange={(value) =>
+                            setDraft((current) => ({ ...current, toLocationId: value }))
+                          }
+                        />
+                      )}
+                      {!concession && (
+                        <SelectField
+                          label={t.fields.hold}
+                          required
+                          value={draft.lotHoldId}
+                          options={holdOptions}
+                          error={errors.lotHoldId ?? reinstate.fieldErrors.lotHoldId}
+                          onChange={(value) =>
+                            setDraft((current) => ({ ...current, lotHoldId: value }))
+                          }
+                        />
+                      )}
+                      <div className="field-cell">
+                        <TextField
+                          label={t.fields.qty}
+                          required
+                          type="number"
+                          min={1}
+                          max={maxQty ?? undefined}
+                          value={draft.qty}
+                          error={errors.qty ?? reinstate.fieldErrors.qty}
+                          helperText={
+                            maxQty === null ? t.values.empty : t.values.holdingQty(maxQty)
+                          }
+                          fullWidth
+                          onChange={(event) =>
+                            setDraft((current) => ({ ...current, qty: event.target.value }))
+                          }
+                        />
+                      </div>
+                      {!concession && (
+                        <SelectField
+                          label={t.fields.releaseReason}
+                          required
+                          value={draft.releaseReasonCode}
+                          options={lookups.data?.releaseReasons ?? []}
+                          note={lookups.isPending ? t.form.releaseReasonUnavailable : undefined}
+                          error={
+                            errors.releaseReasonCode ?? reinstate.fieldErrors.releaseReasonCode
+                          }
+                          onChange={(value) =>
+                            setDraft((current) => ({ ...current, releaseReasonCode: value }))
+                          }
+                        />
+                      )}
+                      <SelectField
+                        label={t.fields.reason}
+                        value={draft.reasonCode}
+                        options={lookups.data?.reinstatementReasons ?? []}
+                        note={
+                          !lookups.isPending &&
+                          (lookups.data?.reinstatementReasons.length ?? 0) === 0
+                            ? t.form.optionalReasonEmpty
+                            : undefined
+                        }
+                        onChange={(value) =>
+                          setDraft((current) => ({ ...current, reasonCode: value }))
+                        }
+                      />
+                      <div className="field-cell stock-reinstatement-remarks">
+                        <TextField
+                          label={t.fields.remarks}
+                          value={draft.remarks}
+                          fullWidth
+                          onChange={(event) =>
+                            setDraft((current) => ({ ...current, remarks: event.target.value }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    {concession && <p className="field-note">{t.values.concessionNote}</p>}
+                    {maxQty !== null && Number(draft.qty) > 0 && (
+                      <p className="field-note">
+                        {Number(draft.qty) < maxQty
+                          ? t.values.partial(maxQty - Number(draft.qty))
+                          : t.values.full}
+                      </p>
+                    )}
+                    {days !== null && days < 180 && (
+                      <AlertBanner variant="warning">{t.warning.shelfLife(days)}</AlertBanner>
+                    )}
+                    <AlertBanner
+                      variant="warning"
+                      title={concession ? t.warning.concessionTitle : t.warning.title}
+                    >
+                      {!concession && <p>{t.warning.transition}</p>}
+                      <p>
+                        {concession
+                          ? t.warning.concessionStock(Number(draft.qty) || 0)
+                          : t.warning.stock(Number(draft.qty) || 0)}
+                      </p>
+                      <p>{t.warning.noUndo}</p>
+                    </AlertBanner>
+                    <div className="form-actions">
+                      <Button
+                        disabled={
+                          lotStatus.data === null ||
+                          lotStatus.data === undefined ||
+                          relatedReadError ||
+                          locationsLoading ||
+                          reinstate.isSaving
+                        }
+                        onClick={requestConfirm}
+                      >
+                        {t.actions.confirm}
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </>
+          ),
+        }}
+      />
       <ConfirmDialog
         open={confirming}
         summary={summary}
-        concession={concession}
         lotLabel={lotLabel}
         isSaving={reinstate.isSaving}
         error={<ReinstatementErrorBanner error={reinstate.error} />}
@@ -810,6 +836,7 @@ export const StockReinstatementScreen = () => {
           if (!reinstate.isSaving) setConfirming(false);
         }}
       />
+      {deselectConfirm.dialog}
     </>
   );
 };
