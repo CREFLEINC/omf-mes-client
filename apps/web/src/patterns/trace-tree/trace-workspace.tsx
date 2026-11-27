@@ -1,4 +1,4 @@
-import { AlertBanner, Breadcrumb, Button, EmptyState, Icon, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Button, EmptyState, Icon, SkeletonText } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -11,7 +11,6 @@ import { ApiRequestError, runRequest } from '../request';
 import { Select } from '../select';
 import { useSession } from '../session';
 import { toWebAccess } from '../web-access';
-import { ScreenHeader } from '../screen-header';
 import {
   PaneHeightSplitter,
   SplitOrientationToggle,
@@ -540,46 +539,39 @@ export const TraceWorkspace = ({ direction, renderSummary, renderEnd }: TraceWor
 
   return (
     <>
-      <ScreenHeader
-        title={words.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: words.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-        actions={
-          <>
-            {plantList.length > 1 && (
-              <span className="trace-tree-plant" title={plantLabel}>
-                <Select
-                  aria-label={t.plant}
-                  value={plantId === null ? null : String(plantId)}
-                  options={plantList.map((plant) => ({
-                    value: String(plant.plantId),
-                    label: named(plant.plantName, plant.plantCode),
-                  }))}
-                  onChange={(value) => {
-                    if (value === null) return;
-                    setList(initialListState);
-                    setNotice(null);
-                    resolveTurn.current += 1;
-                    setSearchParams(new URLSearchParams({ plant: String(value) }));
-                  }}
-                />
-              </span>
-            )}
-            <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
-            <TraceExportButton
-              scanMode={list.mode === 'SCAN'}
-              direction={direction}
-              entries={entries}
-              total={list.mode === 'CONDITION' ? conditionTotal : null}
-              run={run}
+      {/*
+       * 화면 제목 줄(경로 · 큰 제목)은 두지 않는다 — 다른 목록 · 상세 화면(\`ListDetailWorkspace\`)과 같다(#360).
+       * 공장 · 엑셀 내보내기 · 「⋯」(좌우/상하 배치)은 그 화면들처럼 조회 조건 위 오른쪽 한 줄에 선다.
+       */}
+      <div className="list-detail-toolbar">
+        {plantList.length > 1 && (
+          <span className="trace-tree-plant" title={plantLabel}>
+            <Select
+              aria-label={t.plant}
+              value={plantId === null ? null : String(plantId)}
+              options={plantList.map((plant) => ({
+                value: String(plant.plantId),
+                label: named(plant.plantName, plant.plantCode),
+              }))}
+              onChange={(value) => {
+                if (value === null) return;
+                setList(initialListState);
+                setNotice(null);
+                resolveTurn.current += 1;
+                setSearchParams(new URLSearchParams({ plant: String(value) }));
+              }}
             />
-          </>
-        }
-      />
+          </span>
+        )}
+        <TraceExportButton
+          scanMode={list.mode === 'SCAN'}
+          direction={direction}
+          entries={entries}
+          total={list.mode === 'CONDITION' ? conditionTotal : null}
+          run={run}
+        />
+        <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} inline />
+      </div>
       <section ref={aboveRef} className="pane trace-tree-filter-pane" aria-label={t.filterPane}>
         <TraceFilterBar
           direction={direction}

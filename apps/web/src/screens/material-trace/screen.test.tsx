@@ -87,7 +87,7 @@ describe('W-02-13 자재 기준 생산 추적', () => {
     await waitFor(() => expect(listRows()).toHaveLength(3));
     expect(screen.getByText(t.list.recentTitle)).toBeInTheDocument();
     expect(within(detail()).getByText(t.detail.pickTitle)).toBeInTheDocument();
-    expect(screen.getByText(t.material.recentFoot)).toBeInTheDocument();
+    expect(document.querySelector('.trace-tree-list-foot')).toBeNull();
     expect(search().has('lot')).toBe(false);
   });
 

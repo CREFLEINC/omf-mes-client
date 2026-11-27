@@ -12,7 +12,6 @@ import type { Translated } from './translated';
  */
 export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
   title: 'Tiến độ W/O',
-  breadcrumbRoot: 'Quản lý sản xuất',
 
   filters: {
     legend: 'Điều kiện tra cứu',
@@ -159,8 +158,7 @@ export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
 
   /** 집계는 조회 시점의 스냅샷이라 언제 기준인지가 값의 일부다. */
   basis: {
-    label: (at: string) => `Cơ sở ${at}`,
+    label: (at: string) => `Cập nhật lần cuối ${at}`,
     refresh: 'Làm mới',
-    note: 'Màn hình này không tự làm mới. Hãy bấm «Làm mới» để tra cứu lại.',
   },
 };

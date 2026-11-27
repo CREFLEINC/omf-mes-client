@@ -1,4 +1,4 @@
-import { AlertBanner, Breadcrumb, PageHeader, type SortState } from '@crefle/web-ui';
+import { AlertBanner, type SortState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -205,16 +205,7 @@ export const ShipmentScheduleScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-
+      {/* 화면 제목 줄(경로 · 큰 제목)은 두지 않는다 — 다른 목록 화면과 같다(#360). */}
       {list.isError && (
         <LoadErrorBanner
           error={list.error}

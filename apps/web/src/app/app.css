@@ -5266,30 +5266,6 @@ dialog.routing-history-dialog {
   margin-left: auto;
 }
 
-.work-order-progress-basis {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  min-width: 0;
-  padding: var(--space-4) var(--space-5);
-  background: var(--surface-container-low);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-lg);
-}
-
-.work-order-progress-basis-copy {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-.work-order-progress-basis-copy > strong {
-  color: var(--on-surface);
-  font: var(--type-label-lg);
-  letter-spacing: var(--type-label-lg-tracking);
-}
-
 .work-order-progress-title {
   display: flex;
   align-items: center;
@@ -5319,8 +5295,7 @@ dialog.routing-history-dialog {
 }
 
 @media (max-width: 720px) {
-  .work-order-progress-filter-footer,
-  .work-order-progress-basis {
+  .work-order-progress-filter-footer {
     align-items: stretch;
     flex-direction: column;
   }
@@ -5329,8 +5304,7 @@ dialog.routing-history-dialog {
     flex: initial;
   }
 
-  .work-order-progress-filter-buttons,
-  .work-order-progress-basis > button {
+  .work-order-progress-filter-buttons {
     align-self: flex-end;
     margin-left: 0;
   }

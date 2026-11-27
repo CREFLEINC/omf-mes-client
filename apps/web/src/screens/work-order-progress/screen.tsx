@@ -1,4 +1,4 @@
-import { AlertBanner, Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
+import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
@@ -150,20 +150,17 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-
+      {/* 화면 제목 줄(경로 · 큰 제목)은 두지 않는다 — 다른 목록 화면과 같다(#360). */}
       <div className="work-order-progress-workspace">
-        <section className="pane work-order-progress-pane" aria-label={t.filters.legend}>
-          <h2 className="pane-title">{t.filters.legend}</h2>
+        {/* L-5·L-6 — 언제 것인지와 갱신 단추를 한 줄에, 조회 조건 위 오른쪽(#360). */}
+        <BasisBar
+          basisAt={basisAt}
+          onRefresh={() => {
+            void queryClient.invalidateQueries({ queryKey: workOrderProgressKeys.all });
+          }}
+        />
 
+        <section className="pane work-order-progress-pane" aria-label={t.filters.legend}>
           {/* ⛔ 결과가 없어도 조건 줄을 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
           <ProgressFilterBar
             appliedFilters={filters}
@@ -177,14 +174,6 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
             onSearch={apply}
           />
         </section>
-
-        {/* L-5·L-6 — 언제 것인지와, 스스로 새로워지지 않는다는 사실을 함께 둔다. */}
-        <BasisBar
-          basisAt={basisAt}
-          onRefresh={() => {
-            void queryClient.invalidateQueries({ queryKey: workOrderProgressKeys.all });
-          }}
-        />
 
         {/* ⛔ 「결과가 없습니다」로만 두면 조건이 잘못된 줄 알고 조건을 더 만지게 된다. */}
         {pageView.isBeyondLast && (

@@ -12,7 +12,6 @@
  */
 export const shipmentSchedule = {
   title: '출하 예정 목록',
-  breadcrumbRoot: '영업 / 출하 관리',
   panes: {
     list: '출하 예정 목록',
     fulfillmentPlant: '출하 공장 지정',

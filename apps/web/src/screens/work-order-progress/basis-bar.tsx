@@ -1,8 +1,7 @@
-import { Button } from '@crefle/web-ui';
+import { Button, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { formatLocalDateTime } from '../../patterns/date-display';
-import { InfoTip } from '../../patterns/info-tip';
 
 const t = messages.workOrderProgress.basis;
 
@@ -18,24 +17,23 @@ export interface BasisBarProps {
 }
 
 /**
- * 기준 시각과 새로고침.
+ * 마지막 갱신 시각과 「갱신」 — 통합 대시보드 · 재고 현황의 「갱신」과 같은 모양(#360).
  *
- * ⭐ **둘은 한 자리에 있어야 한다.** L-6 이 자동 갱신을 금지하므로 새로고침이 **유일한 갱신
- * 수단**이고, L-5 가 요구하는 기준 시각은 「그 수단을 마지막으로 쓴 때」다. 떨어뜨려 두면
- * 사용자가 시각을 보고도 무엇을 눌러야 새로워지는지 알 수 없다.
- *
- * ⛔ **자동으로 갱신되지 않는다는 사실을 적는다.** 적지 않으면 화면에 떠 있는 수를 「지금」
- * 으로 읽는다 — 조회 화면에서 가장 비싼 오해다.
+ * ⭐ **둘은 한 자리에 있어야 한다.** L-6 이 자동 갱신을 금지하므로 갱신 단추가 **유일한 갱신
+ * 수단**이고, L-5 가 요구하는 기준 시각은 「그 수단을 마지막으로 쓴 때」다. 화면 맨 위 오른쪽 한 줄
+ * (목록 · 상세 화면의 「⋯」 줄과 같은 자리)에 선다.
  */
 export const BasisBar = ({ basisAt, onRefresh }: BasisBarProps) => (
-  <div className="work-order-progress-basis">
-    <div className="work-order-progress-basis-copy">
-      {/* `yyyy-MM-dd HH:mm`(보는 사람 시계 · ⭐ 관리웹 날짜 표기 통일 · 사용자 지시 2026-10-19). */}
-      <strong>{t.label(formatLocalDateTime(basisAt))}</strong>
-      {/* 스스로 새로워지지 않는다는 사실은 ⓘ 로 — 늘 펼쳐 둘 문장은 아니다(관리웹 정리 시안 A). */}
-      <InfoTip text={t.note} />
-    </div>
-    <Button size="sm" variant="outlined" onClick={onRefresh}>
+  <div className="list-detail-toolbar">
+    {/* `yyyy-MM-dd HH:mm`(보는 사람 시계 · ⭐ 관리웹 날짜 표기 통일 · 사용자 지시 2026-10-19). */}
+    <span className="dashboard-refresh-status">{t.label(formatLocalDateTime(basisAt))}</span>
+    <Button
+      variant="outlined"
+      size="sm"
+      className="stock-status-refresh-button"
+      leadingIcon={<Icon name="refresh" size={18} />}
+      onClick={onRefresh}
+    >
       {t.refresh}
     </Button>
   </div>
