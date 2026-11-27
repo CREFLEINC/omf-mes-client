@@ -1,10 +1,8 @@
-import { Button, Chip, Dialog, Icon, Switch, TextField } from '@crefle/web-ui';
+import { Button, Chip, Dialog, Icon, Switch } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useId, useState } from 'react';
 
-import { InfoTip } from '../../patterns/info-tip';
-import { CodeLockTextField } from '../../patterns/master';
 import { Select } from '../../patterns/select';
 import { UsageChip } from '../../patterns/usage-chip';
 import {
@@ -13,34 +11,21 @@ import {
   type LocationFact,
   LocationFacts,
 } from './location-identity';
-import { LOCATION_PREFIX_MAX_LENGTH, generateLocationPrefix } from './location-prefix';
 import type { LookupOptions, WarehouseFormValues } from './types';
 
 export interface WarehouseFormPaneProps {
-  mode: 'create' | 'edit';
   values: WarehouseFormValues;
-  /** 저장된 값 — 고칠 때 바꾼 칸 이름 옆에 점을 찍는 기준. 없으면 점을 찍지 않는다. */
+  /** 저장된 값 — 바꾼 칸 이름 옆에 점을 찍는 기준. 없으면 점을 찍지 않는다. */
   baseline?: WarehouseFormValues | undefined;
   onChange: (patch: Partial<WarehouseFormValues>) => void;
-  /** 필드별 인라인 오류. Phase 1은 fixture로 주입한다 */
+  /** 필드별 인라인 오류 */
   fieldErrors: Record<string, string>;
   /** 저장 충돌·화면 단위 오류 배너 슬롯 */
   banner: ReactNode;
-  /** null이면 창고코드 편집 가능 */
-  codeLockReason: string | null;
   isActive: boolean;
-  isDirty: boolean;
-  isSaving: boolean;
   lookups: LookupOptions;
-  onSave: () => void;
-  onCancel: () => void;
   onDeactivate: () => void;
   onActivate: () => void;
-  /**
-   * 바닥 단추 줄(사용 중지 · 취소 · 저장)을 판 안에 둘지 — 창고 정보 수정 창은 취소 · 저장을 창 바닥에 두므로 끈다.
-   * 끄면 사용 중지 · 다시 사용은 본문 맨 아래 「사용 상태」 줄로 옮긴다(사용자 지시 2026-11-24).
-   */
-  showActions?: boolean;
 }
 
 const t = messages.warehouseLocation;
@@ -144,141 +129,6 @@ export const SelectField = ({
 const labelOf = (options: { value: string; label: string }[], value: string): string =>
   options.find((option) => option.value === value)?.label ?? value;
 
-/**
- * 창고 위치 코드(omf-all-around#292) — 등록 폼을 여는 쪽이 무작위로 지어 채운다. 사람은 고치거나 [다시 만들기]로 새로
- * 짓는다. 친 글자는 대문자로 바꾼다. 형식 · 저장 뒤 못 바꿈은 라벨 옆 ⓘ 가 말하고(관리웹 정리 시안 A), 칸 아래에는
- * 오류(형식 · 다른 창고가 쓰는 코드)만 나타난다. 그 아래 위치 코드 예가 친 값을 따라 바뀐다.
- */
-const LocationPrefixField = ({
-  value,
-  error,
-  onChange,
-}: {
-  value: string;
-  error: string | undefined;
-  onChange: (value: string) => void;
-}) => {
-  const id = useId();
-
-  return (
-    <div className="field-cell warehouse-info-prefix">
-      {/* 칸과 단추를 한 줄에 두려고 이름을 칸 밖에 둔다 — 짜임은 `SelectField` 와 같다. */}
-      <span className="field-label warehouse-location-field-label">
-        <span>
-          <label htmlFor={id}>{t.locationPrefix.label}</label>
-          <span className="required-mark" aria-hidden="true">
-            {' *'}
-          </span>
-        </span>
-        <InfoTip text={t.locationPrefix.helper} />
-      </span>
-      <div className="warehouse-location-field-row">
-        <TextField
-          id={id}
-          required
-          value={value}
-          maxLength={LOCATION_PREFIX_MAX_LENGTH}
-          autoComplete="off"
-          spellCheck={false}
-          onChange={(event) => onChange(event.target.value.toUpperCase())}
-          error={error}
-        />
-        <Button
-          variant="outlined"
-          leadingIcon={<Icon name="refresh" size={18} />}
-          onClick={() => onChange(generateLocationPrefix())}
-        >
-          {t.locationPrefix.regenerate}
-        </Button>
-      </div>
-      <span className="field-note">{t.locationPrefix.example(value)}</span>
-    </div>
-  );
-};
-
-/** 창고 추가 — 머리 · 필수 칸 · 바닥. 값 순서는 보기와 같다(공장 · 코드 · 창고명 / 사업부 · 유형 · 불량 · 외부 / 창고 위치 코드). */
-const WarehouseCreateFields = ({
-  values,
-  onChange,
-  fieldErrors,
-  codeLockReason,
-  lookups,
-}: Pick<
-  WarehouseFormPaneProps,
-  'values' | 'onChange' | 'fieldErrors' | 'codeLockReason' | 'lookups'
->) => (
-  <>
-    <div className="warehouse-info-create-head">
-      <span className="location-identity-icon is-zone">
-        <Icon name="add_business" size={24} />
-      </span>
-      <h3 className="warehouse-info-create-title">{t.actions.addWarehouse}</h3>
-    </div>
-    <div className="form-grid warehouse-info-create-grid">
-      <SelectField
-        label={t.fields.plant}
-        required
-        options={lookups.plants}
-        value={values.plantId}
-        onChange={(value) => onChange({ plantId: value })}
-        error={fieldErrors.plantId}
-      />
-      <CodeLockTextField
-        lockReason={codeLockReason}
-        label={t.fields.warehouseCode}
-        required
-        value={values.warehouseCode}
-        onChange={(event) => onChange({ warehouseCode: event.target.value })}
-        error={fieldErrors.warehouseCode}
-      />
-      <TextField
-        label={t.fields.warehouseName}
-        required
-        value={values.warehouseName}
-        onChange={(event) => onChange({ warehouseName: event.target.value })}
-        error={fieldErrors.warehouseName}
-      />
-      <SelectField
-        label={t.fields.businessUnit}
-        required
-        options={lookups.businessUnits}
-        value={values.businessUnitId}
-        onChange={(value) => onChange({ businessUnitId: value })}
-        error={fieldErrors.businessUnitId}
-      />
-      <SelectField
-        label={t.fields.warehouseType}
-        required
-        options={lookups.warehouseTypes}
-        value={values.warehouseTypeCode}
-        onChange={(value) => onChange({ warehouseTypeCode: value })}
-        error={fieldErrors.warehouseTypeCode}
-        placeholder={t.values.selectPlaceholder}
-      />
-      {/* 외부 · 불량 창고는 유형 옆 칸에 — 등록 때는 아직 창고가 없어 묻지 않고 바로 바뀐다. */}
-      <div className="warehouse-info-create-flags">
-        <Switch
-          label={t.fields.isExternal}
-          labelPlacement="start"
-          checked={values.isExternal}
-          onChange={(event) => onChange({ isExternal: event.target.checked })}
-        />
-        <Switch
-          label={t.fields.isDefect}
-          labelPlacement="start"
-          checked={values.isDefect}
-          onChange={(event) => onChange({ isDefect: event.target.checked })}
-        />
-      </div>
-    </div>
-    <LocationPrefixField
-      value={values.locationPrefix}
-      error={fieldErrors.locationPrefix}
-      onChange={(value) => onChange({ locationPrefix: value })}
-    />
-  </>
-);
-
 interface PendingFlag {
   field: 'isExternal' | 'isDefect';
   value: boolean;
@@ -291,27 +141,19 @@ const flagConfirmTitle = ({ field, value }: PendingFlag): string => {
 };
 
 /**
- * 창고 정보 판 — 위치 수정 창과 같은 짜임: 머리(창고 · 코드 · 창고명 · 칩) · 옅은 정보 판(고칠 값만 연필, 불량 · 외부는
- * 스위치) · 바닥(왼쪽 상태 단추, 오른쪽 취소 · 저장). 등록은 오른쪽 창에, 수정은 [창고 정보] 창 안에 둔다(안 B, 사용자 결정
- * 2026-11-24). 등록은 머리와 필수 칸만.
+ * 창고 정보 수정 창의 본문 — 머리(창고 · 코드 · 창고명 · 칩) · 옅은 정보 판(고칠 값만 연필, 불량 · 외부는 스위치) · 「사용
+ * 상태」 줄. 취소 · 저장은 창 바닥에 있다(안 B, 사용자 결정 2026-11-24). 창고 등록은 화면에서 뺐다(사용자 결정 2026-11-27).
  */
 export const WarehouseFormPane = ({
-  mode,
   values,
   baseline,
   onChange,
   fieldErrors,
   banner,
-  codeLockReason,
   isActive,
-  isDirty,
-  isSaving,
   lookups,
-  onSave,
-  onCancel,
   onDeactivate,
   onActivate,
-  showActions = true,
 }: WarehouseFormPaneProps) => {
   /*
    * 불량 창고는 바꾸기 전에 한 번 묻는다(사용자 지시 2026-10-30) — 확인하면 값이 바뀌고 저장이 켜진다. 확인을 곧 저장으로
@@ -320,8 +162,6 @@ export const WarehouseFormPane = ({
    */
   /* 외부 · 불량 스위치는 한 번 묻고 바꾼다(사용자 지시 2026-10-30). */
   const [pendingFlag, setPendingFlag] = useState<PendingFlag | null>(null);
-  /* 취소하면 열어 둔 연필 칸도 닫는다 — 정보 판을 새로 그린다. */
-  const [resetCount, setResetCount] = useState(0);
 
   const changed = (field: keyof WarehouseFormValues): boolean =>
     baseline !== undefined && values[field] !== baseline[field];
@@ -382,106 +222,53 @@ export const WarehouseFormPane = ({
   );
 
   return (
-    <section
-      className="warehouse-location-form warehouse-info"
-      aria-label={mode === 'create' ? t.actions.addWarehouse : t.sections.warehouse}
-    >
+    <section className="warehouse-location-form warehouse-info" aria-label={t.sections.warehouse}>
       {banner}
 
-      {mode === 'create' ? (
-        <WarehouseCreateFields
-          values={values}
-          onChange={onChange}
-          fieldErrors={fieldErrors}
-          codeLockReason={codeLockReason}
-          lookups={lookups}
-        />
-      ) : (
-        <>
-          <IdentityHeader
-            icon={{ name: 'warehouse', tone: 'zone' }}
-            kind={t.fields.warehouse}
-            code={values.warehouseCode}
-            codeLabel={t.fields.warehouseCode}
-            name={values.warehouseName}
-            nameLabel={t.fields.warehouseName}
-            chips={
-              values.isExternal || values.isDefect ? (
-                <>
-                  {values.isExternal && (
-                    <Chip size="sm" status="idle">
-                      {t.fields.isExternal}
-                    </Chip>
-                  )}
-                  {values.isDefect && (
-                    <Chip size="sm" status="error">
-                      {t.fields.isDefect}
-                    </Chip>
-                  )}
-                </>
-              ) : undefined
-            }
-            /* 창 안에서는 「사용 상태」 줄이 상태를 보인다 — 머리에 두 번 두지 않는다. */
-            isActive={showActions ? isActive : undefined}
-          />
-          {identityErrors.map((error) => (
-            <span key={error} className="field-error">
-              {error}
-            </span>
-          ))}
-          <LocationFacts key={`${values.warehouseCode}-${String(resetCount)}`} facts={facts} />
-          {!showActions && (
-            /* 사용 중지는 저장과 다른 일이라 바닥이 아니라 본문에 — 지금 상태와 바꾸는 단추를 한 줄에. */
-            <div className="warehouse-info-state">
-              <span className="warehouse-info-state-label">{t.fields.isActive}</span>
-              <UsageChip isActive={isActive} />
-              <Button
-                variant="outlined"
-                size="sm"
-                className="location-state-button"
-                leadingIcon={<Icon name={isActive ? 'block' : 'restart_alt'} size={18} />}
-                onClick={isActive ? onDeactivate : onActivate}
-              >
-                {isActive ? messages.common.deactivate : t.actions.activate}
-              </Button>
-            </div>
-          )}
-        </>
-      )}
-
-      {showActions && (
-        <div className="form-actions warehouse-location-form-actions">
-          {/*
-           * 상태를 바꾸는 단추는 바닥 왼쪽 — 오른쪽의 취소 · 저장과 가른다(omf-all-around#17). 위치 창과 같은 아이콘 ·
-           * 글자 단추다. 아직 등록되지 않은 창고에는 사용 중지할 대상이 없다.
-           */}
-          <div className="field-cell form-actions-secondary">
-            {mode === 'edit' && (
-              <Button
-                variant="text"
-                className="location-state-button"
-                leadingIcon={<Icon name={isActive ? 'block' : 'restart_alt'} size={18} />}
-                onClick={isActive ? onDeactivate : onActivate}
-              >
-                {isActive ? messages.common.deactivate : t.actions.activate}
-              </Button>
-            )}
-          </div>
-          <Button
-            variant="outlined"
-            disabled={!isDirty}
-            onClick={() => {
-              setResetCount((count) => count + 1);
-              onCancel();
-            }}
-          >
-            {messages.common.cancel}
-          </Button>
-          <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
-            {messages.common.save}
-          </Button>
-        </div>
-      )}
+      <IdentityHeader
+        icon={{ name: 'warehouse', tone: 'zone' }}
+        kind={t.fields.warehouse}
+        code={values.warehouseCode}
+        codeLabel={t.fields.warehouseCode}
+        name={values.warehouseName}
+        nameLabel={t.fields.warehouseName}
+        chips={
+          values.isExternal || values.isDefect ? (
+            <>
+              {values.isExternal && (
+                <Chip size="sm" status="idle">
+                  {t.fields.isExternal}
+                </Chip>
+              )}
+              {values.isDefect && (
+                <Chip size="sm" status="error">
+                  {t.fields.isDefect}
+                </Chip>
+              )}
+            </>
+          ) : undefined
+        }
+      />
+      {identityErrors.map((error) => (
+        <span key={error} className="field-error">
+          {error}
+        </span>
+      ))}
+      <LocationFacts facts={facts} />
+      {/* 사용 중지는 저장과 다른 일이라 창 바닥이 아니라 본문에 — 지금 상태와 바꾸는 단추를 한 줄에(사용자 지시 2026-11-24). */}
+      <div className="warehouse-info-state">
+        <span className="warehouse-info-state-label">{t.fields.isActive}</span>
+        <UsageChip isActive={isActive} />
+        <Button
+          variant="outlined"
+          size="sm"
+          className="location-state-button"
+          leadingIcon={<Icon name={isActive ? 'block' : 'restart_alt'} size={18} />}
+          onClick={isActive ? onDeactivate : onActivate}
+        >
+          {isActive ? messages.common.deactivate : t.actions.activate}
+        </Button>
+      </div>
 
       <Dialog
         className="location-dialog"
