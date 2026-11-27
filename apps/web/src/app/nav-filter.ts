@@ -30,7 +30,7 @@ const matches = (entry: NavEntry, needle: string): boolean =>
  * 펼친 탭의 보이는 이름 — **묶음 이름을 앞에 붙인다**(「ERP 연동 현황·이력 › ERP W/O」).
  *
  * ⭐ 탭 이름은 묶음 안에서만 홀로 설 수 있다 — 「사원」·「BOM」은 묶음 밖에서 무엇의 사원인지
- * 모르고, 「ERP W/O」를 치면 생산 관리의 「ERP W/O 변경 확인」 탭과 ERP 연동 현황·이력의 「ERP W/O」
+ * 모르고, 「W/O」를 치면 생산 관리의 W/O 화면들과 ERP 연동 현황·이력의 「ERP W/O」
  * 탭이 함께 걸린다. 걸린 글자(탭 이름)는 그대로 보이므로 「왜 걸렸는가」도 읽힌다.
  */
 const SPREAD_SEPARATOR = ' › ';

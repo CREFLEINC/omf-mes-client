@@ -393,8 +393,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     ],
   },
   /*
-   * 생산 관리 — ERP W/O 를 받아 보고(바뀐 것은 같은 자리에서 확인) → MES W/O 로 확정·배포하고 →
-   * 진행을 보고 → 마감한다. 예외 갈래인 긴급 발행은 메뉴에서 감췄다(아래 W-02-07 자리).
+   * 생산 관리 — ERP W/O 를 받아 보고 → MES W/O 로 확정·배포하고 → 진행을 보고 → 마감한다. 바뀐 ERP W/O 를
+   * 확인하는 탭과 예외 갈래인 긴급 발행은 메뉴에서 감췄다(아래 W-02-06 · W-02-07 자리).
    */
   {
     label: '생산 관리',
@@ -419,19 +419,12 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: 'account_tree',
         label: '작업계획',
         labelVi: 'Kế hoạch sản xuất',
-        tabs: [
-          {
-            to: '/production/production-orders',
-            label: '작업계획',
-            labelVi: 'Kế hoạch sản xuất',
-          },
-          {
-            to: '/production/po-change-review',
-            label: 'ERP W/O 변경 확인',
-            labelVi: 'Xác nhận thay đổi ERP W/O',
-          },
-        ],
       },
+      /*
+       * W-02-06 ERP W/O 변경 확인은 **메뉴에서 감춘다**(사용자 지시 2026-11-27) — 주소·화면·서버는 남긴다.
+       * 노트북 DB 의 ERP W/O 3,015건 중 변경 수신이 0건이고, 확인 기록은 다른 업무를 막지 않는다.
+       * 다시 세우면 자리는 「작업계획」의 둘째 탭이다(`tabs: [작업계획, ERP W/O 변경 확인]`).
+       */
       /*
        * W-02-04(W/O 확정, 배포)는 메뉴에서 뺐다. 배포는 「작업지시 목록」 작업함의 일괄 배포와 처리 화면 마지막 단계가
        * 맡는다(화면 구성 규범 C-17, T-W-C). 옛 주소는 작업함의 「배포 대기」 조건으로 넘어간다.

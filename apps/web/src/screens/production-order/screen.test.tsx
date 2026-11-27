@@ -417,7 +417,7 @@ describe('작업지시 목록 작업함', () => {
     },
   );
 
-  it('정렬은 고르는 즉시 주소와 조회에 실리고, 처음은 오래된순이다', async () => {
+  it('정렬은 토글 단추라 누를 때마다 오래된순 ↔ 최신순이 주소와 조회에 실리고, 처음은 오래된순이다', async () => {
     const user = userEvent.setup();
     const { requests } = render({ orders: [REVIEW] });
     const sorts = () =>
@@ -428,15 +428,30 @@ describe('작업지시 목록 작업함', () => {
         .map((query) => query.get('sort'));
 
     await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
-    const order = screen.getByRole('combobox', { name: t.list.order.label });
+    /* 선택 칸이 아니다 — 펼칠 목록 없이 단추 하나다. */
+    expect(screen.queryByRole('combobox', { name: t.list.order.label })).toBeNull();
+    const order = screen.getByRole('button', {
+      name: `${t.list.order.label}: ${t.list.order.oldest}`,
+    });
     expect(order).toHaveTextContent(t.list.order.oldest);
     expect(sorts().at(-1)).toBe('plannedStartDate,asc');
 
     await user.click(order);
-    await user.click(await screen.findByRole('option', { name: t.list.order.newest }));
 
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('order=newest'));
     await waitFor(() => expect(sorts().at(-1)).toBe('plannedStartDate,desc'));
+    expect(
+      screen.getByRole('button', { name: `${t.list.order.label}: ${t.list.order.newest}` }),
+    ).toHaveTextContent(t.list.order.newest);
+
+    /* 다시 누르면 오래된순으로 돌아온다 — 기본값이라 주소에서 빠진다. */
+    await user.click(
+      screen.getByRole('button', { name: `${t.list.order.label}: ${t.list.order.newest}` }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).not.toHaveTextContent('order=newest'),
+    );
+    await waitFor(() => expect(sorts().at(-1)).toBe('plannedStartDate,asc'));
   });
 
   it('행 상태 칩은 서버 판정(worklistState) 그대로다', async () => {
