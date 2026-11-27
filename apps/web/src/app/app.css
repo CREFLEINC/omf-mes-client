@@ -915,7 +915,8 @@ tr[class*='_emptyCell'] > td > div:not(.dash-empty):has(> p:first-child)::before
 /* 상세 머리의 기준 정보 상자 — 버전 요약 상자(`.inspection-standard-facts-line`)와 같은 모양. 이름이 길면 값이 줄을 넘긴다(#196). */
 .inspection-standard-plan-facts dd {
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /* 목록 품목 칸 — 「이름 코드」 한 줄, 코드는 흐리게(사용자 시안 · #196). */
@@ -5462,7 +5463,8 @@ dialog.routing-history-dialog {
 /* 칸 폭에 맞춘 선택 목록(lot-filter-bar.tsx) — 긴 값은 잘리지 않게 목록 안에서 줄을 바꾼다. */
 .lot-status-fit-listbox [role='option'] {
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /*
@@ -20209,7 +20211,8 @@ body:has(.popover-panel [role='combobox'][aria-expanded='true']) [role='listbox'
 .iqc-inspection-panes .iqc-inspection-queue-item-code {
   max-width: 100%;
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /* 품목명은 두 줄까지, 넘치면 말줄임(#133). */
@@ -26286,7 +26289,8 @@ dialog.reference-picker-wide {
 /* 상세의 모델 · 사업부 · 양식 값 상자 — 긴 모델 이름은 줄을 넘겨 다 보인다(#208). */
 .inspection-sheet-template-facts dd {
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /* 품목 · 사업부 · 출력 양식을 한 줄에(사용자 지시 2026-10-30) — 긴 품목 이름은 그 칸 안에서 줄을 넘긴다. */
@@ -31317,7 +31321,8 @@ dialog.layout-editor-dialog .layout-editor-body {
   overflow: visible;
   text-overflow: clip;
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /*
@@ -34144,7 +34149,8 @@ ul.iqc-inbound-superseded {
   overflow: visible;
   text-overflow: clip;
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /* 복수 오더는 한 편집 세션에서 계획을 모으고, 실행 단계는 오더별 기존 검증을 사용한다. */
@@ -34246,7 +34252,8 @@ ul.iqc-inbound-superseded {
 }
 .erp-wo-plan-order {
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 .erp-wo-assign-line-control {
   grid-column: 1 / -1;
@@ -35606,7 +35613,8 @@ body:has(
   align-items: center;
   margin-inline-end: var(--space-4);
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .erp-wo-master-details {
@@ -35977,14 +35985,16 @@ body:has(
 }
 .erp-wo-summary .is-item-name dd {
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 .erp-wo-master-order-list .erp-wo-item-field {
   display: grid;
   gap: 2px;
   min-width: 0;
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 .erp-wo-master-order-list .erp-wo-item-field-label {
   color: var(--on-surface-variant);
@@ -36007,7 +36017,8 @@ body:has(
 .erp-wo-selected-item-fields dd {
   margin: var(--space-1) 0 0;
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /* 긴 원문은 한 행으로 보존하고 표 안에서 이동한다. */
@@ -36066,7 +36077,8 @@ body:has(
   min-height: var(--control-height-sm);
   text-align: left;
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 .reference-field-full-value > button:first-child > span {
   min-width: 0;
@@ -36101,12 +36113,14 @@ body:has(
   overflow: visible;
   text-overflow: clip;
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 .erp-wo-week-table th > span {
   display: block;
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 .erp-wo-plan-layout {
   grid-template-columns: minmax(0, 1fr) minmax(19rem, 22rem);
@@ -36137,7 +36151,8 @@ body:has(
 .erp-wo-release-target-table th,
 .erp-wo-release-target-table td {
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 .erp-wo-release-target-table td:has(input) {
   min-width: 9rem;
@@ -36151,7 +36166,8 @@ body:has(
 .erp-wo-release-summary dd,
 .erp-wo-terminal-target dd {
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 .erp-wo-terminal-table table {
   min-width: 42rem;
@@ -36180,7 +36196,8 @@ body:has(
   overflow: visible;
   text-overflow: clip;
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /* 기존 표·영역 손잡이와 동일한 배치 조절. 값의 정렬은 머리글과 함께 맞춘다. */
@@ -36440,7 +36457,8 @@ body:has(
   margin: 0;
   min-width: 0;
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /* 복수 편성도 단일 처리 화면과 같은 제목·조회 정보 순서를 따른다. */
@@ -36481,7 +36499,8 @@ body:has(
 }
 .erp-wo-multi-current-target dd {
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 .erp-wo-multi-current-target > dl > div:has(dt + dd) {
   min-width: 0;
@@ -39157,7 +39176,8 @@ body:has(
   font: var(--type-body-sm);
   text-align: left;
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 .erp-wo-distribution-dialog .erp-wo-distribution-row-head {
   margin-bottom: var(--space-3);
@@ -41064,7 +41084,8 @@ body:has(
 
 .erp-data-detail-fields > .parts-iqc-fact > dd {
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /* 상세 안의 하위 표(라인 · 코드 값 등) — 제목 줄 + 열 조절 표 + 쪽 넘김. */
@@ -42891,7 +42912,8 @@ body:has(
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /* 공장 고르기(계정 범위 공장이 둘 이상일 때) — 화면 머리 단추 줄, 고른 공장 이름이 읽히는 폭. */
@@ -43304,7 +43326,8 @@ main .po-board-split > :first-child:not(:last-child) tr[class*='emptyCell'] > td
   width: 100cqi;
   max-width: 100cqi;
   white-space: normal;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /* 위아래로 쌓일 때 빈 안내는 위아래 여백만 줄여 상세 칸 자리를 남긴다. */
@@ -44550,4 +44573,15 @@ main > .pane.notification-center-pane {
 .iqc-judgment-confirm > .iqc-inspection-action-note.users-roles-dialog-note[data-tone] {
   font: var(--type-body-lg);
   letter-spacing: var(--type-body-lg-tracking);
+}
+
+/*
+ * 정보 표시 상자 반응형(사용자 지시 · #360) — 칸은 글 길이만큼만 차지하고 왼쪽부터 채운다. 폭이 모자라면 다음 줄로 넘어가고,
+ * 남는 폭을 나눠 늘리지 않는다(종전: 칸이 남는 폭을 나눠 가져 둘째 줄 칸이 화면 절반씩 늘어났다).
+ * 칸은 최소 8rem 이라 짧은 값끼리도 간격이 고르다. 한 칸이 상자보다 길면 그 칸만 말줄임(전체는 마우스를 올리면 보인다).
+ */
+.info-facts-row > .parts-iqc-fact {
+  flex: 0 1 auto;
+  min-width: min(8rem, 100%);
+  padding-right: var(--space-6);
 }

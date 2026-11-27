@@ -1,14 +1,6 @@
-/* 작업지시 마감 확인(#360) — 단추 바로 위 경고 한 줄, 그 아래 오른쪽 단추. */
-.work-order-close-confirm-foot {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--space-3);
-}
-
-.work-order-close-confirm-foot > .iqc-inspection-action-note {
-  align-self: flex-start;
+/* 작업지시 마감 확인(#360) — 정보 상자 · 질문 · LOT 목록 · 안내 줄을 같은 간격으로(단말 관리 확인 창 모양). */
+.work-order-close-confirm-body > * {
+  margin: 0;
 }
 
 /* 남는 LOT — 제목 · 안내 아래 번호를 줄마다 하나씩, 긴 번호는 줄을 넘긴다. */
@@ -30,8 +22,8 @@
   margin: 0;
   padding: var(--space-2) var(--space-3);
   overflow-y: auto;
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
   font: var(--type-body-sm);
   list-style: none;
 }

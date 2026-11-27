@@ -128,7 +128,8 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
       'Không xác nhận được trạng thái đang thực hiện nên chưa bắt đầu tra cứu lần đầu được. Nếu tải lại trang vẫn vậy, hãy báo quản trị hệ thống.',
   },
   confirm: {
-    title: 'Đóng lệnh sản xuất này?',
+    title: 'Đóng lệnh sản xuất',
+    question: 'Đóng lệnh sản xuất này?',
     workOrderNo: 'Số lệnh sản xuất',
     irreversible:
       'Sau khi đóng thì không hủy được việc đóng lệnh sản xuất. Nếu cần sửa kết quả, hãy xử lý sửa kết quả sản xuất.',

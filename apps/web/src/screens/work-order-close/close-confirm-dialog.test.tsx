@@ -31,7 +31,7 @@ describe('WorkOrderCloseConfirmDialog', () => {
     renderDialog();
     const dialog = screen.getByRole('dialog');
 
-    expect(t.title).toBe('작업지시를 마감할까요?');
+    expect(t.title).toBe('작업지시 마감');
     expect(t.irreversible).toBe(
       '마감 후에는 작업지시 마감을 취소할 수 없습니다. 실적 정정이 필요하면 생산실적을 정정 처리해 주세요.',
     );

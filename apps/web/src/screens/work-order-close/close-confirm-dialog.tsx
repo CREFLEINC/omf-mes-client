@@ -76,21 +76,14 @@ export const WorkOrderCloseConfirmDialog = ({
     <Dialog
       closeOnBackdropClick={false}
       footer={
-        /* 되돌릴 수 없다는 한 줄은 단추 바로 위 경고 칩, 단추는 그 아래 오른쪽. */
-        <div className="work-order-close-confirm-foot">
-          <p className="iqc-inspection-action-note" data-tone="warning">
-            <Icon name="warning" size={14} aria-hidden />
-            {t.irreversible}
-          </p>
-          <span className="confirm-foot-actions">
-            <Button disabled={isSubmitting} variant="outlined" onClick={onClose}>
-              {t.cancel}
-            </Button>
-            <Button loading={isSubmitting} variant="filled" onClick={onConfirm}>
-              {t.confirm}
-            </Button>
-          </span>
-        </div>
+        <>
+          <Button disabled={isSubmitting} variant="outlined" onClick={onClose}>
+            {t.cancel}
+          </Button>
+          <Button loading={isSubmitting} variant="filled" onClick={onConfirm}>
+            {t.confirm}
+          </Button>
+        </>
       }
       open
       showCloseButton={false}
@@ -99,38 +92,46 @@ export const WorkOrderCloseConfirmDialog = ({
         if (!isSubmitting) onClose();
       }}
     >
-      {banner === null || banner === undefined ? null : <div>{banner}</div>}
-      <InfoFacts
-        rows={[
-          [{ label: t.workOrderNo, value: workOrderNo }, ...judgment.map(toFact)],
-          others.map(toFact),
-        ]}
-      />
-      {openLotNos.length === 0 ? null : (
-        <section
-          className="work-order-close-confirm-lots"
-          aria-label={t.openLotsHeading(openLotNos.length)}
-        >
-          <h3 className="info-table-title">{t.openLotsHeading(openLotNos.length)}</h3>
-          <p className="field-note">{t.openLotsNote}</p>
-          <ul className="work-order-close-confirm-lot-list">
-            {openLotNos.map((lotNo) => (
-              <li key={lotNo}>{lotNo}</li>
-            ))}
-          </ul>
-        </section>
-      )}
-      {warnings.map((warning) => (
-        <p key={warning}>{warning}</p>
-      ))}
-      <p className="iqc-inspection-action-note" data-tone="info">
-        <Icon name="info" size={14} aria-hidden />
-        <span>
-          {t.erp.queued} {t.erp.resultBefore}
-          <Link to={ERP_RESULT_PATH}>{t.erp.menu}</Link>
-          {t.erp.resultAfter}
-        </span>
-      </p>
+      <div className="users-roles-worker-dialog work-order-close-confirm-body">
+        {banner === null || banner === undefined ? null : <div>{banner}</div>}
+        <InfoFacts
+          rows={[
+            [{ label: t.workOrderNo, value: workOrderNo }, ...judgment.map(toFact)],
+            others.map(toFact),
+          ]}
+        />
+        <p>{t.question}</p>
+        {openLotNos.length === 0 ? null : (
+          <section
+            className="work-order-close-confirm-lots"
+            aria-label={t.openLotsHeading(openLotNos.length)}
+          >
+            <h3 className="info-table-title">{t.openLotsHeading(openLotNos.length)}</h3>
+            <p className="field-note">{t.openLotsNote}</p>
+            <ul className="work-order-close-confirm-lot-list">
+              {openLotNos.map((lotNo) => (
+                <li key={lotNo}>{lotNo}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {warnings.map((warning) => (
+          <p key={warning}>{warning}</p>
+        ))}
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+          <Icon name="info" size={16} aria-hidden />
+          <span>
+            {t.erp.queued} {t.erp.resultBefore}
+            <Link to={ERP_RESULT_PATH}>{t.erp.menu}</Link>
+            {t.erp.resultAfter}
+          </span>
+        </p>
+        {/* 되돌릴 수 없다는 경고도 본문 안내 줄로 — 다른 확인 창과 같은 자리(사용자 지시 · #360). */}
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+          <Icon name="warning" size={16} aria-hidden />
+          {t.irreversible}
+        </p>
+      </div>
     </Dialog>
   );
 };
