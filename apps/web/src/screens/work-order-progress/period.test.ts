@@ -4,9 +4,10 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_PERIOD_DAYS,
   defaultPeriod,
+  periodDays,
   periodLockReason,
-  type PeriodInput,
   resolvePeriod,
+  type PeriodInput,
   WIDE_PERIOD_DAYS,
 } from './period';
 
@@ -154,5 +155,28 @@ describe('resolvePeriod — 넓은 기간', () => {
 
     expect(boundsOf(from, at(WIDE_PERIOD_DAYS)).warning).toBeNull();
     expect(boundsOf(from, at(WIDE_PERIOD_DAYS + 1)).warning).toBe(t.periodWide);
+  });
+});
+
+describe('periodDays', () => {
+  it('기간에 든 날을 양 끝을 포함해 늘어놓는다 — 달 경계도 넘는다', () => {
+    expect(periodDays({ from: '2026-08-30', to: '2026-09-02' })).toEqual([
+      '2026-08-30',
+      '2026-08-31',
+      '2026-09-01',
+      '2026-09-02',
+    ]);
+  });
+
+  it('하루짜리 기간은 그 하루다', () => {
+    expect(periodDays({ from: '2026-08-30', to: '2026-08-30' })).toEqual(['2026-08-30']);
+  });
+
+  it.each([
+    ['비었으면', { from: '', to: '2026-08-30' }],
+    ['달력에 없는 날이면', { from: '2026-02-31', to: '2026-03-05' }],
+    ['거꾸로면', { from: '2026-08-30', to: '2026-08-01' }],
+  ])('⛔ %s 날이 없다 — 막힌 기간으로 축을 그리지 않는다', (_name, input) => {
+    expect(periodDays(input)).toEqual([]);
   });
 });

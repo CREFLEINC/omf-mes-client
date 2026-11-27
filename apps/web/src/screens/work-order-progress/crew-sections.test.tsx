@@ -122,6 +122,25 @@ describe('CrewSections', () => {
     expect(section().getByText(t.defectTypes.empty)).toBeInTheDocument();
   });
 
+  /* 실적이 없는 지시는 빈 표 둘이 창 절반을 차지했다 — 머리만 있는 표 대신 한 줄로 적는다. */
+  it('내역이 없는 구획은 빈 표를 세우지 않고 한 줄로 적는다', () => {
+    render(
+      <CrewSections
+        crew={crew({ workerResults: [], defectTypes: [] })}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+
+    for (const heading of [t.workerResults.heading, t.defectTypes.heading]) {
+      const section = within(screen.getByRole('region', { name: heading }));
+
+      expect(section.queryByRole('table')).not.toBeInTheDocument();
+      expect(section.getByRole('heading', { name: heading })).toBeInTheDocument();
+    }
+    expect(screen.getByText(t.workerResults.empty)).toBeInTheDocument();
+  });
+
   it('이름·사번을 모르면 내부 번호 대신 「알 수 없음」이다', () => {
     const [first] = crew().workerResults;
     if (first === undefined) throw new Error('행 없음');

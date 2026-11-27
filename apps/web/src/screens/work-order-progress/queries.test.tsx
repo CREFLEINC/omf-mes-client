@@ -2,11 +2,12 @@ import { waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { jsonResponse, renderHookWithProviders, type StubFetch } from '../../test/api-harness';
-import { type ProgressFilters, toProgressListQuery } from './filters';
+import { type ProgressFilters, toProgressListQuery, toStatusCountQuery } from './filters';
 import {
   useWorkOrderCrew,
   useWorkOrderDetail,
   useWorkOrderProgressList,
+  useWorkOrderStatusCounts,
   workOrderProgressKeys,
 } from './queries';
 import { DEFAULT_SORT } from './sort';
@@ -19,6 +20,7 @@ const filters = (overrides: Partial<ProgressFilters> = {}): ProgressFilters => (
   productionLineId: '',
   statusCode: '',
   productionOrderId: '',
+  processId: '',
   keyword: '',
   ...overrides,
 });
@@ -51,6 +53,7 @@ describe('workOrderProgressKeys', () => {
   it('무효화 뿌리 키가 모든 갈래를 덮는다', () => {
     for (const key of [
       workOrderProgressKeys.list(queryFor()),
+      workOrderProgressKeys.statusCounts(null),
       workOrderProgressKeys.detail(7001),
     ]) {
       expect(key.slice(0, 1)).toEqual([...workOrderProgressKeys.all]);
@@ -149,13 +152,14 @@ describe('useWorkOrderProgressList', () => {
 });
 
 describe('useWorkOrderDetail', () => {
-  it('고른 W/O 의 상세를 부른다', async () => {
+  /* 상세 창의 양품 · 불량 · 달성률이 실적 누계에서 온다. */
+  it('고른 W/O 의 상세를 실적 누계와 함께 부른다', async () => {
     const { urls, fetch } = collecting();
 
     renderHookWithProviders(() => useWorkOrderDetail(7001), { fetch });
 
     await waitFor(() => {
-      expect(urls).toEqual(['/production/work-orders/7001']);
+      expect(urls).toEqual(['/production/work-orders/7001?withProgress=true']);
     });
   });
 });
@@ -246,5 +250,48 @@ describe('useWorkOrderCrew', () => {
         '/production/work-sessions/1/workers?active=false',
       ]),
     );
+  });
+});
+
+describe('useWorkOrderStatusCounts', () => {
+  /* 고르지 않았으면 목록의 요약이 이미 상태 전체를 센 것이다. */
+  it('⛔ 상태를 고르지 않았으면 요청도 없고 오류도 아니다', async () => {
+    const { urls, fetch } = collecting();
+
+    const { result } = renderHookWithProviders(() => useWorkOrderStatusCounts(null), { fetch });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(urls).toHaveLength(0);
+    expect(result.current.isError).toBe(false);
+  });
+
+  it('상태를 뺀 조건으로 요약만 받는다 — 줄은 한 건만', async () => {
+    const urls: string[] = [];
+    const fetch: StubFetch = async (request) => {
+      const url = new URL(request.url);
+      urls.push(`${url.pathname}${url.search}`);
+      return jsonResponse({
+        items: [],
+        page: { page: 1, size: 1, total: 4 },
+        summary: { totalCount: 4, statusCounts: { SYN_RUN: 3, SYN_DONE: 1 } },
+      });
+    };
+
+    const { result } = renderHookWithProviders(
+      () =>
+        useWorkOrderStatusCounts(
+          toStatusCountQuery(filters({ statusCode: 'SYN_RUN', productionLineId: '7' }), KST),
+        ),
+      { fetch },
+    );
+
+    await waitFor(() => {
+      expect(result.current.data?.statusCounts).toEqual({ SYN_RUN: 3, SYN_DONE: 1 });
+    });
+    const sent = new URLSearchParams(urls[0]?.split('?')[1] ?? '');
+    expect(sent.get('withSummary')).toBe('true');
+    expect(sent.get('size')).toBe('1');
+    expect(sent.get('productionLineId')).toBe('7');
+    expect(sent.has('statusCode')).toBe(false);
   });
 });

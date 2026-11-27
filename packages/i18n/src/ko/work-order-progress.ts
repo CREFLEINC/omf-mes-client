@@ -5,11 +5,8 @@
  * 여기서 나왔다. 문구도 그 조항들을 그대로 비춘다 — 기간을 비울 수 없다(L-3) · 기준 시각을
  * 항상 보인다(L-5) · 자동 갱신이 없으니 새로고침이 유일한 갱신 수단이다(L-6).
  *
- * ⚠ **서버가 아직 내려 주지 않는 것 둘**이 이 화면에 있다(omf-mes#265) — 요약 집계와 지연
- * 판정이다. 둘 다 **감추지 않고 사유를 적는다.** 다만 둘의 처리가 다르다:
- *
- * - **요약**은 모집단(필터 전체)이 화면에 없어 셀 수가 없다 → 칸을 비우고 이유를 적는다
- * - **지연**은 줄마다 완결돼 셀 수 있다 → 화면이 내되 **참고값**임을 밝힌다
+ * 요약 집계와 지연 판정은 서버가 준다(계약의 `summary` · `progress.delayStatusCode`) — 화면은 모양만 바꾼다.
+ * 같은 조회 결과를 표나 날짜 축 일정으로 본다.
  */
 export const workOrderProgress = {
   title: 'W/O 진행현황',
@@ -21,15 +18,16 @@ export const workOrderProgress = {
     from: '시작일',
     to: '종료일',
     productionLine: '라인',
-    status: '상태',
     productionOrder: 'P/O',
     keyword: 'W/O 번호',
     keywordPlaceholder: 'W/O 번호의 일부',
     search: '조회',
     reset: '초기화',
-    /** 「조건 더보기」에 접힌 칸에 걸린 조건의 칩(C-6). */
-    chipStatus: (value: string): string => `상태: ${value}`,
+    /** 공정 조건 — 계약의 `processId`. 「조건 더보기」에 접힌다. */
+    process: '공정',
+    /** 「조건 더보기」에 접힌 칸에 걸린 조건의 칩(C-6). 상태는 표 위 조건 칩이 맡는다(C-17). */
     chipProductionOrder: (value: string): string => `P/O: ${value}`,
+    chipProcess: (value: string): string => `공정: ${value}`,
 
     /** 고르지 않은 상태. ⛔ 「선택 안 함」이 아니라 **무엇이 조회되는지**를 적는다. */
     all: '전체',
@@ -49,7 +47,6 @@ export const workOrderProgress = {
      * G-1·G-2 — 선택지를 세울 수 없으면 **지우지 않고 끄고 이유를 적는다.** 조용히 사라지면
      * 「원래 없는 기능」으로 읽히고, 값이 채워지는 날에도 아무도 눈치채지 못한다.
      */
-    statusUnavailable: '상태 목록을 불러오지 못해 상태로 거를 수 없습니다.',
     lookupFailed: '선택지를 받지 못했습니다. 새로고침해 보세요.',
 
     /**
@@ -82,6 +79,7 @@ export const workOrderProgress = {
       itemId: '품목',
       itemCode: '품목코드',
       itemName: '품목명',
+      process: '공정',
       orderQty: '지시',
       goodQty: '양품',
       defectQty: '불량',
@@ -104,18 +102,59 @@ export const workOrderProgress = {
     /** 줄을 눌러 상세를 연다 — 화면 읽기 도구에도 무엇을 여는지 들려야 한다. */
     select: (workOrderNo: string): string => `${workOrderNo} 상세 열기`,
 
-    /**
-     * ⛔ 지연은 **화면이 낸 값**이다. 서버 판정이 아니라는 것을 값 옆에 상시 적는다 —
-     * 서버가 내려 주기 시작하면 이 문구부터 지운다(omf-mes#265).
-     */
+    /** 지연은 서버 판정(`progress.delayStatusCode`)이다. 정상인 줄은 칸을 비운다. */
     delayed: '지연',
-    delayReference: '지연은 기준 시각으로 화면이 낸 참고값입니다.',
 
     /**
      * ⛔ 계획 종료가 없으면 **판정할 수 없다.** 빈칸으로 두면 「정상」으로 읽히므로 그 뜻을
      * 값 자리에 적는다(스펙 §5-3).
      */
     delayUnknown: '판정 불가',
+  },
+
+  /**
+   * 요약 — 조건에 맞는 W/O **전체** 기준이다(쪽과 무관, 계약의 `summary`).
+   * 값이 0 인 보류 · 스크랩 · 재작업 · 판정 불가 칸과 0 건인 상태 칩은 두지 않는다.
+   */
+  summary: {
+    label: '요약',
+    total: '전체 W/O',
+    countUnit: '건',
+    achievementRate: '달성률',
+    goodQty: '양품',
+    defectQty: '불량',
+    holdQty: '보류',
+    scrapQty: '스크랩',
+    reworkQty: '재작업',
+    delayed: '지연',
+    undeterminable: '판정 불가',
+    /** 상태 조건 칩 묶음의 이름. 칩은 「이름 건수」다. */
+    statusLabel: '상태',
+    statusAll: '전체',
+    statusChip: (label: string, count: number): string =>
+      `${label} ${count.toLocaleString('ko-KR')}`,
+  },
+
+  /** 보기 전환 — 같은 조회 결과를 표나 날짜 축 일정으로 본다. */
+  view: {
+    label: '보기',
+    table: '표',
+    timeline: '일정',
+  },
+
+  /** 일정 보기 — 계획 시작부터 종료까지를 막대로, 넘긴 만큼을 지연 구간으로 그린다. */
+  timeline: {
+    title: '일정',
+    schedule: '일정',
+    legendPlan: '계획 구간',
+    legendDone: '만든 비율',
+    legendWaiting: '배포 전',
+    legendLate: '지연 구간',
+    legendNow: '기준 시각',
+    /** 막대를 글로 읽는 말 — 화면 읽기 도구와 마우스를 올렸을 때 쓴다. */
+    planned: (start: string, end: string): string => `계획 ${start} ~ ${end}`,
+    plannedFrom: (start: string): string => `계획 시작 ${start}`,
+    noSchedule: '계획 일정 없음',
   },
 
   /** 쪽 이동. DS 에 전용 부품이 없어 조합으로 만든다. */
@@ -146,6 +185,14 @@ export const workOrderProgress = {
     workOrderNo: 'W/O 번호',
     statusCode: '상태',
     orderQty: '지시 수량',
+    goodQty: '양품',
+    defectQty: '불량',
+    holdQty: '보류',
+    scrapQty: '스크랩',
+    reworkQty: '재작업',
+    achievementRate: '달성률',
+    process: '공정',
+    productionOrder: 'P/O',
     plannedStartAt: '계획 시작',
     plannedEndAt: '계획 종료',
     completedAt: '완료',

@@ -36,6 +36,8 @@ export interface StubOptions {
   workOrders?: Record<string, unknown>[];
   total?: number;
   listStatus?: number;
+  /** 목록과 함께 줄 요약. 주지 않으면 요약 없이 답한다 — 요약 줄과 건수 없는 화면이다. */
+  summary?: Record<string, unknown>;
 }
 
 const stub = (options: StubOptions = {}): { urls: string[]; fetch: StubFetch } => {
@@ -55,6 +57,7 @@ const stub = (options: StubOptions = {}): { urls: string[]; fetch: StubFetch } =
       return jsonResponse({
         items,
         page: { page, size: 50, total: options.total ?? items.length },
+        ...(options.summary === undefined ? {} : { summary: options.summary }),
       });
     }
 

@@ -3,19 +3,14 @@ import type { WorkOrder } from './types';
 /**
  * 「지연」 판정 — **계획 종료가 지났는데 아직 안 끝난 지시**.
  *
- * ⚠ **이 판정은 원래 서버 몫이다.** 스펙 §4-A 와 공유계약 L-2 가 「달성률·지연 같은 파생은
- * 서버가 낸다」고 적었는데, **계약에 지연 필드가 없다**(전문 검색 0건 · 달성률은 들어가 있다).
- * 설계 저장소에 물어 두었다(omf-mes#265).
+ * ⭐ **서버 판정이 먼저다.** 실적 누계와 함께 받은 응답에는 `progress.delayStatusCode` 가 실려 오고
+ * (공유계약 L-2 — 달성률·지연 같은 파생은 서버가 낸다), 요약의 지연 건수도 같은 기준으로 센다.
  *
- * ⭐ **그래서 화면이 내되 「참고값」임을 밝힌다.** 요약 집계와 처리가 갈리는 이유는 이렇다 —
- * 요약은 **모집단(필터 전체)이 화면에 없어** 셀 수가 없지만, 지연은 **한 줄 안에서 완결된다.**
- * 그 줄의 계획 종료와 상태만 보면 되므로 페이지가 몇 건이든 **각 줄의 판정은 정확하다.**
+ * 화면 계산은 그 값이 없을 때만 쓴다. 지연은 **한 줄 안에서 완결돼** 그 줄의 계획 종료와 상태만 보면 된다.
  *
  * ⛔ **「지금」을 함수 안에서 읽지 않는다.** 화면이 이미 보이고 있는 **기준 시각**을 받는다
  * (L-5). 그래야 사용자가 「무엇을 기준으로 센 값인가」를 눈으로 보고, 감지기도 실행 시각에
  * 흔들리지 않는다.
- *
- * 서버가 필드를 주기 시작하면 **이 함수 하나만 갈아 끼우면 된다.**
  */
 
 /**
@@ -31,10 +26,27 @@ export type DelayState = 'delayed' | 'onTime' | 'unknown';
 const isFinished = (workOrder: WorkOrder): boolean =>
   workOrder.completedAt !== undefined || workOrder.closedAt !== undefined;
 
+const SERVER_DELAY: Record<string, DelayState> = {
+  ON_TIME: 'onTime',
+  DELAYED: 'delayed',
+  UNDETERMINABLE: 'unknown',
+};
+
+/** 서버가 낸 판정만. 실적 누계 없이 받았으면 `null` — 기준 시각 없이는 화면이 대신 판정하지 않는다. */
+export const servedDelay = (workOrder: WorkOrder): DelayState | null =>
+  SERVER_DELAY[workOrder.progress?.delayStatusCode ?? ''] ?? null;
+
 /**
  * @param basisAt 화면이 보이고 있는 기준 시각. 조회한 순간이다.
  */
 export const resolveDelay = (workOrder: WorkOrder, basisAt: Date): DelayState => {
+  /*
+   * ⭐ 서버가 판정을 주면 그대로 쓴다(`progress.delayStatusCode`) — 요약의 지연 건수와 같은 기준이라
+   * 줄과 요약이 어긋나지 않는다. 아래 계산은 실적 누계 없이 받은 응답을 위한 것이다.
+   */
+  const served = servedDelay(workOrder);
+  if (served !== null) return served;
+
   const plannedEnd = workOrder.plannedEndAt;
 
   /* ⛔ 계획 종료가 없으면 「아님」이 아니라 「모름」이다. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveDelay } from './delay';
+import { resolveDelay, servedDelay } from './delay';
 import type { WorkOrder } from './types';
 
 const BASIS = new Date('2026-08-05T09:12:00+09:00');
@@ -101,5 +101,42 @@ describe('resolveDelay', () => {
 
     expect(resolveDelay(target, new Date('2026-08-05T03:00:00+00:00'))).toBe('onTime');
     expect(resolveDelay(target, new Date('2026-08-05T04:00:00+00:00'))).toBe('delayed');
+  });
+});
+
+/*
+ * ⭐ 서버가 판정을 주면 그것이 먼저다 — 요약의 지연 건수와 같은 기준이라 줄과 요약이 어긋나지 않는다.
+ */
+describe('서버 판정', () => {
+  const progress = (delayStatusCode: 'ON_TIME' | 'DELAYED' | 'UNDETERMINABLE') => ({
+    goodQty: 0,
+    achievementRate: 0,
+    completionJudgmentCode: 'UNDER' as const,
+    delayStatusCode,
+  });
+
+  it.each([
+    ['ON_TIME', 'onTime'],
+    ['DELAYED', 'delayed'],
+    ['UNDETERMINABLE', 'unknown'],
+  ] as const)('%s 를 그대로 옮긴다', (code, expected) => {
+    expect(servedDelay(workOrder({ progress: progress(code) }))).toBe(expected);
+  });
+
+  it('⛔ 화면 계산과 달라도 서버 판정을 쓴다', () => {
+    /* 계획 종료가 지났지만 서버는 정상이라 했다 — 화면이 뒤집지 않는다. */
+    const served = workOrder({
+      plannedEndAt: '2026-08-04T18:00:00+09:00',
+      progress: progress('ON_TIME'),
+    });
+
+    expect(resolveDelay(served, BASIS)).toBe('onTime');
+  });
+
+  it('실적 누계 없이 받았으면 판정이 없다 — 그때만 화면이 계산한다', () => {
+    const bare = workOrder({ plannedEndAt: '2026-08-04T18:00:00+09:00' });
+
+    expect(servedDelay(bare)).toBeNull();
+    expect(resolveDelay(bare, BASIS)).toBe('delayed');
   });
 });

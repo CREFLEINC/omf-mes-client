@@ -16,15 +16,25 @@ const row = (overrides: Partial<WorkOrderRow> = {}): WorkOrderRow => ({
   workOrderId: 7001,
   workOrderNo: 'SYN-WO-0007',
   itemIdText: '5001',
+  processText: '합성 공정',
   orderQtyText: '3,000',
   goodQtyText: '2,850',
   defectQtyText: '10',
   holdQtyText: '5',
   scrapQtyText: '3',
   reworkQtyText: '2',
+  hasHoldQty: true,
+  hasScrapQty: true,
+  hasReworkQty: true,
   achievementRateText: '95%',
+  achievementPercent: 95,
   statusCode: 'SYN_RUN',
+  plannedStartAt: '2026-08-04T08:00:00+07:00',
+  plannedEndAt: '2026-08-04T18:00:00+07:00',
+  plannedStartAtText: '2026-08-04 08:00',
   plannedEndAtText: '2026-08-04 18:00',
+  isReleased: true,
+  isFinished: false,
   delay: 'delayed' as DelayState,
   ...overrides,
 });
@@ -57,18 +67,75 @@ const renderTable = (overrides: Partial<WorkOrderTableProps> = {}) => {
 };
 
 describe('WorkOrderTable', () => {
-  it('목록을 제목이 있는 구획으로 구분한다', () => {
+  /* 표 하나뿐인 구획이라 「목록」 제목은 보태는 것이 없다 — 이름은 접근 이름으로만 둔다. */
+  it('목록을 이름 있는 구획으로 두되 제목을 따로 세우지 않는다', () => {
     const { region } = renderTable();
 
-    expect(within(region).getByRole('heading', { level: 2, name: t.title })).toBeInTheDocument();
+    expect(within(region).queryByRole('heading', { name: t.title })).not.toBeInTheDocument();
+    expect(within(region).getByRole('table', { name: t.title })).toBeInTheDocument();
   });
 
-  it('한 줄에 수량 다섯을 그대로 보인다 — 셋으로 접지 않는다', () => {
+  it('값이 있으면 수량 다섯을 그대로 보인다 — 셋으로 접지 않는다', () => {
     const { region } = renderTable();
 
     for (const value of ['2,850', '10', '5', '3', '2']) {
       expect(within(region).getByText(value)).toBeInTheDocument();
     }
+  });
+
+  describe('보류 · 스크랩 · 재작업 열', () => {
+    const quiet = { hasHoldQty: false, hasScrapQty: false, hasReworkQty: false };
+
+    /* 실적 없는 지시만 있는 쪽에서 0 이 다섯 번 되풀이되면 표가 읽히지 않는다. */
+    it('이 쪽에 값이 하나도 없으면 열을 열지 않는다 — 양품 · 불량은 늘 둔다', () => {
+      const { region } = renderTable({ rows: [row(quiet)] });
+
+      for (const name of [t.columns.holdQty, t.columns.scrapQty, t.columns.reworkQty]) {
+        expect(within(region).queryByRole('columnheader', { name })).not.toBeInTheDocument();
+      }
+      expect(within(region).getByRole('columnheader', { name: t.columns.goodQty })).toBeVisible();
+      expect(within(region).getByRole('columnheader', { name: t.columns.defectQty })).toBeVisible();
+    });
+
+    it('한 줄에라도 값이 있으면 그 열만 연다', () => {
+      const { region } = renderTable({
+        rows: [
+          row({ ...quiet, workOrderId: 1 }),
+          row({ ...quiet, workOrderId: 2, hasHoldQty: true }),
+        ],
+      });
+
+      expect(within(region).getByRole('columnheader', { name: t.columns.holdQty })).toBeVisible();
+      expect(
+        within(region).queryByRole('columnheader', { name: t.columns.scrapQty }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it('0 은 흐리게 적는다 — 값이 있는 칸이 먼저 보인다', () => {
+    const { region } = renderTable({ rows: [row({ goodQtyText: '0', defectQtyText: '10' })] });
+
+    expect(within(region).getByText('0')).toHaveClass('work-order-progress-zero');
+    expect(within(region).getByText('10')).not.toHaveClass('work-order-progress-zero');
+  });
+
+  describe('달성률', () => {
+    /* ⛔ 숫자는 서버가 준 값을 그대로 — 막대 길이에서 다시 만들지 않는다(L-2). */
+    it('막대와 서버가 준 숫자를 한 칸에 보인다', () => {
+      const { region } = renderTable();
+      const bar = within(region).getByRole('progressbar', { name: t.columns.achievementRate });
+
+      expect(bar).toHaveAttribute('aria-valuenow', '95');
+      expect(within(region).getByText('95%')).toBeInTheDocument();
+    });
+
+    it('⛔ 받지 못한 달성률에는 막대를 그리지 않는다 — 0% 로 읽히지 않게', () => {
+      const { region } = renderTable({
+        rows: [row({ achievementPercent: null, achievementRateText: t.blank })],
+      });
+
+      expect(within(region).queryByRole('progressbar')).not.toBeInTheDocument();
+    });
   });
 
   it('⛔ 식별자를 그대로 보이지 않고 이름으로 바꾼다', () => {
@@ -86,13 +153,24 @@ describe('WorkOrderTable', () => {
   });
 
   describe('지연', () => {
-    it.each([
-      ['지연', 'delayed' as DelayState, t.delayed],
-      ['정상', 'onTime' as DelayState, t.blank],
-    ])('%s 을 표식으로 보인다', (_name, delay, expected) => {
-      const { region } = renderTable({ rows: [row({ delay })] });
+    it('지연을 칩으로 보이고 넘긴 계획 종료를 같은 색으로 짚는다', () => {
+      const { region } = renderTable({ rows: [row({ delay: 'delayed' })] });
+      const line = within(region).getByRole('row', { name: /SYN-WO-0007/ });
 
-      expect(within(region).getByRole('row', { name: /SYN-WO-0007/ })).toHaveTextContent(expected);
+      expect(within(line).getByText(t.delayed)).toBeInTheDocument();
+      expect(within(line).getByText('2026-08-04 18:00')).toHaveClass('work-order-progress-late');
+    });
+
+    /* 정상은 표시하지 않고 예외만 보인다 — 「—」는 값이 빠진 것으로 읽힌다. */
+    it('정상인 줄은 지연 칸을 비운다', () => {
+      const { region } = renderTable({ rows: [row({ delay: 'onTime' })] });
+      const line = within(region).getByRole('row', { name: /SYN-WO-0007/ });
+
+      expect(within(line).queryByText(t.delayed)).not.toBeInTheDocument();
+      expect(within(line).queryByText(t.delayUnknown)).not.toBeInTheDocument();
+      expect(within(line).getByText('2026-08-04 18:00')).not.toHaveClass(
+        'work-order-progress-late',
+      );
     });
 
     /*
@@ -105,13 +183,6 @@ describe('WorkOrderTable', () => {
 
       expect(line).toHaveTextContent(t.delayUnknown);
       expect(t.delayUnknown).not.toBe(t.blank);
-    });
-
-    /* ⛔ 서버 판정이 아니라는 사실은 목록 제목 옆 ⓘ 로 둔다. 서버가 주기 시작하면 이 문구부터 지운다. */
-    it('⛔ 화면이 낸 참고값임을 목록 ⓘ 의 설명으로 밝힌다', () => {
-      const { region } = renderTable();
-
-      expect(within(region).getByRole('button', { name: t.delayReference })).toBeInTheDocument();
     });
   });
 
@@ -191,12 +262,12 @@ describe('WorkOrderTable', () => {
     });
   });
 
-  /* ⚠ 응답이 식별자만 주어 이름을 얻으려면 줄마다 서버를 다시 불러야 한다. */
-  it('⛔ P/O·공정 열을 만들지 않는다', () => {
+  /* 공정명은 응답에 실려 온다 — 줄마다 다시 묻지 않는다. P/O 는 상세 창에 둔다. */
+  it('공정 열을 둔다', () => {
     const { region } = renderTable();
 
-    expect(within(region).queryByRole('columnheader', { name: 'P/O' })).not.toBeInTheDocument();
-    expect(within(region).queryByRole('columnheader', { name: '공정' })).not.toBeInTheDocument();
+    expect(within(region).getByRole('columnheader', { name: t.columns.process })).toBeVisible();
+    expect(within(region).getByRole('cell', { name: '합성 공정' })).toBeInTheDocument();
   });
 });
 

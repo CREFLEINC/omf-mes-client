@@ -90,6 +90,82 @@ describe('DetailDialog', () => {
     expect(within(dialog()).queryByText('5001')).not.toBeInTheDocument();
   });
 
+  describe('실적', () => {
+    const progress = {
+      goodQty: 1950,
+      defectQty: 6,
+      holdQty: 4,
+      scrapQty: 0,
+      achievementRate: 0.65,
+      completionJudgmentCode: 'UNDER' as const,
+      delayStatusCode: 'DELAYED' as const,
+    };
+
+    /* 목록의 그 줄과 같은 값이다 — 창을 열고도 양품 · 불량 · 달성률을 볼 수 있어야 한다. */
+    it('양품 · 불량 · 달성률을 보인다', () => {
+      renderDialog({ workOrder: workOrder({ progress }) });
+      const panel = dialog();
+
+      expect(within(panel).getByText('1,950')).toBeInTheDocument();
+      expect(within(panel).getByText('6')).toBeInTheDocument();
+      expect(within(panel).getByText('65%')).toBeInTheDocument();
+      expect(within(panel).getByRole('progressbar', { name: t.achievementRate })).toHaveAttribute(
+        'aria-valuenow',
+        '65',
+      );
+    });
+
+    it('보류 · 스크랩 · 재작업은 값이 있을 때만 연다', () => {
+      renderDialog({ workOrder: workOrder({ progress }) });
+      const panel = dialog();
+
+      expect(within(panel).getByText(t.holdQty)).toBeInTheDocument();
+      expect(within(panel).queryByText(t.scrapQty)).not.toBeInTheDocument();
+      expect(within(panel).queryByText(t.reworkQty)).not.toBeInTheDocument();
+    });
+
+    it('지연이면 상태 칩 옆에 지연 칩을 둔다', () => {
+      renderDialog({ workOrder: workOrder({ progress }) });
+
+      expect(within(dialog()).getByText(messages.workOrderProgress.list.delayed)).toBeVisible();
+    });
+
+    it('정상이면 지연 칩을 두지 않는다', () => {
+      renderDialog({
+        workOrder: workOrder({ progress: { ...progress, delayStatusCode: 'ON_TIME' } }),
+      });
+
+      expect(
+        within(dialog()).queryByText(messages.workOrderProgress.list.delayed),
+      ).not.toBeInTheDocument();
+    });
+
+    /* ⛔ 실적 누계를 못 받은 것을 「0개 만듦」으로 그리지 않는다. */
+    it('⛔ 실적 누계를 받지 못했으면 실적 줄을 그리지 않는다', () => {
+      renderDialog();
+      const panel = dialog();
+
+      expect(within(panel).queryByText(t.achievementRate)).not.toBeInTheDocument();
+      expect(within(panel).queryByRole('progressbar')).not.toBeInTheDocument();
+    });
+  });
+
+  it('공정과 P/O 를 보인다', () => {
+    renderDialog({
+      workOrder: workOrder({ processName: '합성 공정', productionOrderNo: 'SYN-PO-0031' }),
+    });
+
+    expect(within(dialog()).getByText('합성 공정')).toBeInTheDocument();
+    expect(within(dialog()).getByText('SYN-PO-0031')).toBeInTheDocument();
+  });
+
+  it('공정과 P/O 는 이름이 실려 오지 않았으면 칸째 없다', () => {
+    renderDialog();
+
+    expect(within(dialog()).queryByText(t.process)).not.toBeInTheDocument();
+    expect(within(dialog()).queryByText(t.productionOrder)).not.toBeInTheDocument();
+  });
+
   describe('없는 값', () => {
     it.each([
       ['계획 시작', t.plannedStartAt],

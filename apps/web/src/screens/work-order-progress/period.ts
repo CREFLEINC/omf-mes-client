@@ -160,6 +160,22 @@ export const resolvePeriod = (input: PeriodInput, offsetMinutes: number): Period
 };
 
 /**
+ * 기간에 든 날들(`YYYY-MM-DD`, 양 끝 포함) — 일정 보기의 날짜 축이다. 막힌 기간이면 빈 배열.
+ *
+ * ⛔ 여기서 시간대를 따지지 않는다 — 날 이름만 센다. 그 날이 어느 순간에 시작하는지는 축을 그리는 쪽이
+ * 공장 시각으로 정한다(`timeline-model.ts`).
+ */
+export const periodDays = (input: PeriodInput): string[] => {
+  const from = parseCalendarDate(input.from);
+  const to = parseCalendarDate(input.to);
+  if (from === null || to === null || input.to < input.from) return [];
+
+  return Array.from({ length: spanInDays(from, to) }, (_unused, index) =>
+    formatDate(new Date(from.year, from.month - 1, from.day + index)),
+  );
+};
+
+/**
  * 조회를 막는 사유만 필요할 때. 없으면 `null`.
  *
  * 오프셋은 판정에 쓰이지 않으므로 아무 값이나 넣어도 결과가 같다 — 판정과 변환을 한 함수에 둔

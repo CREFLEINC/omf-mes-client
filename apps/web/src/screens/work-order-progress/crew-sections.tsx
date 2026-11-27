@@ -149,26 +149,41 @@ export const CrewSections = ({ crew, isLoading, isError }: CrewSectionsProps) =>
         )}
       </section>
 
+      {/* 내역이 없으면 머리만 있는 빈 표 대신 한 줄로 적는다 — 작업 세션과 같다. 빈 표 둘이 창 절반을 차지했다. */}
       <section className="work-order-progress-crew" aria-label={t.workerResults.heading}>
-        <InfoTable
-          title={t.workerResults.heading}
-          storageKey="omf-mes:work-order-progress:columns:crew-results"
-          columns={resultColumns}
-          rows={crew.workerResults}
-          getRowId={(row) => String(row.workerId)}
-          emptyTitle={t.workerResults.empty}
-        />
+        {crew.workerResults.length === 0 ? (
+          <>
+            <InfoGroupTitle>{t.workerResults.heading}</InfoGroupTitle>
+            <p className="field-note">{t.workerResults.empty}</p>
+          </>
+        ) : (
+          <InfoTable
+            title={t.workerResults.heading}
+            storageKey="omf-mes:work-order-progress:columns:crew-results"
+            columns={resultColumns}
+            rows={crew.workerResults}
+            getRowId={(row) => String(row.workerId)}
+            emptyTitle={t.workerResults.empty}
+          />
+        )}
       </section>
 
       <section className="work-order-progress-crew" aria-label={t.defectTypes.heading}>
-        <InfoTable
-          title={t.defectTypes.heading}
-          storageKey="omf-mes:work-order-progress:columns:crew-defects"
-          columns={defectTypeColumns}
-          rows={crew.defectTypes}
-          getRowId={(row) => (row.defectCodeId === null ? 'untyped' : String(row.defectCodeId))}
-          emptyTitle={t.defectTypes.empty}
-        />
+        {crew.defectTypes.length === 0 ? (
+          <>
+            <InfoGroupTitle>{t.defectTypes.heading}</InfoGroupTitle>
+            <p className="field-note">{t.defectTypes.empty}</p>
+          </>
+        ) : (
+          <InfoTable
+            title={t.defectTypes.heading}
+            storageKey="omf-mes:work-order-progress:columns:crew-defects"
+            columns={defectTypeColumns}
+            rows={crew.defectTypes}
+            getRowId={(row) => (row.defectCodeId === null ? 'untyped' : String(row.defectCodeId))}
+            emptyTitle={t.defectTypes.empty}
+          />
+        )}
       </section>
     </>
   );

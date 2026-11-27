@@ -5262,54 +5262,55 @@ dialog.routing-history-dialog {
 }
 
 /*
- * 칸 수를 비워 둔 칸까지 세어(auto-fill) 정한다 — 「조건 더보기」에 접힌 칸(상태 · P/O)이 같은 칸 폭으로
- * 조건 줄 바로 아래에 줄을 맞춰 놓인다(C-6).
+ * 조회 조건 한 줄(C-6) — 칸은 왼쪽부터, [조회] [초기화] [조건 더보기]는 줄 오른쪽 끝. 「조건 더보기」로 펼친 칸 · 걸린 조건 칩 ·
+ * 막힌 사유는 그 아래 줄을 통째로 쓴다.
  */
 .filter-bar.work-order-progress-filter {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
-  gap: var(--space-4);
+  align-items: flex-end;
   margin-bottom: 0;
 }
 
+.work-order-progress-filter > .date-range-fields,
+.work-order-progress-filter .date-range-fields > .field-cell {
+  flex: 0 0 auto;
+}
+
+.work-order-progress-filter > .filter-actions {
+  flex: 0 0 auto;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
 .work-order-progress-filter-more,
-.work-order-progress-filter > .filter-more-chips {
-  grid-column: 1 / -1;
-  margin: 0;
-}
-
-.work-order-progress-filter > *,
-.work-order-progress-filter .field-cell {
-  min-width: 0;
-}
-
-.work-order-progress-filter .field-cell {
-  align-items: stretch;
-}
-
-.work-order-progress-filter-footer {
-  display: flex;
-  grid-column: 1 / -1;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.work-order-progress-filter-footer > p {
-  flex: 1 1 24rem;
+.work-order-progress-filter > .filter-more-chips,
+.work-order-progress-filter-note {
+  flex-basis: 100%;
   max-width: none;
   margin: 0;
 }
 
-.work-order-progress-filter-buttons {
-  justify-content: flex-end;
-  margin-left: auto;
+.filter-bar.work-order-progress-filter-more-row {
+  margin-bottom: 0;
 }
 
-.work-order-progress-title {
+/* 요약 줄 — 정보 표시 상자(InfoFacts) 한 줄. 구획 사이 간격은 화면 격자가 준다. */
+.work-order-progress-summary > .info-facts {
+  margin: 0;
+}
+
+/* 상태 조건 칩(왼쪽)과 보기 전환(오른쪽 끝) 한 줄. */
+.work-order-progress-list-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-1);
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.work-order-progress-status-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .work-order-progress-table {
@@ -5319,10 +5320,11 @@ dialog.routing-history-dialog {
 }
 
 .work-order-progress-table table {
-  min-width: 84rem;
+  min-width: 72rem;
 }
 
-.work-order-progress-table caption {
+.work-order-progress-table caption,
+.work-order-progress-tl caption {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -5334,20 +5336,258 @@ dialog.routing-history-dialog {
   border: 0;
 }
 
-@media (max-width: 720px) {
-  .work-order-progress-filter-footer {
-    align-items: stretch;
-    flex-direction: column;
-  }
+/* 0 은 흐리게 — 값이 있는 칸이 먼저 보인다. */
+.work-order-progress-zero {
+  color: var(--on-surface-muted);
+}
 
-  .work-order-progress-filter-footer > p {
-    flex: initial;
-  }
+/* 넘긴 계획 종료 · 지연 건수 — 이 화면에서 빨강은 지연 하나를 가리킨다(C-19). */
+.work-order-progress-late {
+  color: var(--semantic-error-text);
+}
 
-  .work-order-progress-filter-buttons {
-    align-self: flex-end;
-    margin-left: 0;
-  }
+/* 달성률 한 칸 — 막대와 숫자를 한 줄에(C-16). 숫자 자리는 고정해 막대 끝이 줄마다 맞는다. */
+.work-order-progress-rate {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  vertical-align: middle;
+}
+
+.work-order-progress-rate-bar {
+  flex: 0 0 auto;
+  width: 4.5rem;
+}
+
+.work-order-progress-rate-text {
+  min-width: 3rem;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+/* 요약 줄의 달성률은 막대를 넓게 — 조건 전체의 값이라 표의 한 줄보다 크게 읽힌다. */
+.work-order-progress-summary .work-order-progress-rate-bar {
+  width: 12rem;
+}
+
+/* 일정 보기 — 범례. */
+.work-order-progress-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+.work-order-progress-legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.work-order-progress-legend-mark {
+  display: inline-block;
+  width: var(--space-6);
+  height: var(--space-3);
+  border-radius: var(--radius-sm);
+}
+
+.work-order-progress-legend-mark.is-plan,
+.work-order-progress-tl-bar {
+  border: 1px solid var(--semantic-info);
+  background: var(--semantic-info-container);
+}
+
+.work-order-progress-legend-mark.is-done,
+.work-order-progress-tl-fill {
+  background: var(--semantic-info);
+}
+
+.work-order-progress-legend-mark.is-waiting,
+.work-order-progress-tl-bar.is-waiting {
+  border: 1px dashed var(--outline);
+  background: var(--surface);
+}
+
+.work-order-progress-legend-mark.is-late,
+.work-order-progress-tl-late {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--semantic-error) 0 3px,
+    var(--semantic-error-container) 3px 6px
+  );
+}
+
+.work-order-progress-legend-mark.is-now {
+  width: 2px;
+  height: var(--space-4);
+  border-radius: 0;
+  background: var(--on-surface);
+}
+
+/*
+ * 일정 보기 — 표. 왼쪽 다섯 칸(W/O 번호 ~ 달성률)은 폭이 정해져 있고 옆으로 굴려도 붙어 남는다. 마지막 칸이 날짜 축이다.
+ * 날 하나의 폭에는 아랫값(--work-order-progress-day)이 있어, 기간이 길면 표가 상자보다 넓어지고 상자 안에서 구른다.
+ * 날 수(--work-order-progress-days)는 부품이 표에 적는다.
+ */
+.work-order-progress-tl-scroll {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.work-order-progress-tl {
+  --work-order-progress-no: 11rem;
+  --work-order-progress-name: 13rem;
+  --work-order-progress-process: 4.5rem;
+  --work-order-progress-status: 5rem;
+  --work-order-progress-rate: 4.5rem;
+  --work-order-progress-day: 3rem;
+  --work-order-progress-info: calc(
+    var(--work-order-progress-no) + var(--work-order-progress-name) +
+      var(--work-order-progress-process) + var(--work-order-progress-status) +
+      var(--work-order-progress-rate)
+  );
+
+  width: 100%;
+  min-width: calc(
+    var(--work-order-progress-info) + var(--work-order-progress-days, 1) *
+      var(--work-order-progress-day)
+  );
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+.work-order-progress-tl th,
+.work-order-progress-tl td {
+  position: sticky;
+  z-index: 1;
+  height: var(--control-height-md);
+  padding: 0 var(--space-2);
+  overflow: hidden;
+  border-bottom: 1px solid var(--outline-variant);
+  background: var(--surface);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.work-order-progress-tl th {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.work-order-progress-tl tbody tr:last-child > td {
+  border-bottom: 0;
+}
+
+.work-order-progress-tl tr > :nth-child(1) {
+  left: 0;
+  width: var(--work-order-progress-no);
+}
+
+.work-order-progress-tl tr > :nth-child(2) {
+  left: var(--work-order-progress-no);
+  width: var(--work-order-progress-name);
+}
+
+.work-order-progress-tl tr > :nth-child(3) {
+  left: calc(var(--work-order-progress-no) + var(--work-order-progress-name));
+  width: var(--work-order-progress-process);
+}
+
+.work-order-progress-tl tr > :nth-child(4) {
+  left: calc(
+    var(--work-order-progress-no) + var(--work-order-progress-name) +
+      var(--work-order-progress-process)
+  );
+  width: var(--work-order-progress-status);
+}
+
+.work-order-progress-tl tr > :nth-child(5) {
+  left: calc(var(--work-order-progress-info) - var(--work-order-progress-rate));
+  width: var(--work-order-progress-rate);
+  border-right: 1px solid var(--outline-variant);
+}
+
+.work-order-progress-tl-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 날짜 축 칸 — 붙어 남지 않고 구른다. 날 경계마다 옅은 세로선. */
+.work-order-progress-tl tr > .work-order-progress-tl-track {
+  position: relative;
+  z-index: 0;
+  padding: 0;
+  overflow: hidden;
+  background-image: linear-gradient(to right, var(--outline-variant) 1px, transparent 1px);
+  background-size: calc(100% / var(--work-order-progress-days, 1)) 100%;
+}
+
+.work-order-progress-tl-days {
+  display: grid;
+  grid-template-columns: repeat(var(--work-order-progress-days, 1), minmax(0, 1fr));
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+.work-order-progress-tl-bar,
+.work-order-progress-tl-late {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.work-order-progress-tl-bar {
+  box-sizing: border-box;
+  height: var(--space-4);
+  min-width: var(--space-2);
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+}
+
+.work-order-progress-tl-fill {
+  display: block;
+  height: 100%;
+}
+
+/* 끝난 지시는 중립 색 — 지금 볼 것은 진행 중인 막대다. */
+.work-order-progress-tl-bar.is-finished {
+  border-color: var(--outline);
+  background: var(--surface-container-high);
+}
+
+.work-order-progress-tl-bar.is-finished > .work-order-progress-tl-fill {
+  background: var(--on-surface-variant);
+}
+
+.work-order-progress-tl-late {
+  height: var(--space-3);
+}
+
+/* 기준 시각 — 줄마다 같은 자리에 그어 한 줄로 이어 보인다. */
+.work-order-progress-tl-now {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--on-surface);
 }
 
 /* Lot Status 현황·변경이력 — 두 조회 모드의 조건과 결과를 같은 카드 흐름으로 맞춘다. */
@@ -24068,6 +24308,11 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 .count-chip-success {
   background: var(--semantic-success-container);
   color: var(--on-semantic-success-container);
+}
+
+.count-chip-info {
+  background: var(--semantic-info-container);
+  color: var(--on-semantic-info-container);
 }
 
 .count-chip.is-selected {

@@ -179,3 +179,33 @@ export const useProductionLineLookup = (): NameLookup => {
 
   return toLookup(query.data, query.isPending, query.isError);
 };
+
+/**
+ * 공정 이름표. 필터의 선택지로 쓴다 — 값은 계약의 `processId` 로 그대로 나간다.
+ *
+ * 지난 W/O 를 찾는 조건이라 쓰지 않게 된 공정까지 받는다.
+ */
+export const useProcessLookup = (): NameLookup => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: ['work-order-progress', 'processes'] as const,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/processes', {
+          params: { query: { includeInactive: true, size: LOOKUP_SIZE } },
+        }),
+      );
+
+      return {
+        entries: data.items.map((process) => ({
+          value: String(process.processId),
+          label: process.processName,
+        })),
+        total: data.page.total,
+      };
+    },
+  });
+
+  return toLookup(query.data, query.isPending, query.isError);
+};

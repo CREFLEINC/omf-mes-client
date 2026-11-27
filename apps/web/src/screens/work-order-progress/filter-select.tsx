@@ -20,6 +20,8 @@ export interface FilterSelectProps {
   unavailableReason: string | null;
   /** 끄지는 않지만 함께 알릴 말. 잘림 안내가 여기 온다. */
   note: string | null;
+  /** 칸 폭을 주는 배치 클래스(`filter-field-md` 등 · C-19). */
+  className?: string;
   onChange: (value: string) => void;
 }
 
@@ -38,6 +40,7 @@ export const FilterSelect = ({
   value,
   unavailableReason,
   note,
+  className,
   onChange,
 }: FilterSelectProps) => {
   const id = useId();
@@ -46,7 +49,7 @@ export const FilterSelect = ({
   const shownNote = unavailableReason ?? note;
 
   return (
-    <div className="field-cell">
+    <div className={className === undefined ? 'field-cell' : `field-cell ${className}`}>
       <label className="field-label" htmlFor={id}>
         {label}
       </label>

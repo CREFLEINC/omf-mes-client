@@ -166,3 +166,45 @@ describe('toWorkOrderRow', () => {
     });
   });
 });
+
+describe('표와 일정 보기가 함께 쓰는 값', () => {
+  it('공정은 공정 마스터의 이름이 먼저고, 없으면 Routing 공정 이름이다', () => {
+    expect(rowOf({ processName: '사출', routingOperationName: 'OP-10' }).processText).toBe('사출');
+    expect(rowOf({ routingOperationName: 'OP-10' }).processText).toBe('OP-10');
+    expect(rowOf().processText).toBe(t.blank);
+  });
+
+  /* 보류 · 스크랩 · 재작업 열은 값이 있을 때만 연다 — 「없음」도 「0」도 열 까닭이 못 된다. */
+  it('값이 든 수량만 가린다 — 없거나 0 이면 아니다', () => {
+    const row = rowOf({ progress: progress({ holdQty: 4, scrapQty: 0 }) });
+
+    expect(row).toMatchObject({ hasHoldQty: true, hasScrapQty: false, hasReworkQty: false });
+  });
+
+  it('막대로 그릴 달성률은 0~100 으로 묶는다 — 넘친 실적도 막대는 100 에서 멈춘다', () => {
+    expect(rowOf({ progress: progress({ achievementRate: 0.65 }) }).achievementPercent).toBe(65);
+    expect(rowOf({ progress: progress({ achievementRate: 1.2 }) }).achievementPercent).toBe(100);
+  });
+
+  it('⛔ 받지 못한 달성률은 0 이 아니라 없음이다', () => {
+    expect(rowOf().achievementPercent).toBeNull();
+  });
+
+  it('계획 시작 · 종료의 원문과 배포 · 종료 여부를 옮긴다', () => {
+    const row = rowOf({
+      plannedStartAt: '2026-08-04T01:00:00.000Z',
+      plannedEndAt: '2026-08-04T11:00:00.000Z',
+      releasedAt: '2026-08-03T23:00:00.000Z',
+    });
+
+    expect(row).toMatchObject({
+      plannedStartAt: '2026-08-04T01:00:00.000Z',
+      plannedStartAtText: '2026-08-04 08:00',
+      plannedEndAtText: '2026-08-04 18:00',
+      isReleased: true,
+      isFinished: false,
+    });
+    expect(rowOf({ completedAt: '2026-08-04T11:00:00.000Z' }).isFinished).toBe(true);
+    expect(rowOf().isReleased).toBe(false);
+  });
+});

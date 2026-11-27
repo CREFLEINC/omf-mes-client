@@ -11,14 +11,16 @@ import {
   type SessionView,
   type WorkerResultRow,
 } from './crew-model';
-import type { ProgressListQuery } from './filters';
-import type { WorkOrder, WorkOrderListResponse } from './types';
+import type { ProgressListQuery, StatusCountQuery } from './filters';
+import type { WorkOrder, WorkOrderListResponse, WorkOrderListSummary } from './types';
 
 /** 이 화면이 소유하는 캐시 키. 다른 화면 슬라이스의 키 모듈을 참조하지 않는다. */
 export const workOrderProgressKeys = {
   all: ['work-order-progress'] as const,
   list: (query: ProgressListQuery | null) =>
     ['work-order-progress', 'list', query === null ? null : { ...query }] as const,
+  statusCounts: (query: StatusCountQuery | null) =>
+    ['work-order-progress', 'status-counts', query === null ? null : { ...query }] as const,
   detail: (workOrderId: number | null) => ['work-order-progress', 'detail', workOrderId] as const,
   crew: (workOrderId: number | null) => ['work-order-progress', 'crew', workOrderId] as const,
 };
@@ -50,6 +52,32 @@ export const useWorkOrderProgressList = (
 };
 
 /**
+ * 상태 칩의 건수 — 걸린 조건에서 상태만 뺀 요약이다. **상태를 골랐을 때만** 묻는다(`query` 가 `null` 이 아닐 때).
+ *
+ * 갱신 단추가 목록과 함께 다시 받게 같은 뿌리 키(`workOrderProgressKeys.all`) 아래에 둔다.
+ */
+export const useWorkOrderStatusCounts = (
+  query: StatusCountQuery | null,
+): UseQueryResult<WorkOrderListSummary | null> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workOrderProgressKeys.statusCounts(query),
+    enabled: query !== null,
+    queryFn: async () => {
+      if (query === null)
+        throw new Error('상태를 고르지 않았으면 상태별 건수를 따로 묻지 않습니다.');
+
+      const data = await runRequest(() =>
+        client.GET('/production/work-orders', { params: { query } }),
+      );
+
+      return data.summary ?? null;
+    },
+  });
+};
+
+/**
  * 고른 W/O 의 상세. 목록의 줄을 눌렀을 때 연다.
  *
  * 목록 응답에 이미 대부분이 실려 오지만 상세를 따로 부르는 이유는, **목록은 페이지가 바뀌면
@@ -66,7 +94,8 @@ export const useWorkOrderDetail = (workOrderId: number | null): UseQueryResult<W
 
       return runRequest(() =>
         client.GET('/production/work-orders/{workOrderId}', {
-          params: { path: { workOrderId } },
+          /* 실적 누계를 함께 받는다 — 상세 창의 양품 · 불량 · 달성률이 여기서 온다. */
+          params: { path: { workOrderId }, query: { withProgress: true } },
         }),
       );
     },
