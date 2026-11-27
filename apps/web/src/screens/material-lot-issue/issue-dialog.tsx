@@ -36,6 +36,9 @@ export interface IssueDialogProps {
   onIssued: (created: MaterialLotBatchCreated, group: Group) => void;
 }
 
+/** 발행 미리보기에 줄로 보일 LOT 수 — 넘으면 「외 N건」. */
+const PREVIEW_ROWS = 5;
+
 const SOURCE_STATUS: Record<BatchSource, 'success' | 'info' | 'idle'> = {
   item: 'success',
   itemStorage: 'info',
@@ -150,10 +153,15 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
         )
       : null;
 
+  /*
+   * 입력 전에는 LOT 수 칸 아래 보조 글 한 줄, 다 넣으면 같은 자리에 「발행 미리보기」와 발행 예정 LOT 목록
+   * (사용자 지시 2026-11-27). 목록은 앞 `PREVIEW_ROWS` 건만 — 번호 끝 일련번호는 서버가 정하므로 짓지 않는다.
+   */
   const summary =
     check?.ok === true && check.lotQty !== null && check.lotCount !== null && group !== null ? (
       <>
-        <strong>
+        <strong className="mlot-issue-preview-title">{td.previewTitle}</strong>
+        <span>
           {td.summary(
             check.lotCount,
             formatBaseQty(check.lotQty, uomCode),
@@ -161,11 +169,24 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
             formatBaseQty(check.lotQty * check.lotCount, uomCode),
             check.supplierLotNo,
           )}
-        </strong>
-        <br />
-        {td.summaryTail(
-          lotNoPattern(group.itemCode, check.lotQty, group.supplierCode, plantToday()),
+        </span>
+        <ol className="mlot-issue-preview-list">
+          {Array.from({ length: Math.min(check.lotCount, PREVIEW_ROWS) }, (_, index) => (
+            <li key={index}>
+              <span className="mlot-issue-preview-no">{index + 1}</span>
+              <span>{formatBaseQty(check.lotQty ?? 0, uomCode)}</span>
+              {pkgText !== null && <span className="field-note">{pkgText}</span>}
+            </li>
+          ))}
+        </ol>
+        {check.lotCount > PREVIEW_ROWS && (
+          <span className="field-note">{td.previewMore(check.lotCount - PREVIEW_ROWS)}</span>
         )}
+        <span className="field-note">
+          {td.summaryTail(
+            lotNoPattern(group.itemCode, check.lotQty, group.supplierCode, plantToday()),
+          )}
+        </span>
       </>
     ) : (
       td.summaryEmpty
@@ -201,7 +222,7 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
         </>
       }
     >
-      <div className="mlot-issue-form">
+      <div className="mlot-issue-form is-issue">
         {issue.error !== null && <SaveErrorBanner error={issue.error} />}
         {fixed !== null ? (
           <dl className="mlot-issue-facts">
@@ -354,9 +375,13 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
           </>
         )}
 
-        <p id={reasonId} className="mlot-issue-summary" aria-live="polite">
+        <div
+          id={reasonId}
+          className={blocked ? 'field-note mlot-issue-hint' : 'mlot-issue-preview'}
+          aria-live="polite"
+        >
           {summary}
-        </p>
+        </div>
       </div>
     </Dialog>
   );

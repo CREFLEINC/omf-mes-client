@@ -149,8 +149,10 @@ export const materialLotIssue = {
         supplierLot === null ? '' : ` · 공급사 LOT ${supplierLot}`
       }`,
     summaryTail: (pattern: string) => `번호 예: ${pattern}`,
-    /* 패키징 유무와 관계없이 한 문장(사용자 지시 2026-11-27). */
-    summaryEmpty: '필수 항목을 입력하면 미리보기가 표시됩니다.',
+    /* LOT 수 칸 아래 보조 글 한 줄(사용자 지시 2026-11-27 · 미리보기 개선안). */
+    summaryEmpty: '필수 항목을 입력하면 발행 예정 LOT를 미리 볼 수 있습니다.',
+    previewTitle: '발행 미리보기',
+    previewMore: (count: number) => `외 ${count}건`,
     cancel: '취소',
     submit: (count: number | null) => (count === null ? '발행' : `${count}건 발행`),
   },
