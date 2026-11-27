@@ -43042,6 +43042,253 @@ dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(.pop-ui
 }
 
 /*
+ * 4) 선택 입력 칸 — 이름 오른쪽에 작은 회색 「(선택)」(팝업 디자인 시안 2026-11-27 「1. 입력 칸 모양」 · omf-all-around#360).
+ * 고칠 수 있는 칸(글자 · 여러 줄 · 선택칸 · 시각 칸)이 있고 빨간 * · required · aria-required 가 없는 칸만. 잠긴 칸 · 읽기 전용 칸 ·
+ * 체크 상자 · 조회 조건 줄(찾기 팝업의 부서 고르기 등)은 붙이지 않는다. 화면이 「(선택)」을 직접 다는 팝업(`.optional-mark` —
+ * 사용자 · 단말)은 그 화면의 표시를 따르고 겹치지 않게 뺀다.
+ */
+dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(
+    .pop-ui *,
+    .dash-tab *,
+    .dash-tabs *,
+    .dash-eq-all-dialog,
+    :has(.dash-detail-head),
+    :has(.optional-mark)
+  )
+  :is(.field-cell, [class*='_field_']):not(
+    .filter-bar *,
+    [role='search'] *,
+    .alarm-picker-controls *
+  ):not(
+    :has(
+      .required-mark,
+      [class*='_requiredMark_'],
+      .optional-mark,
+      :required,
+      [aria-required='true']
+    )
+  ):has(
+    input:not(
+      [type='checkbox'],
+      [type='radio'],
+      [type='hidden'],
+      [type='file'],
+      :disabled,
+      [readonly]
+    ),
+    textarea:not(:disabled, [readonly]),
+    button[role='combobox']:not(:disabled)
+  )
+  > :is(.field-label, [class*='_labelRow_'])::after {
+  content: var(--optional-mark-text, '(선택)');
+  margin-left: var(--space-1);
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  white-space: nowrap;
+}
+
+/* 베트남어 화면은 베트남어로(화면이 직접 다는 「(선택)」 문구와 같은 말). */
+html:lang(vi) {
+  --optional-mark-text: '(tùy chọn)';
+}
+
+/*
+ * 정보 표시 팝업(입력란 없음)의 상세 정보 상자 — 팝업 디자인 시안 2026-11-27 「3. 정보 표시 팝업」(omf-all-around#360).
+ * `patterns/info-facts.tsx`. 검사 조회·판정 「검사 기본 정보」 상자(`.parts-iqc-facts` · `.parts-iqc-fact`)와 같은 모양 —
+ * 연회색 둥근 상자, 이름(위) · 값(아래) 칸이 가로로 흐르고 칸 사이 세로선. 칸 폭은 글 길이만큼, 남는 폭은 나눠 갖고,
+ * 넘치면 다음 줄. 값은 한 줄 — 길면 말줄임. 줄 첫 칸의 세로선은 상자 밖(왼쪽 -1px)으로 숨긴다.
+ */
+.info-facts {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) 0;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+  overflow: hidden;
+}
+
+.info-facts:last-child {
+  margin-bottom: 0;
+}
+
+.info-facts-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+.info-facts-row > .parts-iqc-fact {
+  flex: 1 0 auto;
+  align-content: start;
+  max-width: 100%;
+  overflow-wrap: normal;
+}
+
+.info-facts-row > .parts-iqc-fact > .field-label {
+  margin: 0;
+}
+
+.info-fact-value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow: hidden;
+  color: var(--on-surface);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.info-fact-value.is-key {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.info-fact-value > .parts-iqc-fact-sub,
+.info-fact-unit {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.info-fact-value > .parts-iqc-fact-sub {
+  color: var(--on-surface-variant);
+}
+
+.info-fact-unit {
+  margin-inline-start: var(--space-1);
+  color: var(--on-surface-muted);
+}
+
+.info-fact-empty {
+  color: var(--on-surface-muted);
+}
+
+/* 긴 글(비고 등) — 상자 밖 아래에 이름 + 글, 줄바꿈 그대로. */
+.info-long {
+  margin: 0 0 var(--space-4);
+}
+
+.info-long:last-child {
+  margin-bottom: 0;
+}
+
+.info-long-value {
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* 항목이 많을 때 묶음 제목 — 검정, 묶음마다 상자 하나. 표 제목도 같은 글자(시안 2026-11-27 11:51). */
+.info-group-title,
+.info-table-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  font-weight: 700;
+}
+
+.info-group-title {
+  margin-bottom: var(--space-2);
+}
+
+/*
+ * 표가 있을 때 — 상자 아래에 제목 + 회색 「N건」, 그 아래 관리웹 공용 표(`ManagedTable`). 5줄까지 보이고 넘으면 표 안에서
+ * 구른다 — 머리 줄은 고정, 팝업이 화면 밖으로 길어지지 않는다.
+ */
+.info-table-block {
+  margin: 0 0 var(--space-4);
+}
+
+.info-table-block:last-child {
+  margin-bottom: 0;
+}
+
+.info-table-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.info-table-count {
+  color: var(--on-surface-muted);
+  font: var(--type-label-lg);
+}
+
+.info-table > div:has(> table) {
+  max-height: calc(var(--info-table-row, 41px) * 6 + 2px);
+  overflow: auto;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+/* 표 이름은 위 제목 줄이 보인다 — 표 안 caption 은 화면 읽기 도구에만. */
+.info-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.info-table tbody tr:last-child > td {
+  border-bottom: 0;
+}
+
+.info-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.info-table tbody tr:hover > td {
+  background: var(--surface-container-high);
+}
+
+/*
+ * 팝업 안 표 정렬 — 숫자(`align: 'end'`)는 오른쪽, 판정 · 상태 칩(`'center'`)은 가운데, 글자(표시 없음)는 왼쪽.
+ * 목록 표를 모두 가운데로 맞추는 규칙(「목록은 모두 중앙 정렬」 · 이 파일 뒤쪽)이 팝업 표에 번지지 않게 — 그 규칙보다
+ * 무겁게(클래스 겹침) 따로 둔다. 뒤에 와도 이긴다.
+ */
+dialog
+  .info-table.info-table.info-table
+  table
+  > :is(thead, tbody)
+  > tr
+  > :is(th, td):not([data-align]):not([scope='rowgroup']) {
+  text-align: left !important;
+}
+
+dialog
+  .info-table.info-table.info-table
+  table
+  > :is(thead, tbody)
+  > tr
+  > :is(th, td)[data-align='end']:not([scope='rowgroup']) {
+  text-align: right !important;
+}
+
+dialog
+  .info-table.info-table.info-table
+  table
+  > :is(thead, tbody)
+  > tr
+  > :is(th, td)[data-align='center']:not([scope='rowgroup']) {
+  text-align: center !important;
+}
+
+/*
  * 목록 표 글자는 머리칸 · 본문칸 모두 가운데(사용자 지시 2026-11-27 「목록은 모두 중앙 정렬」 · omf-all-around#360) —
  * 숫자 칸 포함. 화면마다 칸별 정렬 규칙이 있어 `!important` 로 한 번에 맞춘다. 묶음 머리 줄(`scope=rowgroup`)은 그대로.
  * 제외: 품질 관리 화면 본문(팝업 · 서랍 밖은 종전 그대로 · 사용자 지시 2026-11-27), POP 단말, 통합 대시보드(카드 요약 표는 이미 가운데).

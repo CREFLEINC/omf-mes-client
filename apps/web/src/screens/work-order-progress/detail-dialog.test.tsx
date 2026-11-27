@@ -81,7 +81,7 @@ describe('DetailDialog', () => {
 
     expect(within(panel).getByText('상태 SYN_RUN')).toBeInTheDocument();
     expect(within(panel).getByText('품목 5001')).toBeInTheDocument();
-    expect(within(panel).getByText('3000')).toBeInTheDocument();
+    expect(within(panel).getByText('3,000')).toBeInTheDocument();
   });
 
   it('⛔ 식별자를 그대로 보이지 않고 이름으로 바꾼다', () => {
@@ -100,7 +100,9 @@ describe('DetailDialog', () => {
     ])('%s 이 없으면 「—」로 둔다', (_name, label) => {
       renderDialog();
 
-      expect(within(dialog()).getByText(label).closest('.field-cell')).toHaveTextContent(blank);
+      expect(within(dialog()).getByText(label).closest('.info-fact, .info-long')).toHaveTextContent(
+        blank,
+      );
     });
 
     /* 공장 시각(베트남, UTC+7)으로 옮겨 보인다(omf-all-around#20). */

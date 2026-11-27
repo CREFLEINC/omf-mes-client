@@ -5,6 +5,7 @@ import { type ReactNode, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { InfoTip } from '../../patterns/info-tip';
+import { InfoFacts, InfoTable } from '../../patterns/info-facts';
 import { ManagedTable } from '../../patterns/managed-table';
 import { masterName } from '../../patterns/master-name';
 import { formatPlantDateTime } from '../../patterns/plant-time';
@@ -684,33 +685,48 @@ export const SheetDetail = ({
             </Button>
           }
         >
-          <FactsBox
-            facts={[
+          {/* 정보 표시 팝업 — 상자 + 제목 · 건수 표(시안 2026-11-27 · #360). 표 정렬은 팝업 규칙(숫자 오른쪽 · 판정 가운데 · 글자 왼쪽). */}
+          <InfoFacts
+            rows={[
               [
-                d.stepColumns.signRequired,
-                openedStep.signRequired ? d.signRequiredYes : d.signRequiredNo,
-              ],
-              [d.stepColumns.judgment, judgmentOf(openedStep)],
-              [d.stepColumns.inspector, openedStep.result?.inspectedWorkerName ?? d.none],
-              [d.stepColumns.inspectedAt, when(openedStep.result?.inspectedAt ?? null)],
-              [
-                d.stepColumns.sign,
-                openedStep.result?.signedAt
-                  ? `${openedStep.result.signedByName ?? ''}, ${when(openedStep.result.signedAt)}`
-                  : d.none,
+                {
+                  label: d.stepColumns.signRequired,
+                  value: openedStep.signRequired ? d.signRequiredYes : d.signRequiredNo,
+                },
+                { label: d.stepColumns.judgment, value: judgmentOf(openedStep) },
+                {
+                  label: d.stepColumns.inspector,
+                  value: openedStep.result?.inspectedWorkerName ?? d.none,
+                },
+                {
+                  label: d.stepColumns.inspectedAt,
+                  value: when(openedStep.result?.inspectedAt ?? null),
+                },
+                {
+                  label: d.stepColumns.sign,
+                  value: openedStep.result?.signedAt
+                    ? `${openedStep.result.signedByName ?? ''}, ${when(openedStep.result.signedAt)}`
+                    : d.none,
+                },
               ],
             ]}
           />
-          <section className="inspection-sheet-card inspection-sheet-step-items">
-            <ManagedTable
-              storageKey="omf-mes:inspection-sheet:columns:items"
-              caption={d.items(masterName(openedStep, openedStep.nameKo))}
-              columns={itemColumns}
-              rows={byOrder(openedStep.items)}
-              getRowId={(item) => String(item.inspectionSheetTemplateItemId)}
-              empty={emptyRow(d.itemsEmpty)}
-            />
-          </section>
+          <InfoTable
+            title={d.items(masterName(openedStep, openedStep.nameKo))}
+            storageKey="omf-mes:inspection-sheet:columns:items"
+            columns={itemColumns.map((column) => ({
+              ...column,
+              align:
+                column.key === 'judgment'
+                  ? 'center'
+                  : column.key === 'sequenceNo'
+                    ? 'end'
+                    : undefined,
+            }))}
+            rows={byOrder(openedStep.items)}
+            getRowId={(item) => String(item.inspectionSheetTemplateItemId)}
+            emptyTitle={d.itemsEmpty}
+          />
         </Dialog>
       )}
     </>

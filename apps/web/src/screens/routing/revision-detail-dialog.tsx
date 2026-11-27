@@ -2,6 +2,7 @@ import { Button, Chip, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { InfoCodeName, InfoFacts } from '../../patterns/info-facts';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { toOperationDrafts } from './operation-order';
 import { OperationsPane } from './operations-pane';
@@ -39,26 +40,6 @@ export const RevisionDetailDialog = ({
   const drafts = operations.data === undefined ? [] : toOperationDrafts(operations.data.items);
   const status = resolveRoutingStatus(revision.statusCode);
 
-  const facts: { key: string; label: string; value: ReactNode; wide?: boolean }[] = [
-    { key: 'itemCode', label: t.fields.itemCode, value: itemCode },
-    { key: 'itemName', label: t.fields.itemName, value: itemName, wide: true },
-    { key: 'routingCode', label: t.fields.routingCode, value: revision.routingCode },
-    {
-      key: 'status',
-      label: t.fields.status,
-      value: (
-        <Chip variant="status" size="sm" status={status.tone}>
-          {status.label}
-        </Chip>
-      ),
-    },
-    {
-      key: 'confirmedAt',
-      label: t.fields.confirmedAt,
-      value: formatPlantDateTime(revision.confirmedAt) ?? t.values.empty,
-    },
-  ];
-
   return (
     <Dialog
       open
@@ -75,23 +56,34 @@ export const RevisionDetailDialog = ({
       }
     >
       <div className="routing-detail-dialog">
-        {/* 다섯 칸을 한 줄에 — 칸마다 이름 위 · 값 아래, 왼쪽 맞춤. 품목명만 남는 폭을 쓰고 길면 말줄임(#231). */}
-        <dl className="routing-code-line routing-detail-facts">
-          {facts.map((fact) => (
-            <div
-              key={fact.key}
-              className={fact.wide === true ? 'routing-fact routing-fact-wide' : 'routing-fact'}
-            >
-              <dt className="field-label">{fact.label}</dt>
-              <dd
-                className={fact.wide === true ? 'routing-fact-item-name' : 'routing-code-value'}
-                title={fact.wide === true ? itemName : undefined}
-              >
-                {fact.value}
-              </dd>
-            </div>
-          ))}
-        </dl>
+        {/* 정보 표시 팝업 — 첫 줄 품목 · Routing 코드(크게), 둘째 줄 상태 · 확정 일시(시안 2026-11-27 · #360). */}
+        <InfoFacts
+          rows={[
+            [
+              {
+                label: t.fields.item,
+                value: <InfoCodeName code={itemCode} name={itemName} />,
+                title: `${itemCode} ${itemName}`,
+                isKey: true,
+              },
+              { label: t.fields.routingCode, value: revision.routingCode, isKey: true },
+            ],
+            [
+              {
+                label: t.fields.status,
+                value: (
+                  <Chip variant="status" size="sm" status={status.tone}>
+                    {status.label}
+                  </Chip>
+                ),
+              },
+              {
+                label: t.fields.confirmedAt,
+                value: formatPlantDateTime(revision.confirmedAt) ?? t.values.empty,
+              },
+            ],
+          ]}
+        />
 
         <OperationsPane
           title={

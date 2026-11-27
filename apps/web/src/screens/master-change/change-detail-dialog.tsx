@@ -1,7 +1,8 @@
-import { DiffRow, Dialog } from '@crefle/web-ui';
+import { Button, DiffRow, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { InfoFacts, InfoLong, type InfoFact } from '../../patterns/info-facts';
 import { ListEmpty } from '../../patterns/list-empty';
 import { toDiffEntries } from './diff-entries';
 import { formatDateTime } from './event-format';
@@ -18,35 +19,30 @@ export interface ChangeDetailDialogProps {
   onClose: () => void;
 }
 
-interface DetailItem {
-  label: string;
-  value: string;
-}
-
-/** 값이 없는 칸은 비워 두지 않는다 — 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
+/** 값이 없는 칸은 비워 두지 않는다 — 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다(회색 「—」). */
 const orEmptyMark = (value: string | null): string => value ?? t.values.empty;
 
-const toItems = (row: AuditEventView): DetailItem[] => [
-  { label: t.table.occurredAt, value: orEmptyMark(formatDateTime(row.occurredAt)) },
-  { label: t.table.targetType, value: row.targetTypeCode },
-  { label: t.table.targetId, value: String(row.targetId) },
-  { label: t.table.eventType, value: row.eventTypeCode },
-  {
-    label: t.table.performedBy,
-    // 번호를 그대로 낸다 — 이름을 줄 경로가 계약에 없어 화면이 표시명을 만들 수 없다.
-    value: orEmptyMark(row.performedBy === null ? null : String(row.performedBy)),
-  },
-  { label: t.fields.correlationId, value: orEmptyMark(row.correlationId) },
-  {
-    label: t.diff.terminalId,
-    value: orEmptyMark(row.terminalId === null ? null : String(row.terminalId)),
-  },
-  { label: t.diff.auditEventId, value: String(row.auditEventId) },
-  /*
-   * 사유는 **읽기만 한다.** 이슈가 금지한 것은 입력이며, 응답에 실려 온 값을 감추라는 뜻이 아니다.
-   * 이 창에 입력칸·저장 수단을 두지 않는다.
-   */
-  { label: t.diff.reason, value: orEmptyMark(row.reason) },
+/** 첫 줄은 무엇이 바뀌었는지(대상 · 번호 · 이벤트)를 크게, 둘째 줄은 언제 · 누가 · 연결 번호(시안 2026-11-27 · #360). */
+const toRows = (row: AuditEventView): InfoFact[][] => [
+  [
+    { label: t.table.targetType, value: row.targetTypeCode, isKey: true },
+    { label: t.table.targetId, value: String(row.targetId), isKey: true },
+    { label: t.table.eventType, value: row.eventTypeCode, isKey: true },
+  ],
+  [
+    { label: t.table.occurredAt, value: orEmptyMark(formatDateTime(row.occurredAt)) },
+    {
+      label: t.table.performedBy,
+      // 번호를 그대로 낸다 — 이름을 줄 경로가 계약에 없어 화면이 표시명을 만들 수 없다.
+      value: orEmptyMark(row.performedBy === null ? null : String(row.performedBy)),
+    },
+    { label: t.fields.correlationId, value: orEmptyMark(row.correlationId) },
+    {
+      label: t.diff.terminalId,
+      value: orEmptyMark(row.terminalId === null ? null : String(row.terminalId)),
+    },
+    { label: t.diff.auditEventId, value: String(row.auditEventId) },
+  ],
 ];
 
 /**
@@ -90,15 +86,24 @@ export const ChangeDetailDialog = ({ row, onClose }: ChangeDetailDialogProps) =>
   };
 
   return (
-    <Dialog open onClose={onClose} title={t.diff.title} size="lg">
-      <div className="form-grid">
-        {toItems(row).map((item) => (
-          <div className="field-cell" key={item.label}>
-            <span className="field-label">{item.label}</span>
-            <span>{item.value}</span>
-          </div>
-        ))}
-      </div>
+    <Dialog
+      open
+      onClose={onClose}
+      title={t.diff.title}
+      size="lg"
+      showCloseButton={false}
+      footer={
+        <Button variant="outlined" onClick={onClose}>
+          {messages.common.close}
+        </Button>
+      }
+    >
+      <InfoFacts rows={toRows(row)} />
+      {/*
+       * 사유는 **읽기만 한다.** 이슈가 금지한 것은 입력이며, 응답에 실려 온 값을 감추라는 뜻이 아니다.
+       * 긴 글이라 상자 아래에 둔다.
+       */}
+      <InfoLong label={t.diff.reason} value={orEmptyMark(row.reason)} />
 
       {diffBody()}
     </Dialog>
