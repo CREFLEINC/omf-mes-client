@@ -186,7 +186,7 @@ export const collectionChannel = {
   form: {
     createTitle: '수집 채널 등록',
     editTitle: '수집 채널 수정',
-    unitPlaceholder: '단위를 고르세요',
+    unitPlaceholder: '단위를 선택하세요',
     channelKeyPlaceholder: '채널명을 입력하세요',
     signalNamePlaceholder: '신호 이름을 입력하세요',
     /** 등록 창은 «고른 설비»에 매인다 — 어느 설비에 더하는지 창이 스스로 말한다. */
@@ -200,17 +200,19 @@ export const collectionChannel = {
    */
   itemPicker: {
     legend: '대상 검사 항목',
-    planLabel: '검사기준',
-    versionLabel: '검사기준 버전',
+    planLabel: '검사 기준',
+    versionLabel: '검사 기준 버전',
     itemLabel: '검사 항목',
-    planPlaceholder: '검사기준을 고르세요',
-    versionPlaceholder: '버전을 고르세요',
-    itemPlaceholder: '검사 항목을 고르세요',
+    planPlaceholder: '검사 기준을 선택하세요',
+    versionPlaceholder: '버전을 선택하세요',
+    itemPlaceholder: '검사 항목을 선택하세요',
     versionOption: (planVersion: number, statusLabel: string): string =>
       `Rev ${String(planVersion)} · ${statusLabel}`,
     /** 이 화면은 상태 값 목록을 받지 않는다 — 코드를 그대로 둔다(공유계약 G-9). */
     unmapAction: '연결 해제',
-    unmapped: '이어 둔 검사 항목이 없습니다. 이 채널로 들어오는 값은 저장되지 않고 버려집니다.',
+    /** 「대상 검사 항목」 옆 ⓘ — 이어 두지 않았을 때 무슨 일이 나는지(#360: 값 자리에는 「미지정」만). */
+    legendInfo: '검사 항목을 이어 두지 않으면 이 채널로 들어오는 값은 저장되지 않고 버려집니다.',
+    unmapped: '미지정',
     /**
      * ⛔ **아는 척하지 않는다.** 목록도 상세도 항목의 이름을 내려주지 않아, 이어 둔 것이
      * «무엇인지» 화면이 알 수 없다. 감추면 사용자는 확인했다고 믿는다.
@@ -221,11 +223,9 @@ export const collectionChannel = {
     mappedUnknown:
       '검사 항목이 이어져 있습니다. 어느 항목인지는 이 화면에서 확인할 수 없으니, 확인하려면 아래에서 다시 고르세요.',
     mappedKnown: (name: string): string => `이 채널의 값은 ${name} 항목으로 갑니다.`,
-    versionNeedsPlan: '검사기준을 먼저 고르면 버전을 고를 수 있습니다.',
-    itemNeedsVersion: '버전을 먼저 고르면 검사 항목을 고를 수 있습니다.',
-    noVersions: '이 검사기준에는 아직 버전이 없습니다.',
+    noVersions: '이 검사 기준에는 아직 버전이 없습니다.',
     noItems: '이 버전에는 아직 검사 항목이 없습니다.',
-    plansLoadFailed: '검사기준 목록을 불러오지 못했습니다.',
+    plansLoadFailed: '검사 기준 목록을 불러오지 못했습니다.',
     versionsLoadFailed: '버전 목록을 불러오지 못했습니다.',
     itemsLoadFailed: '검사 항목 목록을 불러오지 못했습니다.',
   },

@@ -206,20 +206,33 @@ describe('W-05-07 ③ — 세 칸을 차례로 좁힌다', () => {
   });
 
   /** 계약이 `inspectionPlanId` 를 필수로 두었다 — 고르기 전에는 부를 수 없다. */
-  it('기준을 고르기 전에는 버전 칸이 사유와 함께 잠긴다', async () => {
+  it('기준을 고르기 전에는 버전 칸이 나타나지 않는다', async () => {
     renderScreen();
     await openCreate();
 
-    expect(dialog().getByRole('combobox', { name: t.itemPicker.versionLabel })).toBeDisabled();
-    expect(dialog().getByText(t.itemPicker.versionNeedsPlan)).toBeInTheDocument();
+    expect(
+      dialog().queryByRole('combobox', { name: t.itemPicker.versionLabel }),
+    ).not.toBeInTheDocument();
   });
 
-  it('버전을 고르기 전에는 항목 칸이 사유와 함께 잠긴다', async () => {
+  it('버전을 고르기 전에는 항목 칸이 나타나지 않는다', async () => {
     renderScreen();
     await openCreate();
+    await choose(t.itemPicker.planLabel, /IP-101/);
 
-    expect(dialog().getByRole('combobox', { name: t.itemPicker.itemLabel })).toBeDisabled();
-    expect(dialog().getByText(t.itemPicker.itemNeedsVersion)).toBeInTheDocument();
+    expect(dialog().getByRole('combobox', { name: t.itemPicker.versionLabel })).toHaveFocus();
+    expect(
+      dialog().queryByRole('combobox', { name: t.itemPicker.itemLabel }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('버전을 고르면 항목 칸이 나타나고 커서가 그리로 간다', async () => {
+    renderScreen();
+    await openCreate();
+    await choose(t.itemPicker.planLabel, /IP-101/);
+    await choose(t.itemPicker.versionLabel, /Rev 2/);
+
+    expect(dialog().getByRole('combobox', { name: t.itemPicker.itemLabel })).toHaveFocus();
   });
 
   it('기준을 고르면 그 기준의 버전만 조회한다', async () => {
@@ -267,7 +280,9 @@ describe('W-05-07 ③ — 세 칸을 차례로 좁힌다', () => {
 
     await choose(t.itemPicker.planLabel, /IP-102/);
 
-    expect(dialog().getByRole('combobox', { name: t.itemPicker.itemLabel })).toBeDisabled();
+    expect(
+      dialog().queryByRole('combobox', { name: t.itemPicker.itemLabel }),
+    ).not.toBeInTheDocument();
   });
 
   /**
@@ -287,8 +302,12 @@ describe('W-05-07 ③ — 세 칸을 차례로 좁힌다', () => {
     await user.click(within(channelPane()).getByRole('button', { name: /^LINKED( \(미사용\))?$/ }));
     await screen.findByRole('dialog');
 
-    expect(dialog().getByRole('combobox', { name: t.itemPicker.versionLabel })).toBeDisabled();
-    expect(dialog().getByRole('combobox', { name: t.itemPicker.itemLabel })).toBeDisabled();
+    expect(
+      dialog().queryByRole('combobox', { name: t.itemPicker.versionLabel }),
+    ).not.toBeInTheDocument();
+    expect(
+      dialog().queryByRole('combobox', { name: t.itemPicker.itemLabel }),
+    ).not.toBeInTheDocument();
   });
 
   /** 반대 방향도 같다 — 수정 창에서 좁혀 둔 길이 등록 창에 딸려 오지 않는다. */
@@ -308,7 +327,9 @@ describe('W-05-07 ③ — 세 칸을 차례로 좁힌다', () => {
     await user.click(within(channelPane()).getByRole('button', { name: t.actions.addChannel }));
     await screen.findByRole('dialog');
 
-    expect(dialog().getByRole('combobox', { name: t.itemPicker.versionLabel })).toBeDisabled();
+    expect(
+      dialog().queryByRole('combobox', { name: t.itemPicker.versionLabel }),
+    ).not.toBeInTheDocument();
   });
 
   it('버전에 항목이 없으면 그 사실을 말한다', async () => {
@@ -411,11 +432,13 @@ describe('W-05-07 ③ — 잇고 끊는다', () => {
   });
 
   /** 끊을 것이 없으면 누를 자리도 없다 — 눌러도 아무 일도 없는 컨트롤을 두지 않는다(G-23). */
-  it('이어 둔 데가 없으면 연결 해제가 잠긴다', async () => {
+  it('이어 둔 데가 없으면 연결 해제가 보이지 않는다', async () => {
     renderScreen();
     await openCreate();
 
-    expect(dialog().getByRole('button', { name: t.itemPicker.unmapAction })).toBeDisabled();
+    expect(
+      dialog().queryByRole('button', { name: t.itemPicker.unmapAction }),
+    ).not.toBeInTheDocument();
   });
 });
 

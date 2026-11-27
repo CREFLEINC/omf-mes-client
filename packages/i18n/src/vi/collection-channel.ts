@@ -159,14 +159,13 @@ export const collectionChannel: Translated<typeof ko.collectionChannel> = {
     versionOption: (planVersion: number, statusLabel: string): string =>
       `Rev ${String(planVersion)} · ${statusLabel}`,
     unmapAction: 'Gỡ nối',
-    unmapped:
-      'Chưa nối hạng mục kiểm tra nào. Giá trị vào bằng kênh này không được lưu mà bị bỏ đi.',
+    legendInfo:
+      'Nếu không nối hạng mục kiểm tra, giá trị vào bằng kênh này không được lưu mà bị bỏ đi.',
+    unmapped: 'Chưa chỉ định',
     /** ⚠ 이 말은 「아직 못 찾았을 때」만 한다 — 이름을 알게 된 뒤에는 mappedKnown 이 선다. */
     mappedUnknown:
       'Đã nối hạng mục kiểm tra. Là hạng mục nào thì màn hình này không xác nhận được, muốn biết thì hãy chọn lại ở bên dưới.',
     mappedKnown: (name: string): string => `Giá trị của kênh này đi vào hạng mục ${name}.`,
-    versionNeedsPlan: 'Chọn tiêu chuẩn kiểm tra trước thì mới chọn được phiên bản.',
-    itemNeedsVersion: 'Chọn phiên bản trước thì mới chọn được hạng mục kiểm tra.',
     noVersions: 'Tiêu chuẩn kiểm tra này chưa có phiên bản.',
     noItems: 'Phiên bản này chưa có hạng mục kiểm tra.',
     plansLoadFailed: 'Không tải được danh sách tiêu chuẩn kiểm tra.',

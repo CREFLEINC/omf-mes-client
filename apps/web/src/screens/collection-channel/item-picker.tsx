@@ -1,7 +1,8 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import type { CodeOption } from './options';
 import { SelectField } from './select-field';
 import type { InspectionItemSpec, InspectionPlan, InspectionPlanVersion } from './types';
@@ -145,17 +146,57 @@ export const ItemPicker = ({
   const pickedSpec =
     specs.items.find((spec) => spec.inspectionItemSpecId === inspectionItemId) ?? null;
 
+  /*
+   * ⭐ **아래 칸은 위 칸을 골랐을 때만 나타나고, 나타나면 커서가 그리로 간다**(#360). 칸이 그려진 뒤에야 옮길 수
+   * 있어 옮길 곳을 적어 두고 그린 뒤에 옮긴다. 위 칸을 «다른 값으로» 바꿀 때는 칸이 이미 있어 옮기지 않는다.
+   */
+  const versionSelectId = useId();
+  const itemSelectId = useId();
+  const pendingFocusId = useRef<string | null>(null);
+
+  useEffect(() => {
+    const targetId = pendingFocusId.current;
+    if (targetId === null) return;
+    const target = document.getElementById(targetId);
+    if (target === null) return;
+    pendingFocusId.current = null;
+    target.focus();
+  });
+
+  const changePlan = (nextPlanId: number | null): void => {
+    if (inspectionPlanId === null && nextPlanId !== null) pendingFocusId.current = versionSelectId;
+    onChangePlan(nextPlanId);
+  };
+
+  const changeVersion = (nextVersionId: number | null): void => {
+    if (inspectionPlanVersionId === null && nextVersionId !== null) {
+      pendingFocusId.current = itemSelectId;
+    }
+    onChangeVersion(nextVersionId);
+  };
+
+  const showsVersion = inspectionPlanId !== null;
+  const showsItem = inspectionPlanVersionId !== null;
+  /* 끊을 것이 있을 때만 [연결 해제] 를 둔다 — 비어 있으면 누를 까닭이 없다. */
+  const showsUnmap = inspectionItemId !== null;
+
   return (
     <div className="form-grid-full">
-      <fieldset className="picker-group">
-        <legend className="field-label">{t.itemPicker.legend}</legend>
+      {/* ⓘ 의 문장이 묶음 이름에 섞이지 않게 이름은 `aria-label` 로 준다(조건 묶음과 같다). */}
+      <fieldset className="picker-group" aria-label={t.itemPicker.legend}>
+        <legend className="field-label">
+          <span className="info-label">
+            {t.itemPicker.legend}
+            <InfoTip text={t.itemPicker.legendInfo} />
+          </span>
+        </legend>
 
         {/*
          * ⭐ **지금 어떤 상태인지를 먼저 말한다 — 그리고 그것은 «셋»이다**(공유계약 G-9).
          *
          * | 사태 | 무엇을 말하나 |
          * | --- | --- |
-         * | 이어 둔 데가 없다 | 값이 버려진다 |
+         * | 이어 둔 데가 없다 | 「미지정」 — 값이 버려진다는 뜻은 묶음 이름 옆 ⓘ 로 |
          * | 이어져 있는데 **무엇인지 못 찾았다** | 확인하려면 아래에서 고르라 |
          * | 이어져 있고 **이름을 안다** | 어느 항목으로 가는지 |
          *
@@ -176,43 +217,49 @@ export const ItemPicker = ({
             label={t.itemPicker.planLabel}
             options={planOptions}
             value={asOptionValue(inspectionPlanId)}
-            onChange={(value) => onChangePlan(asId(value))}
+            onChange={(value) => changePlan(asId(value))}
             placeholder={t.itemPicker.planPlaceholder}
             note={slotNote(plans, t.itemPicker.plansLoadFailed)}
           />
 
-          <SelectField
-            label={t.itemPicker.versionLabel}
-            options={versionOptions}
-            value={asOptionValue(inspectionPlanVersionId)}
-            onChange={(value) => onChangeVersion(asId(value))}
-            placeholder={t.itemPicker.versionPlaceholder}
-            disabled={inspectionPlanId === null}
-            disabledReason={t.itemPicker.versionNeedsPlan}
-            note={slotNote(versions, t.itemPicker.versionsLoadFailed, t.itemPicker.noVersions)}
-          />
+          {/* 칸이 빠져도 행 배치는 그대로 — 빈자리로 칸 자리를 지킨다(검사 기준 | 버전 / 검사 항목 | 연결 해제). */}
+          {showsVersion ? (
+            <SelectField
+              id={versionSelectId}
+              label={t.itemPicker.versionLabel}
+              options={versionOptions}
+              value={asOptionValue(inspectionPlanVersionId)}
+              onChange={(value) => changeVersion(asId(value))}
+              placeholder={t.itemPicker.versionPlaceholder}
+              note={slotNote(versions, t.itemPicker.versionsLoadFailed, t.itemPicker.noVersions)}
+            />
+          ) : (
+            <div className="field-cell" aria-hidden="true" />
+          )}
 
-          <SelectField
-            label={t.itemPicker.itemLabel}
-            options={itemOptions}
-            value={asOptionValue(inspectionItemId)}
-            onChange={(value) => onChangeItem(asId(value))}
-            placeholder={t.itemPicker.itemPlaceholder}
-            disabled={inspectionPlanVersionId === null}
-            disabledReason={t.itemPicker.itemNeedsVersion}
-            note={slotNote(specs, t.itemPicker.itemsLoadFailed, t.itemPicker.noItems)}
-          />
+          {(showsItem || showsUnmap) &&
+            (showsItem ? (
+              <SelectField
+                id={itemSelectId}
+                label={t.itemPicker.itemLabel}
+                options={itemOptions}
+                value={asOptionValue(inspectionItemId)}
+                onChange={(value) => onChangeItem(asId(value))}
+                placeholder={t.itemPicker.itemPlaceholder}
+                note={slotNote(specs, t.itemPicker.itemsLoadFailed, t.itemPicker.noItems)}
+              />
+            ) : (
+              <div className="field-cell" aria-hidden="true" />
+            ))}
 
           {/* 잇는 것과 끊는 것은 뜻이 반대다 — 끊는 자리를 따로 둔다. */}
-          <div className="field-cell field-cell-unlabeled">
-            <Button
-              variant="outlined"
-              onClick={() => onChangeItem(null)}
-              disabled={inspectionItemId === null}
-            >
-              {t.itemPicker.unmapAction}
-            </Button>
-          </div>
+          {showsUnmap && (
+            <div className="field-cell field-cell-unlabeled">
+              <Button variant="outlined" onClick={() => onChangeItem(null)}>
+                {t.itemPicker.unmapAction}
+              </Button>
+            </div>
+          )}
         </div>
       </fieldset>
     </div>

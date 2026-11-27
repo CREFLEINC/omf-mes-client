@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
 import { InfoTip } from '../../patterns/info-tip';
+import { validateChannel } from './channel-validation';
 import { ItemPicker, type PickerSlot } from './item-picker';
 import type { CodeOption } from './options';
 import { asScopeId } from './scope';
@@ -114,6 +115,11 @@ export const ChannelFormDialog = ({
   onSave,
 }: ChannelFormDialogProps) => {
   const isCreate = mode === 'create';
+  /*
+   * ⭐ **필수 칸이 다 차야 [저장] 이 켜진다**(팝업 시안 1장 · #360). 기준은 보내기 전 검증(`validateChannel`) 그대로 —
+   * 지금 필수는 채널명 하나다. 검사 기준 · 버전 · 항목은 좁히는 길일 뿐이라 비워도 저장된다(미지정).
+   */
+  const canSave = Object.keys(validateChannel(values)).length === 0;
 
   return (
     <Dialog
@@ -131,7 +137,7 @@ export const ChannelFormDialog = ({
           <Button variant="outlined" onClick={onClose} disabled={isSaving}>
             {messages.common.cancel}
           </Button>
-          <Button onClick={onSave} loading={isSaving}>
+          <Button onClick={onSave} loading={isSaving} disabled={!canSave}>
             {messages.common.save}
           </Button>
         </>
