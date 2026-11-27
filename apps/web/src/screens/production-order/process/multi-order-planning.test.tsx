@@ -242,14 +242,9 @@ const distribute = async (targets: Record<string, string> = {}) => {
         .value,
     );
     await user.click(
-      within(group).getByRole('button', { name: `조건 ${index + 1} 생산 라인 선택` }),
+      within(group).getByRole('combobox', { name: `조건 ${index + 1} 생산 라인 선택` }),
     );
-    await user.click(
-      within(await screen.findByRole('dialog', { name: '생산 라인 선택' })).getByText('라인 1', {
-        exact: true,
-      }),
-    );
-    await user.click(screen.getByRole('button', { name: '선택' }));
+    await user.click(await screen.findByRole('option', { name: /^라인 1/ }));
     await user.click(within(group).getByRole('combobox', { name: `조건 ${index + 1} 배분 방식` }));
     await user.click(screen.getByRole('option', { name: '날짜별 직접 입력' }));
     const inputs = within(group).getAllByRole('textbox', {
@@ -613,13 +608,8 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     await user.click(screen.getByRole('button', { name: '다음: 생산계획' }));
     await user.click(screen.getByRole('button', { name: '주간 편성' }));
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
-    await user.click(screen.getByRole('button', { name: '조건 1 생산 라인 선택' }));
-    await user.click(
-      within(await screen.findByRole('dialog', { name: '생산 라인 선택' })).getByText('라인 1', {
-        exact: true,
-      }),
-    );
-    await user.click(screen.getByRole('button', { name: '선택' }));
+    await user.click(screen.getByRole('combobox', { name: '조건 1 생산 라인 선택' }));
+    await user.click(await screen.findByRole('option', { name: /^라인 1/ }));
     await user.click(
       within(screen.getByRole('dialog', { name: '자동 분배' })).getByRole('button', {
         name: '닫기',
