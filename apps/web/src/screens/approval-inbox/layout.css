@@ -38,9 +38,10 @@
 @media (min-width: 1101px) {
   .list-detail-filter:has(> .filter-bar.approval-inbox-filter) {
     /*
-     * 승인 유형(조회 줄 선택칸 폭 176px) · 상신 기간(두 칸 제 폭) · 요청번호(남는 폭) · 단추 — 칸을 똑같이 나누면
-     * 선택칸 옆에 빈 폭이 남는다(#361 사용자 지시).
+     * 승인 유형(조회 줄 선택칸 폭 176px) · 상신 기간(두 칸 제 폭) · 요청번호(흐린 문구가 다 보이는 폭) · 단추를 왼쪽부터
+     * 붙여 세운다 — 칸을 똑같이 나누거나 늘이면 빈 폭이 생긴다(#361 사용자 지시).
      */
-    grid-template-columns: 176px auto minmax(16rem, 1fr) auto;
+    grid-template-columns: 176px auto 176px auto;
+    justify-content: start;
   }
 }
