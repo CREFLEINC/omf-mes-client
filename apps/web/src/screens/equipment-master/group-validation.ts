@@ -16,7 +16,6 @@ export const GROUP_FORM_FIELDS: readonly string[] = [
   'parentGroupId',
   'defaultWipLocationId',
   'defaultFgLocationId',
-  'defaultScrapLocationId',
 ];
 
 export interface GroupValidationContext {

@@ -135,7 +135,7 @@ export const erpWorkOrderFlow = {
     WORK_ORDER_LINE_MISSING: ({ workOrderCount }: ReasonDetail): string =>
       `${pendingWorkOrders(workOrderCount)}에 생산 라인이 없습니다. ${steps.assign} 단계에서 생산 라인을 지정해야 합니다.`,
     WORK_ORDER_LOCATION_MISSING: ({ workOrderCount }: ReasonDetail): string =>
-      `${pendingWorkOrders(workOrderCount)}에 WIP 위치, 생산품 입고 창고 또는 스크랩 위치가 지정되지 않았습니다. ${steps.assign} 단계에서 기본 위치를 지정해야 합니다.`,
+      `${pendingWorkOrders(workOrderCount)}에 기본 WIP 위치 또는 생산품 입고 위치가 지정되지 않았습니다. 생산 라인의 기본 WIP 위치와 ${steps.assign} 단계의 입고 위치를 확인하세요.`,
     LINE_PLANT_MISMATCH: ({ workOrderCount }: ReasonDetail): string =>
       `${pendingWorkOrders(workOrderCount)}의 생산 라인이 이 ERP W/O와 다른 공장의 라인입니다. ${steps.assign} 단계에서 이 공장의 생산 라인으로 바꿔야 합니다.`,
     /** 화면이 모르는 사유 코드. */

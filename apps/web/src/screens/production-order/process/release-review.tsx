@@ -88,7 +88,7 @@ export const AssignmentFacts = ({
   const equipment = useWorkOrderEquipment(equipmentRequired ? fact.plannedEquipmentId : null);
   const mold = useWorkOrderMold(moldRequired ? fact.plannedMoldId : null);
   const locations = useWorkOrderLocations(
-    [fact.defaultWipLocationId, fact.defaultFgLocationId, fact.defaultScrapLocationId].some(
+    [fact.defaultWipLocationId, fact.defaultFgLocationId].some(
       (id) => id !== null,
     )
       ? plantId
@@ -163,7 +163,6 @@ export const AssignmentFacts = ({
         locations.isError,
       ),
     ],
-    ['스크랩 위치', locationName(fact.defaultScrapLocationId)],
   ];
   return <ReleaseInformationTable rows={values} label="4M 배정 정보" />;
 };

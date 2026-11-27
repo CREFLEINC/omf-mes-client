@@ -16,7 +16,6 @@ const values: GroupFormValues = {
   parentGroupId: '',
   defaultWipLocationId: '',
   defaultFgLocationId: '',
-  defaultScrapLocationId: '',
   departmentId: '',
 };
 
@@ -39,7 +38,6 @@ const renderPane = (overrides: Partial<GroupFormPaneProps> = {}) => {
       locationOptions={{
         defaultWipLocationId: [{ value: '301', label: '[WH20 MFG WH] WH20-DEF · MFG' }],
         defaultFgLocationId: [],
-        defaultScrapLocationId: [],
       }}
       departmentOptions={[
         { value: '', label: t.form.departmentNone },
@@ -232,14 +230,14 @@ describe('GroupFormPane', () => {
     expect(screen.queryByText(t.actionReasons.deactivateNeedsCleanForm)).toBeNull();
   });
 
-  it('라인 기본 위치 세 칸을 그 칸의 선택지로 그리고, 고르면 그 칸만 바꾼다', async () => {
+  it('WIP와 생산품 입고 위치만 표시한다', async () => {
     const user = userEvent.setup();
     const { onChange } = renderPane();
 
     expect(screen.getByRole('combobox', { name: t.fields.defaultFgLocation })).toBeInTheDocument();
     expect(
-      screen.getByRole('combobox', { name: t.fields.defaultScrapLocation }),
-    ).toBeInTheDocument();
+      screen.queryByRole('combobox', { name: t.fields.defaultScrapLocation }),
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole('combobox', { name: t.fields.defaultWipLocation }));
     await user.click(screen.getByRole('option', { name: /WH20-DEF/ }));
 

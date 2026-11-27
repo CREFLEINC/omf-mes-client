@@ -18,7 +18,6 @@ const WORK_ORDER_ASSIGNMENT_FIELDS = [
   'responsibleWorkerId',
   'defaultWipLocationId',
   'defaultFgLocationId',
-  'defaultScrapLocationId',
 ] as const;
 
 export interface UpdateWorkOrderOptions {
