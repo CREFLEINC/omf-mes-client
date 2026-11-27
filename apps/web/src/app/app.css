@@ -35750,19 +35750,6 @@ body:has(
   z-index: 1;
   border-right: 1px solid var(--outline-variant);
 }
-.erp-wo-table-pagebar,
-.erp-wo-table-page-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-.erp-wo-table-pagebar {
-  justify-content: space-between;
-}
-.erp-wo-table-page-actions > [role='combobox'] {
-  width: 5rem;
-}
 
 .erp-wo-summary .is-item-code {
   min-width: 0;
@@ -43145,8 +43132,8 @@ dialog
 .erp-wo-distribution-dialog .erp-wo-required-empty [role='combobox'],
 .erp-wo-distribution-dialog .erp-wo-required-empty .erp-wo-period-trigger,
 .erp-wo-distribution-dialog .erp-wo-required-empty [class*='_inputWrap_'] {
-  border-color: var(--semantic-error);
-  box-shadow: inset 0 0 0 1px var(--semantic-error);
+  /* 팝업 공통 시안(B안) — 비어 있는 필수 칸은 연한 빨간 바탕, 테두리는 기본. */
+  background: var(--semantic-error-container);
 }
 
 /* 자동 분배 결과 검토 표(사용자 지시 · #360) — 머리칸 · 값 가운데 정렬, 추가 수량 열 바탕 없앰, 입력칸은 좁게 가운데. */
@@ -43199,19 +43186,6 @@ dialog
 .erp-wo-result-warnings ul {
   margin: 0;
   padding-left: 1.1em;
-}
-.erp-wo-result-single-notes {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-2) var(--space-4);
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--outline-variant);
-  font: var(--type-body-sm);
-}
-.erp-wo-result-single-notes > .erp-wo-calendar-result-dates + .erp-wo-calendar-result-dates {
-  padding-left: var(--space-4);
-  border-left: 1px solid var(--outline-variant);
 }
 
 /*
@@ -44177,4 +44151,19 @@ main > .pane.notification-center-pane {
 .process-page > .process-page-head.is-compact .process-page-badges {
   flex-wrap: nowrap;
   gap: var(--space-2);
+}
+/* 자동 분배 결과 — 표와 쪽 이동을 한 테두리 상자로(사용자 지시 · #360). */
+.erp-wo-result-frame {
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.erp-wo-result-frame > .erp-wo-preview-scroll {
+  border: 0;
+  border-radius: 0;
+}
+.erp-wo-result-frame > :not(.erp-wo-preview-scroll) {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--outline-variant);
 }

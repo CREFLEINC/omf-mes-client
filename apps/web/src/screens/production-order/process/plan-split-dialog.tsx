@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { isPastPlanningDate } from './planning-date-policy';
 import { plantToday } from '../../../patterns/plant-time';
 import { useApiClient } from '../../../patterns/api-context';
@@ -15,6 +16,9 @@ import type { ProductionPlanEditorStateRow } from '../../production-plan/editor-
 import { validPlanSplit, type PlanSplitPart } from '../../production-plan/quantity-split';
 import { shiftPlanDate } from './plan-view-model';
 import { formatQty } from './process-model';
+
+/** 팝업 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+const ph = messages.erpWorkOrderFlow.process.placeholders;
 
 export const PlanSplitDialog = ({
   row,
@@ -284,6 +288,7 @@ export const PlanSplitDialog = ({
               label="분할 후 계획 건수"
               required={method !== 'fixed'}
               aria-label="분할 후 계획 건수"
+              placeholder={ph.splitCount}
               inputMode="numeric"
               value={count}
               disabled={calendarBusy || method === 'fixed'}
@@ -292,7 +297,8 @@ export const PlanSplitDialog = ({
                 setConditionsDirty(true);
               }}
             />
-            <div className="field-cell">
+            {/* 늘 값이 골라진 칸(비울 수 없음) — 「(선택)」을 달지 않는다(#360). */}
+            <div className="field-cell no-optional-mark">
               <span className="field-label">분할 방식</span>
               <Select
                 disabled={calendarBusy}
@@ -317,6 +323,7 @@ export const PlanSplitDialog = ({
                 label={`계획당 생산량 (${unit})`}
                 required
                 aria-label="계획당 생산량"
+                placeholder={ph.perPlanQty}
                 inputMode="decimal"
                 value={per}
                 onChange={(event) => {
@@ -325,7 +332,7 @@ export const PlanSplitDialog = ({
                 }}
               />
             )}
-            <div className="field-cell">
+            <div className="field-cell no-optional-mark">
               <span className="field-label">계획일 설정</span>
               <Select
                 disabled={calendarBusy}
@@ -463,6 +470,7 @@ export const PlanSplitDialog = ({
                           disabled={calendarBusy}
                           inputMode="decimal"
                           aria-label={day ? `${day.date} 휴일 생산량` : `계획 ${i + 1} 생산량`}
+                          placeholder={ph.plannedQty}
                           aria-required="true"
                           value={part.plannedQty}
                           onChange={(event) =>

@@ -281,11 +281,14 @@ export const erpWorkOrderFlow = {
       erpNo: 'ERP 원번호',
     },
     rerunAutoPlan: '생산계획 자동 전개 다시 실행',
-    /** 입력칸 흐린 문구(#360). */
+    /** 팝업(계획 분할 · 자동 분배 · 설비 선택) 칸 안 흐린 안내(사용자 지시 2026-11-26). */
     placeholders: {
+      splitCount: '분할 후 계획 건수를 입력하세요',
+      perPlanQty: '계획당 생산량을 입력하세요',
       plannedQty: '생산량을 입력하세요',
       distributionQty: '분배 수량을 입력하세요',
       dailyQty: '수량을 입력하세요',
+      equipmentKeyword: '설비 코드·설비명을 입력하세요',
     },
     autoPlanResult: {
       CONFIRMED: '생산계획 자동 전개로 계획을 확정했습니다',
