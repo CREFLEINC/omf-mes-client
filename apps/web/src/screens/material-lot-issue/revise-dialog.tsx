@@ -129,10 +129,10 @@ export const ReviseDialog = ({
           </dd>
         </dl>
 
-        {/* 필수 칸(checkBatch lotQty)인데 * 가 없다 — 「(선택)」이 붙지 않게(#360). */}
+        {/* 필수 칸(checkBatch lotQty) — 발행 창과 같이 * (#360). */}
         <TextField
-          containerClassName="no-optional-mark"
           label={t.qty}
+          required
           placeholder={ph.lotQty}
           inputMode="decimal"
           value={shownQty}
@@ -162,13 +162,18 @@ export const ReviseDialog = ({
           </div>
           {draft.packageOn ? (
             <div className="mlot-issue-package-fields">
-              {/* 패키징 세 칸은 켜면 필수(checkBatch) — 「(선택)」이 붙지 않게(#360). */}
-              <div className="field-cell no-optional-mark">
+              {/* 패키징 세 칸은 켜면 필수(checkBatch) — 발행 창과 같이 * (#360). */}
+              <div className="field-cell">
                 <span className="field-label">
                   <label htmlFor={packageUomId}>{t.packageUom}</label>
+                  <span className="required-mark" aria-hidden="true">
+                    {' '}
+                    *
+                  </span>
                 </span>
                 <Select
                   id={packageUomId}
+                  aria-required="true"
                   placeholder={ph.packageUom}
                   value={draft.packageUomId === null ? null : String(draft.packageUomId)}
                   options={packageUoms.map((row) => ({
@@ -179,8 +184,8 @@ export const ReviseDialog = ({
                 />
               </div>
               <TextField
-                containerClassName="no-optional-mark"
                 label={t.packageCount}
+                required
                 placeholder={ph.packageCount}
                 inputMode="numeric"
                 value={draft.packageCount}
@@ -189,8 +194,8 @@ export const ReviseDialog = ({
                 }
               />
               <TextField
-                containerClassName="no-optional-mark"
                 label={t.qtyPerPackage(uomCode)}
+                required
                 placeholder={ph.qtyPerPackage}
                 inputMode="decimal"
                 value={draft.qtyPerPackage}
