@@ -18,11 +18,12 @@ import {
   notificationListBody,
 } from './fixtures';
 import { titleIdOf } from './notification-card';
-import { defaultPeriod } from './period';
+import { OPEN_PERIOD_QUERY } from './period';
 import { notificationKeys } from './queries';
 import { NotificationCenterScreen, describeMarkAllReadReason } from './screen';
 
 const t = messages.notificationCenter;
+const pn = messages.screenPatterns.pageNav;
 
 /** 픽스처가 푸는 이름 둘. 셋째(`EQUIPMENT_BREAKDOWN_OCCURRED`)는 유형 목록에 없어 원문으로 낙하한다. */
 const EVENT_NAME_01 = '생산 실행';
@@ -251,55 +252,27 @@ const waitForCards = async (): Promise<void> => {
 const rowOf = (notificationId: number): Element | null =>
   document.getElementById(titleIdOf(notificationId))?.closest('li') ?? null;
 
-const seededPeriod = defaultPeriod(new Date());
-const seededSearch = `?from=${seededPeriod.from}&to=${seededPeriod.to}`;
-
-describe('NotificationCenterScreen — 기간을 주소에 심는다', () => {
-  /**
-   * **T1-1.** 계약이 기간을 필수로 두어 심지 않으면 첫 진입이 곧 400이다.
-   * 저장소의 조회형 골격이 규율로 세운 「기본 기간을 심지 않는다」가 여기서만 거짓인 자리다.
-   */
-  it('주소에 기간이 없으면 오늘 포함 7일을 채우고 조회한다', async () => {
+describe('NotificationCenterScreen — 기간 없이 모든 알림(#361)', () => {
+  it('주소에 기간이 없으면 날짜를 채우지 않고 모든 알림을 부른다', async () => {
     const { urls } = renderScreen();
 
-    await waitFor(() => {
-      expect(currentLocation()).toBe(`/${seededSearch}`);
-    });
+    await waitForCards();
+
+    expect(currentLocation()).toBe('/');
+    expect(listUrls(urls)).toHaveLength(1);
+    expect(listUrls(urls)[0]?.searchParams.get('occurredFrom')).toBe(
+      OPEN_PERIOD_QUERY.occurredFrom,
+    );
+    expect(listUrls(urls)[0]?.searchParams.get('occurredTo')).toBe(OPEN_PERIOD_QUERY.occurredTo);
+  });
+
+  it('한쪽 날짜만 넣어도 조회한다 — 비운 쪽은 경계가 없다', async () => {
+    const { urls } = renderScreen('/?from=2026-08-01');
 
     await waitForCards();
-    expect(listUrls(urls)).toHaveLength(1);
-  });
 
-  it('심은 값이 오늘을 마지막 날로 둔 7일이다 — 값을 재지 않으면 며칠이든 통과한다', async () => {
-    renderScreen();
-
-    await waitFor(() => {
-      expect(currentLocation()).toContain(`from=${seededPeriod.from}`);
-    });
-
-    expect(currentLocation()).toContain(`to=${seededPeriod.to}`);
-  });
-
-  /**
-   * ⭐ **기대값을 구현 함수에서 얻지 않고 주소에서 직접 센다.**
-   *
-   * 바로 위 시험의 `seededPeriod`는 `defaultPeriod(new Date())`에서 나온다 — 자기 참조라
-   * 상수가 30일로 바뀌면 기대값도 함께 바뀌어 **울지 않는다**(`period.test.ts`의 하드코딩
-   * 날짜가 그 자리를 맡지만, 화면 쪽에는 잣대가 없었다).
-   */
-  it('심은 기간의 길이가 오늘 포함 7일이다', async () => {
-    renderScreen();
-
-    await waitFor(() => {
-      expect(currentLocation()).toContain('from=');
-    });
-
-    const params = new URLSearchParams(currentLocation().split('?')[1] ?? '');
-    const from = new Date(`${params.get('from') ?? ''}T00:00:00`);
-    const to = new Date(`${params.get('to') ?? ''}T00:00:00`);
-    const days = Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1;
-
-    expect(days).toBe(7);
+    expect(listUrls(urls)[0]?.searchParams.get('occurredFrom')).toContain('2026-08-01T00:00:00');
+    expect(listUrls(urls)[0]?.searchParams.get('occurredTo')).toBe(OPEN_PERIOD_QUERY.occurredTo);
   });
 
   it('주소에 있던 기간은 덮지 않는다 — 새로고침·공유가 같은 결과를 낸다', async () => {
@@ -309,67 +282,6 @@ describe('NotificationCenterScreen — 기간을 주소에 심는다', () => {
 
     expect(currentLocation()).toBe('/?from=2026-08-01&to=2026-08-07');
     expect(listUrls(urls)).toHaveLength(1);
-  });
-
-  /**
-   * ⭐ **키는 있고 값이 빈 주소는 사용자의 뜻이다.** 값만 보면 「키가 없다」와 같은 빈
-   * 문자열이라, 두 사태를 접으면 화면이 곧바로 기본값으로 덮는다 — 그러면 기간을 비울 수단이
-   * 아예 없어진다. 전례 둘(`master-change` · `integration-sync`)이 `has()`로 갈라 둔 자리다.
-   */
-  it('키는 있고 값이 빈 주소를 덮지 않고 사유를 보인다', async () => {
-    const { urls } = renderScreen('/?from=&to=');
-
-    expect(await screen.findByText(t.reasons.periodIncomplete)).toBeInTheDocument();
-    expect(currentLocation()).toBe('/?from=&to=');
-    expect(listUrls(urls)).toHaveLength(0);
-  });
-
-  it('한쪽 키만 있어도 덮지 않는다 — 넣은 쪽이 사라지면 안 된다', async () => {
-    renderScreen('/?from=2026-08-01');
-
-    expect(await screen.findByText(t.reasons.periodIncomplete)).toBeInTheDocument();
-    expect(currentLocation()).toBe('/?from=2026-08-01');
-  });
-
-  it('기간을 채우면서 다른 조건 키를 지우지 않는다', async () => {
-    /*
-     * 뒤따르는 회차가 조건을 늘릴수록 손실이 커진다 — 지금 잡아 두지 않으면
-     * 「기본값을 채웠더니 걸어 둔 조건이 사라졌다」가 그때 처음 드러난다.
-     */
-    renderScreen('/?unread=1');
-
-    await waitFor(() => {
-      expect(currentLocation()).toContain(`from=${seededPeriod.from}`);
-    });
-
-    expect(currentLocation()).toContain('unread=1');
-  });
-
-  /**
-   * ⭐ **T1-2.** 「늘지 않았다」를 **자기 치유가 만들 수 없는 값으로** 잰다.
-   *
-   * 채우기가 밀어 넣기였다면 한 칸 뒤는 기간 없는 주소이고, 그 자리에서 **채우기가 다시 돌아**
-   * 같은 모양의 주소를 만든다 — 「기간이 있다」만 기다리면 통과하고 **사용자만 그 자리에 갇힌다.**
-   * 그래서 채우기 이전의 자리(손으로 넣은 다른 기간)를 기다린다. 그 값은 자기 치유가 만들지 못한다.
-   */
-  it('기간을 채워도 뒤로가기 기록이 늘지 않는다', async () => {
-    const { user } = renderScreen('/?from=2026-08-01&to=2026-08-07', routesWith(listRoute()), '');
-
-    await waitForCards();
-
-    /* 기간 없는 주소로 옮겨 채우기를 일으킨다 — 여기까지가 칸 하나다. */
-    await user.click(screen.getByRole('button', { name: '주소 이동' }));
-
-    /* 짝 양성 — 채우기가 실제로 돌았다. */
-    await waitFor(() => {
-      expect(currentLocation()).toBe(`/${seededSearch}`);
-    });
-
-    await user.click(screen.getByRole('button', { name: '뒤로' }));
-
-    await waitFor(() => {
-      expect(currentLocation()).toBe('/?from=2026-08-01&to=2026-08-07');
-    });
   });
 });
 
@@ -426,18 +338,6 @@ describe('NotificationCenterScreen — 보낼 수 없는 기간', () => {
     const { urls } = renderScreen('/?from=2026-08-07&to=2026-08-01');
 
     expect(await screen.findByText(t.reasons.periodReversed)).toBeInTheDocument();
-    expect(listUrls(urls)).toHaveLength(0);
-  });
-
-  it('한쪽만 채운 기간도 막는다 — 다만 날짜 탓으로 말하지 않는다', async () => {
-    const { urls } = renderScreen('/?from=2026-08-01');
-
-    /*
-     * ⭐ 넣은 날짜는 멀쩡하다. 「올바른 날짜가 아닙니다」로 말하면 사실도 아니고,
-     * 성한 쪽까지 다시 고르라는 말이 된다(공유계약 G-9).
-     */
-    expect(await screen.findByText(t.reasons.periodIncomplete)).toBeInTheDocument();
-    expect(screen.queryByText(t.reasons.periodInvalid)).not.toBeInTheDocument();
     expect(listUrls(urls)).toHaveLength(0);
   });
 
@@ -522,6 +422,8 @@ describe('NotificationCenterScreen — 목록', () => {
     renderScreen('/?from=2026-08-01&to=2026-08-07', routesWith(listRoute([])));
 
     expect(await screen.findByText(t.empty.noneTitle)).toBeInTheDocument();
+    /* #361 — 넘길 쪽이 없으면 쪽 이동 줄도 내지 않는다. */
+    expect(screen.queryByRole('navigation', { name: pn.label })).not.toBeInTheDocument();
   });
 
   /**
@@ -716,19 +618,20 @@ describe('NotificationCenterScreen — 쪽 이동', () => {
       total,
     });
 
-  it('범위 표기가 응답의 쪽 메타에서 나온다', async () => {
+  it('건수 · 위치 표기가 응답의 쪽 메타에서 나온다', async () => {
     renderScreen('/?from=2026-08-01&to=2026-08-07', routesWith(paged(1)));
 
     await waitForCards();
 
-    expect(screen.getByText(messages.screenPatterns.pageNav.total(137))).toBeInTheDocument();
+    expect(screen.getByText(pn.total(137))).toBeInTheDocument();
+    expect(screen.getByText(pn.position(1, 3))).toBeInTheDocument();
   });
 
   it('다음을 누르면 쪽이 주소와 요청에 함께 실린다', async () => {
     const { urls, user } = renderScreen('/?from=2026-08-01&to=2026-08-07', routesWith(paged(1)));
 
     await waitForCards();
-    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+    await user.click(screen.getByRole('button', { name: pn.next }));
 
     await waitFor(() => {
       expect(currentLocation()).toContain('page=2');
@@ -741,7 +644,40 @@ describe('NotificationCenterScreen — 쪽 이동', () => {
 
     await waitForCards();
 
-    expect(screen.getByRole('button', { name: t.actions.prevPage })).toBeDisabled();
+    expect(screen.getByRole('button', { name: pn.prev })).toBeDisabled();
+  });
+
+  /* #361 — 목록 아래 쪽 이동 줄을 공용 부품으로 맞춘다. 건수를 고르기 전에는 서버 기본값을 쓴다. */
+  it('쪽 크기를 고르기 전에는 크기를 싣지 않는다', async () => {
+    const { urls } = renderScreen('/?from=2026-08-01&to=2026-08-07', routesWith(paged(1)));
+
+    await waitForCards();
+
+    expect(listUrls(urls).at(-1)?.searchParams.has('size')).toBe(false);
+  });
+
+  it('쪽 크기를 고르면 첫 쪽으로 돌아가 그 크기로 조회하고, 조건이 바뀌어도 크기는 남는다', async () => {
+    const { urls, user } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07&page=2',
+      routesWith(paged(2)),
+    );
+
+    await waitForCards();
+    await user.click(screen.getByRole('combobox', { name: pn.pageSize }));
+    await user.click(screen.getByRole('option', { name: pn.pageSizeOption(20) }));
+
+    await waitFor(() => {
+      expect(listUrls(urls).at(-1)?.searchParams.get('size')).toBe('20');
+    });
+    expect(listUrls(urls).at(-1)?.searchParams.has('page')).toBe(false);
+    expect(currentLocation()).toContain('size=20');
+
+    await user.click(screen.getByRole('checkbox', { name: t.fields.unreadOnly }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('unread=0');
+    });
+    expect(currentLocation()).toContain('size=20');
   });
 
   /** ⭐ 3쪽을 보다가 조건을 좁히면 결과가 3쪽에 못 미쳐 「좁혔더니 아무것도 없다」로 보인다. */
@@ -835,7 +771,7 @@ describe('NotificationCenterScreen — 기준 시각', () => {
 
     await waitForCards();
 
-    expect(screen.getByText(/^기준 \d{4}-\d{2}-\d{2} \d{2}:\d{2}$/)).toBeInTheDocument();
+    expect(screen.getByText(/^조회 시각 \d{4}-\d{2}-\d{2} \d{2}:\d{2}$/)).toBeInTheDocument();
   });
 
   /** ⭐ 아직 받은 자료가 없으면 `dataUpdatedAt`이 `0`이다 — 그리면 1970년이 선다. */
@@ -916,7 +852,7 @@ describe('NotificationCenterScreen — 조건 줄의 수명', () => {
 
     await screen.findByText('합성 서버 사유');
 
-    expect(screen.queryByRole('navigation', { name: t.pageNav.label })).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: pn.label })).not.toBeInTheDocument();
   });
 });
 
@@ -988,7 +924,7 @@ describe('NotificationCenterScreen — 쪽 이동은 쪽만 바꾼다', () => {
     expect(listUrls(urls)[0]?.searchParams.has('unreadOnly')).toBe(false);
     expect(listUrls(urls)[0]?.searchParams.get('eventCode')).toBe('WORK_ORDER_CLOSED');
 
-    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+    await user.click(screen.getByRole('button', { name: pn.next }));
 
     await waitFor(() => {
       expect(listUrls(urls).at(-1)?.searchParams.get('page')).toBe('3');
@@ -1003,7 +939,7 @@ describe('NotificationCenterScreen — 쪽 이동은 쪽만 바꾼다', () => {
     const { urls, user } = renderScreen(CONDITIONED, routesWith(pagedRoute()));
 
     await waitForCards();
-    await user.click(screen.getByRole('button', { name: t.actions.prevPage }));
+    await user.click(screen.getByRole('button', { name: pn.prev }));
 
     await waitFor(() => {
       expect(listUrls(urls).length).toBeGreaterThan(1);
@@ -1018,7 +954,7 @@ describe('NotificationCenterScreen — 쪽 이동은 쪽만 바꾼다', () => {
     const { user } = renderScreen(CONDITIONED, routesWith(pagedRoute()));
 
     await waitForCards();
-    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+    await user.click(screen.getByRole('button', { name: pn.next }));
 
     await waitFor(() => {
       expect(currentLocation()).toContain('page=3');
@@ -1473,7 +1409,7 @@ describe('NotificationCenterScreen — 앞 조회에 매인 진술의 수명', (
     await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
     expect(await screen.findByText(t.writeError.readTitle)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+    await user.click(screen.getByRole('button', { name: pn.next }));
 
     await waitFor(() => {
       expect(screen.queryByText(t.writeError.readTitle)).not.toBeInTheDocument();

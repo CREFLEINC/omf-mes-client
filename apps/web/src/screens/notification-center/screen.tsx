@@ -1,42 +1,33 @@
-import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText, useToast } from '@crefle/web-ui';
+import { Button, EmptyState, Icon, SkeletonText, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router';
 
 import { ListEmpty } from '../../patterns/list-empty';
+import { PageNav, type PageSize } from '../../patterns/page-nav';
 import { formatAsOf } from './as-of';
 import { NotificationFilterBar } from './filter-bar';
 import {
+  DEFAULT_FILTERS,
   readFilters,
   readPage,
+  readSize,
   toFilterQuery,
   toSearchParams,
-  withPeriod,
   type NotificationFilters,
 } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
 import { useHandoverEventEntries } from './handover-lookups';
 import { describeEvent, useNotificationEventOptions, withCurrentEvent } from './lookups';
 import { NotificationRow } from './notification-row';
-import { PageNav } from './page-nav';
-import { PAGE_SIZES } from '../../patterns/page-nav';
-import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { toPageView } from './pagination';
-import {
-  defaultPeriod,
-  hasPeriodKeys,
-  readPeriod,
-  resolvePeriod,
-  type NotificationPeriod,
-} from './period';
+import { readPeriod, resolvePeriod, type NotificationPeriod } from './period';
 import { useMarkAllRead, useMarkRead, useNotificationList, useUnreadCount } from './queries';
 import { EMPTY_READ_STATE, isRead, withRead, type ReadState } from './read-state';
 import type { NotificationView, SelectItem } from './types';
 import { WriteErrorBanner, writeFailureTitle } from './write-error-banner';
 
 const t = messages.notificationCenter;
-
-/** 목록 쪽 크기 기본 — 계약 `size` 기본 50(종전에는 싣지 않아 이 값이었다 · #360). */
-const LIST_PAGE_SIZE = 50;
 
 /**
  * 응답이 아직 없을 때 쓰는 자리표시 둘.
@@ -46,7 +37,7 @@ const LIST_PAGE_SIZE = 50;
  * 다른 기본을 쓰는 어긋남이 생긴다.
  *
  * ⚠ **참조 안정성이 근거가 아니다.** 이 회차의 소비처는 `rows.length`·`rows.map(...)`과
- * `toPageView(meta, shown)`인데 **셋 다 값만 읽고 참조 동일성을 보지 않는다** — 메모된 계산도
+ * `toPageView(meta)`인데 **셋 다 값만 읽고 참조 동일성을 보지 않는다** — 메모된 계산도
  * `memo` 부품도 이 값들을 받지 않는다. 그 근거가 참이 되는 시점이 오면 그때 적는다.
  */
 const EMPTY_ROWS: NotificationView[] = [];
@@ -111,9 +102,7 @@ export const describeMarkAllReadReason = (
  * 상단 바의 종 배지는 셸의 책임이라 이 화면이 만들지 않는다.
  */
 export const NotificationCenterScreen = () => {
-  /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(계약 기본 50)은 싣지도 적지도 않는다(#360). */
-  const { searchParams, setSearchParams, pageSize, changePageSize } =
-    usePageSizeSearchParams(LIST_PAGE_SIZE);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   /*
    * **주소가 바뀔 때만 새 참조를 만든다.** 렌더마다 새 객체를 만들면 내용이 같아도 참조가
@@ -123,40 +112,12 @@ export const NotificationCenterScreen = () => {
   const period = useMemo<NotificationPeriod>(() => readPeriod(searchParams), [searchParams]);
   const filters = useMemo<NotificationFilters>(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
+  const size = readSize(searchParams);
 
   /*
-   * ⭐ **「키가 없다」와 「키는 있고 값이 비었다」를 가른다**(주소 키 수명 표 1·2행).
-   * 값만 보면 둘이 같은 빈 문자열이라, 이 한 줄이 없으면 사용자가 비운 기간을 화면이 덮어쓴다.
+   * 실행 환경의 「지금」을 한 번만 읽어 넘긴다. 날짜를 비우면 그쪽 경계 없이 모든 알림을 본다(#361).
    */
-  const hasKeys = hasPeriodKeys(searchParams);
-
-  /*
-   * 실행 환경의 「지금」을 한 번만 읽어 넘긴다. 판정 함수 안에서 읽으면 그 함수가 환경에 따라
-   * 다른 값을 내어 테스트가 코드가 아니라 환경을 검사하게 된다.
-   */
-  const periodState = resolvePeriod(period, hasKeys, new Date());
-  const isSeeding = periodState.kind === 'empty';
-
-  /*
-   * 빈 화면으로 시작하지 않는다 — 기간이 필수라 심지 않으면 아무것도 조회할 수 없다.
-   *
-   * ⭐ **`replace`로 바꾼다.** 밀어 넣으면 기본값을 채운 것이 뒤로가기 기록에 칸을 쌓고,
-   * 사용자가 뒤로 누르면 기간 없는 주소로 돌아가 **같은 채우기가 다시 돌아 그 자리에 갇힌다.**
-   *
-   * ⭐ **기존 주소를 통째로 갈아 끼우지 않는다**(`withPeriod`) — 기간을 채우는 김에 사용자가
-   * 걸어 둔 다른 조건이 함께 사라지면 안 된다.
-   *
-   * ⚠ **여기서 시계를 다시 읽는다**(위 `resolvePeriod`의 것과 다른 `new Date()`다). effect는
-   * 렌더보다 늦게 도므로 그 사이에 날이 바뀌었다면 **심는 시점의 오늘**이 맞다 — 렌더 때 읽은
-   * 값을 나르면 자정 직후에 하루 지난 기간을 심는다.
-   */
-  useEffect(() => {
-    if (!isSeeding) return;
-
-    const seeded = defaultPeriod(new Date());
-
-    setSearchParams((prev) => withPeriod(prev, seeded), { replace: true });
-  }, [isSeeding, setSearchParams]);
+  const periodState = resolvePeriod(period, new Date());
 
   const listQuery =
     periodState.kind === 'ready'
@@ -164,13 +125,20 @@ export const NotificationCenterScreen = () => {
           ...periodState.query,
           ...toFilterQuery(filters),
           ...(page > 1 ? { page } : {}),
-          ...(pageSize === LIST_PAGE_SIZE ? {} : { size: pageSize }),
+          ...(size === null ? {} : { size }),
         }
       : null;
 
   const list = useNotificationList(listQuery);
   const rows = list.data?.items ?? EMPTY_ROWS;
-  const pageView = toPageView(list.data?.page ?? EMPTY_PAGE, rows.length);
+  /* 발생 일시 오름/내림차순(#361) — 지금 쪽 안에서만 차례를 바꾼다(조회 조건 · 쪽은 그대로). */
+  const [order, setOrder] = useState<'desc' | 'asc'>('desc');
+  const sortedRows = useMemo(() => {
+    const sign = order === 'asc' ? 1 : -1;
+    return [...rows].sort((a, b) => sign * a.occurredAt.localeCompare(b.occurredAt));
+  }, [rows, order]);
+  const pageMeta = list.data?.page ?? EMPTY_PAGE;
+  const pageView = toPageView(pageMeta);
 
   /*
    * 유형 목록 — **조건 줄의 선택지와 카드 제목의 이름 풀이가 같은 조회를 쓴다.**
@@ -269,16 +237,34 @@ export const NotificationCenterScreen = () => {
    *
    * **조건이 바뀌면 쪽을 첫 쪽으로 되돌린다**(수명 규칙 4행) — 기본 인자가 그 규칙이다.
    * 쪽 이동만 그 값을 명시해 넘긴다(5행).
+   * 고른 쪽 크기는 조건이 바뀌어도 그대로 둔다 — 조건이 아니라 보는 방식이다(#361).
    */
   const applyQuery = (
     nextPeriod: NotificationPeriod,
     nextFilters: NotificationFilters,
     nextPage = 1,
+    nextSize: PageSize | null = size,
   ): void => {
-    setSearchParams(toSearchParams(nextPeriod, nextFilters, nextPage));
+    setSearchParams(toSearchParams(nextPeriod, nextFilters, nextPage, nextSize));
   };
 
   const markAllReadReason = describeMarkAllReadReason(markAllRead.isSubmitting, unreadCount.data);
+
+  /*
+   * [초기화]는 처음 조건(기본 기간 · 안 읽음만 · 유형 전체)과 달라졌을 때만 선다 — 품질 화면과 같다(#361).
+   * 쪽 · 쪽 크기는 조건이 아니라 견주지 않는다.
+   */
+  const isFilterChanged =
+    period.from !== '' ||
+    period.to !== '' ||
+    filters.unreadOnly !== DEFAULT_FILTERS.unreadOnly ||
+    filters.eventCode !== DEFAULT_FILTERS.eventCode;
+
+  /** [조회] — 조건은 고르는 즉시 반영되므로 같은 조건으로 다시 부른다(품질 화면의 같은 조건 [조회] · #361). */
+  const reload = (): void => {
+    if (listQuery !== null) void list.refetch();
+    void unreadCount.refetch();
+  };
 
   /**
    * 유형 선택지 — 「전체」가 맨 앞이고, 그 뒤가 조회로 받은 목록이다.
@@ -328,8 +314,7 @@ export const NotificationCenterScreen = () => {
       );
     }
 
-    /* 기간을 심는 동안에도 조회를 기다리는 것과 같은 모양이다 — 한 순간 뒤 요청이 나간다. */
-    if (isSeeding || list.isPending) {
+    if (list.isPending) {
       return (
         <div role="status" aria-label={t.loading.list}>
           <SkeletonText lines={3} />
@@ -374,7 +359,7 @@ export const NotificationCenterScreen = () => {
      */
     return (
       <ul className="notification-list">
-        {rows.map((view) => (
+        {sortedRows.map((view) => (
           <li key={view.notificationId}>
             <NotificationRow
               view={view}
@@ -391,50 +376,74 @@ export const NotificationCenterScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-        /*
-         * 기준 시각을 제목 줄에 둔다. **live 영역으로 두지 않는다** — 조건을 바꿀 때마다
-         * 낭독되는데, 조회가 끝났다는 사실은 목록·빈 상태가 이미 알린다.
-         */
-        actions={
-          <div className="field-cell">
-            <div className="filter-actions">
-              {asOf !== null && <span className="field-note">{t.asOf(asOf)}</span>}
-              {/*
-               * ⭐ **활성 판정이 전용 조회에서 온다**(`useUnreadCount`) — 지금 쪽의 안 읽음으로
-               * 재면 다른 쪽에 안 읽음이 있어도 잠긴다. 「모두」라는 말과 어긋나는 틀린 판정이다.
-               *
-               * 아직 그 수를 받지 못했으면 **잠근 채로 둔다** — 안 읽은 것이 있는지 모르는데
-               * 여는 것은 없는 근거로 조작을 허락하는 일이다.
-               *
-               * 비활성 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더해 `aria-describedby`로
-               * 잇는다 — 비활성 컨트롤은 포커스를 받지 못해 시각으로만 두면 보조기술이 닿지 않는다.
-               */}
+      {/* 화면 제목 줄은 두지 않는다 — 조회 조건 상자 · 목록 통일 배치(검사 조회·판정과 같다 · #361). */}
+      <section
+        className="pane po-board-filter list-detail-filter"
+        aria-label={messages.common.paneList.filter}
+      >
+        {/*
+         * ⭐ **결과가 없어도, 조회에 실패해도 조건 줄은 감추지 않는다** — 조건을 고칠 수단이
+         * 사라지면 사용자가 실패에서 빠져나올 길이 없다.
+         */}
+        <NotificationFilterBar
+          period={period}
+          filters={filters}
+          eventOptions={eventOptions}
+          eventNote={events.isError ? t.filters.eventsFailed : undefined}
+          onChangePeriod={(nextPeriod) => {
+            applyQuery(nextPeriod, filters);
+          }}
+          onChangeFilters={(nextFilters) => {
+            applyQuery(period, nextFilters);
+          }}
+        >
+          {/*
+           * 오른쪽 묶음 — 기준 시각 + 「모두 읽음」. 대시보드의 갱신 안내 · 「갱신」과 같은 모양(#361).
+           * 기준 시각은 **live 영역으로 두지 않는다** — 조건을 바꿀 때마다 낭독되는데, 조회가 끝났다는
+           * 사실은 목록 · 빈 상태가 이미 알린다.
+           */}
+          <div className="filter-actions dashboard-filter-actions">
+            {/* [조회] → [초기화]도 오른쪽 끝 묶음에 함께 선다(#361 사용자 지시). */}
+            <Button onClick={reload}>{messages.common.search}</Button>
+            {isFilterChanged && (
               <Button
                 variant="outlined"
-                size="sm"
-                disabled={markAllReadReason !== undefined}
-                aria-describedby={markAllReadReason === undefined ? undefined : markAllReasonId}
-                onClick={markAllRead.markAllRead}
+                onClick={() => {
+                  applyQuery({ from: '', to: '' }, DEFAULT_FILTERS);
+                }}
               >
-                {t.actions.markAllRead}
+                {messages.common.reset}
               </Button>
-            </div>
+            )}
+            <span className="inspection-standard-filter-divider" aria-hidden />
+            {asOf !== null && <p className="dashboard-refresh-status">{t.asOf(asOf)}</p>}
+            {/*
+             * ⭐ **활성 판정이 전용 조회에서 온다**(`useUnreadCount`) — 지금 쪽의 안 읽음으로
+             * 재면 다른 쪽에 안 읽음이 있어도 잠긴다. 「모두」라는 말과 어긋나는 틀린 판정이다.
+             * 아직 그 수를 받지 못했으면 **잠근 채로 둔다**.
+             *
+             * 잠긴 사유는 화면에 글로 늘 세워 두지 않는다(사용자 지시 · #361). 보조기술에는 그대로
+             * 잇는다 — 비활성 단추는 포커스를 받지 못해 사유를 따로 읽힐 길이 없다.
+             */}
+            <Button
+              variant="outlined"
+              className="dashboard-refresh-button"
+              leadingIcon={<Icon name="done_all" size={18} />}
+              disabled={markAllReadReason !== undefined}
+              loading={markAllRead.isSubmitting}
+              aria-describedby={markAllReadReason === undefined ? undefined : markAllReasonId}
+              onClick={markAllRead.markAllRead}
+            >
+              {t.actions.markAllRead}
+            </Button>
             {markAllReadReason !== undefined && (
-              <span id={markAllReasonId} className="field-note">
+              <span id={markAllReasonId} className="visually-hidden">
                 {markAllReadReason}
               </span>
             )}
           </div>
-        }
-      />
+        </NotificationFilterBar>
+      </section>
 
       {/*
        * 쓰기 실패는 **화면 수준 배너**로 낸다(공유계약 G-1). 카드마다 붙이면 목록이 오류로
@@ -465,42 +474,44 @@ export const NotificationCenterScreen = () => {
       )}
 
       <section className="pane notification-center-pane" aria-labelledby="notification-list-title">
-        <h2 id="notification-list-title" className="pane-title">
-          {t.panes.list}
-        </h2>
-        {/*
-         * ⭐ **결과가 없어도, 조회에 실패해도 조건 줄은 감추지 않는다** — 조건을 고칠 수단이
-         * 사라지면 사용자가 실패에서 빠져나올 길이 없다. T1은 조건 줄이 없어 실패 시 구획
-         * 자체를 그리지 않았는데, 이 회차부터는 전례(`master-change`·`inbound-schedule`)의
-         * 형태로 돌아간다.
-         */}
-        <NotificationFilterBar
-          period={period}
-          filters={filters}
-          eventOptions={eventOptions}
-          eventNote={events.isError ? t.filters.eventsFailed : undefined}
-          onChangePeriod={(nextPeriod) => {
-            applyQuery(nextPeriod, filters);
-          }}
-          onChangeFilters={(nextFilters) => {
-            applyQuery(period, nextFilters);
-          }}
-        />
-
+        <div className="notification-list-head">
+          <h2 id="notification-list-title" className="pane-title">
+            {t.panes.list}
+          </h2>
+          {/* 누를 때마다 최신순 ↔ 오래된순. 보이는 글자가 지금 차례다. */}
+          <Button
+            variant="outlined"
+            size="sm"
+            aria-label={`${t.sort.label}: ${order === 'desc' ? t.sort.newest : t.sort.oldest}`}
+            className="notification-sort-button"
+            leadingIcon={<Icon name="swap_vert" size={16} />}
+            onClick={() => {
+              setOrder((current) => (current === 'desc' ? 'asc' : 'desc'));
+            }}
+          >
+            {order === 'desc' ? t.sort.newest : t.sort.oldest}
+          </Button>
+        </div>
         {/* 실패했으면 목록도 빈 상태도 내지 않는다 — 위 배너가 그 자리를 맡는다. */}
         {!list.isError && (
           <>
             {listPane()}
-            {listQuery !== null && !list.isPending && !pageView.isBeyondLast && (
-              <PageNav
-                view={pageView}
-                onChange={(nextPage) => {
-                  applyQuery(period, filters, nextPage);
-                }}
-                sizes={PAGE_SIZES}
-                onChangeSize={changePageSize}
-              />
-            )}
+            {/* 0건이면 쪽 이동 줄을 내지 않는다 — 넘길 쪽이 없다(#361). */}
+            {listQuery !== null &&
+              !list.isPending &&
+              !pageView.isBeyondLast &&
+              pageMeta.total > 0 && (
+                <PageNav
+                  buttonSize="md"
+                  meta={pageMeta}
+                  onChangePage={(nextPage) => {
+                    applyQuery(period, filters, nextPage);
+                  }}
+                  onChangeSize={(nextSize) => {
+                    applyQuery(period, filters, 1, nextSize);
+                  }}
+                />
+              )}
           </>
         )}
       </section>

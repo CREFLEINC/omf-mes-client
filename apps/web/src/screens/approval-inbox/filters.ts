@@ -1,6 +1,8 @@
 import type { paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { PAGE_SIZES, type PageSize } from '../../patterns/page-nav';
+
 import { approvalTypeLabelOf } from './code-options';
 import { DEFAULT_TAB, toTabScopeQuery, type InboxTab } from './tabs';
 import type { InboxFilters } from './types';
@@ -34,6 +36,7 @@ const URL_KEYS = {
   to: 'to',
   q: 'q',
   page: 'page',
+  size: 'size',
   selected: 'rq',
 } as const;
 
@@ -97,6 +100,16 @@ export const readPage = (params: URLSearchParams): number => {
   return isIdentifier(raw) ? Number(raw) : 1;
 };
 
+/**
+ * 주소가 가리키는 쪽 크기. **고른 적이 없으면 `null`** — 그때는 크기를 싣지 않고 서버 기본값을 쓴다.
+ * 고를 수 있는 값(`PAGE_SIZES`) 밖이면 고르지 않은 것으로 본다.
+ */
+export const readSize = (params: URLSearchParams): PageSize | null => {
+  const size = Number(params.get(URL_KEYS.size) ?? '');
+
+  return PAGE_SIZES.find((option) => option === size) ?? null;
+};
+
 /** 주소가 가리키는 요청. 식별자가 아니면 아무것도 고르지 않은 것이다. */
 export const readSelectedRequestId = (params: URLSearchParams): number | null => {
   const raw = params.get(URL_KEYS.selected) ?? '';
@@ -120,6 +133,7 @@ export const toSearchParams = (
   filters: InboxFilters,
   tab: InboxTab,
   page: number,
+  size: PageSize | null = null,
 ): URLSearchParams => {
   const next = new URLSearchParams();
   const keyword = keywordOf(filters.q);
@@ -134,6 +148,7 @@ export const toSearchParams = (
   if (to !== '') next.set(URL_KEYS.to, to);
   if (keyword !== '') next.set(URL_KEYS.q, keyword);
   if (page > 1) next.set(URL_KEYS.page, String(page));
+  if (size !== null) next.set(URL_KEYS.size, String(size));
 
   return next;
 };
@@ -149,8 +164,9 @@ export const toSelectionSearchParams = (
   tab: InboxTab,
   page: number,
   approvalRequestId: number | null,
+  size: PageSize | null = null,
 ): URLSearchParams => {
-  const next = toSearchParams(filters, tab, page);
+  const next = toSearchParams(filters, tab, page, size);
 
   if (approvalRequestId !== null) next.set(URL_KEYS.selected, String(approvalRequestId));
 
@@ -175,8 +191,9 @@ export const withoutSelection = (params: URLSearchParams): URLSearchParams => {
 /**
  * 계약이 쓰는 쿼리 이름.
  *
- * **`size`가 없다.** 서버 기본값을 쓴다 — 화면이 정한 크기를 심으면 그것이 계약처럼 굳는다.
- * 대기 건수 조회만 예외로 크기를 명시하고, 그 사정은 `queries.ts`가 갖는다.
+ * **`size`는 사용자가 쪽 크기를 골랐을 때만 싣는다.** 고르지 않으면 서버 기본값을 쓴다 —
+ * 화면이 정한 크기를 심으면 그것이 계약처럼 굳는다.
+ * 대기 건수 조회는 따로 크기를 명시하고, 그 사정은 `queries.ts`가 갖는다.
  */
 type ListQueryParams = NonNullable<paths['/app/approval-requests']['get']['parameters']['query']>;
 
@@ -191,7 +208,6 @@ export interface RequestListQuery {
   requestedAtTo?: string;
   q?: string;
   page?: number;
-  /** 고른 쪽 크기 — 기본(50)이면 싣지 않는다(#360). */
   size?: number;
 }
 
@@ -205,6 +221,7 @@ export const toRequestListQuery = (
   filters: InboxFilters,
   tab: InboxTab,
   page: number,
+  size: PageSize | null = null,
 ): RequestListQuery => {
   const keyword = keywordOf(filters.q);
   const from = dateOf(filters.from);
@@ -221,6 +238,7 @@ export const toRequestListQuery = (
     ...(to === '' ? {} : { requestedAtTo: to }),
     ...(keyword === '' ? {} : { q: keyword }),
     ...(page > 1 ? { page } : {}),
+    ...(size === null ? {} : { size }),
   };
 };
 

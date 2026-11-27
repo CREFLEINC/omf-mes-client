@@ -33,14 +33,15 @@ type Client = ApiClient['client'];
  * 기간 두 값은 계약이 필수로 두어 **늘 실리고**, 나머지는 **고른 것만 키가 실린다** —
  * 요청 URL이 조건을 그대로 드러내야 무엇으로 조회했는지 읽을 수 있다.
  *
- * `size`는 싣지 않는다. 서버 기본값을 그대로 쓰고 쪽 크기를 화면이 정하지 않는다 —
+ * `size`는 사용자가 쪽 크기를 골랐을 때만 싣는다. 고르지 않으면 서버 기본값을 그대로 쓴다 —
  * 화면이 상수를 심으면 서버 기본이 바뀔 때 두 값이 갈려 범위 표기가 실제 응답과 어긋난다.
+ * 쪽 이동 줄은 응답의 `size`를 읽으므로 어느 쪽이든 표시가 실제 응답과 맞는다(#361).
  */
 export type NotificationListQuery = PeriodQuery &
   NotificationFilterQuery & {
     /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
     page?: number;
-    /** 기본(50)이면 싣지 않는다. */
+    /** 사용자가 고른 쪽 크기. 고르지 않았으면 싣지 않는다 — 서버 기본값을 쓴다. */
     size?: number;
   };
 
@@ -256,6 +257,7 @@ interface MarkReadAttempt {
  */
 export const useMarkRead = (options: MarkReadOptions): MarkReadMutation => {
   const { client } = useApiClient();
+  const queryClient = useQueryClient();
   /**
    * 마지막 실패 — **어느 알림의 것인지와 함께** 든다.
    *
@@ -311,6 +313,8 @@ export const useMarkRead = (options: MarkReadOptions): MarkReadMutation => {
      */
     mutateAsync({ notificationId, idempotencyKey: createIdempotencyKey() })
       .then(() => {
+        /* 사이드바 「알림센터」 숫자(#361)가 같은 열쇠를 읽는다 — 하나 읽으면 다시 센다. */
+        void queryClient.invalidateQueries({ queryKey: notificationKeys.unreadCount });
         /*
          * ⭐ **성공 되먹임의 예외를 요청 실패와 가른다**(전례 `login/queries.ts` · `omf-mes#96` 계열).
          *

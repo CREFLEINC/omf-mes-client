@@ -1,10 +1,17 @@
-import { Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import {
+  Button,
+  Chip,
+  type Column,
+  EmptyState,
+  SkeletonText,
+  type SortState,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 
-import { approvalTypeLabelOf, requestStatusLabelOf } from './code-options';
-import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
-import { PageNav } from './page-nav';
+import { ManagedTable } from '../../patterns/managed-table';
+import { PageNav, type PageNavMeta, type PageSize } from '../../patterns/page-nav';
+import { approvalTypeLabelOf, requestStatusLabelOf, requestStatusToneOf } from './code-options';
 import type { PageView } from './pagination';
 import type { RequestRow } from './types';
 
@@ -14,25 +21,25 @@ const t = messages.approvalInbox;
  * 표의 열 폭.
  *
  * **흡수 열은 사유 하나뿐이고 나머지 다섯은 폭을 지정한다.** 흡수 열이 둘이면 좁은 화면에서
- * 둘 다 짓눌린다. 지정 폭의 합은 **660px**이고, 사유에 **268px**을 예산으로 잡으면 합이
+ * 둘 다 짓눌린다. 지정 폭의 합은 **690px**이고(요청번호 170px · #361), 사유에 **238px**을 예산으로 잡으면 합이
  * `.wide-table`의 최소 폭(58rem = 928px)에 딱 맞는다 — 앞선 화면들이 쓴 방법과 같다
  * (흡수 열에도 예산을 주고 그 합으로 하한을 맞춘다).
  *
  * | 열 | 폭 | 근거 |
  * | --- | ---: | --- |
- * | 요청번호 | 140px | `SYNTH-REQ-001` 형식 한 줄 |
+ * | 요청번호 | 170px | `SYNTH-REQ-001` 형식 한 줄 |
  * | 승인 유형 | 160px | 코드 문자열 그대로. 밑줄 낀 긴 코드가 한 줄에 들어가는 폭 |
  * | 상신자 | 96px | 사람 이름 |
  * | **상신 일시** | **160px** | `2026-08-06 09:12` 한 줄. **일시 열의 저장소 전례 값 그대로다** |
  * | 상태 | 104px | 코드 문자열 그대로 |
- * | **사유 첫 줄** | **미지정(예산 268px)** | 남는 폭을 흡수하는 유일한 열 |
+ * | **사유 첫 줄** | **미지정(예산 238px)** | 남는 폭을 흡수하는 유일한 열 |
  *
  * **열 여섯은 설계 스펙이 확정한 필드 목록 그대로다.** 대상 표시명을 여기 두지 않는다 —
  * 대상은 상세 구획 소관이다. 진행 단계도 두지 않는다. 값 목록이 확정돼 유형이 사람이 읽는
  * 이름이 되면 라벨만 바뀌고 열 구성은 그대로다.
  */
 export const REQUEST_COLUMN_WIDTH = {
-  approvalRequestNo: '140px',
+  approvalRequestNo: '170px',
   approvalTypeCode: '160px',
   requester: '96px',
   requestedAt: '160px',
@@ -40,7 +47,7 @@ export const REQUEST_COLUMN_WIDTH = {
 } as const;
 
 /** 흡수 열(사유)의 예산. 지정 폭 합과 더해 최소 폭에 맞춘다 — 이 값이 곧 그 열의 하한이다. */
-export const REASON_COLUMN_BUDGET_PX = 268;
+export const REASON_COLUMN_BUDGET_PX = 238;
 
 /** `.wide-table`이 주는 표 최소 폭(58rem). 배치 규범 문서가 근거를 갖는다. */
 export const WIDE_TABLE_MIN_WIDTH_PX = 928;
@@ -49,10 +56,10 @@ export interface RequestListPaneProps {
   rows: RequestRow[];
   isLoading: boolean;
   pageView: PageView;
+  /** 목록 아래 쪽 이동 줄(공용 `PageNav`)이 읽는 쪽 정보 — 서버 응답의 `page` 그대로다. */
+  pageMeta: PageNavMeta;
   onChangePage: (page: number) => void;
-  /** 쪽 크기 — 주면 쪽 이동 줄에 「N건 ▾」를 그린다(#360). */
-  pageSizes?: readonly number[];
-  onChangePageSize?: (size: number) => void;
+  onChangeSize: (size: PageSize) => void;
   selectedRequestId: number | null;
   onSelect: (approvalRequestId: number) => void;
   /**
@@ -81,52 +88,48 @@ export const RequestListPane = ({
   rows,
   isLoading,
   pageView,
+  pageMeta,
   onChangePage,
-  pageSizes,
-  onChangePageSize,
+  onChangeSize,
   selectedRequestId,
   onSelect,
   loadError,
 }: RequestListPaneProps) => {
+  /* 상신 일시 오름/내림차순(#361) — 지금 쪽 안에서만 줄 차례를 바꾼다(조회 조건·쪽은 그대로). */
+  const [sort, setSort] = useState<SortState | null>(null);
+
   const columns: Column<RequestRow>[] = [
     {
       key: 'approvalRequestNo',
       header: t.fields.approvalRequestNo,
+      align: 'center',
       width: REQUEST_COLUMN_WIDTH.approvalRequestNo,
+      /* 요청번호는 글자만 — 줄 아무 곳이나 눌러 고르고, 고른 줄을 한 번 더 누르면 푼다(#361). */
       render: (row) => (
-        <button
-          type="button"
-          className={`link-cell ${ROW_PICK_CLASS}`}
-          /*
-           * 보이는 글자(요청번호)를 그대로 담아 음성 조작이 그 말로 이 버튼을 부를 수 있게 한다.
-           * 계약이 요청번호를 UNIQUE로 두어 행마다 이름이 갈린다.
-           * **내부 번호는 접근 이름에도 넣지 않는다.**
-           */
-          aria-label={t.actions.selectRow(row.approvalRequestNo)}
-          aria-current={row.approvalRequestId === selectedRequestId ? 'true' : undefined}
-          onClick={() => {
-            onSelect(row.approvalRequestId);
-          }}
-        >
+        <span data-selected={row.approvalRequestId === selectedRequestId ? 'true' : undefined}>
           {row.approvalRequestNo}
-        </button>
+        </span>
       ),
     },
     {
       key: 'approvalTypeCode',
       header: t.fields.approvalTypeCode,
+      align: 'center',
       width: REQUEST_COLUMN_WIDTH.approvalTypeCode,
       render: (row) => approvalTypeLabelOf(row.approvalTypeCode),
     },
     {
       key: 'requester',
       header: t.fields.requestedByName,
+      align: 'center',
       width: REQUEST_COLUMN_WIDTH.requester,
       render: (row) => row.requesterName,
     },
     {
       key: 'requestedAt',
       header: t.fields.requestedAt,
+      align: 'center',
+      sortable: true,
       width: REQUEST_COLUMN_WIDTH.requestedAt,
       /* **시각까지 낸다** — 같은 날 올라온 요청들의 앞뒤가 결재 차례를 읽는 단서다. */
       render: (row) => row.requestedAtText,
@@ -134,14 +137,22 @@ export const RequestListPane = ({
     {
       key: 'status',
       header: t.fields.status,
+      align: 'center',
       width: REQUEST_COLUMN_WIDTH.status,
-      render: (row) => requestStatusLabelOf(row.statusCode),
+      /* 상태는 라벨로(#361) — 결재 대기 파랑 · 승인 초록 · 반려 빨강. */
+      render: (row) => (
+        <Chip variant="status" size="sm" status={requestStatusToneOf(row.statusCode)}>
+          {requestStatusLabelOf(row.statusCode)}
+        </Chip>
+      ),
     },
     {
       key: 'reason',
       header: t.fields.reason,
+      /* 머리는 가운데, 사유 글은 왼쪽부터 읽히게(#361). */
+      align: 'center',
       /* 남는 폭을 흡수하는 유일한 열. 예산은 `REASON_COLUMN_BUDGET_PX`가 갖는다. */
-      render: (row) => row.reasonFirstLine,
+      render: (row) => <span className="approval-inbox-reason-text">{row.reasonFirstLine}</span>,
     },
   ];
 
@@ -198,23 +209,45 @@ export const RequestListPane = ({
        * (배치 규범 문서의 `.wide-table`). 넘침이 곧 가로 스크롤이 되는 상자는 디자인 시스템
        * `Table`이 이미 갖고 있다 — 우리가 만들지 않는다.
        */}
-      <div className="wide-table approval-inbox-table" {...rowPickHandlers}>
-        <Table
-          density="compact"
-          columns={columns}
-          rows={rows}
-          getRowId={(row) => String(row.approvalRequestId)}
-          caption={t.panes.list}
-          /* 0건을 바깥에서 가르지 않는다 — 가르면 표의 빈 자리가 닿을 수 없는 가지가 된다. */
-          empty={emptySlot}
-        />
-      </div>
-      <PageNav
-        view={pageView}
-        onChange={onChangePage}
-        sizes={pageSizes}
-        onChangeSize={onChangePageSize}
+      {/* 0건이면 표 최소 폭을 풀어 빈 안내가 잘리지 않게 한다(#361). */}
+      {/* 열 폭 끌기 · 순서 바꾸기(#361) — 다른 목록과 같은 공용 표. */}
+      <ManagedTable
+        storageKey="omf-mes:approval-inbox:list"
+        scrollX
+        className={
+          rows.length === 0
+            ? 'approval-inbox-table approval-inbox-table-empty'
+            : 'approval-inbox-table'
+        }
+        columns={columns}
+        rows={sortByRequestedAt(rows, sort)}
+        sort={sort}
+        onSortChange={setSort}
+        getRowId={(row) => String(row.approvalRequestId)}
+        caption={t.panes.list}
+        onRowClick={(row) => {
+          onSelect(row.approvalRequestId);
+        }}
+        /* 0건을 바깥에서 가르지 않는다 — 가르면 표의 빈 자리가 닿을 수 없는 가지가 된다. */
+        empty={emptySlot}
       />
+      {/* 0건이면 쪽 이동 줄을 내지 않는다 — 넘길 쪽이 없다(#361). */}
+      {pageMeta.total > 0 && (
+        <PageNav
+          buttonSize="md"
+          meta={pageMeta}
+          onChangePage={onChangePage}
+          onChangeSize={onChangeSize}
+        />
+      )}
     </>
   );
+};
+
+/** 상신 일시 차례 — `yyyy-MM-dd HH:mm` 글자라 글자 비교가 곧 시각 비교다. */
+const sortByRequestedAt = (rows: RequestRow[], sort: SortState | null): RequestRow[] => {
+  if (sort?.key !== 'requestedAt') return rows;
+  const sign = sort.direction === 'ascending' ? 1 : -1;
+
+  return [...rows].sort((a, b) => sign * a.requestedAtText.localeCompare(b.requestedAtText));
 };

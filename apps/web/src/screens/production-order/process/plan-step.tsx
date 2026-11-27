@@ -587,11 +587,11 @@ export const PlanStep = ({
                         <Button
                           size="sm"
                           variant="outlined"
-                          aria-label={`${group.orderNo} 계획 추가`}
+                          aria-label={`${group.orderNo} 수동 분배`}
                           disabled={disabled || group.addDisabled}
                           onClick={group.onAdd}
                         >
-                          계획 추가
+                          수동 분배
                         </Button>
                       </div>
                       <dl className="erp-wo-selected-item-fields">

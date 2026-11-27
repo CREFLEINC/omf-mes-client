@@ -1,5 +1,5 @@
 import type { components } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { requireIfMatch, useMasterWrite, type MasterWriteResult } from '../../patterns/master';
@@ -36,7 +36,7 @@ export const ACK_PAGE_SIZE = 50;
 
 export const noticeKeys = {
   all: ['notice'] as const,
-  list: (filters: NoticeFilters, size: number = PAGE_SIZE) =>
+  list: (filters: NoticeFilters, size: number | null = null) =>
     [
       'notice',
       'list',
@@ -51,6 +51,7 @@ export const noticeKeys = {
       size,
     ] as const,
   detail: (noticeId: number | null) => ['notice', 'detail', noticeId ?? 0] as const,
+  unacknowledged: (noticeId: number | null) => ['notice', 'unacknowledged', noticeId ?? 0] as const,
   acks: (noticeId: number | null, pendingOnly: boolean) =>
     ['notice', 'acks', noticeId ?? 0, pendingOnly] as const,
 };
@@ -61,10 +62,10 @@ export const noticeDetailPath = (noticeId: number): string => `/app/notices/${St
 type StatusQuery = components['schemas']['Notice']['statusCode'];
 type ScopeQuery = components['schemas']['Notice']['scopeCode'];
 
+/** `size`는 사용자가 고른 쪽 크기 — 고르지 않았으면 화면 기본(`PAGE_SIZE`)으로 조회한다(#361). */
 export const useNotices = (
   filters: NoticeFilters,
-  /** 고른 쪽 크기(10 · 20 · 50 · #360) — 주지 않으면 종전대로 20. */
-  size: number = PAGE_SIZE,
+  size: number | null = null,
 ): UseQueryResult<NoticeListResult> => {
   const { client } = useApiClient();
 
@@ -85,7 +86,7 @@ export const useNotices = (
               ...(filters.overlapFrom === '' ? {} : { overlapFrom: filters.overlapFrom }),
               ...(filters.overlapTo === '' ? {} : { overlapTo: filters.overlapTo }),
               page: filters.page,
-              size,
+              size: size ?? PAGE_SIZE,
             },
           },
         }),
@@ -94,6 +95,46 @@ export const useNotices = (
         page: data.page,
       })),
   });
+};
+
+/**
+ * 상태 라벨의 건수(#361 — 「게시 중 2」). 지금 걸린 다른 조건(제목 · 기간 · 대상 범위 · 내가 확인하지 않은 것)은
+ * 그대로 두고 상태만 바꿔 센다 — 품질 화면(검사 조회·판정)의 판정 칩 건수와 같은 규칙. 한 줄만 받아 총 건수만 읽는다.
+ * 「게시 중」은 목록과 같은 조건(`activeOnly`)으로 센다(서버가 둘을 같은 조건으로 거른다).
+ */
+export const useNoticeStatusCounts = (
+  filters: NoticeFilters,
+  statuses: readonly string[],
+): (number | undefined)[] => {
+  const { client } = useApiClient();
+  const base = { ...filters, page: 1, statusCode: '', activeOnly: false };
+
+  const results = useQueries({
+    queries: statuses.map((status) => ({
+      queryKey: [...noticeKeys.list(base, 1), 'count', status] as const,
+      queryFn: () =>
+        runRequest(() =>
+          client.GET('/app/notices', {
+            params: {
+              query: {
+                ...(base.q === '' ? {} : { q: base.q }),
+                ...(status === 'PUBLISHED'
+                  ? { activeOnly: true }
+                  : { statusCode: status as StatusQuery }),
+                ...(base.scopeCode === '' ? {} : { scopeCode: base.scopeCode as ScopeQuery }),
+                ...(base.unacknowledgedByMe ? { unacknowledgedByMe: true } : {}),
+                ...(base.overlapFrom === '' ? {} : { overlapFrom: base.overlapFrom }),
+                ...(base.overlapTo === '' ? {} : { overlapTo: base.overlapTo }),
+                page: 1,
+                size: 1,
+              },
+            },
+          }),
+        ).then((data) => data.page.total),
+    })),
+  });
+
+  return results.map((result) => result.data);
 };
 
 export const useNoticeDetail = (noticeId: number | null): UseQueryResult<NoticeView> => {
@@ -142,6 +183,43 @@ export const useAcknowledgements = (
         items: data.items.map(toAckView),
         page: data.page,
       }));
+    },
+  });
+};
+
+/** 「아직 확인 안 함」 판정에 한 번에 보는 줄 수 — 같은 제목이 이보다 많을 일은 없다. */
+const UNACKNOWLEDGED_PROBE_SIZE = 100;
+
+/**
+ * 고른 공지를 **내가 아직 확인하지 않았는가**(#361 — 목록에서 고르면 확인한 것으로 친다).
+ *
+ * ⛔ 확인을 다시 보내면 서버가 확인 일시를 그 순간으로 덮어쓴다 — 고를 때마다 보내면 확인 현황의
+ * 「확인 일시」가 「마지막으로 연 때」가 된다. 그래서 확인하지 않은 공지일 때만 보낸다.
+ * 상세 응답에 「내 확인 여부」가 없어 목록의 「내가 확인하지 않은 것만」 조건(게시 중 · 확인 기록 없음)으로
+ * 같은 제목의 공지를 거르고 그 안에 이 공지가 있는지 본다. 게시 중이 아니면 부르지 않는다.
+ */
+export const useUnacknowledgedByMe = (notice: NoticeView | null): UseQueryResult<boolean> => {
+  const { client } = useApiClient();
+  const noticeId = notice?.noticeId ?? null;
+
+  return useQuery({
+    queryKey: noticeKeys.unacknowledged(noticeId),
+    enabled: notice !== null && notice.statusCode === 'PUBLISHED',
+    queryFn: () => {
+      if (notice === null) throw new Error('공지를 고르기 전에는 확인 여부를 조회하지 않습니다.');
+
+      return runRequest(() =>
+        client.GET('/app/notices', {
+          params: {
+            query: {
+              unacknowledgedByMe: true,
+              q: notice.title,
+              page: 1,
+              size: UNACKNOWLEDGED_PROBE_SIZE,
+            },
+          },
+        }),
+      ).then((data) => data.items.some((item) => item.noticeId === notice.noticeId));
     },
   });
 };
@@ -261,7 +339,7 @@ export const useNoticeClose = (
 };
 
 /**
- * 읽은 사람이 스스로 누르는 확인.
+ * 확인 — 목록에서 공지를 고르면 아직 확인하지 않은 게시 중 공지일 때 한 번 보낸다(#361).
  *
  * ⛔ 잠금 토큰을 싣지 않는다 — 계약이 요구하지 않는다. 확인은 공지를 고치는 일이 아니라
  * 내 이름으로 한 줄을 더하는 일이다.
@@ -275,37 +353,6 @@ export const useAcknowledge = (
   return useMasterWrite<Record<string, never>, undefined>({
     request: (_body, headers) =>
       client.POST('/app/notices/{noticeId}:acknowledge', {
-        params: {
-          path: { noticeId: noticeId ?? 0 },
-          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
-        },
-      }),
-    etagPath: null,
-    invalidateKeys: [noticeKeys.all],
-    knownFields: [],
-    keyLifetime: 'per-attempt',
-    onSuccess,
-  });
-};
-
-/**
- * 확인하지 **않고** 닫았다를 기록한다.
- *
- * ⭐ **확인과 닫음을 나누는 이유는 「확인하지 않았다」가 이력에 남아야 하기 때문이다** —
- * 남기려면 닫은 것도 기록해야 한다.
- *
- * ⚠ **확인을 요구한 공지에는 이 호출이 거부된다.** 그 공지는 닫을 수 없다 — 화면이 먼저
- * 잠그고 사유를 적는다.
- */
-export const useDismiss = (
-  noticeId: number | null,
-  onSuccess: () => void,
-): MasterWriteResult<Record<string, never>> => {
-  const { client } = useApiClient();
-
-  return useMasterWrite<Record<string, never>, undefined>({
-    request: (_body, headers) =>
-      client.POST('/app/notices/{noticeId}:dismiss', {
         params: {
           path: { noticeId: noticeId ?? 0 },
           header: { 'Idempotency-Key': headers['Idempotency-Key'] },

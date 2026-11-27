@@ -1384,24 +1384,25 @@ describe('appRouter — 알림센터의 진입 경로', () => {
   it('그 주소로 들어가면 알림센터 화면이 첫 상태로 선다', async () => {
     renderRoutedApp('/notification/center', notificationCenterRoutes());
 
+    /* 화면 제목 줄은 두지 않는다(#361) — 목록 제목으로 화면이 섰는지 본다. */
     expect(
-      await screen.findByRole('heading', { level: 1, name: messages.notificationCenter.title }),
+      await screen.findByRole('heading', {
+        level: 2,
+        name: messages.notificationCenter.panes.list,
+      }),
     ).toBeInTheDocument();
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
   });
 
   /**
-   * ⭐ **주소에 기간이 없으면 화면이 기본 7일을 심는다** — 라우트를 거친 첫 진입이 그 경로다.
-   * 라우트만 열고 화면이 서지 않는 상태를 잡으려면 **조회가 실제로 도는 것**까지 봐야 한다.
+   * ⭐ **주소에 기간이 없으면 기간 없이 모든 알림을 본다**(#361) — 주소에 날짜를 심지 않는다.
    */
-  it('첫 진입에 기간이 주소에 심긴다', async () => {
+  it('첫 진입에 기간을 주소에 심지 않는다', async () => {
     renderRoutedApp('/notification/center', notificationCenterRoutes());
 
-    await screen.findByRole('heading', { level: 1, name: messages.notificationCenter.title });
+    await screen.findByRole('heading', { level: 2, name: messages.notificationCenter.panes.list });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('location').textContent).toContain('from=');
-    });
-    expect(screen.getByTestId('location').textContent).toContain('to=');
+    expect(screen.getByTestId('location').textContent).not.toContain('from=');
   });
 });
 
@@ -1534,9 +1535,24 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
         url.searchParams.get('codeGroupCode') === 'LOGISTICS_DOCUMENT_STATUS'
       );
     };
+    /* 업무함 배지(#361) — 사이드바가 내 결재 대기 수 · 미확인 알림 수를 센다. 화면의 조회가 아니다. */
+    const isInboxBadge = (request: Request) => {
+      const url = new URL(request.url);
+      return (
+        (url.pathname.endsWith('/app/approval-requests') &&
+          (url.searchParams.get('myTurnOnly') === 'true' ||
+            url.searchParams.get('requestedByMe') === 'true') &&
+          url.searchParams.get('size') === '1') ||
+        url.pathname.endsWith('/app/notifications/unread-count')
+      );
+    };
     expect(
       requests.filter(
-        (request) => !isOaLookup(request) && !isIqcBadge(request) && !isStatusOptions(request),
+        (request) =>
+          !isOaLookup(request) &&
+          !isIqcBadge(request) &&
+          !isStatusOptions(request) &&
+          !isInboxBadge(request),
       ),
     ).toHaveLength(0);
   });

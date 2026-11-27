@@ -25,7 +25,8 @@ export const PlanCreationTools = ({
       </div>
     )}
     <div className="erp-wo-plan-create-actions">
-      <Button disabled={disabled || addDisabled} onClick={onAdd}>
+      {/* 자동 분배가 기본 동작으로 보이게 채운 단추는 자동 분배에 두고, 수동 분배는 테두리 단추다(사용자 지시 2026-11-27). */}
+      <Button variant="outlined" disabled={disabled || addDisabled} onClick={onAdd}>
         {messages.erpWorkOrderFlow.process.plan.add}
       </Button>
       {children}

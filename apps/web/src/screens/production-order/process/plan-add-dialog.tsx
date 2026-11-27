@@ -1,4 +1,3 @@
-import { messages } from '@omf-mes/i18n';
 import { isPastPlanningDate } from './planning-date-policy';
 import { plantToday } from '../../../patterns/plant-time';
 import { usePlanningDays, planningDayKey, PlanningDayNotice } from './planning-working-days';
@@ -23,10 +22,6 @@ export interface PlanAddTarget {
   defaults: NewProductionPlanDefaults;
   lines: readonly PlanLine[];
 }
-
-/** 팝업 칸 안 흐린 안내(사용자 지시 2026-11-26). */
-const ph = messages.erpWorkOrderFlow.process.placeholders;
-
 export const PlanAddDialog = ({
   targets,
   initialOrder,
@@ -98,9 +93,10 @@ export const PlanAddDialog = ({
   return (
     <Dialog
       open
-      title="계획 추가"
+      title="수동 분배"
       className="erp-wo-plan-add-dialog"
       closeOnBackdropClick={false}
+      showCloseButton={false}
       onClose={onClose}
       footer={
         <>
@@ -125,29 +121,8 @@ export const PlanAddDialog = ({
           ERP W/O와 계획일을 지정하고 추가 편성 가능한 수량 이내에서 생산량과 단위 소수 자릿수를
           확인하세요.
         </p>
-        {/* W/O 칸 오른쪽에 「추가 편성 가능」 정보 상자(팝업 시안 · #360) — 좁으면 다음 줄로. */}
+        {/* 「추가 편성 가능」 정보 상자는 W/O 칸 왼쪽(사용자 지시 · #360) — 좁으면 다음 줄로. */}
         <div className="erp-wo-plan-add-target">
-          <div className="field-cell">
-            <span className="field-label">
-              계획을 추가할 ERP W/O
-              <span className="required-mark" aria-hidden="true">
-                {' *'}
-              </span>
-            </span>
-            <Select
-              aria-label="계획을 추가할 ERP W/O"
-              placeholder={ph.addTarget}
-              aria-required="true"
-              value={id}
-              options={targets
-                .filter((target) => target.remaining > 0)
-                .map((target) => ({ value: target.id, label: target.label }))}
-              onChange={(id) => {
-                setId(id);
-                setDraft(makeDraft(targets.find((target) => target.id === id)));
-              }}
-            />
-          </div>
           {target && (
             <InfoFacts
               className="erp-wo-plan-add-summary"
@@ -161,6 +136,26 @@ export const PlanAddDialog = ({
               ]}
             />
           )}
+          <div className="field-cell">
+            <span className="field-label">
+              계획을 추가할 ERP W/O
+              <span className="required-mark" aria-hidden="true">
+                {' *'}
+              </span>
+            </span>
+            <Select
+              aria-label="계획을 추가할 ERP W/O"
+              aria-required="true"
+              value={id}
+              options={targets
+                .filter((target) => target.remaining > 0)
+                .map((target) => ({ value: target.id, label: target.label }))}
+              onChange={(id) => {
+                setId(id);
+                setDraft(makeDraft(targets.find((target) => target.id === id)));
+              }}
+            />
+          </div>
         </div>
         <div className="erp-wo-plan-add-fields">
           <div className="field-cell">
@@ -172,7 +167,7 @@ export const PlanAddDialog = ({
             </span>
             <DatePicker
               min={plantToday()}
-              placeholder="계획일을 선택하세요"
+              placeholder="계획일 선택"
               aria-label="추가할 계획일"
               aria-required="true"
               value={draft.planDate}
@@ -188,7 +183,6 @@ export const PlanAddDialog = ({
           </div>
           <TextField
             label="추가할 계획 수량"
-            placeholder={ph.addQty}
             required
             inputMode="decimal"
             disabled={!target}

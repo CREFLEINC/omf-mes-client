@@ -19,14 +19,17 @@ import {
 import { runRequest } from '../../patterns/request';
 import { Select } from '../../patterns/select';
 import { useItemCodeNames } from './item-lookups';
+import { DEFAULT_WORKLIST_FILTER, isWorklistFilter } from './worklist-model';
 import type { WorklistFilters } from './worklist-queries';
 
 const t = messages.erpWorkOrderFlow.filters;
 
-type Draft = Pick<WorklistFilters, 'q' | 'dueFrom' | 'dueTo' | 'item' | 'plant'>;
+type Draft = Pick<WorklistFilters, 'state' | 'q' | 'dueFrom' | 'dueTo' | 'item' | 'plant'>;
 
 export interface WorklistFilterBarProps {
   applied: Draft;
+  /** 처리 상태 선택지. 「전체」부터 처리 순서대로이고, 이름 뒤 건수는 화면이 붙여 넘긴다. */
+  stateOptions: SelectOption[];
   /** 세션 데이터 범위 안 공장. 「전체」는 이 컴포넌트가 앞에 붙인다. */
   plantOptions: SelectOption[];
   /** 범위 안 공장이 하나뿐이라 그 공장으로 정해져 있고 바꿀 수 없다. */
@@ -73,19 +76,27 @@ const useItemSource = (): ReferenceSource => {
 };
 
 /** 조회 조건 줄의 처음 값. 공장이 하나로 정해져 있으면 그 공장이 처음 값이다. */
-const initialDraft = (plant: string): Draft => ({ q: '', dueFrom: '', dueTo: '', item: '', plant });
+const initialDraft = (plant: string): Draft => ({
+  state: DEFAULT_WORKLIST_FILTER,
+  q: '',
+  dueFrom: '',
+  dueTo: '',
+  item: '',
+  plant,
+});
 
 /**
- * C-6 조회 조건 한 줄: 번호 검색(보통), 납기 기간(보통), 품목(보통), [초기화], [조회], [조건 더보기].
+ * C-6 조회 조건 한 줄: 처리 상태(좁음), 번호 검색(보통), 납기 기간(보통), 품목(보통), [초기화], [조회], [조건 더보기].
  * 칸 폭은 C-19의 세 가지(배치 클래스 filter-field-*), 간격은 하나다. Enter로도 조회한다.
- * 자동 계획 조건은 페이지 머리의 상태별 건수 칩이 맡는다(C-17). 1280×800에서 네 칸과 버튼이 한 줄에 들어가지 않아서다(G-41).
+ * 처리 상태는 페이지 머리 탭 대신 이 줄의 선택 칸으로 고른다(사용자 지시 2026-11-27). 다른 칸처럼 [조회]를 눌러야 걸린다.
  *
- * **보이는 칸은 셋이다**(C-6) — 공장은 「조건 더보기」에 접는다. 접힌 공장 조건이 걸려 있으면 칩으로만 알린다.
+ * 공장은 「조건 더보기」에 접는다(C-6). 접힌 공장 조건이 걸려 있으면 칩으로만 알린다.
  * 범위 안 공장이 하나로 정해져 있으면 바꿀 수 없는 범위라 칩을 세우지 않는다.
- * 「초기화」는 조건 줄의 칸이 처음 값과 다를 때만 보인다(상태는 페이지 머리 칩이 맡는다).
+ * 「초기화」는 조건 줄의 칸이 처음 값과 다를 때만 보인다.
  */
 export const WorklistFilterBar = ({
   applied,
+  stateOptions,
   plantOptions,
   plantLocked,
   plantNote,
@@ -94,11 +105,15 @@ export const WorklistFilterBar = ({
 }: WorklistFilterBarProps) => {
   const [draft, setDraft] = useState<Draft>(applied);
   const more = useFilterMore();
+  const stateId = useId();
   const plantId = useId();
   const plantNoteId = useId();
   const itemSource = useItemSource();
-  const { q, dueFrom, dueTo, item, plant } = applied;
-  useEffect(() => setDraft({ q, dueFrom, dueTo, item, plant }), [q, dueFrom, dueTo, item, plant]);
+  const { state, q, dueFrom, dueTo, item, plant } = applied;
+  useEffect(
+    () => setDraft({ state, q, dueFrom, dueTo, item, plant }),
+    [state, q, dueFrom, dueTo, item, plant],
+  );
   const itemNames = useItemCodeNames(draft.item === '' ? [] : [Number(draft.item)]);
   const [pickedLabel, setPickedLabel] = useState<{ id: string; label: string } | null>(null);
   const known = draft.item === '' ? undefined : itemNames.get(Number(draft.item));
@@ -112,6 +127,7 @@ export const WorklistFilterBar = ({
           : named(known.itemName, known.itemCode);
 
   const isChanged = hasChangedFilters(initialDraft(plantLocked ? plant : ''), draft, {
+    state,
     q,
     dueFrom,
     dueTo,
@@ -133,6 +149,19 @@ export const WorklistFilterBar = ({
           onSearch(draft);
         }}
       >
+        <div className="field-cell filter-field-sm">
+          <label className="field-label" htmlFor={stateId}>
+            {t.state}
+          </label>
+          <Select
+            id={stateId}
+            value={draft.state}
+            options={stateOptions}
+            onChange={(value) => {
+              if (isWorklistFilter(value)) setDraft((current) => ({ ...current, state: value }));
+            }}
+          />
+        </div>
         <div className="field-cell filter-field-md erp-wo-filter-q">
           <SearchInput
             fullWidth
@@ -208,7 +237,7 @@ export const WorklistFilterBar = ({
       <HiddenFilterChips
         open={more.isOpen}
         chips={hiddenChips}
-        onRemove={() => onSearch({ q, dueFrom, dueTo, item, plant: '' })}
+        onRemove={() => onSearch({ state, q, dueFrom, dueTo, item, plant: '' })}
       />
     </>
   );

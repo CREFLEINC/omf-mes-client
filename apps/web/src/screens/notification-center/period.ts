@@ -32,11 +32,13 @@ import { messages } from '@omf-mes/i18n';
 const t = messages.notificationCenter;
 
 /**
- * 기본 조회 기간(일). 화면 스펙이 「기본 최근 1주」로 정했다.
- *
- * **기간을 적는 자리는 여기 하나뿐이다.** 다른 값이 맞다고 정해지면 이 상수만 고친다.
+ * 날짜를 비운 쪽에 대신 보내는 끝 경계(#361 사용자 지시 — 기간과 상관없이 모든 알림을 본다).
+ * 계약이 기간을 필수로 두어 서버에는 늘 두 값을 보낸다 — 비운 쪽은 이 넓은 경계로 채운다.
  */
-export const DEFAULT_PERIOD_DAYS = 7;
+export const OPEN_PERIOD_QUERY = {
+  occurredFrom: '2000-01-01T00:00:00Z',
+  occurredTo: '2999-12-31T23:59:59Z',
+} as const;
 
 /**
  * 기간이 사는 주소 키. **다른 조건 키와 갈라 여기 둔다** — 기간은 이 화면에서 유일하게
@@ -69,14 +71,11 @@ export interface PeriodQuery {
  * 그것까지 다시 고르라는 말이 된다.
  */
 export type PeriodState =
-  { kind: 'ready'; query: PeriodQuery } | { kind: 'empty' } | { kind: 'blocked'; reason: string };
+  { kind: 'ready'; query: PeriodQuery } | { kind: 'blocked'; reason: string };
 
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 const pad = (value: number, length: number): string => String(value).padStart(length, '0');
-
-const formatDate = (at: Date): string =>
-  `${pad(at.getFullYear(), 4)}-${pad(at.getMonth() + 1, 2)}-${pad(at.getDate(), 2)}`;
 
 /**
  * 자릿수가 맞고 **실제로 있는 날짜**인가.
@@ -110,37 +109,6 @@ export const readPeriod = (params: URLSearchParams): NotificationPeriod => ({
 });
 
 /**
- * 주소에 기간 키가 **하나라도 있는가.**
- *
- * ⭐ `readPeriod`는 「키가 없다」와 「키는 있고 값이 비었다」를 **같은 빈 문자열로 접는다** —
- * 값을 읽어야 하는 쪽(조건 줄)에는 그것이 맞지만, 「기본값을 채울 것인가」를 정하는 데는
- * 두 사태가 정반대다. 전자는 아직 아무 말도 하지 않은 상태이고 후자는 **비우겠다는 뜻**이다.
- * 채워 버리면 사용자가 기간을 비울 수단이 아예 없어진다.
- *
- * 전례 둘이 같은 자리를 같은 방법으로 갈라 두었다 — `master-change/screen.tsx:118` ·
- * `integration-sync/screen.tsx:169`.
- *
- * **한쪽만 있어도 참이다.** `?from=2026-08-01`은 사용자가 기간에 손을 댄 상태이므로 덮지 않고
- * 「반대쪽을 채우라」고 말한다.
- */
-export const hasPeriodKeys = (params: URLSearchParams): boolean =>
-  params.has(PERIOD_URL_KEYS.from) || params.has(PERIOD_URL_KEYS.to);
-
-/**
- * 오늘을 마지막 날로 두고 `DEFAULT_PERIOD_DAYS`일치를 고른다 — **오늘을 포함해** 센다.
- * 달·해의 경계는 `Date`가 넘겨 준다(0일·음수 일자를 정상 날짜로 되돌린다).
- */
-export const defaultPeriod = (today: Date): NotificationPeriod => {
-  const from = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate() - (DEFAULT_PERIOD_DAYS - 1),
-  );
-
-  return { from: formatDate(from), to: formatDate(today) };
-};
-
-/**
  * 실행 환경이 UTC와 얼마나 떨어져 있는지. `+09:00` 꼴이다.
  *
  * 인자는 **UTC 기준 분**이다(한국은 +540). `Date.getTimezoneOffset()`은 부호가 반대라
@@ -156,57 +124,36 @@ const offsetText = (offsetMinutes: number): string => {
 /**
  * 조회할 수 있는 기간인지 판정하고, 할 수 있으면 보낼 쿼리를 함께 돌려준다.
  *
- * **순서가 뜻을 정한다.** 네 갈래를 이 차례로 본다.
+ * **날짜를 비우면 그쪽 경계가 없는 것으로 본다**(#361 — 기간과 상관없이 모든 알림을 본다). 비운 쪽은
+ * `OPEN_PERIOD_QUERY` 경계로 채운다. 넣은 값이 날짜가 아니거나 뒤집혔을 때만 막는다.
  *
- * | # | 사태 | 결과 | 왜 이 자리인가 |
- * | :-: | --- | --- | --- |
- * | 1 | 키가 없다 | `empty` | 사용자가 아직 아무 말도 하지 않았다 — 유일하게 **덮어도 되는** 상태다 |
- * | 2 | 한쪽이든 양쪽이든 **비었다** | `blocked` · 채우라고 말한다 | 「없는 값」이다. 넣은 쪽은 멀쩡하므로 그것까지 다시 고르라고 하지 않는다 |
- * | 3 | 넣었는데 **날짜가 아니다** | `blocked` · 다시 고르라고 말한다 | 「틀린 값」이다. 2와 갈라야 G-9가 지켜진다 |
- * | 4 | 날짜인데 **뒤집혔다** | `blocked` · 순서를 말한다 | 3보다 뒤다 — 없는 날짜를 「순서를 바꾸세요」로 말하면 순서를 바꿔도 여전히 조회되지 않는다 |
+ * ⚠ **끝 경계는 계약이 말하지 않는다** — `23:59:59`로 두므로 서버가 「미만」으로 자르면 그날 마지막 1초의
+ * 알림이 빠질 수 있다(질문 `omf-mes#163`).
  *
- * ⚠ **끝 경계는 계약이 말하지 않는다** — `occurredTo`가 이상인지 미만인지 적혀 있지 않다.
- * `23:59:59`로 두므로 서버가 「미만」으로 자르면 그날 마지막 1초의 알림이 빠질 수 있다.
- * 질문 `omf-mes#163`으로 추적 중이며, 답이 오면 이 함수 한 곳만 고친다.
- *
- * `hasKeys`는 **주소에 기간 키가 있었는가**다(`hasPeriodKeys`). 값만으로는 1과 2를 가를 수
- * 없어 따로 받는다. 조건 줄이 든 초안을 판정할 때처럼 **주소가 출처가 아닌 호출**에서는
- * 「사용자가 이미 손을 댄 상태」이므로 `true`를 준다.
- *
- * `now`는 **시간대를 읽기 위해서만** 쓴다 — 값 자체는 쿼리에 실리지 않는다. 인자로 받는
- * 이유는 이 함수가 실행 환경의 시각을 스스로 읽지 않기 위해서다(파일 머리의 순수성 규율).
+ * `now`는 **시간대를 읽기 위해서만** 쓴다 — 이 함수가 실행 환경의 시각을 스스로 읽지 않기 위해서다.
  */
-export const resolvePeriod = (
-  period: NotificationPeriod,
-  hasKeys: boolean,
-  now: Date,
-): PeriodState => {
-  if (!hasKeys && period.from === '' && period.to === '') return { kind: 'empty' };
-
-  if (period.from === '' || period.to === '') {
-    return { kind: 'blocked', reason: t.reasons.periodIncomplete };
-  }
-
-  if (!isCalendarDate(period.from) || !isCalendarDate(period.to)) {
+export const resolvePeriod = (period: NotificationPeriod, now: Date): PeriodState => {
+  if (
+    (period.from !== '' && !isCalendarDate(period.from)) ||
+    (period.to !== '' && !isCalendarDate(period.to))
+  ) {
     return { kind: 'blocked', reason: t.reasons.periodInvalid };
   }
 
   /* 자릿수가 고정된 `YYYY-MM-DD`라 문자열 비교가 곧 날짜 비교다. */
-  if (period.to < period.from) {
+  if (period.from !== '' && period.to !== '' && period.to < period.from) {
     return { kind: 'blocked', reason: t.reasons.periodReversed };
   }
 
   const zone = offsetText(-now.getTimezoneOffset());
 
-  /*
-   * **종료는 그날 23:59:59다.** 00:00:00으로 만들면 마지막 날에 온 알림이 통째로 빠져
-   * 사용자에게는 「오늘 온 알림이 안 보인다」로 나타난다.
-   */
+  /* **종료는 그날 23:59:59다.** 00:00:00이면 마지막 날에 온 알림이 통째로 빠진다. */
   return {
     kind: 'ready',
     query: {
-      occurredFrom: `${period.from}T00:00:00${zone}`,
-      occurredTo: `${period.to}T23:59:59${zone}`,
+      occurredFrom:
+        period.from === '' ? OPEN_PERIOD_QUERY.occurredFrom : `${period.from}T00:00:00${zone}`,
+      occurredTo: period.to === '' ? OPEN_PERIOD_QUERY.occurredTo : `${period.to}T23:59:59${zone}`,
     },
   };
 };

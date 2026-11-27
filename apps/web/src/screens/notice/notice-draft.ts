@@ -42,6 +42,16 @@ export const EMPTY_DRAFT: NoticeDraft = {
   workOrder: '',
 };
 
+/** 오늘(사용자 PC 기준 달력 날짜) — 새 공지의 시작일 기본값(#361). */
+const todayDate = (now: Date = new Date()): string =>
+  `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+/** 새 공지 쓰기의 처음 값 — 시작일은 오늘로 채워 둔다(#361). */
+export const newDraft = (now?: Date): NoticeDraft => ({
+  ...EMPTY_DRAFT,
+  startDate: todayDate(now),
+});
+
 export const toDraft = (view: NoticeView): NoticeDraft => ({
   title: view.title,
   body: view.body,
@@ -80,11 +90,10 @@ export const validateDraft = (draft: NoticeDraft): DraftErrors => {
     errors.startDate = t.form.invalidDate;
   }
 
-  if (draft.endDate === '') {
-    errors.endDate = t.form.requiredEndDate;
-  } else if (!isCalendarDate(draft.endDate)) {
+  /* 종료일은 선택 입력이다(계약 `endDate?` · #361) — 비우면 종료일 없이 게시된다. */
+  if (draft.endDate !== '' && !isCalendarDate(draft.endDate)) {
     errors.endDate = t.form.invalidDate;
-  } else if (draft.startDate !== '' && draft.endDate < draft.startDate) {
+  } else if (draft.endDate !== '' && draft.startDate !== '' && draft.endDate < draft.startDate) {
     errors.endDate = t.form.invalidEndDate;
   }
 
@@ -111,7 +120,7 @@ export const hasErrors = (errors: DraftErrors): boolean => Object.keys(errors).l
  *
  * ⛔ **상태를 싣지 않는다** — 서버가 게시 여부와 오늘 날짜로 파생한다.
  * ⛔ **범위가 작업지시가 아니면 작업지시를 싣지 않는다** — 짝이 어긋나면 거부된다.
- * ⭐ **종료일은 항상 싣는다** — 상태 파생이 이 날짜에 걸리므로 저장 전에 필수 검증한다.
+ * ⭐ **종료일은 고른 때만 싣는다** — 계약이 선택 항목으로 두었다(#361). 비우면 종료일 없이 게시된다.
  */
 export const toCreateBody = (draft: NoticeDraft): NoticeCreate => ({
   title: draft.title.trim(),
@@ -123,6 +132,6 @@ export const toCreateBody = (draft: NoticeDraft): NoticeCreate => ({
    * 「1차에 쓸 수 있는 둘」로 걸러 낸 것이라 안전하다.
    */
   scopeCode: draft.scopeCode as NoticeCreate['scopeCode'],
-  endDate: draft.endDate,
+  ...(draft.endDate === '' ? {} : { endDate: draft.endDate }),
   ...(needsWorkOrder(draft.scopeCode) ? { targetWorkOrderId: Number(draft.workOrder) } : {}),
 });

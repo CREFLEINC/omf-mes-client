@@ -38,11 +38,12 @@ export const DisabledAction = ({
   const noteId = useId();
 
   return (
-    <div className="field-cell">
+    <div className="info-label approval-inbox-disabled-action">
       <Button variant={variant} size={size} disabled aria-describedby={noteId}>
         {label}
       </Button>
-      <span id={noteId} className="field-note">
+      {/* 단추 옆 ⓘ 는 두지 않는다(#361 사용자 지시). 사유는 보조기술에만 숨은 글로 잇는다. */}
+      <span id={noteId} className="visually-hidden">
         {reason}
       </span>
     </div>

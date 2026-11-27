@@ -1,4 +1,4 @@
-import { Button, Checkbox, DatePicker, TextArea, TextField } from '@crefle/web-ui';
+import { Checkbox, DatePicker, TextArea, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
@@ -16,13 +16,10 @@ const t = messages.notice;
 export interface NoticeFormProps {
   draft: NoticeDraft;
   errors: DraftErrors;
-  isSaving: boolean;
   saveError: ApiError | null;
   fieldErrors: Record<string, string>;
   workOrders: LookupResult;
   onChange: (patch: Partial<NoticeDraft>) => void;
-  onSubmit: () => void;
-  onCancel: () => void;
 }
 
 /**
@@ -41,13 +38,10 @@ const scopeOptions = (): SelectOption[] =>
 export const NoticeForm = ({
   draft,
   errors,
-  isSaving,
   saveError,
   fieldErrors,
   workOrders,
   onChange,
-  onSubmit,
-  onCancel,
 }: NoticeFormProps) => {
   const baseId = useId();
   const titleId = `${baseId}-title`;
@@ -56,6 +50,10 @@ export const NoticeForm = ({
   const endId = `${baseId}-end`;
 
   const wantsWorkOrder = needsWorkOrder(draft.scopeCode);
+
+  /** 필수인데 비어 있는 칸 — 빨간 테두리로 알리고, 값이 들어오면 걷는다(#361 · 긴급 작업지시와 같은 방식). */
+  const emptyRequired = (value: string): string | undefined =>
+    value.trim() === '' ? 'notice-required-empty' : undefined;
 
   return (
     <>
@@ -67,7 +65,9 @@ export const NoticeForm = ({
           <TextField
             id={titleId}
             aria-required="true"
+            containerClassName={emptyRequired(draft.title)}
             value={draft.title}
+            placeholder={t.form.titlePlaceholder}
             maxLength={200}
             error={errors.title ?? fieldErrors.title}
             onChange={(event) => {
@@ -81,7 +81,9 @@ export const NoticeForm = ({
           <TextArea
             id={bodyId}
             aria-required="true"
+            containerClassName={emptyRequired(draft.body)}
             value={draft.body}
+            placeholder={t.form.bodyPlaceholder}
             rows={6}
             fullWidth
             error={errors.body ?? fieldErrors.body}
@@ -97,8 +99,10 @@ export const NoticeForm = ({
             id={startId}
             mode="single"
             clearable
-            placeholder={messages.common.selectDate}
-            invalid={(errors.startDate ?? fieldErrors.startDate) !== undefined}
+            placeholder={t.filters.datePlaceholder}
+            invalid={
+              draft.startDate === '' || (errors.startDate ?? fieldErrors.startDate) !== undefined
+            }
             value={draft.startDate === '' ? null : draft.startDate}
             onChange={(value) => {
               onChange({ startDate: value ?? '' });
@@ -110,13 +114,13 @@ export const NoticeForm = ({
         </div>
 
         <div className="field-cell">
-          {/* 게시 상태를 정하는 필수 날짜라는 사실은 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
-          <FieldLabel htmlFor={endId} label={t.form.endDate} info={t.form.endDateNote} required />
+          {/* 종료일은 선택 입력이다(#361) — 지나면 게시가 끝난다는 사실은 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
+          <FieldLabel htmlFor={endId} label={t.form.endDate} info={t.form.endDateNote} />
           <DatePicker
             id={endId}
             mode="single"
             clearable
-            placeholder={messages.common.selectDate}
+            placeholder={t.filters.datePlaceholder}
             invalid={(errors.endDate ?? fieldErrors.endDate) !== undefined}
             value={draft.endDate === '' ? null : draft.endDate}
             onChange={(value) => {
@@ -139,7 +143,7 @@ export const NoticeForm = ({
            */
           info={draft.scopeCode === 'COMPANY' ? t.scope.companyNote : undefined}
           error={errors.scopeCode ?? fieldErrors.scopeCode}
-          placeholder={t.form.selectPlaceholder}
+          placeholder={t.form.scopePlaceholder}
           wide
           onChange={(value) => {
             /* 범위를 바꾸면 짝인 작업지시를 함께 정리한다 — 어긋난 짝은 서버가 거부한다. */
@@ -147,23 +151,25 @@ export const NoticeForm = ({
           }}
         />
 
-        <SelectField
-          required={wantsWorkOrder}
-          label={t.form.workOrder}
-          options={workOrders.entries.map((entry) => ({
-            value: entry.value,
-            label: entry.label,
-          }))}
-          value={draft.workOrder}
-          note={lookupNote(workOrders, t.form.workOrderLookupFailed) ?? t.form.workOrderNote}
-          error={errors.workOrder ?? fieldErrors.targetWorkOrderId}
-          placeholder={t.form.selectPlaceholder}
-          disabled={!wantsWorkOrder}
-          wide
-          onChange={(value) => {
-            onChange({ workOrder: value });
-          }}
-        />
+        {/* 대상 작업지시는 대상 범위가 작업지시일 때만 보인다(#361). */}
+        {wantsWorkOrder && (
+          <SelectField
+            required
+            label={t.form.workOrder}
+            options={workOrders.entries.map((entry) => ({
+              value: entry.value,
+              label: entry.label,
+            }))}
+            value={draft.workOrder}
+            note={lookupNote(workOrders, t.form.workOrderLookupFailed)}
+            error={errors.workOrder ?? fieldErrors.targetWorkOrderId}
+            placeholder={t.form.workOrderPlaceholder}
+            wide
+            onChange={(value) => {
+              onChange({ workOrder: value });
+            }}
+          />
+        )}
 
         <div className="field-cell field-cell-unlabeled check-group">
           <Checkbox
@@ -175,16 +181,6 @@ export const NoticeForm = ({
             {t.form.acknowledgeRequired}
           </Checkbox>
         </div>
-      </div>
-
-      <div className="form-actions">
-        {isSaving && <p className="field-note form-actions-secondary">{t.form.saving}</p>}
-        <Button variant="outlined" disabled={isSaving} onClick={onCancel}>
-          {t.form.cancel}
-        </Button>
-        <Button disabled={isSaving} onClick={onSubmit}>
-          {t.form.save}
-        </Button>
       </div>
     </>
   );

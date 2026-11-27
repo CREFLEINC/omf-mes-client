@@ -1,20 +1,17 @@
-import { useMemo, useState } from 'react';
 import { Button } from '@crefle/web-ui';
-import {
-  PickerDialog,
-  REFERENCE_PAGE_SIZE,
-  type ReferenceSource,
-} from '../../../patterns/reference-picker';
+import { Select } from '../../../patterns/select';
 import type { PlanLine } from './plan-step';
 
-/** 이미 조회한 오더별 허용 라인 범위를 공통 검색 팝업에 연결한다. */
+/**
+ * 자동 분배의 생산 라인 선택칸 — 찾기 창 대신 펼침 선택칸(사용자 지시 2026-11-27, 수동 분배 창 · #360 과 같게).
+ * 선택지는 이미 조회한 오더별 허용 라인이고, 다섯 개를 넘으면 공용 선택칸이 검색칸을 띄운다.
+ */
 export const DistributionLinePicker = ({
   label,
   lines,
   value,
   disabled,
   optional = false,
-  combined = false,
   emptyLabel = '생산 라인 선택',
   onChange,
 }: {
@@ -23,84 +20,34 @@ export const DistributionLinePicker = ({
   value: string;
   disabled: boolean;
   optional?: boolean;
-  combined?: boolean;
   emptyLabel?: string;
   onChange: (value: string) => void;
-}) => {
-  const [open, setOpen] = useState(false);
-  const selected = lines.find((line) => String(line.id) === value);
-  const source = useMemo<ReferenceSource>(
-    () => ({
-      title: '생산 라인 선택',
-      wide: true,
-      key: ['distribution-line-picker', lines.map((line) => [line.id, line.code, line.name])],
-      columns: { code: '라인 코드', name: '라인명' },
-      search: async (term, page, _filterValue, size = REFERENCE_PAGE_SIZE) => {
-        const keyword = term.trim().toLocaleLowerCase();
-        const found = lines.filter((line) =>
-          `${line.code} ${line.name}`.toLocaleLowerCase().includes(keyword),
-        );
-        return {
-          items: found
-            .slice((page - 1) * size, page * size)
-            .map((line) => ({ id: line.id, code: line.code, name: line.name })),
-          total: found.length,
-        };
-      },
-    }),
-    [lines],
-  );
-  return (
-    <div className="erp-wo-distribution-line-field">
-      {!combined && (
-        <div className="erp-wo-distribution-line-value">
-          {selected
-            ? `${selected.name} (${selected.code})`
-            : optional
-              ? '각 조건의 생산 라인 유지'
-              : '생산 라인을 선택하세요.'}
-        </div>
-      )}
-      <div className="erp-wo-distribution-line-buttons">
+}) => (
+  <div className="erp-wo-distribution-line-field">
+    <div className="erp-wo-distribution-line-buttons">
+      <Select
+        size="md"
+        aria-label={`${label} 선택`}
+        placeholder={emptyLabel}
+        options={lines.map((line) => ({
+          value: String(line.id),
+          label: `${line.name} (${line.code})`,
+        }))}
+        value={value === '' ? null : value}
+        disabled={disabled}
+        onChange={onChange}
+      />
+      {optional && value && (
         <Button
           size="md"
-          variant="outlined"
-          aria-label={`${label} 선택`}
-          aria-haspopup="dialog"
-          aria-expanded={open}
+          variant="text"
+          aria-label={`${label} 해제`}
           disabled={disabled}
-          onClick={() => setOpen(true)}
+          onClick={() => onChange('')}
         >
-          {combined
-            ? selected
-              ? `${selected.name} (${selected.code})`
-              : emptyLabel
-            : selected
-              ? '라인 변경'
-              : '라인 선택'}
+          해제
         </Button>
-        {optional && value && (
-          <Button
-            size="md"
-            variant="text"
-            aria-label={`${label} 해제`}
-            disabled={disabled}
-            onClick={() => onChange('')}
-          >
-            해제
-          </Button>
-        )}
-      </div>
-      {open && (
-        <PickerDialog
-          source={source}
-          onClose={() => setOpen(false)}
-          onPick={(line) => {
-            onChange(String(line.id));
-            setOpen(false);
-          }}
-        />
       )}
     </div>
-  );
-};
+  </div>
+);

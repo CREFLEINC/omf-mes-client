@@ -10071,6 +10071,11 @@ dialog.routing-history-dialog {
   min-width: 58rem;
 }
 
+/* 0건 — 빈 안내가 넓은 표 가운데에 서서 잘리지 않게 최소 폭을 푼다(#361). */
+.wide-table.approval-inbox-table.approval-inbox-table-empty table {
+  min-width: 0;
+}
+
 .approval-inbox-table caption {
   position: absolute;
   width: 1px;
@@ -10083,28 +10088,28 @@ dialog.routing-history-dialog {
   border: 0;
 }
 
-.approval-inbox-detail-section {
+/*
+ * 상세 — 품질 화면(검사 조회·판정) 상세와 같은 짜임(#361): 맨 위 요약 상자(.parts-iqc-facts) 아래로
+ * 제목 달린 묶음 상자(.parts-iqc-card 와 같은 테두리 · 모서리 · 안쪽 여백)가 차례로 선다.
+ */
+.approval-inbox-detail-request {
   display: grid;
   gap: var(--space-3);
 }
 
-.approval-inbox-detail-section + .approval-inbox-detail-section {
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--outline-variant);
+.approval-inbox-detail-section {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
 }
 
 .approval-inbox-detail-section > h3 {
   margin: 0;
   color: var(--on-surface);
-  font: var(--type-title-md);
-  letter-spacing: var(--type-title-md-tracking);
-}
-
-dl.filter-bar.approval-inbox-detail-facts {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: var(--space-4);
-  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
 }
 
 .approval-inbox-detail-facts dd,
@@ -10112,7 +10117,25 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin: 0;
 }
 
-.filter-bar.approval-inbox-target-facts,
+.approval-inbox-target-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.approval-inbox-target-facts {
+  min-width: 0;
+  margin: 0;
+}
+
+.approval-inbox-target-facts > .parts-iqc-fact {
+  padding: 0;
+  margin: 0;
+  border-left: 0;
+}
+
 .approval-inbox-detail-section > .field-note,
 .approval-inbox-detail-section > .form-actions,
 .approval-inbox-detail-section > p {
@@ -10124,8 +10147,7 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 @media (max-width: 1100px) {
-  .filter-bar.approval-inbox-filter,
-  dl.filter-bar.approval-inbox-detail-facts {
+  .filter-bar.approval-inbox-filter {
     grid-template-columns: 1fr;
   }
 
@@ -10161,9 +10183,24 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .filter-bar.notification-center-filter {
   display: grid;
-  grid-template-columns: minmax(18rem, 1.4fr) minmax(10rem, max-content) minmax(13rem, 1fr);
+  /*
+   * 기간 · 유형 · 안 읽은 알림만을 왼쪽부터 붙여 세우고, [조회]·[초기화] | 조회 시각 + 모두 확인은 오른쪽 끝(#361).
+   */
+  grid-template-columns: auto max-content max-content minmax(max-content, 1fr);
+  align-items: end;
   gap: var(--space-4);
   margin-bottom: 0;
+}
+
+.notification-center-filter > .dashboard-filter-actions {
+  justify-content: flex-end;
+  align-self: end;
+  min-height: var(--control-height-md);
+}
+
+.notification-center-filter > .dashboard-filter-actions > * {
+  flex: none;
+  white-space: nowrap;
 }
 
 .notification-center-filter .field-cell {
@@ -10226,8 +10263,11 @@ dl.filter-bar.approval-inbox-detail-facts {
  */
 .filter-bar.notice-filter {
   display: grid;
-  /* 상태 칸은 조회 줄 선택칸 폭(176px · 사용자 지시 2026-11-24). */
-  grid-template-columns: minmax(0, 1.4fr) 176px repeat(2, minmax(0, 1fr)) minmax(13rem, auto);
+  /*
+   * 게시 시작일 · 게시 종료일 · 대상 범위 · 공지 제목 · 미확인 공지 · 단추 묶음을 한 줄에(#361 사용자 지시).
+   * 입력칸은 흐린 문구가 다 보이는 폭으로 두고 왼쪽부터 붙여 세운다.
+   */
+  grid-template-columns: repeat(2, auto) 176px 172px max-content minmax(0, 1fr);
   gap: var(--space-4);
   margin-bottom: 0;
 }
@@ -10237,18 +10277,18 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 .notice-filter .notice-filter-options {
-  grid-column: 2 / -1;
+  align-self: end;
   align-items: center;
   justify-content: flex-start;
+  min-height: var(--control-height-md);
 }
 
-/* 접힌 줄(대상 범위 · 체크칸 둘)은 왼쪽부터 촘촘히 — 대상 범위(176px) 옆에 빈 폭을 두지 않는다(사용자 지시 2026-11-24). */
-.filter-bar.notice-filter:has(> .notice-filter-options) {
-  display: flex;
-  flex-wrap: wrap;
+.notice-filter-more {
+  justify-self: end;
 }
 
-.notice-filter-actions .filter-actions {
+.notice-filter-actions .filter-actions,
+.notice-filter-more .filter-actions {
   flex-wrap: nowrap;
   /* 조건 더보기는 줄 오른쪽 끝(사용자 지시 2026-11-27) — 한 칸 한 줄로 쌓인 좁은 폭에서도. */
   justify-content: flex-end;
@@ -10259,16 +10299,103 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-top: 0;
 }
 
+/* 공지 상세(#361 시안) — 제목 옆 상태 라벨 · 정보 · 구분선 아래 본문 · 맨 아래 줄에 안내와 단추. */
+.notice-detail-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.notice-detail-head > .notice-detail-actions {
+  margin: 0 0 0 auto;
+}
+
+.notice-detail-head > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+/* 요약 상자(#361 시안) — 바탕 있는 테두리 상자, 줄마다 칸을 고르게 나누고 칸 사이 세로선. */
+.notice-detail-summary {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+  overflow: hidden;
+}
+
+.notice-detail-summary-row {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  margin: 0;
+}
+
+.notice-detail-summary-row > div {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-width: 0;
+  margin-left: -1px;
+  padding: 0 var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+  overflow-wrap: anywhere;
+}
+
+.notice-detail-summary-row dd {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+}
+
+.notice-detail-summary-key dd {
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.notice-detail-body {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.notice-detail .notice-body {
+  max-width: none;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  white-space: pre-wrap;
+}
+
 .notice-table {
   max-width: 100%;
   overflow-x: auto;
+}
+
+/* 줄을 눌러 고른다 — 손가락 모양 커서, 고른 줄은 판정 대기 목록과 같은 파란 바탕 · 왼쪽 선(#361). */
+.notice-table tbody tr {
+  cursor: pointer;
+}
+
+.notice-table tbody tr:has([data-selected='true']) > td,
+.notice-table tbody tr:has([data-selected='true']):hover > td {
+  background: var(--semantic-info-container);
+}
+
+.notice-table tbody tr:has([data-selected='true']) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 
 .wide-table.notice-table table {
   min-width: 58rem;
 }
 
-.notice-table caption {
+.notice-table caption,
+.notice-ack-table caption {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -23652,12 +23779,6 @@ main:has(> .oqc-inspection-panes) {
   margin: 0;
 }
 
-/* 결재함의 차례 안내 — 단추 줄 오른쪽. */
-.approval-inbox-turn-note {
-  margin: 0;
-  text-align: right;
-}
-
 /* 4M 변경 자재 투입(omf-all-around#63 2단계) — 작업지시 진행 상세·LOT 상태 상세가 함께 쓰는 구획. */
 .four-m-inputs {
   display: grid;
@@ -24338,7 +24459,7 @@ dialog.reference-picker-wide {
 }
 
 /*
- * 번호, 납기, 품목 세 칸과 버튼이 1280px 한 줄에 들어간다 — 칸은 보통 폭(240px)에서 줄 끝까지 조금 줄어든다.
+ * 처리 상태, 번호, 납기, 품목 네 칸과 버튼이 1280px 한 줄에 들어간다 — 칸은 보통 폭(240px)에서 줄 끝까지 조금 줄어든다.
  * 좁은 창에서는 버튼이 다음 줄 오른쪽 끝으로 내려간다. 공장은 「조건 더보기」에 접는다(C-6).
  */
 .filter-bar.erp-wo-filter-bar {
@@ -34253,67 +34374,7 @@ ul.iqc-inbound-superseded {
   margin-top: 0;
 }
 
-/* 작업계획 목록: 상태별 조회와 선택 대상의 처리를 서로 다른 줄에 둔다. */
-.erp-wo-status-controls {
-  container-type: inline-size;
-}
-.erp-wo-status-filters {
-  display: flex;
-  border-bottom: 1px solid var(--outline-variant);
-}
-.erp-wo-status-filter {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 2.75rem;
-  padding: var(--space-2) var(--space-3);
-  border: 0;
-  border-bottom: 3px solid transparent;
-  border-radius: 0;
-  background: transparent;
-  color: var(--on-surface-variant);
-  cursor: pointer;
-  white-space: nowrap;
-}
-.erp-wo-status-filter[aria-pressed='true'] {
-  background: var(--primary-container);
-  color: var(--on-primary-container);
-  border-bottom-color: var(--primary);
-}
-.erp-wo-status-name {
-  font: var(--type-label-lg);
-}
-.erp-wo-status-number {
-  display: inline-flex;
-  align-items: baseline;
-  gap: var(--space-1);
-  font: var(--type-label-md);
-  font-variant-numeric: tabular-nums;
-}
-.erp-wo-status-number small {
-  display: none;
-}
-.erp-wo-status-compact {
-  display: none;
-}
-@container (max-width: 52rem) {
-  .erp-wo-status-filters {
-    display: none;
-  }
-  .erp-wo-status-compact {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-  }
-  .erp-wo-status-compact > label {
-    white-space: nowrap;
-    font: var(--type-label-lg);
-  }
-  .erp-wo-status-compact > :last-child {
-    width: min(100%, 18rem);
-    min-width: 0;
-  }
-}
+/* 작업계획 목록: 선택 대상의 처리 줄. 처리 상태는 조회 조건 줄의 선택 칸이 맡는다. */
 .erp-wo-selection-toolbar {
   display: grid;
   grid-template-columns: minmax(10rem, 1fr) auto;
@@ -34323,8 +34384,17 @@ ul.iqc-inbound-superseded {
   border-radius: var(--radius-md);
   background: var(--surface-container);
 }
+.erp-wo-selection-lead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
 .erp-wo-selection-info strong {
   font: var(--type-title-sm);
+}
+.erp-wo-list-order {
+  width: 8rem;
 }
 .erp-wo-selection-info p {
   margin: var(--space-1) 0 0;
@@ -34344,13 +34414,6 @@ ul.iqc-inbound-superseded {
   }
 }
 
-.erp-wo-status-filter:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-.erp-wo-status-filter:hover {
-  border-color: var(--primary);
-}
 .erp-wo-action-choice {
   display: grid;
   gap: var(--space-1);
@@ -36155,8 +36218,10 @@ body:has(
   justify-content: flex-end;
   flex-wrap: wrap;
 }
+/* 배치 단추 둘은 「⋯」에 접지 않고 한 줄로 늘 보인다(사용자 지시 2026-11-27). */
 .erp-wo-layout-tools .po-board-layout-toggle {
   display: flex;
+  flex-direction: row;
 }
 .erp-wo-adjustable-grid {
   min-width: 0;
@@ -36242,27 +36307,23 @@ body:has(
   width: 12px;
   min-height: 100px;
 }
+/* 막대는 입고 관리와 같은 가는 선(2px)이다 — 띠로 칠하지 않는다(사용자 지시 2026-11-27). */
 .erp-wo-adjustable-grid > .po-board-gutter > .po-board-splitter {
   display: block;
   width: 12px;
   height: 100%;
   min-height: 100px;
   cursor: col-resize;
-  border-inline: 4px solid transparent;
+  border-inline: 5px solid transparent;
   background: var(--outline-variant);
   background-clip: content-box;
 }
+/* 상하 막대는 공용 모양(가는 선 + 가운데 손잡이) 그대로 쓴다. */
 .erp-wo-adjustable-grid > .inspection-height-splitter {
-  height: 12px;
   margin: 0;
-  cursor: row-resize;
-  border-block: 4px solid transparent;
-  background: var(--outline-variant);
-  background-clip: content-box;
 }
-.erp-wo-adjustable-grid > .inspection-height-splitter:hover,
 .erp-wo-adjustable-grid > .po-board-gutter > .po-board-splitter:hover {
-  background-color: var(--primary);
+  background-color: var(--semantic-info);
 }
 .erp-wo-plan-workspace .erp-wo-week-table {
   min-width: max(56rem, var(--col-floor, 0px));
@@ -38034,6 +38095,10 @@ body:has(
   align-items: flex-end;
   gap: var(--space-3) var(--space-4);
 }
+/* 계획일 · 수량 칸은 입력칸 아래선을 맞춘다 — 라벨 모양이 달라 윗선이 어긋나지 않게(#360). */
+.erp-wo-plan-add-fields {
+  align-items: end;
+}
 .erp-wo-plan-add-target > .field-cell {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -38070,6 +38135,38 @@ body:has(
 
 .erp-wo-plan-add-fields {
   grid-template-columns: 12rem minmax(0, 1fr);
+}
+/* 계획일 · 추가할 계획 수량 · 생산 라인을 한 행에(사용자 지시 · #360). */
+.erp-wo-plan-add-form .erp-wo-plan-add-fields {
+  grid-template-columns: 12rem 12rem minmax(0, 1fr);
+}
+.erp-wo-plan-add-form .erp-wo-plan-add-fields > .erp-wo-plan-add-line {
+  grid-column: auto;
+}
+/* 계획을 추가할 ERP W/O 는 한 줄 — 넘치면 말줄임, 전체 이름은 펼친 목록에서(사용자 지시 · #360). */
+.erp-wo-plan-add-dialog
+  .erp-wo-plan-add-form
+  .erp-wo-plan-add-target
+  [role='combobox']
+  > span:not([aria-hidden='true']) {
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+/* W/O 이름은 자르지도 줄바꾸지도 않는다 — 팝업이 이름 길이만큼 넓어진다(최소 45rem, 화면 폭까지 · 사용자 지시 #360). */
+.erp-wo-plan-add-dialog {
+  width: fit-content;
+  min-width: min(45rem, calc(100vw - 2rem));
+  max-width: calc(100vw - 2rem);
+}
+.erp-wo-plan-add-target > .field-cell,
+.erp-wo-plan-add-dialog .erp-wo-plan-add-form .erp-wo-plan-add-target [role='combobox'] {
+  min-width: max-content;
+}
+@media (max-width: 42rem) {
+  .erp-wo-plan-add-form .erp-wo-plan-add-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .erp-wo-plan-add-fields > [data-disabled],
 .erp-wo-plan-add-fields > [class*='_field_'] {
@@ -38810,8 +38907,12 @@ body:has(
 .erp-wo-order-overview dl > div:last-child {
   border-bottom: 1px solid var(--outline-variant);
 }
+/* 품목 코드 · 품목명은 제목 바로 아래 첫 줄에 좌우로 나란히 놓는다(사용자 지시 2026-11-27). ERP W/O 등 나머지는 그 아래 줄. */
+.erp-wo-order-overview .is-item-code {
+  order: -2;
+}
 .erp-wo-order-overview .is-item-name {
-  grid-column: 1/-1;
+  order: -1;
 }
 .erp-wo-plan-totals {
   display: grid;
@@ -43533,6 +43634,7 @@ html:lang(vi) {
   --optional-mark-text: '(tùy chọn)';
 }
 
+/* 정보 표시 팝업 공용 상자 · 표(patterns/info-facts.tsx · #360) */
 /*
  * 정보 표시 팝업(입력란 없음)의 상세 정보 상자 — 팝업 디자인 시안 2026-11-27 「3. 정보 표시 팝업」(omf-all-around#360).
  * `patterns/info-facts.tsx`. 검사 조회·판정 「검사 기본 정보」 상자(`.parts-iqc-facts` · `.parts-iqc-fact`)와 같은 모양 —
@@ -43777,4 +43879,450 @@ dialog:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash
   > tr
   > :is(th, td):not([scope='rowgroup']) {
   text-align: center !important;
+ * 작업계획 편성 2 생산계획 · 3 4M 배정의 입력칸 바탕(사용자 지시 2026-11-27) — DS 입력칸은 투명이라 화면 바탕과 같은 색으로
+ * 보여 입력칸으로 읽히지 않았다. 조회 묶음(`filter-field-surface`)과 같은 입력칸 바탕을 쓴다.
+ * `filter-field-surface` 를 그대로 붙이지 않는 까닭: 그 규칙은 창을 여는 단추(`aria-haspopup`)를 모두 칠해 도움말 · 선택 단추까지 바뀐다.
+ * 여기서는 글 입력 · 날짜 입력을 바로 품은 상자, 선택칸, 기간 선택칸만 칠한다. 잠긴 칸은 DS 의 흐린 바탕 그대로다.
+ * [수동 분배] · [자동 분배] · 계획 분할 창도 같다(2026-11-27) — 창은 화면 밖(body)에 그려져 창 클래스로 따로 겨눈다.
+ */
+:is(
+    .erp-wo-plan-workspace,
+    .erp-wo-multi-body,
+    .assign-editor,
+    .erp-wo-plan-add-dialog,
+    .erp-wo-distribution-dialog,
+    .erp-wo-plan-split-dialog
+  )
+  div:has(> input:not([type='checkbox'], [type='radio'], :disabled)),
+:is(
+    .erp-wo-plan-workspace,
+    .erp-wo-multi-body,
+    .assign-editor,
+    .erp-wo-plan-add-dialog,
+    .erp-wo-distribution-dialog,
+    .erp-wo-plan-split-dialog
+  )
+  [role='combobox']:not([aria-disabled='true'], :disabled),
+:is(
+    .erp-wo-plan-workspace,
+    .erp-wo-multi-body,
+    .assign-editor,
+    .erp-wo-plan-add-dialog,
+    .erp-wo-distribution-dialog,
+    .erp-wo-plan-split-dialog
+  )
+  .erp-wo-period-trigger:not(:disabled) {
+  background-color: var(--app-field-surface);
+}
+
+/* 자동 분배의 생산 라인은 펼침 선택칸(`distribution-line-picker.tsx`) — 칸 폭 전체를 쓰고, [해제]는 그 옆에 놓인다. */
+.erp-wo-distribution-line-buttons > :first-child:not(button) {
+  flex: 1;
+  min-width: 0;
+}
+.erp-wo-distribution-line-buttons [role='combobox'] {
+  width: 100%;
+}
+
+/*
+ * 자동 분배 팝업(사용자 지시 · #360)
+ * - 일괄 변경: 공통 분배 기간 · 공통 생산 라인 · 공통 휴일 편성 · [취소][적용] 한 행
+ * - 체크칸 크게
+ * - 필수인데 비어 있는 분배 기간 · 생산 라인 · 분배 수량은 빨간 테두리
+ */
+.erp-wo-distribution-dialog .erp-wo-common-conditions .erp-wo-distribution-fields {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: end;
+}
+.erp-wo-common-conditions-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: var(--control-height-md);
+}
+@media (max-width: 1000px) {
+  .erp-wo-distribution-dialog .erp-wo-common-conditions .erp-wo-distribution-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.erp-wo-distribution-dialog input[type='checkbox'] {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+}
+.erp-wo-distribution-dialog .erp-wo-required-empty [role='combobox'],
+.erp-wo-distribution-dialog .erp-wo-required-empty .erp-wo-period-trigger,
+.erp-wo-distribution-dialog .erp-wo-required-empty [class*='_inputWrap_'] {
+  border-color: var(--semantic-error);
+  box-shadow: inset 0 0 0 1px var(--semantic-error);
+}
+
+/* 자동 분배 결과 검토 표(사용자 지시 · #360) — 머리칸 · 값 가운데 정렬, 추가 수량 열 바탕 없앰, 입력칸은 좁게 가운데. */
+.erp-wo-distribution-dialog .erp-wo-distribution-result-table thead th,
+.erp-wo-distribution-dialog
+  .erp-wo-distribution-result-table
+  tbody
+  tr:not(.erp-wo-result-order, .erp-wo-result-order-notes)
+  > td {
+  text-align: center;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-result-table th.erp-wo-result-added {
+  background: var(--surface-container);
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-result-table td.erp-wo-result-added {
+  background: transparent;
+}
+.erp-wo-distribution-dialog .erp-wo-result-quantity-editor {
+  justify-content: center;
+}
+.erp-wo-distribution-dialog .erp-wo-result-quantity-editor > :first-child {
+  width: 8rem;
+  flex: none;
+}
+.erp-wo-distribution-dialog .erp-wo-result-quantity-editor input {
+  text-align: right;
+}
+
+/* 자동 분배 결과 검토 시안(사용자 지시 · #360) — 단계 「1 › 2」 + 지금 단계 밑줄, 단건 W/O 정보 회색 줄, 안내 한 줄. */
+.erp-wo-distribution-dialog .erp-wo-distribution-steps {
+  gap: var(--space-3);
+  align-items: center;
+  padding-bottom: 0;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-steps > li {
+  padding-bottom: var(--space-2);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-steps > li + li::before {
+  content: '›';
+  margin-right: var(--space-3);
+  color: var(--on-surface-variant);
+  font-weight: 400;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-steps > li[aria-current='step'] {
+  border-bottom-color: var(--primary);
+}
+/* 여러 건 경고 목록 — 글머리표 안쪽 여백만 남겨 아이콘과 첫 줄을 맞춘다. */
+.erp-wo-result-warnings ul {
+  margin: 0;
+  padding-left: 1.1em;
+}
+.erp-wo-result-single-notes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--outline-variant);
+  font: var(--type-body-sm);
+}
+.erp-wo-result-single-notes > .erp-wo-calendar-result-dates + .erp-wo-calendar-result-dates {
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+}
+
+/*
+ * 알림센터 — 목록 상자가 창 높이에 맞춰 늘고 줄며, 카드만 상자 안에서 스크롤한다. 쪽 이동 줄은 상자 맨 아래(#361).
+ */
+main:has(> .notification-center-pane) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+main:has(> .notification-center-pane) > * {
+  flex: none;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+main > .pane.notification-center-pane {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 16rem;
+}
+
+.notification-center-pane > .notification-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
+}
+
+.notification-center-pane > .page-nav {
+  flex: none;
+  margin-top: auto;
+}
+
+/* 카드는 촘촘하게(#361 사용자 지시) — 글자를 표 본문 크기로, 안쪽 여백을 줄인다. */
+.notification-list {
+  gap: var(--space-2);
+}
+
+.notification-list .notification-card-meta {
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.notification-row > :first-child > :first-child {
+  padding: var(--space-2) var(--space-4) 0;
+}
+
+.notification-row > :first-child > :last-child {
+  padding: var(--space-1) var(--space-4) var(--space-2);
+  font: var(--type-body-sm);
+}
+
+/* 「결재하기」 등 — 다른 화면의 작은 테두리 단추(DS Button outlined · sm)와 같은 모양(#361). */
+.notification-list .notification-target-link {
+  align-self: center;
+  gap: var(--space-2);
+  height: var(--control-height-sm);
+  min-height: 0;
+  margin-top: 0;
+  padding: 0 var(--space-3);
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--outline-variant);
+  color: var(--primary-text);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+.notification-list .notification-target-link:hover {
+  background: var(--state-hover);
+}
+
+.notification-list .notification-target-link:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px var(--outline-variant),
+    var(--focus-ring);
+}
+
+/* 게시 · 게시 종료 확인 창의 공지 제목(#361 시안). */
+.notice-confirm-target {
+  margin: 0 0 var(--space-2);
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+/* 공지 확인 현황 — 제목 왼쪽, 상태 라벨 오른쪽 한 줄(#361). */
+.notice-ack-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.notice-ack-head > .pane-title {
+  margin: 0;
+}
+
+/* 결재함 상세(#361) — 상자 안 빈 줄을 없애고, 요청 정보는 이름 왼쪽 · 값 오른쪽 한 줄씩. */
+.approval-inbox-detail-section p {
+  margin: 0;
+}
+
+.approval-inbox-info-list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.approval-inbox-info-list > div {
+  display: contents;
+}
+
+.approval-inbox-info-list dt {
+  align-self: center;
+}
+
+.approval-inbox-info-list dd {
+  margin: 0;
+}
+
+.approval-inbox-target-row {
+  justify-content: flex-start;
+}
+
+.approval-inbox-target-name {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.approval-inbox-progress-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 결재 처리 제목 ⓘ 문장은 한 줄로, 제목 아래 왼쪽부터 띄운다 — 오른쪽으로 띄우면 창 밖으로 잘린다(#361). */
+.approval-inbox-detail-section > h3.info-label {
+  position: relative;
+}
+
+.approval-inbox-detail-section > h3 .info-tip-anchor {
+  position: static;
+}
+
+.approval-inbox-detail-section > h3 .info-tip-anchor > [role='tooltip'] {
+  top: calc(100% + var(--space-1));
+  right: auto;
+  left: 0;
+  width: max-content;
+  max-width: none;
+  white-space: nowrap;
+  transform: none;
+}
+
+/* 달력은 늘 6주를 그린다 — 날짜가 하나도 없는 주는 빈 줄로만 남으니 접는다(#361). */
+[role='dialog'] table[class*='_grid_'] > tbody > tr:not(:has(> td:not([class*='_cellEmpty_']))) {
+  display: none;
+}
+
+/* 결재 진행 표 — 단계 · 결재자 · 상태 · 처리 일시(#361). 상세 안 요약 표라 가운데 정렬, 열 조절 없음. */
+.approval-inbox-progress-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--type-body-sm);
+}
+
+.approval-inbox-progress-table th {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+  color: var(--on-surface-muted);
+  font: var(--type-label-lg);
+  text-align: center;
+}
+
+.approval-inbox-progress-table td {
+  padding: var(--space-2) var(--space-3);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.approval-inbox-progress-table tbody tr + tr > td {
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* 공지 등록 — 필수인데 아직 비어 있는 칸은 빨간 테두리(긴급 작업지시와 같은 방식 · #361). 값이 들어오면 걷힌다. */
+.notice-required-empty > div:has(input),
+.notice-required-empty > div:has(textarea) {
+  box-shadow: inset 0 0 0 1px var(--semantic-error);
+}
+
+/* 결재함 목록 사유 — 머리는 가운데, 글은 왼쪽부터(#361). */
+.approval-inbox-reason-text {
+  display: block;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+}
+
+/* 알림 목록 제목 줄 — 제목 왼쪽, 최신순/오래된순 단추 오른쪽(#361). */
+.notification-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.notification-list-head > .pane-title {
+  margin: 0;
+}
+
+/* 최신순/오래된순 단추 — 둥근 테두리는 그대로, 아이콘 · 글자는 진회색(중립형 · #361). */
+.notification-sort-button {
+  color: var(--on-surface-variant);
+}
+
+.notification-sort-button:hover {
+  background: color-mix(in srgb, var(--on-surface) 8%, transparent);
+}
+
+/* 자동 분배 날짜별 직접 입력(사용자 지시 · #360) — 분배 방식 한 줄, 휴일 포함 · 휴지통은 그 바로 오른쪽, 날짜별 수량은 표. */
+.erp-wo-distribution-dialog .erp-wo-distribution-segment .erp-wo-segment-fields {
+  grid-template-columns:
+    minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(0, 11.5rem) minmax(0, 1fr)
+    auto;
+}
+.erp-wo-distribution-dialog
+  .erp-wo-segment-mode
+  [role='combobox']
+  > span:not([aria-hidden='true']) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.erp-wo-daily-table {
+  margin-top: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.erp-wo-daily-table table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.erp-wo-daily-table th {
+  padding: var(--space-2);
+  background: var(--surface-container);
+  font: var(--type-label-lg);
+  text-align: center;
+  white-space: nowrap;
+}
+.erp-wo-daily-table th + th,
+.erp-wo-daily-table td + td {
+  border-left: 1px solid var(--outline-variant);
+}
+.erp-wo-daily-table td {
+  padding: var(--space-2);
+  border-top: 1px solid var(--outline-variant);
+}
+.erp-wo-distribution-dialog .erp-wo-daily-table td input {
+  width: 100%;
+  text-align: center;
+}
+.erp-wo-daily-table-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+.erp-wo-daily-table-foot strong {
+  color: var(--on-surface);
+}
+
+/* 결과 검토 휴일 행(시안 · #360) — 연한 노란 바탕 + 왼쪽 주황 막대, 날짜 아래 「정기 휴무 · 분배 포함」. */
+.erp-wo-distribution-dialog .erp-wo-distribution-result-table tr.erp-wo-result-holiday-row > td {
+  background: var(--semantic-warning-container);
+}
+.erp-wo-distribution-dialog
+  .erp-wo-distribution-result-table
+  tr.erp-wo-result-holiday-row
+  > td:first-child {
+  box-shadow: inset 4px 0 var(--semantic-warning);
+}
+.erp-wo-distribution-dialog .erp-wo-result-holiday-row .erp-wo-holiday-day-label {
+  margin: var(--space-1) 0 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+.erp-wo-daily-table-nav {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+.erp-wo-daily-table-nav > * {
+  margin: 0;
 }

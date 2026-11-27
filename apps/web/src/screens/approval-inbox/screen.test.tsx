@@ -29,6 +29,7 @@ import { ApprovalInboxScreen } from './screen';
 import type { ApprovalRequestDetail } from './types';
 
 const t = messages.approvalInbox;
+const pn = messages.screenPatterns.pageNav;
 
 const ROUTE = '/approval/inbox';
 const REQUESTS_PATH = '/app/approval-requests';
@@ -93,8 +94,17 @@ const createRecordingFetch = (
 const isCountUrl = (url: URL): boolean =>
   url.pathname === REQUESTS_PATH && url.searchParams.has('myTurnOnly');
 
+/**
+ * 상태 라벨 건수 조회인가(#361). 상태 하나를 걸고 **한 줄만**(`size=1`) 받는다 — 쪽 크기 선택지(10 · 20 · 50)에
+ * 1이 없어 목록 조회와 겹치지 않는다.
+ */
+const isStatusCountUrl = (url: URL): boolean =>
+  url.pathname === REQUESTS_PATH &&
+  url.searchParams.has('statusCode') &&
+  url.searchParams.get('size') === '1';
+
 const isListUrl = (url: URL): boolean =>
-  url.pathname === REQUESTS_PATH && !url.searchParams.has('myTurnOnly');
+  url.pathname === REQUESTS_PATH && !url.searchParams.has('myTurnOnly') && !isStatusCountUrl(url);
 
 /**
  * 상세 경로로 **나간 요청 전부**. 번호 자리가 무엇이든 센다 — 잘못된 경로도 「부르지 않았다」를 깬다.
@@ -180,7 +190,18 @@ const failingDetailRoute = (status: number): StubRoute => ({
   respond: () => jsonResponse({ message: '' }, { status }),
 });
 
-const defaultRoutes = (total = 0): StubRoute[] => [listRoute(), countRoute(total), detailRoute()];
+/** 상태 라벨 건수(#361). 상태마다 2건으로 답한다. */
+const statusCountRoute = (): StubRoute => ({
+  match: (request) => isStatusCountUrl(new URL(request.url)),
+  respond: () => jsonResponse({ items: [], page: { page: 1, size: 1, total: 2 } }),
+});
+
+const defaultRoutes = (total = 0): StubRoute[] => [
+  listRoute(),
+  countRoute(total),
+  statusCountRoute(),
+  detailRoute(),
+];
 
 /**
  * 결재 200이 실어 오는 토큰. **상세의 것과 다르다** — 쓰기의 `ETag`가 액션 경로에 앉아
@@ -294,7 +315,14 @@ const renderScreen = (
 
 const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
 
-const requestTable = (): HTMLElement => screen.getByRole('table');
+/** 승인 요청 목록 표 — 상세의 결재 진행 표(#361)와 가른다. */
+const requestTable = (): HTMLElement => {
+  const table = screen
+    .getAllByRole('table')
+    .find((element) => element.closest('.approval-inbox-detail-section') === null);
+  if (table === undefined) throw new Error('승인 요청 목록 표가 없다');
+  return table;
+};
 
 const tabFor = (label: string): HTMLElement => screen.getByRole('tab', { name: new RegExp(label) });
 
@@ -374,7 +402,7 @@ describe('첫 진입', () => {
 
     const headers = within(requestTable())
       .getAllByRole('columnheader')
-      .map((cell) => cell.textContent);
+      .map((cell) => cell.textContent?.replace('drag_indicator', ''));
 
     expect(headers).toEqual([
       t.fields.approvalRequestNo,
@@ -629,11 +657,21 @@ describe('조회 조건', () => {
     expect(lastListQuery(requests)?.get('requestedByMe')).toBe('true');
   });
 
-  it('접힌 조건 칩의 ×가 그 조건만 푼다', async () => {
-    const { user } = renderScreen(defaultRoutes(), '?q=SYNTH&st=SAMPLE-STATUS-OPEN');
+  /* #361 — 상태는 맨 위 라벨이 맡는다. 고른 라벨을 다시 누르면 상태만 풀린다. */
+  it('고른 상태 라벨을 다시 누르면 그 조건만 푼다', async () => {
+    const { requests, user } = renderScreen(defaultRoutes(), '?q=SYNTH&st=APPROVED');
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveStatus }));
+    const approved = await screen.findByRole('button', { name: /^승인 \d+$/, pressed: true });
+    /* 라벨 건수는 지금 조건에 상태만 바꿔 센다. */
+    const countQuery = requests.find(
+      (request) =>
+        request.url.searchParams.get('size') === '1' &&
+        request.url.searchParams.get('statusCode') === 'PENDING',
+    );
+    expect(countQuery?.url.searchParams.get('q')).toBe('SYNTH');
+
+    await user.click(approved);
 
     await waitFor(() => {
       expect(currentLocation()).not.toContain('st=');
@@ -689,10 +727,10 @@ describe('쪽 이동', () => {
 
     await waitForList();
 
-    /* 서버가 첫 쪽을 줬으므로 범위도 첫 쪽의 것이고 이전으로 갈 수 없다. */
-    expect(screen.getByText('총 45건')).toBeInTheDocument();
-    expect(screen.getByText('1 / 3')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.actions.prevPage })).toBeDisabled();
+    /* 서버가 첫 쪽을 줬으므로 위치도 첫 쪽의 것이고 이전으로 갈 수 없다. */
+    expect(screen.getByText(pn.total(45))).toBeInTheDocument();
+    expect(screen.getByText(pn.position(1, 3))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: pn.prev })).toBeDisabled();
   });
 
   it('쪽만 옮기고 고른 요청을 비운다', async () => {
@@ -702,7 +740,7 @@ describe('쪽 이동', () => {
     );
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+    await user.click(screen.getByRole('button', { name: pn.next }));
 
     await waitFor(() => {
       expect(currentLocation()).toContain('page=2');
@@ -720,13 +758,56 @@ describe('쪽 이동', () => {
     );
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+    await user.click(screen.getByRole('button', { name: pn.next }));
 
     await waitFor(() => {
       expect(currentLocation()).toContain('page=2');
     });
     expect(currentLocation()).toContain('tab=requested');
     expect(lastListQuery(requests)?.get('requestedByMe')).toBe('true');
+  });
+
+  /* #361 — 목록 아래 쪽 이동 줄을 공용 부품으로 맞춘다. 건수를 고르기 전에는 서버 기본값을 쓴다. */
+  it('쪽 크기를 고르기 전에는 크기를 싣지 않는다', async () => {
+    const { requests } = renderScreen([listRoute(), countRoute(), detailRoute()]);
+
+    await waitForList();
+
+    expect(lastListQuery(requests)?.has('size')).toBe(false);
+  });
+
+  it('쪽 크기를 고르면 첫 쪽으로 돌아가 그 크기로 조회하고, 조건이 바뀌어도 크기는 남는다', async () => {
+    const { requests, user } = renderScreen(
+      [listRoute(requestFixtures, { total: 120 }), countRoute(), detailRoute()],
+      '?page=2&tab=requested',
+    );
+
+    await waitForList();
+    await user.click(screen.getByRole('combobox', { name: pn.pageSize }));
+    await user.click(screen.getByRole('option', { name: pn.pageSizeOption(10) }));
+
+    await waitFor(() => {
+      expect(lastListQuery(requests)?.get('size')).toBe('10');
+    });
+    expect(currentLocation()).toContain('size=10');
+    expect(currentLocation()).not.toContain('page=');
+    expect(currentLocation()).toContain('tab=requested');
+
+    await user.click(screen.getByRole('button', { name: pn.next }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('page=2');
+    });
+    expect(currentLocation()).toContain('size=10');
+    expect(lastListQuery(requests)?.get('size')).toBe('10');
+  });
+
+  it('0건이면 쪽 이동 줄을 내지 않는다', async () => {
+    renderScreen([listRoute([], { total: 0 }), countRoute(), detailRoute()]);
+
+    await screen.findByText(t.empty.noResultTitle);
+
+    expect(screen.queryByRole('navigation', { name: pn.label })).not.toBeInTheDocument();
   });
 });
 
@@ -738,7 +819,7 @@ describe('요청 고르기', () => {
 
     expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
+    await user.click(within(requestTable()).getByText('SYNTH-REQ-001'));
 
     await waitFor(() => {
       expect(currentLocation()).toContain('rq=9001');
@@ -750,7 +831,7 @@ describe('요청 고르기', () => {
     const { user } = renderScreen(defaultRoutes(), '?rq=9001');
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
+    await user.click(within(requestTable()).getByText('SYNTH-REQ-001'));
 
     await waitFor(() => {
       expect(currentLocation()).not.toContain('rq=');
@@ -764,7 +845,7 @@ describe('요청 고르기', () => {
 
     const before = listRequests(requests).length;
 
-    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
+    await user.click(within(requestTable()).getByText('SYNTH-REQ-001'));
 
     await waitFor(() => {
       expect(currentLocation()).toContain('rq=9001');
@@ -791,7 +872,7 @@ describe('요청 고르기', () => {
     const { requests, user } = renderScreen(defaultRoutes());
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
+    await user.click(within(requestTable()).getByText('SYNTH-REQ-001'));
 
     await waitFor(() => {
       expect(detailRequests(requests)).toHaveLength(1);
@@ -833,7 +914,7 @@ describe('요청 고르기', () => {
       expect(detailRequests(requests)).toHaveLength(1);
     });
 
-    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
+    await user.click(within(requestTable()).getByText('SYNTH-REQ-001'));
 
     await waitFor(() => {
       expect(currentLocation()).not.toContain('rq=');
@@ -854,7 +935,7 @@ describe('요청 고르기', () => {
       expect(detailRequests(requests)).toHaveLength(1);
     });
 
-    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-002/ }));
+    await user.click(within(requestTable()).getByText('SYNTH-REQ-002'));
 
     await waitFor(() => {
       expect(currentLocation()).toContain('rq=9002');
@@ -872,7 +953,7 @@ describe('요청 고르기', () => {
     const { user } = renderScreen(defaultRoutes(), '?rq=9001&page=2&q=SYNTH&tab=requested');
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-003/ }));
+    await user.click(within(requestTable()).getByText('SYNTH-REQ-003'));
 
     await waitFor(() => {
       expect(currentLocation()).toContain('rq=9003');
@@ -946,7 +1027,7 @@ describe('빈 상태와 조회 실패', () => {
   });
 });
 
-describe('다시 조회', () => {
+describe('같은 조건의 조회 = 다시 조회(#361)', () => {
   it('목록과 대기 건수를 함께 부른다 — 한쪽만 부르면 갱신된 값과 낡은 값이 섞인다', async () => {
     const { requests, user } = renderScreen(defaultRoutes(3));
 
@@ -955,7 +1036,7 @@ describe('다시 조회', () => {
       expect(countRequests(requests)).toHaveLength(1);
     });
 
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => {
       expect(listRequests(requests)).toHaveLength(2);
@@ -971,7 +1052,7 @@ describe('다시 조회', () => {
       expect(detailRequests(requests)).toHaveLength(1);
     });
 
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => {
       expect(detailRequests(requests)).toHaveLength(2);
@@ -984,7 +1065,7 @@ describe('다시 조회', () => {
     const { requests, user } = renderScreen(defaultRoutes(3));
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => {
       expect(listRequests(requests)).toHaveLength(2);
@@ -996,7 +1077,7 @@ describe('다시 조회', () => {
     const { user } = renderScreen(defaultRoutes(), '?q=SYNTH&page=2&rq=9001');
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     expect(currentLocation()).toBe(`${ROUTE}?q=SYNTH&page=2&rq=9001`);
   });
@@ -1015,7 +1096,6 @@ describe('조회만 하는 조작', () => {
       expect(detailRequests(requests)).toHaveLength(1);
     });
 
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
     await user.click(tabFor(t.tabs.requested));
 
@@ -1036,10 +1116,10 @@ describe('조회만 하는 조작', () => {
 
     await waitForList();
 
-    // 승인 유형은 고정 OpenAPI enum으로 채워졌고, 상태 공통코드만 아직 대기 중이다.
-    expect(screen.getAllByText(messages.pendingCode.note)).toHaveLength(1);
+    // 승인 유형은 고정 OpenAPI enum으로 채워졌고, 상태는 맨 위 라벨이 맡아 대기 안내가 없다(#361).
+    expect(screen.queryByText(messages.pendingCode.note)).toBeNull();
 
-    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+    await user.click(screen.getByRole('button', { name: pn.next }));
 
     await waitFor(() => {
       expect(lastListQuery(requests)?.get('page')).toBe('2');
@@ -1116,16 +1196,13 @@ describe('고른 요청 — 정보·대상·진행', () => {
 
     expect(within(target).getByText('합성 대상 문서 가')).toBeVisible();
     expect(target.textContent).not.toContain('INBOUND_LOT');
-    expect(within(target).getByRole('button', { name: t.target.note })).toBeVisible();
+    expect(within(target).queryByRole('button', { name: t.target.note })).toBeNull();
   });
 
-  it('미등록 화면 ID에서는 열기가 잠기고 그 갈래의 사유가 붙는다', async () => {
+  it('미등록 화면 ID에서는 「열기」를 두지 않는다(#361)', async () => {
     await renderSelected();
 
-    const open = screen.getByRole('button', { name: t.target.open });
-
-    expect(open).toBeDisabled();
-    expect(open).toHaveAccessibleDescription(t.target.blockedUnmapped);
+    expect(screen.queryByRole('button', { name: t.target.open })).toBeNull();
   });
 
   it('W-04-02 대상을 열면 선택한 승인 요청 ID가 정식 주소에 실린다', async () => {
@@ -1147,20 +1224,16 @@ describe('고른 요청 — 정보·대상·진행', () => {
     });
   });
 
-  it('열 수 없다고 온 대상은 그 사실로 잠긴다', async () => {
+  it('열 수 없다고 온 대상에는 「열기」를 두지 않는다(#361)', async () => {
     await renderSelected(finishedDetail, '?rq=9002');
 
-    expect(screen.getByRole('button', { name: t.target.open })).toHaveAccessibleDescription(
-      t.target.blockedNotOpenable,
-    );
+    expect(screen.queryByRole('button', { name: t.target.open })).toBeNull();
   });
 
-  it('화면 ID가 오지 않은 대상은 또 다른 사유로 잠긴다', async () => {
+  it('화면 ID가 오지 않은 대상에도 「열기」를 두지 않는다(#361)', async () => {
     await renderSelected(noScreenIdTargetDetail);
 
-    expect(screen.getByRole('button', { name: t.target.open })).toHaveAccessibleDescription(
-      t.target.blockedNoScreenId,
-    );
+    expect(screen.queryByRole('button', { name: t.target.open })).toBeNull();
   });
 
   it('대상 표시명이 비어 오면 번호를 대신 내지 않는다', async () => {
@@ -1190,10 +1263,10 @@ describe('고른 요청 — 순차 판정은 서버 값이다', () => {
     expect(within(progress).queryByText(t.progress.position(1, 3))).not.toBeInTheDocument();
   });
 
-  it('현재 단계가 전체보다 커도 그대로 낸다', async () => {
+  it('전체가 1단계면 진행 위치를 내지 않는다 — 단계 한 줄로 충분하다(#361)', async () => {
     await renderDetail(contradictoryNotMyTurnDetail, '?rq=9003');
 
-    expect(screen.getByText(t.progress.position(2, 1))).toBeVisible();
+    expect(screen.queryByText(t.progress.position(2, 1))).toBeNull();
   });
 
   it('끝난 요청은 종료라고 적고 0으로 메우지 않는다', async () => {
@@ -1205,15 +1278,13 @@ describe('고른 요청 — 순차 판정은 서버 값이다', () => {
   it('내 차례가 서버 값이다 — 배열로는 아닌데 서버가 맞다고 한 경우', async () => {
     await renderDetail(contradictoryMyTurnDetail, '?rq=9001');
 
-    expect(screen.getByText(t.progress.myTurn)).toBeVisible();
-    expect(screen.queryByText(t.progress.notMyTurn)).not.toBeInTheDocument();
+    expect(screen.getByText(t.progress.myTurnBadge)).toBeVisible();
   });
 
   it('내 차례가 서버 값이다 — 배열로는 맞는데 서버가 아니라고 한 경우', async () => {
     await renderDetail(contradictoryNotMyTurnDetail, '?rq=9003');
 
-    expect(screen.getByText(t.progress.notMyTurn)).toBeVisible();
-    expect(screen.queryByText(t.progress.myTurn)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.progress.myTurnBadge)).not.toBeInTheDocument();
   });
 
   it('결재 결과·의견은 응답 값 그대로, 시각은 공장 시각으로 낸다', async () => {
@@ -1226,23 +1297,19 @@ describe('고른 요청 — 순차 판정은 서버 값이다', () => {
     expect(within(progress).getByText('합성 결재 의견 하나')).toBeVisible();
   });
 
-  it('세로로 그리고 결재된 단계의 노드가 번호로 덮인다', async () => {
+  it('단계 이름은 서버가 매긴 단계 번호다(#361 — 「1단계」 줄)', async () => {
     await renderDetail(contradictoryMyTurnDetail, '?rq=9001');
 
     const progress = screen.getByRole('group', { name: t.panes.progress });
-    const list = progress.querySelector('ol');
 
-    expect(list).toHaveAttribute('data-orientation', 'vertical');
-    expect(progress.querySelector('li[data-status] span[aria-hidden="true"]')?.textContent).toBe(
-      '1',
-    );
+    expect(within(progress).getByText(t.progress.stepNo(1))).toBeVisible();
   });
 
   it('고정 반려 값이 아닌 결재 결과는 완료로 그린다', async () => {
     await renderDetail(finishedDetail, '?rq=9002');
 
     const progress = screen.getByRole('group', { name: t.panes.progress });
-    const items = [...progress.querySelectorAll('li[data-status]')];
+    const items = [...progress.querySelectorAll('tbody tr[data-status]')];
 
     expect(items).toHaveLength(2);
     expect(items.map((item) => item.getAttribute('data-status'))).toEqual(['complete', 'complete']);
@@ -1481,7 +1548,8 @@ const renderDecision = async (
 ): Promise<ReturnType<typeof renderScreen>> => {
   const rendered = renderScreen(routes, search, navigateTo, hold);
 
-  await screen.findByRole('group', { name: t.panes.decision });
+  /* 상세가 그려질 때까지 — 결재 상자는 내 차례일 때만 서므로(#361) 대상 구획을 기다린다. */
+  await screen.findByRole('group', { name: t.panes.target });
 
   return rendered;
 };
@@ -1513,12 +1581,10 @@ describe('결재 — 상시 문구', () => {
    * **자물쇠 문구는 사라지는 자리에 두지 않는다.** 승인이 무엇을 하고 무엇을 하지 않는지는
    * 결재함을 보는 내내 참인 사실이라, 알림처럼 몇 초 뒤 없어지면 다시 확인할 방법이 없다.
    */
-  it('결재 제목 옆 ⓘ 에 늘 있고 내 차례가 아니어도 사라지지 않는다', async () => {
+  it('내 차례가 아니면 결재 상자를 두지 않는다(#361)', async () => {
     await renderDecision(decisionRoutes([detailRoute(contradictoryNotMyTurnDetail)]), '?rq=9003');
 
-    expect(within(decisionPane()).getByRole('button', { name: t.decision.lockNote })).toBeVisible();
-    /* 짝 방향 — 그 상태에서 버튼이 실제로 잠겨 있다(문구만 남고 잠금이 풀린 것이 아니다). */
-    expect(approveButton()).toBeDisabled();
+    expect(screen.queryByRole('group', { name: t.panes.decision })).toBeNull();
   });
 
   it('결재에 성공한 뒤 알림에는 그 문장이 없다', async () => {
@@ -1548,14 +1614,9 @@ describe('결재 — 내 차례 판정(첫째 겹)', () => {
       '?rq=9003',
     );
 
-    expect(approveButton()).toBeDisabled();
-    expect(rejectButton()).toBeDisabled();
-    expect(approveButton()).toHaveAccessibleDescription(
-      t.decision.blockedNotMyTurn(t.decision.approve),
-    );
-
-    await user.click(approveButton());
-    await user.click(rejectButton());
+    /* 결재 상자 자체가 없다(#361) — 누를 단추가 없으니 요청도 나가지 않는다. */
+    expect(screen.queryByRole('group', { name: t.panes.decision })).toBeNull();
+    void user;
 
     expect(writeRequests(requests)).toHaveLength(0);
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -1569,13 +1630,11 @@ describe('결재 — 내 차례 판정(첫째 겹)', () => {
   });
 
   /** 승인자가 없어 멈춘 요청도 **오류가 아니라 잠긴 안내**다 — 기다리는 것이 정상이다. */
-  it('멈춘 요청에서도 경보를 세우지 않고 사유만 붙인다', async () => {
+  it('멈춘 요청에서도 경보를 세우지 않고 결재 상자를 두지 않는다', async () => {
     await renderDecision(decisionRoutes([detailRoute(stalledDetail)]), '?rq=9004');
 
-    expect(within(decisionPane()).queryByRole('alert')).toBeNull();
-    expect(rejectButton()).toHaveAccessibleDescription(
-      t.decision.blockedNotMyTurn(t.decision.reject),
-    );
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByRole('group', { name: t.panes.decision })).toBeNull();
   });
 });
 
@@ -1696,8 +1755,10 @@ describe('결재 — 확인 창', () => {
     expect(confirmDialog()).toBeInTheDocument();
 
     /* 창이 열린 채 상세가 다시 온다 — 그 사이 앞 단계가 움직였다. */
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-    await screen.findByText(t.progress.notMyTurn);
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+    await waitFor(() => {
+      expect(screen.queryByText(t.progress.myTurnBadge)).toBeNull();
+    });
 
     await user.click(confirmButton(t.decision.approve));
 
@@ -1914,7 +1975,8 @@ describe('결재 — 성공한 뒤', () => {
 
     /* 재조회가 아직 오지 않았는데도 결재 응답의 값이 보인다. */
     expect(await screen.findByText('합성 결재 직후에 남은 의견')).toBeVisible();
-    expect(within(decisionPane()).getByRole('button', { name: t.decision.lockNote })).toBeVisible();
+    /* 결재를 마쳐 내 차례가 끝났으므로 결재 상자는 사라진다(#361). */
+    expect(screen.queryByRole('group', { name: t.panes.decision })).toBeNull();
 
     release();
   });
@@ -2086,7 +2148,7 @@ describe('결재 — 실패 배너가 매인 대상', () => {
 
     await sendFailingApprove(user);
 
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-002') }));
+    await user.click(within(requestTable()).getByText('SYNTH-REQ-002'));
 
     await waitFor(() => {
       expect(screen.queryByText(messages.conflict.user)).toBeNull();
@@ -2160,7 +2222,7 @@ describe('결재 — 실패 배너가 매인 대상', () => {
     );
 
     await sendFailingApprove(user);
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     /* 새 상세가 실제로 그려졌다 — 여기까지 와야 정리 effect가 도는 자리를 지났다. */
     expect(await screen.findByText('합성 재조회 뒤 의견')).toBeVisible();
@@ -2179,7 +2241,7 @@ describe('결재 — 의견 초안이 매인 대상', () => {
     const { user } = await renderDecision();
 
     await user.type(commentBox(), '9001에만 해당하는 합성 반려 사유');
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-002') }));
+    await user.click(within(requestTable()).getByText('SYNTH-REQ-002'));
 
     await waitFor(() => {
       expect(currentLocation()).toContain('rq=9002');
@@ -2195,7 +2257,7 @@ describe('결재 — 의견 초안이 매인 대상', () => {
 
     const before = detailRequests(requests).length;
 
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
     await waitFor(() => {
       expect(detailRequests(requests).length).toBeGreaterThan(before);
     });
@@ -2271,8 +2333,8 @@ describe('결재 — 전송 중', () => {
     });
 
     await user.click(tabFor(t.tabs.requested));
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-002') }));
-    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+    await user.click(within(requestTable()).getByText('SYNTH-REQ-002'));
+    await user.click(screen.getByRole('button', { name: pn.next }));
 
     expect(currentLocation()).toContain('rq=9001');
     expect(currentLocation()).not.toContain('tab=requested');
@@ -2396,7 +2458,7 @@ describe('결재 — 상세를 읽을 수 없게 된 뒤', () => {
     await user.click(approveButton());
     expect(confirmDialog()).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
     await screen.findByText(messages.httpError.loadTitle);
 
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -2410,7 +2472,7 @@ describe('결재 — 상세를 읽을 수 없게 된 뒤', () => {
     await openRejectDialog(user);
     expect(confirmDialog()).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
     await screen.findByText(messages.httpError.loadTitle);
 
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -2425,7 +2487,7 @@ describe('결재 — 상세를 읽을 수 없게 된 뒤', () => {
     const { requests, user } = await renderDecision(decisionRoutes([failingSecondDetail(403)]));
 
     await user.click(approveButton());
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
     await screen.findByText(t.empty.forbiddenTitle);
 
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -2452,7 +2514,7 @@ describe('결재 — 상세를 읽을 수 없게 된 뒤', () => {
     const { user } = await renderDecision(decisionRoutes([flakyDetail]));
 
     await user.click(approveButton());
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
     await screen.findByText(messages.httpError.loadTitle);
 
     await user.click(screen.getByRole('button', { name: messages.common.retry }));

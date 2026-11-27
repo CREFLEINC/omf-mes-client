@@ -2,7 +2,7 @@ import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
-import { InfoLabel, InfoTip } from '../../patterns/info-tip';
+import { InfoTip } from '../../patterns/info-tip';
 
 import { decisionBlockedReason } from './decision-draft';
 import { DisabledAction } from './disabled-action';
@@ -73,6 +73,7 @@ export const DecisionPane = ({
 
   return (
     <div className="approval-inbox-detail-section" role="group" aria-label={t.panes.decision}>
+      {/* 「승인해도 처리는 원 화면에서」는 겹치지 않는 안내라 남긴다(#361). */}
       <h3 className="info-label">
         {t.panes.decision}
         <InfoTip text={t.decision.lockNote} />
@@ -80,12 +81,10 @@ export const DecisionPane = ({
       {banner}
 
       <div className="field-cell">
-        {/* 승인·반려에 의견이 필요한지는 칸 아래가 아니라 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
-        <InfoLabel
-          htmlFor={commentId}
-          label={t.decision.commentLabel}
-          info={t.decision.commentHelp}
-        />
+        {/* 「(반려 시 필수)」가 이름표에 있어 ⓘ 는 두지 않는다(#361). */}
+        <label className="field-label" htmlFor={commentId}>
+          {t.decision.commentLabel}
+        </label>
         {/* 칸 아래 도움말이 칸 폭을 넓혀 주던 자리 — 걷은 뒤에도 좁아지지 않게 칸(최대 44rem)을 채운다. */}
         <TextField
           id={commentId}
@@ -115,6 +114,8 @@ export const DecisionPane = ({
             <Button variant="filled" disabled aria-describedby={turnNoteId}>
               {t.decision.approve}
             </Button>
+            {/* 잠긴 까닭은 단추 옆 ⓘ 에 올리면 보인다(#361). */}
+            <InfoTip text={t.decision.blockedNotMyTurn(t.decision.approve)} />
           </>
         ) : (
           <>
@@ -137,7 +138,7 @@ export const DecisionPane = ({
         )}
       </div>
       {isNotMyTurn && (
-        <p id={turnNoteId} className="field-note approval-inbox-turn-note">
+        <p id={turnNoteId} className="visually-hidden">
           {t.decision.blockedNotMyTurn(t.decision.approve)}
         </p>
       )}

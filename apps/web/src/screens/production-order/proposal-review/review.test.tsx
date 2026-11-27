@@ -164,14 +164,12 @@ describe('제안 검토 화면', () => {
   it('좌우 배치 목록은 ERP W/O와 확정 검토만 표시한다', async () => {
     const user = userEvent.setup();
     renderReview();
-    await user.click(screen.getByRole('button', { name: '제안 표와 상세 배치' }));
     await user.click(screen.getByRole('button', { name: '좌우 배치' }));
     expect(
       within(screen.getByRole('region', { name: 'ERP W/O 제안 목록' }))
         .getAllByRole('columnheader')
         .map((cell) => cell.textContent),
     ).toEqual(['선택', 'ERP W/O', '확정 검토']);
-    await user.click(screen.getByRole('button', { name: '제안 표와 상세 배치' }));
     await user.click(screen.getByRole('button', { name: '상하 배치' }));
     expect(
       within(screen.getByRole('region', { name: 'ERP W/O 제안 목록' }))
@@ -209,11 +207,9 @@ describe('제안 검토 화면', () => {
     const user = userEvent.setup();
     renderReview();
     await user.click(screen.getByRole('checkbox', { name: `${firstNo} 확정 선택` }));
-    await user.click(screen.getByRole('button', { name: '제안 표와 상세 배치' }));
     await user.click(screen.getByRole('button', { name: '좌우 배치' }));
     expect(screen.getByRole('checkbox', { name: `${firstNo} 확정 선택` })).toBeChecked();
     expect(screen.getByRole('separator', { name: '제안 표와 상세 너비 조절' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '제안 표와 상세 배치' }));
     await user.click(screen.getByRole('button', { name: '상하 배치' }));
     expect(screen.getByRole('region', { name: '생산계획 정보' })).toBeInTheDocument();
   });

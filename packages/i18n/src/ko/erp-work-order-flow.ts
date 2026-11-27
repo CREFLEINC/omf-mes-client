@@ -34,7 +34,7 @@ const steps = {
 
 /** 생산계획 단계의 버튼 이름. 사유 칩 도움말이 같은 이름으로 가리킨다. */
 const planButtons = {
-  add: '계획 추가',
+  add: '수동 분배',
   confirm: '계획 확정 후 4M 배정',
 } as const;
 
@@ -93,14 +93,9 @@ export const erpWorkOrderFlow = {
     forbiddenNoMenu: `이 화면을 보려면 「${SCREEN_NAME}」 권한이 필요합니다. 관리자에게 권한을 요청하세요.`,
   },
 
-  /** 페이지 머리 조건 칩. `label`은 보이지 않는 칩 묶음의 접근명이다. */
+  /** 처리 상태 선택 칸에서 거르지 않는 선택지의 이름. */
   counts: {
-    label: '처리 상태',
-    unit: '건',
     allName: '전체',
-    all: (count: number): string => `전체 ${String(count)}건`,
-    actionRequired: (count: number): string => `${status.ACTION_REQUIRED} ${String(count)}건`,
-    releasePending: (count: number): string => `${status.RELEASE_PENDING} ${String(count)}건`,
   },
 
   status,
@@ -144,6 +139,7 @@ export const erpWorkOrderFlow = {
 
   filters: {
     pane: '조회 조건',
+    state: '처리 상태',
     q: '번호 검색',
     qPlaceholder: 'ERP W/O 번호를 입력하세요',
     dueFrom: '납기 시작일',
@@ -160,6 +156,8 @@ export const erpWorkOrderFlow = {
 
   list: {
     pane: 'ERP W/O 목록',
+    /** 계획 시작일 정렬. */
+    order: { label: '정렬', newest: '최신순', oldest: '오래된순' },
     caption: SCREEN_NAME,
     columns: {
       orderNo: 'ERP W/O 번호',
