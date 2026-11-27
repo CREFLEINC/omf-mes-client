@@ -557,23 +557,24 @@ const RoutingWorkspace = () => {
    * 상태 전이 두 갈래. 실패 배너가 섞이지 않도록 훅을 나눈다 —
    * 하나로 묶으면 확정 실패 문구가 폐기 창에 남는다.
    */
-  const finishTransition = () => {
+  /* 한 일을 말한다 — 확정 · 폐기 모두 「저장했습니다」였다(#360 점검). */
+  const finishTransition = (done: string) => () => {
     setTransition(null);
-    toast.show({ variant: 'success', description: messages.common.saved });
+    toast.show({ variant: 'success', description: done });
   };
 
   const confirmWrite = useRoutingTransition({
     client,
     routingId: selectedRoutingId,
     path: '/planning/routings/{routingId}:confirm',
-    onDone: finishTransition,
+    onDone: finishTransition(t.dialog.confirmDone),
   });
 
   const obsoleteWrite = useRoutingTransition({
     client,
     routingId: selectedRoutingId,
     path: '/planning/routings/{routingId}:obsolete',
-    onDone: finishTransition,
+    onDone: finishTransition(t.dialog.obsoleteDone),
   });
 
   /*
@@ -606,7 +607,6 @@ const RoutingWorkspace = () => {
               ? prev
               : { ...prev, items: prev.items.filter((row) => row.routingId !== deletedId) },
         );
-        queryClient.removeQueries({ queryKey: routingKeys.detail(deletedId) });
       }
       setTransition(null);
       resetHeaderEditing();

@@ -155,9 +155,16 @@ export const EquipmentFormDialog = ({
           <Button variant="outlined" disabled={isSaving} onClick={onClose}>
             {messages.common.cancel}
           </Button>
-          <Button loading={isSaving} disabled={isSaving} onClick={onSave}>
-            {messages.common.save}
-          </Button>
+          {/* 폐기한 설비는 서버가 수정을 거절한다(STATE_LOCKED) — 저장을 잠그고 이유는 마우스를 올리면 보인다(#360 점검). */}
+          <span title={statusCode === DISPOSED_STATUS_CODE ? t.dispose.lockedReason : undefined}>
+            <Button
+              loading={isSaving}
+              disabled={isSaving || statusCode === DISPOSED_STATUS_CODE}
+              onClick={onSave}
+            >
+              {messages.common.save}
+            </Button>
+          </span>
         </>
       }
     >

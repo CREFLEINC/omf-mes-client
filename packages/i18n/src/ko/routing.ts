@@ -301,12 +301,12 @@ export const routing = {
     operationCreateTitle: '공정 추가',
     operationEditTitle: '공정 수정',
     /** 공정 추가 · 수정 창 칸 안 흐린 안내(사용자 지시 2026-11-26). */
-    processPlaceholder: '공정을 고르세요',
+    processPlaceholder: '공정을 선택하세요',
     operationNamePlaceholder: '공정명을 입력하세요',
     cycleTimePlaceholder: '표준 C/T를 입력하세요',
     yieldRatePlaceholder: '표준 수율을 입력하세요',
     processCodePlaceholder: '공정코드를 입력하세요',
-    processTypePlaceholder: '공정 유형을 고르세요',
+    processTypePlaceholder: '공정 유형을 선택하세요',
     /*
      * 되돌리기 어려운 전이라 확인을 한 단계 둔다. 무엇이 일어나는지와
      * 그 뒤에 무엇을 할 수 있는지를 먼저 밝힌다.
@@ -326,6 +326,11 @@ export const routing = {
     discardQuestion: '이 Rev의 작성을 취소하시겠습니까?',
     discardDescription: '작성중 Rev와 그 공정 구성 · 공정 연결이 삭제되며 되돌릴 수 없습니다.',
     discardDone: '작성을 취소했습니다.',
+    /** 확정 · 폐기 · 공정 사용 중지 · 재사용 성공 알림 — 「저장했습니다」 대신 한 일을 말한다(#360 점검). */
+    confirmDone: '확정했습니다.',
+    obsoleteDone: '폐기했습니다.',
+    processDeactivated: '공정을 사용 중지했습니다.',
+    processReactivated: '공정을 다시 사용합니다.',
     /** 공정 편집 창 관리 항목 제목 옆 — 켠 항목 수(#231). */
     /** 공정 편집 창 관리 항목 구역 제목(#231). */
     flagsTitle: '관리 설정',
@@ -350,8 +355,8 @@ export const routing = {
     itemCode: (code: string): string => `품목코드 ${code}`,
     predecessor: '선행 공정',
     successor: '후행 공정',
-    predecessorPlaceholder: '선행 공정을 고르세요',
-    successorPlaceholder: '후행 공정을 고르세요',
+    predecessorPlaceholder: '선행 공정을 선택하세요',
+    successorPlaceholder: '후행 공정을 선택하세요',
     type: '관계',
     remove: (rowNo: number): string => `${String(rowNo)}번째 선후행 삭제`,
     rowField: (rowNo: number, field: string): string => `${String(rowNo)}번째 줄 ${field}`,

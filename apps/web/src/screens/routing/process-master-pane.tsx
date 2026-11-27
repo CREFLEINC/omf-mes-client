@@ -216,8 +216,13 @@ export const ProcessMasterPane = () => {
     invalidateKeys: [processKeys.all],
     knownFields: [],
     onSuccess: () => {
+      const intent = activationIntent;
       setActivationIntent(null);
-      toast.show({ variant: 'success', description: messages.common.saved });
+      toast.show({
+        variant: 'success',
+        description:
+          intent === 'deactivate' ? t.dialog.processDeactivated : t.dialog.processReactivated,
+      });
     },
   });
 

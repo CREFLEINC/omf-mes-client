@@ -1488,7 +1488,7 @@ describe('RoutingScreen — 확정·폐기', () => {
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: '확정' }));
 
-    await screen.findByText('저장했습니다');
+    await screen.findByText('확정했습니다.');
 
     const posts = requestsTo(requests, '/planning/routings/7003:confirm');
     expect(posts).toHaveLength(1);
@@ -1514,7 +1514,7 @@ describe('RoutingScreen — 확정·폐기', () => {
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', { name: '확정' }),
     );
-    await screen.findByText('저장했습니다');
+    await screen.findByText('확정했습니다.');
 
     await waitFor(() => {
       expect(requestsTo(requests, '/planning/routings/7003').length).toBeGreaterThan(before.detail);
@@ -1604,7 +1604,7 @@ describe('RoutingScreen — 확정·폐기', () => {
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', { name: '폐기' }),
     );
-    await screen.findByText('저장했습니다');
+    await screen.findByText('폐기했습니다.');
 
     const posts = requestsTo(requests, '/planning/routings/7002:obsolete');
     expect(posts).toHaveLength(1);

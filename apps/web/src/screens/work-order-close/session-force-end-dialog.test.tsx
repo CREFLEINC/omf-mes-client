@@ -63,6 +63,8 @@ describe('SessionForceEndDialog', () => {
     expect(within(dialog).queryByText(t.reasonRequired)).not.toBeInTheDocument();
     await user.type(within(dialog).getByLabelText(t.reason), '   ');
     expect(confirm).toBeDisabled();
+    /* 공백만 친 사유도 빈 칸 — 단추가 잠긴 동안 칸도 빨간 바탕 표시를 유지한다(#360 점검). */
+    expect(dialog.querySelector('.session-force-end-reason-empty')).not.toBeNull();
     await user.type(within(dialog).getByLabelText(t.reason), '단말 고장으로 종료 불가 ');
     await user.click(confirm);
 

@@ -153,6 +153,8 @@ export const SessionForceEndDialog = ({
           {t.effectKept}
         </p>
         <TextArea
+          /* 공백만 친 사유도 빈 칸이다 — 실행 단추가 잠긴 동안 빨간 바탕을 유지한다(#360 점검). */
+          className={trimmed === '' ? 'session-force-end-reason-empty' : undefined}
           label={t.reason}
           placeholder={t.reasonPlaceholder}
           value={reason}

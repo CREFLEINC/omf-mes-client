@@ -82,6 +82,7 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
       'Đây là xử lý khác với ngừng sử dụng. Ngừng sử dụng là ẩn khỏi danh sách, còn thanh lý là tài sản đã kết thúc.',
     notReversible: 'Không thể hoàn tác. Sau khi thanh lý thì tải lại cũng không mở được chỉnh sửa.',
     confirm: 'Xử lý thanh lý',
+    lockedReason: 'Không thể sửa thiết bị đã thanh lý.',
   },
   deactivate: {
     title: 'Ngừng sử dụng nhóm thiết bị',

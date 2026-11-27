@@ -2663,6 +2663,25 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
     });
   });
 
+  /* 서버가 폐기한 설비의 수정을 거절한다(STATE_LOCKED) — 누르면 실패할 [저장] 을 잠그고 이유를 단다(#360 점검). */
+  it('이미 폐기된 설비의 수정 창은 저장을 잠그고 이유를 단다', async () => {
+    const user = userEvent.setup();
+    const disposed = makeEquipment(2001, 'EQ-01', { statusCode: 'DISPOSED' });
+    renderScreen({
+      respondEquipments: () => jsonResponse(equipmentsResponse([disposed])),
+      respondEquipmentDetail: () =>
+        jsonResponse(equipmentDetail(disposed), { headers: { ETag: '9' } }),
+    });
+
+    const pane = within(await openEquipmentTab(user));
+    await user.click(pane.getByRole('button', { name: 'EQ-01' }));
+    const dialog = within(await screen.findByRole('dialog', { name: t.equipmentForm.editTitle }));
+
+    const save = await dialog.findByRole('button', { name: messages.common.save });
+    await waitFor(() => expect(save).toBeDisabled());
+    expect(save.closest('span')).toHaveAttribute('title', t.dispose.lockedReason);
+  });
+
   const disposeT = messages.equipmentMaster.dispose;
 
   it('폐기 확인이 사용 중지와 다른 문장을 낸다', async () => {

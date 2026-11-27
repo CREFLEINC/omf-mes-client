@@ -306,6 +306,10 @@ export const routing: Translated<typeof ko.routing> = {
     discardDescription:
       'Rev nháp cùng cấu hình công đoạn · liên kết công đoạn sẽ bị xóa và không thể khôi phục.',
     discardDone: 'Đã hủy bản nháp.',
+    confirmDone: 'Đã xác nhận.',
+    obsoleteDone: 'Đã hủy bỏ.',
+    processDeactivated: 'Đã ngừng sử dụng công đoạn.',
+    processReactivated: 'Đã dùng lại công đoạn.',
     flagsTitle: 'Thiết lập quản lý',
     flagsSelected: (count: number): string => `Đã chọn ${String(count)}`,
     deactivateProcessTitle: 'Ngừng sử dụng công đoạn',
