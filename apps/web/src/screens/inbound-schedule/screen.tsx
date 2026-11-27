@@ -11,6 +11,11 @@ import {
   usePaneSplit,
 } from '../../patterns/po-board';
 import { useSession } from '../../patterns/session';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import { toWebAccess } from '../../patterns/web-access';
 import { excessTabHref, readLegacyExcessEntry, type ExcessEntry } from './excess-entry';
 import { excessesByLine } from './excess-match';
@@ -130,6 +135,9 @@ export const InboundScheduleScreen = () => {
   const { splitRef, aboveRef } = useFitToViewport();
   const { session } = useSession();
   const split = usePaneSplit('omf-mes:inbound-schedule:split', 0.4);
+  /* 좌우 · 상하 배치(「⋯」)와 상하 배치의 목록 높이 — 다른 목록 · 상세 화면과 같은 공용 부품이다(#360). */
+  const layout = useSplitOrientation('omf-mes:inbound-schedule:split-orientation');
+  const isStacked = layout.orientation === 'column';
   const quickRef = useRef<QuickLookupHandle>(null);
 
   /*
@@ -315,6 +323,7 @@ export const InboundScheduleScreen = () => {
       {hubActions !== null && stageChips !== null && (
         <HubActions target={hubActions}>{stageChips}</HubActions>
       )}
+      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
 
       {/* 조회 실패는 빈 상태로 오인시키지 않는다 — 「없습니다」로 내면 자료가 없는 줄 안다. */}
       {list.isError && (
@@ -381,8 +390,8 @@ export const InboundScheduleScreen = () => {
       {/* 왼쪽 표를 접으면(사용자 지시 2026-10-24) 오른쪽 구획이 폭을 다 쓴다 — 나란히 설 때만(app.css). */}
       <div
         ref={splitRef}
-        className="po-board-split"
-        style={split.style}
+        className={`po-board-split inbound-schedule-split${isStacked ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
         data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <section className="pane po-board-pane" aria-label={t.panes.orders}>
@@ -436,6 +445,14 @@ export const InboundScheduleScreen = () => {
           onChange={split.commit}
           collapse={listCollapse}
         />
+        {isStacked && (
+          <PaneHeightSplitter
+            label={messages.common.inspectionHub.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+            collapse={listCollapse}
+          />
+        )}
 
         <section className="pane po-board-pane" aria-label={t.panes.lines}>
           {lines.isError ? (
