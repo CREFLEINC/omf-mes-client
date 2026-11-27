@@ -16,7 +16,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     listExpand: 'Mở rộng danh sách',
   },
   actions: {
-    openRouting: 'Tra cứu routing',
     reactivate: 'Sử dụng lại',
     copy: 'Sao chép',
     /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
@@ -190,9 +189,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     versionStatuses: { draft: 'Đang soạn', confirmed: 'Đã xác nhận', obsolete: 'Ngừng dùng' },
     chipVersionStatus: (label: string): string => `Trạng thái: ${label}`,
     chipRemoveVersionStatus: 'Bỏ điều kiện trạng thái',
-    searchLabel: 'Tìm tiêu chuẩn kiểm tra',
-    searchPlaceholder: 'Nhập mã tiêu chuẩn hoặc tên tiêu chuẩn',
-    searchClear: 'Xóa tìm kiếm tiêu chuẩn kiểm tra',
     inspectionType: 'Chọn loại kiểm tra',
     typeAll: 'Tất cả loại',
     chipKeyword: (value: string): string => `Từ khóa: ${value}`,
@@ -438,7 +434,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     /** 표의 「항목」 열 — 코드와 이름을 한 칸에 담는다. `item`(품목)과 다른 것이다. */
     itemSpec: 'Hạng mục',
     dataType: 'Kiểu dữ liệu',
-    targetRange: 'Mục tiêu · Phạm vi',
+    target: 'Mục tiêu',
+    limitRange: 'Phạm vi',
     measurementCount: 'Số lần đo',
     judgment: 'Đánh giá',
     /** 행 안의 수정·삭제 열. 머리글이 없으면 보조기술이 열의 뜻을 읽을 수 없다. */
@@ -501,6 +498,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     none: 'Không có',
     /** 「코드 · 이름」. 코드가 앞에 온다 — 중복 검증의 대상이라 훑을 수 있어야 한다. */
     itemLabel: (code: string, name: string): string => `${code} · ${name}`,
+    planRowLabel: (type: string, planName: string): string => `${type}, ${planName}`,
     /** 목표·하한~상한·단위를 한 칸에 담는다. 없는 값은 지어내지 않고 자리를 비워 표기한다. */
     range: (lower: string, upper: string): string => `${lower}~${upper}`,
   },

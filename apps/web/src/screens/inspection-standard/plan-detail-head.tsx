@@ -16,8 +16,6 @@ export interface PlanDetailHeadProps {
   /** 기준의 라우팅 Rev. 없거나 아직 받지 못했으면 undefined — 「없음」 */
   routingRevision: RoutingRevision | undefined;
   onEdit: () => void;
-  /** 품목이 있는 기준에만 — 그 품목의 라우팅 화면으로 옮긴다(사용자 지시 2026-11-05). */
-  onOpenRouting?: () => void;
   /** 사용 중인 기준에만 — 「기본 정보 수정」 옆 「사용 중지」(#208) */
   onDeactivate?: () => void;
   isDeactivating?: boolean;
@@ -39,7 +37,6 @@ export const PlanDetailHead = ({
   itemParts,
   routingRevision,
   onEdit,
-  onOpenRouting,
   onDeactivate,
   isDeactivating = false,
   onActivate,
@@ -57,12 +54,8 @@ export const PlanDetailHead = ({
         <div className="inspection-standard-plan-chips">
           <h2 className="pane-title">{t.detail.title}</h2>
         </div>
+        {/* 「라우팅 조회」는 걷었다(사용자 지시 2026-11-27) — 라우팅은 라우팅 화면에서 본다. */}
         <div className="inspection-standard-plan-head-actions">
-          {onOpenRouting !== undefined && (
-            <Button variant="outlined" onClick={onOpenRouting}>
-              {t.actions.openRouting}
-            </Button>
-          )}
           {onDeactivate !== undefined && (
             <Button variant="outlined" disabled={isDeactivating} onClick={onDeactivate}>
               {messages.common.deactivate}
