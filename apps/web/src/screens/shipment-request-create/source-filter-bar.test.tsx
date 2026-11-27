@@ -103,7 +103,7 @@ describe('SourceFilterBar', () => {
 
     expect(onRemoveFilter).toHaveBeenCalledWith('period');
   });
-  it('[ERP S/O 없이 생성]은 [조회] 바로 오른쪽에 서고, 누르면 상위에 알린다(#360)', async () => {
+  it('[ERP S/O 없이 생성]은 [조회] 뒤 구분선 너머에 서고, 누르면 상위에 알린다(#360)', async () => {
     const onStartStandalone = vi.fn<() => void>();
     const user = userEvent.setup();
 
@@ -122,7 +122,11 @@ describe('SourceFilterBar', () => {
     const search = screen.getByRole('button', { name: t.filters.search });
     const start = screen.getByRole('button', { name: t.actions.startStandalone });
 
-    expect(search.nextElementSibling).toBe(start);
+    /* 조건을 안 바꿨으니 [초기화]는 없다 — [조회] | 구분선 | [ERP S/O 없이 생성](채움 단추). */
+    const divider = search.nextElementSibling;
+
+    expect(divider).toHaveClass('inspection-standard-filter-divider');
+    expect(divider?.nextElementSibling).toBe(start);
 
     await user.click(start);
     expect(onStartStandalone).toHaveBeenCalledTimes(1);

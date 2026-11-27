@@ -266,18 +266,21 @@ describe('ShipmentRequestCreateScreen — 단독 생성(완료 조건 C3)', () =
     const headerPane = await screen.findByRole('region', { name: t.panes.header });
 
     expect(within(headerPane).getByRole('combobox', { name: /고객/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.actions.removeLine(1) })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.dialog.removeLine })).toBeDisabled();
 
     /* ⭐ 「라인 추가」가 곧바로 줄을 붙이지 않는다 — 팝업에서 품목을 골라야 줄이 생긴다. */
-    await user.click(screen.getByRole('button', { name: t.actions.addLine }));
+    await user.click(screen.getByRole('button', { name: t.dialog.addLine }));
     await pickItems(user, 'SAMPLE-ITEM-02', ['SAMPLE-ITEM-02']);
 
-    expect(screen.getByRole('button', { name: t.actions.removeLine(1) })).toBeEnabled();
-    expect(screen.getByRole('button', { name: t.actions.removeLine(2) })).toBeEnabled();
+    const removeButtons = screen.getAllByRole('button', { name: t.dialog.removeLine });
 
-    await user.click(screen.getByRole('button', { name: t.actions.removeLine(2) }));
+    expect(removeButtons).toHaveLength(2);
+    expect(removeButtons[0]).toBeEnabled();
+    expect(removeButtons[1]).toBeEnabled();
 
-    expect(screen.queryByRole('button', { name: t.actions.removeLine(2) })).not.toBeInTheDocument();
+    await user.click(removeButtons[1]!);
+
+    expect(screen.getAllByRole('button', { name: t.dialog.removeLine })).toHaveLength(1);
   });
 
   /*
@@ -297,12 +300,12 @@ describe('ShipmentRequestCreateScreen — 단독 생성(완료 조건 C3)', () =
     renderScreen({ fetch: createStubFetch(baseRoutes()) });
 
     await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
-    await screen.findByRole('region', { name: t.panes.lines });
+    await screen.findByRole('region', { name: t.dialog.lines });
 
     expect(screen.queryByText('품목을 선택하세요.')).not.toBeInTheDocument();
     expect(screen.queryByText('요청 수량을 입력하세요.')).not.toBeInTheDocument();
 
-    expect(screen.getByRole('button', { name: t.actions.submit })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.dialog.submit })).toBeDisabled();
   });
 
   /*
@@ -326,13 +329,11 @@ describe('ShipmentRequestCreateScreen — 단독 생성(완료 조건 C3)', () =
     renderScreen({ fetch: createStubFetch(baseRoutes()) });
 
     await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
-    await user.click(screen.getByRole('button', { name: t.actions.addLine }));
+    await user.click(screen.getByRole('button', { name: t.dialog.addLine }));
     await pickItems(user, 'SAMPLE-ITEM', ['SAMPLE-ITEM-01', 'SAMPLE-ITEM-02']);
 
     /* 빈 줄 하나 + 고른 둘 = 셋. */
-    expect(
-      await screen.findByRole('button', { name: t.actions.removeLine(3) }),
-    ).toBeInTheDocument();
+    expect(await screen.findAllByRole('button', { name: t.dialog.removeLine })).toHaveLength(3);
     expect(await screen.findByRole('button', { name: t.lineTable.itemLabel(2) })).toHaveTextContent(
       'SAMPLE-ITEM-01 · 합성 품목 가',
     );
@@ -362,7 +363,7 @@ describe('ShipmentRequestCreateScreen — 단독 생성(완료 조건 C3)', () =
     await pickItems(user, 'SAMPLE-ITEM-02', ['SAMPLE-ITEM-02']);
 
     /* 줄이 늘지 않는다 — 바꾼 것이지 더한 것이 아니다. */
-    expect(screen.queryByRole('button', { name: t.actions.removeLine(2) })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: t.dialog.removeLine })).toHaveLength(1);
     expect(screen.getByRole('button', { name: t.lineTable.itemLabel(1) })).toHaveTextContent(
       'SAMPLE-ITEM-02 · 합성 품목 나',
     );
@@ -389,7 +390,7 @@ describe('ShipmentRequestCreateScreen — 배정 수량 검증(완료 조건 C4)
     await user.type(allocatedInput, '11');
 
     expect(await screen.findByText(t.errors.allocatedQtyOverRequested(10))).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.actions.submit })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.dialog.submit })).toBeDisabled();
   });
 });
 
@@ -416,7 +417,7 @@ describe('ShipmentRequestCreateScreen — 시간대 입력란 없음(완료 조�
 
     await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
 
-    expect(screen.getByLabelText(t.fields.requestedShipDate)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.dialog.requestedShipDate)).toBeInTheDocument();
     expect(screen.queryByLabelText(/시간/)).not.toBeInTheDocument();
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
   });
@@ -587,7 +588,7 @@ describe('ShipmentRequestCreateScreen — 사업부·출고 창고(피처 012)',
     await pickItems(user, 'SAMPLE-ITEM-01', ['SAMPLE-ITEM-01']);
     await chooseWarehouse(user, 1, '합성 창고 C (합성 1공장)');
 
-    await user.click(screen.getByRole('button', { name: t.actions.addLine }));
+    await user.click(screen.getByRole('button', { name: t.dialog.addLine }));
     await pickItems(user, 'SAMPLE-ITEM-02', ['SAMPLE-ITEM-02']);
 
     expect(
@@ -676,17 +677,21 @@ describe('ShipmentRequestCreateScreen — ERP S/O 없이 생성 팝업(#360)', (
     await user.click(await screen.findByRole('option', { name: label }));
   };
 
-  it('[조회] 바로 오른쪽 단추가 팝업을 열고, 상세 자리에는 입력 상자가 서지 않는다', async () => {
+  it('[조회] 뒤 구분선 너머 단추가 팝업을 열고, 상세 자리에는 입력 상자가 서지 않는다', async () => {
     const user = userEvent.setup();
 
     renderScreen({ fetch: createStubFetch(baseRoutes()) });
     const dialog = await openStandalone(user);
 
-    expect(screen.getByRole('button', { name: t.filters.search }).nextElementSibling).toBe(
+    /* [조회] | 구분선 | [ERP S/O 없이 생성] — 조건을 안 바꿨으니 [초기화]는 없다. */
+    const divider = screen.getByRole('button', { name: t.filters.search }).nextElementSibling;
+
+    expect(divider).toHaveClass('inspection-standard-filter-divider');
+    expect(divider?.nextElementSibling).toBe(
       screen.getByRole('button', { name: t.actions.startStandalone }),
     );
     expect(dialog.getByRole('region', { name: t.panes.header })).toBeInTheDocument();
-    expect(dialog.getByRole('region', { name: t.panes.lines })).toBeInTheDocument();
+    expect(dialog.getByRole('region', { name: t.dialog.lines })).toBeInTheDocument();
     /* 상세 자리는 빈 안내 그대로 — 입력 상자는 팝업 안에만 있다. */
     expect(screen.getAllByRole('region', { name: t.panes.header })).toHaveLength(1);
     expect(screen.getByText(t.empty.noTargetTitle)).toBeInTheDocument();
@@ -716,7 +721,7 @@ describe('ShipmentRequestCreateScreen — ERP S/O 없이 생성 팝업(#360)', (
     expect(screen.queryByText(t.errors.shipToPartnerRequired)).toBeNull();
     expect(screen.queryByText(t.errors.requestedShipDateRequired)).toBeNull();
     expect(screen.queryByText(t.actionReasons.noAllocatedLine)).toBeNull();
-    expect(dialog.getByRole('button', { name: t.actions.submit })).toBeDisabled();
+    expect(dialog.getByRole('button', { name: t.dialog.submit })).toBeDisabled();
   });
 
   it('다 채워 편성하면 종전과 같은 본문을 보내고, 팝업을 닫고 결과를 알림으로 낸다', async () => {
@@ -758,7 +763,7 @@ describe('ShipmentRequestCreateScreen — ERP S/O 없이 생성 팝업(#360)', (
       dialog.getByRole('combobox', { name: new RegExp(t.fields.shipToPartner, 'u') }),
       'SAMPLE-SHIP-01 · 합성 납품처 가',
     );
-    await pickDate(user, dialog.getByLabelText(t.fields.requestedShipDate), '2026-12-01');
+    await pickDate(user, dialog.getByLabelText(t.dialog.requestedShipDate), '2026-12-01');
 
     await user.click(dialog.getByRole('button', { name: t.lineTable.itemLabel(1) }));
     await pickItems(user, 'SAMPLE-ITEM-01', ['SAMPLE-ITEM-01']);
@@ -770,7 +775,7 @@ describe('ShipmentRequestCreateScreen — ERP S/O 없이 생성 팝업(#360)', (
       '합성 창고 A (합성 1공장)',
     );
 
-    await user.click(dialog.getByRole('button', { name: t.actions.submit }));
+    await user.click(dialog.getByRole('button', { name: t.dialog.submit }));
 
     await waitFor(() => {
       expect(bodies).toHaveLength(1);
@@ -797,7 +802,7 @@ describe('ShipmentRequestCreateScreen — ERP S/O 없이 생성 팝업(#360)', (
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: t.dialog.standaloneTitle })).toBeNull();
     });
-    expect(await screen.findByText(t.result.title)).toBeInTheDocument();
+    expect(await screen.findByText(t.dialog.resultTitle)).toBeInTheDocument();
     expect(
       screen.getByText(
         `${t.result.shipmentRequestNo('SAMPLE-SR-0001')} · ${t.result.lineCount(1)}`,

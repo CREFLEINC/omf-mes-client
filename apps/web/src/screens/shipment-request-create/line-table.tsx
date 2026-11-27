@@ -69,6 +69,15 @@ const WIDTH = {
   rowActionsSplit: '96px',
 } as const;
 
+/**
+ * 단독 생성(ERP S/O 없이 생성 팝업 · #360) — 넓은 팝업(80rem)이라 남는 폭을 품목 · 출고 창고에 먼저 준다
+ * (사용자 지시 2026-11-27). 지정 폭 합 1,192px — 팝업 본문 폭 안이다. S/O 편성 폼은 위 폭 그대로.
+ */
+const STANDALONE_WIDTH = {
+  item: '296px',
+  warehouse: '240px',
+} as const;
+
 export interface LineTableProps {
   mode: AssignmentMode;
   rows: ShipmentRequestLineDraft[];
@@ -168,7 +177,7 @@ export const LineTable = ({
     {
       key: 'item',
       header: isFromOrder ? t.lineTable.item : requiredHeader(t.lineTable.item),
-      width: WIDTH.item,
+      width: isFromOrder ? WIDTH.item : STANDALONE_WIDTH.item,
       /*
        * ⭐ **두 모드가 같은 모양이다** — 「코드 · 이름」 읽기 전용(사용자 결정 2026-09-18).
        *    현장이 코드로 대조하고 라벨·QR 도 코드다.
@@ -213,6 +222,8 @@ export const LineTable = ({
                 type="button"
                 disabled={isLocked}
                 aria-label={t.lineTable.itemLabel(rowIndex + 1)}
+                /* 고른 품목은 두 줄까지만 보이고(팝업 CSS) 전체 「코드 · 이름」은 마우스를 올리면 보인다(#360). */
+                title={row.itemId === '' ? undefined : label}
                 aria-haspopup="dialog"
                 aria-required="true"
                 onClick={() => {
@@ -302,6 +313,8 @@ export const LineTable = ({
     {
       key: 'allocatedQty',
       header: t.lineTable.allocatedQty,
+      /* 단독 생성 팝업은 수량 열을 모두 오른쪽 정렬한다(#360). S/O 편성 폼은 종전 그대로. */
+      align: isFromOrder ? undefined : 'end',
       width: WIDTH.allocatedQty,
       render: (row, rowIndex) => (
         <div className="field-cell">
@@ -345,7 +358,7 @@ export const LineTable = ({
           />
         </span>
       ),
-      width: WIDTH.warehouse,
+      width: isFromOrder ? WIDTH.warehouse : STANDALONE_WIDTH.warehouse,
       /*
        * ⭐ 줄마다 출고 창고 하나(피처 012 FR-003). 사업부를 고르기 전에는 잠긴다(US1-2).
        * 첫 줄 창고로 채운 값은 「첫 줄 창고로 채움」을 작게 적고(FR-004), 사업부를 바꿔 비운 줄은 노란 테로 짚는다.
@@ -389,7 +402,8 @@ export const LineTable = ({
     },
     {
       key: 'shippingInspectionRequired',
-      header: t.lineTable.inspection,
+      /* 단독 생성 팝업은 「검사 요청」(이 줄을 출하검사에 넘길지 · #360). */
+      header: isFromOrder ? t.lineTable.inspection : t.dialog.inspection,
       width: WIDTH.inspection,
       render: (row, rowIndex) => (
         <Checkbox
@@ -437,13 +451,13 @@ export const LineTable = ({
         } satisfies Column<ShipmentRequestLineDraft>)
       : ({
           key: 'rowActions',
-          header: t.lineTable.rowActions,
+          header: t.dialog.rowActions,
           width: WIDTH.rowActions,
-          render: (row: ShipmentRequestLineDraft, rowIndex: number) => (
+          render: (row: ShipmentRequestLineDraft) => (
             <IconButton
               icon="delete"
               size="sm"
-              aria-label={t.actions.removeLine(rowIndex + 1)}
+              aria-label={t.dialog.removeLine}
               disabled={isLocked || rows.length <= 1}
               onClick={() => {
                 onRemove(row.key);

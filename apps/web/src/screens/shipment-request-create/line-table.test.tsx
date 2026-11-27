@@ -92,7 +92,7 @@ describe('LineTable — 지시서 경유', () => {
       />,
     );
 
-    expect(screen.queryByRole('button', { name: t.actions.removeLine(1) })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.dialog.removeLine })).not.toBeInTheDocument();
   });
 });
 
@@ -152,7 +152,7 @@ describe('LineTable — 단독 생성', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: t.actions.removeLine(1) })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.dialog.removeLine })).toBeDisabled();
   });
 
   it('배정 수량을 고치면 onPatch를 부른다', async () => {
@@ -283,5 +283,33 @@ describe('LineTable — 단독 생성', () => {
     expect(screen.queryByRole('columnheader', { name: '고객 LOT 요구' })).not.toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: /잔여 유효기간/u })).not.toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: /고객 LOT/u })).not.toBeInTheDocument();
+  });
+
+  it('팝업 문구 — 「검사 요청」 · 「관리」 열, 「품목 행 삭제」 단추, 고른 품목 전체 이름은 title(#360)', () => {
+    const row = { ...emptyLineDraft(), itemId: '8301' };
+
+    render(
+      <LineTable
+        mode="standalone"
+        rows={[row]}
+        errors={{}}
+        itemNames={itemNames}
+        uomLookup={uomLookup}
+        onPickItem={vi.fn()}
+        uomOptions={uomOptions}
+        availableQty={noAvailableQty}
+        onPatch={vi.fn()}
+        onRemove={vi.fn()}
+        {...warehouseProps}
+      />,
+    );
+
+    expect(screen.getByRole('columnheader', { name: t.dialog.inspection })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: t.dialog.rowActions })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.dialog.removeLine })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.lineTable.itemLabel(1) })).toHaveAttribute(
+      'title',
+      'SAMPLE-ITEM-01 · 합성 품목 가',
+    );
   });
 });

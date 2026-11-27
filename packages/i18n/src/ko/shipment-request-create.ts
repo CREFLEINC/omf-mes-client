@@ -49,7 +49,6 @@ export const shipmentRequestCreate = {
     goFirstPage: '첫 쪽으로',
     startStandalone: 'ERP S/O 없이 생성',
     addLine: '라인 추가',
-    removeLine: (rowIndex: number): string => `${String(rowIndex)}행 삭제`,
     /** S/O 줄 하나를 창고별 지시서 줄로 나눈다(피처 012 FR-005). */
     splitLine: '나누기',
     splitLineLabel: (rowIndex: number): string => `${String(rowIndex)}행 나누기`,
@@ -62,8 +61,18 @@ export const shipmentRequestCreate = {
   },
   /** ERP S/O 없이 생성 팝업(#360) — 본문 상세 자리 대신 팝업에서 입력한다. */
   dialog: {
-    standaloneTitle: 'ERP S/O 없이 출하작업지시 생성',
+    /** 단추를 누르면 곧바로 출하작업지시가 만들어진다(편성 단계 없음) — 제목 · 단추 · 알림을 「생성」으로 맞춘다(#360). */
+    standaloneTitle: '출하작업지시 직접 생성',
+    intro: 'ERP 수주(S/O) 없이 출하작업지시를 생성합니다.',
+    submit: '출하작업지시 생성',
     discardTitle: '입력한 값을 버릴까요?',
+    requestedShipDate: '출하 요청일',
+    lines: '출하 품목',
+    addLine: '품목 추가',
+    inspection: '검사 요청',
+    rowActions: '관리',
+    removeLine: '품목 행 삭제',
+    resultTitle: '출하작업지시를 생성했습니다',
   },
   fields: {
     businessUnit: '사업부',

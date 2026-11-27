@@ -225,7 +225,7 @@ export const ShipmentRequestCreateScreen = () => {
       if (boundSignature === 'standalone') {
         toast.show({
           variant: 'success',
-          title: t.result.title,
+          title: t.dialog.resultTitle,
           description: `${t.result.shipmentRequestNo(result.shipmentRequestNo)} · ${t.result.lineCount(result.lineCount)}`,
         });
         setStandaloneDone(true);
