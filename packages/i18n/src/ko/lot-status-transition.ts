@@ -81,10 +81,8 @@ export const lotStatusTransition = {
       reason: '보류 사유',
       heldAt: '보류일시',
       quantity: '보류량',
+      /** 전량 보류인데 LOT 수량을 받지 못했을 때만 쓴다 — 받으면 「1,200 EA」처럼 숫자 + 단위. */
       full: '전량',
-      target: '해제 대상',
-      select: '선택',
-      selected: '선택됨',
     },
     /** 실행 칸이 서기 전에 무엇이 남았는지 알리는 한 줄. 막힌 자리와 푸는 길을 같이 적는다. */
     notes: {
@@ -137,29 +135,27 @@ export const lotStatusTransition = {
     partial: '일부 해제',
     quantity: '해제 수량',
     remarks: '비고',
-    /** 해제 확인 창을 연다 — 확인하면 보류를 풀고 LOT 상태를 고른 상태로 바꾼다. */
+    quantityPlaceholder: '해제 수량을 입력하세요',
+    remarksPlaceholder: '비고를 입력하세요',
+    /** 해제 팝업의 실행 단추 — 보류를 풀고 LOT 상태를 고른 상태로 바꾼다. */
     confirm: '상태 변경 및 보류 해제',
-    /** 실행 칸의 구획 제목·해제 방식 묶음 이름(사용자 지시). */
-    sectionTitle: '해제 정보',
+    /** 해제 방식 묶음 이름(사용자 지시). */
     modeLabel: '해제 방식',
-    /** 확인 창 제목 — LOT 번호는 제목에 붙이지 않고 아래 요약에 둔다(사용자 지시). */
-    dialogTitle: 'LOT 보류를 해제할까요?',
+    /** 해제 팝업 제목 — LOT 번호는 제목에 붙이지 않고 아래 사실 상자에 둔다(사용자 지시). */
+    dialogTitle: '상태를 변경하고 보류를 해제할까요?',
     dialogLot: 'LOT',
+    dialogStatus: '상태',
+    statusChange: (from: string, to: string): string => `${from} → ${to}`,
     cancel: '취소',
-    release: '보류 해제',
     reload: '최신 불러오기',
     success: 'LOT 보류를 해제했습니다.',
     quantityPositive: '해제 수량은 0보다 커야 합니다.',
     quantityUnknown: '해제 가능한 보류량을 확인하지 못했습니다.',
     quantityMax: (maximum: string): string => `해제 수량은 보류량 ${maximum} 이하여야 합니다.`,
     remarksRequired: '비고를 입력하세요.',
-    /** 확인 창 — 해제 정보(대상 수량·위치·결과 설명)와 주의(두 줄)를 가른다. */
+    /** 해제 팝업 — 사실 상자의 위치 칸과 주의(두 줄). */
     impact: {
-      infoTitle: '보류 해제 정보',
-      quantity: '대상 수량',
       location: '대상 위치',
-      description: '보류를 해제하면 해당 수량의 출고·출하 및 피킹 제한이 해제됩니다.',
-      fullQuantity: '전량',
       locationValue: (warehouse: string, location: string): string =>
         `창고 ${warehouse} · 위치 ${location}`,
       unknown: '미확인',

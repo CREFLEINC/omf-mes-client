@@ -19,11 +19,13 @@ import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { runRequest } from '../../patterns/request';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import {
   codeName,
   useLotHoldReasonOptions as useHoldReasonNames,
   useLotStatusOptions,
 } from '../lot-status-history/options';
+import { useUomCodeOf, withUom } from '../lot-status-history/uoms';
 import type { LotStatusCandidate } from './candidate-screen';
 import { CreateHoldExecution } from './create-hold-execution';
 import { ReleaseHoldExecution } from './release-hold-execution';
@@ -42,6 +44,7 @@ const transitionKey = (value: Transition): string =>
 const formatDateTime = (value: string): string => {
   return formatPlantDateTime(value) ?? value;
 };
+const formatQty = (value: number): string => new Intl.NumberFormat('ko-KR').format(value);
 
 /*
  * 「LOT 상태 변경」 카드 아래쪽(상하 배치면 옆) — 변경할 상태, 그 아래 해제할 보류 · 입력 칸이 이어진다. 현재 상태는 위
@@ -140,10 +143,24 @@ export const LotStatusTransitionPreparation = ({
   const statuses = useLotStatusOptions();
   /* 보류 사유는 공통코드 이름으로 보인다(LOT 이력 화면과 같은 매핑) — 코드면 코드 그대로. */
   const holdReasons = useHoldReasonNames();
+  const uomCodeOf = useUomCodeOf();
+  /*
+   * 보류량 — 일부 보류면 그 수량, 전량 보류(holdQty 없음)면 LOT 의 보유 수량을 숫자 + 단위로(사용자 지시 2026-11-27).
+   * LOT 수량을 받지 못했으면(재고 잔액이 없는 LOT 등) 지어내지 않고 「전량」으로 둔다.
+   */
+  const holdQtyText = (item: LotHold): string =>
+    item.holdQty !== undefined && item.holdQty !== null
+      ? withUom(formatQty(item.holdQty), uomCodeOf(item.uomId ?? null))
+      : lot.onHandQty !== undefined
+        ? withUom(formatQty(lot.onHandQty), uomCodeOf(lot.uomId ?? null))
+        : t.holds.full;
   const [selectedTransitionKey, setSelectedTransitionKey] = useState<string | null>(null);
   const [autoSelectOwner, setAutoSelectOwner] = useState<string | null>(null);
   const [selectedHoldId, setSelectedHoldId] = useState<number | null>(null);
-  /* 입력 칸은 [상태 변경 검토]를 눌러야 열린다(사용자 시안 2026-11-02) — 고른 상태 · 보류가 바뀌면 다시 닫힌다. */
+  /*
+   * 입력 칸은 [상태 변경 검토]를 눌러야 열린다(사용자 시안 2026-11-02) — 고른 상태 · 보류가 바뀌면 다시 닫힌다.
+   * 해제는 팝업으로 뜬다(사용자 지시 2026-11-27).
+   */
   const [reviewing, setReviewing] = useState(false);
   const allowed = transitions.data?.transitions.filter((item) => item.allowed) ?? [];
   const selectedTransition = allowed.find((item) => transitionKey(item) === selectedTransitionKey);
@@ -212,16 +229,36 @@ export const LotStatusTransitionPreparation = ({
   };
   const targetLabel = (code: string): string =>
     statuses.data?.items.find((item) => item.code === code)?.label ?? code;
+  /*
+   * 해제 대상은 줄을 눌러 고른다(앱 공통 줄 고르기 · 파랑 — 사용자 지시 2026-11-27, 「해제 대상」 열 없앰). 고른 줄을 다시
+   * 누르면 선택을 푼다. 보류가 한 건이면 종전처럼 저절로 골라진다.
+   */
+  const toggleHold = (lotHoldId: number): void => {
+    if (confirmationPinned) return;
+    setAutoSelectOwner(null);
+    setReviewing(false);
+    setSelectedHoldId((current) => (current === lotHoldId ? null : lotHoldId));
+  };
   const holdColumns: Column<LotHold>[] = [
     /*
-     * 처음 폭은 종전 비율(사유 34 · 시각 28 · 수량 16 · 해제 대상 22)에 맞춘 px — 끌어 바꾼 폭 · 순서는 브라우저에 남는다
+     * 처음 폭은 종전 비율(사유 · 시각 · 수량)에 맞춘 px — 끌어 바꾼 폭 · 순서는 브라우저에 남는다
      * (표는 늘 폭 · 순서를 바꿀 수 있다 · 사용자 2026-11-02). 가운데 정렬은 `app.css` 의 `.lot-status-transition-holds`.
      */
     {
       key: 'reason',
       header: t.holds.reason,
       width: '200px',
-      render: (item) => codeName(holdReasons.data?.items, item.reasonCode),
+      render: (item) => (
+        <button
+          type="button"
+          className={ROW_PICK_CLASS}
+          disabled={confirmationPinned}
+          aria-pressed={selectedHoldId === item.lotHoldId}
+          onClick={() => toggleHold(item.lotHoldId)}
+        >
+          {codeName(holdReasons.data?.items, item.reasonCode)}
+        </button>
+      ),
     },
     {
       key: 'heldAt',
@@ -236,27 +273,8 @@ export const LotStatusTransitionPreparation = ({
     {
       key: 'quantity',
       header: t.holds.quantity,
-      width: '100px',
-      render: (item) => item.holdQty ?? t.holds.full,
-    },
-    {
-      key: 'select',
-      header: t.holds.target,
       width: '130px',
-      render: (item) => (
-        <Button
-          variant="outlined"
-          disabled={confirmationPinned}
-          aria-pressed={selectedHoldId === item.lotHoldId}
-          onClick={() => {
-            setAutoSelectOwner(null);
-            if (selectedHoldId !== item.lotHoldId) setReviewing(false);
-            setSelectedHoldId(item.lotHoldId);
-          }}
-        >
-          {selectedHoldId === item.lotHoldId ? t.holds.selected : t.holds.select}
-        </Button>
-      ),
+      render: (item) => <span className="lot-status-transition-nowrap">{holdQtyText(item)}</span>,
     },
   ];
   const orderedHoldColumns = useColumnOrder(
@@ -270,7 +288,7 @@ export const LotStatusTransitionPreparation = ({
       fitContent: true,
     },
   );
-  /* 카드 폭에 맞춰 줄인다 — 가로로 밀면 보류 수량 · 해제 대상(선택 단추)이 칸 밖으로 숨는다(점검 2026-11-02). */
+  /* 카드 폭에 맞춰 줄인다 — 가로로 밀면 보류량이 칸 밖으로 숨는다(점검 2026-11-02). */
   const fitHolds = useFitColumns(resizableHolds.columns);
 
   const choiceTitle = <span className="field-label">{t.choiceTitle}</span>;
@@ -364,6 +382,7 @@ export const LotStatusTransitionPreparation = ({
             ref={fitHolds.ref}
             className="wide-table lot-status-transition-table"
             style={resizableHolds.style}
+            {...rowPickHandlers}
           >
             <Table
               density="compact"
@@ -381,7 +400,8 @@ export const LotStatusTransitionPreparation = ({
           {preparation}
         </p>
       )}
-      {!reviewOpen && (
+      {/* 해제는 팝업이라 뒤에 [상태 변경 검토]가 그대로 남는다. */}
+      {(!reviewOpen || isRelease) && (
         <div className="lot-status-transition-review">
           <Button variant="filled" disabled={!canReview} onClick={() => setReviewing(true)}>
             {t.review}
@@ -424,6 +444,9 @@ export const LotStatusTransitionPreparation = ({
             etagPath={lotHoldDetailPath(selectedHold.lotHoldId)}
             lotHoldId={selectedHold.lotHoldId}
             lotNo={lot.lotNo}
+            currentLotStatusCode={lot.lotStatusCode}
+            holdReasonLabel={codeName(holdReasons.data?.items, selectedHold.reasonCode)}
+            holdQtyText={holdQtyText(selectedHold)}
             maxReleaseQty={detailData.holdQty ?? lot.heldQty}
             warehouseId={lot.warehouseId}
             locationId={lot.locationId}
@@ -434,6 +457,7 @@ export const LotStatusTransitionPreparation = ({
               setSelectedHoldId(null);
               setReviewing(false);
             }}
+            onCancel={() => setReviewing(false)}
             onConfirmationChange={changeConfirmation}
             onStale={reloadExecutionOwner}
           />
