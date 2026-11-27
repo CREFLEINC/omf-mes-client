@@ -10343,8 +10343,12 @@ dl.filter-bar.approval-inbox-detail-facts {
   min-width: max(38rem + var(--col-grow, 0px), var(--col-floor, 0px));
 }
 
+/*
+ * 고정 폭 합(--col-floor)에 품목명 칸 몫(12.5rem)을 더한다 — 계층 열 · 초과분 열이 서면 고정 폭 합이 48rem 을 넘어
+ * 품목명 칸이 0 이 되고 LOT 줄의 번호가 잘렸다(사용자 보고 2026-11-27).
+ */
 .wide-table.po-board-lines table {
-  min-width: max(48rem + var(--col-grow, 0px), var(--col-floor, 0px));
+  min-width: max(48rem + var(--col-grow, 0px), var(--col-floor, 0px) + 12.5rem);
 }
 
 /*
@@ -10390,6 +10394,12 @@ dl.filter-bar.approval-inbox-detail-facts {
   background: var(--surface-container);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
+}
+
+/* 표를 옆으로 넘겨도 고른 발주 머리는 제자리에 둔다 — 같이 밀려 발주번호가 잘렸다(사용자 보고 2026-11-27). */
+.po-board-pane > .po-board-order-head {
+  position: sticky;
+  left: 0;
 }
 
 .po-board-order-title {
