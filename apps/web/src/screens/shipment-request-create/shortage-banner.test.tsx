@@ -66,7 +66,7 @@ describe('ShortageBanner', () => {
   it('부족 건수가 있으면 경고를 낸다 — 막지 않는다', () => {
     render(<ShortageBanner count={2} />);
 
-    expect(screen.getByText(/가용 재고가 부족한 라인이 있습니다/)).toBeInTheDocument();
+    expect(screen.getByText('가용 재고 부족 · 2개 품목')).toBeInTheDocument();
   });
 });
 

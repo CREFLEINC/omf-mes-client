@@ -1,19 +1,10 @@
-import {
-  Button,
-  Checkbox,
-  Chip,
-  Icon,
-  IconButton,
-  Table,
-  TextField,
-  type Column,
-} from '@crefle/web-ui';
+import { Button, Checkbox, Icon, IconButton, Table, TextField, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { InfoTip } from '../../patterns/info-tip';
 import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
-import { isShortageLine } from './shortage-banner';
+import { shortageQtyOf } from './shortage-banner';
 import {
   describeAvailableQty,
   describeReference,
@@ -317,11 +308,13 @@ export const LineTable = ({
             }}
           />
           {/* 0(제외)이나 오류가 아니라 「가용보다 많다」는 사실만 밝힌다 — 막지 않는다(C5). */}
-          {isShortageLine(row, availableQty) && (
-            <Chip variant="status" status="warning" size="sm">
-              {t.shortage.title}
-            </Chip>
-          )}
+          {/* 부족한 줄에만 「N EA 부족」 작은 글자 — 칸 높이는 다른 줄과 같게 둔다(사용자 개선안 · #360). */}
+          {(() => {
+            const short = shortageQtyOf(row, availableQty);
+            if (short === null) return null;
+            const uomCode = uomNameOf(row).split(' · ')[0] ?? '';
+            return <span className="sr-shortage-note">{t.shortage.rowNote(short, uomCode)}</span>;
+          })()}
         </div>
       ),
     },
@@ -379,9 +372,13 @@ export const LineTable = ({
               }}
             />
             {error !== undefined && <span className="field-error">{error}</span>}
-            {error === undefined && row.warehouseFilled && row.warehouseId !== '' && (
-              <span className="field-note">{t.lineTable.warehouseFilledFromFirst}</span>
-            )}
+            {/* 직접 생성 팝업은 이 규칙을 칸 머리 ⓘ 로만 둔다 — 줄 높이가 어긋났다(사용자 지시 · #360). */}
+            {isFromOrder &&
+              error === undefined &&
+              row.warehouseFilled &&
+              row.warehouseId !== '' && (
+                <span className="field-note">{t.lineTable.warehouseFilledFromFirst}</span>
+              )}
           </div>
         );
       },

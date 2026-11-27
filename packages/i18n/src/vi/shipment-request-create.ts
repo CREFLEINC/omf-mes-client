@@ -166,9 +166,10 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
       `Hãy chọn lại kho xuất của các dòng màu vàng bằng kho của ${businessUnitName}.`,
   },
   shortage: {
-    title: 'Có dòng thiếu tồn kho khả dụng',
-    description: (count: number): string =>
-      `Có ${String(count)} dòng có số lượng phân bổ vượt quá số lượng khả dụng. Việc lập lệnh không bị chặn — bạn có thể hạ số lượng phân bổ hoặc cứ tiếp tục.`,
+    title: (count: number): string => `Thiếu tồn kho khả dụng · ${String(count)} mặt hàng`,
+    description: 'Có thể điều chỉnh số lượng phân bổ hoặc tiếp tục với số lượng hiện tại.',
+    rowNote: (qty: number, uom: string): string =>
+      `Thiếu ${String(qty)}${uom === '' ? '' : ` ${uom}`}`,
   },
   result: {
     title: 'Đã lập lệnh xuất hàng',

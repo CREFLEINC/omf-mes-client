@@ -241,7 +241,7 @@ describe('LineTable — 단독 생성', () => {
     );
 
     expect(screen.getByLabelText(t.lineTable.allocatedQtyLabel(1))).toBeEnabled();
-    expect(screen.getAllByText(t.shortage.title).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/ 부족$/u).length).toBeGreaterThan(0);
   });
 
   /*

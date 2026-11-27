@@ -74,3 +74,28 @@ dialog.sr-create-dialog {
 .sr-create-dialog .wide-table table {
   min-width: 74.5rem;
 }
+
+/* 가용 부족(사용자 개선안 · #360) — 줄은 배정 칸 아래 작은 황갈색 글자(칸 높이는 다른 줄과 같게 겹쳐 띄움), 표 아래는 한 줄 안내. */
+.sr-create-dialog td .field-cell:has(> .sr-shortage-note),
+.shipment-request-create td .field-cell:has(> .sr-shortage-note) {
+  position: relative;
+}
+.sr-shortage-note {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 2px;
+  color: color-mix(in srgb, var(--semantic-warning) 70%, var(--on-semantic-warning-container));
+  font-size: 0.75rem;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+}
+tr:has(.sr-shortage-note) > td {
+  padding-bottom: 1.25rem;
+}
+.sr-shortage-summary {
+  flex-wrap: wrap;
+  column-gap: var(--space-2);
+}

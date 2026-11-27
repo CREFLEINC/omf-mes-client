@@ -3,7 +3,6 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { useDeselectConfirm } from '../../patterns/deselect-confirm';
-import { ItemPickerDialog, type ItemRow } from '../../patterns/item-picker';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
 import { PAGE_SIZES } from '../../patterns/page-nav';
@@ -23,7 +22,7 @@ import {
   type SourceFilters,
 } from './filters';
 import {
-  appendItemLines,
+  addLineDraft,
   clearWarehousesOutside,
   emptyLineDraft,
   lineDraftsFromSalesOrder,
@@ -74,16 +73,6 @@ import './layout.css';
 const LIST_PAGE_SIZE = 50;
 
 const t = messages.shipmentRequestCreate;
-
-/**
- * 품목 선택 팝업이 처음 세우는 유형 — **제품**.
- *
- * ⛔ **값 «목록»이 아니라 업무 결정 하나다.** 선택지는 코드 그룹(`ITEM_TYPE`)에서 받고(공유계약
- *    G-32), 화면이 아는 것은 「기본으로 무엇을 보일까」 하나다. 근거는 도메인 04 의 이름
- *    「제품출하」와 설계 `W-04-01` §5-5(가용 = 완제품 창고의 가용 잔액).
- * ⚠ 이 코드가 그 환경의 코드 그룹에 없으면 팝업은 「전체」로 떨어진다 — 길을 막지 않는다.
- */
-const SHIPPABLE_ITEM_TYPE_CODE = 'FINISHED';
 
 /** 이 PC 의 오늘(`YYYY-MM-DD`) — UTC 로 바꾸면 자정 무렵 하루가 어긋난다. */
 const localTodayIso = (): string => {
@@ -185,7 +174,6 @@ export const ShipmentRequestCreateScreen = () => {
    *
    * ⛔ **줄 초안에 넣지 않는다.** 서버로 나가는 값이 아니라 「지금 무엇을 고르는 중인가」다.
    */
-  const [picker, setPicker] = useState<{ kind: 'add' } | null>(null);
 
   const items = useItemNames(
     lines.map((line) => (line.itemId === '' ? null : Number(line.itemId))),
@@ -390,23 +378,9 @@ export const ShipmentRequestCreateScreen = () => {
     setLines((prev) => removeLineDraft(prev, key));
   };
 
-  /*
-   * ⭐ **「라인 추가」가 팝업을 연다**(사용자 결정 2026-09-18). 빈 줄을 먼저 만들고 그 안에서
-   *    품목을 고르던 종전 방식은, 품목 마스터 9,269건을 표 안 선택칸에 담을 수 없어 무너졌다.
-   */
+  /* 「품목 추가」는 표에 빈 줄을 붙이고, 품목은 그 줄의 검색 선택칸에서 고른다(사용자 지시 · #360 — 찾기 창을 띄우지 않는다). */
   const addLine = (): void => {
-    setPicker({ kind: 'add' });
-  };
-
-  /** 고른 품목들을 줄로 붙인다. */
-  const applyPickedItems = (chosen: readonly ItemRow[]): void => {
-    const target = picker;
-
-    setPicker(null);
-    if (target === null || chosen.length === 0) return;
-
-    /* 새 줄의 창고는 첫 줄 창고다(피처 012 FR-004). */
-    setLines((prev) => appendItemLines(prev, chosen));
+    setLines((prev) => addLineDraft(prev));
   };
 
   /** 표 안 검색 선택칸에서 그 줄의 품목을 바꿨다 — 단위도 그 품목의 기준 단위로 함께 바꾼다(종전 찾기 창과 같다). */
@@ -779,17 +753,6 @@ export const ShipmentRequestCreateScreen = () => {
         >
           <p>{messages.common.discardChangesConfirm}</p>
         </Dialog>
-      )}
-      {picker !== null && (
-        <ItemPickerDialog
-          multiple
-          defaultItemTypeCode={SHIPPABLE_ITEM_TYPE_CODE}
-          addedItemIds={lines.flatMap((line) => (line.itemId === '' ? [] : [Number(line.itemId)]))}
-          onClose={() => {
-            setPicker(null);
-          }}
-          onConfirm={applyPickedItems}
-        />
       )}
       {deselectConfirm.dialog}
     </>

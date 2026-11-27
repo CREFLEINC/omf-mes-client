@@ -146,32 +146,6 @@ const baseRoutes = (): StubRoute[] => [
 
 const tp = messages.itemPicker;
 
-/**
- * 품목 선택 팝업에서 품목을 고른다.
- *
- * ⚠ **「찾기」를 눌러야 결과가 선다** — 검색어를 치는 것만으로는 조회가 나가지 않는다. 그것이
- *   이 창의 규칙이고, 도우미가 그 규칙을 건너뛰면 시험이 규칙을 못 본다.
- */
-const pickItems = async (
-  user: ReturnType<typeof userEvent.setup>,
-  term: string,
-  codes: readonly string[],
-): Promise<void> => {
-  /* 출하작업지시 입력 팝업 위에 뜬다(#360) — 이름으로 집는다. */
-  const dialog = within(await screen.findByRole('dialog', { name: tp.title }));
-
-  await user.type(dialog.getByLabelText(tp.keywordLabel), term);
-  await user.click(dialog.getByRole('button', { name: tp.search }));
-
-  for (const code of codes) {
-    await user.click(await dialog.findByRole('checkbox', { name: code }));
-  }
-
-  await user.click(
-    dialog.getByRole('button', { name: new RegExp(`${tp.add}|${tp.replace}`, 'u') }),
-  );
-};
-
 /** 그 줄 품목 검색 선택칸을 펼쳐 품목 하나를 고른다(#360 — 찾기 창 대신 표 안 선택칸). */
 const selectRowItem = async (
   user: ReturnType<typeof userEvent.setup>,
@@ -278,9 +252,9 @@ describe('ShipmentRequestCreateScreen — 단독 생성(완료 조건 C3)', () =
     expect(within(headerPane).getByRole('combobox', { name: /고객/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.dialog.removeLine })).toBeDisabled();
 
-    /* ⭐ 「라인 추가」가 곧바로 줄을 붙이지 않는다 — 팝업에서 품목을 골라야 줄이 생긴다. */
+    /* 「품목 추가」는 찾기 창 없이 표에 빈 줄을 바로 붙인다(#360). */
     await user.click(screen.getByRole('button', { name: t.dialog.addLine }));
-    await pickItems(user, 'SAMPLE-ITEM-02', ['SAMPLE-ITEM-02']);
+    expect(screen.queryByRole('dialog', { name: tp.title })).not.toBeInTheDocument();
 
     const removeButtons = screen.getAllByRole('button', { name: t.dialog.removeLine });
 
@@ -333,17 +307,17 @@ describe('ShipmentRequestCreateScreen — 단독 생성(완료 조건 C3)', () =
     expect(await screen.findByText(t.errors.requestedQtyNotPositive)).toBeInTheDocument();
   });
 
-  it('팝업에서 여러 품목을 고르면 그만큼 라인이 붙고 기준 단위가 채워진다', async () => {
+  it('품목 추가로 붙은 빈 줄에서 품목을 고르면 기준 단위가 채워진다', async () => {
     const user = userEvent.setup();
 
     renderScreen({ fetch: createStubFetch(baseRoutes()) });
 
     await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
     await user.click(screen.getByRole('button', { name: t.dialog.addLine }));
-    await pickItems(user, 'SAMPLE-ITEM', ['SAMPLE-ITEM-01', 'SAMPLE-ITEM-02']);
+    await selectRowItem(user, 2, 'SAMPLE-ITEM-01');
 
-    /* 빈 줄 하나 + 고른 둘 = 셋. */
-    expect(await screen.findAllByRole('button', { name: t.dialog.removeLine })).toHaveLength(3);
+    /* 처음 빈 줄 하나 + 붙인 줄 하나 = 둘. */
+    expect(await screen.findAllByRole('button', { name: t.dialog.removeLine })).toHaveLength(2);
     expect(
       await screen.findByRole('combobox', { name: t.lineTable.itemLabel(2) }),
     ).toHaveTextContent('SAMPLE-ITEM-01 · 합성 품목 가');
@@ -595,12 +569,11 @@ describe('ShipmentRequestCreateScreen — 사업부·출고 창고(피처 012)',
     await chooseWarehouse(user, 1, '합성 창고 C (합성 1공장)');
 
     await user.click(screen.getByRole('button', { name: t.dialog.addLine }));
-    await pickItems(user, 'SAMPLE-ITEM-02', ['SAMPLE-ITEM-02']);
 
     expect(
       await screen.findByRole('combobox', { name: t.lineTable.warehouseLabel(2) }),
     ).toHaveTextContent('합성 창고 C (합성 1공장)');
-    expect(screen.getByText(t.lineTable.warehouseFilledFromFirst)).toBeInTheDocument();
+    expect(screen.queryByText(t.lineTable.warehouseFilledFromFirst)).not.toBeInTheDocument();
     /* 새 줄 창고 규칙은 출고 창고 칸 이름 옆 ⓘ 에 고를 수 있는 창고 규칙과 함께 적는다(#360 — [라인 추가] 아래 ⓘ 줄을 걷었다). */
     expect(
       screen.getByRole('button', { name: `${t.notes.warehouseRule} ${t.notes.addLineWarehouse}` }),

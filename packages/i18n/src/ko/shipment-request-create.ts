@@ -182,9 +182,11 @@ export const shipmentRequestCreate = {
       `노란 줄의 출고 창고를 ${businessUnitName} 의 창고로 다시 고르세요.`,
   },
   shortage: {
-    title: '가용 재고가 부족한 라인이 있습니다',
-    description: (count: number): string =>
-      `배정 수량이 가용 수량보다 많은 줄이 ${String(count)}건 있습니다. 배정 수량을 낮추거나 그대로 진행하세요.`,
+    title: (count: number): string => `가용 재고 부족 · ${String(count)}개 품목`,
+    description: '배정 수량을 조정하거나 현재 수량으로 진행할 수 있습니다.',
+    /** 줄 배정 수량 칸 아래 — 「1 EA 부족」. */
+    rowNote: (qty: number, uom: string): string =>
+      `${String(qty)}${uom === '' ? '' : ` ${uom}`} 부족`,
   },
   result: {
     title: '출하작업지시를 편성했습니다',
