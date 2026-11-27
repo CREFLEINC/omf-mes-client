@@ -311,7 +311,6 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
       const detail = screen.getByRole('region', { name: '선택 ERP W/O 상세' });
       expect(within(detail).getByText('시험 품목 【 TEST-100 】', { exact: true })).toBeVisible();
       const user = userEvent.setup();
-      await user.click(screen.getByRole('button', { name: 'ERP W/O 목록과 상세 배치' }));
       await user.click(
         within(screen.getByRole('group', { name: 'ERP W/O 목록과 상세 배치' })).getByRole(
           'button',
@@ -325,7 +324,6 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
       expect(within(row).getByText('ITEM1', { exact: true })).toBeVisible();
       expect(within(row).getByText('시험 품목 【 TEST-100 】', { exact: true })).toBeVisible();
       expect(screen.queryByRole('region', { name: '현재 ERP W/O 정보' })).toBeNull();
-      await user.click(screen.getByRole('button', { name: 'ERP W/O 목록과 상세 배치' }));
       await user.click(
         within(screen.getByRole('group', { name: 'ERP W/O 목록과 상세 배치' })).getByRole(
           'button',
