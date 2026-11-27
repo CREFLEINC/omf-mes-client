@@ -1473,11 +1473,9 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
   it('그 주소로 들어가면 물류 전표 조회·취소 화면이 첫 상태로 선다', async () => {
     renderRoutedApp('/logistics/document-progress', []);
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: docProgress.title }),
-    ).toBeInTheDocument();
+    /* 화면 제목 줄은 두지 않는다(#360) — 첫 상태 안내로 화면이 섰음을 본다. */
     /* 빈 표가 아니라 **왜 비었는지 말하는 안내**가 선다 — 화면이 자기 첫 상태로 섰다는 사실이다. */
-    expect(screen.getByText(docProgress.empty.noDocumentTypeTitle)).toBeInTheDocument();
+    expect(await screen.findByText(docProgress.empty.noDocumentTypeTitle)).toBeInTheDocument();
   });
 
   /*
@@ -1501,10 +1499,8 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
     });
 
     /* 짝 양성 — 화면이 실제로 섰다. 서지도 않은 화면에서 「0회」는 아무것도 뜻하지 않는다. */
-    expect(
-      await screen.findByRole('heading', { level: 1, name: docProgress.title }),
-    ).toBeInTheDocument();
-    expect(screen.getByText(docProgress.empty.noDocumentTypeTitle)).toBeInTheDocument();
+    /* 화면 제목 줄은 두지 않는다(#360) — 첫 상태 안내로 화면이 섰음을 본다. */
+    expect(await screen.findByText(docProgress.empty.noDocumentTypeTitle)).toBeInTheDocument();
 
     /*
      * 셸의 OA 공장 판단(메뉴의 OA 전용 화면 감춤 · omf-all-around#89)이 공장·공통코드를 한 번 읽는다 — 화면의 조회가
@@ -1588,7 +1584,8 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
 
     renderRoutedApp(`/logistics/document-progress?q=${SYNTHETIC_DOCUMENT_NO}&conly=1`, []);
 
-    await screen.findByRole('heading', { level: 1, name: docProgress.title });
+    /* 화면 제목 줄은 두지 않는다(#360) — 첫 상태 안내로 화면이 섰음을 본다. */
+    await screen.findByText(docProgress.empty.noDocumentTypeTitle);
 
     const before = currentLocation();
     const nav = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -1617,7 +1614,8 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
   it('메뉴와 화면 어디에도 내부 번호가 글자로 나오지 않는다', async () => {
     renderRoutedApp('/logistics/document-progress?sel=9101', []);
 
-    await screen.findByRole('heading', { level: 1, name: docProgress.title });
+    /* 화면 제목 줄은 두지 않는다(#360) — 첫 상태 안내로 화면이 섰음을 본다. */
+    await screen.findByText(docProgress.empty.noDocumentTypeTitle);
 
     /* 짝 양성 — 그 번호들은 주소에 실제로 실려 있다. */
     expect(currentLocation()).toContain('sel=9101');
