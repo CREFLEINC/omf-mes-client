@@ -30,7 +30,7 @@ export const notificationCenter = {
      * 각각 이름을 갖는다. 어느 쪽이 정본인지는 질문 `omf-mes#165`로 설계에 올려 두었다.
      * **여기서 논증으로 정하지 않는다** — 답이 오면 컨트롤과 이 문구를 함께 고친다.
      */
-    unreadOnly: '미확인 알림',
+    unreadOnly: '미확인 알림 포함',
     eventCode: '알림 유형',
   },
   filters: {
@@ -75,7 +75,7 @@ export const notificationCenter = {
    */
   actionReasons: {
     /** 판정은 **전용 조회**에서 온다 — 지금 쪽의 안 읽음으로 재면 다른 쪽에 있어도 잠긴다. */
-    nothingUnread: '안 읽은 알림이 없습니다.',
+    nothingUnread: '미확인 알림이 없습니다.',
     markingAllRead: '모두 확인 처리 중입니다.',
   },
   toast: {
@@ -134,7 +134,7 @@ export const notificationCenter = {
   },
   card: {
     read: '읽음',
-    unread: '안 읽음',
+    unread: '미확인',
     /**
      * 본문이 빈 알림. **빈 자리를 그리지 않는다** — 카드가 제목만 남으면 사용자는 화면이
      * 덜 그려진 것으로 읽는다. 「무엇이 왔는지 모른다」는 사실 자체를 말한다.

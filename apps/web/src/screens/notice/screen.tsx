@@ -21,7 +21,7 @@ import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { ManagedTable } from '../../patterns/managed-table';
 import { SaveErrorBanner } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
-import { AckPanel } from './ack-panel';
+import { AckPanel, AckStateChips } from './ack-panel';
 import {
   isClosable,
   isEditable,
@@ -70,7 +70,13 @@ import {
   useUnacknowledgedByMe,
 } from './queries';
 import { SelectField } from './select-field';
-import { formatMoment, formatPeriod, type NoticeView, type SelectOption } from './types';
+import {
+  formatMoment,
+  formatPeriod,
+  type AckState,
+  type NoticeView,
+  type SelectOption,
+} from './types';
 
 /** 상세의 게시 기간 — 종료일이 없으면 「…부터 (종료일 없음)」(#361 시안). */
 const detailPeriod = (view: NoticeView): string =>
@@ -119,7 +125,8 @@ export const NoticeScreen = () => {
   const [draft, setDraft] = useState<NoticeDraft>(EMPTY_DRAFT);
   const [errors, setErrors] = useState<DraftErrors>({});
   const [confirming, setConfirming] = useState<Confirming>('none');
-  const [pendingOnly, setPendingOnly] = useState(false);
+  /** 확인 현황 상태 라벨(#361) — 고른 상태의 행만 본다. 비면 전체. */
+  const [ackState, setAckState] = useState<AckState | null>(null);
   /** 방금 무엇을 했는지 한 줄로 말한다. 저장하면 폼이 닫혀 화면만으로는 알 수 없다. */
   const [flash, setFlash] = useState<string | null>(null);
 
@@ -131,7 +138,7 @@ export const NoticeScreen = () => {
   const acks = useAcknowledgements(
     selectedId,
     selected !== null && selected.acknowledgeRequired,
-    pendingOnly,
+    false,
   );
 
   const create = useNoticeCreate((created) => {
@@ -186,7 +193,7 @@ export const NoticeScreen = () => {
     setSearchParams(toSearchParams(filters, noticeId, size));
     setFormMode('closed');
     setFlash(null);
-    setPendingOnly(false);
+    setAckState(null);
     create.reset();
     update.reset();
     publish.reset();
@@ -631,23 +638,30 @@ export const NoticeScreen = () => {
               {/* 확인을 요구하지 않는 공지는 확인 현황 상자를 두지 않는다(#361). */}
               {selected !== null && selected.acknowledgeRequired && (
                 <section className="pane notice-pane" aria-label={t.panes.ack}>
-                  <h2 className="pane-title info-label">
-                    {t.ack.title}
-                    {/* 사번으로 보이는 행의 뜻은 제목 옆 ⓘ 로 — 확인을 받는 공지에서만 목록이 있다(관리웹 정리 시안 A). */}
-                    {selected.acknowledgeRequired && <InfoTip text={t.ack.workerNote} />}
-                    {/* 분모를 셀 수 없는 범위는 제목 옆 ⓘ 로 알린다(#361) — 0으로 채우지 않는다. */}
-                    {selected.acknowledgeRequired && selected.targetCount === null && (
-                      <InfoTip text={t.ack.noDenominator} />
-                    )}
-                  </h2>
+                  {/* 제목과 같은 줄 오른쪽에 상태 라벨(#361). */}
+                  <div className="notice-ack-head">
+                    <h2 className="pane-title info-label">
+                      {t.ack.title}
+                      {/* 사번으로 보이는 행의 뜻은 제목 옆 ⓘ 로 — 확인을 받는 공지에서만 목록이 있다(관리웹 정리 시안 A). */}
+                      {selected.acknowledgeRequired && <InfoTip text={t.ack.workerNote} />}
+                      {/* 분모를 셀 수 없는 범위는 제목 옆 ⓘ 로 알린다(#361) — 0으로 채우지 않는다. */}
+                      {selected.acknowledgeRequired && selected.targetCount === null && (
+                        <InfoTip text={t.ack.noDenominator} />
+                      )}
+                    </h2>
+                    <AckStateChips
+                      rows={acks.data?.items}
+                      value={ackState}
+                      onChange={setAckState}
+                    />
+                  </div>
                   <AckPanel
                     required={selected.acknowledgeRequired}
-                    pendingOnly={pendingOnly}
+                    stateFilter={ackState}
                     isPending={acks.isPending}
                     isError={acks.isError}
                     error={acks.error}
                     data={acks.data}
-                    onPendingOnlyChange={setPendingOnly}
                     onRetry={() => {
                       void acks.refetch();
                     }}

@@ -1,4 +1,3 @@
-import { Icon } from '@crefle/web-ui';
 import { Link } from 'react-router';
 
 import { NotificationCard, type NotificationCardProps } from './notification-card';
@@ -56,7 +55,6 @@ export const NotificationRow = ({ view, title, ...card }: NotificationRowProps) 
          */
         <Link className="notification-target-link" to={link.to} aria-label={link.label}>
           {link.shortLabel}
-          <Icon name="arrow_forward" size={16} />
         </Link>
       )}
     </div>

@@ -1544,9 +1544,23 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
         url.searchParams.get('codeGroupCode') === 'LOGISTICS_DOCUMENT_STATUS'
       );
     };
+    /* 업무함 배지(#361) — 사이드바가 내 결재 대기 수 · 미확인 알림 수를 센다. 화면의 조회가 아니다. */
+    const isInboxBadge = (request: Request) => {
+      const url = new URL(request.url);
+      return (
+        (url.pathname.endsWith('/app/approval-requests') &&
+          url.searchParams.get('myTurnOnly') === 'true' &&
+          url.searchParams.get('size') === '1') ||
+        url.pathname.endsWith('/app/notifications/unread-count')
+      );
+    };
     expect(
       requests.filter(
-        (request) => !isOaLookup(request) && !isIqcBadge(request) && !isStatusOptions(request),
+        (request) =>
+          !isOaLookup(request) &&
+          !isIqcBadge(request) &&
+          !isStatusOptions(request) &&
+          !isInboxBadge(request),
       ),
     ).toHaveLength(0);
   });

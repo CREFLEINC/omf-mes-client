@@ -20,7 +20,7 @@ export const notice = {
     status: '상태',
     scope: '대상 범위',
     scopeAll: '범위 전체',
-    unacknowledgedByMe: '미확인 공지',
+    unacknowledgedByMe: '미확인 공지 포함',
     from: '게시 시작일',
     to: '게시 종료일',
     /** ⭐ 시작일이 아니라 **겹침**으로 거른다 — 긴 공지가 조회 구간에서 빠지지 않는다. */
@@ -127,7 +127,6 @@ export const notice = {
     title: '확인 현황',
     /** ⭐ 확인을 요구하지 않은 공지에는 미확인자 목록이 뜻이 없다. */
     notRequired: '이 공지는 확인을 요구하지 않습니다.',
-    pendingOnly: '미확인자만',
     who: '이름',
     state: '상태',
     at: '확인 일시',

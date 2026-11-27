@@ -28,6 +28,12 @@ import {
   isNavEntryAllowed,
   matchesNavEntry,
 } from './nav-filter';
+import {
+  APPROVAL_INBOX_PATH,
+  NOTIFICATION_CENTER_PATH,
+  useApprovalPendingCount,
+  useNotificationUnreadCount,
+} from './inbox-pending';
 import { HubTabs } from './hub-tabs';
 import {
   IQC_PATH,
@@ -446,10 +452,20 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   /* 볼 수 없는 탭은 세지 않는다(위 훅이 묻지 않아 `undefined`). 못 센 탭은 0 으로 더한다 — 아는 수만 보인다. */
   const hubCount = (iqcCount ?? 0) + (pqcCount ?? 0) + (oqcCount ?? 0);
   const hubBadge = pendingBadge(hubCount, t.inspectionPending);
+  /* 「결재함」 줄에 내 결재 대기 수, 닫힌 「업무함」 묶음에 점(#361 사용자 지시). */
+  const approvalCount = useApprovalPendingCount(access.allows(APPROVAL_INBOX_PATH));
+  const approvalBadge = pendingBadge(approvalCount, t.approvalPending);
+  /* 「알림센터」 줄에 미확인 알림 수(#361 사용자 지시). */
+  const unreadCount = useNotificationUnreadCount(access.allows(NOTIFICATION_CENTER_PATH));
+  const unreadBadge = pendingBadge(unreadCount, t.notificationUnread);
   const badgeOf = (paths: readonly string[]): ReactNode =>
     paths.includes(IQC_PATH) || paths.includes(PQC_PATH) || paths.includes(OQC_PATH)
       ? hubBadge
-      : null;
+      : paths.includes(APPROVAL_INBOX_PATH)
+        ? approvalBadge
+        : paths.includes(NOTIFICATION_CENTER_PATH)
+          ? unreadBadge
+          : null;
   const isLeadAllowed = isNavEntryAllowed(NAV_LEAD, access);
 
   /* 「검색 결과 없음」의 기준도 **볼 수 있는 것**이다 — 못 보는 항목이 걸렸다고 말할 수 없다. */

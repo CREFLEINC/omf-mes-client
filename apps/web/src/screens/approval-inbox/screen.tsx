@@ -925,20 +925,25 @@ export const ApprovalInboxScreen = () => {
          * 인라인 오류는 **로컬 판정이 먼저**다: 방금 사용자가 부딪힌 벽이 지난 서버 응답보다
          * 지금 무엇을 해야 하는지를 정확히 말한다.
          */}
-        <DecisionPane
-          isMyTurn={request.isMyTurn}
-          comment={comment}
-          onChangeComment={changeComment}
-          commentError={localCommentError ?? serverCommentError}
-          isLocked={isLocked}
-          onApprove={() => {
-            setDialogKind('approve');
-          }}
-          onReject={() => {
-            setDialogKind('reject');
-          }}
-          banner={decisionBanner}
-        />
+        {/* 내 결재 차례가 아니면 결재 상자를 두지 않는다 — 보낸 뒤의 오류 띠만 남긴다(#361 사용자 지시). */}
+        {request.isMyTurn ? (
+          <DecisionPane
+            isMyTurn={request.isMyTurn}
+            comment={comment}
+            onChangeComment={changeComment}
+            commentError={localCommentError ?? serverCommentError}
+            isLocked={isLocked}
+            onApprove={() => {
+              setDialogKind('approve');
+            }}
+            onReject={() => {
+              setDialogKind('reject');
+            }}
+            banner={decisionBanner}
+          />
+        ) : (
+          decisionBanner
+        )}
       </>
     );
   };

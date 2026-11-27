@@ -1189,16 +1189,13 @@ describe('고른 요청 — 정보·대상·진행', () => {
 
     expect(within(target).getByText('합성 대상 문서 가')).toBeVisible();
     expect(target.textContent).not.toContain('INBOUND_LOT');
-    expect(within(target).getByRole('button', { name: t.target.note })).toBeVisible();
+    expect(within(target).queryByRole('button', { name: t.target.note })).toBeNull();
   });
 
-  it('미등록 화면 ID에서는 열기가 잠기고 그 갈래의 사유가 붙는다', async () => {
+  it('미등록 화면 ID에서는 「열기」를 두지 않는다(#361)', async () => {
     await renderSelected();
 
-    const open = screen.getByRole('button', { name: t.target.open });
-
-    expect(open).toBeDisabled();
-    expect(open).toHaveAccessibleDescription(t.target.blockedUnmapped);
+    expect(screen.queryByRole('button', { name: t.target.open })).toBeNull();
   });
 
   it('W-04-02 대상을 열면 선택한 승인 요청 ID가 정식 주소에 실린다', async () => {
@@ -1220,20 +1217,16 @@ describe('고른 요청 — 정보·대상·진행', () => {
     });
   });
 
-  it('열 수 없다고 온 대상은 그 사실로 잠긴다', async () => {
+  it('열 수 없다고 온 대상에는 「열기」를 두지 않는다(#361)', async () => {
     await renderSelected(finishedDetail, '?rq=9002');
 
-    expect(screen.getByRole('button', { name: t.target.open })).toHaveAccessibleDescription(
-      t.target.blockedNotOpenable,
-    );
+    expect(screen.queryByRole('button', { name: t.target.open })).toBeNull();
   });
 
-  it('화면 ID가 오지 않은 대상은 또 다른 사유로 잠긴다', async () => {
+  it('화면 ID가 오지 않은 대상에도 「열기」를 두지 않는다(#361)', async () => {
     await renderSelected(noScreenIdTargetDetail);
 
-    expect(screen.getByRole('button', { name: t.target.open })).toHaveAccessibleDescription(
-      t.target.blockedNoScreenId,
-    );
+    expect(screen.queryByRole('button', { name: t.target.open })).toBeNull();
   });
 
   it('대상 표시명이 비어 오면 번호를 대신 내지 않는다', async () => {
@@ -1554,7 +1547,8 @@ const renderDecision = async (
 ): Promise<ReturnType<typeof renderScreen>> => {
   const rendered = renderScreen(routes, search, navigateTo, hold);
 
-  await screen.findByRole('group', { name: t.panes.decision });
+  /* 상세가 그려질 때까지 — 결재 상자는 내 차례일 때만 서므로(#361) 대상 구획을 기다린다. */
+  await screen.findByRole('group', { name: t.panes.target });
 
   return rendered;
 };
@@ -1586,12 +1580,10 @@ describe('결재 — 상시 문구', () => {
    * **자물쇠 문구는 사라지는 자리에 두지 않는다.** 승인이 무엇을 하고 무엇을 하지 않는지는
    * 결재함을 보는 내내 참인 사실이라, 알림처럼 몇 초 뒤 없어지면 다시 확인할 방법이 없다.
    */
-  it('결재 제목 옆 ⓘ 에 늘 있고 내 차례가 아니어도 사라지지 않는다', async () => {
+  it('내 차례가 아니면 결재 상자를 두지 않는다(#361)', async () => {
     await renderDecision(decisionRoutes([detailRoute(contradictoryNotMyTurnDetail)]), '?rq=9003');
 
-    expect(within(decisionPane()).getByRole('button', { name: t.decision.lockNote })).toBeVisible();
-    /* 짝 방향 — 그 상태에서 버튼이 실제로 잠겨 있다(문구만 남고 잠금이 풀린 것이 아니다). */
-    expect(approveButton()).toBeDisabled();
+    expect(screen.queryByRole('group', { name: t.panes.decision })).toBeNull();
   });
 
   it('결재에 성공한 뒤 알림에는 그 문장이 없다', async () => {
@@ -1621,14 +1613,9 @@ describe('결재 — 내 차례 판정(첫째 겹)', () => {
       '?rq=9003',
     );
 
-    expect(approveButton()).toBeDisabled();
-    expect(rejectButton()).toBeDisabled();
-    expect(approveButton()).toHaveAccessibleDescription(
-      t.decision.blockedNotMyTurn(t.decision.approve),
-    );
-
-    await user.click(approveButton());
-    await user.click(rejectButton());
+    /* 결재 상자 자체가 없다(#361) — 누를 단추가 없으니 요청도 나가지 않는다. */
+    expect(screen.queryByRole('group', { name: t.panes.decision })).toBeNull();
+    void user;
 
     expect(writeRequests(requests)).toHaveLength(0);
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -1642,13 +1629,11 @@ describe('결재 — 내 차례 판정(첫째 겹)', () => {
   });
 
   /** 승인자가 없어 멈춘 요청도 **오류가 아니라 잠긴 안내**다 — 기다리는 것이 정상이다. */
-  it('멈춘 요청에서도 경보를 세우지 않고 사유만 붙인다', async () => {
+  it('멈춘 요청에서도 경보를 세우지 않고 결재 상자를 두지 않는다', async () => {
     await renderDecision(decisionRoutes([detailRoute(stalledDetail)]), '?rq=9004');
 
-    expect(within(decisionPane()).queryByRole('alert')).toBeNull();
-    expect(rejectButton()).toHaveAccessibleDescription(
-      t.decision.blockedNotMyTurn(t.decision.reject),
-    );
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByRole('group', { name: t.panes.decision })).toBeNull();
   });
 });
 
@@ -1987,7 +1972,8 @@ describe('결재 — 성공한 뒤', () => {
 
     /* 재조회가 아직 오지 않았는데도 결재 응답의 값이 보인다. */
     expect(await screen.findByText('합성 결재 직후에 남은 의견')).toBeVisible();
-    expect(within(decisionPane()).getByRole('button', { name: t.decision.lockNote })).toBeVisible();
+    /* 결재를 마쳐 내 차례가 끝났으므로 결재 상자는 사라진다(#361). */
+    expect(screen.queryByRole('group', { name: t.panes.decision })).toBeNull();
 
     release();
   });

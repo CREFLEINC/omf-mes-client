@@ -3,8 +3,7 @@ import { messages } from '@omf-mes/i18n';
 
 import { InfoTip } from '../../patterns/info-tip';
 
-import { DisabledAction } from './disabled-action';
-import { describeOpenBlock, type TargetOpenState } from './target';
+import type { TargetOpenState } from './target';
 
 const t = messages.approvalInbox;
 
@@ -37,7 +36,8 @@ export const TargetPane = ({ name, openState, onOpen }: TargetPaneProps) => {
     <div className="approval-inbox-detail-section" role="group" aria-label={t.panes.target}>
       <h3 className="info-label">
         {t.panes.target}
-        <InfoTip text={t.target.note} />
+        {/* 「[열기]를 눌러…」 안내는 열 수 있을 때만(#361). */}
+        {openState.kind === 'open' && <InfoTip text={t.target.note} />}
       </h3>
       {/* 대상 이름과 「열기」를 한 줄에 — 이름은 요약 상자의 값과 같은 글자 크기(#361). */}
       <div className="approval-inbox-target-row">
@@ -48,7 +48,8 @@ export const TargetPane = ({ name, openState, onOpen }: TargetPaneProps) => {
           </div>
         </dl>
 
-        {openState.kind === 'open' ? (
+        {/* 열 화면이 없는 대상은 「열기」를 두지 않는다 — 잠긴 단추와 안내 문구는 불필요하다(#361 사용자 지시). */}
+        {openState.kind === 'open' && (
           <div className="field-cell">
             <Button
               variant="outlined"
@@ -60,9 +61,6 @@ export const TargetPane = ({ name, openState, onOpen }: TargetPaneProps) => {
               {t.target.open}
             </Button>
           </div>
-        ) : (
-          /* 사유는 감추지 않는다 — 비활성 컨트롤은 포커스를 받지 못해 툴팁으로는 닿을 수 없다. */
-          <DisabledAction label={t.target.open} reason={describeOpenBlock(openState)} size="sm" />
         )}
       </div>
     </div>

@@ -131,7 +131,6 @@ export const notice: Translated<typeof ko.notice> = {
   ack: {
     title: 'Tình hình xác nhận',
     notRequired: 'Thông cáo này không yêu cầu xác nhận.',
-    pendingOnly: 'Chỉ người chưa xác nhận',
     who: 'Người',
     state: 'Trạng thái',
     at: 'Thời điểm',

@@ -53,32 +53,14 @@ describe('TargetPane', () => {
     expect(onOpen).toHaveBeenCalledExactlyOnceWith('/synthetic/target');
   });
 
-  it('열 수 있는 대상에는 잠긴 사유가 붙지 않는다', () => {
-    renderPane();
+  it.each(['notOpenable' as const, 'noScreenId' as const, 'unmapped' as const])(
+    '%s 갈래는 「열기」를 두지 않는다(#361)',
+    (kind) => {
+      renderPane({ openState: { kind } });
 
-    expect(screen.queryByText(t.target.blockedNotOpenable)).not.toBeInTheDocument();
-    expect(screen.queryByText(t.target.blockedNoScreenId)).not.toBeInTheDocument();
-    expect(screen.queryByText(t.target.blockedUnmapped)).not.toBeInTheDocument();
-  });
-
-  it.each([
-    ['notOpenable' as const, t.target.blockedNotOpenable],
-    ['noScreenId' as const, t.target.blockedNoScreenId],
-    ['unmapped' as const, t.target.blockedUnmapped],
-  ])('%s 갈래는 잠기고 그 갈래의 사유가 버튼의 설명이 된다', async (kind, reason) => {
-    const user = userEvent.setup();
-    const { onOpen } = renderPane({ openState: { kind } });
-
-    const open = screen.getByRole('button', { name: t.target.open });
-
-    expect(open).toBeDisabled();
-    expect(open).toHaveAccessibleDescription(reason);
-    expect(screen.getByText(reason)).toBeVisible();
-
-    await user.click(open);
-
-    expect(onOpen).not.toHaveBeenCalled();
-  });
+      expect(screen.queryByRole('button', { name: t.target.open })).toBeNull();
+    },
+  );
 
   it('잠긴 갈래여도 표시명은 그대로 보인다 — 무엇에 대한 결재인지가 사라지면 안 된다', () => {
     renderPane({ openState: { kind: 'notOpenable' } });

@@ -1,8 +1,6 @@
 import { Button, type ButtonSize, type ButtonVariant } from '@crefle/web-ui';
 import { useId } from 'react';
 
-import { InfoTip } from '../../patterns/info-tip';
-
 export interface DisabledActionProps {
   label: string;
   /** 「무엇이 막혔는지 + 누가 풀 수 있는지」를 담는다. 컨트롤 이름으로 시작한다. */
@@ -44,11 +42,7 @@ export const DisabledAction = ({
       <Button variant={variant} size={size} disabled aria-describedby={noteId}>
         {label}
       </Button>
-      {/*
-       * 사유는 단추 옆 ⓘ 에 올리면 보인다(#361 사용자 지시 — 안내 문구는 아이콘으로). 보조기술에는 숨은 글로
-       * 그대로 잇는다 — 비활성 단추는 포커스를 받지 못한다.
-       */}
-      <InfoTip text={reason} />
+      {/* 단추 옆 ⓘ 는 두지 않는다(#361 사용자 지시). 사유는 보조기술에만 숨은 글로 잇는다. */}
       <span id={noteId} className="visually-hidden">
         {reason}
       </span>

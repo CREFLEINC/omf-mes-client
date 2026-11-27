@@ -257,6 +257,7 @@ interface MarkReadAttempt {
  */
 export const useMarkRead = (options: MarkReadOptions): MarkReadMutation => {
   const { client } = useApiClient();
+  const queryClient = useQueryClient();
   /**
    * 마지막 실패 — **어느 알림의 것인지와 함께** 든다.
    *
@@ -312,6 +313,8 @@ export const useMarkRead = (options: MarkReadOptions): MarkReadMutation => {
      */
     mutateAsync({ notificationId, idempotencyKey: createIdempotencyKey() })
       .then(() => {
+        /* 사이드바 「알림센터」 숫자(#361)가 같은 열쇠를 읽는다 — 하나 읽으면 다시 센다. */
+        void queryClient.invalidateQueries({ queryKey: notificationKeys.unreadCount });
         /*
          * ⭐ **성공 되먹임의 예외를 요청 실패와 가른다**(전례 `login/queries.ts` · `omf-mes#96` 계열).
          *

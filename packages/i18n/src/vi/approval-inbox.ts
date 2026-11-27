@@ -54,9 +54,6 @@ export const approvalInbox: Translated<typeof ko.approvalInbox> = {
   },
   target: {
     open: 'Mở',
-    blockedNotOpenable: 'Mở: Đối tượng này không có màn hình để mở',
-    blockedNoScreenId: 'Mở: Chưa định màn hình để mở đối tượng này',
-    blockedUnmapped: 'Mở: Màn hình này chưa có trên web quản trị',
     note: 'Nội dung xem ở màn hình gốc',
   },
   progress: {
