@@ -8,6 +8,13 @@ import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { ScreenHeader } from '../../patterns/screen-header';
+import { useHubActionsTarget } from '../../patterns/hub-actions';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import { CalendarFormDialog } from './calendar-form-dialog';
 import { CalendarListPane } from './calendar-list-pane';
 import { CALENDAR_FORM_FIELDS, validateCalendar } from './calendar-validation';
@@ -471,6 +478,13 @@ export const WorkCalendarScreen = ({
       ? codeLockMessage(detail.data.editability)
       : null;
 
+  /* 목록 | 상세 배치 — 처음엔 위아래(달력 폭 · 아래 주석), 「⋯」에서 좌우로 바꾼다(#360). */
+  const hubTarget = useHubActionsTarget();
+  const { splitRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:work-calendar:split', 0.4);
+  const layout = useSplitOrientation('omf-mes:work-calendar:split-orientation', 'column');
+  const isStacked = layout.orientation === 'column';
+
   return (
     <div className="screen">
       <ScreenHeader
@@ -492,12 +506,26 @@ export const WorkCalendarScreen = ({
       )}
 
       {/*
-       * ⭐ **좌우가 아니라 위아래로 쌓는다.** 달력은 일곱 칸이 한 줄에 서야 하는데, 2단 배치의
-       * 우 칸(약 670px)에서는 칸마다 91px밖에 못 가져 「부분 가동」 배지가 접힌다 —
-       * 브라우저 실측으로 확인하고 바꾼 자리다. 목록은 고르는 자리라 폭이 남고, 달력은
-       * 이 화면의 본론이라 폭이 필요하다.
+       * 목록 | 상세(달력 · 적용 대상) — 다른 목록 · 상세 화면과 같은 공용 분할(가운데 막대 · 「⋯」 좌우/상하 배치 · #360).
+       * ⭐ **처음 배치는 위아래다.** 달력은 일곱 칸이 한 줄에 서야 하는데, 2단 배치의 우 칸(약 670px)에서는 칸마다
+       * 91px밖에 못 가져 「부분 가동」 배지가 접힌다 — 브라우저 실측으로 확인하고 정한 자리다. 좌우는 「⋯」에서 고른다.
        */}
-      <div className="pane-stack work-calendar-workspace">
+      {hubTarget === null ? (
+        <div className="list-detail-toolbar">
+          <SplitOrientationToggle
+            orientation={layout.orientation}
+            onChange={layout.change}
+            inline
+          />
+        </div>
+      ) : (
+        <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
+      )}
+      <div
+        ref={splitRef}
+        className={`po-board-split work-calendar-split${isStacked ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+      >
         <CalendarListPane
           items={items}
           isLoading={calendars.isLoading || isPlantPending}
@@ -519,77 +547,95 @@ export const WorkCalendarScreen = ({
           }
         />
 
-        <MonthGridPane
-          calendarName={selected === null ? null : selected.calendarName}
-          onEditCalendar={() => {
-            if (selected === null) return;
-
-            openEdit(selected);
-          }}
-          yearMonth={yearMonth}
-          onChangeMonth={setYearMonth}
-          onPickDay={openDay}
-          onBulkApply={openBulk}
-          days={days.data?.items ?? NO_ITEMS}
-          isLoading={days.isLoading}
-          loadError={
-            days.isError ? (
-              <LoadErrorBanner error={toApiError(days.error)} onRetry={() => void days.refetch()} />
-            ) : null
-          }
+        <PaneSplitter
+          label={messages.common.inspectionHub.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
         />
+        {isStacked && (
+          <PaneHeightSplitter
+            label={messages.common.inspectionHub.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+          />
+        )}
 
-        <div className="work-calendar-support-grid">
-          <ApplicationPane
+        <div className="pane-stack work-calendar-workspace">
+          <MonthGridPane
             calendarName={selected === null ? null : selected.calendarName}
-            items={applications.data?.items ?? NO_ITEMS}
-            isLoading={applications.isLoading}
-            unassignedPlants={unassignedPlants}
-            onAdd={() => {
-              resetIfIdle(applicationWrite);
-              setTargetTypeCode(TARGET_TYPES.plant);
-              setTargetId('');
-              setAssigning(true);
+            onEditCalendar={() => {
+              if (selected === null) return;
+
+              openEdit(selected);
             }}
-            onRelease={(application: WorkCalendarApplication) => {
-              resetIfIdle(releaseWrite);
-              /* ⭐ 해제는 `workCalendarId` 를 비워 보내는 것이다 — 같은 경로다. */
-              releaseWrite.write({
-                targetTypeCode: application.targetTypeCode,
-                targetId: application.targetId,
-              });
-            }}
+            yearMonth={yearMonth}
+            onChangeMonth={setYearMonth}
+            onPickDay={openDay}
+            onBulkApply={openBulk}
+            days={days.data?.items ?? NO_ITEMS}
+            isLoading={days.isLoading}
             loadError={
-              applications.isError ? (
+              days.isError ? (
                 <LoadErrorBanner
-                  error={toApiError(applications.error)}
-                  onRetry={() => void applications.refetch()}
+                  error={toApiError(days.error)}
+                  onRetry={() => void days.refetch()}
                 />
               ) : null
             }
           />
 
-          {/*
-           * ⭐ **캘린더를 고른 뒤에만 선다.** 이 자리가 답하는 것은 「내가 지금 손대는 캘린더가
-           * 실제로 어느 설비에 닿는가」이고, 고른 캘린더가 없으면 그 물음 자체가 서지 않는다.
-           */}
-          {selected !== null && (
-            <EffectivePane
-              equipmentId={effectiveEquipmentId}
-              onChangeEquipment={setEffectiveEquipmentId}
-              options={equipmentTargets}
-              effective={effective.data ?? null}
-              isLoading={effective.isLoading}
+          <div className="work-calendar-support-grid">
+            <ApplicationPane
+              calendarName={selected === null ? null : selected.calendarName}
+              items={applications.data?.items ?? NO_ITEMS}
+              isLoading={applications.isLoading}
+              unassignedPlants={unassignedPlants}
+              onAdd={() => {
+                resetIfIdle(applicationWrite);
+                setTargetTypeCode(TARGET_TYPES.plant);
+                setTargetId('');
+                setAssigning(true);
+              }}
+              onRelease={(application: WorkCalendarApplication) => {
+                resetIfIdle(releaseWrite);
+                /* ⭐ 해제는 `workCalendarId` 를 비워 보내는 것이다 — 같은 경로다. */
+                releaseWrite.write({
+                  targetTypeCode: application.targetTypeCode,
+                  targetId: application.targetId,
+                });
+              }}
               loadError={
-                effective.isError ? (
+                applications.isError ? (
                   <LoadErrorBanner
-                    error={toApiError(effective.error)}
-                    onRetry={() => void effective.refetch()}
+                    error={toApiError(applications.error)}
+                    onRetry={() => void applications.refetch()}
                   />
                 ) : null
               }
             />
-          )}
+
+            {/*
+             * ⭐ **캘린더를 고른 뒤에만 선다.** 이 자리가 답하는 것은 「내가 지금 손대는 캘린더가
+             * 실제로 어느 설비에 닿는가」이고, 고른 캘린더가 없으면 그 물음 자체가 서지 않는다.
+             */}
+            {selected !== null && (
+              <EffectivePane
+                equipmentId={effectiveEquipmentId}
+                onChangeEquipment={setEffectiveEquipmentId}
+                options={equipmentTargets}
+                effective={effective.data ?? null}
+                isLoading={effective.isLoading}
+                loadError={
+                  effective.isError ? (
+                    <LoadErrorBanner
+                      error={toApiError(effective.error)}
+                      onRetry={() => void effective.refetch()}
+                    />
+                  ) : null
+                }
+              />
+            )}
+          </div>
         </div>
       </div>
 

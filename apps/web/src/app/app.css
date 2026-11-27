@@ -42866,6 +42866,34 @@ main .po-board-split.po-board-split.po-board-split:is(.work-order-close-split, .
   max-height: var(--stacked-list-height);
 }
 
+/*
+ * 작업 캘린더 설정 — 캘린더 목록 | 달력 · 적용 대상을 공용 분할로(#360). 두 칸이 각자 안에서 구르고, 위아래로 쌓이면
+ * 가운데 높이 막대로 정한 높이를 목록이 쓴다(W/O 마감과 같다).
+ */
+.po-board-split.work-calendar-split > :is(:first-child, :last-child) {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+main .po-board-split.po-board-split.po-board-split.work-calendar-split.is-stacked[style*='--stacked-list-height'] > :first-child:not(:last-child) {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  height: var(--stacked-list-height);
+  max-height: var(--stacked-list-height);
+}
+
+/*
+ * 화면 틀(patterns/board-frame.tsx)의 목록 | 상세 — 위아래로 쌓이면 가운데 높이 막대로 정한 높이를 목록이 쓴다(입고 관리와 같다 · #360).
+ * 물류 전표 조회·취소 · 자재 관리 LOT 발행 · 초과분 발주 연결 · 품목 · BOM · 창고 위치 · 창고 배치도.
+ */
+main .po-board-split.po-board-split.po-board-split.board-frame-split.is-stacked[style*='--stacked-list-height'] > :first-child:not(:last-child) {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  height: var(--stacked-list-height);
+  max-height: var(--stacked-list-height);
+}
+
 /* 공장 근무일 — 출고 작업일 예시: 날짜 옆 흐린 보조 글(건너뛴 휴일). 표 위 안내 한 줄과 표 사이 간격(사용자 지시 2026-11-26). */
 .plant-working-days-example {
   display: inline-flex;
