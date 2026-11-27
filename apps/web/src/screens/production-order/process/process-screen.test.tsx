@@ -504,7 +504,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     );
   });
 
-  it('계획 수량 합계와 [계획 추가] 기본 생산량은 W/O 가 모두 취소된 확정 계획을 빼고 센다(#250)', async () => {
+  it('계획 수량 합계와 [수동 분배] 기본 생산량은 W/O 가 모두 취소된 확정 계획을 빼고 센다(#250)', async () => {
     const user = userEvent.setup();
     /* 확정 계획 둘(200 + 100) 가운데 100 의 W/O 가 모두 취소됐다. 서버 확정 계획량은 200 이다. */
     renderAt(
@@ -528,7 +528,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
 
     await user.click(screen.getByRole('button', { name: tp.plan.add }));
     await user.click(
-      within(screen.getByRole('dialog', { name: '계획 추가' })).getByRole('button', {
+      within(screen.getByRole('dialog', { name: '수동 분배' })).getByRole('button', {
         name: '추가',
       }),
     );
@@ -545,7 +545,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     expect(document.body).toHaveTextContent(tp.remaining.qtyShort('50'));
   });
 
-  it('기본 BOM 이 없는 품목은 [계획 추가] 줄을 보내지 않고 막힌 까닭을 알린다(#249)', async () => {
+  it('기본 BOM 이 없는 품목은 [수동 분배] 줄을 보내지 않고 막힌 까닭을 알린다(#249)', async () => {
     const user = userEvent.setup();
     /* BOM 11 은 기본 BOM 이 아니다. 서버는 작성중 계획에 기본 BOM 만 받는다(BOM_NOT_DEFAULT). */
     const state = world({
@@ -558,7 +558,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     await currentStep(tp.steps.plan);
 
     await user.click(screen.getByRole('button', { name: tp.plan.add }));
-    const dialog = screen.getByRole('dialog', { name: '계획 추가' });
+    const dialog = screen.getByRole('dialog', { name: '수동 분배' });
     expect(within(dialog).getByText('ERP 기본 BOM 확인 필요')).toBeVisible();
     expect(within(dialog).getByRole('button', { name: '추가' })).toBeDisabled();
     expect(server.writes).toEqual([]);
@@ -645,14 +645,14 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     ).toBeVisible();
   });
 
-  it('단건 계획 추가도 팝업에서 검토한 뒤 미저장 계획으로 추가한다', async () => {
+  it('단건 수동 분배도 팝업에서 검토한 뒤 미저장 계획으로 추가한다', async () => {
     const user = userEvent.setup();
     const server = renderAt(`${WORKLIST}/${ORDER_NO}`, world());
     await currentStep(tp.steps.master);
     await user.click(screen.getByRole('tab', { name: tp.steps.plan }));
     await currentStep(tp.steps.plan);
-    await user.click(screen.getByRole('button', { name: '계획 추가' }));
-    const dialog = screen.getByRole('dialog', { name: '계획 추가' });
+    await user.click(screen.getByRole('button', { name: '수동 분배' }));
+    const dialog = screen.getByRole('dialog', { name: '수동 분배' });
     expect(
       within(dialog).getByRole('combobox', { name: '계획을 추가할 ERP W/O' }),
     ).toHaveTextContent(ORDER_NO);
@@ -660,7 +660,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     expect(screen.getByRole('region', { name: '선택 계획 편집' })).not.toHaveTextContent(
       '신규 계획',
     );
-    expect(screen.getByRole('button', { name: '계획 추가' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '수동 분배' })).toBeDisabled();
     expect(server.writes).toHaveLength(0);
   });
   it('전개 확정은 불러온 판으로 보내고, 확정하면 4M 배정 단계로 넘어간다', async () => {
@@ -927,7 +927,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     await user.click(screen.getByRole('tab', { name: /생산계획/ }));
     expect(await screen.findByRole('region', { name: tp.plan.heading })).toBeVisible();
     expect(screen.queryByRole('button', { name: tp.plan.confirm })).toBeNull();
-    expect(screen.getByRole('button', { name: '계획 추가' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '수동 분배' })).toBeDisabled();
     await user.click(screen.getByRole('tab', { name: /4M 배정/ }));
     expect(
       await screen.findByRole('heading', { name: tp.assign.editorHeading, level: 2 }),

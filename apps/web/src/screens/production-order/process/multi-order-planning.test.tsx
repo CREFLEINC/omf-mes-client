@@ -278,9 +278,9 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     const header = document.querySelector('.erp-wo-multi-header')! as HTMLElement;
     expect(within(header).getByText('선택 ERP W/O')).toBeVisible();
     expect(within(header).queryByRole('combobox')).toBeNull();
-    expect(screen.getByRole('button', { name: '계획 추가' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '수동 분배' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: '계획 목록' }));
-    expect(screen.getByRole('button', { name: '계획 추가' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '수동 분배' })).toBeVisible();
     expect(screen.getByRole('button', { name: '자동 분배' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
     expect(
@@ -297,7 +297,7 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     await user.click(screen.getByRole('button', { name: '주간 편성' }));
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
     expect(screen.getByRole('textbox', { name: '조건 1 수량' })).toHaveValue('20');
-    expect(screen.getAllByRole('button', { name: '계획 추가' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: '수동 분배' })).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: '자동 분배' })).toHaveLength(1);
     expect(writes).toHaveLength(0);
   });
@@ -522,7 +522,7 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
       'true',
     );
   });
-  it('계획 추가의 ERP W/O 선택은 기존 계획이 있어도 새 계획의 편집 대상과 연결한다', async () => {
+  it('수동 분배의 ERP W/O 선택은 기존 계획이 있어도 새 계획의 편집 대상과 연결한다', async () => {
     mount();
     const user = userEvent.setup();
     await waitFor(() =>
@@ -533,8 +533,8 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     expect(screen.queryByRole('button', { name: /주간 편성에서 확인/ })).toBeNull();
     await user.click(screen.getByRole('button', { name: '주간 편성' }));
     expect(screen.queryByRole('combobox', { name: '계획 추가 대상' })).toBeNull();
-    await user.click(screen.getByRole('button', { name: '계획 추가' }));
-    const dialog = screen.getByRole('dialog', { name: '계획 추가' });
+    await user.click(screen.getByRole('button', { name: '수동 분배' }));
+    const dialog = screen.getByRole('dialog', { name: '수동 분배' });
     expect(within(dialog).getByRole('button', { name: '추가' })).toBeDisabled();
     await user.click(within(dialog).getByRole('combobox', { name: '계획을 추가할 ERP W/O' }));
     await user.click(screen.getByRole('option', { name: 'B / 시험 품목 (ITEM1)' }));
@@ -546,9 +546,9 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     expect(screen.getByRole('button', { name: '계획 확정 후 4M 배정' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: '4M 배정으로' })).toBeNull();
     await user.click(screen.getByRole('button', { name: '계획 목록' }));
-    await user.click(screen.getByRole('button', { name: 'A 계획 추가' }));
+    await user.click(screen.getByRole('button', { name: 'A 수동 분배' }));
     await user.click(
-      within(screen.getByRole('dialog', { name: '계획 추가' })).getByRole('button', {
+      within(screen.getByRole('dialog', { name: '수동 분배' })).getByRole('button', {
         name: '추가',
       }),
     );
