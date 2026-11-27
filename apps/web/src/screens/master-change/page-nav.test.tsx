@@ -3,66 +3,53 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { PageNav } from './page-nav';
-import type { PageView } from './pagination';
+import { toPageView } from './pagination';
 
-const view = (overrides: Partial<PageView> = {}): PageView => ({
-  page: 2,
-  totalPages: 3,
-  rangeLabel: '51–100 / 전체 120건',
-  canPrev: true,
-  canNext: true,
-  isBeyondLast: false,
-  ...overrides,
-});
+type Meta = Parameters<typeof toPageView>[0];
 
-const renderNav = (overrides: Partial<PageView> = {}) => {
-  const onChange = vi.fn();
+const renderNav = (meta: Meta, shown: number) => {
+  const onChange = vi.fn<(page: number) => void>();
 
-  render(<PageNav view={view(overrides)} onChange={onChange} />);
+  render(<PageNav view={toPageView(meta, shown)} onChange={onChange} />);
 
   return { onChange, user: userEvent.setup() };
 };
 
-/* 받은 값을 그대로 그리는 표현 전용 부품이라 렌더 단언만 둔다. */
-describe('PageNav', () => {
-  it('지금 위치를 밝힌다', () => {
-    renderNav();
-
-    expect(screen.getByText('51–100 / 전체 120건')).toBeInTheDocument();
-  });
-
-  it('탐색 영역에 이름이 붙는다', () => {
-    renderNav();
+/* 공용 쪽 이동 줄(총 N건 · [처음] [이전] n / m [다음] [마지막])로 그린다 — 1쪽 · 0건이어도 늘 보인다(#360). */
+describe('PageNav — 공용 쪽 이동 줄', () => {
+  it('총 건수와 지금 위치를 보인다', () => {
+    renderNav({ page: 2, size: 20, total: 45 }, 20);
 
     expect(screen.getByRole('navigation', { name: '쪽 이동' })).toBeInTheDocument();
+    expect(screen.getByText('총 45건')).toBeInTheDocument();
+    expect(screen.getByText('2 / 3')).toBeInTheDocument();
   });
 
-  it('이전을 누르면 한 쪽 앞으로 간다', async () => {
-    const { onChange, user } = renderNav();
+  it('처음 · 이전 · 다음 · 마지막이 옮길 쪽을 알린다', async () => {
+    const { onChange, user } = renderNav({ page: 2, size: 20, total: 45 }, 20);
 
+    await user.click(screen.getByRole('button', { name: '처음' }));
     await user.click(screen.getByRole('button', { name: '이전' }));
-
-    expect(onChange).toHaveBeenCalledWith(1);
-  });
-
-  it('다음을 누르면 한 쪽 뒤로 간다', async () => {
-    const { onChange, user } = renderNav();
-
     await user.click(screen.getByRole('button', { name: '다음' }));
+    await user.click(screen.getByRole('button', { name: '마지막' }));
 
-    expect(onChange).toHaveBeenCalledWith(3);
+    expect(onChange.mock.calls).toEqual([[1], [1], [3], [3]]);
   });
 
-  it('갈 수 없는 쪽의 버튼은 잠긴다', () => {
-    renderNav({ canPrev: false, canNext: false });
+  it('1쪽뿐이어도 줄은 보이고 단추만 잠긴다', () => {
+    renderNav({ page: 1, size: 20, total: 5 }, 5);
 
-    expect(screen.getByRole('button', { name: '이전' })).toBeDisabled();
+    expect(screen.getByText('총 5건')).toBeInTheDocument();
+    expect(screen.getByText('1 / 1')).toBeInTheDocument();
+    for (const name of ['처음', '이전', '다음', '마지막']) {
+      expect(screen.getByRole('button', { name })).toBeDisabled();
+    }
+  });
+
+  it('0건이어도 줄이 보인다', () => {
+    renderNav({ page: 1, size: 20, total: 0 }, 0);
+
+    expect(screen.getByText('총 0건')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '다음' })).toBeDisabled();
-  });
-
-  it('쪽 번호 목록을 만들지 않는다 — 버튼은 이전·다음 둘뿐이다', () => {
-    renderNav();
-
-    expect(screen.getAllByRole('button')).toHaveLength(2);
   });
 });

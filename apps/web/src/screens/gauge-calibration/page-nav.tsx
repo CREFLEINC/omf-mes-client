@@ -1,9 +1,5 @@
-import { Button } from '@crefle/web-ui';
-import { messages } from '@omf-mes/i18n';
-
+import { PageNav as SharedPageNav } from '../../patterns/page-nav';
 import type { PageView } from './pagination';
-
-const t = messages.gaugeCalibration;
 
 export interface PageNavProps {
   view: PageView;
@@ -11,33 +7,13 @@ export interface PageNavProps {
 }
 
 /**
- * 쪽 이동 — 이전·다음과 지금 위치뿐이다. 쪽 번호 목록(1 2 3 … 10)을 만들지 않는다
- * (W-01-09와 같은 근거 — 예정 조회에서 「7쪽으로 점프」는 정상 경로가 아니다).
- *
- * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
+ * 쪽 이동 — 공용 쪽 이동 줄(총 N건 · [처음] [이전] n / m [다음] [마지막])로 그린다. 1쪽뿐이거나
+ * 0건이어도 늘 보인다(단추는 잠긴 채 · #360). 쪽 크기는 이 화면이 서버에 정해진 값으로 보내므로
+ * 고르는 칸을 두지 않는다 — 넘기는 page · size 는 그대로다.
  */
 export const PageNav = ({ view, onChange }: PageNavProps) => (
-  <nav className="form-actions" aria-label={t.pageNav.label}>
-    <p className="field-note form-actions-secondary">{view.rangeLabel}</p>
-    <Button
-      variant="outlined"
-      size="sm"
-      disabled={!view.canPrev}
-      onClick={() => {
-        onChange(view.page - 1);
-      }}
-    >
-      {t.pageNav.prev}
-    </Button>
-    <Button
-      variant="outlined"
-      size="sm"
-      disabled={!view.canNext}
-      onClick={() => {
-        onChange(view.page + 1);
-      }}
-    >
-      {t.pageNav.next}
-    </Button>
-  </nav>
+  <SharedPageNav
+    meta={{ page: view.page, size: view.size, total: view.total }}
+    onChangePage={onChange}
+  />
 );

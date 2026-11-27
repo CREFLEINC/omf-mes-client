@@ -43,7 +43,9 @@ describe('WorkOrderProgressScreen', () => {
     it('필터 전체 건수를 서버가 준 값으로 보인다', async () => {
       renderScreen({ total: 128 });
 
-      expect(await screen.findByText(/^128건 중/)).toBeInTheDocument();
+      expect(
+        await screen.findByText(messages.screenPatterns.pageNav.total(128)),
+      ).toBeInTheDocument();
     });
   });
 

@@ -1,77 +1,55 @@
-import { messages } from '@omf-mes/i18n';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { PageNav } from './page-nav';
-import { type PageMeta, toPageView } from './pagination';
+import { toPageView } from './pagination';
 
-const t = messages.workOrderProgress.page;
+type Meta = Parameters<typeof toPageView>[0];
 
-const renderNav = (meta: Partial<PageMeta> = {}, shown = 50) => {
-  const onChange = vi.fn();
-  const view = toPageView({ page: 1, size: 50, total: 128, ...meta }, shown);
+const renderNav = (meta: Meta, shown: number) => {
+  const onChange = vi.fn<(page: number) => void>();
 
-  render(<PageNav view={view} onChange={onChange} />);
+  render(<PageNav view={toPageView(meta, shown)} onChange={onChange} />);
 
-  return {
-    onChange,
-    user: userEvent.setup(),
-    nav: screen.getByRole('navigation', { name: t.label }),
-  };
+  return { onChange, user: userEvent.setup() };
 };
 
-describe('PageNav', () => {
-  it('지금 보는 자리를 적는다', () => {
-    const { nav } = renderNav();
+/* 공용 쪽 이동 줄(총 N건 · [처음] [이전] n / m [다음] [마지막])로 그린다 — 1쪽 · 0건이어도 늘 보인다(#360). */
+describe('PageNav — 공용 쪽 이동 줄', () => {
+  it('총 건수와 지금 위치를 보인다', () => {
+    renderNav({ page: 2, size: 20, total: 45 }, 20);
 
-    expect(within(nav).getByText(t.range(1, 50, 128))).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: '쪽 이동' })).toBeInTheDocument();
+    expect(screen.getByText('총 45건')).toBeInTheDocument();
+    expect(screen.getByText('2 / 3')).toBeInTheDocument();
   });
 
-  it('다음 쪽으로 간다', async () => {
-    const { onChange, user, nav } = renderNav();
+  it('처음 · 이전 · 다음 · 마지막이 옮길 쪽을 알린다', async () => {
+    const { onChange, user } = renderNav({ page: 2, size: 20, total: 45 }, 20);
 
-    await user.click(within(nav).getByRole('button', { name: t.next }));
+    await user.click(screen.getByRole('button', { name: '처음' }));
+    await user.click(screen.getByRole('button', { name: '이전' }));
+    await user.click(screen.getByRole('button', { name: '다음' }));
+    await user.click(screen.getByRole('button', { name: '마지막' }));
 
-    expect(onChange).toHaveBeenCalledWith(2);
+    expect(onChange.mock.calls).toEqual([[1], [1], [3], [3]]);
   });
 
-  it('이전 쪽으로 간다', async () => {
-    const { onChange, user, nav } = renderNav({ page: 2 });
+  it('1쪽뿐이어도 줄은 보이고 단추만 잠긴다', () => {
+    renderNav({ page: 1, size: 20, total: 5 }, 5);
 
-    await user.click(within(nav).getByRole('button', { name: t.prev }));
-
-    expect(onChange).toHaveBeenCalledWith(1);
+    expect(screen.getByText('총 5건')).toBeInTheDocument();
+    expect(screen.getByText('1 / 1')).toBeInTheDocument();
+    for (const name of ['처음', '이전', '다음', '마지막']) {
+      expect(screen.getByRole('button', { name })).toBeDisabled();
+    }
   });
 
-  /* ⛔ 경계에서 버튼을 없애지 않고 «잠근다» — 사라지면 자리가 흔들려 옆 버튼을 잘못 누른다. */
-  it('⛔ 첫 쪽에서 이전이 잠긴다 — 사라지지 않는다', () => {
-    const { nav } = renderNav();
-    const prev = within(nav).getByRole('button', { name: t.prev });
+  it('0건이어도 줄이 보인다', () => {
+    renderNav({ page: 1, size: 20, total: 0 }, 0);
 
-    expect(prev).toBeInTheDocument();
-    expect(prev).toBeDisabled();
-  });
-
-  it('⛔ 마지막 쪽에서 다음이 잠긴다', () => {
-    const { nav } = renderNav({ page: 3 }, 28);
-
-    expect(within(nav).getByRole('button', { name: t.next })).toBeDisabled();
-  });
-
-  it('결과가 0건이면 양쪽이 잠긴다', () => {
-    const { nav } = renderNav({ total: 0 }, 0);
-
-    expect(within(nav).getByRole('button', { name: t.prev })).toBeDisabled();
-    expect(within(nav).getByRole('button', { name: t.next })).toBeDisabled();
-  });
-
-  /* 버튼과 안내가 같은 계산을 본다 — 「다음」이 눌리는데 없는 자리를 가리키지 않는다. */
-  it('⛔ 잠긴 버튼을 눌러도 아무 일이 없다', async () => {
-    const { onChange, user, nav } = renderNav();
-
-    await user.click(within(nav).getByRole('button', { name: t.prev }));
-
-    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByText('총 0건')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '다음' })).toBeDisabled();
   });
 });

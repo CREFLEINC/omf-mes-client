@@ -36,12 +36,19 @@ describe('toWorkOrderPageView', () => {
       '전체 45건',
     ],
   ])('%s derives navigation and range state', (_name, meta, shown, flags, rangeLabel) => {
-    expect(toWorkOrderPageView(meta, shown)).toEqual({ ...flags, rangeLabel });
+    expect(toWorkOrderPageView(meta, shown)).toEqual({
+      ...flags,
+      size: meta.size,
+      total: meta.total,
+      rangeLabel,
+    });
   });
 
   it('preserves a valid server page for zero results without an inverted range', () => {
     expect(toWorkOrderPageView({ page: 7, size: 20, total: 0 }, 5)).toEqual({
       page: 7,
+      size: 20,
+      total: 0,
       canFirst: true,
       canPrev: true,
       canNext: false,
@@ -66,6 +73,8 @@ describe('toWorkOrderPageView', () => {
 
     expect(toWorkOrderPageView({ page: max, size: 1, total: max }, 1)).toEqual({
       page: max,
+      size: 1,
+      total: max,
       canFirst: true,
       canPrev: true,
       canNext: false,
@@ -74,6 +83,8 @@ describe('toWorkOrderPageView', () => {
     });
     expect(toWorkOrderPageView({ page: 1, size: max, total: max }, max)).toEqual({
       page: 1,
+      size: max,
+      total: max,
       canFirst: false,
       canPrev: false,
       canNext: false,

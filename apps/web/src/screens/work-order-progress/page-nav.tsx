@@ -1,6 +1,6 @@
-import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { PageNav as SharedPageNav } from '../../patterns/page-nav';
 import type { PageView } from './pagination';
 
 export interface PageNavProps {
@@ -9,36 +9,13 @@ export interface PageNavProps {
 }
 
 /**
- * 쪽 이동. DS 에 전용 부품이 없어 조합으로 만든다(design-system-v2-webui#72).
- *
- * 경계 판정은 `pagination` 이 갖는다 — 버튼과 안내가 **같은 계산**을 보게 하려는 것이다.
+ * 쪽 이동 — 공용 쪽 이동 줄(총 N건 · [처음] [이전] n / m [다음] [마지막])로 그린다. 1쪽뿐이거나
+ * 0건이어도 늘 보인다(단추는 잠긴 채 · #360). 쪽 크기는 이 화면이 서버에 정해진 값으로 보내므로
+ * 고르는 칸을 두지 않는다 — 넘기는 page · size 는 그대로다.
  */
-export const PageNav = ({ view, onChange }: PageNavProps) => {
-  const t = messages.workOrderProgress.page;
-
-  return (
-    <nav className="form-actions work-order-progress-page-nav" aria-label={t.label}>
-      <p className="field-note form-actions-secondary">{view.rangeLabel}</p>
-      <Button
-        variant="outlined"
-        size="sm"
-        disabled={!view.canPrev}
-        onClick={() => {
-          onChange(view.page - 1);
-        }}
-      >
-        {t.prev}
-      </Button>
-      <Button
-        variant="outlined"
-        size="sm"
-        disabled={!view.canNext}
-        onClick={() => {
-          onChange(view.page + 1);
-        }}
-      >
-        {t.next}
-      </Button>
-    </nav>
-  );
-};
+export const PageNav = ({ view, onChange }: PageNavProps) => (
+  <SharedPageNav
+    meta={{ page: view.page, size: view.size, total: view.total }}
+    onChangePage={onChange}
+  />
+);

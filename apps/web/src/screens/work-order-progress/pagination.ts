@@ -8,6 +8,9 @@ export interface PageMeta {
 
 export interface PageView {
   page: number;
+  /** 한 쪽 건수 · 전체 건수 — 공용 쪽 이동 줄(총 N건 · n / m)에 그대로 넘긴다(#360). */
+  size: number;
+  total: number;
   canPrev: boolean;
   canNext: boolean;
   /** 마지막 쪽을 지나쳐 있는가 — 조건이 좁아졌는데 쪽 번호가 주소에 남은 경우다. */
@@ -36,6 +39,8 @@ export const toPageView = (meta: PageMeta, shown: number): PageView => {
 
   return {
     page,
+    size,
+    total: meta.total,
     canPrev: page > 1,
     canNext: page < totalPages,
     isBeyondLast: meta.total > 0 && page > totalPages,

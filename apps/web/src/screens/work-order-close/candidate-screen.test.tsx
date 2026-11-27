@@ -1040,7 +1040,7 @@ describe('WorkOrderCloseCandidateScreen', () => {
     expectReasonPlaceholder(nextInput);
     await user.click(reasonField(nextInput));
     await user.click(screen.getByRole('option', { name: 'Synthetic first reason' }));
-    await user.click(screen.getByRole('button', { name: messages.workOrder.pageNav.next }));
+    await user.click(screen.getByRole('button', { name: messages.screenPatterns.pageNav.next }));
     await user.click(await screen.findByRole('button', { name: 'SYN-WO-702 선택' }));
     nextInput = await screen.findByRole('region', { name: t.input.pane });
     expectReasonPlaceholder(nextInput);
@@ -1170,7 +1170,7 @@ describe('WorkOrderCloseCandidateScreen', () => {
     expect(row).not.toHaveAttribute('aria-current');
     await user.click(row);
     await screen.findByRole('region', { name: t.outboundItems.pane });
-    await user.click(screen.getByRole('button', { name: messages.workOrder.pageNav.next }));
+    await user.click(screen.getByRole('button', { name: messages.screenPatterns.pageNav.next }));
     expect(await screen.findByRole('button', { name: 'SYN-WO-702 선택' })).not.toHaveAttribute(
       'aria-current',
     );

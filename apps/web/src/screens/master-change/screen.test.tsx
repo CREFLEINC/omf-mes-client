@@ -515,7 +515,7 @@ describe('MasterChangeScreen — 쪽 이동', () => {
       '?from=2026-08-01&to=2026-08-06',
     );
 
-    expect(await screen.findByText('전체 0건')).toBeInTheDocument();
+    expect(await screen.findByText('총 0건')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '이전' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '다음' })).toBeDisabled();
   });
