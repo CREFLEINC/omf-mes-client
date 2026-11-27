@@ -42645,6 +42645,17 @@ main .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-to
   overflow: auto;
 }
 
+/*
+ * 입고 관리 — 위아래로 쌓이면(좁은 창 · 「⋯」 상하 배치) 가운데 높이 막대(PaneHeightSplitter)로 정한 높이를 발주 목록이 그대로
+ * 쓴다 — 다른 목록 · 상세 화면과 같다(#360). 정하지 않았으면 위 규칙대로 줄 수만큼(60%까지)이다.
+ */
+main .po-board-split.po-board-split.po-board-split.inbound-schedule-split.is-stacked[style*='--stacked-list-height'] > :first-child:not(:last-child) {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  height: var(--stacked-list-height);
+  max-height: var(--stacked-list-height);
+}
+
 /* 공장 근무일 — 출고 작업일 예시: 날짜 옆 흐린 보조 글(건너뛴 휴일). 표 위 안내 한 줄과 표 사이 간격(사용자 지시 2026-11-26). */
 .plant-working-days-example {
   display: inline-flex;
@@ -42673,17 +42684,6 @@ dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(.pop-ui
 
 dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head))
   > [class*='_panel_']
-/*
- * 입고 관리 — 위아래로 쌓이면(좁은 창 · 「⋯」 상하 배치) 가운데 높이 막대(PaneHeightSplitter)로 정한 높이를 발주 목록이 그대로
- * 쓴다 — 다른 목록 · 상세 화면과 같다(#360). 정하지 않았으면 위 규칙대로 줄 수만큼(60%까지)이다.
- */
-main .po-board-split.po-board-split.po-board-split.inbound-schedule-split.is-stacked[style*='--stacked-list-height'] > :first-child:not(:last-child) {
-  box-sizing: border-box;
-  flex: 0 0 auto;
-  height: var(--stacked-list-height);
-  max-height: var(--stacked-list-height);
-}
-
   > header[class*='_header_'] {
   align-items: center;
   padding: var(--space-4) var(--space-5);
