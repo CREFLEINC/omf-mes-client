@@ -63,6 +63,7 @@ export const DistributionPeriodPicker = ({
           title={label}
           className="erp-wo-period-calendar"
           onClose={() => setOpen(false)}
+          showCloseButton={false}
           footer={
             <div className="erp-wo-period-calendar-actions">
               <Button variant="outlined" onClick={() => setMonth(monthOf(plantToday()))}>
