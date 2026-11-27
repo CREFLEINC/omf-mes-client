@@ -492,7 +492,9 @@ export const DistributionControls = ({
                         (!row.start ||
                           !row.end ||
                           !row.lineId ||
-                          (row.mode !== 'daily' && row.quantity.trim() === '')),
+                          (row.mode === 'daily'
+                            ? dateRange(row).some((date) => (row.daily[date] ?? '').trim() === '')
+                            : row.quantity.trim() === '')),
                     )
                   }
                   onClick={async () => {
@@ -1191,6 +1193,11 @@ export const DistributionControls = ({
                                           <td key={date}>
                                             <TextField
                                               size="md"
+                                              className={
+                                                (row.daily[date] ?? '').trim() === ''
+                                                  ? 'erp-wo-required-empty'
+                                                  : undefined
+                                              }
                                               aria-label={`조건 ${index + 1} ${date} 수량`}
                                               placeholder={ph.dailyQty}
                                               inputMode="decimal"
