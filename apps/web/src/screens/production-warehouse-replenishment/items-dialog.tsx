@@ -49,6 +49,9 @@ export const ItemDialog = ({ item, settings, warehouses, onClose }: ItemDialogPr
   const toast = useToast();
   const rangeId = useId();
   const pointId = useId();
+  const warehouseId = useId();
+  const itemFieldId = useId();
+  const sourceId = useId();
   const [warehouse, setWarehouse] = useState(
     String(item?.productionWarehouseId ?? settings.warehouses[0]?.warehouseId ?? ''),
   );
@@ -130,13 +133,14 @@ export const ItemDialog = ({ item, settings, warehouses, onClose }: ItemDialogPr
         open={!confirmDelete}
         onClose={onClose}
         title={item === null ? ti.addTitle : ti.editTitle}
+        className={item === null ? 'dialog-icon-add' : 'dialog-icon-edit'}
         size="sm"
         footer={
           <>
             {item !== null && (
               <Button
                 variant="outlined"
-                className={`form-actions-secondary ${item === null ? 'dialog-icon-add' : 'dialog-icon-edit'}`}
+                className="form-actions-secondary"
                 onClick={() => {
                   remove.reset();
                   setConfirmDelete(true);
@@ -163,30 +167,49 @@ export const ItemDialog = ({ item, settings, warehouses, onClose }: ItemDialogPr
           {errorBanner}
           {item === null ? (
             <>
-              <Select
-                aria-label={ti.productionWarehouse}
-                placeholder={ti.productionWarehousePlaceholder}
-                value={warehouse}
-                options={settings.warehouses.map((row) => ({
-                  value: String(row.warehouseId),
-                  label: row.warehouseName,
-                }))}
-                onChange={(value) => {
-                  touch();
-                  setWarehouse(value);
-                  if (value === source) setSource('');
-                }}
-              />
-              <ItemSelect
-                aria-label={ti.item}
-                placeholder={ti.item}
-                itemTypeCodes={MATERIAL_ITEM_TYPES}
-                value={itemId === '' ? null : itemId}
-                onChange={(value) => {
-                  touch();
-                  setItemId(value);
-                }}
-              />
+              {/* 필수 칸 — 이름 옆 빨간 * 와 빈 칸 빨간 바탕(#360 점검). */}
+              <div className="field-cell">
+                <label className="field-label" htmlFor={warehouseId}>
+                  {ti.productionWarehouse}
+                  <span className="required-mark" aria-hidden="true">
+                    {' *'}
+                  </span>
+                </label>
+                <Select
+                  id={warehouseId}
+                  aria-required="true"
+                  placeholder={ti.productionWarehousePlaceholder}
+                  value={warehouse}
+                  options={settings.warehouses.map((row) => ({
+                    value: String(row.warehouseId),
+                    label: row.warehouseName,
+                  }))}
+                  onChange={(value) => {
+                    touch();
+                    setWarehouse(value);
+                    if (value === source) setSource('');
+                  }}
+                />
+              </div>
+              <div className="field-cell">
+                <label className="field-label" htmlFor={itemFieldId}>
+                  {ti.item}
+                  <span className="required-mark" aria-hidden="true">
+                    {' *'}
+                  </span>
+                </label>
+                <ItemSelect
+                  id={itemFieldId}
+                  aria-required="true"
+                  placeholder={ti.item}
+                  itemTypeCodes={MATERIAL_ITEM_TYPES}
+                  value={itemId === '' ? null : itemId}
+                  onChange={(value) => {
+                    touch();
+                    setItemId(value);
+                  }}
+                />
+              </div>
             </>
           ) : (
             <dl className="replenishment-head">
@@ -225,16 +248,25 @@ export const ItemDialog = ({ item, settings, warehouses, onClose }: ItemDialogPr
               setTarget(event.target.value);
             }}
           />
-          <Select
-            aria-label={ti.source}
-            placeholder={ti.source}
-            value={source === '' ? null : source}
-            options={sourceOptions(warehouses, warehouse)}
-            onChange={(value) => {
-              touch();
-              setSource(value);
-            }}
-          />
+          <div className="field-cell">
+            <label className="field-label" htmlFor={sourceId}>
+              {ti.source}
+              <span className="required-mark" aria-hidden="true">
+                {' *'}
+              </span>
+            </label>
+            <Select
+              id={sourceId}
+              aria-required="true"
+              placeholder={ti.source}
+              value={source === '' ? null : source}
+              options={sourceOptions(warehouses, warehouse)}
+              onChange={(value) => {
+                touch();
+                setSource(value);
+              }}
+            />
+          </div>
           {/* 잠긴 까닭은 화면에 펼치지 않고 화면 읽기용으로만(omf-all-around#360). */}
           {blocked && (
             <p id={rangeId} className="visually-hidden">
