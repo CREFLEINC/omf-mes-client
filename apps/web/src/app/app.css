@@ -3745,6 +3745,44 @@ dialog.routing-history-dialog {
   gap: var(--space-1);
 }
 
+/* 상세 세 상자(변경 내역 · 영향받는 작업지시 · 처리 방식) 제목 앞 아이콘(시안 · #360). */
+.po-change-review-title > .material-symbols-outlined:first-child,
+.po-change-review-title > [aria-hidden='true']:first-child {
+  margin-inline-end: var(--space-1);
+  color: var(--on-surface-muted);
+}
+
+/* 한 줄 안내(내역 없음 파랑 · 처리 불가 주황) — 상자 폭을 다 쓰고, 「|」 뒤 원문 보기 링크. */
+.po-change-review-note {
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.po-change-review-note-bar {
+  color: var(--outline);
+}
+
+/* 영향받는 작업지시 — 머리 글자와 작업지시 번호는 줄바꿈하지 않는다. */
+.po-change-review-table th {
+  white-space: nowrap;
+}
+
+/* 처리 방식 라디오 — 이름 아래 흐린 설명 한 줄. */
+.po-change-review-choices {
+  gap: var(--space-3);
+}
+
+.po-change-review-choice {
+  display: grid;
+  gap: 2px;
+}
+
+.po-change-review-choice > small {
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+}
+
 .po-change-review-diff-values > div {
   display: grid;
   gap: var(--space-1);

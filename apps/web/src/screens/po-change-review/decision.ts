@@ -122,6 +122,8 @@ export const decisionLockReason = (input: DecisionGateInput): string | undefined
 
   if (input.isSaving) return t.saving;
   if (input.selected === null) return t.selectNone;
+  /* 변경 내역을 받지 못한 건은 서버가 「확인할 변경이 없습니다」로 거절한다 — 누르기 전에 잠근다(#360). */
+  if (input.selected.lastChange === null) return t.noChange;
   if (input.draft.decision === null) return t.decisionNone;
   if (reasonError(input.draft) !== undefined) return t.reason;
   if (Object.keys(adjustmentErrors(input.draft, input.workOrders)).length > 0) return t.adjustment;

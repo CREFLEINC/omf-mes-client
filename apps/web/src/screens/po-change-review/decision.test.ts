@@ -24,7 +24,7 @@ const selected: ChangeNotification = {
   dueDate: '2026-08-20',
   statusCode: 'CODE-A',
   acknowledgedAt: null,
-  lastChange: null,
+  lastChange: { receivedAt: '2026-08-05T09:12:00+09:00', changedFields: [] },
 };
 
 const workOrder = (id: number, producedQty: number | null): AffectedWorkOrder => ({
@@ -78,6 +78,13 @@ describe('reasonError', () => {
 });
 
 describe('decisionLockReason', () => {
+  /* 서버가 「확인할 변경이 없습니다」로 거절하는 건 — 누르기 전에 잠근다(#360). */
+  it('⛔ 변경 내역을 못 받은 건은 판정과 상관없이 잠근다', () => {
+    const withoutChange = { ...selected, lastChange: null };
+    expect(decisionLockReason(input({ selected: withoutChange }))).toBe(t.lock.noChange);
+    expect(toAcknowledgeBody(input({ selected: withoutChange }))).toBeNull();
+  });
+
   it('반영은 사유 없이도 열린다', () => {
     expect(decisionLockReason(input())).toBeUndefined();
   });

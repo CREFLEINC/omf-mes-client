@@ -14,7 +14,7 @@ import {
   toAcknowledgeBody,
   type DecisionDraft,
 } from './decision';
-import { useUomLookup } from './lookups';
+import { useUomLookup, useWorkOrderStatusName } from './lookups';
 import { useAcknowledgeMutation } from './mutations';
 import { DecisionPane, DiffPane, NotificationList, WorkOrderPane } from './panes';
 import { useAffectedWorkOrders, useChangeNotifications, useProductionOrderDetail } from './queries';
@@ -51,6 +51,7 @@ export const PoChangeReviewScreen = () => {
   const list = useChangeNotifications();
   const rows = useMemo(() => list.data?.items ?? [], [list.data]);
   const uoms = useUomLookup();
+  const statusNameOf = useWorkOrderStatusName();
   /* 잠금 토큰은 «그 P/O 의 상세»가 내린다 — 고르면 함께 부른다(B-1-1). */
   const detail = useProductionOrderDetail(selectedId);
   const workOrders = useAffectedWorkOrders(selectedId);
@@ -135,10 +136,18 @@ export const PoChangeReviewScreen = () => {
                 ) : null
               }
               onSelect={(id) => {
+                /*
+                 * 앞 건에서 서버가 거절한 빨간 상자가 다른 건으로 옮겨 붙지 않게 지운다(#360) — 종전에는 선택을 바꿔도
+                 * 「지금은 저장할 수 없는 상태입니다」가 계속 떠 있었다.
+                 */
                 if (id === selectedId) {
-                  deselectConfirm.request(hasDraftInput, () => setSelectedId(null));
+                  deselectConfirm.request(hasDraftInput, () => {
+                    write.reset();
+                    setSelectedId(null);
+                  });
                   return;
                 }
+                write.reset();
                 setSelectedId(id);
               }}
             />
@@ -156,6 +165,7 @@ export const PoChangeReviewScreen = () => {
                 isLoading={workOrders.isPending && selectedId !== null}
                 isError={workOrders.isError}
                 hasSelection={selectedId !== null}
+                statusNameOf={statusNameOf}
                 overProduced={warnings.overProduced}
                 changedQty={selected?.orderQty ?? null}
                 showAdjustments={draft.decision === 'APPLY'}
@@ -173,56 +183,54 @@ export const PoChangeReviewScreen = () => {
                 draft={draft}
                 showError={showError}
                 warnings={warnings}
+                blockedNote={lock === t.lock.noChange ? lock : undefined}
                 onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
-              />
-
-              <section className="pane po-change-review-pane" aria-label={t.decision.submit}>
-                {isConflict ? (
-                  <div className="banner-slot">
-                    <AlertBanner
-                      variant="error"
-                      title={t.conflict.title}
-                      action={
-                        <Button
-                          variant="outlined"
-                          size="sm"
-                          onClick={() => {
-                            write.reset();
-                            setSelectedId(null);
-                            void list.refetch();
-                          }}
+                footer={
+                  <>
+                    {/* 빨간 상자는 [처리]를 눌러 서버가 거절했을 때만(#360). */}
+                    {isConflict ? (
+                      <div className="banner-slot">
+                        <AlertBanner
+                          variant="error"
+                          title={t.conflict.title}
+                          action={
+                            <Button
+                              variant="outlined"
+                              size="sm"
+                              onClick={() => {
+                                write.reset();
+                                setSelectedId(null);
+                                void list.refetch();
+                              }}
+                            >
+                              {t.conflict.reload}
+                            </Button>
+                          }
                         >
-                          {t.conflict.reload}
-                        </Button>
-                      }
-                    >
-                      {t.conflict.description}
-                    </AlertBanner>
-                  </div>
-                ) : (
-                  <SaveErrorBanner error={write.error} onReload={() => void list.refetch()} />
-                )}
-
-                {lock !== undefined && (
-                  <div className="banner-slot">
-                    <AlertBanner variant="info">{lock}</AlertBanner>
-                  </div>
-                )}
-                <div className="form-actions">
-                  <Button
-                    disabled={lock !== undefined || detail.isPending}
-                    onClick={() => {
-                      setShowError(true);
-                      const body = toAcknowledgeBody(gate);
-                      /* 게이트가 열려 있어도 본문이 없으면 멈춘다 — 반쪽짜리 판정을 보내지 않는다. */
-                      if (body === null) return;
-                      write.write(body);
-                    }}
-                  >
-                    {t.decision.submit}
-                  </Button>
-                </div>
-              </section>
+                          {t.conflict.description}
+                        </AlertBanner>
+                      </div>
+                    ) : (
+                      <SaveErrorBanner error={write.error} onReload={() => void list.refetch()} />
+                    )}
+                    {/* 잠김 사유 파란 띠는 없앴다 — 필수 표시는 단추 잠금으로 충분하다(사용자 지시 · #360). */}
+                    <div className="form-actions">
+                      <Button
+                        disabled={lock !== undefined || detail.isPending}
+                        onClick={() => {
+                          setShowError(true);
+                          const body = toAcknowledgeBody(gate);
+                          /* 게이트가 열려 있어도 본문이 없으면 멈춘다 — 반쪽짜리 판정을 보내지 않는다. */
+                          if (body === null) return;
+                          write.write(body);
+                        }}
+                      >
+                        {t.decision.submit}
+                      </Button>
+                    </div>
+                  </>
+                }
+              />
             </>
           ),
         }}
