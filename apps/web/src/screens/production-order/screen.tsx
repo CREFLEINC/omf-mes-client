@@ -19,6 +19,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
+import { FitLine } from '../../patterns/fit-line';
 import { BulkResult, type BulkResultFilter } from '../../patterns/bulk-result';
 import { ScreenHeader } from '../../patterns/screen-header';
 import { Select } from '../../patterns/select';
@@ -29,6 +30,7 @@ import { plantNote, usePlantOptions, type DataScope } from '../dashboard/lookups
 import { useWorklistBulk, type BulkKind, type BulkTarget } from './bulk-actions';
 import { ForbiddenNotice, isForbidden } from './forbidden-notice';
 import { WorklistBulkDialog } from './bulk-dialog';
+import { useItemTypeNameOf } from './code-names';
 import { useItemCodeNames } from './item-lookups';
 import { useUomReferenceLookup } from './reference-lookups';
 import type { ProductionOrderFact } from './types';
@@ -48,8 +50,6 @@ const t = messages.erpWorkOrderFlow;
 
 const NO_SCOPES: readonly DataScope[] = [];
 
-/** 공장 선택지 이름은 「코드 · 이름」이다(dashboard `usePlantOptions`). 표에는 앞의 코드만 쓴다. */
-
 /** 조회 조건 칸(번호, 납기, 품목, 고른 공장)에 값이 있는가. 처리 상태 칩과 정해진 공장은 조건으로 치지 않는다. */
 const hasSearchConditions = (filters: WorklistFilters): boolean =>
   filters.q !== '' ||
@@ -67,6 +67,8 @@ export interface WorklistRow {
   uom: string;
   itemCode: string;
   itemName: string;
+  /** 품목 유형 이름(제품 · 반제품). 품목을 아직 못 받았으면 빈 값. */
+  itemType: string;
   qtyLabel: string;
 }
 
@@ -123,6 +125,7 @@ export const ProductionOrderScreen = ({
   const bulkReasonId = useId();
 
   const facts = list.data?.items ?? [];
+  const itemTypeNameOf = useItemTypeNameOf();
   const itemNames = useItemCodeNames(facts.map((fact) => fact.itemId));
   const outcomes = new Map((bulk.run?.outcomes ?? []).map((item) => [item.id, item]));
   const toRow = (fact: ProductionOrderFact): WorklistRow => {
@@ -134,6 +137,7 @@ export const ProductionOrderScreen = ({
       uom,
       itemCode: item?.itemCode ?? '',
       itemName: item?.itemName ?? '',
+      itemType: item === undefined ? '' : itemTypeNameOf(item.itemTypeCode),
       qtyLabel: `${quantity(fact.orderQty)} ${uom}`.trim(),
     };
   };
@@ -191,38 +195,20 @@ export const ProductionOrderScreen = ({
       header: t.list.columns.orderNo,
       render: (row) => <span className="nowrap-cell mono-cell">{row.fact.productionOrderNo}</span>,
     },
-    /* 공장이 정해져 있으면 모든 행이 같은 공장이라 열을 두지 않는다. 표가 좁아 코드만 보이고 이름은 마우스를 올리면 나온다. */
-    ...(plant === ''
-      ? [
-          {
-            key: 'plant',
-            header: t.list.columns.plant,
-            render: (row: WorklistRow) => {
-              const label =
-                plants.entries.find((entry) => entry.value === String(row.fact.plantId))?.label ??
-                '';
-              return (
-                <span className="nowrap-cell" title={label}>
-                  {label}
-                </span>
-              );
-            },
-          },
-        ]
-      : []),
     {
       key: 'itemCode',
       header: t.list.columns.itemCode,
-      render: (row) => <span className="nowrap-cell">{row.itemCode}</span>,
+      render: (row) => <FitLine className="erp-wo-item-code" text={row.itemCode} />,
     },
     {
       key: 'itemName',
       header: t.list.columns.itemName,
-      render: (row) => (
-        <span className="ellipsis-cell" title={`${row.itemName} (${row.itemCode})`}>
-          {row.itemName}
-        </span>
-      ),
+      render: (row) => <FitLine className="erp-wo-item-name" text={row.itemName} />,
+    },
+    {
+      key: 'itemType',
+      header: t.list.columns.itemType,
+      render: (row) => <span className="nowrap-cell">{row.itemType}</span>,
     },
     {
       key: 'orderQty',
@@ -503,7 +489,7 @@ export const ProductionOrderScreen = ({
               caption={<span className="visually-hidden">{t.list.caption}</span>}
               columns={columns.filter((column) =>
                 hasPlanQuantities
-                  ? !['itemCode', 'dueDate', 'pending'].includes(column.key)
+                  ? !['dueDate', 'pending'].includes(column.key)
                   : !['confirmedPlanQty', 'draftPlanQty', 'remainingQty'].includes(column.key),
               )}
               rows={rows}

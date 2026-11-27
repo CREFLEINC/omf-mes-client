@@ -163,9 +163,9 @@ export const erpWorkOrderFlow = {
     caption: SCREEN_NAME,
     columns: {
       orderNo: 'ERP W/O 번호',
-      plant: '공장',
       itemCode: '품목 코드',
       itemName: '품목명',
+      itemType: '품목 유형',
       orderQty: 'ERP W/O 수량',
       plannedStartDate: '계획 시작일',
       dueDate: '납기일',
