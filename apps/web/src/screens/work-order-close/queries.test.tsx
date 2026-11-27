@@ -56,7 +56,6 @@ const closeFact = (workOrderId: number) => ({
   plannedEquipmentId: null,
   plannedMoldId: null,
   plannedShiftId: null,
-  defaultWipLocationId: null,
   defaultFgLocationId: null,
   defaultScrapLocationId: null,
   remarks: null,
@@ -165,7 +164,6 @@ describe('work-order close reads', () => {
         items: [
           {
             ...workOrder(702),
-            defaultWipLocationId: 902,
             completedAt: '2026-08-23T10:00:00+09:00',
             completionVarianceReasonCode: 'SYN-VARIANCE',
             closedAt: '2026-08-23T11:00:00+09:00',
@@ -201,7 +199,6 @@ describe('work-order close reads', () => {
       items: [
         {
           ...closeFact(702),
-          defaultWipLocationId: 902,
           completedAt: '2026-08-23T10:00:00+09:00',
           completionVarianceReasonCode: 'SYN-VARIANCE',
           closedAt: '2026-08-23T11:00:00+09:00',

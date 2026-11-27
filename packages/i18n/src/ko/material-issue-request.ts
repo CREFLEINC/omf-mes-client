@@ -111,7 +111,6 @@ export const materialIssueRequest = {
     noLinesDescription: 'BOM 소요량을 불러오거나 품목을 직접 추가하세요.',
   },
   notes: {
-    warehouseAutoFilled: 'W/O 의 기본 재공 위치로 채웠습니다. 필요하면 바꿀 수 있습니다.',
   },
   result: {
     title: '출고 요청을 발행했습니다',

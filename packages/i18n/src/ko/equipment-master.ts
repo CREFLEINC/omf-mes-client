@@ -194,7 +194,6 @@ export const equipmentMaster = {
     groupName: '그룹명',
     groupType: '그룹유형',
     parentGroup: '상위그룹',
-    defaultWipLocation: '기본 WIP 위치',
     defaultFgLocation: '기본 완제품 위치',
     defaultScrapLocation: '기본 스크랩 위치',
     department: '담당 부서',

@@ -12,7 +12,6 @@ const valid: GroupFormValues = {
   groupName: '프레스 구역',
   groupTypeCode: 'LINE',
   parentGroupId: '',
-  defaultWipLocationId: '',
   defaultFgLocationId: '',
   departmentId: '',
 };
@@ -32,7 +31,6 @@ describe('GROUP_FORM_FIELDS', () => {
         'groupTypeCode',
         'parentGroupId',
         'plantId',
-        'defaultWipLocationId',
         'defaultFgLocationId',
       ].sort(),
     );

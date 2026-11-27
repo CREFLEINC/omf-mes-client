@@ -151,7 +151,6 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
     groupName: 'Tên nhóm',
     groupType: 'Loại nhóm',
     parentGroup: 'Nhóm cha',
-    defaultWipLocation: 'Vị trí WIP mặc định',
     defaultFgLocation: 'Vị trí thành phẩm mặc định',
     defaultScrapLocation: 'Vị trí phế liệu mặc định',
     department: 'Phòng ban phụ trách',

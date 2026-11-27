@@ -479,7 +479,6 @@ export const erpWorkOrderFlow = {
         plannedMoldId: '금형',
         responsibleWorkerId: '작업자',
         plannedShiftId: '교대',
-        defaultWipLocationId: 'WIP 위치',
         defaultFgLocationId: '생산품 입고 창고',
         defaultScrapLocationId: '스크랩 위치',
         plannedStartAtLocal: '계획 시작',

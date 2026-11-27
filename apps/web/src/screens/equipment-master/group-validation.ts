@@ -14,7 +14,6 @@ export const GROUP_FORM_FIELDS: readonly string[] = [
   'groupName',
   'groupTypeCode',
   'parentGroupId',
-  'defaultWipLocationId',
   'defaultFgLocationId',
 ];
 

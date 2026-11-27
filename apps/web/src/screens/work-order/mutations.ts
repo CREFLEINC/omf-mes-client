@@ -16,7 +16,6 @@ const WORK_ORDER_ASSIGNMENT_FIELDS = [
   'plannedShiftId',
   'productionLineId',
   'responsibleWorkerId',
-  'defaultWipLocationId',
   'defaultFgLocationId',
 ] as const;
 

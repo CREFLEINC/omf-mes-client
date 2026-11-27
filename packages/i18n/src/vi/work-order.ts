@@ -165,7 +165,6 @@ export const workOrder: Translated<typeof ko.workOrder> = {
       worker: 'Người phụ trách',
       mold: 'Khuôn',
       shift: 'Ca theo kế hoạch',
-      defaultWipLocation: 'Vị trí WIP mặc định',
       defaultFgLocation: 'Vị trí thành phẩm mặc định',
       defaultScrapLocation: 'Vị trí phế liệu mặc định',
     },

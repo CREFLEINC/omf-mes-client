@@ -14,7 +14,6 @@ const values: GroupFormValues = {
   groupName: '프레스 구역',
   groupTypeCode: 'LINE',
   parentGroupId: '',
-  defaultWipLocationId: '',
   defaultFgLocationId: '',
   departmentId: '',
 };
@@ -36,7 +35,6 @@ const renderPane = (overrides: Partial<GroupFormPaneProps> = {}) => {
       plantOptions={[{ value: '11', label: '제1공장' }]}
       parentOptions={[{ value: '', label: t.form.parentNone }]}
       locationOptions={{
-        defaultWipLocationId: [{ value: '301', label: '[WH20 MFG WH] WH20-DEF · MFG' }],
         defaultFgLocationId: [],
       }}
       departmentOptions={[
@@ -230,18 +228,11 @@ describe('GroupFormPane', () => {
     expect(screen.queryByText(t.actionReasons.deactivateNeedsCleanForm)).toBeNull();
   });
 
-  it('WIP와 생산품 입고 위치만 표시한다', async () => {
-    const user = userEvent.setup();
-    const { onChange } = renderPane();
-
+  it('생산품 입고 위치를 표시하고 기본 WIP 위치를 표시하지 않는다', () => {
+    renderPane();
     expect(screen.getByRole('combobox', { name: t.fields.defaultFgLocation })).toBeInTheDocument();
-    expect(
-      screen.queryByRole('combobox', { name: t.fields.defaultScrapLocation }),
-    ).not.toBeInTheDocument();
-    await user.click(screen.getByRole('combobox', { name: t.fields.defaultWipLocation }));
-    await user.click(screen.getByRole('option', { name: /WH20-DEF/ }));
-
-    expect(onChange).toHaveBeenCalledWith({ defaultWipLocationId: '301' });
+    expect(screen.queryByRole('combobox', { name: '기본 WIP 위치' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: t.fields.defaultScrapLocation })).not.toBeInTheDocument();
   });
 
   /* 001 W-05-12 — 알림 대상 부서. 상위 그룹에서 이어받지 않는다는 사실을 라벨 옆 ⓘ 로 밝힌다. */

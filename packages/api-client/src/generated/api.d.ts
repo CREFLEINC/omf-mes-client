@@ -33986,7 +33986,6 @@ export interface paths {
            *               "routingOperationId": 701,
            *               "productionLineId": 11,
            *               "plannedEquipmentId": 2001,
-           *               "defaultWipLocationId": 1101,
            *               "defaultFgLocationId": 5201,
            *               "defaultScrapLocationId": 1103,
            *               "plannedTimeSourceCode": "USER",
@@ -34012,7 +34011,6 @@ export interface paths {
            *             {
            *               "routingOperationId": 701,
            *               "productionLineId": 12,
-           *               "defaultWipLocationId": 1201,
            *               "defaultFgLocationId": 5101,
            *               "defaultScrapLocationId": 1203,
            *               "plannedTimeSourceCode": "SYSTEM"
@@ -34424,7 +34422,6 @@ export interface paths {
              *               "plannedEquipmentId": 2001,
              *               "plannedMoldId": null,
              *               "responsibleWorkerId": null,
-             *               "defaultWipLocationId": 1101,
              *               "defaultFgLocationId": 5101,
              *               "defaultScrapLocationId": 1103,
              *               "equipmentRequired": true,
@@ -34451,7 +34448,6 @@ export interface paths {
              *               "plannedEquipmentId": null,
              *               "plannedMoldId": null,
              *               "responsibleWorkerId": 501,
-             *               "defaultWipLocationId": 1101,
              *               "defaultFgLocationId": 5101,
              *               "defaultScrapLocationId": 1103,
              *               "equipmentRequired": false,
@@ -51899,12 +51895,6 @@ export interface components {
       isActive: boolean;
       /**
        * Format: int64
-       * @description 라인 기본 WIP 위치. 계획 확정·4M 라인 선택 때 W/O defaultWipLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 근거: 서버 선행 · 장부 P-46
-       * @example 3001
-       */
-      defaultWipLocationId?: number | null;
-      /**
-       * Format: int64
        * @description 라인 기본 완제품 위치. 계획 확정·4M 라인 선택 때 W/O defaultFgLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 근거: 서버 선행 · 장부 P-46
        * @example 3001
        */
@@ -52474,12 +52464,6 @@ export interface components {
       isActive: boolean;
       /**
        * Format: int64
-       * @description 라인 기본 WIP 위치. 계획 확정·4M 라인 선택 때 W/O defaultWipLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 근거: 서버 선행 · 장부 P-46
-       * @example 3001
-       */
-      defaultWipLocationId?: number | null;
-      /**
-       * Format: int64
        * @description 라인 기본 완제품 위치. 계획 확정·4M 라인 선택 때 W/O defaultFgLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 근거: 서버 선행 · 장부 P-46
        * @example 3001
        */
@@ -52525,12 +52509,6 @@ export interface components {
       parentGroupId?: number | null;
       /**
        * Format: int64
-       * @description 라인 기본 WIP 위치. 계획 확정·4M 라인 선택 때 W/O defaultWipLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 생략하면 그대로 두고 null 이면 비운다. 근거: 서버 선행 · 장부 P-46
-       * @example 3001
-       */
-      defaultWipLocationId?: number | null;
-      /**
-       * Format: int64
        * @description 라인 기본 완제품 위치. 계획 확정·4M 라인 선택 때 W/O defaultFgLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 생략하면 그대로 두고 null 이면 비운다. 근거: 서버 선행 · 장부 P-46
        * @example 3001
        */
@@ -52565,12 +52543,6 @@ export interface components {
        * @example 1001
        */
       parentGroupId?: number | null;
-      /**
-       * Format: int64
-       * @description 라인 기본 WIP 위치. 계획 확정·4M 라인 선택 때 W/O defaultWipLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 생략하면 그대로 두고 null 이면 비운다. 근거: 서버 선행 · 장부 P-46
-       * @example 3001
-       */
-      defaultWipLocationId?: number | null;
       /**
        * Format: int64
        * @description 라인 기본 완제품 위치. 계획 확정·4M 라인 선택 때 W/O defaultFgLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 생략하면 그대로 두고 null 이면 비운다. 근거: 서버 선행 · 장부 P-46
@@ -65045,12 +65017,6 @@ export interface components {
       plannedShiftId: number | null;
       /**
        * Format: int64
-       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
-       * @example 1001
-       */
-      defaultWipLocationId: number | null;
-      /**
-       * Format: int64
        * @description 완제품 위치 — ERP W/O 에 SL_CD 가 있으면 erpStorage.location(그 창고 안의 입고 위치), 없으면 W/O 라인의 기본 완제품 위치. SL_CD 가 있는데 창고를 정하지 못하면 라인 기본값이 있어도 null 이고 erpStorage.reasonCode 와 같은 코드의 issues 가 선다. 계획의 모든 공정 W/O 에 같은 값을 둔다. ERP 목적지의 의미는 마지막 공정에 있고 중간 공정 값은 배포 필수 검사를 위해 같은 값을 둔다.
        * @example 1001
        */
@@ -65497,12 +65463,6 @@ export interface components {
       plannedEndAt?: string | null;
       /**
        * Format: int64
-       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
-       * @example 1001
-       */
-      defaultWipLocationId?: number;
-      /**
-       * Format: int64
        * @description SL_CD 창고 안의 위치(제안의 defaultFgLocationId), 계획에 fgWarehouseOverride 가 있으면 바꾼 창고 안의 위치. 규칙은 ProductionPlanProposalConfirmWorkOrder 설명. ERP 목적지의 의미는 마지막 공정에 있고 중간 공정 값은 배포 필수 검사를 위해 같은 값을 둔다.
        * @example 1001
        */
@@ -65852,12 +65812,6 @@ export interface components {
       plannedEndAt?: string | null;
       /**
        * Format: int64
-       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
-       * @example 1001
-       */
-      defaultWipLocationId?: number | null;
-      /**
-       * Format: int64
        * @description SL_CD 창고 안의 위치(제안의 defaultFgLocationId). 규칙은 ProductionPlanProposalConfirmWorkOrder 설명. ERP 목적지의 의미는 마지막 공정에 있고 중간 공정 값은 배포 필수 검사를 위해 같은 값을 둔다.
        * @example 1001
        */
@@ -66023,7 +65977,7 @@ export interface components {
       remarks: string | null;
       fgWarehouse: components['schemas']['ProductionPlanProposalFgWarehouse'];
     };
-    /** @description 재검증한 공정 W/O 하나 — 확정하면 저장될 값. 본문 값은 그대로 두고 서버가 정하는 칸(수량·선후관계·계획 시각·라인 기본 WIP)만 계산해 채운다. 본문 순서다. */
+    /** @description 재검증한 공정 W/O 하나 — 확정하면 저장될 값. 본문 값은 그대로 두고 서버가 정하는 칸(수량·선후관계·계획 시각)만 계산해 채운다. 본문 순서다. */
     ProductionPlanProposalRevalidatedWorkOrder: {
       /**
        * Format: int64
@@ -66094,12 +66048,6 @@ export interface components {
        * @example 1001
        */
       responsibleWorkerId: number | null;
-      /**
-       * Format: int64
-       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
-       * @example 1001
-       */
-      defaultWipLocationId: number | null;
       /**
        * Format: int64
        * @description 본문 값 — 비었으면 null(그 칸 REQUIRED 가 errors 에 있다)
@@ -67180,12 +67128,6 @@ export interface components {
       priorityNo: number;
       /**
        * Format: int64
-       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
-       * @example 1001
-       */
-      defaultWipLocationId?: number;
-      /**
-       * Format: int64
        * @example 1001
        */
       defaultFgLocationId?: number;
@@ -67627,12 +67569,6 @@ export interface components {
        * @example 1001
        */
       responsibleWorkerId?: number | null;
-      /**
-       * Format: int64
-       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
-       * @example 1001
-       */
-      defaultWipLocationId?: number | null;
       /**
        * Format: int64
        * @description 명시적 null = 해제 · 필드 생략 = 기존 값 유지. 값을 바꿀 때 — ERP W/O 에 SL_CD 가 있으면 그 코드와 같은 MES 창고 안의 위치여야 한다(다른 창고면 400 FG_LOCATION_OUTSIDE_WAREHOUSE, 창고를 정하지 못하면 400 FG_WAREHOUSE_UNMAPPED·FG_WAREHOUSE_INACTIVE·FG_WAREHOUSE_OTHER_PLANT·FG_WAREHOUSE_NOT_ALLOWED). SL_CD 가 없으면 이 공장의 사용 중인 위치이되 자재창고·외부창고·불량창고가 아니어야 한다(아니면 400 LOCATION_INVALID). 같은 값을 다시 보내면 검증하지 않는다. ERP 목적지의 의미는 마지막 공정에 있고 중간 공정 값은 배포 필수 검사를 위해 같은 값을 둔다.
