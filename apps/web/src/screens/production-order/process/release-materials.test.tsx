@@ -3,14 +3,17 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { jsonResponse, renderWithProviders } from '../../../test/api-harness';
+import { messages } from '@omf-mes/i18n';
 import {
   ReleaseMaterials,
+  materialCheckOf,
   useReleaseMaterials,
   stockQuantity,
   normalizedRate,
   editableRate,
   type MaterialRequirement,
 } from './release-materials';
+const c = messages.erpWorkOrderFlow.process.release.checks;
 const row: MaterialRequirement = {
   bomComponentId: 1,
   itemId: 2,
@@ -169,6 +172,48 @@ describe('자재 환산 확인', () => {
     await user.type(screen.getByRole('textbox', { name: /환산 비율/ }), '2');
     expect(screen.queryByText('환산 비율 미등록')).not.toBeInTheDocument();
     expect(screen.queryByText('직접 입력한 비율')).not.toBeInTheDocument();
+  });
+  it('자재 확인 결과 — 환산 비율을 넣기 전에는 확인 필요, 넣으면 이상 없음, 자재가 없으면 대상 없음', async () => {
+    const user = userEvent.setup();
+    const Check = () => {
+      const review = useReleaseMaterials(
+        [
+          { workOrderId: 1, workOrderNo: 'SYN-WO-1' },
+          { workOrderId: 2, workOrderNo: 'SYN-WO-2' },
+        ],
+        true,
+      );
+      return (
+        <>
+          <ReleaseMaterials plain review={review} workOrderId={1} />
+          <output aria-label="확인 결과">
+            {JSON.stringify([materialCheckOf(review, 1), materialCheckOf(review, 2)])}
+          </output>
+        </>
+      );
+    };
+    renderWithProviders(<Check />, {
+      fetch: async (request: Request) =>
+        jsonResponse({
+          items: request.url.includes('/work-orders/1/')
+            ? [{ ...row, conversionSource: 'NONE', conversionRate: null, stockQty: null }]
+            : [],
+        }),
+    });
+    const result = (): unknown => JSON.parse(screen.getByLabelText('확인 결과').textContent ?? '');
+    const input = await screen.findByRole('textbox', { name: /환산 비율/ });
+    expect(result()).toEqual([
+      { state: 'warn', summary: [c.materialKinds(1)], alerts: [c.materialRate(1)] },
+      { state: 'none', summary: [c.materialNone] },
+    ]);
+    /* 줄 안에 들 때는 제목과 작업지시 번호를 되풀이하지 않는다. */
+    expect(screen.queryByRole('heading', { name: '자재 소요량 확인' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'SYN-WO-1' })).toBeNull();
+    await user.type(input, '2');
+    expect(result()).toEqual([
+      { state: 'ok', summary: [c.materialKinds(1)], alerts: [] },
+      { state: 'none', summary: [c.materialNone] },
+    ]);
   });
   it('조회 실패 시 배포를 허용하지 않는다', async () => {
     renderWithProviders(<Harness />, { fetch: async () => jsonResponse({}, { status: 500 }) });

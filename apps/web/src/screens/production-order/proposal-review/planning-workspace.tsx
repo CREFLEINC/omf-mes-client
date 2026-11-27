@@ -314,7 +314,7 @@ export const ProposalPlanningWorkspace = ({
         value={stage}
         onChange={setStage}
         items={[
-          { value: 'master', label: 'BOM·Routing', content: null },
+          { value: 'master', label: 'BOM 및 Routing', content: null },
           { value: 'plan', label: '생산계획', content: null },
           { value: 'resources', label: '4M 배정', content: null },
           { value: 'review', label: '확정 검토', content: null },

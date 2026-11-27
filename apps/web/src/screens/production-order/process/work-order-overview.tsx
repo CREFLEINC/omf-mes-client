@@ -7,7 +7,7 @@ const t = messages.erpWorkOrderFlow;
 const tp = t.process;
 interface WorkOrderOverviewProps {
   order: ProductionOrderFact;
-  item?: { itemCode: string; itemName: string; erpItemGroupCode?: string | null };
+  item?: { itemCode: string; itemName: string };
   unitLabel: string;
   numberControl?: ReactNode;
   identityOnly?: boolean;
@@ -61,12 +61,6 @@ export const WorkOrderOverview = ({
             <dt>{t.list.columns.itemName}</dt>
             <dd>{item?.itemName ?? '—'}</dd>
           </div>
-          {item?.erpItemGroupCode != null && item.erpItemGroupCode !== '' && (
-            <div>
-              <dt>{tp.summary.itemGroup}</dt>
-              <dd>{item.erpItemGroupCode}</dd>
-            </div>
-          )}
         </dl>
       </section>
       {!identityOnly && (

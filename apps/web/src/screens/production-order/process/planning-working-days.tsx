@@ -107,7 +107,7 @@ export const planningDayMessage = (day?: PlanningDay): string | null => {
           : '');
     return `휴일입니다${reason ? ` (${reason})` : ''}`;
   }
-  if (day.statusCode === 'UNDETERMINED') return '근무일 판정 불가 (미설정)';
+  if (day.statusCode === 'UNDETERMINED') return '작업 캘린더 미설정';
   if (day.statusCode === 'PARTIAL')
     return `부분 가동${day.startTime && day.endTime ? ` (${day.startTime.slice(0, 5)} ~ ${day.endTime.slice(0, 5)})` : ''}`;
   return null;

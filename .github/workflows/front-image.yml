@@ -50,6 +50,13 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
+      # 빌드 캐시는 러너 디스크에 둔다. 자체 러너에서는 `type=gha` 캐시가 가져오기·내보내기
+      # 모두 400 으로 실패해, 매 릴리스가 의존성 설치부터 다시 했다.
+      - name: Resolve build cache directory
+        id: cache
+        shell: bash
+        run: printf 'dir=%s\n' "${HOME}/.cache/omf-mes-front-buildx" >> "${GITHUB_OUTPUT}"
+
       - name: Build and push image
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
@@ -66,5 +73,18 @@ jobs:
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max,ignore-error=true
+          cache-from: type=local,src=${{ steps.cache.outputs.dir }}
+          cache-to: type=local,dest=${{ steps.cache.outputs.dir }}-new,mode=max,ignore-error=true
+
+      # 로컬 캐시는 같은 자리에 내보내면 옛 층이 쌓이기만 한다. 새 자리에 내보낸 뒤 바꿔 끼운다.
+      # 내보내기가 실패해 새 자리가 없으면 옛 캐시를 그대로 둔다.
+      - name: Rotate build cache
+        if: always()
+        shell: bash
+        run: |
+          if [ -d "${CACHE_DIR}-new" ]; then
+            rm -rf "${CACHE_DIR}"
+            mv "${CACHE_DIR}-new" "${CACHE_DIR}"
+          fi
+        env:
+          CACHE_DIR: ${{ steps.cache.outputs.dir }}

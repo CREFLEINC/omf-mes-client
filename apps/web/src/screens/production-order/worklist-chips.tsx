@@ -26,6 +26,20 @@ export const ProcessStateChip = ({ state }: { state: string }) => (
   </Chip>
 );
 
+/**
+ * 편성 화면 머리의 상태 표지 — 제목 바로 옆에 색을 채운 큰 표지로 둔다(시안 A · 사용자 결정 2026-11-27).
+ * 표 안에 쓰는 작은 칩과 같은 이름 · 같은 색 갈래를 쓰되, 화면의 상태로 읽히게 크기와 무게를 키웠다.
+ */
+export const ProcessStateBadge = ({ state }: { state: string }) => (
+  <span
+    className="process-state-badge"
+    data-tone={isKnownState(state) ? STATE_TONE[state] : 'idle'}
+  >
+    <span className="process-state-badge-dot" aria-hidden="true" />
+    {isKnownState(state) ? t.status[state] : state}
+  </span>
+);
+
 type KnownReason = Exclude<keyof typeof t.reasonHelp & keyof typeof t.reasons, 'unknown'>;
 
 const isKnownReason = (code: string): code is KnownReason =>

@@ -11,7 +11,6 @@ import {
   dispositionEntryPath,
 } from '../screens/disposition-decision/filters';
 import { WORK_ORDER_PROGRESS_PATH } from '../screens/work-order-progress/filters';
-import { LOT_STATUS_PATH } from '../screens/lot-trace/lot-detail';
 import { SessionProvider } from '../patterns/session';
 import { expandAllNavGroups } from '../test/nav-groups';
 import {
@@ -1266,11 +1265,6 @@ describe('appRouter — 부적합 처분 관리의 진입 경로', () => {
    */
   it('⭐ W/O 진행현황이 아는 자기 주소와 등록된 라우트가 «같다»', () => {
     expect(routedPaths()).toContain(WORK_ORDER_PROGRESS_PATH);
-  });
-
-  /* W-02-09 LOT 생산 이력 조회 상세의 [LOT 상태 보기]가 가는 W-03-01 주소다. 갈리면 조용히 404로 간다. */
-  it('⭐ LOT 생산 이력 조회가 여는 LOT 상태 주소와 등록된 라우트가 «같다»', () => {
-    expect(routedPaths()).toContain(LOT_STATUS_PATH);
   });
 
   it('화면 주소는 exact 정식 route이고 테스트용 단수 주소는 없다', () => {

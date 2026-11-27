@@ -13,6 +13,7 @@ export interface DiscardDialogProps {
 /** 저장하지 않은 변경을 두고 떠날 때의 확인(T-W-C 「저장하지 않은 변경」). */
 export const DiscardDialog = ({ onCancel, onConfirm }: DiscardDialogProps) => (
   <Dialog
+    className="dialog-icon-undo"
     open
     size="sm"
     title={t.title}

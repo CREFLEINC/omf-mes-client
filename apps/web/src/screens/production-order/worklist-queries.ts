@@ -13,11 +13,10 @@ export type WorklistOrder = 'newest' | 'oldest';
 
 /**
  * 목록 정렬 → 서버 정렬 값(계획 시작일). 쪽을 나누기 전에 서버가 줄 세운다.
- * ⚠ `sort` 는 아직 계약(api.d.ts)에 없다 — 서버가 받기 전에는 무시되어 늘 오래된순으로 온다.
+ * 같은 날은 방향과 상관없이 납기 → id 순이고, 계획 시작일이 없는 건은 늘 맨 뒤다.
  */
-const sortQuery = (order: WorklistOrder): object => ({
-  sort: order === 'newest' ? 'plannedStartDate,desc' : 'plannedStartDate,asc',
-});
+const sortQuery = (order: WorklistOrder) =>
+  ({ sort: order === 'newest' ? 'plannedStartDate,desc' : 'plannedStartDate,asc' }) as const;
 
 export interface WorklistFilters {
   state: WorklistFilter;

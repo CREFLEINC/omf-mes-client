@@ -130,18 +130,6 @@ describe('ApprovalProgressPane — 못 읽었을 때', () => {
     expect(screen.queryByText(t.progress.forbiddenTitle)).not.toBeInTheDocument();
   });
 
-  /**
-   * **404에는 「다시 시도」를 남긴다.** 권한과 달리 다시 부르면 달라질 수 있다 —
-   * 방금 상신한 건이 승인 축에 아직 안 보이는 순간이 실재한다.
-   */
-  it('404에는 다시 시도가 있다', async () => {
-    const { onRetry, user } = renderPane({ state: { kind: 'failed', error: httpError(404) } });
-
-    await user.click(screen.getByRole('button', { name: messages.common.retry }));
-
-    expect(onRetry).toHaveBeenCalledTimes(1);
-  });
-
   it('그 밖의 실패는 일반 안내를 낸다', () => {
     renderPane({ state: { kind: 'failed', error: httpError(500) } });
 

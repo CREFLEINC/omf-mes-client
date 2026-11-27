@@ -33395,7 +33395,7 @@ export interface paths {
      * P/O 목록
      * @description 근거: W-02-01 §3
      *
-     *     ⭐ 정렬은 계획 시작일 오름차순(없는 것은 뒤) → 납기 오름차순 → 식별자 순으로 서버가 고정한다. ⭐ 계획 수량 — 응답의 confirmedPlanQty(확정 계획량: W/O 가 모두 취소된 확정 계획을 뺀 확정 계획 수량 합) · draftPlanQty(작성중 계획 수량 합) · remainingQty(orderQty − 확정 − 작성, 초과 계획이 있으면 음수) · planStatusCode 를 서버가 계산한다. 계획·수정·확정은 확정 계획량 + 작성 수량이 orderQty 를 넘으면 400 PLAN_QTY_EXCEEDS_ORDER 다.
+     *     ⭐ 정렬은 sort 로 계획 시작일 방향만 고른다(없으면 오름차순) — 같은 날은 납기 오름차순 → 식별자 순이고, 계획 시작일이 없는 것은 방향과 상관없이 뒤다. ⭐ 계획 수량 — 응답의 confirmedPlanQty(확정 계획량: W/O 가 모두 취소된 확정 계획을 뺀 확정 계획 수량 합) · draftPlanQty(작성중 계획 수량 합) · remainingQty(orderQty − 확정 − 작성, 초과 계획이 있으면 음수) · planStatusCode 를 서버가 계산한다. 계획·수정·확정은 확정 계획량 + 작성 수량이 orderQty 를 넘으면 400 PLAN_QTY_EXCEEDS_ORDER 다.
      *
      *     ⭐ 사용자 데이터 범위(P-62 와 같은 규칙) — 계정의 범위(user_data_scope 줄마다 가장 좁은 축: 공장 > 사업부 > 법인)에 드는 공장의 ERP W/O 만 돌려준다. 칩 건수(worklistState 를 걸고 size=1 의 total)도 같다. 범위 줄이 없으면 제한이 없다(전체 공장). 범위 안이면 비활성 공장도 넣는다. 범위는 있는데 남는 공장이 하나도 없으면 빈 목록 200 이다. includeChildren 이면 루트도 하위도 범위로 거른다.
      *
@@ -33438,6 +33438,8 @@ export interface paths {
           plannedStartDateFrom?: string;
           /** @description ERP 계획 시작일 종료(포함). 계획 시작일이 없는 ERP W/O 는 기간을 걸면 빠진다. */
           plannedStartDateTo?: string;
+          /** @description 계획 시작일 방향(asc 오래된순 · desc 최신순 · 생략하면 asc). 없으면 asc. 같은 계획 시작일끼리는 방향과 상관없이 납기 오름차순 → productionOrderId 오름차순이고, 계획 시작일이 없는 ERP W/O 는 방향과 상관없이 맨 뒤다. includeChildren 이면 루트를 이 순서로 고르고 내린다 — 하위는 그 뒤에 bomLevel → productionOrderId 순이다. */
+          sort?: 'plannedStartDate' | 'plannedStartDate,asc' | 'plannedStartDate,desc';
           page?: number;
           size?: number;
         };

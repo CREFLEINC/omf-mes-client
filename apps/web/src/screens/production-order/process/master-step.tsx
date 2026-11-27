@@ -31,6 +31,8 @@ export interface MasterStepProps {
   /** BOM 구성 가용 수량의 공장·기준 수량(ERP W/O 수량 · omf-all-around#320). */
   plantId?: number | null;
   quantity?: number | null;
+  /** ERP W/O 의 품목 — Routing 이 없을 때 등록 화면을 이 품목으로 연다. */
+  itemId?: number;
 }
 
 /** BOM·Routing 단계: 계획에 쓸 BOM과 Routing 개정. 없으면 「남은 일」이 담당과 할 일을 말한다(하단 바). */
@@ -44,6 +46,7 @@ export const MasterStep = ({
   onRoutingChange,
   plantId,
   quantity,
+  itemId,
 }: MasterStepProps) => {
   if (boms.isLoading || routings.isLoading) return <SkeletonText lines={3} />;
   if (boms.isError || routings.isError) {
@@ -77,6 +80,7 @@ export const MasterStep = ({
         routingId={routingId}
         locked={locked}
         itemId={selectedRouting?.itemId}
+        orderItemId={itemId}
         options={routings.items.map((item) => ({
           value: String(item.routingId),
           label: t.revision(item.routingCode, item.routingVersion, statusNameOf(item.statusCode)),
@@ -87,7 +91,6 @@ export const MasterStep = ({
         plantId={plantId}
         quantity={quantity}
       />
-      {locked && <p className="field-note">{t.fixedByPlan}</p>}
     </section>
   );
 };

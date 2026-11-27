@@ -210,7 +210,7 @@ it('휴일·판정 불가 정보는 경고로만 표시한다', () => {
     </>,
   );
   expect(screen.getByText('휴일입니다 (공휴일)')).toBeVisible();
-  expect(screen.getByText('근무일 판정 불가 (미설정)')).toBeVisible();
+  expect(screen.getByText('작업 캘린더 미설정')).toBeVisible();
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });
 
