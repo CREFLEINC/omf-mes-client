@@ -123,6 +123,17 @@ import { excludedLineCount, validateLines } from './validation';
 
 const t = messages.stockAdjust;
 
+/**
+ * 입력으로 풀 수 없는 잠금 — 이것만 보이는 글로 알리고, 나머지 까닭은 화면 읽기 도구에만 둔다
+ * (사용자 지시 2026-11-27 · #360).
+ */
+const STATE_REASONS: ReadonlySet<string> = new Set([
+  t.actionReasons.addLineCountSource,
+  t.actionReasons.alreadyRegistered,
+  t.actionReasons.registerVarianceTruncated,
+]);
+const isStateReason = (reason: string): boolean => STATE_REASONS.has(reason);
+
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_IDS: number[] = [];
 const EMPTY_HISTORY_ROWS: AdjustmentSummaryView[] = [];
@@ -2209,7 +2220,10 @@ export const StockAdjustScreen = () => {
               {t.actions.addLine}
             </Button>
             {addLineReason !== null && (
-              <span id={addLineReasonId} className="field-note">
+              <span
+                id={addLineReasonId}
+                className={isStateReason(addLineReason) ? 'field-note' : 'visually-hidden'}
+              >
                 {addLineReason}
               </span>
             )}
@@ -2256,7 +2270,10 @@ export const StockAdjustScreen = () => {
               {t.actions.register}
             </Button>
             {registerReason !== null && (
-              <span id={registerReasonId} className="field-note">
+              <span
+                id={registerReasonId}
+                className={isStateReason(registerReason) ? 'field-note' : 'visually-hidden'}
+              >
                 {registerReason}
               </span>
             )}
@@ -2278,7 +2295,7 @@ export const StockAdjustScreen = () => {
               {t.actions.discard}
             </Button>
             {discardReason !== null && (
-              <span id={discardReasonId} className="field-note">
+              <span id={discardReasonId} className="visually-hidden">
                 {discardReason}
               </span>
             )}

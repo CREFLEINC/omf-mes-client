@@ -146,7 +146,7 @@ export const SourcePane = ({
               {t.actions.loadVariance}
             </Button>
             {loadBlockReason !== null && (
-              <span id={loadReasonId} className="field-note">
+              <span id={loadReasonId} className="visually-hidden">
                 {loadBlockReason}
               </span>
             )}
