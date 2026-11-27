@@ -20,7 +20,9 @@ ARG VITE_API_BASE_URL=/api
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 
 RUN pnpm -r typecheck
-RUN TZ=Asia/Seoul pnpm --filter @omf-mes/web exec vitest run --maxWorkers=4 --testTimeout=15000
+# 작업자 12 — 빌드 러너는 CPU 36개다. 4개로 돌리던 때 이 단계가 빌드 18분 중 15분이었다.
+# 더 올리기 전에는 findBy 대기(5초)에 걸려 흔들리는 시험이 없는지부터 본다.
+RUN TZ=Asia/Seoul pnpm --filter @omf-mes/web exec vitest run --maxWorkers=12 --testTimeout=15000
 
 # 사용자 등록 폼의 초기 비밀번호 기본값. 비우면 화면 코드의 기본값으로 떨어지므로,
 # 배포처마다 다른 값을 쓸 때만 넘긴다.
