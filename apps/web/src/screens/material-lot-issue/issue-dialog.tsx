@@ -154,13 +154,12 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
       : null;
 
   /*
-   * 입력 전에는 LOT 수 칸 아래 보조 글 한 줄, 다 넣으면 같은 자리에 「발행 미리보기」와 발행 예정 LOT 목록
+   * 회색 상자 맨 위에 「발행 예정 LOT」 — 입력 전에는 그 아래 안내 한 줄, 다 넣으면 같은 자리에 발행 예정 LOT 목록
    * (사용자 지시 2026-11-27). 목록은 앞 `PREVIEW_ROWS` 건만 — 번호 끝 일련번호는 서버가 정하므로 짓지 않는다.
    */
   const summary =
     check?.ok === true && check.lotQty !== null && check.lotCount !== null && group !== null ? (
       <>
-        <strong className="mlot-issue-preview-title">{td.previewTitle}</strong>
         <span>
           {td.summary(
             check.lotCount,
@@ -189,7 +188,7 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
         </span>
       </>
     ) : (
-      td.summaryEmpty
+      <span className="field-note">{td.summaryEmpty}</span>
     );
 
   const submit = (): void => {
@@ -222,7 +221,7 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
         </>
       }
     >
-      <div className="mlot-issue-form is-issue">
+      <div className="mlot-issue-form">
         {issue.error !== null && <SaveErrorBanner error={issue.error} />}
         {fixed !== null ? (
           <dl className="mlot-issue-facts">
@@ -375,11 +374,8 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
           </>
         )}
 
-        <div
-          id={reasonId}
-          className={blocked ? 'field-note mlot-issue-hint' : 'mlot-issue-preview'}
-          aria-live="polite"
-        >
+        <div id={reasonId} className="mlot-issue-summary" aria-live="polite">
+          <strong className="mlot-issue-preview-title">{td.previewTitle}</strong>
           {summary}
         </div>
       </div>

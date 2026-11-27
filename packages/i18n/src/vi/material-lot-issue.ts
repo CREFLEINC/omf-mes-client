@@ -137,7 +137,7 @@ export const materialLotIssue: Translated<typeof ko.materialLotIssue> = {
       }`,
     summaryTail: (pattern: string) => `Ví dụ số: ${pattern}`,
     summaryEmpty: 'Nhập các mục bắt buộc để xem trước các LOT sẽ phát hành.',
-    previewTitle: 'Xem trước phát hành',
+    previewTitle: 'LOT sẽ phát hành',
     previewMore: (count: number) => `và ${count} LOT khác`,
     cancel: 'Hủy',
     submit: (count: number | null) => (count === null ? 'Phát hành' : `Phát hành ${count} LOT`),
