@@ -175,7 +175,7 @@ export const GroupFormPane = ({
                * ⚠ **저장하지 않은 입력이 있으면 잠근다.** 사용 중지는 상세를 다시 불러오므로
                * 그때 폼이 새로 세워지고, 사용자가 친 값이 말없이 사라진다.
                * 감추지 않고 사유를 함께 낸다 — 비활성 컨트롤은 포커스를 받지 못하므로
-               * 사유는 보이는 글자로 두고 `aria-describedby` 로 잇는다.
+               * 사유는 화면 읽기 도구에만 두고 `aria-describedby` 로 잇는다(사용자 지시 2026-11-27 · #360).
                */}
               <Button
                 variant="outlined"
@@ -186,7 +186,7 @@ export const GroupFormPane = ({
                 {messages.common.deactivate}
               </Button>
               {isDirty && (
-                <span id={deactivateNoteId} className="field-note">
+                <span id={deactivateNoteId} className="visually-hidden">
                   {t.actionReasons.deactivateNeedsCleanForm}
                 </span>
               )}
