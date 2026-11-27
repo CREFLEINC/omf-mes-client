@@ -24,7 +24,6 @@ import type { CodeValue, CodeValueFormValues } from './code-value-types';
 import { CODE_VALUE_FORM_FIELDS, validateCodeValueForm } from './code-value-validation';
 import { DeactivateDialog } from './deactivate-dialog';
 import { DisabledAction } from './disabled-action';
-import type { ListPageSize } from './filters';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { toPageView } from './pagination';
 
@@ -71,10 +70,6 @@ export interface CodeValueSectionProps {
   onIncludeInactiveChange: (includeInactive: boolean) => void;
   page: number;
   onPageChange: (page: number) => void;
-  /** 고른 쪽 크기(10 · 20 · 50) — 고르지 않았으면 `null`(서버 기본 50 · #360). */
-  pageSize?: ListPageSize | null;
-  /** 주지 않으면 쪽 크기 선택을 그리지 않는다. */
-  onPageSizeChange?: (size: ListPageSize) => void;
   /** 저장하지 않은 코드값 편집이 있는지 — 소비 화면이 다른 화면으로 옮기기 전에 묻는 데 쓴다(#358). */
   onDirtyChange?: (isDirty: boolean) => void;
   /** 다른 코드값 · 쪽 · 조건 · 등록으로 옮기기 전에 소비 화면이 고친 것을 버릴지 묻는다 — 주지 않으면 곧바로 옮긴다(#358). */
@@ -107,15 +102,13 @@ export const CodeValueSection = ({
   onIncludeInactiveChange,
   page,
   onPageChange,
-  pageSize = null,
-  onPageSizeChange,
   onDirtyChange,
   confirmSwitch = (action) => action(),
 }: CodeValueSectionProps) => {
   const toast = useToast();
   const { client } = useApiClient();
 
-  const list = useCodeValueList(codeGroupId, includeInactive, page, pageSize);
+  const list = useCodeValueList(codeGroupId, includeInactive, page);
   const codeValues = list.data?.items ?? [];
 
   /* 서버가 준 쪽 정보를 정본으로 쓴다. 아직 받지 못했으면 건수를 지어내지 않고 0으로 둔다. */
@@ -314,17 +307,6 @@ export const CodeValueSection = ({
     });
   };
 
-  /* 쪽 크기를 바꾸면 쪽을 옮길 때와 같다 — 고친 것을 버릴지 묻고 첫 쪽으로 간다(#360). */
-  const handlePageSizeChange =
-    onPageSizeChange === undefined
-      ? undefined
-      : (next: ListPageSize) => {
-          confirmSwitch(() => {
-            resetEditing();
-            onPageSizeChange(next);
-          });
-        };
-
   const handleAdd = () => {
     confirmSwitch(() => {
       resetEditing();
@@ -474,7 +456,6 @@ export const CodeValueSection = ({
         pageView={pageView}
         pageMeta={list.data?.page ?? null}
         onChangePage={handlePageChange}
-        onChangePageSize={handlePageSizeChange}
         selectedCodeValueId={selectedCodeValueId}
         onSelect={handleSelect}
         onEdit={handleEdit}

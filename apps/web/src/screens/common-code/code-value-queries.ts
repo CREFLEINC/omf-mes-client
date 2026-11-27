@@ -37,13 +37,10 @@ export const toCodeValueListQuery = (
   codeGroupId: number,
   includeInactive: boolean,
   page: number,
-  /** 고른 쪽 크기 — 고르지 않았으면(`null`) 싣지 않아 서버 기본(50)을 쓴다(#360). */
-  size: number | null = null,
 ): CodeValueListQuery => ({
   codeGroupId,
   ...(includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
-  ...(size === null ? {} : { size }),
 });
 
 /**
@@ -54,8 +51,8 @@ export const toCodeValueListQuery = (
  */
 export const codeValueKeys = {
   all: ['common-code-values'] as const,
-  list: (codeGroupId: number, includeInactive: boolean, page: number, size: number | null = null) =>
-    ['common-code-values', 'list', codeGroupId, includeInactive, page, size] as const,
+  list: (codeGroupId: number, includeInactive: boolean, page: number) =>
+    ['common-code-values', 'list', codeGroupId, includeInactive, page] as const,
   detail: (codeValueId: number) => ['common-code-values', 'detail', codeValueId] as const,
 };
 
@@ -67,12 +64,11 @@ export const useCodeValueList = (
   codeGroupId: number | null,
   includeInactive: boolean,
   page: number,
-  size: number | null = null,
 ): UseQueryResult<CodeValueListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: codeValueKeys.list(codeGroupId ?? 0, includeInactive, page, size),
+    queryKey: codeValueKeys.list(codeGroupId ?? 0, includeInactive, page),
     enabled: codeGroupId !== null,
     queryFn: () => {
       if (codeGroupId === null) {
@@ -81,7 +77,7 @@ export const useCodeValueList = (
 
       return runRequest(() =>
         client.GET('/mdm/code-values', {
-          params: { query: toCodeValueListQuery(codeGroupId, includeInactive, page, size) },
+          params: { query: toCodeValueListQuery(codeGroupId, includeInactive, page) },
         }),
       );
     },
