@@ -131,6 +131,12 @@ export const NotificationCenterScreen = () => {
 
   const list = useNotificationList(listQuery);
   const rows = list.data?.items ?? EMPTY_ROWS;
+  /* 발생 일시 오름/내림차순(#361) — 지금 쪽 안에서만 차례를 바꾼다(조회 조건 · 쪽은 그대로). */
+  const [order, setOrder] = useState<'desc' | 'asc'>('desc');
+  const sortedRows = useMemo(() => {
+    const sign = order === 'asc' ? 1 : -1;
+    return [...rows].sort((a, b) => sign * a.occurredAt.localeCompare(b.occurredAt));
+  }, [rows, order]);
   const pageMeta = list.data?.page ?? EMPTY_PAGE;
   const pageView = toPageView(pageMeta);
 
@@ -353,7 +359,7 @@ export const NotificationCenterScreen = () => {
      */
     return (
       <ul className="notification-list">
-        {rows.map((view) => (
+        {sortedRows.map((view) => (
           <li key={view.notificationId}>
             <NotificationRow
               view={view}
@@ -468,9 +474,25 @@ export const NotificationCenterScreen = () => {
       )}
 
       <section className="pane notification-center-pane" aria-labelledby="notification-list-title">
-        <h2 id="notification-list-title" className="pane-title">
-          {t.panes.list}
-        </h2>
+        <div className="notification-list-head">
+          <h2 id="notification-list-title" className="pane-title">
+            {t.panes.list}
+          </h2>
+          {/* 누를 때마다 최신순 ↔ 오래된순. 보이는 글자가 지금 차례다. */}
+          <Button
+            variant="outlined"
+            size="sm"
+            aria-label={`${t.sort.label}: ${order === 'desc' ? t.sort.newest : t.sort.oldest}`}
+            leadingIcon={
+              <Icon name={order === 'desc' ? 'arrow_downward' : 'arrow_upward'} size={16} />
+            }
+            onClick={() => {
+              setOrder((current) => (current === 'desc' ? 'asc' : 'desc'));
+            }}
+          >
+            {order === 'desc' ? t.sort.newest : t.sort.oldest}
+          </Button>
+        </div>
         {/* 실패했으면 목록도 빈 상태도 내지 않는다 — 위 배너가 그 자리를 맡는다. */}
         {!list.isError && (
           <>

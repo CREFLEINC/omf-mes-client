@@ -132,6 +132,12 @@ export const notificationCenter = {
     beyondLastTitle: '이 페이지에는 알림이 없습니다',
     beyondLastDescription: '앞 페이지에 결과가 있습니다. 첫 페이지로 이동하세요.',
   },
+  /** 목록 차례(#361) — 발생 일시 기준. */
+  sort: {
+    label: '발생 일시 정렬',
+    newest: '최신순',
+    oldest: '오래된순',
+  },
   card: {
     read: '읽음',
     unread: '미확인',
