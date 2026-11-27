@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useColumnWidths } from '../../../patterns/column-resize';
 import { useApiClient } from '../../../patterns/api-context';
 import { runRequest } from '../../../patterns/request';
-import { Select } from '../../../patterns/select';
+import { PageNav } from '../../../patterns/page-nav';
 import { useItemCodeNames, useProductionOrderItemNames } from '../item-lookups';
 import { useUomReferenceLookup } from '../reference-lookups';
 import {
@@ -53,40 +53,14 @@ const PageControls = ({
   total: number;
   paging: ReturnType<typeof useDisplayPage>;
 }) => (
-  <nav className="erp-wo-table-pagebar" aria-label={`${label} 페이지`}>
-    <span className="field-note">
-      {total ? paging.start + 1 : 0}–{Math.min(total, paging.start + paging.size)} / {total}건
-    </span>
-    <div className="erp-wo-table-page-actions">
-      <span className="field-note">행 수</span>
-      <Select
-        aria-label={`${label} 표시 행 수`}
-        size="sm"
-        value={String(paging.size)}
-        options={[10, 20, 50].map((value) => ({ value: String(value), label: String(value) }))}
-        onChange={(value) => paging.setSize(Number(value))}
-      />
-      <Button
-        size="sm"
-        variant="outlined"
-        disabled={paging.page === 1}
-        onClick={() => paging.setPage(paging.page - 1)}
-      >
-        이전
-      </Button>
-      <span>
-        {paging.page} / {paging.pages}
-      </span>
-      <Button
-        size="sm"
-        variant="outlined"
-        disabled={paging.page === paging.pages}
-        onClick={() => paging.setPage(paging.page + 1)}
-      >
-        다음
-      </Button>
-    </div>
-  </nav>
+  /* 공용 쪽 이동 줄 — 총 N건 · 10/20/50건 · 처음/이전/n·m/다음/마지막, 1쪽이어도 늘 보인다(#360). 표가 둘이라 묶음 이름으로 가른다. */
+  <div role="group" aria-label={`${label} 페이지`}>
+    <PageNav
+      meta={{ page: paging.page, size: paging.size, total }}
+      onChangePage={paging.setPage}
+      onChangeSize={paging.setSize}
+    />
+  </div>
 );
 const Grid = ({
   label,

@@ -3,6 +3,7 @@ import { ProposalAuditHistory } from './audit-history';
 import { ProposalPlanningWorkspace } from './planning-workspace';
 import { Link } from 'react-router';
 import { messages } from '@omf-mes/i18n';
+import { josa } from '../../../patterns/josa';
 import { ReviewHelp as Help } from './review-help';
 import {
   AlertBanner,
@@ -986,7 +987,7 @@ export const ProposalReview = ({
                                       label="생산 라인"
                                       required
                                       wrapValue
-                                      placeholder="생산 라인 선택"
+                                      placeholder="생산 라인을 선택하세요"
                                       valueLabel={
                                         planLineLabel(plan) === '미지정' ? '' : planLineLabel(plan)
                                       }
@@ -1040,7 +1041,7 @@ export const ProposalReview = ({
                                       required
                                       wrapValue
                                       valueLabel={plan.routing || ''}
-                                      placeholder="Routing 선택"
+                                      placeholder="Routing을 선택하세요"
                                       disabled={pending || plan.source === '기존 확정 계획'}
                                       source={
                                         !plan.routingOptions?.length
@@ -1180,7 +1181,7 @@ export const ProposalReview = ({
                                           ? '입고 위치'
                                           : resourceLabels[field]
                                       }
-                                      placeholder={`${resourceLabels[field]} 선택`}
+                                      placeholder={`${josa(resourceLabels[field], '을/를')} 선택하세요`}
                                       wrapValue
                                       valueLabel={
                                         op.resources[field]

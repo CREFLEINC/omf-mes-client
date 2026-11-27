@@ -14,7 +14,9 @@ export interface DiscardDialogProps {
 export const DiscardDialog = ({ onCancel, onConfirm }: DiscardDialogProps) => (
   <Dialog
     open
+    size="sm"
     title={t.title}
+    showCloseButton={false}
     onClose={onCancel}
     footer={
       <>
