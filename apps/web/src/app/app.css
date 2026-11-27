@@ -35412,9 +35412,7 @@ body:has(
   margin: 0;
 }
 .erp-wo-inline-routing-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
+  width: min(100%, 24rem);
 }
 .erp-wo-inline-routing-actions {
   margin-top: var(--space-2);
@@ -36029,6 +36027,8 @@ body:has(
 }
 .erp-wo-adjustable-grid.is-stacked > .erp-wo-adjustable-first {
   height: var(--stacked-list-height, auto);
+  /* 내용이 다 보이는 높이보다 더 늘어나지 않는다 — 저장해 둔 높이가 더 커도 그렇다. */
+  max-height: max-content;
   overflow: auto;
 }
 .erp-wo-adjustable-grid.is-stacked > .inspection-height-splitter {
@@ -36091,6 +36091,8 @@ body:has(
   height: 100%;
   min-height: 100px;
   cursor: col-resize;
+  /* 폭 12px 안에 테두리를 넣어야 가운데 2px 만 칠해진다. */
+  box-sizing: border-box;
   border-inline: 5px solid transparent;
   background: var(--outline-variant);
   background-clip: content-box;
@@ -37912,12 +37914,17 @@ body:has(
   border-radius: var(--radius-md);
   background: var(--surface-container-low);
 }
-.erp-wo-plan-view-buttons button[aria-pressed='true'] {
-  color: var(--on-secondary-container);
-  background: var(--secondary-container);
-}
+/*
+ * 고른 보기가 붉게, 나머지는 회색 글자다 — 옆의 [좌우 배치 | 상하 배치]와 같은 표시(사용자 지시 2026-11-27).
+ * 글자 단추의 기본 붉은 글자 때문에 고르지 않은 쪽이 고른 것처럼 보였다.
+ */
 .erp-wo-plan-view-buttons button {
   white-space: nowrap;
+  color: var(--on-surface-variant);
+}
+.erp-wo-plan-view-buttons button[aria-pressed='true'] {
+  color: var(--on-primary-container);
+  background: var(--primary-container);
 }
 
 .erp-wo-week-legend {
@@ -43430,4 +43437,403 @@ main > .pane.notification-center-pane {
 
 .notification-sort-button:hover {
   background: color-mix(in srgb, var(--on-surface) 8%, transparent);
+}
+
+/* 작업계획 편성 머리의 품목 정보 표 — 넓은 창에서도 끝없이 늘어나지 않는다(사용자 지시 2026-11-27). */
+.erp-wo-order-overview {
+  max-width: 72rem;
+}
+
+/* 편성 머리(식별 정보만) — 품목 코드 · 품목명 · ERP W/O 세 항목을 한 줄에 둔다(사용자 지시 2026-11-27). */
+.erp-wo-order-overview.is-identity-only {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) minmax(0, 1fr);
+}
+
+/* ── 작업계획 상세: 없는 경우 표시(2026-11-27) — 무엇이 없는지 한 줄과 고칠 화면 단추. ── */
+.erp-wo-missing-notice {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px dashed var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.erp-wo-missing-notice > p {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font: var(--type-title-sm);
+}
+.erp-wo-missing-notice > p > :first-child {
+  color: var(--semantic-warning);
+}
+.erp-wo-missing-line {
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+/* ── 생산계획 시안 A(2026-11-27) ── */
+/* 수량 진행 막대 — 확정(초록) · 미확정(파랑)이 ERP W/O 수량을 채운 만큼 찬다. */
+.erp-wo-plan-progress {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.erp-wo-plan-progress-track {
+  display: flex;
+  height: 14px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+}
+.erp-wo-plan-progress-track > [data-kind='confirmed'] {
+  background: var(--semantic-success);
+}
+.erp-wo-plan-progress-track > [data-kind='draft'] {
+  background: var(--semantic-info);
+  opacity: 0.55;
+}
+.erp-wo-plan-progress-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+}
+.erp-wo-plan-progress-legend > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.erp-wo-plan-progress-legend dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+.erp-wo-plan-progress-legend dt::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline-variant);
+}
+.erp-wo-plan-progress-legend [data-kind='confirmed'] dt::before {
+  background: var(--semantic-success);
+  border-color: var(--semantic-success);
+}
+.erp-wo-plan-progress-legend [data-kind='draft'] dt::before {
+  background: var(--semantic-info);
+  border-color: var(--semantic-info);
+  opacity: 0.55;
+}
+.erp-wo-plan-progress-legend dd {
+  margin: 0;
+  font: var(--type-title-md);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.erp-wo-plan-progress-legend [data-attention='true'] dd {
+  color: var(--semantic-warning);
+}
+/* ERP W/O 수량은 기준값이라 오른쪽 끝에 작게 둔다. */
+.erp-wo-plan-progress-legend [data-kind='order'] {
+  margin-left: auto;
+}
+.erp-wo-plan-progress-legend [data-kind='order'] dt::before,
+.erp-wo-plan-progress-legend [data-kind='reference'] dt::before {
+  display: none;
+}
+.erp-wo-plan-progress-legend [data-kind='order'] dd,
+.erp-wo-plan-progress-legend [data-kind='reference'] dd {
+  font: var(--type-body-sm);
+  font-weight: 600;
+}
+
+/* 계획 카드 — 확정은 실선 · 초록 띠, 미확정은 점선 · 파랑 띠. 수량을 크게 쓴다. 고른 카드는 검은 테두리다. */
+.erp-wo-plan-workspace .erp-wo-week-plan:not(.erp-wo-week-plan-other) {
+  background: var(--surface);
+  border: 1px solid var(--outline-variant);
+  border-left: 4px solid var(--semantic-success);
+}
+.erp-wo-plan-workspace .erp-wo-week-plan:not(.erp-wo-week-plan-other)[data-confirmed='false'] {
+  border-style: dashed;
+  border-left-style: solid;
+  border-left-color: var(--semantic-info);
+}
+.erp-wo-plan-workspace .erp-wo-week-plan[aria-pressed='true'],
+.erp-wo-plan-workspace .erp-wo-week-plan-other[aria-pressed='true'] {
+  background: var(--surface);
+  box-shadow: 0 0 0 2px var(--on-surface);
+}
+.erp-wo-plan-workspace .erp-wo-week-card-quantity {
+  font: var(--type-title-sm);
+  font-weight: 700;
+}
+/* 오늘 열은 옅게 칠하고 주말 열은 흐리게 한다. */
+.erp-wo-plan-workspace .erp-wo-week-table td.is-today,
+.erp-wo-plan-workspace .erp-wo-week-table thead th:has(.is-today) {
+  background: var(--semantic-warning-container);
+}
+.erp-wo-plan-workspace .erp-wo-week-table thead th:has(.is-today) {
+  font-weight: 700;
+}
+.erp-wo-plan-workspace .erp-wo-week-table td.is-weekend,
+.erp-wo-plan-workspace .erp-wo-week-table thead th:has(.is-weekend) {
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+}
+
+/* 선택 계획 편집 — 입력 칸을 한 줄에 하나씩 세워 창을 좁히고, 왼쪽 편성 표를 넓게 쓴다. */
+.erp-wo-plan-editor-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.erp-wo-plan-editor .erp-wo-plan-edit-fields {
+  grid-template-columns: minmax(0, 1fr);
+}
+.erp-wo-plan-editor .erp-wo-plan-edit-fields > * {
+  grid-column: auto;
+  grid-row: auto;
+  max-width: 18rem;
+}
+
+/*
+ * 선택 계획 편집 창은 좁은 고정 폭으로 두고 나머지를 편성 표가 쓴다(사용자 지시 2026-11-27).
+ * 폭이 고정이라 좌우로 나란할 때는 너비 조절 막대를 두지 않는다.
+ */
+.erp-wo-adjustable-grid.erp-wo-plan-layout.is-side {
+  grid-template-columns: minmax(0, 1fr) 16rem;
+  column-gap: var(--space-3);
+}
+.erp-wo-adjustable-grid.erp-wo-plan-layout.is-side > .po-board-gutter {
+  display: none;
+}
+/* 수량 막대는 한눈에 들어오는 폭까지만 — 넓은 창에서 끝까지 늘어나지 않는다. */
+.erp-wo-plan-progress {
+  max-width: 40rem;
+}
+
+/* 주간 편성의 보는 주 — 날짜를 굵게, 사이는 「~」. */
+.erp-wo-week-range {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font: var(--type-title-sm);
+  color: var(--on-surface-variant);
+}
+.erp-wo-week-range > strong {
+  font-weight: 700;
+  color: var(--on-surface);
+  font-variant-numeric: tabular-nums;
+}
+/* 수량 막대의 테두리 — 비어 있는 구간도 막대의 끝이 보인다. */
+.erp-wo-plan-progress-track {
+  box-sizing: border-box;
+  border: 1px solid var(--outline);
+}
+
+/* 주간 편성 머리 — 제목, 보는 주, 줄 끝에 주 넘김 단추. */
+.erp-wo-week-heading {
+  justify-content: flex-start;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.erp-wo-week-heading > .erp-wo-plan-board-title {
+  margin: 0;
+}
+.erp-wo-week-heading > .erp-wo-week-actions {
+  margin-left: auto;
+}
+/* 편성 머리의 식별 정보는 ERP W/O 가 맨 앞이다(사용자 지시 2026-11-27) — 이어서 품목 코드 · 품목명. */
+.erp-wo-order-overview .is-order {
+  order: -3;
+}
+.erp-wo-order-overview.is-identity-only {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.6fr);
+}
+
+/* ── 선택 계획 편집 카드 개선(2026-11-27) ── */
+/* 확정 계획의 값 목록 — 이름은 왼쪽, 값은 오른쪽에 굵게. */
+.erp-wo-plan-facts {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+.erp-wo-plan-facts > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.erp-wo-plan-facts dt {
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+.erp-wo-plan-facts dd {
+  margin: 0;
+  font: var(--type-body-md);
+  font-weight: 600;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+/* 생산량 칸 안의 단위. */
+.erp-wo-unit-suffix {
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+/* 근무일 안내는 계획일 바로 아래 한 줄 — 상자 대신 점과 글자. */
+.erp-wo-plan-edit-fields .erp-wo-planning-day-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0;
+  background: none;
+}
+.erp-wo-plan-edit-fields .erp-wo-planning-day-notice::before {
+  content: '';
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--semantic-warning);
+}
+/* [계획 분할] [삭제]는 한 줄 양 끝에. 삭제는 글자 단추다. */
+.erp-wo-plan-editor .erp-wo-plan-editor-actions {
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+.erp-wo-plan-editor .erp-wo-plan-editor-actions > button {
+  min-width: 0;
+}
+/* 고르기 전 안내 — 없는 경우 표시와 같은 점선 상자. */
+.erp-wo-pick-prompt {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px dashed var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
+/*
+ * ── 작업계획 편성 머리를 한 줄로(시안 A · 사용자 결정 2026-11-27) ──
+ * [←] 제목 | ERP W/O 번호 · 품목 코드 · 품목명 …… 상태 칩 · 단추. 네 단계 위에 늘 놓여 아래 화면을 밀어내던 높이를 줄인다.
+ */
+.process-page:has(.erp-wo-summary) > .process-page-head.is-compact .process-page-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.process-page:has(.erp-wo-summary) > .process-page-head.is-compact .process-page-back {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding-inline: var(--space-2);
+}
+.process-page:has(.erp-wo-summary) > .process-page-head.is-compact .process-page-title {
+  flex: 0 0 auto;
+}
+.process-page:has(.erp-wo-summary) > .process-page-head.is-compact .process-page-summary {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  overflow: hidden;
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--outline-variant);
+}
+.process-page > .process-page-head.is-compact .process-page-badges,
+.process-page > .process-page-head.is-compact .process-page-head-actions {
+  flex: 0 0 auto;
+}
+/* 식별 정보는 표를 풀어 값만 한 줄로 — 이름(dt)은 화면 읽기 프로그램에만 남긴다. */
+.process-page-head.is-compact .erp-wo-order-overview.is-identity-only {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  max-width: none;
+  padding: 0;
+  border: 0;
+  flex-wrap: nowrap;
+}
+.process-page-head.is-compact .erp-wo-order-overview dl > div,
+.process-page-head.is-compact .erp-wo-order-overview .is-order {
+  display: block;
+  flex: 0 0 auto;
+  min-width: 0;
+  border: 0;
+}
+.process-page-head.is-compact .erp-wo-order-overview dt {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.process-page-head.is-compact .erp-wo-order-overview dd {
+  padding: 0;
+  font: var(--type-body-md);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.process-page-head.is-compact .erp-wo-order-overview .is-item-code dd {
+  font-weight: 400;
+  color: var(--on-surface-variant);
+}
+/* 품목명이 길면 이 칸만 줄어들며 말줄임한다. */
+.process-page-head.is-compact .erp-wo-order-overview .is-item-name {
+  flex: 0 1 auto;
+}
+.process-page-head.is-compact .erp-wo-order-overview .is-order dd {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+/* 한 줄 머리는 위아래 여백도 줄인다(사용자 지시 2026-11-27) — 머리와 단계 탭이 붙어 선다. */
+.process-page:has(> .process-page-head.is-compact) {
+  margin-top: var(--space-2);
+  gap: var(--space-1);
+}
+.process-page > .process-page-head.is-compact .process-page-title-row {
+  min-height: var(--control-height-sm);
+}
+.process-page:has(> .process-page-head.is-compact) > .erp-wo-stage-tabs {
+  margin-top: 0;
+}
+
+/*
+ * 생산계획(사용자 지시 2026-11-27) — 수량 막대 카드는 아래 편성 카드와 폭을 맞추고,
+ * 오른쪽 편집 · 상세 카드는 편성 카드와 높이를 맞춘다.
+ */
+.erp-wo-plan-workspace > .erp-wo-plan-progress {
+  box-sizing: border-box;
+  max-width: none;
+}
+.erp-wo-plan-workspace:has(.erp-wo-plan-layout.is-side) > .erp-wo-plan-progress {
+  width: calc(100% - 16rem - var(--space-3));
+}
+.erp-wo-adjustable-grid.erp-wo-plan-layout.is-side {
+  align-items: stretch;
+}
+.erp-wo-plan-layout.is-side > .erp-wo-adjustable-second {
+  align-self: stretch;
+  display: flex;
+}
+.erp-wo-plan-layout.is-side > .erp-wo-adjustable-second > .erp-wo-plan-editor {
+  flex: 1 1 auto;
+  align-content: start;
 }

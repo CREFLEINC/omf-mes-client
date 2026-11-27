@@ -594,11 +594,10 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     expect(within(identity).getByText('ERP-701', { exact: true })).toBeVisible();
     expect(within(item).getByText('SYN-ITEM', { exact: true })).toBeVisible();
     expect(within(item).getByText('합성 품목 【 SYN-001 】', { exact: true })).toBeVisible();
-    expect(within(item).getByText('G100', { exact: true })).toBeVisible();
     const header = document.querySelector('.process-page-head')! as HTMLElement;
     expect(within(header).queryByText('생산품 입고 창고', { exact: true })).toBeNull();
     expect(screen.getByText('2026-10-31', { exact: true })).toBeVisible();
-    expect(document.querySelector('.erp-wo-plan-totals')).toHaveTextContent('300 EA');
+    expect(document.querySelector('.erp-wo-plan-progress')).toHaveTextContent('300 EA');
   });
 
   it('ERP 원번호는 제목 번호와 다를 때만 머리에 보인다', async () => {
@@ -608,25 +607,16 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     expect(screen.getByText('ERP-701')).toBeVisible();
   });
 
-  it('품목그룹이 있으면 머리에 보이고, 없으면 보이지 않는다', async () => {
+  it('품목그룹은 머리에 보이지 않는다', async () => {
     renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [], itemGroupCode: 'G100' }));
     await currentStep(tp.steps.master);
-    expect(await screen.findByText(tp.summary.itemGroup)).toBeVisible();
-    expect(screen.getByText('G100')).toBeVisible();
+    await within(document.querySelector('.process-page-head') as HTMLElement).findByText(
+      '합성 품목',
+      { exact: false },
+    );
+    expect(screen.queryByText('품목그룹')).toBeNull();
+    expect(screen.queryByText('G100')).toBeNull();
   });
-
-  it.each([undefined, null, ''])(
-    '품목그룹이 %j 이면 머리에 보이지 않는다',
-    async (itemGroupCode) => {
-      renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [], itemGroupCode }));
-      await currentStep(tp.steps.master);
-      await within(document.querySelector('.process-page-head') as HTMLElement).findByText(
-        '합성 품목',
-        { exact: false },
-      );
-      expect(screen.queryByText(tp.summary.itemGroup)).toBeNull();
-    },
-  );
 
   it.each([ORDER_NO, '', null])('ERP 원번호가 %j 이면 머리에 보이지 않는다', async (erpOrderNo) => {
     renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [], erpOrderNo }));

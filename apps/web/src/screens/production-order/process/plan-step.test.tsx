@@ -91,7 +91,8 @@ describe('생산계획 보기와 선택 편집', () => {
     expect(second).toHaveTextContent('200 KG');
     await user.click(second);
     expect(screen.getByText('ERP W/O B')).toBeVisible();
-    expect(screen.getByText('단위 KG')).toBeVisible();
+    /* 단위는 생산량 칸 안에 붙는다. */
+    expect(document.querySelector('.erp-wo-unit-suffix')).toHaveTextContent('KG');
   });
 
   it('고른 계획을 다시 누르면 편집이 풀리고 첫 계획을 다시 고르지 않는다 — 보던 주는 그대로', async () => {
@@ -115,14 +116,18 @@ describe('생산계획 보기와 선택 편집', () => {
     const editor = screen.getByRole('region', { name: t.workspace.editor });
     const inputName = t.fieldLabel(t.newRow(1), t.columns.plannedQty);
     expect(within(editor).getByRole('textbox', { name: inputName })).toBeVisible();
-    expect(screen.getByText('2026-11-02 — 2026-11-08')).toBeVisible();
+    expect(document.querySelector('.erp-wo-week-range')).toHaveTextContent(
+      /2026-11-02.*2026-11-08/,
+    );
 
     const card = screen.getByRole('button', { name: t.workspace.selectPlan(t.newRow(1)) });
     await user.click(card);
     expect(within(editor).getByText(t.workspace.selectPrompt)).toBeVisible();
     expect(within(editor).queryByRole('textbox', { name: inputName })).toBeNull();
     /* 푼 뒤에도 보던 주에 머문다. */
-    expect(screen.getByText('2026-11-02 — 2026-11-08')).toBeVisible();
+    expect(document.querySelector('.erp-wo-week-range')).toHaveTextContent(
+      /2026-11-02.*2026-11-08/,
+    );
 
     await user.click(card);
     expect(within(editor).getByRole('textbox', { name: inputName })).toBeVisible();
@@ -151,12 +156,10 @@ describe('생산계획 보기와 선택 편집', () => {
         onRemove={() => {}}
       />,
     );
-    const editor = screen.getByRole('region', { name: t.workspace.editor });
-    expect(
-      within(editor).getByRole('textbox', {
-        name: t.fieldLabel(t.newRow(1), t.columns.plannedQty),
-      }),
-    ).toBeDisabled();
+    /* 확정 계획은 입력 칸 없이 값 목록으로 보이고, 제목도 「편집」이 아니다. */
+    const editor = screen.getByRole('region', { name: '생산계획 상세' });
+    expect(within(editor).queryByRole('textbox')).toBeNull();
+    expect(within(editor).getByText(t.workspace.readonly)).toBeVisible();
     expect(
       within(editor).queryByRole('button', { name: t.remove(t.newRow(1)) }),
     ).not.toBeInTheDocument();

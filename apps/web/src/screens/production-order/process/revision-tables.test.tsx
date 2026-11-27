@@ -146,7 +146,8 @@ describe('대량 BOM Routing 표', () => {
     const third = within(table).getByRole('cell', { name: 'MAT-3' }).closest('tr')!;
     expect(within(third).getByText('부족')).toBeVisible();
     expect(within(third).getByRole('cell', { name: '30 GR (0.03 KG)' })).toBeVisible();
-    expect(screen.getByText(/필요 수량은 10 EA 기준이고/)).toBeVisible();
+    /* 기준 수량을 풀어 쓰는 안내 문구는 두지 않는다(사용자 지시 2026-11-27). */
+    expect(screen.queryByText(/필요 수량은 10 EA 기준이고/)).toBeNull();
   });
   it('가용 수량 조회에 실패하면 0 이 아니라 조회 실패와 다시 조회를 보인다', async () => {
     renderWithProviders(<BomTable id={1} plantId={7} quantity={10} />, {

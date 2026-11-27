@@ -276,7 +276,6 @@ export const erpWorkOrderFlow = {
     retry: '다시 시도',
     summary: {
       item: '품목',
-      itemGroup: '품목그룹',
       orderQty: 'ERP W/O 수량',
       dueDate: '납기일',
       erpNo: 'ERP 원번호',
@@ -309,10 +308,8 @@ export const erpWorkOrderFlow = {
     /** 하단 바 문장(C-5). `select`, `enter`, `choose`, `resolve`, `canProceed`의 인자는 조사를 붙여 넘긴다. */
     remaining: {
       pastPlanDate: '계획일이 지났습니다. 오늘 이후 날짜로 수정하세요.',
-      bomMissing:
-        '사용 가능한 ERP 기본 BOM이 하나로 정해지지 않아 진행할 수 없습니다. ERP 담당자에게 확인을 요청해 주세요',
-      routingMissing:
-        '사용할 수 있는 Routing이 등록되지 않아 진행할 수 없습니다. 기준정보 담당자에게 Routing 등록을 요청하세요',
+      bomMissing: 'ERP 기본 BOM이 하나로 정해져야 진행할 수 있습니다',
+      routingMissing: 'Routing을 등록해야 진행할 수 있습니다',
       loadFailed: '기준 정보를 불러오지 못했습니다. 다시 시도하세요',
       select: (targetWithJosa: string): string => `${targetWithJosa} 고르세요`,
       addPlan: '생산계획을 추가하세요',
@@ -383,7 +380,7 @@ export const erpWorkOrderFlow = {
         remainingQty: '미계획 수량',
         unconfirmed: '미확정',
         unassigned: '생산 라인 미지정',
-        selectPrompt: '계획을 선택하세요.',
+        selectPrompt: '편성 표에서 계획을 선택하세요',
         readonly: '확정된 계획은 수정할 수 없습니다.',
         unsavedSummary: '편집 중인 수량을 포함합니다. 하단에서 계획을 저장하거나 확정하세요.',
         previousWeek: '이전 주',
@@ -413,7 +410,7 @@ export const erpWorkOrderFlow = {
       remove: (rowName: string): string => `${rowName} 삭제`,
       removeShort: '삭제',
       failedTitle: '계획을 저장하지 못했습니다',
-      empty: '등록된 계획이 없습니다.',
+      empty: '등록된 생산계획이 없습니다',
       total: (planned: string, ordered: string, uom: string): string =>
         `계획 수량 합계 ${planned} / ${ordered} ${uom}`,
     },

@@ -230,7 +230,6 @@ const ErpWorkOrderInformation = ({
         item={{
           itemCode: entry.itemCode,
           itemName: entry.itemName,
-          erpItemGroupCode: entry.itemGroupCode,
         }}
         unitLabel={entry.unit}
       />

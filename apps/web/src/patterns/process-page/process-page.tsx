@@ -154,6 +154,11 @@ export interface ProcessPageProps {
   pastSummary?: PastSummaryGroup[];
   /** 최종 확인에서는 이전 단계 요약도 본문과 함께 스크롤한다. */
   pastSummaryInBody?: boolean;
+  /**
+   * 머리를 한 줄로 줄인다 — 돌아가기는 화살표 단추, 요약은 제목 옆(작업계획 편성 · 사용자 결정 2026-11-27).
+   * 주지 않으면 종전처럼 돌아가기 줄 · 제목 줄 · 요약 줄이다.
+   */
+  compactHead?: boolean;
   /** 단계가 바뀌면 본문 첫 정보부터 읽도록 스크롤을 초기화한다. */
   bodyScrollKey?: string;
   children: ReactNode;
@@ -172,6 +177,7 @@ export const ProcessPage = ({
   onSelectStep,
   pastSummary,
   pastSummaryInBody = false,
+  compactHead = false,
   bodyScrollKey,
   children,
   actionBar,
@@ -182,7 +188,7 @@ export const ProcessPage = ({
   }, [bodyScrollKey]);
   return (
     <div className="process-page">
-      <header className="process-page-head">
+      <header className={`process-page-head${compactHead ? ' is-compact' : ''}`}>
         <div className="process-page-title-row">
           <Button
             variant="text"
@@ -190,16 +196,18 @@ export const ProcessPage = ({
             className="process-page-back"
             leadingIcon={<Icon name="arrow_back" size={18} aria-hidden="true" />}
             onClick={onBack}
+            {...(compactHead ? { 'aria-label': backLabel, title: backLabel } : {})}
           >
-            {backLabel}
+            {compactHead ? null : backLabel}
           </Button>
           <h1 className="process-page-title">{title}</h1>
+          {compactHead && <div className="process-page-summary">{summary}</div>}
           {badges !== undefined && <div className="process-page-badges">{badges}</div>}
           {headerActions !== undefined && (
             <div className="process-page-head-actions">{headerActions}</div>
           )}
         </div>
-        <div className="process-page-summary">{summary}</div>
+        {!compactHead && <div className="process-page-summary">{summary}</div>}
       </header>
       {stepNavigation ?? <ProcessStepper steps={steps} onSelect={onSelectStep} />}
       {!pastSummaryInBody && pastSummary !== undefined && pastSummary.length > 0 && (

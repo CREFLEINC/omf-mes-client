@@ -266,33 +266,12 @@ export const BomTable = ({
         <strong>
           {bom.bomCode} · 개정 {bom.bomVersion}
         </strong>
-        <span>
-          유효기간 {bom.effectiveFrom ?? '미설정'} ~ {bom.effectiveTo ?? '종료일 없음'}
-        </span>
         <strong>
           기준 수량 {bom.baseQty} {unit(bom.baseUomId)}
         </strong>
-        <span>
-          상태:{' '}
-          {({ CONFIRMED: '확정', DRAFT: '작성중', OBSOLETE: '폐기' } as Record<string, string>)[
-            bom.statusCode
-          ] ??
-            bom.statusCode ??
-            '미제공'}
-        </span>
-        <span>{mode(bom.isDefault, '기본 BOM', '기본 아님')}</span>
         <span>자재 {rows.length}건</span>
       </div>
-      {withAvailability && rows.length > 0 && (
-        <>
-          <p className="iqc-inspection-action-note" data-tone="info">
-            <Icon name="info" size={14} aria-hidden />
-            필요 수량은 {quantityText(quantity ?? 0)} {unit(bom.baseUomId)} 기준이고, 가용 수량은
-            공장 자재창고와 생산 창고 재고 합계입니다.
-          </p>
-          <AvailabilityError availability={availability} />
-        </>
-      )}
+      {withAvailability && rows.length > 0 && <AvailabilityError availability={availability} />}
       {rows.length ? (
         <Grid
           label="BOM 구성"
@@ -363,7 +342,7 @@ export const BomTable = ({
           })}
         </Grid>
       ) : (
-        <p>등록된 구성 자재가 없습니다.</p>
+        <p className="erp-wo-missing-line">이 BOM에 구성 자재가 없습니다</p>
       )}
     </>
   );
@@ -486,7 +465,7 @@ export const RoutingTable = ({ id }: { id: number }) => {
           ))}
         </Grid>
       ) : (
-        <p>등록된 공정이 없습니다.</p>
+        <p className="erp-wo-missing-line">이 Routing에 공정이 없습니다</p>
       )}
     </>
   );
