@@ -38,7 +38,6 @@ export const shellHome = {
     physicalCount: '위치의 실물을 세어 기록',
     materialLocation: 'LOT · 품목이 어느 위치에 있는지 조회',
     shopfloorReceipt: '생산창고로 들어온 자재 받기',
-    wipHandover: '공정 사이 재공품 넘기기',
     repairRoundtrip: '수리 보낸 것과 돌아온 것 스캔',
     equipmentInspection: '설비 점검 항목 기록',
     equipmentFailure: '고장 증상과 사진 보고',

@@ -192,6 +192,11 @@ export const traceTree = {
       COMPONENT_SERIAL: '부품 시리얼',
       INBOUND_LOT: '입하 LOT',
     },
+    /** 공정 반제품(피처 016) 단계 이름 「반제품 LOT · 공정 10」(시안 2판 ④). */
+    stageOperation: (stage: string, operationSeq: number): string =>
+      `${stage} · 공정 ${String(operationSeq)}`, // ui-check-ignore: C-13 승인 시안 2판 표기 「반제품 LOT · 공정 10」(016 screens/W-02-13-W-02-14)
+    /** W/O 줄 번호 뒤 공정(피처 016 · 시안 2판 ④ 「W/O WO-… · 공정 30」). */
+    workOrderOperation: (operationSeq: number): string => `· 공정 ${String(operationSeq)}`, // ui-check-ignore: C-13 승인 시안 2판 표기(016 screens/W-02-13-W-02-14)
     bundle: (kind: string, count: number): string => `${kind} ${num(count)}개`,
     more: (next: number, remaining: number): string =>
       next < remaining
@@ -246,7 +251,16 @@ export const traceTree = {
       PARTIAL: '출하·재고', // ui-check-ignore: C-13 엑셀 「최종 LOT」 시트 값과 같은 글(총괄 결정)
       CONSUMED_OUT: '소진',
       VOIDED: '폐기',
+      /** 피처 016 — 다음 공정에 아직 투입되지 않은 반제품. */
+      WIP_PENDING: '다음 공정 투입 전',
     },
+    /** 투입 전 반제품의 행선지 칸 「남은 40 EA」(시안 2판 ④). */
+    wipRemaining: (qtyWithUnit: string): string => `남은 ${qtyWithUnit}`,
+    /** 투입 전 반제품 줄의 아래 줄 「반제품 · 공정 10 ABC」. 공정을 모르면 「반제품 ABC」. */
+    wipItem: (operationSeq: number | null, itemName: string): string =>
+      operationSeq === null
+        ? `반제품 ${itemName}`
+        : `반제품 · 공정 ${String(operationSeq)} ${itemName}`, // ui-check-ignore: C-13 승인 시안 2판 표기(016 screens/W-02-13-W-02-14)
     count: (count: number): string => num(count),
   },
   exporting: {

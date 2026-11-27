@@ -11,32 +11,24 @@ import { WarehouseFormPane } from './warehouse-form-pane';
 
 const renderPane = (overrides: Partial<Parameters<typeof WarehouseFormPane>[0]> = {}) => {
   const onChange = vi.fn();
-  const onSave = vi.fn();
-  const onCancel = vi.fn();
   const onDeactivate = vi.fn();
   const onActivate = vi.fn();
 
   render(
     <WarehouseFormPane
-      mode="edit"
       values={warehouseFormInitialValues}
       onChange={onChange}
       fieldErrors={{}}
       banner={null}
-      codeLockReason={null}
       isActive
-      isDirty={false}
-      isSaving={false}
       lookups={lookupFixtures}
-      onSave={onSave}
-      onCancel={onCancel}
       onDeactivate={onDeactivate}
       onActivate={onActivate}
       {...overrides}
     />,
   );
 
-  return { onChange, onSave, onCancel, onDeactivate, onActivate };
+  return { onChange, onDeactivate, onActivate };
 };
 
 describe('WarehouseFormPane', () => {
@@ -59,93 +51,6 @@ describe('WarehouseFormPane', () => {
     expect(screen.getByRole('button', { name: '창고 유형 수정' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '공장 수정' })).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
-  });
-
-  it('등록은 「창고 추가」 머리 아래 필수 칸과 외부 · 불량 스위치를 둔다', () => {
-    renderPane({ mode: 'create' });
-
-    expect(screen.getByRole('heading', { name: '창고 추가' })).toBeInTheDocument();
-    for (const label of ['공장', '사업부', '창고 유형']) {
-      expect(screen.getByRole('combobox', { name: label })).toBeInTheDocument();
-    }
-    expect(screen.getByRole('textbox', { name: '창고 코드' })).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: '창고명' })).toBeInTheDocument();
-    expect(screen.getByRole('switch', { name: '불량 창고' })).toBeInTheDocument();
-    expect(screen.getByRole('switch', { name: '외부 창고' })).not.toBeChecked();
-    // 선택칸 셋 · 창고 위치 코드는 직접 그린 별표, 입력칸 둘은 디자인 시스템이 required 로 그린다.
-    expect(document.querySelectorAll('.required-mark')).toHaveLength(4);
-    expect(screen.getByRole('textbox', { name: '창고 코드' })).toBeRequired();
-  });
-
-  describe('#292 창고 위치 코드', () => {
-    const prefixBox = () => screen.getByRole('textbox', { name: '창고 위치 코드' });
-
-    /* 형식 · 저장 뒤 못 바꿈은 칸 아래가 아니라 라벨 옆 ⓘ 로 읽힌다(관리웹 정리 시안 A). */
-    it('등록 폼은 받은 값을 칸에 채우고 라벨 옆 ⓘ · 위치 코드 예를 보인다', () => {
-      const helper =
-        '무작위로 만들었습니다. 대문자와 숫자 2~6자로 고칠 수 있고, 저장한 뒤에는 바꿀 수 없습니다.';
-      renderPane({ mode: 'create' });
-
-      expect(prefixBox()).toHaveValue('K7PM');
-      expect(prefixBox()).toBeRequired();
-      expect(prefixBox()).toHaveAttribute('maxlength', '6');
-      expect(screen.getByRole('button', { name: helper })).toBeInTheDocument();
-      expect(screen.queryByText(helper)).not.toBeInTheDocument();
-      expect(screen.getByText('위치 코드 예: K7PM-Z01-R001-L01-C01')).toBeInTheDocument();
-    });
-
-    it('위치 코드 예는 친 값을 따라 바뀐다', () => {
-      renderPane({
-        mode: 'create',
-        values: { ...warehouseFormInitialValues, locationPrefix: 'AB' },
-      });
-
-      expect(screen.getByText('위치 코드 예: AB-Z01-R001-L01-C01')).toBeInTheDocument();
-    });
-
-    it('친 글자는 대문자로 바꿔 올린다', async () => {
-      const user = userEvent.setup();
-      const { onChange } = renderPane({
-        mode: 'create',
-        values: { ...warehouseFormInitialValues, locationPrefix: '' },
-      });
-
-      await user.type(prefixBox(), 'q');
-
-      expect(onChange).toHaveBeenLastCalledWith({ locationPrefix: 'Q' });
-    });
-
-    it('[다시 만들기]는 헷갈리는 글자 없이 무작위 4자를 새로 짓는다', async () => {
-      const user = userEvent.setup();
-      /* 바이트 0 · 30 · 31(글자 수와 같아 첫 글자로 돈다) · 8 → A · 9 · A · J. */
-      const spy = vi.spyOn(crypto, 'getRandomValues').mockImplementation((array) => {
-        const bytes = array as Uint8Array;
-        bytes.set([0, 30, 31, 8, 0, 0, 0, 0]);
-        return array;
-      });
-      const { onChange } = renderPane({ mode: 'create' });
-
-      await user.click(screen.getByRole('button', { name: '다시 만들기' }));
-
-      expect(onChange).toHaveBeenLastCalledWith({ locationPrefix: 'A9AJ' });
-      spy.mockRestore();
-    });
-
-    it('칸 오류(형식 · 서버가 준 「다른 창고가 쓰는 코드」)는 칸 아래에 나타난다', () => {
-      const taken =
-        '이미 다른 창고가 쓰는 코드입니다 — 다른 코드를 넣거나 [다시 만들기]를 누르세요.';
-      renderPane({ mode: 'create', fieldErrors: { locationPrefix: taken } });
-
-      expect(prefixBox()).toBeInvalid();
-      expect(prefixBox()).toHaveAccessibleDescription(taken);
-    });
-
-    it('고칠 때는 입력칸이 없다 — 저장한 뒤에는 바꿀 수 없다', () => {
-      renderPane({ mode: 'edit' });
-
-      expect(screen.queryByRole('textbox', { name: '창고 위치 코드' })).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: '다시 만들기' })).not.toBeInTheDocument();
-    });
   });
 
   it('저장된 값과 다른 칸만 이름 옆에 점을 찍는다', () => {
@@ -183,9 +88,9 @@ describe('WarehouseFormPane', () => {
     expect(onChange).toHaveBeenCalledWith({ isDefect: true });
   });
 
-  it('창 안에 넣을 때(showActions=false)는 저장 · 취소가 없고, 사용 중지는 본문 「사용 상태」 줄에 있다', async () => {
+  it('저장 · 취소는 없고(창 바닥에 있다), 사용 중지는 본문 「사용 상태」 줄에 있다', async () => {
     const user = userEvent.setup();
-    const { onDeactivate } = renderPane({ showActions: false });
+    const { onDeactivate } = renderPane();
 
     expect(screen.queryByRole('button', { name: '저장' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '취소' })).not.toBeInTheDocument();
@@ -201,27 +106,16 @@ describe('WarehouseFormPane', () => {
   });
 
   it('fieldErrors를 주입하면 창고코드의 인라인 오류가 화면에 보인다', () => {
-    renderPane({ mode: 'create', fieldErrors: warehouseFieldErrorFixtures });
+    renderPane({ fieldErrors: warehouseFieldErrorFixtures });
 
     expect(
       screen.getByText('이미 사용 중인 코드입니다. 다른 코드를 입력하세요.'),
     ).toBeInTheDocument();
   });
 
-  /* 사유 문장 대신 칸 이름 오른쪽 「변경 불가」 라벨 — 문장은 마우스 · 화면 읽기로(사용자 지시 2026-11-24). */
-  it('codeLockReason을 주입하면 창고코드가 비활성이고 「변경 불가」 라벨에 사유가 붙는다', () => {
-    const reason = '이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.';
-    renderPane({ mode: 'create', codeLockReason: reason });
-
-    expect(screen.getByLabelText('창고 코드')).toBeDisabled();
-    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 숨긴 설명으로만. */
-    expect(screen.queryByText('변경 불가')).toBeNull();
-    expect(screen.getByLabelText('창고 코드')).toHaveAccessibleDescription(reason);
-  });
-
   /* 고칠 수 없는 값은 흐린 입력칸이 아니라 글자로 보인다(사용자 지시 2026-10-29). */
-  it('수정에서는 공장 · 창고 코드 · 창고명이 입력칸이 아닌 글자로 보인다', () => {
-    renderPane({ mode: 'edit' });
+  it('공장 · 창고 코드 · 창고명 · 창고 위치 코드는 입력칸이 아닌 글자로 보인다', () => {
+    renderPane();
 
     expect(screen.queryByRole('combobox', { name: '공장' })).not.toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: '창고 코드' })).not.toBeInTheDocument();
@@ -229,42 +123,13 @@ describe('WarehouseFormPane', () => {
     expect(screen.getByLabelText('창고 코드')).toHaveTextContent('WH-01');
     expect(screen.getByLabelText('창고명')).toHaveTextContent('1공장 자재창고');
     expect(screen.getByLabelText('공장')).toHaveTextContent('1공장');
-    expect(screen.queryByText('공장은 등록 후 변경할 수 없습니다.')).not.toBeInTheDocument();
-  });
-
-  it('신규 등록 모드에서는 공장을 고를 수 있고 고정 안내가 없다', () => {
-    renderPane({ mode: 'create' });
-
-    expect(screen.getByLabelText('공장')).not.toBeDisabled();
-    expect(screen.queryByText('공장은 등록 후 변경할 수 없습니다.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: '창고 위치 코드' })).not.toBeInTheDocument();
   });
 
   it('배너 슬롯에 넘긴 노드를 상단에 렌더한다', () => {
     renderPane({ banner: <p>저장 충돌 배너</p> });
 
     expect(screen.getByText('저장 충돌 배너')).toBeInTheDocument();
-  });
-
-  it('변경이 없으면 저장·취소가 비활성이다', () => {
-    renderPane({ isDirty: false });
-
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
-  });
-
-  it('변경이 있으면 저장을 눌러 onSave를 부른다', async () => {
-    const user = userEvent.setup();
-    const { onSave } = renderPane({ isDirty: true });
-
-    await user.click(screen.getByRole('button', { name: '저장' }));
-
-    expect(onSave).toHaveBeenCalledTimes(1);
-  });
-
-  it('저장 중에는 저장을 다시 누를 수 없다', () => {
-    renderPane({ isDirty: true, isSaving: true });
-
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
   it('쓸 수 없는 변경 이력 단추와 그 안내가 없다', () => {
@@ -289,23 +154,6 @@ describe('WarehouseFormPane', () => {
     expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '다시 사용' })).toBeInTheDocument();
     expect(screen.getByText('미사용')).toBeInTheDocument();
-  });
-
-  it('신규 등록 폼에는 사용 중지가 없다 — 아직 만들어지지 않은 창고다', () => {
-    renderPane({ mode: 'create', isActive: true });
-
-    expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
-  });
-
-  it('등록에서 창고명을 고치면 바뀐 필드만 담아 onChange를 부른다', async () => {
-    const user = userEvent.setup();
-    const { onChange } = renderPane({ mode: 'create' });
-
-    await user.type(screen.getByLabelText('창고명'), '가');
-
-    expect(onChange).toHaveBeenCalledWith({
-      warehouseName: `${warehouseFormInitialValues.warehouseName}가`,
-    });
   });
 
   /* 외부로 바꾸면 목록에서 숨는다(사용자 결정 2026-10-30 · 서버 #932) — 확인 창이 그 뒤를 알린다. */
@@ -334,9 +182,9 @@ describe('WarehouseFormPane', () => {
     renderPane();
 
     expect(screen.getByText('사용', { exact: true })).toBeInTheDocument();
-    // 상태를 바꾸는 단추는 폼 칸이 아니라 바닥글에 있다(omf-all-around#17 3차).
+    // 상태를 바꾸는 단추는 폼 칸이 아니라 「사용 상태」 줄에 있다.
     expect(
-      screen.getByRole('button', { name: '사용 중지' }).closest('.form-actions'),
+      screen.getByRole('button', { name: '사용 중지' }).closest('.warehouse-info-state'),
     ).not.toBeNull();
   });
 

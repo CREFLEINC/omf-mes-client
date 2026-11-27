@@ -205,6 +205,8 @@ interface LotLabelSource {
   workOrderNo: string | undefined;
   qty: number | null;
   uomCode: string | null;
+  /** 공정 반제품 LOT 이면 생산 공정 순번(피처 016) — 아니면 `null`. */
+  wip: { operationSeq: number | null } | null;
 }
 
 /**
@@ -235,6 +237,7 @@ const lotTargetsOf = (
       uomCode: source.uomCode,
       issueSeq: issue.issueSeq,
       workOrderNo: source.workOrderNo ?? '-',
+      wip: source.wip,
     }),
   }));
 
@@ -514,6 +517,10 @@ export const ProductionFlowScreen = () => {
           qty:
             serverAppliedQty ?? (appliedLabelQty?.lotId === lot.lotId ? appliedLabelQty.qty : null),
           uomCode: uom.labelOf(lot.uomId ?? workOrder.data?.uomId),
+          wip:
+            lot.lotTypeCode === 'WIP'
+              ? { operationSeq: lot.producedOperation?.operationSeq ?? null }
+              : null,
         };
 
   const lotPrint = useLabelPrintRunner(entry.workerNo, shellPrinterName);

@@ -1,5 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 
+import { toPlantDateTimeParts } from '../../patterns/plant-time';
+
 import { toDowntimeView, type DowntimeView } from './types';
 
 /**
@@ -71,15 +73,12 @@ export const fromPending = (
   remarks: body.remarks ?? null,
 });
 
-/** 같은 날에 시작한 것만. 날짜 글자는 지역 시각 기준(`yyyy-mm-dd`)이다. */
+/** 같은 날에 시작한 것만. 날짜 글자는 **공장 달력** 기준(`yyyy-mm-dd`)이다(omf-all-around#364). */
 export const startedOn = (row: TodayRow, day: string): boolean => {
   const at = new Date(row.startedAt);
   if (Number.isNaN(at.getTime())) return false;
 
-  const month = String(at.getMonth() + 1).padStart(2, '0');
-  const date = String(at.getDate()).padStart(2, '0');
-
-  return `${String(at.getFullYear())}-${month}-${date}` === day;
+  return toPlantDateTimeParts(at.toISOString())?.date === day;
 };
 
 /** 시작이 늦은 것이 위로 — 방금 넣은 것이 눈에 먼저 든다. */

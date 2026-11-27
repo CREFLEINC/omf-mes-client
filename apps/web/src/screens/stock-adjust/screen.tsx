@@ -1852,7 +1852,7 @@ export const StockAdjustScreen = () => {
    * 않고 서버 문구를 그대로 낸다.
    */
   const confirmPost = (): void => {
-    const body = toPostRequest(postPanelState.draft, new Date());
+    const body = toPostRequest(postPanelState.draft);
     const target = boundRegister?.created ?? null;
 
     if (body === null || target === null) {

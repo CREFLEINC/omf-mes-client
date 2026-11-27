@@ -11,7 +11,7 @@ import { Chip, type Column } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 
 import { TraceEndTable } from '../../patterns/trace-tree/end-table';
-import { stockPlace } from '../../patterns/trace-tree/tree-table';
+import { stageNameOf, stockPlace } from '../../patterns/trace-tree/tree-table';
 import {
   TraceLotCell,
   iqcTone,
@@ -21,6 +21,7 @@ import {
 import { TraceSummaryCard } from '../../patterns/trace-tree/summary-card';
 import { TraceWorkspace, type TraceDetailContext } from '../../patterns/trace-tree/trace-workspace';
 import type { ForwardEndRow, ForwardTree } from '../../patterns/trace-tree/types';
+import { WIP_LOT_TYPE } from '../../patterns/trace-tree/graph-rows';
 
 const t = messages.traceTree;
 
@@ -32,6 +33,23 @@ const FATE_TONE: Record<ForwardEndRow['fate'], 'error' | 'idle' | 'warning' | 's
   PARTIAL: 'warning',
   CONSUMED_OUT: 'success',
   VOIDED: 'idle',
+  /* 피처 016 — 다음 공정에 아직 투입되지 않은 반제품. 소진도 재고도 아니다. */
+  WIP_PENDING: 'warning',
+};
+
+/**
+ * 현황 칸 폭(px) — 지금 언어의 가장 긴 운명 이름 칩이 잘리지 않게(피처 016 실제 앱 확인 2026-11-26: 80px 에서
+ * 「다음 공정 투입 전」이 「다음 공정 투」로 잘림). 칩 글(12px)의 어림 폭: 한글 11.5 · 빈칸 3.5 · 그 밖 7.5px(vi 성조 글자),
+ * 칩 안쪽 여백 16 + 칸 여백 32(실측). 너무 좁게 어림하지 않게 올림한다.
+ */
+export const fateColumnWidth = (labels: readonly string[]): number => {
+  const textWidth = (text: string): number =>
+    [...text].reduce(
+      (sum, char) => sum + (/[가-힣]/u.test(char) ? 11.5 : char === ' ' ? 3.5 : 7.5),
+      0,
+    );
+
+  return Math.ceil(Math.max(80, ...labels.map((label) => textWidth(label) + 16 + 32)));
 };
 
 /** 첫 값 + 「외 n건」(R-3 — 출하가 둘 이상이면 화면은 줄이고 파일은 출하마다 한 줄). */
@@ -79,7 +97,7 @@ const Summary = ({ tree, names, partial, entry, stageOf }: TraceDetailContext) =
   return (
     <TraceSummaryCard
       lot={root.lot}
-      kindLabel={t.tree.stages[stageOf(root.nodeKey) ?? root.kind]}
+      kindLabel={stageNameOf(stageOf(root.nodeKey) ?? root.kind, root.lot)}
       statusName={names.lotStatus(root.lot.statusCode)}
       serialNo={entry?.serialNo ?? null}
       partial={partial}
@@ -98,22 +116,33 @@ const Summary = ({ tree, names, partial, entry, stageOf }: TraceDetailContext) =
   );
 };
 
-/** 행선지 — 출하됐으면 고객과 출하번호, 남았으면 창고와 위치(일부 출하면 둘 다). 둘 이상이면 「외 n건」. */
+/**
+ * 행선지 — 출하됐으면 고객과 출하번호, 남았으면 창고와 위치(일부 출하면 둘 다). 둘 이상이면 「외 n건」.
+ * 투입 전 반제품(피처 016 `WIP_PENDING`, 일부만 투입된 것 포함)은 「남은 n 단위」 — 서버가 센 `wipRemainingQty`.
+ * 받지 못했으면 실적 전량(아직 넣지 않은 반제품)으로 적는다.
+ */
 const destinationOf = (row: ForwardEndRow): string =>
-  [
-    firstWithMore(
-      row.shipments.map((shipment) => `${shipment.customer.name} ${shipment.shipmentNo}`),
-    ),
-    firstWithMore(row.stock.map((stock) => stockPlace(stock.warehouse, stock.location))),
-  ]
-    .filter((part) => part !== '')
-    .join(', ');
+  row.fate === 'WIP_PENDING'
+    ? t.end.wipRemaining(
+        `${qtyFormat.format(row.wipRemainingQty ?? row.producedQty)} ${row.uomCode}`.trim(),
+      )
+    : [
+        firstWithMore(
+          row.shipments.map((shipment) => `${shipment.customer.name} ${shipment.shipmentNo}`),
+        ),
+        firstWithMore(row.stock.map((stock) => stockPlace(stock.warehouse, stock.location))),
+      ]
+        .filter((part) => part !== '')
+        .join(', ');
 
 /**
  * 영향 제품 LOT 칸(시안 2판) — 제품 LOT · 품목명 · 행방 · 고객, 출하번호, 창고 위치 · 출하일 · 수량 · 상태.
  * 고객 · 출하번호와 창고 · 위치는 행방에 따라 하나가 서므로 한 칸에 둔다(상세 창 폭 — T-W-A 하위 표).
  */
-const columns = (statusName: (code: string) => string): Column<ForwardEndRow>[] => {
+const columns = (
+  statusName: (code: string) => string,
+  rows: readonly ForwardEndRow[],
+): Column<ForwardEndRow>[] => {
   const c = t.end.forward;
   return [
     {
@@ -123,7 +152,11 @@ const columns = (statusName: (code: string) => string): Column<ForwardEndRow>[] 
       render: (row) => (
         <TraceLotCell
           lotNo={row.lot.lotNo}
-          sub={row.item.name}
+          sub={
+            row.lot.lotTypeCode === WIP_LOT_TYPE
+              ? t.end.wipItem(row.lot.operationSeq ?? null, row.item.name)
+              : row.item.name
+          }
           subTitle={named(row.item.name, row.item.code)}
         />
       ),
@@ -131,11 +164,17 @@ const columns = (statusName: (code: string) => string): Column<ForwardEndRow>[] 
     {
       key: 'fate',
       header: c.fate,
-      width: '80px',
+      /*
+       * 지금 목록에 실제로 나온 운명들 기준 — 모든 운명의 최장(vi 「Xuất hàng, tồn kho」 등)으로 잡으면 상세 창(1440)에서
+       * 행선지 칸이 밀려 머리가 글자 단위로 끊겼다(2차 확인 2026-11-26).
+       */
+      width: `${String(fateColumnWidth([...new Set(rows.map((row) => t.end.fates[row.fate]))]))}px`,
       render: (row) => (
-        <Chip variant="status" size="sm" status={FATE_TONE[row.fate]}>
-          {t.end.fates[row.fate]}
-        </Chip>
+        <span title={t.end.fates[row.fate]}>
+          <Chip variant="status" size="sm" status={FATE_TONE[row.fate]}>
+            {t.end.fates[row.fate]}
+          </Chip>
+        </span>
       ),
     },
     {
@@ -181,7 +220,7 @@ const EndRows = ({ tree, names, activeEnd, onLocate, partial }: TraceDetailConte
   return (
     <TraceEndTable
       title={t.material.endTitle}
-      columns={columns(names.lotStatus)}
+      columns={columns(names.lotStatus, forward.endRows)}
       rows={forward.endRows}
       getRowId={(row) => String(row.lot.lotId)}
       lotNoOf={(row) => row.lot.lotNo}

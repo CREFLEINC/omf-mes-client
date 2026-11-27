@@ -1,3 +1,4 @@
+import { ADMIN_BRAND } from '../patterns/admin-brand';
 import type { LocalizedLabel } from '../patterns/localized-label';
 
 /**
@@ -17,8 +18,7 @@ import type { LocalizedLabel } from '../patterns/localized-label';
  *
  * ⛔ **`common.shell.brand` 를 쓰지 않는다.** 그 자리는 모바일의 이름(`OMF-MES 모바일`)을 들고
  * 있고, 셸마다 다른 이름을 한 칸에 담으면 어느 한쪽이 남의 이름으로 선다.
+ *
+ * 값은 `patterns/admin-brand.ts` 가 갖는다 — 로그인 화면이 같은 이름을 쓰기 때문이다.
  */
-export const SHELL_BRAND: LocalizedLabel = {
-  label: 'OMF-MES 관리웹',
-  labelVi: 'OMF-MES Quản trị',
-};
+export const SHELL_BRAND: LocalizedLabel = ADMIN_BRAND;

@@ -20,8 +20,7 @@ export type Session = components['schemas']['Session'];
 /**
  * 로그인 실패 본문.
  *
- * ⛔ 아이디가 틀렸는지 비밀번호가 틀렸는지 말하지 않는다. `remainingAttempts`는 **선택 필드이며
- * 없는 계정에는 오지 않는다** — 화면은 값이 없을 때 숫자를 지어내지 않는다.
+ * ⛔ 아이디가 틀렸는지 비밀번호가 틀렸는지 말하지 않는다.
  */
 export type LoginFailure = components['schemas']['LoginFailure'];
 

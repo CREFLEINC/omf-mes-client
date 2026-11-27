@@ -10,6 +10,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import { SessionProvider } from '../../patterns/session';
 import { ItemBomScreen } from './bom-screen';
 import {
   bomComponentFixtures,
@@ -170,11 +171,11 @@ const renderScreen = (search = '') => {
 
   probeSearch = '';
   renderWithProviders(
-    <>
+    <SessionProvider>
       <ItemBomScreen />
       <RouterProbe />
-    </>,
-    { fetch, route: `${ROUTE}${search}` },
+    </SessionProvider>,
+    { session: null, fetch, route: `${ROUTE}${search}` },
   );
 
   return { requests, user: userEvent.setup() };

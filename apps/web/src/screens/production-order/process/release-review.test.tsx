@@ -45,7 +45,6 @@ const detail = {
   productionLineId: 1,
   plannedEquipmentId: 88,
   plannedMoldId: null,
-  defaultWipLocationId: null,
   defaultFgLocationId: null,
   defaultScrapLocationId: null,
   plannedStartAt: '2026-11-06T01:00:00Z',

@@ -3,7 +3,6 @@ import type { components } from '@omf-mes/api-client';
 import { isSystemLocation } from '../../patterns/system-location';
 import type { Location, LocationFormValues, Warehouse, WarehouseFormValues } from './types';
 
-type WarehouseCreate = components['schemas']['WarehouseCreate'];
 type WarehouseUpdate = components['schemas']['WarehouseUpdate'];
 type LocationUpdate = components['schemas']['LocationUpdate'];
 
@@ -29,10 +28,7 @@ export const warehouseToFormValues = (warehouse: Warehouse): WarehouseFormValues
   isDefect: warehouse.isDefect,
 });
 
-/**
- * 신규 등록 폼의 초기값. 공통코드 선택은 서버가 준 목록에서 사용자가 직접 고른다.
- * 창고 위치 코드는 비워 둔다 — 등록 폼을 여는 쪽이 무작위로 지어 채운다(`generateLocationPrefix`).
- */
+/** 상세를 받기 전 폼의 빈 값 — 수정 창은 상세가 온 뒤에만 열린다. */
 export const emptyWarehouseFormValues = (): WarehouseFormValues => ({
   plantId: '',
   businessUnitId: '',
@@ -40,9 +36,7 @@ export const emptyWarehouseFormValues = (): WarehouseFormValues => ({
   warehouseName: '',
   locationPrefix: '',
   warehouseTypeCode: '',
-  /* ERP 창고도 내부로 등록하고 사람이 외부로 바꾼다(사용자 결정 2026-10-30 · 서버 #932). */
   isExternal: false,
-  /* 신규 창고는 불량창고가 아니다 — 그렇게 정하는 자리가 화면에 없으므로 꺼진 값으로 낸다. */
   isDefect: false,
 });
 
@@ -59,16 +53,6 @@ export const toWarehouseUpdate = (values: WarehouseFormValues): WarehouseUpdate 
   isExternal: values.isExternal,
   /* 화면이 고치지 않은 값을 그대로 되돌려 보낸다 — 여기서 지어내면 서버 값이 덮인다. */
   isDefect: values.isDefect,
-});
-
-/**
- * 창고 등록 요청 본문. 계약상 수정 본문에 plantId · 창고 위치 코드(#292)를 더한 형태이며,
- * isActive는 받지 않는다 — 신규는 항상 사용 중이다.
- */
-export const toWarehouseCreate = (values: WarehouseFormValues): WarehouseCreate => ({
-  ...toWarehouseUpdate(values),
-  plantId: Number(values.plantId),
-  locationPrefix: values.locationPrefix.trim(),
 });
 
 export const locationToFormValues = (location: Location): LocationFormValues => ({

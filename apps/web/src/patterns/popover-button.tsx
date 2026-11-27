@@ -21,6 +21,22 @@ export interface PopoverButtonProps {
   children: (close: () => void) => ReactNode;
 }
 
+/**
+ * 판 안의 칸이 판 밖에 펼친 것(선택 칸의 목록)을 눌렀는가.
+ *
+ * 디자인 시스템 선택 칸은 목록을 `body` 에 그린다 — DOM 으로는 판 밖이라, 이것을 「밖을 눌렀다」로 보면 선택지를
+ * 누르는 순간 판이 닫혀 선택 칸째 사라지고 고른 값이 전해지지 않는다(상단 바 언어 선택 · 사용자 2026-11-27).
+ * 펼친 칸은 `aria-controls` 로 제 목록을 가리키므로 그 연결로 판의 것인지 가린다.
+ */
+const isInsideOwnedLayer = (root: HTMLElement | null, target: Node): boolean => {
+  if (root === null) return false;
+  return [...root.querySelectorAll('[aria-controls]')].some((owner) => {
+    const layerId = owner.getAttribute('aria-controls');
+    if (layerId === null || layerId === '') return false;
+    return document.getElementById(layerId)?.contains(target) === true;
+  });
+};
+
 export const PopoverButton = ({ trigger, label, className, children }: PopoverButtonProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -31,7 +47,9 @@ export const PopoverButton = ({ trigger, label, className, children }: PopoverBu
     if (!isOpen) return undefined;
 
     const handlePointerDown = (event: PointerEvent): void => {
-      if (event.target instanceof Node && rootRef.current?.contains(event.target) === true) return;
+      if (!(event.target instanceof Node)) return;
+      if (rootRef.current?.contains(event.target) === true) return;
+      if (isInsideOwnedLayer(rootRef.current, event.target)) return;
       setIsOpen(false);
     };
     const handleKeyDown = (event: KeyboardEvent): void => {

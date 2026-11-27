@@ -15,6 +15,9 @@ import type { TraceGraph, TraceGraphEdge, TraceGraphNode, TraceNodeKind } from '
  * - 경로 펼치기(`locate`): 최종 LOT 줄을 고르면 뿌리에서 그 항목까지 첫 경로의 접힌 조상과 묶음을 편다.
  */
 
+/** LOT 유형 — 공정 반제품(마지막이 아닌 공정 산출, 피처 016). */
+export const WIP_LOT_TYPE = 'WIP';
+
 export const BUNDLE_THRESHOLD = 20;
 export const BUNDLE_PAGE = 50;
 export const FIRST_VIEW_CAP = 200;
@@ -23,7 +26,7 @@ const FIRST_VIEW_DEPTH = 2;
 
 /**
  * 계보 줄의 단계 — 항목 종류에 계보 안 자리를 더한다.
- * - `SEMI_LOT` 다시 투입된 생산 LOT(반제품) · `SEPARATED_LOT` 생산 LOT 분리(013) 자식
+ * - `SEMI_LOT` 다시 투입된 생산 LOT(반제품) 또는 공정 반제품 LOT(유형 WIP · 016) · `SEPARATED_LOT` 생산 LOT 분리(013) 자식
  * - `SPLIT_ORIGIN` 분할된 원래 LOT · `SEPARATED_ORIGIN` 분리된 원래 LOT(역방향 — 자식이 분할이냐 분리냐를 따른다)
  */
 export type LineageStage =
@@ -120,6 +123,8 @@ const stageOf = (
   }
   if (node === undefined) return 'PRODUCTION_LOT';
   if (node.kind === 'SPLIT_LOT') return splitStageOf(node);
+  /* 공정 반제품(피처 016 · LOT 유형 WIP)은 다음 공정에 투입되기 전이어도 반제품 단계다. */
+  if (node.kind === 'PRODUCTION_LOT' && node.lot?.lotTypeCode === WIP_LOT_TYPE) return 'SEMI_LOT';
   if (node.kind === 'PRODUCTION_LOT' && (edge?.kind === 'CONSUMED' || outKinds.has('CONSUMED'))) {
     return 'SEMI_LOT';
   }

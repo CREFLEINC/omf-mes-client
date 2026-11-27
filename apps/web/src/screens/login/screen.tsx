@@ -1,15 +1,17 @@
-import { Button, Card, Field, TextField } from '@crefle/web-ui';
+import { Button, Card, Field, Icon, IconButton, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState, type FormEvent } from 'react';
+import { useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
+import { ADMIN_PRODUCT_NAME, ADMIN_WEB_NAME } from '../../patterns/admin-brand';
+import { AppVersionText } from '../../patterns/app-version-text';
 import { LocaleSelect } from '../../patterns/locale-select';
+import { localizedLabel } from '../../patterns/localized-label';
 import { resolveReturnPath, useSession } from '../../patterns/session';
 
 import {
-  canSubmit,
   emptyLoginDraft,
-  submitDisabledReason,
+  firstEmptyField,
   LOGIN_ID_MAX_LENGTH,
   type LoginDraft,
 } from './login-draft';
@@ -26,15 +28,19 @@ const t = messages.login;
  * 그 자리의 기본값과 이탈 조건을 적었다. 전역 `main`의 안쪽 여백과 블록 이음매(규범 1)는 그대로
  * 걸리므로, 규범 8이 더하는 것은 중앙 정렬과 폭 상한뿐이다.
  *
+ * **카드 머리에 제품 이름을 둔다**(2026-11-27 시안 A). 셸이 없어 상단 바의 이름이 서지 않으므로,
+ * 여기서 말하지 않으면 무슨 시스템에 들어가는지 알 수 없다. 버전은 카드 아래 작게 둔다 — 문의·
+ * 장애 보고 때 로그인하지 못한 사람도 읽을 수 있게.
+ *
  * **실패를 말하는 규율이 이 화면의 본론이다**(공유계약 F-7 · G-1).
  *
- * - **실패는 세 가지로만 말한다**(#1034) — 로그인 정보 오류 · 계정 잠김 · 서버 오류.
+ * - **실패는 두 가지로만 말한다** — 로그인 정보 오류 · 서버 오류(계정 잠금은 서버 #1165 로 없어졌다).
  *   갈래를 가르는 축은 **「사용자가 무엇을 하면 풀리는가」**다(`login-outcome.ts`).
  * - 어느 칸이 틀렸는지 **말하지 않는다.** 지목하는 문구는 계정이 있는지를 흘린다.
  * - **인라인으로 내리지 않는다.** 칸 옆에 붙은 오류는 문구를 뭉뚱그려도 **붙은 자리가**
  *   어느 칸이 문제인지 말한다. 그래서 실패는 화면 수준 배너 한 자리에만 선다.
  * - **가를 근거가 없는 응답에 자격 문구를 붙이지 않는다.** 「응답이 실패면 무조건 그 문구」는
- *   잠긴 계정·서버 장애에도 자격을 의심하게 만들어, 사용자가 시도를 되풀이하다 계정을 잠근다.
+ *   서버 장애에도 자격을 의심하게 만들어, 사용자가 맞는 값을 헛되이 다시 친다.
  *
  * **성공하면 세션을 담고 셸 안으로 넘긴다.** 담는 자리는 `patterns/session`이고 이 화면은
  * 그것을 채우기만 한다 — 셸이 같은 값을 읽어 상단 바에 이름을 세운다.
@@ -45,6 +51,12 @@ const t = messages.login;
  */
 export const LoginScreen = () => {
   const [draft, setDraft] = useState<LoginDraft>(emptyLoginDraft);
+  const [isPasswordShown, setIsPasswordShown] = useState(false);
+  const [isCapsLockOn, setIsCapsLockOn] = useState(false);
+
+  /** 빈 칸인 채 보내려 하면 커서를 옮길 자리 */
+  const loginIdRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   const titleId = useId();
   const reasonId = useId();
@@ -88,12 +100,20 @@ export const LoginScreen = () => {
   });
 
   /**
-   * 로그인이 막힌 사유. 열려 있으면 `undefined`.
+   * 로그인 버튼이 잠긴 사유 — **나가는 동안뿐이다.** 열려 있으면 `undefined`.
    *
-   * **순서가 뜻을 정한다** — 나가는 중이 맨 앞이다. 그 사정을 뒤에 두면 값을 다 채운 사용자가
-   * 「채우면 쓸 수 있습니다」를 읽고도 잠긴 버튼을 본다.
+   * 빈 칸이어도 잠그지 않는다(2026-11-27 시안 A). 잠긴 회색 버튼과 늘 붙은 「모두 입력하면 쓸 수
+   * 있습니다」 문장 대신, 누르면 요청 없이 빈 칸으로 커서를 옮긴다(`sendLogin`).
    */
-  const blockReason = login.isSubmitting ? t.actionReasons.submitting : submitDisabledReason(draft);
+  const blockReason = login.isSubmitting ? t.actionReasons.submitting : undefined;
+
+  /**
+   * Caps Lock 이 켜졌는지 키를 누를 때마다 읽는다 — 브라우저는 그 상태를 키 이벤트로만 알려 준다.
+   * 비밀번호가 가려져 있으면 대문자로 친 것을 알아볼 수 없어 자격 오류로 이어진다.
+   */
+  const syncCapsLock = (event: KeyboardEvent<HTMLInputElement>): void => {
+    setIsCapsLockOn(event.getModifierState('CapsLock'));
+  };
 
   /**
    * 친 값을 고친다.
@@ -122,14 +142,25 @@ export const LoginScreen = () => {
    * 문자열로 올라가고, 그 주소는 방문 기록·전달 경로에 그대로 남는다 — 비밀번호가 새는 길이다.
    *
    * **보낼 수 있을 때만 보낸다 — 버튼 잠금과 별개의 겹이다.** 폼은 버튼을 지나지 않는 제출
-   * 경로를 갖는다(Enter · 프로그램적 제출). 그 길로 빈 자격이 나가면 서버는 **실패한 시도**로
-   * 세고, 그 횟수는 계정을 잠그는 임계값을 향해 쌓인다 — 사용자가 아무것도 하지 않았는데도.
+   * 경로를 갖는다(Enter · 프로그램적 제출). 그 길로 빈 자격이 나가면 서버가 거절할 것이 뻔한
+   * 요청이 나가고, 사용자는 아무것도 치지 않았는데 「로그인 정보 오류」를 본다.
    *
    * 그래서 **보내는 문을 하나로 둔다**(`sendLogin`) — 폼 제출과 배너의 「다시 시도」가 같은
    * 문을 지나므로, 겹이 한쪽에만 걸리는 일이 생기지 않는다.
+   *
+   * **빈 칸이 있으면 그 칸으로 커서를 옮긴다** — 버튼을 잠그지 않으므로 이 자리가 할 일을 알려 준다.
+   * 문구는 내지 않는다(`firstEmptyField`).
    */
   const sendLogin = (): void => {
-    if (login.isSubmitting || !canSubmit(draft)) return;
+    if (login.isSubmitting) return;
+
+    const emptyField = firstEmptyField(draft);
+
+    if (emptyField !== undefined) {
+      (emptyField === 'loginId' ? loginIdRef : passwordRef).current?.focus();
+
+      return;
+    }
 
     login.submit(draft);
   };
@@ -147,99 +178,155 @@ export const LoginScreen = () => {
      * 랜드마크 목록에서 무엇인지 알 수 없다.
      */
     <main className="login-shell" aria-labelledby={titleId}>
-      <Card className="login-card" surface="default" elevation={2}>
-        <Card.Header className="login-head">
-          {/* 카드 제목이 이 화면의 유일한 표제다 — 셸이 없어 제목 줄도 없다. */}
-          <h1 id={titleId} className="login-title">
-            {t.title}
-          </h1>
+      {/*
+       * 언어 칸은 **화면 오른쪽 위**에 선다(#1126 · 2026-11-27 시안 A). 셸이 없어 상단 바의 그 칸이
+       * 서지 않는데, 공용 PC 에 처음 앉은 사람은 **여기서 바꾸지 못하면 바꿀 자리가 없다.**
+       *
+       * ⭐ **카드보다 앞, 폼 밖이다.** 고르면 새로고침하므로(`patterns/locale-select.tsx`) 치기 전에
+       * 만나는 자리여야 이미 친 아이디·비밀번호를 잃지 않는다. 화면 읽기 차례도 카드보다 앞이다.
+       *
+       * ⛔ **친 값을 새로고침 넘어로 나르지 않는다.** 그러려면 비밀번호를 저장소에 두어야
+       * 한다 — 칸이 둘뿐이라 다시 치는 대가가 그보다 작다.
+       */}
+      <div className="login-locale">
+        <LocaleSelect />
+      </div>
 
-          {/*
-           * 언어 칸이 **이 화면에도** 선다(#1126). 셸이 없어 상단 바의 그 칸이 서지 않는데,
-           * 공용 PC 에 처음 앉은 사람은 **여기서 바꾸지 못하면 바꿀 자리가 없다** — 브라우저
-           * 언어가 그 사람의 언어라는 보장이 없고, 들어가기 전에는 상단 바에 닿지 못한다.
-           *
-           * ⭐ **표제 옆, 폼보다 위다.** 고르면 새로고침하므로(`patterns/locale-select.tsx`)
-           * 폼 아래에 두면 이미 친 아이디·비밀번호를 잃는다. 치기 전에 만나는 자리여야 한다.
-           *
-           * ⛔ **친 값을 새로고침 넘어로 나르지 않는다.** 그러려면 비밀번호를 저장소에 두어야
-           * 한다 — 칸이 둘뿐이라 다시 치는 대가가 그보다 작다.
-           */}
-          <LocaleSelect />
-        </Card.Header>
+      <div className="login-stack">
+        <Card className="login-card" surface="base" elevation={3}>
+          <Card.Header className="login-head">
+            <p className="login-brand">
+              <strong>{ADMIN_PRODUCT_NAME}</strong>{' '}
+              <span className="login-brand-app">{localizedLabel(ADMIN_WEB_NAME)}</span>
+            </p>
+            {/* 카드 제목이 이 화면의 유일한 표제다 — 셸이 없어 제목 줄도 없다. */}
+            <h1 id={titleId} className="login-title">
+              {t.title}
+            </h1>
+          </Card.Header>
 
-        <Card.Body>
-          {/*
-           * 실패는 **한 자리에만** 선다 — 화면 수준 배너다. 규범 6에 따라 화면이 직접 배치하는
-           * 배너는 화면이 이음매(`.banner-slot`)를 붙인다.
-           *
-           * ⛔ **세 갈래가 다른 말을 한다.** 갈래를 보지 않고 「실패면 이 배너」로 두면 잠긴
-           * 계정과 서버 장애에도 자격이 틀렸다고 말하게 된다. 그 판정은 배너가 소유한다.
-           */}
-          {login.outcome !== null && (
-            <LoginErrorBanner outcome={login.outcome} onRetry={sendLogin} />
-          )}
-
-          <form onSubmit={handleSubmit}>
-            <div className="login-fields">
-              {/* 폼 안이라 native required 대신 Field 가 빨간 * 를 그린다(검증·제출 동작 그대로). */}
-              <Field label={t.fields.loginId} required fullWidth>
-                {({ controlId }) => (
-                  <TextField
-                    id={controlId}
-                    aria-required="true"
-                    value={draft.loginId}
-                    /* 계약 상한을 칸이 직접 막는다 — 넘겨 친 값이 요청에 실릴 자리를 만들지 않는다. */
-                    maxLength={LOGIN_ID_MAX_LENGTH}
-                    autoComplete="username"
-                    fullWidth
-                    onChange={(event) => {
-                      changeDraft({ loginId: event.target.value });
-                    }}
-                  />
-                )}
-              </Field>
-
-              <Field label={t.fields.password} required fullWidth>
-                {({ controlId }) => (
-                  <TextField
-                    id={controlId}
-                    aria-required="true"
-                    type="password"
-                    value={draft.password}
-                    autoComplete="current-password"
-                    fullWidth
-                    onChange={(event) => {
-                      changeDraft({ password: event.target.value });
-                    }}
-                  />
-                )}
-              </Field>
-            </div>
-
+          <Card.Body className="login-body">
             {/*
-             * 잠긴 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더해 `aria-describedby`로 잇는다 —
-             * 잠긴 버튼은 포커스를 받지 못해 툴팁만으로는 키보드·스크린리더 사용자가 닿을 수 없다
-             * (배치 규범 4-1). **열려 있으면 사유를 그리지 않는다** — 늘 서 있으면 읽히지 않는다.
+             * 실패는 **한 자리에만** 선다 — 화면 수준 배너다. 규범 6에 따라 화면이 직접 배치하는
+             * 배너는 화면이 이음매(`.banner-slot`)를 붙인다.
+             *
+             * ⛔ **세 갈래가 다른 말을 한다.** 갈래를 보지 않고 「실패면 이 배너」로 두면 잠긴
+             * 계정과 서버 장애에도 자격이 틀렸다고 말하게 된다. 그 판정은 배너가 소유한다.
              */}
-            <div className="login-actions">
-              <Button
-                type="submit"
-                variant="filled"
-                disabled={blockReason !== undefined}
-                aria-describedby={blockReason === undefined ? undefined : reasonId}
-              >
-                {t.actions.submit}
-              </Button>
-              {blockReason !== undefined && (
-                <span id={reasonId} className="field-note">
-                  {blockReason}
-                </span>
-              )}
-            </div>
-          </form>
-        </Card.Body>
-      </Card>
+            {login.outcome !== null && (
+              <LoginErrorBanner outcome={login.outcome} onRetry={sendLogin} />
+            )}
+
+            <form onSubmit={handleSubmit}>
+              <div className="login-fields">
+                {/*
+                 * 별표(*)를 그리지 않는다 — 칸이 둘뿐이고 둘 다 채워야 하는 것이 로그인이라 표시가
+                 * 더하는 뜻이 없다. 보조 기술에는 `aria-required` 로 그대로 알린다.
+                 */}
+                <Field label={t.fields.loginId} fullWidth>
+                  {({ controlId }) => (
+                    <TextField
+                      ref={loginIdRef}
+                      id={controlId}
+                      size="lg"
+                      aria-required="true"
+                      value={draft.loginId}
+                      /* 계약 상한을 칸이 직접 막는다 — 넘겨 친 값이 요청에 실릴 자리를 만들지 않는다. */
+                      maxLength={LOGIN_ID_MAX_LENGTH}
+                      autoComplete="username"
+                      /* 이 화면에서 할 일은 이 칸부터다 — 들어오자마자 칠 수 있게 커서를 둔다. */
+                      autoFocus
+                      fullWidth
+                      onKeyDown={syncCapsLock}
+                      onKeyUp={syncCapsLock}
+                      onChange={(event) => {
+                        changeDraft({ loginId: event.target.value });
+                      }}
+                    />
+                  )}
+                </Field>
+
+                {/*
+                 * Caps Lock 안내는 칸 아래 도움말 자리에 선다 — 실패가 아니라 지금 상태라, 「실패는
+                 * 배너 한 자리」 규율과 부딪히지 않는다. 켜진 동안만 선다.
+                 */}
+                <Field
+                  label={t.fields.password}
+                  fullWidth
+                  helperText={
+                    isCapsLockOn ? (
+                      <span className="login-caps">
+                        <Icon name="keyboard_capslock" size={16} />
+                        {t.hints.capsLock}
+                      </span>
+                    ) : undefined
+                  }
+                >
+                  {({ controlId, describedById }) => (
+                    <div className="login-password">
+                      <TextField
+                        ref={passwordRef}
+                        id={controlId}
+                        className="login-password-input"
+                        size="lg"
+                        aria-required="true"
+                        aria-describedby={describedById}
+                        type={isPasswordShown ? 'text' : 'password'}
+                        value={draft.password}
+                        autoComplete="current-password"
+                        fullWidth
+                        onKeyDown={syncCapsLock}
+                        onKeyUp={syncCapsLock}
+                        onChange={(event) => {
+                          changeDraft({ password: event.target.value });
+                        }}
+                      />
+                      {/*
+                       * 눈 단추는 칸 위에 겹쳐 둔다 — DS `TextField` 의 끝 아이콘 자리는 보조 기술에서
+                       * 숨겨져(`aria-hidden`) 그 안에 둔 단추는 누를 수 없는 것이 된다. 사용자 추가 창
+                       * (`users-roles/user-form-pane.tsx`)과 같은 짜임이다.
+                       */}
+                      <IconButton
+                        icon={isPasswordShown ? 'visibility_off' : 'visibility'}
+                        aria-label={
+                          isPasswordShown ? t.actions.hidePassword : t.actions.showPassword
+                        }
+                        onClick={() => {
+                          setIsPasswordShown((shown) => !shown);
+                        }}
+                      />
+                    </div>
+                  )}
+                </Field>
+              </div>
+
+              {/*
+               * 잠긴 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더해 `aria-describedby`로 잇는다 —
+               * 잠긴 버튼은 포커스를 받지 못해 툴팁만으로는 키보드·스크린리더 사용자가 닿을 수 없다
+               * (배치 규범 4-1). 잠그는 것은 나가는 동안뿐이다.
+               */}
+              <div className="login-actions">
+                <Button
+                  type="submit"
+                  variant="filled"
+                  size="lg"
+                  disabled={blockReason !== undefined}
+                  aria-describedby={blockReason === undefined ? undefined : reasonId}
+                >
+                  {t.actions.submit}
+                </Button>
+                {blockReason !== undefined && (
+                  <span id={reasonId} className="field-note">
+                    {blockReason}
+                  </span>
+                )}
+              </div>
+            </form>
+          </Card.Body>
+        </Card>
+
+        <AppVersionText className="login-version" />
+      </div>
     </main>
   );
 };

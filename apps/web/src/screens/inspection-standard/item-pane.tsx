@@ -11,6 +11,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-grip-order';
+import { CutHint } from '../../patterns/cut-hint';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 
@@ -45,22 +46,21 @@ export interface ItemPaneProps {
 /** 값이 없다는 것과 0이라는 것은 다르다 — 빈 값을 빈 칸으로 두면 둘이 같아 보인다. */
 const orEmptyMark = (value: string): string => (value === '' ? t.values.empty : value);
 
+/** 값 뒤에 단위를 붙인다 — 값이 없으면(「—」) 단위도 붙이지 않는다. */
+const withUom = (value: string, draft: ItemDraft, uomLabel: (uomId: string) => string): string =>
+  value === '' || draft.uomId === '' ? orEmptyMark(value) : `${value} ${uomLabel(draft.uomId)}`;
+
 /**
- * 목표 · 하한~상한 · 단위를 한 칸에 이어 담는다.
- *
- * 계약의 항목에는 필드가 15개 있다 — 전부 열로 만들면 표가 짓눌린다.
- * 개별 입력칸은 편집 창에 두고 표에서는 훑을 수 있는 요약만 낸다.
+ * 목표와 범위(하한~상한)는 따로 칸을 둔다(사용자 지시 2026-11-27) — 한 칸에 이으면 칸이 좁을 때 범위가 잘렸다.
+ * 단위는 두 칸 모두 값 뒤에 붙인다 — 칸 하나만 읽어도 무엇의 몇인지 안다.
  */
-const rangeLabel = (draft: ItemDraft, uomLabel: (uomId: string) => string): string => {
-  const parts = [orEmptyMark(draft.targetValue)];
+const targetLabel = (draft: ItemDraft, uomLabel: (uomId: string) => string): string =>
+  withUom(draft.targetValue, draft, uomLabel);
 
-  if (draft.lowerLimit !== '' || draft.upperLimit !== '') {
-    parts.push(t.values.range(orEmptyMark(draft.lowerLimit), orEmptyMark(draft.upperLimit)));
-  }
-
-  if (draft.uomId !== '') parts.push(uomLabel(draft.uomId));
-
-  return parts.join(' · ');
+const limitRangeLabel = (draft: ItemDraft, uomLabel: (uomId: string) => string): string => {
+  if (draft.lowerLimit === '' && draft.upperLimit === '') return t.values.empty;
+  const range = t.values.range(orEmptyMark(draft.lowerLimit), orEmptyMark(draft.upperLimit));
+  return draft.uomId === '' ? range : `${range} ${uomLabel(draft.uomId)}`;
 };
 
 /** 판정 방식 — 자동판정이면 그 이름, 아니면 「없음」. 필수 여부는 항목 칸 앞 라벨이 말한다(검사 조회·판정 표와 같다 · #196). */
@@ -94,36 +94,42 @@ export const ItemPane = ({
   onReorder,
 }: ItemPaneProps) => {
   /*
-   * 지정 폭의 합은 656px이고 디자인 시스템이 렌더하는 순서 이동 열(96px)을 더해도
-   * `.wide-table`의 최소 폭(58rem = 928px) 안에 들어간다 — `app.css`를 고치지 않는다.
-   * 「목표·범위」만 폭을 지정하지 않는다: 여러 값을 이어 담는 칸이라 남는 폭을 이 열이 가져가는 것이 맞다.
+   * 값 칸(목표 · 범위 · 유형 · 횟수 · 판정)은 값이 잘리지 않는 고정 폭이고, 「항목」만 폭을 정하지 않아 남는 폭을 맡는다
+   * (사용자 지시 2026-11-27) — 항목 이름은 길어 말줄임 · title 로 보고, 숫자 값은 끝까지 보인다.
+   * 칸이 좁으면 항목이 0 으로 사라지지 않게 표 최소 폭(app.css `.inspection-standard-item-rows table`)이 자리를 남기고,
+   * 그보다 좁으면 표 안에서 옆으로 구른다.
    */
   const columns: Column<ItemDraft>[] = [
     {
       key: 'displayNo',
       header: t.fields.sequence,
       align: 'center',
-      width: '72px',
+      width: '64px',
       render: (_row, rowIndex) => String(rowIndex + 1),
     },
     {
       key: 'inspectionItemCode',
       header: t.fields.itemSpec,
       align: 'center',
-      width: '220px',
-      /* 「필수」는 이름 앞 라벨 — 검사 조회·판정의 검사 항목별 결과 표와 같다(#196). */
-      render: (row) => (
-        <span className="inspection-standard-item-cell">
-          {row.requiredFlag && (
-            <Chip variant="status" size="sm" status="idle">
-              {t.fields.requiredFlag}
-            </Chip>
-          )}
-          <span className="inspection-standard-item-name">
-            {t.values.itemLabel(row.inspectionItemCode, row.inspectionItemName)}
-          </span>
-        </span>
-      ),
+      /*
+       * 「필수」는 이름 앞 라벨 — 검사 조회·판정의 검사 항목별 결과 표와 같다(#196).
+       * 칸 글은 왼쪽 정렬이고(머리글은 다른 열처럼 가운데 · 사용자 지시 2026-11-27), 이름이 잘렸을 때만 커서를 두면 힌트로 다 보인다.
+       */
+      render: (row) => {
+        const label = t.values.itemLabel(row.inspectionItemCode, row.inspectionItemName);
+        return (
+          <CutHint className="inspection-standard-item-cell" text={label}>
+            {row.requiredFlag && (
+              <Chip variant="status" size="sm" status="idle">
+                {t.fields.requiredFlag}
+              </Chip>
+            )}
+            <span className="inspection-standard-item-name" data-cut-text>
+              {label}
+            </span>
+          </CutHint>
+        );
+      },
     },
     {
       key: 'dataTypeCode',
@@ -133,30 +139,38 @@ export const ItemPane = ({
       render: (row) => (row.dataTypeCode === '' ? t.values.empty : dataTypeLabel(row.dataTypeCode)),
     },
     {
-      key: 'targetRange',
-      header: t.fields.targetRange,
+      key: 'targetValue',
+      header: t.fields.target,
       align: 'center',
-      /* 폭을 정하지 않는다 — 남는 폭을 이 열이 맡는다(검사 조회·판정 표와 같다 · #196). */
-      render: (row) => rangeLabel(row, uomLabel),
+      /* 「1000.00 mm」까지 다 보이는 폭. 범위도 「1000.00~2000.00 mm」까지 — 더 긴 값만 말줄임이고 열 끝을 끌어 넓힌다. */
+      width: '112px',
+      render: (row) => targetLabel(row, uomLabel),
+    },
+    {
+      key: 'limitRange',
+      header: t.fields.limitRange,
+      align: 'center',
+      width: '160px',
+      render: (row) => limitRangeLabel(row, uomLabel),
     },
     {
       key: 'measurementCount',
       header: t.fields.measurementCount,
       align: 'center',
-      width: '104px',
+      width: '96px',
     },
     {
       key: 'judgment',
       header: t.fields.judgment,
       align: 'center',
-      width: '136px',
+      width: '96px',
       render: (row) => judgmentLabel(row),
     },
     {
       key: 'rowActions',
       header: t.fields.rowActions,
       align: 'center',
-      width: '104px',
+      width: '96px',
       render: (row, rowIndex) => (
         <>
           <IconButton
@@ -183,7 +197,8 @@ export const ItemPane = ({
    * 고칠 수 없는 버전에는 편집 열을 두지 않는다 — 누를 수 없는 단추만 줄마다 남는다.
    */
   const ordered = useColumnOrder(
-    'omf-mes:inspection-standard:columns:items:order',
+    /* `:v2` — 목표 · 범위를 두 열로 나눴다(2026-11-27). 예전 순서를 따르면 새 열이 편집 열 뒤로 밀린다. */
+    'omf-mes:inspection-standard:columns:items:order:v2',
     isEditable ? columns : columns.filter((column) => column.key !== 'rowActions'),
   );
   /* `:v2` — 모든 열이 고정 폭이던 때 최소 폭으로 잘못 저장된 값을 버리고 새로 시작한다(#196). */

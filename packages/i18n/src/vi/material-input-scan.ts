@@ -124,4 +124,18 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     goToProductionResult: 'Sang công việc sản xuất',
     failed: 'Không đăng ký được việc đưa vào.',
   },
+  wip: {
+    chip: (operationSeq: number | null, processName: string | null): string =>
+      operationSeq === null
+        ? 'Bán thành phẩm'
+        : `Bán thành phẩm · CĐ ${String(operationSeq)}${processName === null || processName === '' ? '' : ` ${processName}`}`,
+    basis: (produced: string, consumed: string, remainingWithUnit: string): string =>
+      `Kết quả ${produced} · Đã đưa vào ${consumed} · Số lượng còn lại ${remainingWithUnit}`,
+    filled: (item: string, qtyWithUnit: string): string =>
+      `${item} — Đã điền toàn bộ số lượng còn lại ${qtyWithUnit} của bán thành phẩm. Chỉ giảm khi đưa vào từng phần.`,
+    exceeded: (remainingWithUnit: string, produced: string, consumed: string): string =>
+      `Đã đưa vào nhiều hơn số lượng còn lại (${remainingWithUnit}). Trong kết quả ${produced}, đã đưa vào ${consumed}.`,
+    allInput: (item: string): string => `${item} — đã đưa vào hết số lượng bán thành phẩm còn lại.`,
+    unknown: 'Không biết số lượng bán thành phẩm còn lại nên vui lòng tự nhập lượng đưa vào.',
+  },
 };

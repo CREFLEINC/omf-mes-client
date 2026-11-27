@@ -106,7 +106,6 @@ const fact = (
   closeJudgmentCode: null,
   voidedLotCount: null,
   progress: null,
-  defaultWipLocationId: null,
   defaultFgLocationId: null,
   defaultScrapLocationId: null,
 });

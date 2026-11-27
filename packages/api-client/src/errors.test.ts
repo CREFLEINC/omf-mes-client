@@ -120,6 +120,30 @@ describe('normalizeApiError', () => {
     }
   });
 
+  it('US2-5 반제품 남은 수량 초과(409 WIP_QTY_EXCEEDED)는 meta 의 수량을 함께 싣는다 — 다른 거절에는 칸이 없다', () => {
+    const errors = [
+      {
+        scope: 'field',
+        field: 'inputQty',
+        code: 'WIP_QTY_EXCEEDED',
+        message: '남은 수량을 넘습니다 (남은 40)',
+      },
+    ];
+
+    expect(
+      normalizeApiError(409, { errors, meta: { remainingQty: 40, producedQty: 100 } }),
+    ).toEqual({
+      kind: 'validation',
+      status: 409,
+      errors,
+      wipQty: { remainingQty: 40, producedQty: 100 },
+    });
+    expect(normalizeApiError(400, { errors })).not.toHaveProperty('wipQty');
+    expect(normalizeApiError(409, { errors, meta: { remainingQty: '40' } })).not.toHaveProperty(
+      'wipQty',
+    );
+  });
+
   it('입하 받기 거부(005)는 rejectedLots 의 줄별 까닭을 함께 싣는다 — 다른 잠김에는 칸이 없다', () => {
     const result = normalizeApiError(409, {
       errors: [
@@ -214,7 +238,13 @@ describe('normalizeApiError', () => {
       message: '이 지시서의 출고 창고에 없는 LOT 입니다.',
       conflictCause: 'user',
       warehouses: [
-        { warehouseId: 12, warehouseCode: 'WH-B', warehouseName: '완제품창고 B', plantId: 2, plantName: '2공장' },
+        {
+          warehouseId: 12,
+          warehouseCode: 'WH-B',
+          warehouseName: '완제품창고 B',
+          plantId: 2,
+          plantName: '2공장',
+        },
         { warehouseId: 13 },
       ],
     });

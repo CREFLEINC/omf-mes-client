@@ -48,6 +48,9 @@ const useCodeNameOf = (groupCode: string): CodeNameOf => {
   return (code) => names.get(code) ?? code;
 };
 
+/** 품목 유형(ITEM_TYPE) 이름 — 목록에서 제품 · 반제품을 가른다. */
+export const useItemTypeNameOf = (): CodeNameOf => useCodeNameOf('ITEM_TYPE');
+
 export const useProductionOrderCodeNames = (): ProductionOrderCodeNames => ({
   productionOrderStatus: useCodeNameOf(PRODUCTION_ORDER_CODE_GROUPS.productionOrderStatus),
   productionPlanStatus: useCodeNameOf(PRODUCTION_ORDER_CODE_GROUPS.productionPlanStatus),

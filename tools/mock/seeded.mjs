@@ -2294,7 +2294,6 @@ const DEPT_BASE = {
   businessUnitId: 1001,
   isActive: true,
   sourceSystemCode: 'ERP',
-  productionWarehouseCount: 2,
 };
 const MOCK_DEPARTMENTS = [
   [1001, 'DEPT-P1', '생산1팀'],

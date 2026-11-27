@@ -25,7 +25,6 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     location: 'Location',
   },
   actions: {
-    addWarehouse: 'Thêm kho',
     addRack: 'Thêm kệ',
     printLabels: 'In nhãn',
     activate: 'Dùng lại',
@@ -49,12 +48,6 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   },
   locationPrefix: {
     label: 'Mã vị trí kho',
-    regenerate: 'Tạo lại',
-    example: (code: string): string => `Ví dụ mã vị trí: ${code}-Z01-R001-L01-C01`,
-    helper:
-      'Đã tạo ngẫu nhiên. Có thể sửa thành 2–6 chữ in hoa hoặc số; sau khi lưu thì không thể thay đổi.',
-    invalid: 'Hãy nhập 2–6 chữ in hoa hoặc số.',
-    taken: 'Mã này đã được kho khác sử dụng — hãy nhập mã khác hoặc bấm [Tạo lại].',
   },
   externalConfirm: {
     on: 'Chuyển thành kho bên ngoài?',

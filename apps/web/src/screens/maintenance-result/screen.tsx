@@ -17,6 +17,7 @@ import { useId, useMemo, useState } from 'react';
 
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
+import { PLANT_UTC_OFFSET_MINUTES } from '../../patterns/plant-time';
 import { ScreenHeader } from '../../patterns/screen-header';
 import { FieldLabel } from './field-label';
 import { LoadErrorBanner } from './load-error-banner';
@@ -140,10 +141,10 @@ export const MaintenanceResultScreen = () => {
     if (hasErrors(nextErrors)) return;
 
     /*
-     * ⚠ 시간대 오프셋을 브라우저에서 읽는다. 화면이 날짜만 받고 시각은 그 날의 시작으로 두므로,
-     * 보는 사람의 시간대에서 그 날이 시작하는 순간을 보내는 것이 맞다.
+     * 날짜만 받고 시각은 그 날의 시작으로 둔다 — **공장 달력의 그 날**이다(omf-all-around#364).
+     * 브라우저 offset 을 쓰면 한국 PC 에서 전날 22:00(공장 시각)으로 기록된다.
      */
-    create.write(toCreateBody(draft, -new Date().getTimezoneOffset()));
+    create.write(toCreateBody(draft, PLANT_UTC_OFFSET_MINUTES));
   };
 
   const listColumns: Column<ResultView>[] = [

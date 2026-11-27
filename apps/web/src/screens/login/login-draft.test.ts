@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   canSubmit,
   emptyLoginDraft,
-  submitDisabledReason,
+  firstEmptyField,
   LOGIN_ID_MAX_LENGTH,
   type LoginDraft,
 } from './login-draft';
@@ -95,49 +95,42 @@ describe('canSubmit', () => {
   });
 });
 
-describe('submitDisabledReason', () => {
-  it('두 칸을 다 채우면 사유가 없다', () => {
+describe('firstEmptyField', () => {
+  it('두 칸을 다 채우면 옮길 칸이 없다', () => {
     expect(
-      submitDisabledReason(draft({ loginId: SYNTHETIC_LOGIN_ID, password: SYNTHETIC_PASSWORD })),
+      firstEmptyField(draft({ loginId: SYNTHETIC_LOGIN_ID, password: SYNTHETIC_PASSWORD })),
+    ).toBeUndefined();
+  });
+
+  /** 위에서 아래로 채우는 차례라 아이디가 먼저다 — 둘 다 비었으면 아이디 칸으로 간다. */
+  it('아이디가 비었으면 비밀번호가 있어도 아이디 칸이다', () => {
+    expect(firstEmptyField(emptyLoginDraft)).toBe('loginId');
+    expect(firstEmptyField(draft({ password: SYNTHETIC_PASSWORD }))).toBe('loginId');
+  });
+
+  /** 공백만 친 아이디는 사용자 눈에도 빈 칸이라 채운 것으로 세지 않는다. */
+  it('공백뿐인 아이디는 빈 칸이다', () => {
+    expect(firstEmptyField(draft({ loginId: '   ', password: SYNTHETIC_PASSWORD }))).toBe(
+      'loginId',
+    );
+  });
+
+  it('아이디만 채웠으면 비밀번호 칸이다', () => {
+    expect(firstEmptyField(draft({ loginId: SYNTHETIC_LOGIN_ID }))).toBe('password');
+  });
+
+  /** 가려진 칸의 공백은 점으로 보인다 — 비밀번호는 공백도 값이다(`isPasswordFilled`). */
+  it('공백뿐인 비밀번호는 채운 것이다', () => {
+    expect(
+      firstEmptyField(draft({ loginId: SYNTHETIC_LOGIN_ID, password: '   ' })),
     ).toBeUndefined();
   });
 
   /**
-   * **세 갈래가 같은 사유를 낸다.** 어느 칸이 비었는지 가르면 아직 아무것도 보내지 않은
-   * 시점부터 화면이 칸을 지목하기 시작하고, 그 습관이 그대로 실패 문구(어느 칸이 틀렸는지
-   * 말하지 않는다)로 새어 나간다.
+   * **옮길 칸이 없는 것과 보낼 수 있는 것이 언제나 같다.** 둘이 어긋나면 「보낼 수 없는데 아무
+   * 일도 없는」 버튼이나 「보낼 수 있는데 커서만 도는」 버튼이 생긴다.
    */
-  it('아이디만·비밀번호만·둘 다 공백만 — 셋이 같은 사유를 낸다', () => {
-    const reasons = [
-      submitDisabledReason(draft({ loginId: SYNTHETIC_LOGIN_ID })),
-      submitDisabledReason(draft({ password: SYNTHETIC_PASSWORD })),
-      submitDisabledReason(draft({ loginId: '   ', password: '   ' })),
-    ];
-
-    expect(reasons).toEqual([
-      t.actionReasons.incomplete,
-      t.actionReasons.incomplete,
-      t.actionReasons.incomplete,
-    ]);
-  });
-
-  /**
-   * 사유는 **어떻게 풀 것인가**를 담는다(배치 규범 4 · 공유계약 G-3).
-   * 두 칸을 함께 말하는 것이 곧 「어느 칸이 비었는지 가르지 않는다」이기도 하다.
-   */
-  it('사유가 두 칸을 함께 말하고 풀리는 조건을 담는다', () => {
-    const reason = t.actionReasons.incomplete;
-
-    expect(reason).toContain(t.fields.loginId);
-    expect(reason).toContain(t.fields.password);
-    expect(reason).toContain('입력하면');
-  });
-
-  /**
-   * **잠금과 사유가 갈리지 않는다.** 버튼은 사유의 유무로 잠기므로(화면), 이 둘이 어긋나면
-   * 「사유 없이 잠긴 버튼」이나 「열려 있는데 사유가 붙은 버튼」이 생긴다.
-   */
-  it('사유가 없는 것과 보낼 수 있는 것이 언제나 같다', () => {
+  it('옮길 칸이 없는 것과 보낼 수 있는 것이 언제나 같다', () => {
     const cases: LoginDraft[] = [
       emptyLoginDraft,
       draft({ loginId: SYNTHETIC_LOGIN_ID }),
@@ -148,7 +141,7 @@ describe('submitDisabledReason', () => {
     ];
 
     for (const candidate of cases) {
-      expect(submitDisabledReason(candidate) === undefined).toBe(canSubmit(candidate));
+      expect(firstEmptyField(candidate) === undefined).toBe(canSubmit(candidate));
     }
   });
 });
@@ -160,36 +153,23 @@ describe('submitDisabledReason', () => {
  * 하고, 고치는 김에 규칙까지 느슨해진다. 키로 재면 문구가 바뀌어도 **규칙만 남는다.**
  */
 /**
- * ⚠ **「한쪽 칸만 지목하지 않는다」 규칙에서 빼는 문구.** 근거가 **두 겹**이다.
- *
- * **① 진단이 아니라 해결 경로다.** 그 규칙이 막는 것은 **무엇이 틀렸는지를 진단하는 문장**이
- * 한 칸을 지목하는 것이다 — 그 지목이 곧 「그 아이디는 있다」를 흘린다. 잠금 안내에 나오는
- * 「비밀번호 초기화」는 **관리자가 하는 조치의 이름**이지 「비밀번호가 틀렸다」는 진술이 아니다.
- *
- * **② 그 갈래는 상태 코드 자체가 이미 계정 존재를 드러낸다.** 잠김(423)은 **잠긴 계정에만**
- * 오고 없는 계정은 401을 받는다. 그것은 스펙이 감수하기로 한 트레이드오프이며, 그 갈래 안에서
- * 문구가 칸을 지목하는지를 따지는 것은 실익이 없다.
- *
- * 문구 자체는 스펙이 확정한 것이라 규칙에 맞추려고 다듬지 않는다.
- *
- * ⛔ **이 목록이 늘면 규칙이 껍데기가 된다.** 아래 두 시험이 함께 지킨다 — 하나는 목록 밖
- * 전부에 규칙을 걸고, 다른 하나는 목록 안에 **실제로 해결 경로가 담겼는지**를 잰다.
+ * ⚠ **「한쪽 칸만 지목하지 않는다」 규칙에서 빼는 문구는 없다.** 잠금 안내(「비밀번호 초기화를
+ * 요청하세요」)가 유일한 예외였는데, 서버가 계정 잠금을 없애며(서버 #1165) 그 문구도 사라졌다.
  */
-const RECOVERY_SENTENCES: readonly string[] = [t.banner.locked];
 
 describe('login 블록의 문구 규율', () => {
   /**
-   * **비활성 사유는 그 컨트롤의 이름으로 시작한다**(배치 규범 4-5 · `ko.ts` 작성 규칙).
-   * 잠긴 컨트롤은 포커스를 받지 못해, 사유가 시각적으로 끊겼을 때 주어가 없으면 복원할 단서가
-   * 없다. **사유가 늘어도 이 규칙이 따라붙게** 블록 전체를 훑는다.
+   * **비활성 사유에 컨트롤 이름을 앞에 붙이지 않는다**(배치 규범 4-5 · 결정 57). 사유는 버튼
+   * 바로 아래 붙고 `aria-describedby` 로 이어져 어느 컨트롤의 것인지 이미 보인다 — 이름을 앞에
+   * 붙이면 같은 말이 두 번 읽힌다. **사유가 늘어도 이 규칙이 따라붙게** 블록 전체를 훑는다.
    */
-  it('모든 비활성 사유가 로그인 버튼 이름으로 시작한다', () => {
+  it('비활성 사유가 로그인 버튼 이름으로 시작하지 않는다', () => {
     const reasons = Object.values(t.actionReasons);
 
     expect(reasons.length).toBeGreaterThan(0);
 
     for (const reason of reasons) {
-      expect(reason.startsWith(t.actions.submit)).toBe(true);
+      expect(reason.startsWith(t.actions.submit)).toBe(false);
     }
   });
 
@@ -212,9 +192,7 @@ describe('login 블록의 문구 규율', () => {
      */
     expect(plain.length).toBe(bannerValues.length);
 
-    const sentences = [...Object.values(t.actionReasons), ...plain].filter(
-      (sentence) => !RECOVERY_SENTENCES.includes(sentence),
-    );
+    const sentences = [...Object.values(t.actionReasons), ...Object.values(t.hints), ...plain];
 
     expect(sentences.length).toBeGreaterThan(0);
 
@@ -223,19 +201,6 @@ describe('login 블록의 문구 규율', () => {
       const namesPassword = sentence.includes(t.fields.password);
 
       expect(namesLoginId).toBe(namesPassword);
-    }
-  });
-
-  /**
-   * 빼 놓은 문구가 **규칙의 취지 밖에 있다**는 것을 여기서 따로 잰다 — 목록이 조용히
-   * 늘어나면 규칙이 껍데기만 남으므로, 뺀 문구에는 **해결 경로가 실제로 담겨 있어야** 한다.
-   */
-  it('규칙에서 뺀 문구는 해결 경로를 담는다', () => {
-    expect(RECOVERY_SENTENCES).toHaveLength(1);
-
-    for (const sentence of RECOVERY_SENTENCES) {
-      expect(sentence).toContain('관리자');
-      expect(sentence).toContain('요청');
     }
   });
 });

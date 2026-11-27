@@ -88,7 +88,7 @@ const renderScreen = (
 } => {
   const { fetch, requests } = createRecordingFetch(routes);
   const { queryClient, router } = renderWithProviders(
-    /* 「검사 기준 수정」 · 「라우팅 조회」가 권한을 본다 — 권한 목록이 없는 세션이라 다 열린다. */
+    /* 「검사 기준 수정」이 권한을 본다 — 권한 목록이 없는 세션이라 다 열린다. */
     <SessionProvider>
       <InspectionStandardScreen />
     </SessionProvider>,
@@ -112,23 +112,11 @@ const planRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
 
 const planPane = (): HTMLElement => screen.getByRole('region', { name: '검사 기준' });
 
-/** 검사 기준 검색 칸을 펼쳐 검색어로 찾고, 한 기준을 골라 넣는다 — 창(팝업)을 거치지 않는다(#226). */
-const pickPlanInField = async (
-  user: ReturnType<typeof userEvent.setup>,
-  keyword: string,
-  planCode: string,
-): Promise<void> => {
-  await user.click(screen.getByLabelText('검사 기준 검색'));
-  await screen.findByRole('searchbox', { name: messages.common.selectSearch });
-  await user.keyboard(keyword);
-  await user.click(await screen.findByRole('option', { name: new RegExp(`^${planCode} · `) }));
-};
-
 describe('InspectionStandardScreen — 기준 목록 조회', () => {
   it('화면에 들어오면 목록 요청이 한 번 나가고 조건이 없으면 쿼리도 없다', async () => {
     const { requests } = renderScreen([planListRoute()]);
 
-    expect(await screen.findByRole('button', { name: 'SYN-PLAN-01' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /, 합성 검사기준 A$/ })).toBeInTheDocument();
 
     const first = planRequests(requests);
     expect(first).toHaveLength(1);
@@ -152,17 +140,18 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
   it('서버 응답의 기준을 표에 그린다', async () => {
     renderScreen([planListRoute()]);
 
-    expect(await screen.findByRole('button', { name: 'SYN-PLAN-01' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'SYN-PLAN-02' })).toBeInTheDocument();
-    expect(screen.getByText('합성 검사기준 A')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /, 합성 검사기준 A$/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /, 합성 검사기준 B$/ })).toBeInTheDocument();
+    /* 기준명은 목록 글자로 내지 않는다(기준명 열을 걷었다 · 2026-11-27) — 줄 단추의 접근 이름에만 있다. */
+    expect(screen.queryByText('합성 검사기준 A')).not.toBeInTheDocument();
     expect(screen.getByText('IQC (수입검사)')).toBeInTheDocument();
   });
 
-  it('검색어와 검사 유형이 요청 쿼리에 실린다', async () => {
-    const { requests, user } = renderScreen([planListRoute()]);
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+  /* 「검사 기준 검색」 칸은 걷었다(2026-11-27) — 예전 주소의 검색어는 그대로 실린다. */
+  it('주소의 검색어와 고른 검사 유형이 요청 쿼리에 실린다', async () => {
+    const { requests, user } = renderScreen([planListRoute()], '?q=SYN-PLAN-02');
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
-    await pickPlanInField(user, 'SYN', 'SYN-PLAN-02');
     await user.click(
       within(screen.getByRole('search')).getByRole('combobox', { name: '검사 유형 선택' }),
     );
@@ -177,7 +166,7 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
   /* 계약의 기본값이 false다 — 끈 상태를 값으로 실어 보내면 캐시 키가 갈린다. */
   it('미사용 포함이 꺼져 있으면 includeInactive를 싣지 않는다', async () => {
     const { requests } = renderScreen([planListRoute()]);
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
     expect(planRequests(requests)[0]?.url.searchParams.has('includeInactive')).toBe(false);
   });
@@ -193,15 +182,15 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
   it('상태를 작성중으로 거르면 기준이 남는다', async () => {
     renderScreen([planListRoute(), versionListRoute(), ...lookupRoutes()], '?vstatus=draft');
 
-    expect(await screen.findByRole('button', { name: 'SYN-PLAN-01' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /, 합성 검사기준 A$/ })).toBeInTheDocument();
   });
 
   /* 승인 기능을 걷었다(omf-all-around#357) — 예전 주소의 `unapproved=1` 은 아무것도 거르지 않는다. */
   it('예전 주소의 미승인 조건은 무시하고 승인된 기준도 보인다', async () => {
     renderScreen([planListRoute()], '?inactive=1&unapproved=1');
 
-    expect(await screen.findByRole('button', { name: 'SYN-PLAN-03' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'SYN-PLAN-01' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /, 합성 검사기준 C$/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /, 합성 검사기준 A$/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '미승인 조건 제거' })).not.toBeInTheDocument();
   });
 
@@ -209,14 +198,14 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
   it('미사용만 보기는 미사용인 기준만 남기고 includeInactive=true 로 받는다', async () => {
     const { requests } = renderScreen([planListRoute()], '?inactive=1&usage=off');
 
-    expect(await screen.findByRole('button', { name: 'SYN-PLAN-03' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'SYN-PLAN-01' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /, 합성 검사기준 C$/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /, 합성 검사기준 A$/ })).not.toBeInTheDocument();
     expect(planRequests(requests)[0]?.url.searchParams.get('includeInactive')).toBe('true');
   });
 
   it('조회 조건은 주소에 남는다 — 새로고침·공유가 같은 결과를 낸다', async () => {
     const { requests } = renderScreen([planListRoute()], '?q=SYN&type=OQC&inactive=1');
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
     const first = planRequests(requests)[0];
     expect(first?.url.searchParams.get('q')).toBe('SYN');
@@ -230,12 +219,12 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
       '?q=SYN&vstatus=confirmed',
     );
     await screen.findByText('조건에 맞는 검사기준이 없습니다');
-    /* 보이는 칸(검사 기준 검색)의 조건은 칩으로 겹쳐 적지 않는다. */
-    expect(screen.queryByText('검색어: SYN')).not.toBeInTheDocument();
+    /* 검색어는 칸이 없어(검사 기준 검색을 걷었다 · 2026-11-27) 칩으로 알린다. */
+    expect(screen.getByText('검색어: SYN')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '상태 조건 제거' }));
 
-    expect(await screen.findByRole('button', { name: 'SYN-PLAN-01' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /, 합성 검사기준 A$/ })).toBeInTheDocument();
     expect(planRequests(requests).at(-1)?.url.searchParams.get('q')).toBe('SYN');
   });
 
@@ -274,7 +263,7 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
 
   it('네트워크가 끊기면 연결 안내를 낸다', async () => {
     renderWithProviders(
-      /* 「검사 기준 수정」 · 「라우팅 조회」가 권한을 본다 — 권한 목록이 없는 세션이라 다 열린다. */
+      /* 「검사 기준 수정」이 권한을 본다 — 권한 목록이 없는 세션이라 다 열린다. */
       <SessionProvider>
         <InspectionStandardScreen />
       </SessionProvider>,
@@ -331,7 +320,7 @@ describe('InspectionStandardScreen — 쪽 이동', () => {
     const { requests, user } = renderScreen([
       planListRoute(inspectionPlanFixtures, { page: 1, size: 50, total: 240 }),
     ]);
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
     await user.click(within(planPane()).getByRole('button', { name: '다음' }));
 
@@ -340,7 +329,7 @@ describe('InspectionStandardScreen — 쪽 이동', () => {
 
   it('첫 쪽에서는 이전이 비활성이다', async () => {
     renderScreen([planListRoute(inspectionPlanFixtures, { page: 1, size: 50, total: 240 })]);
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
     expect(within(planPane()).getByRole('button', { name: '이전' })).toBeDisabled();
     expect(within(planPane()).getByRole('button', { name: '다음' })).toBeEnabled();
@@ -351,7 +340,7 @@ describe('InspectionStandardScreen — 쪽 이동', () => {
       [planListRoute(inspectionPlanFixtures, { page: 5, size: 50, total: 203 })],
       '?page=5',
     );
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
     expect(within(planPane()).getByRole('button', { name: '다음' })).toBeDisabled();
     expect(within(planPane()).getByRole('button', { name: '이전' })).toBeEnabled();
@@ -363,7 +352,7 @@ describe('InspectionStandardScreen — 쪽 이동', () => {
       [planListRoute(inspectionPlanFixtures, { page: 2, size: 3, total: 6 })],
       '?page=2',
     );
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
     expect(within(planPane()).getByRole('button', { name: '다음' })).toBeDisabled();
   });
@@ -383,15 +372,17 @@ describe('InspectionStandardScreen — 쪽 이동', () => {
       [planListRoute(inspectionPlanFixtures, { page: 3, size: 50, total: 240 })],
       '?page=3&plan=3001&ver=4001',
     );
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
-    await pickPlanInField(user, 'SYN', 'SYN-PLAN-02');
-    await user.click(within(screen.getByRole('search')).getByRole('button', { name: '조회' }));
+    await user.click(
+      within(screen.getByRole('search')).getByRole('combobox', { name: '검사 유형 선택' }),
+    );
+    await user.click(screen.getByRole('option', { name: 'PQC (공정검사)' }));
 
     const last = planRequests(requests).at(-1);
-    expect(last?.url.searchParams.get('q')).toBe('SYN-PLAN-02');
+    expect(last?.url.searchParams.get('inspectionTypeCode')).toBe('PQC');
     expect(last?.url.searchParams.has('page')).toBe(false);
-    expect(screen.queryByRole('button', { name: 'SYN-PLAN-01' })).not.toHaveAttribute(
+    expect(screen.queryByRole('button', { name: /, 합성 검사기준 A$/ })).not.toHaveAttribute(
       'aria-current',
     );
   });
@@ -402,14 +393,16 @@ describe('InspectionStandardScreen — 쪽 이동', () => {
       '?plan=3001&ver=4001',
     );
 
-    expect(await screen.findByRole('button', { name: 'SYN-PLAN-01' })).toHaveAttribute(
+    expect(await screen.findByRole('button', { name: /, 합성 검사기준 A$/ })).toHaveAttribute(
       'aria-current',
       'true',
     );
 
     await user.click(within(planPane()).getByRole('button', { name: '다음' }));
 
-    expect(screen.getByRole('button', { name: 'SYN-PLAN-01' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('button', { name: /, 합성 검사기준 A$/ })).not.toHaveAttribute(
+      'aria-current',
+    );
   });
 });
 
@@ -417,9 +410,9 @@ describe('InspectionStandardScreen — 기준 선택', () => {
   it('기준코드를 누르면 그 행에 선택 표식이 붙는다', async () => {
     const { user } = renderScreen([planListRoute()]);
 
-    await user.click(await screen.findByRole('button', { name: 'SYN-PLAN-02' }));
+    await user.click(await screen.findByRole('button', { name: /, 합성 검사기준 B$/ }));
 
-    expect(screen.getByRole('button', { name: 'SYN-PLAN-02' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /, 합성 검사기준 B$/ })).toHaveAttribute(
       'aria-current',
       'true',
     );
@@ -428,7 +421,7 @@ describe('InspectionStandardScreen — 기준 선택', () => {
   it('주소의 plan으로 선택이 복원된다', async () => {
     renderScreen([planListRoute()], '?plan=3003');
 
-    expect(await screen.findByRole('button', { name: 'SYN-PLAN-03' })).toHaveAttribute(
+    expect(await screen.findByRole('button', { name: /, 합성 검사기준 C$/ })).toHaveAttribute(
       'aria-current',
       'true',
     );
@@ -436,7 +429,7 @@ describe('InspectionStandardScreen — 기준 선택', () => {
 
   it('기준을 고르기 전에는 중·우 구획이 선택 안내를 낸다', async () => {
     renderScreen([planListRoute()]);
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
     expect(screen.getByText('검사 기준을 선택하세요')).toBeInTheDocument();
     expect(screen.getByText('목록에서 선택하면 상세 정보가 표시됩니다.')).toBeInTheDocument();
@@ -458,7 +451,7 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
 
   it('창을 열면 되돌리지 않음·작성중 버전이 생김을 먼저 말하고, 파일 없이는 올릴 수 없다', async () => {
     const { user } = renderScreen([planListRoute()]);
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
     await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
     const dialog = await screen.findByRole('dialog', { name: t.import.title });
@@ -475,7 +468,7 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
   /* 파일 고르기 창의 「취소」가 올리는 cancel 사건이 바깥 창을 닫지 않는다(#208). */
   it('파일 고르기를 취소해도 올리기 창이 닫히지 않는다', async () => {
     const { user } = renderScreen([planListRoute()]);
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
     await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
     const dialog = await screen.findByRole('dialog', { name: t.import.title });
@@ -489,7 +482,7 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
 
   it('모두 반영되면 창을 닫고 「저장했습니다」를 알린다', async () => {
     const { user } = renderScreen([importRoute(), planListRoute()]);
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
     await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
     const dialog = await screen.findByRole('dialog', { name: t.import.title });
@@ -523,7 +516,7 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
       confirmRoute(() => jsonResponse({})),
       planListRoute(),
     ]);
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
     await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
     const dialog = await screen.findByRole('dialog', { name: t.import.title });
@@ -572,7 +565,7 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
       ),
       planListRoute(),
     ]);
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
     await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
     const dialog = await screen.findByRole('dialog', { name: t.import.title });
@@ -609,7 +602,7 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
       ),
       planListRoute(),
     ]);
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
     await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
     const dialog = await screen.findByRole('dialog', { name: t.import.title });
@@ -656,7 +649,7 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
       }),
       planListRoute(),
     ]);
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
     await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
     const dialog = await screen.findByRole('dialog', { name: t.import.title });
@@ -711,7 +704,7 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
       importRoute(() => jsonResponse({ errors: [] }, { status: 500 })),
       planListRoute(),
     ]);
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
     await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
     const dialog = await screen.findByRole('dialog', { name: t.import.title });
@@ -737,7 +730,7 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
       ),
       planListRoute(),
     ]);
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
     await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
     const dialog = await screen.findByRole('dialog', { name: t.import.title });
@@ -771,7 +764,7 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
       ),
       planListRoute(),
     ]);
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
     await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
     const dialog = await screen.findByRole('dialog', { name: t.import.title });
@@ -976,7 +969,7 @@ const findPlanField = async (label: string): Promise<HTMLElement> => {
 describe('InspectionStandardScreen — 기준 상세 조회', () => {
   it('기준을 고르기 전에는 상세 요청이 나가지 않는다', async () => {
     const { requests } = renderScreen([planListRoute(), planDetailRoute(), ...lookupRoutes()]);
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
     expect(requestsTo(requests, PLAN_DETAIL_PATH)).toHaveLength(0);
   });
@@ -989,7 +982,7 @@ describe('InspectionStandardScreen — 기준 상세 조회', () => {
       ...lookupRoutes(),
     ]);
 
-    await user.click(await screen.findByRole('button', { name: 'SYN-PLAN-01' }));
+    await user.click(await screen.findByRole('button', { name: /, 합성 검사기준 A$/ }));
 
     expect(await findPlanField('기준코드')).toHaveValue('SYN-PLAN-01');
     expect(screen.getByLabelText('기준명')).toHaveValue('합성 검사기준 A');
@@ -1330,9 +1323,9 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     expect(requestsTo(requests, '/planning/routings')).toHaveLength(0);
   });
 
-  /* 상세 머리의 「라우팅 조회」 — 그 품목 · Rev 의 라우팅 화면으로 옮긴다(사용자 지시 2026-11-05). */
-  it('품목이 있는 기준은 「라우팅 조회」로 그 품목의 라우팅 화면으로 옮긴다', async () => {
-    const { user, router } = renderScreen(
+  /* 상세 머리의 「라우팅 조회」는 걷었다(사용자 지시 2026-11-27). */
+  it('품목이 있는 기준에도 상세 머리에 「라우팅 조회」가 없다', async () => {
+    renderScreen(
       [
         planListRoute(),
         planDetailRoute(inspectionPlanFixtures[1]),
@@ -1348,15 +1341,9 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
       '?plan=3002',
     );
 
-    /* 상세 머리의 품목코드 칸(품목 표기 분리) — 품목 상세가 풀린 뒤 단추를 누른다. */
     await screen.findAllByText('SYN-ITEM-01');
-    await user.click(await screen.findByRole('button', { name: '라우팅 조회' }));
-
-    expect(router?.state.location.pathname).toBe('/master-data/routing');
-    /* 품목 코드로 조회한 채 연다 — 라우팅 화면이 첫 50건 밖 품목의 이름을 비우지 않게. */
-    await waitFor(() => {
-      expect(router?.state.location.search).toBe('?q=SYN-ITEM-01&item=5001&rev=7003');
-    });
+    expect(screen.getByRole('button', { name: '기본 정보 수정' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '라우팅 조회' })).not.toBeInTheDocument();
   });
 
   /* 라우팅 화면 「검사 기준 수정」이 보낸 주소 — 그 기준의 「기본 정보 수정」 창을 바로 연다(사용자 보고 2026-11-05). */
@@ -1368,16 +1355,6 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
 
     expect(await screen.findByRole('dialog', { name: '기본 정보 수정' })).toBeInTheDocument();
     expect(router?.state.location.search).toBe('?plan=3002');
-  });
-
-  it('전 품목 공통 기준에는 「라우팅 조회」가 없다', async () => {
-    renderScreen(
-      [planListRoute(), planDetailRoute(inspectionPlanFixtures[2]), ...lookupRoutes()],
-      '?plan=3003',
-    );
-
-    await screen.findByRole('button', { name: '기본 정보 수정' });
-    expect(screen.queryByRole('button', { name: '라우팅 조회' })).not.toBeInTheDocument();
   });
 
   it('품목을 고르면 그 품목의 라우팅을 조회한다', async () => {
@@ -1801,7 +1778,7 @@ describe('InspectionStandardScreen — 버전 목록', () => {
   /* 표의 「상태」 칸(#208) — 목록이 오면 줄마다 그 기준의 버전 목록을 한 번씩 받는다. */
   it('목록이 오면 줄마다 버전 상태를 한 번씩 조회해 상태 칸에 보인다', async () => {
     const { requests } = renderScreen([planListRoute(), versionListRoute(), ...lookupRoutes()]);
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
 
     await waitFor(() => {
       expect(versionRequests(requests)).toHaveLength(inspectionPlanFixtures.length);
@@ -1820,7 +1797,7 @@ describe('InspectionStandardScreen — 버전 목록', () => {
       ...lookupRoutes(),
     ]);
 
-    await user.click(await screen.findByRole('button', { name: 'SYN-PLAN-01' }));
+    await user.click(await screen.findByRole('button', { name: /, 합성 검사기준 A$/ }));
 
     expect(
       await within(await versionPane()).findByRole('button', { name: '버전 2' }),
@@ -1845,7 +1822,7 @@ describe('InspectionStandardScreen — 버전 목록', () => {
       ...lookupRoutes(),
     ]);
 
-    await user.click(await screen.findByRole('button', { name: 'SYN-PLAN-01' }));
+    await user.click(await screen.findByRole('button', { name: /, 합성 검사기준 A$/ }));
 
     await waitFor(() => {
       expect(screen.queryAllByText('버전을 선택하세요')).toHaveLength(0);
@@ -1874,7 +1851,7 @@ describe('InspectionStandardScreen — 버전 목록', () => {
       ...lookupRoutes(),
     ]);
 
-    await user.click(await screen.findByRole('button', { name: 'SYN-PLAN-01' }));
+    await user.click(await screen.findByRole('button', { name: /, 합성 검사기준 A$/ }));
 
     await waitFor(() => {
       expect(screen.queryAllByText('버전을 선택하세요')).toHaveLength(0);
@@ -1889,13 +1866,15 @@ describe('InspectionStandardScreen — 버전 목록', () => {
   it('고른 기준을 다시 누르면 선택이 풀린다', async () => {
     const { user } = renderVersions([], '?plan=3001&ver=4001');
 
-    const code = await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    const code = await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
     expect(code).toHaveAttribute('aria-current', 'true');
 
     await user.click(code);
 
     expect(await screen.findByText('검사 기준을 선택하세요')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'SYN-PLAN-01' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('button', { name: /, 합성 검사기준 A$/ })).not.toHaveAttribute(
+      'aria-current',
+    );
   });
 
   it('버전을 누르면 주소에 남아 선택 표식이 붙는다', async () => {
@@ -1948,7 +1927,7 @@ describe('InspectionStandardScreen — 버전 목록', () => {
       await within(await versionPane()).findByRole('button', { name: '버전 1' }),
     ).toHaveAttribute('aria-current', 'true');
 
-    await user.click(screen.getByRole('button', { name: 'SYN-PLAN-02' }));
+    await user.click(screen.getByRole('button', { name: /, 합성 검사기준 B$/ }));
 
     expect(within(await versionPane()).getByRole('button', { name: '버전 1' })).not.toHaveAttribute(
       'aria-current',
@@ -1969,6 +1948,8 @@ describe('InspectionStandardScreen — 버전 목록', () => {
       '?plan=3001',
     );
 
+    /* 목록은 공장(사업부)을 정한 뒤 부른다 — 목록이 선 뒤에 본다(그 사이 상세가 다시 그려진다). */
+    await screen.findByRole('button', { name: /, 합성 검사기준 A$/ });
     expect(await screen.findByText('버전을 불러오지 못했습니다.')).toBeInTheDocument();
     expect(screen.queryByText('등록된 버전이 없습니다')).not.toBeInTheDocument();
   });
@@ -3107,8 +3088,9 @@ describe('InspectionStandardScreen — 검사 항목 조회', () => {
     await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
 
     await waitFor(() => {
-      expect(within(itemPane()).getByText('10 · 9~11 · EA · 개')).toBeInTheDocument();
+      expect(within(itemPane()).getByText('10 EA · 개')).toBeInTheDocument();
     });
+    expect(within(itemPane()).getByText('9~11 EA · 개')).toBeInTheDocument();
   });
 
   /* 알리지 않으면 이름이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다. */
@@ -3134,10 +3116,9 @@ describe('InspectionStandardScreen — 검사 항목 조회', () => {
       },
     ]);
 
-    expect(
-      await screen.findByText(`10 · 9~11 · ${messages.common.reference.unknown}`),
-    ).toBeInTheDocument();
-    expect(screen.queryByText('10 · 9~11 · 99')).not.toBeInTheDocument();
+    expect(await screen.findByText(`10 ${messages.common.reference.unknown}`)).toBeInTheDocument();
+    expect(screen.getByText(`9~11 ${messages.common.reference.unknown}`)).toBeInTheDocument();
+    expect(screen.queryByText('10 99')).not.toBeInTheDocument();
   });
 
   it('항목 조회에 실패하면 표 대신 오류 배너가 나온다', async () => {
@@ -3634,9 +3615,9 @@ describe('InspectionStandardScreen — 선택 목록 조회 실패', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      within(itemPane()).getByText(`10 · 9~11 · ${messages.common.reference.failed}`),
+      within(itemPane()).getByText(`10 ${messages.common.reference.failed}`),
     ).toBeInTheDocument();
-    expect(within(itemPane()).queryByText('10 · 9~11 · 41')).not.toBeInTheDocument();
+    expect(within(itemPane()).queryByText('10 41')).not.toBeInTheDocument();
     expect(
       within(itemPane()).queryByText(
         '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
@@ -3684,7 +3665,7 @@ describe('InspectionStandardScreen — 선택을 옮기면 폼 편집도 비운�
     const form = await awaitVersionForm();
     fireEvent.change(within(form).getByLabelText('샘플 비율(%)'), { target: { value: '40' } });
 
-    await user.click(screen.getByRole('button', { name: 'SYN-PLAN-02' }));
+    await user.click(screen.getByRole('button', { name: /, 합성 검사기준 B$/ }));
     /* 임시 저장하지 않은 편집이 있으면 먼저 묻는다(#227) — 버리고 옮긴다. */
     await user.click(
       within(await screen.findByRole('dialog', { name: '저장하지 않은 변경 사항' })).getByRole(
@@ -3721,7 +3702,7 @@ describe('InspectionStandardScreen — 선택을 옮기면 폼 편집도 비운�
     await user.type(name, '-편집중');
     expect(screen.getByLabelText('기준명')).toHaveValue('합성 검사기준 A-편집중');
 
-    await user.click(screen.getByRole('button', { name: 'SYN-PLAN-01' }));
+    await user.click(screen.getByRole('button', { name: /, 합성 검사기준 A$/ }));
     /* 임시 저장하지 않은 편집이 있으면 먼저 묻는다(#227) — 버리고 옮긴다. */
     await user.click(
       within(await screen.findByRole('dialog', { name: '저장하지 않은 변경 사항' })).getByRole(
@@ -3731,7 +3712,7 @@ describe('InspectionStandardScreen — 선택을 옮기면 폼 편집도 비운�
     );
     expect(await screen.findByText('검사 기준을 선택하세요')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'SYN-PLAN-01' }));
+    await user.click(screen.getByRole('button', { name: /, 합성 검사기준 A$/ }));
 
     expect(await findPlanField('기준명')).toHaveValue('합성 검사기준 A');
   });
@@ -3745,7 +3726,7 @@ describe('InspectionStandardScreen — 임시 저장하지 않고 옮기면 묻�
     const name = await findPlanField('기준명');
     await user.type(name, '-편집중');
 
-    await user.click(screen.getByRole('button', { name: 'SYN-PLAN-01' }));
+    await user.click(screen.getByRole('button', { name: /, 합성 검사기준 A$/ }));
     const dialog = await screen.findByRole('dialog', { name: '저장하지 않은 변경 사항' });
     expect(within(dialog).getByText(/이동하면 변경 사항이 사라집니다/)).toBeInTheDocument();
     expect(within(dialog).queryByRole('button', { name: /닫기|close/i })).toBeNull();
@@ -3911,7 +3892,7 @@ describe('InspectionStandardScreen — 목록 접기(#252 · #255)', () => {
     window.localStorage.removeItem('omf-mes:inspection-standard:split:collapsed');
     const { user } = renderScreen([planListRoute(), planDetailRoute(), ...lookupRoutes()]);
 
-    await user.click(await screen.findByRole('button', { name: 'SYN-PLAN-01' }));
+    await user.click(await screen.findByRole('button', { name: /, 합성 검사기준 A$/ }));
     expect(
       screen.queryByRole('button', { name: messages.inspectionStandard.panes.listExpand }),
     ).toBeNull();
@@ -4197,7 +4178,7 @@ describe('InspectionStandardScreen — 품목 검사 수준(#357)', () => {
     /* 탭을 오가도 고른 기준은 그대로다. */
     await user.click(screen.getByRole('tab', { name: '버전 관리' }));
     expect(screen.getByRole('button', { name: '버전 목록' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'SYN-PLAN-01' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /, 합성 검사기준 A$/ })).toHaveAttribute(
       'aria-current',
       'true',
     );

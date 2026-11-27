@@ -2,6 +2,7 @@ import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { plantIdQuery } from '../../patterns/master-data-plant';
 import { runRequest } from '../../patterns/request';
 import { CODE_GROUPS, useCodeValueOptions } from './code-values';
 import { toItemListQuery } from './filters';
@@ -40,8 +41,8 @@ export interface ItemListResponse {
  */
 export const itemKeys = {
   all: ['item-extended-attrs-items'] as const,
-  list: (filters: ItemFilters, page: number, size: number = ITEM_LIST_PAGE_SIZE) =>
-    ['item-extended-attrs-items', 'list', filters, page, size] as const,
+  list: (filters: ItemFilters, page: number, plantId: string, size: number = ITEM_LIST_PAGE_SIZE) =>
+    ['item-extended-attrs-items', 'list', filters, page, plantId, size] as const,
   /**
    * 상세의 키. **행 단위 이름 조회가 이 키를 함께 쓴다**(결정 12) —
    * 같은 품목이 여러 행·여러 표에 나와도 한 번만 받게 하려는 것이다.
@@ -77,19 +78,24 @@ export const ITEM_LIST_PAGE_SIZE = 50;
 export const useItemList = (
   filters: ItemFilters,
   page: number,
+  /** 위 줄 사업부의 공장(`useMasterDataPlant`) — 비면 공장으로 거르지 않는다. */
+  plantId = '',
+  enabled = true,
   /** 고른 쪽 크기(10 · 20 · 50) — 기본이면 싣지 않는다. */
   size: number = ITEM_LIST_PAGE_SIZE,
 ): UseQueryResult<ItemListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: itemKeys.list(filters, page, size),
+    queryKey: itemKeys.list(filters, page, plantId, size),
+    enabled,
     queryFn: () =>
       runRequest(() =>
         client.GET('/mdm/items', {
           params: {
             query: {
               ...toItemListQuery(filters, page),
+              ...plantIdQuery(plantId),
               ...(size === ITEM_LIST_PAGE_SIZE ? {} : { size }),
             },
           },

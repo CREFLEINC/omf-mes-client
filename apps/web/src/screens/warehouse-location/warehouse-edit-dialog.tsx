@@ -5,11 +5,11 @@ import { WarehouseFormPane, type WarehouseFormPaneProps } from './warehouse-form
 
 const t = messages.warehouseLocation;
 
-export type WarehouseEditDialogProps = Omit<
-  WarehouseFormPaneProps,
-  'mode' | 'showActions' | 'onCancel'
-> & {
+export type WarehouseEditDialogProps = WarehouseFormPaneProps & {
   open: boolean;
+  isDirty: boolean;
+  isSaving: boolean;
+  onSave: () => void;
   /** 닫기 · 취소 — 저장하지 않은 값은 버린다. */
   onClose: () => void;
 };
@@ -21,12 +21,9 @@ export type WarehouseEditDialogProps = Omit<
 export const WarehouseEditDialog = ({
   open,
   onClose,
-  isActive,
   isDirty,
   isSaving,
   onSave,
-  onDeactivate,
-  onActivate,
   ...paneProps
 }: WarehouseEditDialogProps) => (
   <Dialog
@@ -46,17 +43,6 @@ export const WarehouseEditDialog = ({
       </>
     }
   >
-    <WarehouseFormPane
-      {...paneProps}
-      mode="edit"
-      showActions={false}
-      isActive={isActive}
-      isDirty={isDirty}
-      isSaving={isSaving}
-      onSave={onSave}
-      onCancel={onClose}
-      onDeactivate={onDeactivate}
-      onActivate={onActivate}
-    />
+    <WarehouseFormPane {...paneProps} />
   </Dialog>
 );

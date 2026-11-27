@@ -252,6 +252,19 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       workOrder: 'W/O',
       workOrderText: (workOrderNo: string): string => `${workOrderNo} (LOT gốc)`,
     },
+    wip: {
+      operation: 'Công đoạn sản xuất',
+      operationText: (
+        operationSeq: number,
+        processCode: string,
+        processName: string,
+        workOrderNo: string | null,
+      ): string =>
+        `CĐ ${String(operationSeq)} · ${processCode} ${processName}${workOrderNo === null ? '' : ` (${workOrderNo})`}`, // ui-check-ignore: C-13 승인 시안 2판 표기(016 screens/W-03-01)
+      remaining: 'Còn có thể đưa vào',
+      remainingText: (remainingWithUnit: string, produced: string, consumed: string): string =>
+        `${remainingWithUnit} (kết quả ${produced} − đã đưa vào ${consumed})`,
+    },
     fields: {
       lotNo: 'Số LOT',
       itemCode: 'Mã mặt hàng',

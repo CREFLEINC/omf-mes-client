@@ -1,6 +1,8 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { plantToday } from '../../patterns/plant-time';
+
 import {
   parseCountedQty,
   parseVarianceReason,
@@ -192,7 +194,8 @@ const offsetText = (at: Date): string => {
 };
 
 /**
- * 영업일 — **실행 시각의 날짜로 파생한다**(계획 §6.4).
+ * 영업일 — **실행 시각의 공장 날짜로 파생한다**(계획 §6.4 · omf-all-around#364 — 브라우저 날짜면
+ * 한국 PC 00:00~02:00 에 하루 앞선 날이 된다).
  *
  * 계약이 필수로 요구하는데 산출 규칙(야간조 경계 등)이 어디에도 정의돼 있지 않다. 별도 입력칸을
  * 두는 대안은 **사용자가 무엇을 넣어야 하는지 화면이 설명할 수 없어** 택하지 않았다.
@@ -201,12 +204,15 @@ const offsetText = (at: Date): string => {
  *
  * **`toISOString`을 쓰지 않는다** — UTC로 옮겨 버려 자정 경계에서 날짜가 하루 어긋난다.
  */
-export const toBusinessDate = (at: Date): string =>
+export const toBusinessDate = (at: Date): string => plantToday(at);
+
+/** 발생 시각의 날짜 조각 — 브라우저 시각·offset 과 짝이라 같은 순간을 가리킨다. */
+const toLocalDate = (at: Date): string =>
   `${pad(at.getFullYear(), 4)}-${pad(at.getMonth() + 1, 2)}-${pad(at.getDate(), 2)}`;
 
 /** 발생 시각 — 제출 순간이다. 사용자가 정할 값이 아니라 입력칸을 두지 않는다(공유계약 C-1). */
 export const toOccurredAt = (at: Date): string =>
-  `${toBusinessDate(at)}T${pad(at.getHours(), 2)}:${pad(at.getMinutes(), 2)}:` +
+  `${toLocalDate(at)}T${pad(at.getHours(), 2)}:${pad(at.getMinutes(), 2)}:` +
   `${pad(at.getSeconds(), 2)}${offsetText(at)}`;
 
 export interface LineReplaceInput {

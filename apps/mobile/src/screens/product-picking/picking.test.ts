@@ -218,6 +218,10 @@ describe('피킹 거절', () => {
         message: '',
       }),
     ).toEqual({ kind: 'code', code: 'LOT_SPLIT_UNCONFIRMED' });
+    /* 피처 016 US1-3 — 공정 반제품 LOT 은 출하하지 않는다(잔액 검사보다 먼저). */
+    expect(
+      pickRejectionOf({ kind: 'conflict', cause: 'user', code: 'SEMI_FINISHED_LOT', message: '' }),
+    ).toEqual({ kind: 'code', code: 'SEMI_FINISHED_LOT' });
   });
 
   it('FR-006 보류·불량·재고 없음은 서버 문구를 그대로 쓴다', () => {

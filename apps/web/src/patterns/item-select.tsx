@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { forwardRef, useState } from 'react';
 
 import { useApiClient } from './api-context';
+import { plantIdQuery } from './master-data-plant';
 import { runRequest } from './request';
 import { type PagedOption, PagedSelect, type PagedSelectProps } from './select';
 
@@ -31,6 +32,11 @@ export interface ItemSelectProps extends Omit<
   onItemChange?: (item: Item) => void;
   /** 품목 유형으로 좁힌다 — 여럿이면 쉼표로 묶어 보낸다(서버가 여러 값을 받는다). 없으면 전체. */
   itemTypeCodes?: readonly string[];
+  /**
+   * 공장으로 좁힌다 — 위 줄 사업부의 공장(`useMasterDataPlant().plantId`). 공장을 알 수 없는 품목은 서버가 양쪽에 낸다(#1156).
+   * 빈 값이거나 없으면 전체.
+   */
+  plantId?: string;
 }
 
 type Item = components['schemas']['Item'];
@@ -42,7 +48,15 @@ type Item = components['schemas']['Item'];
  * 화면은 `options` 없이 `value` · `onChange` 만 넘기면 된다 — 고른 품목의 이름은 이 칸이 번호로 받는다.
  */
 export const ItemSelect = forwardRef<HTMLButtonElement, ItemSelectProps>(function ItemSelect(
-  { includeInactive = false, onItemChange, itemTypeCodes, onChange, selectedOption, ...rest },
+  {
+    includeInactive = false,
+    onItemChange,
+    itemTypeCodes,
+    plantId = '',
+    onChange,
+    selectedOption,
+    ...rest
+  },
   ref,
 ) {
   const { client } = useApiClient();
@@ -75,7 +89,7 @@ export const ItemSelect = forwardRef<HTMLButtonElement, ItemSelectProps>(functio
       {...rest}
       ref={ref}
       selectedOption={resolved}
-      queryKey={['item-select', includeInactive, itemTypeCodes?.join(',') ?? '']}
+      queryKey={['item-select', includeInactive, itemTypeCodes?.join(',') ?? '', plantId]}
       {...(onChange !== undefined ? { onChange } : {})}
       onOptionChange={(option) => {
         setPicked({ value: option.value, label: option.label });
@@ -92,6 +106,7 @@ export const ItemSelect = forwardRef<HTMLButtonElement, ItemSelectProps>(functio
                 ...(itemTypeCodes === undefined || itemTypeCodes.length === 0
                   ? {}
                   : { itemTypeCode: [...itemTypeCodes] }),
+                ...plantIdQuery(plantId),
                 page,
                 size: ITEM_SELECT_PAGE_SIZE,
               },

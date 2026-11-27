@@ -15,14 +15,25 @@ export interface VersionSettingRowProps {
   action?: ReactNode;
   /** 줄 아래 내용(검사 항목 표 · 도면) — 늘 펼쳐 둔다(접고 펴기는 걷었다 · 사용자 지시 #258). */
   children?: ReactNode;
+  /**
+   * 카드 테두리 없이 — 안에 테두리 상자(표)가 있는 칸이 쓴다. 버전 카드 · 칸 카드 · 표 상자로 선이 세 겹이 되어
+   * 읽기 어려웠다(사용자 지시 2026-11-27 · 검사 항목).
+   */
+  plain?: boolean;
 }
 
 /**
  * 「버전별 설정」의 한 칸(사용자 시안 · omf-all-around#258) — 테두리 카드에 제목 · 요약, 오른쪽 끝 단추.
  * 검사 항목 · 도면은 그 아래에 종전 탭 내용을 늘 보인다.
  */
-export const VersionSettingRow = ({ title, summary, action, children }: VersionSettingRowProps) => (
-  <div className="inspection-standard-setting-row">
+export const VersionSettingRow = ({
+  title,
+  summary,
+  action,
+  children,
+  plain = false,
+}: VersionSettingRowProps) => (
+  <div className={`inspection-standard-setting-row${plain ? ' is-plain' : ''}`}>
     <div className="inspection-standard-setting-head">
       <div className="inspection-standard-setting-toggle">
         <span className="inspection-standard-setting-text">

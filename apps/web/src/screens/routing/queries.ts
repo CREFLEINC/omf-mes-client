@@ -2,6 +2,7 @@ import type { components } from '@omf-mes/api-client';
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { plantIdQuery } from '../../patterns/master-data-plant';
 import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
 import type { RoutingAuditEvent } from './revision-history';
@@ -37,8 +38,8 @@ export interface RoutingListResponse {
  */
 export const itemKeys = {
   all: ['routing-items'] as const,
-  list: (filters: ItemFilters, paging: ListPaging) =>
-    ['routing-items', 'list', filters, paging] as const,
+  list: (filters: ItemFilters, paging: ListPaging, plantId: string) =>
+    ['routing-items', 'list', filters, paging, plantId] as const,
 };
 
 /** 목록 쪽 — 주소(`page` · `size`)가 소유한다. 쪽 이동 줄(PageNav)이 바꾼다(#231). */
@@ -56,11 +57,15 @@ export interface ListPaging {
 export const useItemList = (
   filters: ItemFilters,
   paging: ListPaging,
+  /** 위 줄 사업부의 공장(`useMasterDataPlant`) — 비면 공장으로 거르지 않는다. */
+  plantId = '',
+  enabled = true,
 ): UseQueryResult<ItemListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: itemKeys.list(filters, paging),
+    queryKey: itemKeys.list(filters, paging, plantId),
+    enabled,
     queryFn: () =>
       runRequest(() =>
         client.GET('/mdm/items', {
@@ -68,6 +73,7 @@ export const useItemList = (
             query: {
               ...(filters.q === '' ? {} : { q: filters.q }),
               ...itemStatusQuery(filters),
+              ...plantIdQuery(plantId),
               page: paging.page,
               size: paging.size,
             },
@@ -101,11 +107,14 @@ export const toStatusFilters = (
 export const useItemStatusCounts = (
   q: string,
   chips: readonly ItemStatusChip[],
+  plantId = '',
+  enabled = true,
 ): (number | undefined)[] => {
   const { client } = useApiClient();
   const results = useQueries({
     queries: chips.map((chip) => ({
-      queryKey: ['routing-items', 'status-count', q, chip] as const,
+      queryKey: ['routing-items', 'status-count', q, chip, plantId] as const,
+      enabled,
       queryFn: () =>
         runRequest(() =>
           client.GET('/mdm/items', {
@@ -113,6 +122,7 @@ export const useItemStatusCounts = (
               query: {
                 ...(q === '' ? {} : { q }),
                 ...itemStatusQuery(toStatusFilters(chip)),
+                ...plantIdQuery(plantId),
                 page: 1,
                 size: 1,
               },

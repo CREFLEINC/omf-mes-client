@@ -1,8 +1,15 @@
+import { PLANT_UTC_OFFSET, toPlantDateTimeParts } from '../../patterns/plant-time';
+
 import { TICK_MS } from './use-now';
 
 /**
  * 구간 — **이 화면에서는 시각 자체가 데이터다**(스펙 §5-2). 다른 화면에서는 「언제 적었나」가
  * 몇 분 틀려도 기록의 뜻이 변하지 않지만, 비가동은 **시작과 끝의 차가 곧 값**이다.
+ *
+ * ⭐ **칸의 글자는 공장 시각(`PLANT_UTC_OFFSET`)이다**(omf-all-around#364). 예전에는 「단말 시각을
+ * 그대로」 넣었는데, 그것은 단말이 공장 시간대에 있다는 전제였다 — 한국 시간 PC 에서 열면
+ * 칸·표시·저장이 모두 2시간 어긋났다. 공장 단말(POP)은 브라우저 시간대가 곧 공장 시간대라
+ * 결과가 같다.
  *
  * ⛔ **화면이 시각을 보정하지 않는다.** 단말 시계가 몇 분 빠르더라도 시작·끝을 **같은 단말**이
  * 찍으므로 차는 정확하다. 보정하면 작업자가 본 값과 저장된 값이 갈리고, 보정값을 잃으면
@@ -32,41 +39,28 @@ export const EMPTY_INTERVAL: IntervalDraft = {
   stillOngoing: false,
 };
 
-const pad = (value: number, length: number): string => String(value).padStart(length, '0');
-
-/** `Date`를 날짜·시각 두 칸으로 나눈다 — `[지금]` 버튼이 쓴다. */
-export const toTimeFieldDraft = (at: Date): TimeFieldDraft => ({
-  date: `${String(at.getFullYear())}-${pad(at.getMonth() + 1, 2)}-${pad(at.getDate(), 2)}`,
-  time: `${pad(at.getHours(), 2)}:${pad(at.getMinutes(), 2)}`,
-});
+/** `Date`를 날짜·시각 두 칸으로 나눈다 — `[지금]` 버튼이 쓴다. **공장 시각**으로 나눈다. */
+export const toTimeFieldDraft = (at: Date): TimeFieldDraft =>
+  toPlantDateTimeParts(at.toISOString()) ?? EMPTY_TIME_FIELD;
 
 /**
  * 두 칸을 하나의 순간으로 읽는다. 한쪽이라도 비었거나 모양이 깨졌으면 `null`이다.
  *
- * ⛔ **`new Date(문자열)`에 통째로 넘기지 않는다.** 구획을 직접 세워 지역 시각으로 만든다 —
- * 문자열 해석은 실행 환경에 따라 UTC로 읽힐 수 있고, 그러면 **단말 시각을 넣는다는 규칙이
- * 조용히 깨진다.**
+ * **공장 offset 을 붙여 읽는다**(omf-all-around#364) — offset 없는 글자는 실행 환경 시간대로
+ * 읽혀, 한국 PC 에서 같은 글자가 2시간 이른 순간이 된다.
  */
 export const readTimeField = (field: TimeFieldDraft): Date | null => {
   const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(field.date);
   const timeMatch = /^(\d{2}):(\d{2})$/.exec(field.time);
   if (dateMatch === null || timeMatch === null) return null;
 
-  const [, year, month, day] = dateMatch;
-  const [, hour, minute] = timeMatch;
+  const at = new Date(`${field.date}T${field.time}:00${PLANT_UTC_OFFSET}`);
+  if (Number.isNaN(at.getTime())) return null;
 
-  const at = new Date(
-    Number(year),
-    Number(month) - 1,
-    Number(day),
-    Number(hour),
-    Number(minute),
-    0,
-    0,
-  );
+  /* 존재하지 않는 날짜(2월 30일 등)·시각은 자리가 넘어간다 — 공장 시각으로 되짚어 확인한다. */
+  const parts = toPlantDateTimeParts(at.toISOString());
 
-  /* 존재하지 않는 날짜(2월 30일 등)는 자리가 넘어가 다른 달이 된다 — 되짚어 확인한다. */
-  return at.getMonth() === Number(month) - 1 && at.getDate() === Number(day) ? at : null;
+  return parts?.date === field.date && parts.time === field.time ? at : null;
 };
 
 /**

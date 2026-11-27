@@ -14,13 +14,13 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useHref, useLinkClickHandler, useLocation } from 'react-router';
 
 import { LocaleSelect } from '../patterns/locale-select';
+import { AppVersionText } from '../patterns/app-version-text';
 import { localizedLabel } from '../patterns/localized-label';
 import { useSession, useSignOut } from '../patterns/session';
 import { OA_ONLY_PATHS, type PlantMode, useOaAccess, usePlantMode } from '../patterns/oa-access';
 import { PageHubContext, type PageHub } from '../patterns/page-hub';
 import { PopoverButton } from '../patterns/popover-button';
 import { toWebAccess } from '../patterns/web-access';
-import { readAppVersion } from './app-version';
 import {
   filterNavGroups,
   filterNavGroupsByAccess,
@@ -161,7 +161,7 @@ const findActiveGroupLabel = (pathname: string): string | null =>
   null;
 
 /**
- * 시스템 이름 옆의 **버전 뱃지**. 릴리스 태그가 없는 빌드는 「개발 빌드」로 말한다.
+ * 시스템 이름 옆의 **버전 뱃지**. 글자와 읽어 주는 이름은 `patterns/app-version-text.tsx` 가 갖는다.
  *
  * ⭐ **사이드바 맨 아래에서 여기로 옮겼다**(#1320 · 본디 #1240). 그 자리는 「찾으면 보이고 일에는
  *    끼어들지 않는」 자리였는데 **사이드바를 접으면 사라졌다**(레일 72px). 문의·장애 보고 때
@@ -171,23 +171,8 @@ const findActiveGroupLabel = (pathname: string): string | null =>
  * ⛔ **DS `Chip` 을 쓰지 않는다.** 칩은 **상태**의 어휘다(연결·프린터·판정) — 버전은 상태가
  *    아니라 맥락 값이라, 칩으로 두면 색이 무슨 뜻인지 묻게 된다. `patterns/pop-worker-tag.tsx`
  *    가 사번을 두고 같은 판단을 했다.
- *
- * ⛔ **보이는 글자에 「버전」을 붙이지 않는다.** 이름 바로 옆이라 자리가 좁고, `v0.3.10` 은 그
- *    자체로 읽힌다. 다만 **읽어 주는 이름에는 붙인다** — 숫자만 들으면 무엇의 값인지 모른다.
  */
-const AppVersionBadge = () => {
-  const appVersion = readAppVersion();
-
-  if (appVersion.kind === 'dev') {
-    return <span className="topbar-version">{t.version.dev}</span>;
-  }
-
-  return (
-    <span className="topbar-version" aria-label={t.version.release(appVersion.version)}>
-      {appVersion.version}
-    </span>
-  );
-};
+const AppVersionBadge = () => <AppVersionText className="topbar-version" />;
 
 /** 비밀번호 변경 화면 주소(W-CO-10). 라우트 표(`routes/index.tsx`)와 같은 값이다. */
 const PASSWORD_CHANGE_PATH = '/system/password-change';

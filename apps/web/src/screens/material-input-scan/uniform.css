@@ -102,6 +102,24 @@
   font-family: var(--pu-mono);
 }
 
+/*
+ * 공정 반제품 줄(피처 016) — LOT 번호는 줄이지 않고, 근거 「실적 · 투입 · 남은 수량」은 다음 줄 전체를 쓴다(좁은 폭 1100 에서
+ * 번호가 말줄임되던 것 · 실제 앱 확인 2026-11-26).
+ */
+.mi-pair.mi-pair-wip {
+  grid-template-columns: max-content max-content max-content minmax(0, 1fr);
+}
+
+.mi-pair-wip > .mi-lot-no {
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.mi-pair-wip > .mi-wip-basis {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
 .mi-prog {
   display: flex;
   align-items: center;

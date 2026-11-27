@@ -1,5 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 
+import { plantToday } from '../../patterns/plant-time';
+
 import type { LoadingInfoDraft } from './loading-info-pane';
 import { lineAllocationIssues, type LineAllocationDraft } from './line-allocation-draft';
 
@@ -87,7 +89,8 @@ export const toShipmentCreatePayload = (
      * 유일 제약에 영업일이 들어 있어 자정을 넘긴 재시도가 값을 다시 계산하면 전표가 두 벌 생긴다.
      * 그래서 `now`를 안에서 만들지 않고 받는다: 확인 대화상자가 이 본문을 한 번 얼려 두고 쓴다.
      */
-    businessDate: toLocalDate(input.now),
+    /* 영업일은 공장 날짜다(omf-all-around#364) — 발생 시각은 같은 순간이라 브라우저 기준 그대로 둔다. */
+    businessDate: plantToday(input.now),
     occurredAt: toOffsetDateTime(input.now),
     lines: input.lineDrafts.map(toLineCreate),
   };

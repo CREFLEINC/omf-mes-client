@@ -12,6 +12,7 @@ import { messages, named } from '@omf-mes/i18n';
 
 import { TraceLotCell, iqcTone, shortDateTime } from '../../patterns/trace-tree/cells';
 import { TraceEndTable } from '../../patterns/trace-tree/end-table';
+import { stageNameOf } from '../../patterns/trace-tree/tree-table';
 import { TraceSummaryCard } from '../../patterns/trace-tree/summary-card';
 import { TraceWorkspace, type TraceDetailContext } from '../../patterns/trace-tree/trace-workspace';
 import type { BackwardEndRow, BackwardTree } from '../../patterns/trace-tree/types';
@@ -68,7 +69,7 @@ const Summary = ({ tree, names, partial, entry, stageOf }: TraceDetailContext) =
   return (
     <TraceSummaryCard
       lot={lotNode.lot}
-      kindLabel={t.tree.stages[stageOf(lotNode.nodeKey) ?? lotNode.kind]}
+      kindLabel={stageNameOf(stageOf(lotNode.nodeKey) ?? lotNode.kind, lotNode.lot)}
       statusName={names.lotStatus(lotNode.lot.statusCode)}
       serialNo={rootNode?.serialNo ?? entry?.serialNo ?? null}
       partial={partial}

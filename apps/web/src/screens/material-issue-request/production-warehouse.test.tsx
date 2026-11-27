@@ -230,8 +230,8 @@ describe('W-02-10 생산 창고 공장', () => {
     /* 고른 값의 뜻은 라벨 옆 ⓘ 의 설명으로 읽힌다(관리웹 정리 시안 A). */
     expect(screen.getByRole('button', { name: t.sourceWarehouse.autoHelp(2) })).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: t.sourceWarehouse.destinationHelp }),
-    ).toBeInTheDocument();
+      screen.queryByLabelText(t.sourceWarehouse.destination),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.reasonHelp })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.actions.publish }));

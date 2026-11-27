@@ -64,6 +64,11 @@ export const productLotSplit = {
 
   /** 분리를 막는 이유(조회의 막힘과 분리 409 둘 다) — 제목 한 줄 + 할 일 한 줄. */
   blocked: {
+    /** 피처 016(시안 2판 ⑤) — 공정 반제품 LOT. */
+    SEMI_FINISHED_LOT: {
+      title: '반제품 LOT 은 분리할 수 없습니다',
+      body: '다음 공정에서 POP 자재 투입으로 투입하세요.',
+    },
     NOT_PRODUCTION_LOT: {
       title: '생산 LOT 만 분리할 수 있습니다',
       body: '자재 LOT 은 이 화면에서 나누지 않습니다. 제품 창고의 생산 LOT 라벨을 스캔하세요.',

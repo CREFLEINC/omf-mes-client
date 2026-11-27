@@ -1,6 +1,8 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { plantToday } from '../../patterns/plant-time';
+
 import { blocksSubmit, type LotReleaseState } from './lot-release';
 import { quantityError, toQuantity, type QuantityLimits } from './quantity';
 import {
@@ -179,7 +181,8 @@ export const toShipmentCreateBody = (
     expedited: true,
     expediteReason: input.draft.reason.trim(),
     /* 영업일·발생시각 — 계약 필수. 서버가 수신 시각으로 다시 잡지 않는다(#666). */
-    businessDate: toLocalDate(now),
+    /* 영업일은 공장 날짜다(omf-all-around#364) — 발생 시각은 같은 순간이라 브라우저 기준 그대로 둔다. */
+    businessDate: plantToday(now),
     occurredAt: toOffsetDateTime(now),
     lines: [lineCreate],
   };

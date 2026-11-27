@@ -103,7 +103,6 @@ if (import.meta.env.DEV) {
     productionLineId: 1,
     plannedEquipmentId: 88,
     plannedMoldId: null,
-    defaultWipLocationId: 1,
     defaultFgLocationId: 2,
     defaultScrapLocationId: 3,
     responsibleWorkerId: null,

@@ -129,6 +129,7 @@ export const productPicking: Translated<typeof ko.productPicking> = {
     outOfScope: 'Thiết bị này không có dòng cần lấy cho mặt hàng này',
     outOfScopeDetail: 'Mặt hàng này thuộc dòng của nhà máy khác hoặc kho khác',
     LOT_SPLIT_UNCONFIRMED: 'LOT chưa xác nhận tách',
+    SEMI_FINISHED_LOT: 'LOT bán thành phẩm không thể xuất hàng',
     splitUnconfirmedDetail:
       'LOT đã tách trên POP nhưng chưa xác nhận trên PDA 「Xác nhận tách LOT」. Hãy quét hai nhãn để xác nhận rồi quét lại',
     notFound: 'Không phải LOT của nhà máy này',

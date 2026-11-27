@@ -10,6 +10,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import { SessionProvider } from '../../patterns/session';
 import { pickDate } from '../../test/date-picker';
 import {
   bomComponentFixtures,
@@ -318,11 +319,11 @@ const renderScreen = (routes: StubRoute[], search = '') => {
   probeSearch = '';
 
   const { queryClient } = renderWithProviders(
-    <>
+    <SessionProvider>
       <ItemExtendedAttrsScreen />
       <RouterProbe />
-    </>,
-    { fetch, route: `${ROUTE}${search}` },
+    </SessionProvider>,
+    { session: null, fetch, route: `${ROUTE}${search}` },
   );
 
   const history: HistoryProbe = {

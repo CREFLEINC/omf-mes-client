@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { messages } from '@omf-mes/i18n';
+import { ko, messages, vi } from '@omf-mes/i18n';
 import { useLocation } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
@@ -21,7 +21,7 @@ import {
 } from '../../patterns/trace-tree/trace-fixtures';
 import { createStubFetch, renderWithProviders } from '../../test/api-harness';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
-import { MaterialTraceScreen } from './screen';
+import { MaterialTraceScreen, fateColumnWidth } from './screen';
 
 const t = messages.traceTree;
 
@@ -329,5 +329,64 @@ describe('W-02-13 자재 기준 생산 추적', () => {
     await user.type(scanBox(), `${P3.lot.lotNo}{Enter}`);
     expect(await screen.findByText(t.material.otherTitle)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.material.otherOpen })).toBeNull();
+  });
+
+  /* 피처 016 — 공정 반제품: 계보 단계 「반제품 LOT · 공정 10」, 투입 전 반제품은 최종 LOT 「다음 공정 투입 전」 · 「남은 n」. */
+  it('US2-6 · Q14 투입 전(일부 투입 포함) 공정 반제품은 계보에 공정이 붙고 최종 LOT 에 「다음 공정 투입 전」 · 남은 수량으로 선다', async () => {
+    const wipLot = {
+      lotId: 302,
+      lotNo: 'PL-SYN-0001-A02',
+      lotTypeCode: 'WIP',
+      statusCode: 'NORMAL',
+      lifecycleStatusCode: 'ACTIVE',
+      operationSeq: 10,
+      processName: '가공',
+    };
+    setup(`/production/material-trace?lot=${String(A.lot.lotId)}`, {
+      tree: (lotId) => {
+        const base = forwardTreeOf(lotId, A.lot.lotNo);
+        return {
+          ...base,
+          nodes: base.nodes
+            .filter((node) => node.nodeKey !== 'K:302:5')
+            .map((node) => (node.nodeKey === 'L:302' ? { ...node, lot: wipLot } : node)),
+          edges: base.edges.filter((edge) => edge.to !== 'K:302:5'),
+          endRows: base.endRows.map((row) =>
+            row.lot.lotId === 302
+              ? {
+                  ...row,
+                  lot: wipLot,
+                  fate: 'WIP_PENDING' as const,
+                  stock: [],
+                  wipRemainingQty: 40,
+                }
+              : row,
+          ),
+        };
+      },
+    });
+    const tree = await within(detail()).findByRole('table', { name: t.tree.caption });
+    expect(within(tree).getByText('반제품 LOT · 공정 10')).toBeInTheDocument();
+
+    const end = within(detail()).getByRole('table', { name: t.material.endTitle });
+    expect(within(end).getByText(t.end.fates.WIP_PENDING)).toBeInTheDocument();
+    /* 일부만 투입된 반제품도 선다 — 행선지는 서버가 센 남은 수량(실적 180 이 아님). */
+    expect(within(end).getByText('남은 40 EA')).toBeInTheDocument();
+    expect(within(end).getByText('반제품 · 공정 10 반제품 1')).toBeInTheDocument();
+  });
+
+  /*
+   * 실제 앱 확인 2026-11-26 — 80px 현황 칸에서 「다음 공정 투입 전」이 잘렸고(1차), 모든 운명의 최장 vi 이름으로 넓히자
+   * 상세 창 1440 에서 행선지 칸이 밀려 머리가 글자 단위로 끊겼다(2차). 폭은 지금 목록에 나온 운명 기준이다.
+   */
+  it('Q14 현황 칸은 목록에 나온 운명 이름이 들어가고, vi 반제품 목록에서도 행선지 칸을 밀어내지 않는다', () => {
+    const ko14 = [ko.traceTree.end.fates.WIP_PENDING, ko.traceTree.end.fates.CONSUMED_OUT];
+    const vi14 = [vi.traceTree.end.fates.WIP_PENDING, vi.traceTree.end.fates.CONSUMED_OUT];
+    /* 칩 103px(실측) + 칸 여백 */
+    expect(fateColumnWidth(ko14)).toBeGreaterThanOrEqual(103 + 24);
+    /* 상세 창(1440, 약 660px)에서 행선지 칸에 120px 이상 남는다 — 첫 칸 180 · 출하일 72 · 수량 88 · 상태 64 */
+    expect(660 - 180 - 72 - 88 - 64 - fateColumnWidth(vi14)).toBeGreaterThanOrEqual(120);
+    /* 나오지 않은 운명은 폭을 늘리지 않는다 */
+    expect(fateColumnWidth([ko.traceTree.end.fates.SHIPPED])).toBe(80);
   });
 });

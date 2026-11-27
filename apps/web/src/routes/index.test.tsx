@@ -959,7 +959,7 @@ describe('appRouter — 계정 로그인의 자리', () => {
      */
     const shellTopbar = screen
       .getAllByRole('banner')
-      .find((element) => within(element).queryByText('OMF-MES 관리웹') !== null);
+      .find((element) => within(element).queryByText('SAMJINLND VINA MES 관리웹') !== null);
 
     if (shellTopbar === undefined) {
       throw new Error('셸 상단 바를 찾지 못했습니다');

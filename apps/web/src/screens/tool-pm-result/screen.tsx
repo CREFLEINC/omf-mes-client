@@ -17,6 +17,7 @@ import { useId, useState } from 'react';
 
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
+import { PLANT_UTC_OFFSET_MINUTES } from '../../patterns/plant-time';
 import { ScreenHeader } from '../../patterns/screen-header';
 import { FieldLabel } from './field-label';
 import { LoadErrorBanner } from './load-error-banner';
@@ -150,7 +151,7 @@ export const ToolPmResultScreen = () => {
 
     if (hasErrors(nextErrors)) return;
 
-    create.write(toCreateBody(draft, -new Date().getTimezoneOffset()));
+    create.write(toCreateBody(draft, PLANT_UTC_OFFSET_MINUTES));
   };
 
   const columns: Column<ToolResultView>[] = [

@@ -49,14 +49,14 @@ export const locationLabelWithRole = (
  * 지금처럼 이름(없으면 번호)으로 보인다.
  */
 export const destinationLocationLabel = (request: {
-  destinationLocationId: number;
+  destinationLocationId: number | null;
   destinationLocationName?: string;
   destinationLocationCode?: string;
   destinationLocationAliasName?: string | null;
   destinationLocationSystemRoleCode?: string | null;
 }): string =>
   request.destinationLocationCode === undefined
-    ? (request.destinationLocationName ?? String(request.destinationLocationId))
+    ? (request.destinationLocationName ?? (request.destinationLocationId === null ? '—' : String(request.destinationLocationId)))
     : locationLabelWithRole({
         locationCode: request.destinationLocationCode,
         locationName: request.destinationLocationName ?? null,

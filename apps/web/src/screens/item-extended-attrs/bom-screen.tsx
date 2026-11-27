@@ -13,7 +13,7 @@ import {
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { type ReactNode, useEffect, useId, useState } from 'react';
+import { type ReactNode, useEffect, useId, useMemo, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { BoardFrame } from '../../patterns/board-frame';
@@ -22,6 +22,11 @@ import { pickBom, useBomTree, type BomTreeRow } from '../../patterns/bom-tree';
 import { BomTreeCell } from '../../patterns/bom-tree-cell';
 import { hasChangedFilters } from '../../patterns/filter-more';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import {
+  plantIdQuery,
+  useMasterDataPlant,
+  useOnMasterDataPlantChange,
+} from '../../patterns/master-data-plant';
 import { OneLine } from '../../patterns/po-board';
 import { Select } from '../../patterns/select';
 import {
@@ -41,7 +46,7 @@ import {
 import { bomComponentDetailPath, bomKeys, useBomComponentDetail } from './bom-queries';
 import {
   bomTreeKeys,
-  ITEM_BOM_TREE,
+  itemBomTree,
   PARENT_PAGE_SIZE,
   type ItemSummary,
   useBomTreeList,
@@ -337,6 +342,8 @@ interface ComponentFormState {
 
 interface BomTreeTableProps {
   bom: Bom;
+  /** 위 줄 사업부의 공장 — 자품목의 BOM 도 이 공장 것으로 편다. */
+  plantId: string;
   uoms: LookupResult;
   processes: LookupResult;
   onEdit: (row: EditingRow) => void;
@@ -349,9 +356,10 @@ interface BomTreeTableProps {
  * ERP 원본 열(소요량 · 손실률 · 필수) 뒤에 **MES 확장 열**(공정 · 확장 표시)을 두고, 줄마다 확장 열 편집 단추를 둔다 —
  * 원본 열은 값 표기만이다(계약에 구성품 추가 · 삭제 · 원본 열 쓰기가 없다).
  */
-const BomTreeTable = ({ bom, uoms, processes, onEdit }: BomTreeTableProps) => {
+const BomTreeTable = ({ bom, plantId, uoms, processes, onEdit }: BomTreeTableProps) => {
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
-  const rows = useBomTree({ itemId: bom.parentItemId, bomId: bom.bomId }, collapsed, ITEM_BOM_TREE);
+  const source = useMemo(() => itemBomTree(plantId), [plantId]);
+  const rows = useBomTree({ itemId: bom.parentItemId, bomId: bom.bomId }, collapsed, source);
   const itemOf = useItemSummaries(rows.map((row) => row.itemId));
   const queryClient = useQueryClient();
   /* 받지 못한 하위 구성(BOM 목록 · 구성품)만 다시 부른다 — 받으면 트리가 그 자리부터 다시 펴진다. */
@@ -520,6 +528,8 @@ const BomTreeTable = ({ bom, uoms, processes, onEdit }: BomTreeTableProps) => {
 
 interface BomDetailProps {
   parentItemId: number;
+  /** 위 줄 사업부의 공장 — 그 공장 BOM 과 공장이 빈 BOM 만 받는다. 비면 공장을 가리지 않는다. */
+  plantId: string;
   /** 주소가 고른 BOM — 이 모품목의 것이 아니면 무시하고 기본 BOM 을 연다. */
   requestedBomId: number | null;
   onPickBom: (bomId: number) => void;
@@ -529,12 +539,12 @@ interface BomDetailProps {
  * 오른쪽 구획 — 고른 모품목의 BOM. 모품목이 바뀌면 통째로 새로 선다(`key`) — 열린 창 · 쓰기 오류 · 접은 줄이
  * 다음 모품목에 따라가지 않는다.
  */
-const BomDetail = ({ parentItemId, requestedBomId, onPickBom }: BomDetailProps) => {
+const BomDetail = ({ parentItemId, plantId, requestedBomId, onPickBom }: BomDetailProps) => {
   const toast = useToast();
   const { client } = useApiClient();
   const bomSelectId = useId();
 
-  const list = useBomTreeList(parentItemId);
+  const list = useBomTreeList(parentItemId, plantId);
   const boms = list.data ?? EMPTY_BOMS;
   const bom = boms.find((each) => each.bomId === requestedBomId) ?? pickBom(boms) ?? null;
 
@@ -559,7 +569,7 @@ const BomDetail = ({ parentItemId, requestedBomId, onPickBom }: BomDetailProps) 
     /* **반드시 `null`이다**(§5.3 표 5행) — 계약에 이 쓰기의 `If-Match` 가 없다. 상세 경로를 주면 요청이 멈춘다. */
     etagPath: null,
     /* 서버가 지정한 줄만 돌려주므로 목록을 다시 받아야 어느 줄이 기본인지 안다. */
-    invalidateKeys: [bomTreeKeys.list(parentItemId)],
+    invalidateKeys: [bomTreeKeys.list(parentItemId, plantId)],
     knownFields: [],
     onSuccess: () => {
       setPendingDefault(null);
@@ -691,6 +701,7 @@ const BomDetail = ({ parentItemId, requestedBomId, onPickBom }: BomDetailProps) 
       <BomTreeTable
         key={bom.bomId}
         bom={bom}
+        plantId={plantId}
         uoms={uoms}
         processes={processes}
         onEdit={(row) => {
@@ -779,12 +790,22 @@ export const ItemBomScreen = () => {
   const parentItemId = readId(searchParams.get('item'));
   const requestedBomId = readId(searchParams.get('rev'));
 
-  const parents = useParentItems({
-    itemTypeCode: filters.type,
-    ...(filters.hasBom ? { hasBom: true } : {}),
-    ...(filters.q === '' ? {} : { q: filters.q }),
-    ...(page > 1 ? { page } : {}),
-    ...(pageSize === PARENT_PAGE_SIZE ? {} : { size: pageSize }),
+  /* 위 줄 사업부의 공장 모품목만(서버 #1156). 공장을 정하는 동안은 조회를 미룬다. */
+  const plant = useMasterDataPlant();
+  const parents = useParentItems(
+    {
+      itemTypeCode: filters.type,
+      ...(filters.hasBom ? { hasBom: true } : {}),
+      ...(filters.q === '' ? {} : { q: filters.q }),
+      ...(page > 1 ? { page } : {}),
+      ...(pageSize === PARENT_PAGE_SIZE ? {} : { size: pageSize }),
+      ...plantIdQuery(plant.plantId),
+    },
+    !plant.isChecking,
+  );
+  /* 사업부를 바꾸면 첫 쪽부터 보고 다른 공장의 모품목 선택을 푼다 — 구성품 수정 창은 화면을 덮어 그동안 바꿀 수 없다. */
+  useOnMasterDataPlantChange(plant, () => {
+    setSearchParams(toSearchParams(filters));
   });
   const itemTypes = useItemTypeOptions();
   const typeName = (code: string): string => codeValueName(itemTypes.data, code);
@@ -893,10 +914,16 @@ export const ItemBomScreen = () => {
         content:
           parentItemId === null ? (
             <EmptyState size="sm" title={tb.empty.noParentTitle} />
+          ) : plant.isChecking ? (
+            /* 주소에 모품목이 있어도 공장을 정한 뒤에 BOM 을 받는다 — 다른 공장 BOM 이 잠깐 보이지 않게. */
+            <div role="status" aria-label={tb.loading.boms}>
+              <SkeletonText lines={4} />
+            </div>
           ) : (
             <BomDetail
               key={parentItemId}
               parentItemId={parentItemId}
+              plantId={plant.plantId}
               requestedBomId={requestedBomId}
               onPickBom={(bomId) => {
                 setSearchParams(toSearchParams(filters, page, parentItemId, bomId));

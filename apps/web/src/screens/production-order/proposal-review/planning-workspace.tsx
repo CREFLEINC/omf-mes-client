@@ -234,7 +234,6 @@ export const ProposalPlanningWorkspace = ({
               plannedMoldId: null,
               responsibleWorkerId: null,
               plannedShiftId: null,
-              defaultWipLocationId: null,
               defaultScrapLocationId: null,
               defaultFgLocationId:
                 plan.operations[0]?.resources.defaultFgLocationId ??
@@ -618,7 +617,6 @@ export const ProposalPlanningWorkspace = ({
                               'plannedMoldId',
                               'responsibleWorkerId',
                               'plannedShiftId',
-                              'defaultWipLocationId',
                               'defaultFgLocationId',
                               'defaultScrapLocationId',
                             ].indexOf(a) -
@@ -628,14 +626,12 @@ export const ProposalPlanningWorkspace = ({
                               'plannedMoldId',
                               'responsibleWorkerId',
                               'plannedShiftId',
-                              'defaultWipLocationId',
                               'defaultFgLocationId',
                               'defaultScrapLocationId',
                             ].indexOf(b),
                         )
                         .filter(
                           (field) =>
-                            field !== 'defaultWipLocationId' &&
                             field !== 'defaultScrapLocationId' &&
                             (field !== 'defaultFgLocationId' ||
                               !row.erpStorage?.erpStorageLocationCode),

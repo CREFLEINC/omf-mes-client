@@ -82,10 +82,10 @@ const destinationName = (location: { systemRoleCode?: string | null; locationCod
       ? t.issue.destinationWhole
       : location.locationCode;
 
-/** 받을 수 있는 출고인가 — W/O 출고는 W/O · 도착 위치, 창고 보충 출고(004)는 도착 위치. */
 const receivable = (issue: ScannedIssue): boolean =>
-  issue.destinationLocationId !== null &&
-  (issue.kind === 'REPLENISHMENT' || (issue.kind === 'WORK_ORDER' && issue.workOrderId !== null));
+  issue.kind === 'WORK_ORDER'
+    ? issue.workOrderId !== null
+    : issue.kind === 'REPLENISHMENT' && issue.destinationLocationId !== null;
 
 export const ShopfloorReceiptScreen = () => {
   useScreenTitle(t.title);
@@ -354,7 +354,7 @@ export const ShopfloorReceiptScreen = () => {
     }
 
     /* 받을 출고가 아니면 수령 전표를 만들 수 없다. 지어내면 다른 작업지시에 재고가 붙는다. */
-    if (!receivable(issue) || issue.destinationLocationId === null) {
+    if (!receivable(issue)) {
       return;
     }
 
@@ -509,6 +509,12 @@ export const ShopfloorReceiptScreen = () => {
             </Card.Header>
             <Card.Body className="card-body">
               {/* 어디로 들어온 것인가. 없으면 받은 자리가 전표에만 남는다. */}
+              {issue.kind === 'WORK_ORDER' && issue.destinationLocationId === null ? (
+                <>
+                  <p>{t.issue.workOrderReceipt}</p>
+                  {issue.workOrderNo !== undefined ? <p>{t.issue.workOrder(issue.workOrderNo)}</p> : null}
+                </>
+              ) : null}
               {destination.data === undefined ? null : (
                 <p>
                   {t.issue.destination(

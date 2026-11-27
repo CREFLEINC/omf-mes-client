@@ -16,6 +16,7 @@ import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-route
 import { useApiClient } from '../../patterns/api-context';
 import { lookupDisplayLabel, selectableLookupOptions } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
+import { useMasterDataPlant, useOnMasterDataPlantChange } from '../../patterns/master-data-plant';
 import { usePageHub } from '../../patterns/page-hub';
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 import { TAB_PAGE_SIZES } from '../../patterns/client-page';
@@ -216,7 +217,9 @@ const RoutingWorkspace = () => {
   const selectedItemId = Number(searchParams.get('item') ?? '') || null;
   const selectedRoutingId = Number(searchParams.get('rev') ?? '') || null;
 
-  const itemList = useItemList(filters, itemPaging);
+  /* 위 줄 사업부의 공장 품목만 — 공장은 서버가 BOM 으로 정한다(서버 #1156). 공장을 정하는 동안은 조회를 미룬다. */
+  const plant = useMasterDataPlant();
+  const itemList = useItemList(filters, itemPaging, plant.plantId, !plant.isChecking);
   const items = itemList.data?.items ?? [];
   /* 보이는 쪽 품목의 기본 Rev · 작성중 Rev · 개정 수 — 품목 목록 열(#231). */
   const revisionSummaries = useItemRevisionSummaries(items.map((item) => item.itemId));
@@ -694,6 +697,11 @@ const RoutingWorkspace = () => {
     isOperationsDirty ||
     (createValues !== null && !isSameHeaderValues(createValues, emptyHeaderFormValues()));
   const [createFieldErrors, setCreateFieldErrors] = useState<Record<string, string>>({});
+
+  /* 사업부를 바꾸면 첫 쪽부터 보고 다른 공장의 품목 · Rev 선택을 푼다 — 저장하지 않은 편집이 있으면 그대로 둔다. */
+  useOnMasterDataPlantChange(plant, () => {
+    if (!hasUnsavedChanges) updateParams({ item: null, rev: null, page: null });
+  });
   /*
    * 품목·Rev 가 바뀌면 첫 Rev 등록 칸을 닫는다 — 앞 품목에서 친 값이 새 품목 아래 남으면 엉뚱한 품목에
    * Rev 가 생기고, 비우지 않은 칸 때문에 그 뒤 이동마다 다시 묻는다(뒤로가기로 바뀐 경우도 같다).
@@ -1212,7 +1220,7 @@ const RoutingWorkspace = () => {
         />
       )}
       {/* 진행 상태 칩은 탭 줄에서 배치 단추 왼쪽 — 먼저 그려야 같은 자리에서 앞에 선다(사용자 지시 · #231). */}
-      <ItemStatusChips appliedFilters={filters} onApplyFilters={handleApplyFilters} />
+      <ItemStatusChips appliedFilters={filters} onApplyFilters={handleApplyFilters} plant={plant} />
       <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
 
       {/* 조회 조건 — 검사 조회·판정처럼 목록과 다른 상자에 둔다(#231). */}
@@ -1221,7 +1229,7 @@ const RoutingWorkspace = () => {
         className="pane inspection-standard-search routing-search"
         role="search"
       >
-        <ItemFilterBar appliedFilters={filters} onApplyFilters={handleApplyFilters} />
+        <ItemFilterBar appliedFilters={filters} onApplyFilters={handleApplyFilters} plant={plant} />
       </section>
 
       <div

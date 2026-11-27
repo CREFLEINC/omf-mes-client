@@ -5,6 +5,7 @@ import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query
 import { useApiClient } from '../../patterns/api-context';
 import { masterName } from '../../patterns/master-name';
 import { runRequest, toApiError } from '../../patterns/request';
+import { plantIdQuery } from '../../patterns/master-data-plant';
 import { DEFAULT_PAGE_SIZE, type PlanListQuery, toListQuery } from './filters';
 import { resolveVersionStatus, type VersionScreenStatus } from './plan-version-status';
 import type { VersionAuditEvent } from './version-history';
@@ -39,30 +40,44 @@ export interface InspectionPlanListResponse {
  */
 export const planKeys = {
   all: ['inspection-plans'] as const,
-  list: (filters: PlanFilters, page: number, size: number = DEFAULT_PAGE_SIZE) =>
-    ['inspection-plans', 'list', filters, page, size] as const,
+  list: (filters: PlanFilters, page: number, size: number = DEFAULT_PAGE_SIZE, plantId = '') =>
+    ['inspection-plans', 'list', filters, page, size, plantId] as const,
   detail: (inspectionPlanId: number) => ['inspection-plans', 'detail', inspectionPlanId] as const,
-  usageCounts: (filters: PlanFilters) => ['inspection-plans', 'usage-counts', filters] as const,
+  usageCounts: (filters: PlanFilters, plantId = '') =>
+    ['inspection-plans', 'usage-counts', filters, plantId] as const,
 };
+
+/** 목록 질의의 공장 — 위 줄 사업부(`useMasterDataPlant`). 빈 값이면 공장으로 거르지 않는다. */
+export interface PlanListPlant {
+  plantId: string;
+  /** 공장을 정하는 중 — 조회를 미룬다(다른 공장 기준이 잠깐 보이지 않게). */
+  isChecking: boolean;
+}
+
+const UNRESTRICTED: PlanListPlant = { plantId: '', isChecking: false };
 
 /**
  * 기준 목록. 조건은 서버로 보낸다 — 클라이언트에서 거르면 서버가 자른 뒤의 결과만 걸러진다.
  * 쿼리 구성 규칙(빈 값·꺼진 확인칸·첫 쪽을 싣지 않는다)은 `filters.ts`가 갖는다.
+ * 공장은 위 줄 사업부의 것이다(서버 #1169) — 기준의 공장은 품목의 공장이고, 품목이 빈 기준은 어느 공장에서도 나온다.
  */
 export const useInspectionPlanList = (
   filters: PlanFilters,
   page: number,
   size: number = DEFAULT_PAGE_SIZE,
+  plant: PlanListPlant = UNRESTRICTED,
 ): UseQueryResult<InspectionPlanListResponse> => {
   const { client } = useApiClient();
+  const plantQuery = plantIdQuery(plant.plantId);
 
   return useQuery({
-    queryKey: planKeys.list(filters, page, size),
+    queryKey: planKeys.list(filters, page, size, plant.plantId),
+    enabled: !plant.isChecking,
     queryFn: async () => {
       if (!needsClientFilter(filters)) {
         return runRequest(() =>
           client.GET('/quality/inspection-plans', {
-            params: { query: toListQuery(filters, page, size) },
+            params: { query: { ...toListQuery(filters, page, size), ...plantQuery } },
           }),
         );
       }
@@ -71,7 +86,7 @@ export const useInspectionPlanList = (
        * 「미사용만」 · 「미승인만」 · 상태는 서버 조건이 없다(#208) — 나머지 조건으로 전부 받아 화면이 거르고 쪽을 나눈다.
        * 검사 기준은 품목 · 유형별이라 수가 많지 않다.
        */
-      const kept = await fetchFilteredPlans(client, filters);
+      const kept = await fetchFilteredPlans(client, filters, plantQuery);
 
       return {
         items: kept.slice((page - 1) * size, page * size),
@@ -103,10 +118,11 @@ const latestVersionStatus = async (
 const fetchFilteredPlans = async (
   client: ApiClient,
   filters: PlanFilters,
+  plantQuery: { plantId?: number },
 ): Promise<InspectionPlanListResponse['items']> => {
   const all = await fetchAllPlans(
     (query) => runRequest(() => client.GET('/quality/inspection-plans', { params: { query } })),
-    toListQuery(filters, 1, ALL_PAGE_SIZE),
+    { ...toListQuery(filters, 1, ALL_PAGE_SIZE), ...plantQuery },
   );
   const kept = all.filter((plan) => !filters.inactiveOnly || !plan.isActive);
   if (filters.versionStatus === '') return kept;
@@ -132,21 +148,24 @@ export const usePlanUsageCounts = (
   filters: PlanFilters,
   /** 칩이 없으면 요청도 없다. */
   enabled: boolean,
+  /** 목록과 같은 공장으로 센다. */
+  plant: PlanListPlant = UNRESTRICTED,
 ): UseQueryResult<PlanUsageCounts> => {
   const { client } = useApiClient();
   const base: PlanFilters = { ...filters, includeInactive: false, inactiveOnly: false };
+  const plantQuery = plantIdQuery(plant.plantId);
 
   return useQuery({
-    queryKey: planKeys.usageCounts(base),
-    enabled,
+    queryKey: planKeys.usageCounts(base, plant.plantId),
+    enabled: enabled && !plant.isChecking,
     queryFn: async () => {
       const list = (query: PlanListQuery & { size?: number }) =>
         runRequest(() => client.GET('/quality/inspection-plans', { params: { query } }));
 
       if (!needsClientFilter(base)) {
         const [all, active] = await Promise.all([
-          list({ ...toListQuery({ ...base, includeInactive: true }, 1), size: 1 }),
-          list({ ...toListQuery(base, 1), size: 1 }),
+          list({ ...toListQuery({ ...base, includeInactive: true }, 1), ...plantQuery, size: 1 }),
+          list({ ...toListQuery(base, 1), ...plantQuery, size: 1 }),
         ]);
         return {
           all: all.page.total,
@@ -155,7 +174,11 @@ export const usePlanUsageCounts = (
         };
       }
 
-      const plans = await fetchFilteredPlans(client, { ...base, includeInactive: true });
+      const plans = await fetchFilteredPlans(
+        client,
+        { ...base, includeInactive: true },
+        plantQuery,
+      );
       const active = plans.filter((plan) => plan.isActive).length;
       return { all: plans.length, active, inactive: plans.length - active };
     },

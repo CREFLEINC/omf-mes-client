@@ -53,7 +53,7 @@ const reasons = {
   PLAN_QTY_REMAINING: '남은 수량 계획 필요',
   NO_LIVE_WORK_ORDER: '계획 추가 필요',
   WORK_ORDER_LINE_MISSING: 'W/O 생산 라인 지정 필요',
-  WORK_ORDER_LOCATION_MISSING: 'W/O 기본 위치 지정 필요',
+  WORK_ORDER_LOCATION_MISSING: '생산품 입고 위치 지정 필요',
   LINE_PLANT_MISMATCH: 'W/O 생산 라인 변경 필요',
 } as const;
 
@@ -135,7 +135,7 @@ export const erpWorkOrderFlow = {
     WORK_ORDER_LINE_MISSING: ({ workOrderCount }: ReasonDetail): string =>
       `${pendingWorkOrders(workOrderCount)}에 생산 라인이 없습니다. ${steps.assign} 단계에서 생산 라인을 지정해야 합니다.`,
     WORK_ORDER_LOCATION_MISSING: ({ workOrderCount }: ReasonDetail): string =>
-      `${pendingWorkOrders(workOrderCount)}에 WIP 위치, 생산품 입고 창고 또는 스크랩 위치가 지정되지 않았습니다. ${steps.assign} 단계에서 기본 위치를 지정해야 합니다.`,
+      `${pendingWorkOrders(workOrderCount)}에 생산품 입고 위치가 지정되지 않았습니다. ${steps.assign} 단계에서 입고 위치를 확인하세요.`,
     LINE_PLANT_MISMATCH: ({ workOrderCount }: ReasonDetail): string =>
       `${pendingWorkOrders(workOrderCount)}의 생산 라인이 이 ERP W/O와 다른 공장의 라인입니다. ${steps.assign} 단계에서 이 공장의 생산 라인으로 바꿔야 합니다.`,
     /** 화면이 모르는 사유 코드. */
@@ -163,9 +163,9 @@ export const erpWorkOrderFlow = {
     caption: SCREEN_NAME,
     columns: {
       orderNo: 'ERP W/O 번호',
-      plant: '공장',
       itemCode: '품목 코드',
       itemName: '품목명',
+      itemType: '품목 유형',
       orderQty: 'ERP W/O 수량',
       plannedStartDate: '계획 시작일',
       dueDate: '납기일',
@@ -498,7 +498,6 @@ export const erpWorkOrderFlow = {
         plannedMoldId: '금형',
         responsibleWorkerId: '작업자',
         plannedShiftId: '교대',
-        defaultWipLocationId: 'WIP 위치',
         defaultFgLocationId: '생산품 입고 창고',
         defaultScrapLocationId: '스크랩 위치',
         plannedStartAtLocal: '계획 시작',

@@ -967,7 +967,7 @@ export const EquipmentMasterScreen = () => {
     /* 공장이 바뀌면 앞 공장의 위치는 고를 수 없다 — 기본 위치 셋을 비운다. */
     const plantChanged = patch.plantId !== undefined && patch.plantId !== formState?.values.plantId;
     const nextPatch: Partial<GroupFormValues> = plantChanged
-      ? { ...patch, defaultWipLocationId: '', defaultFgLocationId: '', defaultScrapLocationId: '' }
+      ? { ...patch, defaultFgLocationId: '' }
       : patch;
     setFormState((prev) =>
       prev === null ? prev : { ...prev, values: { ...prev.values, ...nextPatch } },
@@ -1178,9 +1178,7 @@ export const EquipmentMasterScreen = () => {
       plantOptions={selectableOptions(lookups.sources.plants, formValues.plantId)}
       parentOptions={parentOptions}
       locationOptions={{
-        defaultWipLocationId: locationOptions('defaultWipLocationId'),
         defaultFgLocationId: locationOptions('defaultFgLocationId'),
-        defaultScrapLocationId: locationOptions('defaultScrapLocationId'),
       }}
       locationNote={locationNote}
       departmentOptions={[

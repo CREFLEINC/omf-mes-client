@@ -28,7 +28,7 @@ export type PageMeta = components['schemas']['PageMeta'];
 /**
  * 대상 W/O 한 줄.
  *
- * ⭐ **상세를 따로 부르지 않는다.** 목록 응답의 `WorkOrder` 에 `defaultWipLocationId`·`itemCode`·
+ * ⭐ **상세를 따로 부르지 않는다.** 목록 응답의 `WorkOrder` 에 `itemCode`·
  * `routingOperationName`·`orderQty`·`uomId` 가 전부 실린다(계약 실측).
  */
 export interface WorkOrderView {
@@ -43,7 +43,6 @@ export interface WorkOrderView {
   /** 값으로 분기하지 않고 그대로 보인다(공유계약 G-2) */
   workOrderTypeCode: string;
   /** 도착 위치를 자동으로 채우는 유일한 단서. 없는 W/O 에서는 사용자가 고른다 */
-  defaultWipLocationId: number | null;
 }
 
 export const toWorkOrderView = (data: WorkOrderResponse): WorkOrderView => ({
@@ -55,7 +54,6 @@ export const toWorkOrderView = (data: WorkOrderResponse): WorkOrderView => ({
   uomId: data.uomId,
   routingOperationName: data.routingOperationName ?? null,
   workOrderTypeCode: data.workOrderTypeCode,
-  defaultWipLocationId: data.defaultWipLocationId ?? null,
 });
 
 export interface WorkOrderListResult {

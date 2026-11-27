@@ -9,7 +9,6 @@ type WorkOrder = components['schemas']['WorkOrder'];
 type PageMeta = components['schemas']['PageMeta'];
 
 export interface WorkOrderReleaseFact extends WorkOrderFact {
-  defaultWipLocationId: number | null;
   defaultFgLocationId: number | null;
   defaultScrapLocationId: number | null;
   operationSettingsSnapshot: WorkOrder['operationSettingsSnapshot'] | null;
@@ -49,7 +48,6 @@ export const workOrderReleaseDetailPath = (workOrderId: number): string =>
 
 export const toWorkOrderReleaseFact = (workOrder: WorkOrder): WorkOrderReleaseFact => ({
   ...toWorkOrderFact(workOrder),
-  defaultWipLocationId: workOrder.defaultWipLocationId ?? null,
   defaultFgLocationId: workOrder.defaultFgLocationId ?? null,
   defaultScrapLocationId: workOrder.defaultScrapLocationId ?? null,
   operationSettingsSnapshot: workOrder.operationSettingsSnapshot ?? null,

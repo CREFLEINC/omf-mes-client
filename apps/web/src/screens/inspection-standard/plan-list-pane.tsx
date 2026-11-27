@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-grip-order';
+import { CutHint } from '../../patterns/cut-hint';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 
@@ -47,9 +48,8 @@ export interface PlanListPaneProps {
 /**
  * 좌 페인 — 검사기준을 찾아 고르는 자리.
  *
- * **열은 셋뿐이다**(기준코드·기준명·유형). 계약의 목록 행에는 품목·승인 시각·사용 여부도 있으나
- * 이 칸이 `minmax(240px, 1fr)`이라 열을 늘리면 표를 읽을 수 없다 —
- * 승인 여부와 품목은 기준을 고른 뒤 「기준 정보」 구획의 값 표기로 본다.
+ * 열은 유형 · 품목코드 · 품목명 · 상태 · 사용 유무다. 기준코드 · 기준명은 걷었다(사용자 지시 2026-11-27) —
+ * 상세의 「기준 정보」에서 본다. 승인 열은 승인 기능과 함께 걷었다(omf-all-around#357).
  *
  * **정렬 가능한 열을 두지 않는다.** 계약의 목록 쿼리에 정렬 파라미터가 없어
  * 화면이 정렬하면 지금 쪽 안에서만 도는 정렬이 되어 사용자를 속인다.
@@ -71,68 +71,72 @@ export const PlanListPane = ({
   head,
 }: PlanListPaneProps) => {
   const columns: Column<InspectionPlan>[] = [
-    {
-      key: 'inspectionPlanCode',
-      align: 'center',
-      header: t.fields.inspectionPlanCode,
-      width: '240px',
-      /*
-       * 기준 코드는 링크 모양을 걷고 본문 글자로 둔다(omf-all-around#196) — 줄 아무 곳이나 눌러 고른다.
-       * 단추는 남긴다: 키보드·화면 낭독기가 줄을 고르는 길이고, 고른 줄 표시(`aria-current`)가 여기 실린다.
-       */
-      render: (row) => (
-        <button
-          type="button"
-          className="inspection-standard-plan-open"
-          aria-current={row.inspectionPlanId === selectedPlanId ? 'true' : undefined}
-          title={row.inspectionPlanCode}
-          onClick={() => onSelect(row.inspectionPlanId)}
-        >
-          {row.inspectionPlanCode}
-        </button>
-      ),
-    },
-    {
-      key: 'inspectionPlanName',
-      align: 'center',
-      header: t.fields.inspectionPlanName,
-      /*
-       * 폭을 정하지 않는다 — 남는 폭을 이 열이 맡는다(검사 조회·판정 표와 같다 · 사용자 지시 #196).
-       * 모든 열이 폭을 가지면 한 열을 끌 때 나머지가 비율대로 함께 늘고 줄어 끈 대로 서지 않는다.
-       */
-      render: (row) => <span title={row.inspectionPlanName}>{row.inspectionPlanName}</span>,
-    },
+    /*
+     * 기준코드 · 기준명 열은 걷었다(사용자 지시 2026-11-27) — 기준은 유형 · 품목으로 가른다. 코드 · 이름은 상세의 기준 정보에서 본다.
+     * 검사 유형이 줄을 고르는 단추를 맡는다 — 링크 모양 없이 본문 글자다(omf-all-around#196). 줄 아무 곳이나 눌러도 고르고,
+     * 단추는 키보드 · 화면 낭독기가 줄을 고르는 길이며 고른 줄 표시(`aria-current`)가 여기 실린다.
+     * 화면 낭독기에는 기준명까지 읽힌다 — 유형만으로는 「전 품목 공통」 IQC 기준끼리 가를 수 없다.
+     */
     {
       key: 'inspectionTypeCode',
       align: 'center',
       header: t.fields.inspectionType,
       width: '136px',
-      render: (row) => inspectionTypeLabel(row.inspectionTypeCode),
+      render: (row) => {
+        const type = inspectionTypeLabel(row.inspectionTypeCode);
+        return (
+          <button
+            type="button"
+            className="inspection-standard-plan-open"
+            aria-current={row.inspectionPlanId === selectedPlanId ? 'true' : undefined}
+            aria-label={t.values.planRowLabel(type, row.inspectionPlanName)}
+            onClick={() => onSelect(row.inspectionPlanId)}
+          >
+            {type}
+          </button>
+        );
+      },
     },
     /* 목록에서 바로 가를 수 있게 품목 · 사용을 함께 싣는다(사용자 지시 · #196). 승인은 걷었다(omf-all-around#357). */
     /*
      * 품목은 코드 · 이름 두 칸이다(사용자 지시 2026-11-20, 한 칸에 붙이던 「이름 코드」를 나눴다 · 검사 조회·판정 목록과
-     * 같다). 전 품목 공통 기준은 이름 칸에 「전체 품목」, 코드 칸은 「—」다.
+     * 같다). 전 품목 공통 기준은 이름 칸에 「전 품목 공통」, 코드 칸은 「—」다.
      */
     {
       key: 'itemCode',
       align: 'center',
       header: t.listColumns.itemCode,
-      width: '140px',
+      /* 품목코드가 잘리지 않는 폭 — 품목 마스터 9,277건의 99%가 이 안에 든다(사용자 지시 2026-11-27). 더 긴 코드만 말줄임 · title. */
+      width: '160px',
       render: (row) => {
         const code = itemPartsOf(row.itemId)?.code ?? null;
-        return code === null ? t.values.empty : <span title={code}>{code}</span>;
+        return code === null ? (
+          t.values.empty
+        ) : (
+          <CutHint className="cut-hint-text" text={code}>
+            {code}
+          </CutHint>
+        );
       },
     },
     {
       key: 'itemName',
       align: 'center',
       header: t.listColumns.itemName,
-      width: '200px',
+      /*
+       * 폭을 정하지 않는다 — 남는 폭을 이 열이 맡는다(검사 조회·판정 표와 같다 · 사용자 지시 #196).
+       * 모든 열이 폭을 가지면 한 열을 끌 때 나머지가 비율대로 함께 늘고 줄어 끈 대로 서지 않는다.
+       * 칸이 좁아도 이 열은 사라지지 않는다 — 표 최소 폭(app.css `.inspection-standard-plan-rows table`)이 자리를 남긴다.
+       * 잘린 이름은 커서를 두면 힌트로 다 보인다.
+       */
       render: (row) => {
         const parts = itemPartsOf(row.itemId);
         if (parts === null) return t.values.allItems;
-        return <span title={parts.name}>{parts.name}</span>;
+        return (
+          <CutHint className="cut-hint-text" text={parts.name}>
+            {parts.name}
+          </CutHint>
+        );
       },
     },
     /* 상태 — 가장 높은 버전의 상태(작성중 · 확정 · 폐기, 사용자 지시 · #208). 버전이 없으면 「—」. */
@@ -244,7 +248,7 @@ export const PlanListPane = ({
 
     return (
       /*
-       * 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 기준 코드 단추로 넘긴다(검사 조회·판정과 같다).
+       * 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 검사 유형 단추로 넘긴다(검사 조회·판정과 같다).
        * 키보드·화면 낭독기는 그 단추 하나로 고른다(줄마다 탭 멈춤을 늘리지 않는다).
        */
       <div

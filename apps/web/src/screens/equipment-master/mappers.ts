@@ -37,9 +37,7 @@ export const groupToFormValues = (group: EquipmentGroup): GroupFormValues => ({
   groupName: group.groupName,
   groupTypeCode: group.groupTypeCode,
   parentGroupId: optionalIdToText(group.parentGroupId),
-  defaultWipLocationId: optionalIdToText(group.defaultWipLocationId),
   defaultFgLocationId: optionalIdToText(group.defaultFgLocationId),
-  defaultScrapLocationId: optionalIdToText(group.defaultScrapLocationId),
   departmentId: optionalIdToText(group.departmentId),
 });
 
@@ -57,9 +55,7 @@ export const emptyGroupFormValues = (): GroupFormValues => ({
   groupName: '',
   groupTypeCode: '',
   parentGroupId: '',
-  defaultWipLocationId: '',
   defaultFgLocationId: '',
-  defaultScrapLocationId: '',
   departmentId: '',
 });
 
@@ -83,9 +79,7 @@ export const toGroupUpdate = (
   /* 선택칸의 값은 서버 코드값 목록에서 온다 — 계약이 닫은 두 값(`LINE`·`WORK_AREA`)으로 좁혀 싣는다. */
   groupTypeCode: values.groupTypeCode as EquipmentGroupUpdate['groupTypeCode'],
   parentGroupId: textToOptionalId(values.parentGroupId),
-  defaultWipLocationId: textToOptionalId(values.defaultWipLocationId),
   defaultFgLocationId: textToOptionalId(values.defaultFgLocationId),
-  defaultScrapLocationId: textToOptionalId(values.defaultScrapLocationId),
   departmentId: textToOptionalId(values.departmentId),
 });
 
@@ -106,9 +100,7 @@ export const isSameGroupValues = (a: GroupFormValues, b: GroupFormValues): boole
   a.groupName === b.groupName &&
   a.groupTypeCode === b.groupTypeCode &&
   a.parentGroupId === b.parentGroupId &&
-  a.defaultWipLocationId === b.defaultWipLocationId &&
   a.defaultFgLocationId === b.defaultFgLocationId &&
-  a.defaultScrapLocationId === b.defaultScrapLocationId &&
   a.departmentId === b.departmentId;
 
 /* ── 설비 ─────────────────────────────────────────────────────────── */
