@@ -1,7 +1,7 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
-import { InfoFacts, InfoLong, toFactRows } from '../../patterns/info-facts';
+import { InfoEmpty, InfoGroupTitle } from '../../patterns/info-facts';
 import { toVisibleLine } from './approval-progress-pane';
 import { toReasonLines } from './types';
 
@@ -18,9 +18,11 @@ const t = messages.disposalIssue;
  */
 export interface SubmitLineSummary {
   ordinal: number;
-  item: string;
+  itemName: string;
+  /** 이름을 아직 못 풀었으면 빈 글 — 그때는 `itemName`이 그 사정(불러오는 중 등)을 말한다 */
+  itemCode: string;
   lot: string;
-  /** 「30 SAMPLE-UOM-EA」 — 단위를 붙인 표기 그대로 */
+  /** 「30 EA」 — 단위 코드를 한 번만 붙인 표기 그대로 */
   qty: string;
 }
 
@@ -28,16 +30,17 @@ export interface SubmitSummary {
   /** 폐기의 근거가 되는 입고 전표. **업무 번호다** — 내부 번호가 아니다 */
   goodsReceiptNo: string;
   warehouseName: string;
-  issueTypeCode: string;
-  sourceDocumentTypeCode: string;
-  reasonCode: string;
+  /** 코드는 **이름**으로 온다(코드값 이름 · 없으면 코드 그대로). 보내는 값은 화면이 든 코드다 */
+  issueTypeName: string;
+  sourceDocumentTypeName: string;
+  reasonName: string;
   /** 「2026-08-11 09:30」 — 보이는 표기 그대로 */
   issuedAt: string;
   /** **파생값이다.** 사용자가 넣은 적 없는 값이므로 창이 그 사실을 함께 밝힌다 */
   businessDate: string;
   remarks: string;
   /**
-   * 폐기한 물건이 어디로 가는가 — 「자체 폐기」 또는 **고른 거래처의 이름**(#128).
+   * 폐기한 물건이 어디로 가는가 — 「자체 폐기」 또는 **고른 폐기 거래처의 이름**(#128).
    *
    * **한 값으로 받는다.** 나가는 본문의 두 키는 이 하나에서 따라오므로(도착지 유형은 상수다)
    * 창이 유형과 번호를 따로 보이면 사용자가 정하지 않은 것을 확인하게 된다. 판정과 글자는
@@ -45,10 +48,8 @@ export interface SubmitSummary {
    */
   destination: string;
   lines: readonly SubmitLineSummary[];
-  /** 요청 사유 **전문**. 줄바꿈이 유지된다 */
+  /** 결재 요청 사유 **전문**. 줄바꿈이 유지된다 */
   reason: string;
-  /** 결재함 목록에서 요약을 겸할 첫 줄. **전문과 나눠 보인다**(완료 조건 C62) */
-  reasonFirstLine: string;
   /** 상한을 확인하지 못한 줄이 **섞여 있는가**. 있으면 그 사실을 창이 밝힌다 */
   hasUnknownOnHand: boolean;
 }
@@ -65,30 +66,51 @@ interface SummaryRow {
   value: string;
 }
 
-const toRows = (summary: SubmitSummary): SummaryRow[] => [
+const isBlank = (value: string): boolean => value.trim() === '';
+
+/** 「출고 정보」 상자 — 비고는 값이 있을 때만. */
+const toIssueInfo = (summary: SubmitSummary): SummaryRow[] => [
   { key: 'goodsReceiptNo', label: t.summary.goodsReceiptNo, value: summary.goodsReceiptNo },
   { key: 'warehouse', label: t.summary.warehouse, value: summary.warehouseName },
-  { key: 'issueType', label: t.formFields.issueType, value: summary.issueTypeCode },
+  { key: 'reason', label: t.formFields.reason, value: summary.reasonName },
+  { key: 'issuedAt', label: t.dialog.issuedAt, value: summary.issuedAt },
+  /*
+   * **도착지는 한 행이다** — 사용자가 정한 것은 「어디로 가는가」 하나이고 본문의 두 키는 거기서
+   * 따라온다. 라벨은 입력 화면과 같은 「폐기 거래처」(값은 거래처 이름 또는 「자체 폐기」).
+   */
+  { key: 'destination', label: t.formFields.disposalPartner, value: summary.destination },
+  ...(isBlank(summary.remarks)
+    ? []
+    : [{ key: 'remarks', label: t.formFields.remarks, value: summary.remarks }]),
+];
+
+/** 접힌 「처리 상세」 — 확인 빈도가 낮은 값. */
+const toDetails = (summary: SubmitSummary): SummaryRow[] => [
+  { key: 'issueType', label: t.formFields.issueType, value: summary.issueTypeName },
   {
     key: 'sourceDocumentType',
     label: t.formFields.sourceDocumentType,
-    value: summary.sourceDocumentTypeCode,
+    value: summary.sourceDocumentTypeName,
   },
-  { key: 'reasonCode', label: t.formFields.reason, value: summary.reasonCode },
-  { key: 'issuedAt', label: t.formFields.issuedDate, value: summary.issuedAt },
   /* 파생값임을 **값 자체가** 밝힌다 — 라벨만으로는 사용자가 자기가 넣은 값으로 읽는다. */
   {
     key: 'businessDate',
     label: t.formFields.businessDate,
-    value: t.dialog.businessDateDerived(summary.businessDate),
+    value: t.dialog.businessDateAuto(summary.businessDate),
   },
-  { key: 'remarks', label: t.formFields.remarks, value: summary.remarks },
-  /*
-   * **도착지는 한 행이다** — 없앤 「도착지 유형」·「폐기 계정」 두 행 자리에 선다. 사용자가
-   * 정한 것은 「어디로 가는가」 하나이고 본문의 두 키는 거기서 따라온다.
-   */
-  { key: 'destination', label: t.formFields.destination, value: summary.destination },
 ];
+
+/** 이름 · 값 줄 — 라벨 열과 값 열의 시작점을 맞춘다. 값이 없으면 회색 「—」. */
+const FactList = ({ rows }: { rows: readonly SummaryRow[] }) => (
+  <dl className="di-confirm-facts">
+    {rows.map((row) => (
+      <div className="di-confirm-fact" key={row.key}>
+        <dt className="field-label">{row.label}</dt>
+        <dd>{isBlank(row.value) ? <InfoEmpty /> : row.value}</dd>
+      </div>
+    ))}
+  </dl>
+);
 
 /**
  * 승인 요청 확인 — **되돌릴 수 없는 조작 앞의 마지막 층이다.**
@@ -98,17 +120,17 @@ const toRows = (summary: SubmitSummary): SummaryRow[] => [
  * 실재하고 그때 사용자가 무슨 일이 일어난 것인지 알아야 하기 때문이다.
  *
  * **재고는 아직 움직이지 않는다.** 이 화면에서 재고가 빠지는 순간은 승인 뒤의 「기타출고 처리」
- * 하나뿐이고, 창이 그 경계를 분명히 한다 — 사용자가 여기서 재고가 빠졌다고 믿으면 승인 뒤의
- * 처리를 잊는다(계약이 「승인은 상태만 바꾼다」라고 못 박은 자리).
+ * 하나뿐이고(계약 `:post` — 승인 전이면 400), 창이 그 경계를 분명히 한다.
  *
- * **승인 요청은 되돌릴 수 없다.** 반려된 뒤 다시 올릴 수는 있으나 그것은 **새 요청**이다(스펙 §6).
- * 「취소할 수 있습니다」로 읽히지 않게 정확히 적는다.
+ * **승인 요청은 되돌릴 수 없다.** 계약의 승인 요청에는 승인 · 반려만 있다. 반려된 뒤 다시 올릴
+ * 수는 있으나 그것은 **새 요청**이다(스펙 §6).
  *
- * **사유 전문과 첫 줄을 나눠 보인다**(완료 조건 C62). 결재함 목록에서 요약을 겸하는 것이
- * 첫 줄이라(공유계약 A-12) 어느 문장이 남들에게 보일지 보내기 전에 확인시킨다.
+ * 모양은 공급사 반품 확인 창과 같은 틀이다(#360) — 맨 위 「폐기 대상 N건」, 「출고 정보」 상자,
+ * 접힌 「처리 상세」, 결재 요청 사유, 단추 바로 위 경고 상자. 창 높이는 내용만큼이고 넘치면
+ * 본문만 구른다(공용 `Dialog` 본문).
  *
  * **창 안에 선택칸을 두지 않는다**(`omf-mes#45` · 디자인 시스템 갭). 이 창은 값을 고치는
- * 자리가 아니라 확인하는 자리다 — 고칠 것이 있으면 닫고 폼에서 고친다.
+ * 자리가 아니라 확인하는 자리다 — 고칠 것이 있으면 닫고 폼에서 고친다(입력값은 그대로 남는다).
  *
  * **스크림 클릭·X로 닫히지 않게 한다**(`closeOnBackdropClick={false}`·`showCloseButton={false}`).
  * 되돌릴 수 없는 조작을 확인하는 창이 스치는 클릭에 사라지면 확인 자체가 형식이 된다 —
@@ -117,74 +139,96 @@ const toRows = (summary: SubmitSummary): SummaryRow[] => [
  *
  * 기존 디자인 시스템 컴포넌트의 조합이라 이 화면 슬라이스가 소유한다.
  */
-export const SubmitConfirmDialog = ({ summary, onConfirm, onClose }: SubmitConfirmDialogProps) => (
-  <Dialog
-    open
-    onClose={onClose}
-    size="md"
-    closeOnBackdropClick={false}
-    showCloseButton={false}
-    title={t.dialog.submitTitle}
-    footer={
-      <>
-        {/* 문구가 「확인/취소」가 아니다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다. */}
-        <Button variant="outlined" onClick={onClose}>
-          {t.actions.keepEditing}
-        </Button>
-        <Button onClick={onConfirm}>{t.actions.confirmSubmit}</Button>
-      </>
-    }
-  >
-    <p>{t.dialog.submitLead}</p>
+export const SubmitConfirmDialog = ({ summary, onConfirm, onClose }: SubmitConfirmDialogProps) => {
+  const reasonLines = toReasonLines(summary.reason);
 
-    {/*
-     * 사실 상자 — 정보 표시 팝업 시안 상자(#360). 첫 칸(입고번호)은 크게, 비고는 긴 글이라 상자 밖 아래.
-     * 값이 없는 칸은 비워 두지 않는다 — 빠뜨린 것인지 없는 것인지 구분되지 않는다(회색 「—」).
-     */}
-    <InfoFacts rows={toFactRows(toRows(summary).filter((row) => row.key !== 'remarks'))} />
-    <InfoLong label={t.formFields.remarks} value={summary.remarks} />
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      size="md"
+      closeOnBackdropClick={false}
+      showCloseButton={false}
+      title={t.dialog.submitTitle}
+      footer={
+        <>
+          {/* 문구가 「확인/취소」가 아니다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다. */}
+          <Button variant="outlined" onClick={onClose}>
+            {t.actions.backToInput}
+          </Button>
+          <Button onClick={onConfirm}>{t.actions.requestApproval}</Button>
+        </>
+      }
+    >
+      <div className="sr-confirm-body">
+        {/*
+         * **무엇이 얼마나 나가는지를 줄마다 다시 보인다.** 합계만 보이면 어느 줄이 얼마인지
+         * 확인할 수 없고, 이 화면에서 잘못 실린 수량은 승인을 거쳐 그대로 재고에서 빠진다.
+         * 줄은 순번 차례 그대로 — 내부 번호를 키로 쓰지 않는다(#44).
+         */}
+        <section aria-label={t.dialog.targetHead(summary.lines.length)}>
+          <InfoGroupTitle>{t.dialog.targetHead(summary.lines.length)}</InfoGroupTitle>
+          <ul className="di-confirm-lines">
+            {summary.lines.map((line) => (
+              <li className="di-confirm-line" key={line.ordinal}>
+                <div className="di-confirm-line-main">
+                  <div className="di-confirm-line-item">
+                    <span className="di-confirm-line-name">{line.itemName}</span>
+                    {line.itemCode !== '' && (
+                      <span className="di-confirm-line-code">{line.itemCode}</span>
+                    )}
+                  </div>
+                  <div className="di-confirm-line-lot" title={line.lot}>
+                    {`${t.lineTable.lot} ${line.lot}`}
+                  </div>
+                </div>
+                <div className="di-confirm-line-qty">
+                  <span className="visually-hidden">{t.dialog.disposalQty}</span>
+                  <span>{line.qty}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
 
-    {/*
-     * **무엇이 얼마나 나가는지를 줄마다 다시 보인다.** 합계만 보이면 어느 줄이 얼마인지
-     * 확인할 수 없고, 이 화면에서 잘못 실린 수량은 승인을 거쳐 그대로 재고에서 빠진다.
-     */}
-    <p>{t.dialog.lineCount(summary.lines.length)}</p>
-    <ul>
-      {/*
-       * `key`가 사실상 배열 인덱스다(순번이 그 자리에서 매겨진다). **여기서는 그 규칙을
-       * 지나간다** — 줄이 순수 텍스트이고 지역 상태가 없으며, 이 목록은 제자리에서 재정렬되지
-       * 않는다(값이 바뀌면 창째 다시 그려진다). 내부 번호를 키로 쓰지 않기 위한 것이며(#44)
-       * 받는 타입에 그 자리조차 두지 않았다.
-       */}
-      {summary.lines.map((line) => (
-        <li key={line.ordinal}>{t.dialog.linePair(line.item, line.lot, line.qty)}</li>
-      ))}
-    </ul>
+        <section aria-label={t.dialog.issueInfo}>
+          <InfoGroupTitle>{t.dialog.issueInfo}</InfoGroupTitle>
+          <FactList rows={toIssueInfo(summary)} />
+        </section>
 
-    {/*
-     * 사유는 **전문과 첫 줄을 나눠** 보인다. 첫 줄만 보이면 무엇을 보내는지 모르고, 전문만
-     * 보이면 어느 줄이 남들에게 요약으로 보일지 모른다.
-     */}
-    <section aria-label={t.dialog.reasonFull}>
-      <p className="field-label">{t.dialog.reasonFull}</p>
-      {/*
-       * 줄바꿈이 뜻을 나른다 — 한 줄로 이어 붙이면 문단 구분이 사라진다. 줄마다 상자를 세우고
-       * 빈 줄은 보이는 글자로 바꾼다(결재 진행 구획과 같은 처리 · `app.css`를 고치지 않는다).
-       */}
-      {toReasonLines(summary.reason).map((line, index) => (
-        <p key={`${String(index)}:${line}`}>{toVisibleLine(line)}</p>
-      ))}
-    </section>
+        <details className="sr-confirm-details">
+          <summary>
+            {t.dialog.details}
+            <Icon name="expand_more" size={20} aria-hidden />
+          </summary>
+          <FactList rows={toDetails(summary)} />
+        </details>
 
-    <section aria-label={t.dialog.reasonFirstLine}>
-      <p className="field-label">{t.dialog.reasonFirstLine}</p>
-      <p>{summary.reasonFirstLine}</p>
-      <p className="field-note">{t.dialog.reasonSummaryNote}</p>
-    </section>
+        <section aria-label={t.dialog.approvalReason}>
+          <InfoGroupTitle>{t.dialog.approvalReason}</InfoGroupTitle>
+          {/*
+           * 줄바꿈이 뜻을 나른다 — 한 줄로 이어 붙이면 문단 구분이 사라진다. 줄마다 상자를 세우고
+           * 빈 줄은 보이는 글자로 바꾼다(결재 진행 구획과 같은 처리).
+           */}
+          <div className="di-confirm-reason">
+            {reasonLines.map((line, index) => (
+              <p key={`${String(index)}:${line}`}>{toVisibleLine(line)}</p>
+            ))}
+          </div>
+          {/* 결재함 목록에서 요약을 겸하는 것이 첫 줄이다 — 여러 줄일 때만 밝힌다. */}
+          {reasonLines.length > 1 && <p className="field-note">{t.dialog.reasonFirstLineNote}</p>}
+        </section>
 
-    {summary.hasUnknownOnHand && <p className="field-note">{t.dialog.submitOnHandUnknown}</p>}
+        {summary.hasUnknownOnHand && <p className="field-note">{t.dialog.submitOnHandUnknown}</p>}
 
-    <p>{t.dialog.submitEffects}</p>
-    <p>{t.dialog.submitNoUndo}</p>
-  </Dialog>
-);
+        <AlertBanner variant="warning">
+          <span>{t.dialog.submitLead}</span>
+          <br />
+          <span>{t.dialog.submitEffects}</span>
+          <br />
+          <span>{t.dialog.submitNoUndo}</span>
+        </AlertBanner>
+      </div>
+    </Dialog>
+  );
+};

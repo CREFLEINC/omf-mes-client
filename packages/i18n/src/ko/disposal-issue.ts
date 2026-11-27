@@ -102,6 +102,9 @@ export const disposalIssue = {
     /** 창의 바닥 버튼. 「확인/취소」로 적지 않는다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다. */
     keepEditing: '계속 작성',
     confirmSubmit: '요청',
+    /** 승인 요청 확인 창의 바닥 버튼(#360) — 닫으면 입력값은 그대로 남는다. */
+    backToInput: '입력으로 돌아가기',
+    requestApproval: '결재 요청',
     confirmDiscard: '지우기',
     /** 만들어진 요청을 이력 탭에서 연다. **탭을 말없이 바꾸지 않는다**(계획 결정 6). */
     openIssue: '이 요청 열기',
@@ -524,8 +527,9 @@ export const disposalIssue = {
    * 닫고 폼에서 고친다.
    */
   dialog: {
-    submitTitle: '폐기 요청을 올릴까요?',
-    submitLead: '아래 내용으로 폐기 요청 전표를 만들고 이어서 결재에 올립니다.',
+    submitTitle: '폐기 출고 결재를 요청할까요?',
+    /** 한 번 누르면 전표 생성과 결재 요청이 이어서 나간다(승인 기록 정정 1-1). */
+    submitLead: '폐기 요청 전표를 생성하고 결재를 요청합니다.',
     resubmitTitle: '이 폐기 요청을 결재에 올릴까요?',
     resubmitLead: '이미 만들어진 폐기 요청 전표를 결재에 올립니다. 전표를 새로 만들지 않습니다.',
     discardTitle: '입력한 것을 지울까요?',
@@ -536,19 +540,28 @@ export const disposalIssue = {
      * 화면이 확인하지 않은 것을 말하는 것이 된다 — 줄 수는 그대로 보인다.
      */
     mixedUom: '단위가 섞여 합계를 내지 않습니다',
-    linePair: (item: string, lot: string, qty: string): string => `${item} · ${lot} · ${qty}`,
-    /** 파생값임을 **값 자체가** 밝힌다 — 라벨만으로는 사용자가 자기가 넣은 값으로 읽는다. */
-    businessDateDerived: (businessDate: string): string => `${businessDate} (출고 일자에서 만듦)`,
-    /** 사유 전문과 첫 줄을 **나눠** 보인다(완료 조건 C62) — 요약이 될 줄이 어느 것인지 보여야 한다. */
+    /** 승인 요청 확인 창 맨 위 — 줄마다 품목 · LOT · 폐기 수량(#360). */
+    targetHead: (count: number): string => `폐기 대상 ${String(count)}건`,
+    disposalQty: '폐기 수량',
+    issueInfo: '출고 정보',
+    issuedAt: '출고 일시',
+    /** 확인 빈도가 낮은 값(출고 유형 · 원천 문서 유형 · 영업일)을 접어 둔다. */
+    details: '처리 상세',
+    /** 파생값임을 **값 자체가** 밝힌다 — 사용자가 넣은 적 없는 값이다. */
+    businessDateAuto: (businessDate: string): string => `${businessDate} (자동)`,
+    /** 재상신 확인 창 — 사유 전문과 첫 줄을 **나눠** 보인다(완료 조건 C62). */
     reasonFull: '요청 사유 전문',
     reasonFirstLine: '결재함 목록에 요약으로 보일 첫 줄',
     reasonSummaryNote: '결재함 목록에는 이 첫 줄만 보입니다.',
-    submitEffects: '승인 요청만으로는 재고가 빠지지 않습니다. 승인된 뒤 「기타출고 처리」를 눌러야 빠집니다.',
+    approvalReason: '결재 요청 사유',
+    /** 사유가 여러 줄일 때만 — 결재함 목록에서 요약을 겸하는 것이 첫 줄이다(공유계약 A-12). */
+    reasonFirstLineNote: '결재함 목록에는 첫 줄이 표시됩니다.',
+    submitEffects: '승인 후 [기타출고 처리]를 실행하면 재고가 차감됩니다.',
     /**
-     * **승인 요청은 되돌릴 수 없다.** 계약의 출고 취소는 다시 결재를 타며 이 화면에 없다 —
-     * 반려된 뒤 다시 올리는 것도 **새 요청**이다(스펙 §6).
+     * **승인 요청은 되돌릴 수 없다.** 계약의 승인 요청에는 승인 · 반려만 있고 회수가 없다 —
+     * 반려된 뒤 다시 올리는 것도 **새 요청**이다(스펙 §6 · 공유계약 J-6).
      */
-    submitNoUndo: '올린 요청은 취소할 수 없습니다. 반려되면 새로 올려 주세요.',
+    submitNoUndo: '결재 요청 후에는 취소할 수 없습니다. 반려되면 다시 요청해 주세요.',
     /** 상한을 확인하지 못한 줄이 **보낼 줄에 섞여 있을 때만** 밝힌다. */
     submitOnHandUnknown: '재고 수량을 확인하지 못한 줄이 있습니다. 재고보다 많으면 요청이 거절됩니다.',
     /**
@@ -692,6 +705,13 @@ export const disposalIssue = {
      * 소관이고, 폐기했다고 보류가 풀리지도 않는다. **막지도 않는다**(계획 결정 4와 같은 논거).
      */
     lotHold: '「보류」 표식이 붙은 자재 LOT은 품질 보류 중입니다. 이 화면에서 풀 수 없습니다.',
+  },
+  /**
+   * 구조 코드의 이름 — 원천 문서 유형은 계약이 공통코드 그룹으로 받지 말라고 적은 값이라 계약 설명의
+   * 이름을 쓴다(공급사 반품과 같은 이름 · #360). 보내는 값은 코드다.
+   */
+  codeNames: {
+    sourceDocumentType: { GOODS_RECEIPT: '입고 전표' } as Readonly<Record<string, string>>,
   },
   values: {
     /** 참조를 못 푼 네 갈래 중 셋. **어느 갈래에도 번호를 담지 않는다**(`omf-mes#44`). */

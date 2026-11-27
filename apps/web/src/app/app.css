@@ -37615,6 +37615,113 @@ body:has(
   margin-top: var(--space-2);
 }
 
+/*
+ * 폐기 출고 결재 요청 확인(#360) — 틀은 공급사 반품 확인(`.sr-confirm-body` · `.sr-confirm-details`)과 같다.
+ * 「폐기 대상 N건」 줄: 왼쪽 품목명 · 품목 코드, 그 아래 LOT(길면 줄바꿈), 오른쪽 폐기 수량.
+ * 「출고 정보」 · 「처리 상세」: 이름 열과 값 열의 시작점을 맞춘 두 열.
+ */
+.di-confirm-lines {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+  list-style: none;
+}
+
+.di-confirm-line {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+}
+
+.di-confirm-line + .di-confirm-line {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.di-confirm-line-main {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.di-confirm-line-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-2);
+  min-width: 0;
+}
+
+.di-confirm-line-name {
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  overflow-wrap: anywhere;
+}
+
+.di-confirm-line-code,
+.di-confirm-line-lot {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  overflow-wrap: anywhere;
+}
+
+.di-confirm-line-qty {
+  flex: 0 0 auto;
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.di-confirm-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+}
+
+.di-confirm-fact {
+  display: contents;
+}
+
+.di-confirm-fact > .field-label {
+  margin: 0;
+}
+
+.di-confirm-fact > dd {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.sr-confirm-details > .di-confirm-facts {
+  margin-top: var(--space-2);
+}
+
+.di-confirm-reason {
+  color: var(--on-surface);
+  overflow-wrap: anywhere;
+}
+
+.di-confirm-reason > p {
+  margin: 0;
+}
+
 /* 분배 조건과 결과는 같은 영역에서 전환하고 선택한 조건만 편집한다. */
 .erp-wo-distribution-steps {
   display: flex;

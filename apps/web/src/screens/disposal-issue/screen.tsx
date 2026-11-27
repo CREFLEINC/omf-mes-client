@@ -17,6 +17,7 @@ import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
 import { plantNowLocal } from '../../patterns/plant-time';
 import { ScreenHeader } from '../../patterns/screen-header';
+import { splitCodeName } from '../../patterns/split-code-name';
 import { applyDisposalAutoFill, NO_DISPOSAL_AUTO_VALUES, onlyOptionValue } from './auto-fill';
 
 import {
@@ -1501,12 +1502,20 @@ export const DisposalIssueScreen = () => {
    * 순번은 **보낼 줄 안에서의 차례**다. 창은 순번을 글자로 내지 않고 줄을 가르는 데만 쓰므로
    * (내부 번호를 쓰지 않기 위한 것이다 · `omf-mes#44`) 표의 순번과 달라도 뜻을 잃지 않는다.
    */
-  const submitLines: SubmitLineSummary[] = submitInputs.map((line, index) => ({
-    ordinal: index + 1,
-    item: itemNameOf(line.itemId),
-    lot: lotNameOf(line.lotId),
-    qty: qtyTextOf(line.issueQty, line.uomId),
-  }));
+  const submitLines: SubmitLineSummary[] = submitInputs.map((line, index) => {
+    /* 「코드 · 이름」을 나눈다 — 못 풀었으면(불러오는 중 등) 그 글을 이름 자리에 두고 코드는 비운다. */
+    const item = splitCodeName(itemNameOf(line.itemId), '');
+    /* 단위는 코드만 한 번(「1 EA」) — 「EA · 개」를 그대로 붙이면 단위가 두 번 읽힌다(#360). */
+    const uom = splitCodeName(describeReference(toReference(uoms, line.uomId)), '').code;
+
+    return {
+      ordinal: index + 1,
+      itemName: item.name === '' ? item.code : item.name,
+      itemCode: item.name === '' ? '' : item.code,
+      lot: lotNameOf(line.lotId),
+      qty: t.lineTable.receiptQtyPair(line.issueQty, uom),
+    };
+  });
 
   /**
    * 결과 구획이 보일 값 — **서버가 되돌려 준 전표에서 나온다**(계획 결정 15).
@@ -2182,9 +2191,13 @@ export const DisposalIssueScreen = () => {
                         summary={{
                           goodsReceiptNo: detailData.receipt.goodsReceiptNo,
                           warehouseName: detailWarehouseName,
-                          issueTypeCode: codeName('issueType', disposalDraft.codes.issueType),
-                          sourceDocumentTypeCode: disposalDraft.codes.sourceDocumentType,
-                          reasonCode: codeName('reason', disposalDraft.codes.reason),
+                          issueTypeName: codeName('issueType', disposalDraft.codes.issueType),
+                          /* 공통코드 그룹이 아닌 구조 값 — 계약 설명의 이름(없으면 코드 그대로). */
+                          sourceDocumentTypeName:
+                            t.codeNames.sourceDocumentType[
+                              disposalDraft.codes.sourceDocumentType
+                            ] ?? disposalDraft.codes.sourceDocumentType,
+                          reasonName: codeName('reason', disposalDraft.codes.reason),
                           issuedAt: formatDateTime(toIssuedLocal(disposalDraft)),
                           businessDate: toBusinessDate(toIssuedLocal(disposalDraft)),
                           remarks: disposalDraft.remarks,
@@ -2195,7 +2208,6 @@ export const DisposalIssueScreen = () => {
                           ),
                           lines: submitLines,
                           reason: disposalDraft.reason,
-                          reasonFirstLine: firstLineOf(disposalDraft.reason),
                           /* 상한을 확인하지 못한 줄이 **보낼 줄에 섞여 있을 때만** 밝힌다. */
                           hasUnknownOnHand: selection.selectedRows.some(
                             (row) => row.onHand.kind !== 'known',

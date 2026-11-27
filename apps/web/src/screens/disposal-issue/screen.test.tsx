@@ -211,7 +211,6 @@ const APPROVAL_LIST_PATH = '/app/approval-requests';
 
 const WAREHOUSE_LABEL = 'SAMPLE-WH-01 · 합성 폐기창고 가';
 const OTHER_WAREHOUSE_LABEL = 'SAMPLE-WH-02 · 합성 자재창고 나';
-const ITEM_LABEL = 'SAMPLE-ITEM-01 · 합성 자재 가';
 /* 라인 표는 품목코드 · 품목명을 두 열로 나눠 보인다(사용자 지시 2026-11-24). */
 const ITEM_NAME = '합성 자재 가';
 const UOM_LABEL = 'SAMPLE-UOM-EA · 합성 낱개';
@@ -3136,8 +3135,12 @@ const openSubmitConfirm = async (user: ReturnType<typeof userEvent.setup>): Prom
   await user.click(submitButton());
 };
 
+/** 승인 요청 창은 「결재 요청」, 재상신 창은 「요청」 — 떠 있는 쪽을 누른다. */
 const confirmSubmit = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-  await user.click(screen.getByRole('button', { name: t.actions.confirmSubmit }));
+  await user.click(
+    screen.queryByRole('button', { name: t.actions.requestApproval }) ??
+      screen.getByRole('button', { name: t.actions.confirmSubmit }),
+  );
 };
 
 /** 실제로 나간 쓰기. **경로와 method를 함께** 본다 — 한쪽만 세면 다른 경로의 쓰기를 놓친다. */
@@ -3297,11 +3300,13 @@ describe('DisposalIssueScreen — 확인 창을 지나야 나간다', () => {
     expect(within(dialog).getByText(SAMPLE_FORM_CODES.issueType)).toBeInTheDocument();
     expect(within(dialog).getByText(SAMPLE_FORM_CODES.reason)).toBeInTheDocument();
     expect(within(dialog).getByText('2026-08-11 09:30')).toBeInTheDocument();
-    expect(within(dialog).getByText(t.dialog.lineCount(1))).toBeInTheDocument();
-    expect(
-      within(dialog).getByText(t.dialog.linePair(ITEM_LABEL, 'SAMPLE-LOT-0001', `10 ${UOM_LABEL}`)),
-    ).toBeInTheDocument();
-    expect(within(dialog).getByText(t.dialog.reasonSummaryNote)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.dialog.targetHead(1))).toBeInTheDocument();
+    /* 품목은 이름 · 코드를 나눠, 수량은 단위 코드 한 번(「10 SAMPLE-UOM-EA」). */
+    expect(within(dialog).getByText(ITEM_NAME)).toBeInTheDocument();
+    expect(within(dialog).getByText('SAMPLE-ITEM-01')).toBeInTheDocument();
+    expect(within(dialog).getByText(`${t.lineTable.lot} SAMPLE-LOT-0001`)).toBeInTheDocument();
+    expect(within(dialog).getByText('10 SAMPLE-UOM-EA')).toBeInTheDocument();
+    expect(within(dialog).queryByText(new RegExp(UOM_LABEL))).not.toBeInTheDocument();
     expect(within(dialog).getByText(t.dialog.submitEffects)).toBeInTheDocument();
   });
 
@@ -3441,7 +3446,7 @@ describe('DisposalIssueScreen — 연쇄가 실제로 보내는 것', () => {
 
     const dialog = await screen.findByRole('dialog');
 
-    expect(within(dialog).getByText(t.formFields.destination)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.formFields.disposalPartner)).toBeInTheDocument();
     expect(within(dialog).getByText(t.values.selfDisposal)).toBeInTheDocument();
 
     await confirmSubmit(user);
