@@ -48,7 +48,7 @@ const useItemSource = (): ReferenceSource => {
       title: t.itemPicker,
       key: ['reference', 'item'],
       columns: { code: t.itemCode, name: t.itemName },
-      search: async (term, page, _filterValue, size = REFERENCE_PAGE_SIZE) => {
+      search: async (term, page) => {
         const data = await runRequest(() =>
           client.GET('/mdm/items', {
             params: {
@@ -56,7 +56,7 @@ const useItemSource = (): ReferenceSource => {
                 ...(term === '' ? {} : { q: term }),
                 includeInactive: true,
                 page,
-                size,
+                size: REFERENCE_PAGE_SIZE,
               },
             },
           }),

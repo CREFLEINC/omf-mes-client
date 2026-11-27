@@ -1053,22 +1053,14 @@ export const ProposalReview = ({
                                                 code: 'Routing 코드',
                                                 name: 'Routing 명칭/개정',
                                               },
-                                              search: async (
-                                                term,
-                                                page,
-                                                _filterValue,
-                                                size = 20,
-                                              ) => {
+                                              search: async (term, page) => {
                                                 const items = plan
                                                   .routingOptions!.map((option) => option.value)
                                                   .filter((value) =>
                                                     `${value.code} ${value.name}`.includes(term),
                                                   );
                                                 return {
-                                                  items: items.slice(
-                                                    (page - 1) * size,
-                                                    page * size,
-                                                  ),
+                                                  items: items.slice((page - 1) * 20, page * 20),
                                                   total: items.length,
                                                 };
                                               },

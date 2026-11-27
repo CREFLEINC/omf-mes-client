@@ -35752,19 +35752,6 @@ body:has(
   z-index: 1;
   border-right: 1px solid var(--outline-variant);
 }
-.erp-wo-table-pagebar,
-.erp-wo-table-page-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-.erp-wo-table-pagebar {
-  justify-content: space-between;
-}
-.erp-wo-table-page-actions > [role='combobox'] {
-  width: 5rem;
-}
 
 .erp-wo-summary .is-item-code {
   min-width: 0;
@@ -43192,19 +43179,6 @@ dialog
 .erp-wo-result-warnings ul {
   margin: 0;
   padding-left: 1.1em;
-}
-.erp-wo-result-single-notes {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-2) var(--space-4);
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--outline-variant);
-  font: var(--type-body-sm);
-}
-.erp-wo-result-single-notes > .erp-wo-calendar-result-dates + .erp-wo-calendar-result-dates {
-  padding-left: var(--space-4);
-  border-left: 1px solid var(--outline-variant);
 }
 
 /*

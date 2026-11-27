@@ -299,11 +299,11 @@ export const ProposalPlanningWorkspace = ({
     title: 'Routing 선택',
     key: ['proposal-routing-workspace', row.id, plan?.key ?? ''],
     columns: { code: 'Routing 코드', name: 'Routing 명칭/개정' },
-    search: async (term, page, _filterValue, size = 20) => {
+    search: async (term, page) => {
       const items = (plan?.routingOptions ?? [])
         .map((option) => option.value)
         .filter((option) => `${option.code} ${option.name}`.includes(term));
-      return { items: items.slice((page - 1) * size, page * size), total: items.length };
+      return { items: items.slice((page - 1) * 20, page * 20), total: items.length };
     },
   };
   return (
