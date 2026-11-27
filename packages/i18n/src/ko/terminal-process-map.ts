@@ -76,7 +76,7 @@ export const terminalProcessMap = {
     registeredAt: '등록 일시',
     equipment: '설치 설비',
     equipmentNone: '미지정',
-    plantPlaceholder: '공장 선택',
+    plantPlaceholder: '공장을 선택하세요',
     typePlaceholder: '유형 선택',
     warehouse: '창고',
     warehouseAll: '공장 전체',
@@ -168,7 +168,7 @@ export const terminalProcessMap = {
     /** 여덟 칸을 하나씩 누르지 않게 한 줄을 통째로 여닫는다. */
     openAll: '모든 기능',
     add: '공정 추가',
-    addPlaceholder: '공정 선택',
+    addPlaceholder: '공정을 선택하세요',
     nothingToAdd: '추가할 공정이 없습니다.',
     /** 공정 행 관리 열 — 기능 칸과 성격이 다르다(이 단말의 구성에서 공정을 뺀다). */
     manage: '공정 제외',

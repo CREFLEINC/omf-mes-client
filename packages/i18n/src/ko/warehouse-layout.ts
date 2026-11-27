@@ -28,7 +28,7 @@ export const warehouseLayout = {
 
   warehouse: {
     select: '창고',
-    selectPlaceholder: '창고 선택',
+    selectPlaceholder: '창고를 선택하세요',
     lookupFailed: '창고 목록을 불러오지 못했습니다.',
     lookupTruncated: '목록의 일부만 보입니다.',
     emptyTitle: '창고를 선택하세요',

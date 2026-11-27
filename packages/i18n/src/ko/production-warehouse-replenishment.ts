@@ -62,7 +62,7 @@ export const productionWarehouseReplenishment = {
     sourceLabel: (row: number): string => `${String(row)}번 줄 출고 자재 창고`,
     qtyLabel: (row: number): string => `${String(row)}번 줄 요청 수량`,
     removeLabel: (row: number): string => `${String(row)}번 줄 빼기`,
-    itemPlaceholder: '품목 검색',
+    itemPlaceholder: '품목을 선택하세요',
     sourcePlaceholder: '출고 자재 창고 고르기',
     managedNote: (point: string, target: string): string =>
       `관리 품목, 보충 시점 ${point}, 유지량 ${target}`,

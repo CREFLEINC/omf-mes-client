@@ -546,7 +546,7 @@ export const oqcInspection = {
       reasonHelp: '이 결과가 아래 피킹 LOT 의 판정을 바꿉니다. 재검 사유를 고르세요.',
       reasonLine: (lotNo: string, seqNo: number, before: string, after: string): string =>
         `LOT ${lotNo}: ${String(seqNo)}회차 ${before} → 이 회차 ${after}`,
-      reasonPlaceholder: '재검 사유 선택',
+      reasonPlaceholder: '재검 사유를 선택하세요',
       reasonLoadFailed: '재검 사유 목록을 불러오지 못했습니다.',
       ruleErrors: {
         MATCHED_LOT_REQUIRED: '피킹 LOT 을 1개 이상 고르세요',

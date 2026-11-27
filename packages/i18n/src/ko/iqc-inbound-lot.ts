@@ -169,7 +169,7 @@ export const iqcInboundLot = {
     selectNone: '전부 해제',
     matchRequired: '자재 관리 LOT를 1개 이상 고르세요',
     reasonHeading: '재검 사유',
-    reasonPlaceholder: '재검 사유 선택',
+    reasonPlaceholder: '재검 사유를 선택하세요',
     /** 사유가 필요한 까닭 — 「LOT 0001: 결과 1 불합격 → 합격」을 줄마다. */
     reasonHelp: '이 결과가 아래 자재 관리 LOT 의 판정을 바꿉니다. 재검 사유를 고르세요.',
     reasonLine: (lotTail: string, seqNo: number, before: string, after: string) =>

@@ -477,7 +477,7 @@ export const usersRoles = {
     inputLabelConnect: '연결할 작업자 사번',
     inputPlaceholderConnect: '작업자 사번을 입력하세요',
     currentCaption: '현재 연결된 작업자',
-    inputPlaceholder: '사번 입력',
+    inputPlaceholder: '사번을 입력하세요',
     /* 사용자 역할 권한 화면의 연결 · 변경 창(사용자 시안 2026-11-20 · #333). */
     inputPlaceholderChange: '작업자 사번을 입력하세요',
     submitConnect: '연결',

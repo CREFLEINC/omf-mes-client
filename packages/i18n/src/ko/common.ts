@@ -195,7 +195,7 @@ export const common = {
    * 날짜 칸이 비었을 때 트리거에 보이는 글자. `TextField type="date"`는 브라우저가 `yyyy-mm-dd`
    * 마스크를 그려 줬지만 `DatePicker`의 트리거는 우리가 넣지 않으면 빈 칸으로 남는다.
    */
-  selectDate: '날짜 선택',
+  selectDate: '날짜를 선택하세요',
   /** 기간을 시작 · 종료 두 칸으로 나눌 때, 날짜 이름이 따로 없는 「기간」의 두 칸 이름(`patterns/date-range-fields`). */
   startDate: '시작일',
   endDate: '종료일',

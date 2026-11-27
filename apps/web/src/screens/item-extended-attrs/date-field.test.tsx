@@ -64,7 +64,7 @@ describe('DateField', () => {
   it('값이 없으면 자리표시를 낸다', () => {
     renderField({ value: '' });
 
-    expect(screen.getByLabelText('유효 시작')).toHaveTextContent('날짜 선택');
+    expect(screen.getByLabelText('유효 시작')).toHaveTextContent('날짜를 선택하세요');
   });
 
   /* 지금 고칠 수 있는 것을 먼저 보인다 — 오류가 있으면 안내를 밀어낸다. */

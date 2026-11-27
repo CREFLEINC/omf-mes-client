@@ -104,7 +104,7 @@ export const inboundSchedule = {
   quick: {
     supplier: '공급업체',
     item: '품목코드',
-    itemPlaceholder: '품목코드 입력',
+    itemPlaceholder: '품목코드를 입력하세요',
     scanNotFound: (value: string): string => `「${value}」에 맞는 품목이 없습니다.`,
     scanFailed: '품목을 찾지 못했습니다. 잠시 뒤 다시 스캔하세요.',
     today: '오늘 도착',

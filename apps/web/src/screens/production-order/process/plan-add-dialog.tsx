@@ -165,7 +165,7 @@ export const PlanAddDialog = ({
             </span>
             <DatePicker
               min={plantToday()}
-              placeholder="계획일 선택"
+              placeholder="계획일을 선택하세요"
               aria-label="추가할 계획일"
               aria-required="true"
               value={draft.planDate}

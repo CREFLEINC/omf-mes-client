@@ -81,7 +81,7 @@ export const shipmentRequestCreate = {
     warehouseLabel: (rowIndex: number): string => `${String(rowIndex)}행 출고 창고`,
     /** 사업부를 고르기 전 — 창고 칸이 잠긴다(US1-2). */
     warehouseNeedsBusinessUnit: '사업부를 먼저 고르세요',
-    warehousePlaceholder: '출고 창고 선택',
+    warehousePlaceholder: '출고 창고를 선택하세요',
     /** 사업부를 바꿔 비운 줄(FR-004). */
     warehouseReselect: '다시 고르세요',
     warehouseFilledFromFirst: '첫 줄 창고로 채움',

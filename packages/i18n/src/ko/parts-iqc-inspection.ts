@@ -112,7 +112,7 @@ export const partsIqcInspection = {
     inspectedMinute: '검사 시각(분)',
     hourHead: '시',
     minuteHead: '분',
-    timePlaceholder: '시각 선택',
+    timePlaceholder: '시각을 선택하세요',
   },
 
   dimension: {

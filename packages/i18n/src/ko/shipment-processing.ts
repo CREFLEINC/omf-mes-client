@@ -117,7 +117,7 @@ export const shipmentProcessing = {
       DUPLICATE_LOT: '같은 LOT을 두 번 이상 선택할 수 없습니다.',
       SUM_MISMATCH: '출하수량과 LOT 배분 합이 다릅니다.',
     },
-    lotSelectPlaceholder: 'LOT 선택',
+    lotSelectPlaceholder: 'LOT를 선택하세요',
     lotUnavailable: '이 품목의 LOT 후보를 불러오지 못했습니다.',
     lotTruncated: '이 품목의 LOT 후보가 많아 일부만 보입니다.',
     lotLoading: 'LOT 후보를 불러오는 중입니다.',
