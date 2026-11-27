@@ -88,9 +88,7 @@ export const IntervalDialog = ({
     }
   >
     <div className="dialog-scroll">
-      <p className="dialog-lead">
-        {kind === 'overlapping' ? t.summary.overlappingIntervalsNote : t.summary.openIntervalsNote}
-      </p>
+      {/* 구간 설명은 요약 칸에 이미 있다 — 창 머리에서 되풀이하지 않는다(사용자 지시 · #360). */}
       {isScopeNarrowed && <p className="dialog-lead">{t.intervals.scopeMismatch}</p>}
       {isError && <LoadErrorBanner error={error} onRetry={onRetry} />}
       {isLoading ? (

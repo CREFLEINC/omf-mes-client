@@ -113,6 +113,19 @@ describe('DepartmentFormPane — 상위 부서', () => {
     ).toBeInTheDocument();
   });
 
+  it('등록 팝업에서는 비활성 사유 문장을 내지 않는다(#360)', () => {
+    renderPane({
+      mode: 'create',
+      parentOptions: [],
+      parentDisabledReason: '상위 부서는 고를 수 있는 다른 부서가 없어 지정할 수 없습니다.',
+    });
+
+    expect(screen.getByLabelText('상위 부서')).toBeDisabled();
+    expect(
+      screen.queryByText('상위 부서는 고를 수 있는 다른 부서가 없어 지정할 수 없습니다.'),
+    ).toBeNull();
+  });
+
   /* 비우는 것이 정상 값이다 — 계약이 널을 허용하고 그것이 곧 뿌리 부서다. */
   it('상위 부서를 비우는 선택지가 있다', async () => {
     const { user } = renderPane();

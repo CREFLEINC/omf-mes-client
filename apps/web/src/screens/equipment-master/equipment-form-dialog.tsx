@@ -136,7 +136,6 @@ export const EquipmentFormDialog = ({
 }: EquipmentFormDialogProps) => {
   const hierarchyLabelId = useId();
   const calibrationNoteId = useId();
-  const disposeNoteId = useId();
 
   /** 주기는 «둘 다» 있어야 성립한다 — 계약이 그렇게 짝을 묶었다. */
   const hasCalibrationCycle =
@@ -306,23 +305,17 @@ export const EquipmentFormDialog = ({
              *
              * ⚠ **값 목록을 못 받으면 잠근다.** 시드가 아직 들어가지 않아 빌 수 있고
              * (설계 omf-mes#182), 그때 열어 두면 이미 끝난 자산에도 눌리는 컨트롤이 된다.
-             * 감추지 않고 사유를 밝힌다(G-2) — 목록이 들어오면 이 잠금은 저절로 풀린다.
+             * 잠긴 까닭 문장은 걷었다 — 꺼진 단추로만(사용자 지시 · #360). 목록이 들어오면 잠금은 저절로 풀린다.
              */}
             {statusCode !== DISPOSED_STATUS_CODE && (
               <div className="field-cell">
                 <Button
                   variant="outlined"
                   disabled={isSaving || statusOptions.length === 0}
-                  aria-describedby={statusOptions.length === 0 ? disposeNoteId : undefined}
                   onClick={onDispose}
                 >
                   {t.actions.disposeEquipment}
                 </Button>
-                {statusOptions.length === 0 && (
-                  <span id={disposeNoteId} className="field-note">
-                    {t.actionReasons.disposeUnavailable}
-                  </span>
-                )}
               </div>
             )}
           </>

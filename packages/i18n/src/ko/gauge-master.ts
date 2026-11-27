@@ -61,7 +61,6 @@ export const gaugeMaster = {
   /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다(공유계약 G-2). */
   actionReasons: {
     plantFixed: '공장은 등록할 때 정해지며 이 화면에서 옮길 수 없습니다.',
-    cycleNeedsCalibration: '검교정 대상으로 지정하면 주기를 입력할 수 있습니다.',
     statusOwnedElsewhere: '운용상태는 사용 중지·폐기 처리로 바뀝니다.',
     calibrationDateOwnedElsewhere: '검교정 일자는 검교정 이력 등록에서 정합니다.',
     alreadyInactive: '이미 사용 중지된 계측기입니다.',
@@ -130,8 +129,6 @@ export const gaugeMaster = {
   history: {
     title: '검교정 이력',
     loading: '검교정 이력을 불러오는 중',
-    /** ⭐ 이 화면은 이력을 **읽기만 한다** — 등록은 검교정 이력 등록 화면의 몫이다. */
-    readOnlyNote: '검교정 이력은 검교정 이력 등록에서 남깁니다. 여기서는 볼 수만 있습니다.',
     emptyTitle: '검교정 이력이 없습니다',
     emptyDescription: '검교정을 하고 이력을 남기면 여기에 나타납니다.',
     loadFailed: '검교정 이력을 불러오지 못했습니다.',

@@ -60,7 +60,6 @@ describe('ResubmitConfirmDialog', () => {
 
     expect(within(full).getByText('둘째 줄')).toBeInTheDocument();
     expect(within(first).getByText('불량 판정분 폐기')).toBeInTheDocument();
-    expect(screen.getByText(t.dialog.reasonSummaryNote)).toBeInTheDocument();
   });
 
   it('되돌릴 수 없음과 재고가 움직이지 않음을 함께 적는다', () => {

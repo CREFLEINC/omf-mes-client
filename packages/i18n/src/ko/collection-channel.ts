@@ -271,8 +271,6 @@ export const collectionChannel = {
     deactivateReversible:
       '지우는 것이 아니라 끄는 것입니다. 「미사용 포함」을 켜면 다시 찾아 켤 수 있습니다.',
     resumeImpact: '다시 켜면 이 채널이 목록에 돌아옵니다. 이어 둔 검사 항목도 그대로입니다.',
-    /** 창을 열었지만 아직 대상을 받지 못했다 — 모르면 잠근다(누르면 아무 일도 없는 것보다 낫다). */
-    loadingTarget: '채널 정보를 불러오는 중입니다.',
   },
   /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다(공유계약 G-2). */
   actionReasons: {

@@ -171,7 +171,8 @@ export const DepartmentFormPane = ({
         value={values.parentDepartmentId}
         onChange={(value) => onChange({ parentDepartmentId: value })}
         disabled={parentDisabledReason !== null}
-        disabledReason={parentDisabledReason ?? undefined}
+        /* 등록 팝업에서는 잠긴 까닭 문장을 내지 않는다 — 꺼진 칸으로만(사용자 지시 · #360). */
+        disabledReason={mode === 'create' ? undefined : (parentDisabledReason ?? undefined)}
         error={fieldErrors.parentDepartmentId}
       />
 

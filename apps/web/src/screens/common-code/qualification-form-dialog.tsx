@@ -161,7 +161,12 @@ export const QualificationFormDialog = ({
           value={values.certifiedBy === null ? '' : String(values.certifiedBy)}
           onChange={(value) => change({ certifiedBy: value === '' ? null : Number(value) })}
           disabled={certifierDisabledReason !== undefined}
-          disabledReason={certifierDisabledReason}
+          /* 잠긴 까닭 중 목록 불러오기 실패만 남긴다 — 불러오는 중 · 고를 사람 없음은 꺼진 칸으로만(사용자 지시 · #360). */
+          disabledReason={
+            certifierDisabledReason === t.actionReasons.certifierLookupFailed
+              ? certifierDisabledReason
+              : undefined
+          }
         />
       </div>
     </Dialog>

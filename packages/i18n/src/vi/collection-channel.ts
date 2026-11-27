@@ -198,7 +198,6 @@ export const collectionChannel: Translated<typeof ko.collectionChannel> = {
       'Đây là tắt chứ không phải xóa. Bật «gồm cả mục ngừng dùng» thì tìm lại và bật lại được.',
     resumeImpact:
       'Bật lại thì kênh này trở lại danh sách. Hạng mục kiểm tra đã nối cũng giữ nguyên.',
-    loadingTarget: 'Đang tải thông tin kênh.',
   },
   /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다. */
   actionReasons: {

@@ -241,7 +241,6 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
   },
   dialog: {
     submitTitle: 'Yêu cầu phê duyệt xuất hủy chứ?',
-    submitLead: 'Tạo phiếu yêu cầu hủy và yêu cầu phê duyệt.',
     resubmitTitle: 'Trình yêu cầu hủy này lên phê duyệt chứ?',
     resubmitLead: 'Trình lên phê duyệt phiếu yêu cầu hủy đã được tạo. Không tạo phiếu mới.',
     discardTitle: 'Xóa nội dung đã nhập chứ?',
@@ -255,16 +254,13 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
     businessDateAuto: (businessDate: string): string => `${businessDate} (tự động)`,
     reasonFull: 'Toàn văn lý do yêu cầu',
     reasonFirstLine: 'Dòng đầu sẽ hiện làm tóm tắt trong hộp phê duyệt',
-    reasonSummaryNote: 'Dòng đầu sẽ thành phần tóm tắt trong danh sách hộp phê duyệt.',
     approvalReason: 'Lý do yêu cầu phê duyệt',
-    reasonFirstLineNote: 'Danh sách hộp phê duyệt hiển thị dòng đầu tiên.',
     submitEffects: 'Sau khi phê duyệt, thực hiện [Xử lý xuất khác] thì tồn kho bị trừ.',
     submitNoUndo:
       'Sau khi yêu cầu phê duyệt thì không hủy được. Nếu bị trả lại, vui lòng yêu cầu lại.',
     submitOnHandUnknown:
       'Có lẫn dòng chưa xác nhận được số lượng hiện có. Số lượng do máy chủ quyết định cuối cùng.',
     postTitle: 'Xử lý thành xuất khác chứ?',
-    postLead: 'Xử lý yêu cầu hủy dưới đây thành xuất kho thực tế.',
     postDeducts: 'Bấm xác nhận thì tồn kho bị trừ đúng bằng số lượng của phiếu này.',
     postNoUndo:
       'Màn hình này không có cách hoàn tác. Muốn hoàn nguyên thì cần hủy phiếu xuất kho, và việc đó lại phải qua phê duyệt.',

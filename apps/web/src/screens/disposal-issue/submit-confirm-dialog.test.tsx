@@ -182,19 +182,12 @@ describe('SubmitConfirmDialog 보이는 것', () => {
 });
 
 describe('SubmitConfirmDialog 사유', () => {
-  /** 사유는 **한 번만** 보인다 — 첫 줄을 따로 되풀이하지 않는다. 여러 줄이면 첫 줄이 요약임을 밝힌다. */
-  it('결재 요청 사유를 한 번만 보이고, 여러 줄이면 첫 줄 안내를 붙인다', () => {
-    const { unmount } = renderDialog();
-
-    const reason = screen.getByRole('region', { name: t.dialog.approvalReason });
+  /** 사유는 **한 번만** 보인다 — 첫 줄을 따로 되풀이하지 않는다. 첫 줄 안내 문장은 걷었다(사용자 지시 · #360). */
+  it('결재 요청 사유를 한 번만 보인다', () => {
+    renderDialog();
 
     expect(screen.getAllByText('불량 판정분 폐기')).toHaveLength(1);
-    expect(within(reason).getByText(t.dialog.reasonFirstLineNote)).toBeInTheDocument();
-    unmount();
-
-    renderDialog({ summary: { ...SUMMARY, reason: '한 줄 사유' } });
-
-    expect(screen.queryByText(t.dialog.reasonFirstLineNote)).not.toBeInTheDocument();
+    expect(screen.queryByText('결재함 목록에는 첫 줄이 표시됩니다.')).not.toBeInTheDocument();
   });
 
   /**

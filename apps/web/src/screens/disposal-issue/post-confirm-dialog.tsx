@@ -75,8 +75,6 @@ export const PostConfirmDialog = ({ summary, onConfirm, onClose }: PostConfirmDi
       </>
     }
   >
-    <p>{t.dialog.postLead}</p>
-
     {/* 사실 상자 — 정보 표시 팝업 시안 상자(#360). */}
     <InfoFacts
       rows={[

@@ -2629,9 +2629,9 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
 
   /*
    * ⚠ 목록을 못 받으면 **이미 폐기된 자산인지 판정할 수 없다** — 열어 두면 이미 끝난
-   * 자산에도 눌리는 컨트롤이 된다. 감추지 않고 사유를 밝힌다(G-2).
+   * 자산에도 눌리는 컨트롤이 된다. 잠긴 까닭 문장은 내지 않는다(사용자 지시 · #360).
    */
-  it('값 목록을 못 받으면 폐기를 잠그고 사유를 낸다', async () => {
+  it('값 목록을 못 받으면 폐기를 잠근다', async () => {
     const user = userEvent.setup();
     renderScreen({ respondCodeValues: () => jsonResponse(codeValuesResponse([])) });
 
@@ -2641,12 +2641,7 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
 
     const dispose = dialog.getByRole('button', { name: t.actions.disposeEquipment });
     expect(dispose).toBeDisabled();
-
-    const describedBy = dispose.getAttribute('aria-describedby');
-    expect(describedBy).not.toBeNull();
-    expect(document.getElementById(describedBy ?? '')).toHaveTextContent(
-      t.actionReasons.disposeUnavailable,
-    );
+    expect(dialog.queryByText('등록된 자산 상태가 없어 폐기할 수 없습니다.')).toBeNull();
   });
 
   /* 이미 끝난 자산에는 폐기할 대상이 없다 — 누를 것이 없는 컨트롤을 두지 않는다. */

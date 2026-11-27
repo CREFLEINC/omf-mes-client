@@ -215,15 +215,11 @@ export const SubmitConfirmDialog = ({ summary, onConfirm, onClose }: SubmitConfi
               <p key={`${String(index)}:${line}`}>{toVisibleLine(line)}</p>
             ))}
           </div>
-          {/* 결재함 목록에서 요약을 겸하는 것이 첫 줄이다 — 여러 줄일 때만 밝힌다. */}
-          {reasonLines.length > 1 && <p className="field-note">{t.dialog.reasonFirstLineNote}</p>}
         </section>
 
         {summary.hasUnknownOnHand && <p className="field-note">{t.dialog.submitOnHandUnknown}</p>}
 
         <AlertBanner variant="warning">
-          <span>{t.dialog.submitLead}</span>
-          <br />
           <span>{t.dialog.submitEffects}</span>
           <br />
           <span>{t.dialog.submitNoUndo}</span>

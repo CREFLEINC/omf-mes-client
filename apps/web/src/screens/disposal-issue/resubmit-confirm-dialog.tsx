@@ -85,7 +85,6 @@ export const ResubmitConfirmDialog = ({
     <section aria-label={t.dialog.reasonFirstLine}>
       <p className="field-label">{t.dialog.reasonFirstLine}</p>
       <p>{summary.reasonFirstLine}</p>
-      <p className="field-note">{t.dialog.reasonSummaryNote}</p>
     </section>
 
     <p>{t.dialog.submitEffects}</p>

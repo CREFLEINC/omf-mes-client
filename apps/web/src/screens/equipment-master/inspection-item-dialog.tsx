@@ -119,8 +119,8 @@ export const InspectionItemDialog = ({
             onChange={(value) => onChange({ plantId: value })}
             error={fieldErrors.plantId}
             placeholder={t.placeholders.plant}
+            /* 수정에서는 잠그기만 한다 — 잠긴 까닭 문장은 걷었다(사용자 지시 · #360). */
             disabled={mode === 'edit'}
-            disabledReason={mode === 'edit' ? t.plantFixed : undefined}
           />
         </div>
         <CodeLockTextField

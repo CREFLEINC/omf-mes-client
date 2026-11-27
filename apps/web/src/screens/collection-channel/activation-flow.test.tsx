@@ -382,7 +382,6 @@ describe('W-05-07 ⑤ — 대상의 지금 값을 못 받았으면', () => {
     await screen.findByRole('dialog');
 
     expect(dialog().getByRole('button', { name: ta.deactivateAction })).toBeDisabled();
-    expect(dialog().getByText(ta.loadingTarget)).toBeInTheDocument();
   });
 });
 

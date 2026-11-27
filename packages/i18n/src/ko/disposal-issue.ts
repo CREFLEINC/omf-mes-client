@@ -249,8 +249,7 @@ export const disposalIssue = {
      * 한쪽은 실패인 채로 남는데 문구는 둘 다 고쳐질 것처럼 말한다.
      */
     referencesFailed: '창고 이름을 불러오지 못했습니다.',
-    lineReferencesFailed:
-      '품목·단위·자재 LOT·위치 이름을 불러오지 못했습니다.',
+    lineReferencesFailed: '품목·단위·자재 LOT·위치 이름을 불러오지 못했습니다.',
     /**
      * **잘림은 실패와 다르다.** 이름 목록이 앞쪽만 오면 그 뒤의 정상 값이 「알 수 없음」으로
      * 찍히는데, 그 문구는 *값이 잘못됐다*는 뜻이라 사용자가 반대로 읽는다.
@@ -468,8 +467,7 @@ export const disposalIssue = {
      * 찾다가 화면을 고장으로 읽는다. 그래서 지금 실제로 할 수 있는 조치(자체 폐기 체크)만
      * 가리킨다. 선택지가 차면 위 문구로 저절로 바뀐다.
      */
-    disposalPartnerPending:
-      '등록된 폐기 거래처가 없습니다. 자체 폐기를 체크하면 올릴 수 있습니다.',
+    disposalPartnerPending: '등록된 폐기 거래처가 없습니다. 자체 폐기를 체크하면 올릴 수 있습니다.',
     /**
      * 같은 잠금의 **셋째 갈래** — 목록을 부르기는 했으나 **지금 고를 것이 없다**(불러오지
      * 못했거나 · 오는 중이거나 · 0건이거나).
@@ -528,8 +526,6 @@ export const disposalIssue = {
    */
   dialog: {
     submitTitle: '폐기 출고 결재를 요청할까요?',
-    /** 한 번 누르면 전표 생성과 결재 요청이 이어서 나간다(승인 기록 정정 1-1). */
-    submitLead: '폐기 요청 전표를 생성하고 결재를 요청합니다.',
     resubmitTitle: '이 폐기 요청을 결재에 올릴까요?',
     resubmitLead: '이미 만들어진 폐기 요청 전표를 결재에 올립니다. 전표를 새로 만들지 않습니다.',
     discardTitle: '입력한 것을 지울까요?',
@@ -552,10 +548,7 @@ export const disposalIssue = {
     /** 재상신 확인 창 — 사유 전문과 첫 줄을 **나눠** 보인다(완료 조건 C62). */
     reasonFull: '요청 사유 전문',
     reasonFirstLine: '결재함 목록에 요약으로 보일 첫 줄',
-    reasonSummaryNote: '결재함 목록에는 이 첫 줄만 보입니다.',
     approvalReason: '결재 요청 사유',
-    /** 사유가 여러 줄일 때만 — 결재함 목록에서 요약을 겸하는 것이 첫 줄이다(공유계약 A-12). */
-    reasonFirstLineNote: '결재함 목록에는 첫 줄이 표시됩니다.',
     submitEffects: '승인 후 [기타출고 처리]를 실행하면 재고가 차감됩니다.',
     /**
      * **승인 요청은 되돌릴 수 없다.** 계약의 승인 요청에는 승인 · 반려만 있고 회수가 없다 —
@@ -563,7 +556,8 @@ export const disposalIssue = {
      */
     submitNoUndo: '결재 요청 후에는 취소할 수 없습니다. 반려되면 다시 요청해 주세요.',
     /** 상한을 확인하지 못한 줄이 **보낼 줄에 섞여 있을 때만** 밝힌다. */
-    submitOnHandUnknown: '재고 수량을 확인하지 못한 줄이 있습니다. 재고보다 많으면 요청이 거절됩니다.',
+    submitOnHandUnknown:
+      '재고 수량을 확인하지 못한 줄이 있습니다. 재고보다 많으면 요청이 거절됩니다.',
     /**
      * 기타출고 처리 확인 — **이 화면에서 재고를 움직이는 유일한 창이다.**
      *
@@ -572,9 +566,9 @@ export const disposalIssue = {
      * 「이 버튼이 하는 일」이다.
      */
     postTitle: '기타출고로 처리할까요?',
-    postLead: '아래 폐기 요청을 출고 처리합니다.',
     postDeducts: '확인을 누르면 이 수량만큼 재고가 빠집니다.',
-    postNoUndo: '처리한 뒤에는 여기서 되돌릴 수 없습니다. 되돌리려면 출고 취소를 다시 결재받아야 합니다.',
+    postNoUndo:
+      '처리한 뒤에는 여기서 되돌릴 수 없습니다. 되돌리려면 출고 취소를 다시 결재받아야 합니다.',
     /** 결재 진행을 못 읽은 채 처리하는 갈래(403·404·네트워크·부르는 중). */
     postProgressUnread: '결재 진행을 불러오지 못했습니다. 승인 전이면 처리가 거절됩니다.',
     /**
@@ -637,8 +631,7 @@ export const disposalIssue = {
      */
     postLabel: '처리 결과',
     postedTitle: (goodsIssueNo: string): string => `${goodsIssueNo}를 기타출고로 처리했습니다`,
-    postedDescription:
-      '출고 처리했습니다.',
+    postedDescription: '출고 처리했습니다.',
     /** **화면이 센 줄 수를 적지 않는다** — 전기 응답에 라인이 없다(계약 실측). */
     postedNoLines: '전기 응답에는 줄이 실려 오지 않습니다. 위 라인 표의 전기 표식으로 확인하세요.',
   },

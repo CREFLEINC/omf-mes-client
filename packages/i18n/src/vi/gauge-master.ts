@@ -60,7 +60,6 @@ export const gaugeMaster: Translated<typeof ko.gaugeMaster> = {
   /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다. */
   actionReasons: {
     plantFixed: 'Nhà máy được định khi đăng ký và không thể chuyển ở màn hình này.',
-    cycleNeedsCalibration: 'Chỉ định là đối tượng hiệu chuẩn thì mới nhập được chu kỳ.',
     statusOwnedElsewhere: 'Trạng thái vận hành thay đổi qua ngừng sử dụng · xử lý thanh lý.',
     calibrationDateOwnedElsewhere:
       'Ngày hiệu chuẩn được định ở màn hình đăng ký lịch sử hiệu chuẩn.',
@@ -126,9 +125,6 @@ export const gaugeMaster: Translated<typeof ko.gaugeMaster> = {
   history: {
     title: 'Lịch sử hiệu chuẩn',
     loading: 'Đang tải lịch sử hiệu chuẩn',
-    /** ⭐ 이 화면은 이력을 읽기만 한다 — 등록은 검교정 이력 등록 화면의 몫이다. */
-    readOnlyNote:
-      'Lịch sử hiệu chuẩn được ghi ở màn hình đăng ký lịch sử hiệu chuẩn. Ở đây chỉ xem được.',
     emptyTitle: 'Không có lịch sử hiệu chuẩn',
     emptyDescription: 'Hiệu chuẩn xong và ghi lại lịch sử thì sẽ hiện ở đây.',
     loadFailed: 'Không tải được lịch sử hiệu chuẩn.',

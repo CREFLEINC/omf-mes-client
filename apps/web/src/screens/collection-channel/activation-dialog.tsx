@@ -80,8 +80,7 @@ export const ActivationDialog = ({
             {t.deactivateReversible}
           </p>
         )}
-        {/* 모르면 잠근다 — 잠근 이유를 함께 낸다(공유계약 G-2). */}
-        {isLoadingTarget && <p className="field-note">{t.loadingTarget}</p>}
+        {/* 모르면 잠근다 — 잠긴 까닭 문장은 걷었다(사용자 지시 · #360). */}
       </div>
     </Dialog>
   );

@@ -93,13 +93,21 @@ describe('QualificationFormDialog — 자리표시 (C73)', () => {
   });
 
   it('인증자 조회가 실패하면 인증자 선택만 막고 사유를 보인다', () => {
-    renderDialog({
-      certifierOptions: [],
-      certifierDisabledReason: '인증자 목록을 불러오지 못했습니다.',
-    });
+    const failed =
+      '인증자 목록을 불러오지 못해 새 인증자를 선택할 수 없습니다. 기존 값은 유지됩니다.';
+    renderDialog({ certifierOptions: [], certifierDisabledReason: failed });
 
     expect(screen.getByLabelText('인증자')).toBeDisabled();
-    expect(screen.getByText('인증자 목록을 불러오지 못했습니다.')).toBeInTheDocument();
+    expect(screen.getByText(failed)).toBeInTheDocument();
+  });
+
+  /* 불러오는 중 · 고를 사람 없음은 꺼진 칸으로만 — 까닭 문장을 내지 않는다(사용자 지시 · #360). */
+  it('인증자 목록이 비면 선택만 막고 문장은 내지 않는다', () => {
+    const empty = '선택할 수 있는 활성 사용자가 없습니다.';
+    renderDialog({ certifierOptions: [], certifierDisabledReason: empty });
+
+    expect(screen.getByLabelText('인증자')).toBeDisabled();
+    expect(screen.queryByText(empty)).toBeNull();
   });
 });
 

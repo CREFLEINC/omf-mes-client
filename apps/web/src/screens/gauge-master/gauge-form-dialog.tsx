@@ -2,6 +2,7 @@ import { Button, Dialog, Switch, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { CodeLockTextField } from '../../patterns/master';
 import type { ActionAvailability } from './asset-actions';
@@ -19,25 +20,35 @@ const readOnlyText = (value: string | null): string =>
 interface ReadOnlyFieldProps {
   label: string;
   value: string | null;
-  note?: string;
+  /** 이 칸의 규칙 — 칸 아래 문장 대신 이름 옆 ⓘ 로 낸다(사용자 지시 · #360). */
+  info?: string;
 }
 
 /**
  * 값을 보여 주기만 하는 칸.
  *
  * **폼 컨트롤을 잠그지 않고 값 표기로 낸다** — 잠긴 입력칸은 「언젠가 여기서 고칠 수 있다」를
- * 뜻하는데, 이 값들은 이 화면이 영영 정하지 않는다. 사유는 함께 낸다.
+ * 뜻하는데, 이 값들은 이 화면이 영영 정하지 않는다. 사유는 이름 옆 ⓘ 로 낸다(사용자 지시 · #360).
  */
-const ReadOnlyField = ({ label, value, note }: ReadOnlyFieldProps) => {
+const ReadOnlyField = ({ label, value, info }: ReadOnlyFieldProps) => {
   const labelId = useId();
+  const labelNode = (
+    <span className="field-label" id={labelId}>
+      {label}
+    </span>
+  );
 
   return (
     <div className="field-cell">
-      <span className="field-label" id={labelId}>
-        {label}
-      </span>
+      {info === undefined ? (
+        labelNode
+      ) : (
+        <span className="info-label">
+          {labelNode}
+          <InfoTip text={info} />
+        </span>
+      )}
       <p aria-labelledby={labelId}>{readOnlyText(value)}</p>
-      {note !== undefined && <span className="field-note">{note}</span>}
     </div>
   );
 };
@@ -179,7 +190,7 @@ export const GaugeFormDialog = ({
           <ReadOnlyField
             label={t.fields.plant}
             value={plantName}
-            note={t.actionReasons.plantFixed}
+            info={t.actionReasons.plantFixed}
           />
         )}
 
@@ -209,7 +220,7 @@ export const GaugeFormDialog = ({
         </div>
 
         {/*
-         * 주기 두 칸은 **짝**이다. 대상이 아니면 잠그고 사유를 붙인다 — 감추지 않는다(G-2).
+         * 주기 두 칸은 **짝**이다. 대상이 아니면 잠근다 — 감추지 않는다(G-2). 잠긴 까닭 문장은 걷었다(사용자 지시 · #360).
          * 값은 지우지 않고 남겨 둔다: 다시 켜면 방금 적은 것이 그대로 있고,
          * **비우는 자리는 보낼 때 하나다**(`toGaugeUpdate`).
          */}
@@ -220,7 +231,6 @@ export const GaugeFormDialog = ({
           value={values.calibrationCycleTypeCode}
           onChange={(value) => onChange({ calibrationCycleTypeCode: value })}
           disabled={!values.calibrationRequired}
-          disabledReason={t.actionReasons.cycleNeedsCalibration}
           error={fieldErrors.calibrationCycleTypeCode}
           placeholder={t.form.cyclePlaceholder}
         />
@@ -233,7 +243,6 @@ export const GaugeFormDialog = ({
           value={values.calibrationCycleInterval}
           onChange={(event) => onChange({ calibrationCycleInterval: event.target.value })}
           disabled={!values.calibrationRequired}
-          disabledReason={t.actionReasons.cycleNeedsCalibration}
           error={fieldErrors.calibrationCycleInterval}
         />
 
@@ -264,7 +273,7 @@ export const GaugeFormDialog = ({
           <ReadOnlyField
             label={t.fields.status}
             value={statusCode === null ? null : codeLabel(statusCode, statusOptions)}
-            note={t.actionReasons.statusOwnedElsewhere}
+            info={t.actionReasons.statusOwnedElsewhere}
           />
         )}
 
@@ -276,7 +285,7 @@ export const GaugeFormDialog = ({
           <ReadOnlyField
             label={t.fields.lastCalibrationDate}
             value={lastCalibrationDate}
-            note={t.actionReasons.calibrationDateOwnedElsewhere}
+            info={t.actionReasons.calibrationDateOwnedElsewhere}
           />
         )}
 
@@ -290,9 +299,9 @@ export const GaugeFormDialog = ({
          * **「저장」과 「취소」까지 화면 밖으로 밀려난다**(브라우저 확인 ③에서 실측).
          * 형제 화면(W-05-12)도 같은 자리에 둔다.
          *
-         * ⭐ **감추지 않고 잠그고 사유를 붙인다**(공유계약 G-2). 사라진 버튼은 「원래 없는
-         * 기능」과 구분되지 않아, 왜 못 하는지도 어디서 할 수 있는지도 알 수 없다.
-         * 사유는 보이는 DOM 텍스트로 낸다 — 잠긴 버튼은 포커스를 못 받아 툴팁이 닿지 않는다.
+         * ⭐ **감추지 않고 잠근다**(공유계약 G-2). 사라진 버튼은 「원래 없는 기능」과 구분되지 않는다.
+         * 잠긴 까닭 문장은 걷었다 — 꺼진 단추로만(사용자 지시 · #360). 상세를 못 읽은 사실만은 남긴다
+         * (읽기 실패를 알릴 자리가 이 줄뿐이다).
          */}
         {/*
          * 이력은 표라 **두 칸을 다 쓴다** — 폼 칸과 같은 폭에 넣으면 열이 뭉개진다.
@@ -305,12 +314,16 @@ export const GaugeFormDialog = ({
             <Button
               variant="outlined"
               disabled={isSaving || !deactivate.enabled}
-              aria-describedby={deactivate.reason === null ? undefined : `${retireNoteId}-off`}
+              aria-describedby={
+                deactivate.reason === t.actionReasons.targetUnknown
+                  ? `${retireNoteId}-off`
+                  : undefined
+              }
               onClick={onDeactivate}
             >
               {t.retire.deactivateConfirm}
             </Button>
-            {deactivate.reason !== null && (
+            {deactivate.reason === t.actionReasons.targetUnknown && (
               <span id={`${retireNoteId}-off`} className="field-note">
                 {deactivate.reason}
               </span>
@@ -323,12 +336,16 @@ export const GaugeFormDialog = ({
             <Button
               variant="outlined"
               disabled={isSaving || !dispose.enabled}
-              aria-describedby={dispose.reason === null ? undefined : `${retireNoteId}-dispose`}
+              aria-describedby={
+                dispose.reason === t.actionReasons.targetUnknown
+                  ? `${retireNoteId}-dispose`
+                  : undefined
+              }
               onClick={onDispose}
             >
               {t.retire.disposeConfirm}
             </Button>
-            {dispose.reason !== null && (
+            {dispose.reason === t.actionReasons.targetUnknown && (
               <span id={`${retireNoteId}-dispose`} className="field-note">
                 {dispose.reason}
               </span>

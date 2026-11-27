@@ -31,8 +31,6 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
       'Trạng thái vận hành chỉ đổi bằng thanh lý. Đây là trục khác với ngừng sử dụng.',
     codeLockUnknown: 'Chưa tải được thông tin thiết bị nên không đổi được mã.',
     equipmentPlantFixed: 'Nhà máy của thiết bị theo nhà máy của nhóm trực thuộc.',
-    disposeUnavailable:
-      'Chưa tải được danh sách giá trị trạng thái tài sản nên không dùng được thanh lý. Khi danh sách sẵn sàng thì dùng được nút này.',
     deactivateNeedsCleanForm:
       'Còn thay đổi chưa lưu thì không dùng được ngừng sử dụng. Hãy lưu hoặc hủy trước.',
   },
@@ -283,7 +281,6 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
       sequenceNo: 'Hãy nhập thứ tự hiển thị',
     },
     measurementNote: 'Nếu cách đánh giá là «giá trị đo» thì cần cả đơn vị và giới hạn trên · dưới.',
-    plantFixed: 'Nhà máy được định khi đăng ký và không thể chuyển ở màn hình này.',
     assignmentCount: (count: number): string =>
       count === 0
         ? 'Chưa được gán ở đâu cả.'
