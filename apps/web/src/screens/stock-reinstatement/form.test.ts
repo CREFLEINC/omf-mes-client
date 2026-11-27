@@ -38,6 +38,27 @@ describe('재고 재등록 본문', () => {
     expect(body).not.toHaveProperty('remarks');
   });
 
+  /* omf-all-around#364 — 영업일은 공장 날짜다. 한국 자정 직후 제출이면 공장의 전날이다. */
+  it('한국 자정 직후 제출이면 영업일은 공장의 전날이다', () => {
+    const body = toCreateBody({
+      draft: {
+        ...EMPTY_DRAFT,
+        toWarehouseId: '202',
+        lotHoldId: '71001',
+        qty: '80',
+        releaseReasonCode: 'RETEST_PASS',
+      },
+      dispositionDecisionId: 3101,
+      lotId: 6101,
+      versionNo: 7,
+      uomId: 7101,
+      concession: false,
+      now: new Date('2026-09-06T00:30:00+09:00'),
+    });
+
+    expect(body.businessDate).toBe('2026-09-05');
+  });
+
   it('재고를 둘 위치가 여럿인 창고와 수량 상한, 필수 해제 사유를 함께 검증한다', () => {
     expect(
       validateDraft({

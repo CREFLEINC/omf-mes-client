@@ -9,6 +9,9 @@ export const PLANT_TIME_ZONE = 'Asia/Ho_Chi_Minh';
 /** `PLANT_TIME_ZONE` 의 UTC 오프셋 — 베트남은 서머타임이 없어 고정이다. */
 export const PLANT_UTC_OFFSET = '+07:00';
 
+/** `PLANT_UTC_OFFSET` 을 분으로 — 오프셋을 분으로 받는 함수(`toMoment` 등)에 넘긴다. */
+export const PLANT_UTC_OFFSET_MINUTES = 7 * 60;
+
 /** 날짜 + 시각(분까지). 뒤따르는 초·소수 초·offset 은 있어도 없어도 된다. */
 const DATE_TIME_PATTERN =
   /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:\d{2})?$/;

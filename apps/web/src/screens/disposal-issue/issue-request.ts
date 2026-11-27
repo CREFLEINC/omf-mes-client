@@ -1,6 +1,8 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { PLANT_UTC_OFFSET } from '../../patterns/plant-time';
+
 import type { DisposalLineRow } from './disposal-selection';
 import type { DisposalDraft, ReceiptView } from './types';
 
@@ -253,11 +255,13 @@ export const toIssuedLocal = (draft: Pick<DisposalDraft, 'issuedDate' | 'issuedT
  *
  * 시각 칸은 분까지만 주는데(`HH:mm`) 계약은 초까지 있는 형식을 요구한다. offset이 없는
  * 문자열을 그대로 보내면 **같은 글자가 지역마다 다른 순간을 가리킨다.**
+ *
+ * **offset 은 공장 시간대(`PLANT_UTC_OFFSET`)다**(omf-all-around#364) — 칸의 글자는 공장 시각이다.
  */
-export const toOffsetDateTime = (local: string, at: Date): string => {
+export const toOffsetDateTime = (local: string): string => {
   const withSeconds = local.length === 16 ? `${local}:00` : local;
 
-  return `${withSeconds}${offsetText(at)}`;
+  return `${withSeconds}${PLANT_UTC_OFFSET}`;
 };
 
 /** 발생 시각 — **제출 순간**을 초와 offset까지 갖춰 싣는다(공유계약 C-1). */
@@ -334,7 +338,7 @@ export const toGoodsIssueRequest = (input: DisposalRequestInput): GoodsIssueCrea
     sourceDocumentTypeCode: sourceDocumentTypeCode as GoodsIssueCreate['sourceDocumentTypeCode'],
     sourceDocumentId: input.receipt.goodsReceiptId,
     sourceWarehouseId: input.receipt.warehouseId,
-    issuedAt: toOffsetDateTime(issuedLocal, input.now),
+    issuedAt: toOffsetDateTime(issuedLocal),
     reasonCode,
     sendToErp: SEND_TO_ERP,
     postImmediately: POST_IMMEDIATELY,

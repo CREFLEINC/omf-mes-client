@@ -1,3 +1,5 @@
+import { plantToday } from '../../patterns/plant-time';
+
 import type { StockReinstatementCreate } from './types';
 
 export interface ReinstatementDraft {
@@ -81,13 +83,15 @@ export const validateDraft = (input: ValidationInput): DraftErrors => {
 export const hasErrors = (errors: DraftErrors): boolean => Object.keys(errors).length > 0;
 
 const pad = (value: number): string => String(value).padStart(2, '0');
-const toBusinessDate = (at: Date): string =>
+/** 영업일 — **공장 날짜**다(omf-all-around#364). 브라우저 날짜면 한국 PC 00:00~02:00 에 하루 앞선 날이 된다. */
+const toBusinessDate = (at: Date): string => plantToday(at);
+const toLocalDate = (at: Date): string =>
   `${String(at.getFullYear())}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
 const toOccurredAt = (at: Date): string => {
   const offsetMinutes = -at.getTimezoneOffset();
   const sign = offsetMinutes >= 0 ? '+' : '-';
   const absolute = Math.abs(offsetMinutes);
-  return `${toBusinessDate(at)}T${pad(at.getHours())}:${pad(at.getMinutes())}:${pad(at.getSeconds())}${sign}${pad(Math.floor(absolute / 60))}:${pad(absolute % 60)}`;
+  return `${toLocalDate(at)}T${pad(at.getHours())}:${pad(at.getMinutes())}:${pad(at.getSeconds())}${sign}${pad(Math.floor(absolute / 60))}:${pad(absolute % 60)}`;
 };
 
 export interface BodyInput {

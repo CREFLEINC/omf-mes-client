@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { itemFixtures } from '../item-extended-attrs/fixtures';
 import {
+  buildLotComplete,
   appliedGoodQty,
   buildLotIssue,
   buildTagIssue,
@@ -139,5 +140,16 @@ describe('P-02-04 통합 흐름 판정', () => {
       canPageUp: true,
       canPageDown: false,
     });
+  });
+});
+
+/* omf-all-around#364 — 영업일은 공장 날짜다. 발생 시각은 같은 순간이라 그대로다. */
+describe('buildLotComplete 영업일', () => {
+  it('한국 자정 직후 마감이면 영업일은 공장의 전날이다', () => {
+    const at = new Date('2026-08-12T00:30:00+09:00');
+    const body = buildLotComplete(at);
+
+    expect(body.businessDate).toBe('2026-08-11');
+    expect(new Date(body.occurredAt).getTime()).toBe(at.getTime());
   });
 });

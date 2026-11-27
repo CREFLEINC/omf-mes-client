@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import { PopIdentityProvider, type PopIdentity } from '../../patterns/pop-identity';
 import { PuToastHost } from '../../patterns/pop-uniform';
 import {
@@ -507,8 +508,8 @@ describe('DowntimeRegisterScreen — 저장', () => {
       downtimeListRoute({
         today: [
           downtime({
-            startedAt: '2026-08-11T13:05:00+09:00',
-            endedAt: '2026-08-11T13:20:00+09:00',
+            startedAt: '2026-08-11T13:05:00+07:00',
+            endedAt: '2026-08-11T13:20:00+07:00',
           }),
         ],
       }),
@@ -815,7 +816,7 @@ describe('DowntimeRegisterScreen — 고장 연결', () => {
     renderScreen([
       downtimeListRoute(),
       summaryRoute(),
-      breakdownsRoute([breakdown({ stoppedAt: '2026-08-11T14:20:00+09:00' })]),
+      breakdownsRoute([breakdown({ stoppedAt: '2026-08-11T14:20:00+07:00' })]),
       gateRoute(),
       createRoute(),
     ]);
@@ -867,7 +868,7 @@ describe('DowntimeRegisterScreen — 시간이 흐른 뒤', () => {
    */
   it('20분 열어 둔 뒤 [지금]으로 찍어도 미래 시각으로 막지 않는다', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    vi.setSystemTime(new Date(2026, 7, 11, 9, 0));
+    vi.setSystemTime(new Date('2026-08-11T09:00:00+07:00'));
 
     const { requests } = renderScreen([
       downtimeListRoute(),
@@ -1138,9 +1139,10 @@ describe('DowntimeRegisterScreen — 건수와 합계의 모집단', () => {
    *    날짜로 치면 방금 넣은 줄이 목록에서 빠져 감지기가 늘 통과한다.
    */
   const todayInterval = (): { start: [string, string]; end: [string, string] } => {
-    const pad = (value: number): string => String(value).padStart(2, '0');
-    const localDay = (at: Date): string =>
-      `${String(at.getFullYear())}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+    /* 칸·목록이 공장 시각이라 「오늘」과 시각도 공장 달력으로 친다(#364). */
+    const localDay = (at: Date): string => toPlantDateTimeParts(at.toISOString())?.date ?? '';
+    const plantHour = (at: Date): string =>
+      (toPlantDateTimeParts(at.toISOString())?.time ?? '00:00').slice(0, 2);
 
     const now = new Date();
     const day = localDay(now);
@@ -1154,8 +1156,8 @@ describe('DowntimeRegisterScreen — 건수와 합계의 모집단', () => {
 
     /* `earlier` 의 정각·30분은 둘 다 지금보다 앞선다(지금 −79분 · −49분). */
     return {
-      start: [day, `${pad(earlier.getHours())}:00`],
-      end: [day, `${pad(earlier.getHours())}:30`],
+      start: [day, `${plantHour(earlier)}:00`],
+      end: [day, `${plantHour(earlier)}:30`],
     };
   };
 
