@@ -48,7 +48,7 @@ describe('분배 조건과 미리보기 적용', () => {
     await user.click(all);
     expect(screen.getByRole('checkbox', { name: '분배 조건 1 선택' })).not.toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'ERP W/O B 전체 선택' })).not.toBeChecked();
-    expect(screen.getByRole('heading', { name: 'ERP W/O A / 품목 A' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'ERP W/O A / 품목 A 분배 조건' })).toBeVisible();
   });
   it('ERP 시작일과 추천 라인을 채우고 사용자의 조건 변경은 다시 열어도 유지한다', async () => {
     const user = userEvent.setup();
@@ -290,6 +290,39 @@ describe('분배 조건과 미리보기 적용', () => {
         .closest('.erp-wo-distribution-line-field'),
     ).not.toHaveTextContent('라인 1');
   });
+});
+
+it('계산 요약은 최종 하루 수량으로 풀어 쓰고 휴일 포함 · 수량이 바뀌면 다시 쓴다', async () => {
+  const { planningDaysResponse } = await import('../../../test/planning-day-fixture');
+  const user = userEvent.setup();
+  renderWithProviders(
+    <DistributionControls
+      orders={[{ ...orders[0]!, plantId: 1 }]}
+      existing={[]}
+      disabled={false}
+      onApply={() => {}}
+    />,
+    {
+      fetch: (request) =>
+        planningDaysResponse(request, (date) =>
+          [0, 6].includes(new Date(`${date}T12:00:00Z`).getUTCDay()) ? 'HOLIDAY' : 'WORKING',
+        ),
+    },
+  );
+  await user.click(screen.getByRole('button', { name: '자동 분배' }));
+  // 7일 중 주말 2일 제외 → 5일, 3 EA 는 앞 3일에 1 EA씩.
+  expect(await screen.findByRole('status')).toHaveTextContent(
+    '5일에 분배(휴일 2일 제외) · 처음 3일은 하루 1 EA, 나머지 2일은 하루 0 EA',
+  );
+  await user.click(screen.getByRole('checkbox', { name: '분배 조건 1 휴일 포함' }));
+  expect(screen.getByRole('status')).toHaveTextContent(
+    '7일에 분배(휴일 2일 포함) · 처음 3일은 하루 1 EA, 나머지 4일은 하루 0 EA',
+  );
+  await user.click(screen.getByRole('checkbox', { name: '분배 조건 1 휴일 포함' }));
+  const quantity = screen.getByRole('textbox', { name: '조건 1 수량' });
+  await user.clear(quantity);
+  await user.type(quantity, '10');
+  expect(screen.getByRole('status')).toHaveTextContent('5일에 분배(휴일 2일 제외) · 하루 2 EA');
 });
 
 it('분배 수량이 0인 휴일 행은 숨기고 제외 안내와 합계를 보존한다', async () => {

@@ -284,6 +284,12 @@ export const erpWorkOrderFlow = {
       erpNo: 'ERP 원번호',
     },
     rerunAutoPlan: '생산계획 자동 전개 다시 실행',
+    /** 입력칸 흐린 문구(#360). */
+    placeholders: {
+      plannedQty: '생산량을 입력하세요',
+      distributionQty: '분배 수량을 입력하세요',
+      dailyQty: '수량을 입력하세요',
+    },
     autoPlanResult: {
       CONFIRMED: '생산계획 자동 전개로 계획을 확정했습니다',
       DRAFT: '미확정 계획입니다. 생산계획에서 보완하세요',

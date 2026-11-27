@@ -37557,9 +37557,10 @@ body:has(
   padding: 0;
   border: 0;
 }
+/* 한 단계 넓게(사용자 지시 · #360) — 36rem → DS 큰 창(lg 720px = 45rem). */
 .erp-wo-plan-add-dialog {
-  width: min(36rem, calc(100vw - 2rem));
-  max-width: 36rem;
+  width: min(45rem, calc(100vw - 2rem));
+  max-width: 45rem;
 }
 .erp-wo-plan-add-form > .field-cell {
   display: grid;
@@ -37593,23 +37594,27 @@ body:has(
   text-align: left;
   justify-content: flex-start;
 }
-.erp-wo-plan-add-summary {
+/* W/O 선택칸 + 오른쪽 「추가 편성 가능」 정보 상자(`.info-facts`) 한 줄 — 좁으면 상자가 다음 줄로. */
+.erp-wo-plan-add-target {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3) var(--space-5);
-  margin: 0;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
 }
-.erp-wo-plan-add-summary > div {
+/* 계획일 · 수량 칸은 입력칸 아래선을 맞춘다 — 라벨 모양이 달라 윗선이 어긋나지 않게(#360). */
+.erp-wo-plan-add-fields {
+  align-items: end;
+}
+.erp-wo-plan-add-target > .field-cell {
   display: grid;
-  gap: var(--space-1);
+  grid-template-columns: minmax(0, 1fr);
+  flex: 1 1 20rem;
+  min-width: 0;
 }
-.erp-wo-plan-add-summary dt {
-  color: var(--on-surface-muted);
-  font: var(--type-label-sm);
-}
-.erp-wo-plan-add-summary dd {
+.erp-wo-plan-add-target > .info-facts.erp-wo-plan-add-summary {
+  flex: 0 0 auto;
   margin: 0;
-  font-variant-numeric: tabular-nums;
+  padding-block: var(--space-2);
 }
 @media (max-width: 32rem) {
   .erp-wo-plan-add-fields {
@@ -38720,6 +38725,25 @@ body:has(
   border-radius: var(--radius-sm);
 }
 
+/* 조건 한 행 — 분배 기간 · 생산 라인 · 분배 방식(좁게) · 분배 수량 · 휴일 포함 · 삭제(#360). */
+.erp-wo-distribution-dialog .erp-wo-distribution-segment .erp-wo-segment-fields {
+  grid-template-columns:
+    minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(0, 10rem) minmax(0, 1fr)
+    auto;
+}
+.erp-wo-distribution-dialog .erp-wo-segment-fields > .erp-wo-segment-tail {
+  display: flex;
+  align-items: center;
+  align-self: end;
+  gap: var(--space-2);
+  min-height: var(--control-height-md);
+}
+@media (max-width: 1000px) {
+  .erp-wo-distribution-dialog .erp-wo-distribution-segment .erp-wo-segment-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .erp-wo-distribution-holiday-option {
   display: inline-flex;
   align-items: center;
@@ -38870,6 +38894,70 @@ body:has(
   margin: var(--space-2) 0 0;
   color: var(--on-surface-variant);
   font: var(--type-body-sm);
+}
+/* 자동 분배 팝업 정리(#360) — 단건 요약 상자 + 수량 한 줄, 조건은 카드 하나씩, 다건 선택 행 강조. */
+.erp-wo-distribution-single-summary {
+  display: grid;
+  gap: var(--space-2);
+}
+.erp-wo-distribution-qty-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+.erp-wo-distribution-qty-line strong {
+  color: var(--on-surface);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-heading .section-title > .field-note {
+  display: inline;
+  margin: 0 0 0 var(--space-2);
+}
+.erp-wo-distribution-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-heading-actions > button {
+  min-width: 0;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-focused-order {
+  padding-top: 0;
+  border-top: 0;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-segments {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-segment {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-lowest, var(--surface));
+}
+.erp-wo-distribution-dialog .erp-wo-segment-fields .erp-wo-distribution-holiday-option {
+  justify-self: start;
+  min-height: 0;
+  margin-top: var(--space-1);
+}
+.erp-wo-distribution-dialog .erp-wo-segment-fields .erp-wo-distribution-holiday-option input {
+  flex: none;
+  width: 1rem;
+  max-width: 1rem;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-owner-table tr[data-active='true'] {
+  background: var(--surface-container-high);
+  box-shadow: inset 3px 0 var(--primary);
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-owner-table tr[data-active='true'] td {
+  font-weight: 600;
 }
 @media (max-width: 1000px) {
   .erp-wo-distribution-dialog .erp-wo-segment-fields {
