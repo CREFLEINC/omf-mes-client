@@ -111,7 +111,16 @@ export const judgePlan = (facts: PlanFacts, next: string): PlanJudgment => {
       guidance: say(t.qtyShort(formatQty(facts.orderQty - facts.totalQty))),
     };
   }
-  if (facts.unconfirmed > 0) return { complete: false, canConfirm: true, guidance: proceed(next) };
+  /*
+   * 계획 수량이 ERP W/O 수량을 넘으면 아래 줄 한 곳에서만 알린다(사용자 지시 2026-11-27) — 본문에 따로 띄우던 경고는 없앴다.
+   * 넘쳤다고 확정 · 진행을 새로 막지는 않는다(판정은 종전 그대로).
+   */
+  const over =
+    facts.totalQty > facts.orderQty
+      ? say(t.qtyOver(formatQty(facts.totalQty - facts.orderQty)))
+      : null;
+  if (facts.unconfirmed > 0)
+    return { complete: false, canConfirm: true, guidance: over ?? proceed(next) };
   if (facts.confirmedQty < facts.orderQty) {
     return {
       complete: false,
@@ -119,7 +128,7 @@ export const judgePlan = (facts: PlanFacts, next: string): PlanJudgment => {
       guidance: say(t.qtyShort(formatQty(facts.orderQty - facts.confirmedQty))),
     };
   }
-  return { complete: true, canConfirm: false, guidance: proceed(next) };
+  return { complete: true, canConfirm: false, guidance: over ?? proceed(next) };
 };
 
 export interface AssignFacts {

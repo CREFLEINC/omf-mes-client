@@ -1,15 +1,32 @@
-import { ReleaseReview, ReleaseInformationTable, type ReleaseReviewPlan } from './release-review';
+import {
+  ReleaseFactGrid,
+  ReleaseInformationTable,
+  releaseDateTime,
+  useAssignmentValues,
+  type ReleaseReviewPlan,
+} from './release-review';
 import './release-selection.css';
-import { AdjustableLayout, useAdjustableOrientation } from './adjustable-layout';
-import { AdjustableTable } from './adjustable-table';
-import { TerminalConnections } from './terminal-connections';
-import { AlertBanner, EmptyState, SkeletonText, type Column } from '@crefle/web-ui';
+import './release-check.css';
+import { CheckMark, CheckRow, SummaryParts } from './release-check-row';
+import {
+  CHECK_KEYS,
+  needsCheck,
+  type CheckKey,
+  type SectionCheck,
+  type SummaryPart,
+} from './release-checks';
+import { RevisionDetailButton } from './revision-detail';
+import { TerminalConnections, terminalCheckOf, useTerminalDirectory } from './terminal-connections';
+import { isPastPlanningDate } from './planning-date-policy';
+import { AlertBanner, Chip, EmptyState, SkeletonText, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { fetchAllPages } from '../../../patterns/fetch-all-pages';
+import { InfoTip } from '../../../patterns/info-tip';
 import { plantToday, toPlantDateTimeParts } from '../../../patterns/plant-time';
+import { SelectableTable } from '../../../patterns/selectable-table';
 import {
   currentPolicy,
   previousWorkingDay,
@@ -19,6 +36,8 @@ import {
 
 import { useApiClient } from '../../../patterns/api-context';
 import { runRequest } from '../../../patterns/request';
+import { useRoutingOperations } from '../../routing/queries';
+import { toWorkOrderFact, workOrderKeys, type WorkOrderFact } from '../../work-order/queries';
 import { evaluateWorkOrderReleaseDraft } from '../../work-order-release/release-draft';
 import type { ReleaseAttempt } from '../release-runner';
 import { productionOrderItemKeys } from '../item-lookups';
@@ -28,6 +47,8 @@ import type { OrderWorkOrder } from './queries';
 const t = messages.erpWorkOrderFlow.process.release;
 
 const pw = t.productionWarehouse;
+
+const c = t.checks;
 
 /** W-02-11 부족 보기 — 배포 결과의 「재고 있는 생산 창고 없음」 안내가 가리킨다. */
 export const MATERIAL_ISSUE_SHORTAGE_PATH = '/production/material-issue-status?view=shortage';
@@ -222,35 +243,6 @@ export const toReleaseLines = (
     };
   });
 
-const ReleaseTargetList = ({
-  columns,
-  lines,
-  selectedId,
-  onSelect,
-}: {
-  columns: Column<ReleaseLine>[];
-  lines: ReleaseLine[];
-  selectedId: number | null;
-  onSelect: (id: string) => void;
-}) => {
-  const orientation = useAdjustableOrientation();
-  return (
-    <AdjustableTable
-      storageKey={`omf-mes:work-planning:release-select-columns:${orientation}`}
-      columns={
-        orientation === 'side'
-          ? columns.filter((column) => ['workOrder', 'process', 'quantity'].includes(column.key))
-          : columns
-      }
-      rows={lines}
-      getRowId={(line) => String(line.workOrder.workOrderId)}
-      activeId={selectedId === null ? null : String(selectedId)}
-      onActivate={(line) => onSelect(String(line.workOrder.workOrderId))}
-      rowLabel={(line) => `${line.workOrder.workOrderNo} 배포 상세`}
-    />
-  );
-};
-
 export interface ReleaseStepProps {
   /** `null` 은 고른 작업지시를 다시 눌러 푼 것. */
   onSelectedWorkOrderChange?: (id: number | null) => void;
@@ -258,7 +250,9 @@ export interface ReleaseStepProps {
   /** 고른 작업지시를 풀었다 — 첫 작업지시로 되돌리지 않는다. 없으면 이 단계가 스스로 기억한다. */
   workOrderCleared?: boolean;
   readOnly?: boolean;
-  materialReview?: (workOrderId: number) => import('react').ReactNode;
+  materialReview?: (workOrderId: number) => ReactNode;
+  /** 작업지시의 자재 확인 결과 — 목록의 「자재」 칸과 상세의 「자재 소요량」 줄이 쓴다. */
+  materialCheckOf?: (workOrderId: number) => SectionCheck;
   plantId?: number;
   reviewPlans?: ReleaseReviewPlan[];
   lines: ReleaseLine[] | undefined;
@@ -276,8 +270,306 @@ export interface ReleaseStepProps {
   onLotSizeChange: (workOrderId: number, value: string) => void;
 }
 
+const monthDay = (iso: string | null | undefined): string => (iso == null ? '' : iso.slice(5));
+
+interface EffectCell {
+  key: string;
+  label: string;
+  value: string;
+  /** 칸 이름 옆 ⓘ 가 보이는 규칙 문장. */
+  info?: string;
+}
+
 /**
- * 배포 확인 단계(마지막 확인 단계). 결과를 바꾸는 값(W/O, 수량, LOT 크기)과 반영 사항을 1280×800 첫 화면 안에 보인다.
+ * 배포 시 반영 사항 — 이름표 칸 다섯. [배포]가 목록 전체를 내보내므로 고른 작업지시와 상관없이 전체 값이다.
+ * 생산 창고 공장은 날짜만 보인다(검토 14). 출고 작업일이 모두 오늘 이하면 「바로 출고」, 날짜가 여럿이면 가장 이른 날 「외 N일」.
+ */
+const effectCells = (
+  lines: readonly ReleaseLine[],
+  issueDates: Map<number, IssueDates> | undefined,
+): EffectCell[] => {
+  const totalLots = lines.reduce((sum, line) => sum + (line.lotCount ?? 0), 0);
+  const fixed: EffectCell[] = [
+    { key: 'status', label: t.effects.status, value: t.effects.statusValue(lines.length) },
+    {
+      key: 'lots',
+      label: t.effects.lots,
+      value: lines.some((line) => line.lotCount === null)
+        ? t.effects.lotsPending
+        : t.effects.lotsValue(totalLots),
+    },
+  ];
+  const pqc: EffectCell = { key: 'pqc', label: t.effects.pqc, value: t.effects.pqcValue };
+  if (issueDates === undefined) {
+    return [
+      ...fixed,
+      { key: 'materials', label: t.effects.materials, value: t.effects.materialsValue },
+      { key: 'picking', label: t.effects.picking, value: t.effects.pickingValue },
+      pqc,
+    ];
+  }
+  if (lines.some((line) => issueDates.get(line.workOrder.workOrderId)?.undetermined === true)) {
+    return [
+      ...fixed,
+      {
+        key: 'materials',
+        label: t.effects.materials,
+        value: pw.cells.materialsUndetermined,
+        info: pw.materialsUndetermined,
+      },
+      { key: 'picking', label: pw.cells.picking, value: pw.cells.pickingAt, info: pw.pickingLine },
+      pqc,
+    ];
+  }
+  const dates = [
+    ...new Set(
+      lines
+        .map((line) => issueDates.get(line.workOrder.workOrderId)?.issueWorkDate ?? null)
+        .filter((date): date is string => date !== null),
+    ),
+  ].sort();
+  const today = plantToday();
+  const first = dates[0];
+  if (first !== undefined && dates.every((date) => date <= today)) {
+    return [
+      ...fixed,
+      {
+        key: 'materials',
+        label: t.effects.materials,
+        value: pw.cells.materialsNow,
+        info: pw.materialsNow(monthDay(dates.at(-1))),
+      },
+      { key: 'picking', label: pw.cells.picking, value: pw.cells.pickingNow, info: pw.pickingNow },
+      pqc,
+    ];
+  }
+  const upcoming = dates.filter((date) => date > today);
+  const dateText = pw.dates(monthDay(upcoming[0] ?? first), Math.max(0, upcoming.length - 1));
+  return [
+    ...fixed,
+    {
+      key: 'materials',
+      label: t.effects.materials,
+      value: pw.cells.materialsAt(dateText),
+      info: pw.materialsLine(dateText),
+    },
+    { key: 'picking', label: pw.cells.picking, value: pw.cells.pickingAt, info: pw.pickingLine },
+    pqc,
+  ];
+};
+
+const ReleaseEffects = ({ cells }: { cells: EffectCell[] }) => {
+  const title = messages.screenPatterns.effectList.title(t.task);
+  return (
+    <section className="pane release-effects" role="region" aria-label={title}>
+      <h3 className="section-title">{title}</h3>
+      <dl>
+        {cells.map((cell) => (
+          <div key={cell.key}>
+            <dt>
+              {cell.label}
+              {cell.info !== undefined && <InfoTip text={cell.info} />}
+            </dt>
+            <dd>{cell.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+};
+
+/** 계획 시작 ~ 종료 한 줄(「12-01 13:00 ~ 17:00」). 날짜가 다르면 종료에도 날짜를 적는다. */
+const scheduleText = (fact: WorkOrderFact | undefined): string | null => {
+  const start = fact?.plannedStartAt ? toPlantDateTimeParts(fact.plannedStartAt) : null;
+  const end = fact?.plannedEndAt ? toPlantDateTimeParts(fact.plannedEndAt) : null;
+  if (!start || !end) return null;
+  return c.schedule(
+    `${monthDay(start.date)} ${start.time}`,
+    end.date === start.date ? end.time : `${monthDay(end.date)} ${end.time}`,
+  );
+};
+
+interface RowProps {
+  open: boolean;
+  onToggle: () => void;
+  check: SectionCheck | undefined;
+}
+
+/** 「생산계획」 줄 — 계획 번호 · 계획 시작~종료 · 자재 출고일. 펼치면 계획 · BOM · Routing · 일정 표. */
+const PlanCheckRow = ({
+  open,
+  onToggle,
+  check,
+  workOrder,
+  plan,
+  fact,
+  issue,
+  plantId,
+  orderNo,
+  itemCode,
+  itemName,
+  planDateOf,
+  lineNameOf,
+  uomLabelOf,
+}: RowProps & {
+  workOrder: OrderWorkOrder;
+  plan: ReleaseReviewPlan | undefined;
+  fact: WorkOrderFact | undefined;
+  issue: IssueDates | undefined;
+  plantId: number | null;
+} & Pick<
+    ReleaseStepProps,
+    'orderNo' | 'itemCode' | 'itemName' | 'planDateOf' | 'lineNameOf' | 'uomLabelOf'
+  >) => {
+  const issueDate =
+    issue === undefined
+      ? null
+      : issue.undetermined
+        ? pw.decidedAtRelease
+        : (issue.issueWorkDate ?? null);
+  const planDate = plan?.planDate ?? planDateOf?.(workOrder.productionPlanId) ?? null;
+  const summary: SummaryPart[] = [
+    ...(plan === undefined ? [] : [plan.planNo]),
+    ...[scheduleText(fact) ?? planDate].filter((part): part is string => part !== null),
+    ...(issueDate === null
+      ? []
+      : [
+          [
+            pw.issueWorkDate,
+            issue?.undetermined === true ? issueDate : monthDay(issueDate),
+          ] as const,
+        ]),
+  ];
+  const issueLine: ReactNode[][][] =
+    issue === undefined
+      ? []
+      : [
+          [
+            [pw.issueWorkDate, issueDate ?? '—'],
+            [pw.productionDate, issue.productionDate ?? '—'],
+          ],
+        ];
+  const lines: ReactNode[][][] =
+    plan === undefined
+      ? [
+          [[t.orderNo, orderNo ?? '—']],
+          [
+            [t.itemCode, itemCode ?? '—'],
+            [t.itemName, itemName ?? '—'],
+          ],
+          [
+            [t.planDate, planDate ?? '—'],
+            [t.line, lineNameOf?.(workOrder.productionLineId ?? null) ?? '—'],
+          ],
+          ...issueLine,
+        ]
+      : [
+          [
+            ['생산계획', plan.planNo],
+            ['계획일', plan.planDate],
+          ],
+          [
+            ['생산량', `${formatQty(plan.plannedQty)} ${uomLabelOf(plan.uomId)}`],
+            [
+              '생산 라인',
+              lineNameOf?.(plan.plannedLineId) ??
+                (plan.plannedLineId === null ? '미지정' : `ID ${plan.plannedLineId}`),
+            ],
+          ],
+          [
+            [
+              'BOM',
+              <span key="bom" className="erp-wo-final-revision">
+                {plan.bomLabel}
+                <RevisionDetailButton
+                  iconOnly
+                  kind="BOM"
+                  value={String(plan.bomId)}
+                  content={plan.revisionContent?.bom}
+                  availabilityContext={{ plantId, quantity: plan.plannedQty }}
+                />
+              </span>,
+            ],
+          ],
+          [
+            [
+              'Routing',
+              <span key="routing" className="erp-wo-final-revision">
+                {plan.routingLabel}
+                <RevisionDetailButton
+                  iconOnly
+                  kind="Routing"
+                  content={plan.revisionContent?.routing}
+                  value={String(plan.routingId)}
+                  label={plan.routingLabel}
+                />
+              </span>,
+            ],
+          ],
+          [
+            ['계획 시작', fact ? releaseDateTime(fact.plannedStartAt) : '조회 중'],
+            ['계획 종료', fact ? releaseDateTime(fact.plannedEndAt) : '조회 중'],
+          ],
+          ...issueLine,
+        ];
+  return (
+    <CheckRow title={c.plan} check={check} summary={summary} open={open} onToggle={onToggle}>
+      <ReleaseFactGrid label="생산계획 정보" lines={lines} />
+    </CheckRow>
+  );
+};
+
+/** 「4M 배정」 줄 — 받은 배정 값. 상세를 받은 뒤에만 세운다(훅이 값을 받아야 한다). */
+const AssignCheckRowLoaded = ({
+  open,
+  onToggle,
+  check,
+  fact,
+  routingId,
+  plantId,
+  lineNameOf,
+}: RowProps & {
+  fact: WorkOrderFact;
+  routingId: number | null;
+  plantId: number | null;
+  lineNameOf: ReleaseStepProps['lineNameOf'];
+}) => {
+  const operations = useRoutingOperations(routingId);
+  const operation = operations.data?.items.find(
+    (row) => row.routingOperationId === fact.routingOperationId,
+  );
+  const values = useAssignmentValues({
+    fact,
+    equipmentRequired: operation?.equipmentRequired === true,
+    moldRequired: operation?.moldRequired === true,
+    plantId,
+    lineNameOf,
+  });
+  /* 첫 값(생산 라인)은 값만, 나머지는 「이름표 값」 — 「조립 2라인」 「생산품 입고 창고 MFG WH (WH20)」. */
+  const summary: SummaryPart[] = values.map(([name, value], index) =>
+    index === 0 ? (value ?? '') : ([name ?? '', value ?? ''] as const),
+  );
+  return (
+    <CheckRow title={c.assign} check={check} summary={summary} open={open} onToggle={onToggle}>
+      {operations.isError && (
+        <AlertBanner variant="warning" title="공정별 필수 설정을 조회하지 못했습니다" />
+      )}
+      <ReleaseInformationTable paired label="4M 배정 정보" rows={values} />
+    </CheckRow>
+  );
+};
+
+interface ListRow {
+  line: ReleaseLine;
+  checks: Partial<Record<CheckKey, SectionCheck>>;
+}
+
+/**
+ * 배포 확인 단계(마지막 확인 단계) — 좌우 고정 배치(B안, 2026-11-27).
+ *
+ * - 맨 위: 배포 시 반영 사항(전체 값).
+ * - 왼쪽: 배포 작업지시 목록. 확인 칸(계획 · 4M · 자재 · 단말기)으로 열어 보지 않고도 확인할 작업지시가 보인다.
+ * - 오른쪽: 고른 작업지시의 확인 항목 넷. 확인이 필요한 줄만 펼친 채로 열리고 나머지는 한 줄 요약이다.
  */
 export const ReleaseStep = ({
   onSelectedWorkOrderChange,
@@ -285,6 +577,7 @@ export const ReleaseStep = ({
   workOrderCleared,
   readOnly = false,
   materialReview,
+  materialCheckOf,
   plantId,
   reviewPlans,
   lines,
@@ -296,13 +589,33 @@ export const ReleaseStep = ({
   uomLabelOf,
   failures,
   issueDates,
-  revealErrors,
 }: ReleaseStepProps) => {
+  const { client } = useApiClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [localCleared, setLocalCleared] = useState(false);
+  /* 줄을 손수 펼치거나 접은 것 — 작업지시를 바꿔도 그대로 둔다. 손대지 않은 줄은 확인이 필요할 때만 펼친다. */
+  const [opened, setOpened] = useState<Partial<Record<CheckKey, boolean>>>({});
   const cleared = workOrderCleared ?? localCleared;
   const detailRef = useRef<HTMLDivElement>(null);
   const lastSelection = useRef<number | null>(null);
+  /* 4M 과 계획 시작 · 종료는 작업지시 상세에서 읽는다. 생산계획을 넘겨받지 않은 자리(시험 등)에서는 묻지 않는다. */
+  const withFacts = reviewPlans !== undefined;
+  const facts = useQueries({
+    queries: (lines ?? []).map((line) => ({
+      queryKey: workOrderKeys.detail(line.workOrder.workOrderId),
+      enabled: withFacts,
+      retry: false,
+      queryFn: async () =>
+        toWorkOrderFact(
+          await runRequest(() =>
+            client.GET('/production/work-orders/{workOrderId}', {
+              params: { path: { workOrderId: line.workOrder.workOrderId } },
+            }),
+          ),
+        ),
+    })),
+  });
+  const directory = useTerminalDirectory(plantId);
   const selected = cleared
     ? undefined
     : (lines?.find(
@@ -330,284 +643,221 @@ export const ReleaseStep = ({
       detailRef.current?.scrollIntoView?.({ block: 'start', inline: 'nearest', behavior: 'auto' });
   }, [activeWorkOrderId]);
   if (lines === undefined) return <SkeletonText lines={4} />;
-  const totalLots = lines.reduce((sum, line) => sum + (line.lotCount ?? 0), 0);
   if (lines.length === 0) return <p className="empty-line">{t.empty}</p>;
-  const wo = selected?.workOrder;
-  const monthDay = (iso: string | null | undefined): string => (iso == null ? '' : iso.slice(5));
-  /*
-   * 생산 창고 공장의 효과 문구 — 날짜만(검토 14). 출고 작업일이 오늘 이하면 「바로 출고」.
-   * 날짜가 여럿이면 가장 이른 날 「외 N일」.
-   */
-  const effectItems = (() => {
-    if (issueDates === undefined) {
-      return [
-        { key: 'materials', label: t.effects.materials },
-        { key: 'picking', label: t.effects.picking },
-      ];
-    }
-    if (lines.some((line) => issueDates.get(line.workOrder.workOrderId)?.undetermined === true)) {
-      return [
-        { key: 'materials', label: pw.materialsUndetermined },
-        { key: 'picking', label: pw.pickingLine },
-      ];
-    }
-    const dates = [
-      ...new Set(
-        lines
-          .map((line) => issueDates.get(line.workOrder.workOrderId)?.issueWorkDate ?? null)
-          .filter((date): date is string => date !== null),
-      ),
-    ].sort();
-    const today = plantToday();
-    const first = dates[0];
-    if (first !== undefined && dates.every((date) => date <= today)) {
-      return [
-        { key: 'materials', label: pw.materialsNow(monthDay(dates.at(-1))) },
-        { key: 'picking', label: pw.pickingNow },
-      ];
-    }
-    const upcoming = dates.filter((date) => date > today);
-    return [
-      {
-        key: 'materials',
-        label: pw.materialsLine(
-          pw.dates(monthDay(upcoming[0] ?? first), Math.max(0, upcoming.length - 1)),
-        ),
-      },
-      { key: 'picking', label: pw.pickingLine },
-    ];
-  })();
+
+  const today = plantToday();
+  const planOf = (workOrder: OrderWorkOrder): ReleaseReviewPlan | undefined =>
+    reviewPlans?.find((plan) => plan.productionPlanId === workOrder.productionPlanId);
+  const checksOf = (line: ReleaseLine, index: number): ListRow['checks'] => {
+    const workOrder = line.workOrder;
+    const planDate =
+      planOf(workOrder)?.planDate ?? planDateOf?.(workOrder.productionPlanId) ?? null;
+    const fact = facts[index];
+    return {
+      /* 계획일이 지난 작업지시는 배포할 수 없다 — 배포한 뒤(읽기 전용)에는 따지지 않는다. */
+      plan:
+        !readOnly && planDate !== null && isPastPlanningDate(planDate, today)
+          ? { state: 'warn', summary: [], alerts: [c.planPast] }
+          : { state: 'ok', summary: [] },
+      assign: !withFacts
+        ? undefined
+        : fact?.data !== undefined
+          ? fact.data.fgWarehouseDiffersFromErp === true
+            ? { state: 'warn', summary: [], alerts: [c.erpWarehouseDiffers] }
+            : { state: 'ok', summary: [] }
+          : fact?.isError === true
+            ? { state: 'warn', summary: [], alerts: [c.failed] }
+            : { state: 'pending', summary: [c.pending] },
+      material: materialCheckOf?.(workOrder.workOrderId),
+      terminal: terminalCheckOf(directory, workOrder),
+    };
+  };
+  const rows: ListRow[] = lines.map((line, index) => ({ line, checks: checksOf(line, index) }));
+  const attention = rows.filter((row) => needsCheck(Object.values(row.checks))).length;
+  const shownChecks = CHECK_KEYS.filter((key) => rows.some((row) => row.checks[key] !== undefined));
   const hasBlocks = failures.some((failure) => failure.links.length > 0);
-  const columns: Column<ReleaseLine>[] = [
+  const columns: Column<ListRow>[] = [
     {
       key: 'workOrder',
       header: '작업지시 번호',
-      width: '220px',
+      width: '168px',
       /* 번호는 보통 글자(사용자 지시 · #360) — 줄 고르기는 줄 자체가 맡는다. 줄바꿈 · 말줄임 없이. */
-      render: ({ workOrder: target }) => <span className="nowrap-cell">{target.workOrderNo}</span>,
+      render: ({ line }) => <span className="nowrap-cell">{line.workOrder.workOrderNo}</span>,
     },
     {
       key: 'process',
       header: '공정',
-      width: '110px',
-      render: ({ workOrder: target }) => target.operationName,
-    },
-    {
-      key: 'planDate',
-      header: '계획일',
-      width: '130px',
-      render: ({ workOrder: target }) => planDateOf?.(target.productionPlanId) ?? '—',
-    },
-    {
-      key: 'line',
-      header: '생산 라인',
-      width: '190px',
-      render: ({ workOrder: target }) => lineNameOf?.(target.productionLineId ?? null) ?? '—',
+      render: ({ line }) => (
+        <span className="release-check-operation">{line.workOrder.operationName}</span>
+      ),
     },
     {
       key: 'quantity',
-      header: t.columns.orderQty,
-      width: '110px',
-      render: ({ workOrder: target }) =>
-        `${formatQty(target.orderQty)} ${uomLabelOf(target.uomId)}`,
+      header: '수량',
+      width: '104px',
+      align: 'end',
+      /* 수량과 단위는 한 줄로 쓴다 — 칸이 좁아도 줄을 바꾸지 않는다(사용자 지시 2026-11-27). */
+      render: ({ line }) => (
+        <span className="nowrap-cell">
+          {`${formatQty(line.workOrder.orderQty)} ${uomLabelOf(line.workOrder.uomId)}`}
+        </span>
+      ),
     },
-    ...(!readOnly
-      ? [
-          {
-            key: 'lots',
-            header: t.columns.lotCount,
-            width: '110px',
-            render: (line: ReleaseLine) => (line.lotCount == null ? '—' : `${line.lotCount}개`),
-          },
-        ]
-      : []),
-    ...(issueDates === undefined
-      ? []
-      : [
-          {
-            key: 'issueDate',
-            header: pw.issueWorkDate,
-            width: '110px',
-            render: (line: ReleaseLine) =>
-              issueDates.get(line.workOrder.workOrderId)?.undetermined === true
-                ? pw.decidedAtRelease
-                : monthDay(issueDates.get(line.workOrder.workOrderId)?.issueWorkDate),
-          },
-          {
-            key: 'productionDate',
-            header: pw.productionDate,
-            width: '110px',
-            render: (line: ReleaseLine) =>
-              monthDay(issueDates.get(line.workOrder.workOrderId)?.productionDate),
-          },
-        ]),
+    ...shownChecks.map((key): Column<ListRow> => ({
+      key,
+      header: c.columns[key],
+      width: key === 'terminal' ? '64px' : '52px',
+      align: 'center',
+      render: (row) => <CheckMark check={row.checks[key]} title={c.columns[key]} />,
+    })),
   ];
 
+  const wo = selected?.workOrder;
+  const selectedRow = rows.find((row) => row.line === selected);
+  const selectedIndex = selected === undefined ? -1 : lines.indexOf(selected);
+  const selectedFact = selectedIndex < 0 ? undefined : facts[selectedIndex]?.data;
+  const isOpen = (key: CheckKey): boolean => {
+    const check = selectedRow?.checks[key];
+    return opened[key] ?? (check === undefined || check.state === 'warn');
+  };
+  const rowProps = (key: CheckKey): RowProps => ({
+    open: isOpen(key),
+    onToggle: () => setOpened((current) => ({ ...current, [key]: !isOpen(key) })),
+    check: selectedRow?.checks[key],
+  });
+  const materialNode = wo === undefined ? null : materialReview?.(wo.workOrderId);
+
   return (
-    <div className="erp-wo-release-workspace">
-      <AdjustableLayout
-        storageKey="omf-mes:work-planning:release-layout"
-        label="배포 확인"
-        initial="stack"
-        ratio={0.6}
-      >
+    <div className="erp-wo-release-workspace release-check">
+      {!readOnly && <ReleaseEffects cells={effectCells(lines, issueDates)} />}
+      {!readOnly && failures.length > 0 && (
+        <AlertBanner variant="error" title={hasBlocks ? pw.blockedTitle : undefined}>
+          <ul className="erp-wo-release-failures">
+            {failures.map((failure) => (
+              <li key={failure.key}>
+                {failure.text}
+                {failure.links.map((link) => (
+                  <Link
+                    key={link.to}
+                    className="action-link-button"
+                    to={link.to}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </li>
+            ))}
+          </ul>
+        </AlertBanner>
+      )}
+      <div className="release-check-panes">
         <section className="pane erp-wo-release-targets" aria-label="배포 작업지시">
-          <div className="section-heading-row">
+          <div className="section-heading-row release-check-list-head">
             <h3 className="section-title">배포 작업지시</h3>
-            <span className="field-note">{t.scope(lines.length)}</span>
+            <span className="release-check-count">{t.count(lines.length)}</span>
+            {attention > 0 && (
+              <Chip variant="status" status="warning" size="sm">
+                {t.needsCheck(attention)}
+              </Chip>
+            )}
           </div>
           <div className="erp-wo-release-selection-table">
-            <ReleaseTargetList
+            <SelectableTable
               columns={columns}
-              lines={lines}
-              selectedId={wo?.workOrderId ?? null}
-              onSelect={(id) => pick(Number(id))}
+              rows={rows}
+              getRowId={(row) => String(row.line.workOrder.workOrderId)}
+              activeId={wo === undefined ? null : String(wo.workOrderId)}
+              onActivate={(row) => pick(row.line.workOrder.workOrderId)}
+              rowLabel={(row) => `${row.line.workOrder.workOrderNo} 배포 상세`}
             />
           </div>
         </section>
         <div
           ref={detailRef}
-          className="erp-wo-release-layout"
+          className="release-check-detail"
           role="region"
           aria-label="선택 작업지시 배포 상세"
         >
-          <h3 className="section-title">선택 작업지시 상세</h3>
           {selected === undefined || wo === undefined ? (
-            <EmptyState size="sm" title={t.selectPrompt} />
+            <>
+              <div className="release-check-detail-head">
+                <h3 className="section-title">선택 작업지시 상세</h3>
+              </div>
+              <EmptyState size="sm" title={t.selectPrompt} />
+            </>
           ) : (
             <>
-              <ReleaseInformationTable
-                label="작업지시 정보"
-                rows={[
-                  ['작업지시 번호', wo.workOrderNo],
-                  ['공정', wo.operationName],
-                ]}
+              <div className="release-check-detail-head">
+                <h3 className="section-title">{wo.workOrderNo}</h3>
+                <span className="release-check-detail-facts">
+                  <SummaryParts
+                    parts={[
+                      ...(wo.operationName === '' ? [] : [wo.operationName]),
+                      `${formatQty(wo.orderQty)} ${uomLabelOf(wo.uomId)}`,
+                      ...(!readOnly && selected.lotCount !== null
+                        ? [[t.columns.lotCount, c.lotCount(selected.lotCount)] as const]
+                        : []),
+                    ]}
+                  />
+                </span>
+              </div>
+              <PlanCheckRow
+                {...rowProps('plan')}
+                workOrder={wo}
+                plan={planOf(wo)}
+                fact={selectedFact}
+                issue={issueDates?.get(wo.workOrderId)}
+                plantId={plantId ?? null}
+                orderNo={orderNo}
+                itemCode={itemCode}
+                itemName={itemName}
+                planDateOf={planDateOf}
+                lineNameOf={lineNameOf}
+                uomLabelOf={uomLabelOf}
               />
-              {reviewPlans && (
-                <ReleaseReview
-                  plans={reviewPlans}
-                  lines={[selected]}
-                  plantId={plantId ?? null}
-                  lineNameOf={lineNameOf}
-                  uomLabelOf={uomLabelOf}
-                />
-              )}
-              {issueDates && (
-                <table className="erp-release-information-table">
-                  <tbody>
-                    <tr>
-                      <th scope="row">{pw.issueWorkDate}</th>
-                      <td>
-                        {issueDates.get(wo.workOrderId)?.undetermined
-                          ? pw.decidedAtRelease
-                          : (issueDates.get(wo.workOrderId)?.issueWorkDate ?? '—')}
-                      </td>
-                    </tr>
-                    <tr>
-                      <th scope="row">{pw.productionDate}</th>
-                      <td>{issueDates.get(wo.workOrderId)?.productionDate ?? '—'}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              )}
-              {materialReview?.(wo.workOrderId)}
-              {!reviewPlans && (
-                <section className="pane erp-wo-release-detail" aria-label={t.selectedTarget}>
-                  <h3 className="section-title">작업지시 정보</h3>
-                  <table className="erp-release-information-table">
-                    <tbody>
-                      <tr>
-                        <th scope="row">{t.orderNo}</th>
-                        <td>{orderNo ?? '—'}</td>
-                      </tr>
-                      <tr>
-                        <th scope="row">{t.itemCode}</th>
-                        <td>{itemCode ?? '—'}</td>
-                      </tr>
-                      <tr>
-                        <th scope="row">{t.itemName}</th>
-                        <td>{itemName ?? '—'}</td>
-                      </tr>
-                      <tr>
-                        <th scope="row">{t.columns.operation}</th>
-                        <td>{wo.operationName}</td>
-                      </tr>
-                      <tr>
-                        <th scope="row">{t.columns.orderQty}</th>
-                        <td>
-                          {formatQty(wo.orderQty)} {uomLabelOf(wo.uomId)}
-                        </td>
-                      </tr>
-                      <tr>
-                        <th scope="row">{t.planDate}</th>
-                        <td>{planDateOf?.(wo.productionPlanId) ?? '—'}</td>
-                      </tr>
-                      <tr>
-                        <th scope="row">{t.line}</th>
-                        <td>{lineNameOf?.(wo.productionLineId ?? null) ?? '—'}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </section>
-              )}
+              {withFacts &&
+                (selectedFact === undefined ? (
+                  <CheckRow title={c.assign} {...rowProps('assign')}>
+                    {selectedRow?.checks.assign?.state === 'warn' ? (
+                      <AlertBanner
+                        variant="error"
+                        title="작업지시 배정 정보를 조회하지 못했습니다"
+                      />
+                    ) : (
+                      <SkeletonText lines={2} />
+                    )}
+                  </CheckRow>
+                ) : (
+                  <AssignCheckRowLoaded
+                    key={wo.workOrderId}
+                    {...rowProps('assign')}
+                    fact={selectedFact}
+                    routingId={planOf(wo)?.routingId ?? null}
+                    plantId={plantId ?? null}
+                    lineNameOf={lineNameOf}
+                  />
+                ))}
+              {materialNode ? (
+                <CheckRow title={c.material} {...rowProps('material')}>
+                  {materialNode}
+                </CheckRow>
+              ) : null}
               {plantId != null && (
-                <section className="pane erp-wo-release-terminals" aria-label="연결 단말기 확인">
-                  <h3 className="section-title">연결 단말기 확인</h3>
-                  <TerminalConnections key={wo.workOrderId} plantId={plantId} workOrder={wo} />
-                </section>
+                <CheckRow title={c.terminal} {...rowProps('terminal')}>
+                  <TerminalConnections
+                    plain
+                    key={wo.workOrderId}
+                    plantId={plantId}
+                    workOrder={wo}
+                  />
+                </CheckRow>
               )}
             </>
           )}
-          {!readOnly && (
-            <section className="erp-wo-release-effects">
-              <div className="pane">
-                <div
-                  className="erp-wo-release-notice"
-                  role="region"
-                  aria-label={messages.screenPatterns.effectList.title(t.task)}
-                >
-                  <h3 className="section-title">전체 배포 시 반영 사항</h3>
-                  <ul>
-                    <li>{t.effects.status(lines.length)}</li>
-                    <li>
-                      {lines.some((line) => line.lotCount === null)
-                        ? t.lotsPending
-                        : t.effects.lots(totalLots)}
-                    </li>
-                    {effectItems.map((effect) => (
-                      <li key={effect.key}>{effect.label}</li>
-                    ))}
-                    <li>{t.effects.pqc}</li>
-                  </ul>
-                  <p>{t.irreversible}</p>
-                </div>
-              </div>
-              {failures.length > 0 && (
-                <AlertBanner variant="error" title={hasBlocks ? pw.blockedTitle : undefined}>
-                  <ul className="erp-wo-release-failures">
-                    {failures.map((failure) => (
-                      <li key={failure.key}>
-                        {failure.text}
-                        {failure.links.map((link) => (
-                          <Link
-                            key={link.to}
-                            className="action-link-button"
-                            to={link.to}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            {link.label}
-                          </Link>
-                        ))}
-                      </li>
-                    ))}
-                  </ul>
-                </AlertBanner>
-              )}
-            </section>
-          )}
         </div>
-      </AdjustableLayout>
+      </div>
     </div>
   );
 };

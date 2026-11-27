@@ -28,6 +28,7 @@ export const WeeklyPlanCard = ({
     className={`erp-wo-week-plan${other ? ' erp-wo-week-plan-other' : ''}`}
     aria-label={label}
     aria-pressed={selected}
+    data-confirmed={confirmed}
     aria-controls={controls}
     onClick={onSelect}
   >

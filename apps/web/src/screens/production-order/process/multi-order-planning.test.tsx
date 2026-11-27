@@ -613,7 +613,7 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
         name: '닫기',
       }),
     );
-    await user.click(screen.getByRole('tab', { name: '1. BOM·Routing' }));
+    await user.click(screen.getByRole('tab', { name: '1. BOM 및 Routing' }));
     expect(screen.getByRole('dialog')).toBeVisible();
   });
 });

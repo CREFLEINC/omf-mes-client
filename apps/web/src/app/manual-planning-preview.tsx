@@ -135,6 +135,12 @@ function ManualPlanningPreview() {
       </section>
       <PlanStep
         rows={rows}
+        hideEditorIdentity
+        rowIdentityOf={() => ({
+          orderNo: 'PD261106000001',
+          itemCode: 'ITEM-A',
+          itemName: '품목 A',
+        })}
         orderQty={order.orderQty}
         confirmedQty={order.confirmedPlanQty}
         uomLabel="EA"

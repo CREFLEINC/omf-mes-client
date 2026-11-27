@@ -57,7 +57,8 @@ describe('BOM Routing 본문 상세', () => {
     await screen.findByText('ERP-SYN · 개정 2');
     const routing = screen.getByRole('region', { name: 'Routing 상세 정보' });
     await within(routing).findByRole('cell', { name: '사출' });
-    await userEvent.setup().click(within(routing).getByRole('button', { name: 'R2 개정 2' }));
+    await userEvent.setup().click(within(routing).getByRole('combobox', { name: 'Routing 개정' }));
+    await userEvent.setup().click(await screen.findByRole('option', { name: /R2 개정 2/ }));
     await within(routing).findByRole('cell', { name: '검사' });
     expect(change).not.toHaveBeenCalled();
     await userEvent
@@ -66,10 +67,33 @@ describe('BOM Routing 본문 상세', () => {
     expect(change).toHaveBeenCalledExactlyOnceWith('22');
     expect(screen.queryByRole('dialog')).toBeNull();
   });
+  it('Routing이 없으면 선택 칸 없이 없는 것과 등록 화면 단추만 보인다', async () => {
+    renderWithProviders(
+      <MasterDetails
+        bomId=""
+        routingId=""
+        options={[]}
+        locked={false}
+        orderItemId={91}
+        onRoutingChange={vi.fn()}
+      />,
+      { fetch: async () => jsonResponse({ items: [], page: { total: 0 } }) },
+    );
+    const routing = screen.getByRole('region', { name: 'Routing 상세 정보' });
+    expect(within(routing).getByText('이 품목에 등록된 Routing이 없습니다')).toBeVisible();
+    expect(within(routing).queryByRole('combobox', { name: 'Routing 개정' })).toBeNull();
+    expect(within(routing).queryByText('Routing 미지정')).toBeNull();
+    expect(within(routing).getByRole('link', { name: /Routing 등록 화면 열기/ })).toHaveAttribute(
+      'href',
+      '/master-data/routing?item=91',
+    );
+    const bom = screen.getByRole('region', { name: 'BOM 상세 정보' });
+    expect(within(bom).getByText('ERP에서 받은 기본 BOM이 없습니다')).toBeVisible();
+  });
   it('확정 계획의 상세는 표시하되 개정 변경은 제공하지 않는다', async () => {
     const change = mount(true);
     await screen.findByRole('cell', { name: '사출' });
-    expect(screen.queryByRole('group', { name: 'Routing 개정 목록' })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Routing 개정' })).toBeNull();
     expect(screen.queryByRole('button', { name: '이 작업 순서 적용' })).toBeNull();
     expect(change).not.toHaveBeenCalled();
   });

@@ -128,7 +128,15 @@ export const AdjustableLayout = ({
               <PaneHeightSplitter
                 label={`${label} 높이 조절`}
                 height={height.listHeight}
-                onChange={height.changeListHeight}
+                /* 위 영역이 이미 다 보이면 그보다 더 늘리지 않는다(사용자 지시 2026-11-27). */
+                onChange={(next) => {
+                  const first = ref.current?.firstElementChild;
+                  const content = Array.from(first?.children ?? []).reduce(
+                    (sum, child) => sum + child.getBoundingClientRect().height,
+                    0,
+                  );
+                  height.changeListHeight(content > 0 ? Math.min(next, Math.ceil(content)) : next);
+                }}
               />
             )}
             <div className="erp-wo-adjustable-second">{panes[1]}</div>

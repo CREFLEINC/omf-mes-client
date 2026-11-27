@@ -1,4 +1,4 @@
-import { ReleaseMaterials, useReleaseMaterials } from './release-materials';
+import { ReleaseMaterials, materialCheckOf, useReleaseMaterials } from './release-materials';
 import {
   isPastPlanningDate,
   pastPlanningDateMessage,
@@ -46,7 +46,7 @@ import { useItemCodeNames } from '../item-lookups';
 import { useUomReferenceLookup } from '../reference-lookups';
 import { apiErrorText, invalidateFlow, releaseWorkOrder } from '../release-runner';
 import { ForbiddenNotice, isForbidden } from '../forbidden-notice';
-import { ProcessStateChip, ReasonChips } from '../worklist-chips';
+import { ProcessStateBadge, ReasonChips } from '../worklist-chips';
 import { rememberedWorklistSearch, worklistPath } from '../worklist-filters';
 import { deriveWorklistState, type ProcessStepKey } from '../worklist-model';
 import { useProductionOrderByNumber, worklistKeys } from '../worklist-queries';
@@ -567,15 +567,11 @@ export const ProcessWorkspace = ({
       : step === 'release'
         ? releaseGuidance
         : judgments[step].guidance;
+  /* BOM·Routing 단계에서는 카드 안 단추가 고칠 화면을 연다 — 아래 줄에 같은 단추를 겹쳐 두지 않는다(2026-11-27). */
   const remainingLink =
-    (step === 'master' && master.blockedOutside === 'bom') ||
-    (step === 'plan' && invalidRow?.master === 'bom') ? (
+    step === 'plan' && invalidRow?.master === 'bom' ? (
       <Link className="action-link-button" to="/system/erp-data/boms">
         {tp.links.bom}
-      </Link>
-    ) : step === 'master' && master.blockedOutside === 'routing' ? (
-      <Link className="action-link-button" to="/master-data/routing">
-        {tp.links.routing}
       </Link>
     ) : undefined;
 
@@ -617,6 +613,7 @@ export const ProcessWorkspace = ({
       materialReview={(workOrderId) =>
         !readOnly && (
           <ReleaseMaterials
+            plain
             review={materials}
             workOrderId={workOrderId}
             disabled={releasing}
@@ -628,6 +625,17 @@ export const ProcessWorkspace = ({
             )}
           />
         )
+      }
+      materialCheckOf={
+        readOnly
+          ? undefined
+          : (workOrderId) =>
+              materialCheckOf(
+                materials,
+                workOrderId,
+                releaseAttempts.find((attempt) => attempt.workOrderId === workOrderId)
+                  ?.materialErrors?.length ?? 0,
+              )
       }
       readOnly={readOnly}
       reviewPlans={planFacts.map((plan) => ({
@@ -685,6 +693,7 @@ export const ProcessWorkspace = ({
               refetch: () => void routings.refetch(),
             }}
             bomId={bomId}
+            itemId={order.itemId}
             routingId={routingId}
             locked={step === 'done' || fixedByPlan}
             statusNameOf={codeNames.masterVersionStatus}
@@ -710,6 +719,7 @@ export const ProcessWorkspace = ({
               cycleTimeFor={(row) => (row.draft.routingId === routingId ? cycleTime : undefined)}
               currentOrderIds={[order.productionOrderId]}
               contextUnitLabelOf={uomLabelOf}
+              hideEditorIdentity
               rowIdentityOf={() => ({
                 orderNo: order.productionOrderNo,
                 itemCode: item?.itemCode ?? '—',
@@ -956,6 +966,7 @@ export const ProcessWorkspace = ({
   return (
     <ProcessPage
       backLabel={tp.back}
+      compactHead
       onBack={() => void navigate(worklistPath(lastSearch))}
       title={
         step === 'done'
@@ -966,7 +977,7 @@ export const ProcessWorkspace = ({
       }
       badges={
         <>
-          <ProcessStateChip state={derived.state} />
+          <ProcessStateBadge state={derived.state} />
           <ReasonChips
             reasons={derived.reasons}
             detail={{
@@ -1035,7 +1046,7 @@ export const ProcessWorkspace = ({
           remainingLink={step === 'master' && master.complete ? undefined : remainingLink}
           remainingId={remainingId}
           leading={
-            step === 'release' || step === 'done' ? (
+            step === 'done' ? (
               releaseNavigation
             ) : dirtyPlans ? (
               <Button variant="outlined" disabled={planBusy} onClick={() => void savePlans(false)}>

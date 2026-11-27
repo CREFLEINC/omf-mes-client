@@ -13,12 +13,13 @@ import type { ProductionOrderFact } from '../types';
 import { AlertBanner, Button, Chip, SkeletonText, Tooltip, useToast } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 import { DateTimeField } from '../../../patterns/date-time-field';
 import { locationOptionLabel } from '../../../patterns/location-label';
 import { ReferenceField, type ReferenceRow } from '../../../patterns/reference-picker';
+import { PagedSelect } from '../../../patterns/select';
 import { SaveErrorBanner } from '../../../patterns/master';
 import {
   useWorkOrderEquipment,
@@ -76,9 +77,7 @@ type IdField = Exclude<
 const idOrNull = (value: string): number | null =>
   /^[1-9]\d*$/.test(value) ? Number(value) : null;
 
-const LOCATION_FIELDS = [
-  'defaultFgLocationId',
-] as const;
+const LOCATION_FIELDS = ['defaultFgLocationId'] as const;
 const isLocationField = (field: string): field is (typeof LOCATION_FIELDS)[number] =>
   (LOCATION_FIELDS as readonly string[]).includes(field);
 const PLAN_FIELDS = ['plannedStartAtLocal', 'plannedEndAtLocal', 'priorityNo'] as const;
@@ -165,7 +164,134 @@ const RecommendationLinks = ({
   );
 };
 
+/** 표의 한 줄로 그릴 때 줄 앞쪽에 쓰는 값과 줄 고르기(시안 B · 사용자 결정 2026-11-27). */
+export interface AssignRowInfo {
+  workOrderNo: string;
+  operationName: string;
+  planDate: string;
+  quantity: string;
+  lineName?: string;
+  selected: boolean;
+  /** 읽기 전용(배포 뒤)에서 점검 대신 보일 상태 칩. */
+  status?: ReactNode;
+  columnCount: number;
+  onFocus: () => void;
+}
+
+/** 표 아래 단추가 줄마다 부르는 동작. */
+export interface AssignRowHandle {
+  save: () => Promise<void>;
+  reset: () => void;
+  check: () => void;
+}
+
+/**
+ * 표 칸의 일시 — 「11-27 08:00」 한 칸으로 보이고, 누르면 날짜 · 시각을 고르는 판이 열린다(사용자 지시 2026-11-27).
+ * 판은 `body` 에 고정 위치로 그린다 — 표가 넘치는 칸을 자르기 때문이다. 표 안의 다른 곳을 누르거나 Esc 로 닫는다.
+ * 달력 · 시각 목록은 판 밖(`body`)에 펼쳐질 수 있어, 「판 밖을 눌렀다」가 아니라 「화면 본문을 눌렀다」로 닫는다.
+ */
+const DateTimeCell = ({
+  label,
+  value,
+  disabled,
+  invalid,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  disabled: boolean;
+  invalid: boolean;
+  onChange: (value: string) => void;
+}) => {
+  const [open, setOpen] = useState(false);
+  const [at, setAt] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const onPointerDown = (event: PointerEvent): void => {
+      if (!(event.target instanceof Element)) return;
+      if (panelRef.current?.contains(event.target) || buttonRef.current?.contains(event.target))
+        return;
+      if (event.target.closest('.process-page, .action-bar') !== null) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') return;
+      setOpen(false);
+      buttonRef.current?.focus();
+    };
+    const onScroll = (event: Event): void => {
+      if (event.target instanceof Node && panelRef.current?.contains(event.target)) return;
+      setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    window.addEventListener('scroll', onScroll, true);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('scroll', onScroll, true);
+    };
+  }, [open]);
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        className="erp-wo-assign-datetime"
+        aria-label={label}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-invalid={invalid || undefined}
+        disabled={disabled}
+        onClick={() => {
+          const rect = buttonRef.current?.getBoundingClientRect();
+          if (rect !== undefined)
+            setAt({
+              top: rect.bottom + 4,
+              left: Math.max(8, Math.min(rect.left, window.innerWidth - 320)),
+            });
+          setOpen((current) => !current);
+        }}
+      >
+        {value === '' ? (
+          <span className="erp-wo-assign-datetime-empty">선택</span>
+        ) : (
+          dateTimeText(value).slice(5)
+        )}
+      </button>
+      {open &&
+        createPortal(
+          <div
+            ref={panelRef}
+            className="erp-wo-assign-datetime-panel"
+            role="dialog"
+            aria-label={label}
+            style={{ top: at.top, left: at.left }}
+          >
+            <DateTimeField
+              minDate={plantToday()}
+              timePicker
+              size="md"
+              label={label}
+              value={value}
+              invalid={invalid}
+              onChange={onChange}
+            />
+            <Button size="sm" variant="outlined" onClick={() => setOpen(false)}>
+              {messages.common.close}
+            </Button>
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+};
+
 interface EditorSessionProps {
+  /** 주면 편집 영역 대신 표의 한 줄(`<tr>`)로 그린다. 편집 로직은 같다. */
+  row?: AssignRowInfo;
+  onRegister?: (handle: AssignRowHandle | null) => void;
   readOnly?: boolean;
   actionTargetId?: string;
   summary?: string;
@@ -181,6 +307,8 @@ interface EditorSessionProps {
 }
 
 const EditorSession = ({
+  row,
+  onRegister,
   readOnly = false,
   actionTargetId,
   summary,
@@ -353,17 +481,19 @@ const EditorSession = ({
   };
   const pick = (
     field: IdField,
-    row: ReferenceRow,
+    picked: ReferenceRow,
     extra: Partial<WorkOrderAssignmentDraft> = {},
   ) => {
     setLabels((current) => ({
       ...current,
       /* 위치는 「코드 · 별칭」(#267) — 고르기 표의 이름 칸이 이미 별칭 → 이름이다(`reference-sources.ts`). */
-      [`${field}:${String(row.id)}`]: isLocationField(field)
-        ? locationOptionLabel({ locationCode: row.code, locationName: row.name })
-        : named(row.name, row.code),
+      [`${field}:${String(picked.id)}`]: isLocationField(field)
+        ? locationOptionLabel({ locationCode: picked.code, locationName: picked.name })
+        : field === 'productionLineId' && row !== undefined
+          ? picked.name
+          : named(picked.name, picked.code),
     }));
-    patch({ ...extra, [field]: String(row.id) });
+    patch({ ...extra, [field]: String(picked.id) });
   };
 
   const validationResult = validateWorkOrderAssignmentDraft(draft);
@@ -387,7 +517,12 @@ const EditorSession = ({
     switch (field) {
       case 'productionLineId': {
         const line = lineOf(value);
-        return line === undefined ? '' : named(line.lineName, line.lineCode);
+        /* 표에서는 생산 라인을 이름만 쓴다 — 코드는 붙이지 않는다(사용자 지시 2026-11-27). */
+        return line === undefined
+          ? ''
+          : row !== undefined
+            ? line.lineName
+            : named(line.lineName, line.lineCode);
       }
       case 'plannedEquipmentId':
         return equipment.data === undefined
@@ -443,6 +578,7 @@ const EditorSession = ({
     !resourceRequired(field) ? null : (
       <ReferenceField
         wrapValue
+        hideLabel={row !== undefined}
         renderPicker={
           field === 'plannedEquipmentId'
             ? (props) => (
@@ -489,6 +625,63 @@ const EditorSession = ({
       >
         {errorLine(field)}
       </ReferenceField>
+    );
+
+  /* 표의 선택 칸이 받아 온 행 — 고른 값의 이름과 설비의 소속 라인을 여기서 찾는다. */
+  const fetchedRows = useRef(new Map<string, ReferenceRow>());
+  const optionLabel = (field: IdField, found: ReferenceRow): string =>
+    isLocationField(field)
+      ? locationOptionLabel({ locationCode: found.code, locationName: found.name })
+      : field === 'productionLineId'
+        ? found.name
+        : named(found.name, found.code);
+  /**
+   * 표 칸의 선택 — 펼치면 검색창이 있고, 찾기 창과 같은 조회를 쓴다(사용자 지시 2026-11-27).
+   * 필수가 아닌 칸은 맨 앞 「미지정」으로 비운다.
+   */
+  const selectCell = (
+    field: IdField,
+    label: string,
+    source: ReturnType<typeof useLineSource>,
+    onPickRow?: (found: ReferenceRow) => void,
+  ) =>
+    !resourceRequired(field) ? null : (
+      <PagedSelect
+        size="sm"
+        aria-label={label}
+        aria-required={required(field) || undefined}
+        aria-describedby={errorOf(field) === undefined ? undefined : `${errorIdPrefix}-${field}`}
+        placeholder="선택"
+        queryKey={['production-order', 'assign-row-select', field, ...(source?.key ?? [])]}
+        fetchPage={async (query, page) => {
+          if (source === null) return { options: [], total: 0 };
+          const found = await source.search(query, page, '');
+          found.items.forEach((item) =>
+            fetchedRows.current.set(`${field}:${String(item.id)}`, item),
+          );
+          return {
+            options: found.items.map((item) => ({
+              value: String(item.id),
+              label: optionLabel(field, item),
+            })),
+            total: found.total,
+          };
+        }}
+        leadingOptions={required(field) ? undefined : [{ value: '', label: t.fold.unset }]}
+        value={draft[field] === '' ? null : draft[field]}
+        selectedOption={draft[field] === '' ? null : { value: draft[field], label: labelOf(field) }}
+        disabled={saving || readOnly || source === null}
+        invalid={errorOf(field) !== undefined}
+        onChange={(value) => {
+          if (value === '') {
+            patch({ [field]: '' });
+            return;
+          }
+          const found = fetchedRows.current.get(`${field}:${value}`);
+          if (found === undefined) patch({ [field]: value });
+          else (onPickRow ?? ((picked: ReferenceRow) => pick(field, picked)))(found);
+        }}
+      />
     );
 
   const report = validation.data;
@@ -590,6 +783,52 @@ const EditorSession = ({
     { label: t.fold.priority, value: draft.priorityNo },
   ];
 
+  const save = async (): Promise<void> => {
+    setRevealErrors(true);
+    setOccupancyError('');
+    const body = toWorkOrderAssignmentUpdate(draft);
+    if (readOnly || body === null) return;
+    if (draft.plannedEquipmentId !== '') {
+      setCheckingOccupancy(true);
+      const latest = await occupancy.refetch();
+      setCheckingOccupancy(false);
+      if (latest.isError || !latest.data) {
+        setOccupancyError('설비 배정 내역을 조회하지 못했습니다. 다시 확인하세요.');
+        return;
+      }
+      const status = allocationStatus(
+        latest.data,
+        draft.plannedStartAtLocal,
+        draft.plannedEndAtLocal,
+      );
+      if (status !== '중복 없음') {
+        setOccupancyError(status);
+        return;
+      }
+    }
+    update.write(body);
+  };
+  const reset = (): void => {
+    setDraft(baseline);
+    setRevealErrors(false);
+    setOccupancyError('');
+    update.reset();
+  };
+  /* 표 아래 단추가 부를 동작을 올려 둔다 — 늘 지금 초안으로 동작하게 참조로 감싼다. */
+  const handle = useRef<AssignRowHandle>({ save, reset, check: () => undefined });
+  handle.current = { save, reset, check: () => void validation.refetch() };
+  useEffect(() => {
+    if (onRegister === undefined) return;
+    onRegister({
+      save: () => handle.current.save(),
+      reset: () => handle.current.reset(),
+      check: () => handle.current.check(),
+    });
+    return () => onRegister(null);
+    // 줄이 서고 사라질 때 한 번씩만 올린다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const saveAction = (
     <Button
       size="sm"
@@ -608,35 +847,188 @@ const EditorSession = ({
             ) !== '중복 없음'))
       }
       aria-describedby={!dirty ? `${headingId}-save-note` : undefined}
-      onClick={async () => {
-        setRevealErrors(true);
-        setOccupancyError('');
-        const body = toWorkOrderAssignmentUpdate(draft);
-        if (readOnly || body === null) return;
-        if (draft.plannedEquipmentId !== '') {
-          setCheckingOccupancy(true);
-          const latest = await occupancy.refetch();
-          setCheckingOccupancy(false);
-          if (latest.isError || !latest.data) {
-            setOccupancyError('설비 배정 내역을 조회하지 못했습니다. 다시 확인하세요.');
-            return;
-          }
-          const status = allocationStatus(
-            latest.data,
-            draft.plannedStartAtLocal,
-            draft.plannedEndAtLocal,
-          );
-          if (status !== '중복 없음') {
-            setOccupancyError(status);
-            return;
-          }
-        }
-        update.write(body);
-      }}
+      onClick={() => void save()}
     >
       {t.actions.save}
     </Button>
   );
+
+  if (row !== undefined) {
+    const warehouseText = workOrder.fgWarehouseDiffersFromErp
+      ? `${appliedLocation?.warehouseName ?? workOrder.fgWarehouseCode} (${workOrder.fgWarehouseCode})`
+      : erpStorage?.erpStorageLocationCode
+        ? erpStorage.erpStorageWarehouse
+          ? `${erpStorage.erpStorageWarehouse.name} (${erpStorage.erpStorageWarehouse.code})`
+          : `${erpStorage.erpStorageLocationCode} · 창고 연결 확인 필요`
+        : (locations.items.find((item) => String(item.locationId) === draft.defaultFgLocationId)
+            ?.warehouseName ?? t.fold.unset);
+    const arrivalMissing =
+      erpStorage?.erpStorageWarehouse !== undefined &&
+      erpStorage.erpStorageWarehouse !== null &&
+      (arrival.isError || (arrival.isSuccess && !arrival.data.location));
+    const equipmentCell = selectCell(
+      'plannedEquipmentId',
+      t.fields.plannedEquipmentId,
+      equipmentSource,
+      (picked) =>
+        pick(
+          'plannedEquipmentId',
+          picked,
+          picked.parentId === null ||
+            picked.parentId === undefined ||
+            String(picked.parentId) === draft.productionLineId
+            ? {}
+            : { productionLineId: String(picked.parentId) },
+        ),
+    );
+    const moldCell = selectCell('plannedMoldId', t.fields.plannedMoldId, moldSource);
+    const recommend = (field: 'plannedEquipmentId' | 'plannedMoldId', label: string) => (
+      <RecommendationLinks
+        label={label}
+        chips={chips[field]}
+        value={draft[field]}
+        disabled={saving || readOnly}
+        onPick={(chip) => {
+          setLabels((current) => ({ ...current, [`${field}:${chip.value}`]: chip.label }));
+          patch(
+            chip.productionLineId === null
+              ? { [field]: chip.value }
+              : { productionLineId: chip.productionLineId, [field]: chip.value },
+          );
+        }}
+      />
+    );
+    /* 줄 아래에 붙는 알림 — 저장 오류, 설비 중복, 점검이 막은 까닭. 고른 줄이면 설비 배정 내역도 함께. */
+    const notes =
+      update.error !== null && update.error !== undefined
+        ? true
+        : occupancyError !== '' || plan.isError || operations.isError || findingText !== null;
+    const showOccupancy =
+      row.selected && resourceRequired('plannedEquipmentId') && draft.plannedEquipmentId !== '';
+    return (
+      <>
+        <tr
+          className="erp-wo-assign-row"
+          data-selected={row.selected || undefined}
+          data-dirty={dirty || undefined}
+          aria-label={`${row.workOrderNo} ${row.operationName}`}
+          onFocusCapture={row.onFocus}
+          onClick={row.onFocus}
+        >
+          <th scope="row" className="nowrap-cell">
+            {row.workOrderNo}
+          </th>
+          {/* 공정명은 자르지 않는다 — 칸 폭을 넘으면 줄을 바꾼다. */}
+          <td className="erp-wo-assign-operation">{row.operationName}</td>
+          <td className="nowrap-cell erp-wo-assign-qty">{row.quantity}</td>
+          <td title={labelOf('productionLineId') || undefined}>
+            {selectCell('productionLineId', t.fields.productionLineId, lineSource)}
+            {errorLine('productionLineId')}
+          </td>
+          <td>
+            {equipmentCell === null ? (
+              <span className="erp-wo-assign-none">—</span>
+            ) : (
+              <div className="erp-wo-assign-cell">
+                {equipmentCell}
+                {idOrNull(draft.plannedEquipmentId) !== null && (
+                  <EquipmentStatus
+                    id={Number(draft.plannedEquipmentId)}
+                    selfId={workOrder.workOrderId}
+                    start={draft.plannedStartAtLocal}
+                    end={draft.plannedEndAtLocal}
+                  />
+                )}
+                {recommend('plannedEquipmentId', t.fields.plannedEquipmentId)}
+              </div>
+            )}
+          </td>
+          <td>
+            {moldCell === null ? (
+              <span className="erp-wo-assign-none">—</span>
+            ) : (
+              <div className="erp-wo-assign-cell">
+                {moldCell}
+                {recommend('plannedMoldId', t.fields.plannedMoldId)}
+              </div>
+            )}
+          </td>
+          {/*
+           * 입고 위치는 창고까지만 보인다(사용자 지시 2026-11-27) — 위치는 창고의 입고 위치나 라인 기본 위치로 채워지고,
+           * 칸에 올리면 채워진 위치가 나타난다. 채워지지 않았을 때만 위치를 고르는 선택 칸을 연다.
+           */}
+          <td
+            className="nowrap-cell"
+            title={draft.defaultFgLocationId === '' ? undefined : labelOf('defaultFgLocationId')}
+          >
+            {draft.defaultFgLocationId !== '' || workOrder.fgWarehouseDiffersFromErp
+              ? warehouseText
+              : selectCell('defaultFgLocationId', '입고 위치', fgSource)}
+            {errorLine('defaultFgLocationId')}
+          </td>
+          <td>
+            <DateTimeCell
+              label={t.fields.plannedStartAtLocal}
+              value={draft.plannedStartAtLocal}
+              disabled={saving || readOnly}
+              invalid={errorOf('plannedStartAtLocal') !== undefined}
+              onChange={(value) => patch({ plannedStartAtLocal: value })}
+            />
+          </td>
+          <td>
+            <DateTimeCell
+              label={t.fields.plannedEndAtLocal}
+              value={draft.plannedEndAtLocal}
+              disabled={saving || readOnly}
+              invalid={errorOf('plannedEndAtLocal') !== undefined}
+              onChange={(value) => patch({ plannedEndAtLocal: value })}
+            />
+            {errorLine('plannedEndAtLocal')}
+          </td>
+          <td className="nowrap-cell">
+            {row.status ?? (
+              <Chip variant="status" size="sm" status={checkTone}>
+                {checkLabel}
+              </Chip>
+            )}
+          </td>
+        </tr>
+        {(notes || showOccupancy || arrivalMissing || workOrder.fgWarehouseDiffersFromErp) && (
+          <tr className="erp-wo-assign-row-notes" data-selected={row.selected || undefined}>
+            <td colSpan={row.columnCount}>
+              <div className="erp-wo-assign-notes">
+                {findingText !== null && (
+                  <p className="assign-check">
+                    <span className="assign-check-text">{findingText}</span>
+                  </p>
+                )}
+                {workOrder.fgWarehouseDiffersFromErp && (
+                  <p>ERP 입고 창고와 다름: {workOrder.erpStorageLocationCode}</p>
+                )}
+                {arrivalMissing && <p role="alert">입고 위치 기준정보 확인 필요</p>}
+                <SaveErrorBanner error={update.error} />
+                {occupancyError && <AlertBanner variant="error" title={occupancyError} />}
+                {(plan.isError || operations.isError) && (
+                  <AlertBanner variant="error">
+                    공정 필수 배정 항목을 조회하지 못했습니다. 다시 조회하세요.
+                  </AlertBanner>
+                )}
+                {showOccupancy && (
+                  <EquipmentOccupancy
+                    equipmentId={idOrNull(draft.plannedEquipmentId)}
+                    selfId={workOrder.workOrderId}
+                    start={draft.plannedStartAtLocal}
+                    end={draft.plannedEndAtLocal}
+                    label={labelOf('plannedEquipmentId')}
+                  />
+                )}
+              </div>
+            </td>
+          </tr>
+        )}
+      </>
+    );
+  }
 
   return (
     <section className="assign-editor" aria-labelledby={headingId}>
@@ -657,11 +1049,7 @@ const EditorSession = ({
             size="sm"
             variant="outlined"
             disabled={readOnly || !dirty || saving}
-            onClick={() => {
-              setDraft(baseline);
-              setRevealErrors(false);
-              update.reset();
-            }}
+            onClick={reset}
           >
             {t.actions.reset}
           </Button>
@@ -822,6 +1210,8 @@ const EditorSession = ({
 };
 
 export interface AssignEditorProps {
+  row?: AssignRowInfo;
+  onRegister?: (handle: AssignRowHandle | null) => void;
   readOnly?: boolean;
   actionTargetId?: string;
   summary?: string;
@@ -836,6 +1226,8 @@ export interface AssignEditorProps {
 }
 
 export const AssignEditor = ({
+  row,
+  onRegister,
   readOnly = false,
   actionTargetId,
   summary,
@@ -848,6 +1240,27 @@ export const AssignEditor = ({
   onSaved,
 }: AssignEditorProps) => {
   const detail = useWorkOrderDetail(workOrderId);
+  if (row !== undefined && (detail.isPending || detail.data === undefined)) {
+    return (
+      <tr className="erp-wo-assign-row" aria-label={`${row.workOrderNo} ${row.operationName}`}>
+        <th scope="row" className="nowrap-cell">
+          {row.workOrderNo}
+        </th>
+        <td colSpan={row.columnCount - 1}>
+          {detail.isPending ? (
+            <SkeletonText lines={1} />
+          ) : (
+            <span className="erp-wo-assign-load-failed">
+              {t.loadFailed}{' '}
+              <Button size="sm" variant="outlined" onClick={() => void detail.refetch()}>
+                {messages.common.retry}
+              </Button>
+            </span>
+          )}
+        </td>
+      </tr>
+    );
+  }
   if (detail.isPending) return <SkeletonText lines={6} />;
   if (detail.data === undefined) {
     return (
@@ -864,6 +1277,8 @@ export const AssignEditor = ({
   }
   return (
     <EditorSession
+      row={row}
+      onRegister={onRegister}
       readOnly={readOnly}
       actionTargetId={actionTargetId}
       summary={summary}

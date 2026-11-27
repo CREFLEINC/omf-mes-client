@@ -49,6 +49,33 @@ export const ReleaseInformationTable = ({
   );
 };
 
+/**
+ * 이름 · 값 표 — 줄마다 칸 수를 정한다. 짧은 값은 한 줄에 둘씩, 긴 값(BOM · Routing)은 한 줄을 통째로 써서
+ * 값이 두세 줄로 꺾이지 않게 한다.
+ */
+export const ReleaseFactGrid = ({
+  lines,
+  label,
+}: {
+  lines: readonly (readonly (readonly ReactNode[])[])[];
+  label: string;
+}) => (
+  <table className="erp-release-information-table is-paired" aria-label={label}>
+    <tbody>
+      {lines.map((line, at) => (
+        <tr key={at}>
+          {line.map(([name, value]) => (
+            <Fragment key={String(name)}>
+              <th scope="row">{name}</th>
+              <td colSpan={line.length === 1 ? 3 : undefined}>{value}</td>
+            </Fragment>
+          ))}
+        </tr>
+      ))}
+    </tbody>
+  </table>
+);
+
 export interface ReleaseReviewPlan extends ProductionPlanFact {
   revisionContent?: { bom?: ReactNode; routing?: ReactNode };
   bomLabel: string;
@@ -72,19 +99,22 @@ const name = (id: number | null, value: string | undefined, pending: boolean, fa
     ? '미지정'
     : value || `${failed ? '명칭 조회 실패' : pending ? '조회 중' : '명칭 확인 필요'} (ID ${id})`;
 
-export const AssignmentFacts = ({
-  fact,
-  equipmentRequired,
-  moldRequired,
-  plantId,
-  lineNameOf,
-}: {
+interface AssignmentFactsProps {
   fact: WorkOrderFact;
   equipmentRequired: boolean;
   moldRequired: boolean;
   plantId: number | null;
   lineNameOf?: Props['lineNameOf'];
-}) => {
+}
+
+/** 4M 배정 값(이름 · 값). 표로도 쓰고, 배포 확인의 접힌 줄 요약으로도 쓴다. */
+export const useAssignmentValues = ({
+  fact,
+  equipmentRequired,
+  moldRequired,
+  plantId,
+  lineNameOf,
+}: AssignmentFactsProps): string[][] => {
   const equipment = useWorkOrderEquipment(equipmentRequired ? fact.plannedEquipmentId : null);
   const mold = useWorkOrderMold(moldRequired ? fact.plannedMoldId : null);
   const locations = useWorkOrderLocations(fact.defaultFgLocationId === null ? null : plantId);
@@ -148,8 +178,15 @@ export const AssignmentFacts = ({
       ),
     ],
   ];
-  return <ReleaseInformationTable rows={values} label="4M 배정 정보" />;
+  return values;
 };
+
+export const AssignmentFacts = (props: AssignmentFactsProps) => (
+  <ReleaseInformationTable rows={useAssignmentValues(props)} label="4M 배정 정보" />
+);
+
+/** 계획 시작 · 종료 표기 — 값이 없으면 「미지정」. */
+export const releaseDateTime = (value: string | null): string => dateTime(value);
 const ReviewPlan = ({
   plan,
   lines,

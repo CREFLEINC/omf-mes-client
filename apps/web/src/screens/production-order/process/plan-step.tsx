@@ -6,6 +6,7 @@ import { WeeklyPlanCard } from './weekly-plan-card';
 import { useProductionLineReferenceQuery } from '../../production-plan/reference-queries';
 import { useWeeklyPlanContext, type WeeklyContextPlan } from './weekly-plan-context';
 import { PlanViewSwitch } from './plan-view-switch';
+import { MissingNotice } from './master-details';
 import { planQuantities } from './plan-quantities';
 import { PlanCreationTools } from './plan-creation-tools';
 import type { PlanSplitPart } from '../../production-plan/quantity-split';
@@ -75,6 +76,8 @@ export interface PlanStepProps {
   addDisabled?: boolean;
   viewMode?: 'grid' | 'week';
   layoutToolsTargetId?: string;
+  /** 편집 창에서 ERP W/O · 품목을 되풀이하지 않는다 — 화면 머리에 이미 있는 ERP W/O 하나짜리 편성. */
+  hideEditorIdentity?: boolean;
   hideTotals?: boolean;
   hideBoardTotal?: boolean;
   hideTools?: boolean;
@@ -139,6 +142,7 @@ export const PlanStep = ({
   distributionCycleTimeUnavailable,
   onDistributionDirtyChange,
   onSplit,
+  hideEditorIdentity = false,
   hideTotals = false,
   hideBoardTotal = hideTotals,
   hideTools = false,
@@ -338,6 +342,11 @@ export const PlanStep = ({
   const total = quantities.confirmed + quantities.draft;
   const draftQty = quantities.draft;
   const remaining = quantities.remaining;
+  /* 막대에서 차지하는 폭 — 계획 합계가 ERP W/O 수량을 넘으면 합계를 전체로 본다. */
+  const share = (qty: number | null | undefined) => {
+    const whole = Math.max(orderQty, total);
+    return whole > 0 ? `${String(((qty ?? 0) / whole) * 100)}%` : '0%';
+  };
   const displayQty = (qty: number | null | undefined) =>
     qty == null ? '—' : `${formatQty(qty)} ${uomLabel}`;
   const choose = (row: ProductionPlanEditorStateRow) => {
@@ -434,8 +443,14 @@ export const PlanStep = ({
     },
   ];
 
+  /* 오늘 열은 옅게 칠하고 주말(토 · 일) 열은 흐리게 한다(시안 A). */
+  const today = plantToday();
+  const dayClass = (date: string): string | undefined =>
+    date === today ? 'is-today' : week.indexOf(date) >= 5 ? 'is-weekend' : undefined;
   const outsideWeek = rows.filter((row) => !week.includes(row.draft.planDate));
   const editDisabled = disabled || selected?.confirmed === true;
+  /* 고칠 수 없는 계획(다른 ERP W/O · 확정)에는 「편집」이라고 쓰지 않는다. */
+  const editorTitle = contextPlan || selected?.confirmed ? '생산계획 상세' : ui.editor;
 
   const pastDraft = disabled
     ? undefined
@@ -448,22 +463,39 @@ export const PlanStep = ({
   return (
     <section className="erp-wo-plan-workspace" aria-label={t.heading}>
       {!hideTotals && (
-        <dl className="erp-wo-plan-totals">
-          {[
-            [ui.orderQty, orderQty],
-            [ui.confirmedQty, quantities.confirmed],
-            [ui.draftQty, draftQty],
-            [ui.remainingQty, remaining],
-          ].map(([label, qty]) => (
-            <div key={String(label)}>
-              <dt>{label}</dt>
-              <dd>{displayQty(qty as number | null | undefined)}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
-      {!hideTotals && quantities.excess > 0 && (
-        <AlertBanner variant="error">초과 수량 {displayQty(quantities.excess)}</AlertBanner>
+        /*
+         * 수량 넷을 막대 하나로 보인다(시안 A · 사용자 결정 2026-11-27) — 확정 · 미확정이 ERP W/O 수량을 얼마나 채웠는지가
+         * 먼저 보이고, 남은 미계획 수량은 경고 색이다.
+         */
+        <div className="erp-wo-plan-progress">
+          <div className="erp-wo-plan-progress-track" aria-hidden="true">
+            <span data-kind="confirmed" style={{ width: share(quantities.confirmed) }} />
+            <span data-kind="draft" style={{ width: share(draftQty) }} />
+          </div>
+          <dl className="erp-wo-plan-progress-legend">
+            {(
+              [
+                ['confirmed', ui.confirmedQty, quantities.confirmed],
+                ['draft', ui.draftQty, draftQty],
+                /* 넘치면 「미계획 0」 대신 넘친 수량을 숫자로 보인다 — 문장 경고는 아래 줄 한 곳에만 둔다. */
+                quantities.excess > 0
+                  ? (['excess', ui.excessQty, quantities.excess] as const)
+                  : (['remaining', ui.remainingQty, remaining] as const),
+                ['order', ui.orderQty, orderQty],
+              ] as const
+            ).map(([kind, label, qty]) => (
+              <div
+                key={kind}
+                data-kind={kind}
+                data-attention={kind === 'remaining' && (qty ?? 0) > 0 ? 'true' : undefined}
+                data-error={kind === 'excess' ? 'true' : undefined}
+              >
+                <dt>{label}</dt>
+                <dd>{displayQty(qty)}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
       )}
       {!hideTools && (
         <PlanCreationTools
@@ -473,6 +505,7 @@ export const PlanStep = ({
             ) : undefined
           }
           context={
+            hideTotals &&
             distributionCycleTimeSec !== undefined && (
               <CycleTimeSummary seconds={distributionCycleTimeSec} unit={uomLabel} />
             )
@@ -543,7 +576,7 @@ export const PlanStep = ({
         storageKey="omf-mes:work-planning:plan-layout"
         label="생산계획"
         toolsTargetId={layoutToolsId}
-        ratio={0.65}
+        ratio={0.75}
         className="erp-wo-plan-layout"
       >
         <section
@@ -551,9 +584,60 @@ export const PlanStep = ({
           ref={boardRef}
           aria-label={view === 'week' ? ui.week : ui.grid}
         >
-          <h2 className="section-title erp-wo-plan-board-title">
-            {view === 'week' ? ui.weekHeading : ui.gridHeading}
-          </h2>
+          {/* 주간 편성은 제목 오른쪽에 보는 주를 두고, 같은 줄 끝에 주 넘김 단추를 둔다(사용자 지시 2026-11-27). */}
+          {view === 'week' ? (
+            <div className="erp-wo-week-heading">
+              <h2 className="section-title erp-wo-plan-board-title">{ui.weekHeading}</h2>
+              {/* 보는 주 — 시작일과 끝일을 굵게 쓰고 「~」로 잇는다(사용자 지시 2026-11-27). */}
+              <span className="erp-wo-week-range">
+                <strong>{week[0]}</strong>
+                <span aria-hidden="true">~</span>
+                <span className="visually-hidden">부터</span>
+                <strong>{week.at(-1)}</strong>
+              </span>
+              <div className="erp-wo-week-actions">
+                <Button
+                  size="sm"
+                  variant="outlined"
+                  aria-pressed={showAll}
+                  disabled={plantId === null}
+                  onClick={() => {
+                    setShowAll((value) => !value);
+                    setContextSelection(null);
+                  }}
+                >
+                  전체 편성 보기
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outlined"
+                  aria-label={ui.previousWeek}
+                  onClick={() => {
+                    setAnchor(shiftPlanDate(week[0] ?? plantToday(), -7));
+                    setDayOffset(0);
+                    setContextSelection(null);
+                  }}
+                >
+                  ‹
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outlined"
+                  aria-label={ui.nextWeek}
+                  onClick={() => {
+                    setAnchor(shiftPlanDate(week[0] ?? plantToday(), 7));
+                    setDayOffset(0);
+                    setContextSelection(null);
+                  }}
+                >
+                  ›
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <h2 className="section-title erp-wo-plan-board-title">{ui.gridHeading}</h2>
+          )}
           {view === 'grid' ? (
             planGroups ? (
               <div className="erp-wo-grouped-plans">
@@ -615,7 +699,7 @@ export const PlanStep = ({
                           activeId={selected?.key}
                           rowLabel={(row) => nameOf(row)}
                           onActivate={toggle}
-                          empty={<p className="empty-line">{t.empty}</p>}
+                          empty={<MissingNotice title={t.empty} />}
                         />
                       )}
                     </section>
@@ -632,55 +716,11 @@ export const PlanStep = ({
                 activeId={selected?.key}
                 rowLabel={(row) => nameOf(row)}
                 onActivate={toggle}
-                empty={<p className="empty-line">{t.empty}</p>}
+                empty={<MissingNotice title={t.empty} />}
               />
             )
           ) : (
             <>
-              <div className="erp-wo-week-heading">
-                <span>
-                  {week[0]} — {week.at(-1)}
-                </span>
-                <div className="erp-wo-week-actions">
-                  <Button
-                    size="sm"
-                    variant="outlined"
-                    aria-pressed={showAll}
-                    disabled={plantId === null}
-                    onClick={() => {
-                      setShowAll((value) => !value);
-                      setContextSelection(null);
-                    }}
-                  >
-                    전체 편성 보기
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="outlined"
-                    aria-label={ui.previousWeek}
-                    onClick={() => {
-                      setAnchor(shiftPlanDate(week[0] ?? plantToday(), -7));
-                      setDayOffset(0);
-                      setContextSelection(null);
-                    }}
-                  >
-                    ‹
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outlined"
-                    aria-label={ui.nextWeek}
-                    onClick={() => {
-                      setAnchor(shiftPlanDate(week[0] ?? plantToday(), 7));
-                      setDayOffset(0);
-                      setContextSelection(null);
-                    }}
-                  >
-                    ›
-                  </Button>
-                </div>
-              </div>
               {compactCalendar && (
                 <div className="erp-wo-week-day-navigation">
                   <Button
@@ -693,7 +733,7 @@ export const PlanStep = ({
                     ‹
                   </Button>
                   <span>
-                    {visibleWeek[0]?.slice(5)} — {visibleWeek.at(-1)?.slice(5)}
+                    {visibleWeek[0]?.slice(5)} ~ {visibleWeek.at(-1)?.slice(5)}
                   </span>
                   <Button
                     size="sm"
@@ -745,9 +785,12 @@ export const PlanStep = ({
                   labels={[
                     t.columns.line,
                     ...visibleWeek.map((date) => (
-                      <span key={date}>
+                      <span key={date} className={dayClass(date)}>
                         {date.slice(5)}
-                        <span>{ui.weekdays[week.indexOf(date)]}</span>
+                        <span>
+                          {ui.weekdays[week.indexOf(date)]}
+                          {date === today ? ' · 오늘' : ''}
+                        </span>
                       </span>
                     )),
                   ]}
@@ -762,9 +805,14 @@ export const PlanStep = ({
                           <td
                             key={date}
                             className={
-                              dayOfGroup(group, date)?.statusCode === 'HOLIDAY'
-                                ? 'erp-wo-holiday-day'
-                                : undefined
+                              [
+                                dayOfGroup(group, date)?.statusCode === 'HOLIDAY'
+                                  ? 'erp-wo-holiday-day'
+                                  : '',
+                                dayClass(date) ?? '',
+                              ]
+                                .join(' ')
+                                .trim() || undefined
                             }
                           >
                             {dayOfGroup(group, date)?.statusCode === 'HOLIDAY' && (
@@ -837,7 +885,7 @@ export const PlanStep = ({
                 </AdjustableNativeTable>
               </div>
               {rows.length === 0 && contextRows.length === 0 && !context.isFetching && (
-                <p className="empty-line">{t.empty}</p>
+                <MissingNotice title={t.empty} />
               )}
               {outsideWeek.length > 0 && (
                 <div className="erp-wo-plan-outside">
@@ -866,12 +914,15 @@ export const PlanStep = ({
             </p>
           )}
         </section>
-        <section
-          className="pane erp-wo-plan-editor"
-          id={editorId}
-          aria-label={contextPlan ? '생산계획 상세' : ui.editor}
-        >
-          <h2 className="section-title">{contextPlan ? '생산계획 상세' : ui.editor}</h2>
+        <section className="pane erp-wo-plan-editor" id={editorId} aria-label={editorTitle}>
+          <div className="erp-wo-plan-editor-heading">
+            <h2 className="section-title">{editorTitle}</h2>
+            {!contextPlan && selected !== undefined && (
+              <Chip size="sm" variant="status" status={selected.confirmed ? 'success' : 'idle'}>
+                {selected.confirmed ? statusNameOf(selected.statusCode) : unconfirmedLabel}
+              </Chip>
+            )}
+          </div>
           {contextPlan ? (
             <>
               <div className="erp-wo-plan-editor-title">
@@ -907,10 +958,11 @@ export const PlanStep = ({
               </dl>
             </>
           ) : selected === undefined ? (
-            <p className="empty-line">{ui.selectPrompt}</p>
+            <p className="erp-wo-pick-prompt">{ui.selectPrompt}</p>
           ) : (
             <>
-              {orderContextOf ? (
+              {/* ERP W/O 하나를 편성할 때는 화면 머리에 같은 값이 있어 식별 정보를 되풀이하지 않는다. */}
+              {hideEditorIdentity ? null : orderContextOf ? (
                 orderContextOf(selected)
               ) : rowIdentityOf ? (
                 <dl className="erp-wo-context-plan-facts">
@@ -930,120 +982,142 @@ export const PlanStep = ({
                   <p className="field-note erp-wo-plan-order">{orderNameOf(selected)}</p>
                 )
               )}
-              <div className="erp-wo-plan-editor-title">
-                {selected.planNo && <span className="mono-cell">{selected.planNo}</span>}
-                <Chip size="sm" variant="status" status={selected.confirmed ? 'success' : 'idle'}>
-                  {selected.confirmed ? statusNameOf(selected.statusCode) : unconfirmedLabel}
-                </Chip>
-              </div>
-              {selected.confirmed && <p className="field-note">{ui.readonly}</p>}
-              <div className="erp-wo-plan-edit-fields">
-                {' '}
-                <div className="field-cell">
-                  <span className="field-label">
-                    <label>{t.columns.planDate}</label>
-                    <span className="required-mark" aria-hidden="true">
-                      {' *'}
-                    </span>
-                  </span>
-                  <DatePicker
-                    min={plantToday()}
-                    size="md"
-                    aria-label={t.fieldLabel(nameOf(selected), t.columns.planDate)}
-                    aria-required="true"
-                    value={selected.draft.planDate || null}
-                    invalid={errorText(selected.errors, 'planDate') !== undefined}
-                    disabled={editDisabled}
-                    onChange={(value) => onChange(selected.key, 'planDate', value)}
-                  />
-                </div>
-                <div className="field-cell">
-                  <label className="field-label" htmlFor={lineSelectId}>
-                    {t.columns.line}
-                  </label>
-                  {/*
-                   * 찾기 창 대신 검색이 되는 펼침 선택칸(사용자 지시 · #360) — 선택지는 종전 찾기 창과 같은 조회
-                   * (공장의 생산 라인 · 검색어 · 쪽), 보내는 값은 라인 번호 그대로. 맨 앞 「미지정」은 종전 지우기 단추 자리.
-                   */}
-                  <PagedSelect
-                    id={lineSelectId}
-                    size="md"
-                    aria-label={
-                      selected.planNo
-                        ? t.fieldLabel(selected.planNo, t.columns.line)
-                        : t.columns.line
-                    }
-                    placeholder={`${josa(t.columns.line, '을/를')} 선택하세요`}
-                    queryKey={['production-order', 'plan-line-select', plantId]}
-                    fetchPage={async (query, page) => {
-                      if (lineSource === null) return { options: [], total: 0 };
-                      const found = await lineSource.search(query, page, '');
-                      return {
-                        options: found.items.map((line) => ({
-                          value: String(line.id),
-                          label: named(line.name, line.code),
-                        })),
-                        total: found.total,
-                      };
-                    }}
-                    leadingOptions={[{ value: '', label: ui.unassigned }]}
-                    value={
-                      selected.draft.plannedLineId === '' ? null : selected.draft.plannedLineId
-                    }
-                    selectedOption={
-                      selected.draft.plannedLineId === ''
-                        ? null
-                        : {
-                            value: selected.draft.plannedLineId,
-                            label: lineName(selected.draft.plannedLineId),
-                          }
-                    }
-                    disabled={editDisabled || lineSource === null}
-                    invalid={errorText(selected.errors, 'plannedLineId') !== undefined}
-                    onChange={(value) => onChange(selected.key, 'plannedLineId', value)}
-                  />
-                </div>
-                <TextField
-                  containerClassName="erp-wo-plan-quantity-field"
-                  size="md"
-                  label={t.columns.plannedQty}
-                  required
-                  aria-label={t.fieldLabel(nameOf(selected), t.columns.plannedQty)}
-                  inputMode="decimal"
-                  helperText={rowUomLabelOf ? `단위 ${unitOf(selected)}` : undefined}
-                  value={selected.draft.plannedQty}
-                  error={errorText(selected.errors, 'plannedQty')}
-                  disabled={editDisabled}
-                  onChange={(event) => onChange(selected.key, 'plannedQty', event.target.value)}
-                />
-              </div>
-              {workingDays.isError ? (
-                <p className="erp-wo-planning-day-notice" role="status">
-                  근무일 정보를 조회하지 못했습니다. 날짜 입력은 유지됩니다.
-                </p>
+              {selected.confirmed ? (
+                /* 확정 계획은 고칠 수 없어 입력 칸 대신 값 목록으로 보인다(사용자 결정 2026-11-27). */
+                <>
+                  <dl className="erp-wo-plan-facts">
+                    {[
+                      ...(selected.planNo ? [[t.columns.planNo, selected.planNo]] : []),
+                      [t.columns.planDate, selected.draft.planDate],
+                      [
+                        t.columns.plannedQty,
+                        `${formatQty(Number(selected.draft.plannedQty) || 0)} ${unitOf(selected)}`,
+                      ],
+                      [t.columns.line, lineName(selected.draft.plannedLineId)],
+                    ].map(([label, value]) => (
+                      <div key={label}>
+                        <dt>{label}</dt>
+                        <dd>{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </>
               ) : (
-                <PlanningDayNotice
-                  day={
-                    plantOf(selected)
-                      ? workingDays.data?.get(
-                          planningDayKey(
-                            plantOf(selected)!,
-                            selected.draft.plannedLineId
-                              ? Number(selected.draft.plannedLineId)
-                              : null,
-                            selected.draft.planDate,
-                          ),
-                        )
-                      : undefined
-                  }
-                />
+                <>
+                  {selected.planNo && (
+                    <div className="erp-wo-plan-editor-title">
+                      <span className="mono-cell">{selected.planNo}</span>
+                    </div>
+                  )}
+                  {/* 입력 순서는 계획일 → 생산량 → 생산 라인. 근무일 안내는 계획일 바로 아래에 둔다. */}
+                  <div className="erp-wo-plan-edit-fields">
+                    <div className="field-cell">
+                      <span className="field-label">
+                        <label>{t.columns.planDate}</label>
+                        <span className="required-mark" aria-hidden="true">
+                          {' *'}
+                        </span>
+                      </span>
+                      <DatePicker
+                        min={plantToday()}
+                        size="md"
+                        aria-label={t.fieldLabel(nameOf(selected), t.columns.planDate)}
+                        aria-required="true"
+                        value={selected.draft.planDate || null}
+                        invalid={errorText(selected.errors, 'planDate') !== undefined}
+                        disabled={editDisabled}
+                        onChange={(value) => onChange(selected.key, 'planDate', value)}
+                      />
+                      {workingDays.isError ? (
+                        <p className="erp-wo-planning-day-notice" role="status">
+                          근무일 정보를 조회하지 못했습니다. 날짜 입력은 유지됩니다.
+                        </p>
+                      ) : (
+                        <PlanningDayNotice
+                          day={
+                            plantOf(selected)
+                              ? workingDays.data?.get(
+                                  planningDayKey(
+                                    plantOf(selected)!,
+                                    selected.draft.plannedLineId
+                                      ? Number(selected.draft.plannedLineId)
+                                      : null,
+                                    selected.draft.planDate,
+                                  ),
+                                )
+                              : undefined
+                          }
+                        />
+                      )}
+                    </div>
+                    <TextField
+                      containerClassName="erp-wo-plan-quantity-field"
+                      size="md"
+                      label={t.columns.plannedQty}
+                      required
+                      aria-label={t.fieldLabel(nameOf(selected), t.columns.plannedQty)}
+                      inputMode="decimal"
+                      trailingIcon={<span className="erp-wo-unit-suffix">{unitOf(selected)}</span>}
+                      value={selected.draft.plannedQty}
+                      error={errorText(selected.errors, 'plannedQty')}
+                      disabled={editDisabled}
+                      onChange={(event) => onChange(selected.key, 'plannedQty', event.target.value)}
+                    />
+                    <div className="field-cell">
+                      <label className="field-label" htmlFor={lineSelectId}>
+                        {t.columns.line}
+                      </label>
+                      {/*
+                       * 찾기 창 대신 검색이 되는 펼침 선택칸(사용자 지시 · #360) — 선택지는 종전 찾기 창과 같은 조회
+                       * (공장의 생산 라인 · 검색어 · 쪽), 보내는 값은 라인 번호 그대로. 맨 앞 「미지정」은 종전 지우기 단추 자리.
+                       */}
+                      <PagedSelect
+                        id={lineSelectId}
+                        size="md"
+                        aria-label={
+                          selected.planNo
+                            ? t.fieldLabel(selected.planNo, t.columns.line)
+                            : t.columns.line
+                        }
+                        placeholder={`${josa(t.columns.line, '을/를')} 선택하세요`}
+                        queryKey={['production-order', 'plan-line-select', plantId]}
+                        fetchPage={async (query, page) => {
+                          if (lineSource === null) return { options: [], total: 0 };
+                          const found = await lineSource.search(query, page, '');
+                          return {
+                            options: found.items.map((line) => ({
+                              value: String(line.id),
+                              label: named(line.name, line.code),
+                            })),
+                            total: found.total,
+                          };
+                        }}
+                        leadingOptions={[{ value: '', label: ui.unassigned }]}
+                        value={
+                          selected.draft.plannedLineId === '' ? null : selected.draft.plannedLineId
+                        }
+                        selectedOption={
+                          selected.draft.plannedLineId === ''
+                            ? null
+                            : {
+                                value: selected.draft.plannedLineId,
+                                label: lineName(selected.draft.plannedLineId),
+                              }
+                        }
+                        disabled={editDisabled || lineSource === null}
+                        invalid={errorText(selected.errors, 'plannedLineId') !== undefined}
+                        onChange={(value) => onChange(selected.key, 'plannedLineId', value)}
+                      />
+                    </div>
+                  </div>
+                </>
               )}
               {!selected.confirmed && (
                 <div className="erp-wo-plan-editor-actions">
                   {onSplit && (
                     <Button
                       size="md"
-                      variant="tonal"
+                      variant="outlined"
                       disabled={editDisabled || selected.isPending}
                       onClick={() => setSplitOpen(true)}
                     >
@@ -1051,7 +1125,7 @@ export const PlanStep = ({
                     </Button>
                   )}
                   <Button
-                    variant="outlined"
+                    variant="text"
                     size="md"
                     aria-label={t.remove(nameOf(selected))}
                     disabled={disabled || selected.isPending}

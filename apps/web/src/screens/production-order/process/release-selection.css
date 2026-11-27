@@ -5,12 +5,13 @@
   white-space: nowrap;
   padding-inline: 0;
 }
-.erp-wo-release-selection-table .selectable-table tbody > tr.is-active > td {
-  background: var(--secondary-container);
-  color: var(--on-secondary-container);
+/* 고른 줄은 4M 배정 표와 같은 파랑이다 — 두 단계가 같은 작업지시 목록을 이어 보인다. */
+.erp-wo-release-selection-table .selectable-table tbody > tr.is-active > td,
+.erp-wo-release-selection-table .selectable-table tbody > tr.is-active:hover > td {
+  background: var(--semantic-info-container);
 }
 .erp-wo-release-selection-table .selectable-table tbody > tr.is-active > td:first-child {
-  box-shadow: inset 3px 0 0 var(--secondary);
+  box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 .erp-release-information-table {
   width: 100%;
