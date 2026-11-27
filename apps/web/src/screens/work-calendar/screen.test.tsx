@@ -402,14 +402,107 @@ describe('W-05-09 작업 캘린더 — 등록·수정', () => {
     expect(within(formDialog()).getByRole('textbox', { name: /캘린더 코드/ })).toHaveValue('CAL-A');
   });
 
-  it('캘린더 등록을 누르면 빈 창이 열린다', async () => {
+  it('캘린더 등록을 누르면 코드가 자동으로 채워진 창이 열린다', async () => {
     const { user } = renderScreen();
 
     await screen.findByRole('button', { name: 'CAL-A' });
     await user.click(within(listPane()).getByRole('button', { name: t.actions.addCalendar }));
     await screen.findByRole('dialog', { name: t.form.createTitle });
 
-    expect(within(formDialog()).getByRole('textbox', { name: /캘린더 코드/ })).toHaveValue('');
+    /* 공장을 모르는 계정 — 해만 쓴다. */
+    await waitFor(() => {
+      expect(within(formDialog()).getByRole('textbox', { name: /캘린더 코드/ })).toHaveValue(
+        'CAL-2026',
+      );
+    });
+    expect(
+      within(formDialog()).getByText(messages.screenPatterns.autoValue.chip),
+    ).toBeInTheDocument();
+    expect(within(formDialog()).getByRole('textbox', { name: /캘린더 이름/ })).toHaveValue('');
+  });
+
+  it('같은 코드가 이미 있으면 다음 번호를 붙이고, 사용 중지 것까지 센다', async () => {
+    const { user, sent } = renderScreen({
+      respondCalendars: (request) =>
+        new URL(request.url).searchParams.get('q') === 'CAL-2026'
+          ? jsonResponse(
+              calendarsResponse([
+                makeCalendar(7001, 'CAL-2026'),
+                makeCalendar(7002, 'CAL-2026-02', { isActive: false }),
+              ]),
+            )
+          : jsonResponse(calendarsResponse()),
+    });
+
+    await screen.findByRole('button', { name: 'CAL-A' });
+    await user.click(within(listPane()).getByRole('button', { name: t.actions.addCalendar }));
+
+    await waitFor(() => {
+      expect(within(formDialog()).getByRole('textbox', { name: /캘린더 코드/ })).toHaveValue(
+        'CAL-2026-03',
+      );
+    });
+    const scan = sent.find((url) => url.searchParams.get('q') === 'CAL-2026');
+    expect(scan?.searchParams.get('includeInactive')).toBe('true');
+  });
+
+  it('사용자가 고친 코드는 그대로 보내고 「자동」을 뗀다', async () => {
+    const { user, writes } = renderScreen();
+
+    await screen.findByRole('button', { name: 'CAL-A' });
+    await user.click(within(listPane()).getByRole('button', { name: t.actions.addCalendar }));
+    const code = within(formDialog()).getByRole('textbox', { name: /캘린더 코드/ });
+    await waitFor(() => {
+      expect(code).toHaveValue('CAL-2026');
+    });
+    await user.type(code, '-A');
+    await user.type(
+      within(formDialog()).getByRole('textbox', { name: /캘린더 이름/ }),
+      '새 캘린더',
+    );
+
+    expect(code).toHaveValue('CAL-2026-A');
+    expect(
+      within(formDialog()).queryByText(messages.screenPatterns.autoValue.chip),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.common.save }));
+    await waitFor(() => {
+      expect(writes.length).toBe(1);
+    });
+    expect(await onlyWrite(writes).json()).toEqual({
+      calendarCode: 'CAL-2026-A',
+      calendarName: '새 캘린더',
+    });
+  });
+
+  it('비운 코드는 다시 채우지 않는다', async () => {
+    const { user } = renderScreen();
+
+    await screen.findByRole('button', { name: 'CAL-A' });
+    await user.click(within(listPane()).getByRole('button', { name: t.actions.addCalendar }));
+    const code = within(formDialog()).getByRole('textbox', { name: /캘린더 코드/ });
+    await waitFor(() => {
+      expect(code).toHaveValue('CAL-2026');
+    });
+    await user.clear(code);
+    await user.type(
+      within(formDialog()).getByRole('textbox', { name: /캘린더 이름/ }),
+      '새 캘린더',
+    );
+
+    expect(code).toHaveValue('');
+  });
+
+  it('수정 창의 코드는 자동으로 바꾸지 않는다', async () => {
+    const { user } = renderScreen();
+
+    await openEditOf(user, 'CAL-A');
+
+    expect(within(formDialog()).getByRole('textbox', { name: /캘린더 코드/ })).toHaveValue('CAL-A');
+    expect(
+      within(formDialog()).queryByText(messages.screenPatterns.autoValue.chip),
+    ).not.toBeInTheDocument();
   });
 
   /*
@@ -480,7 +573,12 @@ describe('W-05-09 작업 캘린더 — 등록·수정', () => {
     await screen.findByRole('button', { name: 'CAL-A' });
     await user.click(within(listPane()).getByRole('button', { name: t.actions.addCalendar }));
     await screen.findByRole('dialog', { name: t.form.createTitle });
-    await user.type(within(formDialog()).getByRole('textbox', { name: /캘린더 코드/ }), 'CAL-Z');
+    const code = within(formDialog()).getByRole('textbox', { name: /캘린더 코드/ });
+    await waitFor(() => {
+      expect(code).toHaveValue('CAL-2026');
+    });
+    await user.clear(code);
+    await user.type(code, 'CAL-Z');
     await user.type(
       within(formDialog()).getByRole('textbox', { name: /캘린더 이름/ }),
       '새 캘린더',

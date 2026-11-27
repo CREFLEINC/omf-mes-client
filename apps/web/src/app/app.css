@@ -8750,6 +8750,23 @@ dialog.routing-history-dialog {
   border: 0;
 }
 
+/* 작업 캘린더 등록 창 — 화면이 채운 코드 그대로일 때 칸 이름 옆 「자동」(단말 코드와 같은 모양 · #360). */
+.field-label.work-calendar-code-label {
+  display: flex;
+  align-items: center;
+  column-gap: 0.2em;
+}
+
+.work-calendar-auto-mark {
+  margin-left: var(--space-2);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
 /* 작업 캘린더 설정 — 7열 월간 그리드는 전체 폭을 보존하고 보조 구획만 넓은 화면에서 나눈다. */
 .work-calendar-workspace,
 .work-calendar-pane,

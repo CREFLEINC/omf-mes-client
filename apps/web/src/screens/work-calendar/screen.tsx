@@ -4,6 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
 import { useMasterDataPlant, useOnMasterDataPlantChange } from '../../patterns/master-data-plant';
+import { usePlantsAndOaCodes } from '../../patterns/oa-access';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
@@ -15,6 +16,7 @@ import {
   SplitOrientationToggle,
   useSplitOrientation,
 } from '../../patterns/split-orientation';
+import { calendarCodeBase } from './calendar-code';
 import { CalendarFormDialog } from './calendar-form-dialog';
 import { CalendarListPane } from './calendar-list-pane';
 import { CALENDAR_FORM_FIELDS, validateCalendar } from './calendar-validation';
@@ -59,6 +61,7 @@ import {
   useEffectiveCalendar,
   useEquipmentGroupTargets,
   useEquipmentTargets,
+  useNextCalendarCode,
   useOtherPlantCalendarIds,
   usePlantApplications,
   usePlantTargets,
@@ -270,6 +273,33 @@ export const WorkCalendarScreen = ({
 
   const isCreate = dialog?.mode === 'create';
 
+  /*
+   * 등록 창의 코드를 `CAL-공장코드-연도` 로 채운다 — 고칠 수 있다(사용자 지시 2026-11-27 · omf-all-around#360).
+   * 해는 처음 보일 달의 해(화면을 여는 자리에서는 오늘의 해)다. 칸이 앞서 채운 값 그대로일 때만 바꾸고,
+   * 사용자가 고치거나 비운 코드는 덮지 않는다. 수정 창의 코드는 건드리지 않는다.
+   */
+  const plantLookup = usePlantsAndOaCodes();
+  const [autoCode, setAutoCode] = useState<string | null>(null);
+  const codePlant =
+    plantId === null
+      ? undefined
+      : plantLookup.data?.plants.find((item) => item.plantId === plantId)?.plantCode;
+  const codeSuggestion = useNextCalendarCode(
+    !isCreate || plant.isChecking || (plantId !== null && codePlant === undefined)
+      ? null
+      : calendarCodeBase(codePlant ?? null, initialMonth.year),
+  );
+  if (
+    isCreate &&
+    codeSuggestion !== null &&
+    codeSuggestion !== autoCode &&
+    values.calendarCode === (autoCode ?? '')
+  ) {
+    setAutoCode(codeSuggestion);
+    setValues({ ...values, calendarCode: codeSuggestion });
+    setLocalErrors(({ calendarCode: _filled, ...rest }) => rest);
+  }
+
   const write = useMasterWrite<CalendarFormValues, WorkCalendar>({
     request: (formValues, headers) =>
       isCreate
@@ -345,6 +375,7 @@ export const WorkCalendarScreen = ({
     resetEditing();
     setLocalErrors({});
     setValues(emptyFormValues());
+    setAutoCode(null);
     setDialog({ mode: 'create' });
   };
 
@@ -650,6 +681,7 @@ export const WorkCalendarScreen = ({
             <SaveErrorBanner error={write.error} onReload={() => void detail.refetch()} />
           }
           codeLockReason={codeLockReason}
+          codeIsAuto={isCreate && autoCode !== null && values.calendarCode === autoCode}
           applicationCount={detail.data?.applicationCount ?? null}
           isSaving={write.isSaving}
           deactivate={deactivate}

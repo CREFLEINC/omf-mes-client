@@ -16,6 +16,8 @@ export interface CalendarFormDialogProps {
   banner: ReactNode;
   /** null이면 캘린더 코드 편집 가능 */
   codeLockReason: string | null;
+  /** 코드 칸이 화면이 채운 값 그대로인가 — 칸 이름 옆에 「자동」을 단다. 등록 창에서만 참이다 */
+  codeIsAuto: boolean;
   /** 이 캘린더를 따르는 공장·설비 그룹 수. 아직 모르면 `null` */
   applicationCount: number | null;
   isSaving: boolean;
@@ -41,6 +43,7 @@ export const CalendarFormDialog = ({
   fieldErrors,
   banner,
   codeLockReason,
+  codeIsAuto,
   applicationCount,
   isSaving,
   deactivate,
@@ -49,6 +52,7 @@ export const CalendarFormDialog = ({
   onDeactivate,
 }: CalendarFormDialogProps) => {
   const countLabelId = useId();
+  const codeId = useId();
   const retireNoteId = useId();
 
   return (
@@ -71,15 +75,41 @@ export const CalendarFormDialog = ({
       <div className="form-grid dialog-scroll">
         {banner}
 
-        <CodeLockTextField
-          lockReason={codeLockReason}
-          label={t.fields.calendarCode}
-          placeholder={t.form.codePlaceholder}
-          required
-          value={values.calendarCode}
-          onChange={(event) => onChange({ calendarCode: event.target.value })}
-          error={fieldErrors.calendarCode}
-        />
+        {mode === 'create' ? (
+          /* 등록 — 화면이 채운 코드 그대로면 칸 이름 옆 「자동」(C-17). 고치면 사라진다. */
+          <div className="field-cell">
+            <span className="field-label work-calendar-code-label">
+              <label htmlFor={codeId}>{t.fields.calendarCode}</label>
+              <span className="required-mark" aria-hidden="true">
+                {' '}
+                *
+              </span>
+              {codeIsAuto && (
+                <span className="work-calendar-auto-mark">
+                  {messages.screenPatterns.autoValue.chip}
+                </span>
+              )}
+            </span>
+            <TextField
+              id={codeId}
+              placeholder={t.form.codePlaceholder}
+              required
+              value={values.calendarCode}
+              onChange={(event) => onChange({ calendarCode: event.target.value })}
+              error={fieldErrors.calendarCode}
+            />
+          </div>
+        ) : (
+          <CodeLockTextField
+            lockReason={codeLockReason}
+            label={t.fields.calendarCode}
+            placeholder={t.form.codePlaceholder}
+            required
+            value={values.calendarCode}
+            onChange={(event) => onChange({ calendarCode: event.target.value })}
+            error={fieldErrors.calendarCode}
+          />
+        )}
 
         <TextField
           label={t.fields.calendarName}

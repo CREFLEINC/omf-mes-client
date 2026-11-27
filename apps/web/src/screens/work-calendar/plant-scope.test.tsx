@@ -1,4 +1,6 @@
-import { screen } from '@testing-library/react';
+import { messages } from '@omf-mes/i18n';
+import { screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { SessionProvider } from '../../patterns/session';
@@ -63,5 +65,45 @@ describe('작업 캘린더 — 사업부의 공장 것만', () => {
     expect(await screen.findByText('CAL-MINE')).toBeInTheDocument();
     expect(screen.getByText('CAL-FREE')).toBeInTheDocument();
     expect(screen.queryByText('CAL-OTHER')).not.toBeInTheDocument();
+  });
+
+  it('등록 창의 코드는 이 공장 코드와 해로 채운다', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <SessionProvider>
+        <WorkCalendarScreen initialMonth={{ year: 2026, month: 8 }} />
+      </SessionProvider>,
+      {
+        session: { ...SYNTHETIC_SESSION, scopes: [] },
+        fetch: createStubFetch([
+          {
+            match: at('/mdm/work-calendar-applications'),
+            respond: () => jsonResponse(applicationsResponse([])),
+          },
+          {
+            match: at('/mdm/work-calendars'),
+            respond: () => jsonResponse(calendarsResponse([makeCalendar(1, 'CAL-FREE')])),
+          },
+          {
+            match: at('/mdm/code-values'),
+            respond: () =>
+              jsonResponse({ items: [{ code: 'PL-2' }], page: { page: 1, size: 100, total: 1 } }),
+          },
+          { match: at('/mdm/plants'), respond: () => jsonResponse(plantsResponse()) },
+        ]),
+      },
+    );
+
+    await screen.findByText('CAL-FREE');
+    await user.click(
+      screen.getByRole('button', { name: messages.workCalendar.actions.addCalendar }),
+    );
+    const dialog = await screen.findByRole('dialog');
+
+    await waitFor(() => {
+      expect(within(dialog).getByRole('textbox', { name: /캘린더 코드/ })).toHaveValue(
+        'CAL-PL-2-2026',
+      );
+    });
   });
 });
