@@ -10010,6 +10010,11 @@ dialog.routing-history-dialog {
   min-width: 58rem;
 }
 
+/* 0건 — 빈 안내가 넓은 표 가운데에 서서 잘리지 않게 최소 폭을 푼다(#361). */
+.wide-table.approval-inbox-table.approval-inbox-table-empty table {
+  min-width: 0;
+}
+
 .approval-inbox-table caption {
   position: absolute;
   width: 1px;
@@ -10117,10 +10122,10 @@ dialog.routing-history-dialog {
 
 .filter-bar.notification-center-filter {
   display: grid;
-  /* 기간 · 안 읽음만 · 유형 · [조회]·[초기화] · 오른쪽 끝 기준 시각 + 모두 읽음(#361). */
+  /* 기간 · 안 읽은 알림만 · 유형 · 오른쪽 끝 [조회]·[초기화] | 조회 시각 + 모두 읽음(#361). */
   grid-template-columns:
     minmax(18rem, 1.4fr) minmax(10rem, max-content) minmax(13rem, 1fr)
-    auto minmax(max-content, 1fr);
+    minmax(max-content, 1fr);
   align-items: end;
   gap: var(--space-4);
   margin-bottom: 0;
@@ -10201,8 +10206,7 @@ dialog.routing-history-dialog {
    * 상태는 맨 위 라벨로 옮겼다(#361) — 제목 · 기간 시작 · 기간 끝 · 단추 묶음. 입력칸은 흐린 문구가 다 보이는
    * 폭으로 두고 왼쪽부터 붙여 세운다(#361 사용자 지시).
    */
-  grid-template-columns: 176px repeat(2, auto) auto;
-  justify-content: start;
+  grid-template-columns: 176px repeat(2, auto) minmax(0, 1fr);
   gap: var(--space-4);
   margin-bottom: 0;
 }
@@ -10223,7 +10227,12 @@ dialog.routing-history-dialog {
   flex-wrap: wrap;
 }
 
-.notice-filter-actions .filter-actions {
+.notice-filter-more {
+  justify-self: end;
+}
+
+.notice-filter-actions .filter-actions,
+.notice-filter-more .filter-actions {
   flex-wrap: nowrap;
 }
 
@@ -23385,12 +23394,6 @@ main:has(> .oqc-inspection-panes) {
 
 .work-order-progress-session-times dd {
   margin: 0;
-}
-
-/* 결재함의 차례 안내 — 단추 줄 오른쪽. */
-.approval-inbox-turn-note {
-  margin: 0;
-  text-align: right;
 }
 
 /* 4M 변경 자재 투입(omf-all-around#63 2단계) — 작업지시 진행 상세·LOT 상태 상세가 함께 쓰는 구획. */

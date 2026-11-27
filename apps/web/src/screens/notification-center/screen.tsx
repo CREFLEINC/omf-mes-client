@@ -429,28 +429,25 @@ export const NotificationCenterScreen = () => {
             applyQuery(period, nextFilters);
           }}
         >
-          <div className="field-cell field-cell-unlabeled">
-            <div className="filter-actions">
-              <Button onClick={reload}>{messages.common.search}</Button>
-              {isFilterChanged && (
-                <Button
-                  variant="outlined"
-                  onClick={() => {
-                    applyQuery(defaultPeriod(new Date()), DEFAULT_FILTERS);
-                  }}
-                >
-                  {messages.common.reset}
-                </Button>
-              )}
-            </div>
-          </div>
-
           {/*
            * 오른쪽 묶음 — 기준 시각 + 「모두 읽음」. 대시보드의 갱신 안내 · 「갱신」과 같은 모양(#361).
            * 기준 시각은 **live 영역으로 두지 않는다** — 조건을 바꿀 때마다 낭독되는데, 조회가 끝났다는
            * 사실은 목록 · 빈 상태가 이미 알린다.
            */}
           <div className="filter-actions dashboard-filter-actions">
+            {/* [조회] → [초기화]도 오른쪽 끝 묶음에 함께 선다(#361 사용자 지시). */}
+            <Button onClick={reload}>{messages.common.search}</Button>
+            {isFilterChanged && (
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  applyQuery(defaultPeriod(new Date()), DEFAULT_FILTERS);
+                }}
+              >
+                {messages.common.reset}
+              </Button>
+            )}
+            <span className="inspection-standard-filter-divider" aria-hidden />
             {asOf !== null && <p className="dashboard-refresh-status">{t.asOf(asOf)}</p>}
             {/*
              * ⭐ **활성 판정이 전용 조회에서 온다**(`useUnreadCount`) — 지금 쪽의 안 읽음으로

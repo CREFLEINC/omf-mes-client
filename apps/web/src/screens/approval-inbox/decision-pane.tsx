@@ -115,6 +115,8 @@ export const DecisionPane = ({
             <Button variant="filled" disabled aria-describedby={turnNoteId}>
               {t.decision.approve}
             </Button>
+            {/* 잠긴 까닭은 단추 옆 ⓘ 에 올리면 보인다(#361). */}
+            <InfoTip text={t.decision.blockedNotMyTurn(t.decision.approve)} />
           </>
         ) : (
           <>
@@ -137,7 +139,7 @@ export const DecisionPane = ({
         )}
       </div>
       {isNotMyTurn && (
-        <p id={turnNoteId} className="field-note approval-inbox-turn-note">
+        <p id={turnNoteId} className="visually-hidden">
           {t.decision.blockedNotMyTurn(t.decision.approve)}
         </p>
       )}

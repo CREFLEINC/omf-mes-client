@@ -29,7 +29,7 @@ export const notificationCenter = {
      * 각각 이름을 갖는다. 어느 쪽이 정본인지는 질문 `omf-mes#165`로 설계에 올려 두었다.
      * **여기서 논증으로 정하지 않는다** — 답이 오면 컨트롤과 이 문구를 함께 고친다.
      */
-    unreadOnly: '안 읽음만',
+    unreadOnly: '안 읽은 알림만',
     eventCode: '알림 유형',
   },
   filters: {
@@ -38,13 +38,13 @@ export const notificationCenter = {
      * 유형 목록을 못 받았을 때. **목록 조회는 계속된다** — 유형으로 좁히지 못할 뿐이고,
      * 카드 제목은 원본 코드로 낙하한다. 그래서 화면 전체를 오류로 두지 않고 이 칸만 밝힌다.
      */
-    eventsFailed: '알림 유형 목록을 불러오지 못했습니다. 유형으로 좁힐 수 없습니다.',
+    eventsFailed: '알림 유형을 불러오지 못해 유형으로 찾을 수 없습니다.',
     /** 유형 선택지의 묶음 이름 — 기존 6종 뒤에 인계 작업 10종(피처 002, 확정 2026-10-28). */
-    eventGroup: '이벤트',
+    eventGroup: '일반 알림',
     handoverGroup: '인계 작업',
   },
   actions: {
-    goFirstPage: '첫 쪽으로',
+    goFirstPage: '첫 페이지로',
     markAllRead: '모두 읽음',
     /**
      * 「대상으로 이동」 **링크**의 접근 이름.
@@ -74,20 +74,20 @@ export const notificationCenter = {
    */
   actionReasons: {
     /** 판정은 **전용 조회**에서 온다 — 지금 쪽의 안 읽음으로 재면 다른 쪽에 있어도 잠긴다. */
-    nothingUnread: '모두 읽음은 안 읽은 알림이 있을 때 쓸 수 있습니다.',
-    markingAllRead: '모두 읽음은 응답을 기다리는 중입니다. 답이 오면 다시 쓸 수 있습니다.',
+    nothingUnread: '안 읽은 알림이 없습니다.',
+    markingAllRead: '모두 읽음 처리 중입니다.',
   },
   toast: {
     /** 몇 건이 바뀌었는지 **서버가 준 수**로 말한다 — 화면이 세면 다른 쪽의 건이 빠진다. */
-    allRead: (count: number): string => `${String(count)}건을 읽음으로 바꿨습니다`,
+    allRead: (count: number): string => `${String(count)}건을 읽음 처리했습니다`,
   },
   /**
    * 읽음 처리 실패. **화면 수준 배너로 낸다** — 카드마다 오류를 붙이면 목록이 오류로 뒤덮인다.
    * 실패해도 **그 카드의 읽음 표시는 바뀌지 않는다**(성공한 것만 집합에 든다).
    */
   writeError: {
-    readTitle: '읽음으로 바꾸지 못했습니다',
-    allReadTitle: '모두 읽음으로 바꾸지 못했습니다',
+    readTitle: '읽음 처리하지 못했습니다',
+    allReadTitle: '모두 읽음 처리하지 못했습니다',
     /**
      * ⭐ **쓰기는 됐는데 화면이 그 결과를 반영하지 못한 자리.**
      *
@@ -95,17 +95,17 @@ export const notificationCenter = {
      * 아무 일도 일어나지 않는다(이미 읽음이다). 사용자가 할 수 있는 일은 다시 조회해
      * 서버 값을 받는 것뿐이므로 그 길만 말한다.
      */
-    readFeedbackTitle: '읽음으로 바꿨지만 화면에 반영하지 못했습니다',
-    allReadFeedbackTitle: '모두 읽음으로 바꿨지만 화면에 반영하지 못했습니다',
-    feedbackDescription: '기간을 다시 조회하면 최신 상태가 보입니다.',
+    readFeedbackTitle: '읽음 처리는 됐지만 화면에 반영되지 않았습니다',
+    allReadFeedbackTitle: '모두 읽음 처리는 됐지만 화면에 반영되지 않았습니다',
+    feedbackDescription: '[조회]를 누르면 최신 상태로 보입니다.',
     /** 없는 알림. 목록이 낡았을 때 나므로 「기간을 다시 조회」가 실제로 푸는 조치다. */
-    notFound: '그 알림을 찾을 수 없습니다. 기간을 다시 조회해 주세요.',
+    notFound: '알림을 찾을 수 없습니다. [조회]를 눌러 목록을 새로 고치세요.',
   },
   /**
    * 기준 시각(공유계약 L-5). 이 화면은 저 혼자 갱신되지 않으므로(L-6) 지금 보이는 목록이
    * 언제의 것인지 밝히지 않으면 사용자가 실시간으로 읽는다.
    */
-  asOf: (at: string): string => `기준 ${at}`,
+  asOf: (at: string): string => `조회 시각 ${at}`,
   /**
    * 조회를 멈춘 사유. 화면이 기본값을 채우는 것은 **주소에 기간 키가 아예 없을 때뿐**이므로,
    * 여기 있는 셋은 전부 **사용자가 기간에 손을 댄 뒤**의 사태다.
@@ -123,10 +123,10 @@ export const notificationCenter = {
      * 형제 화면들의 `searchNeedsPeriod`와 같은 사태이나 문형이 다르다 — 그쪽은 「조회」 버튼의
      * 비활성 사유라 컨트롤 이름으로 시작하고, 이 화면에는 그 버튼이 없다.
      */
-    periodIncomplete: '기간은 시작일과 종료일이 모두 있어야 합니다. 비어 있는 쪽을 고르세요.',
+    periodIncomplete: '조회 시작일과 종료일을 모두 선택하세요.',
     /** 넣긴 넣었는데 날짜가 아니다 — 없는 날짜(`2026-02-31`)와 형식이 깨진 값. */
-    periodInvalid: '기간이 올바른 날짜가 아닙니다. 시작일과 종료일을 다시 고르세요.',
-    periodReversed: '기간 종료는 기간 시작보다 앞설 수 없습니다.',
+    periodInvalid: '날짜가 올바르지 않습니다. 조회 시작일과 종료일을 다시 선택하세요.',
+    periodReversed: '조회 종료일이 시작일보다 빠릅니다.',
   },
   empty: {
     blockedTitle: '이 기간으로는 조회할 수 없습니다',
@@ -135,10 +135,10 @@ export const notificationCenter = {
      * 조건이 셋으로 늘어 「기간을 넓혀라」만으로는 부족하다 — 「안 읽음만」이 켜져 있으면
      * 이미 읽은 알림이 있어도 0건이 된다. 사용자가 풀 수 있는 조건을 전부 짚는다.
      */
-    noneDescription: '기간을 넓히거나 「안 읽음만」·유형 조건을 풀고 다시 찾아보세요.',
+    noneDescription: '기간을 넓히거나 「안 읽은 알림만」·알림 유형 조건을 바꿔 보세요.',
     /** 결과는 있는데 이 쪽에는 없다 — **0건과 갈라야** 사용자가 조건을 헛되이 넓히지 않는다. */
-    beyondLastTitle: '이 쪽에는 알림이 없습니다',
-    beyondLastDescription: '앞쪽에 결과가 있습니다. 첫 쪽으로 이동하세요.',
+    beyondLastTitle: '이 페이지에는 알림이 없습니다',
+    beyondLastDescription: '앞 페이지에 결과가 있습니다. 첫 페이지로 이동하세요.',
   },
   card: {
     read: '읽음',

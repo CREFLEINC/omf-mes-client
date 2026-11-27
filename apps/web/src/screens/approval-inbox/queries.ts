@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -68,6 +68,34 @@ export const useRequestList = (query: RequestListQuery): UseQueryResult<RequestL
     queryKey: inboxKeys.list(query),
     queryFn: () => runRequest(() => client.GET('/app/approval-requests', { params: { query } })),
   });
+};
+
+/**
+ * 상태 라벨의 건수(#361 — 「결재 대기 3」). 지금 탭 · 조건(기간 · 승인 유형 · 요청번호)은 그대로 두고 상태만 바꿔
+ * 센다 — 공지 · 품질 화면의 라벨 건수와 같은 규칙. 한 줄만 받아 총 건수만 읽는다.
+ */
+export const useRequestStatusCounts = (
+  query: RequestListQuery,
+  statuses: readonly string[],
+): (number | undefined)[] => {
+  const { client } = useApiClient();
+  const { statusCode: _status, page: _page, size: _size, ...base } = query;
+
+  const results = useQueries({
+    queries: statuses.map((statusCode) => {
+      const countQuery: RequestListQuery = { ...base, statusCode, size: 1 };
+
+      return {
+        queryKey: inboxKeys.list(countQuery),
+        queryFn: () =>
+          runRequest(() =>
+            client.GET('/app/approval-requests', { params: { query: countQuery } }),
+          ).then((data) => data.page.total),
+      };
+    }),
+  });
+
+  return results.map((result) => result.data);
 };
 
 /**

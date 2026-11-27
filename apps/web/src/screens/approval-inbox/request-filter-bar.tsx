@@ -3,15 +3,10 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useState } from 'react';
 
 import { DateRangeFields } from '../../patterns/date-range-fields';
-import {
-  FilterMoreButton,
-  HiddenFilterChips,
-  hasChangedFilters,
-  useFilterMore,
-} from '../../patterns/filter-more';
+import { hasChangedFilters } from '../../patterns/filter-more';
 
 import { codeNote, codePlaceholder } from './code-options';
-import { EMPTY_FILTERS, toFilterChips, type FilterChipKey } from './filters';
+import { EMPTY_FILTERS } from './filters';
 import { SelectField } from './select-field';
 import type { InboxFilters, SelectOption } from './types';
 
@@ -25,10 +20,7 @@ export interface RequestFilterBarProps {
    * 「값이 확정되면 배열만 채운다」는 전환을 화면 수준에서 잴 수 없다.
    */
   approvalTypeOptions: SelectOption[];
-  statusOptions: SelectOption[];
   onSearch: (filters: InboxFilters) => void;
-  /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
-  onRemoveFilter: (key: FilterChipKey) => void;
   onReset: () => void;
 }
 
@@ -46,23 +38,17 @@ export interface RequestFilterBarProps {
  * 지켜 이 칸을 거친 역전은 생기지 않는다. 한쪽만 고른 구간도 조건으로 살아 있다 —
  * 그 표기는 조건 칩이 맡는다(`filters.ts`).
  *
- * **승인 유형은 고정 OpenAPI enum을 쓰고, 상태 선택지는 비어 있다.** 운영
- * 공통코드인 상태를 지어내지 않고, 왜 비어 있는지를 `aria-describedby`로 이어 붙인다.
- *
- * **보이는 칸은 셋이다**(C-6) — 승인 유형 · 상신일 · 요청번호. 상태는 탭이 이미 범위를 나누고 있어
- * 「조건 더보기」에 접는다. 접힌 상태 조건이 걸려 있으면 칩으로만 알린다. 「초기화」는 바뀐 것이 있을 때만 보인다.
+ * **칸은 셋이다** — 상신일 · 승인 유형 · 요청번호(#361 차례). 상태는 화면 맨 위 라벨이 맡는다(#361 — 「조건 더보기」의
+ * 상태 선택칸을 걷었다). 「초기화」는 바뀐 것이 있을 때만 보이고 상태는 풀지 않는다.
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 export const RequestFilterBar = ({
   appliedFilters,
   approvalTypeOptions,
-  statusOptions,
   onSearch,
-  onRemoveFilter,
   onReset,
 }: RequestFilterBarProps) => {
-  const more = useFilterMore();
   const [filters, setFilters] = useState<InboxFilters>(appliedFilters);
 
   /*
@@ -101,7 +87,7 @@ export const RequestFilterBar = ({
    * 않는다 — 그러면 「초기화」를 눌렀는데 치던 값이 그대로 남는다.
    */
   const reset = (): void => {
-    setFilters(EMPTY_FILTERS);
+    setFilters({ ...EMPTY_FILTERS, statusCode: appliedFilters.statusCode });
     onReset();
   };
 
@@ -121,24 +107,17 @@ export const RequestFilterBar = ({
   const placeholderOf = (options: SelectOption[]): string =>
     options.length === 0 ? codePlaceholder() : t.filters.all;
 
-  /* 접힌 칸(상태)의 조건만 칩으로 — 보이는 칸의 값을 칩으로 겹쳐 적지 않는다. */
-  const hiddenChips = toFilterChips(appliedFilters).filter((chip) => chip.key === 'statusCode');
-  const isChanged = hasChangedFilters(EMPTY_FILTERS, filters, appliedFilters);
+  /* 상태는 맨 위 라벨 몫이라 견주지 않는다(#361). */
+  const isChanged = hasChangedFilters(
+    { ...EMPTY_FILTERS, statusCode: appliedFilters.statusCode },
+    filters,
+    appliedFilters,
+  );
 
   return (
     <>
       <div className="filter-bar approval-inbox-filter">
-        <SelectField
-          label={t.fields.approvalTypeCode}
-          options={optionsOf(approvalTypeOptions)}
-          value={filters.approvalTypeCode}
-          note={codeNote(approvalTypeOptions)}
-          placeholder={placeholderOf(approvalTypeOptions)}
-          onChange={(value) => {
-            setFilters((prev) => ({ ...prev, approvalTypeCode: value }));
-          }}
-        />
-
+        {/* 상신 기간 → 승인 유형 → 요청번호 차례(#361 사용자 지시). */}
         <DateRangeFields
           clearable
           startLabel={t.fields.periodFrom}
@@ -148,6 +127,17 @@ export const RequestFilterBar = ({
           to={filters.to}
           onChange={(from, to) => {
             setFilters((prev) => ({ ...prev, from, to }));
+          }}
+        />
+
+        <SelectField
+          label={t.fields.approvalTypeCode}
+          options={optionsOf(approvalTypeOptions)}
+          value={filters.approvalTypeCode}
+          note={codeNote(approvalTypeOptions)}
+          placeholder={placeholderOf(approvalTypeOptions)}
+          onChange={(value) => {
+            setFilters((prev) => ({ ...prev, approvalTypeCode: value }));
           }}
         />
 
@@ -172,7 +162,8 @@ export const RequestFilterBar = ({
          * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1).
          * 조건 없이도 조회가 열려 있다 — 이 화면은 들어오자마자 내 결재 대기를 보여야 한다.
          */}
-        <div className="field-cell field-cell-unlabeled approval-inbox-filter-actions">
+        {/* [조회] → [초기화]는 조회 줄 오른쪽 끝에 한 묶음으로(#361 사용자 지시). */}
+        <div className="field-cell field-cell-unlabeled approval-inbox-filter-actions approval-inbox-filter-more">
           <div className="filter-actions">
             <Button onClick={search}>{messages.common.search}</Button>
             {isChanged && (
@@ -180,28 +171,9 @@ export const RequestFilterBar = ({
                 {messages.common.reset}
               </Button>
             )}
-            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
           </div>
         </div>
       </div>
-
-      {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
-      <div id={more.id} hidden={!more.isOpen}>
-        <div className="filter-bar approval-inbox-filter">
-          <SelectField
-            label={t.fields.status}
-            options={optionsOf(statusOptions)}
-            value={filters.statusCode}
-            note={codeNote(statusOptions)}
-            placeholder={placeholderOf(statusOptions)}
-            onChange={(value) => {
-              setFilters((prev) => ({ ...prev, statusCode: value }));
-            }}
-          />
-        </div>
-      </div>
-
-      <HiddenFilterChips open={more.isOpen} chips={hiddenChips} onRemove={onRemoveFilter} />
     </>
   );
 };

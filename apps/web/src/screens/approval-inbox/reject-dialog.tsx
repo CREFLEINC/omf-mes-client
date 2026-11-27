@@ -1,6 +1,8 @@
 import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { InfoTip } from '../../patterns/info-tip';
+
 const t = messages.approvalInbox;
 
 export interface RejectDialogProps {
@@ -59,10 +61,13 @@ export const RejectDialog = ({
   >
     <p>{t.dialog.subject(approvalRequestNo)}</p>
 
-    <p className="field-label">{t.dialog.commentHeading}</p>
+    <p className="field-label info-label">
+      {t.dialog.commentHeading}
+      {/* 기록에 남는다는 안내는 제목 옆 ⓘ 로(#361 — 안내 문구는 아이콘에 올리면 보인다). */}
+      <InfoTip text={t.dialog.commentRecorded} />
+    </p>
     {/* 보낼 값 그대로다 — 여기 보이는 것과 나가는 것이 갈리면 확인의 뜻이 없다. */}
     <p>{comment}</p>
-    <p className="field-note">{t.dialog.commentRecorded}</p>
 
     <p>{t.dialog.irreversible}</p>
   </Dialog>

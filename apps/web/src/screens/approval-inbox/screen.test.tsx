@@ -94,8 +94,17 @@ const createRecordingFetch = (
 const isCountUrl = (url: URL): boolean =>
   url.pathname === REQUESTS_PATH && url.searchParams.has('myTurnOnly');
 
+/**
+ * 상태 라벨 건수 조회인가(#361). 상태 하나를 걸고 **한 줄만**(`size=1`) 받는다 — 쪽 크기 선택지(10 · 20 · 50)에
+ * 1이 없어 목록 조회와 겹치지 않는다.
+ */
+const isStatusCountUrl = (url: URL): boolean =>
+  url.pathname === REQUESTS_PATH &&
+  url.searchParams.has('statusCode') &&
+  url.searchParams.get('size') === '1';
+
 const isListUrl = (url: URL): boolean =>
-  url.pathname === REQUESTS_PATH && !url.searchParams.has('myTurnOnly');
+  url.pathname === REQUESTS_PATH && !url.searchParams.has('myTurnOnly') && !isStatusCountUrl(url);
 
 /**
  * 상세 경로로 **나간 요청 전부**. 번호 자리가 무엇이든 센다 — 잘못된 경로도 「부르지 않았다」를 깬다.
@@ -181,7 +190,18 @@ const failingDetailRoute = (status: number): StubRoute => ({
   respond: () => jsonResponse({ message: '' }, { status }),
 });
 
-const defaultRoutes = (total = 0): StubRoute[] => [listRoute(), countRoute(total), detailRoute()];
+/** 상태 라벨 건수(#361). 상태마다 2건으로 답한다. */
+const statusCountRoute = (): StubRoute => ({
+  match: (request) => isStatusCountUrl(new URL(request.url)),
+  respond: () => jsonResponse({ items: [], page: { page: 1, size: 1, total: 2 } }),
+});
+
+const defaultRoutes = (total = 0): StubRoute[] => [
+  listRoute(),
+  countRoute(total),
+  statusCountRoute(),
+  detailRoute(),
+];
 
 /**
  * 결재 200이 실어 오는 토큰. **상세의 것과 다르다** — 쓰기의 `ETag`가 액션 경로에 앉아
@@ -630,11 +650,21 @@ describe('조회 조건', () => {
     expect(lastListQuery(requests)?.get('requestedByMe')).toBe('true');
   });
 
-  it('접힌 조건 칩의 ×가 그 조건만 푼다', async () => {
-    const { user } = renderScreen(defaultRoutes(), '?q=SYNTH&st=SAMPLE-STATUS-OPEN');
+  /* #361 — 상태는 맨 위 라벨이 맡는다. 고른 라벨을 다시 누르면 상태만 풀린다. */
+  it('고른 상태 라벨을 다시 누르면 그 조건만 푼다', async () => {
+    const { requests, user } = renderScreen(defaultRoutes(), '?q=SYNTH&st=APPROVED');
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveStatus }));
+    const approved = await screen.findByRole('button', { name: /^승인 \d+$/, pressed: true });
+    /* 라벨 건수는 지금 조건에 상태만 바꿔 센다. */
+    const countQuery = requests.find(
+      (request) =>
+        request.url.searchParams.get('size') === '1' &&
+        request.url.searchParams.get('statusCode') === 'PENDING',
+    );
+    expect(countQuery?.url.searchParams.get('q')).toBe('SYNTH');
+
+    await user.click(approved);
 
     await waitFor(() => {
       expect(currentLocation()).not.toContain('st=');
@@ -1079,8 +1109,8 @@ describe('조회만 하는 조작', () => {
 
     await waitForList();
 
-    // 승인 유형은 고정 OpenAPI enum으로 채워졌고, 상태 공통코드만 아직 대기 중이다.
-    expect(screen.getAllByText(messages.pendingCode.note)).toHaveLength(1);
+    // 승인 유형은 고정 OpenAPI enum으로 채워졌고, 상태는 맨 위 라벨이 맡아 대기 안내가 없다(#361).
+    expect(screen.queryByText(messages.pendingCode.note)).toBeNull();
 
     await user.click(screen.getByRole('button', { name: pn.next }));
 

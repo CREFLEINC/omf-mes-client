@@ -391,6 +391,9 @@ export const NoticeScreen = () => {
         />
       ) : notices.isPending ? (
         <Skeleton variant="rect" height="12rem" />
+      ) : rows.length === 0 ? (
+        /* 0건은 넓은 표 없이 안내만 — 표 최소 폭 때문에 안내가 잘리지 않게 한다(#361). */
+        <EmptyState size="sm" live title={t.list.emptyTitle} description={t.list.empty} />
       ) : (
         <ManagedTable
           storageKey="omf-mes:notice:columns"
@@ -592,7 +595,8 @@ export const NoticeScreen = () => {
                 </div>
 
                 {/* [조회] → [초기화(조건을 바꿨을 때만)] → [조건 더보기] | [새 공지 쓰기] — 품질 화면과 같은 차례. */}
-                <div className="field-cell field-cell-unlabeled notice-filter-actions">
+                {/* [조회] → [초기화] → [조건 더보기] | [새 공지 쓰기]는 조회 줄 오른쪽 끝에 한 묶음으로(#361 사용자 지시). */}
+                <div className="field-cell field-cell-unlabeled notice-filter-actions notice-filter-more">
                   <div className="filter-actions">
                     <Button onClick={searchNow}>{messages.common.search}</Button>
                     {isFilterChanged && (
@@ -684,6 +688,10 @@ export const NoticeScreen = () => {
                     {t.ack.title}
                     {/* 사번으로 보이는 행의 뜻은 제목 옆 ⓘ 로 — 확인을 받는 공지에서만 목록이 있다(관리웹 정리 시안 A). */}
                     {selected.acknowledgeRequired && <InfoTip text={t.ack.workerNote} />}
+                    {/* 분모를 셀 수 없는 범위는 제목 옆 ⓘ 로 알린다(#361) — 0으로 채우지 않는다. */}
+                    {selected.acknowledgeRequired && selected.targetCount === null && (
+                      <InfoTip text={t.ack.noDenominator} />
+                    )}
                   </h2>
                   <AckPanel
                     required={selected.acknowledgeRequired}
@@ -692,7 +700,6 @@ export const NoticeScreen = () => {
                     isError={acks.isError}
                     error={acks.error}
                     data={acks.data}
-                    hasDenominator={selected.targetCount !== null}
                     onPendingOnlyChange={setPendingOnly}
                     onRetry={() => {
                       void acks.refetch();

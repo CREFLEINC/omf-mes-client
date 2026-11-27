@@ -872,7 +872,7 @@ describe('NotificationCenterScreen — 기준 시각', () => {
 
     await waitForCards();
 
-    expect(screen.getByText(/^기준 \d{4}-\d{2}-\d{2} \d{2}:\d{2}$/)).toBeInTheDocument();
+    expect(screen.getByText(/^조회 시각 \d{4}-\d{2}-\d{2} \d{2}:\d{2}$/)).toBeInTheDocument();
   });
 
   /** ⭐ 아직 받은 자료가 없으면 `dataUpdatedAt`이 `0`이다 — 그리면 1970년이 선다. */

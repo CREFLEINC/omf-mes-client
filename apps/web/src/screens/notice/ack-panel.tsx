@@ -26,8 +26,6 @@ export interface AckPanelProps {
   isError: boolean;
   error: unknown;
   data: AckListResult | undefined;
-  /** ⚠ 분모를 셀 수 없는 범위가 있다. */
-  hasDenominator: boolean;
   onPendingOnlyChange: (value: boolean) => void;
   onRetry: () => void;
 }
@@ -48,7 +46,6 @@ export const AckPanel = ({
   isError,
   error,
   data,
-  hasDenominator,
   onPendingOnlyChange,
   onRetry,
 }: AckPanelProps) => {
@@ -76,9 +73,6 @@ export const AckPanel = ({
 
   return (
     <>
-      {/* ⚠ 분모를 셀 수 없으면 그 사실을 목록 위에 적는다 — 0으로 채우지 않는다. */}
-      {!hasDenominator && <p className="pane-lead">{t.ack.noDenominator}</p>}
-
       <div className="filter-bar">
         <div className="field-cell field-cell-unlabeled check-group">
           <Checkbox

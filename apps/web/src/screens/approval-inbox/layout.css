@@ -1,7 +1,5 @@
 /*
- * 조회 상자 — 조회 줄과 「조건 더보기」 줄 · 칩을 한 격자에 세운다. 위 줄 단추 칸(조회 · 조건 더보기 | 다시 조회)은 단추
- * 글자 폭만큼 두고(다시 조회가 조회 상자로 들어오며 4등분 칸에서는 글자가 두 줄로 꺾인다 · 통일 배치 #350), 더보기 줄의
- * 상태 칸은 위 줄 결재 유형 칸과 같은 폭이 되게 위 격자의 칸 나눔을 그대로 쓴다(subgrid · #350 리뷰).
+ * 조회 상자 — 조회 줄 한 줄을 격자로 세운다. 상태는 「조건 더보기」 대신 화면 맨 위 라벨이 맡는다(#361).
  */
 .list-detail-filter:has(> .filter-bar.approval-inbox-filter) {
   display: grid;
@@ -15,33 +13,23 @@
   min-width: 0;
 }
 
-.list-detail-filter:has(> .filter-bar.approval-inbox-filter) > .filter-more-chips {
-  margin: 0;
-}
-
-/* `hidden` 이 지는 감싸개는 격자로 두지 않는다 — display 가 속성을 덮는다. */
-.list-detail-filter:has(> .filter-bar.approval-inbox-filter) > .filter-bar.approval-inbox-filter,
-.list-detail-filter:has(> .filter-bar.approval-inbox-filter) > div:not([hidden]):has(> .filter-bar),
-.list-detail-filter:has(> .filter-bar.approval-inbox-filter)
-  > div
-  > .filter-bar.approval-inbox-filter {
+.list-detail-filter:has(> .filter-bar.approval-inbox-filter) > .filter-bar.approval-inbox-filter {
   display: grid;
   grid-template-columns: subgrid;
 }
 
-.list-detail-filter:has(> .filter-bar.approval-inbox-filter)
-  > div
-  > .filter-bar.approval-inbox-filter {
-  grid-column: 1 / -1;
+/* [조회] · [초기화]는 조회 줄 오른쪽 끝(#361). */
+.filter-bar.approval-inbox-filter > .approval-inbox-filter-more {
+  justify-self: end;
+  width: auto;
 }
 
 @media (min-width: 1101px) {
   .list-detail-filter:has(> .filter-bar.approval-inbox-filter) {
     /*
-     * 승인 유형(조회 줄 선택칸 폭 176px) · 상신 기간(두 칸 제 폭) · 요청번호(흐린 문구가 다 보이는 폭) · 단추를 왼쪽부터
-     * 붙여 세운다 — 칸을 똑같이 나누거나 늘이면 빈 폭이 생긴다(#361 사용자 지시).
+     * 상신 기간(두 칸 제 폭) · 승인 유형(조회 줄 선택칸 폭 176px) · 요청번호(흐린 문구가 다 보이는 폭) · 단추 — 칸을
+     * 똑같이 나누거나 늘이면 빈 폭이 생긴다(#361 사용자 지시).
      */
-    grid-template-columns: 176px auto 176px auto;
-    justify-content: start;
+    grid-template-columns: auto 176px 176px minmax(0, 1fr);
   }
 }

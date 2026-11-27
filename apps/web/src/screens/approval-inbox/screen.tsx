@@ -1,6 +1,7 @@
 import {
   Badge,
   Button,
+  Chip,
   EmptyState,
   Icon,
   SkeletonText,
@@ -22,9 +23,8 @@ import { toApiError } from '../../patterns/request';
 import { ApproveDialog } from './approve-dialog';
 import {
   PLACEHOLDER_APPROVAL_TYPE_CODES,
-  PLACEHOLDER_REQUEST_STATUS_CODES,
+  requestStatusLabelOf,
   toApprovalTypeOptions,
-  toCodeOptions,
 } from './code-options';
 import {
   DECISION_COMMENT_FIELD,
@@ -36,7 +36,6 @@ import {
 import { DecisionPane } from './decision-pane';
 import {
   EMPTY_FILTERS,
-  clearFilter,
   readFilters,
   readPage,
   readSize,
@@ -46,7 +45,6 @@ import {
   toSearchParams,
   toSelectionSearchParams,
   withoutSelection,
-  type FilterChipKey,
 } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
 import { toPageView } from './pagination';
@@ -57,6 +55,7 @@ import {
   requestDetailPath,
   useRequestDetail,
   useRequestList,
+  useRequestStatusCounts,
   usePendingCount,
 } from './queries';
 import { RejectDialog } from './reject-dialog';
@@ -79,6 +78,9 @@ import {
 import './layout.css';
 
 const t = messages.approvalInbox;
+
+/** 상태 라벨의 차례 — 서버 요청 상태 코드(결재 대기 · 승인 · 반려 · #353). */
+const REQUEST_STATUS_CHIPS = ['PENDING', 'APPROVED', 'REJECTED'] as const;
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ITEMS: ApprovalRequest[] = [];
@@ -236,6 +238,39 @@ export const ApprovalInboxScreen = () => {
    */
   const listQuery = toRequestListQuery(filters, tab, page, size);
   const list = useRequestList(listQuery);
+
+  /*
+   * 상태 라벨 필터(#361) — 「조건 더보기」의 상태 선택칸 대신 화면 맨 위 줄(「⋯」 왼쪽)에 「결재 대기 3」처럼 건수와 함께
+   * 선다. 공지 · 품질 화면과 같다: 누르면 그 상태로 바로 거르고, 고른 라벨을 다시 누르면 푼다. 0건 라벨은 감춘다
+   * (고른 라벨은 남긴다).
+   */
+  const statusCounts = useRequestStatusCounts(listQuery, REQUEST_STATUS_CHIPS);
+  const statusChips = (
+    <div className="inspection-hub-counts" role="group" aria-label={t.fields.status}>
+      {REQUEST_STATUS_CHIPS.map((code, index) => {
+        const isActive = filters.statusCode === code;
+        const count = statusCounts[index];
+        if (count === 0 && !isActive) return null;
+
+        return (
+          <Chip
+            key={code}
+            variant="filter"
+            size="sm"
+            selected={isActive}
+            aria-pressed={isActive}
+            onSelectedChange={() => {
+              apply({ ...filters, statusCode: isActive ? '' : code }, tab);
+            }}
+          >
+            {count === undefined
+              ? requestStatusLabelOf(code)
+              : messages.common.inspectionHub.count(requestStatusLabelOf(code), count)}
+          </Chip>
+        );
+      })}
+    </div>
+  );
   const items = list.data?.items ?? EMPTY_ITEMS;
   const rows = useMemo(() => items.map(toRequestRow), [items]);
   const pageMeta = list.data?.page ?? { page, size: 0, total: 0 };
@@ -956,6 +991,7 @@ export const ApprovalInboxScreen = () => {
       {/* 화면 제목 줄은 두지 않는다 — 조회 조건 · 목록 · 상세 통일 배치(검사 조회·판정과 같다 · #350). */}
       <ListDetailWorkspace
         storageKey="omf-mes:approval-inbox"
+        toolbar={statusChips}
         initialRatio={0.45}
         filter={{
           label: messages.common.paneList.filter,
@@ -968,7 +1004,6 @@ export const ApprovalInboxScreen = () => {
                * 채운다」는 전환을 화면 수준에서 잴 수 없다.
                */
               approvalTypeOptions={toApprovalTypeOptions(PLACEHOLDER_APPROVAL_TYPE_CODES)}
-              statusOptions={toCodeOptions(PLACEHOLDER_REQUEST_STATUS_CODES)}
               onSearch={(nextFilters) => {
                 /*
                  * 같은 조건의 [조회]는 다시 조회다 — 품질 화면(검사 조회·판정)과 같게(#361).
@@ -983,11 +1018,9 @@ export const ApprovalInboxScreen = () => {
                 }
                 apply(nextFilters, tab);
               }}
-              onRemoveFilter={(key: FilterChipKey) => {
-                apply(clearFilter(filters, key), tab);
-              }}
               onReset={() => {
-                apply(EMPTY_FILTERS, tab);
+                /* 상태는 맨 위 라벨이 맡아 조회 상자의 [초기화]가 풀지 않는다(#361). */
+                apply({ ...EMPTY_FILTERS, statusCode: filters.statusCode }, tab);
               }}
             />
           ),
