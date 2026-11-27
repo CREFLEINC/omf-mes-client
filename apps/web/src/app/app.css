@@ -36864,6 +36864,11 @@ body:has(
   font: var(--type-title-sm);
 }
 
+/* [폐기] · [자재 관리 LOT 발행] 줄 — 위 미입고 P/O 표와 붙어 보여 띄운다(사용자 지시 2026-11-27). */
+.mlot-issue-section-head:has(> .mlot-issue-actions) {
+  margin-top: var(--space-4);
+}
+
 .mlot-issue-actions {
   display: inline-flex;
   align-items: center;
