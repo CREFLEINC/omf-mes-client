@@ -6019,6 +6019,8 @@ export interface paths {
           /** @description 값 = `IQC`·`PQC`·`OQC`. 값 목록은 `GET /mdm/code-values?codeGroupCode=QUALITY_INSPECTION_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
           inspectionTypeCode?: string;
           itemId?: number;
+          /** @description 공장으로 거른다 — 관리웹 검사기준 목록이 사업부 공장(OA PL13 · 부품 PL11) 기준만 보인다(클라이언트 요청 2026-11-27). 기준의 공장은 품목의 공장이고 GET /mdm/items 의 plantId 와 같은 규칙이다 — 모품목이나 구성품으로 든 BOM 중 공장이 이 값인 것이 있으면 그 공장 품목이다. 두 공장 BOM 에 다 든 품목의 기준은 두 공장에서 나온다. 공장이 정해진 BOM 에 든 적 없는 품목의 기준과 품목이 빈 기준은 어느 공장으로 걸러도 나온다. 보내지 않으면 공장을 가리지 않는다 */
+          plantId?: number;
           includeInactive?: boolean;
           page?: number;
           size?: number;

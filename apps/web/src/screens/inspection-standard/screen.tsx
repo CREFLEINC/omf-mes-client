@@ -18,7 +18,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useLocation, useNavigate, useSearchParams } from 'react-router';
+import { useLocation, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useInspectionDrawings } from '../../patterns/inspection-drawings';
@@ -41,6 +41,7 @@ import { runRequest, toApiError } from '../../patterns/request';
 import { serverReasonOf } from '../../patterns/server-reason';
 import { useScopeBusinessUnitIds } from '../../patterns/oa-access';
 import { useSession } from '../../patterns/session';
+import { useMasterDataPlant, useOnMasterDataPlantChange } from '../../patterns/master-data-plant';
 import { toWebAccess } from '../../patterns/web-access';
 import { itemKeys } from '../item-extended-attrs/item-queries';
 import { DiscardDialog, LeaveGuard } from '../routing/leave-guard';
@@ -155,8 +156,6 @@ type InspectionPlanVersionDetailResponse =
 
 const t = messages.inspectionStandard;
 
-/** 라우팅 화면 — 상세 머리의 「라우팅 조회」가 이 주소로 그 품목 · Rev 를 연다(`item` · `rev` 는 그 화면의 주소 칸이다). */
-const ROUTING_PATH = '/master-data/routing';
 /** 검사 수준 지정 · 변경 권한 — 검사 수준 관리(W-03-12)를 검사기준 등록(W-06-02)에 합쳤다(omf-all-around#357). */
 const INSPECTION_LEVEL_PATH = '/master-data/inspection-standard';
 /** 서버가 검사 수준 저장 실패를 돌려주는 칸 — 기본 정보 칸이 아니라 검사 수준 칸 아래에 보인다. */
@@ -285,7 +284,6 @@ const EDIT_PLAN_KEY = 'edit';
  */
 export const InspectionStandardScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
   const { session } = useSession();
   /*
    * 등록 창에서 PQC 를 고른 OA 계정의 검사표 기준 칸 값 — 사업부 · 출력 양식 · 고른 품목 이름(omf-all-around#260).
@@ -341,9 +339,14 @@ export const InspectionStandardScreen = () => {
     setDetailTab('version');
   }
 
-  const planList = useInspectionPlanList(filters, page, pageSize);
+  /*
+   * 위 줄 사업부의 공장 기준만 보인다(사용자 지시 2026-11-27 · 서버 #1169) — 품목 · BOM · 라우팅과 같다.
+   * 기준의 공장은 품목의 공장(BOM)이다. 공장을 정하는 동안은 조회를 미룬다.
+   */
+  const plant = useMasterDataPlant();
+  const planList = useInspectionPlanList(filters, page, pageSize, plant);
   /* 사용 여부 칩은 탭 막대가 있든 없든 선다(omf-all-around#357) — 건수도 늘 센다. */
-  const usageCounts = usePlanUsageCounts(filters, true);
+  const usageCounts = usePlanUsageCounts(filters, true, plant);
 
   /** 엑셀 올리기 창. `null` 이면 닫혀 있다 — 파일과 결과는 창이 닫히면 함께 버린다. */
   const [importState, setImportState] = useState<{
@@ -1141,6 +1144,14 @@ export const InspectionStandardScreen = () => {
       if (split.collapsed) split.toggleCollapsed();
     });
 
+  /*
+   * 사업부를 바꾸면 첫 쪽으로 가며 고른 기준 · 품목 조건을 푼다 — 다른 공장의 기준 · 품목이 남으면 목록과 어긋난다.
+   * 저장하지 않은 수정이 있으면 그대로 둔다(라우팅과 같다).
+   */
+  useOnMasterDataPlantChange(plant, () => {
+    if (!isAnythingDirty) applyFilters({ ...filters, itemId: '' });
+  });
+
   /* 고른 기준 없이 열리면(검사 유형을 바꿔 넘어온 때 포함) 접힌 채 저장된 목록을 펼친다(#255 사용자 지시). */
   useEffect(() => {
     if (selectedPlanId === null && split.collapsed) split.toggleCollapsed();
@@ -1862,23 +1873,6 @@ export const InspectionStandardScreen = () => {
             (revision) =>
               revision.routingId === String(planDetail.data.inspectionPlan.routingId ?? ''),
           )}
-          /* 품목이 있는 기준은 그 품목의 라우팅 화면으로 옮긴다(사용자 지시 2026-11-05) — 이동 감시가 고친 내용을 먼저 묻는다. */
-          onOpenRouting={(() => {
-            const plan = planDetail.data.inspectionPlan;
-            if (plan.itemId === null || !toWebAccess(session?.permissions).allows(ROUTING_PATH)) {
-              return undefined;
-            }
-            /*
-             * 품목 코드로 조회한 채 연다 — 라우팅 화면은 품목 이름을 조회 목록(첫 50건)에서 찾아, 목록 밖 품목이면 「—」로 보인다.
-             */
-            const code = itemPartsOf(plan.itemId)?.code;
-            const query = new URLSearchParams({
-              ...(code === null || code === undefined ? {} : { q: code }),
-              item: String(plan.itemId),
-              ...(plan.routingId === null ? {} : { rev: String(plan.routingId) }),
-            });
-            return () => navigate(`${ROUTING_PATH}?${query.toString()}`);
-          })()}
           /*
            * 창을 열 때 상세 · 라우팅을 다시 받는다 — 라우팅 화면의 「검사 관리」 저장이 이 기준(기본 생략 · 버전)을 바꿀 수 있어,
            * 열어 둔 화면의 옛 잠금 토큰으로 저장하면 「다른 사용자가 먼저 저장」으로 막힌다.
@@ -2208,7 +2202,9 @@ export const InspectionStandardScreen = () => {
       >
         <div className="inspection-standard-setting-list">
           {/* 검사 항목은 한 줄 전체, 그 아래 검사 지시문 · 검사 도면을 한 줄에 둔다 — 좁으면 한 열로 쌓는다(사용자 지시 · #258). */}
+          {/* 검사 항목은 카드 테두리 없이 — 표 상자 테두리만 남긴다(사용자 지시 2026-11-27). */}
           <VersionSettingRow
+            plain
             title={t.versionSection.tabItems}
             summary={t.versionSection.rowItemsCount(itemDrafts.length)}
             action={

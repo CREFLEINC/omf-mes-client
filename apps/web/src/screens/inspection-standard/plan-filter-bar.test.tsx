@@ -1,9 +1,12 @@
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { renderWithProviders } from '../../test/api-harness';
+import { SessionProvider } from '../../patterns/session';
+import { jsonResponse, renderWithProviders } from '../../test/api-harness';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 
 import { DEFAULT_PLAN_FILTERS, INSPECTION_TYPE_OPTIONS } from './code-options';
 import { PlanFilterBar } from './plan-filter-bar';
@@ -13,8 +16,11 @@ import type { PlanFilters } from './types';
 const renderBar = (appliedFilters: PlanFilters = DEFAULT_PLAN_FILTERS) => {
   const onApplyFilters = vi.fn<(next: PlanFilters) => void>();
 
+  /* 품목 칸이 위 줄 사업부의 공장을 세션에서 읽는다 — 화면처럼 세션 안에 그린다. */
   renderWithProviders(
-    <PlanFilterBar appliedFilters={appliedFilters} onApplyFilters={onApplyFilters} />,
+    <SessionProvider>
+      <PlanFilterBar appliedFilters={appliedFilters} onApplyFilters={onApplyFilters} />
+    </SessionProvider>,
   );
 
   return { onApplyFilters, user: userEvent.setup() };
@@ -49,11 +55,13 @@ describe('PlanFilterBar — 조건', () => {
   it('검사표를 여는 유형(OA 의 PQC)을 고르면 다른 조건을 비운다', async () => {
     const onApplyFilters = vi.fn<(next: PlanFilters) => void>();
     renderWithProviders(
-      <PlanFilterBar
-        appliedFilters={{ ...DEFAULT_PLAN_FILTERS, q: 'SYN', versionStatus: 'draft' }}
-        onApplyFilters={onApplyFilters}
-        sheetTypeCode={SHEET_TYPE}
-      />,
+      <SessionProvider>
+        <PlanFilterBar
+          appliedFilters={{ ...DEFAULT_PLAN_FILTERS, q: 'SYN', versionStatus: 'draft' }}
+          onApplyFilters={onApplyFilters}
+          sheetTypeCode={SHEET_TYPE}
+        />
+      </SessionProvider>,
     );
     const user = userEvent.setup();
 
@@ -69,10 +77,12 @@ describe('PlanFilterBar — 조건', () => {
   it('검사표를 여는 유형이 없으면(부품) PQC 는 다른 조건을 그대로 둔다', async () => {
     const onApplyFilters = vi.fn<(next: PlanFilters) => void>();
     renderWithProviders(
-      <PlanFilterBar
-        appliedFilters={{ ...DEFAULT_PLAN_FILTERS, q: 'SYN', versionStatus: 'draft' }}
-        onApplyFilters={onApplyFilters}
-      />,
+      <SessionProvider>
+        <PlanFilterBar
+          appliedFilters={{ ...DEFAULT_PLAN_FILTERS, q: 'SYN', versionStatus: 'draft' }}
+          onApplyFilters={onApplyFilters}
+        />
+      </SessionProvider>,
     );
     const user = userEvent.setup();
 
@@ -85,18 +95,20 @@ describe('PlanFilterBar — 조건', () => {
     );
   });
 
-  /* 검사 기준은 칸에서 바로 검색해 고른다 — 창(팝업)이 열리지 않는다(#226). 고르기 전에는 「전체」다. */
-  it('검사 기준 검색 칸은 펼치면 검색창이 서고 창이 열리지 않는다', async () => {
-    const { user } = renderBar();
+  /* 「검사 기준 검색」 칸은 걷었다(사용자 지시 2026-11-27) — 기준은 검사 유형 · 품목으로 찾는다. */
+  it('검사 기준 검색 칸이 없다', () => {
+    renderBar();
 
-    const field = screen.getByLabelText('검사 기준 검색');
-    expect(field).toHaveTextContent('전체');
-    await user.click(field);
+    expect(screen.queryByLabelText('검사 기준 검색')).not.toBeInTheDocument();
+  });
 
-    expect(
-      await screen.findByRole('searchbox', { name: messages.common.selectSearch }),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  /* 예전 주소로 검색어가 걸려 들어오면 칸이 없으니 칩으로 알리고 지울 수 있게 한다. */
+  it('걸려 있는 검색어는 칩으로 보이고 ×로 푼다', async () => {
+    const { onApplyFilters, user } = renderBar({ ...DEFAULT_PLAN_FILTERS, q: 'SYN' });
+
+    await user.click(screen.getByRole('button', { name: '검색어 조건 제거' }));
+
+    expect(onApplyFilters).toHaveBeenCalledWith(expect.objectContaining({ q: '' }));
   });
 
   /* 종전 「미사용 포함」 체크는 탭 줄 사용 여부 칩으로 옮겼고(#208), 「미승인」 체크는 승인 기능과 함께 걷었다(omf-all-around#357). */
@@ -147,9 +159,8 @@ describe('PlanFilterBar — 조건 더보기(C-6)', () => {
 
     expect(more).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByRole('combobox', { name: '상태 선택' })).not.toBeInTheDocument();
-    /* 보이는 칸은 셋 — 검사 유형 · 검사 기준 검색 · 품목 검색. */
+    /* 보이는 칸은 둘 — 검사 유형 · 품목 검색. */
     expect(screen.getByRole('combobox', { name: '검사 유형 선택' })).toBeVisible();
-    expect(screen.getByLabelText('검사 기준 검색')).toBeVisible();
     expect(screen.getByLabelText('품목 검색')).toBeVisible();
 
     await user.click(more);
@@ -161,7 +172,8 @@ describe('PlanFilterBar — 조건 더보기(C-6)', () => {
     );
   });
 
-  it('접힌 칸에 걸린 조건만 칩이 되고 보이는 칸의 조건은 칩으로 겹쳐 적지 않는다', () => {
+  /* 검색어는 칸을 걷어(2026-11-27) 보이지 않는 조건이라 칩이 된다. */
+  it('보이지 않는 칸(검색어 · 상태)의 조건만 칩이 되고 보이는 칸의 조건은 칩으로 겹쳐 적지 않는다', () => {
     renderBar({
       q: 'SYN',
       inspectionTypeCode: 'IQC',
@@ -173,7 +185,7 @@ describe('PlanFilterBar — 조건 더보기(C-6)', () => {
 
     expect(screen.getByText('상태: 확정')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '상태 조건 제거' })).toBeInTheDocument();
-    expect(screen.queryByText('검색어: SYN')).not.toBeInTheDocument();
+    expect(screen.getByText('검색어: SYN')).toBeInTheDocument();
     expect(screen.queryByText('검사 유형: IQC (수입검사)')).not.toBeInTheDocument();
   });
 
@@ -206,5 +218,59 @@ describe('PlanFilterBar — 조건 더보기(C-6)', () => {
     await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
 
     expect(screen.queryByRole('button', { name: '상태 조건 제거' })).not.toBeInTheDocument();
+  });
+});
+
+/* 품목 칸은 위 줄 사업부의 공장 품목에서만 찾는다(사용자 지시 2026-11-27) — 품목 · BOM · 라우팅과 같다(서버 #1156). */
+describe('PlanFilterBar — 품목 칸의 공장', () => {
+  type Plant = components['schemas']['Plant'];
+  const plant = (plantId: number, plantCode: string): Plant => ({
+    plantId,
+    legalEntityId: 1,
+    businessUnitId: 1,
+    plantCode,
+    plantName: plantCode,
+    timezoneCode: 'UTC',
+    isActive: true,
+  });
+  const PLANTS = [plant(11, 'PL-PARTS'), plant(12, 'PL-OA')];
+  const EMPTY_PAGE = { page: 1, size: 20, total: 0 };
+
+  afterEach(() => globalThis.localStorage.clear());
+
+  it('품목 칸을 펼치면 OA 공장의 품목만 부른다', async () => {
+    const urls: URL[] = [];
+    const fetch = async (request: Request): Promise<Response> => {
+      const url = new URL(request.url);
+      urls.push(url);
+      if (url.pathname === '/mdm/plants') {
+        return jsonResponse({ items: PLANTS, page: { ...EMPTY_PAGE, total: PLANTS.length } });
+      }
+      /* PL-OA 가 OA 공장이다(코드 그룹 INSPECTION_SHEET_PLANT). */
+      if (url.pathname === '/mdm/code-values') {
+        return jsonResponse({ items: [{ code: 'PL-OA' }], page: { ...EMPTY_PAGE, total: 1 } });
+      }
+      return jsonResponse({ items: [], page: EMPTY_PAGE });
+    };
+    renderWithProviders(
+      <SessionProvider>
+        <PlanFilterBar appliedFilters={DEFAULT_PLAN_FILTERS} onApplyFilters={vi.fn()} />
+      </SessionProvider>,
+      { session: { ...SYNTHETIC_SESSION, scopes: [] }, fetch },
+    );
+    const user = userEvent.setup();
+
+    /* 공장을 정한 뒤 펼친다 — 정하기 전에는 거르지 않는다. */
+    await waitFor(() => {
+      expect(urls.some((url) => url.pathname === '/mdm/code-values')).toBe(true);
+    });
+    await user.click(screen.getByLabelText('품목 검색'));
+
+    await waitFor(() => {
+      expect(urls.filter((url) => url.pathname === '/mdm/items').length).toBeGreaterThan(0);
+    });
+    for (const url of urls.filter((each) => each.pathname === '/mdm/items')) {
+      expect(url.searchParams.get('plantId')).toBe('12');
+    }
   });
 });

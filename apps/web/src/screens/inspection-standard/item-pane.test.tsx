@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -38,19 +38,20 @@ const itemRows = (): HTMLElement[] =>
     .slice(1);
 
 describe('ItemPane — 표', () => {
-  /* 마지막 「순서 변경」 열은 디자인 시스템이 렌더한다 — 화면이 정하는 것은 앞의 일곱이다. */
-  it('화면이 정한 일곱 열을 낸다', () => {
+  /* 마지막 「순서 변경」 열은 디자인 시스템이 렌더한다 — 화면이 정하는 것은 앞의 여덟이다. */
+  it('화면이 정한 여덟 열을 낸다 — 목표 · 범위는 따로 칸이다', () => {
     renderPane();
 
     /* 머리칸에는 열 순서 손잡이 아이콘 글자(drag_indicator)가 함께 있다 — 이름만 견준다. */
     const headers = screen
       .getAllByRole('columnheader')
       .map((cell) => cell.textContent?.replace('drag_indicator', ''));
-    expect(headers.slice(0, 7)).toEqual([
+    expect(headers.slice(0, 8)).toEqual([
       '순서',
       '항목',
       '검사값 유형',
-      '목표·범위',
+      '목표',
+      '범위',
       '측정 횟수',
       '판정',
       '편집',
@@ -76,17 +77,34 @@ describe('ItemPane — 표', () => {
     expect(screen.getByText('SYN-ITEM-CODE-01 · 합성 항목 A')).toBeInTheDocument();
   });
 
-  it('목표·범위를 한 칸에 이어 담고 단위 이름을 옮겨 낸다', () => {
+  /* 잘린 이름만 커서를 두면 힌트로 다 보인다(사용자 지시 2026-11-27) — 다 보이는 이름에는 같은 글을 또 띄우지 않는다. */
+  it('항목 이름이 잘렸을 때 칸에 커서를 두면 힌트로 전체를 낸다', async () => {
     renderPane();
 
-    expect(screen.getByText('10 · 9~11 · EA · 개')).toBeInTheDocument();
+    const name = screen.getByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+    /* jsdom 은 배치를 하지 않는다 — 글 폭 · 칸 폭을 정해 잘린 상태를 만든다. */
+    Object.defineProperty(name, 'clientWidth', { configurable: true, value: 100 });
+    Object.defineProperty(name, 'scrollWidth', { configurable: true, value: 180 });
+    fireEvent.mouseEnter(name.parentElement!);
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('SYN-ITEM-CODE-01 · 합성 항목 A');
   });
 
-  /* 값이 없다는 것과 0이라는 것은 다르다. */
+  /* 목표 · 범위는 따로 칸이고(사용자 지시 2026-11-27) 단위는 두 칸 모두 값 뒤에 붙는다. */
+  it('목표와 범위를 따로 칸에 담고 단위 이름을 값 뒤에 붙인다', () => {
+    renderPane();
+
+    const row = itemRows()[0]!;
+    expect(within(row).getByText('10 EA · 개')).toBeInTheDocument();
+    expect(within(row).getByText('9~11 EA · 개')).toBeInTheDocument();
+  });
+
+  /* 값이 없다는 것과 0이라는 것은 다르다. 값이 없으면 단위도 붙이지 않는다. */
   it('값이 없는 칸은 표기를 남긴다', () => {
     renderPane();
 
-    expect(within(itemRows()[1]!).getByText('—')).toBeInTheDocument();
+    /* 목표 · 범위 두 칸 */
+    expect(within(itemRows()[1]!).getAllByText('—')).toHaveLength(2);
   });
 
   /* 필수는 항목 이름 앞 라벨, 판정 칸은 자동판정 여부만 말한다(검사 조회·판정 표와 같다 · #196). */
@@ -147,7 +165,7 @@ describe('ItemPane — 편집', () => {
       .getAllByRole('columnheader')
       .map((cell) => cell.textContent?.replace('drag_indicator', ''));
     /* 잠긴 버전에는 편집 열도 없다 — 누를 수 없는 단추만 줄마다 남기지 않는다(#196). */
-    expect(headers).toHaveLength(6);
+    expect(headers).toHaveLength(7);
     expect(headers).not.toContain('순서 변경');
     expect(headers).not.toContain('편집');
   });
