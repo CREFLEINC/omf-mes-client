@@ -77,8 +77,9 @@ export const RegisterConfirmDialog = ({
     footer={
       /* 되돌릴 수 없다는 한 줄은 단추 줄 왼쪽 끝, 단추는 오른쪽(사용자 지시 2026-11-27). */
       <div className="confirm-foot">
-        <p className="confirm-foot-note">
-          <Icon name="warning" size={16} aria-hidden />
+        {/* 경고 칩 — 앱 안내 칩(`iqc-inspection-action-note`)의 경고 색(사용자 지시 2026-11-27 · #360). */}
+        <p className="iqc-inspection-action-note" data-tone="warning">
+          <Icon name="warning" size={14} aria-hidden />
           {t.dialog.registerNoUndo}
         </p>
         <span className="confirm-foot-actions">

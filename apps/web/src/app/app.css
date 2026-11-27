@@ -37447,7 +37447,7 @@ body:has(
   margin-inline-start: auto;
 }
 
-/* 확인 팝업 단추 줄 — 왼쪽 끝 경고 한 줄(경고 아이콘 + 주황 글자), 오른쪽 단추. */
+/* 확인 팝업 단추 줄 — 왼쪽 끝 경고 칩(`iqc-inspection-action-note` warning), 오른쪽 단추. */
 .confirm-foot {
   display: flex;
   flex: 1 1 auto;
@@ -37456,19 +37456,16 @@ body:has(
   gap: var(--space-2);
 }
 
-.confirm-foot-note {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin: 0;
-  color: var(--semantic-warning);
-  font: var(--type-body-sm);
-}
-
 .confirm-foot-actions {
   display: flex;
   gap: var(--space-2);
   margin-inline-start: auto;
+}
+
+/* 경고 칩은 단추와 한 줄에 — 좁은 팝업(md)에서도 넘치지 않게 칩 안 여백만 줄인다(사용자 지시 2026-11-27 · #360). */
+.confirm-foot > .iqc-inspection-action-note:nth-child(n) {
+  gap: var(--space-1);
+  padding-inline: var(--space-2);
 }
 
 /*
