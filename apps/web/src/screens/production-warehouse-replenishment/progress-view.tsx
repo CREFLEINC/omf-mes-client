@@ -10,9 +10,10 @@ import type { ReplenishmentOriginCode, ReplenishmentSettings } from './api-types
 import { hasChangedFilters } from '../../patterns/filter-more';
 import { DetailPanel } from './detail-panel';
 import { EMPTY_PROGRESS, type ProgressFilters } from './filters';
-import { PAGE_SIZE, replenishmentKeys, useProgressList } from './queries';
+import { replenishmentKeys, useProgressList } from './queries';
 import { RunTable } from './run-table';
 import { ListEmptyRow } from '../../patterns/list-empty';
+import { PageNav } from '../../patterns/page-nav';
 import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import {
@@ -42,6 +43,10 @@ export interface ProgressViewProps {
   onSearch: (filters: ProgressFilters) => void;
   onReset: () => void;
   onPage: (page: number) => void;
+  /** 한 쪽 건수와 고를 크기(10 · 20 · 50) — 바꾸면 첫 쪽으로 간다(품질 화면과 같다 · #360). */
+  pageSize: number;
+  pageSizes: readonly number[];
+  onPageSize: (size: number) => void;
   onSelect: (id: number | null) => void;
 }
 
@@ -100,6 +105,9 @@ export const ProgressView = ({
   onSearch,
   onReset,
   onPage,
+  pageSize,
+  pageSizes,
+  onPageSize,
   onSelect,
 }: ProgressViewProps) => {
   const [draft, setDraft] = useState<ProgressFilters>(filters);
@@ -109,7 +117,7 @@ export const ProgressView = ({
     setSource(filters);
     setDraft(filters);
   }
-  const list = useProgressList(plantId, filters, page, true);
+  const list = useProgressList(plantId, filters, page, true, pageSize);
   const queryClient = useQueryClient();
   /* [조회]는 조건이 같아도 목록 · 열린 상세 · 머리 숫자를 새로 받는다(G1 확인 4). */
   const search = (next: ProgressFilters): void => {
@@ -212,7 +220,6 @@ export const ProgressView = ({
     if (list.data === undefined) return <Skeleton variant="rect" height="16rem" />;
 
     const total = list.data.page.total;
-    const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
     return (
       <>
         <div className="replenishment-table-scroll" {...rowPickHandlers}>
@@ -287,25 +294,14 @@ export const ProgressView = ({
         </div>
         {list.data.items.length === 0 ? null : (
           <>
-            <div className="replenishment-pager">
-              <span className="field-note">{tp.pager.total(total)}</span>
-              <Button
-                variant="outlined"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => onPage(page - 1)}
-              >
-                {tp.pager.previous}
-              </Button>
-              <Button
-                variant="outlined"
-                size="sm"
-                disabled={page >= lastPage}
-                onClick={() => onPage(page + 1)}
-              >
-                {tp.pager.next}
-              </Button>
-            </div>
+            {/* 쪽 이동은 공용 줄 — 「총 N건 · N건 ▾」 + [처음] [이전] n / m [다음] [마지막](품질 화면과 같다 · #360). */}
+            <PageNav
+              meta={{ page, size: pageSize, total }}
+              sizes={pageSizes}
+              buttonSize="md"
+              onChangePage={onPage}
+              onChangeSize={onPageSize}
+            />
           </>
         )}
       </>

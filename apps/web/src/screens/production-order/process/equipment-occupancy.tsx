@@ -13,7 +13,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { formatPlantDateTime } from '../../../patterns/plant-time';
 import { PageNav } from '../../../patterns/page-nav';
-import type { ReferenceRow, ReferenceSource } from '../../../patterns/reference-picker';
+import { pageSizesWith } from '../../../patterns/page-nav/page-size-param';
+import {
+  REFERENCE_PAGE_SIZE,
+  type ReferenceRow,
+  type ReferenceSource,
+} from '../../../patterns/reference-picker';
 import { useProductionPlanDetail } from '../../production-plan/queries';
 import { useProductionOrderCodeNames } from '../code-names';
 import { useItemCodeNames } from '../item-lookups';
@@ -272,12 +277,15 @@ export const EquipmentAssignmentPicker = ({
   const [keyword, setKeyword] = useState('');
   const [term, setTerm] = useState('');
   const [page, setPage] = useState(1);
+  /* 쪽 크기 — 기본은 원천이 종전에 보내던 값(참조 선택 팝업과 같다 · #360). */
+  const defaultSize = source.pageSize ?? REFERENCE_PAGE_SIZE;
+  const [size, setSize] = useState(defaultSize);
   const [selected, setSelected] = useState<ReferenceRow | null>(null);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState('');
   const result = useQuery({
-    queryKey: [...source.key, 'assignment-picker', term, page],
-    queryFn: () => source.search(term, page, ''),
+    queryKey: [...source.key, 'assignment-picker', term, page, size],
+    queryFn: () => source.search(term, page, '', size),
   });
   const occupancy = useEquipmentOccupancy(selected?.id ?? null, selfId);
   const available =
@@ -396,9 +404,15 @@ export const EquipmentAssignmentPicker = ({
           />
         )}
         <PageNav
-          meta={{ page, size: 20, total: result.data?.total ?? 0 }}
+          meta={{ page, size, total: result.data?.total ?? 0 }}
+          sizes={pageSizesWith(defaultSize)}
           onChangePage={(value) => {
             setPage(value);
+            setSelected(null);
+          }}
+          onChangeSize={(value) => {
+            setSize(value);
+            setPage(1);
             setSelected(null);
           }}
         />

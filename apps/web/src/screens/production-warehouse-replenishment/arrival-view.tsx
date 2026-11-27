@@ -17,10 +17,11 @@ import { hasChangedFilters } from '../../patterns/filter-more';
 import { EMPTY_ARRIVAL, type ArrivalFilters } from './filters';
 import { useBulkReceive } from './mutations';
 import { OriginChip } from './progress-view';
-import { PAGE_SIZE, replenishmentKeys, useArrivalList, useLocationNames } from './queries';
+import { replenishmentKeys, useArrivalList, useLocationNames } from './queries';
 import { ReceiveDialog } from './receive-dialog';
 import { plantMinute, qtyWithUom } from './types';
 import { ListEmptyRow } from '../../patterns/list-empty';
+import { PageNav } from '../../patterns/page-nav';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 
 const t = messages.productionWarehouseReplenishment;
@@ -44,6 +45,10 @@ export interface ArrivalViewProps {
   onSearch: (filters: ArrivalFilters) => void;
   onReset: () => void;
   onPage: (page: number) => void;
+  /** 한 쪽 건수와 고를 크기(10 · 20 · 50) — 바꾸면 첫 쪽으로 간다(품질 화면과 같다 · #360). */
+  pageSize: number;
+  pageSizes: readonly number[];
+  onPageSize: (size: number) => void;
 }
 
 type BulkStep = 'confirm' | 'result' | null;
@@ -57,6 +62,9 @@ export const ArrivalView = ({
   onSearch,
   onReset,
   onPage,
+  pageSize,
+  pageSizes,
+  onPageSize,
 }: ArrivalViewProps) => {
   const queryClient = useQueryClient();
   const blockId = useId();
@@ -79,7 +87,7 @@ export const ArrivalView = ({
   const [bulkResult, setBulkResult] = useState<ShopfloorReceiptBulkResult | null>(null);
   /** 결과 창이 번호를 찾도록 보낸 장을 기억한다(받은 뒤 목록에서 빠진다). */
   const [sent, setSent] = useState<ReplenishmentArrival[]>([]);
-  const list = useArrivalList(plantId, filters, page);
+  const list = useArrivalList(plantId, filters, page, pageSize);
 
   const refresh = (): void => {
     void queryClient.invalidateQueries({ queryKey: replenishmentKeys.all });
@@ -202,7 +210,6 @@ export const ArrivalView = ({
     if (list.data === undefined) return <Skeleton variant="rect" height="16rem" />;
 
     const total = list.data.page.total;
-    const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
     const blocked = selected.length === 0 || selected.length > BULK_LIMIT;
     return (
       <>
@@ -323,25 +330,14 @@ export const ArrivalView = ({
                 <InfoTip text={ta.footNote} />
               </span>
             </div>
-            <div className="replenishment-pager">
-              <span className="field-note">{t.progress.pager.total(total)}</span>
-              <Button
-                variant="outlined"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => onPage(page - 1)}
-              >
-                {t.progress.pager.previous}
-              </Button>
-              <Button
-                variant="outlined"
-                size="sm"
-                disabled={page >= lastPage}
-                onClick={() => onPage(page + 1)}
-              >
-                {t.progress.pager.next}
-              </Button>
-            </div>
+            {/* 쪽 이동은 공용 줄 — 「총 N건 · N건 ▾」 + [처음] [이전] n / m [다음] [마지막](품질 화면과 같다 · #360). */}
+            <PageNav
+              meta={{ page, size: pageSize, total }}
+              sizes={pageSizes}
+              buttonSize="md"
+              onChangePage={onPage}
+              onChangeSize={onPageSize}
+            />
           </>
         )}
       </>

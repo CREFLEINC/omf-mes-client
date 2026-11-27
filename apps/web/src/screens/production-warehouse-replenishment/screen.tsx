@@ -1,9 +1,10 @@
 import { Breadcrumb, Button, EmptyState, PageHeader, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate } from 'react-router';
 
 import { ListEmpty } from '../../patterns/list-empty';
+import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { plantToday } from '../../patterns/plant-time';
 import { ScreenHeader } from '../../patterns/screen-header';
 import { Select } from '../../patterns/select';
@@ -25,7 +26,7 @@ import {
 } from './filters';
 import { ItemsView } from './items-view';
 import { ProgressView } from './progress-view';
-import { useHeaderCounts, usePlants, useSettings } from './queries';
+import { PAGE_SIZE, useHeaderCounts, usePlants, useSettings } from './queries';
 import { RequestView } from './request-view';
 import { formatDay } from './types';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
@@ -41,7 +42,10 @@ export const WAREHOUSE_PATH = '/master-data/warehouse-location';
  */
 export const ProductionWarehouseReplenishmentScreen = () => {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  /* 쪽 크기(10 · 20 · 50)는 주소 `size` — 기본 50건은 적지 않고, 바꾸면 첫 쪽으로 간다(품질 화면과 같다 · #360). */
+  const { searchParams, setSearchParams, pageSize, changePageSize, pageSizes } =
+    usePageSizeSearchParams(PAGE_SIZE);
+  const sizeProps = { pageSize, pageSizes, onPageSize: (size: number) => changePageSize(size) };
   const state: ScreenState = {
     view: readView(searchParams),
     plant: readPlant(searchParams),
@@ -117,6 +121,7 @@ export const ProductionWarehouseReplenishmentScreen = () => {
             onSearch={(progress) => go({ view: 'progress', progress })}
             onReset={() => go({ view: 'progress', progress: EMPTY_PROGRESS })}
             onPage={(page) => go({ view: 'progress', page })}
+            {...sizeProps}
             /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-27 · #360). */
             onSelect={(id) =>
               setSearchParams(
@@ -135,6 +140,7 @@ export const ProductionWarehouseReplenishmentScreen = () => {
             onSearch={(arrival) => go({ view: 'arrival', arrival })}
             onReset={() => go({ view: 'arrival', arrival: EMPTY_ARRIVAL })}
             onPage={(page) => go({ view: 'arrival', page })}
+            {...sizeProps}
           />
         );
       case 'items':
@@ -147,6 +153,7 @@ export const ProductionWarehouseReplenishmentScreen = () => {
             onSearch={(items) => go({ view: 'items', items })}
             onReset={() => go({ view: 'items', items: EMPTY_ITEMS })}
             onPage={(page) => go({ view: 'items', page })}
+            {...sizeProps}
           />
         );
       default:

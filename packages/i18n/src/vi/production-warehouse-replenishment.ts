@@ -127,11 +127,6 @@ export const productionWarehouseReplenishment: Translated<
     issuedPartial: 'Một phần',
     issuedFull: 'Toàn bộ',
     receipt: (received: number, issued: number): string => `${String(received)}/${String(issued)}`,
-    pager: {
-      total: (count: number): string => `Tổng ${String(count)}`,
-      previous: 'Trước',
-      next: 'Sau',
-    },
   },
   detail: {
     label: 'Chi tiết yêu cầu bổ sung kho',

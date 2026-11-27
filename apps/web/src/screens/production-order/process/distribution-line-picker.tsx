@@ -34,14 +34,14 @@ export const DistributionLinePicker = ({
       title: '생산 라인 선택',
       key: ['distribution-line-picker', lines.map((line) => [line.id, line.code, line.name])],
       columns: { code: '라인 코드', name: '라인명' },
-      search: async (term, page) => {
+      search: async (term, page, _filterValue, size = REFERENCE_PAGE_SIZE) => {
         const keyword = term.trim().toLocaleLowerCase();
         const found = lines.filter((line) =>
           `${line.code} ${line.name}`.toLocaleLowerCase().includes(keyword),
         );
         return {
           items: found
-            .slice((page - 1) * REFERENCE_PAGE_SIZE, page * REFERENCE_PAGE_SIZE)
+            .slice((page - 1) * size, page * size)
             .map((line) => ({ id: line.id, code: line.code, name: line.name })),
           total: found.length,
         };

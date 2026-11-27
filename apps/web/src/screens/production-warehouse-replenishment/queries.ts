@@ -46,12 +46,12 @@ export const replenishmentKeys = {
     ['production-warehouse-replenishment', 'planned-stock', plantId, warehouseId] as const,
   managed: (plantId: number, warehouseId: number) =>
     ['production-warehouse-replenishment', 'managed', plantId, warehouseId] as const,
-  items: (plantId: number, filters: ItemFilters, page: number) =>
-    ['production-warehouse-replenishment', 'items', plantId, filters, page] as const,
-  progress: (plantId: number, filters: ProgressFilters, page: number) =>
-    ['production-warehouse-replenishment', 'progress', plantId, filters, page] as const,
-  arrivals: (plantId: number, filters: ArrivalFilters, page: number) =>
-    ['production-warehouse-replenishment', 'arrivals', plantId, filters, page] as const,
+  items: (plantId: number, filters: ItemFilters, page: number, size: number = PAGE_SIZE) =>
+    ['production-warehouse-replenishment', 'items', plantId, filters, page, size] as const,
+  progress: (plantId: number, filters: ProgressFilters, page: number, size: number = PAGE_SIZE) =>
+    ['production-warehouse-replenishment', 'progress', plantId, filters, page, size] as const,
+  arrivals: (plantId: number, filters: ArrivalFilters, page: number, size: number = PAGE_SIZE) =>
+    ['production-warehouse-replenishment', 'arrivals', plantId, filters, page, size] as const,
   varianceReasons: ['production-warehouse-replenishment', 'variance-reasons'] as const,
   location: (locationId: number) =>
     ['production-warehouse-replenishment', 'location', locationId] as const,
@@ -251,15 +251,17 @@ export const useItemList = (
   filters: ItemFilters,
   page: number,
   enabled: boolean,
+  /** 한 쪽 건수 — 쪽 크기 선택(10 · 20 · 50 · #360). 기본은 종전대로 50. */
+  size: number = PAGE_SIZE,
 ): UseQueryResult<{ items: ReplenishmentItem[]; page: PageMeta }> => {
   const { client } = useApiClient();
   return useQuery({
-    queryKey: replenishmentKeys.items(plantId ?? 0, filters, page),
+    queryKey: replenishmentKeys.items(plantId ?? 0, filters, page, size),
     enabled: enabled && plantId !== null,
     queryFn: () =>
       runRequest(() =>
         client.GET('/logistics/replenishment-items', {
-          params: { query: toItemQuery(plantId ?? 0, filters, page, PAGE_SIZE) },
+          params: { query: toItemQuery(plantId ?? 0, filters, page, size) },
         }),
       ),
   });
@@ -270,15 +272,17 @@ export const useProgressList = (
   filters: ProgressFilters,
   page: number,
   enabled: boolean,
+  /** 한 쪽 건수 — 쪽 크기 선택(10 · 20 · 50 · #360). 기본은 종전대로 50. */
+  size: number = PAGE_SIZE,
 ): UseQueryResult<{ items: ReplenishmentRequestView[]; page: PageMeta }> => {
   const { client } = useApiClient();
   return useQuery({
-    queryKey: replenishmentKeys.progress(plantId ?? 0, filters, page),
+    queryKey: replenishmentKeys.progress(plantId ?? 0, filters, page, size),
     enabled: enabled && plantId !== null,
     queryFn: async () => {
       const data = await runRequest(() =>
         client.GET('/logistics/material-issue-requests', {
-          params: { query: toProgressQuery(plantId ?? 0, filters, page, PAGE_SIZE) },
+          params: { query: toProgressQuery(plantId ?? 0, filters, page, size) },
         }),
       );
       return {
@@ -435,10 +439,12 @@ export const useArrivalList = (
   plantId: number | null,
   filters: ArrivalFilters,
   page: number,
+  /** 한 쪽 건수 — 쪽 크기 선택(10 · 20 · 50 · #360). 기본은 종전대로 50. */
+  size: number = PAGE_SIZE,
 ): UseQueryResult<{ items: ReplenishmentArrival[]; page: PageMeta }> => {
   const { client } = useApiClient();
   return useQuery({
-    queryKey: replenishmentKeys.arrivals(plantId ?? 0, filters, page),
+    queryKey: replenishmentKeys.arrivals(plantId ?? 0, filters, page, size),
     enabled: plantId !== null,
     /* 모바일 생산창고 입고에서 받은 전표가 바로 빠지게 — 열 때마다 새로 받는다. */
     staleTime: 0,
@@ -446,7 +452,7 @@ export const useArrivalList = (
     queryFn: () =>
       runRequest(() =>
         client.GET('/logistics/replenishment-requests/arrivals', {
-          params: { query: toArrivalQuery(plantId ?? 0, filters, page, PAGE_SIZE) },
+          params: { query: toArrivalQuery(plantId ?? 0, filters, page, size) },
         }),
       ),
   });

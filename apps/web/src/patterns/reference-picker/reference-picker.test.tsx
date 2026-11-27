@@ -87,7 +87,7 @@ describe('ReferenceField와 PickerDialog(C-12)', () => {
     await user.click(screen.getByLabelText('생산 라인'));
     const dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByLabelText(t.keyword), '조립{Enter}');
-    expect(search).toHaveBeenLastCalledWith('조립', 1, '');
+    expect(search).toHaveBeenLastCalledWith('조립', 1, '', 20);
   });
 
   it('쪽을 넘기면 고른 행을 풀어 보이지 않는 행이 선택되지 않는다', async () => {

@@ -1,7 +1,6 @@
 import { AlertBanner, Button, EmptyState, Icon, Skeleton, type SelectItems } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router';
 
 import { DateRangeFields } from '../../patterns/date-range-fields';
 import {
@@ -13,6 +12,7 @@ import {
 import { handoverTypeName, useHandoverAlertTypes } from '../../patterns/handover-alert-types';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { PageNav } from '../../patterns/page-nav';
+import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { ErpDetailFields, type ErpDetailField } from '../erp-item/erp-data-parts';
 
@@ -55,7 +55,9 @@ const w = t.workspace;
  * 칩으로 알린다. [초기화]는 처음 연 때처럼 기본 7일 · 조건 없음으로 되돌려 다시 조회한다(#358).
  */
 export const DispatchHistoryScreen = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  /* 쪽 크기(10 · 20 · 50)는 주소 `size` — 기본 50건은 적지 않는다(품질 화면과 같다 · #360). */
+  const { searchParams, setSearchParams, pageSize, changePageSize, pageSizes } =
+    usePageSizeSearchParams(PAGE_SIZE);
   const fieldId = useId();
   const more = useFilterMore();
   /* 기간 오류 문구. [조회]를 잠그는 사유이기도 해서 단추가 이 문구를 가리킨다(C-4). */
@@ -89,7 +91,7 @@ export const DispatchHistoryScreen = () => {
           ...periodQuery,
           ...toFilterQuery(appliedFilters),
           page,
-          size: PAGE_SIZE,
+          size: pageSize,
         }
       : null;
 
@@ -220,8 +222,14 @@ export const DispatchHistoryScreen = () => {
           /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
           onSelect={(id) => go(page, id === selected ? null : id)}
         />
-        {/* 공용 쪽 넘김(#358). 쪽 크기는 서버 요청 그대로(50건 고정)라 크기 고르기는 두지 않는다. */}
-        <PageNav meta={meta} buttonSize="md" onChangePage={(next) => go(next, null)} />
+        {/* 공용 쪽 넘김(#358) · 쪽 크기 고르기(#360) — 크기를 바꾸면 첫 쪽으로 가고 고른 줄은 그대로 둔다. */}
+        <PageNav
+          meta={meta}
+          buttonSize="md"
+          sizes={pageSizes}
+          onChangePage={(next) => go(next, null)}
+          onChangeSize={(next) => changePageSize(next)}
+        />
       </>
     );
   };

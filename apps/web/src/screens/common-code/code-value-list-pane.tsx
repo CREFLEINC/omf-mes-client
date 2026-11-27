@@ -18,6 +18,7 @@ import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
 import { UsageName } from '../../patterns/usage-chip';
 import { hasDuplicateDisplayOrder, sortForDisplay } from './code-value-order';
 import type { CodeValue } from './code-value-types';
+import { LIST_PAGE_SIZES, type ListPageSize } from './filters';
 import type { PageView } from './pagination';
 
 const t = messages.commonCode.codeValue;
@@ -33,6 +34,8 @@ export interface CodeValueListPaneProps {
   /** 서버가 준 쪽 정보. 받기 전 · 실패면 `null` — 셀 것이 없으면 쪽 이동을 그리지 않는다. */
   pageMeta: PageNavMeta | null;
   onChangePage: (page: number) => void;
+  /** 쪽 크기(10 · 20 · 50) — 주지 않으면 크기 선택을 그리지 않는다(#360). */
+  onChangePageSize?: (size: ListPageSize) => void;
   selectedCodeValueId: number | null;
   onSelect: (codeValueId: number) => void;
   /** 줄의 [수정] — 그 코드값의 수정 팝업을 연다(사용자 지시 2026-11-26). */
@@ -78,6 +81,7 @@ export const CodeValueListPane = ({
   pageView,
   pageMeta,
   onChangePage,
+  onChangePageSize,
   selectedCodeValueId,
   onSelect,
   onEdit,
@@ -242,7 +246,13 @@ export const CodeValueListPane = ({
         {/* 공용 쪽 이동(#358). 한 화면에 쪽 이동이 둘이라 묶음 이름으로 어느 목록의 이동인지 가른다. */}
         {pageMeta !== null && (
           <div role="group" aria-label={t.pageNavLabel}>
-            <PageNav meta={pageMeta} buttonSize="md" onChangePage={onChangePage} />
+            <PageNav<ListPageSize>
+              meta={pageMeta}
+              sizes={LIST_PAGE_SIZES}
+              buttonSize="md"
+              onChangePage={onChangePage}
+              onChangeSize={onChangePageSize}
+            />
           </div>
         )}
       </>

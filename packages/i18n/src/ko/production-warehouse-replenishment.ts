@@ -126,11 +126,6 @@ export const productionWarehouseReplenishment = {
     issuedPartial: '일부',
     issuedFull: '전량',
     receipt: (received: number, issued: number): string => `${String(received)}/${String(issued)}`,
-    pager: {
-      total: (count: number): string => `전체 ${String(count)}건`,
-      previous: '이전',
-      next: '다음',
-    },
   },
   detail: {
     label: '창고 보충 요청 상세',

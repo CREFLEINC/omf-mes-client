@@ -295,13 +295,15 @@ export function liveResourceSource(
           },
         }
       : {}),
-    search: async (q, page, warehouse) => {
+    /* 종전처럼 50건씩 받는다 — 쪽 이동의 n / m 도 이 크기로 센다(#360). */
+    pageSize: 50,
+    search: async (q, page, warehouse, size = 50) => {
       if (location) {
         if (!warehouses.some((item) => String(item.warehouseId) === warehouse))
           return { items: [], total: 0 };
         const data = await runRequest(() =>
           client.GET('/mdm/locations', {
-            params: { query: { warehouseId: Number(warehouse), q, page, size: 50 } },
+            params: { query: { warehouseId: Number(warehouse), q, page, size } },
           }),
         );
         return {
@@ -319,7 +321,7 @@ export function liveResourceSource(
       if (field === 'productionLineId') {
         const data = await runRequest(() =>
           client.GET('/mdm/production-lines', {
-            params: { query: { plantId, q, page, size: 50 } },
+            params: { query: { plantId, q, page, size } },
           }),
         );
         return {
@@ -335,7 +337,7 @@ export function liveResourceSource(
       }
       if (field === 'plannedEquipmentId') {
         const data = await runRequest(() =>
-          client.GET('/mdm/equipments', { params: { query: { plantId, q, page, size: 50 } } }),
+          client.GET('/mdm/equipments', { params: { query: { plantId, q, page, size } } }),
         );
         return {
           items: data.items
@@ -351,7 +353,7 @@ export function liveResourceSource(
       }
       const data = await runRequest(() =>
         client.GET('/mdm/molds', {
-          params: { query: { plantId, toolTypeCode: 'MOLD', q, page, size: 50 } },
+          params: { query: { plantId, toolTypeCode: 'MOLD', q, page, size } },
         }),
       );
       return {

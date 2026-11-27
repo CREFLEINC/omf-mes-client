@@ -33,10 +33,12 @@ export const ProposalWarehouseField = ({
     title: '생산품 입고 창고 선택',
     key: ['proposal-warehouses', row.plantId],
     columns: { code: '창고 코드', name: '창고명' },
-    search: async (q, page) => {
+    /* 종전처럼 50건씩 받는다 — 쪽 이동의 n / m 도 이 크기로 센다(#360). */
+    pageSize: 50,
+    search: async (q, page, _filterValue, size = 50) => {
       const response = await runRequest(() =>
         client.GET('/mdm/warehouses', {
-          params: { query: { plantId: row.plantId, q, page, size: 50 } },
+          params: { query: { plantId: row.plantId, q, page, size } },
         }),
       );
       return {
@@ -159,13 +161,14 @@ export const ProposalWarehouseField = ({
                 title: '입고 위치 선택',
                 key: ['proposal-arrival', candidate.id],
                 columns: { code: '위치 코드', name: '위치명' },
-                search: async (q, page) => {
+                pageSize: 50,
+                search: async (q, page, _filterValue, size = 50) => {
                   const values = (arrival.data?.items ?? []).filter(
                     (item) =>
                       item.isActive && `${item.locationCode} ${item.locationName}`.includes(q),
                   );
                   return {
-                    items: values.slice((page - 1) * 50, page * 50).map((item) => ({
+                    items: values.slice((page - 1) * size, page * size).map((item) => ({
                       id: item.locationId,
                       code: item.locationCode,
                       name: item.locationName,

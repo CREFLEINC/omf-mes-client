@@ -22,7 +22,7 @@ export const useLineSource = (plantId: number | null): ReferenceSource | null =>
             title: t.line,
             key: ['reference', 'line', plantId],
             columns: { code: t.columns.lineCode, name: t.columns.lineName },
-            search: async (term, page) => {
+            search: async (term, page, _filterValue, size = REFERENCE_PAGE_SIZE) => {
               const data = await runRequest(() =>
                 client.GET('/mdm/production-lines', {
                   params: {
@@ -30,7 +30,7 @@ export const useLineSource = (plantId: number | null): ReferenceSource | null =>
                       plantId,
                       ...(term === '' ? {} : { q: term }),
                       page,
-                      size: REFERENCE_PAGE_SIZE,
+                      size,
                     },
                   },
                 }),
@@ -62,7 +62,7 @@ export const useEquipmentSource = (
             title: t.equipment,
             key: ['reference', 'equipment', plantId, lineId],
             columns: { code: t.columns.equipmentCode, name: t.columns.equipmentName },
-            search: async (term, page) => {
+            search: async (term, page, _filterValue, size = REFERENCE_PAGE_SIZE) => {
               const data = await runRequest(() =>
                 client.GET('/mdm/equipments', {
                   params: {
@@ -71,7 +71,7 @@ export const useEquipmentSource = (
                       ...(lineId === null ? {} : { productionLineId: lineId }),
                       ...(term === '' ? {} : { q: term }),
                       page,
-                      size: REFERENCE_PAGE_SIZE,
+                      size,
                     },
                   },
                 }),
@@ -101,7 +101,7 @@ export const useMoldSource = (plantId: number | null): ReferenceSource | null =>
             title: t.mold,
             key: ['reference', 'mold', plantId],
             columns: { code: t.columns.moldCode, name: t.columns.moldName },
-            search: async (term, page) => {
+            search: async (term, page, _filterValue, size = REFERENCE_PAGE_SIZE) => {
               const data = await runRequest(() =>
                 client.GET('/mdm/molds', {
                   params: {
@@ -110,7 +110,7 @@ export const useMoldSource = (plantId: number | null): ReferenceSource | null =>
                       toolTypeCode: 'MOLD',
                       ...(term === '' ? {} : { q: term }),
                       page,
-                      size: REFERENCE_PAGE_SIZE,
+                      size,
                     },
                   },
                 }),
@@ -139,7 +139,7 @@ export const useWorkerSource = (plantId: number | null): ReferenceSource | null 
             title: t.worker,
             key: ['reference', 'worker', plantId],
             columns: { code: t.columns.workerNo, name: t.columns.workerName },
-            search: async (term, page) => {
+            search: async (term, page, _filterValue, size = REFERENCE_PAGE_SIZE) => {
               const data = await runRequest(() =>
                 client.GET('/mdm/workers', {
                   params: {
@@ -147,7 +147,7 @@ export const useWorkerSource = (plantId: number | null): ReferenceSource | null 
                       plantId,
                       ...(term === '' ? {} : { q: term }),
                       page,
-                      size: REFERENCE_PAGE_SIZE,
+                      size,
                     },
                   },
                 }),
@@ -212,7 +212,7 @@ export const useLocationSource = (
         group: t.columns.warehouse,
       },
       filter: { label: t.columns.warehouse, value: first.value, options },
-      search: async (term, page, warehouseId) => {
+      search: async (term, page, warehouseId, size = REFERENCE_PAGE_SIZE) => {
         if (!options.some((option) => option.value === warehouseId)) return { items: [], total: 0 };
         const data = await runRequest(() =>
           client.GET('/mdm/locations', {
@@ -221,7 +221,7 @@ export const useLocationSource = (
                 warehouseId: Number(warehouseId),
                 ...(term === '' ? {} : { q: term }),
                 page,
-                size: REFERENCE_PAGE_SIZE,
+                size,
               },
             },
           }),

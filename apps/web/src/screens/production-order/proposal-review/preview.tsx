@@ -114,14 +114,14 @@ export const previewResourceSource = (
   title: `${resourceLabels[field]} 선택`,
   key: ['proposal-preview', operation.key, field, operation.resources.productionLineId?.id],
   columns: { code: '코드', name: '명칭' },
-  search: async (term, page) => {
+  search: async (term, page, _filterValue, size = 20) => {
     const filtered = options[field].filter(
       (value) =>
         (field !== 'plannedEquipmentId' ||
           value.parentId === operation.resources.productionLineId?.id) &&
         `${value.code} ${value.name}`.includes(term),
     );
-    return { items: filtered.slice((page - 1) * 20, page * 20), total: filtered.length };
+    return { items: filtered.slice((page - 1) * size, page * size), total: filtered.length };
   },
 });
 export const ProposalReviewPreviewPage = () => {

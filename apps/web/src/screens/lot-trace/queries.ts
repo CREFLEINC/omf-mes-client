@@ -280,7 +280,7 @@ export const useItemSource = (): ReferenceSource => {
       title: t.itemPicker,
       key: ['lot-trace', 'reference', 'item'],
       columns: { code: t.itemCode, name: t.itemName },
-      search: async (term, page) => {
+      search: async (term, page, _filterValue, size = REFERENCE_PAGE_SIZE) => {
         const data = await runRequest(() =>
           client.GET('/mdm/items', {
             params: {
@@ -288,7 +288,7 @@ export const useItemSource = (): ReferenceSource => {
                 ...(term === '' ? {} : { q: term }),
                 includeInactive: true,
                 page,
-                size: REFERENCE_PAGE_SIZE,
+                size,
               },
             },
           }),
@@ -314,7 +314,7 @@ export const useWarehouseSource = (): ReferenceSource => {
       title: t.warehousePicker,
       key: ['lot-trace', 'reference', 'warehouse'],
       columns: { code: t.warehouseCode, name: t.warehouseName },
-      search: async (term, page) => {
+      search: async (term, page, _filterValue, size = REFERENCE_PAGE_SIZE) => {
         const data = await runRequest(() =>
           client.GET('/mdm/warehouses', {
             params: {
@@ -322,7 +322,7 @@ export const useWarehouseSource = (): ReferenceSource => {
                 ...(term === '' ? {} : { q: term }),
                 includeInactive: true,
                 page,
-                size: REFERENCE_PAGE_SIZE,
+                size,
               },
             },
           }),
@@ -354,7 +354,7 @@ export const usePartnerSource = (role: PartnerRole | null): ReferenceSource | nu
               role === 'SUPPLIER'
                 ? { code: t.supplierCode, name: t.supplierName }
                 : { code: t.customerCode, name: t.customerName },
-            search: async (term, page) => {
+            search: async (term, page, _filterValue, size = REFERENCE_PAGE_SIZE) => {
               const data = await runRequest(() =>
                 client.GET('/mdm/partners', {
                   params: {
@@ -363,7 +363,7 @@ export const usePartnerSource = (role: PartnerRole | null): ReferenceSource | nu
                       roleTypeCode: role,
                       includeInactive: true,
                       page,
-                      size: REFERENCE_PAGE_SIZE,
+                      size,
                     },
                   },
                 }),

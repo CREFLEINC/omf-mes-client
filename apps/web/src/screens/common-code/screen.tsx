@@ -52,6 +52,7 @@ import {
 } from './department-queries';
 import { DEPARTMENT_FORM_FIELDS, validateDepartmentForm } from './department-validation';
 import {
+  LIST_PAGE_SIZES,
   PARTNER_SELECT_KEY,
   SCOPE_KEYS,
   readCodeGroupFilters,
@@ -296,6 +297,9 @@ export const CommonCodeScreen = () => {
    */
   const codeValueIncludeInactive = searchParams.get('vinactive') === '1';
   const codeValuePage = readPage(searchParams, 'vpage');
+  /* 코드값 목록의 쪽 크기(`vsize`) — 고르지 않았으면 싣지 않아 서버 기본(50)이다(좌 목록 `size` 와 같은 규칙 · #360). */
+  const codeValuePageSize =
+    LIST_PAGE_SIZES.find((option) => String(option) === searchParams.get('vsize')) ?? null;
   const selectedCodeValueId = readSelectedId(searchParams, 'val');
   /*
    * 코드값 등록에는 그룹이 있어야 한다 — 계약이 그룹 번호를 필수로 두었다.
@@ -702,6 +706,16 @@ export const CommonCodeScreen = () => {
       }
 
       // 쪽을 옮기면 보이는 행이 달라진다 — 목록에 없는 코드값을 가리키면 안 된다.
+      next.delete('val');
+      clearCodeValueCreating(next);
+    });
+  };
+
+  /** 코드값 쪽 크기를 바꾸면 첫 쪽으로 간다 — 쪽을 옮길 때와 같이 고른 코드값도 비운다(#360). */
+  const changeCodeValuePageSize = (nextSize: ListPageSize) => {
+    patchSearchParams((next) => {
+      next.set('vsize', String(nextSize));
+      next.delete('vpage');
       next.delete('val');
       clearCodeValueCreating(next);
     });
@@ -1956,6 +1970,8 @@ export const CommonCodeScreen = () => {
                       onIncludeInactiveChange={changeCodeValueIncludeInactive}
                       page={codeValuePage}
                       onPageChange={changeCodeValuePage}
+                      pageSize={codeValuePageSize}
+                      onPageSizeChange={changeCodeValuePageSize}
                       onDirtyChange={setIsCodeValueDirty}
                       confirmSwitch={(action) => confirmSwitch(isCodeValueDirty, action)}
                     />
