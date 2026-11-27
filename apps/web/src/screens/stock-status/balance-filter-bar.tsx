@@ -1,4 +1,4 @@
-import { Button, Checkbox, SearchInput } from '@crefle/web-ui';
+import { Button, Checkbox, Icon, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
@@ -236,6 +236,18 @@ export const BalanceFilterBar = ({
             onWarehouseChange?.(value);
           }}
         />
+        {/*
+         * 조회를 잠근 사유는 창고 칸 바로 오른쪽 안내 칩(정보 아이콘 + 파란 바탕)으로 둔다(#360). 감추지 않고 늘 보이는
+         * DOM 텍스트로 그려 조회 단추의 aria-describedby 로 잇는다 — 비활성 단추는 포커스를 받지 못해 툴팁만으론 닿을 수 없다.
+         */}
+        {searchReason !== null && (
+          <div className="field-cell field-cell-unlabeled">
+            <p id={reasonId} className="iqc-inspection-action-note" data-tone="info">
+              <Icon name="info" size={14} aria-hidden />
+              {searchReason}
+            </p>
+          </div>
+        )}
         <ItemSelectField
           fixedWidth
           label={t.fields.item}
@@ -246,12 +258,8 @@ export const BalanceFilterBar = ({
           }}
         />
 
-        {/*
-         * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶고(배치 규범 2-1), 비활성 사유는 그 아래에 둔다.
-         * 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더해 aria-describedby로 잇는다 —
-         * 비활성 컨트롤은 포커스를 받지 못해 툴팁만으로는 키보드·보조기술 사용자가 닿을 수 없다.
-         */}
-        <div className="field-cell field-cell-unlabeled">
+        {/* 조회와 초기화는 짝이라 함께 줄바꿈되게 묶고(배치 규범 2-1), 조건 줄 오른쪽 끝에 세운다(#360). */}
+        <div className="field-cell field-cell-unlabeled filter-actions-end">
           <div className="filter-actions">
             <Button
               disabled={searchReason !== null}
@@ -267,11 +275,6 @@ export const BalanceFilterBar = ({
             )}
             <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
           </div>
-          {searchReason !== null && (
-            <span id={reasonId} className="field-note">
-              {searchReason}
-            </span>
-          )}
         </div>
       </div>
 

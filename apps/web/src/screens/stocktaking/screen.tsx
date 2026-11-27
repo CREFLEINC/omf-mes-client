@@ -5,6 +5,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
 import { usePageHub } from '../../patterns/page-hub';
 import { CloseConfirmDialog } from './close-confirm-dialog';
@@ -23,8 +24,11 @@ import { CountTable } from './count-table';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import {
   DEFAULT_FILTERS,
+  LIST_PAGE_SIZES,
+  PAGE_SIZE,
   readFilters,
   readPage,
+  readPageSize,
   readSelectedCountId,
   readSelectedLocationId,
   SELECTION_KEYS,
@@ -329,6 +333,7 @@ export const StocktakingScreen = () => {
    */
   const filters = useMemo<CountFilters>(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
+  const pageSize = readPageSize(searchParams);
   const selectedCountId = readSelectedCountId(searchParams);
   const selectedLocationId = readSelectedLocationId(searchParams);
 
@@ -368,7 +373,11 @@ export const StocktakingScreen = () => {
    *
    * **기본 기간을 심지 않는다** — 첫 요청에 날짜 조건이 실리지 않는다(계획 결정 3).
    */
-  const listQuery = { ...toFilterQuery(filters), ...(page > 1 ? { page } : {}) };
+  const listQuery = {
+    ...toFilterQuery(filters),
+    ...(page > 1 ? { page } : {}),
+    ...(pageSize === PAGE_SIZE ? {} : { size: pageSize }),
+  };
 
   const list = useInventoryCounts(listQuery);
   const rows = list.data?.items ?? EMPTY_ROWS;
@@ -504,7 +513,7 @@ export const StocktakingScreen = () => {
        * **목록 소속으로 판정하지 않는 설계가 여기서 값을 한다**(계획 결정 2): 방금 만든 실사가
        * 지금 조건에 걸리지 않아 목록에 없어도, 상세가 200이면 아래 구획이 그대로 열린다.
        */
-      const next = toSearchParams(filters, page);
+      const next = toSearchParams(filters, page, pageSize);
       next.set(SELECTION_KEYS.count, String(opened.count.inventoryCountId));
 
       setSearchParams(next);
@@ -611,7 +620,7 @@ export const StocktakingScreen = () => {
        * **`loc`만 비운다.** `toSearchParams`가 `ct`·`loc`를 만들지 않으므로 `ct`만 도로
        * 붙이면 된다 — 개시 성공이 `ct`를 옮기는 것과 짝을 이루는 비대칭이다.
        */
-      const next = toSearchParams(filters, page);
+      const next = toSearchParams(filters, page, pageSize);
 
       if (selectedCountId !== null) next.set(SELECTION_KEYS.count, String(selectedCountId));
 
@@ -801,18 +810,18 @@ export const StocktakingScreen = () => {
    * `toSearchParams`가 `ct`·`loc`를 만들지 않으므로 조건·쪽이 바뀌면 고른 실사와 위치가
    * 함께 풀린다(수명 표 1~3행).
    */
-  const applyQuery = (nextFilters: CountFilters, nextPage = 1): void => {
+  const applyQuery = (nextFilters: CountFilters, nextPage = 1, nextSize = pageSize): void => {
     if (isLocked) return;
 
     setHasNotFoundNotice(false);
-    setSearchParams(toSearchParams(nextFilters, nextPage));
+    setSearchParams(toSearchParams(nextFilters, nextPage, nextSize));
   };
 
   /** 고르고 푸는 것은 **보이는 행을 바꾸지 않는다**(수명 표 4행) — 쪽을 그대로 둔다. */
   const toggleSelectCount = (inventoryCountId: number): void => {
     if (isLocked) return;
 
-    const next = toSearchParams(filters, page);
+    const next = toSearchParams(filters, page, pageSize);
 
     if (inventoryCountId !== selectedCountId) {
       next.set(SELECTION_KEYS.count, String(inventoryCountId));
@@ -832,7 +841,7 @@ export const StocktakingScreen = () => {
   const selectLocation = (locationId: number | null): void => {
     if (isLocked) return;
 
-    const next = toSearchParams(filters, page);
+    const next = toSearchParams(filters, page, pageSize);
 
     if (selectedCountId !== null) next.set(SELECTION_KEYS.count, String(selectedCountId));
     if (locationId !== null) next.set(SELECTION_KEYS.location, String(locationId));
@@ -1433,130 +1442,158 @@ export const StocktakingScreen = () => {
         />
       )}
 
-      <section className="pane" aria-label={t.panes.list}>
-        {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-        <CountFilterBar
-          appliedFilters={filters}
-          warehouseOptions={warehouseOptions}
-          warehouseNote={lookupNote(warehouses)}
-          isLocked={isLocked}
-          onSearch={(nextFilters) => {
-            applyQuery(nextFilters);
-          }}
-          onReset={() => {
-            applyQuery(DEFAULT_FILTERS);
-          }}
-        />
-
-        {!list.isError && (
-          <>
-            <CountTable
-              rows={rows}
-              isLoading={list.isPending}
-              isBeyondLast={pageView.isBeyondLast}
-              selectedCountId={selectedCountId}
-              warehouseLookup={warehouses}
-              countTypeName={countTypeName}
-              isLocked={isLocked}
-              onFirstPage={() => {
-                applyQuery(filters);
-              }}
-              onToggleSelect={toggleSelectCount}
-              onRetryReferences={() => {
-                warehouses.refetch();
-              }}
-            />
-            {!list.isPending && (
-              <PageNav
-                view={pageView}
+      {/*
+       * 목록 | 상세 — 공용 분할(가운데 폭 막대 · 상하 배치의 높이 막대 · 「⋯」 좌우/상하 배치 · 목록 접기 · #360).
+       * 오른쪽은 종전 차례 그대로 실사 개시 → 고른 실사다. 상자 안 조회 · 목록 · 입력은 그대로 옮겼다.
+       */}
+      <ListDetailWorkspace
+        storageKey="omf-mes:stocktaking"
+        list={{
+          label: t.panes.list,
+          title: t.panes.list,
+          count: list.data?.page.total,
+          content: (
+            <>
+              {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
+              <CountFilterBar
+                appliedFilters={filters}
+                warehouseOptions={warehouseOptions}
+                warehouseNote={lookupNote(warehouses)}
                 isLocked={isLocked}
-                onChange={(nextPage) => {
-                  applyQuery(filters, nextPage);
+                onSearch={(nextFilters) => {
+                  applyQuery(nextFilters);
+                }}
+                onReset={() => {
+                  applyQuery(DEFAULT_FILTERS);
                 }}
               />
-            )}
-          </>
-        )}
-      </section>
 
-      {/*
-       * 개시 구획. **목록과 아래 구획 사이에 선다**(계획 §5.5 배치) — 위에서 무엇이 이미 있는지
-       * 보고, 없으면 여기서 만들고, 만든 것을 아래에서 이어 다룬다는 차례다.
-       *
-       * **고른 실사와 무관하게 늘 보인다.** 여기서 만드는 것은 새 실사라 대상이 필요 없다 —
-       * 고른 실사가 있을 때만 보이면 「무엇을 골라야 개시할 수 있나」라는 없는 규칙이 생긴다.
-       */}
-      <section className="pane" aria-label={t.panes.open}>
-        <OpenForm
-          draft={openDraft}
-          warehouseOptions={warehouseOptions}
-          countTypeOptions={codeOptions.countType}
-          warehouseNote={lookupNote(warehouses)}
-          fieldErrors={openFieldErrors}
-          isLocked={isLocked}
-          onChangeCountType={(value) => {
-            changeDraft({ countType: value }, OPEN_FIELD_NAMES.countType);
-          }}
-          onChangeWarehouse={(value) => {
-            changeDraft({ warehouse: value }, OPEN_FIELD_NAMES.warehouse);
-          }}
-          onChangePlannedDate={(value) => {
-            changeDraft({ plannedDate: value }, OPEN_FIELD_NAMES.plannedDate);
-          }}
-          onChangeBlindCount={(checked) => {
-            changeDraft({ blindCount: checked });
-          }}
-        />
+              {!list.isError && (
+                <>
+                  <CountTable
+                    rows={rows}
+                    isLoading={list.isPending}
+                    isBeyondLast={pageView.isBeyondLast}
+                    selectedCountId={selectedCountId}
+                    warehouseLookup={warehouses}
+                    countTypeName={countTypeName}
+                    isLocked={isLocked}
+                    onFirstPage={() => {
+                      applyQuery(filters);
+                    }}
+                    onToggleSelect={toggleSelectCount}
+                    onRetryReferences={() => {
+                      warehouses.refetch();
+                    }}
+                  />
+                  {!list.isPending && (
+                    <PageNav
+                      view={pageView}
+                      isLocked={isLocked}
+                      onChange={(nextPage) => {
+                        applyQuery(filters, nextPage);
+                      }}
+                      sizes={LIST_PAGE_SIZES}
+                      onChangeSize={(nextSize) => {
+                        /* 쪽 이동과 같다 — 첫 쪽부터 그 크기로 다시 받는다. */
+                        applyQuery(filters, 1, nextSize);
+                      }}
+                    />
+                  )}
+                </>
+              )}
+            </>
+          ),
+        }}
+        detail={{
+          label: `${t.panes.open} · ${t.panes.detail}`,
+          bare: true,
+          content: (
+            <>
+              {/*
+               * 개시 구획. **목록과 아래 구획 사이에 선다**(계획 §5.5 배치) — 위에서 무엇이 이미 있는지
+               * 보고, 없으면 여기서 만들고, 만든 것을 아래에서 이어 다룬다는 차례다.
+               *
+               * **고른 실사와 무관하게 늘 보인다.** 여기서 만드는 것은 새 실사라 대상이 필요 없다 —
+               * 고른 실사가 있을 때만 보이면 「무엇을 골라야 개시할 수 있나」라는 없는 규칙이 생긴다.
+               */}
+              <section className="pane" aria-label={t.panes.open}>
+                <OpenForm
+                  draft={openDraft}
+                  warehouseOptions={warehouseOptions}
+                  countTypeOptions={codeOptions.countType}
+                  warehouseNote={lookupNote(warehouses)}
+                  fieldErrors={openFieldErrors}
+                  isLocked={isLocked}
+                  onChangeCountType={(value) => {
+                    changeDraft({ countType: value }, OPEN_FIELD_NAMES.countType);
+                  }}
+                  onChangeWarehouse={(value) => {
+                    changeDraft({ warehouse: value }, OPEN_FIELD_NAMES.warehouse);
+                  }}
+                  onChangePlannedDate={(value) => {
+                    changeDraft({ plannedDate: value }, OPEN_FIELD_NAMES.plannedDate);
+                  }}
+                  onChangeBlindCount={(checked) => {
+                    changeDraft({ blindCount: checked });
+                  }}
+                />
 
-        {/*
-         * 개시 실패는 **세 갈래**다(완료 조건 C30) — 검증 실패(400) · 권한 없음(403) ·
-         * 응답 없음(네트워크). **충돌(409)은 이 오퍼레이션에 없다**(실측): 낙관적 잠금 자체가
-         * 없어 「최신 불러오기」가 뜰 자리가 없다. 그래서 `onReload`를 주지 않는다.
-         */}
-        <SaveErrorBanner error={open.error} />
+                {/*
+                 * 개시 실패는 **세 갈래**다(완료 조건 C30) — 검증 실패(400) · 권한 없음(403) ·
+                 * 응답 없음(네트워크). **충돌(409)은 이 오퍼레이션에 없다**(실측): 낙관적 잠금 자체가
+                 * 없어 「최신 불러오기」가 뜰 자리가 없다. 그래서 `onReload`를 주지 않는다.
+                 */}
+                <SaveErrorBanner error={open.error} />
 
-        {/*
-         * **응답을 받지 못한 실패에만 한 줄을 더한다.** 공통 문구는 「다시 시도하세요」로 끝나는데,
-         * 확인 없이 다시 보내면 같은 창고에 실사 전표가 두 벌 생긴다 — 공통 쓰기 훅이 호출마다
-         * 새 멱등 키를 만들어 서버가 재전송으로 보지 못한다(중복 전송 완화의 한 층).
-         */}
-        {open.error?.kind === 'network' && <p className="field-error">{t.notes.openRecheck}</p>}
+                {/*
+                 * **응답을 받지 못한 실패에만 한 줄을 더한다.** 공통 문구는 「다시 시도하세요」로 끝나는데,
+                 * 확인 없이 다시 보내면 같은 창고에 실사 전표가 두 벌 생긴다 — 공통 쓰기 훅이 호출마다
+                 * 새 멱등 키를 만들어 서버가 재전송으로 보지 못한다(중복 전송 완화의 한 층).
+                 */}
+                {open.error?.kind === 'network' && (
+                  <p className="field-error">{t.notes.openRecheck}</p>
+                )}
 
-        <div className="form-actions">
-          {/* 취소가 개시보다 앞에 선다 — 되돌릴 수 없는 것이 손 가까이 있으면 안 된다. */}
-          <Button variant="text" disabled={isLocked} onClick={requestDiscardOpenDraft}>
-            {messages.common.cancel}
-          </Button>
+                <div className="form-actions">
+                  {/* 취소가 개시보다 앞에 선다 — 되돌릴 수 없는 것이 손 가까이 있으면 안 된다. */}
+                  <Button variant="text" disabled={isLocked} onClick={requestDiscardOpenDraft}>
+                    {messages.common.cancel}
+                  </Button>
 
-          <div className="field-cell">
-            <Button
-              variant="outlined"
-              disabled={openBlockedReason !== null || isLocked}
-              loading={isLocked}
-              aria-describedby={openBlockedReason === null ? undefined : openReasonId}
-              onClick={requestOpen}
-            >
-              {t.actions.open}
-            </Button>
-            {openBlockedReason !== null && (
-              <span id={openReasonId} className="field-note">
-                {openBlockedReason}
-              </span>
-            )}
-          </div>
-        </div>
-      </section>
+                  <div className="field-cell">
+                    <Button
+                      variant="outlined"
+                      disabled={openBlockedReason !== null || isLocked}
+                      loading={isLocked}
+                      aria-describedby={openBlockedReason === null ? undefined : openReasonId}
+                      onClick={requestOpen}
+                    >
+                      {t.actions.open}
+                    </Button>
+                    {openBlockedReason !== null && (
+                      <span id={openReasonId} className="field-note">
+                        {openBlockedReason}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </section>
 
-      <section className="pane" aria-label={t.panes.detail}>
-        {detailPane()}
+              <section className="pane" aria-label={t.panes.detail}>
+                {detailPane()}
 
-        {/*
-         * 결과 구획은 **아래 구획의 마지막**이다(계획 §5.5 배치). 개시 성공은 `ct`를 새 실사로
-         * 옮기므로 바로 위에 그 실사의 제목줄과 요약이 함께 서고, 「무엇을 만들었고 그것이
-         * 지금 어떤 상태인가」가 한 눈에 이어진다.
-         */}
-        {result !== null && <ResultPane result={result.view} />}
-      </section>
+                {/*
+                 * 결과 구획은 **아래 구획의 마지막**이다(계획 §5.5 배치). 개시 성공은 `ct`를 새 실사로
+                 * 옮기므로 바로 위에 그 실사의 제목줄과 요약이 함께 서고, 「무엇을 만들었고 그것이
+                 * 지금 어떤 상태인가」가 한 눈에 이어진다.
+                 */}
+                {result !== null && <ResultPane result={result.view} />}
+              </section>
+            </>
+          ),
+        }}
+      />
 
       {isOpenConfirmVisible && (
         <OpenConfirmDialog
