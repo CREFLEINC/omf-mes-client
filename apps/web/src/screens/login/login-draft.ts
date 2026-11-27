@@ -1,8 +1,4 @@
-import { messages } from '@omf-mes/i18n';
-
 import type { LoginRequestBody } from './types';
-
-const t = messages.login;
 
 /**
  * 계약이 정한 아이디 상한.
@@ -38,7 +34,7 @@ const isFilled = (value: string): boolean => value.trim() !== '';
  *
  * `isFilled`와 반대로 판단하는 자리다 — 아이디 칸은 공백만 쳐도 사용자 눈에 빈 칸으로 «보이지만»,
  * 가려진 칸(`type="password"`)에서 공백은 점으로 **보인다.** `trim()`을 걸면 값을 바르게 친
- * 사용자가 자기 눈에 채워진 칸을 보면서 「모두 입력하면 쓸 수 있습니다」를 읽게 된다. 계약이
+ * 사용자가 자기 눈에 채워진 칸을 두고 로그인을 눌러도 커서만 그 칸으로 되돌아온다. 계약이
  * 이 칸에 형식을 두지 않고 길이만 재므로 공백도 값의 일부다(형제 구현
  * `password-change/password-draft.ts`의 `isEmpty`와 같은 근거).
  */
@@ -54,14 +50,23 @@ const isPasswordFilled = (value: string): boolean => value !== '';
 export const canSubmit = (draft: LoginDraft): boolean =>
   isFilled(draft.loginId) && isPasswordFilled(draft.password);
 
+/** 로그인 폼의 두 칸 */
+export type LoginField = keyof LoginDraft;
+
 /**
- * 로그인 버튼이 잠긴 사유. 열려 있으면 `undefined`.
+ * 보내려 할 때 **커서를 옮길 빈 칸**. 둘 다 채워졌으면 `undefined`.
  *
- * **`canSubmit`을 그대로 지난다.** 잠금과 사유가 각자 판정하면 「사유 없이 잠긴 버튼」이나
- * 「열려 있는데 사유가 붙은 버튼」이 생긴다 — 한 판정에서 갈라 나온다.
+ * 빈 칸이어도 로그인 버튼을 잠그지 않는다 — 누르면 요청 없이 이 칸으로 커서만 옮긴다.
+ * 아이디가 먼저다(위에서 아래로 채우는 차례).
  *
- * **어느 칸이 비었는지 가르지 않는다.** 지목하는 형태를 여기서 한 번 쓰면 그것이 그대로
- * 실패 문구(어느 칸이 틀렸는지 말하지 않는다)로 옮아간다.
+ * **`canSubmit`을 그대로 지난다.** 둘이 각자 판정하면 「보낼 수 없는데 옮길 칸이 없는」 갈래가 생긴다.
+ *
+ * ⚠ **문구로 칸을 지목하지 않는다.** 커서만 옮기고 「아이디를 입력하세요」류의 말은 내지 않는다 —
+ * 실패 문구(어느 칸이 틀렸는지 말하지 않는다)로 그 형태가 옮아가지 않게 한다. 빈 칸은 사용자 눈에
+ * 이미 보이는 사실이라 커서를 옮겨도 계정에 대해 새로 흘리는 것이 없다.
  */
-export const submitDisabledReason = (draft: LoginDraft): string | undefined =>
-  canSubmit(draft) ? undefined : t.actionReasons.incomplete;
+export const firstEmptyField = (draft: LoginDraft): LoginField | undefined => {
+  if (canSubmit(draft)) return undefined;
+
+  return isFilled(draft.loginId) ? 'password' : 'loginId';
+};
