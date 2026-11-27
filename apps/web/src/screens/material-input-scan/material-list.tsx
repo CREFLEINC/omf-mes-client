@@ -2,7 +2,7 @@ import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useRef } from 'react';
 
 import type { RecordedNote } from './mutations';
-import type { ScannedMaterial } from './scan';
+import type { ScannedMaterial, WipLotInfo } from './scan';
 import type { ReceiptLineStatus, ReceiptLineView } from './types';
 
 import {
@@ -40,6 +40,28 @@ export const RECEIPT_STATUS_LABEL: Record<ReceiptLineStatus, string> = {
 /** 수량을 화면 글자로(단위 포함). */
 const withUnit = (value: number, uom: string): string =>
   uom === '' ? String(value) : `${String(value)} ${uom}`;
+
+/** 뺄셈의 부동소수 꼬리(0.1 + 0.2 꼴)를 털어 낸다 — 실적·남은 수량은 서버 값 그대로이고 이 차만 화면이 낸다. */
+const tidy = (value: number): number => Number(value.toFixed(6));
+
+/**
+ * 공정 반제품 줄의 근거 「실적 100 · 투입 60 · 남은 수량 40 EA」(피처 016 · 시안 2판 ①). 투입 = 실적 − 남은.
+ * `remaining` 은 지금의 남은 수량 — 조회한 뒤 이 화면이 보낸 투입을 뺀 값(화면 `wipLeftOf`)이다. 스캔 때 값을 그대로
+ * 쓰면 투입 등록 뒤에도 줄이 바뀌지 않는다(실제 앱 확인 2026-11-26).
+ * 실적이나 남은 수량을 받지 못했으면 줄을 두지 않는다 — 모르는 값을 0 으로 적지 않는다.
+ */
+export const wipBasisText = (
+  wip: WipLotInfo,
+  remaining: number | null,
+  uom: string,
+): string | null =>
+  wip.producedQty === null || remaining === null
+    ? null
+    : t.wip.basis(
+        String(wip.producedQty),
+        String(tidy(wip.producedQty - remaining)),
+        withUnit(remaining, uom),
+      );
 
 export interface QtyProgressProps {
   /** 불출량. 불출 줄이 없으면 `null`(기준이 없어 막대를 두지 않는다). */
@@ -177,6 +199,8 @@ export interface MaterialListProps {
   notes: readonly RecordedNote[];
   /** 투입 중인 LOT(스캔하고 아직 전송하지 않음). 진행 칩 「투입 중」이다. */
   pendingLotIds: readonly number[];
+  /** 공정 반제품의 지금 남은 수량(조회 값 − 이 화면이 보낸 투입). 모르면 `null`(피처 016). */
+  wipLeftOf: (lotId: number, wip: WipLotInfo) => number | null;
   /** 이 W/O에 기록된 투입 수량(LOT별 합). 없으면 `null`. */
   recordedQtyOf: (lotId: number) => { qty: number; uomId: number } | null;
   /** 고른 LOT. 없으면 `null`. */
@@ -211,6 +235,7 @@ export const MaterialList = ({
   notes,
   pendingLotIds,
   recordedQtyOf,
+  wipLeftOf,
   selectedLotId,
   selectedRecords,
   revealKey,
@@ -261,13 +286,18 @@ export const MaterialList = ({
             const uomId = receipt?.uomId ?? done?.uomId ?? material?.uomId;
             const uom = uomId === undefined ? '' : describeUom(uomId);
             const itemCode = receipt?.itemCode ?? describeItem(row.itemId);
-            const isUnlinked = notes.some((note) => note.lotId === row.lotId && note.unlinkedIssue);
+            const wip = material?.wip ?? null;
+            /* 반제품은 불출 개념이 없어 「출고 미귀속」을 붙이지 않는다(피처 016). */
+            const isUnlinked =
+              wip === null && notes.some((note) => note.lotId === row.lotId && note.unlinkedIssue);
             const isUnitMismatch =
               material !== undefined && receipt !== undefined && material.uomId !== receipt.uomId;
             const progress = progressStateOf(receipt?.receivedQty ?? null, done?.qty ?? 0);
             /* 최근 것부터(「미전송」이 맨 앞). */
             const records = isSelected ? [...selectedRecords].reverse() : [];
             const receivedAt = listDateTimeText(receipt?.receivedAt);
+            const wipBasis =
+              wip === null ? null : wipBasisText(wip, wipLeftOf(row.lotId, wip), uom);
             const more = records.length - RECORDS_SHOWN;
 
             return (
@@ -284,6 +314,10 @@ export const MaterialList = ({
                   <span className="pu-item-top">
                     <span className="no">{named(receipt?.itemName, itemCode)}</span>
                     <span className="chips">
+                      {/* 공정 반제품(피처 016) — 앞 공정 산출을 다음 공정에 넣는 줄임을 알린다. 막지 않는다. */}
+                      {wip !== null && (
+                        <PuChip>{t.wip.chip(wip.operationSeq, wip.processName)}</PuChip>
+                      )}
                       {/* 예외만 칩으로 보인다(C-21 정상은 숨김). */}
                       {receipt !== undefined && receipt.status !== 'matched' && (
                         <PuChip tone={RECEIPT_STATUS_TONE[receipt.status]}>
@@ -313,8 +347,14 @@ export const MaterialList = ({
                     </span>
                   </span>
                   {/* 정보 영역(C-21): LOT 번호(라벨 대조용, C-10)와 투입량 막대. */}
-                  <span className="pu-item-sub mi-pair">
+                  {/* 반제품 줄은 LOT 번호를 줄이지 않고 근거를 다음 줄로 접는다(좁은 폭 · 시안 2판 ①). */}
+                  <span className={puCx('pu-item-sub mi-pair', wip !== null && 'mi-pair-wip')}>
                     <span>{t.pairs.lotLabel}</span> <b className="mi-lot-no">{row.lotNo}</b>{' '}
+                    {wipBasis !== null && (
+                      <>
+                        <b className="mi-wip-basis">{wipBasis}</b>{' '}
+                      </>
+                    )}
                     <span>{t.pairs.progressLabel}</span>{' '}
                     <QtyProgress
                       received={receipt?.receivedQty ?? null}

@@ -10,6 +10,7 @@ const FIELDS = {
   uomCode: 'EA',
   issueSeq: 1,
   workOrderNo: 'SYN-WO-0007',
+  wip: null,
 };
 
 const WIDTH = 639;
@@ -61,6 +62,8 @@ describe('buildProductionLotLabel', () => {
    */
   it.each([
     ['수량을 적을 때(5줄)', FIELDS],
+    /* 반제품 첫 줄이 가장 길다(피처 016) — 그 판도 QR 앞에서 끝나야 한다. */
+    ['반제품 LOT 일 때', { ...FIELDS, issueSeq: 12, wip: { operationSeq: 990 } }],
     /* ⛔ 수량을 빼면 4줄이 되어 줄 간격이 다시 계산된다 — 그 판도 여백 안에서 끝나야 한다. */
     ['수량을 모를 때(4줄)', { ...FIELDS, qty: null }],
   ])('⛔ %s 글줄과 QR 이 안전 여백 안에서 끝나고 서로 겹치지 않는다', (_name, fields) => {
@@ -109,5 +112,37 @@ describe('buildProductionLotLabel', () => {
 
     expect(drawn).toHaveLength(4);
     expect(drawn.some((line) => line.includes('"QTY'))).toBe(false);
+  });
+
+  describe('피처 016 공정 반제품 LOT', () => {
+    const headline = (label: string): string =>
+      /,"0",0,\d+,\d+,"(.*)"$/u.exec(textLines(label)[0] ?? '')?.[1] ?? '';
+
+    it('US1-5·Q5 반제품 LOT 라벨 첫 줄은 WIP LOT OP{공정 순번} — 나머지 줄·QR 은 제품 LOT 과 같다', () => {
+      const wip = buildProductionLotLabel({ ...FIELDS, wip: { operationSeq: 10 } });
+      const prod = buildProductionLotLabel(FIELDS);
+
+      expect(headline(wip)).toBe('WIP LOT OP10  #1');
+      expect(textLines(wip).slice(1)).toEqual(textLines(prod).slice(1));
+      expect(wip.split('\r\n').find((line) => line.startsWith('QRCODE '))).toBe(
+        prod.split('\r\n').find((line) => line.startsWith('QRCODE ')),
+      );
+    });
+
+    it('US1-5·Q5 제품 LOT(마지막 공정) 라벨은 지금처럼 PROD LOT #n', () => {
+      expect(headline(buildProductionLotLabel({ ...FIELDS, issueSeq: 3 }))).toBe('PROD LOT  #3');
+    });
+
+    it('US1-5 공정 순번을 모르는 반제품은 WIP LOT 만 적는다', () => {
+      expect(headline(buildProductionLotLabel({ ...FIELDS, wip: { operationSeq: null } }))).toBe(
+        'WIP LOT  #1',
+      );
+    });
+
+    it('US1-5·Q5 ⛔ 라벨 글줄은 모두 ASCII — 내장 글꼴이 한글을 찍지 못한다(결정 17)', () => {
+      const label = buildProductionLotLabel({ ...FIELDS, wip: { operationSeq: 20 } });
+
+      expect(/^[\x20-\x7e\r\n]*$/u.test(label)).toBe(true);
+    });
   });
 });

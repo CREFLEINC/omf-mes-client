@@ -59,6 +59,39 @@ export const lifecycleBlockOf = (
   return code === 'WAITING' || code === 'VOIDED' ? code : null;
 };
 
+/**
+ * 공정 반제품 LOT(`lotTypeCode=WIP` · 피처 016)의 근거 — 다음 공정 W/O 에 투입한다. 판정(같은 품목 · 바로 앞
+ * 공정 · 남은 수량)은 서버가 하고 화면은 보이기만 한다.
+ */
+export interface WipLotInfo {
+  /** 만든 공정 순번·이름. 받지 못했으면 `null`. */
+  operationSeq: number | null;
+  processName: string | null;
+  /** 실적 배분 합(양품). 받지 못했으면 `null`. */
+  producedQty: number | null;
+  /** 남은 투입 가능 수량(실적 − 투입) — **조회한 그 순간의 값**이다. 받지 못했으면 `null`. */
+  remainingQty: number | null;
+  /**
+   * 남은 수량을 조회한 시각. 이 뒤에 이 화면이 보낸 투입은 서버 값에 아직 없으므로 화면이 빼서 처음 값을 낸다
+   * (같은 LOT 을 다시 스캔하면 조회하지 않고 담긴 값을 쓴다 — `duplicate`).
+   */
+  lookedUpAt: string;
+}
+
+/** LOT 유형 — 공정 반제품(마지막이 아닌 공정 산출, 피처 016). */
+const WIP_LOT_TYPE = 'WIP';
+
+const wipInfoOf = (lot: LotResponse, now: Date): WipLotInfo | null =>
+  lot.lotTypeCode === WIP_LOT_TYPE
+    ? {
+        operationSeq: lot.producedOperation?.operationSeq ?? null,
+        processName: lot.producedOperation?.processName ?? null,
+        producedQty: lot.wipProducedQty ?? null,
+        remainingQty: lot.wipRemainingQty ?? null,
+        lookedUpAt: now.toISOString(),
+      }
+    : null;
+
 /** 담긴 자재LOT 한 줄. */
 export interface ScannedMaterial {
   lotId: number;
@@ -77,9 +110,14 @@ export interface ScannedMaterial {
   isHeld: boolean;
   /** IQC 에서 적은 4M 변경품(omf-all-around#63) — 투입을 막지 않고 알리기만 한다. 아니면 `null`. */
   fourMChange: FourMChangeForward | null;
+  /**
+   * 공정 반제품 LOT 이면 그 근거(피처 016), 아니면 `null`. ⛔ 화면은 이것으로 막지 않는다 — 판정은 서버다.
+   * 단말에 남은 옛 「미전송」에는 칸이 없을 수 있다(`undefined` = 반제품 아님).
+   */
+  wip?: WipLotInfo | null;
 }
 
-export const toScannedMaterial = (lot: LotResponse): ScannedMaterial => ({
+export const toScannedMaterial = (lot: LotResponse, now: Date = new Date()): ScannedMaterial => ({
   lotId: lot.lotId,
   lotNo: lot.lotNo,
   itemId: lot.itemId,
@@ -87,6 +125,7 @@ export const toScannedMaterial = (lot: LotResponse): ScannedMaterial => ({
   statusCode: lot.statusCode,
   isHeld: lot.held ?? false,
   fourMChange: lot.fourMChange ?? null,
+  wip: wipInfoOf(lot, now),
 });
 
 /** 담긴 금형. **한 번에 하나다**(스펙 §3의 투입 목록에 금형 줄이 하나다). */

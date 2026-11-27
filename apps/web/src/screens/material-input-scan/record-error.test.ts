@@ -37,4 +37,39 @@ describe('describeRecordError', () => {
 
     expect(describeRecordError(error)).toBe('BOM 에 없는 자재입니다.');
   });
+
+  it('US2-5 반제품 남은 수량 초과(409)는 남은·실적·이미 투입을 시안 문구로 말한다', () => {
+    const error = new ApiRequestError(
+      normalizeApiError(409, {
+        errors: [
+          {
+            scope: 'field',
+            field: 'inputQty',
+            code: 'WIP_QTY_EXCEEDED',
+            message: '남은 수량을 넘습니다 (남은 40)',
+          },
+        ],
+        meta: { remainingQty: 40, producedQty: 100 },
+      }),
+    );
+
+    expect(describeRecordError(error, 'EA')).toBe(
+      '남은 수량(40 EA)보다 많이 넣었습니다. 실적 100 중 60 은 이미 투입했습니다.',
+    );
+    expect(describeRecordError(error)).toBe(
+      '남은 수량(40)보다 많이 넣었습니다. 실적 100 중 60 은 이미 투입했습니다.',
+    );
+  });
+
+  it('US2-3 반제품 400(다른 품목·앞 공정 아님)은 서버 문구를 그대로 낸다', () => {
+    const error = new ApiRequestError(
+      normalizeApiError(400, {
+        errors: [
+          { scope: 'field', field: 'lotId', code: 'INVALID', message: '다른 품목의 반제품입니다' },
+        ],
+      }),
+    );
+
+    expect(describeRecordError(error, 'EA')).toBe('다른 품목의 반제품입니다');
+  });
 });

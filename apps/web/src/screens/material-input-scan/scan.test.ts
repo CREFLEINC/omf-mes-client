@@ -49,6 +49,41 @@ describe('toScannedMaterial', () => {
     expect(toScannedMaterial(lot({ held: true })).isHeld).toBe(true);
   });
 
+  /* 피처 016 — 공정 반제품 LOT 은 생산 공정·실적·남은 수량을 함께 들고 다닌다. 막지 않는다. */
+  it('US2-1 반제품 LOT 은 생산 공정·실적·남은 수량을 옮기고, 아닌 LOT 은 null 이다', () => {
+    const now = new Date('2026-11-25T01:02:03.000Z');
+
+    expect(toScannedMaterial(lot(), now).wip).toBeNull();
+    expect(
+      toScannedMaterial(
+        lot({
+          lotTypeCode: 'WIP',
+          producedOperation: {
+            workOrderId: 7800,
+            operationSeq: 20,
+            processCode: 'SAMPLE-P20',
+            processName: '조립',
+          },
+          wipProducedQty: 100,
+          wipRemainingQty: 40,
+        }),
+        now,
+      ).wip,
+    ).toEqual({
+      operationSeq: 20,
+      processName: '조립',
+      producedQty: 100,
+      remainingQty: 40,
+      lookedUpAt: '2026-11-25T01:02:03.000Z',
+    });
+    /* 칸을 못 받았으면 지어내지 않는다. */
+    expect(toScannedMaterial(lot({ lotTypeCode: 'WIP' }), now).wip).toMatchObject({
+      operationSeq: null,
+      producedQty: null,
+      remainingQty: null,
+    });
+  });
+
   /* omf-all-around#63 — IQC 에서 적은 4M 변경품은 투입 목록에 알린다. 없으면 변경품이 아니다. */
   it('4M 변경품 기록을 옮기고, 없으면 null 이다', () => {
     expect(toScannedMaterial(lot()).fourMChange).toBeNull();

@@ -30,7 +30,27 @@ export interface ProductionLotLabelFields {
   /** 발행 회차. */
   issueSeq: number;
   workOrderNo: string;
+  /**
+   * 공정 반제품 LOT(`lotTypeCode=WIP`, 마지막이 아닌 공정 산출)이면 그 생산 공정 — 아니면 `null`
+   * (피처 016 · D-8). 반제품이면 첫 줄이 `WIP LOT OP{공정 순번}` 이 된다. 공정 순번을 모르면
+   * `operationSeq: null` — 「반제품」만 적는다.
+   */
+  wip: { operationSeq: number | null } | null;
 }
+
+/**
+ * 첫 줄. 제품 LOT(마지막 공정)은 지금처럼 `PROD LOT`, 반제품 LOT 은 `WIP LOT OP10` 처럼
+ * 공정 순번을 함께 적는다 — 현장에서 라벨만 보고 「다음 공정에 넣을 반제품」인지 안다.
+ * ⚠ 내장 글꼴이 한글을 찍지 못해 영문만 쓴다(결정 17).
+ */
+const headlineOf = (fields: ProductionLotLabelFields): string => {
+  const seq = `#${String(fields.issueSeq)}`;
+  if (fields.wip === null) return `PROD LOT  ${seq}`;
+
+  return fields.wip.operationSeq === null
+    ? `WIP LOT  ${seq}`
+    : `WIP LOT OP${String(fields.wip.operationSeq)}  ${seq}`;
+};
 
 /**
  * 생산 LOT 라벨 한 장.
@@ -42,10 +62,12 @@ export interface ProductionLotLabelFields {
  * LOT PL-260916-0001           └────┘
  * W/O WO-260916-0007
  * ```
+ *
+ * 반제품 LOT 은 첫 줄만 `WIP LOT OP10  #1` 이다. 나머지 줄·QR(LOT 번호만)은 같다.
  */
 export const buildProductionLotLabel = (fields: ProductionLotLabelFields): string => {
   const rows: LotLabelRow[] = [
-    { point: 8, content: `PROD LOT  #${String(fields.issueSeq)}` },
+    { point: 8, content: headlineOf(fields) },
     { point: 10, content: `ITEM ${fields.itemCode}` },
     ...(fields.qty === null
       ? []

@@ -1711,3 +1711,167 @@ describe('MaterialInputScanScreen — 저장소에서 되살린 큐', () => {
     globalThis.localStorage.clear();
   });
 });
+
+/*
+ * 피처 016 — 다음 공정 W/O 에서 앞 공정 반제품 LOT 을 스캔해 투입한다(시안 2판 ①). 불출 줄이 없어도 남은 전량을
+ * 투입량에 채우고, 자재와 같은 「미전송」 길(다음 동작에서 보냄)로 간다. 판정은 서버다 — 화면은 거절 문구를 옮긴다.
+ */
+describe('MaterialInputScanScreen — 공정 반제품 투입(피처 016)', () => {
+  const WIP_LOT_NO = 'SAMPLE-WIP-0001';
+  const wipLot = (overrides: Record<string, unknown> = {}) =>
+    lot({
+      lotId: 7351,
+      lotNo: WIP_LOT_NO,
+      itemId: 7251,
+      lotTypeCode: 'WIP',
+      producedOperation: {
+        workOrderId: 7800,
+        operationSeq: 10,
+        processCode: 'SAMPLE-P10',
+        processName: '가공',
+      },
+      wipProducedQty: 100,
+      wipRemainingQty: 40,
+      ...overrides,
+    });
+  const noRecords: StubRoute = {
+    match: (request) => isGet(request, CONSUMPTIONS_PATH),
+    respond: () => jsonResponse({ items: [], page: { page: 1, size: 200, total: 0 } }),
+  };
+  const rowOf = (lotNo: string): HTMLElement => {
+    const row = within(scannedList())
+      .getAllByRole('listitem')
+      .find((item) => within(item).queryByText(lotNo) !== null);
+    if (row === undefined) throw new Error(`${lotNo} 줄이 없다`);
+
+    return row;
+  };
+  const rejectRoute = (status: number, body: unknown): StubRoute => ({
+    match: (request) => isPost(request, CONSUMPTIONS_PATH),
+    respond: () => jsonResponse(body, { status }),
+  });
+
+  it('US2-1·SC-004 반제품을 스캔하면 불출 줄 없이도 남은 전량을 채우고, 칩·근거를 보이며, 다음 스캔에서 그 양으로 보낸다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen(
+      [wipLot(), lot()],
+      okRoute([consumption(7351, { inputQty: 40 }), consumption(7301)]),
+      [noRecords],
+    );
+
+    await user.type(screen.getByLabelText(t.scan.label), `${WIP_LOT_NO}{Enter}`);
+    const field = await screen.findByLabelText(t.scanned.qtyLabel(WIP_LOT_NO));
+    expect(field).toHaveProperty('value', '40');
+    expect(await screen.findByText(t.wip.filled('SAMPLE-ITEM-7251', '40 EA'))).toBeTruthy();
+    /* 자재의 「미전송」과 같이 [취소]가 서고 아직 보내지 않는다(조작 수 같음). */
+    expect(screen.getByRole('button', { name: t.scanned.undoMaterial(WIP_LOT_NO) })).toBeTruthy();
+    expect(sent).toHaveLength(0);
+
+    const row = rowOf(WIP_LOT_NO);
+    expect(within(row).getByText(t.wip.chip(10, '가공'))).toBeTruthy();
+    expect(within(row).getByText('실적 100 · 투입 60 · 남은 수량 40 EA')).toBeTruthy();
+    expect(within(row).getByText(t.scanned.pendingMark)).toBeTruthy();
+
+    /* 다음 스캔이 앞 반제품을 보낸다 — 자재와 같은 시점. */
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
+    await waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+    expect(sent[0]?.body).toMatchObject({ lotId: 7351, inputQty: 40, uomId: 7401 });
+  });
+
+  it('US2-1 · Q7 줄여서 나눠 넣으면 그 양만 보내고, 줄 근거가 「투입 · 남은」을 따라가며, 다시 스캔하면 남은 양을 채운다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen(
+      [wipLot(), lot()],
+      okRoute([consumption(7351, { inputQty: 30 }), consumption(7301)]),
+      [noRecords],
+    );
+
+    await user.type(screen.getByLabelText(t.scan.label), `${WIP_LOT_NO}{Enter}`);
+    const field = await screen.findByLabelText(t.scanned.qtyLabel(WIP_LOT_NO));
+    await user.clear(field);
+    await user.type(field, '30');
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
+    await waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+    expect(sent[0]?.body).toMatchObject({ lotId: 7351, inputQty: 30 });
+    /* 보낸 뒤 줄 근거는 이 화면이 보낸 30 을 반영한다(스캔 때 값 「투입 60 · 남은 40」 그대로가 아님). */
+    await waitFor(() => {
+      expect(
+        within(rowOf(WIP_LOT_NO)).getByText('실적 100 · 투입 90 · 남은 수량 10 EA'),
+      ).toBeTruthy();
+    });
+    /* 반제품은 불출이 없으니 서버가 「출고 미귀속」으로 기록해도 칩을 붙이지 않는다. */
+    expect(within(rowOf(WIP_LOT_NO)).queryByText(t.scanned.unlinkedIssue)).toBeNull();
+
+    /* 같은 라벨을 다시 읽으면(조회하지 않고 담긴 값) 이 화면이 보낸 30 을 빼고 10 을 채운다. */
+    await user.type(screen.getByLabelText(t.scan.label), `${WIP_LOT_NO}{Enter}`);
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.scanned.qtyLabel(WIP_LOT_NO))).toHaveProperty('value', '10');
+    });
+  });
+
+  it('US2-5 남은 수량을 넘겨 서버가 409 WIP_QTY_EXCEEDED 로 거절하면 남은·실적·이미 투입을 말한다', async () => {
+    const user = userEvent.setup();
+    renderScreen(
+      [wipLot()],
+      rejectRoute(409, {
+        errors: [
+          {
+            scope: 'field',
+            field: 'inputQty',
+            code: 'WIP_QTY_EXCEEDED',
+            message: '남은 수량을 넘습니다 (남은 40)',
+          },
+        ],
+        meta: { remainingQty: 40, producedQty: 100 },
+      }),
+      [noRecords],
+    );
+
+    await prepare(user, [[WIP_LOT_NO, '50']]);
+
+    expect(await screen.findByText(t.confirm.failed)).toBeTruthy();
+    expect(
+      screen.getByText(
+        '남은 수량(40 EA)보다 많이 넣었습니다. 실적 100 중 60 은 이미 투입했습니다.',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('US2-3 화면은 유형으로 막지 않고 앞 공정이 아니라는 서버 400 문구를 그대로 보인다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen(
+      [wipLot()],
+      rejectRoute(400, {
+        errors: [
+          {
+            scope: 'field',
+            field: 'lotId',
+            code: 'INVALID',
+            message: '이 W/O 의 앞 공정 반제품이 아닙니다',
+          },
+        ],
+      }),
+      [noRecords],
+    );
+
+    await prepare(user, [[WIP_LOT_NO, '40']]);
+
+    expect(await screen.findByText('이 W/O 의 앞 공정 반제품이 아닙니다')).toBeTruthy();
+    expect(sent).toHaveLength(1);
+  });
+
+  it('US2-1 남은 수량이 0 인 반제품은 채우지 않고 「모두 투입」으로 보이기만 한다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen([wipLot({ wipRemainingQty: 0 })], okRoute([]), [noRecords]);
+
+    await user.type(screen.getByLabelText(t.scan.label), `${WIP_LOT_NO}{Enter}`);
+
+    expect(await screen.findByText(t.wip.allInput('SAMPLE-ITEM-7251'))).toBeTruthy();
+    expect(screen.queryByLabelText(t.scanned.qtyLabel(WIP_LOT_NO))).toBeNull();
+    expect(sent).toHaveLength(0);
+  });
+});

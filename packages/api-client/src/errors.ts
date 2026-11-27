@@ -2,6 +2,15 @@ import type { components } from './generated/api';
 
 export type ErrorItem = components['schemas']['ErrorItem'];
 
+/**
+ * 반제품 투입이 남은 수량을 넘은 409 `WIP_QTY_EXCEEDED` 의 `meta`(피처 016 · `WipQtyExceededResponse`).
+ * 이미 투입한 양 = `producedQty − remainingQty`.
+ */
+export interface WipQtyExceeded {
+  remainingQty: number;
+  producedQty: number;
+}
+
 /** 입하 받기 거부의 한 줄(005 계약 §3 `InboundLotReceiveRejection.rejectedLots[]`). */
 export interface RejectedLot {
   index: number;
@@ -102,7 +111,16 @@ export type ApiError =
        */
       rejectedLots?: RejectedLot[];
     }
-  | { kind: 'validation'; errors: ErrorItem[]; status?: number }
+  | {
+      kind: 'validation';
+      errors: ErrorItem[];
+      status?: number;
+      /**
+       * 반제품 남은 수량 초과(409 `WIP_QTY_EXCEEDED` · 피처 016)의 수량들. 그 응답에만 있다 — 버리면 화면이
+       * 「실적 p 중 c 은 이미 투입했습니다」를 말할 값을 다시 조회해야 한다(`rejectedLots` 와 같은 까닭).
+       */
+      wipQty?: WipQtyExceeded;
+    }
   | {
       kind: 'http';
       status: number;
@@ -182,6 +200,11 @@ const isErrorItem = (value: unknown): value is ErrorItem =>
   typeof value.code === 'string' &&
   typeof value.message === 'string';
 
+const isWipQtyExceeded = (value: unknown): value is WipQtyExceeded =>
+  isRecord(value) &&
+  typeof value.remainingQty === 'number' &&
+  typeof value.producedQty === 'number';
+
 const isRejectedLot = (value: unknown): value is RejectedLot =>
   isRecord(value) &&
   typeof value.index === 'number' &&
@@ -210,7 +233,11 @@ const toConflictWarehouse = (value: unknown): ConflictWarehouse[] => {
     return [];
   }
   return [
-    { warehouseId: value.warehouseId, warehouseName: value.warehouseName, plantName: value.plantName },
+    {
+      warehouseId: value.warehouseId,
+      warehouseName: value.warehouseName,
+      plantName: value.plantName,
+    },
   ];
 };
 
@@ -297,7 +324,15 @@ export const normalizeApiError = (status: number, body: unknown): ApiError => {
     const errors = body.errors;
     if (errors.length > 0) {
       if (!errors.some((error) => error.code === STATE_LOCKED_CODE)) {
-        return { kind: 'validation', status, errors };
+        const meta = body.meta;
+        return isWipQtyExceeded(meta)
+          ? {
+              kind: 'validation',
+              status,
+              errors,
+              wipQty: { remainingQty: meta.remainingQty, producedQty: meta.producedQty },
+            }
+          : { kind: 'validation', status, errors };
       }
 
       const rejectedLots = Array.isArray(body.rejectedLots)

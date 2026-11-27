@@ -684,6 +684,62 @@ describe('ProductionFlowScreen', () => {
     expect(command).toContain('"LOT ' + LOT_NO + '"');
   });
 
+  /* 피처 016 — 현재 LOT 이 공정 반제품이면 라벨 첫 줄에 공정 순번을 적는다(D-8). */
+  it('US1-5·Q5 현재 LOT 이 반제품이면 라벨 첫 줄이 WIP LOT OP{공정 순번} 이다', async () => {
+    const writes: Request[] = [];
+    const wipLot: StubRoute = {
+      match: (request) =>
+        pathOf(request) === '/trace/lots' &&
+        new URL(request.url).searchParams.get('completed') !== 'true',
+      respond: () =>
+        jsonResponse({
+          items: [
+            {
+              lotId: LOT_ID,
+              lotNo: LOT_NO,
+              itemId: 101,
+              lotTypeCode: 'WIP',
+              plantId: 1,
+              initialQty: 12,
+              uomId: 1,
+              sourceTypeCode: 'WORK_ORDER',
+              sourceId: WORK_ORDER_ID,
+              statusCode: 'NORMAL',
+              producedOperation: {
+                workOrderId: WORK_ORDER_ID,
+                operationSeq: 10,
+                processCode: 'P10',
+                processName: '가공',
+              },
+              wipProducedQty: 0,
+              wipRemainingQty: 0,
+            },
+          ],
+          page: { page: 1, size: 20, total: 1 },
+        }),
+    };
+    const save = vi.fn().mockResolvedValue('/tmp/lot.prn');
+    Object.defineProperty(window, 'pop', {
+      configurable: true,
+      value: { rendition: { save } },
+    });
+    const user = userEvent.setup();
+    renderScreen(writes, [wipLot]);
+
+    const output = await findOutput();
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+
+    await waitFor(() => {
+      expect(save).toHaveBeenCalledTimes(1);
+    });
+    const [bytes] = save.mock.calls[0] as [Uint8Array];
+    const command = new TextDecoder().decode(bytes);
+
+    expect(command).toContain('"WIP LOT OP10  #');
+    expect(command).not.toContain('"PROD LOT');
+  });
+
   /*
    * ⭐ **라벨은 화면이 직접 짠다**(사용자 지시 2026-09-16 · `label-tspl`). 서버에서 그림을 받는
    * 걸음이 사라져 이 시험의 옛 전제(`renditionFailed`)는 더 일어나지 않는다 — 같은 원칙을
