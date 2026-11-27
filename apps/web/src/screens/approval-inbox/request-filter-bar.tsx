@@ -1,6 +1,6 @@
-import { Button, SearchInput } from '@crefle/web-ui';
+import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 
 import { DateRangeFields } from '../../patterns/date-range-fields';
 import {
@@ -30,8 +30,6 @@ export interface RequestFilterBarProps {
   /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
   onRemoveFilter: (key: FilterChipKey) => void;
   onReset: () => void;
-  /** 조회 · 초기화 뒤 구분선 너머에 둘 화면 단추(다시 조회) — 통일 배치(#350). */
-  actions?: ReactNode;
 }
 
 /**
@@ -63,7 +61,6 @@ export const RequestFilterBar = ({
   onSearch,
   onRemoveFilter,
   onReset,
-  actions,
 }: RequestFilterBarProps) => {
   const more = useFilterMore();
   const [filters, setFilters] = useState<InboxFilters>(appliedFilters);
@@ -154,17 +151,21 @@ export const RequestFilterBar = ({
           }}
         />
 
-        <SearchInput
+        {/* 품질 화면(검사 조회·판정)과 같은 입력칸 — 돋보기 없이 흐린 문구로 안내한다(#361). */}
+        <TextField
           label={t.fields.q}
+          placeholder={t.fields.qPlaceholder}
           value={filters.q}
           onChange={(event) => {
             setFilters((prev) => ({ ...prev, q: event.target.value }));
           }}
-          /* 엔터로도 조회된다 — 검색칸에서 엔터가 아무 일도 하지 않으면 멈춘 것으로 읽힌다. */
-          onSearch={(value) => {
-            onSearch({ ...filters, q: value });
+          /* 엔터로도 조회된다 — 입력칸에서 엔터가 아무 일도 하지 않으면 멈춘 것으로 읽힌다. */
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+              event.preventDefault();
+              onSearch({ ...filters, q: event.currentTarget.value });
+            }
           }}
-          clearLabel={messages.common.clear}
         />
 
         {/*
@@ -180,12 +181,6 @@ export const RequestFilterBar = ({
               </Button>
             )}
             <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
-            {actions !== undefined && (
-              <>
-                <span className="inspection-standard-filter-divider" aria-hidden />
-                {actions}
-              </>
-            )}
           </div>
         </div>
       </div>

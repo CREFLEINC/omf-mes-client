@@ -10022,28 +10022,28 @@ dialog.routing-history-dialog {
   border: 0;
 }
 
-.approval-inbox-detail-section {
+/*
+ * 상세 — 품질 화면(검사 조회·판정) 상세와 같은 짜임(#361): 맨 위 요약 상자(.parts-iqc-facts) 아래로
+ * 제목 달린 묶음 상자(.parts-iqc-card 와 같은 테두리 · 모서리 · 안쪽 여백)가 차례로 선다.
+ */
+.approval-inbox-detail-request {
   display: grid;
   gap: var(--space-3);
 }
 
-.approval-inbox-detail-section + .approval-inbox-detail-section {
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--outline-variant);
+.approval-inbox-detail-section {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
 }
 
 .approval-inbox-detail-section > h3 {
   margin: 0;
   color: var(--on-surface);
-  font: var(--type-title-md);
-  letter-spacing: var(--type-title-md-tracking);
-}
-
-dl.filter-bar.approval-inbox-detail-facts {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: var(--space-4);
-  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
 }
 
 .approval-inbox-detail-facts dd,
@@ -10051,7 +10051,25 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin: 0;
 }
 
-.filter-bar.approval-inbox-target-facts,
+.approval-inbox-target-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.approval-inbox-target-facts {
+  min-width: 0;
+  margin: 0;
+}
+
+.approval-inbox-target-facts > .parts-iqc-fact {
+  padding: 0;
+  margin: 0;
+  border-left: 0;
+}
+
 .approval-inbox-detail-section > .field-note,
 .approval-inbox-detail-section > .form-actions,
 .approval-inbox-detail-section > p {
@@ -10063,8 +10081,7 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 @media (max-width: 1100px) {
-  .filter-bar.approval-inbox-filter,
-  dl.filter-bar.approval-inbox-detail-facts {
+  .filter-bar.approval-inbox-filter {
     grid-template-columns: 1fr;
   }
 
@@ -41089,7 +41106,10 @@ body:has(
  * 이름 열(템플릿명 · 작업명 · 이벤트)만 왼쪽 정렬 — 나머지(알림 · Zalo · 수신자 · 구분 · 템플릿 ID)는 가운데 그대로.
  * `.inspection-queue-table … :nth-child(n)×3` 가운데 정렬보다 세게 건다.
  */
-.list-detail-list .notify-list-table.inspection-queue-table table th:has(.notify-name-head):nth-child(n),
+.list-detail-list
+  .notify-list-table.inspection-queue-table
+  table
+  th:has(.notify-name-head):nth-child(n),
 .list-detail-list
   .notify-list-table.inspection-queue-table
   table
@@ -41312,7 +41332,8 @@ body:has(
  * 조회 상자 안 칸 이름에는 빨간 * 를 두지 않는다(사용자 지시 2026-11-25). 필수 조건 검사 · 오류 안내 · aria-required 는
  * 그대로다 — 표시만 숨긴다. 상세 · 팝업 안 입력 칸의 * 는 그대로 둔다.
  */
-:is(.list-detail-filter, .po-board-filter, .filter-bar) :is(.required-mark, [class*='requiredMark']) {
+:is(.list-detail-filter, .po-board-filter, .filter-bar)
+  :is(.required-mark, [class*='requiredMark']) {
   display: none;
 }
 
@@ -41446,7 +41467,6 @@ body:has(
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
 }
-
 
 /*
  * 알림 연결 설정 — Zalo 연결 정보 상자(시안 2026-11-25): 앱 ID · 앱 비밀 키 · 갱신 토큰 세 칸을 나란히(이름은 값 위),
@@ -42363,7 +42383,9 @@ body:has(
     min-height: 0;
   }
 
-  main .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top'] > :first-child {
+  main
+    .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top']
+    > :first-child {
     display: flex;
     flex: 1 1 auto;
     flex-direction: column;
@@ -42373,29 +42395,48 @@ body:has(
     overflow: auto;
   }
 
-  main .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top'] > :first-child:not(:last-child) {
+  main
+    .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top']
+    > :first-child:not(:last-child) {
     max-height: var(--stacked-list-height, 60%);
   }
 
   /* 빈 목록 — 안내(아이콘 · 제목)가 표 아래 선에 잘리지 않게 높이를 줄이지 않는다(사용자 지시 2026-11-26). */
-  main .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top'] > :first-child:not(:last-child):has(tr[class*='emptyCell']) {
+  main
+    .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top']
+    > :first-child:not(:last-child):has(tr[class*='emptyCell']) {
     flex: 0 1 auto;
     /* 상세 칸 · 막대 자리(약 7rem)는 남긴다 — 그래도 모자라면 목록 칸 안에서 구른다. */
     max-height: calc(100% - 7rem);
   }
 
   /* 목록이 비면 상세 칸은 남은 높이만 쓴다(안에서 구른다) — 페이지가 아래로 늘지 않게. */
-  main .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top']:has(> :first-child tr[class*='emptyCell']) > :last-child:not(:first-child) {
+  main
+    .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top']:has(
+      > :first-child tr[class*='emptyCell']
+    )
+    > :last-child:not(:first-child) {
     min-height: 0;
   }
 
   /* 위아래로 쌓일 때 빈 안내는 위아래 여백만 줄여 상세 칸 자리를 남긴다. */
-  main .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top'] > :first-child:not(:last-child) tr[class*='emptyCell'] > td,
-  main .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top'] > :first-child:not(:last-child) tr[class*='emptyCell'] > td > div {
+  main
+    .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top']
+    > :first-child:not(:last-child)
+    tr[class*='emptyCell']
+    > td,
+  main
+    .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top']
+    > :first-child:not(:last-child)
+    tr[class*='emptyCell']
+    > td
+    > div {
     padding-block: var(--space-1);
   }
 
-  main .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top'] > :last-child:not(:first-child) {
+  main
+    .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top']
+    > :last-child:not(:first-child) {
     flex: 1 1 0;
     align-self: stretch;
     width: auto;
@@ -42404,8 +42445,14 @@ body:has(
     overflow: auto;
   }
 
-  main .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top'] > :first-child .po-board-table,
-  main .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top'] > :first-child > .board-table {
+  main
+    .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top']
+    > :first-child
+    .po-board-table,
+  main
+    .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top']
+    > :first-child
+    > .board-table {
     flex: 1 1 auto;
     min-height: 0;
     overflow: auto;
@@ -42420,29 +42467,48 @@ main .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-to
   min-height: 0;
 }
 
-main .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top'] > :first-child:not(:last-child) {
+main
+  .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top']
+  > :first-child:not(:last-child) {
   flex: 0 1 auto;
   height: auto;
   min-height: 140px;
   max-height: var(--stacked-list-height, 60%);
 }
 
-main .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top'] > :first-child:not(:last-child):has(tr[class*='emptyCell']) {
+main
+  .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top']
+  > :first-child:not(:last-child):has(tr[class*='emptyCell']) {
   flex: 0 1 auto;
   max-height: calc(100% - 7rem);
 }
 
-main .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top']:has(> :first-child tr[class*='emptyCell']) > :last-child:not(:first-child) {
+main
+  .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top']:has(
+    > :first-child tr[class*='emptyCell']
+  )
+  > :last-child:not(:first-child) {
   min-height: 0;
 }
 
 /* 위아래로 쌓일 때 빈 안내는 위아래 여백만 줄여 상세 칸 자리를 남긴다. */
-main .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top'] > :first-child:not(:last-child) tr[class*='emptyCell'] > td,
-main .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top'] > :first-child:not(:last-child) tr[class*='emptyCell'] > td > div {
+main
+  .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top']
+  > :first-child:not(:last-child)
+  tr[class*='emptyCell']
+  > td,
+main
+  .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top']
+  > :first-child:not(:last-child)
+  tr[class*='emptyCell']
+  > td
+  > div {
   padding-block: var(--space-1);
 }
 
-main .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top'] > :last-child:not(:first-child) {
+main
+  .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top']
+  > :last-child:not(:first-child) {
   flex: 1 1 0;
   align-self: stretch;
   width: auto;

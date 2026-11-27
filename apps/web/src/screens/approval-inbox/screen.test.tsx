@@ -990,7 +990,7 @@ describe('빈 상태와 조회 실패', () => {
   });
 });
 
-describe('다시 조회', () => {
+describe('같은 조건의 조회 = 다시 조회(#361)', () => {
   it('목록과 대기 건수를 함께 부른다 — 한쪽만 부르면 갱신된 값과 낡은 값이 섞인다', async () => {
     const { requests, user } = renderScreen(defaultRoutes(3));
 
@@ -999,7 +999,7 @@ describe('다시 조회', () => {
       expect(countRequests(requests)).toHaveLength(1);
     });
 
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => {
       expect(listRequests(requests)).toHaveLength(2);
@@ -1015,7 +1015,7 @@ describe('다시 조회', () => {
       expect(detailRequests(requests)).toHaveLength(1);
     });
 
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => {
       expect(detailRequests(requests)).toHaveLength(2);
@@ -1028,7 +1028,7 @@ describe('다시 조회', () => {
     const { requests, user } = renderScreen(defaultRoutes(3));
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => {
       expect(listRequests(requests)).toHaveLength(2);
@@ -1040,7 +1040,7 @@ describe('다시 조회', () => {
     const { user } = renderScreen(defaultRoutes(), '?q=SYNTH&page=2&rq=9001');
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     expect(currentLocation()).toBe(`${ROUTE}?q=SYNTH&page=2&rq=9001`);
   });
@@ -1059,7 +1059,6 @@ describe('조회만 하는 조작', () => {
       expect(detailRequests(requests)).toHaveLength(1);
     });
 
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
     await user.click(tabFor(t.tabs.requested));
 
@@ -1740,7 +1739,7 @@ describe('결재 — 확인 창', () => {
     expect(confirmDialog()).toBeInTheDocument();
 
     /* 창이 열린 채 상세가 다시 온다 — 그 사이 앞 단계가 움직였다. */
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
     await screen.findByText(t.progress.notMyTurn);
 
     await user.click(confirmButton(t.decision.approve));
@@ -2204,7 +2203,7 @@ describe('결재 — 실패 배너가 매인 대상', () => {
     );
 
     await sendFailingApprove(user);
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     /* 새 상세가 실제로 그려졌다 — 여기까지 와야 정리 effect가 도는 자리를 지났다. */
     expect(await screen.findByText('합성 재조회 뒤 의견')).toBeVisible();
@@ -2239,7 +2238,7 @@ describe('결재 — 의견 초안이 매인 대상', () => {
 
     const before = detailRequests(requests).length;
 
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
     await waitFor(() => {
       expect(detailRequests(requests).length).toBeGreaterThan(before);
     });
@@ -2440,7 +2439,7 @@ describe('결재 — 상세를 읽을 수 없게 된 뒤', () => {
     await user.click(approveButton());
     expect(confirmDialog()).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
     await screen.findByText(messages.httpError.loadTitle);
 
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -2454,7 +2453,7 @@ describe('결재 — 상세를 읽을 수 없게 된 뒤', () => {
     await openRejectDialog(user);
     expect(confirmDialog()).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
     await screen.findByText(messages.httpError.loadTitle);
 
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -2469,7 +2468,7 @@ describe('결재 — 상세를 읽을 수 없게 된 뒤', () => {
     const { requests, user } = await renderDecision(decisionRoutes([failingSecondDetail(403)]));
 
     await user.click(approveButton());
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
     await screen.findByText(t.empty.forbiddenTitle);
 
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -2496,7 +2495,7 @@ describe('결재 — 상세를 읽을 수 없게 된 뒤', () => {
     const { user } = await renderDecision(decisionRoutes([flakyDetail]));
 
     await user.click(approveButton());
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
     await screen.findByText(messages.httpError.loadTitle);
 
     await user.click(screen.getByRole('button', { name: messages.common.retry }));

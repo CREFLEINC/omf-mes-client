@@ -52,33 +52,33 @@ export interface RequestDetailPaneProps {
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 export const RequestDetailPane = ({ view }: RequestDetailPaneProps) => (
-  <div className="approval-inbox-detail-section" role="group" aria-label={t.panes.request}>
-    <h3>{t.panes.request}</h3>
-    <dl className="filter-bar approval-inbox-detail-facts">
-      <div className="field-cell">
+  <div className="approval-inbox-detail-request" role="group" aria-label={t.panes.request}>
+    {/* 요약 상자 — 품질 화면(검사 조회·판정) 상세의 요약 상자와 같은 모양(작은 이름 위 · 큰 값 아래 · #361). */}
+    <dl className="parts-iqc-facts iqc-inbound-facts approval-inbox-detail-facts">
+      <div className="parts-iqc-fact">
         <dt className="field-label">{t.fields.approvalRequestNo}</dt>
-        <dd>{view.approvalRequestNo}</dd>
+        <dd className="parts-iqc-fact-key">{view.approvalRequestNo}</dd>
       </div>
-      <div className="field-cell">
+      <div className="parts-iqc-fact">
         <dt className="field-label">{t.fields.approvalTypeCode}</dt>
-        <dd>{approvalTypeLabelOf(view.approvalTypeCode)}</dd>
+        <dd className="parts-iqc-fact-key">{approvalTypeLabelOf(view.approvalTypeCode)}</dd>
       </div>
-      <div className="field-cell">
+      <div className="parts-iqc-fact">
         <dt className="field-label">{t.fields.requestedByName}</dt>
-        <dd>{view.requesterName}</dd>
+        <dd className="parts-iqc-fact-key">{view.requesterName}</dd>
       </div>
-      <div className="field-cell">
+      <div className="parts-iqc-fact">
         <dt className="field-label">{t.fields.requestedAt}</dt>
-        <dd>{view.requestedAtText}</dd>
+        <dd className="parts-iqc-fact-key">{view.requestedAtText}</dd>
       </div>
-      <div className="field-cell">
+      <div className="parts-iqc-fact">
         <dt className="field-label">{t.fields.status}</dt>
-        <dd>{requestStatusLabelOf(view.statusCode)}</dd>
+        <dd className="parts-iqc-fact-key">{requestStatusLabelOf(view.statusCode)}</dd>
       </div>
     </dl>
 
-    <div className="field-cell">
-      <span className="field-label">{t.fields.reason}</span>
+    <section className="approval-inbox-detail-section">
+      <h3>{t.fields.reason}</h3>
       {/*
        * **줄마다 한 칸이다.** 줄바꿈을 구조로 내어 들여쓰기와 빈 줄이 표기 층에서 사라지지
        * 않게 하는 것은 `toVisibleLine`이 맡는다.
@@ -91,6 +91,6 @@ export const RequestDetailPane = ({ view }: RequestDetailPaneProps) => (
           <p key={`${String(index)}:${line}`}>{toVisibleLine(line)}</p>
         ))}
       </div>
-    </div>
+    </section>
   </div>
 );

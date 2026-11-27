@@ -2,6 +2,7 @@ import {
   Badge,
   Button,
   EmptyState,
+  Icon,
   SkeletonText,
   Tabs,
   useToast,
@@ -591,7 +592,7 @@ export const ApprovalInboxScreen = () => {
     );
 
   /**
-   * 다시 조회(수명 표 10행) — **화면이 보고 있는 조회를 전부 다시 한다.**
+   * 다시 조회(수명 표 10행) — **화면이 보고 있는 조회를 전부 다시 한다.** 같은 조건의 [조회]가 부른다(#361).
    *
    * 목록만 다시 부르면 갱신된 목록과 낡은 대기 건수·상세가 한 화면에 섞인다 — 방금 결재된
    * 건이 빠진 목록 옆에 그 건을 포함한 뱃지가 서고, 아래 구획은 결재 전 진행을 보인다.
@@ -804,6 +805,11 @@ export const ApprovalInboxScreen = () => {
       return (
         <EmptyState
           size="sm"
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="layers" size={20} />
+            </span>
+          }
           title={t.empty.noSelectionTitle}
           description={t.empty.noSelectionDescription}
         />
@@ -964,6 +970,17 @@ export const ApprovalInboxScreen = () => {
               approvalTypeOptions={toApprovalTypeOptions(PLACEHOLDER_APPROVAL_TYPE_CODES)}
               statusOptions={toCodeOptions(PLACEHOLDER_REQUEST_STATUS_CODES)}
               onSearch={(nextFilters) => {
+                /*
+                 * 같은 조건의 [조회]는 다시 조회다 — 품질 화면(검사 조회·판정)과 같게(#361).
+                 * 예전 「다시 조회」 단추 그대로 쪽 · 선택을 두고 목록 · 대기 건수 · 상세만 다시 부른다.
+                 */
+                if (
+                  toSearchParams(nextFilters, tab, page, size).toString() ===
+                  toSearchParams(filters, tab, page, size).toString()
+                ) {
+                  if (!isLocked) handleReload();
+                  return;
+                }
                 apply(nextFilters, tab);
               }}
               onRemoveFilter={(key: FilterChipKey) => {
@@ -972,11 +989,6 @@ export const ApprovalInboxScreen = () => {
               onReset={() => {
                 apply(EMPTY_FILTERS, tab);
               }}
-              actions={
-                <Button variant="outlined" onClick={handleReload}>
-                  {t.actions.reload}
-                </Button>
-              }
             />
           ),
         }}
@@ -999,12 +1011,8 @@ export const ApprovalInboxScreen = () => {
         detail={{
           label: t.panes.detail,
           className: 'approval-inbox-pane',
-          content: (
-            <>
-              <h2 className="pane-title">{t.panes.detail}</h2>
-              {detailSlot()}
-            </>
-          ),
+          /* 구획 제목을 따로 두지 않는다 — 품질 화면(검사 조회·판정) 상세와 같게(#361). 구획 이름은 접근 이름으로 남는다. */
+          content: detailSlot(),
         }}
       />
 

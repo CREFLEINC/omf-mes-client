@@ -39,29 +39,32 @@ export const TargetPane = ({ name, openState, onOpen }: TargetPaneProps) => {
         {t.panes.target}
         <InfoTip text={t.target.note} />
       </h3>
-      <dl className="filter-bar approval-inbox-target-facts">
-        <div className="field-cell">
-          <dt className="field-label">{t.panes.target}</dt>
-          <dd>{name}</dd>
-        </div>
-      </dl>
+      {/* 대상 이름과 「열기」를 한 줄에 — 이름은 요약 상자의 값과 같은 글자 크기(#361). */}
+      <div className="approval-inbox-target-row">
+        <dl className="approval-inbox-target-facts">
+          <div className="parts-iqc-fact">
+            <dt className="field-label">{t.panes.target}</dt>
+            <dd className="parts-iqc-fact-key">{name}</dd>
+          </div>
+        </dl>
 
-      {openState.kind === 'open' ? (
-        <div className="field-cell">
-          <Button
-            variant="outlined"
-            size="sm"
-            onClick={() => {
-              onOpen(openState.path);
-            }}
-          >
-            {t.target.open}
-          </Button>
-        </div>
-      ) : (
-        /* 사유는 감추지 않는다 — 비활성 컨트롤은 포커스를 받지 못해 툴팁으로는 닿을 수 없다. */
-        <DisabledAction label={t.target.open} reason={describeOpenBlock(openState)} size="sm" />
-      )}
+        {openState.kind === 'open' ? (
+          <div className="field-cell">
+            <Button
+              variant="outlined"
+              size="sm"
+              onClick={() => {
+                onOpen(openState.path);
+              }}
+            >
+              {t.target.open}
+            </Button>
+          </div>
+        ) : (
+          /* 사유는 감추지 않는다 — 비활성 컨트롤은 포커스를 받지 못해 툴팁으로는 닿을 수 없다. */
+          <DisabledAction label={t.target.open} reason={describeOpenBlock(openState)} size="sm" />
+        )}
+      </div>
     </div>
   );
 };

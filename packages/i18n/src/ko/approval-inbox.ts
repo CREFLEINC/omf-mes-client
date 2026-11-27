@@ -52,11 +52,10 @@ export const approvalInbox = {
     periodFrom: '상신 시작일',
     periodTo: '상신 종료일',
     q: '요청번호 검색',
+    qPlaceholder: '요청번호를 입력하세요',
   },
   actions: {
     goFirstPage: '첫 쪽으로',
-    /** 목록과 대기 건수를 **함께** 다시 부른다. 한쪽만 부르면 갱신된 값과 낡은 값이 섞인다. */
-    reload: '다시 조회',
     /*
      * 요청번호 하나로 이름이 선다 — 계약이 그 값을 UNIQUE로 두었다.
      * 보이는 글자를 그대로 담아 음성 조작이 그 말로 이 버튼을 부를 수 있게 하고,
@@ -133,8 +132,8 @@ export const approvalInbox = {
     noResultDescription: '조건을 줄이거나 다른 탭에서 다시 조회하세요.',
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
-    noSelectionTitle: '요청을 고르면 자세한 내용이 보입니다',
-    noSelectionDescription: '목록에서 요청번호를 누르세요.',
+    noSelectionTitle: '승인 요청을 선택하세요.',
+    noSelectionDescription: '선택한 요청의 상세 정보가 표시됩니다.',
     /**
      * 상세가 **404**. 「없는 것」이라 주소에서 고른 번호를 정리한다 —
      * 남겨 두면 새로고침·공유가 같은 빈자리로 되돌아온다.

@@ -42,10 +42,10 @@ export const approvalInbox: Translated<typeof ko.approvalInbox> = {
     periodFrom: 'Từ ngày trình',
     periodTo: 'Đến ngày trình',
     q: 'Tìm số yêu cầu',
+    qPlaceholder: 'Nhập số yêu cầu',
   },
   actions: {
     goFirstPage: 'Về trang đầu',
-    reload: 'Tra cứu lại',
     selectRow: (approvalRequestNo: string): string => `Chọn ${approvalRequestNo}`,
   },
   loading: {
@@ -88,8 +88,8 @@ export const approvalInbox: Translated<typeof ko.approvalInbox> = {
     noResultDescription: 'Hãy bớt điều kiện hoặc tra cứu lại ở tab khác.',
     beyondLastTitle: 'Trang này không có kết quả',
     beyondLastDescription: 'Hãy về trang đầu.',
-    noSelectionTitle: 'Chọn một yêu cầu thì sẽ thấy nội dung chi tiết',
-    noSelectionDescription: 'Hãy bấm số yêu cầu trong danh sách.',
+    noSelectionTitle: 'Hãy chọn yêu cầu phê duyệt.',
+    noSelectionDescription: 'Thông tin chi tiết của yêu cầu đã chọn sẽ hiển thị.',
     notFoundTitle: 'Không tìm thấy yêu cầu đã chọn',
     notFoundDescription: 'Yêu cầu đã được xử lý hoặc đã bị xóa. Hãy chọn lại từ danh sách.',
     forbiddenTitle: 'Bạn không có quyền xem yêu cầu này',
