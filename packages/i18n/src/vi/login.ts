@@ -16,10 +16,14 @@ export const login: Translated<typeof ko.login> = {
   },
   actions: {
     submit: 'Đăng nhập',
+    showPassword: 'Hiện mật khẩu',
+    hidePassword: 'Ẩn mật khẩu',
+  },
+  hints: {
+    capsLock: 'Caps Lock đang bật',
   },
   actionReasons: {
-    incomplete: 'Nhập đủ tên đăng nhập và mật khẩu thì mới dùng được nút Đăng nhập.',
-    submitting: 'Đăng nhập đang chờ phản hồi. Có phản hồi rồi thì dùng lại được.',
+    submitting: 'Đang chờ phản hồi.',
   },
   banner: {
     credentialsTitle: 'Sai thông tin đăng nhập',

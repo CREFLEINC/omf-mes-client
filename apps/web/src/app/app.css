@@ -58,11 +58,18 @@
  * .nav-search-empty 검색에 맞는 화면이 없다는 안내
  * .topbar-brand   탑바의 시스템 이름 줄 — 이름과 버전 뱃지를 한 줄에 놓는다
  * .topbar-version 그 줄의 버전 뱃지
+ * .login-locale  로그인 화면 오른쪽 위의 언어 칸 줄
+ * .login-stack   그 화면의 카드와 버전 글자 — 남는 높이 한가운데 선다(규범 8)
  * .login-card    그 화면이 세우는 카드의 폭 상한(규범 8)
- * .login-title   카드 머리에 놓는 표제 — 디자인 시스템의 머리 서식을 그대로 물려받는다(규범 8)
- * .login-head    그 카드 머리 — 표제와 언어 칸을 한 줄에 놓는다(규범 8)
+ * .login-head    그 카드 머리 — 제품 이름 줄과 표제를 위아래로 쌓는다(규범 8)
+ * .login-brand   카드 머리의 제품 이름 줄 — 이름은 굵게, 「관리웹」은 옅게
+ * .login-title   카드 머리에 놓는 표제(규범 8)
+ * .login-body    그 카드 본문의 안쪽 여백
  * .login-fields  카드 안 입력 칸 사이 간격(규범 8)
+ * .login-password 비밀번호 칸 위에 눈 단추를 겹쳐 두는 자리
+ * .login-caps    Caps Lock 이 켜진 동안 비밀번호 칸 아래 서는 안내
  * .login-actions 카드 안 액션 줄 — 하나뿐인 액션이 줄 전체를 채운다(규범 8)
+ * .login-version 카드 아래 버전 글자
  *
  * .pop-shell     POP(현장 단말) 화면의 본문 — 셸 밖에 서서 뷰포트를 그대로 쓴다
  * .pop-header    그 화면의 표제 줄
@@ -12301,8 +12308,8 @@ a.erp-send-chips:focus-visible {
  *
  * 상한을 칸 열에만 주면 액션 줄(.form-actions는 폭 상한이 없는 우측 정렬 행이다)이 칸 열과
  * 갈라져, 넓은 창에서 칸은 왼쪽 24rem에 서고 취소·변경은 화면 오른쪽 끝으로 달아난다.
- * 값 24rem은 .login-card와 같다 — 같은 값을 치는 칸이라 폭이 갈릴 이유가 없고, 가려진 글자는
- * 줄이 길어져도 읽을 것이 없다.
+ * 값 24rem은 로그인 카드의 칸 폭(344px)과 비슷한 값이다 — 같은 값을 치는 칸이라 폭이 크게 갈릴
+ * 이유가 없고, 가려진 글자는 줄이 길어져도 읽을 것이 없다.
  */
 .password-form {
   max-width: 24rem;
@@ -12356,47 +12363,87 @@ a.erp-send-chips:focus-visible {
  *
  * 높이 기준을 100%로 두는 것은 html·body·#root가 이미 height: 100%인 사슬을 쓰기 위해서다.
  * 같은 파일에 선 사슬을 두고 다른 기준(100dvh)을 들이면 둘이 어긋날 때 정본을 가릴 수 없다.
+ *
+ * 바탕은 카드보다 한 단 어두운 표면이다(2026-11-27 시안 A) — 카드와 바탕이 같은 계열의 회색이면
+ * 카드가 바탕에 묻힌다. 맨 위에 언어 칸 줄, 남는 높이 한가운데에 카드가 선다.
  */
 .login-shell {
   box-sizing: border-box;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   min-height: 100%;
+  background: var(--surface-container-low);
+}
+
+/* 화면 오른쪽 위의 언어 칸 — 카드보다 먼저 만나는 자리다(#1126). */
+.login-locale {
+  display: flex;
+  justify-content: flex-end;
 }
 
 /*
- * 24rem(384px) = 내용 폭 하한 344px + DS CardBody의 좌우 안쪽 여백(--space-5 × 2 = 40px).
+ * 카드와 그 아래 버전 글자를 남는 높이 한가운데 세운다. 아래 여백은 위 언어 줄을 덜어 내는 몫이다 —
+ * 그만큼 주지 않으면 카드가 눈으로 보기에 가운데보다 아래에 선다.
+ */
+.login-stack {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+  padding-bottom: var(--space-9);
+}
+
+/*
+ * 26.5rem(424px) = 내용 폭 하한 344px + 카드 좌우 안쪽 여백 --space-8 × 2(80px).
  * 창이 좁으면 width: 100%가 남는 폭을 그대로 쓴다 — 상한은 넓을 때만 발동한다.
  */
 .login-card {
   width: 100%;
-  max-width: 24rem;
+  max-width: 26.5rem;
 }
 
 /*
- * 카드 머리 — 표제와 언어 칸이 한 줄에 선다(#1126).
+ * 카드 머리 — 제품 이름 줄과 표제를 위아래로 쌓는다.
  *
- * 안쪽 여백·서식은 디자인 시스템의 카드 머리가 소유한다. 이 규칙이 더하는 것은 **한 줄 배치**
- * 뿐이다.
- *
- * ⚠ **줄바꿈을 막지 않는다.** 카드 폭이 24rem 이고 표제와 언어 이름은 언어에 따라 길이가
- * 바뀐다 — 한 줄에 묶어 두면 좁을 때 서로를 눌러 **글자가 잘린다.** 넘치면 언어 칸이 아래로
- * 내려가는 편이 읽을 수 있다.
+ * 안쪽 여백은 디자인 시스템 기본(--space-5)보다 넓게 준다. 칸이 둘뿐인 카드라 여백이 좁으면
+ * 빽빽해 보인다. 선택자를 두 겹으로 두는 것은 DS 의 해시 클래스를 겨냥하지 않고, 스타일시트
+ * 순서에도 기대지 않으려는 것이다.
  */
-.login-head {
+.login-card .login-head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-8) 0;
 }
 
-/* 카드 머리의 서식은 디자인 시스템이 소유한다 — 표제는 그것을 물려받고 브라우저 기본 여백만 턴다. */
+.login-card .login-body {
+  padding: var(--space-6) var(--space-8) var(--space-8);
+}
+
+/* 제품 이름 — 이름은 굵게, 뒤의 「관리웹」은 옅게. */
+.login-brand {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  color: var(--on-surface);
+}
+
+.login-brand > strong {
+  font-weight: 700;
+}
+
+.login-brand-app {
+  color: var(--on-surface-muted);
+}
+
+/* 표제 — 셸이 없어 이 화면의 유일한 제목이라 카드 머리 기본 서식보다 한 단 크게 둔다. */
 .login-title {
   margin: 0;
-  font: inherit;
-  letter-spacing: inherit;
+  font: var(--type-headline-sm);
+  letter-spacing: var(--type-headline-sm-tracking);
+  color: var(--on-surface);
 }
 
 /* 한 블록 안의 칸 사이 간격이라 .form-grid의 gap과 같은 값이다(규범 1의 --space-5는 블록 사이다). */
@@ -12406,17 +12453,51 @@ a.erp-send-chips:focus-visible {
 }
 
 /*
+ * 비밀번호 칸 위에 겹치는 눈 단추 — 사용자 추가 창(.users-roles-password-field)과 같은 짜임이다.
+ * 칸 높이 48px(lg) 안에 40px 단추를 위아래 4px 띄워 세우고, 친 글자가 단추 밑으로 들어가지 않게
+ * 칸 오른쪽 안쪽 여백을 늘린다.
+ */
+.login-password {
+  position: relative;
+}
+
+.login-password > button {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+}
+
+.login-password input.login-password-input {
+  padding-right: var(--space-7);
+}
+
+/* Caps Lock 안내 — 오류가 아니라 주의라 경고 계열 글자색을 쓴다. */
+.login-caps {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--on-semantic-warning-container);
+}
+
+/*
  * 액션 줄 — .form-actions(우측 정렬)를 쓰지 않는 자리다. 카드가 좁고 액션이 하나뿐이라
- * 오른쪽 끝에 붙이면 왼쪽에 아무것도 없는 빈 줄이 남는다. 이음매 값은 .form-actions와 같다.
+ * 오른쪽 끝에 붙이면 왼쪽에 아무것도 없는 빈 줄이 남는다.
  *
  * 폭은 button **요소**에 준다 — 디자인 시스템의 해시 클래스 이름을 겨냥하지 않는다(.wide-table과 같은 판단).
  */
 .login-actions {
-  margin-top: var(--space-5);
+  margin-top: var(--space-6);
 }
 
 .login-actions > button {
   width: 100%;
+}
+
+/* 카드 아래 버전 — 문의·장애 보고 때 읽는 값이라 작게만 둔다. */
+.login-version {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
 }
 
 /*
@@ -41026,7 +41107,10 @@ body:has(
  * 이름 열(템플릿명 · 작업명 · 이벤트)만 왼쪽 정렬 — 나머지(알림 · Zalo · 수신자 · 구분 · 템플릿 ID)는 가운데 그대로.
  * `.inspection-queue-table … :nth-child(n)×3` 가운데 정렬보다 세게 건다.
  */
-.list-detail-list .notify-list-table.inspection-queue-table table th:has(.notify-name-head):nth-child(n),
+.list-detail-list
+  .notify-list-table.inspection-queue-table
+  table
+  th:has(.notify-name-head):nth-child(n),
 .list-detail-list
   .notify-list-table.inspection-queue-table
   table
@@ -41249,7 +41333,8 @@ body:has(
  * 조회 상자 안 칸 이름에는 빨간 * 를 두지 않는다(사용자 지시 2026-11-25). 필수 조건 검사 · 오류 안내 · aria-required 는
  * 그대로다 — 표시만 숨긴다. 상세 · 팝업 안 입력 칸의 * 는 그대로 둔다.
  */
-:is(.list-detail-filter, .po-board-filter, .filter-bar) :is(.required-mark, [class*='requiredMark']) {
+:is(.list-detail-filter, .po-board-filter, .filter-bar)
+  :is(.required-mark, [class*='requiredMark']) {
   display: none;
 }
 
@@ -41383,7 +41468,6 @@ body:has(
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
 }
-
 
 /*
  * 알림 연결 설정 — Zalo 연결 정보 상자(시안 2026-11-25): 앱 ID · 앱 비밀 키 · 갱신 토큰 세 칸을 나란히(이름은 값 위),
@@ -42300,7 +42384,9 @@ body:has(
     min-height: 0;
   }
 
-  main .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top'] > :first-child {
+  main
+    .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top']
+    > :first-child {
     display: flex;
     flex: 1 1 auto;
     flex-direction: column;
@@ -42310,29 +42396,48 @@ body:has(
     overflow: auto;
   }
 
-  main .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top'] > :first-child:not(:last-child) {
+  main
+    .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top']
+    > :first-child:not(:last-child) {
     max-height: var(--stacked-list-height, 60%);
   }
 
   /* 빈 목록 — 안내(아이콘 · 제목)가 표 아래 선에 잘리지 않게 높이를 줄이지 않는다(사용자 지시 2026-11-26). */
-  main .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top'] > :first-child:not(:last-child):has(tr[class*='emptyCell']) {
+  main
+    .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top']
+    > :first-child:not(:last-child):has(tr[class*='emptyCell']) {
     flex: 0 1 auto;
     /* 상세 칸 · 막대 자리(약 7rem)는 남긴다 — 그래도 모자라면 목록 칸 안에서 구른다. */
     max-height: calc(100% - 7rem);
   }
 
   /* 목록이 비면 상세 칸은 남은 높이만 쓴다(안에서 구른다) — 페이지가 아래로 늘지 않게. */
-  main .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top']:has(> :first-child tr[class*='emptyCell']) > :last-child:not(:first-child) {
+  main
+    .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top']:has(
+      > :first-child tr[class*='emptyCell']
+    )
+    > :last-child:not(:first-child) {
     min-height: 0;
   }
 
   /* 위아래로 쌓일 때 빈 안내는 위아래 여백만 줄여 상세 칸 자리를 남긴다. */
-  main .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top'] > :first-child:not(:last-child) tr[class*='emptyCell'] > td,
-  main .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top'] > :first-child:not(:last-child) tr[class*='emptyCell'] > td > div {
+  main
+    .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top']
+    > :first-child:not(:last-child)
+    tr[class*='emptyCell']
+    > td,
+  main
+    .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top']
+    > :first-child:not(:last-child)
+    tr[class*='emptyCell']
+    > td
+    > div {
     padding-block: var(--space-1);
   }
 
-  main .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top'] > :last-child:not(:first-child) {
+  main
+    .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top']
+    > :last-child:not(:first-child) {
     flex: 1 1 0;
     align-self: stretch;
     width: auto;
@@ -42341,8 +42446,14 @@ body:has(
     overflow: auto;
   }
 
-  main .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top'] > :first-child .po-board-table,
-  main .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top'] > :first-child > .board-table {
+  main
+    .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top']
+    > :first-child
+    .po-board-table,
+  main
+    .po-board-split.po-board-split.po-board-split.po-board-split[style*='--split-top']
+    > :first-child
+    > .board-table {
     flex: 1 1 auto;
     min-height: 0;
     overflow: auto;
@@ -42357,29 +42468,48 @@ main .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-to
   min-height: 0;
 }
 
-main .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top'] > :first-child:not(:last-child) {
+main
+  .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top']
+  > :first-child:not(:last-child) {
   flex: 0 1 auto;
   height: auto;
   min-height: 140px;
   max-height: var(--stacked-list-height, 60%);
 }
 
-main .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top'] > :first-child:not(:last-child):has(tr[class*='emptyCell']) {
+main
+  .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top']
+  > :first-child:not(:last-child):has(tr[class*='emptyCell']) {
   flex: 0 1 auto;
   max-height: calc(100% - 7rem);
 }
 
-main .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top']:has(> :first-child tr[class*='emptyCell']) > :last-child:not(:first-child) {
+main
+  .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top']:has(
+    > :first-child tr[class*='emptyCell']
+  )
+  > :last-child:not(:first-child) {
   min-height: 0;
 }
 
 /* 위아래로 쌓일 때 빈 안내는 위아래 여백만 줄여 상세 칸 자리를 남긴다. */
-main .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top'] > :first-child:not(:last-child) tr[class*='emptyCell'] > td,
-main .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top'] > :first-child:not(:last-child) tr[class*='emptyCell'] > td > div {
+main
+  .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top']
+  > :first-child:not(:last-child)
+  tr[class*='emptyCell']
+  > td,
+main
+  .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top']
+  > :first-child:not(:last-child)
+  tr[class*='emptyCell']
+  > td
+  > div {
   padding-block: var(--space-1);
 }
 
-main .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top'] > :last-child:not(:first-child) {
+main
+  .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top']
+  > :last-child:not(:first-child) {
   flex: 1 1 0;
   align-self: stretch;
   width: auto;
