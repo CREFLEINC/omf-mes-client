@@ -593,6 +593,9 @@ const form = (mode: 'create' | 'edit' = 'edit') =>
     screen.getByRole('region', { name: mode === 'create' ? t.form.createTitle : t.form.editTitle }),
   );
 
+/** 등록 팝업 — 단추 줄([취소][등록])은 팝업에 있다. */
+const createDialog = () => within(screen.getByRole('dialog', { name: t.form.createTitle }));
+
 const openGroup = async (user: ReturnType<typeof userEvent.setup>, code = 'GRP-A') => {
   await user.click(await screen.findByRole('button', { name: code }));
   await screen.findByRole('region', { name: t.form.editTitle });
@@ -836,7 +839,7 @@ describe('EquipmentMasterScreen — 그룹 등록·수정', () => {
     await user.click(await screen.findByRole('option', { name: t.groupTypes.LINE }));
     await user.click(form('create').getByRole('combobox', { name: t.fields.plant }));
     await user.click(await screen.findByRole('option', { name: /제1공장/ }));
-    await user.click(form('create').getByRole('button', { name: messages.common.save }));
+    await user.click(createDialog().getByRole('button', { name: t.actions.register }));
 
     await waitFor(() => {
       expect(writes).toHaveLength(1);
@@ -854,6 +857,84 @@ describe('EquipmentMasterScreen — 그룹 등록·수정', () => {
 
     // 등록 응답(201)에는 ETag가 없다 — 상세로 옮겨야 이어서 수정할 수 있다.
     expect(await screen.findByRole('region', { name: t.form.editTitle })).toBeInTheDocument();
+    /* 등록이 끝나면 팝업을 닫고 토스트로 알린다(omf-all-around#360). */
+    expect(screen.queryByRole('dialog', { name: t.form.createTitle })).toBeNull();
+    expect(await screen.findByText(messages.common.created)).toBeInTheDocument();
+  });
+
+  /* omf-all-around#360 — 그룹 추가는 등록 팝업으로 연다. */
+  it('「그룹 추가」는 등록 팝업을 열고, 필수 칸이 다 차야 [등록]이 켜진다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await screen.findByRole('button', { name: 'GRP-A' });
+    await user.click(screen.getAllByRole('button', { name: t.actions.addGroup })[0] as HTMLElement);
+
+    const register = createDialog().getByRole('button', { name: t.actions.register });
+    expect(register).toBeDisabled();
+    /* 본문 폼의 [저장]·[취소] 줄은 팝업 안에 두지 않는다 — 팝업 단추 줄이 대신한다. */
+    expect(createDialog().queryByRole('button', { name: messages.common.save })).toBeNull();
+
+    await user.type(
+      form('create').getByRole('textbox', { name: new RegExp(t.fields.groupCode) }),
+      'GRP-NEW',
+    );
+    await user.type(
+      form('create').getByRole('textbox', { name: new RegExp(t.fields.groupName) }),
+      '새 구역',
+    );
+    await user.click(form('create').getByRole('combobox', { name: t.fields.groupType }));
+    await user.click(await screen.findByRole('option', { name: t.groupTypes.LINE }));
+    expect(register).toBeDisabled();
+
+    await user.click(form('create').getByRole('combobox', { name: t.fields.plant }));
+    await user.click(await screen.findByRole('option', { name: /제1공장/ }));
+    expect(register).toBeEnabled();
+  });
+
+  it('등록 팝업 [취소]는 입력이 없으면 바로 닫고 고르던 그룹으로 돌아간다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderScreen();
+
+    await openGroup(user);
+    await user.click(screen.getAllByRole('button', { name: t.actions.addGroup })[0] as HTMLElement);
+    await user.click(createDialog().getByRole('button', { name: messages.common.cancel }));
+
+    expect(screen.queryByRole('dialog', { name: t.dialog.discardTitle })).toBeNull();
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: t.form.createTitle })).toBeNull();
+    });
+    await waitFor(() => {
+      expect(form().getByRole('textbox', { name: new RegExp(t.fields.groupCode) })).toHaveValue(
+        'GRP-A',
+      );
+    });
+    expect(writes).toHaveLength(0);
+  });
+
+  it('등록 팝업 [취소]는 입력이 있으면 「입력한 내용을 버릴까요?」를 먼저 묻는다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderScreen();
+
+    await screen.findByRole('button', { name: 'GRP-A' });
+    await user.click(screen.getAllByRole('button', { name: t.actions.addGroup })[0] as HTMLElement);
+    const codeInput = form('create').getByRole('textbox', {
+      name: new RegExp(t.fields.groupCode),
+    });
+    await user.type(codeInput, 'GRP-NEW');
+    await user.click(createDialog().getByRole('button', { name: messages.common.cancel }));
+
+    expect(await screen.findByRole('dialog', { name: t.dialog.discardTitle })).toBeInTheDocument();
+    /* [계속 편집]이면 친 값이 그대로 남는다. */
+    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+    expect(codeInput).toHaveValue('GRP-NEW');
+
+    await user.click(createDialog().getByRole('button', { name: messages.common.cancel }));
+    await user.click(await screen.findByRole('button', { name: t.actions.discardChanges }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: t.form.createTitle })).toBeNull();
+    });
+    expect(writes).toHaveLength(0);
   });
 
   /*

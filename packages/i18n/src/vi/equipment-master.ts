@@ -13,6 +13,7 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
     disposeEquipment: 'Xử lý thanh lý',
     keepEditing: 'Tiếp tục sửa',
     discardChanges: 'Bỏ thay đổi',
+    register: 'Đăng ký',
   },
   actionReasons: {
     plantFixedAfterCreate:
@@ -103,6 +104,10 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
     locationNone: 'Không chỉ định',
     locationNeedsPlant: 'Chọn nhà máy để hiện vị trí của nhà máy đó.',
     departmentNone: 'Không chỉ định',
+    plantPlaceholder: 'Hãy chọn nhà máy',
+    codePlaceholder: 'Hãy nhập mã nhóm',
+    namePlaceholder: 'Hãy nhập tên nhóm',
+    typePlaceholder: 'Hãy chọn loại nhóm',
     departmentHelp:
       'Thông báo phát sinh từ W/O và thiết bị của dây chuyền này sẽ đi theo thiết lập thông báo của phòng ban này. Không kế thừa phòng ban của nhóm cấp trên.',
   },

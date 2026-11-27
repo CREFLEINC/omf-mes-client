@@ -13,6 +13,8 @@ export const equipmentMaster = {
     disposeEquipment: '폐기 처리',
     keepEditing: '계속 편집',
     discardChanges: '변경 버리기',
+    /** 설비 그룹 등록 팝업의 등록 단추. */
+    register: '등록',
   },
   actionReasons: {
     plantFixedAfterCreate:
@@ -137,6 +139,10 @@ export const equipmentMaster = {
     locationNone: '지정 없음',
     locationNeedsPlant: '공장을 고르면 그 공장의 위치가 나옵니다.',
     departmentNone: '지정 없음',
+    plantPlaceholder: '공장을 선택하세요',
+    codePlaceholder: '그룹코드를 입력하세요',
+    namePlaceholder: '그룹명을 입력하세요',
+    typePlaceholder: '그룹유형을 선택하세요',
     /** 알림 대상 판정 근거 — 상위 그룹에서 이어받지 않는다는 것을 함께 밝힌다(001 W-05-12). */
     departmentHelp:
       '이 라인의 W/O와 설비에서 생기는 알림이 이 부서의 알림 설정으로 갑니다. 상위 그룹의 부서는 이어받지 않습니다.',

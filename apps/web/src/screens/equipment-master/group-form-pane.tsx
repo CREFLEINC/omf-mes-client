@@ -47,6 +47,8 @@ export interface GroupFormPaneProps {
   onSave: () => void;
   onCancel: () => void;
   onDeactivate: () => void;
+  /** 아래 [취소][저장] 줄을 그릴지. 등록 팝업은 팝업 단추 줄이 대신한다. */
+  actions?: boolean;
 }
 
 const t = messages.equipmentMaster;
@@ -70,6 +72,7 @@ export const GroupFormPane = ({
   onSave,
   onCancel,
   onDeactivate,
+  actions = true,
 }: GroupFormPaneProps) => {
   const activeLabelId = useId();
   const deactivateNoteId = useId();
@@ -84,6 +87,7 @@ export const GroupFormPane = ({
       <div className="form-grid">
         <SelectField
           label={t.fields.plant}
+          placeholder={t.form.plantPlaceholder}
           required={mode === 'create'}
           options={plantOptions}
           value={values.plantId}
@@ -96,6 +100,7 @@ export const GroupFormPane = ({
         <CodeLockTextField
           lockReason={codeLockReason}
           label={t.fields.groupCode}
+          placeholder={t.form.codePlaceholder}
           required
           value={values.groupCode}
           onChange={(event) => onChange({ groupCode: event.target.value })}
@@ -104,6 +109,7 @@ export const GroupFormPane = ({
 
         <TextField
           label={t.fields.groupName}
+          placeholder={t.form.namePlaceholder}
           required
           value={values.groupName}
           onChange={(event) => onChange({ groupName: event.target.value })}
@@ -112,6 +118,7 @@ export const GroupFormPane = ({
 
         <SelectField
           label={t.fields.groupType}
+          placeholder={t.form.typePlaceholder}
           required
           options={GROUP_TYPE_OPTIONS}
           value={values.groupTypeCode}
@@ -190,14 +197,16 @@ export const GroupFormPane = ({
         </div>
       </div>
 
-      <div className="form-actions">
-        <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
-          {messages.common.cancel}
-        </Button>
-        <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
-          {messages.common.save}
-        </Button>
-      </div>
+      {actions && (
+        <div className="form-actions">
+          <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
+            {messages.common.cancel}
+          </Button>
+          <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
+            {messages.common.save}
+          </Button>
+        </div>
+      )}
     </section>
   );
 };
