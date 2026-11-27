@@ -31,7 +31,7 @@ export interface StandaloneCreateDialogProps {
   lines: ShipmentRequestLineDraft[];
   lineErrors: Record<string, string>;
   itemNames: ItemNameLookup;
-  onPickItem: (key: string) => void;
+  onSelectItem: (key: string, item: { itemId: number; baseUomId: number }) => void;
   uomLookup: ReferenceSource;
   uomOptions: SelectOption[];
   availableQty: AvailableQtyLookup;
@@ -83,7 +83,7 @@ export const StandaloneCreateDialog = ({
   lines,
   lineErrors,
   itemNames,
-  onPickItem,
+  onSelectItem,
   uomLookup,
   uomOptions,
   availableQty,
@@ -123,8 +123,6 @@ export const StandaloneCreateDialog = ({
         </>
       }
     >
-      <p className="sr-create-dialog-intro">{t.dialog.intro}</p>
-
       <section aria-label={t.panes.header}>
         <div className="form-grid">
           <SelectField
@@ -220,7 +218,7 @@ export const StandaloneCreateDialog = ({
           rows={lines}
           errors={lineErrors}
           itemNames={itemNames}
-          onPickItem={onPickItem}
+          onSelectItem={onSelectItem}
           uomLookup={uomLookup}
           uomOptions={uomOptions}
           availableQty={availableQty}

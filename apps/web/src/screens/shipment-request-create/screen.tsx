@@ -85,6 +85,12 @@ const t = messages.shipmentRequestCreate;
  */
 const SHIPPABLE_ITEM_TYPE_CODE = 'FINISHED';
 
+/** 이 PC 의 오늘(`YYYY-MM-DD`) — UTC 로 바꾸면 자정 무렵 하루가 어긋난다. */
+const localTodayIso = (): string => {
+  const now = new Date();
+  return `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+};
+
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ROWS: SalesOrderView[] = [];
 const NO_SCOPES: readonly DataScope[] = [];
@@ -174,16 +180,12 @@ export const ShipmentRequestCreateScreen = () => {
   const [header, setHeader] = useState<HeaderDraft>(EMPTY_HEADER_DRAFT);
   const [lines, setLines] = useState<ShipmentRequestLineDraft[]>([]);
   /**
-   * 품목 선택 팝업이 열려 있는가 — **여는 자리가 둘이다.**
-   *
-   * - `{ kind: 'add' }` 「라인 추가」에서 열었다. 고른 품목마다 줄이 붙는다(여러 개).
-   * - `{ kind: 'replace', key }` 그 줄의 품목 셀에서 열었다. 하나만 고르고 그 줄을 바꾼다.
+   * 품목 선택 팝업이 열려 있는가 — 「라인 추가」에서 연다. 고른 품목마다 줄이 붙는다(여러 개).
+   * 줄의 품목을 바꾸는 것은 표 안 검색 선택칸이 한다(#360).
    *
    * ⛔ **줄 초안에 넣지 않는다.** 서버로 나가는 값이 아니라 「지금 무엇을 고르는 중인가」다.
    */
-  const [picker, setPicker] = useState<{ kind: 'add' } | { kind: 'replace'; key: string } | null>(
-    null,
-  );
+  const [picker, setPicker] = useState<{ kind: 'add' } | null>(null);
 
   const items = useItemNames(
     lines.map((line) => (line.itemId === '' ? null : Number(line.itemId))),
@@ -278,7 +280,8 @@ export const ShipmentRequestCreateScreen = () => {
   useEffect(() => {
     if (!isStandalone) return;
 
-    setHeader(EMPTY_HEADER_DRAFT);
+    /* 출하 요청일은 오늘로 채워 연다(사용자 지시 · #360) — 바꿀 수 있다. */
+    setHeader({ ...EMPTY_HEADER_DRAFT, requestedShipDate: localTodayIso() });
     setLines([emptyLineDraft()]);
     resetIfIdle(create);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -395,33 +398,21 @@ export const ShipmentRequestCreateScreen = () => {
     setPicker({ kind: 'add' });
   };
 
-  /** 고른 품목들을 줄로 만든다 — 여는 자리에 따라 붙이거나 바꾼다. */
+  /** 고른 품목들을 줄로 붙인다. */
   const applyPickedItems = (chosen: readonly ItemRow[]): void => {
     const target = picker;
 
     setPicker(null);
     if (target === null || chosen.length === 0) return;
 
-    if (target.kind === 'add') {
-      /* 새 줄의 창고는 첫 줄 창고다(피처 012 FR-004). */
-      setLines((prev) => appendItemLines(prev, chosen));
+    /* 새 줄의 창고는 첫 줄 창고다(피처 012 FR-004). */
+    setLines((prev) => appendItemLines(prev, chosen));
+  };
 
-      return;
-    }
-
-    /*
-     * ⚠ **바꿀 때 단위도 함께 바꾼다.** 품목이 달라지면 앞 품목의 기준 단위가 남을 이유가 없다 —
-     *   남기면 담당이 고치지 않는 한 엉뚱한 단위로 나간다.
-     */
-    const [first] = chosen;
-
-    if (first === undefined) return;
-
+  /** 표 안 검색 선택칸에서 그 줄의 품목을 바꿨다 — 단위도 그 품목의 기준 단위로 함께 바꾼다(종전 찾기 창과 같다). */
+  const selectItem = (key: string, item: { itemId: number; baseUomId: number }): void => {
     setLines((prev) =>
-      patchLineDraft(prev, target.key, {
-        itemId: String(first.itemId),
-        uomId: String(first.baseUomId),
-      }),
+      patchLineDraft(prev, key, { itemId: String(item.itemId), uomId: String(item.baseUomId) }),
     );
   };
 
@@ -528,7 +519,8 @@ export const ShipmentRequestCreateScreen = () => {
     return (
       header.customerId !== '' ||
       header.shipToPartnerId !== '' ||
-      header.requestedShipDate !== '' ||
+      /* 오늘로 채워 연 날짜는 넣은 값으로 치지 않는다. */
+      (header.requestedShipDate !== '' && header.requestedShipDate !== localTodayIso()) ||
       (header.businessUnitId !== '' && header.businessUnitId !== onlyBusinessUnit) ||
       withoutKey(lines) !== withoutKey([emptyLineDraft()])
     );
@@ -615,9 +607,7 @@ export const ShipmentRequestCreateScreen = () => {
         lines={lines}
         lineErrors={lineValidation.errors}
         itemNames={items}
-        onPickItem={(key) => {
-          setPicker({ kind: 'replace', key });
-        }}
+        onSelectItem={selectItem}
         uomLookup={uoms}
         uomOptions={toSelectOptions(uoms)}
         availableQty={availableQty}
@@ -739,9 +729,7 @@ export const ShipmentRequestCreateScreen = () => {
           lines={lines}
           lineErrors={lineValidation.errors}
           itemNames={items}
-          onPickItem={(key) => {
-            setPicker({ kind: 'replace', key });
-          }}
+          onSelectItem={selectItem}
           uomLookup={uoms}
           uomOptions={toSelectOptions(uoms)}
           availableQty={availableQty}
@@ -794,7 +782,7 @@ export const ShipmentRequestCreateScreen = () => {
       )}
       {picker !== null && (
         <ItemPickerDialog
-          multiple={picker.kind === 'add'}
+          multiple
           defaultItemTypeCode={SHIPPABLE_ITEM_TYPE_CODE}
           addedItemIds={lines.flatMap((line) => (line.itemId === '' ? [] : [Number(line.itemId)]))}
           onClose={() => {

@@ -11,6 +11,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 
 import { InfoTip } from '../../patterns/info-tip';
+import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
 import { isShortageLine } from './shortage-banner';
 import {
@@ -91,8 +92,8 @@ export interface LineTableProps {
   isLocked?: boolean;
   onPatch: (key: string, patch: Partial<Omit<ShipmentRequestLineDraft, 'key'>>) => void;
   onRemove: (key: string) => void;
-  /** 그 줄의 품목을 바꾸려고 팝업을 연다. 단독 생성에서만 쓰인다. */
-  onPickItem: (key: string) => void;
+  /** 그 줄의 품목을 고르거나 바꿨다(검색 선택칸 · #360). 단독 생성에서만 쓰인다. 기준 단위도 함께 넘긴다. */
+  onSelectItem: (key: string, item: { itemId: number; baseUomId: number }) => void;
   /** 출고 창고 선택지(피처 012 FR-003) — 고른 사업부의 활성 창고. 묶음 제목에 사업부가 붙는다. */
   warehouseOptions: SelectItems;
   /** 사업부를 골랐는가 — 아니면 창고 칸·[나누기]가 잠긴다(US1-2). */
@@ -133,7 +134,7 @@ export const LineTable = ({
   isLocked = false,
   onPatch,
   onRemove,
-  onPickItem,
+  onSelectItem,
   warehouseOptions,
   hasBusinessUnit,
   onChangeWarehouse,
@@ -209,37 +210,22 @@ export const LineTable = ({
           );
         }
 
-        /* 앱의 찾기 선택칸(`ReferenceField` 의 `wrapValue` 모양)과 같은 테두리 · 돋보기 · 흐린 문구(#360). 고르는 동작은 그대로. */
+        /* 품목은 검색 선택칸 — 펼치면 목록, 코드 · 이름으로 찾는다(사용자 지시 · #360). 고른 품목의 기준 단위도 채운다(종전 그대로). */
         return (
           <div className="field-cell">
-            <div
-              className="reference-field-full-value sr-item-picker"
-              data-size="sm"
-              data-disabled={isLocked || undefined}
-              data-invalid={errorOf(row, 'itemId') !== undefined || undefined}
-            >
-              <button
-                type="button"
-                disabled={isLocked}
-                aria-label={t.lineTable.itemLabel(rowIndex + 1)}
-                /* 고른 품목은 두 줄까지만 보이고(팝업 CSS) 전체 「코드 · 이름」은 마우스를 올리면 보인다(#360). */
-                title={row.itemId === '' ? undefined : label}
-                aria-haspopup="dialog"
-                aria-required="true"
-                onClick={() => {
-                  onPickItem(row.key);
-                }}
-              >
-                <Icon name="search" size={20} />
-                <span
-                  className={
-                    row.itemId === '' ? 'reference-field-placeholder' : 'reference-field-value'
-                  }
-                >
-                  {row.itemId === '' ? t.lineTable.itemUnpicked : label}
-                </span>
-              </button>
-            </div>
+            <ItemSelect
+              size="sm"
+              value={row.itemId === '' ? null : row.itemId}
+              selectedOption={row.itemId === '' ? null : { value: row.itemId, label }}
+              placeholder={t.lineTable.itemUnpicked}
+              invalid={errorOf(row, 'itemId') !== undefined}
+              disabled={isLocked}
+              aria-label={t.lineTable.itemLabel(rowIndex + 1)}
+              aria-required="true"
+              onItemChange={(item) => {
+                onSelectItem(row.key, { itemId: item.itemId, baseUomId: item.baseUomId });
+              }}
+            />
             {errorOf(row, 'itemId') !== undefined && (
               <span className="field-error">{errorOf(row, 'itemId')}</span>
             )}

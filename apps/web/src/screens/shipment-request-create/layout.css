@@ -32,53 +32,31 @@ dialog.sr-create-dialog {
   margin-top: var(--space-5);
 }
 
-/* 품목 찾기 칸은 칸 폭을 다 쓴다(다른 입력칸처럼). */
-.sr-create-dialog .sr-item-picker {
-  align-self: stretch;
-}
-
 /* [라인 추가]는 표 제목 줄 오른쪽 끝. */
 .sr-create-dialog-lines .sr-create-add-line {
   margin-inline-start: auto;
 }
 
 /*
- * 빈 필수 칸은 기본 바탕이다(사용자 지시 2026-11-27) — 앱 공통 「팝업 빈 필수 칸 연한 빨강」은 `app.css` 에서 이 팝업만 뺐다.
- * 실제 오류(잘못된 수량 · 서버 오류)만 그 칸 테두리 · 칸 아래 글로 보인다.
+ * 출하 품목 표는 다른 목록처럼 모두 가운데 정렬(사용자 지시 · #360 — 종전 수량 열 오른쪽 정렬을 바꿈).
+ * 칸 안 입력칸 · 선택칸은 열 폭을 다 채워 칸마다 가운데에 고르게 놓이고, 수량 입력 글자도 가운데.
  */
-
-/* 제목 아래 한 줄 안내. */
-.sr-create-dialog-intro {
-  margin: 0 0 var(--space-4);
-  color: var(--on-surface-variant);
-  font: var(--type-body-md);
-  letter-spacing: var(--type-body-md-tracking);
+.sr-create-dialog td :is([class*='_inputWrap_'], button[role='combobox']) {
+  width: 100%;
 }
 
-/* 고른 품목 「코드 · 품목명」은 두 줄까지 — 넘치면 말줄임, 전체는 단추 title(마우스를 올리면). */
-.sr-create-dialog .sr-item-picker .reference-field-value {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+.sr-create-dialog td input[inputmode='decimal'] {
+  text-align: center;
 }
 
 /*
- * 수량 열(요청 · 가용 · 배정)은 값을 오른쪽에(사용자 지시 2026-11-27) — 표를 모두 가운데로 미는 공통 규칙
- * (`app.css` 「목록은 모두 중앙 정렬」 · !important)보다 무거워야 해서 클래스를 세 번 겹치고 !important. 머리줄도 같은 쪽.
+ * 비어 있는 필수 칸(사용자 지시 · #360 — 팝업 시안 「연한 빨간 바탕」) — 머리 칸(사업부 · 고객 · 납품처 · 출하 요청일)은 앱 공통
+ * 규칙이 칠하고, 표 안 칸(품목 · 단위 · 출고 창고 선택칸)은 칸 이름이 머리줄에 있어 공통 규칙에 걸리지 않으므로 여기서 칠한다.
  */
-.sr-create-dialog.sr-create-dialog.sr-create-dialog
-  .wide-table
-  table
-  > :is(thead, tbody)
-  > tr
-  > :is(th, td)[data-align='end'] {
-  text-align: right !important;
-}
-
-/* 수량 입력칸 글자도 오른쪽 정렬(열 값과 같은 쪽). */
-.sr-create-dialog td input[inputmode='decimal'] {
-  text-align: end;
+.sr-create-dialog
+  td
+  button[role='combobox'][aria-required='true']:not(:disabled):has(> [class*='_placeholder_']) {
+  background: var(--semantic-error-container);
 }
 
 /* 좁은 화면 — 표만 가로로 민다(열 폭 합만큼 최소 폭). 팝업 본문 세로 넘침은 DS 팝업이 본문만 스크롤한다. */

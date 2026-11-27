@@ -828,7 +828,6 @@ export const StockReinstatementScreen = () => {
       <ConfirmDialog
         open={confirming}
         summary={summary}
-        concession={concession}
         lotLabel={lotLabel}
         isSaving={reinstate.isSaving}
         error={<ReinstatementErrorBanner error={reinstate.error} />}

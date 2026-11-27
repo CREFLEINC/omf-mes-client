@@ -172,6 +172,16 @@ const pickItems = async (
   );
 };
 
+/** 그 줄 품목 검색 선택칸을 펼쳐 품목 하나를 고른다(#360 — 찾기 창 대신 표 안 선택칸). */
+const selectRowItem = async (
+  user: ReturnType<typeof userEvent.setup>,
+  rowIndex: number,
+  code: string,
+): Promise<void> => {
+  await user.click(screen.getByRole('combobox', { name: t.lineTable.itemLabel(rowIndex) }));
+  await user.click(await screen.findByRole('option', { name: new RegExp(`^${code} · `, 'u') }));
+};
+
 describe('ShipmentRequestCreateScreen — 좌측 목록(완료 조건 C1)', () => {
   it('목록을 불러와 표에 낸다', async () => {
     renderScreen({ fetch: createStubFetch(baseRoutes()) });
@@ -334,37 +344,35 @@ describe('ShipmentRequestCreateScreen — 단독 생성(완료 조건 C3)', () =
 
     /* 빈 줄 하나 + 고른 둘 = 셋. */
     expect(await screen.findAllByRole('button', { name: t.dialog.removeLine })).toHaveLength(3);
-    expect(await screen.findByRole('button', { name: t.lineTable.itemLabel(2) })).toHaveTextContent(
-      'SAMPLE-ITEM-01 · 합성 품목 가',
-    );
+    expect(
+      await screen.findByRole('combobox', { name: t.lineTable.itemLabel(2) }),
+    ).toHaveTextContent('SAMPLE-ITEM-01 · 합성 품목 가');
     expect(screen.getAllByRole('combobox', { name: t.lineTable.uomLabel(2) })[0]).toHaveTextContent(
       /개/u,
     );
   });
 
   /*
-   * ⭐ **품목 셀을 눌러도 같은 팝업이 열린다** — 잘못 고른 줄을 지우고 다시 만들지 않아도 된다.
-   *    이때는 «바꾸기»라 하나만 고른다.
+   * ⭐ **품목 셀은 검색 선택칸이다(#360)** — 잘못 고른 줄을 지우고 다시 만들지 않아도 된다.
+   *    하나만 고르고 그 줄을 바꾼다.
    */
-  it('품목 셀을 누르면 그 줄의 품목을 바꾼다', async () => {
+  it('품목 선택칸에서 고르면 그 줄의 품목을 바꾼다', async () => {
     const user = userEvent.setup();
 
     renderScreen({ fetch: createStubFetch(baseRoutes()) });
 
     await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
-    await user.click(screen.getByRole('button', { name: t.lineTable.itemLabel(1) }));
-    await pickItems(user, 'SAMPLE-ITEM-01', ['SAMPLE-ITEM-01']);
+    await selectRowItem(user, 1, 'SAMPLE-ITEM-01');
 
-    expect(await screen.findByRole('button', { name: t.lineTable.itemLabel(1) })).toHaveTextContent(
-      'SAMPLE-ITEM-01 · 합성 품목 가',
-    );
+    expect(
+      await screen.findByRole('combobox', { name: t.lineTable.itemLabel(1) }),
+    ).toHaveTextContent('SAMPLE-ITEM-01 · 합성 품목 가');
 
-    await user.click(screen.getByRole('button', { name: t.lineTable.itemLabel(1) }));
-    await pickItems(user, 'SAMPLE-ITEM-02', ['SAMPLE-ITEM-02']);
+    await selectRowItem(user, 1, 'SAMPLE-ITEM-02');
 
     /* 줄이 늘지 않는다 — 바꾼 것이지 더한 것이 아니다. */
     expect(screen.getAllByRole('button', { name: t.dialog.removeLine })).toHaveLength(1);
-    expect(screen.getByRole('button', { name: t.lineTable.itemLabel(1) })).toHaveTextContent(
+    expect(screen.getByRole('combobox', { name: t.lineTable.itemLabel(1) })).toHaveTextContent(
       'SAMPLE-ITEM-02 · 합성 품목 나',
     );
   });
@@ -378,8 +386,7 @@ describe('ShipmentRequestCreateScreen — 배정 수량 검증(완료 조건 C4)
 
     await user.click(await screen.findByRole('button', { name: t.actions.startStandalone }));
 
-    await user.click(screen.getByRole('button', { name: t.lineTable.itemLabel(1) }));
-    await pickItems(user, 'SAMPLE-ITEM-01', ['SAMPLE-ITEM-01']);
+    await selectRowItem(user, 1, 'SAMPLE-ITEM-01');
 
     const requestedInput = screen.getByLabelText(t.lineTable.requestedQtyLabel(1));
 
@@ -584,8 +591,7 @@ describe('ShipmentRequestCreateScreen — 사업부·출고 창고(피처 012)',
       await screen.findByRole('combobox', { name: new RegExp(t.fields.businessUnit, 'u') }),
     ).toHaveTextContent('합성 사업부 X');
     expect(screen.queryByText(t.notes.businessUnitAutoFilled)).toBeNull();
-    await user.click(screen.getByRole('button', { name: t.lineTable.itemLabel(1) }));
-    await pickItems(user, 'SAMPLE-ITEM-01', ['SAMPLE-ITEM-01']);
+    await selectRowItem(user, 1, 'SAMPLE-ITEM-01');
     await chooseWarehouse(user, 1, '합성 창고 C (합성 1공장)');
 
     await user.click(screen.getByRole('button', { name: t.dialog.addLine }));
@@ -712,7 +718,7 @@ describe('ShipmentRequestCreateScreen — ERP S/O 없이 생성 팝업(#360)', (
     expect(
       dialog.getByRole('combobox', { name: new RegExp(t.fields.shipToPartner, 'u') }),
     ).toHaveTextContent(t.fields.shipToPartnerPlaceholder);
-    expect(dialog.getByRole('button', { name: t.lineTable.itemLabel(1) })).toHaveTextContent(
+    expect(dialog.getByRole('combobox', { name: t.lineTable.itemLabel(1) })).toHaveTextContent(
       t.lineTable.itemUnpicked,
     );
 
@@ -765,8 +771,7 @@ describe('ShipmentRequestCreateScreen — ERP S/O 없이 생성 팝업(#360)', (
     );
     await pickDate(user, dialog.getByLabelText(t.dialog.requestedShipDate), '2026-12-01');
 
-    await user.click(dialog.getByRole('button', { name: t.lineTable.itemLabel(1) }));
-    await pickItems(user, 'SAMPLE-ITEM-01', ['SAMPLE-ITEM-01']);
+    await selectRowItem(user, 1, 'SAMPLE-ITEM-01');
     await user.type(dialog.getByLabelText(t.lineTable.requestedQtyLabel(1)), '10');
     await user.type(dialog.getByLabelText(t.lineTable.allocatedQtyLabel(1)), '7');
     await choose(

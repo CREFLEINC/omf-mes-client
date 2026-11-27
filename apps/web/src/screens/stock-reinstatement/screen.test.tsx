@@ -124,7 +124,7 @@ describe('StockReinstatementScreen', () => {
     await user.click(screen.getByRole('button', { name: t.actions.confirm }));
 
     const dialog = await screen.findByRole('dialog', { name: t.confirm.title });
-    expect(within(dialog).getByText(t.warning.transition)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.warning.noUndo)).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: t.actions.submit }));
 
     await waitFor(() => {

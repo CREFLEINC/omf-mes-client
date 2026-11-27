@@ -43522,36 +43522,36 @@ dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
-/* 2) 비어 있는 필수 칸 — 글자 칸 · 여러 줄 칸(`required` 인데 비어 있으면 :invalid). 출하작업지시 직접 생성 팝업(`.sr-create-dialog`)은 기본 바탕을 쓴다(사용자 지시 2026-11-27). */
-dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, .sr-create-dialog, :has(.dash-detail-head)) [class*='_inputWrap_']:has(> input:required:invalid:not(:disabled)),
-dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, .sr-create-dialog, :has(.dash-detail-head)) [class*='_areaWrap_']:has(> textarea:required:invalid:not(:disabled)),
+/* 2) 비어 있는 필수 칸 — 글자 칸 · 여러 줄 칸(`required` 인데 비어 있으면 :invalid). */
+dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head)) [class*='_inputWrap_']:has(> input:required:invalid:not(:disabled)),
+dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head)) [class*='_areaWrap_']:has(> textarea:required:invalid:not(:disabled)),
 /*
  * `required` 없이 `aria-required` 나 칸 이름 옆 빨간 * 로만 필수를 알리는 칸도 많다(공통코드 · 사용자 등) — 값이 비어
  * 있으면(React 가 `value` 속성을 함께 맞춘다) 같은 바탕. 읽기 전용 칸은 제외.
  */
-dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, .sr-create-dialog, :has(.dash-detail-head)) [class*='_inputWrap_']:has(> input[aria-required='true'][value='']:not(:disabled, [readonly])),
-dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, .sr-create-dialog, :has(.dash-detail-head)) [class*='_areaWrap_']:has(> textarea[aria-required='true']:placeholder-shown:not(:disabled, [readonly])),
-dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, .sr-create-dialog, :has(.dash-detail-head))
+dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head)) [class*='_inputWrap_']:has(> input[aria-required='true'][value='']:not(:disabled, [readonly])),
+dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head)) [class*='_areaWrap_']:has(> textarea[aria-required='true']:placeholder-shown:not(:disabled, [readonly])),
+dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head))
   :is(.field-cell, [class*='_field_']):has(
     > :is(.field-label, [class*='_labelRow_']) :is(.required-mark, [class*='_requiredMark_'])
   )
   [class*='_inputWrap_']:has(> input[value='']:not(:disabled, [readonly], [type='checkbox'], [type='radio'])),
-dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, .sr-create-dialog, :has(.dash-detail-head))
+dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head))
   :is(.field-cell, [class*='_field_']):has(
     > :is(.field-label, [class*='_labelRow_']) :is(.required-mark, [class*='_requiredMark_'])
   )
   [class*='_areaWrap_']:has(> textarea:placeholder-shown:not(:disabled, [readonly])),
 /* 선택칸 — 칸 이름 옆에 빨간 * 가 있고 아직 고르지 않았으면(자리표시 글자가 보이면) */
-dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, .sr-create-dialog, :has(.dash-detail-head))
+dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head))
   :is(.field-cell, [class*='_field_']):has(
     > :is(.field-label, [class*='_labelRow_']) :is(.required-mark, [class*='_requiredMark_'])
   )
   button[role='combobox']:not(:disabled):has(> [class*='_placeholder_']),
 /* 날짜 칸(`DatePicker`) — 필수(aria-required)인데 아직 고르지 않았으면(자리표시 글자가 보이면) */
-dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, .sr-create-dialog, :has(.dash-detail-head))
+dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head))
   button[aria-haspopup='dialog'][aria-required='true']:not(:disabled):has(> [class*='_placeholder_']),
 /* 시각 칸(`patterns/time-field`) */
-dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, .sr-create-dialog, :has(.dash-detail-head)) .time-picker-trigger[data-required][data-empty]:not([data-disabled]) {
+dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head)) .time-picker-trigger[data-required][data-empty]:not([data-disabled]) {
   background: var(--semantic-error-container);
 }
 

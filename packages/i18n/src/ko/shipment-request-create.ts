@@ -63,7 +63,6 @@ export const shipmentRequestCreate = {
   dialog: {
     /** 단추를 누르면 곧바로 출하작업지시가 만들어진다(편성 단계 없음) — 제목 · 단추 · 알림을 「생성」으로 맞춘다(#360). */
     standaloneTitle: '출하작업지시 직접 생성',
-    intro: 'ERP 수주(S/O) 없이 출하작업지시를 생성합니다.',
     submit: '출하작업지시 생성',
     discardTitle: '입력한 값을 버릴까요?',
     requestedShipDate: '출하 요청일',
@@ -109,12 +108,15 @@ export const shipmentRequestCreate = {
     /** 사업부를 바꿔 비운 줄(FR-004). */
     warehouseReselect: '다시 고르세요',
     warehouseFilledFromFirst: '첫 줄 창고로 채움',
-    warehouseOption: (warehouseName: string, plantName: string): string => `${warehouseName} (${plantName})`,
-    warehouseGroup: (businessUnitName: string): string => `${businessUnitName} 활성 창고(불량창고 제외)`,
+    warehouseOption: (warehouseName: string, plantName: string): string =>
+      `${warehouseName} (${plantName})`,
+    warehouseGroup: (businessUnitName: string): string =>
+      `${businessUnitName} 활성 창고(불량창고 제외)`,
     /** ERP S/O 줄의 ERP 창고 코드 — 참고로만 보인다, 자동 연결하지 않는다(FR-006). */
     erpWarehouseHint: (code: string): string => `ERP 창고 ${code} (참고)`,
     splitRowLabel: (source: string): string => `나눈 줄 (${source})`,
-    salesOrderLineRef: (salesOrderNo: string, lineNo: number): string => `${salesOrderNo} ${String(lineNo)}행`,
+    salesOrderLineRef: (salesOrderNo: string, lineNo: number): string =>
+      `${salesOrderNo} ${String(lineNo)}행`,
     /** 나눈 줄 묶음 끝 합계(FR-005). */
     splitTotal: (source: string, remaining: number, total: number, parts: string): string =>
       `${source} 잔여 ${String(remaining)}, 나눈 줄 합 ${String(total)} (${parts})`,
@@ -162,7 +164,8 @@ export const shipmentRequestCreate = {
     splitRowTag: (rowIndex: number): string => `${String(rowIndex)}(나눈 줄)`,
   },
   notes: {
-    fromOrderLocked: 'ERP S/O 로 편성하는 중이라 고객, 납품처, 라인 품목과 수량은 고칠 수 없습니다.',
+    fromOrderLocked:
+      'ERP S/O 로 편성하는 중이라 고객, 납품처, 라인 품목과 수량은 고칠 수 없습니다.',
     requestedQtyFixed: '요청 수량은 ERP S/O 잔여 수량으로 자동 채워지며 고칠 수 없습니다.',
     /* 출고 창고 칸 머리 ⓘ(관리웹 정리 시안 A — 늘 보이는 규칙 문장은 ⓘ 로). */
     warehouseRule: '출고 창고는 고른 사업부의 활성 창고만 고를 수 있습니다(불량창고 제외).',
@@ -170,8 +173,7 @@ export const shipmentRequestCreate = {
     addLineWarehouse:
       '새 줄의 출고 창고는 첫 줄 창고로 채웁니다. 같은 품목을 두 창고에서 내려면 줄을 따로 담습니다.',
     erpUnmatched: 'ERP S/O 없이 생성한 작업지시에는 ERP S/O 번호가 없습니다.',
-    networkUnconfirmed:
-      '응답을 받지 못했습니다. 반영됐는지 목록에서 확인한 뒤 다시 시도하세요.',
+    networkUnconfirmed: '응답을 받지 못했습니다. 반영됐는지 목록에서 확인한 뒤 다시 시도하세요.',
   },
   /** 사업부를 바꿔 다른 사업부 창고를 고른 줄을 비웠을 때(FR-004 · US1-7). */
   warehouseCleared: {

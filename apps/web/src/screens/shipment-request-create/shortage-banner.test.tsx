@@ -82,8 +82,18 @@ describe('FR-006a 가용·부족은 고른 창고 기준', () => {
   };
 
   it('같은 배정 40 — 창고 A(55)는 부족 아님, 창고 B(25)는 부족', () => {
-    expect(isShortageLine(line({ itemId: '8301', allocatedQty: '40', warehouseId: '9101' }), byWarehouse)).toBe(false);
-    expect(isShortageLine(line({ itemId: '8301', allocatedQty: '40', warehouseId: '9102' }), byWarehouse)).toBe(true);
+    expect(
+      isShortageLine(
+        line({ itemId: '8301', allocatedQty: '40', warehouseId: '9101' }),
+        byWarehouse,
+      ),
+    ).toBe(false);
+    expect(
+      isShortageLine(
+        line({ itemId: '8301', allocatedQty: '40', warehouseId: '9102' }),
+        byWarehouse,
+      ),
+    ).toBe(true);
   });
 
   it('창고를 안 고른 줄은 가용을 모르므로 부족으로 세지 않는다', () => {

@@ -16,8 +16,6 @@ export interface ReinstatementSummary {
 export interface ConfirmDialogProps {
   open: boolean;
   summary: ReinstatementSummary;
-  /** 특채 재등록(#207) — LOT 은 이미 정상이라 상태 전이 줄이 없다. */
-  concession: boolean;
   /** LOT 칸 이름 — LOT 종류로 화면이 정한다(#207). */
   lotLabel: string;
   isSaving: boolean;
@@ -26,11 +24,10 @@ export interface ConfirmDialogProps {
   onClose: () => void;
 }
 
-/** 확인 팝업 시안(#360) — 사실 상자 · 질문 · 안내 줄(종전 경고 배너의 문장을 그대로 옮겼다). */
+/** 확인 팝업 시안(#360) — 사실 상자 · 질문 · 되돌릴 수 없다는 한 줄. */
 export const ConfirmDialog = ({
   open,
   summary,
-  concession,
   lotLabel,
   isSaving,
   error,
@@ -74,20 +71,7 @@ export const ConfirmDialog = ({
           ]}
         />
         <p>{t.confirm.question}</p>
-        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
-          <Icon name="info" size={16} aria-hidden />
-          {t.confirm.lead}
-        </p>
-        <ul>
-          {!concession && <li>{t.warning.transition}</li>}
-          <li>
-            {concession ? t.warning.concessionStock(summary.qty) : t.warning.stock(summary.qty)}
-          </li>
-        </ul>
-        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
-          <Icon name="warning" size={16} aria-hidden />
-          {concession ? t.warning.concessionTitle : t.warning.title}
-        </p>
+        {/* 바뀌는 재고 · 출하 가능 안내는 화면 본문 경고 상자에 이미 있어 여기서는 되돌릴 수 없다는 한 줄만(사용자 지시 · #360). */}
         <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
           <Icon name="warning" size={16} aria-hidden />
           {t.warning.noUndo}

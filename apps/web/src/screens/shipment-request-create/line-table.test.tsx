@@ -1,5 +1,8 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen } from '@testing-library/react';
+import { createApiClient } from '@omf-mes/api-client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render as rtlRender, screen } from '@testing-library/react';
+import type { ReactElement, ReactNode } from 'react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -10,7 +13,29 @@ import { salesOrderDetailFixture } from './fixtures';
 import { toSalesOrderDetailView } from './types';
 import { lineFieldId } from './validation';
 
+import { ApiClientProvider } from '../../patterns/api-context';
+
 const t = messages.shipmentRequestCreate;
+
+/** 품목 칸(`ItemSelect`)은 서버에 품목을 묻는다 — 빈 목록을 내려주는 합성 서버로 감싼다(#360). */
+const render = (ui: ReactElement) => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const apiClient = createApiClient({
+    baseUrl: 'http://test.invalid',
+    fetch: () =>
+      Promise.resolve(
+        new Response(JSON.stringify({ items: [], page: { page: 1, size: 50, total: 0 } }), {
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+  });
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <ApiClientProvider client={apiClient}>{children}</ApiClientProvider>
+    </QueryClientProvider>
+  );
+  return rtlRender(ui, { wrapper });
+};
 
 /** 품목 이름은 번호 하나씩 푼다 — 목록 첫 쪽에 기대지 않는다(`useItemNames`). */
 const itemNames = {
@@ -60,7 +85,7 @@ describe('LineTable — 지시서 경유', () => {
         errors={{}}
         itemNames={itemNames}
         uomLookup={uomLookup}
-        onPickItem={vi.fn()}
+        onSelectItem={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
@@ -83,7 +108,7 @@ describe('LineTable — 지시서 경유', () => {
         errors={{}}
         itemNames={itemNames}
         uomLookup={uomLookup}
-        onPickItem={vi.fn()}
+        onSelectItem={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
@@ -105,7 +130,7 @@ describe('LineTable — 단독 생성', () => {
         errors={{}}
         itemNames={itemNames}
         uomLookup={uomLookup}
-        onPickItem={vi.fn()}
+        onSelectItem={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
@@ -125,8 +150,19 @@ describe('LineTable — 단독 생성', () => {
     const row = emptyLineDraft();
 
     render(
-      <LineTable mode="standalone" rows={[row]} errors={{}} itemNames={itemNames} uomLookup={uomLookup}
-        onPickItem={vi.fn()} uomOptions={uomOptions} availableQty={noAvailableQty} onPatch={onPatch} onRemove={vi.fn()} {...warehouseProps} />,
+      <LineTable
+        mode="standalone"
+        rows={[row]}
+        errors={{}}
+        itemNames={itemNames}
+        uomLookup={uomLookup}
+        onSelectItem={vi.fn()}
+        uomOptions={uomOptions}
+        availableQty={noAvailableQty}
+        onPatch={onPatch}
+        onRemove={vi.fn()}
+        {...warehouseProps}
+      />,
     );
 
     await user.click(screen.getByLabelText(t.lineTable.uomLabel(1)));
@@ -143,7 +179,7 @@ describe('LineTable — 단독 생성', () => {
         errors={{}}
         itemNames={itemNames}
         uomLookup={uomLookup}
-        onPickItem={vi.fn()}
+        onSelectItem={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
@@ -167,7 +203,7 @@ describe('LineTable — 단독 생성', () => {
         errors={{}}
         itemNames={itemNames}
         uomLookup={uomLookup}
-        onPickItem={vi.fn()}
+        onSelectItem={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={onPatch}
@@ -195,7 +231,7 @@ describe('LineTable — 단독 생성', () => {
         errors={{}}
         itemNames={itemNames}
         uomLookup={uomLookup}
-        onPickItem={vi.fn()}
+        onSelectItem={vi.fn()}
         uomOptions={uomOptions}
         availableQty={availableQty}
         onPatch={vi.fn()}
@@ -222,7 +258,7 @@ describe('LineTable — 단독 생성', () => {
         errors={{}}
         itemNames={itemNames}
         uomLookup={uomLookup}
-        onPickItem={vi.fn()}
+        onSelectItem={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
@@ -247,7 +283,7 @@ describe('LineTable — 단독 생성', () => {
         errors={{}}
         itemNames={itemNames}
         uomLookup={uomLookup}
-        onPickItem={vi.fn()}
+        onSelectItem={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
@@ -271,7 +307,7 @@ describe('LineTable — 단독 생성', () => {
         errors={{}}
         itemNames={itemNames}
         uomLookup={uomLookup}
-        onPickItem={vi.fn()}
+        onSelectItem={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
@@ -295,7 +331,7 @@ describe('LineTable — 단독 생성', () => {
         errors={{}}
         itemNames={itemNames}
         uomLookup={uomLookup}
-        onPickItem={vi.fn()}
+        onSelectItem={vi.fn()}
         uomOptions={uomOptions}
         availableQty={noAvailableQty}
         onPatch={vi.fn()}
@@ -307,8 +343,7 @@ describe('LineTable — 단독 생성', () => {
     expect(screen.getByRole('columnheader', { name: t.dialog.inspection })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: t.dialog.rowActions })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.dialog.removeLine })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.lineTable.itemLabel(1) })).toHaveAttribute(
-      'title',
+    expect(screen.getByRole('combobox', { name: t.lineTable.itemLabel(1) })).toHaveTextContent(
       'SAMPLE-ITEM-01 · 합성 품목 가',
     );
   });

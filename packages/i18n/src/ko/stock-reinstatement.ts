@@ -99,7 +99,6 @@ export const stockReinstatement = {
   confirm: {
     title: '재고 재등록 확인',
     question: '재고를 재등록하시겠습니까?',
-    lead: '아래 변화가 한 번의 확정으로 동시에 반영됩니다.',
   },
   success: (qty: number): string => `${String(qty)} 재고를 재등록했습니다.`,
   empty: {
