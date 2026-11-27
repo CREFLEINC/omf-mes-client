@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { type ReactNode, useId } from 'react';
 
 import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
@@ -60,6 +60,8 @@ export interface SelectFieldProps {
   fixedWidth?: boolean;
   /** 비우면 조회가 잠기는 칸 — 라벨 옆 빨간 *. */
   required?: boolean;
+  /** 이름 오른쪽 같은 줄의 짧은 안내 — `FieldLabel` 의 `hint`. */
+  labelHint?: ReactNode;
 }
 
 /**
@@ -86,6 +88,7 @@ export const SelectField = ({
   optionWidth,
   fixedWidth = false,
   required = false,
+  labelHint,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
@@ -108,7 +111,7 @@ export const SelectField = ({
         fixedWidth ? 'field-cell filter-field-md' : isWide ? 'field-cell wide-select' : 'field-cell'
       }
     >
-      <FieldLabel htmlFor={id} label={label} required={required} />
+      <FieldLabel htmlFor={id} label={label} required={required} hint={labelHint} />
       <Select
         id={id}
         options={options}

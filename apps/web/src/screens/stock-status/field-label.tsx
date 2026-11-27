@@ -1,9 +1,13 @@
+import type { ReactNode } from 'react';
+
 export interface FieldLabelProps {
   /** 이 라벨이 가리키는 컨트롤의 id */
   htmlFor: string;
   label: string;
   /** 비우면 조회가 잠기는 칸 — 라벨 밖에 빨간 *(접근 이름은 그대로). */
   required?: boolean;
+  /** 이름 오른쪽 같은 줄의 짧은 안내(조회가 잠긴 사유 등 · #360). */
+  hint?: ReactNode;
 }
 
 /**
@@ -18,7 +22,7 @@ export interface FieldLabelProps {
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const FieldLabel = ({ htmlFor, label, required = false }: FieldLabelProps) => (
+export const FieldLabel = ({ htmlFor, label, required = false, hint }: FieldLabelProps) => (
   <span className="field-label">
     <label htmlFor={htmlFor}>{label}</label>
     {required && (
@@ -26,5 +30,6 @@ export const FieldLabel = ({ htmlFor, label, required = false }: FieldLabelProps
         {' *'}
       </span>
     )}
+    {hint}
   </span>
 );

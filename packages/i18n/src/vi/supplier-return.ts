@@ -38,7 +38,7 @@ export const supplierReturn: Translated<typeof ko.supplierReturn> = {
     prevPage: 'Trước',
     nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
-    refresh: 'Tra cứu lại',
+    refresh: 'Làm mới',
     select: 'Chọn',
     selectRow: (goodsReceiptNo: string): string => `Chọn ${goodsReceiptNo}`,
     deselectRow: (goodsReceiptNo: string): string => `Bỏ chọn ${goodsReceiptNo}`,

@@ -65,7 +65,7 @@ export const supplierReturn = {
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
     /** 화면이 보고 있는 조회를 전부 다시 한다 — 목록만 다시 부르면 낡은 값과 새 값이 섞인다. */
-    refresh: '다시 조회',
+    refresh: '갱신',
     select: '선택',
     /*
      * 행 안의 버튼은 보이는 글자가 행마다 같다. 접근 이름에 입고번호를 넣어 어느 건인지 밝히되,

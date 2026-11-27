@@ -1,4 +1,4 @@
-import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
+import { Breadcrumb, Button, EmptyState, Icon, PageHeader, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
@@ -1156,7 +1156,15 @@ export const SupplierReturnScreen = () => {
           />
         }
         actions={
-          <Button variant="outlined" size="sm" disabled={isLocked} onClick={refreshAll}>
+          /* 모양은 통합 대시보드 · 재고 현황 · 폐기 품의의 「갱신」과 같다(사용자 지시 2026-11-27 · #360). */
+          <Button
+            variant="outlined"
+            size="sm"
+            className="stock-status-refresh-button"
+            leadingIcon={<Icon name="refresh" size={18} />}
+            disabled={isLocked}
+            onClick={refreshAll}
+          >
             {t.actions.refresh}
           </Button>
         }

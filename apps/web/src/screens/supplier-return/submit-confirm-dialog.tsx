@@ -124,7 +124,7 @@ export const SubmitConfirmDialog = ({ summary, onConfirm, onClose }: SubmitConfi
   <Dialog
     open
     onClose={onClose}
-    size="md"
+    size="lg"
     closeOnBackdropClick={false}
     title={t.dialog.submitTitle}
     footer={

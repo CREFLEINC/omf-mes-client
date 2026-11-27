@@ -303,6 +303,18 @@ main > * + * {
   font: var(--type-label-sm);
 }
 
+/* 재고 현황 조회 줄 — 창고 이름 오른쪽 같은 줄의 조회 잠금 사유(사용자 지시 2026-11-27 · #360). 라벨 줄 높이를 늘리지 않게 작게. */
+.field-label > .stock-status-label-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0 0 0 var(--space-2);
+  padding: 0 var(--space-2);
+  white-space: nowrap;
+  font: var(--type-label-sm);
+  vertical-align: middle;
+}
+
 /* 이 폼의 라벨 줄은 안내 라벨 높이에 맞춘다 — 한 칸만 높아져 옆 칸과 입력칸 윗선이 어긋나지 않게. */
 .inspection-standard-plan-pane .form-grid .field-label {
   display: flex;

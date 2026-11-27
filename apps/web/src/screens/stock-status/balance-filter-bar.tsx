@@ -234,6 +234,22 @@ export const BalanceFilterBar = ({
           options={withAll(warehouseOptions)}
           value={filters.warehouse}
           note={warehouseNote}
+          /*
+           * 조회를 잠근 사유는 창고 이름 오른쪽 같은 줄의 안내 칩(정보 아이콘 + 파란 바탕)으로 둔다(사용자 지시 2026-11-27 · #360).
+           * 늘 보이는 DOM 텍스트로 그려 조회 단추의 aria-describedby 로 잇는다 — 비활성 단추는 포커스를 받지 못한다.
+           */
+          labelHint={
+            searchReason === null ? undefined : (
+              <span
+                id={reasonId}
+                className="iqc-inspection-action-note stock-status-label-hint"
+                data-tone="info"
+              >
+                <Icon name="info" size={14} aria-hidden />
+                {searchReason}
+              </span>
+            )
+          }
           onChange={(value) => {
             /* 창고를 바꾸면 고른 위치를 비운다 — 다른 창고의 위치가 조건에 남지 않게. */
             setFilters((prev) => ({
@@ -244,18 +260,6 @@ export const BalanceFilterBar = ({
             onWarehouseChange?.(value);
           }}
         />
-        {/*
-         * 조회를 잠근 사유는 창고 칸 바로 오른쪽 안내 칩(정보 아이콘 + 파란 바탕)으로 둔다(#360). 감추지 않고 늘 보이는
-         * DOM 텍스트로 그려 조회 단추의 aria-describedby 로 잇는다 — 비활성 단추는 포커스를 받지 못해 툴팁만으론 닿을 수 없다.
-         */}
-        {searchReason !== null && (
-          <div className="field-cell field-cell-unlabeled">
-            <p id={reasonId} className="iqc-inspection-action-note" data-tone="info">
-              <Icon name="info" size={14} aria-hidden />
-              {searchReason}
-            </p>
-          </div>
-        )}
         <ItemSelectField
           fixedWidth
           label={t.fields.item}
