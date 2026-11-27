@@ -108,8 +108,12 @@ describe('대량 BOM Routing 표', () => {
     await user.click(screen.getByRole('button', { name: '다음' }));
     await within(table).findByRole('cell', { name: 'MAT-11' });
     expect(within(table).queryByRole('cell', { name: 'MAT-1' })).toBeNull();
-    await user.click(screen.getByRole('combobox', { name: 'BOM 구성 표시 행 수' }));
-    await user.click(screen.getByRole('option', { name: '20' }));
+    await user.click(
+      within(screen.getByRole('group', { name: 'BOM 구성 페이지' })).getByRole('combobox', {
+        name: '페이지 크기',
+      }),
+    );
+    await user.click(screen.getByRole('option', { name: '20건' }));
     expect(within(table).getAllByRole('row')).toHaveLength(21);
     await within(table).findByRole('cell', { name: 'MAT-1' });
   });

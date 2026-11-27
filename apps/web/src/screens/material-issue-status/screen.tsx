@@ -23,6 +23,7 @@ import { DateRangeFields } from '../../patterns/date-range-fields';
 import { plantToday } from '../../patterns/plant-time';
 import { InfoTip } from '../../patterns/info-tip';
 import { ListEmptyRow } from '../../patterns/list-empty';
+import { PageNav } from '../../patterns/page-nav';
 import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { ScreenHeader } from '../../patterns/screen-header';
 import { Select } from '../../patterns/select';
@@ -359,7 +360,6 @@ export const MaterialIssueStatusScreen = () => {
       ? groupByPlan(items)
       : [{ key: 'all', title: '', rows: items }];
     const total = list.data.page.total;
-    const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
     return (
       <>
@@ -405,27 +405,11 @@ export const MaterialIssueStatusScreen = () => {
             </tbody>
           ))}
         </table>
-        {items.length === 0 ? null : (
-          <div className="material-issue-status-pager">
-            <span className="field-note">{t.pager.total(total)}</span>
-            <Button
-              variant="outlined"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => go('list', filters, page - 1)}
-            >
-              {t.pager.previous}
-            </Button>
-            <Button
-              variant="outlined"
-              size="sm"
-              disabled={page >= lastPage}
-              onClick={() => go('list', filters, page + 1)}
-            >
-              {t.pager.next}
-            </Button>
-          </div>
-        )}
+        {/* 공용 쪽 이동 줄 — 1쪽 · 0건이어도 늘 보인다(#360). 쪽 크기는 정해진 값(PAGE_SIZE)이라 고르는 칸이 없다. */}
+        <PageNav
+          meta={{ page, size: PAGE_SIZE, total }}
+          onChangePage={(nextPage) => go('list', filters, nextPage)}
+        />
       </>
     );
   };

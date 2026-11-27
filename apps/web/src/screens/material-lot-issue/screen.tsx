@@ -228,12 +228,11 @@ export const MaterialLotIssueScreen = () => {
             onUnpick: () => update({ open: null }),
           }}
         />
-        {rows.length === 0 ? null : (
-          <PageNav
-            meta={{ page: pageParam, size: LIST_PAGE_SIZE, total }}
-            onChangePage={(next) => update({ page: next === 1 ? null : String(next) })}
-          />
-        )}
+        {/* 0건이어도 쪽 이동 줄은 늘 보인다(단추는 잠긴 채 · #360). */}
+        <PageNav
+          meta={{ page: pageParam, size: LIST_PAGE_SIZE, total }}
+          onChangePage={(next) => update({ page: next === 1 ? null : String(next) })}
+        />
       </>
     );
   };

@@ -1179,12 +1179,11 @@ export const DistributionControls = ({
                     })}
                   </table>
                 </div>
-                {visibleResultRows.length > 10 && (
-                  <PageNav
-                    meta={{ page: visibleResultPage, size: 10, total: visibleResultRows.length }}
-                    onChangePage={setResultPage}
-                  />
-                )}
+                {/* 1쪽뿐이어도 쪽 이동 줄은 늘 보인다(단추는 잠긴 채 · #360). */}
+                <PageNav
+                  meta={{ page: visibleResultPage, size: 10, total: visibleResultRows.length }}
+                  onChangePage={setResultPage}
+                />
                 {!!reviewResult!.warnings.length && (
                   <>
                     <AlertBanner variant="warning">

@@ -275,7 +275,8 @@ export const PlantWorkingDaysScreen = () => {
             empty={<ListEmpty title={rows.length === 0 ? t.state.noPlants : w.empty} />}
           />
         </div>
-        {rows.length === 0 ? null : <PageNav {...plantPage.nav} buttonSize="md" />}
+        {/* 0건이어도 쪽 이동 줄은 늘 보인다(단추는 잠긴 채 · #360). */}
+        <PageNav {...plantPage.nav} buttonSize="md" />
       </>
     );
   };

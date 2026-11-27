@@ -22,6 +22,7 @@ import { useSearchParams } from 'react-router';
 
 import { InfoTip } from '../../patterns/info-tip';
 import { isStockableLocation } from '../../patterns/location-level';
+import { PageNav } from '../../patterns/page-nav';
 import { SaveErrorBanner } from '../../patterns/master';
 import { ScreenHeader } from '../../patterns/screen-header';
 import { Select } from '../../patterns/select';
@@ -453,8 +454,6 @@ export const StockReinstatementScreen = () => {
     },
   ];
   const total = candidates.data?.page.total ?? 0;
-  const start = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const end = Math.min(total, start + (candidates.data?.items.length ?? 0) - 1);
 
   // 위치가 하나뿐이면 본문에 싣지 않아도 서버가 그 위치로 넣으므로, 확인 창에는 그 위치를 보여 준다.
   const toLocation =
@@ -536,31 +535,13 @@ export const StockReinstatementScreen = () => {
             </div>
           )}
           {!candidates.isPending && !candidates.isError && (
-            <nav className="form-actions" aria-label={t.accessibility.pagination}>
-              <p className="field-note form-actions-secondary">
-                {t.values.page(start, end, total)}
-              </p>
-              <Button
-                size="sm"
-                variant="outlined"
-                disabled={page <= 1}
-                onClick={() =>
-                  setFilters(warehouseId === null ? '' : String(warehouseId), page - 1)
-                }
-              >
-                {t.actions.prevPage}
-              </Button>
-              <Button
-                size="sm"
-                variant="outlined"
-                disabled={end >= total}
-                onClick={() =>
-                  setFilters(warehouseId === null ? '' : String(warehouseId), page + 1)
-                }
-              >
-                {t.actions.nextPage}
-              </Button>
-            </nav>
+            /* 공용 쪽 이동 줄 — 1쪽 · 0건이어도 늘 보인다(#360). 쪽 크기는 정해진 값(PAGE_SIZE)이라 고르는 칸이 없다. */
+            <PageNav
+              meta={{ page, size: PAGE_SIZE, total }}
+              onChangePage={(nextPage) =>
+                setFilters(warehouseId === null ? '' : String(warehouseId), nextPage)
+              }
+            />
           )}
         </section>
         <ListCollapseTab collapse={listCollapse} />
