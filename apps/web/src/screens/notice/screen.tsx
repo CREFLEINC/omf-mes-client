@@ -49,6 +49,7 @@ import { LoadErrorBanner } from './load-error-banner';
 import { useWorkOrderOptions } from './lookups';
 import {
   EMPTY_DRAFT,
+  newDraft,
   hasErrors,
   toCreateBody,
   toDraft,
@@ -211,7 +212,7 @@ export const NoticeScreen = () => {
   };
 
   const openCreate = (): void => {
-    setDraft(EMPTY_DRAFT);
+    setDraft(newDraft());
     setErrors({});
     setFormMode('create');
     setFlash(null);
@@ -546,7 +547,7 @@ export const NoticeScreen = () => {
           content: (
             <>
               <div className="filter-bar notice-filter">
-                {/* 차례: 게시 시작일 · 게시 종료일 · 공지 제목 · 대상 범위 · 미확인 공지 — 한 줄에 모두(#361). */}
+                {/* 차례: 게시 시작일 · 게시 종료일 · 대상 범위 · 공지 제목 · 미확인 공지 — 한 줄에 모두(#361). */}
                 <div className="field-cell notice-filter-period">
                   {/* ⭐ 시작일이 아니라 겹침으로 거른다 — 기간 칸 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
                   <span className="info-label">
@@ -581,6 +582,16 @@ export const NoticeScreen = () => {
                   )}
                 </div>
 
+                <SelectField
+                  label={t.filters.scope}
+                  options={scopeFilterOptions}
+                  value={filters.scopeCode}
+                  placeholder={t.filters.scopeAll}
+                  onChange={(value) => {
+                    apply({ scopeCode: value });
+                  }}
+                />
+
                 {/* 품질 화면(검사 조회·판정)과 같은 입력칸 — 돋보기 없이 흐린 문구로 안내한다(#361). */}
                 <TextField
                   label={t.filters.search}
@@ -594,16 +605,6 @@ export const NoticeScreen = () => {
                       event.preventDefault();
                       searchNow();
                     }
-                  }}
-                />
-
-                <SelectField
-                  label={t.filters.scope}
-                  options={scopeFilterOptions}
-                  value={filters.scopeCode}
-                  placeholder={t.filters.scopeAll}
-                  onChange={(value) => {
-                    apply({ scopeCode: value });
                   }}
                 />
 

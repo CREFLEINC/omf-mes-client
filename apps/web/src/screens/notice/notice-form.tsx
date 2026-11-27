@@ -51,6 +51,10 @@ export const NoticeForm = ({
 
   const wantsWorkOrder = needsWorkOrder(draft.scopeCode);
 
+  /** 필수인데 비어 있는 칸 — 빨간 테두리로 알리고, 값이 들어오면 걷는다(#361 · 긴급 작업지시와 같은 방식). */
+  const emptyRequired = (value: string): string | undefined =>
+    value.trim() === '' ? 'notice-required-empty' : undefined;
+
   return (
     <>
       <SaveErrorBanner error={saveError} />
@@ -61,6 +65,7 @@ export const NoticeForm = ({
           <TextField
             id={titleId}
             aria-required="true"
+            containerClassName={emptyRequired(draft.title)}
             value={draft.title}
             placeholder={t.form.titlePlaceholder}
             maxLength={200}
@@ -76,6 +81,7 @@ export const NoticeForm = ({
           <TextArea
             id={bodyId}
             aria-required="true"
+            containerClassName={emptyRequired(draft.body)}
             value={draft.body}
             placeholder={t.form.bodyPlaceholder}
             rows={6}
@@ -94,7 +100,9 @@ export const NoticeForm = ({
             mode="single"
             clearable
             placeholder={t.filters.datePlaceholder}
-            invalid={(errors.startDate ?? fieldErrors.startDate) !== undefined}
+            invalid={
+              draft.startDate === '' || (errors.startDate ?? fieldErrors.startDate) !== undefined
+            }
             value={draft.startDate === '' ? null : draft.startDate}
             onChange={(value) => {
               onChange({ startDate: value ?? '' });
@@ -106,8 +114,8 @@ export const NoticeForm = ({
         </div>
 
         <div className="field-cell">
-          {/* 게시 상태를 정하는 필수 날짜라는 사실은 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
-          <FieldLabel htmlFor={endId} label={t.form.endDate} info={t.form.endDateNote} required />
+          {/* 종료일은 선택 입력이다(#361) — 지나면 게시가 끝난다는 사실은 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
+          <FieldLabel htmlFor={endId} label={t.form.endDate} info={t.form.endDateNote} />
           <DatePicker
             id={endId}
             mode="single"

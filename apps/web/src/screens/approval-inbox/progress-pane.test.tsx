@@ -55,13 +55,43 @@ const renderPane = (
   return screen.getByRole('group', { name: t.panes.progress });
 };
 
-/** 단계 한 줄(값 칸). 상태는 `data-status` 로 싣는다. */
+/** 단계 한 줄(표의 줄). 상태는 `data-status` 로 싣는다. */
 const stepLines = (pane: HTMLElement): HTMLElement[] => [
-  ...pane.querySelectorAll<HTMLElement>('dd[data-status]'),
+  ...pane.querySelectorAll<HTMLElement>('tbody tr[data-status]'),
 ];
 
-describe('ProgressPane — 배치(#361 · 요청 정보와 같은 이름 · 값 줄)', () => {
-  it('단계마다 「n단계」 이름 옆에 승인자 · 상태 라벨이 한 줄로 선다', () => {
+describe('ProgressPane — 배치(#361 · 단계 · 결재자 · 상태 · 처리 일시 표)', () => {
+  it('표 머리는 단계 · 결재자 · 상태 · 처리 일시다', () => {
+    const pane = renderPane([step()]);
+
+    expect(
+      within(pane)
+        .getAllByRole('columnheader')
+        .map((th) => th.textContent),
+    ).toEqual(['단계', '결재자', '상태', '처리 일시']);
+  });
+
+  it('의견은 표 아래 「결재 의견」 줄로, 단계가 여럿이면 어느 단계인지 붙인다', () => {
+    const pane = renderPane(
+      [
+        step({ decisionCode: 'APPROVED', decisionComment: '합성 의견 가' }),
+        step({ stepNo: 2, isCurrent: true }),
+      ],
+      { currentStepNo: 2, totalStepNo: 2 },
+    );
+
+    expect(within(pane).getByText(t.progress.stepCommentLabel(1))).toBeVisible();
+    expect(within(pane).getByText('합성 의견 가')).toBeVisible();
+    expect(within(pane).queryByText(t.progress.stepCommentLabel(2))).toBeNull();
+  });
+
+  it('단계가 하나면 의견 이름은 「결재 의견」이다', () => {
+    const pane = renderPane([step({ decisionCode: 'APPROVED', decisionComment: '진행하세요.' })]);
+
+    expect(within(pane).getByText(t.progress.commentLabel)).toBeVisible();
+  });
+
+  it('단계마다 「n단계」 줄에 승인자 · 상태 라벨이 선다', () => {
     const pane = renderPane([step({ isCurrent: true })]);
 
     expect(within(pane).getByText(t.progress.stepNo(1))).toBeVisible();

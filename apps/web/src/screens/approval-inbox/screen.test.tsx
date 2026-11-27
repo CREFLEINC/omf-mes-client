@@ -315,7 +315,14 @@ const renderScreen = (
 
 const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
 
-const requestTable = (): HTMLElement => screen.getByRole('table');
+/** 승인 요청 목록 표 — 상세의 결재 진행 표(#361)와 가른다. */
+const requestTable = (): HTMLElement => {
+  const table = screen
+    .getAllByRole('table')
+    .find((element) => element.closest('.approval-inbox-detail-section') === null);
+  if (table === undefined) throw new Error('승인 요청 목록 표가 없다');
+  return table;
+};
 
 const tabFor = (label: string): HTMLElement => screen.getByRole('tab', { name: new RegExp(label) });
 
@@ -1302,7 +1309,7 @@ describe('고른 요청 — 순차 판정은 서버 값이다', () => {
     await renderDetail(finishedDetail, '?rq=9002');
 
     const progress = screen.getByRole('group', { name: t.panes.progress });
-    const items = [...progress.querySelectorAll('dd[data-status]')];
+    const items = [...progress.querySelectorAll('tbody tr[data-status]')];
 
     expect(items).toHaveLength(2);
     expect(items.map((item) => item.getAttribute('data-status'))).toEqual(['complete', 'complete']);

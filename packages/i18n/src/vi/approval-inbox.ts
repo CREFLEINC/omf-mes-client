@@ -59,6 +59,14 @@ export const approvalInbox: Translated<typeof ko.approvalInbox> = {
     note: 'Nội dung xem ở màn hình gốc',
   },
   progress: {
+    columns: {
+      step: 'Bước',
+      approver: 'Người duyệt',
+      status: 'Trạng thái',
+      decidedAt: 'Thời điểm xử lý',
+    },
+    commentLabel: 'Ý kiến phê duyệt',
+    stepCommentLabel: (stepNo: number): string => `Ý kiến phê duyệt bước ${String(stepNo)}`,
     positionLabel: 'Tiến độ',
     stepNo: (stepNo: number): string => `Bước ${String(stepNo)}`,
     myTurnBadge: 'Lượt phê duyệt của tôi',

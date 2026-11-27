@@ -91,7 +91,6 @@ export const notice: Translated<typeof ko.notice> = {
     requiredTitle: 'Hãy nhập tiêu đề.',
     requiredBody: 'Hãy nhập nội dung.',
     requiredStartDate: 'Hãy chọn ngày bắt đầu.',
-    requiredEndDate: 'Hãy chọn ngày kết thúc.',
     requiredScope: 'Hãy chọn phạm vi đối tượng.',
     requiredWorkOrder: 'Hãy chọn lệnh sản xuất đối tượng.',
     workOrderNotAllowed: 'Phạm vi đối tượng không phải lệnh sản xuất thì để trống lệnh sản xuất.',

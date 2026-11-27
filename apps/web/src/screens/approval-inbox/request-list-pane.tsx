@@ -1,6 +1,13 @@
-import { Button, Chip, type Column, EmptyState, SkeletonText } from '@crefle/web-ui';
+import {
+  Button,
+  Chip,
+  type Column,
+  EmptyState,
+  SkeletonText,
+  type SortState,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 
 import { ManagedTable } from '../../patterns/managed-table';
 import { PageNav, type PageNavMeta, type PageSize } from '../../patterns/page-nav';
@@ -88,6 +95,9 @@ export const RequestListPane = ({
   onSelect,
   loadError,
 }: RequestListPaneProps) => {
+  /* 상신 일시 오름/내림차순(#361) — 지금 쪽 안에서만 줄 차례를 바꾼다(조회 조건·쪽은 그대로). */
+  const [sort, setSort] = useState<SortState | null>(null);
+
   const columns: Column<RequestRow>[] = [
     {
       key: 'approvalRequestNo',
@@ -119,6 +129,7 @@ export const RequestListPane = ({
       key: 'requestedAt',
       header: t.fields.requestedAt,
       align: 'center',
+      sortable: true,
       width: REQUEST_COLUMN_WIDTH.requestedAt,
       /* **시각까지 낸다** — 같은 날 올라온 요청들의 앞뒤가 결재 차례를 읽는 단서다. */
       render: (row) => row.requestedAtText,
@@ -138,9 +149,10 @@ export const RequestListPane = ({
     {
       key: 'reason',
       header: t.fields.reason,
+      /* 머리는 가운데, 사유 글은 왼쪽부터 읽히게(#361). */
       align: 'center',
       /* 남는 폭을 흡수하는 유일한 열. 예산은 `REASON_COLUMN_BUDGET_PX`가 갖는다. */
-      render: (row) => row.reasonFirstLine,
+      render: (row) => <span className="approval-inbox-reason-text">{row.reasonFirstLine}</span>,
     },
   ];
 
@@ -208,7 +220,9 @@ export const RequestListPane = ({
             : 'approval-inbox-table'
         }
         columns={columns}
-        rows={rows}
+        rows={sortByRequestedAt(rows, sort)}
+        sort={sort}
+        onSortChange={setSort}
         getRowId={(row) => String(row.approvalRequestId)}
         caption={t.panes.list}
         onRowClick={(row) => {
@@ -228,4 +242,12 @@ export const RequestListPane = ({
       )}
     </>
   );
+};
+
+/** 상신 일시 차례 — `yyyy-MM-dd HH:mm` 글자라 글자 비교가 곧 시각 비교다. */
+const sortByRequestedAt = (rows: RequestRow[], sort: SortState | null): RequestRow[] => {
+  if (sort?.key !== 'requestedAt') return rows;
+  const sign = sort.direction === 'ascending' ? 1 : -1;
+
+  return [...rows].sort((a, b) => sign * a.requestedAtText.localeCompare(b.requestedAtText));
 };

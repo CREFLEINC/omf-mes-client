@@ -79,6 +79,11 @@ export const approvalInbox = {
    * 단계 배열을 훑어 다시 계산하지 않는다(계획 결정 7).
    */
   progress: {
+    /** 결재 진행 표의 열 이름(#361). */
+    columns: { step: '단계', approver: '결재자', status: '상태', decidedAt: '처리 일시' },
+    /** 표 아래 의견 줄. 단계가 여럿이면 어느 단계의 의견인지 이름에 붙인다. */
+    commentLabel: '결재 의견',
+    stepCommentLabel: (stepNo: number): string => `${String(stepNo)}단계 결재 의견`,
     positionLabel: '진행',
     stepNo: (stepNo: number): string => `${String(stepNo)}단계`,
     myTurnBadge: '내 결재 차례',

@@ -60,6 +60,7 @@ export const NotificationFilterBar = ({
         startLabel={t.fields.periodFrom}
         endLabel={t.fields.periodTo}
         placeholder={t.fields.datePlaceholder}
+        clearable
         from={period.from}
         to={period.to}
         onChange={(from, to) => {

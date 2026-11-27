@@ -20,58 +20,84 @@ const STEP_TONE: Record<StepProgressView['status'], ChipStatus> = {
 };
 
 /**
- * 결재 진행 — 「요청 정보」 상자와 같은 짜임(이름 왼쪽 · 값 오른쪽 한 줄씩 · #361).
+ * 결재 진행 — 「단계 · 결재자 · 상태 · 처리 일시」 표, 의견은 표 아래 줄로(#361).
  *
- * 단계마다 「n단계 | 승인자 [상태 라벨] 일시 · 의견」 한 줄이다. 번호는 **서버가 매긴 단계 번호**이고,
- * 결과 코드는 서버 값 그대로 라벨에 싣는다(화면 낱말로 바꾸지 않는다). 서버가 준 전체 단계가 여럿일 때만 맨 위에
- * 「n / m 단계」를 낸다 — 하나면 그 한 줄로 충분하다.
+ * 번호는 **서버가 매긴 단계 번호**이고, 결과 코드는 서버 값 그대로 라벨에 싣는다(화면 낱말로 바꾸지 않는다).
+ * 서버가 준 전체 단계가 여럿일 때만 표 위에 「n / m 단계」를 낸다 — 하나면 표 한 줄로 충분하다.
  *
  * **왜 내 차례가 아닌지는 말하지 않는다.** 화면은 그 까닭을 판정할 수 없다 — 내 차례일 때만 라벨을 붙인다.
  */
-export const ProgressPane = ({ view, isMyTurn = false }: ProgressPaneProps) => (
-  <div className="approval-inbox-detail-section" role="group" aria-label={t.panes.progress}>
-    <h3 className="approval-inbox-progress-head">
-      {t.panes.progress}
-      {isMyTurn && (
-        <Chip size="sm" status="info">
-          {t.progress.myTurnBadge}
-        </Chip>
-      )}
-    </h3>
+export const ProgressPane = ({ view, isMyTurn = false }: ProgressPaneProps) => {
+  const commented = view.steps.filter((step) => step.decisionComment !== null);
 
-    {view.steps.length === 0 ? (
-      <p className="field-note">{t.progress.noSteps}</p>
-    ) : (
-      <dl className="approval-inbox-info-list">
-        {view.isMultiStep && (
-          <div>
-            <dt className="field-label">{t.progress.positionLabel}</dt>
-            <dd>{view.positionText}</dd>
-          </div>
+  return (
+    <div className="approval-inbox-detail-section" role="group" aria-label={t.panes.progress}>
+      <h3 className="approval-inbox-progress-head">
+        {t.panes.progress}
+        {isMyTurn && (
+          <Chip size="sm" status="info">
+            {t.progress.myTurnBadge}
+          </Chip>
         )}
-        {view.steps.map((step) => (
-          <div key={step.stepNo}>
-            <dt className="field-label">{t.progress.stepNo(step.stepNo)}</dt>
-            <dd
-              className="approval-inbox-step-line"
-              data-status={step.status}
-              aria-current={step.status === 'current' ? 'step' : undefined}
-            >
-              {/* 승인자 이름. 비어 오면 그 사실을 적은 글자가 오고 **번호가 오지 않는다**. */}
-              <span>{step.approverLabel}</span>
-              <Chip size="sm" status={STEP_TONE[step.status]}>
-                {step.decisionCode ?? step.waitingText}
-              </Chip>
-              {step.decisionAtText !== null && (
-                <span className="field-note">{step.decisionAtText}</span>
-              )}
-              {step.decisionComment !== null && (
-                <span className="field-note">{step.decisionComment}</span>
-              )}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    )}
-  </div>
-);
+      </h3>
+
+      {view.steps.length === 0 ? (
+        <p className="field-note">{t.progress.noSteps}</p>
+      ) : (
+        <>
+          {view.isMultiStep && (
+            <dl className="approval-inbox-info-list">
+              <div>
+                <dt className="field-label">{t.progress.positionLabel}</dt>
+                <dd>{view.positionText}</dd>
+              </div>
+            </dl>
+          )}
+          <table className="approval-inbox-progress-table">
+            <thead>
+              <tr>
+                <th scope="col">{t.progress.columns.step}</th>
+                <th scope="col">{t.progress.columns.approver}</th>
+                <th scope="col">{t.progress.columns.status}</th>
+                <th scope="col">{t.progress.columns.decidedAt}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {view.steps.map((step) => (
+                <tr
+                  key={step.stepNo}
+                  data-status={step.status}
+                  aria-current={step.status === 'current' ? 'step' : undefined}
+                >
+                  <td>{t.progress.stepNo(step.stepNo)}</td>
+                  {/* 승인자 이름. 비어 오면 그 사실을 적은 글자가 오고 **번호가 오지 않는다**. */}
+                  <td>{step.approverLabel}</td>
+                  <td>
+                    <Chip size="sm" status={STEP_TONE[step.status]}>
+                      {step.decisionCode ?? step.waitingText}
+                    </Chip>
+                  </td>
+                  <td>{step.decisionAtText ?? '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {commented.length > 0 && (
+            <dl className="approval-inbox-info-list">
+              {commented.map((step) => (
+                <div key={step.stepNo}>
+                  <dt className="field-label">
+                    {view.isMultiStep
+                      ? t.progress.stepCommentLabel(step.stepNo)
+                      : t.progress.commentLabel}
+                  </dt>
+                  <dd>{step.decisionComment}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
