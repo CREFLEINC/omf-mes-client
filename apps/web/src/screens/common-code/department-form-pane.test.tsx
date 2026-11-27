@@ -80,8 +80,11 @@ describe('DepartmentFormPane — 코드 잠금', () => {
     renderPane({ codeLockReason: '이 코드는 다른 자료가 참조 중이라 고칠 수 없습니다.' });
 
     expect(screen.getByLabelText('부서코드')).toBeDisabled();
-    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 숨긴 설명으로만. */
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 이름의 title · 숨긴 설명으로. */
     expect(screen.queryByText('변경 불가')).toBeNull();
+    expect(
+      screen.getByTitle('이 코드는 다른 자료가 참조 중이라 고칠 수 없습니다.'),
+    ).toHaveTextContent(/^부서코드/);
     expect(screen.getByLabelText('부서코드')).toHaveAccessibleDescription(
       '이 코드는 다른 자료가 참조 중이라 고칠 수 없습니다.',
     );

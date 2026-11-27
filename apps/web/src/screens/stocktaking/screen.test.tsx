@@ -1191,18 +1191,17 @@ describe('StocktakingScreen — 실사 고르기와 요약', () => {
     });
   });
 
-  it('다시 누르면 선택이 풀리고 아래 구획이 닫힌다', async () => {
+  /* 고른 실사를 다시 눌러도 풀지 않는다 — 적던 값이 확인 없이 지워지지 않게(사용자 지시 2026-11-27 · #360). */
+  it('다시 눌러도 선택과 아래 구획이 그대로다', async () => {
     const { user } = renderScreen(allRoutes(), '?ct=9001');
 
     await screen.findByRole('group', { name: t.detail.summaryLabel });
 
-    await user.click(screen.getByRole('row', { name: t.actions.deselectRow('IC-2026-900011') }));
+    await user.click(screen.getByRole('row', { name: t.actions.selectRow('IC-2026-900011') }));
 
-    await waitFor(() => {
-      expect(currentLocation()).toBe(ROUTE);
-    });
-
-    expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+    expect(currentLocation()).toBe(`${ROUTE}?ct=9001`);
+    expect(screen.getByRole('group', { name: t.detail.summaryLabel })).toBeInTheDocument();
+    expect(screen.queryByText(t.empty.noSelectionTitle)).not.toBeInTheDocument();
   });
 
   /*
@@ -1986,7 +1985,12 @@ describe('StocktakingScreen — 개시 요청', () => {
 
     expect(openButton()).toBeDisabled();
     expect(within(listPane()).getByRole('button', { name: messages.common.search })).toBeDisabled();
-    /* 행 선택 잠금은 CountTable 테스트가 잰다 — 행에는 disabled 가 없다(행 클릭 · 사용자 지시 2026-11-26). */
+    /* 행에는 disabled 가 없다(행 클릭 · 사용자 지시 2026-11-26) — 다른 실사 행을 눌러도 주소가 바뀌지 않음을 잰다. */
+    const lockedAt = currentLocation();
+    await user.click(
+      within(listPane()).getByRole('row', { name: t.actions.selectRow('IC-2026-900012') }),
+    );
+    expect(currentLocation()).toBe(lockedAt);
     expect(within(openPane()).getByLabelText(t.fields.countType)).toBeDisabled();
     /*
      * **취소도 함께 잠긴다.** 이 한 줄이 `requestDiscardOpenDraft`의 핸들러 가드를 「등가」로
@@ -3341,7 +3345,12 @@ describe('StocktakingScreen — 저장 중 잠금', () => {
     expect(qtyField(1)).toBeDisabled();
     expect(screen.getByLabelText(t.lineTable.reasonLabel(1))).toBeDisabled();
     expect(within(listPane()).getByRole('button', { name: messages.common.search })).toBeDisabled();
-    /* 행 선택 잠금은 CountTable 테스트가 잰다 — 행에는 disabled 가 없다(행 클릭 · 사용자 지시 2026-11-26). */
+    /* 행에는 disabled 가 없다(행 클릭 · 사용자 지시 2026-11-26) — 다른 실사 행을 눌러도 주소가 바뀌지 않음을 잰다. */
+    const lockedAt = currentLocation();
+    await user.click(
+      within(listPane()).getByRole('row', { name: t.actions.selectRow('IC-2026-900012') }),
+    );
+    expect(currentLocation()).toBe(lockedAt);
     expect(
       within(detailPane()).getByRole('button', { name: messages.common.cancel }),
     ).toBeDisabled();
@@ -4441,7 +4450,12 @@ describe('StocktakingScreen — 마감 중 잠금', () => {
     expect(qtyField(1)).toBeDisabled();
     expect(saveButton()).toBeDisabled();
     expect(within(listPane()).getByRole('button', { name: messages.common.search })).toBeDisabled();
-    /* 행 선택 잠금은 CountTable 테스트가 잰다 — 행에는 disabled 가 없다(행 클릭 · 사용자 지시 2026-11-26). */
+    /* 행에는 disabled 가 없다(행 클릭 · 사용자 지시 2026-11-26) — 다른 실사 행을 눌러도 주소가 바뀌지 않음을 잰다. */
+    const lockedAt = currentLocation();
+    await user.click(
+      within(listPane()).getByRole('row', { name: t.actions.selectRow('IC-2026-900012') }),
+    );
+    expect(currentLocation()).toBe(lockedAt);
 
     await user.click(closeButton());
 

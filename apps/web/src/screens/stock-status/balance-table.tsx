@@ -189,7 +189,7 @@ export const buildBalanceColumns = ({
 
       /*
        * LOT 칸이 곧 상세를 여는 손잡이다(사용자 지시 2026-11-26 · 「선택」 열 대신 줄 아무 곳이나 눌러 연다 —
-       * 표 상자의 `rowPickHandlers` 가 줄 누름을 이 단추로 넘긴다). 고른 LOT 을 다시 누르면 상세를 닫는다.
+       * 표 상자의 `rowPickHandlers` 가 줄 누름을 이 단추로 넘긴다). 고른 LOT 을 다시 눌러도 그대로다(#360 — 다시 누름은 `rowPickHandlers` 가 막는다).
        *
        * 접근 이름에 **LOT 이름**을 넣는다 — 어느 LOT을 여는지 알 수 있게. **번호를 넣지 않는다**(#44): 이름을
        * 못 푼 줄에는 LOT 칸과 **같은 대체 표기**가 들어가, 눈으로 읽는 값과 보조기술이 읽는 값이 어긋나지 않는다.
@@ -199,7 +199,7 @@ export const buildBalanceColumns = ({
           type="button"
           className={`link-cell ${ROW_PICK_CLASS}`}
           aria-current={isSelected ? 'true' : undefined}
-          aria-label={isSelected ? t.actions.deselectRow(name) : t.actions.selectRow(name)}
+          aria-label={t.actions.selectRow(name)}
           onClick={() => {
             onToggleSelect(lotId);
           }}

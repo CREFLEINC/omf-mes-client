@@ -39,9 +39,7 @@ export const stockStatus: Translated<typeof ko.stockStatus> = {
     goFirstPage: 'Về trang đầu',
     refresh: 'Làm mới',
     select: 'Chọn',
-    deselect: 'Bỏ chọn',
     selectRow: (lotName: string): string => `Chọn ${lotName}`,
-    deselectRow: (lotName: string): string => `Bỏ chọn ${lotName}`,
     filterInboundLot: (inboundLotNo: string): string => `Lọc theo LOT nhập hàng ${inboundLotNo}`,
   },
   reasons: {

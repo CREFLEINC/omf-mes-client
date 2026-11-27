@@ -173,13 +173,11 @@ export const GrTable = ({
           rows={rows}
           getRowId={(row) => String(row.goodsReceiptId)}
           activeId={selectedReceiptId === null ? null : String(selectedReceiptId)}
-          rowLabel={(row) =>
-            row.goodsReceiptId === selectedReceiptId
-              ? t.actions.deselectRow(row.goodsReceiptNo)
-              : t.actions.selectRow(row.goodsReceiptNo)
-          }
+          rowLabel={(row) => t.actions.selectRow(row.goodsReceiptNo)}
+          /* 고른 행을 다시 눌러도 풀지 않는다 — 적던 입력이 확인 없이 지워지지 않게(omf-all-around#360). */
           onActivate={(row) => {
-            if (!isLocked) onToggleSelect(row.goodsReceiptId);
+            if (!isLocked && row.goodsReceiptId !== selectedReceiptId)
+              onToggleSelect(row.goodsReceiptId);
           }}
           empty={emptySlot()}
         />

@@ -99,8 +99,9 @@ describe('CodeValueFormPane — 코드 잠금', () => {
     renderPane({ codeLockReason: reason });
 
     expect(screen.getByLabelText('코드')).toBeDisabled();
-    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 숨긴 설명으로만. */
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 이름의 title · 숨긴 설명으로. */
     expect(screen.queryByText('변경 불가')).toBeNull();
+    expect(screen.getByTitle(reason)).toHaveTextContent(/^코드/);
     expect(screen.getByLabelText('코드')).toHaveAccessibleDescription(reason);
   });
 

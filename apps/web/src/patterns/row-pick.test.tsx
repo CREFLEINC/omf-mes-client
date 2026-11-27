@@ -6,7 +6,7 @@ import { ROW_PICK_CLASS, rowPickHandlers } from './row-pick';
 
 const NAMES = ['합성 가', '합성 나', '합성 다'];
 
-const renderTable = (disabled: string | null = null) => {
+const renderTable = (disabled: string | null = null, picked: string | null = null) => {
   const onPick = vi.fn<(name: string) => void>();
   const onOther = vi.fn();
   render(
@@ -20,6 +20,7 @@ const renderTable = (disabled: string | null = null) => {
                   type="button"
                   className={`link-cell ${ROW_PICK_CLASS}`}
                   disabled={name === disabled}
+                  aria-current={name === picked ? 'true' : undefined}
                   onClick={() => onPick(name)}
                 >
                   {name}
@@ -71,6 +72,62 @@ describe('rowPickHandlers — 줄 아무 곳이나 눌러 고르기(#360)', () =
     await user.click(screen.getByText('합성 가 설명'));
 
     expect(onPick).not.toHaveBeenCalled();
+  });
+
+  /* 고른 줄을 다시 눌러도 아무 일이 없다 — 적던 입력이 확인 없이 지워지지 않게(사용자 지시 2026-11-27 · #360). */
+  it('고른 줄은 빈 칸 · 고르는 단추 · Enter 어느 쪽으로 눌러도 다시 고르지 않는다', async () => {
+    const { onPick, user } = renderTable(null, '합성 나');
+
+    await user.click(screen.getByText('합성 나 설명'));
+    await user.click(screen.getByRole('button', { name: '합성 나' }));
+    screen.getByRole('button', { name: '합성 나' }).focus();
+    await user.keyboard('{Enter}');
+
+    expect(onPick).not.toHaveBeenCalled();
+  });
+
+  it('고른 줄이 있어도 다른 줄은 종전대로 고른다', async () => {
+    const { onPick, user } = renderTable(null, '합성 나');
+
+    await user.click(screen.getByText('합성 가 설명'));
+    await user.click(screen.getByRole('button', { name: '합성 다' }));
+
+    expect(onPick.mock.calls).toEqual([['합성 가'], ['합성 다']]);
+  });
+
+  it('aria-pressed 로 고른 상태를 적는 단추도 같다', async () => {
+    const onPick = vi.fn();
+    render(
+      <div {...rowPickHandlers}>
+        <table>
+          <tbody>
+            <tr>
+              <td>
+                <button type="button" className={ROW_PICK_CLASS} aria-pressed onClick={onPick}>
+                  합성 라
+                </button>
+              </td>
+              <td>합성 라 설명</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>,
+    );
+    const user = userEvent.setup();
+
+    await user.click(screen.getByText('합성 라 설명'));
+    await user.click(screen.getByRole('button', { name: '합성 라' }));
+
+    expect(onPick).not.toHaveBeenCalled();
+  });
+
+  /* 고른 줄의 단추는 막아도 그 줄의 다른 단추는 그쪽이 받는다. */
+  it('고른 줄의 다른 단추는 그대로 받는다', async () => {
+    const { onOther, user } = renderTable(null, '합성 가');
+
+    await user.click(screen.getByRole('button', { name: '합성 가 다른 일' }));
+
+    expect(onOther).toHaveBeenCalledOnce();
   });
 
   it('위아래 방향키로 앞뒤 줄의 고르는 단추로 옮긴다 — 잠긴 줄은 건너뛴다', async () => {

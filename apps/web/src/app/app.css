@@ -23651,6 +23651,34 @@ tbody tr:has(.row-pick:not(:disabled)) {
   cursor: pointer;
 }
 
+/*
+ * 고르는 단추는 다른 칸과 같은 글자로 보인다(사용자 지시 2026-11-27 · #360) — 줄 전체가 누르는 자리라 링크·단추처럼
+ * 꾸밀 까닭이 없다. 단추는 키보드로 고르는 자리(Tab · Enter · 위아래)로만 남고 초점 테두리는 그대로 쓴다.
+ * `.link-cell` · 공용 Button(text) 모양을 덮으려고 `button.` 을 붙인다. 전례: `.po-board-orders .link-cell`.
+ */
+button.row-pick {
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  text-decoration: none;
+}
+
+button.row-pick:hover,
+button.row-pick:hover::before,
+button.row-pick:active::before {
+  background: none;
+}
+
+button.row-pick:focus-visible {
+  border-radius: var(--radius-sm);
+  box-shadow: var(--focus-ring);
+}
+
 /* 표를 곧바로 그리는 목록에서 누름만 받는 상자 — 배치에 끼지 않는다. */
 .row-pick-box {
   display: contents;

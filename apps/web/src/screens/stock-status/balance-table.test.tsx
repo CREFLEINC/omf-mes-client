@@ -703,12 +703,18 @@ describe('BalanceTable — LOT 고르기', () => {
     ).toBeInTheDocument();
   });
 
-  it('고른 줄은 해제 이름이 된다', () => {
-    renderTable({ view: 'lot', rows: lotViewFixtures, selectedLotId: 9401 });
+  /* 고른 줄을 다시 눌러도 풀지 않으니 이름도 「선택」 그대로다(사용자 지시 2026-11-27 · #360). */
+  it('고른 줄도 고르기 이름이고, 다시 눌러도 상위에 알리지 않는다', async () => {
+    const { onToggleSelect, user } = renderTable({
+      view: 'lot',
+      rows: lotViewFixtures,
+      selectedLotId: 9401,
+    });
 
-    expect(
-      screen.getByRole('button', { name: t.actions.deselectRow('SAMPLE-LOT-0001') }),
-    ).toBeInTheDocument();
+    const chosen = screen.getByRole('button', { name: t.actions.selectRow('SAMPLE-LOT-0001') });
+    expect(chosen).toHaveAttribute('aria-current', 'true');
+    await user.click(chosen);
+    expect(onToggleSelect).not.toHaveBeenCalled();
     /* 짝 방향 — 고르지 않은 줄은 그대로 고르기다. */
     expect(
       screen.getByRole('button', { name: t.actions.selectRow('SAMPLE-LOT-0002') }),

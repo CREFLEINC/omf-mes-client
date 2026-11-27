@@ -179,7 +179,8 @@ describe('마감 후 생산실적 정정', () => {
     expect(writes[0]?.body).not.toHaveProperty('grade');
   });
 
-  it('고른 실적 줄을 한 번 더 누르면 선택이 풀리고 [정정]이 잠긴다', async () => {
+  /* 고른 실적 줄을 다시 눌러도 풀지 않는다(사용자 지시 2026-11-27 · #360). */
+  it('고른 실적 줄을 한 번 더 눌러도 선택이 그대로고 [정정]이 열려 있다', async () => {
     renderWorkspace(() => jsonResponse(productionResult, { status: 201 }), []);
     const user = userEvent.setup();
     const row = await screen.findByRole('button', { name: t.actions.select(3) });
@@ -188,8 +189,8 @@ describe('마감 후 생산실적 정정', () => {
     expect(screen.getByRole('button', { name: t.actions.correct })).toBeEnabled();
 
     await user.click(row);
-    expect(row).not.toHaveAttribute('aria-current');
-    expect(screen.getByRole('button', { name: t.actions.correct })).toBeDisabled();
+    expect(row).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByRole('button', { name: t.actions.correct })).toBeEnabled();
   });
 
   it('화면 단위 400 뒤에만 승인 사유를 받아 별도 상신한다', async () => {

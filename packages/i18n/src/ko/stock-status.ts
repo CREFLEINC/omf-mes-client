@@ -56,13 +56,11 @@ export const stockStatus = {
     /** 같은 조회를 다시 한다. 조건·보기·정렬·쪽·선택을 하나도 바꾸지 않는다. */
     refresh: '새로고침',
     select: '선택',
-    deselect: '선택 해제',
     /*
      * 접근 이름에 **LOT 이름**을 넣는다 — 「선택」이 행마다 되풀이되면 어느 줄인지 알 수 없다.
      * 내부 번호를 넣지 않는다(#44) — 이름을 못 풀면 표 칸과 같은 대체 표기가 들어간다.
      */
     selectRow: (lotName: string): string => `${lotName} 선택`,
-    deselectRow: (lotName: string): string => `${lotName} 선택 해제`,
     /** 005 FR-035 — 행의 입하 LOT 번호를 눌러 그 입하 LOT 으로 거른다. */
     filterInboundLot: (inboundLotNo: string): string => `입하 LOT ${inboundLotNo}로 거르기`,
   },

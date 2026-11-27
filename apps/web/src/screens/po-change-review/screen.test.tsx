@@ -217,15 +217,16 @@ describe('PoChangeReviewScreen', () => {
     });
   });
 
-  it('고른 줄을 한 번 더 누르면 선택이 풀린다', async () => {
+  /* 고른 줄을 다시 눌러도 풀지 않는다 — 적던 판정이 확인 없이 지워지지 않게(사용자 지시 2026-11-27 · #360). */
+  it('고른 줄을 한 번 더 눌러도 선택이 그대로다', async () => {
     const { user } = renderScreen();
     await selectRow(user);
     const row = screen.getByRole('button', { name: t.list.selectRow('SYNTH-PO-0031') });
     expect(row).toHaveAttribute('aria-current', 'true');
 
     await user.click(row);
-    expect(row).not.toHaveAttribute('aria-current');
-    expect(screen.getAllByText(t.diff.selectFirst).length).toBeGreaterThan(0);
+    expect(row).toHaveAttribute('aria-current', 'true');
+    expect(screen.queryByText(t.diff.selectFirst)).not.toBeInTheDocument();
   });
 
   /* 취소 후속은 이 화면에 없다 — 판정 제목 옆 ⓘ 의 설명으로 읽힌다(관리웹 정리 시안 A). */

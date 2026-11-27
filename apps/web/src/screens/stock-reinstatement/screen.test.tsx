@@ -105,15 +105,16 @@ describe('StockReinstatementScreen', () => {
     expect(paths).toContain('/trace/lots/6101');
   });
 
-  it('고른 줄을 한 번 더 누르면 선택이 풀린다', async () => {
+  /* 고른 줄을 다시 눌러도 풀지 않는다 — 적던 입력이 확인 없이 지워지지 않게(사용자 지시 2026-11-27 · #360). */
+  it('고른 줄을 한 번 더 눌러도 선택이 그대로다', async () => {
     const user = renderScreen();
     await chooseTarget(user);
     const row = screen.getByRole('button', { name: t.actions.selectRow('LOT-SYNTH-6101') });
     expect(row).toHaveAttribute('aria-current', 'true');
 
     await user.click(row);
-    await waitFor(() => expect(row).not.toHaveAttribute('aria-current'));
-    expect(screen.getByText(t.empty.selectionTitle)).toBeInTheDocument();
+    expect(row).toHaveAttribute('aria-current', 'true');
+    expect(screen.queryByText(t.empty.selectionTitle)).not.toBeInTheDocument();
   });
 
   it('한 번의 재등록 POST만 보내고 토큰은 본문에 싣는다', async () => {

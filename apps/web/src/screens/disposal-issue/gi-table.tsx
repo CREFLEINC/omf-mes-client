@@ -189,13 +189,10 @@ export const GiTable = ({
           rows={rows}
           getRowId={(row) => String(row.goodsIssueId)}
           activeId={selectedIssueId === null ? null : String(selectedIssueId)}
-          rowLabel={(row) =>
-            row.goodsIssueId === selectedIssueId
-              ? t.actions.deselectIssueRow(row.goodsIssueNo)
-              : t.actions.selectIssueRow(row.goodsIssueNo)
-          }
+          rowLabel={(row) => t.actions.selectIssueRow(row.goodsIssueNo)}
+          /* 고른 행을 다시 눌러도 풀지 않는다 — 적던 입력이 확인 없이 지워지지 않게(omf-all-around#360). */
           onActivate={(row) => {
-            if (!isLocked) onToggleSelect(row.goodsIssueId);
+            if (!isLocked && row.goodsIssueId !== selectedIssueId) onToggleSelect(row.goodsIssueId);
           }}
           empty={emptySlot()}
         />

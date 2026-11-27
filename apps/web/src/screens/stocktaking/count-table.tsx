@@ -150,13 +150,11 @@ export const CountTable = ({
           rows={rows}
           getRowId={(row) => String(row.inventoryCountId)}
           activeId={selectedCountId === null ? null : String(selectedCountId)}
-          rowLabel={(row) =>
-            row.inventoryCountId === selectedCountId
-              ? t.actions.deselectRow(row.inventoryCountNo)
-              : t.actions.selectRow(row.inventoryCountNo)
-          }
+          rowLabel={(row) => t.actions.selectRow(row.inventoryCountNo)}
+          /* 고른 행을 다시 눌러도 풀지 않는다 — 적던 입력이 확인 없이 지워지지 않게(omf-all-around#360). */
           onActivate={(row) => {
-            if (!isLocked) onToggleSelect(row.inventoryCountId);
+            if (!isLocked && row.inventoryCountId !== selectedCountId)
+              onToggleSelect(row.inventoryCountId);
           }}
           empty={emptySlot()}
         />

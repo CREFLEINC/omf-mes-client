@@ -237,7 +237,8 @@ describe('ShipmentRequestCreateScreen — 지시서 경유(완료 조건 C2)', (
     expect(within(linesPane).queryByText('SAMPLE-ITEM-02 · 합성 품목 나')).not.toBeInTheDocument();
   });
 
-  it('고른 지시서를 한 번 더 누르면 선택이 풀리고 빈 안내로 돌아간다', async () => {
+  /* 고른 지시서를 다시 눌러도 풀지 않는다 — 생성 대상이 확인 없이 지워지지 않게(사용자 지시 2026-11-27 · #360). */
+  it('고른 지시서를 한 번 더 눌러도 선택과 생성 대상이 그대로다', async () => {
     const user = userEvent.setup();
 
     renderScreen({ fetch: createStubFetch(baseRoutes()) });
@@ -248,8 +249,8 @@ describe('ShipmentRequestCreateScreen — 지시서 경유(완료 조건 C2)', (
     expect(row).toHaveAttribute('aria-pressed', 'true');
 
     await user.click(row);
-    expect(row).not.toHaveAttribute('aria-pressed', 'true');
-    expect(screen.queryByRole('region', { name: t.panes.header })).toBeNull();
+    expect(row).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('region', { name: t.panes.header })).toBeInTheDocument();
   });
 });
 

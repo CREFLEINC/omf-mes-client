@@ -1880,7 +1880,8 @@ describe('StockStatusScreen — LOT 고르기', () => {
     expect(requestsTo(requests, BALANCES_PATH)).toHaveLength(listRequests);
   });
 
-  it('다시 누르면 선택이 풀리고 구획이 되돌아간다', async () => {
+  /* 고른 LOT 을 다시 눌러도 풀지 않는다(사용자 지시 2026-11-27 · #360). */
+  it('다시 눌러도 선택과 구획이 그대로다', async () => {
     const { user } = renderScreen(
       [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
       LOT_VIEW,
@@ -1890,13 +1891,11 @@ describe('StockStatusScreen — LOT 고르기', () => {
 
     await screen.findByRole('group', { name: t.detail.quantities });
 
-    await user.click(
-      screen.getByRole('button', { name: t.actions.deselectRow('SAMPLE-LOT-0001') }),
-    );
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SAMPLE-LOT-0001') }));
 
-    await screen.findByText(t.empty.noSelectionTitle);
-
-    expect(currentLocation()).not.toContain('sel=');
+    expect(currentLocation()).toContain('sel=');
+    expect(screen.getByRole('group', { name: t.detail.quantities })).toBeInTheDocument();
+    expect(screen.queryByText(t.empty.noSelectionTitle)).not.toBeInTheDocument();
   });
 
   /* 보기를 바꾸면 고른 LOT이 새 결과에 없다 — 수명 표 1행이 `sel`을 함께 비운다. */

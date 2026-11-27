@@ -67,14 +67,12 @@ export const supplierReturn = {
     /** 화면이 보고 있는 조회를 전부 다시 한다 — 목록만 다시 부르면 낡은 값과 새 값이 섞인다. */
     refresh: '다시 조회',
     select: '선택',
-    deselect: '선택 해제',
     /*
      * 행 안의 버튼은 보이는 글자가 행마다 같다. 접근 이름에 입고번호를 넣어 어느 건인지 밝히되,
      * 보이는 글자를 그대로 담는다 — 담지 않으면 음성 조작이 「선택」으로 이 버튼을 부를 수 없다.
      * **내부 번호를 접근 이름에 넣지 않는다** — 그것이 화면 밖으로 새는 또 하나의 경로다.
      */
     selectRow: (goodsReceiptNo: string): string => `${goodsReceiptNo} 선택`,
-    deselectRow: (goodsReceiptNo: string): string => `${goodsReceiptNo} 선택 해제`,
     /**
      * 되돌릴 수 없는 조작의 이름. **한 버튼이다** — 등록과 전기가 한 요청이라 두 단계로 나누면
      * 전기되지 않은 전표가 이 화면에서 손댈 수 없는 채 남는다(착수 이슈 §6).

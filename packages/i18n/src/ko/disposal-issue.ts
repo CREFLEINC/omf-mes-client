@@ -64,17 +64,14 @@ export const disposalIssue = {
     /** 화면이 보고 있는 조회를 전부 다시 한다 — 목록만 다시 부르면 낡은 값과 새 값이 섞인다. */
     refresh: '다시 조회',
     select: '선택',
-    deselect: '선택 해제',
     /*
      * 행 안의 버튼은 보이는 글자가 행마다 같다. 접근 이름에 입고번호를 넣어 어느 건인지 밝히되,
      * 보이는 글자를 그대로 담는다 — 담지 않으면 음성 조작이 「선택」으로 이 버튼을 부를 수 없다.
      * **내부 번호를 접근 이름에 넣지 않는다** — 그것이 화면 밖으로 새는 또 하나의 경로다.
      */
     selectRow: (goodsReceiptNo: string): string => `${goodsReceiptNo} 선택`,
-    deselectRow: (goodsReceiptNo: string): string => `${goodsReceiptNo} 선택 해제`,
     /** 이력 목록 행의 버튼. 같은 이유로 **출고번호**를 접근 이름에 넣는다. */
     selectIssueRow: (goodsIssueNo: string): string => `${goodsIssueNo} 선택`,
-    deselectIssueRow: (goodsIssueNo: string): string => `${goodsIssueNo} 선택 해제`,
     /**
      * **버튼 하나가 요청 둘을 잇는다**(승인 기록 정정 1-1) — 전표를 만들고 곧바로 승인을
      * 요청한다. 「등록」과 「요청」으로 나누어 적지 않는 이유는 사용자의 목적이 하나이기

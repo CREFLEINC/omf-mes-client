@@ -1061,15 +1061,19 @@ describe('SupplierReturnScreen — 수명 표', () => {
     });
   });
 
-  it('고른 전표를 다시 누르면 풀린다', async () => {
+  /* 고른 전표를 다시 눌러도 풀지 않는다 — 적던 줄 초안이 확인 없이 지워지지 않게(사용자 지시 2026-11-27 · #360). */
+  it('고른 전표를 다시 눌러도 선택과 줄 초안이 남는다', async () => {
     const { user } = renderScreen(allRoutes(), '?gr=9001');
 
     await screen.findAllByText(ITEM_NAME);
-    await user.click(screen.getByRole('row', { name: t.actions.deselectRow('GR-2026-900001') }));
+    await user.click(selectBox(1));
+    await user.type(qtyBox(1), '10');
 
-    await waitFor(() => {
-      expect(currentLocation()).toBe(ROUTE);
-    });
+    await selectReceipt(user, 'GR-2026-900001');
+
+    expect(currentLocation()).toBe(`${ROUTE}?gr=9001`);
+    expect(selectBox(1)).toBeChecked();
+    expect(qtyBox(1)).toHaveValue('10');
   });
 
   /**
@@ -2790,7 +2794,10 @@ describe('SupplierReturnScreen — 전송 중', () => {
     expect(discardButton()).toBeDisabled();
     expect(screen.getByRole('button', { name: messages.common.search })).toBeDisabled();
     expect(screen.getByRole('button', { name: t.actions.refresh })).toBeDisabled();
-    /* 행 선택 잠금은 GrTable 테스트가 잰다 — 행에는 disabled 가 없다(행 클릭 · 사용자 지시 2026-11-26). */
+    /* 행에는 disabled 가 없다(행 클릭 · 사용자 지시 2026-11-26) — 눌러도 고른 전표가 바뀌지 않음을 잰다. */
+    await user.click(screen.getByRole('row', { name: t.actions.selectRow('GR-2026-900002') }));
+    expect(currentLocation()).toContain('gr=9001');
+    expect(currentLocation()).not.toContain('gr=9002');
     expect(selectBox(1)).toBeDisabled();
     expect(qtyBox(1)).toBeDisabled();
     expect(screen.getByRole('combobox', { name: t.fields.supplier })).toBeDisabled();

@@ -172,13 +172,11 @@ export const HistoryTable = ({
         rows={rows}
         getRowId={(row) => String(row.inventoryAdjustmentId)}
         activeId={selectedAdjustmentId === null ? null : String(selectedAdjustmentId)}
-        rowLabel={(row) =>
-          row.inventoryAdjustmentId === selectedAdjustmentId
-            ? t.actions.deselectAdjustmentRow(row.inventoryAdjustmentNo)
-            : t.actions.selectAdjustmentRow(row.inventoryAdjustmentNo)
-        }
+        rowLabel={(row) => t.actions.selectAdjustmentRow(row.inventoryAdjustmentNo)}
+        /* 고른 행을 다시 눌러도 풀지 않는다 — 적던 입력이 확인 없이 지워지지 않게(omf-all-around#360). */
         onActivate={(row) => {
-          if (!isLocked) onToggleSelect(row.inventoryAdjustmentId);
+          if (!isLocked && row.inventoryAdjustmentId !== selectedAdjustmentId)
+            onToggleSelect(row.inventoryAdjustmentId);
         }}
         empty={emptySlot()}
       />

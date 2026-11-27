@@ -1178,15 +1178,19 @@ describe('DisposalIssueScreen — 수명 표', () => {
     });
   });
 
-  it('고른 전표를 다시 누르면 풀린다', async () => {
+  /* 고른 전표를 다시 눌러도 풀지 않는다 — 적던 줄 초안이 확인 없이 지워지지 않게(사용자 지시 2026-11-27 · #360). */
+  it('고른 전표를 다시 눌러도 선택과 줄 초안이 남는다', async () => {
     const { user } = renderScreen(allRoutes(), '?gr=9001');
 
-    await waitForList();
-    await user.click(screen.getByRole('row', { name: t.actions.deselectRow('GR-2026-900001') }));
+    await waitForLines();
+    await user.click(lineCheckbox(1));
+    await user.type(qtyInput(1), '5');
 
-    await waitFor(() => {
-      expect(currentLocation()).toBe(ROUTE);
-    });
+    await selectReceipt(user, 'GR-2026-900001');
+
+    expect(currentLocation()).toBe(`${ROUTE}?gr=9001`);
+    expect(lineCheckbox(1)).toBeChecked();
+    expect(qtyInput(1)).toHaveValue('5');
   });
 
   /**
@@ -2137,11 +2141,11 @@ describe('DisposalIssueScreen — 줄 초안의 수명', () => {
     await user.click(lineCheckbox(1));
     await user.type(qtyInput(1), '5');
 
-    /* 같은 전표를 풀었다 다시 고르는 것도 「대상이 바뀐 것」이다. */
-    await user.click(screen.getByRole('row', { name: t.actions.deselectRow('GR-2026-900001') }));
+    /* 다른 전표로 옮겼다 돌아오는 것도 「대상이 바뀐 것」이다(고른 전표를 다시 누르면 풀리지 않는다 · #360). */
+    await selectReceipt(user, 'GR-2026-900002');
 
     await waitFor(() => {
-      expect(currentLocation()).toBe(ROUTE);
+      expect(currentLocation()).toBe(`${ROUTE}?gr=9002`);
     });
 
     await selectReceipt(user, 'GR-2026-900001');

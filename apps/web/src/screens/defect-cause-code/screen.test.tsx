@@ -994,8 +994,11 @@ describe('DefectCauseCodeScreen — 상세 조회', () => {
 
     await openEdit();
     expect(await screen.findByLabelText('불량코드')).toBeDisabled();
-    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 숨긴 설명으로만. */
+    /* 칸 이름 옆 「변경 불가」 라벨은 두지 않는다(omf-all-around#360) — 사유는 이름의 title · 숨긴 설명으로. */
     expect(screen.queryByText('변경 불가')).toBeNull();
+    expect(
+      screen.getByTitle('지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.'),
+    ).toHaveTextContent(/^불량코드/);
     expect(screen.getByLabelText('불량코드')).toHaveAccessibleDescription(
       '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
     );

@@ -150,6 +150,27 @@ describe('ReturnReceiptScreen — 원 출하가 있는 반품', () => {
     expect(await screen.findByLabelText(`LOT-TEST-0290 ${t.fields.returnQty}`)).toBeInTheDocument();
   });
 
+  /* 고른 출하를 다시 눌러도 풀지 않는다 — 적던 수량·비고가 확인 없이 지워지지 않게(사용자 지시 2026-11-27 · #360). */
+  it('고른 출하를 다시 눌러도 선택과 적던 입력이 그대로고, 다른 출하를 누르면 바뀐다', async () => {
+    const { user } = renderScreen();
+    await selectShipment(user);
+    await user.type(linesGroup().getByLabelText(`LOT-TEST-0311 ${t.fields.returnQty}`), '40');
+    await user.type(receiptPane().getByLabelText(new RegExp(t.fields.remarks)), '상단 긁힘');
+
+    const pick = screen.getByRole('button', { name: t.actions.selectRow('SH-TEST-0455') });
+    await user.click(pick.closest('tr')!);
+    await user.click(pick);
+
+    expect(pick).toHaveAttribute('aria-pressed', 'true');
+    expect(receiptPane().getByText(t.target.shipment('SH-TEST-0455'))).toBeInTheDocument();
+    expect(linesGroup().getByLabelText(`LOT-TEST-0311 ${t.fields.returnQty}`)).toHaveValue('40');
+    expect(receiptPane().getByLabelText(new RegExp(t.fields.remarks))).toHaveValue('상단 긁힘');
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SH-TEST-0448') }));
+
+    expect(await receiptPane().findByText(t.target.shipment('SH-TEST-0448'))).toBeInTheDocument();
+  });
+
   it('출하 수량을 넘는 반품 수량은 그 줄에서 막고 등록도 잠근다', async () => {
     const { user } = renderScreen();
     await selectShipment(user);
