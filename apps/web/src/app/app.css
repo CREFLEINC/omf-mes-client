@@ -23666,6 +23666,8 @@ button.row-pick {
   letter-spacing: inherit;
   text-align: inherit;
   text-decoration: none;
+  /* 종전 단추처럼 한 줄 — 좁은 열에서 번호가 줄바꿈되지 않게. */
+  white-space: nowrap;
 }
 
 button.row-pick:hover,
