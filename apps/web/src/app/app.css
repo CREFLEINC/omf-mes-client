@@ -43048,9 +43048,13 @@ dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(.pop-ui
  * 4) 선택 입력 칸 — 이름 오른쪽에 작은 회색 「(선택)」(팝업 디자인 시안 2026-11-27 「1. 입력 칸 모양」 · omf-all-around#360).
  * 고칠 수 있는 칸(글자 · 여러 줄 · 선택칸 · 시각 칸)이 있고 빨간 * · required · aria-required 가 없는 칸만. 잠긴 칸 · 읽기 전용 칸 ·
  * 체크 상자 · 조회 조건 줄(찾기 팝업의 부서 고르기 등)은 붙이지 않는다. 화면이 「(선택)」을 직접 다는 팝업(`.optional-mark` —
- * 사용자 · 단말)은 그 화면의 표시를 따르고 겹치지 않게 뺀다.
+ * 사용자 · 단말)은 그 화면의 표시를 따르고 겹치지 않게 뺀다. 관리웹 틀(AppShell `_shell_`) 안 팝업만 — POP 단말 화면은 뺀다.
+ * 필수인데 * 가 없는 칸 · 비울 수 없는 칸(늘 값이 골라진 선택칸 등)은 화면이 `.no-optional-mark` 를 달아 뺀다. 버전 · Rev 비교
+ * 팝업(`.inspection-standard-compare`)의 두 선택칸도 늘 골라져 있어 뺀다.
+ * 칸 안에 찾기 팝업을 그리는 칸(`:has(dialog)`)은 그 팝업 검색 칸 때문에 붙지 않게 뺀다.
  */
-dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(
+[class*='_shell_']
+  dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(
     .pop-ui *,
     .dash-tab *,
     .dash-tabs *,
@@ -43059,11 +43063,16 @@ dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(
     :has(.optional-mark)
   )
   :is(.field-cell, [class*='_field_']):not(
+    .no-optional-mark,
     .filter-bar *,
     [role='search'] *,
-    .alarm-picker-controls *
+    .alarm-picker-controls *,
+    .item-picker-controls *,
+    .erp-equipment-picker-search *,
+    .inspection-standard-compare *
   ):not(
     :has(
+      dialog,
       .required-mark,
       [class*='_requiredMark_'],
       .optional-mark,
@@ -43229,7 +43238,8 @@ html:lang(vi) {
 }
 
 .info-table > div:has(> table) {
-  max-height: calc(var(--info-table-row, 41px) * 6 + 2px);
+  /* 머리 줄(38px) + 촘촘한 줄(37px) 5개 + 위아래 테두리 — 여섯째 줄부터 표 안에서 구른다. */
+  max-height: calc(38px + 37px * 5 + 2px);
   overflow: auto;
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);

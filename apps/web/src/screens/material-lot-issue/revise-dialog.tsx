@@ -129,7 +129,9 @@ export const ReviseDialog = ({
           </dd>
         </dl>
 
+        {/* 필수 칸(checkBatch lotQty)인데 * 가 없다 — 「(선택)」이 붙지 않게(#360). */}
         <TextField
+          containerClassName="no-optional-mark"
           label={t.qty}
           placeholder={ph.lotQty}
           inputMode="decimal"
@@ -160,7 +162,8 @@ export const ReviseDialog = ({
           </div>
           {draft.packageOn ? (
             <div className="mlot-issue-package-fields">
-              <div className="field-cell">
+              {/* 패키징 세 칸은 켜면 필수(checkBatch) — 「(선택)」이 붙지 않게(#360). */}
+              <div className="field-cell no-optional-mark">
                 <span className="field-label">
                   <label htmlFor={packageUomId}>{t.packageUom}</label>
                 </span>
@@ -176,6 +179,7 @@ export const ReviseDialog = ({
                 />
               </div>
               <TextField
+                containerClassName="no-optional-mark"
                 label={t.packageCount}
                 placeholder={ph.packageCount}
                 inputMode="numeric"
@@ -185,6 +189,7 @@ export const ReviseDialog = ({
                 }
               />
               <TextField
+                containerClassName="no-optional-mark"
                 label={t.qtyPerPackage(uomCode)}
                 placeholder={ph.qtyPerPackage}
                 inputMode="decimal"

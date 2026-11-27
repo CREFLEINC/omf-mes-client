@@ -87,7 +87,9 @@ export const DataScopeFormDialog = ({
       <div className="form-grid">
         {/* 규범 3-2 — 「SYN-BU-01 · 합성 사업부 A」는 트리거 폭에 갇혀 잘린다. */}
         {/* 추가 창 안내는 첫 칸 이름 옆 ⓘ — 마우스를 올리면 뜬다(omf-all-around#360). 창 이름은 제목만 읽힌다. */}
+        {/* 사업부 · 공장은 둘 중 하나는 골라야 한다(targetRequired) — 하나씩 「(선택)」을 달지 않는다(#360). */}
         <SelectField
+          className="no-optional-mark"
           label={t.scope.fields.businessUnit}
           {...(isNew ? { info: t.scope.dialog.addLead } : {})}
           wide
@@ -99,6 +101,7 @@ export const DataScopeFormDialog = ({
         />
 
         <SelectField
+          className="no-optional-mark"
           label={t.scope.fields.plant}
           wide
           options={[{ value: '', label: t.scope.dialog.allPlants }, ...plantOptions]}

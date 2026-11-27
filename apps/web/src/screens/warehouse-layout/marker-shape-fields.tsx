@@ -39,6 +39,8 @@ const NumberCell = ({ label, value, min, max, step, disabled, onCommit }: Number
     <TextField
       size="sm"
       type="number"
+      /* 비우면 지금 값으로 되돌아가 비울 수 없는 칸 — 「(선택)」을 달지 않는다(#360). */
+      containerClassName="no-optional-mark"
       label={label}
       min={min}
       max={max}

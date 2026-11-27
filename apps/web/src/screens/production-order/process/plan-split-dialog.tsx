@@ -297,7 +297,8 @@ export const PlanSplitDialog = ({
                 setConditionsDirty(true);
               }}
             />
-            <div className="field-cell">
+            {/* 늘 값이 골라진 칸(비울 수 없음) — 「(선택)」을 달지 않는다(#360). */}
+            <div className="field-cell no-optional-mark">
               <span className="field-label">분할 방식</span>
               <Select
                 disabled={calendarBusy}
@@ -331,7 +332,7 @@ export const PlanSplitDialog = ({
                 }}
               />
             )}
-            <div className="field-cell">
+            <div className="field-cell no-optional-mark">
               <span className="field-label">계획일 설정</span>
               <Select
                 disabled={calendarBusy}

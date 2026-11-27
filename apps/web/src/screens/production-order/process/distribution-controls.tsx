@@ -755,7 +755,7 @@ export const DistributionControls = ({
                                 onChange={(lineId) => change(row.id, { lineId })}
                               />
                             </div>
-                            <div className="field-cell erp-wo-segment-mode">
+                            <div className="field-cell erp-wo-segment-mode no-optional-mark">
                               <span className="field-label">배분 방식</span>
                               <Select
                                 size="md"

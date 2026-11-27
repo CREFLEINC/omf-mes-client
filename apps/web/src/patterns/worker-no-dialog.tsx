@@ -98,7 +98,8 @@ export const WorkerNoDialog = ({
           value={draft}
           size="xl"
           ref={fieldRef}
-          containerClassName="worker-no-dialog-field"
+          /* 사번은 비우면 확인이 진행되지 않는다(canSubmit) — 「(선택)」이 붙지 않게(#360). */
+          containerClassName="worker-no-dialog-field no-optional-mark"
           inputMode="none"
           autoComplete="off"
           onChange={(event) => {
