@@ -1256,10 +1256,10 @@ describe('고른 요청 — 순차 판정은 서버 값이다', () => {
     expect(within(progress).queryByText(t.progress.position(1, 3))).not.toBeInTheDocument();
   });
 
-  it('현재 단계가 전체보다 커도 그대로 낸다', async () => {
+  it('전체가 1단계면 진행 위치를 내지 않는다 — 단계 한 줄로 충분하다(#361)', async () => {
     await renderDetail(contradictoryNotMyTurnDetail, '?rq=9003');
 
-    expect(screen.getByText(t.progress.position(2, 1))).toBeVisible();
+    expect(screen.queryByText(t.progress.position(2, 1))).toBeNull();
   });
 
   it('끝난 요청은 종료라고 적고 0으로 메우지 않는다', async () => {
@@ -1271,15 +1271,13 @@ describe('고른 요청 — 순차 판정은 서버 값이다', () => {
   it('내 차례가 서버 값이다 — 배열로는 아닌데 서버가 맞다고 한 경우', async () => {
     await renderDetail(contradictoryMyTurnDetail, '?rq=9001');
 
-    expect(screen.getByText(t.progress.myTurn)).toBeVisible();
-    expect(screen.queryByText(t.progress.notMyTurn)).not.toBeInTheDocument();
+    expect(screen.getByText(t.progress.myTurnBadge)).toBeVisible();
   });
 
   it('내 차례가 서버 값이다 — 배열로는 맞는데 서버가 아니라고 한 경우', async () => {
     await renderDetail(contradictoryNotMyTurnDetail, '?rq=9003');
 
-    expect(screen.getByText(t.progress.notMyTurn)).toBeVisible();
-    expect(screen.queryByText(t.progress.myTurn)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.progress.myTurnBadge)).not.toBeInTheDocument();
   });
 
   it('결재 결과·의견은 응답 값 그대로, 시각은 공장 시각으로 낸다', async () => {
@@ -1292,23 +1290,19 @@ describe('고른 요청 — 순차 판정은 서버 값이다', () => {
     expect(within(progress).getByText('합성 결재 의견 하나')).toBeVisible();
   });
 
-  it('세로로 그리고 결재된 단계의 노드가 번호로 덮인다', async () => {
+  it('단계 이름은 서버가 매긴 단계 번호다(#361 — 「1단계」 줄)', async () => {
     await renderDetail(contradictoryMyTurnDetail, '?rq=9001');
 
     const progress = screen.getByRole('group', { name: t.panes.progress });
-    const list = progress.querySelector('ol');
 
-    expect(list).toHaveAttribute('data-orientation', 'vertical');
-    expect(progress.querySelector('li[data-status] span[aria-hidden="true"]')?.textContent).toBe(
-      '1',
-    );
+    expect(within(progress).getByText(t.progress.stepNo(1))).toBeVisible();
   });
 
   it('고정 반려 값이 아닌 결재 결과는 완료로 그린다', async () => {
     await renderDetail(finishedDetail, '?rq=9002');
 
     const progress = screen.getByRole('group', { name: t.panes.progress });
-    const items = [...progress.querySelectorAll('li[data-status]')];
+    const items = [...progress.querySelectorAll('dd[data-status]')];
 
     expect(items).toHaveLength(2);
     expect(items.map((item) => item.getAttribute('data-status'))).toEqual(['complete', 'complete']);
@@ -1755,7 +1749,9 @@ describe('결재 — 확인 창', () => {
 
     /* 창이 열린 채 상세가 다시 온다 — 그 사이 앞 단계가 움직였다. */
     await user.click(screen.getByRole('button', { name: messages.common.search }));
-    await screen.findByText(t.progress.notMyTurn);
+    await waitFor(() => {
+      expect(screen.queryByText(t.progress.myTurnBadge)).toBeNull();
+    });
 
     await user.click(confirmButton(t.decision.approve));
 

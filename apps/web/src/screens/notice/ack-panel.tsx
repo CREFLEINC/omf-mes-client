@@ -58,10 +58,11 @@ export const AckPanel = ({
   }
 
   const columns: Column<AckView>[] = [
-    { key: 'who', header: t.ack.who, render: (row) => row.who },
+    { key: 'who', header: t.ack.who, align: 'center', render: (row) => row.who },
     {
       key: 'state',
       header: t.ack.state,
+      align: 'center',
       render: (row) => (
         <Chip size="sm" status={STATE_TONE[row.state]}>
           {STATE_LABEL[row.state]}
@@ -71,6 +72,7 @@ export const AckPanel = ({
     {
       key: 'at',
       header: t.ack.at,
+      align: 'center',
       /* 확인 일시 오름 · 내림차순(#361). 시각이 없는 행은 늘 뒤에 둔다. */
       sortable: true,
       render: (row) => (row.at === null ? t.ack.notAvailable : formatMoment(row.at)),

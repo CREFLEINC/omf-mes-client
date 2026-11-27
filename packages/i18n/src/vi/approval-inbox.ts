@@ -22,7 +22,7 @@ export const approvalInbox: Translated<typeof ko.approvalInbox> = {
     target: 'Đối tượng',
     progress: 'Tiến trình phê duyệt',
     reason: 'Toàn văn lý do',
-    decision: 'Phê duyệt',
+    decision: 'Xử lý phê duyệt',
   },
   tabs: {
     label: 'Xem hộp phê duyệt',
@@ -34,6 +34,7 @@ export const approvalInbox: Translated<typeof ko.approvalInbox> = {
   fields: {
     approvalRequestNo: 'Số yêu cầu',
     reason: 'Lý do',
+    targetDocument: 'Tài liệu đối tượng',
     requestedByName: 'Người trình',
     requestedAt: 'Thời điểm trình',
     status: 'Trạng thái',
@@ -58,6 +59,9 @@ export const approvalInbox: Translated<typeof ko.approvalInbox> = {
     note: 'Nội dung xem ở màn hình gốc',
   },
   progress: {
+    positionLabel: 'Tiến độ',
+    stepNo: (stepNo: number): string => `Bước ${String(stepNo)}`,
+    myTurnBadge: 'Lượt phê duyệt của tôi',
     position: (current: number, total: number): string =>
       `Bước ${String(current)} / ${String(total)}`,
     finished: (total: number): string => `Đã kết thúc phê duyệt · tổng ${String(total)} bước`,

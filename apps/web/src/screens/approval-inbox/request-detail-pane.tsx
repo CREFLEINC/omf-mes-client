@@ -1,6 +1,8 @@
+import { Chip } from '@crefle/web-ui';
+import type { ReactNode } from 'react';
 import { messages } from '@omf-mes/i18n';
 
-import { approvalTypeLabelOf, requestStatusLabelOf } from './code-options';
+import { approvalTypeLabelOf, requestStatusLabelOf, requestStatusToneOf } from './code-options';
 import type { RequestDetailView } from './types';
 
 const t = messages.approvalInbox;
@@ -34,6 +36,8 @@ export const toVisibleLine = (line: string): string => {
 
 export interface RequestDetailPaneProps {
   view: RequestDetailView;
+  /** 「대상 문서」 칸에 서는 대상 이름 · 「열기」(#361 — 사유와 대상을 「요청 정보」 한 상자로). */
+  target?: ReactNode;
 }
 
 /**
@@ -51,7 +55,7 @@ export interface RequestDetailPaneProps {
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const RequestDetailPane = ({ view }: RequestDetailPaneProps) => (
+export const RequestDetailPane = ({ view, target }: RequestDetailPaneProps) => (
   <div className="approval-inbox-detail-request" role="group" aria-label={t.panes.request}>
     {/* 요약 상자 — 품질 화면(검사 조회·판정) 상세의 요약 상자와 같은 모양(작은 이름 위 · 큰 값 아래 · #361). */}
     <dl className="parts-iqc-facts iqc-inbound-facts approval-inbox-detail-facts">
@@ -73,24 +77,42 @@ export const RequestDetailPane = ({ view }: RequestDetailPaneProps) => (
       </div>
       <div className="parts-iqc-fact">
         <dt className="field-label">{t.fields.status}</dt>
-        <dd className="parts-iqc-fact-key">{requestStatusLabelOf(view.statusCode)}</dd>
+        <dd className="parts-iqc-fact-key">
+          <Chip variant="status" size="sm" status={requestStatusToneOf(view.statusCode)}>
+            {requestStatusLabelOf(view.statusCode)}
+          </Chip>
+        </dd>
       </div>
     </dl>
 
+    {/* 요청 정보 — 대상 문서와 요청 사유를 한 상자에, 이름 왼쪽 · 값 오른쪽 한 줄씩(#361). */}
     <section className="approval-inbox-detail-section">
-      <h3>{t.fields.reason}</h3>
-      {/*
-       * **줄마다 한 칸이다.** 줄바꿈을 구조로 내어 들여쓰기와 빈 줄이 표기 층에서 사라지지
-       * 않게 하는 것은 `toVisibleLine`이 맡는다.
-       *
-       * React key에 차례를 쓴다. **여기서는 차례가 곧 그 줄의 정체다** — 사유는 통째로
-       * 갈리는 한 덩어리라 줄이 재배열되거나 사이에 끼어들지 않는다.
-       */}
-      <div role="group" aria-label={t.panes.reason}>
-        {view.reasonLines.map((line, index) => (
-          <p key={`${String(index)}:${line}`}>{toVisibleLine(line)}</p>
-        ))}
-      </div>
+      <h3>{t.panes.request}</h3>
+      <dl className="approval-inbox-info-list">
+        {target !== undefined && (
+          <div>
+            <dt className="field-label">{t.fields.targetDocument}</dt>
+            <dd>{target}</dd>
+          </div>
+        )}
+        <div>
+          <dt className="field-label">{t.panes.reason}</dt>
+          <dd>
+            {/*
+             * **줄마다 한 칸이다.** 줄바꿈을 구조로 내어 들여쓰기와 빈 줄이 표기 층에서 사라지지
+             * 않게 하는 것은 `toVisibleLine`이 맡는다.
+             *
+             * React key에 차례를 쓴다. **여기서는 차례가 곧 그 줄의 정체다** — 사유는 통째로
+             * 갈리는 한 덩어리라 줄이 재배열되거나 사이에 끼어들지 않는다.
+             */}
+            <div role="group" aria-label={t.panes.reason}>
+              {view.reasonLines.map((line, index) => (
+                <p key={`${String(index)}:${line}`}>{toVisibleLine(line)}</p>
+              ))}
+            </div>
+          </dd>
+        </div>
+      </dl>
     </section>
   </div>
 );

@@ -1549,7 +1549,8 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
       const url = new URL(request.url);
       return (
         (url.pathname.endsWith('/app/approval-requests') &&
-          url.searchParams.get('myTurnOnly') === 'true' &&
+          (url.searchParams.get('myTurnOnly') === 'true' ||
+            url.searchParams.get('requestedByMe') === 'true') &&
           url.searchParams.get('size') === '1') ||
         url.pathname.endsWith('/app/notifications/unread-count')
       );

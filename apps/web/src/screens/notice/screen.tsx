@@ -274,6 +274,7 @@ export const NoticeScreen = () => {
     {
       key: 'title',
       header: t.list.title,
+      align: 'center',
       width: '280px',
       /* 제목은 글자만 — 줄 아무 곳이나 눌러 고른다(#361). 고른 줄 표시는 이 칸의 `data-selected` 로 건다. */
       render: (row) => (
@@ -294,6 +295,7 @@ export const NoticeScreen = () => {
     {
       key: 'scope',
       header: t.list.scope,
+      align: 'center',
       width: '140px',
       /*
        * ⭐ 작업지시 번호는 **범위가 작업지시일 때만** 뜻이 있다. 범위를 바꾸며 만든 공지에
@@ -313,14 +315,15 @@ export const NoticeScreen = () => {
     {
       key: 'period',
       header: t.list.period,
+      align: 'center',
       width: '220px',
       render: (row) => formatPeriod(row.startDate, row.endDate, t.detail.noEndDate),
     },
     {
       key: 'ack',
       header: t.list.ack,
+      align: 'center',
       width: '120px',
-      align: 'end',
       /* ⛔ 분모를 셀 수 없으면 분자만 낸다 — 0으로 채우면 「아무도 안 봤음」과 같아 보인다. */
       render: ackSummary,
     },

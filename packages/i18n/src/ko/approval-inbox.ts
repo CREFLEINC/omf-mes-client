@@ -19,7 +19,7 @@ export const approvalInbox = {
      * 결재 액션이 서는 자리. **진행 구획 바로 아래**다 — 의견은 내 단계에 남는 말이라
      * 단계 목록 옆이 가장 가깝고, 위의 둘(사유·대상)은 「무엇을 결재하는가」로 축이 다르다.
      */
-    decision: '결재',
+    decision: '결재 처리',
   },
   /**
    * 탭은 **조회 조건 그 자체**다. 이름이 곧 그 탭이 무엇을 보여 주는지여야 한다 —
@@ -39,6 +39,7 @@ export const approvalInbox = {
   fields: {
     approvalRequestNo: '요청번호',
     reason: '사유',
+    targetDocument: '대상 문서',
     requestedByName: '상신자',
     /** 목록 열 이름. 계약이 이 값을 시각까지 실어 주고 목록도 시각까지 보인다. */
     requestedAt: '상신 일시',
@@ -78,6 +79,9 @@ export const approvalInbox = {
    * 단계 배열을 훑어 다시 계산하지 않는다(계획 결정 7).
    */
   progress: {
+    positionLabel: '진행',
+    stepNo: (stepNo: number): string => `${String(stepNo)}단계`,
+    myTurnBadge: '내 결재 차례',
     /** 몇 단계 중 몇 번째인가. **`currentStepNo`·`totalStepNo` 그대로다.** */
     position: (current: number, total: number): string =>
       `${String(current)} / ${String(total)} 단계`,

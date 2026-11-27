@@ -905,15 +905,22 @@ export const ApprovalInboxScreen = () => {
          * 차례가 뜻이다 — **사유가 대상보다 위**다. 사유가 이 리소스의 유일한 업무 값이라
          * 결재 판단의 근거가 거기에만 있고, 대상 이름은 「그 판단이 무엇에 붙는가」다.
          */}
-        <RequestDetailPane view={toRequestDetailView(request)} />
-        <TargetPane
-          name={describeTargetName(request.target)}
-          openState={judgeTargetOpen(request.target, request.approvalRequestId, SCREEN_ROUTES)}
-          onOpen={(path) => {
-            void navigate(path);
-          }}
+        <RequestDetailPane
+          view={toRequestDetailView(request)}
+          target={
+            <TargetPane
+              name={describeTargetName(request.target)}
+              openState={judgeTargetOpen(request.target, request.approvalRequestId, SCREEN_ROUTES)}
+              onOpen={(path) => {
+                void navigate(path);
+              }}
+            />
+          }
         />
-        <ProgressPane view={toRequestProgressView(detail.data, REJECTION_DECISION_CODES)} />
+        <ProgressPane
+          view={toRequestProgressView(detail.data, REJECTION_DECISION_CODES)}
+          isMyTurn={request.isMyTurn}
+        />
         {/*
          * **의견 입력칸과 결재 액션이 진행 구획 바로 아래에 선다.**
          * 창이 아니라 이 구획 안이라야 사용자가 무엇을 결재하는지 보면서 의견을 쓴다 —

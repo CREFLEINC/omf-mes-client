@@ -1,10 +1,10 @@
-import { Button, type Column, EmptyState, SkeletonText } from '@crefle/web-ui';
+import { Button, Chip, type Column, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { ManagedTable } from '../../patterns/managed-table';
 import { PageNav, type PageNavMeta, type PageSize } from '../../patterns/page-nav';
-import { approvalTypeLabelOf, requestStatusLabelOf } from './code-options';
+import { approvalTypeLabelOf, requestStatusLabelOf, requestStatusToneOf } from './code-options';
 import type { PageView } from './pagination';
 import type { RequestRow } from './types';
 
@@ -92,6 +92,7 @@ export const RequestListPane = ({
     {
       key: 'approvalRequestNo',
       header: t.fields.approvalRequestNo,
+      align: 'center',
       width: REQUEST_COLUMN_WIDTH.approvalRequestNo,
       /* 요청번호는 글자만 — 줄 아무 곳이나 눌러 고르고, 고른 줄을 한 번 더 누르면 푼다(#361). */
       render: (row) => (
@@ -103,18 +104,21 @@ export const RequestListPane = ({
     {
       key: 'approvalTypeCode',
       header: t.fields.approvalTypeCode,
+      align: 'center',
       width: REQUEST_COLUMN_WIDTH.approvalTypeCode,
       render: (row) => approvalTypeLabelOf(row.approvalTypeCode),
     },
     {
       key: 'requester',
       header: t.fields.requestedByName,
+      align: 'center',
       width: REQUEST_COLUMN_WIDTH.requester,
       render: (row) => row.requesterName,
     },
     {
       key: 'requestedAt',
       header: t.fields.requestedAt,
+      align: 'center',
       width: REQUEST_COLUMN_WIDTH.requestedAt,
       /* **시각까지 낸다** — 같은 날 올라온 요청들의 앞뒤가 결재 차례를 읽는 단서다. */
       render: (row) => row.requestedAtText,
@@ -122,12 +126,19 @@ export const RequestListPane = ({
     {
       key: 'status',
       header: t.fields.status,
+      align: 'center',
       width: REQUEST_COLUMN_WIDTH.status,
-      render: (row) => requestStatusLabelOf(row.statusCode),
+      /* 상태는 라벨로(#361) — 결재 대기 파랑 · 승인 초록 · 반려 빨강. */
+      render: (row) => (
+        <Chip variant="status" size="sm" status={requestStatusToneOf(row.statusCode)}>
+          {requestStatusLabelOf(row.statusCode)}
+        </Chip>
+      ),
     },
     {
       key: 'reason',
       header: t.fields.reason,
+      align: 'center',
       /* 남는 폭을 흡수하는 유일한 열. 예산은 `REASON_COLUMN_BUDGET_PX`가 갖는다. */
       render: (row) => row.reasonFirstLine,
     },

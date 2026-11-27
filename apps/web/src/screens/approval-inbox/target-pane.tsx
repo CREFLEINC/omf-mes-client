@@ -1,8 +1,6 @@
 import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
-import { InfoTip } from '../../patterns/info-tip';
-
 import type { TargetOpenState } from './target';
 
 const t = messages.approvalInbox;
@@ -33,36 +31,21 @@ export interface TargetPaneProps {
  */
 export const TargetPane = ({ name, openState, onOpen }: TargetPaneProps) => {
   return (
-    <div className="approval-inbox-detail-section" role="group" aria-label={t.panes.target}>
-      <h3 className="info-label">
-        {t.panes.target}
-        {/* 「[열기]를 눌러…」 안내는 열 수 있을 때만(#361). */}
-        {openState.kind === 'open' && <InfoTip text={t.target.note} />}
-      </h3>
-      {/* 대상 이름과 「열기」를 한 줄에 — 이름은 요약 상자의 값과 같은 글자 크기(#361). */}
-      <div className="approval-inbox-target-row">
-        <dl className="approval-inbox-target-facts">
-          <div className="parts-iqc-fact">
-            <dt className="field-label">{t.panes.target}</dt>
-            <dd className="parts-iqc-fact-key">{name}</dd>
-          </div>
-        </dl>
-
-        {/* 열 화면이 없는 대상은 「열기」를 두지 않는다 — 잠긴 단추와 안내 문구는 불필요하다(#361 사용자 지시). */}
-        {openState.kind === 'open' && (
-          <div className="field-cell">
-            <Button
-              variant="outlined"
-              size="sm"
-              onClick={() => {
-                onOpen(openState.path);
-              }}
-            >
-              {t.target.open}
-            </Button>
-          </div>
-        )}
-      </div>
+    /* 「요청 정보」 상자의 「대상 문서」 칸 안에 이름과 「열기」를 한 줄로(#361). */
+    <div className="approval-inbox-target-row" role="group" aria-label={t.panes.target}>
+      <span className="approval-inbox-target-name">{name}</span>
+      {/* 열 화면이 없는 대상은 「열기」를 두지 않는다 — 잠긴 단추와 안내 문구는 불필요하다(#361 사용자 지시). */}
+      {openState.kind === 'open' && (
+        <Button
+          variant="outlined"
+          size="sm"
+          onClick={() => {
+            onOpen(openState.path);
+          }}
+        >
+          {t.target.open}
+        </Button>
+      )}
     </div>
   );
 };

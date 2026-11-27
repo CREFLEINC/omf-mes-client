@@ -12,16 +12,19 @@ export const NOTIFICATION_CENTER_PATH = '/notification/center';
 
 const INBOX_PENDING_INTERVAL_MS = 60_000;
 
+/** 내가 올린 요청 중 아직 결재 대기인 것 — 결재함 화면의 「내가 올린 요청」 탭 숫자와 같은 조건 · 같은 열쇠. */
+const REQUESTED_PENDING_QUERY = { requestedByMe: true, statusCode: 'PENDING', size: 1 } as const;
+
 /**
- * 사이드바 「결재함」의 대기 수(#361) — 지금 내가 결재할 차례인 요청 수.
+ * 사이드바 「결재함」의 숫자(#361) — **내 결재 대기 + 내가 올린 요청(결재 대기)** 의 합.
  *
- * 결재함 화면의 「내 결재 대기」 탭 숫자와 **같은 열쇠 · 같은 응답 모양**을 쓴다 — 결재하면 그 화면이 이 열쇠를
- * 무효화해 메뉴 숫자도 함께 줄어든다. 화면을 옮길 때와 1분마다 다시 센다(검사 대기 수와 같다).
+ * 결재함 화면의 두 탭 숫자와 **같은 열쇠 · 같은 응답 모양**을 쓴다 — 결재하면 그 화면이 열쇠를 무효화해
+ * 메뉴 숫자도 함께 바뀐다. 화면을 옮길 때와 1분마다 다시 센다(검사 대기 수와 같다). 한쪽을 못 세면 아는 쪽만 더한다.
  */
 export const useApprovalPendingCount = (enabled: boolean): number | undefined => {
   const { client } = useApiClient();
   const { pathname } = useLocation();
-  const query = useQuery({
+  const myTurn = useQuery({
     queryKey: inboxKeys.pendingCount(),
     enabled,
     refetchInterval: INBOX_PENDING_INTERVAL_MS,
@@ -32,13 +35,29 @@ export const useApprovalPendingCount = (enabled: boolean): number | undefined =>
         }),
       ),
   });
-  const { refetch } = query;
+  const requested = useQuery({
+    queryKey: inboxKeys.list(REQUESTED_PENDING_QUERY),
+    enabled,
+    refetchInterval: INBOX_PENDING_INTERVAL_MS,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/app/approval-requests', { params: { query: REQUESTED_PENDING_QUERY } }),
+      ),
+  });
+  const refetchMyTurn = myTurn.refetch;
+  const refetchRequested = requested.refetch;
 
   useEffect(() => {
-    if (enabled) void refetch();
-  }, [enabled, pathname, refetch]);
+    if (!enabled) return;
+    void refetchMyTurn();
+    void refetchRequested();
+  }, [enabled, pathname, refetchMyTurn, refetchRequested]);
 
-  return enabled ? query.data?.page.total : undefined;
+  const myTurnTotal = myTurn.data?.page.total;
+  const requestedTotal = requested.data?.page.total;
+  if (!enabled || (myTurnTotal === undefined && requestedTotal === undefined)) return undefined;
+
+  return (myTurnTotal ?? 0) + (requestedTotal ?? 0);
 };
 
 /**

@@ -42731,3 +42731,42 @@ main > .pane.notification-center-pane {
 .notice-ack-head > .pane-title {
   margin: 0;
 }
+
+/* 결재함 상세(#361) — 상자 안 빈 줄을 없애고, 요청 정보는 이름 왼쪽 · 값 오른쪽 한 줄씩. */
+.approval-inbox-detail-section p {
+  margin: 0;
+}
+
+.approval-inbox-info-list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.approval-inbox-info-list > div {
+  display: contents;
+}
+
+.approval-inbox-info-list dt {
+  align-self: center;
+}
+
+.approval-inbox-info-list dd {
+  margin: 0;
+}
+
+.approval-inbox-target-row {
+  justify-content: flex-start;
+}
+
+.approval-inbox-target-name {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.approval-inbox-progress-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
