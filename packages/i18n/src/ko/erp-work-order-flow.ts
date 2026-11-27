@@ -34,7 +34,7 @@ const steps = {
 
 /** 생산계획 단계의 버튼 이름. 사유 칩 도움말이 같은 이름으로 가리킨다. */
 const planButtons = {
-  add: '계획 추가',
+  add: '수동 분배',
   confirm: '계획 확정 후 4M 배정',
 } as const;
 
@@ -53,7 +53,7 @@ const reasons = {
   PLAN_QTY_REMAINING: '남은 수량 계획 필요',
   NO_LIVE_WORK_ORDER: '계획 추가 필요',
   WORK_ORDER_LINE_MISSING: 'W/O 생산 라인 지정 필요',
-  WORK_ORDER_LOCATION_MISSING: 'W/O 기본 위치 지정 필요',
+  WORK_ORDER_LOCATION_MISSING: '생산품 입고 위치 지정 필요',
   LINE_PLANT_MISMATCH: 'W/O 생산 라인 변경 필요',
 } as const;
 
@@ -135,7 +135,7 @@ export const erpWorkOrderFlow = {
     WORK_ORDER_LINE_MISSING: ({ workOrderCount }: ReasonDetail): string =>
       `${pendingWorkOrders(workOrderCount)}에 생산 라인이 없습니다. ${steps.assign} 단계에서 생산 라인을 지정해야 합니다.`,
     WORK_ORDER_LOCATION_MISSING: ({ workOrderCount }: ReasonDetail): string =>
-      `${pendingWorkOrders(workOrderCount)}에 WIP 위치, 생산품 입고 창고 또는 스크랩 위치가 지정되지 않았습니다. ${steps.assign} 단계에서 기본 위치를 지정해야 합니다.`,
+      `${pendingWorkOrders(workOrderCount)}에 생산품 입고 위치가 지정되지 않았습니다. ${steps.assign} 단계에서 입고 위치를 확인하세요.`,
     LINE_PLANT_MISMATCH: ({ workOrderCount }: ReasonDetail): string =>
       `${pendingWorkOrders(workOrderCount)}의 생산 라인이 이 ERP W/O와 다른 공장의 라인입니다. ${steps.assign} 단계에서 이 공장의 생산 라인으로 바꿔야 합니다.`,
     /** 화면이 모르는 사유 코드. */
@@ -145,7 +145,7 @@ export const erpWorkOrderFlow = {
   filters: {
     pane: '조회 조건',
     q: '번호 검색',
-    qPlaceholder: 'ERP W/O 번호',
+    qPlaceholder: 'ERP W/O 번호를 입력하세요',
     dueFrom: '납기 시작일',
     dueTo: '납기 종료일',
     plant: '공장',
@@ -163,9 +163,9 @@ export const erpWorkOrderFlow = {
     caption: SCREEN_NAME,
     columns: {
       orderNo: 'ERP W/O 번호',
-      plant: '공장',
       itemCode: '품목 코드',
       itemName: '품목명',
+      itemType: '품목 유형',
       orderQty: 'ERP W/O 수량',
       plannedStartDate: '계획 시작일',
       dueDate: '납기일',
@@ -284,6 +284,12 @@ export const erpWorkOrderFlow = {
       erpNo: 'ERP 원번호',
     },
     rerunAutoPlan: '생산계획 자동 전개 다시 실행',
+    /** 입력칸 흐린 문구(#360). */
+    placeholders: {
+      plannedQty: '생산량을 입력하세요',
+      distributionQty: '분배 수량을 입력하세요',
+      dailyQty: '수량을 입력하세요',
+    },
     autoPlanResult: {
       CONFIRMED: '생산계획 자동 전개로 계획을 확정했습니다',
       DRAFT: '미확정 계획입니다. 생산계획에서 보완하세요',
@@ -413,16 +419,24 @@ export const erpWorkOrderFlow = {
       total: (planned: string, ordered: string, uom: string): string =>
         `계획 수량 합계 ${planned} / ${ordered} ${uom}`,
     },
+    /** 계획 확정 확인 팝업(확인 팝업 시안 · #360). */
     planConfirm: {
-      title: '계획 확정 및 작업지시 생성',
-      target: (plans: string): string => `대상 계획: ${plans}`,
-      task: '계획 확정',
-      effects: {
-        plans: (count: number): string => `생산계획 상태 변경: 확정 (${String(count)}건)`,
-        workOrders: (count: number, operations: string): string =>
-          `W/O ${String(count)}건 생성: ${operations}`,
-      },
-      irreversible: '확정 후에는 수정할 수 없습니다.',
+      title: '생산계획을 확정할까요?',
+      order: 'ERP W/O',
+      plan: '생산계획',
+      newPlan: '신규 계획',
+      planDate: '계획일',
+      plannedQty: '계획 수량',
+      operation: '공정',
+      operationUnknown: '공정 정보 확인 필요',
+      /** 「확정하면 **작업지시 N건**이 생성됩니다.」 — 가운데만 굵게. */
+      effectBefore: '확정하면 ',
+      workOrders: (count: number): string => `작업지시 ${String(count)}건`,
+      effectAfter: '이 생성됩니다.',
+      effectUnknown:
+        '확정하면 작업지시가 생성됩니다. 공정 정보를 확인해야 생성 건수를 알 수 있습니다.',
+      partial: 'ERP W/O와 계획별로 처리하므로 일부만 완료될 수 있습니다.',
+      irreversible: '확정된 생산계획은 수정할 수 없습니다.',
       confirm: '계획 확정',
     },
     pickers: {
@@ -479,7 +493,6 @@ export const erpWorkOrderFlow = {
         plannedMoldId: '금형',
         responsibleWorkerId: '작업자',
         plannedShiftId: '교대',
-        defaultWipLocationId: 'WIP 위치',
         defaultFgLocationId: '생산품 입고 창고',
         defaultScrapLocationId: '스크랩 위치',
         plannedStartAtLocal: '계획 시작',

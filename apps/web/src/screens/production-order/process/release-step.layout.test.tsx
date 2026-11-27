@@ -122,13 +122,13 @@ describe('배포 대상 상세', () => {
     expect(screen.queryByRole('textbox')).toBeNull();
     expect(screen.queryByRole('combobox')).toBeNull();
     expect(screen.getByText(t.effects.lots(6))).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'WO-2 상세 확인' }));
-    expect(screen.getByRole('button', { name: 'WO-2 상세 확인' })).toHaveAttribute(
-      'aria-pressed',
+    await user.click(screen.getByRole('row', { name: 'WO-2 배포 상세' }));
+    expect(screen.getByRole('row', { name: 'WO-2 배포 상세' })).toHaveAttribute(
+      'aria-selected',
       'true',
     );
     expect(screen.getByText(t.effects.lots(6))).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'WO-1 상세 확인' }));
+    await user.click(screen.getByRole('row', { name: 'WO-1 배포 상세' }));
     expect(screen.queryByRole('textbox')).toBeNull();
   });
 

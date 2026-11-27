@@ -170,4 +170,29 @@ describe('W-02-14 제품 기준 역추적', () => {
       setLocale('ko');
     }
   });
+
+  /*
+   * 피처 016 · 시안 ④ — 계보 W/O 줄에 공정 순번. 번호는 한 줄 말줄임(전체는 title)이라 단계 이름 뒤 「W/O · 공정 30」에
+   * 붙인다(실제 앱 확인 2026-11-26).
+   */
+  it('US2-6 · Q13 계보의 W/O 줄은 단계 이름에 공정 순번을 붙이고, 번호는 접지 않고 한 줄(title 전체)이다', async () => {
+    setup(`/production/product-trace?lot=${String(P3.lot.lotId)}`, {
+      tree: (lotId, serialNo) => {
+        const base = backwardTreeOf(lotId, P3.lot.lotNo, serialNo);
+        return {
+          ...base,
+          nodes: base.nodes.map((node) =>
+            node.workOrder === undefined
+              ? node
+              : { ...node, workOrder: { ...node.workOrder, operationSeq: 30 } },
+          ),
+        };
+      },
+    });
+    const tree = await within(detail()).findByRole('table', { name: t.tree.caption });
+    expect(within(tree).getByText('W/O · 공정 30')).toBeInTheDocument();
+    const number = within(tree).getByText('WO-SYN-0002');
+    expect(number).toHaveAttribute('title', 'WO-SYN-0002');
+    expect(number.querySelector('wbr')).toBeNull();
+  });
 });

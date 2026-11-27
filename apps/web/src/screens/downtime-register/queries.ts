@@ -2,6 +2,7 @@ import type { ApiClient } from '@omf-mes/api-client';
 import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { plantToday } from '../../patterns/plant-time';
 import { runRequest } from '../../patterns/request';
 import {
   isOngoing,
@@ -54,11 +55,11 @@ const DOWNTIME_REASON_GROUP_CODE = 'DOWNTIME_REASON';
 /** 한 번에 받아 오는 값 수. 고객이 늘리는 목록이라(G-31) 넉넉히 받아 화면에서 자르지 않는다. */
 const REASON_OPTION_SIZE = 100;
 
-const pad = (value: number, length: number): string => String(value).padStart(length, '0');
-
-/** 오늘 하루를 가리키는 날짜 글자(`yyyy-mm-dd`). **단말이 선 날**이다. */
-export const toLocalDay = (at: Date): string =>
-  `${String(at.getFullYear())}-${pad(at.getMonth() + 1, 2)}-${pad(at.getDate(), 2)}`;
+/**
+ * 오늘 하루를 가리키는 날짜 글자(`yyyy-mm-dd`). **공장 달력의 오늘**이다(omf-all-around#364) —
+ * 칸·목록·저장이 모두 공장 시각이라 「오늘」도 같은 달력이어야 한다. 공장 단말은 결과가 같다.
+ */
+export const toLocalDay = (at: Date): string => plantToday(at);
 
 const fetchOngoing = async (client: Client, equipmentId: number): Promise<DowntimeView[]> => {
   const data = await runRequest(() =>

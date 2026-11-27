@@ -152,9 +152,7 @@ const stub = ({
       const id = Number(detail[1]);
       const base = pending.find((item) => item.workOrderId === id);
       return jsonResponse(
-        id !== 9001
-          ? { ...base, defaultWipLocationId: 1, defaultFgLocationId: 2, defaultScrapLocationId: 3 }
-          : base,
+        id !== 9001 ? { ...base, defaultFgLocationId: 2, defaultScrapLocationId: 3 } : base,
         { headers: { ETag: '"1"' } },
       );
     }
@@ -172,6 +170,7 @@ const stub = ({
           itemId: 7101,
           itemCode: 'SYN-ITEM',
           itemName: '합성 품목',
+          itemTypeCode: 'SEMI_FINISHED',
           baseUomId: 8101,
           defaultProductionLotSize: 100,
         },
@@ -187,7 +186,15 @@ const stub = ({
     if (path(request) === '/mdm/uoms') {
       return jsonResponse(page([{ uomId: 8101, uomCode: 'EA', uomName: '개', isActive: true }]));
     }
-    if (path(request) === '/mdm/code-values') return jsonResponse(page([]));
+    if (path(request) === '/mdm/code-values') {
+      return jsonResponse(
+        page(
+          new URL(request.url).searchParams.get('codeGroupCode') === 'ITEM_TYPE'
+            ? [{ code: 'SEMI_FINISHED', codeName: '반제품' }]
+            : [],
+        ),
+      );
+    }
     if (path(request) === '/mdm/plants') return jsonResponse(page(plants));
     throw new Error(`unexpected request: ${request.method} ${request.url}`);
   };
@@ -488,8 +495,8 @@ describe('작업지시 목록 작업함', () => {
     ],
     [
       'WORK_ORDER_LOCATION_MISSING',
-      'W/O 기본 위치 지정 필요',
-      '배포 전 W/O 2건에 WIP 위치, 생산품 입고 창고 또는 스크랩 위치가 지정되지 않았습니다. 4M 배정 단계에서 기본 위치를 지정해야 합니다.',
+      '생산품 입고 위치 지정 필요',
+      '배포 전 W/O 2건에 생산품 입고 위치가 지정되지 않았습니다. 4M 배정 단계에서 입고 위치를 확인하세요.',
     ],
     [
       'LINE_PLANT_MISMATCH',
@@ -499,7 +506,7 @@ describe('작업지시 목록 작업함', () => {
     [
       'NO_LIVE_WORK_ORDER',
       '계획 추가 필요',
-      '확정한 계획의 W/O가 없거나 모두 취소되었습니다. 생산계획 단계에서 [계획 추가]로 필요한 수량을 다시 계획하고 [계획 확정 후 4M 배정]을 눌러야 합니다.',
+      '확정한 계획의 W/O가 없거나 모두 취소되었습니다. 생산계획 단계에서 [수동 분배]로 필요한 수량을 다시 계획하고 [계획 확정 후 4M 배정]을 눌러야 합니다.',
     ],
     [
       'DRAFT_PLAN_PENDING',
@@ -769,7 +776,15 @@ describe('작업지시 목록 작업함', () => {
     });
 
     const row = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
-    expect(within(row).getByText('합성 공장 나')).toHaveAttribute('title', '합성 공장 나');
+    /* 목록에는 공장 열이 없다. 품목은 코드와 이름을 열로 나눠 보인다. */
+    expect(screen.queryByRole('columnheader', { name: '공장' })).toBeNull();
+    expect(screen.getByRole('columnheader', { name: t.list.columns.itemCode })).toBeVisible();
+    expect(screen.getByRole('columnheader', { name: t.list.columns.itemName })).toBeVisible();
+    expect(within(row).getByText('SYN-ITEM')).toBeVisible();
+    expect(within(row).getByText('합성 품목')).toBeVisible();
+    /* 품목 유형(제품 · 반제품)은 코드값 이름으로 보인다. */
+    expect(screen.getByRole('columnheader', { name: t.list.columns.itemType })).toBeVisible();
+    expect(await within(row).findByText('반제품')).toBeVisible();
     /* 공장은 「조건 더보기」에 접혀 있다(C-6). */
     await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
     const plant = screen.getByLabelText(t.filters.plant);
@@ -797,7 +812,7 @@ describe('작업지시 목록 작업함', () => {
     const plant = screen.getByLabelText(t.filters.plant);
     await waitFor(() => expect(plant).toHaveTextContent('합성 공장 가'));
     expect(plant).toBeDisabled();
-    expect(screen.queryByRole('columnheader', { name: t.list.columns.plant })).toBeNull();
+    expect(screen.queryByRole('columnheader', { name: '공장' })).toBeNull();
     expect(screen.getByTestId('location')).not.toHaveTextContent('plant=');
     /* 바꿀 수 없는 범위라 접힌 칸의 칩도, 「초기화」도 세우지 않는다. */
     expect(screen.queryByText(t.filters.plantChip('합성 공장 가'))).toBeNull();

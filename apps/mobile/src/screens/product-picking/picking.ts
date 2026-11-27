@@ -147,7 +147,9 @@ export type PickRejectionCode =
   | 'LOT_NOT_IN_LINE_WAREHOUSE'
   | 'LINE_WAREHOUSE_UNAVAILABLE'
   /** 피처 013 — POP 에서 나눈 뒤 PDA 「LOT 분리 확인」 전인 원래 · 새 LOT. */
-  | 'LOT_SPLIT_UNCONFIRMED';
+  | 'LOT_SPLIT_UNCONFIRMED'
+  /** 피처 016 — 공정 반제품 LOT(다음 공정에 투입할 것이라 출하하지 않는다). */
+  | 'SEMI_FINISHED_LOT';
 
 export type PickRejection =
   /** `warehouses` 는 `LOT_NOT_IN_LINE_WAREHOUSE` 일 때 LOT 이 있는 창고들(피처 012). */
@@ -165,6 +167,7 @@ const REJECTION_CODES: readonly string[] = [
   'LOT_NOT_IN_LINE_WAREHOUSE',
   'LINE_WAREHOUSE_UNAVAILABLE',
   'LOT_SPLIT_UNCONFIRMED',
+  'SEMI_FINISHED_LOT',
 ];
 
 /** `:pick-lot` 의 거절을 화면 말로 가른다. 409 는 `code` 로, 나머지는 서버 문구로. */

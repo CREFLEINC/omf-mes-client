@@ -1,5 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 
+import { PLANT_UTC_OFFSET } from '../../patterns/plant-time';
+
 import type { SourceLocation } from './on-hand';
 import type { ReturnLineRow } from './return-selection';
 import type { ReceiptView, ReturnDraft } from './types';
@@ -190,11 +192,13 @@ export const toIssuedLocal = (draft: Pick<ReturnDraft, 'issuedDate' | 'issuedTim
  *
  * 시각 칸은 분까지만 주는데(`HH:mm`) 계약은 초까지 있는 형식을 요구한다. offset이 없는
  * 문자열을 그대로 보내면 **같은 글자가 지역마다 다른 순간을 가리킨다.**
+ *
+ * **offset 은 공장 시간대(`PLANT_UTC_OFFSET`)다**(omf-all-around#364) — 칸의 글자는 공장 시각이다.
  */
-export const toOffsetDateTime = (local: string, at: Date): string => {
+export const toOffsetDateTime = (local: string): string => {
   const withSeconds = local.length === 16 ? `${local}:00` : local;
 
-  return `${withSeconds}${offsetText(at)}`;
+  return `${withSeconds}${PLANT_UTC_OFFSET}`;
 };
 
 /** 발생 시각 — **제출 순간**을 초와 offset까지 갖춰 싣는다(공유계약 C-1). */
@@ -266,7 +270,7 @@ export const toGoodsIssueRequest = (input: ReturnRequestInput): GoodsIssueCreate
     destinationTypeCode,
     /* 공급사 선택칸의 값이 곧 도착지다 — 화면이 번호로 옮기는 유일한 자리다. */
     destinationId: Number(draft.supplier),
-    issuedAt: toOffsetDateTime(issuedLocal, input.now),
+    issuedAt: toOffsetDateTime(issuedLocal),
     /*
      * 계약 스키마는 nullable이지만 설명이 「반품·기타 출고에서는 필수」다(계획 §5.4-4).
      * 화면이 필수로 걸었으므로 여기서는 늘 채워 보낸다 — 비었다면 버튼이 열리지 않았다.

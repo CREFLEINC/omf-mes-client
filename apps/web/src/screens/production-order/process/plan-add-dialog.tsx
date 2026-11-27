@@ -3,13 +3,13 @@ import { plantToday } from '../../../patterns/plant-time';
 import { usePlanningDays, planningDayKey, PlanningDayNotice } from './planning-working-days';
 import { useId, useState } from 'react';
 import { AlertBanner, Button, DatePicker, Dialog, TextField } from '@crefle/web-ui';
+import { InfoFacts } from '../../../patterns/info-facts';
 import { Select } from '../../../patterns/select';
 import type { NewProductionPlanDefaults } from '../../production-plan/editor-state';
 import {
   validateProductionPlanDraft,
   type ProductionPlanDraft,
 } from '../../production-plan/editor-model';
-import { DistributionLinePicker } from './distribution-line-picker';
 import { formatQty } from './process-model';
 import type { PlanLine } from './plan-step';
 export interface PlanAddTarget {
@@ -34,6 +34,7 @@ export const PlanAddDialog = ({
   onAdd: (id: string, draft: ProductionPlanDraft) => void;
 }) => {
   const validationId = useId();
+  const lineId = useId();
   const initial =
     targets.find((target) => target.id === initialOrder) ??
     (targets.length === 1 ? targets[0] : undefined);
@@ -92,9 +93,10 @@ export const PlanAddDialog = ({
   return (
     <Dialog
       open
-      title="계획 추가"
+      title="수동 분배"
       className="erp-wo-plan-add-dialog"
       closeOnBackdropClick={false}
+      showCloseButton={false}
       onClose={onClose}
       footer={
         <>
@@ -119,36 +121,42 @@ export const PlanAddDialog = ({
           ERP W/O와 계획일을 지정하고 추가 편성 가능한 수량 이내에서 생산량과 단위 소수 자릿수를
           확인하세요.
         </p>
-        <div className="field-cell">
-          <span className="field-label">
-            계획을 추가할 ERP W/O
-            <span className="required-mark" aria-hidden="true">
-              {' *'}
+        {/* 「추가 편성 가능」 정보 상자는 W/O 칸 왼쪽(사용자 지시 · #360) — 좁으면 다음 줄로. */}
+        <div className="erp-wo-plan-add-target">
+          {target && (
+            <InfoFacts
+              className="erp-wo-plan-add-summary"
+              rows={[
+                [
+                  {
+                    label: '추가 편성 가능',
+                    value: `${formatQty(target.remaining)} ${target.unit}`,
+                  },
+                ],
+              ]}
+            />
+          )}
+          <div className="field-cell">
+            <span className="field-label">
+              계획을 추가할 ERP W/O
+              <span className="required-mark" aria-hidden="true">
+                {' *'}
+              </span>
             </span>
-          </span>
-          <Select
-            aria-label="계획을 추가할 ERP W/O"
-            aria-required="true"
-            value={id}
-            options={targets
-              .filter((target) => target.remaining > 0)
-              .map((target) => ({ value: target.id, label: target.label }))}
-            onChange={(id) => {
-              setId(id);
-              setDraft(makeDraft(targets.find((target) => target.id === id)));
-            }}
-          />
+            <Select
+              aria-label="계획을 추가할 ERP W/O"
+              aria-required="true"
+              value={id}
+              options={targets
+                .filter((target) => target.remaining > 0)
+                .map((target) => ({ value: target.id, label: target.label }))}
+              onChange={(id) => {
+                setId(id);
+                setDraft(makeDraft(targets.find((target) => target.id === id)));
+              }}
+            />
+          </div>
         </div>
-        {target && (
-          <dl className="erp-wo-plan-add-summary">
-            <div>
-              <dt>추가 편성 가능</dt>
-              <dd>
-                {formatQty(target.remaining)} {target.unit}
-              </dd>
-            </div>
-          </dl>
-        )}
         <div className="erp-wo-plan-add-fields">
           <div className="field-cell">
             <span className="field-label">
@@ -184,12 +192,19 @@ export const PlanAddDialog = ({
             }
           />
           <div className="field-cell erp-wo-plan-add-line">
-            <span className="field-label">생산 라인</span>
-            <DistributionLinePicker
-              combined
-              label="추가할 계획 생산 라인"
-              lines={target?.lines ?? []}
-              value={draft.plannedLineId}
+            <label className="field-label" htmlFor={lineId}>
+              생산 라인
+            </label>
+            {/* 찾기 창 대신 펼침 선택칸(사용자 지시 · #360) — 선택지는 종전 찾기 창과 같은 이 ERP W/O 의 허용 라인. */}
+            <Select
+              id={lineId}
+              aria-label="추가할 계획 생산 라인"
+              placeholder="생산 라인을 선택하세요"
+              options={(target?.lines ?? []).map((line) => ({
+                value: String(line.id),
+                label: `${line.name} (${line.code})`,
+              }))}
+              value={draft.plannedLineId === '' ? null : draft.plannedLineId}
               disabled={!target}
               onChange={(plannedLineId) => setDraft((current) => ({ ...current, plannedLineId }))}
             />

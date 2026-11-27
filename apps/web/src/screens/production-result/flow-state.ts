@@ -1,5 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 
+import { plantToday } from '../../patterns/plant-time';
+
 export type DocumentIssueCreate = components['schemas']['DocumentIssueCreate'];
 export type LotComplete = components['schemas']['LotComplete'];
 type DocumentIssueSummary = components['schemas']['DocumentIssueSummary'];
@@ -117,7 +119,8 @@ export const buildLotComplete = (
   varianceReasonCode: string | null = null,
 ): LotComplete => ({
   ...(varianceReasonCode === null ? {} : { completionVarianceReasonCode: varianceReasonCode }),
-  businessDate: `${String(at.getFullYear())}-${pad(at.getMonth() + 1, 2)}-${pad(at.getDate(), 2)}`,
+  /* 영업일은 공장 날짜다(omf-all-around#364) — 발생 시각은 같은 순간이라 브라우저 기준 그대로 둔다. */
+  businessDate: plantToday(at),
   occurredAt: `${String(at.getFullYear())}-${pad(at.getMonth() + 1, 2)}-${pad(
     at.getDate(),
     2,

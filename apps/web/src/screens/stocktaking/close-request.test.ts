@@ -13,7 +13,9 @@ describe('toCountClose — 마감 본문', () => {
    * `InventoryCountClose`에 다른 필드가 없다(실측) — 하나라도 더 실으면 서버가 거절한다.
    */
   it('본문이 영업일 하나다', () => {
-    expect(toCountClose(new Date(2026, 7, 11, 14, 30))).toEqual({ businessDate: '2026-08-11' });
+    expect(toCountClose(new Date('2026-08-11T14:30:00+07:00'))).toEqual({
+      businessDate: '2026-08-11',
+    });
   });
 
   /*
@@ -22,10 +24,12 @@ describe('toCountClose — 마감 본문', () => {
    * 수 없어** 택하지 않았다.
    */
   it.each<[string, Date, string]>([
-    ['자정 직전', new Date(2026, 7, 11, 23, 59, 59), '2026-08-11'],
-    ['자정 직후', new Date(2026, 7, 12, 0, 0, 0), '2026-08-12'],
-    ['한 자리 달·일', new Date(2026, 0, 5, 9, 0), '2026-01-05'],
-  ])('%s의 영업일이 그날의 지역 날짜다', (_label, at, expected) => {
+    ['자정 직전', new Date('2026-08-11T23:59:59+07:00'), '2026-08-11'],
+    ['자정 직후', new Date('2026-08-12T00:00:00+07:00'), '2026-08-12'],
+    ['한 자리 달·일', new Date('2026-01-05T09:00:00+07:00'), '2026-01-05'],
+    /* omf-all-around#364 — 한국 자정 직후는 공장에서 아직 전날이다. */
+    ['한국 자정 직후', new Date('2026-08-12T00:30:00+09:00'), '2026-08-11'],
+  ])('%s의 영업일이 그날의 공장 날짜다', (_label, at, expected) => {
     expect(toCountClose(at).businessDate).toBe(expected);
   });
 

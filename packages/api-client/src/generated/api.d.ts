@@ -6019,6 +6019,8 @@ export interface paths {
           /** @description 값 = `IQC`·`PQC`·`OQC`. 값 목록은 `GET /mdm/code-values?codeGroupCode=QUALITY_INSPECTION_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
           inspectionTypeCode?: string;
           itemId?: number;
+          /** @description 공장으로 거른다 — 관리웹 검사기준 목록이 사업부 공장(OA PL13 · 부품 PL11) 기준만 보인다(클라이언트 요청 2026-11-27). 기준의 공장은 품목의 공장이고 GET /mdm/items 의 plantId 와 같은 규칙이다 — 모품목이나 구성품으로 든 BOM 중 공장이 이 값인 것이 있으면 그 공장 품목이다. 두 공장 BOM 에 다 든 품목의 기준은 두 공장에서 나온다. 공장이 정해진 BOM 에 든 적 없는 품목의 기준과 품목이 빈 기준은 어느 공장으로 걸러도 나온다. 보내지 않으면 공장을 가리지 않는다 */
+          plantId?: number;
           includeInactive?: boolean;
           page?: number;
           size?: number;
@@ -18871,7 +18873,7 @@ export interface paths {
     put?: never;
     /**
      * 입고 처리
-     * @description 입고 전표 생성과 전기가 한 번에 일어난다. LOT 상태 전이·수불 원장·잔액·ERP 송신 적재가 같은 트랜잭션이며 ERP 실제 전송만 밖이다. 근거: W-01-10 §5-4 · 공유계약 B-8 ⭐ 적치 지시는 라인마다 서버가 함께 만들고, 응답의 GoodsReceiptLine.putawayTaskId 가 그 식별자를 싣는다 — 화면은 그 값으로 라인 수만큼 적치 완료를 부른다. ⛔ 입고와 적치 완료는 한 트랜잭션이 아니다 — 입고만 성공하고 적치가 남는 상태는 오류가 아니라 표현 가능한 상태이고, GET /logistics/putaway-tasks?goodsReceiptId= 로 되찾는다(공유계약 B-8 의 경계는 전표 안까지다). ⭐ ERP 구매입고(IF-GR-SEND, 입고번호 키)는 입고 줄의 LOT 이 모두 새 흐름(erp_send_mode_code=ON_FINALIZE) 입하 LOT 소속이면 적재하지 않는다 — 새 흐름은 입하 LOT 마다 최종 마감 때 한 번 간다(피처 005 §6 · R-25, 그 송신은 #265). 이전 데이터(PER_RECEIPT)와 섞이면 적재하고 보낼 때 새 흐름 줄을 뺀다. ⭐ 입고는 입하 마감 뒤에만 한다(피처 005 FR-014a · 2026-11-13, 검사 불필요 품목 포함): 줄의 자재 관리 LOT 이 입하 중(RECEIVING)인 새 흐름(ON_FINALIZE) 입하 LOT 소속이면 409 — errors[] 가 그 줄마다 scope=field · field=lines[i].lotId · code=INBOUND_LOT_RECEIVING(문구에 입하 LOT 번호). 이전 데이터(PER_RECEIPT)·입하 LOT 없는 LOT 은 지금 그대로. ⭐⭐ 구매 입하 자재는 PDA 적치로 입고한다(피처 009 · 2026-11-18): 줄의 LOT 이 입하에서 왔으면(선별 자식은 조상 기준) 409 — errors[] 가 그 줄마다 scope=field · field=lines[i].lotId · code=USE_PDA_PUTAWAY. 제품 입고(M-04-04)·반품 입고(W-04-06)는 그대로다. 구매 입하 LOT 의 입고는 POST /logistics/putaway-pending-lots/{lotId}:putaway · :putaway-temporary. 근거: 피처 009 적치 지시 없는 구매 입고 적치 · omf-all-around#294
+     * @description 입고 전표 생성과 전기가 한 번에 일어난다. LOT 상태 전이·수불 원장·잔액·ERP 송신 적재가 같은 트랜잭션이며 ERP 실제 전송만 밖이다. 근거: W-01-10 §5-4 · 공유계약 B-8 ⭐ 적치 지시는 라인마다 서버가 함께 만들고, 응답의 GoodsReceiptLine.putawayTaskId 가 그 식별자를 싣는다 — 화면은 그 값으로 라인 수만큼 적치 완료를 부른다. ⛔ 입고와 적치 완료는 한 트랜잭션이 아니다 — 입고만 성공하고 적치가 남는 상태는 오류가 아니라 표현 가능한 상태이고, GET /logistics/putaway-tasks?goodsReceiptId= 로 되찾는다(공유계약 B-8 의 경계는 전표 안까지다). ⭐ ERP 구매입고(IF-GR-SEND, 입고번호 키)는 입고 줄의 LOT 이 모두 새 흐름(erp_send_mode_code=ON_FINALIZE) 입하 LOT 소속이면 적재하지 않는다 — 새 흐름은 입하 LOT 마다 최종 마감 때 한 번 간다(피처 005 §6 · R-25, 그 송신은 #265). 이전 데이터(PER_RECEIPT)와 섞이면 적재하고 보낼 때 새 흐름 줄을 뺀다. ⭐ 입고는 입하 마감 뒤에만 한다(피처 005 FR-014a · 2026-11-13, 검사 불필요 품목 포함): 줄의 자재 관리 LOT 이 입하 중(RECEIVING)인 새 흐름(ON_FINALIZE) 입하 LOT 소속이면 409 — errors[] 가 그 줄마다 scope=field · field=lines[i].lotId · code=INBOUND_LOT_RECEIVING(문구에 입하 LOT 번호). 이전 데이터(PER_RECEIPT)·입하 LOT 없는 LOT 은 지금 그대로. ⭐⭐ 구매 입하 자재는 PDA 적치로 입고한다(피처 009 · 2026-11-18): 줄의 LOT 이 입하에서 왔으면(선별 자식은 조상 기준) 409 — errors[] 가 그 줄마다 scope=field · field=lines[i].lotId · code=USE_PDA_PUTAWAY. 제품 입고(M-04-04)·반품 입고(W-04-06)는 그대로다. 구매 입하 LOT 의 입고는 POST /logistics/putaway-pending-lots/{lotId}:putaway · :putaway-temporary. 근거: 피처 009 적치 지시 없는 구매 입고 적치 · omf-all-around#294 ⛔ 공정 반제품 LOT(유형 WIP)은 입고하지 않는다 — 다음 공정에 투입한다. 400 INVALID 「반제품 LOT 은 제품 입고할 수 없습니다.」(lines[i].lotId · 피처 016 · omf-all-around#359).
      */
     post: {
       parameters: {
@@ -23706,7 +23708,7 @@ export interface paths {
         query?: {
           itemId?: number;
           plantId?: number;
-          /** @description LOT 유형으로 거른다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_TYPE 로 받는다(MATERIAL·PRODUCTION·PRODUCT) — 생산LOT 만 볼 때는 PRODUCTION 이다. 근거: 공유계약 G-32 */
+          /** @description LOT 유형으로 거른다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_TYPE 로 받는다(MATERIAL·PRODUCTION·WIP·PRODUCT) — 마지막 공정 생산LOT 만 볼 때는 PRODUCTION, 공정 반제품은 WIP 다(피처 016). 근거: 공유계약 G-32 */
           lotTypeCode?: string;
           /** @description 품질 판정 축으로 거른다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). ⛔ 이 축으로는 「완료」·「폐번」을 고를 수 없다 — 완료는 completed, 폐번은 생명주기 축이다. 근거: 공유계약 G-32 · omf-mes#269 */
           statusCode?: string;
@@ -23730,7 +23732,7 @@ export interface paths {
           awaitingReceiptOnly?: boolean;
           /** @description 완료 처리됐는가로 거른다 — false 면 completedAt 이 비어 있는 것만, true 면 값이 있는 것만 낸다. LOT 라벨 출력(P-02-07 §4-B)의 완료 LOT 목록과 긴급 직행 출하(W-04-05 §3)의 생산 완료분 선택이 이 축으로 선다. ⭐ 상태 코드 문자열을 몰라도 판정된다. ⛔ statusCode(품질 판정 축)로는 완료를 고를 수 없다. ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 쪽 단위다(공유계약 L-11). 근거: P-02-07 §4-B·§5-4 · omf-mes#269 */
           completed?: boolean;
-          /** @description true 면 그 W/O 의 «현재» 생산 LOT 한 건만 낸다(items 0~1건 · 받은 page·size 는 무시하고 page 메타는 page 1·size 1) — 완료되지 않고 폐번되지 않은(생명주기 ACTIVE·WAITING) 생산 LOT 중 진행 중(ACTIVE)이 먼저, 그 안에서 선발행 회차(W/O 안 LOT 순번)가 가장 앞선 것. 진행 중이 둘 이상이어도 막지 않는다. 다른 질의(completed·lotTypeCode 등)는 이 조건과 함께(AND) 걸려 후보를 넓히지 못한다. workOrderId 가 필수 — 없으면 400 REQUIRED. POP 실적·완료가 다음 LOT 으로 넘어가는 축이다. 장부 P-103 */
+          /** @description true 면 그 W/O 의 «현재» 생산 LOT 한 건만 낸다(items 0~1건 · 받은 page·size 는 무시하고 page 메타는 page 1·size 1) — 완료되지 않고 폐번되지 않은(생명주기 ACTIVE·WAITING) 생산 LOT(유형 PRODUCTION·WIP — 반제품 공정 W/O 의 LOT 도 현재 LOT 이다 · 피처 016) 중 진행 중(ACTIVE)이 먼저, 그 안에서 선발행 회차(W/O 안 LOT 순번)가 가장 앞선 것. 진행 중이 둘 이상이어도 막지 않는다. 다른 질의(completed·lotTypeCode 등)는 이 조건과 함께(AND) 걸려 후보를 넓히지 못한다. workOrderId 가 필수 — 없으면 400 REQUIRED. POP 실적·완료가 다음 LOT 으로 넘어가는 축이다. 장부 P-103 */
           currentOnly?: boolean;
           /** @description 아직 입고 전표에 실리지 않은 LOT 만. ⭐ W-04-05 긴급 직행 출하가 「창고에 아직 안 들어온 생산 완료분」을 고르는 축이다(W-04-05 §5-7). 이미 입고된 LOT 은 정상 출하 흐름으로 가야 한다. ⭐ M-04-04 제품입고·적치가 오프라인 진입 전 「인수 대기 제품 LOT 목록」을 미리 받는 축이기도 하다(공유계약 C-11) */
           unreceivedOnly?: boolean;
@@ -30115,7 +30117,7 @@ export interface paths {
     put?: never;
     /**
      * 로그인
-     * @description ⛔ 실패해도 아이디와 비밀번호 중 무엇이 틀렸는지 말하지 않는다 — 계정이 있는지가 새어 나간다. 남은 시도 횟수는 알린다(잠긴 뒤에야 알리지 않기 위해서다). 잠긴 계정은 스스로 풀 수 없다 — 관리자가 푼다. 근거: W-CO-01 §5-1·§5-2
+     * @description ⛔ 실패해도 아이디와 비밀번호 중 무엇이 틀렸는지 말하지 않는다 — 계정이 있는지가 새어 나간다. 근거: W-CO-01 §5-1
      */
     post: {
       parameters: {
@@ -30160,15 +30162,6 @@ export interface paths {
           };
           content: {
             'application/json': components['schemas']['LoginFailure'];
-          };
-        };
-        /** @description 실패가 쌓여 잠겼다 — 스스로 풀 수 없다 */
-        423: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
           };
         };
       };
@@ -30268,7 +30261,7 @@ export interface paths {
     put?: never;
     /**
      * 내 비밀번호 변경
-     * @description ⛔ 현재 비밀번호를 틀려도 계정을 잠그지 않는다 — 로그인과 달리 이미 인증된 본인이기 때문이다. ⛔ 바꾼 뒤 다시 로그인시키지 않는다 — 작업 중일 수 있다. 근거: W-CO-10 §5-2·§5-3
+     * @description ⛔ 바꾼 뒤 다시 로그인시키지 않는다 — 작업 중일 수 있다. 근거: W-CO-10 §5-3
      */
     post: {
       parameters: {
@@ -33995,7 +33988,6 @@ export interface paths {
            *               "routingOperationId": 701,
            *               "productionLineId": 11,
            *               "plannedEquipmentId": 2001,
-           *               "defaultWipLocationId": 1101,
            *               "defaultFgLocationId": 5201,
            *               "defaultScrapLocationId": 1103,
            *               "plannedTimeSourceCode": "USER",
@@ -34021,7 +34013,6 @@ export interface paths {
            *             {
            *               "routingOperationId": 701,
            *               "productionLineId": 12,
-           *               "defaultWipLocationId": 1201,
            *               "defaultFgLocationId": 5101,
            *               "defaultScrapLocationId": 1203,
            *               "plannedTimeSourceCode": "SYSTEM"
@@ -34433,7 +34424,6 @@ export interface paths {
              *               "plannedEquipmentId": 2001,
              *               "plannedMoldId": null,
              *               "responsibleWorkerId": null,
-             *               "defaultWipLocationId": 1101,
              *               "defaultFgLocationId": 5101,
              *               "defaultScrapLocationId": 1103,
              *               "equipmentRequired": true,
@@ -34460,7 +34450,6 @@ export interface paths {
              *               "plannedEquipmentId": null,
              *               "plannedMoldId": null,
              *               "responsibleWorkerId": 501,
-             *               "defaultWipLocationId": 1101,
              *               "defaultFgLocationId": 5101,
              *               "defaultScrapLocationId": 1103,
              *               "equipmentRequired": false,
@@ -35254,7 +35243,7 @@ export interface paths {
     put?: never;
     /**
      * 자재 투입 등록
-     * @description 오투입 판정이 서버에서 일어난다 — 화면만으로 막지 않는다. 한 호출이 투입 한 건이다 — 스캔한 자재가 여럿이면 건마다 부른다. ⭐ 자재LOT → 생산LOT 계보가 시작되는 지점이다 — 서버가 계보 관계를 이 등록과 한 트랜잭션으로 만든다(공유계약 B-8). 화면은 추적 정확도·배분 방법을 보내지 않는다 — 서버가 투입 형태로 정한다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항). 근거: P-02-03 §5-1·5-3·§5-4 · 공유계약 F-1
+     * @description 오투입 판정이 서버에서 일어난다 — 화면만으로 막지 않는다. 한 호출이 투입 한 건이다 — 스캔한 자재가 여럿이면 건마다 부른다. ⭐ 자재LOT → 생산LOT 계보가 시작되는 지점이다 — 서버가 계보 관계를 이 등록과 한 트랜잭션으로 만든다(공유계약 B-8). 화면은 추적 정확도·배분 방법을 보내지 않는다 — 서버가 투입 형태로 정한다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항). 근거: P-02-03 §5-1·5-3·§5-4 · 공유계약 F-1 ⭐ 공정 반제품(LOT 유형 WIP · 피처 016)은 BOM 대신 세 가지를 본다 — ① LOT 품목 = 투입 W/O 품목(아니면 400 INVALID 「다른 품목의 반제품입니다.」) ② 반제품을 만든 W/O 의 공정 마스터 = 투입 W/O 의 Routing 에서 투입 공정 바로 앞(순번이 작은 것 중 가장 큰) 공정의 공정 마스터 — 다른 Rev·다른 생산계획의 같은 앞 공정 반제품도 받고, 첫 공정 W/O 는 반제품을 받지 않는다(아니면 400 INVALID 「이 W/O 의 앞 공정 반제품이 아닙니다.」) ③ inputQty ≤ 남은 투입 가능 수량(Lot.wipRemainingQty = 실적 배분 합 − 투입 합) — LOT 을 잠그고 다시 세므로 동시 투입도 하나만 통과한다(넘으면 409 WIP_QTY_EXCEEDED). 반제품 투입은 BOM 줄이 없어 bomComponentId 를 저장하지 않는다 — 응답에서 그 키가 빠진다(빈 선택 칸 규칙). 상태(NORMAL)·작업자·멱등·계보는 자재 투입과 같다. 근거: 피처 016 R-3 · omf-all-around#359
      */
     post: {
       parameters: {
@@ -35635,7 +35624,7 @@ export interface paths {
     put?: never;
     /**
      * 공정 인계 확정
-     * @description 인계와 인수를 한 번에 확정한다 — 화면의 버튼이 하나다. ⛔ 오프라인 대상이 아니다 — 이 오퍼레이션을 부르는 WIP 공정 이동 스캔은 온라인 전용이다(✓확정 2026-07-24 #2·#3 · R79). 화면은 연결이 끊기면 진입 자체를 막는다. ⛔ 셸의 outbox 에 담지 않는다. Idempotency-Key 는 필수다 — 오프라인 큐 때문이 아니라 재시도 중복을 막기 위해서다(공유계약 C-8). If-Match 는 선택이다 — 신규 생성이라 대조할 version_no 가 아직 없다. 근거: M-02-01 §1·§6
+     * @description ⛔ 닫았다(피처 016 · omf-all-around#359) — 409 code=HANDOVER_RETIRED 「공정 인계는 반제품 투입으로 바뀌었습니다.」. 다음 공정은 POP 자재 투입(POST /production/material-consumptions)에서 반제품 LOT 을 스캔해 투입한다 — 그것이 계보를 잇는다. 지난 기록 조회(GET 둘)는 그대로다. (옛 설명) 인계와 인수를 한 번에 확정한다 — 화면의 버튼이 하나다. ⛔ 오프라인 대상이 아니다 — 이 오퍼레이션을 부르는 WIP 공정 이동 스캔은 온라인 전용이다(✓확정 2026-07-24 #2·#3 · R79). 화면은 연결이 끊기면 진입 자체를 막는다. ⛔ 셸의 outbox 에 담지 않는다. Idempotency-Key 는 필수다 — 오프라인 큐 때문이 아니라 재시도 중복을 막기 위해서다(공유계약 C-8). If-Match 는 선택이다 — 신규 생성이라 대조할 version_no 가 아직 없다. 근거: M-02-01 §1·§6
      */
     post: {
       parameters: {
@@ -37934,13 +37923,15 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 충돌 */
+        /** @description 충돌(ProductionConflictResponse) 또는 반제품 남은 수량 초과(WipQtyExceededResponse — errors[0].code=WIP_QTY_EXCEEDED, meta.remainingQty·meta.producedQty) */
         409: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': components['schemas']['ProductionConflictResponse'];
+            'application/json':
+              | components['schemas']['ProductionConflictResponse']
+              | components['schemas']['WipQtyExceededResponse'];
           };
         };
       };
@@ -38264,7 +38255,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 충돌 */
+        /** @description 충돌 — HANDOVER_RETIRED(공정 인계를 닫았다 · 피처 016) */
         409: {
           headers: {
             [name: string]: unknown;
@@ -44004,7 +43995,7 @@ export interface paths {
     put?: never;
     /**
      * 출하 처리
-     * @description 출하·라인·LOT 배분을 한 트랜잭션으로 만든다(공유계약 B-8). ⛔ 확정하지 않는다 — 미확정 출하까지이고 확정은 :confirm 이다(2026-08-07 출하 2단 확정). 긴급 직행이면 expedited 를 참으로 보내고 사유가 필수다(W-04-05). 근거: W-04-04 §5 · W-04-05 §5-5
+     * @description 출하·라인·LOT 배분을 한 트랜잭션으로 만든다(공유계약 B-8). ⛔ 확정하지 않는다 — 미확정 출하까지이고 확정은 :confirm 이다(2026-08-07 출하 2단 확정). 긴급 직행이면 expedited 를 참으로 보내고 사유가 필수다(W-04-05). 긴급 직행은 제품 입고를 먼저 전기하므로 공정 반제품 LOT(유형 WIP)은 400 INVALID 「반제품 LOT 은 제품 입고할 수 없습니다.」(피처 016). 근거: W-04-04 §5 · W-04-05 §5-5
      */
     post: {
       parameters: {
@@ -45303,7 +45294,7 @@ export interface paths {
     put?: never;
     /**
      * 제품 LOT 통째 피킹
-     * @description PDA(M-04-01)가 LOT 을 스캔하면 그 LOT 의 공장 안 가용 잔액 전부(불량창고 제외 — 여러 창고·위치·적치 대기 자리 포함)를 이 라인에 피킹한다. 잔액 행마다 예약을 하나씩 걸고 곧바로 푼다(picked += 가용). 라인 피킹 합이 목표(allocatedQty)보다 작을 때만 받으므로 초과는 마지막 LOT 에서만 생긴다. 수량 입력은 없다. 피킹 LOT 행(shipment_request_lot)이 PICKED 로 생긴다. 근거: 피처 010 FR-004·004a·005·006 ⭐ 피처 012 R-3: 줄 출고 창고가 있는 지시서는 경로의 줄을 «품목 힌트»로만 쓴다 — 서버가 LOT 의 가용 잔액이 있는 창고로 같은 품목·단말 범위 안 줄(남은 수량이 있는 앞 줄)을 골라 그 «창고의» 잔액만 통째로 잡고, 실제 줄을 응답 `line` 으로 알린다. 다른 창고에 남은 몫은 `otherWarehouseQty`. 창고 없는 옛 줄은 지금 규칙(지시서 공장의 불량 외 모든 창고) 그대로다.
+     * @description PDA(M-04-01)가 LOT 을 스캔하면 그 LOT 의 공장 안 가용 잔액 전부(불량창고 제외 — 여러 창고·위치·적치 대기 자리 포함)를 이 라인에 피킹한다. 잔액 행마다 예약을 하나씩 걸고 곧바로 푼다(picked += 가용). 라인 피킹 합이 목표(allocatedQty)보다 작을 때만 받으므로 초과는 마지막 LOT 에서만 생긴다. 수량 입력은 없다. 피킹 LOT 행(shipment_request_lot)이 PICKED 로 생긴다. 근거: 피처 010 FR-004·004a·005·006 ⭐ 피처 012 R-3: 줄 출고 창고가 있는 지시서는 경로의 줄을 «품목 힌트»로만 쓴다 — 서버가 LOT 의 가용 잔액이 있는 창고로 같은 품목·단말 범위 안 줄(남은 수량이 있는 앞 줄)을 골라 그 «창고의» 잔액만 통째로 잡고, 실제 줄을 응답 `line` 으로 알린다. 다른 창고에 남은 몫은 `otherWarehouseQty`. 창고 없는 옛 줄은 지금 규칙(지시서 공장의 불량 외 모든 창고) 그대로다. · SEMI_FINISHED_LOT(공정 반제품 LOT 「반제품 LOT 은 출하할 수 없습니다.」 — 다른 검사보다 먼저 · 피처 016)
      */
     post: {
       parameters: {
@@ -45760,7 +45751,7 @@ export interface paths {
     };
     /**
      * 생산 LOT 분리 스캔 조회(POP)
-     * @description POP P-04-08 — LOT 번호(정확 일치)로 LOT·라벨 수량·W/O 와 이 공장의 보유 위치별 잔액·고를 수 있는지·막힌 이유를 낸다. 분리 요청과 같은 규칙(R-8)이고 분리 때 다시 검사한다. 근거: 피처 013 R-14
+     * @description POP P-04-08 — LOT 번호(정확 일치)로 LOT·라벨 수량·W/O 와 이 공장의 보유 위치별 잔액·고를 수 있는지·막힌 이유를 낸다. 분리 요청과 같은 규칙(R-8)이고 분리 때 다시 검사한다. 근거: 피처 013 R-14 공정 반제품(LOT 유형 WIP)은 blocked.code=SEMI_FINISHED_LOT 다(피처 016).
      */
     get: {
       parameters: {
@@ -45963,7 +45954,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description NOT_PRODUCTION_LOT · SPLIT_SERIAL_LOT · INVALID_STATE · LOT_SPLIT_UNCONFIRMED · LOT_ALREADY_RESERVED · PUTAWAY_PENDING · NOT_PRODUCT_WAREHOUSE · MIXED_STOCK_STATUS · DUPLICATE_KEY */
+        /** @description SEMI_FINISHED_LOT(공정 반제품 · 피처 016) · NOT_PRODUCTION_LOT · SPLIT_SERIAL_LOT · INVALID_STATE · LOT_SPLIT_UNCONFIRMED · LOT_ALREADY_RESERVED · PUTAWAY_PENDING · NOT_PRODUCT_WAREHOUSE · MIXED_STOCK_STATUS · DUPLICATE_KEY */
         409: {
           headers: {
             [name: string]: unknown;
@@ -51906,12 +51897,6 @@ export interface components {
       isActive: boolean;
       /**
        * Format: int64
-       * @description 라인 기본 WIP 위치. 계획 확정·4M 라인 선택 때 W/O defaultWipLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 근거: 서버 선행 · 장부 P-46
-       * @example 3001
-       */
-      defaultWipLocationId?: number | null;
-      /**
-       * Format: int64
        * @description 라인 기본 완제품 위치. 계획 확정·4M 라인 선택 때 W/O defaultFgLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 근거: 서버 선행 · 장부 P-46
        * @example 3001
        */
@@ -52481,12 +52466,6 @@ export interface components {
       isActive: boolean;
       /**
        * Format: int64
-       * @description 라인 기본 WIP 위치. 계획 확정·4M 라인 선택 때 W/O defaultWipLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 근거: 서버 선행 · 장부 P-46
-       * @example 3001
-       */
-      defaultWipLocationId?: number | null;
-      /**
-       * Format: int64
        * @description 라인 기본 완제품 위치. 계획 확정·4M 라인 선택 때 W/O defaultFgLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 근거: 서버 선행 · 장부 P-46
        * @example 3001
        */
@@ -52532,12 +52511,6 @@ export interface components {
       parentGroupId?: number | null;
       /**
        * Format: int64
-       * @description 라인 기본 WIP 위치. 계획 확정·4M 라인 선택 때 W/O defaultWipLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 생략하면 그대로 두고 null 이면 비운다. 근거: 서버 선행 · 장부 P-46
-       * @example 3001
-       */
-      defaultWipLocationId?: number | null;
-      /**
-       * Format: int64
        * @description 라인 기본 완제품 위치. 계획 확정·4M 라인 선택 때 W/O defaultFgLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 생략하면 그대로 두고 null 이면 비운다. 근거: 서버 선행 · 장부 P-46
        * @example 3001
        */
@@ -52572,12 +52545,6 @@ export interface components {
        * @example 1001
        */
       parentGroupId?: number | null;
-      /**
-       * Format: int64
-       * @description 라인 기본 WIP 위치. 계획 확정·4M 라인 선택 때 W/O defaultWipLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 생략하면 그대로 두고 null 이면 비운다. 근거: 서버 선행 · 장부 P-46
-       * @example 3001
-       */
-      defaultWipLocationId?: number | null;
       /**
        * Format: int64
        * @description 라인 기본 완제품 위치. 계획 확정·4M 라인 선택 때 W/O defaultFgLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 생략하면 그대로 두고 null 이면 비운다. 근거: 서버 선행 · 장부 P-46
@@ -57065,7 +57032,7 @@ export interface components {
        */
       itemId: number;
       /**
-       * @description LOT 유형. 값 = MATERIAL·PRODUCTION·PRODUCT (2026-09-03 코드 사전 등재) — ⛔ 고객이 편집할 수 없다 — 우리가 정한 값이다 값 = `MATERIAL`·`PRODUCTION`·`PRODUCT`. 값 목록은 `GET /mdm/code-values?codeGroupCode=LOT_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+       * @description LOT 유형. 값 = MATERIAL·PRODUCTION·WIP·PRODUCT (2026-09-03 코드 사전 등재 · WIP 는 피처 016) — ⛔ 고객이 편집할 수 없다 — 우리가 정한 값이다 값 = `MATERIAL`·`PRODUCTION`·`WIP`·`PRODUCT`. ⭐ `WIP`(반제품)는 Routing 의 마지막이 아닌 공정 W/O 가 만든 LOT 이다 — 다음 공정 W/O 에 자재 투입(POST /production/material-consumptions)으로 넣고, 제품 입고·출하·생산 LOT 분리는 받지 않는다. 마지막 공정 W/O 의 LOT 은 지금처럼 `PRODUCTION` 이다. 근거: 피처 016 · omf-all-around#359. 값 목록은 `GET /mdm/code-values?codeGroupCode=LOT_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
        * @example MATERIAL
        */
       lotTypeCode: string;
@@ -57165,6 +57132,40 @@ export interface components {
         /** @example 원자재 공급처 변경(10/15부) */
         remarks?: string;
       };
+      /** @description ⭐ 반제품(lotTypeCode=WIP)의 생산 공정 — LOT 에 복사하지 않고 원천 W/O 에서 읽는다. 반제품이 아니면 null. 목록(GET /trace/lots)·단건(GET /trace/lots/{lotId})이 싣는다. 근거: 피처 016 · omf-all-around#359 */
+      producedOperation?: {
+        /**
+         * Format: int64
+         * @description 반제품을 만든 W/O(= sourceId)
+         * @example 12
+         */
+        workOrderId: number;
+        /**
+         * @description 그 W/O 의 Routing 공정 순번
+         * @example 10
+         */
+        operationSeq: number;
+        /**
+         * @description 공정 마스터 코드
+         * @example P10
+         */
+        processCode: string;
+        /**
+         * @description 공정 마스터 이름
+         * @example 가공
+         */
+        processName: string;
+      } | null;
+      /**
+       * @description ⭐ 반제품(WIP)만 — 이 LOT 에 배분된 실적 양품 합. 반제품이 아니면 null. POP 투입 줄 근거 「실적 · 투입 · 남은」의 실적이다(투입 = wipProducedQty − wipRemainingQty). 근거: 피처 016
+       * @example 100
+       */
+      wipProducedQty?: number | null;
+      /**
+       * @description ⭐ 반제품(WIP)만 — 다음 공정에 더 넣을 수 있는 양 = 실적 배분 합 − 투입 합(정정된 원 투입 제외), 0 아래로 내려가지 않는다. 반제품이 아니면 null. 이 값을 넘는 투입은 409 WIP_QTY_EXCEEDED 다. 근거: 피처 016 FR-011
+       * @example 40
+       */
+      wipRemainingQty?: number | null;
       /**
        * Format: int64
        * @description 속한 입하 LOT(피처 005) — 입하 전·자재가 아닌 LOT 은 null 단건 조회에서 분할 LOT 은 조상의 입하 LOT 을 낸다(피처 008).
@@ -57672,7 +57673,7 @@ export interface components {
        * Format: int64
        * @example 1001
        */
-      destinationLocationId: number;
+      destinationLocationId: number | null;
       /**
        * Format: date-time
        * @example 2026-08-06T09:12:00+09:00
@@ -58828,7 +58829,7 @@ export interface components {
        * Format: int64
        * @example 1001
        */
-      destinationLocationId: number;
+      destinationLocationId: number | null;
       /**
        * Format: date-time
        * @example 2026-08-06T09:12:00+09:00
@@ -58864,7 +58865,7 @@ export interface components {
        * @description 창고 보충 출고(workOrderId 없음)는 출고가 실은 도착 위치와 같아야 한다(아니면 400 INVALID). W/O 출고는 대조하지 않는다(지금 동작 그대로). 근거: 피처 004 생산 창고 보충 G2 보완 · omf-all-around#230
        * @example 1001
        */
-      destinationLocationId: number;
+      destinationLocationId?: number;
       /**
        * Format: date-time
        * @example 2026-08-06T09:12:00+09:00
@@ -61065,6 +61066,21 @@ export interface components {
       /** @description LOT 상태(NORMAL·HOLD·DEFECT·SCRAPPED 등) — 화면 상태 칩 */
       statusCode: string;
       lifecycleStatusCode: string | null;
+      /**
+       * @description ⭐ 반제품(lotTypeCode=WIP)의 생산 공정 순번 — 계보 항목(forward-tree·backward-tree 의 nodes)만 싣는다. 반제품이 아니면 null. 목록 줄(material·product-trace-lots)에는 키가 없다. 화면 단계 이름 「반제품 LOT · 공정 10」. 근거: 피처 016 · omf-all-around#359
+       * @example 10
+       */
+      operationSeq?: number | null;
+      /**
+       * @description ⭐ 반제품(WIP)의 생산 공정 이름(공정 마스터) — operationSeq 와 같은 규칙. 근거: 피처 016
+       * @example 가공
+       */
+      processName?: string | null;
+      /**
+       * @description ⭐ 반제품(WIP)의 남은 투입 가능 수량 — 계보 항목만 싣는다(반제품이 아니면 null, 목록 줄은 키 없음). 근거: 피처 016
+       * @example 40
+       */
+      wipRemainingQty?: number | null;
     };
     TraceTreeItem: {
       /** Format: int64 */
@@ -61185,6 +61201,11 @@ export interface components {
         workOrderId: number;
         workOrderNo: string;
         statusCode: string;
+        /**
+         * @description 그 W/O 의 Routing 공정 순번 — 모든 W/O(반제품 여부 무관). 화면 「W/O WO-… · 공정 30」. 근거: 피처 016
+         * @example 30
+         */
+        operationSeq?: number | null;
       };
       shipment?: {
         /** Format: int64 */
@@ -61284,10 +61305,15 @@ export interface components {
       producedQty: number;
       uomCode: string;
       /**
-       * @description PARTIAL = 출하 + 재고 · CONSUMED_OUT = 재고 0·출하 없음 · VOIDED = 폐번·폐기
+       * @description PARTIAL = 출하 + 재고 · CONSUMED_OUT = 재고 0·출하 없음 · VOIDED = 폐번·폐기 · WIP_PENDING = 다음 공정 투입 전(남은 투입 가능 수량 > 0 인 반제품 — 일부만 다음 공정에 들어간 반제품도 선다. 다 투입된 반제품은 최종 줄이 서지 않는다 · 피처 016 FR-013)
        * @enum {string}
        */
-      fate: 'SHIPPED' | 'IN_STOCK' | 'PARTIAL' | 'CONSUMED_OUT' | 'VOIDED';
+      fate: 'SHIPPED' | 'IN_STOCK' | 'PARTIAL' | 'CONSUMED_OUT' | 'VOIDED' | 'WIP_PENDING';
+      /**
+       * @description ⭐ fate=WIP_PENDING 줄만 — 그 반제품의 남은 투입 가능 수량(실적 배분 합 − 투입 합, 정정된 원 투입 제외). 화면 행선지 「다음 공정 투입 전 · 남은 n」. 그 밖은 null. 근거: 피처 016 FR-013
+       * @example 40
+       */
+      wipRemainingQty?: number | null;
       /** @description 취소 제외 출하 — 화면은 첫 출하 + 「외 n건」, 내보내기는 출하마다 한 줄 */
       shipments: {
         shipmentNo: string;
@@ -62070,11 +62096,6 @@ export interface components {
     LoginFailure: {
       /** @example 아이디 또는 비밀번호가 맞지 않습니다 */
       message: string;
-      /**
-       * @description 남은 시도 횟수. 잠긴 뒤에야 알리지 않는다. ⚠ 없는 계정에는 오지 않는다 — 그래서 계정 존재가 드러나지만 「잠길 줄 모르는 것」보다 낫다고 판단했다
-       * @example 3
-       */
-      remainingAttempts?: number;
     };
     /**
      * @description 로그인 결과이자 「지금 나는 누구이고 어디까지 보는가」.
@@ -62125,7 +62146,7 @@ export interface components {
        */
       plantId?: number;
     };
-    /** @description 현재 비밀번호를 틀려도 계정을 잠그지 않는다 — 이미 인증된 본인이다. 바꾼 뒤 다시 로그인시키지도 않는다. 근거: W-CO-10 §5-2·§5-3 */
+    /** @description 바꾼 뒤 다시 로그인시키지 않는다. 근거: W-CO-10 §5-3 */
     PasswordChangeRequest: {
       /** Format: password */
       currentPassword: string;
@@ -64998,12 +65019,6 @@ export interface components {
       plannedShiftId: number | null;
       /**
        * Format: int64
-       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
-       * @example 1001
-       */
-      defaultWipLocationId: number | null;
-      /**
-       * Format: int64
        * @description 완제품 위치 — ERP W/O 에 SL_CD 가 있으면 erpStorage.location(그 창고 안의 입고 위치), 없으면 W/O 라인의 기본 완제품 위치. SL_CD 가 있는데 창고를 정하지 못하면 라인 기본값이 있어도 null 이고 erpStorage.reasonCode 와 같은 코드의 issues 가 선다. 계획의 모든 공정 W/O 에 같은 값을 둔다. ERP 목적지의 의미는 마지막 공정에 있고 중간 공정 값은 배포 필수 검사를 위해 같은 값을 둔다.
        * @example 1001
        */
@@ -65450,12 +65465,6 @@ export interface components {
       plannedEndAt?: string | null;
       /**
        * Format: int64
-       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
-       * @example 1001
-       */
-      defaultWipLocationId?: number;
-      /**
-       * Format: int64
        * @description SL_CD 창고 안의 위치(제안의 defaultFgLocationId), 계획에 fgWarehouseOverride 가 있으면 바꾼 창고 안의 위치. 규칙은 ProductionPlanProposalConfirmWorkOrder 설명. ERP 목적지의 의미는 마지막 공정에 있고 중간 공정 값은 배포 필수 검사를 위해 같은 값을 둔다.
        * @example 1001
        */
@@ -65805,12 +65814,6 @@ export interface components {
       plannedEndAt?: string | null;
       /**
        * Format: int64
-       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
-       * @example 1001
-       */
-      defaultWipLocationId?: number | null;
-      /**
-       * Format: int64
        * @description SL_CD 창고 안의 위치(제안의 defaultFgLocationId). 규칙은 ProductionPlanProposalConfirmWorkOrder 설명. ERP 목적지의 의미는 마지막 공정에 있고 중간 공정 값은 배포 필수 검사를 위해 같은 값을 둔다.
        * @example 1001
        */
@@ -65976,7 +65979,7 @@ export interface components {
       remarks: string | null;
       fgWarehouse: components['schemas']['ProductionPlanProposalFgWarehouse'];
     };
-    /** @description 재검증한 공정 W/O 하나 — 확정하면 저장될 값. 본문 값은 그대로 두고 서버가 정하는 칸(수량·선후관계·계획 시각·라인 기본 WIP)만 계산해 채운다. 본문 순서다. */
+    /** @description 재검증한 공정 W/O 하나 — 확정하면 저장될 값. 본문 값은 그대로 두고 서버가 정하는 칸(수량·선후관계·계획 시각)만 계산해 채운다. 본문 순서다. */
     ProductionPlanProposalRevalidatedWorkOrder: {
       /**
        * Format: int64
@@ -66047,12 +66050,6 @@ export interface components {
        * @example 1001
        */
       responsibleWorkerId: number | null;
-      /**
-       * Format: int64
-       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
-       * @example 1001
-       */
-      defaultWipLocationId: number | null;
       /**
        * Format: int64
        * @description 본문 값 — 비었으면 null(그 칸 REQUIRED 가 errors 에 있다)
@@ -67133,12 +67130,6 @@ export interface components {
       priorityNo: number;
       /**
        * Format: int64
-       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
-       * @example 1001
-       */
-      defaultWipLocationId?: number;
-      /**
-       * Format: int64
        * @example 1001
        */
       defaultFgLocationId?: number;
@@ -67582,12 +67573,6 @@ export interface components {
       responsibleWorkerId?: number | null;
       /**
        * Format: int64
-       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
-       * @example 1001
-       */
-      defaultWipLocationId?: number | null;
-      /**
-       * Format: int64
        * @description 명시적 null = 해제 · 필드 생략 = 기존 값 유지. 값을 바꿀 때 — ERP W/O 에 SL_CD 가 있으면 그 코드와 같은 MES 창고 안의 위치여야 한다(다른 창고면 400 FG_LOCATION_OUTSIDE_WAREHOUSE, 창고를 정하지 못하면 400 FG_WAREHOUSE_UNMAPPED·FG_WAREHOUSE_INACTIVE·FG_WAREHOUSE_OTHER_PLANT·FG_WAREHOUSE_NOT_ALLOWED). SL_CD 가 없으면 이 공장의 사용 중인 위치이되 자재창고·외부창고·불량창고가 아니어야 한다(아니면 400 LOCATION_INVALID). 같은 값을 다시 보내면 검증하지 않는다. ERP 목적지의 의미는 마지막 공정에 있고 중간 공정 값은 배포 필수 검사를 위해 같은 값을 둔다.
        * @example 1001
        */
@@ -67901,9 +67886,26 @@ export interface components {
        */
       statusCode: string;
     };
+    /** @description 반제품(LOT 유형 WIP) 투입이 남은 투입 가능 수량을 넘었다(409). 화면은 「남은 수량(n)보다 많이 넣었습니다. 실적 p 중 c 은 이미 투입했습니다.」로 알린다. 근거: 피처 016 FR-011 · omf-all-around#359 */
+    WipQtyExceededResponse: {
+      /** @description code=WIP_QTY_EXCEEDED · field=inputQty · 「남은 수량을 넘습니다 (남은 {n})」 */
+      errors: components['schemas']['ErrorItem'][];
+      meta: {
+        /**
+         * @description 잠금 안에서 다시 센 남은 투입 가능 수량(0 이상)
+         * @example 40
+         */
+        remainingQty: number;
+        /**
+         * @description 그 반제품 LOT 의 실적 배분 합 — 이미 투입한 양 = producedQty − remainingQty
+         * @example 100
+         */
+        producedQty: number;
+      };
+    };
     ProductionConflictResponse: {
       /**
-       * @description OPEN_SESSION_EXISTS 는 열린 구간이 이미 있다는 뜻이다. PROPOSAL_CHANGED 는 계획 제안을 검토한 뒤 기준(ERP W/O·계획·BOM·Routing·자원)이 바뀌어 확정하지 않았다는 뜻이다 — proposalChanges·currentProposal 을 함께 내린다. BATCH_DEPENDENCY_FAILED 는 선행 요청이 아직 없다는 뜻이며 큐가 묶음을 멈춰야 한다. 근거: 공유계약 C-2 · C-10
+       * @description HANDOVER_RETIRED 는 공정 인계 등록을 닫았다는 뜻이다(반제품 투입으로 바뀜 · 피처 016). OPEN_SESSION_EXISTS 는 열린 구간이 이미 있다는 뜻이다. PROPOSAL_CHANGED 는 계획 제안을 검토한 뒤 기준(ERP W/O·계획·BOM·Routing·자원)이 바뀌어 확정하지 않았다는 뜻이다 — proposalChanges·currentProposal 을 함께 내린다. BATCH_DEPENDENCY_FAILED 는 선행 요청이 아직 없다는 뜻이며 큐가 묶음을 멈춰야 한다. 근거: 공유계약 C-2 · C-10
        * @example VERSION_CONFLICT
        * @enum {string}
        */
@@ -67913,7 +67915,8 @@ export interface components {
         | 'OPEN_SESSION_EXISTS'
         | 'BATCH_DEPENDENCY_FAILED'
         | 'INVALID_STATE'
-        | 'PROPOSAL_CHANGED';
+        | 'PROPOSAL_CHANGED'
+        | 'HANDOVER_RETIRED';
       /** @example 값 */
       message: string;
       /**
@@ -71745,7 +71748,7 @@ export interface components {
     };
     ShipmentConflictResponse: {
       /**
-       * @description ALREADY_CONFIRMED 는 이미 확정된 출하라는 뜻이다 — 확정 취소 경로가 없으므로 되돌릴 수 없다(W-04-12 §5-3). CANCEL_IN_PROGRESS 는 취소 결재가 진행 중이라 확정할 수 없다는 뜻이다(J-7). 근거: W-04-12 §5-8 피처 010(omf-all-around#305): USE_PICK_LOT 는 옛 수량 피킹(:pick)이 닫혔다는 뜻이다 — LOT 통째 피킹(:pick-lot)을 쓴다. LOT_TARGET_REACHED 는 라인 피킹 합이 이미 목표(배정) 이상이다. LOT_ALREADY_RESERVED 는 그 LOT 의 잔액 행에 다른 예약·피킹·차단이 걸려 통째로 잡을 수 없다. LOT_ALREADY_PICKED 는 이미 이 지시서에 피킹한 LOT 이다. NO_LINE_FOR_ITEM 은 이 지시서에 그 LOT 품목의 라인이 없다. LOT_NOT_REJECTED 는 교체할 수 없는 피킹 LOT 이다 — OQC 판정이 불합격이 아니거나(교체 전에 재검 합격이 들어온 경우 포함) 이미 교체·출하됐다. COMPLETION_BLOCKED 는 출하 완료를 막는 이유가 있다(blockers 에 실린다). ALREADY_COMPLETED 는 이미 POP 에서 출하 완료한 지시서다(다시 스캔·동시 완료). ERP_ALREADY_SENT 는 ERP 로 이미 보낸(또는 보내는 중인) POP 완료 출하라 취소할 수 없다 — ERP 에서 처리한다. 피처 012(omf-all-around#338): LOT_NOT_IN_LINE_WAREHOUSE 는 스캔한 LOT 의 가용 잔액이 이 기기 범위 안 같은 품목 줄의 출고 창고 어디에도 없다 — `warehouses` 에 LOT 이 있는 창고(공장)를 싣는다. LINE_WAREHOUSE_UNAVAILABLE 은 고른 줄의 출고 창고가 비활성이거나 지시서 사업부의 창고가 아니다(「출고 창고를 쓸 수 없습니다」). 창고 맞는 줄 찾기가 먼저이고, 맞는 줄이 모두 목표를 채웠을 때만 LOT_TARGET_REACHED 다. 피처 013(omf-all-around#303) 생산 LOT 분리: NOT_PRODUCTION_LOT 는 생산 LOT 이 아니다. SPLIT_SERIAL_LOT 는 시리얼 관리 품목 LOT 이다. LOT_SPLIT_UNCONFIRMED 는 PDA 확인 전인 분리의 원래·자식 LOT 이다(재분리·출하 피킹 거절). PUTAWAY_PENDING 은 적치 대기 자리이거나 그 자리에서 출발하는 열린 적치 지시가 있다. NOT_PRODUCT_WAREHOUSE 는 제품 창고(불량 창고 제외) 위치가 아니다. MIXED_STOCK_STATUS 는 그 위치에 품질·재고 상태가 다른 잔액이 섞여 있다. 분리의 INVALID_STATE 는 보류·불량·폐기·무효, LOT_ALREADY_RESERVED 는 그 LOT 의 어느 잔액에든 예약·피킹·차단이 걸렸다는 뜻이다. 분리 확인(:confirm)의 ALREADY_CONFIRMED 는 이미 확인된 분리다.
+       * @description ALREADY_CONFIRMED 는 이미 확정된 출하라는 뜻이다 — 확정 취소 경로가 없으므로 되돌릴 수 없다(W-04-12 §5-3). CANCEL_IN_PROGRESS 는 취소 결재가 진행 중이라 확정할 수 없다는 뜻이다(J-7). 근거: W-04-12 §5-8 피처 010(omf-all-around#305): USE_PICK_LOT 는 옛 수량 피킹(:pick)이 닫혔다는 뜻이다 — LOT 통째 피킹(:pick-lot)을 쓴다. LOT_TARGET_REACHED 는 라인 피킹 합이 이미 목표(배정) 이상이다. LOT_ALREADY_RESERVED 는 그 LOT 의 잔액 행에 다른 예약·피킹·차단이 걸려 통째로 잡을 수 없다. LOT_ALREADY_PICKED 는 이미 이 지시서에 피킹한 LOT 이다. NO_LINE_FOR_ITEM 은 이 지시서에 그 LOT 품목의 라인이 없다. LOT_NOT_REJECTED 는 교체할 수 없는 피킹 LOT 이다 — OQC 판정이 불합격이 아니거나(교체 전에 재검 합격이 들어온 경우 포함) 이미 교체·출하됐다. COMPLETION_BLOCKED 는 출하 완료를 막는 이유가 있다(blockers 에 실린다). ALREADY_COMPLETED 는 이미 POP 에서 출하 완료한 지시서다(다시 스캔·동시 완료). ERP_ALREADY_SENT 는 ERP 로 이미 보낸(또는 보내는 중인) POP 완료 출하라 취소할 수 없다 — ERP 에서 처리한다. 피처 012(omf-all-around#338): LOT_NOT_IN_LINE_WAREHOUSE 는 스캔한 LOT 의 가용 잔액이 이 기기 범위 안 같은 품목 줄의 출고 창고 어디에도 없다 — `warehouses` 에 LOT 이 있는 창고(공장)를 싣는다. LINE_WAREHOUSE_UNAVAILABLE 은 고른 줄의 출고 창고가 비활성이거나 지시서 사업부의 창고가 아니다(「출고 창고를 쓸 수 없습니다」). 창고 맞는 줄 찾기가 먼저이고, 맞는 줄이 모두 목표를 채웠을 때만 LOT_TARGET_REACHED 다. 피처 013(omf-all-around#303) 생산 LOT 분리: NOT_PRODUCTION_LOT 는 생산 LOT 이 아니다. SPLIT_SERIAL_LOT 는 시리얼 관리 품목 LOT 이다. LOT_SPLIT_UNCONFIRMED 는 PDA 확인 전인 분리의 원래·자식 LOT 이다(재분리·출하 피킹 거절). PUTAWAY_PENDING 은 적치 대기 자리이거나 그 자리에서 출발하는 열린 적치 지시가 있다. NOT_PRODUCT_WAREHOUSE 는 제품 창고(불량 창고 제외) 위치가 아니다. MIXED_STOCK_STATUS 는 그 위치에 품질·재고 상태가 다른 잔액이 섞여 있다. 분리의 INVALID_STATE 는 보류·불량·폐기·무효, LOT_ALREADY_RESERVED 는 그 LOT 의 어느 잔액에든 예약·피킹·차단이 걸렸다는 뜻이다. 분리 확인(:confirm)의 ALREADY_CONFIRMED 는 이미 확인된 분리다. 피처 016(omf-all-around#359): SEMI_FINISHED_LOT 는 공정 반제품 LOT(유형 WIP)이라 출하 피킹·생산 LOT 분리를 받지 않는다는 뜻이다 — 다음 공정에 투입한다.
        * @example VERSION_CONFLICT
        * @enum {string}
        */
@@ -71767,6 +71770,7 @@ export interface components {
         | 'LOT_NOT_IN_LINE_WAREHOUSE'
         | 'LINE_WAREHOUSE_UNAVAILABLE'
         | 'NOT_PRODUCTION_LOT'
+        | 'SEMI_FINISHED_LOT'
         | 'SPLIT_SERIAL_LOT'
         | 'LOT_SPLIT_UNCONFIRMED'
         | 'PUTAWAY_PENDING'
@@ -72780,6 +72784,7 @@ export interface components {
        */
       code:
         | 'NOT_PRODUCTION_LOT'
+        | 'SEMI_FINISHED_LOT'
         | 'SPLIT_SERIAL_LOT'
         | 'INVALID_STATE'
         | 'LOT_SPLIT_UNCONFIRMED'
@@ -72823,7 +72828,7 @@ export interface components {
          */
         labelQty: number;
       };
-      /** @description LOT 단위 막힘(NOT_PRODUCTION_LOT·SPLIT_SERIAL_LOT·INVALID_STATE·LOT_SPLIT_UNCONFIRMED·LOT_ALREADY_RESERVED). 없으면 null */
+      /** @description LOT 단위 막힘(SEMI_FINISHED_LOT·NOT_PRODUCTION_LOT·SPLIT_SERIAL_LOT·INVALID_STATE·LOT_SPLIT_UNCONFIRMED·LOT_ALREADY_RESERVED). 없으면 null */
       blocked: components['schemas']['ProductLotSplitBlock'] | null;
       locations: {
         /**

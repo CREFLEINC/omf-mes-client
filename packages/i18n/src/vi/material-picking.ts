@@ -17,6 +17,7 @@ export const materialPicking: Translated<typeof ko.materialPicking> = {
     change: 'Chọn lệnh khác',
     type: (name: string) => `Loại ${name}`,
     destination: (code: string) => `Nơi đến ${code}`,
+    directIssue: 'Xuất kho trực tiếp cho lệnh sản xuất',
     destinationLoading: 'Đang tải vị trí đến',
     destinationOffline: 'Không xác nhận được vị trí đến. Hãy kiểm tra kết nối.',
     destinationUnknown:

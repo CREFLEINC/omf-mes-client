@@ -13,6 +13,7 @@ export {
   type ConflictCause,
   type ErrorItem,
   type RejectedLot,
+  type WipQtyExceeded,
   STATE_LOCKED_CODE,
 } from './errors';
 export type { components, paths } from './generated/api';

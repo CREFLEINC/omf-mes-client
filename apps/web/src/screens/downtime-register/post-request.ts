@@ -1,5 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 
+import { PLANT_UTC_OFFSET, toPlantDateTimeParts } from '../../patterns/plant-time';
+
 import { readInterval, type IntervalDraft } from './interval';
 
 /**
@@ -11,7 +13,7 @@ import { readInterval, type IntervalDraft } from './interval';
  * | --- | --- | --- |
  * | `equipmentId` | 주소 | 비가동은 **설비에 붙는다** |
  * | `reasonCode` | 사유 소분류 | 임시 목록에서 고른 값 |
- * | `startedAt` | 시작 칸 | **단말 시각을 그대로** 넣는다 |
+ * | `startedAt` | 시작 칸 | **공장 시각**(+07:00)으로 넣는다 — 칸의 글자가 공장 시각이다(omf-all-around#364) |
  *
  * ⛔ **작업지시(W/O)를 붙이지 않는다.** 비가동은 설비에 붙지 작업에 붙지 않고, 계약의 쓰기
  * 본문에도 그 칸이 없다. 금형 교체·자재 대기는 작업지시 «사이»에 생긴다.
@@ -27,25 +29,21 @@ type DowntimeCreate = components['schemas']['DowntimeCreate'];
 
 const pad = (value: number, length: number): string => String(value).padStart(length, '0');
 
-/** 실행 환경이 UTC와 얼마나 떨어져 있는지. `+09:00` 꼴이다. */
-const offsetText = (at: Date): string => {
-  const minutes = -at.getTimezoneOffset();
-  const sign = minutes < 0 ? '-' : '+';
-  const absolute = Math.abs(minutes);
-
-  return `${sign}${pad(Math.floor(absolute / 60), 2)}:${pad(absolute % 60, 2)}`;
-};
-
 /**
  * 계약이 요구하는 offset 있는 시각 문자열.
  *
- * ⛔ **offset 없이 보내지 않는다** — 같은 글자가 지역마다 다른 순간을 가리킨다. 현장 단말은
- * 공장 시간대에 있고 서버는 다를 수 있는데, 이 화면에서 그 어긋남은 **구간의 길이**를 바꾼다.
+ * ⛔ **offset 없이 보내지 않는다** — 같은 글자가 지역마다 다른 순간을 가리킨다.
+ *
+ * **공장 시각과 공장 offset(`PLANT_UTC_OFFSET`)으로 적는다**(omf-all-around#364). 브라우저 시간대로
+ * 적으면 한국 PC 에서 칸에 본 시각과 다른 글자(+09:00)가 나간다. 공장 단말은 결과가 같다.
  */
-export const toOffsetDateTime = (at: Date): string =>
-  `${String(at.getFullYear())}-${pad(at.getMonth() + 1, 2)}-${pad(at.getDate(), 2)}T` +
-  `${pad(at.getHours(), 2)}:${pad(at.getMinutes(), 2)}:${pad(at.getSeconds(), 2)}` +
-  offsetText(at);
+export const toOffsetDateTime = (at: Date): string => {
+  const parts = toPlantDateTimeParts(at.toISOString());
+  const date = parts?.date ?? at.toISOString().slice(0, 10);
+  const time = parts?.time ?? at.toISOString().slice(11, 16);
+
+  return `${date}T${time}:${pad(at.getUTCSeconds(), 2)}${PLANT_UTC_OFFSET}`;
+};
 
 export interface DowntimeDraft {
   interval: IntervalDraft;

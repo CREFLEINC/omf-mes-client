@@ -3,6 +3,7 @@ import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useState } from 'react';
 
 import { DateRangeFields } from '../../patterns/date-range-fields';
+import { josa } from '../../patterns/josa';
 import { useApiClient } from '../../patterns/api-context';
 import {
   FilterMoreButton,
@@ -132,7 +133,7 @@ export const WorklistFilterBar = ({
           onSearch(draft);
         }}
       >
-        <div className="field-cell filter-field-md">
+        <div className="field-cell filter-field-md erp-wo-filter-q">
           <SearchInput
             fullWidth
             label={t.q}
@@ -155,6 +156,7 @@ export const WorklistFilterBar = ({
         <div className="filter-field-md">
           <ReferenceField
             label={t.item}
+            placeholder={`${josa(t.item, '을/를')} 선택하세요`}
             valueLabel={itemLabel}
             source={itemSource}
             onPick={(row) => {

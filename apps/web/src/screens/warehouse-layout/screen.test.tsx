@@ -44,7 +44,7 @@ describe('W-CO-08 창고 배치도 — 조건 상자', () => {
     renderScreen({ layouts: [withDrawing([])] });
 
     await loaded();
-    expect(screen.queryByRole('button', { name: wl.actions.addWarehouse })).toBeNull();
+    expect(screen.queryByRole('button', { name: '창고 추가' })).toBeNull();
     expect(screen.queryByRole('searchbox', { name: wl.filters.searchLabel })).toBeNull();
 
     const row = screen
@@ -283,7 +283,7 @@ describe('W-CO-08 조회 화면 — 읽기 전용 · [수정] (US2)', () => {
 
     expect(screen.getByText(t.locations.emptyTitle)).toBeInTheDocument();
     expect(screen.getByText(t.locations.emptyGuide(wl.title))).toBeInTheDocument();
-    for (const name of [wl.bulkCreate.open, wl.actions.addRack, wl.actions.addWarehouse]) {
+    for (const name of [wl.bulkCreate.open, wl.actions.addRack, '창고 추가']) {
       expect(screen.queryByRole('button', { name })).toBeNull();
     }
   });

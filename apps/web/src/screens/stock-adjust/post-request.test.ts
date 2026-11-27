@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   POST_FORM_FIELDS,
@@ -26,34 +26,42 @@ afterEach(() => {
 });
 
 /**
- * ⚠ **아래 세 감지기는 실행 환경 시간대(+09:00)에 매여 있다** — 고정 시각을 만들어 놓고
- * **로컬로 읽은 결과**를 KST 기준 리터럴과 대조하기 때문이다(리뷰 R-5). 저장소 전역의 기존
- * 형태이고(다른 슬라이스 6건이 같은 조건에서 함께 넘어진다) `vitest.config.ts` 한 줄로 닫히는
- * 자리라 **별건**으로 남긴다 — `#204`가 그 자리다. offset 축은 시간대를 갈아 끼워 재므로
- * (아래 `toPostRequest`) 그 매임이 없다.
+ * 기본값은 **공장 시각(Asia/Ho_Chi_Minh, +07:00)** 이다(omf-all-around#364). 브라우저 시간대를
+ * 한국(+09:00)으로 고정해 두고, 그래도 공장 날짜·시각이 서는지 잰다.
  */
 describe('seedPostDraft', () => {
-  it('영업일과 발생 일시를 제출 순간으로 채운다', () => {
+  const originalTz = process.env.TZ;
+
+  beforeAll(() => {
+    process.env.TZ = 'Asia/Seoul';
+  });
+
+  afterAll(() => {
+    if (originalTz === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTz;
+  });
+
+  it('영업일과 발생 일시를 제출 순간의 공장 시각으로 채운다 — 한국 14:05 는 공장 12:05', () => {
     expect(seedPostDraft(NOW)).toEqual({
       businessDate: '2026-08-18',
-      occurredAtLocal: '2026-08-18T14:05',
+      occurredAtLocal: '2026-08-18T12:05',
     });
   });
 
   /**
-   * ⭐ **실행 환경 시간대로 읽는다.** UTC로 읽으면 한국 시간 오전 9시 이전이 **어제**가 되고,
-   * 그 값이 그대로 원장의 영업일이 된다.
+   * ⭐ **공장 달력으로 읽는다.** 한국 자정 직후(00:30)는 공장에서는 아직 **전날 22:30** 이다 —
+   * 브라우저 날짜로 채우면 하루 이른 영업일이 원장에 남는다.
    */
-  it('자정 직후에도 그날의 날짜다', () => {
+  it('한국 자정 직후는 공장의 전날이다', () => {
     expect(seedPostDraft(new Date('2026-08-19T00:30:00+09:00'))).toEqual({
-      businessDate: '2026-08-19',
-      occurredAtLocal: '2026-08-19T00:30',
+      businessDate: '2026-08-18',
+      occurredAtLocal: '2026-08-18T22:30',
     });
   });
 
   /** 한 자리 수 달·날·시·분에 0을 채운다 — 계약 형식이 두 자리다. */
   it('한 자리 수에 0을 채운다', () => {
-    expect(seedPostDraft(new Date('2026-09-05T07:08:00+09:00'))).toEqual({
+    expect(seedPostDraft(new Date('2026-09-05T09:08:00+09:00'))).toEqual({
       businessDate: '2026-09-05',
       occurredAtLocal: '2026-09-05T07:08',
     });
@@ -121,7 +129,7 @@ describe('toPostRequest', () => {
    * 원장에 반영할 뿐이다. 하나라도 빠지면 **재고가 잘못된 영업일로 잡힌다**(공유계약 C-8).
    */
   it('본문 키가 영업일과 발생 시각 둘뿐이다', () => {
-    const body = toPostRequest(draft(), NOW);
+    const body = toPostRequest(draft());
 
     expect(body).not.toBeNull();
     expect(Object.keys(body ?? {}).sort()).toEqual(['businessDate', 'occurredAt']);
@@ -129,9 +137,7 @@ describe('toPostRequest', () => {
 
   /** 영업일은 **사용자가 고른 글자 그대로** 실린다 — 화면이 다시 계산하지 않는다. */
   it('영업일이 친 값 그대로 실린다', () => {
-    expect(toPostRequest(draft({ businessDate: '2026-08-17' }), NOW)?.businessDate).toBe(
-      '2026-08-17',
-    );
+    expect(toPostRequest(draft({ businessDate: '2026-08-17' }))?.businessDate).toBe('2026-08-17');
   });
 
   /**
@@ -141,48 +147,42 @@ describe('toPostRequest', () => {
    * 보내면 **같은 글자가 지역마다 다른 순간**을 가리킨다(공유계약 C-1).
    */
   it('발생 시각에 초와 offset이 붙는다', () => {
-    const occurredAt = toPostRequest(
-      draft({ occurredAtLocal: '2026-08-18T14:05' }),
-      NOW,
-    )?.occurredAt;
+    const occurredAt = toPostRequest(draft({ occurredAtLocal: '2026-08-18T14:05' }))?.occurredAt;
 
-    expect(occurredAt).toMatch(/^2026-08-18T14:05:00[+-]\d{2}:\d{2}$/);
+    expect(occurredAt).toBe('2026-08-18T14:05:00+07:00');
   });
 
   /*
-   * ⭐ **실행 환경이 UTC 동쪽일 때와 서쪽일 때 부호가 갈린다**(전례 `supplier-return`의 감지기
-   * 사본 · 리뷰 R-2). 고정 시각만으로는 이 갈래를 잴 수 없어 **시간대 자체를 갈아 끼운다** —
-   * 부호를 뒤집는 결함은 한국에서만 돌려 보면 드러나지 않고, 그때 같은 글자가 **18시간 어긋난
-   * 순간**을 가리킨 채 되돌릴 수 없는 전기 본문에 실린다.
+   * ⭐ **offset 은 브라우저가 아니라 공장 시간대다**(omf-all-around#364). 칸의 글자는 공장 시각이라
+   * 브라우저 offset(한국 +09:00)을 붙이면 같은 글자가 **2시간 이른 순간**을 가리킨다 — 실제로
+   * `…T11:53:00+09:00` 이 나가 공장 09:53 으로 기록됐다.
    */
-  it('UTC 동쪽이면 `+`, 서쪽이면 `-`가 붙는다', () => {
-    const offset = vi.spyOn(Date.prototype, 'getTimezoneOffset');
-
-    offset.mockReturnValue(-540);
-    expect(toPostRequest(draft(), NOW)?.occurredAt.endsWith('+09:00')).toBe(true);
-
-    offset.mockReturnValue(300);
-    expect(toPostRequest(draft(), NOW)?.occurredAt.endsWith('-05:00')).toBe(true);
+  it('브라우저가 한국(+09:00)이어도 11:53 은 `+07:00` 으로 나간다', () => {
+    const originalTz = process.env.TZ;
+    process.env.TZ = 'Asia/Seoul';
+    try {
+      expect(new Date('2026-11-27T00:00:00Z').getTimezoneOffset()).toBe(-540);
+      expect(
+        toPostRequest(draft({ businessDate: '2026-11-27', occurredAtLocal: '2026-11-27T11:53' }))
+          ?.occurredAt,
+      ).toBe('2026-11-27T11:53:00+07:00');
+    } finally {
+      if (originalTz === undefined) delete process.env.TZ;
+      else process.env.TZ = originalTz;
+    }
   });
 
-  /* 30분 단위 시간대(예: UTC+05:30)에서도 분이 살아 있어야 한다 — 시간만 쓰면 30분이 사라진다. */
-  it('30분 단위 시간대의 분을 버리지 않는다', () => {
-    vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(-330);
+  /* 브라우저 시간대가 어디든 같다 — UTC 서쪽(-05:00)·30분 단위(+05:30)에서도 공장 offset 그대로다. */
+  it.each([300, -330, 0])('브라우저 offset(%i분)과 무관하게 `+07:00` 이다', (minutes) => {
+    vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(minutes);
 
-    expect(toPostRequest(draft(), NOW)?.occurredAt.endsWith('+05:30')).toBe(true);
-  });
-
-  /* UTC 자체에서도 형식이 무너지지 않는다 — 0은 부호가 없는 값이 아니다. */
-  it('UTC에서는 +00:00이 붙는다', () => {
-    vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(0);
-
-    expect(toPostRequest(draft(), NOW)?.occurredAt.endsWith('+00:00')).toBe(true);
+    expect(toPostRequest(draft())?.occurredAt).toBe('2026-08-18T14:05:00+07:00');
   });
 
   it('초까지 친 발생 시각은 그 초를 그대로 둔다', () => {
-    expect(
-      toPostRequest(draft({ occurredAtLocal: '2026-08-18T14:05:09' }), NOW)?.occurredAt,
-    ).toMatch(/^2026-08-18T14:05:09[+-]\d{2}:\d{2}$/);
+    expect(toPostRequest(draft({ occurredAtLocal: '2026-08-18T14:05:09' }))?.occurredAt).toBe(
+      '2026-08-18T14:05:09+07:00',
+    );
   });
 
   /**
@@ -192,7 +192,6 @@ describe('toPostRequest', () => {
   it('영업일이 발생 시각의 날짜와 달라도 그대로 싣는다', () => {
     const body = toPostRequest(
       draft({ businessDate: '2026-08-17', occurredAtLocal: '2026-08-18T00:30' }),
-      NOW,
     );
 
     expect(body?.businessDate).toBe('2026-08-17');
@@ -209,7 +208,7 @@ describe('toPostRequest', () => {
     draft({ businessDate: '어제' }),
     draft({ occurredAtLocal: '14:05' }),
   ])('갖춰지지 않은 초안(%o)으로는 본문을 만들지 않는다', (invalid) => {
-    expect(toPostRequest(invalid, NOW)).toBeNull();
+    expect(toPostRequest(invalid)).toBeNull();
   });
 });
 

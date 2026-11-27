@@ -12,6 +12,7 @@ import {
   visibleRows,
   type Lineage,
   type LineageLine,
+  type LineageStage,
   type TreeView,
   type VisibleRow,
 } from './graph-rows';
@@ -38,16 +39,36 @@ export const stockPlace = (
     : `${named(warehouse.name, warehouse.code)} / ${named(location.name, location.code)}`;
 
 /**
- * 번호를 「-」「|」 경계에서만 접히게 — 경계 뒤에 접을 자리(<wbr>)를 두고 칸은 글자 중간에서 꺾지 않는다(1440 깊은 단계).
+ * 계보 단계 이름 — 공정 반제품(피처 016)은 「반제품 LOT · 공정 10」처럼 만든 공정 순번을 붙인다. 요약 칸도 같은 이름.
  */
-export const BreakableNo = ({ value }: { value: string }) => (
-  <>
-    {value.split(/(?<=[-|])/).flatMap((part, index) =>
-      /* 조각 자리가 곧 열쇠다(번호는 바뀌지 않는다). */
-      index === 0 ? [part] : [<wbr key={index} />, part],
-    )}
-  </>
-);
+export const stageNameOf = (
+  stage: LineageStage,
+  lot: { operationSeq?: number | null } | undefined,
+): string => {
+  const name = t.stages[stage];
+  const seq = lot?.operationSeq ?? null;
+
+  return stage === 'SEMI_LOT' && seq !== null ? t.stageOperation(name, seq) : name;
+};
+
+/**
+ * W/O 줄의 공정 「· 공정 30」(피처 016 · 시안 ④). 공정 순번이 없으면 `null`.
+ * 번호 줄은 한 줄 말줄임이라 번호 뒤에 붙이면 잘리므로, 단계 이름 뒤(「W/O · 공정 30」)에 붙인다 — 반제품 단계
+ * 「반제품 LOT · 공정 20」과 같은 자리.
+ */
+export const workOrderOperationOf = (line: LineageLine): string | null => {
+  const seq = line.node?.workOrder?.operationSeq ?? null;
+
+  return seq === null ? null : t.workOrderOperation(seq);
+};
+
+/** 계보 줄의 단계 칩 글 — 반제품 공정 · W/O 공정을 붙인다. */
+const stageLabelOf = (line: LineageLine): string => {
+  const name = stageNameOf(line.stage, line.node?.lot);
+  const operation = workOrderOperationOf(line);
+
+  return operation === null ? name : `${name} ${operation}`;
+};
 
 /** 들여쓰기 상한 — 이보다 깊으면 더 들이지 않고 단계 칩 앞에 깊이 수를 둔다(번호 자리를 지킨다). */
 const INDENT_CAP = 5;
@@ -282,8 +303,8 @@ export const TraceTreeTable = ({
                 {row.depth}
               </span>
             )}
-            <span className="trace-tree-stage" data-stage={line.stage} title={t.stages[line.stage]}>
-              {t.stages[line.stage]}
+            <span className="trace-tree-stage" data-stage={line.stage} title={stageLabelOf(line)}>
+              {stageLabelOf(line)}
             </span>
           </span>
           {isLot ? (
@@ -293,11 +314,11 @@ export const TraceTreeTable = ({
               title={t.openLot(number)}
               onClick={() => onOpenLot(number)}
             >
-              <BreakableNo value={number} />
+              {number}
             </button>
           ) : (
             <span className="trace-tree-no mono-cell" title={number}>
-              {line.node?.warehouse === undefined ? <BreakableNo value={number} /> : number}
+              {number}
             </span>
           )}
           {line.mark === 'duplicate' && (

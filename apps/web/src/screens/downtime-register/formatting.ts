@@ -6,14 +6,17 @@
 
 import { messages } from '@omf-mes/i18n';
 
-const pad = (value: number, length: number): string => String(value).padStart(length, '0');
+import { toPlantDateTimeParts } from '../../patterns/plant-time';
 
-/** 계약이 준 시각 글자를 `HH:MM`으로. 읽을 수 없으면 `null`이다 — 깨진 글자를 시각인 척 보이지 않는다. */
+/**
+ * 계약이 준 시각 글자를 `HH:MM`(**공장 시각**)으로. 읽을 수 없으면 `null`이다 — 깨진 글자를
+ * 시각인 척 보이지 않는다. 칸·저장과 같은 공장 시각이어야 한국 PC 에서도 본 값과 맞다(#364).
+ */
 export const toClockLabel = (isoText: string): string | null => {
   const at = new Date(isoText);
   if (Number.isNaN(at.getTime())) return null;
 
-  return `${pad(at.getHours(), 2)}:${pad(at.getMinutes(), 2)}`;
+  return toPlantDateTimeParts(at.toISOString())?.time ?? null;
 };
 
 /**

@@ -20,7 +20,7 @@
  * 나가는 번들이라는 점에서 이전보다 낫다.
  *
  * ⛔ **탭 제목을 코드에서 맞추지 않는다.** 셸마다 진입 문서가 따로이므로 제목도 그 문서가
- * 갖는다 — `pop.html`이 「OMF-MES POP」, 관리웹 `index.html`이 「OMF-MES 관리웹」,
+ * 갖는다 — `pop.html`이 「OMF-MES POP」, 관리웹 `index.html`이 「SAMJINLND VINA MES 관리웹」,
  * 모바일 `apps/mobile/index.html`이 「OMF-MES 모바일」이다. 주소로 제목을 가르던 장치
  * (`app/document-title.ts`)는 「한 번들에 셸이 둘」인 동안만 필요했고, #752 로 사라졌다.
  */

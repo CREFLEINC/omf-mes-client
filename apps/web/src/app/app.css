@@ -58,11 +58,18 @@
  * .nav-search-empty 검색에 맞는 화면이 없다는 안내
  * .topbar-brand   탑바의 시스템 이름 줄 — 이름과 버전 뱃지를 한 줄에 놓는다
  * .topbar-version 그 줄의 버전 뱃지
+ * .login-locale  로그인 화면 오른쪽 위의 언어 칸 줄
+ * .login-stack   그 화면의 카드와 버전 글자 — 남는 높이 한가운데 선다(규범 8)
  * .login-card    그 화면이 세우는 카드의 폭 상한(규범 8)
- * .login-title   카드 머리에 놓는 표제 — 디자인 시스템의 머리 서식을 그대로 물려받는다(규범 8)
- * .login-head    그 카드 머리 — 표제와 언어 칸을 한 줄에 놓는다(규범 8)
+ * .login-head    그 카드 머리 — 제품 이름 줄과 표제를 위아래로 쌓는다(규범 8)
+ * .login-brand   카드 머리의 제품 이름 줄 — 이름은 굵게, 「관리웹」은 옅게
+ * .login-title   카드 머리에 놓는 표제(규범 8)
+ * .login-body    그 카드 본문의 안쪽 여백
  * .login-fields  카드 안 입력 칸 사이 간격(규범 8)
+ * .login-password 비밀번호 칸 위에 눈 단추를 겹쳐 두는 자리
+ * .login-caps    Caps Lock 이 켜진 동안 비밀번호 칸 아래 서는 안내
  * .login-actions 카드 안 액션 줄 — 하나뿐인 액션이 줄 전체를 채운다(규범 8)
+ * .login-version 카드 아래 버전 글자
  *
  * .pop-shell     POP(현장 단말) 화면의 본문 — 셸 밖에 서서 뷰포트를 그대로 쓴다
  * .pop-header    그 화면의 표제 줄
@@ -269,17 +276,6 @@ main > * + * {
 }
 
 /*
- * 검사 기준 검색 칸 — 흐린 안내(「기준 코드 또는 기준명을 입력하세요」)가 잘리지 않는 폭을 기본으로 하고,
- * 창이 좁으면 그만큼 줄어든다(사용자 지시 2026-10-27 · #196).
- */
-.inspection-standard-search:not(.defect-cause-search, .routing-search)
-  > .filter-bar:first-child
-  > :nth-child(2) {
-  flex: 0 1 19.5em;
-  min-width: 12rem;
-}
-
-/*
  * 검사 유형 칸 — 창 폭에 맞춰 늘고 준다(사용자 지시 · #208). 「IQC (수입검사)」가 잘리지 않는 10rem 아래로는 줄지 않고,
  * 남는 폭이 있으면 13rem 까지 넓어진다. 선택지 목록이 트리거 폭을 따르므로(design-system-v2-webui#62) 하한을 둔다.
  */
@@ -300,15 +296,6 @@ main > * + * {
 
 .inspection-standard-status-filter > :not(label) {
   width: 100%;
-}
-
-/* 검사 기준 탭 조회 줄만(같은 카드 클래스를 쓰는 품질 코드 관리 조회 줄에는 걸지 않는다 — 단추 묶음이 4번째라 눌려 삐져나왔다). */
-/* 품목 칸은 고른 품목 이름 길이로 늘지 않는다 — 늘면 조회 · 초기화가 아랫줄로 밀린다(#208). 전체 이름은 title 로 본다. */
-.inspection-standard-search:not(.defect-cause-search, .routing-search)
-  > .filter-bar:first-child
-  > :nth-child(3) {
-  flex: 0 1 11.5em;
-  min-width: 10rem;
 }
 
 /*
@@ -1082,6 +1069,53 @@ tr[class*='_emptyCell'] > td > div:not(.dash-empty):has(> p:first-child)::before
   white-space: nowrap;
 }
 
+/*
+ * 검사 항목 표의 「항목」 칸은 왼쪽 정렬(사용자 지시 2026-11-27) — 머리글은 다른 열처럼 가운데다.
+ * 검사 표 공용 규칙이 칸 글을 가운데로 묶어(`:nth-child(n)` 세 겹) 칸 안 상자를 칸 폭만큼 펴서 왼쪽에 붙인다.
+ * 「필수」 라벨은 줄지 않고, 이름만 말줄임이다.
+ */
+.inspection-standard-item-rows .inspection-standard-item-cell {
+  display: flex;
+  width: 100%;
+}
+
+.inspection-standard-item-rows
+  .inspection-standard-item-cell
+  > :not(.inspection-standard-item-name) {
+  flex-shrink: 0;
+}
+
+/*
+ * 잘린 글 힌트(`patterns/cut-hint.tsx`) — 표 넘침에 잘리지 않게 화면 고정 자리에 뜬다. 모양은 사유 말풍선(`.reason-help-bubble`)과
+ * 같은 바탕 · 테두리 · 작은 본문 글자. 긴 글은 줄을 바꿔 다 보이고, 커서를 막지 않는다.
+ */
+/* 잘린 글 힌트를 거는 한 줄 글 — 칸 폭만큼 펴서 말줄임이 이 상자에 걸려야 잘렸는지 잴 수 있다(줄 안 글은 폭이 0 으로 잰다). */
+.cut-hint-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cut-hint-bubble {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  width: max-content;
+  max-width: 32rem;
+  padding: var(--space-1) var(--space-2);
+  overflow-wrap: anywhere;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface);
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--elevation-2);
+  pointer-events: none;
+}
+
 /* 구획 제목 + 칩(「검사 항목 (N)」 · 「읽기 전용」). */
 .inspection-standard-section-title {
   display: inline-flex;
@@ -1134,7 +1168,7 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /*
- * 순서 이동 열(디자인 시스템이 그린다)은 화살표 둘만큼 — 폭이 없으면 「목표·범위」와 남는 폭을 나눠 가져
+ * 순서 이동 열(디자인 시스템이 그린다)은 화살표 둘만큼 — 폭이 없으면 「항목」과 남는 폭을 나눠 가져
  * 오른쪽에 빈 칸이 생긴다(사용자 지적 · #196). 폭 숫자는 `item-pane.tsx` REORDER_COLUMN_WIDTH 와 같다.
  */
 .inspection-standard-item-rows.is-reorderable col:last-child {
@@ -1143,6 +1177,19 @@ h2:has(> .inspection-standard-dialog-title) {
 
 .inspection-standard-item-rows.is-reorderable tr > :last-child {
   text-align: center;
+}
+
+/*
+ * 「항목」 열(남는 폭을 맡는 열)이 지킬 폭 — 칸이 좁으면 값 칸 폭의 합이 칸을 넘어 이 열이 0 으로 사라졌다(2026-11-27 확인).
+ * 「필수」 라벨 + 「DIM-02 · 치수 ①79.22±0.1」 정도가 다 보이는 폭을 남기고, 그보다 좁으면 표 안에서 옆으로 구른다.
+ * 순서 이동 열(96px · DS)은 열 폭 합(`--col-fixed`)에 들지 않아 따로 더한다. 검사 표 공용 규칙(최소 폭 0)보다 무겁게 클래스를 겹친다.
+ */
+.inspection-queue-table.inspection-standard-item-rows table {
+  min-width: max(var(--col-floor, 0px), var(--col-fixed, 0px) + 280px);
+}
+
+.inspection-queue-table.inspection-standard-item-rows.is-reorderable table {
+  min-width: max(var(--col-floor, 0px) + 96px, var(--col-fixed, 0px) + 376px);
 }
 
 /* 버전 비교 창(#196) — 버전 고르기 두 칸, 설정 표, 검사 항목 표를 위아래로. */
@@ -1334,6 +1381,12 @@ h2:has(> .inspection-standard-dialog-title) {
   min-width: 0;
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-lg);
+}
+
+/* 검사 항목 칸은 테두리 없이(사용자 지시 2026-11-27) — 버전 카드 · 칸 카드 · 표 상자로 선이 세 겹이었다. 안쪽 여백은 그대로 두어 제목 · 표가 버전 설정 값과 같은 줄에 선다. */
+.inspection-standard-setting-row.is-plain {
+  border: 0;
+  border-radius: 0;
 }
 
 /*
@@ -1755,6 +1808,16 @@ h2:has(> .inspection-standard-dialog-title) {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+}
+
+/*
+ * 품목명 열(남는 폭을 맡는 열)이 지킬 폭 — 좌우 배치처럼 칸이 좁으면 다른 열 폭의 합이 칸을 넘어 이 열이 0 으로
+ * 사라졌다(2026-11-27 확인). 종전 품목명 폭(200px)만큼 남기고, 그보다 좁으면 표 안에서 옆으로 구른다.
+ * 끌어 넓힌 폭(`--col-floor`)이 더 크면 그것을 따른다.
+ * 검사 표 공용 규칙(`.inspection-queue-table table` · 최소 폭 0)이 뒤에 있어 클래스를 겹쳐 무게를 올린다.
+ */
+.inspection-queue-table.inspection-standard-plan-rows table {
+  min-width: max(var(--col-floor, 0px), var(--col-fixed, 0px) + 200px);
 }
 
 .inspection-standard-plan-rows thead th {
@@ -3274,6 +3337,20 @@ dialog.routing-history-dialog {
 }
 
 .production-plan-confirm-body > p {
+  margin: 0;
+}
+
+/*
+ * 생산계획 확정 확인(확인 팝업 시안 · #360) — 사실 상자(여러 건이면 상자 + 표 · `.info-facts` · `.info-table`),
+ * 생길 작업지시 문장, 파란 안내.
+ */
+.plan-confirm-body {
+  display: grid;
+  gap: var(--space-3);
+  text-align: start;
+}
+
+.plan-confirm-body > p {
   margin: 0;
 }
 
@@ -12183,24 +12260,6 @@ a.erp-send-chips:focus-visible {
   row-gap: var(--space-3);
 }
 
-/*
- * 바닥글을 한 줄로 — 위에 구분선, 변경 이력 사유는 단추 옆(아래로 떨어지면 폼 칸의 안내처럼 읽혔다).
- * 사유 글이 길어 좁은 폭에서는 단추 아래로 접힌다.
- */
-.warehouse-location-form-actions {
-  align-items: center;
-  margin-top: var(--space-4);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--outline-variant);
-}
-
-.warehouse-location-form-actions .form-actions-secondary {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-}
-
 /* Location 표의 보기(전체 계층 · 적치 위치만) — 이름과 단추를 한 줄에. */
 .warehouse-location-view {
   display: flex;
@@ -12446,8 +12505,8 @@ a.erp-send-chips:focus-visible {
  *
  * 상한을 칸 열에만 주면 액션 줄(.form-actions는 폭 상한이 없는 우측 정렬 행이다)이 칸 열과
  * 갈라져, 넓은 창에서 칸은 왼쪽 24rem에 서고 취소·변경은 화면 오른쪽 끝으로 달아난다.
- * 값 24rem은 .login-card와 같다 — 같은 값을 치는 칸이라 폭이 갈릴 이유가 없고, 가려진 글자는
- * 줄이 길어져도 읽을 것이 없다.
+ * 값 24rem은 로그인 카드의 칸 폭(344px)과 비슷한 값이다 — 같은 값을 치는 칸이라 폭이 크게 갈릴
+ * 이유가 없고, 가려진 글자는 줄이 길어져도 읽을 것이 없다.
  */
 .password-form {
   max-width: 24rem;
@@ -12501,47 +12560,87 @@ a.erp-send-chips:focus-visible {
  *
  * 높이 기준을 100%로 두는 것은 html·body·#root가 이미 height: 100%인 사슬을 쓰기 위해서다.
  * 같은 파일에 선 사슬을 두고 다른 기준(100dvh)을 들이면 둘이 어긋날 때 정본을 가릴 수 없다.
+ *
+ * 바탕은 카드보다 한 단 어두운 표면이다(2026-11-27 시안 A) — 카드와 바탕이 같은 계열의 회색이면
+ * 카드가 바탕에 묻힌다. 맨 위에 언어 칸 줄, 남는 높이 한가운데에 카드가 선다.
  */
 .login-shell {
   box-sizing: border-box;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   min-height: 100%;
+  background: var(--surface-container-low);
+}
+
+/* 화면 오른쪽 위의 언어 칸 — 카드보다 먼저 만나는 자리다(#1126). */
+.login-locale {
+  display: flex;
+  justify-content: flex-end;
 }
 
 /*
- * 24rem(384px) = 내용 폭 하한 344px + DS CardBody의 좌우 안쪽 여백(--space-5 × 2 = 40px).
+ * 카드와 그 아래 버전 글자를 남는 높이 한가운데 세운다. 아래 여백은 위 언어 줄을 덜어 내는 몫이다 —
+ * 그만큼 주지 않으면 카드가 눈으로 보기에 가운데보다 아래에 선다.
+ */
+.login-stack {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+  padding-bottom: var(--space-9);
+}
+
+/*
+ * 26.5rem(424px) = 내용 폭 하한 344px + 카드 좌우 안쪽 여백 --space-8 × 2(80px).
  * 창이 좁으면 width: 100%가 남는 폭을 그대로 쓴다 — 상한은 넓을 때만 발동한다.
  */
 .login-card {
   width: 100%;
-  max-width: 24rem;
+  max-width: 26.5rem;
 }
 
 /*
- * 카드 머리 — 표제와 언어 칸이 한 줄에 선다(#1126).
+ * 카드 머리 — 제품 이름 줄과 표제를 위아래로 쌓는다.
  *
- * 안쪽 여백·서식은 디자인 시스템의 카드 머리가 소유한다. 이 규칙이 더하는 것은 **한 줄 배치**
- * 뿐이다.
- *
- * ⚠ **줄바꿈을 막지 않는다.** 카드 폭이 24rem 이고 표제와 언어 이름은 언어에 따라 길이가
- * 바뀐다 — 한 줄에 묶어 두면 좁을 때 서로를 눌러 **글자가 잘린다.** 넘치면 언어 칸이 아래로
- * 내려가는 편이 읽을 수 있다.
+ * 안쪽 여백은 디자인 시스템 기본(--space-5)보다 넓게 준다. 칸이 둘뿐인 카드라 여백이 좁으면
+ * 빽빽해 보인다. 선택자를 두 겹으로 두는 것은 DS 의 해시 클래스를 겨냥하지 않고, 스타일시트
+ * 순서에도 기대지 않으려는 것이다.
  */
-.login-head {
+.login-card .login-head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-8) 0;
 }
 
-/* 카드 머리의 서식은 디자인 시스템이 소유한다 — 표제는 그것을 물려받고 브라우저 기본 여백만 턴다. */
+.login-card .login-body {
+  padding: var(--space-6) var(--space-8) var(--space-8);
+}
+
+/* 제품 이름 — 이름은 굵게, 뒤의 「관리웹」은 옅게. */
+.login-brand {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  color: var(--on-surface);
+}
+
+.login-brand > strong {
+  font-weight: 700;
+}
+
+.login-brand-app {
+  color: var(--on-surface-muted);
+}
+
+/* 표제 — 셸이 없어 이 화면의 유일한 제목이라 카드 머리 기본 서식보다 한 단 크게 둔다. */
 .login-title {
   margin: 0;
-  font: inherit;
-  letter-spacing: inherit;
+  font: var(--type-headline-sm);
+  letter-spacing: var(--type-headline-sm-tracking);
+  color: var(--on-surface);
 }
 
 /* 한 블록 안의 칸 사이 간격이라 .form-grid의 gap과 같은 값이다(규범 1의 --space-5는 블록 사이다). */
@@ -12551,17 +12650,51 @@ a.erp-send-chips:focus-visible {
 }
 
 /*
+ * 비밀번호 칸 위에 겹치는 눈 단추 — 사용자 추가 창(.users-roles-password-field)과 같은 짜임이다.
+ * 칸 높이 48px(lg) 안에 40px 단추를 위아래 4px 띄워 세우고, 친 글자가 단추 밑으로 들어가지 않게
+ * 칸 오른쪽 안쪽 여백을 늘린다.
+ */
+.login-password {
+  position: relative;
+}
+
+.login-password > button {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+}
+
+.login-password input.login-password-input {
+  padding-right: var(--space-7);
+}
+
+/* Caps Lock 안내 — 오류가 아니라 주의라 경고 계열 글자색을 쓴다. */
+.login-caps {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--on-semantic-warning-container);
+}
+
+/*
  * 액션 줄 — .form-actions(우측 정렬)를 쓰지 않는 자리다. 카드가 좁고 액션이 하나뿐이라
- * 오른쪽 끝에 붙이면 왼쪽에 아무것도 없는 빈 줄이 남는다. 이음매 값은 .form-actions와 같다.
+ * 오른쪽 끝에 붙이면 왼쪽에 아무것도 없는 빈 줄이 남는다.
  *
  * 폭은 button **요소**에 준다 — 디자인 시스템의 해시 클래스 이름을 겨냥하지 않는다(.wide-table과 같은 판단).
  */
 .login-actions {
-  margin-top: var(--space-5);
+  margin-top: var(--space-6);
 }
 
 .login-actions > button {
   width: 100%;
+}
+
+/* 카드 아래 버전 — 문의·장애 보고 때 읽는 값이라 작게만 둔다. */
+.login-version {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
 }
 
 /*
@@ -19539,6 +19672,14 @@ dialog.terminal-map-wizard:has(.terminal-map-matrix) {
   box-shadow: var(--elevation-2);
 }
 
+/*
+ * 판 안 선택 칸의 목록은 `body` 에 z-index 20 으로 그려져 판(40) 밑에 깔린다 — 선택지가 판에 가려 고를 수 없었다
+ * (상단 바 언어 선택 · 사용자 2026-11-27). 판 안의 칸이 펼친 목록은 판 위로 올린다.
+ */
+body:has(.popover-panel [role='combobox'][aria-expanded='true']) [role='listbox'] {
+  z-index: 41;
+}
+
 /* 상단 바 이름 메뉴 — 이름을 누르면 비밀번호 변경 · 언어 · 로그아웃이 아래로 펼친다. */
 .session-menu > .popover-trigger {
   height: 32px;
@@ -23983,6 +24124,11 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   gap: var(--space-3);
 }
 
+/* 생산 라인 선택 팝업 — 라인 이름이 길어 넓게(사용자 지시 · #360). */
+dialog.reference-picker-wide {
+  --dialog-max-lg: 60rem;
+}
+
 .reference-picker-search {
   display: flex;
   align-items: flex-start;
@@ -24058,6 +24204,12 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 .filter-bar.erp-wo-filter-bar > .filter-field-md {
   flex: 1 1 200px;
   max-width: 240px;
+}
+
+/* 번호 검색 — 흐린 글자 「ERP W/O 번호를 입력하세요」가 다 보이는 폭(#360). */
+.filter-bar.erp-wo-filter-bar > .filter-field-md.erp-wo-filter-q {
+  flex-basis: 16.5rem;
+  max-width: 16.5rem;
 }
 
 /* 접힌 칸과 접힌 조건 칩은 조건 줄과 같은 간격으로 그 아래에 놓인다. */
@@ -24390,6 +24542,24 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 
 .erp-wo-table .ellipsis-cell {
   max-width: 8rem;
+}
+
+/*
+ * 품목 코드 · 품목명(사용자 지시 2026-11-27) — 칸 폭을 넘으면 `FitLine` 이 글자를 줄여 한 줄에 다 보인다.
+ * 폭을 정해 두어야 긴 이름이 표를 밀지 않고 줄어든다.
+ */
+.erp-wo-table .erp-wo-item-code,
+.erp-wo-table .erp-wo-item-name {
+  display: block;
+}
+
+.erp-wo-table .erp-wo-item-code {
+  max-width: 9rem;
+}
+
+/* 품목명은 창이 넓을수록 넓게 — 나머지 칸 · 옆 메뉴 폭(78rem)을 뺀 만큼이라 1440px 부터 표가 가로로 밀리지 않는다. */
+.erp-wo-table .erp-wo-item-name {
+  max-width: clamp(9rem, 100vw - 78rem, 22rem);
 }
 
 .erp-wo-table th,
@@ -30705,51 +30875,6 @@ dialog.layout-editor-dialog .layout-editor-body {
   min-height: 28px;
 }
 
-.warehouse-info .warehouse-location-form-actions {
-  margin-top: var(--space-1);
-  padding-top: var(--space-3);
-}
-
-/* 창고 추가 — 머리 · 세 칸씩 두 줄(공장 · 코드 · 창고명 / 사업부 · 유형 · 불량 창고). */
-.warehouse-info-create-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.warehouse-info-create-title {
-  margin: 0;
-  font: inherit;
-  font-weight: 700;
-}
-
-.warehouse-info-create-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.warehouse-info-create-flags {
-  display: flex;
-  align-items: flex-end;
-  padding-bottom: var(--space-2);
-  white-space: nowrap;
-}
-
-/*
- * 창고 추가의 창고 위치 코드(omf-all-around#292) — 이름 줄 · 칸과 [다시 만들기] 한 줄 · 위치 코드 예. 칸 아래 도움말 · 오류가
- * 붙어도 단추가 칸 높이에 머물게 위로 맞춘다.
- */
-.warehouse-info-prefix {
-  max-width: 32rem;
-}
-
-.warehouse-info-prefix .warehouse-location-field-row {
-  align-items: flex-start;
-}
-
-.warehouse-info-prefix .warehouse-location-field-row > button {
-  flex: none;
-}
-
 /*
  * 오른쪽 창 맨 위 창고 머리(안 B, 사용자 결정 2026-11-24) — 머리 줄 · [창고 정보] 단추, 그 밑에 공장 · 사업부 · 창고 위치
  * 코드(잠김). 밑에 Location 표가 이어진다.
@@ -36773,6 +36898,19 @@ body:has(
   min-width: 0;
 }
 
+/*
+ * LOT 유형 칸 — 칸은 제 글자 폭(위 규칙)인데 펼친 목록은 칸과 같은 폭이라(사용자 2026-10-30), 고른 값이 「전체」면 세 글자
+ * 「반제품」(피처 016, vi 「Bán thành phẩm」)이 목록에서 「반…」으로 잘렸다(실제 앱 확인 2026-11-26). 가장 긴 선택지가 체크
+ * 자리 · 여백과 함께 들어가는 폭을 최소로 둔다. vi 는 선택지 이름이 길어 따로.
+ */
+.lot-status-search .filter-bar > .lot-status-filter-lot-type:nth-child(n) {
+  min-width: 7.5rem;
+}
+
+:root:lang(vi) .lot-status-search .filter-bar > .lot-status-filter-lot-type:nth-child(n) {
+  min-width: 11.5rem;
+}
+
 /* LOT 스캔 칸 — 앞에 돋보기가 붙어 검사 조회·판정(17.5rem)보다 그만큼 넓혀야 안내 글이 다 보인다. */
 .lot-status-search .filter-bar > .lot-status-filter-lot-no:nth-child(n) {
   flex: 0 1 19rem;
@@ -37540,9 +37678,10 @@ body:has(
   padding: 0;
   border: 0;
 }
+/* 한 단계 넓게(사용자 지시 · #360) — 36rem → DS 큰 창(lg 720px = 45rem). */
 .erp-wo-plan-add-dialog {
-  width: min(36rem, calc(100vw - 2rem));
-  max-width: 36rem;
+  width: min(45rem, calc(100vw - 2rem));
+  max-width: 45rem;
 }
 .erp-wo-plan-add-form > .field-cell {
   display: grid;
@@ -37576,23 +37715,27 @@ body:has(
   text-align: left;
   justify-content: flex-start;
 }
-.erp-wo-plan-add-summary {
+/* W/O 선택칸 + 오른쪽 「추가 편성 가능」 정보 상자(`.info-facts`) 한 줄 — 좁으면 상자가 다음 줄로. */
+.erp-wo-plan-add-target {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3) var(--space-5);
-  margin: 0;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
 }
-.erp-wo-plan-add-summary > div {
+/* 계획일 · 수량 칸은 입력칸 아래선을 맞춘다 — 라벨 모양이 달라 윗선이 어긋나지 않게(#360). */
+.erp-wo-plan-add-fields {
+  align-items: end;
+}
+.erp-wo-plan-add-target > .field-cell {
   display: grid;
-  gap: var(--space-1);
+  grid-template-columns: minmax(0, 1fr);
+  flex: 1 1 20rem;
+  min-width: 0;
 }
-.erp-wo-plan-add-summary dt {
-  color: var(--on-surface-muted);
-  font: var(--type-label-sm);
-}
-.erp-wo-plan-add-summary dd {
+.erp-wo-plan-add-target > .info-facts.erp-wo-plan-add-summary {
+  flex: 0 0 auto;
   margin: 0;
-  font-variant-numeric: tabular-nums;
+  padding-block: var(--space-2);
 }
 @media (max-width: 32rem) {
   .erp-wo-plan-add-fields {
@@ -37619,6 +37762,28 @@ body:has(
 
 .erp-wo-plan-add-fields {
   grid-template-columns: 12rem minmax(0, 1fr);
+}
+/* 계획일 · 추가할 계획 수량 · 생산 라인을 한 행에(사용자 지시 · #360). */
+.erp-wo-plan-add-form .erp-wo-plan-add-fields {
+  grid-template-columns: 12rem 12rem minmax(0, 1fr);
+}
+.erp-wo-plan-add-form .erp-wo-plan-add-fields > .erp-wo-plan-add-line {
+  grid-column: auto;
+}
+/* 계획을 추가할 ERP W/O 는 한 줄 — 넘치면 말줄임, 전체 이름은 펼친 목록에서(사용자 지시 · #360). */
+.erp-wo-plan-add-dialog
+  .erp-wo-plan-add-form
+  .erp-wo-plan-add-target
+  [role='combobox']
+  > span:not([aria-hidden='true']) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 42rem) {
+  .erp-wo-plan-add-form .erp-wo-plan-add-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .erp-wo-plan-add-fields > [data-disabled],
 .erp-wo-plan-add-fields > [class*='_field_'] {
@@ -38359,8 +38524,12 @@ body:has(
 .erp-wo-order-overview dl > div:last-child {
   border-bottom: 1px solid var(--outline-variant);
 }
+/* 품목 코드 · 품목명은 제목 바로 아래 첫 줄에 좌우로 나란히 놓는다(사용자 지시 2026-11-27). ERP W/O 등 나머지는 그 아래 줄. */
+.erp-wo-order-overview .is-item-code {
+  order: -2;
+}
 .erp-wo-order-overview .is-item-name {
-  grid-column: 1/-1;
+  order: -1;
 }
 .erp-wo-plan-totals {
   display: grid;
@@ -38699,6 +38868,25 @@ body:has(
   border-radius: var(--radius-sm);
 }
 
+/* 조건 한 행 — 분배 기간 · 생산 라인 · 분배 방식(좁게) · 분배 수량 · 휴일 포함 · 삭제(#360). */
+.erp-wo-distribution-dialog .erp-wo-distribution-segment .erp-wo-segment-fields {
+  grid-template-columns:
+    minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(0, 10rem) minmax(0, 1fr)
+    auto;
+}
+.erp-wo-distribution-dialog .erp-wo-segment-fields > .erp-wo-segment-tail {
+  display: flex;
+  align-items: center;
+  align-self: end;
+  gap: var(--space-2);
+  min-height: var(--control-height-md);
+}
+@media (max-width: 1000px) {
+  .erp-wo-distribution-dialog .erp-wo-distribution-segment .erp-wo-segment-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .erp-wo-distribution-holiday-option {
   display: inline-flex;
   align-items: center;
@@ -38849,6 +39037,70 @@ body:has(
   margin: var(--space-2) 0 0;
   color: var(--on-surface-variant);
   font: var(--type-body-sm);
+}
+/* 자동 분배 팝업 정리(#360) — 단건 요약 상자 + 수량 한 줄, 조건은 카드 하나씩, 다건 선택 행 강조. */
+.erp-wo-distribution-single-summary {
+  display: grid;
+  gap: var(--space-2);
+}
+.erp-wo-distribution-qty-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+.erp-wo-distribution-qty-line strong {
+  color: var(--on-surface);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-heading .section-title > .field-note {
+  display: inline;
+  margin: 0 0 0 var(--space-2);
+}
+.erp-wo-distribution-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-heading-actions > button {
+  min-width: 0;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-focused-order {
+  padding-top: 0;
+  border-top: 0;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-segments {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-segment {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-lowest, var(--surface));
+}
+.erp-wo-distribution-dialog .erp-wo-segment-fields .erp-wo-distribution-holiday-option {
+  justify-self: start;
+  min-height: 0;
+  margin-top: var(--space-1);
+}
+.erp-wo-distribution-dialog .erp-wo-segment-fields .erp-wo-distribution-holiday-option input {
+  flex: none;
+  width: 1rem;
+  max-width: 1rem;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-owner-table tr[data-active='true'] {
+  background: var(--surface-container-high);
+  box-shadow: inset 3px 0 var(--primary);
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-owner-table tr[data-active='true'] td {
+  font-weight: 600;
 }
 @media (max-width: 1000px) {
   .erp-wo-distribution-dialog .erp-wo-segment-fields {
@@ -41017,6 +41269,19 @@ body:has(
 }
 
 /*
+ * 검사 기준 관리 조회 줄의 품목 칸은 위 176px 의 예외다(사용자 지시 2026-11-27) — 「품목명 (품목코드)」가 잘리지 않게 넓힌다.
+ * 176px 에서 시작해 줄에 남는 폭만큼 30rem 까지 늘어난다. 처음부터 넓게 두면 좁은 창에서 조회 · 추가 단추가 아랫줄로 밀린다.
+ * 30rem 이면 품목 마스터의 95%가 다 보인다. 그보다 긴 이름만 말줄임이고, 펼친 목록에서는 끝까지 보인다.
+ * 위 규칙과 검사 화면 조회 줄 규칙(`:not(.filter-actions):nth-child(n)` · 0,5,0)보다 무거워야 한다 — 같은 무게면 뒤에 있어야 이긴다.
+ */
+.inspection-standard-search
+  > .filter-bar:first-child
+  > .field-cell.inspection-standard-item-filter {
+  flex: 1 1 176px;
+  max-width: 30rem;
+}
+
+/*
  * 상세 구획을 좁게 끌어도 구성품 표의 머리글(「필수 여부」 등) · 품목 칸이 잘리지 않게 — 표 상자에 최소 폭을 두어 열 맞춤
  * (`patterns/column-fit.tsx`)이 칸을 줄이지 않게 하고, 그보다 좁으면 구성품 구획 안에서만 가로로 구른다(사용자 지시 2026-11-24).
  */
@@ -42242,6 +42507,7 @@ body:has(
 /* 단계 칩(+ 깊이 수)을 위 작은 줄에, 번호를 그 아래 줄에 — 칩 · 들여쓰기가 번호와 한 줄에서 폭을 다투지 않게. */
 .trace-tree-cell-body {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
@@ -42259,6 +42525,8 @@ body:has(
 
 /* 단계 칩은 칸이 모자라면 말줄임(전체는 title) — 긴 베트남어 단계 이름. */
 .trace-tree-cell-head > .trace-tree-stage {
+  /* 줄어들 수 있어야 말줄임이 선다 — 그러지 않으면 칸 끝에서 표시 없이 잘린다(vi 「LOT bán thành phẩm · CĐ 20」, 016). */
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -42269,15 +42537,17 @@ body:has(
   color: var(--on-surface-variant);
 }
 
-/* 번호는 「-」「|」 경계(<wbr>)에서만 접는다 — 글자 중간에서 꺾지 않는다. */
+/*
+ * 번호는 한 줄 — 칸이 모자라면 말줄임하고 전체는 title(피처 016 실제 앱 확인 2026-11-26). 015 에는 「-」「|」 경계에서
+ * 접었으나, 반제품 단계로 깊어지면 경계 없는 34자리 LOT 번호가 표시 없이 잘리고 W/O 번호가 3~4줄로 끊겼다.
+ * 깊이는 들여쓰기 상한 + 깊이 수(INDENT_CAP)가 그대로 맡는다.
+ */
 .trace-tree-table .trace-tree-cell-body > .trace-tree-no {
   max-width: 100%;
-  overflow: visible;
-  overflow-wrap: normal;
+  overflow: hidden;
   text-align: left;
-  text-overflow: clip;
-  white-space: normal;
-  word-break: keep-all;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .trace-tree-table .trace-tree-cell-body > .trace-tree-flag {
@@ -42631,6 +42901,390 @@ main
   color: var(--on-surface-variant);
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
+}
+
+/* 정보 표시 팝업 공용 상자 · 표(patterns/info-facts.tsx · #360) */
+/*
+ * 정보 표시 팝업(입력란 없음)의 상세 정보 상자 — 팝업 디자인 시안 2026-11-27 「3. 정보 표시 팝업」(omf-all-around#360).
+ * `patterns/info-facts.tsx`. 검사 조회·판정 「검사 기본 정보」 상자(`.parts-iqc-facts` · `.parts-iqc-fact`)와 같은 모양 —
+ * 연회색 둥근 상자, 이름(위) · 값(아래) 칸이 가로로 흐르고 칸 사이 세로선. 칸 폭은 글 길이만큼, 남는 폭은 나눠 갖고,
+ * 넘치면 다음 줄. 값은 한 줄 — 길면 말줄임. 줄 첫 칸의 세로선은 상자 밖(왼쪽 -1px)으로 숨긴다.
+ */
+.info-facts {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) 0;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+  overflow: hidden;
+}
+
+.info-facts:last-child {
+  margin-bottom: 0;
+}
+
+.info-facts-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+.info-facts-row > .parts-iqc-fact {
+  flex: 1 0 auto;
+  align-content: start;
+  max-width: 100%;
+  overflow-wrap: normal;
+}
+
+.info-facts-row > .parts-iqc-fact > .field-label {
+  margin: 0;
+}
+
+.info-fact-value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow: hidden;
+  color: var(--on-surface);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.info-fact-value.is-key {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.info-fact-value .parts-iqc-fact-sub,
+.info-fact-unit {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.info-fact-value .parts-iqc-fact-sub {
+  color: var(--on-surface-variant);
+}
+
+.info-fact-unit {
+  margin-inline-start: var(--space-1);
+  color: var(--on-surface-muted);
+}
+
+.info-fact-empty {
+  color: var(--on-surface-muted);
+}
+
+/* 한 칸 값이 두 줄(예: 입하번호 + 품목) — 줄마다 한 줄, 길면 말줄임. */
+.info-fact-lines {
+  display: grid;
+  min-width: 0;
+}
+
+.info-fact-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 긴 글(비고 등) — 상자 밖 아래에 이름 + 글, 줄바꿈 그대로. */
+.info-long {
+  margin: 0 0 var(--space-4);
+}
+
+.info-long:last-child {
+  margin-bottom: 0;
+}
+
+.info-long-value {
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* 항목이 많을 때 묶음 제목 — 검정, 묶음마다 상자 하나. 표 제목도 같은 글자(시안 2026-11-27 11:51). */
+.info-group-title,
+.info-table-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  font-weight: 700;
+}
+
+.info-group-title {
+  margin-bottom: var(--space-2);
+}
+
+/*
+ * 표가 있을 때 — 상자 아래에 제목 + 회색 「N건」, 그 아래 관리웹 공용 표(`ManagedTable`). 5줄까지 보이고 넘으면 표 안에서
+ * 구른다 — 머리 줄은 고정, 팝업이 화면 밖으로 길어지지 않는다.
+ */
+.info-table-block {
+  margin: 0 0 var(--space-4);
+}
+
+.info-table-block:last-child {
+  margin-bottom: 0;
+}
+
+.info-table-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.info-table-count {
+  color: var(--on-surface-muted);
+  font: var(--type-label-lg);
+}
+
+.info-table > div:has(> table) {
+  /* 머리 줄(38px) + 촘촘한 줄(37px) 5개 + 위아래 테두리 — 여섯째 줄부터 표 안에서 구른다. */
+  max-height: calc(38px + 37px * 5 + 2px);
+  overflow: auto;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+/* 표 이름은 위 제목 줄이 보인다 — 표 안 caption 은 화면 읽기 도구에만. */
+.info-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.info-table tbody tr:last-child > td {
+  border-bottom: 0;
+}
+
+.info-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.info-table tbody tr:hover > td {
+  background: var(--surface-container-high);
+}
+
+/*
+ * 팝업 안 표 정렬 — 숫자(`align: 'end'`)는 오른쪽, 판정 · 상태 칩(`'center'`)은 가운데, 글자(표시 없음)는 왼쪽.
+ * 목록 표를 모두 가운데로 맞추는 규칙(「목록은 모두 중앙 정렬」 · 이 파일 뒤쪽)이 팝업 표에 번지지 않게 — 그 규칙보다
+ * 무겁게(클래스 겹침) 따로 둔다. 뒤에 와도 이긴다.
+ */
+dialog
+  .info-table.info-table.info-table
+  table
+  > :is(thead, tbody)
+  > tr
+  > :is(th, td):not([data-align]):not([scope='rowgroup']) {
+  text-align: left !important;
+}
+
+dialog
+  .info-table.info-table.info-table
+  table
+  > :is(thead, tbody)
+  > tr
+  > :is(th, td)[data-align='end']:not([scope='rowgroup']) {
+  text-align: right !important;
+}
+
+dialog
+  .info-table.info-table.info-table
+  table
+  > :is(thead, tbody)
+  > tr
+  > :is(th, td)[data-align='center']:not([scope='rowgroup']) {
+  text-align: center !important;
+}
+
+/*
+ * 작업계획 편성 2 생산계획 · 3 4M 배정의 입력칸 바탕(사용자 지시 2026-11-27) — DS 입력칸은 투명이라 화면 바탕과 같은 색으로
+ * 보여 입력칸으로 읽히지 않았다. 조회 묶음(`filter-field-surface`)과 같은 입력칸 바탕을 쓴다.
+ * `filter-field-surface` 를 그대로 붙이지 않는 까닭: 그 규칙은 창을 여는 단추(`aria-haspopup`)를 모두 칠해 도움말 · 선택 단추까지 바뀐다.
+ * 여기서는 글 입력 · 날짜 입력을 바로 품은 상자, 선택칸, 기간 선택칸만 칠한다. 잠긴 칸은 DS 의 흐린 바탕 그대로다.
+ * [수동 분배] · [자동 분배] · 계획 분할 창도 같다(2026-11-27) — 창은 화면 밖(body)에 그려져 창 클래스로 따로 겨눈다.
+ */
+:is(
+    .erp-wo-plan-workspace,
+    .erp-wo-multi-body,
+    .assign-editor,
+    .erp-wo-plan-add-dialog,
+    .erp-wo-distribution-dialog,
+    .erp-wo-plan-split-dialog
+  )
+  div:has(> input:not([type='checkbox'], [type='radio'], :disabled)),
+:is(
+    .erp-wo-plan-workspace,
+    .erp-wo-multi-body,
+    .assign-editor,
+    .erp-wo-plan-add-dialog,
+    .erp-wo-distribution-dialog,
+    .erp-wo-plan-split-dialog
+  )
+  [role='combobox']:not([aria-disabled='true'], :disabled),
+:is(
+    .erp-wo-plan-workspace,
+    .erp-wo-multi-body,
+    .assign-editor,
+    .erp-wo-plan-add-dialog,
+    .erp-wo-distribution-dialog,
+    .erp-wo-plan-split-dialog
+  )
+  .erp-wo-period-trigger:not(:disabled) {
+  background-color: var(--app-field-surface);
+}
+
+/* 자동 분배의 생산 라인은 펼침 선택칸(`distribution-line-picker.tsx`) — 칸 폭 전체를 쓰고, [해제]는 그 옆에 놓인다. */
+.erp-wo-distribution-line-buttons > :first-child:not(button) {
+  flex: 1;
+  min-width: 0;
+}
+.erp-wo-distribution-line-buttons [role='combobox'] {
+  width: 100%;
+}
+
+/*
+ * 자동 분배 팝업(사용자 지시 · #360)
+ * - 일괄 변경: 공통 분배 기간 · 공통 생산 라인 · 공통 휴일 편성 · [취소][적용] 한 행
+ * - 체크칸 크게
+ * - 필수인데 비어 있는 분배 기간 · 생산 라인 · 분배 수량은 빨간 테두리
+ */
+.erp-wo-distribution-dialog .erp-wo-common-conditions .erp-wo-distribution-fields {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: end;
+}
+.erp-wo-common-conditions-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: var(--control-height-md);
+}
+@media (max-width: 1000px) {
+  .erp-wo-distribution-dialog .erp-wo-common-conditions .erp-wo-distribution-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.erp-wo-distribution-dialog input[type='checkbox'] {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+}
+.erp-wo-distribution-dialog .erp-wo-required-empty [role='combobox'],
+.erp-wo-distribution-dialog .erp-wo-required-empty .erp-wo-period-trigger,
+.erp-wo-distribution-dialog .erp-wo-required-empty [class*='_inputWrap_'] {
+  border-color: var(--semantic-error);
+  box-shadow: inset 0 0 0 1px var(--semantic-error);
+}
+
+/* 자동 분배 결과 검토 표(사용자 지시 · #360) — 머리칸 · 값 가운데 정렬, 추가 수량 열 바탕 없앰, 입력칸은 좁게 가운데. */
+.erp-wo-distribution-dialog .erp-wo-distribution-result-table thead th,
+.erp-wo-distribution-dialog
+  .erp-wo-distribution-result-table
+  tbody
+  tr:not(.erp-wo-result-order, .erp-wo-result-order-notes)
+  > td {
+  text-align: center;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-result-table th.erp-wo-result-added {
+  background: var(--surface-container);
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-result-table td.erp-wo-result-added {
+  background: transparent;
+}
+.erp-wo-distribution-dialog .erp-wo-result-quantity-editor {
+  justify-content: center;
+}
+.erp-wo-distribution-dialog .erp-wo-result-quantity-editor > :first-child {
+  width: 8rem;
+  flex: none;
+}
+.erp-wo-distribution-dialog .erp-wo-result-quantity-editor input {
+  text-align: right;
+}
+
+/* 자동 분배 결과 검토 시안(사용자 지시 · #360) — 단계 「1 › 2」 + 지금 단계 밑줄, 단건 W/O 정보 회색 줄, 안내 한 줄. */
+.erp-wo-distribution-dialog .erp-wo-distribution-steps {
+  gap: var(--space-3);
+  align-items: center;
+  padding-bottom: 0;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-steps > li {
+  padding-bottom: var(--space-2);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-steps > li + li::before {
+  content: '›';
+  margin-right: var(--space-3);
+  color: var(--on-surface-variant);
+  font-weight: 400;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-steps > li[aria-current='step'] {
+  border-bottom-color: var(--primary);
+}
+.erp-wo-result-single-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+  font: var(--type-body-md);
+}
+.erp-wo-result-single-bar-facts,
+.erp-wo-result-single-bar-qty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+}
+.erp-wo-result-single-bar-facts > span,
+.erp-wo-result-single-bar-qty > span {
+  color: var(--on-surface-variant);
+}
+.erp-wo-result-single-bar-facts > strong {
+  margin-right: var(--space-4);
+}
+.erp-wo-result-single-bar-qty strong {
+  color: var(--on-surface);
+}
+.erp-wo-result-single-bar-qty > span + span {
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+}
+.erp-wo-result-single-notes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--outline-variant);
+  font: var(--type-body-sm);
+}
+.erp-wo-result-single-notes > .erp-wo-calendar-result-dates + .erp-wo-calendar-result-dates {
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--outline-variant);
 }
 
 /*

@@ -138,38 +138,22 @@ describe('toOffsetDateTime — 입력칸 값에 offset을 붙인다', () => {
    * 입력칸은 분까지만 주는데 계약은 초까지 있는 형식을 요구한다. offset이 없는 문자열을
    * 그대로 보내면 **같은 글자가 지역마다 다른 순간을 가리킨다.**
    */
-  it('초와 실행 환경 offset을 붙인다', () => {
-    const value = toOffsetDateTime('2026-08-06T09:12', NOW);
-
-    expect(value.startsWith('2026-08-06T09:12:00')).toBe(true);
-    expect(/[+-]\d{2}:\d{2}$/.test(value)).toBe(true);
+  it('초와 공장 시간대 offset(+07:00)을 붙인다', () => {
+    expect(toOffsetDateTime('2026-08-06T09:12')).toBe('2026-08-06T09:12:00+07:00');
   });
 
   it('초가 이미 있으면 덧붙이지 않는다', () => {
-    expect(toOffsetDateTime('2026-08-06T09:12:30', NOW).startsWith('2026-08-06T09:12:30')).toBe(
-      true,
-    );
+    expect(toOffsetDateTime('2026-08-06T09:12:30')).toBe('2026-08-06T09:12:30+07:00');
   });
 
   /*
-   * **실행 환경이 UTC 동쪽일 때와 서쪽일 때 부호가 갈린다.** 고정 시각만으로는 이 갈래를 잴 수
-   * 없어 시간대 자체를 갈아 끼운다 — 부호를 뒤집는 결함은 한국에서만 돌려 보면 드러나지 않는다.
+   * **칸의 글자는 공장 시각이다**(omf-all-around#364). 브라우저 시간대가 어디든 공장 offset 을
+   * 붙인다 — 브라우저 offset 을 붙이면 한국 PC 에서 같은 글자가 2시간 이른 순간이 된다.
    */
-  it('UTC 동쪽이면 `+`, 서쪽이면 `-`가 붙는다', () => {
-    const offset = vi.spyOn(Date.prototype, 'getTimezoneOffset');
+  it.each([-540, 300, -330])('브라우저 offset(%i분)과 무관하게 +07:00 이다', (minutes) => {
+    vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(minutes);
 
-    offset.mockReturnValue(-540);
-    expect(toOffsetDateTime('2026-08-06T09:12', NOW).endsWith('+09:00')).toBe(true);
-
-    offset.mockReturnValue(300);
-    expect(toOffsetDateTime('2026-08-06T09:12', NOW).endsWith('-05:00')).toBe(true);
-  });
-
-  /* 30분 단위 시간대(예: UTC+05:30)에서도 분이 살아 있어야 한다 — 시간만 쓰면 30분이 사라진다. */
-  it('30분 단위 시간대의 분을 버리지 않는다', () => {
-    vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(-330);
-
-    expect(toOffsetDateTime('2026-08-06T09:12', NOW).endsWith('+05:30')).toBe(true);
+    expect(toOffsetDateTime('2026-08-06T09:12')).toBe('2026-08-06T09:12:00+07:00');
   });
 });
 
@@ -280,11 +264,11 @@ describe('toGoodsIssueRequest — 되돌릴 수 없는 쓰기의 본문', () => 
     expect(body?.reasonCode).toBe('SAMPLE_REASON_A');
   });
 
-  /* **C46** — 출고 일시는 두 칸을 이어 offset을 붙인 값이다. */
+  /* **C46** — 출고 일시는 두 칸을 이어 공장 offset(+07:00)을 붙인 값이다 — 브라우저가 한국이어도. */
   it('출고 일시가 날짜·시각 두 칸에서 온다', () => {
     vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(-540);
 
-    expect(toGoodsIssueRequest(input())?.issuedAt).toBe('2026-08-06T09:12:00+09:00');
+    expect(toGoodsIssueRequest(input())?.issuedAt).toBe('2026-08-06T09:12:00+07:00');
   });
 
   /*

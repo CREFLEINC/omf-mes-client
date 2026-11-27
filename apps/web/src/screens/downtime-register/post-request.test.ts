@@ -20,10 +20,35 @@ const draft = (overrides: Partial<DowntimeDraft> = {}): DowntimeDraft => ({
 });
 
 describe('toOffsetDateTime', () => {
-  it('offset을 붙여 낸다 — 없으면 같은 글자가 지역마다 다른 순간이 된다', () => {
-    expect(toOffsetDateTime(new Date(2026, 7, 11, 14, 20, 0))).toMatch(
-      /^2026-08-11T14:20:00[+-]\d{2}:\d{2}$/,
-    );
+  it('공장 시각과 공장 offset(+07:00)으로 낸다 — 없으면 같은 글자가 지역마다 다른 순간이 된다', () => {
+    expect(toOffsetDateTime(new Date('2026-08-11T07:20:00Z'))).toBe('2026-08-11T14:20:00+07:00');
+  });
+
+  /* omf-all-around#364 — 한국(+09:00) 브라우저에서도 칸에 넣은 시각 그대로 +07:00 으로 나간다. */
+  it('브라우저가 한국이어도 칸의 14:20 이 `+07:00` 으로 나간다', () => {
+    const originalTz = process.env.TZ;
+    process.env.TZ = 'Asia/Seoul';
+    try {
+      const body = toDowntimeCreate(EQUIPMENT_ID, draft());
+
+      expect(body?.startedAt).toBe('2026-08-11T14:20:00+07:00');
+      expect(body?.endedAt).toBe('2026-08-11T15:07:00+07:00');
+    } finally {
+      if (originalTz === undefined) delete process.env.TZ;
+      else process.env.TZ = originalTz;
+    }
+  });
+
+  /* 공장 단말(POP)은 브라우저가 곧 공장 시간대다 — 결과가 같아야 한다. */
+  it('브라우저가 공장 시간대여도 같은 값이다', () => {
+    const originalTz = process.env.TZ;
+    process.env.TZ = 'Asia/Ho_Chi_Minh';
+    try {
+      expect(toDowntimeCreate(EQUIPMENT_ID, draft())?.startedAt).toBe('2026-08-11T14:20:00+07:00');
+    } finally {
+      if (originalTz === undefined) delete process.env.TZ;
+      else process.env.TZ = originalTz;
+    }
   });
 });
 

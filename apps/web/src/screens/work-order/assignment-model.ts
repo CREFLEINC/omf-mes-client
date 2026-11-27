@@ -14,7 +14,6 @@ const RESOURCE_FIELDS = [
   'plannedShiftId',
 ] as const;
 const LOCATION_FIELDS = [
-  'defaultWipLocationId',
   'defaultFgLocationId',
   'defaultScrapLocationId',
 ] as const;
@@ -26,7 +25,6 @@ export interface WorkOrderAssignmentDraft {
   plannedEquipmentId: string;
   plannedMoldId: string;
   plannedShiftId: string;
-  defaultWipLocationId: string;
   defaultFgLocationId: string;
   defaultScrapLocationId: string;
   plannedStartAtLocal: string;
@@ -135,7 +133,6 @@ export const workOrderAssignmentDraftFrom = (fact: WorkOrderFact): WorkOrderAssi
   plannedEquipmentId: fact.plannedEquipmentId?.toString() ?? '',
   plannedMoldId: fact.plannedMoldId?.toString() ?? '',
   plannedShiftId: fact.plannedShiftId?.toString() ?? '',
-  defaultWipLocationId: fact.defaultWipLocationId?.toString() ?? '',
   defaultFgLocationId: fact.defaultFgLocationId?.toString() ?? '',
   defaultScrapLocationId: fact.defaultScrapLocationId?.toString() ?? '',
   plannedStartAtLocal: toLocalDateTime(fact.plannedStartAt),

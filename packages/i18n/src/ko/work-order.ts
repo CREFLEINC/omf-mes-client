@@ -160,7 +160,6 @@ export const workOrder = {
       worker: '담당 작업자',
       mold: '금형',
       shift: '계획 교대',
-      defaultWipLocation: '기본 WIP 위치',
       defaultFgLocation: '기본 완제품 위치',
       defaultScrapLocation: '기본 스크랩 위치',
     },

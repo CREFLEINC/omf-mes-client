@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -39,47 +39,45 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanListPane>[0]> = {})
 };
 
 describe('PlanListPane — 목록 표시', () => {
-  it('기준코드·기준명·유형과 품목·상태·사용 열을 낸다 — 승인 열은 없다(#357)', () => {
+  /* 기준코드 · 기준명 열은 걷었다(사용자 지시 2026-11-27) — 코드 · 이름은 상세의 기준 정보에서 본다. */
+  it('유형과 품목·상태·사용 열을 낸다 — 기준코드 · 기준명 · 승인 열은 없다', () => {
     renderPane();
 
     /* 머리칸에는 열 순서를 옮기는 손잡이 아이콘 글자(drag_indicator)가 함께 있다 — 이름만 견준다. */
     const headers = screen
       .getAllByRole('columnheader')
       .map((cell) => cell.textContent?.replace('drag_indicator', ''));
-    expect(headers).toEqual([
-      '기준코드',
-      '기준명',
-      '검사 유형',
-      '품목코드',
-      '품목명',
-      '상태',
-      '사용 유무',
-    ]);
+    expect(headers).toEqual(['검사 유형', '품목코드', '품목명', '상태', '사용 유무']);
   });
 
   it('고른 기준의 행에 선택 표식이 붙는다', () => {
     renderPane({ selectedPlanId: 3002 });
 
-    expect(screen.getByRole('button', { name: 'SYN-PLAN-02' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /, 합성 검사기준 B$/ })).toHaveAttribute(
       'aria-current',
       'true',
     );
-    expect(screen.getByRole('button', { name: 'SYN-PLAN-01' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('button', { name: /, 합성 검사기준 A$/ })).not.toHaveAttribute(
+      'aria-current',
+    );
   });
 
-  it('기준코드를 누르면 그 기준 번호를 알린다', async () => {
+  /* 줄을 고르는 단추는 검사 유형 칸 — 화면 낭독기에는 기준명까지 읽힌다(기준명 열이 없다). */
+  it('검사 유형 단추를 누르면 그 기준 번호를 알린다', async () => {
     const { onSelect, user } = renderPane();
 
-    await user.click(screen.getByRole('button', { name: 'SYN-PLAN-03' }));
+    await user.click(screen.getByRole('button', { name: /, 합성 검사기준 C$/ }));
 
     expect(onSelect).toHaveBeenCalledWith(3003);
   });
 
   /* 줄 아무 곳이나 눌러도 고른다 — 검사 조회·판정 목록과 같다(omf-all-around#196). */
-  it('기준명 칸을 눌러도 그 줄의 기준을 고른다', async () => {
+  it('단추 밖의 칸(품목명)을 눌러도 그 줄의 기준을 고른다', async () => {
     const { onSelect, user } = renderPane();
 
-    await user.click(screen.getByText(inspectionPlanFixtures[1]?.inspectionPlanName ?? ''));
+    /* 머리줄 다음이 첫 줄 — 둘째 기준 줄의 셋째 칸(품목명) */
+    const row = screen.getAllByRole('row')[2]!;
+    await user.click(within(row).getAllByRole('cell')[2]!);
 
     expect(onSelect).toHaveBeenCalledWith(inspectionPlanFixtures[1]?.inspectionPlanId);
   });

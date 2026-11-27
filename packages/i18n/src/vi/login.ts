@@ -16,16 +16,18 @@ export const login: Translated<typeof ko.login> = {
   },
   actions: {
     submit: 'Đăng nhập',
+    showPassword: 'Hiện mật khẩu',
+    hidePassword: 'Ẩn mật khẩu',
+  },
+  hints: {
+    capsLock: 'Caps Lock đang bật',
   },
   actionReasons: {
-    incomplete: 'Nhập đủ tên đăng nhập và mật khẩu thì mới dùng được nút Đăng nhập.',
-    submitting: 'Đăng nhập đang chờ phản hồi. Có phản hồi rồi thì dùng lại được.',
+    submitting: 'Đang chờ phản hồi.',
   },
   banner: {
     credentialsTitle: 'Sai thông tin đăng nhập',
     credentials: 'Tên đăng nhập hoặc mật khẩu không đúng. Hãy kiểm tra lại.',
-    lockedTitle: 'Tài khoản bị khóa',
-    locked: 'Tài khoản đã bị khóa. Hãy yêu cầu quản trị viên đặt lại mật khẩu.',
     serverTitle: 'Lỗi máy chủ',
     server:
       'Máy chủ không xử lý được đăng nhập. Hãy thử lại sau, nếu vẫn vậy thì báo cho quản trị viên.',

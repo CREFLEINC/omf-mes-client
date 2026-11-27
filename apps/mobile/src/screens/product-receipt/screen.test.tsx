@@ -89,7 +89,13 @@ interface Options {
    * 생산 LOT 라벨(FG-2026-000311)을 LOT 번호로 찾을 수 있다(omf-all-around#293). 기본은 생산 완료 ·
    * 양품 480 인 생산 LOT 이다.
    */
-  scanLot?: { completed?: boolean; goodQty?: number; lotTypeCode?: string };
+  scanLot?: {
+    completed?: boolean;
+    goodQty?: number;
+    lotTypeCode?: string;
+    /** 공정 반제품(피처 016)이면 만든 공정 순번. */
+    operationSeq?: number;
+  };
   /** 두 번째 생산 LOT(8202 · FG-2026-000312)도 찾을 수 있다. */
   secondLot?: boolean;
   /** 이 LOT 들만 이미 재고로 서 있다(`alreadyStocked` 는 전부). */
@@ -226,6 +232,16 @@ const routes = (options: Options = {}): StubRoute[] => [
             ? {}
             : {
                 completedAt: scanLot.completed === false ? null : '2026-11-17T09:00:00+07:00',
+                ...(scanLot.operationSeq === undefined
+                  ? {}
+                  : {
+                      producedOperation: {
+                        workOrderId: 9001,
+                        operationSeq: scanLot.operationSeq,
+                        processCode: 'P10',
+                        processName: '가공',
+                      },
+                    }),
                 progress: {
                   goodQty: scanLot.goodQty ?? 480,
                   achievementRate: 0.96,
@@ -964,6 +980,20 @@ describe('제품 입고·적치 화면', () => {
       await scanLotLabel(user);
 
       expect(await screen.findByText(`${LOT_NO} 은(는) 제품 LOT이 아닙니다`)).toBeTruthy();
+      expect(screen.queryByLabelText(/실물 수량/)).toBeNull();
+    });
+
+    it('US1-3 · Q4 반제품 LOT 은 받지 않고 다음 공정 투입을 안내한다(피처 016)', async () => {
+      const user = userEvent.setup();
+      mount({ scanLot: { lotTypeCode: 'WIP', operationSeq: 10 } });
+      await scanLotLabel(user);
+
+      expect(await screen.findByText('반제품 LOT 은 제품 입고할 수 없습니다')).toBeTruthy();
+      expect(
+        screen.getByText(
+          `${LOT_NO} · 공정 10 반제품 — 다음 공정에서 POP 자재 투입으로 투입하세요.`,
+        ),
+      ).toBeTruthy();
       expect(screen.queryByLabelText(/실물 수량/)).toBeNull();
     });
 

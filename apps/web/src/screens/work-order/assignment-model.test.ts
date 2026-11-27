@@ -30,7 +30,6 @@ const workOrderFact = (overrides: Partial<WorkOrderFact> = {}): WorkOrderFact =>
   plannedEquipmentId: 903,
   plannedMoldId: 904,
   plannedShiftId: 905,
-  defaultWipLocationId: 906,
   defaultFgLocationId: 907,
   defaultScrapLocationId: 908,
   remarks: 'Synthetic remarks',
@@ -46,7 +45,6 @@ const validDraft = (
   plannedEquipmentId: '',
   plannedMoldId: '',
   plannedShiftId: '',
-  defaultWipLocationId: '911',
   defaultFgLocationId: '912',
   defaultScrapLocationId: '913',
   plannedStartAtLocal: '2026-08-23T09:45',
@@ -57,7 +55,7 @@ const validDraft = (
 
 describe('work-order assignment model', () => {
   it('WIP·스크랩 입력 없이 저장하며 서버 자동값을 덮어쓰지 않는다', () => {
-    const draft = validDraft({ defaultWipLocationId: '', defaultScrapLocationId: '' });
+    const draft = validDraft({ defaultScrapLocationId: '' });
     expect(isWorkOrderAssignmentSaveEnabled(draft)).toBe(true);
     const body = toWorkOrderAssignmentUpdate(draft);
     expect(body).not.toHaveProperty('defaultWipLocationId');
@@ -71,7 +69,6 @@ describe('work-order assignment model', () => {
       plannedEquipmentId: '903',
       plannedMoldId: '904',
       plannedShiftId: '905',
-      defaultWipLocationId: '906',
       defaultFgLocationId: '907',
       defaultScrapLocationId: '908',
       plannedStartAtLocal: '2026-08-23T09:45',
@@ -86,7 +83,6 @@ describe('work-order assignment model', () => {
           plannedEquipmentId: null,
           plannedMoldId: null,
           plannedShiftId: null,
-          defaultWipLocationId: null,
           defaultFgLocationId: null,
           defaultScrapLocationId: null,
           plannedStartAt: null,
@@ -100,7 +96,6 @@ describe('work-order assignment model', () => {
       plannedEquipmentId: '',
       plannedMoldId: '',
       plannedShiftId: '',
-      defaultWipLocationId: '',
       defaultFgLocationId: '',
       defaultScrapLocationId: '',
       plannedStartAtLocal: '',
@@ -117,7 +112,6 @@ describe('work-order assignment model', () => {
         plannedEquipmentId: '\t',
         plannedMoldId: '',
         plannedShiftId: '',
-        defaultWipLocationId: '',
         defaultFgLocationId: '',
         defaultScrapLocationId: '',
         plannedStartAtLocal: '',
@@ -162,7 +156,6 @@ describe('work-order assignment model', () => {
     'plannedEquipmentId',
     'plannedMoldId',
     'plannedShiftId',
-    'defaultWipLocationId',
     'defaultFgLocationId',
     'defaultScrapLocationId',
   ] as const)(
@@ -291,7 +284,6 @@ describe('work-order assignment model', () => {
           plannedEquipmentId: '903',
           plannedMoldId: '904',
           plannedShiftId: '905',
-          defaultWipLocationId: ' 906 ',
           defaultFgLocationId: '907',
           defaultScrapLocationId: '908',
           priorityNo: ' 7 ',

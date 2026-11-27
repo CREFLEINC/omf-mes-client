@@ -156,7 +156,6 @@ import { toolUsage } from './tool-usage';
 import { usersRoles } from './users-roles';
 import { warehouseLayout } from './warehouse-layout';
 import { warehouseLocation } from './warehouse-location';
-import { wipHandover } from './wip-handover';
 import { workCalendar } from './work-calendar';
 import { workHoldRegister } from './work-hold-register';
 import { workOrder } from './work-order';
@@ -325,7 +324,6 @@ export const vi: Translated<Messages> = {
   usersRoles,
   warehouseLayout,
   warehouseLocation,
-  wipHandover,
   workCalendar,
   workerAssignment,
   workHoldRegister,

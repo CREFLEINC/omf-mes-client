@@ -1179,7 +1179,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                             : !editable && !enough
                               ? planView === 'grid'
                                 ? ''
-                                : '계획 추가 또는 자동 분배로 편성하세요.'
+                                : '수동 분배 또는 자동 분배로 편성하세요.'
                               : !confirmInputComplete && editable
                                 ? '계획일, 생산 라인, 생산량, 개정을 확인하세요.'
                                 : enough && !editable
@@ -1275,18 +1275,16 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
       )}
       {confirm && (
         <PlanConfirmDialog
-          plans={combined
-            .filter((row) => !row.confirmed)
-            .map(
-              (row) =>
-                `${ownerOf(row.key)?.order.productionOrderNo} / ${row.planNo ?? `${row.draft.planDate} / ${row.draft.plannedQty}`}`,
-            )}
-          operations={[]}
           groups={entries.map((entry) => ({
             orderNo: entry.order.productionOrderNo,
             plans: entry.editor.rows
               .filter((row) => !row.confirmed)
-              .map((row) => row.planNo ?? `${row.draft.planDate} / ${row.draft.plannedQty}`),
+              .map((row) => ({
+                key: row.key,
+                planNo: row.planNo,
+                planDate: row.draft.planDate,
+                quantity: `${row.draft.plannedQty} ${entry.unit}`,
+              })),
             operations: entry.operations,
           }))}
           running={busy}

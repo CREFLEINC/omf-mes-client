@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { DisposalLineRow } from './disposal-selection';
 import { goodsReceiptFixtures, receiptLineFixtures } from './fixtures';
@@ -212,7 +212,7 @@ describe('toGoodsIssueRequest', () => {
 
     expect(body?.sourceDocumentId).toBe(receipt.goodsReceiptId);
     expect(body?.sourceWarehouseId).toBe(receipt.warehouseId);
-    expect(body?.issuedAt).toBe('2026-08-11T09:30:00+09:00');
+    expect(body?.issuedAt).toBe('2026-08-11T09:30:00+07:00');
     expect(body?.occurredAt).toBe(toOccurredAt(NOW));
     expect(body?.businessDate).toBe('2026-08-11');
   });
@@ -390,10 +390,13 @@ describe('시각 파생', () => {
     );
   });
 
-  it('초와 시간대 차이를 붙인다', () => {
-    expect(toOffsetDateTime('2026-08-11T09:30', NOW)).toMatch(
-      /^2026-08-11T09:30:00[+-]\d{2}:\d{2}$/,
-    );
+  /* 칸의 글자는 공장 시각이다 — 브라우저 offset 이 아니라 공장 offset(+07:00)을 붙인다(omf-all-around#364). */
+  it('초와 공장 시간대 offset 을 붙인다 — 브라우저가 한국이어도 +07:00', () => {
+    const offset = vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(-540);
+    const value = toOffsetDateTime('2026-08-11T09:30');
+    offset.mockRestore();
+
+    expect(value).toBe('2026-08-11T09:30:00+07:00');
   });
 
   it('발생 시각은 제출 순간이고 초와 시간대 차이를 갖춘다', () => {

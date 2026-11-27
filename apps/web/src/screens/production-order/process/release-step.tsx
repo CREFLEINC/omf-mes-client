@@ -3,7 +3,7 @@ import './release-selection.css';
 import { AdjustableLayout, useAdjustableOrientation } from './adjustable-layout';
 import { AdjustableTable } from './adjustable-table';
 import { TerminalConnections } from './terminal-connections';
-import { AlertBanner, Button, EmptyState, SkeletonText, type Column } from '@crefle/web-ui';
+import { AlertBanner, EmptyState, SkeletonText, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useQueries, useQuery } from '@tanstack/react-query';
@@ -383,19 +383,8 @@ export const ReleaseStep = ({
       key: 'workOrder',
       header: '작업지시 번호',
       width: '220px',
-      render: ({ workOrder: target }) => (
-        <>
-          <Button
-            variant="text"
-            size="sm"
-            aria-label={`${target.workOrderNo} 상세 확인`}
-            aria-pressed={target.workOrderId === wo?.workOrderId}
-            onClick={() => pick(target.workOrderId)}
-          >
-            {target.workOrderNo}
-          </Button>
-        </>
-      ),
+      /* 번호는 보통 글자(사용자 지시 · #360) — 줄 고르기는 줄 자체가 맡는다. 줄바꿈 · 말줄임 없이. */
+      render: ({ workOrder: target }) => <span className="nowrap-cell">{target.workOrderNo}</span>,
     },
     {
       key: 'process',

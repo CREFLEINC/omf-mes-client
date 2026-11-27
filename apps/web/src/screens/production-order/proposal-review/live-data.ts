@@ -83,7 +83,6 @@ export async function loadCatalog(client: Client, proposals: PlanProposal[]) {
       ...new Set(
         operations
           .flatMap((op) => [
-            op.defaultWipLocationId,
             op.defaultFgLocationId,
             op.defaultScrapLocationId,
           ])
@@ -240,7 +239,6 @@ export function toLiveProposal(row: PlanProposal, catalog: LiveCatalog): ReviewP
           plannedMoldId: label(op.plannedMoldId, catalog.molds),
           responsibleWorkerId: null,
           plannedShiftId: null,
-          defaultWipLocationId: label(op.defaultWipLocationId, catalog.values),
           defaultFgLocationId: label(op.defaultFgLocationId, catalog.values),
           defaultScrapLocationId: label(op.defaultScrapLocationId, catalog.values),
         },
@@ -268,7 +266,6 @@ export function liveResourceSource(
           (field !== 'defaultFgLocationId' || (!item.isExternal && !item.isDefect)),
       ) ?? [];
   const location =
-    field === 'defaultWipLocationId' ||
     field === 'defaultFgLocationId' ||
     field === 'defaultScrapLocationId';
   if (

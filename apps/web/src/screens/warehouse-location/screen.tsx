@@ -21,7 +21,6 @@ import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { BulkCreateDialog } from './bulk-create-dialog';
 import { selectableOptions } from './code-options';
 import { DeactivateConfirmDialog } from './deactivate-confirm-dialog';
-import { generateLocationPrefix } from './location-prefix';
 import { LocationDeleteDialog } from './location-delete-dialog';
 import { countSubtree } from './location-identity';
 import { LocationFormDialog } from './location-form-dialog';
@@ -48,7 +47,6 @@ import {
   locationAliasOrCode,
   locationToFormValues,
   toLocationUpdate,
-  toWarehouseCreate,
   toWarehouseUpdate,
   warehouseToFormValues,
 } from './mappers';
@@ -85,7 +83,6 @@ import {
   readLocationViewMode,
 } from './leaf-rows';
 import { WarehouseEditDialog } from './warehouse-edit-dialog';
-import { WarehouseFormPane } from './warehouse-form-pane';
 import { WarehouseHeader } from './warehouse-header';
 import { WarehouseListPane } from './warehouse-list-pane';
 import { WAREHOUSE_FORM_FIELDS, validateWarehouse } from './warehouse-validation';
@@ -98,14 +95,9 @@ type DocumentIssueCreate = components['schemas']['DocumentIssueCreate'];
 type DocumentIssueBatchResponse = components['schemas']['DocumentIssueBatchResponse'];
 type DocumentIssueSummaryResponse = components['schemas']['DocumentIssueSummaryResponse'];
 
-/** 신규 등록 폼의 기준값 출처. 상세 응답과 같은 자리를 채우는 안정된 표식이다. */
-const CREATE_FORM_SOURCE = Symbol('warehouse-create');
-
-type WarehouseFormSource = WarehouseDetailResponse | typeof CREATE_FORM_SOURCE;
-
 /** 폼의 현재 값과 그것이 어디서 나왔는지. 「고친 것이 있는가」는 둘의 비교로 판정한다. */
 interface WarehouseFormState {
-  source: WarehouseFormSource;
+  source: WarehouseDetailResponse;
   baseline: WarehouseFormValues;
   values: WarehouseFormValues;
 }
@@ -156,8 +148,7 @@ export const WarehouseLocationScreen = () => {
     [searchParams, plant.picked],
   );
 
-  const isCreateMode = searchParams.get('mode') === 'create';
-  const selectedWarehouseId = isCreateMode ? null : Number(searchParams.get('wh') ?? '') || null;
+  const selectedWarehouseId = Number(searchParams.get('wh') ?? '') || null;
 
   const warehouseList = useWarehouseList({ ...filters, plantId: plant.plantId }, !plant.isChecking);
   const warehouses = useMemo(
@@ -176,39 +167,11 @@ export const WarehouseLocationScreen = () => {
    * 사용자가 입력하는 동안 값이 서버 값으로 되돌아가지 않게 한다.
    * 캐시가 같은 값을 돌려주면 객체 동일성이 유지되므로 다시 세우지 않는다.
    */
-  const formSource: WarehouseFormSource | null = isCreateMode
-    ? CREATE_FORM_SOURCE
-    : (detail.data ?? null);
+  const formSource = detail.data ?? null;
 
   if (formSource !== null && formState?.source !== formSource) {
-    /* 등록 폼은 창고 위치 코드를 무작위로 지어 채운다(#292) — 기준값에도 넣어 손대지 않은 폼이 「고친 것」이 아니다. */
-    const seeded =
-      formSource === CREATE_FORM_SOURCE
-        ? { ...emptyWarehouseFormValues(), locationPrefix: generateLocationPrefix() }
-        : warehouseToFormValues(formSource.warehouse);
+    const seeded = warehouseToFormValues(formSource.warehouse);
     setFormState({ source: formSource, baseline: seeded, values: seeded });
-  }
-
-  /*
-   * 등록에서 고를 공장이 하나뿐이면 미리 채운다 — 선택 목록이 늦게 와도 아직 고르지 않았을 때만. 기준값에도 넣어
-   * 손대지 않은 등록 폼이 「고친 것」으로 읽히지 않게 한다.
-   */
-  const onlyPlant = (() => {
-    const plants = selectableOptions(lookups.sources.plants, '');
-    return plants.length === 1 ? plants[0]!.value : null;
-  })();
-  if (
-    formState !== null &&
-    formState.source === CREATE_FORM_SOURCE &&
-    onlyPlant !== null &&
-    formState.values.plantId === '' &&
-    formState.baseline.plantId === ''
-  ) {
-    setFormState({
-      ...formState,
-      baseline: { ...formState.baseline, plantId: onlyPlant },
-      values: { ...formState.values, plantId: onlyPlant },
-    });
   }
 
   const formValues = formState?.values ?? emptyWarehouseFormValues();
@@ -220,45 +183,22 @@ export const WarehouseLocationScreen = () => {
 
   const warehouseWrite = useMasterWrite<WarehouseFormValues, Warehouse>({
     request: (values, headers) =>
-      isCreateMode
-        ? // 등록에는 낙관적 잠금이 없다 — 계약이 If-Match를 요구하지 않는다.
-          client.POST('/mdm/warehouses', {
-            params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
-            body: toWarehouseCreate(values),
-          })
-        : client.PUT('/mdm/warehouses/{warehouseId}', {
-            params: {
-              path: { warehouseId: selectedWarehouseId ?? 0 },
-              header: {
-                'Idempotency-Key': headers['Idempotency-Key'],
-                'If-Match': headers['If-Match'] ?? '',
-              },
-            },
-            body: toWarehouseUpdate(values),
-          }),
+      client.PUT('/mdm/warehouses/{warehouseId}', {
+        params: {
+          path: { warehouseId: selectedWarehouseId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+        body: toWarehouseUpdate(values),
+      }),
     // ETag는 상세 경로에 보관된다. 저장 응답의 ETag도 같은 경로로 갱신돼 연속 수정이 된다.
     etagPath: selectedWarehouseId === null ? null : warehouseDetailPath(selectedWarehouseId),
     invalidateKeys: [warehouseKeys.all],
     knownFields: WAREHOUSE_FORM_FIELDS,
-    /* 창고 위치 코드(#292) — 다른 창고가 쓰면 고칠 방법(다른 코드 · [다시 만들기])까지 말한다. */
-    restateFieldError: (item) => {
-      if (item.field !== 'locationPrefix') return undefined;
-      if (item.code === 'UNIQUE_VIOLATION') return t.locationPrefix.taken;
-      if (item.code === 'INVALID') return t.locationPrefix.invalid;
-      return undefined;
-    },
     onSuccess: (saved) => {
       setLocalFieldErrors({});
-
-      if (isCreateMode) {
-        toast.show({ variant: 'success', description: messages.common.created });
-        /*
-         * 등록 응답(201)에는 ETag가 없다. 등록한 창고의 상세로 옮겨 다시 조회해야
-         * 낙관적 잠금 토큰이 확보되고 이어서 수정할 수 있다.
-         */
-        updateParams({ mode: null, wh: String(saved.warehouseId) });
-        return;
-      }
 
       const next = warehouseToFormValues(saved);
       setFormState((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
@@ -621,7 +561,7 @@ export const WarehouseLocationScreen = () => {
   };
 
   const handleSaveWarehouse = () => {
-    const errors = validateWarehouse(formValues, isCreateMode ? 'create' : 'edit');
+    const errors = validateWarehouse(formValues);
 
     setLocalFieldErrors(errors);
 
@@ -1166,8 +1106,8 @@ export const WarehouseLocationScreen = () => {
   const receivedCount = warehouseList.data?.items.length ?? 0;
   const listTruncated = listPage !== undefined && isTruncated(listPage, receivedCount);
 
-  /** 창고 정보 판의 칸 · 오류 · 고르기 — 오른쪽 창의 등록 판과 수정 창이 함께 쓴다. */
-  const warehouseFormProps = (mode: 'create' | 'edit') => ({
+  /** 창고 정보 수정 창의 칸 · 오류 · 고르기. */
+  const warehouseFormProps = {
     values: formValues,
     onChange: changeFormValues,
     // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
@@ -1175,13 +1115,9 @@ export const WarehouseLocationScreen = () => {
     banner: (
       <>
         {lookupNotice}
-        <SaveErrorBanner
-          error={warehouseWrite.error}
-          onReload={mode === 'edit' ? handleReloadDetail : undefined}
-        />
+        <SaveErrorBanner error={warehouseWrite.error} onReload={handleReloadDetail} />
       </>
     ),
-    codeLockReason: null,
     baseline: formState?.baseline,
     isDirty,
     isSaving: warehouseWrite.isSaving,
@@ -1195,9 +1131,9 @@ export const WarehouseLocationScreen = () => {
       warehouseStatusWrite.reset();
       setWarehouseStatusOpen(true);
     },
-  });
+  };
 
-  /** 고친 값 · 오류를 버린다 — 등록 판의 [취소], 수정 창의 닫기 · [취소]. */
+  /** 고친 값 · 오류를 버린다 — 수정 창의 닫기 · [취소]. */
   const discardWarehouseEdits = () => {
     setLocalFieldErrors({});
     warehouseWrite.reset();
@@ -1209,23 +1145,6 @@ export const WarehouseLocationScreen = () => {
    * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
    */
   const renderDetailPane = () => {
-    /*
-     * 신규 등록에는 Location 표를 두지 않는다. 아직 만들어지지 않은 창고에는
-     * 위치를 붙일 대상이 없다.
-     */
-    if (isCreateMode) {
-      return (
-        <div>
-          <WarehouseFormPane
-            {...warehouseFormProps('create')}
-            mode="create"
-            isActive
-            onCancel={discardWarehouseEdits}
-          />
-        </div>
-      );
-    }
-
     if (selectedWarehouseId === null) {
       return (
         <div>
@@ -1404,7 +1323,6 @@ export const WarehouseLocationScreen = () => {
                   /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
                   updateParams({
                     wh: warehouseId === selectedWarehouseId ? null : String(warehouseId),
-                    mode: null,
                     tab: null,
                   });
                 }}
@@ -1428,9 +1346,9 @@ export const WarehouseLocationScreen = () => {
         detail={{ label: t.panes.detail, content: renderDetailPane() }}
       />
 
-      {warehouseEditOpen && selectedWarehouse !== null && formState !== null && !isCreateMode && (
+      {warehouseEditOpen && selectedWarehouse !== null && formState !== null && (
         <WarehouseEditDialog
-          {...warehouseFormProps('edit')}
+          {...warehouseFormProps}
           open
           onClose={() => {
             discardWarehouseEdits();

@@ -97,6 +97,12 @@ export const homeAreas: HomeArea[] = [
         description: t.screens.materialPicking,
       },
       {
+        to: '/shopfloor-receipt',
+        label: messages.shopfloorReceipt.title,
+        icon: 'factory',
+        description: t.screens.shopfloorReceipt,
+      },
+      {
         to: '/physical-count',
         label: messages.physicalCount.title,
         icon: 'fact_check',
@@ -166,7 +172,7 @@ export const hiddenScreens: HomeScreen[] = [
     description: t.screens.packingRepack,
   },
   /*
-   * 아직 현장에서 쓰지 않는 작업 — 입하 오류 등록 · 재생재 등록과 생산 현장 업무 전체
+   * 아직 현장에서 쓰지 않는 작업 — 입하 오류 등록 · 재생재 등록과 일부 생산 현장 업무
    * (사용자 지시 2026-11-20 「숨김 처리해서 사용자가 접근 못하게」). 다시 열 때는 위 목록으로 옮긴다.
    */
   {
@@ -180,18 +186,6 @@ export const hiddenScreens: HomeScreen[] = [
     label: messages.recycleEntry.title,
     icon: 'recycling',
     description: t.screens.recycleEntry,
-  },
-  {
-    to: '/shopfloor-receipt',
-    label: messages.shopfloorReceipt.title,
-    icon: 'factory',
-    description: t.screens.shopfloorReceipt,
-  },
-  {
-    to: '/wip-handover',
-    label: messages.wipHandover.title,
-    icon: 'sync_alt',
-    description: t.screens.wipHandover,
   },
   {
     to: '/repair-roundtrip',

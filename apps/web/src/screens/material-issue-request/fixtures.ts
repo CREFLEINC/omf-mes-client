@@ -29,8 +29,8 @@ type MaterialIssueRequestResponse = components['schemas']['MaterialIssueRequest'
 
 /**
  * W/O 셋.
- * - 7101: 기본 재공 위치가 있다(7301) — 창고·도착 위치가 자동으로 채워진다
- * - 7102: 기본 재공 위치가 **없다** — 사용자가 직접 고른다
+ * - 7101: 창고와 도착 위치를 선택해 출고 요청을 작성한다
+ * - 7102: 작업지시 변경 시 기존 선택이 비워지는지 검증한다
  * - 7103: 유형 글자가 다르다 — 화면이 값으로 분기하지 않는지 보는 자리
  */
 export const workOrderFixtures: WorkOrderResponse[] = [
@@ -45,7 +45,6 @@ export const workOrderFixtures: WorkOrderResponse[] = [
     workOrderTypeCode: 'SAMPLE_WO_T_A',
     priorityNo: 100,
     statusCode: 'SAMPLE_WO_S_A',
-    defaultWipLocationId: 7301,
     routingOperationName: '합성 공정 가',
     itemCode: 'SAMPLE-ITEM-01',
   },
@@ -74,7 +73,6 @@ export const workOrderFixtures: WorkOrderResponse[] = [
     workOrderTypeCode: 'SAMPLE_WO_T_B',
     priorityNo: 1,
     statusCode: 'SAMPLE_WO_S_B',
-    defaultWipLocationId: 7302,
     routingOperationName: '합성 공정 다',
     itemCode: 'SAMPLE-ITEM-03',
   },
@@ -116,7 +114,7 @@ export const shortageFixtures: ShortageLineResponse[] = [
 ];
 
 /**
- * 창고 둘. **7201 이 기본 재공 위치(7301)가 속한 창고**라 자동 채움이 이쪽으로 온다.
+ * 7201 은 도착 위치 7301 이 속한 창고다.
  * 7202 는 **사용자가 창고를 바꾸는 갈래**에 필요하다 — 하나뿐이면 바꿀 곳이 없다.
  */
 export const warehouseFixtures = [
