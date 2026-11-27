@@ -51,7 +51,10 @@ describe('RejectDialog', () => {
 
     expect(within(dialog()).getByText(t.dialog.commentHeading)).toBeInTheDocument();
     expect(within(dialog()).getByText(COMMENT)).toBeInTheDocument();
-    expect(within(dialog()).getByText(t.dialog.commentRecorded)).toBeInTheDocument();
+    /* 기록에 남는다는 안내는 「결재 의견」 옆 ⓘ 다(#361). */
+    expect(
+      within(dialog()).getByRole('button', { name: t.dialog.commentRecorded }),
+    ).toBeInTheDocument();
   });
 
   /** 승인 창과 갈라 둔 이유가 여기 있다 — 반려에는 「의견 없음」 갈래가 없다. */
@@ -77,7 +80,12 @@ describe('RejectDialog', () => {
     renderDialog();
 
     expect(within(dialog()).queryByRole('button', { name: messages.common.close })).toBeNull();
-    expect(within(dialog()).getAllByRole('button')).toHaveLength(2);
+    /* 안내 ⓘ 는 나가는 길이 아니라 세지 않는다(#361). */
+    expect(
+      within(dialog())
+        .getAllByRole('button')
+        .filter((button) => !button.classList.contains('info-tip')),
+    ).toHaveLength(2);
   });
 
   /** 승인 창과 같은 규율 — **한쪽 창만 좁히면 다른 쪽이 열린 문이 된다.** */

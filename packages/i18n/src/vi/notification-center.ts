@@ -15,8 +15,6 @@ import type { Translated } from './translated';
  * 다시 고르는** 길만 말한다.
  */
 export const notificationCenter: Translated<typeof ko.notificationCenter> = {
-  title: 'Trung tâm thông báo',
-  breadcrumbRoot: 'Hộp công việc',
   panes: {
     list: 'Danh sách thông báo',
   },
@@ -26,6 +24,7 @@ export const notificationCenter: Translated<typeof ko.notificationCenter> = {
   fields: {
     periodFrom: 'Ngày bắt đầu tra cứu',
     periodTo: 'Ngày kết thúc tra cứu',
+    datePlaceholder: 'Hãy chọn ngày',
     unreadOnly: 'Chỉ chưa xem',
     eventCode: 'Loại thông báo',
   },
@@ -36,8 +35,6 @@ export const notificationCenter: Translated<typeof ko.notificationCenter> = {
     handoverGroup: 'Công việc bàn giao',
   },
   actions: {
-    prevPage: 'Trước',
-    nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
     markAllRead: 'Đánh dấu tất cả đã xem',
     /**
@@ -71,17 +68,8 @@ export const notificationCenter: Translated<typeof ko.notificationCenter> = {
     feedbackDescription: 'Tra cứu lại khoảng thời gian thì sẽ thấy trạng thái mới nhất.',
     notFound: 'Không tìm thấy thông báo đó. Hãy tra cứu lại khoảng thời gian.',
   },
-  pageNav: {
-    label: 'Chuyển trang',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / tổng ${String(total)} mục`,
-    totalOnly: (total: number): string => `Tổng ${String(total)} mục`,
-  },
   asOf: (at: string): string => `Cơ sở ${at}`,
   reasons: {
-    /** ⛔ 「날짜가 틀렸다」로 뭉개지 않는다 — **비어 있는 쪽만** 가리킨다. */
-    periodIncomplete:
-      'Khoảng thời gian phải có cả ngày bắt đầu và ngày kết thúc. Hãy chọn bên đang trống.',
     periodInvalid:
       'Khoảng thời gian không phải ngày hợp lệ. Hãy chọn lại ngày bắt đầu và ngày kết thúc.',
     periodReversed: 'Ngày kết thúc không được đứng trước ngày bắt đầu.',
@@ -93,6 +81,11 @@ export const notificationCenter: Translated<typeof ko.notificationCenter> = {
       'Hãy nới khoảng thời gian hoặc bỏ điều kiện «Chỉ chưa xem» · loại rồi tìm lại.',
     beyondLastTitle: 'Trang này không có thông báo',
     beyondLastDescription: 'Kết quả nằm ở trang trước. Hãy về trang đầu.',
+  },
+  sort: {
+    label: 'Sắp xếp theo thời điểm phát sinh',
+    newest: 'Mới nhất',
+    oldest: 'Cũ nhất',
   },
   card: {
     read: 'Đã xem',

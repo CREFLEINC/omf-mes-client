@@ -22,7 +22,7 @@ export const approvalInbox: Translated<typeof ko.approvalInbox> = {
     target: 'Đối tượng',
     progress: 'Tiến trình phê duyệt',
     reason: 'Toàn văn lý do',
-    decision: 'Phê duyệt',
+    decision: 'Xử lý phê duyệt',
   },
   tabs: {
     label: 'Xem hộp phê duyệt',
@@ -34,21 +34,21 @@ export const approvalInbox: Translated<typeof ko.approvalInbox> = {
   fields: {
     approvalRequestNo: 'Số yêu cầu',
     reason: 'Lý do',
+    targetDocument: 'Tài liệu đối tượng',
     requestedByName: 'Người trình',
     requestedAt: 'Thời điểm trình',
     status: 'Trạng thái',
     approvalTypeCode: 'Loại phê duyệt',
+    approvalTypeFilter: 'Chọn loại phê duyệt',
     /** 열 이름과 낱말이 다른 것이 맞다 — 조건은 **날짜 단위**라 시각을 뜻하는 말을 쓰지 않는다. */
     periodFrom: 'Từ ngày trình',
     periodTo: 'Đến ngày trình',
     q: 'Tìm số yêu cầu',
+    qPlaceholder: 'Nhập số yêu cầu',
+    datePlaceholder: 'Hãy chọn ngày',
   },
   actions: {
-    prevPage: 'Trước',
-    nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
-    reload: 'Tra cứu lại',
-    selectRow: (approvalRequestNo: string): string => `Chọn ${approvalRequestNo}`,
   },
   loading: {
     list: 'Đang tải danh sách yêu cầu phê duyệt',
@@ -56,12 +56,20 @@ export const approvalInbox: Translated<typeof ko.approvalInbox> = {
   },
   target: {
     open: 'Mở',
-    blockedNotOpenable: 'Mở: Đối tượng này không có màn hình để mở',
-    blockedNoScreenId: 'Mở: Chưa định màn hình để mở đối tượng này',
-    blockedUnmapped: 'Mở: Màn hình này chưa có trên web quản trị',
     note: 'Nội dung xem ở màn hình gốc',
   },
   progress: {
+    columns: {
+      step: 'Bước',
+      approver: 'Người duyệt',
+      status: 'Trạng thái',
+      decidedAt: 'Thời điểm xử lý',
+    },
+    commentLabel: 'Ý kiến phê duyệt',
+    stepCommentLabel: (stepNo: number): string => `Ý kiến phê duyệt bước ${String(stepNo)}`,
+    positionLabel: 'Tiến độ',
+    stepNo: (stepNo: number): string => `Bước ${String(stepNo)}`,
+    myTurnBadge: 'Lượt phê duyệt của tôi',
     position: (current: number, total: number): string =>
       `Bước ${String(current)} / ${String(total)}`,
     finished: (total: number): string => `Đã kết thúc phê duyệt · tổng ${String(total)} bước`,
@@ -85,19 +93,13 @@ export const approvalInbox: Translated<typeof ko.approvalInbox> = {
     chipRemovePeriod: 'Bỏ điều kiện ngày trình',
     chipRemoveKeyword: 'Bỏ điều kiện số yêu cầu',
   },
-  pageNav: {
-    label: 'Chuyển trang',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / tổng ${String(total)} mục`,
-    totalOnly: (total: number): string => `Tổng ${String(total)} mục`,
-  },
   empty: {
     noResultTitle: 'Không có yêu cầu phê duyệt khớp điều kiện',
     noResultDescription: 'Hãy bớt điều kiện hoặc tra cứu lại ở tab khác.',
     beyondLastTitle: 'Trang này không có kết quả',
     beyondLastDescription: 'Hãy về trang đầu.',
-    noSelectionTitle: 'Chọn một yêu cầu thì sẽ thấy nội dung chi tiết',
-    noSelectionDescription: 'Hãy bấm số yêu cầu trong danh sách.',
+    noSelectionTitle: 'Hãy chọn yêu cầu phê duyệt.',
+    noSelectionDescription: 'Thông tin chi tiết của yêu cầu đã chọn sẽ hiển thị.',
     notFoundTitle: 'Không tìm thấy yêu cầu đã chọn',
     notFoundDescription: 'Yêu cầu đã được xử lý hoặc đã bị xóa. Hãy chọn lại từ danh sách.',
     forbiddenTitle: 'Bạn không có quyền xem yêu cầu này',

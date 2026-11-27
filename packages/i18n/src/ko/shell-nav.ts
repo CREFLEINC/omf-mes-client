@@ -20,6 +20,8 @@ export const shellNav = {
   oqcPending: (count: number) => `OQC 대기 ${String(count)}건`,
   /** 「검사 조회·판정」 메뉴 줄 — IQC · PQC · OQC 대기 합(사용자 지시 2026-10-30). */
   inspectionPending: (count: number) => `검사 대기 ${String(count)}건`,
+  approvalPending: (count: number) => `결재 대기 ${String(count)}건`,
+  notificationUnread: (count: number) => `미확인 알림 ${String(count)}건`,
   group: {
     /*
      * 묶음 손잡이의 접근명. 펼쳤는지는 aria-expanded 가 말하므로 여기 넣지 않는다 -

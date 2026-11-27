@@ -69,7 +69,10 @@ describe('ApproveDialog', () => {
 
     expect(within(dialog()).getByText(t.dialog.commentHeading)).toBeInTheDocument();
     expect(within(dialog()).getByText('합성 승인 의견')).toBeInTheDocument();
-    expect(within(dialog()).getByText(t.dialog.commentRecorded)).toBeInTheDocument();
+    /* 기록에 남는다는 안내는 「결재 의견」 옆 ⓘ 다(#361). */
+    expect(
+      within(dialog()).getByRole('button', { name: t.dialog.commentRecorded }),
+    ).toBeInTheDocument();
     expect(within(dialog()).queryByText(t.dialog.noComment)).toBeNull();
   });
 
@@ -101,7 +104,12 @@ describe('ApproveDialog', () => {
     renderDialog();
 
     expect(within(dialog()).queryByRole('button', { name: messages.common.close })).toBeNull();
-    expect(within(dialog()).getAllByRole('button')).toHaveLength(2);
+    /* 안내 ⓘ 는 나가는 길이 아니라 세지 않는다(#361). */
+    expect(
+      within(dialog())
+        .getAllByRole('button')
+        .filter((button) => !button.classList.contains('info-tip')),
+    ).toHaveLength(2);
   });
 
   /**

@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { isClosable, isEditable, isPublishable, isSupportedScope } from './codes';
-import { EMPTY_DRAFT, toCreateBody, validateDraft, type NoticeDraft } from './notice-draft';
+import {
+  EMPTY_DRAFT,
+  newDraft,
+  toCreateBody,
+  validateDraft,
+  type NoticeDraft,
+} from './notice-draft';
 import { toAckState, formatPeriod } from './types';
 
 /**
@@ -68,8 +74,8 @@ describe('validateDraft — 기간과 필수 칸', () => {
     expect(validateDraft(draftOf({ startDate: '2026-02-30' })).startDate).toBeDefined();
   });
 
-  it('상태 파생에 필요한 종료일을 비우면 막는다', () => {
-    expect(validateDraft(draftOf({ endDate: '' })).endDate).toBeDefined();
+  it('종료일은 선택 입력이라 비워도 막지 않는다(#361)', () => {
+    expect(validateDraft(draftOf({ endDate: '' })).endDate).toBeUndefined();
   });
 
   it('제목과 본문이 공백뿐이면 비운 것으로 본다', () => {
@@ -97,8 +103,13 @@ describe('toCreateBody', () => {
     ).toBe(9);
   });
 
-  it('종료일을 항상 싣는다', () => {
+  it('종료일은 고른 때만 싣는다', () => {
     expect(toCreateBody(draftOf({ endDate: '2026-08-31' })).endDate).toBe('2026-08-31');
+    expect('endDate' in toCreateBody(draftOf({ endDate: '' }))).toBe(false);
+  });
+
+  it('새 공지의 시작일은 오늘이다', () => {
+    expect(newDraft(new Date(2026, 10, 27)).startDate).toBe('2026-11-27');
   });
 
   it('앞뒤 공백을 다듬어 보낸다', () => {

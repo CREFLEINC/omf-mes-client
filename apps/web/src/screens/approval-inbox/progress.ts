@@ -79,6 +79,8 @@ export interface RequestProgressView {
   positionText: string;
   /** 「지금 이 요청을 결재할 차례입니다」 또는 그 반대. **`isMyTurn` 그대로다.** */
   turnText: string;
+  /** 서버가 준 전체 단계가 둘 이상인가 — 그때만 「n / m 단계」를 낸다(#361). */
+  isMultiStep: boolean;
   steps: StepProgressView[];
 }
 
@@ -157,6 +159,7 @@ export const toRequestProgressView = (
         ? t.progress.finished(request.totalStepNo)
         : t.progress.position(request.currentStepNo, request.totalStepNo),
     turnText: request.isMyTurn ? t.progress.myTurn : t.progress.notMyTurn,
+    isMultiStep: request.totalStepNo > 1,
     steps: toStepProgressViews(steps, rejectionCodes),
   };
 };

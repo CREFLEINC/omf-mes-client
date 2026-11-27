@@ -1,7 +1,9 @@
 import {
   Badge,
   Button,
+  Chip,
   EmptyState,
+  Icon,
   SkeletonText,
   Tabs,
   useToast,
@@ -15,14 +17,14 @@ import { useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
+import type { PageSize } from '../../patterns/page-nav';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { ApproveDialog } from './approve-dialog';
 import {
   PLACEHOLDER_APPROVAL_TYPE_CODES,
-  PLACEHOLDER_REQUEST_STATUS_CODES,
+  requestStatusLabelOf,
   toApprovalTypeOptions,
-  toCodeOptions,
 } from './code-options';
 import {
   DECISION_COMMENT_FIELD,
@@ -34,16 +36,15 @@ import {
 import { DecisionPane } from './decision-pane';
 import {
   EMPTY_FILTERS,
-  clearFilter,
   readFilters,
   readPage,
+  readSize,
   readSelectedRequestId,
   readTabParam,
   toRequestListQuery,
   toSearchParams,
   toSelectionSearchParams,
   withoutSelection,
-  type FilterChipKey,
 } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
 import { toPageView } from './pagination';
@@ -54,6 +55,7 @@ import {
   requestDetailPath,
   useRequestDetail,
   useRequestList,
+  useRequestStatusCounts,
   usePendingCount,
 } from './queries';
 import { RejectDialog } from './reject-dialog';
@@ -76,6 +78,9 @@ import {
 import './layout.css';
 
 const t = messages.approvalInbox;
+
+/** 상태 라벨의 차례 — 서버 요청 상태 코드(결재 대기 · 승인 · 반려 · #353). */
+const REQUEST_STATUS_CHIPS = ['PENDING', 'APPROVED', 'REJECTED'] as const;
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ITEMS: ApprovalRequest[] = [];
@@ -224,17 +229,52 @@ export const ApprovalInboxScreen = () => {
    */
   const tab = readTab(readTabParam(searchParams), canSeeAllRequests);
   const page = readPage(searchParams);
+  const size = readSize(searchParams);
   const selectedRequestId = readSelectedRequestId(searchParams);
 
   /*
    * **조건 없이도 조회한다.** 계약이 어느 파라미터도 필수로 두지 않았고, 결재함은 들어오자마자
    * 내 결재 대기를 보여야 하는 자리다 — 탭이 이미 범위를 좁히고 있다.
    */
-  const listQuery = toRequestListQuery(filters, tab, page);
+  const listQuery = toRequestListQuery(filters, tab, page, size);
   const list = useRequestList(listQuery);
+
+  /*
+   * 상태 라벨 필터(#361) — 「조건 더보기」의 상태 선택칸 대신 화면 맨 위 줄(「⋯」 왼쪽)에 「결재 대기 3」처럼 건수와 함께
+   * 선다. 공지 · 품질 화면과 같다: 누르면 그 상태로 바로 거르고, 고른 라벨을 다시 누르면 푼다. 0건 라벨은 감춘다
+   * (고른 라벨은 남긴다).
+   */
+  const statusCounts = useRequestStatusCounts(listQuery, REQUEST_STATUS_CHIPS);
+  const statusChips = (
+    <div className="inspection-hub-counts" role="group" aria-label={t.fields.status}>
+      {REQUEST_STATUS_CHIPS.map((code, index) => {
+        const isActive = filters.statusCode === code;
+        const count = statusCounts[index];
+        if (count === 0 && !isActive) return null;
+
+        return (
+          <Chip
+            key={code}
+            variant="filter"
+            size="sm"
+            selected={isActive}
+            aria-pressed={isActive}
+            onSelectedChange={() => {
+              apply({ ...filters, statusCode: isActive ? '' : code }, tab);
+            }}
+          >
+            {count === undefined
+              ? requestStatusLabelOf(code)
+              : messages.common.inspectionHub.count(requestStatusLabelOf(code), count)}
+          </Chip>
+        );
+      })}
+    </div>
+  );
   const items = list.data?.items ?? EMPTY_ITEMS;
   const rows = useMemo(() => items.map(toRequestRow), [items]);
-  const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, items.length);
+  const pageMeta = list.data?.page ?? { page, size: 0, total: 0 };
+  const pageView = toPageView(pageMeta);
 
   /*
    * 대기 건수는 **전용 조회**가 갖는다(`queries.ts`에 근거 표가 있다).
@@ -243,6 +283,13 @@ export const ApprovalInboxScreen = () => {
    */
   const pendingCount = usePendingCount();
   const pendingTotal = pendingCount.data?.page.total;
+  /* 「내가 올린 요청」 탭 숫자(#361) — 내가 올린 것 중 아직 결재가 끝나지 않은(결재 대기) 건수. */
+  const requestedPendingCount = useRequestList({
+    requestedByMe: true,
+    statusCode: 'PENDING',
+    size: 1,
+  });
+  const requestedPendingTotal = requestedPendingCount.data?.page.total;
 
   /*
    * 고른 요청의 상세. **조회 하나로 정보·대상·결재 진행이 모두 온다**(계약이 `steps`를
@@ -261,7 +308,7 @@ export const ApprovalInboxScreen = () => {
    * 없어진다. 조작마다 따로 지우면 뒤로가기·주소 직접 편집이 그 길을 지나지 않아 안내가
    * 살아남는다 — 그래서 「이 조건으로 보고 있던 동안」에 맨다.
    */
-  const listContextKey = toSearchParams(filters, tab, page).toString();
+  const listContextKey = toSearchParams(filters, tab, page, size).toString();
   const [missingContextKey, setMissingContextKey] = useState<string | null>(null);
 
   /**
@@ -535,8 +582,14 @@ export const ApprovalInboxScreen = () => {
     applySearchParams(next);
   };
 
-  const apply = (nextFilters: InboxFilters, nextTab: InboxTab, nextPage = 1): void => {
-    applyUserNavigation(toSearchParams(nextFilters, nextTab, nextPage));
+  /** 고른 쪽 크기는 조건·탭이 바뀌어도 그대로 둔다 — 조건이 아니라 보는 방식이다(#361). */
+  const apply = (
+    nextFilters: InboxFilters,
+    nextTab: InboxTab,
+    nextPage = 1,
+    nextSize: PageSize | null = size,
+  ): void => {
+    applyUserNavigation(toSearchParams(nextFilters, nextTab, nextPage, nextSize));
   };
 
   /** 탭 전환(수명 표 3행). 조건은 그대로 두고 **쪽과 선택만** 되돌린다. */
@@ -560,6 +613,7 @@ export const ApprovalInboxScreen = () => {
         tab,
         page,
         approvalRequestId === selectedRequestId ? null : approvalRequestId,
+        size,
       ),
     );
   };
@@ -578,9 +632,16 @@ export const ApprovalInboxScreen = () => {
     pendingTotal === undefined ? undefined : (
       <Badge count={pendingTotal} aria-label={t.tabs.pendingBadge(pendingTotal)} />
     );
+  const requestedBadge: ReactNode =
+    requestedPendingTotal === undefined ? undefined : (
+      <Badge
+        count={requestedPendingTotal}
+        aria-label={t.tabs.pendingBadge(requestedPendingTotal)}
+      />
+    );
 
   /**
-   * 다시 조회(수명 표 10행) — **화면이 보고 있는 조회를 전부 다시 한다.**
+   * 다시 조회(수명 표 10행) — **화면이 보고 있는 조회를 전부 다시 한다.** 같은 조건의 [조회]가 부른다(#361).
    *
    * 목록만 다시 부르면 갱신된 목록과 낡은 대기 건수·상세가 한 화면에 섞인다 — 방금 결재된
    * 건이 빠진 목록 옆에 그 건을 포함한 뱃지가 서고, 아래 구획은 결재 전 진행을 보인다.
@@ -591,6 +652,7 @@ export const ApprovalInboxScreen = () => {
   const handleReload = (): void => {
     void list.refetch();
     void pendingCount.refetch();
+    void requestedPendingCount.refetch();
 
     if (selectedRequestId !== null) void detail.refetch();
   };
@@ -721,8 +783,12 @@ export const ApprovalInboxScreen = () => {
       rows={rows}
       isLoading={list.isPending}
       pageView={pageView}
+      pageMeta={pageMeta}
       onChangePage={(nextPage) => {
         apply(filters, tab, nextPage);
+      }}
+      onChangeSize={(nextSize) => {
+        apply(filters, tab, 1, nextSize);
       }}
       selectedRequestId={selectedRequestId}
       onSelect={toggleSelect}
@@ -749,8 +815,8 @@ export const ApprovalInboxScreen = () => {
   const tabItems: TabItem[] = visibleTabs(canSeeAllRequests).map((value) => ({
     value,
     label: tabLabel(value),
-    /* 대기 건수는 「지금 내가 결재할 수 있는 것」의 수라 그 탭에 붙는다. */
-    badge: value === 'pending' ? pendingBadge : undefined,
+    /* 내 결재 대기 = 지금 내가 결재할 수 있는 수 · 내가 올린 요청 = 그중 아직 결재 대기인 수(#361). */
+    badge: value === 'pending' ? pendingBadge : value === 'requested' ? requestedBadge : undefined,
     content: value === tab ? listPane : null,
   }));
 
@@ -789,6 +855,11 @@ export const ApprovalInboxScreen = () => {
       return (
         <EmptyState
           size="sm"
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="layers" size={20} />
+            </span>
+          }
           title={t.empty.noSelectionTitle}
           description={t.empty.noSelectionDescription}
         />
@@ -834,15 +905,22 @@ export const ApprovalInboxScreen = () => {
          * 차례가 뜻이다 — **사유가 대상보다 위**다. 사유가 이 리소스의 유일한 업무 값이라
          * 결재 판단의 근거가 거기에만 있고, 대상 이름은 「그 판단이 무엇에 붙는가」다.
          */}
-        <RequestDetailPane view={toRequestDetailView(request)} />
-        <TargetPane
-          name={describeTargetName(request.target)}
-          openState={judgeTargetOpen(request.target, request.approvalRequestId, SCREEN_ROUTES)}
-          onOpen={(path) => {
-            void navigate(path);
-          }}
+        <RequestDetailPane
+          view={toRequestDetailView(request)}
+          target={
+            <TargetPane
+              name={describeTargetName(request.target)}
+              openState={judgeTargetOpen(request.target, request.approvalRequestId, SCREEN_ROUTES)}
+              onOpen={(path) => {
+                void navigate(path);
+              }}
+            />
+          }
         />
-        <ProgressPane view={toRequestProgressView(detail.data, REJECTION_DECISION_CODES)} />
+        <ProgressPane
+          view={toRequestProgressView(detail.data, REJECTION_DECISION_CODES)}
+          isMyTurn={request.isMyTurn}
+        />
         {/*
          * **의견 입력칸과 결재 액션이 진행 구획 바로 아래에 선다.**
          * 창이 아니라 이 구획 안이라야 사용자가 무엇을 결재하는지 보면서 의견을 쓴다 —
@@ -854,20 +932,25 @@ export const ApprovalInboxScreen = () => {
          * 인라인 오류는 **로컬 판정이 먼저**다: 방금 사용자가 부딪힌 벽이 지난 서버 응답보다
          * 지금 무엇을 해야 하는지를 정확히 말한다.
          */}
-        <DecisionPane
-          isMyTurn={request.isMyTurn}
-          comment={comment}
-          onChangeComment={changeComment}
-          commentError={localCommentError ?? serverCommentError}
-          isLocked={isLocked}
-          onApprove={() => {
-            setDialogKind('approve');
-          }}
-          onReject={() => {
-            setDialogKind('reject');
-          }}
-          banner={decisionBanner}
-        />
+        {/* 내 결재 차례가 아니면 결재 상자를 두지 않는다 — 보낸 뒤의 오류 띠만 남긴다(#361 사용자 지시). */}
+        {request.isMyTurn ? (
+          <DecisionPane
+            isMyTurn={request.isMyTurn}
+            comment={comment}
+            onChangeComment={changeComment}
+            commentError={localCommentError ?? serverCommentError}
+            isLocked={isLocked}
+            onApprove={() => {
+              setDialogKind('approve');
+            }}
+            onReject={() => {
+              setDialogKind('reject');
+            }}
+            banner={decisionBanner}
+          />
+        ) : (
+          decisionBanner
+        )}
       </>
     );
   };
@@ -935,6 +1018,7 @@ export const ApprovalInboxScreen = () => {
       {/* 화면 제목 줄은 두지 않는다 — 조회 조건 · 목록 · 상세 통일 배치(검사 조회·판정과 같다 · #350). */}
       <ListDetailWorkspace
         storageKey="omf-mes:approval-inbox"
+        toolbar={statusChips}
         initialRatio={0.45}
         filter={{
           label: messages.common.paneList.filter,
@@ -947,21 +1031,24 @@ export const ApprovalInboxScreen = () => {
                * 채운다」는 전환을 화면 수준에서 잴 수 없다.
                */
               approvalTypeOptions={toApprovalTypeOptions(PLACEHOLDER_APPROVAL_TYPE_CODES)}
-              statusOptions={toCodeOptions(PLACEHOLDER_REQUEST_STATUS_CODES)}
               onSearch={(nextFilters) => {
+                /*
+                 * 같은 조건의 [조회]는 다시 조회다 — 품질 화면(검사 조회·판정)과 같게(#361).
+                 * 예전 「다시 조회」 단추 그대로 쪽 · 선택을 두고 목록 · 대기 건수 · 상세만 다시 부른다.
+                 */
+                if (
+                  toSearchParams(nextFilters, tab, page, size).toString() ===
+                  toSearchParams(filters, tab, page, size).toString()
+                ) {
+                  if (!isLocked) handleReload();
+                  return;
+                }
                 apply(nextFilters, tab);
               }}
-              onRemoveFilter={(key: FilterChipKey) => {
-                apply(clearFilter(filters, key), tab);
-              }}
               onReset={() => {
-                apply(EMPTY_FILTERS, tab);
+                /* 상태는 맨 위 라벨이 맡아 조회 상자의 [초기화]가 풀지 않는다(#361). */
+                apply({ ...EMPTY_FILTERS, statusCode: filters.statusCode }, tab);
               }}
-              actions={
-                <Button variant="outlined" onClick={handleReload}>
-                  {t.actions.reload}
-                </Button>
-              }
             />
           ),
         }}
@@ -984,12 +1071,8 @@ export const ApprovalInboxScreen = () => {
         detail={{
           label: t.panes.detail,
           className: 'approval-inbox-pane',
-          content: (
-            <>
-              <h2 className="pane-title">{t.panes.detail}</h2>
-              {detailSlot()}
-            </>
-          ),
+          /* 구획 제목을 따로 두지 않는다 — 품질 화면(검사 조회·판정) 상세와 같게(#361). 구획 이름은 접근 이름으로 남는다. */
+          content: detailSlot(),
         }}
       />
 
