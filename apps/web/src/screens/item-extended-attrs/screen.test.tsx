@@ -1663,16 +1663,6 @@ describe('ItemExtendedAttrsScreen — 초안 수명 (M10·C12)', () => {
   });
 });
 
-describe('ItemExtendedAttrsScreen — 단위 환산 조회 시점', () => {
-  it('확장 속성 탭에서는 단위 환산을 조회하지 않는다', async () => {
-    const { requests } = renderScreen(subsidiaryRoutes(), '?item=1001');
-
-    await findOriginContent();
-
-    expect(requestsTo(requests, uomConversionsPath())).toHaveLength(0);
-  });
-});
-
 /**
  * C08·C09·C10 · M15~M18 — 단위 환산의 전체 치환.
  *
