@@ -313,6 +313,8 @@ main > * + * {
   white-space: nowrap;
   font: var(--type-label-sm);
   vertical-align: middle;
+  /* 라벨 줄 높이를 키우지 않는다 — 옆 칸(품목) 입력칸과 윗선을 맞춘다. */
+  margin-block: calc(-1 * var(--space-2));
 }
 
 /* 이 폼의 라벨 줄은 안내 라벨 높이에 맞춘다 — 한 칸만 높아져 옆 칸과 입력칸 윗선이 어긋나지 않게. */
