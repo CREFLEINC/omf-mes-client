@@ -1,5 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
+import { plantToday } from '../../patterns/plant-time';
+
 /**
  * 출하일 범위 — 이 화면의 **필수** 조회 조건이다(공유계약 L-3).
  *
@@ -25,6 +27,16 @@ export interface PeriodInput {
 
 /** 처음 값 — 두 칸 모두 비어 있다. 「초기화」가 이 값으로 되돌린다. */
 export const EMPTY_PERIOD: PeriodInput = { from: '', to: '' };
+
+/** 처음 · 초기화 기간 — 시작일만 오늘(공장 날짜)로 채운다(사용자 지시 2026-11-27 · #360). 종료일은 비운다. */
+export const defaultPeriod = (now: Date = new Date()): PeriodInput => ({
+  from: plantToday(now),
+  to: '',
+});
+
+/** 주소에 시작일이 없으면(처음 들어옴 · 초기화) 시작일을 오늘로 본다. */
+export const readPeriodOrDefault = (params: URLSearchParams): PeriodInput =>
+  params.has('shipDateFrom') ? readPeriod(params) : { ...readPeriod(params), from: defaultPeriod().from };
 
 /** 서버로 보내는 값. `shipDateFrom`은 항상 채워진다 — 비어 있으면 애초에 조회하지 않는다. */
 export interface PeriodQuery {

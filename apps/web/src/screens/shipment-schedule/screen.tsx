@@ -23,7 +23,7 @@ import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param
 import { toPageView } from './pagination';
 import {
   EMPTY_PERIOD,
-  readPeriod,
+  readPeriodOrDefault,
   toPeriodQuery,
   validatePeriod,
   type PeriodInput,
@@ -101,7 +101,7 @@ export const ShipmentScheduleScreen = () => {
    */
   const session = useQueryClient().getQueryData<Session>(sessionKeys.current) ?? null;
 
-  const period = useMemo<PeriodInput>(() => readPeriod(searchParams), [searchParams]);
+  const period = useMemo<PeriodInput>(() => readPeriodOrDefault(searchParams), [searchParams]);
   const filters = useMemo<ShipmentFilters>(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
   const sortKey = readSortKey(searchParams.get('sort'));

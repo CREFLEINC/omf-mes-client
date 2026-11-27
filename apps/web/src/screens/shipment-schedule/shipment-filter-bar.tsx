@@ -17,7 +17,7 @@ import {
   type ShipmentFilters,
 } from './filters';
 import {
-  EMPTY_PERIOD,
+  defaultPeriod,
   isPeriodEndReason,
   isPeriodRequiredReason,
   validatePeriod,
@@ -152,7 +152,7 @@ export const ShipmentFilterBar = ({
    * 되돌림 effect 가 깨어나지 않고, 치던 값이 그대로 남는다.
    */
   const reset = (): void => {
-    setPeriod(EMPTY_PERIOD);
+    setPeriod(defaultPeriod());
     setFilters(EMPTY_FILTERS);
     onReset();
   };
@@ -162,7 +162,7 @@ export const ShipmentFilterBar = ({
     FOLDED_KEYS.includes(chip.key),
   );
   const isChanged = hasChangedFilters(
-    { ...EMPTY_PERIOD, ...EMPTY_FILTERS },
+    { ...defaultPeriod(), ...EMPTY_FILTERS },
     { ...period, ...filters },
     { ...appliedPeriod, ...appliedFilters },
   );
