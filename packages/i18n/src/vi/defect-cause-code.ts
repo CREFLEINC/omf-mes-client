@@ -174,7 +174,9 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
   },
   /** 되돌리기 어려운 액션이라 확인을 한 단계 둔다. 무엇이 일어나는지 먼저 밝힌다. */
   deactivate: {
-    title: 'Ngừng sử dụng?',
+    title: 'Ngừng sử dụng mã lỗi',
+    caption: 'Đối tượng ngừng sử dụng',
+    question: 'Bạn có muốn ngừng sử dụng mã lỗi này không?',
     description:
       'Ngừng sử dụng thì không chọn được mã này ở công việc mới. Dữ liệu cũ vẫn được giữ.',
     confirm: 'Ngừng sử dụng',
@@ -182,7 +184,9 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     childCount: (count: number): string => `Có ${String(count)} mã cấp dưới được liên kết.`,
   },
   activate: {
-    title: 'Dùng lại?',
+    title: 'Dùng lại mã lỗi',
+    caption: 'Đối tượng dùng lại',
+    question: 'Bạn có muốn dùng lại mã lỗi này không?',
     description: 'Dùng lại thì có thể chọn lại mã này ở công việc mới.',
     confirm: 'Dùng lại',
   },

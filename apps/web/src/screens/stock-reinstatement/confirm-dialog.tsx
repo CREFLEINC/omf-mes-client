@@ -1,6 +1,8 @@
-import { AlertBanner, Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
+
+import { InfoFacts } from '../../patterns/info-facts';
 
 export interface ReinstatementSummary {
   lotNo: string;
@@ -24,6 +26,7 @@ export interface ConfirmDialogProps {
   onClose: () => void;
 }
 
+/** 확인 팝업 시안(#360) — 사실 상자 · 질문 · 안내 줄(종전 경고 배너의 문장을 그대로 옮겼다). */
 export const ConfirmDialog = ({
   open,
   summary,
@@ -56,39 +59,40 @@ export const ConfirmDialog = ({
       }
     >
       {error}
-      <p>{t.confirm.lead}</p>
-      <dl className="stock-reinstatement-confirm-summary">
-        <div>
-          <dt>{lotLabel}</dt>
-          <dd>{summary.lotNo}</dd>
-        </div>
-        <div>
-          <dt>{t.fields.qty}</dt>
-          <dd>{qty}</dd>
-        </div>
-        <div>
-          <dt>{t.fields.sourceWarehouse}</dt>
-          <dd>{summary.fromWarehouse}</dd>
-        </div>
-        <div>
-          <dt>{t.fields.targetWarehouse}</dt>
-          <dd>{summary.toWarehouse}</dd>
-        </div>
-        {summary.toLocation !== null && (
-          <div>
-            <dt>{t.fields.targetLocation}</dt>
-            <dd>{summary.toLocation}</dd>
-          </div>
-        )}
-      </dl>
-      <AlertBanner
-        variant="warning"
-        title={concession ? t.warning.concessionTitle : t.warning.title}
-      >
-        {!concession && <p>{t.warning.transition}</p>}
-        <p>{concession ? t.warning.concessionStock(summary.qty) : t.warning.stock(summary.qty)}</p>
-        <p>{t.warning.noUndo}</p>
-      </AlertBanner>
+      <div className="users-roles-worker-dialog">
+        <InfoFacts
+          rows={[
+            [{ label: lotLabel, value: summary.lotNo, isKey: true }],
+            [
+              { label: t.fields.qty, value: qty },
+              { label: t.fields.sourceWarehouse, value: summary.fromWarehouse },
+              { label: t.fields.targetWarehouse, value: summary.toWarehouse },
+              ...(summary.toLocation !== null
+                ? [{ label: t.fields.targetLocation, value: summary.toLocation }]
+                : []),
+            ],
+          ]}
+        />
+        <p>{t.confirm.question}</p>
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+          <Icon name="info" size={16} aria-hidden />
+          {t.confirm.lead}
+        </p>
+        <ul>
+          {!concession && <li>{t.warning.transition}</li>}
+          <li>
+            {concession ? t.warning.concessionStock(summary.qty) : t.warning.stock(summary.qty)}
+          </li>
+        </ul>
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+          <Icon name="warning" size={16} aria-hidden />
+          {concession ? t.warning.concessionTitle : t.warning.title}
+        </p>
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+          <Icon name="warning" size={16} aria-hidden />
+          {t.warning.noUndo}
+        </p>
+      </div>
     </Dialog>
   );
 };

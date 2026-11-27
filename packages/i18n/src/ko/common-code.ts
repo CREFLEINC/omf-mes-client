@@ -52,8 +52,10 @@ export const commonCode = {
    * 근거이지 「이 행을 참조하는 자료의 수」가 아니다. 두 뜻을 섞으면 화면이 지어낸다.
    */
   dialog: {
-    deactivateCodeGroupTitle: '코드그룹을 사용 중지할까요?',
-    deactivateDepartmentTitle: '부서를 사용 중지할까요?',
+    deactivateCodeGroupTitle: '코드그룹 사용 중지',
+    deactivateDepartmentTitle: '부서 사용 중지',
+    deactivateCodeGroupQuestion: '이 코드그룹의 사용을 중지하시겠습니까?',
+    deactivateDepartmentQuestion: '이 부서의 사용을 중지하시겠습니까?',
     deactivateCodeGroupDescription:
       '사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 코드그룹이 그대로 표시됩니다.',
     deactivateDepartmentDescription:
@@ -426,7 +428,8 @@ export const commonCode = {
      * 버튼 문구가 「확인/취소」가 아니다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다.
      */
     dialog: {
-      title: '해제되는 역할이 있습니다',
+      title: '거래처 역할 해제',
+      question: '이 역할을 해제하고 저장하시겠습니까?',
       lead: '저장하면 아래 역할이 해제됩니다.',
       /* 계약이 빈 배열을 「전부 해제」로 정의한다 — 실제로 만들 수 있는 상태라 미리 밝힌다. */
       noneLeft: '저장하면 이 거래처의 역할이 하나도 남지 않습니다.',
@@ -528,7 +531,8 @@ export const commonCode = {
       effectiveRangeReversed: '유효 종료는 유효 시작과 같거나 그 뒤여야 합니다.',
     },
     dialog: {
-      deactivateTitle: '코드값을 사용 중지할까요?',
+      deactivateTitle: '코드값 사용 중지',
+      deactivateQuestion: '이 코드값의 사용을 중지하시겠습니까?',
       deactivateDescription:
         '사용을 중지하면 새로 선택할 수 없습니다. 기존 기록에는 이 코드값이 그대로 표시됩니다.',
     },

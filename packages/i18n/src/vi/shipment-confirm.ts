@@ -153,7 +153,7 @@ export const shipmentConfirm: Translated<typeof ko.shipmentConfirm> = {
   },
   confirmDialog: {
     title: 'Xác nhận xuất hàng',
-    target: (count: number): string => `Xác nhận ${String(count)} lô xuất hàng.`,
+    question: (count: number): string => `Xác nhận ${String(count)} lô xuất hàng chứ?`,
     list: 'Lô xuất hàng sẽ xác nhận',
     irreversible: 'Không thể hoàn tác việc xác nhận — không có cách hủy xác nhận.',
     erpQueued: 'Phiếu sẽ được đưa vào hàng đợi gửi ERP. Không gửi ngay lập tức.',
@@ -204,7 +204,7 @@ export const shipmentConfirm: Translated<typeof ko.shipmentConfirm> = {
   },
   executeDialog: {
     title: 'Thực thi hủy xuất hàng',
-    target: (shipmentNo: string): string => `Sẽ thực thi việc hủy đã được duyệt của ${shipmentNo}.`,
+    question: 'Thực thi việc hủy đã được duyệt chứ?',
     irreversible:
       'Sau khi thực thi thì không thể hoàn tác. Muốn xuất lại, hãy hoàn tất xuất hàng lại trên POP.',
     erpAlreadySent: 'Không thực thi được. Trong lúc đó đã gửi sang ERP rồi. Hãy xử lý ở phía ERP.',

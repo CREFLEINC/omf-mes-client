@@ -1117,7 +1117,7 @@ describe('CommonCodeScreen — 코드그룹 사용 중지 (C22)', () => {
 
     await user.click(within(codeGroupFormPane()).getByRole('button', { name: '사용 중지' }));
 
-    const dialog = within(screen.getByRole('dialog', { name: '코드그룹을 사용 중지할까요?' }));
+    const dialog = within(screen.getByRole('dialog', { name: '코드그룹 사용 중지' }));
     // 제목 아래 대상 줄은 두지 않는다(사용자 지시 2026-11-26).
     expect(dialog.queryByText('합성 코드그룹 A (SYN-GRP-01)')).toBeNull();
     expect(
@@ -2797,7 +2797,7 @@ describe('CommonCodeScreen — 코드값 사용 중지 (C39)', () => {
 
     await user.click(rowDeactivate());
 
-    const dialog = within(screen.getByRole('dialog', { name: '코드값을 사용 중지할까요?' }));
+    const dialog = within(screen.getByRole('dialog', { name: '코드값 사용 중지' }));
     // 제목 아래 대상 줄은 두지 않는다(사용자 지시 2026-11-26).
     expect(dialog.queryByText('합성 코드값 A (SYN-CV-01)')).toBeNull();
     expect(
@@ -4025,7 +4025,7 @@ describe('CommonCodeScreen — 부서 사용 중지 (C56)', () => {
 
     await user.click(within(departmentFormPane()).getByRole('button', { name: '사용 중지' }));
 
-    const dialog = screen.getByRole('dialog', { name: '부서를 사용 중지할까요?' });
+    const dialog = screen.getByRole('dialog', { name: '부서 사용 중지' });
     // 제목 아래 대상 줄은 두지 않는다(사용자 지시 2026-11-26).
     expect(within(dialog).queryByText('합성 부서 A (SYN-DEPT-01)')).toBeNull();
     expect(

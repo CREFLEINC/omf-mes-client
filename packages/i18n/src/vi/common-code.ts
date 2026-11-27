@@ -45,8 +45,10 @@ export const commonCode: Translated<typeof ko.commonCode> = {
   },
   /** 사용 중지 확인 창. 참조 건수를 내지 않는다. */
   dialog: {
-    deactivateCodeGroupTitle: 'Ngừng sử dụng nhóm mã?',
-    deactivateDepartmentTitle: 'Ngừng sử dụng phòng ban?',
+    deactivateCodeGroupTitle: 'Ngừng sử dụng nhóm mã',
+    deactivateDepartmentTitle: 'Ngừng sử dụng phòng ban',
+    deactivateCodeGroupQuestion: 'Bạn có muốn ngừng sử dụng nhóm mã này không?',
+    deactivateDepartmentQuestion: 'Bạn có muốn ngừng sử dụng phòng ban này không?',
     deactivateCodeGroupDescription:
       'Khi ngừng sử dụng sẽ không thể chọn mới. Các bản ghi hiện có vẫn hiển thị nhóm mã này.',
     deactivateDepartmentDescription:
@@ -314,7 +316,8 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       'Thông tin cần cho việc lưu vẫn chưa được máy chủ cung cấp nên bây giờ chưa lưu được. Bấm lại cũng cho kết quả như vậy. Nếu lặp lại thì hãy báo người phụ trách.',
     /* 잃는 것이 있을 때만 서는 창. 버튼 문구가 «확인/취소»가 아니다 — 무엇을 누르는지 알아야 한다. */
     dialog: {
-      title: 'Có vai trò sẽ bị gỡ',
+      title: 'Gỡ vai trò đối tác',
+      question: 'Bạn có muốn gỡ các vai trò này và lưu không?',
       lead: 'Khi lưu, các vai trò dưới đây sẽ bị gỡ.',
       /* 계약이 빈 배열을 «전부 해제»로 정의한다 — 실제로 만들 수 있는 상태라 미리 밝힌다. */
       noneLeft: 'Khi lưu, đối tác này sẽ không còn vai trò nào.',
@@ -396,7 +399,8 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       effectiveRangeReversed: 'Hiệu lực đến phải bằng hoặc sau hiệu lực từ.',
     },
     dialog: {
-      deactivateTitle: 'Ngừng sử dụng giá trị mã?',
+      deactivateTitle: 'Ngừng sử dụng giá trị mã',
+      deactivateQuestion: 'Bạn có muốn ngừng sử dụng giá trị mã này không?',
       deactivateDescription:
         'Khi ngừng sử dụng sẽ không thể chọn mới. Các bản ghi hiện có vẫn hiển thị giá trị mã này.',
     },

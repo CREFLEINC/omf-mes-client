@@ -105,12 +105,15 @@ export const ActivationDialog = ({
             {/* 진행 중 건수 · 되돌릴 수 있다는 사실은 그 아래 안내 줄(끄기를 정하는 순간에 궁금한 것). */}
             <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
               <Icon name="info" size={16} aria-hidden />
+              {/* 안내 줄 안은 한 덩어리 글 — 두 문장이 옆 칸으로 갈라지지 않게 한 span 에 담는다. */}
               <span>
-                {inProgressCount === 0
-                  ? t.dialog.deactivateInProgressNone
-                  : t.dialog.deactivateInProgress(inProgressCount)}
+                <span>
+                  {inProgressCount === 0
+                    ? t.dialog.deactivateInProgressNone
+                    : t.dialog.deactivateInProgress(inProgressCount)}
+                </span>{' '}
+                <span>{t.dialog.deactivateReversible}</span>
               </span>
-              <span>{t.dialog.deactivateReversible}</span>
             </p>
           </>
         ) : (

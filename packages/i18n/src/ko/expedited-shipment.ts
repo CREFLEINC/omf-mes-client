@@ -157,9 +157,7 @@ export const expeditedShipment = {
   },
   confirm: {
     title: '직행 출하 확정',
-    target: (lotNo: string, shipmentRequestNo: string): string =>
-      `${lotNo}을(를) ${shipmentRequestNo}으로 직행 출하합니다.`,
-    qty: (qty: string): string => `수량 ${qty}`,
+    question: '직행 출하하시겠습니까?',
     irreversible: '되돌릴 수 없습니다 — 제품 입고와 출하 전표가 함께 만들어지고 재고가 차감됩니다.',
     unconfirmedNote: '처리 후에도 출하는 미확정 상태입니다. 확정은 별도 화면에서 진행합니다.',
     cancel: '취소',

@@ -19,7 +19,8 @@ const renderDialog = (overrides: Partial<DeactivateConfirmDialogProps> = {}) => 
     <ToastProvider>
       <DeactivateConfirmDialog
         title={t.title}
-        targetNote={t.target('GRP-A · 프레스 구역')}
+        target={{ caption: t.caption, name: '프레스 구역', meta: 'GRP-A' }}
+        question={t.question}
         confirmLabel={t.confirm}
         impactNote={t.membersNone}
         reversibilityNote={t.notReversibleHere}
@@ -41,7 +42,10 @@ describe('DeactivateConfirmDialog', () => {
     renderDialog();
 
     expect(screen.getByRole('dialog', { name: t.title })).toBeInTheDocument();
-    expect(screen.getByText(t.target('GRP-A · 프레스 구역'))).toBeInTheDocument();
+    expect(screen.getByText(t.caption)).toBeInTheDocument();
+    expect(screen.getByText('프레스 구역')).toBeInTheDocument();
+    expect(screen.getByText('GRP-A')).toBeInTheDocument();
+    expect(screen.getByText(t.question)).toBeInTheDocument();
   });
 
   /* 끄면 무엇이 달라지는지는 부르는 쪽이 정한다 — 창은 받은 문장을 그대로 낸다. */

@@ -247,6 +247,8 @@ export const warehouseLocation = {
   /** 랙의 층 · 셀 설정 대화상자(사용자 지시 2026-10-29). */
   deleteLocation: {
     title: '위치 삭제',
+    caption: '삭제 대상',
+    question: '이 위치를 삭제하시겠습니까?',
     /** 그 위치와 밑의 위치 수. */
     count: (count: number): string =>
       count > 1 ? `위치 ${String(count)}개가 함께 삭제됩니다.` : '위치 1개가 삭제됩니다.',
@@ -296,7 +298,10 @@ export const warehouseLocation = {
   },
   /** 되돌리기 어려운 액션이라 확인을 한 단계 둔다. 무엇이 일어나는지 먼저 밝힌다. */
   deactivate: {
-    title: '사용 중지할까요?',
+    title: '위치 사용 중지',
+    caption: '사용 중지 대상',
+    question: '이 위치의 사용을 중지하시겠습니까?',
+    warehouseQuestion: '이 창고의 사용을 중지하시겠습니까?',
     description: '삭제하지 않습니다. 사용 중지하면 새 작업에서 고를 수 없게 됩니다.',
     confirm: '사용 중지',
     count: (count: number): string =>
@@ -309,7 +314,10 @@ export const warehouseLocation = {
     stockCheckFailed: '재고를 확인하지 못했습니다.',
   },
   activate: {
-    title: '다시 사용할까요?',
+    title: '위치 다시 사용',
+    caption: '다시 사용 대상',
+    question: '이 위치를 다시 사용하시겠습니까?',
+    warehouseQuestion: '이 창고를 다시 사용하시겠습니까?',
     description: '다시 사용하면 새 작업에서 이 항목을 선택할 수 있습니다.',
     confirm: '다시 사용',
     count: (count: number): string =>

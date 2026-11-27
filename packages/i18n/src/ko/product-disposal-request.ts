@@ -230,8 +230,8 @@ export const productDisposalRequest = {
   },
   confirm: {
     title: '폐기 요청',
-    target: (count: number, qty: string): string =>
-      `대상 ${String(count)}건 · 합계 ${qty}을(를) 폐기 요청합니다.`,
+    question: (count: number, qty: string): string =>
+      `대상 ${String(count)}건 · 합계 ${qty}을(를) 폐기 요청하시겠습니까?`,
     approvalNote: '요청은 결재선을 따라 올라갑니다. 승인 뒤에 출고할 수 있습니다.',
     irreversible: '요청을 올린 뒤에는 화면에서 철회할 수 없습니다. 번복은 결재함의 반려로 합니다.',
     cancel: '취소',

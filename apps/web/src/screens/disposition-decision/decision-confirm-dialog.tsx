@@ -1,8 +1,7 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
 
-import { InfoTip } from '../../patterns/info-tip';
+import { InfoFacts, InfoLong, type InfoFact } from '../../patterns/info-facts';
 
 const t = messages.dispositionDecision;
 
@@ -24,6 +23,9 @@ export interface DecisionConfirmDialogProps {
 /**
  * 판정 확인 팝업(omf-all-around#352 사용자 지시) — 폐기 · 선별 · 특채 저장 전에 늘 띄운다. 결재 없이 저장하면 바로
  * 반영되므로(사용자 결정 2026-11-23) 저장할 내용을 마지막으로 보인다.
+ *
+ * 확인 팝업 시안(#360) — 굵게 보일 값(처분 유형 · 대상 · 수량)은 사실 상자(첫 칸 크게), 긴 글(선별 대상 · 적용 기간 ·
+ * 사유)은 상자 아래 이름 + 글, 그 아래 질문 · 「바로 반영」 안내 줄.
  */
 export const DecisionConfirmDialog = ({
   rows,
@@ -31,24 +33,18 @@ export const DecisionConfirmDialog = ({
   onConfirm,
   onCancel,
 }: DecisionConfirmDialogProps) => {
-  const titleId = useId();
+  const facts: InfoFact[] = rows
+    .filter((row) => row.strong === true)
+    .map((row) => ({ label: row.label, value: row.value }));
+  const [key, ...rest] = facts;
+  const longRows = rows.filter((row) => row.strong !== true);
 
   return (
     <Dialog
       open
       onClose={onCancel}
       size="md"
-      /*
-       * 저장 안내는 제목 옆 ⓘ — 마우스를 올리면 뜬다(omf-all-around#360). 본문은 값 줄뿐이라 붙일 머리가 없다.
-       * 창 이름은 `aria-labelledby` 로 제목 글자만 읽힌다.
-       */
-      title={
-        <span className="disposition-confirm-title">
-          <span id={titleId}>{t.confirm.title}</span>
-          <InfoTip text={t.confirm.direct} />
-        </span>
-      }
-      aria-labelledby={titleId}
+      title={t.confirm.title}
       showCloseButton={false}
       closeOnBackdropClick={false}
       footer={
@@ -67,15 +63,16 @@ export const DecisionConfirmDialog = ({
         </>
       }
     >
-      <div className="disposition-confirm">
-        <dl className="disposition-confirm-rows">
-          {rows.map((row) => (
-            <div key={row.label}>
-              <dt>{row.label}</dt>
-              <dd>{row.strong === true ? <strong>{row.value}</strong> : row.value}</dd>
-            </div>
-          ))}
-        </dl>
+      <div className="users-roles-worker-dialog">
+        {key === undefined ? null : <InfoFacts rows={[[{ ...key, isKey: true }], rest]} />}
+        {longRows.map((row) => (
+          <InfoLong key={row.label} label={row.label} value={row.value} />
+        ))}
+        <p>{t.confirm.question}</p>
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+          <Icon name="info" size={16} aria-hidden />
+          {t.confirm.direct}
+        </p>
       </div>
     </Dialog>
   );

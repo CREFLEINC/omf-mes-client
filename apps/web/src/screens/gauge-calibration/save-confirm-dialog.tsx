@@ -1,4 +1,4 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { codeLabel, PLACEHOLDER_HISTORY_TYPES, PLACEHOLDER_RESULT_CODES } from './code-options';
@@ -76,13 +76,23 @@ export const SaveConfirmDialog = ({
         </>
       }
     >
-      <p className="dialog-lead">{t.confirm.lead}</p>
-      <p className="dialog-lead">
-        <strong>{summarize(draft, equipmentLabel)}</strong>
-      </p>
-      <p className="dialog-lead">
-        {updatesMaster(draft) ? t.confirm.masterEffect : t.confirm.noMasterEffect}
-      </p>
+      {/* 단말 사용 중지 창과 같은 짜임 — 대상 상자 · 질문 · 안내 줄(#360). 계측기 이름 아래 나머지 값 한 줄. */}
+      <div className="users-roles-worker-dialog">
+        <div className="users-roles-worker-block">
+          <span className="users-roles-worker-block-caption">{t.confirm.caption}</span>
+          <strong>{equipmentLabel}</strong>
+          <span>{summarize(draft, '')}</span>
+        </div>
+        <p>{t.confirm.question}</p>
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+          <Icon name="warning" size={16} aria-hidden />
+          {t.confirm.lead}
+        </p>
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+          <Icon name="info" size={16} aria-hidden />
+          {updatesMaster(draft) ? t.confirm.masterEffect : t.confirm.noMasterEffect}
+        </p>
+      </div>
     </Dialog>
   );
 };

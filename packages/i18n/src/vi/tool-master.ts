@@ -125,21 +125,23 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
     month: 'Tháng',
   },
   retire: {
-    deactivateTitle: 'Ngừng sử dụng công cụ này?',
+    deactivateTitle: 'Ngừng sử dụng công cụ',
+    deactivateCaption: 'Đối tượng ngừng sử dụng',
+    deactivateQuestion: 'Bạn có muốn ngừng sử dụng công cụ này không?',
     deactivateImpact:
       'Kết quả mà công cụ này để lại vẫn giữ nguyên, chỉ khi chọn mới thì nó không còn trong danh sách.',
     deactivateNotReversibleHere:
       'Không xóa. Nhưng màn hình này không có cách bật lại, muốn hoàn tác thì phải nhờ người phụ trách.',
     deactivateConfirm: 'Ngừng sử dụng',
-    deactivateTarget: (label: string): string => `Ngừng sử dụng ${label}.`,
-    disposeTitle: 'Xử lý thanh lý?',
+    disposeTitle: 'Thanh lý công cụ',
+    disposeCaption: 'Đối tượng thanh lý',
+    disposeQuestion: 'Bạn có muốn thanh lý công cụ này không?',
     /** 사용 중지와 다른 축이다 — 그것은 감추는 것이고 이것은 자산이 끝난 것이다. */
     disposeImpact:
       'Đây là xử lý khác với ngừng sử dụng. Ngừng sử dụng là ẩn khỏi danh sách, còn thanh lý là tài sản đã kết thúc.',
     disposeNotReversible:
       'Không thể hoàn tác. Sau khi thanh lý thì tải lại cũng không mở được chỉnh sửa.',
     disposeConfirm: 'Xử lý thanh lý',
-    disposeTarget: (label: string): string => `Thanh lý ${label}.`,
     referenceCount: (count: number): string => `Có ${count} dữ liệu tham chiếu đến công cụ này.`,
     referenceNone: 'Không có dữ liệu nào tham chiếu đến công cụ này.',
     /** ⛔ 모르는 것을 「없다」로 그리지 않는다. */

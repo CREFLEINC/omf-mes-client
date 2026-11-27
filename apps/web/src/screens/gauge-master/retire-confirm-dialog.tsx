@@ -1,4 +1,4 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -6,10 +6,12 @@ export interface RetireConfirmDialogProps {
   /** 창의 제목. 무엇을 끄는지 종류가 다르면 제목도 달라야 한다 */
   title: string;
   /**
-   * 무엇을 대상으로 하는지 한 줄. **내부 번호가 아니라 사람이 읽는 이름을 담는다.**
-   * 문장은 부르는 쪽이 만든다 — 「사용 중지합니다」와 「폐기 처리합니다」가 다르다.
+   * 대상 상자 — 작은 제목 · 이름 · 보조 한 줄(코드). **내부 번호가 아니라 사람이 읽는 이름을 담는다.**
+   * 작은 제목은 부르는 쪽이 정한다 — 「사용 중지 대상」과 「폐기 대상」이 다르다.
    */
-  targetNote: string;
+  target: { caption: string; name: string; meta: string };
+  /** 상자 아래 묻는 문장. 제목은 짧은 이름이고 묻는 말은 본문에 둔다(#360). */
+  question: string;
   /**
    * 끄면 무엇이 달라지는지 한 줄. **부르는 쪽이 정한다** —
    * 사용 중지는 남는 기록을, 폐기는 자산이 끝났음을 말한다.
@@ -63,7 +65,8 @@ export interface RetireConfirmDialogProps {
  */
 export const RetireConfirmDialog = ({
   title,
-  targetNote,
+  target,
+  question,
   impactNote,
   reversibilityNote,
   confirmLabel,
@@ -92,8 +95,22 @@ export const RetireConfirmDialog = ({
     }
   >
     {banner}
-    <p>{targetNote}</p>
-    <p>{impactNote}</p>
-    <p>{reversibilityNote}</p>
+    {/* 단말 사용 중지 창과 같은 짜임 — 대상 상자 · 질문 · 안내 줄(#360). */}
+    <div className="users-roles-worker-dialog">
+      <div className="users-roles-worker-block">
+        <span className="users-roles-worker-block-caption">{target.caption}</span>
+        <strong>{target.name}</strong>
+        <span>{target.meta}</span>
+      </div>
+      <p>{question}</p>
+      <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+        <Icon name="info" size={16} aria-hidden />
+        {impactNote}
+      </p>
+      <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+        <Icon name="warning" size={16} aria-hidden />
+        {reversibilityNote}
+      </p>
+    </div>
   </Dialog>
 );

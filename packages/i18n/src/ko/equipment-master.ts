@@ -111,8 +111,9 @@ export const equipmentMaster = {
    * ⚠ 계약에 다시 켜는 경로가 없다 — 이 화면에서 되돌릴 수 없다는 사실을 감추지 않는다.
    */
   dispose: {
-    title: '폐기 처리할까요?',
-    target: (label: string): string => `${label} 을(를) 폐기 처리합니다.`,
+    title: '설비 폐기 처리',
+    caption: '폐기 대상',
+    question: '이 설비를 폐기 처리하시겠습니까?',
     /** 사용 중지와 «다른 축» 이다 — 그것은 감추는 것이고 이것은 자산이 끝난 것이다. */
     impact:
       '사용 중지와 다른 처리입니다. 사용 중지는 목록에서 감추는 것이고, 폐기는 자산이 끝난 것입니다.',
@@ -120,11 +121,13 @@ export const equipmentMaster = {
     confirm: '폐기 처리',
   },
   deactivate: {
-    title: '사용 중지할까요?',
-    equipmentTitle: '설비를 사용 중지할까요?',
+    title: '설비 그룹 사용 중지',
+    equipmentTitle: '설비 사용 중지',
+    caption: '사용 중지 대상',
+    question: '이 설비 그룹의 사용을 중지하시겠습니까?',
+    equipmentQuestion: '이 설비의 사용을 중지하시겠습니까?',
     /** 설비를 중지해도 그 설비가 남긴 기록은 그대로다 — 감추는 것과 지우는 것은 다르다. */
     equipmentImpact: '이 설비가 남긴 기록은 그대로 남고, 새로 고를 때만 목록에서 빠집니다.',
-    target: (label: string): string => `${label} 을(를) 사용 중지합니다.`,
     membersNone: '이 그룹에 소속된 설비가 없습니다.',
     /** 소속 설비는 그대로 남는다 — 그룹이 목록에서 빠질 뿐이다. */
     members: (count: number): string =>

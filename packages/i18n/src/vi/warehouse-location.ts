@@ -220,6 +220,8 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   /** 랙의 층 · 셀 설정 대화상자(사용자 지시 2026-10-29). */
   deleteLocation: {
     title: 'Xóa vị trí',
+    caption: 'Đối tượng xóa',
+    question: 'Bạn có muốn xóa vị trí này không?',
     /** 그 위치와 밑의 위치 수. */
     count: (count: number): string =>
       count > 1 ? `${String(count)} vị trí sẽ cùng bị xóa.` : '1 vị trí sẽ bị xóa.',
@@ -269,7 +271,10 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   },
   /** 되돌리기 어려운 액션이라 확인을 한 단계 둔다. 무엇이 일어나는지 먼저 밝힌다. */
   deactivate: {
-    title: 'Ngừng sử dụng?',
+    title: 'Ngừng sử dụng vị trí',
+    caption: 'Đối tượng ngừng sử dụng',
+    question: 'Bạn có muốn ngừng sử dụng vị trí này không?',
+    warehouseQuestion: 'Bạn có muốn ngừng sử dụng kho này không?',
     description: 'Không xóa. Ngừng sử dụng thì không chọn được ở công việc mới.',
     confirm: 'Ngừng sử dụng',
     count: (count: number): string =>
@@ -281,7 +286,10 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     stockCheckFailed: 'Không kiểm tra được tồn kho.',
   },
   activate: {
-    title: 'Dùng lại?',
+    title: 'Dùng lại vị trí',
+    caption: 'Đối tượng dùng lại',
+    question: 'Bạn có muốn dùng lại vị trí này không?',
+    warehouseQuestion: 'Bạn có muốn dùng lại kho này không?',
     description: 'Dùng lại thì có thể chọn mục này ở công việc mới.',
     confirm: 'Dùng lại',
     count: (count: number): string =>

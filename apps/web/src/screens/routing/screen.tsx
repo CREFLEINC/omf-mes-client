@@ -1489,6 +1489,7 @@ const RoutingWorkspace = () => {
           revisionLabel={
             detail.data === undefined ? '' : t.values.revision(detail.data.routing.routingVersion)
           }
+          itemLabel={itemLabel}
           onClose={resetTransition}
           onConfirm={() => {
             transitionWrite.write();

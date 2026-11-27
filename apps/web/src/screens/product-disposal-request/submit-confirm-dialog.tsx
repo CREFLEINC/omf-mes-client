@@ -1,4 +1,4 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 const t = messages.productDisposalRequest.confirm;
@@ -20,6 +20,8 @@ export interface SubmitConfirmDialogProps {
  *
  * ⛔ **버튼 문구를 「확인/취소」로 두지 않는다** — 무엇을 누르는지 창을 다시 읽지 않아도
  * 알아야 한다.
+ *
+ * 확인 팝업 시안(#360) — 고른 대상이 여러 건이라 대상 상자 없이 질문 · 안내 줄.
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
@@ -45,9 +47,17 @@ export const SubmitConfirmDialog = ({
       </>
     }
   >
-    <p>{t.target(count, qtyText)}</p>
-    <p className="field-note">{t.approvalNote}</p>
-    {/* ⛔ 되돌릴 수 없다는 사실을 «누르기 전»에 적는다. 누른 뒤에 적으면 소용이 없다. */}
-    <p className="field-note">{t.irreversible}</p>
+    <div className="users-roles-worker-dialog">
+      <p>{t.question(count, qtyText)}</p>
+      <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+        <Icon name="info" size={16} aria-hidden />
+        {t.approvalNote}
+      </p>
+      {/* ⛔ 되돌릴 수 없다는 사실을 «누르기 전»에 적는다. 누른 뒤에 적으면 소용이 없다. */}
+      <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+        <Icon name="warning" size={16} aria-hidden />
+        {t.irreversible}
+      </p>
+    </div>
   </Dialog>
 );

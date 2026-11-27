@@ -187,9 +187,12 @@ export const collectionChannel: Translated<typeof ko.collectionChannel> = {
     resumeAction: 'Dùng lại',
     deactivateLabel: (channelKey: string): string => `Ngừng sử dụng ${channelKey}`,
     resumeLabel: (channelKey: string): string => `Dùng lại ${channelKey}`,
-    deactivateTitle: 'Ngừng sử dụng kênh này?',
-    resumeTitle: 'Bật lại kênh này?',
-    target: (channelKey: string): string => `Xử lý kênh ${channelKey}.`,
+    deactivateTitle: 'Ngừng sử dụng kênh',
+    resumeTitle: 'Tiếp tục sử dụng kênh',
+    deactivateCaption: 'Đối tượng ngừng sử dụng',
+    resumeCaption: 'Đối tượng tiếp tục sử dụng',
+    deactivateQuestion: 'Bạn có muốn ngừng sử dụng kênh này không?',
+    resumeQuestion: 'Bạn có muốn tiếp tục sử dụng kênh này không?',
     /** ⚠ 수집까지 멈추는지 아직 모른다 — 「값이 버려진다」고도 「담긴다」고도 말하지 않는다. */
     deactivateImpact:
       'Ngừng sử dụng thì kênh này không còn trong danh sách. Hạng mục kiểm tra đã nối với kênh không bị xóa.',

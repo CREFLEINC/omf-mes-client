@@ -16,8 +16,9 @@ describe('SubmitConfirmDialog', () => {
       />,
     );
 
-    expect(screen.getByText('SYN-SR-501 출하 처리')).toBeInTheDocument();
-    expect(screen.getByText('SYN-SR-501을(를) 출하 처리합니다.')).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: '출하 처리' })).toBeInTheDocument();
+    expect(screen.getByText('SYN-SR-501')).toBeInTheDocument();
+    expect(screen.getByText('출하 처리하시겠습니까?')).toBeInTheDocument();
     expect(screen.getByText(/되돌릴 수 없습니다/)).toBeInTheDocument();
     expect(
       screen.getByText('처리 후에도 출하는 미확정 상태입니다. 확정은 별도 화면에서 진행합니다.'),

@@ -311,13 +311,19 @@ export const routing = {
      * 되돌리기 어려운 전이라 확인을 한 단계 둔다. 무엇이 일어나는지와
      * 그 뒤에 무엇을 할 수 있는지를 먼저 밝힌다.
      */
-    confirmTitle: '이 Rev를 확정할까요?',
+    confirmTitle: 'Rev 확정',
+    confirmCaption: '확정 대상',
+    confirmQuestion: '이 Rev를 확정하시겠습니까?',
     confirmDescription: '확정하면 이 Rev는 고칠 수 없습니다. 바꾸려면 신규 Rev를 발행해야 합니다.',
-    obsoleteTitle: (revision: string): string => `${revision}를 폐기하시겠습니까?`,
+    obsoleteTitle: (revision: string): string => `${revision} 폐기`,
+    obsoleteCaption: '폐기 대상',
+    obsoleteQuestion: '이 Rev를 폐기하시겠습니까?',
     obsoleteDescription: '폐기된 Rev는 신규 작업에 사용할 수 없습니다.',
     obsoleteNote: '폐기 후에도 기존 이력은 유지됩니다.',
     /** 작성중 Rev 취소 확인(#231). */
-    discardTitle: (revision: string): string => `${revision} 작성을 취소하시겠습니까?`,
+    discardTitle: (revision: string): string => `${revision} 작성 취소`,
+    discardCaption: '작성 취소 대상',
+    discardQuestion: '이 Rev의 작성을 취소하시겠습니까?',
     discardDescription: '작성중 Rev와 그 공정 구성 · 공정 연결이 삭제됩니다.',
     discardNote: '삭제 후에는 되돌릴 수 없습니다. 변경 이력에는 남습니다.',
     discardDone: '작성을 취소했습니다.',

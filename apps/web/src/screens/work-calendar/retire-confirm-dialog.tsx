@@ -1,14 +1,12 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 const t = messages.workCalendar.retire;
 
 export interface RetireConfirmDialogProps {
-  /**
-   * 무엇을 대상으로 하는지 한 줄. **내부 번호가 아니라 사람이 읽는 이름을 담는다.**
-   */
-  targetNote: string;
+  /** 대상 상자의 이름 · 보조 한 줄(코드). **내부 번호가 아니라 사람이 읽는 이름을 담는다.** */
+  target: { name: string; meta: string };
   /**
    * 몇이 이 캘린더를 따르는지 한 줄. **계약이 시킨 것이다** —
    * 「참조가 있으면 확인 문구에 건수를 함께 보인 뒤 부른다」(공유계약 B-4).
@@ -43,7 +41,7 @@ export interface RetireConfirmDialogProps {
  * 기존 디자인 시스템 컴포넌트의 조합이라 이 화면 슬라이스가 소유한다.
  */
 export const RetireConfirmDialog = ({
-  targetNote,
+  target,
   applicationNote,
   isSaving,
   banner,
@@ -70,9 +68,26 @@ export const RetireConfirmDialog = ({
     }
   >
     {banner}
-    <p>{targetNote}</p>
-    <p>{applicationNote}</p>
-    <p>{t.impact}</p>
-    <p>{t.notReversibleHere}</p>
+    {/* 단말 사용 중지 창과 같은 짜임 — 대상 상자 · 질문 · 안내 줄(#360). */}
+    <div className="users-roles-worker-dialog">
+      <div className="users-roles-worker-block">
+        <span className="users-roles-worker-block-caption">{t.caption}</span>
+        <strong>{target.name}</strong>
+        <span>{target.meta}</span>
+      </div>
+      <p>{t.question}</p>
+      <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+        <Icon name="info" size={16} aria-hidden />
+        {applicationNote}
+      </p>
+      <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+        <Icon name="info" size={16} aria-hidden />
+        {t.impact}
+      </p>
+      <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+        <Icon name="warning" size={16} aria-hidden />
+        {t.notReversibleHere}
+      </p>
+    </div>
   </Dialog>
 );

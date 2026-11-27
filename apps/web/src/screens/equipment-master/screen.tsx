@@ -1573,9 +1573,12 @@ export const EquipmentMasterScreen = () => {
       {disposeTarget !== null && (
         <DeactivateConfirmDialog
           title={t.dispose.title}
-          targetNote={t.dispose.target(
-            `${disposeTarget.equipmentCode} · ${disposeTarget.equipmentName}`,
-          )}
+          target={{
+            caption: t.dispose.caption,
+            name: disposeTarget.equipmentName,
+            meta: disposeTarget.equipmentCode,
+          }}
+          question={t.dispose.question}
           confirmLabel={t.dispose.confirm}
           impactNote={t.dispose.impact}
           reversibilityNote={t.dispose.notReversible}
@@ -1589,9 +1592,12 @@ export const EquipmentMasterScreen = () => {
       {deactivateTarget !== null && (
         <DeactivateConfirmDialog
           title={t.deactivate.equipmentTitle}
-          targetNote={t.deactivate.target(
-            `${deactivateTarget.equipmentCode} · ${deactivateTarget.equipmentName}`,
-          )}
+          target={{
+            caption: t.deactivate.caption,
+            name: deactivateTarget.equipmentName,
+            meta: deactivateTarget.equipmentCode,
+          }}
+          question={t.deactivate.equipmentQuestion}
           confirmLabel={t.deactivate.confirm}
           impactNote={t.deactivate.equipmentImpact}
           reversibilityNote={t.deactivate.notReversibleHere}
@@ -1610,9 +1616,12 @@ export const EquipmentMasterScreen = () => {
       {isDeactivateOpen && detail.data !== undefined && (
         <DeactivateConfirmDialog
           title={t.deactivate.title}
-          targetNote={t.deactivate.target(
-            `${detail.data.equipmentGroup.groupCode} · ${detail.data.equipmentGroup.groupName}`,
-          )}
+          target={{
+            caption: t.deactivate.caption,
+            name: detail.data.equipmentGroup.groupName,
+            meta: detail.data.equipmentGroup.groupCode,
+          }}
+          question={t.deactivate.question}
           confirmLabel={t.deactivate.confirm}
           impactNote={groupDeactivateImpact(detail.data.memberEquipmentCount)}
           reversibilityNote={t.deactivate.notReversibleHere}

@@ -1,6 +1,8 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
+
+import { InfoFacts } from '../../patterns/info-facts';
 
 import { toReasonLines, toVisibleLine } from './reason-draft';
 
@@ -85,41 +87,51 @@ export const SubmitConfirmDialog = ({
   >
     {banner}
 
-    <p>{t.dialog.submitLead}</p>
+    {/* 확인 팝업 시안(#360) — 대상 상자 · 질문 · 사유 · 경고 줄. */}
+    <div className="users-roles-worker-dialog">
+      <InfoFacts
+        rows={[
+          [
+            {
+              label: t.result.inventoryAdjustmentNo,
+              value: summary.inventoryAdjustmentNo,
+              isKey: true,
+            },
+          ],
+        ]}
+      />
+      <p>{t.dialog.submitQuestion}</p>
 
-    <dl className="filter-bar">
-      <div className="field-cell">
-        <dt className="field-label">{t.result.inventoryAdjustmentNo}</dt>
-        <dd>{summary.inventoryAdjustmentNo}</dd>
-      </div>
-    </dl>
-
-    {/*
-     * 사유는 **전문과 첫 줄을 나눠** 보인다. 첫 줄만 보이면 무엇을 보내는지 모르고, 전문만
-     * 보이면 어느 줄이 남들에게 요약으로 보일지 모른다.
-     */}
-    <section aria-label={t.dialog.reasonFull}>
-      <p className="field-label">{t.dialog.reasonFull}</p>
       {/*
-       * 줄바꿈이 뜻을 나른다 — 한 줄로 이어 붙이면 문단 구분이 사라진다. 줄마다 상자를 세우고
-       * 빈 줄은 보이는 글자로 바꾼다(`app.css`를 고치지 않는다).
-       *
-       * 키에 순번을 섞는다 — 같은 글자가 두 줄에 오는 것이 사유에서는 흔하다.
+       * 사유는 **전문과 첫 줄을 나눠** 보인다. 첫 줄만 보이면 무엇을 보내는지 모르고, 전문만
+       * 보이면 어느 줄이 남들에게 요약으로 보일지 모른다.
        */}
-      {toReasonLines(summary.reason).map((line, index) => (
-        <p key={`${String(index)}:${line}`}>{toVisibleLine(line)}</p>
-      ))}
-    </section>
+      <section aria-label={t.dialog.reasonFull}>
+        <p className="field-label">{t.dialog.reasonFull}</p>
+        {/*
+         * 줄바꿈이 뜻을 나른다 — 한 줄로 이어 붙이면 문단 구분이 사라진다. 줄마다 상자를 세우고
+         * 빈 줄은 보이는 글자로 바꾼다(`app.css`를 고치지 않는다).
+         *
+         * 키에 순번을 섞는다 — 같은 글자가 두 줄에 오는 것이 사유에서는 흔하다.
+         */}
+        {toReasonLines(summary.reason).map((line, index) => (
+          <p key={`${String(index)}:${line}`}>{toVisibleLine(line)}</p>
+        ))}
+      </section>
 
-    <section aria-label={t.dialog.reasonFirstLine}>
-      <p className="field-label">{t.dialog.reasonFirstLine}</p>
-      <p>{summary.reasonFirstLine}</p>
-    </section>
+      <section aria-label={t.dialog.reasonFirstLine}>
+        <p className="field-label">{t.dialog.reasonFirstLine}</p>
+        <p>{summary.reasonFirstLine}</p>
+      </section>
 
-    {/*
-     * 되돌릴 수 없다는 한 줄만 실행 버튼 바로 위에 선다. 요약 안내·승인자 안내는 걷었다
-     * (사용자 지시 2026-11-18).
-     */}
-    <p>{t.dialog.submitNoUndo}</p>
+      {/*
+       * 되돌릴 수 없다는 한 줄만 실행 버튼 바로 위에 선다. 요약 안내·승인자 안내는 걷었다
+       * (사용자 지시 2026-11-18).
+       */}
+      <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+        <Icon name="warning" size={16} aria-hidden />
+        {t.dialog.submitNoUndo}
+      </p>
+    </div>
   </Dialog>
 );

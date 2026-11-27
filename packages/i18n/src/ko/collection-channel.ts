@@ -256,9 +256,12 @@ export const collectionChannel = {
     resumeAction: '사용 재개',
     deactivateLabel: (channelKey: string): string => `${channelKey} 사용 중지`,
     resumeLabel: (channelKey: string): string => `${channelKey} 사용 재개`,
-    deactivateTitle: '이 채널을 사용 중지할까요?',
-    resumeTitle: '이 채널을 다시 켤까요?',
-    target: (channelKey: string): string => `${channelKey} 채널을 처리합니다.`,
+    deactivateTitle: '채널 사용 중지',
+    resumeTitle: '채널 사용 재개',
+    deactivateCaption: '사용 중지 대상',
+    resumeCaption: '사용 재개 대상',
+    deactivateQuestion: '이 채널의 사용을 중지하시겠습니까?',
+    resumeQuestion: '이 채널의 사용을 재개하시겠습니까?',
     /**
      * ⚠ **「값이 버려진다」고도 「값이 담긴다」고도 말하지 않는다.** 사용 안 함이 수집까지
      * 멈추는지가 아직 확인되지 않았다(설계 질의). **모르는 것을 단정하면 사용자는 그 말을

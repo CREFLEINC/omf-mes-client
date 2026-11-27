@@ -1367,7 +1367,7 @@ describe('RoutingScreen — 작성 취소', () => {
     await screen.findByText('1차 사출');
 
     await user.click(within(actionsRegion()).getByRole('button', { name: '작성 취소' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Rev 3 작성을 취소하시겠습니까?' });
+    const dialog = await screen.findByRole('dialog', { name: 'Rev 3 작성 취소' });
     expect(requests.filter((request) => request.method === 'DELETE')).toHaveLength(0);
     await user.click(within(dialog).getByRole('button', { name: '작성 취소' }));
 
@@ -1416,7 +1416,7 @@ describe('RoutingScreen — 작성 취소', () => {
     await screen.findByText('1차 사출');
 
     await user.click(within(actionsRegion()).getByRole('button', { name: '작성 취소' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Rev 3 작성을 취소하시겠습니까?' });
+    const dialog = await screen.findByRole('dialog', { name: 'Rev 3 작성 취소' });
     await user.click(within(dialog).getByRole('button', { name: '작성 취소' }));
 
     expect(
@@ -1435,7 +1435,7 @@ describe('RoutingScreen — 확정·폐기', () => {
 
     await user.click(within(actionsRegion()).getByRole('button', { name: '확정' }));
 
-    expect(await screen.findByText('이 Rev를 확정할까요?')).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: 'Rev 확정' })).toBeInTheDocument();
     expect(requestsTo(requests, '/planning/routings/7003:confirm')).toHaveLength(0);
   });
 
@@ -1557,7 +1557,7 @@ describe('RoutingScreen — 확정·폐기', () => {
     await screen.findByText('1차 사출');
 
     await user.click(within(actionsRegion()).getByRole('button', { name: '폐기' }));
-    expect(await screen.findByText('Rev 2를 폐기하시겠습니까?')).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: 'Rev 2 폐기' })).toBeInTheDocument();
     expect(requestsTo(requests, '/planning/routings/7002:obsolete')).toHaveLength(0);
 
     await user.click(
@@ -1579,7 +1579,7 @@ describe('RoutingScreen — 확정·폐기', () => {
       within(await screen.findByRole('dialog')).getByRole('button', { name: '취소' }),
     );
 
-    expect(screen.queryByText('이 Rev를 확정할까요?')).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Rev 확정' })).not.toBeInTheDocument();
     expect(requestsTo(requests, '/planning/routings/7003:confirm')).toHaveLength(0);
   });
 });

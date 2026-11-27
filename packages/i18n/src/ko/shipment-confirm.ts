@@ -169,7 +169,7 @@ export const shipmentConfirm = {
   },
   confirmDialog: {
     title: '출하 확정',
-    target: (count: number): string => `출하 ${String(count)}건을 확정합니다.`,
+    question: (count: number): string => `출하 ${String(count)}건을 확정하시겠습니까?`,
     list: '확정할 출하',
     irreversible: '확정은 되돌릴 수 없습니다 — 확정 취소 경로가 없습니다.',
     erpQueued: 'ERP 전표 송신이 대기열에 실립니다. 즉시 전송이 아닙니다.',
@@ -227,7 +227,7 @@ export const shipmentConfirm = {
   /** 승인된 취소의 실행 확인 창(FR-023 — 결재함은 승인만 하고 실행은 이 화면에서 한다). */
   executeDialog: {
     title: '출하 취소 실행',
-    target: (shipmentNo: string): string => `${shipmentNo}의 승인된 취소를 실행합니다.`,
+    question: '승인된 취소를 실행하시겠습니까?',
     irreversible: '실행하면 되돌릴 수 없습니다. 다시 내보내려면 POP 에서 출하를 다시 완료하세요.',
     erpAlreadySent: '실행하지 못했습니다. 그 사이 ERP 로 이미 보냈습니다. ERP 에서 처리하세요.',
     failed: (message: string): string => `실행하지 못했습니다. ${message}`,

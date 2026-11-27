@@ -152,8 +152,8 @@ export const shipmentProcessing = {
     irreversible: '되돌릴 수 없습니다.',
   },
   confirm: {
-    title: (shipmentRequestNo: string) => `${shipmentRequestNo} 출하 처리`,
-    target: (shipmentRequestNo: string) => `${shipmentRequestNo}을(를) 출하 처리합니다.`,
+    title: '출하 처리',
+    question: '출하 처리하시겠습니까?',
     irreversible: '이 처리는 되돌릴 수 없습니다 — 재고가 즉시 차감되고 LOT genealogy가 종결됩니다.',
     unconfirmedNote: '처리 후에도 출하는 미확정 상태입니다. 확정은 별도 화면에서 진행합니다.',
     cancel: '취소',

@@ -203,7 +203,9 @@ describe('W-05-07 ⑤ — 확인 창', () => {
     await openDeactivate();
 
     expect(screen.getByRole('dialog', { name: ta.deactivateTitle })).toBeInTheDocument();
-    expect(dialog().getByText(ta.target('CYCLE_TIME'))).toBeInTheDocument();
+    expect(dialog().getByText(ta.deactivateCaption)).toBeInTheDocument();
+    expect(dialog().getByText('CYCLE_TIME')).toBeInTheDocument();
+    expect(dialog().getByText(ta.deactivateQuestion)).toBeInTheDocument();
   });
 
   /** ⭐ 되돌릴 수 있다는 사실을 밝힌다 — 형제 화면과 여기가 갈리는 자리다. */

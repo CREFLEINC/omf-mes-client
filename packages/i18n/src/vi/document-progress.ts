@@ -180,8 +180,8 @@ export const documentProgress: Translated<typeof ko.documentProgress> = {
     executed: 'Đã thực hiện hủy.',
   },
   executeDialog: {
-    title: 'Thực hiện hủy chứ?',
-    target: (documentNo: string): string => `Thực hiện hủy ${documentNo}.`,
+    title: 'Thực hiện hủy',
+    question: 'Thực hiện hủy chứng từ này chứ?',
     irreversible: '⛔ Thực hiện rồi thì không hoàn tác được.',
     confirm: 'Thực hiện hủy',
     keepEditing: 'Quay lại',

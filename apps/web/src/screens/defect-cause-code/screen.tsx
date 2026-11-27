@@ -582,6 +582,11 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
         onConfirm={() => deactivateWrite.write(undefined)}
         isSaving={deactivateWrite.isSaving}
         childCount={deactivateChildCount}
+        target={
+          detail.data === undefined
+            ? undefined
+            : { code: detail.data.code.code, name: detail.data.code.name }
+        }
         // 충돌은 상세를 다시 받아 잠금 토큰을 갱신하면 풀린다. 버릴 입력이 없다.
         banner={<SaveErrorBanner error={deactivateWrite.error} onReload={handleReloadDetail} />}
       />

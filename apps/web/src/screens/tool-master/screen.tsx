@@ -466,11 +466,12 @@ export const ToolMasterScreen = () => {
       {retiring !== null && tool !== null && (
         <RetireConfirmDialog
           title={retiring === 'dispose' ? t.retire.disposeTitle : t.retire.deactivateTitle}
-          targetNote={
-            retiring === 'dispose'
-              ? t.retire.disposeTarget(`${tool.moldCode} · ${tool.moldName}`)
-              : t.retire.deactivateTarget(`${tool.moldCode} · ${tool.moldName}`)
-          }
+          target={{
+            caption: retiring === 'dispose' ? t.retire.disposeCaption : t.retire.deactivateCaption,
+            name: tool.moldName,
+            meta: tool.moldCode,
+          }}
+          question={retiring === 'dispose' ? t.retire.disposeQuestion : t.retire.deactivateQuestion}
           referenceNote={referenceNote(detail.data?.editability.referenceCount)}
           outsideNote={labelNote(detail.data?.labelIssueCount ?? null)}
           impactNote={retiring === 'dispose' ? t.retire.disposeImpact : t.retire.deactivateImpact}

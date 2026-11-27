@@ -169,19 +169,3 @@ dialog .field-cell.users-roles-required-empty > div > button[aria-haspopup] {
   justify-content: center;
   white-space: nowrap;
 }
-
-/* 사용 중지 확인 창 — 설명 · 주의 줄(경고 안내 줄)(사용자 지시 2026-11-26). */
-.common-code-deactivate-body {
-  display: grid;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-.common-code-deactivate-body > p {
-  max-width: none;
-  margin: 0;
-}
-
-.iqc-inspection-action-note.common-code-deactivate-note[data-tone] {
-  margin: 0;
-}

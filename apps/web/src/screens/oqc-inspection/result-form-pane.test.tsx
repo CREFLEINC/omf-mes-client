@@ -307,11 +307,9 @@ describe('ResultFormPane — 확인 창', () => {
     const dialog = screen.getByRole('dialog');
 
     const jc = messages.judgmentConfirm;
-    expect(within(dialog).getByText(jc.title)).toBeInTheDocument();
-    expect(
-      within(dialog).getByText(jc.target(waitingRequest.inspectionRequestNo)),
-    ).toBeInTheDocument();
-    expect(within(dialog).getByText('합격', { selector: 'strong' })).toBeInTheDocument();
+    expect(within(dialog).getByText(jc.question)).toBeInTheDocument();
+    expect(within(dialog).getByText(waitingRequest.inspectionRequestNo)).toBeInTheDocument();
+    expect(within(dialog).getByTitle('합격')).toHaveTextContent('합격');
     expect(within(dialog).getByText(jc.lotState.release)).toBeInTheDocument();
     expect(within(dialog).getByText(confirm.applyPicking)).toBeInTheDocument();
     expect(within(dialog).getByText(jc.irreversible)).toBeInTheDocument();

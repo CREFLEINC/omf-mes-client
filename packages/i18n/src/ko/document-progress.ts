@@ -362,9 +362,9 @@ export const documentProgress = {
    * ⚠ **ⓑ를 흐리지 않는다** — 되돌리는 경로가 **없다.** 무를 수 있다고 읽히면 사용자가 가볍게 누른다.
    */
   executeDialog: {
-    title: '취소를 실행할까요?',
-    /** 어느 문서인지 **문서번호로** 말한다(내부 번호가 아니다 — omf-mes#44). */
-    target: (documentNo: string): string => `${documentNo}의 취소를 실행합니다.`,
+    title: '취소 실행',
+    /** 어느 문서인지는 위 상자가 **문서번호로** 말한다(내부 번호가 아니다 — omf-mes#44). */
+    question: '이 문서의 취소를 실행하시겠습니까?',
     irreversible: '⛔ 실행하면 되돌릴 수 없습니다.',
     confirm: '취소 실행하기',
     keepEditing: '돌아가기',

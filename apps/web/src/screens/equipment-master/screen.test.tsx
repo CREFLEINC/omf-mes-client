@@ -1243,7 +1243,9 @@ describe('EquipmentMasterScreen — 그룹 사용 중지', () => {
     await user.click(form().getByRole('button', { name: messages.common.deactivate }));
 
     const dialog = within(await screen.findByRole('dialog', { name: deactivateT.title }));
-    expect(dialog.getByText(deactivateT.target('GRP-A · GRP-A 그룹'))).toBeInTheDocument();
+    expect(dialog.getByText('GRP-A 그룹')).toBeInTheDocument();
+    expect(dialog.getByText('GRP-A')).toBeInTheDocument();
+    expect(dialog.getByText(deactivateT.question)).toBeInTheDocument();
     // 건수를 화면이 세지 않는다 — 상세 응답이 내려 준 값을 그대로 보인다.
     expect(dialog.getByText(deactivateT.members(12))).toBeInTheDocument();
   });
@@ -2383,7 +2385,9 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
     await openDeactivate(user);
 
     const dialog = within(await screen.findByRole('dialog', { name: deactivateT.equipmentTitle }));
-    expect(dialog.getByText(deactivateT.target('EQ-01 · EQ-01 설비'))).toBeInTheDocument();
+    expect(dialog.getByText('EQ-01 설비')).toBeInTheDocument();
+    expect(dialog.getByText('EQ-01')).toBeInTheDocument();
+    expect(dialog.getByText(deactivateT.equipmentQuestion)).toBeInTheDocument();
     expect(dialog.getByText(deactivateT.equipmentImpact)).toBeInTheDocument();
     // 되돌릴 수 없다는 사실은 그룹과 같은 문장을 쓴다.
     expect(dialog.getByText(deactivateT.notReversibleHere)).toBeInTheDocument();

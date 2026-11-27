@@ -1402,7 +1402,8 @@ describe('DefectCauseCodeScreen — 사용 중지', () => {
     );
 
     const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByText('사용 중지할까요?')).toBeInTheDocument();
+    expect(within(dialog).getByText('불량코드 사용 중지')).toBeInTheDocument();
+    expect(within(dialog).getByText('이 불량코드의 사용을 중지하시겠습니까?')).toBeInTheDocument();
     expect(within(dialog).getByText('연결된 하위 코드 2건이 있습니다.')).toBeInTheDocument();
   });
 
@@ -1543,7 +1544,7 @@ describe('DefectCauseCodeScreen — 사용 중지', () => {
     );
 
     await user.click(await findRowButton('DF-90', '재사용'));
-    const dialog = await screen.findByRole('dialog', { name: '재사용할까요?' });
+    const dialog = await screen.findByRole('dialog', { name: '불량코드 재사용' });
     await user.click(within(dialog).getByRole('button', { name: '재사용' }));
 
     expect(await screen.findByText('저장했습니다')).toBeInTheDocument();

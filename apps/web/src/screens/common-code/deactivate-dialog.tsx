@@ -8,6 +8,8 @@ export interface DeactivateDialogProps {
   open: boolean;
   /** 어느 자원을 중지하는지. 세 자원이 같은 틀에 제목 · 설명만 바꿔 쓴다(사용자 지시 2026-11-26). */
   title: string;
+  /** 제목 아래 묻는 문장 — 제목은 짧은 이름이고 묻는 말은 본문에 둔다(#360). */
+  question: string;
   /** 중지하면 무엇이 달라지는지 — 자원 이름만 다르다. */
   description: string;
   onClose: () => void;
@@ -39,6 +41,7 @@ export interface DeactivateDialogProps {
 export const DeactivateDialog = ({
   open,
   title,
+  question,
   description,
   onClose,
   onConfirm,
@@ -71,9 +74,17 @@ export const DeactivateDialog = ({
     }
   >
     {banner}
-    <div className="common-code-deactivate-body">
-      <p>{description}</p>
-      <p className="iqc-inspection-action-note common-code-deactivate-note" data-tone="warning">
+    {/*
+     * 단말 사용 중지 창과 같은 짜임 — 질문 · 안내 줄(#360). 대상 상자는 두지 않는다 —
+     * 제목 아래 대상 줄 없이 쓰라는 앞선 지시(사용자 지시 2026-11-26)를 지킨다.
+     */}
+    <div className="users-roles-worker-dialog">
+      <p>{question}</p>
+      <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+        <Icon name="info" size={16} aria-hidden />
+        {description}
+      </p>
+      <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
         <Icon name="warning" size={16} aria-hidden />
         {t.deactivateWarning}
       </p>

@@ -77,19 +77,22 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
     discardTitle: 'Bỏ nội dung đã nhập?',
   },
   dispose: {
-    title: 'Xử lý thanh lý?',
-    target: (label: string): string => `Thanh lý ${label}.`,
+    title: 'Thanh lý thiết bị',
+    caption: 'Đối tượng thanh lý',
+    question: 'Bạn có muốn thanh lý thiết bị này không?',
     impact:
       'Đây là xử lý khác với ngừng sử dụng. Ngừng sử dụng là ẩn khỏi danh sách, còn thanh lý là tài sản đã kết thúc.',
     notReversible: 'Không thể hoàn tác. Sau khi thanh lý thì tải lại cũng không mở được chỉnh sửa.',
     confirm: 'Xử lý thanh lý',
   },
   deactivate: {
-    title: 'Ngừng sử dụng?',
-    equipmentTitle: 'Ngừng sử dụng thiết bị?',
+    title: 'Ngừng sử dụng nhóm thiết bị',
+    equipmentTitle: 'Ngừng sử dụng thiết bị',
+    caption: 'Đối tượng ngừng sử dụng',
+    question: 'Bạn có muốn ngừng sử dụng nhóm thiết bị này không?',
+    equipmentQuestion: 'Bạn có muốn ngừng sử dụng thiết bị này không?',
     equipmentImpact:
       'Bản ghi thiết bị này để lại vẫn còn nguyên, chỉ khi chọn mới thì thiết bị mới không còn trong danh sách.',
-    target: (label: string): string => `Ngừng sử dụng ${label}.`,
     membersNone: 'Nhóm này không có thiết bị trực thuộc.',
     members: (count: number): string =>
       `Nhóm này có ${count} thiết bị trực thuộc. Trực thuộc vẫn giữ nguyên, chỉ khi chọn mới thì nhóm này mới không còn trong danh sách.`,

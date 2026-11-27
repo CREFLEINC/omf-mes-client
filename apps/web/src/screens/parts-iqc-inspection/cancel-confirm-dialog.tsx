@@ -2,7 +2,6 @@ import { AlertBanner, Button, Dialog, Icon, TextArea } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
-import { InfoTip } from '../../patterns/info-tip';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { FieldLabel } from '../iqc-inspection/field-label';
 import type { InboundInspection } from './inbound-queries';
@@ -80,13 +79,14 @@ export const CancelConfirmDialog = ({
       }
     >
       {/* 사용자 시안(2026-11-17 · omf-all-around#286) — 대상 · 변경 사항 상자 · 안내 한 줄 · 사유. 보내는 값은 그대로다. */}
-      <div className="iqc-cancel-confirm">
-        <p className="iqc-cancel-confirm-target">{t.target(inboundLotNo)}</p>
-        {/* 확정 후 안내는 제목 옆 ⓘ — 마우스를 올리면 뜬다(omf-all-around#360). */}
-        <h3 className="iqc-cancel-confirm-heading">
-          {t.changesHeading}
-          <InfoTip text={t.note} />
-        </h3>
+      {/* 확인 팝업 시안(#360) — 단말 사용 중지 창처럼 대상 상자 · 질문, 변경 사항 상자 아래 안내 줄, 그 아래 사유. */}
+      <div className="users-roles-worker-dialog iqc-cancel-confirm">
+        <div className="users-roles-worker-block">
+          <span className="users-roles-worker-block-caption">{t.targetCaption}</span>
+          <strong>{inboundLotNo}</strong>
+        </div>
+        <p>{t.question}</p>
+        <h3 className="iqc-cancel-confirm-heading">{t.changesHeading}</h3>
         {/* 시안(사용자 지시 2026-11-19 · omf-all-around#296) — LOT 묶음 · 결과 묶음을 한 상자에, 묶음 사이만 선. 안내는 한 줄. */}
         <div className="iqc-cancel-confirm-changes">
           <dl className="iqc-cancel-confirm-group">
@@ -132,6 +132,10 @@ export const CancelConfirmDialog = ({
             )}
           </dl>
         </div>
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+          <Icon name="info" size={16} aria-hidden />
+          {t.note}
+        </p>
         <div className="iqc-cancel-confirm-reason">
           <FieldLabel htmlFor={reasonId} label={t.reason} />
           <TextArea

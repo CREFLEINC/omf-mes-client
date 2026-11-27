@@ -2620,7 +2620,9 @@ describe('실행 확인 창 — C4-9 · C4-10 · C4-11', () => {
     });
     await user.click(executeButton());
 
-    expect(screen.getByText(t.executeDialog.target('SYN-GR-2026-0001'))).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: t.executeDialog.title });
+    expect(within(dialog).getByText('SYN-GR-2026-0001')).toBeInTheDocument();
+    expect(within(dialog).getByText(t.executeDialog.question)).toBeInTheDocument();
   });
 
   /**

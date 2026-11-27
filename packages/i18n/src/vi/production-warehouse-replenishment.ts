@@ -191,6 +191,8 @@ export const productionWarehouseReplenishment: Translated<
   },
   closeDialog: {
     title: 'Đóng phần còn lại',
+    question: 'Đóng phần còn lại chứ?',
+    caption: 'Yêu cầu cần đóng',
     line: (item: string, requested: string, issued: string, remaining: string): string =>
       `${item}: yêu cầu ${requested}, đã xuất ${issued}, đóng ${remaining} còn lại.`,
     body: 'Lượng còn lại được bỏ khỏi dự kiến xuất của kho vật tư và các dòng còn lại của chỉ thị lấy hàng cũng bị đóng. Các phiếu đã xuất vẫn nhận được như cũ.',

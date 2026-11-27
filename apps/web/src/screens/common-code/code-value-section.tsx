@@ -478,6 +478,7 @@ export const CodeValueSection = ({
         <DeactivateDialog
           open
           title={t.dialog.deactivateTitle}
+          question={t.dialog.deactivateQuestion}
           description={t.dialog.deactivateDescription}
           onClose={() => {
             setIsDeactivateOpen(false);

@@ -786,7 +786,7 @@ export const WorkCalendarScreen = ({
 
       {retiring && calendar !== null && (
         <RetireConfirmDialog
-          targetNote={t.retire.target(`${calendar.calendarCode} · ${calendar.calendarName}`)}
+          target={{ name: calendar.calendarName, meta: calendar.calendarCode }}
           applicationNote={applicationNote(detail.data?.applicationCount ?? null)}
           isSaving={deactivateWrite.isSaving}
           banner={

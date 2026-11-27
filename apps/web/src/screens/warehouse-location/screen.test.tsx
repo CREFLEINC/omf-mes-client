@@ -1932,7 +1932,7 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     const editDialog = screen.getByRole('dialog');
     await within(editDialog).findByLabelText('위치 코드');
     await user.click(within(editDialog).getByRole('button', { name: '사용 중지' }));
-    const confirmDialog = screen.getByRole('dialog', { name: '사용 중지할까요?' });
+    const confirmDialog = screen.getByRole('dialog', { name: '위치 사용 중지' });
     await user.click(within(confirmDialog).getByRole('button', { name: '사용 중지' }));
 
     await waitFor(() =>
@@ -2383,7 +2383,7 @@ describe('WarehouseLocationScreen — 사용 중지 · 삭제는 구역 · 랙 �
 
     // 확인 전에는 나가지 않는다.
     expect(requests.some((request) => request.url.pathname.endsWith(':deactivate'))).toBe(false);
-    const confirm = screen.getByRole('dialog', { name: '사용 중지할까요?' });
+    const confirm = screen.getByRole('dialog', { name: '위치 사용 중지' });
     expect(within(confirm).getByText('A-01-01')).toBeInTheDocument();
     expect(within(confirm).getByText('위치 2개가 함께 사용 중지됩니다.')).toBeInTheDocument();
     await user.click(within(confirm).getByRole('button', { name: '사용 중지' }));

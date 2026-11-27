@@ -500,8 +500,8 @@ export const stockAdjust = {
      * **사유 전문과 첫 줄을 나눠 보인다**(C30 · A-12). 첫 줄만 보이면 무엇을 보내는지 모르고,
      * 전문만 보이면 어느 줄이 남들에게 요약으로 보일지 모른다.
      */
-    submitTitle: '이 사유로 결재에 올릴까요?',
-    submitLead: '아래 사유로 이 조정 전표의 승인을 요청합니다.',
+    submitTitle: '결재 요청',
+    submitQuestion: '아래 사유로 이 조정 전표의 승인을 요청하시겠습니까?',
     reasonFull: '사유 전문',
     reasonFirstLine: '결재함 목록에 요약으로 보일 첫 줄',
     submitNoUndo: '결재에 올린 뒤에는 이 화면에서 되돌릴 수 없습니다. 취소는 결재함에서 합니다.',

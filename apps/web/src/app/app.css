@@ -573,10 +573,6 @@ main > * + * {
   border-top: 1px solid var(--outline);
 }
 
-.defect-cause-dialog-note {
-  margin-top: var(--space-3);
-}
-
 /* 대분류 상세 아래 하위 코드 목록(#209) — 구분선 아래 제목(「하위 코드 · N건」) + 표. */
 .defect-cause-children {
   display: grid;
@@ -19144,8 +19140,7 @@ dialog.terminal-map-wizard:has(.terminal-map-matrix) {
   min-width: 0;
 }
 
-.stock-reinstatement-summary,
-.stock-reinstatement-confirm-summary {
+.stock-reinstatement-summary {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3) 0;
@@ -19153,36 +19148,18 @@ dialog.terminal-map-wizard:has(.terminal-map-matrix) {
   overflow: hidden;
 }
 
-/* 칸은 글 폭만큼 · 칸 사이 32px · 세로선, 줄 첫 칸의 선은 상자 밖으로 숨긴다(고정 열 대신 · 사용자 지시 2026-11-24). */
-.stock-reinstatement-confirm-summary > div {
-  flex: 0 1 auto;
-  min-width: 0;
-  margin-left: -1px;
-  padding: 0 var(--space-4);
-  border-left: 1px solid var(--outline-variant);
-}
-
-.stock-reinstatement-summary > div,
-.stock-reinstatement-confirm-summary > div {
+.stock-reinstatement-summary > div {
   display: grid;
   gap: var(--space-1);
 }
 
-.stock-reinstatement-summary dt,
-.stock-reinstatement-confirm-summary dt {
+.stock-reinstatement-summary dt {
   color: var(--on-surface-variant);
   font: var(--type-body-md);
 }
 
-.stock-reinstatement-summary dd,
-.stock-reinstatement-confirm-summary dd {
+.stock-reinstatement-summary dd {
   margin: 0;
-}
-
-/* 확인 창 요약 이름 — 검사 조회 요약 상자 이름(field-label)과 같은 글자(사용자 지시 2026-11-24). */
-.stock-reinstatement-confirm-summary dt {
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
 }
 
 .stock-reinstatement-section {
@@ -19203,7 +19180,6 @@ dialog.terminal-map-wizard:has(.terminal-map-matrix) {
 @media (max-width: 760px) {
   .stock-reinstatement-filter,
   .stock-reinstatement-summary,
-  .stock-reinstatement-confirm-summary,
   .stock-reinstatement-form {
     grid-template-columns: 1fr;
   }
@@ -44556,4 +44532,22 @@ main > .pane.notification-center-pane {
   margin: 0;
   padding: var(--space-2) var(--space-3);
   border-top: 1px solid var(--outline-variant);
+}
+
+/*
+ * 판정 확정 창(#360 단말 관리 모양) — 정보 상자 안 합격 · 불합격 수량도 종전처럼 색으로,
+ * IQC 창 경고 글은 종전 크기(사용자 지시 2026-11-19 · omf-all-around#296).
+ */
+.judgment-confirm .judgment-confirm-qty [data-tone='success'] {
+  color: var(--semantic-success-text);
+}
+.judgment-confirm .judgment-confirm-qty [data-tone='error'] {
+  color: var(--semantic-error-text);
+}
+.judgment-confirm .judgment-confirm-qty [data-tone='warning'] {
+  color: var(--semantic-warning);
+}
+.iqc-judgment-confirm > .iqc-inspection-action-note.users-roles-dialog-note[data-tone] {
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
 }

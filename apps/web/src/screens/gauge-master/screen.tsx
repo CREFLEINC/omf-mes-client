@@ -443,11 +443,12 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
       {retiring !== null && gauge !== null && (
         <RetireConfirmDialog
           title={retiring === 'dispose' ? t.retire.disposeTitle : t.retire.deactivateTitle}
-          targetNote={
-            retiring === 'dispose'
-              ? t.retire.disposeTarget(`${gauge.equipmentCode} · ${gauge.equipmentName}`)
-              : t.retire.deactivateTarget(`${gauge.equipmentCode} · ${gauge.equipmentName}`)
-          }
+          target={{
+            caption: retiring === 'dispose' ? t.retire.disposeCaption : t.retire.deactivateCaption,
+            name: gauge.equipmentName,
+            meta: gauge.equipmentCode,
+          }}
+          question={retiring === 'dispose' ? t.retire.disposeQuestion : t.retire.deactivateQuestion}
           impactNote={retiring === 'dispose' ? t.retire.disposeImpact : t.retire.deactivateImpact}
           reversibilityNote={
             retiring === 'dispose'

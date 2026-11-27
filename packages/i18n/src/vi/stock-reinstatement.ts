@@ -98,6 +98,7 @@ export const stockReinstatement: Translated<typeof ko.stockReinstatement> = {
   },
   confirm: {
     title: 'Xác nhận đăng ký lại tồn kho',
+    question: 'Đăng ký lại tồn kho chứ?',
     lead: 'Các thay đổi dưới đây được áp dụng cùng lúc chỉ với một lần chốt.',
   },
   success: (qty: number): string => `Đã đăng ký lại ${String(qty)} tồn kho.`,

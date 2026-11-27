@@ -33,7 +33,7 @@ describe('판정 확인 팝업(#352)', () => {
     const { onConfirm, user } = renderDialog();
 
     expect(screen.getByText(t.confirm.title)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.confirm.direct })).toBeInTheDocument();
+    expect(screen.getByText(t.confirm.direct)).toBeInTheDocument();
     expect(screen.getByText('합성 사유')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: t.confirm.save }));
     expect(onConfirm).toHaveBeenCalledOnce();

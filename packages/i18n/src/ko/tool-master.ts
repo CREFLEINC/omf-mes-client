@@ -140,19 +140,21 @@ export const toolMaster = {
     month: '개월',
   },
   retire: {
-    deactivateTitle: '툴을 사용 중지할까요?',
+    deactivateTitle: '툴 사용 중지',
+    deactivateCaption: '사용 중지 대상',
+    deactivateQuestion: '이 툴의 사용을 중지하시겠습니까?',
     /** 중지해도 그 툴이 남긴 실적은 그대로다 — 감추는 것과 지우는 것은 다르다. */
     deactivateImpact: '이 툴이 남긴 실적은 그대로 남고, 새로 고를 때만 목록에서 빠집니다.',
     deactivateNotReversibleHere: '삭제되지는 않습니다. 다시 켜려면 담당자에게 요청하세요.',
     deactivateConfirm: '사용 중지',
-    deactivateTarget: (label: string): string => `${label} 을(를) 사용 중지합니다.`,
-    disposeTitle: '폐기 처리할까요?',
+    disposeTitle: '툴 폐기 처리',
+    disposeCaption: '폐기 대상',
+    disposeQuestion: '이 툴을 폐기 처리하시겠습니까?',
     /** 사용 중지와 «다른 축» 이다 — 그것은 감추는 것이고 이것은 자산이 끝난 것이다. */
     disposeImpact:
       '사용 중지와 다른 처리입니다. 사용 중지는 목록에서 감추는 것이고, 폐기는 자산이 끝난 것입니다.',
     disposeNotReversible: '되돌릴 수 없습니다. 폐기한 뒤에는 다시 불러와도 편집이 풀리지 않습니다.',
     disposeConfirm: '폐기 처리',
-    disposeTarget: (label: string): string => `${label} 을(를) 폐기 처리합니다.`,
     /**
      * ⭐ **참조가 있으면 건수를 함께 보인 뒤 부른다**(계약 주석 · 공유계약 B-4).
      * 물리 삭제가 없는 자원이라 「몇이 이 툴에 매여 있는가」가 판단의 근거다.

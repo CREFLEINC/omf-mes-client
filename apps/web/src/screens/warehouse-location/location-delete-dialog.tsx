@@ -6,7 +6,6 @@ import { useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest, toApiError } from '../../patterns/request';
-import { ConfirmTarget } from './location-identity';
 import { locationKeys } from './queries';
 import type { Location } from './types';
 
@@ -53,6 +52,9 @@ export const LocationDeleteDialog = ({
   const toast = useToast();
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+
+  /* 별칭이 없으면 null 이다 — 종전 대상 줄(ConfirmTarget)과 같이 비운 것으로 본다. */
+  const alias = target?.aliasName?.trim() ?? '';
 
   const close = () => {
     if (saving) return;
@@ -110,14 +112,20 @@ export const LocationDeleteDialog = ({
       }
     >
       {failure !== null && <AlertBanner variant="error" title={failure} />}
+      {/* 단말 사용 중지 창과 같은 짜임 — 대상 상자 · 질문 · 안내 줄(#360). */}
       {target !== null && (
-        <ConfirmTarget
-          tone="danger"
-          icon="warning"
-          code={target.locationCode}
-          name={target.aliasName}
-          line={t.count(count)}
-        />
+        <div className="users-roles-worker-dialog">
+          <div className="users-roles-worker-block">
+            <span className="users-roles-worker-block-caption">{t.caption}</span>
+            <strong>{target.locationCode}</strong>
+            {alias !== '' && <span>{alias}</span>}
+          </div>
+          <p>{t.question}</p>
+          <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+            <Icon name="warning" size={16} aria-hidden />
+            {t.count(count)}
+          </p>
+        </div>
       )}
     </Dialog>
   );

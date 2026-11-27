@@ -27,15 +27,16 @@ describe('ExecuteCancelDialog — 창이 말하는 것 · C4-9', () => {
   it('대상 문서번호를 말한다', () => {
     renderDialog();
 
-    expect(screen.getByText(t.executeDialog.target(DOCUMENT_NO))).toBeInTheDocument();
+    expect(screen.getByText(DOCUMENT_NO)).toBeInTheDocument();
+    expect(screen.getByText(t.executeDialog.question)).toBeInTheDocument();
   });
 
   /** 넘겨받은 번호 그대로다 — 창이 지어내지 않는다는 것을 값이 흐르는지로 잰다. */
   it('넘겨받은 문서번호를 그대로 낸다', () => {
     renderDialog({ documentNo: 'SYN-GR-2026-0009' });
 
-    expect(screen.getByText(t.executeDialog.target('SYN-GR-2026-0009'))).toBeInTheDocument();
-    expect(screen.queryByText(t.executeDialog.target(DOCUMENT_NO))).not.toBeInTheDocument();
+    expect(screen.getByText('SYN-GR-2026-0009')).toBeInTheDocument();
+    expect(screen.queryByText(DOCUMENT_NO)).not.toBeInTheDocument();
   });
 
   /**
@@ -68,7 +69,7 @@ describe('ExecuteCancelDialog — 창이 말하는 것 · C4-9', () => {
   it('두 문장이 함께 선다', () => {
     renderDialog();
 
-    for (const line of [t.executeDialog.target(DOCUMENT_NO), t.executeDialog.irreversible]) {
+    for (const line of [DOCUMENT_NO, t.executeDialog.question, t.executeDialog.irreversible]) {
       expect(screen.getByText(line)).toBeInTheDocument();
     }
   });

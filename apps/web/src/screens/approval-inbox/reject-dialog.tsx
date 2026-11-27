@@ -1,4 +1,4 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { InfoTip } from '../../patterns/info-tip';
@@ -59,16 +59,26 @@ export const RejectDialog = ({
       </>
     }
   >
-    <p>{t.dialog.subject(approvalRequestNo)}</p>
+    {/* 단말 사용 중지 창과 같은 짜임 — 대상 상자 · 질문 · 안내 줄(#360). */}
+    <div className="users-roles-worker-dialog">
+      <div className="users-roles-worker-block">
+        <span className="users-roles-worker-block-caption">{t.dialog.rejectCaption}</span>
+        <strong>{approvalRequestNo}</strong>
+      </div>
+      <p>{t.dialog.rejectQuestion}</p>
 
-    <p className="field-label info-label">
-      {t.dialog.commentHeading}
-      {/* 기록에 남는다는 안내는 제목 옆 ⓘ 로(#361 — 안내 문구는 아이콘에 올리면 보인다). */}
-      <InfoTip text={t.dialog.commentRecorded} />
-    </p>
-    {/* 보낼 값 그대로다 — 여기 보이는 것과 나가는 것이 갈리면 확인의 뜻이 없다. */}
-    <p>{comment}</p>
+      <p className="field-label info-label">
+        {t.dialog.commentHeading}
+        {/* 기록에 남는다는 안내는 제목 옆 ⓘ 로(#361 — 안내 문구는 아이콘에 올리면 보인다). */}
+        <InfoTip text={t.dialog.commentRecorded} />
+      </p>
+      {/* 보낼 값 그대로다 — 여기 보이는 것과 나가는 것이 갈리면 확인의 뜻이 없다. */}
+      <p>{comment}</p>
 
-    <p>{t.dialog.irreversible}</p>
+      <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+        <Icon name="warning" size={16} aria-hidden />
+        {t.dialog.irreversible}
+      </p>
+    </div>
   </Dialog>
 );

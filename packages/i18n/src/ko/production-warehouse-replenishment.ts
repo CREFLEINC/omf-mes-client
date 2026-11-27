@@ -189,7 +189,9 @@ export const productionWarehouseReplenishment = {
     submit: '요청 취소',
   },
   closeDialog: {
-    title: '남은 양을 마감합니다',
+    title: '남은 양 마감',
+    question: '남은 양을 마감하시겠습니까?',
+    caption: '마감할 요청',
     line: (item: string, requested: string, issued: string, remaining: string): string =>
       `${item}: 요청 ${requested}, 출고 ${issued}, 남은 ${remaining} 을 닫습니다.`,
     body: '자재 창고 출고 예정에서 남은 양이 빠지고, 피킹 지시의 남은 줄도 닫힙니다. 이미 출고한 전표는 그대로 받을 수 있습니다.',

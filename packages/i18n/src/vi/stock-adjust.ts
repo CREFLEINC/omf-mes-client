@@ -244,8 +244,8 @@ export const stockAdjust: Translated<typeof ko.stockAdjust> = {
       'Các dòng trên bảng và lý do điều chỉnh đã chọn sẽ mất. Chênh lệch kiểm kê thì tải lại được.',
     discardWhileSaving:
       'Cửa sổ này không hoàn tác lần đăng ký đang gửi. Nếu máy chủ nhận thì phiếu điều chỉnh vẫn được tạo.',
-    submitTitle: 'Trình phê duyệt với lý do này chứ?',
-    submitLead: 'Yêu cầu phê duyệt phiếu điều chỉnh này với lý do dưới đây.',
+    submitTitle: 'Trình phê duyệt',
+    submitQuestion: 'Yêu cầu phê duyệt phiếu điều chỉnh này với lý do dưới đây chứ?',
     reasonFull: 'Toàn văn lý do',
     reasonFirstLine: 'Dòng đầu sẽ hiện làm tóm tắt trong hộp phê duyệt',
     submitNoUndo:
