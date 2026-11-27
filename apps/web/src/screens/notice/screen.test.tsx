@@ -284,3 +284,76 @@ describe('NoticeScreen — 고르기 · 확인 기록', () => {
     expect(acknowledges).toEqual([]);
   });
 });
+
+/* #361 — 게시한 사람은 「골라서 읽은 사람」이 아니다. 게시 직후 고른 채로 있어도 확인으로 기록하지 않는다. */
+describe('NoticeScreen — 게시 직후 확인 기록', () => {
+  it('내가 게시한 공지는 고른 채로 게시 중이 되어도 확인을 보내지 않는다', async () => {
+    const acknowledges: string[] = [];
+    let status = 'DRAFT';
+    const notice = () => ({
+      noticeId: 7,
+      title: '합성 게시 공지',
+      body: '합성 본문',
+      statusCode: status,
+      startDate: '2026-11-27',
+      createdBy: 1,
+      acknowledgeRequired: true,
+      acknowledgedCount: 0,
+      targetCount: 1,
+      versionNo: 1,
+      publishedAt: status === 'PUBLISHED' ? '2026-11-27T00:00:00Z' : null,
+      scopeCode: 'COMPANY',
+      targetWorkOrderId: null,
+      targetWorkOrderNo: null,
+    });
+
+    renderWithProviders(<NoticeScreen />, {
+      fetch: createStubFetch([
+        {
+          match: (request) =>
+            request.method === 'GET' && new URL(request.url).pathname === '/app/notices',
+          respond: () => jsonResponse({ items: [notice()], page: { page: 1, size: 20, total: 1 } }),
+        },
+        {
+          match: (request) => /^\/app\/notices\/\d+$/.test(new URL(request.url).pathname),
+          respond: () => jsonResponse(notice(), { headers: { ETag: '"1"' } }),
+        },
+        {
+          match: (request) => new URL(request.url).pathname.endsWith(':publish'),
+          respond: () => {
+            status = 'PUBLISHED';
+            return jsonResponse(notice());
+          },
+        },
+        {
+          match: (request) => new URL(request.url).pathname.endsWith(':acknowledge'),
+          respond: (request) => {
+            acknowledges.push(new URL(request.url).pathname);
+            return new Response(null, { status: 204 });
+          },
+        },
+        {
+          match: (request) => new URL(request.url).pathname.endsWith('/acknowledgements'),
+          respond: () => jsonResponse({ items: [], page: { page: 1, size: 50, total: 0 } }),
+        },
+        {
+          match: (request) => new URL(request.url).pathname === '/production/work-orders',
+          respond: () => jsonResponse({ items: [], page: { page: 1, size: 100, total: 0 } }),
+        },
+      ]),
+      route: '/notification/notices?notice=7',
+    });
+    const user = userEvent.setup();
+
+    const detail = await screen.findByRole('region', { name: t.panes.detail });
+    await user.click(await within(detail).findByRole('button', { name: t.detail.publish }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: t.detail.confirm }),
+    );
+
+    /* 게시가 끝나 상세가 게시 중으로 바뀐 뒤(게시 종료 단추)에도 확인은 나가지 않는다. */
+    expect(await within(detail).findByRole('button', { name: t.detail.close })).toBeVisible();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(acknowledges).toEqual([]);
+  });
+});

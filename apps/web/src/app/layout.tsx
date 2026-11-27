@@ -437,7 +437,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   /* 볼 수 없는 탭은 세지 않는다(위 훅이 묻지 않아 `undefined`). 못 센 탭은 0 으로 더한다 — 아는 수만 보인다. */
   const hubCount = (iqcCount ?? 0) + (pqcCount ?? 0) + (oqcCount ?? 0);
   const hubBadge = pendingBadge(hubCount, t.inspectionPending);
-  /* 「결재함」 줄에 내 결재 대기 수, 닫힌 「업무함」 묶음에 점(#361 사용자 지시). */
+  /* 「결재함」 줄에 내 결재 대기 + 내가 올린 요청(결재 대기) 수, 닫힌 「업무함」 묶음에 점(#361 사용자 지시). */
   const approvalCount = useApprovalPendingCount(access.allows(APPROVAL_INBOX_PATH));
   const approvalBadge = pendingBadge(approvalCount, t.approvalPending);
   /* 「알림센터」 줄에 미확인 알림 수(#361 사용자 지시). */

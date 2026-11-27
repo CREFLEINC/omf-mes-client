@@ -162,9 +162,12 @@ export const NoticeScreen = () => {
     setFlash(t.form.saved);
   });
 
+  const acknowledgedIdRef = useRef<number | null>(null);
   const publish = useNoticePublish(selectedId, () => {
     setConfirming('none');
     setFlash(t.detail.published);
+    /* 방금 내가 게시한 공지는 「골라서 읽은 것」이 아니다 — 게시한 사람을 확인자로 기록하지 않는다(#361). */
+    acknowledgedIdRef.current = selectedId;
   });
 
   const close = useNoticeClose(selectedId, () => {
@@ -181,7 +184,6 @@ export const NoticeScreen = () => {
     void acks.refetch();
   });
   const unacknowledged = useUnacknowledgedByMe(selected);
-  const acknowledgedIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (selected === null || unacknowledged.data !== true) return;
