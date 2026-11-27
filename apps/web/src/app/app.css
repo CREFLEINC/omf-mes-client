@@ -12056,24 +12056,6 @@ a.erp-send-chips:focus-visible {
   row-gap: var(--space-3);
 }
 
-/*
- * 바닥글을 한 줄로 — 위에 구분선, 변경 이력 사유는 단추 옆(아래로 떨어지면 폼 칸의 안내처럼 읽혔다).
- * 사유 글이 길어 좁은 폭에서는 단추 아래로 접힌다.
- */
-.warehouse-location-form-actions {
-  align-items: center;
-  margin-top: var(--space-4);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--outline-variant);
-}
-
-.warehouse-location-form-actions .form-actions-secondary {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-}
-
 /* Location 표의 보기(전체 계층 · 적치 위치만) — 이름과 단추를 한 줄에. */
 .warehouse-location-view {
   display: flex;
@@ -30582,51 +30564,6 @@ dialog.layout-editor-dialog .layout-editor-body {
 .warehouse-info .location-facts dd {
   align-content: center;
   min-height: 28px;
-}
-
-.warehouse-info .warehouse-location-form-actions {
-  margin-top: var(--space-1);
-  padding-top: var(--space-3);
-}
-
-/* 창고 추가 — 머리 · 세 칸씩 두 줄(공장 · 코드 · 창고명 / 사업부 · 유형 · 불량 창고). */
-.warehouse-info-create-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.warehouse-info-create-title {
-  margin: 0;
-  font: inherit;
-  font-weight: 700;
-}
-
-.warehouse-info-create-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.warehouse-info-create-flags {
-  display: flex;
-  align-items: flex-end;
-  padding-bottom: var(--space-2);
-  white-space: nowrap;
-}
-
-/*
- * 창고 추가의 창고 위치 코드(omf-all-around#292) — 이름 줄 · 칸과 [다시 만들기] 한 줄 · 위치 코드 예. 칸 아래 도움말 · 오류가
- * 붙어도 단추가 칸 높이에 머물게 위로 맞춘다.
- */
-.warehouse-info-prefix {
-  max-width: 32rem;
-}
-
-.warehouse-info-prefix .warehouse-location-field-row {
-  align-items: flex-start;
-}
-
-.warehouse-info-prefix .warehouse-location-field-row > button {
-  flex: none;
 }
 
 /*

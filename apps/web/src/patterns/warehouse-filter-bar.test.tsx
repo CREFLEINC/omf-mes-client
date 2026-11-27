@@ -1,4 +1,3 @@
-import { messages } from '@omf-mes/i18n';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -50,9 +49,7 @@ describe('WarehouseFilterBar', () => {
     expect(row).toContainElement(screen.getByRole('combobox', { name: '공장' }));
     expect(row).toContainElement(screen.getByRole('checkbox', { name: '미사용 포함' }));
     expect(screen.queryByRole('button', { name: '조회' })).toBeNull();
-    expect(
-      screen.queryByRole('button', { name: messages.warehouseLocation.actions.addWarehouse }),
-    ).toBeNull();
+    expect(screen.queryByRole('button', { name: '창고 추가' })).toBeNull();
   });
 
   it('검색어는 입력이 멈추면 한 번만 적용한다 — 글자마다 부르지 않는다', async () => {
