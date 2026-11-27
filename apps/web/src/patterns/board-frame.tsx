@@ -1,6 +1,13 @@
+import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { useHubActionsTarget } from './hub-actions';
 import { PaneListHead, PaneSplitter, useFitToViewport, usePaneSplit } from './po-board';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from './split-orientation';
 
 /** 한 구획 — 접근 이름(보이지 않아도 구획을 부르는 이름)과 내용. */
 export interface BoardFramePane {
@@ -49,7 +56,7 @@ export type BoardFrameProps = BoardFrameSplit | BoardFrameSingle;
 /**
  * **입고 관리 짜임의 화면 틀**(사용자 지시 2026-10-27 — ERP 데이터 탭이 입고 관리와 같은 배치를 쓴다). 위에 조회 조건,
  * 아래에 왼쪽 목록 | 오른쪽 상세. 두 구획은 창 바닥에서 멈추고, 가운데 막대를 끌어 폭을 나누며, 막대 위 단추로 왼쪽을
- * 접는다. 창이 1440px 보다 좁으면 위아래로 쌓인다(app.css `.po-board-split`).
+ * 접는다. 창이 1440px 보다 좁거나 「⋯」에서 상하 배치를 고르면 위아래로 쌓이고, 가운데 높이 막대로 목록 높이를 정한다.
  *
  * 상세가 없으면(`detail` 을 주지 않으면) 목록 한 구획이 전체 폭을 쓴다.
  *
@@ -67,6 +74,13 @@ export const BoardFrame = ({
   /* 훅은 늘 부른다 — 한 구획이면 그 결과를 쓰지 않는다. */
   const split = usePaneSplit(splitKey ?? 'omf-mes:board-frame:single', initialRatio);
   const isSingle = detail === undefined || splitter === undefined;
+  /*
+   * 두 구획이면 좌우 · 상하 배치(「⋯」)와 상하 배치의 목록 높이 막대를 단다 — 다른 목록 · 상세 화면(ListDetailWorkspace)과
+   * 같은 공용 부품이다(#360). 열쇠는 폭 비율 열쇠 뒤에 `-orientation` 을 붙여 화면마다 다르다.
+   */
+  const layout = useSplitOrientation(`${splitKey ?? 'omf-mes:board-frame:single'}-orientation`);
+  const isStacked = layout.orientation === 'column';
+  const hubTarget = useHubActionsTarget();
   const collapse = {
     collapsed: split.collapsed,
     onToggle: split.toggleCollapsed,
@@ -77,6 +91,20 @@ export const BoardFrame = ({
 
   return (
     <>
+      {/* 탭 묶음 안이면 「⋯」은 탭 줄로 간다. 밖이면 조회 조건 위 오른쪽 한 줄(ListDetailWorkspace 와 같다). */}
+      {!isSingle &&
+        (hubTarget === null ? (
+          <div className="list-detail-toolbar">
+            <SplitOrientationToggle
+              orientation={layout.orientation}
+              onChange={layout.change}
+              inline
+            />
+          </div>
+        ) : (
+          <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
+        ))}
+
       {above !== undefined && (
         <section ref={aboveRef} className="board-frame-above" aria-label={above.label}>
           {above.content}
@@ -93,8 +121,8 @@ export const BoardFrame = ({
         /* 왼쪽 목록을 접으면 오른쪽 상세가 폭을 다 쓴다 — 나란히 설 때만(app.css). */
         <div
           ref={splitRef}
-          className="po-board-split board-frame"
-          style={split.style}
+          className={`po-board-split board-frame board-frame-split${isStacked ? ' is-stacked' : ''}`}
+          style={{ ...split.style, ...layout.style }}
           data-left-collapsed={split.collapsed ? 'true' : undefined}
         >
           <section className="pane po-board-pane" aria-label={list.label}>
@@ -108,6 +136,14 @@ export const BoardFrame = ({
             onChange={split.commit}
             collapse={collapse}
           />
+          {isStacked && (
+            <PaneHeightSplitter
+              label={messages.common.inspectionHub.heightSplitter}
+              height={layout.listHeight}
+              onChange={layout.changeListHeight}
+              collapse={collapse}
+            />
+          )}
 
           <section
             className={
