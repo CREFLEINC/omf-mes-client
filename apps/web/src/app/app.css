@@ -24398,6 +24398,24 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   max-width: 8rem;
 }
 
+/*
+ * 품목 코드 · 품목명(사용자 지시 2026-11-27) — 칸 폭을 넘으면 `FitLine` 이 글자를 줄여 한 줄에 다 보인다.
+ * 폭을 정해 두어야 긴 이름이 표를 밀지 않고 줄어든다.
+ */
+.erp-wo-table .erp-wo-item-code,
+.erp-wo-table .erp-wo-item-name {
+  display: block;
+}
+
+.erp-wo-table .erp-wo-item-code {
+  max-width: 9rem;
+}
+
+/* 품목명은 창이 넓을수록 넓게 — 나머지 칸 · 옆 메뉴 폭(78rem)을 뺀 만큼이라 1440px 부터 표가 가로로 밀리지 않는다. */
+.erp-wo-table .erp-wo-item-name {
+  max-width: clamp(9rem, 100vw - 78rem, 22rem);
+}
+
 .erp-wo-table th,
 .erp-wo-table td {
   white-space: nowrap;
