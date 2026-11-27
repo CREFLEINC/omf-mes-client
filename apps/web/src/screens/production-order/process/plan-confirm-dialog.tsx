@@ -1,5 +1,7 @@
-import { Button, Dialog, Icon } from '@crefle/web-ui';
+import { Button, type Column, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+
+import { InfoFacts, InfoTable } from '../../../patterns/info-facts';
 
 const t = messages.erpWorkOrderFlow.process.planConfirm;
 
@@ -27,10 +29,29 @@ export interface PlanConfirmDialogProps {
   onConfirm: () => void;
 }
 
+interface PlanRow {
+  group: PlanConfirmGroup;
+  plan: PlanConfirmPlan;
+}
+
+/** 여러 건 표의 열 — 여러 ERP W/O 이면 맨 앞에 W/O 열. 수량은 오른쪽, 글자는 왼쪽(정보 표시 팝업 시안 · #360). */
+const planColumns = (
+  multiOrder: boolean,
+  operationsOf: (group: PlanConfirmGroup) => string,
+): Column<PlanRow>[] => [
+  ...(multiOrder
+    ? [{ key: 'order', header: t.order, render: (row: PlanRow) => row.group.orderNo }]
+    : []),
+  { key: 'plan', header: t.plan, render: (row) => row.plan.planNo ?? t.newPlan },
+  { key: 'planDate', header: t.planDate, render: (row) => row.plan.planDate },
+  { key: 'plannedQty', header: t.plannedQty, align: 'end', render: (row) => row.plan.quantity },
+  { key: 'operation', header: t.operation, render: (row) => operationsOf(row.group) },
+];
+
 /**
  * C-9 중간 단계 확정 확인(T-W-C 중간 단계의 확정) — 확인 팝업 시안(사용자 지시 · #360).
- * ERP W/O 한 줄, 사실 상자(계획일 · 계획 수량 · 공정), 생기는 작업지시 수 한 문장, 되돌릴 수 없다는 파란 안내.
- * 계획이 여러 건이면 사실 상자를 표 한 장(계획마다 한 줄)으로 바꾸고, 일부만 완료될 수 있다는 안내를 더한다.
+ * 사실 상자(ERP W/O · 계획일 · 계획 수량 · 공정), 생기는 작업지시 수 한 문장, 되돌릴 수 없다는 파란 안내.
+ * 계획이 여러 건이면 상자 아래 표(계획마다 한 줄 · 정보 표시 팝업 시안 「표가 있을 때」)로 바꾸고, 일부만 완료될 수 있다는 안내를 더한다.
  * 확정 요청 자체는 부르는 화면이 그대로 보낸다 — 이 창은 보이기만 한다.
  */
 export const PlanConfirmDialog = ({
@@ -71,52 +92,32 @@ export const PlanConfirmDialog = ({
       }
     >
       <div className="plan-confirm-body">
-        {!multiOrder && shown[0] !== undefined && (
-          <p className="plan-confirm-order">
-            <span>{t.order}</span>
-            <strong className="nowrap-cell">{shown[0].orderNo}</strong>
-          </p>
-        )}
+        {/* 정보 표시 팝업 시안(#360) — 한 건이면 사실 상자, 여러 건이면 상자(ERP W/O 하나일 때) 아래 제목 + 건수 + 표. */}
         {single !== undefined ? (
-          <dl className="confirm-facts is-stacked">
-            <div>
-              <dt>{t.planDate}</dt>
-              <dd>{single.plan.planDate}</dd>
-            </div>
-            <div>
-              <dt>{t.plannedQty}</dt>
-              <dd>{single.plan.quantity}</dd>
-            </div>
-            <div>
-              <dt>{t.operation}</dt>
-              <dd>{operationsOf(single.group)}</dd>
-            </div>
-          </dl>
+          <InfoFacts
+            rows={[
+              [{ label: t.order, value: single.group.orderNo, isKey: true }],
+              [
+                { label: t.planDate, value: single.plan.planDate },
+                { label: t.plannedQty, value: single.plan.quantity },
+                { label: t.operation, value: operationsOf(single.group) },
+              ],
+            ]}
+          />
         ) : (
-          <div className="plan-confirm-table">
-            <table>
-              <thead>
-                <tr>
-                  {multiOrder && <th>{t.order}</th>}
-                  <th>{t.plan}</th>
-                  <th>{t.planDate}</th>
-                  <th>{t.plannedQty}</th>
-                  <th>{t.operation}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {plans.map(({ group, plan }) => (
-                  <tr key={`${group.orderNo}:${plan.key}`}>
-                    {multiOrder && <td className="nowrap-cell">{group.orderNo}</td>}
-                    <td className="nowrap-cell">{plan.planNo ?? t.newPlan}</td>
-                    <td className="nowrap-cell">{plan.planDate}</td>
-                    <td className="nowrap-cell">{plan.quantity}</td>
-                    <td>{operationsOf(group)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            {!multiOrder && shown[0] !== undefined && (
+              <InfoFacts rows={[[{ label: t.order, value: shown[0].orderNo, isKey: true }]]} />
+            )}
+            <InfoTable
+              title={t.plan}
+              storageKey="omf-mes:plan-confirm:columns"
+              columns={planColumns(multiOrder, operationsOf)}
+              rows={plans}
+              getRowId={({ group, plan }) => `${group.orderNo}:${plan.key}`}
+              emptyTitle={t.plan}
+            />
+          </>
         )}
         <p className="plan-confirm-effect">
           {countKnown ? (
