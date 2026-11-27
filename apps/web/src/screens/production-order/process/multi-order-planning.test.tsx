@@ -250,7 +250,7 @@ const distribute = async (targets: Record<string, string> = {}) => {
       }),
     );
     await user.click(screen.getByRole('button', { name: '선택' }));
-    await user.click(within(group).getByRole('combobox', { name: `조건 ${index + 1} 배분 방식` }));
+    await user.click(within(group).getByRole('combobox', { name: `조건 ${index + 1} 분배 방식` }));
     await user.click(screen.getByRole('option', { name: '날짜별 직접 입력' }));
     const inputs = within(group).getAllByRole('textbox', {
       name: new RegExp(`조건 ${index + 1} [0-9]{4}-`),
