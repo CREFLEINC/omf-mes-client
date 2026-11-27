@@ -36,8 +36,6 @@ export const notificationCenter: Translated<typeof ko.notificationCenter> = {
     handoverGroup: 'Công việc bàn giao',
   },
   actions: {
-    prevPage: 'Trước',
-    nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
     markAllRead: 'Đánh dấu tất cả đã xem',
     /**
@@ -70,12 +68,6 @@ export const notificationCenter: Translated<typeof ko.notificationCenter> = {
     allReadFeedbackTitle: 'Đã chuyển tất cả sang đã xem nhưng chưa phản ánh lên màn hình',
     feedbackDescription: 'Tra cứu lại khoảng thời gian thì sẽ thấy trạng thái mới nhất.',
     notFound: 'Không tìm thấy thông báo đó. Hãy tra cứu lại khoảng thời gian.',
-  },
-  pageNav: {
-    label: 'Chuyển trang',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / tổng ${String(total)} mục`,
-    totalOnly: (total: number): string => `Tổng ${String(total)} mục`,
   },
   asOf: (at: string): string => `Cơ sở ${at}`,
   reasons: {

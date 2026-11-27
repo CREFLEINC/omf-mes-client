@@ -54,8 +54,6 @@ export const approvalInbox = {
     q: '요청번호 검색',
   },
   actions: {
-    prevPage: '이전',
-    nextPage: '다음',
     goFirstPage: '첫 쪽으로',
     /** 목록과 대기 건수를 **함께** 다시 부른다. 한쪽만 부르면 갱신된 값과 낡은 값이 섞인다. */
     reload: '다시 조회',
@@ -128,14 +126,6 @@ export const approvalInbox = {
     chipRemoveStatus: '상태 조건 제거',
     chipRemovePeriod: '상신일 조건 제거',
     chipRemoveKeyword: '요청번호 조건 제거',
-  },
-  /** 쪽 이동. 번호 목록을 두지 않는 근거는 screens/approval-inbox/page-nav.tsx에 있다. */
-  pageNav: {
-    label: '쪽 이동',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
-    /** 이 쪽에 보일 것이 없을 때. 범위를 지어내지 않고 전체 건수만 밝힌다. */
-    totalOnly: (total: number): string => `전체 ${String(total)}건`,
   },
   /** 빈 상태는 **세 갈래**다. 사용자가 할 조치가 서로 다르다(완료 조건 C12). */
   empty: {

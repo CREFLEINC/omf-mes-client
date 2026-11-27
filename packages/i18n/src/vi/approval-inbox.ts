@@ -44,8 +44,6 @@ export const approvalInbox: Translated<typeof ko.approvalInbox> = {
     q: 'Tìm số yêu cầu',
   },
   actions: {
-    prevPage: 'Trước',
-    nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
     reload: 'Tra cứu lại',
     selectRow: (approvalRequestNo: string): string => `Chọn ${approvalRequestNo}`,
@@ -84,12 +82,6 @@ export const approvalInbox: Translated<typeof ko.approvalInbox> = {
     chipRemoveStatus: 'Bỏ điều kiện trạng thái',
     chipRemovePeriod: 'Bỏ điều kiện ngày trình',
     chipRemoveKeyword: 'Bỏ điều kiện số yêu cầu',
-  },
-  pageNav: {
-    label: 'Chuyển trang',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / tổng ${String(total)} mục`,
-    totalOnly: (total: number): string => `Tổng ${String(total)} mục`,
   },
   empty: {
     noResultTitle: 'Không có yêu cầu phê duyệt khớp điều kiện',

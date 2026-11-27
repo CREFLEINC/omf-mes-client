@@ -152,13 +152,4 @@ export const notice = {
     /** ⚠ 분모를 셀 수 없는 범위가 있다. */
     noDenominator: '작업지시 범위는 대상 인원을 셀 수 없어 확인한 수만 보입니다.',
   },
-
-  pageNav: {
-    label: '쪽 이동',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
-    totalOnly: (total: number): string => `전체 ${String(total)}건`,
-    prev: '이전',
-    next: '다음',
-  },
 } as const;

@@ -1,5 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
+import { PAGE_SIZES, type PageSize } from '../../patterns/page-nav';
+
 /**
  * 공지 목록의 조회 조건. **주소가 정본이다** — 새로고침·공유가 같은 목록을 연다.
  *
@@ -61,6 +63,16 @@ export const readFilters = (params: URLSearchParams): NoticeFilters => {
   };
 };
 
+/**
+ * 주소가 가리키는 쪽 크기. **고른 적이 없으면 `null`** — 그때는 화면 기본 크기(`PAGE_SIZE`)로 조회한다.
+ * 조회 조건이 아니라 보는 방식이라 `NoticeFilters`에 두지 않는다 — 조건 초기화·변경 판정에 끼지 않는다(#361).
+ */
+export const readSize = (params: URLSearchParams): PageSize | null => {
+  const size = Number(params.get('size') ?? '');
+
+  return PAGE_SIZES.find((option) => option === size) ?? null;
+};
+
 export const readSelected = (params: URLSearchParams): number | null => {
   const value = params.get('notice') ?? '';
 
@@ -71,6 +83,7 @@ export const readSelected = (params: URLSearchParams): number | null => {
 export const toSearchParams = (
   filters: NoticeFilters,
   selected: number | null,
+  size: PageSize | null = null,
 ): URLSearchParams => {
   const params = new URLSearchParams();
 
@@ -82,6 +95,7 @@ export const toSearchParams = (
   if (filters.overlapFrom !== '') params.set('overlapFrom', filters.overlapFrom);
   if (filters.overlapTo !== '') params.set('overlapTo', filters.overlapTo);
   if (filters.page > 1) params.set('page', String(filters.page));
+  if (size !== null) params.set('size', String(size));
   if (selected !== null) params.set('notice', String(selected));
 
   return params;

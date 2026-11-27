@@ -8,9 +8,10 @@ import { NoticeScreen } from './screen';
 
 const t = messages.notice;
 const more = messages.common.filterMore;
+const pn = messages.screenPatterns.pageNav;
 
 /** 목록은 비워 둔다 — 여기서 재는 것은 조회 조건 줄이고, 나간 조건은 요청 주소로 본다. */
-const setup = (route = '/notification/notices') => {
+const setup = (route = '/notification/notices', total = 0) => {
   const listQueries: URL[] = [];
 
   renderWithProviders(<NoticeScreen />, {
@@ -19,7 +20,8 @@ const setup = (route = '/notification/notices') => {
         match: (request) => new URL(request.url).pathname === '/app/notices',
         respond: (request) => {
           listQueries.push(new URL(request.url));
-          return jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } });
+          const size = Number(new URL(request.url).searchParams.get('size') ?? '20');
+          return jsonResponse({ items: [], page: { page: 1, size, total } });
         },
       },
       {
@@ -101,5 +103,33 @@ describe('NoticeScreen — 조회 조건(C-6)', () => {
     await user.type(filterPane().getByPlaceholderText(t.filters.searchPlaceholder), '점');
 
     expect(filterPane().getByRole('button', { name: t.filters.clear })).toBeVisible();
+  });
+});
+
+/* #361 — 목록 아래 쪽 이동 줄을 공용 부품으로 맞춘다. 처음 크기는 지금처럼 20건이다. */
+describe('NoticeScreen — 쪽 이동', () => {
+  it('0건이면 쪽 이동 줄을 내지 않는다', async () => {
+    const { listQueries } = setup();
+
+    await waitFor(() => {
+      expect(listQueries.length).toBeGreaterThan(0);
+    });
+    expect(screen.queryByRole('navigation', { name: pn.label })).toBeNull();
+  });
+
+  it('처음에는 20건씩 조회하고, 크기를 고르면 첫 쪽으로 돌아가 그 크기로 조회한다', async () => {
+    const { listQueries, user } = setup('/notification/notices?page=2', 45);
+
+    await screen.findByRole('navigation', { name: pn.label });
+    expect(listQueries.at(-1)?.searchParams.get('size')).toBe('20');
+    expect(screen.getByText(pn.total(45))).toBeVisible();
+
+    await user.click(screen.getByRole('combobox', { name: pn.pageSize }));
+    await user.click(screen.getByRole('option', { name: pn.pageSizeOption(50) }));
+
+    await waitFor(() => {
+      expect(listQueries.at(-1)?.searchParams.get('size')).toBe('50');
+    });
+    expect(listQueries.at(-1)?.searchParams.get('page')).toBe('1');
   });
 });

@@ -15,6 +15,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
+import type { PageSize } from '../../patterns/page-nav';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { ApproveDialog } from './approve-dialog';
@@ -37,6 +38,7 @@ import {
   clearFilter,
   readFilters,
   readPage,
+  readSize,
   readSelectedRequestId,
   readTabParam,
   toRequestListQuery,
@@ -224,17 +226,19 @@ export const ApprovalInboxScreen = () => {
    */
   const tab = readTab(readTabParam(searchParams), canSeeAllRequests);
   const page = readPage(searchParams);
+  const size = readSize(searchParams);
   const selectedRequestId = readSelectedRequestId(searchParams);
 
   /*
    * **조건 없이도 조회한다.** 계약이 어느 파라미터도 필수로 두지 않았고, 결재함은 들어오자마자
    * 내 결재 대기를 보여야 하는 자리다 — 탭이 이미 범위를 좁히고 있다.
    */
-  const listQuery = toRequestListQuery(filters, tab, page);
+  const listQuery = toRequestListQuery(filters, tab, page, size);
   const list = useRequestList(listQuery);
   const items = list.data?.items ?? EMPTY_ITEMS;
   const rows = useMemo(() => items.map(toRequestRow), [items]);
-  const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, items.length);
+  const pageMeta = list.data?.page ?? { page, size: 0, total: 0 };
+  const pageView = toPageView(pageMeta);
 
   /*
    * 대기 건수는 **전용 조회**가 갖는다(`queries.ts`에 근거 표가 있다).
@@ -261,7 +265,7 @@ export const ApprovalInboxScreen = () => {
    * 없어진다. 조작마다 따로 지우면 뒤로가기·주소 직접 편집이 그 길을 지나지 않아 안내가
    * 살아남는다 — 그래서 「이 조건으로 보고 있던 동안」에 맨다.
    */
-  const listContextKey = toSearchParams(filters, tab, page).toString();
+  const listContextKey = toSearchParams(filters, tab, page, size).toString();
   const [missingContextKey, setMissingContextKey] = useState<string | null>(null);
 
   /**
@@ -535,8 +539,14 @@ export const ApprovalInboxScreen = () => {
     applySearchParams(next);
   };
 
-  const apply = (nextFilters: InboxFilters, nextTab: InboxTab, nextPage = 1): void => {
-    applyUserNavigation(toSearchParams(nextFilters, nextTab, nextPage));
+  /** 고른 쪽 크기는 조건·탭이 바뀌어도 그대로 둔다 — 조건이 아니라 보는 방식이다(#361). */
+  const apply = (
+    nextFilters: InboxFilters,
+    nextTab: InboxTab,
+    nextPage = 1,
+    nextSize: PageSize | null = size,
+  ): void => {
+    applyUserNavigation(toSearchParams(nextFilters, nextTab, nextPage, nextSize));
   };
 
   /** 탭 전환(수명 표 3행). 조건은 그대로 두고 **쪽과 선택만** 되돌린다. */
@@ -560,6 +570,7 @@ export const ApprovalInboxScreen = () => {
         tab,
         page,
         approvalRequestId === selectedRequestId ? null : approvalRequestId,
+        size,
       ),
     );
   };
@@ -721,8 +732,12 @@ export const ApprovalInboxScreen = () => {
       rows={rows}
       isLoading={list.isPending}
       pageView={pageView}
+      pageMeta={pageMeta}
       onChangePage={(nextPage) => {
         apply(filters, tab, nextPage);
+      }}
+      onChangeSize={(nextSize) => {
+        apply(filters, tab, 1, nextSize);
       }}
       selectedRequestId={selectedRequestId}
       onSelect={toggleSelect}

@@ -46,8 +46,6 @@ export const notificationCenter = {
     handoverGroup: '인계 작업',
   },
   actions: {
-    prevPage: '이전',
-    nextPage: '다음',
     goFirstPage: '첫 쪽으로',
     markAllRead: '모두 읽음',
     /**
@@ -104,13 +102,6 @@ export const notificationCenter = {
     feedbackDescription: '기간을 다시 조회하면 최신 상태가 보입니다.',
     /** 없는 알림. 목록이 낡았을 때 나므로 「기간을 다시 조회」가 실제로 푸는 조치다. */
     notFound: '그 알림을 찾을 수 없습니다. 기간을 다시 조회해 주세요.',
-  },
-  pageNav: {
-    label: '쪽 이동',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
-    /** 이 쪽에 보일 것이 없을 때. 범위를 지어내지 않고 전체 건수만 밝힌다. */
-    totalOnly: (total: number): string => `전체 ${String(total)}건`,
   },
   /**
    * 기준 시각(공유계약 L-5). 이 화면은 저 혼자 갱신되지 않으므로(L-6) 지금 보이는 목록이

@@ -23,6 +23,7 @@ import { notificationKeys } from './queries';
 import { NotificationCenterScreen, describeMarkAllReadReason } from './screen';
 
 const t = messages.notificationCenter;
+const pn = messages.screenPatterns.pageNav;
 
 /** 픽스처가 푸는 이름 둘. 셋째(`EQUIPMENT_BREAKDOWN_OCCURRED`)는 유형 목록에 없어 원문으로 낙하한다. */
 const EVENT_NAME_01 = '생산 실행';
@@ -522,6 +523,8 @@ describe('NotificationCenterScreen — 목록', () => {
     renderScreen('/?from=2026-08-01&to=2026-08-07', routesWith(listRoute([])));
 
     expect(await screen.findByText(t.empty.noneTitle)).toBeInTheDocument();
+    /* #361 — 넘길 쪽이 없으면 쪽 이동 줄도 내지 않는다. */
+    expect(screen.queryByRole('navigation', { name: pn.label })).not.toBeInTheDocument();
   });
 
   /**
@@ -716,19 +719,20 @@ describe('NotificationCenterScreen — 쪽 이동', () => {
       total,
     });
 
-  it('범위 표기가 응답의 쪽 메타에서 나온다', async () => {
+  it('건수 · 위치 표기가 응답의 쪽 메타에서 나온다', async () => {
     renderScreen('/?from=2026-08-01&to=2026-08-07', routesWith(paged(1)));
 
     await waitForCards();
 
-    expect(screen.getByText(t.pageNav.range(1, 3, 137))).toBeInTheDocument();
+    expect(screen.getByText(pn.total(137))).toBeInTheDocument();
+    expect(screen.getByText(pn.position(1, 3))).toBeInTheDocument();
   });
 
   it('다음을 누르면 쪽이 주소와 요청에 함께 실린다', async () => {
     const { urls, user } = renderScreen('/?from=2026-08-01&to=2026-08-07', routesWith(paged(1)));
 
     await waitForCards();
-    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+    await user.click(screen.getByRole('button', { name: pn.next }));
 
     await waitFor(() => {
       expect(currentLocation()).toContain('page=2');
@@ -741,7 +745,40 @@ describe('NotificationCenterScreen — 쪽 이동', () => {
 
     await waitForCards();
 
-    expect(screen.getByRole('button', { name: t.actions.prevPage })).toBeDisabled();
+    expect(screen.getByRole('button', { name: pn.prev })).toBeDisabled();
+  });
+
+  /* #361 — 목록 아래 쪽 이동 줄을 공용 부품으로 맞춘다. 건수를 고르기 전에는 서버 기본값을 쓴다. */
+  it('쪽 크기를 고르기 전에는 크기를 싣지 않는다', async () => {
+    const { urls } = renderScreen('/?from=2026-08-01&to=2026-08-07', routesWith(paged(1)));
+
+    await waitForCards();
+
+    expect(listUrls(urls).at(-1)?.searchParams.has('size')).toBe(false);
+  });
+
+  it('쪽 크기를 고르면 첫 쪽으로 돌아가 그 크기로 조회하고, 조건이 바뀌어도 크기는 남는다', async () => {
+    const { urls, user } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07&page=2',
+      routesWith(paged(2)),
+    );
+
+    await waitForCards();
+    await user.click(screen.getByRole('combobox', { name: pn.pageSize }));
+    await user.click(screen.getByRole('option', { name: pn.pageSizeOption(20) }));
+
+    await waitFor(() => {
+      expect(listUrls(urls).at(-1)?.searchParams.get('size')).toBe('20');
+    });
+    expect(listUrls(urls).at(-1)?.searchParams.has('page')).toBe(false);
+    expect(currentLocation()).toContain('size=20');
+
+    await user.click(screen.getByRole('checkbox', { name: t.fields.unreadOnly }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('unread=0');
+    });
+    expect(currentLocation()).toContain('size=20');
   });
 
   /** ⭐ 3쪽을 보다가 조건을 좁히면 결과가 3쪽에 못 미쳐 「좁혔더니 아무것도 없다」로 보인다. */
@@ -916,7 +953,7 @@ describe('NotificationCenterScreen — 조건 줄의 수명', () => {
 
     await screen.findByText('합성 서버 사유');
 
-    expect(screen.queryByRole('navigation', { name: t.pageNav.label })).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: pn.label })).not.toBeInTheDocument();
   });
 });
 
@@ -988,7 +1025,7 @@ describe('NotificationCenterScreen — 쪽 이동은 쪽만 바꾼다', () => {
     expect(listUrls(urls)[0]?.searchParams.has('unreadOnly')).toBe(false);
     expect(listUrls(urls)[0]?.searchParams.get('eventCode')).toBe('WORK_ORDER_CLOSED');
 
-    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+    await user.click(screen.getByRole('button', { name: pn.next }));
 
     await waitFor(() => {
       expect(listUrls(urls).at(-1)?.searchParams.get('page')).toBe('3');
@@ -1003,7 +1040,7 @@ describe('NotificationCenterScreen — 쪽 이동은 쪽만 바꾼다', () => {
     const { urls, user } = renderScreen(CONDITIONED, routesWith(pagedRoute()));
 
     await waitForCards();
-    await user.click(screen.getByRole('button', { name: t.actions.prevPage }));
+    await user.click(screen.getByRole('button', { name: pn.prev }));
 
     await waitFor(() => {
       expect(listUrls(urls).length).toBeGreaterThan(1);
@@ -1018,7 +1055,7 @@ describe('NotificationCenterScreen — 쪽 이동은 쪽만 바꾼다', () => {
     const { user } = renderScreen(CONDITIONED, routesWith(pagedRoute()));
 
     await waitForCards();
-    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+    await user.click(screen.getByRole('button', { name: pn.next }));
 
     await waitFor(() => {
       expect(currentLocation()).toContain('page=3');
@@ -1473,7 +1510,7 @@ describe('NotificationCenterScreen — 앞 조회에 매인 진술의 수명', (
     await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
     expect(await screen.findByText(t.writeError.readTitle)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+    await user.click(screen.getByRole('button', { name: pn.next }));
 
     await waitFor(() => {
       expect(screen.queryByText(t.writeError.readTitle)).not.toBeInTheDocument();

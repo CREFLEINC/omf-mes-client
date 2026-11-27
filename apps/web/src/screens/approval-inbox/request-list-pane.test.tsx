@@ -25,7 +25,6 @@ interface RenderOptions {
   rows?: RequestRow[];
   isLoading?: boolean;
   meta?: { page: number; size: number; total: number };
-  shown?: number;
   selectedRequestId?: number | null;
   loadError?: ReactNode;
 }
@@ -34,7 +33,6 @@ const renderPane = ({
   rows = requestRowFixtures,
   isLoading = false,
   meta = { page: 1, size: 20, total: rows.length },
-  shown = rows.length,
   selectedRequestId = null,
   loadError = null,
 }: RenderOptions = {}) => {
@@ -45,8 +43,10 @@ const renderPane = ({
     <RequestListPane
       rows={rows}
       isLoading={isLoading}
-      pageView={toPageView(meta, shown)}
+      pageView={toPageView(meta)}
+      pageMeta={meta}
       onChangePage={onChangePage}
+      onChangeSize={vi.fn()}
       selectedRequestId={selectedRequestId}
       onSelect={onSelect}
       loadError={loadError}
@@ -297,7 +297,7 @@ describe('RequestListPane — 고르기', () => {
 
 describe('RequestListPane — 빈 상태', () => {
   it('0건이어도 표를 그리고 그 안의 빈 자리가 맡는다', () => {
-    renderPane({ rows: [], meta: { page: 1, size: 20, total: 0 }, shown: 0 });
+    renderPane({ rows: [], meta: { page: 1, size: 20, total: 0 } });
 
     /* 바깥에서 0건을 가르면 표의 빈 자리가 닿을 수 없는 가지가 된다. */
     expect(screen.getByRole('table')).toBeInTheDocument();
@@ -308,7 +308,6 @@ describe('RequestListPane — 빈 상태', () => {
     const { onChangePage, user } = renderPane({
       rows: [],
       meta: { page: 9, size: 20, total: 45 },
-      shown: 0,
     });
 
     expect(screen.getByText(t.empty.beyondLastTitle)).toBeInTheDocument();

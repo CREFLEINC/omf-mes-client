@@ -4,11 +4,13 @@ import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { ListEmpty } from '../../patterns/list-empty';
+import { PageNav, type PageSize } from '../../patterns/page-nav';
 import { formatAsOf } from './as-of';
 import { NotificationFilterBar } from './filter-bar';
 import {
   readFilters,
   readPage,
+  readSize,
   toFilterQuery,
   toSearchParams,
   withPeriod,
@@ -18,7 +20,6 @@ import { LoadErrorBanner } from './load-error-banner';
 import { useHandoverEventEntries } from './handover-lookups';
 import { describeEvent, useNotificationEventOptions, withCurrentEvent } from './lookups';
 import { NotificationRow } from './notification-row';
-import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import {
   defaultPeriod,
@@ -42,7 +43,7 @@ const t = messages.notificationCenter;
  * 다른 기본을 쓰는 어긋남이 생긴다.
  *
  * ⚠ **참조 안정성이 근거가 아니다.** 이 회차의 소비처는 `rows.length`·`rows.map(...)`과
- * `toPageView(meta, shown)`인데 **셋 다 값만 읽고 참조 동일성을 보지 않는다** — 메모된 계산도
+ * `toPageView(meta)`인데 **셋 다 값만 읽고 참조 동일성을 보지 않는다** — 메모된 계산도
  * `memo` 부품도 이 값들을 받지 않는다. 그 근거가 참이 되는 시점이 오면 그때 적는다.
  */
 const EMPTY_ROWS: NotificationView[] = [];
@@ -117,6 +118,7 @@ export const NotificationCenterScreen = () => {
   const period = useMemo<NotificationPeriod>(() => readPeriod(searchParams), [searchParams]);
   const filters = useMemo<NotificationFilters>(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
+  const size = readSize(searchParams);
 
   /*
    * ⭐ **「키가 없다」와 「키는 있고 값이 비었다」를 가른다**(주소 키 수명 표 1·2행).
@@ -154,12 +156,18 @@ export const NotificationCenterScreen = () => {
 
   const listQuery =
     periodState.kind === 'ready'
-      ? { ...periodState.query, ...toFilterQuery(filters), ...(page > 1 ? { page } : {}) }
+      ? {
+          ...periodState.query,
+          ...toFilterQuery(filters),
+          ...(page > 1 ? { page } : {}),
+          ...(size === null ? {} : { size }),
+        }
       : null;
 
   const list = useNotificationList(listQuery);
   const rows = list.data?.items ?? EMPTY_ROWS;
-  const pageView = toPageView(list.data?.page ?? EMPTY_PAGE, rows.length);
+  const pageMeta = list.data?.page ?? EMPTY_PAGE;
+  const pageView = toPageView(pageMeta);
 
   /*
    * 유형 목록 — **조건 줄의 선택지와 카드 제목의 이름 풀이가 같은 조회를 쓴다.**
@@ -258,13 +266,15 @@ export const NotificationCenterScreen = () => {
    *
    * **조건이 바뀌면 쪽을 첫 쪽으로 되돌린다**(수명 규칙 4행) — 기본 인자가 그 규칙이다.
    * 쪽 이동만 그 값을 명시해 넘긴다(5행).
+   * 고른 쪽 크기는 조건이 바뀌어도 그대로 둔다 — 조건이 아니라 보는 방식이다(#361).
    */
   const applyQuery = (
     nextPeriod: NotificationPeriod,
     nextFilters: NotificationFilters,
     nextPage = 1,
+    nextSize: PageSize | null = size,
   ): void => {
-    setSearchParams(toSearchParams(nextPeriod, nextFilters, nextPage));
+    setSearchParams(toSearchParams(nextPeriod, nextFilters, nextPage, nextSize));
   };
 
   const markAllReadReason = describeMarkAllReadReason(markAllRead.isSubmitting, unreadCount.data);
@@ -480,14 +490,21 @@ export const NotificationCenterScreen = () => {
         {!list.isError && (
           <>
             {listPane()}
-            {listQuery !== null && !list.isPending && !pageView.isBeyondLast && (
-              <PageNav
-                view={pageView}
-                onChange={(nextPage) => {
-                  applyQuery(period, filters, nextPage);
-                }}
-              />
-            )}
+            {/* 0건이면 쪽 이동 줄을 내지 않는다 — 넘길 쪽이 없다(#361). */}
+            {listQuery !== null &&
+              !list.isPending &&
+              !pageView.isBeyondLast &&
+              pageMeta.total > 0 && (
+                <PageNav
+                  meta={pageMeta}
+                  onChangePage={(nextPage) => {
+                    applyQuery(period, filters, nextPage);
+                  }}
+                  onChangeSize={(nextSize) => {
+                    applyQuery(period, filters, 1, nextSize);
+                  }}
+                />
+              )}
           </>
         )}
       </section>

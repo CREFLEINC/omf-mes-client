@@ -36,7 +36,7 @@ export const ACK_PAGE_SIZE = 50;
 
 export const noticeKeys = {
   all: ['notice'] as const,
-  list: (filters: NoticeFilters) =>
+  list: (filters: NoticeFilters, size: number | null = null) =>
     [
       'notice',
       'list',
@@ -48,6 +48,7 @@ export const noticeKeys = {
       filters.overlapFrom,
       filters.overlapTo,
       filters.page,
+      size,
     ] as const,
   detail: (noticeId: number | null) => ['notice', 'detail', noticeId ?? 0] as const,
   acks: (noticeId: number | null, pendingOnly: boolean) =>
@@ -60,11 +61,15 @@ export const noticeDetailPath = (noticeId: number): string => `/app/notices/${St
 type StatusQuery = components['schemas']['Notice']['statusCode'];
 type ScopeQuery = components['schemas']['Notice']['scopeCode'];
 
-export const useNotices = (filters: NoticeFilters): UseQueryResult<NoticeListResult> => {
+/** `size`는 사용자가 고른 쪽 크기 — 고르지 않았으면 화면 기본(`PAGE_SIZE`)으로 조회한다(#361). */
+export const useNotices = (
+  filters: NoticeFilters,
+  size: number | null = null,
+): UseQueryResult<NoticeListResult> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: noticeKeys.list(filters),
+    queryKey: noticeKeys.list(filters, size),
     queryFn: () =>
       runRequest(() =>
         client.GET('/app/notices', {
@@ -80,7 +85,7 @@ export const useNotices = (filters: NoticeFilters): UseQueryResult<NoticeListRes
               ...(filters.overlapFrom === '' ? {} : { overlapFrom: filters.overlapFrom }),
               ...(filters.overlapTo === '' ? {} : { overlapTo: filters.overlapTo }),
               page: filters.page,
-              size: PAGE_SIZE,
+              size: size ?? PAGE_SIZE,
             },
           },
         }),

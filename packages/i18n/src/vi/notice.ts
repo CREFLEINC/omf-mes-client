@@ -155,13 +155,4 @@ export const notice: Translated<typeof ko.notice> = {
     noDenominator:
       'Phạm vi lệnh sản xuất không đếm được số người đối tượng nên chỉ hiện số đã xác nhận.',
   },
-
-  pageNav: {
-    label: 'Chuyển trang',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / tổng ${String(total)} mục`,
-    totalOnly: (total: number): string => `Tổng ${String(total)} mục`,
-    prev: 'Trước',
-    next: 'Sau',
-  },
 };

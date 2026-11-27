@@ -1,3 +1,4 @@
+import { PAGE_SIZES, type PageSize } from '../../patterns/page-nav';
 import { PERIOD_URL_KEYS, type NotificationPeriod } from './period';
 
 /**
@@ -31,6 +32,7 @@ export const URL_KEYS = {
   unreadOnly: 'unread',
   eventCode: 'ev',
   page: 'page',
+  size: 'size',
 } as const;
 
 export interface NotificationFilters {
@@ -86,6 +88,16 @@ export const readPage = (params: URLSearchParams): number => {
 };
 
 /**
+ * 주소가 가리키는 쪽 크기. **고른 적이 없으면 `null`** — 그때는 크기를 싣지 않고 서버 기본값을 쓴다.
+ * 고를 수 있는 값(`PAGE_SIZES`) 밖이면 고르지 않은 것으로 본다.
+ */
+export const readSize = (params: URLSearchParams): PageSize | null => {
+  const size = Number(params.get(URL_KEYS.size) ?? '');
+
+  return PAGE_SIZES.find((option) => option === size) ?? null;
+};
+
+/**
  * 조건 전체를 주소로 옮긴다.
  *
  * **기본값은 주소에 적지 않는다** — 적으면 같은 화면의 주소가 두 가지가 되어 공유·비교가
@@ -98,6 +110,7 @@ export const toSearchParams = (
   period: NotificationPeriod,
   filters: NotificationFilters,
   page: number,
+  size: PageSize | null = null,
 ): URLSearchParams => {
   const next = new URLSearchParams({
     [URL_KEYS.from]: period.from,
@@ -112,6 +125,7 @@ export const toSearchParams = (
   if (eventCode !== '') next.set(URL_KEYS.eventCode, eventCode);
 
   if (page > 1) next.set(URL_KEYS.page, String(page));
+  if (size !== null) next.set(URL_KEYS.size, String(size));
 
   return next;
 };

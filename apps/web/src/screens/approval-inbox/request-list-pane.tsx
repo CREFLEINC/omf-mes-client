@@ -2,8 +2,8 @@ import { Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/we
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { PageNav, type PageNavMeta, type PageSize } from '../../patterns/page-nav';
 import { approvalTypeLabelOf, requestStatusLabelOf } from './code-options';
-import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import type { RequestRow } from './types';
 
@@ -48,7 +48,10 @@ export interface RequestListPaneProps {
   rows: RequestRow[];
   isLoading: boolean;
   pageView: PageView;
+  /** 목록 아래 쪽 이동 줄(공용 `PageNav`)이 읽는 쪽 정보 — 서버 응답의 `page` 그대로다. */
+  pageMeta: PageNavMeta;
   onChangePage: (page: number) => void;
+  onChangeSize: (size: PageSize) => void;
   selectedRequestId: number | null;
   onSelect: (approvalRequestId: number) => void;
   /**
@@ -77,7 +80,9 @@ export const RequestListPane = ({
   rows,
   isLoading,
   pageView,
+  pageMeta,
   onChangePage,
+  onChangeSize,
   selectedRequestId,
   onSelect,
   loadError,
@@ -203,7 +208,10 @@ export const RequestListPane = ({
           empty={emptySlot}
         />
       </div>
-      <PageNav view={pageView} onChange={onChangePage} />
+      {/* 0건이면 쪽 이동 줄을 내지 않는다 — 넘길 쪽이 없다(#361). */}
+      {pageMeta.total > 0 && (
+        <PageNav meta={pageMeta} onChangePage={onChangePage} onChangeSize={onChangeSize} />
+      )}
     </>
   );
 };

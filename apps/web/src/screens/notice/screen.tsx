@@ -25,6 +25,7 @@ import {
 import { InfoTip } from '../../patterns/info-tip';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
+import { PageNav } from '../../patterns/page-nav';
 import { AckPanel } from './ack-panel';
 import {
   isClosable,
@@ -37,7 +38,14 @@ import {
   SCOPE_CODES,
   isSupportedScope,
 } from './codes';
-import { EMPTY_FILTERS, periodError, readFilters, readSelected, toSearchParams } from './filters';
+import {
+  EMPTY_FILTERS,
+  periodError,
+  readFilters,
+  readSelected,
+  readSize,
+  toSearchParams,
+} from './filters';
 import { LoadErrorBanner } from './load-error-banner';
 import { useWorkOrderOptions } from './lookups';
 import {
@@ -50,8 +58,6 @@ import {
   type NoticeDraft,
 } from './notice-draft';
 import { NoticeForm } from './notice-form';
-import { PageNav } from './page-nav';
-import { toPageView } from './pagination';
 import {
   useAcknowledge,
   useAcknowledgements,
@@ -100,6 +106,7 @@ export const NoticeScreen = () => {
   const more = useFilterMore();
   const filters = readFilters(searchParams);
   const selectedId = readSelected(searchParams);
+  const size = readSize(searchParams);
   const invalidPeriod = periodError(filters);
 
   const [search, setSearch] = useState(filters.q);
@@ -112,7 +119,7 @@ export const NoticeScreen = () => {
   const [flash, setFlash] = useState<string | null>(null);
 
   const workOrders = useWorkOrderOptions();
-  const notices = useNotices(filters);
+  const notices = useNotices(filters, size);
   const detail = useNoticeDetail(selectedId);
   const selected = detail.data ?? null;
 
@@ -153,14 +160,15 @@ export const NoticeScreen = () => {
   });
 
   const rows = notices.data?.items ?? EMPTY_ROWS;
-  const pageView = notices.data === undefined ? null : toPageView(notices.data.page, rows.length);
 
   const apply = (next: Partial<typeof filters>): void => {
-    setSearchParams(toSearchParams({ ...filters, ...next, page: next.page ?? 1 }, selectedId));
+    setSearchParams(
+      toSearchParams({ ...filters, ...next, page: next.page ?? 1 }, selectedId, size),
+    );
   };
 
   const selectNotice = (noticeId: number | null): void => {
-    setSearchParams(toSearchParams(filters, noticeId));
+    setSearchParams(toSearchParams(filters, noticeId, size));
     setFormMode('closed');
     setFlash(null);
     setPendingOnly(false);
@@ -381,7 +389,7 @@ export const NoticeScreen = () => {
                         variant="outlined"
                         onClick={() => {
                           setSearch('');
-                          setSearchParams(toSearchParams(EMPTY_FILTERS, selectedId));
+                          setSearchParams(toSearchParams(EMPTY_FILTERS, selectedId, size));
                         }}
                       >
                         {t.filters.clear}
@@ -478,11 +486,15 @@ export const NoticeScreen = () => {
                   />
                 </div>
               )}
-              {pageView !== null && (
+              {/* 0건이면 쪽 이동 줄을 내지 않는다 — 넘길 쪽이 없다(#361). */}
+              {notices.data !== undefined && notices.data.page.total > 0 && (
                 <PageNav
-                  view={pageView}
-                  onChange={(page) => {
+                  meta={notices.data.page}
+                  onChangePage={(page) => {
                     apply({ page });
+                  }}
+                  onChangeSize={(nextSize) => {
+                    setSearchParams(toSearchParams({ ...filters, page: 1 }, selectedId, nextSize));
                   }}
                 />
               )}

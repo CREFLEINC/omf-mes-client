@@ -29,6 +29,7 @@ import { ApprovalInboxScreen } from './screen';
 import type { ApprovalRequestDetail } from './types';
 
 const t = messages.approvalInbox;
+const pn = messages.screenPatterns.pageNav;
 
 const ROUTE = '/approval/inbox';
 const REQUESTS_PATH = '/app/approval-requests';
@@ -689,9 +690,10 @@ describe('쪽 이동', () => {
 
     await waitForList();
 
-    /* 서버가 첫 쪽을 줬으므로 범위도 첫 쪽의 것이고 이전으로 갈 수 없다. */
-    expect(screen.getByText('1–4 / 전체 45건')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.actions.prevPage })).toBeDisabled();
+    /* 서버가 첫 쪽을 줬으므로 위치도 첫 쪽의 것이고 이전으로 갈 수 없다. */
+    expect(screen.getByText(pn.total(45))).toBeInTheDocument();
+    expect(screen.getByText(pn.position(1, 3))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: pn.prev })).toBeDisabled();
   });
 
   it('쪽만 옮기고 고른 요청을 비운다', async () => {
@@ -701,7 +703,7 @@ describe('쪽 이동', () => {
     );
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+    await user.click(screen.getByRole('button', { name: pn.next }));
 
     await waitFor(() => {
       expect(currentLocation()).toContain('page=2');
@@ -719,13 +721,56 @@ describe('쪽 이동', () => {
     );
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+    await user.click(screen.getByRole('button', { name: pn.next }));
 
     await waitFor(() => {
       expect(currentLocation()).toContain('page=2');
     });
     expect(currentLocation()).toContain('tab=requested');
     expect(lastListQuery(requests)?.get('requestedByMe')).toBe('true');
+  });
+
+  /* #361 — 목록 아래 쪽 이동 줄을 공용 부품으로 맞춘다. 건수를 고르기 전에는 서버 기본값을 쓴다. */
+  it('쪽 크기를 고르기 전에는 크기를 싣지 않는다', async () => {
+    const { requests } = renderScreen([listRoute(), countRoute(), detailRoute()]);
+
+    await waitForList();
+
+    expect(lastListQuery(requests)?.has('size')).toBe(false);
+  });
+
+  it('쪽 크기를 고르면 첫 쪽으로 돌아가 그 크기로 조회하고, 조건이 바뀌어도 크기는 남는다', async () => {
+    const { requests, user } = renderScreen(
+      [listRoute(requestFixtures, { total: 120 }), countRoute(), detailRoute()],
+      '?page=2&tab=requested',
+    );
+
+    await waitForList();
+    await user.click(screen.getByRole('combobox', { name: pn.pageSize }));
+    await user.click(screen.getByRole('option', { name: pn.pageSizeOption(10) }));
+
+    await waitFor(() => {
+      expect(lastListQuery(requests)?.get('size')).toBe('10');
+    });
+    expect(currentLocation()).toContain('size=10');
+    expect(currentLocation()).not.toContain('page=');
+    expect(currentLocation()).toContain('tab=requested');
+
+    await user.click(screen.getByRole('button', { name: pn.next }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('page=2');
+    });
+    expect(currentLocation()).toContain('size=10');
+    expect(lastListQuery(requests)?.get('size')).toBe('10');
+  });
+
+  it('0건이면 쪽 이동 줄을 내지 않는다', async () => {
+    renderScreen([listRoute([], { total: 0 }), countRoute(), detailRoute()]);
+
+    await screen.findByText(t.empty.noResultTitle);
+
+    expect(screen.queryByRole('navigation', { name: pn.label })).not.toBeInTheDocument();
   });
 });
 
@@ -1038,7 +1083,7 @@ describe('조회만 하는 조작', () => {
     // 승인 유형은 고정 OpenAPI enum으로 채워졌고, 상태 공통코드만 아직 대기 중이다.
     expect(screen.getAllByText(messages.pendingCode.note)).toHaveLength(1);
 
-    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+    await user.click(screen.getByRole('button', { name: pn.next }));
 
     await waitFor(() => {
       expect(lastListQuery(requests)?.get('page')).toBe('2');
@@ -2271,7 +2316,7 @@ describe('결재 — 전송 중', () => {
 
     await user.click(tabFor(t.tabs.requested));
     await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-002') }));
-    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+    await user.click(screen.getByRole('button', { name: pn.next }));
 
     expect(currentLocation()).toContain('rq=9001');
     expect(currentLocation()).not.toContain('tab=requested');
