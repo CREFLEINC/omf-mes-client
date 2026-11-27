@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../../test/api-harness';
@@ -80,6 +80,27 @@ describe('분배 조건과 미리보기 적용', () => {
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
     expect(screen.getByRole('textbox', { name: '조건 1 수량' })).toHaveValue('2');
     expect(apply).not.toHaveBeenCalled();
+  });
+  it('날짜별 직접 입력은 날짜 칸이 하나라도 비면 미리보기를 막는다(#360)', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <DistributionControls
+        orders={[{ ...orders[0]!, startDate: '2099-11-10', lineId: '31' }]}
+        existing={[]}
+        disabled={false}
+        onApply={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: '자동 분배' }));
+    await user.click(screen.getByRole('combobox', { name: '조건 1 분배 방식' }));
+    await user.click(await screen.findByRole('option', { name: '날짜별 직접 입력' }));
+    const preview = screen.getByRole('button', { name: '분배 미리보기' });
+    const first = screen.getAllByRole('textbox', { name: /^조건 1 \d{4}-\d{2}-\d{2} 수량$/ })[0]!;
+    await waitFor(() => expect(preview).toBeEnabled());
+    await user.clear(first);
+    expect(preview).toBeDisabled();
+    await user.type(first, '0');
+    expect(preview).toBeEnabled();
   });
   it('조건은 하나만 편집하고 미리보기에서 돌아와도 입력을 유지한다', async () => {
     const apply = vi.fn();

@@ -688,11 +688,13 @@ describe('AppLayout', () => {
     const links = sidebarHrefs();
 
     expect(within(sidebar).getByText('생산 관리')).toBeInTheDocument();
-    /* 작업함과 변경 확인은 「작업계획」 묶음 한 줄이다 — 줄은 작업함(첫 탭)을 건다. */
     expect(within(sidebar).getByRole('link', { name: '작업계획' })).toHaveAttribute(
       'href',
       '/production/production-orders',
     );
+    /* W-02-06 ERP W/O 변경 확인은 메뉴에서 감췄다(사용자 지시 2026-11-27) — 주소·화면은 남는다. */
+    expect(within(sidebar).queryByRole('link', { name: 'ERP W/O 변경 확인' })).toBeNull();
+    expect(links).not.toContain('/production/po-change-review');
     /*
      * ⛔ 전개·편성(`W-02-02`)과 4M 배정(`W-02-03`)은 메뉴에 «없다»(omf-all-around#41) — 주소에
      * 대상이 실려야 그리는 화면이라 맨 주소로 열면 안내만 선다. 앞 화면의 이동 버튼으로 들어간다.
@@ -753,26 +755,19 @@ describe('AppLayout', () => {
   });
 
   /*
-   * 변경 판정은 조회 바로 뒤 탭이다 — 그 화면이 만든 목록 위에서 이어진다(W-02-06).
-   * 옛 「P/O 변경 관리자 확인」 — 「P/O」는 구매오더만 뜻하게 되어 「ERP W/O」로 바꿨다.
+   * W-02-06 ERP W/O 변경 확인을 메뉴에서 감춰(사용자 지시 2026-11-27) 「작업계획」은 탭이 하나뿐이라
+   * 탭 묶음을 풀었다 — 작업계획 화면에도, 주소로 연 변경 확인 화면에도 「작업계획」 탭 막대가 없다.
    */
-  it('작업계획 탭 막대가 작업계획 → ERP W/O 변경 확인 차례다', () => {
-    renderLayout('본문 내용', { route: '/production/po-change-review' });
+  it('작업계획에는 탭 막대가 없다 — ERP W/O 변경 확인 탭을 감췄다', () => {
+    renderLayout('본문 내용', { route: '/production/production-orders' });
 
-    const tabs = screen.getByRole('navigation', { name: '작업계획' });
-
-    expect(within(tabs).getByRole('link', { name: '작업계획' })).toHaveAttribute(
+    /* 짝 양성 — 사이드바의 작업계획 줄은 그대로다. */
+    expect(within(navSidebar()).getByRole('link', { name: '작업계획' })).toHaveAttribute(
       'href',
       '/production/production-orders',
     );
-    expect(within(tabs).getByRole('link', { name: 'ERP W/O 변경 확인' })).toHaveAttribute(
-      'href',
-      '/production/po-change-review',
-    );
-    expect(hubTabHrefs('작업계획')).toEqual([
-      '/production/production-orders',
-      '/production/po-change-review',
-    ]);
+    expect(screen.queryByRole('navigation', { name: '작업계획' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'ERP W/O 변경 확인' })).toBeNull();
   });
 
   /*
@@ -970,7 +965,7 @@ describe('AppLayout', () => {
       '/master-data/defect-cause-code',
       '/quality/inspection-results' /* ← 검사 실적·결과 */,
       '/quality/lot-status' /* ← LOT 상태 */,
-      /* 생산 관리 — 작업계획(작업함, 변경 확인) → 진행 → 자재 기준 생산 추적 → 제품 기준 역추적 → 마감. 긴급 W/O 발행은 감췄다. */
+      /* 생산 관리 — 작업계획 → 진행 → 자재 기준 생산 추적 → 제품 기준 역추적 → 마감. ERP W/O 변경 확인 · 긴급 W/O 발행은 감췄다. */
       '/production/production-orders' /* ← 작업계획 */,
       '/production/work-order-progress',
       '/production/material-trace',
@@ -1009,7 +1004,7 @@ describe('AppLayout', () => {
   });
 
   /*
-   * 탭 묶음 열한 개의 **탭 차례와 경로**(계측기 · 설비 보전 · 툴 보전은 메뉴에서 감췄다). 사이드바 전체 감지기가 묶음 줄만 재므로, 묶음 안의
+   * 탭 묶음 열 개의 **탭 차례와 경로**(계측기 · 설비 보전 · 툴 보전은 메뉴에서 감췄고, 작업계획은 변경 확인 탭을 감춰 묶음을 풀었다). 사이드바 전체 감지기가 묶음 줄만 재므로, 묶음 안의
    * 차례는 여기서 얼린다 — 묶음 줄을 **실제로 눌러** 첫 탭에 들어가고 그 자리의 탭 막대를 읽는다.
    * 줄을 누르면 첫 탭에 닿는다는 것(`to` = 첫 탭)도 함께 재진다.
    */
@@ -1036,7 +1031,6 @@ describe('AppLayout', () => {
         '/quality/lot-status-transition',
         '/quality/suspicious-material-hold',
       ],
-      작업계획: ['/production/production-orders', '/production/po-change-review'],
       '반품·클레임': [
         '/shipment/return-receipts',
         '/shipment/disposition-requests',
@@ -2129,20 +2123,24 @@ describe('AppLayout — 탭 묶음 검색', () => {
   });
 
   /*
-   * 비슷한 이름의 탭이 여러 묶음에 있어도 검색 결과에서 묶음 이름으로 갈린다 — 생산 관리
-   * 「작업계획」 묶음의 「ERP W/O 변경 확인」 탭과 ERP 연동 현황·이력의 「ERP W/O」 탭이 각자 묶음 이름을 달고 선다.
+   * 비슷한 이름의 탭이 여러 묶음에 있어도 검색 결과에서 묶음 이름으로 갈린다 — 「폐기」를 치면
+   * 출고 관리의 「폐기 품의·기타출고」 탭과 반품·클레임의 「재작업/폐기 판정 의뢰」 · 「제품 폐기 요청」
+   * 탭이 각자 묶음 이름을 달고 선다.
    */
   it('비슷한 이름의 탭이 검색 결과에서 묶음 이름으로 갈린다', async () => {
     const { user } = renderLayout('본문 내용', { expandGroups: false });
 
-    await user.type(searchBox(), 'ERP W/O');
+    await user.type(searchBox(), '폐기');
 
     expect(
-      within(navSidebar()).getByRole('link', { name: '작업계획 › ERP W/O 변경 확인' }),
-    ).toHaveAttribute('href', '/production/po-change-review');
+      within(navSidebar()).getByRole('link', { name: '출고 관리 › 폐기 품의·기타출고' }),
+    ).toHaveAttribute('href', '/logistics/disposal-issue');
     expect(
-      within(navSidebar()).getByRole('link', { name: 'ERP 연동 현황·이력 › ERP W/O' }),
-    ).toHaveAttribute('href', '/system/erp-data/production-orders');
+      within(navSidebar()).getByRole('link', { name: '반품·클레임 › 재작업/폐기 판정 의뢰' }),
+    ).toHaveAttribute('href', '/shipment/disposition-requests');
+    expect(
+      within(navSidebar()).getByRole('link', { name: '반품·클레임 › 제품 폐기 요청' }),
+    ).toHaveAttribute('href', '/shipment/product-disposal-request');
   });
 
   it('묶음 이름으로 찾으면 묶음 줄이 그대로 선다', async () => {

@@ -34157,9 +34157,6 @@ ul.iqc-inbound-superseded {
 .erp-wo-selection-info strong {
   font: var(--type-title-sm);
 }
-.erp-wo-list-order {
-  width: 8rem;
-}
 .erp-wo-selection-info p {
   margin: var(--space-1) 0 0;
   font: var(--type-body-sm);
@@ -43430,12 +43427,14 @@ main > .pane.notification-center-pane {
   margin: 0;
 }
 
-/* 최신순/오래된순 단추 — 둥근 테두리는 그대로, 아이콘 · 글자는 진회색(중립형 · #361). */
-.notification-sort-button {
+/* 최신순/오래된순 단추 — 둥근 테두리는 그대로, 아이콘 · 글자는 진회색(중립형 · #361). 작업계획 정렬 단추도 같다. */
+.notification-sort-button,
+.erp-wo-list-order-button {
   color: var(--on-surface-variant);
 }
 
-.notification-sort-button:hover {
+.notification-sort-button:hover,
+.erp-wo-list-order-button:hover {
   background: color-mix(in srgb, var(--on-surface) 8%, transparent);
 }
 
@@ -43836,4 +43835,86 @@ main > .pane.notification-center-pane {
 .erp-wo-plan-layout.is-side > .erp-wo-adjustable-second > .erp-wo-plan-editor {
   flex: 1 1 auto;
   align-content: start;
+}
+/* 자동 분배 날짜별 직접 입력(사용자 지시 · #360) — 분배 방식 한 줄, 휴일 포함 · 휴지통은 그 바로 오른쪽, 날짜별 수량은 표. */
+.erp-wo-distribution-dialog .erp-wo-distribution-segment .erp-wo-segment-fields {
+  grid-template-columns:
+    minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(0, 11.5rem) minmax(0, 1fr)
+    auto;
+}
+.erp-wo-distribution-dialog
+  .erp-wo-segment-mode
+  [role='combobox']
+  > span:not([aria-hidden='true']) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.erp-wo-daily-table {
+  margin-top: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.erp-wo-daily-table table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.erp-wo-daily-table th {
+  padding: var(--space-2);
+  background: var(--surface-container);
+  font: var(--type-label-lg);
+  text-align: center;
+  white-space: nowrap;
+}
+.erp-wo-daily-table th + th,
+.erp-wo-daily-table td + td {
+  border-left: 1px solid var(--outline-variant);
+}
+.erp-wo-daily-table td {
+  padding: var(--space-2);
+  border-top: 1px solid var(--outline-variant);
+}
+.erp-wo-distribution-dialog .erp-wo-daily-table td input {
+  width: 100%;
+  text-align: center;
+}
+.erp-wo-daily-table-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+.erp-wo-daily-table-foot strong {
+  color: var(--on-surface);
+}
+
+/* 결과 검토 휴일 행(시안 · #360) — 연한 노란 바탕 + 왼쪽 주황 막대, 날짜 아래 「정기 휴무 · 분배 포함」. */
+.erp-wo-distribution-dialog .erp-wo-distribution-result-table tr.erp-wo-result-holiday-row > td {
+  background: var(--semantic-warning-container);
+}
+.erp-wo-distribution-dialog
+  .erp-wo-distribution-result-table
+  tr.erp-wo-result-holiday-row
+  > td:first-child {
+  box-shadow: inset 4px 0 var(--semantic-warning);
+}
+.erp-wo-distribution-dialog .erp-wo-result-holiday-row .erp-wo-holiday-day-label {
+  margin: var(--space-1) 0 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+.erp-wo-daily-table-nav {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+.erp-wo-daily-table-nav > * {
+  margin: 0;
 }
