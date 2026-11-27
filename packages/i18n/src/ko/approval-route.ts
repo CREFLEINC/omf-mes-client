@@ -296,7 +296,11 @@ export const approvalRoute = {
      *
      * 계약에 이 오퍼레이션의 400 응답이 아예 없다 — **화면 경고가 유일한 방어다.**
      */
-    deactivateTitle: '이 결재선을 사용 중지할까요?',
+    /* 단말 · 계정 사용 중지 창과 같은 모양 — 대상 상자 · 질문 · 안내 줄(사용자 지시 · #360). */
+    deactivateTitle: '결재선 사용 중지',
+    deactivateCaption: '사용 중지 대상',
+    deactivateQuestion: '이 결재선의 사용을 중지하시겠습니까?',
+    targetMeta: (count: number): string => `결재 단계: ${String(count)}개`,
     deactivateBlocks: (approvalTypeCode: string): string =>
       `중지하면 「${approvalTypeCode}」 유형의 상신이 거부됩니다.`,
     /** 건수는 결재선 응답이 실어 온 파생값이다 — 화면이 세지 않는다. */
@@ -305,7 +309,9 @@ export const approvalRoute = {
     deactivateInProgressNone: '지금 진행 중인 요청은 없습니다.',
     deactivateReversible: '나중에 「다시 사용」으로 되돌릴 수 있습니다.',
     /** 다시 사용 확인. 계약이 단계 0·활성 중복을 400으로 막으므로 화면이 **먼저** 막는다. */
-    activateTitle: '이 결재선을 다시 사용할까요?',
+    activateTitle: '결재선 다시 사용',
+    activateCaption: '다시 사용 대상',
+    activateQuestion: '이 결재선을 다시 사용하시겠습니까?',
     activateOpens: (approvalTypeCode: string): string =>
       `「${approvalTypeCode}」 유형의 상신이 다시 열립니다.`,
     activateStepCount: (count: number): string => `결재 단계는 ${String(count)}개입니다.`,

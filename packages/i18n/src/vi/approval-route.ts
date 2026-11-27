@@ -167,14 +167,19 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
       'Xóa: Không xóa được bước cuối cùng. Không có bước thì yêu cầu trình của loại này sẽ bị từ chối.',
   },
   dialog: {
-    deactivateTitle: 'Ngừng sử dụng luồng phê duyệt này chứ?',
+    deactivateTitle: 'Ngừng sử dụng luồng phê duyệt',
+    deactivateCaption: 'Đối tượng ngừng sử dụng',
+    deactivateQuestion: 'Ngừng sử dụng luồng phê duyệt này chứ?',
+    targetMeta: (count: number): string => `Bước phê duyệt: ${String(count)}`,
     deactivateBlocks: (approvalTypeCode: string): string =>
       `Ngừng thì yêu cầu trình của loại «${approvalTypeCode}» sẽ bị từ chối.`,
     deactivateInProgress: (count: number): string =>
       `${String(count)} yêu cầu đang xử lý vẫn chạy tiếp như cũ.`,
     deactivateInProgressNone: 'Hiện không có yêu cầu nào đang xử lý.',
     deactivateReversible: 'Sau này có thể hoàn lại bằng «Dùng lại».',
-    activateTitle: 'Dùng lại luồng phê duyệt này chứ?',
+    activateTitle: 'Dùng lại luồng phê duyệt',
+    activateCaption: 'Đối tượng dùng lại',
+    activateQuestion: 'Dùng lại luồng phê duyệt này chứ?',
     activateOpens: (approvalTypeCode: string): string =>
       `Yêu cầu trình của loại «${approvalTypeCode}» sẽ mở lại.`,
     activateStepCount: (count: number): string => `Có ${String(count)} bước phê duyệt.`,

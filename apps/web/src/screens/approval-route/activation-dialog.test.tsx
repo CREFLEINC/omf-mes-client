@@ -73,7 +73,7 @@ describe('ActivationDialog — 다시 사용', () => {
     renderDialog({ intent: 'activate' });
 
     expect(screen.getByText(t.dialog.activateOpens('폐기 출고'))).toBeInTheDocument();
-    expect(screen.getByText(t.dialog.activateStepCount(2))).toBeInTheDocument();
+    expect(screen.getByText(t.dialog.targetMeta(2))).toBeInTheDocument();
   });
 
   /** 두 갈래가 서로 다른 사실을 말해야 한다 — 같은 본문을 쓰면 사실과 다른 안내가 나간다. */
