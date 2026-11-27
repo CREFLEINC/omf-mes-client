@@ -1,12 +1,11 @@
 import type { ProductionOrderFact } from '../types';
-import { Button, Chip, Dialog, EmptyState, SkeletonText, type Column } from '@crefle/web-ui';
+import { Button, Chip, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
-import { AdjustableTable } from './adjustable-table';
-import { AdjustableLayout } from './adjustable-layout';
-import { AssignEditor } from './assign-editor';
-import { formatQty, nextIncompleteId } from './process-model';
+import { AssignEditor, type AssignRowHandle } from './assign-editor';
+import { formatQty } from './process-model';
 import type { OrderWorkOrder } from './queries';
 
 const t = messages.erpWorkOrderFlow.process.assign;
@@ -24,21 +23,18 @@ export interface AssignStepProps {
   lineNameOf?: (lineId: number | null) => string;
   uomLabelOf?: (uomId: number) => string;
   selectedId: number | null;
-  /** 고른 W/O를 다시 눌러 풀었다 — 읽기 전용에서도 첫 W/O로 되돌리지 않는다. */
+  /** 예전 목록 · 편집 창 짜임에서 쓰던 값. 표에서는 줄을 풀 일이 없어 쓰지 않는다. */
   cleared?: boolean;
-  /** `null` 은 고른 W/O를 다시 눌러 푼 것. */
   onSelect: (workOrderId: number | null) => void;
   onDirtyChange: (dirty: boolean) => void;
 }
 
 /**
- * 4M 배정 단계(T-W-C 「대상 안의 하위 항목」): 왼쪽 W/O 목록(공정과 배정 완료 칩), 오른쪽 편집 영역.
- * W/O 번호는 편집 영역 제목과 행 접근 이름에 둔다. 편집 영역이 고른 값을 다 읽을 수 있게 두 칸 폭을 확보하려고
- * 목록에서는 번호 열을 뺐다(C-16 「우선순위 낮은 열을 상세로」).
- * 저장하지 않은 변경이 있는 채로 다른 W/O를 누르면 확인을 받는다.
- * [저장]하면 다음 미완료 W/O를 공정 순서로 연다(T-W-C 항목 하나씩 끝내는 흐름).
- * 자동으로 채워지는 값을 접어도 넘치면(펼친 위치 묶음) 편집 영역 안에서만 스크롤하고 머리는 고정한다
- * (T-W-C 높이가 모자랄 때 ②, 이탈. 구성안 8장).
+ * 4M 배정 단계 — 작업지시마다 한 줄인 표에서 칸을 바로 고친다(시안 B · 사용자 결정 2026-11-27).
+ * 예전에는 왼쪽 목록에서 W/O 를 고르고 오른쪽 편집 창에서 하나씩 저장했다. 지금은 목록과 편집 창이 표 하나이고,
+ * [배정 저장]은 고친 줄을 한꺼번에 저장한다. 줄마다의 편집 로직(초안 · 검증 · 점검 · 설비 중복 확인 · 라인 기본 위치)은
+ * `AssignEditor` 가 그대로 맡고, 이 컴포넌트는 표 틀과 표 아래 단추만 맡는다.
+ * 줄을 누르거나 칸에 초점을 두면 그 줄이 고른 줄이 되고, 고른 줄 아래에 설비 배정 내역이 열린다.
  */
 export const AssignStep = ({
   readOnly = false,
@@ -49,147 +45,181 @@ export const AssignStep = ({
   plantId,
   erpStorage,
   planDateOf,
-  lineNameOf,
   uomLabelOf,
   selectedId,
-  cleared = false,
   onSelect,
   onDirtyChange,
 }: AssignStepProps) => {
-  const [dirty, setDirty] = useState(false);
-  /* 옮길 W/O. `'none'` 은 고른 W/O를 푸는 것 — 저장하지 않은 변경이 있으면 같은 확인을 거친다. */
-  const [pending, setPending] = useState<number | 'none' | null>(null);
+  const handles = useRef(new Map<number, AssignRowHandle>());
+  const [dirtyIds, setDirtyIds] = useState<ReadonlySet<number>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const [actionTarget, setActionTarget] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setActionTarget(actionTargetId === undefined ? null : document.getElementById(actionTargetId));
+  }, [actionTargetId]);
+
+  const dirty = dirtyIds.size > 0;
+  useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
+  /* 고른 줄이 없는데 고친 줄이 생기면 그 줄을 고른 줄로 둔다. 사용자가 고른 줄은 건드리지 않는다. */
+  const firstDirty = [...dirtyIds][0];
+  useEffect(() => {
+    if (firstDirty !== undefined && selectedId === null) onSelect(firstDirty);
+  }, [firstDirty, onSelect, selectedId]);
+
+  /* 줄마다 같은 함수를 넘겨, 줄이 다시 그려질 때마다 등록 · 해제가 되풀이되지 않게 한다. */
+  const perRow = useMemo(() => new Map<number, RowCallbacks>(), []);
+  const callbacksOf = useCallback(
+    (workOrderId: number): RowCallbacks => {
+      const known = perRow.get(workOrderId);
+      if (known !== undefined) return known;
+      const created: RowCallbacks = {
+        onRegister: (handle) => {
+          if (handle === null) handles.current.delete(workOrderId);
+          else handles.current.set(workOrderId, handle);
+        },
+        onDirtyChange: (next) =>
+          setDirtyIds((current) => {
+            if (current.has(workOrderId) === next) return current;
+            const copy = new Set(current);
+            if (next) copy.add(workOrderId);
+            else copy.delete(workOrderId);
+            return copy;
+          }),
+      };
+      perRow.set(workOrderId, created);
+      return created;
+    },
+    [perRow],
+  );
+
   if (workOrders === undefined || blockedIds === undefined) return <SkeletonText lines={4} />;
-  const selected =
-    workOrders.find((item) => item.workOrderId === selectedId) ??
-    (readOnly && !cleared ? workOrders[0] : undefined);
-  const columns: Column<OrderWorkOrder>[] = [
-    {
-      key: 'operation',
-      header: t.columns.operation,
-      render: (row) => (
-        <span className="erp-wo-assign-target">
-          {/* 작업지시 번호는 줄바꿈 · 말줄임 없이(사용자 지시 · #360). */}
-          <span className="nowrap-cell" title={row.workOrderNo}>
-            {row.workOrderNo}
-          </span>
-          <small>{row.operationName}</small>
-          <small>
-            {planDateOf(row.productionPlanId) ?? '—'} / {formatQty(row.orderQty)}{' '}
-            {uomLabelOf?.(row.uomId) ?? ''}
-          </small>
-          {lineNameOf !== undefined && <small>{lineNameOf(row.productionLineId ?? null)}</small>}
-        </span>
-      ),
-    },
-    {
-      key: 'status',
-      header: t.columns.status,
-      render: (row) =>
-        readOnly ? (
-          <Chip size="sm">{statusNameOf?.(row.statusCode) ?? row.statusCode}</Chip>
-        ) : blockedIds.has(row.workOrderId) ? (
-          <Chip variant="status" size="sm" status="warning">
-            {t.pending}
-          </Chip>
-        ) : (
-          <Chip variant="status" size="sm" status="success">
-            {t.done}
-          </Chip>
-        ),
-    },
+
+  const pendingCount = readOnly
+    ? 0
+    : workOrders.filter((row) => blockedIds.has(row.workOrderId)).length;
+  const headers = [
+    t.columns.workOrderNo,
+    t.columns.operation,
+    t.columns.quantity,
+    `${t.fields.productionLineId} *`,
+    t.fields.plannedEquipmentId,
+    t.fields.plannedMoldId,
+    t.columns.fgWarehouse,
+    t.fields.plannedStartAtLocal,
+    t.fields.plannedEndAtLocal,
+    readOnly ? t.columns.workOrderStatus : t.columns.check,
   ];
-  const changeDirty = (next: boolean) => {
-    setDirty(next);
-    onDirtyChange(next);
-  };
+
+  const saveAction = (
+    <Button
+      size="sm"
+      variant={actionTargetId === undefined ? 'outlined' : undefined}
+      loading={saving}
+      disabled={readOnly || !dirty}
+      onClick={async () => {
+        setSaving(true);
+        try {
+          /* 고친 줄을 차례로 저장한다 — 줄마다 설비 중복을 다시 확인하고, 막힌 줄은 그 줄 아래에 까닭을 알린다. */
+          for (const id of dirtyIds) await handles.current.get(id)?.save();
+        } finally {
+          setSaving(false);
+        }
+      }}
+    >
+      {t.actions.save}
+    </Button>
+  );
 
   return (
-    <>
-      <AdjustableLayout
-        storageKey="omf-mes:work-planning:assign-layout"
-        label="작업지시 목록과 4M 배정"
-        ratio={0.36}
-        className="erp-wo-assign-layout"
-      >
-        <section className="pane erp-wo-assign-list" aria-label={t.listHeading}>
-          <h2 className="section-title">
-            {t.listHeading} <span className="erp-wo-assign-count">{workOrders.length}</span>
-          </h2>
-          <AdjustableTable
-            storageKey="omf-mes:work-planning:assign-columns"
-            columns={columns}
-            rows={workOrders}
-            getRowId={(row) => String(row.workOrderId)}
-            activeId={selected ? String(selected.workOrderId) : null}
-            rowLabel={(row) => `${row.workOrderNo} ${row.operationName}`}
-            onActivate={(row) => {
-              const next = row.workOrderId === selected?.workOrderId ? 'none' : row.workOrderId;
-              if (dirty) setPending(next);
-              else onSelect(next === 'none' ? null : next);
-            }}
-            empty={<EmptyState size="sm" title={t.empty} />}
-          />
-        </section>
-        <section
-          className="pane erp-wo-assign-editor"
-          aria-label={
-            selected === undefined ? t.editorHeading : t.editorLabel(selected.workOrderNo)
-          }
-        >
-          {selected === undefined ? (
-            <EmptyState size="sm" title={t.selectPrompt} />
-          ) : (
-            <AssignEditor
-              readOnly={readOnly}
-              actionTargetId={actionTargetId}
-              summary={`계획일 ${planDateOf(selected.productionPlanId) ?? '—'} / 작업지시 수량 ${formatQty(selected.orderQty)} ${uomLabelOf?.(selected.uomId) ?? ''}`}
-              key={selected.workOrderId}
-              title={t.editorTitle(selected.workOrderNo, selected.operationName)}
-              workOrderId={selected.workOrderId}
-              plantId={plantId}
-              erpStorage={erpStorage}
-              planDate={planDateOf(selected.productionPlanId)}
-              onDirtyChange={changeDirty}
-              onSaved={(ready) => {
-                const next = nextIncompleteId(
-                  workOrders.map((item) => item.workOrderId),
-                  blockedIds,
-                  selected.workOrderId,
-                  ready,
+    <section className="pane erp-wo-assign-grid-pane" aria-label={t.gridHeading}>
+      <div className="section-heading-row">
+        <h2 className="section-title">
+          {t.gridHeading}{' '}
+          <span className="erp-wo-assign-count">
+            {t.gridCount(workOrders.length, pendingCount)}
+          </span>
+        </h2>
+        {!readOnly && (
+          <div className="assign-editor-actions">
+            <Button
+              size="sm"
+              variant="outlined"
+              disabled={saving || workOrders.length === 0}
+              onClick={() => handles.current.forEach((handle) => handle.check())}
+            >
+              {t.actions.check}
+            </Button>
+            <Button
+              size="sm"
+              variant="outlined"
+              disabled={!dirty || saving}
+              onClick={() => dirtyIds.forEach((id) => handles.current.get(id)?.reset())}
+            >
+              {t.actions.reset}
+            </Button>
+            {actionTarget === null ? saveAction : createPortal(saveAction, actionTarget)}
+          </div>
+        )}
+      </div>
+      {workOrders.length === 0 ? (
+        <EmptyState size="sm" title={t.empty} />
+      ) : (
+        <div className="erp-wo-assign-grid-scroll">
+          <table className="erp-wo-assign-grid">
+            <caption className="visually-hidden">{t.gridHeading}</caption>
+            <thead>
+              <tr>
+                {headers.map((header) => (
+                  <th key={header} scope="col">
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {workOrders.map((row) => {
+                const callbacks = callbacksOf(row.workOrderId);
+                return (
+                  <AssignEditor
+                    key={row.workOrderId}
+                    row={{
+                      workOrderNo: row.workOrderNo,
+                      operationName: row.operationName,
+                      planDate: planDateOf(row.productionPlanId) ?? '—',
+                      quantity:
+                        `${formatQty(row.orderQty)} ${uomLabelOf?.(row.uomId) ?? ''}`.trim(),
+                      selected: row.workOrderId === selectedId,
+                      status: readOnly ? (
+                        <Chip size="sm">{statusNameOf?.(row.statusCode) ?? row.statusCode}</Chip>
+                      ) : undefined,
+                      columnCount: headers.length,
+                      onFocus: () => {
+                        if (row.workOrderId !== selectedId) onSelect(row.workOrderId);
+                      },
+                    }}
+                    onRegister={callbacks.onRegister}
+                    readOnly={readOnly}
+                    title={t.editorTitle(row.workOrderNo, row.operationName)}
+                    workOrderId={row.workOrderId}
+                    plantId={plantId}
+                    erpStorage={erpStorage}
+                    planDate={planDateOf(row.productionPlanId)}
+                    onDirtyChange={callbacks.onDirtyChange}
+                    onSaved={noop}
+                  />
                 );
-                if (next !== null) onSelect(next);
-              }}
-            />
-          )}
-        </section>
-      </AdjustableLayout>
-      {pending !== null && (
-        <Dialog
-          open
-          title={t.discard.title}
-          onClose={() => setPending(null)}
-          footer={
-            <>
-              <Button variant="outlined" onClick={() => setPending(null)}>
-                {messages.common.cancel}
-              </Button>
-              <Button
-                onClick={() => {
-                  const next = pending;
-                  setPending(null);
-                  changeDirty(false);
-                  onSelect(next === 'none' ? null : next);
-                }}
-              >
-                {t.discard.confirm}
-              </Button>
-            </>
-          }
-        >
-          <p className="dialog-text">{t.discard.body}</p>
-        </Dialog>
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
-    </>
+    </section>
   );
 };
+
+interface RowCallbacks {
+  onRegister: (handle: AssignRowHandle | null) => void;
+  onDirtyChange: (dirty: boolean) => void;
+}
+
+const noop = (): void => undefined;

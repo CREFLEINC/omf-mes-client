@@ -456,10 +456,21 @@ export const erpWorkOrderFlow = {
     },
     assign: {
       listHeading: '작업지시 목록',
+      /** 작업지시마다 한 줄인 배정 표의 제목과 건수(시안 B · 2026-11-27). */
+      gridHeading: '작업지시 4M 배정',
+      gridCount: (total: number, pending: number): string =>
+        pending > 0
+          ? `${String(total)}건 · 배정 필요 ${String(pending)}건`
+          : `${String(total)}건`,
       columns: {
         workOrderNo: 'W/O 번호',
         operation: '공정',
         status: '배정',
+        planDate: '계획일',
+        quantity: '수량',
+        fgWarehouse: '입고 창고',
+        check: '점검',
+        workOrderStatus: '상태',
       },
       done: '배정 완료',
       pending: '배정 필요',

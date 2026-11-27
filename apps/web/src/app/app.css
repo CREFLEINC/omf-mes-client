@@ -43918,3 +43918,232 @@ main > .pane.notification-center-pane {
 .erp-wo-daily-table-nav > * {
   margin: 0;
 }
+
+/*
+ * ── 4M 배정: 작업지시마다 한 줄인 표에서 바로 고친다(시안 B · 사용자 결정 2026-11-27) ──
+ * 열 폭을 비율로 고정하고 글자와 입력 칸을 작게 해, 가로 스크롤 없이 한 화면에 든다(사용자 지시 2026-11-27).
+ * 창이 아주 좁을 때만 표 안에서 가로로 구른다.
+ */
+.erp-wo-assign-grid-pane {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+}
+.erp-wo-assign-grid-pane > .section-heading-row {
+  align-items: center;
+}
+.erp-wo-assign-grid-scroll {
+  overflow-x: auto;
+  background: var(--surface);
+}
+.erp-wo-assign-grid {
+  width: 100%;
+  min-width: 68rem;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font: var(--type-label-md);
+}
+/* W/O 번호 · 공정 · 수량 · 생산 라인 · 설비 · 금형 · 입고 위치 · 계획 시작 · 계획 종료 · 점검 */
+.erp-wo-assign-grid thead th:nth-child(1) {
+  width: 12%;
+}
+.erp-wo-assign-grid thead th:nth-child(2) {
+  width: 10%;
+}
+.erp-wo-assign-grid thead th:nth-child(3) {
+  width: 6%;
+  text-align: right;
+}
+.erp-wo-assign-grid thead th:nth-child(4) {
+  width: 15%;
+}
+.erp-wo-assign-grid thead th:nth-child(5),
+.erp-wo-assign-grid thead th:nth-child(6) {
+  width: 10%;
+}
+.erp-wo-assign-grid thead th:nth-child(7) {
+  width: 15%;
+}
+.erp-wo-assign-grid thead th:nth-child(8),
+.erp-wo-assign-grid thead th:nth-child(9) {
+  width: 8%;
+}
+.erp-wo-assign-grid thead th:nth-child(10) {
+  width: 6%;
+}
+/* 표 안의 글자는 모두 12px 로 맞춘다 — 머리줄 · 값 · 입력 칸 · 칩(사용자 지시 2026-11-27). */
+.erp-wo-assign-grid,
+.erp-wo-assign-grid th,
+.erp-wo-assign-grid td,
+.erp-wo-assign-grid button,
+.erp-wo-assign-grid button > span,
+.erp-wo-assign-grid [role='combobox'],
+.erp-wo-assign-grid [role='combobox'] > span,
+.erp-wo-assign-row .erp-wo-assign-datetime {
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+.erp-wo-assign-grid thead th {
+  padding: var(--space-2);
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--outline-variant);
+}
+.erp-wo-assign-row > th,
+.erp-wo-assign-row > td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+  vertical-align: middle;
+  text-align: left;
+  font: var(--type-label-md);
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.erp-wo-assign-row > th {
+  font-weight: 600;
+}
+.erp-wo-assign-row > .erp-wo-assign-qty {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+/* 고른 줄은 왼쪽 띠와 옅은 바탕 — 붉은 바탕은 오류처럼 보여 쓰지 않는다. */
+.erp-wo-assign-row[data-selected] > th,
+.erp-wo-assign-row[data-selected] > td,
+.erp-wo-assign-row-notes[data-selected] > td {
+  background: var(--semantic-info-container);
+}
+.erp-wo-assign-row[data-selected] > th {
+  box-shadow: inset 3px 0 0 var(--semantic-info);
+}
+/* 칸 안의 입력은 열 폭을 채우는 작은 칸이다. 이름표는 머리줄이 맡는다. */
+.erp-wo-assign-grid .field-cell {
+  display: block;
+  min-width: 0;
+}
+.erp-wo-assign-grid .field-cell > .field-label,
+.erp-wo-assign-grid .field-cell > label.field-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* 선택 칸 — 낮고 좁은 펼침 칸. 넘치는 값은 말줄임하고 칸에 올리면 전체가 나타난다. */
+.erp-wo-assign-grid-pane .erp-wo-assign-grid .erp-wo-assign-row [role='combobox'] {
+  width: 100%;
+  min-width: 0;
+  height: 1.5rem;
+  min-height: 1.5rem;
+  padding-block: 0;
+  padding-inline: var(--space-2) var(--space-1);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+}
+.erp-wo-assign-grid-pane .erp-wo-assign-grid .erp-wo-assign-row [role='combobox'] span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+}
+/* 점검 칩도 표 글자 크기에 맞춘다. */
+.erp-wo-assign-grid .erp-wo-assign-row > td:last-child * {
+  font-size: 0.75rem;
+}
+/* 일시 — 「11-27 08:00」 한 칸. 누르면 날짜 · 시각을 고르는 판이 열린다. */
+.erp-wo-assign-datetime {
+  width: 100%;
+  height: 1.5rem;
+  padding-inline: var(--space-2);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--on-surface);
+  text-align: left;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.erp-wo-assign-datetime:hover:not(:disabled) {
+  border-color: var(--on-surface);
+}
+.erp-wo-assign-datetime:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+.erp-wo-assign-datetime[aria-invalid='true'] {
+  border-color: var(--semantic-error);
+}
+.erp-wo-assign-datetime:disabled {
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  cursor: default;
+}
+.erp-wo-assign-datetime-empty {
+  color: var(--on-surface-variant);
+}
+.erp-wo-assign-datetime-panel {
+  position: fixed;
+  /* 판 안에서 펼치는 달력 · 시각 목록은 `body` 에 그려진다 — 판이 그것들을 덮지 않게 낮게 둔다. */
+  z-index: 5;
+  display: grid;
+  gap: var(--space-3);
+  justify-items: end;
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--elevation-2);
+}
+.erp-wo-assign-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.erp-wo-assign-cell > .field-cell {
+  flex: 1 1 auto;
+}
+.erp-wo-assign-none {
+  color: var(--on-surface-variant);
+}
+/* 줄 아래 알림 — 점검이 막은 까닭, 저장 오류, 고른 줄의 설비 배정 내역. */
+.erp-wo-assign-row-notes > td {
+  padding: 0 var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+  font: var(--type-body-sm);
+}
+.erp-wo-assign-notes {
+  display: grid;
+  gap: var(--space-2);
+}
+.erp-wo-assign-notes > p {
+  margin: 0;
+}
+.erp-wo-assign-load-failed {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+/* 선택 칸은 열 폭을 넘지 않는다 — 긴 값은 칸 안에서 말줄임한다. */
+.erp-wo-assign-grid .erp-wo-assign-row > td > *,
+.erp-wo-assign-grid .erp-wo-assign-cell > * {
+  max-width: 100%;
+  min-width: 0;
+}
+.erp-wo-assign-grid-pane .erp-wo-assign-grid .erp-wo-assign-row [role='combobox'] {
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow: hidden;
+}
+/* 표 제목은 생산계획의 「생산 라인별 주간 편성」과 같은 크기로 쓴다(사용자 지시 2026-11-27). */
+.erp-wo-assign-grid-pane > .section-heading-row > .section-title {
+  margin: 0;
+  font: var(--type-title-sm);
+}

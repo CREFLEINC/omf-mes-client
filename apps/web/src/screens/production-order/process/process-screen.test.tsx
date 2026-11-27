@@ -684,9 +684,9 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     await currentStep(tp.steps.plan);
   });
 
-  it('4M을 저장하면 다음 배정 미완 W/O를 연다', async () => {
+  it('4M 배정은 작업지시마다 한 줄인 표이고, [배정 저장]은 고친 줄을 한꺼번에 저장한다', async () => {
     const user = userEvent.setup();
-    renderAt(
+    const server = renderAt(
       `${WORKLIST}/${ORDER_NO}`,
       world({
         autoPlan: { status: 'DONE', reasons: [] },
@@ -698,11 +698,13 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
       }),
     );
     await currentStep(tp.steps.assign);
-    await screen.findByRole('region', {
-      name: tp.assign.editorLabel('SYN-WO-9001'),
-    });
+    const grid = await screen.findByRole('region', { name: tp.assign.gridHeading });
+    /* 목록과 편집 창이 따로 없다 — 두 작업지시가 모두 표의 줄로 보인다. */
+    expect(await within(grid).findByRole('row', { name: /^SYN-WO-9001 / })).toBeVisible();
+    expect(within(grid).getByRole('row', { name: /^SYN-WO-9002 / })).toBeVisible();
+    expect(screen.queryByRole('region', { name: tp.assign.editorHeading })).toBeNull();
     /*
-     * [저장]은 라인 기본 위치가 초안에 채워져야 열린다 — 라인 목록이 늦게 오면 편집기가 먼저
+     * [저장]은 라인 기본 위치가 초안에 채워져야 열린다 — 라인 목록이 늦게 오면 줄이 먼저
      * 보이므로, 열리기 전에 누르면 아무 일도 일어나지 않는다.
      */
     await waitFor(() => {
@@ -710,12 +712,14 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     });
     await user.click(screen.getByRole('button', { name: tp.assign.actions.save }));
 
-    expect(
-      await screen.findByRole('region', { name: tp.assign.editorLabel('SYN-WO-9002') }),
-    ).toBeVisible();
+    await waitFor(() =>
+      expect(
+        server.writes.filter((write) => /\/work-orders\/900[12]$/.test(write.path)).length,
+      ).toBe(2),
+    );
   });
 
-  it('4M 배정에서 고른 W/O를 다시 누르면 풀리고 첫 W/O를 저절로 다시 고르지 않는다', async () => {
+  it('4M 배정에서 줄을 누르면 그 줄이 고른 줄이 되고, 확인 창 없이 다른 줄로 옮긴다', async () => {
     const user = userEvent.setup();
     renderAt(
       `${WORKLIST}/${ORDER_NO}`,
@@ -729,22 +733,18 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
       }),
     );
     await currentStep(tp.steps.assign);
-    await screen.findByRole('region', { name: tp.assign.editorLabel('SYN-WO-9001') });
-    await user.click(screen.getByRole('row', { name: /^SYN-WO-9001 / }));
-    /* 편집기가 라인 기본 위치를 채워 둔 상태라 다른 줄로 옮길 때와 같은 확인을 거친다. */
-    const confirm = await screen.findByRole('dialog', { name: tp.assign.discard.title });
-    await user.click(within(confirm).getByRole('button', { name: tp.assign.discard.confirm }));
-
-    const editor = await screen.findByRole('region', { name: tp.assign.editorHeading });
-    expect(within(editor).getByText(tp.assign.selectPrompt)).toBeVisible();
-    expect(screen.getByRole('row', { name: /^SYN-WO-9001 / })).not.toHaveAttribute(
-      'aria-selected',
-      'true',
+    /* 라인 기본 위치가 채워질 때까지 기다린 뒤 누른다 — 그 전에는 줄이 다시 그려진다. */
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: tp.assign.actions.save })).toBeEnabled();
+    });
+    await user.click(
+      within(screen.getByRole('row', { name: /^SYN-WO-9002 / })).getByRole('rowheader'),
     );
-    await user.click(screen.getByRole('row', { name: /^SYN-WO-9002 / }));
-    expect(
-      await screen.findByRole('region', { name: tp.assign.editorLabel('SYN-WO-9002') }),
-    ).toBeVisible();
+    await waitFor(() =>
+      expect(screen.getByRole('row', { name: /^SYN-WO-9002 / })).toHaveAttribute('data-selected'),
+    );
+    expect(screen.getByRole('row', { name: /^SYN-WO-9001 / })).not.toHaveAttribute('data-selected');
+    expect(screen.queryByRole('dialog', { name: tp.assign.discard.title })).toBeNull();
   });
 
   it('배포 확인에서 고른 작업지시를 다시 누르면 풀리고, [다음 작업지시]는 첫 작업지시를 연다', async () => {
@@ -783,9 +783,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     renderAt(`${WORKLIST}/${ORDER_NO}`, state);
     await currentStep(tp.steps.assign);
     expect(await screen.findByText(t.reasons.WORK_ORDER_LOCATION_MISSING)).toBeVisible();
-    await screen.findByRole('region', {
-      name: tp.assign.editorLabel('SYN-WO-9001'),
-    });
+    await screen.findByRole('row', { name: /^SYN-WO-9001 / });
     const save = await screen.findByRole('button', { name: tp.assign.actions.save });
     await waitFor(() => {
       expect(save).toBeEnabled();
@@ -918,9 +916,13 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     expect(screen.getByRole('button', { name: '수동 분배' })).toBeDisabled();
     await user.click(screen.getByRole('tab', { name: /4M 배정/ }));
     expect(
-      await screen.findByRole('heading', { name: tp.assign.editorHeading, level: 2 }),
+      await screen.findByRole('heading', {
+        name: new RegExp(`^${tp.assign.gridHeading}`),
+        level: 2,
+      }),
     ).toBeVisible();
-    expect(await screen.findByRole('button', { name: tp.assign.actions.save })).toBeDisabled();
+    /* 배포 뒤에는 읽기 전용이라 저장 · 점검 단추가 없다. */
+    expect(screen.queryByRole('button', { name: tp.assign.actions.save })).toBeNull();
     expect(screen.getByRole('tab', { name: /4M 배정/ })).toHaveAttribute('aria-selected', 'true');
     await user.click(screen.getByRole('tab', { name: /배포 확인/ }));
     expect(await screen.findByRole('heading', { name: '배포 완료 내역', level: 2 })).toBeVisible();
