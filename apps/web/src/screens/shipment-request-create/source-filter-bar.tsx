@@ -50,6 +50,8 @@ export interface SourceFilterBarProps {
   onSearch: (filters: SourceFilters) => void;
   onRemoveFilter: (key: FilterChip['key']) => void;
   onReset: () => void;
+  /** [ERP S/O 없이 생성] — 조회 바로 오른쪽(#360). 누르면 입력 팝업이 열린다. */
+  onStartStandalone: () => void;
 }
 
 /**
@@ -72,6 +74,7 @@ export const SourceFilterBar = ({
   onSearch,
   onRemoveFilter,
   onReset,
+  onStartStandalone,
 }: SourceFilterBarProps) => {
   const [filters, setFilters] = useState<SourceFilters>(appliedFilters);
 
@@ -161,6 +164,9 @@ export const SourceFilterBar = ({
               }}
             >
               {t.filters.search}
+            </Button>
+            <Button variant="outlined" onClick={onStartStandalone}>
+              {t.actions.startStandalone}
             </Button>
             {hasChangedFilters(EMPTY_FILTERS, filters, appliedFilters) && (
               <Button variant="outlined" onClick={reset}>

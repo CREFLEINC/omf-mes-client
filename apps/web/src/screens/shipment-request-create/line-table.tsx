@@ -1,4 +1,13 @@
-import { Button, Checkbox, Chip, IconButton, Table, TextField, type Column } from '@crefle/web-ui';
+import {
+  Button,
+  Checkbox,
+  Chip,
+  Icon,
+  IconButton,
+  Table,
+  TextField,
+  type Column,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { InfoTip } from '../../patterns/info-tip';
@@ -191,19 +200,35 @@ export const LineTable = ({
           );
         }
 
+        /* 앱의 찾기 선택칸(`ReferenceField` 의 `wrapValue` 모양)과 같은 테두리 · 돋보기 · 흐린 문구(#360). 고르는 동작은 그대로. */
         return (
           <div className="field-cell">
-            <Button
-              variant="text"
-              size="sm"
-              disabled={isLocked}
-              aria-label={t.lineTable.itemLabel(rowIndex + 1)}
-              onClick={() => {
-                onPickItem(row.key);
-              }}
+            <div
+              className="reference-field-full-value sr-item-picker"
+              data-size="sm"
+              data-disabled={isLocked || undefined}
+              data-invalid={errorOf(row, 'itemId') !== undefined || undefined}
             >
-              {row.itemId === '' ? t.lineTable.itemUnpicked : label}
-            </Button>
+              <button
+                type="button"
+                disabled={isLocked}
+                aria-label={t.lineTable.itemLabel(rowIndex + 1)}
+                aria-haspopup="dialog"
+                aria-required="true"
+                onClick={() => {
+                  onPickItem(row.key);
+                }}
+              >
+                <Icon name="search" size={20} />
+                <span
+                  className={
+                    row.itemId === '' ? 'reference-field-placeholder' : 'reference-field-value'
+                  }
+                >
+                  {row.itemId === '' ? t.lineTable.itemUnpicked : label}
+                </span>
+              </button>
+            </div>
             {errorOf(row, 'itemId') !== undefined && (
               <span className="field-error">{errorOf(row, 'itemId')}</span>
             )}
@@ -249,6 +274,7 @@ export const LineTable = ({
             size="sm"
             options={uomOptions}
             value={row.uomId === '' ? null : row.uomId}
+            placeholder={t.lineTable.uomPlaceholder}
             invalid={errorOf(row, 'uomId') !== undefined}
             disabled={isLocked}
             aria-label={t.lineTable.uomLabel(rowIndex + 1)}
@@ -309,7 +335,14 @@ export const LineTable = ({
           <span className="required-mark" aria-hidden="true">
             {' *'}
           </span>
-          <InfoTip text={t.notes.warehouseRule} />
+          {/* 단독 생성은 새 줄 창고 규칙(종전 [라인 추가] 아래 ⓘ)도 이 칸 ⓘ 에 함께 적는다(#360). */}
+          <InfoTip
+            text={
+              isFromOrder
+                ? t.notes.warehouseRule
+                : `${t.notes.warehouseRule} ${t.notes.addLineWarehouse}`
+            }
+          />
         </span>
       ),
       width: WIDTH.warehouse,

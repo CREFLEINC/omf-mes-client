@@ -18,3 +18,37 @@
 .sr-create-source-list tbody tr:has(button[aria-pressed='true']) > td:first-child {
   box-shadow: inset 3px 0 0 var(--semantic-info);
 }
+
+/*
+ * ERP S/O 없이 생성 팝업(#360) — 넓은 등록 팝업. 라인 표(품목 · 요청 수량 · 단위 · 가용 · 배정 · 출고 창고 · 검사 · 삭제)가
+ * 가로로 밀리지 않게 DS 「lg」보다 넓힌다. 화면이 좁으면 화면 폭까지만.
+ */
+dialog.sr-create-dialog {
+  width: min(80rem, calc(100vw - var(--space-8)));
+  max-width: min(80rem, calc(100vw - var(--space-8)));
+}
+
+.sr-create-dialog-lines {
+  margin-top: var(--space-5);
+}
+
+/* 품목 찾기 칸은 칸 폭을 다 쓴다(다른 입력칸처럼). */
+.sr-create-dialog .sr-item-picker {
+  align-self: stretch;
+}
+
+/* [라인 추가]는 표 제목 줄 오른쪽 끝. */
+.sr-create-dialog-lines .sr-create-add-line {
+  margin-inline-start: auto;
+}
+
+/*
+ * 표 안의 필수 칸 — 칸 이름 줄이 없어 공통 규칙(이름 옆 * 를 보는 규칙)이 닿지 않는다. 같은 연한 빨간 바탕을 준다:
+ * 아직 고르지 않은 품목 찾기 칸, 아직 고르지 않은 단위 · 출고 창고 선택칸.
+ */
+.sr-create-dialog .sr-item-picker:not([data-disabled]):has(.reference-field-placeholder),
+.sr-create-dialog
+  td
+  button[role='combobox'][aria-required='true']:not(:disabled):has(> [class*='_placeholder_']) {
+  background: var(--semantic-error-container);
+}

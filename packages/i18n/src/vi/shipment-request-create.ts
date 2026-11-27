@@ -51,12 +51,21 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     removeSplitLine: (rowIndex: number): string => `Xóa dòng đã tách ${String(rowIndex)}`,
     removeLine: (rowIndex: number): string => `Xóa dòng ${String(rowIndex)}`,
     submit: 'Lập lệnh xuất hàng',
+    cancel: 'Hủy',
+    discard: 'Bỏ nội dung đã nhập',
+  },
+  dialog: {
+    standaloneTitle: 'Tạo lệnh xuất hàng không cần ERP S/O',
+    discardTitle: 'Bỏ các giá trị đã nhập?',
   },
   fields: {
     businessUnit: 'Đơn vị kinh doanh',
     customer: 'Khách hàng',
     shipToPartner: 'Nơi giao hàng',
     requestedShipDate: 'Ngày yêu cầu xuất hàng',
+    businessUnitPlaceholder: 'Chọn đơn vị kinh doanh',
+    customerPlaceholder: 'Chọn khách hàng',
+    shipToPartnerPlaceholder: 'Chọn nơi giao hàng',
   },
   lineTable: {
     item: 'Mặt hàng',
@@ -64,6 +73,7 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     itemUnpicked: 'Chọn mặt hàng',
     uom: 'Đơn vị',
     uomLabel: (rowIndex: number): string => `Đơn vị dòng ${String(rowIndex)}`,
+    uomPlaceholder: 'Chọn',
     requestedQty: 'Số lượng yêu cầu',
     requestedQtyLabel: (rowIndex: number): string => `Số lượng yêu cầu dòng ${String(rowIndex)}`,
     availableQty: 'Số lượng khả dụng',
@@ -167,6 +177,6 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     beyondLastDescription: 'Hãy về trang đầu.',
     noTargetTitle: 'Hãy chọn ERP S/O hoặc bấm [Tạo không cần ERP S/O]',
     noTargetDescription:
-      'Chọn ERP S/O ở danh sách bên trái thì sẽ lập lệnh theo S/O đó; muốn tạo mà không có ERP S/O thì hãy bấm nút bên dưới.',
+      'Chọn ERP S/O ở danh sách bên trái thì sẽ lập lệnh theo S/O đó; muốn tạo mà không có ERP S/O thì hãy bấm [Tạo không cần ERP S/O] ở trên.',
   },
 };

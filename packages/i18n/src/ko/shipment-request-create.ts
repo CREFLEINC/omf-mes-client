@@ -55,20 +55,35 @@ export const shipmentRequestCreate = {
     splitLineLabel: (rowIndex: number): string => `${String(rowIndex)}행 나누기`,
     removeSplitLine: (rowIndex: number): string => `${String(rowIndex)}행 나눈 줄 삭제`,
     submit: '출하작업지시 편성',
+    /** ERP S/O 없이 생성 팝업의 [취소](#360). */
+    cancel: '취소',
+    /** 입력을 버릴지 묻는 창의 버리기 단추(#360). */
+    discard: '입력 버리기',
+  },
+  /** ERP S/O 없이 생성 팝업(#360) — 본문 상세 자리 대신 팝업에서 입력한다. */
+  dialog: {
+    standaloneTitle: 'ERP S/O 없이 출하작업지시 생성',
+    discardTitle: '입력한 값을 버릴까요?',
   },
   fields: {
     businessUnit: '사업부',
     customer: '고객',
     shipToPartner: '납품처',
     requestedShipDate: '출하요청일',
+    /** 고르기 전 선택칸의 흐린 문구(#360). */
+    businessUnitPlaceholder: '사업부를 선택하세요',
+    customerPlaceholder: '고객을 선택하세요',
+    shipToPartnerPlaceholder: '납품처를 선택하세요',
   },
   lineTable: {
     item: '품목',
     itemLabel: (rowIndex: number): string => `${String(rowIndex)}행 품목`,
-    /** 아직 고르지 않은 줄 — 누르면 팝업이 열린다는 것을 그 자리가 말한다. */
-    itemUnpicked: '품목 고르기',
+    /** 아직 고르지 않은 줄 — 찾기 선택칸의 흐린 문구(#360). 누르면 품목 선택 팝업이 열린다. */
+    itemUnpicked: '품목을 선택하세요',
     uom: '단위',
     uomLabel: (rowIndex: number): string => `${String(rowIndex)}행 단위`,
+    /** 단위 칸이 좁아 짧게(#360). */
+    uomPlaceholder: '선택하세요',
     requestedQty: '요청 수량',
     requestedQtyLabel: (rowIndex: number): string => `${String(rowIndex)}행 요청 수량`,
     availableQty: '가용 수량',
@@ -176,6 +191,6 @@ export const shipmentRequestCreate = {
     beyondLastDescription: '첫 쪽으로 이동하세요.',
     noTargetTitle: 'ERP S/O 를 고르거나 [ERP S/O 없이 생성]을 누르세요',
     noTargetDescription:
-      '왼쪽 목록에서 ERP S/O 를 고르면 그 S/O 로 편성하고, ERP S/O 없이 만들려면 아래 버튼을 누르세요.',
+      '왼쪽 목록에서 ERP S/O 를 고르면 그 S/O 로 편성하고, ERP S/O 없이 만들려면 위 [ERP S/O 없이 생성]을 누르세요.',
   },
 } as const;

@@ -1,4 +1,4 @@
-import { SkeletonText } from '@crefle/web-ui';
+import { Button, Dialog, SkeletonText, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
@@ -52,6 +52,7 @@ import { toPageView } from './pagination';
 import { useSalesOrderDetail, useSalesOrderList } from './source-queries';
 import { SourceFilterBar } from './source-filter-bar';
 import { SourceListTable } from './source-list-table';
+import { StandaloneCreateDialog } from './standalone-create-dialog';
 import { toShipmentRequestCreateBody } from './shipment-request-create-body';
 import { useShipmentRequestCreateMutation } from './mutations';
 import type {
@@ -209,9 +210,28 @@ export const ShipmentRequestCreateScreen = () => {
   const [createdBinding, setCreatedBinding] = useState<CreatedBinding | null>(null);
   const submittingTargetRef = useRef<TargetSignature | null>(null);
 
+  const toast = useToast();
+  /** ERP S/O 없이 생성 팝업의 편성이 끝났다 — 팝업을 닫는다(#360). 닫는 동안에도 폼은 잠가 둔다. */
+  const [standaloneDone, setStandaloneDone] = useState(false);
+
   const create = useShipmentRequestCreateMutation({
     onSuccess: (result) => {
       const boundSignature = submittingTargetRef.current;
+
+      /*
+       * ⭐ ERP S/O 없이 생성은 팝업이다 — 성공하면 팝업을 닫고 결과(작업지시번호 · 라인 수)를 오른쪽 아래 알림으로 낸다(#360).
+       *    성공 띠는 팝업과 함께 사라지므로 매임(`createdBinding`)에 남기지 않는다 — 남기면 다시 열 때 잠긴 채 열린다.
+       */
+      if (boundSignature === 'standalone') {
+        toast.show({
+          variant: 'success',
+          title: t.result.title,
+          description: `${t.result.shipmentRequestNo(result.shipmentRequestNo)} · ${t.result.lineCount(result.lineCount)}`,
+        });
+        setStandaloneDone(true);
+
+        return;
+      }
 
       setCreatedBinding(
         boundSignature === null ? null : { targetSignature: boundSignature, result },
@@ -274,7 +294,7 @@ export const ShipmentRequestCreateScreen = () => {
       : null;
 
   const isSaving = create.isSaving;
-  const isLocked = isSaving || boundCreated !== null;
+  const isLocked = isSaving || boundCreated !== null || standaloneDone;
 
   const headerLocalErrors = mode === null ? {} : validateHeader(mode, header);
   const lineValidation = validateLines(lines);
@@ -484,6 +504,43 @@ export const ShipmentRequestCreateScreen = () => {
     setSearchParams(toSearchParams(filters, page, { kind: 'standalone', mode: 'standalone' }));
   };
 
+  const closeStandalone = (): void => {
+    setSearchParams(toSearchParams(filters, page, { kind: 'none' }));
+  };
+
+  /* 편성에 성공하면 팝업을 닫는다 — 그 사이 사용자가 이미 닫았으면 그대로 둔다(#360). */
+  useEffect(() => {
+    if (!standaloneDone) return;
+
+    setStandaloneDone(false);
+    if (isStandalone) closeStandalone();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [standaloneDone]);
+
+  /**
+   * 팝업에 사람이 넣은 값이 있는가 — 있으면 [취소] · Esc 에서 버릴지 묻는다(#360).
+   * 사업부는 하나뿐이면 저절로 채워지므로 그 값은 넣은 것으로 치지 않는다. 처음 빈 줄 하나도 넣은 것이 아니다.
+   */
+  const hasStandaloneInput = (): boolean => {
+    const withoutKey = (drafts: readonly ShipmentRequestLineDraft[]): string =>
+      JSON.stringify(drafts.map(({ key: _key, ...rest }) => rest));
+
+    return (
+      header.customerId !== '' ||
+      header.shipToPartnerId !== '' ||
+      header.requestedShipDate !== '' ||
+      (header.businessUnitId !== '' && header.businessUnitId !== onlyBusinessUnit) ||
+      withoutKey(lines) !== withoutKey([emptyLineDraft()])
+    );
+  };
+
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+
+  const cancelStandalone = (): void => {
+    if (hasStandaloneInput()) setConfirmingDiscard(true);
+    else closeStandalone();
+  };
+
   const businessUnitName = describeReference(
     toReference(businessUnits, header.businessUnitId === '' ? null : Number(header.businessUnitId)),
   );
@@ -503,10 +560,11 @@ export const ShipmentRequestCreateScreen = () => {
         ];
 
   const rightColumn = (): ReactNode => {
-    if (target.kind === 'none') {
+    /* ERP S/O 없이 생성은 팝업이다(#360) — 그동안 상세 자리는 빈 안내 그대로. */
+    if (target.kind === 'none' || target.kind === 'standalone') {
       return (
         <section className="pane">
-          <EmptyFormPlaceholder onStartStandalone={startStandalone} />
+          <EmptyFormPlaceholder />
         </section>
       );
     }
@@ -603,6 +661,7 @@ export const ShipmentRequestCreateScreen = () => {
               onReset={() => {
                 applyFilters(EMPTY_FILTERS);
               }}
+              onStartStandalone={startStandalone}
             />
           ),
         }}
@@ -662,6 +721,77 @@ export const ShipmentRequestCreateScreen = () => {
        *    원자재·부자재가 결과에 섞인다. 「전체」와 다른 유형은 유상사급처럼 자재가 나가는
        *    예외를 위해 열어 둔다.
        */}
+      {isStandalone && (
+        <StandaloneCreateDialog
+          businessUnitId={header.businessUnitId}
+          customerId={header.customerId}
+          shipToPartnerId={header.shipToPartnerId}
+          requestedShipDate={header.requestedShipDate}
+          businessUnitOptions={toSelectOptions(businessUnits)}
+          customerOptions={toSelectOptions(customers)}
+          shipToPartnerOptions={toSelectOptions(shipToPartners)}
+          businessUnitNote={lookupNote(businessUnits)}
+          customerNote={lookupNote(customers)}
+          shipToPartnerNote={lookupNote(shipToPartners)}
+          /* 칸 아래 오류 글은 실제로 보낸 뒤 서버가 준 것만(#360) — 빈 칸은 연한 빨간 바탕이 알린다. */
+          headerErrors={create.fieldErrors}
+          onChangeHeader={changeHeader}
+          lines={lines}
+          lineErrors={lineValidation.errors}
+          itemNames={items}
+          onPickItem={(key) => {
+            setPicker({ kind: 'replace', key });
+          }}
+          uomLookup={uoms}
+          uomOptions={toSelectOptions(uoms)}
+          availableQty={availableQty}
+          onPatchLine={patchLine}
+          onRemoveLine={removeLine}
+          onAddLine={addLine}
+          warehouseOptions={warehouseOptions}
+          onChangeWarehouse={changeWarehouse}
+          clearedWarehouseCount={lines.filter((line) => line.warehouseCleared).length}
+          businessUnitName={businessUnitName}
+          isLocked={isLocked}
+          isSubmitBlocked={submitBlockReason() !== null}
+          isSaving={isSaving}
+          banner={<SaveErrorBanner error={create.error} />}
+          onSubmit={submit}
+          onCancel={cancelStandalone}
+        />
+      )}
+      {confirmingDiscard && (
+        <Dialog
+          open
+          size="sm"
+          title={t.dialog.discardTitle}
+          onClose={() => {
+            setConfirmingDiscard(false);
+          }}
+          footer={
+            <>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setConfirmingDiscard(false);
+                }}
+              >
+                {t.actions.cancel}
+              </Button>
+              <Button
+                onClick={() => {
+                  setConfirmingDiscard(false);
+                  closeStandalone();
+                }}
+              >
+                {t.actions.discard}
+              </Button>
+            </>
+          }
+        >
+          <p>{messages.common.discardChangesConfirm}</p>
+        </Dialog>
+      )}
       {picker !== null && (
         <ItemPickerDialog
           multiple={picker.kind === 'add'}
