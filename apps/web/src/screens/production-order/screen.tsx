@@ -6,22 +6,13 @@ import { AUTO_PLAN_RESULT_PATH } from './auto-plan-result-page';
  * 조건, 건수, 행 칩은 서버 칩 판정(`worklistState`) 하나로 거르고 센다(C-17). 막힌 까닭은 사유 칩이 말한다.
  * 이탈: C-12 기간 칸의 「시작일부터」 적용은 DS 기간 선택이 지원하지 않아 미구현.
  */
-import {
-  AlertBanner,
-  Breadcrumb,
-  Button,
-  EmptyState,
-  PageHeader,
-  SkeletonText,
-  type Column,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, EmptyState, SkeletonText, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { FitLine } from '../../patterns/fit-line';
 import { BulkResult, type BulkResultFilter } from '../../patterns/bulk-result';
-import { ScreenHeader } from '../../patterns/screen-header';
 import { Select } from '../../patterns/select';
 import { PageNav } from '../../patterns/page-nav';
 import { SelectableTable } from '../../patterns/selectable-table';
@@ -288,15 +279,10 @@ export const ProductionOrderScreen = ({
 
   return (
     <>
-      <ScreenHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
+      {/*
+       * 경로·제목을 세우지 않는다(사용자 지시 2026-11-27 「작업계획 타이틀 제거」) — 사이드바의 「작업계획」 줄이 이미
+       * 켜져 있고, 표 위를 두 줄 차지하던 머리를 걷어 작업함이 바로 시작한다.
+       */}
       <section className="erp-wo-status-controls" role="group" aria-label={t.counts.label}>
         <div className="erp-wo-status-compact">
           <label htmlFor="worklist-state">{t.counts.label}</label>

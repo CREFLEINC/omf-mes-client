@@ -1333,13 +1333,15 @@ describe('appRouter — 작업지시 목록 작업함의 진입 경로', () => {
 
     await waitFor(() => expect(currentLocation()).toBe('/production/production-orders'));
     /*
-     * ERP W/O 변경 확인 탭을 메뉴에서 감춰(사용자 지시 2026-11-27) 탭 묶음이 아니다 — 탭 막대 대신 화면이
-     * 경로와 제목을 세운다.
+     * ERP W/O 변경 확인 탭을 메뉴에서 감춰 탭 막대가 없고, 경로·제목도 세우지 않는다(사용자 지시 2026-11-27
+     * 「작업계획 타이틀 제거」). 작업함의 상태 조건이 맨 위다.
      */
     expect(
-      await screen.findByRole('heading', { level: 1, name: messages.erpWorkOrderFlow.title }),
+      await screen.findByRole('group', { name: messages.erpWorkOrderFlow.counts.label }),
     ).toBeVisible();
     expect(screen.queryByRole('navigation', { name: '작업계획' })).toBeNull();
+    expect(screen.queryByRole('navigation', { name: '탐색 경로' })).toBeNull();
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
     expect(await screen.findByText(messages.erpWorkOrderFlow.list.emptyTitle)).toBeVisible();
   });
 
