@@ -555,7 +555,7 @@ export const DistributionControls = ({
                         if (row.mode === 'equal' && holidays.length)
                           notes.push({
                             owner: row.owner,
-                            summary: `휴일 ${holidays.length}일 ${row.includeHolidays ? '포함' : '제외'}`,
+                            summary: `휴일 ${row.includeHolidays ? '포함' : '제외'} ${holidays.length}일`,
                             dates: holidays.map((day) => day.date),
                           });
                         if (row.mode === 'daily')
@@ -1236,15 +1236,49 @@ export const DistributionControls = ({
             {message && <AlertBanner variant="error">{message}</AlertBanner>}
             {preview && (
               <section className="erp-wo-distribution-preview" aria-label="분배 미리보기 결과">
-                <div className="erp-wo-distribution-heading">
-                  <h2 className="section-title">분배 결과</h2>
-                </div>
                 {resultError && <AlertBanner variant="error">{resultError}</AlertBanner>}
                 {stale && (
                   <AlertBanner variant="warning">
                     계획이나 대상 수량이 바뀌었습니다. 미리보기를 다시 만드세요.
                   </AlertBanner>
                 )}
+                {/* 단건은 W/O 정보를 표 위 회색 줄로, 안내는 표 아래 한 줄로(결과 검토 시안 · #360). */}
+                {singleOrder &&
+                  (() => {
+                    const summary = reviewResult?.orders.find(
+                      (entry) => entry.id === singleOrder.id,
+                    );
+                    return (
+                      <div className="erp-wo-result-single-bar">
+                        <div className="erp-wo-result-single-bar-facts">
+                          <span>ERP W/O</span>
+                          <strong>{singleOrder.orderNo ?? singleOrder.label}</strong>
+                          {singleOrder.itemCode && (
+                            <>
+                              <span>품목 코드</span>
+                              <strong>{singleOrder.itemCode}</strong>
+                            </>
+                          )}
+                        </div>
+                        {summary && (
+                          <div className="erp-wo-result-single-bar-qty">
+                            <span>
+                              이번 분배{' '}
+                              <strong>
+                                {formatQty(summary.added)} {singleOrder.unit}
+                              </strong>
+                            </span>
+                            <span>
+                              미분배{' '}
+                              <strong>
+                                {formatQty(summary.pending)} {singleOrder.unit}
+                              </strong>
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 <div className="erp-wo-preview-scroll">
                   <table className="erp-wo-distribution-result-table">
                     <caption className="visually-hidden">날짜와 라인별 결과</caption>
@@ -1264,32 +1298,34 @@ export const DistributionControls = ({
                       const unit = order?.unit;
                       return (
                         <tbody key={owner} aria-label={order?.orderNo ?? order?.label ?? owner}>
-                          <tr className="erp-wo-result-order">
-                            <td colSpan={5}>
-                              <div className="erp-wo-result-order-header">
-                                <div>
-                                  <strong>{order?.orderNo ?? order?.label ?? owner}</strong>
-                                  {order?.itemCode && <span>{order.itemCode}</span>}
-                                </div>
-                                {summary && (
+                          {!isSingle && (
+                            <tr className="erp-wo-result-order">
+                              <td colSpan={5}>
+                                <div className="erp-wo-result-order-header">
                                   <div>
-                                    <span>
-                                      이번 분배{' '}
-                                      <strong>
-                                        {formatQty(summary.added)} {unit}
-                                      </strong>
-                                    </span>
-                                    <span>
-                                      미분배{' '}
-                                      <strong>
-                                        {formatQty(summary.pending)} {unit}
-                                      </strong>
-                                    </span>
+                                    <strong>{order?.orderNo ?? order?.label ?? owner}</strong>
+                                    {order?.itemCode && <span>{order.itemCode}</span>}
                                   </div>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
+                                  {summary && (
+                                    <div>
+                                      <span>
+                                        이번 분배{' '}
+                                        <strong>
+                                          {formatQty(summary.added)} {unit}
+                                        </strong>
+                                      </span>
+                                      <span>
+                                        미분배{' '}
+                                        <strong>
+                                          {formatQty(summary.pending)} {unit}
+                                        </strong>
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
                           {orderRows.map((row) => {
                             const key = resultKey(row);
                             const existingQty = existingByResultKey.get(key) ?? 0;
@@ -1345,7 +1381,7 @@ export const DistributionControls = ({
                               </tr>
                             );
                           })}
-                          {notes.length > 0 && (
+                          {!isSingle && notes.length > 0 && (
                             <tr className="erp-wo-result-order-notes">
                               <td colSpan={5}>
                                 {notes.map((note) => (
@@ -1369,6 +1405,22 @@ export const DistributionControls = ({
                     })}
                   </table>
                 </div>
+                {singleOrder && calendarNotes.some((note) => note.owner === singleOrder.id) && (
+                  <div className="erp-wo-result-single-notes">
+                    {calendarNotes
+                      .filter((note) => note.owner === singleOrder.id)
+                      .map((note) => (
+                        <span className="erp-wo-calendar-result-dates" key={JSON.stringify(note)}>
+                          <strong>{note.summary}</strong>
+                          {note.dates?.map((date) => (
+                            <time key={date} dateTime={date}>
+                              {date}
+                            </time>
+                          ))}
+                        </span>
+                      ))}
+                  </div>
+                )}
                 {/* 1쪽뿐이어도 쪽 이동 줄은 늘 보인다(단추는 잠긴 채 · #360). */}
                 <PageNav
                   meta={{
