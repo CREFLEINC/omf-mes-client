@@ -33,7 +33,6 @@ export interface GroupFormValues {
   /** 라인 기본 위치 셋 — 계획 확정·4M 라인 선택 때 W/O 기본 위치로 복사된다. */
   defaultWipLocationId: string;
   defaultFgLocationId: string;
-  defaultScrapLocationId: string;
   /** 담당 부서 — 이 라인의 W/O·설비에서 생기는 알림이 이 부서의 알림 설정으로 간다. 비면 해제. */
   departmentId: string;
 }

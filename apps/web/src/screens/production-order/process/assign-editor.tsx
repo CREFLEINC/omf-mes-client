@@ -80,7 +80,6 @@ const idOrNull = (value: string): number | null =>
 const LOCATION_FIELDS = [
   'defaultWipLocationId',
   'defaultFgLocationId',
-  'defaultScrapLocationId',
 ] as const;
 const isLocationField = (field: string): field is (typeof LOCATION_FIELDS)[number] =>
   (LOCATION_FIELDS as readonly string[]).includes(field);
@@ -560,7 +559,6 @@ const EditorSession = ({
   const locationNames = {
     defaultWipLocationId: t.fold.wip,
     defaultFgLocationId: '생산품 입고 창고',
-    defaultScrapLocationId: t.fold.scrap,
   };
   const locationPairs: FoldPair[] =
     draft.productionLineId === '' && LOCATION_FIELDS.every((field) => draft[field] === '')

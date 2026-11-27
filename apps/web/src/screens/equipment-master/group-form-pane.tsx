@@ -10,14 +10,13 @@ import { SelectField } from './select-field';
 import type { GroupFormValues } from './types';
 
 export type LocationField =
-  'defaultWipLocationId' | 'defaultFgLocationId' | 'defaultScrapLocationId';
+  'defaultWipLocationId' | 'defaultFgLocationId';
 const LOCATION_FIELDS: {
   field: LocationField;
-  label: 'defaultWipLocation' | 'defaultFgLocation' | 'defaultScrapLocation';
+  label: 'defaultWipLocation' | 'defaultFgLocation';
 }[] = [
   { field: 'defaultWipLocationId', label: 'defaultWipLocation' },
   { field: 'defaultFgLocationId', label: 'defaultFgLocation' },
-  { field: 'defaultScrapLocationId', label: 'defaultScrapLocation' },
 ];
 
 export interface GroupFormPaneProps {

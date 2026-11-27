@@ -35,7 +35,6 @@ describe('groupToFormValues', () => {
       parentGroupId: '99',
       defaultWipLocationId: '',
       defaultFgLocationId: '',
-      defaultScrapLocationId: '',
       departmentId: '',
     });
   });
@@ -50,7 +49,6 @@ describe('groupToFormValues', () => {
     expect(values).toMatchObject({
       defaultWipLocationId: '301',
       defaultFgLocationId: '',
-      defaultScrapLocationId: '',
       departmentId: '',
     });
   });
@@ -83,7 +81,6 @@ describe('emptyGroupFormValues', () => {
       parentGroupId: '',
       defaultWipLocationId: '',
       defaultFgLocationId: '',
-      defaultScrapLocationId: '',
       departmentId: '',
     });
   });
@@ -98,7 +95,6 @@ describe('toGroupUpdate', () => {
     parentGroupId: '99',
     defaultWipLocationId: '',
     defaultFgLocationId: '',
-    defaultScrapLocationId: '',
     departmentId: '',
   };
 
@@ -150,7 +146,6 @@ describe('toGroupUpdate', () => {
     expect(body).toMatchObject({
       defaultWipLocationId: 301,
       defaultFgLocationId: null,
-      defaultScrapLocationId: null,
     });
   });
 
@@ -170,7 +165,6 @@ describe('toGroupCreate', () => {
     parentGroupId: '',
     defaultWipLocationId: '',
     defaultFgLocationId: '',
-    defaultScrapLocationId: '',
     departmentId: '',
   };
 
@@ -183,7 +177,6 @@ describe('toGroupCreate', () => {
       parentGroupId: null,
       defaultWipLocationId: null,
       defaultFgLocationId: null,
-      defaultScrapLocationId: null,
       departmentId: null,
     });
   });
@@ -203,7 +196,6 @@ describe('isSameGroupValues', () => {
     parentGroupId: '',
     defaultWipLocationId: '',
     defaultFgLocationId: '',
-    defaultScrapLocationId: '',
     departmentId: '',
   };
 
@@ -217,7 +209,6 @@ describe('isSameGroupValues', () => {
     ['groupName', '나'],
     ['defaultWipLocationId', '301'],
     ['defaultFgLocationId', '302'],
-    ['defaultScrapLocationId', '303'],
     ['groupTypeCode', 'WORK_AREA'],
     ['parentGroupId', '99'],
     ['departmentId', '7'],

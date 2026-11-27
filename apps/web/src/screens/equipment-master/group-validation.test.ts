@@ -14,7 +14,6 @@ const valid: GroupFormValues = {
   parentGroupId: '',
   defaultWipLocationId: '',
   defaultFgLocationId: '',
-  defaultScrapLocationId: '',
   departmentId: '',
 };
 
@@ -35,7 +34,6 @@ describe('GROUP_FORM_FIELDS', () => {
         'plantId',
         'defaultWipLocationId',
         'defaultFgLocationId',
-        'defaultScrapLocationId',
       ].sort(),
     );
   });
