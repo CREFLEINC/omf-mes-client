@@ -196,6 +196,8 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
       'Gán hạng mục kiểm tra định kỳ thì thiết bị của nhóm này sẽ thực hiện hạng mục đó.',
     editAction: 'Gán hạng mục kiểm tra định kỳ',
     dialogTitle: 'Gán hạng mục kiểm tra định kỳ',
+    /** 부여 창 머리의 대상 상자 제목 — 아래에 이름 · 코드가 선다(#360). */
+    targetCaption: 'Đối tượng gán',
     dialogLead: 'Những gì còn lại trong cửa sổ này sẽ là tất cả — dòng đã xóa thì gán được gỡ.',
     addLabel: 'Thêm hạng mục',
     addPlaceholder: 'Hãy chọn hạng mục kiểm tra định kỳ để gán',

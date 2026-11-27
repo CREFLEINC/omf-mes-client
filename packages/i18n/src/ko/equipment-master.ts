@@ -260,6 +260,8 @@ export const equipmentMaster = {
     emptyDescription: '점검 항목을 부여하면 이 그룹의 설비가 그 항목을 돕니다.',
     editAction: '점검 항목 부여',
     dialogTitle: '점검 항목 부여',
+    /** 부여 창 머리의 대상 상자 제목 — 아래에 이름 · 코드가 선다(#360). */
+    targetCaption: '부여 대상',
     /**
      * ⛔ **묶음 통째 교체라는 사실을 감추지 않는다**(계약의 `PUT`). 「지운 줄은 지워진다」를
      * 말하지 않으면 사용자는 더한 것만 반영된다고 읽는다.

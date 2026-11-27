@@ -212,7 +212,9 @@ export const EquipmentMasterScreen = () => {
   );
 
   const isCreateMode = searchParams.get('mode') === 'create';
-  const selectedGroupId = isCreateMode ? null : Number(searchParams.get('grp') ?? '') || null;
+  /* 등록 팝업을 연 동안에도 목록에서 고른 줄은 그대로 짚는다 — 주소의 grp 가 그 그룹이다(#360). */
+  const listSelectedGroupId = Number(searchParams.get('grp') ?? '') || null;
+  const selectedGroupId = isCreateMode ? null : listSelectedGroupId;
 
   const groupList = useGroupList({ ...filters, plantId: plant.plantId }, !plant.isChecking);
   const groupItems = useMemo(() => groupList.data?.items ?? [], [groupList.data]);
@@ -1354,7 +1356,7 @@ export const EquipmentMasterScreen = () => {
     plants: lookups.sources.plants,
     expandedIds,
     onToggleExpand: handleToggleExpand,
-    selectedGroupId,
+    selectedGroupId: listSelectedGroupId,
     /* 고른 줄을 다시 누르면 고르기를 푼다(사용자 지시 2026-11-24) — 고치던 것이 있으면 같은 확인을 지난다. */
     onSelect: (equipmentGroupId) =>
       navigateWithDraftGuard({
@@ -1684,7 +1686,8 @@ export const EquipmentMasterScreen = () => {
       {inspectionTarget !== null && (
         <InspectionAssignDialog
           title={t.inspection.equipmentDialogTitle}
-          targetLabel={`${inspectionTarget.equipmentCode} · ${inspectionTarget.equipmentName}`}
+          targetCode={inspectionTarget.equipmentCode}
+          targetName={inspectionTarget.equipmentName}
           lead={t.inspection.equipmentDialogLead}
           rows={equipmentRows}
           onChangeRows={(next) => setEquipmentAssignRows(next)}
@@ -1716,7 +1719,8 @@ export const EquipmentMasterScreen = () => {
       {assignRows !== null && detail.data !== undefined && (
         <InspectionAssignDialog
           title={t.inspection.dialogTitle}
-          targetLabel={`${detail.data.equipmentGroup.groupCode} · ${detail.data.equipmentGroup.groupName}`}
+          targetCode={detail.data.equipmentGroup.groupCode}
+          targetName={detail.data.equipmentGroup.groupName}
           lead={t.inspection.dialogLead}
           rows={assignRows}
           onChangeRows={setAssignRows}

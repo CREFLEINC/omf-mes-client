@@ -44580,3 +44580,10 @@ main > .pane.notification-center-pane {
   min-width: min(8rem, 100%);
   padding-right: var(--space-6);
 }
+
+/* 설비 점검 항목 부여 팝업(omf-all-around#360) — 항목 선택 칸 아래 도움말은 칸 폭 안에서 줄을 바꾼다. */
+.equipment-inspection-assign .form-grid .field-note {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

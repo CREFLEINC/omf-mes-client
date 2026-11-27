@@ -179,9 +179,8 @@ export const useInspectionItemPane = ({
         <div className="filter-actions">
           <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
           <span className="inspection-standard-filter-divider" aria-hidden />
-          <Button variant="outlined" onClick={onAdd}>
-            {t.addAction}
-          </Button>
+          {/* 등록 단추는 빨간 바탕(사용자 지시 · #360) — [그룹 추가]와 같은 모양. */}
+          <Button onClick={onAdd}>{t.addAction}</Button>
         </div>
       </div>
     </div>

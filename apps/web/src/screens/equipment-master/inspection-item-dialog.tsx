@@ -84,6 +84,30 @@ export const InspectionItemDialog = ({
       {banner}
 
       <div className="form-grid equipment-inspection-item-form">
+        {/* 2열 배치(사용자 지시 · #360): 1행 필수 여부 | 공장, 2행 항목코드 | 항목명, 3행 점검 유형 | 판정 방식,
+            4행 표시 순서 | 점검 부위. 필수 여부는 이름 위 · 토글 아래. */}
+        <div className="equipment-inspection-item-flags">
+          <div className="field-cell">
+            <FieldLabel htmlFor={requiredFlagId} label={t.fields.requiredFlag} />
+            <Switch
+              id={requiredFlagId}
+              checked={values.requiredFlag}
+              onChange={(event) => onChange({ requiredFlag: event.target.checked })}
+            />
+          </div>
+
+          {/* ⛔ 물리 삭제가 없다(B-4) — 끄는 것이 지우는 것을 대신하는 뜻은 이름 옆 ⓘ 로(관리웹 정리 시안 A). */}
+          {mode === 'edit' && (
+            <div className="field-cell">
+              <FieldLabel htmlFor={isActiveId} label={t.fields.isActive} info={t.inactiveNote} />
+              <Switch
+                id={isActiveId}
+                checked={values.isActive}
+                onChange={(event) => onChange({ isActive: event.target.checked })}
+              />
+            </div>
+          )}
+        </div>
         {/* ⭐ 항목은 공장에 매인다 — 등록할 때 정하고 수정 본문은 받지 않는다(계약). */}
         <SelectField
           label={t.fields.plant}
@@ -133,7 +157,14 @@ export const InspectionItemDialog = ({
           /* ⛔ 왜 세 칸이 갑자기 필수가 되는지 말한다 — 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */
           info={t.measurementNote}
         />
-
+        <TextField
+          label={t.fields.sequenceNo}
+          placeholder={t.placeholders.sequenceNo}
+          required
+          value={values.sequenceNo}
+          onChange={(event) => onChange({ sequenceNo: event.target.value })}
+          error={fieldErrors.sequenceNo}
+        />
         <TextField
           label={t.fields.inspectionPoint}
           placeholder={t.placeholders.inspectionPoint}
@@ -172,38 +203,6 @@ export const InspectionItemDialog = ({
             />
           </div>
         )}
-
-        {/* 필수 여부는 표시 순서와 같은 줄 왼쪽 칸 — 이름 위 · 토글 아래(사용자 지시 · #360). */}
-        <div className="equipment-inspection-item-flags">
-          <div className="field-cell">
-            <FieldLabel htmlFor={requiredFlagId} label={t.fields.requiredFlag} />
-            <Switch
-              id={requiredFlagId}
-              checked={values.requiredFlag}
-              onChange={(event) => onChange({ requiredFlag: event.target.checked })}
-            />
-          </div>
-
-          {/* ⛔ 물리 삭제가 없다(B-4) — 끄는 것이 지우는 것을 대신하는 뜻은 이름 옆 ⓘ 로(관리웹 정리 시안 A). */}
-          {mode === 'edit' && (
-            <div className="field-cell">
-              <FieldLabel htmlFor={isActiveId} label={t.fields.isActive} info={t.inactiveNote} />
-              <Switch
-                id={isActiveId}
-                checked={values.isActive}
-                onChange={(event) => onChange({ isActive: event.target.checked })}
-              />
-            </div>
-          )}
-        </div>
-        <TextField
-          label={t.fields.sequenceNo}
-          placeholder={t.placeholders.sequenceNo}
-          required
-          value={values.sequenceNo}
-          onChange={(event) => onChange({ sequenceNo: event.target.value })}
-          error={fieldErrors.sequenceNo}
-        />
 
         {/* ⭐ 무엇에 걸려 있는지 — 코드를 못 고치는 사유와 같은 사실의 다른 면이다. */}
         {assignmentCount !== null && (

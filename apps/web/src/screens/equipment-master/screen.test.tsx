@@ -892,6 +892,27 @@ describe('EquipmentMasterScreen — 그룹 등록·수정', () => {
     expect(register).toBeEnabled();
   });
 
+  /* 고른 그룹을 두고 「그룹 추가」를 눌러도 목록의 고른 줄이 풀리지 않는다(#360). */
+  it('등록 팝업을 연 동안과 닫은 뒤에도 목록에서 고른 그룹이 그대로다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await openGroup(user);
+    await user.click(screen.getAllByRole('button', { name: t.actions.addGroup })[0] as HTMLElement);
+    await screen.findByRole('dialog', { name: t.form.createTitle });
+
+    expect(screen.getByRole('button', { name: 'GRP-A', hidden: true })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+
+    await user.click(createDialog().getByRole('button', { name: messages.common.cancel }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: t.form.createTitle })).toBeNull();
+    });
+    expect(screen.getByRole('button', { name: 'GRP-A' })).toHaveAttribute('aria-current', 'true');
+  });
+
   it('등록 팝업 [취소]는 입력이 없으면 바로 닫고 고르던 그룹으로 돌아간다', async () => {
     const user = userEvent.setup();
     const { writes } = renderScreen();
@@ -2001,7 +2022,9 @@ describe('EquipmentMasterScreen — 설비 등록·수정', () => {
     expect(
       equipmentForm().getByRole('switch', { name: t.fields.calibrationRequired }),
     ).toBeDisabled();
-    expect(equipmentForm().getByText(t.actionReasons.calibrationNeedsCycle)).toBeInTheDocument();
+    expect(
+      equipmentForm().getByRole('button', { name: t.actionReasons.calibrationNeedsCycle }),
+    ).toBeInTheDocument();
   });
 
   /* 계측기 마스터가 정한 값을 여기서는 본다 — 잠긴 입력칸이 아니라 값 표기다. */

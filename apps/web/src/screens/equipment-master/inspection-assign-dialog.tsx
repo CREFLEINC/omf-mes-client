@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Dialog, Switch, TextField } from '@crefle/web-ui';
+import { Button, Dialog, Icon, Switch, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useId } from 'react';
@@ -14,8 +14,9 @@ const t = messages.equipmentMaster.inspection;
 export interface InspectionAssignDialogProps {
   /** 창 제목. 그룹과 설비가 다른 말을 쓴다 */
   title: string;
-  /** 무엇에 부여하는지 — 창 머리에 남긴다 */
-  targetLabel: string;
+  /** 무엇에 부여하는지 — 창 머리의 대상 상자에 남긴다 */
+  targetCode: string;
+  targetName: string;
   /**
    * 이 부여가 무엇을 뜻하는지. **그룹과 설비가 다르다** — 그룹은 「지우면 풀린다」이고
    * 설비는 「지우면 소속 그룹의 것이 적용된다」다. 한 문장으로 덮으면 한쪽이 거짓이 된다.
@@ -46,7 +47,8 @@ export interface InspectionAssignDialogProps {
  */
 export const InspectionAssignDialog = ({
   title,
-  targetLabel,
+  targetCode,
+  targetName,
   lead,
   resolutionNote,
   rows,
@@ -95,129 +97,146 @@ export const InspectionAssignDialog = ({
   };
 
   return (
-    <Dialog open onClose={onClose} title={title} size="lg">
-      <p className="dialog-lead">{targetLabel}</p>
-      {/* ⛔ 묶음 통째 교체라는 사실을 감추지 않는다. */}
-      <div className="banner-slot">
-        <AlertBanner variant="warning">{lead}</AlertBanner>
-      </div>
-      {/* ⛔ 어디서 왔는지 말하지 않으면 사용자가 엉뚱한 자리를 고친다(B-17). */}
-      {resolutionNote !== undefined && <p className="dialog-lead">{resolutionNote}</p>}
-      {banner}
+    <Dialog
+      open
+      onClose={onClose}
+      title={title}
+      size="lg"
+      /* [취소] 가 닫기라 제목 줄 X 는 두지 않는다 — Esc 는 그대로 닫는다(팝업 디자인 시안 · #360). */
+      showCloseButton={false}
+      /* 단추 줄은 창 아래 띠에 오른쪽 정렬(팝업 디자인 시안 · #360). */
+      footer={
+        <>
+          <Button variant="outlined" onClick={onClose}>
+            {messages.common.cancel}
+          </Button>
+          <Button onClick={onSave} disabled={isSaving}>
+            {messages.common.save}
+          </Button>
+        </>
+      }
+    >
+      <div className="users-roles-worker-dialog equipment-inspection-assign">
+        {/* 무엇에 부여하는지 — 단말 관리 사용 중지 창과 같은 대상 상자(팝업 디자인 시안 · #360). */}
+        <div className="users-roles-worker-block">
+          <span className="users-roles-worker-block-caption">{t.targetCaption}</span>
+          <strong>{targetName}</strong>
+          <span>{targetCode}</span>
+        </div>
+        {/* ⛔ 묶음 통째 교체라는 사실을 감추지 않는다 — 안내 줄 모양(팝업 디자인 시안 · #360). */}
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+          <Icon name="warning" size={16} aria-hidden />
+          {lead}
+        </p>
+        {/* ⛔ 어디서 왔는지 말하지 않으면 사용자가 엉뚱한 자리를 고친다(B-17). */}
+        {resolutionNote !== undefined && <p className="dialog-lead">{resolutionNote}</p>}
+        {banner}
 
-      <div className="form-grid">
-        <SelectField
-          label={t.addLabel}
-          options={selectable.map((item) => ({
-            value: String(item.equipmentInspectionItemId),
-            label: `${item.itemCode} · ${item.itemName}`,
-          }))}
-          value=""
-          onChange={addRow}
-          placeholder={t.addPlaceholder}
-          disabled={selectable.length === 0}
-          /*
-           * ⭐ **잠긴 칸에서는 사유가 안내를 대신한다**(`SelectField` 의 규율). 둘 중 하나만
-           * 주면 잠긴 순간 문구가 사라져, 왜 고를 수 없는지 말하지 않는 칸이 된다.
-           */
-          disabledReason={addNote()}
-          note={addNote()}
-        />
-      </div>
+        <div className="form-grid">
+          <SelectField
+            label={t.addLabel}
+            options={selectable.map((item) => ({
+              value: String(item.equipmentInspectionItemId),
+              label: `${item.itemCode} · ${item.itemName}`,
+            }))}
+            value=""
+            onChange={addRow}
+            placeholder={t.addPlaceholder}
+            disabled={selectable.length === 0}
+            /*
+             * ⭐ **잠긴 칸에서는 사유가 안내를 대신한다**(`SelectField` 의 규율). 둘 중 하나만
+             * 주면 잠긴 순간 문구가 사라져, 왜 고를 수 없는지 말하지 않는 칸이 된다.
+             */
+            disabledReason={addNote()}
+            note={addNote()}
+          />
+        </div>
 
-      <ul className="assignment-rows">
-        {rows.map((row) => {
-          const errors = rowErrors.get(row.equipmentInspectionItemId) ?? {};
+        <ul className="assignment-rows">
+          {rows.map((row) => {
+            const errors = rowErrors.get(row.equipmentInspectionItemId) ?? {};
 
-          return (
-            <li key={row.equipmentInspectionItemId} className="assignment-row">
-              <p className="assignment-row-title">
-                {row.itemCode} · {row.itemName}
-              </p>
+            return (
+              <li key={row.equipmentInspectionItemId} className="assignment-row">
+                <p className="assignment-row-title">
+                  {row.itemCode} · {row.itemName}
+                </p>
 
-              <div className="form-grid">
-                <SelectField
-                  label={t.fields.cycleType}
-                  placeholder={t.cycleTypePlaceholder}
-                  required
-                  options={cycleOptions}
-                  value={row.cycleTypeCode}
-                  onChange={(value) =>
-                    patchRow(row.equipmentInspectionItemId, { cycleTypeCode: value })
-                  }
-                  error={errors.cycleTypeCode}
-                />
-                <TextField
-                  label={t.fields.cycleInterval}
-                  placeholder={t.cycleIntervalPlaceholder}
-                  required
-                  value={row.cycleInterval}
-                  onChange={(event) =>
-                    patchRow(row.equipmentInspectionItemId, { cycleInterval: event.target.value })
-                  }
-                  error={errors.cycleInterval}
-                />
-                {/* 비우면 부여일이 기준이라는 뜻은 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
-                <div className="field-cell">
-                  <InfoLabel
-                    htmlFor={`${baseDateId}-${String(row.equipmentInspectionItemId)}`}
-                    label={t.fields.cycleBaseDate}
-                    info={t.baseDateNote}
+                <div className="form-grid">
+                  <SelectField
+                    label={t.fields.cycleType}
+                    placeholder={t.cycleTypePlaceholder}
+                    required
+                    options={cycleOptions}
+                    value={row.cycleTypeCode}
+                    onChange={(value) =>
+                      patchRow(row.equipmentInspectionItemId, { cycleTypeCode: value })
+                    }
+                    error={errors.cycleTypeCode}
                   />
                   <TextField
-                    id={`${baseDateId}-${String(row.equipmentInspectionItemId)}`}
-                    type="date"
-                    value={row.cycleBaseDate}
+                    label={t.fields.cycleInterval}
+                    placeholder={t.cycleIntervalPlaceholder}
+                    required
+                    value={row.cycleInterval}
                     onChange={(event) =>
-                      patchRow(row.equipmentInspectionItemId, {
-                        cycleBaseDate: event.target.value,
-                      })
+                      patchRow(row.equipmentInspectionItemId, { cycleInterval: event.target.value })
                     }
+                    error={errors.cycleInterval}
                   />
+                  {/* 비우면 부여일이 기준이라는 뜻은 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
+                  <div className="field-cell">
+                    <InfoLabel
+                      htmlFor={`${baseDateId}-${String(row.equipmentInspectionItemId)}`}
+                      label={t.fields.cycleBaseDate}
+                      info={t.baseDateNote}
+                    />
+                    <TextField
+                      id={`${baseDateId}-${String(row.equipmentInspectionItemId)}`}
+                      type="date"
+                      value={row.cycleBaseDate}
+                      onChange={(event) =>
+                        patchRow(row.equipmentInspectionItemId, {
+                          cycleBaseDate: event.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="field-cell">
+                    <Switch
+                      label={t.fields.activation}
+                      checked={row.isActive}
+                      onChange={(event) =>
+                        patchRow(row.equipmentInspectionItemId, {
+                          isActive: event.target.checked,
+                        })
+                      }
+                    />
+                  </div>
                 </div>
-                <div className="field-cell">
-                  <Switch
-                    label={t.fields.activation}
-                    checked={row.isActive}
-                    onChange={(event) =>
-                      patchRow(row.equipmentInspectionItemId, {
-                        isActive: event.target.checked,
-                      })
+
+                <div className="assignment-row-actions">
+                  <Button
+                    variant="outlined"
+                    size="sm"
+                    onClick={() =>
+                      onChangeRows(
+                        rows.filter(
+                          (other) =>
+                            other.equipmentInspectionItemId !== row.equipmentInspectionItemId,
+                        ),
+                      )
                     }
-                  />
+                    aria-label={t.removeLabel(row.itemName)}
+                  >
+                    {t.removeAction}
+                  </Button>
                 </div>
-              </div>
-
-              <div className="assignment-row-actions">
-                <Button
-                  variant="outlined"
-                  size="sm"
-                  onClick={() =>
-                    onChangeRows(
-                      rows.filter(
-                        (other) =>
-                          other.equipmentInspectionItemId !== row.equipmentInspectionItemId,
-                      ),
-                    )
-                  }
-                  aria-label={t.removeLabel(row.itemName)}
-                >
-                  {t.removeAction}
-                </Button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-
-      <footer className="dialog-actions">
-        <Button variant="outlined" onClick={onClose}>
-          {messages.common.cancel}
-        </Button>
-        <Button onClick={onSave} disabled={isSaving}>
-          {messages.common.save}
-        </Button>
-      </footer>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </Dialog>
   );
 };

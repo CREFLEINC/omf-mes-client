@@ -263,18 +263,19 @@ describe('EquipmentFormDialog', () => {
     const toggle = screen.getByRole('switch', { name: t.fields.calibrationRequired });
     expect(toggle).toBeDisabled();
 
-    const describedBy = toggle.getAttribute('aria-describedby');
-    expect(describedBy).not.toBeNull();
-    expect(document.getElementById(describedBy ?? '')).toHaveTextContent(
-      t.actionReasons.calibrationNeedsCycle,
-    );
+    /* 사유는 이름 옆 ⓘ 에 둔다 — 단추 이름이 곧 그 문장이다(사용자 지시 · #360). */
+    expect(
+      screen.getByRole('button', { name: t.actionReasons.calibrationNeedsCycle }),
+    ).toBeInTheDocument();
   });
 
   it('주기가 있으면 검교정 대상을 켤 수 있다', () => {
     renderDialog({ values: { ...values, calibrationRequired: false } });
 
     expect(screen.getByRole('switch', { name: t.fields.calibrationRequired })).toBeEnabled();
-    expect(screen.queryByText(t.actionReasons.calibrationNeedsCycle)).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: t.actionReasons.calibrationNeedsCycle }),
+    ).toBeNull();
   });
 
   /*

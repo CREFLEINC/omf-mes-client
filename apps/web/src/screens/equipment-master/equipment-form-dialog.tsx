@@ -235,23 +235,22 @@ export const EquipmentFormDialog = ({
          * 있고, 그때 토글까지 잠그면 **사용자가 그 어긋난 상태를 풀 수단이 없다.**
          */}
         <div className="field-cell">
-          <FieldLabel htmlFor={calibrationNoteId} label={t.fields.calibrationRequired} />
+          {/* 켤 수 없는 사유는 토글 아래 문장 대신 이름 옆 ⓘ 로(사용자 지시 · #360). */}
+          <FieldLabel
+            htmlFor={calibrationNoteId}
+            label={t.fields.calibrationRequired}
+            info={
+              !values.calibrationRequired && !hasCalibrationCycle
+                ? t.actionReasons.calibrationNeedsCycle
+                : undefined
+            }
+          />
           <Switch
             id={calibrationNoteId}
             checked={values.calibrationRequired}
             disabled={!values.calibrationRequired && !hasCalibrationCycle}
-            aria-describedby={
-              !values.calibrationRequired && !hasCalibrationCycle
-                ? `${calibrationNoteId}-note`
-                : undefined
-            }
             onChange={(event) => onChange({ calibrationRequired: event.target.checked })}
           />
-          {!values.calibrationRequired && !hasCalibrationCycle && (
-            <span id={`${calibrationNoteId}-note`} className="field-note">
-              {t.actionReasons.calibrationNeedsCycle}
-            </span>
-          )}
         </div>
 
         {mode === 'edit' && (
