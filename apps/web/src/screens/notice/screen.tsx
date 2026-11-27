@@ -285,8 +285,10 @@ export const NoticeScreen = () => {
       key: 'title',
       header: t.list.title,
       width: '280px',
-      /* 제목은 글자만 — 줄 아무 곳이나 눌러 고른다(#361). */
-      render: (row) => row.title,
+      /* 제목은 글자만 — 줄 아무 곳이나 눌러 고른다(#361). 고른 줄 표시는 이 칸의 `data-selected` 로 건다. */
+      render: (row) => (
+        <span data-selected={row.noticeId === selectedId ? 'true' : undefined}>{row.title}</span>
+      ),
     },
     {
       key: 'status',

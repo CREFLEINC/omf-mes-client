@@ -10279,6 +10279,20 @@ dialog.routing-history-dialog {
   overflow-x: auto;
 }
 
+/* 줄을 눌러 고른다 — 손가락 모양 커서, 고른 줄은 판정 대기 목록과 같은 파란 바탕 · 왼쪽 선(#361). */
+.notice-table tbody tr {
+  cursor: pointer;
+}
+
+.notice-table tbody tr:has([data-selected='true']) > td,
+.notice-table tbody tr:has([data-selected='true']):hover > td {
+  background: var(--semantic-info-container);
+}
+
+.notice-table tbody tr:has([data-selected='true']) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--semantic-info);
+}
+
 .wide-table.notice-table table {
   min-width: 58rem;
 }
