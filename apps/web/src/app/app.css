@@ -36972,7 +36972,16 @@ body:has(
 .mlot-issue-summary {
   display: grid;
   gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
   font: var(--type-body-sm);
+}
+
+/* 안내 · 보조 글은 상자 폭 그대로 한 줄로(사용자 지시 2026-11-27). */
+.mlot-issue-summary .field-note {
+  max-width: none;
 }
 
 .mlot-issue-preview-title {
@@ -37014,18 +37023,9 @@ body:has(
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
 }
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--surface-container);
 
 /* 조건 상자 — 보이는 줄 · 「조건 더보기」에 접힌 줄 · 접힌 조건 칩을 위아래로 담는다(C-6). */
 .iwr-filters {
-/* 안내 · 보조 글은 상자 폭 그대로 한 줄로(사용자 지시 2026-11-27). */
-.mlot-issue-summary .field-note {
-  max-width: none;
-}
-
   display: grid;
   gap: var(--space-2);
   margin-bottom: var(--space-4);
