@@ -42996,8 +42996,12 @@ main
  * 0건이거나 줄이 적은 목록도 높이 막대로 정한 높이를 따른다(#360) — 막대를 끌어 높이를 정했으면(`--stacked-list-height`)
  * 「줄 수만큼」 · 빈 목록의 「안내만큼 · 상세 자리 7rem 남김」보다 그 높이가 앞선다. 정하지 않았으면 위 규칙 그대로다.
  */
-main .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top'][style*='--stacked-list-height'] > :first-child:not(:last-child),
-main .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top'][style*='--stacked-list-height'] > :first-child:not(:last-child):has(tr[class*='emptyCell']) {
+main
+  .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top'][style*='--stacked-list-height']
+  > :first-child:not(:last-child),
+main
+  .po-board-split.po-board-split.po-board-split.is-stacked[style*='--split-top'][style*='--stacked-list-height']
+  > :first-child:not(:last-child):has(tr[class*='emptyCell']) {
   flex: 0 0 auto;
   box-sizing: border-box;
   height: var(--stacked-list-height);
@@ -43051,7 +43055,9 @@ main
  * 입고 관리 — 위아래로 쌓이면(좁은 창 · 「⋯」 상하 배치) 가운데 높이 막대(PaneHeightSplitter)로 정한 높이를 발주 목록이 그대로
  * 쓴다 — 다른 목록 · 상세 화면과 같다(#360). 정하지 않았으면 위 규칙대로 줄 수만큼(60%까지)이다.
  */
-main .po-board-split.po-board-split.po-board-split.inbound-schedule-split.is-stacked[style*='--stacked-list-height'] > :first-child:not(:last-child) {
+main
+  .po-board-split.po-board-split.po-board-split.inbound-schedule-split.is-stacked[style*='--stacked-list-height']
+  > :first-child:not(:last-child) {
   box-sizing: border-box;
   flex: 0 0 auto;
   height: var(--stacked-list-height);
@@ -43062,13 +43068,19 @@ main .po-board-split.po-board-split.po-board-split.inbound-schedule-split.is-sta
  * W/O 마감 · 출하 처리 — 목록 | 상세를 공용 분할(po-board-split)로 옮겼다(#360). 나란히 서면 창 바닥에 맞춘 두 칸이 각자
  * 안에서 구르고, 위아래로 쌓이면 가운데 높이 막대(PaneHeightSplitter)로 정한 높이를 목록이 쓴다(입고 관리와 같다).
  */
-.po-board-split:is(.work-order-close-split, .shipment-processing-split) > :is(:first-child, :last-child) {
+.po-board-split:is(.work-order-close-split, .shipment-processing-split)
+  > :is(:first-child, :last-child) {
   min-width: 0;
   min-height: 0;
   overflow: auto;
 }
 
-main .po-board-split.po-board-split.po-board-split:is(.work-order-close-split, .shipment-processing-split).is-stacked[style*='--stacked-list-height'] > :first-child:not(:last-child) {
+main
+  .po-board-split.po-board-split.po-board-split:is(
+    .work-order-close-split,
+    .shipment-processing-split
+  ).is-stacked[style*='--stacked-list-height']
+  > :first-child:not(:last-child) {
   box-sizing: border-box;
   flex: 0 0 auto;
   height: var(--stacked-list-height);
@@ -43085,7 +43097,9 @@ main .po-board-split.po-board-split.po-board-split:is(.work-order-close-split, .
   overflow: auto;
 }
 
-main .po-board-split.po-board-split.po-board-split.work-calendar-split.is-stacked[style*='--stacked-list-height'] > :first-child:not(:last-child) {
+main
+  .po-board-split.po-board-split.po-board-split.work-calendar-split.is-stacked[style*='--stacked-list-height']
+  > :first-child:not(:last-child) {
   box-sizing: border-box;
   flex: 0 0 auto;
   height: var(--stacked-list-height);
@@ -43096,7 +43110,9 @@ main .po-board-split.po-board-split.po-board-split.work-calendar-split.is-stacke
  * 화면 틀(patterns/board-frame.tsx)의 목록 | 상세 — 위아래로 쌓이면 가운데 높이 막대로 정한 높이를 목록이 쓴다(입고 관리와 같다 · #360).
  * 물류 전표 조회·취소 · 자재 관리 LOT 발행 · 초과분 발주 연결 · 품목 · BOM · 창고 위치 · 창고 배치도.
  */
-main .po-board-split.po-board-split.po-board-split.board-frame-split.is-stacked[style*='--stacked-list-height'] > :first-child:not(:last-child) {
+main
+  .po-board-split.po-board-split.po-board-split.board-frame-split.is-stacked[style*='--stacked-list-height']
+  > :first-child:not(:last-child) {
   box-sizing: border-box;
   flex: 0 0 auto;
   height: var(--stacked-list-height);
@@ -43125,11 +43141,24 @@ main .po-board-split.po-board-split.po-board-split.board-frame-split.is-stacked[
  * 2) 비어 있는 필수 칸은 연한 빨간 바탕(B안) — 오류 테두리 · 문구 없이. 칸을 채우면 바로 기본 칸으로 돌아간다.
  *    필수 표시는 그대로 이름 옆 빨간 `*`. 잠긴(disabled) 칸은 바탕을 바꾸지 않는다.
  */
-dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head)) > [class*='_panel_'] {
+dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(
+    .pop-ui *,
+    .dash-tab *,
+    .dash-tabs *,
+    .dash-eq-all-dialog,
+    :has(.dash-detail-head)
+  )
+  > [class*='_panel_'] {
   background: var(--surface);
 }
 
-dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head))
+dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(
+    .pop-ui *,
+    .dash-tab *,
+    .dash-tabs *,
+    .dash-eq-all-dialog,
+    :has(.dash-detail-head)
+  )
   > [class*='_panel_']
   > header[class*='_header_'] {
   align-items: center;
@@ -43138,14 +43167,26 @@ dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(.pop-ui
   background: var(--surface-container-low);
 }
 
-dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head))
+dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(
+    .pop-ui *,
+    .dash-tab *,
+    .dash-tabs *,
+    .dash-eq-all-dialog,
+    :has(.dash-detail-head)
+  )
   > [class*='_panel_']
   > header[class*='_header_']
   + [class*='_body_'] {
   padding-top: var(--space-5);
 }
 
-dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head))
+dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(
+    .pop-ui *,
+    .dash-tab *,
+    .dash-tabs *,
+    .dash-eq-all-dialog,
+    :has(.dash-detail-head)
+  )
   > [class*='_panel_']
   > footer[class*='_footer_'] {
   align-items: center;
@@ -43153,13 +43194,25 @@ dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(.pop-ui
 }
 
 /* 판이 넘침을 자르지 않는 팝업(시간 고르기 창 등)에서도 회색 줄이 둥근 모서리 밖으로 나가지 않게. */
-dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head))
+dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(
+    .pop-ui *,
+    .dash-tab *,
+    .dash-tabs *,
+    .dash-eq-all-dialog,
+    :has(.dash-detail-head)
+  )
   > [class*='_panel_']
   > header[class*='_header_']:first-child {
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
-dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head))
+dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(
+    .pop-ui *,
+    .dash-tab *,
+    .dash-tabs *,
+    .dash-eq-all-dialog,
+    :has(.dash-detail-head)
+  )
   > [class*='_panel_']
   > footer[class*='_footer_']:last-child {
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
@@ -43202,7 +43255,13 @@ dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all
  * 3) 제목 줄 오른쪽 X 닫기 단추를 없앤다(사용자 지시 2026-11-26) — 아래 단추 줄의 [취소] · [닫기]와 Esc 로 닫는다.
  * 단추 줄이 없는 팝업(보기 전용 등)은 닫을 단추가 사라지지 않게 X 를 남긴다.
  */
-dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head))
+dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(
+    .pop-ui *,
+    .dash-tab *,
+    .dash-tabs *,
+    .dash-eq-all-dialog,
+    :has(.dash-detail-head)
+  )
   > [class*='_panel_']:has(> footer[class*='_footer_'])
   > header[class*='_header_']
   > button[class*='_close_'] {

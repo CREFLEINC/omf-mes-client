@@ -210,7 +210,7 @@ export const documentProgress = {
   cancelRequest: {
     label: '취소 요청',
     reason: '취소 사유',
-    reasonPlaceholder: '왜 취소하는지 적으세요',
+    reasonPlaceholder: '취소 사유를 입력하세요',
     reasonRequired: '취소 사유를 적어야 요청을 올릴 수 있습니다.',
     /**
      * 이 유형에 취소 경로가 없다. **유형 표에 취소 리소스가 없는 상태**이며, 값이 확정되지 않은
