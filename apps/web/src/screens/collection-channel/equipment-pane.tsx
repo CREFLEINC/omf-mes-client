@@ -185,7 +185,7 @@ export const useEquipmentPane = ({
         />
       )}
       {/* 규범 2-1 — 뜻이 짝인 액션이 줄바꿈으로 갈라지지 않게 한 덩어리로 묶는다. */}
-      <div className="field-cell field-cell-unlabeled">
+      <div className="field-cell field-cell-unlabeled filter-actions-end">
         <div className="filter-actions">
           <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
           {/* 「초기화」는 편집 중이거나 적용된 조건이 처음 값과 다를 때만 보인다(C-6). */}

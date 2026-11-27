@@ -10002,6 +10002,8 @@ dialog.routing-history-dialog {
 
 .approval-inbox-filter-actions .filter-actions {
   flex-wrap: nowrap;
+  /* 조회 · 초기화 · 조건 더보기는 줄 오른쪽 끝(사용자 지시 2026-11-27) — 한 칸 한 줄로 쌓인 좁은 폭에서도. */
+  justify-content: flex-end;
 }
 
 .approval-inbox-table {
@@ -10192,6 +10194,8 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .notice-filter-actions .filter-actions {
   flex-wrap: nowrap;
+  /* 조건 더보기는 줄 오른쪽 끝(사용자 지시 2026-11-27) — 한 칸 한 줄로 쌓인 좁은 폭에서도. */
+  justify-content: flex-end;
 }
 
 .notice-pane > .pane-lead,

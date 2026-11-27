@@ -215,7 +215,7 @@ export const GrFilterBar = ({
          * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1).
          * 비활성 사유가 붙는 자리가 없다 — 조건 없이도 조회가 열려 있다.
          */}
-        <div className="field-cell field-cell-unlabeled">
+        <div className="field-cell field-cell-unlabeled filter-actions-end">
           <div className="filter-actions">
             <Button disabled={isLocked} onClick={search}>
               {messages.common.search}

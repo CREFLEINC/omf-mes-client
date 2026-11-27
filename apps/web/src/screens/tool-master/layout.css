@@ -37,6 +37,8 @@
     grid-area: actions;
     justify-self: start;
     flex-wrap: wrap;
+    /* 조회 · 초기화 · 조건 더보기는 줄 오른쪽 끝(사용자 지시 2026-11-27) — 다음 줄로 내려간 툴 생성 · 엑셀 업로드도 오른쪽에 붙는다. */
+    justify-content: flex-end;
   }
 
   .filter-bar.tool-master-filter-more {

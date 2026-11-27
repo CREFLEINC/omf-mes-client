@@ -175,7 +175,7 @@ export const useInspectionItemPane = ({
           {messages.common.includeInactive}
         </Checkbox>
       </div>
-      <div className="field-cell field-cell-unlabeled">
+      <div className="field-cell field-cell-unlabeled filter-actions-end">
         <div className="filter-actions">
           <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
           <span className="inspection-standard-filter-divider" aria-hidden />

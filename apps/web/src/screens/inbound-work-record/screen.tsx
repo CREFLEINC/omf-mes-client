@@ -182,7 +182,9 @@ export const InboundWorkRecordScreen = () => {
           />
         </div>
         {hasPlantChoice && (
-          <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
+          <div className="filter-actions filter-actions-end">
+            <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
+          </div>
         )}
       </div>
       {/* `hidden` 은 감싸는 상자에 둔다 — 줄의 display 가 속성을 덮는다. */}

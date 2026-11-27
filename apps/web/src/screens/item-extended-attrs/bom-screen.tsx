@@ -184,7 +184,7 @@ const FilterBar = ({ applied, typeName, onSearch }: FilterBarProps) => {
           {tb.fields.hasBom}
         </Checkbox>
       </div>
-      <div className="field-cell field-cell-unlabeled">
+      <div className="field-cell field-cell-unlabeled filter-actions-end">
         <div className="filter-actions">
           <Button type="submit">{messages.common.search}</Button>
           {isChanged && (

@@ -227,7 +227,7 @@ export const RatioListPane = ({
           />
         </div>
         {/* 규범 2-1 — 뜻이 짝인 액션이 줄바꿈으로 갈라지지 않게 한 덩어리로 묶는다. */}
-        <div className="field-cell field-cell-unlabeled">
+        <div className="field-cell field-cell-unlabeled filter-actions-end">
           <div className="filter-actions">
             <Button onClick={() => onApplyFilters({ effectiveOn: draft })}>
               {messages.common.search}

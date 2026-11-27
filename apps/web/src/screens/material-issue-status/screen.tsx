@@ -255,13 +255,15 @@ export const MaterialIssueStatusScreen = () => {
             if (event.key === 'Enter') search();
           }}
         />
-        <Button onClick={search}>{t.filters.search}</Button>
-        {isChanged && (
-          <Button variant="outlined" onClick={reset}>
-            {t.filters.reset}
-          </Button>
-        )}
-        <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
+        <div className="filter-actions filter-actions-end">
+          <Button onClick={search}>{t.filters.search}</Button>
+          {isChanged && (
+            <Button variant="outlined" onClick={reset}>
+              {t.filters.reset}
+            </Button>
+          )}
+          <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
+        </div>
       </div>
       {/* `hidden` 은 감싸는 상자에 둔다 — 줄의 display 가 속성을 덮는다. */}
       <div id={more.id} hidden={!more.isOpen}>

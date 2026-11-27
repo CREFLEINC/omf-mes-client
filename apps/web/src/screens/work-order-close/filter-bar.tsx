@@ -179,7 +179,7 @@ export const WorkOrderCloseFilterBar = ({
             </p>
           )}
         </div>
-        <div className="field-cell field-cell-unlabeled">
+        <div className="field-cell field-cell-unlabeled filter-actions-end">
           <div className="filter-actions">
             <Button
               aria-describedby={searchDisabled ? validationId : undefined}
