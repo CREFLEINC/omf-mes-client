@@ -51,7 +51,7 @@ export const supplierReturn = {
      * 한 칸짜리 `datetime-local`을 쓰지 않는 것은 날짜 입력을 달력으로 통일한 판올림 결정 때문이다.
      */
     issuedDate: '출고 일자',
-    issuedTime: '출고일시',
+    issuedTime: '출고 시각',
     /** 확인 창과 결과가 쓰는 **합친 표기**. 두 칸이 한 값(`issuedAt`)이라는 사실이 여기서 보인다. */
     issuedAt: '출고 일시',
     /** 화면이 파생해 함께 보내는 값. **사용자가 넣는 칸이 없다.** */

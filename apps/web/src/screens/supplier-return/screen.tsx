@@ -6,7 +6,14 @@ import { useSearchParams } from 'react-router';
 import { useDeselectConfirm } from '../../patterns/deselect-confirm';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
+import { plantNowLocal } from '../../patterns/plant-time';
 import { ScreenHeader } from '../../patterns/screen-header';
+import {
+  applyReturnAutoFill,
+  NO_RETURN_AUTO_VALUES,
+  onlyOptionValue,
+  SUPPLIER_RETURN_ISSUE_TYPE_CODE,
+} from './auto-fill';
 import {
   SUPPLIER_RETURN_CODE_GROUPS,
   codeNameOf,
@@ -50,6 +57,7 @@ import {
   useItemNames,
   useLocationOptions,
   useLotOptions,
+  useInboundReceiptSupplier,
   usePartnerOptions,
   useUomOptions,
   useWarehouseOptions,
@@ -690,6 +698,59 @@ export const SupplierReturnScreen = () => {
   const receiptTypeName = (code: string): string => codeNameOf(codeNames.receiptType, code);
   const statusName = (code: string): string => codeNameOf(codeNames.status, code);
 
+  /*
+   * **반품 정보 자동 채움**(사용자 지시 2026-11-27 · #360 「자동 키인」). 전표를 고르면 화면이 아는
+   * 값을 칸에 넣는다 — 공급사 = 그 전표 원천 입하의 공급사, 출고 유형 = 공급사반품(계약
+   * `issueTypeCode` 확정 값), 원천 문서 유형 · 도착지 유형 = 고를 값이 하나뿐인 구조 값,
+   * 출고 일자 · 시각 = 고른 순간의 공장 시각. 반품 사유는 사람이 정한다.
+   *
+   * 사용자가 고친 값은 덮지 않는다(`auto-fill.ts`). **고른 전표가 바뀌거나 채울 값이 도착할 때만**
+   * 돈다 — 「입력 지우기」·처리 성공으로 비운 칸을 곧바로 다시 채우지 않는다.
+   */
+  const inboundSupplierId = useInboundReceiptSupplier(detailData?.inboundReceiptId ?? null);
+  const supplierOptions = toSelectOptions(partners);
+  const autoSupplier =
+    inboundSupplierId !== null &&
+    supplierOptions.some((option) => option.value === String(inboundSupplierId))
+      ? String(inboundSupplierId)
+      : '';
+  const autoIssueType = codeOptions.issueType.some(
+    (option) => option.value === SUPPLIER_RETURN_ISSUE_TYPE_CODE,
+  )
+    ? SUPPLIER_RETURN_ISSUE_TYPE_CODE
+    : onlyOptionValue(codeOptions.issueType);
+  const autoSourceDocumentType = onlyOptionValue(codeOptions.sourceDocumentType);
+  const autoDestinationType = onlyOptionValue(codeOptions.destinationType);
+  const autoFilledRef = useRef(NO_RETURN_AUTO_VALUES);
+  const autoNowRef = useRef<{ receiptId: number | null; date: string; time: string }>({
+    receiptId: null,
+    date: '',
+    time: '',
+  });
+
+  useEffect(() => {
+    if (selectedReceiptId === null) return;
+
+    if (autoNowRef.current.receiptId !== selectedReceiptId) {
+      const [date = '', time = ''] = plantNowLocal().split('T');
+
+      autoNowRef.current = { receiptId: selectedReceiptId, date, time };
+    }
+
+    const previous = autoFilledRef.current;
+    const next = {
+      supplier: autoSupplier,
+      issueType: autoIssueType,
+      sourceDocumentType: autoSourceDocumentType,
+      destinationType: autoDestinationType,
+      issuedDate: autoNowRef.current.date,
+      issuedTime: autoNowRef.current.time,
+    };
+
+    autoFilledRef.current = next;
+    setReturnDraft((prev) => applyReturnAutoFill(prev, previous, next));
+  }, [selectedReceiptId, autoSupplier, autoIssueType, autoSourceDocumentType, autoDestinationType]);
+
   /** 잠긴 두 버튼의 사유를 잇는 `id`. 사유는 **잠근 자리 옆에서** 읽혀야 한다(배치 규범 4). */
   const blockReasonId = useId();
   const discardReasonId = `${blockReasonId}-discard`;
@@ -846,7 +907,7 @@ export const SupplierReturnScreen = () => {
       <>
         <ReturnForm
           values={returnDraft}
-          supplierOptions={toSelectOptions(partners)}
+          supplierOptions={supplierOptions}
           /*
            * 잘림은 **선택칸에 붙이고** 실패는 복구 버튼과 함께 폼이 따로 낸다 — 잘림은 다시
            * 불러도 같은 쪽이 오므로 사용자가 할 조치가 없고, 실패는 있다.
@@ -906,7 +967,8 @@ export const SupplierReturnScreen = () => {
               {t.actions.discardDrafts}
             </Button>
             {!hasDraft && (
-              <span id={discardReasonId} className="field-note">
+              /* 사유 글자는 화면 읽기용으로만 둔다 — 보이는 안내는 걷었다(사용자 지시 2026-11-27 · #360). */
+              <span id={discardReasonId} className="visually-hidden">
                 {t.actionReasons.nothingToDiscard}
               </span>
             )}
@@ -921,8 +983,18 @@ export const SupplierReturnScreen = () => {
             >
               {t.actions.submit}
             </Button>
+            {/*
+             * 잠금 사유는 화면 읽기용으로만 둔다(사용자 지시 2026-11-27 · #360 — 「되돌려 보낼 공급사를
+             * 고르세요」 같은 안내 제거). **코드 목록이 없는 사정만 보이게 남긴다** — 사용자가 칸을
+             * 채워 풀 수 있는 것이 아니다.
+             */}
             {blockReason !== null && (
-              <span id={blockReasonId} className="field-note">
+              <span
+                id={blockReasonId}
+                className={
+                  isRequiredCodeListPending(codeOptions) ? 'field-note' : 'visually-hidden'
+                }
+              >
                 {blockReason}
               </span>
             )}

@@ -309,7 +309,6 @@ export const GrLineTable = ({
 
   /** 고른 줄 수와 합계. **보낼 줄에서 나온다** — 화면이 따로 세면 확인한 것과 나가는 것이 갈린다. */
   const summary = (): string => {
-    if (selection.count === 0) return t.selection.none;
     if (selection.totalQty === null) return t.selection.summaryMixedUom(selection.count);
 
     return t.selection.summary(
@@ -339,9 +338,11 @@ export const GrLineTable = ({
       </div>
 
       {/* 무엇이 나갈지 표 바로 아래에서 읽힌다 — 확인 창에서 처음 보게 하지 않는다. */}
-      <p className="field-note">{summary()}</p>
-
-      {selection.ready.kind === 'blocked' && <p className="field-note">{selection.ready.reason}</p>}
+      {/*
+       * 고른 줄이 없을 때의 「아직 고른 줄이 없습니다」와 다음 단계로 못 가는 사유(줄을 고르세요 ·
+       * 수량을 채우세요)는 보이지 않게 걷었다(사용자 지시 2026-11-27 · #360) — 단추는 그대로 잠긴다.
+       */}
+      {selection.count > 0 && <p className="field-note">{summary()}</p>}
 
       {hasHeldLot && <p className="field-note">{t.notes.lotHold}</p>}
 

@@ -194,6 +194,9 @@ export const lookupKeys = {
   /** 위치는 **창고마다** 갈린다 — 계약이 창고를 필수 조건으로 둔다. */
   locations: (warehouseId: number) => ['supplier-return-lookups', 'locations', warehouseId] as const,
   partners: ['supplier-return-lookups', 'partners'] as const,
+  /** 입고 전표의 원천 입하 — 그 공급사로 반품 정보의 공급사 칸을 미리 채운다(#360). */
+  inboundSupplier: (inboundReceiptId: number) =>
+    ['supplier-return-lookups', 'inbound-supplier', inboundReceiptId] as const,
 };
 
 /**
@@ -519,4 +522,31 @@ export const usePartnerOptions = (enabled: boolean): LookupResult => {
       void query.refetch();
     },
   };
+};
+
+/**
+ * 고른 입고 전표를 만든 **입하의 공급사**(`partnerId`) — 반품 정보의 공급사 칸을 미리 채우는 데만
+ * 쓴다(사용자 지시 2026-11-27 · #360). 입고 전표에 공급사 필드가 없어 원천 입하
+ * (`sourceDocumentTypeCode = INBOUND_RECEIPT`)를 한 번 더 읽는다. 원천이 입하가 아니거나 오는 중 ·
+ * 실패면 `null` — 칸은 비어 사용자가 고른다.
+ */
+export const useInboundReceiptSupplier = (inboundReceiptId: number | null): number | null => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: lookupKeys.inboundSupplier(inboundReceiptId ?? 0),
+    enabled: inboundReceiptId !== null,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/logistics/inbound-receipts/{inboundReceiptId}', {
+          params: { path: { inboundReceiptId: inboundReceiptId ?? 0 } },
+        }),
+      );
+
+      return data.inboundReceipt.supplierId;
+    },
+    retry: false,
+  });
+
+  return inboundReceiptId === null ? null : (query.data ?? null);
 };

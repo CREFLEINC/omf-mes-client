@@ -15,7 +15,9 @@ import { useSearchParams } from 'react-router';
 import { useDeselectConfirm } from '../../patterns/deselect-confirm';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
+import { plantNowLocal } from '../../patterns/plant-time';
 import { ScreenHeader } from '../../patterns/screen-header';
+import { applyDisposalAutoFill, NO_DISPOSAL_AUTO_VALUES, onlyOptionValue } from './auto-fill';
 
 import {
   hasPostedLine,
@@ -31,6 +33,7 @@ import {
   DEFECT_WAREHOUSE_TYPE_CODES,
   DISPOSAL_PARTNER_ROLE_CODE,
   isDisposalPartnerRolePending,
+  isRequiredCodeListPending,
   narrowToDefectWarehouses,
   readDisposalPartnerCondition,
   toCodeNameOf,
@@ -1411,6 +1414,54 @@ export const DisposalIssueScreen = () => {
     isDisposalPartnerRolePending(DISPOSAL_PARTNER_ROLE_CODE),
   );
 
+  /*
+   * **폐기 요청 정보 자동 채움**(사용자 지시 2026-11-27 · #360 「자동 키인」). 전표를 고르면 화면이
+   * 아는 값을 칸에 넣는다 — 출고 유형 · 원천 문서 유형 = 고를 값이 하나뿐일 때 그 값(계약상
+   * 기타출고 · 입고 전표), 출고 일자 · 시각 = 고른 순간의 공장 시각, 폐기 거래처 = 등록된 곳이
+   * 하나뿐일 때만. 폐기 사유 · 요청 사유는 사람이 정한다. 입고 전표 자체에는 이 폼에 옮길 값이 없다.
+   *
+   * 사용자가 고친 값은 덮지 않는다(`auto-fill.ts`). **고른 전표가 바뀌거나 채울 값이 도착할 때만**
+   * 돈다 — 「입력 지우기」·요청 성공으로 비운 칸을 곧바로 다시 채우지 않는다.
+   */
+  const autoIssueType = onlyOptionValue(codeOptions.issueType);
+  const autoSourceDocumentType = onlyOptionValue(codeOptions.sourceDocumentType);
+  const autoDisposalPartner =
+    disposalPartnerCondition === 'ready' ? onlyOptionValue(disposalPartners.entries) : '';
+  const autoFilledRef = useRef(NO_DISPOSAL_AUTO_VALUES);
+  const autoNowRef = useRef<{ receiptId: number | null; date: string; time: string }>({
+    receiptId: null,
+    date: '',
+    time: '',
+  });
+
+  useEffect(() => {
+    if (!isDisposalTab || selectedReceiptId === null) return;
+
+    if (autoNowRef.current.receiptId !== selectedReceiptId) {
+      const [date = '', time = ''] = plantNowLocal().split('T');
+
+      autoNowRef.current = { receiptId: selectedReceiptId, date, time };
+    }
+
+    const previous = autoFilledRef.current;
+    const next = {
+      issueType: autoIssueType,
+      sourceDocumentType: autoSourceDocumentType,
+      issuedDate: autoNowRef.current.date,
+      issuedTime: autoNowRef.current.time,
+      disposalPartnerId: autoDisposalPartner,
+    };
+
+    autoFilledRef.current = next;
+    setDisposalDraft((prev) => applyDisposalAutoFill(prev, previous, next));
+  }, [
+    isDisposalTab,
+    selectedReceiptId,
+    autoIssueType,
+    autoSourceDocumentType,
+    autoDisposalPartner,
+  ]);
+
   /**
    * 표가 그릴 줄. **판정을 여기서 만들지 않는다**(감지기 M24·M31) — 고를 수 있는가·골라졌는가·
    * 상한을 넘었는가는 전부 `disposal-selection.ts` 한 곳에서 나오고, 표와 요약이 같은 결과를 본다.
@@ -2090,7 +2141,8 @@ export const DisposalIssueScreen = () => {
                           {t.actions.discardDrafts}
                         </Button>
                         {!hasDraft && (
-                          <span id={discardReasonId} className="field-note">
+                          /* 사유 글자는 화면 읽기용으로만 둔다 — 보이는 안내는 걷었다(사용자 지시 2026-11-27 · #360). */
+                          <span id={discardReasonId} className="visually-hidden">
                             {t.actionReasons.nothingToDiscard}
                           </span>
                         )}
@@ -2105,8 +2157,19 @@ export const DisposalIssueScreen = () => {
                         >
                           {t.actions.submitDisposal}
                         </Button>
+                        {/*
+                         * 잠금 사유는 화면 읽기용으로만 둔다(사용자 지시 2026-11-27 · #360). **코드 목록이
+                         * 없는 사정만 보이게 남긴다** — 사용자가 칸을 채워 풀 수 있는 것이 아니다.
+                         */}
                         {blockReason !== null && (
-                          <span id={actionReasonId} className="field-note">
+                          <span
+                            id={actionReasonId}
+                            className={
+                              isRequiredCodeListPending(codeOptions)
+                                ? 'field-note'
+                                : 'visually-hidden'
+                            }
+                          >
                             {blockReason}
                           </span>
                         )}

@@ -655,23 +655,18 @@ describe('GrLineTable — 고른 줄 요약', () => {
     expect(screen.getByText(t.selection.summary(1, 10, UOM_LABEL))).toBeInTheDocument();
   });
 
-  it('아무 줄도 고르지 않았으면 그 사실을 낸다', () => {
+  /* 「아직 고른 줄이 없습니다」·갈 수 없는 사유는 보이지 않게 걷었다(사용자 지시 2026-11-27 · #360). */
+  it('아무 줄도 고르지 않았으면 요약도 사유도 내지 않는다', () => {
     renderTable();
 
-    expect(screen.getByText(t.selection.none)).toBeInTheDocument();
+    expect(screen.queryByText(t.selection.none)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.reasons.selectNone)).not.toBeInTheDocument();
   });
 
-  /** **C29** — 다음 단계로 갈 수 없는 사유가 화면에서 읽힌다. */
-  it('갈 수 없는 사유를 낸다', () => {
-    renderTable();
-
-    expect(screen.getByText(t.reasons.selectNone)).toBeInTheDocument();
-  });
-
-  it('고른 줄의 수량이 비면 그 사유를 낸다', () => {
+  it('고른 줄의 수량이 비어도 사유를 표 아래에 내지 않는다', () => {
     renderTable({ rows: rowsFrom(toggleLineSelection(EMPTY_LINE_DRAFT, 9401)) });
 
-    expect(screen.getByText(t.reasons.selectQtyMissing)).toBeInTheDocument();
+    expect(screen.queryByText(t.reasons.selectQtyMissing)).not.toBeInTheDocument();
   });
 
   it('갖춰지면 사유를 거둔다', () => {
@@ -705,7 +700,7 @@ describe('GrLineTable — 고른 줄 요약', () => {
 
     renderTable({ rows });
 
-    expect(screen.getByText(t.selection.none)).toBeInTheDocument();
+    expect(screen.queryByText(t.selection.summary(1, 10, UOM_LABEL))).not.toBeInTheDocument();
   });
 });
 

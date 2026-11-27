@@ -203,6 +203,7 @@ export const disposalIssue: Translated<typeof ko.disposalIssue> = {
   form: {
     label: 'Thông tin yêu cầu hủy',
     reasonPlaceholder: 'VD) Hủy phần bị đánh giá lỗi — 12 thùng không đạt kiểm tra đầu vào',
+    remarksPlaceholder: 'Nhập ghi chú',
     businessDateDerived:
       'Ngày làm việc được dựng từ ngày xuất kho và gửi kèm — không có ô ghi riêng.',
     selfDisposalChosen: 'Đã chọn tự hủy nên không chọn đối tác hủy.',

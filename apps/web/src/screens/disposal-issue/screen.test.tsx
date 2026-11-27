@@ -1990,7 +1990,9 @@ describe('DisposalIssueScreen — 라인 표와 폐기 수량', () => {
     await waitForLines();
     await user.click(lineCheckbox(1));
 
-    expect(screen.getByText(t.reasons.selectQtyMissing)).toBeInTheDocument();
+    /* 표 아래 사유는 걷었다(사용자 지시 2026-11-27 · #360) — 단추는 그대로 잠긴다. */
+    expect(screen.queryByText(t.reasons.selectQtyMissing)).not.toBeInTheDocument();
+    expect(submitButton()).toBeDisabled();
 
     await user.type(qtyInput(1), '5');
 
@@ -4605,11 +4607,18 @@ describe('DisposalIssueScreen — 버릴 것이 있는가', () => {
 
     await waitForLines();
 
+    /*
+     * 전표를 고르면 자동으로 채운 값이 있어 지울 것이 있다(#360) — 한 번 지워 빈 상태를 만든다.
+     * 짝 방향 — 아무것도 없을 때는 잠기고 사유가 화면 읽기용으로만 붙는다.
+     */
+    await user.click(screen.getByRole('button', { name: t.actions.discardDrafts }));
+    await user.click(screen.getByRole('button', { name: t.actions.confirmDiscard }));
+
     const discard = screen.getByRole('button', { name: t.actions.discardDrafts });
 
-    /* 짝 방향 — 아무것도 없을 때는 잠기고 사유가 붙는다. */
     expect(discard).toBeDisabled();
     expect(discard).toHaveAccessibleDescription(t.actionReasons.nothingToDiscard);
+    expect(screen.getByText(t.actionReasons.nothingToDiscard)).toHaveClass('visually-hidden');
 
     await user.click(lineCheckbox(1));
 
@@ -6381,7 +6390,8 @@ describe('DisposalIssueScreen — 폐기 거래처 선택지가 열리는 조건
    * 고를 것이 없을 때 「고르세요」라고 말하면 사용자는 자기가 놓친 것을 찾다가 화면을 고장으로
    * 읽는다. 선택지가 살아나는 순간 그 문구가 통지 문면으로 바뀐다.
    */
-  it('역할 코드를 채우면 버튼의 잠금 사유가 「고르거나 체크하십시오」로 바뀐다', async () => {
+  /* 고를 수 있는 폐기 거래처가 하나뿐이면 그 거래처를 미리 채운다(사용자 지시 2026-11-27 · #360). */
+  it('역할 코드를 채우면 하나뿐인 폐기 거래처가 미리 채워져 승인 요청이 열린다', async () => {
     fillFormCodeLists();
     fillPartnerRole();
 
@@ -6393,9 +6403,9 @@ describe('DisposalIssueScreen — 폐기 거래처 선택지가 열리는 조건
     await fillDisposalForm(user, '불량 판정분 폐기', false);
 
     await waitFor(() => {
-      expect(submitButton()).toHaveAccessibleDescription(t.actionReasons.needsDisposalDestination);
+      expect(submitButton()).toBeEnabled();
     });
-    expect(submitButton()).toBeDisabled();
+    expect(screen.getByText(PARTNER_LABEL)).toBeInTheDocument();
   });
 
   /**

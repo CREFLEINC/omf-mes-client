@@ -540,11 +540,12 @@ describe('GrLineTable — 보유 수량과 요약', () => {
     expect(screen.queryByText(t.reasons.onHandUnknownNote)).not.toBeInTheDocument();
   });
 
-  it('아무것도 고르지 않으면 그 사실과 사유를 낸다', () => {
+  /* 「아직 고른 줄이 없습니다」·갈 수 없는 사유는 보이지 않게 걷었다(사용자 지시 2026-11-27 · #360). */
+  it('아무것도 고르지 않으면 요약도 사유도 내지 않는다', () => {
     renderTable();
 
-    expect(screen.getByText(t.selection.none)).toBeInTheDocument();
-    expect(screen.getByText(t.reasons.selectNone)).toBeInTheDocument();
+    expect(screen.queryByText(t.selection.none)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.reasons.selectNone)).not.toBeInTheDocument();
   });
 
   it('고른 줄 수와 합계를 낸다', () => {

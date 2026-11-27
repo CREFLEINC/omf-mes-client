@@ -362,7 +362,7 @@ export const disposalIssue = {
     sourceDocumentType: '원천 문서 유형',
     reason: '폐기 사유',
     issuedDate: '출고 일자',
-    issuedTime: '출고일시',
+    issuedTime: '출고 시각',
     /** 확인 창에만 나오는 라벨 — 폼에는 칸이 없다(출고 일자에서 파생한다). */
     businessDate: '영업일',
     remarks: '비고',
@@ -388,6 +388,7 @@ export const disposalIssue = {
      * 몇 글자여야 하는지를 화면이 정하면 그것도 지어내는 것이다(승인 기록 §13-6).
      */
     reasonPlaceholder: '예) 불량 판정분 폐기 — 입고 검사 부적합 12박스',
+    remarksPlaceholder: '비고를 입력하세요',
     /** 사용자가 넣지 않은 값이 전표에 실린다 — 출고 일자 라벨 옆 ⓘ 로 밝힌다(관리웹 정리 시안 A). */
     businessDateDerived: '영업일은 출고 일자에서 만들어 함께 보냅니다 — 따로 적는 칸이 없습니다.',
     /**

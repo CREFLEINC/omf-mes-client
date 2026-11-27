@@ -1960,7 +1960,8 @@ describe('SupplierReturnScreen — 줄 선택과 반품 수량', () => {
     await screen.findByText('GR-2026-900001');
     await openReceipt(user);
 
-    expect(screen.getByText(t.selection.none)).toBeInTheDocument();
+    /* 「아직 고른 줄이 없습니다」는 걷었다(사용자 지시 2026-11-27 · #360). */
+    expect(screen.queryByText(t.selection.none)).not.toBeInTheDocument();
 
     await user.click(selectBox(1));
     await user.type(qtyBox(1), '10');
@@ -1978,7 +1979,7 @@ describe('SupplierReturnScreen — 줄 선택과 반품 수량', () => {
     await user.click(selectBox(1));
 
     expect(selectBox(1)).not.toBeChecked();
-    expect(screen.getByText(t.selection.none)).toBeInTheDocument();
+    expect(screen.queryByText(t.selection.summary(1, 10, UOM_LABEL))).not.toBeInTheDocument();
   });
 
   /** **M21** — 계약이 `exclusiveMinimum: 0`이라 0도 보낼 수 없다. */
@@ -1992,7 +1993,7 @@ describe('SupplierReturnScreen — 줄 선택과 반품 수량', () => {
     await user.type(qtyBox(1), '0');
 
     expect(screen.getByText(t.errors.qtyNotPositive)).toBeInTheDocument();
-    expect(screen.getByText(t.reasons.selectQtyInvalid)).toBeInTheDocument();
+    expect(submitButton()).toBeDisabled();
   });
 
   it('숫자가 아닌 글자를 인라인 오류로 막는다', async () => {
@@ -2024,7 +2025,7 @@ describe('SupplierReturnScreen — 줄 선택과 반품 수량', () => {
     await user.type(qtyBox(1), '121');
 
     expect(screen.getByText(t.errors.qtyOverOnHand(ON_HAND_9601))).toBeInTheDocument();
-    expect(screen.getByText(t.reasons.selectQtyInvalid)).toBeInTheDocument();
+    expect(submitButton()).toBeDisabled();
   });
 
   it('상한과 같은 값은 막지 않는다', async () => {
@@ -2395,11 +2396,10 @@ describe('SupplierReturnScreen — 코드 목록이 채워지면', () => {
     await chooseOption(user, t.fields.destinationType, DESTINATION_TYPE_LABEL);
     await chooseOption(user, t.fields.reason, SAMPLE_REASON);
 
-    expect(submitButton()).toHaveAccessibleDescription(t.actionReasons.needsIssuedDate);
-
-    await pickDate(user, screen.getByLabelText(t.fields.issuedDate), '2026-08-06');
-
-    expect(submitButton()).toHaveAccessibleDescription(t.actionReasons.needsIssuedTime);
+    /* 출고 일자 · 시각은 전표를 고를 때 공장 시각으로 미리 채워진다(사용자 지시 2026-11-27 · #360). */
+    expect(submitButton()).toBeEnabled();
+    expect(submitButton()).not.toHaveAccessibleDescription(t.actionReasons.needsIssuedDate);
+    expect(submitButton()).not.toHaveAccessibleDescription(t.actionReasons.needsIssuedTime);
   });
 
   /*
@@ -3143,7 +3143,7 @@ describe('SupplierReturnScreen — 실패 배너의 수명', () => {
 
 describe('SupplierReturnScreen — 입력 지우기', () => {
   /* 버릴 것이 없으면 잠긴다 — 눌러도 아무 일이 없는 버튼은 화면을 고장으로 읽히게 한다. */
-  it('버릴 것이 없으면 잠기고 사유가 붙는다', async () => {
+  it('버릴 것이 없으면 잠기고 사유가 화면 읽기용으로만 붙는다', async () => {
     fillCodeLists();
 
     const { user } = renderScreen(allRoutes());
@@ -3151,8 +3151,14 @@ describe('SupplierReturnScreen — 입력 지우기', () => {
     await screen.findByText('GR-2026-900001');
     await openReceipt(user);
 
+    /* 전표를 고르면 자동으로 채운 값이 있어 지울 것이 있다(#360) — 지우고 나면 잠긴다. */
+    expect(discardButton()).toBeEnabled();
+    await user.click(discardButton());
+    await user.click(screen.getByRole('button', { name: t.actions.confirmDiscard }));
+
     expect(discardButton()).toBeDisabled();
     expect(discardButton()).toHaveAccessibleDescription(t.actionReasons.nothingToDiscard);
+    expect(screen.getByText(t.actionReasons.nothingToDiscard)).toHaveClass('visually-hidden');
   });
 
   /* **C40의 짝** — 친 값이 말없이 사라지지 않는다. 확인 창을 거쳐야 지워진다. */

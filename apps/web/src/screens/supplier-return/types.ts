@@ -141,6 +141,11 @@ export interface ReceiptListResult {
 export interface ReceiptDetailResult {
   receipt: ReceiptView;
   lines: ReceiptLineView[];
+  /**
+   * 원천이 입하(`INBOUND_RECEIPT`)면 그 입하 번호, 아니면 `null`. 반품 정보의 공급사 칸을 미리
+   * 채우는 데만 쓴다(#360) — 화면에 그리지 않는다.
+   */
+  inboundReceiptId: number | null;
 }
 
 /**

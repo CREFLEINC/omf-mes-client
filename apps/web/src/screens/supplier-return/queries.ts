@@ -148,6 +148,10 @@ const fetchGoodsReceiptDetail = async (
   return {
     receipt: toReceiptView(data.goodsReceipt),
     lines: data.lines.map(toReceiptLineView),
+    inboundReceiptId:
+      data.goodsReceipt.sourceDocumentTypeCode === 'INBOUND_RECEIPT'
+        ? (data.goodsReceipt.sourceDocumentId ?? null)
+        : null,
   };
 };
 
