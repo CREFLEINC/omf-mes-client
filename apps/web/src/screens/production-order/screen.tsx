@@ -11,6 +11,7 @@ import {
   Breadcrumb,
   Button,
   EmptyState,
+  Icon,
   SkeletonText,
   type Column,
 } from '@crefle/web-ui';
@@ -328,20 +329,28 @@ export const ProductionOrderScreen = ({
             <strong>{t.bulk.selected(checkedRows.length)}</strong>
             {bulk.isRunning && <p>{bulkReason}</p>}
           </div>
-          {/* 계획 시작일 정렬 — 고르면 바로 걸리고 첫 쪽부터 다시 받는다(사용자 지시 2026-11-27). */}
-          <div className="erp-wo-list-order">
-            <Select
-              aria-label={t.list.order.label}
-              value={filters.order}
-              options={[
-                { value: 'newest', label: t.list.order.newest },
-                { value: 'oldest', label: t.list.order.oldest },
-              ]}
-              onChange={(order) =>
-                apply({ ...filters, order: order === 'newest' ? 'newest' : 'oldest', page: 1 })
-              }
-            />
-          </div>
+          {/*
+           * 계획 시작일 정렬 — 누를 때마다 오래된순 ↔ 최신순, 보이는 글자가 지금 차례다(사용자 지시 2026-11-27
+           * 「토글 형태로」). 알림센터 정렬 단추와 같은 모양이다. 누르면 바로 걸리고 첫 쪽부터 다시 받는다.
+           */}
+          <Button
+            variant="outlined"
+            size="sm"
+            className="erp-wo-list-order-button"
+            aria-label={`${t.list.order.label}: ${
+              filters.order === 'newest' ? t.list.order.newest : t.list.order.oldest
+            }`}
+            leadingIcon={<Icon name="swap_vert" size={16} />}
+            onClick={() =>
+              apply({
+                ...filters,
+                order: filters.order === 'newest' ? 'oldest' : 'newest',
+                page: 1,
+              })
+            }
+          >
+            {filters.order === 'newest' ? t.list.order.newest : t.list.order.oldest}
+          </Button>
         </div>
         <div className="erp-wo-bulk-actions">
           <div className="erp-wo-action-choice">

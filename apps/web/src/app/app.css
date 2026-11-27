@@ -34157,9 +34157,6 @@ ul.iqc-inbound-superseded {
 .erp-wo-selection-info strong {
   font: var(--type-title-sm);
 }
-.erp-wo-list-order {
-  width: 8rem;
-}
 .erp-wo-selection-info p {
   margin: var(--space-1) 0 0;
   font: var(--type-body-sm);
@@ -43423,12 +43420,14 @@ main > .pane.notification-center-pane {
   margin: 0;
 }
 
-/* 최신순/오래된순 단추 — 둥근 테두리는 그대로, 아이콘 · 글자는 진회색(중립형 · #361). */
-.notification-sort-button {
+/* 최신순/오래된순 단추 — 둥근 테두리는 그대로, 아이콘 · 글자는 진회색(중립형 · #361). 작업계획 정렬 단추도 같다. */
+.notification-sort-button,
+.erp-wo-list-order-button {
   color: var(--on-surface-variant);
 }
 
-.notification-sort-button:hover {
+.notification-sort-button:hover,
+.erp-wo-list-order-button:hover {
   background: color-mix(in srgb, var(--on-surface) 8%, transparent);
 }
 
