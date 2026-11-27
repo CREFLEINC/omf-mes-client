@@ -747,6 +747,26 @@ main > * + * {
   white-space: nowrap;
 }
 
+/*
+ * 불량코드 — 오른쪽 상세 상자와 줄 고르기를 걷었다(사용자 지시 · #360). 목록이 화면 폭을 다 쓰고,
+ * 줄은 누르는 자리가 아니라 손가락 커서를 걷는다. 코드는 단추가 아닌 글자라 칸 안에서 말줄임한다.
+ */
+.po-board-split.defect-cause-split {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.inspection-standard-plan-rows.defect-cause-rows tbody tr {
+  cursor: default;
+}
+
+.defect-cause-rows .defect-cause-open {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .inspection-standard-plan-chips {
   display: flex;
   flex-wrap: wrap;

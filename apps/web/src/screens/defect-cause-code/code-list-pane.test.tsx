@@ -29,8 +29,6 @@ const renderPane = (overrides: Partial<CodeListPaneProps> = {}) => {
     isLoading: false,
     appliedFilters: NO_FILTERS,
     onApplyFilters: vi.fn(),
-    selectedId: null,
-    onSelect: vi.fn(),
     processLabelOf: (processId) => (processId === 7001 ? 'P-10 · 조립' : null),
     pageMeta: { page: 1, size: 20, total: orderedRows.length },
     onChangePage: vi.fn(),
@@ -39,6 +37,7 @@ const renderPane = (overrides: Partial<CodeListPaneProps> = {}) => {
     referenceCountOf: () => null,
     onEdit: vi.fn(),
     onToggleActive: vi.fn(),
+    onAddChild: vi.fn(),
     ...overrides,
   };
 
@@ -47,9 +46,9 @@ const renderPane = (overrides: Partial<CodeListPaneProps> = {}) => {
   return { props, user: userEvent.setup() };
 };
 
-/** 대분류 줄이 묶음 머리다(#209) — 그 코드 단추가 머리 칸(접기 단추 옆)에 있는가. */
+/** 대분류 줄이 묶음 머리다(#209) — 그 코드 글자가 머리 칸(접기 단추 옆)에 있는가. */
 const isHeadRow = (code: string): boolean =>
-  screen.getByRole('button', { name: code }).closest('.defect-cause-tree-head') !== null;
+  screen.getByText(code).closest('.defect-cause-tree-head') !== null;
 
 describe('CodeListPane — 2계층 표시', () => {
   it('대분류 줄이 묶음 머리가 되고 하위 코드 수를 함께 낸다(#209)', () => {
@@ -65,12 +64,12 @@ describe('CodeListPane — 2계층 표시', () => {
   it('상세 줄은 선으로 대분류에 잇고, 묶음의 마지막 줄에서 선을 끝낸다', () => {
     renderPane();
 
-    const child = screen.getByRole('button', { name: 'DF-12' }).closest('.defect-cause-tree-child');
+    const child = screen.getByText('DF-12').closest('.defect-cause-tree-child');
     expect(child).not.toBeNull();
     expect(child).toHaveAttribute('data-last', 'true');
-    expect(
-      screen.getByRole('button', { name: 'DF-11' }).closest('.defect-cause-tree-child'),
-    ).not.toHaveAttribute('data-last');
+    expect(screen.getByText('DF-11').closest('.defect-cause-tree-child')).not.toHaveAttribute(
+      'data-last',
+    );
   });
 
   it('접기 단추를 누르면 그 대분류의 상세 줄을 숨기고, 다시 누르면 보인다', async () => {
@@ -78,33 +77,32 @@ describe('CodeListPane — 2계층 표시', () => {
 
     const [fold] = screen.getAllByRole('button', { name: '하위 코드 접기' });
     await user.click(fold!);
-    expect(screen.queryByRole('button', { name: 'DF-11' })).not.toBeInTheDocument();
+    expect(screen.queryByText('DF-11')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '하위 코드 펼치기' }));
-    expect(screen.getByRole('button', { name: 'DF-11' })).toBeInTheDocument();
+    expect(screen.getByText('DF-11')).toBeInTheDocument();
   });
 
   it('상위를 찾을 수 없는 코드는 별도 그룹으로 나온다 — 사라지지 않는다', () => {
     renderPane();
 
     expect(screen.getByText('상위를 찾을 수 없는 코드')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'DF-91' })).toBeInTheDocument();
+    expect(screen.getByText('DF-91')).toBeInTheDocument();
   });
 
   it('자기참조 행도 대분류로 나오고 그 아래에 상세가 붙는다', () => {
     renderPane();
 
-    expect(screen.getByRole('button', { name: 'DF-20' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'DF-21' })).toBeInTheDocument();
+    expect(screen.getByText('DF-20')).toBeInTheDocument();
+    expect(screen.getByText('DF-21')).toBeInTheDocument();
   });
 
   it('받은 순서대로 행을 그린다 — 대분류 자신이 자기 그룹의 첫 행이다', () => {
     renderPane();
 
-    const codes = screen
-      .getAllByRole('button')
-      .map((element) => element.textContent)
-      .filter((text) => text !== null && text.startsWith('DF-'));
+    const codes = [...document.querySelectorAll('.defect-cause-open')].map(
+      (element) => element.textContent,
+    );
 
     expect(codes).toEqual(['DF-10', 'DF-11', 'DF-12', 'DF-20', 'DF-21', 'DF-90', 'DF-91']);
   });
@@ -119,12 +117,11 @@ describe('CodeListPane — 2계층 표시', () => {
     );
   });
 
-  it('코드를 누르면 그 코드가 선택된다', async () => {
-    const { props, user } = renderPane();
+  it('코드와 줄은 누르는 자리가 아니다 — 단추로 그리지 않는다(#360)', () => {
+    renderPane();
 
-    await user.click(screen.getByRole('button', { name: 'DF-11' }));
-
-    expect(props.onSelect).toHaveBeenCalledWith(1002);
+    expect(screen.queryByRole('button', { name: 'DF-11' })).not.toBeInTheDocument();
+    expect(document.querySelector('[aria-current]')).toBeNull();
   });
 });
 
@@ -225,25 +222,19 @@ describe('CodeListPane — 표 머리 문구 (#209)', () => {
   });
 });
 
-describe('CodeListPane — 선택', () => {
-  it('고른 코드에 현재 선택 표식이 붙는다', () => {
-    renderPane({ selectedId: 1002 });
-
-    expect(screen.getByRole('button', { name: 'DF-11' })).toHaveAttribute('aria-current', 'true');
-  });
-
-  it('조회 조건과 등록 단추는 목록 칸에 두지 않는다 — 위 조회 카드에 선다(#209)', () => {
+describe('CodeListPane — 조회 조건', () => {
+  it('조회 조건과 대분류 추가 단추는 목록 칸에 두지 않는다 — 위 조회 카드에 선다(#209)', () => {
     renderPane();
 
     expect(screen.queryByRole('button', { name: '조회' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '하위 코드 추가' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '대분류 추가' })).not.toBeInTheDocument();
   });
 });
 
 /* 상세 카드에 있던 사용된 기록 · 사용 중지/재사용 · 수정을 목록 줄로 옮겼다(#360). */
 describe('CodeListPane — 행 끝 동작 · 사용된 기록 (#360)', () => {
   const rowOf = (code: string): HTMLElement => {
-    const row = screen.getByRole('button', { name: code }).closest('tr');
+    const row = screen.getByText(code).closest('tr');
     if (row === null) throw new Error(`${code} 줄이 없습니다.`);
     return row;
   };
@@ -263,8 +254,33 @@ describe('CodeListPane — 행 끝 동작 · 사용된 기록 (#360)', () => {
 
     expect(props.onToggleActive).toHaveBeenCalledWith(1002);
     expect(props.onEdit).toHaveBeenCalledWith(1002);
-    // 단추를 눌러도 줄 고르기로 번지지 않는다.
-    expect(props.onSelect).not.toHaveBeenCalled();
+  });
+
+  it('사용 중인 대분류 줄에만 하위 코드 추가를 내고, 그 대분류로 부른다(상세 카드에서 옮겨 옴)', async () => {
+    const { props, user } = renderPane();
+
+    expect(within(rowOf('DF-11')).queryByRole('button', { name: '하위 코드 추가' })).toBeNull();
+    // 미사용 대분류에는 내지 않는다(#209).
+    expect(within(rowOf('DF-90')).queryByRole('button', { name: '하위 코드 추가' })).toBeNull();
+    await user.click(within(rowOf('DF-10')).getByRole('button', { name: '하위 코드 추가' }));
+
+    expect(props.onAddChild).toHaveBeenCalledWith(1001);
+  });
+
+  it('사용 중지 · 재사용 · 수정 단추에 아이콘이 붙는다(#360)', () => {
+    renderPane();
+
+    for (const [code, name, icon] of [
+      ['DF-11', '사용 중지', 'block'],
+      ['DF-90', '재사용', 'restart_alt'],
+      ['DF-11', '수정', 'edit'],
+    ] as const) {
+      const button = within(rowOf(code)).getByRole('button', { name });
+      // 세 단추의 아이콘은 같은 크기다.
+      const glyph = button.querySelector<HTMLElement>('[aria-hidden="true"]');
+      expect(glyph).toHaveTextContent(icon);
+      expect(glyph).toHaveStyle({ fontSize: '16px' });
+    }
   });
 
   it('미사용 줄은 사용 중지 자리에 재사용을 낸다', async () => {
