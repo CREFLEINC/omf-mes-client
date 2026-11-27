@@ -1296,16 +1296,11 @@ describe('appRouter — W/O 마감·ERP 실적 송신의 진입 경로', () => {
     await user.keyboard('{Enter}');
 
     await waitFor(() => expect(currentLocation()).toBe('/production/work-order-close'));
+    /* 화면 제목 줄(경로 · 큰 제목)은 두지 않는다(#360). */
     expect(
-      screen.getAllByRole('heading', { level: 1, name: messages.workOrderClose.title }),
-    ).toHaveLength(1);
-    const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
-    const breadcrumbItems = within(within(breadcrumb).getByRole('list')).getAllByRole('listitem');
-    expect(breadcrumbItems).toHaveLength(2);
-    expect(
-      within(breadcrumbItems[0]!).getByText(messages.workOrderClose.breadcrumbRoot),
-    ).toBeVisible();
-    expect(within(breadcrumbItems[1]!).getByText(messages.workOrderClose.title)).toBeVisible();
+      screen.queryByRole('heading', { level: 1, name: messages.workOrderClose.title }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: '탐색 경로' })).not.toBeInTheDocument();
     const pane = screen.getByRole('region', { name: messages.workOrderClose.candidateList.pane });
     expect(await within(pane).findByRole('button', { name: 'SYN-WO-9701 선택' })).toBeVisible();
     expect(await within(pane).findByText(/합성 마감 품목/)).toBeVisible();

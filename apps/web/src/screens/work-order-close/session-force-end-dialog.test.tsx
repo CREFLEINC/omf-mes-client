@@ -51,14 +51,16 @@ describe('SessionForceEndDialog', () => {
     const valueOf = (label: string) => within(dialog).getByText(label).nextElementSibling;
     expect(valueOf(sessionText.terminal)).toHaveTextContent('POP-SYN-1');
     expect(valueOf(sessionText.worker)).toHaveTextContent('합성 작업자(900028)');
-    expect(valueOf(sessionText.startedAt)).toHaveTextContent('2026-10-22 09:00');
+    expect(valueOf(t.startedAt)).toHaveTextContent('2026-10-22 09:00');
     expect(valueOf(sessionText.state)).toHaveTextContent(sessionText.STOPPED);
     expect(within(dialog).getByText(t.effect)).toBeVisible();
     expect(within(dialog).getByText(t.notify)).toBeVisible();
+    expect(within(dialog).getByText(t.reasonHelp)).toBeVisible();
 
     const confirm = within(dialog).getByRole('button', { name: t.confirm });
     expect(confirm).toBeDisabled();
-    expect(confirm).toHaveAccessibleDescription(t.reasonRequired);
+    /* 빈 사유는 단추만 잠그고 같은 안내를 되풀이하지 않는다(#360). */
+    expect(within(dialog).queryByText(t.reasonRequired)).not.toBeInTheDocument();
     await user.type(within(dialog).getByLabelText(t.reason), '   ');
     expect(confirm).toBeDisabled();
     await user.type(within(dialog).getByLabelText(t.reason), '단말 고장으로 종료 불가 ');

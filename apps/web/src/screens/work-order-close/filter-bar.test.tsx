@@ -78,7 +78,7 @@ describe('WorkOrderCloseFilterBar', () => {
     expect(screen.getByRole('region', { name: t.pane })).toHaveClass(
       'work-order-close-filter-pane',
     );
-    expect(screen.getByRole('heading', { level: 2, name: t.pane })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: t.pane })).not.toBeInTheDocument();
     await pickDateRange(
       user,
       screen.getByLabelText(t.plannedStartFrom),

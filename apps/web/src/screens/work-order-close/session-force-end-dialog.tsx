@@ -1,10 +1,11 @@
-import { Button, Dialog, TextArea, useToast } from '@crefle/web-ui';
+import { Button, Chip, type ChipStatus, Dialog, Icon, TextArea, useToast } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { type JSX, useEffect, useId, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { InfoFacts } from '../../patterns/info-facts';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { workOrderCloseKeys, type WorkOrderCloseOpenSessionView } from './queries';
@@ -74,20 +75,19 @@ export const SessionForceEndDialog = ({
       : trimmed.length > REASON_MAX_LENGTH
         ? t.reasonTooLong(REASON_MAX_LENGTH)
         : null;
+  /* 빈 사유는 단추만 잠근다 — 칸 아래 · 단추 위에 같은 안내를 되풀이하지 않는다(#360). 넘친 글자 수만 알린다. */
+  const tooLongNote = trimmed.length > REASON_MAX_LENGTH ? blockedReason : null;
   const worker =
     session.workerName === null || session.workerNo === null
       ? sessionText.unknown
       : sessionText.workerValue(session.workerName, session.workerNo);
-  const state =
-    session.statusCode === 'RUNNING' || session.statusCode === 'STOPPED'
-      ? sessionText[session.statusCode]
-      : sessionText.unknown;
-  const fields: [label: string, value: string][] = [
-    [sessionText.terminal, terminalOf(session)],
-    [sessionText.worker, worker],
-    [sessionText.startedAt, formatPlantDateTime(session.startedAt) ?? sessionText.unknown],
-    [sessionText.state, state],
-  ];
+  /* 상태는 칩으로 — 진행 중 정보 색, 중단 경고 색, 모르는 값 중립(#360). 「진행 중」은 이 팝업 표시만이다. */
+  const [stateLabel, stateTone]: [string, ChipStatus] =
+    session.statusCode === 'RUNNING'
+      ? [t.RUNNING, 'info']
+      : session.statusCode === 'STOPPED'
+        ? [sessionText.STOPPED, 'warning']
+        : [sessionText.unknown, 'idle'];
 
   return (
     <Dialog
@@ -100,33 +100,52 @@ export const SessionForceEndDialog = ({
         if (!write.isSaving) onClose();
       }}
       footer={
-        <>
-          <Button variant="outlined" disabled={write.isSaving} onClick={onClose}>
-            {t.cancel}
-          </Button>
-          <Button
-            variant="filled"
-            aria-describedby={blockedReason === null ? undefined : noteId}
-            disabled={blockedReason !== null || write.isSaving}
-            loading={write.isSaving}
-            onClick={() => write.write({ reason: trimmed })}
-          >
-            {t.confirm}
-          </Button>
-        </>
+        /* 작업자에게 알리라는 한 줄은 단추 줄 왼쪽 경고 칩, 단추는 오른쪽 — 확인 팝업 공용 짜임(#360). */
+        <div className="confirm-foot">
+          <p className="iqc-inspection-action-note" data-tone="warning">
+            <Icon name="warning" size={14} aria-hidden />
+            {t.notify}
+          </p>
+          <span className="confirm-foot-actions">
+            <Button variant="outlined" disabled={write.isSaving} onClick={onClose}>
+              {t.cancel}
+            </Button>
+            <Button
+              variant="filled"
+              aria-describedby={tooLongNote === null ? undefined : noteId}
+              disabled={blockedReason !== null || write.isSaving}
+              loading={write.isSaving}
+              onClick={() => write.write({ reason: trimmed })}
+            >
+              {t.confirm}
+            </Button>
+          </span>
+        </div>
       }
     >
       <SaveErrorBanner error={write.error} />
-      <dl className="work-order-close-confirm-details">
-        {fields.map(([label, value]) => (
-          <div key={label}>
-            <dt>{label}</dt>
-            <dd>{value}</dd>
-          </div>
-        ))}
-      </dl>
+      {/* 정보 상자 — 정보 표시 팝업 시안 상자, 한 줄 가로 나열(#360). */}
+      <InfoFacts
+        rows={[
+          [
+            { label: sessionText.terminal, value: terminalOf(session) },
+            { label: sessionText.worker, value: worker },
+            {
+              label: t.startedAt,
+              value: formatPlantDateTime(session.startedAt) ?? sessionText.unknown,
+            },
+            {
+              label: sessionText.state,
+              value: (
+                <Chip size="sm" variant="status" status={stateTone}>
+                  {stateLabel}
+                </Chip>
+              ),
+            },
+          ],
+        ]}
+      />
       <p>{t.effect}</p>
-      <p>{t.notify}</p>
       <TextArea
         label={t.reason}
         placeholder={t.reasonPlaceholder}
@@ -142,9 +161,9 @@ export const SessionForceEndDialog = ({
           write.clearFieldError('reason');
         }}
       />
-      {blockedReason !== null && (
+      {tooLongNote !== null && (
         <p className="field-note" id={noteId}>
-          {blockedReason}
+          {tooLongNote}
         </p>
       )}
     </Dialog>
