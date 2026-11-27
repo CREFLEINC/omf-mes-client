@@ -39043,6 +39043,25 @@ body:has(
   border-radius: var(--radius-sm);
 }
 
+/* 조건 한 행 — 분배 기간 · 생산 라인 · 분배 방식(좁게) · 분배 수량 · 휴일 포함 · 삭제(#360). */
+.erp-wo-distribution-dialog .erp-wo-distribution-segment .erp-wo-segment-fields {
+  grid-template-columns:
+    minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(0, 10rem) minmax(0, 1fr)
+    auto;
+}
+.erp-wo-distribution-dialog .erp-wo-segment-fields > .erp-wo-segment-tail {
+  display: flex;
+  align-items: center;
+  align-self: end;
+  gap: var(--space-2);
+  min-height: var(--control-height-md);
+}
+@media (max-width: 1000px) {
+  .erp-wo-distribution-dialog .erp-wo-distribution-segment .erp-wo-segment-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .erp-wo-distribution-holiday-option {
   display: inline-flex;
   align-items: center;

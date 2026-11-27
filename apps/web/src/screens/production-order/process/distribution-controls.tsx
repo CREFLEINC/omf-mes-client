@@ -11,7 +11,7 @@ import {
   type PlanningDayTarget,
 } from './planning-working-days';
 import { useEffect, useId, useRef, useState } from 'react';
-import { AlertBanner, Button, Dialog, Icon, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, Icon, IconButton, TextField } from '@crefle/web-ui';
 import { DistributionPeriodPicker } from './distribution-period-picker';
 import { InfoFacts } from '../../../patterns/info-facts';
 import { PageNav } from '../../../patterns/page-nav';
@@ -996,26 +996,6 @@ export const DistributionControls = ({
                               분배 조건 {index + 1}
                               {row.applied && <span className="field-note">편성안 반영됨</span>}
                             </label>
-                            <div className="erp-wo-distribution-condition-actions">
-                              <Button
-                                variant="outlined"
-                                size="md"
-                                disabled={disabled}
-                                aria-label={`조건 ${index + 1} 삭제`}
-                                onClick={() => {
-                                  const remainingRows = rows.filter((item) => item.id !== row.id);
-                                  setRows(remainingRows);
-                                  if (!remainingRows.some((item) => !item.applied)) {
-                                    baseline.current = remainingRows;
-                                    setDirty(false);
-                                  } else setDirty(true);
-                                  setSelected((current) => current.filter((key) => key !== row.id));
-                                  setPreview(null);
-                                }}
-                              >
-                                삭제
-                              </Button>
-                            </div>
                           </div>
                           <div className="erp-wo-segment-fields">
                             <div className="field-cell erp-wo-segment-date erp-wo-distribution-period">
@@ -1031,19 +1011,6 @@ export const DistributionControls = ({
                                 disabled={disabled}
                                 onChange={([start, end]) => change(row.id, { start, end })}
                               />
-                              {/* 「휴일 포함」은 날짜 바로 아래(#360). */}
-                              <label className="erp-wo-distribution-holiday-option">
-                                <input
-                                  type="checkbox"
-                                  aria-label={`분배 조건 ${index + 1} 휴일 포함`}
-                                  checked={row.includeHolidays ?? false}
-                                  disabled={disabled || row.mode === 'daily'}
-                                  onChange={(event) =>
-                                    change(row.id, { includeHolidays: event.target.checked })
-                                  }
-                                />
-                                휴일 포함
-                              </label>
                             </div>
                             <div className="field-cell erp-wo-segment-line">
                               <span className="field-label">
@@ -1122,6 +1089,37 @@ export const DistributionControls = ({
                                 날짜별 합계 {total} {target?.unit}
                               </p>
                             )}
+                            {/* 휴일 포함 · 조건 삭제(휴지통)는 입력칸과 같은 행 끝(#360). */}
+                            <div className="erp-wo-segment-tail">
+                              <label className="erp-wo-distribution-holiday-option">
+                                <input
+                                  type="checkbox"
+                                  aria-label={`분배 조건 ${index + 1} 휴일 포함`}
+                                  checked={row.includeHolidays ?? false}
+                                  disabled={disabled || row.mode === 'daily'}
+                                  onChange={(event) =>
+                                    change(row.id, { includeHolidays: event.target.checked })
+                                  }
+                                />
+                                휴일 포함
+                              </label>
+                              <IconButton
+                                icon="delete"
+                                size="md"
+                                disabled={disabled}
+                                aria-label={`조건 ${index + 1} 삭제`}
+                                onClick={() => {
+                                  const remainingRows = rows.filter((item) => item.id !== row.id);
+                                  setRows(remainingRows);
+                                  if (!remainingRows.some((item) => !item.applied)) {
+                                    baseline.current = remainingRows;
+                                    setDirty(false);
+                                  } else setDirty(true);
+                                  setSelected((current) => current.filter((key) => key !== row.id));
+                                  setPreview(null);
+                                }}
+                              />
+                            </div>
                           </div>
                           {row.mode === 'daily' && (
                             <div className="erp-wo-daily-quantities">
