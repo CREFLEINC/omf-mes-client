@@ -57,24 +57,36 @@ export const ConfirmDialog = ({
     >
       {error}
       <div className="users-roles-worker-dialog">
+        {/*
+         * 사용자 개선안(#360) — 1행 LOT(넓게) · 수량, 2행 현재 창고, 3행 재등록 위치(창고 · 위치 한 묶음).
+         * 제목이 묻는 말이라 본문 질문은 두지 않는다. 재등록 뒤 상태를 먼저 말하고, 되돌릴 수 없다는 경고는 노란 안내.
+         */}
         <InfoFacts
           rows={[
-            [{ label: lotLabel, value: summary.lotNo, isKey: true }],
             [
+              { label: lotLabel, value: summary.lotNo, isKey: true },
               { label: t.fields.qty, value: qty },
-              { label: t.fields.sourceWarehouse, value: summary.fromWarehouse },
-              { label: t.fields.targetWarehouse, value: summary.toWarehouse },
-              ...(summary.toLocation !== null
-                ? [{ label: t.fields.targetLocation, value: summary.toLocation }]
-                : []),
+            ],
+            [{ label: t.fields.sourceWarehouse, value: summary.fromWarehouse }],
+            [
+              {
+                label: t.confirm.targetPlace,
+                value: (
+                  <span className="info-fact-lines">
+                    <span className="info-fact-line">{summary.toWarehouse}</span>
+                    {summary.toLocation !== null && (
+                      <span className="info-fact-line">{summary.toLocation}</span>
+                    )}
+                  </span>
+                ),
+              },
             ],
           ]}
         />
-        <p>{t.confirm.question}</p>
-        {/* 바뀌는 재고 · 출하 가능 안내는 화면 본문 경고 상자에 이미 있어 여기서는 되돌릴 수 없다는 한 줄만(사용자 지시 · #360). */}
+        <p>{t.confirm.after}</p>
         <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
           <Icon name="warning" size={16} aria-hidden />
-          {t.warning.noUndo}
+          {t.confirm.irreversible}
         </p>
       </div>
     </Dialog>

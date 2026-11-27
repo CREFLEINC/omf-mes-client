@@ -37,7 +37,7 @@ export const stockReinstatement = {
     nextPage: '다음',
     confirm: '재등록 확인',
     submit: '재등록 확정',
-    keepEditing: '입력 계속하기',
+    keepEditing: '계속 입력',
   },
   accessibility: {
     candidateLoading: '재등록 대기 목록 불러오는 중',
@@ -97,8 +97,13 @@ export const stockReinstatement = {
         : `잔여 ${String(days)}일입니다. 고객의 최소 잔여 유효기간보다 짧으면 출하할 수 없습니다.`,
   },
   confirm: {
-    title: '재고 재등록 확인',
-    question: '재고를 재등록하시겠습니까?',
+    /** 제목이 묻는 말 — 본문에 질문을 되풀이하지 않는다(사용자 개선안 · #360). */
+    title: '재고를 재등록할까요?',
+    /** 재등록 위치 — 대상 창고와 위치를 한 묶음으로. */
+    targetPlace: '재등록 위치',
+    after: '재등록하면 지정한 위치에서 가용 재고로 사용할 수 있습니다.',
+    irreversible:
+      '확정 후에는 이 화면에서 되돌릴 수 없습니다. 사용을 다시 제한하려면 판정·보류 절차를 거쳐야 합니다.',
   },
   success: (qty: number): string => `${String(qty)} 재고를 재등록했습니다.`,
   empty: {
