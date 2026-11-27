@@ -46,7 +46,7 @@ import { useItemCodeNames } from '../item-lookups';
 import { useUomReferenceLookup } from '../reference-lookups';
 import { apiErrorText, invalidateFlow, releaseWorkOrder } from '../release-runner';
 import { ForbiddenNotice, isForbidden } from '../forbidden-notice';
-import { ProcessStateChip, ReasonChips } from '../worklist-chips';
+import { ProcessStateBadge, ReasonChips } from '../worklist-chips';
 import { rememberedWorklistSearch, worklistPath } from '../worklist-filters';
 import { deriveWorklistState, type ProcessStepKey } from '../worklist-model';
 import { useProductionOrderByNumber, worklistKeys } from '../worklist-queries';
@@ -977,7 +977,7 @@ export const ProcessWorkspace = ({
       }
       badges={
         <>
-          <ProcessStateChip state={derived.state} />
+          <ProcessStateBadge state={derived.state} />
           <ReasonChips
             reasons={derived.reasons}
             detail={{

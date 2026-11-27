@@ -201,8 +201,14 @@ export const ProcessPage = ({
             {compactHead ? null : backLabel}
           </Button>
           <h1 className="process-page-title">{title}</h1>
+          {/* 한 줄 머리에서는 상태를 제목 바로 옆, 요약 앞에 둔다 — 화면에 들어오자마자 읽히는 자리다. */}
+          {compactHead && badges !== undefined && (
+            <div className="process-page-badges">{badges}</div>
+          )}
           {compactHead && <div className="process-page-summary">{summary}</div>}
-          {badges !== undefined && <div className="process-page-badges">{badges}</div>}
+          {!compactHead && badges !== undefined && (
+            <div className="process-page-badges">{badges}</div>
+          )}
           {headerActions !== undefined && (
             <div className="process-page-head-actions">{headerActions}</div>
           )}

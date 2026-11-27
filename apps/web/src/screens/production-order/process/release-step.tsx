@@ -696,8 +696,12 @@ export const ReleaseStep = ({
       header: '수량',
       width: '104px',
       align: 'end',
-      render: ({ line }) =>
-        `${formatQty(line.workOrder.orderQty)} ${uomLabelOf(line.workOrder.uomId)}`,
+      /* 수량과 단위는 한 줄로 쓴다 — 칸이 좁아도 줄을 바꾸지 않는다(사용자 지시 2026-11-27). */
+      render: ({ line }) => (
+        <span className="nowrap-cell">
+          {`${formatQty(line.workOrder.orderQty)} ${uomLabelOf(line.workOrder.uomId)}`}
+        </span>
+      ),
     },
     ...shownChecks.map((key): Column<ListRow> => ({
       key,

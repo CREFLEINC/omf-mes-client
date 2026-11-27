@@ -477,7 +477,10 @@ export const PlanStep = ({
               [
                 ['confirmed', ui.confirmedQty, quantities.confirmed],
                 ['draft', ui.draftQty, draftQty],
-                ['remaining', ui.remainingQty, remaining],
+                /* 넘치면 「미계획 0」 대신 넘친 수량을 숫자로 보인다 — 문장 경고는 아래 줄 한 곳에만 둔다. */
+                quantities.excess > 0
+                  ? (['excess', ui.excessQty, quantities.excess] as const)
+                  : (['remaining', ui.remainingQty, remaining] as const),
                 ['order', ui.orderQty, orderQty],
               ] as const
             ).map(([kind, label, qty]) => (
@@ -485,6 +488,7 @@ export const PlanStep = ({
                 key={kind}
                 data-kind={kind}
                 data-attention={kind === 'remaining' && (qty ?? 0) > 0 ? 'true' : undefined}
+                data-error={kind === 'excess' ? 'true' : undefined}
               >
                 <dt>{label}</dt>
                 <dd>{displayQty(qty)}</dd>
@@ -492,9 +496,6 @@ export const PlanStep = ({
             ))}
           </dl>
         </div>
-      )}
-      {!hideTotals && quantities.excess > 0 && (
-        <AlertBanner variant="error">초과 수량 {displayQty(quantities.excess)}</AlertBanner>
       )}
       {!hideTools && (
         <PlanCreationTools

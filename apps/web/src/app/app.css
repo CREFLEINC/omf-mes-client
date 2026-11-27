@@ -44128,3 +44128,53 @@ main > .pane.notification-center-pane {
   margin: 0;
   font: var(--type-title-sm);
 }
+/* 계획 수량이 ERP W/O 수량을 넘으면 넘친 수량을 오류 색 숫자로 보인다 — 문장 경고는 아래 안내 줄 한 곳에만 둔다. */
+.erp-wo-plan-progress-legend [data-error='true'] dd {
+  color: var(--semantic-error);
+}
+
+/* ── 편성 화면 머리의 상태 표지(시안 A · 2026-11-27) — 제목 옆, 색을 채운 큰 표지. ── */
+.process-state-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 1.75rem;
+  padding: 0 var(--space-3) 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  font: var(--type-label-lg);
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+}
+.process-state-badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.process-state-badge[data-tone='warning'] {
+  background: var(--semantic-warning-container);
+  color: var(--on-semantic-warning-container, var(--on-surface));
+  box-shadow: inset 0 0 0 1.5px var(--semantic-warning);
+}
+.process-state-badge[data-tone='warning'] > .process-state-badge-dot {
+  background: var(--semantic-warning);
+}
+.process-state-badge[data-tone='success'] {
+  background: var(--semantic-success);
+  color: var(--surface);
+}
+.process-state-badge[data-tone='info'] {
+  background: var(--semantic-info);
+  color: var(--surface);
+}
+.process-state-badge[data-tone='error'] {
+  background: var(--semantic-error);
+  color: var(--surface);
+}
+/* 한 줄 머리에서 상태 표지는 제목에 붙고, 요약(번호 · 품목)이 그 뒤를 잇는다. */
+.process-page > .process-page-head.is-compact .process-page-badges {
+  flex-wrap: nowrap;
+  gap: var(--space-2);
+}
