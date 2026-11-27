@@ -2493,11 +2493,10 @@ describe('SupplierReturnScreen — 확인 창', () => {
     expect(
       within(dialog).getByText(t.dialog.businessDateDerived('2026-08-06')),
     ).toBeInTheDocument();
-    expect(within(dialog).getByRole('listitem')).toHaveTextContent(ITEM_LABEL);
-    expect(within(dialog).getByRole('listitem')).toHaveTextContent('LOT-2026-900010');
-    expect(within(dialog).getByRole('listitem')).toHaveTextContent(
-      t.lineTable.returnQtyPair(30, UOM_LABEL),
-    );
+    const targetLine = dialog.querySelector('.info-facts dl');
+    expect(targetLine).toHaveTextContent(ITEM_LABEL);
+    expect(targetLine).toHaveTextContent('LOT-2026-900010');
+    expect(targetLine).toHaveTextContent(t.lineTable.returnQtyPair(30, UOM_LABEL));
     expect(within(dialog).getByText(t.dialog.submitNoUndoHere)).toBeInTheDocument();
     expect(within(dialog).getByText(t.dialog.submitLotHoldKept)).toBeInTheDocument();
 
@@ -3310,11 +3309,14 @@ describe('SupplierReturnScreen — 대상이 바뀔 때 두 초안', () => {
 describe('SupplierReturnScreen — 확인 창과 요청의 줄이 같다', () => {
   /** 창에 그려진 줄 문구를 차례대로 모은다. */
   /** 창의 한 줄 글자 — 품목 · LOT | 「반품 수량 N 단위」(시안 2026-11-27 · #360). */
+  /* 「반품 대상」 상자(창의 첫 상자)의 줄 하나 — 이름(위) · 값(아래) 칸 셋(품목 · 자재 LOT · 반품 수량 · 정보 표시 팝업 시안 #360). */
   const dialogLine = (item: string, lot: string, qty: string): string =>
-    `${item}${lot}${t.dialog.returnQty} ${qty}`;
+    `${t.dialog.item}${item}${t.lineTable.lot}${lot}${t.dialog.returnQty}${qty}`;
 
   const dialogLineTexts = (): string[] =>
-    [...screen.getByRole('dialog').querySelectorAll('li')].map((item) => item.textContent ?? '');
+    [
+      ...(screen.getByRole('dialog').querySelector('.info-facts')?.querySelectorAll('dl') ?? []),
+    ].map((row) => row.textContent ?? '');
 
   /** 요청 본문의 줄을 **창과 같은 규칙으로** 문구로 옮긴다 — 둘을 견줄 유일한 방법이다. */
   const requestLineTexts = (requests: RecordedRequest[]): string[] => {

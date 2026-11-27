@@ -2,6 +2,8 @@ import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { InfoFacts } from '../../patterns/info-facts';
+
 const t = messages.stockAdjust;
 
 /** 확인 창이 되보일 것 전부. **내부 번호는 하나도 담기지 않는다**(`omf-mes#44`). */
@@ -92,26 +94,25 @@ export const RegisterConfirmDialog = ({
   >
     {banner}
 
-    {/* 사실 상자 세 칸(사용자 시안 2026-11-27). 등록에 실리는 줄 수는 「ERP 송신 대상」 칸이 함께 말한다. */}
-    <dl className="confirm-facts is-stacked">
-      <div>
-        <dt>{t.dialog.reasonCode}</dt>
-        <dd>{summary.reasonName}</dd>
-      </div>
-      <div>
-        {/* 비어 있는 것이 정상이라 경고 표식을 붙이지 않고 「—」로 둔다(조심 ⑤). */}
-        <dt>{t.dialog.countRef}</dt>
-        <dd>{summary.hasCountRef ? t.source.count : t.values.empty}</dd>
-      </div>
-      <div>
-        <dt>{t.dialog.sendToErp}</dt>
-        <dd>
-          {summary.sendToErp
-            ? t.dialog.erpTarget(summary.includedCount)
-            : t.dialog.erpTargetOff(summary.includedCount)}
-        </dd>
-      </div>
-    </dl>
+    {/* 사실 상자 — 정보 표시 팝업 시안 상자(#360). 등록에 실리는 줄 수는 「ERP 송신 대상」 칸이 함께 말한다. */}
+    <InfoFacts
+      rows={[
+        [{ label: t.dialog.reasonCode, value: summary.reasonName, isKey: true }],
+        [
+          /* 비어 있는 것이 정상이라 경고 표식을 붙이지 않고 「—」로 둔다(조심 ⑤). */
+          {
+            label: t.dialog.countRef,
+            value: summary.hasCountRef ? t.source.count : t.values.empty,
+          },
+          {
+            label: t.dialog.sendToErp,
+            value: summary.sendToErp
+              ? t.dialog.erpTarget(summary.includedCount)
+              : t.dialog.erpTargetOff(summary.includedCount),
+          },
+        ],
+      ]}
+    />
 
     {/* 빠지는 줄이 있을 때만 밝힌다(사용자 시안 2026-11-27 — 「빠지는 줄은 없습니다」는 걷었다). */}
     {summary.excludedCount > 0 && (

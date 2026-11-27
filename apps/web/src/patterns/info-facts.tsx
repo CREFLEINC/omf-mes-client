@@ -42,6 +42,17 @@ export const InfoCodeName = ({ code, name }: { code: string; name?: string | nul
   </>
 );
 
+/** 한 칸 값이 두 줄일 때(예: 입하번호 + 품목) — 줄마다 한 줄, 길면 말줄임. */
+export const InfoLines = ({ lines }: { lines: ReactNode[] }) => (
+  <span className="info-fact-lines">
+    {lines.map((line, index) => (
+      <span className="info-fact-line" key={index}>
+        {line}
+      </span>
+    ))}
+  </span>
+);
+
 /** 수량 — 천 단위 쉼표 + 흐린 단위. */
 export const InfoQty = ({ value, unit }: { value: number | string; unit?: string | null }) => {
   const num = typeof value === 'number' ? value : Number(value);
@@ -82,6 +93,18 @@ export interface InfoFactsProps {
   rows: InfoFact[][];
   className?: string;
 }
+
+/**
+ * 확인 팝업의 이름 · 값 목록을 상자 두 줄로 — 첫 칸은 대상을 가리키는 핵심 값(크게), 나머지는 둘째 줄.
+ */
+export const toFactRows = (facts: readonly { label: string; value: ReactNode }[]): InfoFact[][] => {
+  const [first, ...rest] = facts;
+  if (first === undefined) return [];
+  return [
+    [{ label: first.label, value: first.value, isKey: true }],
+    rest.map(({ label, value }) => ({ label, value })),
+  ];
+};
 
 /** 상세 정보 상자 하나. */
 export const InfoFacts = ({ rows, className }: InfoFactsProps) => (

@@ -116,10 +116,10 @@ describe('SubmitConfirmDialog 보이는 것', () => {
     expect(screen.getByText(t.dialog.businessDateDerived('2026-08-11'))).toBeInTheDocument();
   });
 
-  it('빈 칸을 비워 두지 않는다', () => {
+  it('빈 칸을 비워 두지 않는다(회색 「—」)', () => {
     renderDialog();
 
-    expect(screen.getByText(t.values.empty)).toBeInTheDocument();
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
   });
 
   /** 합계만 보이면 어느 줄이 얼마인지 확인할 수 없다 — 줄마다 다시 보인다. */

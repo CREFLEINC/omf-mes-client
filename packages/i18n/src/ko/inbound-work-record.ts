@@ -163,6 +163,7 @@ export const inboundWorkRecord = {
   finalizeDialog: {
     title: '최종 마감할까요?',
     /** 사실 상자(사용자 시안 2026-11-27). */
+    item: '품목',
     receivedQty: '입하 수량',
     goodsReceivedQty: '입고 수량',
     qty: (qty: string, uom: string) => `${qty} ${uom}`,

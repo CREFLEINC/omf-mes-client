@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { InfoCodeName, InfoFacts } from '../../patterns/info-facts';
 import type { FinalizeBlocker, WorkRecordDetail, WorkRecordLot } from './forward-contract';
 import { classifyFailure, finalizeInboundLot } from './mutations';
 import { blockersText, formatQty } from './types';
@@ -91,24 +92,30 @@ export const FinalizeDialog = ({
       }
     >
       <div className="iwr-finalize-body">
-        {/* 사용자 시안 2026-11-27 — LOT 번호 / 공급사 · 품목 / 수량 사실 상자 / 경고 하나(두 문장) / 상자 밖 체크칸. */}
-        <p>
-          <strong className="iwr-code iwr-finalize-lot">{detail.inboundLotNo}</strong>
-        </p>
-        <p>
-          {detail.supplierName} <span className="iwr-code">{detail.itemCode}</span>{' '}
-          {detail.itemName}
-        </p>
-        <dl className="confirm-facts">
-          <div>
-            <dt>{tf.receivedQty}</dt>
-            <dd>{tf.qty(formatQty(detail.receivedQty), detail.uomCode)}</dd>
-          </div>
-          <div>
-            <dt>{tf.goodsReceivedQty}</dt>
-            <dd>{tf.qty(formatQty(detail.goodsReceivedQty), detail.uomCode)}</dd>
-          </div>
-        </dl>
+        {/* 확인 팝업 사실 상자 — 정보 표시 팝업 시안 상자(#360). 첫 줄 입하 LOT · 공급사 · 품목, 둘째 줄 수량. */}
+        <InfoFacts
+          rows={[
+            [
+              { label: t.list.columns.inboundLot, value: detail.inboundLotNo, isKey: true },
+              { label: t.list.columns.supplier, value: detail.supplierName },
+              {
+                label: tf.item,
+                value: <InfoCodeName code={detail.itemCode} name={detail.itemName} />,
+                isKey: true,
+              },
+            ],
+            [
+              {
+                label: tf.receivedQty,
+                value: tf.qty(formatQty(detail.receivedQty), detail.uomCode),
+              },
+              {
+                label: tf.goodsReceivedQty,
+                value: tf.qty(formatQty(detail.goodsReceivedQty), detail.uomCode),
+              },
+            ],
+          ]}
+        />
         <AlertBanner variant="warning">
           {needsAck && (
             <>

@@ -1,6 +1,7 @@
 import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { InfoFacts, InfoLong, toFactRows } from '../../patterns/info-facts';
 import { toVisibleLine } from './approval-progress-pane';
 import { toReasonLines } from './types';
 
@@ -136,15 +137,12 @@ export const SubmitConfirmDialog = ({ summary, onConfirm, onClose }: SubmitConfi
   >
     <p>{t.dialog.submitLead}</p>
 
-    <dl className="filter-bar">
-      {toRows(summary).map((row) => (
-        <div className="field-cell" key={row.key}>
-          <dt className="field-label">{row.label}</dt>
-          {/* 값이 없는 칸은 비워 두지 않는다 — 빠뜨린 것인지 없는 것인지 구분되지 않는다. */}
-          <dd>{row.value === '' ? t.values.empty : row.value}</dd>
-        </div>
-      ))}
-    </dl>
+    {/*
+     * 사실 상자 — 정보 표시 팝업 시안 상자(#360). 첫 칸(입고번호)은 크게, 비고는 긴 글이라 상자 밖 아래.
+     * 값이 없는 칸은 비워 두지 않는다 — 빠뜨린 것인지 없는 것인지 구분되지 않는다(회색 「—」).
+     */}
+    <InfoFacts rows={toFactRows(toRows(summary).filter((row) => row.key !== 'remarks'))} />
+    <InfoLong label={t.formFields.remarks} value={summary.remarks} />
 
     {/*
      * **무엇이 얼마나 나가는지를 줄마다 다시 보인다.** 합계만 보이면 어느 줄이 얼마인지

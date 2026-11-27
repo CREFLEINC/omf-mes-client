@@ -1,6 +1,8 @@
 import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { InfoFacts } from '../../patterns/info-facts';
+
 const t = messages.materialIssueRequest;
 
 /** 확인 창이 되보일 것 — 화면에 이미 있는 값만 받는다. 창이 다시 세거나 지어내지 않는다. */
@@ -51,39 +53,26 @@ export const PublishConfirmDialog = ({
       </div>
     }
   >
-    <dl className="confirm-facts is-stacked">
-      <div>
-        <dt>{t.confirm.workOrder}</dt>
-        <dd>{summary.workOrderNo}</dd>
-      </div>
-      {summary.warehouse !== null && (
-        <div>
-          <dt>{t.confirm.warehouse}</dt>
-          <dd>{summary.warehouse}</dd>
-        </div>
-      )}
-      {summary.sourceWarehouse !== null && (
-        <div>
-          <dt>{t.lineTable.sourceWarehouse}</dt>
-          <dd>{summary.sourceWarehouse}</dd>
-        </div>
-      )}
-      {summary.destination !== null && (
-        <div>
-          <dt>{t.confirm.destination}</dt>
-          <dd>{summary.destination}</dd>
-        </div>
-      )}
-      {summary.requiredAt !== null && (
-        <div>
-          <dt>{t.confirm.requiredAt}</dt>
-          <dd>{summary.requiredAt}</dd>
-        </div>
-      )}
-      <div>
-        <dt>{t.confirm.lines}</dt>
-        <dd>{t.confirm.lineCount(summary.lineCount)}</dd>
-      </div>
-    </dl>
+    {/* 사실 상자 — 정보 표시 팝업 시안 상자(#360). 고르지 않은 칸은 내지 않는다(종전과 같다). */}
+    <InfoFacts
+      rows={[
+        [{ label: t.confirm.workOrder, value: summary.workOrderNo, isKey: true }],
+        [
+          ...(summary.warehouse !== null
+            ? [{ label: t.confirm.warehouse, value: summary.warehouse }]
+            : []),
+          ...(summary.sourceWarehouse !== null
+            ? [{ label: t.lineTable.sourceWarehouse, value: summary.sourceWarehouse }]
+            : []),
+          ...(summary.destination !== null
+            ? [{ label: t.confirm.destination, value: summary.destination }]
+            : []),
+          ...(summary.requiredAt !== null
+            ? [{ label: t.confirm.requiredAt, value: summary.requiredAt }]
+            : []),
+          { label: t.confirm.lines, value: t.confirm.lineCount(summary.lineCount) },
+        ],
+      ]}
+    />
   </Dialog>
 );

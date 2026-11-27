@@ -1,6 +1,8 @@
 import { AlertBanner, Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { InfoFacts, InfoGroupTitle, InfoLong } from '../../patterns/info-facts';
+
 const t = messages.supplierReturn;
 
 /**
@@ -56,7 +58,7 @@ interface SummaryRow {
 
 const yesNo = (value: boolean): string => (value ? t.values.yes : t.values.no);
 
-/** 2열 작은 상자 넷(사용자 시안 2026-11-27 · #360). */
+/** 사실 상자 넷(정보 표시 팝업 시안 상자 · #360). */
 const toFacts = (summary: SubmitSummary): SummaryRow[] => [
   { key: 'supplier', label: t.fields.supplier, value: summary.supplierName },
   { key: 'reason', label: t.fields.reason, value: summary.reasonName },
@@ -90,9 +92,6 @@ const toDetails = (summary: SubmitSummary): SummaryRow[] => [
   },
   { key: 'remarks', label: t.fields.remarks, value: summary.remarks },
 ];
-
-/* 값이 없는 칸은 비워 두지 않는다 — 빠뜨린 것인지 없는 것인지 구분되지 않는다. */
-const shown = (value: string): string => (value === '' ? t.values.empty : value);
 
 /**
  * 반품 처리 확인 — **되돌릴 수 없는 쓰기 앞의 마지막 층이다.**
@@ -138,54 +137,32 @@ export const SubmitConfirmDialog = ({ summary, onConfirm, onClose }: SubmitConfi
     }
   >
     {/*
-     * 사용자 시안 2026-11-27(#360) — 맨 위 「반품 대상 N건」 상자(줄마다 품목 · LOT | 반품 수량), 그 아래 2열 작은
-     * 상자 넷, 나머지는 접힌 「처리 상세」, 주황 경고 세 줄. **무엇이 얼마나 나가는지 줄마다 다시 보인다.**
+     * 정보 표시 팝업 시안 상자(#360) — 맨 위 「반품 대상 N건」 상자(줄마다 품목 · 자재 LOT · 반품 수량), 그 아래 사실
+     * 상자 하나, 나머지는 접힌 「처리 상세」, 주황 경고 세 줄. **무엇이 얼마나 나가는지 줄마다 다시 보인다.**
      */}
     <div className="sr-confirm-body">
-      <section className="sr-confirm-target" aria-label={t.dialog.targetHead(summary.lines.length)}>
-        <p className="sr-confirm-target-head">{t.dialog.targetHead(summary.lines.length)}</p>
-        <ul className="sr-confirm-lines">
-          {/*
-           * `key`가 사실상 배열 인덱스다(순번이 그 자리에서 매겨진다) — 줄이 순수 텍스트이고 제자리에서
-           * 재정렬되지 않는다. 내부 번호를 키로 쓰지 않기 위한 것이다(#44).
-           */}
-          {summary.lines.map((line) => (
-            <li key={line.ordinal}>
-              <span className="sr-confirm-line-what">
-                <strong>{line.item}</strong>
-                <span className="sr-confirm-line-lot">{line.lot}</span>
-              </span>
-              <span className="sr-confirm-line-qty">
-                <span className="sr-confirm-line-qty-label">{t.dialog.returnQty}</span>{' '}
-                <strong>{line.qty}</strong>
-              </span>
-            </li>
-          ))}
-        </ul>
+      <section aria-label={t.dialog.targetHead(summary.lines.length)}>
+        <InfoGroupTitle>{t.dialog.targetHead(summary.lines.length)}</InfoGroupTitle>
+        {/* 줄은 순번 차례 그대로 — 내부 번호를 쓰지 않는다(#44). */}
+        <InfoFacts
+          rows={summary.lines.map((line) => [
+            { label: t.dialog.item, value: line.item, isKey: true },
+            { label: t.lineTable.lot, value: line.lot },
+            { label: t.dialog.returnQty, value: line.qty, isKey: true },
+          ])}
+        />
       </section>
 
-      <dl className="sr-confirm-facts">
-        {toFacts(summary).map((row) => (
-          <div key={row.key}>
-            <dt>{row.label}</dt>
-            <dd>{shown(row.value)}</dd>
-          </div>
-        ))}
-      </dl>
+      {/* 값이 없는 칸은 비워 두지 않는다 — 빠뜨린 것인지 없는 것인지 구분되지 않는다(회색 「—」). */}
+      <InfoFacts rows={[toFacts(summary)]} />
 
       <details className="sr-confirm-details">
         <summary>
           {t.dialog.details}
           <Icon name="expand_more" size={20} aria-hidden />
         </summary>
-        <dl>
-          {toDetails(summary).map((row) => (
-            <div key={row.key}>
-              <dt>{row.label}</dt>
-              <dd>{shown(row.value)}</dd>
-            </div>
-          ))}
-        </dl>
+        <InfoFacts rows={[toDetails(summary).filter((row) => row.key !== 'remarks')]} />
+        <InfoLong label={t.fields.remarks} value={summary.remarks} />
       </details>
 
       {summary.hasUnknownOnHand && <p className="field-note">{t.dialog.submitOnHandUnknown}</p>}

@@ -163,6 +163,7 @@ export const supplierReturn: Translated<typeof ko.supplierReturn> = {
   dialog: {
     submitTitle: 'Xử lý trả hàng chứ?',
     targetHead: (count: number): string => `Đối tượng trả hàng ${String(count)} mục`,
+    item: 'Mặt hàng',
     returnQty: 'Số lượng trả',
     erpPlanned: 'Sẽ gửi',
     erpOff: 'Không gửi',

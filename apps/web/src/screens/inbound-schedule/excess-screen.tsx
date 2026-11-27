@@ -14,6 +14,7 @@ import { Link, useSearchParams } from 'react-router';
 
 import { BoardFrame } from '../../patterns/board-frame';
 import { BoardTable } from '../../patterns/board-table';
+import { InfoCodeName, InfoFacts, InfoLines } from '../../patterns/info-facts';
 import { SaveErrorBanner } from '../../patterns/master';
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import { toApiError } from '../../patterns/request';
@@ -532,24 +533,38 @@ export const InboundExcessScreen = () => {
           </>
         }
       >
-        <dl className="confirm-facts is-stacked">
-          <div>
-            <dt>{t.linkDialog.receiptLine}</dt>
-            <dd>
-              {selectedExcess.inboundReceiptNo}
-              <br />
-              {selectedExcess.itemCode} {selectedExcess.itemName}
-            </dd>
-          </div>
-          <div>
-            <dt>{t.linkDialog.order}</dt>
-            <dd>{t.orderLine(selectedCandidate.purchaseOrderNo, selectedCandidate.lineNo)}</dd>
-          </div>
-          <div>
-            <dt>{t.linkDialog.qty}</dt>
-            <dd>{qtyWithUom(selectedExcess.unallocatedQty, selectedExcess.uomCode)}</dd>
-          </div>
-        </dl>
+        <InfoFacts
+          rows={[
+            [
+              {
+                label: t.linkDialog.receiptLine,
+                isKey: true,
+                value: (
+                  <InfoLines
+                    lines={[
+                      selectedExcess.inboundReceiptNo,
+                      <InfoCodeName
+                        key="item"
+                        code={selectedExcess.itemCode}
+                        name={selectedExcess.itemName}
+                      />,
+                    ]}
+                  />
+                ),
+              },
+            ],
+            [
+              {
+                label: t.linkDialog.order,
+                value: t.orderLine(selectedCandidate.purchaseOrderNo, selectedCandidate.lineNo),
+              },
+              {
+                label: t.linkDialog.qty,
+                value: qtyWithUom(selectedExcess.unallocatedQty, selectedExcess.uomCode),
+              },
+            ],
+          ]}
+        />
       </Dialog>
     ) : null;
 

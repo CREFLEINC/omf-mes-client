@@ -143,6 +143,7 @@ export const inboundWorkRecord: Translated<typeof ko.inboundWorkRecord> = {
   },
   finalizeDialog: {
     title: 'Chốt cuối cùng?',
+    item: 'Mặt hàng',
     receivedQty: 'SL nhập hàng',
     goodsReceivedQty: 'SL nhập kho',
     qty: (qty: string, uom: string) => `${qty} ${uom}`,

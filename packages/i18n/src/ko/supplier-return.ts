@@ -286,6 +286,7 @@ export const supplierReturn = {
     submitTitle: '반품을 처리할까요?',
     /** 맨 위 상자 머리. */
     targetHead: (count: number): string => `반품 대상 ${String(count)}건`,
+    item: '품목',
     returnQty: '반품 수량',
     /** 2열 작은 상자의 ERP 송신 값. */
     erpPlanned: '송신 예정',

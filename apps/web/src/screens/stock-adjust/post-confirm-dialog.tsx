@@ -2,6 +2,7 @@ import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { InfoFacts } from '../../patterns/info-facts';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.stockAdjust;
@@ -91,22 +92,26 @@ export const PostConfirmDialog = ({
   >
     {banner}
 
-    {/* 사실 상자 세 칸 — 등록 확인 창과 같은 짜임(#360). */}
-    <dl className="confirm-facts is-stacked">
-      <div>
-        <dt>{t.result.inventoryAdjustmentNo}</dt>
-        <dd>{summary.inventoryAdjustmentNo}</dd>
-      </div>
-      <div>
-        <dt>{t.post.businessDate}</dt>
-        <dd>{summary.businessDate}</dd>
-      </div>
-      <div>
-        <dt>{t.post.occurredAt}</dt>
-        {/* 입력값(`yyyy-MM-ddTHH:mm`)을 `yyyy-MM-dd HH:mm`로 보인다(⭐ 사용자 지시 2026-10-19). offset 이 없어 글자 그대로. */}
-        <dd>{formatPlantDateTime(summary.occurredAtLocal) ?? summary.occurredAtLocal}</dd>
-      </div>
-    </dl>
+    {/* 사실 상자 — 정보 표시 팝업 시안 상자, 등록 확인 창과 같은 짜임(#360). */}
+    <InfoFacts
+      rows={[
+        [
+          {
+            label: t.result.inventoryAdjustmentNo,
+            value: summary.inventoryAdjustmentNo,
+            isKey: true,
+          },
+        ],
+        [
+          { label: t.post.businessDate, value: summary.businessDate },
+          /* 입력값(`yyyy-MM-ddTHH:mm`)을 `yyyy-MM-dd HH:mm`로 보인다(⭐ 사용자 지시 2026-10-19). offset 이 없어 글자 그대로. */
+          {
+            label: t.post.occurredAt,
+            value: formatPlantDateTime(summary.occurredAtLocal) ?? summary.occurredAtLocal,
+          },
+        ],
+      ]}
+    />
 
     {/* 갈린 날짜는 **막지 않고 밝힌다** — 뜻한 값인지 실수인지는 사용자가 안다. */}
     {summary.isBusinessDateApart && <p className="field-note">{t.dialog.postDatesApart}</p>}

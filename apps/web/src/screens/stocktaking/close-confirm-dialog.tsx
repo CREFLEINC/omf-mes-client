@@ -1,6 +1,7 @@
 import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { InfoFacts, toFactRows } from '../../patterns/info-facts';
 import type { CountSummaryView } from './types';
 
 const t = messages.stocktaking;
@@ -108,14 +109,8 @@ export const CloseConfirmDialog = ({ summary, onConfirm, onClose }: CloseConfirm
   >
     <p>{t.dialog.closeLead}</p>
 
-    <dl className="filter-bar">
-      {toRows(summary).map((row) => (
-        <div className="field-cell" key={row.key}>
-          <dt className="field-label">{row.label}</dt>
-          <dd>{row.value}</dd>
-        </div>
-      ))}
-    </dl>
+    {/* 사실 상자 — 정보 표시 팝업 시안 상자(#360). 첫 칸은 크게(핵심 값), 나머지는 둘째 줄. */}
+    <InfoFacts rows={toFactRows(toRows(summary))} />
 
     <p>{t.dialog.closeIrreversible}</p>
   </Dialog>

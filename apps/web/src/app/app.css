@@ -3266,8 +3266,8 @@ dialog.routing-history-dialog {
 }
 
 /*
- * 생산계획 확정 확인(확인 팝업 시안 · #360) — ERP W/O 한 줄, 사실 상자(여러 건이면 표), 생길 작업지시 문장, 파란 안내.
- * 번호 · 날짜 · 수량은 줄바꿈하지 않는다.
+ * 생산계획 확정 확인(확인 팝업 시안 · #360) — 사실 상자(여러 건이면 상자 + 표 · `.info-facts` · `.info-table`),
+ * 생길 작업지시 문장, 파란 안내.
  */
 .plan-confirm-body {
   display: grid;
@@ -3277,54 +3277,6 @@ dialog.routing-history-dialog {
 
 .plan-confirm-body > p {
   margin: 0;
-}
-
-.plan-confirm-order {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-3);
-}
-
-.plan-confirm-order > span {
-  color: var(--on-surface-muted);
-  font: var(--type-body-sm);
-}
-
-.plan-confirm-body .confirm-facts dd {
-  white-space: nowrap;
-}
-
-.plan-confirm-table {
-  max-width: 100%;
-  max-height: 18rem;
-  overflow: auto;
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-}
-
-.plan-confirm-table table {
-  width: 100%;
-  border-collapse: collapse;
-  font: var(--type-body-sm);
-}
-
-.plan-confirm-table th,
-.plan-confirm-table td {
-  padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--outline-variant);
-  text-align: center;
-}
-
-.plan-confirm-table th {
-  position: sticky;
-  top: 0;
-  background: var(--surface-container);
-  white-space: nowrap;
-}
-
-.plan-confirm-table tr:last-child > td {
-  border-bottom: 0;
 }
 
 /*
@@ -37490,57 +37442,6 @@ body:has(
   margin-inline-start: auto;
 }
 
-.iwr-finalize-body > p {
-  margin: 0;
-}
-
-/* 최종 마감 확인 — 첫 줄 입하 LOT 번호(굵은 고정폭), 아래 줄 공급사 · 품목(사용자 시안 2026-11-27 · #360). */
-.iwr-finalize-lot {
-  font-weight: 700;
-}
-
-/*
- * 확인 팝업의 사실 상자(사용자 시안 2026-11-27 · #360 — 최종 마감 · 재고 조정 등록 · 초과분 발주 연결): 둥근 테두리
- * 상자 안에 칸이 나란히, 칸 사이 세로 구분선, 이름은 보조색 · 값은 굵게. 줄 첫 칸의 세로선은 상자 밖(-1px)으로 숨긴다.
- * `.is-stacked` 는 이름 위 · 값 아래.
- */
-.confirm-facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) 0;
-  margin: 0;
-  padding: var(--space-3) var(--space-4) var(--space-3) 0;
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.confirm-facts > div {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  min-width: 0;
-  margin-left: -1px;
-  padding: 0 var(--space-4);
-  border-left: 1px solid var(--outline-variant);
-}
-
-.confirm-facts.is-stacked > div {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-1);
-}
-
-.confirm-facts dt {
-  color: var(--on-surface-muted);
-  font: var(--type-body-sm);
-}
-
-.confirm-facts dd {
-  margin: 0;
-  font-weight: 700;
-}
-
 /* 확인 팝업 단추 줄 — 왼쪽 끝 경고 한 줄(경고 아이콘 + 주황 글자), 오른쪽 단추. */
 .confirm-foot {
   display: flex;
@@ -37566,89 +37467,13 @@ body:has(
 }
 
 /*
- * 공급사 반품 처리 확인(사용자 시안 2026-11-27 · #360): 맨 위 「반품 대상 N건」 상자(줄마다 품목 · LOT | 세로선 |
- * 반품 수량), 그 아래 2열 작은 상자 넷, 접힌 「처리 상세」, 주황 경고.
+ * 공급사 반품 처리 확인(#360): 「반품 대상 N건」 상자 · 사실 상자(정보 표시 팝업 시안 `.info-facts`), 접힌 「처리 상세」,
+ * 주황 경고.
  */
 .sr-confirm-body {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-}
-
-.sr-confirm-target {
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.sr-confirm-target-head {
-  margin: 0;
-  padding: var(--space-2) var(--space-4);
-  background: var(--surface-container);
-  font-weight: 700;
-}
-
-.sr-confirm-lines {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.sr-confirm-lines > li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  border-top: 1px solid var(--outline-variant);
-}
-
-.sr-confirm-line-what {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.sr-confirm-line-lot,
-.sr-confirm-line-qty-label {
-  color: var(--on-surface-muted);
-  font: var(--type-body-sm);
-}
-
-.sr-confirm-line-qty {
-  flex: 0 0 auto;
-  padding-left: var(--space-4);
-  border-left: 1px solid var(--outline-variant);
-  white-space: nowrap;
-}
-
-.sr-confirm-facts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
-  margin: 0;
-}
-
-.sr-confirm-facts > div {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-}
-
-.sr-confirm-facts dt,
-.sr-confirm-details dt {
-  color: var(--on-surface-muted);
-  font: var(--type-body-sm);
-}
-
-.sr-confirm-facts dd {
-  margin: 0;
-  font-weight: 700;
-  overflow-wrap: anywhere;
 }
 
 .sr-confirm-details > summary {
@@ -37668,19 +37493,8 @@ body:has(
   transform: rotate(180deg);
 }
 
-.sr-confirm-details dl {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: var(--space-1) var(--space-4);
-  margin: var(--space-2) 0 0;
-}
-
-.sr-confirm-details dl > div {
-  display: contents;
-}
-
-.sr-confirm-details dd {
-  margin: 0;
+.sr-confirm-details > .info-facts {
+  margin-top: var(--space-2);
 }
 
 /* 분배 조건과 결과는 같은 영역에서 전환하고 선택한 조건만 편집한다. */
@@ -43279,13 +43093,13 @@ html:lang(vi) {
   letter-spacing: var(--type-title-sm-tracking);
 }
 
-.info-fact-value > .parts-iqc-fact-sub,
+.info-fact-value .parts-iqc-fact-sub,
 .info-fact-unit {
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
 }
 
-.info-fact-value > .parts-iqc-fact-sub {
+.info-fact-value .parts-iqc-fact-sub {
   color: var(--on-surface-variant);
 }
 
@@ -43296,6 +43110,22 @@ html:lang(vi) {
 
 .info-fact-empty {
   color: var(--on-surface-muted);
+}
+
+/* 한 칸 값이 두 줄(예: 입하번호 + 품목) — 줄마다 한 줄, 길면 말줄임. */
+.info-fact-lines {
+  display: grid;
+  min-width: 0;
+}
+
+.info-fact-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /* 긴 글(비고 등) — 상자 밖 아래에 이름 + 글, 줄바꿈 그대로. */

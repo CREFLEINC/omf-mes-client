@@ -83,10 +83,10 @@ describe('SubmitConfirmDialog — 반품 처리 확인', () => {
   });
 
   /* 값이 없는 칸을 비워 두지 않는다 — 빠뜨린 것인지 없는 것인지 구분되지 않는다. */
-  it('비고가 비어 있으면 없음이라고 적는다', () => {
+  it('비고가 비어 있으면 회색 「—」로 적는다', () => {
     renderDialog();
 
-    expect(within(dialog()).getByText(t.values.empty)).toBeInTheDocument();
+    expect(within(dialog()).getAllByText('—').length).toBeGreaterThan(0);
   });
 
   /*
@@ -104,10 +104,10 @@ describe('SubmitConfirmDialog — 반품 처리 확인', () => {
     const body = dialog();
 
     expect(within(body).getByText(t.dialog.targetHead(2))).toBeInTheDocument();
-    const lines = within(body).getAllByRole('listitem');
+    const lines = [...(body.querySelector('.info-facts')?.querySelectorAll('dl') ?? [])];
     expect(lines[0]).toHaveTextContent(ITEM_LABEL);
     expect(lines[0]).toHaveTextContent(LOT_LABEL);
-    expect(lines[0]).toHaveTextContent(`${t.dialog.returnQty} 30 SAMPLE-EA`);
+    expect(lines[0]).toHaveTextContent(`${t.dialog.returnQty}30 SAMPLE-EA`);
     expect(lines[1]).toHaveTextContent('LOT-2026-900011');
     expect(lines[1]).toHaveTextContent('5 SAMPLE-EA');
   });
