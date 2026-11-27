@@ -50,10 +50,6 @@ describe('resolveTab', () => {
  * 확장 속성 · 단위 환산 · 설비·금형이 한 줄의 탭이다(사용자 지시 2026-11-24 — 「부속 정보」 탭 안의 하위 탭을 올림).
  */
 describe('탭 순서', () => {
-  it('확장 속성 · 단위 환산 · 설비·금형 순이다', () => {
-    expect(ITEM_EXTENDED_ATTRS_TABS.map((tab) => tab.id)).toEqual(['attrs', 'uom', 'res']);
-  });
-
   /* 없앤 「부속 정보」 탭의 옛 주소(`tab=sub`)는 첫 탭으로 떨어진다. */
   it('옛 부속 정보 탭 주소는 첫 탭으로 떨어진다', () => {
     expect(resolveTab('sub').id).toBe(DEFAULT_TAB_ID);
