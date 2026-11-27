@@ -254,7 +254,7 @@ const ReviewPlan = ({
                         )?.operationSeq ?? '확인 필요')
                       : '조회 중'}
                   </td>
-                  <td>{line.workOrder.workOrderNo}</td>
+                  <td className="nowrap-cell">{line.workOrder.workOrderNo}</td>
                   <td>{line.workOrder.operationName}</td>
                   <td>
                     {formatQty(line.workOrder.orderQty)} {uomLabelOf(line.workOrder.uomId)}

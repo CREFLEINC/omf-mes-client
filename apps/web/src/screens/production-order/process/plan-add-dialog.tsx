@@ -9,7 +9,6 @@ import {
   validateProductionPlanDraft,
   type ProductionPlanDraft,
 } from '../../production-plan/editor-model';
-import { DistributionLinePicker } from './distribution-line-picker';
 import { formatQty } from './process-model';
 import type { PlanLine } from './plan-step';
 export interface PlanAddTarget {
@@ -34,6 +33,7 @@ export const PlanAddDialog = ({
   onAdd: (id: string, draft: ProductionPlanDraft) => void;
 }) => {
   const validationId = useId();
+  const lineId = useId();
   const initial =
     targets.find((target) => target.id === initialOrder) ??
     (targets.length === 1 ? targets[0] : undefined);
@@ -184,12 +184,19 @@ export const PlanAddDialog = ({
             }
           />
           <div className="field-cell erp-wo-plan-add-line">
-            <span className="field-label">생산 라인</span>
-            <DistributionLinePicker
-              combined
-              label="추가할 계획 생산 라인"
-              lines={target?.lines ?? []}
-              value={draft.plannedLineId}
+            <label className="field-label" htmlFor={lineId}>
+              생산 라인
+            </label>
+            {/* 찾기 창 대신 펼침 선택칸(사용자 지시 · #360) — 선택지는 종전 찾기 창과 같은 이 ERP W/O 의 허용 라인. */}
+            <Select
+              id={lineId}
+              aria-label="추가할 계획 생산 라인"
+              placeholder="생산 라인을 선택하세요"
+              options={(target?.lines ?? []).map((line) => ({
+                value: String(line.id),
+                label: `${line.name} (${line.code})`,
+              }))}
+              value={draft.plannedLineId === '' ? null : draft.plannedLineId}
               disabled={!target}
               onChange={(plannedLineId) => setDraft((current) => ({ ...current, plannedLineId }))}
             />

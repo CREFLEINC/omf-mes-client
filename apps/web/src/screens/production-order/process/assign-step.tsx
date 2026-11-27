@@ -69,7 +69,8 @@ export const AssignStep = ({
       header: t.columns.operation,
       render: (row) => (
         <span className="erp-wo-assign-target">
-          <span className="erp-wo-complete-value" title={row.workOrderNo}>
+          {/* 작업지시 번호는 줄바꿈 · 말줄임 없이(사용자 지시 · #360). */}
+          <span className="nowrap-cell" title={row.workOrderNo}>
             {row.workOrderNo}
           </span>
           <small>{row.operationName}</small>

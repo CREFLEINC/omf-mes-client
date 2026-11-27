@@ -3,6 +3,20 @@
  *
  * 부품은 특정 화면을 모르므로 업무 이름은 부르는 화면이 넘긴다. 여기에는 부품 자신이 쓰는 말만 둔다.
  */
+/**
+ * 받침이 있으면 「을」, 없으면 「를」 — 칸 안 흐린 문구에 붙인다. 판단은 apps/web `patterns/josa` 와 같다
+ * (영문 대문자 L·R·M·N, 소문자 l·m·n·g·k·t·p, 숫자 0·1·3·6·7·8 은 받침 있음).
+ */
+const objectJosa = (word: string): string => {
+  const last = word
+    .trim()
+    .replace(/[」』)\]"'”’》〉]+$/u, '')
+    .slice(-1);
+  const code = last.charCodeAt(0) - 0xac00;
+  const hasFinal = code >= 0 && code <= 11171 ? code % 28 !== 0 : /[013678LRMNlmngktp]/.test(last);
+  return hasFinal ? '을' : '를';
+};
+
 export const screenPatterns = {
   /** C-8 페이지 이동 */
   pageNav: {
@@ -57,18 +71,18 @@ export const screenPatterns = {
   },
   /** C-12 참조 선택 팝업 */
   referencePicker: {
-    open: '눌러서 찾기',
-    select: (label: string): string => `${label} 선택`,
+    open: '눌러서 검색',
+    select: (label: string): string => `${label}${objectJosa(label)} 선택하세요`,
     clear: (label: string): string => `${label} 지우기`,
     keyword: '검색어',
-    keywordPlaceholder: '코드나 이름',
-    search: '찾기',
+    keywordPlaceholder: '코드나 이름을 입력하세요',
+    search: '검색',
     pick: '선택',
     pickReason: '목록에서 한 건을 고르세요',
-    searching: '찾는 중입니다',
+    searching: '검색 중입니다',
     empty: (term: string): string =>
       term === '' ? '결과가 없습니다' : `「${term}」 결과가 없습니다`,
-    failed: '목록을 불러오지 못했습니다. 다시 찾으세요.',
+    failed: '목록을 불러오지 못했습니다. 다시 검색하세요.',
   },
   /** C-12 일시 입력 */
   dateTimeField: {

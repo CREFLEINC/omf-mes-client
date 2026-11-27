@@ -3341,6 +3341,68 @@ dialog.routing-history-dialog {
 }
 
 /*
+ * 생산계획 확정 확인(확인 팝업 시안 · #360) — ERP W/O 한 줄, 사실 상자(여러 건이면 표), 생길 작업지시 문장, 파란 안내.
+ * 번호 · 날짜 · 수량은 줄바꿈하지 않는다.
+ */
+.plan-confirm-body {
+  display: grid;
+  gap: var(--space-3);
+  text-align: start;
+}
+
+.plan-confirm-body > p {
+  margin: 0;
+}
+
+.plan-confirm-order {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.plan-confirm-order > span {
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+}
+
+.plan-confirm-body .confirm-facts dd {
+  white-space: nowrap;
+}
+
+.plan-confirm-table {
+  max-width: 100%;
+  max-height: 18rem;
+  overflow: auto;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.plan-confirm-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--type-body-sm);
+}
+
+.plan-confirm-table th,
+.plan-confirm-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+  text-align: center;
+}
+
+.plan-confirm-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-container);
+  white-space: nowrap;
+}
+
+.plan-confirm-table tr:last-child > td {
+  border-bottom: 0;
+}
+
+/*
  * 줄 오류 안내 — 표 아래에 쌓인다. 비어 있으면 아예 없앤다(display:none) — 구획이 grid 라
  * 빈 상자만 남겨도 간격이 한 칸 더 생긴다(사용자 지시 2026-09-21).
  */
@@ -23989,6 +24051,11 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   gap: var(--space-3);
 }
 
+/* 생산 라인 선택 팝업 — 라인 이름이 길어 넓게(사용자 지시 · #360). */
+dialog.reference-picker-wide {
+  --dialog-max-lg: 60rem;
+}
+
 .reference-picker-search {
   display: flex;
   align-items: flex-start;
@@ -24064,6 +24131,12 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 .filter-bar.erp-wo-filter-bar > .filter-field-md {
   flex: 1 1 200px;
   max-width: 240px;
+}
+
+/* 번호 검색 — 흐린 글자 「ERP W/O 번호를 입력하세요」가 다 보이는 폭(#360). */
+.filter-bar.erp-wo-filter-bar > .filter-field-md.erp-wo-filter-q {
+  flex-basis: 16.5rem;
+  max-width: 16.5rem;
 }
 
 /* 접힌 칸과 접힌 조건 칩은 조건 줄과 같은 간격으로 그 아래에 놓인다. */
