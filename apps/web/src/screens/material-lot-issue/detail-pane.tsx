@@ -19,6 +19,7 @@ import {
 } from '../../patterns/material-lot-precreate';
 import { formatBaseQty, formatPackage } from '../../patterns/package-qty';
 import { PageNav } from '../../patterns/page-nav';
+import { pageSizesWith } from '../../patterns/page-nav/page-size-param';
 import { ApiRequestError } from '../../patterns/request';
 import { PairDefaultsText, storageText } from './defaults-text';
 import { useVoidLots } from './mutations';
@@ -67,6 +68,12 @@ export const DetailPane = ({
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<MaterialLotTab>('UNPRINTED');
   const [page, setPage] = useState(1);
+  /*
+   * 쪽 크기(10 · 20 · 50 · #360) — 미출력 탭은 늘 10건이다. 서버가 미출력을 「이 쪽까지 모자란 만큼(page×size)」 새로 만들어
+   * 크기를 키우면 LOT 이 한꺼번에 더 만들어진다(업무 데이터가 바뀐다). 다른 탭은 읽기만 해서 고를 수 있다.
+   */
+  const [chosenSize, setChosenSize] = useState(DETAIL_PAGE_SIZE);
+  const pageSize = tab === 'UNPRINTED' ? DETAIL_PAGE_SIZE : chosenSize;
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
   const [confirming, setConfirming] = useState(false);
   const [revising, setRevising] = useState<Lot | null>(null);
@@ -76,7 +83,7 @@ export const DetailPane = ({
     { plantId, supplierId: group.supplierId, itemId: group.itemId },
     tab,
     page,
-    DETAIL_PAGE_SIZE,
+    pageSize,
   );
   const rows = lots.data?.items ?? [];
   const generation = tab === 'UNPRINTED' ? (lots.data?.generation ?? null) : null;
@@ -365,8 +372,17 @@ export const DetailPane = ({
                     ) : null}
                     {/* 총 건수는 쪽 넘김(C-8)이 말한다 — 미출력은 그 안에 아직 만들지 않은 몫이 든다. */}
                     <PageNav
-                      meta={{ page, size: DETAIL_PAGE_SIZE, total }}
+                      meta={{ page, size: pageSize, total }}
+                      sizes={pageSizesWith(DETAIL_PAGE_SIZE)}
                       onChangePage={setPage}
+                      onChangeSize={
+                        tab === 'UNPRINTED'
+                          ? undefined
+                          : (next) => {
+                              setChosenSize(next);
+                              setPage(1);
+                            }
+                      }
                     />
                   </div>
                 )}
