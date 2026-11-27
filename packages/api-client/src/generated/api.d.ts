@@ -57699,7 +57699,7 @@ export interface components {
        * Format: int64
        * @example 1001
        */
-      destinationLocationId: number;
+      destinationLocationId: number | null;
       /**
        * Format: date-time
        * @example 2026-08-06T09:12:00+09:00
@@ -58855,7 +58855,7 @@ export interface components {
        * Format: int64
        * @example 1001
        */
-      destinationLocationId: number;
+      destinationLocationId: number | null;
       /**
        * Format: date-time
        * @example 2026-08-06T09:12:00+09:00
@@ -58891,7 +58891,7 @@ export interface components {
        * @description 창고 보충 출고(workOrderId 없음)는 출고가 실은 도착 위치와 같아야 한다(아니면 400 INVALID). W/O 출고는 대조하지 않는다(지금 동작 그대로). 근거: 피처 004 생산 창고 보충 G2 보완 · omf-all-around#230
        * @example 1001
        */
-      destinationLocationId: number;
+      destinationLocationId?: number;
       /**
        * Format: date-time
        * @example 2026-08-06T09:12:00+09:00

@@ -90,7 +90,6 @@ export const judgeRelease = (
 ): ReleaseVerdict => {
   if (
     fact.productionLineId === null ||
-    fact.defaultWipLocationId === null ||
     fact.defaultFgLocationId === null
   ) {
     return { ready: false, reason: t.setupMissing };

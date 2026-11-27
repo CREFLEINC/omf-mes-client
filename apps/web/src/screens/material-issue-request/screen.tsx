@@ -560,9 +560,7 @@ export const MaterialIssueRequestScreen = () => {
       shortage: shortageLines,
       ...(usesProductionWarehouses
         ? {
-            /* 사용자가 고르지 않은 입고지는 보내지 않는다 — 서버 기본값(라인 생산 현장)을 탄다(G2 12). */
-            destinationLocationId:
-              touched.destinationLocationId === true ? form.destinationLocationId : '',
+            destinationLocationId: '',
             sourceWarehouseId: form.sourceWarehouseId,
             destinationOptional: true,
             acceptPlannedOverride,

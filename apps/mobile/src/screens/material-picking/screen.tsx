@@ -772,7 +772,7 @@ export const MaterialPickingScreen = () => {
               )}
             </p>
             {/* 집은 것을 어디로 가져가는가. 말하지 않으면 그 자리가 사람의 기억에만 남는다. */}
-            {destination.isPending && request.data !== undefined ? (
+            {destination.isPending && request.data?.destinationLocationId != null ? (
               <p role="status">{t.orders.destinationLoading}</p>
             ) : null}
             {request.isError || destination.isError ? (
@@ -789,6 +789,7 @@ export const MaterialPickingScreen = () => {
                 )}
               </p>
             ) : null}
+            {request.data?.destinationLocationId === null ? <p>{t.orders.directIssue}</p> : null}
             {destination.data === undefined ? null : (
               <p>
                 {t.orders.destination(

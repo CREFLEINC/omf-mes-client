@@ -166,11 +166,15 @@ describe('작업 목록', () => {
    * Q21 피처 010 — 출하는 PDA 피킹 → OQC → POP 출하 완료로 끝나 재포장(포장 수정)을 쓰지 않는다.
    * 제품 출하 업무에서 감추되 라우트는 남긴다(배포 전 진행분).
    */
-  it('입하 오류 등록 · 재생재 등록과 생산 현장 작업은 목록에 없다', () => {
+  it('창고 작업 목록에서 생산창고 입고를 열 수 있다', () => {
+    render(<Shell path="/screens/warehouse"><HomeRoutes /></Shell>);
+    expect(screen.getByRole('link', { name: '생산창고 입고' })).toHaveAttribute('href', '/shopfloor-receipt');
+  });
+
+  it('입하 오류 등록과 재생재 등록 등 숨긴 작업은 목록에 없다', () => {
     const hidden = [
       '/inbound-variance',
       '/recycle-entry',
-      '/shopfloor-receipt',
       '/repair-roundtrip',
       '/equipment-inspection',
       '/equipment-failure',
@@ -252,7 +256,7 @@ describe('작업 목록', () => {
         .map((link) => link.getAttribute('href')),
     ).toEqual(['/screens/inbound', '/screens/warehouse', '/screens/shipping']);
     /* 창고 7 — 피처 011 이 적치 기록(M-01-14)을 더했다. */
-    expect(screen.getByRole('link', { name: /^창고/ })).toHaveTextContent('작업 6개');
+    expect(screen.getByRole('link', { name: /^창고/ })).toHaveTextContent('작업 7개');
   });
 
   it('업무를 누르면 그 업무의 작업들이 선다', async () => {
@@ -270,7 +274,7 @@ describe('작업 목록', () => {
       'href',
       '/putaway',
     );
-    expect(within(list).getAllByRole('link')).toHaveLength(6);
+    expect(within(list).getAllByRole('link')).toHaveLength(7);
   });
 
   it('FR-003 · D-6 창고 업무에 「적치 기록」이 적치·입고 완료 바로 다음에 나타난다', async () => {
