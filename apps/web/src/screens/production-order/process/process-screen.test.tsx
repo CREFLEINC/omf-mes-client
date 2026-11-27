@@ -747,7 +747,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     expect(screen.queryByRole('dialog', { name: tp.assign.discard.title })).toBeNull();
   });
 
-  it('배포 확인에서 고른 작업지시를 다시 누르면 풀리고, [다음 작업지시]는 첫 작업지시를 연다', async () => {
+  it('배포 확인에서 고른 작업지시를 다시 누르면 풀리고, 목록에서 다시 고른다(아래 바에 작업지시 이동 단추 없음)', async () => {
     const user = userEvent.setup();
     renderAt(
       `${WORKLIST}/${ORDER_NO}`,
@@ -765,9 +765,9 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     const detail = screen.getByRole('region', { name: '선택 작업지시 배포 상세' });
     expect(within(detail).getByText(tp.release.selectPrompt)).toBeVisible();
     expect(detail).not.toHaveTextContent('SYN-WO-9001');
-    expect(screen.getByRole('group', { name: '배포 작업지시 이동' })).toHaveTextContent('0 / 2');
-    expect(screen.getByRole('button', { name: '이전 작업지시' })).toBeDisabled();
-    await user.click(screen.getByRole('button', { name: '다음 작업지시' }));
+    /* 목록이 늘 옆에 있어 아래 바의 이전 · 다음 작업지시는 두지 않는다(배포 확인 B안). */
+    expect(screen.queryByRole('group', { name: '배포 작업지시 이동' })).toBeNull();
+    await user.click(screen.getByRole('row', { name: 'SYN-WO-9001 배포 상세' }));
     expect(detail).toHaveTextContent('SYN-WO-9001');
   });
 
@@ -820,7 +820,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     expect(screen.queryByRole('button', { name: tp.retry })).toBeNull();
   });
 
-  it('하단 이전·다음은 ERP W/O 이동 없이 선택 작업지시 상세를 바꾼다', async () => {
+  it('목록에서 고르면 선택 작업지시 상세가 바뀌고, 배포 결과의 하단 이전·다음은 ERP W/O 이동 없이 상세를 바꾼다', async () => {
     const user = userEvent.setup();
     const state = world({
       autoPlan: { status: 'DONE', reasons: [] },
@@ -832,13 +832,12 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     });
     const server = renderAt(`${WORKLIST}/${ORDER_NO}`, state);
     await currentStep(tp.steps.release);
-    expect(screen.getByRole('button', { name: '이전 작업지시' })).toBeDisabled();
-    await user.click(screen.getByRole('button', { name: '다음 작업지시' }));
+    expect(screen.queryByRole('button', { name: '다음 작업지시' })).toBeNull();
+    await user.click(screen.getByRole('row', { name: 'SYN-WO-9002 배포 상세' }));
     const detail = screen.getByRole('region', { name: '선택 작업지시 배포 상세' });
     expect(detail).toHaveTextContent('SYN-WO-9002');
     expect(detail).not.toHaveTextContent('SYN-WO-9001');
-    expect(screen.getByRole('button', { name: '다음 작업지시' })).toBeDisabled();
-    await user.click(screen.getByRole('button', { name: '이전 작업지시' }));
+    await user.click(screen.getByRole('row', { name: 'SYN-WO-9001 배포 상세' }));
     expect(detail).toHaveTextContent('SYN-WO-9001');
     expect(server.writes).toHaveLength(0);
     await user.click(screen.getByRole('button', { name: tp.release.release }));
@@ -908,7 +907,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     expect(screen.getByText('배포된 작업지시')).toBeVisible();
     expect(screen.queryByRole('button', { name: '미배포 작업지시 다시 배포' })).toBeNull();
     const user = userEvent.setup();
-    await user.click(screen.getByRole('tab', { name: /BOM·Routing/ }));
+    await user.click(screen.getByRole('tab', { name: /BOM 및 Routing/ }));
     expect(await screen.findByRole('region', { name: tp.master.heading })).toBeVisible();
     await user.click(screen.getByRole('tab', { name: /생산계획/ }));
     expect(await screen.findByRole('region', { name: tp.plan.heading })).toBeVisible();

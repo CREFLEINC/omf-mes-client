@@ -26,7 +26,7 @@ const status = {
 
 /** 처리 화면 단계 이름. 사유 칩 도움말이 고칠 단계를 이 이름으로 말한다. */
 const steps = {
-  master: 'BOM·Routing',
+  master: 'BOM 및 Routing',
   plan: '생산계획',
   assign: '4M 배정',
   release: '배포 확인',
@@ -323,7 +323,7 @@ export const erpWorkOrderFlow = {
       planBomMissing: (plan: string): string =>
         `${plan}에 쓸 ERP 기본 BOM이 하나로 정해지지 않아 저장할 수 없습니다. ERP 담당자에게 확인을 요청해 주세요`,
       planRoutingMissing: (plan: string): string =>
-        `${plan}에 쓸 Routing이 정해지지 않아 저장할 수 없습니다. BOM·Routing 단계를 확인하세요`,
+        `${plan}에 쓸 Routing이 정해지지 않아 저장할 수 없습니다. BOM 및 Routing 단계를 확인하세요`,
       saveFailed: '계획을 저장하지 못했습니다. 오류를 확인하세요',
       qtyShort: (qty: string): string => `계획 수량이 ${qty} 부족합니다. 계획을 추가하세요`,
       canProceed: (stepWithJosa: string): string => `${stepWithJosa} 진행할 수 있습니다`,
@@ -335,7 +335,7 @@ export const erpWorkOrderFlow = {
       choose: (operation: string, fieldWithJosa: string): string =>
         `${operation} 공정의 ${fieldWithJosa} 고르세요`,
       resolve: (findingWithJosa: string): string => `${findingWithJosa} 해결하세요`,
-      releaseFinal: '배포 후 수정 불가',
+      releaseFinal: '배포 후에는 수정할 수 없습니다',
       enterLot: (workOrderNo: string): string =>
         `${workOrderNo}의 품목 기본 LOT 크기 설정이 필요합니다`,
       remainingOrders: (count: number): string => `남은 ERP W/O ${String(count)}건`,
@@ -546,8 +546,6 @@ export const erpWorkOrderFlow = {
       loadFailed: 'W/O를 불러오지 못했습니다',
     },
     release: {
-      lotsPending: '생성 예정 LOT 수: 품목 기본 LOT 크기 설정 후 확인',
-      selectedTarget: '선택 작업지시 정보',
       selectPrompt: '작업지시를 선택하세요.',
       orderNo: 'ERP W/O',
       item: '품목',
@@ -556,8 +554,9 @@ export const erpWorkOrderFlow = {
       planDate: '계획일',
       line: '생산 라인',
       empty: '배포할 작업지시가 없습니다.',
-      scope: (count: number): string => `전체 배포 대상 ${String(count)}건`,
-      scopeHelp: '하단 배포 버튼은 대상 전체를 처리합니다.',
+      /** 목록 제목 옆 건수. [배포]는 목록 전체를 내보낸다 — 반영 사항의 「배포 N건」이 그 범위다. */
+      count: (count: number): string => `${String(count)}건`,
+      needsCheck: (count: number): string => `확인 필요 ${String(count)}건`,
       heading: '배포 확인',
       columns: {
         workOrderNo: 'W/O 번호',
@@ -568,14 +567,50 @@ export const erpWorkOrderFlow = {
       },
       lotSizeLabel: (workOrderNo: string): string => `${workOrderNo} LOT당 수량`,
       task: '배포',
+      /**
+       * 배포 시 반영 사항 — 이름표 칸 다섯(이름 · 값). 풀어 쓴 규칙 문장은 칸 이름 옆 ⓘ 로 옮겼다(생산 창고 공장).
+       * 되돌릴 수 없다는 말은 아래 바 한 곳에만 둔다(`remaining.releaseFinal`).
+       */
       effects: {
-        status: (count: number): string => `W/O 상태 변경: 배포 (${String(count)}건)`,
-        lots: (count: number): string => `생산 LOT 선발행 (${String(count)}개)`,
-        materials: '출고 요청 발행',
-        picking: '피킹 지시(투입 자재가 있을 때)',
-        pqc: '공정검사(PQC) 의뢰(검사 공정일 때)',
+        status: 'W/O 상태',
+        statusValue: (count: number): string => `배포 ${String(count)}건`,
+        lots: '생산 LOT',
+        lotsValue: (count: number): string => `${String(count)}개 선발행`,
+        lotsPending: '품목 기본 LOT 크기 설정 후 확인',
+        materials: '출고 요청',
+        materialsValue: '발행',
+        picking: '피킹 지시',
+        pickingValue: '투입 자재가 있을 때',
+        pqc: '공정검사(PQC) 의뢰',
+        pqcValue: '검사 공정일 때',
       },
-      irreversible: '배포 후에는 수정할 수 없습니다.',
+      /**
+       * 확인 항목 — 목록의 확인 칸과 상세의 줄이 같은 넷이다. 「확인 필요」는 배포를 막지 않는다(막는 것은 아래 바가 말한다).
+       * 계획: 계획일이 지남 · 4M: ERP 입고 창고와 다름 · 자재: 재고 부족, 환산 비율 미입력, 조회 실패 · 단말기: 연결 없음, 조회 실패.
+       */
+      checks: {
+        plan: '생산계획',
+        assign: '4M 배정',
+        material: '자재 소요량',
+        terminal: '연결 단말기',
+        columns: { plan: '계획', assign: '4M', material: '자재', terminal: '단말기' },
+        ok: '이상 없음',
+        warn: '확인 필요',
+        none: '대상 없음',
+        pending: '조회 중',
+        failed: '조회 실패',
+        planPast: '계획일 지남',
+        erpWarehouseDiffers: 'ERP 입고 창고와 다름',
+        materialKinds: (count: number): string => `${String(count)}종`,
+        materialShort: (count: number): string => `부족 ${String(count)}종`,
+        materialRate: (count: number): string => `환산 비율 입력 ${String(count)}종`,
+        materialNone: '출고 요청할 자재 없음',
+        terminalCount: (count: number): string => `${String(count)}대`,
+        terminalNone: '연결된 단말기 없음',
+        terminalUnknown: '공정 연결 정보 확인 필요',
+        lotCount: (count: number): string => `${String(count)}개`,
+        schedule: (start: string, end: string): string => `${start} ~ ${end}`,
+      },
       release: '배포',
       failed: (workOrderNo: string, reason: string): string => `${workOrderNo}: ${reason}`,
       /**
@@ -598,6 +633,15 @@ export const erpWorkOrderFlow = {
           '피킹 지시와 인계 작업 알림은 자재 출고일 00:00 에 나갑니다. 재고가 모자라면 배포는 되고 부족분이 출고 요청 현황에 보입니다.',
         materialsNow: (date: string): string => `출고 요청 바로 출고 (자재 출고일 ${date} 지남)`,
         pickingNow: '피킹 지시와 인계 작업 알림(바로)',
+        /** 반영 사항 칸의 짧은 값 — 위 문장들은 칸 이름 옆 ⓘ 가 그대로 보인다. */
+        cells: {
+          picking: '피킹 지시와 인계 알림',
+          materialsAt: (dates: string): string => `자재 출고일 ${dates}`,
+          materialsNow: '바로 출고',
+          materialsUndetermined: '자재 출고일은 배포 때 정함',
+          pickingAt: '자재 출고일 00:00',
+          pickingNow: '바로',
+        },
         blockedTitle: '배포하지 못했습니다. 출고 요청에 필요한 기준정보가 빠졌습니다',
         blocks: {
           PRODUCTION_WAREHOUSE_MISSING: '이 공장에 사용 중인 생산창고 유형 창고가 없습니다.',

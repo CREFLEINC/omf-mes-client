@@ -2,7 +2,10 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders, jsonResponse } from '../../../test/api-harness';
-import { TerminalConnections } from './terminal-connections';
+import { messages } from '@omf-mes/i18n';
+import { TerminalConnections, terminalCheckOf, useTerminalDirectory } from './terminal-connections';
+
+const c = messages.erpWorkOrderFlow.process.release.checks;
 const workOrder = {
   workOrderId: 10,
   workOrderNo: 'WO-10',
@@ -87,6 +90,53 @@ describe('배포 연결 단말기 조회', () => {
     await screen.findByText('설비 또는 공정에 연결된 단말기가 없습니다.');
     await userEvent.setup().click(screen.getByRole('button', { name: '단말기 다시 조회' }));
     expect(screen.getByText('미배정')).toBeVisible();
+  });
+  it('확인 결과 — 연결 단말기가 있으면 대수와 상태, 없으면 확인 필요다. 줄 안에서는 제목 · 공정 칸을 되풀이하지 않는다', async () => {
+    const Check = () => {
+      const directory = useTerminalDirectory(1);
+      return (
+        <>
+          <TerminalConnections plain plantId={1} workOrder={workOrder} />
+          <output aria-label="확인 결과">
+            {JSON.stringify([
+              terminalCheckOf(directory, workOrder),
+              terminalCheckOf(directory, { ...workOrder, plannedEquipmentId: null, processId: 99 }),
+            ])}
+          </output>
+        </>
+      );
+    };
+    renderWithProviders(<Check />, {
+      fetch: async (request: Request) => {
+        const url = new URL(request.url);
+        if (url.pathname.endsWith('/equipments/9'))
+          return jsonResponse({
+            equipment: { equipmentId: 9, equipmentCode: 'EQ9', equipmentName: '사출기' },
+          });
+        if (url.pathname.endsWith('/terminals'))
+          return jsonResponse({ items: [terminal(1)], page: { page: 1, size: 200, total: 1 } });
+        return jsonResponse({ items: [{ processId: 2, canStartWork: true }] });
+      },
+    });
+    await screen.findByRole('table');
+    expect(JSON.parse(screen.getByLabelText('확인 결과').textContent ?? '')).toEqual([
+      { state: 'ok', summary: [c.terminalCount(1), 'POP-1 가동 중'] },
+      { state: 'warn', summary: [c.terminalNone] },
+    ]);
+    expect(screen.queryByRole('heading', { name: '연결 단말기' })).toBeNull();
+    expect(screen.queryByText('배정 설비')).toBeNull();
+    expect(screen.getByRole('button', { name: '단말기 다시 조회' })).toBeEnabled();
+  });
+  it('공장을 모르면 단말기를 묻지 않고 확인 칸도 두지 않는다', () => {
+    const fetch = vi.fn();
+    const Check = () => (
+      <output aria-label="확인 결과">
+        {String(terminalCheckOf(useTerminalDirectory(undefined), workOrder))}
+      </output>
+    );
+    renderWithProviders(<Check />, { fetch });
+    expect(screen.getByLabelText('확인 결과')).toHaveTextContent('undefined');
+    expect(fetch).not.toHaveBeenCalled();
   });
   it('공정 정보가 없으면 전체 연결 없음으로 판단하지 않는다', async () => {
     renderWithProviders(

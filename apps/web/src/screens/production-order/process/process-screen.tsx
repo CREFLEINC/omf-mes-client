@@ -1,4 +1,4 @@
-import { ReleaseMaterials, useReleaseMaterials } from './release-materials';
+import { ReleaseMaterials, materialCheckOf, useReleaseMaterials } from './release-materials';
 import {
   isPastPlanningDate,
   pastPlanningDateMessage,
@@ -613,6 +613,7 @@ export const ProcessWorkspace = ({
       materialReview={(workOrderId) =>
         !readOnly && (
           <ReleaseMaterials
+            plain
             review={materials}
             workOrderId={workOrderId}
             disabled={releasing}
@@ -624,6 +625,17 @@ export const ProcessWorkspace = ({
             )}
           />
         )
+      }
+      materialCheckOf={
+        readOnly
+          ? undefined
+          : (workOrderId) =>
+              materialCheckOf(
+                materials,
+                workOrderId,
+                releaseAttempts.find((attempt) => attempt.workOrderId === workOrderId)
+                  ?.materialErrors?.length ?? 0,
+              )
       }
       readOnly={readOnly}
       reviewPlans={planFacts.map((plan) => ({
@@ -1034,7 +1046,7 @@ export const ProcessWorkspace = ({
           remainingLink={step === 'master' && master.complete ? undefined : remainingLink}
           remainingId={remainingId}
           leading={
-            step === 'release' || step === 'done' ? (
+            step === 'done' ? (
               releaseNavigation
             ) : dirtyPlans ? (
               <Button variant="outlined" disabled={planBusy} onClick={() => void savePlans(false)}>

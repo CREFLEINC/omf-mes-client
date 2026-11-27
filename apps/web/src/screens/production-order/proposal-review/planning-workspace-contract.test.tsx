@@ -146,7 +146,7 @@ describe('proposal workspace contract boundaries', () => {
     );
     await user.click(screen.getByRole('checkbox', { name: `${value.number} 확정 선택` }));
     expect(screen.getByRole('button', { name: '선택 제안 확정' })).toBeEnabled();
-    await user.click(screen.getByRole('tab', { name: 'BOM·Routing' }));
+    await user.click(screen.getByRole('tab', { name: 'BOM 및 Routing' }));
     await user.click(screen.getByRole('button', { name: '시험 Routing 적용' }));
     await waitFor(() =>
       expect(screen.getByRole('button', { name: '선택 제안 확정' })).toBeDisabled(),

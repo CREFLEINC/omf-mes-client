@@ -19,6 +19,7 @@ import {
 
 const t = messages.erpWorkOrderFlow.process.release;
 const pw = t.productionWarehouse;
+const c = t.checks;
 
 /** 배포 확인 단계(피처 003 · tasks T053). W/O · 품목은 합성 값이다. */
 
@@ -124,7 +125,8 @@ describe('배포 확인 단계 — 생산 창고 공장', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
-  it('US2-4 「배포할 W/O」 표에 생산일 · 출고 작업일 열을 더하고 효과 문구는 「출고 요청 대기, 출고 작업일 MM-DD 외 N일」', () => {
+  it('US2-4 생산일 · 출고 작업일은 「생산계획」 줄에 보이고 반영 사항은 「자재 출고일 MM-DD 외 N일」, 규칙 문장은 ⓘ', async () => {
+    const user = userEvent.setup();
     const later = addDays(plantToday(), 10);
     const latest = addDays(plantToday(), 12);
     const issueDates = new Map<number, IssueDates>([
@@ -133,17 +135,25 @@ describe('배포 확인 단계 — 생산 창고 공장', () => {
     ]);
     renderStep({ issueDates });
 
-    const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
-    expect(headers.slice(-2)).toEqual([pw.issueWorkDate, pw.productionDate]);
+    /* 접어 둔 줄의 요약에 자재 출고일이 보이고, 펼치면 자재 출고일 · 생산일 칸이 나온다. */
+    const plan = screen.getByRole('button', { name: new RegExp(c.plan) });
+    expect(plan).toHaveTextContent(`${pw.issueWorkDate} ${later.slice(5)}`);
+    expect(screen.queryByRole('rowheader', { name: pw.productionDate })).not.toBeInTheDocument();
+    await user.click(plan);
+    expect(screen.getByRole('rowheader', { name: pw.issueWorkDate })).toBeInTheDocument();
+    expect(screen.getByRole('rowheader', { name: pw.productionDate })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: addDays(later, 1) })).toBeInTheDocument();
+
     const effects = within(
       screen.getByRole('region', { name: messages.screenPatterns.effectList.title(t.task) }),
     );
-    /* G2 — 두 문장이 마침표 없이 붙지 않는다. */
-    expect(effects.getByText(pw.materialsLine(pw.dates(later.slice(5), 1)))).toHaveTextContent(
-      /외 1일\. 생산 창고별로 나눕니다\./,
-    );
-    expect(effects.getByText(pw.pickingLine)).toBeInTheDocument();
-    expect(effects.queryByText(t.effects.materials)).not.toBeInTheDocument();
+    const dates = pw.dates(later.slice(5), 1);
+    expect(effects.getByText(pw.cells.materialsAt(dates))).toBeInTheDocument();
+    /* G2 — 두 문장이 마침표 없이 붙지 않는다. 문장은 칸 이름 옆 ⓘ 가 보인다. */
+    expect(pw.materialsLine(dates)).toMatch(/외 1일\. 생산 창고별로 나눕니다\./);
+    expect(effects.getByRole('button', { name: pw.materialsLine(dates) })).toBeInTheDocument();
+    expect(effects.getByRole('button', { name: pw.pickingLine })).toBeInTheDocument();
+    expect(effects.queryByText(t.effects.materialsValue)).not.toBeInTheDocument();
   });
 
   it('출고 작업일이 모두 오늘 이하면 「바로 출고」 효과 문구', () => {
@@ -155,15 +165,26 @@ describe('배포 확인 단계 — 생산 창고 공장', () => {
       ]),
     });
 
-    expect(screen.getByText(pw.materialsNow(past.slice(5)))).toBeInTheDocument();
-    expect(screen.getByText(pw.pickingNow)).toBeInTheDocument();
+    expect(screen.getByText(pw.cells.materialsNow)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: pw.materialsNow(past.slice(5)) }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(pw.cells.pickingNow)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: pw.pickingNow })).toBeInTheDocument();
   });
 
-  it('생산 창고가 없는 공장(issueDates 없음)은 지금 효과 문구 그대로(표기만 「출고 요청 발행」)', () => {
+  it('생산 창고가 없는 공장(issueDates 없음)은 「출고 요청 · 발행」, 「피킹 지시 · 투입 자재가 있을 때」', () => {
     renderStep();
 
-    expect(screen.getByText(t.effects.materials)).toBeInTheDocument();
-    expect(t.effects.materials).toBe('출고 요청 발행');
+    const effects = within(
+      screen.getByRole('region', { name: messages.screenPatterns.effectList.title(t.task) }),
+    );
+    expect(effects.getByText(t.effects.materials)).toBeInTheDocument();
+    expect(effects.getByText(t.effects.materialsValue)).toBeInTheDocument();
+    expect(effects.getByText(t.effects.pickingValue)).toBeInTheDocument();
+    expect(`${t.effects.materials} ${t.effects.materialsValue}`).toBe('출고 요청 발행');
+    /* 풀어 쓴 규칙이 없으니 ⓘ 도 없다. */
+    expect(effects.queryByRole('button')).not.toBeInTheDocument();
     expect(screen.queryByText(pw.productionDate)).not.toBeInTheDocument();
   });
 
@@ -198,10 +219,13 @@ describe('배포 확인 단계 — 생산 창고 공장', () => {
       ]),
     });
 
-    expect(screen.getByText(pw.materialsNow(plantToday().slice(5)))).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: pw.materialsNow(plantToday().slice(5)) }),
+    ).toBeInTheDocument();
   });
 
-  it('근무일 정책을 못 읽으면 출고 작업일을 「배포 때 정함」으로 두고 날짜를 지어내지 않는다', () => {
+  it('근무일 정책을 못 읽으면 출고 작업일을 「배포 때 정함」으로 두고 날짜를 지어내지 않는다', async () => {
+    const user = userEvent.setup();
     renderStep({
       issueDates: new Map([
         [1, { productionDate: '2026-11-23', issueWorkDate: null, undetermined: true }],
@@ -209,7 +233,12 @@ describe('배포 확인 단계 — 생산 창고 공장', () => {
       ]),
     });
 
-    expect(screen.getAllByText(pw.decidedAtRelease)).toHaveLength(3);
-    expect(screen.getByText(pw.materialsUndetermined)).toBeInTheDocument();
+    expect(screen.getByText(pw.cells.materialsUndetermined)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: pw.materialsUndetermined })).toBeInTheDocument();
+    const plan = screen.getByRole('button', { name: new RegExp(c.plan) });
+    expect(plan).toHaveTextContent(`${pw.issueWorkDate} ${pw.decidedAtRelease}`);
+    await user.click(plan);
+    expect(screen.getByRole('cell', { name: pw.decidedAtRelease })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '2026-11-23' })).toBeInTheDocument();
   });
 });

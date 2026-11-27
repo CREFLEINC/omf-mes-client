@@ -1,0 +1,251 @@
+/*
+ * 배포 확인(B안) — 맨 위 반영 사항 한 줄, 왼쪽 목록(확인 칸), 오른쪽 상세(확인 항목 줄).
+ * 테두리는 반영 사항 · 목록 카드 둘뿐이다. 상세는 줄마다 아래 선 하나로 가른다(카드 안 카드 금지).
+ */
+.release-check {
+  container-type: inline-size;
+  container-name: release-check;
+  gap: var(--space-4);
+  padding-top: var(--space-2);
+}
+
+/* 반영 사항 — 제목 + 이름표 칸. 칸은 같은 폭, 사이에 세로 선. */
+.release-effects {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+}
+.release-effects > .section-title {
+  flex: none;
+  width: 9rem;
+  font: var(--type-body-sm);
+  font-weight: 500;
+}
+.release-effects > dl {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  margin: 0;
+}
+.release-effects > dl > div {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: 0 var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+}
+.release-effects dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 24px;
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+.release-effects dd {
+  margin: 0;
+  font: var(--type-body-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.release-check-panes {
+  display: grid;
+  grid-template-columns: minmax(30rem, 38rem) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+  min-width: 0;
+}
+
+.release-check .release-check-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-3);
+}
+/* 상세가 길어 내려 보아도 목록은 제자리에 남는다 — 어느 작업지시를 보고 있는지 놓치지 않게. */
+.release-check-panes > .erp-wo-release-targets {
+  position: sticky;
+  top: var(--space-2);
+}
+.release-check-list-head > :last-child:not(.release-check-count) {
+  margin-left: auto;
+}
+.release-check-count {
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.release-check-operation {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 확인 표시 — 모양(동그라미 체크 · 세모)으로 가르고 색은 거든다. */
+.release-check-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--on-surface-variant);
+  vertical-align: middle;
+}
+.release-check-mark.is-none {
+  color: var(--outline);
+}
+.release-check-mark.is-ok {
+  color: var(--semantic-success);
+}
+/* 경고 노랑은 밝은 바탕에서 흐리다 — 글자색을 섞어 3:1 을 넘긴다. */
+.release-check-mark.is-warn {
+  color: color-mix(in srgb, var(--semantic-warning) 62%, var(--on-surface));
+}
+
+.release-check-detail {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+}
+.release-check-detail-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 2rem;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.release-check-row {
+  min-width: 0;
+  border-bottom: 1px solid var(--outline-variant);
+}
+.release-check-row-heading {
+  margin: 0;
+  font: inherit;
+}
+.release-check-row-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 3rem;
+  padding: 0 var(--space-1);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: var(--type-body-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.release-check-row-head:not(.is-static):hover {
+  background: var(--surface-container-low);
+}
+.release-check-row-head.is-static {
+  cursor: default;
+}
+.release-check-row-head:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.release-check-row-title {
+  flex: none;
+  width: 8.5rem;
+  font-weight: 500;
+}
+/* 요약 — 값 칸을 간격으로 나눈다(가운뎃점 · 쉼표로 잇지 않는다). 이름표는 작고 흐리게. */
+.release-check-row-summary,
+.release-check-detail-facts {
+  display: flex;
+  flex: 1;
+  gap: var(--space-4);
+  min-width: 0;
+  overflow: hidden;
+  font: var(--type-body-sm);
+  white-space: nowrap;
+}
+.release-check-row-summary > span,
+.release-check-detail-facts > span {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.release-check-summary-label {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+.release-check-row-body {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: 0 0 var(--space-4);
+}
+
+/* 줄 안에 든 자재 · 단말기 — 제목과 카드 테두리는 줄이 대신한다. */
+.release-materials-plain {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.release-materials-plain .section-heading-row:empty {
+  display: none;
+}
+.release-materials-plain p {
+  margin: 0;
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+.erp-wo-terminal-connections.is-plain {
+  gap: var(--space-2);
+}
+.erp-wo-terminal-connections.is-plain > .section-heading-row {
+  justify-content: flex-end;
+}
+/* 표 이름은 줄 제목이 이미 말한다 — 보조기기에만 남긴다. */
+.erp-wo-terminal-connections.is-plain caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* 공정 설정 칸은 한 줄 — 공정 이름 뒤에 실행 권한을 잇는다. */
+.erp-wo-terminal-connections.is-plain .erp-wo-terminal-table small {
+  display: inline;
+  margin-left: var(--space-2);
+}
+
+@container release-check (max-width: 64rem) {
+  .release-check-panes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .release-check-panes > .erp-wo-release-targets {
+    position: static;
+  }
+  .release-effects {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .release-effects > dl {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+    row-gap: var(--space-3);
+  }
+  .release-effects > dl > div {
+    padding-left: var(--space-3);
+  }
+}

@@ -7,7 +7,9 @@ import { useQueries } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useApiClient } from '../../../patterns/api-context';
 import { runRequest } from '../../../patterns/request';
+import { messages } from '@omf-mes/i18n';
 import type { ReleaseTarget } from '../release-runner';
+import type { SectionCheck } from './release-checks';
 import { AdjustableNativeTable } from './adjustable-table';
 import {
   AvailabilityError,
@@ -16,6 +18,8 @@ import {
   useMaterialAvailability,
   type AvailabilityRequest,
 } from './material-availability';
+
+const c = messages.erpWorkOrderFlow.process.release.checks;
 
 export type MaterialRequirement = MaterialComponents['schemas']['WorkOrderMaterialRequirement'];
 export type MaterialConfirmation = NonNullable<
@@ -133,27 +137,65 @@ const availabilityRequestOf = (
     ? { plantId: target.plantId, bomComponentId: row.bomComponentId, quantity: target.orderQty }
     : null;
 export type MaterialReview = ReturnType<typeof useReleaseMaterials>;
+
+/**
+ * 작업지시의 자재 확인 결과. 재고 부족 · 환산 비율 미입력 · 조회 실패 · 서버가 돌려준 자재 오류가 「확인 필요」다.
+ * 재고 부족은 배포를 막지 않는다 — 환산 비율 미입력과 조회 실패만 막는다(`ready`).
+ */
+export const materialCheckOf = (
+  review: MaterialReview,
+  workOrderId: number,
+  errorCount = 0,
+): SectionCheck => {
+  const group = review.groups.find((entry) => entry.target.workOrderId === workOrderId);
+  if (group === undefined || group.query.isPending)
+    return { state: 'pending', summary: [c.pending] };
+  if (group.query.isError) return { state: 'warn', summary: [c.failed] };
+  if (group.rows.length === 0) return { state: 'none', summary: [c.materialNone] };
+  const short = group.rows.filter(({ row }) => {
+    const request = availabilityRequestOf(group.target, row);
+    return request !== null && review.availability.lineOf(request)?.statusCode === 'SHORT';
+  }).length;
+  const unconfirmed = group.rows.filter(
+    ({ row, rate }) => row.confirmationRequired && rate === null,
+  ).length;
+  const alerts = [
+    ...(short > 0 ? [c.materialShort(short)] : []),
+    ...(unconfirmed > 0 ? [c.materialRate(unconfirmed)] : []),
+  ];
+  return {
+    state: alerts.length > 0 || errorCount > 0 || review.availability.isError ? 'warn' : 'ok',
+    summary: [c.materialKinds(group.rows.length)],
+    alerts,
+  };
+};
+
 export const ReleaseMaterials = ({
   review,
   workOrderId,
   disabled = false,
   errors = [],
+  plain = false,
 }: {
   review: MaterialReview;
   workOrderId?: number;
   disabled?: boolean;
   errors?: { workOrderId: number; field?: string; message: string }[];
+  /** 배포 확인의 「자재 소요량」 줄 안 — 카드 테두리와 제목 · 작업지시 번호는 그 줄과 상세 머리가 이미 보인다. */
+  plain?: boolean;
 }) => (
-  <section aria-label="자재 소요량 확인" className="pane">
-    <div className="section-heading-row">
-      <h3 className="section-title">자재 소요량 확인</h3>
-    </div>
+  <section aria-label="자재 소요량 확인" className={plain ? 'release-materials-plain' : 'pane'}>
+    {!plain && (
+      <div className="section-heading-row">
+        <h3 className="section-title">자재 소요량 확인</h3>
+      </div>
+    )}
     {review.groups
       .filter((group) => workOrderId === undefined || group.target.workOrderId === workOrderId)
       .map(({ target, query, rows }) => (
         <section key={target.workOrderId} aria-label={`${target.workOrderNo} 자재 소요`}>
           <div className="section-heading-row">
-            <h4>{target.workOrderNo}</h4>
+            {!plain && <h4>{target.workOrderNo}</h4>}
             {(query.isError ||
               errors.some((error) => error.workOrderId === target.workOrderId)) && (
               <Button
