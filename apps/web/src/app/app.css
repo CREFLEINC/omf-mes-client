@@ -10122,10 +10122,10 @@ dialog.routing-history-dialog {
 
 .filter-bar.notification-center-filter {
   display: grid;
-  /* 기간 · 안 읽은 알림만 · 유형 · 오른쪽 끝 [조회]·[초기화] | 조회 시각 + 모두 읽음(#361). */
-  grid-template-columns:
-    minmax(18rem, 1.4fr) minmax(10rem, max-content) minmax(13rem, 1fr)
-    minmax(max-content, 1fr);
+  /*
+   * 기간 · 유형 · 안 읽은 알림만을 왼쪽부터 붙여 세우고, [조회]·[초기화] | 조회 시각 + 모두 확인은 오른쪽 끝(#361).
+   */
+  grid-template-columns: auto 200px max-content minmax(max-content, 1fr);
   align-items: end;
   gap: var(--space-4);
   margin-bottom: 0;
@@ -10203,10 +10203,10 @@ dialog.routing-history-dialog {
 .filter-bar.notice-filter {
   display: grid;
   /*
-   * 상태는 맨 위 라벨로 옮겼다(#361) — 제목 · 기간 시작 · 기간 끝 · 단추 묶음. 입력칸은 흐린 문구가 다 보이는
-   * 폭으로 두고 왼쪽부터 붙여 세운다(#361 사용자 지시).
+   * 게시 시작일 · 게시 종료일 · 공지 제목 · 대상 범위 · 미확인 공지 · 단추 묶음을 한 줄에(#361 사용자 지시).
+   * 입력칸은 흐린 문구가 다 보이는 폭으로 두고 왼쪽부터 붙여 세운다.
    */
-  grid-template-columns: 176px repeat(2, auto) minmax(0, 1fr);
+  grid-template-columns: repeat(2, auto) 220px 200px max-content minmax(0, 1fr);
   gap: var(--space-4);
   margin-bottom: 0;
 }
@@ -10216,15 +10216,10 @@ dialog.routing-history-dialog {
 }
 
 .notice-filter .notice-filter-options {
-  grid-column: 2 / -1;
+  align-self: end;
   align-items: center;
   justify-content: flex-start;
-}
-
-/* 접힌 줄(대상 범위 · 체크칸 둘)은 왼쪽부터 촘촘히 — 대상 범위(176px) 옆에 빈 폭을 두지 않는다(사용자 지시 2026-11-24). */
-.filter-bar.notice-filter:has(> .notice-filter-options) {
-  display: flex;
-  flex-wrap: wrap;
+  min-height: var(--control-height-md);
 }
 
 .notice-filter-more {
@@ -10309,7 +10304,8 @@ dialog.routing-history-dialog {
   min-width: 58rem;
 }
 
-.notice-table caption {
+.notice-table caption,
+.notice-ack-table caption {
   position: absolute;
   width: 1px;
   height: 1px;

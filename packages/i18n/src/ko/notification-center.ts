@@ -21,6 +21,7 @@ export const notificationCenter = {
     /** 기간은 시작일 · 종료일 두 칸이다(사용자 지시 2026-11-25) — 칸마다 이름이 있다. */
     periodFrom: '조회 시작일',
     periodTo: '조회 종료일',
+    datePlaceholder: '날짜를 선택하세요',
     /**
      * 「안 읽음만」은 **켜진 채로 시작한다**(화면 스펙 §4의 배치).
      *
@@ -45,7 +46,7 @@ export const notificationCenter = {
   },
   actions: {
     goFirstPage: '첫 페이지로',
-    markAllRead: '모두 읽음',
+    markAllRead: '모두 확인',
     /**
      * 「대상으로 이동」 **링크**의 접근 이름.
      *
@@ -75,7 +76,7 @@ export const notificationCenter = {
   actionReasons: {
     /** 판정은 **전용 조회**에서 온다 — 지금 쪽의 안 읽음으로 재면 다른 쪽에 있어도 잠긴다. */
     nothingUnread: '안 읽은 알림이 없습니다.',
-    markingAllRead: '모두 읽음 처리 중입니다.',
+    markingAllRead: '모두 확인 처리 중입니다.',
   },
   toast: {
     /** 몇 건이 바뀌었는지 **서버가 준 수**로 말한다 — 화면이 세면 다른 쪽의 건이 빠진다. */
@@ -87,7 +88,7 @@ export const notificationCenter = {
    */
   writeError: {
     readTitle: '읽음 처리하지 못했습니다',
-    allReadTitle: '모두 읽음 처리하지 못했습니다',
+    allReadTitle: '모두 확인 처리하지 못했습니다',
     /**
      * ⭐ **쓰기는 됐는데 화면이 그 결과를 반영하지 못한 자리.**
      *
@@ -96,7 +97,7 @@ export const notificationCenter = {
      * 서버 값을 받는 것뿐이므로 그 길만 말한다.
      */
     readFeedbackTitle: '읽음 처리는 됐지만 화면에 반영되지 않았습니다',
-    allReadFeedbackTitle: '모두 읽음 처리는 됐지만 화면에 반영되지 않았습니다',
+    allReadFeedbackTitle: '모두 확인 처리는 됐지만 화면에 반영되지 않았습니다',
     feedbackDescription: '[조회]를 누르면 최신 상태로 보입니다.',
     /** 없는 알림. 목록이 낡았을 때 나므로 「기간을 다시 조회」가 실제로 푸는 조치다. */
     notFound: '알림을 찾을 수 없습니다. [조회]를 눌러 목록을 새로 고치세요.',
@@ -115,15 +116,6 @@ export const notificationCenter = {
    * 것 · 순서를 바꾸는 것.
    */
   reasons: {
-    /**
-     * 한쪽이든 양쪽이든 **비어 있다.**
-     *
-     * ⛔ 「올바른 날짜가 아닙니다」로 말하지 않는다 — 한쪽만 비운 사람이 넣은 날짜는 멀쩡한데
-     * 그것까지 다시 고르라는 말이 된다. **비어 있는 쪽만** 가리킨다.
-     * 형제 화면들의 `searchNeedsPeriod`와 같은 사태이나 문형이 다르다 — 그쪽은 「조회」 버튼의
-     * 비활성 사유라 컨트롤 이름으로 시작하고, 이 화면에는 그 버튼이 없다.
-     */
-    periodIncomplete: '조회 시작일과 종료일을 모두 선택하세요.',
     /** 넣긴 넣었는데 날짜가 아니다 — 없는 날짜(`2026-02-31`)와 형식이 깨진 값. */
     periodInvalid: '날짜가 올바르지 않습니다. 조회 시작일과 종료일을 다시 선택하세요.',
     periodReversed: '조회 종료일이 시작일보다 빠릅니다.',
@@ -135,7 +127,7 @@ export const notificationCenter = {
      * 조건이 셋으로 늘어 「기간을 넓혀라」만으로는 부족하다 — 「안 읽음만」이 켜져 있으면
      * 이미 읽은 알림이 있어도 0건이 된다. 사용자가 풀 수 있는 조건을 전부 짚는다.
      */
-    noneDescription: '기간을 넓히거나 「안 읽은 알림만」·알림 유형 조건을 바꿔 보세요.',
+    noneDescription: '조회 조건을 바꿔 보세요.',
     /** 결과는 있는데 이 쪽에는 없다 — **0건과 갈라야** 사용자가 조건을 헛되이 넓히지 않는다. */
     beyondLastTitle: '이 페이지에는 알림이 없습니다',
     beyondLastDescription: '앞 페이지에 결과가 있습니다. 첫 페이지로 이동하세요.',

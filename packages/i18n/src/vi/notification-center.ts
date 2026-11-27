@@ -24,6 +24,7 @@ export const notificationCenter: Translated<typeof ko.notificationCenter> = {
   fields: {
     periodFrom: 'Ngày bắt đầu tra cứu',
     periodTo: 'Ngày kết thúc tra cứu',
+    datePlaceholder: 'Hãy chọn ngày',
     unreadOnly: 'Chỉ chưa xem',
     eventCode: 'Loại thông báo',
   },
@@ -69,9 +70,6 @@ export const notificationCenter: Translated<typeof ko.notificationCenter> = {
   },
   asOf: (at: string): string => `Cơ sở ${at}`,
   reasons: {
-    /** ⛔ 「날짜가 틀렸다」로 뭉개지 않는다 — **비어 있는 쪽만** 가리킨다. */
-    periodIncomplete:
-      'Khoảng thời gian phải có cả ngày bắt đầu và ngày kết thúc. Hãy chọn bên đang trống.',
     periodInvalid:
       'Khoảng thời gian không phải ngày hợp lệ. Hãy chọn lại ngày bắt đầu và ngày kết thúc.',
     periodReversed: 'Ngày kết thúc không được đứng trước ngày bắt đầu.',

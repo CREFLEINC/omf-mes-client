@@ -14,22 +14,20 @@ export const notice = {
   },
 
   filters: {
-    search: '제목 검색',
-    searchPlaceholder: '제목을 입력하세요',
+    search: '공지 제목',
+    searchPlaceholder: '공지 제목을 입력하세요',
     datePlaceholder: '날짜를 선택하세요',
     status: '상태',
     scope: '대상 범위',
     scopeAll: '범위 전체',
-    unacknowledgedByMe: '내가 확인하지 않은 공지만',
-    from: '조회 시작일',
-    to: '조회 종료일',
+    unacknowledgedByMe: '미확인 공지',
+    from: '게시 시작일',
+    to: '게시 종료일',
     /** ⭐ 시작일이 아니라 **겹침**으로 거른다 — 긴 공지가 조회 구간에서 빠지지 않는다. */
     periodNote: '게시 기간이 선택한 기간과 하루라도 겹치는 공지를 모두 찾습니다.',
     /** ⛔ 기간은 필수가 아니다 — 계약이 그렇게 두었다. */
     periodOptional: '기간은 비워도 됩니다.',
-    /** 「조건 더보기」에 접힌 대상 범위 조건의 칩(C-6). */
-    chipScope: (name: string): string => `대상 범위: ${name}`,
-    invalidPeriod: '조회 종료일이 시작일보다 빠릅니다.',
+    invalidPeriod: '게시 종료일이 시작일보다 빠릅니다.',
   },
 
   status: {
@@ -81,7 +79,6 @@ export const notice = {
     acknowledgeRequired: '읽은 사람에게 확인을 받습니다',
     scope: '대상 범위',
     workOrder: '대상 작업지시',
-    workOrderNote: '대상 범위가 작업지시일 때만 선택합니다.',
     save: '저장',
     saving: '저장하는 중입니다.',
     saved: '공지를 저장했습니다.',
@@ -99,11 +96,13 @@ export const notice = {
     workOrderLookupFailed: '작업지시 목록을 불러오지 못해 지금은 고를 수 없습니다.',
     lookupTruncated: '목록의 일부만 보입니다. 찾는 것이 없으면 담당자에게 문의하세요.',
     selectPlaceholder: '선택하세요',
+    titlePlaceholder: '공지 제목을 입력하세요',
+    bodyPlaceholder: '본문을 입력하세요',
+    scopePlaceholder: '대상 범위를 선택하세요',
+    workOrderPlaceholder: '대상 작업지시를 선택하세요',
   },
 
   detail: {
-    /** ⛔⛔ 게시 뒤에는 본문을 고칠 수 없다. */
-    lockedAfterPublish: '내용을 수정하려면 게시를 종료한 뒤 새 공지를 등록하세요.',
     publish: '게시',
     publishTitle: '이 공지를 게시할까요?',
     publishLead: '게시한 뒤에는 내용을 수정할 수 없습니다.',
@@ -118,9 +117,9 @@ export const notice = {
     createdBy: '작성자',
     publishedAt: '게시 일시',
     period: '게시 기간',
-    noEndDate: '종료일 없음',
+    noEndDate: '종료일 미지정',
     /** 상세의 게시 기간 — 종료일이 없을 때(#361 시안). */
-    periodOpen: (start: string): string => `${start}부터 (종료일 없음)`,
+    periodOpen: (start: string): string => `${start}부터 (종료일 미지정)`,
     loadFailed: '공지를 불러오지 못했습니다.',
   },
 

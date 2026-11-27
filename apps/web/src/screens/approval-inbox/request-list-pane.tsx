@@ -1,7 +1,8 @@
-import { Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { Button, type Column, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { ManagedTable } from '../../patterns/managed-table';
 import { PageNav, type PageNavMeta, type PageSize } from '../../patterns/page-nav';
 import { approvalTypeLabelOf, requestStatusLabelOf } from './code-options';
 import type { PageView } from './pagination';
@@ -198,23 +199,22 @@ export const RequestListPane = ({
        * `Table`이 이미 갖고 있다 — 우리가 만들지 않는다.
        */}
       {/* 0건이면 표 최소 폭을 풀어 빈 안내가 잘리지 않게 한다(#361). */}
-      <div
+      {/* 열 폭 끌기 · 순서 바꾸기(#361) — 다른 목록과 같은 공용 표. */}
+      <ManagedTable
+        storageKey="omf-mes:approval-inbox:list"
+        scrollX
         className={
           rows.length === 0
-            ? 'wide-table approval-inbox-table approval-inbox-table-empty'
-            : 'wide-table approval-inbox-table'
+            ? 'approval-inbox-table approval-inbox-table-empty'
+            : 'approval-inbox-table'
         }
-      >
-        <Table
-          density="compact"
-          columns={columns}
-          rows={rows}
-          getRowId={(row) => String(row.approvalRequestId)}
-          caption={t.panes.list}
-          /* 0건을 바깥에서 가르지 않는다 — 가르면 표의 빈 자리가 닿을 수 없는 가지가 된다. */
-          empty={emptySlot}
-        />
-      </div>
+        columns={columns}
+        rows={rows}
+        getRowId={(row) => String(row.approvalRequestId)}
+        caption={t.panes.list}
+        /* 0건을 바깥에서 가르지 않는다 — 가르면 표의 빈 자리가 닿을 수 없는 가지가 된다. */
+        empty={emptySlot}
+      />
       {/* 0건이면 쪽 이동 줄을 내지 않는다 — 넘길 쪽이 없다(#361). */}
       {pageMeta.total > 0 && (
         <PageNav meta={pageMeta} onChangePage={onChangePage} onChangeSize={onChangeSize} />

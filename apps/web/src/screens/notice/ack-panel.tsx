@@ -1,5 +1,7 @@
-import { Checkbox, Chip, EmptyState, Skeleton, Table, type Column } from '@crefle/web-ui';
+import { Checkbox, Chip, EmptyState, Skeleton, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+
+import { ManagedTable } from '../../patterns/managed-table';
 
 import { LoadErrorBanner } from './load-error-banner';
 import { formatMoment, type AckListResult, type AckState, type AckView } from './types';
@@ -91,15 +93,17 @@ export const AckPanel = ({
       ) : isPending ? (
         <Skeleton variant="rect" height="8rem" />
       ) : (
-        <div className="wide-table">
-          <Table
-            columns={columns}
-            rows={data?.items ?? []}
-            getRowId={(row) => row.key}
-            density="compact"
-            empty={<EmptyState size="sm" live title={t.ack.emptyTitle} description={t.ack.empty} />}
-          />
-        </div>
+        /* 열 폭 끌기 · 순서 바꾸기(#361) — 다른 목록과 같은 공용 표. */
+        <ManagedTable
+          storageKey="omf-mes:notice:ack"
+          className="notice-ack-table"
+          scrollX
+          caption={t.ack.title}
+          columns={columns}
+          rows={data?.items ?? []}
+          getRowId={(row) => row.key}
+          empty={<EmptyState size="sm" live title={t.ack.emptyTitle} description={t.ack.empty} />}
+        />
       )}
     </>
   );

@@ -395,7 +395,7 @@ describe('첫 진입', () => {
 
     const headers = within(requestTable())
       .getAllByRole('columnheader')
-      .map((cell) => cell.textContent);
+      .map((cell) => cell.textContent?.replace('drag_indicator', ''));
 
     expect(headers).toEqual([
       t.fields.approvalRequestNo,

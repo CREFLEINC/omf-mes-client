@@ -1400,18 +1400,14 @@ describe('appRouter — 알림센터의 진입 경로', () => {
   });
 
   /**
-   * ⭐ **주소에 기간이 없으면 화면이 기본 7일을 심는다** — 라우트를 거친 첫 진입이 그 경로다.
-   * 라우트만 열고 화면이 서지 않는 상태를 잡으려면 **조회가 실제로 도는 것**까지 봐야 한다.
+   * ⭐ **주소에 기간이 없으면 기간 없이 모든 알림을 본다**(#361) — 주소에 날짜를 심지 않는다.
    */
-  it('첫 진입에 기간이 주소에 심긴다', async () => {
+  it('첫 진입에 기간을 주소에 심지 않는다', async () => {
     renderRoutedApp('/notification/center', notificationCenterRoutes());
 
     await screen.findByRole('heading', { level: 2, name: messages.notificationCenter.panes.list });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('location').textContent).toContain('from=');
-    });
-    expect(screen.getByTestId('location').textContent).toContain('to=');
+    expect(screen.getByTestId('location').textContent).not.toContain('from=');
   });
 });
 

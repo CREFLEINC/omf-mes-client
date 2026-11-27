@@ -71,46 +71,21 @@ describe('NoticeScreen — 조회 조건(C-6)', () => {
     });
   });
 
-  it('대상 범위와 「내가 아직 확인하지 않은 것만」은 조건 더보기 안에 접혀 있다', async () => {
-    const { user } = setup();
+  it('대상 범위와 미확인 공지도 조회 줄에 함께 보인다 — 조건 더보기가 없다(#361)', async () => {
+    setup();
 
-    await waitFor(() => {
-      expect(filterPane().getByRole('button', { name: more.open })).toBeVisible();
-    });
-    expect(filterPane().queryByRole('combobox', { name: t.filters.scope })).toBeNull();
-
-    await user.click(filterPane().getByRole('button', { name: more.open }));
-
-    expect(filterPane().getByRole('combobox', { name: t.filters.scope })).toBeVisible();
+    expect(await filterPane().findByRole('combobox', { name: t.filters.scope })).toBeVisible();
     expect(
       filterPane().getByRole('checkbox', { name: t.filters.unacknowledgedByMe }),
     ).toBeVisible();
-  });
-
-  it('접힌 칸에 걸린 조건만 칩이 되고 × 가 그 조건만 풀어 다시 조회한다', async () => {
-    const { listQueries, user } = setup('/notification/notices?q=점검&scopeCode=COMPANY');
-
-    const scopeChip = await filterPane().findByRole('button', {
-      name: more.remove(t.filters.scope),
-    });
-    expect(filterPane().getByText(t.filters.chipScope(t.scope.COMPANY))).toBeVisible();
-    /* 제목은 보이는 칸이라 칩으로 겹쳐 적지 않는다. 상태는 목록 위 탭이 맡는다. */
-    expect(filterPane().getAllByRole('button', { name: /조건 제거$/ })).toHaveLength(1);
-
-    await user.click(scopeChip);
-
-    await waitFor(() => {
-      expect(listQueries.at(-1)?.searchParams.get('scopeCode')).toBeNull();
-    });
-    expect(listQueries.at(-1)?.searchParams.get('q')).toBe('점검');
-    expect(listQueries.at(-1)?.searchParams.get('activeOnly')).toBe('true');
+    expect(filterPane().queryByRole('button', { name: more.open })).toBeNull();
   });
 
   it('[초기화]는 처음 값과 달라진 것이 있을 때만 보인다', async () => {
     const { user } = setup();
 
     await waitFor(() => {
-      expect(filterPane().getByRole('button', { name: more.open })).toBeVisible();
+      expect(filterPane().getByRole('button', { name: messages.common.search })).toBeVisible();
     });
     expect(filterPane().queryByRole('button', { name: messages.common.reset })).toBeNull();
 

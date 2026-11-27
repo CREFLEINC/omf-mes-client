@@ -34,7 +34,6 @@ export const notice: Translated<typeof ko.notice> = {
     /** ⭐ 시작일이 아니라 **겹침**이다 — 「trong khoảng」 으로 옮기면 긴 공지가 빠진다. */
     periodNote: 'Tìm thông cáo có kỳ đăng giao với khoảng này. Không lấy ngày bắt đầu làm chuẩn.',
     periodOptional: 'Khoảng thời gian để trống cũng được.',
-    chipScope: (name: string): string => `Phạm vi đối tượng: ${name}`,
     invalidPeriod: 'Kết thúc khoảng đứng trước lúc bắt đầu.',
   },
 
@@ -85,7 +84,6 @@ export const notice: Translated<typeof ko.notice> = {
     acknowledgeRequired: 'Bắt người đọc bấm xác nhận',
     scope: 'Phạm vi đối tượng',
     workOrder: 'Lệnh sản xuất đối tượng',
-    workOrderNote: 'Chỉ chọn khi phạm vi đối tượng là lệnh sản xuất.',
     save: 'Lưu',
     saving: 'Đang lưu.',
     saved: 'Đã lưu thông cáo.',
@@ -104,11 +102,13 @@ export const notice: Translated<typeof ko.notice> = {
     lookupTruncated:
       'Chỉ hiển thị một phần danh sách. Không thấy cái cần tìm thì hãy hỏi người phụ trách.',
     selectPlaceholder: 'Hãy chọn',
+    titlePlaceholder: 'Hãy nhập tiêu đề thông cáo',
+    bodyPlaceholder: 'Hãy nhập nội dung',
+    scopePlaceholder: 'Hãy chọn phạm vi đối tượng',
+    workOrderPlaceholder: 'Hãy chọn lệnh sản xuất đối tượng',
   },
 
   detail: {
-    /** ⛔⛔ 게시 뒤 본문 잠금. **이유까지 옮긴다** — 이유가 빠지면 서버가 심술부리는 것으로 읽힌다. */
-    lockedAfterPublish: 'Muốn sửa nội dung thì hãy kết thúc đăng rồi tạo thông cáo mới.',
     publish: 'Đăng',
     publishTitle: 'Đăng thông cáo này chứ?',
     publishLead: 'Đăng rồi thì nội dung bị khóa. Chỉ sửa được trước khi đăng.',

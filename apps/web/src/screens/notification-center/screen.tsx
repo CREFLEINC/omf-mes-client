@@ -14,7 +14,6 @@ import {
   readSize,
   toFilterQuery,
   toSearchParams,
-  withPeriod,
   type NotificationFilters,
 } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
@@ -22,13 +21,7 @@ import { useHandoverEventEntries } from './handover-lookups';
 import { describeEvent, useNotificationEventOptions, withCurrentEvent } from './lookups';
 import { NotificationRow } from './notification-row';
 import { toPageView } from './pagination';
-import {
-  defaultPeriod,
-  hasPeriodKeys,
-  readPeriod,
-  resolvePeriod,
-  type NotificationPeriod,
-} from './period';
+import { readPeriod, resolvePeriod, type NotificationPeriod } from './period';
 import { useMarkAllRead, useMarkRead, useNotificationList, useUnreadCount } from './queries';
 import { EMPTY_READ_STATE, isRead, withRead, type ReadState } from './read-state';
 import type { NotificationView, SelectItem } from './types';
@@ -122,38 +115,9 @@ export const NotificationCenterScreen = () => {
   const size = readSize(searchParams);
 
   /*
-   * ⭐ **「키가 없다」와 「키는 있고 값이 비었다」를 가른다**(주소 키 수명 표 1·2행).
-   * 값만 보면 둘이 같은 빈 문자열이라, 이 한 줄이 없으면 사용자가 비운 기간을 화면이 덮어쓴다.
+   * 실행 환경의 「지금」을 한 번만 읽어 넘긴다. 날짜를 비우면 그쪽 경계 없이 모든 알림을 본다(#361).
    */
-  const hasKeys = hasPeriodKeys(searchParams);
-
-  /*
-   * 실행 환경의 「지금」을 한 번만 읽어 넘긴다. 판정 함수 안에서 읽으면 그 함수가 환경에 따라
-   * 다른 값을 내어 테스트가 코드가 아니라 환경을 검사하게 된다.
-   */
-  const periodState = resolvePeriod(period, hasKeys, new Date());
-  const isSeeding = periodState.kind === 'empty';
-
-  /*
-   * 빈 화면으로 시작하지 않는다 — 기간이 필수라 심지 않으면 아무것도 조회할 수 없다.
-   *
-   * ⭐ **`replace`로 바꾼다.** 밀어 넣으면 기본값을 채운 것이 뒤로가기 기록에 칸을 쌓고,
-   * 사용자가 뒤로 누르면 기간 없는 주소로 돌아가 **같은 채우기가 다시 돌아 그 자리에 갇힌다.**
-   *
-   * ⭐ **기존 주소를 통째로 갈아 끼우지 않는다**(`withPeriod`) — 기간을 채우는 김에 사용자가
-   * 걸어 둔 다른 조건이 함께 사라지면 안 된다.
-   *
-   * ⚠ **여기서 시계를 다시 읽는다**(위 `resolvePeriod`의 것과 다른 `new Date()`다). effect는
-   * 렌더보다 늦게 도므로 그 사이에 날이 바뀌었다면 **심는 시점의 오늘**이 맞다 — 렌더 때 읽은
-   * 값을 나르면 자정 직후에 하루 지난 기간을 심는다.
-   */
-  useEffect(() => {
-    if (!isSeeding) return;
-
-    const seeded = defaultPeriod(new Date());
-
-    setSearchParams((prev) => withPeriod(prev, seeded), { replace: true });
-  }, [isSeeding, setSearchParams]);
+  const periodState = resolvePeriod(period, new Date());
 
   const listQuery =
     periodState.kind === 'ready'
@@ -284,10 +248,9 @@ export const NotificationCenterScreen = () => {
    * [초기화]는 처음 조건(기본 기간 · 안 읽음만 · 유형 전체)과 달라졌을 때만 선다 — 품질 화면과 같다(#361).
    * 쪽 · 쪽 크기는 조건이 아니라 견주지 않는다.
    */
-  const initialPeriod = defaultPeriod(new Date());
   const isFilterChanged =
-    period.from !== initialPeriod.from ||
-    period.to !== initialPeriod.to ||
+    period.from !== '' ||
+    period.to !== '' ||
     filters.unreadOnly !== DEFAULT_FILTERS.unreadOnly ||
     filters.eventCode !== DEFAULT_FILTERS.eventCode;
 
@@ -345,8 +308,7 @@ export const NotificationCenterScreen = () => {
       );
     }
 
-    /* 기간을 심는 동안에도 조회를 기다리는 것과 같은 모양이다 — 한 순간 뒤 요청이 나간다. */
-    if (isSeeding || list.isPending) {
+    if (list.isPending) {
       return (
         <div role="status" aria-label={t.loading.list}>
           <SkeletonText lines={3} />
@@ -441,7 +403,7 @@ export const NotificationCenterScreen = () => {
               <Button
                 variant="outlined"
                 onClick={() => {
-                  applyQuery(defaultPeriod(new Date()), DEFAULT_FILTERS);
+                  applyQuery({ from: '', to: '' }, DEFAULT_FILTERS);
                 }}
               >
                 {messages.common.reset}

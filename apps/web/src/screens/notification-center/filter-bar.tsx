@@ -55,15 +55,26 @@ export const NotificationFilterBar = ({
 }: NotificationFilterBarProps) => {
   return (
     <div className="filter-bar notification-center-filter">
-      {/* 기간은 계약상 필수 조회 조건 — 두 칸 모두 빨간 * 는 `<label>` 밖(접근 이름 그대로). */}
+      {/* 차례: 조회 시작일 · 조회 종료일 · 알림 유형 · 안 읽은 알림만(#361). 날짜를 비우면 기간 없이 모든 알림을 본다. */}
       <DateRangeFields
-        required
         startLabel={t.fields.periodFrom}
         endLabel={t.fields.periodTo}
+        placeholder={t.fields.datePlaceholder}
         from={period.from}
         to={period.to}
         onChange={(from, to) => {
           onChangePeriod({ from, to });
+        }}
+      />
+
+      <SelectField
+        label={t.fields.eventCode}
+        options={eventOptions}
+        value={filters.eventCode}
+        note={eventNote}
+        wide
+        onChange={(value) => {
+          onChangeFilters({ ...filters, eventCode: value });
         }}
       />
 
@@ -92,17 +103,6 @@ export const NotificationFilterBar = ({
           {t.fields.unreadOnly}
         </Checkbox>
       </div>
-
-      <SelectField
-        label={t.fields.eventCode}
-        options={eventOptions}
-        value={filters.eventCode}
-        note={eventNote}
-        wide
-        onChange={(value) => {
-          onChangeFilters({ ...filters, eventCode: value });
-        }}
-      />
 
       {children}
     </div>

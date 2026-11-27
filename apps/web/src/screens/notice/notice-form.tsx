@@ -62,6 +62,7 @@ export const NoticeForm = ({
             id={titleId}
             aria-required="true"
             value={draft.title}
+            placeholder={t.form.titlePlaceholder}
             maxLength={200}
             error={errors.title ?? fieldErrors.title}
             onChange={(event) => {
@@ -76,6 +77,7 @@ export const NoticeForm = ({
             id={bodyId}
             aria-required="true"
             value={draft.body}
+            placeholder={t.form.bodyPlaceholder}
             rows={6}
             fullWidth
             error={errors.body ?? fieldErrors.body}
@@ -133,7 +135,7 @@ export const NoticeForm = ({
            */
           info={draft.scopeCode === 'COMPANY' ? t.scope.companyNote : undefined}
           error={errors.scopeCode ?? fieldErrors.scopeCode}
-          placeholder={t.form.selectPlaceholder}
+          placeholder={t.form.scopePlaceholder}
           wide
           onChange={(value) => {
             /* 범위를 바꾸면 짝인 작업지시를 함께 정리한다 — 어긋난 짝은 서버가 거부한다. */
@@ -141,23 +143,25 @@ export const NoticeForm = ({
           }}
         />
 
-        <SelectField
-          required={wantsWorkOrder}
-          label={t.form.workOrder}
-          options={workOrders.entries.map((entry) => ({
-            value: entry.value,
-            label: entry.label,
-          }))}
-          value={draft.workOrder}
-          note={lookupNote(workOrders, t.form.workOrderLookupFailed) ?? t.form.workOrderNote}
-          error={errors.workOrder ?? fieldErrors.targetWorkOrderId}
-          placeholder={t.form.selectPlaceholder}
-          disabled={!wantsWorkOrder}
-          wide
-          onChange={(value) => {
-            onChange({ workOrder: value });
-          }}
-        />
+        {/* 대상 작업지시는 대상 범위가 작업지시일 때만 보인다(#361). */}
+        {wantsWorkOrder && (
+          <SelectField
+            required
+            label={t.form.workOrder}
+            options={workOrders.entries.map((entry) => ({
+              value: entry.value,
+              label: entry.label,
+            }))}
+            value={draft.workOrder}
+            note={lookupNote(workOrders, t.form.workOrderLookupFailed)}
+            error={errors.workOrder ?? fieldErrors.targetWorkOrderId}
+            placeholder={t.form.workOrderPlaceholder}
+            wide
+            onChange={(value) => {
+              onChange({ workOrder: value });
+            }}
+          />
+        )}
 
         <div className="field-cell field-cell-unlabeled check-group">
           <Checkbox

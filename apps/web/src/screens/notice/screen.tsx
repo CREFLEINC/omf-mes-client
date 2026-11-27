@@ -15,13 +15,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
-import {
-  FilterMoreButton,
-  HiddenFilterChips,
-  type HiddenFilterChip,
-  hasChangedFilters,
-  useFilterMore,
-} from '../../patterns/filter-more';
+import { hasChangedFilters } from '../../patterns/filter-more';
 import { InfoTip } from '../../patterns/info-tip';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { ManagedTable } from '../../patterns/managed-table';
@@ -115,7 +109,6 @@ type Confirming = 'none' | 'publish' | 'close';
  */
 export const NoticeScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const more = useFilterMore();
   const filters = readFilters(searchParams);
   const selectedId = readSelected(searchParams);
   const size = readSize(searchParams);
@@ -237,25 +230,6 @@ export const NoticeScreen = () => {
     value: code,
     label: scopeLabel(code),
   }));
-
-  /*
-   * 접힌 칸(대상 범위 · 체크칸 둘)에 걸린 조건만 칩으로 — 보이는 칸의 값은 칩으로 겹쳐 적지 않는다.
-   * 조건은 바꾸는 즉시 나가므로 × 도 곧바로 다시 조회한다.
-   */
-  const hiddenChips: HiddenFilterChip<'scopeCode' | 'unacknowledgedByMe'>[] = [
-    ...(filters.scopeCode === ''
-      ? []
-      : [
-          {
-            key: 'scopeCode' as const,
-            label: t.filters.chipScope(scopeLabel(filters.scopeCode)),
-            removeLabel: messages.common.filterMore.remove(t.filters.scope),
-          },
-        ]),
-    ...(filters.unacknowledgedByMe
-      ? [{ key: 'unacknowledgedByMe' as const, label: t.filters.unacknowledgedByMe }]
-      : []),
-  ];
 
   /*
    * 쪽은 조건이 아니다 — 견줄 때 첫 쪽으로 맞춘다. 제목 칸은 조회 전에도 편집 중인 값으로 본다.
@@ -489,15 +463,15 @@ export const NoticeScreen = () => {
 
         <div className="notice-detail-footer">
           {/* ⛔⛔ 게시 뒤에는 본문을 고칠 수 없다 — 잠근 이유를 잠근 자리에 적는다. */}
-          <p className="field-note">{editable ? '' : t.detail.lockedAfterPublish}</p>
           <div className="form-actions">
+            {/* [취소]는 [게시 종료]와 같은 모양(#361). */}
             <Button
-              variant="tonal"
+              variant="outlined"
               onClick={() => {
                 selectNotice(null);
               }}
             >
-              {messages.common.close}
+              {t.detail.cancel}
             </Button>
             {editable && (
               <Button variant="outlined" onClick={openEdit}>
@@ -544,22 +518,7 @@ export const NoticeScreen = () => {
           content: (
             <>
               <div className="filter-bar notice-filter">
-                {/* 품질 화면(검사 조회·판정)과 같은 입력칸 — 돋보기 없이 흐린 문구로 안내한다(#361). */}
-                <TextField
-                  label={t.filters.search}
-                  value={search}
-                  placeholder={t.filters.searchPlaceholder}
-                  onChange={(event) => {
-                    setSearch(event.target.value);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
-                      event.preventDefault();
-                      searchNow();
-                    }
-                  }}
-                />
-
+                {/* 차례: 게시 시작일 · 게시 종료일 · 공지 제목 · 대상 범위 · 미확인 공지 — 한 줄에 모두(#361). */}
                 <div className="field-cell notice-filter-period">
                   {/* ⭐ 시작일이 아니라 겹침으로 거른다 — 기간 칸 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */}
                   <span className="info-label">
@@ -594,8 +553,43 @@ export const NoticeScreen = () => {
                   )}
                 </div>
 
-                {/* [조회] → [초기화(조건을 바꿨을 때만)] → [조건 더보기] | [새 공지 쓰기] — 품질 화면과 같은 차례. */}
-                {/* [조회] → [초기화] → [조건 더보기] | [새 공지 쓰기]는 조회 줄 오른쪽 끝에 한 묶음으로(#361 사용자 지시). */}
+                {/* 품질 화면(검사 조회·판정)과 같은 입력칸 — 돋보기 없이 흐린 문구로 안내한다(#361). */}
+                <TextField
+                  label={t.filters.search}
+                  value={search}
+                  placeholder={t.filters.searchPlaceholder}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                      event.preventDefault();
+                      searchNow();
+                    }
+                  }}
+                />
+
+                <SelectField
+                  label={t.filters.scope}
+                  options={scopeFilterOptions}
+                  value={filters.scopeCode}
+                  placeholder={t.filters.scopeAll}
+                  onChange={(value) => {
+                    apply({ scopeCode: value });
+                  }}
+                />
+
+                <div className="field-cell field-cell-unlabeled check-group check-group-row notice-filter-options">
+                  <Checkbox
+                    checked={filters.unacknowledgedByMe}
+                    onChange={(event) => {
+                      apply({ unacknowledgedByMe: event.target.checked });
+                    }}
+                  >
+                    {t.filters.unacknowledgedByMe}
+                  </Checkbox>
+                </div>
+                {/* [조회] → [초기화] | [새 공지 쓰기]는 조회 줄 오른쪽 끝에 한 묶음으로(#361 사용자 지시). */}
                 <div className="field-cell field-cell-unlabeled notice-filter-actions notice-filter-more">
                   <div className="filter-actions">
                     <Button onClick={searchNow}>{messages.common.search}</Button>
@@ -604,51 +598,11 @@ export const NoticeScreen = () => {
                         {messages.common.reset}
                       </Button>
                     )}
-                    <FilterMoreButton
-                      open={more.isOpen}
-                      controlsId={more.id}
-                      onToggle={more.toggle}
-                    />
                     <span className="inspection-standard-filter-divider" aria-hidden />
                     <Button onClick={openCreate}>{t.form.create}</Button>
                   </div>
                 </div>
               </div>
-
-              {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
-              <div id={more.id} hidden={!more.isOpen}>
-                <div className="filter-bar notice-filter">
-                  <SelectField
-                    label={t.filters.scope}
-                    options={scopeFilterOptions}
-                    value={filters.scopeCode}
-                    placeholder={t.filters.scopeAll}
-                    onChange={(value) => {
-                      apply({ scopeCode: value });
-                    }}
-                  />
-
-                  <div className="field-cell field-cell-unlabeled check-group check-group-row notice-filter-options">
-                    <Checkbox
-                      checked={filters.unacknowledgedByMe}
-                      onChange={(event) => {
-                        apply({ unacknowledgedByMe: event.target.checked });
-                      }}
-                    >
-                      {t.filters.unacknowledgedByMe}
-                    </Checkbox>
-                  </div>
-                </div>
-              </div>
-
-              <HiddenFilterChips
-                open={more.isOpen}
-                chips={hiddenChips}
-                onRemove={(key) => {
-                  if (key === 'scopeCode') apply({ scopeCode: '' });
-                  else apply({ unacknowledgedByMe: false });
-                }}
-              />
             </>
           ),
         }}
@@ -682,7 +636,8 @@ export const NoticeScreen = () => {
               )}
               <section className="pane notice-pane notice-detail">{detailContent()}</section>
 
-              {selected !== null && (
+              {/* 확인을 요구하지 않는 공지는 확인 현황 상자를 두지 않는다(#361). */}
+              {selected !== null && selected.acknowledgeRequired && (
                 <section className="pane notice-pane" aria-label={t.panes.ack}>
                   <h2 className="pane-title info-label">
                     {t.ack.title}

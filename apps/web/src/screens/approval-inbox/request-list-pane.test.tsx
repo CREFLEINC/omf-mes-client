@@ -162,7 +162,11 @@ describe('RequestListPane — 확정된 여섯 열', () => {
   it('머리글이 확정 목록 그대로이고 차례도 같다', () => {
     renderPane();
 
-    expect(screen.getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual([
+    expect(
+      screen
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent?.replace('drag_indicator', '')),
+    ).toEqual([
       t.fields.approvalRequestNo,
       t.fields.approvalTypeCode,
       t.fields.requestedByName,
