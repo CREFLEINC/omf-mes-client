@@ -198,9 +198,9 @@ describe('PlanPane — 편집', () => {
     expect(onChange).toHaveBeenCalledWith({ inspectionPlanName: '합성 검사기준 AX' });
   });
 
-  /* 품목은 칸에서 바로 검색해 고른다 — 창이 열리지 않는다(사용자 지시 2026-11-04). 맨 앞 「전 품목 공통」이 비우는 자리다. */
-  it('지정된 품목의 이름을 칸에 보이고, 「전 품목 공통」을 고르면 비운다', async () => {
-    const { onChange, user } = renderPane({
+  /* 품목은 칸에서 바로 검색해 고른다 — 창이 열리지 않는다(사용자 지시 2026-11-04). 품목은 필수라 「전 품목 공통」이 없다(omf-all-around#366). */
+  it('지정된 품목의 이름을 칸에 보이고, 「전 품목 공통」 선택지는 없다', async () => {
+    const { user } = renderPane({
       values: { ...planToFormValues(inspectionPlanFixtures[0]!), itemId: '5002' },
     });
 
@@ -212,9 +212,7 @@ describe('PlanPane — 편집', () => {
       await screen.findByRole('searchbox', { name: messages.common.selectSearch }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('option', { name: '전 품목 공통' }));
-
-    expect(onChange).toHaveBeenCalledWith({ itemId: '' });
+    expect(screen.queryByRole('option', { name: '전 품목 공통' })).not.toBeInTheDocument();
   });
 
   it('고친 것이 없으면 저장과 취소가 모두 비활성이다', () => {

@@ -7,7 +7,7 @@ const values = (overrides: Partial<PlanFormValues> = {}): PlanFormValues => ({
   inspectionPlanCode: 'SYN-PLAN-01',
   inspectionPlanName: '합성 검사기준 A',
   inspectionTypeCode: 'IQC',
-  itemId: '',
+  itemId: '40',
   processId: '',
   routingId: '',
   defaultSkip: false,
@@ -45,12 +45,10 @@ describe('validatePlanForm', () => {
     );
   });
 
-  /*
-   * 품목·공정·라우팅은 계약이 널을 허용한다 — 「전 품목 공통 기준」이 정상 값이고
-   * IQC 에는 공정이 없다. 화면이 필수로 막으면 계약이 허용한 자료를 만들 수 없다.
-   */
-  it('품목·공정·라우팅은 비어 있어도 통과한다', () => {
-    expect(validatePlanForm(values({ itemId: '', processId: '', routingId: '' }))).toEqual({});
+  /* 품목은 필수다 — 「전 품목 공통 기준」은 없앴다(omf-all-around#366). 공정·라우팅은 비어도 된다. */
+  it('품목을 비우면 필수 오류이고, 공정·라우팅은 비어 있어도 통과한다', () => {
+    expect(validatePlanForm(values({ itemId: '', processId: '', routingId: '' }))).toEqual({ itemId: '필수 입력 항목입니다.' });
+    expect(validatePlanForm(values({ processId: '', routingId: '' }))).toEqual({});
   });
 
   /*
