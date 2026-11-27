@@ -74,13 +74,7 @@ export const VersionBar = ({
             </Chip>
           </h2>
         )}
-        {/* 고칠 수 없는 버전이면 상태 오른쪽에 안내 한 줄(사용자 지시 · #258). */}
-        {selectedStatus !== null && !selectedStatus.isEditable && (
-          <p className="iqc-inspection-action-note" data-tone="info">
-            <Icon name="info" size={14} aria-hidden />
-            {selectedStatus.status === 'obsolete' ? t.stateLock.obsolete : t.stateLock.confirmed}
-          </p>
-        )}
+        {/* 고칠 수 없는 버전의 안내 한 줄(「확정된 버전은 고칠 수 없습니다 …」)은 걷었다 — 상태 칩이 말한다(사용자 지시 2026-11-27). */}
         {/* 오른쪽 끝 「+ 신규 버전 발행」(사용자 시안 · #196). 확정 · 사용 중지 등 고른 버전의 일은 카드 바닥 줄로 옮겼다(#258). */}
         <div className="inspection-standard-version-actions">
           <Button variant="outlined" onClick={() => setIsListOpen(true)}>

@@ -9,7 +9,6 @@ import { plantToday } from '../../../patterns/plant-time';
 import { useProductionPlanDetail } from '../../production-plan/queries';
 import { useRoutingOperations } from '../../routing/queries';
 import { useWarehouseArrival } from './arrival-location';
-import { lineLocationDefaults } from './line-location-defaults';
 import type { ProductionOrderFact } from '../types';
 import { AlertBanner, Button, Chip, SkeletonText, Tooltip, useToast } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
@@ -78,7 +77,6 @@ const idOrNull = (value: string): number | null =>
   /^[1-9]\d*$/.test(value) ? Number(value) : null;
 
 const LOCATION_FIELDS = [
-  'defaultWipLocationId',
   'defaultFgLocationId',
 ] as const;
 const isLocationField = (field: string): field is (typeof LOCATION_FIELDS)[number] =>
@@ -304,7 +302,6 @@ const EditorSession = ({
     );
     if (line === undefined) return;
     const filled: Partial<WorkOrderAssignmentDraft> = {
-      defaultWipLocationId: lineLocationDefaults(line).defaultWipLocationId,
       ...(!erpStorage?.erpStorageLocationCode
         ? {
             defaultFgLocationId:
@@ -334,14 +331,12 @@ const EditorSession = ({
     update.reset();
     setDraft((current) => {
       const merged = { ...current, ...next };
-      /* 완제품 입고 목적지는 라인 변경으로 덮어쓰지 않는다. WIP만 라인 기본값을 따른다. */
+      /* 완제품 입고 목적지는 라인 변경으로 덮어쓰지 않는다. */
       if (
         next.productionLineId !== undefined &&
         next.productionLineId !== current.productionLineId
       ) {
-        const line = lineOf(next.productionLineId);
         merged.plannedEquipmentId = next.plannedEquipmentId ?? '';
-        merged.defaultWipLocationId = lineLocationDefaults(line).defaultWipLocationId;
       }
       if (
         next.plannedShiftId !== undefined &&
@@ -557,7 +552,6 @@ const EditorSession = ({
       (field) => draft[field] === (line[field] == null ? '' : String(line[field])),
     );
   const locationNames = {
-    defaultWipLocationId: t.fold.wip,
     defaultFgLocationId: '생산품 입고 창고',
   };
   const locationPairs: FoldPair[] =

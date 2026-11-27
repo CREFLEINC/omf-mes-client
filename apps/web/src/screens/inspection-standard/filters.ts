@@ -99,6 +99,8 @@ export interface PlanListQuery {
   q?: string;
   inspectionTypeCode?: string;
   itemId?: number;
+  /** 위 줄 사업부의 공장 — 주소 조건이 아니라 화면이 붙인다(서버 #1169). */
+  plantId?: number;
   includeInactive?: boolean;
   page?: number;
 }

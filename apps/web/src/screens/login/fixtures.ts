@@ -60,13 +60,7 @@ export const sessionBody = (overrides: Partial<Session> = {}): Session => ({
   ...overrides,
 });
 
-/**
- * 401 본문.
- *
- * `remainingAttempts`를 **기본값으로 두지 않는다** — 계약이 선택 필드로 두었고 없는 계정에는
- * 오지 않는다. 기본으로 실어 두면 「값이 없을 때」를 재는 시험이 일부러 지워야 성립하고,
- * 지우는 것을 잊으면 그 갈래가 조용히 사라진다.
- */
+/** 401 본문. */
 const BASE_FAILURE: LoginFailure = {
   /*
    * ⚠ **계약의 `@example` 문구를 쓰지 않는다** — 이 파일 머리의 금지가 그대로 걸린다.
@@ -84,7 +78,7 @@ export const loginFailureBody = (overrides: Partial<LoginFailure> = {}): LoginFa
   ...overrides,
 });
 
-/** 400·423이 주는 일반 오류 본문. 목 서버도 이 자리에 같은 모양을 준다(실측). */
+/** 400이 주는 일반 오류 본문. 목 서버도 이 자리에 같은 모양을 준다(실측). */
 export const errorResponseBody = (overrides: Partial<ErrorResponse> = {}): ErrorResponse => ({
   errors: [{ scope: 'screen', code: 'SYN_CODE_A', message: '합성 오류 문구입니다.' }],
   ...overrides,

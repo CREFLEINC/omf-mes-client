@@ -461,6 +461,8 @@ describe('P-04-08 생산 LOT 분리', () => {
 
   describe('T026 막힌 이유 — 스캔 조회의 blocked', () => {
     const cases: [string, string | null, string][] = [
+      /* 피처 016 US1-3 · Q4 — 공정 반제품 LOT 은 「반제품 LOT 은 분리할 수 없습니다」. */
+      ['SEMI_FINISHED_LOT', null, t.blocked.SEMI_FINISHED_LOT.title],
       ['NOT_PRODUCTION_LOT', null, t.blocked.NOT_PRODUCTION_LOT.title],
       ['SPLIT_SERIAL_LOT', null, t.blocked.SPLIT_SERIAL_LOT.title],
       ['INVALID_STATE', 'HOLD', t.blocked.INVALID_STATE.title('보류')],
@@ -499,6 +501,7 @@ describe('P-04-08 생산 LOT 분리', () => {
 
   describe('T026 막힌 이유 — 분리 409 code', () => {
     const codes = [
+      'SEMI_FINISHED_LOT',
       'NOT_PRODUCTION_LOT',
       'SPLIT_SERIAL_LOT',
       'INVALID_STATE',

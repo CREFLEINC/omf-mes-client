@@ -153,7 +153,7 @@ const stub = ({
       const base = pending.find((item) => item.workOrderId === id);
       return jsonResponse(
         id !== 9001
-          ? { ...base, defaultWipLocationId: 1, defaultFgLocationId: 2, defaultScrapLocationId: 3 }
+          ? { ...base, defaultFgLocationId: 2, defaultScrapLocationId: 3 }
           : base,
         { headers: { ETag: '"1"' } },
       );
@@ -488,8 +488,8 @@ describe('작업지시 목록 작업함', () => {
     ],
     [
       'WORK_ORDER_LOCATION_MISSING',
-      'W/O 기본 위치 지정 필요',
-      '배포 전 W/O 2건에 기본 WIP 위치 또는 생산품 입고 위치가 지정되지 않았습니다. 생산 라인의 기본 WIP 위치와 4M 배정 단계의 입고 위치를 확인하세요.',
+      '생산품 입고 위치 지정 필요',
+      '배포 전 W/O 2건에 생산품 입고 위치가 지정되지 않았습니다. 4M 배정 단계에서 입고 위치를 확인하세요.',
     ],
     [
       'LINE_PLANT_MISMATCH',

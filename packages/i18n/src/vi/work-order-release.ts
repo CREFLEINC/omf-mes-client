@@ -125,7 +125,7 @@ export const workOrderRelease: Translated<typeof ko.workOrderRelease> = {
       `Kết quả phát hành hàng loạt — phát hành ${String(released)} · bỏ qua ${String(skipped)} · lỗi ${String(failed)}`,
     close: 'Đóng',
     reasons: {
-      setupMissing: 'Chưa thiết lập dây chuyền · vị trí mặc định (phân bổ 4M).',
+      setupMissing: 'Chưa thiết lập dây chuyền hoặc vị trí nhập thành phẩm (phân bổ 4M).',
       noDefaultLotSize: 'Mặt hàng chưa có cỡ LOT mặc định hoặc khác đơn vị (thuộc tính mở rộng).',
       failed: 'Không phát hành được.',
     },
@@ -161,13 +161,12 @@ export const workOrderRelease: Translated<typeof ko.workOrderRelease> = {
     validationUnavailable:
       'Không tải được kết quả kiểm tra. Hãy chọn lại hoặc làm mới trang rồi tiếp tục.',
     missingDefaultLocations:
-      'Hãy thiết lập vị trí WIP, thành phẩm và phế liệu mặc định rồi kiểm tra lại.',
+      'Hãy kiểm tra vị trí nhập thành phẩm.',
     openAssignment: 'Thiết lập ở phân bổ 4M',
   },
   locations: {
     missingTitle: (names: string) => `Chưa thiết lập ${names}.`,
     missingAction: 'Để phát hành, hãy thiết lập vị trí ở phân bổ 4M.',
-    wip: 'Vị trí WIP',
     finishedGoods: 'Vị trí thành phẩm',
     scrap: 'Vị trí phế liệu',
   },

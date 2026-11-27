@@ -156,7 +156,7 @@ export const workOrderRelease = {
     validationBlocked: '검증 결과의 차단 항목을 해결한 뒤 다시 확인하세요.',
     validationUnavailable:
       '검증 결과를 불러올 수 없습니다. 다시 선택하거나 새로고침한 뒤 계속하세요.',
-    missingDefaultLocations: '기본 WIP 위치와 생산품 입고 위치를 확인하세요.',
+    missingDefaultLocations: '생산품 입고 위치를 확인하세요.',
     /** 위치 누락·검증 차단은 둘 다 W-02-03 에서 고친다 — 그 화면으로 가는 버튼 */
     openAssignment: '4M 자원배정에서 설정',
   },
@@ -164,7 +164,6 @@ export const workOrderRelease = {
     /** 빠진 위치를 먼저 말하고(원인) 고칠 곳을 뒤에 말한다(해결) */
     missingTitle: (names: string): string => `${names}가 설정되지 않았습니다.`,
     missingAction: '배포하려면 4M 자원배정에서 위치를 설정해 주세요.',
-    wip: 'WIP 위치',
     finishedGoods: '완제품 위치',
     scrap: '스크랩 위치',
   },

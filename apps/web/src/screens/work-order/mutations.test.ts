@@ -27,7 +27,6 @@ const COMPLETE_BODY = {
   plannedShiftId: 803,
   productionLineId: 804,
   responsibleWorkerId: 805,
-  defaultWipLocationId: 806,
   defaultFgLocationId: 807,
   defaultScrapLocationId: 808,
   remarks: 'Synthetic assignment note',

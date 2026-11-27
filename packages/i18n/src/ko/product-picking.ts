@@ -151,6 +151,8 @@ export const productPicking = {
     outOfScopeDetail: '이 품목은 다른 공장이나 다른 창고의 라인입니다',
     /** 피처 013(시안 M0401) — 원래 · 새 LOT 모두 해당. */
     LOT_SPLIT_UNCONFIRMED: '분리 확인 전인 LOT 입니다',
+    /** 피처 016(시안 2판 ⑤) — 공정 반제품 LOT(409 `SEMI_FINISHED_LOT`). */
+    SEMI_FINISHED_LOT: '반제품 LOT 은 출하할 수 없습니다',
     splitUnconfirmedDetail:
       'POP 에서 나눈 뒤 PDA 「LOT 분리 확인」을 하지 않았습니다. 두 라벨을 스캔해 확인한 뒤 다시 스캔하세요',
     notFound: '이 공장의 LOT 이 아닙니다',

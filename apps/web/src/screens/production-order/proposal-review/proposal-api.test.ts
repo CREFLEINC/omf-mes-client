@@ -88,7 +88,6 @@ const validation = (value: ReviewProposal): ProposalRevalidation => ({
       plannedEquipmentId: null,
       plannedMoldId: null,
       responsibleWorkerId: null,
-      defaultWipLocationId: 51,
       defaultFgLocationId: 61,
       defaultScrapLocationId: null,
       equipmentRequired: false,

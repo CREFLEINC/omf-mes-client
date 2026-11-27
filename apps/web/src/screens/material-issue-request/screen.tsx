@@ -16,7 +16,6 @@ import {
   lookupNote,
   useItemNameSources,
   useItemOptions,
-  useLocationDetail,
   useLocationOptions,
   useUomOptions,
   useWarehouseOptions,
@@ -179,9 +178,6 @@ export const MaterialIssueRequestScreen = () => {
   const workOrders = useWorkOrderSearch(appliedQuery);
   const workOrderRows = workOrders.data?.items ?? EMPTY_WORK_ORDERS;
 
-  const defaultWipLocationId = selectedWorkOrder?.defaultWipLocationId ?? null;
-  const locationDetail = useLocationDetail(defaultWipLocationId);
-
   const warehouses = useWarehouseOptions();
   const warehouseId = form.warehouseId === '' ? null : Number(form.warehouseId);
   const locations = useLocationOptions(warehouseId);
@@ -207,7 +203,7 @@ export const MaterialIssueRequestScreen = () => {
 
   /*
    * 피처 003 — W/O 공장의 생산 창고(유형이 생산창고인 창고). 있으면 생산 창고 공장(새 규칙): 출발 생산 창고 칸, 「창고」 칸 숨김,
-   * 입고지 선택(비우면 서버가 채움). 없거나 못 받으면 지금 화면 그대로(FR-009a).
+   * 생산창고 직접 출고는 도착지를 받지 않는다.
    */
   const workOrderDetail = useWorkOrderDetail(
     selectedWorkOrder?.workOrderId ?? (isPrefillApplied ? null : (prefill?.workOrderId ?? null)),
@@ -323,45 +319,6 @@ export const MaterialIssueRequestScreen = () => {
   }, [workOrderId]);
 
   /*
-   * 도착 위치 자동 채움 — W/O 의 기본 재공 위치가 속한 창고를 찾아 창고·위치를 함께 세운다.
-   * **사용자가 이미 고른 값을 덮지 않는다**(둘 다 비어 있을 때만 채운다). 상세 조회가 실패하면
-   * 아무것도 채우지 않는다 — 조용히 첫 창고를 고르면 잘못된 위치가 전표에 실린다.
-   *
-   * ⛔ **대상(`workOrderId`)도 조건에 넣는다.** 위 비움 effect 가 대상이 바뀔 때마다 두 칸을
-   * 비우는데, 기본 재공 위치가 같은 W/O 로 옮기면 위치·창고 값이 그대로라 이 effect 가 다시 돌지
-   * 않아 칸이 빈 채로 남았다(PLAN-WO-01 W13). 선언 순서상 비움 뒤에 돌므로 비운 칸을 다시 채운다.
-   */
-  const resolvedWarehouseId = locationDetail.warehouseId;
-
-  useEffect(() => {
-    if (defaultWipLocationId === null || resolvedWarehouseId === null) return;
-
-    setForm((prev) =>
-      prev.warehouseId === '' && prev.destinationLocationId === ''
-        ? {
-            ...prev,
-            warehouseId: String(resolvedWarehouseId),
-            /*
-             * 생산 창고 공장은 입고지를 채우지 않는다 — 서버가 라인 생산 현장으로 채우고
-             * `PRODUCTION_FLOOR_LOCATION_MISSING` 을 검사한다(FR-006, G2 12). 창고만 채워 위치 선택지를 연다.
-             */
-            destinationLocationId: usesProductionWarehouses ? '' : String(defaultWipLocationId),
-          }
-        : prev,
-    );
-  }, [workOrderId, defaultWipLocationId, resolvedWarehouseId, usesProductionWarehouses]);
-
-  /* 모드를 늦게 알았으면(상세가 자동 채움보다 늦게 옴) 화면이 채운 입고지를 거둔다 — 사용자가 고른 값은 둔다. */
-  useEffect(() => {
-    if (!usesProductionWarehouses || touched.destinationLocationId === true) return;
-    setForm((prev) =>
-      defaultWipLocationId !== null && prev.destinationLocationId === String(defaultWipLocationId)
-        ? { ...prev, destinationLocationId: '' }
-        : prev,
-    );
-  }, [usesProductionWarehouses, defaultWipLocationId, touched.destinationLocationId]);
-
-  /*
    * 보충 요청 값 채우기 — 대상 비움(위)이 돈 다음에 세운다. 품목 기본 단위를 받은 뒤에 한 번만.
    */
   useEffect(() => {
@@ -427,12 +384,12 @@ export const MaterialIssueRequestScreen = () => {
    * 이 칸을 만졌다고 적는다. **오류의 열쇠로 적는다** — 필요 일자·시각 두 칸이 `requiredAt` 오류
    * 하나를 공유하므로, 칸 이름으로 적으면 어느 쪽을 만져도 그 오류가 드러나지 않는다.
    */
-  const markTouched = (fields: readonly string[]): void => {
+  const markTouched = (fields: readonly string[], cascaded: readonly string[]): void => {
     setTouched((prev) => {
       const next = { ...prev };
 
       for (const field of fields) {
-        next[field] = true;
+        next[field] = !cascaded.includes(field);
         if (field === 'requiredDate' || field === 'requiredTime') next.requiredAt = true;
       }
 
@@ -454,7 +411,7 @@ export const MaterialIssueRequestScreen = () => {
     cascaded: readonly (keyof FormDraft)[] = [],
   ): void => {
     setForm((prev) => ({ ...prev, ...patch }));
-    markTouched(Object.keys(patch).filter((field) => !cascaded.includes(field as keyof FormDraft)));
+    markTouched(Object.keys(patch), cascaded);
 
     for (const field of Object.keys(patch)) create.clearFieldError(field);
   };
@@ -560,9 +517,7 @@ export const MaterialIssueRequestScreen = () => {
       shortage: shortageLines,
       ...(usesProductionWarehouses
         ? {
-            /* 사용자가 고르지 않은 입고지는 보내지 않는다 — 서버 기본값(라인 생산 현장)을 탄다(G2 12). */
-            destinationLocationId:
-              touched.destinationLocationId === true ? form.destinationLocationId : '',
+            destinationLocationId: '',
             sourceWarehouseId: form.sourceWarehouseId,
             destinationOptional: true,
             acceptPlannedOverride,
@@ -623,15 +578,7 @@ export const MaterialIssueRequestScreen = () => {
     return isTruncated(page, workOrderRows.length) ? t.filters.workOrderTruncated : undefined;
   };
 
-  const warehouseNote = (): string | undefined => {
-    const note = lookupNote(warehouses);
-
-    if (note !== undefined) return note;
-
-    return resolvedWarehouseId !== null && form.warehouseId === String(resolvedWarehouseId)
-      ? t.notes.warehouseAutoFilled
-      : undefined;
-  };
+  const warehouseNote = (): string | undefined => lookupNote(warehouses);
 
   return (
     <>

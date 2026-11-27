@@ -33,7 +33,6 @@ describe('groupToFormValues', () => {
       groupName: 'GRP-A 그룹',
       groupTypeCode: 'LINE',
       parentGroupId: '99',
-      defaultWipLocationId: '',
       defaultFgLocationId: '',
       departmentId: '',
     });
@@ -42,12 +41,10 @@ describe('groupToFormValues', () => {
   it('라인 기본 위치를 문자열로 옮긴다 — 서버 선행 칸이라 없으면 빈 값이다', () => {
     const values = groupToFormValues({
       ...makeGroup(101, 'GRP-A'),
-      defaultWipLocationId: 301,
       defaultFgLocationId: null,
     } as ReturnType<typeof makeGroup>);
 
     expect(values).toMatchObject({
-      defaultWipLocationId: '301',
       defaultFgLocationId: '',
       departmentId: '',
     });
@@ -79,7 +76,6 @@ describe('emptyGroupFormValues', () => {
       groupName: '',
       groupTypeCode: '',
       parentGroupId: '',
-      defaultWipLocationId: '',
       defaultFgLocationId: '',
       departmentId: '',
     });
@@ -93,7 +89,6 @@ describe('toGroupUpdate', () => {
     groupName: '  프레스 구역  ',
     groupTypeCode: 'LINE',
     parentGroupId: '99',
-    defaultWipLocationId: '',
     defaultFgLocationId: '',
     departmentId: '',
   };
@@ -139,12 +134,11 @@ describe('toGroupUpdate', () => {
 
   it('기본 위치는 고른 것은 숫자로, 비운 것은 널로 보낸다 — 비우면 서버가 지운다', () => {
     const body = toGroupUpdate(
-      { ...values, defaultWipLocationId: '301', defaultFgLocationId: '' },
+      { ...values, defaultFgLocationId: '' },
       true,
     );
 
     expect(body).toMatchObject({
-      defaultWipLocationId: 301,
       defaultFgLocationId: null,
     });
   });
@@ -163,7 +157,6 @@ describe('toGroupCreate', () => {
     groupName: '프레스 구역',
     groupTypeCode: 'LINE',
     parentGroupId: '',
-    defaultWipLocationId: '',
     defaultFgLocationId: '',
     departmentId: '',
   };
@@ -175,7 +168,6 @@ describe('toGroupCreate', () => {
       groupName: '프레스 구역',
       groupTypeCode: 'LINE',
       parentGroupId: null,
-      defaultWipLocationId: null,
       defaultFgLocationId: null,
       departmentId: null,
     });
@@ -194,7 +186,6 @@ describe('isSameGroupValues', () => {
     groupName: '가',
     groupTypeCode: 'LINE',
     parentGroupId: '',
-    defaultWipLocationId: '',
     defaultFgLocationId: '',
     departmentId: '',
   };
@@ -207,7 +198,6 @@ describe('isSameGroupValues', () => {
     ['plantId', '12'],
     ['groupCode', 'GRP-B'],
     ['groupName', '나'],
-    ['defaultWipLocationId', '301'],
     ['defaultFgLocationId', '302'],
     ['groupTypeCode', 'WORK_AREA'],
     ['parentGroupId', '99'],

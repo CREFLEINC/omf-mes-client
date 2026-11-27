@@ -13,8 +13,9 @@ import type { SplitLookupLocation } from './queries';
 /* 부를 때 읽는다 — 단말 언어(`setLocale`)를 모듈이 실릴 때 붙잡지 않는다. */
 const words = () => messages.productLotSplit;
 
-/** 막힌 이유 code 8종(조회 LOT 단위 5 + 위치 단위 3). */
+/** 막힌 이유 code 9종(조회 LOT 단위 6 + 위치 단위 3). `SEMI_FINISHED_LOT` 은 공정 반제품(피처 016). */
 export const SPLIT_BLOCK_CODES = [
+  'SEMI_FINISHED_LOT',
   'NOT_PRODUCTION_LOT',
   'SPLIT_SERIAL_LOT',
   'INVALID_STATE',
@@ -72,6 +73,7 @@ export const blockViewOf = (code: string | undefined, detail: string | null = nu
             ? t.blocked.LOT_ALREADY_RESERVED.bodyNoRequest
             : t.blocked.LOT_ALREADY_RESERVED.body(detail),
       };
+    case 'SEMI_FINISHED_LOT':
     case 'NOT_PRODUCTION_LOT':
     case 'SPLIT_SERIAL_LOT':
     case 'PUTAWAY_PENDING':

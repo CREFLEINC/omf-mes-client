@@ -100,7 +100,7 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
       ),
     );
     setSource(String(detail.data.materialIssueRequest.sourceWarehouseId ?? ''));
-    setDestination(String(detail.data.materialIssueRequest.destinationLocationId));
+    setDestination(String(detail.data.materialIssueRequest.destinationLocationId ?? ''));
   }
 
   const request = detail.data?.materialIssueRequest;
@@ -193,6 +193,7 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
       scope === 'all' && source !== String(request.sourceWarehouseId ?? '') && source !== '';
     const destinationChanged =
       scope === 'all' &&
+      request.destinationLocationId !== null &&
       destination !== String(request.destinationLocationId) &&
       destination !== '';
     const dirty = lineChanges.length > 0 || sourceChanged || destinationChanged;
@@ -343,7 +344,7 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
           </dd>
           <dt>{t.detail.destination}</dt>
           <dd>
-            {scope === 'all' ? (
+            {scope === 'all' && request.destinationLocationId !== null ? (
               <Select
                 aria-label={t.detail.destination}
                 value={destination}

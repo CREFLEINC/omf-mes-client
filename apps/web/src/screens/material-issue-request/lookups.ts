@@ -9,12 +9,10 @@ import { locationOptionLabel } from '../../patterns/location-label';
 
 /**
  * 내부 번호(FK)로 이어진 값을 이름으로 푸는 선택 목록 넷 — 창고·위치·품목·단위.
- * 여기에 더해 **위치 하나의 상세**(`useLocationDetail`)로 창고를 유도한다.
  *
  * ⭐ **창고 축이 화면에 필요한 이유.** `GET /mdm/locations` 는 `warehouseId` 를 **필수**로
  * 요구한다(계약 실측 — 타입에도 필수라 비우고 부를 수단이 없다). 스펙 §3 의 도착 칸은 선택칸
- * 하나뿐이라 창고를 담을 자리가 없어, 화면이 칸을 하나 더 세운다. 대부분의 W/O 에서는
- * `defaultWipLocationId` 로 자동으로 채워져 사용자가 만지지 않는다.
+ * 하나뿐이라 창고를 담을 자리가 없어, 화면에서 창고를 먼저 고른다.
  *
  * 전부 `includeInactive=true` 로 받는다 — 미사용 값을 참조하는 과거 W/O 가 오면 이름이
  * 비어 보이지 않게 하기 위해서다.
@@ -67,8 +65,6 @@ export const lookupKeys = {
   warehouses: ['material-issue-request-lookups', 'warehouses'] as const,
   locations: (warehouseId: number) =>
     ['material-issue-request-lookups', 'locations', warehouseId] as const,
-  locationDetail: (locationId: number) =>
-    ['material-issue-request-lookups', 'location-detail', locationId] as const,
   items: ['material-issue-request-lookups', 'items'] as const,
   itemDetail: (itemId: number) =>
     ['material-issue-request-lookups', 'item-detail', itemId] as const,
@@ -145,44 +141,6 @@ export const useLocationOptions = (warehouseId: number | null): LookupResult => 
     refetch: () => {
       void query.refetch();
     },
-  };
-};
-
-export interface LocationDetailResult {
-  /** 그 위치가 속한 창고. 못 풀었으면 `null` */
-  warehouseId: number | null;
-  isError: boolean;
-  isLoading: boolean;
-}
-
-/**
- * W/O 의 기본 재공 위치가 어느 창고에 속하는지 푼다 — 창고칸을 **자동으로 채우는** 유일한 단서다.
- *
- * ⛔ **실패하면 조용히 첫 창고를 고르지 않는다.** 못 풀면 사용자가 직접 고른다. 지어낸 창고로
- * 채우면 잘못된 위치가 되돌릴 수 없는 전표에 실린다.
- */
-export const useLocationDetail = (locationId: number | null): LocationDetailResult => {
-  const { client } = useApiClient();
-
-  const query = useQuery({
-    queryKey: lookupKeys.locationDetail(locationId ?? 0),
-    enabled: locationId !== null,
-    queryFn: () => {
-      if (locationId === null) {
-        throw new Error('기본 재공 위치가 없는 W/O 에서는 상세를 조회하지 않습니다.');
-      }
-
-      return runRequest(() =>
-        client.GET('/mdm/locations/{locationId}', { params: { path: { locationId } } }),
-      );
-    },
-  });
-
-  /* 상세는 위치와 편집 가능 여부를 함께 준다(계약 실측) — 우리가 쓰는 것은 창고 하나다. */
-  return {
-    warehouseId: query.data?.location.warehouseId ?? null,
-    isError: query.isError,
-    isLoading: locationId !== null && query.isPending,
   };
 };
 

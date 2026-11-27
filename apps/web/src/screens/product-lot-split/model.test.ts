@@ -47,7 +47,7 @@ describe('P-04-08 판정', () => {
     expect(subtractQty(0.3, 0.1)).toBe(0.2);
   });
 
-  it('T026 막힌 이유 8종 모두 ko 와 vi 문구가 있다', () => {
+  it('T026 막힌 이유 9종(016 반제품 포함) 모두 ko 와 vi 문구가 있다', () => {
     for (const code of SPLIT_BLOCK_CODES) {
       const korean = blockViewOf(code);
       expect(korean.title).not.toBe(ko.productLotSplit.blocked.unknown.title);

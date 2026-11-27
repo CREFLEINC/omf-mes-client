@@ -127,7 +127,7 @@ export const toReceiptDraft = (
   issue: GoodsIssue,
   /** 창고 보충 출고면 null — 본문에 싣지 않는다. */
   workOrderId: number | null,
-  destinationLocationId: number,
+  destinationLocationId: number | null,
   lines: DraftLine[],
   now: Date,
   workerNo: string,
@@ -135,7 +135,7 @@ export const toReceiptDraft = (
   const body: ShopfloorReceiptCreate = {
     goodsIssueId: issue.goodsIssueId,
     ...(workOrderId === null ? {} : { workOrderId }),
-    destinationLocationId,
+    ...(destinationLocationId === null ? {} : { destinationLocationId }),
     receivedAt: now.toISOString(),
     /* 오프라인에서 늦게 닿아도 언제 한 일인지가 남아야 수불이 그날로 선다. */
     businessDate: now.toISOString().slice(0, 10),

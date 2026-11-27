@@ -33,11 +33,16 @@ export const productReceipt = {
     notFound: (no: string) => `${no} 에 맞는 LOT·인식표를 찾지 못했습니다`,
     /** 받지 않는 생산 LOT 라벨 — 까닭을 사람의 말로. */
     lotRefused: {
+      /** 피처 016 공정 반제품(시안 2판 ⑤). 둘째 줄은 `semiFinishedHint`. */
+      semiFinished: (_lotNo: string) => '반제품 LOT 은 제품 입고할 수 없습니다',
       notProduct: (lotNo: string) => `${lotNo} 은(는) 제품 LOT이 아닙니다`,
       voided: (lotNo: string) => `${lotNo} 은(는) 폐번된 LOT입니다`,
       noGood: (lotNo: string) => `${lotNo} 은(는) 양품 실적이 없습니다`,
       stocked: (lotNo: string) => `${lotNo} 은(는) 이미 입고한 LOT입니다`,
     },
+    /** 반제품 거절 카드의 둘째 줄 — 할 일을 말한다(시안 2판 ⑤). 공정을 모르면 순번 없이. */
+    semiFinishedHint: (lotNo: string, operationSeq: number | null) =>
+      `${lotNo}${operationSeq === null ? '' : ` · 공정 ${String(operationSeq)}`} 반제품 — 다음 공정에서 POP 자재 투입으로 투입하세요.`, // ui-check-ignore: C-13 승인 시안 2판 표기(016 screens/M-04-04)
     picked: (no: string) => `인식표 ${no}`,
     empty: '이 인식표에는 담긴 물건이 없습니다',
   },

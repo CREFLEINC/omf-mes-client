@@ -96,7 +96,6 @@ const proposal: PlanProposal = {
           plannedMoldId: null,
           responsibleWorkerId: null,
           plannedShiftId: null,
-          defaultWipLocationId: null,
           defaultFgLocationId: 50,
           defaultFgLocationSource: 'ERP_STORAGE_LOCATION',
           defaultScrapLocationId: null,

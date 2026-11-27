@@ -17,8 +17,6 @@ export const inspectionStandard = {
     listExpand: '목록 펼치기',
   },
   actions: {
-    /* 상세 머리 — 그 품목의 라우팅 화면으로 옮긴다(사용자 지시 2026-11-05). */
-    openRouting: '라우팅 조회',
     /* 미사용 기준을 다시 켜는 단추 — 「사용 중지」 자리(사용자 지시 2026-11-04). */
     reactivate: '재사용',
     /* 다른 품목으로 복사(omf-all-around#255). */
@@ -216,9 +214,6 @@ export const inspectionStandard = {
     versionStatuses: { draft: '작성중', confirmed: '확정', obsolete: '사용 중지' },
     chipVersionStatus: (label: string): string => `상태: ${label}`,
     chipRemoveVersionStatus: '상태 조건 제거',
-    searchLabel: '검사 기준 검색',
-    searchPlaceholder: '기준 코드 또는 기준명을 입력하세요',
-    searchClear: '검사 기준 검색 지우기',
     inspectionType: '검사 유형 선택',
     typeAll: '전체 유형',
     chipKeyword: (value: string): string => `검색어: ${value}`,
@@ -492,7 +487,9 @@ export const inspectionStandard = {
     /** 표의 「항목」 열 — 코드와 이름을 한 칸에 담는다. `item`(품목)과 다른 것이다. */
     itemSpec: '항목',
     dataType: '검사값 유형',
-    targetRange: '목표·범위',
+    /* 검사 항목 표 — 목표 · 범위(하한~상한)를 따로 칸으로(사용자 지시 2026-11-27). */
+    target: '목표',
+    limitRange: '범위',
     measurementCount: '측정 횟수',
     judgment: '판정',
     /** 행 안의 수정·삭제 열. 머리글이 없으면 보조기술이 열의 뜻을 읽을 수 없다. */
@@ -557,6 +554,8 @@ export const inspectionStandard = {
     none: '없음',
     /** 「코드 · 이름」. 코드가 앞에 온다 — 중복 검증의 대상이라 훑을 수 있어야 한다. */
     itemLabel: (code: string, name: string): string => `${code} · ${name}`,
+    /** 목록 줄을 고르는 단추의 접근 이름 — 보이는 글(검사 유형) 뒤 쉼표, 기준명(목록에 기준명 열이 없다 · 2026-11-27). */
+    planRowLabel: (type: string, planName: string): string => `${type}, ${planName}`,
     /** 목표·하한~상한·단위를 한 칸에 담는다. 없는 값은 지어내지 않고 자리를 비워 표기한다. */
     range: (lower: string, upper: string): string => `${lower}~${upper}`,
   },

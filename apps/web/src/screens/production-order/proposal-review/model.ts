@@ -9,7 +9,6 @@ export const resourceLabels = {
   plannedMoldId: '금형',
   responsibleWorkerId: '작업자',
   plannedShiftId: '교대',
-  defaultWipLocationId: 'WIP 위치',
   defaultFgLocationId: '생산품 입고 창고',
   defaultScrapLocationId: '스크랩 위치',
 } as const;
@@ -177,7 +176,7 @@ export const proposalErrors = (row: ReviewProposal): string[] => {
     if (!plan.operations.length) errors.push('Routing 공정을 확인하세요');
     plan.operations.forEach((op) =>
       op.required
-        .filter((field) => field !== 'defaultWipLocationId' && field !== 'defaultScrapLocationId')
+        .filter((field) => field !== 'defaultScrapLocationId')
         .forEach((field) => {
           if (
             !op.resources[field] &&

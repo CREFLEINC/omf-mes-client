@@ -288,14 +288,12 @@ describe('work-order resource queries', () => {
           ...productionLine(602),
           parentLineId: 601,
           isActive: false,
-          defaultWipLocationId: null,
           defaultFgLocationId: null,
           defaultScrapLocationId: null,
         },
         {
           ...productionLine(601),
           parentLineId: null,
-          defaultWipLocationId: null,
           defaultFgLocationId: null,
           defaultScrapLocationId: null,
         },
@@ -381,7 +379,6 @@ describe('work-order resource queries', () => {
         {
           ...productionLine(601),
           parentLineId: null,
-          defaultWipLocationId: null,
           defaultFgLocationId: null,
           defaultScrapLocationId: null,
         },

@@ -6019,6 +6019,8 @@ export interface paths {
           /** @description 값 = `IQC`·`PQC`·`OQC`. 값 목록은 `GET /mdm/code-values?codeGroupCode=QUALITY_INSPECTION_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
           inspectionTypeCode?: string;
           itemId?: number;
+          /** @description 공장으로 거른다 — 관리웹 검사기준 목록이 사업부 공장(OA PL13 · 부품 PL11) 기준만 보인다(클라이언트 요청 2026-11-27). 기준의 공장은 품목의 공장이고 GET /mdm/items 의 plantId 와 같은 규칙이다 — 모품목이나 구성품으로 든 BOM 중 공장이 이 값인 것이 있으면 그 공장 품목이다. 두 공장 BOM 에 다 든 품목의 기준은 두 공장에서 나온다. 공장이 정해진 BOM 에 든 적 없는 품목의 기준과 품목이 빈 기준은 어느 공장으로 걸러도 나온다. 보내지 않으면 공장을 가리지 않는다 */
+          plantId?: number;
           includeInactive?: boolean;
           page?: number;
           size?: number;
@@ -30115,7 +30117,7 @@ export interface paths {
     put?: never;
     /**
      * 로그인
-     * @description ⛔ 실패해도 아이디와 비밀번호 중 무엇이 틀렸는지 말하지 않는다 — 계정이 있는지가 새어 나간다. 남은 시도 횟수는 알린다(잠긴 뒤에야 알리지 않기 위해서다). 잠긴 계정은 스스로 풀 수 없다 — 관리자가 푼다. 근거: W-CO-01 §5-1·§5-2
+     * @description ⛔ 실패해도 아이디와 비밀번호 중 무엇이 틀렸는지 말하지 않는다 — 계정이 있는지가 새어 나간다. 근거: W-CO-01 §5-1
      */
     post: {
       parameters: {
@@ -30160,15 +30162,6 @@ export interface paths {
           };
           content: {
             'application/json': components['schemas']['LoginFailure'];
-          };
-        };
-        /** @description 실패가 쌓여 잠겼다 — 스스로 풀 수 없다 */
-        423: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
           };
         };
       };
@@ -30268,7 +30261,7 @@ export interface paths {
     put?: never;
     /**
      * 내 비밀번호 변경
-     * @description ⛔ 현재 비밀번호를 틀려도 계정을 잠그지 않는다 — 로그인과 달리 이미 인증된 본인이기 때문이다. ⛔ 바꾼 뒤 다시 로그인시키지 않는다 — 작업 중일 수 있다. 근거: W-CO-10 §5-2·§5-3
+     * @description ⛔ 바꾼 뒤 다시 로그인시키지 않는다 — 작업 중일 수 있다. 근거: W-CO-10 §5-3
      */
     post: {
       parameters: {
@@ -33995,7 +33988,6 @@ export interface paths {
            *               "routingOperationId": 701,
            *               "productionLineId": 11,
            *               "plannedEquipmentId": 2001,
-           *               "defaultWipLocationId": 1101,
            *               "defaultFgLocationId": 5201,
            *               "defaultScrapLocationId": 1103,
            *               "plannedTimeSourceCode": "USER",
@@ -34021,7 +34013,6 @@ export interface paths {
            *             {
            *               "routingOperationId": 701,
            *               "productionLineId": 12,
-           *               "defaultWipLocationId": 1201,
            *               "defaultFgLocationId": 5101,
            *               "defaultScrapLocationId": 1203,
            *               "plannedTimeSourceCode": "SYSTEM"
@@ -34433,7 +34424,6 @@ export interface paths {
              *               "plannedEquipmentId": 2001,
              *               "plannedMoldId": null,
              *               "responsibleWorkerId": null,
-             *               "defaultWipLocationId": 1101,
              *               "defaultFgLocationId": 5101,
              *               "defaultScrapLocationId": 1103,
              *               "equipmentRequired": true,
@@ -34460,7 +34450,6 @@ export interface paths {
              *               "plannedEquipmentId": null,
              *               "plannedMoldId": null,
              *               "responsibleWorkerId": 501,
-             *               "defaultWipLocationId": 1101,
              *               "defaultFgLocationId": 5101,
              *               "defaultScrapLocationId": 1103,
              *               "equipmentRequired": false,
@@ -51908,12 +51897,6 @@ export interface components {
       isActive: boolean;
       /**
        * Format: int64
-       * @description 라인 기본 WIP 위치. 계획 확정·4M 라인 선택 때 W/O defaultWipLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 근거: 서버 선행 · 장부 P-46
-       * @example 3001
-       */
-      defaultWipLocationId?: number | null;
-      /**
-       * Format: int64
        * @description 라인 기본 완제품 위치. 계획 확정·4M 라인 선택 때 W/O defaultFgLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 근거: 서버 선행 · 장부 P-46
        * @example 3001
        */
@@ -52483,12 +52466,6 @@ export interface components {
       isActive: boolean;
       /**
        * Format: int64
-       * @description 라인 기본 WIP 위치. 계획 확정·4M 라인 선택 때 W/O defaultWipLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 근거: 서버 선행 · 장부 P-46
-       * @example 3001
-       */
-      defaultWipLocationId?: number | null;
-      /**
-       * Format: int64
        * @description 라인 기본 완제품 위치. 계획 확정·4M 라인 선택 때 W/O defaultFgLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 근거: 서버 선행 · 장부 P-46
        * @example 3001
        */
@@ -52534,12 +52511,6 @@ export interface components {
       parentGroupId?: number | null;
       /**
        * Format: int64
-       * @description 라인 기본 WIP 위치. 계획 확정·4M 라인 선택 때 W/O defaultWipLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 생략하면 그대로 두고 null 이면 비운다. 근거: 서버 선행 · 장부 P-46
-       * @example 3001
-       */
-      defaultWipLocationId?: number | null;
-      /**
-       * Format: int64
        * @description 라인 기본 완제품 위치. 계획 확정·4M 라인 선택 때 W/O defaultFgLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 생략하면 그대로 두고 null 이면 비운다. 근거: 서버 선행 · 장부 P-46
        * @example 3001
        */
@@ -52574,12 +52545,6 @@ export interface components {
        * @example 1001
        */
       parentGroupId?: number | null;
-      /**
-       * Format: int64
-       * @description 라인 기본 WIP 위치. 계획 확정·4M 라인 선택 때 W/O defaultWipLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 생략하면 그대로 두고 null 이면 비운다. 근거: 서버 선행 · 장부 P-46
-       * @example 3001
-       */
-      defaultWipLocationId?: number | null;
       /**
        * Format: int64
        * @description 라인 기본 완제품 위치. 계획 확정·4M 라인 선택 때 W/O defaultFgLocationId 로 복사한다. 그 라인 공장의, 자재창고가 아닌 위치여야 한다(아니면 400 INVALID). 생략하면 그대로 두고 null 이면 비운다. 근거: 서버 선행 · 장부 P-46
@@ -57708,7 +57673,7 @@ export interface components {
        * Format: int64
        * @example 1001
        */
-      destinationLocationId: number;
+      destinationLocationId: number | null;
       /**
        * Format: date-time
        * @example 2026-08-06T09:12:00+09:00
@@ -58864,7 +58829,7 @@ export interface components {
        * Format: int64
        * @example 1001
        */
-      destinationLocationId: number;
+      destinationLocationId: number | null;
       /**
        * Format: date-time
        * @example 2026-08-06T09:12:00+09:00
@@ -58900,7 +58865,7 @@ export interface components {
        * @description 창고 보충 출고(workOrderId 없음)는 출고가 실은 도착 위치와 같아야 한다(아니면 400 INVALID). W/O 출고는 대조하지 않는다(지금 동작 그대로). 근거: 피처 004 생산 창고 보충 G2 보완 · omf-all-around#230
        * @example 1001
        */
-      destinationLocationId: number;
+      destinationLocationId?: number;
       /**
        * Format: date-time
        * @example 2026-08-06T09:12:00+09:00
@@ -62131,11 +62096,6 @@ export interface components {
     LoginFailure: {
       /** @example 아이디 또는 비밀번호가 맞지 않습니다 */
       message: string;
-      /**
-       * @description 남은 시도 횟수. 잠긴 뒤에야 알리지 않는다. ⚠ 없는 계정에는 오지 않는다 — 그래서 계정 존재가 드러나지만 「잠길 줄 모르는 것」보다 낫다고 판단했다
-       * @example 3
-       */
-      remainingAttempts?: number;
     };
     /**
      * @description 로그인 결과이자 「지금 나는 누구이고 어디까지 보는가」.
@@ -62186,7 +62146,7 @@ export interface components {
        */
       plantId?: number;
     };
-    /** @description 현재 비밀번호를 틀려도 계정을 잠그지 않는다 — 이미 인증된 본인이다. 바꾼 뒤 다시 로그인시키지도 않는다. 근거: W-CO-10 §5-2·§5-3 */
+    /** @description 바꾼 뒤 다시 로그인시키지 않는다. 근거: W-CO-10 §5-3 */
     PasswordChangeRequest: {
       /** Format: password */
       currentPassword: string;
@@ -65059,12 +65019,6 @@ export interface components {
       plannedShiftId: number | null;
       /**
        * Format: int64
-       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
-       * @example 1001
-       */
-      defaultWipLocationId: number | null;
-      /**
-       * Format: int64
        * @description 완제품 위치 — ERP W/O 에 SL_CD 가 있으면 erpStorage.location(그 창고 안의 입고 위치), 없으면 W/O 라인의 기본 완제품 위치. SL_CD 가 있는데 창고를 정하지 못하면 라인 기본값이 있어도 null 이고 erpStorage.reasonCode 와 같은 코드의 issues 가 선다. 계획의 모든 공정 W/O 에 같은 값을 둔다. ERP 목적지의 의미는 마지막 공정에 있고 중간 공정 값은 배포 필수 검사를 위해 같은 값을 둔다.
        * @example 1001
        */
@@ -65511,12 +65465,6 @@ export interface components {
       plannedEndAt?: string | null;
       /**
        * Format: int64
-       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
-       * @example 1001
-       */
-      defaultWipLocationId?: number;
-      /**
-       * Format: int64
        * @description SL_CD 창고 안의 위치(제안의 defaultFgLocationId), 계획에 fgWarehouseOverride 가 있으면 바꾼 창고 안의 위치. 규칙은 ProductionPlanProposalConfirmWorkOrder 설명. ERP 목적지의 의미는 마지막 공정에 있고 중간 공정 값은 배포 필수 검사를 위해 같은 값을 둔다.
        * @example 1001
        */
@@ -65866,12 +65814,6 @@ export interface components {
       plannedEndAt?: string | null;
       /**
        * Format: int64
-       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
-       * @example 1001
-       */
-      defaultWipLocationId?: number | null;
-      /**
-       * Format: int64
        * @description SL_CD 창고 안의 위치(제안의 defaultFgLocationId). 규칙은 ProductionPlanProposalConfirmWorkOrder 설명. ERP 목적지의 의미는 마지막 공정에 있고 중간 공정 값은 배포 필수 검사를 위해 같은 값을 둔다.
        * @example 1001
        */
@@ -66037,7 +65979,7 @@ export interface components {
       remarks: string | null;
       fgWarehouse: components['schemas']['ProductionPlanProposalFgWarehouse'];
     };
-    /** @description 재검증한 공정 W/O 하나 — 확정하면 저장될 값. 본문 값은 그대로 두고 서버가 정하는 칸(수량·선후관계·계획 시각·라인 기본 WIP)만 계산해 채운다. 본문 순서다. */
+    /** @description 재검증한 공정 W/O 하나 — 확정하면 저장될 값. 본문 값은 그대로 두고 서버가 정하는 칸(수량·선후관계·계획 시각)만 계산해 채운다. 본문 순서다. */
     ProductionPlanProposalRevalidatedWorkOrder: {
       /**
        * Format: int64
@@ -66108,12 +66050,6 @@ export interface components {
        * @example 1001
        */
       responsibleWorkerId: number | null;
-      /**
-       * Format: int64
-       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
-       * @example 1001
-       */
-      defaultWipLocationId: number | null;
       /**
        * Format: int64
        * @description 본문 값 — 비었으면 null(그 칸 REQUIRED 가 errors 에 있다)
@@ -67194,12 +67130,6 @@ export interface components {
       priorityNo: number;
       /**
        * Format: int64
-       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
-       * @example 1001
-       */
-      defaultWipLocationId?: number;
-      /**
-       * Format: int64
        * @example 1001
        */
       defaultFgLocationId?: number;
@@ -67641,12 +67571,6 @@ export interface components {
        * @example 1001
        */
       responsibleWorkerId?: number | null;
-      /**
-       * Format: int64
-       * @description 생산 라인 기본 WIP에서 서버가 자동 적용합니다. 직접 지정하지 않습니다. 배포 전 수정은 같은 라인의 저장값을 보존하고 라인 변경 또는 누락 시 기본값을 적용합니다.
-       * @example 1001
-       */
-      defaultWipLocationId?: number | null;
       /**
        * Format: int64
        * @description 명시적 null = 해제 · 필드 생략 = 기존 값 유지. 값을 바꿀 때 — ERP W/O 에 SL_CD 가 있으면 그 코드와 같은 MES 창고 안의 위치여야 한다(다른 창고면 400 FG_LOCATION_OUTSIDE_WAREHOUSE, 창고를 정하지 못하면 400 FG_WAREHOUSE_UNMAPPED·FG_WAREHOUSE_INACTIVE·FG_WAREHOUSE_OTHER_PLANT·FG_WAREHOUSE_NOT_ALLOWED). SL_CD 가 없으면 이 공장의 사용 중인 위치이되 자재창고·외부창고·불량창고가 아니어야 한다(아니면 400 LOCATION_INVALID). 같은 값을 다시 보내면 검증하지 않는다. ERP 목적지의 의미는 마지막 공정에 있고 중간 공정 값은 배포 필수 검사를 위해 같은 값을 둔다.

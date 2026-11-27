@@ -24,6 +24,7 @@ export const materialPicking = {
     type: (name: string) => `유형 ${name}`,
     /** 집은 것을 어디로 가져가는가. 말하지 않으면 그 자리가 사람의 기억에만 남는다. */
     destination: (code: string) => `도착 ${code}`,
+    directIssue: '작업지시 자재 출고',
     destinationLoading: '도착 위치를 불러오는 중입니다',
     /*
      * 끊긴 것과 서버가 없다고 답한 것을 가른다. 앞은 자리를 옮기면 풀리고 뒤는 옮겨도

@@ -2,7 +2,6 @@ import { Button, Checkbox } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 
-import { useApiClient } from '../../patterns/api-context';
 import {
   FilterMoreButton,
   HiddenFilterChips,
@@ -10,11 +9,11 @@ import {
   useFilterMore,
 } from '../../patterns/filter-more';
 import { ItemSelect } from '../../patterns/item-select';
-import { runRequest } from '../../patterns/request';
-import { PagedSelect, Select } from '../../patterns/select';
+import { useMasterDataPlant } from '../../patterns/master-data-plant';
+import { Select } from '../../patterns/select';
 import { DEFAULT_PLAN_FILTERS, INSPECTION_TYPE_OPTIONS } from './code-options';
 import { FieldLabel } from './field-label';
-import { clearFilter, toFilterChips, toListQuery } from './filters';
+import { clearFilter, toFilterChips } from './filters';
 import { useItemNameLabels } from './queries';
 import type { PlanFilters } from './types';
 
@@ -23,11 +22,11 @@ const t = messages.inspectionStandard;
 /** 조건 줄의 「전체」 — 빈 값이라 좁히지 않는다. */
 const ALL = [{ value: '', label: t.filters.all }];
 
-/** 「조건 더보기」에 접는 조건(C-6) — 칩은 이 조건만 낸다. */
-const FOLDED_KEYS: readonly (keyof PlanFilters)[] = ['versionStatus'];
-
-/** 검사 기준 칸의 한 쪽 건수 — 종전 검색 창의 첫 쪽과 같다. */
-const PLAN_SELECT_PAGE_SIZE = 20;
+/**
+ * 칸이 보이지 않는 조건(C-6) — 칩은 이 조건만 낸다. 「조건 더보기」에 접은 상태와, 칸을 걷은 검색어(2026-11-27)다.
+ * 예전 주소로 검색어가 걸려 들어오면 칸 없이 목록만 좁아지므로 칩으로 알리고 지울 수 있게 한다.
+ */
+const FOLDED_KEYS: readonly (keyof PlanFilters)[] = ['q', 'versionStatus'];
 
 export interface PlanFilterBarProps {
   /** 적용된(주소에 반영된) 조건 — 조건 칩의 렌더 기준 */
@@ -44,7 +43,7 @@ export interface PlanFilterBarProps {
  * 검사기준 조회 조건 — 검사 조회·판정처럼 목록 위 카드 한 줄에 선다(omf-all-around#196).
  * 목록 구획 안에 두면 좌우 배치에서 좁은 목록 칸에 조건 셋이 끼어 줄이 넘친다.
  *
- * **보이는 칸은 셋이다**(C-6) — 검사 유형 · 검사 기준 검색 · 품목 검색. 상태 · 미승인은 「조건 더보기」에 접고,
+ * **보이는 칸은 둘이다**(C-6) — 검사 유형 · 품목 검색(검사 기준 검색은 걷었다 · 2026-11-27). 상태는 「조건 더보기」에 접고,
  * 접힌 조건이 걸려 있으면 칩으로만 알린다. 「초기화」는 바뀐 것이 있을 때만 보인다.
  */
 export const PlanFilterBar = ({
@@ -56,9 +55,12 @@ export const PlanFilterBar = ({
   const more = useFilterMore();
   const typeSelectId = useId();
   const statusSelectId = useId();
-  const planSelectId = useId();
   const itemSelectId = useId();
-  const { client } = useApiClient();
+  /*
+   * 품목은 위 줄 사업부의 공장 것에서만 찾는다(사용자 지시 2026-11-27) — 목록(서버 #1169) · 품목 · BOM · 라우팅과 같다.
+   * 사업부를 바꾸면 고른 품목 조건은 화면이 푼다(`screen.tsx`).
+   */
+  const plant = useMasterDataPlant();
 
   /*
    * 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
@@ -102,9 +104,7 @@ export const PlanFilterBar = ({
   const toItemId = (value: string): number | null => (value === '' ? null : Number(value));
   const itemLabelOf = useItemNameLabels([toItemId(draft.itemId)]);
   const draftItemLabel = itemLabelOf(toItemId(draft.itemId)) ?? '';
-  /* 종전 창과 같은 범위에서 찾는다 — 목록 조건의 미사용 포함을 따른다(목록에 없는 기준을 고르지 않게). */
-  const planIncludeInactive = appliedFilters.includeInactive || appliedFilters.inactiveOnly;
-  /* 접힌 칸(상태)의 조건만, 칸 차례대로 칩으로 — 보이는 칸의 값을 칩으로 겹쳐 적지 않는다. */
+  /* 보이지 않는 칸(검색어 · 상태)의 조건만, 차례대로 칩으로 — 보이는 칸의 값을 칩으로 겹쳐 적지 않는다. */
   const appliedChips = toFilterChips(appliedFilters);
   const hiddenChips = FOLDED_KEYS.flatMap((key) => appliedChips.filter((chip) => chip.key === key));
   /* 사용 여부 칩도 초기화가 되돌리므로 함께 견준다. */
@@ -113,7 +113,7 @@ export const PlanFilterBar = ({
   return (
     <>
       <div className="filter-bar">
-        {/* 순서: 검사 유형 → 검사 기준 검색 → 품목 검색 → (조건 더보기) 상태(사용자 지시 · #208 · C-6). 미승인 체크는 승인 기능과 함께 걷었다(omf-all-around#357). */}
+        {/* 순서: 검사 유형 → 품목 검색 → (조건 더보기) 상태(사용자 지시 · #208 · C-6). 미승인 체크는 승인 기능과 함께 걷었다(omf-all-around#357). */}
         {/*
          * 규범 3-2 — 선택지 목록이 트리거 폭에 갇혀 있어(디자인 시스템 이슈 #62) 최소 폭을 주지 않으면
          * 「IQC (수입검사)」가 「IQC (수⋯」로 잘려 무엇을 고르는지 읽을 수 없다.
@@ -133,56 +133,18 @@ export const PlanFilterBar = ({
           />
         </div>
 
-        {/*
-         * 검사 기준은 **칸에서 바로 검색해서 고른다**(omf-all-around#226) — 검사 조회·판정의 품목 조건과 같은 모양.
-         * 고른 기준의 코드가 검색어로 들어가 칸에 그 코드가 선다. 「전체」는 종전 × 자리다. 고르면 바로 조회한다(#208).
-         */}
-        <div className="field-cell search-select-cell">
-          <FieldLabel htmlFor={planSelectId} label={t.filters.searchLabel} />
-          <PagedSelect
-            id={planSelectId}
-            queryKey={['inspection-standard', 'plan-select', planIncludeInactive]}
-            fetchPage={async (q, page) => {
-              const data = await runRequest(() =>
-                client.GET('/quality/inspection-plans', {
-                  params: {
-                    query: {
-                      ...toListQuery(
-                        { ...DEFAULT_PLAN_FILTERS, q, includeInactive: planIncludeInactive },
-                        page,
-                      ),
-                      page,
-                      size: PLAN_SELECT_PAGE_SIZE,
-                    },
-                  },
-                }),
-              );
-              return {
-                options: data.items.map((plan) => ({
-                  value: plan.inspectionPlanCode,
-                  label: `${plan.inspectionPlanCode} · ${plan.inspectionPlanName}`,
-                })),
-                total: data.page.total,
-              };
-            }}
-            /* 칸에는 종전처럼 검색어(기준 코드)를 그대로 보인다 — 주소로 들어온 검색어도 같다. */
-            selectedOption={draft.q === '' ? null : { value: draft.q, label: draft.q }}
-            leadingOptions={ALL}
-            value={draft.q}
-            placeholder={t.filters.all}
-            onChange={(value) => applyNow({ q: value })}
-          />
-        </div>
-
+        {/* 「검사 기준 검색」 칸은 걷었다(사용자 지시 2026-11-27) — 기준은 검사 유형 · 품목으로 찾는다. */}
         {/*
          * 품목 — 칸에서 바로 검색해서 고른다(#226). 고르면 바로 조회하고(#208) 「전체」는 종전 × 자리다.
          * 지난 기준도 찾게 사용 중지 품목까지 찾는다. 칸 글자는 종전처럼 「이름 (코드)」다.
+         * 칸은 다른 선택칸보다 넓다 — 이름 · 코드가 잘리지 않게(사용자 지시 2026-11-27 · app.css `.inspection-standard-item-filter`).
          */}
-        <div className="field-cell search-select-cell">
+        <div className="field-cell search-select-cell inspection-standard-item-filter">
           <FieldLabel htmlFor={itemSelectId} label={t.filters.item} />
           <ItemSelect
             id={itemSelectId}
             includeInactive
+            plantId={plant.plantId}
             selectedOption={
               draft.itemId === '' || draftItemLabel === ''
                 ? null

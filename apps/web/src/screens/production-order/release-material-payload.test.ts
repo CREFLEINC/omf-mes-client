@@ -37,7 +37,6 @@ describe('배포 자재 환산 본문과 오류 연결', () => {
               orderQty: 10,
               statusCode: 'CONFIRMED',
               productionLineId: 5,
-              defaultWipLocationId: 6,
               defaultFgLocationId: 6,
             },
             { headers: { ETag: '"1"' } },

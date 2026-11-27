@@ -97,7 +97,6 @@ const LINE = {
   lineName: '합성 라인',
   lineTypeCode: 'ASSEMBLY',
   isActive: true,
-  defaultWipLocationId: 41,
   defaultFgLocationId: 42,
   defaultScrapLocationId: 43,
 };
@@ -147,7 +146,7 @@ const workOrderBody = (workOrder: WorkOrder, state: World) => ({
     ? {}
     : { productionLineId: workOrder.productionLineId }),
   ...(workOrder.located
-    ? { defaultWipLocationId: 41, defaultFgLocationId: 42, defaultScrapLocationId: 43 }
+    ? { defaultFgLocationId: 42, defaultScrapLocationId: 43 }
     : {}),
   versionNo: 1,
 });
