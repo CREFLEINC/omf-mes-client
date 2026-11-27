@@ -28,6 +28,7 @@ export const shopfloorReceipt = {
     hopper: '호퍼 잔량 실측',
   },
   issue: {
+    workOrderReceipt: '작업지시 자재 수령',
     /*
      * 008(omf-all-around#289) — 출고 QR 은 더 발행하지 않는다. 부분 출고분은 분할 LOT 라벨, 전량 출고분은 원래
      * 자재 LOT 라벨을 읽어 그 LOT 의 입고 안 된 출고를 연다. 이미 붙은 출고 QR · 손으로 친 출고번호도 받는다.

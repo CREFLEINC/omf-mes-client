@@ -180,23 +180,20 @@ export const TargetPane = ({
           />
         )}
 
-        <SelectField
-          wide
-          required={sourceWarehouse === undefined}
-          label={
-            sourceWarehouse === undefined
-              ? t.formFields.destinationLocation
-              : t.sourceWarehouse.destination
-          }
-          options={locationOptions}
-          value={destinationLocationId}
-          placeholder={t.placeholders.select}
-          note={locationNote}
-          info={sourceWarehouse === undefined ? undefined : t.sourceWarehouse.destinationHelp}
-          error={headerErrors.destinationLocationId}
-          disabled={isLocked}
-          onChange={onChangeDestination}
-        />
+        {sourceWarehouse === undefined && (
+          <SelectField
+            wide
+            required
+            label={t.formFields.destinationLocation}
+            options={locationOptions}
+            value={destinationLocationId}
+            placeholder={t.placeholders.select}
+            note={locationNote}
+            error={headerErrors.destinationLocationId}
+            disabled={isLocked}
+            onChange={onChangeDestination}
+          />
+        )}
 
         {/*
          * `DatePicker`에는 `label`·`error` prop이 없다(설치본 실측) — 라벨을 직접 만들고 오류는

@@ -12,14 +12,13 @@ type Client = ReturnType<typeof useApiClient>['client'];
 /**
  * 스캔 하나로 모은 것.
  *
- * 수령 전표는 작업지시와 도착 위치를 필수로 요구하는데 출고 전표에는 둘 다 없다. 출고 →
- * 피킹 지시 → 자재출고요청으로 두 번 더 따라가야 나온다.
+ * 출고 → 피킹 지시 → 자재출고요청으로 따라가 작업지시와 도착 위치를 확인한다.
  */
 export interface ScannedIssue {
   issue: GoodsIssue;
   lines: GoodsIssueLine[];
   /**
-   * 피킹지시 원천이 아니면 둘 다 없다.
+   * 피킹지시 원천이 아니면 작업지시와 도착 위치가 비어 있다.
    *
    * 계약의 출고 원천은 셋이다 - `PICKING_ORDER` · `GOODS_RECEIPT` · `DISPOSITION_DECISION`.
    * 뒤의 둘은 따라갈 사슬이 없어 이 화면이 두 값을 얻을 길이 없다. 서버가 막는 것은 아니고

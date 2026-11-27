@@ -119,7 +119,7 @@ const setup = (options: Setup = {}) => {
 const warehouseLabel = t.areas.warehouse.label;
 const shippingLabel = t.areas.shipping.label;
 /**
- * 배지가 없을 때 창고 줄의 이름은 보이는 글자(「창고 작업 6개」)다. 6 — 피처 011 이 적치 기록을 더했고, 임시 위치 적재는
+ * 배지가 없을 때 창고 줄의 이름은 보이는 글자(「창고 작업 7개」)다. 7 — 피처 011 이 적치 기록을 더했고, 임시 위치 적재는
  * 목록에서 뺐다(2026-11-23).
  */
 const areaName = new RegExp(`^${warehouseLabel}`);
