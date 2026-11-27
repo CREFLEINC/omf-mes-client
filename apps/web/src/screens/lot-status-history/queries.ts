@@ -88,6 +88,27 @@ export const useLotDetail = (lotId: number | null): UseQueryResult<LotDetailView
 };
 
 /**
+ * 반제품 LOT 을 만든 W/O 번호(피처 016 · 생산 공정 줄). LOT 응답은 W/O id 만 싣는다. 못 받으면 번호 없이 공정만 보인다.
+ */
+export const useWorkOrderNo = (workOrderId: number | null): UseQueryResult<string> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: lotStatusKeys.workOrder(workOrderId),
+    enabled: workOrderId !== null,
+    queryFn: async () => {
+      if (workOrderId === null) throw new Error('W/O 를 모르면 조회하지 않습니다.');
+      const data = await runRequest(() =>
+        client.GET('/production/work-orders/{workOrderId}', {
+          params: { path: { workOrderId } },
+        }),
+      );
+      return data.workOrderNo;
+    },
+  });
+};
+
+/**
  * 이력 줄의 LOT 유형 — 이력 응답에는 유형이 없어 보이는 쪽의 LOT 상세에서 읽는다. 상세 칸과 같은 키라 한 번 받은 LOT 은
  * 다시 부르지 않는다. 못 받은 LOT 은 맵에 없고, 라벨 없이 번호만 보인다(사용자 2026-11-02).
  */

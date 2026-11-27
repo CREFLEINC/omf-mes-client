@@ -124,6 +124,26 @@ describe('계보 줄 만들기(graph → rows)', () => {
     expect(stageOf('L:2')).toBe('SPLIT_LOT');
   });
 
+  it('US2-6 공정 반제품(유형 WIP)은 투입 전이어도 반제품 LOT — 유형이 생산이면 지금처럼 끝 LOT', () => {
+    const wip = (id: number) => ({
+      ...lot(id),
+      lot: { ...lot(id).lot, lotTypeCode: 'WIP', operationSeq: 10, processName: '가공' },
+    });
+    const pending = graph(
+      'L:1',
+      [lot(1, 'MATERIAL_LOT', 'A'), wo(1), wip(11), lot(12)],
+      [
+        edge('L:1', 'W:1', 'CONSUMED'),
+        edge('W:1', 'L:11', 'PRODUCED'),
+        edge('W:1', 'L:12', 'PRODUCED'),
+      ],
+    );
+    const lineage = buildLineage(pending);
+    const stageOf = (key: string) => lineage.all.find((line) => line.nodeKey === key)?.stage;
+    expect(stageOf('L:11')).toBe('SEMI_LOT');
+    expect(stageOf('L:12')).toBe('PRODUCTION_LOT');
+  });
+
   it('US2-4 출고 번호 없는 생산 LOT 자식은 「분리 LOT」(013), 역방향의 원래 LOT 은 「분리된 원래 LOT」', () => {
     const separated = graph(
       'L:41',

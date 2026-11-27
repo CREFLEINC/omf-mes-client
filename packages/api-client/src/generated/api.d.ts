@@ -61101,6 +61101,21 @@ export interface components {
       /** @description LOT 상태(NORMAL·HOLD·DEFECT·SCRAPPED 등) — 화면 상태 칩 */
       statusCode: string;
       lifecycleStatusCode: string | null;
+      /**
+       * @description ⭐ 반제품(lotTypeCode=WIP)의 생산 공정 순번 — 계보 항목(forward-tree·backward-tree 의 nodes)만 싣는다. 반제품이 아니면 null. 목록 줄(material·product-trace-lots)에는 키가 없다. 화면 단계 이름 「반제품 LOT · 공정 10」. 근거: 피처 016 · omf-all-around#359
+       * @example 10
+       */
+      operationSeq?: number | null;
+      /**
+       * @description ⭐ 반제품(WIP)의 생산 공정 이름(공정 마스터) — operationSeq 와 같은 규칙. 근거: 피처 016
+       * @example 가공
+       */
+      processName?: string | null;
+      /**
+       * @description ⭐ 반제품(WIP)의 남은 투입 가능 수량 — 계보 항목만 싣는다(반제품이 아니면 null, 목록 줄은 키 없음). 근거: 피처 016
+       * @example 40
+       */
+      wipRemainingQty?: number | null;
     };
     TraceTreeItem: {
       /** Format: int64 */
@@ -61221,6 +61236,11 @@ export interface components {
         workOrderId: number;
         workOrderNo: string;
         statusCode: string;
+        /**
+         * @description 그 W/O 의 Routing 공정 순번 — 모든 W/O(반제품 여부 무관). 화면 「W/O WO-… · 공정 30」. 근거: 피처 016
+         * @example 30
+         */
+        operationSeq?: number | null;
       };
       shipment?: {
         /** Format: int64 */
@@ -61320,10 +61340,15 @@ export interface components {
       producedQty: number;
       uomCode: string;
       /**
-       * @description PARTIAL = 출하 + 재고 · CONSUMED_OUT = 재고 0·출하 없음 · VOIDED = 폐번·폐기
+       * @description PARTIAL = 출하 + 재고 · CONSUMED_OUT = 재고 0·출하 없음 · VOIDED = 폐번·폐기 · WIP_PENDING = 다음 공정 투입 전(남은 투입 가능 수량 > 0 인 반제품 — 일부만 다음 공정에 들어간 반제품도 선다. 다 투입된 반제품은 최종 줄이 서지 않는다 · 피처 016 FR-013)
        * @enum {string}
        */
-      fate: 'SHIPPED' | 'IN_STOCK' | 'PARTIAL' | 'CONSUMED_OUT' | 'VOIDED';
+      fate: 'SHIPPED' | 'IN_STOCK' | 'PARTIAL' | 'CONSUMED_OUT' | 'VOIDED' | 'WIP_PENDING';
+      /**
+       * @description ⭐ fate=WIP_PENDING 줄만 — 그 반제품의 남은 투입 가능 수량(실적 배분 합 − 투입 합, 정정된 원 투입 제외). 화면 행선지 「다음 공정 투입 전 · 남은 n」. 그 밖은 null. 근거: 피처 016 FR-013
+       * @example 40
+       */
+      wipRemainingQty?: number | null;
       /** @description 취소 제외 출하 — 화면은 첫 출하 + 「외 n건」, 내보내기는 출하마다 한 줄 */
       shipments: {
         shipmentNo: string;

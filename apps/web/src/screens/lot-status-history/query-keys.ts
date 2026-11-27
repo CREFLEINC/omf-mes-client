@@ -49,4 +49,6 @@ export const lotStatusKeys = {
     offsetMinutes,
   ],
   lotTimeline: (lotId: number): QueryKey => [ROOT_KEY, 'lot-timeline', lotId],
+  /** 반제품 LOT 을 만든 W/O(피처 016) — 생산 공정 줄의 W/O 번호. */
+  workOrder: (workOrderId: number | null): QueryKey => [ROOT_KEY, 'work-order', workOrderId],
 };

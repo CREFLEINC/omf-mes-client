@@ -36670,6 +36670,19 @@ body:has(
   min-width: 0;
 }
 
+/*
+ * LOT 유형 칸 — 칸은 제 글자 폭(위 규칙)인데 펼친 목록은 칸과 같은 폭이라(사용자 2026-10-30), 고른 값이 「전체」면 세 글자
+ * 「반제품」(피처 016, vi 「Bán thành phẩm」)이 목록에서 「반…」으로 잘렸다(실제 앱 확인 2026-11-26). 가장 긴 선택지가 체크
+ * 자리 · 여백과 함께 들어가는 폭을 최소로 둔다. vi 는 선택지 이름이 길어 따로.
+ */
+.lot-status-search .filter-bar > .lot-status-filter-lot-type:nth-child(n) {
+  min-width: 7.5rem;
+}
+
+:root:lang(vi) .lot-status-search .filter-bar > .lot-status-filter-lot-type:nth-child(n) {
+  min-width: 11.5rem;
+}
+
 /* LOT 스캔 칸 — 앞에 돋보기가 붙어 검사 조회·판정(17.5rem)보다 그만큼 넓혀야 안내 글이 다 보인다. */
 .lot-status-search .filter-bar > .lot-status-filter-lot-no:nth-child(n) {
   flex: 0 1 19rem;
@@ -42139,6 +42152,7 @@ body:has(
 /* 단계 칩(+ 깊이 수)을 위 작은 줄에, 번호를 그 아래 줄에 — 칩 · 들여쓰기가 번호와 한 줄에서 폭을 다투지 않게. */
 .trace-tree-cell-body {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
@@ -42156,6 +42170,8 @@ body:has(
 
 /* 단계 칩은 칸이 모자라면 말줄임(전체는 title) — 긴 베트남어 단계 이름. */
 .trace-tree-cell-head > .trace-tree-stage {
+  /* 줄어들 수 있어야 말줄임이 선다 — 그러지 않으면 칸 끝에서 표시 없이 잘린다(vi 「LOT bán thành phẩm · CĐ 20」, 016). */
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -42166,15 +42182,17 @@ body:has(
   color: var(--on-surface-variant);
 }
 
-/* 번호는 「-」「|」 경계(<wbr>)에서만 접는다 — 글자 중간에서 꺾지 않는다. */
+/*
+ * 번호는 한 줄 — 칸이 모자라면 말줄임하고 전체는 title(피처 016 실제 앱 확인 2026-11-26). 015 에는 「-」「|」 경계에서
+ * 접었으나, 반제품 단계로 깊어지면 경계 없는 34자리 LOT 번호가 표시 없이 잘리고 W/O 번호가 3~4줄로 끊겼다.
+ * 깊이는 들여쓰기 상한 + 깊이 수(INDENT_CAP)가 그대로 맡는다.
+ */
 .trace-tree-table .trace-tree-cell-body > .trace-tree-no {
   max-width: 100%;
-  overflow: visible;
-  overflow-wrap: normal;
+  overflow: hidden;
   text-align: left;
-  text-overflow: clip;
-  white-space: normal;
-  word-break: keep-all;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .trace-tree-table .trace-tree-cell-body > .trace-tree-flag {

@@ -78,7 +78,25 @@ export interface LotDetailView {
    * 생산 LOT 분리(피처 013) — 자식이면 자기 분리(CHILD), 원래 LOT 이면 가장 최근 분리(PARENT). 아니면 `null`.
    */
   productSplit: ProductLotSplitView | null;
+  /** 공정 반제품 LOT(`lotTypeCode=WIP` · 피처 016)이면 생산 공정과 실적 · 남은 투입 가능 수량. 아니면 `null`. */
+  wip: LotWipView | null;
 }
+
+export interface LotWipView {
+  /** 만든 공정 — 서버가 원천 W/O 에서 읽는다. 받지 못했으면 `null`. */
+  operation: NonNullable<Lot['producedOperation']> | null;
+  producedQty: number | null;
+  remainingQty: number | null;
+}
+
+const toWipView = (lot: Lot): LotWipView | null =>
+  lot.lotTypeCode === 'WIP'
+    ? {
+        operation: lot.producedOperation ?? null,
+        producedQty: lot.wipProducedQty ?? null,
+        remainingQty: lot.wipRemainingQty ?? null,
+      }
+    : null;
 
 export type ProductLotSplitView = NonNullable<Lot['productLotSplit']>;
 
@@ -126,6 +144,7 @@ export const toLotDetailView = ({ lot }: LotDetailResponse): LotDetailView => ({
   split: toSplitView(lot),
   splitChildCount: lot.splitChildCount ?? 0,
   productSplit: lot.productLotSplit ?? null,
+  wip: toWipView(lot),
 });
 
 export interface LotStatusCountView {

@@ -279,6 +279,22 @@ export const lotStatusHistory = {
       workOrder: 'W/O',
       workOrderText: (workOrderNo: string): string => `${workOrderNo} (원래 LOT)`,
     },
+    /**
+     * 공정 반제품 LOT(피처 016 · 시안 2판 ③) — 반제품 상세에만 두 줄. 유형 칩은 코드값 이름(「반제품」)이라 따로 두지 않는다.
+     */
+    wip: {
+      operation: '생산 공정',
+      operationText: (
+        operationSeq: number,
+        processCode: string,
+        processName: string,
+        workOrderNo: string | null,
+      ): string =>
+        `공정 ${String(operationSeq)} · ${processCode} ${processName}${workOrderNo === null ? '' : ` (${workOrderNo})`}`, // ui-check-ignore: C-13 승인 시안 2판 표기 「공정 10 · P10 가공 (WO-…)」(016 screens/W-03-01)
+      remaining: '남은 투입 가능',
+      remainingText: (remainingWithUnit: string, produced: string, consumed: string): string =>
+        `${remainingWithUnit} (실적 ${produced} − 투입 ${consumed})`,
+    },
     fields: {
       lotNo: 'LOT 번호',
       itemCode: '품목코드',
