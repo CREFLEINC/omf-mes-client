@@ -143,7 +143,7 @@ export const RequestFilterBar = ({
           clearable
           startLabel={t.fields.periodFrom}
           endLabel={t.fields.periodTo}
-          placeholder={messages.common.selectDate}
+          placeholder={t.fields.datePlaceholder}
           from={filters.from}
           to={filters.to}
           onChange={(from, to) => {

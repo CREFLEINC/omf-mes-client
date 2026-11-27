@@ -43,6 +43,7 @@ export const approvalInbox: Translated<typeof ko.approvalInbox> = {
     periodTo: 'Đến ngày trình',
     q: 'Tìm số yêu cầu',
     qPlaceholder: 'Nhập số yêu cầu',
+    datePlaceholder: 'Hãy chọn ngày',
   },
   actions: {
     goFirstPage: 'Về trang đầu',

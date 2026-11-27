@@ -91,7 +91,7 @@ export const NoticeForm = ({
             id={startId}
             mode="single"
             clearable
-            placeholder={messages.common.selectDate}
+            placeholder={t.filters.datePlaceholder}
             invalid={(errors.startDate ?? fieldErrors.startDate) !== undefined}
             value={draft.startDate === '' ? null : draft.startDate}
             onChange={(value) => {
@@ -110,7 +110,7 @@ export const NoticeForm = ({
             id={endId}
             mode="single"
             clearable
-            placeholder={messages.common.selectDate}
+            placeholder={t.filters.datePlaceholder}
             invalid={(errors.endDate ?? fieldErrors.endDate) !== undefined}
             value={draft.endDate === '' ? null : draft.endDate}
             onChange={(value) => {

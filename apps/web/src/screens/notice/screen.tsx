@@ -566,7 +566,7 @@ export const NoticeScreen = () => {
                   <DatePicker
                     mode="single"
                     clearable
-                    placeholder={messages.common.selectDate}
+                    placeholder={t.filters.datePlaceholder}
                     value={filters.overlapFrom === '' ? null : filters.overlapFrom}
                     onChange={(value) => {
                       apply({ overlapFrom: value ?? '' });
@@ -579,7 +579,7 @@ export const NoticeScreen = () => {
                   <DatePicker
                     mode="single"
                     clearable
-                    placeholder={messages.common.selectDate}
+                    placeholder={t.filters.datePlaceholder}
                     invalid={invalidPeriod !== undefined}
                     value={filters.overlapTo === '' ? null : filters.overlapTo}
                     onChange={(value) => {

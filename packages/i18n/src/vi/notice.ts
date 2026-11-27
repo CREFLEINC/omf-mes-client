@@ -24,6 +24,7 @@ export const notice: Translated<typeof ko.notice> = {
   filters: {
     search: 'Tìm tiêu đề',
     searchPlaceholder: 'Nhập tiêu đề',
+    datePlaceholder: 'Hãy chọn ngày',
     status: 'Trạng thái',
     scope: 'Phạm vi đối tượng',
     scopeAll: 'Tất cả phạm vi',

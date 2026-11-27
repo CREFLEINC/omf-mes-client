@@ -16,6 +16,7 @@ export const notice = {
   filters: {
     search: '제목 검색',
     searchPlaceholder: '제목을 입력하세요',
+    datePlaceholder: '날짜를 선택하세요',
     status: '상태',
     scope: '대상 범위',
     scopeAll: '범위 전체',

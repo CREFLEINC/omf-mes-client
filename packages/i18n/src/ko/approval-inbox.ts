@@ -53,6 +53,7 @@ export const approvalInbox = {
     periodTo: '상신 종료일',
     q: '요청번호 검색',
     qPlaceholder: '요청번호를 입력하세요',
+    datePlaceholder: '날짜를 선택하세요',
   },
   actions: {
     goFirstPage: '첫 쪽으로',
