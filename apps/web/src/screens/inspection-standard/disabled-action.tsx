@@ -33,7 +33,7 @@ export const DisabledAction = ({ label, reason, className }: DisabledActionProps
       <Button variant="outlined" disabled aria-describedby={noteId}>
         {label}
       </Button>
-      <span id={noteId} className="field-note">
+      <span id={noteId} className="visually-hidden">
         {reason}
       </span>
     </div>

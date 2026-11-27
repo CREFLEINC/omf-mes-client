@@ -74,11 +74,14 @@ export const DisabledAction = ({
   }
 
   return (
-    <div className={className === undefined ? 'field-cell' : `field-cell ${className}`}>
+    <div
+      className={className === undefined ? 'field-cell' : `field-cell ${className}`}
+      title={reason}
+    >
       <Button variant="outlined" disabled aria-describedby={noteId}>
         {label}
       </Button>
-      <span id={noteId} className="field-note">
+      <span id={noteId} className="visually-hidden">
         {reason}
       </span>
     </div>
