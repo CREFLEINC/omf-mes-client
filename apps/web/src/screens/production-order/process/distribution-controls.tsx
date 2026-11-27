@@ -1242,41 +1242,39 @@ export const DistributionControls = ({
                     계획이나 대상 수량이 바뀌었습니다. 미리보기를 다시 만드세요.
                   </AlertBanner>
                 )}
-                {/* 단건은 W/O 정보를 표 위 회색 줄로, 안내는 표 아래 한 줄로(결과 검토 시안 · #360). */}
+                {/* 단건은 W/O 정보를 조건 단계와 같은 정보 상자로(결과 검토 시안 · #360). 안내는 표 아래 한 줄. */}
                 {singleOrder &&
                   (() => {
                     const summary = reviewResult?.orders.find(
                       (entry) => entry.id === singleOrder.id,
                     );
                     return (
-                      <div className="erp-wo-result-single-bar">
-                        <div className="erp-wo-result-single-bar-facts">
-                          <span>ERP W/O</span>
-                          <strong>{singleOrder.orderNo ?? singleOrder.label}</strong>
-                          {singleOrder.itemCode && (
-                            <>
-                              <span>품목 코드</span>
-                              <strong>{singleOrder.itemCode}</strong>
-                            </>
-                          )}
-                        </div>
-                        {summary && (
-                          <div className="erp-wo-result-single-bar-qty">
-                            <span>
-                              이번 분배{' '}
-                              <strong>
-                                {formatQty(summary.added)} {singleOrder.unit}
-                              </strong>
-                            </span>
-                            <span>
-                              미분배{' '}
-                              <strong>
-                                {formatQty(summary.pending)} {singleOrder.unit}
-                              </strong>
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                      <InfoFacts
+                        className="erp-wo-result-single-facts"
+                        rows={[
+                          [
+                            {
+                              label: 'ERP W/O',
+                              value: singleOrder.orderNo ?? singleOrder.label,
+                              isKey: true,
+                            },
+                            { label: '품목 코드', value: singleOrder.itemCode },
+                            { label: '품목명', value: singleOrder.itemName },
+                            ...(summary
+                              ? [
+                                  {
+                                    label: '이번 분배',
+                                    value: `${formatQty(summary.added)} ${singleOrder.unit}`,
+                                  },
+                                  {
+                                    label: '미분배',
+                                    value: `${formatQty(summary.pending)} ${singleOrder.unit}`,
+                                  },
+                                ]
+                              : []),
+                          ],
+                        ]}
+                      />
                     );
                   })()}
                 <div className="erp-wo-preview-scroll">
@@ -1436,12 +1434,17 @@ export const DistributionControls = ({
                 />
                 {!!reviewResult!.warnings.length && (
                   <>
-                    <AlertBanner variant="warning">
-                      <ul>
-                        {reviewResult!.warnings.map((warning) => (
-                          <li key={warning}>{warning}</li>
-                        ))}
-                      </ul>
+                    {/* 한 건이면 글머리표 없이 한 줄, 여러 건이면 목록 — 아이콘과 첫 줄을 맞춘다(#360). */}
+                    <AlertBanner variant="warning" className="erp-wo-result-warnings">
+                      {reviewResult!.warnings.length === 1 ? (
+                        reviewResult!.warnings[0]
+                      ) : (
+                        <ul>
+                          {reviewResult!.warnings.map((warning) => (
+                            <li key={warning}>{warning}</li>
+                          ))}
+                        </ul>
+                      )}
                     </AlertBanner>
                     <label className="erp-wo-checkbox">
                       <input

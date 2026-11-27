@@ -43251,37 +43251,10 @@ dialog
 .erp-wo-distribution-dialog .erp-wo-distribution-steps > li[aria-current='step'] {
   border-bottom-color: var(--primary);
 }
-.erp-wo-result-single-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--surface-container);
-  font: var(--type-body-md);
-}
-.erp-wo-result-single-bar-facts,
-.erp-wo-result-single-bar-qty {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-2) var(--space-4);
-}
-.erp-wo-result-single-bar-facts > span,
-.erp-wo-result-single-bar-qty > span {
-  color: var(--on-surface-variant);
-}
-.erp-wo-result-single-bar-facts > strong {
-  margin-right: var(--space-4);
-}
-.erp-wo-result-single-bar-qty strong {
-  color: var(--on-surface);
-}
-.erp-wo-result-single-bar-qty > span + span {
-  padding-left: var(--space-4);
-  border-left: 1px solid var(--outline-variant);
+/* 여러 건 경고 목록 — 글머리표 안쪽 여백만 남겨 아이콘과 첫 줄을 맞춘다. */
+.erp-wo-result-warnings ul {
+  margin: 0;
+  padding-left: 1.1em;
 }
 .erp-wo-result-single-notes {
   display: flex;
