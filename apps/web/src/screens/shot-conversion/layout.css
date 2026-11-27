@@ -5,3 +5,26 @@
 .list-detail-filter > .shot-conversion-enabled {
   padding: 0;
 }
+
+/*
+ * 「적용 범위」 ⓘ 말풍선은 묶음 이름 줄 아래에 창 폭으로 띄운다 — 옆으로 띄우면 창 본문 맨 위라
+ * 첫 줄이 잘린다(선택 목록 안내를 합쳐 세 줄이 됐다 · omf-all-around#360).
+ */
+.shot-conversion-scope > legend {
+  position: relative;
+  width: 100%;
+}
+
+.shot-conversion-scope > legend .info-tip-anchor {
+  position: static;
+}
+
+.shot-conversion-scope > legend .info-tip-anchor > [role='tooltip'] {
+  top: calc(100% + var(--space-1));
+  /* 창 본문 오른쪽 끝에 테두리가 겹쳐 잘리지 않게 조금 띄운다. */
+  right: 2px;
+  left: 0;
+  width: auto;
+  max-width: none;
+  transform: none;
+}

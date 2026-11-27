@@ -343,6 +343,34 @@ describe('W-05-01 ① — 이름 풀이의 한계', () => {
     expect(screen.queryByText(t.optionsLoadFailed)).not.toBeInTheDocument();
   });
 
+  /** ⭐ 잘렸다는 안내는 칸마다 되풀이하지 않고 「적용 범위」 ⓘ 뒤에 한 번만 붙인다. */
+  it('잘렸다는 안내를 등록 창의 적용 범위 ⓘ 에 한 번만 붙인다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen({ truncateLookup: '/mdm/plants' });
+    await within(pane()).findByText(t.scope.all);
+    await user.click(within(pane()).getByRole('button', { name: t.actions.addPolicy }));
+
+    const dialog = within(await screen.findByRole('dialog'));
+
+    expect(
+      dialog.getByRole('button', { name: `${t.form.scopeNote} ${t.optionsTruncated}` }),
+    ).toBeInTheDocument();
+    expect(dialog.queryByText(t.optionsTruncated)).not.toBeInTheDocument();
+  });
+
+  it('잘리지 않았으면 적용 범위 ⓘ 에 그 안내를 붙이지 않는다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen();
+    await within(pane()).findByText(t.scope.all);
+    await user.click(within(pane()).getByRole('button', { name: t.actions.addPolicy }));
+
+    const dialog = within(await screen.findByRole('dialog'));
+
+    expect(dialog.getByRole('button', { name: t.form.scopeNote })).toBeInTheDocument();
+  });
+
   /** ⛔ 이름을 못 받아도 범위 칸이 비거나 내부 숫자가 노출되지 않는다. */
   it('이름을 못 받으면 실패 상태가 선다', async () => {
     renderScreen({ failLookup: '/mdm/items', policies: [makeRatio(9003, 0.25, { itemId: 21 })] });
