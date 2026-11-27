@@ -128,12 +128,16 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
       'Không xác nhận được trạng thái đang thực hiện nên chưa bắt đầu tra cứu lần đầu được. Nếu tải lại trang vẫn vậy, hãy báo quản trị hệ thống.',
   },
   confirm: {
-    title: (workOrderNo: string) => `Đóng lệnh sản xuất — ${workOrderNo}`,
-    target: (workOrderNo: string) => `Lệnh sản xuất đích: ${workOrderNo}`,
+    title: 'Đóng lệnh sản xuất này?',
+    workOrderNo: 'Số lệnh sản xuất',
     irreversible:
-      'Đóng lệnh sản xuất không hoàn tác được. Nếu cần sửa thì hãy xử lý bù trừ kết quả sản xuất.',
-    erp: (menuPath: string): string =>
-      `Kết quả sản xuất sẽ vào hàng đợi gửi sang ERP cùng lúc đóng. Hãy xem kết quả gửi ở ${menuPath}.`,
+      'Sau khi đóng thì không hủy được việc đóng lệnh sản xuất. Nếu cần sửa kết quả, hãy xử lý sửa kết quả sản xuất.',
+    erp: {
+      queued: 'Khi đóng, kết quả sản xuất được đăng ký ở trạng thái chờ gửi sang ERP.',
+      resultBefore: 'Có thể xem kết quả gửi ở ',
+      menu: 'Tình trạng · lịch sử liên kết ERP',
+      resultAfter: '.',
+    },
     fields: {
       judgment: 'Đánh giá',
       remainder: 'Xử lý lượng còn lại',
@@ -144,6 +148,8 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
       `${String(count)} LOT phát trước chưa có kết quả sẽ bị hủy số cùng lúc đóng.`,
     openLots: (count: number, lotNos: string): string =>
       `${String(count)} LOT chưa đóng (${lotNos}) sẽ giữ nguyên trạng thái.`,
+    openLotsHeading: (count: number): string => `${String(count)} LOT chưa đóng`,
+    openLotsNote: 'Dù đóng lệnh sản xuất, các LOT dưới đây vẫn ở trạng thái chưa đóng.',
     openLotsChecking: 'Đang kiểm tra LOT đang thực hiện. Kiểm tra xong mới đóng được.',
     openLotsUnknown:
       'Chưa kiểm tra được LOT đang thực hiện. Dù đóng, LOT đang thực hiện vẫn giữ nguyên trạng thái.',

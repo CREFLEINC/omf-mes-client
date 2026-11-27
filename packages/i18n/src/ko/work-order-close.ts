@@ -116,12 +116,20 @@ export const workOrderClose = {
       '진행 상태를 확인할 수 없어 처음 조회를 시작할 수 없습니다. 새로고침한 뒤에도 같으면 시스템 관리자에게 알리세요.',
   },
   confirm: {
-    title: (workOrderNo: string): string => `작업지시 마감 — ${workOrderNo}`,
-    target: (workOrderNo: string): string => `대상 작업지시: ${workOrderNo}`,
-    irreversible: '작업지시 마감은 되돌릴 수 없습니다. 정정이 필요하면 생산실적을 상계 처리하세요.',
-    /* 마감과 함께 송신 대기열에 오를 뿐 보낸 결과는 이 화면에 없다 — 어디서 보는지 함께 말한다. */
-    erp: (menuPath: string): string =>
-      `ERP 실적 송신은 마감과 함께 대기열에 올라갑니다. 송신 결과는 ${menuPath}에서 확인하세요.`,
+    /* 확인 팝업 시안(#360) — 대상 번호는 제목에 넣지 않고 아래 정보 상자에 한 번만. */
+    title: '작업지시를 마감할까요?',
+    workOrderNo: '작업지시 번호',
+    /* 되돌릴 수 없다는 한 줄 — 정정 절차는 이 화면 「생산실적 정정」(원본을 두고 정정 실적을 더한다)이다. */
+    irreversible:
+      '마감 후에는 작업지시 마감을 취소할 수 없습니다. 실적 정정이 필요하면 생산실적을 정정 처리해 주세요.',
+    /* 마감과 함께 송신 대기열에 오를 뿐 보낸 결과는 이 화면에 없다 — 어디서 보는지 메뉴 링크로 함께 말한다. */
+    erp: {
+      queued: '마감하면 생산실적이 ERP 송신 대기 상태로 등록됩니다.',
+      resultBefore: '송신 결과는 ',
+      /** 메뉴 이름 그대로(app/nav-tree.ts 「ERP 연동 현황·이력」). */
+      menu: 'ERP 연동 현황·이력',
+      resultAfter: '에서 확인할 수 있습니다.',
+    },
     fields: {
       judgment: '판정',
       remainder: '잔량 처리',
@@ -132,6 +140,9 @@ export const workOrderClose = {
       `실적이 없는 선발행 LOT ${String(count)}건은 마감과 함께 폐번됩니다.`,
     openLots: (count: number, lotNos: string): string =>
       `마감되지 않은 LOT ${String(count)}건(${lotNos})은 그 상태로 남습니다.`,
+    /** 확인 팝업의 남는 LOT 구획 — 번호는 안내 아래 줄마다 하나씩. */
+    openLotsHeading: (count: number): string => `미마감 LOT ${String(count)}건`,
+    openLotsNote: '작업지시를 마감해도 아래 LOT는 미마감 상태로 남습니다.',
     openLotsChecking: '진행 중인 LOT 을 확인하는 중입니다. 확인이 끝나면 마감할 수 있습니다.',
     openLotsUnknown:
       '진행 중인 LOT 을 확인하지 못했습니다. 마감해도 진행 중인 LOT 은 그 상태로 남습니다.',

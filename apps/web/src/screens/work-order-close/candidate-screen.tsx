@@ -223,7 +223,7 @@ export const toWorkOrderCloseConfirmDetails = (source: {
   const summary = messages.workOrderClose.detailSummary;
   const input = messages.workOrderClose.input;
   const details: WorkOrderCloseConfirmDetail[] = [
-    { label: confirmText.fields.judgment, value: summary.judgments[judgment] },
+    { label: confirmText.fields.judgment, value: summary.judgments[judgment], judgment },
   ];
   const variance = detailState.detail.progress?.varianceQty;
   const unit = detailState.unitLabel ?? summary.values.unitNotConfirmed;
@@ -501,9 +501,18 @@ export const WorkOrderCloseCandidateScreen = () => {
     draft: inputDraft,
     reasonOptions,
   });
-  const closeWarnings = toWorkOrderCloseWarnings({
+  const openLotsSource = openLots.isError
+    ? 'UNKNOWN'
+    : openLots.isPending
+      ? 'CHECKING'
+      : openLots.data;
+  const closeWarnings = toWorkOrderCloseWarnings({ detailState, openLots: openLotsSource });
+  /* 확인 팝업은 남는 LOT 번호를 안내 문장에서 떼어 줄마다 보인다 — 나머지 안내는 화면 배너와 같다. */
+  const isOpenLotsKnown = detailState.kind === 'RESOLVED' && typeof openLotsSource === 'object';
+  const confirmOpenLotNos = isOpenLotsKnown ? openLotsSource.lotNos : [];
+  const confirmWarnings = toWorkOrderCloseWarnings({
     detailState,
-    openLots: openLots.isError ? 'UNKNOWN' : openLots.isPending ? 'CHECKING' : openLots.data,
+    openLots: isOpenLotsKnown ? { ...openLotsSource, lotNos: [] } : openLotsSource,
   });
   /* 일자별 실적 — 마감 판단과 무관한 읽기 구획이라 고른 W/O 마다 따로 둔다(펼침 상태도 함께 초기화). */
   const dailyUom =
@@ -720,6 +729,8 @@ export const WorkOrderCloseCandidateScreen = () => {
                 request={executionRequest}
                 details={confirmDetails}
                 warnings={closeWarnings}
+                openLotNos={confirmOpenLotNos}
+                confirmWarnings={confirmWarnings}
                 onClearSelection={() => dispatch({ type: 'CLEAR_SELECTION' })}
                 onReloadCandidates={candidate.refetch}
                 onReloadDetail={detail.refetch}

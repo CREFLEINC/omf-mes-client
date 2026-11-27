@@ -1,0 +1,41 @@
+/* 작업지시 마감 확인(#360) — 단추 바로 위 경고 한 줄, 그 아래 오른쪽 단추. */
+.work-order-close-confirm-foot {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+}
+
+.work-order-close-confirm-foot > .iqc-inspection-action-note {
+  align-self: flex-start;
+}
+
+/* 남는 LOT — 제목 · 안내 아래 번호를 줄마다 하나씩, 긴 번호는 줄을 넘긴다. */
+.work-order-close-confirm-lots {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.work-order-close-confirm-lots > h3,
+.work-order-close-confirm-lots > p {
+  max-width: none;
+  margin: 0;
+}
+
+.work-order-close-confirm-lot-list {
+  display: grid;
+  gap: var(--space-1);
+  max-height: 10rem;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  overflow-y: auto;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  font: var(--type-body-sm);
+  list-style: none;
+}
+
+.work-order-close-confirm-lot-list > li {
+  overflow-wrap: anywhere;
+}

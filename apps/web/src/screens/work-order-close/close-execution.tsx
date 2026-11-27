@@ -19,6 +19,9 @@ export interface WorkOrderCloseExecutionProps {
   request: WorkOrderClose | null;
   details: readonly WorkOrderCloseConfirmDetail[];
   warnings: readonly string[];
+  /** 확인 팝업 몫 — 남는 LOT 번호는 따로 줄마다, 나머지 안내는 `confirmWarnings`. */
+  openLotNos: readonly string[];
+  confirmWarnings: readonly string[];
   onClearSelection: () => void;
   onReloadCandidates: () => Promise<unknown>;
   onReloadDetail: () => Promise<unknown>;
@@ -94,7 +97,8 @@ export const WorkOrderCloseExecution = (props: WorkOrderCloseExecutionProps) => 
         <WorkOrderCloseConfirmDialog
           workOrderNo={props.workOrderNo}
           details={props.details}
-          warnings={props.warnings}
+          openLotNos={props.openLotNos}
+          warnings={props.confirmWarnings}
           banner={
             <>
               <SaveErrorBanner error={write.error} onReload={reload} />

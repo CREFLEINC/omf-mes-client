@@ -651,7 +651,8 @@ describe('WorkOrderCloseCandidateScreen', () => {
     void queryClient.invalidateQueries({ queryKey: ['work-order-close', 'detail', 701] });
     await screen.findByRole('status', { name: t.detailSummary.loading });
     api.releaseDetail();
-    await screen.findByText('SYN-WO-DETAIL-701');
+    /* 열린 확인 팝업의 정보 상자에도 같은 번호가 선다 — 화면 상세가 다시 선 것만 기다린다. */
+    await screen.findAllByText('SYN-WO-DETAIL-701');
     api.releaseClose();
     const dialog = await screen.findByRole('dialog');
     expect(await within(dialog).findByRole('alert')).toBeVisible();
@@ -913,7 +914,15 @@ describe('WorkOrderCloseCandidateScreen', () => {
     expect(valueOf(t.confirm.fields.remainder)).toHaveTextContent(t.input.remainder.WRITE_OFF);
     expect(valueOf(t.confirm.fields.reason)).toHaveTextContent('Synthetic second reason');
     expect(dialog).toHaveTextContent(voided);
-    expect(dialog).toHaveTextContent(remaining);
+    /* 팝업은 남는 LOT 을 문장에 엮지 않고 「미마감 LOT N건」 아래 번호를 줄마다 보인다. */
+    expect(dialog).not.toHaveTextContent(remaining);
+    const lots = within(dialog).getByRole('region', { name: t.confirm.openLotsHeading(1) });
+    expect(lots).toHaveTextContent(t.confirm.openLotsNote);
+    expect(
+      within(lots)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(['LOT-SYN-ACTIVE']);
     expect(dialog).not.toHaveTextContent('LOT-SYN-WAITING');
   });
 
