@@ -10118,10 +10118,9 @@ dialog.routing-history-dialog {
 .filter-bar.notification-center-filter {
   display: grid;
   /* 기간 · 안 읽음만 · 유형 · [조회]·[초기화] · 오른쪽 끝 기준 시각 + 모두 읽음(#361). */
-  grid-template-columns: minmax(18rem, 1.4fr) minmax(10rem, max-content) minmax(
-      13rem,
-      1fr
-    ) auto minmax(max-content, 1fr);
+  grid-template-columns:
+    minmax(18rem, 1.4fr) minmax(10rem, max-content) minmax(13rem, 1fr)
+    auto minmax(max-content, 1fr);
   align-items: end;
   gap: var(--space-4);
   margin-bottom: 0;
