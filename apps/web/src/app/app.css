@@ -38376,8 +38376,12 @@ body:has(
 .erp-wo-order-overview dl > div:last-child {
   border-bottom: 1px solid var(--outline-variant);
 }
+/* 품목 코드 · 품목명은 제목 바로 아래 첫 줄에 좌우로 나란히 놓는다(사용자 지시 2026-11-27). ERP W/O 등 나머지는 그 아래 줄. */
+.erp-wo-order-overview .is-item-code {
+  order: -2;
+}
 .erp-wo-order-overview .is-item-name {
-  grid-column: 1/-1;
+  order: -1;
 }
 .erp-wo-plan-totals {
   display: grid;
