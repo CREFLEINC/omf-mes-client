@@ -240,7 +240,6 @@ describe('주 메뉴 트리', () => {
       '/quality/lot-status-transition → history',
       '/quality/suspicious-material-hold → history',
       '/production/production-orders → account_tree',
-      '/production/po-change-review → account_tree',
       '/production/work-order-progress → monitoring',
       '/production/material-trace → timeline',
       '/production/product-trace → manage_search',
