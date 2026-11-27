@@ -898,13 +898,14 @@ const EditorSession = ({
         }}
       />
     );
-    /* 줄 아래에 붙는 알림 — 저장 오류, 설비 중복, 점검이 막은 까닭. 고른 줄이면 설비 배정 내역도 함께. */
+    /*
+     * 줄 아래에 붙는 알림 — 저장 오류, 저장을 막은 설비 중복, 점검이 막은 까닭.
+     * 고른 줄 아래에 설비 배정 내역을 펼치거나 설비 칸에 배정 상태 칩을 두지 않는다(사용자 지시 2026-11-27).
+     */
     const notes =
       update.error !== null && update.error !== undefined
         ? true
         : occupancyError !== '' || plan.isError || operations.isError || findingText !== null;
-    const showOccupancy =
-      row.selected && resourceRequired('plannedEquipmentId') && draft.plannedEquipmentId !== '';
     return (
       <>
         <tr
@@ -931,14 +932,6 @@ const EditorSession = ({
             ) : (
               <div className="erp-wo-assign-cell">
                 {equipmentCell}
-                {idOrNull(draft.plannedEquipmentId) !== null && (
-                  <EquipmentStatus
-                    id={Number(draft.plannedEquipmentId)}
-                    selfId={workOrder.workOrderId}
-                    start={draft.plannedStartAtLocal}
-                    end={draft.plannedEndAtLocal}
-                  />
-                )}
                 {recommend('plannedEquipmentId', t.fields.plannedEquipmentId)}
               </div>
             )}
@@ -993,7 +986,7 @@ const EditorSession = ({
             )}
           </td>
         </tr>
-        {(notes || showOccupancy || arrivalMissing || workOrder.fgWarehouseDiffersFromErp) && (
+        {(notes || arrivalMissing || workOrder.fgWarehouseDiffersFromErp) && (
           <tr className="erp-wo-assign-row-notes" data-selected={row.selected || undefined}>
             <td colSpan={row.columnCount}>
               <div className="erp-wo-assign-notes">
@@ -1012,15 +1005,6 @@ const EditorSession = ({
                   <AlertBanner variant="error">
                     공정 필수 배정 항목을 조회하지 못했습니다. 다시 조회하세요.
                   </AlertBanner>
-                )}
-                {showOccupancy && (
-                  <EquipmentOccupancy
-                    equipmentId={idOrNull(draft.plannedEquipmentId)}
-                    selfId={workOrder.workOrderId}
-                    start={draft.plannedStartAtLocal}
-                    end={draft.plannedEndAtLocal}
-                    label={labelOf('plannedEquipmentId')}
-                  />
                 )}
               </div>
             </td>
