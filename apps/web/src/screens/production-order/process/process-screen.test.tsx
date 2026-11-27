@@ -145,9 +145,7 @@ const workOrderBody = (workOrder: WorkOrder, state: World) => ({
   ...(workOrder.productionLineId === undefined
     ? {}
     : { productionLineId: workOrder.productionLineId }),
-  ...(workOrder.located
-    ? { defaultFgLocationId: 42, defaultScrapLocationId: 43 }
-    : {}),
+  ...(workOrder.located ? { defaultFgLocationId: 42, defaultScrapLocationId: 43 } : {}),
   versionNo: 1,
 });
 
