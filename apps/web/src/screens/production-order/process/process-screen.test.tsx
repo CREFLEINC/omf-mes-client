@@ -640,8 +640,9 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
   it('작성 중 계획이 있으면 생산계획 단계로 열고, 라인 칸은 「계획 번호 라인」 이름을 가진다', async () => {
     renderAt(`${WORKLIST}/${ORDER_NO}`, world({ plans: [{ ...DRAFT_PLAN }] }));
     await currentStep(tp.steps.plan);
+    /* 생산 라인은 검색이 되는 펼침 선택칸이다(#360). */
     expect(
-      screen.getByRole('button', { name: tp.plan.fieldLabel('PP-501', tp.plan.columns.line) }),
+      screen.getByRole('combobox', { name: tp.plan.fieldLabel('PP-501', tp.plan.columns.line) }),
     ).toBeVisible();
   });
 

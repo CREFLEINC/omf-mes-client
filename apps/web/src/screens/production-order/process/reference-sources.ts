@@ -20,6 +20,7 @@ export const useLineSource = (plantId: number | null): ReferenceSource | null =>
         ? null
         : {
             title: t.line,
+            wide: true,
             key: ['reference', 'line', plantId],
             columns: { code: t.columns.lineCode, name: t.columns.lineName },
             search: async (term, page, _filterValue, size = REFERENCE_PAGE_SIZE) => {

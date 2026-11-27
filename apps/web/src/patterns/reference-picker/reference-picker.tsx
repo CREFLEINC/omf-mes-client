@@ -66,6 +66,8 @@ export interface ReferenceSource {
   ) => Promise<ReferenceSearchPage>;
   /** 이 원천의 기본 쪽 크기 — 종전에 보내던 값. 없으면 `REFERENCE_PAGE_SIZE`(20). */
   pageSize?: number;
+  /** 팝업을 넓게(생산 라인 선택 · 사용자 지시 #360). */
+  wide?: boolean;
 }
 
 export const REFERENCE_PAGE_SIZE = 20;
@@ -133,6 +135,7 @@ export const PickerDialog = ({ source, onClose, onPick, wrapValue = false }: Pic
     <Dialog
       open
       size="lg"
+      className={source.wide === true ? 'reference-picker-wide' : undefined}
       title={source.title}
       closeOnBackdropClick={false}
       onClose={onClose}
@@ -244,7 +247,7 @@ export interface ReferenceFieldProps {
   /** 긴 선택값을 줄바꿈하여 전체 표시한다. */
   wrapValue?: boolean;
   clearable?: boolean;
-  /** 비었을 때 흐린 문구. 기본은 「눌러서 찾기」. */
+  /** 비었을 때 흐린 문구. 기본은 「눌러서 검색」. */
   placeholder?: string;
   source: ReferenceSource | null;
   required?: boolean;

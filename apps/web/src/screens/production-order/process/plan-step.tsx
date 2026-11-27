@@ -17,7 +17,8 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { AdjustableLayout } from './adjustable-layout';
 import { AdjustableTable, AdjustableNativeTable } from './adjustable-table';
 import { plantToday } from '../../../patterns/plant-time';
-import { ReferenceField } from '../../../patterns/reference-picker';
+import { josa } from '../../../patterns/josa';
+import { PagedSelect } from '../../../patterns/select';
 import type {
   ProductionPlanDraftErrors,
   ProductionPlanDraftField,
@@ -211,6 +212,7 @@ export const PlanStep = ({
   const editorId = useId();
   const layoutToolsId = layoutToolsTargetId ?? `${editorId}-layout-tools`;
   const lineSource = useLineSource(plantId);
+  const lineSelectId = useId();
   const displayLines = useProductionLineReferenceQuery(plantId);
   function revealEditor() {
     const editor = document.getElementById(editorId);
@@ -956,26 +958,49 @@ export const PlanStep = ({
                   />
                 </div>
                 <div className="field-cell">
-                  <span className="field-label">{t.columns.line}</span>
-                  <ReferenceField
-                    wrapValue
-                    hideLabel
+                  <label className="field-label" htmlFor={lineSelectId}>
+                    {t.columns.line}
+                  </label>
+                  {/*
+                   * 찾기 창 대신 검색이 되는 펼침 선택칸(사용자 지시 · #360) — 선택지는 종전 찾기 창과 같은 조회
+                   * (공장의 생산 라인 · 검색어 · 쪽), 보내는 값은 라인 번호 그대로. 맨 앞 「미지정」은 종전 지우기 단추 자리.
+                   */}
+                  <PagedSelect
+                    id={lineSelectId}
                     size="md"
-                    label={
+                    aria-label={
                       selected.planNo
                         ? t.fieldLabel(selected.planNo, t.columns.line)
                         : t.columns.line
                     }
-                    valueLabel={
-                      selected.draft.plannedLineId === ''
-                        ? ''
-                        : lineName(selected.draft.plannedLineId)
+                    placeholder={`${josa(t.columns.line, '을/를')} 선택하세요`}
+                    queryKey={['production-order', 'plan-line-select', plantId]}
+                    fetchPage={async (query, page) => {
+                      if (lineSource === null) return { options: [], total: 0 };
+                      const found = await lineSource.search(query, page, '');
+                      return {
+                        options: found.items.map((line) => ({
+                          value: String(line.id),
+                          label: named(line.name, line.code),
+                        })),
+                        total: found.total,
+                      };
+                    }}
+                    leadingOptions={[{ value: '', label: ui.unassigned }]}
+                    value={
+                      selected.draft.plannedLineId === '' ? null : selected.draft.plannedLineId
                     }
-                    source={lineSource}
-                    disabled={editDisabled}
+                    selectedOption={
+                      selected.draft.plannedLineId === ''
+                        ? null
+                        : {
+                            value: selected.draft.plannedLineId,
+                            label: lineName(selected.draft.plannedLineId),
+                          }
+                    }
+                    disabled={editDisabled || lineSource === null}
                     invalid={errorText(selected.errors, 'plannedLineId') !== undefined}
-                    onPick={(line) => onChange(selected.key, 'plannedLineId', String(line.id))}
-                    onClear={() => onChange(selected.key, 'plannedLineId', '')}
+                    onChange={(value) => onChange(selected.key, 'plannedLineId', value)}
                   />
                 </div>
                 <TextField

@@ -1099,17 +1099,20 @@ export const ProcessWorkspace = ({
       )}
       {confirmOpen && (
         <PlanConfirmDialog
-          plans={unconfirmedRows.map(rowName)}
           groups={[
             {
               orderNo: order.productionOrderNo,
-              plans: unconfirmedRows.map(rowName),
+              plans: unconfirmedRows.map((row) => ({
+                key: row.key,
+                planNo: row.planNo,
+                planDate: row.draft.planDate,
+                quantity: `${formatQty(Number(row.draft.plannedQty) || 0)} ${uomLabelOf(order.uomId)}`,
+              })),
               operations: (operations.data?.items ?? []).map(
                 (operation) => operation.operationName,
               ),
             },
           ]}
-          operations={(operations.data?.items ?? []).map((operation) => operation.operationName)}
           running={planBusy}
           onCancel={() => setConfirmOpen(false)}
           onConfirm={() => void savePlans(true)}

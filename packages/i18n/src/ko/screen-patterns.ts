@@ -71,18 +71,18 @@ export const screenPatterns = {
   },
   /** C-12 참조 선택 팝업 */
   referencePicker: {
-    open: '눌러서 찾기',
+    open: '눌러서 검색',
     select: (label: string): string => `${label}${objectJosa(label)} 선택하세요`,
     clear: (label: string): string => `${label} 지우기`,
     keyword: '검색어',
-    keywordPlaceholder: '코드나 이름',
-    search: '찾기',
+    keywordPlaceholder: '코드나 이름을 입력하세요',
+    search: '검색',
     pick: '선택',
     pickReason: '목록에서 한 건을 고르세요',
-    searching: '찾는 중입니다',
+    searching: '검색 중입니다',
     empty: (term: string): string =>
       term === '' ? '결과가 없습니다' : `「${term}」 결과가 없습니다`,
-    failed: '목록을 불러오지 못했습니다. 다시 찾으세요.',
+    failed: '목록을 불러오지 못했습니다. 다시 검색하세요.',
   },
   /** C-12 일시 입력 */
   dateTimeField: {
