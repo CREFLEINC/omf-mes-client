@@ -30115,7 +30115,7 @@ export interface paths {
     put?: never;
     /**
      * 로그인
-     * @description ⛔ 실패해도 아이디와 비밀번호 중 무엇이 틀렸는지 말하지 않는다 — 계정이 있는지가 새어 나간다. 남은 시도 횟수는 알린다(잠긴 뒤에야 알리지 않기 위해서다). 잠긴 계정은 스스로 풀 수 없다 — 관리자가 푼다. 근거: W-CO-01 §5-1·§5-2
+     * @description ⛔ 실패해도 아이디와 비밀번호 중 무엇이 틀렸는지 말하지 않는다 — 계정이 있는지가 새어 나간다. 근거: W-CO-01 §5-1
      */
     post: {
       parameters: {
@@ -30160,15 +30160,6 @@ export interface paths {
           };
           content: {
             'application/json': components['schemas']['LoginFailure'];
-          };
-        };
-        /** @description 실패가 쌓여 잠겼다 — 스스로 풀 수 없다 */
-        423: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
           };
         };
       };
@@ -30268,7 +30259,7 @@ export interface paths {
     put?: never;
     /**
      * 내 비밀번호 변경
-     * @description ⛔ 현재 비밀번호를 틀려도 계정을 잠그지 않는다 — 로그인과 달리 이미 인증된 본인이기 때문이다. ⛔ 바꾼 뒤 다시 로그인시키지 않는다 — 작업 중일 수 있다. 근거: W-CO-10 §5-2·§5-3
+     * @description ⛔ 바꾼 뒤 다시 로그인시키지 않는다 — 작업 중일 수 있다. 근거: W-CO-10 §5-3
      */
     post: {
       parameters: {
@@ -62131,11 +62122,6 @@ export interface components {
     LoginFailure: {
       /** @example 아이디 또는 비밀번호가 맞지 않습니다 */
       message: string;
-      /**
-       * @description 남은 시도 횟수. 잠긴 뒤에야 알리지 않는다. ⚠ 없는 계정에는 오지 않는다 — 그래서 계정 존재가 드러나지만 「잠길 줄 모르는 것」보다 낫다고 판단했다
-       * @example 3
-       */
-      remainingAttempts?: number;
     };
     /**
      * @description 로그인 결과이자 「지금 나는 누구이고 어디까지 보는가」.
@@ -62186,7 +62172,7 @@ export interface components {
        */
       plantId?: number;
     };
-    /** @description 현재 비밀번호를 틀려도 계정을 잠그지 않는다 — 이미 인증된 본인이다. 바꾼 뒤 다시 로그인시키지도 않는다. 근거: W-CO-10 §5-2·§5-3 */
+    /** @description 바꾼 뒤 다시 로그인시키지 않는다. 근거: W-CO-10 §5-3 */
     PasswordChangeRequest: {
       /** Format: password */
       currentPassword: string;

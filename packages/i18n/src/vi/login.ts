@@ -28,8 +28,6 @@ export const login: Translated<typeof ko.login> = {
   banner: {
     credentialsTitle: 'Sai thông tin đăng nhập',
     credentials: 'Tên đăng nhập hoặc mật khẩu không đúng. Hãy kiểm tra lại.',
-    lockedTitle: 'Tài khoản bị khóa',
-    locked: 'Tài khoản đã bị khóa. Hãy yêu cầu quản trị viên đặt lại mật khẩu.',
     serverTitle: 'Lỗi máy chủ',
     server:
       'Máy chủ không xử lý được đăng nhập. Hãy thử lại sau, nếu vẫn vậy thì báo cho quản trị viên.',
