@@ -22,9 +22,7 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
     plantRequired: 'Hãy chọn nhà máy cần tải lên trước.',
     fileLabel: 'Tệp Excel công cụ',
     filePlaceholder: 'Chọn tệp',
-    fileNone: 'Chưa chọn tệp nào.',
     submit: 'Tải lên',
-    fileRequired: 'Hãy chọn tệp cần tải lên trước.',
     resultTitle: 'Kết quả tải lên',
     succeeded: (count: number): string => `Đã đăng ký ${count} mục.`,
     failed: (count: number): string => `${count} mục thất bại.`,
@@ -94,7 +92,6 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
     lastPmDate: 'Ngày bảo trì phòng ngừa gần nhất',
     nextPmDate: 'Ngày dự kiến bảo trì phòng ngừa kế tiếp',
     labelIssueCount: 'Số lần đã phát hành nhãn',
-    notRecorded: 'Không có ghi nhận',
   },
   form: {
     /** 창의 세 구획 — 「고칠 값 → 예방보전 설정 → 보기만 하는 값」 차례로 읽힌다. */
@@ -159,7 +156,6 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
       'Danh sách giá trị trạng thái tài sản chưa sẵn sàng nên chưa thể xử lý thanh lý.',
   },
   notes: {
-    cavityMeaningfulForMold: 'Chỉ áp dụng cho khuôn.',
     /** ⭐ 막지 않고 알린다 — 막으면 나중에 채우는 길이 사라진다. */
     guaranteedMissingBlocksShotAxis:
       'Nếu số nhát dập đảm bảo để trống thì không tính được số nhát dập khả dụng và tỷ lệ vượt, và bảo trì phòng ngừa không đến hạn theo số nhát dập.',

@@ -1,7 +1,8 @@
-import { Button, Dialog, TextField } from '@crefle/web-ui';
+import { Button, Chip, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import { InfoFacts } from '../../patterns/info-facts';
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { CodeLockTextField } from '../../patterns/master';
 import type { ActionAvailability } from './asset-actions';
@@ -12,7 +13,6 @@ import {
   type CodeOption,
   codeLabel,
   ensureOption,
-  MOLD_TOOL_TYPE_CODE,
   selectableOptions,
   usesDateAxis,
   usesShotAxis,
@@ -23,33 +23,6 @@ import { countText, figureText, ratioText } from './shot-text';
 import type { ToolFormValues } from './types';
 
 const t = messages.toolMaster;
-
-/** 값이 없는 읽기 전용 칸. 빈칸으로 두지 않고 「기록 없음」을 밝힌다(공유계약 G-9). */
-const readOnlyText = (value: string | null): string =>
-  value === null || value.trim() === '' ? t.fields.notRecorded : value;
-
-interface StatusItemProps {
-  label: string;
-  value: string | null;
-}
-
-/**
- * 「현재 상태」 한 묶음 — 작은 이름 바로 아래 값.
- *
- * **폼 컨트롤을 잠그지 않고 값 표기로 낸다** — 잠긴 입력칸은 「언젠가 여기서 고칠 수 있다」를
- * 뜻하는데, 이 값들은 이 화면이 영영 정하지 않는다. 값은 이름표로 이어 둔다 — 화면 낭독기와
- * 시험이 「어느 값이 무엇인가」를 이름으로 찾는다.
- */
-const StatusItem = ({ label, value }: StatusItemProps) => {
-  const labelId = useId();
-
-  return (
-    <div className="tool-form-status-item">
-      <dt id={labelId}>{label}</dt>
-      <dd aria-labelledby={labelId}>{readOnlyText(value)}</dd>
-    </div>
-  );
-};
 
 export interface ToolFormDialogProps {
   mode: 'create' | 'edit';
@@ -227,10 +200,9 @@ export const ToolFormDialog = ({
             />
 
             {/*
-             * ⚠ **잠그지 않고 뜻을 밝힌다.** 캐비티 수는 금형에서만 뜻이 있으나(스펙 §6), 잠그면 유형을
-             * 잘못 고른 채로는 고칠 수 없는 자리가 생긴다. 뜻은 짧은 도움말로만 남긴다.
-             * ⭐ 도움말은 **금형이 아닌 유형을 골랐을 때만** 선다(사용자 지정 2026-09-22) — 설명은 입력을
-             *   정하는 데 필요할 때만 낸다. 늘 서면 그 칸만 키가 커져 옆 칸 밑이 비고 다음 줄이 밀렸다.
+             * ⚠ **잠그지도 감추지도 않는다.** 캐비티 수는 금형에서만 뜻이 있으나(스펙 §6) 모든 유형에서 필수이고
+             * 늘 보낸다 — 감추면 보이지 않는 칸이 검증에 걸린다. 「금형에만 적용됩니다.」 도움말은 걷었다(사용자 지시
+             * 2026-11-27 · #360).
              */}
             <TextField
               label={t.fields.cavityCount}
@@ -240,11 +212,6 @@ export const ToolFormDialog = ({
               value={values.cavityCount}
               onChange={(event) => onChange({ cavityCount: event.target.value })}
               containerClassName={emptyRequired(values.cavityCount, true)}
-              helperText={
-                values.toolTypeCode !== '' && values.toolTypeCode !== MOLD_TOOL_TYPE_CODE
-                  ? t.notes.cavityMeaningfulForMold
-                  : undefined
-              }
               error={fieldErrors.cavityCount}
             />
 
@@ -400,31 +367,44 @@ export const ToolFormDialog = ({
              * 초과율·예방보전일·라벨 발행 회차도 이 자리에 선다(라벨 회차는 참조 0건인데도 코드가
              * 잠기는 까닭이다).
              */}
-            <dl className="tool-form-status">
-              <StatusItem label={t.fields.plant} value={plantName} />
-              <StatusItem
-                label={t.fields.status}
-                value={statusCode === null ? null : codeLabel(statusCode, statusOptions)}
-              />
-              <StatusItem
-                label={t.fields.currentShotCount}
-                value={currentShotCount === null ? null : countText(currentShotCount)}
-              />
-              <StatusItem
-                label={t.fields.availableShotCount}
-                value={figures === null ? null : figureText(availableShots(figures), countText)}
-              />
-              <StatusItem
-                label={t.fields.shotUsageRatio}
-                value={figures === null ? null : figureText(shotUsage(figures), ratioText)}
-              />
-              <StatusItem
-                label={t.fields.labelIssueCount}
-                value={labelIssueCount === null ? null : t.form.labelIssued(labelIssueCount)}
-              />
-              <StatusItem label={t.fields.lastPmDate} value={lastPmDate} />
-              <StatusItem label={t.fields.nextPmDate} value={nextPmDate} />
-            </dl>
+            {/*
+             * 시안 정보 상자(공용 InfoFacts — 팝업 디자인 시안 2026-11-27 · #360): 연회색 둥근 상자, 이름 위 · 값 아래,
+             * 세로선으로 가른다. 운용상태는 칩, 빈 값은 회색 「—」.
+             */}
+            <InfoFacts
+              rows={[
+                [
+                  { label: t.fields.plant, value: plantName },
+                  {
+                    label: t.fields.status,
+                    value:
+                      statusCode === null ? null : (
+                        <Chip size="sm">{codeLabel(statusCode, statusOptions)}</Chip>
+                      ),
+                  },
+                  {
+                    label: t.fields.currentShotCount,
+                    value: currentShotCount === null ? null : countText(currentShotCount),
+                  },
+                  {
+                    label: t.fields.availableShotCount,
+                    value: figures === null ? null : figureText(availableShots(figures), countText),
+                  },
+                ],
+                [
+                  {
+                    label: t.fields.shotUsageRatio,
+                    value: figures === null ? null : figureText(shotUsage(figures), ratioText),
+                  },
+                  {
+                    label: t.fields.labelIssueCount,
+                    value: labelIssueCount === null ? null : t.form.labelIssued(labelIssueCount),
+                  },
+                  { label: t.fields.lastPmDate, value: lastPmDate },
+                  { label: t.fields.nextPmDate, value: nextPmDate },
+                ],
+              ]}
+            />
           </section>
         )}
       </div>

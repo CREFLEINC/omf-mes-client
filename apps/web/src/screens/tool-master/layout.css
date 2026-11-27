@@ -69,3 +69,16 @@
     grid-area: search;
   }
 }
+
+/* 엑셀 업로드 파일 상자(검사 기준 업로드와 같은 모양) — 반 폭 칸이라 단추 글자가 접히지 않게, 긴 파일 이름은 말줄임. */
+.tool-master-file-field .inspection-standard-import-box-head > button {
+  flex: none;
+  white-space: nowrap;
+}
+
+.tool-master-file-field .inspection-standard-import-box-head > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

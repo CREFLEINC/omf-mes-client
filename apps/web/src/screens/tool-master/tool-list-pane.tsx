@@ -20,6 +20,7 @@ import {
   useFilterMore,
 } from '../../patterns/filter-more';
 import type { LookupSource } from '../../patterns/lookup-display';
+import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { UsageName } from '../../patterns/usage-chip';
 import {
   SORT_OPTIONS,
@@ -50,7 +51,10 @@ export interface ToolListPaneProps {
   typeNote?: string;
   statusOptions: CodeOption[];
   onAdd: () => void;
-  onEdit: (tool: Mold) => void;
+  /** 고른 줄(파랑). 고른 줄이 없으면 `null`. */
+  selectedId: number | null;
+  /** 줄을 누르거나 Enter · Space — 고른 줄을 다시 누르면 푸는 것도 이 함수가 가른다. */
+  onPick: (tool: Mold) => void;
   onImport: () => void;
   loadError: ReactNode;
 }
@@ -106,7 +110,8 @@ export const useToolListPane = ({
   typeNote,
   statusOptions,
   onAdd,
-  onEdit,
+  selectedId,
+  onPick,
   onImport,
   loadError,
 }: ToolListPaneProps): { filter: ReactNode; list: ReactNode } => {
@@ -231,9 +236,17 @@ export const useToolListPane = ({
       header: t.fields.toolCode,
       align: 'center',
       width: '14%',
-      /* 코드가 곧 여는 손잡이다 — 줄마다 「수정」 단추를 세우면 표가 조작으로 덮인다. */
+      /*
+       * 줄 아무 곳이나 눌러 고른다(사용자 지시 2026-11-27 · #360 — 공용 row-pick). 코드 칸 단추는 보통 글자로 보이고
+       * 키보드로 고르는 자리(Tab · Enter · Space)로만 남는다.
+       */
       render: (row) => (
-        <button type="button" className="link-cell" onClick={() => onEdit(row)}>
+        <button
+          type="button"
+          className={`link-cell ${ROW_PICK_CLASS}`}
+          aria-current={row.moldId === selectedId ? 'true' : undefined}
+          onClick={() => onPick(row)}
+        >
           {row.moldCode}
         </button>
       ),
@@ -314,7 +327,7 @@ export const useToolListPane = ({
      * 스크롤 상자는 디자인 시스템 `Table` 이 이미 갖고 있어 우리가 만들지 않는다.
      */
     return (
-      <div className="wide-table tool-master-table">
+      <div className="wide-table tool-master-table" {...rowPickHandlers}>
         <Table
           density="compact"
           caption={<span className="tool-master-table-caption">{t.paneTitle}</span>}

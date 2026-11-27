@@ -8661,35 +8661,6 @@ dialog.routing-history-dialog {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-/*
- * 현재 상태 — 보기만 하는 값이라 입력 구획보다 가볍게. 작은 흐린 이름 바로 아래 값을 둬 한
- * 묶음으로 읽히게 하고, 4열 두 줄로 압축한다. 칸마다 상자는 두지 않는다.
- */
-.tool-form-status {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-3) var(--space-4);
-  margin: 0;
-}
-
-.tool-form-status-item {
-  display: grid;
-  gap: 2px;
-  align-content: start;
-  min-width: 0;
-}
-
-.tool-form-status-item > dt {
-  color: var(--on-surface-variant);
-  font: var(--type-body-sm);
-}
-
-.tool-form-status-item > dd {
-  margin: 0;
-  color: var(--on-surface);
-  overflow-wrap: anywhere;
-}
-
 /* 구획 제목 줄 — 제목은 왼쪽, 그 구획의 값을 바꾸는 손잡이는 오른쪽. */
 .tool-form-section-head {
   display: flex;
@@ -8723,10 +8694,6 @@ dialog.routing-history-dialog {
 }
 
 @media (max-width: 720px) {
-  .tool-form-status {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .form-grid.tool-form-pm-grid {
     grid-template-columns: minmax(0, 1fr);
   }

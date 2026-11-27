@@ -29,10 +29,7 @@ export const toolMaster = {
     plantRequired: '올릴 공장을 먼저 고르세요.',
     fileLabel: '툴 엑셀 파일',
     filePlaceholder: '파일 고르기',
-    fileNone: '고른 파일이 없습니다.',
     submit: '올리기',
-    /** ⛔ 고른 파일이 없으면 보낼 것이 없다 — 감추지 않고 잠그고 사유를 말한다(G-2). */
-    fileRequired: '올릴 파일을 먼저 고르세요.',
     resultTitle: '올리기 결과',
     succeeded: (count: number): string => `${count}건을 등록했습니다.`,
     failed: (count: number): string => `${count}건이 실패했습니다.`,
@@ -106,7 +103,6 @@ export const toolMaster = {
     lastPmDate: '마지막 예방보전일',
     nextPmDate: '다음 예방보전 예정일',
     labelIssueCount: '발행한 라벨 회차',
-    notRecorded: '기록 없음',
   },
   form: {
     /** 창의 세 구획 — 「고칠 값 → 예방보전 설정 → 보기만 하는 값」 차례로 읽힌다. */
@@ -147,8 +143,7 @@ export const toolMaster = {
     deactivateTitle: '툴을 사용 중지할까요?',
     /** 중지해도 그 툴이 남긴 실적은 그대로다 — 감추는 것과 지우는 것은 다르다. */
     deactivateImpact: '이 툴이 남긴 실적은 그대로 남고, 새로 고를 때만 목록에서 빠집니다.',
-    deactivateNotReversibleHere:
-      '삭제되지는 않습니다. 다시 켜려면 담당자에게 요청하세요.',
+    deactivateNotReversibleHere: '삭제되지는 않습니다. 다시 켜려면 담당자에게 요청하세요.',
     deactivateConfirm: '사용 중지',
     deactivateTarget: (label: string): string => `${label} 을(를) 사용 중지합니다.`,
     disposeTitle: '폐기 처리할까요?',
@@ -184,11 +179,6 @@ export const toolMaster = {
     disposeUnavailable: '등록된 자산 상태가 없어 폐기할 수 없습니다.',
   },
   notes: {
-    /**
-     * ⚠ 도구 유형 값 목록이 아직 없어(추적 `omf-mes#145`) **어느 코드가 금형인지 화면이
-     * 판정할 수 없다.** 잠그는 대신 뜻을 밝힌다 — 값 목록이 들어오면 잠글 수 있다.
-     */
-    cavityMeaningfulForMold: '금형에만 적용됩니다.',
     /**
      * ⭐ **막지 않고 알린다.** 「적정타수 없는 것만」 조회 조건이 있다는 것은 이 상태로 저장하는
      * 것을 **업무가 허용한다**는 뜻이다 — 막으면 나중에 채우는 길이 사라진다.
