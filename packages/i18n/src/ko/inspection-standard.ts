@@ -374,7 +374,7 @@ export const inspectionStandard = {
     legendChanged: '변경',
     legendAdded: '추가',
     legendRemoved: '삭제',
-    count: (count: number): string => `총 ${String(count)}건`,
+    count: (count: number): string => `${String(count)}건`,
     fieldColumn: '항목',
     statusColumn: '상태',
     itemColumn: '검사 항목',

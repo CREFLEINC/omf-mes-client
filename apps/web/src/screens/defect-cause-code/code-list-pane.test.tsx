@@ -36,6 +36,9 @@ const renderPane = (overrides: Partial<CodeListPaneProps> = {}) => {
     onChangePage: vi.fn(),
     onChangePageSize: vi.fn(),
     loadError: null,
+    referenceCountOf: () => null,
+    onEdit: vi.fn(),
+    onToggleActive: vi.fn(),
     ...overrides,
   };
 
@@ -234,6 +237,44 @@ describe('CodeListPane — 선택', () => {
 
     expect(screen.queryByRole('button', { name: '조회' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '하위 코드 추가' })).not.toBeInTheDocument();
+  });
+});
+
+/* 상세 카드에 있던 사용된 기록 · 사용 중지/재사용 · 수정을 목록 줄로 옮겼다(#360). */
+describe('CodeListPane — 행 끝 동작 · 사용된 기록 (#360)', () => {
+  const rowOf = (code: string): HTMLElement => {
+    const row = screen.getByRole('button', { name: code }).closest('tr');
+    if (row === null) throw new Error(`${code} 줄이 없습니다.`);
+    return row;
+  };
+
+  it('사용된 기록을 건수로, 받지 못한 줄은 「—」로 낸다', () => {
+    renderPane({ referenceCountOf: (id) => (id === 1002 ? 3 : null) });
+
+    expect(within(rowOf('DF-11')).getByText('3건')).toBeInTheDocument();
+    expect(within(rowOf('DF-12')).queryByText(/건$/)).not.toBeInTheDocument();
+  });
+
+  it('사용 중인 줄의 사용 중지 · 수정은 그 코드로 부른다', async () => {
+    const { props, user } = renderPane();
+
+    await user.click(within(rowOf('DF-11')).getByRole('button', { name: '사용 중지' }));
+    await user.click(within(rowOf('DF-11')).getByRole('button', { name: '수정' }));
+
+    expect(props.onToggleActive).toHaveBeenCalledWith(1002);
+    expect(props.onEdit).toHaveBeenCalledWith(1002);
+    // 단추를 눌러도 줄 고르기로 번지지 않는다.
+    expect(props.onSelect).not.toHaveBeenCalled();
+  });
+
+  it('미사용 줄은 사용 중지 자리에 재사용을 낸다', async () => {
+    const { props, user } = renderPane();
+
+    const inactive = rowOf('DF-90');
+    expect(within(inactive).queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
+    await user.click(within(inactive).getByRole('button', { name: '재사용' }));
+
+    expect(props.onToggleActive).toHaveBeenCalledWith(1006);
   });
 });
 

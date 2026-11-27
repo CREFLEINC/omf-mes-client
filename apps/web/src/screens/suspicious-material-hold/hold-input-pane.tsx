@@ -206,7 +206,7 @@ export const SuspiciousMaterialHoldInputPane = ({
    */
   return (
     <div className="suspicious-material-hold-section" role="group" aria-label={t.pane}>
-      {/* 보류 범위 · 사유 · 해제 조건 · 비고를 한 줄에(사용자 2026-11-02) — 좁으면 다음 줄로 넘긴다. */}
+      {/* 보류 범위 · 사유 한 줄, 해제 조건 · 비고 한 줄(사용자 지시 · #360) — 좁으면 한 칸씩 쌓는다. */}
       <div className="suspicious-material-hold-input-row">
         <div className="field-cell suspicious-material-hold-range">
           <span className="field-label">{t.range}</span>
@@ -227,30 +227,31 @@ export const SuspiciousMaterialHoldInputPane = ({
             <Radio value="FULL">{t.full}</Radio>
             {selection.length === 1 && <Radio value="PARTIAL">{t.partial}</Radio>}
           </RadioGroup>
+          {/* 보류 수량은 범위 칸 안 단추 아래 — 범위 · 사유 / 해제 조건 · 비고 두 줄 짝을 깨지 않는다(#360). */}
+          {draft.mode === 'PARTIAL' && selection.length === 1 && (
+            /*
+             * 보류 수량 — 숫자 몇 자리만큼만 좁게, 칸 오른쪽 안에 LOT 단위(코드)를 붙인다(사용자 2026-11-02). 단위를 못 받았으면
+             * 붙이지 않는다(위 안내가 막힌 까닭을 알린다).
+             */
+            <TextField
+              containerClassName="suspicious-material-hold-qty"
+              label={t.quantity}
+              required
+              placeholder={t.quantityPlaceholder}
+              inputMode="decimal"
+              aria-invalid={!isLocked && draft.holdQty.trim() === ''}
+              {...(qtyOverLimit === null ? {} : { error: qtyOverLimit })}
+              {...(unitCode === null
+                ? {}
+                : {
+                    trailingIcon: <span className="suspicious-material-hold-unit">{unitCode}</span>,
+                  })}
+              value={draft.holdQty}
+              disabled={isLocked}
+              onChange={(event) => update('holdQty', event.target.value)}
+            />
+          )}
         </div>
-        {draft.mode === 'PARTIAL' && selection.length === 1 && (
-          /*
-           * 보류 수량 — 숫자 몇 자리만큼만 좁게, 칸 오른쪽 안에 LOT 단위(코드)를 붙인다(사용자 2026-11-02). 단위를 못 받았으면
-           * 붙이지 않는다(위 안내가 막힌 까닭을 알린다).
-           */
-          <TextField
-            containerClassName="suspicious-material-hold-qty"
-            label={t.quantity}
-            required
-            placeholder={t.quantityPlaceholder}
-            inputMode="decimal"
-            aria-invalid={!isLocked && draft.holdQty.trim() === ''}
-            {...(qtyOverLimit === null ? {} : { error: qtyOverLimit })}
-            {...(unitCode === null
-              ? {}
-              : {
-                  trailingIcon: <span className="suspicious-material-hold-unit">{unitCode}</span>,
-                })}
-            value={draft.holdQty}
-            disabled={isLocked}
-            onChange={(event) => update('holdQty', event.target.value)}
-          />
-        )}
         <div className="field-cell suspicious-material-hold-reason">
           <span className="field-label">
             <label htmlFor={reasonId}>{t.reason}</label>

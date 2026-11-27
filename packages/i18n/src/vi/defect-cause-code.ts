@@ -117,6 +117,7 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     defectName: 'Tên lỗi',
     kind: 'Phân loại',
     isActive: 'Sử dụng',
+    manage: 'Quản lý',
   },
   mappingView: {
     searchLabel: 'Tìm mã lỗi',

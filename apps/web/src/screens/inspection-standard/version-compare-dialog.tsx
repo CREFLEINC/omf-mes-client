@@ -4,6 +4,7 @@ import { type ReactNode, useId, useState } from 'react';
 
 import { Select } from '../../patterns/select';
 import { FieldLabel } from './field-label';
+import { ListEmpty } from '../../patterns/list-empty';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { resolveVersionStatus } from './plan-version-status';
 import { useInspectionItemSpecs, useInspectionPlanVersionDetail } from './queries';
@@ -198,20 +199,19 @@ export const VersionCompareDialog = ({
               {t.compare.hideSame}
             </Checkbox>
           </div>
-          {allItemRows.length === 0 ? (
-            <p className="field-note">{t.compare.noItems}</p>
-          ) : itemRows.length === 0 ? (
-            <p className="field-note">{t.compare.noItemDiff}</p>
-          ) : (
-            <div className="inspection-queue-table inspection-standard-table-box inspection-standard-compare-table">
-              <Table
-                density="compact"
-                columns={itemColumns}
-                rows={itemRows}
-                getRowId={(row) => `${row.status}:${row.code}`}
-              />
-            </div>
-          )}
+          <div className="inspection-queue-table inspection-standard-table-box inspection-standard-compare-table">
+            <Table
+              density="compact"
+              columns={itemColumns}
+              rows={itemRows}
+              getRowId={(row) => `${row.status}:${row.code}`}
+              empty={
+                <ListEmpty
+                  title={allItemRows.length === 0 ? t.compare.noItems : t.compare.noItemDiff}
+                />
+              }
+            />
+          </div>
         </section>
       </>
     );

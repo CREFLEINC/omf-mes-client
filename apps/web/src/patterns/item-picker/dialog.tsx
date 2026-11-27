@@ -10,6 +10,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { ListEmpty } from '../list-empty';
 import { Select } from '../select';
 import { type TabPageSize, TAB_PAGE_SIZES } from '../client-page';
 import { PageNav } from '../page-nav';
@@ -375,7 +376,15 @@ export const ItemPickerDialog = ({
             columns={columns}
             rows={rows}
             getRowId={(row) => String(row.itemId)}
-            empty={search.isPending ? t.searching : search.isError ? '' : (emptyText ?? t.noResult)}
+            empty={
+              search.isPending ? (
+                t.searching
+              ) : search.isError ? (
+                ''
+              ) : (
+                <ListEmpty live title={emptyText ?? t.noResult} />
+              )
+            }
           />
         </div>
 

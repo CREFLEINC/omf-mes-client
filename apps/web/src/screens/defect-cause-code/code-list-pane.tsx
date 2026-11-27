@@ -40,6 +40,12 @@ export interface CodeListPaneProps {
   loadError: ReactNode;
   /** 목록 맨 위 제목 줄(「이름 · 건수 · 목록 접기」 · #350). 화면이 `PaneListHead` 로 넘긴다. */
   head?: ReactNode;
+  /** 코드별 「사용된 기록」 건수 — 못 받았거나 서버가 셀 수 없으면 null(「—」). */
+  referenceCountOf: (id: number) => number | null;
+  /** 행 끝 「수정」 — 그 줄을 고르고 수정 창을 연다(상세 카드에서 옮겨 옴 · #360). */
+  onEdit: (id: number) => void;
+  /** 행 끝 「사용 중지」 · 「재사용」 — 그 줄을 고르고 확인 창을 연다. */
+  onToggleActive: (id: number) => void;
 }
 
 /** 표의 한 줄 — 대분류(머리)이거나 그 아래 상세(가지). 머리의 `code` 가 없으면 대분류를 못 찾은 묶음이다. */
@@ -136,6 +142,9 @@ export const CodeListPane = ({
   processLabelOf,
   loadError,
   head,
+  referenceCountOf,
+  onEdit,
+  onToggleActive,
 }: CodeListPaneProps) => {
   const orEmpty = (value: string | null | undefined): string =>
     value === null || value === undefined || value === '' ? t.values.empty : value;
@@ -286,6 +295,39 @@ export const CodeListPane = ({
         <Chip variant="status" size="sm" status={row.isActive ? 'success' : 'idle'}>
           {row.isActive ? t.detail.chipActive : t.detail.chipInactive}
         </Chip>
+      )),
+    },
+    /* 상세 카드에 있던 「사용된 기록」 · 사용 중지/재사용 · 수정을 목록으로 옮겼다(사용자 지시 · #360). */
+    {
+      key: 'referenceCount',
+      align: 'center',
+      header: t.fields.referenceCount,
+      width: '104px',
+      render: cell((row) => {
+        const count = referenceCountOf(row.id);
+        return count === null ? t.values.empty : t.values.referenceCount(count);
+      }),
+    },
+    {
+      key: 'manage',
+      align: 'center',
+      header: t.listColumns.manage,
+      width: '208px',
+      render: cell((row) => (
+        <span className="defect-cause-row-actions">
+          {/* 사용 중이면 사용 중지, 미사용이면 같은 자리에 재사용(#209). */}
+          <Button variant="outlined" size="sm" onClick={() => onToggleActive(row.id)}>
+            {row.isActive ? messages.common.deactivate : t.activate.confirm}
+          </Button>
+          <Button
+            variant="outlined"
+            size="sm"
+            leadingIcon={<Icon name="edit" size={16} />}
+            onClick={() => onEdit(row.id)}
+          >
+            {t.detail.edit}
+          </Button>
+        </span>
       )),
     },
   ];

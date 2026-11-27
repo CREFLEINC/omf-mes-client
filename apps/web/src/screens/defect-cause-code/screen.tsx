@@ -50,7 +50,13 @@ import {
   toServerFieldName,
 } from './mappers';
 import { UsageChips } from './usage-chips';
-import { useCodeDetail, useCodeList, useCodeOptions, useProcessLabels } from './queries';
+import {
+  useCodeDetail,
+  useCodeList,
+  useCodeOptions,
+  useCodeReferenceCounts,
+  useProcessLabels,
+} from './queries';
 import { ProcessMappingPane } from './process-mapping-pane';
 import { resolveTab } from './tabs';
 import type {
@@ -230,6 +236,14 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   });
 
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
+  /*
+   * 목록 행 끝 단추(수정 · 사용 중지/재사용 · #360) — 그 줄을 고른 뒤 상세(잠금 토큰 · 사용 여부)를 받으면 창을 연다.
+   * 상세 없이 열면 사용 중지/재사용 판정과 잠금 토큰이 비어 저장이 실패한다.
+   */
+  const [pendingAction, setPendingAction] = useState<{
+    id: number;
+    kind: 'edit' | 'status';
+  } | null>(null);
   /* 확인 창이 사용 중지인지 재사용인지 — 고른 코드의 사용 여부가 정한다(#209). */
   const statusMode: 'deactivate' | 'activate' =
     detail.data?.code.isActive === false ? 'activate' : 'deactivate';
@@ -253,6 +267,12 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
+
+  if (pendingAction !== null && detail.data?.code.id === pendingAction.id) {
+    setPendingAction(null);
+    if (pendingAction.kind === 'edit') setIsEditOpen(true);
+    else setIsDeactivateOpen(true);
+  }
 
   const updateParams = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(searchParams);
@@ -431,6 +451,30 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
         inactive: options.items.filter((item) => !item.isActive).length,
       };
 
+  /* 「사용된 기록」 열 — 보이는 줄과 그 대분류 머리 줄의 상세를 읽는다(#360). */
+  const referenceIds = useMemo(
+    () => [
+      ...new Set(
+        rows.flatMap((row) => (row.parentId === null ? [row.id] : [row.id, row.parentId])),
+      ),
+    ],
+    [rows],
+  );
+  const referenceCounts = useCodeReferenceCounts(adapter, referenceIds);
+
+  /** 행 끝 단추 — 그 줄을 고르고(이미 골랐으면 그대로) 상세를 받은 뒤 창을 연다. */
+  const startRowAction = (id: number, kind: 'edit' | 'status') => {
+    setIsEditOpen(false);
+    if (kind === 'edit') {
+      write.reset();
+      setLocalFieldErrors({});
+    } else {
+      deactivateWrite.reset();
+    }
+    setPendingAction({ id, kind });
+    if (id !== selectedId) updateParams({ sel: String(id), mode: null, as: null });
+  };
+
   const listCollapse = {
     collapsed: split.collapsed,
     onToggle: split.toggleCollapsed,
@@ -455,8 +499,12 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
         updateParams({ page: null, size: size === 20 ? null : String(size) })
       }
       processLabelOf={processLabelOf}
+      referenceCountOf={(id) => referenceCounts.get(id) ?? null}
+      onEdit={(id) => startRowAction(id, 'edit')}
+      onToggleActive={(id) => startRowAction(id, 'status')}
       onSelect={(id) => {
         setIsEditOpen(false);
+        setPendingAction(null);
         /* 고른 줄을 다시 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
         updateParams({ sel: id === selectedId ? null : String(id), mode: null, as: null });
       }}
@@ -597,23 +645,10 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
           code={code}
           parentLabel={parentLabelOf(code)}
           processLabel={processLabelOf(shown.data.processId)}
-          referenceCount={shown.data.editability.referenceCount ?? null}
           // 대분류를 고르면 상세 카드에서 상세를 추가한다 — 고른 대분류가 상위 초기값이 된다.
           // 창이 열려 있는 동안에도 뒤 카드의 단추는 그대로 둔다 — 보이는 코드(`viewId`)로 판정한다(#209 버그 수정).
+          // 사용 여부 · 사용된 기록 · 사용 중지 · 수정은 목록 줄로 옮겼다(#360).
           onAddChild={isCategory(code) ? () => openCreateForm({}) : undefined}
-          onEdit={() => {
-            write.reset();
-            setLocalFieldErrors({});
-            setIsEditOpen(true);
-          }}
-          onDeactivate={() => {
-            deactivateWrite.reset();
-            setIsDeactivateOpen(true);
-          }}
-          onActivate={() => {
-            deactivateWrite.reset();
-            setIsDeactivateOpen(true);
-          }}
         />
         {/* 대분류를 고르면 딸린 하위 코드를 함께 본다(사용자 지시 · #209). 미사용까지 받은 전체 목록 기준. */}
         {isCategory(code) && (

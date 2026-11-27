@@ -3,6 +3,7 @@ import type { InspectionSheetTemplate } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId, useState } from 'react';
 
+import { ListEmpty } from '../../patterns/list-empty';
 import { Select } from '../../patterns/select';
 import { useTemplate } from './queries';
 import {
@@ -160,20 +161,19 @@ export const TemplateVersionCompareDialog = ({
               {t.compare.hideSame}
             </Checkbox>
           </div>
-          {allItemRows.length === 0 ? (
-            <p className="field-note">{t.compare.noItems}</p>
-          ) : itemRows.length === 0 ? (
-            <p className="field-note">{t.compare.noItemDiff}</p>
-          ) : (
-            <div className="inspection-queue-table inspection-standard-table-box inspection-standard-compare-table">
-              <Table
-                density="compact"
-                columns={itemColumns}
-                rows={itemRows}
-                getRowId={(row) => row.key}
-              />
-            </div>
-          )}
+          <div className="inspection-queue-table inspection-standard-table-box inspection-standard-compare-table">
+            <Table
+              density="compact"
+              columns={itemColumns}
+              rows={itemRows}
+              getRowId={(row) => row.key}
+              empty={
+                <ListEmpty
+                  title={allItemRows.length === 0 ? t.compare.noItems : t.compare.noItemDiff}
+                />
+              }
+            />
+          </div>
         </section>
       </>
     );

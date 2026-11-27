@@ -10,6 +10,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { ListEmpty } from '../list-empty';
 import {
   RESOURCE_PAGE_SIZE,
   useResourceSearch,
@@ -142,7 +143,15 @@ export const ResourcePickerDialog = ({
             columns={columns}
             rows={rows}
             getRowId={(row) => String(row.id)}
-            empty={search.isPending ? t.searching : search.isError ? '' : t.noResult}
+            empty={
+              search.isPending ? (
+                t.searching
+              ) : search.isError ? (
+                ''
+              ) : (
+                <ListEmpty live title={t.noResult} />
+              )
+            }
           />
         </div>
 

@@ -12,6 +12,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { formatPlantDateTime } from '../../../patterns/plant-time';
+import { ListEmpty } from '../../../patterns/list-empty';
 import { PageNav } from '../../../patterns/page-nav';
 import { pageSizesWith } from '../../../patterns/page-nav/page-size-param';
 import {
@@ -217,7 +218,7 @@ export const EquipmentOccupancy = ({
               setSelectedId(row.workOrderId);
             }}
             rowLabel={(row) => `${row.productionOrderNo ?? ''} ${row.workOrderNo} 배정 상세`}
-            empty="등록된 배정이 없습니다."
+            empty={<ListEmpty title="등록된 배정이 없습니다." />}
           />
           {selected && <AllocationDetail row={selected} />}
         </>
@@ -400,7 +401,7 @@ export const EquipmentAssignmentPicker = ({
               setError('');
             }}
             rowLabel={(row) => `${row.code} ${row.name} 배정 내역 확인`}
-            empty="조회된 설비가 없습니다."
+            empty={<ListEmpty live title="조회된 설비가 없습니다." />}
           />
         )}
         <PageNav
