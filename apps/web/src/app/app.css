@@ -42996,3 +42996,37 @@ dialog[class*='_dialog_']:not([class*='_right_'], [class*='_left_']):not(.pop-ui
   > button[class*='_close_'] {
   display: none;
 }
+
+/*
+ * 목록 표 글자는 머리칸 · 본문칸 모두 가운데(사용자 지시 2026-11-27 「목록은 모두 중앙 정렬」 · omf-all-around#360) —
+ * 숫자 칸 포함. 화면마다 칸별 정렬 규칙이 있어 `!important` 로 한 번에 맞춘다. 묶음 머리 줄(`scope=rowgroup`)은 그대로.
+ * 제외: 품질 관리 화면 본문(팝업 · 서랍 밖은 종전 그대로 · 사용자 지시 2026-11-27), POP 단말, 통합 대시보드(카드 요약 표는 이미 가운데).
+ * 품질 화면은 화면에만 있는 묶음(검사 조회·판정 · 검사 기준 · 품질 코드 · 검사 실적 · 제품 검사표 · LOT 상태 탭)으로 가린다.
+ */
+main:not(
+    :has(
+      .iqc-inspection-panes,
+      .pqc-web-list,
+      .oqc-inspection-panes,
+      .inspection-standard-list-pane:not(.routing-item-pane, .routing-process-list-pane),
+      .defect-process-mapping-pane,
+      .inspection-standard-type-filter,
+      .inspection-sheet-template-list-pane,
+      .inspection-sheet-list-pane,
+      .lot-status-workspace,
+      .lot-status-transition-screen,
+      .suspicious-material-hold-workspace,
+      .inspection-results-screen
+    )
+  )
+  table:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog *)
+  > :is(thead, tbody, tfoot)
+  > tr
+  > :is(th, td):not([scope='rowgroup']),
+dialog:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head))
+  table
+  > :is(thead, tbody, tfoot)
+  > tr
+  > :is(th, td):not([scope='rowgroup']) {
+  text-align: center !important;
+}
