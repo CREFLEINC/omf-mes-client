@@ -39181,6 +39181,70 @@ body:has(
   color: var(--on-surface-variant);
   font: var(--type-body-sm);
 }
+/* 자동 분배 팝업 정리(#360) — 단건 요약 상자 + 수량 한 줄, 조건은 카드 하나씩, 다건 선택 행 강조. */
+.erp-wo-distribution-single-summary {
+  display: grid;
+  gap: var(--space-2);
+}
+.erp-wo-distribution-qty-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+.erp-wo-distribution-qty-line strong {
+  color: var(--on-surface);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-heading .section-title > .field-note {
+  display: inline;
+  margin: 0 0 0 var(--space-2);
+}
+.erp-wo-distribution-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-heading-actions > button {
+  min-width: 0;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-focused-order {
+  padding-top: 0;
+  border-top: 0;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-segments {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-segment {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-lowest, var(--surface));
+}
+.erp-wo-distribution-dialog .erp-wo-segment-fields .erp-wo-distribution-holiday-option {
+  justify-self: start;
+  min-height: 0;
+  margin-top: var(--space-1);
+}
+.erp-wo-distribution-dialog .erp-wo-segment-fields .erp-wo-distribution-holiday-option input {
+  flex: none;
+  width: 1rem;
+  max-width: 1rem;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-owner-table tr[data-active='true'] {
+  background: var(--surface-container-high);
+  box-shadow: inset 3px 0 var(--primary);
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-owner-table tr[data-active='true'] td {
+  font-weight: 600;
+}
 @media (max-width: 1000px) {
   .erp-wo-distribution-dialog .erp-wo-segment-fields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
