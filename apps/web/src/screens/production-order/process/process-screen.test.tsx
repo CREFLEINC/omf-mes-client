@@ -41,6 +41,8 @@ interface WorkOrder {
   workOrderId: number;
   productionLineId?: number;
   located: boolean;
+  /** 배정된 설비와 계획 시간. 하나라도 주면 공정이 설비를 필수로 요구한다. */
+  equipment?: { id: number; start: string; end: string };
 }
 
 interface World {
@@ -146,6 +148,13 @@ const workOrderBody = (workOrder: WorkOrder, state: World) => ({
     ? {}
     : { productionLineId: workOrder.productionLineId }),
   ...(workOrder.located ? { defaultFgLocationId: 42, defaultScrapLocationId: 43 } : {}),
+  ...(workOrder.equipment === undefined
+    ? {}
+    : {
+        plannedEquipmentId: workOrder.equipment.id,
+        plannedStartAt: workOrder.equipment.start,
+        plannedEndAt: workOrder.equipment.end,
+      }),
   versionNo: 1,
 });
 
@@ -217,7 +226,16 @@ const serve = (state: World) => {
       });
     if (at === '/planning/routings/21/operations') {
       return jsonResponse(
-        page([{ routingOperationId: 1, operationSeq: 10, operationName: '조립' }]),
+        page([
+          {
+            routingOperationId: 1,
+            operationSeq: 10,
+            operationName: '조립',
+            ...(state.workOrders.some((entry) => entry.equipment !== undefined)
+              ? { equipmentRequired: true }
+              : {}),
+          },
+        ]),
       );
     }
     if (at === '/mdm/production-lines') return jsonResponse(page([LINE]));
@@ -717,6 +735,59 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
         server.writes.filter((write) => /\/work-orders\/900[12]$/.test(write.path)).length,
       ).toBe(2),
     );
+  });
+
+  it('4M 배정에서 줄을 골라도 설비 배정 내역은 펼쳐지지 않고, 설비 시간이 겹치면 저장할 때 막고 알린다', async () => {
+    const user = userEvent.setup();
+    const server = renderAt(
+      `${WORKLIST}/${ORDER_NO}`,
+      world({
+        autoPlan: { status: 'DONE', reasons: [] },
+        plans: [{ ...CONFIRMED_PLAN }],
+        workOrders: [
+          {
+            workOrderId: 9001,
+            productionLineId: 31,
+            located: false,
+            equipment: {
+              id: 61,
+              start: '2026-11-27T08:00:00+07:00',
+              end: '2026-11-28T08:00:00+07:00',
+            },
+          },
+          {
+            workOrderId: 9002,
+            productionLineId: 31,
+            located: false,
+            equipment: {
+              id: 61,
+              start: '2026-11-28T07:00:00+07:00',
+              end: '2026-11-28T17:20:00+07:00',
+            },
+          },
+        ],
+      }),
+    );
+    await currentStep(tp.steps.assign);
+    const grid = await screen.findByRole('region', { name: tp.assign.gridHeading });
+    /* 줄을 골라도 설비 배정 내역 표는 열리지 않고, 저장 전에는 겹침 알림도 없다(사용자 지시 2026-11-27). */
+    await user.click(
+      within(await within(grid).findByRole('row', { name: /^SYN-WO-9001 / })).getByRole(
+        'rowheader',
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('row', { name: /^SYN-WO-9001 / })).toHaveAttribute('data-selected'),
+    );
+    expect(screen.queryByRole('region', { name: '설비 배정 내역' })).toBeNull();
+    expect(within(grid).queryByText(/배정 시간 중복/)).toBeNull();
+    /* 저장하면 겹친 줄은 저장되지 않고 그 줄 아래에 까닭이 나타난다. */
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: tp.assign.actions.save })).toBeEnabled();
+    });
+    await user.click(screen.getByRole('button', { name: tp.assign.actions.save }));
+    expect(await within(grid).findAllByText('배정 시간 중복 1건')).toHaveLength(2);
+    expect(server.writes.filter((write) => /\/work-orders\/900[12]$/.test(write.path))).toEqual([]);
   });
 
   it('4M 배정에서 줄을 누르면 그 줄이 고른 줄이 되고, 확인 창 없이 다른 줄로 옮긴다', async () => {

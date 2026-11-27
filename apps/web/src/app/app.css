@@ -44068,7 +44068,7 @@ main > .pane.notification-center-pane {
 .erp-wo-assign-none {
   color: var(--on-surface-variant);
 }
-/* 줄 아래 알림 — 점검이 막은 까닭, 저장 오류, 고른 줄의 설비 배정 내역. */
+/* 줄 아래 알림 — 점검이 막은 까닭, 저장 오류. */
 .erp-wo-assign-row-notes > td {
   padding: 0 var(--space-2) var(--space-2);
   border-bottom: 1px solid var(--outline-variant);
