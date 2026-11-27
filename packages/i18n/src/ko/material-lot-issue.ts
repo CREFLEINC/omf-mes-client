@@ -157,7 +157,11 @@ export const materialLotIssue = {
     submit: (count: number | null) => (count === null ? '발행' : `${count}건 발행`),
   },
   void: {
-    title: (count: number) => `대기 자재 관리 LOT ${count}건를 폐기할까요?`,
+    /* 제목은 짧은 이름, 묻는 말은 본문(단말 사용 중지 창과 같은 짜임 · #360). */
+    title: '자재 관리 LOT 폐기',
+    caption: '폐기 대상',
+    target: (count: number) => `대기 자재 관리 LOT ${count}건`,
+    question: '선택한 LOT를 폐기하시겠습니까?',
     body: '폐기하면 PDA 입하 스캔에서 거부되고 번호는 다시 매기지 않습니다.',
     printed: (count: number) => `라벨이 출력된 ${count}건는 현장에서 라벨을 떼어 버려야 합니다.`,
     cancel: '취소',

@@ -617,7 +617,7 @@ describe('W-01-14 상세 — 탭 넷(피처 014 Q17)', () => {
     );
     await user.click(pane.getByRole('button', { name: t.detail.void(2) }));
 
-    const confirm = within(await screen.findByRole('dialog', { name: t.void.title(2) }));
+    const confirm = within(await screen.findByRole('dialog', { name: t.void.title }));
     await user.click(confirm.getByRole('button', { name: t.void.confirm(2) }));
 
     await waitFor(() =>

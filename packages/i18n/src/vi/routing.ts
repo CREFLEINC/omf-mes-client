@@ -303,19 +303,23 @@ export const routing: Translated<typeof ko.routing> = {
     discardTitle: (revision: string): string => `Hủy bản nháp ${revision}`,
     discardCaption: 'Đối tượng hủy bản nháp',
     discardQuestion: 'Bạn có muốn hủy bản nháp Rev này không?',
-    discardDescription: 'Rev nháp cùng cấu hình công đoạn · liên kết công đoạn sẽ bị xóa.',
-    discardNote: 'Không thể khôi phục sau khi xóa. Lịch sử thay đổi vẫn được giữ.',
+    discardDescription:
+      'Rev nháp cùng cấu hình công đoạn · liên kết công đoạn sẽ bị xóa và không thể khôi phục.',
     discardDone: 'Đã hủy bản nháp.',
     flagsTitle: 'Thiết lập quản lý',
     flagsSelected: (count: number): string => `Đã chọn ${String(count)}`,
-    deactivateProcessTitle: 'Ngừng sử dụng công đoạn?',
+    deactivateProcessTitle: 'Ngừng sử dụng công đoạn',
+    deactivateProcessCaption: 'Đối tượng ngừng sử dụng',
+    deactivateProcessQuestion: 'Ngừng sử dụng công đoạn này?',
     deactivateProcessDescription:
       'Sau khi ngừng sử dụng, không thể thêm công đoạn này vào quy trình công đoạn mới.',
-    deactivateImpactConfirmed: 'Quy trình đã xác nhận',
-    deactivateImpactConfirmedValue: 'Không ảnh hưởng',
-    deactivateImpactReferences: 'Đang tham chiếu',
-    deactivateImpactReferencesValue: (count: number): string => `${String(count)}`,
-    activateProcessTitle: 'Dùng lại công đoạn?',
+    deactivateProcessImpact: (count: number | null): string =>
+      count === null
+        ? 'Không ảnh hưởng đến quy trình đã xác nhận.'
+        : `Không ảnh hưởng đến quy trình đã xác nhận. Đang tham chiếu ${String(count)}.`,
+    activateProcessTitle: 'Dùng lại công đoạn',
+    activateProcessCaption: 'Đối tượng dùng lại',
+    activateProcessQuestion: 'Dùng lại công đoạn này?',
     activateProcessDescription:
       'Khi dùng lại, có thể thêm công đoạn này vào quy trình công đoạn mới.',
   },

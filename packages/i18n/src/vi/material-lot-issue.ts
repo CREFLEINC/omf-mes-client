@@ -143,7 +143,10 @@ export const materialLotIssue: Translated<typeof ko.materialLotIssue> = {
     submit: (count: number | null) => (count === null ? 'Phát hành' : `Phát hành ${count} LOT`),
   },
   void: {
-    title: (count: number) => `Hủy ${count} LOT quản lý vật tư đang chờ?`,
+    title: 'Hủy LOT quản lý vật tư',
+    caption: 'Đối tượng hủy',
+    target: (count: number) => `${count} LOT quản lý vật tư đang chờ`,
+    question: 'Hủy các LOT đã chọn?',
     body: 'Sau khi hủy, LOT bị từ chối khi quét nhập hàng trên PDA và số LOT không được cấp lại.',
     printed: (count: number) =>
       `Nhãn của ${count} LOT đã in nhãn phải được bóc bỏ tại hiện trường.`,

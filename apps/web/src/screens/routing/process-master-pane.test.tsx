@@ -267,11 +267,12 @@ describe('RoutingScreen — 공정 관리 탭', () => {
     await user.click(await findRowButton('OP-INJ', '사용 중지'));
 
     const dialog = await screen.findByRole('dialog');
-    /* 영향 상자 — 기존 확정 경로는 영향 없음, 현재 참조 건수(사용자 시안 · #231). */
-    expect(within(dialog).getByText('기존 확정 경로').nextElementSibling).toHaveTextContent(
-      '영향 없음',
-    );
-    expect(within(dialog).getByText('현재 참조').nextElementSibling).toHaveTextContent('12건');
+    /* 대상 상자 · 질문 · 영향 한 줄 — 기존 확정 경로는 영향 없음, 현재 참조 건수(#231 · #360). */
+    expect(within(dialog).getByText('사출')).toBeInTheDocument();
+    expect(within(dialog).getByText('이 공정의 사용을 중지하시겠습니까?')).toBeInTheDocument();
+    expect(
+      within(dialog).getByText('기존 확정 경로에는 영향이 없습니다. 현재 참조 12건.'),
+    ).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: '사용 중지' }));
 
     await waitFor(() => {

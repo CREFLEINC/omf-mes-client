@@ -464,6 +464,7 @@ export const ProcessMasterPane = () => {
       <ProcessActivationDialog
         intent={activationIntent}
         referenceCount={detail.data?.editability.referenceCount ?? null}
+        process={detail.data?.process ?? null}
         isSaving={activationWrite.isSaving}
         banner={<SaveErrorBanner error={activationWrite.error} onReload={reloadDetail} />}
         onClose={() => setActivationIntent(null)}
@@ -994,6 +995,8 @@ const ProcessCreateDialog = ({ typeOptions, onClose, onCreated }: ProcessCreateD
 interface ProcessActivationDialogProps {
   intent: ActivationIntent | null;
   referenceCount: number | null;
+  /** 대상 상자에 담을 공정 — 상세를 받기 전이면 상자를 두지 않는다. */
+  process: { processCode: string; processName: string } | null;
   isSaving: boolean;
   banner: ReactNode;
   onClose: () => void;
@@ -1003,6 +1006,7 @@ interface ProcessActivationDialogProps {
 const ProcessActivationDialog = ({
   intent,
   referenceCount,
+  process,
   isSaving,
   banner,
   onClose,
@@ -1031,27 +1035,38 @@ const ProcessActivationDialog = ({
       }
     >
       {banner}
-      {/* 재사용은 영향 상자가 없어 설명을 보조 글로 한 줄(사용자 시안 · #231). 단추는 주 작업 색(빨강) 그대로. */}
-      <p className={isDeactivate ? 'routing-obsolete-description' : 'routing-obsolete-note'}>
-        {isDeactivate ? t.dialog.deactivateProcessDescription : t.dialog.activateProcessDescription}
-      </p>
-      {/*
-       * 사용 중지의 영향 — 기존 확정 경로 유지 여부와 현재 참조 건수를 줄을 나눠 보인다(사용자 시안 · #231).
-       */}
-      {isDeactivate && (
-        <dl className="routing-impact-box">
-          <div>
-            <dt>{t.dialog.deactivateImpactConfirmed}</dt>
-            <dd>{t.dialog.deactivateImpactConfirmedValue}</dd>
+      {/* 단말 사용 중지 창과 같은 짜임 — 대상 상자 · 질문 · 안내 줄(#360). */}
+      <div className="users-roles-worker-dialog">
+        {process !== null && (
+          <div className="users-roles-worker-block">
+            <span className="users-roles-worker-block-caption">
+              {isDeactivate ? t.dialog.deactivateProcessCaption : t.dialog.activateProcessCaption}
+            </span>
+            <strong>{process.processName}</strong>
+            <span>{process.processCode}</span>
           </div>
-          {referenceCount !== null && (
-            <div>
-              <dt>{t.dialog.deactivateImpactReferences}</dt>
-              <dd>{t.dialog.deactivateImpactReferencesValue(referenceCount)}</dd>
-            </div>
-          )}
-        </dl>
-      )}
+        )}
+        <p>
+          {isDeactivate ? t.dialog.deactivateProcessQuestion : t.dialog.activateProcessQuestion}
+        </p>
+        {isDeactivate ? (
+          <>
+            <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+              <Icon name="warning" size={16} aria-hidden />
+              {t.dialog.deactivateProcessDescription}
+            </p>
+            <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+              <Icon name="info" size={16} aria-hidden />
+              {t.dialog.deactivateProcessImpact(referenceCount)}
+            </p>
+          </>
+        ) : (
+          <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+            <Icon name="info" size={16} aria-hidden />
+            {t.dialog.activateProcessDescription}
+          </p>
+        )}
+      </div>
     </Dialog>
   );
 };

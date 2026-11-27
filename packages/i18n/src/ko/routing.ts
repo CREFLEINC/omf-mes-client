@@ -324,21 +324,24 @@ export const routing = {
     discardTitle: (revision: string): string => `${revision} 작성 취소`,
     discardCaption: '작성 취소 대상',
     discardQuestion: '이 Rev의 작성을 취소하시겠습니까?',
-    discardDescription: '작성중 Rev와 그 공정 구성 · 공정 연결이 삭제됩니다.',
-    discardNote: '삭제 후에는 되돌릴 수 없습니다. 변경 이력에는 남습니다.',
+    discardDescription: '작성중 Rev와 그 공정 구성 · 공정 연결이 삭제되며 되돌릴 수 없습니다.',
     discardDone: '작성을 취소했습니다.',
     /** 공정 편집 창 관리 항목 제목 옆 — 켠 항목 수(#231). */
     /** 공정 편집 창 관리 항목 구역 제목(#231). */
     flagsTitle: '관리 설정',
     flagsSelected: (count: number): string => `${String(count)}개 선택`,
-    deactivateProcessTitle: '공정 사용을 중지하시겠습니까?',
+    deactivateProcessTitle: '공정 사용 중지',
+    deactivateProcessCaption: '사용 중지 대상',
+    deactivateProcessQuestion: '이 공정의 사용을 중지하시겠습니까?',
     deactivateProcessDescription: '사용을 중지하면 새로운 라우팅에 해당 공정을 추가할 수 없습니다.',
-    /** 사용 중지 확인 창의 영향 상자 — 기존 확정 경로 유지 · 현재 참조 건수(사용자 시안 · #231). */
-    deactivateImpactConfirmed: '기존 확정 경로',
-    deactivateImpactConfirmedValue: '영향 없음',
-    deactivateImpactReferences: '현재 참조',
-    deactivateImpactReferencesValue: (count: number): string => `${String(count)}건`,
-    activateProcessTitle: '공정을 재사용하시겠습니까?',
+    /** 영향 한 줄 — 기존 확정 경로는 그대로, 참조 건수를 알면 함께(#231 · #360). */
+    deactivateProcessImpact: (count: number | null): string =>
+      count === null
+        ? '기존 확정 경로에는 영향이 없습니다.'
+        : `기존 확정 경로에는 영향이 없습니다. 현재 참조 ${String(count)}건.`,
+    activateProcessTitle: '공정 재사용',
+    activateProcessCaption: '재사용 대상',
+    activateProcessQuestion: '이 공정을 재사용하시겠습니까?',
     activateProcessDescription: '재사용하면 새로운 라우팅에 이 공정을 추가할 수 있습니다.',
   },
   /** 공정 선후행 설정 창. */

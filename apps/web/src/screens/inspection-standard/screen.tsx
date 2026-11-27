@@ -2650,6 +2650,14 @@ export const InspectionStandardScreen = () => {
           banner={
             <PlanActionBanner error={planActionWrite.error} onReload={handleReloadPlanDetail} />
           }
+          target={
+            planDetail.data === undefined
+              ? null
+              : {
+                  name: planDetail.data.inspectionPlan.inspectionPlanName,
+                  meta: planDetail.data.inspectionPlan.inspectionPlanCode,
+                }
+          }
         />
       )}
 
@@ -2749,6 +2757,11 @@ export const InspectionStandardScreen = () => {
             versions.find((version) => version.inspectionPlanVersionId === selectedVersionId)
               ?.planVersion ??
             0
+          }
+          planLabel={
+            planDetail.data === undefined
+              ? ''
+              : `${planDetail.data.inspectionPlan.inspectionPlanCode} · ${planDetail.data.inspectionPlan.inspectionPlanName}`
           }
         />
       )}

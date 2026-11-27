@@ -92,26 +92,20 @@ export const TransitionConfirmDialog = ({
             ? t.dialog.obsoleteQuestion
             : t.dialog.discardQuestion}
       </p>
-      {kind === 'confirm' ? (
-        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
-          <Icon name="warning" size={16} aria-hidden />
-          {t.dialog.confirmDescription}
+      {/* 확정 · 작성 취소는 경고 한 줄, 폐기는 경고 아래 이력 유지 안내 한 줄(#231 · #360). */}
+      <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+        <Icon name="warning" size={16} aria-hidden />
+        {kind === 'confirm'
+          ? t.dialog.confirmDescription
+          : kind === 'obsolete'
+            ? t.dialog.obsoleteDescription
+            : t.dialog.discardDescription}
+      </p>
+      {kind === 'obsolete' && (
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+          <Icon name="info" size={16} aria-hidden />
+          {t.dialog.obsoleteNote}
         </p>
-      ) : (
-        /* 폐기 · 작성 취소 — 결과 한 줄 아래 보조 설명 한 줄(#231), 둘 다 안내 줄로. */
-        <>
-          <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
-            <Icon name="warning" size={16} aria-hidden />
-            {kind === 'obsolete' ? t.dialog.obsoleteDescription : t.dialog.discardDescription}
-          </p>
-          <p
-            className="iqc-inspection-action-note users-roles-dialog-note"
-            data-tone={kind === 'obsolete' ? 'info' : 'warning'}
-          >
-            <Icon name={kind === 'obsolete' ? 'info' : 'warning'} size={16} aria-hidden />
-            {kind === 'obsolete' ? t.dialog.obsoleteNote : t.dialog.discardNote}
-          </p>
-        </>
       )}
     </div>
   </Dialog>

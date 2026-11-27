@@ -77,11 +77,10 @@ describe('VersionTransitionDialog — 문면 잣대', () => {
 
     const description = t.dialog.obsoleteDescription;
 
-    /* 제목에 버전 번호를 넣는다(사용자 시안 · #258). */
-    expect(
-      screen.getByRole('dialog', { name: '버전 1을 사용 중지하시겠습니까?' }),
-    ).toBeInTheDocument();
-    expect(t.dialog.obsoleteTitle(2)).toBe('버전 2를 사용 중지하시겠습니까?');
+    /* 제목은 짧은 이름, 버전 번호는 대상 상자에(#258 · #360). */
+    expect(screen.getByRole('dialog', { name: t.dialog.obsoleteTitle })).toBeInTheDocument();
+    expect(screen.getByText('버전 1')).toBeInTheDocument();
+    expect(screen.getByText(t.dialog.obsoleteQuestion)).toBeInTheDocument();
     expect(screen.getByText(description)).toBeInTheDocument();
     expect(description).toContain('새 검사에 적용되지 않습니다');
     expect(description).toContain('기존 데이터는 유지되며');
