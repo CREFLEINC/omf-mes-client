@@ -50,6 +50,9 @@ export interface RequestListPaneProps {
   isLoading: boolean;
   pageView: PageView;
   onChangePage: (page: number) => void;
+  /** 쪽 크기 — 주면 쪽 이동 줄에 「N건 ▾」를 그린다(#360). */
+  pageSizes?: readonly number[];
+  onChangePageSize?: (size: number) => void;
   selectedRequestId: number | null;
   onSelect: (approvalRequestId: number) => void;
   /**
@@ -79,6 +82,8 @@ export const RequestListPane = ({
   isLoading,
   pageView,
   onChangePage,
+  pageSizes,
+  onChangePageSize,
   selectedRequestId,
   onSelect,
   loadError,
@@ -204,7 +209,12 @@ export const RequestListPane = ({
           empty={emptySlot}
         />
       </div>
-      <PageNav view={pageView} onChange={onChangePage} />
+      <PageNav
+        view={pageView}
+        onChange={onChangePage}
+        sizes={pageSizes}
+        onChangeSize={onChangePageSize}
+      />
     </>
   );
 };

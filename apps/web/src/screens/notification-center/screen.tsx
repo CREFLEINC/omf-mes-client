@@ -1,7 +1,6 @@
 import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router';
 
 import { ListEmpty } from '../../patterns/list-empty';
 import { formatAsOf } from './as-of';
@@ -19,6 +18,8 @@ import { useHandoverEventEntries } from './handover-lookups';
 import { describeEvent, useNotificationEventOptions, withCurrentEvent } from './lookups';
 import { NotificationRow } from './notification-row';
 import { PageNav } from './page-nav';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { toPageView } from './pagination';
 import {
   defaultPeriod,
@@ -33,6 +34,9 @@ import type { NotificationView, SelectItem } from './types';
 import { WriteErrorBanner, writeFailureTitle } from './write-error-banner';
 
 const t = messages.notificationCenter;
+
+/** 목록 쪽 크기 기본 — 계약 `size` 기본 50(종전에는 싣지 않아 이 값이었다 · #360). */
+const LIST_PAGE_SIZE = 50;
 
 /**
  * 응답이 아직 없을 때 쓰는 자리표시 둘.
@@ -107,7 +111,9 @@ export const describeMarkAllReadReason = (
  * 상단 바의 종 배지는 셸의 책임이라 이 화면이 만들지 않는다.
  */
 export const NotificationCenterScreen = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(계약 기본 50)은 싣지도 적지도 않는다(#360). */
+  const { searchParams, setSearchParams, pageSize, changePageSize } =
+    usePageSizeSearchParams(LIST_PAGE_SIZE);
 
   /*
    * **주소가 바뀔 때만 새 참조를 만든다.** 렌더마다 새 객체를 만들면 내용이 같아도 참조가
@@ -154,7 +160,12 @@ export const NotificationCenterScreen = () => {
 
   const listQuery =
     periodState.kind === 'ready'
-      ? { ...periodState.query, ...toFilterQuery(filters), ...(page > 1 ? { page } : {}) }
+      ? {
+          ...periodState.query,
+          ...toFilterQuery(filters),
+          ...(page > 1 ? { page } : {}),
+          ...(pageSize === LIST_PAGE_SIZE ? {} : { size: pageSize }),
+        }
       : null;
 
   const list = useNotificationList(listQuery);
@@ -486,6 +497,8 @@ export const NotificationCenterScreen = () => {
                 onChange={(nextPage) => {
                   applyQuery(period, filters, nextPage);
                 }}
+                sizes={PAGE_SIZES}
+                onChangeSize={changePageSize}
               />
             )}
           </>

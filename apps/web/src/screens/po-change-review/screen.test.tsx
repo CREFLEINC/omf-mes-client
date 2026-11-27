@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -39,7 +39,7 @@ describe('PoChangeReviewScreen', () => {
 
     const listPane = screen.getByLabelText(t.panes.list);
     expect(listPane).toHaveClass('po-change-review-pane');
-    expect(listPane.parentElement).toHaveClass('po-change-review-layout');
+    expect(listPane.parentElement).toHaveClass('list-detail-split');
     expect(screen.getByRole('table', { name: t.panes.list })).toHaveClass('po-change-review-table');
     const paths = requestedPaths();
     expect(paths.some((path) => path.includes('unacknowledgedOnly=true'))).toBe(true);
@@ -271,16 +271,18 @@ describe('PoChangeReviewScreen', () => {
 
   /* 목록 제목 줄 「목록 접기」 · 접힌 「목록 N건」 탭(#350). */
   it('목록을 접으면 탭에 건수가 서고, 펼친 뒤에도 고른 P/O · 고른 판정 · 적어 둔 사유가 그대로다', async () => {
-    const collapsedKey = 'omf-mes:po-change-review:list:collapsed';
+    const collapsedKey = 'omf-mes:po-change-review:split:collapsed';
     window.localStorage.removeItem(collapsedKey);
     const { user } = renderScreen();
     await selectRow(user);
     await user.click(await screen.findByRole('radio', { name: t.decision.proceed }));
     await user.type(screen.getByLabelText(t.decision.reasonLabel), '납기 우선');
-    const layout = document.querySelector('.po-change-review-layout');
+    const layout = document.querySelector('.list-detail-split');
 
     await user.click(
-      screen.getByRole('button', { name: messages.common.inspectionHub.listCollapse }),
+      within(screen.getByLabelText(t.panes.list)).getByRole('button', {
+        name: messages.common.inspectionHub.listCollapse,
+      }),
     );
     expect(layout).toHaveAttribute('data-left-collapsed', 'true');
     const tab = layout!.querySelector<HTMLElement>('.po-board-list-tab');

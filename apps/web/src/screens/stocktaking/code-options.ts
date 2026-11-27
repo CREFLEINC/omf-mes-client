@@ -1,5 +1,9 @@
 import { messages } from '@omf-mes/i18n';
+import { useQuery } from '@tanstack/react-query';
 
+import { useApiClient } from '../../patterns/api-context';
+import { masterName } from '../../patterns/master-name';
+import { runRequest } from '../../patterns/request';
 import type { SelectOption, StocktakingCodeKey } from './types';
 
 /**
@@ -28,23 +32,21 @@ import type { SelectOption, StocktakingCodeKey } from './types';
  * 그 조작의 사정이라 `validation.ts`가 문구로 낸다 — 화면이 배열 길이를 직접 세면 같은 판정이
  * 자리마다 다시 생긴다.
  *
- * **값이 확정되면 이 파일의 배열만 채우면 된다.** 화면·검증·요청 조립은 배열을 읽을 뿐이라
- * 다른 자리를 고칠 필요가 없고, 채우는 순간 개시와 저장이 저절로 살아난다.
- * 그 전환은 감지기가 고정한다(M19 · M40).
- *
- * 추적: 공통코드 값 목록 미확정 — 설계 저장소 이슈로 관리한다(비공개 저장소는 번호로만 참조).
+ * **값 목록은 서버 코드값에서 받는다**(계약 확정 — 공유계약 G-32 · omf-mes#198 · 사용자 지시 2026-11-27
+ * 「재고실사에서 실사 유형 데이터도 넣어주어야 해」). 화면·검증·요청 조립은 배열을 읽을 뿐이라
+ * 받은 배열이 차는 순간 개시와 저장이 살아난다. 받기 전 · 실패면 빈 목록이라 종전처럼 잠긴다.
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
-/** 코드마다의 값 목록. **비어 있는 것이 지금의 사실이다.** */
+/** 코드마다의 값 목록 — 서버에서 받는다(`useStocktakingCodeLists`). */
 export type CodeValueLists = Record<StocktakingCodeKey, readonly string[]>;
 
 /** 코드마다의 선택지. */
 export type CodeOptionSets = Record<StocktakingCodeKey, SelectOption[]>;
 
 /**
- * 값 목록 — **둘 다 비어 있다.**
+ * 받기 전 · 실패 때의 값 목록 — **둘 다 비어 있다.**
  *
  * 자리표시 값을 하나 넣어 두지 않는다. 넣으면 사용자가 그것을 고를 수 있고, 고르면
  * 서버가 모르는 코드가 되돌릴 수 없는 전표에 실린다.
@@ -54,21 +56,99 @@ export const PLACEHOLDER_STOCKTAKING_CODES: CodeValueLists = {
   varianceReason: [],
 };
 
-const toOptions = (values: readonly string[]): SelectOption[] =>
-  values.map((code) => ({ value: code, label: code }));
+/** 코드마다 서버가 준 이름(코드 → 이름). 받기 전이거나 없는 코드는 코드 그대로 보인다. */
+export type CodeNames = Record<StocktakingCodeKey, ReadonlyMap<string, string>>;
+
+const NO_NAMES: CodeNames = { countType: new Map(), varianceReason: new Map() };
+
+const toOptions = (values: readonly string[], names: ReadonlyMap<string, string>): SelectOption[] =>
+  values.map((code) => ({ value: code, label: names.get(code) ?? code }));
 
 /**
  * 값 목록을 선택지로 옮긴다.
  *
- * **라벨을 지어내지 않는다** — 코드값을 그대로 라벨로 쓴다. 사람이 읽을 이름을 주는 곳이
- * 아직 없는데 화면이 「순환 실사」 같은 이름을 붙이면 그 뜻도 화면이 지어낸 것이 된다.
+ * **라벨을 지어내지 않는다** — 서버가 준 이름(`names`)이 있으면 그것을, 없으면 코드값을 그대로
+ * 라벨로 쓴다. 화면이 「순환 실사」 같은 이름을 붙이면 그 뜻도 화면이 지어낸 것이 된다.
  *
  * **차례를 바꾸지 않는다.** 값 목록이 어떤 차례로 오는지가 뜻일 수 있다(자주 쓰는 것부터 등).
  */
-export const toCodeOptionSets = (values: CodeValueLists): CodeOptionSets => ({
-  countType: toOptions(values.countType),
-  varianceReason: toOptions(values.varianceReason),
+export const toCodeOptionSets = (
+  values: CodeValueLists,
+  names: CodeNames = NO_NAMES,
+): CodeOptionSets => ({
+  countType: toOptions(values.countType, names.countType),
+  varianceReason: toOptions(values.varianceReason, names.varianceReason),
 });
+
+/**
+ * 코드 그룹 — 계약 `countTypeCode` · `varianceReasonCode` 설명의 확정 문구(공유계약 G-32 ·
+ * omf-mes#198): 값 목록은 `GET /mdm/code-values?codeGroupCode=…` 로 받는다. 채번 식별자
+ * (`codeGroupId`)는 환경마다 달라 코드로 부른다.
+ */
+export const STOCKTAKING_CODE_GROUPS: Record<StocktakingCodeKey, string> = {
+  countType: 'INVENTORY_COUNT_TYPE',
+  varianceReason: 'VARIANCE_REASON',
+};
+
+interface CodeGroupList {
+  /** 고를 수 있는 값 — 사용 중인 것만, 서버 차례 그대로. */
+  values: string[];
+  /** 지난 전표가 쓴 미사용 값도 이름으로 보이게 전부 담는다. */
+  names: Map<string, string>;
+}
+
+const useCodeGroup = (key: StocktakingCodeKey) => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['stocktaking-lookups', 'code-values', STOCKTAKING_CODE_GROUPS[key]],
+    queryFn: async (): Promise<CodeGroupList> => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: {
+            query: {
+              codeGroupCode: STOCKTAKING_CODE_GROUPS[key],
+              includeInactive: true,
+              size: 100,
+            },
+          },
+        }),
+      );
+
+      return {
+        values: data.items.filter((item) => item.isActive).map((item) => item.code),
+        names: new Map(data.items.map((item) => [item.code, masterName(item, item.codeName)])),
+      };
+    },
+  });
+};
+
+export interface StocktakingCodeLists {
+  /** 받기 전 · 실패면 빈 목록이다(`PLACEHOLDER_STOCKTAKING_CODES`) — 값을 지어내지 않는다. */
+  values: CodeValueLists;
+  names: CodeNames;
+}
+
+/** 실사 유형 · 차이 사유의 값 목록과 이름을 서버에서 받는다. */
+export const useStocktakingCodeLists = (): StocktakingCodeLists => {
+  const countType = useCodeGroup('countType');
+  const varianceReason = useCodeGroup('varianceReason');
+
+  return {
+    values: {
+      countType: countType.data?.values ?? PLACEHOLDER_STOCKTAKING_CODES.countType,
+      varianceReason: varianceReason.data?.values ?? PLACEHOLDER_STOCKTAKING_CODES.varianceReason,
+    },
+    names: {
+      countType: countType.data?.names ?? NO_NAMES.countType,
+      varianceReason: varianceReason.data?.names ?? NO_NAMES.varianceReason,
+    },
+  };
+};
+
+/** 코드 → 서버 이름. 이름이 없으면 코드를 그대로 낸다. */
+export const codeNameOf = (names: ReadonlyMap<string, string>, code: string): string =>
+  names.get(code) ?? code;
 
 /**
  * 개시가 **통째로** 막히는가 — 실사 유형은 요청 필수인데 고를 값 자체가 없다(승인 G1).
@@ -97,5 +177,10 @@ export const isCountTypeListPending = (sets: CodeOptionSets): boolean =>
 export const isVarianceReasonListPending = (sets: CodeOptionSets): boolean =>
   sets.varianceReason.length === 0;
 
-/** 선택칸 트리거에 보이는 자리표시 문구. */
-export const codePlaceholder = (): string => messages.pendingCode.placeholder;
+/**
+ * 선택칸 트리거에 보이는 자리표시 문구 — 고를 값이 있으면 「~을/를 선택하세요」, 없으면 「등록된 값 없음」.
+ */
+export const codePlaceholder = (label: string, options: readonly SelectOption[]): string =>
+  options.length === 0
+    ? messages.pendingCode.placeholder
+    : messages.screenPatterns.referencePicker.select(label);

@@ -50,13 +50,13 @@ describe('W-01-16 최종 마감', () => {
     const { user, recorded } = setup(READY);
 
     const dialog = await openFinalize(user, READY);
-    expect(within(dialog).getByText(tf.summary('2,050', '2,050', 'EA'))).toBeVisible();
-    expect(within(dialog).getByText('P/O 없음: 175')).toBeVisible();
+    expect(within(dialog).getByText(tf.receivedQty)).toBeVisible();
+    expect(within(dialog).getByText(tf.goodsReceivedQty)).toBeVisible();
+    expect(within(dialog).getAllByText(tf.qty('2,050', 'EA'))).toHaveLength(2);
     expect(within(dialog).getByText(tf.unallocatedWarning('175', 'EA'))).toBeVisible();
     expect(within(dialog).getByText(tf.warning)).toBeVisible();
     const confirm = within(dialog).getByRole('button', { name: tf.confirm });
     expect(confirm).toBeDisabled();
-    expect(confirm).toHaveAccessibleDescription(tf.acknowledgeNeeded);
 
     await user.click(within(dialog).getByRole('checkbox', { name: tf.acknowledge }));
     await user.click(confirm);

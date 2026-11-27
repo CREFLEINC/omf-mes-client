@@ -11,6 +11,8 @@ const t = messages.stocktaking;
 export interface CountColumnsInput {
   selectedCountId: number | null;
   warehouseLookup: ReferenceSource;
+  /** 실사 유형 코드 → 서버 코드값 이름(없으면 코드 그대로). */
+  countTypeName: (code: string) => string;
   /** 전송 중인가. 다른 실사로 옮기면 **앞 요청의 결과가 그 실사 맥락에 나타난다**. */
   isLocked: boolean;
   onToggleSelect: (inventoryCountId: number) => void;
@@ -42,7 +44,8 @@ export interface CountColumnsInput {
  */
 export const buildCountColumns = ({
   warehouseLookup,
-}: Pick<CountColumnsInput, 'warehouseLookup'>): Column<CountView>[] => [
+  countTypeName,
+}: Pick<CountColumnsInput, 'warehouseLookup' | 'countTypeName'>): Column<CountView>[] => [
   { key: 'inventoryCountNo', header: t.table.inventoryCountNo, width: '168px' },
   {
     key: 'warehouse',
@@ -53,7 +56,12 @@ export const buildCountColumns = ({
      */
     render: (row) => describeReference(toReference(warehouseLookup, row.warehouseId)),
   },
-  { key: 'countTypeCode', header: t.table.countType, width: '128px' },
+  {
+    key: 'countTypeCode',
+    header: t.table.countType,
+    width: '128px',
+    render: (row) => countTypeName(row.countTypeCode),
+  },
   { key: 'plannedDate', header: t.table.plannedDate, width: '120px' },
   {
     key: 'blindCount',
@@ -103,12 +111,13 @@ export const CountTable = ({
   isBeyondLast,
   selectedCountId,
   warehouseLookup,
+  countTypeName,
   isLocked,
   onFirstPage,
   onToggleSelect,
   onRetryReferences,
 }: CountTableProps) => {
-  const columns = buildCountColumns({ warehouseLookup });
+  const columns = buildCountColumns({ warehouseLookup, countTypeName });
 
   if (isLoading) {
     return (

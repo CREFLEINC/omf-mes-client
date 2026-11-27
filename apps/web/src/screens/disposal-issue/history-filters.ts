@@ -1,6 +1,13 @@
 import { messages } from '@omf-mes/i18n';
 
-import { normalizeText, readDateFilter, readNumberFilter } from './filters';
+import {
+  LIST_PAGE_SIZES,
+  normalizeText,
+  PAGE_SIZE,
+  readDateFilter,
+  readNumberFilter,
+  type ListPageSize,
+} from './filters';
 
 /**
  * 「처리 이력」 탭의 조회 조건 — **주소가 정본이다.**
@@ -63,6 +70,7 @@ const HISTORY_URL_KEYS = {
   status: 'ist',
   q: 'iq',
   page: 'ipage',
+  size: 'isize',
 } as const;
 
 /**
@@ -93,6 +101,10 @@ export const readIssuePage = (params: URLSearchParams): number => {
   return readNumberFilter(raw) === '' ? 1 : Number(raw);
 };
 
+/** 이력 목록 쪽 크기. 고를 수 있는 값이 아니면 기본(50)으로 읽는다 — 선택지는 대상 목록과 같다(#360). */
+export const readIssuePageSize = (params: URLSearchParams): ListPageSize =>
+  LIST_PAGE_SIZES.find((size) => String(size) === params.get(HISTORY_URL_KEYS.size)) ?? PAGE_SIZE;
+
 /**
  * 고른 품의(출고 전표)의 번호. **요청 쿼리에 실리지 않는다** — 출고 상세의 경로 조각이고,
  * 그 상세가 실어 주는 승인 요청 값이 결재 진행 조회의 뿌리가 된다.
@@ -115,7 +127,12 @@ export const readSelectedIssueId = (params: URLSearchParams): number | null => {
  * **대상 탭의 키도 만들지 않는다.** 두 탭의 조건을 합치는 것은 화면의 주소 조립 한 문이 한다 —
  * 여기서 함께 만들면 이력 조건 하나를 바꿀 때 대상 조건까지 이 모듈이 정하게 된다.
  */
-export const toHistorySearchParams = (filters: IssueFilters, page: number): URLSearchParams => {
+export const toHistorySearchParams = (
+  filters: IssueFilters,
+  page: number,
+  /** 고른 쪽 크기 — 기본(50)이면 적지 않는다. */
+  size: number = PAGE_SIZE,
+): URLSearchParams => {
   const next = new URLSearchParams();
 
   const entries: [string, string][] = [
@@ -132,6 +149,7 @@ export const toHistorySearchParams = (filters: IssueFilters, page: number): URLS
   }
 
   if (page > 1) next.set(HISTORY_URL_KEYS.page, String(page));
+  if (size !== PAGE_SIZE) next.set(HISTORY_URL_KEYS.size, String(size));
 
   return next;
 };

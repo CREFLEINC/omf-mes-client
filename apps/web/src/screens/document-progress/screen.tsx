@@ -10,7 +10,7 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate } from 'react-router';
 
 import {
   APPROVED_APPROVAL_STATUS_CODES,
@@ -53,6 +53,8 @@ import {
 } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
 import { PageNav } from './page-nav';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { toPageView } from './pagination';
 import { ProgressFilterBar } from './progress-filter-bar';
 import { ProgressTable } from './progress-table';
@@ -76,6 +78,9 @@ import { BoardFrame } from '../../patterns/board-frame';
 import { SaveErrorBanner } from '../../patterns/master';
 
 const t = messages.documentProgress;
+
+/** 목록 쪽 크기 기본 — 계약 `size` 기본 50(종전에는 싣지 않아 이 값이었다 · #360). */
+const LIST_PAGE_SIZE = 50;
 
 type ApprovalRequestCreate = components['schemas']['ApprovalRequestCreate'];
 
@@ -131,7 +136,9 @@ interface CancelDialogState {
  * 실행할 곳이 없는** 상태가 사용자에게 보이지 않는다.
  */
 export const DocumentProgressScreen = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(계약 기본 50)은 싣지도 적지도 않는다(#360). */
+  const { searchParams, setSearchParams, pageSize, changePageSize } =
+    usePageSizeSearchParams(LIST_PAGE_SIZE);
   const navigate = useNavigate();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -173,7 +180,14 @@ export const DocumentProgressScreen = () => {
    * ⭐ **조회가 성립하는가를 한 곳에서 정한다.** `toListQuery`가 `null`을 주면 목록 조회는
    * 나가지 않는다 — 표가 비어 있는 동안에는 어떤 주소로 들어와도 `null`이다.
    */
-  const listQuery = toListQuery(filters, documentTypes, page);
+  const baseListQuery = toListQuery(filters, documentTypes, page);
+  const listQuery =
+    baseListQuery === null
+      ? null
+      : {
+          ...baseListQuery,
+          ...(pageSize === LIST_PAGE_SIZE ? {} : { size: pageSize }),
+        };
   const list = useDocumentProgressList(listQuery);
   const statusName = useCodeNames(listQuery === null ? null : 'LOGISTICS_DOCUMENT_STATUS');
   const subTypeName = useCodeNames(
@@ -979,6 +993,8 @@ export const DocumentProgressScreen = () => {
                   onChange={(nextPage) => {
                     applyQuery(filters, nextPage);
                   }}
+                  sizes={PAGE_SIZES}
+                  onChangeSize={changePageSize}
                 />
               )}
             </>

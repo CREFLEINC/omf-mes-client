@@ -189,6 +189,8 @@ export interface DocumentProgressListQuery {
   q?: string;
   /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
   page?: number;
+  /** 고른 쪽 크기 — 기본이면 싣지 않는다(#360). */
+  size?: number;
 }
 
 /**

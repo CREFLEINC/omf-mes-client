@@ -32,7 +32,7 @@ const source = (overrides: Partial<ReferenceSource> = {}): ReferenceSource => ({
 });
 
 const columnsWith = (warehouseLookup: ReferenceSource = source()): Column<CountView>[] =>
-  buildCountColumns({ warehouseLookup });
+  buildCountColumns({ warehouseLookup, countTypeName: (code) => code });
 
 const rows = countFixtures.map(toCountView);
 
@@ -48,6 +48,7 @@ const renderTable = (overrides: Partial<CountTableProps> = {}) => {
       isBeyondLast={false}
       selectedCountId={null}
       warehouseLookup={source()}
+      countTypeName={(code) => code}
       isLocked={false}
       onFirstPage={onFirstPage}
       onToggleSelect={onToggleSelect}

@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
+import type { ListPageSize } from './filters';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import { formatQty, type ShipmentRow } from './types';
@@ -19,6 +20,9 @@ export interface ShipmentListProps {
   statusLookup: LookupSource;
   onSelect: (row: ShipmentRow) => void;
   onChangePage: (page: number) => void;
+  /** 쪽 크기 선택(10 · 20 · 50건 · #360) — 주면 「N건 ▾」를 그린다. */
+  pageSizes?: readonly ListPageSize[];
+  onChangePageSize?: (size: ListPageSize) => void;
 }
 
 /** 상태 표시명 — 코드값이 아직 없거나 모르는 코드면 코드를 그대로 보인다. 뜻을 지어내지 않는다. */
@@ -41,6 +45,8 @@ export const ShipmentList = ({
   statusLookup,
   onSelect,
   onChangePage,
+  pageSizes,
+  onChangePageSize,
 }: ShipmentListProps) => {
   const columns: Column<ShipmentRow>[] = [
     {
@@ -136,7 +142,12 @@ export const ShipmentList = ({
         rows={rows}
         getRowId={(row) => String(row.shipmentId)}
       />
-      <PageNav view={page} onChange={onChangePage} />
+      <PageNav
+        view={page}
+        onChange={onChangePage}
+        sizes={pageSizes}
+        onChangeSize={onChangePageSize}
+      />
     </div>
   );
 };

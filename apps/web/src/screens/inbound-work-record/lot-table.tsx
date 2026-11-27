@@ -4,6 +4,7 @@ import { Fragment, type ReactNode } from 'react';
 
 import { ListEmptyRow } from '../../patterns/list-empty';
 import { OneLine } from '../../patterns/po-board';
+import { ROW_PICK_CLASS } from '../../patterns/row-pick';
 import type { WorkRecordLot } from './forward-contract';
 import { formatAt, formatQty, matchParts, reasonOf, shortDate, type View } from './types';
 
@@ -70,7 +71,7 @@ const lastHead = (view: View): string =>
 
 /**
  * 입하 LOT 목록(시안 W0116-After). 넓은 표라 1280 폭에서는 표 상자 안에서 가로로 민다(`.wide-table`).
- * 행 어디를 눌러도 상세가 열린다 — 키보드는 입하 LOT 칸의 단추가 맡는다.
+ * 행 어디를 눌러도 상세가 열린다 — 키보드는 입하 LOT 칸의 단추(보통 글자 모양 `.row-pick`)가 맡는다.
  * 행은 한 줄이다(사용자 지시 2026-11-18) — 수량 · 단위, 품목 코드 · 이름, 칩 둘을 한 줄에 두고 긴 이름 · 매칭은 말줄임.
  */
 export const LotTable = ({
@@ -121,16 +122,18 @@ export const LotTable = ({
               onClick={open}
             >
               <td>
+                {/* 보통 글자 — 링크 모양 없이 행 클릭으로 연다(사용자 지시 2026-11-27). 키보드 자리로만 남는다. */}
                 <button
                   type="button"
-                  className="link-cell iwr-code"
+                  className={ROW_PICK_CLASS}
                   aria-label={tl.open(lot.inboundLotNo)}
+                  aria-current={openId === lot.inboundLotId ? true : undefined}
                   onClick={(event) => {
                     event.stopPropagation();
                     open();
                   }}
                 >
-                  {lot.inboundLotNo}
+                  <span className="iwr-code">{lot.inboundLotNo}</span>
                 </button>
               </td>
               <td>{lot.supplierName}</td>

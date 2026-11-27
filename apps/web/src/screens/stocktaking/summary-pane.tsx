@@ -14,6 +14,8 @@ export interface SummaryPaneProps {
    * 두지 않으면 그 값이 제목줄로 샐 경로도 없다(#44).
    */
   warehouseName: string;
+  /** 실사 유형 이름 — 화면이 서버 코드값 이름으로 풀어 넘긴다(없으면 코드 그대로). */
+  countTypeName: string;
 }
 
 interface HeadingItem {
@@ -51,10 +53,10 @@ interface SummaryCell {
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const SummaryPane = ({ count, summary, warehouseName }: SummaryPaneProps) => {
+export const SummaryPane = ({ count, summary, warehouseName, countTypeName }: SummaryPaneProps) => {
   const headingItems: HeadingItem[] = [
     { key: 'inventoryCountNo', label: t.detail.inventoryCountNo, value: count.inventoryCountNo },
-    { key: 'countTypeCode', label: t.detail.countType, value: count.countTypeCode },
+    { key: 'countTypeCode', label: t.detail.countType, value: countTypeName },
     { key: 'warehouse', label: t.detail.warehouse, value: warehouseName },
     { key: 'plannedDate', label: t.detail.plannedDate, value: count.plannedDate },
     { key: 'blindCount', label: t.detail.blindCount, value: describeBlindCount(count.blindCount) },

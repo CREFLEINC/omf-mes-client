@@ -11,7 +11,7 @@ import { isForbidden } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
@@ -60,6 +60,8 @@ import { RejectDialog } from './reject-dialog';
 import { RequestDetailPane } from './request-detail-pane';
 import { RequestFilterBar } from './request-filter-bar';
 import { RequestListPane } from './request-list-pane';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { SCREEN_ROUTES } from './screen-routes';
 import { canSeeAllRequests, readTab, tabLabel, visibleTabs, type InboxTab } from './tabs';
 import { describeTargetName, judgeTargetOpen } from './target';
@@ -76,6 +78,9 @@ import {
 import './layout.css';
 
 const t = messages.approvalInbox;
+
+/** 목록 쪽 크기 기본 — 계약 `size` 기본 50(종전에는 싣지 않아 이 값이었다 · #360). */
+const LIST_PAGE_SIZE = 50;
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ITEMS: ApprovalRequest[] = [];
@@ -117,7 +122,9 @@ const EMPTY_ITEMS: ApprovalRequest[] = [];
  * 주소를 정리하지만, 403은 **있는데 내 것이 아닌 것**이라 정리하면 무엇을 열려 했는지 잃는다.
  */
 export const ApprovalInboxScreen = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(계약 기본 50)은 싣지도 적지도 않는다(#360). */
+  const { searchParams, setSearchParams, pageSize, changePageSize } =
+    usePageSizeSearchParams(LIST_PAGE_SIZE);
   /* 대상 「열기」가 쓰는 유일한 이동 수단. 어디로 가는지는 `screen-routes.ts`가 정한다. */
   const navigate = useNavigate();
 
@@ -230,7 +237,10 @@ export const ApprovalInboxScreen = () => {
    * **조건 없이도 조회한다.** 계약이 어느 파라미터도 필수로 두지 않았고, 결재함은 들어오자마자
    * 내 결재 대기를 보여야 하는 자리다 — 탭이 이미 범위를 좁히고 있다.
    */
-  const listQuery = toRequestListQuery(filters, tab, page);
+  const listQuery = {
+    ...toRequestListQuery(filters, tab, page),
+    ...(pageSize === LIST_PAGE_SIZE ? {} : { size: pageSize }),
+  };
   const list = useRequestList(listQuery);
   const items = list.data?.items ?? EMPTY_ITEMS;
   const rows = useMemo(() => items.map(toRequestRow), [items]);
@@ -724,6 +734,8 @@ export const ApprovalInboxScreen = () => {
       onChangePage={(nextPage) => {
         apply(filters, tab, nextPage);
       }}
+      pageSizes={PAGE_SIZES}
+      onChangePageSize={changePageSize}
       selectedRequestId={selectedRequestId}
       onSelect={toggleSelect}
       loadError={

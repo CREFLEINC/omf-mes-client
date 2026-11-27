@@ -1722,7 +1722,7 @@ describe('StockAdjustScreen — 등록 확인 창', () => {
     const dialog = screen.getByRole('dialog');
 
     /* 픽스처 세 줄 가운데 하나가 차이 0이다 — 실릴 줄 둘, 빠질 줄 하나. */
-    expect(within(dialog).getByText(t.dialog.includedLineCount(2))).toBeVisible();
+    expect(within(dialog).getByText(t.dialog.erpTarget(2))).toBeVisible();
     expect(within(dialog).getByText(t.dialog.excludedLineCount(1))).toBeVisible();
   });
 

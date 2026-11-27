@@ -1,4 +1,4 @@
-import type { ShipmentProcessingCandidateFilters } from './queries';
+import { SHIPMENT_PROCESSING_PAGE_SIZE, type ShipmentProcessingCandidateFilters } from './queries';
 
 /**
  * 후보 화면의 상태 기계 — `work-order-close/candidate-screen-model.ts`를 구조 원형으로 삼는다
@@ -17,6 +17,8 @@ export interface ShipmentProcessingFilterValues {
 export interface ShipmentProcessingCandidateScreenState {
   appliedFilters: ShipmentProcessingFilterValues;
   page: number;
+  /** 한 쪽 건수 — 품질 화면과 같은 10 · 20 · 50(#360). 기본은 서버 기본(50)이라 보내지 않는다. */
+  pageSize?: number;
   selectedShipmentRequestId: number | null;
 }
 
@@ -30,6 +32,7 @@ export type ShipmentProcessingCandidateScreenAction =
   | { type: 'SEARCH'; filters: ShipmentProcessingFilterValues }
   | { type: 'RESET' }
   | { type: 'CHANGE_PAGE'; page: number }
+  | { type: 'CHANGE_PAGE_SIZE'; pageSize: number }
   | { type: 'SELECT'; shipmentRequestId: number }
   | { type: 'CLEAR_SELECTION' }
   | { type: 'CLEAR_MISSING_SELECTION'; snapshot: ShipmentProcessingCandidateSnapshot };
@@ -48,6 +51,7 @@ export const createShipmentProcessingCandidateScreenState =
   (): ShipmentProcessingCandidateScreenState => ({
     appliedFilters: { ...EMPTY_SHIPMENT_PROCESSING_FILTERS },
     page: 1,
+    pageSize: SHIPMENT_PROCESSING_PAGE_SIZE,
     selectedShipmentRequestId: null,
   });
 
@@ -57,15 +61,23 @@ export const reduceShipmentProcessingCandidateScreen = (
 ): ShipmentProcessingCandidateScreenState => {
   switch (action.type) {
     case 'SEARCH':
-      return { appliedFilters: { ...action.filters }, page: 1, selectedShipmentRequestId: null };
+      return {
+        appliedFilters: { ...action.filters },
+        page: 1,
+        pageSize: state.pageSize,
+        selectedShipmentRequestId: null,
+      };
     case 'RESET':
       return {
         appliedFilters: { ...EMPTY_SHIPMENT_PROCESSING_FILTERS },
         page: 1,
+        pageSize: state.pageSize,
         selectedShipmentRequestId: null,
       };
     case 'CHANGE_PAGE':
       return { ...state, page: action.page, selectedShipmentRequestId: null };
+    case 'CHANGE_PAGE_SIZE':
+      return { ...state, pageSize: action.pageSize, page: 1, selectedShipmentRequestId: null };
     case 'SELECT':
       return { ...state, selectedShipmentRequestId: action.shipmentRequestId };
     case 'CLEAR_SELECTION':
@@ -99,5 +111,6 @@ export const toShipmentProcessingCandidateFilters = (
     shipDateTo: canLoad ? shipDateTo : null,
     pickingCompleteOnly: state.appliedFilters.pickingCompleteOnly,
     page: state.page,
+    size: state.pageSize,
   };
 };

@@ -253,6 +253,15 @@ export const inboundSchedule = {
     actions: {
       link: '연결',
     },
+    /** [연결]을 누르면 먼저 뜨는 확인 팝업(사용자 지시 2026-11-27 · #360). */
+    linkDialog: {
+      title: '발주에 연결할까요?',
+      receiptLine: '입하 줄',
+      order: '연결할 발주',
+      qty: '연결 수량',
+      cancel: '취소',
+      confirm: '연결',
+    },
     /** 단추 옆에 늘 보이는 요약. 수량 뒤에 조사를 붙이지 않는다(받침이 단위마다 다르다). */
     confirmLink: (qty: string, order: string): string => `초과분 ${qty} → ${order}`,
     blocked: {

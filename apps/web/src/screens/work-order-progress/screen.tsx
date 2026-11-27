@@ -23,6 +23,8 @@ import {
 } from './filters';
 import { useItemNames, useProductionLineLookup, useProductionOrderLookup } from './lookups';
 import { PageNav } from './page-nav';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { readPageSizeParam, toPageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { toPageView } from './pagination';
 import { defaultPeriod } from './period';
 import {
@@ -93,6 +95,8 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
   const { from: periodFrom, to: periodTo } = filters;
   const sort = readSort(searchParams, filters);
   const page = readPage(searchParams);
+  /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(50)은 적지 않는다(#360). */
+  const pageSize = readPageSizeParam(searchParams, PAGE_SIZE);
   const selectedWorkOrderId = readSelectedWorkOrderId(searchParams);
 
   /*
@@ -112,7 +116,9 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
     });
   }, [isPeriodInAddress, periodFrom, periodTo, setSearchParams]);
 
-  const list = useWorkOrderProgressList(toProgressListQuery(filters, sort, page, offsetMinutes));
+  const list = useWorkOrderProgressList(
+    toProgressListQuery(filters, sort, page, offsetMinutes, pageSize),
+  );
   const detail = useWorkOrderDetail(selectedWorkOrderId);
   const crew = useWorkOrderCrew(selectedWorkOrderId);
   const lines = useProductionLineLookup();
@@ -133,7 +139,7 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
     ...workOrders.map((workOrder) => workOrder.itemId),
     ...(detail.data === undefined ? [] : [detail.data.itemId]),
   ]);
-  const pageView = toPageView(list.data?.page ?? { page, size: PAGE_SIZE, total: 0 }, rows.length);
+  const pageView = toPageView(list.data?.page ?? { page, size: pageSize, total: 0 }, rows.length);
 
   /* 「초기화」가 되돌리는 값 — 오늘에 기대므로 같은 함수로 만든다. 이와 다를 때만 「초기화」가 보인다. */
   const initialFilters: ProgressFilters = { ...defaultPeriod(today), ...EMPTY_CONDITIONS };
@@ -225,6 +231,10 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
               view={pageView}
               onChange={(next) => {
                 setSearchParams(withPage(searchParams, next));
+              }}
+              sizes={PAGE_SIZES}
+              onChangeSize={(size) => {
+                setSearchParams(toPageSizeSearchParams(searchParams, size, PAGE_SIZE));
               }}
             />
           )}

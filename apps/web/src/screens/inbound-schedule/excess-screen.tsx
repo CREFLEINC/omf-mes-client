@@ -1,4 +1,12 @@
-import { AlertBanner, Button, Chip, type Column, EmptyState, SkeletonText } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Chip,
+  type Column,
+  Dialog,
+  EmptyState,
+  SkeletonText,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useEffect, useId, useState } from 'react';
@@ -85,6 +93,8 @@ export const InboundExcessScreen = () => {
   );
   const [selectedLineId, setSelectedLineId] = useState<number | null>(entry.purchaseOrderLineId);
   const [done, setDone] = useState<string | null>(null);
+  /** [연결]을 누르면 확인 팝업이 먼저 뜬다 — 팝업의 [연결]이 기존 연결 호출을 그대로 부른다(사용자 지시 2026-11-27). */
+  const [asking, setAsking] = useState(false);
   const confirmId = useId();
 
   const unlinked = useUnallocatedLines({ size: EXCESS_PAGE_SIZE });
@@ -485,7 +495,7 @@ export const InboundExcessScreen = () => {
               disabled={!canRun}
               loading={isSaving}
               aria-describedby={confirmId}
-              onClick={runLink}
+              onClick={() => setAsking(true)}
             >
               {t.actions.link}
             </Button>
@@ -498,23 +508,71 @@ export const InboundExcessScreen = () => {
     );
   };
 
-  return (
-    <BoardFrame
-      splitKey="omf-mes:inbound-excess:split"
-      /* 왼쪽 표의 고정 폭(576px) + 품목 칸이 1920 폭에서 다 보이게 — 오른쪽은 후보 표가 가로로 넘긴다. */
-      initialRatio={0.55}
-      splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
-      list={{
-        label: t.listTitle,
-        count: unlinked.data?.page.total,
-        content: (
+  const linkDialog =
+    asking && selectedExcess !== null && selectedCandidate !== null ? (
+      <Dialog
+        open
+        size="md"
+        closeOnBackdropClick={false}
+        title={t.linkDialog.title}
+        onClose={() => setAsking(false)}
+        footer={
           <>
-            {newFlowNotice}
-            {listBody()}
+            <Button variant="outlined" onClick={() => setAsking(false)}>
+              {t.linkDialog.cancel}
+            </Button>
+            <Button
+              onClick={() => {
+                setAsking(false);
+                runLink();
+              }}
+            >
+              {t.linkDialog.confirm}
+            </Button>
           </>
-        ),
-      }}
-      detail={{ label: t.candidates.title, content: detailBody() }}
-    />
+        }
+      >
+        <dl className="confirm-facts is-stacked">
+          <div>
+            <dt>{t.linkDialog.receiptLine}</dt>
+            <dd>
+              {selectedExcess.inboundReceiptNo}
+              <br />
+              {selectedExcess.itemCode} {selectedExcess.itemName}
+            </dd>
+          </div>
+          <div>
+            <dt>{t.linkDialog.order}</dt>
+            <dd>{t.orderLine(selectedCandidate.purchaseOrderNo, selectedCandidate.lineNo)}</dd>
+          </div>
+          <div>
+            <dt>{t.linkDialog.qty}</dt>
+            <dd>{qtyWithUom(selectedExcess.unallocatedQty, selectedExcess.uomCode)}</dd>
+          </div>
+        </dl>
+      </Dialog>
+    ) : null;
+
+  return (
+    <>
+      {linkDialog}
+      <BoardFrame
+        splitKey="omf-mes:inbound-excess:split"
+        /* 왼쪽 표의 고정 폭(576px) + 품목 칸이 1920 폭에서 다 보이게 — 오른쪽은 후보 표가 가로로 넘긴다. */
+        initialRatio={0.55}
+        splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
+        list={{
+          label: t.listTitle,
+          count: unlinked.data?.page.total,
+          content: (
+            <>
+              {newFlowNotice}
+              {listBody()}
+            </>
+          ),
+        }}
+        detail={{ label: t.candidates.title, content: detailBody() }}
+      />
+    </>
   );
 };

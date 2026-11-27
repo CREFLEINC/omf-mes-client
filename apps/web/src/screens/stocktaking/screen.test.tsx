@@ -55,7 +55,14 @@ const { codeValues } = vi.hoisted(() => ({
 vi.mock('./code-options', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./code-options')>();
 
-  return { ...actual, PLACEHOLDER_STOCKTAKING_CODES: codeValues };
+  /* 서버 코드값 조회(`useStocktakingCodeLists`)를 배열로 갈아 끼운다 — 이름은 비워 코드가 그대로 보인다. */
+  return {
+    ...actual,
+    useStocktakingCodeLists: () => ({
+      values: codeValues,
+      names: { countType: new Map<string, string>(), varianceReason: new Map<string, string>() },
+    }),
+  };
 });
 
 /** 지어낸 합성 코드. **계약의 `@example` 값을 쓰지 않는다** — 예시가 확정 값으로 읽히면 안 된다. */
@@ -1744,11 +1751,11 @@ describe('StocktakingScreen — 개시 확인 창', () => {
   });
 
   /* 닫으면 요청이 나가지 않고 **초안이 그대로 남는다** — 고칠 것이 있어 닫는 것이다. */
-  it('계속 입력을 누르면 창만 닫히고 초안이 남는다', async () => {
+  it('취소를 누르면 창만 닫히고 초안이 남는다', async () => {
     const { requests, user } = await setupReadyToOpen();
 
     await user.click(openButton());
-    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+    await user.click(within(confirmDialog()).getByRole('button', { name: t.actions.keepEditing }));
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(openRequests(requests)).toHaveLength(0);

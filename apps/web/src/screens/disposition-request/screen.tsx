@@ -10,15 +10,17 @@ import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { requireIfMatch, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { ScreenHeader } from '../../patterns/screen-header';
-import { ListCollapseTab, PaneListHead, usePaneSplit } from '../../patterns/po-board';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { stageOf } from './codes';
 import { FilterBar } from './filter-bar';
 import {
   EMPTY_FILTERS,
   hasSelection,
   isPeriodContractBlocked,
+  LIST_PAGE_SIZES,
   readFilters,
   readPage,
+  readPageSize,
   readSelection,
   toAppliedSearchParams,
   toListQuery,
@@ -123,8 +125,9 @@ export const DispositionRequestScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = useMemo(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
+  const pageSize = readPageSize(searchParams);
   const selection = useMemo(() => readSelection(searchParams), [searchParams]);
-  const listQuery = useMemo(() => toListQuery(filters, page), [filters, page]);
+  const listQuery = useMemo(() => toListQuery(filters, page, pageSize), [filters, page, pageSize]);
 
   const list = useTargetList(listQuery);
   const isListBlocked = isPeriodContractBlocked(listQuery);
@@ -338,15 +341,6 @@ export const DispositionRequestScreen = () => {
       : t.register.qtyNote(formatQty(activeRow.quantity), uomLabel);
   const followUp = toFollowUpStates(decisionRows);
 
-  /* 목록 접기(#350, app.css `list-collapsible`) — 넓은 창은 왼쪽 세로 탭 + 상세, 좁으면 상세 위 가로 탭 + 상세 한 칸. */
-  const listSplit = usePaneSplit('omf-mes:disposition-request:list');
-  const listCollapse = {
-    collapsed: listSplit.collapsed,
-    onToggle: listSplit.toggleCollapsed,
-    collapseLabel: messages.common.inspectionHub.listCollapse,
-    expandLabel: messages.common.inspectionHub.listExpand,
-    count: list.data?.data.page.total,
-  };
   return (
     <>
       <ScreenHeader
@@ -362,154 +356,172 @@ export const DispositionRequestScreen = () => {
        * 상단 설명 띠(판정은 품질 화면에서 · 여기서는 등록과 의뢰)는 걷었다 — 화면 설명이고, 판정이 품질 화면
        * 몫이라는 것은 진행 단계 「판정 (품질 화면)」과 「② 판정 의뢰」 제목 옆 ⓘ 가 말한다(관리웹 정리 시안 A).
        */}
-      <div
-        className="disposition-request-workspace list-collapsible"
-        data-left-collapsed={listCollapse.collapsed ? 'true' : undefined}
-      >
-        <section
-          className="pane disposition-request-pane disposition-request-list-pane"
-          aria-label={t.panes.list}
-        >
-          <PaneListHead title={t.panes.list} collapse={listCollapse} />
-          <FilterBar
-            applied={filters}
-            warehouses={warehouses}
-            onApply={(next) => apply(next)}
-            onRemoveFilter={(key) => apply({ ...filters, [key]: '' })}
-            onReset={() => apply(EMPTY_FILTERS)}
-          />
-          {/*
+      {/*
+       * 목록 | 상세 — 공용 분할(가운데 폭 막대 · 상하 배치의 높이 막대 · 「⋯」 좌우/상하 배치 · 목록 접기 · #360).
+       * 상자 안 조회 · 목록 · 등록 · 의뢰 · 결과는 그대로 옮겼다.
+       */}
+      <ListDetailWorkspace
+        storageKey="omf-mes:disposition-request"
+        list={{
+          label: t.panes.list,
+          title: t.panes.list,
+          count: list.data?.data.page.total,
+          className: 'disposition-request-list-pane',
+          content: (
+            <>
+              <FilterBar
+                applied={filters}
+                warehouses={warehouses}
+                onApply={(next) => apply(next)}
+                onRemoveFilter={(key) => apply({ ...filters, [key]: '' })}
+                onReset={() => apply(EMPTY_FILTERS)}
+              />
+              {/*
             ⛔ **부를 수 없는 조건임을 목록 «위»에 세운다** — 통보 186 · 공유계약 L-3-2 ⑷
             (`filters.ts`의 `NonconformanceListQuery` 주석에 사유 전문이 있다).
 
             빈 목록으로 두면 적체 관리 화면에서 「부적합이 없다」로 읽힌다 — 미처리 건이 있는데
             없는 것으로 보이는 것이 이 화면에서 가장 나쁜 오독이다.
           */}
-          {isListBlocked ? (
-            <AlertBanner variant="warning">{t.periodContractBlocked}</AlertBanner>
-          ) : null}
-          <TargetList
-            rows={rows}
-            isLoading={list.isPending && !isListBlocked}
-            error={
-              list.isError ? (
-                <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
-              ) : null
-            }
-            page={pageView}
-            selectedKey={activeRowKey}
-            onSelect={select}
-            onChangePage={(nextPage) => apply(filters, nextPage)}
-          />
-        </section>
-        <ListCollapseTab collapse={listCollapse} />
-        <div className="pane-stack disposition-request-side">
-          <section className="pane disposition-request-pane" aria-label={t.panes.target}>
-            <h2 className="pane-title">{t.panes.target}</h2>
-            <TargetHeader
-              row={activeRow}
-              detail={{
-                isPending: detail.isPending && activeNonconformanceId !== null,
-                isError: detail.isError,
-                isNotFound: isDetailNotFound,
-                error: detail.error,
-                view: detail.data ?? null,
-              }}
-              uoms={uoms}
-              onRetry={() => void detail.refetch()}
-            />
-            <ProgressStepper steps={steps} />
-          </section>
-          <section className="pane disposition-request-pane" aria-label={t.panes.register}>
-            {/* 대상 수량 전량을 등록한다는 사실은 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
-            <h2 className="pane-title">
-              <span className="info-label">
-                {t.panes.register}
-                {registerQtyNote !== undefined && <InfoTip text={registerQtyNote} />}
-              </span>
-            </h2>
-            <RegisterPane
-              value={registerForm}
-              errors={showRegisterErrors ? registerErrors : register.fieldErrors}
-              warning={descriptionWarning(registerForm)}
-              severity={severity}
-              departments={departments}
-              lock={registerLock}
-              onCheckOutcome={checkOutcome}
-              writeError={register.error}
-              isSaving={register.isSaving}
-              canCancel={hasNonconformanceInput(registerForm)}
-              onChange={(next) => {
-                if (next.severityCode !== registerForm.severityCode)
-                  register.clearFieldError('severityCode');
-                if (next.description !== registerForm.description)
-                  register.clearFieldError('description');
-                setRegisterForm(next);
-              }}
-              onSave={saveRegister}
-              onCancel={() => {
-                setRegisterForm(EMPTY_NONCONFORMANCE_FORM);
-                setShowRegisterErrors(false);
-                register.reset();
-              }}
-              onReload={checkOutcome}
-            />
-          </section>
-          <section className="pane disposition-request-pane" aria-label={t.panes.request}>
-            {/* 의뢰하면 무엇이 일어나는지 — 품질 화면으로 넘어가고 결과가 돌아온다(스펙 §3 ②) · 제목 옆 ⓘ. */}
-            <h2 className="pane-title">
-              <span className="info-label">
-                {t.panes.request}
-                <InfoTip text={t.request.afterNote} />
-              </span>
-            </h2>
-            <RequestPane
-              value={requestForm}
-              errors={showRequestErrors ? requestErrors : request.fieldErrors}
-              maxQtyText={formatQty(activeQuantity)}
-              uomLabel={uomLabel}
-              lock={requestLock}
-              onCheckOutcome={checkOutcome}
-              writeError={request.error}
-              isSaving={request.isSaving}
-              canCancel={hasRequestInput(requestForm, activeQuantity)}
-              onChange={(next) => {
-                if (next.qty !== requestForm.qty) request.clearFieldError('requestedQty');
-                setRequestForm(next);
-              }}
-              onSave={saveRequest}
-              onCancel={() => {
-                setRequestForm(defaultRequestForm(activeQuantity));
-                setShowRequestErrors(false);
-                request.reset();
-              }}
-              onReload={checkOutcome}
-            />
-          </section>
-          <section className="pane disposition-request-pane" aria-label={t.panes.result}>
-            {/* 부분 처분이 정상이다(§5-5) — 처분이 여러 건일 수 있다는 사실은 제목 옆 ⓘ 로 둔다. */}
-            <h2 className="pane-title">
-              <span className="info-label">
-                {t.panes.result}
-                <InfoTip text={t.result.partialNote} />
-              </span>
-            </h2>
-            <ResultPane
-              nonconformanceId={activeRow?.nonconformanceId ?? null}
-              stage={activeRow?.stage ?? null}
-              decisions={{
-                rows: decisionRows,
-                isLoading: decisions.isPending && activeNonconformanceId !== null,
-                isError: decisions.isError,
-                error: decisions.error,
-              }}
-              followUp={followUp}
-              uoms={uoms}
-              onRetry={() => void decisions.refetch()}
-            />
-          </section>
-        </div>
-      </div>
+              {isListBlocked ? (
+                <AlertBanner variant="warning">{t.periodContractBlocked}</AlertBanner>
+              ) : null}
+              <TargetList
+                rows={rows}
+                isLoading={list.isPending && !isListBlocked}
+                error={
+                  list.isError ? (
+                    <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
+                  ) : null
+                }
+                page={pageView}
+                selectedKey={activeRowKey}
+                onSelect={select}
+                onChangePage={(nextPage) => apply(filters, nextPage)}
+                pageSizes={LIST_PAGE_SIZES}
+                /* 쪽 이동과 같다 — 첫 쪽부터 그 크기로 다시 받는다. */
+                onChangePageSize={(nextSize) =>
+                  setSearchParams((current) => toAppliedSearchParams(current, filters, 1, nextSize))
+                }
+              />
+            </>
+          ),
+        }}
+        detail={{
+          /* 상세 묶음(선택한 대상 → ① 등록 → ② 의뢰 → ③ 결과)의 이름 — 안 상자 이름과 겹치지 않게 등록 · 의뢰로 부른다. */
+          label: `${t.panes.register} · ${t.panes.request}`,
+          bare: true,
+          className: 'disposition-request-side',
+          content: (
+            <>
+              <section className="pane disposition-request-pane" aria-label={t.panes.target}>
+                <h2 className="pane-title">{t.panes.target}</h2>
+                <TargetHeader
+                  row={activeRow}
+                  detail={{
+                    isPending: detail.isPending && activeNonconformanceId !== null,
+                    isError: detail.isError,
+                    isNotFound: isDetailNotFound,
+                    error: detail.error,
+                    view: detail.data ?? null,
+                  }}
+                  uoms={uoms}
+                  onRetry={() => void detail.refetch()}
+                />
+                <ProgressStepper steps={steps} />
+              </section>
+              <section className="pane disposition-request-pane" aria-label={t.panes.register}>
+                {/* 대상 수량 전량을 등록한다는 사실은 제목 옆 ⓘ 로 둔다(관리웹 정리 시안 A). */}
+                <h2 className="pane-title">
+                  <span className="info-label">
+                    {t.panes.register}
+                    {registerQtyNote !== undefined && <InfoTip text={registerQtyNote} />}
+                  </span>
+                </h2>
+                <RegisterPane
+                  value={registerForm}
+                  errors={showRegisterErrors ? registerErrors : register.fieldErrors}
+                  warning={descriptionWarning(registerForm)}
+                  severity={severity}
+                  departments={departments}
+                  lock={registerLock}
+                  onCheckOutcome={checkOutcome}
+                  writeError={register.error}
+                  isSaving={register.isSaving}
+                  canCancel={hasNonconformanceInput(registerForm)}
+                  onChange={(next) => {
+                    if (next.severityCode !== registerForm.severityCode)
+                      register.clearFieldError('severityCode');
+                    if (next.description !== registerForm.description)
+                      register.clearFieldError('description');
+                    setRegisterForm(next);
+                  }}
+                  onSave={saveRegister}
+                  onCancel={() => {
+                    setRegisterForm(EMPTY_NONCONFORMANCE_FORM);
+                    setShowRegisterErrors(false);
+                    register.reset();
+                  }}
+                  onReload={checkOutcome}
+                />
+              </section>
+              <section className="pane disposition-request-pane" aria-label={t.panes.request}>
+                {/* 의뢰하면 무엇이 일어나는지 — 품질 화면으로 넘어가고 결과가 돌아온다(스펙 §3 ②) · 제목 옆 ⓘ. */}
+                <h2 className="pane-title">
+                  <span className="info-label">
+                    {t.panes.request}
+                    <InfoTip text={t.request.afterNote} />
+                  </span>
+                </h2>
+                <RequestPane
+                  value={requestForm}
+                  errors={showRequestErrors ? requestErrors : request.fieldErrors}
+                  maxQtyText={formatQty(activeQuantity)}
+                  uomLabel={uomLabel}
+                  lock={requestLock}
+                  onCheckOutcome={checkOutcome}
+                  writeError={request.error}
+                  isSaving={request.isSaving}
+                  canCancel={hasRequestInput(requestForm, activeQuantity)}
+                  onChange={(next) => {
+                    if (next.qty !== requestForm.qty) request.clearFieldError('requestedQty');
+                    setRequestForm(next);
+                  }}
+                  onSave={saveRequest}
+                  onCancel={() => {
+                    setRequestForm(defaultRequestForm(activeQuantity));
+                    setShowRequestErrors(false);
+                    request.reset();
+                  }}
+                  onReload={checkOutcome}
+                />
+              </section>
+              <section className="pane disposition-request-pane" aria-label={t.panes.result}>
+                {/* 부분 처분이 정상이다(§5-5) — 처분이 여러 건일 수 있다는 사실은 제목 옆 ⓘ 로 둔다. */}
+                <h2 className="pane-title">
+                  <span className="info-label">
+                    {t.panes.result}
+                    <InfoTip text={t.result.partialNote} />
+                  </span>
+                </h2>
+                <ResultPane
+                  nonconformanceId={activeRow?.nonconformanceId ?? null}
+                  stage={activeRow?.stage ?? null}
+                  decisions={{
+                    rows: decisionRows,
+                    isLoading: decisions.isPending && activeNonconformanceId !== null,
+                    isError: decisions.isError,
+                    error: decisions.error,
+                  }}
+                  followUp={followUp}
+                  uoms={uoms}
+                  onRetry={() => void decisions.refetch()}
+                />
+              </section>
+            </>
+          ),
+        }}
+      />
     </>
   );
 };

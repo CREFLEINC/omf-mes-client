@@ -22,12 +22,16 @@ type PageMeta = components['schemas']['PageMeta'];
 
 export const PAGE_SIZE = 50;
 
+/** 고를 쪽 크기 — 품질 목록과 같은 10 · 20 · 50건, 기본은 종전대로 50건(#360). */
+export const LIST_PAGE_SIZES = [10, 20, PAGE_SIZE] as const;
+export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
+
 /** 이 화면이 소유하는 캐시 키. 쓰기가 성공하면 `all` 을 무효화해 목록 · 상세 · 부족을 함께 다시 받는다. */
 export const statusKeys = {
   all: ['material-issue-status'] as const,
   plants: ['material-issue-status', 'plants'] as const,
-  list: (filters: StatusFilters, page: number) =>
-    ['material-issue-status', 'list', filters, page] as const,
+  list: (filters: StatusFilters, page: number, size: number) =>
+    ['material-issue-status', 'list', filters, page, size] as const,
   detail: (id: number) => ['material-issue-status', 'detail', id] as const,
   history: (id: number) => ['material-issue-status', 'history', id] as const,
   shortage: (plantId: number) => ['material-issue-status', 'shortage', plantId] as const,
@@ -55,16 +59,17 @@ export const usePlants = (): UseQueryResult<Plant[]> => {
 export const useRequestList = (
   filters: StatusFilters,
   page: number,
+  size: number,
   enabled: boolean,
 ): UseQueryResult<{ items: MaterialIssueRequestView[]; page: PageMeta }> => {
   const { client } = useApiClient();
   return useQuery({
-    queryKey: statusKeys.list(filters, page),
+    queryKey: statusKeys.list(filters, page, size),
     enabled,
     queryFn: async () => {
       const data = await runRequest(() =>
         client.GET('/logistics/material-issue-requests', {
-          params: { query: toListQuery(filters, page, PAGE_SIZE) },
+          params: { query: toListQuery(filters, page, size) },
         }),
       );
       return { items: data.items.map(toRequestView), page: data.page };

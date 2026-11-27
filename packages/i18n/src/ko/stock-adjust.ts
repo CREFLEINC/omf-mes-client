@@ -258,11 +258,11 @@ export const stockAdjust = {
     togglePost: '승인 없이 전기',
     /** 펼친 뒤의 실행 손잡이. **여는 손잡이와 이름을 갈라 둔다** — 같으면 어느 것을 누르는지 갈린다 */
     post: '재고 전기',
-    /** 창의 버튼 문구는 「확인/취소」가 아니다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다. */
-    keepEditing: '계속 입력',
+    /** 입력은 그대로 두고 창만 닫는다 — 문구는 「취소」로 통일(사용자 지시 2026-11-27 · #360). */
+    keepEditing: '취소',
     /** 전기 확인 창의 되돌아가기. 「계속 입력」과 갈라 둔다 — 이 창에는 고칠 칸이 없다 */
     keepReviewing: '다시 확인',
-    confirmRegister: '등록합니다',
+    confirmRegister: '전표 등록',
     confirmSubmit: '결재에 올립니다',
     confirmPost: '재고를 움직입니다',
     confirmDiscard: '초안을 버립니다',
@@ -470,25 +470,21 @@ export const stockAdjust = {
    * 창은 연다」이다.
    */
   dialog: {
-    registerTitle: '이 조정을 등록할까요?',
-    registerLead: '아래 내용으로 조정 전표를 만듭니다.',
-    /** 무엇이 실리는지 값으로 되보인다. 창이 다시 세지 않고 화면이 만든 글자를 받는다. */
+    /** 등록 확인(사용자 시안 2026-11-27 · #360) — 제목 · 사실 상자 세 칸 · 빠지는 줄(있을 때만) · 단추 줄 왼쪽 경고. */
+    registerTitle: '재고 조정 전표를 등록할까요?',
     reasonCode: '조정 사유',
-    sendToErp: 'ERP 송신',
-    sendToErpOn: '보냅니다',
-    sendToErpOff: '보내지 않습니다',
+    sendToErp: 'ERP 송신 대상',
+    /** 등록에 실리는 줄 수를 ERP 송신 칸 한 자리에 — 보내지 않으면 그 사실을 앞에 붙인다. */
+    erpTarget: (lineCount: number): string => `조정 항목 ${String(lineCount)}건`,
+    erpTargetOff: (lineCount: number): string => `송신 안 함 · 조정 항목 ${String(lineCount)}건`,
     countRef: '대상 실사',
-    includedLineCount: (lineCount: number): string =>
-      `조정 라인 ${String(lineCount)}행을 함께 보냅니다.`,
     /**
      * **빠지는 줄 수를 창이 밝힌다**(C19). 표에서 「제외」 표식을 못 본 채 확인하는 길이 있고,
-     * 그때 사용자가 확인한 줄 수와 실제로 나가는 줄 수가 갈린다.
+     * 그때 사용자가 확인한 줄 수와 실제로 나가는 줄 수가 갈린다. 빠지는 줄이 없으면 내지 않는다(사용자 시안).
      */
     excludedLineCount: (lineCount: number): string =>
       `차이가 0인 ${String(lineCount)}행은 등록에서 빠집니다.`,
-    /** 짝 방향 — 빠지는 줄이 없다는 것도 사실이라 말한다. 없을 때 침묵하면 확인이 반쪽이 된다. */
-    noExcludedLine: '빠지는 줄은 없습니다.',
-    registerNoUndo: '만들어진 조정 전표는 이 화면에서 되돌릴 수 없습니다.',
+    registerNoUndo: '등록한 전표는 이 화면에서 취소할 수 없습니다.',
     discardTitle: '세운 조정 대상을 버릴까요?',
     discardLead: '표의 줄과 고른 조정 사유가 사라집니다. 실사 차이는 다시 불러올 수 있습니다.',
     /**

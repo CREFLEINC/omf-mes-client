@@ -143,13 +143,12 @@ export const inboundWorkRecord: Translated<typeof ko.inboundWorkRecord> = {
   },
   finalizeDialog: {
     title: 'Chốt cuối cùng?',
-    summary: (received: string, goods: string, uom: string) =>
-      `Nhập hàng ${received} · nhập kho ${goods} ${uom}`,
-    matchLabel: 'Ghép P/O: ',
+    receivedQty: 'SL nhập hàng',
+    goodsReceivedQty: 'SL nhập kho',
+    qty: (qty: string, uom: string) => `${qty} ${uom}`,
     unallocatedWarning: (qty: string, uom: string) =>
-      `Còn ${qty} ${uom} Không có P/O. Số lượng đó sẽ không được gửi sang ERP.`,
-    acknowledge: 'Đã xác nhận',
-    acknowledgeNeeded: 'Phải xác nhận số lượng Không có P/O mới chốt cuối cùng được.',
+      `Số lượng chưa ghép P/O ${qty} ${uom} sẽ không được gửi sang ERP.`,
+    acknowledge: 'Đã xác nhận số lượng không được gửi sang ERP.',
     warning: 'Sau khi chốt cuối cùng không thể hủy nhập kho · hủy chốt nhập hàng · sửa ghép P/O.',
     cancel: 'Hủy',
     confirm: 'Chốt cuối cùng',

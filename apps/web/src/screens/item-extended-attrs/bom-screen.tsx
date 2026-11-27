@@ -14,7 +14,6 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { type ReactNode, useEffect, useId, useState } from 'react';
-import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { BoardFrame } from '../../patterns/board-frame';
@@ -60,6 +59,8 @@ import {
 } from './lookups';
 import { codeValueName, lookupLabel, selectableOptions } from './options';
 import { PageNav } from './page-nav';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { toPageView } from './pagination';
 import { SetDefaultDialog } from './set-default-dialog';
 
@@ -770,7 +771,9 @@ type ParentRow = Item;
  * 줄마다 구성품 **확장 열**을 고치고 기본 BOM 을 지정한다. 조건 · 쪽 · 고른 모품목 · 고른 BOM 을 전부 주소에 둔다.
  */
 export const ItemBomScreen = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(종전 50)은 적지 않는다(#360). */
+  const { searchParams, setSearchParams, pageSize, changePageSize } =
+    usePageSizeSearchParams(PARENT_PAGE_SIZE);
   const filters = readFilters(searchParams);
   const page = readId(searchParams.get('page')) ?? 1;
   const parentItemId = readId(searchParams.get('item'));
@@ -781,6 +784,7 @@ export const ItemBomScreen = () => {
     ...(filters.hasBom ? { hasBom: true } : {}),
     ...(filters.q === '' ? {} : { q: filters.q }),
     ...(page > 1 ? { page } : {}),
+    ...(pageSize === PARENT_PAGE_SIZE ? {} : { size: pageSize }),
   });
   const itemTypes = useItemTypeOptions();
   const typeName = (code: string): string => codeValueName(itemTypes.data, code);
@@ -856,6 +860,8 @@ export const ItemBomScreen = () => {
           onChange={(next) => {
             setSearchParams(toSearchParams(filters, next, parentItemId));
           }}
+          sizes={PAGE_SIZES}
+          onChangeSize={changePageSize}
         />
       </>
     );

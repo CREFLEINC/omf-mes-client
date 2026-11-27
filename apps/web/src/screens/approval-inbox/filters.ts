@@ -191,6 +191,8 @@ export interface RequestListQuery {
   requestedAtTo?: string;
   q?: string;
   page?: number;
+  /** 고른 쪽 크기 — 기본(50)이면 싣지 않는다(#360). */
+  size?: number;
 }
 
 /**

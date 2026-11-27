@@ -62,6 +62,7 @@ const expectedState = (
   initializationKind,
   appliedFilters,
   page: 1,
+  pageSize: 50,
   selectedWorkOrderId: null,
 });
 const clearMissing = (
@@ -197,6 +198,7 @@ describe('work-order close candidate projections', () => {
       plannedStartFrom: '2026-08-23',
       plannedStartTo: '2026-08-24',
       page: 3,
+      size: 50,
     });
     expect(
       toWorkOrderCloseCandidateFilters({

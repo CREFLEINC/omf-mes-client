@@ -23,12 +23,14 @@ type Client = ApiClient['client'];
  * 목록 조회의 쿼리 전체. **기간은 필수**이고 나머지는 값이 있을 때만 키가 실린다 —
  * 요청 URL이 조건을 그대로 드러내야 무엇으로 조회했는지 읽을 수 있다.
  *
- * `size`는 싣지 않는다. 서버 기본값을 그대로 쓰고 쪽 크기를 화면이 정하지 않는다.
+ * `size`는 고른 쪽 크기가 기본(계약 기본 50)이 아닐 때만 싣는다(#360).
  */
 export type AuditEventListQuery = PeriodQuery &
   EventFilterQuery & {
     /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
     page?: number;
+    /** 기본(50)이면 싣지 않는다. */
+    size?: number;
   };
 
 export const auditEventKeys = {

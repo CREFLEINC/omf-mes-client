@@ -32,6 +32,8 @@ const tp = t.precreate;
 
 /** 왼쪽 목록 한 쪽 줄 수(시안 W0114 「1–50 / 132」). */
 const LIST_PAGE_SIZE = 50;
+/** 고를 쪽 크기 — 품질 목록과 같은 10 · 20 · 50건, 기본은 종전대로 50건(주소에 적지 않는다 · #360). */
+const LIST_PAGE_SIZES = [10, 20, LIST_PAGE_SIZE] as const;
 
 const NO_PAIRS: Pair[] = [];
 const NO_SCOPES: never[] = [];
@@ -44,7 +46,7 @@ const NO_SCOPES: never[] = [];
  *    맞는 모든 조합, 할 일 있는 조합이 위(서버 정렬). 공급사 고르기 · 「대기 있는 것만」은 없앴다(시안 확인 거리 3).
  * ⭐ 오른쪽 상세는 POP P-01-01 과 같은 규칙으로 탭 넷을 받는다 — 미출력 탭은 P/O 몫을 만들면서(`DetailPane`).
  * ⛔ **라벨은 여기서 찍지 않는다** — POP 「자재 관리 LOT 라벨」에서만. 일괄 출력도 없다.
- * 주소: 공장(`plant`) · 찾기(`q`) · 쪽(`page`) · 연 공급사·품목(`open`).
+ * 주소: 공장(`plant`) · 찾기(`q`) · 쪽(`page`) · 쪽 크기(`size`) · 연 공급사·품목(`open`).
  */
 export const MaterialLotIssueScreen = () => {
   const toast = useToast();
@@ -52,6 +54,8 @@ export const MaterialLotIssueScreen = () => {
   const plantParam = searchParams.get('plant') ?? '';
   const query = searchParams.get('q') ?? '';
   const pageParam = Math.max(1, Number(searchParams.get('page') ?? '1') || 1);
+  const pageSize =
+    LIST_PAGE_SIZES.find((size) => String(size) === searchParams.get('size')) ?? LIST_PAGE_SIZE;
   const openKey = searchParams.get('open');
 
   const [issueOpen, setIssueOpen] = useState<Group | null>(null);
@@ -66,7 +70,7 @@ export const MaterialLotIssueScreen = () => {
     plants.data?.find((row) => String(row.plantId) === plantParam) ?? plants.data?.[0] ?? null;
   const plantId = plant?.plantId ?? null;
   const pairs = useMaterialLotPairs(
-    plantId === null ? null : { plantId, q: query, page: pageParam, size: LIST_PAGE_SIZE },
+    plantId === null ? null : { plantId, q: query, page: pageParam, size: pageSize },
   );
   const uoms = useUomOptions();
 
@@ -230,8 +234,13 @@ export const MaterialLotIssueScreen = () => {
         />
         {/* 0건이어도 쪽 이동 줄은 늘 보인다(단추는 잠긴 채 · #360). */}
         <PageNav
-          meta={{ page: pageParam, size: LIST_PAGE_SIZE, total }}
+          meta={{ page: pageParam, size: pageSize, total }}
           onChangePage={(next) => update({ page: next === 1 ? null : String(next) })}
+          sizes={LIST_PAGE_SIZES}
+          /* 쪽 이동과 같다 — 첫 쪽부터 그 크기로 다시 받는다. 기본(50)은 주소에 적지 않는다. */
+          onChangeSize={(next) =>
+            update({ page: null, size: next === LIST_PAGE_SIZE ? null : String(next) })
+          }
         />
       </>
     );

@@ -104,6 +104,7 @@ describe('workOrderCloseKeys', () => {
       '2026-08-23T09:00:00+09:00',
       '2026-08-23T17:00:00+09:00',
       3,
+      50,
     ]);
     [
       filters({ statusCode: 'SYN-OTHER-STATUS' }),

@@ -11,8 +11,8 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router';
 
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
 import { ScreenHeader } from '../../patterns/screen-header';
 import { LoadErrorBanner } from './load-error-banner';
@@ -33,6 +33,8 @@ import {
 } from './order-draft';
 import { OrderForm } from './order-form';
 import { PageNav } from './page-nav';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { toPageView } from './pagination';
 import {
   useBreakdownCandidates,
@@ -53,6 +55,9 @@ import {
 } from './types';
 
 const t = messages.maintenanceOrder;
+
+/** 목록 쪽 크기 기본 — 계약 `size` 기본 50(종전에는 싣지 않아 이 값이었다 · #360). */
+const LIST_PAGE_SIZE = 50;
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ORDERS: OrderView[] = [];
@@ -82,7 +87,9 @@ const isPositiveInteger = (value: string): boolean => /^\d+$/.test(value) && Num
  * 공유한 주소가 남의 편집 중간 상태를 여는 셈이 된다.
  */
 export const MaintenanceOrderScreen = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(계약 기본 50)은 싣지도 적지도 않는다(#360). */
+  const { searchParams, setSearchParams, pageSize, changePageSize } =
+    usePageSizeSearchParams(LIST_PAGE_SIZE);
 
   const statusFilter = searchParams.get('status') ?? '';
   const page = isPositiveInteger(searchParams.get('page') ?? '')
@@ -93,8 +100,9 @@ export const MaintenanceOrderScreen = () => {
     () => ({
       ...(statusFilter === '' ? {} : { statusCode: statusFilter }),
       ...(page > 1 ? { page } : {}),
+      ...(pageSize === LIST_PAGE_SIZE ? {} : { size: pageSize }),
     }),
-    [statusFilter, page],
+    [statusFilter, page, pageSize],
   );
 
   const [draft, setDraft] = useState<OrderDraft>(EMPTY_DRAFT);
@@ -234,43 +242,56 @@ export const MaintenanceOrderScreen = () => {
       )}
 
       <div className="maintenance-order-workspace">
-        <section className="pane maintenance-order-pane" aria-label={t.panes.triggers}>
-          <h2 className="pane-title">{t.triggers.heading}</h2>
-          <TriggerPicker
-            breakdowns={breakdowns.data ?? []}
-            inspections={inspections.data ?? []}
-            isLoading={breakdowns.isPending || inspections.isPending}
-            selected={triggers}
-            equipmentOptions={toOptions(equipments.entries)}
-            onToggle={toggleTrigger}
-            onRemove={removeTrigger}
-          />
-        </section>
-
-        <section className="pane maintenance-order-pane" aria-label={t.panes.form}>
-          <h2 className="pane-title">{t.panes.form}</h2>
-          <SaveErrorBanner error={create.error} />
-          <OrderForm
-            draft={draft}
-            triggers={triggers}
-            errors={{ ...errors, ...create.fieldErrors }}
-            equipmentOptions={toOptions(equipments.entries)}
-            userOptions={toOptions(users.entries)}
-            itemOptions={toOptions(items.entries)}
-            equipmentNote={lookupNote(equipments, t.form.equipmentLookupFailed)}
-            userNote={lookupNote(users, t.form.userLookupFailed)}
-            itemNote={lookupNote(items, t.form.itemLookupFailed)}
-            isSaving={create.isSaving}
-            onChange={setDraft}
-            onSubmit={requestSubmit}
-            onReset={() => {
-              setDraft(EMPTY_DRAFT);
-              setTriggers(EMPTY_TRIGGERS);
-              setErrors({});
-              create.reset();
-            }}
-          />
-        </section>
+        {/* 트리거 목록 | 발행 폼 공용 분할 — 가운데 막대로 폭, 「⋯」로 좌우/상하 배치, 상하일 때 높이 막대(#360). */}
+        <ListDetailWorkspace
+          storageKey="omf-mes:maintenance-order"
+          list={{
+            label: t.panes.triggers,
+            title: t.triggers.heading,
+            className: 'maintenance-order-pane',
+            content: (
+              <TriggerPicker
+                breakdowns={breakdowns.data ?? []}
+                inspections={inspections.data ?? []}
+                isLoading={breakdowns.isPending || inspections.isPending}
+                selected={triggers}
+                equipmentOptions={toOptions(equipments.entries)}
+                onToggle={toggleTrigger}
+                onRemove={removeTrigger}
+              />
+            ),
+          }}
+          detail={{
+            label: t.panes.form,
+            className: 'maintenance-order-pane',
+            content: (
+              <>
+                <h2 className="pane-title">{t.panes.form}</h2>
+                <SaveErrorBanner error={create.error} />
+                <OrderForm
+                  draft={draft}
+                  triggers={triggers}
+                  errors={{ ...errors, ...create.fieldErrors }}
+                  equipmentOptions={toOptions(equipments.entries)}
+                  userOptions={toOptions(users.entries)}
+                  itemOptions={toOptions(items.entries)}
+                  equipmentNote={lookupNote(equipments, t.form.equipmentLookupFailed)}
+                  userNote={lookupNote(users, t.form.userLookupFailed)}
+                  itemNote={lookupNote(items, t.form.itemLookupFailed)}
+                  isSaving={create.isSaving}
+                  onChange={setDraft}
+                  onSubmit={requestSubmit}
+                  onReset={() => {
+                    setDraft(EMPTY_DRAFT);
+                    setTriggers(EMPTY_TRIGGERS);
+                    setErrors({});
+                    create.reset();
+                  }}
+                />
+              </>
+            ),
+          }}
+        />
 
         <section className="pane maintenance-order-pane" aria-label={t.panes.list}>
           <h2 className="pane-title">{t.panes.list}</h2>
@@ -312,6 +333,8 @@ export const MaintenanceOrderScreen = () => {
                   if (nextPage > 1) params.set('page', String(nextPage));
                   setSearchParams(params);
                 }}
+                sizes={PAGE_SIZES}
+                onChangeSize={changePageSize}
               />
             </>
           )}

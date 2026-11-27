@@ -14,7 +14,6 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { ScreenHeader } from '../../patterns/screen-header';
@@ -29,6 +28,8 @@ import {
   useUserOptions,
 } from './lookups';
 import { PageNav } from './page-nav';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { toPageView } from './pagination';
 import { useResultCreate, useResultList, type ResultListQuery } from './queries';
 import {
@@ -44,6 +45,9 @@ import { SelectField } from './select-field';
 import { formatMoment, type ResultView, type SelectOption } from './types';
 
 const t = messages.maintenanceResult;
+
+/** 목록 쪽 크기 기본 — 계약 `size` 기본 50(종전에는 싣지 않아 이 값이었다 · #360). */
+const LIST_PAGE_SIZE = 50;
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ROWS: ResultView[] = [];
@@ -72,7 +76,9 @@ const optional = (value: string | null): string =>
  * 수 없다. 감추지 않고 사유를 낸다.
  */
 export const MaintenanceResultScreen = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(계약 기본 50)은 싣지도 적지도 않는다(#360). */
+  const { searchParams, setSearchParams, pageSize, changePageSize } =
+    usePageSizeSearchParams(LIST_PAGE_SIZE);
   const startedId = useId();
   const finishedId = `${startedId}-finished`;
   const noteId = `${startedId}-note`;
@@ -87,8 +93,9 @@ export const MaintenanceResultScreen = () => {
     () => ({
       ...(isPositiveInteger(orderFilter) ? { maintenanceOrderId: Number(orderFilter) } : {}),
       ...(page > 1 ? { page } : {}),
+      ...(pageSize === LIST_PAGE_SIZE ? {} : { size: pageSize }),
     }),
-    [orderFilter, page],
+    [orderFilter, page, pageSize],
   );
 
   const [draft, setDraft] = useState<ResultDraft>(EMPTY_DRAFT);
@@ -500,6 +507,8 @@ export const MaintenanceResultScreen = () => {
                   if (nextPage > 1) params.set('page', String(nextPage));
                   setSearchParams(params);
                 }}
+                sizes={PAGE_SIZES}
+                onChangeSize={changePageSize}
               />
             </>
           )

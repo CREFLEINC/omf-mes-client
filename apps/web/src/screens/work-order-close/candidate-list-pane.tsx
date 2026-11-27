@@ -28,6 +28,9 @@ export interface WorkOrderCloseCandidateListPaneProps {
   page: WorkOrderPageView;
   onSelect: (workOrderId: number) => void;
   onChangePage: (page: number) => void;
+  /** 쪽 크기 — 주면 쪽 이동 줄에 「N건 ▾」를 그린다(#360). */
+  pageSizes?: readonly number[];
+  onChangePageSize?: (size: number) => void;
   variant?: 'close' | 'correction';
   /** 목록 맨 위 제목 줄(「이름 · 건수 · 목록 접기」 · #350). 화면이 `PaneListHead` 로 넘긴다 — 없으면 종전 제목. */
   head?: ReactNode;
@@ -44,6 +47,8 @@ export const WorkOrderCloseCandidateListPane = ({
   page,
   onSelect,
   onChangePage,
+  pageSizes,
+  onChangePageSize,
   variant = 'close',
   head,
 }: WorkOrderCloseCandidateListPaneProps) => {
@@ -127,7 +132,12 @@ export const WorkOrderCloseCandidateListPane = ({
           }
         />
       </div>
-      <PageNav view={page} onChange={onChangePage} />
+      <PageNav
+        view={page}
+        onChange={onChangePage}
+        sizes={pageSizes}
+        onChangeSize={onChangePageSize}
+      />
     </section>
   );
 };

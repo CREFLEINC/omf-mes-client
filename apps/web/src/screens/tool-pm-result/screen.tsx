@@ -14,7 +14,6 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
-import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { ScreenHeader } from '../../patterns/screen-header';
@@ -22,6 +21,8 @@ import { FieldLabel } from './field-label';
 import { LoadErrorBanner } from './load-error-banner';
 import { lookupNote, useOrderOptions, useToolOptions, useUserOptions } from './lookups';
 import { PageNav } from './page-nav';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { toPageView } from './pagination';
 import {
   EMPTY_DRAFT,
@@ -31,7 +32,7 @@ import {
   type DraftErrors,
   type ToolResultDraft,
 } from './result-draft';
-import { useToolDetail, useToolResultCreate, useToolResults } from './queries';
+import { PAGE_SIZE, useToolDetail, useToolResultCreate, useToolResults } from './queries';
 import { SelectField } from './select-field';
 import {
   formatCount,
@@ -63,7 +64,9 @@ const isPositiveInteger = (value: string): boolean => /^\d+$/.test(value) && Num
  * **고른 툴은 주소가 소유한다** — 새로고침·공유가 같은 툴을 연다.
  */
 export const ToolPmResultScreen = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(종전 20)은 적지 않는다(#360). */
+  const { searchParams, setSearchParams, pageSize, changePageSize } =
+    usePageSizeSearchParams(PAGE_SIZE);
   const startedId = useId();
   const finishedId = `${startedId}-finished`;
   const noteId = `${startedId}-note`;
@@ -91,7 +94,7 @@ export const ToolPmResultScreen = () => {
   const users = useUserOptions();
   const orders = useOrderOptions(moldId);
   const detail = useToolDetail(moldId);
-  const results = useToolResults(moldId, page);
+  const results = useToolResults(moldId, page, pageSize);
 
   const create = useToolResultCreate(moldId, () => {
     setSaved(true);
@@ -429,7 +432,14 @@ export const ToolPmResultScreen = () => {
           </div>
         )}
         {/* 예방보전 이력은 여러 해 쌓인다 — 첫 쪽만 그리고 「이게 전부」로 보이게 두지 않는다. */}
-        {pageView !== null && <PageNav view={pageView} onChange={goToPage} />}
+        {pageView !== null && (
+          <PageNav
+            view={pageView}
+            onChange={goToPage}
+            sizes={PAGE_SIZES}
+            onChangeSize={changePageSize}
+          />
+        )}
       </section>
     </>
   );

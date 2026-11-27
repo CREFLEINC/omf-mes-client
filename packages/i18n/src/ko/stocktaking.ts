@@ -60,7 +60,7 @@ export const stocktaking = {
     /** 이 화면의 첫째 쓰기. 누르면 곧바로 나가지 않고 **확인 창이 먼저** 뜬다. */
     open: '실사 개시',
     confirmOpen: '실사 개시 실행',
-    keepEditing: '계속 입력',
+    keepEditing: '취소',
     discardDraft: '입력 버리기',
     /*
      * 이 화면의 **둘째 쓰기**. 「저장」이 아니라 「이 위치 실사 완료」인 것이 치환의 뜻이다 —

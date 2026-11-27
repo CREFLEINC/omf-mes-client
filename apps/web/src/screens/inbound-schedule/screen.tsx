@@ -30,8 +30,11 @@ import { ScheduleFilterBar } from './filter-bar';
 import {
   clearFilter,
   DEFAULT_FILTERS,
+  LIST_PAGE_SIZE,
+  LIST_PAGE_SIZES,
   readFilters,
   readPage,
+  readPageSize,
   toFilterQuery,
   toSearchParams,
   type ScheduleFilters,
@@ -86,8 +89,8 @@ const NO_EXCESSES: UnallocatedLine[] = [];
 /** 고른 발주를 풀었다는 `po` 값 — 결과가 하나뿐이어도 저절로 고르지 않는다. */
 const PO_CLEARED = 'none';
 
-/** 왼쪽 표 한 쪽 20줄(사용자 지시 2026-10-20). 서버 기본(50)보다 작게 실어 보낸다 — 상한은 200. */
-export const LIST_PAGE_SIZE = 20;
+/** 왼쪽 표 한 쪽 기본 20줄(사용자 지시 2026-10-20) — 쪽 크기 선택(10 · 20 · 50)은 filters.ts(#360). */
+export { LIST_PAGE_SIZE };
 
 /**
  * 참조 목록을 선택지로 옮긴다.
@@ -152,6 +155,7 @@ export const InboundScheduleScreen = () => {
   );
   const filters = useMemo<ScheduleFilters>(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
+  const pageSize = readPageSize(searchParams);
 
   /*
    * **조건이 하나도 없어도 조회한다.** 조회를 멈추는 것은 보내면 반드시 400 `INVALID`가 되는
@@ -169,14 +173,14 @@ export const InboundScheduleScreen = () => {
   const listQuery: PurchaseOrderSummaryQuery | null = resolvingInboundLot
     ? null
     : lotEntry !== null
-      ? { lotId: lotEntry, openOnly: false, size: LIST_PAGE_SIZE }
+      ? { lotId: lotEntry, openOnly: false, size: pageSize }
       : periodReason === null
         ? {
             /* 지연은 납기 기간과 상관없이 늦은 발주 전부다(사용자 지시 2026-10-21) — 기간을 싣지 않는다. */
             ...(filters.overdueOnly ? {} : toPeriodQuery(period)),
             ...toFilterQuery(filters),
             ...(page > 1 ? { page } : {}),
-            size: LIST_PAGE_SIZE,
+            size: pageSize,
           }
         : null;
 
@@ -247,7 +251,7 @@ export const InboundScheduleScreen = () => {
     nextFilters: ScheduleFilters,
     nextPage = 1,
   ): void => {
-    setSearchParams(toSearchParams(nextPeriod, nextFilters, nextPage, fallbackPeriod));
+    setSearchParams(toSearchParams(nextPeriod, nextFilters, nextPage, fallbackPeriod, pageSize));
   };
 
   /*
@@ -298,14 +302,14 @@ export const InboundScheduleScreen = () => {
 
   /** 발주를 고른다 — 조건·쪽은 그대로 두고 `po` 만 바꾼다. 앞 발주의 입고 결과·실패는 걷는다. */
   const selectOrder = (purchaseOrderId: number): void => {
-    const next = toSearchParams(period, filters, page, fallbackPeriod);
+    const next = toSearchParams(period, filters, page, fallbackPeriod, pageSize);
     next.set('po', String(purchaseOrderId));
     setSearchParams(next);
   };
 
   /** 고른 발주를 다시 누르면 고르기를 푼다 — 결과가 하나뿐일 때 저절로 다시 고르지 않게 `po` 를 비운 표시로 둔다. */
   const clearOrder = (): void => {
-    const next = toSearchParams(period, filters, page, fallbackPeriod);
+    const next = toSearchParams(period, filters, page, fallbackPeriod, pageSize);
     next.set('po', PO_CLEARED);
     setSearchParams(next);
   };
@@ -421,6 +425,7 @@ export const InboundScheduleScreen = () => {
                     { ...filters, sort: next },
                     1,
                     fallbackPeriod,
+                    pageSize,
                   );
                   const po = searchParams.get('po');
                   if (po !== null) nextParams.set('po', po);
@@ -432,6 +437,11 @@ export const InboundScheduleScreen = () => {
                   view={pageView}
                   onChange={(nextPage) => {
                     applyQuery(period, filters, nextPage);
+                  }}
+                  sizes={LIST_PAGE_SIZES}
+                  onChangeSize={(nextSize) => {
+                    /* 쪽 이동과 같다 — 첫 쪽부터 그 크기로 다시 받는다. */
+                    setSearchParams(toSearchParams(period, filters, 1, fallbackPeriod, nextSize));
                   }}
                 />
               )}

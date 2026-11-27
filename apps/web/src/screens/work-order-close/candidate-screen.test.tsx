@@ -1244,7 +1244,7 @@ describe('WorkOrderCloseCandidateScreen', () => {
     const reason = await screen.findByRole('combobox', { name: t.input.reason.label });
     await user.click(reason);
     await user.click(screen.getByRole('option', { name: 'Synthetic first reason' }));
-    const content = document.querySelector('.work-order-close-content');
+    const content = document.querySelector('.work-order-close-split');
 
     await user.click(
       screen.getAllByRole('button', { name: messages.common.inspectionHub.listCollapse })[0]!,

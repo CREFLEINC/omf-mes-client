@@ -11,10 +11,11 @@ import { CloseConfirmDialog } from './close-confirm-dialog';
 import { closeBlockReason } from './close-guard';
 import { toCountClose } from './close-request';
 import {
+  codeNameOf,
   isCountTypeListPending,
   isVarianceReasonListPending,
-  PLACEHOLDER_STOCKTAKING_CODES,
   toCodeOptionSets,
+  useStocktakingCodeLists,
 } from './code-options';
 import { CountFilterBar } from './count-filter-bar';
 import { CountLineTable } from './count-line-table';
@@ -865,7 +866,9 @@ export const StocktakingScreen = () => {
     if (selectedCountId !== null && activeLocationId !== null) void lines.refetch();
   };
 
-  const codeOptions = toCodeOptionSets(PLACEHOLDER_STOCKTAKING_CODES);
+  const codeLists = useStocktakingCodeLists();
+  const codeOptions = toCodeOptionSets(codeLists.values, codeLists.names);
+  const countTypeName = (code: string): string => codeNameOf(codeLists.names.countType, code);
 
   /**
    * 창고 선택지. **한 렌더에 한 벌만 만든다** — 조건 줄과 개시 폼이 같은 목록을 쓰는데
@@ -1352,6 +1355,7 @@ export const StocktakingScreen = () => {
            * 두지 않으면 그 값이 화면으로 샐 경로도 없다(#44).
            */
           warehouseName={describeReference(toReference(warehouses, count.warehouseId))}
+          countTypeName={countTypeName(count.countTypeCode)}
         />
 
         {/*
@@ -1452,6 +1456,7 @@ export const StocktakingScreen = () => {
               isBeyondLast={pageView.isBeyondLast}
               selectedCountId={selectedCountId}
               warehouseLookup={warehouses}
+              countTypeName={countTypeName}
               isLocked={isLocked}
               onFirstPage={() => {
                 applyQuery(filters);
@@ -1556,7 +1561,7 @@ export const StocktakingScreen = () => {
       {isOpenConfirmVisible && (
         <OpenConfirmDialog
           summary={{
-            countTypeCode: openDraft.countType,
+            countTypeCode: countTypeName(openDraft.countType),
             /*
              * **이름으로 풀어 넘긴다**(#44). 풀지 못한 갈래(미도착·목록에 없음·실패)도 그
              * 사정이 문구로 오며, 어느 갈래에도 번호가 담기지 않는다.

@@ -563,7 +563,7 @@ export const oqcInspection = {
       confirmedByShipment: '출하 완료로 판정이 확정되어 결과를 기록할 수 없습니다.',
       saveFailed: '결과를 저장하지 못했습니다.',
       discardBody: '입력한 내용이 사라집니다. 닫을까요?',
-      discardStay: '계속 입력',
+      discardStay: '취소',
       discardLeave: '닫기',
       /** IQC 결과 서랍과 같은 안내 — 출하 검사에 맞춘 문장(omf-all-around#356). */
       planVersionNote:

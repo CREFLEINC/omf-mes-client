@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { ScreenHeader } from '../../patterns/screen-header';
-import { ListCollapseTab, PaneListHead, usePaneSplit } from '../../patterns/po-board';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import {
   adjustmentErrors,
   decisionLockReason,
@@ -86,15 +86,6 @@ export const PoChangeReviewScreen = () => {
    */
   const isConflict = write.error?.kind === 'conflict';
 
-  /* 목록 접기(#350, app.css `list-collapsible`) — 넓은 창은 왼쪽 세로 탭 + 상세, 좁으면 상세 위 가로 탭 + 상세 한 칸. */
-  const listSplit = usePaneSplit('omf-mes:po-change-review:list');
-  const listCollapse = {
-    collapsed: listSplit.collapsed,
-    onToggle: listSplit.toggleCollapsed,
-    collapseLabel: messages.common.inspectionHub.listCollapse,
-    expandLabel: messages.common.inspectionHub.listExpand,
-    count: list.data === undefined ? undefined : rows.length,
-  };
   return (
     <>
       <ScreenHeader
@@ -108,112 +99,121 @@ export const PoChangeReviewScreen = () => {
         actions={<Chip status="warning">{t.header.unacknowledged(unacknowledged)}</Chip>}
       />
 
-      <div
-        className="two-pane po-change-review-layout list-collapsible"
-        data-left-collapsed={listCollapse.collapsed ? 'true' : undefined}
-      >
-        <section className="pane po-change-review-pane" aria-label={t.panes.list}>
-          <PaneListHead title={t.panes.list} collapse={listCollapse} />
-          <NotificationList
-            rows={rows}
-            selectedId={selectedId}
-            isLoading={list.isPending}
-            error={
-              list.isError ? (
-                <AlertBanner
-                  variant="error"
-                  action={
-                    <Button variant="outlined" size="sm" onClick={() => void list.refetch()}>
-                      {messages.common.retry}
-                    </Button>
-                  }
-                >
-                  {t.list.loadFailed}
-                </AlertBanner>
-              ) : null
-            }
-            onSelect={(id) => setSelectedId((prev) => (prev === id ? null : id))}
-          />
-        </section>
-        <ListCollapseTab collapse={listCollapse} />
+      {/* 목록 | 상세 공용 분할 — 가운데 막대로 폭, 「⋯」로 좌우/상하 배치, 상하일 때 높이 막대(#360). */}
+      <ListDetailWorkspace
+        storageKey="omf-mes:po-change-review"
+        initialRatio={0.5}
+        list={{
+          label: t.panes.list,
+          title: t.panes.list,
+          count: list.data === undefined ? undefined : rows.length,
+          className: 'po-change-review-pane',
+          content: (
+            <NotificationList
+              rows={rows}
+              selectedId={selectedId}
+              isLoading={list.isPending}
+              error={
+                list.isError ? (
+                  <AlertBanner
+                    variant="error"
+                    action={
+                      <Button variant="outlined" size="sm" onClick={() => void list.refetch()}>
+                        {messages.common.retry}
+                      </Button>
+                    }
+                  >
+                    {t.list.loadFailed}
+                  </AlertBanner>
+                ) : null
+              }
+              onSelect={(id) => setSelectedId((prev) => (prev === id ? null : id))}
+            />
+          ),
+        }}
+        detail={{
+          label: t.title,
+          bare: true,
+          content: (
+            <>
+              <DiffPane selected={selected} uoms={uoms} />
 
-        <div className="pane-stack">
-          <DiffPane selected={selected} uoms={uoms} />
+              <WorkOrderPane
+                rows={affected}
+                isLoading={workOrders.isPending && selectedId !== null}
+                isError={workOrders.isError}
+                hasSelection={selectedId !== null}
+                overProduced={warnings.overProduced}
+                changedQty={selected?.orderQty ?? null}
+                showAdjustments={draft.decision === 'APPLY'}
+                adjustments={draft.adjustments}
+                adjustmentErrors={adjustmentErrorMap}
+                onChangeAdjustment={(workOrderId, value) =>
+                  setDraft((current) => ({
+                    ...current,
+                    adjustments: { ...current.adjustments, [String(workOrderId)]: value },
+                  }))
+                }
+              />
 
-          <WorkOrderPane
-            rows={affected}
-            isLoading={workOrders.isPending && selectedId !== null}
-            isError={workOrders.isError}
-            hasSelection={selectedId !== null}
-            overProduced={warnings.overProduced}
-            changedQty={selected?.orderQty ?? null}
-            showAdjustments={draft.decision === 'APPLY'}
-            adjustments={draft.adjustments}
-            adjustmentErrors={adjustmentErrorMap}
-            onChangeAdjustment={(workOrderId, value) =>
-              setDraft((current) => ({
-                ...current,
-                adjustments: { ...current.adjustments, [String(workOrderId)]: value },
-              }))
-            }
-          />
+              <DecisionPane
+                draft={draft}
+                showError={showError}
+                warnings={warnings}
+                onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
+              />
 
-          <DecisionPane
-            draft={draft}
-            showError={showError}
-            warnings={warnings}
-            onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
-          />
-
-          <section className="pane po-change-review-pane" aria-label={t.decision.submit}>
-            {isConflict ? (
-              <div className="banner-slot">
-                <AlertBanner
-                  variant="error"
-                  title={t.conflict.title}
-                  action={
-                    <Button
-                      variant="outlined"
-                      size="sm"
-                      onClick={() => {
-                        write.reset();
-                        setSelectedId(null);
-                        void list.refetch();
-                      }}
+              <section className="pane po-change-review-pane" aria-label={t.decision.submit}>
+                {isConflict ? (
+                  <div className="banner-slot">
+                    <AlertBanner
+                      variant="error"
+                      title={t.conflict.title}
+                      action={
+                        <Button
+                          variant="outlined"
+                          size="sm"
+                          onClick={() => {
+                            write.reset();
+                            setSelectedId(null);
+                            void list.refetch();
+                          }}
+                        >
+                          {t.conflict.reload}
+                        </Button>
+                      }
                     >
-                      {t.conflict.reload}
-                    </Button>
-                  }
-                >
-                  {t.conflict.description}
-                </AlertBanner>
-              </div>
-            ) : (
-              <SaveErrorBanner error={write.error} onReload={() => void list.refetch()} />
-            )}
+                      {t.conflict.description}
+                    </AlertBanner>
+                  </div>
+                ) : (
+                  <SaveErrorBanner error={write.error} onReload={() => void list.refetch()} />
+                )}
 
-            {lock !== undefined && (
-              <div className="banner-slot">
-                <AlertBanner variant="info">{lock}</AlertBanner>
-              </div>
-            )}
-            <div className="form-actions">
-              <Button
-                disabled={lock !== undefined || detail.isPending}
-                onClick={() => {
-                  setShowError(true);
-                  const body = toAcknowledgeBody(gate);
-                  /* 게이트가 열려 있어도 본문이 없으면 멈춘다 — 반쪽짜리 판정을 보내지 않는다. */
-                  if (body === null) return;
-                  write.write(body);
-                }}
-              >
-                {t.decision.submit}
-              </Button>
-            </div>
-          </section>
-        </div>
-      </div>
+                {lock !== undefined && (
+                  <div className="banner-slot">
+                    <AlertBanner variant="info">{lock}</AlertBanner>
+                  </div>
+                )}
+                <div className="form-actions">
+                  <Button
+                    disabled={lock !== undefined || detail.isPending}
+                    onClick={() => {
+                      setShowError(true);
+                      const body = toAcknowledgeBody(gate);
+                      /* 게이트가 열려 있어도 본문이 없으면 멈춘다 — 반쪽짜리 판정을 보내지 않는다. */
+                      if (body === null) return;
+                      write.write(body);
+                    }}
+                  >
+                    {t.decision.submit}
+                  </Button>
+                </div>
+              </section>
+            </>
+          ),
+        }}
+      />
     </>
   );
 };

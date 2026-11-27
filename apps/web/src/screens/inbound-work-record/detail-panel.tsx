@@ -197,6 +197,11 @@ export const DetailPanel = ({
       size="lg"
       className="detail-drawer iwr-drawer"
       title={<span className="iwr-code">{data?.inboundLotNo ?? ''}</span>}
+      /*
+       * X 닫기 단추는 두지 않는다(사용자 지시 2026-11-27) — 단추 줄의 [닫기] · Esc 로 닫는다. 단추 줄이 아직 없는
+       * 동안(불러오는 중 · 실패)만 닫을 길이 사라지지 않게 X 를 남긴다.
+       */
+      showCloseButton={data === undefined || view === null}
       onClose={onClose}
       footer={
         data === undefined || view === null

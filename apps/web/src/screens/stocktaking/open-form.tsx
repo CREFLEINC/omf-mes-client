@@ -79,7 +79,7 @@ export const OpenForm = ({
           options={countTypeOptions}
           value={draft.countType}
           error={fieldErrors[OPEN_FIELD_NAMES.countType]}
-          placeholder={codePlaceholder()}
+          placeholder={codePlaceholder(t.fields.countType, countTypeOptions)}
           disabled={isLocked}
           onChange={onChangeCountType}
         />

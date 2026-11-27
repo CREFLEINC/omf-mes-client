@@ -36,6 +36,8 @@ export interface ResultListQuery {
   startedFrom?: string;
   startedTo?: string;
   page?: number;
+  /** 고른 쪽 크기 — 기본이면 싣지 않는다(#360). */
+  size?: number;
 }
 
 export const resultKeys = {

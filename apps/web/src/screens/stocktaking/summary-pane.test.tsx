@@ -16,6 +16,7 @@ const renderPane = (overrides: Partial<SummaryPaneProps> = {}) =>
       count={toCountView(countResponse())}
       summary={toCountSummaryView(summaryResponse())}
       warehouseName={WAREHOUSE_LABEL}
+      countTypeName="SAMPLE_COUNT_TYPE_A"
       {...overrides}
     />,
   );

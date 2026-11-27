@@ -38,6 +38,7 @@ import {
   type StatusView,
 } from './filters';
 import {
+  LIST_PAGE_SIZES,
   PAGE_SIZE,
   usePlannedShortage,
   usePlants,
@@ -63,6 +64,10 @@ const readPage = (params: URLSearchParams): number => {
   const page = Number(params.get('page'));
   return Number.isInteger(page) && page > 1 ? page : 1;
 };
+
+/** 쪽 크기. 고를 수 있는 값이 아니면 기본(50)으로 읽는다(#360). */
+const readPageSize = (params: URLSearchParams): number =>
+  LIST_PAGE_SIZES.find((size) => String(size) === params.get('size')) ?? PAGE_SIZE;
 
 interface PlanGroup {
   key: string;
@@ -107,6 +112,7 @@ export const MaterialIssueStatusScreen = () => {
   const view = readView(searchParams);
   const applied = readFilters(searchParams);
   const page = readPage(searchParams);
+  const pageSize = readPageSize(searchParams);
   const selectedId = readSelectedId(searchParams);
 
   const plants = usePlants();
@@ -129,7 +135,7 @@ export const MaterialIssueStatusScreen = () => {
 
   const more = useFilterMore();
 
-  const list = useRequestList(filters, page, view === 'list' && plantId !== null);
+  const list = useRequestList(filters, page, pageSize, view === 'list' && plantId !== null);
   const shortage = usePlannedShortage(plantId);
   const warehouses = useWarehouseOptions(plantId);
 
@@ -137,8 +143,14 @@ export const MaterialIssueStatusScreen = () => {
     (shortage.data?.items.filter((row) => row.shortageQty > 0).length ?? 0) +
     (shortage.data?.unsourced?.length ?? 0);
 
-  const go = (nextView: StatusView, next: StatusFilters, nextPage = 1, id?: number): void => {
-    const params = toSearchParams(nextView, next, nextPage);
+  const go = (
+    nextView: StatusView,
+    next: StatusFilters,
+    nextPage = 1,
+    id?: number,
+    nextSize = pageSize,
+  ): void => {
+    const params = toSearchParams(nextView, next, nextPage, nextSize);
     if (id !== undefined) params.set('id', String(id));
     setSearchParams(params);
   };
@@ -405,10 +417,12 @@ export const MaterialIssueStatusScreen = () => {
             </tbody>
           ))}
         </table>
-        {/* 공용 쪽 이동 줄 — 1쪽 · 0건이어도 늘 보인다(#360). 쪽 크기는 정해진 값(PAGE_SIZE)이라 고르는 칸이 없다. */}
+        {/* 공용 쪽 이동 줄 — 1쪽 · 0건이어도 늘 보인다. 쪽 크기를 바꾸면 첫 쪽부터 다시 받는다(#360). */}
         <PageNav
-          meta={{ page, size: PAGE_SIZE, total }}
+          meta={{ page, size: pageSize, total }}
           onChangePage={(nextPage) => go('list', filters, nextPage)}
+          sizes={LIST_PAGE_SIZES}
+          onChangeSize={(nextSize) => go('list', filters, 1, undefined, nextSize)}
         />
       </>
     );

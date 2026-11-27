@@ -91,6 +91,8 @@ export const DistributionControls = ({
   const [activeId, setActiveId] = useState('');
   const [activeOwner, setActiveOwner] = useState('');
   const [resultPage, setResultPage] = useState(1);
+  /* 결과 표 쪽 크기 — 받아 온 결과를 화면에서 나눈다. 품질 화면과 같은 10 · 20 · 50, 기본은 종전 10(#360). */
+  const [resultPageSize, setResultPageSize] = useState<number>(10);
   const [dailyPages, setDailyPages] = useState<Record<string, number>>({});
   const [editingResultKey, setEditingResultKey] = useState<string | null>(null);
   const [rows, setRows] = useState<DistributionSegment[]>([]);
@@ -198,10 +200,13 @@ export const DistributionControls = ({
   );
   const visibleResultPage = Math.min(
     resultPage,
-    Math.max(1, Math.ceil(visibleResultRows.length / 10)),
+    Math.max(1, Math.ceil(visibleResultRows.length / resultPageSize)),
   );
   const resultRowsByOrder = new Map<string, typeof visibleResultRows>();
-  for (const row of visibleResultRows.slice((visibleResultPage - 1) * 10, visibleResultPage * 10)) {
+  for (const row of visibleResultRows.slice(
+    (visibleResultPage - 1) * resultPageSize,
+    visibleResultPage * resultPageSize,
+  )) {
     const orderRows = resultRowsByOrder.get(row.owner) ?? [];
     orderRows.push(row);
     resultRowsByOrder.set(row.owner, orderRows);
@@ -1181,8 +1186,16 @@ export const DistributionControls = ({
                 </div>
                 {/* 1쪽뿐이어도 쪽 이동 줄은 늘 보인다(단추는 잠긴 채 · #360). */}
                 <PageNav
-                  meta={{ page: visibleResultPage, size: 10, total: visibleResultRows.length }}
+                  meta={{
+                    page: visibleResultPage,
+                    size: resultPageSize,
+                    total: visibleResultRows.length,
+                  }}
                   onChangePage={setResultPage}
+                  onChangeSize={(size) => {
+                    setResultPageSize(size);
+                    setResultPage(1);
+                  }}
                 />
                 {!!reviewResult!.warnings.length && (
                   <>

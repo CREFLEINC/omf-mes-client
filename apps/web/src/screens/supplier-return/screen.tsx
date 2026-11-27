@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
 import { ScreenHeader } from '../../patterns/screen-header';
 import {
@@ -15,8 +16,11 @@ import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import {
   clearFilter,
   DEFAULT_FILTERS,
+  LIST_PAGE_SIZES,
+  PAGE_SIZE,
   readFilters,
   readPage,
+  readPageSize,
   readSelectedReceiptId,
   SELECTION_KEYS,
   toFilterQuery,
@@ -215,6 +219,7 @@ export const SupplierReturnScreen = () => {
    */
   const filters = useMemo<ReceiptFilters>(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
+  const pageSize = readPageSize(searchParams);
   const selectedReceiptId = readSelectedReceiptId(searchParams);
 
   /*
@@ -223,7 +228,11 @@ export const SupplierReturnScreen = () => {
    *
    * **기본 기간을 심지 않는다** — 첫 요청에 날짜 조건이 실리지 않는다.
    */
-  const listQuery = { ...toFilterQuery(filters), ...(page > 1 ? { page } : {}) };
+  const listQuery = {
+    ...toFilterQuery(filters),
+    ...(page > 1 ? { page } : {}),
+    ...(pageSize === PAGE_SIZE ? {} : { size: pageSize }),
+  };
 
   const list = useGoodsReceipts(listQuery);
   const rows = list.data?.items ?? EMPTY_ROWS;
@@ -551,14 +560,14 @@ export const SupplierReturnScreen = () => {
     if (isLocked) return;
 
     setHasNotFoundNotice(false);
-    setSearchParams(toSearchParams(nextFilters, nextPage));
+    setSearchParams(toSearchParams(nextFilters, nextPage, pageSize));
   };
 
   /** 고르고 푸는 것은 **보이는 행을 바꾸지 않는다**(수명 표 4행). */
   const toggleSelectReceipt = (goodsReceiptId: number): void => {
     setHasNotFoundNotice(false);
 
-    const next = toSearchParams(filters, page);
+    const next = toSearchParams(filters, page, pageSize);
 
     if (goodsReceiptId !== selectedReceiptId) {
       next.set(SELECTION_KEYS.goodsReceipt, String(goodsReceiptId));
@@ -1067,79 +1076,106 @@ export const SupplierReturnScreen = () => {
         />
       )}
 
-      <section className="pane" aria-label={t.panes.list}>
-        {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-        <GrFilterBar
-          appliedFilters={filters}
-          warehouseOptions={toSelectOptions(warehouses)}
-          warehouseNote={lookupNote(warehouses)}
-          receiptTypeOptions={codeOptions.receiptType}
-          statusOptions={codeOptions.status}
-          chipNames={{ warehouse: describeReference(warehouseReference) }}
-          isLocked={isLocked}
-          onSearch={(nextFilters) => {
-            applyQuery(nextFilters);
-          }}
-          onRemoveFilter={(key: RemovableChipKey) => {
-            applyQuery(clearFilter(filters, key));
-          }}
-          onReset={() => {
-            applyQuery(DEFAULT_FILTERS);
-          }}
-        />
-
-        {!list.isError && (
-          <>
-            <GrTable
-              rows={rows}
-              isLoading={list.isPending}
-              isBeyondLast={pageView.isBeyondLast}
-              selectedReceiptId={selectedReceiptId}
-              warehouseLookup={warehouses}
-              isLocked={isLocked}
-              onFirstPage={() => {
-                applyQuery(filters);
-              }}
-              onToggleSelect={toggleSelectReceipt}
-              onRetryReferences={retryTopReferences}
-            />
-            {!list.isPending && (
-              <PageNav
-                view={pageView}
+      {/*
+       * 목록 | 상세 — 공용 분할(가운데 폭 막대 · 상하 배치의 높이 막대 · 「⋯」 좌우/상하 배치 · 목록 접기 · #360).
+       * 상자 안 조회 · 목록 · 라인 · 반품 정보 · 결과는 그대로 옮겼다.
+       */}
+      <ListDetailWorkspace
+        storageKey="omf-mes:supplier-return"
+        list={{
+          label: t.panes.list,
+          title: t.panes.list,
+          count: list.data?.page.total,
+          content: (
+            <>
+              {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
+              <GrFilterBar
+                appliedFilters={filters}
+                warehouseOptions={toSelectOptions(warehouses)}
+                warehouseNote={lookupNote(warehouses)}
+                receiptTypeOptions={codeOptions.receiptType}
+                statusOptions={codeOptions.status}
+                chipNames={{ warehouse: describeReference(warehouseReference) }}
                 isLocked={isLocked}
-                onChange={(nextPage) => {
-                  applyQuery(filters, nextPage);
+                onSearch={(nextFilters) => {
+                  applyQuery(nextFilters);
+                }}
+                onRemoveFilter={(key: RemovableChipKey) => {
+                  applyQuery(clearFilter(filters, key));
+                }}
+                onReset={() => {
+                  applyQuery(DEFAULT_FILTERS);
                 }}
               />
-            )}
-          </>
-        )}
-      </section>
 
-      <section className="pane" aria-label={t.panes.lines}>
-        {detailPane()}
-      </section>
+              {!list.isError && (
+                <>
+                  <GrTable
+                    rows={rows}
+                    isLoading={list.isPending}
+                    isBeyondLast={pageView.isBeyondLast}
+                    selectedReceiptId={selectedReceiptId}
+                    warehouseLookup={warehouses}
+                    isLocked={isLocked}
+                    onFirstPage={() => {
+                      applyQuery(filters);
+                    }}
+                    onToggleSelect={toggleSelectReceipt}
+                    onRetryReferences={retryTopReferences}
+                  />
+                  {!list.isPending && (
+                    <PageNav
+                      view={pageView}
+                      isLocked={isLocked}
+                      onChange={(nextPage) => {
+                        applyQuery(filters, nextPage);
+                      }}
+                      sizes={LIST_PAGE_SIZES}
+                      onChangeSize={(nextSize) => {
+                        /* 쪽 이동과 같다 — 첫 쪽부터 그 크기로 다시 받고, 고른 전표는 풀린다(수명 표 1~3행). */
+                        if (isLocked) return;
+                        setSearchParams(toSearchParams(filters, 1, nextSize));
+                      }}
+                    />
+                  )}
+                </>
+              )}
+            </>
+          ),
+        }}
+        detail={{
+          label: `${t.panes.lines} · ${t.panes.form}`,
+          bare: true,
+          content: (
+            <>
+              <section className="pane" aria-label={t.panes.lines}>
+                {detailPane()}
+              </section>
 
-      {/*
-       * 반품 정보는 **라인 표가 그려지는 조건과 같은 조건**으로 연다 — 갈리면 표는 없는데
-       * 폼만 있는 상태가 생기고, 사용자는 무엇에 대한 입력인지 모른 채 값을 넣는다.
-       */}
-      {returnTarget !== null && (
-        <section className="pane" aria-label={t.panes.form}>
-          {returnPane(returnTarget)}
-        </section>
-      )}
+              {/*
+               * 반품 정보는 **라인 표가 그려지는 조건과 같은 조건**으로 연다 — 갈리면 표는 없는데
+               * 폼만 있는 상태가 생기고, 사용자는 무엇에 대한 입력인지 모른 채 값을 넣는다.
+               */}
+              {returnTarget !== null && (
+                <section className="pane" aria-label={t.panes.form}>
+                  {returnPane(returnTarget)}
+                </section>
+              )}
 
-      {/*
-       * 결과는 **따로 선 구획**이다. 반품 정보 폼 안에 두면 다음 처리를 준비하는 입력과 방금
-       * 만들어진 번호가 섞인다. 이름은 부품이 `role="status"`로 갖는다 — 구획에도 같은 이름을
-       * 붙이면 두 번 읽힌다.
-       */}
-      {result !== null && (
-        <section className="pane">
-          <ResultPane result={result} lines={resultLines} />
-        </section>
-      )}
+              {/*
+               * 결과는 **따로 선 구획**이다. 반품 정보 폼 안에 두면 다음 처리를 준비하는 입력과 방금
+               * 만들어진 번호가 섞인다. 이름은 부품이 `role="status"`로 갖는다 — 구획에도 같은 이름을
+               * 붙이면 두 번 읽힌다.
+               */}
+              {result !== null && (
+                <section className="pane">
+                  <ResultPane result={result} lines={resultLines} />
+                </section>
+              )}
+            </>
+          ),
+        }}
+      />
 
       {isDiscardOpen && (
         <DiscardConfirmDialog

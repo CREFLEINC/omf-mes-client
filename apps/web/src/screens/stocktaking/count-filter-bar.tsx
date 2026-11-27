@@ -151,8 +151,9 @@ export const CountFilterBar = ({
        * 조건 때문에 잠기는 자리는 없다 — 조건 없이도 조회가 열려 있다.
        * **전송 중에만 잠긴다**(수명 표 18행) — 조회·초기화는 고른 실사를 비우는 길이라,
        * 보내는 동안 열어 두면 앞 요청의 결과가 다른 맥락에 나타난다.
+       * 조건 줄 오른쪽 끝에 선다 — 재고 관리 묶음의 다른 탭과 같다(#360).
        */}
-      <div className="field-cell field-cell-unlabeled">
+      <div className="field-cell field-cell-unlabeled filter-actions-end">
         <div className="filter-actions">
           <Button disabled={isLocked} onClick={search}>
             {messages.common.search}

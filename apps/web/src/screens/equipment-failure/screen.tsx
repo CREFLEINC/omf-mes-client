@@ -1,8 +1,8 @@
 import { Breadcrumb, Button, Dialog, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router';
 
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
 import { ScreenHeader } from '../../patterns/screen-header';
 import { DetailPane } from './detail-pane';
@@ -20,6 +20,8 @@ import {
 import { LoadErrorBanner } from './load-error-banner';
 import { equipmentNote, useEquipmentOptions } from './lookups';
 import { PageNav } from './page-nav';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { toPageView } from './pagination';
 import {
   useComplete,
@@ -32,6 +34,9 @@ import { openDowntimeWarning } from './transitions';
 import type { BreakdownReportView, SelectOption } from './types';
 
 const t = messages.equipmentFailure;
+
+/** 목록 쪽 크기 기본 — 계약 `size` 기본 50(종전에는 싣지 않아 이 값이었다 · #360). */
+const LIST_PAGE_SIZE = 50;
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ROWS: BreakdownReportView[] = [];
@@ -61,12 +66,20 @@ type PendingAction = 'start' | 'complete' | null;
  * | 4 | 저장·전이 | 그대로 | 그대로 — 같은 건을 계속 본다 |
  */
 export const EquipmentFailureScreen = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(계약 기본 50)은 싣지도 적지도 않는다(#360). */
+  const { searchParams, setSearchParams, pageSize, changePageSize } =
+    usePageSizeSearchParams(LIST_PAGE_SIZE);
 
   const filters = useMemo<FailureFilters>(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
   const selectedId = readSelected(searchParams);
-  const listQuery = useMemo(() => toListQuery(filters, page), [filters, page]);
+  const listQuery = useMemo(
+    () => ({
+      ...toListQuery(filters, page),
+      ...(pageSize === LIST_PAGE_SIZE ? {} : { size: pageSize }),
+    }),
+    [filters, page, pageSize],
+  );
 
   const [causeCode, setCauseCode] = useState('');
   const [handlingNote, setHandlingNote] = useState('');
@@ -170,99 +183,107 @@ export const EquipmentFailureScreen = () => {
         />
       )}
 
-      <div className="equipment-failure-workspace">
-        <section className="pane equipment-failure-pane" aria-label={t.panes.filters}>
-          <h2 className="pane-title">{t.panes.filters}</h2>
-          <FailureFilterBar
-            appliedFilters={filters}
-            equipmentOptions={equipmentOptions}
-            equipmentNote={equipmentNote(equipments)}
-            onSearch={(next) => {
-              apply(next);
-            }}
-            onReset={() => {
-              apply(DEFAULT_FILTERS);
-            }}
-          />
-        </section>
-
-        <div className="two-pane equipment-failure-layout">
-          <section
-            className="pane equipment-failure-pane equipment-failure-list-pane"
-            aria-label={t.panes.list}
-          >
-            <h2 className="pane-title">{t.panes.list}</h2>
-            {!list.isError && (
-              <>
-                <FailureTable
-                  rows={rows}
-                  selectedId={selectedId}
-                  isLoading={list.isPending}
-                  isBeyondLast={pageView.isBeyondLast}
-                  onSelect={(breakdownId) => {
-                    /* 고른 줄을 다시 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
-                    apply(filters, page, breakdownId === selectedId ? null : breakdownId);
-                  }}
-                  onFirstPage={() => {
-                    apply(filters);
-                  }}
-                />
-                {!list.isPending && !pageView.isBeyondLast && (
-                  <PageNav
-                    view={pageView}
-                    onChange={(nextPage) => {
-                      apply(filters, nextPage);
-                    }}
-                  />
-                )}
-              </>
-            )}
-          </section>
-
-          <section
-            className="pane equipment-failure-pane equipment-failure-detail-pane"
-            aria-label={t.panes.detail}
-          >
-            <h2 className="pane-title">{t.panes.detail}</h2>
-            {detail.isError ? (
-              <LoadErrorBanner
-                error={detail.error}
-                onRetry={() => {
-                  void detail.refetch();
+      {/* 조회 조건 · 목록 | 상세 공용 분할 — 가운데 막대로 폭, 「⋯」로 좌우/상하 배치, 상하일 때 높이 막대(#360). */}
+      <ListDetailWorkspace
+        storageKey="omf-mes:equipment-failure"
+        filter={{
+          label: t.panes.filters,
+          content: (
+            <>
+              <h2 className="pane-title">{t.panes.filters}</h2>
+              <FailureFilterBar
+                appliedFilters={filters}
+                equipmentOptions={equipmentOptions}
+                equipmentNote={equipmentNote(equipments)}
+                onSearch={(next) => {
+                  apply(next);
+                }}
+                onReset={() => {
+                  apply(DEFAULT_FILTERS);
                 }}
               />
-            ) : (
-              <>
-                <SaveErrorBanner error={writeError} />
-                <DetailPane
-                  detail={detailView}
-                  isLoading={detail.isPending && selectedId !== null}
-                  causeCode={causeCode}
-                  handlingNote={handlingNote}
-                  fieldErrors={fieldErrors}
-                  isSaving={isSaving}
-                  onChangeCause={setCauseCode}
-                  onChangeNote={setHandlingNote}
-                  onSave={() => {
-                    clearOtherErrors('update');
-                    /* 빈 값은 「지운다」가 아니라 「아직 안 적었다」다 — `null`로 보낸다. */
-                    update.write({
-                      causeCode: causeCode === '' ? null : causeCode,
-                      handlingNote: handlingNote.trim() === '' ? null : handlingNote,
-                    });
+            </>
+          ),
+        }}
+        list={{
+          label: t.panes.list,
+          title: t.panes.list,
+          count: list.data?.page.total,
+          className: 'equipment-failure-pane equipment-failure-list-pane',
+          content: !list.isError && (
+            <>
+              <FailureTable
+                rows={rows}
+                selectedId={selectedId}
+                isLoading={list.isPending}
+                isBeyondLast={pageView.isBeyondLast}
+                onSelect={(breakdownId) => {
+                  /* 고른 줄을 다시 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+                  apply(filters, page, breakdownId === selectedId ? null : breakdownId);
+                }}
+                onFirstPage={() => {
+                  apply(filters);
+                }}
+              />
+              {!list.isPending && !pageView.isBeyondLast && (
+                <PageNav
+                  view={pageView}
+                  onChange={(nextPage) => {
+                    apply(filters, nextPage);
                   }}
-                  onStartHandling={() => {
-                    setPending('start');
-                  }}
-                  onComplete={() => {
-                    setPending('complete');
+                  sizes={PAGE_SIZES}
+                  onChangeSize={changePageSize}
+                />
+              )}
+            </>
+          ),
+        }}
+        detail={{
+          label: t.panes.detail,
+          className: 'equipment-failure-pane equipment-failure-detail-pane',
+          content: (
+            <>
+              <h2 className="pane-title">{t.panes.detail}</h2>
+              {detail.isError ? (
+                <LoadErrorBanner
+                  error={detail.error}
+                  onRetry={() => {
+                    void detail.refetch();
                   }}
                 />
-              </>
-            )}
-          </section>
-        </div>
-      </div>
+              ) : (
+                <>
+                  <SaveErrorBanner error={writeError} />
+                  <DetailPane
+                    detail={detailView}
+                    isLoading={detail.isPending && selectedId !== null}
+                    causeCode={causeCode}
+                    handlingNote={handlingNote}
+                    fieldErrors={fieldErrors}
+                    isSaving={isSaving}
+                    onChangeCause={setCauseCode}
+                    onChangeNote={setHandlingNote}
+                    onSave={() => {
+                      clearOtherErrors('update');
+                      /* 빈 값은 「지운다」가 아니라 「아직 안 적었다」다 — `null`로 보낸다. */
+                      update.write({
+                        causeCode: causeCode === '' ? null : causeCode,
+                        handlingNote: handlingNote.trim() === '' ? null : handlingNote,
+                      });
+                    }}
+                    onStartHandling={() => {
+                      setPending('start');
+                    }}
+                    onComplete={() => {
+                      setPending('complete');
+                    }}
+                  />
+                </>
+              )}
+            </>
+          ),
+        }}
+      />
 
       {/*
        * ⭐ 되돌릴 수 없는 전이 둘의 확인 창. **바깥을 눌러 닫히게 두지 않는다** — 실수로 닫히면

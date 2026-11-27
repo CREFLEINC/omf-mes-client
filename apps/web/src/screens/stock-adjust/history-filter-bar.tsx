@@ -199,8 +199,8 @@ export const HistoryFilterBar = ({
           }}
         />
 
-        {/* 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다. */}
-        <div className="field-cell field-cell-unlabeled">
+        {/* 조회와 초기화는 짝이라 함께 줄바꿈되게 묶고, 조건 줄 오른쪽 끝에 세운다(#360). */}
+        <div className="field-cell field-cell-unlabeled filter-actions-end">
           <div className="filter-actions">
             <Button disabled={isLocked} onClick={search}>
               {messages.common.search}

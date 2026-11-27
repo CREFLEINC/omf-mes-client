@@ -13,7 +13,6 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
-import { useSearchParams } from 'react-router';
 
 import {
   FilterMoreButton,
@@ -52,8 +51,11 @@ import {
 } from './notice-draft';
 import { NoticeForm } from './notice-form';
 import { PageNav } from './page-nav';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { toPageView } from './pagination';
 import {
+  PAGE_SIZE,
   useAcknowledge,
   useAcknowledgements,
   useDismiss,
@@ -97,7 +99,9 @@ type Confirming = 'none' | 'publish' | 'close';
  * 「조건 지우기」는 처음 값과 다른 것이 있을 때만 보인다.
  */
 export const NoticeScreen = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(종전 20)은 적지 않는다(#360). */
+  const { searchParams, setSearchParams, pageSize, changePageSize } =
+    usePageSizeSearchParams(PAGE_SIZE);
   const more = useFilterMore();
   const filters = readFilters(searchParams);
   const selectedId = readSelected(searchParams);
@@ -113,7 +117,7 @@ export const NoticeScreen = () => {
   const [flash, setFlash] = useState<string | null>(null);
 
   const workOrders = useWorkOrderOptions();
-  const notices = useNotices(filters);
+  const notices = useNotices(filters, pageSize);
   const detail = useNoticeDetail(selectedId);
   const selected = detail.data ?? null;
 
@@ -487,6 +491,8 @@ export const NoticeScreen = () => {
                   onChange={(page) => {
                     apply({ page });
                   }}
+                  sizes={PAGE_SIZES}
+                  onChangeSize={changePageSize}
                 />
               )}
             </>

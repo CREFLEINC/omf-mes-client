@@ -11,7 +11,7 @@ const t = messages.stockAdjust;
 const BANNER_TEXT = '합성 실패 배너';
 
 const SUMMARY: RegisterSummary = {
-  reasonCode: 'SAMPLE_AR_A',
+  reasonName: 'SAMPLE_AR_A',
   sendToErp: true,
   includedCount: 2,
   excludedCount: 1,
@@ -42,14 +42,14 @@ describe('RegisterConfirmDialog — 무엇을 만드는가', () => {
     renderDialog();
 
     expect(screen.getByText('SAMPLE_AR_A')).toBeVisible();
-    expect(screen.getByText(t.dialog.sendToErpOn)).toBeVisible();
-    expect(screen.getByText(t.dialog.includedLineCount(2))).toBeVisible();
+    expect(screen.getByText(t.dialog.sendToErp)).toBeVisible();
+    expect(screen.getByText(t.dialog.erpTarget(2))).toBeVisible();
   });
 
   it('ERP 송신을 껐으면 그 사실이 보인다', () => {
     renderDialog({ sendToErp: false });
 
-    expect(screen.getByText(t.dialog.sendToErpOff)).toBeVisible();
+    expect(screen.getByText(t.dialog.erpTargetOff(2))).toBeVisible();
   });
 
   /**
@@ -64,11 +64,10 @@ describe('RegisterConfirmDialog — 무엇을 만드는가', () => {
     expect(screen.getByText(t.dialog.excludedLineCount(1))).toBeVisible();
   });
 
-  /** 짝 방향 — 빠지는 줄이 없다는 것도 말한다. 없을 때 침묵하면 확인이 반쪽이 된다. */
-  it('빠지는 줄이 없으면 그 사실을 말한다', () => {
+  /** 빠지는 줄이 없으면 그 줄을 내지 않는다(사용자 시안 2026-11-27). */
+  it('빠지는 줄이 없으면 빠지는 줄 문장이 없다', () => {
     renderDialog({ excludedCount: 0 });
 
-    expect(screen.getByText(t.dialog.noExcludedLine)).toBeVisible();
     expect(screen.queryByText(t.dialog.excludedLineCount(0))).not.toBeInTheDocument();
   });
 

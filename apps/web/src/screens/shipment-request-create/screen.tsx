@@ -1,11 +1,12 @@
 import { SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router';
 
 import { ItemPickerDialog, type ItemRow } from '../../patterns/item-picker';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { usePageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { useSession } from '../../patterns/session';
 import { AssignmentFormPane } from './assignment-form-pane';
 import { EmptyFormPlaceholder } from './empty-form-placeholder';
@@ -66,6 +67,9 @@ import {
   validateLines,
 } from './validation';
 import './layout.css';
+
+/** 지시서 목록 쪽 크기 기본 — 계약 `size` 기본 50(종전에는 싣지 않아 이 값이었다). */
+const LIST_PAGE_SIZE = 50;
 
 const t = messages.shipmentRequestCreate;
 
@@ -130,7 +134,9 @@ interface CreatedBinding {
  * 옮겨 간 뒤 늦게 도착한 성공이 새 대상 위에 「편성했습니다」로 서지 않게 한다.
  */
 export const ShipmentRequestCreateScreen = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(서버 기본 50)은 싣지도 적지도 않는다(#360). */
+  const { searchParams, setSearchParams, pageSize, changePageSize } =
+    usePageSizeSearchParams(LIST_PAGE_SIZE);
 
   const filters = readFilters(searchParams);
   const page = readPage(searchParams);
@@ -140,7 +146,11 @@ export const ShipmentRequestCreateScreen = () => {
   const targetSignature: TargetSignature =
     target.kind === 'order' ? `order:${String(target.salesOrderId)}` : target.kind;
 
-  const listQuery = { ...toSourceFilterQuery(filters), ...(page > 1 ? { page } : {}) };
+  const listQuery = {
+    ...toSourceFilterQuery(filters),
+    ...(page > 1 ? { page } : {}),
+    ...(pageSize === LIST_PAGE_SIZE ? {} : { size: pageSize }),
+  };
   const list = useSalesOrderList(listQuery);
   const rows = list.data?.items ?? EMPTY_ROWS;
   const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, rows.length);
@@ -597,7 +607,16 @@ export const ShipmentRequestCreateScreen = () => {
                   changePage(1);
                 }}
               />
-              {!list.isPending && <PageNav view={pageView} onChange={changePage} />}
+              {!list.isPending && (
+                <PageNav
+                  view={pageView}
+                  onChange={changePage}
+                  sizes={PAGE_SIZES}
+                  onChangeSize={(size) => {
+                    changePageSize(size);
+                  }}
+                />
+              )}
             </>
           ),
         }}

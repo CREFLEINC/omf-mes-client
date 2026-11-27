@@ -40,6 +40,8 @@ export type NotificationListQuery = PeriodQuery &
   NotificationFilterQuery & {
     /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
     page?: number;
+    /** 기본(50)이면 싣지 않는다. */
+    size?: number;
   };
 
 /**

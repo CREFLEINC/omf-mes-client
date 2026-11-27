@@ -73,6 +73,7 @@ const URL_KEYS = {
   sort: 'sort',
   sortDirection: 'dir',
   page: 'page',
+  size: 'size',
 } as const;
 
 const ORDER_SORT_KEYS: readonly OrderSortKey[] = [
@@ -143,6 +144,17 @@ export const readPage = (params: URLSearchParams): number => {
   return POSITIVE_INTEGER.test(raw) && Number(raw) >= 1 ? Number(raw) : 1;
 };
 
+/** 목록 한 쪽 건수 기본 — 종전 고정값 20(사용자 지시 2026-10-20). 주소에 적지 않는다. */
+export const LIST_PAGE_SIZE = 20;
+
+/** 고를 쪽 크기 — 품질 목록과 같은 10 · 20 · 50건(#360). */
+export const LIST_PAGE_SIZES = [10, LIST_PAGE_SIZE, 50] as const;
+export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
+
+/** 쪽 크기. 고를 수 있는 값이 아니면 기본(20)으로 읽는다. */
+export const readPageSize = (params: URLSearchParams): ListPageSize =>
+  LIST_PAGE_SIZES.find((size) => String(size) === params.get(URL_KEYS.size)) ?? LIST_PAGE_SIZE;
+
 /**
  * 조건 전체를 주소로 옮긴다. **빈 조건·기본값은 키 자체를 두지 않는다** —
  * 같은 화면의 주소가 두 가지가 되지 않게 하고, 주소가 걸린 조건을 그대로 드러내게 한다.
@@ -154,6 +166,8 @@ export const toSearchParams = (
   filters: ScheduleFilters,
   page: number,
   fallback: PeriodInput,
+  /** 고른 쪽 크기 — 기본(20)이면 적지 않는다. */
+  size: number = LIST_PAGE_SIZE,
 ): URLSearchParams => {
   const next = new URLSearchParams();
 
@@ -180,6 +194,7 @@ export const toSearchParams = (
     next.set(URL_KEYS.sortDirection, filters.sort.direction === 'descending' ? 'desc' : 'asc');
   }
   if (page > 1) next.set(URL_KEYS.page, String(page));
+  if (size !== LIST_PAGE_SIZE) next.set(URL_KEYS.size, String(size));
 
   return next;
 };

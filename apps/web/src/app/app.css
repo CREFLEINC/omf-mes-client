@@ -37470,20 +37470,75 @@ body:has(
   margin: 0;
 }
 
-.iwr-finalize-summary {
-  padding: var(--space-2) var(--space-3);
+/* 최종 마감 확인 — 첫 줄 입하 LOT 번호(굵은 고정폭), 아래 줄 공급사 · 품목(사용자 시안 2026-11-27 · #360). */
+.iwr-finalize-lot {
+  font-weight: 700;
+}
+
+/*
+ * 확인 팝업의 사실 상자(사용자 시안 2026-11-27 · #360 — 최종 마감 · 재고 조정 등록 · 초과분 발주 연결): 둥근 테두리
+ * 상자 안에 칸이 나란히, 칸 사이 세로 구분선, 이름은 보조색 · 값은 굵게. 줄 첫 칸의 세로선은 상자 밖(-1px)으로 숨긴다.
+ * `.is-stacked` 는 이름 위 · 값 아래.
+ */
+.confirm-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) 0;
+  margin: 0;
+  padding: var(--space-3) var(--space-4) var(--space-3) 0;
   border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.confirm-facts > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  min-width: 0;
+  margin-left: -1px;
+  padding: 0 var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+}
+
+.confirm-facts.is-stacked > div {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.confirm-facts dt {
+  color: var(--on-surface-muted);
   font: var(--type-body-sm);
 }
 
-.iwr-finalize-summary > p {
+.confirm-facts dd {
   margin: 0;
+  font-weight: 700;
 }
 
-.iwr-ack {
-  display: grid;
+/* 확인 팝업 단추 줄 — 왼쪽 끝 경고 한 줄(경고 아이콘 + 주황 글자), 오른쪽 단추. */
+.confirm-foot {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.confirm-foot-note {
+  display: inline-flex;
+  align-items: center;
   gap: var(--space-1);
+  margin: 0;
+  color: var(--semantic-warning);
+  font: var(--type-body-sm);
+}
+
+.confirm-foot-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-inline-start: auto;
 }
 
 /* 분배 조건과 결과는 같은 영역에서 전환하고 선택한 조건만 편집한다. */

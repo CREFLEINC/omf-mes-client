@@ -85,6 +85,8 @@ export const toSearchParams = (
   view: StatusView,
   filters: StatusFilters,
   page = 1,
+  /** 고른 쪽 크기 — 기본(50)이면 적지 않는다(#360). */
+  size = 50,
 ): URLSearchParams => {
   const params = new URLSearchParams();
   if (view === 'shortage') params.set('view', 'shortage');
@@ -104,6 +106,7 @@ export const toSearchParams = (
   if (filters.failedOnly) params.set(KEYS.failedOnly, '1');
   if (filters.groupByPlan) params.set(KEYS.groupByPlan, '1');
   if (page > 1) params.set('page', String(page));
+  if (size !== 50) params.set('size', String(size));
   return params;
 };
 

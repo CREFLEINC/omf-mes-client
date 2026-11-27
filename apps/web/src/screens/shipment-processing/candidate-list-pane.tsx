@@ -27,6 +27,9 @@ export interface ShipmentProcessingCandidateListPaneProps {
   page: PageView;
   onSelect: (shipmentRequestId: number) => void;
   onChangePage: (page: number) => void;
+  /** 쪽 크기 — 주면 쪽 이동 줄에 「N건 ▾」를 그린다(#360). */
+  pageSizes?: readonly number[];
+  onChangePageSize?: (size: number) => void;
 }
 
 const customerLabel = (value: ShipmentProcessingCandidateRow['customerLabel']): string =>
@@ -61,6 +64,8 @@ export const ShipmentProcessingCandidateListPane = ({
   page,
   onSelect,
   onChangePage,
+  pageSizes,
+  onChangePageSize,
 }: ShipmentProcessingCandidateListPaneProps) => {
   const columns: Column<ShipmentProcessingCandidateRow>[] = [
     {
@@ -139,7 +144,12 @@ export const ShipmentProcessingCandidateListPane = ({
           }
         />
       </div>
-      <PageNav view={page} onChange={onChangePage} />
+      <PageNav
+        view={page}
+        onChange={onChangePage}
+        sizes={pageSizes}
+        onChangeSize={onChangePageSize}
+      />
     </section>
   );
 };

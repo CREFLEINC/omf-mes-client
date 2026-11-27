@@ -1,10 +1,22 @@
 import { AlertBanner, Button, EmptyState } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer, useState, type RefObject } from 'react';
 
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
-import { ListCollapseTab, PaneListHead, usePaneSplit } from '../../patterns/po-board';
+import { PAGE_SIZES } from '../../patterns/page-nav';
+import { useHubActionsTarget } from '../../patterns/hub-actions';
+import {
+  PaneListHead,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneSplit,
+} from '../../patterns/po-board';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import { toWorkOrderPageView } from '../work-order/pagination';
 import { WorkOrderCloseCandidateListPane } from './candidate-list-pane';
 import {
@@ -315,7 +327,12 @@ export const WorkOrderCloseCandidateScreen = () => {
   const openSession = useWorkOrderCloseOpenSession(closeSelectedWorkOrderId);
   const openLots = useWorkOrderCloseOpenLots(closeSelectedWorkOrderId);
   const [forceEndTarget, setForceEndTarget] = useState<WorkOrderCloseOpenSessionView | null>(null);
-  const listSplit = usePaneSplit('omf-mes:work-order-close:list');
+  const listSplit = usePaneSplit('omf-mes:work-order-close:list', 0.4);
+  /* 목록 | 상세 공용 분할 — 「⋯」 좌우/상하 배치와 상하일 때 목록 높이 막대(입고 관리와 같은 짜임 · #360). */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const layout = useSplitOrientation('omf-mes:work-order-close:split-orientation');
+  const isStacked = layout.orientation === 'column';
+  const hubTarget = useHubActionsTarget();
   const snapshot = useMemo(
     () =>
       toWorkOrderCloseCandidateSnapshot({
@@ -522,8 +539,8 @@ export const WorkOrderCloseCandidateScreen = () => {
     }));
 
   /*
-   * 목록 접기(#350, app.css `list-collapsible`) — 넓은 창(1440px~)은 왼쪽 48px 세로 탭 + 상세, 그보다 좁으면 상세 위
-   * 가로 탭 + 상세 한 칸.
+   * 목록 접기(#350) — 제목 줄 「목록 접기」 · 가운데 막대의 접기 단추. 접으면 목록 자리에 「목록 N건」 탭이 선다
+   * (공용 분할 `po-board-split` · #360).
    */
   const listCollapse = {
     collapsed: listSplit.collapsed,
@@ -534,23 +551,41 @@ export const WorkOrderCloseCandidateScreen = () => {
   };
   return (
     <div className="work-order-close-workspace">
-      <WorkOrderCloseFilterBar
-        appliedFilters={state.appliedFilters}
-        initialFilters={initialization.initialFilters}
-        productionOrderOptions={toWorkOrderCloseProductionOrderOptions(
-          productionOrders.data?.items ?? [],
-        )}
-        statusOptions={[
-          { value: DEFAULT_STATUS_FILTER, label: messages.workOrderClose.filter.closableStatuses },
-          ...toWorkOrderCloseCodeOptions(status.data?.items ?? []),
-        ]}
-        productionOrderUnavailableReason={productionOrderReason(productionOrders)}
-        statusUnavailableReason={initialization.statusUnavailableReason}
-        onSearch={(next) => dispatch({ type: 'SEARCH', filters: next })}
-        onReset={() => dispatch({ type: 'RESET' })}
-      />
+      {hubTarget === null ? (
+        <div className="list-detail-toolbar">
+          <SplitOrientationToggle
+            orientation={layout.orientation}
+            onChange={layout.change}
+            inline
+          />
+        </div>
+      ) : (
+        <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
+      )}
+      <div ref={aboveRef as RefObject<HTMLDivElement>}>
+        <WorkOrderCloseFilterBar
+          appliedFilters={state.appliedFilters}
+          initialFilters={initialization.initialFilters}
+          productionOrderOptions={toWorkOrderCloseProductionOrderOptions(
+            productionOrders.data?.items ?? [],
+          )}
+          statusOptions={[
+            {
+              value: DEFAULT_STATUS_FILTER,
+              label: messages.workOrderClose.filter.closableStatuses,
+            },
+            ...toWorkOrderCloseCodeOptions(status.data?.items ?? []),
+          ]}
+          productionOrderUnavailableReason={productionOrderReason(productionOrders)}
+          statusUnavailableReason={initialization.statusUnavailableReason}
+          onSearch={(next) => dispatch({ type: 'SEARCH', filters: next })}
+          onReset={() => dispatch({ type: 'RESET' })}
+        />
+      </div>
       <div
-        className="work-order-close-content list-collapsible"
+        ref={splitRef}
+        className={`po-board-split work-order-close-split${isStacked ? ' is-stacked' : ''}`}
+        style={{ ...listSplit.style, ...layout.style }}
         data-left-collapsed={listCollapse.collapsed ? 'true' : undefined}
       >
         <WorkOrderCloseCandidateListPane
@@ -582,8 +617,23 @@ export const WorkOrderCloseCandidateScreen = () => {
             )
           }
           onChangePage={(nextPage) => dispatch({ type: 'CHANGE_PAGE', page: nextPage })}
+          pageSizes={PAGE_SIZES}
+          onChangePageSize={(pageSize) => dispatch({ type: 'CHANGE_PAGE_SIZE', pageSize })}
         />
-        <ListCollapseTab collapse={listCollapse} />
+        <PaneSplitter
+          label={messages.common.inspectionHub.splitter}
+          ratio={listSplit.ratio}
+          onChange={listSplit.commit}
+          collapse={listCollapse}
+        />
+        {isStacked && (
+          <PaneHeightSplitter
+            label={messages.common.inspectionHub.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+            collapse={listCollapse}
+          />
+        )}
         {correctionMode ? (
           <div className="work-order-close-detail">
             {state.selectedWorkOrderId === null ? null : (

@@ -61,6 +61,7 @@ const HISTORY_URL_KEYS = {
   from: 'hfrom',
   to: 'hto',
   page: 'hpage',
+  size: 'hsize',
 } as const;
 
 /**
@@ -132,6 +133,17 @@ export const readAdjustmentPage = (params: URLSearchParams): number => {
   return readNumberFilter(raw) === '' ? 1 : Number(raw);
 };
 
+/** 목록 한 쪽 건수 기본 — 서버 기본값(50)이라 싣지 않는다. 주소에 적지 않는다. */
+export const PAGE_SIZE = 50;
+
+/** 고를 쪽 크기 — 품질 목록과 같은 10 · 20 · 50건(#360). */
+export const LIST_PAGE_SIZES = [10, 20, 50] as const;
+export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
+
+/** 쪽 크기. 고를 수 있는 값이 아니면 기본(50)으로 읽는다. */
+export const readPageSize = (params: URLSearchParams): ListPageSize =>
+  LIST_PAGE_SIZES.find((size) => String(size) === params.get(HISTORY_URL_KEYS.size)) ?? PAGE_SIZE;
+
 /**
  * 고른 조정 전표의 번호. **요청 쿼리에 실리지 않는다** — 상세 조회의 경로 조각이다.
  *
@@ -154,6 +166,8 @@ export const readSelectedAdjustmentId = (params: URLSearchParams): number | null
 export const toHistorySearchParams = (
   filters: AdjustmentFilters,
   page: number,
+  /** 고른 쪽 크기 — 기본(50)이면 적지 않는다. */
+  size: number = PAGE_SIZE,
 ): URLSearchParams => {
   const next = new URLSearchParams();
 
@@ -169,6 +183,7 @@ export const toHistorySearchParams = (
   }
 
   if (page > 1) next.set(HISTORY_URL_KEYS.page, String(page));
+  if (size !== PAGE_SIZE) next.set(HISTORY_URL_KEYS.size, String(size));
 
   return next;
 };

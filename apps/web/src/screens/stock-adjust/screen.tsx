@@ -89,7 +89,7 @@ import {
   useStockAdjustments,
 } from './queries';
 import { readReason, toApprovalRequest } from './reason-draft';
-import { useAdjustReasonLookup } from './reason-options';
+import { adjustReasonName, useAdjustReasonLookup } from './reason-options';
 import { RegisterConfirmDialog, type RegisterSummary } from './register-confirm-dialog';
 import { ResultPane, type SubmitPhase } from './result-pane';
 import { applySourceChange, initialSourceKind, type AdjustSourceKind } from './source';
@@ -1637,7 +1637,7 @@ export const StockAdjustScreen = () => {
    * 것」과 「요청에 실리는 것」이 갈린다.
    */
   const registerSummary = (): RegisterSummary => ({
-    reasonCode: header.reasonCode,
+    reasonName: adjustReasonName(reasonLookup, header.reasonCode),
     sendToErp: header.sendToErp,
     includedCount: lineSummary.includedCount,
     excludedCount: lineSummary.excludedCount,

@@ -56,6 +56,7 @@ describe('shipmentProcessingKeys', () => {
       '2026-08-31',
       true,
       1,
+      50,
     ]);
     expect(shipmentProcessingKeys.detail(501)).toEqual(['shipment-processing', 'detail', 501]);
   });

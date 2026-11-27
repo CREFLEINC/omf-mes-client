@@ -5,8 +5,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import {
+  LIST_PAGE_SIZES,
   readFilters,
   readPage,
+  readPageSize,
   readSelection,
   toAppliedSearchParams,
   toListQuery,
@@ -56,7 +58,7 @@ import { SearchPane } from './search-pane';
 import { ShipmentList } from './shipment-list';
 import { toLotLineSource, toReturnLineSources, type ShipmentRow } from './types';
 import { ScreenHeader } from '../../patterns/screen-header';
-import { ListCollapseTab, PaneListHead, usePaneSplit } from '../../patterns/po-board';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 
 const selectionKeyOf = (selection: Selection): string =>
   selection.kind === 'shipment' ? `shipment:${String(selection.shipmentId)}` : selection.kind;
@@ -69,8 +71,9 @@ export const ReturnReceiptScreen = () => {
   /* 처음 값 — 주소에 조건이 없을 때 읽히는 값(최근 한 달). 「초기화」가 이 값으로 되돌린다. */
   const initialFilters = useMemo(() => readFilters(new URLSearchParams(), today), [today]);
   const page = readPage(searchParams);
+  const pageSize = readPageSize(searchParams);
   const selection = useMemo(() => readSelection(searchParams), [searchParams]);
-  const listQuery = useMemo(() => toListQuery(filters, page), [filters, page]);
+  const listQuery = useMemo(() => toListQuery(filters, page, pageSize), [filters, page, pageSize]);
   const selectedShipmentId = selection.kind === 'shipment' ? selection.shipmentId : null;
 
   const list = useShipmentList(listQuery);
@@ -223,15 +226,6 @@ export const ReturnReceiptScreen = () => {
 
   const visibleDraftErrors = { ...(showErrors ? draftErrors : {}), ...write.fieldErrors };
 
-  /* 목록 접기(#350, app.css `list-collapsible`) — 넓은 창은 왼쪽 세로 탭 + 상세, 좁으면 상세 위 가로 탭 + 상세 한 칸. */
-  const listSplit = usePaneSplit('omf-mes:return-receipt:list');
-  const listCollapse = {
-    collapsed: listSplit.collapsed,
-    onToggle: listSplit.toggleCollapsed,
-    collapseLabel: messages.common.inspectionHub.listCollapse,
-    expandLabel: messages.common.inspectionHub.listExpand,
-    count: list.data?.page.total,
-  };
   return (
     <>
       <ScreenHeader
@@ -247,93 +241,117 @@ export const ReturnReceiptScreen = () => {
        * 상단 설명 띠(무엇을 여기서 하는지 · 보류로 들어온다 · 판정은 판정 의뢰에서)는 걷었다 — 화면 설명이고,
        * 보류와 다음 화면은 등록 단추 위 「이 등록이 하는 일」이 말한다(관리웹 정리 시안 A).
        */}
-      <div
-        className="return-receipt-workspace list-collapsible"
-        data-left-collapsed={listCollapse.collapsed ? 'true' : undefined}
-      >
-        <section
-          className="pane return-receipt-pane return-receipt-search-pane"
-          aria-label={t.panes.search}
-        >
-          <PaneListHead title={t.panes.search} collapse={listCollapse} />
-          <SearchPane
-            applied={filters}
-            defaults={initialFilters}
-            customers={customers}
-            isDirect={selection.kind === 'direct'}
-            onApply={(next) => apply(next)}
-            onReset={() =>
-              setSearchParams((current) => toAppliedSearchParams(current, initialFilters, 1))
-            }
-            onDirect={() =>
-              select(selection.kind === 'direct' ? { kind: 'none' } : { kind: 'direct' })
-            }
-          />
-          <ShipmentList
-            rows={rows}
-            isLoading={list.isPending && listQuery !== null}
-            error={
-              list.isError ? (
-                <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
-              ) : null
-            }
-            page={pageView}
-            selectedShipmentId={selectedShipmentId}
-            statusLookup={statusLookup}
-            onSelect={onSelectRow}
-            onChangePage={(nextPage) => apply(filters, nextPage)}
-          />
-        </section>
-        <ListCollapseTab collapse={listCollapse} />
-        <section className="pane return-receipt-pane" aria-label={t.panes.receipt}>
-          <h2 className="pane-title">{t.panes.receipt}</h2>
-          {outcome !== null ? (
-            <OutcomePane outcome={outcome} uoms={uoms} onAnother={() => select({ kind: 'none' })} />
-          ) : (
-            <ReceiptForm
-              target={{
-                selection,
-                shipmentNo:
-                  detailData?.shipmentId === selectedShipmentId
-                    ? (detailData?.shipmentNo ?? null)
-                    : (rows.find((row) => row.shipmentId === selectedShipmentId)?.shipmentNo ??
-                      null),
-                isDetailPending: selectedShipmentId !== null && detail.isPending,
-                detailError: detail.isError ? detail.error : null,
-                onRetryDetail: () => void detail.refetch(),
-              }}
-              lotFind={{ isSearching: findLot.isPending, message: lotMessage, onFind: onFindLot }}
-              lines={lines}
-              lineErrors={showErrors || hasLineInput(lines) ? lineErrors : {}}
-              activeLines={active}
-              draft={draft}
-              draftErrors={visibleDraftErrors}
-              reasons={reasons}
-              warehouses={warehouses}
-              locations={locations}
-              uoms={uoms}
-              items={items}
-              lock={lock}
-              writeError={write.error}
-              isSaving={write.isSaving}
-              canCancel={hasLineInput(lines) || hasDraftInput(draft)}
-              onChangeQty={(key, qtyText) =>
-                setLines((current) => setLineQty(current, key, qtyText))
-              }
-              onRemoveLine={(key) => setLines((current) => removeLine(current, key))}
-              onChangeDraft={(next) => {
-                if (next.locationId !== draft.locationId)
-                  write.clearFieldError('destinationLocationId');
-                if (next.reasonCode !== draft.reasonCode) write.clearFieldError('reasonCode');
-                setDraft(next);
-              }}
-              onSubmit={submit}
-              onCancel={cancel}
-              onCheckOutcome={checkOutcome}
-            />
-          )}
-        </section>
-      </div>
+      {/*
+       * 목록 | 상세 — 공용 분할(가운데 폭 막대 · 상하 배치의 높이 막대 · 「⋯」 좌우/상하 배치 · 목록 접기 · #360).
+       * 상자 안 찾기 · 목록 · 입고 입력은 그대로 옮겼다.
+       */}
+      <ListDetailWorkspace
+        storageKey="omf-mes:return-receipt"
+        list={{
+          label: t.panes.search,
+          title: t.panes.search,
+          count: list.data?.page.total,
+          className: 'return-receipt-pane return-receipt-search-pane',
+          content: (
+            <>
+              <SearchPane
+                applied={filters}
+                defaults={initialFilters}
+                customers={customers}
+                isDirect={selection.kind === 'direct'}
+                onApply={(next) => apply(next)}
+                onReset={() =>
+                  setSearchParams((current) => toAppliedSearchParams(current, initialFilters, 1))
+                }
+                onDirect={() =>
+                  select(selection.kind === 'direct' ? { kind: 'none' } : { kind: 'direct' })
+                }
+              />
+              <ShipmentList
+                rows={rows}
+                isLoading={list.isPending && listQuery !== null}
+                error={
+                  list.isError ? (
+                    <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
+                  ) : null
+                }
+                page={pageView}
+                selectedShipmentId={selectedShipmentId}
+                statusLookup={statusLookup}
+                onSelect={onSelectRow}
+                onChangePage={(nextPage) => apply(filters, nextPage)}
+                pageSizes={LIST_PAGE_SIZES}
+                /* 쪽 이동과 같다 — 첫 쪽부터 그 크기로 다시 받는다. */
+                onChangePageSize={(nextSize) =>
+                  setSearchParams((current) => toAppliedSearchParams(current, filters, 1, nextSize))
+                }
+              />
+            </>
+          ),
+        }}
+        detail={{
+          label: t.panes.receipt,
+          className: 'return-receipt-pane',
+          content: (
+            <>
+              <h2 className="pane-title">{t.panes.receipt}</h2>
+              {outcome !== null ? (
+                <OutcomePane
+                  outcome={outcome}
+                  uoms={uoms}
+                  onAnother={() => select({ kind: 'none' })}
+                />
+              ) : (
+                <ReceiptForm
+                  target={{
+                    selection,
+                    shipmentNo:
+                      detailData?.shipmentId === selectedShipmentId
+                        ? (detailData?.shipmentNo ?? null)
+                        : (rows.find((row) => row.shipmentId === selectedShipmentId)?.shipmentNo ??
+                          null),
+                    isDetailPending: selectedShipmentId !== null && detail.isPending,
+                    detailError: detail.isError ? detail.error : null,
+                    onRetryDetail: () => void detail.refetch(),
+                  }}
+                  lotFind={{
+                    isSearching: findLot.isPending,
+                    message: lotMessage,
+                    onFind: onFindLot,
+                  }}
+                  lines={lines}
+                  lineErrors={showErrors || hasLineInput(lines) ? lineErrors : {}}
+                  activeLines={active}
+                  draft={draft}
+                  draftErrors={visibleDraftErrors}
+                  reasons={reasons}
+                  warehouses={warehouses}
+                  locations={locations}
+                  uoms={uoms}
+                  items={items}
+                  lock={lock}
+                  writeError={write.error}
+                  isSaving={write.isSaving}
+                  canCancel={hasLineInput(lines) || hasDraftInput(draft)}
+                  onChangeQty={(key, qtyText) =>
+                    setLines((current) => setLineQty(current, key, qtyText))
+                  }
+                  onRemoveLine={(key) => setLines((current) => removeLine(current, key))}
+                  onChangeDraft={(next) => {
+                    if (next.locationId !== draft.locationId)
+                      write.clearFieldError('destinationLocationId');
+                    if (next.reasonCode !== draft.reasonCode) write.clearFieldError('reasonCode');
+                    setDraft(next);
+                  }}
+                  onSubmit={submit}
+                  onCancel={cancel}
+                  onCheckOutcome={checkOutcome}
+                />
+              )}
+            </>
+          ),
+        }}
+      />
     </>
   );
 };

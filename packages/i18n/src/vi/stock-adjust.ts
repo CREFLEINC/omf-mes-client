@@ -229,19 +229,15 @@ export const stockAdjust: Translated<typeof ko.stockAdjust> = {
       'Không tải được tên mặt hàng, đơn vị và LOT vật tư. Lý do sẽ hiện ở chỗ của tên.',
   },
   dialog: {
-    registerTitle: 'Đăng ký điều chỉnh này chứ?',
-    registerLead: 'Phiếu điều chỉnh sẽ được tạo với nội dung dưới đây.',
+    registerTitle: 'Đăng ký phiếu điều chỉnh tồn kho chứ?',
     reasonCode: 'Lý do điều chỉnh',
-    sendToErp: 'Gửi ERP',
-    sendToErpOn: 'Có gửi',
-    sendToErpOff: 'Không gửi',
+    sendToErp: 'Đối tượng gửi ERP',
+    erpTarget: (lineCount: number): string => `${String(lineCount)} mục điều chỉnh`,
+    erpTargetOff: (lineCount: number): string => `Không gửi · ${String(lineCount)} mục điều chỉnh`,
     countRef: 'Kiểm kê liên quan',
-    includedLineCount: (lineCount: number): string =>
-      `Gửi kèm ${String(lineCount)} dòng điều chỉnh.`,
     excludedLineCount: (lineCount: number): string =>
       `${String(lineCount)} dòng có chênh lệch bằng 0 sẽ bị loại khỏi đăng ký.`,
-    noExcludedLine: 'Không có dòng nào bị loại.',
-    registerNoUndo: 'Phiếu điều chỉnh đã tạo thì màn hình này không hoàn tác được.',
+    registerNoUndo: 'Phiếu đã đăng ký thì màn hình này không hủy được.',
     discardTitle: 'Bỏ các đối tượng điều chỉnh đã dựng chứ?',
     discardLead:
       'Các dòng trên bảng và lý do điều chỉnh đã chọn sẽ mất. Chênh lệch kiểm kê thì tải lại được.',

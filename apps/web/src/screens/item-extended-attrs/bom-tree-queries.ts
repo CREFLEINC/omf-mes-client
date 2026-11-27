@@ -54,6 +54,8 @@ export interface ParentItemQuery {
   q?: string;
   itemTypeCode: string;
   page?: number;
+  /** 고른 쪽 크기(10 · 20 · 50 · #360) — 없으면 종전대로 50. */
+  size?: number;
   /** BOM 이 있는 품목만(서버 #848 · 장부 P-130). 켜짐일 때만 싣는다 — 그 밖의 값은 400 이다. */
   hasBom?: true;
 }
@@ -78,7 +80,7 @@ export const useParentItems = (query: ParentItemQuery) => {
         ...query,
         itemTypeCode: [query.itemTypeCode],
         includeInactive: true,
-        size: PARENT_PAGE_SIZE,
+        size: query.size ?? PARENT_PAGE_SIZE,
       };
       return runRequest(() => client.GET('/mdm/items', { params: { query: params } }));
     },
