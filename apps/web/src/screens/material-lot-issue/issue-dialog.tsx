@@ -167,8 +167,6 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
           lotNoPattern(group.itemCode, check.lotQty, group.supplierCode, plantToday()),
         )}
       </>
-    ) : draft?.packageOn === true ? (
-      td.summaryEmptyPackaged
     ) : (
       td.summaryEmpty
     );
