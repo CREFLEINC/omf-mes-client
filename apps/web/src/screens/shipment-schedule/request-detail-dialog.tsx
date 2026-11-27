@@ -118,7 +118,8 @@ const LineWarehouses = ({ detail }: { detail: ShipmentRequestDetail }) => {
         <Chip variant="status" status="idle" size="sm">
           {t.bu012.warehouseUnassigned}
         </Chip>{' '}
-        <span className="field-note">{t.bu012.warehouseUnassignedNote}</span>
+        {/* 그 뜻은 칩 옆 ⓘ 로(omf-all-around#360). */}
+        <InfoTip text={t.bu012.warehouseUnassignedNote} />
       </span>
     );
   }
@@ -210,7 +211,8 @@ export const RequestDetailDialog = ({
       {linkedBanner}
       {error !== null && error !== undefined && <LoadErrorBanner error={error} onRetry={onRetry} />}
       {detail === undefined && (
-        <p id={printNoteId} className="field-note">
+        /* [지시서 인쇄]가 잠긴 까닭은 화면에 펼치지 않고 화면 읽기용으로만(omf-all-around#360). */
+        <p id={printNoteId} className="visually-hidden">
           {t.detail.printNeedsDetail}
         </p>
       )}
@@ -378,7 +380,10 @@ export const RequestDetailDialog = ({
                       <td>
                         {line.warehouse === null || line.warehouse === undefined
                           ? t.bu012.warehouseUnassigned
-                          : t.bu012.warehouse(line.warehouse.warehouseName, line.warehouse.plantName)}
+                          : t.bu012.warehouse(
+                              line.warehouse.warehouseName,
+                              line.warehouse.plantName,
+                            )}
                       </td>
                       <td>
                         {line.salesOrderLine === null

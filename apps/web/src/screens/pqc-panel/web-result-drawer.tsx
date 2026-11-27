@@ -3,6 +3,7 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
+import { InfoTip } from '../../patterns/info-tip';
 import { SaveErrorBanner } from '../../patterns/master';
 import {
   formatPlantDateTime,
@@ -460,7 +461,8 @@ export const PqcWebResultDrawer = ({
                   <div className="field-cell pqc-web-remarks-field">
                     <span className="field-label">
                       <label htmlFor={remarksId}>{tPqc.noStandard.remarks}</label>
-                      <span className="pqc-web-label-hint">{t.noStandardNote}</span>
+                      {/* 검사기준이 없다는 안내는 이름 옆 ⓘ 로(omf-all-around#360). */}
+                      <InfoTip text={t.noStandardNote} />
                     </span>
                     <TextField
                       id={remarksId}

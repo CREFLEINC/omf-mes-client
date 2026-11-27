@@ -329,8 +329,8 @@ export const SplitLotsDialog = ({
             {t.allSelected}
           </AlertBanner>
         ) : lockReason !== null ? (
-          /* 아무것도 안 고른 때의 안내는 화면에서 뺀다(위 「0/n개 선택」이 대신) — [분리] 잠긴 까닭으로는 남긴다(#274). */
-          <p id={reasonId} className={selected.length === 0 ? 'visually-hidden' : 'iqc-split-hint'}>
+          /* [분리] 잠긴 까닭은 화면에 펼치지 않고 화면 읽기용으로만 남긴다(#274 · omf-all-around#360). */
+          <p id={reasonId} className="visually-hidden">
             {lockReason}
           </p>
         ) : null}

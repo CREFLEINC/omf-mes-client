@@ -311,7 +311,6 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
     proceed: 'Sửa đánh giá',
     done: 'Đã hủy xác nhận đánh giá. Có thể sửa kết quả lại.',
     blockedTitle: 'Không thể sửa đánh giá',
-    blockedLead: 'Các việc dưới đây đã diễn ra nên không thể sửa đánh giá.',
     blockedTail:
       'Hãy hủy nhập kho hoặc hoàn tác thay đổi trạng thái rồi thử lại. Nếu xử lý · chấp nhận đặc biệt cho hàng không đạt đã bắt đầu, hãy xử lý ở Ra quyết định xử lý.',
     blockedOk: 'Xác nhận',

@@ -107,8 +107,6 @@ export const CloseConfirmDialog = ({ summary, onConfirm, onClose }: CloseConfirm
       </>
     }
   >
-    <p>{t.dialog.closeLead}</p>
-
     {/* 사실 상자 — 정보 표시 팝업 시안 상자(#360). 첫 칸은 크게(핵심 값), 나머지는 둘째 줄. */}
     <InfoFacts rows={toFactRows(toRows(summary))} />
 

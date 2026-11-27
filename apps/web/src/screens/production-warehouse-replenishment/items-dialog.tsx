@@ -3,6 +3,7 @@ import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { InfoLabel } from '../../patterns/info-tip';
 import { ItemSelect } from '../../patterns/item-select';
 import { SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
@@ -47,6 +48,7 @@ export interface ItemDialogProps {
 export const ItemDialog = ({ item, settings, warehouses, onClose }: ItemDialogProps) => {
   const toast = useToast();
   const rangeId = useId();
+  const pointId = useId();
   const [warehouse, setWarehouse] = useState(
     String(item?.productionWarehouseId ?? settings.warehouses[0]?.warehouseId ?? ''),
   );
@@ -196,18 +198,22 @@ export const ItemDialog = ({ item, settings, warehouses, onClose }: ItemDialogPr
               <dd>{`${item.itemName} (${item.uomCode})`}</dd>
             </dl>
           )}
-          <TextField
-            label={ti.point}
-            placeholder={ti.pointPlaceholder}
-            required
-            inputMode="decimal"
-            value={point}
-            error={rangeOk ? undefined : t.errors.range}
-            onChange={(event) => {
-              touch();
-              setPoint(event.target.value);
-            }}
-          />
+          {/* 보충 규칙은 칸 아래 대신 「보충 시점」 이름 옆 ⓘ 로(omf-all-around#360). */}
+          <div className="field-cell">
+            <InfoLabel htmlFor={pointId} label={ti.point} info={ti.help} required />
+            <TextField
+              id={pointId}
+              placeholder={ti.pointPlaceholder}
+              aria-required="true"
+              inputMode="decimal"
+              value={point}
+              error={rangeOk ? undefined : t.errors.range}
+              onChange={(event) => {
+                touch();
+                setPoint(event.target.value);
+              }}
+            />
+          </div>
           <TextField
             label={ti.target}
             placeholder={ti.targetPlaceholder}
@@ -229,9 +235,9 @@ export const ItemDialog = ({ item, settings, warehouses, onClose }: ItemDialogPr
               setSource(value);
             }}
           />
-          <p className="field-note">{ti.help}</p>
+          {/* 잠긴 까닭은 화면에 펼치지 않고 화면 읽기용으로만(omf-all-around#360). */}
           {blocked && (
-            <p id={rangeId} className="field-note">
+            <p id={rangeId} className="visually-hidden">
               {rangeOk ? ti.required : t.errors.range}
             </p>
           )}

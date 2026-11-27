@@ -82,11 +82,9 @@ export const stocktaking: Translated<typeof ko.stocktaking> = {
   },
   dialog: {
     openTitle: 'Mở kiểm kê với nội dung này chứ?',
-    openLead: 'Phiếu kiểm kê sẽ được tạo với các giá trị dưới đây.',
     openIrreversible: 'Kiểm kê đã mở thì không xóa hay hoàn tác được.',
     discardTitle: 'Bỏ các giá trị đã nhập chứ?',
     closeTitle: 'Chốt kiểm kê này chứ?',
-    closeLead: 'Kiểm kê dưới đây sẽ được chốt.',
     closeIrreversible: 'Chốt rồi thì không sửa kiểm kê này được nữa.',
   },
   result: {

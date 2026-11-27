@@ -170,7 +170,6 @@ export const CancelBlockedDialog = ({
     onClose={onClose}
     footer={<Button onClick={onClose}>{t.blockedOk}</Button>}
   >
-    <p className="dialog-text">{t.blockedLead}</p>
     <ul className="iqc-inbound-confirm-lines">
       {blockers.map((blocker) => {
         const text = t.blockers[blocker.code] ?? blocker.code;

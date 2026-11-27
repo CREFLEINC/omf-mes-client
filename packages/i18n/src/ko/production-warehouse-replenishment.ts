@@ -333,7 +333,6 @@ export const productionWarehouseReplenishment = {
     reasonRequired: (item: string): string => `${item}: 받은 수량이 다르면 차이 사유를 고르세요.`,
     diff: (qty: string): string =>
       `차이 ${qty} 를 기록합니다. 재고는 바뀌지 않습니다. 출고 때 이미 들어왔으니 차이는 재고 조정으로 맞추세요.`,
-    note: '수령은 기록만 합니다. 재고는 출고 때 이미 들어왔고, 차이는 재고 조정으로 맞춥니다.',
     cancel: '취소',
     submit: '수령',
     already: '이 출고는 그사이 이미 받았습니다. 목록을 다시 불러옵니다.',

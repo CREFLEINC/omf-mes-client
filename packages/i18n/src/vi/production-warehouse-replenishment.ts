@@ -336,7 +336,6 @@ export const productionWarehouseReplenishment: Translated<
       `${item}: số lượng nhận khác thì hãy chọn lý do chênh lệch.`,
     diff: (qty: string): string =>
       `Ghi nhận chênh lệch ${qty}. Tồn kho không đổi. Hàng đã vào khi xuất nên chênh lệch hãy điều chỉnh tồn kho.`,
-    note: 'Việc nhận chỉ ghi nhận. Tồn kho đã vào khi xuất, chênh lệch được điều chỉnh bằng điều chỉnh tồn kho.',
     cancel: 'Hủy',
     submit: 'Nhận',
     already: 'Phiếu xuất này đã được nhận trước đó. Tải lại danh sách.',

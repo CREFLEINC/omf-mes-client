@@ -126,8 +126,7 @@ export const stocktaking = {
      * 차이 사유의 코드 목록이 확정되지 않아 **차이가 있는 위치만** 저장이 막힌다(승인 G1).
      * 차이가 없는 위치는 그대로 저장된다 — 그 갈림이 필수도로 갈라 적용한다는 결정의 요점이다.
      */
-    saveReasonListPending:
-      '등록된 차이 사유가 없어 차이가 있는 위치는 저장할 수 없습니다.',
+    saveReasonListPending: '등록된 차이 사유가 없어 차이가 있는 위치는 저장할 수 없습니다.',
     saveNeedsReason: (remaining: number): string =>
       `장부와 수량이 달라 차이 사유를 골라야 하는 줄이 ${String(remaining)}줄 있습니다.`,
     saveInvalidReason: '차이 사유를 다시 골라야 하는 줄이 있습니다.',
@@ -144,8 +143,7 @@ export const stocktaking = {
      * 응답에서 빠질 수 있다 — 라인의 `systemQty`에서 이미 겪은 어긋남이다). 판정할 수 없을
      * 때는 **막는 쪽에 선다** — 열어 두면 되돌릴 수 없는 마감이 근거 없이 나간다.
      */
-    closeSummaryUnavailable:
-      '진행 상황을 불러오지 못했습니다. 다시 조회하세요.',
+    closeSummaryUnavailable: '진행 상황을 불러오지 못했습니다. 다시 조회하세요.',
     /** 요약이 준 건수를 그대로 인용한다 — 화면이 세지 않는다(착수 이슈 §6 ⭐). */
     closeUncounted: (remaining: number): string =>
       `실사하지 않은 ${String(remaining)}건이 남아 있어 마감할 수 없습니다.`,
@@ -153,8 +151,7 @@ export const stocktaking = {
      * 착수 이슈 §4가 「차이가 남으면 마감을 막는다. **우회 경로를 두지 않는다**」로 정했다 —
      * 그래서 이 사유에는 「그래도 마감」 같은 다른 길이 붙지 않는다.
      */
-    closeVariance: (remaining: number): string =>
-      `차이 ${String(remaining)}건을 먼저 조정하세요.`,
+    closeVariance: (remaining: number): string => `차이 ${String(remaining)}건을 먼저 조정하세요.`,
   },
   /** 입력칸 옆에 붙는 오류. 서버가 준 필드 오류도 같은 자리에 낸다. */
   errors: {
@@ -185,18 +182,10 @@ export const stocktaking = {
   },
   dialog: {
     openTitle: '이 내용으로 실사를 개시할까요?',
-    openLead: '아래 값으로 실사 전표를 만듭니다.',
     /** 되돌릴 수 없다는 사실을 창이 밝힌다 — 개시한 실사를 지우거나 취소할 수단이 없다. */
     openIrreversible: '개시한 실사는 지우거나 되돌릴 수 없습니다.',
     discardTitle: '입력한 값을 버릴까요?',
     closeTitle: '이 실사를 마감할까요?',
-    /**
-     * 마감 창은 **보낼 값이 아니라 마감할 대상과 그 진행 상황**을 다시 보인다.
-     *
-     * 보내는 값은 영업일 하나이고 그것마저 화면이 파생한다 — 값을 확인시켜야 할 것이 없다.
-     * 대신 「무엇을 마감하는가」와 「지금 어디까지 됐는가」가 확인의 실질이다.
-     */
-    closeLead: '아래 실사를 마감합니다.',
     /** 되돌릴 수 없다는 사실을 창이 밝힌다 — 다시 여는 오퍼레이션이 계약에 없다(실측). */
     closeIrreversible: '마감하면 이 실사를 더 고칠 수 없습니다.',
   },
@@ -353,11 +342,9 @@ export const stocktaking = {
      * **위치는 복구 버튼이 따로 선다.** 위치를 고르지 못하면 라인 표 자체가 열리지 않아,
      * 표 아래에 두면 **보이지도 않는 실패의 복구 버튼**이 된다(W-01-10이 공장에서 겪은 자리).
      */
-    locationReferenceFailed:
-      '위치 목록을 불러오지 못했습니다.',
+    locationReferenceFailed: '위치 목록을 불러오지 못했습니다.',
     /** 라인 표가 이름을 내는 참조 셋(품목·단위·자재 LOT) 중 하나라도 실패했다. */
-    lineReferencesFailed:
-      '품목·단위·자재 LOT의 이름을 불러오지 못했습니다.',
+    lineReferencesFailed: '품목·단위·자재 LOT의 이름을 불러오지 못했습니다.',
     /*
      * **잘림은 경고가 아니라 차단이다**(계획 결정 8). 못 받은 줄이 치환에 실리지 않으면
      * 그 줄이 미실사로 되돌아간다 — 이 표식과 저장 차단 사유가 같은 사실을 두 자리에서 말한다.

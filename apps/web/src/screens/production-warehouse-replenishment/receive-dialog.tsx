@@ -148,7 +148,6 @@ export const ReceiveDialog = ({ arrival, onClose, onStale }: ReceiveDialogProps)
       }
     >
       <div className="replenishment-form">
-        <p className="dialog-text">{tr.note}</p>
         {already ? (
           <AlertBanner
             variant="warning"

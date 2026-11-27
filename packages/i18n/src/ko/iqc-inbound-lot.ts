@@ -370,7 +370,6 @@ export const iqcInboundLot = {
     proceed: '판정 수정',
     done: '판정 확정을 취소했습니다. 결과를 다시 고칠 수 있습니다.',
     blockedTitle: '판정을 수정할 수 없습니다',
-    blockedLead: '아래 일이 이미 진행되어 판정을 수정할 수 없습니다.',
     blockedTail:
       '입고를 취소하거나 상태 변경을 되돌린 뒤 다시 시도하세요. 불합격 건의 처분·특채가 시작됐으면 부적합 처분 관리에서 처리합니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
     blockedOk: '확인',
