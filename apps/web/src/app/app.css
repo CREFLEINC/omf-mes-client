@@ -42884,3 +42884,18 @@ dialog
   > :is(th, td)[data-align='center']:not([scope='rowgroup']) {
   text-align: center !important;
 }
+
+/*
+ * 작업계획 편성 2 생산계획 · 3 4M 배정의 입력칸 바탕(사용자 지시 2026-11-27) — DS 입력칸은 투명이라 화면 바탕과 같은 색으로
+ * 보여 입력칸으로 읽히지 않았다. 조회 묶음(`filter-field-surface`)과 같은 입력칸 바탕을 쓴다.
+ * `filter-field-surface` 를 그대로 붙이지 않는 까닭: 그 규칙은 창을 여는 단추(`aria-haspopup`)를 모두 칠해 도움말 · 선택 단추까지 바뀐다.
+ * 여기서는 글 입력 · 날짜 입력을 바로 품은 상자, 선택칸, 기간 선택칸만 칠한다. 잠긴 칸은 DS 의 흐린 바탕 그대로다.
+ */
+:is(.erp-wo-plan-workspace, .erp-wo-multi-body, .assign-editor)
+  div:has(> input:not([type='checkbox'], [type='radio'], :disabled)),
+:is(.erp-wo-plan-workspace, .erp-wo-multi-body, .assign-editor)
+  [role='combobox']:not([aria-disabled='true'], :disabled),
+:is(.erp-wo-plan-workspace, .erp-wo-multi-body, .assign-editor)
+  .erp-wo-period-trigger:not(:disabled) {
+  background-color: var(--app-field-surface);
+}
