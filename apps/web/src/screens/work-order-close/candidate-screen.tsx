@@ -3,6 +3,7 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useReducer, useState, type RefObject } from 'react';
 
+import { useDeselectConfirm } from '../../patterns/deselect-confirm';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { PAGE_SIZES } from '../../patterns/page-nav';
 import { useHubActionsTarget } from '../../patterns/hub-actions';
@@ -305,6 +306,10 @@ export const WorkOrderCloseCandidateScreen = () => {
     draft: { ...EMPTY_WORK_ORDER_CLOSE_INPUT_DRAFT },
   }));
   const draft = toWorkOrderCloseSelectedDraft(ownedDraft, state.selectedWorkOrderId);
+  /* 고른 줄을 다시 눌러 풀 때 적던 잔량 처리·차이 사유·비고가 사라지는가 — 있으면 먼저 묻는다(#360). */
+  const deselectConfirm = useDeselectConfirm();
+  const hasDraftInput =
+    draft.remainderDisposition !== null || draft.varianceReasonCode !== '' || draft.remarks !== '';
   useEffect(() => {
     dispatch({ type: 'SYNCHRONIZE_INITIALIZATION', initialization });
   }, [initialization]);
@@ -608,14 +613,14 @@ export const WorkOrderCloseCandidateScreen = () => {
           loadError={loadError}
           page={page}
           variant={correctionMode ? 'correction' : 'close'}
-          onSelect={(workOrderId) =>
-            /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
-            dispatch(
-              workOrderId === state.selectedWorkOrderId
-                ? { type: 'CLEAR_SELECTION' }
-                : { type: 'SELECT', workOrderId },
-            )
-          }
+          onSelect={(workOrderId) => {
+            /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24) — 적던 것이 있으면 먼저 묻는다(#360). */
+            if (workOrderId === state.selectedWorkOrderId) {
+              deselectConfirm.request(hasDraftInput, () => dispatch({ type: 'CLEAR_SELECTION' }));
+              return;
+            }
+            dispatch({ type: 'SELECT', workOrderId });
+          }}
           onChangePage={(nextPage) => dispatch({ type: 'CHANGE_PAGE', page: nextPage })}
           pageSizes={PAGE_SIZES}
           onChangePageSize={(pageSize) => dispatch({ type: 'CHANGE_PAGE_SIZE', pageSize })}
@@ -731,6 +736,7 @@ export const WorkOrderCloseCandidateScreen = () => {
           onClose={() => setForceEndTarget(null)}
         />
       )}
+      {deselectConfirm.dialog}
     </div>
   );
 };

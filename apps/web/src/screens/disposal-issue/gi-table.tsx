@@ -189,10 +189,14 @@ export const GiTable = ({
           rows={rows}
           getRowId={(row) => String(row.goodsIssueId)}
           activeId={selectedIssueId === null ? null : String(selectedIssueId)}
-          rowLabel={(row) => t.actions.selectIssueRow(row.goodsIssueNo)}
-          /* 고른 행을 다시 눌러도 풀지 않는다 — 적던 입력이 확인 없이 지워지지 않게(omf-all-around#360). */
+          rowLabel={(row) =>
+            row.goodsIssueId === selectedIssueId
+              ? t.actions.deselectIssueRow(row.goodsIssueNo)
+              : t.actions.selectIssueRow(row.goodsIssueNo)
+          }
+          /* 고른 행을 다시 누르면 푼다(사용자 지시 2026-11-27 · #360) — 적던 입력이 있으면 화면이 먼저 묻는다. */
           onActivate={(row) => {
-            if (!isLocked && row.goodsIssueId !== selectedIssueId) onToggleSelect(row.goodsIssueId);
+            if (!isLocked) onToggleSelect(row.goodsIssueId);
           }}
           empty={emptySlot()}
         />

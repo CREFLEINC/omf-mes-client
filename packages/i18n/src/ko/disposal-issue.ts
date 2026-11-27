@@ -70,8 +70,10 @@ export const disposalIssue = {
      * **내부 번호를 접근 이름에 넣지 않는다** — 그것이 화면 밖으로 새는 또 하나의 경로다.
      */
     selectRow: (goodsReceiptNo: string): string => `${goodsReceiptNo} 선택`,
+    deselectRow: (goodsReceiptNo: string): string => `${goodsReceiptNo} 선택 해제`,
     /** 이력 목록 행의 버튼. 같은 이유로 **출고번호**를 접근 이름에 넣는다. */
     selectIssueRow: (goodsIssueNo: string): string => `${goodsIssueNo} 선택`,
+    deselectIssueRow: (goodsIssueNo: string): string => `${goodsIssueNo} 선택 해제`,
     /**
      * **버튼 하나가 요청 둘을 잇는다**(승인 기록 정정 1-1) — 전표를 만들고 곧바로 승인을
      * 요청한다. 「등록」과 「요청」으로 나누어 적지 않는 이유는 사용자의 목적이 하나이기

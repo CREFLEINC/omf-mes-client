@@ -236,7 +236,7 @@ describe('W-05-07 — 설비를 고르면', () => {
     ).not.toHaveAttribute('aria-current');
   });
 
-  it('고른 설비를 다시 눌러도 선택이 그대로다(사용자 지시 2026-11-27 · #360)', async () => {
+  it('고른 설비를 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
     renderScreen();
     await pickFirstEquipment();
 
@@ -246,7 +246,7 @@ describe('W-05-07 — 설비를 고르면', () => {
     await waitFor(() => expect(chosen).toHaveAttribute('aria-current', 'true'));
     await userEvent.setup().click(chosen);
 
-    expect(chosen).toHaveAttribute('aria-current', 'true');
+    await waitFor(() => expect(chosen).not.toHaveAttribute('aria-current'));
   });
 
   it('고른 설비를 페인 머리에 남긴다', async () => {

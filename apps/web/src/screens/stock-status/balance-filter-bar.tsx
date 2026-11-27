@@ -16,6 +16,7 @@ import {
   type BalanceFilters,
   type FilterChipNames,
 } from './filters';
+import type { StockCodeNames } from './code-names';
 import { ItemSelectField, SelectField } from './select-field';
 import type { SelectOption } from './types';
 
@@ -55,6 +56,8 @@ export interface BalanceFilterBarProps {
   /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
   onRemoveFilter: (key: keyof BalanceFilters) => void;
   onReset: () => void;
+  /** 품질 상태 · 재고 상태 · 소유 구분 선택지 이름(서버 코드 목록 · omf-all-around#360). 없으면 코드 그대로. */
+  codeNames?: StockCodeNames;
 }
 
 /**
@@ -96,6 +99,7 @@ export const BalanceFilterBar = ({
   onSearch,
   onRemoveFilter,
   onReset,
+  codeNames,
 }: BalanceFilterBarProps) => {
   const reasonId = useId();
   const more = useFilterMore();
@@ -204,8 +208,12 @@ export const BalanceFilterBar = ({
     ...options,
   ];
 
-  const codeOptions = (codes: readonly string[]): SelectOption[] =>
-    withAll(codes.map((code) => ({ value: code, label: code })));
+  /* 고르는 글자는 서버 코드 목록의 이름(omf-all-around#360) — 보내는 값은 코드 그대로. */
+  const codeOptions = (
+    codes: readonly string[],
+    nameOf?: (code: string) => string,
+  ): SelectOption[] =>
+    withAll(codes.map((code) => ({ value: code, label: nameOf?.(code) ?? code })));
 
   return (
     <>
@@ -323,7 +331,7 @@ export const BalanceFilterBar = ({
           <SelectField
             optionWidth="code"
             label={t.fields.qualityStatus}
-            options={codeOptions(qualityStatusOptions)}
+            options={codeOptions(qualityStatusOptions, codeNames?.quality)}
             value={filters.qualityStatus}
             onChange={(value) => {
               setFilters((prev) => ({ ...prev, qualityStatus: value }));
@@ -332,7 +340,7 @@ export const BalanceFilterBar = ({
           <SelectField
             optionWidth="code"
             label={t.fields.inventoryStatus}
-            options={codeOptions(inventoryStatusOptions)}
+            options={codeOptions(inventoryStatusOptions, codeNames?.inventory)}
             value={filters.inventoryStatus}
             onChange={(value) => {
               setFilters((prev) => ({ ...prev, inventoryStatus: value }));
@@ -341,7 +349,7 @@ export const BalanceFilterBar = ({
           <SelectField
             optionWidth="code"
             label={t.fields.ownership}
-            options={codeOptions(ownershipOptions)}
+            options={codeOptions(ownershipOptions, codeNames?.ownership)}
             value={filters.ownership}
             onChange={(value) => {
               setFilters((prev) => ({ ...prev, ownership: value }));

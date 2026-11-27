@@ -159,11 +159,14 @@ export const CountTable = ({
           rows={rows}
           getRowId={(row) => String(row.inventoryCountId)}
           activeId={selectedCountId === null ? null : String(selectedCountId)}
-          rowLabel={(row) => t.actions.selectRow(row.inventoryCountNo)}
-          /* 고른 행을 다시 눌러도 풀지 않는다 — 적던 입력이 확인 없이 지워지지 않게(omf-all-around#360). */
+          rowLabel={(row) =>
+            row.inventoryCountId === selectedCountId
+              ? t.actions.deselectRow(row.inventoryCountNo)
+              : t.actions.selectRow(row.inventoryCountNo)
+          }
+          /* 고른 행을 다시 누르면 푼다(사용자 지시 2026-11-27 · #360) — 적던 입력이 있으면 화면이 먼저 묻는다. */
           onActivate={(row) => {
-            if (!isLocked && row.inventoryCountId !== selectedCountId)
-              onToggleSelect(row.inventoryCountId);
+            if (!isLocked) onToggleSelect(row.inventoryCountId);
           }}
           empty={emptySlot()}
         />

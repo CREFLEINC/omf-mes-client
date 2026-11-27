@@ -23,6 +23,7 @@ import {
 import { formatAsOf } from './as-of';
 import { BalanceFilterBar } from './balance-filter-bar';
 import { BalanceTable } from './balance-table';
+import { useStockCodeNames } from './code-names';
 import {
   defaultBusinessPeriod,
   resolveBusinessPeriod,
@@ -136,6 +137,8 @@ export const StockStatusScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const hub = usePageHub();
   const hubActionsTarget = useHubActionsTarget();
+  /* 품질 상태 · 재고 상태 · 소유 구분은 서버 코드 목록의 이름으로 보인다(omf-all-around#360). */
+  const codeNames = useStockCodeNames();
   /*
    * LOT별 보기의 목록 | 상세 — 다른 목록 · 상세 화면과 같은 공용 분할(가운데 폭 막대 · 상하 배치의 높이 막대 ·
    * 「⋯」 좌우/상하 배치 · 목록 접기 · #360). 다른 두 보기는 상세가 없어 종전처럼 목록 한 칸이다.
@@ -634,6 +637,7 @@ export const StockStatusScreen = () => {
       <BalanceTable
         view={view}
         rows={rows}
+        codeNames={codeNames}
         isLoading={list.isPending && listQuery !== null}
         hasQuery={listQuery !== null}
         isBeyondLast={pageView.isBeyondLast}
@@ -720,6 +724,7 @@ export const StockStatusScreen = () => {
       <LotDetailPane
         row={selectedRow}
         detail={lotDetail.data}
+        codeNames={codeNames}
         /*
          * **유효기한 판정의 「오늘」도 기준 시각이다.** 목록 응답이 도착한 시각을 쓴다 —
          * 이 구획의 수량이 그 응답에서 왔고 머리글의 「기준 …」이 그 시각을 말한다.
@@ -972,7 +977,11 @@ export const StockStatusScreen = () => {
               ),
               lot: describeReference(toReference(lots, toLookupId(filters.lot))),
               location: describeReference(toReference(locations, toLookupId(filters.location))),
+              qualityStatus: codeNames.quality(filters.qualityStatus),
+              inventoryStatus: codeNames.inventory(filters.inventoryStatus),
+              ownership: codeNames.ownership(filters.ownership),
             }}
+            codeNames={codeNames}
             warehouseNote={lookupNote(warehouses)}
             lotNote={lotNote}
             /* 「창고를 고르면 채워집니다」 안내는 걷었다(사용자 지시 2026-11-18). */

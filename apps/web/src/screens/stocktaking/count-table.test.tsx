@@ -205,13 +205,12 @@ describe('CountTable — 선택과 빈 상태', () => {
     expect(onToggleSelect).toHaveBeenCalledWith(9001);
   });
 
-  /* 고른 행을 다시 눌러도 풀지 않는다 — 이름도 「선택」 그대로다(사용자 지시 2026-11-27 · #360). */
-  it('고른 행은 이름이 「선택」 그대로고, 다시 눌러도 고르기를 부르지 않는다', async () => {
-    const { onToggleSelect, user } = renderTable({ selectedCountId: 9001 });
+  it('고른 행은 선택 해제로 바뀐다', () => {
+    renderTable({ selectedCountId: 9001 });
 
-    await user.click(screen.getByRole('row', { name: t.actions.selectRow('IC-2026-900011') }));
-
-    expect(onToggleSelect).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('row', { name: t.actions.deselectRow('IC-2026-900011') }),
+    ).toBeInTheDocument();
   });
 
   /*

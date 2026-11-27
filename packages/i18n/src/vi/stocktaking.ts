@@ -29,6 +29,7 @@ export const stocktaking: Translated<typeof ko.stocktaking> = {
     goFirstPage: 'Về trang đầu',
     select: 'Chọn',
     selectRow: (inventoryCountNo: string): string => `Chọn ${inventoryCountNo}`,
+    deselectRow: (inventoryCountNo: string): string => `Bỏ chọn ${inventoryCountNo}`,
     refresh: 'Tra cứu lại',
     open: 'Mở kiểm kê',
     confirmOpen: 'Thực hiện mở kiểm kê',

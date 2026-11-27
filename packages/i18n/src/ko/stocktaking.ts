@@ -55,6 +55,7 @@ export const stocktaking = {
      * **내부 번호를 접근 이름에 넣지 않는다** — 그것이 화면 밖으로 새는 또 하나의 경로다.
      */
     selectRow: (inventoryCountNo: string): string => `${inventoryCountNo} 선택`,
+    deselectRow: (inventoryCountNo: string): string => `${inventoryCountNo} 선택 해제`,
     /** 목록과 고른 실사를 **함께** 다시 부른다 — 한쪽만 부르면 낡은 값과 새 값이 섞인다. */
     refresh: '다시 조회',
     /** 이 화면의 첫째 쓰기. 누르면 곧바로 나가지 않고 **확인 창이 먼저** 뜬다. */

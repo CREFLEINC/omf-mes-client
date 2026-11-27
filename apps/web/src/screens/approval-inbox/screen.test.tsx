@@ -746,18 +746,15 @@ describe('요청 고르기', () => {
     expect(screen.queryByText(t.empty.noSelectionTitle)).not.toBeInTheDocument();
   });
 
-  /* 고른 요청을 다시 눌러도 풀리지 않는다(사용자 지시 2026-11-27 · #360 — 적던 것이 확인 없이 지워지지 않게). */
-  it('같은 요청을 다시 눌러도 선택이 그대로다', async () => {
+  it('같은 요청을 다시 누르면 선택이 풀린다', async () => {
     const { user } = renderScreen(defaultRoutes(), '?rq=9001');
 
     await waitForList();
     await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
 
-    expect(currentLocation()).toContain('rq=9001');
-    expect(screen.getByRole('button', { name: /SYNTH-REQ-001/ })).toHaveAttribute(
-      'aria-current',
-      'true',
-    );
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('rq=');
+    });
   });
 
   it('고르는 것이 보이는 행을 바꾸지 않는다', async () => {
@@ -828,7 +825,7 @@ describe('요청 고르기', () => {
     expect(apiClient.etags.ifMatch(REQUESTS_PATH)).toBeUndefined();
   });
 
-  it('고른 요청을 다시 눌러도 상세를 다시 부르지 않는다', async () => {
+  it('고르기를 풀면 상세를 다시 부르지 않는다', async () => {
     const { requests, user } = renderScreen(defaultRoutes(), '?rq=9001');
 
     await waitForList();
@@ -838,12 +835,14 @@ describe('요청 고르기', () => {
 
     await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
 
-    expect(currentLocation()).toContain('rq=9001');
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('rq=');
+    });
     expect(detailRequests(requests)).toHaveLength(1);
   });
 
   /*
-   * 위 시험들은 **고르지 않은 상태 → A** 이거나 **A → 같은 A(그대로)** 뿐이다.
+   * 위 시험들은 **고르지 않은 상태 → A** 이거나 **A → 같은 A(해제)** 뿐이다.
    * **A가 걸린 채 B를 누르는 길**은 사용자가 가장 자주 밟는 길인데 어느 시험도 지나지 않아,
    * 앞 선택이 그대로 남는 구현(사용자에게는 「눌러도 아무 일이 없다」)이 통과할 수 있었다.
    */

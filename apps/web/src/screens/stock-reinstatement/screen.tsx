@@ -20,6 +20,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { useDeselectConfirm } from '../../patterns/deselect-confirm';
 import { InfoTip } from '../../patterns/info-tip';
 import { isStockableLocation } from '../../patterns/location-level';
 import { PageNav } from '../../patterns/page-nav';
@@ -276,6 +277,21 @@ export const StockReinstatementScreen = () => {
       setDraft((current) => ({ ...current, qty: String(heldQty) }));
   }, [draft.qty, heldQty]);
 
+  /*
+   * 고른 줄을 다시 눌러 풀 때 사람이 적은 것이 사라지는가(#360) — 화면이 스스로 채운 보류(하나뿐일 때)와
+   * 수량(보유 수량)은 입력으로 치지 않는다.
+   */
+  const deselectConfirm = useDeselectConfirm();
+  const hasDraftInput =
+    draft.toWarehouseId !== '' ||
+    draft.toLocationId !== '' ||
+    (draft.lotHoldId !== '' &&
+      (onlyHold === undefined || draft.lotHoldId !== String(onlyHold.lotHoldId))) ||
+    (draft.qty !== '' && (heldQty === null || draft.qty !== String(heldQty))) ||
+    draft.releaseReasonCode !== '' ||
+    draft.reasonCode !== '' ||
+    draft.remarks !== '';
+
   const reinstate = useReinstate((result) => {
     setConfirming(false);
     setDraft(EMPTY_DRAFT);
@@ -309,13 +325,17 @@ export const StockReinstatementScreen = () => {
 
   const selectDecision = (row: DecisionView): void => {
     if (row.lotId === null) return;
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
-      if (row.dispositionDecisionId === selectedId) next.delete('decision');
-      else next.set('decision', String(row.dispositionDecisionId));
-      return next;
-    });
+    const apply = (): void =>
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+        if (row.dispositionDecisionId === selectedId) next.delete('decision');
+        else next.set('decision', String(row.dispositionDecisionId));
+        return next;
+      });
+    /* 적던 입력이 있으면 풀기 전에 묻는다(#360). 다른 줄을 고르는 것은 그대로다. */
+    if (row.dispositionDecisionId === selectedId) deselectConfirm.request(hasDraftInput, apply);
+    else apply();
   };
 
   const requestConfirm = (): void => {
@@ -817,6 +837,7 @@ export const StockReinstatementScreen = () => {
           if (!reinstate.isSaving) setConfirming(false);
         }}
       />
+      {deselectConfirm.dialog}
     </>
   );
 };

@@ -11,6 +11,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { useDeselectConfirm } from '../../patterns/deselect-confirm';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
 import { ScreenHeader } from '../../patterns/screen-header';
@@ -982,13 +983,22 @@ export const DisposalIssueScreen = () => {
   };
 
   /** 고르고 푸는 것은 **보이는 행을 바꾸지 않는다**(수명 표 4행). */
-  const toggleSelectReceipt = (goodsReceiptId: number): void => {
-    const moved = applyUserNavigation({
-      ...currentAddress,
-      goodsReceiptId: goodsReceiptId === selectedReceiptId ? null : goodsReceiptId,
-    });
+  const deselectConfirm = useDeselectConfirm();
 
-    if (moved) setNotFoundNotice(false);
+  const toggleSelectReceipt = (goodsReceiptId: number): void => {
+    const apply = (): void => {
+      const moved = applyUserNavigation({
+        ...currentAddress,
+        goodsReceiptId: goodsReceiptId === selectedReceiptId ? null : goodsReceiptId,
+      });
+
+      if (moved) setNotFoundNotice(false);
+    };
+
+    /* 고른 전표를 다시 눌러 풀면 줄 초안이 비워진다 — 적은 값이 있으면 먼저 묻는다(사용자 지시 2026-11-27 · #360). */
+    if (goodsReceiptId === selectedReceiptId)
+      deselectConfirm.request(hasAnyLineDraftValue(lineDraft), apply);
+    else apply();
   };
 
   /**
@@ -1012,12 +1022,19 @@ export const DisposalIssueScreen = () => {
   };
 
   const toggleSelectIssue = (goodsIssueId: number): void => {
-    const moved = applyUserNavigation({
-      ...currentAddress,
-      goodsIssueId: goodsIssueId === selectedIssueId ? null : goodsIssueId,
-    });
+    const apply = (): void => {
+      const moved = applyUserNavigation({
+        ...currentAddress,
+        goodsIssueId: goodsIssueId === selectedIssueId ? null : goodsIssueId,
+      });
 
-    if (moved) setIssueNotFoundNotice(false);
+      if (moved) setIssueNotFoundNotice(false);
+    };
+
+    /* 고른 품의를 다시 눌러 풀면 재상신 사유가 비워진다 — 적은 값이 있으면 먼저 묻는다(#360). */
+    if (goodsIssueId === selectedIssueId)
+      deselectConfirm.request(resubmitReason.trim() !== '', apply);
+    else apply();
   };
 
   /**
@@ -2482,6 +2499,7 @@ export const DisposalIssueScreen = () => {
       />
       {/* 탭 줄 위 상시 안내(승인 기록 정정 1-2)는 걷었다 — 필수가 아닌 문장은 두지 않는다(사용자 지시 2026-11-20). */}
       <Tabs aria-label={t.tabs.label} items={tabItems} value={tab} onChange={changeTab} />
+      {deselectConfirm.dialog}
     </>
   );
 };

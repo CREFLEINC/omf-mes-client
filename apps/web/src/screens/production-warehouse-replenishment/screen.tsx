@@ -117,7 +117,12 @@ export const ProductionWarehouseReplenishmentScreen = () => {
             onSearch={(progress) => go({ view: 'progress', progress })}
             onReset={() => go({ view: 'progress', progress: EMPTY_PROGRESS })}
             onPage={(page) => go({ view: 'progress', page })}
-            onSelect={(id) => setSearchParams(toSearchParams({ ...state, view: 'progress', id }))}
+            /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-27 · #360). */
+            onSelect={(id) =>
+              setSearchParams(
+                toSearchParams({ ...state, view: 'progress', id: id === state.id ? null : id }),
+              )
+            }
           />
         );
       case 'arrival':

@@ -41,6 +41,7 @@ export const supplierReturn: Translated<typeof ko.supplierReturn> = {
     refresh: 'Tra cứu lại',
     select: 'Chọn',
     selectRow: (goodsReceiptNo: string): string => `Chọn ${goodsReceiptNo}`,
+    deselectRow: (goodsReceiptNo: string): string => `Bỏ chọn ${goodsReceiptNo}`,
     submit: 'Xử lý trả hàng',
     discardDrafts: 'Xóa nội dung đã nhập',
     keepEditing: 'Nhập tiếp',

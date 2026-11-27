@@ -74,8 +74,11 @@ describe('rowPickHandlers — 줄 아무 곳이나 눌러 고르기(#360)', () =
     expect(onPick).not.toHaveBeenCalled();
   });
 
-  /* 고른 줄을 다시 눌러도 아무 일이 없다 — 적던 입력이 확인 없이 지워지지 않게(사용자 지시 2026-11-27 · #360). */
-  it('고른 줄은 빈 칸 · 고르는 단추 · Enter 어느 쪽으로 눌러도 다시 고르지 않는다', async () => {
+  /*
+   * 고른 줄을 다시 누르면 고르는 단추의 함수(선택 해제)에 닿는다 — 빈 칸 · 단추 · Enter 모두(사용자 지시 2026-11-27 ·
+   * #360 「2번 클릭하면 선택 해제」). 입력이 사라지는 화면의 확인 팝업은 그 함수가 띄운다.
+   */
+  it('고른 줄은 빈 칸 · 고르는 단추 · Enter 어느 쪽으로 눌러도 단추의 함수(해제)에 닿는다', async () => {
     const { onPick, user } = renderTable(null, '합성 나');
 
     await user.click(screen.getByText('합성 나 설명'));
@@ -83,7 +86,8 @@ describe('rowPickHandlers — 줄 아무 곳이나 눌러 고르기(#360)', () =
     screen.getByRole('button', { name: '합성 나' }).focus();
     await user.keyboard('{Enter}');
 
-    expect(onPick).not.toHaveBeenCalled();
+    expect(onPick).toHaveBeenCalledTimes(3);
+    expect(onPick).toHaveBeenNthCalledWith(1, '합성 나');
   });
 
   it('고른 줄이 있어도 다른 줄은 종전대로 고른다', async () => {
@@ -118,10 +122,10 @@ describe('rowPickHandlers — 줄 아무 곳이나 눌러 고르기(#360)', () =
     await user.click(screen.getByText('합성 라 설명'));
     await user.click(screen.getByRole('button', { name: '합성 라' }));
 
-    expect(onPick).not.toHaveBeenCalled();
+    expect(onPick).toHaveBeenCalledTimes(2);
   });
 
-  /* 고른 줄의 단추는 막아도 그 줄의 다른 단추는 그쪽이 받는다. */
+  /* 고른 줄이어도 그 줄의 다른 단추는 그쪽만 받는다. */
   it('고른 줄의 다른 단추는 그대로 받는다', async () => {
     const { onOther, user } = renderTable(null, '합성 가');
 

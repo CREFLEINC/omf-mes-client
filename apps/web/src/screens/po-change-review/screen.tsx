@@ -2,6 +2,7 @@ import { AlertBanner, Breadcrumb, Button, Chip, PageHeader, useToast } from '@cr
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useState } from 'react';
 
+import { useDeselectConfirm } from '../../patterns/deselect-confirm';
 import { SaveErrorBanner } from '../../patterns/master';
 import { ScreenHeader } from '../../patterns/screen-header';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
@@ -40,6 +41,12 @@ export const PoChangeReviewScreen = () => {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [draft, setDraft] = useState<DecisionDraft>(EMPTY_DECISION);
   const [showError, setShowError] = useState(false);
+  const deselectConfirm = useDeselectConfirm();
+  /* 고른 줄을 다시 눌러 풀 때 적던 판정이 사라지는가 — 있으면 먼저 묻는다(#360). */
+  const hasDraftInput =
+    draft.decision !== null ||
+    draft.reason !== '' ||
+    Object.values(draft.adjustments).some((value) => value !== '');
 
   const list = useChangeNotifications();
   const rows = useMemo(() => list.data?.items ?? [], [list.data]);
@@ -127,7 +134,13 @@ export const PoChangeReviewScreen = () => {
                   </AlertBanner>
                 ) : null
               }
-              onSelect={(id) => setSelectedId((prev) => (prev === id ? null : id))}
+              onSelect={(id) => {
+                if (id === selectedId) {
+                  deselectConfirm.request(hasDraftInput, () => setSelectedId(null));
+                  return;
+                }
+                setSelectedId(id);
+              }}
             />
           ),
         }}
@@ -214,6 +227,8 @@ export const PoChangeReviewScreen = () => {
           ),
         }}
       />
+
+      {deselectConfirm.dialog}
     </>
   );
 };

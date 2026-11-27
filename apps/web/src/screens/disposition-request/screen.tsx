@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { useDeselectConfirm } from '../../patterns/deselect-confirm';
 import { InfoTip } from '../../patterns/info-tip';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { requireIfMatch, useMasterWrite } from '../../patterns/master';
@@ -295,16 +296,24 @@ export const DispositionRequestScreen = () => {
     setSearchParams((current) => toAppliedSearchParams(current, next, nextPage));
   };
 
+  /* 고른 줄을 다시 눌러 풀 때 적던 ①·② 입력이 사라지는가 — 있으면 먼저 묻는다(#360). */
+  const deselectConfirm = useDeselectConfirm();
+  const hasFormInput =
+    hasNonconformanceInput(registerForm) || hasRequestInput(requestForm, activeQuantity);
+
   const select = (row: TargetRow): void => {
     const same = row.key === activeRowKey;
-    setSearchParams((current) =>
-      withSelection(
-        current,
-        same
-          ? { lotId: null, nonconformanceId: null }
-          : { lotId: row.lotId, nonconformanceId: row.nonconformanceId },
-      ),
-    );
+    const apply = (): void =>
+      setSearchParams((current) =>
+        withSelection(
+          current,
+          same
+            ? { lotId: null, nonconformanceId: null }
+            : { lotId: row.lotId, nonconformanceId: row.nonconformanceId },
+        ),
+      );
+    if (same) deselectConfirm.request(hasFormInput, apply);
+    else apply();
   };
 
   const saveRegister = (): void => {
@@ -522,6 +531,7 @@ export const DispositionRequestScreen = () => {
           ),
         }}
       />
+      {deselectConfirm.dialog}
     </>
   );
 };

@@ -144,6 +144,7 @@ export const stockAdjust: Translated<typeof ko.stockAdjust> = {
     goFirstPage: 'Về trang đầu',
     select: 'Chọn',
     selectAdjustmentRow: (adjustmentNo: string): string => `Chọn ${adjustmentNo}`,
+    deselectAdjustmentRow: (adjustmentNo: string): string => `Bỏ chọn ${adjustmentNo}`,
   },
   actionReasons: {
     loadVarianceNeedsCount:

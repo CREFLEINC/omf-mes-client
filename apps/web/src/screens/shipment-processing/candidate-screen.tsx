@@ -2,6 +2,7 @@ import { AlertBanner, Button, EmptyState, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useReducer, useState, type RefObject } from 'react';
 
+import { useDeselectConfirm } from '../../patterns/deselect-confirm';
 import { useHubActionsTarget } from '../../patterns/hub-actions';
 import { SaveErrorBanner } from '../../patterns/master';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
@@ -216,6 +217,15 @@ export const ShipmentProcessingCandidateScreen = () => {
 
   const lineDrafts = toSelectedLineDrafts(ownedLineDrafts, state.selectedShipmentRequestId);
   const loadingInfo = toSelectedLoadingInfo(ownedLoadingInfo, state.selectedShipmentRequestId);
+  /* 고른 줄을 다시 눌러 풀 때 적던 출하수량·LOT 배분·적재 정보가 사라지는가 — 있으면 먼저 묻는다(#360). */
+  const deselectConfirm = useDeselectConfirm();
+  const hasDraftInput =
+    Object.values(loadingInfo).some((value) => value !== '') ||
+    lineDrafts.some(
+      (line) =>
+        line.shippedQty !== '' ||
+        line.allocations.some((allocation) => allocation.lotId !== null || allocation.qty !== ''),
+    );
   const itemIds = [...new Set(lineDrafts.map((line) => line.itemId))];
   const pickedLots: Record<number, PickedLot[]> = {};
   if (detailState.kind === 'RESOLVED') {
@@ -343,12 +353,12 @@ export const ShipmentProcessingCandidateScreen = () => {
           loadError={loadError}
           page={page}
           onSelect={(shipmentRequestId) => {
-            /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
-            dispatch(
-              shipmentRequestId === state.selectedShipmentRequestId
-                ? { type: 'CLEAR_SELECTION' }
-                : { type: 'SELECT', shipmentRequestId },
-            );
+            /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24) — 적던 것이 있으면 먼저 묻는다(#360). */
+            if (shipmentRequestId === state.selectedShipmentRequestId) {
+              deselectConfirm.request(hasDraftInput, () => dispatch({ type: 'CLEAR_SELECTION' }));
+              return;
+            }
+            dispatch({ type: 'SELECT', shipmentRequestId });
           }}
           onChangePage={(nextPage) => {
             dispatch({ type: 'CHANGE_PAGE', page: nextPage });
@@ -470,6 +480,7 @@ export const ShipmentProcessingCandidateScreen = () => {
           )}
         </div>
       </div>
+      {deselectConfirm.dialog}
     </>
   );
 };

@@ -315,8 +315,7 @@ describe('ShipmentProcessingCandidateScreen', () => {
     expect(screen.getByRole('region', { name: '확정하면 일어나는 일' })).toBeInTheDocument();
   });
 
-  /* 고른 줄을 다시 눌러도 풀지 않는다 — 고른 LOT 이 확인 없이 지워지지 않게(사용자 지시 2026-11-27 · #360). */
-  it('고른 줄을 한 번 더 눌러도 선택이 그대로다', async () => {
+  it('고른 줄을 한 번 더 누르면 선택이 풀리고 안내로 돌아간다', async () => {
     const user = userEvent.setup();
     const { fetch } = recordingFetch(baseRoutes());
     renderWithProviders(<ShipmentProcessingCandidateScreen />, { fetch });
@@ -326,8 +325,8 @@ describe('ShipmentProcessingCandidateScreen', () => {
     expect(row).toHaveAttribute('aria-current', 'true');
 
     await user.click(row);
-    expect(row).toHaveAttribute('aria-current', 'true');
-    expect(screen.queryByText('출하작업지시를 선택하세요.')).not.toBeInTheDocument();
+    expect(row).not.toHaveAttribute('aria-current');
+    expect(screen.getByText('출하작업지시를 선택하세요.')).toBeInTheDocument();
   });
 
   it('LOT을 고르지 않으면 [출하 처리]가 막혀 있고 사유를 낸다(C-3·C-4)', async () => {

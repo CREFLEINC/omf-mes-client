@@ -2,6 +2,7 @@ import { SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
+import { useDeselectConfirm } from '../../patterns/deselect-confirm';
 import { ItemPickerDialog, type ItemRow } from '../../patterns/item-picker';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -443,16 +444,39 @@ export const ShipmentRequestCreateScreen = () => {
     setSearchParams(toSearchParams(next, 1, target));
   };
 
+  const deselectConfirm = useDeselectConfirm();
+
+  /**
+   * 지시서에서 받아 온 머리 · 줄을 사람이 고쳤는가 — 받아 온 그대로면 풀어도 잃는 것이 없다(#360).
+   * 사업부는 하나뿐이면 저절로 채워지므로 그 값은 고친 것으로 치지 않는다. 이미 편성한 대상은 보낸 뒤라 묻지 않는다.
+   */
+  const hasEditedOrderDraft = (): boolean => {
+    if (detail.data === undefined || boundCreated !== null) return false;
+
+    const withoutKey = (drafts: readonly ShipmentRequestLineDraft[]): string =>
+      JSON.stringify(drafts.map(({ key: _key, ...rest }) => rest));
+
+    return (
+      header.requestedShipDate !== '' ||
+      header.customerId !== String(detail.data.customerId) ||
+      header.shipToPartnerId !== String(detail.data.shipToPartnerId) ||
+      (header.businessUnitId !== '' && header.businessUnitId !== onlyBusinessUnit) ||
+      withoutKey(lines) !== withoutKey(lineDraftsFromSalesOrder(detail.data.lines))
+    );
+  };
+
   const selectSalesOrder = (salesOrderId: number): void => {
-    /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
+    /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24) — 고친 초안이 있으면 먼저 묻는다(2026-11-27 · #360). */
+    if (salesOrderId === targetSalesOrderId) {
+      deselectConfirm.request(hasEditedOrderDraft(), () => {
+        setSearchParams(toSearchParams(filters, page, { kind: 'none' }));
+      });
+
+      return;
+    }
+
     setSearchParams(
-      toSearchParams(
-        filters,
-        page,
-        salesOrderId === targetSalesOrderId
-          ? { kind: 'none' }
-          : { kind: 'order', salesOrderId, mode: 'fromOrder' },
-      ),
+      toSearchParams(filters, page, { kind: 'order', salesOrderId, mode: 'fromOrder' }),
     );
   };
 
@@ -649,6 +673,7 @@ export const ShipmentRequestCreateScreen = () => {
           onConfirm={applyPickedItems}
         />
       )}
+      {deselectConfirm.dialog}
     </>
   );
 };

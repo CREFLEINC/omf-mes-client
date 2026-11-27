@@ -73,6 +73,7 @@ export const supplierReturn = {
      * **내부 번호를 접근 이름에 넣지 않는다** — 그것이 화면 밖으로 새는 또 하나의 경로다.
      */
     selectRow: (goodsReceiptNo: string): string => `${goodsReceiptNo} 선택`,
+    deselectRow: (goodsReceiptNo: string): string => `${goodsReceiptNo} 선택 해제`,
     /**
      * 되돌릴 수 없는 조작의 이름. **한 버튼이다** — 등록과 전기가 한 요청이라 두 단계로 나누면
      * 전기되지 않은 전표가 이 화면에서 손댈 수 없는 채 남는다(착수 이슈 §6).

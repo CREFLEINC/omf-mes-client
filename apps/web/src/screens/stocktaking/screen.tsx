@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { useDeselectConfirm } from '../../patterns/deselect-confirm';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -818,17 +819,26 @@ export const StocktakingScreen = () => {
   };
 
   /** 고르고 푸는 것은 **보이는 행을 바꾸지 않는다**(수명 표 4행) — 쪽을 그대로 둔다. */
+  const deselectConfirm = useDeselectConfirm();
+
   const toggleSelectCount = (inventoryCountId: number): void => {
     if (isLocked) return;
 
-    const next = toSearchParams(filters, page, pageSize);
+    const apply = (): void => {
+      const next = toSearchParams(filters, page, pageSize);
 
-    if (inventoryCountId !== selectedCountId) {
-      next.set(SELECTION_KEYS.count, String(inventoryCountId));
-    }
+      if (inventoryCountId !== selectedCountId) {
+        next.set(SELECTION_KEYS.count, String(inventoryCountId));
+      }
 
-    setHasNotFoundNotice(false);
-    setSearchParams(next);
+      setHasNotFoundNotice(false);
+      setSearchParams(next);
+    };
+
+    /* 고른 실사를 다시 눌러 풀면 위치와 실사 수량 초안이 비워진다 — 적은 값이 있으면 먼저 묻는다(사용자 지시 2026-11-27 · #360). */
+    if (inventoryCountId === selectedCountId)
+      deselectConfirm.request(hasAnyLineDraftValue(lineDrafts), apply);
+    else apply();
   };
 
   /**
@@ -1652,6 +1662,7 @@ export const StocktakingScreen = () => {
           }}
         />
       )}
+      {deselectConfirm.dialog}
     </>
   );
 };

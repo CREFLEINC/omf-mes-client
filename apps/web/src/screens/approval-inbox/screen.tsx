@@ -17,6 +17,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { useDeselectConfirm } from '../../patterns/deselect-confirm';
 import { ApproveDialog } from './approve-dialog';
 import {
   PLACEHOLDER_APPROVAL_TYPE_CODES,
@@ -338,6 +339,7 @@ export const ApprovalInboxScreen = () => {
     selectedRequestId === null ? null : String(selectedRequestId);
 
   const [comment, setComment] = useState('');
+  const deselectConfirm = useDeselectConfirm();
   /** 보내는 자리가 스스로 본 결과. 서버가 준 필드 오류와 **같은 칸**에 선다. */
   const [localCommentError, setLocalCommentError] = useState<string | null>(null);
   const [dialogKind, setDialogKind] = useState<DecisionKind | null>(null);
@@ -564,14 +566,15 @@ export const ApprovalInboxScreen = () => {
    * **보이는 행을 바꾸지 않는다** — 조건·탭·쪽을 그대로 두고 `rq`만 넣고 뺀다.
    */
   const toggleSelect = (approvalRequestId: number): void => {
-    applyUserNavigation(
-      toSelectionSearchParams(
-        filters,
-        tab,
-        page,
-        approvalRequestId === selectedRequestId ? null : approvalRequestId,
-      ),
-    );
+    if (approvalRequestId === selectedRequestId) {
+      /* 같은 요청을 다시 누르면 푼다 — 적던 의견이 있으면 먼저 묻는다(#360). */
+      deselectConfirm.request(comment.trim() !== '', () => {
+        applyUserNavigation(toSelectionSearchParams(filters, tab, page, null));
+      });
+      return;
+    }
+
+    applyUserNavigation(toSelectionSearchParams(filters, tab, page, approvalRequestId));
   };
 
   /**
@@ -1006,6 +1009,7 @@ export const ApprovalInboxScreen = () => {
       />
 
       {decisionDialog()}
+      {deselectConfirm.dialog}
     </>
   );
 };

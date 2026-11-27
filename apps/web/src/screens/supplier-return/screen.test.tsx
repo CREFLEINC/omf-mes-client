@@ -88,6 +88,8 @@ const SAMPLE_SOURCE_TYPE = 'SAMPLE_SOURCE_TYPE_A';
  * 나머지 셋은 계약이 아직 `string`이라 합성값 그대로다.
  */
 const DESTINATION_TYPE = 'PARTNER';
+/** 도착지 유형 선택지에 보이는 이름 — 계약이 적은 이름이다(#360). 보내는 값은 `PARTNER` 그대로. */
+const DESTINATION_TYPE_LABEL = t.codeNames.destinationType.PARTNER;
 /** 계약 밖 도착지 유형. 자리표시가 열린 뒤에도 이런 값이 실리지 않는지 재는 데 쓴다. */
 const OUT_OF_CONTRACT_DESTINATION_TYPE = 'SAMPLE_DESTINATION_TYPE_A';
 const SAMPLE_REASON = 'SAMPLE_REASON_A';
@@ -722,7 +724,11 @@ const fillReturnForm = async (
   await chooseOption(user, t.fields.supplier, PARTNER_LABEL);
   await chooseOption(user, t.fields.issueType, SAMPLE_ISSUE_TYPE);
   await chooseOption(user, t.fields.sourceDocumentType, SAMPLE_SOURCE_TYPE);
-  await chooseOption(user, t.fields.destinationType, destinationType);
+  await chooseOption(
+    user,
+    t.fields.destinationType,
+    destinationType === DESTINATION_TYPE ? DESTINATION_TYPE_LABEL : destinationType,
+  );
   await chooseOption(user, t.fields.reason, SAMPLE_REASON);
   await pickDate(user, screen.getByLabelText(t.fields.issuedDate), '2026-08-06');
   setIssuedTime('09:12');
@@ -771,7 +777,9 @@ const openConfirm = async (user: ReturnType<typeof userEvent.setup>): Promise<vo
 };
 
 const confirmSubmit = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-  await user.click(screen.getByRole('button', { name: t.actions.confirmSubmit }));
+  await user.click(
+    within(screen.getByRole('dialog')).getByRole('button', { name: t.actions.confirmSubmit }),
+  );
 };
 
 describe('SupplierReturnScreen — 첫 진입 조회', () => {
@@ -1061,19 +1069,15 @@ describe('SupplierReturnScreen — 수명 표', () => {
     });
   });
 
-  /* 고른 전표를 다시 눌러도 풀지 않는다 — 적던 줄 초안이 확인 없이 지워지지 않게(사용자 지시 2026-11-27 · #360). */
-  it('고른 전표를 다시 눌러도 선택과 줄 초안이 남는다', async () => {
+  it('고른 전표를 다시 누르면 풀린다', async () => {
     const { user } = renderScreen(allRoutes(), '?gr=9001');
 
     await screen.findAllByText(ITEM_NAME);
-    await user.click(selectBox(1));
-    await user.type(qtyBox(1), '10');
+    await user.click(screen.getByRole('row', { name: t.actions.deselectRow('GR-2026-900001') }));
 
-    await selectReceipt(user, 'GR-2026-900001');
-
-    expect(currentLocation()).toBe(`${ROUTE}?gr=9001`);
-    expect(selectBox(1)).toBeChecked();
-    expect(qtyBox(1)).toHaveValue('10');
+    await waitFor(() => {
+      expect(currentLocation()).toBe(ROUTE);
+    });
   });
 
   /**
@@ -2388,7 +2392,7 @@ describe('SupplierReturnScreen — 코드 목록이 채워지면', () => {
     await chooseOption(user, t.fields.supplier, PARTNER_LABEL);
     await chooseOption(user, t.fields.issueType, SAMPLE_ISSUE_TYPE);
     await chooseOption(user, t.fields.sourceDocumentType, SAMPLE_SOURCE_TYPE);
-    await chooseOption(user, t.fields.destinationType, DESTINATION_TYPE);
+    await chooseOption(user, t.fields.destinationType, DESTINATION_TYPE_LABEL);
     await chooseOption(user, t.fields.reason, SAMPLE_REASON);
 
     expect(submitButton()).toHaveAccessibleDescription(t.actionReasons.needsIssuedDate);
@@ -2414,7 +2418,7 @@ describe('SupplierReturnScreen — 코드 목록이 채워지면', () => {
     await chooseOption(user, t.fields.supplier, PARTNER_LABEL);
     await chooseOption(user, t.fields.issueType, SAMPLE_ISSUE_TYPE);
     await chooseOption(user, t.fields.sourceDocumentType, SAMPLE_SOURCE_TYPE);
-    await chooseOption(user, t.fields.destinationType, DESTINATION_TYPE);
+    await chooseOption(user, t.fields.destinationType, DESTINATION_TYPE_LABEL);
     await chooseOption(user, t.fields.reason, 'A'.repeat(51));
     await pickDate(user, screen.getByLabelText(t.fields.issuedDate), '2026-08-06');
     setIssuedTime('09:12');
@@ -2482,14 +2486,17 @@ describe('SupplierReturnScreen — 확인 창', () => {
     expect(dialog).toHaveTextContent(PARTNER_LABEL);
     expect(dialog).toHaveTextContent(SAMPLE_ISSUE_TYPE);
     expect(dialog).toHaveTextContent(SAMPLE_SOURCE_TYPE);
-    expect(dialog).toHaveTextContent(DESTINATION_TYPE);
+    /* 도착지 유형은 계약이 적은 이름으로 보인다(#360) — 보내는 값은 `PARTNER` 그대로다. */
+    expect(dialog).toHaveTextContent(t.codeNames.destinationType.PARTNER);
     expect(dialog).toHaveTextContent(SAMPLE_REASON);
     expect(dialog).toHaveTextContent('2026-08-06 09:12');
     expect(
       within(dialog).getByText(t.dialog.businessDateDerived('2026-08-06')),
     ).toBeInTheDocument();
-    expect(dialog).toHaveTextContent(
-      t.dialog.linePair(ITEM_LABEL, 'LOT-2026-900010', t.lineTable.returnQtyPair(30, UOM_LABEL)),
+    expect(within(dialog).getByRole('listitem')).toHaveTextContent(ITEM_LABEL);
+    expect(within(dialog).getByRole('listitem')).toHaveTextContent('LOT-2026-900010');
+    expect(within(dialog).getByRole('listitem')).toHaveTextContent(
+      t.lineTable.returnQtyPair(30, UOM_LABEL),
     );
     expect(within(dialog).getByText(t.dialog.submitNoUndoHere)).toBeInTheDocument();
     expect(within(dialog).getByText(t.dialog.submitLotHoldKept)).toBeInTheDocument();
@@ -3217,7 +3224,7 @@ describe('SupplierReturnScreen — 대상이 바뀔 때 두 초안', () => {
       SAMPLE_SOURCE_TYPE,
     );
     expect(screen.getByRole('combobox', { name: t.fields.destinationType })).toHaveTextContent(
-      DESTINATION_TYPE,
+      DESTINATION_TYPE_LABEL,
     );
     expect(screen.getByRole('combobox', { name: t.fields.reason })).toHaveTextContent(
       SAMPLE_REASON,
@@ -3302,6 +3309,10 @@ describe('SupplierReturnScreen — 대상이 바뀔 때 두 초안', () => {
  */
 describe('SupplierReturnScreen — 확인 창과 요청의 줄이 같다', () => {
   /** 창에 그려진 줄 문구를 차례대로 모은다. */
+  /** 창의 한 줄 글자 — 품목 · LOT | 「반품 수량 N 단위」(시안 2026-11-27 · #360). */
+  const dialogLine = (item: string, lot: string, qty: string): string =>
+    `${item}${lot}${t.dialog.returnQty} ${qty}`;
+
   const dialogLineTexts = (): string[] =>
     [...screen.getByRole('dialog').querySelectorAll('li')].map((item) => item.textContent ?? '');
 
@@ -3317,7 +3328,7 @@ describe('SupplierReturnScreen — 확인 창과 요청의 줄이 같다', () =>
     };
 
     return body.lines.map((line) =>
-      t.dialog.linePair(
+      dialogLine(
         itemNames[line.itemId] ?? '',
         lotNames[line.lotId] ?? '',
         t.lineTable.returnQtyPair(line.issueQty, UOM_LABEL),
@@ -3344,7 +3355,7 @@ describe('SupplierReturnScreen — 확인 창과 요청의 줄이 같다', () =>
 
     /* 짝 방향 — 고른 줄은 창에 실제로 있다(아무것도 안 그려서 통과한 것이 아니다). */
     expect(dialogLineTexts()).toEqual([
-      t.dialog.linePair(ITEM_LABEL, 'LOT-2026-900010', t.lineTable.returnQtyPair(30, UOM_LABEL)),
+      dialogLine(ITEM_LABEL, 'LOT-2026-900010', t.lineTable.returnQtyPair(30, UOM_LABEL)),
     ]);
 
     await confirmSubmit(user);

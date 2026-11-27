@@ -13,6 +13,7 @@ import type { ReactNode } from 'react';
 import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { splitCodeName } from '../../patterns/split-code-name';
 import { formatTransactionAt } from './as-of';
+import type { StockCodeNames } from './code-names';
 import type { InboundLotRef } from './filters';
 import { describeReference, toReference, type ReferenceSource } from './lookups';
 import { sortableKeysOf, toSortState, type SortKey } from './sort';
@@ -95,6 +96,10 @@ export interface BalanceColumnDeps {
   locationLookup: ReferenceSource;
   uomLookup: ReferenceSource;
   partnerLookup: ReferenceSource;
+  /**
+   * 품질 상태 · 재고 상태 · 소유 구분 코드의 이름(서버 코드 목록 · omf-all-around#360). 없으면 코드를 그대로 보인다.
+   */
+  codeNames?: StockCodeNames;
   /** 지금 상세를 보고 있는 LOT. 주소가 소유하므로 표는 받아 쓰기만 한다. */
   selectedLotId: number | null;
   onToggleSelect: (lotId: number) => void;
@@ -110,14 +115,14 @@ const orEmptyMark = (value: string | null): ReactNode => value ?? t.values.empty
  *
  * **중립 변형 하나로만 쓴다**(계획 결정 12). 값 집합을 모르는 채 색을 가르면 뜻을 지어내는
  * 것이고, 나중에 값이 확정됐을 때 화면이 이미 틀린 뜻을 말하고 있게 된다.
- * 서버가 준 코드를 **번역하지 않고 그대로** 낸다.
+ * 글자는 서버 코드 목록의 이름(사용자 지시 2026-11-27 · omf-all-around#360) — 이름이 없으면 서버가 준 코드 그대로.
  */
-const codeChip = (code: string | null): ReactNode =>
+const codeChip = (code: string | null, nameOf?: (code: string) => string): ReactNode =>
   code === null || code === '' ? (
     t.values.empty
   ) : (
     <Chip variant="status" size="sm">
-      {code}
+      {nameOf === undefined ? code : nameOf(code)}
     </Chip>
   );
 
@@ -138,6 +143,7 @@ export const buildBalanceColumns = ({
   locationLookup,
   uomLookup,
   partnerLookup,
+  codeNames,
   selectedLotId,
   onToggleSelect,
   onFilterInboundLot,
@@ -189,7 +195,7 @@ export const buildBalanceColumns = ({
 
       /*
        * LOT 칸이 곧 상세를 여는 손잡이다(사용자 지시 2026-11-26 · 「선택」 열 대신 줄 아무 곳이나 눌러 연다 —
-       * 표 상자의 `rowPickHandlers` 가 줄 누름을 이 단추로 넘긴다). 고른 LOT 을 다시 눌러도 그대로다(#360 — 다시 누름은 `rowPickHandlers` 가 막는다).
+       * 표 상자의 `rowPickHandlers` 가 줄 누름을 이 단추로 넘긴다). 고른 LOT 을 다시 누르면 상세를 닫는다(#360).
        *
        * 접근 이름에 **LOT 이름**을 넣는다 — 어느 LOT을 여는지 알 수 있게. **번호를 넣지 않는다**(#44): 이름을
        * 못 푼 줄에는 LOT 칸과 **같은 대체 표기**가 들어가, 눈으로 읽는 값과 보조기술이 읽는 값이 어긋나지 않는다.
@@ -199,7 +205,7 @@ export const buildBalanceColumns = ({
           type="button"
           className={`link-cell ${ROW_PICK_CLASS}`}
           aria-current={isSelected ? 'true' : undefined}
-          aria-label={t.actions.selectRow(name)}
+          aria-label={isSelected ? t.actions.deselectRow(name) : t.actions.selectRow(name)}
           onClick={() => {
             onToggleSelect(lotId);
           }}
@@ -325,13 +331,13 @@ export const buildBalanceColumns = ({
       key: 'qualityStatusCode',
       header: t.table.qualityStatus,
       width: WIDTH.code,
-      render: (row) => codeChip(row.qualityStatusCode),
+      render: (row) => codeChip(row.qualityStatusCode, codeNames?.quality),
     },
     {
       key: 'inventoryStatusCode',
       header: t.table.inventoryStatus,
       width: WIDTH.code,
-      render: (row) => codeChip(row.inventoryStatusCode),
+      render: (row) => codeChip(row.inventoryStatusCode, codeNames?.inventory),
     },
     {
       key: 'ownership',
@@ -349,7 +355,7 @@ export const buildBalanceColumns = ({
               ? t.values.ownedBySelf
               : describeReference(toReference(partnerLookup, row.ownerPartnerId))}
           </span>
-          {codeChip(row.ownershipTypeCode)}
+          {codeChip(row.ownershipTypeCode, codeNames?.ownership)}
         </div>
       ),
     },
@@ -421,11 +427,13 @@ export const BalanceTable = ({
   locationLookup,
   uomLookup,
   partnerLookup,
+  codeNames,
 }: BalanceTableProps) => {
   const lookups = { itemLookup, itemNames, lotLookup, locationLookup, uomLookup, partnerLookup };
   const columns = buildBalanceColumns({
     view,
     ...lookups,
+    codeNames,
     selectedLotId,
     onToggleSelect,
     ...(onFilterInboundLot === undefined ? {} : { onFilterInboundLot }),

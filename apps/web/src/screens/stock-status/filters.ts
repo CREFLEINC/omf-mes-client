@@ -396,6 +396,10 @@ export interface FilterChipNames {
   item: string;
   lot: string;
   location: string;
+  /** 고른 코드의 이름(서버 코드 목록 · omf-all-around#360). 없으면 코드 그대로. */
+  qualityStatus?: string;
+  inventoryStatus?: string;
+  ownership?: string;
 }
 
 /** 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다. */
@@ -419,17 +423,17 @@ export const toFilterChips = (filters: BalanceFilters, names: FilterChipNames): 
     },
     {
       key: 'qualityStatus',
-      label: t.filters.chipQualityStatus(filters.qualityStatus),
+      label: t.filters.chipQualityStatus(names.qualityStatus ?? filters.qualityStatus),
       removeLabel: t.filters.chipRemoveQualityStatus,
     },
     {
       key: 'inventoryStatus',
-      label: t.filters.chipInventoryStatus(filters.inventoryStatus),
+      label: t.filters.chipInventoryStatus(names.inventoryStatus ?? filters.inventoryStatus),
       removeLabel: t.filters.chipRemoveInventoryStatus,
     },
     {
       key: 'ownership',
-      label: t.filters.chipOwnership(filters.ownership),
+      label: t.filters.chipOwnership(names.ownership ?? filters.ownership),
       removeLabel: t.filters.chipRemoveOwnership,
     },
     {

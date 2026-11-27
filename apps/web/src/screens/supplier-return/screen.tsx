@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { useDeselectConfirm } from '../../patterns/deselect-confirm';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
 import { ScreenHeader } from '../../patterns/screen-header';
@@ -564,16 +565,25 @@ export const SupplierReturnScreen = () => {
   };
 
   /** 고르고 푸는 것은 **보이는 행을 바꾸지 않는다**(수명 표 4행). */
+  const deselectConfirm = useDeselectConfirm();
+
   const toggleSelectReceipt = (goodsReceiptId: number): void => {
-    setHasNotFoundNotice(false);
+    const apply = (): void => {
+      setHasNotFoundNotice(false);
 
-    const next = toSearchParams(filters, page, pageSize);
+      const next = toSearchParams(filters, page, pageSize);
 
-    if (goodsReceiptId !== selectedReceiptId) {
-      next.set(SELECTION_KEYS.goodsReceipt, String(goodsReceiptId));
-    }
+      if (goodsReceiptId !== selectedReceiptId) {
+        next.set(SELECTION_KEYS.goodsReceipt, String(goodsReceiptId));
+      }
 
-    setSearchParams(next);
+      setSearchParams(next);
+    };
+
+    /* 고른 전표를 다시 눌러 풀면 줄 초안이 비워진다 — 적은 값이 있으면 먼저 묻는다(사용자 지시 2026-11-27 · #360). */
+    if (goodsReceiptId === selectedReceiptId)
+      deselectConfirm.request(hasAnyLineDraftValue(lineDraft), apply);
+    else apply();
   };
 
   /**
@@ -1188,6 +1198,7 @@ export const SupplierReturnScreen = () => {
           }}
         />
       )}
+      {deselectConfirm.dialog}
     </>
   );
 };

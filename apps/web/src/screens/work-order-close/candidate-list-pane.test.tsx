@@ -95,12 +95,9 @@ describe('WorkOrderCloseCandidateListPane', () => {
     expect(
       screen.getByRole('button', { name: t.actions.select('SYN-WO-BRAVO') }),
     ).not.toHaveAttribute('aria-current');
-    /* 고른 W/O 를 다시 눌러도 알리지 않는다(사용자 지시 2026-11-27 · #360) — 다른 W/O 는 한 번 알린다. */
     await user.click(workOrder);
-    expect(props.onSelect).not.toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: t.actions.select('SYN-WO-BRAVO') }));
     expect(props.onSelect).toHaveBeenCalledTimes(1);
-    expect(props.onSelect).toHaveBeenCalledWith(702);
+    expect(props.onSelect).toHaveBeenCalledWith(701);
   });
 
   it('changes the current marker only when caller selection props change', () => {

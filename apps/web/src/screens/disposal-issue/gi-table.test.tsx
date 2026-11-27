@@ -207,19 +207,15 @@ describe('GiTable — 고르기', () => {
     expect(onToggleSelect).toHaveBeenCalledWith(9501);
   });
 
-  /* 고른 행을 다시 눌러도 풀지 않는다 — 이름도 「선택」 그대로다(사용자 지시 2026-11-27 · #360). */
-  it('고른 행은 강조되고, 다시 눌러도 고르기를 부르지 않는다', async () => {
-    const { onToggleSelect, user } = renderTable({ selectedIssueId: 9501 });
+  it('고른 행은 강조되고 이름이 해제로 바뀐다', () => {
+    renderTable({ selectedIssueId: 9501 });
 
-    const chosen = screen.getByRole('row', { name: t.actions.selectIssueRow('GI-2026-950001') });
-    expect(chosen).toHaveAttribute('aria-selected', 'true');
+    expect(
+      screen.getByRole('row', { name: t.actions.deselectIssueRow('GI-2026-950001') }),
+    ).toHaveAttribute('aria-selected', 'true');
     expect(
       screen.getByRole('row', { name: t.actions.selectIssueRow('GI-2026-950002') }),
     ).toBeInTheDocument();
-
-    await user.click(chosen);
-
-    expect(onToggleSelect).not.toHaveBeenCalled();
   });
 
   /* 접근 이름에도 내부 번호를 넣지 않는다 — 그것이 화면 밖으로 새는 또 하나의 경로다. */

@@ -562,6 +562,32 @@ describe('BalanceTable — 상태 배지', () => {
     expect(within(table()).getByText('SAMPLE_I_A')).toBeInTheDocument();
   });
 
+  /* 서버 코드 목록에 이름이 있으면 코드 대신 이름(omf-all-around#360). */
+  it('코드 목록의 이름이 있으면 이름으로 낸다', () => {
+    const names: Record<string, string> = {
+      SAMPLE_Q_A: '합성 품질 가',
+      SAMPLE_I_A: '합성 재고 가',
+      SAMPLE_O_A: '합성 소유 가',
+    };
+    const nameOf = (code: string): string => names[code] ?? code;
+    renderTable({
+      view: 'item',
+      rows: [
+        balance({
+          qualityStatusCode: 'SAMPLE_Q_A',
+          inventoryStatusCode: 'SAMPLE_I_A',
+          ownershipTypeCode: 'SAMPLE_O_A',
+        }),
+      ],
+      codeNames: { quality: nameOf, inventory: nameOf, ownership: nameOf },
+    });
+
+    expect(within(table()).getByText('합성 품질 가')).toBeInTheDocument();
+    expect(within(table()).getByText('합성 재고 가')).toBeInTheDocument();
+    expect(within(table()).getByText('합성 소유 가')).toBeInTheDocument();
+    expect(within(table()).queryByText('SAMPLE_Q_A')).toBeNull();
+  });
+
   /* 값이 무엇이든 같은 변형이다 — 값에 따라 갈리면 그 순간 뜻을 지어낸 것이다. */
   it('코드가 달라도 배지 변형이 같다', () => {
     renderTable({
@@ -703,18 +729,12 @@ describe('BalanceTable — LOT 고르기', () => {
     ).toBeInTheDocument();
   });
 
-  /* 고른 줄을 다시 눌러도 풀지 않으니 이름도 「선택」 그대로다(사용자 지시 2026-11-27 · #360). */
-  it('고른 줄도 고르기 이름이고, 다시 눌러도 상위에 알리지 않는다', async () => {
-    const { onToggleSelect, user } = renderTable({
-      view: 'lot',
-      rows: lotViewFixtures,
-      selectedLotId: 9401,
-    });
+  it('고른 줄은 해제 이름이 된다', () => {
+    renderTable({ view: 'lot', rows: lotViewFixtures, selectedLotId: 9401 });
 
-    const chosen = screen.getByRole('button', { name: t.actions.selectRow('SAMPLE-LOT-0001') });
-    expect(chosen).toHaveAttribute('aria-current', 'true');
-    await user.click(chosen);
-    expect(onToggleSelect).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('button', { name: t.actions.deselectRow('SAMPLE-LOT-0001') }),
+    ).toBeInTheDocument();
     /* 짝 방향 — 고르지 않은 줄은 그대로 고르기다. */
     expect(
       screen.getByRole('button', { name: t.actions.selectRow('SAMPLE-LOT-0002') }),

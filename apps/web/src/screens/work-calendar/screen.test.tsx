@@ -806,16 +806,15 @@ describe('W-05-09 작업 캘린더 — 달력 그리드', () => {
     expect(within(gridPane()).queryByRole('table')).not.toBeInTheDocument();
   });
 
-  /* 고른 캘린더를 다시 눌러도 풀지 않는다(사용자 지시 2026-11-27 · #360). */
-  it('고른 캘린더를 한 번 더 눌러도 선택이 그대로다', async () => {
+  it('고른 캘린더를 한 번 더 누르면 선택이 풀리고 고르라는 안내로 돌아간다', async () => {
     const { user } = renderScreen();
 
     await selectCalendar(user, 'CAL-A');
     expect(screen.getByRole('button', { name: 'CAL-A' })).toHaveAttribute('aria-current', 'true');
 
     await user.click(screen.getByRole('button', { name: 'CAL-A' }));
-    expect(screen.getByRole('button', { name: 'CAL-A' })).toHaveAttribute('aria-current', 'true');
-    expect(within(gridPane()).queryByText(t.grid.pickCalendar)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'CAL-A' })).not.toHaveAttribute('aria-current');
+    expect(within(gridPane()).getByText(t.grid.pickCalendar)).toBeInTheDocument();
   });
 
   it('고르기 전에는 일자를 조회하지 않는다', async () => {

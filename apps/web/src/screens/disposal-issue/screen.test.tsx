@@ -88,6 +88,19 @@ vi.mock('./code-options', async (importOriginal) => {
   return {
     ...actual,
     PLACEHOLDER_DISPOSAL_ISSUE_CODES: codeValues,
+    /* 서버 코드값 조회(`useDisposalCodeLists`)를 배열로 갈아 끼운다 — 이름은 비워 코드가 그대로 보인다(#360). */
+    useDisposalCodeLists: () => ({
+      values: codeValues,
+      names: {
+        issueType: new Map<string, string>(),
+        sourceDocumentType: new Map<string, string>(),
+        reason: new Map<string, string>(),
+        receiptType: new Map<string, string>(),
+        status: new Map<string, string>(),
+        issueStatus: new Map<string, string>(),
+      },
+      historyIssueTypes: codeValues.issueType,
+    }),
     DEFECT_WAREHOUSE_TYPE_CODES: defectTypeCodes,
     /**
      * 역할 코드는 **글자 하나**라 배열처럼 내용만 바꿀 그릇이 없다 — 접근자로 낸다.
@@ -1178,19 +1191,15 @@ describe('DisposalIssueScreen — 수명 표', () => {
     });
   });
 
-  /* 고른 전표를 다시 눌러도 풀지 않는다 — 적던 줄 초안이 확인 없이 지워지지 않게(사용자 지시 2026-11-27 · #360). */
-  it('고른 전표를 다시 눌러도 선택과 줄 초안이 남는다', async () => {
+  it('고른 전표를 다시 누르면 풀린다', async () => {
     const { user } = renderScreen(allRoutes(), '?gr=9001');
 
-    await waitForLines();
-    await user.click(lineCheckbox(1));
-    await user.type(qtyInput(1), '5');
+    await waitForList();
+    await user.click(screen.getByRole('row', { name: t.actions.deselectRow('GR-2026-900001') }));
 
-    await selectReceipt(user, 'GR-2026-900001');
-
-    expect(currentLocation()).toBe(`${ROUTE}?gr=9001`);
-    expect(lineCheckbox(1)).toBeChecked();
-    expect(qtyInput(1)).toHaveValue('5');
+    await waitFor(() => {
+      expect(currentLocation()).toBe(ROUTE);
+    });
   });
 
   /**
@@ -2141,11 +2150,29 @@ describe('DisposalIssueScreen — 줄 초안의 수명', () => {
     await user.click(lineCheckbox(1));
     await user.type(qtyInput(1), '5');
 
-    /* 다른 전표로 옮겼다 돌아오는 것도 「대상이 바뀐 것」이다(고른 전표를 다시 누르면 풀리지 않는다 · #360). */
-    await selectReceipt(user, 'GR-2026-900002');
+    /*
+     * 같은 전표를 풀었다 다시 고르는 것도 「대상이 바뀐 것」이다. 친 값이 있어 풀기 전에 확인 팝업을 거친다
+     * (사용자 지시 2026-11-27 · #360) — [취소]면 그대로, [해제]면 풀린다.
+     */
+    await user.click(screen.getByRole('row', { name: t.actions.deselectRow('GR-2026-900001') }));
+    const confirm = messages.common.deselectConfirm;
+    await user.click(
+      within(await screen.findByRole('dialog', { name: confirm.title })).getByRole('button', {
+        name: confirm.cancel,
+      }),
+    );
+    expect(currentLocation()).toBe(`${ROUTE}?gr=9001`);
+    expect(qtyInput(1)).toHaveValue('5');
+
+    await user.click(screen.getByRole('row', { name: t.actions.deselectRow('GR-2026-900001') }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: confirm.title })).getByRole('button', {
+        name: confirm.confirm,
+      }),
+    );
 
     await waitFor(() => {
-      expect(currentLocation()).toBe(`${ROUTE}?gr=9002`);
+      expect(currentLocation()).toBe(ROUTE);
     });
 
     await selectReceipt(user, 'GR-2026-900001');
@@ -2829,7 +2856,9 @@ describe('DisposalIssueScreen — 결재 진행', () => {
      * 배열 인덱스+1로 다시 매기는 결함이 여기서 값으로 갈린다 — 연속이면 가려진다.
      */
     expect(within(progress).getByText('4')).toBeInTheDocument();
-    expect(within(progress).getByText('APPROVED')).toBeInTheDocument();
+    expect(
+      within(progress).getByText(messages.approvalInbox.requestStatusNames.APPROVED ?? ''),
+    ).toBeInTheDocument();
     expect(within(progress).getByText(t.progress.waitingCurrent)).toBeInTheDocument();
   });
 

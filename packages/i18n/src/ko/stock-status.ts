@@ -61,6 +61,7 @@ export const stockStatus = {
      * 내부 번호를 넣지 않는다(#44) — 이름을 못 풀면 표 칸과 같은 대체 표기가 들어간다.
      */
     selectRow: (lotName: string): string => `${lotName} 선택`,
+    deselectRow: (lotName: string): string => `${lotName} 선택 해제`,
     /** 005 FR-035 — 행의 입하 LOT 번호를 눌러 그 입하 LOT 으로 거른다. */
     filterInboundLot: (inboundLotNo: string): string => `입하 LOT ${inboundLotNo}로 거르기`,
   },

@@ -150,27 +150,6 @@ describe('ReturnReceiptScreen — 원 출하가 있는 반품', () => {
     expect(await screen.findByLabelText(`LOT-TEST-0290 ${t.fields.returnQty}`)).toBeInTheDocument();
   });
 
-  /* 고른 출하를 다시 눌러도 풀지 않는다 — 적던 수량·비고가 확인 없이 지워지지 않게(사용자 지시 2026-11-27 · #360). */
-  it('고른 출하를 다시 눌러도 선택과 적던 입력이 그대로고, 다른 출하를 누르면 바뀐다', async () => {
-    const { user } = renderScreen();
-    await selectShipment(user);
-    await user.type(linesGroup().getByLabelText(`LOT-TEST-0311 ${t.fields.returnQty}`), '40');
-    await user.type(receiptPane().getByLabelText(new RegExp(t.fields.remarks)), '상단 긁힘');
-
-    const pick = screen.getByRole('button', { name: t.actions.selectRow('SH-TEST-0455') });
-    await user.click(pick.closest('tr')!);
-    await user.click(pick);
-
-    expect(pick).toHaveAttribute('aria-pressed', 'true');
-    expect(receiptPane().getByText(t.target.shipment('SH-TEST-0455'))).toBeInTheDocument();
-    expect(linesGroup().getByLabelText(`LOT-TEST-0311 ${t.fields.returnQty}`)).toHaveValue('40');
-    expect(receiptPane().getByLabelText(new RegExp(t.fields.remarks))).toHaveValue('상단 긁힘');
-
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SH-TEST-0448') }));
-
-    expect(await receiptPane().findByText(t.target.shipment('SH-TEST-0448'))).toBeInTheDocument();
-  });
-
   it('출하 수량을 넘는 반품 수량은 그 줄에서 막고 등록도 잠근다', async () => {
     const { user } = renderScreen();
     await selectShipment(user);
@@ -179,6 +158,57 @@ describe('ReturnReceiptScreen — 원 출하가 있는 반품', () => {
 
     expect(linesGroup().getByText(t.lines.qtyExceeds('180'))).toBeInTheDocument();
     expect(receiptPane().getByText(t.lock.lineErrors)).toBeInTheDocument();
+  });
+
+  /* 고른 출하를 다시 누르면 풀린다 — 적은 값이 있으면 먼저 묻는다(사용자 지시 2026-11-27 · #360). */
+  it('입력이 없으면 고른 출하를 다시 눌러 곧바로 푼다', async () => {
+    const { user } = renderScreen();
+    await selectShipment(user);
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SH-TEST-0455') }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.target.shipment('SH-TEST-0455'))).toBeNull();
+    });
+    expect(
+      screen.queryByRole('dialog', { name: messages.common.deselectConfirm.title }),
+    ).toBeNull();
+  });
+
+  it('입력이 있으면 확인 팝업을 거친다 — [취소]는 그대로, [해제]는 푼다', async () => {
+    const { user } = renderScreen();
+    await selectShipment(user);
+    const qty = linesGroup().getByLabelText(`LOT-TEST-0311 ${t.fields.returnQty}`);
+    await user.type(qty, '5');
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SH-TEST-0455') }));
+    const dialog = await screen.findByRole('dialog', {
+      name: messages.common.deselectConfirm.title,
+    });
+    expect(within(dialog).getByText(messages.common.deselectConfirm.body)).toBeInTheDocument();
+
+    await user.click(
+      within(dialog).getByRole('button', { name: messages.common.deselectConfirm.cancel }),
+    );
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: messages.common.deselectConfirm.title }),
+      ).toBeNull();
+    });
+    expect(receiptPane().getByText(t.target.shipment('SH-TEST-0455'))).toBeInTheDocument();
+    expect(linesGroup().getByLabelText(`LOT-TEST-0311 ${t.fields.returnQty}`)).toHaveValue('5');
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SH-TEST-0455') }));
+    const again = await screen.findByRole('dialog', {
+      name: messages.common.deselectConfirm.title,
+    });
+    await user.click(
+      within(again).getByRole('button', { name: messages.common.deselectConfirm.confirm }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.target.shipment('SH-TEST-0455'))).toBeNull();
+    });
   });
 
   it('⭐ 등록은 원천 문서·배분 번호·보류를 싣고 멱등 키와 함께 나간다', async () => {

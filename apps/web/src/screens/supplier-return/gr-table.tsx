@@ -167,11 +167,14 @@ export const GrTable = ({
           rows={rows}
           getRowId={(row) => String(row.goodsReceiptId)}
           activeId={selectedReceiptId === null ? null : String(selectedReceiptId)}
-          rowLabel={(row) => t.actions.selectRow(row.goodsReceiptNo)}
-          /* 고른 행을 다시 눌러도 풀지 않는다 — 적던 입력이 확인 없이 지워지지 않게(omf-all-around#360). */
+          rowLabel={(row) =>
+            row.goodsReceiptId === selectedReceiptId
+              ? t.actions.deselectRow(row.goodsReceiptNo)
+              : t.actions.selectRow(row.goodsReceiptNo)
+          }
+          /* 고른 행을 다시 누르면 푼다(사용자 지시 2026-11-27 · #360) — 적던 입력이 있으면 화면이 먼저 묻는다. */
           onActivate={(row) => {
-            if (!isLocked && row.goodsReceiptId !== selectedReceiptId)
-              onToggleSelect(row.goodsReceiptId);
+            if (!isLocked) onToggleSelect(row.goodsReceiptId);
           }}
           empty={emptySlot()}
         />

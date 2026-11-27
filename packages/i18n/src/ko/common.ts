@@ -41,6 +41,13 @@ export const common = {
     remove: (label: string): string => `${label} 조건 제거`,
   },
   discardChangesConfirm: '입력한 내용이 저장되지 않았습니다. 변경을 파기할까요?',
+  /** 고른 줄을 다시 눌러 풀 때 적던 입력이 사라지는 화면의 확인 팝업(사용자 지시 2026-11-27 · omf-all-around#360). */
+  deselectConfirm: {
+    title: '선택 해제',
+    body: '입력한 내용이 사라집니다. 선택을 해제할까요?',
+    cancel: '취소',
+    confirm: '해제',
+  },
   /*
    * 화면 뼈대의 이름들. 디자인 시스템이 기본값을 한국어로 들고 있어, 넘겨주지 않으면 다른
    * 언어로 열어도 이 자리만 한국어로 남는다.

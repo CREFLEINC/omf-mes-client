@@ -217,18 +217,12 @@ describe('HistoryTable — 고르기', () => {
     expect(onToggleSelect).toHaveBeenCalledWith(9302);
   });
 
-  /* 고른 줄을 다시 눌러도 풀지 않는다 — 이름도 「선택」 그대로다(사용자 지시 2026-11-27 · #360). */
-  it('고른 줄은 강조되고, 다시 눌러도 고르기를 부르지 않는다 — 접근 이름이 전표번호를 담는다', async () => {
-    const { onToggleSelect, user } = renderTable({ selectedAdjustmentId: 9302 });
+  it('고른 줄은 강조되고 해제 이름으로 바뀐다 — 접근 이름이 전표번호를 담는다', () => {
+    renderTable({ selectedAdjustmentId: 9302 });
 
-    const chosen = screen.getByRole('row', {
-      name: t.actions.selectAdjustmentRow('SAMPLE-IA-9302'),
-    });
-    expect(chosen).toHaveAttribute('aria-selected', 'true');
-
-    await user.click(chosen);
-
-    expect(onToggleSelect).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('row', { name: t.actions.deselectAdjustmentRow('SAMPLE-IA-9302') }),
+    ).toHaveAttribute('aria-selected', 'true');
   });
 
   it('잠기면 행을 눌러도 고르지 않는다', async () => {

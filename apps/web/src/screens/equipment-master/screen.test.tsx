@@ -472,7 +472,7 @@ describe('EquipmentMasterScreen', () => {
     });
   });
 
-  it('고른 그룹을 다시 눌러도 선택이 그대로다(사용자 지시 2026-11-27 · #360)', async () => {
+  it('고른 그룹을 다시 누르면 선택이 풀린다(사용자 지시 2026-11-24)', async () => {
     const user = userEvent.setup();
     renderScreen();
 
@@ -485,11 +485,8 @@ describe('EquipmentMasterScreen', () => {
     });
     await user.click(screen.getByRole('button', { name: 'GRP-A-01' }));
 
-    expect(screen.getByRole('button', { name: 'GRP-A-01' })).toHaveAttribute(
-      'aria-current',
-      'true',
-    );
-    expect(screen.queryByText(t.empty.groupNotSelected)).not.toBeInTheDocument();
+    expect(await screen.findByText(t.empty.groupNotSelected)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'GRP-A-01' })).not.toHaveAttribute('aria-current');
   });
 
   /* 아직 상세 페인이 없다 — 무엇을 해야 하는지 빈 자리 문구로 밝힌다. */

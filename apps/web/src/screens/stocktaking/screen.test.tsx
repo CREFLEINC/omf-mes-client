@@ -1198,17 +1198,18 @@ describe('StocktakingScreen — 실사 고르기와 요약', () => {
     });
   });
 
-  /* 고른 실사를 다시 눌러도 풀지 않는다 — 적던 값이 확인 없이 지워지지 않게(사용자 지시 2026-11-27 · #360). */
-  it('다시 눌러도 선택과 아래 구획이 그대로다', async () => {
+  it('다시 누르면 선택이 풀리고 아래 구획이 닫힌다', async () => {
     const { user } = renderScreen(allRoutes(), '?ct=9001');
 
     await screen.findByRole('group', { name: t.detail.summaryLabel });
 
-    await user.click(screen.getByRole('row', { name: t.actions.selectRow('IC-2026-900011') }));
+    await user.click(screen.getByRole('row', { name: t.actions.deselectRow('IC-2026-900011') }));
 
-    expect(currentLocation()).toBe(`${ROUTE}?ct=9001`);
-    expect(screen.getByRole('group', { name: t.detail.summaryLabel })).toBeInTheDocument();
-    expect(screen.queryByText(t.empty.noSelectionTitle)).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(currentLocation()).toBe(ROUTE);
+    });
+
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
   });
 
   /*

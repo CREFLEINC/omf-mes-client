@@ -329,7 +329,12 @@ export const MaterialIssueStatusScreen = () => {
           type="button"
           className={`link-cell ${ROW_PICK_CLASS}`}
           aria-current={request.materialIssueRequestId === selectedId ? 'true' : undefined}
-          onClick={() => select(request.materialIssueRequestId)}
+          /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-27 · #360). */
+          onClick={() =>
+            select(
+              request.materialIssueRequestId === selectedId ? null : request.materialIssueRequestId,
+            )
+          }
         >
           {request.issueRequestNo}
         </button>

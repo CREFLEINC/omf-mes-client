@@ -272,6 +272,7 @@ export const stockAdjust = {
     goFirstPage: '첫 쪽으로',
     select: '선택',
     selectAdjustmentRow: (adjustmentNo: string): string => `${adjustmentNo} 선택`,
+    deselectAdjustmentRow: (adjustmentNo: string): string => `${adjustmentNo} 선택 해제`,
   },
   /** 비활성 사유는 **그 컨트롤의 이름으로 시작한다.** 잠갔으면 반드시 함께 선다. */
   actionReasons: {

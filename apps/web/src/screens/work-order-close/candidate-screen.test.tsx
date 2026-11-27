@@ -1185,8 +1185,7 @@ describe('WorkOrderCloseCandidateScreen', () => {
     expect(candidateUrls(api.urls).at(-1)?.searchParams.get('page')).toBe('1');
   });
 
-  /* 고른 줄을 다시 눌러도 풀지 않는다 — 적던 사유가 확인 없이 지워지지 않게(사용자 지시 2026-11-27 · #360). */
-  it('고른 줄을 한 번 더 눌러도 선택과 상세가 그대로다', async () => {
+  it('고른 줄을 한 번 더 누르면 선택이 풀린다', async () => {
     const user = userEvent.setup();
     const api = makeApi();
     renderWithProviders(<WorkOrderCloseCandidateScreen />, { fetch: api.fetch });
@@ -1196,9 +1195,9 @@ describe('WorkOrderCloseCandidateScreen', () => {
     await screen.findByText('SYN-WO-DETAIL-701');
 
     await user.click(row);
-    expect(row).toHaveAttribute('aria-current', 'true');
-    expect(screen.queryByText('마감할 W/O를 선택하세요.')).not.toBeInTheDocument();
-    expect(screen.getByText('SYN-WO-DETAIL-701')).toBeInTheDocument();
+    expect(row).not.toHaveAttribute('aria-current');
+    expect(screen.getByText('마감할 W/O를 선택하세요.')).toBeVisible();
+    expect(screen.queryByText('SYN-WO-DETAIL-701')).not.toBeInTheDocument();
   });
 
   it('hides stale rows on refetch failure and retries only the candidate request', async () => {

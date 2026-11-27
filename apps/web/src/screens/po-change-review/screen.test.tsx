@@ -13,6 +13,7 @@ import {
 import { PoChangeReviewScreen } from './screen';
 
 const t = messages.poChangeReview;
+const deselect = messages.common.deselectConfirm;
 
 const renderScreen = (options: PoChangeStubOptions = {}) => {
   renderWithProviders(<PoChangeReviewScreen />, {
@@ -210,23 +211,62 @@ describe('PoChangeReviewScreen', () => {
     await user.click(await screen.findByRole('radio', { name: t.decision.proceed }));
     expect(screen.getByRole('radio', { name: t.decision.proceed })).toBeChecked();
 
-    /* 같은 행을 다시 눌러도 선택 상태가 새로 서야 한다 — 되돌릴 수 없는 판정이다. */
+    /* 같은 행을 다시 눌러도 선택 상태가 새로 서야 한다 — 되돌릴 수 없는 판정이다. 적던 판정이 있어 먼저 묻는다(#360). */
     await user.click(screen.getByRole('button', { name: t.list.selectRow('SYNTH-PO-0031') }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: deselect.title })).getByRole('button', {
+        name: deselect.confirm,
+      }),
+    );
+    await selectRow(user);
+    expect(await screen.findByRole('radio', { name: t.decision.proceed })).not.toBeChecked();
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.decision.submit })).toBeDisabled();
     });
   });
 
-  /* 고른 줄을 다시 눌러도 풀지 않는다 — 적던 판정이 확인 없이 지워지지 않게(사용자 지시 2026-11-27 · #360). */
-  it('고른 줄을 한 번 더 눌러도 선택이 그대로다', async () => {
+  it('고른 줄을 한 번 더 누르면 선택이 풀린다', async () => {
     const { user } = renderScreen();
     await selectRow(user);
     const row = screen.getByRole('button', { name: t.list.selectRow('SYNTH-PO-0031') });
     expect(row).toHaveAttribute('aria-current', 'true');
 
     await user.click(row);
+    /* 적은 것이 없으면 묻지 않고 바로 푼다(#360). */
+    expect(screen.queryByRole('dialog', { name: deselect.title })).not.toBeInTheDocument();
+    expect(row).not.toHaveAttribute('aria-current');
+    expect(screen.getAllByText(t.diff.selectFirst).length).toBeGreaterThan(0);
+  });
+
+  /* 적던 판정이 있으면 풀기 전에 묻는다 — [취소]는 선택·입력을 그대로, [해제]는 푼다(사용자 지시 2026-11-27 · #360). */
+  it('적던 판정이 있으면 고른 줄을 다시 눌렀을 때 먼저 묻는다', async () => {
+    const { user } = renderScreen();
+    await selectRow(user);
+    await user.click(await screen.findByRole('radio', { name: t.decision.proceed }));
+    await user.type(screen.getByLabelText(t.decision.reasonLabel), '납기 우선');
+    const row = screen.getByRole('button', { name: t.list.selectRow('SYNTH-PO-0031') });
+
+    await user.click(row);
+    const dialog = await screen.findByRole('dialog', { name: deselect.title });
+    expect(within(dialog).getByText(deselect.body)).toBeInTheDocument();
     expect(row).toHaveAttribute('aria-current', 'true');
-    expect(screen.queryByText(t.diff.selectFirst)).not.toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: deselect.cancel }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: deselect.title })).not.toBeInTheDocument();
+    });
+    expect(row).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByRole('radio', { name: t.decision.proceed })).toBeChecked();
+    expect(screen.getByLabelText(t.decision.reasonLabel)).toHaveValue('납기 우선');
+
+    await user.click(row);
+    await user.click(
+      within(await screen.findByRole('dialog', { name: deselect.title })).getByRole('button', {
+        name: deselect.confirm,
+      }),
+    );
+    await waitFor(() => expect(row).not.toHaveAttribute('aria-current'));
+    expect(screen.getAllByText(t.diff.selectFirst).length).toBeGreaterThan(0);
   });
 
   /* 취소 후속은 이 화면에 없다 — 판정 제목 옆 ⓘ 의 설명으로 읽힌다(관리웹 정리 시안 A). */

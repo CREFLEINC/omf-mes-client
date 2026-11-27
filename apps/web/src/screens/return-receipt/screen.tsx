@@ -58,6 +58,7 @@ import { SearchPane } from './search-pane';
 import { ShipmentList } from './shipment-list';
 import { toLotLineSource, toReturnLineSources, type ShipmentRow } from './types';
 import { ScreenHeader } from '../../patterns/screen-header';
+import { useDeselectConfirm } from '../../patterns/deselect-confirm';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 
 const selectionKeyOf = (selection: Selection): string =>
@@ -168,11 +169,17 @@ export const ReturnReceiptScreen = () => {
     setSearchParams((current) => withSelection(current, next));
   };
 
+  const deselectConfirm = useDeselectConfirm();
+
   const onSelectRow = (row: ShipmentRow): void => {
-    select(
-      selectedShipmentId === row.shipmentId
-        ? { kind: 'none' }
-        : { kind: 'shipment', shipmentId: row.shipmentId },
+    if (selectedShipmentId !== row.shipmentId) {
+      select({ kind: 'shipment', shipmentId: row.shipmentId });
+      return;
+    }
+    /* 고른 출하를 다시 눌러 풀면 LOT 줄 수량 · 사유 · 비고가 비워진다 — 적은 값이 있으면 먼저 묻는다(사용자 지시 2026-11-27 · #360). */
+    deselectConfirm.request(
+      hasLineInput(lines) || draft.reasonCode !== '' || draft.remarks.trim() !== '',
+      () => select({ kind: 'none' }),
     );
   };
 
@@ -352,6 +359,7 @@ export const ReturnReceiptScreen = () => {
           ),
         }}
       />
+      {deselectConfirm.dialog}
     </>
   );
 };

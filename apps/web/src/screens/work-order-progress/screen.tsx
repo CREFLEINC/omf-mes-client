@@ -215,7 +215,13 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
             statusLabel={(statusCode) => statuses.labelOf(statusCode)}
             selectedWorkOrderId={selectedWorkOrderId}
             onSelect={(workOrderId) => {
-              setSearchParams(withSelectedWorkOrder(searchParams, workOrderId));
+              /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-27 · #360). */
+              setSearchParams(
+                withSelectedWorkOrder(
+                  searchParams,
+                  workOrderId === selectedWorkOrderId ? null : workOrderId,
+                ),
+              );
             }}
             onSort={(key) => {
               setSearchParams(withSort(searchParams, nextSort(sort, key)));
