@@ -43,7 +43,7 @@ export interface PlanFormValues {
   inspectionPlanCode: string;
   inspectionPlanName: string;
   inspectionTypeCode: string;
-  /** 비우면 「전 품목 공통 기준」이다 — 계약이 널을 허용한다. */
+  /** 필수 — 「전 품목 공통 기준」은 없앴다(omf-all-around#366). */
   itemId: string;
   /** IQC에는 공정이 없다 — 계약이 널을 허용한다. */
   processId: string;
