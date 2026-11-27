@@ -501,7 +501,6 @@ export const DistributionControls = ({
                               emptyLabel="변경하지 않음"
                               disabled={disabled || !selected.length}
                               optional
-                              combined
                               onChange={setCommonLine}
                             />
                           </div>
@@ -739,7 +738,6 @@ export const DistributionControls = ({
                               <DistributionLinePicker
                                 label={`조건 ${index + 1} 생산 라인`}
                                 lines={target?.lines ?? []}
-                                combined
                                 value={row.lineId}
                                 disabled={disabled}
                                 onChange={(lineId) => change(row.id, { lineId })}

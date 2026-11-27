@@ -19,13 +19,8 @@ const orders: DistributionTarget[] = [
 const configure = async () => {
   const user = userEvent.setup();
   await user.click(screen.getByRole('button', { name: '자동 분배' }));
-  await user.click(screen.getByRole('button', { name: '조건 1 생산 라인 선택' }));
-  await user.click(
-    within(await screen.findByRole('dialog', { name: '생산 라인 선택' })).getByText('라인 1', {
-      exact: true,
-    }),
-  );
-  await user.click(screen.getByRole('button', { name: '선택' }));
+  await user.click(screen.getByRole('combobox', { name: '조건 1 생산 라인 선택' }));
+  await user.click(await screen.findByRole('option', { name: /^라인 1/ }));
   await user.click(screen.getByRole('button', { name: '분배 미리보기' }));
   return user;
 };
@@ -73,7 +68,7 @@ describe('분배 조건과 미리보기 적용', () => {
     expect(screen.getByLabelText('조건 1 분배 기간')).toHaveTextContent('2099-11-16');
     expect(
       screen
-        .getByRole('button', { name: '조건 1 생산 라인 선택' })
+        .getByRole('combobox', { name: '조건 1 생산 라인 선택' })
         .closest('.erp-wo-distribution-line-field'),
     ).toHaveTextContent('라인 1');
     const quantity = screen.getByRole('textbox', { name: '조건 1 수량' });
@@ -274,13 +269,8 @@ describe('분배 조건과 미리보기 적용', () => {
     expect(screen.queryByRole('button', { name: '선택 항목에 적용' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('checkbox', { name: '분배 조건 1 선택' }));
     await user.click(screen.getByRole('button', { name: '일괄 변경' }));
-    await user.click(screen.getByRole('button', { name: '공통 생산 라인 선택' }));
-    await user.click(
-      within(await screen.findByRole('dialog', { name: '생산 라인 선택' })).getByText('라인 1', {
-        exact: true,
-      }),
-    );
-    await user.click(screen.getByRole('button', { name: '선택' }));
+    await user.click(screen.getByRole('combobox', { name: '공통 생산 라인 선택' }));
+    await user.click(await screen.findByRole('option', { name: /^라인 1/ }));
     expect(screen.getByRole('button', { name: '공통 분배 기간' })).toHaveTextContent(
       '변경하지 않음',
     );
@@ -290,13 +280,13 @@ describe('분배 조건과 미리보기 적용', () => {
     );
     expect(
       screen
-        .getByRole('button', { name: '조건 1 생산 라인 선택' })
+        .getByRole('combobox', { name: '조건 1 생산 라인 선택' })
         .closest('.erp-wo-distribution-line-field'),
     ).toHaveTextContent('라인 1');
     await user.click(screen.getByRole('row', { name: 'ERP W/O B / 품목 B 분배 조건' }));
     expect(
       screen
-        .getByRole('button', { name: '조건 2 생산 라인 선택' })
+        .getByRole('combobox', { name: '조건 2 생산 라인 선택' })
         .closest('.erp-wo-distribution-line-field'),
     ).not.toHaveTextContent('라인 1');
   });
