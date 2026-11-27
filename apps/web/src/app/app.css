@@ -42770,3 +42770,27 @@ main > .pane.notification-center-pane {
   align-items: center;
   gap: var(--space-2);
 }
+
+/* 결재 처리 제목 ⓘ 문장은 한 줄로, 제목 아래 왼쪽부터 띄운다 — 오른쪽으로 띄우면 창 밖으로 잘린다(#361). */
+.approval-inbox-detail-section > h3.info-label {
+  position: relative;
+}
+
+.approval-inbox-detail-section > h3 .info-tip-anchor {
+  position: static;
+}
+
+.approval-inbox-detail-section > h3 .info-tip-anchor > [role='tooltip'] {
+  top: calc(100% + var(--space-1));
+  right: auto;
+  left: 0;
+  width: max-content;
+  max-width: none;
+  white-space: nowrap;
+  transform: none;
+}
+
+/* 달력은 늘 6주를 그린다 — 날짜가 하나도 없는 주는 빈 줄로만 남으니 접는다(#361). */
+[role='dialog'] table[class*='_grid_'] > tbody > tr:not(:has(> td:not([class*='_cellEmpty_']))) {
+  display: none;
+}
