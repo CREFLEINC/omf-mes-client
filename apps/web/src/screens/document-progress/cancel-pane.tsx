@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
 import { describeCancelBlockReason, type CancelAvailability } from './cancel-availability';
+import { readCancelReason } from './cancel-reason-draft';
 import { describeLoadError } from './load-error-banner';
 import { isCancelResourceForbidden, isCancelResourceNotFound } from './queries';
 import { toApiError } from '../../patterns/request';
@@ -168,7 +169,12 @@ export const CancelPane = ({
   }
 
   const isBlocked = availability.kind === 'blocked';
-  const canRequest = !isBlocked && lock.kind === 'ready';
+  /*
+   * 사유가 있어야(공백만은 빈 것) 버튼이 열린다 — 잠긴 까닭은 따로 적지 않는다
+   * (사용자 지시 2026-11-27 · #360). 판정은 보내는 본문을 만드는 자리와 같은 `readCancelReason`.
+   */
+  const hasReason = readCancelReason(reason).kind === 'ready';
+  const canRequest = !isBlocked && lock.kind === 'ready' && hasReason;
 
   /**
    * 버튼이 왜 잠겼는지 한 줄.

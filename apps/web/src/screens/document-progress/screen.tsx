@@ -18,7 +18,7 @@ import { BlockedExecutionPane } from './blocked-execution-pane';
 import { readCancelAvailability } from './cancel-availability';
 import { isSuccessorBlocked } from './cancel-error';
 import { CancelPane, type CancelLock } from './cancel-pane';
-import { CANCEL_REASON_FIELD, toCancelRequest } from './cancel-reason-draft';
+import { CANCEL_REASON_FIELD, readCancelReason, toCancelRequest } from './cancel-reason-draft';
 import { DetailPane } from './detail-pane';
 import {
   readSelectedDocumentId,
@@ -30,6 +30,7 @@ import {
   cancelTargetOf,
   describeDisabledTypes,
   DOCUMENT_TYPES,
+  documentTypeName,
   isDocumentTypeListPending,
   subTypeGroupOf,
   toDocumentTypeOptions,
@@ -101,6 +102,8 @@ interface CancelExecutionState {
 interface CancelDialogState {
   /** 확인 당시의 대상. **업무 번호다** — 창이 뜬 뒤 목록이 갱신돼도 확인한 대상이 바뀌지 않는다. */
   documentNo: string;
+  /** 창 제목에 쓸 문서 종류 이름. 표시명을 모르면 `null`. */
+  documentTypeName: string | null;
   /** 그대로 나갈 본문. 사유 하나뿐이다. */
   body: ApprovalRequestCreate;
 }
@@ -383,10 +386,15 @@ export const DocumentProgressScreen = () => {
    * ⚠ **이 문단은 정정본이다.** 앞 회차(r2)에 「두 값이 함께 서는 순간이 없다 = 등가」라고 적었으나
    * **틀렸다** — `resetIfIdle`의 첫 줄(`if (write.isSaving) return`)을 수명 표에서 빠뜨렸다.
    * 감지기 「나가는 중 창이 닫힌 뒤 도착한 거절 위에 필수 오류가 선다」가 이 차례를 실제로 문다.
+   *
+   * ⭐ **칸이 비면 서버 거절을 내지 않는다**(2026-11-27 · #360). 사유가 없으면 버튼이 잠겨 ④의
+   * 「다시 누르기」가 없어졌다 — 빈 칸 옆에 낡은 「사유가 짧습니다」가 남지 않게 여기서 거른다.
    */
   const cancelReasonFieldError =
     cancelReasonError ??
-    (isCancelResultMine ? cancelWrite.fieldErrors[CANCEL_REASON_FIELD] : undefined);
+    (isCancelResultMine && readCancelReason(cancelReason).kind === 'ready'
+      ? cancelWrite.fieldErrors[CANCEL_REASON_FIELD]
+      : undefined);
 
   /**
    * 없음 안내가 매인 대상 — **조건·쪽의 서명**이다.
@@ -591,7 +599,7 @@ export const DocumentProgressScreen = () => {
    * 물러나야 하고, 무엇보다 「확인했는데 안 나가는」 자리가 생긴다. 검증 결과(본문)를 창의
    * 상태에 담아 두므로 **확인한 값과 보내는 값이 같은 자리에서 나온다.**
    */
-  const openCancelDialog = (documentNo: string): void => {
+  const openCancelDialog = (documentNo: string, documentTypeCode: string): void => {
     if (isCancelLocked) return;
 
     const body = toCancelRequest(cancelReason);
@@ -603,7 +611,13 @@ export const DocumentProgressScreen = () => {
     }
 
     setCancelReasonError(null);
-    setCancelDialog({ documentNo, body });
+    const typeName = documentTypeName(documentTypeCode);
+
+    setCancelDialog({
+      documentNo,
+      documentTypeName: typeName === documentTypeCode ? null : typeName,
+      body,
+    });
   };
 
   /**
@@ -846,7 +860,7 @@ export const DocumentProgressScreen = () => {
             setCancelReasonError(null);
           }}
           onOpenConfirm={() => {
-            openCancelDialog(progress.documentNo);
+            openCancelDialog(progress.documentNo, progress.documentTypeCode);
           }}
           onRetryLock={() => {
             void cancelLockQuery.refetch();
@@ -999,6 +1013,7 @@ export const DocumentProgressScreen = () => {
       {cancelDialog !== null && (
         <RequestCancelDialog
           documentNo={cancelDialog.documentNo}
+          documentTypeName={cancelDialog.documentTypeName}
           isSaving={isCancelSavingMine}
           banner={cancelFailureSlot()}
           onClose={closeCancelDialog}

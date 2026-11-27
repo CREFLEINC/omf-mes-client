@@ -254,11 +254,22 @@ export const documentProgress = {
    * ⓑ가 이 창의 요점이다: 올린 뒤 무를 수 있다고 읽히면 사용자가 가볍게 누른다.
    */
   cancelDialog: {
-    title: '취소 요청을 올릴까요?',
+    /**
+     * 문서 종류 이름이 있으면 「입고 취소를 요청할까요?」, 없으면 「문서 취소를 요청할까요?」.
+     * 사용자 지시 2026-11-27 · omf-all-around#360.
+     */
+    title: (typeName: string | null): string =>
+      typeName === null ? '문서 취소를 요청할까요?' : `${typeName} 취소를 요청할까요?`,
     /** 어느 문서인지 **문서번호로** 말한다(내부 번호가 아니다 — omf-mes#44). */
-    target: (documentNo: string): string => `${documentNo}의 취소를 승인에 올립니다.`,
-    noWithdraw: '⚠ 올린 요청은 철회할 수 없습니다.',
-    confirm: '취소 요청 올리기',
+    targetLabel: '대상 문서',
+    /**
+     * 승인되어도 취소가 저절로 되지 않는다 — 승인 뒤 취소 실행(`:cancel`)을 사람이 다시 누른다.
+     * 그래서 「승인되면 문서가 취소됩니다」를 붙이지 않는다.
+     */
+    lead: '이 문서의 취소를 결재에 올립니다.',
+    /** 상신을 되무르는 오퍼레이션이 승인 계약에 없다(omf-mes#87). */
+    noWithdraw: '결재 요청 후에는 철회할 수 없습니다.',
+    confirm: '취소 결재 요청',
     keepEditing: '돌아가기',
   },
   /**

@@ -125,7 +125,7 @@ export const documentProgress: Translated<typeof ko.documentProgress> = {
   cancelRequest: {
     label: 'Yêu cầu hủy',
     reason: 'Lý do hủy',
-    reasonPlaceholder: 'Hãy ghi vì sao hủy',
+    reasonPlaceholder: 'Hãy nhập lý do hủy',
     reasonRequired: 'Phải ghi lý do hủy mới trình được yêu cầu.',
     unsupportedTitle: 'Loại này không hủy được tại đây',
     preparing: 'Đang chuẩn bị yêu cầu hủy',
@@ -139,10 +139,12 @@ export const documentProgress: Translated<typeof ko.documentProgress> = {
     submitted: 'Đã trình yêu cầu hủy. Phê duyệt xong thì thực hiện hủy được.',
   },
   cancelDialog: {
-    title: 'Trình yêu cầu hủy chứ?',
-    target: (documentNo: string): string => `Trình việc hủy ${documentNo} lên phê duyệt.`,
-    noWithdraw: '⚠ Yêu cầu đã trình thì không rút lại được.',
-    confirm: 'Trình yêu cầu hủy',
+    title: (typeName: string | null): string =>
+      typeName === null ? 'Yêu cầu hủy chứng từ chứ?' : `Yêu cầu hủy ${typeName} chứ?`,
+    targetLabel: 'Chứng từ đối tượng',
+    lead: 'Trình việc hủy chứng từ này lên phê duyệt.',
+    noWithdraw: 'Sau khi trình phê duyệt thì không rút lại được.',
+    confirm: 'Trình phê duyệt hủy',
     keepEditing: 'Quay lại',
   },
   approval: {

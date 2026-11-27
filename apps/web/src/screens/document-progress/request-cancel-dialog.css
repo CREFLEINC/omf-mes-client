@@ -1,0 +1,27 @@
+/*
+ * 취소 요청 확인 팝업(#360) — 제목과 본문 사이 여백을 줄이고(사용자 지시 2026-11-27),
+ * 대상 문서 상자 · 처리 안내 · 철회 제한 한 줄을 같은 간격으로 쌓는다.
+ */
+/* 공용 팝업 틀(app.css 「header + body」 padding-top: space-5)보다 앞서도록 클래스를 겹쳐 쓴다. */
+dialog.document-cancel-request-dialog.document-cancel-request-dialog.document-cancel-request-dialog
+  > [class*='_panel_']
+  > header[class*='_header_']
+  + [class*='_body_'] {
+  padding-top: var(--space-3);
+}
+
+.document-cancel-request-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.document-cancel-request-body > .info-facts {
+  align-self: stretch;
+  margin: 0;
+}
+
+.document-cancel-request-body > p {
+  margin: 0;
+}

@@ -1446,11 +1446,12 @@ describe('잠금 토큰 — C3-3 · C3-9', () => {
    */
   it('리소스 상세가 오기 전에는 요청 버튼이 잠긴다', async () => {
     fillDocumentTypes();
-    const { requests, release } = renderScreen(cancelRoutes(), selectCancelTarget, '', [
+    const { requests, release, user } = renderScreen(cancelRoutes(), selectCancelTarget, '', [
       CANCEL_RESOURCE_PATH,
     ]);
 
-    await screen.findByLabelText(t.cancelRequest.reason);
+    /* 사유를 먼저 적어 둔다 — 버튼을 잠그는 것이 토큰 축뿐이게 한다. */
+    await user.type(await screen.findByLabelText(t.cancelRequest.reason), '사유');
 
     /* 요청은 이미 나갔다 — 「아직 안 보냈다」와 「보냈는데 안 왔다」는 다른 상태다. */
     expect(requestsTo(requests, CANCEL_RESOURCE_PATH)).toHaveLength(1);
@@ -1601,16 +1602,19 @@ describe('사유는 필수다 — C3-5', () => {
    * ⭐ **빈 사유로는 요청이 나가지 않고 창도 열리지 않는다.** 계약이 `reason`을 필수로 두었고
    * 이 화면에서는 **그 사유가 곧 취소 이력**이다 — 빈 이력은 나중에 아무것도 말하지 않는다.
    */
-  it('사유가 비면 창이 열리지 않고 인라인 오류가 선다', async () => {
+  /* 사유가 있어야 버튼이 열린다 — 잠긴 까닭 문구는 따로 보이지 않는다(사용자 지시 2026-11-27 · #360). */
+  it('사유가 비면 버튼이 잠겨 창이 열리지 않는다', async () => {
     fillDocumentTypes();
     const { requests, user } = renderScreen(cancelRoutes(), selectCancelTarget);
 
     await waitFor(() => {
-      expect(requestCancelButton()).toBeEnabled();
+      expect(requestsTo(requests, CANCEL_RESOURCE_PATH)).toHaveLength(1);
     });
+    await screen.findByLabelText(t.cancelRequest.reason);
+    expect(requestCancelButton()).toBeDisabled();
     await user.click(requestCancelButton());
 
-    expect(screen.getByText(t.cancelRequest.reasonRequired)).toBeInTheDocument();
+    expect(screen.queryByText(t.cancelRequest.reasonRequired)).not.toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(0);
   });
@@ -1621,9 +1625,10 @@ describe('사유는 필수다 — C3-5', () => {
     const { requests, user } = renderScreen(cancelRoutes(), selectCancelTarget);
 
     await user.type(await screen.findByLabelText(t.cancelRequest.reason), '   ');
+    expect(requestCancelButton()).toBeDisabled();
     await user.click(requestCancelButton());
 
-    expect(screen.getByText(t.cancelRequest.reasonRequired)).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(0);
   });
 
@@ -1660,18 +1665,16 @@ describe('사유는 필수다 — C3-5', () => {
     );
   });
 
-  /* 고쳐 치면 오류가 걷힌다 — 남아 있으면 사용자가 아직 막힌 줄 안다. */
-  it('사유를 치면 오류가 걷힌다', async () => {
+  /* 짝 방향 — 사유를 치면 버튼이 열린다. 아니면 위 단언이 「늘 잠겨 있다」와 같아진다. */
+  it('사유를 치면 버튼이 열린다', async () => {
     fillDocumentTypes();
     const { user } = renderScreen(cancelRoutes(), selectCancelTarget);
 
-    await user.click(await screen.findByLabelText(t.cancelRequest.reason));
-    await user.click(requestCancelButton());
-    expect(screen.getByText(t.cancelRequest.reasonRequired)).toBeInTheDocument();
+    await user.type(await screen.findByLabelText(t.cancelRequest.reason), '사유');
 
-    await user.type(screen.getByLabelText(t.cancelRequest.reason), '사유');
-
-    expect(screen.queryByText(t.cancelRequest.reasonRequired)).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(requestCancelButton()).toBeEnabled();
+    });
   });
 });
 
@@ -1684,9 +1687,12 @@ describe('확인 창이 뜬다 — C3-6', () => {
     await user.type(await screen.findByLabelText(t.cancelRequest.reason), '사유');
     await user.click(requestCancelButton());
 
-    const dialog = await screen.findByRole('dialog');
+    const dialog = await screen.findByRole('dialog', {
+      name: t.cancelDialog.title(t.documentTypes[CANCEL_TYPE]),
+    });
 
-    expect(within(dialog).getByText(t.cancelDialog.target('SYN-GR-2026-0001'))).toBeInTheDocument();
+    expect(within(dialog).getByText('SYN-GR-2026-0001')).toBeInTheDocument();
+    expect(within(dialog).getByText(t.cancelDialog.lead)).toBeInTheDocument();
     expect(within(dialog).getByText(t.cancelDialog.noWithdraw)).toBeInTheDocument();
   });
 
@@ -1724,8 +1730,9 @@ describe('202를 받으면 — C3-10', () => {
     const { requests, user } = renderScreen(cancelRoutes(), selectCancelTarget);
 
     await waitFor(() => {
-      expect(requestCancelButton()).toBeEnabled();
+      expect(requestsTo(requests, CANCEL_RESOURCE_PATH)).toHaveLength(1);
     });
+    await screen.findByLabelText(t.cancelRequest.reason);
 
     const before = {
       list: listRequests(requests).length,
@@ -1926,7 +1933,7 @@ describe('400을 받으면 — C3-11 · C3-12', () => {
    * ⚠ 이 감지기는 **내가 r2에서 「등가」로 잘못 판정했던 자리**다 — `resetIfIdle`가 나가는 중에는
    * 걷지 않는다는 사실(내가 C3-8로 세운 규율)을 수명 표에서 빠뜨렸다.
    */
-  it('나가는 중 창이 닫힌 뒤 도착한 거절 위에 필수 오류가 선다', async () => {
+  it('나가는 중 창이 닫힌 뒤 도착한 거절은 칸을 비우면 걷힌다', async () => {
     fillDocumentTypes();
     const { requests, release, user } = renderScreen(
       cancelRoutes([
@@ -1963,19 +1970,15 @@ describe('400을 받으면 — C3-11 · C3-12', () => {
     /* ③ 창이 닫힌 채 서버 거절이 칸에 선다 — 걷혔다면 여기서 멈춘다. */
     expect(await screen.findByText('사유가 짧습니다.')).toBeInTheDocument();
 
-    /* ④⑤ 비우고 다시 누른다 — 두 오류가 함께 서는 순간이다. */
+    /* ④ 비운다 — 버튼이 잠기고, 빈 칸 옆에 낡은 서버 거절이 남지 않는다(#360). */
     await user.clear(screen.getByLabelText(t.cancelRequest.reason));
-    await user.click(requestCancelButton());
 
-    expect(screen.getByText(t.cancelRequest.reasonRequired)).toBeInTheDocument();
+    expect(requestCancelButton()).toBeDisabled();
     expect(screen.queryByText('사유가 짧습니다.')).not.toBeInTheDocument();
   });
 
-  /**
-   * 걷힌 뒤에도 **화면이 잡은 오류는 제 자리에 선다** — 걷는 규약이 새 오류까지 삼키면 사용자는
-   * 왜 안 나가는지 알 수 없다.
-   */
-  it('걷힌 뒤 비운 채 다시 누르면 필수 오류가 선다', async () => {
+  /** 걷힌 뒤 칸을 비우면 버튼이 잠긴다 — 빈 사유로는 다시 보낼 길이 없다(#360). */
+  it('걷힌 뒤 칸을 비우면 요청 버튼이 잠긴다', async () => {
     const { user } = await submitWith([
       failingRequestCancelRoute(400, {
         errors: [
@@ -1988,9 +1991,9 @@ describe('400을 받으면 — C3-11 · C3-12', () => {
 
     await user.click(screen.getByRole('button', { name: t.cancelDialog.keepEditing }));
     await user.clear(screen.getByLabelText(t.cancelRequest.reason));
-    await user.click(requestCancelButton());
 
-    expect(screen.getByText(t.cancelRequest.reasonRequired)).toBeInTheDocument();
+    expect(requestCancelButton()).toBeDisabled();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   /** 실패해도 **창을 닫지 않는다** — 닫으면 무엇이 막았는지 모른 채 같은 버튼을 다시 누른다. */
@@ -2184,9 +2187,9 @@ describe('나가는 중 — C3-13의 두 축', () => {
 
     release();
 
-    /* 거절이 도착했다 — 도착 자체는 확인하고(요청이 살아 있다), 새 대상에는 그리지 않는다. */
+    /* 거절이 도착했다 — 도착 자체는 확인하고(잠금이 풀린다), 새 대상에는 그리지 않는다. */
     await waitFor(() => {
-      expect(requestCancelButton()).toBeEnabled();
+      expect(screen.getByLabelText(t.cancelRequest.reason)).toBeEnabled();
     });
     expect(screen.queryByText('사유가 짧습니다.')).not.toBeInTheDocument();
   });
@@ -2771,13 +2774,13 @@ describe('실행 200 — C4-12', () => {
     fillDocumentTypes();
     const { requests, user } = renderScreen(executeRoutes(), selectCancelTarget);
 
+    await user.type(await screen.findByLabelText(t.cancelRequest.reason), '사유');
     await waitFor(() => {
       expect(requestCancelButton()).toBeEnabled();
     });
 
     const before = approvalRequests(requests).length;
 
-    await user.type(screen.getByLabelText(t.cancelRequest.reason), '사유');
     await user.click(requestCancelButton());
     await user.click(screen.getByRole('button', { name: t.cancelDialog.confirm }));
 
@@ -3038,11 +3041,11 @@ describe('실행의 대상 매임과 잠금 — C4-16', () => {
       REQUEST_CANCEL_PATH,
     ]);
 
+    await user.type(await screen.findByLabelText(t.cancelRequest.reason), '사유');
     await waitFor(() => {
       expect(requestCancelButton()).toBeEnabled();
     });
 
-    await user.type(screen.getByLabelText(t.cancelRequest.reason), '사유');
     await user.click(requestCancelButton());
     await user.click(screen.getByRole('button', { name: t.cancelDialog.confirm }));
 
@@ -3158,6 +3161,8 @@ describe('실행의 대상 매임과 잠금 — C4-16', () => {
     await waitFor(() => {
       expect(executeButton()).toBeEnabled();
     });
+    /* 사유를 적어 두어 요청 버튼을 잠그는 것이 실행 잠금뿐이게 한다. */
+    await user.type(screen.getByLabelText(t.cancelRequest.reason), '사유');
     await confirmExecute(user);
 
     await waitFor(() => {
