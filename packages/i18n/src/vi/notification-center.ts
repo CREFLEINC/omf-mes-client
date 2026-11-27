@@ -15,8 +15,6 @@ import type { Translated } from './translated';
  * 다시 고르는** 길만 말한다.
  */
 export const notificationCenter: Translated<typeof ko.notificationCenter> = {
-  title: 'Trung tâm thông báo',
-  breadcrumbRoot: 'Hộp công việc',
   panes: {
     list: 'Danh sách thông báo',
   },

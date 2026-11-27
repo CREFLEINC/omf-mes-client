@@ -10117,9 +10117,25 @@ dialog.routing-history-dialog {
 
 .filter-bar.notification-center-filter {
   display: grid;
-  grid-template-columns: minmax(18rem, 1.4fr) minmax(10rem, max-content) minmax(13rem, 1fr);
+  /* 기간 · 안 읽음만 · 유형 · [조회]·[초기화] · 오른쪽 끝 기준 시각 + 모두 읽음(#361). */
+  grid-template-columns: minmax(18rem, 1.4fr) minmax(10rem, max-content) minmax(
+      13rem,
+      1fr
+    ) auto minmax(max-content, 1fr);
+  align-items: end;
   gap: var(--space-4);
   margin-bottom: 0;
+}
+
+.notification-center-filter > .dashboard-filter-actions {
+  justify-content: flex-end;
+  align-self: end;
+  min-height: var(--control-height-md);
+}
+
+.notification-center-filter > .dashboard-filter-actions > * {
+  flex: none;
+  white-space: nowrap;
 }
 
 .notification-center-filter .field-cell {
@@ -10182,8 +10198,8 @@ dialog.routing-history-dialog {
  */
 .filter-bar.notice-filter {
   display: grid;
-  /* 상태 칸은 조회 줄 선택칸 폭(176px · 사용자 지시 2026-11-24). */
-  grid-template-columns: minmax(0, 1.4fr) 176px repeat(2, minmax(0, 1fr)) minmax(13rem, auto);
+  /* 상태는 목록 위 탭으로 옮겼다(#361) — 제목 · 기간 시작 · 기간 끝 · 단추 묶음. */
+  grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr)) auto;
   gap: var(--space-4);
   margin-bottom: 0;
 }
@@ -10211,6 +10227,51 @@ dialog.routing-history-dialog {
 .notice-pane > .pane-lead,
 .notice-pane > .form-actions {
   margin-top: 0;
+}
+
+/* 공지 상세(#361 시안) — 제목 옆 상태 라벨 · 정보 · 구분선 아래 본문 · 맨 아래 줄에 안내와 단추. */
+.notice-detail-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.notice-detail-head > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.notice-detail-facts {
+  margin: 0;
+}
+
+.notice-detail .notice-body {
+  max-width: none;
+  margin: 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+  white-space: pre-wrap;
+}
+
+.notice-detail-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0 calc(-1 * var(--space-5)) calc(-1 * var(--space-5));
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.notice-detail-footer > .field-note {
+  margin: 0;
+}
+
+.notice-detail-footer > .form-actions {
+  margin: 0 0 0 auto;
 }
 
 .notice-table {

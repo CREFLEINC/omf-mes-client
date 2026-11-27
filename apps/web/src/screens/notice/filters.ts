@@ -101,6 +101,38 @@ export const toSearchParams = (
   return params;
 };
 
+/**
+ * 목록 위 상태 탭(#361) — 「게시 중만」 체크 · 상태 선택칸을 하나로 합친 자리.
+ * 조건 값은 그대로 두고 보이는 모양만 바꾼다: 「게시 중」 탭은 종전 기본(`activeOnly`)과 같은 조회다
+ * (서버가 둘을 같은 조건으로 거른다). 다른 상태는 `statusCode`, 「전체」는 둘 다 비운다.
+ */
+export type StatusTab = 'ALL' | 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'CLOSED';
+
+export const STATUS_TABS: readonly StatusTab[] = [
+  'ALL',
+  'DRAFT',
+  'SCHEDULED',
+  'PUBLISHED',
+  'CLOSED',
+];
+
+export const statusTabOf = (filters: NoticeFilters): StatusTab => {
+  if (filters.statusCode !== '') {
+    return (STATUS_TABS as readonly string[]).includes(filters.statusCode)
+      ? (filters.statusCode as StatusTab)
+      : 'ALL';
+  }
+
+  return filters.activeOnly ? 'PUBLISHED' : 'ALL';
+};
+
+export const withStatusTab = (tab: StatusTab): Pick<NoticeFilters, 'activeOnly' | 'statusCode'> => {
+  if (tab === 'PUBLISHED') return { activeOnly: true, statusCode: '' };
+  if (tab === 'ALL') return { activeOnly: false, statusCode: '' };
+
+  return { activeOnly: false, statusCode: tab };
+};
+
 /** 기간이 뒤집혔는가. 뒤집힌 채로 보내면 0건이 나오고 사람은 「없다」로 읽는다. */
 export const periodError = (filters: NoticeFilters): string | undefined => {
   if (filters.overlapFrom === '' || filters.overlapTo === '') return undefined;

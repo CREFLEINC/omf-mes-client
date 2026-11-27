@@ -1,4 +1,4 @@
-import { Button, Checkbox, DatePicker, TextArea, TextField } from '@crefle/web-ui';
+import { Checkbox, DatePicker, TextArea, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
@@ -16,13 +16,10 @@ const t = messages.notice;
 export interface NoticeFormProps {
   draft: NoticeDraft;
   errors: DraftErrors;
-  isSaving: boolean;
   saveError: ApiError | null;
   fieldErrors: Record<string, string>;
   workOrders: LookupResult;
   onChange: (patch: Partial<NoticeDraft>) => void;
-  onSubmit: () => void;
-  onCancel: () => void;
 }
 
 /**
@@ -41,13 +38,10 @@ const scopeOptions = (): SelectOption[] =>
 export const NoticeForm = ({
   draft,
   errors,
-  isSaving,
   saveError,
   fieldErrors,
   workOrders,
   onChange,
-  onSubmit,
-  onCancel,
 }: NoticeFormProps) => {
   const baseId = useId();
   const titleId = `${baseId}-title`;
@@ -175,16 +169,6 @@ export const NoticeForm = ({
             {t.form.acknowledgeRequired}
           </Checkbox>
         </div>
-      </div>
-
-      <div className="form-actions">
-        {isSaving && <p className="field-note form-actions-secondary">{t.form.saving}</p>}
-        <Button variant="outlined" disabled={isSaving} onClick={onCancel}>
-          {t.form.cancel}
-        </Button>
-        <Button disabled={isSaving} onClick={onSubmit}>
-          {t.form.save}
-        </Button>
       </div>
     </>
   );

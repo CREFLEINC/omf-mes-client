@@ -1389,9 +1389,14 @@ describe('appRouter — 알림센터의 진입 경로', () => {
   it('그 주소로 들어가면 알림센터 화면이 첫 상태로 선다', async () => {
     renderRoutedApp('/notification/center', notificationCenterRoutes());
 
+    /* 화면 제목 줄은 두지 않는다(#361) — 목록 제목으로 화면이 섰는지 본다. */
     expect(
-      await screen.findByRole('heading', { level: 1, name: messages.notificationCenter.title }),
+      await screen.findByRole('heading', {
+        level: 2,
+        name: messages.notificationCenter.panes.list,
+      }),
     ).toBeInTheDocument();
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
   });
 
   /**
@@ -1401,7 +1406,7 @@ describe('appRouter — 알림센터의 진입 경로', () => {
   it('첫 진입에 기간이 주소에 심긴다', async () => {
     renderRoutedApp('/notification/center', notificationCenterRoutes());
 
-    await screen.findByRole('heading', { level: 1, name: messages.notificationCenter.title });
+    await screen.findByRole('heading', { level: 2, name: messages.notificationCenter.panes.list });
 
     await waitFor(() => {
       expect(screen.getByTestId('location').textContent).toContain('from=');

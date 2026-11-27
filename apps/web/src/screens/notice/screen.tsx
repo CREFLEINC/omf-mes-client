@@ -6,13 +6,14 @@ import {
   DatePicker,
   Dialog,
   EmptyState,
-  SearchInput,
+  Icon,
   Skeleton,
-  Table,
+  Tabs,
+  TextField,
   type Column,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import {
@@ -24,6 +25,7 @@ import {
 } from '../../patterns/filter-more';
 import { InfoTip } from '../../patterns/info-tip';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
+import { ManagedTable } from '../../patterns/managed-table';
 import { SaveErrorBanner } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
 import { AckPanel } from './ack-panel';
@@ -34,7 +36,7 @@ import {
   needsWorkOrder,
   scopeLabel,
   statusLabel,
-  STATUS_CODES,
+  statusTone,
   SCOPE_CODES,
   isSupportedScope,
 } from './codes';
@@ -44,7 +46,11 @@ import {
   readFilters,
   readSelected,
   readSize,
+  STATUS_TABS,
+  statusTabOf,
   toSearchParams,
+  withStatusTab,
+  type StatusTab,
 } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
 import { useWorkOrderOptions } from './lookups';
@@ -61,16 +67,22 @@ import { NoticeForm } from './notice-form';
 import {
   useAcknowledge,
   useAcknowledgements,
-  useDismiss,
   useNoticeClose,
   useNoticeCreate,
   useNoticeDetail,
   useNoticePublish,
   useNotices,
   useNoticeUpdate,
+  useUnacknowledgedByMe,
 } from './queries';
 import { SelectField } from './select-field';
 import { formatMoment, formatPeriod, type NoticeView, type SelectOption } from './types';
+
+/** 상세의 게시 기간 — 종료일이 없으면 「…부터 (종료일 없음)」(#361 시안). */
+const detailPeriod = (view: NoticeView): string =>
+  view.endDate === null
+    ? messages.notice.detail.periodOpen(view.startDate)
+    : formatPeriod(view.startDate, view.endDate, messages.notice.detail.noEndDate);
 
 const t = messages.notice;
 
@@ -150,14 +162,24 @@ export const NoticeScreen = () => {
     setFlash(t.detail.closed);
   });
 
+  /*
+   * 목록에서 고르면 확인한 것으로 친다(#361 — 「확인했습니다」 · 「확인 없이 닫기」 단추 대신).
+   * ⛔ 아직 확인하지 않은 게시 중 공지일 때만, 고른 공지마다 한 번만 보낸다 — 다시 보내면 서버가
+   * 확인 일시를 덮어써 확인 현황의 시각이 「마지막으로 연 때」가 된다.
+   */
   const acknowledge = useAcknowledge(selectedId, () => {
-    setFlash(t.detail.acknowledged);
     void acks.refetch();
   });
+  const unacknowledged = useUnacknowledgedByMe(selected);
+  const acknowledgedIdRef = useRef<number | null>(null);
 
-  const dismiss = useDismiss(selectedId, () => {
-    setFlash(t.detail.dismissed);
-  });
+  useEffect(() => {
+    if (selected === null || unacknowledged.data !== true) return;
+    if (acknowledgedIdRef.current === selected.noticeId) return;
+
+    acknowledgedIdRef.current = selected.noticeId;
+    acknowledge.write({});
+  }, [selected, unacknowledged.data, acknowledge]);
 
   const rows = notices.data?.items ?? EMPTY_ROWS;
 
@@ -177,7 +199,6 @@ export const NoticeScreen = () => {
     publish.reset();
     close.reset();
     acknowledge.reset();
-    dismiss.reset();
   };
 
   const openCreate = (): void => {
@@ -212,11 +233,6 @@ export const NoticeScreen = () => {
     else update.write(body);
   };
 
-  const statusOptions: SelectOption[] = STATUS_CODES.map((code) => ({
-    value: code,
-    label: statusLabel(code),
-  }));
-
   const scopeFilterOptions: SelectOption[] = SCOPE_CODES.filter(isSupportedScope).map((code) => ({
     value: code,
     label: scopeLabel(code),
@@ -226,7 +242,7 @@ export const NoticeScreen = () => {
    * 접힌 칸(대상 범위 · 체크칸 둘)에 걸린 조건만 칩으로 — 보이는 칸의 값은 칩으로 겹쳐 적지 않는다.
    * 조건은 바꾸는 즉시 나가므로 × 도 곧바로 다시 조회한다.
    */
-  const hiddenChips: HiddenFilterChip<'scopeCode' | 'activeOnly' | 'unacknowledgedByMe'>[] = [
+  const hiddenChips: HiddenFilterChip<'scopeCode' | 'unacknowledgedByMe'>[] = [
     ...(filters.scopeCode === ''
       ? []
       : [
@@ -236,44 +252,57 @@ export const NoticeScreen = () => {
             removeLabel: messages.common.filterMore.remove(t.filters.scope),
           },
         ]),
-    ...(filters.activeOnly ? [{ key: 'activeOnly' as const, label: t.filters.activeOnly }] : []),
     ...(filters.unacknowledgedByMe
       ? [{ key: 'unacknowledgedByMe' as const, label: t.filters.unacknowledgedByMe }]
       : []),
   ];
 
-  /* 쪽은 조건이 아니다 — 견줄 때 첫 쪽으로 맞춘다. 제목 칸은 Enter 전에도 편집 중인 값으로 본다. */
+  /*
+   * 쪽은 조건이 아니다 — 견줄 때 첫 쪽으로 맞춘다. 제목 칸은 조회 전에도 편집 중인 값으로 본다.
+   * 상태는 목록 위 탭이 맡아 조회 상자의 [초기화] 대상이 아니다(#361).
+   */
+  const statusTab = statusTabOf(filters);
+  const baseFilters = { ...EMPTY_FILTERS, ...withStatusTab(statusTab) };
   const isFilterChanged = hasChangedFilters(
-    EMPTY_FILTERS,
+    baseFilters,
     { ...filters, q: search, page: 1 },
     { ...filters, page: 1 },
   );
+
+  /** 조회 — 같은 조건이면 다시 부른다(품질 화면과 같게 · #361). */
+  const searchNow = (): void => {
+    if (search === filters.q && filters.page === 1) void notices.refetch();
+    apply({ q: search });
+  };
+
+  const resetFilters = (): void => {
+    setSearch('');
+    setSearchParams(toSearchParams(baseFilters, selectedId, size));
+  };
 
   const columns: Column<NoticeView>[] = [
     {
       key: 'title',
       header: t.list.title,
-      render: (row) => (
-        <Button
-          variant="text"
-          size="sm"
-          onClick={() => {
-            /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24). */
-            selectNotice(row.noticeId === selectedId ? null : row.noticeId);
-          }}
-        >
-          {row.title}
-        </Button>
-      ),
+      width: '280px',
+      /* 제목은 글자만 — 줄 아무 곳이나 눌러 고른다(#361). */
+      render: (row) => row.title,
     },
     {
       key: 'status',
       header: t.list.status,
-      render: (row) => <Chip size="sm">{statusLabel(row.statusCode)}</Chip>,
+      width: '110px',
+      align: 'center',
+      render: (row) => (
+        <Chip variant="status" size="sm" status={statusTone(row.statusCode)}>
+          {statusLabel(row.statusCode)}
+        </Chip>
+      ),
     },
     {
       key: 'scope',
       header: t.list.scope,
+      width: '140px',
       /*
        * ⭐ 작업지시 번호는 **범위가 작업지시일 때만** 뜻이 있다. 범위를 바꾸며 만든 공지에
        * 옛 번호가 남아 있을 수 있는데, 그것을 전사 공지 옆에 그리면 대상이 좁아 보인다.
@@ -292,11 +321,13 @@ export const NoticeScreen = () => {
     {
       key: 'period',
       header: t.list.period,
+      width: '220px',
       render: (row) => formatPeriod(row.startDate, row.endDate, t.detail.noEndDate),
     },
     {
       key: 'ack',
       header: t.list.ack,
+      width: '120px',
       align: 'end',
       /* ⛔ 분모를 셀 수 없으면 분자만 낸다 — 0으로 채우면 「아무도 안 봤음」과 같아 보인다. */
       render: (row) => {
@@ -311,6 +342,163 @@ export const NoticeScreen = () => {
 
   const editable = selected !== null && isEditable(selected.statusCode);
 
+  /** 목록 위 상태 탭 — 고르면 바로 조회한다(품질 화면의 선택칸 · 체크칸처럼 · #361). */
+  const statusTabItems = STATUS_TABS.map((value: StatusTab) => ({
+    value,
+    label: value === 'ALL' ? t.filters.statusTabAll : statusLabel(value),
+    content: null,
+  }));
+
+  const listContent = (
+    <>
+      {notices.isError ? (
+        <LoadErrorBanner
+          error={notices.error}
+          onRetry={() => {
+            void notices.refetch();
+          }}
+        />
+      ) : notices.isPending ? (
+        <Skeleton variant="rect" height="12rem" />
+      ) : (
+        <ManagedTable
+          storageKey="omf-mes:notice:columns"
+          className="notice-table"
+          columns={columns}
+          rows={rows}
+          getRowId={(row) => String(row.noticeId)}
+          caption={t.panes.list}
+          scrollX
+          /* 줄 아무 곳이나 눌러 고른다 · 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-24 · #361). */
+          onRowClick={(row) => {
+            selectNotice(row.noticeId === selectedId ? null : row.noticeId);
+          }}
+          empty={<EmptyState size="sm" live title={t.list.emptyTitle} description={t.list.empty} />}
+        />
+      )}
+      {/* 0건이면 쪽 이동 줄을 내지 않는다 — 넘길 쪽이 없다(#361). */}
+      {notices.data !== undefined && notices.data.page.total > 0 && (
+        <PageNav
+          meta={notices.data.page}
+          onChangePage={(page) => {
+            apply({ page });
+          }}
+          onChangeSize={(nextSize) => {
+            setSearchParams(toSearchParams({ ...filters, page: 1 }, selectedId, nextSize));
+          }}
+        />
+      )}
+    </>
+  );
+
+  /** 상세 상자 — 시안(#361): 제목 「공지 상세」 + 상태 라벨, 정보 · 본문, 아래 줄에 안내와 단추. */
+  const detailContent = (): ReactNode => {
+    if (selectedId === null) {
+      return (
+        <EmptyState
+          size="sm"
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="layers" size={20} />
+            </span>
+          }
+          title={t.list.selectTitle}
+          description={t.list.select}
+        />
+      );
+    }
+
+    if (detail.isError) {
+      return (
+        <LoadErrorBanner
+          error={detail.error}
+          onRetry={() => {
+            void detail.refetch();
+          }}
+        />
+      );
+    }
+
+    if (detail.isPending || selected === null) return <Skeleton variant="rect" height="10rem" />;
+
+    return (
+      <>
+        <div className="notice-detail-head">
+          <h2 className="pane-title">{t.panes.detail}</h2>
+          <Chip variant="status" size="sm" status={statusTone(selected.statusCode)}>
+            {statusLabel(selected.statusCode)}
+          </Chip>
+        </div>
+
+        <SaveErrorBanner error={publish.error ?? close.error} />
+        <SaveErrorBanner error={acknowledge.error} />
+
+        <dl className="token-meta notice-detail-facts">
+          <dt>{t.list.scope}</dt>
+          <dd>
+            {scopeLabel(selected.scopeCode)}
+            {needsWorkOrder(selected.scopeCode) && selected.targetWorkOrderNo !== null
+              ? ` · ${selected.targetWorkOrderNo}`
+              : ''}
+          </dd>
+          <dt>{t.detail.period}</dt>
+          <dd>{detailPeriod(selected)}</dd>
+          <dt>{t.detail.publishedAt}</dt>
+          <dd>
+            {selected.publishedAt === null
+              ? t.list.notAvailable
+              : formatMoment(selected.publishedAt)}
+          </dd>
+        </dl>
+
+        <p className="notice-body">{selected.body}</p>
+
+        <div className="notice-detail-footer">
+          {/* ⛔⛔ 게시 뒤에는 본문을 고칠 수 없다 — 잠근 이유를 잠근 자리에 적는다. */}
+          <p className="field-note">{editable ? '' : t.detail.lockedAfterPublish}</p>
+          <div className="form-actions">
+            <Button
+              variant="tonal"
+              onClick={() => {
+                selectNotice(null);
+              }}
+            >
+              {messages.common.close}
+            </Button>
+            {editable && (
+              <Button variant="outlined" onClick={openEdit}>
+                {t.form.edit}
+              </Button>
+            )}
+            {isClosable(selected.statusCode) && (
+              <Button
+                variant="outlined"
+                disabled={close.isSaving}
+                onClick={() => {
+                  setConfirming('close');
+                }}
+              >
+                {t.detail.close}
+              </Button>
+            )}
+            {isPublishable(selected.statusCode) && (
+              <Button
+                disabled={publish.isSaving}
+                onClick={() => {
+                  setConfirming('publish');
+                }}
+              >
+                {t.detail.publish}
+              </Button>
+            )}
+          </div>
+        </div>
+      </>
+    );
+  };
+
+  const isSaving = create.isSaving || update.isSaving;
+
   return (
     <>
       {/* 화면 제목 줄은 두지 않는다 — 조회 조건 · 목록 · 상세 통일 배치(검사 조회·판정과 같다 · #350). */}
@@ -321,30 +509,19 @@ export const NoticeScreen = () => {
           content: (
             <>
               <div className="filter-bar notice-filter">
-                <div className="field-cell">
-                  <span className="field-label">{t.filters.search}</span>
-                  <SearchInput
-                    value={search}
-                    placeholder={t.filters.searchPlaceholder}
-                    onChange={(event) => {
-                      setSearch(event.target.value);
-                    }}
-                    onSearch={() => {
-                      apply({ q: search });
-                    }}
-                    clearLabel={messages.common.clear}
-                  />
-                </div>
-
-                <SelectField
-                  label={t.filters.status}
-                  options={statusOptions}
-                  value={filters.statusCode}
-                  placeholder={t.filters.statusAll}
-                  /* 상태가 정해지는 방식은 라벨 옆 ⓘ 로(관리웹 정리 시안 A). */
-                  info={t.status.derived}
-                  onChange={(value) => {
-                    apply({ statusCode: value });
+                {/* 품질 화면(검사 조회·판정)과 같은 입력칸 — 돋보기 없이 흐린 문구로 안내한다(#361). */}
+                <TextField
+                  label={t.filters.search}
+                  value={search}
+                  placeholder={t.filters.searchPlaceholder}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                      event.preventDefault();
+                      searchNow();
+                    }
                   }}
                 />
 
@@ -382,17 +559,13 @@ export const NoticeScreen = () => {
                   )}
                 </div>
 
+                {/* [조회] → [초기화(조건을 바꿨을 때만)] → [조건 더보기] | [새 공지 쓰기] — 품질 화면과 같은 차례. */}
                 <div className="field-cell field-cell-unlabeled notice-filter-actions">
                   <div className="filter-actions">
+                    <Button onClick={searchNow}>{messages.common.search}</Button>
                     {isFilterChanged && (
-                      <Button
-                        variant="outlined"
-                        onClick={() => {
-                          setSearch('');
-                          setSearchParams(toSearchParams(EMPTY_FILTERS, selectedId, size));
-                        }}
-                      >
-                        {t.filters.clear}
+                      <Button variant="outlined" onClick={resetFilters}>
+                        {messages.common.reset}
                       </Button>
                     )}
                     <FilterMoreButton
@@ -421,14 +594,6 @@ export const NoticeScreen = () => {
 
                   <div className="field-cell field-cell-unlabeled check-group check-group-row notice-filter-options">
                     <Checkbox
-                      checked={filters.activeOnly}
-                      onChange={(event) => {
-                        apply({ activeOnly: event.target.checked });
-                      }}
-                    >
-                      {t.filters.activeOnly}
-                    </Checkbox>
-                    <Checkbox
                       checked={filters.unacknowledgedByMe}
                       onChange={(event) => {
                         apply({ unacknowledgedByMe: event.target.checked });
@@ -445,7 +610,6 @@ export const NoticeScreen = () => {
                 chips={hiddenChips}
                 onRemove={(key) => {
                   if (key === 'scopeCode') apply({ scopeCode: '' });
-                  else if (key === 'activeOnly') apply({ activeOnly: false });
                   else apply({ unacknowledgedByMe: false });
                 }}
               />
@@ -458,46 +622,17 @@ export const NoticeScreen = () => {
           count: notices.data?.page.total,
           content: (
             <>
-              {notices.isError ? (
-                <LoadErrorBanner
-                  error={notices.error}
-                  onRetry={() => {
-                    void notices.refetch();
-                  }}
-                />
-              ) : notices.isPending ? (
-                <Skeleton variant="rect" height="12rem" />
-              ) : (
-                <div className="wide-table notice-table">
-                  <Table
-                    columns={columns}
-                    rows={rows}
-                    getRowId={(row) => String(row.noticeId)}
-                    density="compact"
-                    caption={t.panes.list}
-                    empty={
-                      <EmptyState
-                        size="sm"
-                        live
-                        title={t.list.emptyTitle}
-                        description={t.list.empty}
-                      />
-                    }
-                  />
-                </div>
-              )}
-              {/* 0건이면 쪽 이동 줄을 내지 않는다 — 넘길 쪽이 없다(#361). */}
-              {notices.data !== undefined && notices.data.page.total > 0 && (
-                <PageNav
-                  meta={notices.data.page}
-                  onChangePage={(page) => {
-                    apply({ page });
-                  }}
-                  onChangeSize={(nextSize) => {
-                    setSearchParams(toSearchParams({ ...filters, page: 1 }, selectedId, nextSize));
-                  }}
-                />
-              )}
+              {/* 상태 탭 — 「게시 중만」 체크 · 상태 선택칸 대신 목록 위에서 고른다(#361). 기본은 종전처럼 「게시 중」. */}
+              <Tabs
+                aria-label={t.filters.status}
+                items={statusTabItems}
+                value={statusTab}
+                onChange={(next) => {
+                  const tab = STATUS_TABS.find((value) => value === next);
+                  if (tab !== undefined) apply(withStatusTab(tab));
+                }}
+              />
+              {listContent}
             </>
           ),
         }}
@@ -507,7 +642,7 @@ export const NoticeScreen = () => {
           content: (
             <>
               {/*
-               * 저장 · 게시 · 마감 · 확인 안내 — 상세 상자 위에 둔다(통일 배치 밖에 두면 안내가 뜨고 질 때 목록 | 상세 높이가
+               * 저장 · 게시 · 마감 안내 — 상세 상자 위에 둔다(통일 배치 밖에 두면 안내가 뜨고 질 때 목록 | 상세 높이가
                * 창 바닥과 어긋난다 · #350 리뷰).
                */}
               {flash !== null && (
@@ -523,120 +658,9 @@ export const NoticeScreen = () => {
                   </AlertBanner>
                 </div>
               )}
-              {/* 바깥 상세 구획이 「공지」 이름을 갖는다 — 안쪽 상자에 같은 이름을 겹쳐 달지 않는다. */}
-              <section className="pane notice-pane">
-                <h2 className="pane-title">
-                  {formMode === 'create' ? t.form.create : t.panes.detail}
-                </h2>
+              <section className="pane notice-pane notice-detail">{detailContent()}</section>
 
-                {formMode !== 'closed' ? (
-                  <NoticeForm
-                    draft={draft}
-                    errors={errors}
-                    isSaving={create.isSaving || update.isSaving}
-                    saveError={formMode === 'create' ? create.error : update.error}
-                    fieldErrors={formMode === 'create' ? create.fieldErrors : update.fieldErrors}
-                    workOrders={workOrders}
-                    onChange={(patch) => {
-                      setDraft((prev) => ({ ...prev, ...patch }));
-                    }}
-                    onSubmit={submit}
-                    onCancel={() => {
-                      setFormMode('closed');
-                    }}
-                  />
-                ) : selectedId === null ? (
-                  <EmptyState size="sm" title={t.list.selectTitle} description={t.list.select} />
-                ) : detail.isError ? (
-                  <LoadErrorBanner
-                    error={detail.error}
-                    onRetry={() => {
-                      void detail.refetch();
-                    }}
-                  />
-                ) : detail.isPending || selected === null ? (
-                  <Skeleton variant="rect" height="10rem" />
-                ) : (
-                  <>
-                    <SaveErrorBanner error={publish.error ?? close.error} />
-                    <SaveErrorBanner error={acknowledge.error ?? dismiss.error} />
-
-                    <dl className="token-meta">
-                      <dt>{t.list.status}</dt>
-                      <dd>{statusLabel(selected.statusCode)}</dd>
-                      <dt>{t.detail.period}</dt>
-                      <dd>
-                        {formatPeriod(selected.startDate, selected.endDate, t.detail.noEndDate)}
-                      </dd>
-                      <dt>{t.list.scope}</dt>
-                      <dd>
-                        {scopeLabel(selected.scopeCode)}
-                        {needsWorkOrder(selected.scopeCode) && selected.targetWorkOrderNo !== null
-                          ? ` · ${selected.targetWorkOrderNo}`
-                          : ''}
-                      </dd>
-                      <dt>{t.detail.publishedAt}</dt>
-                      <dd>
-                        {selected.publishedAt === null
-                          ? t.list.notAvailable
-                          : formatMoment(selected.publishedAt)}
-                      </dd>
-                    </dl>
-
-                    <p className="notice-body">{selected.body}</p>
-
-                    {/* ⛔⛔ 게시 뒤에는 본문을 고칠 수 없다 — 잠근 이유를 잠근 자리에 적는다. */}
-                    {!editable && <p className="pane-lead">{t.detail.lockedAfterPublish}</p>}
-
-                    <div className="form-actions">
-                      <Button
-                        variant="outlined"
-                        disabled={acknowledge.isSaving}
-                        onClick={() => {
-                          acknowledge.write({});
-                        }}
-                      >
-                        {t.detail.acknowledge}
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        /* ⚠ 확인을 요구한 공지는 그냥 닫을 수 없다 — 서버가 거부한다. */
-                        disabled={selected.acknowledgeRequired || dismiss.isSaving}
-                        onClick={() => {
-                          dismiss.write({});
-                        }}
-                      >
-                        {t.detail.dismiss}
-                      </Button>
-                      <Button variant="outlined" disabled={!editable} onClick={openEdit}>
-                        {t.form.edit}
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        disabled={!isClosable(selected.statusCode) || close.isSaving}
-                        onClick={() => {
-                          setConfirming('close');
-                        }}
-                      >
-                        {t.detail.close}
-                      </Button>
-                      <Button
-                        disabled={!isPublishable(selected.statusCode) || publish.isSaving}
-                        onClick={() => {
-                          setConfirming('publish');
-                        }}
-                      >
-                        {t.detail.publish}
-                      </Button>
-                    </div>
-                    {selected.acknowledgeRequired && (
-                      <p className="field-note">{t.detail.dismissLocked}</p>
-                    )}
-                  </>
-                )}
-              </section>
-
-              {selected !== null && formMode === 'closed' && (
+              {selected !== null && (
                 <section className="pane notice-pane" aria-label={t.panes.ack}>
                   <h2 className="pane-title info-label">
                     {t.ack.title}
@@ -662,6 +686,46 @@ export const NoticeScreen = () => {
           ),
         }}
       />
+
+      {/* 새 공지 쓰기 · 공지 고치기 — 상세 자리 대신 팝업으로(#361). */}
+      <Dialog
+        open={formMode !== 'closed'}
+        onClose={() => {
+          if (!isSaving) setFormMode('closed');
+        }}
+        size="lg"
+        title={formMode === 'edit' ? t.form.edit : t.form.create}
+        closeOnBackdropClick={false}
+        showCloseButton={false}
+        footer={
+          <>
+            {isSaving && <p className="field-note form-actions-secondary">{t.form.saving}</p>}
+            <Button
+              variant="outlined"
+              disabled={isSaving}
+              onClick={() => {
+                setFormMode('closed');
+              }}
+            >
+              {t.form.cancel}
+            </Button>
+            <Button disabled={isSaving} onClick={submit}>
+              {t.form.save}
+            </Button>
+          </>
+        }
+      >
+        <NoticeForm
+          draft={draft}
+          errors={errors}
+          saveError={formMode === 'create' ? create.error : update.error}
+          fieldErrors={formMode === 'create' ? create.fieldErrors : update.fieldErrors}
+          workOrders={workOrders}
+          onChange={(patch) => {
+            setDraft((prev) => ({ ...prev, ...patch }));
+          }}
+        />
+      </Dialog>
 
       <Dialog
         open={confirming !== 'none'}

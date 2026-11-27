@@ -9,18 +9,18 @@
 export const notice = {
   panes: {
     list: '공지 목록',
-    detail: '공지',
+    detail: '공지 상세',
     ack: '확인 현황',
   },
 
   filters: {
     search: '제목 검색',
-    searchPlaceholder: '제목 일부를 적으세요',
+    searchPlaceholder: '제목을 입력하세요',
     status: '상태',
-    statusAll: '상태 전체',
+    /** 목록 위 상태 탭의 「전체」(#361 — 「게시 중만」 체크 · 상태 선택칸 대신). */
+    statusTabAll: '전체',
     scope: '대상 범위',
     scopeAll: '범위 전체',
-    activeOnly: '게시 중만',
     unacknowledgedByMe: '내가 아직 확인하지 않은 것만',
     from: '기간 시작',
     to: '기간 끝',
@@ -28,7 +28,6 @@ export const notice = {
     periodNote: '게시 기간이 이 구간과 겹치는 공지를 찾습니다. 시작일 기준이 아닙니다.',
     /** ⛔ 기간은 필수가 아니다 — 계약이 그렇게 두었다. */
     periodOptional: '기간은 비워도 됩니다.',
-    clear: '조건 지우기',
     /** 「조건 더보기」에 접힌 대상 범위 조건의 칩(C-6). */
     chipScope: (name: string): string => `대상 범위: ${name}`,
     invalidPeriod: '기간 끝이 시작보다 앞섭니다.',
@@ -68,8 +67,8 @@ export const notice = {
     emptyTitle: '공지가 없습니다',
     empty: '조건에 맞는 공지가 없습니다. 조건을 넓히거나 새 공지를 쓰세요.',
     loadFailed: '공지 목록을 불러오지 못했습니다.',
-    selectTitle: '공지를 고르세요',
-    select: '왼쪽에서 공지를 고르면 내용과 확인 현황이 보입니다.',
+    selectTitle: '공지를 선택하세요.',
+    select: '선택한 공지의 상세 정보가 표시됩니다.',
   },
 
   form: {
@@ -105,36 +104,31 @@ export const notice = {
 
   detail: {
     /** ⛔⛔ 게시 뒤에는 본문을 고칠 수 없다. */
-    lockedAfterPublish:
-      '게시한 공지는 본문을 고칠 수 없습니다. 이미 확인한 사람이 다른 것을 본 것이 되기 때문입니다. 고쳐야 하면 종료하고 새로 쓰세요.',
+    lockedAfterPublish: '내용을 수정하려면 게시를 종료한 뒤 새 공지를 등록하세요.',
     publish: '게시',
     publishTitle: '이 공지를 게시할까요?',
     publishLead: '게시하면 본문이 잠깁니다. 고칠 수 있는 것은 게시 전까지입니다.',
     published: '공지를 게시했습니다.',
-    close: '종료',
+    close: '게시 종료',
     closeTitle: '이 공지를 내릴까요?',
     /** ⭐ 지우는 것이 아니라 종료일을 당기는 것이다. */
     closeLead: '지우지 않고 종료일을 오늘로 당깁니다 — 확인 이력이 남아야 합니다.',
     closed: '공지를 종료했습니다.',
     confirm: '진행',
     cancel: '취소',
-    acknowledge: '확인했습니다',
-    acknowledged: '확인으로 기록했습니다.',
-    dismiss: '확인 없이 닫기',
-    dismissed: '확인하지 않고 닫은 것으로 기록했습니다.',
-    /** ⭐ 확인을 요구한 공지는 닫을 수 없다 — 서버가 거부한다. */
-    dismissLocked: '이 공지는 확인을 요구해 그냥 닫을 수 없습니다. 확인을 눌러 주세요.',
     createdBy: '작성자',
-    publishedAt: '게시일시',
+    publishedAt: '게시 일시',
     period: '게시 기간',
     noEndDate: '종료일 없음',
+    /** 상세의 게시 기간 — 종료일이 없을 때(#361 시안). */
+    periodOpen: (start: string): string => `${start}부터 (종료일 없음)`,
     loadFailed: '공지를 불러오지 못했습니다.',
   },
 
   ack: {
     title: '확인 현황',
     /** ⭐ 확인을 요구하지 않은 공지에는 미확인자 목록이 뜻이 없다. */
-    notRequired: '이 공지는 확인을 요구하지 않아 확인 현황이 없습니다.',
+    notRequired: '이 공지는 확인을 요구하지 않습니다.',
     pendingOnly: '아직 확인하지 않은 사람만',
     who: '사람',
     state: '상태',

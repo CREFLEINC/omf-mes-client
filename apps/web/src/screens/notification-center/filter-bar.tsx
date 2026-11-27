@@ -1,5 +1,6 @@
 import { Checkbox } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
 import { DateRangeFields } from '../../patterns/date-range-fields';
 import type { NotificationFilters } from './filters';
@@ -19,6 +20,8 @@ export interface NotificationFilterBarProps {
   eventNote?: string;
   onChangePeriod: (period: NotificationPeriod) => void;
   onChangeFilters: (filters: NotificationFilters) => void;
+  /** 조건 줄 끝에 붙는 단추 묶음([조회] · [초기화] · 모두 읽음 — #361). */
+  children?: ReactNode;
 }
 
 /**
@@ -48,6 +51,7 @@ export const NotificationFilterBar = ({
   eventNote,
   onChangePeriod,
   onChangeFilters,
+  children,
 }: NotificationFilterBarProps) => {
   return (
     <div className="filter-bar notification-center-filter">
@@ -99,6 +103,8 @@ export const NotificationFilterBar = ({
           onChangeFilters({ ...filters, eventCode: value });
         }}
       />
+
+      {children}
     </div>
   );
 };

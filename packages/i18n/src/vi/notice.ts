@@ -17,25 +17,23 @@ import type { Translated } from './translated';
 export const notice: Translated<typeof ko.notice> = {
   panes: {
     list: 'Danh sách thông cáo',
-    detail: 'Thông cáo',
+    detail: 'Chi tiết thông cáo',
     ack: 'Tình hình xác nhận',
   },
 
   filters: {
     search: 'Tìm tiêu đề',
-    searchPlaceholder: 'Hãy nhập một phần tiêu đề',
+    searchPlaceholder: 'Nhập tiêu đề',
     status: 'Trạng thái',
-    statusAll: 'Tất cả trạng thái',
+    statusTabAll: 'Tất cả',
     scope: 'Phạm vi đối tượng',
     scopeAll: 'Tất cả phạm vi',
-    activeOnly: 'Chỉ đang đăng',
     unacknowledgedByMe: 'Chỉ những cái tôi chưa xác nhận',
     from: 'Bắt đầu khoảng',
     to: 'Kết thúc khoảng',
     /** ⭐ 시작일이 아니라 **겹침**이다 — 「trong khoảng」 으로 옮기면 긴 공지가 빠진다. */
     periodNote: 'Tìm thông cáo có kỳ đăng giao với khoảng này. Không lấy ngày bắt đầu làm chuẩn.',
     periodOptional: 'Khoảng thời gian để trống cũng được.',
-    clear: 'Xóa điều kiện',
     chipScope: (name: string): string => `Phạm vi đối tượng: ${name}`,
     invalidPeriod: 'Kết thúc khoảng đứng trước lúc bắt đầu.',
   },
@@ -72,8 +70,8 @@ export const notice: Translated<typeof ko.notice> = {
     emptyTitle: 'Không có thông cáo',
     empty: 'Không có thông cáo khớp điều kiện. Hãy nới điều kiện hoặc viết thông cáo mới.',
     loadFailed: 'Không tải được danh sách thông cáo.',
-    selectTitle: 'Hãy chọn một thông cáo',
-    select: 'Chọn thông cáo ở bên trái thì sẽ thấy nội dung và tình hình xác nhận.',
+    selectTitle: 'Hãy chọn thông cáo.',
+    select: 'Thông tin chi tiết của thông cáo đã chọn sẽ hiển thị.',
   },
 
   form: {
@@ -110,34 +108,29 @@ export const notice: Translated<typeof ko.notice> = {
 
   detail: {
     /** ⛔⛔ 게시 뒤 본문 잠금. **이유까지 옮긴다** — 이유가 빠지면 서버가 심술부리는 것으로 읽힌다. */
-    lockedAfterPublish:
-      'Thông cáo đã đăng thì không sửa được nội dung. Vì như vậy người đã xác nhận hóa ra đã xem một bản khác. Cần sửa thì hãy kết thúc rồi viết mới.',
+    lockedAfterPublish: 'Muốn sửa nội dung thì hãy kết thúc đăng rồi tạo thông cáo mới.',
     publish: 'Đăng',
     publishTitle: 'Đăng thông cáo này chứ?',
     publishLead: 'Đăng rồi thì nội dung bị khóa. Chỉ sửa được trước khi đăng.',
     published: 'Đã đăng thông cáo.',
-    close: 'Kết thúc',
+    close: 'Kết thúc đăng',
     closeTitle: 'Gỡ thông cáo này xuống chứ?',
     /** ⭐ `xóa`(지우다)를 쓰지 않는다 — 종료는 종료일을 당기는 일이다. */
     closeLead: 'Không xóa mà kéo ngày kết thúc về hôm nay — lịch sử xác nhận phải còn lại.',
     closed: 'Đã kết thúc thông cáo.',
     confirm: 'Tiến hành',
     cancel: 'Hủy',
-    acknowledge: 'Tôi đã xác nhận',
-    acknowledged: 'Đã ghi lại là đã xác nhận.',
-    dismiss: 'Đóng mà không xác nhận',
-    dismissed: 'Đã ghi lại là đóng mà không xác nhận.',
-    dismissLocked: 'Thông cáo này yêu cầu xác nhận nên không đóng suông được. Hãy bấm xác nhận.',
     createdBy: 'Người viết',
     publishedAt: 'Thời điểm đăng',
     period: 'Kỳ đăng',
     noEndDate: 'Không có ngày kết thúc',
+    periodOpen: (start: string): string => `Từ ${start} (không có ngày kết thúc)`,
     loadFailed: 'Không tải được thông cáo.',
   },
 
   ack: {
     title: 'Tình hình xác nhận',
-    notRequired: 'Thông cáo này không yêu cầu xác nhận nên không có tình hình xác nhận.',
+    notRequired: 'Thông cáo này không yêu cầu xác nhận.',
     pendingOnly: 'Chỉ người chưa xác nhận',
     who: 'Người',
     state: 'Trạng thái',

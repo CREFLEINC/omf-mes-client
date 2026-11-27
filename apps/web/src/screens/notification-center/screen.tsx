@@ -1,4 +1,4 @@
-import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText, useToast } from '@crefle/web-ui';
+import { Button, EmptyState, Icon, SkeletonText, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
@@ -8,6 +8,7 @@ import { PageNav, type PageSize } from '../../patterns/page-nav';
 import { formatAsOf } from './as-of';
 import { NotificationFilterBar } from './filter-bar';
 import {
+  DEFAULT_FILTERS,
   readFilters,
   readPage,
   readSize,
@@ -279,6 +280,23 @@ export const NotificationCenterScreen = () => {
 
   const markAllReadReason = describeMarkAllReadReason(markAllRead.isSubmitting, unreadCount.data);
 
+  /*
+   * [초기화]는 처음 조건(기본 기간 · 안 읽음만 · 유형 전체)과 달라졌을 때만 선다 — 품질 화면과 같다(#361).
+   * 쪽 · 쪽 크기는 조건이 아니라 견주지 않는다.
+   */
+  const initialPeriod = defaultPeriod(new Date());
+  const isFilterChanged =
+    period.from !== initialPeriod.from ||
+    period.to !== initialPeriod.to ||
+    filters.unreadOnly !== DEFAULT_FILTERS.unreadOnly ||
+    filters.eventCode !== DEFAULT_FILTERS.eventCode;
+
+  /** [조회] — 조건은 고르는 즉시 반영되므로 같은 조건으로 다시 부른다(품질 화면의 같은 조건 [조회] · #361). */
+  const reload = (): void => {
+    if (listQuery !== null) void list.refetch();
+    void unreadCount.refetch();
+  };
+
   /**
    * 유형 선택지 — 「전체」가 맨 앞이고, 그 뒤가 조회로 받은 목록이다.
    *
@@ -390,50 +408,77 @@ export const NotificationCenterScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-        /*
-         * 기준 시각을 제목 줄에 둔다. **live 영역으로 두지 않는다** — 조건을 바꿀 때마다
-         * 낭독되는데, 조회가 끝났다는 사실은 목록·빈 상태가 이미 알린다.
-         */
-        actions={
-          <div className="field-cell">
+      {/* 화면 제목 줄은 두지 않는다 — 조회 조건 상자 · 목록 통일 배치(검사 조회·판정과 같다 · #361). */}
+      <section
+        className="pane po-board-filter list-detail-filter"
+        aria-label={messages.common.paneList.filter}
+      >
+        {/*
+         * ⭐ **결과가 없어도, 조회에 실패해도 조건 줄은 감추지 않는다** — 조건을 고칠 수단이
+         * 사라지면 사용자가 실패에서 빠져나올 길이 없다.
+         */}
+        <NotificationFilterBar
+          period={period}
+          filters={filters}
+          eventOptions={eventOptions}
+          eventNote={events.isError ? t.filters.eventsFailed : undefined}
+          onChangePeriod={(nextPeriod) => {
+            applyQuery(nextPeriod, filters);
+          }}
+          onChangeFilters={(nextFilters) => {
+            applyQuery(period, nextFilters);
+          }}
+        >
+          <div className="field-cell field-cell-unlabeled">
             <div className="filter-actions">
-              {asOf !== null && <span className="field-note">{t.asOf(asOf)}</span>}
-              {/*
-               * ⭐ **활성 판정이 전용 조회에서 온다**(`useUnreadCount`) — 지금 쪽의 안 읽음으로
-               * 재면 다른 쪽에 안 읽음이 있어도 잠긴다. 「모두」라는 말과 어긋나는 틀린 판정이다.
-               *
-               * 아직 그 수를 받지 못했으면 **잠근 채로 둔다** — 안 읽은 것이 있는지 모르는데
-               * 여는 것은 없는 근거로 조작을 허락하는 일이다.
-               *
-               * 비활성 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더해 `aria-describedby`로
-               * 잇는다 — 비활성 컨트롤은 포커스를 받지 못해 시각으로만 두면 보조기술이 닿지 않는다.
-               */}
-              <Button
-                variant="outlined"
-                size="sm"
-                disabled={markAllReadReason !== undefined}
-                aria-describedby={markAllReadReason === undefined ? undefined : markAllReasonId}
-                onClick={markAllRead.markAllRead}
-              >
-                {t.actions.markAllRead}
-              </Button>
+              <Button onClick={reload}>{messages.common.search}</Button>
+              {isFilterChanged && (
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    applyQuery(defaultPeriod(new Date()), DEFAULT_FILTERS);
+                  }}
+                >
+                  {messages.common.reset}
+                </Button>
+              )}
             </div>
+          </div>
+
+          {/*
+           * 오른쪽 묶음 — 기준 시각 + 「모두 읽음」. 대시보드의 갱신 안내 · 「갱신」과 같은 모양(#361).
+           * 기준 시각은 **live 영역으로 두지 않는다** — 조건을 바꿀 때마다 낭독되는데, 조회가 끝났다는
+           * 사실은 목록 · 빈 상태가 이미 알린다.
+           */}
+          <div className="filter-actions dashboard-filter-actions">
+            {asOf !== null && <p className="dashboard-refresh-status">{t.asOf(asOf)}</p>}
+            {/*
+             * ⭐ **활성 판정이 전용 조회에서 온다**(`useUnreadCount`) — 지금 쪽의 안 읽음으로
+             * 재면 다른 쪽에 안 읽음이 있어도 잠긴다. 「모두」라는 말과 어긋나는 틀린 판정이다.
+             * 아직 그 수를 받지 못했으면 **잠근 채로 둔다**.
+             *
+             * 잠긴 사유는 화면에 글로 늘 세워 두지 않는다(사용자 지시 · #361). 보조기술에는 그대로
+             * 잇는다 — 비활성 단추는 포커스를 받지 못해 사유를 따로 읽힐 길이 없다.
+             */}
+            <Button
+              variant="outlined"
+              className="dashboard-refresh-button"
+              leadingIcon={<Icon name="done_all" size={18} />}
+              disabled={markAllReadReason !== undefined}
+              loading={markAllRead.isSubmitting}
+              aria-describedby={markAllReadReason === undefined ? undefined : markAllReasonId}
+              onClick={markAllRead.markAllRead}
+            >
+              {t.actions.markAllRead}
+            </Button>
             {markAllReadReason !== undefined && (
-              <span id={markAllReasonId} className="field-note">
+              <span id={markAllReasonId} className="visually-hidden">
                 {markAllReadReason}
               </span>
             )}
           </div>
-        }
-      />
+        </NotificationFilterBar>
+      </section>
 
       {/*
        * 쓰기 실패는 **화면 수준 배너**로 낸다(공유계약 G-1). 카드마다 붙이면 목록이 오류로
@@ -467,25 +512,6 @@ export const NotificationCenterScreen = () => {
         <h2 id="notification-list-title" className="pane-title">
           {t.panes.list}
         </h2>
-        {/*
-         * ⭐ **결과가 없어도, 조회에 실패해도 조건 줄은 감추지 않는다** — 조건을 고칠 수단이
-         * 사라지면 사용자가 실패에서 빠져나올 길이 없다. T1은 조건 줄이 없어 실패 시 구획
-         * 자체를 그리지 않았는데, 이 회차부터는 전례(`master-change`·`inbound-schedule`)의
-         * 형태로 돌아간다.
-         */}
-        <NotificationFilterBar
-          period={period}
-          filters={filters}
-          eventOptions={eventOptions}
-          eventNote={events.isError ? t.filters.eventsFailed : undefined}
-          onChangePeriod={(nextPeriod) => {
-            applyQuery(nextPeriod, filters);
-          }}
-          onChangeFilters={(nextFilters) => {
-            applyQuery(period, nextFilters);
-          }}
-        />
-
         {/* 실패했으면 목록도 빈 상태도 내지 않는다 — 위 배너가 그 자리를 맡는다. */}
         {!list.isError && (
           <>

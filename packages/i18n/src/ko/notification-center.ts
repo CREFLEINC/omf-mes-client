@@ -11,8 +11,6 @@
  *    그래서 사유 문구가 「기간을 지우세요」로 읽히면 안 되고, **고쳐서 다시 고르는** 길만 말한다.
  */
 export const notificationCenter = {
-  title: '알림센터',
-  breadcrumbRoot: '업무함',
   panes: {
     list: '알림 목록',
   },
