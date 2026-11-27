@@ -63,23 +63,6 @@ export const judgeTargetOpen = (
 };
 
 /**
- * 잠긴 사유.
- *
- * **열린 갈래를 인자로 받지 않는다.** 받으면 「사유 없음」을 뜻하는 널이 반환 타입에 생기고,
- * 그리는 자리가 그 널을 빈 글자로 메우는 죽은 가지를 갖게 된다 — 타입이 그 자리를 막는다.
- */
-export const describeOpenBlock = (block: TargetOpenBlock): string => {
-  switch (block.kind) {
-    case 'notOpenable':
-      return t.target.blockedNotOpenable;
-    case 'noScreenId':
-      return t.target.blockedNoScreenId;
-    case 'unmapped':
-      return t.target.blockedUnmapped;
-  }
-};
-
-/**
  * 대상 이름 — **서버가 만든 표시명 그대로다.**
  *
  * 비어 오면 사실을 적는다. **`targetId`도 `targetTypeCode`도 대신 내지 않는다**(`omf-mes#44`) —

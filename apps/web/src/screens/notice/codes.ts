@@ -26,6 +26,17 @@ const isStatusCode = (value: string): value is StatusCode =>
 /** 모르는 코드는 그대로 보인다 — 지어낸 이름으로 덮지 않는다. */
 export const statusLabel = (code: string): string => (isStatusCode(code) ? t.status[code] : code);
 
+/**
+ * 상태 라벨 색(#361) — 품질 화면 상태 라벨과 같은 규칙: 진행 중인 것(게시 중)은 초록, 곧 시작할 것(게시 예정)은
+ * 파랑, 작성 중 · 종료는 회색.
+ */
+export const statusTone = (code: string): 'success' | 'info' | 'idle' => {
+  if (code === 'PUBLISHED') return 'success';
+  if (code === 'SCHEDULED') return 'info';
+
+  return 'idle';
+};
+
 export const SCOPE_CODES = [
   'COMPANY',
   'WORK_ORDER',

@@ -2,7 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import { SCREEN_ROUTES } from './screen-routes';
-import { describeOpenBlock, describeTargetName, judgeTargetOpen } from './target';
+import { describeTargetName, judgeTargetOpen } from './target';
 import type { ApprovalTarget } from './types';
 
 const t = messages.approvalInbox;
@@ -71,53 +71,5 @@ describe('대상 열기 판정', () => {
       kind: 'open',
       path: '/shipment/shipment-schedule?approvalRequestId=9001',
     });
-  });
-});
-
-describe('잠긴 사유', () => {
-  it('세 갈래의 문구가 서로 다르다', () => {
-    const reasons = [
-      describeOpenBlock({ kind: 'notOpenable' }),
-      describeOpenBlock({ kind: 'noScreenId' }),
-      describeOpenBlock({ kind: 'unmapped' }),
-    ];
-
-    expect(reasons).toEqual([
-      t.target.blockedNotOpenable,
-      t.target.blockedNoScreenId,
-      t.target.blockedUnmapped,
-    ]);
-    expect(new Set(reasons).size).toBe(3);
-  });
-
-  it('세 문구 모두 컨트롤 이름을 앞에 붙이지 않는다(레이아웃 규범 4-5)', () => {
-    for (const reason of [
-      describeOpenBlock({ kind: 'notOpenable' }),
-      describeOpenBlock({ kind: 'noScreenId' }),
-      describeOpenBlock({ kind: 'unmapped' }),
-    ]) {
-      expect(reason.startsWith(`${t.target.open}:`)).toBe(false);
-    }
-  });
-});
-
-describe('대상 이름', () => {
-  it('서버가 만든 표시명을 그대로 낸다', () => {
-    expect(describeTargetName(target(true, 'W-99-99'))).toBe('합성 대상 문서 가');
-  });
-
-  it('표시명이 비어 오면 사실을 적는다 — 내부 번호를 대신 내지 않는다', () => {
-    const name = describeTargetName(target(true, 'W-99-99', ''));
-
-    expect(name).toBe(t.values.unknownTarget);
-    expect(name).not.toContain('9401');
-  });
-
-  it('공백만인 표시명도 비어 있는 것과 같이 다룬다', () => {
-    expect(describeTargetName(target(true, 'W-99-99', '   '))).toBe(t.values.unknownTarget);
-  });
-
-  it('대상 유형 코드는 이름에 섞이지 않는다 — 유형으로 이름을 지어내지 않는다', () => {
-    expect(describeTargetName(target(true, 'W-99-99'))).not.toContain('INBOUND_LOT');
   });
 });

@@ -1,5 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
+import { PAGE_SIZES, type PageSize } from '../../patterns/page-nav';
+
 /**
  * 공지 목록의 조회 조건. **주소가 정본이다** — 새로고침·공유가 같은 목록을 연다.
  *
@@ -61,6 +63,16 @@ export const readFilters = (params: URLSearchParams): NoticeFilters => {
   };
 };
 
+/**
+ * 주소가 가리키는 쪽 크기. **고른 적이 없으면 `null`** — 그때는 화면 기본 크기(`PAGE_SIZE`)로 조회한다.
+ * 조회 조건이 아니라 보는 방식이라 `NoticeFilters`에 두지 않는다 — 조건 초기화·변경 판정에 끼지 않는다(#361).
+ */
+export const readSize = (params: URLSearchParams): PageSize | null => {
+  const size = Number(params.get('size') ?? '');
+
+  return PAGE_SIZES.find((option) => option === size) ?? null;
+};
+
 export const readSelected = (params: URLSearchParams): number | null => {
   const value = params.get('notice') ?? '';
 
@@ -71,6 +83,7 @@ export const readSelected = (params: URLSearchParams): number | null => {
 export const toSearchParams = (
   filters: NoticeFilters,
   selected: number | null,
+  size: PageSize | null = null,
 ): URLSearchParams => {
   const params = new URLSearchParams();
 
@@ -82,9 +95,42 @@ export const toSearchParams = (
   if (filters.overlapFrom !== '') params.set('overlapFrom', filters.overlapFrom);
   if (filters.overlapTo !== '') params.set('overlapTo', filters.overlapTo);
   if (filters.page > 1) params.set('page', String(filters.page));
+  if (size !== null) params.set('size', String(size));
   if (selected !== null) params.set('notice', String(selected));
 
   return params;
+};
+
+/**
+ * 상태 라벨 필터(#361) — 「게시 중만」 체크 · 상태 선택칸을 하나로 합친 자리(「전체」는 라벨을 고르지 않은 상태).
+ * 조건 값은 그대로 두고 보이는 모양만 바꾼다: 「게시 중」 탭은 종전 기본(`activeOnly`)과 같은 조회다
+ * (서버가 둘을 같은 조건으로 거른다). 다른 상태는 `statusCode`, 「전체」는 둘 다 비운다.
+ */
+export type StatusTab = 'ALL' | 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'CLOSED';
+
+export const STATUS_TABS: readonly StatusTab[] = [
+  'ALL',
+  'DRAFT',
+  'SCHEDULED',
+  'PUBLISHED',
+  'CLOSED',
+];
+
+export const statusTabOf = (filters: NoticeFilters): StatusTab => {
+  if (filters.statusCode !== '') {
+    return (STATUS_TABS as readonly string[]).includes(filters.statusCode)
+      ? (filters.statusCode as StatusTab)
+      : 'ALL';
+  }
+
+  return filters.activeOnly ? 'PUBLISHED' : 'ALL';
+};
+
+export const withStatusTab = (tab: StatusTab): Pick<NoticeFilters, 'activeOnly' | 'statusCode'> => {
+  if (tab === 'PUBLISHED') return { activeOnly: true, statusCode: '' };
+  if (tab === 'ALL') return { activeOnly: false, statusCode: '' };
+
+  return { activeOnly: false, statusCode: tab };
 };
 
 /** 기간이 뒤집혔는가. 뒤집힌 채로 보내면 0건이 나오고 사람은 「없다」로 읽는다. */

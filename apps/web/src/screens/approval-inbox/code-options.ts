@@ -30,6 +30,16 @@ export const approvalTypeLabelOf = (code: string): string =>
 export const requestStatusLabelOf = (code: string): string =>
   messages.approvalInbox.requestStatusNames[code] ?? code;
 
+/** 요청 상태 라벨 색(#361) — 결재 대기 파랑 · 승인 초록 · 반려 빨강, 모르는 코드는 회색. */
+export const requestStatusToneOf = (code: string): 'info' | 'success' | 'error' | 'idle' =>
+  code === 'PENDING'
+    ? 'info'
+    : code === 'APPROVED'
+      ? 'success'
+      : code === 'REJECTED'
+        ? 'error'
+        : 'idle';
+
 /**
  * 값 목록을 선택지로 옮긴다 — 요청 상태처럼 이름을 줄 곳이 아직 없는 값 목록에 쓴다.
  *

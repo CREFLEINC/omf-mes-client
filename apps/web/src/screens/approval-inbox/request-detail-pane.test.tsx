@@ -156,7 +156,7 @@ describe('RequestDetailPane', () => {
       t.fields.requestedByName,
       t.fields.requestedAt,
       t.fields.status,
-      t.fields.reason,
+      t.panes.reason,
     ]) {
       expect(within(pane).getByText(label)).toBeVisible();
     }

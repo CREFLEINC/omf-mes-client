@@ -200,11 +200,10 @@ describe('DecisionPane', () => {
     });
 
     /** 짝 방향 — 오류가 없으면 칸이 오류 상태가 아니다. 도움말은 칸 아래가 아니라 라벨 옆 ⓘ 다(관리웹 정리 시안 A). */
-    it('오류가 없으면 오류 상태가 아니고 도움말은 라벨 옆 ⓘ 에 있다', () => {
+    it('오류가 없으면 오류 상태가 아니고, 이름표에 「반려 시 필수」가 있어 ⓘ 는 두지 않는다(#361)', () => {
       renderPane();
 
-      expect(screen.getByRole('button', { name: t.decision.commentHelp })).toBeVisible();
-      expect(screen.queryByText(t.decision.commentHelp)).toBeNull();
+      expect(screen.queryByRole('button', { name: t.decision.commentHelp })).toBeNull();
       expect(commentBox()).not.toHaveAttribute('aria-invalid', 'true');
     });
 

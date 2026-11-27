@@ -19,6 +19,9 @@ const PLAN_LEVEL_REASONS = new Set([
   'PLAN_QTY_REMAINING',
   'NO_LIVE_WORK_ORDER',
 ]);
+/** 펼친 선택지의 이름. 선택지마다 앞에 붙는 선택 표시 아이콘 글자(check)는 뺀다. */
+const optionNames = (): string[] =>
+  screen.getAllByRole('option').map((option) => (option.textContent ?? '').replace(/^check/, ''));
 const page = (items: unknown[]) => ({ items, page: { page: 1, size: 20, total: items.length } });
 
 const order = (
@@ -324,7 +327,8 @@ describe('작업지시 목록 작업함', () => {
     expect(requests.some((request) => path(request) === '/production/work-orders')).toBe(false);
   });
 
-  it('조건 칩은 「전체」 없이 처리 순서대로 서며, 보이는 묶음 이름 없이 접근명을 갖는다(C-17)', async () => {
+  it('처리 상태는 조회 조건 줄의 선택 칸으로 고르며, 「전체」부터 처리 순서대로 건수와 함께 보인다(C-17)', async () => {
+    const user = userEvent.setup();
     render({
       orders: [
         REVIEW,
@@ -336,35 +340,25 @@ describe('작업지시 목록 작업함', () => {
       ],
     });
 
-    const group = await screen.findByRole('group', { name: t.counts.label });
+    const filterPane = screen.getByRole('region', { name: t.filters.pane });
+    const select = within(filterPane).getByLabelText(t.filters.state);
     await waitFor(() =>
-      expect(
-        within(group)
-          .getAllByRole('button')
-          .filter((button) => button.hasAttribute('aria-pressed'))
-          .map((chip) => chip.textContent),
-      ).toEqual([
-        expect.stringMatching(new RegExp(`^${t.status.BEFORE_PLAN} `)),
-        expect.stringMatching(new RegExp(`^${t.status.ACTION_REQUIRED} `)),
-        expect.stringMatching(new RegExp(`^${t.status.RELEASE_PENDING} `)),
-        expect.stringMatching(new RegExp(`^${t.status.RELEASED} `)),
-        expect.stringMatching(new RegExp(`^${t.status.CANCELLED} `)),
-      ]),
+      expect(select).toHaveTextContent(new RegExp(`^${t.counts.allName} \\d+건`)),
     );
-    expect(within(group).queryByText('생산계획 자동 전개', { exact: true })).toBeNull();
-  });
-
-  it('0 건으로 센 상태 칩은 세우지 않는다 — 「전체」 칩은 두지 않는다', async () => {
-    render({ orders: [REVIEW] });
-
-    const group = await screen.findByRole('group', { name: t.counts.label });
+    /* 페이지 머리의 상태 탭은 없다(사용자 지시 2026-11-27). */
+    expect(
+      screen.queryByRole('button', { name: new RegExp(`^${t.status.BEFORE_PLAN}`) }),
+    ).toBeNull();
+    await user.click(select);
     await waitFor(() =>
-      expect(
-        within(group)
-          .getAllByRole('button')
-          .filter((button) => button.hasAttribute('aria-pressed'))
-          .map((chip) => chip.textContent),
-      ).toEqual([expect.stringMatching(new RegExp(`^${t.status.ACTION_REQUIRED} `))]),
+      expect(optionNames()).toEqual([
+        expect.stringMatching(new RegExp(`^${t.counts.allName} \\d+건`)),
+        expect.stringMatching(new RegExp(`^${t.status.BEFORE_PLAN} \\d+건`)),
+        expect.stringMatching(new RegExp(`^${t.status.ACTION_REQUIRED} \\d+건`)),
+        expect.stringMatching(new RegExp(`^${t.status.RELEASE_PENDING} \\d+건`)),
+        expect.stringMatching(new RegExp(`^${t.status.RELEASED} \\d+건`)),
+        expect.stringMatching(new RegExp(`^${t.status.CANCELLED} \\d+건`)),
+      ]),
     );
   });
 
@@ -376,12 +370,14 @@ describe('작업지시 목록 작업함', () => {
         { orders: [REVIEW, order(731, 'SYN-PO-731', null, 0, state)] },
         '/production/production-orders?q=SYN&dueFrom=2026-10-01&dueTo=2026-10-31',
       );
-      const group = await screen.findByRole('group', { name: t.counts.label });
+      const select = screen.getByLabelText(t.filters.state);
+      await user.click(select);
       await user.click(
-        await within(group).findByRole('button', {
-          name: new RegExp(`^${t.status[state]}(?: |$)`),
-        }),
+        await screen.findByRole('option', { name: new RegExp(`^${t.status[state]}(?: |$)`) }),
       );
+      /* 다른 조건 칸처럼 [조회]를 눌러야 걸린다. */
+      expect(screen.getByTestId('location')).not.toHaveTextContent(`state=${state}`);
+      await user.click(screen.getByRole('button', { name: messages.common.search }));
       await waitFor(() =>
         expect(
           requests.some((request) => {
@@ -408,19 +404,40 @@ describe('작업지시 목록 작업함', () => {
         expect(query.get('dueDateTo')).toBe('2026-10-31');
       }
 
-      /* 고른 칩을 다시 누르면 전체로 돌아간다(「전체」 칩 없음 · 사용자 지시 2026-11-24). */
-      const chip = within(group).getByRole('button', {
-        name: new RegExp(`^${t.status[state]}(?: |$)`),
-      });
-      await waitFor(() => expect(chip).toHaveAttribute('aria-pressed', 'true'));
-      await user.click(chip);
+      /* 고른 상태는 선택 칸에 남고, [초기화]로 전체로 돌아간다. */
       await waitFor(() =>
-        expect(
-          within(group).getByRole('button', { name: new RegExp(`^${t.status[state]}(?: |$)`) }),
-        ).toHaveAttribute('aria-pressed', 'false'),
+        expect(select).toHaveTextContent(new RegExp(`^${t.status[state]}(?: |$)`)),
+      );
+      await user.click(screen.getByRole('button', { name: messages.common.reset }));
+      await waitFor(() =>
+        expect(screen.getByTestId('location')).toHaveTextContent(
+          /^\/production\/production-orders$/,
+        ),
       );
     },
   );
+
+  it('정렬은 고르는 즉시 주소와 조회에 실리고, 처음은 오래된순이다', async () => {
+    const user = userEvent.setup();
+    const { requests } = render({ orders: [REVIEW] });
+    const sorts = () =>
+      requests
+        .filter((request) => path(request) === '/planning/production-orders')
+        .map((request) => new URL(request.url).searchParams)
+        .filter((query) => query.get('size') === '20')
+        .map((query) => query.get('sort'));
+
+    await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
+    const order = screen.getByRole('combobox', { name: t.list.order.label });
+    expect(order).toHaveTextContent(t.list.order.oldest);
+    expect(sorts().at(-1)).toBe('plannedStartDate,asc');
+
+    await user.click(order);
+    await user.click(await screen.findByRole('option', { name: t.list.order.newest }));
+
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('order=newest'));
+    await waitFor(() => expect(sorts().at(-1)).toBe('plannedStartDate,desc'));
+  });
 
   it('행 상태 칩은 서버 판정(worklistState) 그대로다', async () => {
     const BEFORE = order(711, 'SYN-PO-711', null, 0, 'BEFORE_PLAN');
@@ -562,10 +579,11 @@ describe('작업지시 목록 작업함', () => {
 
     await screen.findByRole('link', { name: t.list.openRow('SYN-PO-703') });
     expect(screen.queryByRole('link', { name: t.list.openRow('SYN-PO-701') })).toBeNull();
-    const group = screen.getByRole('group', { name: t.counts.label });
-    expect(
-      within(group).getByRole('button', { name: new RegExp(`^${t.status.RELEASE_PENDING} `) }),
-    ).toHaveAttribute('aria-pressed', 'true');
+    await waitFor(() =>
+      expect(screen.getByLabelText(t.filters.state)).toHaveTextContent(
+        new RegExp(`^${t.status.RELEASE_PENDING} `),
+      ),
+    );
     const list = requests.find(
       (request) =>
         path(request) === '/planning/production-orders' &&
@@ -576,21 +594,18 @@ describe('작업지시 목록 작업함', () => {
     );
   });
 
-  it('목록을 볼 권한이 없으면 다시 시도 없이 없는 권한과 요청할 곳을 말하고, 칩은 건수 없이 이름만 보인다', async () => {
+  it('목록을 볼 권한이 없으면 다시 시도 없이 없는 권한과 요청할 곳을 말하고, 처리 상태 선택지는 건수 없이 이름만 보인다', async () => {
     render({ orders: [REVIEW], forbidden: true });
 
     expect(await screen.findByText(t.access.forbiddenTitle)).toBeVisible();
     expect(screen.getByText(t.access.forbiddenNoMenu)).toBeVisible();
     expect(screen.queryByText(t.list.loadFailed)).toBeNull();
     expect(screen.queryByRole('button', { name: messages.common.retry })).toBeNull();
-    const group = screen.getByRole('group', { name: t.counts.label });
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText(t.filters.state));
     await waitFor(() =>
-      expect(
-        within(group)
-          .getAllByRole('button')
-          .filter((button) => button.hasAttribute('aria-pressed'))
-          .map((chip) => chip.textContent),
-      ).toEqual([
+      expect(optionNames()).toEqual([
+        t.counts.allName,
         t.status.BEFORE_PLAN,
         t.status.ACTION_REQUIRED,
         t.status.RELEASE_PENDING,
@@ -694,7 +709,6 @@ describe('작업지시 목록 작업함', () => {
     }
     await user.click(screen.getByRole('button', { name: t.bulk.autoPlan }));
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('ids=701,702'));
-    expect(screen.queryByRole('group', { name: t.counts.label })).toBeNull();
     expect(requests.some((request) => request.method === 'POST')).toBe(false);
   });
   it('일괄 배포는 실행과 같은 판정으로 예고하고, 일부 처리를 따로 세며, 처리 상태 칸은 결과가 아니라 실제 상태를 보인다(C-16, C-18)', async () => {

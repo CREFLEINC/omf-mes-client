@@ -75,7 +75,8 @@ export const SelectField = ({
         disabled={disabled}
         aria-required={required || undefined}
         placeholder={placeholder}
-        invalid={error !== undefined}
+        /* 필수인데 비어 있으면 빨간 테두리 — 값을 고르면 걷힌다(#361). */
+        invalid={error !== undefined || (required && value === '')}
         aria-describedby={
           [error === undefined ? null : errorId, note === undefined ? null : noteId]
             .filter((value) => value !== null)

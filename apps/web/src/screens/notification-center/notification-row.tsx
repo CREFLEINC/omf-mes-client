@@ -56,7 +56,7 @@ export const NotificationRow = ({ view, title, ...card }: NotificationRowProps) 
          */
         <Link className="notification-target-link" to={link.to} aria-label={link.label}>
           {link.shortLabel}
-          <Icon name="arrow_forward" size={16} />
+          <Icon name="arrow_forward" size={16} aria-hidden />
         </Link>
       )}
     </div>

@@ -25,7 +25,6 @@ interface RenderOptions {
   rows?: RequestRow[];
   isLoading?: boolean;
   meta?: { page: number; size: number; total: number };
-  shown?: number;
   selectedRequestId?: number | null;
   loadError?: ReactNode;
 }
@@ -34,7 +33,6 @@ const renderPane = ({
   rows = requestRowFixtures,
   isLoading = false,
   meta = { page: 1, size: 20, total: rows.length },
-  shown = rows.length,
   selectedRequestId = null,
   loadError = null,
 }: RenderOptions = {}) => {
@@ -45,8 +43,10 @@ const renderPane = ({
     <RequestListPane
       rows={rows}
       isLoading={isLoading}
-      pageView={toPageView(meta, shown)}
+      pageView={toPageView(meta)}
+      pageMeta={meta}
       onChangePage={onChangePage}
+      onChangeSize={vi.fn()}
       selectedRequestId={selectedRequestId}
       onSelect={onSelect}
       loadError={loadError}
@@ -105,7 +105,7 @@ describe('열 폭 예산 — 선언(상수)', () => {
       0,
     );
 
-    expect(specified).toBe(660);
+    expect(specified).toBe(690);
     expect(specified + REASON_COLUMN_BUDGET_PX).toBeLessThanOrEqual(WIDE_TABLE_MIN_WIDTH_PX);
   });
 
@@ -149,7 +149,7 @@ describe('열 폭 예산 — 산출물(열 정의)', () => {
       .filter((width): width is string => width !== null)
       .reduce((sum, width) => sum + pxOf(width), 0);
 
-    expect(specified).toBe(660);
+    expect(specified).toBe(690);
     expect(specified + REASON_COLUMN_BUDGET_PX).toBeLessThanOrEqual(WIDE_TABLE_MIN_WIDTH_PX);
   });
 });
@@ -162,7 +162,11 @@ describe('RequestListPane — 확정된 여섯 열', () => {
   it('머리글이 확정 목록 그대로이고 차례도 같다', () => {
     renderPane();
 
-    expect(screen.getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual([
+    expect(
+      screen
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent?.replace('drag_indicator', '')),
+    ).toEqual([
       t.fields.approvalRequestNo,
       t.fields.approvalTypeCode,
       t.fields.requestedByName,
@@ -263,41 +267,32 @@ describe('RequestListPane — 보이는 값', () => {
 });
 
 describe('RequestListPane — 고르기', () => {
-  it('요청번호를 누르면 그 요청을 고른다', async () => {
+  /* #361 — 요청번호 단추 대신 줄 아무 곳이나 눌러 고른다. */
+  it('줄 아무 곳이나 누르면 그 요청을 고른다', async () => {
     const { onSelect, user } = renderPane();
 
-    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
+    await user.click(screen.getByText('SYNTH-REQ-001'));
 
     expect(onSelect).toHaveBeenCalledWith(9001);
   });
 
-  it('고르기 버튼의 이름이 행마다 갈린다 — 계약이 요청번호를 UNIQUE로 두었다', () => {
+  it('요청번호는 단추가 아니다', () => {
     renderPane();
 
-    const names = requestRowFixtures.map((row) => t.actions.selectRow(row.approvalRequestNo));
-
-    expect(new Set(names).size).toBe(requestRowFixtures.length);
-    for (const name of names) {
-      expect(screen.getByRole('button', { name })).toBeInTheDocument();
-    }
+    expect(screen.queryByRole('button', { name: /SYNTH-REQ-001/ })).toBeNull();
   });
 
   it('고른 행을 표시한다', () => {
     renderPane({ selectedRequestId: 9001 });
 
-    expect(screen.getByRole('button', { name: /SYNTH-REQ-001/ })).toHaveAttribute(
-      'aria-current',
-      'true',
-    );
-    expect(screen.getByRole('button', { name: /SYNTH-REQ-002/ })).not.toHaveAttribute(
-      'aria-current',
-    );
+    expect(screen.getByText('SYNTH-REQ-001')).toHaveAttribute('data-selected', 'true');
+    expect(screen.getByText('SYNTH-REQ-002')).not.toHaveAttribute('data-selected');
   });
 });
 
 describe('RequestListPane — 빈 상태', () => {
   it('0건이어도 표를 그리고 그 안의 빈 자리가 맡는다', () => {
-    renderPane({ rows: [], meta: { page: 1, size: 20, total: 0 }, shown: 0 });
+    renderPane({ rows: [], meta: { page: 1, size: 20, total: 0 } });
 
     /* 바깥에서 0건을 가르면 표의 빈 자리가 닿을 수 없는 가지가 된다. */
     expect(screen.getByRole('table')).toBeInTheDocument();
@@ -308,7 +303,6 @@ describe('RequestListPane — 빈 상태', () => {
     const { onChangePage, user } = renderPane({
       rows: [],
       meta: { page: 9, size: 20, total: 45 },
-      shown: 0,
     });
 
     expect(screen.getByText(t.empty.beyondLastTitle)).toBeInTheDocument();
