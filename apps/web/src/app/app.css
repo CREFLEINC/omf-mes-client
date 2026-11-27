@@ -37656,8 +37656,18 @@ body:has(
   [role='combobox']
   > span:not([aria-hidden='true']) {
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
+}
+/* W/O 이름은 자르지도 줄바꾸지도 않는다 — 팝업이 이름 길이만큼 넓어진다(최소 45rem, 화면 폭까지 · 사용자 지시 #360). */
+.erp-wo-plan-add-dialog {
+  width: fit-content;
+  min-width: min(45rem, calc(100vw - 2rem));
+  max-width: calc(100vw - 2rem);
+}
+.erp-wo-plan-add-target > .field-cell,
+.erp-wo-plan-add-dialog .erp-wo-plan-add-form .erp-wo-plan-add-target [role='combobox'] {
+  min-width: max-content;
 }
 @media (max-width: 42rem) {
   .erp-wo-plan-add-form .erp-wo-plan-add-fields {
