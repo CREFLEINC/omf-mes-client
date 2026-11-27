@@ -19,8 +19,8 @@ export const notificationCenter = {
   },
   fields: {
     /** 기간은 시작일 · 종료일 두 칸이다(사용자 지시 2026-11-25) — 칸마다 이름이 있다. */
-    periodFrom: '조회 시작일',
-    periodTo: '조회 종료일',
+    periodFrom: '조회 시작일 선택',
+    periodTo: '조회 종료일 선택',
     datePlaceholder: '날짜를 선택하세요',
     /**
      * 「안 읽음만」은 **켜진 채로 시작한다**(화면 스펙 §4의 배치).
@@ -31,7 +31,7 @@ export const notificationCenter = {
      * **여기서 논증으로 정하지 않는다** — 답이 오면 컨트롤과 이 문구를 함께 고친다.
      */
     unreadOnly: '미확인 알림 포함',
-    eventCode: '알림 유형',
+    eventCode: '알림 유형 선택',
   },
   filters: {
     all: '전체',

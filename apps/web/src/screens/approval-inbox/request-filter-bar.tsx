@@ -131,7 +131,7 @@ export const RequestFilterBar = ({
         />
 
         <SelectField
-          label={t.fields.approvalTypeCode}
+          label={t.fields.approvalTypeFilter}
           options={optionsOf(approvalTypeOptions)}
           value={filters.approvalTypeCode}
           note={codeNote(approvalTypeOptions)}

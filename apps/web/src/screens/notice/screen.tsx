@@ -113,6 +113,15 @@ type Confirming = 'none' | 'publish' | 'close';
  * 처음부터 칩이 보인다 — 끝난 공지가 왜 안 보이는지가 접혀서도 드러난다.
  * 「조건 지우기」는 처음 값과 다른 것이 있을 때만 보인다.
  */
+/** 확인 현황 한 줄 — 목록 칸과 상세 요약이 같은 글을 쓴다. ⛔ 분모를 셀 수 없으면 분자만 낸다(0으로 채우면 「아무도 안 봤음」과 같아 보인다). */
+const ackSummary = (notice: NoticeView): string => {
+  if (!notice.acknowledgeRequired) return t.list.ackNotRequired;
+
+  return notice.targetCount === null
+    ? t.list.ackDoneOnly(notice.acknowledgedCount)
+    : t.list.ackOf(notice.acknowledgedCount, notice.targetCount);
+};
+
 export const NoticeScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = readFilters(searchParams);
@@ -313,13 +322,7 @@ export const NoticeScreen = () => {
       width: '120px',
       align: 'end',
       /* ⛔ 분모를 셀 수 없으면 분자만 낸다 — 0으로 채우면 「아무도 안 봤음」과 같아 보인다. */
-      render: (row) => {
-        if (!row.acknowledgeRequired) return t.list.ackNotRequired;
-
-        return row.targetCount === null
-          ? t.list.ackDoneOnly(row.acknowledgedCount)
-          : t.list.ackOf(row.acknowledgedCount, row.targetCount);
-      },
+      render: ackSummary,
     },
   ];
 
@@ -481,25 +484,48 @@ export const NoticeScreen = () => {
         <SaveErrorBanner error={publish.error ?? close.error} />
         <SaveErrorBanner error={acknowledge.error} />
 
-        <dl className="token-meta notice-detail-facts">
-          <dt>{t.list.scope}</dt>
-          <dd>
-            {scopeLabel(selected.scopeCode)}
-            {needsWorkOrder(selected.scopeCode) && selected.targetWorkOrderNo !== null
-              ? ` · ${selected.targetWorkOrderNo}`
-              : ''}
-          </dd>
-          <dt>{t.detail.period}</dt>
-          <dd>{detailPeriod(selected)}</dd>
-          <dt>{t.detail.publishedAt}</dt>
-          <dd>
-            {selected.publishedAt === null
-              ? t.list.notAvailable
-              : formatMoment(selected.publishedAt)}
-          </dd>
-        </dl>
+        {/* 요약 상자(#361 시안) — 윗줄은 무엇에 대한 공지인지(큰 글자), 아랫줄은 기간 · 일시 · 확인. 칸 사이 세로선. */}
+        <div className="notice-detail-summary">
+          <dl className="notice-detail-summary-row notice-detail-summary-key">
+            <div>
+              <dt className="field-label">{t.list.title}</dt>
+              <dd>{selected.title}</dd>
+            </div>
+            <div>
+              <dt className="field-label">{t.list.scope}</dt>
+              <dd>
+                {scopeLabel(selected.scopeCode)}
+                {needsWorkOrder(selected.scopeCode) && selected.targetWorkOrderNo !== null
+                  ? ` · ${selected.targetWorkOrderNo}`
+                  : ''}
+              </dd>
+            </div>
+          </dl>
+          <dl className="notice-detail-summary-row">
+            <div>
+              <dt className="field-label">{t.detail.period}</dt>
+              <dd>{detailPeriod(selected)}</dd>
+            </div>
+            <div>
+              <dt className="field-label">{t.detail.publishedAt}</dt>
+              <dd>
+                {selected.publishedAt === null
+                  ? t.list.notAvailable
+                  : formatMoment(selected.publishedAt)}
+              </dd>
+            </div>
+            <div>
+              <dt className="field-label">{t.list.ack}</dt>
+              <dd>{ackSummary(selected)}</dd>
+            </div>
+          </dl>
+        </div>
 
-        <p className="notice-body">{selected.body}</p>
+        {/* 본문에 이름표를 단다(#361) — 무엇이 공지 내용인지 바로 읽히게. */}
+        <div className="notice-detail-body">
+          <span className="field-label">{t.form.body}</span>
+          <p className="notice-body">{selected.body}</p>
+        </div>
       </>
     );
   };

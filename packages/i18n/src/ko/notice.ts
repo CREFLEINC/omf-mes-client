@@ -14,15 +14,15 @@ export const notice = {
   },
 
   filters: {
-    search: '공지 제목',
+    search: '공지 제목 검색',
     searchPlaceholder: '공지 제목을 입력하세요',
     datePlaceholder: '날짜를 선택하세요',
     status: '상태',
-    scope: '대상 범위',
+    scope: '대상 범위 선택',
     scopeAll: '범위 전체',
     unacknowledgedByMe: '미확인 공지 포함',
-    from: '게시 시작일',
-    to: '게시 종료일',
+    from: '게시 시작일 선택',
+    to: '게시 종료일 선택',
     /** ⭐ 시작일이 아니라 **겹침**으로 거른다 — 긴 공지가 조회 구간에서 빠지지 않는다. */
     periodNote: '게시 기간이 선택한 기간과 하루라도 겹치는 공지를 모두 찾습니다.',
     /** ⛔ 기간은 필수가 아니다 — 계약이 그렇게 두었다. */
@@ -51,7 +51,7 @@ export const notice = {
   },
 
   list: {
-    title: '제목',
+    title: '공지 제목',
     status: '상태',
     scope: '대상',
     period: '게시 기간',
@@ -69,7 +69,7 @@ export const notice = {
   },
 
   form: {
-    create: '새 공지 쓰기',
+    create: '공지 등록',
     edit: '공지 수정',
     title: '제목',
     body: '본문',

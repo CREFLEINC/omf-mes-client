@@ -57,7 +57,7 @@ describe('RequestFilterBar — 자리표시 선택칸', () => {
     /* 안내는 채워진 칸에서 사라진다. */
     expect(screen.queryByText(messages.pendingCode.note)).toBeNull();
     /* 「전체」가 붙는다 — 한 번 고른 뒤 해제할 방법이 칸 안에 생긴다. */
-    expect(screen.getByLabelText(t.fields.approvalTypeCode)).toHaveTextContent(t.filters.all);
+    expect(screen.getByLabelText(t.fields.approvalTypeFilter)).toHaveTextContent(t.filters.all);
   });
 
   it('값이 오면 그 값을 고를 수 있다', async () => {
@@ -65,7 +65,7 @@ describe('RequestFilterBar — 자리표시 선택칸', () => {
       approvalTypeOptions: toCodeOptions(['GOODS_ISSUE_DISPOSAL', 'INVENTORY_ADJUSTMENT']),
     });
 
-    await user.click(screen.getByLabelText(t.fields.approvalTypeCode));
+    await user.click(screen.getByLabelText(t.fields.approvalTypeFilter));
     await user.click(screen.getByRole('option', { name: 'INVENTORY_ADJUSTMENT' }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 

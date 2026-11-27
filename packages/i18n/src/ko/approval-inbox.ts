@@ -44,13 +44,15 @@ export const approvalInbox = {
     requestedAt: '상신 일시',
     status: '상태',
     approvalTypeCode: '승인 유형',
+    /** 조회 조건 칸 이름(#361) — 목록 머리 · 상세는 「승인 유형」 그대로. */
+    approvalTypeFilter: '승인 유형 선택',
     /**
      * 조건 줄의 기간 라벨. **열 이름과 낱말이 다른 것이 맞다** — 계약의 두 조건
      * (`requestedAtFrom`·`requestedAtTo`)이 `format: date`라 **날짜 단위로** 좁힌다.
      * 여기에 「일시」를 쓰면 시각까지 지정할 수 있다고 읽힌다.
      */
-    periodFrom: '상신 시작일',
-    periodTo: '상신 종료일',
+    periodFrom: '상신 시작일 선택',
+    periodTo: '상신 종료일 선택',
     q: '요청번호 검색',
     qPlaceholder: '요청번호를 입력하세요',
     datePlaceholder: '날짜를 선택하세요',
