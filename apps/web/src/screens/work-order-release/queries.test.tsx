@@ -52,7 +52,6 @@ const releaseFact = (workOrderId: number) => ({
   plannedMoldId: null,
   plannedShiftId: null,
   remarks: null,
-  defaultWipLocationId: null,
   defaultFgLocationId: null,
   defaultScrapLocationId: null,
   operationSettingsSnapshot: null,
@@ -122,7 +121,6 @@ describe('work-order release reads', () => {
         items: [
           {
             ...workOrder(702),
-            defaultWipLocationId: 911,
             defaultFgLocationId: 912,
             defaultScrapLocationId: 913,
             operationSettingsSnapshot: {},
@@ -153,7 +151,6 @@ describe('work-order release reads', () => {
       items: [
         {
           ...releaseFact(702),
-          defaultWipLocationId: 911,
           defaultFgLocationId: 912,
           defaultScrapLocationId: 913,
           operationSettingsSnapshot: {},
@@ -196,7 +193,6 @@ describe('work-order release reads', () => {
     const { fetch, requests } = recordingFetch([
       getRoute(DETAIL_PATH, {
         ...workOrder(702),
-        defaultWipLocationId: 911,
         defaultFgLocationId: 912,
         defaultScrapLocationId: 913,
         operationSettingsSnapshot: {},
@@ -214,7 +210,6 @@ describe('work-order release reads', () => {
     expect(requests[0]?.search).toBe('');
     expect(result.current.data).toEqual({
       ...releaseFact(702),
-      defaultWipLocationId: 911,
       defaultFgLocationId: 912,
       defaultScrapLocationId: 913,
       operationSettingsSnapshot: {},

@@ -20,7 +20,6 @@ export interface WorkOrderProductionLineFact {
   lineTypeCode: string;
   isActive: boolean;
   /** 라인 기본 위치 — 4M 에서 라인을 고르면 W/O 기본 위치를 이 값으로 덮어쓴다. */
-  defaultWipLocationId: number | null;
   defaultFgLocationId: number | null;
   defaultScrapLocationId: number | null;
 }
@@ -103,23 +102,20 @@ export const toWorkOrderProductionLineFact = (
 });
 
 type LineDefaultLocationKey =
-  'defaultWipLocationId' | 'defaultFgLocationId' | 'defaultScrapLocationId';
+  'defaultFgLocationId' | 'defaultScrapLocationId';
 
 /** 라인 기본 위치 셋 — 선택 칸이라 없으면 비어 있는 것으로 본다. */
 export const lineDefaultLocationsOf = (
   source: Pick<ProductionLine, LineDefaultLocationKey>,
 ): Record<LineDefaultLocationKey, number | null> => ({
-  defaultWipLocationId: source.defaultWipLocationId ?? null,
   defaultFgLocationId: source.defaultFgLocationId ?? null,
   defaultScrapLocationId: source.defaultScrapLocationId ?? null,
 });
 
 /**
- * 기본 위치 칸마다 보여 줄 창고 유형. 자재창고(MATERIAL)는 어느 칸에도 두지 않는다 — WIP 위치로
- * 자재창고를 고르면 출고가 창고 안에서 맴돈다.
+ * 기본 위치 칸마다 보여 줄 창고 유형.
  */
 export const LINE_LOCATION_WAREHOUSE_TYPES = {
-  defaultWipLocationId: 'GENERAL',
   defaultFgLocationId: 'PRODUCT',
   defaultScrapLocationId: 'GENERAL',
 } as const;

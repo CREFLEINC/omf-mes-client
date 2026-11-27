@@ -164,7 +164,6 @@ export const workOrderRelease = {
     /** 빠진 위치를 먼저 말하고(원인) 고칠 곳을 뒤에 말한다(해결) */
     missingTitle: (names: string): string => `${names}가 설정되지 않았습니다.`,
     missingAction: '배포하려면 4M 자원배정에서 위치를 설정해 주세요.',
-    wip: 'WIP 위치',
     finishedGoods: '완제품 위치',
     scrap: '스크랩 위치',
   },

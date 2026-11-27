@@ -42,7 +42,6 @@ const fact = (workOrderId: number) => ({
   plannedEquipmentId: null,
   plannedMoldId: null,
   plannedShiftId: null,
-  defaultWipLocationId: null,
   defaultFgLocationId: null,
   defaultScrapLocationId: null,
   remarks: null,
@@ -95,7 +94,6 @@ describe('work-order reads', () => {
           {
             ...workOrder(702),
             productionLineId: 901,
-            defaultWipLocationId: 902,
             remarks: 'Synthetic remarks',
             versionNo: 9,
           },
@@ -118,7 +116,6 @@ describe('work-order reads', () => {
         {
           ...fact(702),
           productionLineId: 901,
-          defaultWipLocationId: 902,
           remarks: 'Synthetic remarks',
         },
         fact(701),

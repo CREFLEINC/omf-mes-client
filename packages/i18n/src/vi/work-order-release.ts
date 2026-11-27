@@ -167,7 +167,6 @@ export const workOrderRelease: Translated<typeof ko.workOrderRelease> = {
   locations: {
     missingTitle: (names: string) => `Chưa thiết lập ${names}.`,
     missingAction: 'Để phát hành, hãy thiết lập vị trí ở phân bổ 4M.',
-    wip: 'Vị trí WIP',
     finishedGoods: 'Vị trí thành phẩm',
     scrap: 'Vị trí phế liệu',
   },

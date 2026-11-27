@@ -153,7 +153,7 @@ const stub = ({
       const base = pending.find((item) => item.workOrderId === id);
       return jsonResponse(
         id !== 9001
-          ? { ...base, defaultWipLocationId: 1, defaultFgLocationId: 2, defaultScrapLocationId: 3 }
+          ? { ...base, defaultFgLocationId: 2, defaultScrapLocationId: 3 }
           : base,
         { headers: { ETag: '"1"' } },
       );

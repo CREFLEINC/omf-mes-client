@@ -1203,12 +1203,6 @@ export interface components {
       plannedShiftId: number | null;
       /**
        * Format: int64
-       * @description W/O 라인의 기본 WIP 위치. 셋 중 하나라도 비면 WORK_ORDER_LOCATION_REQUIRED 다
-       * @example 1001
-       */
-      defaultWipLocationId: number | null;
-      /**
-       * Format: int64
        * @description 완제품 위치 — ERP W/O 에 SL_CD 가 있으면 erpStorage.location(그 창고 안의 입고 위치), 없으면 W/O 라인의 기본 완제품 위치. SL_CD 가 있는데 창고를 정하지 못하면 라인 기본값이 있어도 null 이고 erpStorage.reasonCode 와 같은 코드의 issues 가 선다. 계획의 모든 공정 W/O 에 같은 값을 둔다. ERP 목적지의 의미는 마지막 공정에 있고 중간 공정 값은 배포 필수 검사를 위해 같은 값을 둔다.
        * @example 1001
        */

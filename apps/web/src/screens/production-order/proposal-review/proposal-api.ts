@@ -188,10 +188,6 @@ export function applyRevalidation(
                 resources: {
                   ...op.resources,
                   productionLineId: reference(checkedOp.productionLineId, 'productionLineId'),
-                  defaultWipLocationId: reference(
-                    checkedOp.defaultWipLocationId,
-                    'defaultWipLocationId',
-                  ),
                   defaultFgLocationId: reference(
                     checkedOp.defaultFgLocationId,
                     'defaultFgLocationId',
@@ -262,7 +258,6 @@ export function createProposalSession(client: Client, catalog: LiveCatalog) {
             ...op,
             productionLineId: op.productionLineId,
             defaultFgLocationId: op.defaultFgLocationId,
-            defaultWipLocationId: undefined,
             defaultScrapLocationId: undefined,
           };
         }),

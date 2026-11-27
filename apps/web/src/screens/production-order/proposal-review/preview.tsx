@@ -21,7 +21,6 @@ const options: Record<ResourceField, ReferenceRow[]> = {
   plannedMoldId: [option(21, 'MOLD-01', '금형 A')],
   responsibleWorkerId: [option(31, 'WK-01', '작업자 A')],
   plannedShiftId: [option(41, 'SHIFT-01', '주간'), option(42, 'SHIFT-02', '야간')],
-  defaultWipLocationId: [option(51, 'WIP-01', 'WIP 위치 A')],
   defaultFgLocationId: [option(61, 'SYS-WHOLE', '창고 전체', 81)],
   defaultScrapLocationId: [option(71, 'SCRAP-01', '스크랩 위치 A')],
 };
@@ -36,7 +35,6 @@ const operation = (key: string, sequence: number, missing: boolean): ReviewOpera
   end: `${plantToday()} 17:00`,
   required: [
     'productionLineId',
-    'defaultWipLocationId',
     'defaultFgLocationId',
     'defaultScrapLocationId',
   ],
@@ -46,7 +44,6 @@ const operation = (key: string, sequence: number, missing: boolean): ReviewOpera
     plannedMoldId: null,
     responsibleWorkerId: null,
     plannedShiftId: null,
-    defaultWipLocationId: options.defaultWipLocationId[0]!,
     defaultFgLocationId: options.defaultFgLocationId[0]!,
     defaultScrapLocationId: options.defaultScrapLocationId[0]!,
   },
