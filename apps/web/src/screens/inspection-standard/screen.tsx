@@ -876,12 +876,31 @@ export const InspectionStandardScreen = () => {
       }),
     // 계약이 이 경로에 If-Match를 요구하지 않는다.
     etagPath: null,
-    invalidateKeys: [versionKeys.all],
+    /*
+     * 다시 읽기는 아래 성공 처리에서 직접 한다 — 여기서 버전 전체를 다시 읽으면 선택이 옮겨 가기 전이라
+     * 방금 지운 버전의 상세 · 항목까지 다시 읽어 404가 났다(사용자 보고 · #360).
+     */
+    invalidateKeys: [],
     knownFields: [],
     onSuccess: () => {
-      const remaining = versions.find(
-        (version) => version.inspectionPlanVersionId !== selectedVersionId,
-      );
+      const deletedId = selectedVersionId;
+      const remaining = versions.find((version) => version.inspectionPlanVersionId !== deletedId);
+      /*
+       * 지운 버전을 목록 캐시에서 바로 뺀다 — 다시 읽기 전 낡은 목록이 남아 있으면 자동 고르기가
+       * 방금 지운 버전을 다시 고른다(라우팅 작성 취소와 같은 원인 · #360).
+       */
+      if (selectedPlanId !== null && deletedId !== null) {
+        queryClient.setQueryData<typeof versionList.data>(
+          versionKeys.list(selectedPlanId),
+          (prev) =>
+            prev === undefined
+              ? prev
+              : {
+                  ...prev,
+                  items: prev.items.filter((row) => row.inspectionPlanVersionId !== deletedId),
+                },
+        );
+      }
       resetVersionEditing();
       if (remaining === undefined) {
         const next = new URLSearchParams(searchParams);
@@ -890,6 +909,15 @@ export const InspectionStandardScreen = () => {
       } else {
         selectVersion(remaining.inspectionPlanVersionId);
       }
+      /* 지운 버전의 상세 · 항목만 빼고 다시 읽는다 — 나머지는 종전과 같다. */
+      void queryClient.invalidateQueries({
+        queryKey: versionKeys.all,
+        predicate: (query) =>
+          !(
+            query.queryKey[2] === deletedId &&
+            (query.queryKey[1] === 'detail' || query.queryKey[1] === 'items')
+          ),
+      });
       toast.show({ variant: 'success', description: t.result.discarded });
     },
   });
@@ -2167,6 +2195,7 @@ export const InspectionStandardScreen = () => {
         {isVersionEditOpen && versionStatus.isEditable && (
           <Dialog
             open
+            className="dialog-icon-edit"
             size="lg"
             closeOnBackdropClick={false}
             showCloseButton={false}

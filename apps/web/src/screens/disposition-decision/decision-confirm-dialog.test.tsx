@@ -29,6 +29,16 @@ const renderDialog = () => {
 };
 
 describe('판정 확인 팝업(#352)', () => {
+  /* 아이콘 클래스는 창(제목 앞 아이콘)에 — [취소] 단추에 붙지 않는다(#360). */
+  it('제목 아이콘 클래스는 창에 붙고 [취소] 단추에는 없다', () => {
+    renderDialog();
+
+    expect(document.querySelector('dialog.dialog-icon-check')).not.toBeNull();
+    expect(screen.getByRole('button', { name: messages.common.cancel }).className).not.toMatch(
+      /dialog-icon-/,
+    );
+  });
+
   it('저장할 내용과 「바로 반영」 안내를 보이고, [판정 저장]을 누르면 저장한다', async () => {
     const { onConfirm, user } = renderDialog();
 

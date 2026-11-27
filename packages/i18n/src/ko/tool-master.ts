@@ -120,6 +120,7 @@ export const toolMaster = {
     namePlaceholder: '툴명을 입력하세요',
     cavityCountPlaceholder: '캐비티 수를 입력하세요',
     guaranteedShotCountPlaceholder: '적정타수를 입력하세요',
+    guaranteedShotCountInfo: '비워 두면 타발수 기준 예방보전 도래를 계산하지 않습니다.',
     pmTriggerTypePlaceholder: '예방보전 판정 기준을 고르세요',
     pmCycleIntervalPlaceholder: '예방보전 주기 간격을 입력하세요',
     labelIssued: (count: number): string => `${count}회`,

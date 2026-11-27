@@ -242,6 +242,15 @@ describe('StepPane — 삭제', () => {
     expect(button).toHaveAccessibleDescription(t.actionReasons.stepRemoveLast);
   });
 
+  /* 잠긴 단추는 마우스 이벤트를 받지 않는다 — 감싼 칸의 title 로 마우스를 올리면 까닭이 뜬다(#360). */
+  it('단계가 하나뿐이면 삭제 단추를 감싼 칸에 마우스를 올렸을 때 사유가 뜬다', () => {
+    renderPane({ drafts: [draftOf(9301, 'a')] });
+
+    const button = screen.getByRole('button', { name: t.actions.removeStep(1) });
+
+    expect(button.closest('[title]')).toHaveAttribute('title', t.actionReasons.stepRemoveLast);
+  });
+
   it('단계가 하나뿐일 때 삭제를 눌러도 알리지 않는다', async () => {
     const onRemove = vi.fn();
     const user = userEvent.setup();

@@ -402,7 +402,7 @@ export const ShiftManagementScreen = () => {
         className={turningOn ? 'dialog-icon-restart' : 'dialog-icon-block'}
         open={retiring !== null}
         onClose={() => setToggling(null)}
-        title={toggleText.title(retiring?.shiftName ?? '')}
+        title={toggleText.title}
         size="md"
         showCloseButton={false}
         footer={
@@ -420,7 +420,24 @@ export const ShiftManagementScreen = () => {
           </>
         }
       >
-        {retiring !== null && <p className="dialog-text">{toggleText.body(retiring.shiftName)}</p>}
+        {/* 단말 사용 중지 창과 같은 짜임 — 대상 상자 · 질문 · 안내 줄(#360). */}
+        {retiring !== null && (
+          <div className="users-roles-worker-dialog">
+            <div className="users-roles-worker-block">
+              <span className="users-roles-worker-block-caption">{toggleText.caption}</span>
+              <strong>{retiring.shiftName}</strong>
+              <span>{retiring.shiftCode}</span>
+            </div>
+            <p>{toggleText.question}</p>
+            <p
+              className="iqc-inspection-action-note users-roles-dialog-note"
+              data-tone={turningOn ? 'info' : 'warning'}
+            >
+              <Icon name={turningOn ? 'info' : 'warning'} size={16} aria-hidden />
+              {toggleText.body(retiring.shiftName)}
+            </p>
+          </div>
+        )}
         {retiringDetail.isError && (
           <LoadErrorAlert
             error={retiringDetail.error}

@@ -76,6 +76,18 @@ describe('PqcWebSteps 자동 판정', () => {
 
 const draft = (accepted: string, rejected: string, held: string) => ({ accepted, rejected, held });
 
+describe('PqcWebSteps 종합 판정 칸', () => {
+  /* 필수 칸 빨간 바탕(app.css)이 걸리도록 칸이 필수임을 aria-required 로 알린다(#360). */
+  it('종합 판정 선택칸은 필수(aria-required)로 표시된다', () => {
+    render(<Harness />);
+
+    expect(screen.getByRole('combobox', { name: t.judgmentBox })).toHaveAttribute(
+      'aria-required',
+      'true',
+    );
+  });
+});
+
 describe('remainingAcceptedOf (PQC)', () => {
   it.each([
     [draft('100', '3', '2'), '95'],

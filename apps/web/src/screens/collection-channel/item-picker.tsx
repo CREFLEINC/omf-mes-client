@@ -9,6 +9,17 @@ import { judgeUnit, type UnitMatch } from './unit-match';
 
 const t = messages.collectionChannel;
 
+/**
+ * 버전 상태 코드 → 이름(검사 기준 화면과 같은 이름 · #360). 모르는 코드는 그대로 둔다 — 감추지 않는다(공유계약 G-9).
+ */
+const VERSION_STATUS_NAMES: Record<string, string | undefined> = {
+  DRAFT: messages.inspectionStandard.values.draft,
+  CONFIRMED: messages.inspectionStandard.values.confirmed,
+  OBSOLETE: messages.inspectionStandard.values.obsolete,
+};
+const versionStatusName = (code: string): string =>
+  VERSION_STATUS_NAMES[code.trim().toUpperCase()] ?? code;
+
 /** 한 칸이 알아야 하는 것 — 고를 값과 그 목록의 형편. */
 export interface PickerSlot<TItem> {
   items: TItem[];
@@ -128,8 +139,7 @@ export const ItemPicker = ({
 
   const versionOptions: CodeOption[] = versions.items.map((version) => ({
     value: String(version.inspectionPlanVersionId),
-    /* 상태 값 목록을 받지 않는다 — 코드를 그대로 둔다(공유계약 G-9). */
-    label: t.itemPicker.versionOption(version.planVersion, version.statusCode),
+    label: t.itemPicker.versionOption(version.planVersion, versionStatusName(version.statusCode)),
   }));
 
   const itemOptions: CodeOption[] = specs.items.map((spec) => ({

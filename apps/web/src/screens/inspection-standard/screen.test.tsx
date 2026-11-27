@@ -1681,7 +1681,7 @@ describe('InspectionStandardScreen — 기준 사용 중지', () => {
     expect(screen.getByText('검사 기준을 다시 사용하시겠습니까?')).toBeInTheDocument();
     expect(requestsTo(requests, `${PLANS_PATH}/3001:activate`)).toHaveLength(0);
 
-    await user.click(within(await dialog()).getByRole('button', { name: '재사용' }));
+    await user.click(within(await dialog()).getByRole('button', { name: '다시 사용' }));
     await screen.findByText(t.result.activated);
 
     const posts = requestsTo(requests, `${PLANS_PATH}/3001:activate`);

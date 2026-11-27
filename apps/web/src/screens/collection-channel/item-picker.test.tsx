@@ -2,7 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { planItems, specItems, versionItems } from './fixtures';
+import { makeVersion, planItems, specItems, versionItems } from './fixtures';
 import { asId, asOptionValue, ItemPicker, type PickerSlot } from './item-picker';
 
 const t = messages.collectionChannel;
@@ -97,5 +97,17 @@ describe('고른 값과 식별자 옮기기', () => {
 
   it('읽을 수 있으면 식별자가 된다', () => {
     expect(asId('5001')).toBe(5001);
+  });
+});
+
+/* 버전 선택지는 상태 코드(DRAFT 등) 대신 상태 이름으로 보인다(#360). */
+describe('버전 선택지 이름', () => {
+  it('「Rev 2 · DRAFT」가 아니라 「Rev 2 · 작성중」으로 보인다', () => {
+    renderPicker({ versions: slot([makeVersion(4101, 4001, 2, 'DRAFT')]) });
+
+    expect(
+      screen.getByText(t.itemPicker.versionOption(2, messages.inspectionStandard.values.draft)),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/DRAFT/)).not.toBeInTheDocument();
   });
 });

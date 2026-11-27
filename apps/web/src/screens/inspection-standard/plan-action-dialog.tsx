@@ -29,7 +29,8 @@ const TEXT: Record<
     title: t.dialog.activateTitle,
     caption: t.dialog.activateCaption,
     question: t.dialog.activateQuestion,
-    action: t.actions.reactivate,
+    /* 단추 이름은 제목과 같은 말로(#360). */
+    action: t.actions.activateConfirm,
     description: t.dialog.activateDescription,
     tone: 'info',
   },
@@ -69,8 +70,8 @@ export const PlanActionDialog = ({
     className={kind === 'deactivate' ? 'dialog-icon-block' : 'dialog-icon-restart'}
     open={open}
     onClose={onClose}
-    /* 사용 중지 창은 넓힌다(사용자 시안 · #258). */
-    size={kind === 'activate' ? 'sm' : 'md'}
+    /* 사용 중지 창은 넓힌다(사용자 시안 · #258). 다시 사용 창도 같은 크기로(#360). */
+    size="md"
     title={TEXT[kind].title}
     closeOnBackdropClick={false}
     showCloseButton={false}

@@ -170,23 +170,30 @@ export const StepPane = ({
               onReorder(index, index + 1);
             }}
           />
-          <IconButton
-            icon="delete"
-            size="sm"
-            aria-label={t.actions.removeStep(index + 1)}
-            /*
-             * 마지막 한 단계는 지울 수 없다. 사유는 이 버튼의 접근 설명으로 잇는다 —
-             * 비활성 컨트롤은 포커스를 받지 못해 툴팁만으로는 닿을 수 없다(배치 규범 4).
-             */
-            disabled={isLocked || removeDisabledReason !== null}
-            aria-describedby={removeDisabledReason === null ? undefined : removeReasonId}
-            onClick={() => {
-              /* 누르는 자리가 스스로 한 번 더 본다 — 버튼의 잠금만 믿지 않는다. */
-              if (removeDisabledReason !== null) return;
+          /* 잠기면 마우스를 올렸을 때 까닭이 뜬다 — 잠긴 단추는 마우스 이벤트를 받지 않아 감싼 칸에
+          단다(#360). */
+          <span
+            className="approval-route-step-remove-tip"
+            title={removeDisabledReason ?? undefined}
+          >
+            <IconButton
+              icon="delete"
+              size="sm"
+              aria-label={t.actions.removeStep(index + 1)}
+              /*
+               * 마지막 한 단계는 지울 수 없다. 사유는 이 버튼의 접근 설명으로 잇는다 —
+               * 비활성 컨트롤은 포커스를 받지 못해 툴팁만으로는 닿을 수 없다(배치 규범 4).
+               */
+              disabled={isLocked || removeDisabledReason !== null}
+              aria-describedby={removeDisabledReason === null ? undefined : removeReasonId}
+              onClick={() => {
+                /* 누르는 자리가 스스로 한 번 더 본다 — 버튼의 잠금만 믿지 않는다. */
+                if (removeDisabledReason !== null) return;
 
-              onRemove(step.draftId);
-            }}
-          />
+                onRemove(step.draftId);
+              }}
+            />
+          </span>
         </span>
       ),
     },

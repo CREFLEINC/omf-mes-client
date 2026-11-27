@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
 import { InfoFacts } from '../../patterns/info-facts';
+import { InfoLabel } from '../../patterns/info-tip';
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { CodeLockTextField } from '../../patterns/master';
 import type { ActionAvailability } from './asset-actions';
@@ -15,6 +16,7 @@ import {
   ensureOption,
   selectableOptions,
   usesDateAxis,
+  usesShotAxis,
 } from './code-options';
 import { SelectField } from './select-field';
 import { availableShots, shotUsage, type ShotTarget } from './shot-counts';
@@ -109,6 +111,8 @@ export const ToolFormDialog = ({
   const plantName = lookupDisplayLabel(plantSource, values.plantId);
 
   const onDateAxis = usesDateAxis(values.pmTriggerTypeCode);
+  const onShotAxis = usesShotAxis(values.pmTriggerTypeCode);
+  const guaranteedShotId = useId();
 
   /*
    * ⭐ 지금 걸려 있는 값이 선택지에 없어도 **칸이 비어 보이면 안 된다.** 서버 자료에 계약이
@@ -214,15 +218,36 @@ export const ToolFormDialog = ({
               error={fieldErrors.cavityCount}
             />
 
-            {/* 비워 두는 것을 막지 않는다 — 「적정 타수 미설정」 조회 조건이 그 상태를 전제한다. 칸 아래 안내는 걷었다(사용자 지시 · #360). */}
-            <TextField
-              label={t.fields.guaranteedShotCount}
-              placeholder={t.form.guaranteedShotCountPlaceholder}
-              inputMode="numeric"
-              value={values.guaranteedShotCount}
-              onChange={(event) => onChange({ guaranteedShotCount: event.target.value })}
-              error={fieldErrors.guaranteedShotCount}
-            />
+            {/*
+             * 비워 두는 것을 막지 않는다 — 「적정 타수 미설정」 조회 조건이 그 상태를 전제한다. 칸 아래 안내는 걷었다(사용자 지시 · #360).
+             * 판정 기준이 타발수 축을 쓸 때만 이름 옆 ⓘ 로 「비우면 도래를 계산하지 않는다」를 알린다(#360).
+             */}
+            {onShotAxis ? (
+              <div className="field-cell">
+                <InfoLabel
+                  htmlFor={guaranteedShotId}
+                  label={t.fields.guaranteedShotCount}
+                  info={t.form.guaranteedShotCountInfo}
+                />
+                <TextField
+                  id={guaranteedShotId}
+                  placeholder={t.form.guaranteedShotCountPlaceholder}
+                  inputMode="numeric"
+                  value={values.guaranteedShotCount}
+                  onChange={(event) => onChange({ guaranteedShotCount: event.target.value })}
+                  error={fieldErrors.guaranteedShotCount}
+                />
+              </div>
+            ) : (
+              <TextField
+                label={t.fields.guaranteedShotCount}
+                placeholder={t.form.guaranteedShotCountPlaceholder}
+                inputMode="numeric"
+                value={values.guaranteedShotCount}
+                onChange={(event) => onChange({ guaranteedShotCount: event.target.value })}
+                error={fieldErrors.guaranteedShotCount}
+              />
+            )}
 
             {/*
              * ⭐ **공장은 등록에서만 고른다.** 계약이 수정 본문에 받지 않는다 — 공장을 옮기는 것은
@@ -312,7 +337,11 @@ export const ToolFormDialog = ({
                *   외곽선이라 바닥 줄의 [저장]보다 앞서지 않는다.
                */}
               <div className="tool-form-retire">
-                <div className="tool-form-retire-action">
+                {/* 잠긴 까닭은 마우스를 올리면 뜬다 — 잠긴 단추는 마우스 이벤트를 받지 않아 감싼 칸에 단다(#360). */}
+                <div
+                  className="tool-form-retire-action"
+                  title={deactivate.enabled ? undefined : (deactivate.reason ?? undefined)}
+                >
                   <Button
                     variant="outlined"
                     size="sm"

@@ -73,14 +73,19 @@ export const shiftManagement = {
     loading: '교대 정보를 불러오는 중입니다.',
   },
   deactivateDialog: {
-    title: (name: string) => `${name} 교대 사용 중지`,
+    /* 제목은 짧은 이름 — 교대명은 본문 대상 상자에(#360). */
+    title: '교대 사용 중지',
+    caption: '사용 중지 대상',
+    question: '이 교대를 사용 중지하시겠습니까?',
     body: (name: string) =>
       `사용을 중지하면 ${name} 교대가 교대 선택 목록과 작업 시간 판정에서 제외됩니다. 기존 작업 기록과 실적은 유지됩니다.`,
     cancel: '취소',
     confirm: '사용 중지',
   },
   activateDialog: {
-    title: (name: string) => `${name} 교대 재사용`,
+    title: '교대 다시 사용',
+    caption: '다시 사용 대상',
+    question: '이 교대를 다시 사용하시겠습니까?',
     body: (name: string) =>
       `재사용하면 ${name} 교대가 교대 선택 목록과 작업 시간 판정에 다시 포함됩니다.`,
     cancel: '취소',

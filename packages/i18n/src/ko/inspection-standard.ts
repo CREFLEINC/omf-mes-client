@@ -19,6 +19,7 @@ export const inspectionStandard = {
   actions: {
     /* 미사용 기준을 다시 켜는 단추 — 「사용 중지」 자리(사용자 지시 2026-11-04). */
     reactivate: '재사용',
+    activateConfirm: '다시 사용',
     /* 다른 품목으로 복사(omf-all-around#255). */
     copy: '복사',
     /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */

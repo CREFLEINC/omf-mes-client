@@ -41,6 +41,22 @@ const renderVersionTransition = (overrides: Partial<VersionTransitionDialogProps
 };
 
 describe('PlanActionDialog — 문면 잣대', () => {
+  /* 다시 사용 창 — 단추는 제목과 같은 말, 창 크기는 사용 중지 창과 같게(#360). */
+  it('다시 사용 창의 실행 단추는 「다시 사용」이고 창 크기는 사용 중지 창과 같다', () => {
+    const { unmount } = renderPlanAction({ kind: 'deactivate' });
+    const deactivateClass = document.querySelector('dialog')?.className ?? '';
+    unmount();
+
+    renderPlanAction({ kind: 'activate' });
+
+    expect(screen.getByRole('button', { name: t.actions.activateConfirm })).toBeInTheDocument();
+    expect(t.actions.activateConfirm).toBe('다시 사용');
+    const activateClass = document.querySelector('dialog')?.className ?? '';
+    expect(activateClass.replace('dialog-icon-restart', '')).toBe(
+      deactivateClass.replace('dialog-icon-block', ''),
+    );
+  });
+
   /** 사용 중지는 삭제가 아니며 앞으로 적용되지 않는다는 두 사실을 함께 말해야 한다. */
   it('사용 중지가 삭제가 아니고 새 검사에서 적용되지 않음을 밝힌다', () => {
     renderPlanAction({ kind: 'deactivate' });

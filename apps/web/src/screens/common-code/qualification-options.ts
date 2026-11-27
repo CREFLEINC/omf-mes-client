@@ -19,3 +19,7 @@ export const PENDING_QUALIFICATION_TYPE = 'PENDING';
 export const QUALIFICATION_TYPE_OPTIONS: SelectOption[] = [
   { value: PENDING_QUALIFICATION_TYPE, label: messages.commonCode.qualification.typePending },
 ];
+
+/** 표에 보일 이름 — 선택칸과 같은 이름표(「미정」). 목록에 없는 코드는 코드 그대로(#360). */
+export const qualificationTypeLabel = (code: string): string =>
+  QUALIFICATION_TYPE_OPTIONS.find((option) => option.value === code)?.label ?? code;

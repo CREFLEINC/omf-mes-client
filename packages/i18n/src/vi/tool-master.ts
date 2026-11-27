@@ -109,6 +109,8 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
     namePlaceholder: 'Hãy nhập tên công cụ',
     cavityCountPlaceholder: 'Hãy nhập số khoang khuôn',
     guaranteedShotCountPlaceholder: 'Hãy nhập số nhát dập đảm bảo',
+    guaranteedShotCountInfo:
+      'Nếu để trống, hệ thống sẽ không tính hạn bảo trì phòng ngừa theo số lần dập.',
     pmTriggerTypePlaceholder: 'Hãy chọn tiêu chí đánh giá bảo trì phòng ngừa',
     pmCycleIntervalPlaceholder: 'Hãy nhập khoảng chu kỳ bảo trì phòng ngừa',
     labelIssued: (count: number): string => `${count} lần`,

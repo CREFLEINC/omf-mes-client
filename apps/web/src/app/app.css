@@ -44626,4 +44626,32 @@ dialog[class*='dialog-icon-'] [class*='_header_'] > [class*='_title_'] {
 .session-force-end-body [class*='_meta_'] > p {
   margin: 0;
 }
+.session-force-end-body .session-force-end-reason-empty [class*='_areaWrap_'] {
+  background: var(--semantic-error-container);
+}
 
+
+/*
+ * 비어 있는 필수 선택칸 — 「2) 비어 있는 필수 칸」 규칙이 닿지 않는 두 짜임(#360).
+ * - 이름 옆 ⓘ 를 붙이면 이름 줄이 `.info-label` 로 한 겹 감싸져 `> .field-label` 직계 조건에서 빠진다(작업 캘린더 › 적용 대상 지정 「대상」).
+ * - PQC 결과 창 「종합 판정」은 `.field-cell` 이 아닌 한 줄 칸(`.parts-iqc-overall`)이라 같은 조건에서 빠진다 — 칸에 aria-required 를 준다.
+ */
+dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head))
+  .field-cell:has(> .info-label > .field-label .required-mark)
+  button[role='combobox'][aria-required='true']:not(:disabled):has(> [class*='_placeholder_']),
+dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head))
+  .parts-iqc-overall
+  button[role='combobox'][aria-required='true']:not(:disabled):has(> [class*='_placeholder_']) {
+  background: var(--semantic-error-container);
+}
+
+/* 결재선 단계 삭제(휴지통) — 잠긴 까닭을 마우스로 보이게 감싼 칸이 줄 맞춤을 흐트러뜨리지 않게(#360). */
+.approval-route-step-remove-tip {
+  display: inline-flex;
+}
+
+/* 수령 창 — 「차이 사유」 열까지 가로 밀지 않고 보이게 넓힌다(#360 점검). */
+dialog.replenishment-receive-dialog {
+  width: min(75rem, calc(100vw - var(--space-8)));
+  max-width: min(75rem, calc(100vw - var(--space-8)));
+}

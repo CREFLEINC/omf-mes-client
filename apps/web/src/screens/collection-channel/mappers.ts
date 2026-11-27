@@ -92,7 +92,11 @@ export const toChannelUpdate = (
   current: Pick<CollectionChannel, 'isActive'>,
 ): CollectionChannelUpdate => ({
   signalName: trimmed(values.signalName),
-  unitCode: trimmed(values.unitCode),
+  /*
+   * 빈 단위는 보내지 않는다 — 계약이 `unitCode` 를 생략 가능한 글자로만 두고(null 불가) 서버가 빈 글자를
+   * 400 으로 막는다(「빈 단위 코드는 사용할 수 없습니다」 · #360). 생략하면 서버는 단위를 그대로 둔다.
+   */
+  ...(trimmed(values.unitCode) === '' ? {} : { unitCode: trimmed(values.unitCode) }),
   inspectionItemId: values.inspectionItemId,
   /* ⭐ 조건도 폼에서 온다 — 계약의 수정 본문이 받는다(설계 회신 `omf-mes#203` 질문1). */
   itemId: values.itemId,

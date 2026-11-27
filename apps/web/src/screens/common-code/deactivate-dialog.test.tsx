@@ -26,6 +26,15 @@ const renderDialog = (overrides: Partial<Parameters<typeof DeactivateDialog>[0]>
 };
 
 describe('DeactivateDialog', () => {
+  /* 아이콘 클래스는 창(제목 앞 아이콘)에 — [취소] 단추에 붙지 않는다(#360). */
+  it('제목 아이콘 클래스는 창에 붙고 [취소] 단추에는 없다', () => {
+    renderDialog();
+
+    expect(screen.getByRole('dialog').closest('dialog')).toHaveClass('dialog-icon-block');
+    const cancel = screen.getByRole('button', { name: '취소' });
+    expect(cancel.className).not.toMatch(/dialog-icon-/);
+  });
+
   it('어느 자원을 중지하는지 제목이 밝힌다', () => {
     renderDialog();
 

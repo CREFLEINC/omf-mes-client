@@ -1287,12 +1287,14 @@ describe('고른 요청 — 순차 판정은 서버 값이다', () => {
     expect(screen.queryByText(t.progress.myTurnBadge)).not.toBeInTheDocument();
   });
 
-  it('결재 결과·의견은 응답 값 그대로, 시각은 공장 시각으로 낸다', async () => {
+  it('결재 결과는 상태 이름(APPROVED → 승인)으로, 의견은 응답 값 그대로, 시각은 공장 시각으로 낸다', async () => {
     await renderDetail(contradictoryMyTurnDetail, '?rq=9001');
 
     const progress = screen.getByRole('group', { name: t.panes.progress });
 
-    expect(within(progress).getByText('APPROVED')).toBeVisible();
+    /* 영어 코드가 그대로 보이지 않는다(#360). */
+    expect(within(progress).queryByText('APPROVED')).toBeNull();
+    expect(within(progress).getByText('승인')).toBeVisible();
     expect(within(progress).getByText('2026-08-06 13:02')).toBeVisible();
     expect(within(progress).getByText('합성 결재 의견 하나')).toBeVisible();
   });

@@ -71,14 +71,18 @@ export const shiftManagement: Translated<typeof ko.shiftManagement> = {
     loading: 'Đang tải thông tin ca.',
   },
   deactivateDialog: {
-    title: (name: string) => `Ngừng sử dụng ca ${name}`,
+    title: 'Ngừng sử dụng ca',
+    caption: 'Đối tượng ngừng sử dụng',
+    question: 'Bạn có muốn ngừng sử dụng ca này không?',
     body: (name: string) =>
       `Khi ngừng sử dụng, ca ${name} sẽ bị loại khỏi danh sách chọn ca và việc xác định ca theo giờ làm. Công việc và kết quả đã ghi vẫn được giữ nguyên.`,
     cancel: 'Hủy',
     confirm: 'Ngừng sử dụng',
   },
   activateDialog: {
-    title: (name: string) => `Dùng lại ca ${name}`,
+    title: 'Dùng lại ca',
+    caption: 'Đối tượng dùng lại',
+    question: 'Bạn có muốn dùng lại ca này không?',
     body: (name: string) =>
       `Khi dùng lại, ca ${name} sẽ được đưa lại vào danh sách chọn ca và việc xác định ca theo giờ làm.`,
     cancel: 'Hủy',

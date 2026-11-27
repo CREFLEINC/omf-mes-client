@@ -157,7 +157,7 @@ describe('ProgressPane — 단계', () => {
     expect(pane.textContent).not.toContain('9501');
   });
 
-  it('결재 결과 코드 · 시각 · 의견을 그대로 낸다 — 화면 낱말로 바꾸지 않는다', () => {
+  it('결재 결과 코드는 상태 이름으로(APPROVED → 승인), 시각 · 의견은 그대로 낸다(#360)', () => {
     const pane = renderPane([
       step({
         decisionCode: 'APPROVED',
@@ -166,7 +166,8 @@ describe('ProgressPane — 단계', () => {
       }),
     ]);
 
-    expect(within(pane).getByText('APPROVED')).toBeVisible();
+    expect(within(pane).queryByText('APPROVED')).toBeNull();
+    expect(within(pane).getByText('승인')).toBeVisible();
     expect(within(pane).getByText('2026-08-06 13:02')).toBeVisible();
     expect(within(pane).getByText('합성 결재 의견')).toBeVisible();
   });
@@ -221,6 +222,6 @@ describe('ProgressPane — 반려 자리표시', () => {
     );
 
     expect(stepLines(pane).map((line) => line.dataset.status)).toEqual(['rejected', 'complete']);
-    expect(within(pane).getByText(SYNTHETIC_REJECTION_CODE)).toBeVisible();
+    expect(within(pane).getByText('반려')).toBeVisible();
   });
 });

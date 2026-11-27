@@ -45,13 +45,14 @@ export const DecisionConfirmDialog = ({
       onClose={onCancel}
       size="md"
       title={t.confirm.title}
+      className="dialog-icon-check"
       showCloseButton={false}
       closeOnBackdropClick={false}
       footer={
         <>
           <Button
             variant="outlined"
-            className="app-button-neutral dialog-icon-check"
+            className="app-button-neutral"
             disabled={isSaving}
             onClick={onCancel}
           >
