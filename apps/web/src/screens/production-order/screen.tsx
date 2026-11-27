@@ -11,7 +11,7 @@ import {
   Breadcrumb,
   Button,
   EmptyState,
-  PageHeader,
+  Icon,
   SkeletonText,
   type Column,
 } from '@crefle/web-ui';
@@ -21,7 +21,6 @@ import { useNavigate, useSearchParams } from 'react-router';
 
 import { FitLine } from '../../patterns/fit-line';
 import { BulkResult, type BulkResultFilter } from '../../patterns/bulk-result';
-import { ScreenHeader } from '../../patterns/screen-header';
 import { PageNav } from '../../patterns/page-nav';
 import { Select } from '../../patterns/select';
 import { SelectableTable } from '../../patterns/selectable-table';
@@ -288,14 +287,13 @@ export const ProductionOrderScreen = ({
 
   return (
     <>
-      <ScreenHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
+      {/*
+       * 탐색 경로만 두고 큰 제목은 세우지 않는다(사용자 지시 2026-11-27 「작업계획 타이틀 제거」 · 「크럼블은 놔둬야지」).
+       * `PageHeader` 는 제목이 필수라 쓰지 않고 경로를 그대로 둔다 — 머리 안에서도 경로는 블록 하나라 모양이 같다.
+       */}
+      <Breadcrumb
+        items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+        aria-label={messages.common.shell.breadcrumb}
       />
       <section className="pane erp-wo-filter-pane" aria-label={t.filters.pane}>
         <WorklistFilterBar
@@ -331,20 +329,28 @@ export const ProductionOrderScreen = ({
             <strong>{t.bulk.selected(checkedRows.length)}</strong>
             {bulk.isRunning && <p>{bulkReason}</p>}
           </div>
-          {/* 계획 시작일 정렬 — 고르면 바로 걸리고 첫 쪽부터 다시 받는다(사용자 지시 2026-11-27). */}
-          <div className="erp-wo-list-order">
-            <Select
-              aria-label={t.list.order.label}
-              value={filters.order}
-              options={[
-                { value: 'newest', label: t.list.order.newest },
-                { value: 'oldest', label: t.list.order.oldest },
-              ]}
-              onChange={(order) =>
-                apply({ ...filters, order: order === 'newest' ? 'newest' : 'oldest', page: 1 })
-              }
-            />
-          </div>
+          {/*
+           * 계획 시작일 정렬 — 누를 때마다 오래된순 ↔ 최신순, 보이는 글자가 지금 차례다(사용자 지시 2026-11-27
+           * 「토글 형태로」). 알림센터 정렬 단추와 같은 모양이다. 누르면 바로 걸리고 첫 쪽부터 다시 받는다.
+           */}
+          <Button
+            variant="outlined"
+            size="sm"
+            className="erp-wo-list-order-button"
+            aria-label={`${t.list.order.label}: ${
+              filters.order === 'newest' ? t.list.order.newest : t.list.order.oldest
+            }`}
+            leadingIcon={<Icon name="swap_vert" size={16} />}
+            onClick={() =>
+              apply({
+                ...filters,
+                order: filters.order === 'newest' ? 'oldest' : 'newest',
+                page: 1,
+              })
+            }
+          >
+            {filters.order === 'newest' ? t.list.order.newest : t.list.order.oldest}
+          </Button>
         </div>
         <div className="erp-wo-bulk-actions">
           <div className="erp-wo-action-choice">

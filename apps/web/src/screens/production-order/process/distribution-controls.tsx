@@ -34,6 +34,8 @@ interface CalendarNote {
   owner: string;
   summary: string;
   dates?: string[];
+  /** 단건 요약 상자의 이름 · 값 칸 — 문장을 다시 쪼개지 않게 만들 때 함께 둔다(#360). */
+  fact?: { label: string; value: string };
 }
 
 export interface DistributionControlsProps {
@@ -531,6 +533,7 @@ export const DistributionControls = ({
                           notes.push({
                             owner: row.owner,
                             summary: '근무일 판정 불가 (공장 미지정)',
+                            fact: { label: '근무일 판정 불가', value: '공장 미지정' },
                           });
                           continue;
                         }
@@ -546,7 +549,11 @@ export const DistributionControls = ({
                         );
                         bySegment.set(row.id, days);
                         if (row.mode === 'equal' && order.bottleneckCycleTimeSec === null)
-                          notes.push({ owner: row.owner, summary: '표준 C/T 미설정' });
+                          notes.push({
+                            owner: row.owner,
+                            summary: '표준 C/T 미설정',
+                            fact: { label: '표준 C/T', value: '미설정' },
+                          });
                         const holidays = days.filter((day) => day.statusCode === 'HOLIDAY');
                         for (const day of holidays) {
                           /* 결과 표 휴일 행 아래 줄 — 「정기 휴무 · 분배 포함」(시안 · #360). */
@@ -568,6 +575,7 @@ export const DistributionControls = ({
                           notes.push({
                             owner: row.owner,
                             summary: `근무일 판정 불가 ${unknown}일 (미설정)`,
+                            fact: { label: '근무일 판정 불가', value: `${unknown}일 (미설정)` },
                           });
                       }
                       const result = previewSegments(
@@ -1302,15 +1310,11 @@ export const DistributionControls = ({
                     /* 표준 C/T · 휴일 · 판정 불가 안내도 같은 상자 둘째 줄로(사용자 지시 · #360). */
                     const notes = calendarNotes
                       .filter((note) => note.owner === singleOrder.id)
-                      .map((note) => {
-                        if (note.dates?.length)
-                          return { label: note.summary, value: note.dates.join(', ') };
-                        const [, head, rest] =
-                          /^(표준 C\/T|근무일 판정 불가)\s*(.*)$/.exec(note.summary) ?? [];
-                        return head
-                          ? { label: head, value: rest || '—' }
-                          : { label: '안내', value: note.summary };
-                      });
+                      .map((note) =>
+                        note.dates?.length
+                          ? { label: note.summary, value: note.dates.join(', ') }
+                          : (note.fact ?? { label: '안내', value: note.summary }),
+                      );
                     return (
                       <InfoFacts
                         className="erp-wo-result-single-facts"

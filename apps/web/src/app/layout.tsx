@@ -466,13 +466,8 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
    * 보이면 모양이 갈린다(omf-all-around#228). 볼 수 없는 탭은 종전처럼 막대에 세우지 않는다.
    */
   const activeHub = findActiveHub(allowedGroups, pathname) ?? currentTabOnly(pathname);
-  const singleWorklistTab =
-    activeHub?.hub.to === '/production/production-orders' && activeHub.hub.tabs.length === 1;
   const hubTabs =
-    activeHub !== null &&
-    !singleWorklistTab &&
-    activeHub.hub.tabs.length > 0 &&
-    activeHub.hub.inlineTabs !== true ? (
+    activeHub !== null && activeHub.hub.tabs.length > 0 && activeHub.hub.inlineTabs !== true ? (
       <HubTabs hub={activeHub.hub} activePath={activeHub.activePath} badgeOf={tabBadgeOf} />
     ) : null;
   /* 탭 막대가 섰으면 화면에 알린다 — 그 화면은 경로·제목을 따로 세우지 않는다(`patterns/page-hub.tsx`). */

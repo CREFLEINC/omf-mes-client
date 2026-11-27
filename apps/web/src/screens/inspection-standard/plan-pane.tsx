@@ -14,9 +14,6 @@ import type { InspectionPlan, PlanFormValues, SelectOption } from './types';
 
 const t = messages.inspectionStandard;
 
-/** 품목 칸 맨 앞 — 비우면 「전 품목 공통」 기준이다. */
-const ALL_ITEMS = [{ value: '', label: t.values.allItems }];
-
 export type PlanPaneMode = 'edit' | 'create';
 
 export interface PlanPaneProps {
@@ -257,22 +254,21 @@ export const PlanPane = ({
 
         {/* 셋째 줄 — 품목 · 라우팅(사용자 지시 2026-11-04). */}
         {/*
-         * 비우면 「전 품목 공통 기준」이다 — 계약이 널을 허용한다.
+         * 품목은 필수다 — 「전 품목 공통」 기준은 없앴다(omf-all-around#366). 검사표 기준도 품목마다 선다(#260).
          * 품목은 **칸에서 바로 검색해서 고른다**(사용자 지시 2026-11-04 — 품목 선택 창을 띄우지 않는다).
-         * 검색어는 서버로 가 뒤쪽 품목도 찾는다. 조회 줄의 품목 조건과 같은 부품이고, 맨 앞 「전 품목 공통」이 비우는 자리다.
+         * 검색어는 서버로 가 뒤쪽 품목도 찾는다. 조회 줄의 품목 조건과 같은 부품이다.
          */}
         <div className="field-cell search-select-cell">
-          {/* 검사표 기준은 품목마다 선다 — 「전 품목 공통」이 없고 필수다(#260). */}
-          <FieldLabel htmlFor={itemId} label={t.fields.item} required={isSheet} />
+          <FieldLabel htmlFor={itemId} label={t.fields.item} required />
           <ItemSelect
             id={itemId}
             selectedOption={itemOption}
-            leadingOptions={isSheet ? [] : ALL_ITEMS}
+            leadingOptions={[]}
             value={values.itemId}
-            placeholder={isSheet ? t.values.pickItem : t.values.allItems}
+            placeholder={t.values.pickItem}
             onChange={(value) => onChange({ itemId: value })}
             {...(onItemChange !== undefined ? { onItemChange } : {})}
-            invalid={fieldErrors.itemId !== undefined || (isSheet && isBlank(values.itemId))}
+            invalid={fieldErrors.itemId !== undefined || isBlank(values.itemId)}
             aria-describedby={fieldErrors.itemId === undefined ? undefined : itemErrorId}
           />
           {fieldErrors.itemId !== undefined && (

@@ -1327,8 +1327,14 @@ describe('appRouter — 작업지시 목록 작업함의 진입 경로', () => {
     await user.keyboard('{Enter}');
 
     await waitFor(() => expect(currentLocation()).toBe('/production/production-orders'));
-    /* 탭 묶음 안이라 탭 막대가 화면 이름을 말한다 — 제목을 세우지 않는다(시안 A). */
-    expect(await findCurrentHubTab('작업계획', '작업계획')).toBeInTheDocument();
+    /*
+     * ERP W/O 변경 확인 탭을 메뉴에서 감춰 탭 막대가 없다. 탐색 경로는 두고 큰 제목은 세우지 않는다(사용자 지시
+     * 2026-11-27 「작업계획 타이틀 제거」 · 「크럼블은 놔둬야지」).
+     */
+    const breadcrumb = await screen.findByRole('navigation', { name: '탐색 경로' });
+    expect(within(breadcrumb).getByText(messages.erpWorkOrderFlow.breadcrumbRoot)).toBeVisible();
+    expect(within(breadcrumb).getByText(messages.erpWorkOrderFlow.title)).toBeVisible();
+    expect(screen.queryByRole('navigation', { name: '작업계획' })).toBeNull();
     expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
     expect(await screen.findByText(messages.erpWorkOrderFlow.list.emptyTitle)).toBeVisible();
   });

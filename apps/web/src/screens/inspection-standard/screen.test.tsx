@@ -1238,6 +1238,8 @@ describe('InspectionStandardScreen — 기준 등록', () => {
     await user.type(screen.getByLabelText('기준명'), '합성 검사기준 J');
     await user.click(within(createForm()).getByRole('combobox', { name: '검사 유형' }));
     await user.click(screen.getByRole('option', { name: 'OQC (출하검사)' }));
+    await user.click(within(createForm()).getByRole('combobox', { name: '품목' }));
+    await user.click(await screen.findByRole('option', { name: /SYN-ITEM-01/ }));
     await user.click(within(createForm()).getByRole('button', { name: '기준 추가' }));
 
     await screen.findByText('등록했습니다');
@@ -1245,13 +1247,13 @@ describe('InspectionStandardScreen — 기준 등록', () => {
     const post = requests.find((request) => request.method === 'POST');
     expect(post?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
     expect(post?.headers.get('If-Match')).toBeNull();
-    expect(JSON.parse(post?.body ?? '{}')).toEqual({
+    // 라우팅은 고른 품목의 Rev 로 자동으로 채워진다 — 여기서는 보지 않는다.
+    expect(JSON.parse(post?.body ?? '{}')).toMatchObject({
       inspectionPlanCode: 'SYN-PLAN-10',
       inspectionPlanName: '합성 검사기준 J',
       inspectionTypeCode: 'OQC',
-      itemId: null,
+      itemId: 5001,
       processId: null,
-      routingId: null,
       defaultSkip: false,
     });
   });
@@ -1270,6 +1272,8 @@ describe('InspectionStandardScreen — 기준 등록', () => {
     await user.type(screen.getByLabelText('기준명'), '합성 검사기준 J');
     await user.click(within(createForm()).getByRole('combobox', { name: '검사 유형' }));
     await user.click(screen.getByRole('option', { name: 'OQC (출하검사)' }));
+    await user.click(within(createForm()).getByRole('combobox', { name: '품목' }));
+    await user.click(await screen.findByRole('option', { name: /SYN-ITEM-01/ }));
     await user.click(within(createForm()).getByRole('button', { name: '기준 추가' }));
 
     await waitFor(() => {
@@ -3792,6 +3796,8 @@ describe('InspectionStandardScreen — 기준 복사', () => {
     await user.click(await screen.findByRole('button', { name: t.actions.copy }));
     const dialog = await screen.findByRole('dialog', { name: t.detail.copyTitle });
     await user.type(within(dialog).getByLabelText('기준코드'), 'SYN-PLAN-COPY');
+    await user.click(within(dialog).getByRole('combobox', { name: '품목' }));
+    await user.click(await screen.findByRole('option', { name: /SYN-ITEM-01/ }));
     await user.click(within(dialog).getByRole('button', { name: t.actions.addPlan }));
 
     await screen.findByText(t.result.copied);

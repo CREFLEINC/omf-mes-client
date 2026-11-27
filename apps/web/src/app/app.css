@@ -34315,9 +34315,6 @@ ul.iqc-inbound-superseded {
 .erp-wo-selection-info strong {
   font: var(--type-title-sm);
 }
-.erp-wo-list-order {
-  width: 8rem;
-}
 .erp-wo-selection-info p {
   margin: var(--space-1) 0 0;
   font: var(--type-body-sm);
@@ -44154,19 +44151,6 @@ dialog
   margin: 0;
   padding-left: 1.1em;
 }
-.erp-wo-result-single-notes {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-2) var(--space-4);
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--outline-variant);
-  font: var(--type-body-sm);
-}
-.erp-wo-result-single-notes > .erp-wo-calendar-result-dates + .erp-wo-calendar-result-dates {
-  padding-left: var(--space-4);
-  border-left: 1px solid var(--outline-variant);
-}
 
 /*
  * 알림센터 — 목록 상자가 창 높이에 맞춰 늘고 줄며, 카드만 상자 안에서 스크롤한다. 쪽 이동 줄은 상자 맨 아래(#361).
@@ -44381,12 +44365,14 @@ main > .pane.notification-center-pane {
   margin: 0;
 }
 
-/* 최신순/오래된순 단추 — 둥근 테두리는 그대로, 아이콘 · 글자는 진회색(중립형 · #361). */
-.notification-sort-button {
+/* 최신순/오래된순 단추 — 둥근 테두리는 그대로, 아이콘 · 글자는 진회색(중립형 · #361). 작업계획 정렬 단추도 같다. */
+.notification-sort-button,
+.erp-wo-list-order-button {
   color: var(--on-surface-variant);
 }
 
-.notification-sort-button:hover {
+.notification-sort-button:hover,
+.erp-wo-list-order-button:hover {
   background: color-mix(in srgb, var(--on-surface) 8%, transparent);
 }
 
