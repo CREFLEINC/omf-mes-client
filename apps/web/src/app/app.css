@@ -2070,22 +2070,6 @@ h2:has(> .inspection-standard-dialog-title) {
   align-content: start;
 }
 
-/* ④ 0건이면 쪽 이동 줄(총 0건 · 건수 · 처음/이전/다음/마지막)을 감춘다 — 데이터가 있을 때만 보인다(사용자 지시 · omf-all-around#228). */
-:is(
-    .iqc-inspection-queue-pane,
-    .pqc-web-list,
-    .oqc-inspection-queue-pane,
-    .inspection-standard-list-pane,
-    .inspection-sheet-template-list-pane,
-    .inspection-sheet-list-pane,
-    .lot-status-pane,
-    .disposition-list,
-    .inspection-results-pane
-  )
-  > .page-nav[data-empty] {
-  display: none;
-}
-
 .pane-stack {
   display: grid;
   gap: var(--space-5);
@@ -5272,10 +5256,6 @@ dialog.routing-history-dialog {
   clip: rect(0 0 0 0);
   white-space: nowrap;
   border: 0;
-}
-
-.work-order-progress-page-nav {
-  margin-top: calc(var(--space-2) * -1);
 }
 
 @media (max-width: 720px) {
@@ -13949,14 +13929,6 @@ dialog.layout-editor-dialog {
 
 .material-issue-status-code {
   font-family: var(--font-mono);
-}
-
-.material-issue-status-pager {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
 }
 
 .material-issue-status-detail {
@@ -35687,19 +35659,6 @@ body:has(
   left: 104px;
   z-index: 1;
   border-right: 1px solid var(--outline-variant);
-}
-.erp-wo-table-pagebar,
-.erp-wo-table-page-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-.erp-wo-table-pagebar {
-  justify-content: space-between;
-}
-.erp-wo-table-page-actions > [role='combobox'] {
-  width: 5rem;
 }
 
 .erp-wo-summary .is-item-code {
