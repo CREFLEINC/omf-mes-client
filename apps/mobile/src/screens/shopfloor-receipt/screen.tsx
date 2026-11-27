@@ -510,7 +510,10 @@ export const ShopfloorReceiptScreen = () => {
             <Card.Body className="card-body">
               {/* 어디로 들어온 것인가. 없으면 받은 자리가 전표에만 남는다. */}
               {issue.kind === 'WORK_ORDER' && issue.destinationLocationId === null ? (
-                <p>{t.issue.workOrderReceipt}</p>
+                <>
+                  <p>{t.issue.workOrderReceipt}</p>
+                  {issue.workOrderNo !== undefined ? <p>{t.issue.workOrder(issue.workOrderNo)}</p> : null}
+                </>
               ) : null}
               {destination.data === undefined ? null : (
                 <p>

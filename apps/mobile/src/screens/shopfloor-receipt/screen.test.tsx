@@ -1114,13 +1114,14 @@ describe('생산창고 입고 화면', () => {
     mount({ seen, extra: [{
       match: (req) => /\/logistics\/material-issue-requests\/\d+$/.test(new URL(req.url).pathname),
       respond: () => jsonResponse({
-        materialIssueRequest: { materialIssueRequestId: 200, workOrderId: 700, destinationLocationId: null },
+        materialIssueRequest: { materialIssueRequestId: 200, workOrderId: 700, workOrderNo: 'WO-700', destinationLocationId: null },
         lines: [],
       }),
     }] });
     await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
     scan(ISSUE_NO);
     expect(await screen.findByText('작업지시 자재 수령')).toBeInTheDocument();
+    expect(screen.getByText(/WO-700/)).toBeInTheDocument();
     await user.type(await receivedField(), '500');
     await user.click(screen.getByRole('button', { name: '입고 확정' }));
     expect(await screen.findByText('입고를 기록했습니다')).toBeInTheDocument();

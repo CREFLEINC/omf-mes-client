@@ -15,6 +15,7 @@ export const shopfloorReceipt: Translated<typeof ko.shopfloorReceipt> = {
     hopper: 'Đo lượng còn lại trong phễu',
   },
   issue: {
+    workOrder: (no: string) => `Lệnh sản xuất ${no}`,
     workOrderReceipt: 'Nhận vật tư theo lệnh sản xuất',
     legend: 'Quét nhãn · số phiếu xuất kho',
     scanLabel: 'Nhãn LOT vật tư hoặc số phiếu xuất kho',

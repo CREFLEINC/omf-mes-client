@@ -25,6 +25,7 @@ export interface ScannedIssue {
    * 본문으로 받으므로, 없다는 사실만 말하고 지어내지 않는다.
    */
   workOrderId: number | null;
+  workOrderNo?: string;
   destinationLocationId: number | null;
   /**
    * 수령 종류(004) — W/O 출고(`WORK_ORDER`)와 창고 보충 출고(`REPLENISHMENT`, W/O 없음). 출고 요청까지 따라가지
@@ -266,6 +267,7 @@ const openIssue = async (
     issue,
     lines: lineItems,
     workOrderId: found.workOrderId,
+    ...(found.workOrderNo == null ? {} : { workOrderNo: found.workOrderNo }),
     destinationLocationId: found.destinationLocationId,
     kind: 'WORK_ORDER',
     issueRequestNo: null,
