@@ -1,3 +1,5 @@
+import { PLANT_UTC_OFFSET } from '../../patterns/plant-time';
+
 import { resolveBomComponentId } from './bom-origin';
 import type {
   MaterialIssueLineDraft,
@@ -76,10 +78,10 @@ export const toOccurredAt = (now: Date): string =>
  * ⛔ **시각을 지어내지 않는다.** 날짜만 적힌 상태에서 `00:00` 을 채우면 사용자가 정하지 않은
  * 기한이 전표에 실린다. 반쪽 입력은 `validateHeader` 가 이미 발행을 막는다.
  *
- * `now` 는 offset 을 읽는 데만 쓴다 — 이 제품이 도는 지역에 서머타임이 없어 제출 순간의
- * offset 과 필요 시각의 offset 이 갈리지 않는다.
+ * **offset 은 공장 시간대(`PLANT_UTC_OFFSET`)다**(omf-all-around#364) — 칸의 글자는 공장 시각이라
+ * 브라우저 offset 을 붙이면 한국 PC 에서 2시간 이른 기한이 실린다.
  */
-export const toRequiredAt = (date: string, time: string, now: Date): string | null => {
+export const toRequiredAt = (date: string, time: string): string | null => {
   const day = date.trim();
   const clock = time.trim();
 
@@ -87,7 +89,7 @@ export const toRequiredAt = (date: string, time: string, now: Date): string | nu
 
   const withSeconds = clock.length === 5 ? `${clock}:00` : clock;
 
-  return `${day}T${withSeconds}${offsetText(now)}`;
+  return `${day}T${withSeconds}${PLANT_UTC_OFFSET}`;
 };
 
 /**
@@ -180,7 +182,7 @@ export const toMaterialIssueRequestBody = (
 
   if (lines.length === 0) return null;
 
-  const requiredAt = toRequiredAt(input.requiredDate, input.requiredTime, now);
+  const requiredAt = toRequiredAt(input.requiredDate, input.requiredTime);
   const reasonCode = input.reasonCode.trim();
   const remarks = input.remarks.trim();
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   stampSubmission,
@@ -128,14 +128,16 @@ describe('toMaterialIssueRequestBody — 영업일·발생 시각 (D-2)', () => 
     expect(body?.occurredAt?.startsWith('2026-09-01T00:12:30')).toBe(true);
   });
 
-  it('필요 시각도 같은 offset 을 단다 — 같은 글자가 지역마다 다른 순간을 가리키지 않게 한다', () => {
+  /* 칸의 글자는 공장 시각이다 — 브라우저 시간대와 무관하게 공장 offset(+07:00)을 단다(omf-all-around#364). */
+  it('필요 시각은 공장 offset(+07:00)을 단다 — 브라우저가 한국이어도', () => {
+    const offset = vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(-540);
     const body = toMaterialIssueRequestBody(
       input({ requiredDate: '2026-09-04', requiredTime: '14:00' }),
       submittedAt,
     );
+    offset.mockRestore();
 
-    expect(body?.requiredAt).toMatch(OFFSET_DATE_TIME);
-    expect(body?.requiredAt?.slice(-6)).toBe(body?.occurredAt?.slice(-6));
+    expect(body?.requiredAt).toBe('2026-09-04T14:00:00+07:00');
   });
 
   it('toBusinessDate·toOccurredAt 는 같은 순간을 본다', () => {
@@ -145,11 +147,11 @@ describe('toMaterialIssueRequestBody — 영업일·발생 시각 (D-2)', () => 
 
 describe('toRequiredAt — 반쪽 입력은 값을 만들지 않는다', () => {
   it('날짜가 비면 null 이다', () => {
-    expect(toRequiredAt('', '14:00', submittedAt)).toBeNull();
+    expect(toRequiredAt('', '14:00')).toBeNull();
   });
 
   it('시각이 비면 null 이다 — 시각을 지어내지 않는다', () => {
-    expect(toRequiredAt('2026-09-04', '', submittedAt)).toBeNull();
+    expect(toRequiredAt('2026-09-04', '')).toBeNull();
   });
 });
 

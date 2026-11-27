@@ -1,6 +1,8 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { PLANT_UTC_OFFSET, plantNowLocal, plantToday } from '../../patterns/plant-time';
+
 /**
  * 전기 요청의 본문을 만드는 **유일한 자리**.
  *
@@ -55,21 +57,18 @@ export interface PostDraft {
 /** 아직 세우지 않은 초안. **두 칸이 비어 있는 것이 「아직 열지 않았다」의 표현**이다. */
 export const EMPTY_POST_DRAFT: PostDraft = { businessDate: '', occurredAtLocal: '' };
 
-const pad = (value: number, length: number): string => String(value).padStart(length, '0');
-
-/** 실행 환경 시간대로 읽은 `YYYY-MM-DD`. **UTC로 읽지 않는다** — 이른 아침이 어제가 된다. */
-const toLocalDate = (at: Date): string =>
-  `${String(at.getFullYear())}-${pad(at.getMonth() + 1, 2)}-${pad(at.getDate(), 2)}`;
-
 /**
  * 제출 순간으로 채운 초안 — **기본값이지 확정값이 아니다.**
  *
  * 대부분의 조정은 발견한 날 전기하므로 이 값이 그대로 지나간다. 경계에 선 사람만 고치면
  * 되고, 그 사람은 화면에 선 값을 보고 판단할 수 있다.
+ *
+ * **공장 시각으로 채운다**(omf-all-around#364) — 브라우저 시간대로 채우면 한국 PC 에서 공장보다
+ * 2시간 늦은 시각·날짜가 선다.
  */
 export const seedPostDraft = (now: Date): PostDraft => ({
-  businessDate: toLocalDate(now),
-  occurredAtLocal: `${toLocalDate(now)}T${pad(now.getHours(), 2)}:${pad(now.getMinutes(), 2)}`,
+  businessDate: plantToday(now),
+  occurredAtLocal: plantNowLocal(now),
 });
 
 /** 두 칸에 붙는 오류. **칸 이름은 본문의 키와 같다** — 서버가 그 이름으로 오류를 내려준다. */
@@ -123,30 +122,18 @@ export const isBusinessDateApart = (draft: PostDraft): boolean => {
 };
 
 /**
- * 실행 환경이 UTC와 얼마나 떨어져 있는지. `+09:00` 꼴이다.
- *
- * **제출 순간의 값을 쓴다.** 발생 일시를 파싱해 그 시점의 값을 쓰면 서머타임 경계에서 더
- * 정확해지지만 파싱이 실패할 수 있는 가지가 생긴다 — 이 제품이 도는 지역에 서머타임이 없어
- * 두 값이 갈리지 않으므로 가지를 만들지 않는 쪽을 택했다(전례 `disposal-issue`와 같은 판단).
- */
-const offsetText = (at: Date): string => {
-  const minutes = -at.getTimezoneOffset();
-  const sign = minutes < 0 ? '-' : '+';
-  const absolute = Math.abs(minutes);
-
-  return `${sign}${pad(Math.floor(absolute / 60), 2)}:${pad(absolute % 60, 2)}`;
-};
-
-/**
  * 칸이 준 글자에 초와 offset을 붙인다.
  *
  * 칸은 분까지만 주는데(`HH:mm`) 계약은 offset이 있는 형식을 요구한다 — offset이 없는 문자열을
  * 그대로 보내면 **같은 글자가 지역마다 다른 순간**을 가리킨다.
+ *
+ * **offset 은 공장 시간대(`PLANT_UTC_OFFSET`)다**(omf-all-around#364). 칸의 글자는 공장 시각이라,
+ * 브라우저 offset 을 붙이면 한국 PC 에서 11:53 이 공장 09:53 으로 기록된다.
  */
-const toOffsetDateTime = (local: string, at: Date): string => {
+const toOffsetDateTime = (local: string): string => {
   const withSeconds = local.length === 16 ? `${local}:00` : local;
 
-  return `${withSeconds}${offsetText(at)}`;
+  return `${withSeconds}${PLANT_UTC_OFFSET}`;
 };
 
 /**
@@ -156,12 +143,12 @@ const toOffsetDateTime = (local: string, at: Date): string => {
  * 뚫려도 형식이 아닌 글자가 되돌릴 수 없는 전기 본문에 실리지 않아야 한다 — 등록 조립
  * (`adjust-request.ts`)·상신 조립(`reason-draft.ts`)과 같은 규율이다.
  */
-export const toPostRequest = (draft: PostDraft, now: Date): PostRequest | null => {
+export const toPostRequest = (draft: PostDraft): PostRequest | null => {
   if (Object.keys(validatePostDraft(draft)).length > 0) return null;
 
   return {
     businessDate: draft.businessDate,
-    occurredAt: toOffsetDateTime(draft.occurredAtLocal, now),
+    occurredAt: toOffsetDateTime(draft.occurredAtLocal),
   };
 };
 

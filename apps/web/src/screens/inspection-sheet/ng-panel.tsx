@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { DateTimeField } from '../../patterns/date-time-field';
 import { InfoTip } from '../../patterns/info-tip';
 import { masterName } from '../../patterns/master-name';
+import { PLANT_UTC_OFFSET, plantNowLocal, toPlantDateTimeParts } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
 
 const t = messages.inspectionSheetEntry.ng;
@@ -20,16 +21,19 @@ export interface NgDraft extends Omit<InspectionSheetNgWrite, 'repairedAt' | 're
 let seed = 0;
 const nextKey = () => `ng-${(seed += 1)}`;
 
-/** ISO → `datetime-local` 입력값(브라우저 로컬 시각 = 현장 시각). */
+/**
+ * ISO → 입력칸 값(`YYYY-MM-DDTHH:mm`) — **공장 시각**이다(omf-all-around#364). 브라우저 시간대로
+ * 읽으면 한국 PC 에서 공장보다 2시간 늦게 선다.
+ */
 export const toLocalInput = (iso: string | null): string => {
   if (iso === null) return '';
-  const date = new Date(iso);
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 16);
+  const parts = toPlantDateTimeParts(iso);
+  return parts === null ? '' : `${parts.date}T${parts.time}`;
 };
 
+/** 입력칸 값(공장 시각) → ISO(`…Z`). 글자를 공장 offset 으로 읽는다 — 브라우저 시간대로 읽지 않는다. */
 const toIso = (value: string): string | null =>
-  value === '' ? null : new Date(value).toISOString();
+  value === '' ? null : new Date(`${value}:00${PLANT_UTC_OFFSET}`).toISOString();
 const text = (value: string | null | undefined): string | null =>
   value?.trim() ? value.trim() : null;
 
@@ -84,7 +88,7 @@ const emptyDraft = (): NgDraft => ({
   recheckedAt: '',
 });
 
-const nowInput = (): string => toLocalInput(new Date().toISOString());
+const nowInput = (): string => plantNowLocal();
 
 export interface NgPanelProps {
   sheet: InspectionSheet;
