@@ -43099,3 +43099,69 @@ dialog
 .erp-wo-distribution-dialog .erp-wo-result-quantity-editor input {
   text-align: right;
 }
+
+/* 자동 분배 결과 검토 시안(사용자 지시 · #360) — 단계 「1 › 2」 + 지금 단계 밑줄, 단건 W/O 정보 회색 줄, 안내 한 줄. */
+.erp-wo-distribution-dialog .erp-wo-distribution-steps {
+  gap: var(--space-3);
+  align-items: center;
+  padding-bottom: 0;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-steps > li {
+  padding-bottom: var(--space-2);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-steps > li + li::before {
+  content: '›';
+  margin-right: var(--space-3);
+  color: var(--on-surface-variant);
+  font-weight: 400;
+}
+.erp-wo-distribution-dialog .erp-wo-distribution-steps > li[aria-current='step'] {
+  border-bottom-color: var(--primary);
+}
+.erp-wo-result-single-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+  font: var(--type-body-md);
+}
+.erp-wo-result-single-bar-facts,
+.erp-wo-result-single-bar-qty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+}
+.erp-wo-result-single-bar-facts > span,
+.erp-wo-result-single-bar-qty > span {
+  color: var(--on-surface-variant);
+}
+.erp-wo-result-single-bar-facts > strong {
+  margin-right: var(--space-4);
+}
+.erp-wo-result-single-bar-qty strong {
+  color: var(--on-surface);
+}
+.erp-wo-result-single-bar-qty > span + span {
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+}
+.erp-wo-result-single-notes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--outline-variant);
+  font: var(--type-body-sm);
+}
+.erp-wo-result-single-notes > .erp-wo-calendar-result-dates + .erp-wo-calendar-result-dates {
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+}

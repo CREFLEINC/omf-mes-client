@@ -344,7 +344,10 @@ it('분배 수량이 0인 휴일 행은 숨기고 제외 안내와 합계를 보
   );
   const user = await configure();
   const resultTable = await screen.findByRole('table', { name: '날짜와 라인별 결과' });
-  expect(within(resultTable).getByText('휴일 2일 제외')).toBeVisible();
+  /* 단건은 휴일 안내를 표 아래 한 줄로(#360). */
+  expect(
+    within(screen.getByRole('region', { name: '분배 미리보기 결과' })).getByText('휴일 제외 2일'),
+  ).toBeVisible();
   expect(screen.queryByRole('button', { name: '조건 초기화' })).not.toBeInTheDocument();
   for (const name of ['기존 수량', '추가 수량', '적용 후 합계']) {
     expect(within(resultTable).getByRole('columnheader', { name })).toBeVisible();
