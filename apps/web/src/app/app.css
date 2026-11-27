@@ -42970,6 +42970,9 @@ dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all
     > :is(.field-label, [class*='_labelRow_']) :is(.required-mark, [class*='_requiredMark_'])
   )
   button[role='combobox']:not(:disabled):has(> [class*='_placeholder_']),
+/* 날짜 칸(`DatePicker`) — 필수(aria-required)인데 아직 고르지 않았으면(자리표시 글자가 보이면) */
+dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head))
+  button[aria-haspopup='dialog'][aria-required='true']:not(:disabled):has(> [class*='_placeholder_']),
 /* 시각 칸(`patterns/time-field`) */
 dialog[class*='_dialog_']:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash-detail-head)) .time-picker-trigger[data-required][data-empty]:not([data-disabled]) {
   background: var(--semantic-error-container);

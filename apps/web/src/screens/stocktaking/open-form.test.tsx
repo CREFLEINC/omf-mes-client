@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { pickDate } from '../../test/date-picker';
 import { OpenForm, type OpenFormProps } from './open-form';
 import { EMPTY_OPEN_DRAFT } from './open-request';
 import { OPEN_FIELD_NAMES } from './validation';
@@ -99,14 +100,15 @@ describe('OpenForm — 개시 입력 칸', () => {
 
     expect(screen.getByLabelText(t.fields.countType)).toHaveTextContent(SAMPLE_COUNT_TYPE);
     expect(screen.getByLabelText(t.fields.warehouse)).toHaveTextContent(WAREHOUSE_LABEL);
-    expect(screen.getByLabelText(t.fields.plannedDate)).toHaveValue('2026-08-06');
+    /* 계획일은 공용 날짜 칸(`DatePicker`) — 값은 단추 글자로 보인다(#360). */
+    expect(screen.getByLabelText(t.fields.plannedDate)).toHaveTextContent('2026-08-06');
     expect(screen.getByRole('checkbox', { name: t.fields.blindCount })).toBeChecked();
   });
 
   it('계획일과 블라인드를 고치면 그대로 알린다', async () => {
     const { user, onChangePlannedDate, onChangeBlindCount } = renderForm();
 
-    await user.type(screen.getByLabelText(t.fields.plannedDate), '2026-08-06');
+    await pickDate(user, screen.getByLabelText(t.fields.plannedDate), '2026-08-06');
     await user.click(screen.getByRole('checkbox', { name: t.fields.blindCount }));
 
     expect(onChangePlannedDate).toHaveBeenLastCalledWith('2026-08-06');

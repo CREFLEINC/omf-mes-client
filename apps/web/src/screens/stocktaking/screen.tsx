@@ -1,4 +1,13 @@
-import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
+import {
+  Breadcrumb,
+  Button,
+  Dialog,
+  EmptyState,
+  Icon,
+  PageHeader,
+  SkeletonText,
+  useToast,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
@@ -9,6 +18,7 @@ import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
 import { usePageHub } from '../../patterns/page-hub';
+import { formatAsOf } from '../stock-status/as-of';
 import { CloseConfirmDialog } from './close-confirm-dialog';
 import { closeBlockReason } from './close-guard';
 import { toCountClose } from './close-request';
@@ -487,6 +497,14 @@ export const StocktakingScreen = () => {
   const [isOpenConfirmVisible, setOpenConfirmVisible] = useState(false);
 
   /**
+   * 「실사 개시」 등록 팝업이 열려 있는가(사용자 지시 2026-11-27 · #360 — 본문 구획 대신 조회 조건 줄의 [실사 개시]로 연다).
+   * 개시 확인 창 · 입력 버리기 확인 창이 떠 있는 동안에는 그 창만 보이고, 닫히면 이 팝업이 다시 보인다.
+   */
+  const [isOpenFormVisible, setOpenFormVisible] = useState(false);
+
+  const toast = useToast();
+
+  /**
    * 마감 확인 창이 열려 있는가. **확인하기 전에는 요청이 나가지 않는다**(완료 조건 C54).
    *
    * 개시 창과 **따로 둔다.** 하나로 묶으면 「어느 확인인가」가 확인 버튼의 핸들러에만 남고,
@@ -541,6 +559,7 @@ export const StocktakingScreen = () => {
        */
       setOpenDraft(EMPTY_OPEN_DRAFT);
       setLocalFieldErrors(NO_FIELD_ERRORS);
+      setOpenFormVisible(false);
     },
   });
 
@@ -574,17 +593,8 @@ export const StocktakingScreen = () => {
 
       if (now.countId !== selectedCountId || now.locationId !== selectedLocationId) return;
 
-      setResult({
-        inventoryCountId: selectedCountId,
-        /* `loc`는 유지된다(13행) — 방금 무엇을 저장했는지 화면에 남아야 결과를 읽는다. */
-        locationId: selectedLocationId,
-        view: {
-          kind: 'saved',
-          locationLabel,
-          /* **서버가 되돌려 준 배열의 길이다** — 화면이 보낸 줄 수가 아니다. */
-          replacedLineCount: saved.items.length,
-        },
-      });
+      /* 실사 완료 성공은 오른쪽 아래 알림으로(사용자 지시 2026-11-27 · #360) — 결과 상자는 두지 않는다. */
+      toast.show({ variant: 'success', description: t.result.savedToast });
     },
   });
 
@@ -950,6 +960,7 @@ export const StocktakingScreen = () => {
     setResult(null);
     setDiscardTarget(null);
     setOpenConfirmVisible(false);
+    setOpenFormVisible(false);
     open.reset();
   };
 
@@ -1224,8 +1235,9 @@ export const StocktakingScreen = () => {
             >
               {t.actions.close}
             </Button>
+            {/* 잠긴 까닭은 화면 읽기 도구에만 — 보이는 안내 문구는 두지 않는다(사용자 지시 2026-11-27 · #360). */}
             {blockedReason !== null && (
-              <span id={closeReasonId} className="field-note">
+              <span id={closeReasonId} className="visually-hidden">
                 {blockedReason}
               </span>
             )}
@@ -1309,8 +1321,9 @@ export const StocktakingScreen = () => {
             >
               {t.actions.saveLocation}
             </Button>
+            {/* 잠긴 까닭은 화면 읽기 도구에만 — 보이는 안내 문구는 두지 않는다(사용자 지시 2026-11-27 · #360). */}
             {saveBlockedReason !== null && (
-              <span id={saveReasonId} className="field-note">
+              <span id={saveReasonId} className="visually-hidden">
                 {saveBlockedReason}
               </span>
             )}
@@ -1412,17 +1425,28 @@ export const StocktakingScreen = () => {
     );
   };
 
+  /* 마지막 갱신 시각 + 갱신 단추 — 통합 대시보드 · 재고 현황의 「갱신」과 같은 모양(사용자 지시 2026-11-27 · #360). */
+  const asOf = formatAsOf(list.data === undefined ? null : list.dataUpdatedAt);
   const refreshButton = (
-    <Button variant="outlined" size="sm" onClick={refreshAll}>
-      {t.actions.refresh}
-    </Button>
+    <>
+      {asOf !== null && <span className="dashboard-refresh-status">{t.actions.asOf(asOf)}</span>}
+      <Button
+        variant="outlined"
+        size="sm"
+        className="stock-status-refresh-button"
+        leadingIcon={<Icon name="refresh" size={18} />}
+        onClick={refreshAll}
+      >
+        {t.actions.refresh}
+      </Button>
+    </>
   );
 
   return (
     <>
       {/*
        * 탭 묶음(재고 관리) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않고(사용자 지시
-       * 2026-11-18 · `patterns/page-hub.tsx`), 「다시 조회」는 탭 막대 오른쪽 자리로 옮긴다.
+       * 2026-11-18 · `patterns/page-hub.tsx`), 「갱신」은 탭 막대 오른쪽 자리로 옮긴다.
        * 그 자리가 없으면 화면 맨 위에 그대로 둔다.
        */}
       {hub === null ? (
@@ -1476,6 +1500,17 @@ export const StocktakingScreen = () => {
                 onReset={() => {
                   applyQuery(DEFAULT_FILTERS);
                 }}
+                openAction={
+                  <Button
+                    variant="outlined"
+                    disabled={isLocked}
+                    onClick={() => {
+                      setOpenFormVisible(true);
+                    }}
+                  >
+                    {t.actions.open}
+                  </Button>
+                }
               />
 
               {!list.isError && (
@@ -1516,81 +1551,12 @@ export const StocktakingScreen = () => {
           ),
         }}
         detail={{
-          label: `${t.panes.open} · ${t.panes.detail}`,
+          label: t.panes.detail,
           bare: true,
           content: (
             <>
-              {/*
-               * 개시 구획. **목록과 아래 구획 사이에 선다**(계획 §5.5 배치) — 위에서 무엇이 이미 있는지
-               * 보고, 없으면 여기서 만들고, 만든 것을 아래에서 이어 다룬다는 차례다.
-               *
-               * **고른 실사와 무관하게 늘 보인다.** 여기서 만드는 것은 새 실사라 대상이 필요 없다 —
-               * 고른 실사가 있을 때만 보이면 「무엇을 골라야 개시할 수 있나」라는 없는 규칙이 생긴다.
-               */}
-              <section className="pane" aria-label={t.panes.open}>
-                <OpenForm
-                  draft={openDraft}
-                  warehouseOptions={warehouseOptions}
-                  countTypeOptions={codeOptions.countType}
-                  warehouseNote={lookupNote(warehouses)}
-                  fieldErrors={openFieldErrors}
-                  isLocked={isLocked}
-                  onChangeCountType={(value) => {
-                    changeDraft({ countType: value }, OPEN_FIELD_NAMES.countType);
-                  }}
-                  onChangeWarehouse={(value) => {
-                    changeDraft({ warehouse: value }, OPEN_FIELD_NAMES.warehouse);
-                  }}
-                  onChangePlannedDate={(value) => {
-                    changeDraft({ plannedDate: value }, OPEN_FIELD_NAMES.plannedDate);
-                  }}
-                  onChangeBlindCount={(checked) => {
-                    changeDraft({ blindCount: checked });
-                  }}
-                />
-
-                {/*
-                 * 개시 실패는 **세 갈래**다(완료 조건 C30) — 검증 실패(400) · 권한 없음(403) ·
-                 * 응답 없음(네트워크). **충돌(409)은 이 오퍼레이션에 없다**(실측): 낙관적 잠금 자체가
-                 * 없어 「최신 불러오기」가 뜰 자리가 없다. 그래서 `onReload`를 주지 않는다.
-                 */}
-                <SaveErrorBanner error={open.error} />
-
-                {/*
-                 * **응답을 받지 못한 실패에만 한 줄을 더한다.** 공통 문구는 「다시 시도하세요」로 끝나는데,
-                 * 확인 없이 다시 보내면 같은 창고에 실사 전표가 두 벌 생긴다 — 공통 쓰기 훅이 호출마다
-                 * 새 멱등 키를 만들어 서버가 재전송으로 보지 못한다(중복 전송 완화의 한 층).
-                 */}
-                {open.error?.kind === 'network' && (
-                  <p className="field-error">{t.notes.openRecheck}</p>
-                )}
-
-                <div className="form-actions">
-                  {/* 취소가 개시보다 앞에 선다 — 되돌릴 수 없는 것이 손 가까이 있으면 안 된다. */}
-                  <Button variant="text" disabled={isLocked} onClick={requestDiscardOpenDraft}>
-                    {messages.common.cancel}
-                  </Button>
-
-                  <div className="field-cell">
-                    <Button
-                      variant="outlined"
-                      disabled={openBlockedReason !== null || isLocked}
-                      loading={isLocked}
-                      aria-describedby={openBlockedReason === null ? undefined : openReasonId}
-                      onClick={requestOpen}
-                    >
-                      {t.actions.open}
-                    </Button>
-                    {openBlockedReason !== null && (
-                      <span id={openReasonId} className="field-note">
-                        {openBlockedReason}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </section>
-
-              <section className="pane" aria-label={t.panes.detail}>
+              {/* 구획 이름(「고른 실사」)은 감싸는 공용 분할의 상세 영역이 가진다 — 겹치지 않게 여기에는 두지 않는다. */}
+              <section className="pane">
                 {detailPane()}
 
                 {/*
@@ -1604,6 +1570,76 @@ export const StocktakingScreen = () => {
           ),
         }}
       />
+
+      {/*
+       * 「실사 개시」 등록 팝업(사용자 지시 2026-11-27 · #360). [실사 개시]는 종전과 같이 개시 확인 창을 먼저 띄우고,
+       * [취소]는 입력이 있으면 버릴지 묻는다(종전 구획의 [취소]와 같다). 확인 창 · 버리기 창이 떠 있는 동안에는 숨는다.
+       */}
+      {isOpenFormVisible && !isOpenConfirmVisible && discardTarget !== 'open' && (
+        <Dialog
+          open
+          size="md"
+          closeOnBackdropClick={false}
+          title={t.actions.open}
+          onClose={requestDiscardOpenDraft}
+          footer={
+            <>
+              <Button variant="outlined" disabled={isLocked} onClick={requestDiscardOpenDraft}>
+                {messages.common.cancel}
+              </Button>
+              <Button
+                disabled={openBlockedReason !== null || isLocked}
+                loading={isLocked}
+                aria-describedby={openBlockedReason === null ? undefined : openReasonId}
+                onClick={requestOpen}
+              >
+                {t.actions.open}
+              </Button>
+              {/* 잠긴 까닭은 화면 읽기 도구에만 — 보이는 안내 문구는 두지 않는다(사용자 지시 2026-11-27 · #360). */}
+              {openBlockedReason !== null && (
+                <span id={openReasonId} className="visually-hidden">
+                  {openBlockedReason}
+                </span>
+              )}
+            </>
+          }
+        >
+          <section aria-label={t.panes.open}>
+            <OpenForm
+              draft={openDraft}
+              warehouseOptions={warehouseOptions}
+              countTypeOptions={codeOptions.countType}
+              warehouseNote={lookupNote(warehouses)}
+              fieldErrors={openFieldErrors}
+              isLocked={isLocked}
+              onChangeCountType={(value) => {
+                changeDraft({ countType: value }, OPEN_FIELD_NAMES.countType);
+              }}
+              onChangeWarehouse={(value) => {
+                changeDraft({ warehouse: value }, OPEN_FIELD_NAMES.warehouse);
+              }}
+              onChangePlannedDate={(value) => {
+                changeDraft({ plannedDate: value }, OPEN_FIELD_NAMES.plannedDate);
+              }}
+              onChangeBlindCount={(checked) => {
+                changeDraft({ blindCount: checked });
+              }}
+            />
+
+            {/*
+             * 개시 실패는 **세 갈래**다(완료 조건 C30) — 검증 실패(400) · 권한 없음(403) · 응답 없음(네트워크).
+             * **충돌(409)은 이 오퍼레이션에 없다**(실측) — 그래서 `onReload`를 주지 않는다.
+             */}
+            <SaveErrorBanner error={open.error} />
+
+            {/*
+             * **응답을 받지 못한 실패에만 한 줄을 더한다.** 확인 없이 다시 보내면 같은 창고에 실사 전표가 두 벌
+             * 생긴다 — 공통 쓰기 훅이 호출마다 새 멱등 키를 만들어 서버가 재전송으로 보지 못한다.
+             */}
+            {open.error?.kind === 'network' && <p className="field-error">{t.notes.openRecheck}</p>}
+          </section>
+        </Dialog>
+      )}
 
       {isOpenConfirmVisible && (
         <OpenConfirmDialog

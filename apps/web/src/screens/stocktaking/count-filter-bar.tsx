@@ -1,5 +1,6 @@
 import { Button, Checkbox, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 
 import { hasChangedFilters } from '../../patterns/filter-more';
@@ -24,6 +25,8 @@ export interface CountFilterBarProps {
   isLocked: boolean;
   onSearch: (filters: CountFilters) => void;
   onReset: () => void;
+  /** [조회] 바로 오른쪽에 서는 단추 — 「실사 개시」 등록 팝업을 연다(사용자 지시 2026-11-27 · #360). */
+  openAction?: ReactNode;
 }
 
 /**
@@ -50,6 +53,7 @@ export const CountFilterBar = ({
   isLocked,
   onSearch,
   onReset,
+  openAction,
 }: CountFilterBarProps) => {
   const [filters, setFilters] = useState<CountFilters>(appliedFilters);
 
@@ -158,6 +162,7 @@ export const CountFilterBar = ({
           <Button disabled={isLocked} onClick={search}>
             {messages.common.search}
           </Button>
+          {openAction}
           {isChanged && (
             <Button variant="outlined" disabled={isLocked} onClick={reset}>
               {messages.common.reset}

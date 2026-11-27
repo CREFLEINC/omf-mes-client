@@ -1,7 +1,9 @@
-import { Checkbox, TextField } from '@crefle/web-ui';
+import { Checkbox, DatePicker } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useId } from 'react';
 
 import { codePlaceholder } from './code-options';
+import { FieldLabel } from './field-label';
 import type { OpenDraft } from './open-request';
 import { SelectField } from './select-field';
 import type { SelectOption } from './types';
@@ -32,10 +34,8 @@ export interface OpenFormProps {
  * 실사 라인은 서버가 장부에서 만들고(계약 설명) 실사번호·상태는 서버가 붙인다 —
  * 화면이 대상을 열거하지 않는다. 그래서 이 폼에는 표도 목록도 없다.
  *
- * **창에 넣지 않고 목록 아래 구획에 둔다**(계획 결정 15). 개시에는 선택칸이 둘 필요한데
- * 창 본문이 펼침 목록을 자르는 결함(#45 · DS `design-system-v2-webui#68`)이 아직 고쳐지지
- * 않았다 — 창에 넣으면 정면으로 걸린다. 확인은 값을 **고치는** 자리가 아니라 **다시 보는**
- * 자리이므로 그쪽에만 창을 둔다.
+ * **「실사 개시」 등록 팝업 안에 선다**(사용자 지시 2026-11-27 · #360 — 조회 조건 줄 [조회] 오른쪽 [실사 개시]로 연다).
+ * 팝업 틀 · 필수 * · 빈 필수 칸 바탕 · 「(선택)」은 앱 공통 팝업 규칙(app.css)이 입힌다.
  *
  * **블라인드 토글이 여기에만 있다**(계획 결정 4 · 어긋남 9). 착수 이슈는 「개시 후에는 컨트롤을
  * 비활성으로」라 했으나 실사 헤더를 고치는 오퍼레이션이 계약에 아예 없다(실측) — 개시한 뒤에
@@ -47,9 +47,6 @@ export interface OpenFormProps {
  *
  * **실사 유형을 `TextField`로 두지 않는다.** 자유 입력은 사용자가 지어낸 코드가 되돌릴 수 없는
  * 전표에 실리는 경로를 화면이 여는 것이다 — 값 목록이 채워지면 이 부품은 고칠 것 없이 살아난다.
- *
- * **필수 표시(*)를 붙이지 않는다.** 넷 중 셋이 필수라 표시가 거의 모든 칸에 붙어 뜻을 잃는다 —
- * 무엇이 모자라는지는 「실사 개시」 옆의 사유 한 줄이 **한 번에 하나씩** 가리킨다.
  *
  * 기존 디자인 시스템 컴포넌트의 조합이라 이 화면 슬라이스가 소유한다.
  */
@@ -65,6 +62,10 @@ export const OpenForm = ({
   onChangePlannedDate,
   onChangeBlindCount,
 }: OpenFormProps) => {
+  const plannedDateId = useId();
+  const plannedDateErrorId = `${plannedDateId}-error`;
+  const plannedDateError = fieldErrors[OPEN_FIELD_NAMES.plannedDate];
+
   return (
     <>
       <div className="form-grid">
@@ -96,22 +97,31 @@ export const OpenForm = ({
           value={draft.warehouse}
           note={warehouseNote}
           error={fieldErrors[OPEN_FIELD_NAMES.warehouse]}
+          placeholder={messages.screenPatterns.referencePicker.select(t.fields.warehouse)}
           disabled={isLocked}
           onChange={onChangeWarehouse}
         />
 
-        {/* 설치본에 `DatePicker`가 없다 — 네이티브 타입으로 대체한다(W-01-07이 세운 처리). */}
-        <TextField
-          type="date"
-          label={t.fields.plannedDate}
-          required
-          value={draft.plannedDate}
-          error={fieldErrors[OPEN_FIELD_NAMES.plannedDate]}
-          disabled={isLocked}
-          onChange={(event) => {
-            onChangePlannedDate(event.target.value);
-          }}
-        />
+        {/* 계획일은 앱 공용 날짜 칸(`DatePicker`) — 브라우저 기본 「연도. 월. 일.」 칸 대신(사용자 지시 2026-11-27 · #360). */}
+        <div className="field-cell">
+          <FieldLabel htmlFor={plannedDateId} label={t.fields.plannedDate} required />
+          <DatePicker
+            id={plannedDateId}
+            mode="single"
+            placeholder={messages.common.selectDate}
+            value={draft.plannedDate === '' ? null : draft.plannedDate}
+            disabled={isLocked}
+            invalid={plannedDateError !== undefined}
+            aria-required
+            aria-describedby={plannedDateError === undefined ? undefined : plannedDateErrorId}
+            onChange={onChangePlannedDate}
+          />
+          {plannedDateError !== undefined && (
+            <span id={plannedDateErrorId} className="field-error">
+              {plannedDateError}
+            </span>
+          )}
+        </div>
 
         {/* 확인칸은 라벨 층이 없다 — 규범 2의 `.field-cell-unlabeled`가 줄을 맞춘다. */}
         <div className="field-cell field-cell-unlabeled">

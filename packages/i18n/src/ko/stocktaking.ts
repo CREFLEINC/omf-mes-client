@@ -57,7 +57,9 @@ export const stocktaking = {
     selectRow: (inventoryCountNo: string): string => `${inventoryCountNo} 선택`,
     deselectRow: (inventoryCountNo: string): string => `${inventoryCountNo} 선택 해제`,
     /** 목록과 고른 실사를 **함께** 다시 부른다 — 한쪽만 부르면 낡은 값과 새 값이 섞인다. */
-    refresh: '다시 조회',
+    refresh: '갱신',
+    /** 갱신 단추 옆 마지막 갱신 시각 — 통합 대시보드 · 재고 현황과 같은 모양(#360). */
+    asOf: (at: string): string => `마지막 갱신 ${at}`,
     /** 이 화면의 첫째 쓰기. 누르면 곧바로 나가지 않고 **확인 창이 먼저** 뜬다. */
     open: '실사 개시',
     confirmOpen: '실사 개시 실행',
@@ -68,7 +70,7 @@ export const stocktaking = {
      * 보내는 것은 친 줄이 아니라 **그 위치의 전 줄**이고, 여기 없는 줄은 미실사로 되돌아간다.
      * 「저장」이라 적으면 사용자가 친 것만 반영되는 줄 안다.
      */
-    saveLocation: '이 위치 실사 완료',
+    saveLocation: '실사 완료',
     /*
      * 이 화면의 **셋째 쓰기이자 마지막 단계**. 「완료」가 아니라 「마감」인 것이 그 뜻이다 —
      * 되돌릴 수 없고, 다시 여는 오퍼레이션이 계약에 없다. 누르면 곧바로 나가지 않고
@@ -199,21 +201,14 @@ export const stocktaking = {
     closeIrreversible: '마감하면 이 실사를 더 고칠 수 없습니다.',
   },
   /**
-   * 쓰기 결과. **한 자리에 갈래 하나만 보인다** — 개시·저장·마감 결과를 따로 두면
-   * 셋이 동시에 보이는 상태가 생긴다(계획 결정 14).
+   * 쓰기 결과. **한 자리에 갈래 하나만 보인다** — 개시·마감 결과를 따로 두면
+   * 둘이 동시에 보이는 상태가 생긴다(계획 결정 14). 위치 저장 성공은 알림(`savedToast`)으로 낸다.
    */
   result: {
     label: '실사 개시 결과',
     openedNo: '실사번호',
-    /** 저장 갈래. 라벨이 갈래마다 다른 것이 「한 자리에 갈래 하나」의 실물이다. */
-    savedLabel: '위치 저장 결과',
-    savedLocation: '위치',
-    savedLineCount: '치환한 줄',
-    /**
-     * **서버가 되돌려 준 줄 수를 낸다** — 화면이 센 숫자가 아니다. 둘이 갈리면 그 자리가
-     * 「보낸 것과 저장된 것이 다르다」는 사실을 드러낸다.
-     */
-    savedCount: (lineCount: number): string => `${String(lineCount)}줄`,
+    /** 위치 실사 완료 성공 — 오른쪽 아래 알림(#360). */
+    savedToast: '실사를 완료했습니다.',
     /** 마감 갈래. 라벨이 갈래마다 다른 것이 「한 자리에 갈래 하나」의 실물이다. */
     closedLabel: '실사 마감 결과',
     closedNo: '실사번호',
