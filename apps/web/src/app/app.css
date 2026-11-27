@@ -42978,12 +42978,43 @@ dialog
  * 보여 입력칸으로 읽히지 않았다. 조회 묶음(`filter-field-surface`)과 같은 입력칸 바탕을 쓴다.
  * `filter-field-surface` 를 그대로 붙이지 않는 까닭: 그 규칙은 창을 여는 단추(`aria-haspopup`)를 모두 칠해 도움말 · 선택 단추까지 바뀐다.
  * 여기서는 글 입력 · 날짜 입력을 바로 품은 상자, 선택칸, 기간 선택칸만 칠한다. 잠긴 칸은 DS 의 흐린 바탕 그대로다.
+ * [수동 분배] · [자동 분배] · 계획 분할 창도 같다(2026-11-27) — 창은 화면 밖(body)에 그려져 창 클래스로 따로 겨눈다.
  */
-:is(.erp-wo-plan-workspace, .erp-wo-multi-body, .assign-editor)
+:is(
+    .erp-wo-plan-workspace,
+    .erp-wo-multi-body,
+    .assign-editor,
+    .erp-wo-plan-add-dialog,
+    .erp-wo-distribution-dialog,
+    .erp-wo-plan-split-dialog
+  )
   div:has(> input:not([type='checkbox'], [type='radio'], :disabled)),
-:is(.erp-wo-plan-workspace, .erp-wo-multi-body, .assign-editor)
+:is(
+    .erp-wo-plan-workspace,
+    .erp-wo-multi-body,
+    .assign-editor,
+    .erp-wo-plan-add-dialog,
+    .erp-wo-distribution-dialog,
+    .erp-wo-plan-split-dialog
+  )
   [role='combobox']:not([aria-disabled='true'], :disabled),
-:is(.erp-wo-plan-workspace, .erp-wo-multi-body, .assign-editor)
+:is(
+    .erp-wo-plan-workspace,
+    .erp-wo-multi-body,
+    .assign-editor,
+    .erp-wo-plan-add-dialog,
+    .erp-wo-distribution-dialog,
+    .erp-wo-plan-split-dialog
+  )
   .erp-wo-period-trigger:not(:disabled) {
   background-color: var(--app-field-surface);
+}
+
+/* 자동 분배의 생산 라인은 펼침 선택칸(`distribution-line-picker.tsx`) — 칸 폭 전체를 쓰고, [해제]는 그 옆에 놓인다. */
+.erp-wo-distribution-line-buttons > :first-child:not(button) {
+  flex: 1;
+  min-width: 0;
+}
+.erp-wo-distribution-line-buttons [role='combobox'] {
+  width: 100%;
 }
