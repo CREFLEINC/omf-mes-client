@@ -109,6 +109,7 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     hourHead: 'Giờ',
     minuteHead: 'Phút',
     timePlaceholder: 'Chọn giờ',
+    panelTimePlaceholder: 'Chọn giờ',
   },
 
   dimension: {

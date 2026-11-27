@@ -113,6 +113,8 @@ export const partsIqcInspection = {
     hourHead: '시',
     minuteHead: '분',
     timePlaceholder: '시각을 선택하세요',
+    /** 본문(서랍 밖) 검사 양식의 종전 시각 칸 흐린 글자 — 품질 화면 본문은 팝업 디자인 전 그대로(#360). */
+    panelTimePlaceholder: '시각 선택',
   },
 
   dimension: {

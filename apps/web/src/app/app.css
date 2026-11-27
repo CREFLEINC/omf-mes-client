@@ -602,6 +602,11 @@ main > * + * {
 }
 
 /* 공정 매핑 탭(#209) — 불량코드 탭과 같은 카드 짜임. 표는 테두리 상자 안에서 가로로 구른다. */
+/* 안내 문구는 제목 줄 맨 오른쪽에 붙인다(사용자 지시 2026-10-29). */
+.defect-process-mapping-pane .defect-cause-mapping-note {
+  margin: 0 0 0 auto;
+}
+
 .defect-mapping-box {
   overflow-x: auto;
   border: 1px solid var(--outline-variant);
@@ -1814,14 +1819,14 @@ h2:has(> .inspection-standard-dialog-title) {
 .inspection-standard-plan-rows
   tbody
   tr:nth-child(n):has(.inspection-standard-plan-open[aria-current='true']) {
-  background: var(--semantic-info-container);
+  background: var(--surface-container-high);
 }
 
 .inspection-standard-plan-rows
   tbody
   tr:has(.inspection-standard-plan-open[aria-current='true'])
   > td:first-child {
-  box-shadow: inset 3px 0 0 var(--semantic-info);
+  box-shadow: inset 3px 0 0 var(--primary);
 }
 
 /* 기준 코드 — 링크 모양 없이 본문 글자. 누를 수 있다는 것은 커서와 줄 바탕으로 보인다. */
@@ -2068,6 +2073,22 @@ h2:has(> .inspection-standard-dialog-title) {
 .lot-status-split > .lot-status-transition-detail > .lot-status-pane,
 .lot-status-split > .suspicious-material-hold-detail > .suspicious-material-hold-card {
   align-content: start;
+}
+
+/* ④ 0건이면 쪽 이동 줄(총 0건 · 건수 · 처음/이전/다음/마지막)을 감춘다 — 데이터가 있을 때만 보인다(사용자 지시 · omf-all-around#228). */
+:is(
+    .iqc-inspection-queue-pane,
+    .pqc-web-list,
+    .oqc-inspection-queue-pane,
+    .inspection-standard-list-pane,
+    .inspection-sheet-template-list-pane,
+    .inspection-sheet-list-pane,
+    .lot-status-pane,
+    .disposition-list,
+    .inspection-results-pane
+  )
+  > .page-nav[data-empty] {
+  display: none;
 }
 
 .pane-stack {
@@ -5421,15 +5442,6 @@ dialog.routing-history-dialog {
   width: 15rem;
 }
 
-/*
- * 위 폭은 전 화면 조회 줄 선택칸 폭(176px · 사용자 지시 2026-11-24)에 덮여 흐린 글자가 잘렸다 — 위치 칸만 흐린 글자
- * 「창고를 먼저 선택하세요」(135px)와 여백 · 펼침 표시(64px)가 다 보이는 폭으로 넓힌다.
- */
-.filter-bar.lot-status-filter > .field-cell.lot-status-filter-place.lot-status-filter-location {
-  width: 12.75rem;
-  max-width: none;
-}
-
 /* 기간 — [시작일] [종료일] 두 칸을 붙여 둔다(출하 일정 조회와 같은 폭 · 「~」 없음 · 사용자 2026-11-02). */
 .lot-status-date-range-row {
   display: flex;
@@ -5993,7 +6005,7 @@ dialog.routing-history-dialog {
  * 배경을 칠하지 않는 이유: 품질 상태 배지와 같은 바탕이 되어 배지가 묻힌다.
  */
 .lot-status-transition-table tr:has(.link-cell[aria-current='true']) > td:first-child {
-  box-shadow: inset 3px 0 0 var(--semantic-info);
+  box-shadow: inset 3px 0 0 var(--primary);
 }
 
 .lot-status-transition-table {
@@ -6218,9 +6230,8 @@ dialog.routing-history-dialog {
 .lot-status-transition-pane .link-cell[aria-current='true'] {
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
-  /* 고른 줄은 파랑(#360) — 줄 바탕과 같은 정보 파랑. */
-  background: var(--semantic-info-container);
-  color: var(--semantic-info);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
   text-decoration: none;
 }
 
@@ -19958,7 +19969,7 @@ dialog.terminal-map-wizard:has(.terminal-map-matrix) {
 .iqc-inspection-queue-rows
   tbody
   tr:nth-child(n):has(.iqc-inspection-queue-item[aria-current='true']) {
-  background: var(--semantic-info-container);
+  background: var(--surface-container-high);
 }
 
 /* 표 줄(tr)에는 그림자가 안 그려진다 — 강조선은 첫 칸에 긋는다. */
@@ -19966,7 +19977,7 @@ dialog.terminal-map-wizard:has(.terminal-map-matrix) {
   tbody
   tr:has(.iqc-inspection-queue-item[aria-current='true'])
   > td:first-child {
-  box-shadow: inset 3px 0 0 var(--semantic-info);
+  box-shadow: inset 3px 0 0 var(--primary);
 }
 
 /*
@@ -21569,14 +21580,14 @@ dialog.terminal-map-wizard:has(.terminal-map-matrix) {
 .oqc-inspection-queue-rows
   tbody
   tr:nth-child(n):has(.oqc-inspection-queue-open[aria-current='true']) {
-  background: var(--semantic-info-container);
+  background: var(--surface-container-high);
 }
 
 .oqc-inspection-queue-rows
   tbody
   tr:has(.oqc-inspection-queue-open[aria-current='true'])
   > td:first-child {
-  box-shadow: inset 3px 0 0 var(--semantic-info);
+  box-shadow: inset 3px 0 0 var(--primary);
 }
 
 /* 의뢰번호는 본문색 · 굵게 — 누를 수 있다는 것은 커서와 줄 바탕으로 보인다. */
@@ -22616,6 +22627,129 @@ main:has(> .oqc-inspection-panes) {
 
 .time-picker-action[data-kind='confirm']:hover:not(:disabled) {
   background: color-mix(in srgb, var(--semantic-info) 88%, #000);
+}
+
+/*
+ * 종전 시각 선택칸(`patterns/time-field/legacy-time-field.tsx`) — 품질 관리 화면 본문은 팝업 디자인 시안(#360) 전 모양을
+ * 그대로 둔다(사용자 지시 2026-11-27). 트리거는 DS `Select` 와 같은 높이·반경·테두리·글자, 팝오버 안은 시·분 두 열.
+ */
+.time-picker-legacy-trigger {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  height: var(--control-height-md);
+  padding: 0 var(--space-3) 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--outline);
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  cursor: pointer;
+}
+
+.time-picker-legacy-trigger:hover:not(:disabled) {
+  background: var(--state-hover-neutral);
+}
+
+.time-picker-legacy-trigger:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px var(--outline),
+    var(--focus-ring);
+}
+
+.time-picker-legacy-trigger[data-open] {
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+.time-picker-legacy-trigger[data-invalid] {
+  box-shadow: inset 0 0 0 1px var(--semantic-error);
+}
+
+.time-picker-legacy-trigger:disabled {
+  cursor: default;
+  color: var(--state-disabled-text);
+  box-shadow: inset 0 0 0 1px var(--state-disabled-fill);
+}
+
+.time-picker-legacy-placeholder {
+  color: var(--on-surface-muted);
+}
+
+.time-picker-legacy-popup {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(2, 4.5rem);
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-high);
+  box-shadow: var(--elevation-3);
+  outline: 1px solid var(--outline-variant);
+}
+
+.time-picker-legacy-popup[data-placement='up'] {
+  top: auto;
+  bottom: calc(100% + var(--space-1));
+}
+
+.time-picker-legacy-column-label {
+  display: block;
+  padding: 0 0 var(--space-1);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+  text-align: center;
+}
+
+.time-picker-legacy-column {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(var(--control-height-md) * 6);
+  overflow-y: auto;
+  position: relative;
+}
+
+.time-picker-legacy-option {
+  flex: none;
+  height: var(--control-height-md);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.time-picker-legacy-option:hover:not([aria-disabled='true']) {
+  background: var(--state-hover-neutral);
+}
+
+.time-picker-legacy-option:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.time-picker-legacy-option[aria-selected='true'] {
+  color: var(--primary-text);
+  font-weight: 600;
+  background: var(--surface);
+}
+
+.time-picker-legacy-option[aria-disabled='true'] {
+  cursor: default;
+  color: var(--state-disabled-text);
 }
 
 /*
@@ -25533,7 +25667,7 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 }
 
 .inspection-sheet-list tbody tr:has([aria-current='true']) {
-  background: var(--semantic-info-container);
+  background: var(--surface-container-high);
 }
 
 /* 시리얼 — 키보드로도 여는 글자 단추. 겉모양은 보통 글자. */
@@ -25860,14 +25994,14 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 .inspection-sheet-template-rows
   tbody
   tr:nth-child(n):has(.inspection-sheet-template-open[aria-current='true']) {
-  background: var(--semantic-info-container);
+  background: var(--surface-container-high);
 }
 
 .inspection-sheet-template-rows
   tbody
   tr:has(.inspection-sheet-template-open[aria-current='true'])
   > td:first-child {
-  box-shadow: inset 3px 0 0 var(--semantic-info);
+  box-shadow: inset 3px 0 0 var(--primary);
 }
 
 /* 모델 칸 — 「코드 이름」 한 줄, 이름은 흐리게 말줄임. 링크 모양 없이 본문 글자(검사 기준 탭과 같다). */
@@ -31933,14 +32067,8 @@ dialog.layout-editor-dialog .layout-editor-body {
   background: var(--surface-container-high);
 }
 
-/* 펼친 줄은 목록의 고른 줄과 같은 파랑(#360). */
-.parts-iqc-history tbody tr.is-open > td,
-.parts-iqc-history > tbody > tr.is-open:hover > td {
-  background: var(--semantic-info-container);
-}
-
-.parts-iqc-history tbody tr.is-open > td:first-child {
-  box-shadow: inset 3px 0 0 var(--semantic-info);
+.parts-iqc-history tbody tr.is-open > td {
+  background: var(--surface-container-high);
 }
 
 .parts-iqc-history-detail > td {

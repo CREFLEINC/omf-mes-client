@@ -165,7 +165,7 @@ describe('#351 검사 기준이 없는 IQC', () => {
     mount();
 
     expect(await screen.findByText(tp.dialog.noPlan)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: tp.dialog.planVersionNote })).toBeNull();
+    expect(screen.queryByText(tp.dialog.planVersionNote)).toBeNull();
     expect(screen.getByRole('button', { name: tp.footer.submit })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: tp.plan.open })).toBeNull();
     expect(screen.getByText(tp.verdict.noPlan)).toBeInTheDocument();
@@ -176,9 +176,7 @@ describe('#351 검사 기준이 없는 IQC', () => {
     detailOf.value = request(3);
     mount();
 
-    expect(
-      await screen.findByRole('button', { name: tp.dialog.planVersionNote }),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(tp.dialog.planVersionNote)).toBeInTheDocument();
     expect(screen.queryByText(tp.dialog.noPlan)).toBeNull();
     expect(screen.getByRole('button', { name: tp.plan.open })).toBeInTheDocument();
     expect(screen.getByText(tp.verdict.pending)).toBeInTheDocument();

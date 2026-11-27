@@ -45,7 +45,7 @@ import {
 } from '../../patterns/plant-time';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
-import { TimeField, type TimeFieldLabels } from '../../patterns/time-field';
+import { LegacyTimeField, TimeField, type TimeFieldLabels } from '../../patterns/time-field';
 import {
   useDefectCodes,
   useInspectionItemSpecs,
@@ -1236,14 +1236,30 @@ const InspectionForm = (props: FormProps) => {
                   value={inspectedDate === '' ? null : inspectedDate}
                   onChange={(next) => changeInspectedAt(next, inspectedTime)}
                 />
-                <TimeField
-                  labels={TIME_LABELS}
-                  hour={inspectedTime.slice(0, 2)}
-                  minute={inspectedTime.slice(3, 5)}
-                  disabled={false}
-                  invalid={false}
-                  onChange={(hour, minute) => changeInspectedAt(inspectedDate, `${hour}:${minute}`)}
-                />
+                {/* 서랍은 새 시각 칸(#360), 본문 양식은 종전 시각 칸 그대로(품질 화면은 팝업 · 서랍만 바꾼다). */}
+                {props.drawer != null ? (
+                  <TimeField
+                    labels={TIME_LABELS}
+                    hour={inspectedTime.slice(0, 2)}
+                    minute={inspectedTime.slice(3, 5)}
+                    disabled={false}
+                    invalid={false}
+                    onChange={(hour, minute) =>
+                      changeInspectedAt(inspectedDate, `${hour}:${minute}`)
+                    }
+                  />
+                ) : (
+                  <LegacyTimeField
+                    labels={{ ...TIME_LABELS, placeholder: t.lot.panelTimePlaceholder }}
+                    hour={inspectedTime.slice(0, 2)}
+                    minute={inspectedTime.slice(3, 5)}
+                    disabled={false}
+                    invalid={false}
+                    onChange={(hour, minute) =>
+                      changeInspectedAt(inspectedDate, `${hour}:${minute}`)
+                    }
+                  />
+                )}
               </div>
             </div>
             {/* 검사 수량 — 이 회차에 실제로 검사한 수(사용자 지시 2026-10-30). 기본은 검사기준의 시료 수, 고칠 수 있다.
@@ -1270,7 +1286,14 @@ const InspectionForm = (props: FormProps) => {
 
       {!noPlan && (
         <MeasurementTable
-          headNote={specs.length > 0 ? <InfoTip text={t.dialog.planVersionNote} /> : null}
+          /* 기준 변경 안내 — 서랍은 「검사 항목」 옆 ⓘ(#360), 본문 양식은 종전 안내 줄 그대로. */
+          headNote={
+            specs.length === 0 ? null : props.drawer != null ? (
+              <InfoTip text={t.dialog.planVersionNote} />
+            ) : (
+              <PlanNote text={t.dialog.planVersionNote} />
+            )
+          }
           items={dimensions}
           uomCodeOf={uoms.codeOf}
           values={form.values}
