@@ -294,7 +294,7 @@ describe('LoginScreen — 입력 칸', () => {
  * **빈 칸이어도 버튼을 잠그지 않는다**(2026-11-27 시안 A).
  *
  * 잠긴 회색 버튼과 늘 붙은 사유 문장 대신, 누르면 **요청 없이 빈 칸으로 커서만 옮긴다.**
- * 빈 자격이 나가면 서버는 실패한 시도로 세어 계정 잠금 임계값에 쌓으므로 「나가지 않았다」를
+ * 빈 자격이 나가면 치지도 않은 값으로 「로그인 정보 오류」를 보게 되므로 「나가지 않았다」를
  * 함께 잰다.
  */
 describe('LoginScreen — 빈 칸이면 커서를 옮긴다', () => {
@@ -513,8 +513,8 @@ describe('LoginScreen — 폼의 기본 제출', () => {
    * ⛔ **버튼을 지나지 않는 제출 경로가 실재한다** — Enter와 프로그램적 제출이 그것이다.
    * 버튼 잠금은 그 길을 막지 못하므로 제출 자리에 겹이 하나 더 있다.
    *
-   * 그 겹이 없으면 빈 자격이 그대로 나가고, 서버는 그것을 **실패한 시도**로 세어 계정을 잠그는
-   * 임계값을 향해 쌓는다 — 사용자가 아무것도 하지 않았는데도.
+   * 그 겹이 없으면 빈 자격이 그대로 나가고, 사용자는 아무것도 치지 않았는데 「로그인 정보
+   * 오류」를 본다.
    *
    * **양성 대조를 같은 시험에 둔다.** 채운 뒤 같은 경로로 제출하면 요청이 나가야, 앞의
    * 「나가지 않았다」가 **감지기가 죽어서 생긴 결과가 아님**이 증명된다.
@@ -708,27 +708,6 @@ describe('LoginScreen — 실패를 어떻게 알리는가', () => {
     expect(passwordBox()).not.toHaveAttribute('aria-invalid');
     expect(loginIdBox()).not.toHaveAccessibleDescription(t.banner.credentials);
     expect(passwordBox()).not.toHaveAccessibleDescription(t.banner.credentials);
-  });
-
-  /**
-   * ⭐ **자격이 틀렸다는 말은 401에만 붙는다.** 실패를 뭉뚱그리는 화면이 저지르기 쉬운 실수가
-   * 「응답이 실패면 무조건 그 문구」인데, 잠긴 계정에 그 말을 하면 사용자는 맞는 자격을
-   * 의심하며 되풀이 시도한다 — 이미 잠긴 계정에 대고.
-   *
-   * 실패가 둘로 줄어든 뒤에도(#1034) 이 규율은 그대로다 — 줄인 것은 갈래 수이지 이 판단이 아니다.
-   */
-  it('423에는 아이디·비밀번호 문구를 내지 않는다', async () => {
-    const { user } = renderScreen({ fetch: failing(423, errorResponseBody()) });
-
-    await fillCredentials(user);
-    await user.click(submitButton());
-
-    /* 양성 먼저 — 시도가 끝나 버튼이 다시 열린 것을 잡은 뒤에 없음을 잰다. */
-    await waitFor(() => {
-      expect(submitButton()).toBeEnabled();
-    });
-
-    expect(screen.queryByText(t.banner.credentials)).toBeNull();
   });
 
   /**
@@ -1020,11 +999,13 @@ describe('LoginScreen — 실패를 세 갈래로만 말한다', () => {
    * ⭐ **401 말고는 어느 것도 「로그인 정보 오류」가 되지 않는다**(#1034).
    *
    * 실패를 뭉뚱그리는 화면이 저지르기 쉬운 실수가 「응답이 실패면 무조건 자격 문구」인데,
-   * 잠긴 계정이나 서버 장애에 그 말을 하면 사용자는 맞는 자격을 의심하며 되풀이 시도한다.
+   * 서버 장애에 그 말을 하면 사용자는 맞는 자격을 의심하며 되풀이 시도한다.
    * 갈래가 둘로 줄어도 **이 판단은 줄지 않는다** — 목록이 그것을 갈래마다 건다.
    */
   it.each([
     ['검증 실패', 400, fieldErrorResponseBody()],
+    /* 계약에서 빠진 코드다(서버 #1165) — 예전 서버가 주더라도 따로 가르지 않는다. */
+    ['없어진 잠김 응답', 423, errorResponseBody()],
     ['서버 장애', 500, null],
   ])('%s는 서버 오류로 말한다', async (_label, status, body) => {
     const { user } = renderScreen({ fetch: failing(status, body) });
@@ -1038,41 +1019,6 @@ describe('LoginScreen — 실패를 세 갈래로만 말한다', () => {
     expect(banner).toHaveTextContent(t.banner.server);
 
     expect(screen.queryByText(t.banner.credentials)).toBeNull();
-  });
-
-  /**
-   * 잠긴 계정은 **스스로 풀 수 없다.** 그래서 「다시 시도」를 두지 않는다 — 같은 자격으로
-   * 다시 불러도 같은 답이 오고, 정작 해야 할 일(관리자 요청)을 가린다.
-   *
-   * ⛔ **자격 문구를 내지 않는다.** 잠긴 사람에게 「비밀번호를 다시 확인하세요」라고 말하면
-   * 맞는 자격을 의심하며 되풀이 시도한다 — 이미 잠긴 계정에 대고.
-   */
-  it('423이면 관리자 요청 안내가 뜨고 「다시 시도」가 없다', async () => {
-    const { user } = renderScreen({ fetch: failing(423, errorResponseBody()) });
-
-    await fillCredentials(user);
-    await user.click(submitButton());
-
-    const banner = await screen.findByRole('alert');
-
-    expect(banner).toHaveTextContent(t.banner.lockedTitle);
-    expect(banner).toHaveTextContent(t.banner.locked);
-
-    expect(screen.queryByText(t.banner.credentials)).toBeNull();
-    expect(screen.queryByText(t.banner.server)).toBeNull();
-    expect(screen.queryByRole('button', { name: messages.common.retry })).toBeNull();
-  });
-
-  /** 잠긴 화면에 수치를 남기면 잠금 정책을 밖에서 셀 수 있게 된다. */
-  it('423 화면에 실패 횟수나 임계값이 보이지 않는다', async () => {
-    const { user } = renderScreen({ fetch: failing(423, errorResponseBody()) });
-
-    await fillCredentials(user);
-    await user.click(submitButton());
-
-    const banner = await screen.findByRole('alert');
-
-    expect(banner.textContent).not.toMatch(/\d/);
   });
 
   /**
@@ -1180,7 +1126,6 @@ describe('LoginScreen — 실패를 세 갈래로만 말한다', () => {
    */
   it.each([
     ['로그인 정보 오류', 401, loginFailureBody()],
-    ['계정 잠김', 423, errorResponseBody()],
     ['서버 오류', 500, null],
   ])('%s 배너도 값을 고치면 걷힌다', async (_label, status, body) => {
     const { user } = renderScreen({ fetch: failing(status, body) });
@@ -1207,7 +1152,7 @@ describe('LoginScreen — 실패를 세 갈래로만 말한다', () => {
 
   /** 실패한 뒤에도 다시 보낼 수 있어야 한다 — 화면이 폼을 막지 않는다. */
   it('실패한 뒤 버튼이 다시 열린다', async () => {
-    const { user } = renderScreen({ fetch: failing(423, errorResponseBody()) });
+    const { user } = renderScreen({ fetch: failing(400, errorResponseBody()) });
 
     await fillCredentials(user);
     await user.click(submitButton());
