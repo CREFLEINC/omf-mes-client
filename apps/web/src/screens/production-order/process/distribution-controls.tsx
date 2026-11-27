@@ -414,6 +414,18 @@ export const DistributionControls = ({
                 <Button variant="outlined" onClick={closeDialog}>
                   닫기
                 </Button>
+                {/* 결과 단계의 [분배 조건 수정]은 아래 단추 줄 · 보조 단추(사용자 지시 · #360). */}
+                <Button
+                  variant="outlined"
+                  disabled={disabled}
+                  onClick={() => {
+                    setPreview(null);
+                    setMessage('');
+                    setAcknowledged(false);
+                  }}
+                >
+                  분배 조건 수정
+                </Button>
                 <Button
                   aria-describedby={`${id}-note`}
                   disabled={
@@ -468,7 +480,20 @@ export const DistributionControls = ({
                 </Button>
                 <Button
                   aria-describedby={`${id}-note`}
-                  disabled={disabled || calendarBusy || !rows.some((row) => !row.applied)}
+                  disabled={
+                    disabled ||
+                    calendarBusy ||
+                    !rows.some((row) => !row.applied) ||
+                    /* 필수 칸(분배 기간 · 생산 라인 · 분배 수량)이 다 채워져야 켠다(사용자 지시 · #360). */
+                    rows.some(
+                      (row) =>
+                        !row.applied &&
+                        (!row.start ||
+                          !row.end ||
+                          !row.lineId ||
+                          (row.mode !== 'daily' && row.quantity.trim() === '')),
+                    )
+                  }
                   onClick={async () => {
                     const requestedSignature = signature;
                     const epoch = ++previewEpoch.current;
@@ -750,16 +775,19 @@ export const DistributionControls = ({
                   <section className="erp-wo-common-conditions" aria-label="선택 조건 공통 입력">
                     <div className="erp-wo-common-conditions-header">
                       <span>선택한 조건 {selected.length}건</span>
-                      <Button
-                        variant="outlined"
-                        size="sm"
-                        aria-expanded={commonOpen && selected.length > 0}
-                        aria-controls={`${id}-common-fields`}
-                        disabled={disabled || selected.length === 0}
-                        onClick={() => setCommonOpen(!commonOpen)}
-                      >
-                        {commonOpen ? '접기' : '일괄 변경'}
-                      </Button>
+                      {/* 펼친 뒤에는 [취소] · [적용]이 공통 입력칸과 같은 행에 선다(사용자 지시 · #360). */}
+                      {!(commonOpen && selected.length > 0) && (
+                        <Button
+                          variant="outlined"
+                          size="sm"
+                          aria-expanded={false}
+                          aria-controls={`${id}-common-fields`}
+                          disabled={disabled || selected.length === 0}
+                          onClick={() => setCommonOpen(true)}
+                        >
+                          일괄 변경
+                        </Button>
+                      )}
                     </div>
                     {commonOpen && selected.length > 0 && (
                       <>
@@ -814,65 +842,79 @@ export const DistributionControls = ({
                               onChange={setCommonHoliday}
                             />
                           </div>
+                          <div className="erp-wo-common-conditions-actions">
+                            <Button
+                              variant="outlined"
+                              onClick={() => {
+                                setCommonOpen(false);
+                                setCommonPeriodChanged(false);
+                                setCommonLine('');
+                                setCommonHoliday('');
+                              }}
+                            >
+                              취소
+                            </Button>
+                            <Button
+                              disabled={
+                                disabled ||
+                                !selected.length ||
+                                (!commonPeriodChanged && !commonLine && !commonHoliday)
+                              }
+                              onClick={() => {
+                                try {
+                                  if (commonPeriodChanged) segmentDates(commonStart, commonEnd);
+                                  if (
+                                    commonLine &&
+                                    selectedOrders.some(
+                                      (order) =>
+                                        !order.lines.some((line) => String(line.id) === commonLine),
+                                    )
+                                  )
+                                    throw new Error(
+                                      '선택 조건에 공통으로 사용할 수 있는 라인을 고르세요.',
+                                    );
+                                  setRows((current) =>
+                                    current.map((row) =>
+                                      selected.includes(row.id)
+                                        ? {
+                                            ...row,
+                                            ...(commonPeriodChanged
+                                              ? { start: commonStart, end: commonEnd }
+                                              : {}),
+                                            ...(commonHoliday
+                                              ? { includeHolidays: commonHoliday === 'yes' }
+                                              : {}),
+                                            ...(commonLine ? { lineId: commonLine } : {}),
+                                            applied: false,
+                                          }
+                                        : row,
+                                    ),
+                                  );
+                                  setDirty(true);
+                                  setPreview(null);
+                                  setMessage('');
+                                  setCommonStatus(`선택 ${selected.length}건에 적용했습니다.`);
+                                  setCommonPeriodChanged(false);
+                                  setCommonLine('');
+                                  setCommonHoliday('');
+                                } catch (error) {
+                                  setMessage(
+                                    error instanceof Error
+                                      ? error.message
+                                      : '공통 조건을 확인하세요.',
+                                  );
+                                }
+                              }}
+                            >
+                              적용
+                            </Button>
+                          </div>
                         </div>
                         {commonStatus && (
                           <p className="field-note" role="status">
                             {commonStatus}
                           </p>
                         )}
-                        <Button
-                          variant="outlined"
-                          disabled={
-                            disabled ||
-                            !selected.length ||
-                            (!commonPeriodChanged && !commonLine && !commonHoliday)
-                          }
-                          onClick={() => {
-                            try {
-                              if (commonPeriodChanged) segmentDates(commonStart, commonEnd);
-                              if (
-                                commonLine &&
-                                selectedOrders.some(
-                                  (order) =>
-                                    !order.lines.some((line) => String(line.id) === commonLine),
-                                )
-                              )
-                                throw new Error(
-                                  '선택 조건에 공통으로 사용할 수 있는 라인을 고르세요.',
-                                );
-                              setRows((current) =>
-                                current.map((row) =>
-                                  selected.includes(row.id)
-                                    ? {
-                                        ...row,
-                                        ...(commonPeriodChanged
-                                          ? { start: commonStart, end: commonEnd }
-                                          : {}),
-                                        ...(commonHoliday
-                                          ? { includeHolidays: commonHoliday === 'yes' }
-                                          : {}),
-                                        ...(commonLine ? { lineId: commonLine } : {}),
-                                        applied: false,
-                                      }
-                                    : row,
-                                ),
-                              );
-                              setDirty(true);
-                              setPreview(null);
-                              setMessage('');
-                              setCommonStatus(`선택 ${selected.length}건에 적용했습니다.`);
-                              setCommonPeriodChanged(false);
-                              setCommonLine('');
-                              setCommonHoliday('');
-                            } catch (error) {
-                              setMessage(
-                                error instanceof Error ? error.message : '공통 조건을 확인하세요.',
-                              );
-                            }
-                          }}
-                        >
-                          선택 항목에 적용
-                        </Button>
                       </>
                     )}
                   </section>
@@ -996,7 +1038,9 @@ export const DistributionControls = ({
                             </label>
                           </div>
                           <div className="erp-wo-segment-fields">
-                            <div className="field-cell erp-wo-segment-date erp-wo-distribution-period">
+                            <div
+                              className={`field-cell erp-wo-segment-date erp-wo-distribution-period${!row.start || !row.end ? ' erp-wo-required-empty' : ''}`}
+                            >
                               <span className="field-label">
                                 분배 기간
                                 <span className="required-mark" aria-hidden="true">
@@ -1010,7 +1054,9 @@ export const DistributionControls = ({
                                 onChange={([start, end]) => change(row.id, { start, end })}
                               />
                             </div>
-                            <div className="field-cell erp-wo-segment-line">
+                            <div
+                              className={`field-cell erp-wo-segment-line${row.lineId ? '' : ' erp-wo-required-empty'}`}
+                            >
                               <span className="field-label">
                                 생산 라인
                                 <span className="required-mark" aria-hidden="true">
@@ -1069,7 +1115,7 @@ export const DistributionControls = ({
                             {row.mode === 'equal' ? (
                               <TextField
                                 size="md"
-                                className="erp-wo-segment-quantity"
+                                className={`erp-wo-segment-quantity${row.quantity.trim() === '' ? ' erp-wo-required-empty' : ''}`}
                                 label={`분배 수량 (${target?.unit ?? ''})`}
                                 required
                                 aria-label={`조건 ${index + 1} 수량`}
@@ -1192,16 +1238,6 @@ export const DistributionControls = ({
               <section className="erp-wo-distribution-preview" aria-label="분배 미리보기 결과">
                 <div className="erp-wo-distribution-heading">
                   <h2 className="section-title">분배 결과</h2>
-                  <Button
-                    disabled={disabled}
-                    onClick={() => {
-                      setPreview(null);
-                      setMessage('');
-                      setAcknowledged(false);
-                    }}
-                  >
-                    분배 조건 수정
-                  </Button>
                 </div>
                 {resultError && <AlertBanner variant="error">{resultError}</AlertBanner>}
                 {stale && (
@@ -1211,7 +1247,7 @@ export const DistributionControls = ({
                 )}
                 <div className="erp-wo-preview-scroll">
                   <table className="erp-wo-distribution-result-table">
-                    <caption>날짜와 라인별 결과</caption>
+                    <caption className="visually-hidden">날짜와 라인별 결과</caption>
                     <thead>
                       <tr>
                         <th>날짜</th>
