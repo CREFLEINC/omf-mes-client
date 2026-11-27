@@ -1513,7 +1513,7 @@ export const WarehouseLocationScreen = () => {
               restriction={restriction}
             />
           ) : editingLocation !== null && isSystemLocation(editingLocation) ? (
-            /* 시스템 자리(창고 전체 · 적치 대기)는 켤 수 없다 — 잠긴 스위치 줄만 까닭과 함께(시안 결정 · FR-017c). */
+            /* 시스템 자리(창고 전체 · 적치 대기)는 켤 수 없다 — 잠긴 스위치 줄만(까닭 글은 걷었다 · #360 · FR-017c). */
             <section
               className="location-section location-items-section"
               aria-label={t.itemsSection.restrict.label}

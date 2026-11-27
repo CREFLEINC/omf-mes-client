@@ -777,14 +777,14 @@ describe('W-05-09 작업 캘린더 — 사용 중지', () => {
     ).not.toBeInTheDocument();
   });
 
-  /* 감추지 않고 잠그고 사유를 붙인다(G-2). */
-  it('이미 중지된 캘린더는 잠그고 사유를 보인다', async () => {
+  /* 감추지 않고 잠근다(G-2) — 잠긴 단추 아래 까닭 문장은 걷었다(#360). */
+  it('이미 중지된 캘린더는 잠근다(사유 문장 없음)', async () => {
     const { user } = renderScreen();
 
     await openEditOf(user, 'CAL-B');
 
     expect(within(formDialog()).getByRole('button', { name: t.retire.confirm })).toBeDisabled();
-    expect(screen.getByText(t.retire.alreadyInactive)).toBeInTheDocument();
+    expect(screen.queryByText(t.retire.alreadyInactive)).not.toBeInTheDocument();
   });
 
   /*
@@ -1204,15 +1204,17 @@ describe('W-05-09 작업 캘린더 — 하루 편집', () => {
     }
   });
 
-  /* 감추지 않고 잠그고 사유를 붙인다(G-2). */
-  it('부분 가동이 아니면 시각 두 칸을 잠그고 사유를 밝힌다', async () => {
+  /* 감추지 않고 잠근다(G-2) — 잠긴 칸 아래 까닭 문장은 걷었다(#360). */
+  it('부분 가동이 아니면 시각 두 칸을 잠근다(사유 문장 없음)', async () => {
     const { user } = renderScreen();
 
     await openDay(user, '2026-08-04', t.grid.status.unset);
     await user.click(screen.getByRole('radio', { name: t.grid.status.holiday }));
 
     expect(screen.getByRole('textbox', { name: /시작 시각/ })).toBeDisabled();
-    expect(screen.getAllByText(t.dayForm.timeNeedsPartial).length).toBeGreaterThan(0);
+    expect(
+      screen.queryByText('구분을 「부분 가동」으로 고르면 시각을 입력할 수 있습니다.'),
+    ).not.toBeInTheDocument();
   });
 
   it('부분 가동을 고르면 시각 두 칸이 열린다', async () => {

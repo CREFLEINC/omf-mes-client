@@ -50,23 +50,27 @@ export const DeactivateConfirmDialog = ({
   const copy = deactivating ? t : messages.warehouseLocation.activate;
   const hasTarget = location !== undefined || warehouse !== undefined;
   const tone = deactivating ? 'warning' : 'info';
-  /* 대상 상자 · 질문 · 안내 줄 — 창고와 위치가 같은 짜임에 말만 다르다(#360). */
+  /*
+   * 대상 상자 · 질문 · 안내 줄 — 창고와 위치가 같은 짜임에 말만 다르다(#360).
+   * 다시 사용의 정보 줄은 질문과 같은 말이라 두지 않는다 — 함께 바뀌는 위치가 여럿일 때만 건수를 보인다(사용자 지시 · #360).
+   */
   const body =
     warehouse !== undefined
       ? {
           code: warehouse.code,
           name: warehouse.name,
           question: copy.warehouseQuestion,
-          note: copy.warehouseLine,
+          note: deactivating ? t.warehouseLine : null,
         }
       : location !== undefined
         ? {
             code: location.target.locationCode,
             name: location.target.aliasName,
             question: copy.question,
-            note: copy.count(location.count),
+            note: deactivating || location.count > 1 ? copy.count(location.count) : null,
           }
         : null;
+  const note = body === null ? (deactivating ? t.description : null) : body.note;
   /* 별칭이 없으면 null 이다 — 종전 대상 줄(ConfirmTarget)과 같이 비운 것으로 본다. */
   const alias = body?.name?.trim() ?? '';
 
@@ -110,10 +114,12 @@ export const DeactivateConfirmDialog = ({
           </div>
         )}
         <p>{body === null ? copy.question : body.question}</p>
-        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone={tone}>
-          <Icon name={tone} size={16} aria-hidden />
-          {body === null ? copy.description : body.note}
-        </p>
+        {note !== null && (
+          <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone={tone}>
+            <Icon name={tone} size={16} aria-hidden />
+            {note}
+          </p>
+        )}
       </div>
     </Dialog>
   );

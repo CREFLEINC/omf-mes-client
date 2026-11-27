@@ -1474,8 +1474,8 @@ describe('W-05-13 툴 마스터 — 사용 중지·폐기', () => {
     ).not.toBeInTheDocument();
   });
 
-  /* 감추지 않고 잠그고 사유를 붙인다(G-2). */
-  it('이미 중지된 툴은 사용 중지를 잠그고 사유를 보인다', async () => {
+  /* 감추지 않고 잠근다(G-2) — 잠긴 단추 아래 까닭 문장은 걷었다(#360). */
+  it('이미 중지된 툴은 사용 중지를 잠근다(사유 문장 없음)', async () => {
     const { user } = renderScreen();
 
     await openEditOf(user, 'TL-06');
@@ -1483,10 +1483,10 @@ describe('W-05-13 툴 마스터 — 사용 중지·폐기', () => {
     expect(
       within(formDialog()).getByRole('button', { name: t.retire.deactivateConfirm }),
     ).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.alreadyInactive)).toBeInTheDocument();
+    expect(screen.queryByText(t.actionReasons.alreadyInactive)).not.toBeInTheDocument();
   });
 
-  it('이미 폐기된 툴은 폐기를 잠그고 사유를 보인다', async () => {
+  it('이미 폐기된 툴은 폐기를 잠근다(사유 문장 없음)', async () => {
     const { user } = renderScreen();
 
     await openEditOf(user, 'TL-06');
@@ -1494,7 +1494,7 @@ describe('W-05-13 툴 마스터 — 사용 중지·폐기', () => {
     expect(
       within(formDialog()).getByRole('button', { name: t.retire.disposeConfirm }),
     ).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.alreadyDisposed)).toBeInTheDocument();
+    expect(screen.queryByText(t.actionReasons.alreadyDisposed)).not.toBeInTheDocument();
   });
 
   /*
@@ -1526,7 +1526,7 @@ describe('W-05-13 툴 마스터 — 사용 중지·폐기', () => {
     expect(
       within(formDialog()).getByRole('button', { name: t.retire.disposeConfirm }),
     ).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.disposeUnavailable)).toBeInTheDocument();
+    expect(screen.queryByText(t.actionReasons.disposeUnavailable)).not.toBeInTheDocument();
   });
 
   /*

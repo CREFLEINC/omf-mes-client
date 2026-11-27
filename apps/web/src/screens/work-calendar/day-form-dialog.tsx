@@ -103,7 +103,6 @@ export const DayFormDialog = ({
           value={values.startTime}
           onChange={(event) => onChange({ startTime: event.target.value })}
           disabled={!onPartial}
-          disabledReason={t.dayForm.timeNeedsPartial}
           error={fieldErrors.startTime}
         />
 
@@ -114,7 +113,6 @@ export const DayFormDialog = ({
           value={values.endTime}
           onChange={(event) => onChange({ endTime: event.target.value })}
           disabled={!onPartial}
-          disabledReason={t.dayForm.timeNeedsPartial}
           error={fieldErrors.endTime}
         />
 

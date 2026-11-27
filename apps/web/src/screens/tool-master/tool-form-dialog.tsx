@@ -98,7 +98,6 @@ export const ToolFormDialog = ({
   onDeactivate,
   onDispose,
 }: ToolFormDialogProps) => {
-  const retireNoteId = useId();
   const sectionId = useId();
   /*
    * ⭐ 비어 있는 필수 입력칸 표식 — 테두리만 빨갛게 칠한다(사용자 지정 2026-09-22). 디자인
@@ -304,9 +303,7 @@ export const ToolFormDialog = ({
                * 줄까지 함께 붙어 줄이 두 층이 되고, 창이 뷰포트를 넘어 「저장」과 「취소」까지 화면 밖으로
                * 밀려난다(W-05-11 브라우저 확인에서 실측). 운용상태를 바꾸는 자리라 「현재 상태」에 둔다.
                *
-               * ⭐ **감추지 않고 잠그고 사유를 붙인다**(공유계약 G-2). 사라진 버튼은 「원래 없는
-               * 기능」과 구분되지 않아, 왜 못 하는지도 어디서 할 수 있는지도 알 수 없다.
-               * 사유는 보이는 DOM 텍스트로 낸다 — 잠긴 버튼은 포커스를 못 받아 툴팁이 닿지 않는다.
+               * ⭐ **감추지 않고 잠근다**(공유계약 G-2). 잠긴 단추 아래 까닭 문장은 걷었다(사용자 지시 · #360).
                */}
               {/*
                * ⭐ 상태를 바꾸는 두 액션은 **「현재 상태」 제목 줄 오른쪽**에 둔다(사용자 지정 2026-09-22) —
@@ -319,36 +316,20 @@ export const ToolFormDialog = ({
                     variant="outlined"
                     size="sm"
                     disabled={isSaving || !deactivate.enabled}
-                    aria-describedby={
-                      deactivate.reason === null ? undefined : `${retireNoteId}-off`
-                    }
                     onClick={onDeactivate}
                   >
                     {t.retire.deactivateConfirm}
                   </Button>
-                  {deactivate.reason !== null && (
-                    <span id={`${retireNoteId}-off`} className="field-note">
-                      {deactivate.reason}
-                    </span>
-                  )}
                 </div>
                 <div className="tool-form-retire-action">
                   <Button
                     variant="outlined"
                     size="sm"
                     disabled={isSaving || !dispose.enabled}
-                    aria-describedby={
-                      dispose.reason === null ? undefined : `${retireNoteId}-dispose`
-                    }
                     onClick={onDispose}
                   >
                     {t.retire.disposeConfirm}
                   </Button>
-                  {dispose.reason !== null && (
-                    <span id={`${retireNoteId}-dispose`} className="field-note">
-                      {dispose.reason}
-                    </span>
-                  )}
                 </div>
               </div>
             </div>

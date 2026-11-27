@@ -2204,15 +2204,15 @@ describe('WarehouseLocationScreen — 서버가 만든 위치', () => {
     expect(
       within(dialog).getByRole('button', { name: messages.common.deactivate }),
     ).toBeInTheDocument();
-    /* 피처 009 — 시스템 자리는 「지정 품목만 받기」를 켤 수 없다. 잠긴 스위치 줄을 까닭과 함께(FR-017c). */
+    /* 피처 009 — 시스템 자리는 「지정 품목만 받기」를 켤 수 없다. 잠긴 스위치 줄만 — 까닭 글은 걷었다(#360). */
     const restrict = within(dialog).getByRole('switch', {
       name: messages.warehouseLocation.itemsSection.restrict.label,
     });
     expect(restrict).toBeDisabled();
     expect(restrict).not.toBeChecked();
     expect(
-      within(dialog).getByText(messages.warehouseLocation.itemsSection.restrict.system),
-    ).toBeInTheDocument();
+      within(dialog).queryByText(messages.warehouseLocation.itemsSection.restrict.system),
+    ).not.toBeInTheDocument();
   });
 });
 

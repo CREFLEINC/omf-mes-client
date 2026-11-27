@@ -318,11 +318,9 @@ export const warehouseLocation = {
     caption: '다시 사용 대상',
     question: '이 위치를 다시 사용하시겠습니까?',
     warehouseQuestion: '이 창고를 다시 사용하시겠습니까?',
-    description: '다시 사용하면 새 작업에서 이 항목을 선택할 수 있습니다.',
     confirm: '다시 사용',
     count: (count: number): string =>
       count > 1 ? `위치 ${String(count)}개를 함께 다시 사용합니다.` : '위치 1개를 다시 사용합니다.',
     warehouseTitle: '창고 다시 사용',
-    warehouseLine: '새 작업에서 이 창고를 다시 고를 수 있습니다.',
   },
 } as const;

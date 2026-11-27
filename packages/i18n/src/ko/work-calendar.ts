@@ -83,8 +83,6 @@ export const workCalendar = {
     reasonPlaceholder: '사유를 입력하세요',
     remarksPlaceholder: '비고를 입력하세요',
     saved: (count: number): string => `${count}일을 저장했습니다.`,
-    /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다(공유계약 G-2). */
-    timeNeedsPartial: '구분을 「부분 가동」으로 고르면 시각을 입력할 수 있습니다.',
   },
   /**
    * 일괄 적용. **규칙이 아니라 날짜 목록을 보낸다** — 화면이 바뀔 날을 미리 세어 보이고

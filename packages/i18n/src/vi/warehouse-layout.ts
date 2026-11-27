@@ -61,17 +61,10 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
     saving: 'Đang lưu.',
     saved: 'Đã lưu sơ đồ bố trí.',
     reset: 'Hoàn tác',
-    lockLoading: 'Đang tải sơ đồ bố trí.',
-    lockFailed: 'Không tải được sơ đồ bố trí nên không lưu được.',
     upload: 'Tải bản vẽ lên',
     /** ⛔ 요청 전에 화면이 거른다 — 서버가 받는 것은 PNG·JPEG 뿐이다. */
     fileTypeRejected: 'Chỉ tải lên được tệp PNG hoặc JPEG.',
     fileTooLarge: 'Chỉ tải lên được tệp từ 10MB trở xuống.',
-    /**
-     * ⛔ 저장하지 않은 점 편집이 있으면 올리기를 막는다 — 바로 반영이라 그 점을 함께 보낼지
-     * 버릴지가 사용자 모르게 갈린다.
-     */
-    uploadNeedsCleanDraft: 'Có thay đổi điểm đánh dấu chưa lưu.',
     /** ⭐ 올리기와 저장은 이어지는 두 호출이다 — 지금 어느 쪽인지 글자로 말한다. */
     uploadingLabel: 'Đang tải lên…',
     savingDrawingLabel: 'Đang lưu bản vẽ…',

@@ -77,8 +77,6 @@ export const workCalendar: Translated<typeof ko.workCalendar> = {
     reasonPlaceholder: 'Hãy nhập lý do',
     remarksPlaceholder: 'Hãy nhập ghi chú',
     saved: (count: number): string => `Đã lưu ${count} ngày.`,
-    /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다. */
-    timeNeedsPartial: 'Chọn phân loại «Làm việc một phần» thì mới nhập được giờ.',
   },
   bulk: {
     open: 'Áp dụng hàng loạt',

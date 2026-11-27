@@ -53,7 +53,6 @@ export const CalendarFormDialog = ({
 }: CalendarFormDialogProps) => {
   const countLabelId = useId();
   const codeId = useId();
-  const retireNoteId = useId();
 
   return (
     <Dialog
@@ -141,24 +140,17 @@ export const CalendarFormDialog = ({
          * 줄까지 함께 붙어 줄이 두 층이 되고, 창이 뷰포트를 넘어 「저장」과 「취소」까지 화면
          * 밖으로 밀려난다(W-05-11 브라우저 확인에서 실측).
          *
-         * ⭐ **감추지 않고 잠그고 사유를 붙인다**(공유계약 G-2). 사유는 보이는 DOM 텍스트로
-         * 낸다 — 잠긴 버튼은 포커스를 못 받아 툴팁이 닿지 않는다.
+         * ⭐ **감추지 않고 잠근다**(공유계약 G-2). 잠긴 단추 아래 까닭 문장은 걷었다(사용자 지시 · #360).
          */}
         {mode === 'edit' && (
           <div className="field-cell">
             <Button
               variant="outlined"
               disabled={isSaving || !deactivate.enabled}
-              aria-describedby={deactivate.reason === null ? undefined : retireNoteId}
               onClick={onDeactivate}
             >
               {messages.workCalendar.retire.confirm}
             </Button>
-            {deactivate.reason !== null && (
-              <span id={retireNoteId} className="field-note">
-                {deactivate.reason}
-              </span>
-            )}
           </div>
         )}
       </div>

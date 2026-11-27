@@ -511,7 +511,7 @@ export const LayoutEditorDialog = ({
             <EditorToolbar
               uploadLabel={drawing.isBusy ? busyLabel : t.map.upload}
               uploadLoading={drawing.isBusy}
-              /* ⛔ 저장하지 않은 점 편집 위에 도면을 갈지 않는다 — 사유는 판 아래에 적는다. */
+              /* ⛔ 저장하지 않은 점 편집 위에 도면을 갈지 않는다. */
               uploadDisabled={draftDirty || replace.isSaving}
               onUpload={() => {
                 fileInput.current?.click();
@@ -547,9 +547,7 @@ export const LayoutEditorDialog = ({
                 </AlertBanner>
               </div>
             )}
-            {/* ⭐ 잠금 토큰이 배치도 조회에서 온다 — 받기 전 · 못 받으면 저장을 보낼 수 없다. */}
-            {layout.isError && <p className="field-note">{t.map.lockFailed}</p>}
-            {layout.isPending && <p className="field-note">{t.map.lockLoading}</p>}
+            {/* ⭐ 잠금 토큰이 배치도 조회에서 온다 — 받기 전 · 못 받으면 저장을 보낼 수 없다(까닭 줄은 걷었다 · #360). */}
             {/* 점 저장의 실패 — 충돌이면 최신 배치를 불러와 그 위에서 다시 정하게 한다. 그때까지 내 변경은 남는다. */}
             <SaveErrorBanner error={replace.error} onReload={reloadLatest} />
 
@@ -658,8 +656,7 @@ export const LayoutEditorDialog = ({
 
                 {hint !== null && <p className="field-error">{hint}</p>}
 
-                {/* 올리기 자리의 말 — 사유 · 사전 검사 · 서버가 돌려준 파일 오류가 여기 모인다. */}
-                {draftDirty && <p className="field-note">{t.map.uploadNeedsCleanDraft}</p>}
+                {/* 올리기 자리의 말 — 사전 검사 · 서버가 돌려준 파일 오류가 여기 모인다(잠긴 까닭 줄은 걷었다 · #360). */}
                 {fileNote !== null && <p className="field-error">{fileNote}</p>}
                 {drawing.fileError !== null && <p className="field-error">{drawing.fileError}</p>}
                 {/* 올리기 «단계»의 실패(413 · 403 등) — 저장 배너와 자리를 가른다. */}

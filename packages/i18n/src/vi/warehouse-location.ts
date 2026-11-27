@@ -290,11 +290,9 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     caption: 'Đối tượng dùng lại',
     question: 'Bạn có muốn dùng lại vị trí này không?',
     warehouseQuestion: 'Bạn có muốn dùng lại kho này không?',
-    description: 'Dùng lại thì có thể chọn mục này ở công việc mới.',
     confirm: 'Dùng lại',
     count: (count: number): string =>
       count > 1 ? `${String(count)} vị trí sẽ cùng được dùng lại.` : '1 vị trí sẽ được dùng lại.',
     warehouseTitle: 'Dùng lại kho',
-    warehouseLine: 'Có thể chọn lại kho này ở công việc mới.',
   },
 };

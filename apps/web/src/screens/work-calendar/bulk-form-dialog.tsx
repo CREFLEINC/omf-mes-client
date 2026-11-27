@@ -164,7 +164,6 @@ export const BulkFormDialog = ({
           value={values.day.startTime}
           onChange={(event) => onChangeDay({ startTime: event.target.value })}
           disabled={!onPartial}
-          disabledReason={t.dayForm.timeNeedsPartial}
           error={fieldErrors.startTime}
         />
 
@@ -175,7 +174,6 @@ export const BulkFormDialog = ({
           value={values.day.endTime}
           onChange={(event) => onChangeDay({ endTime: event.target.value })}
           disabled={!onPartial}
-          disabledReason={t.dayForm.timeNeedsPartial}
           error={fieldErrors.endTime}
         />
 
