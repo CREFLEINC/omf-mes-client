@@ -113,15 +113,22 @@ export const CheckRow = ({
         >
           <CheckMark check={check} />
           <span className="release-check-row-title">{title}</span>
-          <span className="release-check-row-summary">
-            <SummaryParts parts={summary ?? check?.summary ?? []} />
-          </span>
+          {(summary ?? check?.summary ?? []).length > 0 && (
+            <span className="release-check-row-summary">
+              <SummaryParts parts={summary ?? check?.summary ?? []} />
+            </span>
+          )}
           {(check?.alerts ?? []).map((alert) => (
             <Chip key={alert} variant="status" status="warning" size="sm">
               {alert}
             </Chip>
           ))}
-          <Icon name={open ? 'expand_less' : 'expand_more'} size={20} aria-hidden />
+          <Icon
+            className="release-check-row-toggle"
+            name={open ? 'expand_less' : 'expand_more'}
+            size={20}
+            aria-hidden
+          />
         </button>
       </h4>
       {open && <div className="release-check-row-body">{children}</div>}

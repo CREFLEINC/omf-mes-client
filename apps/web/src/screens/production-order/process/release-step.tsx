@@ -666,7 +666,7 @@ export const ReleaseStep = ({
             ? { state: 'warn', summary: [], alerts: [c.erpWarehouseDiffers] }
             : { state: 'ok', summary: [] }
           : fact?.isError === true
-            ? { state: 'warn', summary: [c.failed] }
+            ? { state: 'warn', summary: [], alerts: [c.failed] }
             : { state: 'pending', summary: [c.pending] },
       material: materialCheckOf?.(workOrder.workOrderId),
       terminal: terminalCheckOf(directory, workOrder),

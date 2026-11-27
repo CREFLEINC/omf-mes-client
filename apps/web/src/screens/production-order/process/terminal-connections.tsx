@@ -1,5 +1,6 @@
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { AlertBanner, Button, SkeletonText } from '@crefle/web-ui';
+import { Link } from 'react-router';
 import { useApiClient } from '../../../patterns/api-context';
 import { fetchAllPages } from '../../../patterns/fetch-all-pages';
 import { runRequest } from '../../../patterns/request';
@@ -71,6 +72,9 @@ export const useTerminalDirectory = (plantId: number | null | undefined) => {
   };
 };
 
+/** 단말 관리(W-CO-06) — 단말기에 설비 · 공정을 연결하는 자리. */
+export const TERMINAL_SCREEN_PATH = '/system/terminal-process-map';
+
 const terminalStatusText = (statusCode: string): string =>
   statusCode === 'RUNNING' ? '가동 중' : statusCode === 'STOPPED' ? '정지' : statusCode;
 
@@ -84,6 +88,7 @@ export const terminalCheckOf = (
 ): SectionCheck | undefined => {
   if (!directory.known) return undefined;
   if (directory.loading) return { state: 'pending', summary: [c.pending] };
+  /* 확인이 필요한 까닭은 요약 글이 아니라 경고 칩으로 보인다(자재의 「부족 1종」과 같은 자리). */
   const links = directory.linksOf(workOrder);
   if (links.length > 0) {
     return {
@@ -96,10 +101,11 @@ export const terminalCheckOf = (
       ],
     };
   }
-  if (directory.incomplete) return { state: 'warn', summary: [c.failed] };
+  if (directory.incomplete) return { state: 'warn', summary: [], alerts: [c.failed] };
   return {
     state: 'warn',
-    summary: [workOrder.processId == null ? c.terminalUnknown : c.terminalNone],
+    summary: [],
+    alerts: [workOrder.processId == null ? c.terminalUnknown : c.terminalNone],
   };
 };
 
@@ -121,6 +127,28 @@ export const TerminalConnections = ({
   };
   const { loading, incomplete } = directory;
   const links = directory.linksOf(workOrder);
+  /* 줄 안에서 연결 단말기가 없을 때 — 문장 대신 무엇으로 찾았는지(공정 · 배정 설비)와 고칠 자리를 보인다. */
+  const empty = plain && !loading && links.length === 0;
+  const target = (
+    <dl className="erp-wo-terminal-target">
+      <div>
+        <dt>공정</dt>
+        <dd>{workOrder.operationName || '공정 정보 확인 필요'}</dd>
+      </div>
+      <div>
+        <dt>배정 설비</dt>
+        <dd>
+          {workOrder.plannedEquipmentId == null
+            ? '미배정'
+            : equipment.data
+              ? `${equipment.data.equipmentName} (${equipment.data.equipmentCode})`
+              : equipment.isError
+                ? '설비 조회 실패'
+                : '설비 조회 중'}
+        </dd>
+      </div>
+    </dl>
+  );
   return (
     <section
       className={`erp-wo-terminal-connections${plain ? ' is-plain' : ''}`}
@@ -128,30 +156,24 @@ export const TerminalConnections = ({
     >
       <div className="section-heading-row">
         {!plain && <h3 className="section-title">연결 단말기</h3>}
-        <Button size="sm" variant="outlined" onClick={refresh}>
-          단말기 다시 조회
-        </Button>
+        {empty && target}
+        <span className="erp-wo-terminal-actions">
+          {empty && !incomplete && workOrder.processId != null && (
+            <Link
+              className="action-link-button"
+              to={TERMINAL_SCREEN_PATH}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {c.openTerminals}
+            </Link>
+          )}
+          <Button size="sm" variant="outlined" onClick={refresh}>
+            단말기 다시 조회
+          </Button>
+        </span>
       </div>
-      {!plain && (
-        <dl className="erp-wo-terminal-target">
-          <div>
-            <dt>공정</dt>
-            <dd>{workOrder.operationName || '공정 정보 확인 필요'}</dd>
-          </div>
-          <div>
-            <dt>배정 설비</dt>
-            <dd>
-              {workOrder.plannedEquipmentId == null
-                ? '미배정'
-                : equipment.data
-                  ? `${equipment.data.equipmentName} (${equipment.data.equipmentCode})`
-                  : equipment.isError
-                    ? '설비 조회 실패'
-                    : '설비 조회 중'}
-            </dd>
-          </div>
-        </dl>
-      )}
+      {!plain && target}
       {!plain && workOrder.processId == null && (
         <p className="field-note">공정 연결 정보 확인 필요</p>
       )}
@@ -227,6 +249,7 @@ export const TerminalConnections = ({
               </table>
             </div>
           ) : (
+            !plain &&
             !incomplete &&
             workOrder.processId != null && (
               <p className="empty-line">설비 또는 공정에 연결된 단말기가 없습니다.</p>

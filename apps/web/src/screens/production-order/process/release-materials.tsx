@@ -150,7 +150,7 @@ export const materialCheckOf = (
   const group = review.groups.find((entry) => entry.target.workOrderId === workOrderId);
   if (group === undefined || group.query.isPending)
     return { state: 'pending', summary: [c.pending] };
-  if (group.query.isError) return { state: 'warn', summary: [c.failed] };
+  if (group.query.isError) return { state: 'warn', summary: [], alerts: [c.failed] };
   if (group.rows.length === 0) return { state: 'none', summary: [c.materialNone] };
   const short = group.rows.filter(({ row }) => {
     const request = availabilityRequestOf(group.target, row);

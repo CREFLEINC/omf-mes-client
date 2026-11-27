@@ -169,7 +169,7 @@
 .release-check-row-summary,
 .release-check-detail-facts {
   display: flex;
-  flex: 1;
+  flex: 0 1 auto;
   gap: var(--space-4);
   min-width: 0;
   overflow: hidden;
@@ -182,6 +182,11 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* 펼침 화살표는 늘 오른쪽 끝 — 요약이 없고 칩만 있어도 칩은 제목 바로 뒤에 온다. */
+.release-check-row-toggle {
+  flex: none;
+  margin-left: auto;
 }
 .release-check-summary-label {
   font: var(--type-label-sm);
@@ -212,7 +217,32 @@
   gap: var(--space-2);
 }
 .erp-wo-terminal-connections.is-plain > .section-heading-row {
+  display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: var(--space-4);
+}
+/* 연결 단말기가 없을 때 — 찾은 기준(공정 · 배정 설비)을 이름표 값 한 줄로, 단추는 오른쪽 끝. */
+.erp-wo-terminal-connections.is-plain .erp-wo-terminal-target {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  gap: var(--space-2) var(--space-5);
+}
+.erp-wo-terminal-connections.is-plain .erp-wo-terminal-target > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.erp-wo-terminal-connections.is-plain .erp-wo-terminal-target dd {
+  margin: 0;
+}
+.erp-wo-terminal-actions {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
 }
 /* 표 이름은 줄 제목이 이미 말한다 — 보조기기에만 남긴다. */
 .erp-wo-terminal-connections.is-plain caption {

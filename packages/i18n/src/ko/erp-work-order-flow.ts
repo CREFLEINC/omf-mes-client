@@ -606,6 +606,7 @@ export const erpWorkOrderFlow = {
         terminalCount: (count: number): string => `${String(count)}대`,
         terminalNone: '연결된 단말기 없음',
         terminalUnknown: '공정 연결 정보 확인 필요',
+        openTerminals: '단말 관리 열기',
         lotCount: (count: number): string => `${String(count)}개`,
         schedule: (start: string, end: string): string => `${start} ~ ${end}`,
       },

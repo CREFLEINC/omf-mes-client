@@ -3,7 +3,12 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders, jsonResponse } from '../../../test/api-harness';
 import { messages } from '@omf-mes/i18n';
-import { TerminalConnections, terminalCheckOf, useTerminalDirectory } from './terminal-connections';
+import {
+  TERMINAL_SCREEN_PATH,
+  TerminalConnections,
+  terminalCheckOf,
+  useTerminalDirectory,
+} from './terminal-connections';
 
 const c = messages.erpWorkOrderFlow.process.release.checks;
 const workOrder = {
@@ -121,11 +126,41 @@ describe('배포 연결 단말기 조회', () => {
     await screen.findByRole('table');
     expect(JSON.parse(screen.getByLabelText('확인 결과').textContent ?? '')).toEqual([
       { state: 'ok', summary: [c.terminalCount(1), 'POP-1 가동 중'] },
-      { state: 'warn', summary: [c.terminalNone] },
+      { state: 'warn', summary: [], alerts: [c.terminalNone] },
     ]);
     expect(screen.queryByRole('heading', { name: '연결 단말기' })).toBeNull();
     expect(screen.queryByText('배정 설비')).toBeNull();
     expect(screen.getByRole('button', { name: '단말기 다시 조회' })).toBeEnabled();
+  });
+  it('줄 안에서 연결 단말기가 없으면 문장 대신 찾은 기준(공정 · 배정 설비)과 단말 관리 바로가기를 보인다', async () => {
+    renderWithProviders(
+      <TerminalConnections
+        plain
+        plantId={1}
+        workOrder={{ ...workOrder, plannedEquipmentId: null }}
+      />,
+      { fetch: async () => jsonResponse({ items: [], page: { page: 1, size: 200, total: 0 } }) },
+    );
+    const link = await screen.findByRole('link', { name: c.openTerminals });
+    expect(link).toHaveAttribute('href', TERMINAL_SCREEN_PATH);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(screen.getByText('배정 설비')).toBeVisible();
+    expect(screen.getByText('미배정')).toBeVisible();
+    expect(screen.getByText('사출')).toBeVisible();
+    expect(screen.queryByText('설비 또는 공정에 연결된 단말기가 없습니다.')).toBeNull();
+    expect(screen.getByRole('button', { name: '단말기 다시 조회' })).toBeEnabled();
+  });
+  it('줄 안에서 공정 정보가 없는 작업지시는 단말 관리로 보내지 않는다', async () => {
+    renderWithProviders(
+      <TerminalConnections
+        plain
+        plantId={1}
+        workOrder={{ ...workOrder, plannedEquipmentId: null, processId: undefined }}
+      />,
+      { fetch: async () => jsonResponse({ items: [], page: { page: 1, size: 200, total: 0 } }) },
+    );
+    expect(await screen.findByText('미배정')).toBeVisible();
+    expect(screen.queryByRole('link', { name: c.openTerminals })).toBeNull();
   });
   it('공장을 모르면 단말기를 묻지 않고 확인 칸도 두지 않는다', () => {
     const fetch = vi.fn();
