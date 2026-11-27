@@ -91,7 +91,6 @@ export const MasterStep = ({
         plantId={plantId}
         quantity={quantity}
       />
-      {locked && <p className="field-note">{t.fixedByPlan}</p>}
     </section>
   );
 };

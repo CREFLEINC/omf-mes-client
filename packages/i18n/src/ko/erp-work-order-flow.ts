@@ -360,7 +360,6 @@ export const erpWorkOrderFlow = {
       effective: (from: string, to: string): string => `유효기간 ${from} ~ ${to}`,
       periodOpen: '종료일 없음',
       autoSelected: '기본 개정',
-      fixedByPlan: '확정된 계획이 쓰는 개정',
     },
     plan: {
       heading: '생산계획 편성',
@@ -381,7 +380,6 @@ export const erpWorkOrderFlow = {
         unconfirmed: '미확정',
         unassigned: '생산 라인 미지정',
         selectPrompt: '편성 표에서 계획을 선택하세요',
-        readonly: '확정된 계획은 수정할 수 없습니다.',
         unsavedSummary: '편집 중인 수량을 포함합니다. 하단에서 계획을 저장하거나 확정하세요.',
         previousWeek: '이전 주',
         nextWeek: '다음 주',

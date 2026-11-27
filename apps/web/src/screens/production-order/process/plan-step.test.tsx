@@ -159,7 +159,7 @@ describe('생산계획 보기와 선택 편집', () => {
     /* 확정 계획은 입력 칸 없이 값 목록으로 보이고, 제목도 「편집」이 아니다. */
     const editor = screen.getByRole('region', { name: '생산계획 상세' });
     expect(within(editor).queryByRole('textbox')).toBeNull();
-    expect(within(editor).getByText(t.workspace.readonly)).toBeVisible();
+    expect(within(editor).getByText(t.columns.planDate)).toBeVisible();
     expect(
       within(editor).queryByRole('button', { name: t.remove(t.newRow(1)) }),
     ).not.toBeInTheDocument();

@@ -4,6 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import { AdjustableNativeTable } from './adjustable-table';
 import { AssignEditor, type AssignRowHandle } from './assign-editor';
 import { formatQty } from './process-model';
 import type { OrderWorkOrder } from './queries';
@@ -164,18 +165,14 @@ export const AssignStep = ({
       {workOrders.length === 0 ? (
         <EmptyState size="sm" title={t.empty} />
       ) : (
+        /* 열 사이를 끌어 폭을 바꾸고, 바꾼 폭은 브라우저에 남는다(사용자 지시 2026-11-27). */
         <div className="erp-wo-assign-grid-scroll">
-          <table className="erp-wo-assign-grid">
-            <caption className="visually-hidden">{t.gridHeading}</caption>
-            <thead>
-              <tr>
-                {headers.map((header) => (
-                  <th key={header} scope="col">
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
+          <AdjustableNativeTable
+            storageKey="omf-mes:work-planning:assign-grid-columns:v1"
+            className="erp-wo-assign-grid"
+            labels={headers}
+            widths={COLUMN_WIDTHS}
+          >
             <tbody>
               {workOrders.map((row) => {
                 const callbacks = callbacksOf(row.workOrderId);
@@ -210,12 +207,15 @@ export const AssignStep = ({
                 );
               })}
             </tbody>
-          </table>
+          </AdjustableNativeTable>
         </div>
       )}
     </section>
   );
 };
+
+/** 열의 처음 폭(px) — W/O 번호 · 공정 · 수량 · 생산 라인 · 설비 · 금형 · 입고 창고 · 계획 시작 · 계획 종료 · 점검. */
+const COLUMN_WIDTHS = [170, 200, 80, 180, 120, 120, 170, 125, 125, 100];
 
 interface RowCallbacks {
   onRegister: (handle: AssignRowHandle | null) => void;

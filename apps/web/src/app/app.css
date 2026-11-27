@@ -43939,40 +43939,21 @@ main > .pane.notification-center-pane {
 }
 .erp-wo-assign-grid {
   width: 100%;
-  min-width: 68rem;
   table-layout: fixed;
   border-collapse: collapse;
   font: var(--type-label-md);
 }
-/* W/O 번호 · 공정 · 수량 · 생산 라인 · 설비 · 금형 · 입고 위치 · 계획 시작 · 계획 종료 · 점검 */
-.erp-wo-assign-grid thead th:nth-child(1) {
-  width: 12%;
-}
-.erp-wo-assign-grid thead th:nth-child(2) {
-  width: 10%;
-}
+/* 열 폭은 머리줄 사이를 끌어 바꾼다(`AdjustableNativeTable`). 수량 열만 오른쪽에 맞춘다. */
 .erp-wo-assign-grid thead th:nth-child(3) {
-  width: 6%;
   text-align: right;
 }
-.erp-wo-assign-grid thead th:nth-child(4) {
-  width: 15%;
+/* 공정명은 자르지 않고 칸 안에서 줄을 바꾼다. */
+.erp-wo-assign-row > .erp-wo-assign-operation {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
 }
-.erp-wo-assign-grid thead th:nth-child(5),
-.erp-wo-assign-grid thead th:nth-child(6) {
-  width: 10%;
-}
-.erp-wo-assign-grid thead th:nth-child(7) {
-  width: 15%;
-}
-.erp-wo-assign-grid thead th:nth-child(8),
-.erp-wo-assign-grid thead th:nth-child(9) {
-  width: 8%;
-}
-.erp-wo-assign-grid thead th:nth-child(10) {
-  width: 6%;
-}
-/* 표 안의 글자는 모두 12px 로 맞춘다 — 머리줄 · 값 · 입력 칸 · 칩(사용자 지시 2026-11-27). */
+/* 표 안의 글자는 모두 14px 로 맞춘다 — 머리줄 · 값 · 입력 칸 · 칩(사용자 지시 2026-11-27). */
 .erp-wo-assign-grid,
 .erp-wo-assign-grid th,
 .erp-wo-assign-grid td,
@@ -43981,7 +43962,7 @@ main > .pane.notification-center-pane {
 .erp-wo-assign-grid [role='combobox'],
 .erp-wo-assign-grid [role='combobox'] > span,
 .erp-wo-assign-row .erp-wo-assign-datetime {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1.4;
 }
 .erp-wo-assign-grid thead th {
@@ -44043,18 +44024,18 @@ main > .pane.notification-center-pane {
   padding-block: 0;
   padding-inline: var(--space-2) var(--space-1);
   border-radius: var(--radius-sm);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 .erp-wo-assign-grid-pane .erp-wo-assign-grid .erp-wo-assign-row [role='combobox'] span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 /* 점검 칩도 표 글자 크기에 맞춘다. */
 .erp-wo-assign-grid .erp-wo-assign-row > td:last-child * {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 /* 일시 — 「11-27 08:00」 한 칸. 누르면 날짜 · 시각을 고르는 판이 열린다. */
 .erp-wo-assign-datetime {

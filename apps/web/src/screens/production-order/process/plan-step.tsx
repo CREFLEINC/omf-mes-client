@@ -1000,7 +1000,6 @@ export const PlanStep = ({
                       </div>
                     ))}
                   </dl>
-                  <p className="field-note">{ui.readonly}</p>
                 </>
               ) : (
                 <>

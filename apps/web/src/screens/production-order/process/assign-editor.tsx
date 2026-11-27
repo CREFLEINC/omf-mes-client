@@ -918,7 +918,8 @@ const EditorSession = ({
           <th scope="row" className="nowrap-cell">
             {row.workOrderNo}
           </th>
-          <td className="nowrap-cell">{row.operationName}</td>
+          {/* 공정명은 자르지 않는다 — 칸 폭을 넘으면 줄을 바꾼다. */}
+          <td className="erp-wo-assign-operation">{row.operationName}</td>
           <td className="nowrap-cell erp-wo-assign-qty">{row.quantity}</td>
           <td title={labelOf('productionLineId') || undefined}>
             {selectCell('productionLineId', t.fields.productionLineId, lineSource)}

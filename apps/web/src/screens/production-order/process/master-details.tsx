@@ -60,7 +60,6 @@ export const MasterDetails = ({
   useEffect(() => setPreview(initial), [initial]);
   const candidate = options.find((option) => option.value === preview);
   const operations = useRoutingOperations(candidate ? Number(preview) : null);
-  const applied = options.find((option) => option.value === routingId);
   return (
     <AdjustableLayout
       storageKey="omf-mes:work-planning:bom-routing"
@@ -91,9 +90,6 @@ export const MasterDetails = ({
       <section className="pane erp-wo-inline-revision" aria-label="Routing 상세 정보">
         <div className="section-heading-row">
           <h2 className="section-title">Routing</h2>
-          {applied && (
-            <span className="field-note">현재 적용: {readableRevision(applied.label)}</span>
-          )}
         </div>
         {!locked && options.length > 0 && (
           /* Routing 개정은 선택 칸으로 고른다 — 처음 값은 기본 개정이다(사용자 지시 2026-11-27). */
@@ -113,7 +109,11 @@ export const MasterDetails = ({
         )}
         {candidate ? (
           <>
-            <RoutingTable key={preview} id={Number(preview)} />
+            <RoutingTable
+              key={preview}
+              id={Number(preview)}
+              hideHeading={!locked && options.length > 0}
+            />
             {/*
              * 적용한 개정을 볼 때는 제목 옆 「현재 적용: …」이 이미 말하므로 비워 둔다 — 다른 개정을 보는 동안만
              * 알린다(관리웹 정리 시안 A). 알림 자리는 숨겨 남겨 두어 바뀔 때 읽히게 한다.

@@ -746,11 +746,6 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                     aria-label="선택 ERP W/O 상세"
                   >
                     <ErpWorkOrderInformation entry={entry} showReadiness />
-                    {entry.locked && (
-                      <p className="field-note">
-                        {messages.erpWorkOrderFlow.process.master.fixedByPlan}
-                      </p>
-                    )}
                     <MasterDetails
                       bomId={entry.bomId}
                       routingId={entry.routingId}

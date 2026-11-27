@@ -348,7 +348,14 @@ export const BomTable = ({
   );
 };
 
-export const RoutingTable = ({ id }: { id: number }) => {
+export const RoutingTable = ({
+  id,
+  hideHeading = false,
+}: {
+  id: number;
+  /** 표 위의 「코드 · 개정」 줄을 빼는가 — 선택 칸이 같은 값을 보일 때. */
+  hideHeading?: boolean;
+}) => {
   const { client } = useApiClient();
   const header = useRoutingDetail(id);
   const operations = useRoutingOperations(id);
@@ -393,29 +400,14 @@ export const RoutingTable = ({ id }: { id: number }) => {
           Routing 개정 정보를 불러오지 못했습니다.
         </AlertBanner>
       )}
-      <div className="erp-wo-dense-metadata">
-        {header.data?.routing && (
-          <>
-            <strong>
-              {header.data.routing.routingCode} · 개정 {header.data.routing.routingVersion}
-            </strong>
-            <span>
-              상태:{' '}
-              {({ CONFIRMED: '확정', DRAFT: '작성중', OBSOLETE: '폐기' } as Record<string, string>)[
-                header.data.routing.statusCode
-              ] ??
-                header.data.routing.statusCode ??
-                '미제공'}
-            </span>
-            <span>{mode(header.data.routing.isDefault, '기본 Routing', '기본 아님')}</span>
-            <span>
-              유효기간 {header.data.routing.effectiveFrom ?? '미설정'} ~{' '}
-              {header.data.routing.effectiveTo ?? '종료일 없음'}
-            </span>
-          </>
-        )}
-        <span>MES Routing 기준정보 · 공정 {rows.length}건</span>
-      </div>
+      {/* 바로 위 선택 칸이 같은 개정을 보이고 있으면 이름을 되풀이하지 않는다. */}
+      {!hideHeading && header.data?.routing && (
+        <div className="erp-wo-dense-metadata">
+          <strong>
+            {header.data.routing.routingCode} · 개정 {header.data.routing.routingVersion}
+          </strong>
+        </div>
+      )}
       {rows.length ? (
         <Grid
           label="Routing 공정"
