@@ -205,16 +205,20 @@ describe('LoginScreen — 셸 밖에 선다', () => {
  * 여기서 재는 것은 **자리**다.
  */
 describe('LoginScreen — 언어 선택', () => {
-  it('카드 머리의 표제와 같은 자리에 언어 칸이 선다', () => {
+  /**
+   * ⭐ **카드보다 앞에 선다.** 고르면 새로고침하므로 칸을 치기 전에 만나는 자리여야 한다 —
+   * 화면 읽기 차례(문서 차례)로 표제보다 먼저 온다.
+   */
+  it('언어 칸이 로그인 카드보다 앞에 선다', () => {
     renderScreen();
 
     /* 양성 먼저 — 화면이 실제로 섰음을 잡은 뒤에 자리를 잰다. */
     const heading = screen.getByRole('heading', { level: 1, name: t.title });
-    const head = heading.parentElement;
+    const localeBox = screen.getByRole('combobox', { name: '언어' });
 
-    if (head === null) throw new Error('카드 머리를 찾지 못했습니다');
-
-    expect(within(head).getByRole('combobox', { name: '언어' })).toBeInTheDocument();
+    expect(localeBox.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
   });
 
   /**
@@ -286,67 +290,158 @@ describe('LoginScreen — 입력 칸', () => {
   });
 });
 
-describe('LoginScreen — 로그인 버튼의 활성 조건', () => {
-  it('아무것도 치지 않았으면 잠겨 있고 사유가 보인다', () => {
+/**
+ * **빈 칸이어도 버튼을 잠그지 않는다**(2026-11-27 시안 A).
+ *
+ * 잠긴 회색 버튼과 늘 붙은 사유 문장 대신, 누르면 **요청 없이 빈 칸으로 커서만 옮긴다.**
+ * 빈 자격이 나가면 서버는 실패한 시도로 세어 계정 잠금 임계값에 쌓으므로 「나가지 않았다」를
+ * 함께 잰다.
+ */
+describe('LoginScreen — 빈 칸이면 커서를 옮긴다', () => {
+  /** 보낸 요청을 적는 스텁 — 「나가지 않았다」를 잴 근거다. */
+  const recordingFetch =
+    (requests: string[]): StubFetch =>
+    (request) => {
+      requests.push(new URL(request.url).pathname);
+
+      return Promise.resolve(jsonResponse(sessionBody()));
+    };
+
+  it('들어오면 아이디 칸에 커서가 있다', () => {
     renderScreen();
 
-    expect(submitButton()).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.incomplete)).toBeInTheDocument();
+    expect(loginIdBox()).toHaveFocus();
+  });
+
+  it('아무것도 치지 않아도 버튼이 열려 있고 사유 문장이 없다', () => {
+    renderScreen();
+
+    expect(submitButton()).toBeEnabled();
+    expect(submitButton()).not.toHaveAttribute('aria-describedby');
+  });
+
+  it('빈 채로 누르면 요청 없이 아이디 칸으로 커서가 간다', async () => {
+    const requests: string[] = [];
+    const { user } = renderScreen({ fetch: recordingFetch(requests) });
+
+    await user.click(submitButton());
+
+    expect(loginIdBox()).toHaveFocus();
+    expect(requests).toEqual([]);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('아이디만 치고 누르면 요청 없이 비밀번호 칸으로 커서가 간다', async () => {
+    const requests: string[] = [];
+    const { user } = renderScreen({ fetch: recordingFetch(requests) });
+
+    await user.type(loginIdBox(), SYNTHETIC_LOGIN_ID);
+    await user.click(submitButton());
+
+    expect(passwordBox()).toHaveFocus();
+    expect(requests).toEqual([]);
+  });
+
+  /** 공백만 친 아이디는 사용자 눈에도 빈 칸이다 — 비밀번호를 채웠어도 아이디 칸으로 간다. */
+  it('아이디가 공백뿐이면 비밀번호를 채웠어도 아이디 칸으로 간다', async () => {
+    const requests: string[] = [];
+    const { user } = renderScreen({ fetch: recordingFetch(requests) });
+
+    await user.type(loginIdBox(), '   ');
+    await user.type(passwordBox(), SYNTHETIC_PASSWORD);
+    await user.click(submitButton());
+
+    expect(loginIdBox()).toHaveFocus();
+    expect(requests).toEqual([]);
+  });
+
+  /** 양성 대조 — 둘 다 채우면 같은 단추로 요청이 나가야 앞의 「나가지 않았다」가 뜻을 갖는다. */
+  it('둘 다 채우고 누르면 요청이 나간다', async () => {
+    const requests: string[] = [];
+    const { user } = renderScreen({ fetch: recordingFetch(requests) });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(requests).toEqual([SESSIONS_PATH]);
+    });
+  });
+});
+
+describe('LoginScreen — 비밀번호 칸을 돕는 것', () => {
+  it('눈 단추를 누르면 친 값이 보이고 다시 누르면 가려진다', async () => {
+    const { user } = renderScreen();
+
+    await user.type(passwordBox(), SYNTHETIC_PASSWORD);
+    await user.click(screen.getByRole('button', { name: t.actions.showPassword }));
+
+    expect(passwordBox()).toHaveAttribute('type', 'text');
+    expect(passwordBox()).toHaveValue(SYNTHETIC_PASSWORD);
+
+    await user.click(screen.getByRole('button', { name: t.actions.hidePassword }));
+
+    expect(passwordBox()).toHaveAttribute('type', 'password');
+  });
+
+  /** 눈 단추는 폼 안에 있지만 제출 단추가 아니다 — 누른다고 요청이 나가면 안 된다. */
+  it('눈 단추는 폼을 보내지 않는다', async () => {
+    const requests: string[] = [];
+    const { user } = renderScreen({
+      fetch: (request) => {
+        requests.push(new URL(request.url).pathname);
+
+        return Promise.resolve(jsonResponse(sessionBody()));
+      },
+    });
+
+    await fillCredentials(user);
+    await user.click(screen.getByRole('button', { name: t.actions.showPassword }));
+
+    expect(requests).toEqual([]);
   });
 
   /**
-   * 사유는 감추지 않고 **항상 보이는 DOM 텍스트**로 렌더해 `aria-describedby`로 잇는다 —
-   * 잠긴 버튼은 포커스를 받지 못해 툴팁만으로는 키보드·스크린리더 사용자가 닿을 수 없다
-   * (배치 규범 4-1).
+   * Caps Lock 안내는 **켜진 동안만** 서고 비밀번호 칸에 이어진다(`aria-describedby`). 실패가 아니라
+   * 지금 상태라 배너(`alert`)로 서지 않는다.
    */
-  it('사유가 잠긴 버튼에 붙어 있다', () => {
+  it('Caps Lock 이 켜진 채 치면 안내가 서고, 꺼지면 사라진다', () => {
     renderScreen();
 
-    const reason = screen.getByText(t.actionReasons.incomplete);
+    expect(screen.queryByText(t.hints.capsLock)).toBeNull();
 
-    expect(reason.id).not.toBe('');
-    expect(submitButton()).toHaveAttribute('aria-describedby', reason.id);
+    fireEvent.keyDown(passwordBox(), { key: 'A', modifierCapsLock: true });
+
+    const hint = screen.getByText(t.hints.capsLock);
+    const describedBy = passwordBox().getAttribute('aria-describedby') ?? '';
+    const hintHolder = hint.closest('[id]');
+
+    expect(hintHolder).not.toBeNull();
+    expect(describedBy.split(' ')).toContain(hintHolder?.id);
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    fireEvent.keyUp(passwordBox(), { key: 'a', modifierCapsLock: false });
+
+    expect(screen.queryByText(t.hints.capsLock)).toBeNull();
+  });
+});
+
+/**
+ * 셸 밖이라 상단 바의 이름이 서지 않는다 — **카드가 무슨 시스템인지 말한다.** 버전은 카드 아래에
+ * 선다(시험 빌드에는 릴리스 태그가 없어 「개발 빌드」다).
+ */
+describe('LoginScreen — 제품 이름과 버전', () => {
+  it('카드 머리에 제품 이름이 선다', () => {
+    renderScreen();
+
+    expect(screen.getByText('SAMJINLND VINA MES')).toBeInTheDocument();
+    expect(screen.getByText('관리웹')).toBeInTheDocument();
   });
 
-  it('아이디만 치면 잠긴 채로 사유가 보인다', async () => {
-    const { user } = renderScreen();
+  it('카드 아래에 버전이 선다', () => {
+    renderScreen();
 
-    await user.type(loginIdBox(), SYNTHETIC_LOGIN_ID);
-
-    expect(submitButton()).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.incomplete)).toBeInTheDocument();
-  });
-
-  it('비밀번호만 치면 잠긴 채로 사유가 보인다', async () => {
-    const { user } = renderScreen();
-
-    await user.type(passwordBox(), SYNTHETIC_PASSWORD);
-
-    expect(submitButton()).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.incomplete)).toBeInTheDocument();
-  });
-
-  it('둘 다 공백만 치면 잠긴 채로 사유가 보인다', async () => {
-    const { user } = renderScreen();
-
-    await user.type(loginIdBox(), '   ');
-    await user.type(passwordBox(), '   ');
-
-    expect(submitButton()).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.incomplete)).toBeInTheDocument();
-  });
-
-  it('둘 다 치면 버튼이 열리고 사유가 사라진다', async () => {
-    const { user } = renderScreen();
-
-    await user.type(loginIdBox(), SYNTHETIC_LOGIN_ID);
-    await user.type(passwordBox(), SYNTHETIC_PASSWORD);
-
-    /* 양성 먼저 — 버튼이 실제로 열린 것을 잡은 **뒤에** 사유가 없음을 잰다. */
-    expect(submitButton()).toBeEnabled();
-
-    expect(screen.queryByText(t.actionReasons.incomplete)).toBeNull();
-    expect(submitButton()).not.toHaveAttribute('aria-describedby');
+    expect(screen.getByText(messages.shellNav.version.dev)).toBeInTheDocument();
   });
 });
 
