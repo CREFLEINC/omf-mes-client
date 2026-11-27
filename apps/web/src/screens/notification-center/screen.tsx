@@ -483,9 +483,8 @@ export const NotificationCenterScreen = () => {
             variant="outlined"
             size="sm"
             aria-label={`${t.sort.label}: ${order === 'desc' ? t.sort.newest : t.sort.oldest}`}
-            leadingIcon={
-              <Icon name={order === 'desc' ? 'arrow_downward' : 'arrow_upward'} size={16} />
-            }
+            className="notification-sort-button"
+            leadingIcon={<Icon name="swap_vert" size={16} />}
             onClick={() => {
               setOrder((current) => (current === 'desc' ? 'asc' : 'desc'));
             }}
