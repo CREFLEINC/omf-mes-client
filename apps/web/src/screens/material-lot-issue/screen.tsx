@@ -109,7 +109,7 @@ export const MaterialLotIssueScreen = () => {
           />
         </div>
       )}
-      <div className="field-cell">
+      <div className="field-cell mlot-issue-search">
         <label className="field-label" htmlFor={searchFieldId}>
           {tp.search}
         </label>

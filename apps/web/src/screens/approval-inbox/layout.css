@@ -36,7 +36,13 @@
 }
 
 @media (min-width: 1101px) {
+  /*
+   * 둘째 칸(상신 시작일 · 종료일)은 줄지 않는 하한을 둔다 — 두 날짜 칸이 흐린 글자 「날짜를 선택하세요」(106px)와
+   * 여백 · 달력 아이콘(64px)을 다 보이는 폭(칸마다 10.75rem)과 그 사이 간격.
+   */
   .list-detail-filter:has(> .filter-bar.approval-inbox-filter) {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+    grid-template-columns:
+      minmax(0, 1fr) minmax(calc(2 * 10.75rem + var(--space-3)), 1fr)
+      minmax(0, 1fr) auto;
   }
 }

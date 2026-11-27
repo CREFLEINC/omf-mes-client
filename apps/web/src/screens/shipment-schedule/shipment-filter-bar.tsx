@@ -239,7 +239,7 @@ export const ShipmentFilterBar = ({
         </div>
 
         {/* 피처 010 — 지시서 번호 · 고객 · 품목 부분 일치(계약 `q`). */}
-        <div className="field-cell">
+        <div className="field-cell shipment-schedule-q">
           <TextField
             label={t.filters.q}
             value={filters.q}

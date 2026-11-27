@@ -5421,6 +5421,15 @@ dialog.routing-history-dialog {
   width: 15rem;
 }
 
+/*
+ * 위 폭은 전 화면 조회 줄 선택칸 폭(176px · 사용자 지시 2026-11-24)에 덮여 흐린 글자가 잘렸다 — 위치 칸만 흐린 글자
+ * 「창고를 먼저 선택하세요」(135px)와 여백 · 펼침 표시(64px)가 다 보이는 폭으로 넓힌다.
+ */
+.filter-bar.lot-status-filter > .field-cell.lot-status-filter-place.lot-status-filter-location {
+  width: 12.75rem;
+  max-width: none;
+}
+
 /* 기간 — [시작일] [종료일] 두 칸을 붙여 둔다(출하 일정 조회와 같은 폭 · 「~」 없음 · 사용자 2026-11-02). */
 .lot-status-date-range-row {
   display: flex;
@@ -11711,6 +11720,14 @@ a.erp-send-chips:focus-visible {
 /* 빠른 조회 칸들은 조건 줄(납기 뒤 · 조회 단추 앞)의 칸으로 그대로 선다. */
 .po-board-quick {
   display: contents;
+}
+
+/*
+ * 품목코드 — 좁음(160px)에서는 흐린 글자 「품목코드를 입력하세요」가 칸 끝에 딱 붙어 잘려 보였다.
+ * 글자 + 안쪽 여백(28px)에 여유 8px 을 둔 폭.
+ */
+.field-cell.filter-field-sm.inbound-quick-item {
+  width: 10.5rem;
 }
 
 .po-board-filter .filter-bar > :not(dialog) {
@@ -22800,9 +22817,18 @@ main:has(> .oqc-inspection-panes) {
   flex: 0 0 auto;
 }
 
-/* 두 날짜 칸은 같은 폭으로 선다 — 폭이 다르면 한 조건이 아니라 두 조건으로 읽힌다. */
+/*
+ * 두 날짜 칸은 같은 폭으로 선다 — 폭이 다르면 한 조건이 아니라 두 조건으로 읽힌다.
+ * 흐린 글자 「시작일을 선택하세요」가 다 보이는 폭(종전 11rem 에서 글자 약 137px + 여백 · 달력 아이콘 64px).
+ */
 .shipment-schedule-date-field {
-  width: 11rem;
+  width: 12.75rem;
+}
+
+/* 검색어 — 흐린 글자 「지시서 번호, 출하 번호, 고객, 품목」이 다 보이는 폭(글자 약 220px + 안쪽 여백 28px + 여유). */
+.field-cell.shipment-schedule-q {
+  align-items: stretch;
+  width: 16rem;
 }
 
 /* 「~」는 두 칸을 잇는 표시일 뿐이다 — 칸보다 흐리게 두어 값이 먼저 읽히게 한다. */
@@ -36822,6 +36848,12 @@ body:has(
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
+}
+
+/* 찾기 — 흐린 글자 「공급사 또는 품목의 코드나 이름」이 다 보이는 폭(글자 194px + 안쪽 여백 28px). */
+.field-cell.mlot-issue-search {
+  align-items: stretch;
+  width: 14rem;
 }
 
 /* 피처 014 — 상세 탭 넷 · 쪽 넘김 줄(시안 W0114 W2). */
