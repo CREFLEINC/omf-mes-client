@@ -1,0 +1,38 @@
+/* W/O 상세 팝업(#360) — 이 팝업에만 쓰는 모양. */
+
+/* 팝업 폭 — DS 「lg」보다 한 단계 넓게(사용자 지시 · #360). 화면이 좁으면 DS 가 화면 폭까지만 쓴다. */
+dialog.work-order-progress-detail-dialog {
+  --dialog-max-lg: 60rem;
+}
+
+/* 비고 줄 — 상자 전체 폭, 입력한 줄바꿈 그대로 · 길면 자연 줄바꿈(한 줄 말줄임 대신). */
+dialog.work-order-progress-detail-dialog
+  .info-facts-row
+  > .info-fact:has(.work-order-progress-remarks) {
+  flex: 1 1 100%;
+}
+
+dialog.work-order-progress-detail-dialog .info-fact-value:has(> .work-order-progress-remarks) {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* 4M 변경 자재 투입 내역 — 긴 LOT 번호도 끝까지 보이게 칸 안에서 줄을 바꾼다. */
+dialog.work-order-progress-detail-dialog .four-m-inputs-lot {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+/*
+ * 이 팝업 안 표는 머리칸 · 값 모두 가운데(사용자 지시 2026-11-27 · #360) — 숫자 칸 포함. 공용 팝업 표 정렬
+ * (app.css 「팝업 안 표 정렬」 · 클래스 셋 겹침)보다 무겁게 클래스 넷을 겹친다. 다른 화면 표는 그대로.
+ */
+dialog.work-order-progress-detail-dialog
+  .info-table.info-table.info-table.info-table
+  table
+  > :is(thead, tbody)
+  > tr
+  > :is(th, td):not([scope='rowgroup']) {
+  text-align: center !important;
+}

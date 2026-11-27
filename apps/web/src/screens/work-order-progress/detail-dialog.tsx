@@ -5,9 +5,11 @@ import { CrewSections } from './crew-sections';
 import type { WorkOrderCrew } from './queries';
 import type { WorkOrder } from './types';
 import { FourMInputsPanel } from '../four-m-inputs/panel';
-import { InfoCodeName, InfoFacts, InfoLong, InfoQty } from '../../patterns/info-facts';
+import { InfoCodeName, InfoFacts, InfoQty, type InfoFact } from '../../patterns/info-facts';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { splitCodeName } from '../../patterns/split-code-name';
+
+import './detail-dialog.css';
 
 export interface DetailDialogProps {
   /** 고른 W/O. 고르지 않았으면 `null` — 창이 열리지 않는다. */
@@ -32,8 +34,19 @@ const dateTimeText = (value: string | undefined): string => {
   return formatPlantDateTime(value) ?? value;
 };
 
-const textOr = (value: string | undefined): string =>
-  value === undefined || value === '' ? blank : value;
+/**
+ * 비고 줄 — 비었거나 공백뿐이면 줄째 뺀다(라벨 · 「—」 · 여백 모두 · #360). 있으면 상자 마지막 줄에 상자 전체 폭으로,
+ * 입력한 줄바꿈 그대로 · 길면 자연 줄바꿈(`.work-order-progress-remarks`).
+ */
+const remarksRow = (remarks: string | undefined): InfoFact[] =>
+  remarks === undefined || remarks.trim() === ''
+    ? []
+    : [
+        {
+          label: t.remarks,
+          value: <span className="work-order-progress-remarks">{remarks}</span>,
+        },
+      ];
 
 /**
  * 고른 W/O 의 상세.
@@ -65,6 +78,7 @@ export const DetailDialog = ({
     onClose={onClose}
     title={workOrder === null ? t.title : `${t.title} — ${workOrder.workOrderNo}`}
     size="lg"
+    className="work-order-progress-detail-dialog"
     showCloseButton={false}
     footer={
       <Button variant="outlined" onClick={onClose}>
@@ -82,7 +96,7 @@ export const DetailDialog = ({
 
     {workOrder !== null && (
       <>
-        {/* 정보 표시 팝업 — 첫 줄 W/O · 품목 · 지시 수량(크게), 둘째 줄 상태 · 일시, 비고는 상자 아래(시안 2026-11-27 · #360). */}
+        {/* 정보 표시 팝업 — 첫 줄 W/O · 품목 · 지시 수량(크게), 둘째 줄 상태 · 일시, 비고가 있으면 마지막 줄(시안 2026-11-27 · #360). */}
         <InfoFacts
           rows={[
             [
@@ -110,13 +124,13 @@ export const DetailDialog = ({
               { label: t.completedAt, value: dateTimeText(workOrder.completedAt) },
               { label: t.closedAt, value: dateTimeText(workOrder.closedAt) },
             ],
+            remarksRow(workOrder.remarks),
           ]}
         />
-        <InfoLong label={t.remarks} value={textOr(workOrder.remarks)} />
 
         <CrewSections crew={crew.data} isLoading={crew.isLoading} isError={crew.isError} />
 
-        {/* 4M 변경품이 이 W/O 에 투입됐는지(omf-all-around#63 2단계) — 없으면 없다고 적는다. */}
+        {/* 4M 변경 자재가 이 W/O 에 투입됐는지(omf-all-around#63 2단계) — 없으면 「내역 없음」 한 줄. */}
         <FourMInputsPanel workOrderId={workOrder.workOrderId} />
       </>
     )}

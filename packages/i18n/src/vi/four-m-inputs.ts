@@ -1,8 +1,8 @@
 export const fourMInputs = {
-  heading: 'Vật tư thay đổi 4M đã đưa vào',
+  heading: 'Danh sách vật tư thay đổi 4M đã đưa vào',
   loading: 'Đang tải vật tư thay đổi 4M đã đưa vào.',
   loadFailed: 'Không tải được vật tư thay đổi 4M đã đưa vào.',
-  none: 'Lệnh sản xuất này chưa đưa vào hàng thay đổi 4M.',
+  none: 'Không có vật tư thay đổi 4M đã đưa vào',
   columns: {
     lot: 'LOT vật tư',
     changeType: 'Loại thay đổi',

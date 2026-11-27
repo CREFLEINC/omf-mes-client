@@ -55,9 +55,9 @@ const stub = (items: unknown[]) =>
     },
   ]);
 
-/** omf-all-around#63 2단계 — 작업지시에 투입된 자재 중 4M 변경품만 보인다. */
+/** omf-all-around#63 2단계 — 작업지시에 투입된 자재 중 4M 변경 자재만 보인다. */
 describe('FourMInputsPanel', () => {
-  it('4M 변경품으로 적힌 투입만 LOT 번호·변경 종류·내용으로 보인다', async () => {
+  it('4M 변경 자재로 적힌 투입만 LOT 번호·변경 종류·내용으로 보인다', async () => {
     renderWithProviders(<FourMInputsPanel workOrderId={70} />, {
       fetch: stub([
         consumption(1, 11, { changeTypeCode: 'MATERIAL', remarks: '공급처 변경' }),
@@ -70,14 +70,18 @@ describe('FourMInputsPanel', () => {
     expect(await screen.findByText('자재')).toBeInTheDocument();
     expect(screen.getByText('공급처 변경')).toBeInTheDocument();
     expect(screen.getAllByRole('row')).toHaveLength(2);
+    expect(screen.getByRole('heading', { name: t.heading })).toBeInTheDocument();
+    expect(screen.getByText(messages.common.paneList.count(1))).toBeInTheDocument();
   });
 
-  it('투입된 4M 변경품이 없으면 없다고 적는다', async () => {
+  it('투입된 4M 변경 자재가 없으면 「내역 없음」 한 줄만 적는다 — 제목 · 빈 표 없이', async () => {
     renderWithProviders(<FourMInputsPanel workOrderId={70} />, {
       fetch: stub([consumption(2, 12)]),
       session: null,
     });
 
     expect(await screen.findByText(t.none)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: t.heading })).not.toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 });
