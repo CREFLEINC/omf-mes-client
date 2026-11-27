@@ -157,11 +157,6 @@ export const toolMaster: Translated<typeof ko.toolMaster> = {
     disposeUnavailable:
       'Danh sách giá trị trạng thái tài sản chưa sẵn sàng nên chưa thể xử lý thanh lý.',
   },
-  notes: {
-    /** ⭐ 막지 않고 알린다 — 막으면 나중에 채우는 길이 사라진다. */
-    guaranteedMissingBlocksShotAxis:
-      'Nếu số nhát dập đảm bảo để trống thì không tính được số nhát dập khả dụng và tỷ lệ vượt, và bảo trì phòng ngừa không đến hạn theo số nhát dập.',
-  },
   validation: {
     required: 'Mục bắt buộc.',
     codeBlank: 'Không thể tạo mã công cụ chỉ bằng khoảng trắng.',

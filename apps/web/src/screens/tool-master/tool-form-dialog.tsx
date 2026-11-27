@@ -15,7 +15,6 @@ import {
   ensureOption,
   selectableOptions,
   usesDateAxis,
-  usesShotAxis,
 } from './code-options';
 import { SelectField } from './select-field';
 import { availableShots, shotUsage, type ShotTarget } from './shot-counts';
@@ -215,22 +214,13 @@ export const ToolFormDialog = ({
               error={fieldErrors.cavityCount}
             />
 
-            {/*
-             * ⭐ **비워 두는 것을 막지 않는다** — 「적정 타수 미설정」 조회 조건이 그 상태를 전제한다.
-             * 대신 비어 있을 때 **무엇이 서지 않는지**를 말한다. 타발수 축을 쓰기로 해 놓고 비워 둔
-             * 경우가 그 말이 가장 필요한 자리다.
-             */}
+            {/* 비워 두는 것을 막지 않는다 — 「적정 타수 미설정」 조회 조건이 그 상태를 전제한다. 칸 아래 안내는 걷었다(사용자 지시 · #360). */}
             <TextField
               label={t.fields.guaranteedShotCount}
               placeholder={t.form.guaranteedShotCountPlaceholder}
               inputMode="numeric"
               value={values.guaranteedShotCount}
               onChange={(event) => onChange({ guaranteedShotCount: event.target.value })}
-              helperText={
-                values.guaranteedShotCount.trim() === '' && usesShotAxis(values.pmTriggerTypeCode)
-                  ? t.notes.guaranteedMissingBlocksShotAxis
-                  : undefined
-              }
               error={fieldErrors.guaranteedShotCount}
             />
 

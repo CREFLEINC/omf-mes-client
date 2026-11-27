@@ -180,14 +180,6 @@ export const toolMaster = {
      */
     disposeUnavailable: '등록된 자산 상태가 없어 폐기할 수 없습니다.',
   },
-  notes: {
-    /**
-     * ⭐ **막지 않고 알린다.** 「적정타수 없는 것만」 조회 조건이 있다는 것은 이 상태로 저장하는
-     * 것을 **업무가 허용한다**는 뜻이다 — 막으면 나중에 채우는 길이 사라진다.
-     */
-    guaranteedMissingBlocksShotAxis:
-      '적정타수가 비어 있으면 사용 가능 타수와 초과율을 셀 수 없고, 타발수로는 예방보전이 도래하지 않습니다.',
-  },
   validation: {
     required: '필수 항목입니다.',
     codeBlank: '공백만으로는 툴코드를 만들 수 없습니다.',

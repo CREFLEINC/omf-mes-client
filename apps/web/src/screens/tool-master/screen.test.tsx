@@ -1158,46 +1158,14 @@ describe('W-05-13 툴 마스터 — 예방보전 주기 짝', () => {
     expect(screen.getByRole('textbox', { name: /예방보전 주기 간격/ })).toHaveValue('6');
   });
 
-  /*
-   * ⭐ **막지 않고 알린다.** 「적정타수 없는 것만」 조회 조건이 이 상태를 전제한다 —
-   * 다만 타발수로 판정하겠다고 해 놓고 비워 두면 그 축이 서지 않는다는 사실은 말해야 한다.
-   */
-  it('타발수 축인데 적정타수가 비면 무엇이 서지 않는지 말한다', async () => {
+  /* 적정타수 칸 아래 안내 문구는 두지 않는다(사용자 지시 · #360) — 비워 두는 것은 종전처럼 막지 않는다. */
+  it('적정타수가 비어도 칸 아래 안내 문구를 붙이지 않는다', async () => {
     const { user } = renderScreen();
 
     await openEditOf(user, 'TL-04');
-
-    expect(screen.getByText(t.notes.guaranteedMissingBlocksShotAxis)).toBeInTheDocument();
-  });
-
-  it('적정타수를 채우면 그 안내가 사라진다', async () => {
-    const { user } = renderScreen();
-
-    await openEditOf(user, 'TL-04');
-    await user.type(screen.getByRole('textbox', { name: /적정타수/ }), '100000');
-
-    expect(screen.queryByText(t.notes.guaranteedMissingBlocksShotAxis)).not.toBeInTheDocument();
-  });
-
-  /*
-   * 적정타수가 비어 있는 것만으로는 안내를 붙이지 않는다 — 타발수로 판정하지 않는 툴에는
-   * 그 축이 서지 않는다는 말이 뜻이 없다. **비었다**와 **비어서 축이 안 선다**는 다른 사실이다.
-   */
-  it('타발수 축이 아니면 적정타수가 비어도 안내를 붙이지 않는다', async () => {
-    const dateOnly = makeTool(7001, 'TL-01', {
-      pmTriggerTypeCode: 'DATE',
-      pmCycleInterval: 6,
-      pmCycleUnitCode: 'MONTH',
-    });
-    const { user } = renderScreen({
-      respondTools: () => jsonResponse(toolsResponse([dateOnly])),
-      respondDetail: () => jsonResponse(toolDetail(dateOnly), { headers: { ETag: '9' } }),
-    });
-
-    await openEditOf(user, 'TL-01');
 
     expect(within(formDialog()).getByRole('textbox', { name: /적정타수/ })).toHaveValue('');
-    expect(screen.queryByText(t.notes.guaranteedMissingBlocksShotAxis)).not.toBeInTheDocument();
+    expect(screen.queryByText(/사용 가능 타수와 초과율을 셀 수 없고/u)).not.toBeInTheDocument();
   });
 
   /*
