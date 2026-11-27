@@ -161,11 +161,29 @@ export const shipmentConfirm: Translated<typeof ko.shipmentConfirm> = {
     confirm: 'Xác nhận',
   },
   cancelDialog: {
-    title: 'Yêu cầu hủy xuất hàng',
+    title: 'Gửi phê duyệt hủy xuất hàng?',
     target: (shipmentNo: string): string => `Sẽ yêu cầu hủy ${shipmentNo}.`,
-    approvalNote: 'Yêu cầu sẽ được đưa lên phê duyệt. Được duyệt rồi thì việc hủy mới chạy.',
-    hold: 'Sau khi yêu cầu, lô xuất hàng này sẽ không được gửi sang ERP cho đến khi được duyệt và thực thi.',
+    shipmentNo: 'Số xuất hàng',
+    approvalNote: 'Sau khi được duyệt, hãy bấm [Thực thi hủy] thì lô xuất hàng mới bị hủy.',
+    hold: 'Khi gửi phê duyệt, việc gửi ERP của lô xuất hàng này sẽ bị tạm giữ.',
     whatTitle: 'Khi việc hủy được thực thi',
+    effectsTitle: 'Thay đổi sau khi hủy xuất hàng',
+    effects: {
+      stockLabel: 'Tồn kho: ',
+      stock: (qty: string, warehouses: string): string =>
+        `Khôi phục số lượng đã xuất ${qty} về kho xuất (${warehouses}).`,
+      documentsLabel: 'Phiếu xuất kho: ',
+      documents: 'Hủy phiếu và xóa phần chờ gửi ERP.',
+      salesOrderLabel: 'Đơn bán hàng: ',
+      salesOrder: 'Trừ đi đúng số lượng của lần xuất hàng này.',
+      requestLabel: 'Lệnh xuất hàng: ',
+      request: (shipmentRequestNo: string): string =>
+        `Đưa ${shipmentRequestNo} về trạng thái trước khi hoàn tất xuất hàng.`,
+    },
+    records: {
+      title: 'Bản ghi lấy hàng và kiểm tra',
+      body: 'Bản ghi lấy hàng và OQC được giữ lại. Các LOT đã lấy được đặt giữ lại; LOT nào không đặt giữ được sẽ hiện là chưa đặt giữ.',
+    },
     what: {
       stock: (qty: number, warehouses: string): string =>
         `${String(qty)} tồn kho trở về đúng vị trí đã trừ (${warehouses}).`,
@@ -182,7 +200,7 @@ export const shipmentConfirm: Translated<typeof ko.shipmentConfirm> = {
     erpAlreadySent:
       'Không gửi được yêu cầu hủy. Trong lúc yêu cầu, việc gửi ERP đã xong trước — đã gửi sang ERP rồi. Hãy xử lý ở phía ERP.',
     cancel: 'Đóng',
-    submit: 'Yêu cầu hủy',
+    submit: 'Gửi phê duyệt hủy',
   },
   executeDialog: {
     title: 'Thực thi hủy xuất hàng',
