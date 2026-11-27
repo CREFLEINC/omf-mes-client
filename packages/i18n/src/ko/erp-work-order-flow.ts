@@ -34,7 +34,7 @@ const steps = {
 
 /** 생산계획 단계의 버튼 이름. 사유 칩 도움말이 같은 이름으로 가리킨다. */
 const planButtons = {
-  add: '계획 추가',
+  add: '수동 분배',
   confirm: '계획 확정 후 4M 배정',
 } as const;
 

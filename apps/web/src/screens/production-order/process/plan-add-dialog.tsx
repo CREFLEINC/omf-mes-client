@@ -92,7 +92,7 @@ export const PlanAddDialog = ({
   return (
     <Dialog
       open
-      title="계획 추가"
+      title="수동 분배"
       className="erp-wo-plan-add-dialog"
       closeOnBackdropClick={false}
       onClose={onClose}
