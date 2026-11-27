@@ -857,7 +857,7 @@ describe('쪽 이동', () => {
     fillDocumentTypes();
     renderScreen([listRoute(documentProgressFixtures, { total: 120 })], `?ty=${SELECTABLE_TYPE}`);
 
-    expect(await screen.findByText(t.pageNav.range(1, 4, 120))).toBeInTheDocument();
+    expect(await screen.findByText(messages.screenPatterns.pageNav.total(120))).toBeInTheDocument();
   });
 
   /* 조건이 바뀌면 첫 쪽으로 되돌린다 — 3쪽을 보다 좁히면 결과가 3쪽에 못 미친다. */

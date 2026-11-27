@@ -721,7 +721,7 @@ describe('NotificationCenterScreen — 쪽 이동', () => {
 
     await waitForCards();
 
-    expect(screen.getByText(t.pageNav.range(1, 3, 137))).toBeInTheDocument();
+    expect(screen.getByText(messages.screenPatterns.pageNav.total(137))).toBeInTheDocument();
   });
 
   it('다음을 누르면 쪽이 주소와 요청에 함께 실린다', async () => {

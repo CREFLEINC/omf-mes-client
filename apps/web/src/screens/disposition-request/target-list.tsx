@@ -122,7 +122,7 @@ export const TargetList = ({
           empty={empty}
         />
       </div>
-      <PageNav view={page} label={t.page.label} onChange={onChangePage} />
+      <PageNav view={page} onChange={onChangePage} />
     </div>
   );
 };

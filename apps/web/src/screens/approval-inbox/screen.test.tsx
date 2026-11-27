@@ -690,7 +690,8 @@ describe('쪽 이동', () => {
     await waitForList();
 
     /* 서버가 첫 쪽을 줬으므로 범위도 첫 쪽의 것이고 이전으로 갈 수 없다. */
-    expect(screen.getByText('1–4 / 전체 45건')).toBeInTheDocument();
+    expect(screen.getByText('총 45건')).toBeInTheDocument();
+    expect(screen.getByText('1 / 3')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.actions.prevPage })).toBeDisabled();
   });
 
