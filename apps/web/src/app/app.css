@@ -304,17 +304,28 @@ main > * + * {
 }
 
 /* 재고 현황 조회 줄 — 창고 이름 오른쪽 같은 줄의 조회 잠금 사유(사용자 지시 2026-11-27 · #360). 라벨 줄 높이를 늘리지 않게 작게. */
+/* 안내가 다음 줄로 내려가지 않게 — 창고 이름 오른쪽 한 줄에 둔다. */
+.field-label:has(> .stock-status-label-hint) {
+  white-space: nowrap;
+}
+
+/* 안내가 있는 조회 줄은 라벨 줄을 안내 높이로 맞춘다 — 옆 칸(품목)과 선택칸 윗선이 같고, 안내와 선택칸 사이가 띈다. */
+.filter-bar:has(.stock-status-label-hint) .field-label {
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+}
+
 .field-label > .stock-status-label-hint {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  margin: 0 0 0 var(--space-2);
+  margin: 0 0 0 var(--space-1);
   padding: 0 var(--space-2);
   white-space: nowrap;
   font: var(--type-label-sm);
   vertical-align: middle;
-  /* 라벨 줄 높이를 키우지 않는다 — 옆 칸(품목) 입력칸과 윗선을 맞춘다. */
-  margin-block: calc(-1 * var(--space-2));
+  padding-block: 2px;
 }
 
 /* 이 폼의 라벨 줄은 안내 라벨 높이에 맞춘다 — 한 칸만 높아져 옆 칸과 입력칸 윗선이 어긋나지 않게. */
