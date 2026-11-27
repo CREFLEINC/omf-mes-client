@@ -21,6 +21,8 @@ export interface SelectFieldProps {
   /** 인라인 오류. **지금 고칠 수 있는 것**이라 안내·잠긴 사유보다 앞선다. */
   error?: string;
   placeholder?: string;
+  /** 칸 이름 옆 ⓘ 설명(#360). */
+  info?: string;
 }
 
 /**
@@ -46,6 +48,7 @@ export const SelectField = ({
   note,
   error,
   placeholder,
+  info,
 }: SelectFieldProps) => {
   const fallbackId = useId();
   const id = idProp ?? fallbackId;
@@ -64,7 +67,7 @@ export const SelectField = ({
 
   return (
     <div className="field-cell">
-      <FieldLabel htmlFor={id} label={label} required={required} />
+      <FieldLabel htmlFor={id} label={label} required={required} info={info} />
       <Select
         id={id}
         options={options}

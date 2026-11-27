@@ -212,7 +212,6 @@ export const collectionChannel = {
     unmapAction: '연결 해제',
     /** 「대상 검사 항목」 옆 ⓘ — 이어 두지 않았을 때 무슨 일이 나는지(#360: 값 자리에는 「미지정」만). */
     legendInfo: '검사 항목을 이어 두지 않으면 이 채널로 들어오는 값은 저장되지 않고 버려집니다.',
-    unmapped: '미지정',
     /**
      * ⛔ **아는 척하지 않는다.** 목록도 상세도 항목의 이름을 내려주지 않아, 이어 둔 것이
      * «무엇인지» 화면이 알 수 없다. 감추면 사용자는 확인했다고 믿는다.
@@ -222,7 +221,6 @@ export const collectionChannel = {
      */
     mappedUnknown:
       '검사 항목이 이어져 있습니다. 어느 항목인지는 이 화면에서 확인할 수 없으니, 확인하려면 아래에서 다시 고르세요.',
-    mappedKnown: (name: string): string => `이 채널의 값은 ${name} 항목으로 갑니다.`,
     noVersions: '이 검사 기준에는 아직 버전이 없습니다.',
     noItems: '이 버전에는 아직 검사 항목이 없습니다.',
     plansLoadFailed: '검사 기준 목록을 불러오지 못했습니다.',

@@ -1,8 +1,12 @@
+import { InfoTip } from '../../patterns/info-tip';
+
 export interface FieldLabelProps {
   /** 이 라벨이 가리키는 컨트롤의 id */
   htmlFor: string;
   label: string;
   required?: boolean;
+  /** 이름 옆 ⓘ 에 올리면 보이는 설명(#360). */
+  info?: string;
 }
 
 /**
@@ -18,7 +22,7 @@ export interface FieldLabelProps {
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const FieldLabel = ({ htmlFor, label, required = false }: FieldLabelProps) => (
+export const FieldLabel = ({ htmlFor, label, required = false, info }: FieldLabelProps) => (
   <span className="field-label">
     <label htmlFor={htmlFor}>{label}</label>
     {required && (
@@ -26,5 +30,6 @@ export const FieldLabel = ({ htmlFor, label, required = false }: FieldLabelProps
         {' *'}
       </span>
     )}
+    {info !== undefined && <InfoTip text={info} />}
   </span>
 );

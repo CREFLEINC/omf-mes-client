@@ -264,7 +264,9 @@ describe('W-05-07 ③ — 세 칸을 차례로 좁힌다', () => {
     expect(dialog().getByRole('combobox', { name: t.itemPicker.itemLabel })).toBeEnabled();
     await choose(t.itemPicker.itemLabel, /사이클 타임/);
 
-    expect(dialog().getByText(t.itemPicker.mappedKnown('사이클 타임'))).toBeInTheDocument();
+    expect(dialog().getByRole('combobox', { name: t.itemPicker.itemLabel })).toHaveTextContent(
+      /사이클 타임/,
+    );
   });
 
   /**
@@ -380,11 +382,13 @@ describe('W-05-07 ③ — 잇고 끊는다', () => {
     expect('inspectionItemId' in (await bodyOf(onlyWrite(writes)))).toBe(false);
   });
 
-  it('잇지 않은 채널의 창은 값이 버려진다고 말한다', async () => {
+  /* 「미지정」 줄은 걷었다(#360) — 값이 버려진다는 말은 「검사 기준」 옆 ⓘ 에 있다. */
+  it('잇지 않은 채널의 창은 상태 줄 없이 고르는 칸만 낸다', async () => {
     renderScreen();
     await openCreate();
 
-    expect(dialog().getByText(t.itemPicker.unmapped)).toBeInTheDocument();
+    expect(dialog().getByRole('combobox', { name: t.itemPicker.planLabel })).toBeInTheDocument();
+    expect(dialog().queryByText(t.itemPicker.mappedUnknown)).not.toBeInTheDocument();
   });
 
   /** ⛔ 아는 척하지 않는다 — 이어 둔 것이 «무엇인지» 계약으로는 되찾을 수 없다. */
@@ -409,7 +413,6 @@ describe('W-05-07 ③ — 잇고 끊는다', () => {
     await choose(t.itemPicker.versionLabel, /Rev 2/);
     await choose(t.itemPicker.itemLabel, /사이클 타임/);
 
-    expect(dialog().getByText(t.itemPicker.mappedKnown('사이클 타임'))).toBeInTheDocument();
     expect(dialog().queryByText(t.itemPicker.mappedUnknown)).not.toBeInTheDocument();
   });
 
@@ -423,7 +426,7 @@ describe('W-05-07 ③ — 잇고 끊는다', () => {
     await screen.findByRole('dialog');
 
     await user.click(dialog().getByRole('button', { name: t.itemPicker.unmapAction }));
-    expect(dialog().getByText(t.itemPicker.unmapped)).toBeInTheDocument();
+    expect(dialog().queryByText(t.itemPicker.mappedUnknown)).not.toBeInTheDocument();
 
     await user.click(dialog().getByRole('button', { name: messages.common.save }));
 
