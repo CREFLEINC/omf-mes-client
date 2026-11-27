@@ -3,6 +3,7 @@ import { plantToday } from '../../../patterns/plant-time';
 import { usePlanningDays, planningDayKey, PlanningDayNotice } from './planning-working-days';
 import { useId, useState } from 'react';
 import { AlertBanner, Button, DatePicker, Dialog, TextField } from '@crefle/web-ui';
+import { InfoFacts } from '../../../patterns/info-facts';
 import { Select } from '../../../patterns/select';
 import type { NewProductionPlanDefaults } from '../../production-plan/editor-state';
 import {
@@ -119,36 +120,42 @@ export const PlanAddDialog = ({
           ERP W/O와 계획일을 지정하고 추가 편성 가능한 수량 이내에서 생산량과 단위 소수 자릿수를
           확인하세요.
         </p>
-        <div className="field-cell">
-          <span className="field-label">
-            계획을 추가할 ERP W/O
-            <span className="required-mark" aria-hidden="true">
-              {' *'}
+        {/* W/O 칸 오른쪽에 「추가 편성 가능」 정보 상자(팝업 시안 · #360) — 좁으면 다음 줄로. */}
+        <div className="erp-wo-plan-add-target">
+          <div className="field-cell">
+            <span className="field-label">
+              계획을 추가할 ERP W/O
+              <span className="required-mark" aria-hidden="true">
+                {' *'}
+              </span>
             </span>
-          </span>
-          <Select
-            aria-label="계획을 추가할 ERP W/O"
-            aria-required="true"
-            value={id}
-            options={targets
-              .filter((target) => target.remaining > 0)
-              .map((target) => ({ value: target.id, label: target.label }))}
-            onChange={(id) => {
-              setId(id);
-              setDraft(makeDraft(targets.find((target) => target.id === id)));
-            }}
-          />
+            <Select
+              aria-label="계획을 추가할 ERP W/O"
+              aria-required="true"
+              value={id}
+              options={targets
+                .filter((target) => target.remaining > 0)
+                .map((target) => ({ value: target.id, label: target.label }))}
+              onChange={(id) => {
+                setId(id);
+                setDraft(makeDraft(targets.find((target) => target.id === id)));
+              }}
+            />
+          </div>
+          {target && (
+            <InfoFacts
+              className="erp-wo-plan-add-summary"
+              rows={[
+                [
+                  {
+                    label: '추가 편성 가능',
+                    value: `${formatQty(target.remaining)} ${target.unit}`,
+                  },
+                ],
+              ]}
+            />
+          )}
         </div>
-        {target && (
-          <dl className="erp-wo-plan-add-summary">
-            <div>
-              <dt>추가 편성 가능</dt>
-              <dd>
-                {formatQty(target.remaining)} {target.unit}
-              </dd>
-            </div>
-          </dl>
-        )}
         <div className="erp-wo-plan-add-fields">
           <div className="field-cell">
             <span className="field-label">

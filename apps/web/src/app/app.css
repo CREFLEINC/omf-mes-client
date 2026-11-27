@@ -37557,9 +37557,10 @@ body:has(
   padding: 0;
   border: 0;
 }
+/* 한 단계 넓게(사용자 지시 · #360) — 36rem → DS 큰 창(lg 720px = 45rem). */
 .erp-wo-plan-add-dialog {
-  width: min(36rem, calc(100vw - 2rem));
-  max-width: 36rem;
+  width: min(45rem, calc(100vw - 2rem));
+  max-width: 45rem;
 }
 .erp-wo-plan-add-form > .field-cell {
   display: grid;
@@ -37593,23 +37594,23 @@ body:has(
   text-align: left;
   justify-content: flex-start;
 }
-.erp-wo-plan-add-summary {
+/* W/O 선택칸 + 오른쪽 「추가 편성 가능」 정보 상자(`.info-facts`) 한 줄 — 좁으면 상자가 다음 줄로. */
+.erp-wo-plan-add-target {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3) var(--space-5);
-  margin: 0;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
 }
-.erp-wo-plan-add-summary > div {
+.erp-wo-plan-add-target > .field-cell {
   display: grid;
-  gap: var(--space-1);
+  grid-template-columns: minmax(0, 1fr);
+  flex: 1 1 20rem;
+  min-width: 0;
 }
-.erp-wo-plan-add-summary dt {
-  color: var(--on-surface-muted);
-  font: var(--type-label-sm);
-}
-.erp-wo-plan-add-summary dd {
+.erp-wo-plan-add-target > .info-facts.erp-wo-plan-add-summary {
+  flex: 0 0 auto;
   margin: 0;
-  font-variant-numeric: tabular-nums;
+  padding-block: var(--space-2);
 }
 @media (max-width: 32rem) {
   .erp-wo-plan-add-fields {
