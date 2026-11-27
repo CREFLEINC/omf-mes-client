@@ -66,12 +66,20 @@ export const ResultPane = ({ publishBlockReason, banner, created, onPublish }: R
       {banner}
 
       {/*
-       * 잠긴 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더해 `aria-describedby`로 잇는다
-       * (배치 규범 4) — 잠긴 버튼은 포커스를 받지 못해 툴팁만으로는 닿을 수 없다.
+       * 잠긴 사유는 `aria-describedby`로 잇는다. 입력으로 풀 수 없는 잠금(생산 창고 없음 · 이미 발행)만
+       * 보이는 글로 두고, 나머지는 화면 읽기 도구에만 둔다(사용자 지시 2026-11-27 · #360).
        */}
       <div className="material-issue-request-publish-row">
         {publishBlockReason !== null && (
-          <span id={reasonId} className="field-note">
+          <span
+            id={reasonId}
+            className={
+              publishBlockReason === t.sourceWarehouse.none ||
+              publishBlockReason === t.actionReasons.alreadyPublished
+                ? 'field-note'
+                : 'visually-hidden'
+            }
+          >
             {publishBlockReason}
           </span>
         )}
