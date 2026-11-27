@@ -180,7 +180,7 @@ describe('모바일 홈 남은 작업 배지(피처 002)', () => {
 
     await waitFor(() => expect(counted).toHaveLength(1));
     expect(screen.queryByText(t.workCount.left)).toBeNull();
-    expect(screen.getByRole('link', { name: areaName })).toHaveTextContent(t.areas.count(6));
+    expect(screen.getByRole('link', { name: areaName })).toHaveTextContent(t.areas.count(7));
   });
 
   it('FR-018 조회가 실패하면 배지를 숨기고 오류 문구 없이 업무 줄은 그대로 누를 수 있다', async () => {

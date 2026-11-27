@@ -274,7 +274,7 @@ describe('작업 목록', () => {
       'href',
       '/putaway',
     );
-    expect(within(list).getAllByRole('link')).toHaveLength(6);
+    expect(within(list).getAllByRole('link')).toHaveLength(7);
   });
 
   it('FR-003 · D-6 창고 업무에 「적치 기록」이 적치·입고 완료 바로 다음에 나타난다', async () => {
