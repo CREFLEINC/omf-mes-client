@@ -1,4 +1,4 @@
-import { Button, Checkbox, Icon, IconButton, Table, TextField, type Column } from '@crefle/web-ui';
+import { Button, Checkbox, IconButton, Table, TextField, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { InfoTip } from '../../patterns/info-tip';

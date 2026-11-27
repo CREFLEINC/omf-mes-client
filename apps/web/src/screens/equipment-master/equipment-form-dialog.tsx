@@ -136,6 +136,8 @@ export const EquipmentFormDialog = ({
 }: EquipmentFormDialogProps) => {
   const hierarchyLabelId = useId();
   const calibrationNoteId = useId();
+  const lockedNoteId = useId();
+  const isDisposed = statusCode === DISPOSED_STATUS_CODE;
 
   /** 주기는 «둘 다» 있어야 성립한다 — 계약이 그렇게 짝을 묶었다. */
   const hasCalibrationCycle =
@@ -156,14 +158,20 @@ export const EquipmentFormDialog = ({
             {messages.common.cancel}
           </Button>
           {/* 폐기한 설비는 서버가 수정을 거절한다(STATE_LOCKED) — 저장을 잠그고 이유는 마우스를 올리면 보인다(#360 점검). */}
-          <span title={statusCode === DISPOSED_STATUS_CODE ? t.dispose.lockedReason : undefined}>
+          <span title={isDisposed ? t.dispose.lockedReason : undefined}>
             <Button
               loading={isSaving}
-              disabled={isSaving || statusCode === DISPOSED_STATUS_CODE}
+              disabled={isSaving || isDisposed}
+              aria-describedby={isDisposed ? lockedNoteId : undefined}
               onClick={onSave}
             >
               {messages.common.save}
             </Button>
+            {isDisposed && (
+              <span id={lockedNoteId} className="visually-hidden">
+                {t.dispose.lockedReason}
+              </span>
+            )}
           </span>
         </>
       }

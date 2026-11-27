@@ -252,7 +252,7 @@ export const SuspiciousMaterialHoldInputPane = ({
             />
           )}
         </div>
-        <div className="field-cell suspicious-material-hold-reason">
+        <div className="field-cell">
           <span className="field-label">
             <label htmlFor={reasonId}>{t.reason}</label>
             {/* 보류 사유 · 해제 조건은 등록을 막는 필수 칸이다 — 이름 옆 빨간 *(라벨 밖 · 화면 규칙). */}

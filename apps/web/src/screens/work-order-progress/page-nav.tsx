@@ -1,5 +1,3 @@
-import { messages } from '@omf-mes/i18n';
-
 import { PageNav as SharedPageNav } from '../../patterns/page-nav';
 import type { PageView } from './pagination';
 

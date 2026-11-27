@@ -40369,13 +40369,6 @@ body:has(
   gap: var(--space-3);
 }
 
-/* 확인 창 제목 + ⓘ(저장 안내 · omf-all-around#360) — 아이콘을 제목 줄 가운데에 맞춘다. */
-.disposition-confirm-title {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
 .disposition-confirm-rows {
   display: grid;
   grid-template-columns: max-content 1fr;
@@ -45265,10 +45258,6 @@ dialog[class*='dialog-icon-'] [class*='_header_'] > [class*='_title_'] {
 
 .dialog-icon-password {
   --dialog-title-icon: 'lock_reset';
-}
-
-.dialog-icon-inventory {
-  --dialog-title-icon: 'inventory_2';
 }
 
 .dialog-icon-unlink {

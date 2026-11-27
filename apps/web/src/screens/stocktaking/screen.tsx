@@ -563,12 +563,6 @@ export const StocktakingScreen = () => {
     },
   });
 
-  /**
-   * 위치를 고른 라벨. **결과 구획이 번호가 아니라 이름을 받는다**(#44) —
-   * 저장 성공 시점에 풀어 담아 두면 그 뒤 참조가 다시 오더라도 결과 문구가 흔들리지 않는다.
-   */
-  const locationLabel = describeReference(toReference(locations, selectedLocationId));
-
   const replace = useInventoryCountLineReplace({
     inventoryCountId: selectedCountId,
     onSuccess: (saved) => {
