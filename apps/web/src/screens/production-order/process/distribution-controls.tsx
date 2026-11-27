@@ -6,7 +6,6 @@ import {
   usePlanningDays,
   planningDayKey,
   planningDayMessage,
-  planningHolidayLabel,
   type PlanningDay,
   type PlanningDayTarget,
 } from './planning-working-days';
@@ -550,9 +549,10 @@ export const DistributionControls = ({
                           notes.push({ owner: row.owner, summary: '표준 C/T 미설정' });
                         const holidays = days.filter((day) => day.statusCode === 'HOLIDAY');
                         for (const day of holidays) {
+                          /* 결과 표 휴일 행 아래 줄 — 「정기 휴무 · 분배 포함」(시안 · #360). */
                           holidayDisplay.set(
                             `${row.owner}:${day.date}:${row.lineId}`,
-                            planningHolidayLabel(day),
+                            `${planningDayMessage(day)?.match(/\((.+)\)$/)?.[1] ?? '휴일'} · 분배 포함`,
                           );
                         }
                         if (row.mode === 'equal' && holidays.length)
@@ -561,16 +561,6 @@ export const DistributionControls = ({
                             summary: `휴일 ${row.includeHolidays ? '포함' : '제외'} ${holidays.length}일`,
                             dates: holidays.map((day) => day.date),
                           });
-                        if (row.mode === 'daily')
-                          holidays
-                            .filter((day) => Number(row.daily[day.date]) > 0)
-                            .forEach((day) =>
-                              notes.push({
-                                owner: row.owner,
-                                summary: planningDayMessage(day) ?? '휴일',
-                                dates: [day.date],
-                              }),
-                            );
                         const unknown = days.filter(
                           (day) => day.statusCode === 'UNDETERMINED',
                         ).length;
@@ -1217,6 +1207,21 @@ export const DistributionControls = ({
                                     </tr>
                                   </tbody>
                                 </table>
+                                {/* 7일 넘으면 쪽 이동은 표 상자 안, 표 바로 아래(#360). */}
+                                {dates.length > 7 && (
+                                  <div className="erp-wo-daily-table-nav">
+                                    <PageNav
+                                      meta={{
+                                        page: visibleDailyPage,
+                                        size: 7,
+                                        total: dates.length,
+                                      }}
+                                      onChangePage={(page) =>
+                                        setDailyPages((current) => ({ ...current, [row.id]: page }))
+                                      }
+                                    />
+                                  </div>
+                                )}
                                 <div className="erp-wo-daily-table-foot">
                                   <span role="status">
                                     {resolved
@@ -1245,14 +1250,6 @@ export const DistributionControls = ({
                             ) : (
                               <p className="field-note">시작일과 종료일을 확인하세요.</p>
                             ))}
-                          {row.mode === 'daily' && dates.length > 7 && (
-                            <PageNav
-                              meta={{ page: visibleDailyPage, size: 7, total: dates.length }}
-                              onChangePage={(page) =>
-                                setDailyPages((current) => ({ ...current, [row.id]: page }))
-                              }
-                            />
-                          )}
                           {resolved && row.mode === 'equal' && (
                             <p className="erp-wo-distribution-calendar-summary" role="status">
                               {calendarSummary({
@@ -1383,7 +1380,12 @@ export const DistributionControls = ({
                             const existingQty = existingByResultKey.get(key) ?? 0;
                             const addedQty = Number(row.plannedQty);
                             return (
-                              <tr key={key}>
+                              <tr
+                                key={key}
+                                className={
+                                  row.holidayLabel ? 'erp-wo-result-holiday-row' : undefined
+                                }
+                              >
                                 <td>
                                   {row.planDate}
                                   {row.holidayLabel && (

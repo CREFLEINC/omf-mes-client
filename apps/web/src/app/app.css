@@ -43489,3 +43489,28 @@ main > .pane.notification-center-pane {
 .erp-wo-daily-table-foot strong {
   color: var(--on-surface);
 }
+
+/* 결과 검토 휴일 행(시안 · #360) — 연한 노란 바탕 + 왼쪽 주황 막대, 날짜 아래 「정기 휴무 · 분배 포함」. */
+.erp-wo-distribution-dialog .erp-wo-distribution-result-table tr.erp-wo-result-holiday-row > td {
+  background: var(--semantic-warning-container);
+}
+.erp-wo-distribution-dialog
+  .erp-wo-distribution-result-table
+  tr.erp-wo-result-holiday-row
+  > td:first-child {
+  box-shadow: inset 4px 0 var(--semantic-warning);
+}
+.erp-wo-distribution-dialog .erp-wo-result-holiday-row .erp-wo-holiday-day-label {
+  margin: var(--space-1) 0 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+.erp-wo-daily-table-nav {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+.erp-wo-daily-table-nav > * {
+  margin: 0;
+}
