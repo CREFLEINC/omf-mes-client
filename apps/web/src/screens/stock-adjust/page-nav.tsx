@@ -1,6 +1,6 @@
-import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { PageNav as SharedPageNav } from '../../patterns/page-nav';
 import type { PageMeta } from './types';
 
 const t = messages.stockAdjust;
@@ -17,6 +17,9 @@ const t = messages.stockAdjust;
 export interface PageView {
   /** 1부터 센 현재 쪽 */
   page: number;
+  /** 한 쪽 건수 · 전체 건수 — 공용 쪽 이동 줄(총 N건 · n / m)에 그대로 넘긴다(#360). */
+  size: number;
+  total: number;
   totalPages: number;
   /** 「51–100 / 전체 120건」 */
   rangeLabel: string;
@@ -36,6 +39,8 @@ export const toPageView = (meta: PageMeta, shown: number): PageView => {
 
   return {
     page,
+    size,
+    total: meta.total,
     totalPages,
     /* 보이는 것이 없으면 범위를 지어내지 않는다. 전체 건수는 그대로 밝힌다. */
     rangeLabel:
@@ -59,38 +64,14 @@ export interface PageNavProps {
 }
 
 /**
- * 쪽 이동 — 이전·다음과 지금 위치뿐이다.
- *
- * **쪽 번호 목록(1 2 3 … 10)을 만들지 않는다.** 생략 기호가 있는 번호 목록은 자기만의 생략
- * 규칙·현재 위치 표시·키보드 이동 규약을 갖는 별도의 부품이 되고, 지난 조정을 되찾는 데
- * 「7쪽으로 점프」는 정상 경로가 아니다 — 사유·실사·전기일로 좁히는 것이 정상 경로다.
- *
- * 배치는 이미 있는 「하단 액션 줄」을 그대로 쓴다. 새 클래스를 만들지 않는다.
- *
- * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
+ * 쪽 이동 — 공용 쪽 이동 줄(총 N건 · [처음] [이전] n / m [다음] [마지막])로 그린다. 1쪽뿐이거나
+ * 0건이어도 늘 보인다(단추는 잠긴 채 · #360). 쪽 크기는 이 화면이 서버에 정해진 값으로 보내므로
+ * 고르는 칸을 두지 않는다 — 넘기는 page · size 는 그대로다.
  */
 export const PageNav = ({ view, isLocked = false, onChange }: PageNavProps) => (
-  <nav className="form-actions" aria-label={t.pageNav.label}>
-    <p className="field-note form-actions-secondary">{view.rangeLabel}</p>
-    <Button
-      variant="outlined"
-      size="sm"
-      disabled={!view.canPrev || isLocked}
-      onClick={() => {
-        onChange(view.page - 1);
-      }}
-    >
-      {t.actions.prevPage}
-    </Button>
-    <Button
-      variant="outlined"
-      size="sm"
-      disabled={!view.canNext || isLocked}
-      onClick={() => {
-        onChange(view.page + 1);
-      }}
-    >
-      {t.actions.nextPage}
-    </Button>
-  </nav>
+  <SharedPageNav
+    meta={{ page: view.page, size: view.size, total: view.total }}
+    disabled={isLocked}
+    onChangePage={onChange}
+  />
 );

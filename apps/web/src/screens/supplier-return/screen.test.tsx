@@ -1085,7 +1085,7 @@ describe('SupplierReturnScreen — 수명 표', () => {
     await refresh(user);
 
     await waitFor(() => {
-      expect(screen.getByText(t.pageNav.range(1, 3, 5))).toBeInTheDocument();
+      expect(screen.getByText(messages.screenPatterns.pageNav.total(5))).toBeInTheDocument();
     });
 
     expect(screen.getByLabelText(t.fields.q)).toHaveValue('GR-2026');

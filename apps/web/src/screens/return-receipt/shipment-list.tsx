@@ -136,7 +136,7 @@ export const ShipmentList = ({
         rows={rows}
         getRowId={(row) => String(row.shipmentId)}
       />
-      <PageNav view={page} label={t.panes.search} onChange={onChangePage} />
+      <PageNav view={page} onChange={onChangePage} />
     </div>
   );
 };

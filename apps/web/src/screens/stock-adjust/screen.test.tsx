@@ -5750,7 +5750,9 @@ describe('StockAdjustScreen — 이력 조회', () => {
     await waitForCounts();
     await openHistoryTab(user);
 
-    await user.click(await screen.findByRole('button', { name: t.actions.nextPage }));
+    await user.click(
+      await screen.findByRole('button', { name: messages.screenPatterns.pageNav.next }),
+    );
 
     await waitFor(() => {
       expect(adjustmentRequests(requests)).toHaveLength(2);
