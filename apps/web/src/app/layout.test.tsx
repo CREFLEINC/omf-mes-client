@@ -1121,7 +1121,7 @@ describe('AppLayout', () => {
     renderLayout('본문 내용');
 
     /* 짝 양성 — 상단 바는 실제로 서 있고 브랜드를 담는다. */
-    expect(within(topbar()).getByText('OMF-MES 관리웹')).toBeInTheDocument();
+    expect(within(topbar()).getByText('SAMJINLND VINA MES 관리웹')).toBeInTheDocument();
     expect(within(topbar()).queryByRole('link', { name: /알림/ })).not.toBeInTheDocument();
     expect(within(topbar()).queryByRole('status')).not.toBeInTheDocument();
   });
@@ -1135,7 +1135,9 @@ describe('AppLayout', () => {
   it('상단바에 브랜드가 보인다', () => {
     renderLayout('본문 내용');
 
-    expect(within(screen.getByRole('banner')).getByText('OMF-MES 관리웹')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('banner')).getByText('SAMJINLND VINA MES 관리웹'),
+    ).toBeInTheDocument();
   });
 });
 
@@ -1151,7 +1153,7 @@ describe('AppLayout — 로그인 사용자 표시', () => {
     renderLayout('본문 내용');
 
     /* 짝 양성 — 상단 바는 실제로 그려졌다. */
-    expect(within(topbar()).getByText('OMF-MES 관리웹')).toBeInTheDocument();
+    expect(within(topbar()).getByText('SAMJINLND VINA MES 관리웹')).toBeInTheDocument();
 
     expect(within(topbar()).queryByText(SYNTHETIC_USER_NAME)).not.toBeInTheDocument();
     expect(within(topbar()).queryByText(/알 수 없음|게스트|미로그인/)).not.toBeInTheDocument();
