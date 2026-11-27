@@ -32,33 +32,42 @@
   overflow-wrap: anywhere;
 }
 
-/* ERP 안내 줄 — 글은 왼쪽, 메뉴 이동 단추는 오른쪽 끝. 좁으면 단추가 아래 줄로 내려간다(사용자 지시 · #360). */
-.work-order-close-erp-note {
-  flex-wrap: wrap;
-  row-gap: var(--space-2);
+/*
+ * ERP 안내 줄 — 아이콘 · 글 · 메뉴 이동 단추를 한 줄에 가운데로 맞춘다(아이콘이 위로 떨어지지 않게).
+ * 단추는 안내 줄과 같은 정보 색 · 글자 크기의 작은 라벨 모양(사용자 지시 · #360).
+ */
+.iqc-inspection-action-note.work-order-close-erp-note {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.work-order-close-erp-note > svg,
+.work-order-close-erp-note > [class*='icon'] {
+  flex: none;
 }
 .work-order-close-erp-note > span {
-  flex: 1 1 14rem;
+  flex: 1 1 auto;
+  min-width: 0;
 }
-.work-order-close-erp-link {
+.work-order-close-erp-note > a.work-order-close-erp-link {
+  flex: none;
   display: inline-flex;
   align-items: center;
-  margin-left: auto;
   padding: 2px var(--space-3);
-  border: 1px solid var(--outline-variant);
+  border: 1px solid color-mix(in srgb, var(--semantic-info) 35%, transparent);
   border-radius: 999px;
   background: var(--surface);
-  color: var(--primary);
-  font-size: 0.8125rem;
+  color: var(--on-semantic-info-container);
+  font: inherit;
   font-weight: 600;
-  line-height: 1.6;
   text-decoration: none;
   white-space: nowrap;
 }
-.work-order-close-erp-link:hover {
-  background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+.work-order-close-erp-note > a.work-order-close-erp-link:hover {
+  background: color-mix(in srgb, var(--semantic-info) 10%, var(--surface));
 }
-.work-order-close-erp-link:focus-visible {
-  outline: 2px solid var(--primary);
+.work-order-close-erp-note > a.work-order-close-erp-link:focus-visible {
+  outline: 2px solid var(--semantic-info);
   outline-offset: 2px;
 }

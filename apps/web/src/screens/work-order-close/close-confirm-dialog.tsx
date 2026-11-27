@@ -74,6 +74,8 @@ export const WorkOrderCloseConfirmDialog = ({
 
   return (
     <Dialog
+      /* 제목 앞 마감 아이콘 — 다른 확인 창과 같은 규칙(#360). */
+      className="dialog-icon-lock"
       closeOnBackdropClick={false}
       footer={
         <>

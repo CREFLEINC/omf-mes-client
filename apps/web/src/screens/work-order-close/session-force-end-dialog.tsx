@@ -92,7 +92,7 @@ export const SessionForceEndDialog = ({
   return (
     <Dialog
       open
-      className="session-force-end-dialog"
+      className="session-force-end-dialog dialog-icon-cancel"
       title={t.title}
       showCloseButton={false}
       /* 되돌릴 수 없는 일 앞에서 바깥을 눌러 닫히지 않게 한다. */
