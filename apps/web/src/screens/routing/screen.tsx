@@ -1,5 +1,6 @@
 import {
   AlertBanner,
+  Button,
   Breadcrumb,
   Chip,
   EmptyState,
@@ -1181,10 +1182,6 @@ const RoutingWorkspace = () => {
                   obsoleteWrite.reset();
                   setTransition('obsolete');
                 }}
-                onDiscard={() => {
-                  discardWrite.reset();
-                  setTransition('discard');
-                }}
               />
             </section>
           )}
@@ -1306,6 +1303,23 @@ const RoutingWorkspace = () => {
                         )}
                       </Chip>
                     )}
+                  {/*
+                   * 작성 취소(저장한 작성중 Rev 삭제)는 「Rev · 작성중」 칩 오른쪽, 빨간 바탕(사용자 지시 · #360 — 종전 아래 단추 줄).
+                   * 세우는 조건 · 확인 창 · 잠금은 종전 그대로다.
+                   */}
+                  {isViewingDraft && createValues === null && formState !== null && (
+                    <Button
+                      disabled={
+                        confirmWrite.isSaving || obsoleteWrite.isSaving || discardWrite.isSaving
+                      }
+                      onClick={() => {
+                        discardWrite.reset();
+                        setTransition('discard');
+                      }}
+                    >
+                      {t.actions.discard}
+                    </Button>
+                  )}
                   {/* 폐기 개정은 고칠 수도 발행할 수도 없다 — 안내 상자 대신 라벨 하나(사용자 지시 · #231). */}
                   {isViewingObsolete && (
                     <Chip variant="status" status="idle">

@@ -2562,11 +2562,6 @@ h2:has(> .inspection-standard-dialog-title) {
   margin-left: auto;
 }
 
-/* 작성 취소 — 오른쪽 묶음 맨 앞에 두되, 입력만 되돌리는 「취소」와 헷갈리지 않게 간격을 더 띄운다(#231). */
-.routing-discard-action {
-  margin-right: var(--space-5);
-}
-
 /* 막힌 단추 옆 짧은 라벨(「공정 2건 이상 필요」 · #231) — 사유 문장은 라벨 위 마우스로 본다. */
 .disabled-action-inline {
   display: inline-flex;

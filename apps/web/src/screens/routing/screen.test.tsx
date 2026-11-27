@@ -1366,7 +1366,8 @@ describe('RoutingScreen — 작성 취소', () => {
     if (router === null) throw new Error('데이터 라우터가 없습니다');
     await screen.findByText('1차 사출');
 
-    await user.click(within(actionsRegion()).getByRole('button', { name: '작성 취소' }));
+    /* 작성 취소는 카드 머리 「Rev · 작성중」 칩 오른쪽(#360). */
+    await user.click(screen.getByRole('button', { name: '작성 취소' }));
     const dialog = await screen.findByRole('dialog', { name: 'Rev 3 작성 취소' });
     expect(requests.filter((request) => request.method === 'DELETE')).toHaveLength(0);
     await user.click(within(dialog).getByRole('button', { name: '작성 취소' }));
@@ -1392,7 +1393,7 @@ describe('RoutingScreen — 작성 취소', () => {
     );
     await screen.findByText('1차 사출');
 
-    expect(within(actionsRegion()).queryByRole('button', { name: '작성 취소' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '작성 취소' })).toBeNull();
   });
 
   it('서버가 거절하면 창을 닫지 않고 그 사유를 보인다', async () => {
@@ -1415,7 +1416,8 @@ describe('RoutingScreen — 작성 취소', () => {
     const { user } = { user: userEvent.setup() };
     await screen.findByText('1차 사출');
 
-    await user.click(within(actionsRegion()).getByRole('button', { name: '작성 취소' }));
+    /* 작성 취소는 카드 머리 「Rev · 작성중」 칩 오른쪽(#360). */
+    await user.click(screen.getByRole('button', { name: '작성 취소' }));
     const dialog = await screen.findByRole('dialog', { name: 'Rev 3 작성 취소' });
     await user.click(within(dialog).getByRole('button', { name: '작성 취소' }));
 
