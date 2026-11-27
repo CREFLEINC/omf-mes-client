@@ -21,7 +21,8 @@ export interface InspectionAssignDialogProps {
    * 이 부여가 무엇을 뜻하는지. **그룹과 설비가 다르다** — 그룹은 「지우면 풀린다」이고
    * 설비는 「지우면 소속 그룹의 것이 적용된다」다. 한 문장으로 덮으면 한쪽이 거짓이 된다.
    */
-  lead: string;
+  /** 창 위 안내 줄 — 설비 창만(그룹의 것이 적용된다는 규칙). 그룹 창은 두지 않는다(사용자 지시 · #360). */
+  lead?: string;
   /** 지금 무엇이 적용되고 있는지 — 서버가 판정한 근거다. 없으면 붙이지 않는다 */
   resolutionNote?: string;
   rows: AssignmentDraftRow[];
@@ -89,12 +90,8 @@ export const InspectionAssignDialog = ({
    * 비었다」이고, 뒤엣것은 조회가 실패한 것이다 — 셋을 같은 문구로 덮으면 사용자는 무엇을
    * 해야 할지 알 수 없다(G-9).
    */
-  const addNote = (): string | undefined => {
-    if (masterLoadFailed) return t.masterLoadFailed;
-    if (master.length === 0) return t.masterEmpty;
-
-    return selectable.length === 0 ? t.allAssigned : undefined;
-  };
+  /* 칸 아래 글은 목록을 못 불러왔을 때만 — 「마스터가 비었다 · 모두 부여했다」 안내는 걷었다(사용자 지시 · #360). */
+  const addNote = (): string | undefined => (masterLoadFailed ? t.masterLoadFailed : undefined);
 
   return (
     <Dialog
@@ -124,10 +121,12 @@ export const InspectionAssignDialog = ({
           <span>{targetCode}</span>
         </div>
         {/* ⛔ 묶음 통째 교체라는 사실을 감추지 않는다 — 안내 줄 모양(팝업 디자인 시안 · #360). */}
-        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
-          <Icon name="warning" size={16} aria-hidden />
-          {lead}
-        </p>
+        {lead !== undefined && (
+          <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+            <Icon name="warning" size={16} aria-hidden />
+            {lead}
+          </p>
+        )}
         {/* ⛔ 어디서 왔는지 말하지 않으면 사용자가 엉뚱한 자리를 고친다(B-17). */}
         {resolutionNote !== undefined && <p className="dialog-lead">{resolutionNote}</p>}
         {banner}

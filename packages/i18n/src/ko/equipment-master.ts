@@ -140,7 +140,6 @@ export const equipmentMaster = {
     editTitle: '설비 그룹 정보',
     parentNone: '없음 (최상위)',
     locationNone: '지정 없음',
-    locationNeedsPlant: '공장을 고르면 그 공장의 위치가 나옵니다.',
     departmentNone: '지정 없음',
     plantPlaceholder: '공장을 선택하세요',
     codePlaceholder: '그룹코드를 입력하세요',
@@ -266,20 +265,16 @@ export const equipmentMaster = {
      * ⛔ **묶음 통째 교체라는 사실을 감추지 않는다**(계약의 `PUT`). 「지운 줄은 지워진다」를
      * 말하지 않으면 사용자는 더한 것만 반영된다고 읽는다.
      */
-    dialogLead: '이 창에 남긴 것이 전부가 됩니다 — 지운 줄은 부여가 풀립니다.',
     addLabel: '항목 추가',
     addPlaceholder: '부여할 점검 항목을 고르세요',
     cycleTypePlaceholder: '주기 단위를 고르세요',
     cycleIntervalPlaceholder: '주기 간격을 입력하세요',
     /** 고를 것이 없는 것과 목록을 못 받은 것은 다르다 — 앞엣것만 이 문구다. */
-    allAssigned: '마스터의 점검 항목을 모두 부여했습니다.',
     /**
      * ⚠ **「어떻게 풀 것인가」를 함께 적는다**(공유계약 G-3 · 설계 회신 `omf-mes#220`).
      * 「없습니다」에서 멈추면 사용자는 어디로 가야 할지 모른다 — 만드는 자리가 «같은 화면»
      * 안이므로 그 탭 이름을 말한다.
      */
-    masterEmpty:
-      '등록된 점검 항목이 없습니다. 위의 「점검 항목」 탭에서 항목을 만든 뒤 부여하세요.',
     masterLoadFailed: '점검 항목 목록을 불러오지 못했습니다.',
     removeAction: '부여 해제',
     removeLabel: (itemName: string): string => `${itemName} 부여 해제`,

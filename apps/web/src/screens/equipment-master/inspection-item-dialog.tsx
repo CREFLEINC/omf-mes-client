@@ -86,40 +86,43 @@ export const InspectionItemDialog = ({
       <div className="form-grid equipment-inspection-item-form">
         {/* 2열 배치(사용자 지시 · #360): 1행 필수 여부 | 공장, 2행 항목코드 | 항목명, 3행 점검 유형 | 판정 방식,
             4행 표시 순서 | 점검 부위. 필수 여부는 이름 위 · 토글 아래. */}
-        <div className="equipment-inspection-item-flags">
-          <div className="field-cell">
-            <FieldLabel htmlFor={requiredFlagId} label={t.fields.requiredFlag} />
-            <Switch
-              id={requiredFlagId}
-              checked={values.requiredFlag}
-              onChange={(event) => onChange({ requiredFlag: event.target.checked })}
-            />
-          </div>
-
-          {/* ⛔ 물리 삭제가 없다(B-4) — 끄는 것이 지우는 것을 대신하는 뜻은 이름 옆 ⓘ 로(관리웹 정리 시안 A). */}
-          {mode === 'edit' && (
+        {/* 1행은 필수 여부(토글 폭만큼) 바로 오른쪽에 공장이 남는 폭을 다 쓴다(사용자 지시 · #360 — 빈 공간이 컸다). */}
+        <div className="form-grid-full equipment-inspection-item-head">
+          <div className="equipment-inspection-item-flags">
             <div className="field-cell">
-              <FieldLabel htmlFor={isActiveId} label={t.fields.isActive} info={t.inactiveNote} />
+              <FieldLabel htmlFor={requiredFlagId} label={t.fields.requiredFlag} />
               <Switch
-                id={isActiveId}
-                checked={values.isActive}
-                onChange={(event) => onChange({ isActive: event.target.checked })}
+                id={requiredFlagId}
+                checked={values.requiredFlag}
+                onChange={(event) => onChange({ requiredFlag: event.target.checked })}
               />
             </div>
-          )}
+
+            {/* ⛔ 물리 삭제가 없다(B-4) — 끄는 것이 지우는 것을 대신하는 뜻은 이름 옆 ⓘ 로(관리웹 정리 시안 A). */}
+            {mode === 'edit' && (
+              <div className="field-cell">
+                <FieldLabel htmlFor={isActiveId} label={t.fields.isActive} info={t.inactiveNote} />
+                <Switch
+                  id={isActiveId}
+                  checked={values.isActive}
+                  onChange={(event) => onChange({ isActive: event.target.checked })}
+                />
+              </div>
+            )}
+          </div>
+          {/* ⭐ 항목은 공장에 매인다 — 등록할 때 정하고 수정 본문은 받지 않는다(계약). */}
+          <SelectField
+            label={t.fields.plant}
+            required
+            options={plantOptions}
+            value={values.plantId}
+            onChange={(value) => onChange({ plantId: value })}
+            error={fieldErrors.plantId}
+            placeholder={t.placeholders.plant}
+            disabled={mode === 'edit'}
+            disabledReason={mode === 'edit' ? t.plantFixed : undefined}
+          />
         </div>
-        {/* ⭐ 항목은 공장에 매인다 — 등록할 때 정하고 수정 본문은 받지 않는다(계약). */}
-        <SelectField
-          label={t.fields.plant}
-          required
-          options={plantOptions}
-          value={values.plantId}
-          onChange={(value) => onChange({ plantId: value })}
-          error={fieldErrors.plantId}
-          placeholder={t.placeholders.plant}
-          disabled={mode === 'edit'}
-          disabledReason={mode === 'edit' ? t.plantFixed : undefined}
-        />
         <CodeLockTextField
           lockReason={codeLockReason}
           label={t.fields.itemCode}

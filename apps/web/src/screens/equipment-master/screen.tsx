@@ -399,12 +399,9 @@ export const EquipmentMasterScreen = () => {
         label: lineLocationLabel(item),
       })),
   ];
+  /* 「공장을 고르면 위치가 나온다」 안내는 걷었다(사용자 지시 · #360) — 목록이 잘렸을 때만 알린다. */
   const locationNote =
-    formPlantId === null
-      ? t.form.locationNeedsPlant
-      : lineLocations.truncated
-        ? t.optionsTruncated
-        : undefined;
+    formPlantId !== null && lineLocations.truncated ? t.optionsTruncated : undefined;
 
   const parentOptions: CodeOption[] = useMemo(() => {
     const selectable = groupOptions.groups
@@ -1721,7 +1718,6 @@ export const EquipmentMasterScreen = () => {
           title={t.inspection.dialogTitle}
           targetCode={detail.data.equipmentGroup.groupCode}
           targetName={detail.data.equipmentGroup.groupName}
-          lead={t.inspection.dialogLead}
           rows={assignRows}
           onChangeRows={setAssignRows}
           master={inspectionMaster.data ?? []}

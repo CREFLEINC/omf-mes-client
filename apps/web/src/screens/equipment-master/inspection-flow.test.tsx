@@ -242,14 +242,16 @@ describe('W-05-12 점검 항목 — 부여를 고친다', () => {
     expect(within(dialog()).getByText(/오일 레벨/)).toBeInTheDocument();
   });
 
-  /** ⛔ 묶음 통째 교체라는 사실을 감추지 않는다 — 지운 줄이 지워진다는 뜻이다. */
-  it('창이 묶음 통째 교체임을 말한다', async () => {
+  /* 그룹 창 위 「이 창에 남긴 것이 전부가 됩니다」 안내 줄은 걷었다(사용자 지시 · #360). */
+  it('그룹 창에는 위 안내 줄이 없다', async () => {
     const user = userEvent.setup();
 
     renderAt({ assignments: [makeAssignment(inspectionItems[0] as never)] });
     await openDialog(user);
 
-    expect(within(dialog()).getByText(ti.dialogLead)).toBeInTheDocument();
+    expect(
+      within(dialog()).queryByText(/이 창에 남긴 것이 전부가 됩니다/u),
+    ).not.toBeInTheDocument();
   });
 
   it('고치지 않고 저장하면 지금 부여가 그대로 나간다', async () => {
@@ -387,19 +389,18 @@ describe('W-05-12 점검 항목 — 부여를 고친다', () => {
    * 「없습니다」에서 멈추면 사용자는 어디로 가야 할지 모른다 — 만드는 자리가 «같은 화면»
    * 안이므로 그 탭 이름을 말한다.
    */
-  it('마스터가 비면 어디서 만드는지 함께 말한다', async () => {
+  /* 「마스터가 비었다 · 모두 부여했다」 안내 줄은 걷었다(#360) — 고를 것이 없으면 칸만 잠긴다. */
+  it('마스터가 비면 칸이 잠기고 안내 줄은 없다', async () => {
     const user = userEvent.setup();
 
     renderAt({ assignments: [], master: [] });
     await openDialog(user);
 
-    const note = await within(dialog()).findByText(ti.masterEmpty);
-
-    expect(note).toBeInTheDocument();
-    expect(note.textContent).toContain(t.inspectionItem.tabLabel);
+    expect(await within(dialog()).findByRole('combobox', { name: ti.addLabel })).toBeDisabled();
+    expect(within(dialog()).queryByText(/등록된 점검 항목이 없습니다/u)).not.toBeInTheDocument();
   });
 
-  it('모두 부여했으면 그 사실을 말한다', async () => {
+  it('모두 부여했으면 칸이 잠기고 안내 줄은 없다', async () => {
     const user = userEvent.setup();
 
     renderAt({
@@ -407,7 +408,8 @@ describe('W-05-12 점검 항목 — 부여를 고친다', () => {
     });
     await openDialog(user);
 
-    expect(await within(dialog()).findByText(ti.allAssigned)).toBeInTheDocument();
+    expect(await within(dialog()).findByRole('combobox', { name: ti.addLabel })).toBeDisabled();
+    expect(within(dialog()).queryByText(/모두 부여했습니다/u)).not.toBeInTheDocument();
   });
 
   /** ⭐ 「다시 시도」라 말하면 누를 자리가 있어야 한다(G-23). */
@@ -547,7 +549,7 @@ describe('W-05-12 점검 항목 — 설비의 부여', () => {
     await user.click(within(dialog()).getByRole('combobox', { name: ti.addLabel }));
 
     expect(await screen.findByRole('option', { name: /INS-01/ })).toBeInTheDocument();
-    expect(within(dialog()).queryByText(ti.masterEmpty)).not.toBeInTheDocument();
+    expect(within(dialog()).queryByText(/등록된 점검 항목이 없습니다/u)).not.toBeInTheDocument();
   });
 
   it('설비 부여 경로의 잠금 토큰을 싣는다', async () => {

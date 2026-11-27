@@ -44587,3 +44587,18 @@ main > .pane.notification-center-pane {
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
+/* 점검 항목 등록 1행 — 필수 여부(· 사용) 토글은 제 폭만, 공장은 남는 폭을 다 쓴다(사용자 지시 · #360). */
+.equipment-inspection-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4) var(--space-6);
+}
+.equipment-inspection-item-head > .equipment-inspection-item-flags {
+  flex: 0 0 auto;
+}
+.equipment-inspection-item-head > .field-cell {
+  flex: 1 1 16rem;
+  min-width: 0;
+}

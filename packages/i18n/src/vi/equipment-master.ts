@@ -105,7 +105,6 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
     editTitle: 'Thông tin nhóm thiết bị',
     parentNone: 'Không có (cấp cao nhất)',
     locationNone: 'Không chỉ định',
-    locationNeedsPlant: 'Chọn nhà máy để hiện vị trí của nhà máy đó.',
     departmentNone: 'Không chỉ định',
     plantPlaceholder: 'Hãy chọn nhà máy',
     codePlaceholder: 'Hãy nhập mã nhóm',
@@ -198,15 +197,11 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
     dialogTitle: 'Gán hạng mục kiểm tra định kỳ',
     /** 부여 창 머리의 대상 상자 제목 — 아래에 이름 · 코드가 선다(#360). */
     targetCaption: 'Đối tượng gán',
-    dialogLead: 'Những gì còn lại trong cửa sổ này sẽ là tất cả — dòng đã xóa thì gán được gỡ.',
     addLabel: 'Thêm hạng mục',
     addPlaceholder: 'Hãy chọn hạng mục kiểm tra định kỳ để gán',
     cycleTypePlaceholder: 'Hãy chọn đơn vị chu kỳ',
     cycleIntervalPlaceholder: 'Hãy nhập khoảng chu kỳ',
-    allAssigned: 'Đã gán hết hạng mục kiểm tra định kỳ của dữ liệu gốc.',
     /** 「어디서 만드나」를 같은 화면의 탭 이름으로 짚는다 — 탭 이름과 글자를 맞춘다. */
-    masterEmpty:
-      'Không có hạng mục kiểm tra định kỳ nào được đăng ký. Hãy tạo hạng mục ở tab «Hạng mục kiểm tra định kỳ» phía trên rồi gán.',
     masterLoadFailed: 'Không tải được danh sách hạng mục kiểm tra định kỳ.',
     removeAction: 'Gỡ gán',
     removeLabel: (itemName: string): string => `Gỡ gán ${itemName}`,
