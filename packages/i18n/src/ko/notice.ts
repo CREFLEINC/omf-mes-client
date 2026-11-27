@@ -108,9 +108,9 @@ export const notice = {
     publishLead: '게시한 뒤에는 내용을 수정할 수 없습니다.',
     published: '공지를 게시했습니다.',
     close: '게시 종료',
-    closeTitle: '이 공지의 게시를 종료할까요?',
+    closeTitle: '공지 게시를 종료할까요?',
     /** ⭐ 지우는 것이 아니라 종료일을 당기는 것이다. */
-    closeLead: '공지는 삭제되지 않고 종료일이 오늘로 바뀝니다. 확인 기록은 그대로 남습니다.',
+    closeLead: '게시 종료일이 오늘로 변경됩니다. 공지와 확인 기록은 그대로 남습니다.',
     closed: '게시를 종료했습니다.',
     confirm: '확인',
     cancel: '취소',

@@ -14,7 +14,7 @@ const t = messages.approvalInbox;
  * 표의 열 폭.
  *
  * **흡수 열은 사유 하나뿐이고 나머지 다섯은 폭을 지정한다.** 흡수 열이 둘이면 좁은 화면에서
- * 둘 다 짓눌린다. 지정 폭의 합은 **660px**이고, 사유에 **268px**을 예산으로 잡으면 합이
+ * 둘 다 짓눌린다. 지정 폭의 합은 **690px**이고(요청번호 170px · #361), 사유에 **238px**을 예산으로 잡으면 합이
  * `.wide-table`의 최소 폭(58rem = 928px)에 딱 맞는다 — 앞선 화면들이 쓴 방법과 같다
  * (흡수 열에도 예산을 주고 그 합으로 하한을 맞춘다).
  *
@@ -25,14 +25,14 @@ const t = messages.approvalInbox;
  * | 상신자 | 96px | 사람 이름 |
  * | **상신 일시** | **160px** | `2026-08-06 09:12` 한 줄. **일시 열의 저장소 전례 값 그대로다** |
  * | 상태 | 104px | 코드 문자열 그대로 |
- * | **사유 첫 줄** | **미지정(예산 268px)** | 남는 폭을 흡수하는 유일한 열 |
+ * | **사유 첫 줄** | **미지정(예산 238px)** | 남는 폭을 흡수하는 유일한 열 |
  *
  * **열 여섯은 설계 스펙이 확정한 필드 목록 그대로다.** 대상 표시명을 여기 두지 않는다 —
  * 대상은 상세 구획 소관이다. 진행 단계도 두지 않는다. 값 목록이 확정돼 유형이 사람이 읽는
  * 이름이 되면 라벨만 바뀌고 열 구성은 그대로다.
  */
 export const REQUEST_COLUMN_WIDTH = {
-  approvalRequestNo: '140px',
+  approvalRequestNo: '170px',
   approvalTypeCode: '160px',
   requester: '96px',
   requestedAt: '160px',
@@ -40,7 +40,7 @@ export const REQUEST_COLUMN_WIDTH = {
 } as const;
 
 /** 흡수 열(사유)의 예산. 지정 폭 합과 더해 최소 폭에 맞춘다 — 이 값이 곧 그 열의 하한이다. */
-export const REASON_COLUMN_BUDGET_PX = 268;
+export const REASON_COLUMN_BUDGET_PX = 238;
 
 /** `.wide-table`이 주는 표 최소 폭(58rem). 배치 규범 문서가 근거를 갖는다. */
 export const WIDE_TABLE_MIN_WIDTH_PX = 928;
@@ -93,23 +93,11 @@ export const RequestListPane = ({
       key: 'approvalRequestNo',
       header: t.fields.approvalRequestNo,
       width: REQUEST_COLUMN_WIDTH.approvalRequestNo,
+      /* 요청번호는 글자만 — 줄 아무 곳이나 눌러 고르고, 고른 줄을 한 번 더 누르면 푼다(#361). */
       render: (row) => (
-        <button
-          type="button"
-          className="link-cell"
-          /*
-           * 보이는 글자(요청번호)를 그대로 담아 음성 조작이 그 말로 이 버튼을 부를 수 있게 한다.
-           * 계약이 요청번호를 UNIQUE로 두어 행마다 이름이 갈린다.
-           * **내부 번호는 접근 이름에도 넣지 않는다.**
-           */
-          aria-label={t.actions.selectRow(row.approvalRequestNo)}
-          aria-current={row.approvalRequestId === selectedRequestId ? 'true' : undefined}
-          onClick={() => {
-            onSelect(row.approvalRequestId);
-          }}
-        >
+        <span data-selected={row.approvalRequestId === selectedRequestId ? 'true' : undefined}>
           {row.approvalRequestNo}
-        </button>
+        </span>
       ),
     },
     {
@@ -212,12 +200,20 @@ export const RequestListPane = ({
         rows={rows}
         getRowId={(row) => String(row.approvalRequestId)}
         caption={t.panes.list}
+        onRowClick={(row) => {
+          onSelect(row.approvalRequestId);
+        }}
         /* 0건을 바깥에서 가르지 않는다 — 가르면 표의 빈 자리가 닿을 수 없는 가지가 된다. */
         empty={emptySlot}
       />
       {/* 0건이면 쪽 이동 줄을 내지 않는다 — 넘길 쪽이 없다(#361). */}
       {pageMeta.total > 0 && (
-        <PageNav meta={pageMeta} onChangePage={onChangePage} onChangeSize={onChangeSize} />
+        <PageNav
+          buttonSize="md"
+          meta={pageMeta}
+          onChangePage={onChangePage}
+          onChangeSize={onChangeSize}
+        />
       )}
     </>
   );

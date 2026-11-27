@@ -57,12 +57,6 @@ export const approvalInbox = {
   },
   actions: {
     goFirstPage: '첫 페이지로',
-    /*
-     * 요청번호 하나로 이름이 선다 — 계약이 그 값을 UNIQUE로 두었다.
-     * 보이는 글자를 그대로 담아 음성 조작이 그 말로 이 버튼을 부를 수 있게 하고,
-     * **내부 번호는 접근 이름에도 넣지 않는다.**
-     */
-    selectRow: (approvalRequestNo: string): string => `${approvalRequestNo} 선택`,
   },
   loading: {
     list: '승인 요청 목록 불러오는 중',

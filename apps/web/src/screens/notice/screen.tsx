@@ -387,6 +387,7 @@ export const NoticeScreen = () => {
       {/* 0건이면 쪽 이동 줄을 내지 않는다 — 넘길 쪽이 없다(#361). */}
       {notices.data !== undefined && notices.data.page.total > 0 && (
         <PageNav
+          buttonSize="md"
           meta={notices.data.page}
           onChangePage={(page) => {
             apply({ page });
@@ -436,6 +437,38 @@ export const NoticeScreen = () => {
           <Chip variant="status" size="sm" status={statusTone(selected.statusCode)}>
             {statusLabel(selected.statusCode)}
           </Chip>
+          {/* 처리 단추는 상자 오른쪽 위에 작게(#361 사용자 지시). 목록 줄을 다시 누르면 고르기가 풀려 [취소]는 두지 않는다. */}
+          <div className="form-actions notice-detail-actions">
+            {editable && (
+              <Button size="sm" variant="outlined" onClick={openEdit}>
+                {t.form.edit}
+              </Button>
+            )}
+            {isClosable(selected.statusCode) && (
+              <Button
+                size="sm"
+                variant="outlined"
+                leadingIcon={<Icon name="event_busy" size={18} />}
+                disabled={close.isSaving}
+                onClick={() => {
+                  setConfirming('close');
+                }}
+              >
+                {t.detail.close}
+              </Button>
+            )}
+            {isPublishable(selected.statusCode) && (
+              <Button
+                size="sm"
+                disabled={publish.isSaving}
+                onClick={() => {
+                  setConfirming('publish');
+                }}
+              >
+                {t.detail.publish}
+              </Button>
+            )}
+          </div>
         </div>
 
         <SaveErrorBanner error={publish.error ?? close.error} />
@@ -460,47 +493,6 @@ export const NoticeScreen = () => {
         </dl>
 
         <p className="notice-body">{selected.body}</p>
-
-        <div className="notice-detail-footer">
-          {/* ⛔⛔ 게시 뒤에는 본문을 고칠 수 없다 — 잠근 이유를 잠근 자리에 적는다. */}
-          <div className="form-actions">
-            {/* [취소]는 [게시 종료]와 같은 모양(#361). */}
-            <Button
-              variant="outlined"
-              onClick={() => {
-                selectNotice(null);
-              }}
-            >
-              {t.detail.cancel}
-            </Button>
-            {editable && (
-              <Button variant="outlined" onClick={openEdit}>
-                {t.form.edit}
-              </Button>
-            )}
-            {isClosable(selected.statusCode) && (
-              <Button
-                variant="outlined"
-                disabled={close.isSaving}
-                onClick={() => {
-                  setConfirming('close');
-                }}
-              >
-                {t.detail.close}
-              </Button>
-            )}
-            {isPublishable(selected.statusCode) && (
-              <Button
-                disabled={publish.isSaving}
-                onClick={() => {
-                  setConfirming('publish');
-                }}
-              >
-                {t.detail.publish}
-              </Button>
-            )}
-          </div>
-        </div>
       </>
     );
   };
@@ -689,7 +681,8 @@ export const NoticeScreen = () => {
             >
               {t.form.cancel}
             </Button>
-            <Button disabled={isSaving} onClick={submit}>
+            {/* 필수 칸이 모두 채워져야 [저장]이 눌린다(#361 사용자 지시). */}
+            <Button disabled={isSaving || hasErrors(validateDraft(draft))} onClick={submit}>
               {t.form.save}
             </Button>
           </>
@@ -714,6 +707,7 @@ export const NoticeScreen = () => {
         }}
         title={confirming === 'close' ? t.detail.closeTitle : t.detail.publishTitle}
         closeOnBackdropClick={false}
+        showCloseButton={false}
         footer={
           <>
             <Button
@@ -732,11 +726,14 @@ export const NoticeScreen = () => {
                 else publish.write({});
               }}
             >
-              {t.detail.confirm}
+              {/* 게시 종료는 할 일 이름 그대로(#361 시안). */}
+              {confirming === 'close' ? t.detail.close : t.detail.confirm}
             </Button>
           </>
         }
       >
+        {/* 어느 공지인지 제목을 함께 보인다(#361 시안). */}
+        {selected !== null && <p className="notice-confirm-target">{selected.title}</p>}
         <p className="dialog-lead">
           {confirming === 'close' ? t.detail.closeLead : t.detail.publishLead}
         </p>

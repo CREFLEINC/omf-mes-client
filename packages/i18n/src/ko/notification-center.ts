@@ -30,7 +30,7 @@ export const notificationCenter = {
      * 각각 이름을 갖는다. 어느 쪽이 정본인지는 질문 `omf-mes#165`로 설계에 올려 두었다.
      * **여기서 논증으로 정하지 않는다** — 답이 오면 컨트롤과 이 문구를 함께 고친다.
      */
-    unreadOnly: '안 읽은 알림만',
+    unreadOnly: '미확인 알림',
     eventCode: '알림 유형',
   },
   filters: {

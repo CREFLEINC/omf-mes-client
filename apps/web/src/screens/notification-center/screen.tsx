@@ -481,6 +481,7 @@ export const NotificationCenterScreen = () => {
               !pageView.isBeyondLast &&
               pageMeta.total > 0 && (
                 <PageNav
+                  buttonSize="md"
                   meta={pageMeta}
                   onChangePage={(nextPage) => {
                     applyQuery(period, filters, nextPage);

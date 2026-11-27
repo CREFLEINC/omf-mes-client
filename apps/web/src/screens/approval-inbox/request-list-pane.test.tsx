@@ -105,7 +105,7 @@ describe('열 폭 예산 — 선언(상수)', () => {
       0,
     );
 
-    expect(specified).toBe(660);
+    expect(specified).toBe(690);
     expect(specified + REASON_COLUMN_BUDGET_PX).toBeLessThanOrEqual(WIDE_TABLE_MIN_WIDTH_PX);
   });
 
@@ -149,7 +149,7 @@ describe('열 폭 예산 — 산출물(열 정의)', () => {
       .filter((width): width is string => width !== null)
       .reduce((sum, width) => sum + pxOf(width), 0);
 
-    expect(specified).toBe(660);
+    expect(specified).toBe(690);
     expect(specified + REASON_COLUMN_BUDGET_PX).toBeLessThanOrEqual(WIDE_TABLE_MIN_WIDTH_PX);
   });
 });
@@ -267,35 +267,26 @@ describe('RequestListPane — 보이는 값', () => {
 });
 
 describe('RequestListPane — 고르기', () => {
-  it('요청번호를 누르면 그 요청을 고른다', async () => {
+  /* #361 — 요청번호 단추 대신 줄 아무 곳이나 눌러 고른다. */
+  it('줄 아무 곳이나 누르면 그 요청을 고른다', async () => {
     const { onSelect, user } = renderPane();
 
-    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
+    await user.click(screen.getByText('SYNTH-REQ-001'));
 
     expect(onSelect).toHaveBeenCalledWith(9001);
   });
 
-  it('고르기 버튼의 이름이 행마다 갈린다 — 계약이 요청번호를 UNIQUE로 두었다', () => {
+  it('요청번호는 단추가 아니다', () => {
     renderPane();
 
-    const names = requestRowFixtures.map((row) => t.actions.selectRow(row.approvalRequestNo));
-
-    expect(new Set(names).size).toBe(requestRowFixtures.length);
-    for (const name of names) {
-      expect(screen.getByRole('button', { name })).toBeInTheDocument();
-    }
+    expect(screen.queryByRole('button', { name: /SYNTH-REQ-001/ })).toBeNull();
   });
 
   it('고른 행을 표시한다', () => {
     renderPane({ selectedRequestId: 9001 });
 
-    expect(screen.getByRole('button', { name: /SYNTH-REQ-001/ })).toHaveAttribute(
-      'aria-current',
-      'true',
-    );
-    expect(screen.getByRole('button', { name: /SYNTH-REQ-002/ })).not.toHaveAttribute(
-      'aria-current',
-    );
+    expect(screen.getByText('SYNTH-REQ-001')).toHaveAttribute('data-selected', 'true');
+    expect(screen.getByText('SYNTH-REQ-002')).not.toHaveAttribute('data-selected');
   });
 });
 

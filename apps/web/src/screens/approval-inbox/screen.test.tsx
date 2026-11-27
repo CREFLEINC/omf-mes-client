@@ -812,7 +812,7 @@ describe('요청 고르기', () => {
 
     expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
+    await user.click(within(requestTable()).getByText('SYNTH-REQ-001'));
 
     await waitFor(() => {
       expect(currentLocation()).toContain('rq=9001');
@@ -824,7 +824,7 @@ describe('요청 고르기', () => {
     const { user } = renderScreen(defaultRoutes(), '?rq=9001');
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
+    await user.click(within(requestTable()).getByText('SYNTH-REQ-001'));
 
     await waitFor(() => {
       expect(currentLocation()).not.toContain('rq=');
@@ -838,7 +838,7 @@ describe('요청 고르기', () => {
 
     const before = listRequests(requests).length;
 
-    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
+    await user.click(within(requestTable()).getByText('SYNTH-REQ-001'));
 
     await waitFor(() => {
       expect(currentLocation()).toContain('rq=9001');
@@ -865,7 +865,7 @@ describe('요청 고르기', () => {
     const { requests, user } = renderScreen(defaultRoutes());
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
+    await user.click(within(requestTable()).getByText('SYNTH-REQ-001'));
 
     await waitFor(() => {
       expect(detailRequests(requests)).toHaveLength(1);
@@ -907,7 +907,7 @@ describe('요청 고르기', () => {
       expect(detailRequests(requests)).toHaveLength(1);
     });
 
-    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
+    await user.click(within(requestTable()).getByText('SYNTH-REQ-001'));
 
     await waitFor(() => {
       expect(currentLocation()).not.toContain('rq=');
@@ -928,7 +928,7 @@ describe('요청 고르기', () => {
       expect(detailRequests(requests)).toHaveLength(1);
     });
 
-    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-002/ }));
+    await user.click(within(requestTable()).getByText('SYNTH-REQ-002'));
 
     await waitFor(() => {
       expect(currentLocation()).toContain('rq=9002');
@@ -946,7 +946,7 @@ describe('요청 고르기', () => {
     const { user } = renderScreen(defaultRoutes(), '?rq=9001&page=2&q=SYNTH&tab=requested');
 
     await waitForList();
-    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-003/ }));
+    await user.click(within(requestTable()).getByText('SYNTH-REQ-003'));
 
     await waitFor(() => {
       expect(currentLocation()).toContain('rq=9003');
@@ -2159,7 +2159,7 @@ describe('결재 — 실패 배너가 매인 대상', () => {
 
     await sendFailingApprove(user);
 
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-002') }));
+    await user.click(within(requestTable()).getByText('SYNTH-REQ-002'));
 
     await waitFor(() => {
       expect(screen.queryByText(messages.conflict.user)).toBeNull();
@@ -2252,7 +2252,7 @@ describe('결재 — 의견 초안이 매인 대상', () => {
     const { user } = await renderDecision();
 
     await user.type(commentBox(), '9001에만 해당하는 합성 반려 사유');
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-002') }));
+    await user.click(within(requestTable()).getByText('SYNTH-REQ-002'));
 
     await waitFor(() => {
       expect(currentLocation()).toContain('rq=9002');
@@ -2344,7 +2344,7 @@ describe('결재 — 전송 중', () => {
     });
 
     await user.click(tabFor(t.tabs.requested));
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-002') }));
+    await user.click(within(requestTable()).getByText('SYNTH-REQ-002'));
     await user.click(screen.getByRole('button', { name: pn.next }));
 
     expect(currentLocation()).toContain('rq=9001');

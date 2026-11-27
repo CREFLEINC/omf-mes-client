@@ -88,14 +88,13 @@ export const useRequestStatusCounts = (
       return {
         queryKey: inboxKeys.list(countQuery),
         queryFn: () =>
-          runRequest(() =>
-            client.GET('/app/approval-requests', { params: { query: countQuery } }),
-          ).then((data) => data.page.total),
+          runRequest(() => client.GET('/app/approval-requests', { params: { query: countQuery } })),
       };
     }),
   });
 
-  return results.map((result) => result.data);
+  /* 목록과 같은 열쇠라 응답을 통째로 둔다(같은 열쇠에 다른 모양을 두면 서로 덮는다) — 건수만 읽는다. */
+  return results.map((result) => result.data?.page.total);
 };
 
 /**

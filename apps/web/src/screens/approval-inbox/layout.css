@@ -33,3 +33,32 @@
     grid-template-columns: auto 176px 176px minmax(0, 1fr);
   }
 }
+
+/* 쪽 이동 줄은 목록 칸 맨 아래(#361 — 공지 목록과 같다). 탭 · 탭 내용이 남는 높이를 채운다. */
+.approval-inbox-pane > :has(> [role='tabpanel']) {
+  flex: 1 1 auto;
+}
+
+.approval-inbox-pane [role='tabpanel']:has(> .page-nav) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.approval-inbox-pane [role='tabpanel'] > .page-nav {
+  margin-top: auto;
+}
+
+/* 줄을 눌러 고른다 — 손가락 모양 커서, 고른 줄은 공지 목록과 같은 파란 바탕 · 왼쪽 선(#361). */
+.approval-inbox-table tbody tr {
+  cursor: pointer;
+}
+
+.approval-inbox-table tbody tr:has([data-selected='true']) > td,
+.approval-inbox-table tbody tr:has([data-selected='true']):hover > td {
+  background: var(--semantic-info-container);
+}
+
+.approval-inbox-table tbody tr:has([data-selected='true']) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--semantic-info);
+}

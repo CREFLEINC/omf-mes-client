@@ -10206,7 +10206,7 @@ dialog.routing-history-dialog {
    * 게시 시작일 · 게시 종료일 · 공지 제목 · 대상 범위 · 미확인 공지 · 단추 묶음을 한 줄에(#361 사용자 지시).
    * 입력칸은 흐린 문구가 다 보이는 폭으로 두고 왼쪽부터 붙여 세운다.
    */
-  grid-template-columns: repeat(2, auto) 220px 200px max-content minmax(0, 1fr);
+  grid-template-columns: repeat(2, auto) 220px 176px max-content minmax(0, 1fr);
   gap: var(--space-4);
   margin-bottom: 0;
 }
@@ -10243,6 +10243,10 @@ dialog.routing-history-dialog {
   gap: var(--space-3);
 }
 
+.notice-detail-head > .notice-detail-actions {
+  margin: 0 0 0 auto;
+}
+
 .notice-detail-head > .pane-title {
   margin: 0;
   color: var(--on-surface);
@@ -10260,25 +10264,6 @@ dialog.routing-history-dialog {
   padding-top: var(--space-4);
   border-top: 1px solid var(--outline-variant);
   white-space: pre-wrap;
-}
-
-.notice-detail-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin: 0 calc(-1 * var(--space-5)) calc(-1 * var(--space-5));
-  padding: var(--space-3) var(--space-5);
-  border-top: 1px solid var(--outline-variant);
-}
-
-.notice-detail-footer > .field-note {
-  margin: 0;
-}
-
-.notice-detail-footer > .form-actions {
-  margin: 0 0 0 auto;
 }
 
 .notice-table {
@@ -42604,4 +42589,63 @@ main
   color: var(--on-surface-variant);
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
+}
+
+/*
+ * 알림센터 — 목록 상자가 창 높이에 맞춰 늘고 줄며, 카드만 상자 안에서 스크롤한다. 쪽 이동 줄은 상자 맨 아래(#361).
+ */
+main:has(> .notification-center-pane) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+main:has(> .notification-center-pane) > * {
+  flex: none;
+  margin-bottom: 0;
+}
+
+main > .pane.notification-center-pane {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 16rem;
+}
+
+.notification-center-pane > .notification-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
+}
+
+.notification-center-pane > .page-nav {
+  flex: none;
+  margin-top: auto;
+}
+
+/* 카드는 촘촘하게(#361 사용자 지시) — 머리줄 글자를 본문 한 단계 위로, 안쪽 여백을 줄인다. */
+.notification-list .notification-card-meta {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.notification-row > :first-child > :first-child {
+  padding: var(--space-3) var(--space-4) var(--space-1);
+}
+
+.notification-row > :first-child > :last-child {
+  padding: 0 var(--space-4) var(--space-3);
+}
+
+.notification-list .notification-target-link {
+  margin-top: var(--space-2);
+}
+
+/* 게시 · 게시 종료 확인 창의 공지 제목(#361 시안). */
+.notice-confirm-target {
+  margin: 0 0 var(--space-2);
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
 }

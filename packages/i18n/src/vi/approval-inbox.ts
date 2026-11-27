@@ -47,7 +47,6 @@ export const approvalInbox: Translated<typeof ko.approvalInbox> = {
   },
   actions: {
     goFirstPage: 'Về trang đầu',
-    selectRow: (approvalRequestNo: string): string => `Chọn ${approvalRequestNo}`,
   },
   loading: {
     list: 'Đang tải danh sách yêu cầu phê duyệt',

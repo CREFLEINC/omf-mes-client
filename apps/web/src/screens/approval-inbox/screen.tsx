@@ -283,6 +283,13 @@ export const ApprovalInboxScreen = () => {
    */
   const pendingCount = usePendingCount();
   const pendingTotal = pendingCount.data?.page.total;
+  /* 「내가 올린 요청」 탭 숫자(#361) — 내가 올린 것 중 아직 결재가 끝나지 않은(결재 대기) 건수. */
+  const requestedPendingCount = useRequestList({
+    requestedByMe: true,
+    statusCode: 'PENDING',
+    size: 1,
+  });
+  const requestedPendingTotal = requestedPendingCount.data?.page.total;
 
   /*
    * 고른 요청의 상세. **조회 하나로 정보·대상·결재 진행이 모두 온다**(계약이 `steps`를
@@ -625,6 +632,13 @@ export const ApprovalInboxScreen = () => {
     pendingTotal === undefined ? undefined : (
       <Badge count={pendingTotal} aria-label={t.tabs.pendingBadge(pendingTotal)} />
     );
+  const requestedBadge: ReactNode =
+    requestedPendingTotal === undefined ? undefined : (
+      <Badge
+        count={requestedPendingTotal}
+        aria-label={t.tabs.pendingBadge(requestedPendingTotal)}
+      />
+    );
 
   /**
    * 다시 조회(수명 표 10행) — **화면이 보고 있는 조회를 전부 다시 한다.** 같은 조건의 [조회]가 부른다(#361).
@@ -638,6 +652,7 @@ export const ApprovalInboxScreen = () => {
   const handleReload = (): void => {
     void list.refetch();
     void pendingCount.refetch();
+    void requestedPendingCount.refetch();
 
     if (selectedRequestId !== null) void detail.refetch();
   };
@@ -800,8 +815,8 @@ export const ApprovalInboxScreen = () => {
   const tabItems: TabItem[] = visibleTabs(canSeeAllRequests).map((value) => ({
     value,
     label: tabLabel(value),
-    /* 대기 건수는 「지금 내가 결재할 수 있는 것」의 수라 그 탭에 붙는다. */
-    badge: value === 'pending' ? pendingBadge : undefined,
+    /* 내 결재 대기 = 지금 내가 결재할 수 있는 수 · 내가 올린 요청 = 그중 아직 결재 대기인 수(#361). */
+    badge: value === 'pending' ? pendingBadge : value === 'requested' ? requestedBadge : undefined,
     content: value === tab ? listPane : null,
   }));
 
