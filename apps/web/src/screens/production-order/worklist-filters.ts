@@ -2,7 +2,7 @@ import { PAGE_SIZES } from '../../patterns/page-nav';
 import { DEFAULT_WORKLIST_FILTER, isWorklistFilter, type WorklistFilter } from './worklist-model';
 import type { WorklistFilters } from './worklist-queries';
 
-/** 작업함 조회 조건과 주소 쿼리. 기본 조건(전체, 1쪽, 20건)은 주소에 쓰지 않는다. */
+/** 작업함 조회 조건과 주소 쿼리. 기본 조건(전체, 오래된순, 1쪽, 20건)은 주소에 쓰지 않는다. */
 export const DEFAULT_WORKLIST_FILTERS: WorklistFilters = {
   state: DEFAULT_WORKLIST_FILTER,
   q: '',
@@ -10,6 +10,7 @@ export const DEFAULT_WORKLIST_FILTERS: WorklistFilters = {
   dueTo: '',
   item: '',
   plant: '',
+  order: 'oldest',
   page: 1,
   size: 20,
 };
@@ -44,6 +45,7 @@ export const readWorklistFilters = (params: URLSearchParams): WorklistFilters =>
     dueTo: datePattern.test(params.get('dueTo') ?? '') ? (params.get('dueTo') ?? '') : '',
     item: String(positive(params.get('item')) ?? ''),
     plant: String(positive(params.get('plant')) ?? ''),
+    order: params.get('order') === 'newest' ? 'newest' : 'oldest',
     page: positive(params.get('page')) ?? 1,
     size: size !== null && (PAGE_SIZES as readonly number[]).includes(size) ? size : 20,
   };
@@ -57,6 +59,7 @@ export const toWorklistSearchParams = (filters: WorklistFilters): URLSearchParam
   if (filters.dueTo !== '') next.set('dueTo', filters.dueTo);
   if (filters.item !== '') next.set('item', filters.item);
   if (filters.plant !== '') next.set('plant', filters.plant);
+  if (filters.order !== 'oldest') next.set('order', filters.order);
   if (filters.page > 1) next.set('page', String(filters.page));
   if (filters.size !== 20) next.set('size', String(filters.size));
   return next;

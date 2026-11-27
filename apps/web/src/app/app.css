@@ -24071,7 +24071,7 @@ dialog.reference-picker-wide {
 }
 
 /*
- * 번호, 납기, 품목 세 칸과 버튼이 1280px 한 줄에 들어간다 — 칸은 보통 폭(240px)에서 줄 끝까지 조금 줄어든다.
+ * 처리 상태, 번호, 납기, 품목 네 칸과 버튼이 1280px 한 줄에 들어간다 — 칸은 보통 폭(240px)에서 줄 끝까지 조금 줄어든다.
  * 좁은 창에서는 버튼이 다음 줄 오른쪽 끝으로 내려간다. 공장은 「조건 더보기」에 접는다(C-6).
  */
 .filter-bar.erp-wo-filter-bar {
@@ -34017,67 +34017,7 @@ ul.iqc-inbound-superseded {
   margin-top: 0;
 }
 
-/* 작업계획 목록: 상태별 조회와 선택 대상의 처리를 서로 다른 줄에 둔다. */
-.erp-wo-status-controls {
-  container-type: inline-size;
-}
-.erp-wo-status-filters {
-  display: flex;
-  border-bottom: 1px solid var(--outline-variant);
-}
-.erp-wo-status-filter {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 2.75rem;
-  padding: var(--space-2) var(--space-3);
-  border: 0;
-  border-bottom: 3px solid transparent;
-  border-radius: 0;
-  background: transparent;
-  color: var(--on-surface-variant);
-  cursor: pointer;
-  white-space: nowrap;
-}
-.erp-wo-status-filter[aria-pressed='true'] {
-  background: var(--primary-container);
-  color: var(--on-primary-container);
-  border-bottom-color: var(--primary);
-}
-.erp-wo-status-name {
-  font: var(--type-label-lg);
-}
-.erp-wo-status-number {
-  display: inline-flex;
-  align-items: baseline;
-  gap: var(--space-1);
-  font: var(--type-label-md);
-  font-variant-numeric: tabular-nums;
-}
-.erp-wo-status-number small {
-  display: none;
-}
-.erp-wo-status-compact {
-  display: none;
-}
-@container (max-width: 52rem) {
-  .erp-wo-status-filters {
-    display: none;
-  }
-  .erp-wo-status-compact {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-  }
-  .erp-wo-status-compact > label {
-    white-space: nowrap;
-    font: var(--type-label-lg);
-  }
-  .erp-wo-status-compact > :last-child {
-    width: min(100%, 18rem);
-    min-width: 0;
-  }
-}
+/* 작업계획 목록: 선택 대상의 처리 줄. 처리 상태는 조회 조건 줄의 선택 칸이 맡는다. */
 .erp-wo-selection-toolbar {
   display: grid;
   grid-template-columns: minmax(10rem, 1fr) auto;
@@ -34087,8 +34027,17 @@ ul.iqc-inbound-superseded {
   border-radius: var(--radius-md);
   background: var(--surface-container);
 }
+.erp-wo-selection-lead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
 .erp-wo-selection-info strong {
   font: var(--type-title-sm);
+}
+.erp-wo-list-order {
+  width: 8rem;
 }
 .erp-wo-selection-info p {
   margin: var(--space-1) 0 0;
@@ -34108,13 +34057,6 @@ ul.iqc-inbound-superseded {
   }
 }
 
-.erp-wo-status-filter:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-.erp-wo-status-filter:hover {
-  border-color: var(--primary);
-}
 .erp-wo-action-choice {
   display: grid;
   gap: var(--space-1);
@@ -35932,8 +35874,10 @@ body:has(
   justify-content: flex-end;
   flex-wrap: wrap;
 }
+/* 배치 단추 둘은 「⋯」에 접지 않고 한 줄로 늘 보인다(사용자 지시 2026-11-27). */
 .erp-wo-layout-tools .po-board-layout-toggle {
   display: flex;
+  flex-direction: row;
 }
 .erp-wo-adjustable-grid {
   min-width: 0;
@@ -36019,27 +35963,23 @@ body:has(
   width: 12px;
   min-height: 100px;
 }
+/* 막대는 입고 관리와 같은 가는 선(2px)이다 — 띠로 칠하지 않는다(사용자 지시 2026-11-27). */
 .erp-wo-adjustable-grid > .po-board-gutter > .po-board-splitter {
   display: block;
   width: 12px;
   height: 100%;
   min-height: 100px;
   cursor: col-resize;
-  border-inline: 4px solid transparent;
+  border-inline: 5px solid transparent;
   background: var(--outline-variant);
   background-clip: content-box;
 }
+/* 상하 막대는 공용 모양(가는 선 + 가운데 손잡이) 그대로 쓴다. */
 .erp-wo-adjustable-grid > .inspection-height-splitter {
-  height: 12px;
   margin: 0;
-  cursor: row-resize;
-  border-block: 4px solid transparent;
-  background: var(--outline-variant);
-  background-clip: content-box;
 }
-.erp-wo-adjustable-grid > .inspection-height-splitter:hover,
 .erp-wo-adjustable-grid > .po-board-gutter > .po-board-splitter:hover {
-  background-color: var(--primary);
+  background-color: var(--semantic-info);
 }
 .erp-wo-plan-workspace .erp-wo-week-table {
   min-width: max(56rem, var(--col-floor, 0px));
