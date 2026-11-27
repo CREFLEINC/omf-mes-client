@@ -37551,6 +37551,124 @@ body:has(
   margin-inline-start: auto;
 }
 
+/*
+ * 공급사 반품 처리 확인(사용자 시안 2026-11-27 · #360): 맨 위 「반품 대상 N건」 상자(줄마다 품목 · LOT | 세로선 |
+ * 반품 수량), 그 아래 2열 작은 상자 넷, 접힌 「처리 상세」, 주황 경고.
+ */
+.sr-confirm-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sr-confirm-target {
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.sr-confirm-target-head {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface-container);
+  font-weight: 700;
+}
+
+.sr-confirm-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sr-confirm-lines > li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.sr-confirm-line-what {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sr-confirm-line-lot,
+.sr-confirm-line-qty-label {
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+}
+
+.sr-confirm-line-qty {
+  flex: 0 0 auto;
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+  white-space: nowrap;
+}
+
+.sr-confirm-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.sr-confirm-facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.sr-confirm-facts dt,
+.sr-confirm-details dt {
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+}
+
+.sr-confirm-facts dd {
+  margin: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.sr-confirm-details > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+.sr-confirm-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.sr-confirm-details[open] > summary > :last-child {
+  transform: rotate(180deg);
+}
+
+.sr-confirm-details dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-2) 0 0;
+}
+
+.sr-confirm-details dl > div {
+  display: contents;
+}
+
+.sr-confirm-details dd {
+  margin: 0;
+}
+
 /* 분배 조건과 결과는 같은 영역에서 전환하고 선택한 조건만 편집한다. */
 .erp-wo-distribution-steps {
   display: flex;

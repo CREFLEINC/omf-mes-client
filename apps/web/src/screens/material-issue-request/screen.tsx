@@ -22,9 +22,13 @@ import {
   useWarehouseOptions,
   type LookupResult,
 } from './lookups';
-import type { MaterialIssueRequestInput } from './material-issue-request-body';
+import {
+  toMaterialIssueRequestBody,
+  type MaterialIssueRequestInput,
+} from './material-issue-request-body';
 import { useMaterialIssueRequestMutation, type PlannedStockConflict } from './mutations';
 import { PlannedStockDialog } from './planned-stock-dialog';
+import { PublishConfirmDialog, type PublishSummary } from './publish-confirm-dialog';
 import { usePublishSubmission } from './publish-submission';
 import {
   useExistingRequests,
@@ -172,6 +176,8 @@ export const MaterialIssueRequestScreen = () => {
   /** 사용자가 만진 칸(오류의 열쇠로 적는다) · 발행을 한 번이라도 눌렀는가 — 오류 노출의 문이다. */
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [hasAttemptedPublish, setHasAttemptedPublish] = useState(false);
+  /** [요청 발행] 확인 창에 되보일 값 — 열려 있지 않으면 `null`(#360). */
+  const [confirmSummary, setConfirmSummary] = useState<PublishSummary | null>(null);
 
   const workOrderId = selectedWorkOrder === null ? '' : String(selectedWorkOrder.workOrderId);
   const targetSignature: TargetSignature = `wo:${workOrderId}`;
@@ -539,39 +545,39 @@ export const MaterialIssueRequestScreen = () => {
   };
 
   /**
-   * 확인 창 없이 곧바로 보낸다 — 전송 중 잠금과 성공 후 잠금 두 겹이 연타를 막는다.
+   * 확인 창(`openPublishConfirm`)을 거친 뒤 보낸다(#360) — 전송 중 잠금과 성공 후 잠금 두 겹이 연타를 막는다.
    *
    * ⭐ **본문을 여기서 조립하지 않는다.** 제출 순간의 고정과 본문 조립을 잇는 이음매는
    * `usePublishSubmission` 이 진다 — 그 이음매가 이 화면에서 가장 조용히 틀릴 자리이고,
    * 화면 안에 두면 감지기가 닿지 않는다(검증 발견 1).
    */
+  const publishInput = (acceptPlannedOverride: boolean): MaterialIssueRequestInput => ({
+    workOrderId,
+    destinationLocationId: form.destinationLocationId,
+    requiredDate: form.requiredDate,
+    requiredTime: form.requiredTime,
+    reasonCode: form.reasonCode,
+    remarks: form.remarks,
+    lines: resolvedLines,
+    shortage: shortageLines,
+    ...(usesProductionWarehouses
+      ? {
+          /* 사용자가 고르지 않은 입고지는 보내지 않는다 — 서버 기본값(라인 생산 현장)을 탄다(G2 12). */
+          destinationLocationId:
+            touched.destinationLocationId === true ? form.destinationLocationId : '',
+          sourceWarehouseId: form.sourceWarehouseId,
+          destinationOptional: true,
+          acceptPlannedOverride,
+          unsourcedShortageId: prefill?.unsourcedShortageId ?? '',
+        }
+      : {}),
+  });
+
   const publish = (acceptPlannedOverride = false): void => {
     setHasAttemptedPublish(true);
     setConflict(null);
 
-    const input: MaterialIssueRequestInput = {
-      workOrderId,
-      destinationLocationId: form.destinationLocationId,
-      requiredDate: form.requiredDate,
-      requiredTime: form.requiredTime,
-      reasonCode: form.reasonCode,
-      remarks: form.remarks,
-      lines: resolvedLines,
-      shortage: shortageLines,
-      ...(usesProductionWarehouses
-        ? {
-            /* 사용자가 고르지 않은 입고지는 보내지 않는다 — 서버 기본값(라인 생산 현장)을 탄다(G2 12). */
-            destinationLocationId:
-              touched.destinationLocationId === true ? form.destinationLocationId : '',
-            sourceWarehouseId: form.sourceWarehouseId,
-            destinationOptional: true,
-            acceptPlannedOverride,
-            unsourcedShortageId: prefill?.unsourcedShortageId ?? '',
-          }
-        : {}),
-    };
-
-    const body = submission.build(input);
+    const body = submission.build(publishInput(acceptPlannedOverride));
 
     /*
      * 여기 닿으면 아무 일도 일어나지 않은 것처럼 보인다. **버튼 잠금이 이미 닫아 둔 길이라
@@ -582,6 +588,37 @@ export const MaterialIssueRequestScreen = () => {
 
     submittingTargetRef.current = targetSignature;
     create.write(body);
+  };
+
+  /**
+   * [요청 발행] → 확인 창(#360). 품목 줄 수는 **본문 조립 함수가 고른 줄 수 그대로** 센다 — 순수
+   * 함수라 멱등 도장(`submission`)을 건드리지 않는다. 확인하면 종전 `publish()` 를 그대로 부른다.
+   */
+  const openPublishConfirm = (): void => {
+    if (selectedWorkOrder === null) return;
+
+    const labelOf = (lookup: LookupResult, value: string): string | null =>
+      value === ''
+        ? null
+        : (toSelectOptions(lookup).find((option) => option.value === value)?.label ?? value);
+    const requiredAt = [form.requiredDate, form.requiredTime]
+      .filter((part) => part !== '')
+      .join(' ');
+
+    setConfirmSummary({
+      workOrderNo: selectedWorkOrder.workOrderNo,
+      warehouse: labelOf(warehouses, form.warehouseId),
+      sourceWarehouse: !usesProductionWarehouses
+        ? null
+        : form.sourceWarehouseId === ''
+          ? t.sourceWarehouse.auto
+          : (productionWarehouses.find(
+              (warehouse) => String(warehouse.warehouseId) === form.sourceWarehouseId,
+            )?.warehouseName ?? form.sourceWarehouseId),
+      destination: labelOf(locations, form.destinationLocationId),
+      requiredAt: requiredAt === '' ? null : requiredAt,
+      lineCount: toMaterialIssueRequestBody(publishInput(false), new Date())?.lines.length ?? 0,
+    });
   };
 
   const workOrderOptions = useMemo<SelectOption[]>(() => {
@@ -806,8 +843,18 @@ export const MaterialIssueRequestScreen = () => {
                 }
                 banner={conflict === null ? <SaveErrorBanner error={create.error} /> : null}
                 created={boundCreated}
-                onPublish={() => publish()}
+                onPublish={openPublishConfirm}
               />
+              {confirmSummary !== null && (
+                <PublishConfirmDialog
+                  summary={confirmSummary}
+                  onClose={() => setConfirmSummary(null)}
+                  onConfirm={() => {
+                    setConfirmSummary(null);
+                    publish();
+                  }}
+                />
+              )}
               {conflict !== null && (
                 <PlannedStockDialog
                   conflict={conflict}

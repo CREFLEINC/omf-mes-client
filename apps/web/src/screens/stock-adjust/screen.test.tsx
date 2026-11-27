@@ -4167,7 +4167,7 @@ const postButton = (): HTMLElement =>
   within(postPane()).getByRole('button', { name: t.actions.post });
 
 const confirmPostButton = (): HTMLElement =>
-  screen.getByRole('button', { name: new RegExp(t.actions.confirmPost) });
+  screen.getByRole('button', { name: t.actions.confirmPost });
 
 const businessDateField = (): HTMLElement => within(postPane()).getByLabelText(t.post.businessDate);
 
@@ -4490,7 +4490,7 @@ describe('StockAdjustScreen — 전기 확인 창', () => {
     expect(within(dialog).getByText('2026-08-18 00:30')).toBeVisible();
     /* 두 날짜가 갈렸다는 사실을 밝히되 막지 않는다(공유계약 C-8). */
     expect(within(dialog).getByText(t.dialog.postDatesApart)).toBeVisible();
-    expect(within(dialog).getByText(t.dialog.postLead)).toBeVisible();
+    expect(within(dialog).getByText(t.dialog.postNoUndo)).toBeVisible();
   });
 
   /**
@@ -4650,7 +4650,7 @@ describe('StockAdjustScreen — 전기 성공', () => {
 
     await screen.findByText(t.post.postedTitle('SAMPLE-IA-9301'));
 
-    expect(within(resultPane()).getByText(t.result.createdTitle('SAMPLE-IA-9301'))).toBeVisible();
+    expect(within(resultPane()).getByText('SAMPLE-IA-9301')).toBeVisible();
   });
 });
 
@@ -4817,7 +4817,7 @@ describe('StockAdjustScreen — 전기 실패', () => {
     await user.click(screen.getByRole('button', { name: t.actions.keepReviewing }));
 
     expect(within(postPane()).getByText(t.post.failedTitle('SAMPLE-IA-9301'))).toBeVisible();
-    expect(within(resultPane()).getByText(t.result.createdTitle('SAMPLE-IA-9301'))).toBeVisible();
+    expect(within(resultPane()).getByText('SAMPLE-IA-9301')).toBeVisible();
     expect(postButton()).toBeEnabled();
   });
 

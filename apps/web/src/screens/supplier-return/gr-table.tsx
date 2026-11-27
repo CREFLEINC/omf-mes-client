@@ -19,6 +19,9 @@ export const TABLE_MIN_WIDTH_PX = 928;
 export interface GrColumnsInput {
   selectedReceiptId: number | null;
   warehouseLookup: ReferenceSource;
+  /** 입고 유형 · 상태 코드 → 서버 코드값 이름(없으면 코드 그대로 · #360). */
+  receiptTypeName?: (code: string) => string;
+  statusName?: (code: string) => string;
   /**
    * 전송 중인가. **전표를 바꾸는 길을 함께 닫는다** — 열어 두면 사용자가 다른 전표로 옮긴 뒤
    * 앞 요청의 결과가 지금 보는 맥락에 나타난다.
@@ -58,9 +61,16 @@ export interface GrColumnsInput {
  * 하한에 가까우면 흡수 열이 몇십 px밖에 못 받아 「코드 · 이름」이 낱말 단위로 쪼개진다.
  * 그 어긋남은 열 폭 합만 세는 단언을 통과하므로 **남는 폭까지 함께 단언한다.**
  */
+const asIs = (code: string): string => code;
+
 export const buildGrColumns = ({
   warehouseLookup,
-}: Pick<GrColumnsInput, 'warehouseLookup'>): Column<ReceiptView>[] => [
+  receiptTypeName = asIs,
+  statusName = asIs,
+}: Pick<
+  GrColumnsInput,
+  'warehouseLookup' | 'receiptTypeName' | 'statusName'
+>): Column<ReceiptView>[] => [
   { key: 'goodsReceiptNo', header: t.table.goodsReceiptNo, width: '168px' },
   {
     key: 'warehouse',
@@ -79,7 +89,9 @@ export const buildGrColumns = ({
      * **값에 따라 변형을 가르지 않는다.** 값 집합이 확정되지 않아 색을 가르면 뜻을 지어내는
      * 것이 된다. 코드는 번역하지 않고 그대로 낸다 — 칩으로 감싸지 않는 이유는 비활성 표현이
      * 필요한 자리가 생겼을 때 칩이 그 prop을 갖고 있지 않기 때문이다(설치본 실측).
+     * 글자는 서버 코드값 이름으로 낸다(#360).
      */
+    render: (row) => receiptTypeName(row.receiptTypeCode),
   },
   {
     key: 'receiptDatetime',
@@ -87,7 +99,12 @@ export const buildGrColumns = ({
     width: '168px',
     render: (row) => formatDateTime(row.receiptDatetime),
   },
-  { key: 'statusCode', header: t.table.status, width: '128px' },
+  {
+    key: 'statusCode',
+    header: t.table.status,
+    width: '128px',
+    render: (row) => statusName(row.statusCode),
+  },
 ];
 
 export interface GrTableProps extends GrColumnsInput {
@@ -114,12 +131,14 @@ export const GrTable = ({
   isBeyondLast,
   selectedReceiptId,
   warehouseLookup,
+  receiptTypeName,
+  statusName,
   isLocked,
   onFirstPage,
   onToggleSelect,
   onRetryReferences,
 }: GrTableProps) => {
-  const columns = buildGrColumns({ warehouseLookup });
+  const columns = buildGrColumns({ warehouseLookup, receiptTypeName, statusName });
 
   if (isLoading) {
     return (

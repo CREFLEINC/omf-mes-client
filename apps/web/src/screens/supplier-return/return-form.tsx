@@ -3,12 +3,14 @@ import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
 import { InfoLabel, InfoTip } from '../../patterns/info-tip';
+import { TimeField } from '../../patterns/time-field';
 import { codeNote, codePlaceholder, type CodeOptionSets } from './code-options';
 import { SelectField } from './select-field';
 import type { ReturnCodeKey, ReturnDraft, SelectOption } from './types';
 import { CODE_FIELD_NAMES } from './validation';
 
 const t = messages.supplierReturn;
+const dt = messages.screenPatterns.dateTimeField;
 
 export interface ReturnFormProps {
   values: ReturnDraft;
@@ -150,23 +152,36 @@ export const ReturnForm = ({
 
         <div className="field-cell">
           {/*
-           * **시각은 시각 입력칸이다.** 날짜를 달력으로 통일한 뒤에도 시각은 그 위젯이 다루지
-           * 않는다 — 네이티브 속성을 그대로 받는 입력칸에 `type="time"`을 준다.
+           * **시각은 공용 시각 칸이다**(patterns/time-field · #360) — 숫자만 쳐도 `HH:MM` 으로 다듬고, 시계
+           * 단추로 고를 수도 있다. 값은 종전과 같은 `HH:MM` 이다.
            *
            * 오류 문구를 이 칸이 그리지 않고 **아래 한 자리**에서 그린다. 두 칸이 한 값이라
            * 각자 그리면 같은 문장이 두 번 서고, 그때 두 문장의 `id`가 달라 날짜 칸이 자기
            * 오류를 가리킬 수 없게 된다.
            */}
-          <TextField
-            type="time"
-            label={t.fields.issuedTime}
-            required
-            value={values.issuedTime}
+          <span className="field-label" aria-hidden="true">
+            {t.fields.issuedTime}
+            <span className="required-mark">{' *'}</span>
+          </span>
+          <TimeField
+            labels={{
+              field: t.fields.issuedTime,
+              hourList: dt.hour(t.fields.issuedTime),
+              minuteList: dt.minute(t.fields.issuedTime),
+              hourHead: dt.hourLabel,
+              minuteHead: dt.minuteLabel,
+              placeholder: dt.timePlaceholder,
+            }}
+            hour={values.issuedTime.slice(0, 2)}
+            minute={values.issuedTime.slice(3, 5)}
             disabled={isLocked}
-            aria-invalid={issuedError !== undefined}
-            aria-describedby={issuedError === undefined ? undefined : issuedErrorId}
-            onChange={(event) => {
-              onChangeIssuedTime(event.target.value);
+            invalid={issuedError !== undefined}
+            describedBy={issuedError === undefined ? undefined : issuedErrorId}
+            onChange={(hour, minute) => {
+              onChangeIssuedTime(`${hour}:${minute}`);
+            }}
+            onClear={() => {
+              onChangeIssuedTime('');
             }}
           />
           {issuedError !== undefined && (

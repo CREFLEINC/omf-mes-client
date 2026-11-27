@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
 import { InfoLabel } from '../../patterns/info-tip';
+import { TimeField } from '../../patterns/time-field';
 import {
   canChooseDisposalPartner,
   codeNote,
@@ -144,7 +145,11 @@ export const DisposalForm = ({
         options={options}
         value={values.codes[key]}
         note={codeNote(options)}
-        placeholder={options.length === 0 ? codePlaceholder() : undefined}
+        placeholder={
+          options.length === 0
+            ? codePlaceholder()
+            : messages.screenPatterns.referencePicker.select(label)
+        }
         disabled={isLocked || options.length === 0}
         error={fieldErrors[CODE_FIELD_NAMES[key]]}
         onChange={(value) => {
@@ -186,23 +191,38 @@ export const DisposalForm = ({
 
         <div className="field-cell">
           {/*
-           * **시각은 시각 입력칸이다.** 날짜를 달력으로 통일한 뒤에도 시각은 그 위젯이 다루지
-           * 않는다 — 네이티브 속성을 그대로 받는 입력칸에 `type="time"`을 준다.
+           * **시각은 공용 시각 칸이다**(팝업 디자인 시안 · #360) — 숫자만 쳐도 `HH:MM` 이 붙고, 시계
+           * 단추로 고를 수도 있다. 넘기는 값은 종전 `type="time"` 과 같은 `HH:MM` 이다.
            *
            * 오류 문구를 이 칸이 그리지 않고 **아래 한 자리**에서 그린다. 두 칸이 한 값이라
            * 각자 그리면 같은 문장이 두 번 서고, 그때 두 문장의 `id`가 달라 날짜 칸이 자기
            * 오류를 가리킬 수 없게 된다.
            */}
-          <TextField
-            type="time"
-            label={t.formFields.issuedTime}
-            required
-            value={values.issuedTime}
+          <span className="field-label">
+            {t.formFields.issuedTime}
+            <span className="required-mark" aria-hidden="true">
+              {' *'}
+            </span>
+          </span>
+          <TimeField
+            labels={{
+              field: t.formFields.issuedTime,
+              hourList: messages.screenPatterns.dateTimeField.hour(t.formFields.issuedTime),
+              minuteList: messages.screenPatterns.dateTimeField.minute(t.formFields.issuedTime),
+              hourHead: messages.screenPatterns.dateTimeField.hourLabel,
+              minuteHead: messages.screenPatterns.dateTimeField.minuteLabel,
+              placeholder: messages.screenPatterns.dateTimeField.timePlaceholder,
+            }}
+            hour={values.issuedTime.slice(0, 2)}
+            minute={values.issuedTime.slice(3, 5)}
             disabled={isLocked}
-            aria-invalid={issuedError !== undefined}
-            aria-describedby={issuedError === undefined ? undefined : issuedErrorId}
-            onChange={(event) => {
-              onChangeIssuedTime(event.target.value);
+            invalid={issuedError !== undefined}
+            describedBy={issuedError === undefined ? undefined : issuedErrorId}
+            onChange={(hour, minute) => {
+              onChangeIssuedTime(`${hour}:${minute}`);
+            }}
+            onClear={() => {
+              onChangeIssuedTime('');
             }}
           />
           {issuedError !== undefined && (

@@ -2,6 +2,7 @@ import {
   Breadcrumb,
   Button,
   EmptyState,
+  Icon,
   PageHeader,
   SkeletonText,
   Tabs,
@@ -31,9 +32,10 @@ import {
   DISPOSAL_PARTNER_ROLE_CODE,
   isDisposalPartnerRolePending,
   narrowToDefectWarehouses,
-  PLACEHOLDER_DISPOSAL_ISSUE_CODES,
   readDisposalPartnerCondition,
+  toCodeNameOf,
   toCodeOptionSets,
+  useDisposalCodeLists,
 } from './code-options';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import { DisposalForm } from './disposal-form';
@@ -1375,7 +1377,15 @@ export const DisposalIssueScreen = () => {
    * 값 목록이 확정되지 않은 코드의 선택지. **화면이 만들어 조건 줄에 넘긴다** —
    * 배열이 차는 순간 화면이 달라지는 것을 화면 수준에서 잴 수 있게 하기 위해서다.
    */
-  const codeOptions = toCodeOptionSets(PLACEHOLDER_DISPOSAL_ISSUE_CODES);
+  const codeLists = useDisposalCodeLists();
+  const codeOptions = toCodeOptionSets(codeLists.values, codeLists.names);
+  /* 처리 이력의 출고 유형 조건은 거르기라 폼처럼 좁히지 않는다(계약 issueTypeCode 설명 · #360). */
+  const historyIssueTypeOptions = toCodeOptionSets(
+    { ...codeLists.values, issueType: codeLists.historyIssueTypes },
+    codeLists.names,
+  ).issueType;
+  /* 표·상세의 코드 → 서버 코드값 이름(없으면 코드 그대로 · #360). */
+  const codeName = toCodeNameOf(codeLists.names);
 
   /**
    * 폐기 거래처 선택지 — **조회가 준 것을 그대로 넘긴다**(변경 통지 #128).
@@ -1455,7 +1465,7 @@ export const DisposalIssueScreen = () => {
    */
   const toResultSummary = (created: IssueDetailResult) => ({
     goodsIssueNo: created.issue.goodsIssueNo,
-    statusCode: created.issue.statusCode,
+    statusCode: codeName('issueStatus', created.issue.statusCode),
     lines: created.lines.map((line, index): ResultLineSummary => ({
       ordinal: index + 1,
       item: itemNameOf(line.itemId),
@@ -1891,7 +1901,12 @@ export const DisposalIssueScreen = () => {
               {!list.isError && (
                 <>
                   <GrTable
-                    rows={rows}
+                    /* 입고 유형 · 상태는 서버 코드값 이름으로 보인다(표시만 · #360). */
+                    rows={rows.map((row) => ({
+                      ...row,
+                      receiptTypeCode: codeName('receiptType', row.receiptTypeCode),
+                      statusCode: codeName('status', row.statusCode),
+                    }))}
                     isLoading={list.isPending}
                     isLocked={isLocked}
                     isBeyondLast={pageView.isBeyondLast}
@@ -1964,7 +1979,14 @@ export const DisposalIssueScreen = () => {
                 {detailData !== undefined && (
                   <>
                     <ReceiptSummaryPane
-                      receipt={detailData.receipt}
+                      receipt={{
+                        ...detailData.receipt,
+                        receiptTypeCode: codeName(
+                          'receiptType',
+                          detailData.receipt.receiptTypeCode,
+                        ),
+                        statusCode: codeName('status', detailData.receipt.statusCode),
+                      }}
                       warehouseName={detailWarehouseName}
                     />
 
@@ -2097,9 +2119,9 @@ export const DisposalIssueScreen = () => {
                         summary={{
                           goodsReceiptNo: detailData.receipt.goodsReceiptNo,
                           warehouseName: detailWarehouseName,
-                          issueTypeCode: disposalDraft.codes.issueType,
+                          issueTypeCode: codeName('issueType', disposalDraft.codes.issueType),
                           sourceDocumentTypeCode: disposalDraft.codes.sourceDocumentType,
-                          reasonCode: disposalDraft.codes.reason,
+                          reasonCode: codeName('reason', disposalDraft.codes.reason),
                           issuedAt: formatDateTime(toIssuedLocal(disposalDraft)),
                           businessDate: toBusinessDate(toIssuedLocal(disposalDraft)),
                           remarks: disposalDraft.remarks,
@@ -2203,7 +2225,7 @@ export const DisposalIssueScreen = () => {
                  * 갈라 두면 값이 확정될 때 채울 자리가 둘이 된다(`code-options.ts`).
                  * **상태만 따로다** — 출고 전표의 상태는 입고 전표의 상태와 다른 값 목록이다.
                  */
-                issueTypeOptions={codeOptions.issueType}
+                issueTypeOptions={historyIssueTypeOptions}
                 reasonOptions={codeOptions.reason}
                 statusOptions={codeOptions.issueStatus}
                 onSearch={(nextFilters) => {
@@ -2220,7 +2242,13 @@ export const DisposalIssueScreen = () => {
               {!issueList.isError && (
                 <>
                   <GiTable
-                    rows={issueRows}
+                    /* 폐기 사유 · 상태는 서버 코드값 이름으로 보인다(표시만 · #360). */
+                    rows={issueRows.map((row) => ({
+                      ...row,
+                      reasonCode:
+                        row.reasonCode === null ? null : codeName('reason', row.reasonCode),
+                      statusCode: codeName('issueStatus', row.statusCode),
+                    }))}
                     isLoading={issueList.isPending}
                     isLocked={isLocked}
                     isBeyondLast={issuePageView.isBeyondLast}
@@ -2292,7 +2320,15 @@ export const DisposalIssueScreen = () => {
               {!issueDetail.isError && issueDetailData !== undefined && (
                 <>
                   <IssueDetailPane
-                    issue={issueDetailData.issue}
+                    issue={{
+                      ...issueDetailData.issue,
+                      issueTypeCode: codeName('issueType', issueDetailData.issue.issueTypeCode),
+                      reasonCode:
+                        issueDetailData.issue.reasonCode === null
+                          ? null
+                          : codeName('reason', issueDetailData.issue.reasonCode),
+                      statusCode: codeName('issueStatus', issueDetailData.issue.statusCode),
+                    }}
                     warehouseName={issueWarehouseName}
                   />
 
@@ -2422,7 +2458,7 @@ export const DisposalIssueScreen = () => {
                        */
                       issue={{
                         goodsIssueNo: postResult.goodsIssueNo,
-                        statusCode: postResult.statusCode,
+                        statusCode: codeName('issueStatus', postResult.statusCode),
                         erpMessageQueued: postResult.erpMessageQueued,
                       }}
                     />
@@ -2492,7 +2528,15 @@ export const DisposalIssueScreen = () => {
         }
         actions={
           /* 전송 중에는 다시 부르지 않는다 — 나가는 중인 쓰기가 곧 그 자료를 바꾼다. */
-          <Button variant="outlined" size="sm" disabled={isLocked} onClick={refreshAll}>
+          /* 모양은 통합 대시보드 · 재고 현황의 「갱신」과 같다(#360). */
+          <Button
+            variant="outlined"
+            size="sm"
+            className="stock-status-refresh-button"
+            leadingIcon={<Icon name="refresh" size={18} />}
+            disabled={isLocked}
+            onClick={refreshAll}
+          >
             {t.actions.refresh}
           </Button>
         }

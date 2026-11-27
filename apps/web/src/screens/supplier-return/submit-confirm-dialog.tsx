@@ -1,4 +1,4 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 const t = messages.supplierReturn;
@@ -22,10 +22,14 @@ export interface SubmitLineSummary {
 
 export interface SubmitSummary {
   supplierName: string;
-  issueTypeCode: string;
-  sourceDocumentTypeCode: string;
-  destinationTypeCode: string;
-  reasonCode: string;
+  /**
+   * 코드 넷은 **이름**으로 온다 — 서버 코드값 이름 · 계약이 적은 이름(없으면 코드 그대로 · #360).
+   * 보내는 값은 화면이 들고 있는 코드 그대로다.
+   */
+  issueTypeName: string;
+  sourceDocumentTypeName: string;
+  destinationTypeName: string;
+  reasonName: string;
   /** 「2026-08-06 09:12」 — 보이는 표기 그대로 */
   issuedAt: string;
   /** **파생값이다.** 사용자가 넣은 적 없는 값이므로 창이 그 사실을 함께 밝힌다 */
@@ -52,17 +56,27 @@ interface SummaryRow {
 
 const yesNo = (value: boolean): string => (value ? t.values.yes : t.values.no);
 
-const toRows = (summary: SubmitSummary): SummaryRow[] => [
+/** 2열 작은 상자 넷(사용자 시안 2026-11-27 · #360). */
+const toFacts = (summary: SubmitSummary): SummaryRow[] => [
   { key: 'supplier', label: t.fields.supplier, value: summary.supplierName },
-  { key: 'issueType', label: t.fields.issueType, value: summary.issueTypeCode },
+  { key: 'reason', label: t.fields.reason, value: summary.reasonName },
+  { key: 'issuedAt', label: t.fields.issuedAt, value: summary.issuedAt },
+  {
+    key: 'sendToErp',
+    label: t.fields.sendToErp,
+    value: summary.sendToErp ? t.dialog.erpPlanned : t.dialog.erpOff,
+  },
+];
+
+/** 접힌 「처리 상세」 안의 나머지 정보. */
+const toDetails = (summary: SubmitSummary): SummaryRow[] => [
+  { key: 'issueType', label: t.fields.issueType, value: summary.issueTypeName },
   {
     key: 'sourceDocumentType',
     label: t.fields.sourceDocumentType,
-    value: summary.sourceDocumentTypeCode,
+    value: summary.sourceDocumentTypeName,
   },
-  { key: 'destinationType', label: t.fields.destinationType, value: summary.destinationTypeCode },
-  { key: 'reason', label: t.fields.reason, value: summary.reasonCode },
-  { key: 'issuedAt', label: t.fields.issuedAt, value: summary.issuedAt },
+  { key: 'destinationType', label: t.fields.destinationType, value: summary.destinationTypeName },
   /* 파생값임을 **값 자체가** 밝힌다 — 라벨만으로는 사용자가 자기가 넣은 값으로 읽는다. */
   {
     key: 'businessDate',
@@ -74,9 +88,11 @@ const toRows = (summary: SubmitSummary): SummaryRow[] => [
     label: t.fields.replacementExpected,
     value: yesNo(summary.replacementExpected),
   },
-  { key: 'sendToErp', label: t.fields.sendToErp, value: yesNo(summary.sendToErp) },
   { key: 'remarks', label: t.fields.remarks, value: summary.remarks },
 ];
+
+/* 값이 없는 칸은 비워 두지 않는다 — 빠뜨린 것인지 없는 것인지 구분되지 않는다. */
+const shown = (value: string): string => (value === '' ? t.values.empty : value);
 
 /**
  * 반품 처리 확인 — **되돌릴 수 없는 쓰기 앞의 마지막 층이다.**
@@ -114,7 +130,6 @@ export const SubmitConfirmDialog = ({ summary, onConfirm, onClose }: SubmitConfi
     title={t.dialog.submitTitle}
     footer={
       <>
-        {/* 문구가 「확인/취소」가 아니다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다. */}
         <Button variant="outlined" onClick={onClose}>
           {t.actions.keepEditing}
         </Button>
@@ -122,39 +137,66 @@ export const SubmitConfirmDialog = ({ summary, onConfirm, onClose }: SubmitConfi
       </>
     }
   >
-    <p>{t.dialog.submitLead}</p>
-
-    <dl className="filter-bar">
-      {toRows(summary).map((row) => (
-        <div className="field-cell" key={row.key}>
-          <dt className="field-label">{row.label}</dt>
-          {/* 값이 없는 칸은 비워 두지 않는다 — 빠뜨린 것인지 없는 것인지 구분되지 않는다. */}
-          <dd>{row.value === '' ? t.values.empty : row.value}</dd>
-        </div>
-      ))}
-    </dl>
-
     {/*
-     * **무엇이 얼마나 나가는지를 줄마다 다시 보인다.** 합계만 보이면 어느 줄이 얼마인지
-     * 확인할 수 없고, 이 화면에서 잘못 실린 수량은 재고에서 그대로 빠진다.
+     * 사용자 시안 2026-11-27(#360) — 맨 위 「반품 대상 N건」 상자(줄마다 품목 · LOT | 반품 수량), 그 아래 2열 작은
+     * 상자 넷, 나머지는 접힌 「처리 상세」, 주황 경고 세 줄. **무엇이 얼마나 나가는지 줄마다 다시 보인다.**
      */}
-    <p>{t.dialog.lineCount(summary.lines.length)}</p>
-    <ul>
-      {/*
-       * `key`가 사실상 배열 인덱스다(순번이 그 자리에서 매겨진다). **여기서는 그 규칙을
-       * 지나간다** — 줄이 순수 텍스트이고 지역 상태가 없으며, 이 목록은 제자리에서 재정렬되지
-       * 않는다(값이 바뀌면 창째 다시 그려진다). 내부 번호를 키로 쓰지 않기 위한 것이며(#44)
-       * 받는 타입에 그 자리조차 두지 않았다.
-       */}
-      {summary.lines.map((line) => (
-        <li key={line.ordinal}>{t.dialog.linePair(line.item, line.lot, line.qty)}</li>
-      ))}
-    </ul>
+    <div className="sr-confirm-body">
+      <section className="sr-confirm-target" aria-label={t.dialog.targetHead(summary.lines.length)}>
+        <p className="sr-confirm-target-head">{t.dialog.targetHead(summary.lines.length)}</p>
+        <ul className="sr-confirm-lines">
+          {/*
+           * `key`가 사실상 배열 인덱스다(순번이 그 자리에서 매겨진다) — 줄이 순수 텍스트이고 제자리에서
+           * 재정렬되지 않는다. 내부 번호를 키로 쓰지 않기 위한 것이다(#44).
+           */}
+          {summary.lines.map((line) => (
+            <li key={line.ordinal}>
+              <span className="sr-confirm-line-what">
+                <strong>{line.item}</strong>
+                <span className="sr-confirm-line-lot">{line.lot}</span>
+              </span>
+              <span className="sr-confirm-line-qty">
+                <span className="sr-confirm-line-qty-label">{t.dialog.returnQty}</span>{' '}
+                <strong>{line.qty}</strong>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
 
-    {summary.hasUnknownOnHand && <p className="field-note">{t.dialog.submitOnHandUnknown}</p>}
+      <dl className="sr-confirm-facts">
+        {toFacts(summary).map((row) => (
+          <div key={row.key}>
+            <dt>{row.label}</dt>
+            <dd>{shown(row.value)}</dd>
+          </div>
+        ))}
+      </dl>
 
-    <p>{t.dialog.submitEffects}</p>
-    <p>{t.dialog.submitNoUndoHere}</p>
-    <p>{t.dialog.submitLotHoldKept}</p>
+      <details className="sr-confirm-details">
+        <summary>
+          {t.dialog.details}
+          <Icon name="expand_more" size={20} aria-hidden />
+        </summary>
+        <dl>
+          {toDetails(summary).map((row) => (
+            <div key={row.key}>
+              <dt>{row.label}</dt>
+              <dd>{shown(row.value)}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
+
+      {summary.hasUnknownOnHand && <p className="field-note">{t.dialog.submitOnHandUnknown}</p>}
+
+      <AlertBanner variant="warning">
+        <span>{t.dialog.submitEffects}</span>
+        <br />
+        <span>{t.dialog.submitNoUndoHere}</span>
+        <br />
+        <span>{t.dialog.submitLotHoldKept}</span>
+      </AlertBanner>
+    </div>
   </Dialog>
 );

@@ -24,7 +24,7 @@ export interface DetailPaneProps {
 }
 
 /**
- * 고른 전표 — **입고 관리 라인 머리와 같은 모양**(오른쪽 구획). 머리(유형 · 문서번호 + 사실 칸) 다음에
+ * 고른 전표 — **다른 목록 · 상세 화면과 같은 사실 칸 짜임**(오른쪽 구획 · #360). 머리(유형 · 문서번호 + 사실 칸) 다음에
  * 취소 구획, 처리 경과, 후속 문서가 이어진다. 구획이 통째로 스크롤한다.
  *
  * ⭐ **요약은 상세 응답의 값이다**(계약 `DocumentProgressDetail.progress`) — 왼쪽 목록 행을 다시 그리지 않는다.
@@ -44,6 +44,12 @@ export const DetailPane = ({
   const openState = judgeScreenOpen(detail.screenId ?? '', routes);
 
   const facts: { key: string; label: string; value: string }[] = [
+    {
+      key: 'documentType',
+      label: t.fields.documentType,
+      value: documentTypeName(progress.documentTypeCode),
+    },
+    { key: 'documentNo', label: t.fields.q, value: progress.documentNo },
     { key: 'documentDate', label: t.detail.documentDate, value: progress.documentDate },
     {
       key: 'subType',
@@ -62,37 +68,32 @@ export const DetailPane = ({
 
   return (
     <>
-      <header
-        className="po-board-order-head"
-        role="group"
-        aria-label={t.detail.summary(progress.documentNo)}
-      >
-        <div className="po-board-order-title">
-          <span className="po-board-order-eyebrow">
-            {documentTypeName(progress.documentTypeCode)}
-          </span>
-          <span className="po-board-order-no">{progress.documentNo}</span>
-        </div>
-        <dl className="po-board-order-facts">
+      {/*
+       * 머리 = 사실 칸(이름 위 · 값 아래) — 공급사 반품 · 재고조정 이력 상세와 같은 짜임(#360). 단추는 그 아래 줄에 선다.
+       */}
+      <div role="group" aria-label={t.detail.summary(progress.documentNo)}>
+        <dl className="filter-bar">
           {facts.map((fact) => (
-            <div key={fact.key}>
-              <dt>{fact.label}</dt>
+            <div className="field-cell" key={fact.key}>
+              <dt className="field-label">{fact.label}</dt>
               <dd>{fact.value}</dd>
             </div>
           ))}
         </dl>
         {openState.kind === 'open' ? (
-          <Button
-            variant="outlined"
-            size="sm"
-            onClick={() => {
-              onOpen(openState.path);
-            }}
-          >
-            {t.actions.openDocument}
-          </Button>
+          <div className="filter-actions">
+            <Button
+              variant="outlined"
+              size="sm"
+              onClick={() => {
+                onOpen(openState.path);
+              }}
+            >
+              {t.actions.openDocument}
+            </Button>
+          </div>
         ) : null}
-      </header>
+      </div>
 
       {children}
 

@@ -1,11 +1,4 @@
-import {
-  AlertBanner,
-  Breadcrumb,
-  EmptyState,
-  PageHeader,
-  SkeletonText,
-  useToast,
-} from '@crefle/web-ui';
+import { AlertBanner, EmptyState, SkeletonText, useToast } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
@@ -74,7 +67,7 @@ import {
 import { RequestCancelDialog } from './request-cancel-dialog';
 import { SCREEN_ROUTES } from './screen-routes';
 import type { CancelExecutionView } from './types';
-import { BoardFrame } from '../../patterns/board-frame';
+import { ListDetailWorkspace } from '../../patterns/list-detail-workspace';
 import { SaveErrorBanner } from '../../patterns/master';
 
 const t = messages.documentProgress;
@@ -913,25 +906,15 @@ export const DocumentProgressScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-
       {/*
-       * **입고 관리 짜임**(사용자 지시 2026-11-19) — 위 조회 조건, 왼쪽 전표 목록, 오른쪽 고른 전표. 두 구획은
-       * 창 바닥에서 멈추고 가운데 막대로 폭을 나눈다(`BoardFrame`).
+       * 화면 제목 줄(경로 · 큰 제목)은 두지 않는다 — 다른 목록 · 상세 화면과 같다(#360).
+       * 조회 조건 · 목록 | 상세는 공용 분할(가운데 폭 막대 · 상하 배치의 높이 막대 · 「⋯」 좌우/상하 배치 · 목록 접기)이다.
+       * 폭 비율 열쇠(`omf-mes:document-progress:split`)는 종전과 같다.
        */}
-      <BoardFrame
-        splitKey="omf-mes:document-progress:split"
+      <ListDetailWorkspace
+        storageKey="omf-mes:document-progress"
         initialRatio={0.6}
-        splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
-        above={{
+        filter={{
           label: t.panes.filters,
           content: (
             <>
@@ -939,32 +922,33 @@ export const DocumentProgressScreen = () => {
                 <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
               )}
               {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-              <div className="pane po-board-filter">
-                <ProgressFilterBar
-                  appliedFilters={filters}
-                  documentTypeOptions={documentTypeOptions}
-                  disabledTypeNote={
-                    disabledReasons === undefined
-                      ? undefined
-                      : t.filters.disabledTypes(disabledReasons)
-                  }
-                  statusOptions={statusOptions}
-                  onSearch={(nextFilters) => {
-                    applyQuery(nextFilters);
-                  }}
-                  onRemoveFilter={(key) => {
-                    applyQuery({ ...filters, [key]: DEFAULT_PROGRESS_FILTERS[key] });
-                  }}
-                  onReset={() => {
-                    applyQuery(DEFAULT_PROGRESS_FILTERS);
-                  }}
-                />
-              </div>
+              <ProgressFilterBar
+                appliedFilters={filters}
+                documentTypeOptions={documentTypeOptions}
+                disabledTypeNote={
+                  disabledReasons === undefined
+                    ? undefined
+                    : t.filters.disabledTypes(disabledReasons)
+                }
+                statusOptions={statusOptions}
+                onSearch={(nextFilters) => {
+                  applyQuery(nextFilters);
+                }}
+                onRemoveFilter={(key) => {
+                  applyQuery({ ...filters, [key]: DEFAULT_PROGRESS_FILTERS[key] });
+                }}
+                onReset={() => {
+                  applyQuery(DEFAULT_PROGRESS_FILTERS);
+                }}
+              />
             </>
           ),
         }}
         list={{
           label: t.panes.list,
+          title: t.panes.list,
+          /* 넓은 표가 목록 상자째 옆으로 밀리지 않고 표만 구르게 — 종전 입고 관리 짜임 표 상자 규칙(`.po-board-pane`)을 그대로 쓴다. */
+          className: 'po-board-pane',
           count: list.data?.page.total,
           /*
            * 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「없습니다」로 보이면 사용자가

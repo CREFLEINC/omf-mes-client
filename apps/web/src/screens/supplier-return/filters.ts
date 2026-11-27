@@ -265,6 +265,9 @@ export type FilterChip =
  */
 export interface FilterChipNames {
   warehouse: string;
+  /** 입고 유형 · 상태 코드 → 서버 코드값 이름(#360). 주지 않으면 코드 그대로. */
+  receiptTypeName?: (code: string) => string;
+  statusName?: (code: string) => string;
 }
 
 /** 기간 칩의 문구. 한쪽만 넣은 기간도 조건이므로 세 갈래로 갈린다. */
@@ -281,10 +284,7 @@ const periodLabel = (from: string, to: string): string => {
  * (`?q=%20%20`·`?from=2026-13-01`)에서 **조건은 걸리지 않는데 칩만 뜬다** —
  * 사용자는 칩을 보고 조건이 걸린 줄 알고, 결과가 그대로인 이유를 화면 어디에서도 읽을 수 없다.
  */
-export const toFilterChips = (
-  filters: ReceiptFilters,
-  names: FilterChipNames,
-): FilterChip[] => {
+export const toFilterChips = (filters: ReceiptFilters, names: FilterChipNames): FilterChip[] => {
   const from = readDateFilter(filters.from);
   const to = readDateFilter(filters.to);
   const receiptType = normalizeText(filters.receiptType);
@@ -300,14 +300,11 @@ export const toFilterChips = (
       },
       readNumberFilter(filters.warehouse),
     ],
-    [
-      { key: 'period', label: periodLabel(from, to), removeLabel: null },
-      from === '' ? to : from,
-    ],
+    [{ key: 'period', label: periodLabel(from, to), removeLabel: null }, from === '' ? to : from],
     [
       {
         key: 'receiptType',
-        label: t.filters.chipReceiptType(receiptType),
+        label: t.filters.chipReceiptType(names.receiptTypeName?.(receiptType) ?? receiptType),
         removeLabel: t.filters.chipRemoveReceiptType,
       },
       receiptType,
@@ -315,15 +312,12 @@ export const toFilterChips = (
     [
       {
         key: 'status',
-        label: t.filters.chipStatus(status),
+        label: t.filters.chipStatus(names.statusName?.(status) ?? status),
         removeLabel: t.filters.chipRemoveStatus,
       },
       status,
     ],
-    [
-      { key: 'q', label: t.filters.chipQ(query), removeLabel: t.filters.chipRemoveQ },
-      query,
-    ],
+    [{ key: 'q', label: t.filters.chipQ(query), removeLabel: t.filters.chipRemoveQ }, query],
   ];
 
   return candidates.filter(([, value]) => value !== '').map(([chip]) => chip);

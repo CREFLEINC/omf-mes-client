@@ -47,12 +47,15 @@ const renderPane = (options: RenderOptions = {}): HTMLElement => {
 };
 
 describe('ResultPane — 화면이 확인한 것만 말한다', () => {
-  /** 전표번호는 **적어 두거나 옮겨 적는 값**이라 사라지는 알림으로 내지 않는다. */
-  it('전표번호가 제목과 값 자리에 남는다', () => {
+  /** 등록 성공 문장은 오른쪽 아래 알림으로 나가고(#360), 전표번호는 값 자리에 남는다. */
+  it('성공 상자 없이 전표번호가 값 자리에 남는다', () => {
     const pane = renderPane();
 
-    expect(within(pane).getByText(t.result.createdTitle('SAMPLE-IA-9301'))).toBeVisible();
+    expect(
+      within(pane).queryByText(t.result.createdTitle('SAMPLE-IA-9301')),
+    ).not.toBeInTheDocument();
     expect(within(pane).getByText(t.result.inventoryAdjustmentNo)).toBeVisible();
+    expect(within(pane).getByText('SAMPLE-IA-9301')).toBeVisible();
   });
 
   /**
@@ -152,7 +155,7 @@ describe('ResultPane — 상신 갈래', () => {
     const pane = renderPane({ phase: 'submitting', blockReason: t.actionReasons.submitting });
 
     expect(within(pane).getByText(t.result.submitting)).toBeVisible();
-    expect(within(pane).getByText(t.result.createdTitle('SAMPLE-IA-9301'))).toBeVisible();
+    expect(within(pane).getByText('SAMPLE-IA-9301')).toBeVisible();
     expect(within(pane).getByLabelText(t.submit.reason)).toBeDisabled();
   });
 

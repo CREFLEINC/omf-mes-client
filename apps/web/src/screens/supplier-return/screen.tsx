@@ -9,8 +9,10 @@ import { SaveErrorBanner } from '../../patterns/master';
 import { ScreenHeader } from '../../patterns/screen-header';
 import {
   SUPPLIER_RETURN_CODE_GROUPS,
+  codeNameOf,
   isRequiredCodeListPending,
   toCodeOptionSets,
+  toSupplierReturnCodeNames,
   withRuntimeSupplierReturnCodes,
 } from './code-options';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
@@ -670,10 +672,23 @@ export const SupplierReturnScreen = () => {
    */
   const issueTypes = useSupplierReturnCodeValues(SUPPLIER_RETURN_CODE_GROUPS.issueType);
   const reasons = useSupplierReturnCodeValues(SUPPLIER_RETURN_CODE_GROUPS.reason);
+  /* 입고 유형 · 상태 — 조회 조건 선택지와 목록 · 제목줄의 이름(계약 확정 그룹 · #360). */
+  const receiptTypes = useSupplierReturnCodeValues(SUPPLIER_RETURN_CODE_GROUPS.receiptType);
+  const statuses = useSupplierReturnCodeValues(SUPPLIER_RETURN_CODE_GROUPS.status);
   const codeLookupError = [issueTypes, reasons].find((lookup) => lookup.isError);
+  const runtimeCodeValues = {
+    issueType: issueTypes.data,
+    reason: reasons.data,
+    receiptType: receiptTypes.data,
+    status: statuses.data,
+  };
+  const codeNames = toSupplierReturnCodeNames(runtimeCodeValues);
   const codeOptions = toCodeOptionSets(
-    withRuntimeSupplierReturnCodes({ issueType: issueTypes.data, reason: reasons.data }),
+    withRuntimeSupplierReturnCodes(runtimeCodeValues),
+    codeNames,
   );
+  const receiptTypeName = (code: string): string => codeNameOf(codeNames.receiptType, code);
+  const statusName = (code: string): string => codeNameOf(codeNames.status, code);
 
   /** 잠긴 두 버튼의 사유를 잇는 `id`. 사유는 **잠근 자리 옆에서** 읽혀야 한다(배치 규범 4). */
   const blockReasonId = useId();
@@ -923,10 +938,16 @@ export const SupplierReturnScreen = () => {
                   returnDraft.supplier === '' ? null : Number(returnDraft.supplier),
                 ),
               ),
-              issueTypeCode: returnDraft.codes.issueType,
-              sourceDocumentTypeCode: returnDraft.codes.sourceDocumentType,
-              destinationTypeCode: returnDraft.codes.destinationType,
-              reasonCode: returnDraft.codes.reason,
+              issueTypeName: codeNameOf(codeNames.issueType, returnDraft.codes.issueType),
+              sourceDocumentTypeName: codeNameOf(
+                codeNames.sourceDocumentType,
+                returnDraft.codes.sourceDocumentType,
+              ),
+              destinationTypeName: codeNameOf(
+                codeNames.destinationType,
+                returnDraft.codes.destinationType,
+              ),
+              reasonName: codeNameOf(codeNames.reason, returnDraft.codes.reason),
               issuedAt: formatDateTime(toIssuedLocal(returnDraft)),
               businessDate: toBusinessDate(toIssuedLocal(returnDraft)),
               replacementExpected: returnDraft.replacementExpected,
@@ -1003,6 +1024,8 @@ export const SupplierReturnScreen = () => {
            * 제목줄에 번호를 문자열로 만드는 자리는 어느 쪽에도 없다.
            */
           warehouseName={describeReference(toReference(warehouses, detailData.receipt.warehouseId))}
+          receiptTypeName={receiptTypeName(detailData.receipt.receiptTypeCode)}
+          statusName={statusName(detailData.receipt.statusCode)}
         />
 
         <GrLineTable
@@ -1105,7 +1128,11 @@ export const SupplierReturnScreen = () => {
                 warehouseNote={lookupNote(warehouses)}
                 receiptTypeOptions={codeOptions.receiptType}
                 statusOptions={codeOptions.status}
-                chipNames={{ warehouse: describeReference(warehouseReference) }}
+                chipNames={{
+                  warehouse: describeReference(warehouseReference),
+                  receiptTypeName,
+                  statusName,
+                }}
                 isLocked={isLocked}
                 onSearch={(nextFilters) => {
                   applyQuery(nextFilters);
@@ -1126,6 +1153,8 @@ export const SupplierReturnScreen = () => {
                     isBeyondLast={pageView.isBeyondLast}
                     selectedReceiptId={selectedReceiptId}
                     warehouseLookup={warehouses}
+                    receiptTypeName={receiptTypeName}
+                    statusName={statusName}
                     isLocked={isLocked}
                     onFirstPage={() => {
                       applyQuery(filters);
@@ -1179,7 +1208,11 @@ export const SupplierReturnScreen = () => {
                */}
               {result !== null && (
                 <section className="pane">
-                  <ResultPane result={result} lines={resultLines} />
+                  <ResultPane
+                    result={result}
+                    lines={resultLines}
+                    statusName={statusName(result.statusCode)}
+                  />
                 </section>
               )}
             </>

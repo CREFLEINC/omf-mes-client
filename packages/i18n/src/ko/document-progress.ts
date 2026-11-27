@@ -14,17 +14,12 @@
  */
 export const documentProgress = {
   title: '물류 전표 조회·취소',
-  breadcrumbRoot: '구매 / 자재 관리',
   /** 구획 이름 — 입고 관리 짜임(위 조건 · 왼쪽 목록 · 오른쪽 고른 전표). */
   panes: {
     filters: '조회 조건',
     list: '전표 목록',
     detail: '고른 전표',
   },
-  /** 목록 · 상세 사이 막대. */
-  splitter: '끌어서 목록과 상세 폭 조절',
-  listCollapse: '전표 목록 접기',
-  listExpand: '전표 목록 펼치기',
   /** 문서 유형 이름 — 계약이 표시명을 싣지 않고 다국어 사전에 맡겼다(G-33). */
   documentTypes: {
     PURCHASE_ORDER: '발주',
@@ -61,8 +56,8 @@ export const documentProgress = {
   },
   filters: {
     all: '전체',
-    /** 문서 유형은 「전체」로 조회할 수 없다 — 하나를 골라야 목록이 나온다. */
-    choose: '선택',
+    /** 문서번호 검색칸의 흐린 문구(#360). */
+    qPlaceholder: '문서번호를 입력하세요',
     /** 외주 문서처럼 고를 수 없는 유형이 있을 때. 사유를 감추지 않는다. */
     disabledTypes: (reasons: string): string => `고를 수 없는 유형이 있습니다. ${reasons}`,
     /** 「조건 더보기」에 접힌 상태에 걸린 값의 칩(C-6). */

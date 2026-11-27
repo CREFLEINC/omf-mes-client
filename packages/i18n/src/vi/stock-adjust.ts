@@ -134,10 +134,10 @@ export const stockAdjust: Translated<typeof ko.stockAdjust> = {
     togglePost: 'Ghi sổ không qua phê duyệt',
     post: 'Ghi sổ tồn kho',
     keepEditing: 'Nhập tiếp',
-    keepReviewing: 'Xem lại',
+    keepReviewing: 'Hủy',
     confirmRegister: 'Đăng ký',
     confirmSubmit: 'Trình phê duyệt',
-    confirmPost: 'Làm chuyển động tồn kho',
+    confirmPost: 'Ghi sổ',
     confirmDiscard: 'Bỏ bản nháp',
     prevPage: 'Trang trước',
     nextPage: 'Trang sau',
@@ -250,9 +250,8 @@ export const stockAdjust: Translated<typeof ko.stockAdjust> = {
     reasonFirstLine: 'Dòng đầu sẽ hiện làm tóm tắt trong hộp phê duyệt',
     submitNoUndo:
       'Sau khi trình phê duyệt thì màn hình này không hoàn tác được. Việc hủy làm ở hộp phê duyệt.',
-    postTitle: 'Ghi sổ điều chỉnh này chứ?',
-    postLead:
-      'Tồn kho sẽ chuyển động theo các giá trị dưới đây. Muốn hoàn nguyên thì phải dựng một điều chỉnh ngược chiều mới.',
+    postTitle: 'Ghi sổ phiếu điều chỉnh tồn kho chứ?',
+    postNoUndo: 'Phiếu đã ghi sổ thì màn hình này không hủy được.',
     postDatesApart:
       'Ngày của ngày làm việc và thời điểm phát sinh khác nhau. Nếu là điều chỉnh làm qua nửa đêm thì bình thường, nếu không thì hãy đóng lại và sửa.',
   },
@@ -285,8 +284,6 @@ export const stockAdjust: Translated<typeof ko.stockAdjust> = {
     occurredAt: 'Thời điểm phát sinh',
     posting: 'Đang ghi sổ.',
     postedTitle: (adjustmentNo: string): string => `Đã ghi sổ phiếu điều chỉnh ${adjustmentNo}.`,
-    postedDescription:
-      'Tồn kho đã chuyển động. Muốn hoàn nguyên thì phải dựng một điều chỉnh ngược chiều mới.',
     adjustedAt: 'Thời điểm ghi sổ',
     adjustedAtUnknown: 'Máy chủ không gửi về thời điểm ghi sổ',
     statusAfterPost: 'Trạng thái sau khi ghi sổ',

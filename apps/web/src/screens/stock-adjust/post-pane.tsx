@@ -122,12 +122,9 @@ export const PostPane = ({
 
       {isExpanded && (
         <div id={bodyId}>
+          {/* 전기 성공은 오른쪽 아래 알림으로 낸다(#360) — 전기일시·전기 후 상태는 여기 남는다. */}
           {posting.kind === 'posted' && (
             <>
-              <AlertBanner variant="success" title={t.post.postedTitle(inventoryAdjustmentNo)}>
-                {t.post.postedDescription}
-              </AlertBanner>
-
               <dl className="filter-bar">
                 <div className="field-cell">
                   <dt className="field-label">{t.post.adjustedAt}</dt>

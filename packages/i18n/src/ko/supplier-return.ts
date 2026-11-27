@@ -84,10 +84,10 @@ export const supplierReturn = {
     /** 입력은 그대로 두고 창만 닫는다 — 문구는 「취소」로 통일(사용자 지시 2026-11-27 · #360). */
     keepEditing: '취소',
     /**
-     * **창 안의 확인 버튼은 이름이 다르다.** 구획의 「반품 처리」와 글자가 같으면 사용자가
-     * 어느 것을 눌렀는지 되짚을 수 없고, 음성 조작이 둘 중 무엇을 가리키는지도 정해지지 않는다.
+     * 창 안의 확인 버튼 — 시안대로 구획 단추와 같은 「반품 처리」(사용자 시안 2026-11-27 · #360).
+     * 창이 열려 있는 동안 바깥은 가려져 둘이 함께 눌릴 자리가 없다.
      */
-    confirmSubmit: '반품 처리 실행',
+    confirmSubmit: '반품 처리',
     confirmDiscard: '입력 지우기 실행',
   },
   /** 컨트롤이 잠긴 사유. **잠근 자리 옆에서 읽혀야 한다**(배치 규범 4). */
@@ -96,8 +96,7 @@ export const supplierReturn = {
      * 「고르세요」가 아니라 **「고를 값이 아직 없습니다」**다. 고를 것이 없는데 고르라고 하면
      * 사용자가 자기가 놓친 것을 찾다가 화면을 고장으로 읽는다(계획 결정 10).
      */
-    codeListPending:
-      '필요한 코드 목록이 아직 없어 반품을 처리할 수 없습니다.',
+    codeListPending: '필요한 코드 목록이 아직 없어 반품을 처리할 수 없습니다.',
     needsSupplier: '되돌려 보낼 공급사를 고르세요.',
     needsCodes: '반품 정보의 코드를 모두 고르세요.',
     needsIssuedDate: '출고 일자를 고르세요.',
@@ -129,8 +128,7 @@ export const supplierReturn = {
   filters: {
     all: '전체',
     /** 기본 기간이 없다는 사실 — 입고일 라벨 옆 ⓘ 로 읽힌다(관리웹 정리 시안 A). */
-    periodNote:
-      '입고일을 고르지 않으면 기본 기간이 보입니다.',
+    periodNote: '입고일을 고르지 않으면 기본 기간이 보입니다.',
     lookupFailed: '이름 목록을 불러오지 못했습니다. 다시 시도해 주세요.',
     lookupTruncated:
       '이름 목록이 일부만 왔습니다. 찾는 값이 목록에 없을 수 있습니다 — 없어진 것이 아닙니다.',
@@ -175,8 +173,7 @@ export const supplierReturn = {
      * 한쪽은 실패인 채로 남는데 문구는 둘 다 고쳐질 것처럼 말한다.
      */
     referencesFailed: '창고 이름을 불러오지 못했습니다.',
-    lineReferencesFailed:
-      '품목·단위·자재 LOT·위치 이름을 불러오지 못했습니다.',
+    lineReferencesFailed: '품목·단위·자재 LOT·위치 이름을 불러오지 못했습니다.',
     /**
      * **잘림은 실패와 다르다.** 이름 목록이 앞쪽만 오면 그 뒤의 정상 값이 「알 수 없음」으로
      * 찍히는데, 그 문구는 *값이 잘못됐다*는 뜻이라 사용자가 반대로 읽는다.
@@ -285,23 +282,27 @@ export const supplierReturn = {
    * 고쳐지지 않았고, 고칠 수 없는 결함은 **걸릴 자리를 만들지 않는 것**으로 피한다.
    */
   dialog: {
-    submitTitle: '이 내용으로 반품을 처리할까요?',
-    submitLead: '아래 내용으로 반품 전표를 만들고 곧바로 전기합니다.',
-    /** 줄별 요약. 「품목 · 자재 LOT · 수량 단위」 — 확인 창에서 처음 보는 값이 없어야 한다. */
-    linePair: (item: string, lot: string, qty: string): string => `${item} · ${lot} · ${qty}`,
-    lineCount: (count: number): string => `고른 줄 ${String(count)}줄`,
+    /** 반품 처리 확인 팝업 — 사용자 시안 2026-11-27(#360). */
+    submitTitle: '반품을 처리할까요?',
+    /** 맨 위 상자 머리. */
+    targetHead: (count: number): string => `반품 대상 ${String(count)}건`,
+    returnQty: '반품 수량',
+    /** 2열 작은 상자의 ERP 송신 값. */
+    erpPlanned: '송신 예정',
+    erpOff: '송신 안 함',
+    /** 접힌 나머지 정보. */
+    details: '처리 상세',
     /** **파생값임을 밝힌다** — 사용자가 넣은 적 없는 값이 전표에 실리기 때문이다. */
     businessDateDerived: (businessDate: string): string =>
       `${businessDate} (출고 일자에서 나온 값입니다)`,
     /**
      * 되돌릴 수 없다는 **사실을 정확히** 말한다. 「계약에 없다」가 아니다 —
-     * 취소 오퍼레이션은 계약에 있고 승인을 타며 다른 화면 소관이다. 사실과 다르게 적으면
-     * 사용자가 잘못된 판단을 한다(계획 §5.4-1).
+     * 취소 오퍼레이션은 계약에 있고 승인을 타며 다른 화면 소관이다(계획 §5.4-1).
      */
-    submitEffects: '확인을 누르면 반품이 등록되고 재고가 바로 빠집니다.',
-    submitNoUndoHere: '처리한 뒤에는 여기서 되돌릴 수 없습니다.',
+    submitEffects: '반품 전표가 등록되고 재고가 즉시 차감됩니다.',
+    submitNoUndoHere: '처리 후에는 이 화면에서 취소할 수 없습니다.',
     /** 착수 이슈 §6 — 「반출됐다고 해제하지 마세요」. 그 사실을 사용자가 확인 창에서 읽는다. */
-    submitLotHoldKept: '반품해도 자재 LOT 의 보류는 풀리지 않습니다.',
+    submitLotHoldKept: '자재 LOT의 보류 상태는 유지됩니다.',
     /**
      * 상한을 확인하지 못한 줄이 **섞여 있을 때만** 낸다(위험 10). 늘 세워 두면 전부 확인된
      * 화면에서도 사용자가 상한이 없는 줄 안다.
@@ -358,6 +359,14 @@ export const supplierReturn = {
      */
     replacementExpectedNote:
       '대체입고 예정은 전표에 표시로만 남습니다. 입하 예정 목록으로 이어지지 않습니다.',
+  },
+  /**
+   * 구조 코드 둘의 이름 — 계약이 공통코드 그룹으로 받지 말라고 적은 값이라(A-10 · A-16) 계약 설명의
+   * 이름을 쓴다: 원천 문서 유형 `GOODS_RECEIPT` = 입고 전표, 도착지 유형 `PARTNER` = 거래처. 보내는 값은 코드다.
+   */
+  codeNames: {
+    sourceDocumentType: { GOODS_RECEIPT: '입고 전표' },
+    destinationType: { PARTNER: '거래처' },
   },
   values: {
     /** 이름 목록에 그 번호가 없다. **값이 잘못됐다는 뜻이 아니다** — 목록이 잘렸을 수도 있다. */

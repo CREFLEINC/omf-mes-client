@@ -62,7 +62,7 @@ export const disposalIssue = {
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
     /** 화면이 보고 있는 조회를 전부 다시 한다 — 목록만 다시 부르면 낡은 값과 새 값이 섞인다. */
-    refresh: '다시 조회',
+    refresh: '갱신',
     select: '선택',
     /*
      * 행 안의 버튼은 보이는 글자가 행마다 같다. 접근 이름에 입고번호를 넣어 어느 건인지 밝히되,
@@ -157,6 +157,8 @@ export const disposalIssue = {
     chipReceiptType: (code: string): string => `입고 유형: ${code}`,
     chipStatus: (code: string): string => `상태: ${code}`,
     chipQ: (q: string): string => `검색어: ${q}`,
+    /** 입고번호 검색칸 흐린 문구(#360). */
+    qPlaceholder: '입고번호를 입력하세요',
     chipRemoveWarehouse: '창고 조건 해제',
     chipRemoveReceiptType: '입고 유형 조건 해제',
     chipRemoveStatus: '상태 조건 해제',
@@ -189,6 +191,8 @@ export const disposalIssue = {
     chipReason: (code: string): string => `폐기 사유: ${code}`,
     chipStatus: (code: string): string => `상태: ${code}`,
     chipQ: (q: string): string => `검색어: ${q}`,
+    /** 출고번호 검색칸 흐린 문구(#360). */
+    qPlaceholder: '출고번호를 입력하세요',
     chipRemoveIssueType: '출고 유형 조건 해제',
     chipRemoveReason: '폐기 사유 조건 해제',
     chipRemoveStatus: '상태 조건 해제',

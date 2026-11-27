@@ -119,14 +119,21 @@ export const GiFilterBar = ({
     onReset();
   };
 
+  const nameOf = (options: readonly SelectOption[], code: string): string =>
+    options.find((option) => option.value === code)?.label ?? code;
+
   /* 접힌 칸(출고 유형 · 상태)의 조건만 칩으로 — 보이는 칸의 값을 칩으로 겹쳐 적지 않는다. 펼치면 칸에 값이 보인다. */
   const hiddenChips = more.isOpen
     ? []
-    : toIssueFilterChips(appliedFilters).flatMap(
-        (chip): HiddenFilterChip<RemovableIssueChipKey>[] =>
-          chip.removeLabel !== null && (chip.key === 'issueType' || chip.key === 'status')
-            ? [{ key: chip.key, label: chip.label, removeLabel: chip.removeLabel }]
-            : [],
+    : toIssueFilterChips({
+        /* 접힌 코드 칸의 칩은 코드 대신 선택지 이름으로 읽힌다(#360) — 거둘 때 쓰는 키는 그대로다. */
+        ...appliedFilters,
+        issueType: nameOf(issueTypeOptions, appliedFilters.issueType),
+        status: nameOf(statusOptions, appliedFilters.status),
+      }).flatMap((chip): HiddenFilterChip<RemovableIssueChipKey>[] =>
+        chip.removeLabel !== null && (chip.key === 'issueType' || chip.key === 'status')
+          ? [{ key: chip.key, label: chip.label, removeLabel: chip.removeLabel }]
+          : [],
       );
   const isChanged = hasChangedFilters(DEFAULT_ISSUE_FILTERS, filters, appliedFilters);
 
@@ -168,6 +175,7 @@ export const GiFilterBar = ({
 
         <SearchInput
           label={t.historyFields.q}
+          placeholder={t.historyFilters.qPlaceholder}
           value={filters.q}
           disabled={isLocked}
           onChange={(event) => {
@@ -178,8 +186,8 @@ export const GiFilterBar = ({
           clearLabel={messages.common.clear}
         />
 
-        {/* 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1). */}
-        <div className="field-cell field-cell-unlabeled">
+        {/* 조회와 초기화는 짝이라 함께 줄바꿈되게 묶고, 조건 줄 오른쪽 끝에 세운다(배치 규범 2-1 · #360). */}
+        <div className="field-cell field-cell-unlabeled filter-actions-end">
           <div className="filter-actions">
             <Button disabled={isLocked} onClick={search}>
               {messages.common.search}

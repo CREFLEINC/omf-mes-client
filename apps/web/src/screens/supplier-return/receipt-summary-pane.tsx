@@ -19,6 +19,9 @@ export interface ReceiptSummaryPaneProps {
    * 위 구획이 소유한다(계획 결정 17). 이 부품에 번호를 문자열로 만드는 자리는 없다.
    */
   warehouseName: string;
+  /** 입고 유형 · 상태의 서버 코드값 이름(#360). 주지 않으면 코드 그대로. */
+  receiptTypeName?: string;
+  statusName?: string;
 }
 
 /**
@@ -33,7 +36,12 @@ export interface ReceiptSummaryPaneProps {
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const ReceiptSummaryPane = ({ receipt, warehouseName }: ReceiptSummaryPaneProps) => {
+export const ReceiptSummaryPane = ({
+  receipt,
+  warehouseName,
+  receiptTypeName,
+  statusName,
+}: ReceiptSummaryPaneProps) => {
   const summary: SummaryItem[] = [
     { key: 'goodsReceiptNo', label: t.summary.goodsReceiptNo, value: receipt.goodsReceiptNo },
     { key: 'warehouse', label: t.summary.warehouse, value: warehouseName },
@@ -42,8 +50,12 @@ export const ReceiptSummaryPane = ({ receipt, warehouseName }: ReceiptSummaryPan
       label: t.summary.receiptDatetime,
       value: formatDateTime(receipt.receiptDatetime),
     },
-    { key: 'receiptType', label: t.summary.receiptType, value: receipt.receiptTypeCode },
-    { key: 'status', label: t.summary.status, value: receipt.statusCode },
+    {
+      key: 'receiptType',
+      label: t.summary.receiptType,
+      value: receiptTypeName ?? receipt.receiptTypeCode,
+    },
+    { key: 'status', label: t.summary.status, value: statusName ?? receipt.statusCode },
   ];
 
   return (

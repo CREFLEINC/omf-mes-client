@@ -5,6 +5,7 @@ import {
   PageHeader,
   SkeletonText,
   Tabs,
+  useToast,
   type TabItem,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
@@ -275,6 +276,7 @@ const CLOSED_POST_PANEL: PostPanelState = {
 export const StockAdjustScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const hub = usePageHub();
+  const toast = useToast();
 
   const urlCountId = readInventoryCountId(searchParams);
 
@@ -718,6 +720,11 @@ export const StockAdjustScreen = () => {
       }
 
       setPending(null);
+      /* 등록 성공은 오른쪽 아래 알림으로(#360) — 전표번호는 결과 구획 표에 남는다. */
+      toast.show({
+        variant: 'success',
+        description: t.result.createdTitle(created.created.inventoryAdjustmentNo),
+      });
     },
   });
 
@@ -879,6 +886,11 @@ export const StockAdjustScreen = () => {
       }
 
       setPending(null);
+      /* 전기 성공은 오른쪽 아래 알림으로(#360) — 전기일시·전기 후 상태는 전기 구획에 남는다. */
+      toast.show({
+        variant: 'success',
+        description: t.post.postedTitle(target.inventoryAdjustmentNo),
+      });
     },
   });
 

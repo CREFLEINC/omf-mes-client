@@ -1,4 +1,4 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -41,8 +41,8 @@ export interface PostConfirmDialogProps {
  * 여기서 확인시키는 것은 **무엇이 언제 자로 원장에 잡히는가**다 — 조정의 내용은 이미 서버에
  * 있고 이 창이 고칠 수 없다.
  *
- * **되돌릴 수 없다는 사실은 한 줄(`dialog.postLead`)로만 밝힌다.** 그 아래 붙던 「전기하면
- * 일어나는 일」 세 문장은 걷었다(사용자 지시 2026-11-18).
+ * **되돌릴 수 없다는 사실은 단추 줄 왼쪽 경고 한 줄(`dialog.postNoUndo`)로만 밝힌다** — 등록 확인 창과
+ * 같은 짜임(사실 상자 + 단추 줄 경고 · #360).
  *
  * **두 날짜가 갈려도 막지 않는다**(공유계약 C-8). 자정을 넘겨 일한 조정이면 그것이 정상이고,
  * 막으면 어제 자 조정을 전기할 길이 사라진다 — 화면은 **밝히기만 한다.**
@@ -72,32 +72,37 @@ export const PostConfirmDialog = ({
     showCloseButton={false}
     title={t.dialog.postTitle}
     footer={
-      <>
-        {/* 문구가 「확인/취소」가 아니다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다. */}
-        <Button variant="outlined" disabled={isSaving} onClick={onClose}>
-          {t.actions.keepReviewing}
-        </Button>
-        <Button loading={isSaving} disabled={isSaving} onClick={onConfirm}>
-          {t.actions.confirmPost}
-        </Button>
-      </>
+      /* 되돌릴 수 없다는 한 줄은 단추 줄 왼쪽 끝, 단추는 오른쪽 — 등록 확인 창과 같다(#360). */
+      <div className="confirm-foot">
+        <p className="confirm-foot-note">
+          <Icon name="warning" size={16} aria-hidden />
+          {t.dialog.postNoUndo}
+        </p>
+        <span className="confirm-foot-actions">
+          <Button variant="outlined" disabled={isSaving} onClick={onClose}>
+            {t.actions.keepReviewing}
+          </Button>
+          <Button loading={isSaving} disabled={isSaving} onClick={onConfirm}>
+            {t.actions.confirmPost}
+          </Button>
+        </span>
+      </div>
     }
   >
     {banner}
 
-    <p>{t.dialog.postLead}</p>
-
-    <dl className="filter-bar">
-      <div className="field-cell">
-        <dt className="field-label">{t.result.inventoryAdjustmentNo}</dt>
+    {/* 사실 상자 세 칸 — 등록 확인 창과 같은 짜임(#360). */}
+    <dl className="confirm-facts is-stacked">
+      <div>
+        <dt>{t.result.inventoryAdjustmentNo}</dt>
         <dd>{summary.inventoryAdjustmentNo}</dd>
       </div>
-      <div className="field-cell">
-        <dt className="field-label">{t.post.businessDate}</dt>
+      <div>
+        <dt>{t.post.businessDate}</dt>
         <dd>{summary.businessDate}</dd>
       </div>
-      <div className="field-cell">
-        <dt className="field-label">{t.post.occurredAt}</dt>
+      <div>
+        <dt>{t.post.occurredAt}</dt>
         {/* 입력값(`yyyy-MM-ddTHH:mm`)을 `yyyy-MM-dd HH:mm`로 보인다(⭐ 사용자 지시 2026-10-19). offset 이 없어 글자 그대로. */}
         <dd>{formatPlantDateTime(summary.occurredAtLocal) ?? summary.occurredAtLocal}</dd>
       </div>

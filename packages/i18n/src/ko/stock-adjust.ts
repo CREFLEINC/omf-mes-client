@@ -260,11 +260,11 @@ export const stockAdjust = {
     post: '재고 전기',
     /** 입력은 그대로 두고 창만 닫는다 — 문구는 「취소」로 통일(사용자 지시 2026-11-27 · #360). */
     keepEditing: '취소',
-    /** 전기 확인 창의 되돌아가기. 「계속 입력」과 갈라 둔다 — 이 창에는 고칠 칸이 없다 */
-    keepReviewing: '다시 확인',
+    /** 전기 확인 창의 되돌아가기 — 문구는 「취소」로 통일(사용자 지시 2026-11-27 · #360). */
+    keepReviewing: '취소',
     confirmRegister: '전표 등록',
     confirmSubmit: '결재에 올립니다',
-    confirmPost: '재고를 움직입니다',
+    confirmPost: '전기',
     confirmDiscard: '초안을 버립니다',
     /** 처리 이력 탭의 쪽 이동과 고르기. **번호가 아니라 전표번호로 가리킨다**(`omf-mes#44`) */
     prevPage: '이전 쪽',
@@ -511,8 +511,9 @@ export const stockAdjust = {
      * 상신 확인 창과 **갈라 둔다.** 그 창이 확인시키는 것은 「이 문장이 결재함 요약이 된다」이고,
      * 여기서 확인시키는 것은 **무엇이 언제 자로 원장에 잡히는가**다.
      */
-    postTitle: '이 조정을 전기할까요?',
-    postLead: '아래 값으로 재고를 움직입니다. 되돌리려면 반대 방향의 조정을 새로 세워야 합니다.',
+    /** 전기 확인(#360) — 제목 · 사실 상자(전표번호 · 영업일 · 발생 일시) · 단추 줄 왼쪽 경고. 등록 확인 창과 같은 짜임. */
+    postTitle: '재고 조정 전표를 전기할까요?',
+    postNoUndo: '전기한 전표는 이 화면에서 취소할 수 없습니다.',
     /**
      * ⭐ **영업일과 발생 일시의 날짜가 갈렸다** — 막지 않고 밝힌다(공유계약 C-8의 야간조 경계).
      *
@@ -532,7 +533,8 @@ export const stockAdjust = {
    */
   result: {
     label: '등록 결과',
-    createdTitle: (adjustmentNo: string): string => `조정 전표 ${adjustmentNo}를 만들었습니다.`,
+    /** 등록 성공 — 오른쪽 아래 알림으로 낸다(#360). 전표번호는 결과 구획 표에 남는다. */
+    createdTitle: (adjustmentNo: string): string => `조정 전표 ${adjustmentNo}를 생성했습니다.`,
     inventoryAdjustmentNo: '조정 전표번호',
     statusCode: '등록 시점 상태',
     lineCount: (lineCount: number): string =>
@@ -617,7 +619,6 @@ export const stockAdjust = {
      * 세우지 않는다(목이 그 값을 채워 준다 — 계획 §5.2.5).
      */
     postedTitle: (adjustmentNo: string): string => `조정 전표 ${adjustmentNo}를 전기했습니다.`,
-    postedDescription: '재고가 움직였습니다. 되돌리려면 반대 방향의 조정을 새로 세워야 합니다.',
     adjustedAt: '전기일시',
     /**
      * 200은 왔는데 **전기 시각이 실려 오지 않았다**(계약이 그 값을 nullable로 두었다).

@@ -7,15 +7,11 @@ import type { Translated } from './translated';
  */
 export const documentProgress: Translated<typeof ko.documentProgress> = {
   title: 'Tra cứu · hủy chứng từ logistics',
-  breadcrumbRoot: 'Quản lý mua hàng / vật tư',
   panes: {
     filters: 'Điều kiện tra cứu',
     list: 'Danh sách chứng từ',
     detail: 'Chứng từ đã chọn',
   },
-  splitter: 'Kéo để điều chỉnh độ rộng danh sách và chi tiết',
-  listCollapse: 'Thu gọn danh sách chứng từ',
-  listExpand: 'Mở rộng danh sách chứng từ',
   documentTypes: {
     PURCHASE_ORDER: 'Đơn mua hàng',
     INBOUND_RECEIPT: 'Nhận hàng',
@@ -45,7 +41,7 @@ export const documentProgress: Translated<typeof ko.documentProgress> = {
   },
   filters: {
     all: 'Tất cả',
-    choose: 'Chọn',
+    qPlaceholder: 'Nhập số chứng từ',
     disabledTypes: (reasons: string): string => `Có loại không chọn được. ${reasons}`,
     chipStatus: (value: string): string => `Trạng thái: ${value}`,
     chipRemoveStatus: 'Bỏ điều kiện trạng thái',

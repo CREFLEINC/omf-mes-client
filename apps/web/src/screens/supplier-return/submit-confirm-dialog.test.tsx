@@ -13,10 +13,10 @@ const LOT_LABEL = 'LOT-2026-900010';
 
 const SUMMARY: SubmitSummary = {
   supplierName: PARTNER_LABEL,
-  issueTypeCode: 'SAMPLE_ISSUE_TYPE_A',
-  sourceDocumentTypeCode: 'GOODS_RECEIPT',
-  destinationTypeCode: 'PARTNER',
-  reasonCode: 'SAMPLE_REASON_A',
+  issueTypeName: 'SAMPLE_ISSUE_TYPE_A',
+  sourceDocumentTypeName: '입고 전표',
+  destinationTypeName: '거래처',
+  reasonName: 'SAMPLE_REASON_A',
   issuedAt: '2026-08-06 09:12',
   businessDate: '2026-08-06',
   replacementExpected: false,
@@ -52,8 +52,8 @@ describe('SubmitConfirmDialog — 반품 처리 확인', () => {
 
     expect(body).toHaveTextContent(PARTNER_LABEL);
     expect(body).toHaveTextContent('SAMPLE_ISSUE_TYPE_A');
-    expect(body).toHaveTextContent('GOODS_RECEIPT');
-    expect(body).toHaveTextContent('PARTNER');
+    expect(body).toHaveTextContent('입고 전표');
+    expect(body).toHaveTextContent('거래처');
     expect(body).toHaveTextContent('SAMPLE_REASON_A');
     expect(body).toHaveTextContent('2026-08-06 09:12');
     expect(within(body).getByText(t.fields.replacementExpected)).toBeInTheDocument();
@@ -72,10 +72,14 @@ describe('SubmitConfirmDialog — 반품 처리 확인', () => {
   it('참·거짓을 글자로 낸다', () => {
     renderDialog({ replacementExpected: true, sendToErp: false });
 
-    const values = within(dialog()).getAllByText(t.values.yes);
+    expect(within(dialog()).getByText(t.values.yes)).toBeInTheDocument();
+    expect(within(dialog()).getByText(t.dialog.erpOff)).toBeInTheDocument();
+  });
 
-    expect(values.length).toBeGreaterThan(0);
-    expect(within(dialog()).getAllByText(t.values.no).length).toBeGreaterThan(0);
+  it('ERP 송신을 켰으면 송신 예정이라고 낸다', () => {
+    renderDialog();
+
+    expect(within(dialog()).getByText(t.dialog.erpPlanned)).toBeInTheDocument();
   });
 
   /* 값이 없는 칸을 비워 두지 않는다 — 빠뜨린 것인지 없는 것인지 구분되지 않는다. */
@@ -89,7 +93,7 @@ describe('SubmitConfirmDialog — 반품 처리 확인', () => {
    * **줄마다 무엇이 얼마나 나가는지 다시 보인다.** 합계만 보이면 어느 줄이 얼마인지 확인할 수
    * 없고, 잘못 실린 수량은 재고에서 그대로 빠진다.
    */
-  it('고른 줄 수와 줄별 품목·LOT·수량을 보인다', () => {
+  it('반품 대상 건수와 줄별 품목·LOT·반품 수량을 보인다', () => {
     renderDialog({
       lines: [
         { ordinal: 1, item: ITEM_LABEL, lot: LOT_LABEL, qty: '30 SAMPLE-EA' },
@@ -99,11 +103,13 @@ describe('SubmitConfirmDialog — 반품 처리 확인', () => {
 
     const body = dialog();
 
-    expect(within(body).getByText(t.dialog.lineCount(2))).toBeInTheDocument();
-    expect(body).toHaveTextContent(t.dialog.linePair(ITEM_LABEL, LOT_LABEL, '30 SAMPLE-EA'));
-    expect(body).toHaveTextContent(
-      t.dialog.linePair('알 수 없음', 'LOT-2026-900011', '5 SAMPLE-EA'),
-    );
+    expect(within(body).getByText(t.dialog.targetHead(2))).toBeInTheDocument();
+    const lines = within(body).getAllByRole('listitem');
+    expect(lines[0]).toHaveTextContent(ITEM_LABEL);
+    expect(lines[0]).toHaveTextContent(LOT_LABEL);
+    expect(lines[0]).toHaveTextContent(`${t.dialog.returnQty} 30 SAMPLE-EA`);
+    expect(lines[1]).toHaveTextContent('LOT-2026-900011');
+    expect(lines[1]).toHaveTextContent('5 SAMPLE-EA');
   });
 
   /*
