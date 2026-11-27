@@ -1,4 +1,4 @@
-import { PLANT_UTC_OFFSET } from '../../patterns/plant-time';
+import { PLANT_UTC_OFFSET, plantToday } from '../../patterns/plant-time';
 
 import { resolveBomComponentId } from './bom-origin';
 import type {
@@ -61,13 +61,16 @@ const offsetText = (at: Date): string => {
   return `${sign}${pad(Math.floor(absolute / 60), 2)}:${pad(absolute % 60, 2)}`;
 };
 
-/** 영업일 — **제출 순간의 로컬 날짜**다(공유계약 C-8). */
-export const toBusinessDate = (now: Date): string =>
+/** 영업일 — **제출 순간의 공장 날짜**다(공유계약 C-8 · omf-all-around#364). */
+export const toBusinessDate = (now: Date): string => plantToday(now);
+
+/** 발생 시각의 날짜 조각 — 브라우저 시각·offset 과 짝이라 같은 순간을 가리킨다. */
+const toLocalDate = (now: Date): string =>
   `${String(now.getFullYear())}-${pad(now.getMonth() + 1, 2)}-${pad(now.getDate(), 2)}`;
 
 /** 발생 시각 — **제출 순간**을 초와 offset까지 갖춰 싣는다(공유계약 C-8). */
 export const toOccurredAt = (now: Date): string =>
-  `${toBusinessDate(now)}T${pad(now.getHours(), 2)}:${pad(now.getMinutes(), 2)}:${pad(
+  `${toLocalDate(now)}T${pad(now.getHours(), 2)}:${pad(now.getMinutes(), 2)}:${pad(
     now.getSeconds(),
     2,
   )}${offsetText(now)}`;

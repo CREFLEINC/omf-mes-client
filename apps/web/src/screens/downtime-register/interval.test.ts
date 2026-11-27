@@ -19,18 +19,19 @@ const draft = (overrides: Partial<IntervalDraft> = {}): IntervalDraft => ({
   ...overrides,
 });
 
-const NOW = new Date(2026, 7, 11, 16, 0);
+const NOW = new Date('2026-08-11T16:00:00+07:00');
 
 describe('readTimeField', () => {
-  it('날짜와 시각 두 칸을 지역 시각 한 순간으로 읽는다', () => {
+  /* omf-all-around#364 — 칸의 글자는 공장 시각이다. 브라우저 시간대(한국 등)로 읽으면 2시간 어긋난다. */
+  it('날짜와 시각 두 칸을 공장 시각(+07:00) 한 순간으로 읽는다', () => {
     const at = readTimeField({ date: '2026-08-11', time: '14:20' });
 
-    /* UTC로 읽히면 이 단언이 무너진다 — 단말 시각을 그대로 쓴다는 규칙이 여기 걸려 있다. */
-    expect(at?.getFullYear()).toBe(2026);
-    expect(at?.getMonth()).toBe(7);
-    expect(at?.getDate()).toBe(11);
-    expect(at?.getHours()).toBe(14);
-    expect(at?.getMinutes()).toBe(20);
+    expect(at?.toISOString()).toBe('2026-08-11T07:20:00.000Z');
+  });
+
+  it('없는 날짜·시각은 읽지 않는다', () => {
+    expect(readTimeField({ date: '2026-02-30', time: '10:00' })).toBeNull();
+    expect(readTimeField({ date: '2026-08-11', time: '25:00' })).toBeNull();
   });
 
   it('한쪽 칸이 비어 있으면 읽지 않는다', () => {
@@ -161,7 +162,7 @@ describe('validateInterval', () => {
      * 등호로 통과하고, **여유를 0으로 좁혀도** 이 단언이 그대로 통과한다 — 그러면 여유가
      * 사라진 것을 아무도 알아채지 못한다. 시계가 45초에 틱한 상태를 재현해 그 폭을 잰다.
      */
-    const tickedAtFortyFive = new Date(2026, 7, 11, 16, 0, 45);
+    const tickedAtFortyFive = new Date('2026-08-11T16:00:45+07:00');
     const justNow = draft({
       startedAt: { date: '2026-08-11', time: '16:01' },
       endedAt: { date: '', time: '' },
@@ -195,7 +196,7 @@ describe('intervalMinutes', () => {
 
 describe('toTimeFieldDraft', () => {
   it('한 자리 수를 두 자리로 채워 브라우저 입력이 읽는 모양으로 낸다', () => {
-    expect(toTimeFieldDraft(new Date(2026, 0, 5, 9, 7))).toEqual({
+    expect(toTimeFieldDraft(new Date('2026-01-05T09:07:00+07:00'))).toEqual({
       date: '2026-01-05',
       time: '09:07',
     });
@@ -204,8 +205,8 @@ describe('toTimeFieldDraft', () => {
 
 describe('findOverlaps', () => {
   const existing = [
-    { startedAt: '2026-08-11T13:05:00+09:00', endedAt: '2026-08-11T13:20:00+09:00' },
-    { startedAt: '2026-08-11T09:40:00+09:00', endedAt: '2026-08-11T10:30:00+09:00' },
+    { startedAt: '2026-08-11T13:05:00+07:00', endedAt: '2026-08-11T13:20:00+07:00' },
+    { startedAt: '2026-08-11T09:40:00+07:00', endedAt: '2026-08-11T10:30:00+07:00' },
   ];
 
   it('구간이 겹치면 그 건들을 낸다 — 막지는 않는다', () => {
@@ -248,7 +249,7 @@ describe('findOverlaps', () => {
     );
 
     expect(
-      findOverlaps([{ startedAt: '2026-08-11T19:00:00+09:00', endedAt: null }], moments),
+      findOverlaps([{ startedAt: '2026-08-11T19:00:00+07:00', endedAt: null }], moments),
     ).toHaveLength(1);
   });
 

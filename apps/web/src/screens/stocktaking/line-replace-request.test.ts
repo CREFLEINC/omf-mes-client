@@ -338,9 +338,14 @@ describe('toBusinessDate · toOccurredAt — 시각을 인자로 받는다', () 
    * 그 근거를 남긴다 — 별도 입력칸을 두는 대안은 **사용자가 무엇을 넣어야 하는지 화면이
    * 설명할 수 없어** 택하지 않았다.
    */
-  it('영업일이 실행 시각의 날짜다', () => {
-    expect(toBusinessDate(BEFORE_MIDNIGHT)).toBe('2026-08-11');
-    expect(toBusinessDate(AFTER_MIDNIGHT)).toBe('2026-08-12');
+  it('영업일이 실행 시각의 공장 날짜다', () => {
+    expect(toBusinessDate(new Date('2026-08-11T23:59:59+07:00'))).toBe('2026-08-11');
+    expect(toBusinessDate(new Date('2026-08-12T00:00:01+07:00'))).toBe('2026-08-12');
+  });
+
+  /* omf-all-around#364 — 한국 PC 00:00~02:00 에 하루 앞선 날로 들어가지 않는다. */
+  it('한국 자정 직후 제출이면 영업일은 공장의 전날이다', () => {
+    expect(toBusinessDate(new Date('2026-08-12T00:30:00+09:00'))).toBe('2026-08-11');
   });
 
   it('발생 시각이 초와 offset을 갖춘다', () => {
@@ -349,8 +354,8 @@ describe('toBusinessDate · toOccurredAt — 시각을 인자로 받는다', () 
     );
   });
 
-  /** UTC로 옮기지 않는다 — `toISOString`을 쓰면 자정 경계에서 날짜가 하루 어긋난다. */
-  it('발생 시각의 날짜가 영업일과 같다', () => {
-    expect(toOccurredAt(AFTER_MIDNIGHT).slice(0, 10)).toBe(toBusinessDate(AFTER_MIDNIGHT));
+  /** 발생 시각은 offset 을 갖춘 **같은 순간**이다 — 어느 시간대에서 돌려도 그 순간을 가리킨다. */
+  it('발생 시각이 실행 시각과 같은 순간이다', () => {
+    expect(new Date(toOccurredAt(AFTER_MIDNIGHT)).getTime()).toBe(AFTER_MIDNIGHT.getTime());
   });
 });

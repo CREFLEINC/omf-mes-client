@@ -1,5 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
+import { plantToday } from '../../patterns/plant-time';
+
 import {
   INVENTORY_STATUS_HOLD,
   QUALITY_STATUS_PENDING,
@@ -91,7 +93,8 @@ export const toGoodsReceiptBody = (input: ReceiptInput): GoodsReceiptCreate => (
   plantId: input.warehouse.plantId,
   warehouseId: input.warehouse.warehouseId,
   receiptDatetime: toOffsetDateTime(input.now),
-  businessDate: toLocalDate(input.now),
+  /* 영업일은 공장 날짜다(omf-all-around#364) — 입고 일시는 같은 순간이라 브라우저 기준 그대로 둔다. */
+  businessDate: plantToday(input.now),
   ...(input.shipmentId === null
     ? {}
     : { sourceDocumentTypeCode: SOURCE_DOCUMENT_SHIPMENT, sourceDocumentId: input.shipmentId }),

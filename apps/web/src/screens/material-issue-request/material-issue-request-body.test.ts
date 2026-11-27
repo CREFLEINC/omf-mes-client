@@ -117,8 +117,15 @@ describe('toMaterialIssueRequestBody — 영업일·발생 시각 (D-2)', () => 
       submittedAt,
     );
 
-    expect(body?.businessDate).toBe('2026-09-01');
+    expect(body?.businessDate).toBe(toBusinessDate(submittedAt));
     expect(body?.requiredAt?.startsWith('2026-09-04T14:00:00')).toBe(true);
+  });
+
+  /* omf-all-around#364 — 영업일은 공장 날짜다. 한국 자정 직후 제출이면 공장의 전날이다. */
+  it('한국 자정 직후 제출이면 영업일은 공장의 전날이다', () => {
+    const body = toMaterialIssueRequestBody(input(), new Date('2026-09-01T00:12:30+09:00'));
+
+    expect(body?.businessDate).toBe('2026-08-31');
   });
 
   it('발생 시각은 초와 offset 을 갖춘 제출 순간이다', () => {
@@ -140,8 +147,8 @@ describe('toMaterialIssueRequestBody — 영업일·발생 시각 (D-2)', () => 
     expect(body?.requiredAt).toBe('2026-09-04T14:00:00+07:00');
   });
 
-  it('toBusinessDate·toOccurredAt 는 같은 순간을 본다', () => {
-    expect(toOccurredAt(submittedAt).startsWith(`${toBusinessDate(submittedAt)}T`)).toBe(true);
+  it('발생 시각은 제출 순간과 같은 순간이다', () => {
+    expect(new Date(toOccurredAt(submittedAt)).getTime()).toBe(submittedAt.getTime());
   });
 });
 

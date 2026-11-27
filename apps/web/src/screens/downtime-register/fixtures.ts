@@ -21,8 +21,8 @@ export const PROCESS_ID = 5402;
 /** 시험이 보는 「오늘」. 시각이 데이터인 화면이라 날짜를 고정하지 않으면 감지기가 흔들린다. */
 export const TODAY = '2026-08-11';
 
-/** 지역 시각 문자열 — 계약이 offset 있는 시각을 요구한다. */
-export const at = (time: string, day: string = TODAY): string => `${day}T${time}:00+09:00`;
+/** 공장 시각 문자열 — 계약이 offset 있는 시각을 요구한다(칸·표시가 공장 시각이다, #364). */
+export const at = (time: string, day: string = TODAY): string => `${day}T${time}:00+07:00`;
 
 export const downtime = (overrides: Partial<Downtime> = {}): Downtime => ({
   downtimeId: 5201,
