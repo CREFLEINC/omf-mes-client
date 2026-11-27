@@ -482,9 +482,6 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
               {t.detail.cancel}
             </Button>
           )}
-          {scope === 'quantity' && (
-            <span className="field-note form-actions-secondary">{t.detail.cancelLocked}</span>
-          )}
           {scope !== 'none' && (
             <>
               <Button

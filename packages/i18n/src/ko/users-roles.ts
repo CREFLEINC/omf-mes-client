@@ -472,7 +472,6 @@ export const usersRoles = {
     unlink: '연결 해제',
     /** 수입검사 화면의 작업자 연결 창(`iqc-inspection/worker-connect-dialog`)이 쓰는 문구 — 그 화면은 바꾸지 않는다. */
     inputLabel: '작업자 사번',
-    noteConnect: '연결하면 별도 저장 없이 즉시 적용됩니다.',
     inputLabelChange: '변경할 작업자 사번',
     inputLabelConnect: '연결할 작업자 사번',
     inputPlaceholderConnect: '작업자 사번을 입력하세요',

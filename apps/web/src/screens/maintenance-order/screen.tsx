@@ -372,7 +372,6 @@ export const MaintenanceOrderScreen = () => {
           </>
         }
       >
-        <p className="dialog-lead">{t.confirm.lead}</p>
         <p className="dialog-lead">
           <strong>
             {[

@@ -32,13 +32,13 @@ const resultView = (overrides: Partial<BatchResultView> = {}): BatchResultView =
 });
 
 describe('BatchRetryDialog — 확인 단계', () => {
-  it('고른 건수와 부분 실패 가능성을 함께 밝힌다', () => {
+  it('고른 건수를 밝히고, 부분 실패 안내 줄은 두지 않는다(#360)', () => {
     renderDialog();
 
     expect(screen.getByText('선택한 3건을 재처리할까요?')).toBeInTheDocument();
     expect(
-      screen.getByText('일부 건만 처리될 수 있습니다. 결과는 건별로 알려 드립니다.'),
-    ).toBeInTheDocument();
+      screen.queryByText('일부 건만 처리될 수 있습니다. 결과는 건별로 알려 드립니다.'),
+    ).not.toBeInTheDocument();
   });
 
   it('확인을 누르면 보낸다', async () => {

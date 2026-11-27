@@ -116,7 +116,6 @@ export const inboundWorkRecord: Translated<typeof ko.inboundWorkRecord> = {
       waitingReceipt: 'Chờ nhập kho',
     },
     finalize: 'Chốt cuối cùng',
-    finalizeLockedByEdit: 'Hãy lưu hoặc hủy phần sửa ghép P/O trước',
   },
   editor: {
     qtyLabel: (line: string) => `${line} ghép lần này`,
@@ -136,7 +135,6 @@ export const inboundWorkRecord: Translated<typeof ko.inboundWorkRecord> = {
       `Tổng ghép ${sum} ${uom} vượt SL nhập hàng ${need} ${uom} (+${diff})`,
     cancel: 'Hủy',
     save: 'Lưu ghép P/O',
-    saveLocked: 'Phải sửa lỗi mới lưu được',
     saved: (inboundLotNo: string) => `Đã sửa ghép P/O của ${inboundLotNo}`,
     saveFailed: 'Không lưu được ghép P/O.',
     finalizedLocked: 'LOT nhập hàng đã chốt cuối cùng — không thể sửa ghép P/O',

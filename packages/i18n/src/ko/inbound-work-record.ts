@@ -135,7 +135,6 @@ export const inboundWorkRecord = {
       waitingReceipt: '입고 대기',
     },
     finalize: '최종 마감',
-    finalizeLockedByEdit: '매칭 수정을 먼저 저장하거나 취소하세요',
   },
   editor: {
     qtyLabel: (line: string) => `${line} 이번 매칭`,
@@ -155,7 +154,6 @@ export const inboundWorkRecord = {
       `매칭 합 ${sum} ${uom}가 입하 수량 ${need} ${uom}를 넘습니다(+${diff})`,
     cancel: '취소',
     save: '매칭 저장',
-    saveLocked: '오류를 고쳐야 저장할 수 있습니다',
     saved: (inboundLotNo: string) => `${inboundLotNo} 매칭을 고쳤습니다`,
     saveFailed: '매칭을 저장하지 못했습니다.',
     finalizedLocked: '최종 마감된 입하 LOT 입니다 — 매칭을 고칠 수 없습니다',

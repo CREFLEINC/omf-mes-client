@@ -85,7 +85,6 @@ export const integrationSync = {
     /** 확인 창의 대상 줄 — 「대상 N건」(#358). */
     targetLabel: '대상',
     confirmDescription: '선택한 연동 건을 다시 처리합니다. 새 연동 건은 생성되지 않습니다.',
-    confirmNote: '일부 건만 처리될 수 있습니다. 결과는 건별로 알려 드립니다.',
     resultTitle: '재처리 결과',
     failedListLabel: '재처리하지 못한 건',
     allSucceeded: (count: number): string => `${String(count)}건의 재처리를 요청했습니다.`,

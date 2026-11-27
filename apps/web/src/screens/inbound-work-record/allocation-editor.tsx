@@ -1,7 +1,7 @@
 import { AlertBanner, Button, Chip, Skeleton, TextField, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useId, useState } from 'react';
+import { useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
@@ -46,7 +46,6 @@ export const AllocationSection = ({
   const { client } = useApiClient();
   const queryClient = useQueryClient();
   const toast = useToast();
-  const saveNoteId = useId();
   const receiving = detail.statusCode === 'RECEIVING';
   const candidates = useAllocationCandidates(detail.inboundLotId, !receiving);
   const [values, setValues] = useState<Record<number, string> | null>(null);
@@ -337,20 +336,10 @@ export const AllocationSection = ({
             </AlertBanner>
           )}
           <div className="iwr-editor-actions">
-            {blocked && (
-              <span id={saveNoteId} className="field-note">
-                {te.saveLocked}
-              </span>
-            )}
             <Button variant="outlined" disabled={saving} onClick={() => setEditing(null)}>
               {te.cancel}
             </Button>
-            <Button
-              disabled={blocked}
-              loading={saving}
-              aria-describedby={blocked ? saveNoteId : undefined}
-              onClick={() => void save()}
-            >
+            <Button disabled={blocked} loading={saving} onClick={() => void save()}>
               {te.save}
             </Button>
           </div>

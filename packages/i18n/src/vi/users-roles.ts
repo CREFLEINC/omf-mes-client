@@ -334,7 +334,6 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
     change: 'Đổi người lao động',
     unlink: 'Hủy liên kết',
     inputLabel: 'Mã nhân viên',
-    noteConnect: 'Khi liên kết, thay đổi được áp dụng ngay, không cần lưu riêng.',
     inputLabelChange: 'Mã nhân viên cần đổi',
     inputLabelConnect: 'Mã nhân viên cần liên kết',
     inputPlaceholderConnect: 'Nhập mã nhân viên',

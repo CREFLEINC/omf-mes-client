@@ -415,7 +415,7 @@ describe('W-02-11 출고 요청 현황 — 상세', () => {
     expect(await detail.findByText(t.detail.locked)).toBeInTheDocument();
     expect(detail.queryByRole('button', { name: t.detail.changeDate })).not.toBeInTheDocument();
     expect(detail.queryByRole('button', { name: t.detail.cancel })).not.toBeInTheDocument();
-    expect(detail.getByText(t.detail.cancelLocked)).toBeInTheDocument();
+    expect(detail.queryByText('일부 진행돼 취소할 수 없습니다')).not.toBeInTheDocument();
 
     const field = detail.getByRole('textbox', { name: t.detail.lines.qtyLabel('SYN-IT-1') });
     await user.clear(field);
