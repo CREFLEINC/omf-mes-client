@@ -73,10 +73,7 @@ describe('배포 확인 단계 — 생산 창고 공장', () => {
         { scope: 'screen', code: 'OTHER', message: 'd' },
       ],
     });
-    expect(blocks).toEqual([
-      'PRODUCTION_WAREHOUSE_MISSING',
-      'PRODUCTION_FLOOR_LOCATION_MISSING',
-    ]);
+    expect(blocks).toEqual(['PRODUCTION_WAREHOUSE_MISSING', 'PRODUCTION_FLOOR_LOCATION_MISSING']);
 
     const failures = toReleaseFailures([attempt({ blocks })], t.failed);
     renderStep({ failures });
@@ -97,7 +94,9 @@ describe('배포 확인 단계 — 생산 창고 공장', () => {
     renderStep({ onSelectedWorkOrderChange });
 
     const detail = screen.getByRole('region', { name: '선택 작업지시 배포 상세' });
-    await user.click(screen.getByRole('button', { name: 'SYN-WO-1 상세 확인', pressed: true }));
+    /* 작업지시 번호는 보통 글자다(#360) — 고른 줄을 다시 눌러 푼다. */
+    expect(screen.queryByRole('button', { name: /SYN-WO-1/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('row', { name: 'SYN-WO-1 배포 상세' }));
     expect(onSelectedWorkOrderChange).toHaveBeenLastCalledWith(null);
     expect(within(detail).getByText(t.selectPrompt)).toBeInTheDocument();
     expect(within(detail).queryByText('SYN-WO-1')).not.toBeInTheDocument();
@@ -111,7 +110,10 @@ describe('배포 확인 단계 — 생산 창고 공장', () => {
     await user.click(screen.getByRole('row', { name: 'SYN-WO-2 배포 상세' }));
     expect(onSelectedWorkOrderChange).toHaveBeenLastCalledWith(2);
     expect(within(detail).queryByText(t.selectPrompt)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'SYN-WO-2 상세 확인', pressed: true })).toBeVisible();
+    expect(screen.getByRole('row', { name: 'SYN-WO-2 배포 상세' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
   });
 
   it('그 밖의 실패는 지금처럼 서버 문구 한 줄이고 바로가기가 없다', () => {

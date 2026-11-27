@@ -145,7 +145,7 @@ export const erpWorkOrderFlow = {
   filters: {
     pane: '조회 조건',
     q: '번호 검색',
-    qPlaceholder: 'ERP W/O 번호',
+    qPlaceholder: 'ERP W/O 번호를 입력하세요',
     dueFrom: '납기 시작일',
     dueTo: '납기 종료일',
     plant: '공장',
@@ -413,16 +413,24 @@ export const erpWorkOrderFlow = {
       total: (planned: string, ordered: string, uom: string): string =>
         `계획 수량 합계 ${planned} / ${ordered} ${uom}`,
     },
+    /** 계획 확정 확인 팝업(확인 팝업 시안 · #360). */
     planConfirm: {
-      title: '계획 확정 및 작업지시 생성',
-      target: (plans: string): string => `대상 계획: ${plans}`,
-      task: '계획 확정',
-      effects: {
-        plans: (count: number): string => `생산계획 상태 변경: 확정 (${String(count)}건)`,
-        workOrders: (count: number, operations: string): string =>
-          `W/O ${String(count)}건 생성: ${operations}`,
-      },
-      irreversible: '확정 후에는 수정할 수 없습니다.',
+      title: '생산계획을 확정할까요?',
+      order: 'ERP W/O',
+      plan: '생산계획',
+      newPlan: '신규 계획',
+      planDate: '계획일',
+      plannedQty: '계획 수량',
+      operation: '공정',
+      operationUnknown: '공정 정보 확인 필요',
+      /** 「확정하면 **작업지시 N건**이 생성됩니다.」 — 가운데만 굵게. */
+      effectBefore: '확정하면 ',
+      workOrders: (count: number): string => `작업지시 ${String(count)}건`,
+      effectAfter: '이 생성됩니다.',
+      effectUnknown:
+        '확정하면 작업지시가 생성됩니다. 공정 정보를 확인해야 생성 건수를 알 수 있습니다.',
+      partial: 'ERP W/O와 계획별로 처리하므로 일부만 완료될 수 있습니다.',
+      irreversible: '확정된 생산계획은 수정할 수 없습니다.',
       confirm: '계획 확정',
     },
     pickers: {

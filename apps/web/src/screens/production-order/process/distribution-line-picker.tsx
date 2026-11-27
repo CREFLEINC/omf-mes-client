@@ -32,6 +32,7 @@ export const DistributionLinePicker = ({
   const source = useMemo<ReferenceSource>(
     () => ({
       title: '생산 라인 선택',
+      wide: true,
       key: ['distribution-line-picker', lines.map((line) => [line.id, line.code, line.name])],
       columns: { code: '라인 코드', name: '라인명' },
       search: async (term, page) => {

@@ -1275,18 +1275,16 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
       )}
       {confirm && (
         <PlanConfirmDialog
-          plans={combined
-            .filter((row) => !row.confirmed)
-            .map(
-              (row) =>
-                `${ownerOf(row.key)?.order.productionOrderNo} / ${row.planNo ?? `${row.draft.planDate} / ${row.draft.plannedQty}`}`,
-            )}
-          operations={[]}
           groups={entries.map((entry) => ({
             orderNo: entry.order.productionOrderNo,
             plans: entry.editor.rows
               .filter((row) => !row.confirmed)
-              .map((row) => row.planNo ?? `${row.draft.planDate} / ${row.draft.plannedQty}`),
+              .map((row) => ({
+                key: row.key,
+                planNo: row.planNo,
+                planDate: row.draft.planDate,
+                quantity: `${row.draft.plannedQty} ${entry.unit}`,
+              })),
             operations: entry.operations,
           }))}
           running={busy}
