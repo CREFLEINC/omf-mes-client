@@ -27,11 +27,14 @@ export const productReceipt: Translated<typeof ko.productReceipt> = {
     lotLoadFailed: 'Không tải được LOT. Hãy kiểm tra kết nối.',
     notFound: (no: string) => `Không tìm thấy LOT hoặc thẻ nhận diện ${no}`,
     lotRefused: {
+      semiFinished: (_lotNo: string) => 'LOT bán thành phẩm không thể nhập kho thành phẩm',
       notProduct: (lotNo: string) => `${lotNo} không phải LOT thành phẩm`,
       voided: (lotNo: string) => `${lotNo} là LOT đã hủy số`,
       noGood: (lotNo: string) => `${lotNo} chưa có sản lượng đạt`,
       stocked: (lotNo: string) => `${lotNo} là LOT đã nhập kho`,
     },
+    semiFinishedHint: (lotNo: string, operationSeq: number | null) =>
+      `${lotNo}${operationSeq === null ? '' : ` · CĐ ${String(operationSeq)}`} bán thành phẩm — hãy đưa vào ở công đoạn sau bằng màn hình đưa vật tư vào trên POP.`, // ui-check-ignore: C-13 승인 시안 2판 표기(016 screens/M-04-04)
     picked: (no: string) => `Thẻ nhận diện ${no}`,
     empty: 'Thẻ nhận diện này không có hàng nào bên trong',
   },

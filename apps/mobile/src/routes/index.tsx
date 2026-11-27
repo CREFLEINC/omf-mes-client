@@ -1,4 +1,4 @@
-import { Outlet, createBrowserRouter, type RouteObject } from 'react-router';
+import { Navigate, Outlet, createBrowserRouter, type RouteObject } from 'react-router';
 
 import { AppLayout } from '../app/layout';
 import { ShellGate } from '../app/shell-gate';
@@ -26,7 +26,6 @@ import { RecycleEntryScreen } from '../screens/recycle-entry/screen';
 import { TemporaryPutawayScreen } from '../screens/temporary-putaway/screen';
 import { RepairRoundtripScreen } from '../screens/repair-roundtrip/screen';
 import { SettingsScreen } from '../screens/settings/screen';
-import { WipHandoverScreen } from '../screens/wip-handover/screen';
 
 export const appRoutes: RouteObject[] = [
   {
@@ -58,7 +57,11 @@ export const appRoutes: RouteObject[] = [
       { path: 'physical-count', element: <PhysicalCountScreen /> },
       { path: 'equipment-failure', element: <EquipmentFailureScreen /> },
       { path: 'equipment-inspection', element: <EquipmentInspectionScreen /> },
-      { path: 'wip-handover', element: <WipHandoverScreen /> },
+      /*
+       * M-02-01 공정 인계(WIP 공정 이동)는 닫았다 — 반제품은 다음 공정 POP 자재 투입으로 넣는다(피처 016 · D-7,
+       * 서버 409 HANDOVER_RETIRED). 메뉴는 이미 없고, 주소로 열던 길도 홈으로 넘긴다. 지난 인계 기록은 서버에 남는다.
+       */
+      { path: 'wip-handover', element: <Navigate to="/screens" replace /> },
       { path: 'repair-roundtrip', element: <RepairRoundtripScreen /> },
       { path: 'product-picking', element: <ProductPickingScreen /> },
       /* M-04-05 LOT 분리 확인(피처 013) — 온라인 전용, 메뉴 배지 없음. */

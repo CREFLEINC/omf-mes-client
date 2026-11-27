@@ -30,6 +30,8 @@ const NOT_LISTED = new Set([
   'outbox',
   'rejections',
   'settings',
+  /* 닫은 공정 인계(피처 016 · D-7) — 홈으로 넘기는 주소만 남았다. */
+  'wip-handover',
   ...hiddenScreens.map((hidden) => hidden.to.slice(1)),
 ]);
 
@@ -169,7 +171,6 @@ describe('작업 목록', () => {
       '/inbound-variance',
       '/recycle-entry',
       '/shopfloor-receipt',
-      '/wip-handover',
       '/repair-roundtrip',
       '/equipment-inspection',
       '/equipment-failure',
@@ -186,6 +187,20 @@ describe('작업 목록', () => {
       expect(screenOf(path)).toBeUndefined();
     }
     expect(hiddenScreens.map((each) => each.to)).toEqual(expect.arrayContaining(hidden));
+  });
+
+  it('US2-8 공정 인계(WIP 공정 이동)는 어느 목록 · 감춘 목록에도 없다(피처 016)', () => {
+    for (const area of homeAreas) {
+      const { unmount } = render(
+        <Shell path={`/screens/${area.id}`}>
+          <HomeRoutes />
+        </Shell>,
+      );
+      expect(linkedPaths()).not.toContain('/wip-handover');
+      unmount();
+    }
+    expect(screenOf('/wip-handover')).toBeUndefined();
+    expect(hiddenScreens.map((each) => each.to)).not.toContain('/wip-handover');
   });
 
   it('Q21 재포장은 제품 출하 업무에 없고 라우트는 남는다', () => {

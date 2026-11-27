@@ -541,6 +541,21 @@ describe('M-04-01 제품 피킹 — LOT 통째 피킹', () => {
     expect(within(banner).getByText('피킹하지 않았습니다')).toBeTruthy();
   });
 
+  it('US1-3 · Q4 반제품 LOT 은 「반제품 LOT 은 출하할 수 없습니다」(피처 016)', async () => {
+    const user = userEvent.setup();
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname.endsWith(':pick-lot'),
+        respond: () => conflict('SEMI_FINISHED_LOT'),
+      },
+    ]);
+    await openRequest(user);
+    await scan(user, 'P2611-0003');
+
+    const banner = await screen.findByRole('alert', { name: '반제품 LOT 은 출하할 수 없습니다' });
+    expect(within(banner).getByText('피킹하지 않았습니다')).toBeTruthy();
+  });
+
   it('FR-006 보류·불량·재고 없음은 서버 문구를 보인다', async () => {
     const user = userEvent.setup();
     mount([

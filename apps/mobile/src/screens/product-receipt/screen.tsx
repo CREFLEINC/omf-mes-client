@@ -520,6 +520,12 @@ export const ProductReceiptScreen = () => {
             ? t.unit.lotRefused.stocked(foundLot.lotNo)
             : null;
 
+  /* 반제품(피처 016)은 둘째 줄에 할 일을 — 「LOT · 공정 10 반제품 — 다음 공정에서 POP 자재 투입으로 투입하세요.」 */
+  const rejectDetail =
+    rejectTitle !== null && foundLot !== null && lotRefusal === 'semiFinished'
+      ? t.unit.semiFinishedHint(foundLot.lotNo, foundLot.producedOperation?.operationSeq ?? null)
+      : null;
+
   const result =
     scannedCode !== null && (unit.isPending || scannedLot.isFetching) ? (
       <p role="status">{t.unit.loading}</p>
@@ -531,6 +537,7 @@ export const ProductReceiptScreen = () => {
         </p>
         <div className="last-scan__body" role="alert">
           <p className="last-scan__why">{rejectTitle}</p>
+          {rejectDetail !== null && <p className="last-scan__lot">{rejectDetail}</p>}
         </div>
       </section>
     ) : foundUnit !== null && contents.isSuccess && contents.data.length === 0 ? (

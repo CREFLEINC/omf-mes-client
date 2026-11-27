@@ -57,6 +57,10 @@ export const productLotSplit = {
   },
 
   blocked: {
+    SEMI_FINISHED_LOT: {
+      title: 'Không tách được LOT bán thành phẩm',
+      body: 'Hãy đưa vào ở công đoạn sau bằng màn hình đưa vật tư vào trên POP.',
+    },
     NOT_PRODUCTION_LOT: {
       title: 'Chỉ tách được LOT sản xuất',
       body: 'Không tách LOT vật tư tại màn hình này. Hãy quét nhãn LOT sản xuất trong kho thành phẩm.',

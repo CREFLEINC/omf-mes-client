@@ -29,7 +29,6 @@ export const shellHome: Translated<typeof ko.shellHome> = {
     physicalCount: 'Đếm và ghi nhận hàng thực tế tại vị trí',
     materialLocation: 'Tra cứu LOT · mặt hàng đang ở vị trí nào',
     shopfloorReceipt: 'Nhận vật tư vào kho sản xuất',
-    wipHandover: 'Bàn giao bán thành phẩm giữa các công đoạn',
     repairRoundtrip: 'Quét hàng gửi sửa và hàng sửa xong trở về',
     equipmentInspection: 'Ghi nhận hạng mục kiểm tra thiết bị',
     equipmentFailure: 'Báo cáo hiện tượng hỏng và ảnh',
