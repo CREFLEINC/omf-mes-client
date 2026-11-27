@@ -297,7 +297,6 @@ export const DistributionControls = ({
     <section className="erp-wo-distribution">
       <div className="erp-wo-distribution-actions">
         <Button
-          variant="outlined"
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-controls={`${id}-conditions`}
