@@ -40,6 +40,8 @@ export const routing = {
     addProcess: '공정 추가',
     editProcess: '수정',
     activateProcess: '재사용',
+    /** 공정 수정 팝업 제목 — 목록 행 끝 [수정]으로 연다(#360). */
+    editProcessTitle: '공정 수정',
     confirm: '확정',
     obsolete: '폐기',
     /** 작성중 Rev 취소(삭제) · #231 */
@@ -165,6 +167,8 @@ export const routing = {
     processName: '공정명',
     processType: '공정 유형',
     isActive: '사용 유무',
+    /** 목록 행 끝 단추 열(사용 중지/재사용 · 수정 · #360). */
+    manage: '관리',
     operationName: '공정명',
     managedItems: '관리 항목',
     /** 단위를 라벨에 적는다 — 값만 보고는 분·초를 구분할 수 없다. */

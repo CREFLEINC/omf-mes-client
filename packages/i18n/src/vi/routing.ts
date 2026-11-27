@@ -39,6 +39,8 @@ export const routing: Translated<typeof ko.routing> = {
     addProcess: 'Thêm công đoạn',
     editProcess: 'Sửa',
     activateProcess: 'Dùng lại',
+    /** 공정 수정 팝업 제목 — 목록 행 끝 [수정]으로 연다(#360). */
+    editProcessTitle: 'Sửa công đoạn',
     confirm: 'Xác nhận',
     obsolete: 'Hủy bỏ',
     discard: 'Hủy bản nháp',
@@ -153,6 +155,8 @@ export const routing: Translated<typeof ko.routing> = {
     processName: 'Tên công đoạn',
     processType: 'Loại công đoạn',
     isActive: 'Trạng thái sử dụng',
+    /** 목록 행 끝 단추 열(사용 중지/재사용 · 수정 · #360). */
+    manage: 'Quản lý',
     operationName: 'Tên công đoạn',
     managedItems: 'Hạng mục quản lý',
     /** 단위를 라벨에 적는다 — 값만 보고는 분·초를 구분할 수 없다. */
