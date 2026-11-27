@@ -13,9 +13,20 @@ const pn = messages.screenPatterns.pageNav;
 /** 목록은 비워 둔다 — 여기서 재는 것은 조회 조건 줄이고, 나간 조건은 요청 주소로 본다. */
 const setup = (route = '/notification/notices', total = 0) => {
   const listQueries: URL[] = [];
+  const countQueries: URL[] = [];
 
   renderWithProviders(<NoticeScreen />, {
     fetch: createStubFetch([
+      {
+        /* 상태 라벨 건수(한 줄만 받는 조회) — 목록 조회와 따로 센다. 라벨마다 3건으로 답한다. */
+        match: (request) =>
+          new URL(request.url).pathname === '/app/notices' &&
+          new URL(request.url).searchParams.get('size') === '1',
+        respond: (request) => {
+          countQueries.push(new URL(request.url));
+          return jsonResponse({ items: [], page: { page: 1, size: 1, total: 3 } });
+        },
+      },
       {
         match: (request) => new URL(request.url).pathname === '/app/notices',
         respond: (request) => {
@@ -32,8 +43,11 @@ const setup = (route = '/notification/notices', total = 0) => {
     route,
   });
 
-  return { listQueries, user: userEvent.setup() };
+  return { countQueries, listQueries, user: userEvent.setup() };
 };
+
+/** 상태 라벨 — 「게시 중 3」처럼 이름 뒤에 건수가 붙는다. */
+const statusChip = (label: string) => new RegExp(`^${label} \\d+$`);
 
 /* 조회 조건은 목록과 따로 선 조회 조건 상자에 있다(통일 배치 · #350). */
 const filterPane = () =>
@@ -127,31 +141,42 @@ describe('NoticeScreen — 조회 조건(C-6)', () => {
   });
 });
 
-/* #361 — 「게시 중만」 체크 · 상태 선택칸 대신 목록 위 상태 탭. 기본은 종전과 같은 「게시 중」 조회다. */
-describe('NoticeScreen — 상태 탭', () => {
-  it('처음에는 「게시 중」 탭이고 종전과 같은 조건(activeOnly)으로 조회한다', async () => {
+/* #361 — 「게시 중만」 체크 · 상태 선택칸 대신 맨 위 상태 라벨. 기본은 종전과 같은 「게시 중」 조회다. */
+describe('NoticeScreen — 상태 라벨', () => {
+  it('처음에는 「게시 중」 라벨이 골라져 있고 종전과 같은 조건(activeOnly)으로 조회한다', async () => {
     const { listQueries } = setup();
 
-    expect(await screen.findByRole('tab', { name: t.status.PUBLISHED })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
+    expect(
+      await screen.findByRole('button', { name: statusChip(t.status.PUBLISHED), pressed: true }),
+    ).toBeVisible();
     await waitFor(() => {
       expect(listQueries.at(-1)?.searchParams.get('activeOnly')).toBe('true');
     });
     expect(listQueries.at(-1)?.searchParams.get('statusCode')).toBeNull();
   });
 
-  it('다른 상태 탭은 그 상태로, 「전체」는 상태 조건 없이 조회한다', async () => {
+  it('라벨마다 건수가 붙고, 건수는 지금 조건에 상태만 바꿔 센다', async () => {
+    const { countQueries } = setup('/notification/notices?q=점검');
+
+    expect(await screen.findByRole('button', { name: `${t.status.DRAFT} 3` })).toBeVisible();
+    const draft = countQueries.find((url) => url.searchParams.get('statusCode') === 'DRAFT');
+    expect(draft?.searchParams.get('q')).toBe('점검');
+    const published = countQueries.find((url) => url.searchParams.get('activeOnly') === 'true');
+    expect(published?.searchParams.get('statusCode')).toBeNull();
+  });
+
+  it('다른 라벨은 그 상태로, 고른 라벨을 다시 누르면 상태 조건 없이 조회한다', async () => {
     const { listQueries, user } = setup();
 
-    await user.click(await screen.findByRole('tab', { name: t.status.DRAFT }));
+    await user.click(await screen.findByRole('button', { name: statusChip(t.status.DRAFT) }));
     await waitFor(() => {
       expect(listQueries.at(-1)?.searchParams.get('statusCode')).toBe('DRAFT');
     });
     expect(listQueries.at(-1)?.searchParams.get('activeOnly')).toBeNull();
 
-    await user.click(screen.getByRole('tab', { name: t.filters.statusTabAll }));
+    await user.click(
+      screen.getByRole('button', { name: statusChip(t.status.DRAFT), pressed: true }),
+    );
     await waitFor(() => {
       expect(listQueries.at(-1)?.searchParams.get('statusCode')).toBeNull();
     });

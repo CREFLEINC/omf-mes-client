@@ -8,7 +8,6 @@ import {
   EmptyState,
   Icon,
   Skeleton,
-  Tabs,
   TextField,
   type Column,
 } from '@crefle/web-ui';
@@ -72,6 +71,7 @@ import {
   useNoticeDetail,
   useNoticePublish,
   useNotices,
+  useNoticeStatusCounts,
   useNoticeUpdate,
   useUnacknowledgedByMe,
 } from './queries';
@@ -342,12 +342,41 @@ export const NoticeScreen = () => {
 
   const editable = selected !== null && isEditable(selected.statusCode);
 
-  /** 목록 위 상태 탭 — 고르면 바로 조회한다(품질 화면의 선택칸 · 체크칸처럼 · #361). */
-  const statusTabItems = STATUS_TABS.map((value: StatusTab) => ({
-    value,
-    label: value === 'ALL' ? t.filters.statusTabAll : statusLabel(value),
-    content: null,
-  }));
+  /**
+   * 상태 라벨 필터(#361) — 화면 맨 위 줄, 「⋯」 왼쪽. 품질 화면(검사 조회·판정)의 상태 칩과 같은 자리 · 모양이다.
+   * 누르면 그 상태로 바로 거르고, 고른 라벨을 다시 누르면 거르기를 풀어 전체를 본다. 「전체」 라벨은 두지 않는다.
+   */
+  const chipStatuses = STATUS_TABS.filter(
+    (value): value is Exclude<StatusTab, 'ALL'> => value !== 'ALL',
+  );
+  const statusCounts = useNoticeStatusCounts(filters, chipStatuses);
+  /* 0건 라벨은 감춘다 — 고른 라벨은 남긴다(품질 화면 판정 칩과 같다). */
+  const statusChips = (
+    <div className="inspection-hub-counts" role="group" aria-label={t.filters.status}>
+      {chipStatuses.map((value, index) => {
+        const isActive = statusTab === value;
+        const count = statusCounts[index];
+        if (count === 0 && !isActive) return null;
+
+        return (
+          <Chip
+            key={value}
+            variant="filter"
+            size="sm"
+            selected={isActive}
+            aria-pressed={isActive}
+            onSelectedChange={() => {
+              apply(withStatusTab(isActive ? 'ALL' : value));
+            }}
+          >
+            {count === undefined
+              ? statusLabel(value)
+              : messages.common.inspectionHub.count(statusLabel(value), count)}
+          </Chip>
+        );
+      })}
+    </div>
+  );
 
   const listContent = (
     <>
@@ -504,6 +533,7 @@ export const NoticeScreen = () => {
       {/* 화면 제목 줄은 두지 않는다 — 조회 조건 · 목록 · 상세 통일 배치(검사 조회·판정과 같다 · #350). */}
       <ListDetailWorkspace
         storageKey="omf-mes:notice"
+        toolbar={statusChips}
         filter={{
           label: messages.common.paneList.filter,
           content: (
@@ -620,21 +650,7 @@ export const NoticeScreen = () => {
           label: t.panes.list,
           title: t.panes.list,
           count: notices.data?.page.total,
-          content: (
-            <>
-              {/* 상태 탭 — 「게시 중만」 체크 · 상태 선택칸 대신 목록 위에서 고른다(#361). 기본은 종전처럼 「게시 중」. */}
-              <Tabs
-                aria-label={t.filters.status}
-                items={statusTabItems}
-                value={statusTab}
-                onChange={(next) => {
-                  const tab = STATUS_TABS.find((value) => value === next);
-                  if (tab !== undefined) apply(withStatusTab(tab));
-                }}
-              />
-              {listContent}
-            </>
-          ),
+          content: <>{listContent}</>,
         }}
         detail={{
           label: t.panes.detail,

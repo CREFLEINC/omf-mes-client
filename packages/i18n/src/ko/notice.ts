@@ -17,8 +17,6 @@ export const notice = {
     search: '제목 검색',
     searchPlaceholder: '제목을 입력하세요',
     status: '상태',
-    /** 목록 위 상태 탭의 「전체」(#361 — 「게시 중만」 체크 · 상태 선택칸 대신). */
-    statusTabAll: '전체',
     scope: '대상 범위',
     scopeAll: '범위 전체',
     unacknowledgedByMe: '내가 아직 확인하지 않은 것만',

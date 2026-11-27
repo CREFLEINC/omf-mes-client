@@ -1,5 +1,5 @@
 import type { components } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { requireIfMatch, useMasterWrite, type MasterWriteResult } from '../../patterns/master';
@@ -95,6 +95,46 @@ export const useNotices = (
         page: data.page,
       })),
   });
+};
+
+/**
+ * 상태 라벨의 건수(#361 — 「게시 중 2」). 지금 걸린 다른 조건(제목 · 기간 · 대상 범위 · 내가 확인하지 않은 것)은
+ * 그대로 두고 상태만 바꿔 센다 — 품질 화면(검사 조회·판정)의 판정 칩 건수와 같은 규칙. 한 줄만 받아 총 건수만 읽는다.
+ * 「게시 중」은 목록과 같은 조건(`activeOnly`)으로 센다(서버가 둘을 같은 조건으로 거른다).
+ */
+export const useNoticeStatusCounts = (
+  filters: NoticeFilters,
+  statuses: readonly string[],
+): (number | undefined)[] => {
+  const { client } = useApiClient();
+  const base = { ...filters, page: 1, statusCode: '', activeOnly: false };
+
+  const results = useQueries({
+    queries: statuses.map((status) => ({
+      queryKey: [...noticeKeys.list(base, 1), 'count', status] as const,
+      queryFn: () =>
+        runRequest(() =>
+          client.GET('/app/notices', {
+            params: {
+              query: {
+                ...(base.q === '' ? {} : { q: base.q }),
+                ...(status === 'PUBLISHED'
+                  ? { activeOnly: true }
+                  : { statusCode: status as StatusQuery }),
+                ...(base.scopeCode === '' ? {} : { scopeCode: base.scopeCode as ScopeQuery }),
+                ...(base.unacknowledgedByMe ? { unacknowledgedByMe: true } : {}),
+                ...(base.overlapFrom === '' ? {} : { overlapFrom: base.overlapFrom }),
+                ...(base.overlapTo === '' ? {} : { overlapTo: base.overlapTo }),
+                page: 1,
+                size: 1,
+              },
+            },
+          }),
+        ).then((data) => data.page.total),
+    })),
+  });
+
+  return results.map((result) => result.data);
 };
 
 export const useNoticeDetail = (noticeId: number | null): UseQueryResult<NoticeView> => {
