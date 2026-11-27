@@ -724,6 +724,7 @@ export const ShipmentRequestCreateScreen = () => {
       )}
       {confirmingDiscard && (
         <Dialog
+          className="dialog-icon-undo"
           open
           size="sm"
           title={t.dialog.discardTitle}

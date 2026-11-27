@@ -689,6 +689,7 @@ export const LayoutEditorDialog = ({
        */}
       {pendingFile !== null && (
         <Dialog
+          className="dialog-icon-upload"
           open
           size="sm"
           title={t.map.replaceDrawingTitle}
@@ -724,6 +725,7 @@ export const LayoutEditorDialog = ({
       {/* 저장하지 않은 변경을 버리고 닫을지 — 버리면 서버 배치는 그대로다(FR-008). */}
       {confirmingDiscard && (
         <Dialog
+          className="dialog-icon-undo"
           open
           size="sm"
           title={t.editor.discardTitle}

@@ -778,6 +778,7 @@ const ProcessEditDialog = ({
 
   return (
     <Dialog
+      className="dialog-icon-edit"
       open
       size="sm"
       closeOnBackdropClick={false}
@@ -917,6 +918,7 @@ const ProcessCreateDialog = ({ typeOptions, onClose, onCreated }: ProcessCreateD
     <>
       <LeaveGuard when={isDirty} discardBody={t.discard.bodyProcess} showCloseButton={false} />
       <Dialog
+        className="dialog-icon-add"
         open
         size="sm"
         closeOnBackdropClick={false}
@@ -1016,6 +1018,7 @@ const ProcessActivationDialog = ({
 
   return (
     <Dialog
+      className={isDeactivate ? 'dialog-icon-block' : 'dialog-icon-restart'}
       open={intent !== null}
       onClose={onClose}
       size="md"

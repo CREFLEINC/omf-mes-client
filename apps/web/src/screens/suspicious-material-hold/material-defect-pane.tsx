@@ -259,6 +259,7 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
       )}
       {confirmingAll && pending.length > 0 && (
         <Dialog
+          className="dialog-icon-check"
           open
           closeOnBackdropClick={false}
           showCloseButton={false}

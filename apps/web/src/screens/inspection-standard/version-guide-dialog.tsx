@@ -33,6 +33,7 @@ export const VersionGuideDialog = ({
   const isTooLong = text.trim().length > GUIDE_TEXT_MAX;
   return (
     <Dialog
+      className="dialog-icon-edit"
       open
       size="lg"
       closeOnBackdropClick={false}

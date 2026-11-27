@@ -865,6 +865,7 @@ const InspectionSheetScreenBody = () => {
 
       {confirming !== null && data !== null && (
         <Dialog
+          className="dialog-icon-check"
           open
           showCloseButton={false}
           onClose={() => setConfirming(null)}
@@ -901,6 +902,7 @@ const InspectionSheetScreenBody = () => {
 
       {creating && (
         <Dialog
+          className="dialog-icon-add"
           open
           size="sm"
           showCloseButton={false}
@@ -962,6 +964,7 @@ const InspectionSheetScreenBody = () => {
 
       {reopening && data !== null && (
         <Dialog
+          className="dialog-icon-undo"
           open
           showCloseButton={false}
           onClose={() => setReopening(false)}

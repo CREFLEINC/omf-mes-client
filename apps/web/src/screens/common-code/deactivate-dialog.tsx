@@ -61,7 +61,7 @@ export const DeactivateDialog = ({
         {/* [취소]는 중립색 — 빨간색은 [사용 중지]만(사용자 지시 2026-11-26 · 사용자 관리 화면과 같은 방식). */}
         <Button
           variant="outlined"
-          className="app-button-neutral"
+          className="app-button-neutral dialog-icon-block"
           disabled={isSaving}
           onClick={onClose}
         >

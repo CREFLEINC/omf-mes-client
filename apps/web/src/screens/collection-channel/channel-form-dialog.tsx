@@ -123,6 +123,7 @@ export const ChannelFormDialog = ({
 
   return (
     <Dialog
+      className={isCreate ? 'dialog-icon-add' : 'dialog-icon-edit'}
       open
       onClose={onClose}
       closeOnBackdropClick={false}

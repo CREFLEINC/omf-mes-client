@@ -95,6 +95,7 @@ export const ReviseDialog = ({
 
   return (
     <Dialog
+      className="dialog-icon-edit"
       open
       onClose={onClose}
       title={t.title}

@@ -39,6 +39,7 @@ export const ConfirmDialog = ({
 
   return (
     <Dialog
+      className="dialog-icon-check"
       open={open}
       onClose={onClose}
       title={t.confirm.title}

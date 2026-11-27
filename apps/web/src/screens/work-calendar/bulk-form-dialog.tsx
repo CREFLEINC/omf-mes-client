@@ -64,6 +64,7 @@ export const BulkFormDialog = ({
 
   return (
     <Dialog
+      className="dialog-icon-edit"
       open
       onClose={onClose}
       closeOnBackdropClick={false}

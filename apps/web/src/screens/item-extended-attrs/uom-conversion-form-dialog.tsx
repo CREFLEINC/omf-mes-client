@@ -83,6 +83,7 @@ export const UomConversionFormDialog = ({
 
   return (
     <Dialog
+      className={isNew ? 'dialog-icon-add' : 'dialog-icon-edit'}
       open
       onClose={onClose}
       size="md"

@@ -143,6 +143,7 @@ export const CodeValueFormPane = ({
    */
   return (
     <Dialog
+      className={mode === 'create' ? 'dialog-icon-add' : 'dialog-icon-edit'}
       open
       onClose={onCancel}
       size="lg"

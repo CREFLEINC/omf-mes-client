@@ -109,7 +109,7 @@ export const StandaloneCreateDialog = ({
     <Dialog
       open
       size="lg"
-      className="sr-create-dialog"
+      className="sr-create-dialog dialog-icon-add"
       title={t.dialog.standaloneTitle}
       onClose={onCancel}
       footer={

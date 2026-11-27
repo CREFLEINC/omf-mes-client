@@ -707,6 +707,7 @@ export const NoticeScreen = () => {
 
       {/* 새 공지 쓰기 · 공지 고치기 — 상세 자리 대신 팝업으로(#361). */}
       <Dialog
+        className={formMode === 'edit' ? 'dialog-icon-edit' : 'dialog-icon-add'}
         open={formMode !== 'closed'}
         onClose={() => {
           if (!isSaving) setFormMode('closed');
@@ -747,6 +748,7 @@ export const NoticeScreen = () => {
       </Dialog>
 
       <Dialog
+        className={confirming === 'close' ? 'dialog-icon-cancel' : 'dialog-icon-send'}
         open={confirming !== 'none'}
         onClose={() => {
           setConfirming('none');

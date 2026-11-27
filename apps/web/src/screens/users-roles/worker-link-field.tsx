@@ -398,6 +398,7 @@ export const WorkerLinkField = ({ appUserId, departmentLabel }: WorkerLinkFieldP
       </Dialog>
 
       <Dialog
+        className="dialog-icon-unlink"
         open={isUnlinkOpen}
         onClose={() => {
           if (!write.isSaving) setIsUnlinkOpen(false);

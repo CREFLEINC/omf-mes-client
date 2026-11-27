@@ -1947,6 +1947,7 @@ export const UsersRolesScreen = () => {
       {/* 사용자 추가 팝업(사용자 지시 2026-11-20 · #333) — 주소의 등록 상태를 그대로 쓰고, 닫으면 등록을 접는다. */}
       {isCreatingUser && createFormState !== null && (
         <Dialog
+          className="dialog-icon-add"
           open
           onClose={closeUserCreateForm}
           size="lg"
@@ -2262,6 +2263,7 @@ export const UsersRolesScreen = () => {
       {/* 역할 추가 팝업 — 사용자 추가 팝업과 같은 모양(사용자 지시 2026-11-20 · #333). 닫으면 등록을 접는다. */}
       {isCreatingRole && roleCreateValues !== null && (
         <Dialog
+          className="dialog-icon-add"
           open
           onClose={closeRoleCreateForm}
           size="lg"

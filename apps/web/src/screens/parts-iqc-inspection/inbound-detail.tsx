@@ -587,6 +587,7 @@ export const InboundDetail = ({
 
                   {deleting === null ? null : (
                     <Dialog
+                      className="dialog-icon-delete"
                       open
                       size="sm"
                       showCloseButton={false}

@@ -38,6 +38,7 @@ export const BatchRetryDialog = ({
 
   return (
     <Dialog
+      className={isResultPhase ? undefined : 'dialog-icon-refresh'}
       open={open}
       onClose={onClose}
       closeOnBackdropClick={false}

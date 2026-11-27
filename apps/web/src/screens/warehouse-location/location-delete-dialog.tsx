@@ -88,7 +88,7 @@ export const LocationDeleteDialog = ({
 
   return (
     <Dialog
-      className="location-dialog"
+      className="location-dialog dialog-icon-delete"
       open={target !== null}
       onClose={close}
       size="sm"

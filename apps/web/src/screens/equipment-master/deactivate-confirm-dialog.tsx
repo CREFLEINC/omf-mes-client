@@ -5,6 +5,8 @@ import type { ReactNode } from 'react';
 export interface DeactivateConfirmDialogProps {
   /** 창의 제목. 무엇을 끄는지 종류가 다르면 제목도 달라야 한다 */
   title: string;
+  /** 제목 앞 아이콘 클래스(app.css `dialog-icon-*` · #360). 폐기는 `dialog-icon-delete`. */
+  iconClass?: string;
   /**
    * 대상 상자 — 작은 제목 · 이름 · 보조 한 줄(코드). **내부 번호가 아니라 사람이 읽는 이름을 담는다.**
    * 작은 제목은 부르는 쪽이 정한다 — 「사용 중지 대상」과 「폐기 대상」이 다르다.
@@ -65,6 +67,7 @@ export interface DeactivateConfirmDialogProps {
  */
 export const DeactivateConfirmDialog = ({
   title,
+  iconClass = 'dialog-icon-block',
   target,
   question,
   impactNote,
@@ -76,6 +79,7 @@ export const DeactivateConfirmDialog = ({
   onConfirm,
 }: DeactivateConfirmDialogProps) => (
   <Dialog
+    className={iconClass}
     open
     onClose={onClose}
     size="sm"

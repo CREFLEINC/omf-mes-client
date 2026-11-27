@@ -27,7 +27,7 @@ export const WarehouseEditDialog = ({
   ...paneProps
 }: WarehouseEditDialogProps) => (
   <Dialog
-    className="location-dialog"
+    className="location-dialog dialog-icon-edit"
     open={open}
     onClose={onClose}
     size="lg"

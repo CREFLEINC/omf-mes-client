@@ -29,6 +29,7 @@ export const GroupFormDialog = ({
   onRegister,
 }: GroupFormDialogProps) => (
   <Dialog
+    className="dialog-icon-add"
     open
     onClose={onCancel}
     closeOnBackdropClick={false}

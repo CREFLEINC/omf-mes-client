@@ -42,6 +42,7 @@ export const ActivationDialog = ({
 
   return (
     <Dialog
+      className={isDeactivate ? 'dialog-icon-block' : 'dialog-icon-restart'}
       open
       onClose={onClose}
       closeOnBackdropClick={false}

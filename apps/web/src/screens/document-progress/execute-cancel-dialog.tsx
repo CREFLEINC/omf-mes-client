@@ -54,6 +54,7 @@ export const ExecuteCancelDialog = ({
   onConfirm,
 }: ExecuteCancelDialogProps) => (
   <Dialog
+    className="dialog-icon-cancel"
     open
     onClose={onClose}
     size="sm"

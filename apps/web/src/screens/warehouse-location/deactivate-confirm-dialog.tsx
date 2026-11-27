@@ -76,7 +76,7 @@ export const DeactivateConfirmDialog = ({
 
   return (
     <Dialog
-      className="location-dialog"
+      className={`location-dialog ${deactivating ? 'dialog-icon-block' : 'dialog-icon-restart'}`}
       open={open}
       onClose={onClose}
       size="sm"

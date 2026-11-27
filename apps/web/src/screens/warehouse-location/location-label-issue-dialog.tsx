@@ -30,7 +30,7 @@ export const LocationLabelIssueDialog = ({
   banner,
 }: LocationLabelIssueDialogProps) => (
   <Dialog
-    className="location-dialog"
+    className="location-dialog dialog-icon-print"
     open
     onClose={onClose}
     size="sm"

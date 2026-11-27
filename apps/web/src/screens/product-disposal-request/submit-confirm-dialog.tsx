@@ -32,6 +32,7 @@ export const SubmitConfirmDialog = ({
   onClose,
 }: SubmitConfirmDialogProps) => (
   <Dialog
+    className="dialog-icon-send"
     open
     onClose={onClose}
     size="sm"

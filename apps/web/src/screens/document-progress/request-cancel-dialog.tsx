@@ -56,7 +56,7 @@ export const RequestCancelDialog = ({
     open
     onClose={onClose}
     size="sm"
-    className="document-cancel-request-dialog"
+    className="document-cancel-request-dialog dialog-icon-cancel"
     closeOnBackdropClick={false}
     showCloseButton={false}
     title={t.cancelDialog.title(documentTypeName)}

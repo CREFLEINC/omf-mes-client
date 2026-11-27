@@ -194,6 +194,7 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
 
   return (
     <Dialog
+      className="dialog-icon-unlock"
       open
       size="md"
       closeOnBackdropClick={false}

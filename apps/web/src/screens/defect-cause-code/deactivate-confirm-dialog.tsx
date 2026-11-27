@@ -46,6 +46,7 @@ export const DeactivateConfirmDialog = ({
 
   return (
     <Dialog
+      className="dialog-icon-block"
       open={open}
       onClose={onClose}
       size="sm"

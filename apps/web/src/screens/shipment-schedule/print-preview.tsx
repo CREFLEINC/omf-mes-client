@@ -213,6 +213,7 @@ export const PrintPreviewDialog = ({ detail, names, onClose, now }: PrintPreview
   return (
     <>
       <Dialog
+        className="dialog-icon-print"
         open
         size="lg"
         title={t.printPreview.title}

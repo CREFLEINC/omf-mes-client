@@ -167,6 +167,7 @@ export const AssignStep = ({
       {pending !== null && (
         /* 단말 관리 · 사용자 관리의 저장 안 한 변경 창과 같은 모양 — 작은 창, X 없음(사용자 지시 · #360). */
         <Dialog
+          className="dialog-icon-undo"
           open
           size="sm"
           title={t.discard.title}

@@ -506,6 +506,7 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
         </div>
 
         <Dialog
+          className="dialog-icon-edit"
           open={dialog === 'date'}
           onClose={() => setDialog(null)}
           title={t.dateDialog.title}
@@ -568,6 +569,7 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
         </Dialog>
 
         <Dialog
+          className="dialog-icon-cancel"
           open={dialog === 'cancel'}
           onClose={() => setDialog(null)}
           title={t.cancelDialog.title(request.issueRequestNo)}

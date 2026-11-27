@@ -60,6 +60,7 @@ export const SaveConfirmDialog = ({
 
   return (
     <Dialog
+      className="dialog-icon-check"
       open={open}
       onClose={onCancel}
       title={t.confirm.title}

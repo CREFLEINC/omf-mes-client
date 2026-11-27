@@ -66,6 +66,7 @@ export const PostConfirmDialog = ({
   onClose,
 }: PostConfirmDialogProps) => (
   <Dialog
+    className="dialog-icon-check"
     open
     onClose={onClose}
     size="md"

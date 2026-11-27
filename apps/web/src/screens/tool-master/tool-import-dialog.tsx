@@ -72,6 +72,7 @@ export const ToolImportDialog = ({
 
   return (
     <Dialog
+      className="dialog-icon-upload"
       open
       onClose={onClose}
       closeOnBackdropClick={false}

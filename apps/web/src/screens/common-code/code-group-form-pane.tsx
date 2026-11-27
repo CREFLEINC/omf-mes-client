@@ -165,6 +165,7 @@ export const CodeGroupFormPane = ({
   if (mode === 'create') {
     return (
       <Dialog
+        className="dialog-icon-add"
         open
         onClose={onCancel}
         size="lg"

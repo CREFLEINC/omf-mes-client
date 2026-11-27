@@ -221,7 +221,7 @@ export const BulkCreateDialog = ({
 
   return (
     <Dialog
-      className="location-dialog bulk-create-dialog"
+      className="location-dialog bulk-create-dialog dialog-icon-add"
       open={open}
       onClose={close}
       title={b.open}

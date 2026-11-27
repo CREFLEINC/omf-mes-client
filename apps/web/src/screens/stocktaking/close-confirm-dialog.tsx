@@ -92,6 +92,7 @@ const toRows = (summary: CloseSummary): SummaryRow[] => [
  */
 export const CloseConfirmDialog = ({ summary, onConfirm, onClose }: CloseConfirmDialogProps) => (
   <Dialog
+    className="dialog-icon-lock"
     open
     onClose={onClose}
     size="md"

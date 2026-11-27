@@ -1572,6 +1572,7 @@ export const EquipmentMasterScreen = () => {
       {disposeTarget !== null && (
         <DeactivateConfirmDialog
           title={t.dispose.title}
+          iconClass="dialog-icon-delete"
           target={{
             caption: t.dispose.caption,
             name: disposeTarget.equipmentName,

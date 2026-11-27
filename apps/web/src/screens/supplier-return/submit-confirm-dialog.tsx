@@ -122,6 +122,7 @@ const toDetails = (summary: SubmitSummary): SummaryRow[] => [
  */
 export const SubmitConfirmDialog = ({ summary, onConfirm, onClose }: SubmitConfirmDialogProps) => (
   <Dialog
+    className="dialog-icon-check"
     open
     onClose={onClose}
     size="lg"

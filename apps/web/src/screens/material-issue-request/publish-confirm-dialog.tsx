@@ -36,6 +36,7 @@ export const PublishConfirmDialog = ({
   onClose,
 }: PublishConfirmDialogProps) => (
   <Dialog
+    className="dialog-icon-send"
     open
     onClose={onClose}
     size="md"

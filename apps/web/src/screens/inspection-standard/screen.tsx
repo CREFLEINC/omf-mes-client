@@ -1747,6 +1747,7 @@ export const InspectionStandardScreen = () => {
 
     return (
       <Dialog
+        className="dialog-icon-add"
         open
         size="lg"
         closeOnBackdropClick={false}
@@ -2032,7 +2033,7 @@ export const InspectionStandardScreen = () => {
             showCloseButton={false}
             title={t.detail.editBasic}
             /* 첫 줄에 기본 생략 · 기준코드 · 기준명이 서도록 창을 넓힌다(사용자 지시 2026-11-04). */
-            className="inspection-standard-plan-edit-dialog"
+            className="inspection-standard-plan-edit-dialog dialog-icon-edit"
             onClose={() => {
               cancelPlanEdit();
               setIsPlanEditOpen(false);

@@ -40,6 +40,7 @@ export const CloseDialog = ({ open, detail, close, onClose }: CloseDialogProps) 
 
   return (
     <Dialog
+      className="dialog-icon-lock"
       open={open}
       onClose={onClose}
       title={tc.title}

@@ -45,6 +45,7 @@ export const ApplicationFormDialog = ({
 
   return (
     <Dialog
+      className="dialog-icon-add"
       open
       onClose={onClose}
       closeOnBackdropClick={false}

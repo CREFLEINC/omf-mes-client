@@ -61,6 +61,7 @@ export const LevelDialog = ({
 
   return (
     <Dialog
+      className="dialog-icon-add"
       open
       onClose={onClose}
       /* 닫기는 [취소]로 — 우상단 × 를 두지 않는다(#133). Esc · 바깥 누름은 그대로 [취소]와 같다. */

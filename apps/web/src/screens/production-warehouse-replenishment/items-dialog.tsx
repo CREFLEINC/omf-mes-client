@@ -136,7 +136,7 @@ export const ItemDialog = ({ item, settings, warehouses, onClose }: ItemDialogPr
             {item !== null && (
               <Button
                 variant="outlined"
-                className="form-actions-secondary"
+                className={`form-actions-secondary ${item === null ? 'dialog-icon-add' : 'dialog-icon-edit'}`}
                 onClick={() => {
                   remove.reset();
                   setConfirmDelete(true);
@@ -244,6 +244,7 @@ export const ItemDialog = ({ item, settings, warehouses, onClose }: ItemDialogPr
         </div>
       </Dialog>
       <Dialog
+        className="dialog-icon-delete"
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         title={ti.deleteTitle}

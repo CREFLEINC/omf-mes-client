@@ -309,7 +309,7 @@ export const EditDialog = ({
       title={shift === null ? td.addTitle : td.editTitle}
       size="lg"
       showCloseButton={false}
-      className="shift-management-dialog"
+      className={`shift-management-dialog ${shift === null ? 'dialog-icon-add' : 'dialog-icon-edit'}`}
       footer={
         <>
           <Button variant="outlined" onClick={onClose}>

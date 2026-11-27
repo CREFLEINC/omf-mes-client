@@ -31,6 +31,7 @@ export const ExecuteCancelDialog = ({
   onSubmit,
 }: ExecuteCancelDialogProps) => (
   <Dialog
+    className="dialog-icon-cancel"
     closeOnBackdropClick={false}
     footer={
       <>

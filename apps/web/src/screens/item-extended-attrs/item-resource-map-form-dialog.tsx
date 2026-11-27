@@ -105,6 +105,7 @@ export const ItemResourceMapFormDialog = ({
 
   return (
     <Dialog
+      className={row === null ? 'dialog-icon-add' : 'dialog-icon-edit'}
       open
       onClose={onClose}
       size="lg"

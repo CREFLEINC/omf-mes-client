@@ -1577,6 +1577,7 @@ export const StocktakingScreen = () => {
        */}
       {isOpenFormVisible && !isOpenConfirmVisible && discardTarget !== 'open' && (
         <Dialog
+          className="dialog-icon-add"
           open
           size="md"
           closeOnBackdropClick={false}

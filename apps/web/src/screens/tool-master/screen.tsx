@@ -466,6 +466,7 @@ export const ToolMasterScreen = () => {
       {retiring !== null && tool !== null && (
         <RetireConfirmDialog
           title={retiring === 'dispose' ? t.retire.disposeTitle : t.retire.deactivateTitle}
+          iconClass={retiring === 'dispose' ? 'dialog-icon-delete' : 'dialog-icon-block'}
           target={{
             caption: retiring === 'dispose' ? t.retire.disposeCaption : t.retire.deactivateCaption,
             name: tool.moldName,

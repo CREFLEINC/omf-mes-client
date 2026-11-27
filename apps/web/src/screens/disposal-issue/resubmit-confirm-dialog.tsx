@@ -48,6 +48,7 @@ export const ResubmitConfirmDialog = ({
   onClose,
 }: ResubmitConfirmDialogProps) => (
   <Dialog
+    className="dialog-icon-send"
     open
     onClose={onClose}
     size="md"

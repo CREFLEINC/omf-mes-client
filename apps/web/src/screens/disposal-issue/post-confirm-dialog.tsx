@@ -60,6 +60,7 @@ export interface PostConfirmDialogProps {
  */
 export const PostConfirmDialog = ({ summary, onConfirm, onClose }: PostConfirmDialogProps) => (
   <Dialog
+    className="dialog-icon-check"
     open
     onClose={onClose}
     size="md"

@@ -64,6 +64,7 @@ const RetryConfirmDialog = ({
   banner,
 }: RetryConfirmDialogProps) => (
   <Dialog
+    className="dialog-icon-refresh"
     open={target !== null}
     onClose={onClose}
     /* 닫기는 [취소] 하나(창의 X 단추는 두지 않는다 · #358). */

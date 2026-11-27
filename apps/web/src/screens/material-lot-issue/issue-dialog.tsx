@@ -201,6 +201,7 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
 
   return (
     <Dialog
+      className="dialog-icon-add"
       open
       onClose={onClose}
       title={td.title}

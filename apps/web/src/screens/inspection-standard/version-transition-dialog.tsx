@@ -15,6 +15,8 @@ const TEXT: Record<
     action: string;
     description: string;
     tone: 'warning' | 'info';
+    /** 제목 앞 아이콘(app.css `dialog-icon-*` · #360). */
+    icon: string;
   }
 > = {
   confirm: {
@@ -24,6 +26,7 @@ const TEXT: Record<
     action: t.actions.confirm,
     description: t.dialog.confirmDescription,
     tone: 'warning',
+    icon: 'dialog-icon-check',
   },
   obsolete: {
     title: t.dialog.obsoleteTitle,
@@ -32,6 +35,7 @@ const TEXT: Record<
     action: t.actions.obsolete,
     description: t.dialog.obsoleteDescription,
     tone: 'warning',
+    icon: 'dialog-icon-block',
   },
   reactivate: {
     title: t.dialog.reactivateVersionTitle,
@@ -40,6 +44,7 @@ const TEXT: Record<
     action: t.actions.reactivate,
     description: t.dialog.reactivateVersionDescription,
     tone: 'info',
+    icon: 'dialog-icon-restart',
   },
   discard: {
     title: t.dialog.discardTitle,
@@ -48,6 +53,7 @@ const TEXT: Record<
     action: t.actions.discard,
     description: t.dialog.discardDescription,
     tone: 'warning',
+    icon: 'dialog-icon-undo',
   },
 };
 
@@ -86,6 +92,7 @@ export const VersionTransitionDialog = ({
   const text = TEXT[kind];
   return (
     <Dialog
+      className={text.icon}
       open={open}
       onClose={onClose}
       size="sm"

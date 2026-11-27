@@ -144,6 +144,7 @@ export const SubmitConfirmDialog = ({ summary, onConfirm, onClose }: SubmitConfi
 
   return (
     <Dialog
+      className="dialog-icon-send"
       open
       onClose={onClose}
       size="md"

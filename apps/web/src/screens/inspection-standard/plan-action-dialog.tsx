@@ -66,6 +66,7 @@ export const PlanActionDialog = ({
   target = null,
 }: PlanActionDialogProps) => (
   <Dialog
+    className={kind === 'deactivate' ? 'dialog-icon-block' : 'dialog-icon-restart'}
     open={open}
     onClose={onClose}
     /* 사용 중지 창은 넓힌다(사용자 시안 · #258). */

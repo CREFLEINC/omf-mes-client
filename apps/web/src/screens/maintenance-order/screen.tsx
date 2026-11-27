@@ -344,6 +344,7 @@ export const MaintenanceOrderScreen = () => {
 
       {/* 발행 확인 — 무엇이 하나로 묶이는지 되읽어 준다. */}
       <Dialog
+        className="dialog-icon-send"
         open={isConfirming}
         onClose={() => {
           setConfirming(false);
@@ -391,6 +392,7 @@ export const MaintenanceOrderScreen = () => {
        * 잠그지 않으면 눌러도 요청이 나가지 않고 「최신 정보를 불러오는 중입니다」만 뜬다.
        */}
       <Dialog
+        className="dialog-icon-cancel"
         open={cancelTarget !== null}
         onClose={() => {
           setCancelTarget(null);

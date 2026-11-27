@@ -443,6 +443,7 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
       {retiring !== null && gauge !== null && (
         <RetireConfirmDialog
           title={retiring === 'dispose' ? t.retire.disposeTitle : t.retire.deactivateTitle}
+          iconClass={retiring === 'dispose' ? 'dialog-icon-delete' : 'dialog-icon-block'}
           target={{
             caption: retiring === 'dispose' ? t.retire.disposeCaption : t.retire.deactivateCaption,
             name: gauge.equipmentName,

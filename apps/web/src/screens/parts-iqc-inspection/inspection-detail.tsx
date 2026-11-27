@@ -1448,6 +1448,7 @@ const InspectionForm = (props: FormProps) => {
           );
           return (
             <Dialog
+              className="dialog-icon-check"
               open
               size="md"
               showCloseButton={false}

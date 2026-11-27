@@ -385,6 +385,7 @@ export const DetailPane = ({
       />
 
       <Dialog
+        className="dialog-icon-delete"
         open={confirming}
         onClose={() => setConfirming(false)}
         title={t.void.title}

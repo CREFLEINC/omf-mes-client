@@ -422,6 +422,7 @@ export const DependencyDialog = ({
 
       {isDiscardOpen && (
         <Dialog
+          className="dialog-icon-undo"
           open
           size="sm"
           closeOnBackdropClick={false}

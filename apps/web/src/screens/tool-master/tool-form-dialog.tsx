@@ -125,6 +125,7 @@ export const ToolFormDialog = ({
 
   return (
     <Dialog
+      className={mode === 'create' ? 'dialog-icon-add' : 'dialog-icon-edit'}
       open
       onClose={onClose}
       closeOnBackdropClick={false}

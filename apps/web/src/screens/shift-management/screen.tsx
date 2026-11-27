@@ -399,6 +399,7 @@ export const ShiftManagementScreen = () => {
         />
       )}
       <Dialog
+        className={turningOn ? 'dialog-icon-restart' : 'dialog-icon-block'}
         open={retiring !== null}
         onClose={() => setToggling(null)}
         title={toggleText.title(retiring?.shiftName ?? '')}

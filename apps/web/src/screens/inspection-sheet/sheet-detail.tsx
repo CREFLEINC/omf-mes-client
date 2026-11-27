@@ -646,6 +646,7 @@ export const SheetDetail = ({
       />
       {signingStep !== null && (
         <Dialog
+          className="dialog-icon-check"
           open
           size="sm"
           showCloseButton={false}

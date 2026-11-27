@@ -48,6 +48,7 @@ export const ApproveDialog = ({
   onConfirm,
 }: ApproveDialogProps) => (
   <Dialog
+    className="dialog-icon-check"
     open
     onClose={onClose}
     size="sm"

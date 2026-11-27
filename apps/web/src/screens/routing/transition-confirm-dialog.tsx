@@ -41,6 +41,13 @@ export const TransitionConfirmDialog = ({
   banner,
 }: TransitionConfirmDialogProps) => (
   <Dialog
+    className={
+      kind === 'confirm'
+        ? 'dialog-icon-check'
+        : kind === 'obsolete'
+          ? 'dialog-icon-delete'
+          : 'dialog-icon-undo'
+    }
     open={open}
     onClose={onClose}
     size="sm"

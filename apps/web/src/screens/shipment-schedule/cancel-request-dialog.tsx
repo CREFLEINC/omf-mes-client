@@ -82,7 +82,7 @@ export const CancelRequestDialog = ({
 
   return (
     <Dialog
-      className="ship-cancel-request-dialog"
+      className="ship-cancel-request-dialog dialog-icon-cancel"
       closeOnBackdropClick={false}
       footer={
         <>

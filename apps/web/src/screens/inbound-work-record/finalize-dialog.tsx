@@ -77,7 +77,7 @@ export const FinalizeDialog = ({
     <Dialog
       open
       size="md"
-      className="iwr-finalize-dialog"
+      className="iwr-finalize-dialog dialog-icon-lock"
       title={tf.title}
       onClose={onClose}
       footer={

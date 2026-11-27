@@ -358,7 +358,7 @@ export const RackCreateDialog = ({
 
   return (
     <Dialog
-      className="location-dialog"
+      className={`location-dialog ${editRack === null ? 'dialog-icon-add' : 'dialog-icon-edit'}`}
       open={zone !== null}
       onClose={close}
       title={editRack === null ? t.dialog.createRackTitle : t.dialog.editRackTitle}

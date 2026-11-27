@@ -43,6 +43,7 @@ export const PartnerRoleConfirmDialog = ({
   onClose,
 }: PartnerRoleConfirmDialogProps) => (
   <Dialog
+    className="dialog-icon-cancel"
     open
     onClose={onClose}
     size="sm"

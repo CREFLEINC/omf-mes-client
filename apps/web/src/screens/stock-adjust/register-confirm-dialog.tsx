@@ -68,6 +68,7 @@ export const RegisterConfirmDialog = ({
   onClose,
 }: RegisterConfirmDialogProps) => (
   <Dialog
+    className="dialog-icon-add"
     open
     onClose={onClose}
     size="md"

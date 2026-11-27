@@ -25,6 +25,7 @@ export interface DiscardConfirmDialogProps {
  */
 export const DiscardConfirmDialog = ({ onConfirm, onClose }: DiscardConfirmDialogProps) => (
   <Dialog
+    className="dialog-icon-undo"
     open
     onClose={onClose}
     size="sm"

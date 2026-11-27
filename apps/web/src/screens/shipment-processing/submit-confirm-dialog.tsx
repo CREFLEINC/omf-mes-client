@@ -27,6 +27,7 @@ export const SubmitConfirmDialog = ({
   onConfirm,
 }: SubmitConfirmDialogProps) => (
   <Dialog
+    className="dialog-icon-check"
     closeOnBackdropClick={false}
     footer={
       <>

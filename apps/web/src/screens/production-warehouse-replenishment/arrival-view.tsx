@@ -364,6 +364,7 @@ export const ArrivalView = ({
         />
       )}
       <Dialog
+        className="dialog-icon-check"
         open={bulkStep === 'confirm'}
         onClose={() => setBulkStep(null)}
         title={t.bulkDialog.title(selected.length)}

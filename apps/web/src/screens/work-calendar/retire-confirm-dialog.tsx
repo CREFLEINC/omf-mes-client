@@ -49,6 +49,7 @@ export const RetireConfirmDialog = ({
   onConfirm,
 }: RetireConfirmDialogProps) => (
   <Dialog
+    className="dialog-icon-block"
     open
     onClose={onClose}
     size="sm"

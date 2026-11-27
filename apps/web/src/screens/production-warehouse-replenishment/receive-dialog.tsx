@@ -127,6 +127,7 @@ export const ReceiveDialog = ({ arrival, onClose, onStale }: ReceiveDialogProps)
 
   return (
     <Dialog
+      className="dialog-icon-check"
       open
       onClose={onClose}
       title={tr.title(arrival.goodsIssueNo)}

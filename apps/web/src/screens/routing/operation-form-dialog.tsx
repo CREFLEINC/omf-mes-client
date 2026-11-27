@@ -96,6 +96,7 @@ export const OperationFormDialog = ({
 
   return (
     <Dialog
+      className={mode === 'create' ? 'dialog-icon-add' : 'dialog-icon-edit'}
       open={open}
       onClose={onClose}
       size="lg"

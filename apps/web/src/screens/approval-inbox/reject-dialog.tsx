@@ -42,6 +42,7 @@ export const RejectDialog = ({
   onConfirm,
 }: RejectDialogProps) => (
   <Dialog
+    className="dialog-icon-cancel"
     open
     onClose={onClose}
     size="sm"

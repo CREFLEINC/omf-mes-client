@@ -30,6 +30,7 @@ export const ConfirmDialog = ({ rows, isRunning, onClose, onConfirm }: ConfirmDi
 
   return (
     <Dialog
+      className="dialog-icon-check"
       closeOnBackdropClick={false}
       footer={
         <>

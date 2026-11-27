@@ -51,7 +51,7 @@ export const DecisionConfirmDialog = ({
         <>
           <Button
             variant="outlined"
-            className="app-button-neutral"
+            className="app-button-neutral dialog-icon-check"
             disabled={isSaving}
             onClick={onCancel}
           >
