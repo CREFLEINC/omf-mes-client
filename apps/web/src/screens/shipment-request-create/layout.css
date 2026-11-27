@@ -41,7 +41,18 @@ dialog.sr-create-dialog {
  * 출하 품목 표는 다른 목록처럼 모두 가운데 정렬(사용자 지시 · #360 — 종전 수량 열 오른쪽 정렬을 바꿈).
  * 칸 안 입력칸 · 선택칸은 열 폭을 다 채워 칸마다 가운데에 고르게 놓이고, 수량 입력 글자도 가운데.
  */
+.sr-create-dialog
+  td
+  :is(.field-cell, [class*='_field_'], [class*='_root_']):has(
+    button[role='combobox'],
+    input:not([type='checkbox'])
+  ) {
+  width: 100%;
+  min-width: 0;
+}
+
 .sr-create-dialog td :is([class*='_inputWrap_'], button[role='combobox']) {
+  box-sizing: border-box;
   width: 100%;
 }
 

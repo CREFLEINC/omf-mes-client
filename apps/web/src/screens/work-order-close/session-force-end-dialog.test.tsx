@@ -53,7 +53,7 @@ describe('SessionForceEndDialog', () => {
     expect(valueOf(sessionText.worker)).toHaveTextContent('합성 작업자(900028)');
     expect(valueOf(t.startedAt)).toHaveTextContent('2026-10-22 09:00');
     expect(valueOf(sessionText.state)).toHaveTextContent(sessionText.STOPPED);
-    expect(within(dialog).getByText(t.effect)).toBeVisible();
+    expect(within(dialog).getByText(t.effectKept, { exact: false })).toBeVisible();
     expect(within(dialog).getByText(t.notify)).toBeVisible();
     expect(within(dialog).getByText(t.reasonHelp)).toBeVisible();
 

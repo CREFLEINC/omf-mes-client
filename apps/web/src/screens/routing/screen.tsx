@@ -9,6 +9,7 @@ import {
   Tabs,
   useToast,
 } from '@crefle/web-ui';
+import { useQueryClient } from '@tanstack/react-query';
 import type { ApiClient, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -225,6 +226,7 @@ const RoutingWorkspace = () => {
   /* 보이는 쪽 품목의 기본 Rev · 작성중 Rev · 개정 수 — 품목 목록 열(#231). */
   const revisionSummaries = useItemRevisionSummaries(items.map((item) => item.itemId));
 
+  const queryClient = useQueryClient();
   const revisionList = useRoutingList(selectedItemId);
   const revisions = revisionList.data?.items ?? [];
 
@@ -591,6 +593,21 @@ const RoutingWorkspace = () => {
     invalidateKeys: [routingKeys.list(selectedItemId ?? 0), itemKeys.all],
     knownFields: [],
     onSuccess: () => {
+      /*
+       * 지운 Rev 를 개정 목록 캐시에서 바로 뺀다(사용자 보고 · #360) — 다시 읽기 전 낡은 목록이 남아 있으면
+       * 「Rev 자동 고르기」가 방금 지운 작성중 Rev 를 다시 골라 화면에 그대로 떠 있었다(Rev 1 하나뿐인 품목).
+       */
+      if (selectedItemId !== null && selectedRoutingId !== null) {
+        const deletedId = selectedRoutingId;
+        queryClient.setQueryData<typeof revisionList.data>(
+          routingKeys.list(selectedItemId),
+          (prev) =>
+            prev === undefined
+              ? prev
+              : { ...prev, items: prev.items.filter((row) => row.routingId !== deletedId) },
+        );
+        queryClient.removeQueries({ queryKey: routingKeys.detail(deletedId) });
+      }
       setTransition(null);
       resetHeaderEditing();
       resetOperationEditing();

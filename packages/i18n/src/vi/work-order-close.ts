@@ -253,14 +253,16 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
   },
   forceEnd: {
     title: 'Buộc kết thúc phiên làm việc?',
-    effect:
-      'Phiên làm việc của máy đã chọn sẽ kết thúc ngay. Muốn làm tiếp phải bấm [Bắt đầu công việc] lại ở máy đó. Kết quả và vật tư đã đưa vào đã nhập được giữ lại, kể cả phần chưa gửi.',
-    notify: 'Hãy báo cho công nhân ở máy đó trước khi buộc kết thúc.',
+    effectBefore: 'Phiên làm việc kết thúc ngay. Muốn làm tiếp phải bấm ',
+    effectAction: 'Bắt đầu công việc',
+    effectAfter: ' lại ở máy đó.',
+    effectKept: 'Kết quả và vật tư đã đưa vào được giữ lại đến phần trước khi gửi.',
+    notify: 'Hãy báo cho công nhân ở máy đó trước khi kết thúc.',
     startedAt: 'Thời điểm bắt đầu',
     RUNNING: 'Đang làm',
     reason: 'Lý do buộc kết thúc',
     reasonPlaceholder: 'Hãy nhập lý do kết thúc',
-    reasonHelp: 'Người xử lý và lý do đã nhập sẽ được ghi vào lịch sử.',
+    reasonHelp: 'Người xử lý và lý do kết thúc được lưu vào lịch sử.',
     reasonRequired: 'Hãy nhập lý do buộc kết thúc.',
     reasonTooLong: (max: number): string =>
       `Hãy rút gọn lý do buộc kết thúc còn ${String(max)} ký tự trở xuống.`,

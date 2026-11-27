@@ -92,6 +92,7 @@ export const SessionForceEndDialog = ({
   return (
     <Dialog
       open
+      className="session-force-end-dialog"
       title={t.title}
       showCloseButton={false}
       /* 되돌릴 수 없는 일 앞에서 바깥을 눌러 닫히지 않게 한다. */
@@ -100,72 +101,78 @@ export const SessionForceEndDialog = ({
         if (!write.isSaving) onClose();
       }}
       footer={
-        /* 작업자에게 알리라는 한 줄은 단추 줄 왼쪽 경고 칩, 단추는 오른쪽 — 확인 팝업 공용 짜임(#360). */
-        <div className="confirm-foot">
-          <p className="iqc-inspection-action-note" data-tone="warning">
-            <Icon name="warning" size={14} aria-hidden />
-            {t.notify}
-          </p>
-          <span className="confirm-foot-actions">
-            <Button variant="outlined" disabled={write.isSaving} onClick={onClose}>
-              {t.cancel}
-            </Button>
-            <Button
-              variant="filled"
-              aria-describedby={tooLongNote === null ? undefined : noteId}
-              disabled={blockedReason !== null || write.isSaving}
-              loading={write.isSaving}
-              onClick={() => write.write({ reason: trimmed })}
-            >
-              {t.confirm}
-            </Button>
-          </span>
-        </div>
+        <>
+          <Button variant="outlined" disabled={write.isSaving} onClick={onClose}>
+            {t.cancel}
+          </Button>
+          <Button
+            variant="filled"
+            aria-describedby={tooLongNote === null ? undefined : noteId}
+            disabled={blockedReason !== null || write.isSaving}
+            loading={write.isSaving}
+            onClick={() => write.write({ reason: trimmed })}
+          >
+            {t.confirm}
+          </Button>
+        </>
       }
     >
-      <SaveErrorBanner error={write.error} />
-      {/* 정보 상자 — 정보 표시 팝업 시안 상자, 한 줄 가로 나열(#360). */}
-      <InfoFacts
-        rows={[
-          [
-            { label: sessionText.terminal, value: terminalOf(session) },
-            { label: sessionText.worker, value: worker },
-            {
-              label: t.startedAt,
-              value: formatPlantDateTime(session.startedAt) ?? sessionText.unknown,
-            },
-            {
-              label: sessionText.state,
-              value: (
-                <Chip size="sm" variant="status" status={stateTone}>
-                  {stateLabel}
-                </Chip>
-              ),
-            },
-          ],
-        ]}
-      />
-      <p>{t.effect}</p>
-      <TextArea
-        label={t.reason}
-        placeholder={t.reasonPlaceholder}
-        value={reason}
-        rows={2}
-        fullWidth
-        required
-        maxLength={REASON_MAX_LENGTH}
-        helperText={write.fieldErrors.reason === undefined ? t.reasonHelp : undefined}
-        error={write.fieldErrors.reason}
-        onChange={(event) => {
-          setReason(event.target.value);
-          write.clearFieldError('reason');
-        }}
-      />
-      {tooLongNote !== null && (
-        <p className="field-note" id={noteId}>
-          {tooLongNote}
+      {/* 대상 정보 → 종료 전 안내 → 종료 영향 → 사유 입력 → 단추 차례(사용자 지시 · #360 개선안). */}
+      <div className="users-roles-worker-dialog session-force-end-body">
+        <SaveErrorBanner error={write.error} />
+        {/* 정보 상자 — 정보 표시 팝업 시안 상자, 한 줄 가로 나열(#360). */}
+        <InfoFacts
+          rows={[
+            [
+              { label: sessionText.terminal, value: terminalOf(session) },
+              { label: sessionText.worker, value: worker },
+              {
+                label: t.startedAt,
+                value: formatPlantDateTime(session.startedAt) ?? sessionText.unknown,
+              },
+              {
+                label: sessionText.state,
+                value: (
+                  <Chip size="sm" variant="status" status={stateTone}>
+                    {stateLabel}
+                  </Chip>
+                ),
+              },
+            ],
+          ]}
+        />
+        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">
+          <Icon name="warning" size={16} aria-hidden />
+          {t.notify}
         </p>
-      )}
+        <p>
+          {t.effectBefore}
+          <strong>{t.effectAction}</strong>
+          {t.effectAfter}
+          <br />
+          {t.effectKept}
+        </p>
+        <TextArea
+          label={t.reason}
+          placeholder={t.reasonPlaceholder}
+          value={reason}
+          rows={2}
+          fullWidth
+          required
+          maxLength={REASON_MAX_LENGTH}
+          helperText={write.fieldErrors.reason === undefined ? t.reasonHelp : undefined}
+          error={write.fieldErrors.reason}
+          onChange={(event) => {
+            setReason(event.target.value);
+            write.clearFieldError('reason');
+          }}
+        />
+        {tooLongNote !== null && (
+          <p className="field-note" id={noteId}>
+            {tooLongNote}
+          </p>
+        )}
+      </div>
     </Dialog>
   );
 };
