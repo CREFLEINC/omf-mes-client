@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import './equipment-occupancy.css';
 import {
   AlertBanner,
@@ -11,6 +12,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { formatPlantDateTime } from '../../../patterns/plant-time';
+import { ListEmpty } from '../../../patterns/list-empty';
 import { PageNav } from '../../../patterns/page-nav';
 import type { ReferenceRow, ReferenceSource } from '../../../patterns/reference-picker';
 import { useProductionPlanDetail } from '../../production-plan/queries';
@@ -68,6 +70,10 @@ const AllocationDetail = ({ row }: { row: EquipmentAllocation }) => {
     </section>
   );
 };
+
+/** 팝업 칸 안 흐린 안내(사용자 지시 2026-11-26). */
+const ph = messages.erpWorkOrderFlow.process.placeholders;
+
 export const EquipmentOccupancy = ({
   equipmentId,
   selfId,
@@ -207,7 +213,7 @@ export const EquipmentOccupancy = ({
               setSelectedId(row.workOrderId);
             }}
             rowLabel={(row) => `${row.productionOrderNo ?? ''} ${row.workOrderNo} 배정 상세`}
-            empty="등록된 배정이 없습니다."
+            empty={<ListEmpty title="등록된 배정이 없습니다." />}
           />
           {selected && <AllocationDetail row={selected} />}
         </>
@@ -338,6 +344,7 @@ export const EquipmentAssignmentPicker = ({
           <div className="field-cell">
             <TextField
               label="설비 코드·설비명"
+              placeholder={ph.equipmentKeyword}
               fullWidth
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
@@ -386,7 +393,7 @@ export const EquipmentAssignmentPicker = ({
               setError('');
             }}
             rowLabel={(row) => `${row.code} ${row.name} 배정 내역 확인`}
-            empty="조회된 설비가 없습니다."
+            empty={<ListEmpty live title="조회된 설비가 없습니다." />}
           />
         )}
         <PageNav

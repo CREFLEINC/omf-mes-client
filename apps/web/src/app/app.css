@@ -43138,8 +43138,8 @@ dialog
 .erp-wo-distribution-dialog .erp-wo-required-empty [role='combobox'],
 .erp-wo-distribution-dialog .erp-wo-required-empty .erp-wo-period-trigger,
 .erp-wo-distribution-dialog .erp-wo-required-empty [class*='_inputWrap_'] {
-  border-color: var(--semantic-error);
-  box-shadow: inset 0 0 0 1px var(--semantic-error);
+  /* 팝업 공통 시안(B안) — 비어 있는 필수 칸은 연한 빨간 바탕, 테두리는 기본. */
+  background: var(--semantic-error-container);
 }
 
 /* 자동 분배 결과 검토 표(사용자 지시 · #360) — 머리칸 · 값 가운데 정렬, 추가 수량 열 바탕 없앰, 입력칸은 좁게 가운데. */
@@ -43512,4 +43512,20 @@ main > .pane.notification-center-pane {
 }
 .erp-wo-daily-table-nav > * {
   margin: 0;
+}
+
+/* 자동 분배 결과 — 표와 쪽 이동을 한 테두리 상자로(사용자 지시 · #360). */
+.erp-wo-result-frame {
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.erp-wo-result-frame > .erp-wo-preview-scroll {
+  border: 0;
+  border-radius: 0;
+}
+.erp-wo-result-frame > :not(.erp-wo-preview-scroll) {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--outline-variant);
 }

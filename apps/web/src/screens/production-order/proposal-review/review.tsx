@@ -3,6 +3,7 @@ import { ProposalAuditHistory } from './audit-history';
 import { ProposalPlanningWorkspace } from './planning-workspace';
 import { Link } from 'react-router';
 import { messages } from '@omf-mes/i18n';
+import { josa } from '../../../patterns/josa';
 import { ReviewHelp as Help } from './review-help';
 import {
   AlertBanner,
@@ -986,7 +987,7 @@ export const ProposalReview = ({
                                       label="생산 라인"
                                       required
                                       wrapValue
-                                      placeholder="생산 라인 선택"
+                                      placeholder="생산 라인을 선택하세요"
                                       valueLabel={
                                         planLineLabel(plan) === '미지정' ? '' : planLineLabel(plan)
                                       }
@@ -1040,7 +1041,7 @@ export const ProposalReview = ({
                                       required
                                       wrapValue
                                       valueLabel={plan.routing || ''}
-                                      placeholder="Routing 선택"
+                                      placeholder="Routing을 선택하세요"
                                       disabled={pending || plan.source === '기존 확정 계획'}
                                       source={
                                         !plan.routingOptions?.length
@@ -1052,14 +1053,22 @@ export const ProposalReview = ({
                                                 code: 'Routing 코드',
                                                 name: 'Routing 명칭/개정',
                                               },
-                                              search: async (term, page) => {
+                                              search: async (
+                                                term,
+                                                page,
+                                                _filterValue,
+                                                size = 20,
+                                              ) => {
                                                 const items = plan
                                                   .routingOptions!.map((option) => option.value)
                                                   .filter((value) =>
                                                     `${value.code} ${value.name}`.includes(term),
                                                   );
                                                 return {
-                                                  items: items.slice((page - 1) * 20, page * 20),
+                                                  items: items.slice(
+                                                    (page - 1) * size,
+                                                    page * size,
+                                                  ),
                                                   total: items.length,
                                                 };
                                               },
@@ -1180,7 +1189,7 @@ export const ProposalReview = ({
                                           ? '입고 위치'
                                           : resourceLabels[field]
                                       }
-                                      placeholder={`${resourceLabels[field]} 선택`}
+                                      placeholder={`${josa(resourceLabels[field], '을/를')} 선택하세요`}
                                       wrapValue
                                       valueLabel={
                                         op.resources[field]
