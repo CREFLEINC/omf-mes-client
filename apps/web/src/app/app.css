@@ -39874,6 +39874,30 @@ body:has(
   height: 16px;
 }
 
+/*
+ * 설비 점검 항목 등록·수정 팝업(omf-all-around#360) — 「측정값」일 때만 나오는 단위 · 하한 · 상한을 한 줄 세 칸에,
+ * 필수 여부 · 사용 토글은 한 칸 안에 나란히(이름 위 · 토글 아래).
+ */
+.equipment-inspection-item-measure {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.equipment-inspection-item-flags {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+/* 이름 옆 ⓘ 가 붙은 필수 선택칸(판정 방식)도 고르기 전에는 다른 필수 칸과 같은 연한 빨간 바탕. */
+.equipment-inspection-item-form
+  .field-cell:has(> .info-label .required-mark)
+  button[role='combobox']:not(:disabled):has(> [class*='_placeholder_']) {
+  background: var(--semantic-error-container);
+}
+
 /* W-04-01 출고 창고 칸·나눈 줄(피처 012 · 시안 W0401-After) — 사업부를 바꿔 비운 줄은 노란 테로 짚는다(FR-004). */
 .sr-warehouse.is-cleared {
   border-radius: var(--radius-sm);
