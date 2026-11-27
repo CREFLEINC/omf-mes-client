@@ -19475,6 +19475,14 @@ dialog.terminal-map-wizard:has(.terminal-map-matrix) {
   box-shadow: var(--elevation-2);
 }
 
+/*
+ * 판 안 선택 칸의 목록은 `body` 에 z-index 20 으로 그려져 판(40) 밑에 깔린다 — 선택지가 판에 가려 고를 수 없었다
+ * (상단 바 언어 선택 · 사용자 2026-11-27). 판 안의 칸이 펼친 목록은 판 위로 올린다.
+ */
+body:has(.popover-panel [role='combobox'][aria-expanded='true']) [role='listbox'] {
+  z-index: 41;
+}
+
 /* 상단 바 이름 메뉴 — 이름을 누르면 비밀번호 변경 · 언어 · 로그아웃이 아래로 펼친다. */
 .session-menu > .popover-trigger {
   height: 32px;
