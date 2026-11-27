@@ -118,13 +118,16 @@ export const WorkOrderCloseConfirmDialog = ({
         {warnings.map((warning) => (
           <p key={warning}>{warning}</p>
         ))}
-        <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="info">
+        {/* 메뉴 이동은 글 속 밑줄 링크 대신 안내 줄 오른쪽 작은 테두리 단추 모양으로(사용자 지시 · #360 — 단추 모양 통일). */}
+        <p
+          className="iqc-inspection-action-note users-roles-dialog-note work-order-close-erp-note"
+          data-tone="info"
+        >
           <Icon name="info" size={16} aria-hidden />
-          <span>
-            {t.erp.queued} {t.erp.resultBefore}
-            <Link to={ERP_RESULT_PATH}>{t.erp.menu}</Link>
-            {t.erp.resultAfter}
-          </span>
+          <span>{t.erp.queued}</span>
+          <Link className="work-order-close-erp-link" to={ERP_RESULT_PATH}>
+            {t.erp.menu}
+          </Link>
         </p>
         {/* 되돌릴 수 없다는 경고도 본문 안내 줄로 — 다른 확인 창과 같은 자리(사용자 지시 · #360). */}
         <p className="iqc-inspection-action-note users-roles-dialog-note" data-tone="warning">

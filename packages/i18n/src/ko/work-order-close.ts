@@ -127,10 +127,8 @@ export const workOrderClose = {
     /* 마감과 함께 송신 대기열에 오를 뿐 보낸 결과는 이 화면에 없다 — 어디서 보는지 메뉴 링크로 함께 말한다. */
     erp: {
       queued: '마감하면 생산실적이 ERP 송신 대기 상태로 등록됩니다.',
-      resultBefore: '송신 결과는 ',
       /** 메뉴 이름 그대로(app/nav-tree.ts 「ERP 연동 현황·이력」). */
       menu: 'ERP 연동 현황·이력',
-      resultAfter: '에서 확인할 수 있습니다.',
     },
     fields: {
       judgment: '판정',

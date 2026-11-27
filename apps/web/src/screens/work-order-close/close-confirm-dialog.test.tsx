@@ -45,9 +45,7 @@ describe('WorkOrderCloseConfirmDialog', () => {
     );
     expect(within(dialog).getAllByText('SYN-WO-ALPHA')).toHaveLength(1);
     expect(dialog).toHaveTextContent(t.irreversible);
-    expect(dialog).toHaveTextContent(
-      '마감하면 생산실적이 ERP 송신 대기 상태로 등록됩니다. 송신 결과는 ERP 연동 현황·이력에서 확인할 수 있습니다.',
-    );
+    expect(dialog).toHaveTextContent('마감하면 생산실적이 ERP 송신 대기 상태로 등록됩니다.');
     expect(within(dialog).getByRole('link', { name: 'ERP 연동 현황·이력' })).toHaveAttribute(
       'href',
       '/master-data/integration-sync',

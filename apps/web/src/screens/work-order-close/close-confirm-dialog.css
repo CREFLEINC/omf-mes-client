@@ -31,3 +31,34 @@
 .work-order-close-confirm-lot-list > li {
   overflow-wrap: anywhere;
 }
+
+/* ERP 안내 줄 — 글은 왼쪽, 메뉴 이동 단추는 오른쪽 끝. 좁으면 단추가 아래 줄로 내려간다(사용자 지시 · #360). */
+.work-order-close-erp-note {
+  flex-wrap: wrap;
+  row-gap: var(--space-2);
+}
+.work-order-close-erp-note > span {
+  flex: 1 1 14rem;
+}
+.work-order-close-erp-link {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+  padding: 2px var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--primary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.6;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.work-order-close-erp-link:hover {
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+}
+.work-order-close-erp-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}

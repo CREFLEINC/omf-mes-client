@@ -135,9 +135,7 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
       'Sau khi đóng thì không hủy được việc đóng lệnh sản xuất. Nếu cần sửa kết quả, hãy xử lý sửa kết quả sản xuất.',
     erp: {
       queued: 'Khi đóng, kết quả sản xuất được đăng ký ở trạng thái chờ gửi sang ERP.',
-      resultBefore: 'Có thể xem kết quả gửi ở ',
       menu: 'Tình trạng · lịch sử liên kết ERP',
-      resultAfter: '.',
     },
     fields: {
       judgment: 'Đánh giá',
