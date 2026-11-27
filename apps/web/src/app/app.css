@@ -43634,7 +43634,6 @@ html:lang(vi) {
   --optional-mark-text: '(tùy chọn)';
 }
 
-/* 정보 표시 팝업 공용 상자 · 표(patterns/info-facts.tsx · #360) */
 /*
  * 정보 표시 팝업(입력란 없음)의 상세 정보 상자 — 팝업 디자인 시안 2026-11-27 「3. 정보 표시 팝업」(omf-all-around#360).
  * `patterns/info-facts.tsx`. 검사 조회·판정 「검사 기본 정보」 상자(`.parts-iqc-facts` · `.parts-iqc-fact`)와 같은 모양 —
@@ -43879,6 +43878,222 @@ dialog:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash
   > tr
   > :is(th, td):not([scope='rowgroup']) {
   text-align: center !important;
+}
+
+/* 정보 표시 팝업 공용 상자 · 표(patterns/info-facts.tsx · #360) */
+/*
+ * 정보 표시 팝업(입력란 없음)의 상세 정보 상자 — 팝업 디자인 시안 2026-11-27 「3. 정보 표시 팝업」(omf-all-around#360).
+ * `patterns/info-facts.tsx`. 검사 조회·판정 「검사 기본 정보」 상자(`.parts-iqc-facts` · `.parts-iqc-fact`)와 같은 모양 —
+ * 연회색 둥근 상자, 이름(위) · 값(아래) 칸이 가로로 흐르고 칸 사이 세로선. 칸 폭은 글 길이만큼, 남는 폭은 나눠 갖고,
+ * 넘치면 다음 줄. 값은 한 줄 — 길면 말줄임. 줄 첫 칸의 세로선은 상자 밖(왼쪽 -1px)으로 숨긴다.
+ */
+.info-facts {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) 0;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+  overflow: hidden;
+}
+
+.info-facts:last-child {
+  margin-bottom: 0;
+}
+
+.info-facts-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+.info-facts-row > .parts-iqc-fact {
+  flex: 1 0 auto;
+  align-content: start;
+  max-width: 100%;
+  overflow-wrap: normal;
+}
+
+.info-facts-row > .parts-iqc-fact > .field-label {
+  margin: 0;
+}
+
+.info-fact-value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow: hidden;
+  color: var(--on-surface);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.info-fact-value.is-key {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.info-fact-value .parts-iqc-fact-sub,
+.info-fact-unit {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.info-fact-value .parts-iqc-fact-sub {
+  color: var(--on-surface-variant);
+}
+
+.info-fact-unit {
+  margin-inline-start: var(--space-1);
+  color: var(--on-surface-muted);
+}
+
+.info-fact-empty {
+  color: var(--on-surface-muted);
+}
+
+/* 한 칸 값이 두 줄(예: 입하번호 + 품목) — 줄마다 한 줄, 길면 말줄임. */
+.info-fact-lines {
+  display: grid;
+  min-width: 0;
+}
+
+.info-fact-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 긴 글(비고 등) — 상자 밖 아래에 이름 + 글, 줄바꿈 그대로. */
+.info-long {
+  margin: 0 0 var(--space-4);
+}
+
+.info-long:last-child {
+  margin-bottom: 0;
+}
+
+.info-long-value {
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* 항목이 많을 때 묶음 제목 — 검정, 묶음마다 상자 하나. 표 제목도 같은 글자(시안 2026-11-27 11:51). */
+.info-group-title,
+.info-table-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  font-weight: 700;
+}
+
+.info-group-title {
+  margin-bottom: var(--space-2);
+}
+
+/*
+ * 표가 있을 때 — 상자 아래에 제목 + 회색 「N건」, 그 아래 관리웹 공용 표(`ManagedTable`). 5줄까지 보이고 넘으면 표 안에서
+ * 구른다 — 머리 줄은 고정, 팝업이 화면 밖으로 길어지지 않는다.
+ */
+.info-table-block {
+  margin: 0 0 var(--space-4);
+}
+
+.info-table-block:last-child {
+  margin-bottom: 0;
+}
+
+.info-table-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.info-table-count {
+  color: var(--on-surface-muted);
+  font: var(--type-label-lg);
+}
+
+.info-table > div:has(> table) {
+  /* 머리 줄(38px) + 촘촘한 줄(37px) 5개 + 위아래 테두리 — 여섯째 줄부터 표 안에서 구른다. */
+  max-height: calc(38px + 37px * 5 + 2px);
+  overflow: auto;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+/* 표 이름은 위 제목 줄이 보인다 — 표 안 caption 은 화면 읽기 도구에만. */
+.info-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.info-table tbody tr:last-child > td {
+  border-bottom: 0;
+}
+
+.info-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.info-table tbody tr:hover > td {
+  background: var(--surface-container-high);
+}
+
+/*
+ * 팝업 안 표 정렬 — 숫자(`align: 'end'`)는 오른쪽, 판정 · 상태 칩(`'center'`)은 가운데, 글자(표시 없음)는 왼쪽.
+ * 목록 표를 모두 가운데로 맞추는 규칙(「목록은 모두 중앙 정렬」 · 이 파일 뒤쪽)이 팝업 표에 번지지 않게 — 그 규칙보다
+ * 무겁게(클래스 겹침) 따로 둔다. 뒤에 와도 이긴다.
+ */
+dialog
+  .info-table.info-table.info-table
+  table
+  > :is(thead, tbody)
+  > tr
+  > :is(th, td):not([data-align]):not([scope='rowgroup']) {
+  text-align: left !important;
+}
+
+dialog
+  .info-table.info-table.info-table
+  table
+  > :is(thead, tbody)
+  > tr
+  > :is(th, td)[data-align='end']:not([scope='rowgroup']) {
+  text-align: right !important;
+}
+
+dialog
+  .info-table.info-table.info-table
+  table
+  > :is(thead, tbody)
+  > tr
+  > :is(th, td)[data-align='center']:not([scope='rowgroup']) {
+  text-align: center !important;
+}
+
+/*
  * 작업계획 편성 2 생산계획 · 3 4M 배정의 입력칸 바탕(사용자 지시 2026-11-27) — DS 입력칸은 투명이라 화면 바탕과 같은 색으로
  * 보여 입력칸으로 읽히지 않았다. 조회 묶음(`filter-field-surface`)과 같은 입력칸 바탕을 쓴다.
  * `filter-field-surface` 를 그대로 붙이지 않는 까닭: 그 규칙은 창을 여는 단추(`aria-haspopup`)를 모두 칠해 도움말 · 선택 단추까지 바뀐다.
@@ -43953,8 +44168,8 @@ dialog:not(.pop-ui *, .dash-tab *, .dash-tabs *, .dash-eq-all-dialog, :has(.dash
 .erp-wo-distribution-dialog .erp-wo-required-empty [role='combobox'],
 .erp-wo-distribution-dialog .erp-wo-required-empty .erp-wo-period-trigger,
 .erp-wo-distribution-dialog .erp-wo-required-empty [class*='_inputWrap_'] {
-  border-color: var(--semantic-error);
-  box-shadow: inset 0 0 0 1px var(--semantic-error);
+  /* 팝업 공통 시안(B안) — 비어 있는 필수 칸은 연한 빨간 바탕, 테두리는 기본. */
+  background: var(--semantic-error-container);
 }
 
 /* 자동 분배 결과 검토 표(사용자 지시 · #360) — 머리칸 · 값 가운데 정렬, 추가 수량 열 바탕 없앰, 입력칸은 좁게 가운데. */
@@ -44325,4 +44540,20 @@ main > .pane.notification-center-pane {
 }
 .erp-wo-daily-table-nav > * {
   margin: 0;
+}
+
+/* 자동 분배 결과 — 표와 쪽 이동을 한 테두리 상자로(사용자 지시 · #360). */
+.erp-wo-result-frame {
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.erp-wo-result-frame > .erp-wo-preview-scroll {
+  border: 0;
+  border-radius: 0;
+}
+.erp-wo-result-frame > :not(.erp-wo-preview-scroll) {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--outline-variant);
 }

@@ -1299,6 +1299,18 @@ export const DistributionControls = ({
                     const summary = reviewResult?.orders.find(
                       (entry) => entry.id === singleOrder.id,
                     );
+                    /* 표준 C/T · 휴일 · 판정 불가 안내도 같은 상자 둘째 줄로(사용자 지시 · #360). */
+                    const notes = calendarNotes
+                      .filter((note) => note.owner === singleOrder.id)
+                      .map((note) => {
+                        if (note.dates?.length)
+                          return { label: note.summary, value: note.dates.join(', ') };
+                        const [, head, rest] =
+                          /^(표준 C\/T|근무일 판정 불가)\s*(.*)$/.exec(note.summary) ?? [];
+                        return head
+                          ? { label: head, value: rest || '—' }
+                          : { label: '안내', value: note.summary };
+                      });
                     return (
                       <InfoFacts
                         className="erp-wo-result-single-facts"
@@ -1324,170 +1336,158 @@ export const DistributionControls = ({
                                 ]
                               : []),
                           ],
+                          ...(notes.length ? [notes] : []),
                         ]}
                       />
                     );
                   })()}
-                <div className="erp-wo-preview-scroll">
-                  <table className="erp-wo-distribution-result-table">
-                    <caption className="visually-hidden">날짜와 라인별 결과</caption>
-                    <thead>
-                      <tr>
-                        <th>날짜</th>
-                        <th>생산 라인</th>
-                        <th className="erp-wo-result-quantity">기존 수량</th>
-                        <th className="erp-wo-result-quantity erp-wo-result-added">추가 수량</th>
-                        <th className="erp-wo-result-quantity">적용 후 합계</th>
-                      </tr>
-                    </thead>
-                    {Array.from(resultRowsByOrder, ([owner, orderRows]) => {
-                      const order = orders.find((entry) => entry.id === owner);
-                      const summary = reviewResult?.orders.find((entry) => entry.id === owner);
-                      const notes = calendarNotes.filter((note) => note.owner === owner);
-                      const unit = order?.unit;
-                      return (
-                        <tbody key={owner} aria-label={order?.orderNo ?? order?.label ?? owner}>
-                          {!isSingle && (
-                            <tr className="erp-wo-result-order">
-                              <td colSpan={5}>
-                                <div className="erp-wo-result-order-header">
-                                  <div>
-                                    <strong>{order?.orderNo ?? order?.label ?? owner}</strong>
-                                    {order?.itemCode && <span>{order.itemCode}</span>}
-                                  </div>
-                                  {summary && (
+                {/* 표와 쪽 이동을 한 상자로 — 쪽 이동이 표 바로 아래 붙는다(사용자 지시 · #360). */}
+                <div className="erp-wo-result-frame">
+                  <div className="erp-wo-preview-scroll">
+                    <table className="erp-wo-distribution-result-table">
+                      <caption className="visually-hidden">날짜와 라인별 결과</caption>
+                      <thead>
+                        <tr>
+                          <th>날짜</th>
+                          <th>생산 라인</th>
+                          <th className="erp-wo-result-quantity">기존 수량</th>
+                          <th className="erp-wo-result-quantity erp-wo-result-added">추가 수량</th>
+                          <th className="erp-wo-result-quantity">적용 후 합계</th>
+                        </tr>
+                      </thead>
+                      {Array.from(resultRowsByOrder, ([owner, orderRows]) => {
+                        const order = orders.find((entry) => entry.id === owner);
+                        const summary = reviewResult?.orders.find((entry) => entry.id === owner);
+                        const notes = calendarNotes.filter((note) => note.owner === owner);
+                        const unit = order?.unit;
+                        return (
+                          <tbody key={owner} aria-label={order?.orderNo ?? order?.label ?? owner}>
+                            {!isSingle && (
+                              <tr className="erp-wo-result-order">
+                                <td colSpan={5}>
+                                  <div className="erp-wo-result-order-header">
                                     <div>
-                                      <span>
-                                        이번 분배{' '}
-                                        <strong>
-                                          {formatQty(summary.added)} {unit}
-                                        </strong>
-                                      </span>
-                                      <span>
-                                        미분배{' '}
-                                        <strong>
-                                          {formatQty(summary.pending)} {unit}
-                                        </strong>
-                                      </span>
+                                      <strong>{order?.orderNo ?? order?.label ?? owner}</strong>
+                                      {order?.itemCode && <span>{order.itemCode}</span>}
                                     </div>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                          {orderRows.map((row) => {
-                            const key = resultKey(row);
-                            const existingQty = existingByResultKey.get(key) ?? 0;
-                            const addedQty = Number(row.plannedQty);
-                            return (
-                              <tr
-                                key={key}
-                                className={
-                                  row.holidayLabel ? 'erp-wo-result-holiday-row' : undefined
-                                }
-                              >
-                                <td>
-                                  {row.planDate}
-                                  {row.holidayLabel && (
-                                    <span className="erp-wo-holiday-day-label">
-                                      {row.holidayLabel}
-                                    </span>
-                                  )}
-                                </td>
-                                <td>
-                                  {
-                                    order?.lines.find(
-                                      (line) => String(line.id) === row.plannedLineId,
-                                    )?.name
-                                  }
-                                </td>
-                                <td className="erp-wo-result-quantity">
-                                  {formatQty(existingQty)} {unit}
-                                </td>
-                                <td className="erp-wo-result-quantity erp-wo-result-added">
-                                  <div className="erp-wo-result-quantity-editor">
-                                    <TextField
-                                      size="md"
-                                      inputMode="decimal"
-                                      aria-label={`${row.owner} ${row.planDate} ${row.plannedLineId} 생산량`}
-                                      placeholder={ph.plannedQty}
-                                      value={row.plannedQty}
-                                      onFocus={() => setEditingResultKey(key)}
-                                      onBlur={() => setEditingResultKey(null)}
-                                      onChange={(event) => {
-                                        setResultQuantities((current) => ({
-                                          ...current,
-                                          [key]: event.target.value,
-                                        }));
-                                        setAcknowledged(false);
-                                      }}
-                                    />
-                                    <span>{unit}</span>
+                                    {summary && (
+                                      <div>
+                                        <span>
+                                          이번 분배{' '}
+                                          <strong>
+                                            {formatQty(summary.added)} {unit}
+                                          </strong>
+                                        </span>
+                                        <span>
+                                          미분배{' '}
+                                          <strong>
+                                            {formatQty(summary.pending)} {unit}
+                                          </strong>
+                                        </span>
+                                      </div>
+                                    )}
                                   </div>
-                                </td>
-                                <td className="erp-wo-result-quantity">
-                                  <strong>
-                                    {Number.isFinite(addedQty)
-                                      ? `${formatQty(existingQty + addedQty)} ${unit ?? ''}`
-                                      : '—'}
-                                  </strong>
                                 </td>
                               </tr>
-                            );
-                          })}
-                          {!isSingle && notes.length > 0 && (
-                            <tr className="erp-wo-result-order-notes">
-                              <td colSpan={5}>
-                                {notes.map((note) => (
-                                  <div
-                                    className="erp-wo-calendar-result-dates"
-                                    key={JSON.stringify(note)}
-                                  >
-                                    <strong>{note.summary}</strong>
-                                    {note.dates?.map((date) => (
-                                      <time key={date} dateTime={date}>
-                                        {date}
-                                      </time>
-                                    ))}
-                                  </div>
-                                ))}
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      );
-                    })}
-                  </table>
-                </div>
-                {singleOrder && calendarNotes.some((note) => note.owner === singleOrder.id) && (
-                  <div className="erp-wo-result-single-notes">
-                    {calendarNotes
-                      .filter((note) => note.owner === singleOrder.id)
-                      .map((note) => (
-                        <span className="erp-wo-calendar-result-dates" key={JSON.stringify(note)}>
-                          <strong>{note.summary}</strong>
-                          {note.dates?.map((date) => (
-                            <time key={date} dateTime={date}>
-                              {date}
-                            </time>
-                          ))}
-                        </span>
-                      ))}
+                            )}
+                            {orderRows.map((row) => {
+                              const key = resultKey(row);
+                              const existingQty = existingByResultKey.get(key) ?? 0;
+                              const addedQty = Number(row.plannedQty);
+                              return (
+                                <tr
+                                  key={key}
+                                  className={
+                                    row.holidayLabel ? 'erp-wo-result-holiday-row' : undefined
+                                  }
+                                >
+                                  <td>
+                                    {row.planDate}
+                                    {row.holidayLabel && (
+                                      <span className="erp-wo-holiday-day-label">
+                                        {row.holidayLabel}
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    {
+                                      order?.lines.find(
+                                        (line) => String(line.id) === row.plannedLineId,
+                                      )?.name
+                                    }
+                                  </td>
+                                  <td className="erp-wo-result-quantity">
+                                    {formatQty(existingQty)} {unit}
+                                  </td>
+                                  <td className="erp-wo-result-quantity erp-wo-result-added">
+                                    <div className="erp-wo-result-quantity-editor">
+                                      <TextField
+                                        size="md"
+                                        inputMode="decimal"
+                                        aria-label={`${row.owner} ${row.planDate} ${row.plannedLineId} 생산량`}
+                                        placeholder={ph.plannedQty}
+                                        value={row.plannedQty}
+                                        onFocus={() => setEditingResultKey(key)}
+                                        onBlur={() => setEditingResultKey(null)}
+                                        onChange={(event) => {
+                                          setResultQuantities((current) => ({
+                                            ...current,
+                                            [key]: event.target.value,
+                                          }));
+                                          setAcknowledged(false);
+                                        }}
+                                      />
+                                      <span>{unit}</span>
+                                    </div>
+                                  </td>
+                                  <td className="erp-wo-result-quantity">
+                                    <strong>
+                                      {Number.isFinite(addedQty)
+                                        ? `${formatQty(existingQty + addedQty)} ${unit ?? ''}`
+                                        : '—'}
+                                    </strong>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                            {!isSingle && notes.length > 0 && (
+                              <tr className="erp-wo-result-order-notes">
+                                <td colSpan={5}>
+                                  {notes.map((note) => (
+                                    <div
+                                      className="erp-wo-calendar-result-dates"
+                                      key={JSON.stringify(note)}
+                                    >
+                                      <strong>{note.summary}</strong>
+                                      {note.dates?.map((date) => (
+                                        <time key={date} dateTime={date}>
+                                          {date}
+                                        </time>
+                                      ))}
+                                    </div>
+                                  ))}
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        );
+                      })}
+                    </table>
                   </div>
-                )}
-                {/* 1쪽뿐이어도 쪽 이동 줄은 늘 보인다(단추는 잠긴 채 · #360). */}
-                <PageNav
-                  meta={{
-                    page: visibleResultPage,
-                    size: resultPageSize,
-                    total: visibleResultRows.length,
-                  }}
-                  onChangePage={setResultPage}
-                  onChangeSize={(size) => {
-                    setResultPageSize(size);
-                    setResultPage(1);
-                  }}
-                />
+                  {/* 1쪽뿐이어도 쪽 이동 줄은 늘 보인다(단추는 잠긴 채 · #360). */}
+                  <PageNav
+                    meta={{
+                      page: visibleResultPage,
+                      size: resultPageSize,
+                      total: visibleResultRows.length,
+                    }}
+                    onChangePage={setResultPage}
+                    onChangeSize={(size) => {
+                      setResultPageSize(size);
+                      setResultPage(1);
+                    }}
+                  />
+                </div>
                 {!!reviewResult!.warnings.length && (
                   <>
                     {/* 한 건이면 글머리표 없이 한 줄, 여러 건이면 목록 — 아이콘과 첫 줄을 맞춘다(#360). */}
