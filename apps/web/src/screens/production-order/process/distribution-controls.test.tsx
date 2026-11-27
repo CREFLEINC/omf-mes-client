@@ -266,7 +266,7 @@ describe('분배 조건과 미리보기 적용', () => {
     );
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
     expect(screen.getByRole('button', { name: '일괄 변경' })).toBeDisabled();
-    expect(screen.queryByRole('button', { name: '선택 항목에 적용' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '적용' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('checkbox', { name: '분배 조건 1 선택' }));
     await user.click(screen.getByRole('button', { name: '일괄 변경' }));
     await user.click(screen.getByRole('combobox', { name: '공통 생산 라인 선택' }));
@@ -274,7 +274,7 @@ describe('분배 조건과 미리보기 적용', () => {
     expect(screen.getByRole('button', { name: '공통 분배 기간' })).toHaveTextContent(
       '변경하지 않음',
     );
-    await user.click(screen.getByRole('button', { name: '선택 항목에 적용' }));
+    await user.click(screen.getByRole('button', { name: '적용' }));
     expect(screen.getByRole('button', { name: '조건 1 분배 기간' })).toHaveTextContent(
       '2027-01-04',
     );
@@ -384,7 +384,7 @@ it('공통 휴일 설정은 선택한 조건만 바꾸며 기간은 유지한다
   await user.click(screen.getByRole('button', { name: '일괄 변경' }));
   await user.click(screen.getByRole('combobox', { name: '공통 휴일 편성' }));
   await user.click(screen.getByRole('option', { name: /^포함$/ }));
-  await user.click(screen.getByRole('button', { name: '선택 항목에 적용' }));
+  await user.click(screen.getByRole('button', { name: '적용' }));
   expect(screen.getByRole('checkbox', { name: '분배 조건 1 휴일 포함' })).toBeChecked();
   expect(screen.getByRole('button', { name: '공통 분배 기간' })).toHaveTextContent('변경하지 않음');
   await user.click(screen.getByRole('row', { name: 'ERP W/O B 분배 조건' }));

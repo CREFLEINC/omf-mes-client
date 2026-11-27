@@ -96,6 +96,7 @@ export const PlanAddDialog = ({
       title="수동 분배"
       className="erp-wo-plan-add-dialog"
       closeOnBackdropClick={false}
+      showCloseButton={false}
       onClose={onClose}
       footer={
         <>
@@ -120,8 +121,21 @@ export const PlanAddDialog = ({
           ERP W/O와 계획일을 지정하고 추가 편성 가능한 수량 이내에서 생산량과 단위 소수 자릿수를
           확인하세요.
         </p>
-        {/* W/O 칸 오른쪽에 「추가 편성 가능」 정보 상자(팝업 시안 · #360) — 좁으면 다음 줄로. */}
+        {/* 「추가 편성 가능」 정보 상자는 W/O 칸 왼쪽(사용자 지시 · #360) — 좁으면 다음 줄로. */}
         <div className="erp-wo-plan-add-target">
+          {target && (
+            <InfoFacts
+              className="erp-wo-plan-add-summary"
+              rows={[
+                [
+                  {
+                    label: '추가 편성 가능',
+                    value: `${formatQty(target.remaining)} ${target.unit}`,
+                  },
+                ],
+              ]}
+            />
+          )}
           <div className="field-cell">
             <span className="field-label">
               계획을 추가할 ERP W/O
@@ -142,19 +156,6 @@ export const PlanAddDialog = ({
               }}
             />
           </div>
-          {target && (
-            <InfoFacts
-              className="erp-wo-plan-add-summary"
-              rows={[
-                [
-                  {
-                    label: '추가 편성 가능',
-                    value: `${formatQty(target.remaining)} ${target.unit}`,
-                  },
-                ],
-              ]}
-            />
-          )}
         </div>
         <div className="erp-wo-plan-add-fields">
           <div className="field-cell">
