@@ -3,7 +3,7 @@ import { AUTO_PLAN_RESULT_PATH } from './auto-plan-result-page';
 /**
  * W-02-01 작업지시 목록 작업함
  * 유형: T-W-C 처리형 (작업함: ProductionOrderScreen, 처리 화면: ProductionOrderProcessScreen)
- * 조건, 건수, 행 칩은 서버 칩 판정(`worklistState`) 하나로 거르고 센다(C-17). 막힌 까닭은 사유 칩이 말한다.
+ * 처리 상태 선택 칸, 건수, 행 칩은 서버 칩 판정(`worklistState`) 하나로 거르고 센다(C-17). 막힌 까닭은 사유 칩이 말한다.
  * 이탈: C-12 기간 칸의 「시작일부터」 적용은 DS 기간 선택이 지원하지 않아 미구현.
  */
 import {
@@ -20,8 +20,8 @@ import { useNavigate, useSearchParams } from 'react-router';
 
 import { FitLine } from '../../patterns/fit-line';
 import { BulkResult, type BulkResultFilter } from '../../patterns/bulk-result';
-import { Select } from '../../patterns/select';
 import { PageNav } from '../../patterns/page-nav';
+import { Select } from '../../patterns/select';
 import { SelectableTable } from '../../patterns/selectable-table';
 import { useSession } from '../../patterns/session';
 import { plantNote, usePlantOptions, type DataScope } from '../dashboard/lookups';
@@ -40,7 +40,7 @@ import {
   toWorklistSearchParams,
 } from './worklist-filters';
 import { WorklistFilterBar } from './worklist-filter-bar';
-import { deriveWorklistState, isWorklistFilter, type WorklistDerived } from './worklist-model';
+import { deriveWorklistState, type WorklistDerived } from './worklist-model';
 import { useWorklist, useWorklistCount, type WorklistFilters } from './worklist-queries';
 import { ProcessStateChip, ReasonChips } from './worklist-chips';
 
@@ -48,7 +48,7 @@ const t = messages.erpWorkOrderFlow;
 
 const NO_SCOPES: readonly DataScope[] = [];
 
-/** 조회 조건 칸(번호, 납기, 품목, 고른 공장)에 값이 있는가. 처리 상태 칩과 정해진 공장은 조건으로 치지 않는다. */
+/** 조회 조건 칸(번호, 납기, 품목, 고른 공장)에 값이 있는가. 처리 상태와 정해진 공장은 조건으로 치지 않는다. */
 const hasSearchConditions = (filters: WorklistFilters): boolean =>
   filters.q !== '' ||
   filters.dueFrom !== '' ||
@@ -294,74 +294,19 @@ export const ProductionOrderScreen = ({
         items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
         aria-label={messages.common.shell.breadcrumb}
       />
-      <section className="erp-wo-status-controls" role="group" aria-label={t.counts.label}>
-        <div className="erp-wo-status-compact">
-          <label htmlFor="worklist-state">{t.counts.label}</label>
-          <Select
-            id="worklist-state"
-            value={showingResultRows ? '' : filters.state}
-            options={stateFilters.map((entry) => ({
-              value: entry.state,
-              label: `${entry.name}${entry.count === undefined ? '' : ` ${quantity(entry.count)}건`}`,
-            }))}
-            onChange={(state) => {
-              if (isWorklistFilter(state)) apply({ ...filters, state, page: 1 });
-            }}
-          />
-        </div>
-        <div className="erp-wo-status-filters">
-          {/*
-           * 0 건으로 센 상태는 세우지 않는다 — 「취소 0」 같은 탭이 늘 서 있어도 할 일이 없다는 말뿐이다(관리웹 화면 정리 시안 A ·
-           * 2026-11-20). 지금 고른 상태는 0 이어도 남긴다. 건수를 아직 · 끝내 모르면(권한 없음) 이름만으로 세운다 —
-           * 감추면 상태를 고를 길이 없다. 좁은 창의 선택 칸은 모든 상태를 그대로 둔다.
-           * 「전체」 단추는 두지 않는다 — 고른 상태를 다시 누르면 전체로 돌아간다(사용자 지시 2026-11-24).
-           */}
-          {stateFilters
-            .filter(
-              (entry) =>
-                entry.state !== 'ALL' &&
-                ((!showingResultRows && filters.state === entry.state) || entry.count !== 0),
-            )
-            .map((entry) => (
-              <button
-                type="button"
-                key={entry.state}
-                className="erp-wo-status-filter"
-                aria-label={
-                  entry.count === undefined ? entry.name : `${entry.name} ${entry.count}건`
-                }
-                aria-pressed={!showingResultRows && filters.state === entry.state}
-                onClick={() =>
-                  apply({
-                    ...filters,
-                    state:
-                      !showingResultRows && filters.state === entry.state ? 'ALL' : entry.state,
-                    page: 1,
-                  })
-                }
-              >
-                <span className="erp-wo-status-name">{entry.name}</span>
-                {entry.count !== undefined && (
-                  <>
-                    {' '}
-                    <span className="erp-wo-status-number">
-                      {quantity(entry.count)}
-                      <small>{t.counts.unit}</small>
-                    </span>
-                  </>
-                )}
-              </button>
-            ))}
-        </div>
-      </section>
       <section className="pane erp-wo-filter-pane" aria-label={t.filters.pane}>
         <WorklistFilterBar
           applied={{ ...filters, plant }}
+          stateOptions={stateFilters.map((entry) => ({
+            value: entry.state,
+            label:
+              entry.count === undefined ? entry.name : `${entry.name} ${quantity(entry.count)}건`,
+          }))}
           plantOptions={plants.entries.map(({ value, label }) => ({ value, label }))}
           plantLocked={lockedPlant !== undefined}
           plantNote={plantNote(plants)}
           onSearch={(draft) => apply({ ...filters, ...draft, page: 1 })}
-          onReset={() => apply(DEFAULT_WORKLIST_FILTERS)}
+          onReset={() => apply({ ...DEFAULT_WORKLIST_FILTERS, order: filters.order })}
         />
       </section>
       {bulk.run?.kind === 'release' && (
@@ -378,9 +323,25 @@ export const ProductionOrderScreen = ({
         />
       )}
       <section className="erp-wo-selection-toolbar" aria-label={t.bulk.selectionActions}>
-        <div className="erp-wo-selection-info" id={bulkReasonId}>
-          <strong>{t.bulk.selected(checkedRows.length)}</strong>
-          {bulk.isRunning && <p>{bulkReason}</p>}
+        <div className="erp-wo-selection-lead">
+          <div className="erp-wo-selection-info" id={bulkReasonId}>
+            <strong>{t.bulk.selected(checkedRows.length)}</strong>
+            {bulk.isRunning && <p>{bulkReason}</p>}
+          </div>
+          {/* 계획 시작일 정렬 — 고르면 바로 걸리고 첫 쪽부터 다시 받는다(사용자 지시 2026-11-27). */}
+          <div className="erp-wo-list-order">
+            <Select
+              aria-label={t.list.order.label}
+              value={filters.order}
+              options={[
+                { value: 'newest', label: t.list.order.newest },
+                { value: 'oldest', label: t.list.order.oldest },
+              ]}
+              onChange={(order) =>
+                apply({ ...filters, order: order === 'newest' ? 'newest' : 'oldest', page: 1 })
+              }
+            />
+          </div>
         </div>
         <div className="erp-wo-bulk-actions">
           <div className="erp-wo-action-choice">
@@ -453,7 +414,13 @@ export const ProductionOrderScreen = ({
               size="sm"
               variant="outlined"
               onClick={() =>
-                apply({ ...DEFAULT_WORKLIST_FILTERS, plant: filters.plant, state: 'ALL', page: 1 })
+                apply({
+                  ...DEFAULT_WORKLIST_FILTERS,
+                  plant: filters.plant,
+                  order: filters.order,
+                  state: 'ALL',
+                  page: 1,
+                })
               }
             >
               전체 목록으로 돌아가기
@@ -502,7 +469,7 @@ export const ProductionOrderScreen = ({
               onCheckedChange={setChecked}
               empty={
                 hasSearchConditions(filters) ? (
-                  /* 조회 조건 때문에 비었으면 조건을 지우는 길을 둔다. 고른 칩(처리 상태)과 쪽 크기는 그대로다. */
+                  /* 조회 조건 때문에 비었으면 조건을 지우는 길을 둔다. 고른 처리 상태와 쪽 크기는 그대로다. */
                   <EmptyState
                     size="sm"
                     title={t.list.emptyTitle}
@@ -515,6 +482,7 @@ export const ProductionOrderScreen = ({
                           apply({
                             ...DEFAULT_WORKLIST_FILTERS,
                             state: filters.state,
+                            order: filters.order,
                             size: filters.size,
                           })
                         }

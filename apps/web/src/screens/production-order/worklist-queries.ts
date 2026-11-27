@@ -9,6 +9,16 @@ import type { WorklistFilter } from './worklist-model';
 /**
  * 작업함 조회. 키는 `production-orders` 접두를 써서, 자동 계획과 배포가 끝나면 기존 무효화(`invalidateFlow`)로 함께 갱신된다.
  */
+export type WorklistOrder = 'newest' | 'oldest';
+
+/**
+ * 목록 정렬 → 서버 정렬 값(계획 시작일). 쪽을 나누기 전에 서버가 줄 세운다.
+ * ⚠ `sort` 는 아직 계약(api.d.ts)에 없다 — 서버가 받기 전에는 무시되어 늘 오래된순으로 온다.
+ */
+const sortQuery = (order: WorklistOrder): object => ({
+  sort: order === 'newest' ? 'plannedStartDate,desc' : 'plannedStartDate,asc',
+});
+
 export interface WorklistFilters {
   state: WorklistFilter;
   q: string;
@@ -17,6 +27,8 @@ export interface WorklistFilters {
   item: string;
   /** 공장 번호. 빈 값은 전체(세션 데이터 범위 안 전부)다. */
   plant: string;
+  /** 계획 시작일 정렬. 서버 기본 차례는 오래된순이다. */
+  order: WorklistOrder;
   page: number;
   size: number;
 }
@@ -48,6 +60,7 @@ export const useWorklist = (filters: WorklistFilters) => {
               ...(filters.dueTo === '' ? {} : { dueDateTo: filters.dueTo }),
               ...(filters.item === '' ? {} : { itemId: Number(filters.item) }),
               ...plantQuery(filters.plant),
+              ...sortQuery(filters.order),
               page: filters.page,
               size: filters.size,
             },

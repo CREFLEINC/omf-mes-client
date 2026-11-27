@@ -88,7 +88,7 @@ export const AdjustableLayout = ({
       <PaneLayoutToggle
         layout={layout}
         labels={{ group: `${label} 배치`, side: '좌우 배치', stack: '상하 배치' }}
-        menuLabel={`${label} 배치`}
+        expanded
         onChange={(next) => {
           setLayout(next);
           try {

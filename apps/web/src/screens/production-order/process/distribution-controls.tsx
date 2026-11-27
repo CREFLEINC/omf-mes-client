@@ -6,7 +6,6 @@ import {
   usePlanningDays,
   planningDayKey,
   planningDayMessage,
-  planningHolidayLabel,
   type PlanningDay,
   type PlanningDayTarget,
 } from './planning-working-days';
@@ -59,6 +58,7 @@ const dateRange = (row: DistributionSegment) => {
     return [];
   }
 };
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const dailyTotal = (row: DistributionSegment) =>
   Number(
     dateRange(row)
@@ -100,7 +100,7 @@ const calendarSummary = ({
   const note = notes.length ? `(${notes.join(', ')})` : '';
   if (dayCount <= 0) return `분배할 날이 없습니다${note}`;
   const head = `${dayCount}일에 분배${note}`;
-  if (mode !== 'equal') return head;
+  if (mode !== 'equal') return [`분배 대상 ${dayCount}일`, ...notes].join(' · ');
   if (cycleTime) return `${head} · 하루 상한은 분배 미리보기에서 계산`;
   const qty = (value: number) => `${formatQty(Number(value.toFixed(6)))} ${unit}`.trim();
   if (remainder <= 0) return `${head} · 하루 ${qty(dailyBase)}`;
@@ -491,7 +491,9 @@ export const DistributionControls = ({
                         (!row.start ||
                           !row.end ||
                           !row.lineId ||
-                          (row.mode !== 'daily' && row.quantity.trim() === '')),
+                          (row.mode === 'daily'
+                            ? dateRange(row).some((date) => (row.daily[date] ?? '').trim() === '')
+                            : row.quantity.trim() === '')),
                     )
                   }
                   onClick={async () => {
@@ -547,9 +549,10 @@ export const DistributionControls = ({
                           notes.push({ owner: row.owner, summary: '표준 C/T 미설정' });
                         const holidays = days.filter((day) => day.statusCode === 'HOLIDAY');
                         for (const day of holidays) {
+                          /* 결과 표 휴일 행 아래 줄 — 「정기 휴무 · 분배 포함」(시안 · #360). */
                           holidayDisplay.set(
                             `${row.owner}:${day.date}:${row.lineId}`,
-                            planningHolidayLabel(day),
+                            `${planningDayMessage(day)?.match(/\((.+)\)$/)?.[1] ?? '휴일'} · 분배 포함`,
                           );
                         }
                         if (row.mode === 'equal' && holidays.length)
@@ -558,16 +561,6 @@ export const DistributionControls = ({
                             summary: `휴일 ${row.includeHolidays ? '포함' : '제외'} ${holidays.length}일`,
                             dates: holidays.map((day) => day.date),
                           });
-                        if (row.mode === 'daily')
-                          holidays
-                            .filter((day) => Number(row.daily[day.date]) > 0)
-                            .forEach((day) =>
-                              notes.push({
-                                owner: row.owner,
-                                summary: planningDayMessage(day) ?? '휴일',
-                                dates: [day.date],
-                              }),
-                            );
                         const unknown = days.filter(
                           (day) => day.statusCode === 'UNDETERMINED',
                         ).length;
@@ -1127,11 +1120,7 @@ export const DistributionControls = ({
                                   change(row.id, { quantity: event.target.value })
                                 }
                               />
-                            ) : (
-                              <p className="field-note">
-                                날짜별 합계 {total} {target?.unit}
-                              </p>
-                            )}
+                            ) : null}
                             {/* 휴일 포함 · 조건 삭제(휴지통)는 입력칸과 같은 행 끝(#360). */}
                             <div className="erp-wo-segment-tail">
                               <label className="erp-wo-distribution-holiday-option">
@@ -1164,42 +1153,104 @@ export const DistributionControls = ({
                               />
                             </div>
                           </div>
-                          {row.mode === 'daily' && (
-                            <div className="erp-wo-daily-quantities">
-                              {dates.length ? (
-                                dates
-                                  .slice((visibleDailyPage - 1) * 7, visibleDailyPage * 7)
-                                  .map((date) => (
-                                    <TextField
-                                      key={date}
-                                      size="md"
-                                      label={date}
-                                      aria-label={`조건 ${index + 1} ${date} 수량`}
-                                      placeholder={ph.dailyQty}
-                                      inputMode="decimal"
-                                      value={row.daily[date] ?? ''}
-                                      disabled={disabled}
-                                      onChange={(event) =>
-                                        change(row.id, {
-                                          daily: { ...row.daily, [date]: event.target.value },
-                                        })
+                          {/* 날짜별 직접 입력은 표 한 장 — 머리칸 「MM/DD (요일)」, 바닥 줄에 계산 요약 · 입력 합계(시안 · #360). */}
+                          {row.mode === 'daily' &&
+                            (dates.length ? (
+                              <div className="erp-wo-daily-table">
+                                <table>
+                                  <caption className="visually-hidden">
+                                    조건 {index + 1} 날짜별 수량
+                                  </caption>
+                                  <thead>
+                                    <tr>
+                                      {dates
+                                        .slice((visibleDailyPage - 1) * 7, visibleDailyPage * 7)
+                                        .map((date) => (
+                                          <th key={date} scope="col">
+                                            <time dateTime={date}>
+                                              {date.slice(5).replace('-', '/')} (
+                                              {WEEKDAYS[new Date(`${date}T00:00:00Z`).getUTCDay()]})
+                                            </time>
+                                          </th>
+                                        ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr>
+                                      {dates
+                                        .slice((visibleDailyPage - 1) * 7, visibleDailyPage * 7)
+                                        .map((date) => (
+                                          <td key={date}>
+                                            <TextField
+                                              size="md"
+                                              className={
+                                                (row.daily[date] ?? '').trim() === ''
+                                                  ? 'erp-wo-required-empty'
+                                                  : undefined
+                                              }
+                                              aria-label={`조건 ${index + 1} ${date} 수량`}
+                                              placeholder={ph.dailyQty}
+                                              inputMode="decimal"
+                                              value={row.daily[date] ?? ''}
+                                              disabled={disabled}
+                                              onChange={(event) =>
+                                                change(row.id, {
+                                                  daily: {
+                                                    ...row.daily,
+                                                    [date]: event.target.value,
+                                                  },
+                                                })
+                                              }
+                                            />
+                                          </td>
+                                        ))}
+                                    </tr>
+                                  </tbody>
+                                </table>
+                                {/* 7일 넘으면 쪽 이동은 표 상자 안, 표 바로 아래(#360). */}
+                                {dates.length > 7 && (
+                                  <div className="erp-wo-daily-table-nav">
+                                    <PageNav
+                                      meta={{
+                                        page: visibleDailyPage,
+                                        size: 7,
+                                        total: dates.length,
+                                      }}
+                                      onChangePage={(page) =>
+                                        setDailyPages((current) => ({ ...current, [row.id]: page }))
                                       }
                                     />
-                                  ))
-                              ) : (
-                                <p>시작일과 종료일을 확인하세요.</p>
-                              )}
-                            </div>
-                          )}
-                          {row.mode === 'daily' && dates.length > 7 && (
-                            <PageNav
-                              meta={{ page: visibleDailyPage, size: 7, total: dates.length }}
-                              onChangePage={(page) =>
-                                setDailyPages((current) => ({ ...current, [row.id]: page }))
-                              }
-                            />
-                          )}
-                          {resolved && (
+                                  </div>
+                                )}
+                                <div className="erp-wo-daily-table-foot">
+                                  <span role="status">
+                                    {resolved
+                                      ? calendarSummary({
+                                          dayCount,
+                                          holidayCount,
+                                          includeHolidays: row.includeHolidays ?? false,
+                                          undeterminedCount,
+                                          mode: row.mode,
+                                          cycleTime: false,
+                                          dailyBase,
+                                          remainder,
+                                          step: 1 / scale,
+                                          unit: target?.unit ?? '',
+                                        })
+                                      : ''}
+                                  </span>
+                                  <span>
+                                    입력 합계{' '}
+                                    <strong>
+                                      {formatQty(total)} {target?.unit}
+                                    </strong>
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="field-note">시작일과 종료일을 확인하세요.</p>
+                            ))}
+                          {resolved && row.mode === 'equal' && (
                             <p className="erp-wo-distribution-calendar-summary" role="status">
                               {calendarSummary({
                                 dayCount,
@@ -1242,41 +1293,39 @@ export const DistributionControls = ({
                     계획이나 대상 수량이 바뀌었습니다. 미리보기를 다시 만드세요.
                   </AlertBanner>
                 )}
-                {/* 단건은 W/O 정보를 표 위 회색 줄로, 안내는 표 아래 한 줄로(결과 검토 시안 · #360). */}
+                {/* 단건은 W/O 정보를 조건 단계와 같은 정보 상자로(결과 검토 시안 · #360). 안내는 표 아래 한 줄. */}
                 {singleOrder &&
                   (() => {
                     const summary = reviewResult?.orders.find(
                       (entry) => entry.id === singleOrder.id,
                     );
                     return (
-                      <div className="erp-wo-result-single-bar">
-                        <div className="erp-wo-result-single-bar-facts">
-                          <span>ERP W/O</span>
-                          <strong>{singleOrder.orderNo ?? singleOrder.label}</strong>
-                          {singleOrder.itemCode && (
-                            <>
-                              <span>품목 코드</span>
-                              <strong>{singleOrder.itemCode}</strong>
-                            </>
-                          )}
-                        </div>
-                        {summary && (
-                          <div className="erp-wo-result-single-bar-qty">
-                            <span>
-                              이번 분배{' '}
-                              <strong>
-                                {formatQty(summary.added)} {singleOrder.unit}
-                              </strong>
-                            </span>
-                            <span>
-                              미분배{' '}
-                              <strong>
-                                {formatQty(summary.pending)} {singleOrder.unit}
-                              </strong>
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                      <InfoFacts
+                        className="erp-wo-result-single-facts"
+                        rows={[
+                          [
+                            {
+                              label: 'ERP W/O',
+                              value: singleOrder.orderNo ?? singleOrder.label,
+                              isKey: true,
+                            },
+                            { label: '품목 코드', value: singleOrder.itemCode },
+                            { label: '품목명', value: singleOrder.itemName },
+                            ...(summary
+                              ? [
+                                  {
+                                    label: '이번 분배',
+                                    value: `${formatQty(summary.added)} ${singleOrder.unit}`,
+                                  },
+                                  {
+                                    label: '미분배',
+                                    value: `${formatQty(summary.pending)} ${singleOrder.unit}`,
+                                  },
+                                ]
+                              : []),
+                          ],
+                        ]}
+                      />
                     );
                   })()}
                 <div className="erp-wo-preview-scroll">
@@ -1331,7 +1380,12 @@ export const DistributionControls = ({
                             const existingQty = existingByResultKey.get(key) ?? 0;
                             const addedQty = Number(row.plannedQty);
                             return (
-                              <tr key={key}>
+                              <tr
+                                key={key}
+                                className={
+                                  row.holidayLabel ? 'erp-wo-result-holiday-row' : undefined
+                                }
+                              >
                                 <td>
                                   {row.planDate}
                                   {row.holidayLabel && (
@@ -1436,12 +1490,17 @@ export const DistributionControls = ({
                 />
                 {!!reviewResult!.warnings.length && (
                   <>
-                    <AlertBanner variant="warning">
-                      <ul>
-                        {reviewResult!.warnings.map((warning) => (
-                          <li key={warning}>{warning}</li>
-                        ))}
-                      </ul>
+                    {/* 한 건이면 글머리표 없이 한 줄, 여러 건이면 목록 — 아이콘과 첫 줄을 맞춘다(#360). */}
+                    <AlertBanner variant="warning" className="erp-wo-result-warnings">
+                      {reviewResult!.warnings.length === 1 ? (
+                        reviewResult!.warnings[0]
+                      ) : (
+                        <ul>
+                          {reviewResult!.warnings.map((warning) => (
+                            <li key={warning}>{warning}</li>
+                          ))}
+                        </ul>
+                      )}
                     </AlertBanner>
                     <label className="erp-wo-checkbox">
                       <input

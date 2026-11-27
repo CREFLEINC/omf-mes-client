@@ -374,36 +374,44 @@ export const PaneLayoutToggle = ({
   onChange,
   labels,
   menuLabel,
+  expanded = false,
 }: {
   layout: PaneLayout;
   onChange: (next: PaneLayout) => void;
   labels: { group: string; side: string; stack: string };
   /** 「⋯」 단추 이름 — 한 화면에 배치 고르기가 둘 이상일 때만 준다. 주지 않으면 「더보기」. */
   menuLabel?: string;
-}) => (
-  <MoreMenu className="po-board-layout-more" label={menuLabel}>
-    {(close) => (
-      <div
-        className="po-board-layout-toggle split-orientation-toggle"
-        role="group"
-        aria-label={labels.group}
-      >
-        {(['side', 'stack'] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            className="split-orientation-option"
-            aria-pressed={layout === value}
-            onClick={() => {
-              if (layout !== value) onChange(value);
-              close();
-            }}
-          >
-            <Icon name={LAYOUT_ICONS[value]} size={16} />
-            {labels[value]}
-          </button>
-        ))}
-      </div>
-    )}
-  </MoreMenu>
-);
+  /** 「⋯」에 접지 않고 두 단추를 그 자리에 늘 보인다(작업계획 · 사용자 지시 2026-11-27). */
+  expanded?: boolean;
+}) => {
+  const group = (close?: () => void) => (
+    <div
+      className="po-board-layout-toggle split-orientation-toggle"
+      role="group"
+      aria-label={labels.group}
+    >
+      {(['side', 'stack'] as const).map((value) => (
+        <button
+          key={value}
+          type="button"
+          className="split-orientation-option"
+          aria-pressed={layout === value}
+          onClick={() => {
+            if (layout !== value) onChange(value);
+            close?.();
+          }}
+        >
+          <Icon name={LAYOUT_ICONS[value]} size={16} />
+          {labels[value]}
+        </button>
+      ))}
+    </div>
+  );
+  return expanded ? (
+    group()
+  ) : (
+    <MoreMenu className="po-board-layout-more" label={menuLabel}>
+      {(close) => group(close)}
+    </MoreMenu>
+  );
+};
