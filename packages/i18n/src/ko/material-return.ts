@@ -85,7 +85,8 @@ export const materialReturn = {
       '이 W/O 는 최종 마감됐습니다. 반납하면 재고는 돌아오지만 이 W/O 에는 붙지 않습니다.',
     workOrderLine: (item: string, process: string, issuedAt: string) =>
       `${item} · ${process} · 출고 ${issuedAt}`,
-    moreItems: (item: string, more: number) => `${item} 외 ${more}`,
+    /** W/O 로 나간 자재 — 「B-220 하우징 커버(좌) 외 2」, 다른 품목이 없으면 품목만. */
+    withOthers: (item: string, others: number) => (others > 0 ? `${item} 외 ${others}` : item),
     choose: '선택',
     back: '‹ W/O 다시 고르기',
     lotTable: {

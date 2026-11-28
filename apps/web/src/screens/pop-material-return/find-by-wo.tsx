@@ -45,9 +45,15 @@ export const initialLotId = (lots: readonly ReturnWorkOrderLot[]): number | null
   return unprinted.length === 1 && items.size === 1 ? (unprinted[0]?.lotId ?? null) : null;
 };
 
-/** 「B-220 하우징 커버(좌)」 — W/O 줄의 품목. */
-const itemOf = (workOrder: ReturnWorkOrder): string =>
-  `${workOrder.item.itemCode} ${workOrder.item.itemName}`;
+/**
+ * 「B-220 하우징 커버(좌) 외 2」 — W/O 줄에는 그 W/O 로 나간 자재를 보인다(생산 품목이 아니다 · 시안 ③-1).
+ * 긴 품목명은 줄의 `overflow-wrap: anywhere` 로 줄바꿈한다(F-05).
+ */
+const materialOf = ({ returnableMaterial: material }: ReturnWorkOrder): string =>
+  words().findByWo.withOthers(
+    `${material.item.itemCode} ${material.item.itemName}`,
+    material.otherItemCount,
+  );
 
 const processOf = (workOrder: ReturnWorkOrder): string =>
   [workOrder.processName, workOrder.lineName]
@@ -321,7 +327,7 @@ const WorkOrderStep = ({
                 </span>
                 <span className="pmr-wo-sub">
                   {t.workOrderLine(
-                    itemOf(workOrder),
+                    materialOf(workOrder),
                     processOf(workOrder) === '' ? '-' : processOf(workOrder),
                     shortAt(workOrder.lastIssuedAt),
                   )}

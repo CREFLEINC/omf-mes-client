@@ -75,7 +75,7 @@ export const materialReturn: Translated<typeof ko.materialReturn> = {
       'W/O này đã chốt cuối. Nếu trả, tồn kho sẽ quay lại nhưng không gắn vào W/O này.',
     workOrderLine: (item: string, process: string, issuedAt: string) =>
       `${item} · ${process} · Xuất ${issuedAt}`,
-    moreItems: (item: string, more: number) => `${item} + ${more}`,
+    withOthers: (item: string, others: number) => (others > 0 ? `${item} và ${others} khác` : item),
     choose: 'Chọn',
     back: '‹ Chọn lại W/O',
     lotTable: {

@@ -29,9 +29,13 @@ export const initialLotId = (lots: readonly ReturnWorkOrderLot[]): number | null
   return unprinted.length === 1 && items.size === 1 ? (unprinted[0]?.lotId ?? null) : null;
 };
 
+/** 「B-220 외 2 · 공정 20 · 출고 11-27 09:40」 — 생산 품목이 아니라 그 W/O 로 나간 자재(시안 ⑤ W/O 로 찾기). */
 const itemLine = (workOrder: ReturnWorkOrder): string =>
   t.findByWo.workOrderLine(
-    workOrder.item.itemCode,
+    t.findByWo.withOthers(
+      workOrder.returnableMaterial.item.itemCode,
+      workOrder.returnableMaterial.otherItemCount,
+    ),
     workOrder.processName ?? '-',
     plantShortDateTime(workOrder.lastIssuedAt),
   );

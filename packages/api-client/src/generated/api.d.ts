@@ -64387,6 +64387,18 @@ export interface components {
       returnableLotCount: number;
       /** @description 라벨 미발행 LOT 수 */
       unprintedLotCount: number;
+      /** @description 나간 자재 요약 — 이 W/O 의 반납 가능 LOT(반납 가능 양 > 0) 기준. item 은 그중 가장 최근 출고된 LOT 의 자재 품목(출고 시각이 같으면 품목 코드 오름차순 첫 품목), otherItemCount 는 그 LOT 들의 서로 다른 자재 품목 수 − 1(다 반납한 품목은 세지 않는다). item(W/O 생산 품목)과 다르다. 근거: 피처 019 · omf-all-around#367 · 2026-11-28 사용자 결정 */
+      returnableMaterial: {
+        /** @description 가장 최근 출고된 반납 가능 LOT 의 자재 품목 */
+        item: {
+          /** Format: int64 */
+          itemId: number;
+          itemCode: string;
+          itemName: string;
+        };
+        /** @description 그 밖의 자재 품목 수(서로 다른 자재 품목 수 − 1). 자재 1종이면 0 */
+        otherItemCount: number;
+      };
     };
     MaterialReturnWorkOrderLot: {
       /** Format: int64 */

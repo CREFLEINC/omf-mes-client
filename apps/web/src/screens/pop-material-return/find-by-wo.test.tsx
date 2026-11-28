@@ -66,6 +66,10 @@ const WORK_ORDERS = [
     unprintedLotCount: 0,
     finalized: true,
     lastIssuedAt: '2026-11-25T01:10:00Z',
+    returnableMaterial: {
+      item: { itemId: 23, itemCode: 'SYN-A100', itemName: '합성 볼트 M4×10' },
+      otherItemCount: 0,
+    },
   }),
 ];
 
@@ -99,6 +103,11 @@ describe('P-01-03 W/O 로 찾기', () => {
     ]);
     expect(within(items[0] as HTMLElement).getByText(t.findByWo.unprinted(1))).toBeTruthy();
     expect(within(items[2] as HTMLElement).getByText(t.findByWo.finalized)).toBeTruthy();
+    /* 줄에는 W/O 생산 품목이 아니라 그 W/O 로 나간 자재 — 다른 품목이 있으면 「외 n」, 없으면 품목만(시안 ③-1). */
+    expect(items[0]?.textContent).toContain('SYN-B220 합성 하우징 커버 외 2 · 공정 20 조립 · L2');
+    expect(items[0]?.textContent).not.toContain('SYN-P900');
+    expect(items[2]?.textContent).toContain('SYN-A100 합성 볼트 M4×10 · 공정 20 조립 · L2');
+    expect(items[2]?.textContent).not.toContain('외');
 
     await user.click(within(dialog).getByRole('searchbox', { name: t.findByWo.search }));
     const search = await screen.findByRole('dialog', {

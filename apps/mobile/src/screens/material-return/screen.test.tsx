@@ -47,13 +47,33 @@ const lookupOf = (overrides: Partial<MaterialReturnLotLookup> = {}): MaterialRet
 const WORK_ORDER: ReturnWorkOrder = {
   workOrderId: 635,
   workOrderNo: 'WO-SYN-0011',
-  item: { itemId: 21, itemCode: 'SYN-B220', itemName: '합성 하우징 커버' },
+  /* W/O 생산 품목 — 목록 줄에는 보이지 않는다. 줄에는 나간 자재(`returnableMaterial`)를 보인다. */
+  item: { itemId: 90, itemCode: 'SYN-P900', itemName: '합성 완제품' },
   processName: '공정 20 조립',
   lineName: 'L2',
   lastIssuedAt: '2026-11-27T02:40:00Z',
   finalized: false,
   returnableLotCount: 1,
   unprintedLotCount: 1,
+  returnableMaterial: {
+    item: { itemId: 21, itemCode: 'SYN-B220', itemName: '합성 하우징 커버' },
+    otherItemCount: 2,
+  },
+};
+
+/** 다른 품목 없이 자재 하나만 나간 W/O — 「외 n」 없이 품목만. */
+const WORK_ORDER_ONE: ReturnWorkOrder = {
+  ...WORK_ORDER,
+  workOrderId: 601,
+  workOrderNo: 'WO-SYN-0002',
+  processName: '공정 10 사출',
+  finalized: true,
+  unprintedLotCount: 0,
+  lastIssuedAt: '2026-11-25T01:10:00Z',
+  returnableMaterial: {
+    item: { itemId: 23, itemCode: 'SYN-A100', itemName: '합성 볼트 M4×10' },
+    otherItemCount: 0,
+  },
 };
 
 const WO_LOT: ReturnWorkOrderLot = {
@@ -164,7 +184,11 @@ const mount = (
     },
     {
       match: pathIs('/production/material-returns/work-orders'),
-      respond: () => jsonResponse({ items: [WORK_ORDER], page: { page: 1, size: 50, total: 1 } }),
+      respond: () =>
+        jsonResponse({
+          items: [WORK_ORDER, WORK_ORDER_ONE],
+          page: { page: 1, size: 50, total: 2 },
+        }),
     },
     {
       match: pathIs('/production/material-returns/work-orders/635/lots'),
@@ -432,6 +456,12 @@ describe('M-01-15 반납 입고', () => {
     await user.click(await screen.findByRole('button', { name: t.pop.byWorkOrder }));
     const list = await screen.findByRole('list', { name: t.findByWo.recent });
     expect(within(list).getByText(t.findByWo.unprintedShort(1))).toBeTruthy();
+    /* 줄에는 W/O 생산 품목이 아니라 나간 자재 코드 — 다른 품목이 있으면 「외 n」, 없으면 코드만(시안 ⑤). */
+    const rows = within(list).getAllByRole('listitem');
+    expect(rows[0]?.textContent).toContain('SYN-B220 외 2 · 공정 20 조립 · ');
+    expect(rows[0]?.textContent).not.toContain('SYN-P900');
+    expect(rows[1]?.textContent).toContain('SYN-A100 · 공정 10 사출 · ');
+    expect(rows[1]?.textContent).not.toContain('외');
     await user.click(within(list).getByText('WO-SYN-0011'));
 
     const lots = await screen.findByRole('list', { name: t.findByWo.lotTable.label });

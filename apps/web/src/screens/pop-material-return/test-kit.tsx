@@ -35,13 +35,18 @@ export const lookupOf = (
 export const workOrderOf = (overrides: Partial<ReturnWorkOrder> = {}): ReturnWorkOrder => ({
   workOrderId: 635,
   workOrderNo: 'WO-SYN-0011',
-  item: { itemId: 21, itemCode: 'SYN-B220', itemName: '합성 하우징 커버' },
+  /* W/O 생산 품목 — 목록 줄에는 보이지 않는다. 줄에는 나간 자재(`returnableMaterial`)를 보인다. */
+  item: { itemId: 90, itemCode: 'SYN-P900', itemName: '합성 완제품' },
   processName: '공정 20 조립',
   lineName: 'L2',
   lastIssuedAt: '2026-11-27T02:40:00Z',
   finalized: false,
   returnableLotCount: 3,
   unprintedLotCount: 1,
+  returnableMaterial: {
+    item: { itemId: 21, itemCode: 'SYN-B220', itemName: '합성 하우징 커버' },
+    otherItemCount: 2,
+  },
   ...overrides,
 });
 
