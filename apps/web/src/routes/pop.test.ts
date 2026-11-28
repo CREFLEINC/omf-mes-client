@@ -62,6 +62,10 @@ describe('POP 라우트 분리', () => {
     expect(popRoutes.map(({ path }) => path)).toContain('/pop/material-lot-label');
   });
 
+  it('US1-6 P-01-03 반납 입고 주소가 서 있다', () => {
+    expect(popRoutes.map(({ path }) => path)).toContain('/pop/material-return');
+  });
+
   it('P-04-03 재작업 실적 등록 주소가 서 있다', () => {
     expect(popRoutes.map(({ path }) => path)).toContain('/pop/rework-results');
   });
