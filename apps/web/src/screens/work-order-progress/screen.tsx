@@ -1,4 +1,4 @@
-import { AlertBanner, Button } from '@crefle/web-ui';
+import { AlertBanner, Breadcrumb, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
@@ -14,28 +14,37 @@ import {
   readPage,
   readSelectedWorkOrderId,
   readSort,
+  readView,
   toAppliedSearchParams,
   toProgressListQuery,
+  toStatusCountQuery,
   withPage,
   withPeriod,
   withSelectedWorkOrder,
   withSort,
+  withView,
 } from './filters';
-import { useItemNames, useProductionLineLookup, useProductionOrderLookup } from './lookups';
+import { useItemNames, useProcessLookup, useProductionLineLookup } from './lookups';
 import { PageNav } from './page-nav';
 import { PAGE_SIZES } from '../../patterns/page-nav';
 import { readPageSizeParam, toPageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
 import { toPageView } from './pagination';
-import { defaultPeriod } from './period';
+import { defaultPeriod, periodDays } from './period';
 import {
   useWorkOrderCrew,
   useWorkOrderDetail,
   useWorkOrderProgressList,
+  useWorkOrderStatusCounts,
   workOrderProgressKeys,
 } from './queries';
 import { toWorkOrderRow } from './row-view';
 import { type SortKey, type SortState } from './sort';
+import { StatusFilter } from './status-filter';
 import { useWorkOrderStatusOptions } from './status-options';
+import { SummaryBar } from './summary-bar';
+import { WorkOrderTimeline } from './timeline';
+import { toTimelineAxis } from './timeline-model';
+import { ViewToggle } from './view-toggle';
 import { WorkOrderTable } from './work-order-table';
 
 const t = messages.workOrderProgress;
@@ -48,9 +57,12 @@ export interface WorkOrderProgressScreenProps {
 const EMPTY_CONDITIONS = {
   productionLineId: '',
   statusCode: '',
-  productionOrderId: '',
+  processId: '',
   keyword: '',
 };
+
+/** 일정 보기의 줄 순서 — 계획 시작이 이른 것부터. 날짜 축을 왼쪽에서 오른쪽으로 읽는 순서와 같다. */
+const TIMELINE_SORT: SortState = { key: 'plannedStartAt', direction: 'asc' };
 
 const nextSort = (current: SortState, key: SortKey): SortState =>
   current.key === key
@@ -72,6 +84,9 @@ const nextSort = (current: SortState, key: SortKey): SortState =>
  * | 3 | 쪽 이동 | 유지 | 유지 | 옮긴 쪽 | 유지 |
  * | 4 | 고르기·닫기 | 유지 | 유지 | 유지 | 넣고 뺀다 |
  * | 5 | 새로고침 | 유지 | 유지 | 유지 | 유지 |
+ * | 6 | 보기 바꾸기(표 · 일정) | 유지 | 유지 | **첫 쪽** | 유지 |
+ *
+ * 상태 칩을 누르는 것은 1행이다 — 조건 줄의 [조회]와 같은 길로 건다.
  *
  * - **1행** 조건이 바뀌면 그 W/O 는 결과에 없을 수 있다 — 남겨 두면 목록에 없는 건의 상세가
  *   열린 채로 뜬다. 정렬은 「무엇을 보나」가 아니라 「어떻게 늘어놓나」라 빼앗지 않는다.
@@ -79,6 +94,7 @@ const nextSort = (current: SortState, key: SortKey): SortState =>
  * - **3·4행** 상세를 여는 것은 보이는 줄을 바꾸지 않고, 쪽을 옮기는 것은 무엇을 골랐는지를
  *   바꾸지 않는다 — 서로를 건드리지 않는다.
  * - **5행** 새로고침은 **같은 조회를 다시 하는 것**이다. 무언가를 비우면 조건 변경으로 둔갑한다.
+ * - **6행** 일정 보기는 계획 시작 순으로 다시 받아 쪽의 내용이 달라진다. 표로 돌아오면 고른 정렬이 그대로다.
  *
  * ⛔ **자동 갱신이 없어**(L-6) 기준 시각이 값의 일부다(L-5). 그 기준은 **받아 낸 시각**이지
  * 「지금」이 아니다 — 실패해도 앞서 받은 것이 보이므로 낡은 수에 새 시각이 붙는다.
@@ -98,6 +114,7 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
   /* 쪽 크기 — 품질 화면과 같은 10 · 20 · 50, 주소 `size`. 기본(50)은 적지 않는다(#360). */
   const pageSize = readPageSizeParam(searchParams, PAGE_SIZE);
   const selectedWorkOrderId = readSelectedWorkOrderId(searchParams);
+  const view = readView(searchParams);
 
   /*
    * 화면이 실제로 거는 기간을 주소에 적는다 — 그래야 지금 화면을 그대로 공유할 수 있다.
@@ -117,17 +134,32 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
   }, [isPeriodInAddress, periodFrom, periodTo, setSearchParams]);
 
   const list = useWorkOrderProgressList(
-    toProgressListQuery(filters, sort, page, offsetMinutes, pageSize),
+    toProgressListQuery(
+      filters,
+      view === 'timeline' ? TIMELINE_SORT : sort,
+      page,
+      offsetMinutes,
+      pageSize,
+    ),
   );
-  const detail = useWorkOrderDetail(selectedWorkOrderId);
+  /* 상태를 골랐을 때만 나간다 — 고르지 않았으면 목록의 요약이 이미 상태 전체를 센 것이다. */
+  const statusCounts = useWorkOrderStatusCounts(toStatusCountQuery(filters, offsetMinutes));
   const crew = useWorkOrderCrew(selectedWorkOrderId);
   const lines = useProductionLineLookup();
-  const orders = useProductionOrderLookup();
+  const processes = useProcessLookup();
   const statuses = useWorkOrderStatusOptions();
 
   /* ⛔ 「지금」이 아니라 **받아 낸 시각**이다 — 실패해도 낡은 수에 새 시각이 붙지 않는다. */
   const basisAt = list.dataUpdatedAt > 0 ? new Date(list.dataUpdatedAt) : today;
   const workOrders = list.data?.items ?? [];
+  /*
+   * 고른 W/O 가 이 쪽의 몇째 줄인가 — 상세 창의 [이전 W/O] · [다음 W/O] 가 이 순서를 따라간다. 보이는 줄 순서 그대로다
+   * (표는 고른 정렬, 일정 보기는 계획 시작 순). 쪽을 넘어가지는 않는다 — 쪽의 끝에서는 단추가 꺼진다.
+   */
+  const selectedIndex = workOrders.findIndex(
+    (workOrder) => workOrder.workOrderId === selectedWorkOrderId,
+  );
+  const detail = useWorkOrderDetail(selectedWorkOrderId, workOrders[selectedIndex]);
   const rows = workOrders.map((workOrder) => toWorkOrderRow(workOrder, basisAt));
 
   /*
@@ -148,17 +180,48 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
     setSearchParams(toAppliedSearchParams(searchParams, next, 1));
   };
 
+  /* 상태 칩의 건수 — 상태를 뺀 조건 기준. 고른 상태가 없으면 목록의 요약이 곧 그것이다. */
+  const countSummary = filters.statusCode === '' ? list.data?.summary : statusCounts.data;
+
+  const itemLabel = (itemIdText: string): string => items.labelOf(itemIdText);
+  const statusLabel = (statusCode: string): string => statuses.labelOf(statusCode);
+  const lineLabel = (lineIdText: string): string => lines.labelOf(lineIdText);
+  const select = (workOrderId: number): void => {
+    /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-27 · #360). */
+    setSearchParams(
+      withSelectedWorkOrder(searchParams, workOrderId === selectedWorkOrderId ? null : workOrderId),
+    );
+  };
+  /** 창을 닫지 않고 목록의 다른 줄로 넘긴다. 그 줄이 없으면 `null`. */
+  const stepTo = (index: number): (() => void) | null => {
+    const target = selectedIndex < 0 ? undefined : workOrders[index];
+    if (target === undefined) return null;
+
+    return () => {
+      setSearchParams(withSelectedWorkOrder(searchParams, target.workOrderId));
+    };
+  };
+  const isListLoading = list.isPending && list.fetchStatus !== 'idle';
+
   return (
     <>
-      {/* 화면 제목 줄(경로 · 큰 제목)은 두지 않는다 — 다른 목록 화면과 같다(#360). */}
       <div className="work-order-progress-workspace">
-        {/* L-5·L-6 — 언제 것인지와 갱신 단추를 한 줄에, 조회 조건 위 오른쪽(#360). */}
-        <BasisBar
-          basisAt={basisAt}
-          onRefresh={() => {
-            void queryClient.invalidateQueries({ queryKey: workOrderProgressKeys.all });
-          }}
-        />
+        {/*
+         * 머리 한 줄 — 왼쪽에 탐색 경로, 오른쪽 끝에 마지막 갱신 시각과 갱신 단추(L-5 · L-6).
+         * 큰 제목은 세우지 않고 경로만 둔다(사용자 지시 2026-11-28 · 작업계획 화면과 같다).
+         */}
+        <div className="work-order-progress-head">
+          <Breadcrumb
+            aria-label={messages.common.shell.breadcrumb}
+            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+          />
+          <BasisBar
+            basisAt={basisAt}
+            onRefresh={() => {
+              void queryClient.invalidateQueries({ queryKey: workOrderProgressKeys.all });
+            }}
+          />
+        </div>
 
         <section className="pane work-order-progress-pane" aria-label={t.filters.legend}>
           {/* ⛔ 결과가 없어도 조건 줄을 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
@@ -166,8 +229,7 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
             appliedFilters={filters}
             initialFilters={initialFilters}
             lineLookup={lines}
-            productionOrderLookup={orders}
-            statusOptions={statuses}
+            processLookup={processes}
             onReset={() => {
               apply(initialFilters);
             }}
@@ -193,29 +255,59 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
           </div>
         )}
 
+        {/* 요약 — 조건에 맞는 W/O 전체 기준(쪽과 무관). 받지 못했으면 줄째 없다. */}
+        <SummaryBar summary={list.data?.summary} />
+
         <div className="work-order-progress-list-group">
-          <WorkOrderTable
-            isError={list.isError}
-            isLoading={list.isPending && list.fetchStatus !== 'idle'}
-            itemLabel={(itemIdText) => items.labelOf(itemIdText)}
-            period={filters}
-            rows={rows}
-            sort={sort}
-            statusLabel={(statusCode) => statuses.labelOf(statusCode)}
-            selectedWorkOrderId={selectedWorkOrderId}
-            onSelect={(workOrderId) => {
-              /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-27 · #360). */
-              setSearchParams(
-                withSelectedWorkOrder(
-                  searchParams,
-                  workOrderId === selectedWorkOrderId ? null : workOrderId,
-                ),
-              );
-            }}
-            onSort={(key) => {
-              setSearchParams(withSort(searchParams, nextSort(sort, key)));
-            }}
-          />
+          {/* 상태 조건 칩(C-17)과 보기 전환을 한 줄에 — 칩은 왼쪽, 전환은 오른쪽 끝. */}
+          <div className="work-order-progress-list-head">
+            <StatusFilter
+              counts={countSummary?.statusCounts}
+              labelOf={statusLabel}
+              order={statuses.options.map((option) => option.value)}
+              selected={filters.statusCode}
+              total={countSummary?.totalCount}
+              onSelect={(statusCode) => {
+                apply({ ...filters, statusCode });
+              }}
+            />
+            <ViewToggle
+              view={view}
+              onChange={(next) => {
+                setSearchParams(withView(searchParams, next));
+              }}
+            />
+          </div>
+
+          {view === 'timeline' ? (
+            <WorkOrderTimeline
+              axis={toTimelineAxis(periodDays(filters))}
+              basisAt={basisAt}
+              isError={list.isError}
+              isLoading={isListLoading}
+              itemLabel={itemLabel}
+              rows={rows}
+              selectedWorkOrderId={selectedWorkOrderId}
+              statusLabel={statusLabel}
+              onSelect={select}
+            />
+          ) : (
+            <WorkOrderTable
+              isError={list.isError}
+              isLoading={isListLoading}
+              itemLabel={itemLabel}
+              lineLabel={lineLabel}
+              period={filters}
+              rows={rows}
+              sort={sort}
+              statusLabel={statusLabel}
+              selectedWorkOrderId={selectedWorkOrderId}
+              onSelect={select}
+              onSort={(key) => {
+                setSearchParams(withSort(searchParams, nextSort(sort, key)));
+              }}
+            />
+          )}
 
           {/*
            * ⛔ 받지 못했으면 쪽 이동을 세우지 않는다. 세우면 「0건」이라고 **단언하게 되는데**,
@@ -240,9 +332,12 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
         isError={detail.isError}
         isLoading={selectedWorkOrderId !== null && detail.isPending}
         isOpen={selectedWorkOrderId !== null}
-        itemLabel={(itemIdText) => items.labelOf(itemIdText)}
-        statusLabel={(statusCode) => statuses.labelOf(statusCode)}
+        itemLabel={itemLabel}
+        lineLabel={lineLabel}
+        statusLabel={statusLabel}
         workOrder={detail.data ?? null}
+        onNext={stepTo(selectedIndex + 1)}
+        onPrev={stepTo(selectedIndex - 1)}
         crew={{
           data: crew.data,
           isLoading: selectedWorkOrderId !== null && crew.isPending,

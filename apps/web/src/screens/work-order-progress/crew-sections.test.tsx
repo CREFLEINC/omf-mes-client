@@ -48,11 +48,15 @@ const crew = (overrides: Partial<WorkOrderCrew> = {}): WorkOrderCrew => ({
 });
 
 describe('CrewSections', () => {
-  it('세션마다 시작·종료와 참여자 표를 둔다', () => {
+  /* 시작 ~ 종료는 표 제목 줄에 잇는다 — 세션마다 상자를 하나 더 세우지 않는다. 끝나지 않은 세션은 「진행」이다. */
+  it('세션마다 제목 줄에 시작 ~ 종료를 적고 참여자 표를 둔다', () => {
     render(<CrewSections crew={crew()} isLoading={false} isError={false} />);
 
     const block = screen.getByRole('region', { name: t.sessions.session(1) });
-    expect(within(block).getByText(t.sessions.ongoing)).toBeInTheDocument();
+    expect(
+      within(block).getByText(t.sessions.range('2026-10-20 06:00', t.sessions.ongoing)),
+    ).toBeInTheDocument();
+    expect(block.querySelector('.info-facts')).toBeNull();
     const table = within(block).getByRole('table');
     expect(
       within(table)
@@ -120,6 +124,25 @@ describe('CrewSections', () => {
 
     rerender(<CrewSections crew={crew({ defectTypes: [] })} isLoading={false} isError={false} />);
     expect(section().getByText(t.defectTypes.empty)).toBeInTheDocument();
+  });
+
+  /* 실적이 없는 지시는 빈 표 둘이 창 절반을 차지했다 — 머리만 있는 표 대신 한 줄로 적는다. */
+  it('내역이 없는 구획은 빈 표를 세우지 않고 한 줄로 적는다', () => {
+    render(
+      <CrewSections
+        crew={crew({ workerResults: [], defectTypes: [] })}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+
+    for (const heading of [t.workerResults.heading, t.defectTypes.heading]) {
+      const section = within(screen.getByRole('region', { name: heading }));
+
+      expect(section.queryByRole('table')).not.toBeInTheDocument();
+      expect(section.getByRole('heading', { name: heading })).toBeInTheDocument();
+    }
+    expect(screen.getByText(t.workerResults.empty)).toBeInTheDocument();
   });
 
   it('이름·사번을 모르면 내부 번호 대신 「알 수 없음」이다', () => {

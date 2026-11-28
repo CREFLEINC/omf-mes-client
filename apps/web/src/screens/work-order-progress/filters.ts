@@ -10,10 +10,14 @@ import { parseSort, type SortState, toSortParam } from './sort';
 export interface ProgressFilters extends PeriodInput {
   productionLineId: string;
   statusCode: string;
-  productionOrderId: string;
+  /** 공정. 계약의 `processId`다 — 서버가 Routing 공정을 거쳐 잇는다. */
+  processId: string;
   /** W/O 번호 검색. 계약의 `q`다. */
   keyword: string;
 }
+
+/** 보기 — 같은 조회 결과를 표로 보거나 날짜 축 일정으로 본다. */
+export type ProgressView = 'table' | 'timeline';
 
 /** 스펙 레이아웃이 「128건 중 1–50」으로 적었다. */
 export const PAGE_SIZE = 50;
@@ -23,13 +27,31 @@ export interface ProgressListQuery {
   plannedStartTo: string;
   productionLineId?: number;
   statusCode?: string;
-  productionOrderId?: number;
+  processId?: number;
   q?: string;
   sort: ReturnType<typeof toSortParam>;
   page?: number;
   size: number;
   /** 실적 누계를 함께 받는다 — 목록의 양품·불량·달성률이 여기서 온다. */
   withProgress: true;
+  /** 요약 집계를 함께 받는다 — 조건 전체 기준이고 목록과 같은 트랜잭션에서 온다. */
+  withSummary: true;
+}
+
+/**
+ * 상태 칩의 건수만 묻는 조회 — 걸린 조건에서 **상태만 뺀** 것이다.
+ *
+ * 상태를 고른 채로 받은 요약은 그 상태 하나만 세어 온다. 다른 상태 칩의 건수를 지우지 않으려면
+ * 상태 없는 요약을 한 번 더 받아야 한다. 줄은 필요 없어 한 건만 받는다.
+ */
+export interface StatusCountQuery {
+  plannedStartFrom: string;
+  plannedStartTo: string;
+  productionLineId?: number;
+  processId?: number;
+  q?: string;
+  size: 1;
+  withSummary: true;
 }
 
 const KEYS = {
@@ -37,11 +59,12 @@ const KEYS = {
   to: 'to',
   productionLineId: 'line',
   statusCode: 'st',
-  productionOrderId: 'po',
+  processId: 'proc',
   keyword: 'q',
   sort: 'sort',
   page: 'page',
   selected: 'workOrderId',
+  view: 'view',
 } as const;
 
 /**
@@ -71,7 +94,7 @@ const dateOf = (value: string | null): string => {
 /**
  * 주소에서 조회 조건을 읽는다.
  *
- * 기간이 비었거나 쓸 수 없는 값이면 **최근 한 달로 되돌린다** — L-3이 기간을 비울 수 없게 하므로
+ * 기간이 비었거나 쓸 수 없는 값이면 **기본 기간(오늘 앞뒤 14일)으로 되돌린다** — L-3이 기간을 비울 수 없게 하므로
  * 「조건 없는 조회」라는 상태를 만들지 않는다. `today`를 밖에서 받는 이유는 감지기가 실행하는
  * 날에 따라 결과가 달라지지 않게 하기 위해서다.
  */
@@ -85,10 +108,14 @@ export const readFilters = (params: URLSearchParams, today: Date): ProgressFilte
     ...period,
     productionLineId: identifierOf(params.get(KEYS.productionLineId)),
     statusCode: params.get(KEYS.statusCode)?.trim() ?? '',
-    productionOrderId: identifierOf(params.get(KEYS.productionOrderId)),
+    processId: identifierOf(params.get(KEYS.processId)),
     keyword: params.get(KEYS.keyword)?.trim() ?? '',
   };
 };
+
+/** 주소의 보기. 적히지 않았거나 모르는 값이면 표다. */
+export const readView = (params: URLSearchParams): ProgressView =>
+  params.get(KEYS.view) === 'timeline' ? 'timeline' : 'table';
 
 export const readSort = (params: URLSearchParams, period: PeriodInput): SortState =>
   parseSort(params.get(KEYS.sort), period);
@@ -108,11 +135,21 @@ const optionalNumber = (raw: string): number | undefined => (raw === '' ? undefi
 
 const optionalText = (raw: string): string | undefined => (raw === '' ? undefined : raw);
 
+/** 상태를 뺀 나머지 조건 — 목록 조회와 상태 칩 건수 조회가 함께 쓴다. */
+const scopeOf = (
+  filters: ProgressFilters,
+): Pick<ProgressListQuery, 'productionLineId' | 'processId' | 'q'> => ({
+  ...(optionalNumber(filters.productionLineId) === undefined
+    ? {}
+    : { productionLineId: Number(filters.productionLineId) }),
+  ...(optionalNumber(filters.processId) === undefined
+    ? {}
+    : { processId: Number(filters.processId) }),
+  ...(optionalText(filters.keyword) === undefined ? {} : { q: filters.keyword }),
+});
+
 /**
  * 서버로 보낼 조회 조건. **기간이 막히면 `null`** — 막았는데 요청이 나가는 상태를 만들지 않는다.
- *
- * ⛔ **공정으로 거르는 조건을 만들지 않는다.** 계약에 그 파라미터가 없고 요구서의 액션표에도
- * 없다. 자리만 만들어 두면 「고장 났나」로 읽힌다.
  */
 export const toProgressListQuery = (
   filters: ProgressFilters,
@@ -128,18 +165,35 @@ export const toProgressListQuery = (
   return {
     plannedStartFrom: period.bounds.from,
     plannedStartTo: period.bounds.to,
-    ...(optionalNumber(filters.productionLineId) === undefined
-      ? {}
-      : { productionLineId: Number(filters.productionLineId) }),
+    ...scopeOf(filters),
     ...(optionalText(filters.statusCode) === undefined ? {} : { statusCode: filters.statusCode }),
-    ...(optionalNumber(filters.productionOrderId) === undefined
-      ? {}
-      : { productionOrderId: Number(filters.productionOrderId) }),
-    ...(optionalText(filters.keyword) === undefined ? {} : { q: filters.keyword }),
     sort: toSortParam(sort, filters),
     ...(page > 1 ? { page } : {}),
     size,
     withProgress: true,
+    withSummary: true,
+  };
+};
+
+/**
+ * 상태 칩 건수 조회. **상태를 고르지 않았으면 `null`** — 그때는 목록의 요약이 이미 상태 전체를 센 것이라
+ * 다시 묻지 않는다. 기간이 막혔을 때도 `null`.
+ */
+export const toStatusCountQuery = (
+  filters: ProgressFilters,
+  offsetMinutes: number,
+): StatusCountQuery | null => {
+  if (filters.statusCode === '') return null;
+
+  const period = resolvePeriod(filters, offsetMinutes);
+  if (period.kind !== 'ready') return null;
+
+  return {
+    plannedStartFrom: period.bounds.from,
+    plannedStartTo: period.bounds.to,
+    ...scopeOf(filters),
+    size: 1,
+    withSummary: true,
   };
 };
 
@@ -159,7 +213,7 @@ export const toAppliedSearchParams = (
   replace(next, KEYS.to, dateOf(filters.to));
   replace(next, KEYS.productionLineId, filters.productionLineId.trim());
   replace(next, KEYS.statusCode, filters.statusCode.trim());
-  replace(next, KEYS.productionOrderId, filters.productionOrderId.trim());
+  replace(next, KEYS.processId, filters.processId.trim());
   replace(next, KEYS.keyword, filters.keyword.trim());
   replace(next, KEYS.page, page > 1 ? String(page) : '');
   // 조건이 바뀌면 앞서 고른 W/O는 목록에 없을 수 있다 — 고른 것을 지우고 다시 고르게 한다.
@@ -189,6 +243,20 @@ export const withSort = (current: URLSearchParams, sort: SortState): URLSearchPa
 
   replace(next, KEYS.sort, `${sort.key},${sort.direction}`);
   // 순서가 바뀌면 2쪽의 내용이 달라진다 — 첫 쪽으로 되돌린다.
+  next.delete(KEYS.page);
+
+  return next;
+};
+
+/**
+ * 보기를 바꾼다. 표는 기본이라 적지 않는다.
+ *
+ * 일정 보기는 계획 시작 순으로 다시 받으므로 쪽의 내용이 달라진다 — 첫 쪽으로 되돌린다. 고른 W/O 는 그대로 둔다.
+ */
+export const withView = (current: URLSearchParams, view: ProgressView): URLSearchParams => {
+  const next = new URLSearchParams(current);
+
+  replace(next, KEYS.view, view === 'timeline' ? 'timeline' : '');
   next.delete(KEYS.page);
 
   return next;

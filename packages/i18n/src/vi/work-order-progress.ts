@@ -11,7 +11,8 @@ import type { Translated } from './translated';
  * 빼면 서버 판정처럼 읽힌다.
  */
 export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
-  title: 'Tiến độ W/O',
+  title: 'Tra cứu tiến độ W/O',
+  breadcrumbRoot: 'Quản lý sản xuất',
 
   filters: {
     legend: 'Điều kiện tra cứu',
@@ -19,14 +20,12 @@ export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
     from: 'Ngày bắt đầu',
     to: 'Ngày kết thúc',
     productionLine: 'Dòng',
-    status: 'Trạng thái',
-    productionOrder: 'P/O',
     keyword: 'Số W/O',
-    keywordPlaceholder: 'Một phần của số W/O',
+    keywordPlaceholder: 'Nhập số W/O',
     search: 'Tra cứu',
     reset: 'Đặt lại',
-    chipStatus: (value: string): string => `Trạng thái: ${value}`,
-    chipProductionOrder: (value: string): string => `P/O: ${value}`,
+    process: 'Công đoạn',
+    chipProcess: (value: string): string => `Công đoạn: ${value}`,
 
     /** ⛔ 「고르지 않음」이 아니라 무엇이 조회되는지를 적는다. */
     all: 'Tất cả',
@@ -38,8 +37,6 @@ export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
     /** ⛔ 넓은 기간을 막지 않는다 — 예고이지 금지가 아니다. */
     periodWide: 'Kỳ vượt quá 3 tháng. Tra cứu có thể chậm.',
 
-    statusUnavailable:
-      'Chưa nhận được danh sách giá trị trạng thái. Hiện chưa lọc được theo trạng thái.',
     lookupFailed: 'Chưa nhận được các lựa chọn. Hãy thử làm mới trang.',
 
     optionsTruncated: (shown: number) =>
@@ -53,9 +50,11 @@ export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
     title: 'Danh sách',
     columns: {
       workOrderNo: 'Số W/O',
+      productionLine: 'Dòng',
       itemId: 'Mặt hàng',
       itemCode: 'Mã mặt hàng',
       itemName: 'Tên mặt hàng',
+      process: 'Công đoạn',
       orderQty: 'Lệnh',
       goodQty: 'Đạt',
       defectQty: 'Lỗi',
@@ -78,12 +77,45 @@ export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
     select: (workOrderNo: string) => `Mở chi tiết ${workOrderNo}`,
 
     delayed: 'Trễ',
-    delayReference: 'Trễ là giá trị tham khảo do màn hình tính theo thời điểm cơ sở.',
 
     /** ⛔ 빈칸으로 두면 「정상」으로 읽힌다 — 판정할 수 없다는 뜻을 값 자리에 적는다. */
     delayUnknown: 'Không đánh giá được',
   },
 
+  summary: {
+    label: 'Tóm tắt',
+    total: 'Tổng W/O',
+    countUnit: 'mục',
+    achievementRate: 'Tỷ lệ đạt',
+    goodQty: 'Đạt',
+    defectQty: 'Lỗi',
+    holdQty: 'Tạm giữ',
+    scrapQty: 'Phế liệu',
+    reworkQty: 'Làm lại',
+    delayed: 'Trễ',
+    undeterminable: 'Không đánh giá được',
+    statusLabel: 'Trạng thái',
+    statusAll: 'Tất cả',
+    statusChip: (label: string, count: number): string =>
+      `${label} ${count.toLocaleString('vi-VN')}`,
+  },
+  view: {
+    label: 'Chế độ xem',
+    table: 'Bảng',
+    timeline: 'Lịch trình',
+  },
+  timeline: {
+    title: 'Lịch trình',
+    schedule: 'Lịch trình',
+    legendPlan: 'Khoảng kế hoạch',
+    legendDone: 'Tỷ lệ đã làm',
+    legendWaiting: 'Chưa phát hành',
+    legendLate: 'Khoảng trễ',
+    legendNow: 'Thời điểm cơ sở',
+    planned: (start: string, end: string): string => `Kế hoạch ${start} ~ ${end}`,
+    plannedFrom: (start: string): string => `Bắt đầu kế hoạch ${start}`,
+    noSchedule: 'Không có lịch kế hoạch',
+  },
   page: {
     label: 'Chuyển trang',
     prev: 'Trước',
@@ -98,20 +130,31 @@ export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
   },
 
   detail: {
-    title: 'W/O đã chọn',
+    title: 'Chi tiết W/O',
     close: 'Đóng',
+    prev: 'W/O trước',
+    next: 'W/O sau',
     loading: 'Đang nhận chi tiết.',
     loadError: 'Chưa nhận được chi tiết. Hãy thử lại sau giây lát.',
 
-    workOrderNo: 'Số W/O',
     statusCode: 'Trạng thái',
+    steps: 'Các bước tiến độ',
     orderQty: 'Số lượng lệnh',
-    plannedStartAt: 'Bắt đầu kế hoạch',
-    plannedEndAt: 'Kết thúc kế hoạch',
-    completedAt: 'Hoàn thành',
-    closedAt: 'Đóng',
+    goodQty: 'Đạt',
+    defectQty: 'Lỗi',
+    holdQty: 'Tạm giữ',
+    scrapQty: 'Phế liệu',
+    reworkQty: 'Làm lại',
+    achievementRate: 'Tỷ lệ đạt',
+    process: 'Công đoạn',
+    productionLine: 'Dòng',
+    equipment: 'Thiết bị',
+    productionOrder: 'P/O',
+    plannedPeriod: 'Thời gian kế hoạch',
+    period: (startAt: string, endAt: string): string => `${startAt} ~ ${endAt}`,
     remarks: 'Ghi chú',
 
+    noRecords: 'Không có phiên làm việc, kết quả, ghi nhận lỗi, vật tư thay đổi 4M.',
     crewLoading: 'Đang nhận phiên làm việc và kết quả theo người làm.',
     crewLoadError: 'Chưa nhận được phiên làm việc và kết quả theo người làm.',
     sessionsTruncated: 'Không tải được một phần phiên làm việc.',
@@ -122,8 +165,7 @@ export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
     sessions: {
       heading: 'Phiên làm việc',
       session: (sessionNo: number): string => `Phiên ${String(sessionNo)}`,
-      startedAt: 'Bắt đầu',
-      endedAt: 'Kết thúc',
+      range: (startedAt: string, endedAt: string): string => `${startedAt} ~ ${endedAt}`,
       ongoing: 'Đang làm',
       empty: 'Không có phiên làm việc.',
       noParticipants: 'Không có người tham gia.',

@@ -7,11 +7,14 @@ import {
   readPage,
   readSelectedWorkOrderId,
   toAppliedSearchParams,
+  readView,
   toProgressListQuery,
+  toStatusCountQuery,
   withPage,
   withPeriod,
   withSelectedWorkOrder,
   withSort,
+  withView,
 } from './filters';
 import { DEFAULT_SORT, type SortState } from './sort';
 
@@ -25,7 +28,7 @@ const filters = (overrides: Partial<ProgressFilters> = {}): ProgressFilters => (
   ...NARROW,
   productionLineId: '',
   statusCode: '',
-  productionOrderId: '',
+  processId: '',
   keyword: '',
   ...overrides,
 });
@@ -39,7 +42,7 @@ const queryOf = (
 describe('readFilters', () => {
   it('주소에서 조건을 읽는다', () => {
     const read = readFilters(
-      params('from=2026-08-01&to=2026-08-30&line=7&st=SYN_RUN&po=31&q=WO-1'),
+      params('from=2026-08-01&to=2026-08-30&line=7&st=SYN_RUN&proc=41&q=WO-1'),
       TODAY,
     );
 
@@ -48,21 +51,30 @@ describe('readFilters', () => {
       to: '2026-08-30',
       productionLineId: '7',
       statusCode: 'SYN_RUN',
-      productionOrderId: '31',
+      processId: '41',
       keyword: 'WO-1',
     });
   });
 
-  /* ⛔ L-3 — 「조건 없는 조회」라는 상태를 만들지 않는다. 비면 최근 한 달로 되돌린다. */
+  /* P/O 조건은 걷었다(사용자 지시 2026-11-28) — 옛 주소에 남은 `po` 는 읽지 않는다. */
+  it('⛔ P/O 조건을 읽지 않는다', () => {
+    const read = readFilters(params('from=2026-08-01&to=2026-08-30&po=31'), TODAY);
+
+    expect(read).not.toHaveProperty('productionOrderId');
+    expect(toProgressListQuery(read, DEFAULT_SORT, 1, KST)).not.toHaveProperty('productionOrderId');
+  });
+
+  /* ⛔ L-3 — 「조건 없는 조회」라는 상태를 만들지 않는다. 비면 기본 기간(오늘 앞뒤 14일)으로 되돌린다. */
   it.each([
     ['빈 주소', ''],
     ['기간 절반만', 'from=2026-08-01'],
     ['달력에 없는 날', 'from=2026-02-31&to=2026-03-05'],
     ['역순', 'from=2026-08-30&to=2026-08-01'],
-  ])('⛔ %s 이면 최근 한 달로 되돌린다', (_name, search) => {
+  ])('⛔ %s 이면 기본 기간으로 되돌린다', (_name, search) => {
     const read = readFilters(params(search), TODAY);
 
-    expect({ from: read.from, to: read.to }).toEqual(NARROW);
+    /* 오늘(08-30)에서 앞뒤로 14일씩. */
+    expect({ from: read.from, to: read.to }).toEqual({ from: '2026-08-16', to: '2026-09-13' });
   });
 
   it.each([
@@ -90,6 +102,11 @@ describe('toProgressListQuery', () => {
     expect(queryOf()?.withProgress).toBe(true);
   });
 
+  /* 요약은 조건 전체 기준이고 목록과 같은 트랜잭션에서 온다 — 화면이 이 쪽의 줄을 더해 만들지 않는다. */
+  it('요약 집계를 함께 받는다 — 요약 줄과 상태 칩의 건수가 여기서 온다', () => {
+    expect(queryOf()?.withSummary).toBe(true);
+  });
+
   it(`한 쪽에 ${String(PAGE_SIZE)}건을 받는다`, () => {
     expect(queryOf()?.size).toBe(PAGE_SIZE);
   });
@@ -101,7 +118,7 @@ describe('toProgressListQuery', () => {
   it('고른 조건만 싣는다 — 비운 칸은 키 자체를 보내지 않는다', () => {
     const query = queryOf();
 
-    for (const key of ['productionLineId', 'statusCode', 'productionOrderId', 'q']) {
+    for (const key of ['productionLineId', 'statusCode', 'processId', 'q']) {
       expect(query).not.toHaveProperty(key);
     }
   });
@@ -111,13 +128,13 @@ describe('toProgressListQuery', () => {
       queryOf({
         productionLineId: '7',
         statusCode: 'SYN_RUN',
-        productionOrderId: '31',
+        processId: '41',
         keyword: 'WO-1',
       }),
     ).toMatchObject({
       productionLineId: 7,
       statusCode: 'SYN_RUN',
-      productionOrderId: 31,
+      processId: 41,
       q: 'WO-1',
     });
   });
@@ -127,13 +144,63 @@ describe('toProgressListQuery', () => {
     expect(queryOf({}, DEFAULT_SORT, 2)?.page).toBe(2);
   });
 
-  /* ⛔ 계약에 공정 파라미터가 없다. 자리만 만들어 두면 「고장 났나」로 읽힌다. */
-  it('⛔ 공정으로 거르는 조건을 만들지 않는다', () => {
-    const query = queryOf();
+  /* ⛔ 공정은 계약의 `processId` 하나로만 건다 — Routing 공정 번호로 화면이 거르지 않는다(쪽 단위라 틀린다). */
+  it('⛔ 공정 조건은 processId 로만 싣는다', () => {
+    const query = queryOf({ processId: '41' });
 
-    for (const key of ['processId', 'routingOperationId', 'operationId']) {
+    for (const key of ['routingOperationId', 'operationId']) {
       expect(query).not.toHaveProperty(key);
     }
+  });
+});
+
+describe('toStatusCountQuery', () => {
+  /* 고르지 않았으면 목록의 요약이 이미 상태 전체를 센 것이다 — 같은 것을 두 번 묻지 않는다. */
+  it('상태를 고르지 않았으면 묻지 않는다', () => {
+    expect(toStatusCountQuery(filters(), KST)).toBeNull();
+  });
+
+  it('⛔ 상태만 빼고 나머지 조건은 그대로 싣는다 — 다른 상태 칩의 건수가 남는다', () => {
+    const query = toStatusCountQuery(
+      filters({ statusCode: 'SYN_RUN', productionLineId: '7', processId: '41', keyword: 'WO-1' }),
+      KST,
+    );
+
+    expect(query).toEqual({
+      plannedStartFrom: '2026-08-01T00:00:00+09:00',
+      plannedStartTo: '2026-08-31T00:00:00+09:00',
+      productionLineId: 7,
+      processId: 41,
+      q: 'WO-1',
+      size: 1,
+      withSummary: true,
+    });
+  });
+
+  it('⛔ 기간이 막히면 묻지 않는다', () => {
+    expect(toStatusCountQuery(filters({ statusCode: 'SYN_RUN', from: '' }), KST)).toBeNull();
+  });
+});
+
+describe('보기', () => {
+  it('주소에 적히지 않았거나 모르는 값이면 표다', () => {
+    expect(readView(params(''))).toBe('table');
+    expect(readView(params('view=cards'))).toBe('table');
+    expect(readView(params('view=timeline'))).toBe('timeline');
+  });
+
+  it('일정으로 바꾸면 주소에 적고, 표는 기본이라 지운다', () => {
+    expect(withView(params('q=WO-1'), 'timeline').toString()).toBe('q=WO-1&view=timeline');
+    expect(withView(params('q=WO-1&view=timeline'), 'table').toString()).toBe('q=WO-1');
+  });
+
+  /* 일정 보기는 계획 시작 순으로 다시 받는다 — 2쪽의 내용이 달라진다. 고른 W/O 는 그대로다. */
+  it('⛔ 보기를 바꾸면 첫 쪽으로 되돌리되 고른 W/O 는 놓지 않는다', () => {
+    const next = withView(params('page=3&workOrderId=7001&sort=workOrderNo,desc'), 'timeline');
+
+    expect(next.has('page')).toBe(false);
+    expect(next.get('workOrderId')).toBe('7001');
+    expect(next.get('sort')).toBe('workOrderNo,desc');
   });
 });
 

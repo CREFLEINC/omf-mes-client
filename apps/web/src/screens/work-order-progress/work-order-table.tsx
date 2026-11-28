@@ -8,13 +8,14 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
-import { InfoTip } from '../../patterns/info-tip';
 import { ROW_PICK_CLASS, rowPickHandlers } from '../../patterns/row-pick';
 import { splitCodeName } from '../../patterns/split-code-name';
 
 import type { PeriodInput } from './period';
+import { RateCell } from './rate-cell';
 import type { WorkOrderRow } from './row-view';
 import { isSortKeyAllowed, type SortKey, type SortState } from './sort';
+import { DelayChip, StatusChip } from './status-chips';
 
 export interface WorkOrderTableProps {
   rows: WorkOrderRow[];
@@ -25,6 +26,8 @@ export interface WorkOrderTableProps {
   isError: boolean;
   /** 식별자를 사람이 읽는 이름으로. 이름표를 만드는 일은 화면이 맡는다. */
   itemLabel: (itemIdText: string) => string;
+  /** 라인 번호를 「코드 · 이름」으로. 못 찾으면 「이름 확인 중」 — 숫자 번호를 보이지 않는다. */
+  lineLabel: (lineIdText: string) => string;
   /**
    * 상태 코드를 마스터의 표시명으로.
    *
@@ -44,6 +47,10 @@ const toTableSort = (sort: SortState): TableSortState => ({
   direction: sort.direction === 'desc' ? 'descending' : 'ascending',
 });
 
+/** 수량 한 칸 — 0 은 흐리게 적어 값이 있는 칸이 먼저 보이게 한다. */
+const qtyCell = (text: string) =>
+  text === '0' ? <span className="work-order-progress-zero">{text}</span> : text;
+
 /**
  * 진행현황 목록.
  *
@@ -57,8 +64,9 @@ const toTableSort = (sort: SortState): TableSortState => ({
  * ⛔ **정렬할 수 없는 열은 머리를 누를 수 없게 둔다.** 눌러도 안 되는 머리를 두면 사용자가
  * 고장으로 읽는다 — 기간이 넓을 때의 달성률이 그렇다(L-4).
  *
- * ⚠ **P/O·공정 열이 없다.** 응답이 식별자만 주어 이름을 얻으려면 줄마다 서버를 다시 불러야
- * 한다(omf-mes#265). 없는 이유를 목록 머리에 적는다(A-11).
+ * **보류 · 스크랩 · 재작업 열은 이 쪽에 값이 있을 때만 연다.** 실적이 없는 지시는 0 이 다섯 번 되풀이돼
+ * 표가 읽히지 않는다. 양품 · 불량은 늘 두고, 0 은 흐리게 적어 값이 있는 칸이 먼저 보이게 한다.
+ * 상세 창의 작업자별 실적과 같은 규칙이다.
  */
 export const WorkOrderTable = ({
   rows,
@@ -67,6 +75,7 @@ export const WorkOrderTable = ({
   isLoading,
   isError,
   itemLabel,
+  lineLabel,
   statusLabel,
   onSort,
   onSelect,
@@ -100,6 +109,20 @@ export const WorkOrderTable = ({
         </Button>
       ),
     },
+    /*
+     * 라인 — W/O 번호 바로 뒤(사용자 지시 2026-11-28). 응답은 라인 번호만 주어 조회 조건의 라인 이름표로 이름을 푼다.
+     * 칸에는 이름만 적는다. 라인이 정해지지 않은 지시는 「—」다.
+     */
+    {
+      key: 'productionLine',
+      header: t.columns.productionLine,
+      render: (row) => {
+        if (row.productionLineIdText === null) return t.blank;
+
+        const { code, name } = splitCodeName(lineLabel(row.productionLineIdText), '');
+        return name === '' ? code : name;
+      },
+    },
     /* 품목코드 · 품목명은 두 열(사용자 지시 2026-11-24). */
     {
       key: 'itemId',
@@ -111,68 +134,98 @@ export const WorkOrderTable = ({
       header: t.columns.itemName,
       render: (row) => splitCodeName(itemLabel(row.itemIdText), t.blank).name,
     },
+    { key: 'process', header: t.columns.process, render: (row) => row.processText },
     {
       key: 'orderQty',
       header: t.columns.orderQty,
       align: 'end',
       render: (row) => row.orderQtyText,
     },
-    { key: 'goodQty', header: t.columns.goodQty, align: 'end', render: (row) => row.goodQtyText },
+    {
+      key: 'goodQty',
+      header: t.columns.goodQty,
+      align: 'end',
+      render: (row) => qtyCell(row.goodQtyText),
+    },
     {
       key: 'defectQty',
       header: t.columns.defectQty,
       align: 'end',
-      render: (row) => row.defectQtyText,
+      render: (row) => qtyCell(row.defectQtyText),
     },
-    { key: 'holdQty', header: t.columns.holdQty, align: 'end', render: (row) => row.holdQtyText },
-    {
-      key: 'scrapQty',
-      header: t.columns.scrapQty,
-      align: 'end',
-      render: (row) => row.scrapQtyText,
-    },
-    {
-      key: 'reworkQty',
-      header: t.columns.reworkQty,
-      align: 'end',
-      render: (row) => row.reworkQtyText,
-    },
+    ...(rows.some((row) => row.hasHoldQty)
+      ? [
+          {
+            key: 'holdQty',
+            header: t.columns.holdQty,
+            align: 'end',
+            render: (row) => qtyCell(row.holdQtyText),
+          } satisfies Column<WorkOrderRow>,
+        ]
+      : []),
+    ...(rows.some((row) => row.hasScrapQty)
+      ? [
+          {
+            key: 'scrapQty',
+            header: t.columns.scrapQty,
+            align: 'end',
+            render: (row) => qtyCell(row.scrapQtyText),
+          } satisfies Column<WorkOrderRow>,
+        ]
+      : []),
+    ...(rows.some((row) => row.hasReworkQty)
+      ? [
+          {
+            key: 'reworkQty',
+            header: t.columns.reworkQty,
+            align: 'end',
+            render: (row) => qtyCell(row.reworkQtyText),
+          } satisfies Column<WorkOrderRow>,
+        ]
+      : []),
     {
       key: 'achievementRate',
       header: t.columns.achievementRate,
-      align: 'end',
       sortable: sortable('achievementRate'),
-      render: (row) => row.achievementRateText,
+      render: (row) => (
+        <RateCell
+          label={t.columns.achievementRate}
+          percent={row.achievementPercent}
+          text={row.achievementRateText}
+        />
+      ),
     },
     {
       key: 'statusCode',
       header: t.columns.statusCode,
+      align: 'center',
       sortable: sortable('statusCode'),
-      render: (row) => statusLabel(row.statusCode),
+      render: (row) => (
+        <StatusChip label={statusLabel(row.statusCode)} statusCode={row.statusCode} />
+      ),
     },
     {
       key: 'plannedEndAt',
       header: t.columns.plannedEndAt,
-      render: (row) => row.plannedEndAtText,
+      /* 넘긴 계획 종료는 지연 칩과 같은 색으로 — 어느 날짜를 넘겼는지가 바로 보인다. */
+      render: (row) =>
+        row.delay === 'delayed' ? (
+          <span className="work-order-progress-late">{row.plannedEndAtText}</span>
+        ) : (
+          row.plannedEndAtText
+        ),
     },
     {
       key: 'delay',
       header: t.columns.delay,
-      /*
-       * ⛔ 「모름」을 빈칸으로 두지 않는다. 빈칸은 「정상」으로 읽히는데, 계획 종료가 없는
-       * 지시는 늦었는지 아닌지 **판정할 수 없는** 것이다(스펙 §5-3).
-       */
-      render: (row) => {
-        if (row.delay === 'unknown') return t.delayUnknown;
-        return row.delay === 'delayed' ? t.delayed : t.blank;
-      },
+      align: 'center',
+      render: (row) => <DelayChip delay={row.delay} />,
     },
   ];
 
   if (isError) {
     return (
       <section className="pane work-order-progress-pane" aria-label={t.title}>
-        <h2 className="pane-title">{t.title}</h2>
         <div className="banner-slot">
           <AlertBanner variant="error">{t.loadError}</AlertBanner>
         </div>
@@ -182,12 +235,7 @@ export const WorkOrderTable = ({
 
   return (
     <section className="pane work-order-progress-pane" aria-label={t.title}>
-      <h2 className="pane-title work-order-progress-title">
-        {t.title}
-        {/* ⛔ 지연이 서버 판정이 아니라는 사실은 ⓘ 로 둔다(omf-mes#265 · 관리웹 정리 시안 A). */}
-        <InfoTip text={t.delayReference} />
-      </h2>
-
+      {/* 구획 제목 「목록」은 두지 않는다 — 표 하나뿐인 구획이라 제목이 보태는 것이 없다. 이름은 접근 이름으로만. */}
       {isLoading && <p role="status">{t.loading}</p>}
 
       <div className="work-order-progress-table" {...rowPickHandlers}>

@@ -604,6 +604,7 @@ POP 규칙은 다음을 전제로 한다. 관리웹과 같은 글자 밀도, 102
 | `BulkResult`                     | `apps/web/src/patterns/bulk-result/`          | 일괄 동작 결과 영역(건수 요약, 건별 줄, 결과별 목록 좁히기)과 결과 칩                                                                                                                            | C-18                  |
 | `AutoValue`(보류)                | `apps/web/src/patterns/auto-value/`           | 자동으로 채운 값의 「자동」 표시와 출처. 서버 배정 출처 칸이 생기면 만든다                                                                                                                       | C-17                  |
 | `CountChip`                      | `apps/web/src/patterns/count-chip/`           | 작업함 머리 조건 칩(상태 이름과 건수, 누르면 조건 변경, 선택은 굵은 테두리)                                                                                                                      | C-17, C-19            |
+| `Segmented` | `apps/web/src/patterns/segmented/` | 붙임 단추(한 테두리 안의 칸 중 하나를 고름, 고른 칸은 진한 채움, 아이콘 선택). 같은 자료의 보기 전환(표 / 일정)에 쓴다 | C-19 |
 | `PopHeader`, `PopActionBar`      | `apps/web/src/patterns/pop-*`                 | POP 공용 머리줄과 하단 바                                                                                                                                                                        | C-11                  |
 
 **DS 요청 목록.** 아래는 화면 감싸개로 먼저 만들고 디자인 시스템에 요청할 기능이다. 반영되면 감싸개를 걷어 낸다. 요청은 디자인 시스템 저장소 이슈로 낸다.
@@ -614,6 +615,7 @@ POP 규칙은 다음을 전제로 한다. 관리웹과 같은 글자 밀도, 102
 | 완료 단계 클릭                                               | `Stepper`                 | `ProcessStepper`    | T-W-C |
 | 기간 모드에서 시작일만 고르고 닫으면 「시작일부터」          | `DatePicker`              | 화면 감싸개(미구현) | C-12  |
 | 선택 여부와 관계없이 같은 모양의 조건 칩                     | `Chip` 필터형             | `CountChip`         | C-19  |
+| 칸이 붙은 보기 전환 단추 | 새 부품(SegmentedButton) | `Segmented` | C-19 |
 | 24시간제 시각 입력                                           | `DatePicker` 또는 새 부품 | `DateTimeField`     | C-12  |
 
 - 행 클릭과 오른쪽 고정 열은 DS `Table`에, 단계 클릭은 DS `Stepper`에 들어가야 할 기능이다. `SelectableTable`과 `ProcessStepper`는 DS 요청이 반영될 때까지의 임시 감싸개이고, 반영되면 걷어 낸다. DS 요청은 첫 사용 화면을 만들 때 함께 낸다.

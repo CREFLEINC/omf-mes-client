@@ -16,7 +16,7 @@ describe('WorkOrderProgressScreen — 주소 수명', () => {
     renderScreen();
 
     await waitFor(() => {
-      expect(address()).toHaveTextContent('from=2026-06-16');
+      expect(address()).toHaveTextContent('from=2026-07-01');
     });
   });
 
@@ -32,9 +32,9 @@ describe('WorkOrderProgressScreen — 주소 수명', () => {
     renderScreen({ route: `${WORK_ORDER_PROGRESS_PATH}${search}` });
 
     await waitFor(() => {
-      expect(address()).toHaveTextContent('from=2026-06-16');
+      expect(address()).toHaveTextContent('from=2026-07-01');
     });
-    expect(address()).toHaveTextContent('to=2026-07-15');
+    expect(address()).toHaveTextContent('to=2026-07-29');
   });
 
   /*

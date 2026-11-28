@@ -1,7 +1,8 @@
-import { Button, Field, TextField } from '@crefle/web-ui';
+import { Button, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type FormEvent, useEffect, useId, useState } from 'react';
 
+import { DateRangeFields } from '../../patterns/date-range-fields';
 import {
   FilterMoreButton,
   HiddenFilterChips,
@@ -12,18 +13,16 @@ import { FilterSelect } from './filter-select';
 import type { ProgressFilters } from './filters';
 import { LOOKUP_SIZE, type NameLookup } from './lookups';
 import { resolvePeriod } from './period';
-import type { StatusOptions } from './status-options';
 
 const t = messages.workOrderProgress.filters;
 
 export interface ProgressFilterBarProps {
   /** 지금 조회에 걸려 있는 조건. 주소에서 읽은 값이다. */
   appliedFilters: ProgressFilters;
-  /** 「초기화」가 되돌리는 처음 값(최근 한 달, 나머지 비움). 이와 다를 때만 「초기화」가 보인다. */
+  /** 「초기화」가 되돌리는 처음 값(오늘 앞뒤 14일, 나머지 비움). 이와 다를 때만 「초기화」가 보인다. */
   initialFilters: ProgressFilters;
   lineLookup: NameLookup;
-  productionOrderLookup: NameLookup;
-  statusOptions: StatusOptions;
+  processLookup: NameLookup;
   onSearch: (filters: ProgressFilters) => void;
   onReset: () => void;
 }
@@ -52,18 +51,24 @@ const truncationNote = (lookup: NameLookup): string | null =>
  * ⛔ **기간을 비운 채로는 조회할 수 없다**(L-3). 무제한 조회를 허용하면 실적이 쌓인 뒤
  * 목록이 멎는다. 다만 **넓은 기간은 막지 않고 경고만 한다** — 넓게 봐야 하는 일이 실제로 있다.
  *
- * ⛔ **공정 칸을 만들지 않는다.** 계약에 공정으로 거를 파라미터가 없다. 자리만 만들어 두고
- * 늘 비활성이면 「고장 났나」로 읽힌다 — 대신 **한 문장으로 적는다**(A-11).
- *
- * **보이는 조건은 셋이다**(C-6) — 기간 · 라인 · W/O 번호. 상태와 P/O 는 「조건 더보기」에 접고,
+ * **보이는 조건은 셋이다**(C-6) — 기간 · 라인 · W/O 번호. 공정은 「조건 더보기」에 접고,
  * 접힌 칸에 걸린 조건은 칩으로만 알린다. 「초기화」는 처음 값과 다를 때만 보인다.
+ * 조건 칸과 [조회] [초기화] [조건 더보기]는 한 줄에 놓인다 — 단추는 줄 오른쪽 끝이다.
+ * 펼친 칸도 줄을 바꾸지 않고 W/O 번호 바로 뒤에 이어진다.
+ *
+ * 라인은 선택지 수와 관계없이 검색창이 있는 선택 칸이고, W/O 번호는 돋보기가 있는 검색 칸이다.
+ * 칸 바탕은 조회 묶음 공용 바탕(`filter-field-surface`)이다 — 카드의 회색이 칸에 비치지 않는다.
+ *
+ * ⛔ **P/O 칸을 두지 않는다**(사용자 지시 2026-11-28). P/O 번호는 상세 창에서 본다.
+ *
+ * ⛔ **상태 칸을 두지 않는다.** 상태는 표 위 조건 칩이 맡는다(C-17 — 조회 조건 영역에 같은 칸을 두지 않는다).
+ * 이 줄의 [조회]는 걸려 있는 상태를 그대로 싣고, [초기화]는 상태까지 푼다.
  */
 export const ProgressFilterBar = ({
   appliedFilters,
   initialFilters,
   lineLookup,
-  productionOrderLookup,
-  statusOptions,
+  processLookup,
   onSearch,
   onReset,
 }: ProgressFilterBarProps) => {
@@ -71,11 +76,11 @@ export const ProgressFilterBar = ({
   const periodNoteId = useId();
   const more = useFilterMore();
 
-  const { from, to, productionLineId, statusCode, productionOrderId, keyword } = appliedFilters;
+  const { from, to, productionLineId, statusCode, processId, keyword } = appliedFilters;
 
   useEffect(() => {
-    setDraft({ from, to, productionLineId, statusCode, productionOrderId, keyword });
-  }, [from, to, productionLineId, statusCode, productionOrderId, keyword]);
+    setDraft({ from, to, productionLineId, statusCode, processId, keyword });
+  }, [from, to, productionLineId, statusCode, processId, keyword]);
 
   /* 오프셋은 「막을지」와 「경고할지」에 영향을 주지 않는다 — 경계 문자열을 만들 때만 쓴다. */
   const period = resolvePeriod(draft, 0);
@@ -88,59 +93,37 @@ export const ProgressFilterBar = ({
   };
 
   const isChanged = hasChangedFilters(initialFilters, draft, appliedFilters);
-  /* 접힌 칸(상태 · P/O)의 조건만 칩으로 — 보이는 칸의 값을 칩으로 겹쳐 적지 않는다. */
-  const hiddenChips = [
-    ...(statusCode === ''
+  /* 접힌 칸(공정)의 조건만 칩으로 — 보이는 칸의 값을 칩으로 겹쳐 적지 않는다. */
+  const hiddenChips =
+    processId === ''
       ? []
-      : [{ key: 'statusCode' as const, label: t.chipStatus(statusOptions.labelOf(statusCode)) }]),
-    ...(productionOrderId === ''
-      ? []
-      : [
-          {
-            key: 'productionOrderId' as const,
-            label: t.chipProductionOrder(productionOrderLookup.labelOf(productionOrderId)),
-          },
-        ]),
-  ];
+      : [{ key: 'processId' as const, label: t.chipProcess(processLookup.labelOf(processId)) }];
 
   return (
-    <form aria-label={t.legend} className="filter-bar work-order-progress-filter" onSubmit={submit}>
-      <div className="field-cell">
-        {/* 폼 안이라 native required 대신 Field 가 빨간 * 를 그린다(검증·제출 동작 그대로). */}
-        <Field label={t.from} required>
-          {({ controlId }) => (
-            <TextField
-              id={controlId}
-              aria-describedby={blockedReason === null ? undefined : periodNoteId}
-              aria-required
-              type="date"
-              value={draft.from}
-              onChange={(event) => {
-                setDraft((current) => ({ ...current, from: event.target.value }));
-              }}
-            />
-          )}
-        </Field>
-      </div>
+    <form
+      aria-label={t.legend}
+      className="filter-bar filter-field-surface work-order-progress-filter"
+      onSubmit={submit}
+    >
+      {/* 기간은 관리웹 공용 두 칸(시작일 · 종료일) — 달력에서 시작 ≤ 종료를 막는다. 비울 수 없어 지우기 단추는 없다(L-3). */}
+      <DateRangeFields
+        required
+        className="filter-field-sm"
+        describedBy={blockedReason === null ? undefined : periodNoteId}
+        endLabel={t.to}
+        from={draft.from}
+        invalid={blockedReason !== null}
+        startLabel={t.from}
+        to={draft.to}
+        onChange={(nextFrom, nextTo) => {
+          setDraft((current) => ({ ...current, from: nextFrom, to: nextTo }));
+        }}
+      />
 
-      <div className="field-cell">
-        <Field label={t.to} required>
-          {({ controlId }) => (
-            <TextField
-              id={controlId}
-              aria-describedby={blockedReason === null ? undefined : periodNoteId}
-              aria-required
-              type="date"
-              value={draft.to}
-              onChange={(event) => {
-                setDraft((current) => ({ ...current, to: event.target.value }));
-              }}
-            />
-          )}
-        </Field>
-      </div>
-
+      {/* 라인은 선택지가 몇 개든 검색창을 둔다(사용자 지시 2026-11-28) — 공장마다 라인 수가 달라도 쓰는 법이 같다. */}
       <FilterSelect
+        searchable
+        className="filter-field-md"
         label={t.productionLine}
         note={truncationNote(lineLookup)}
         options={lineLookup.options}
@@ -151,42 +134,55 @@ export const ProgressFilterBar = ({
         }}
       />
 
-      <div className="field-cell">
-        <TextField
-          label={t.keyword}
-          placeholder={t.keywordPlaceholder}
-          value={draft.keyword}
-          onChange={(event) => {
-            setDraft((current) => ({ ...current, keyword: event.target.value }));
-          }}
-        />
-      </div>
+      {/* 돋보기가 있는 검색 칸. Enter 는 폼의 [조회]와 같은 길로 나간다 — 칸이 따로 조회를 내지 않는다. */}
+      <SearchInput
+        clearLabel={messages.common.clear}
+        containerClassName="filter-field-md work-order-progress-search"
+        label={t.keyword}
+        placeholder={t.keywordPlaceholder}
+        value={draft.keyword}
+        onChange={(event) => {
+          setDraft((current) => ({ ...current, keyword: event.target.value }));
+        }}
+        onClear={() => {
+          setDraft((current) => ({ ...current, keyword: '' }));
+        }}
+      />
 
-      {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+      {/*
+       * 「조건 더보기」로 펼친 칸은 줄을 바꾸지 않고 W/O 번호 바로 뒤에 잇는다(사용자 지시 2026-11-28).
+       * `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다.
+       */}
       <div id={more.id} className="work-order-progress-filter-more" hidden={!more.isOpen}>
-        <div className="filter-bar work-order-progress-filter">
+        <div className="filter-bar work-order-progress-filter-more-row">
           <FilterSelect
-            label={t.status}
-            note={null}
-            options={statusOptions.options}
-            unavailableReason={statusOptions.isUnavailable ? t.statusUnavailable : null}
-            value={draft.statusCode}
-            onChange={(statusCode) => {
-              setDraft((current) => ({ ...current, statusCode }));
-            }}
-          />
-
-          <FilterSelect
-            label={t.productionOrder}
-            note={truncationNote(productionOrderLookup)}
-            options={productionOrderLookup.options}
-            unavailableReason={lookupReason(productionOrderLookup)}
-            value={draft.productionOrderId}
-            onChange={(productionOrderId) => {
-              setDraft((current) => ({ ...current, productionOrderId }));
+            className="filter-field-md"
+            label={t.process}
+            note={truncationNote(processLookup)}
+            options={processLookup.options}
+            unavailableReason={lookupReason(processLookup)}
+            value={draft.processId}
+            onChange={(nextProcessId) => {
+              setDraft((current) => ({ ...current, processId: nextProcessId }));
             }}
           />
         </div>
+      </div>
+
+      <div className="filter-actions work-order-progress-filter-buttons">
+        <Button
+          aria-describedby={blockedReason === null ? undefined : periodNoteId}
+          disabled={blockedReason !== null}
+          type="submit"
+        >
+          {t.search}
+        </Button>
+        {isChanged && (
+          <Button type="button" variant="outlined" onClick={onReset}>
+            {t.reset}
+          </Button>
+        )}
+        <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
       </div>
 
       <HiddenFilterChips
@@ -197,34 +193,17 @@ export const ProgressFilterBar = ({
         }}
       />
 
-      <div className="work-order-progress-filter-footer">
-        {/* A-11 — 만들지 않은 조건을 한 문장으로 밝힌다. */}
+      {/* 막힌 사유와 넓은 기간 경고는 있을 때만 줄 아래 한 줄로 — 없으면 자리를 차지하지 않는다. */}
+      {blockedReason === null ? null : (
+        <p className="field-error work-order-progress-filter-note" id={periodNoteId}>
+          {blockedReason}
+        </p>
+      )}
 
-        <div className="filter-actions work-order-progress-filter-buttons">
-          <Button
-            aria-describedby={blockedReason === null ? undefined : periodNoteId}
-            disabled={blockedReason !== null}
-            type="submit"
-          >
-            {t.search}
-          </Button>
-          {isChanged && (
-            <Button type="button" variant="outlined" onClick={onReset}>
-              {t.reset}
-            </Button>
-          )}
-          <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
-        </div>
-
-        {blockedReason === null ? null : (
-          <p className="field-error" id={periodNoteId}>
-            {blockedReason}
-          </p>
-        )}
-
-        {/* ⛔ 넓은 기간을 막지 않는다 — 느려질 수 있다는 사실만 미리 알린다. */}
-        {wideWarning === null ? null : <p className="field-note">{wideWarning}</p>}
-      </div>
+      {/* ⛔ 넓은 기간을 막지 않는다 — 느려질 수 있다는 사실만 미리 알린다. */}
+      {wideWarning === null ? null : (
+        <p className="field-note work-order-progress-filter-note">{wideWarning}</p>
+      )}
     </form>
   );
 };

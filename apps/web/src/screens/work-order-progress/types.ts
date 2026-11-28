@@ -6,6 +6,7 @@ import type { components, paths } from '@omf-mes/api-client';
  */
 export type WorkOrder = components['schemas']['WorkOrder'];
 export type WorkOrderProgressFact = components['schemas']['WorkOrderProgress'];
+export type WorkOrderListSummary = components['schemas']['WorkOrderListSummary'];
 
 export type WorkOrderListResponse =
   paths['/production/work-orders']['get']['responses']['200']['content']['application/json'];

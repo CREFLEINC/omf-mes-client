@@ -36,6 +36,8 @@ export interface StubOptions {
   workOrders?: Record<string, unknown>[];
   total?: number;
   listStatus?: number;
+  /** 목록과 함께 줄 요약. 주지 않으면 요약 없이 답한다 — 요약 줄과 건수 없는 화면이다. */
+  summary?: Record<string, unknown>;
 }
 
 const stub = (options: StubOptions = {}): { urls: string[]; fetch: StubFetch } => {
@@ -55,7 +57,20 @@ const stub = (options: StubOptions = {}): { urls: string[]; fetch: StubFetch } =
       return jsonResponse({
         items,
         page: { page, size: 50, total: options.total ?? items.length },
+        ...(options.summary === undefined ? {} : { summary: options.summary }),
       });
+    }
+
+    /* 고른 W/O 의 상세 — 목록의 그 줄을 그대로 돌려준다. */
+    const detailId = /^\/production\/work-orders\/(\d+)$/.exec(url.pathname)?.[1];
+    if (detailId !== undefined) {
+      const found = (options.workOrders ?? [WORK_ORDER]).find(
+        (workOrder) => String(workOrder.workOrderId) === detailId,
+      );
+
+      return found === undefined
+        ? jsonResponse({ message: '없다' }, { status: 404 })
+        : jsonResponse(found);
     }
 
     /*

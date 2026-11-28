@@ -6,7 +6,7 @@ import { messages } from '@omf-mes/i18n';
  * 이 화면이 거는 두 파라미터(`plannedStartFrom`·`plannedStartTo`)는 계약에서 **`date-time`**
  * 이다(실측). 그래서 두 규약이 함께 걸린다.
  *
- * - **L-3** — 기간을 비울 수 없게 하고 기본값을 최근 한 달로 둔다. 무제한 조회를 허용하면
+ * - **L-3** — 기간을 비울 수 없게 하고 기본값을 오늘 앞뒤 14일로 둔다. 무제한 조회를 허용하면
  *   실적이 쌓인 뒤 목록이 멎는다
  * - **L-3-1** — 끝 경계는 **반열림**이다. 「그날까지」를 **익일 00:00:00**으로 보낸다.
  *   `23:59:59`로 닫으면 그 초의 소수점 이하(`23:59:59.5`)가 어느 경계로 잘라도 빠진다
@@ -23,7 +23,8 @@ import { messages } from '@omf-mes/i18n';
 
 const t = messages.workOrderProgress.filters;
 
-export const DEFAULT_PERIOD_DAYS = 30;
+/** 기본 기간이 오늘에서 앞뒤로 뻗는 날 수. 오늘까지 세면 기간은 이 값의 두 배 더하기 하루다. */
+export const DEFAULT_PERIOD_REACH_DAYS = 14;
 
 /** 이 날 수를 넘으면 경고한다 — 막지는 않는다. 3개월을 날로 센 값이다. */
 export const WIDE_PERIOD_DAYS = 92;
@@ -87,15 +88,16 @@ const pad = (value: number, width: number): string => String(value).padStart(wid
 const formatDate = (date: Date): string =>
   `${pad(date.getFullYear(), 4)}-${pad(date.getMonth() + 1, 2)}-${pad(date.getDate(), 2)}`;
 
-/** 오늘을 마지막 날로 두고 `DEFAULT_PERIOD_DAYS`일치를 고른다 — **오늘을 포함해** 센다. */
+/**
+ * 오늘에서 앞뒤로 `DEFAULT_PERIOD_REACH_DAYS`일씩 — 오늘이 기간의 가운데다(사용자 지시 2026-11-28).
+ *
+ * 기간 축이 「계획 시작」이라 앞날에 시작할 지시도 함께 보여야 한다 — 오늘까지만 걸면 내일 시작할 지시가 빠진다.
+ */
 export const defaultPeriod = (today: Date): PeriodInput => {
-  const from = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate() - (DEFAULT_PERIOD_DAYS - 1),
-  );
+  const dayAt = (offset: number): string =>
+    formatDate(new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset));
 
-  return { from: formatDate(from), to: formatDate(today) };
+  return { from: dayAt(-DEFAULT_PERIOD_REACH_DAYS), to: dayAt(DEFAULT_PERIOD_REACH_DAYS) };
 };
 
 /**
@@ -157,6 +159,22 @@ export const resolvePeriod = (input: PeriodInput, offsetMinutes: number): Period
     },
     warning: spanInDays(from, to) > WIDE_PERIOD_DAYS ? t.periodWide : null,
   };
+};
+
+/**
+ * 기간에 든 날들(`YYYY-MM-DD`, 양 끝 포함) — 일정 보기의 날짜 축이다. 막힌 기간이면 빈 배열.
+ *
+ * ⛔ 여기서 시간대를 따지지 않는다 — 날 이름만 센다. 그 날이 어느 순간에 시작하는지는 축을 그리는 쪽이
+ * 공장 시각으로 정한다(`timeline-model.ts`).
+ */
+export const periodDays = (input: PeriodInput): string[] => {
+  const from = parseCalendarDate(input.from);
+  const to = parseCalendarDate(input.to);
+  if (from === null || to === null || input.to < input.from) return [];
+
+  return Array.from({ length: spanInDays(from, to) }, (_unused, index) =>
+    formatDate(new Date(from.year, from.month - 1, from.day + index)),
+  );
 };
 
 /**

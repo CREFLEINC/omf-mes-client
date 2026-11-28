@@ -6,7 +6,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { ProgressFilterBar, type ProgressFilterBarProps } from './filter-bar';
 import type { ProgressFilters } from './filters';
 import { LOOKUP_SIZE, type NameLookup } from './lookups';
-import type { StatusOptions } from './status-options';
 
 const t = messages.workOrderProgress.filters;
 
@@ -15,7 +14,7 @@ const APPLIED: ProgressFilters = {
   to: '2026-07-31',
   productionLineId: '',
   statusCode: '',
-  productionOrderId: '',
+  processId: '',
   keyword: '',
 };
 
@@ -28,21 +27,11 @@ const lookup = (overrides: Partial<NameLookup> = {}): NameLookup => ({
   ...overrides,
 });
 
-const statusOptions = (overrides: Partial<StatusOptions> = {}): StatusOptions => ({
-  options: [{ value: 'SYN_RUN', label: '진행중' }],
-  labelOf: () => '',
-  isPending: false,
-  isError: false,
-  isUnavailable: false,
-  ...overrides,
-});
-
 const propsOf = (overrides: Partial<ProgressFilterBarProps> = {}): ProgressFilterBarProps => ({
   appliedFilters: APPLIED,
   initialFilters: APPLIED,
   lineLookup: lookup(),
-  productionOrderLookup: lookup({ options: [{ value: '31', label: 'SYN-PO-0031' }] }),
-  statusOptions: statusOptions(),
+  processLookup: lookup({ options: [{ value: '41', label: '합성 공정' }] }),
   onSearch: vi.fn(),
   onReset: vi.fn(),
   ...overrides,
@@ -103,61 +92,57 @@ describe('ProgressFilterBar', () => {
   });
 
   describe('조건 더보기', () => {
-    it('상태와 P/O 는 「조건 더보기」 안에 접혀 있다', async () => {
+    it('공정은 「조건 더보기」 안에 접혀 있다', async () => {
       const { user } = renderBar();
       const more = screen.getByRole('button', { name: messages.common.filterMore.open });
 
       expect(more).toHaveAttribute('aria-expanded', 'false');
-      expect(screen.getByLabelText(t.status)).not.toBeVisible();
-      expect(screen.getByLabelText(t.productionOrder)).not.toBeVisible();
+      expect(screen.getByLabelText(t.process)).not.toBeVisible();
       expect(screen.getByLabelText(t.productionLine)).toBeVisible();
 
       await user.click(more);
 
-      expect(screen.getByLabelText(t.status)).toBeVisible();
-      expect(screen.getByLabelText(t.productionOrder)).toBeVisible();
+      expect(screen.getByLabelText(t.process)).toBeVisible();
       expect(
         screen.getByRole('button', { name: messages.common.filterMore.close }),
       ).toHaveAttribute('aria-expanded', 'true');
     });
 
-    it('접힌 칸(상태 · P/O)에 걸린 조건만 칩이 되고 ×가 그 조건만 풀어 조회한다', async () => {
+    it('접힌 칸(공정)에 걸린 조건만 칩이 되고 ×가 그 조건만 풀어 조회한다', async () => {
       const applied = {
         ...APPLIED,
         productionLineId: '7',
         statusCode: 'SYN_RUN',
-        productionOrderId: '31',
+        processId: '41',
         keyword: 'SYN-WO',
       };
       const { onSearch, user } = renderBar({
         appliedFilters: applied,
-        statusOptions: statusOptions({ labelOf: () => '진행중' }),
-        productionOrderLookup: lookup({ labelOf: () => 'SYN-PO-0031' }),
+        processLookup: lookup({ labelOf: () => '합성 공정' }),
       });
 
-      expect(screen.getByText(t.chipStatus('진행중'))).toBeVisible();
-      expect(screen.getByText(t.chipProductionOrder('SYN-PO-0031'))).toBeVisible();
-      /* 보이는 칸(라인 · W/O 번호)은 칩으로 겹쳐 적지 않는다. */
-      expect(screen.getAllByRole('button', { name: /조건 제거$/ })).toHaveLength(2);
+      expect(screen.getByText(t.chipProcess('합성 공정'))).toBeVisible();
+      /* 보이는 칸(라인 · W/O 번호)도, 표 위 칩이 맡는 상태도 여기서 칩으로 겹쳐 적지 않는다. */
+      expect(screen.getAllByRole('button', { name: /조건 제거$/ })).toHaveLength(1);
 
       await user.click(
         screen.getByRole('button', {
-          name: messages.common.filterMore.remove(t.chipStatus('진행중')),
+          name: messages.common.filterMore.remove(t.chipProcess('합성 공정')),
         }),
       );
 
-      expect(onSearch).toHaveBeenCalledWith({ ...applied, statusCode: '' });
+      expect(onSearch).toHaveBeenCalledWith({ ...applied, processId: '' });
     });
 
     it('펼치면 칸에 값이 보이므로 칩을 거둔다', async () => {
       const { user } = renderBar({
-        appliedFilters: { ...APPLIED, statusCode: 'SYN_RUN' },
-        statusOptions: statusOptions({ labelOf: () => '진행중' }),
+        appliedFilters: { ...APPLIED, processId: '41' },
+        processLookup: lookup({ labelOf: () => '합성 공정' }),
       });
 
       await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
 
-      expect(screen.queryByText(t.chipStatus('진행중'))).not.toBeInTheDocument();
+      expect(screen.queryByText(t.chipProcess('합성 공정'))).not.toBeInTheDocument();
     });
   });
 
@@ -239,16 +224,15 @@ describe('ProgressFilterBar', () => {
       expect(onSearch).toHaveBeenCalledWith({ ...APPLIED, productionLineId: '7' });
     });
 
-    /* G-1·G-2 — 감추지 않고 끄고 사유를 적는다. */
-    it('⛔ 상태 선택지를 세울 수 없으면 감추지 않고 끄고 사유를 적는다', async () => {
-      const { user } = renderBar({
-        statusOptions: statusOptions({ options: [], isUnavailable: true }),
-      });
+    it('공정을 고르면 조회 조건으로 넘긴다', async () => {
+      const { onSearch, user } = renderBar();
 
       await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+      await user.click(screen.getByRole('combobox', { name: t.process }));
+      await user.click(await screen.findByRole('option', { name: '합성 공정' }));
+      await user.click(searchButton());
 
-      expect(screen.getByLabelText(t.status)).toBeDisabled();
-      expect(screen.getByText(t.statusUnavailable)).toBeVisible();
+      expect(onSearch).toHaveBeenCalledWith({ ...APPLIED, processId: '41' });
     });
 
     it('⛔ 선택지 조회가 실패하면 끄고 사유를 적는다', () => {
@@ -270,7 +254,7 @@ describe('ProgressFilterBar', () => {
 
     /* ⛔ 적지 않으면 「여기 없으면 없는 것」으로 읽힌다. */
     it('⛔ 선택지가 잘렸으면 그 사실을 적는다', async () => {
-      const { user } = renderBar({ productionOrderLookup: lookup({ isTruncated: true }) });
+      const { user } = renderBar({ processLookup: lookup({ isTruncated: true }) });
 
       await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
 
@@ -284,11 +268,91 @@ describe('ProgressFilterBar', () => {
     });
   });
 
-  /* A-11 — 계약에 공정으로 거를 파라미터가 없다. 칸도, 못 거른다는 문장도 두지 않는다(관리웹 정리 시안 A). */
-  it('⛔ 공정 칸을 만들지 않는다', () => {
-    renderBar();
+  /* P/O 번호는 상세 창에서 본다 — 조건 줄에는 두지 않는다(사용자 지시 2026-11-28). */
+  it('⛔ P/O 칸을 두지 않는다', async () => {
+    const { user } = renderBar();
 
-    expect(screen.queryByLabelText('공정')).not.toBeInTheDocument();
-    expect(screen.queryByText(/공정으로는/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+
+    expect(screen.queryByLabelText('P/O')).not.toBeInTheDocument();
+  });
+
+  describe('라인', () => {
+    /* 선택지가 몇 개든 검색창을 둔다 — 공장마다 라인 수가 달라도 쓰는 법이 같다. */
+    it('선택지가 하나뿐이어도 펼치면 검색창이 있다', async () => {
+      const { user } = renderBar();
+
+      await user.click(screen.getByRole('combobox', { name: t.productionLine }));
+
+      expect(
+        await screen.findByRole('searchbox', { name: messages.common.selectSearch }),
+      ).toBeVisible();
+    });
+
+    it('검색어로 선택지를 좁혀 고른다', async () => {
+      const { onSearch, user } = renderBar({
+        lineLookup: lookup({
+          options: [
+            { value: '7', label: 'SYN-LINE-A · 합성 라인' },
+            { value: '8', label: 'SYN-LINE-B · 둘째 라인' },
+          ],
+        }),
+      });
+
+      await user.click(screen.getByRole('combobox', { name: t.productionLine }));
+      await user.type(
+        await screen.findByRole('searchbox', { name: messages.common.selectSearch }),
+        '둘째',
+      );
+
+      await user.click(await screen.findByRole('option', { name: /둘째 라인$/ }));
+      expect(screen.queryByRole('option', { name: /합성 라인$/ })).toBeNull();
+      await user.click(searchButton());
+
+      expect(onSearch).toHaveBeenCalledWith({ ...APPLIED, productionLineId: '8' });
+    });
+  });
+
+  describe('W/O 번호', () => {
+    it('무엇을 넣는 칸인지 흐린 글로 알린다', () => {
+      renderBar();
+
+      expect(screen.getByLabelText(t.keyword)).toHaveAttribute('placeholder', t.keywordPlaceholder);
+    });
+
+    /* 칸이 따로 조회를 내지 않는다 — Enter 는 [조회]와 같은 길로 한 번만 나간다. */
+    it('Enter 로 조회한다 — 한 번만', async () => {
+      const { onSearch, user } = renderBar();
+
+      await user.type(screen.getByLabelText(t.keyword), 'SYN-WO{Enter}');
+
+      expect(onSearch).toHaveBeenCalledTimes(1);
+      expect(onSearch).toHaveBeenCalledWith({ ...APPLIED, keyword: 'SYN-WO' });
+    });
+
+    it('지우기 단추로 칸을 비운다 — 조회는 [조회]를 눌러야 나간다', async () => {
+      const { onSearch, user } = renderBar({
+        appliedFilters: { ...APPLIED, keyword: 'SYN-WO' },
+      });
+
+      await user.click(screen.getByRole('button', { name: messages.common.clear }));
+
+      expect(screen.getByLabelText(t.keyword)).toHaveValue('');
+      expect(onSearch).not.toHaveBeenCalled();
+    });
+  });
+
+  /* C-17 — 상태는 표 위 조건 칩이 맡는다. 조회 조건 줄에 같은 칸을 두면 두 곳이 서로 다른 값을 가리킬 수 있다. */
+  it('⛔ 상태 칸을 두지 않는다 — [조회]는 걸려 있는 상태를 그대로 싣는다', async () => {
+    const applied = { ...APPLIED, statusCode: 'SYN_RUN' };
+    const { onSearch, user } = renderBar({ appliedFilters: applied });
+
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+    expect(
+      screen.queryByLabelText(messages.workOrderProgress.summary.statusLabel),
+    ).not.toBeInTheDocument();
+
+    await user.click(searchButton());
+    expect(onSearch).toHaveBeenCalledWith(applied);
   });
 });

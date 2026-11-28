@@ -61,16 +61,16 @@ describe('FilterSelect', () => {
   describe('고를 수 없을 때', () => {
     /* G-1·G-2 — 감추지 않고, 끄고, 사유를 함께 적는다. */
     it('⛔ 감추지 않고 끄고 사유를 적는다', () => {
-      renderSelect({ unavailableReason: t.statusUnavailable, options: [] });
+      renderSelect({ unavailableReason: t.lookupFailed, options: [] });
 
       expect(box()).toBeDisabled();
-      expect(screen.getByText(t.statusUnavailable)).toBeInTheDocument();
+      expect(screen.getByText(t.lookupFailed)).toBeInTheDocument();
     });
 
     it('⛔ 사유를 칸에 이어 붙인다 — 따로 떠 있으면 어느 칸의 말인지 모른다', () => {
-      renderSelect({ unavailableReason: t.statusUnavailable, options: [] });
+      renderSelect({ unavailableReason: t.lookupFailed, options: [] });
 
-      expect(box()).toHaveAccessibleDescription(t.statusUnavailable);
+      expect(box()).toHaveAccessibleDescription(t.lookupFailed);
     });
 
     it('사유가 없으면 켜 둔다', () => {

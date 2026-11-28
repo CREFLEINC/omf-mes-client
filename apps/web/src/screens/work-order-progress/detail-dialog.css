@@ -5,19 +5,6 @@ dialog.work-order-progress-detail-dialog {
   --dialog-max-lg: 60rem;
 }
 
-/* 비고 줄 — 상자 전체 폭, 입력한 줄바꿈 그대로 · 길면 자연 줄바꿈(한 줄 말줄임 대신). */
-dialog.work-order-progress-detail-dialog
-  .info-facts-row
-  > .info-fact:has(.work-order-progress-remarks) {
-  flex: 1 1 100%;
-}
-
-dialog.work-order-progress-detail-dialog .info-fact-value:has(> .work-order-progress-remarks) {
-  display: block;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
 /* 4M 변경 자재 투입 내역 — 긴 LOT 번호도 끝까지 보이게 칸 안에서 줄을 바꾼다. */
 dialog.work-order-progress-detail-dialog .four-m-inputs-lot {
   overflow-wrap: anywhere;
@@ -35,4 +22,247 @@ dialog.work-order-progress-detail-dialog
   > tr
   > :is(th, td):not([scope='rowgroup']) {
   text-align: center !important;
+}
+
+/* 제목 — 창의 종류(「W/O 상세」)는 작은 회색 글씨, W/O 번호는 굵게. 한 줄이라 제목 줄 높이는 그대로다. */
+.work-order-progress-detail-title {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-2);
+}
+
+.work-order-progress-detail-title-kind {
+  color: var(--on-surface-muted);
+  font: var(--type-label-lg);
+}
+
+.work-order-progress-detail-title-no {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * 맨 위 상자(시안 B 「진행 먼저」 · 사용자 선택 2026-11-28) — 윗줄에 상태 · 지시 수량 · 실적을 큰 글자로, 아랫줄에 진행 단계.
+ * 상자 모양은 정보 표시 상자(`.info-facts`)와 같다 — 안에 든 `InfoFacts` 는 테두리 · 바탕을 벗겨 줄만 쓴다.
+ */
+.work-order-progress-hero {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-4) 0 var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+}
+
+.work-order-progress-hero > .info-facts {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+/* 칸은 글 폭만큼만 쓰고, 달성률 칸이 남는 폭을 다 가져 막대를 길게 그린다. */
+.work-order-progress-hero-facts > .info-facts-row > .info-fact.info-fact {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.work-order-progress-hero-facts
+  > .info-facts-row
+  > .info-fact.info-fact:has(.work-order-progress-hero-rate) {
+  flex: 1 1 14rem;
+}
+
+.work-order-progress-hero-facts .info-fact-value.is-key {
+  min-height: 2rem;
+  font: var(--type-headline-sm);
+}
+
+.work-order-progress-hero-rate {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.work-order-progress-hero-rate-bar {
+  flex: 1 1 auto;
+  min-width: 6rem;
+}
+
+/*
+ * 진행 단계 줄 — 점과 점을 잇는 선. 지난 단계는 채운 점, 지금 단계는 굵은 고리, 남은 단계는 빈 점이다.
+ * 색은 글자색 하나만 쓴다 — 이 화면의 빨강은 지연 하나를 가리킨다(C-19).
+ */
+.work-order-progress-steps {
+  display: flex;
+  margin: 0;
+  padding: var(--space-3) var(--space-4) 0;
+  border-top: 1px solid var(--outline-variant);
+  list-style: none;
+}
+
+.work-order-progress-step {
+  position: relative;
+  display: grid;
+  flex: 1 1 0;
+  justify-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  color: var(--on-surface-muted);
+  font: var(--type-label-lg);
+}
+
+.work-order-progress-step::before {
+  position: absolute;
+  top: calc(0.5rem - 1px);
+  right: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--outline-variant);
+  content: '';
+}
+
+.work-order-progress-step:first-child::before {
+  display: none;
+}
+
+.work-order-progress-step-dot {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--outline-variant);
+  border-radius: 50%;
+  background: var(--surface-container);
+}
+
+.work-order-progress-step.is-done,
+.work-order-progress-step.is-current {
+  color: var(--on-surface);
+}
+
+.work-order-progress-step.is-done::before,
+.work-order-progress-step.is-current::before {
+  background: var(--on-surface);
+}
+
+.work-order-progress-step.is-done > .work-order-progress-step-dot {
+  border-color: var(--on-surface);
+  background: var(--on-surface);
+}
+
+.work-order-progress-step.is-current > .work-order-progress-step-dot {
+  border: 5px solid var(--on-surface);
+  background: var(--surface);
+}
+
+.work-order-progress-step.is-current > .work-order-progress-step-name {
+  font-weight: 700;
+}
+
+/* 시각이 없는 단계도 자리를 둔다 — 단계마다 높이가 달라 줄이 들쭉날쭉하지 않게. */
+.work-order-progress-step-at {
+  min-height: 1lh;
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * 기본 정보 — 이름(왼쪽) · 값(오른쪽) 줄 목록, 두 단. 회색 상자를 하나 더 세우지 않고 가는 줄로만 가른다.
+ * 줄은 위에서 아래로 세 줄씩 채운다 — 왼쪽 단이 「무엇을 언제」, 오른쪽 단이 「어디서」다.
+ */
+.work-order-progress-spec {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(3, auto);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--space-6);
+  margin: 0 0 var(--space-4);
+}
+
+.work-order-progress-spec-item {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-1);
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* 단마다 첫 줄 위에는 줄을 긋지 않는다 — 줄은 줄과 줄 사이에만 있다. */
+.work-order-progress-spec-item:nth-child(3n + 1):not(.is-wide) {
+  border-top: 0;
+}
+
+.work-order-progress-spec-item > dt {
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+}
+
+.work-order-progress-spec-item > dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--on-surface);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.work-order-progress-spec-code {
+  font-weight: 600;
+}
+
+.work-order-progress-spec-sub {
+  margin-inline-start: var(--space-2);
+  color: var(--on-surface-variant);
+}
+
+/* 비고 — 두 단을 다 쓰는 한 줄. 입력한 줄바꿈 그대로 · 길면 자연 줄바꿈(한 줄 말줄임 대신). */
+.work-order-progress-spec-item.is-wide {
+  grid-row: 4;
+  grid-column: 1 / -1;
+}
+
+.work-order-progress-spec-item.is-wide > dd {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* 작업자별 실적 · 불량 유형별 — 나란히. 둘 다 열이 적어 창 폭을 다 쓰면 빈 자리만 넓다. */
+.work-order-progress-crew-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  align-items: start;
+  gap: var(--space-4);
+  margin-block: var(--space-4);
+}
+
+.work-order-progress-crew-pair > .work-order-progress-crew {
+  margin-block: 0;
+}
+
+/* 기록이 하나도 없을 때의 한 줄. */
+.work-order-progress-no-records {
+  max-width: none;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px dashed var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+/* 아래 단추 줄 — [이전 W/O] · [다음 W/O] 는 왼쪽 끝, [닫기] 는 오른쪽 끝. */
+.work-order-progress-detail-nav {
+  display: flex;
+  gap: var(--space-2);
+  margin-inline-end: auto;
 }
