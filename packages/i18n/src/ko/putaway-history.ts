@@ -58,6 +58,7 @@ export const putawayHistory = {
     PURCHASE: '구매',
     PRODUCT: '제품',
     REPLENISHMENT: '보충',
+    MATERIAL_RETURN: '반납',
   },
   defective: '불량',
   cancelled: '입고 취소됨',

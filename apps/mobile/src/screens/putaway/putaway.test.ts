@@ -245,3 +245,15 @@ describe('원천 요청번호(004, 서버 S7e)', () => {
     );
   });
 });
+
+describe('반납 입고 원천(피처 019)', () => {
+  it('US2-4 반납 입고 적치 지시는 「반납 입고 · 반납 번호」, 번호가 없으면 이름만', () => {
+    const base = { taskQty: 20 } as Parameters<typeof originOf>[0];
+    expect(originOf({ ...base, originCode: 'MATERIAL_RETURN', originDocumentNo: 'MR-SYN-1' })).toBe(
+      '반납 입고 · MR-SYN-1',
+    );
+    expect(originOf({ ...base, originCode: 'MATERIAL_RETURN', originDocumentNo: null })).toBe(
+      '반납 입고',
+    );
+  });
+});

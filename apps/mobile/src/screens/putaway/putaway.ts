@@ -135,14 +135,16 @@ export const toOutboxDraft = (
 
 /**
  * 원천 한 줄(screens/M-putaway.md) — 원천을 모르면(예전 지시) 구매 입고다. 창고 보충은 요청번호(`originDocumentNo`,
- * 서버 S7e)를 붙인다.
+ * 서버 S7e)를, 반납 입고(피처 019 — 적치 대기로 받은 반납 줄)는 반납 번호를 붙인다.
  */
 export const originOf = (task: PutawayTask): string => {
-  const name = messages.putaway.tasks.origin[task.originCode ?? 'GOODS_RECEIPT'];
+  const t = messages.putaway.tasks;
+  const name = t.origin[task.originCode ?? 'GOODS_RECEIPT'];
   const no = task.originDocumentNo;
-  return task.originCode === 'REPLENISHMENT_RECEIPT' && no !== null && no !== undefined && no !== ''
-    ? messages.putaway.tasks.originWithNo(name, no)
-    : name;
+  if (no === null || no === undefined || no === '') return name;
+  if (task.originCode === 'REPLENISHMENT_RECEIPT') return t.originWithNo(name, no);
+  if (task.originCode === 'MATERIAL_RETURN') return t.originReturnWithNo(no);
+  return name;
 };
 
 /**

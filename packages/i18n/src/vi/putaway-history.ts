@@ -51,6 +51,7 @@ export const putawayHistory: Translated<typeof ko.putawayHistory> = {
     PURCHASE: 'Mua hàng',
     PRODUCT: 'Thành phẩm',
     REPLENISHMENT: 'Bổ sung',
+    MATERIAL_RETURN: 'Trả vật tư',
   },
   defective: 'Lỗi',
   cancelled: 'Đã hủy nhập kho',

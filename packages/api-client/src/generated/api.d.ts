@@ -58804,11 +58804,11 @@ export interface components {
        */
       shopfloorReceiptLineId?: number | null;
       /**
-       * @description 지시 원천 — 구매 입고 · 창고 보충 수령. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+       * @description 지시 원천 — 구매 입고 · 창고 보충 수령 · 반납 입고(적치 대기로 받은 반납 줄 — goodsReceiptLineId·shopfloorReceiptLineId 둘 다 null). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 · 피처 019 반납 입고 · omf-all-around#367
        * @enum {string}
        */
-      originCode: 'GOODS_RECEIPT' | 'REPLENISHMENT_RECEIPT';
-      /** @description 원천 문서 번호 — 구매 입고 원천은 입고 번호, 창고 보충 수령 원천은 창고 보충 요청 번호(모바일 「창고 보충 · 요청번호」). 근거: 피처 004 생산 창고 보충 G2 보완 · omf-all-around#230 */
+      originCode: 'GOODS_RECEIPT' | 'REPLENISHMENT_RECEIPT' | 'MATERIAL_RETURN';
+      /** @description 원천 문서 번호 — 구매 입고 원천은 입고 번호, 창고 보충 수령 원천은 창고 보충 요청 번호(모바일 「창고 보충 · 요청번호」), 반납 입고 원천은 반납 번호. 근거: 피처 004 생산 창고 보충 G2 보완 · omf-all-around#230 · 피처 019 · omf-all-around#367 */
       originDocumentNo: string | null;
       /** @description :complete·:complete-temporary 응답에만 — 실제로 옮긴 양. 창고 보충 수령 원천은 적치 대기에 남은 그 LOT 가용과 지시 수량 중 작은 양을 옮기고 끝내며, 0 이면 원장 없이 완료한다. 구매 입고 원천은 지시 수량. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
       movedQty?: number;
@@ -61111,10 +61111,10 @@ export interface components {
        */
       putawayModeCode: 'DESIGNATED' | 'UNDESIGNATED' | 'TEMPORARY' | 'TASK' | 'TASK_TEMPORARY';
       /**
-       * @description 입고 종류 — 제품 입고 지시는 PRODUCT, 생산 창고 보충 수령 지시(피처 004)는 REPLENISHMENT, 그 밖은 PURCHASE
+       * @description 입고 종류 — 제품 입고 지시는 PRODUCT, 생산 창고 보충 수령 지시(피처 004)는 REPLENISHMENT, 반납 입고 지시(피처 019)는 MATERIAL_RETURN, 그 밖은 PURCHASE
        * @enum {string}
        */
-      sourceCode: 'PURCHASE' | 'PRODUCT' | 'REPLENISHMENT';
+      sourceCode: 'PURCHASE' | 'PRODUCT' | 'REPLENISHMENT' | 'MATERIAL_RETURN';
       /**
        * Format: date-time
        * @description DIRECT 는 입고 일시, TASK 는 완료 시각(단말이 보낸 occurredAt)
