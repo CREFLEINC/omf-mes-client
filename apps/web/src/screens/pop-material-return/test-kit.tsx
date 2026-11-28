@@ -90,7 +90,17 @@ export interface KitOptions {
   workOrderLots?: (workOrderId: number) => ReturnWorkOrderLot[];
   splitLots?: SplitMaterialLot[];
   terminalWarehouseId?: number | null;
+  /** 단말 화면 정책(P-10)의 화면 코드. 주지 않으면 정책 조회가 실패해 「모른다」로 둔다(막지 않는다). */
+  screenCodes?: string[];
+  /** 「반납 가능」이 꺼진 단말 — 반납 API 가 403 이다. */
+  forbidden?: boolean;
 }
+
+const FORBIDDEN = () =>
+  jsonResponse(
+    { errors: [{ scope: 'screen', code: 'FORBIDDEN', message: '권한이 없습니다.' }] },
+    { status: 403 },
+  );
 
 /** 등록 응답 — 보낸 줄 그대로, 받은 곳은 적치 대기. */
 export const receivedOf = (
@@ -137,6 +147,23 @@ export const renderReturn = (options: KitOptions = {}) => {
   };
 
   const fetch = createStubFetch([
+    ...(options.screenCodes === undefined
+      ? []
+      : [
+          {
+            match: pathIs('/mdm/terminals/7/accessible-screens'),
+            respond: () => jsonResponse({ terminalId: 7, screenCodes: options.screenCodes }),
+          },
+        ]),
+    ...(options.forbidden === true
+      ? [
+          {
+            match: (request: Request) =>
+              new URL(request.url).pathname.startsWith('/production/material-returns'),
+            respond: FORBIDDEN,
+          },
+        ]
+      : []),
     {
       match: pathIs('/production/material-returns/lot-lookup'),
       respond: async (request) => {

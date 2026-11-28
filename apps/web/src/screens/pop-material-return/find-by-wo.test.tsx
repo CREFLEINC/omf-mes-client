@@ -31,13 +31,15 @@ afterEach(() => {
   globalThis.localStorage.clear();
 });
 
-/** 셸 인쇄 — 찍은 라벨 이름을 모은다. */
+/** 셸 인쇄 — 찍은 라벨 이름을 모은다(`texts` 에는 라벨 명령 글자). */
 const shellPrints = () => {
-  const saved: string[] = [];
+  const saved: string[] & { texts?: string[] } = [];
+  saved.texts = [];
   window.pop = {
     rendition: {
-      save: (_bytes: Uint8Array, label: string) => {
+      save: (bytes: Uint8Array, label: string) => {
         saved.push(label);
+        saved.texts?.push(new TextDecoder().decode(bytes));
         return Promise.resolve('/tmp/x.tspl');
       },
     },
@@ -194,6 +196,9 @@ describe('P-01-03 W/O 로 찾기', () => {
     ]);
 
     await within(label).findByText(B_S1);
+    /* 라벨 수량은 이번 반납 수량 40 — 분할 LOT 목록의 처음 나간 양 300 이 아니다(시안 ③-3 · F-04). */
+    expect(within(label).getByText('40 EA')).toBeTruthy();
+    expect(within(label).queryByText('300 EA')).toBeNull();
     await user.click(within(label).getByRole('button', { name: t.label.print }));
     await screen.findByText(t.label.printed(1));
 
@@ -205,6 +210,8 @@ describe('P-01-03 W/O 로 찾기', () => {
       targets: [{ targetTypeCode: 'LOT', targetId: 541 }],
     });
     expect(saved).toHaveLength(1);
+    expect(saved.texts?.[0]).toContain('40');
+    expect(saved.texts?.[0]).not.toContain('300');
   });
 
   it('US4-5 라벨 찍기 창의 [나중에]는 찍지 않고 닫는다(분할 LOT 라벨 탭에 남는다)', async () => {

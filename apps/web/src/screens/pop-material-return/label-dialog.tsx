@@ -37,15 +37,29 @@ export const labelOutcomeOf = (results: readonly SplitPrintResult[]): LabelOutco
  * ⭐ 새 인쇄 코드가 없다 — P-01-02 「분할 LOT 라벨」의 목록(`split-material-lots`)에서 그 LOT 을 찾아 같은 찍기
  *    (`useSplitLabelPrint` · `MATERIAL_LOT_LABEL`)로 보낸다. [나중에]는 그 탭의 발행 대기에 그대로 남긴다.
  * ⚠ 전에 찍다 실패한 LOT(발행 기록 있음)은 재발행 사유가 필요해 여기서 찍지 않는다 — 그 탭에서 사유와 함께 찍는다.
+ * ⭐ **수량은 이번 반납 수량이다**(시안 ③-3 「40 EA」 · 실제 앱 확인 F-04). 라벨은 창고로 돌아온 실물에 붙는다 —
+ *    분할 LOT 목록의 수량은 그 LOT 이 처음 나간 양(출고 300)이라, 그대로 찍으면 실물 40 에 300 이 적힌다.
+ *    발행 기록은 수량을 싣지 않으므로(`lotId` · 프린터 · 재발행 사유) 그린 라벨의 수량만 바꾼다.
  */
+/** 라벨에 실을 LOT — 수량을 이번 반납 수량으로 바꾼다. 반납 수량을 모르면 목록 값 그대로. */
+export const withReturnedQty = (
+  lot: SplitMaterialLot,
+  returned: ReadonlyMap<number, number>,
+): SplitMaterialLot => {
+  const qty = returned.get(lot.lotId);
+
+  return qty === undefined ? lot : { ...lot, qty };
+};
+
 export const ReturnLabelDialog = ({
-  lotIds,
+  lots,
   plantId,
   workerNo,
   printer,
   onDone,
 }: {
-  lotIds: readonly number[];
+  /** 라벨이 없는 반납 줄 — LOT 과 이번 반납 수량. */
+  lots: readonly { lotId: number; qty: number }[];
   plantId: number | null;
   workerNo: string | null;
   printer: LabelPrinter;
@@ -55,8 +69,10 @@ export const ReturnLabelDialog = ({
   const list = useSplitMaterialLots(plantId, 'UNPRINTED', 'week');
   const printing = useSplitLabelPrint(workerNo);
 
-  const wanted = new Set(lotIds);
-  const found: SplitMaterialLot[] = (list.data?.items ?? []).filter((lot) => wanted.has(lot.lotId));
+  const returned = new Map(lots.map((lot) => [lot.lotId, lot.qty]));
+  const found: SplitMaterialLot[] = (list.data?.items ?? [])
+    .filter((lot) => returned.has(lot.lotId))
+    .map((lot) => withReturnedQty(lot, returned));
   const printable = found.filter((lot) => !needsReissueReason(lot));
   const canPrint = workerNo !== null && printable.length > 0 && !printing.isRunning;
 
@@ -71,7 +87,7 @@ export const ReturnLabelDialog = ({
 
   return (
     <PuDialog
-      title={t.title(lotIds.length)}
+      title={t.title(lots.length)}
       onClose={() => {
         if (!printing.isRunning) onDone({ kind: 'later' });
       }}
