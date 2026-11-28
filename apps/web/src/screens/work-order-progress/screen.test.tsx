@@ -237,6 +237,30 @@ describe('WorkOrderProgressScreen', () => {
       expect(screen.getByTestId('location')).toHaveTextContent('sort=workOrderNo,desc');
     });
 
+    /* 창을 닫고 목록에서 다시 누르지 않아도 된다 — 보이는 줄 순서대로 넘어가고, 쪽의 끝에서는 꺼진다. */
+    it('상세 창의 [다음 W/O] · [이전 W/O] 가 목록의 앞뒤 줄로 넘긴다', async () => {
+      const { user } = renderScreen({
+        route: '/production/work-order-progress?from=2026-07-01&to=2026-07-31&workOrderId=7001',
+        workOrders: [WORK_ORDER, { ...WORK_ORDER, workOrderId: 7002, workOrderNo: 'SYN-WO-0008' }],
+      });
+      const next = await screen.findByRole('button', { name: t.detail.next });
+      await waitFor(() => {
+        expect(next).toBeEnabled();
+      });
+      expect(screen.getByRole('button', { name: t.detail.prev })).toBeDisabled();
+
+      await user.click(next);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('location')).toHaveTextContent('workOrderId=7002');
+      });
+      expect(screen.getByRole('dialog')).toHaveAccessibleName(
+        expect.stringContaining('SYN-WO-0008'),
+      );
+      expect(screen.getByRole('button', { name: t.detail.next })).toBeDisabled();
+      expect(screen.getByRole('button', { name: t.detail.prev })).toBeEnabled();
+    });
+
     it('일정 보기에서도 줄을 눌러 같은 상세 창을 연다', async () => {
       const { user } = renderScreen({
         route: '/production/work-order-progress?from=2026-07-01&to=2026-07-31&view=timeline',

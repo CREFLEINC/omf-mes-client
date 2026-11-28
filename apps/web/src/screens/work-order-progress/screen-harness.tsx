@@ -61,6 +61,18 @@ const stub = (options: StubOptions = {}): { urls: string[]; fetch: StubFetch } =
       });
     }
 
+    /* 고른 W/O 의 상세 — 목록의 그 줄을 그대로 돌려준다. */
+    const detailId = /^\/production\/work-orders\/(\d+)$/.exec(url.pathname)?.[1];
+    if (detailId !== undefined) {
+      const found = (options.workOrders ?? [WORK_ORDER]).find(
+        (workOrder) => String(workOrder.workOrderId) === detailId,
+      );
+
+      return found === undefined
+        ? jsonResponse({ message: '없다' }, { status: 404 })
+        : jsonResponse(found);
+    }
+
     /*
      * 품목만 **번호마다 상세**를 부른다(`GET /mdm/items/{itemId}`) — 목록이 아니다.
      * 응답이 `{ item, editability }` 봉투라는 것까지 여기서 굳힌다.

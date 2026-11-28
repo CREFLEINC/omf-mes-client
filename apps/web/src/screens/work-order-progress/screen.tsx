@@ -144,7 +144,6 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
   );
   /* 상태를 골랐을 때만 나간다 — 고르지 않았으면 목록의 요약이 이미 상태 전체를 센 것이다. */
   const statusCounts = useWorkOrderStatusCounts(toStatusCountQuery(filters, offsetMinutes));
-  const detail = useWorkOrderDetail(selectedWorkOrderId);
   const crew = useWorkOrderCrew(selectedWorkOrderId);
   const lines = useProductionLineLookup();
   const processes = useProcessLookup();
@@ -153,6 +152,14 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
   /* ⛔ 「지금」이 아니라 **받아 낸 시각**이다 — 실패해도 낡은 수에 새 시각이 붙지 않는다. */
   const basisAt = list.dataUpdatedAt > 0 ? new Date(list.dataUpdatedAt) : today;
   const workOrders = list.data?.items ?? [];
+  /*
+   * 고른 W/O 가 이 쪽의 몇째 줄인가 — 상세 창의 [이전 W/O] · [다음 W/O] 가 이 순서를 따라간다. 보이는 줄 순서 그대로다
+   * (표는 고른 정렬, 일정 보기는 계획 시작 순). 쪽을 넘어가지는 않는다 — 쪽의 끝에서는 단추가 꺼진다.
+   */
+  const selectedIndex = workOrders.findIndex(
+    (workOrder) => workOrder.workOrderId === selectedWorkOrderId,
+  );
+  const detail = useWorkOrderDetail(selectedWorkOrderId, workOrders[selectedIndex]);
   const rows = workOrders.map((workOrder) => toWorkOrderRow(workOrder, basisAt));
 
   /*
@@ -184,6 +191,15 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
     setSearchParams(
       withSelectedWorkOrder(searchParams, workOrderId === selectedWorkOrderId ? null : workOrderId),
     );
+  };
+  /** 창을 닫지 않고 목록의 다른 줄로 넘긴다. 그 줄이 없으면 `null`. */
+  const stepTo = (index: number): (() => void) | null => {
+    const target = selectedIndex < 0 ? undefined : workOrders[index];
+    if (target === undefined) return null;
+
+    return () => {
+      setSearchParams(withSelectedWorkOrder(searchParams, target.workOrderId));
+    };
   };
   const isListLoading = list.isPending && list.fetchStatus !== 'idle';
 
@@ -317,8 +333,11 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
         isLoading={selectedWorkOrderId !== null && detail.isPending}
         isOpen={selectedWorkOrderId !== null}
         itemLabel={itemLabel}
+        lineLabel={lineLabel}
         statusLabel={statusLabel}
         workOrder={detail.data ?? null}
+        onNext={stepTo(selectedIndex + 1)}
+        onPrev={stepTo(selectedIndex - 1)}
         crew={{
           data: crew.data,
           isLoading: selectedWorkOrderId !== null && crew.isPending,

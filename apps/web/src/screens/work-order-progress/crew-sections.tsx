@@ -1,7 +1,7 @@
 import { AlertBanner, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
-import { InfoFacts, InfoGroupTitle, InfoTable } from '../../patterns/info-facts';
+import { InfoGroupTitle, InfoTable } from '../../patterns/info-facts';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import {
   QTY_KEYS,
@@ -124,20 +124,13 @@ export const CrewSections = ({ crew, isLoading, isError }: CrewSectionsProps) =>
               className="work-order-progress-session"
               aria-label={t.sessions.session(session.sessionNo)}
             >
-              <InfoFacts
-                rows={[
-                  [
-                    { label: t.sessions.startedAt, value: timeText(session.startedAt) },
-                    {
-                      label: t.sessions.endedAt,
-                      value:
-                        session.endedAt === null ? t.sessions.ongoing : timeText(session.endedAt),
-                    },
-                  ],
-                ]}
-              />
+              {/* 시작 ~ 종료는 표 제목 줄에 잇는다 — 세션마다 상자를 하나 더 세우지 않는다(사용자 선택 2026-11-28). */}
               <InfoTable
                 title={t.sessions.session(session.sessionNo)}
+                note={t.sessions.range(
+                  timeText(session.startedAt),
+                  session.endedAt === null ? t.sessions.ongoing : timeText(session.endedAt),
+                )}
                 storageKey="omf-mes:work-order-progress:columns:crew-session"
                 columns={participantColumns}
                 rows={session.participants}
@@ -149,42 +142,47 @@ export const CrewSections = ({ crew, isLoading, isError }: CrewSectionsProps) =>
         )}
       </section>
 
-      {/* 내역이 없으면 머리만 있는 빈 표 대신 한 줄로 적는다 — 작업 세션과 같다. 빈 표 둘이 창 절반을 차지했다. */}
-      <section className="work-order-progress-crew" aria-label={t.workerResults.heading}>
-        {crew.workerResults.length === 0 ? (
-          <>
-            <InfoGroupTitle>{t.workerResults.heading}</InfoGroupTitle>
-            <p className="field-note">{t.workerResults.empty}</p>
-          </>
-        ) : (
-          <InfoTable
-            title={t.workerResults.heading}
-            storageKey="omf-mes:work-order-progress:columns:crew-results"
-            columns={resultColumns}
-            rows={crew.workerResults}
-            getRowId={(row) => String(row.workerId)}
-            emptyTitle={t.workerResults.empty}
-          />
-        )}
-      </section>
+      {/*
+       * 작업자별 실적과 불량 유형별은 나란히 둔다 — 둘 다 열이 적어 창 폭을 다 쓰면 빈 자리만 넓다.
+       * 내역이 없으면 머리만 있는 빈 표 대신 한 줄로 적는다 — 작업 세션과 같다.
+       */}
+      <div className="work-order-progress-crew-pair">
+        <section className="work-order-progress-crew" aria-label={t.workerResults.heading}>
+          {crew.workerResults.length === 0 ? (
+            <>
+              <InfoGroupTitle>{t.workerResults.heading}</InfoGroupTitle>
+              <p className="field-note">{t.workerResults.empty}</p>
+            </>
+          ) : (
+            <InfoTable
+              title={t.workerResults.heading}
+              storageKey="omf-mes:work-order-progress:columns:crew-results"
+              columns={resultColumns}
+              rows={crew.workerResults}
+              getRowId={(row) => String(row.workerId)}
+              emptyTitle={t.workerResults.empty}
+            />
+          )}
+        </section>
 
-      <section className="work-order-progress-crew" aria-label={t.defectTypes.heading}>
-        {crew.defectTypes.length === 0 ? (
-          <>
-            <InfoGroupTitle>{t.defectTypes.heading}</InfoGroupTitle>
-            <p className="field-note">{t.defectTypes.empty}</p>
-          </>
-        ) : (
-          <InfoTable
-            title={t.defectTypes.heading}
-            storageKey="omf-mes:work-order-progress:columns:crew-defects"
-            columns={defectTypeColumns}
-            rows={crew.defectTypes}
-            getRowId={(row) => (row.defectCodeId === null ? 'untyped' : String(row.defectCodeId))}
-            emptyTitle={t.defectTypes.empty}
-          />
-        )}
-      </section>
+        <section className="work-order-progress-crew" aria-label={t.defectTypes.heading}>
+          {crew.defectTypes.length === 0 ? (
+            <>
+              <InfoGroupTitle>{t.defectTypes.heading}</InfoGroupTitle>
+              <p className="field-note">{t.defectTypes.empty}</p>
+            </>
+          ) : (
+            <InfoTable
+              title={t.defectTypes.heading}
+              storageKey="omf-mes:work-order-progress:columns:crew-defects"
+              columns={defectTypeColumns}
+              rows={crew.defectTypes}
+              getRowId={(row) => (row.defectCodeId === null ? 'untyped' : String(row.defectCodeId))}
+              emptyTitle={t.defectTypes.empty}
+            />
+          )}
+        </section>
+      </div>
     </>
   );
 };

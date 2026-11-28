@@ -47,9 +47,14 @@ export interface FourMInputsPanelProps {
  *
  * ⛔ 읽기 전용이다. 투입을 막거나 상태를 바꾸지 않는다.
  */
-export const FourMInputsPanel = ({ workOrderId }: FourMInputsPanelProps) => {
+/**
+ * 이 W/O 에 투입된 4M 변경 자재. 구획(`FourMInputsPanel`)과, 「기록이 하나도 없는가」를 묻는 부르는 쪽이 **같은 조회**를
+ * 함께 쓴다 — 열쇠가 같아 요청은 한 번만 나간다.
+ */
+export const useFourMInputs = (workOrderId: number) => {
   const { client } = useApiClient();
-  const inputs = useQuery({
+
+  return useQuery({
     queryKey: fourMInputsKeys.ofWorkOrder(workOrderId),
     queryFn: () =>
       runRequest(() =>
@@ -60,6 +65,11 @@ export const FourMInputsPanel = ({ workOrderId }: FourMInputsPanelProps) => {
         (page.items as MaterialConsumption[]).filter((row) => row.fourMChange !== undefined),
       ),
   });
+};
+
+export const FourMInputsPanel = ({ workOrderId }: FourMInputsPanelProps) => {
+  const { client } = useApiClient();
+  const inputs = useFourMInputs(workOrderId);
   const changeTypeLabel = useFourMChangeTypeLabel();
   /* 같은 LOT 을 여러 번 투입했을 수 있다 — 번호는 LOT 마다 한 번 부른다. */
   const lotIds = [...new Set((inputs.data ?? []).map((row) => row.lotId))];

@@ -137,6 +137,8 @@ export const InfoGroupTitle = ({ children }: { children: ReactNode }) => (
 export interface InfoTableProps<T> {
   /** 표 제목(검정) — 옆에 회색 「N건」. 표가 여럿이면 표마다 제목. */
   title: string;
+  /** 제목 줄 건수 뒤에 잇는 덧말(예: 세션의 시작 ~ 종료) — 표에 딸린 값 한두 개를 상자 하나 더 세우지 않고 적는다. */
+  note?: ReactNode;
   /** 바꾼 열 폭 · 순서를 남기는 열쇠 — 표마다 다르게. */
   storageKey: string;
   /** 숫자 열은 `align: 'end'`, 판정 · 상태 칩 열은 `align: 'center'`, 글자 열은 비워 둔다(왼쪽). */
@@ -155,6 +157,7 @@ export interface InfoTableProps<T> {
  */
 export const InfoTable = <T,>({
   title,
+  note,
   storageKey,
   columns,
   rows,
@@ -166,6 +169,7 @@ export const InfoTable = <T,>({
     <div className="info-table-head">
       <h3 className="info-table-title">{title}</h3>
       <span className="info-table-count">{messages.common.paneList.count(rows.length)}</span>
+      {note !== undefined && <span className="info-table-note">{note}</span>}
     </div>
     <ManagedTable
       className="info-table"

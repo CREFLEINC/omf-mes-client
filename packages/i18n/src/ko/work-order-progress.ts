@@ -178,13 +178,15 @@ export const workOrderProgress = {
 
   /** 고른 W/O 의 상세. 가장자리 패널이 DS 에 없어 가운데 창으로 시작한다. */
   detail: {
-    title: '선택한 W/O',
+    title: 'W/O 상세',
     close: '닫기',
+    prev: '이전 W/O',
+    next: '다음 W/O',
     loading: '상세를 받는 중입니다.',
     loadError: '상세를 받지 못했습니다. 잠시 뒤 다시 시도하세요.',
 
-    workOrderNo: 'W/O 번호',
     statusCode: '상태',
+    steps: '진행 단계',
     orderQty: '지시 수량',
     goodQty: '양품',
     defectQty: '불량',
@@ -193,13 +195,14 @@ export const workOrderProgress = {
     reworkQty: '재작업',
     achievementRate: '달성률',
     process: '공정',
+    productionLine: '라인',
+    equipment: '설비',
     productionOrder: 'P/O',
-    plannedStartAt: '계획 시작',
-    plannedEndAt: '계획 종료',
-    completedAt: '완료',
-    closedAt: '마감',
+    plannedPeriod: '계획 기간',
+    period: (startAt: string, endAt: string): string => `${startAt} ~ ${endAt}`,
     remarks: '비고',
 
+    noRecords: '작업 세션, 실적, 불량 기록, 4M 변경 자재 투입 내역이 없습니다.',
     crewLoading: '작업 세션·작업자별 실적을 받는 중입니다.',
     crewLoadError: '작업 세션·작업자별 실적을 받지 못했습니다.',
     sessionsTruncated: '작업 세션 일부를 불러오지 못했습니다.',
@@ -210,8 +213,7 @@ export const workOrderProgress = {
     sessions: {
       heading: '작업 세션',
       session: (sessionNo: number): string => `세션 ${String(sessionNo)}`,
-      startedAt: '시작',
-      endedAt: '종료',
+      range: (startedAt: string, endedAt: string): string => `${startedAt} ~ ${endedAt}`,
       ongoing: '진행',
       empty: '작업 세션이 없습니다.',
       noParticipants: '참여자가 없습니다.',

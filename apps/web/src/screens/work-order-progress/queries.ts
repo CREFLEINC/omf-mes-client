@@ -83,12 +83,20 @@ export const useWorkOrderStatusCounts = (
  * 목록 응답에 이미 대부분이 실려 오지만 상세를 따로 부르는 이유는, **목록은 페이지가 바뀌면
  * 사라지는 값**이고 상세는 고른 것 하나를 붙들고 있어야 하기 때문이다.
  */
-export const useWorkOrderDetail = (workOrderId: number | null): UseQueryResult<WorkOrder> => {
+export const useWorkOrderDetail = (
+  workOrderId: number | null,
+  /**
+   * 목록에서 이미 받은 그 줄. 상세가 오기 전까지 이것을 보인다 — 창 안에서 앞뒤 W/O 로 넘길 때 창이 비었다가
+   * 다시 차지 않는다. 같은 W/O 의 같은 조회 시점 값이라 남의 값이 비치는 일은 없다.
+   */
+  seed?: WorkOrder,
+): UseQueryResult<WorkOrder> => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey: workOrderProgressKeys.detail(workOrderId),
     enabled: workOrderId !== null,
+    placeholderData: seed,
     queryFn: () => {
       if (workOrderId === null) throw new Error('고르기 전에는 상세를 조회하지 않습니다.');
 

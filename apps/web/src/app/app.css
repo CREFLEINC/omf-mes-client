@@ -44039,6 +44039,14 @@ html:lang(vi) {
   font: var(--type-label-lg);
 }
 
+/* 제목 줄의 덧말(예: 세션의 시작 ~ 종료) — 건수 뒤에 잇는다. */
+.info-table-note {
+  margin-inline-start: var(--space-2);
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
 .info-table > div:has(> table) {
   /* 머리 줄(38px) + 촘촘한 줄(37px) 5개 + 위아래 테두리 — 여섯째 줄부터 표 안에서 구른다. */
   max-height: calc(38px + 37px * 5 + 2px);

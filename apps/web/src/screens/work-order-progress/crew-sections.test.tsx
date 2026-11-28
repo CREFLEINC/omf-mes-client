@@ -48,11 +48,15 @@ const crew = (overrides: Partial<WorkOrderCrew> = {}): WorkOrderCrew => ({
 });
 
 describe('CrewSections', () => {
-  it('세션마다 시작·종료와 참여자 표를 둔다', () => {
+  /* 시작 ~ 종료는 표 제목 줄에 잇는다 — 세션마다 상자를 하나 더 세우지 않는다. 끝나지 않은 세션은 「진행」이다. */
+  it('세션마다 제목 줄에 시작 ~ 종료를 적고 참여자 표를 둔다', () => {
     render(<CrewSections crew={crew()} isLoading={false} isError={false} />);
 
     const block = screen.getByRole('region', { name: t.sessions.session(1) });
-    expect(within(block).getByText(t.sessions.ongoing)).toBeInTheDocument();
+    expect(
+      within(block).getByText(t.sessions.range('2026-10-20 06:00', t.sessions.ongoing)),
+    ).toBeInTheDocument();
+    expect(block.querySelector('.info-facts')).toBeNull();
     const table = within(block).getByRole('table');
     expect(
       within(table)
