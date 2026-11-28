@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { basisPosition, dayLabel, toTimelineAxis, toTimelineBar } from './timeline-model';
+import {
+  basisPosition,
+  centeringShift,
+  dayLabel,
+  toTimelineAxis,
+  toTimelineBar,
+} from './timeline-model';
 
 /* 공장 시각(UTC+7)의 08-01 ~ 08-04, 나흘. 하루가 축의 25% 다. */
 const DAYS = ['2026-08-01', '2026-08-02', '2026-08-03', '2026-08-04'];
@@ -109,5 +115,25 @@ describe('basisPosition', () => {
 describe('dayLabel', () => {
   it('해를 빼고 월-일만 적는다', () => {
     expect(dayLabel('2026-08-03')).toBe('08-03');
+  });
+});
+
+describe('centeringShift', () => {
+  /* 붙은 칸이 600 까지 가리고 상자는 1,400 에서 끝난다 — 보이는 축의 가운데는 1,000 이다. */
+  it('기준선이 가운데보다 오른쪽이면 그만큼 더 굴린다', () => {
+    expect(centeringShift(1300, 600, 1400)).toBe(300);
+  });
+
+  it('기준선이 가운데보다 왼쪽이면 그만큼 되돌린다', () => {
+    expect(centeringShift(800, 600, 1400)).toBe(-200);
+  });
+
+  it('이미 가운데면 굴리지 않는다', () => {
+    expect(centeringShift(1000, 600, 1400)).toBe(0);
+  });
+
+  /* ⛔ 상자 전체의 가운데가 아니다 — 붙은 칸이 가린 폭은 보이는 축이 아니다. */
+  it('⛔ 붙은 칸이 넓어지면 가운데도 오른쪽으로 옮겨 간다', () => {
+    expect(centeringShift(1000, 800, 1400)).toBe(-100);
   });
 });

@@ -1,4 +1,4 @@
-import { AlertBanner, Button } from '@crefle/web-ui';
+import { AlertBanner, Breadcrumb, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
@@ -24,12 +24,7 @@ import {
   withSort,
   withView,
 } from './filters';
-import {
-  useItemNames,
-  useProcessLookup,
-  useProductionLineLookup,
-  useProductionOrderLookup,
-} from './lookups';
+import { useItemNames, useProcessLookup, useProductionLineLookup } from './lookups';
 import { PageNav } from './page-nav';
 import { PAGE_SIZES } from '../../patterns/page-nav';
 import { readPageSizeParam, toPageSizeSearchParams } from '../../patterns/page-nav/page-size-param';
@@ -62,7 +57,6 @@ export interface WorkOrderProgressScreenProps {
 const EMPTY_CONDITIONS = {
   productionLineId: '',
   statusCode: '',
-  productionOrderId: '',
   processId: '',
   keyword: '',
 };
@@ -153,7 +147,6 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
   const detail = useWorkOrderDetail(selectedWorkOrderId);
   const crew = useWorkOrderCrew(selectedWorkOrderId);
   const lines = useProductionLineLookup();
-  const orders = useProductionOrderLookup();
   const processes = useProcessLookup();
   const statuses = useWorkOrderStatusOptions();
 
@@ -185,6 +178,7 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
 
   const itemLabel = (itemIdText: string): string => items.labelOf(itemIdText);
   const statusLabel = (statusCode: string): string => statuses.labelOf(statusCode);
+  const lineLabel = (lineIdText: string): string => lines.labelOf(lineIdText);
   const select = (workOrderId: number): void => {
     /* 고른 줄을 한 번 더 누르면 고르기를 푼다(사용자 지시 2026-11-27 · #360). */
     setSearchParams(
@@ -195,15 +189,23 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
 
   return (
     <>
-      {/* 화면 제목 줄(경로 · 큰 제목)은 두지 않는다 — 다른 목록 화면과 같다(#360). */}
       <div className="work-order-progress-workspace">
-        {/* L-5·L-6 — 언제 것인지와 갱신 단추를 한 줄에, 조회 조건 위 오른쪽(#360). */}
-        <BasisBar
-          basisAt={basisAt}
-          onRefresh={() => {
-            void queryClient.invalidateQueries({ queryKey: workOrderProgressKeys.all });
-          }}
-        />
+        {/*
+         * 머리 한 줄 — 왼쪽에 탐색 경로, 오른쪽 끝에 마지막 갱신 시각과 갱신 단추(L-5 · L-6).
+         * 큰 제목은 세우지 않고 경로만 둔다(사용자 지시 2026-11-28 · 작업계획 화면과 같다).
+         */}
+        <div className="work-order-progress-head">
+          <Breadcrumb
+            aria-label={messages.common.shell.breadcrumb}
+            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+          />
+          <BasisBar
+            basisAt={basisAt}
+            onRefresh={() => {
+              void queryClient.invalidateQueries({ queryKey: workOrderProgressKeys.all });
+            }}
+          />
+        </div>
 
         <section className="pane work-order-progress-pane" aria-label={t.filters.legend}>
           {/* ⛔ 결과가 없어도 조건 줄을 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
@@ -211,7 +213,6 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
             appliedFilters={filters}
             initialFilters={initialFilters}
             lineLookup={lines}
-            productionOrderLookup={orders}
             processLookup={processes}
             onReset={() => {
               apply(initialFilters);
@@ -279,6 +280,7 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
               isError={list.isError}
               isLoading={isListLoading}
               itemLabel={itemLabel}
+              lineLabel={lineLabel}
               period={filters}
               rows={rows}
               sort={sort}

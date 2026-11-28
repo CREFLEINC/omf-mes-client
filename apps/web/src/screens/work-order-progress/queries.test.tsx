@@ -19,7 +19,6 @@ const filters = (overrides: Partial<ProgressFilters> = {}): ProgressFilters => (
   to: '2026-08-30',
   productionLineId: '',
   statusCode: '',
-  productionOrderId: '',
   processId: '',
   keyword: '',
   ...overrides,

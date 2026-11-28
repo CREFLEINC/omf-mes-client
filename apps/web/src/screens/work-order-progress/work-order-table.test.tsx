@@ -16,6 +16,7 @@ const row = (overrides: Partial<WorkOrderRow> = {}): WorkOrderRow => ({
   workOrderId: 7001,
   workOrderNo: 'SYN-WO-0007',
   itemIdText: '5001',
+  productionLineIdText: '7',
   processText: '합성 공정',
   orderQtyText: '3,000',
   goodQtyText: '2,850',
@@ -51,6 +52,7 @@ const renderTable = (overrides: Partial<WorkOrderTableProps> = {}) => {
       isLoading={false}
       isError={false}
       itemLabel={(id) => `품목 ${id}`}
+      lineLabel={(id) => (id === '7' ? 'SYN-LINE-A · 합성 라인' : '이름 확인 중')}
       statusLabel={(code) => (code === 'SYN_RUN' ? '진행중' : code)}
       onSort={onSort}
       onSelect={onSelect}
@@ -259,6 +261,35 @@ describe('WorkOrderTable', () => {
 
       expect(within(region).getByText(t.loadError)).toBeInTheDocument();
       expect(within(region).queryByText(t.empty)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('라인 열', () => {
+    it('W/O 번호 바로 뒤에 두고 라인 이름을 적는다', () => {
+      const { region } = renderTable();
+      const headers = within(region)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent?.trim());
+
+      expect(headers.indexOf(t.columns.productionLine)).toBe(
+        headers.findIndex((text) => text?.startsWith(t.columns.workOrderNo)) + 1,
+      );
+      expect(within(region).getByRole('cell', { name: '합성 라인' })).toBeInTheDocument();
+    });
+
+    /* ⛔ 숫자 번호는 사용자가 쓰는 말이 아니다 — 이름을 모르면 모른다고 적는다. */
+    it('⛔ 이름을 못 찾은 라인은 번호 대신 「이름 확인 중」이다', () => {
+      const { region } = renderTable({ rows: [row({ productionLineIdText: '99' })] });
+
+      expect(within(region).getByRole('cell', { name: '이름 확인 중' })).toBeInTheDocument();
+      expect(within(region).queryByText('99')).not.toBeInTheDocument();
+    });
+
+    it('라인이 정해지지 않은 지시는 「—」다', () => {
+      const { region } = renderTable({ rows: [row({ productionLineIdText: null })] });
+      const line = within(region).getByRole('row', { name: /SYN-WO-0007/ });
+
+      expect(within(line).getAllByRole('cell')[1]).toHaveTextContent(t.blank);
     });
   });
 

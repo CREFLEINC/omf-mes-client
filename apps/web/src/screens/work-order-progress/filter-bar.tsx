@@ -1,4 +1,4 @@
-import { Button, TextField } from '@crefle/web-ui';
+import { Button, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type FormEvent, useEffect, useId, useState } from 'react';
 
@@ -19,10 +19,9 @@ const t = messages.workOrderProgress.filters;
 export interface ProgressFilterBarProps {
   /** 지금 조회에 걸려 있는 조건. 주소에서 읽은 값이다. */
   appliedFilters: ProgressFilters;
-  /** 「초기화」가 되돌리는 처음 값(최근 한 달, 나머지 비움). 이와 다를 때만 「초기화」가 보인다. */
+  /** 「초기화」가 되돌리는 처음 값(오늘 앞뒤 14일, 나머지 비움). 이와 다를 때만 「초기화」가 보인다. */
   initialFilters: ProgressFilters;
   lineLookup: NameLookup;
-  productionOrderLookup: NameLookup;
   processLookup: NameLookup;
   onSearch: (filters: ProgressFilters) => void;
   onReset: () => void;
@@ -52,9 +51,15 @@ const truncationNote = (lookup: NameLookup): string | null =>
  * ⛔ **기간을 비운 채로는 조회할 수 없다**(L-3). 무제한 조회를 허용하면 실적이 쌓인 뒤
  * 목록이 멎는다. 다만 **넓은 기간은 막지 않고 경고만 한다** — 넓게 봐야 하는 일이 실제로 있다.
  *
- * **보이는 조건은 셋이다**(C-6) — 기간 · 라인 · W/O 번호. P/O 와 공정은 「조건 더보기」에 접고,
+ * **보이는 조건은 셋이다**(C-6) — 기간 · 라인 · W/O 번호. 공정은 「조건 더보기」에 접고,
  * 접힌 칸에 걸린 조건은 칩으로만 알린다. 「초기화」는 처음 값과 다를 때만 보인다.
  * 조건 칸과 [조회] [초기화] [조건 더보기]는 한 줄에 놓인다 — 단추는 줄 오른쪽 끝이다.
+ * 펼친 칸도 줄을 바꾸지 않고 W/O 번호 바로 뒤에 이어진다.
+ *
+ * 라인은 선택지 수와 관계없이 검색창이 있는 선택 칸이고, W/O 번호는 돋보기가 있는 검색 칸이다.
+ * 칸 바탕은 조회 묶음 공용 바탕(`filter-field-surface`)이다 — 카드의 회색이 칸에 비치지 않는다.
+ *
+ * ⛔ **P/O 칸을 두지 않는다**(사용자 지시 2026-11-28). P/O 번호는 상세 창에서 본다.
  *
  * ⛔ **상태 칸을 두지 않는다.** 상태는 표 위 조건 칩이 맡는다(C-17 — 조회 조건 영역에 같은 칸을 두지 않는다).
  * 이 줄의 [조회]는 걸려 있는 상태를 그대로 싣고, [초기화]는 상태까지 푼다.
@@ -63,7 +68,6 @@ export const ProgressFilterBar = ({
   appliedFilters,
   initialFilters,
   lineLookup,
-  productionOrderLookup,
   processLookup,
   onSearch,
   onReset,
@@ -72,12 +76,11 @@ export const ProgressFilterBar = ({
   const periodNoteId = useId();
   const more = useFilterMore();
 
-  const { from, to, productionLineId, statusCode, productionOrderId, processId, keyword } =
-    appliedFilters;
+  const { from, to, productionLineId, statusCode, processId, keyword } = appliedFilters;
 
   useEffect(() => {
-    setDraft({ from, to, productionLineId, statusCode, productionOrderId, processId, keyword });
-  }, [from, to, productionLineId, statusCode, productionOrderId, processId, keyword]);
+    setDraft({ from, to, productionLineId, statusCode, processId, keyword });
+  }, [from, to, productionLineId, statusCode, processId, keyword]);
 
   /* 오프셋은 「막을지」와 「경고할지」에 영향을 주지 않는다 — 경계 문자열을 만들 때만 쓴다. */
   const period = resolvePeriod(draft, 0);
@@ -90,28 +93,18 @@ export const ProgressFilterBar = ({
   };
 
   const isChanged = hasChangedFilters(initialFilters, draft, appliedFilters);
-  /* 접힌 칸(P/O · 공정)의 조건만 칩으로 — 보이는 칸의 값을 칩으로 겹쳐 적지 않는다. */
-  const hiddenChips = [
-    ...(productionOrderId === ''
+  /* 접힌 칸(공정)의 조건만 칩으로 — 보이는 칸의 값을 칩으로 겹쳐 적지 않는다. */
+  const hiddenChips =
+    processId === ''
       ? []
-      : [
-          {
-            key: 'productionOrderId' as const,
-            label: t.chipProductionOrder(productionOrderLookup.labelOf(productionOrderId)),
-          },
-        ]),
-    ...(processId === ''
-      ? []
-      : [
-          {
-            key: 'processId' as const,
-            label: t.chipProcess(processLookup.labelOf(processId)),
-          },
-        ]),
-  ];
+      : [{ key: 'processId' as const, label: t.chipProcess(processLookup.labelOf(processId)) }];
 
   return (
-    <form aria-label={t.legend} className="filter-bar work-order-progress-filter" onSubmit={submit}>
+    <form
+      aria-label={t.legend}
+      className="filter-bar filter-field-surface work-order-progress-filter"
+      onSubmit={submit}
+    >
       {/* 기간은 관리웹 공용 두 칸(시작일 · 종료일) — 달력에서 시작 ≤ 종료를 막는다. 비울 수 없어 지우기 단추는 없다(L-3). */}
       <DateRangeFields
         required
@@ -127,7 +120,9 @@ export const ProgressFilterBar = ({
         }}
       />
 
+      {/* 라인은 선택지가 몇 개든 검색창을 둔다(사용자 지시 2026-11-28) — 공장마다 라인 수가 달라도 쓰는 법이 같다. */}
       <FilterSelect
+        searchable
         className="filter-field-md"
         label={t.productionLine}
         note={truncationNote(lineLookup)}
@@ -139,15 +134,39 @@ export const ProgressFilterBar = ({
         }}
       />
 
-      <div className="field-cell filter-field-md">
-        <TextField
-          label={t.keyword}
-          placeholder={t.keywordPlaceholder}
-          value={draft.keyword}
-          onChange={(event) => {
-            setDraft((current) => ({ ...current, keyword: event.target.value }));
-          }}
-        />
+      {/* 돋보기가 있는 검색 칸. Enter 는 폼의 [조회]와 같은 길로 나간다 — 칸이 따로 조회를 내지 않는다. */}
+      <SearchInput
+        clearLabel={messages.common.clear}
+        containerClassName="filter-field-md work-order-progress-search"
+        label={t.keyword}
+        placeholder={t.keywordPlaceholder}
+        value={draft.keyword}
+        onChange={(event) => {
+          setDraft((current) => ({ ...current, keyword: event.target.value }));
+        }}
+        onClear={() => {
+          setDraft((current) => ({ ...current, keyword: '' }));
+        }}
+      />
+
+      {/*
+       * 「조건 더보기」로 펼친 칸은 줄을 바꾸지 않고 W/O 번호 바로 뒤에 잇는다(사용자 지시 2026-11-28).
+       * `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다.
+       */}
+      <div id={more.id} className="work-order-progress-filter-more" hidden={!more.isOpen}>
+        <div className="filter-bar work-order-progress-filter-more-row">
+          <FilterSelect
+            className="filter-field-md"
+            label={t.process}
+            note={truncationNote(processLookup)}
+            options={processLookup.options}
+            unavailableReason={lookupReason(processLookup)}
+            value={draft.processId}
+            onChange={(nextProcessId) => {
+              setDraft((current) => ({ ...current, processId: nextProcessId }));
+            }}
+          />
+        </div>
       </div>
 
       <div className="filter-actions work-order-progress-filter-buttons">
@@ -164,35 +183,6 @@ export const ProgressFilterBar = ({
           </Button>
         )}
         <FilterMoreButton open={more.isOpen} controlsId={more.id} onToggle={more.toggle} />
-      </div>
-
-      {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
-      <div id={more.id} className="work-order-progress-filter-more" hidden={!more.isOpen}>
-        <div className="filter-bar work-order-progress-filter-more-row">
-          <FilterSelect
-            className="filter-field-md"
-            label={t.productionOrder}
-            note={truncationNote(productionOrderLookup)}
-            options={productionOrderLookup.options}
-            unavailableReason={lookupReason(productionOrderLookup)}
-            value={draft.productionOrderId}
-            onChange={(productionOrderId) => {
-              setDraft((current) => ({ ...current, productionOrderId }));
-            }}
-          />
-
-          <FilterSelect
-            className="filter-field-md"
-            label={t.process}
-            note={truncationNote(processLookup)}
-            options={processLookup.options}
-            unavailableReason={lookupReason(processLookup)}
-            value={draft.processId}
-            onChange={(nextProcessId) => {
-              setDraft((current) => ({ ...current, processId: nextProcessId }));
-            }}
-          />
-        </div>
       </div>
 
       <HiddenFilterChips

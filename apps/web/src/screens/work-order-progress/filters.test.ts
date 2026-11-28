@@ -28,7 +28,6 @@ const filters = (overrides: Partial<ProgressFilters> = {}): ProgressFilters => (
   ...NARROW,
   productionLineId: '',
   statusCode: '',
-  productionOrderId: '',
   processId: '',
   keyword: '',
   ...overrides,
@@ -43,7 +42,7 @@ const queryOf = (
 describe('readFilters', () => {
   it('주소에서 조건을 읽는다', () => {
     const read = readFilters(
-      params('from=2026-08-01&to=2026-08-30&line=7&st=SYN_RUN&po=31&proc=41&q=WO-1'),
+      params('from=2026-08-01&to=2026-08-30&line=7&st=SYN_RUN&proc=41&q=WO-1'),
       TODAY,
     );
 
@@ -52,22 +51,30 @@ describe('readFilters', () => {
       to: '2026-08-30',
       productionLineId: '7',
       statusCode: 'SYN_RUN',
-      productionOrderId: '31',
       processId: '41',
       keyword: 'WO-1',
     });
   });
 
-  /* ⛔ L-3 — 「조건 없는 조회」라는 상태를 만들지 않는다. 비면 최근 한 달로 되돌린다. */
+  /* P/O 조건은 걷었다(사용자 지시 2026-11-28) — 옛 주소에 남은 `po` 는 읽지 않는다. */
+  it('⛔ P/O 조건을 읽지 않는다', () => {
+    const read = readFilters(params('from=2026-08-01&to=2026-08-30&po=31'), TODAY);
+
+    expect(read).not.toHaveProperty('productionOrderId');
+    expect(toProgressListQuery(read, DEFAULT_SORT, 1, KST)).not.toHaveProperty('productionOrderId');
+  });
+
+  /* ⛔ L-3 — 「조건 없는 조회」라는 상태를 만들지 않는다. 비면 기본 기간(오늘 앞뒤 14일)으로 되돌린다. */
   it.each([
     ['빈 주소', ''],
     ['기간 절반만', 'from=2026-08-01'],
     ['달력에 없는 날', 'from=2026-02-31&to=2026-03-05'],
     ['역순', 'from=2026-08-30&to=2026-08-01'],
-  ])('⛔ %s 이면 최근 한 달로 되돌린다', (_name, search) => {
+  ])('⛔ %s 이면 기본 기간으로 되돌린다', (_name, search) => {
     const read = readFilters(params(search), TODAY);
 
-    expect({ from: read.from, to: read.to }).toEqual(NARROW);
+    /* 오늘(08-30)에서 앞뒤로 14일씩. */
+    expect({ from: read.from, to: read.to }).toEqual({ from: '2026-08-16', to: '2026-09-13' });
   });
 
   it.each([
@@ -111,7 +118,7 @@ describe('toProgressListQuery', () => {
   it('고른 조건만 싣는다 — 비운 칸은 키 자체를 보내지 않는다', () => {
     const query = queryOf();
 
-    for (const key of ['productionLineId', 'statusCode', 'productionOrderId', 'processId', 'q']) {
+    for (const key of ['productionLineId', 'statusCode', 'processId', 'q']) {
       expect(query).not.toHaveProperty(key);
     }
   });
@@ -121,14 +128,12 @@ describe('toProgressListQuery', () => {
       queryOf({
         productionLineId: '7',
         statusCode: 'SYN_RUN',
-        productionOrderId: '31',
         processId: '41',
         keyword: 'WO-1',
       }),
     ).toMatchObject({
       productionLineId: 7,
       statusCode: 'SYN_RUN',
-      productionOrderId: 31,
       processId: 41,
       q: 'WO-1',
     });

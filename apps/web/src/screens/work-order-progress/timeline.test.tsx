@@ -18,6 +18,7 @@ const row = (overrides: Partial<WorkOrderRow> = {}): WorkOrderRow => ({
   workOrderId: 7001,
   workOrderNo: 'SYN-WO-0007',
   itemIdText: '5001',
+  productionLineIdText: '7',
   processText: '합성 공정',
   orderQtyText: '3,000',
   goodQtyText: '1,950',

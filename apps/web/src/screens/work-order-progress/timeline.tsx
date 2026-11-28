@@ -9,6 +9,7 @@ import type { WorkOrderRow } from './row-view';
 import { StatusChip } from './status-chips';
 import {
   basisPosition,
+  centeringShift,
   dayLabel,
   type TimelineAxis,
   type TimelineSpan,
@@ -71,7 +72,8 @@ const LEGEND = [
  * ⛔ **전부 읽기 전용이다.** 막대를 끌어 일정을 고치지 않는다 — 줄을 누르면 표와 같은 상세 창이 열린다.
  *
  * 날 하나의 폭에는 아랫값이 있다. 기간이 길어 화면에 다 들어가지 않으면 축이 옆으로 구르고,
- * W/O 번호부터 달성률까지는 왼쪽에 붙어 남는다. 열면 기준 시각이 보이는 자리로 옮겨 둔다.
+ * W/O 번호부터 달성률까지는 왼쪽에 붙어 남는다. 열면 기준 시각이 보이는 축의 가운데에 오게 옮겨 둔다
+ * (사용자 지시 2026-11-28).
  *
  * 표로 그린다(`<table>`) — 줄 고르기(`rowPickHandlers`)와 고른 줄 칠하기를 표와 똑같이 쓴다.
  */
@@ -91,14 +93,22 @@ export const WorkOrderTimeline = ({
   const nowAt = axis === null ? null : basisPosition(axis, basisMs);
   const dayCount = axis?.days.length ?? 0;
 
-  /* 기준 시각이 보이는 자리로 — 한 달을 조회하면 오늘이 축 오른쪽 끝이라 처음에는 보이지 않는다. */
+  /* 기준 시각을 보이는 축의 가운데로 — 앞뒤 일정을 같은 폭으로 본다. */
   useLayoutEffect(() => {
     const scroller = scrollRef.current;
-    const track = scroller?.querySelector<HTMLElement>('.work-order-progress-tl-days');
-    if (scroller === null || track == null || nowAt === null) return;
+    /* 붙어 남는 마지막 칸(달성률)의 오른쪽 끝이 보이는 축의 왼쪽 끝이다. */
+    const lastInfo = scroller?.querySelector(
+      'thead .work-order-progress-tl-track',
+    )?.previousElementSibling;
+    const basisLine = scroller?.querySelector('.work-order-progress-tl-now');
+    if (scroller == null || lastInfo == null || basisLine == null) return;
 
-    const visibleTrack = scroller.clientWidth - track.offsetLeft;
-    scroller.scrollLeft = Math.max(0, (track.offsetWidth * nowAt) / 100 - visibleTrack / 2);
+    const shift = centeringShift(
+      basisLine.getBoundingClientRect().left,
+      lastInfo.getBoundingClientRect().right,
+      scroller.getBoundingClientRect().right,
+    );
+    scroller.scrollLeft = Math.max(0, scroller.scrollLeft + shift);
   }, [nowAt, dayCount, rows.length]);
 
   if (isError) {

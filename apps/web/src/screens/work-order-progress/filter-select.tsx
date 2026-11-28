@@ -22,6 +22,8 @@ export interface FilterSelectProps {
   note: string | null;
   /** 칸 폭을 주는 배치 클래스(`filter-field-md` 등 · C-19). */
   className?: string;
+  /** 선택지가 5개 이하여도 펼친 목록 맨 위에 검색창을 둔다. 주지 않으면 공용 선택 칸의 규칙(5개 초과)을 따른다. */
+  searchable?: boolean;
   onChange: (value: string) => void;
 }
 
@@ -41,6 +43,7 @@ export const FilterSelect = ({
   unavailableReason,
   note,
   className,
+  searchable = false,
   onChange,
 }: FilterSelectProps) => {
   const id = useId();
@@ -58,6 +61,7 @@ export const FilterSelect = ({
         disabled={unavailableReason !== null}
         id={id}
         options={[{ value: '', label: t.all }, ...options]}
+        searchable={searchable}
         value={value}
         onChange={onChange}
       />

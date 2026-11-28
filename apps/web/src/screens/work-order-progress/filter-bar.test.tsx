@@ -14,7 +14,6 @@ const APPLIED: ProgressFilters = {
   to: '2026-07-31',
   productionLineId: '',
   statusCode: '',
-  productionOrderId: '',
   processId: '',
   keyword: '',
 };
@@ -32,7 +31,6 @@ const propsOf = (overrides: Partial<ProgressFilterBarProps> = {}): ProgressFilte
   appliedFilters: APPLIED,
   initialFilters: APPLIED,
   lineLookup: lookup(),
-  productionOrderLookup: lookup({ options: [{ value: '31', label: 'SYN-PO-0031' }] }),
   processLookup: lookup({ options: [{ value: '41', label: '합성 공정' }] }),
   onSearch: vi.fn(),
   onReset: vi.fn(),
@@ -94,43 +92,38 @@ describe('ProgressFilterBar', () => {
   });
 
   describe('조건 더보기', () => {
-    it('P/O 와 공정은 「조건 더보기」 안에 접혀 있다', async () => {
+    it('공정은 「조건 더보기」 안에 접혀 있다', async () => {
       const { user } = renderBar();
       const more = screen.getByRole('button', { name: messages.common.filterMore.open });
 
       expect(more).toHaveAttribute('aria-expanded', 'false');
       expect(screen.getByLabelText(t.process)).not.toBeVisible();
-      expect(screen.getByLabelText(t.productionOrder)).not.toBeVisible();
       expect(screen.getByLabelText(t.productionLine)).toBeVisible();
 
       await user.click(more);
 
       expect(screen.getByLabelText(t.process)).toBeVisible();
-      expect(screen.getByLabelText(t.productionOrder)).toBeVisible();
       expect(
         screen.getByRole('button', { name: messages.common.filterMore.close }),
       ).toHaveAttribute('aria-expanded', 'true');
     });
 
-    it('접힌 칸(P/O · 공정)에 걸린 조건만 칩이 되고 ×가 그 조건만 풀어 조회한다', async () => {
+    it('접힌 칸(공정)에 걸린 조건만 칩이 되고 ×가 그 조건만 풀어 조회한다', async () => {
       const applied = {
         ...APPLIED,
         productionLineId: '7',
         statusCode: 'SYN_RUN',
-        productionOrderId: '31',
         processId: '41',
         keyword: 'SYN-WO',
       };
       const { onSearch, user } = renderBar({
         appliedFilters: applied,
-        productionOrderLookup: lookup({ labelOf: () => 'SYN-PO-0031' }),
         processLookup: lookup({ labelOf: () => '합성 공정' }),
       });
 
-      expect(screen.getByText(t.chipProductionOrder('SYN-PO-0031'))).toBeVisible();
       expect(screen.getByText(t.chipProcess('합성 공정'))).toBeVisible();
       /* 보이는 칸(라인 · W/O 번호)도, 표 위 칩이 맡는 상태도 여기서 칩으로 겹쳐 적지 않는다. */
-      expect(screen.getAllByRole('button', { name: /조건 제거$/ })).toHaveLength(2);
+      expect(screen.getAllByRole('button', { name: /조건 제거$/ })).toHaveLength(1);
 
       await user.click(
         screen.getByRole('button', {
@@ -261,7 +254,7 @@ describe('ProgressFilterBar', () => {
 
     /* ⛔ 적지 않으면 「여기 없으면 없는 것」으로 읽힌다. */
     it('⛔ 선택지가 잘렸으면 그 사실을 적는다', async () => {
-      const { user } = renderBar({ productionOrderLookup: lookup({ isTruncated: true }) });
+      const { user } = renderBar({ processLookup: lookup({ isTruncated: true }) });
 
       await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
 
@@ -272,6 +265,80 @@ describe('ProgressFilterBar', () => {
       renderBar();
 
       expect(screen.queryByText(t.optionsTruncated(LOOKUP_SIZE))).not.toBeInTheDocument();
+    });
+  });
+
+  /* P/O 번호는 상세 창에서 본다 — 조건 줄에는 두지 않는다(사용자 지시 2026-11-28). */
+  it('⛔ P/O 칸을 두지 않는다', async () => {
+    const { user } = renderBar();
+
+    await user.click(screen.getByRole('button', { name: messages.common.filterMore.open }));
+
+    expect(screen.queryByLabelText('P/O')).not.toBeInTheDocument();
+  });
+
+  describe('라인', () => {
+    /* 선택지가 몇 개든 검색창을 둔다 — 공장마다 라인 수가 달라도 쓰는 법이 같다. */
+    it('선택지가 하나뿐이어도 펼치면 검색창이 있다', async () => {
+      const { user } = renderBar();
+
+      await user.click(screen.getByRole('combobox', { name: t.productionLine }));
+
+      expect(
+        await screen.findByRole('searchbox', { name: messages.common.selectSearch }),
+      ).toBeVisible();
+    });
+
+    it('검색어로 선택지를 좁혀 고른다', async () => {
+      const { onSearch, user } = renderBar({
+        lineLookup: lookup({
+          options: [
+            { value: '7', label: 'SYN-LINE-A · 합성 라인' },
+            { value: '8', label: 'SYN-LINE-B · 둘째 라인' },
+          ],
+        }),
+      });
+
+      await user.click(screen.getByRole('combobox', { name: t.productionLine }));
+      await user.type(
+        await screen.findByRole('searchbox', { name: messages.common.selectSearch }),
+        '둘째',
+      );
+
+      await user.click(await screen.findByRole('option', { name: /둘째 라인$/ }));
+      expect(screen.queryByRole('option', { name: /합성 라인$/ })).toBeNull();
+      await user.click(searchButton());
+
+      expect(onSearch).toHaveBeenCalledWith({ ...APPLIED, productionLineId: '8' });
+    });
+  });
+
+  describe('W/O 번호', () => {
+    it('무엇을 넣는 칸인지 흐린 글로 알린다', () => {
+      renderBar();
+
+      expect(screen.getByLabelText(t.keyword)).toHaveAttribute('placeholder', t.keywordPlaceholder);
+    });
+
+    /* 칸이 따로 조회를 내지 않는다 — Enter 는 [조회]와 같은 길로 한 번만 나간다. */
+    it('Enter 로 조회한다 — 한 번만', async () => {
+      const { onSearch, user } = renderBar();
+
+      await user.type(screen.getByLabelText(t.keyword), 'SYN-WO{Enter}');
+
+      expect(onSearch).toHaveBeenCalledTimes(1);
+      expect(onSearch).toHaveBeenCalledWith({ ...APPLIED, keyword: 'SYN-WO' });
+    });
+
+    it('지우기 단추로 칸을 비운다 — 조회는 [조회]를 눌러야 나간다', async () => {
+      const { onSearch, user } = renderBar({
+        appliedFilters: { ...APPLIED, keyword: 'SYN-WO' },
+      });
+
+      await user.click(screen.getByRole('button', { name: messages.common.clear }));
+
+      expect(screen.getByLabelText(t.keyword)).toHaveValue('');
+      expect(onSearch).not.toHaveBeenCalled();
     });
   });
 

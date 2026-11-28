@@ -95,5 +95,21 @@ export const basisPosition = (axis: TimelineAxis, basisMs: number): number | nul
     ? null
     : ((basisMs - axis.startMs) / (axis.endMs - axis.startMs)) * 100;
 
+/**
+ * 기준 시각이 **보이는 날짜 축의 가운데**에 오게 하려면 지금보다 얼마나 더 굴려야 하는가.
+ *
+ * 왼쪽 다섯 칸(W/O 번호 ~ 달성률)은 붙어 남아 날짜 축을 가리므로, 「보이는 축」은 붙은 칸의 오른쪽 끝부터 상자의
+ * 오른쪽 끝까지다. 셋 다 **화면에 놓인 자리**(같은 기준의 가로 좌표)로 받는다 — 폭을 더해 셈하면 칸 여백 · 붙는
+ * 칸의 겹침 같은 배치 사정에 따라 어긋난다.
+ *
+ * 양수면 오른쪽으로 더, 음수면 왼쪽으로 되돌린다. 축 끝이라 다 굴릴 수 없으면 브라우저가 끝에서 멈춘다.
+ *
+ * @param basisX 기준선의 자리.
+ * @param visibleLeft 보이는 축의 왼쪽 끝(붙은 칸의 오른쪽 끝).
+ * @param visibleRight 보이는 축의 오른쪽 끝(상자의 오른쪽 끝).
+ */
+export const centeringShift = (basisX: number, visibleLeft: number, visibleRight: number): number =>
+  basisX - (visibleLeft + visibleRight) / 2;
+
 /** 날 머리에 적는 말 — `MM-DD`. 해는 조회 조건에 이미 있다. */
 export const dayLabel = (day: string): string => day.slice(5);

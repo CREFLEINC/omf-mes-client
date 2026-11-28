@@ -2,7 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import {
-  DEFAULT_PERIOD_DAYS,
+  DEFAULT_PERIOD_REACH_DAYS,
   defaultPeriod,
   periodDays,
   periodLockReason,
@@ -23,23 +23,24 @@ const boundsOf = (from: string, to: string, offset = KST) => {
 };
 
 describe('defaultPeriod', () => {
-  it('오늘을 마지막 날로 두고 한 달치를 고른다 — 오늘을 포함해 센다', () => {
-    expect(defaultPeriod(new Date(2026, 7, 30))).toEqual({ from: '2026-08-01', to: '2026-08-30' });
+  /* 기간 축이 「계획 시작」이라 앞날에 시작할 지시도 함께 보여야 한다. */
+  it('오늘에서 앞뒤로 14일씩 고른다 — 오늘이 기간의 가운데다', () => {
+    expect(defaultPeriod(new Date(2026, 7, 15))).toEqual({ from: '2026-08-01', to: '2026-08-29' });
   });
 
-  it('달 경계를 넘어간다', () => {
-    expect(defaultPeriod(new Date(2026, 8, 5))).toEqual({ from: '2026-08-07', to: '2026-09-05' });
+  it('달 경계를 앞뒤로 넘어간다', () => {
+    expect(defaultPeriod(new Date(2026, 7, 30))).toEqual({ from: '2026-08-16', to: '2026-09-13' });
   });
 
   it('기본값이 곧바로 조회된다 — 들어오자마자 막혀 있지 않다', () => {
     expect(periodLockReason(defaultPeriod(new Date(2026, 7, 30)))).toBeNull();
   });
 
-  it(`기본 기간이 ${String(DEFAULT_PERIOD_DAYS)}일이다`, () => {
+  it(`오늘 앞뒤로 ${String(DEFAULT_PERIOD_REACH_DAYS)}일씩이다`, () => {
     const { from, to } = defaultPeriod(new Date(2026, 7, 30));
     const span = (Date.parse(to) - Date.parse(from)) / (24 * 60 * 60 * 1000) + 1;
 
-    expect(span).toBe(DEFAULT_PERIOD_DAYS);
+    expect(span).toBe(DEFAULT_PERIOD_REACH_DAYS * 2 + 1);
   });
 });
 

@@ -11,7 +11,8 @@ import type { Translated } from './translated';
  * 빼면 서버 판정처럼 읽힌다.
  */
 export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
-  title: 'Tiến độ W/O',
+  title: 'Tra cứu tiến độ W/O',
+  breadcrumbRoot: 'Quản lý sản xuất',
 
   filters: {
     legend: 'Điều kiện tra cứu',
@@ -19,13 +20,11 @@ export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
     from: 'Ngày bắt đầu',
     to: 'Ngày kết thúc',
     productionLine: 'Dòng',
-    productionOrder: 'P/O',
     keyword: 'Số W/O',
-    keywordPlaceholder: 'Một phần của số W/O',
+    keywordPlaceholder: 'Nhập số W/O',
     search: 'Tra cứu',
     reset: 'Đặt lại',
     process: 'Công đoạn',
-    chipProductionOrder: (value: string): string => `P/O: ${value}`,
     chipProcess: (value: string): string => `Công đoạn: ${value}`,
 
     /** ⛔ 「고르지 않음」이 아니라 무엇이 조회되는지를 적는다. */
@@ -51,6 +50,7 @@ export const workOrderProgress: Translated<typeof ko.workOrderProgress> = {
     title: 'Danh sách',
     columns: {
       workOrderNo: 'Số W/O',
+      productionLine: 'Dòng',
       itemId: 'Mặt hàng',
       itemCode: 'Mã mặt hàng',
       itemName: 'Tên mặt hàng',

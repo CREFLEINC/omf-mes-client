@@ -19,6 +19,8 @@ export interface WorkOrderRow {
   workOrderId: number;
   workOrderNo: string;
   itemIdText: string;
+  /** 라인 번호. 라인이 정해지지 않은 지시는 `null` — 이름은 화면이 라인 이름표로 푼다. */
+  productionLineIdText: string | null;
   /** 공정명. 응답이 싣지 않았으면 「—」. */
   processText: string;
   orderQtyText: string;
@@ -97,6 +99,8 @@ export const toWorkOrderRow = (workOrder: WorkOrder, basisAt: Date): WorkOrderRo
     workOrderId: workOrder.workOrderId,
     workOrderNo: workOrder.workOrderNo,
     itemIdText: String(workOrder.itemId),
+    productionLineIdText:
+      workOrder.productionLineId === undefined ? null : String(workOrder.productionLineId),
     /* 공정 마스터의 이름이 먼저, 없으면 Routing 공정 이름. */
     processText: nameText(workOrder.processName ?? workOrder.routingOperationName),
     orderQtyText: qtyText(workOrder.orderQty),

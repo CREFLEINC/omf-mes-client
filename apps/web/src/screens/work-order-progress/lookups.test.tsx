@@ -6,8 +6,8 @@ import {
   LOOKUP_SIZE,
   NAME_UNKNOWN,
   useItemNames,
+  useProcessLookup,
   useProductionLineLookup,
-  useProductionOrderLookup,
 } from './lookups';
 
 const ITEM = {
@@ -33,12 +33,12 @@ const LINE = {
   isActive: true,
 };
 
-const ORDER = {
-  productionOrderId: 31,
-  productionOrderNo: 'SYN-PO-0031',
-  itemId: 5001,
-  orderQty: 3000,
-  statusCode: 'SYN_OPEN',
+const PROCESS = {
+  processId: 41,
+  processCode: 'SYN-PR-01',
+  processName: '합성 공정',
+  processTypeCode: 'SYN_INTERNAL',
+  isActive: true,
 };
 
 const stub = (
@@ -57,7 +57,7 @@ const stub = (
       return jsonResponse({ message: '없다' }, { status: 404 });
     }
 
-    const items = url.pathname === '/planning/production-orders' ? [ORDER] : [LINE];
+    const items = url.pathname === '/mdm/processes' ? [PROCESS] : [LINE];
     const total = options.total ?? items.length;
     return jsonResponse({ items, page: { page: 1, size: 200, total } });
   };
@@ -166,40 +166,34 @@ describe('useItemNames', () => {
   });
 });
 
-describe('useProductionOrderLookup', () => {
-  /*
-   * ⛔ P/O 는 번호가 곧 이름이다. 품목·라인처럼 「코드 · 이름」으로 꾸미면 없는 필드를
-   * 지어내는 셈이 된다.
-   */
-  it('P/O 번호를 그대로 보인다', async () => {
-    const { result } = renderHookWithProviders(() => useProductionOrderLookup(), {
+describe('useProcessLookup', () => {
+  it('공정 이름을 보인다', async () => {
+    const { result } = renderHookWithProviders(() => useProcessLookup(), {
       fetch: stub().fetch,
     });
 
     await waitFor(() => {
       expect(result.current.isPending).toBe(false);
     });
-    expect(result.current.labelOf(31)).toBe('SYN-PO-0031');
+    expect(result.current.labelOf(41)).toBe('합성 공정');
+    expect(result.current.options).toEqual([{ value: '41', label: '합성 공정' }]);
   });
 
-  /*
-   * ⛔ 하위를 함께 받으면 page·total 이 «루트 기준»으로 바뀌어 「몇 건 중 몇 건을 받았나」가
-   * 어긋난다 — 잘림 판정이 거짓이 된다.
-   */
-  it('⛔ 하위 P/O 를 함께 받지 않는다 — 세는 기준이 바뀐다', async () => {
+  /* 지난 W/O 를 찾는 조건이다 — 쓰지 않게 된 공정으로 만든 지시도 걸러 볼 수 있어야 한다. */
+  it('쓰지 않게 된 공정까지 받는다', async () => {
     const stubbed = stub();
 
-    renderHookWithProviders(() => useProductionOrderLookup(), { fetch: stubbed.fetch });
+    renderHookWithProviders(() => useProcessLookup(), { fetch: stubbed.fetch });
 
     await waitFor(() => {
       expect(stubbed.urls).toHaveLength(1);
     });
-    expect(stubbed.urls[0]).not.toContain('includeChildren');
+    expect(stubbed.urls[0]).toContain('includeInactive=true');
   });
 
-  /* P/O 는 주문이 들어올 때마다 늘어난다 — 「고르려는 것이 목록에 없는」 일이 실제로 생긴다. */
+  /* ⛔ 선택지가 이게 전부인 척하지 않는다 — 넘쳤으면 넘쳤다고 알린다. */
   it('받은 것보다 전체가 많으면 잘렸다고 알린다', async () => {
-    const { result } = renderHookWithProviders(() => useProductionOrderLookup(), {
+    const { result } = renderHookWithProviders(() => useProcessLookup(), {
       fetch: stub({ total: 9000 }).fetch,
     });
 
@@ -210,14 +204,14 @@ describe('useProductionOrderLookup', () => {
   });
 
   it('⛔ 조회가 실패해도 숫자로 물러나지 않는다', async () => {
-    const { result } = renderHookWithProviders(() => useProductionOrderLookup(), {
+    const { result } = renderHookWithProviders(() => useProcessLookup(), {
       fetch: stub({ fail: true }).fetch,
     });
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
     });
-    expect(result.current.labelOf(31)).toBe(NAME_UNKNOWN);
+    expect(result.current.labelOf(41)).toBe(NAME_UNKNOWN);
   });
 });
 
@@ -240,7 +234,7 @@ describe('useProductionLineLookup', () => {
       () => ({
         items: useItemNames([5001]),
         lines: useProductionLineLookup(),
-        orders: useProductionOrderLookup(),
+        processes: useProcessLookup(),
       }),
       { fetch: stubbed.fetch },
     );
@@ -248,7 +242,7 @@ describe('useProductionLineLookup', () => {
     await waitFor(() => {
       expect(stubbed.urls).toHaveLength(3);
     });
-    for (const path of ['/mdm/items/', '/mdm/production-lines', '/planning/production-orders']) {
+    for (const path of ['/mdm/items/', '/mdm/production-lines', '/mdm/processes']) {
       expect(stubbed.urls.some((url) => url.startsWith(path))).toBe(true);
     }
   });

@@ -16,14 +16,23 @@ describe('WorkOrderProgressScreen', () => {
     expect(within(region).queryByRole('heading')).not.toBeInTheDocument();
   });
 
+  /* 큰 제목은 세우지 않고 탐색 경로만 둔다 — 작업계획 화면과 같다(사용자 지시 2026-11-28). */
+  it('화면 위에 탐색 경로를 둔다 — 생산 관리 › W/O 진행현황 조회', () => {
+    renderScreen();
+
+    const crumbs = screen.getByRole('navigation', { name: messages.common.shell.breadcrumb });
+    expect(within(crumbs).getByText(t.breadcrumbRoot)).toBeInTheDocument();
+    expect(within(crumbs).getByText(t.title)).toBeInTheDocument();
+  });
+
   /*
-   * L-3 — 기간을 비운 채로 들어와도 조건 없는 조회를 만들지 않는다. 기본값은 최근 한 달이고,
+   * L-3 — 기간을 비운 채로 들어와도 조건 없는 조회를 만들지 않는다. 기본값은 오늘 앞뒤 14일이고,
    * 그 값을 주소에도 적어야 지금 보고 있는 화면을 그대로 공유할 수 있다.
    */
   it('⛔ 기간 없이 들어와도 조건 없는 조회를 내지 않는다', async () => {
     const { urls } = renderScreen();
 
-    expect(await listUrl(urls)).toContain('plannedStartFrom=2026-06-16');
+    expect(await listUrl(urls)).toContain('plannedStartFrom=2026-07-01');
   });
 
   it('⛔ 실적 누계를 함께 받는다 — 양품·달성률이 거기서 온다', async () => {

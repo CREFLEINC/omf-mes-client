@@ -10,7 +10,6 @@ import { parseSort, type SortState, toSortParam } from './sort';
 export interface ProgressFilters extends PeriodInput {
   productionLineId: string;
   statusCode: string;
-  productionOrderId: string;
   /** 공정. 계약의 `processId`다 — 서버가 Routing 공정을 거쳐 잇는다. */
   processId: string;
   /** W/O 번호 검색. 계약의 `q`다. */
@@ -28,7 +27,6 @@ export interface ProgressListQuery {
   plannedStartTo: string;
   productionLineId?: number;
   statusCode?: string;
-  productionOrderId?: number;
   processId?: number;
   q?: string;
   sort: ReturnType<typeof toSortParam>;
@@ -50,7 +48,6 @@ export interface StatusCountQuery {
   plannedStartFrom: string;
   plannedStartTo: string;
   productionLineId?: number;
-  productionOrderId?: number;
   processId?: number;
   q?: string;
   size: 1;
@@ -62,7 +59,6 @@ const KEYS = {
   to: 'to',
   productionLineId: 'line',
   statusCode: 'st',
-  productionOrderId: 'po',
   processId: 'proc',
   keyword: 'q',
   sort: 'sort',
@@ -98,7 +94,7 @@ const dateOf = (value: string | null): string => {
 /**
  * 주소에서 조회 조건을 읽는다.
  *
- * 기간이 비었거나 쓸 수 없는 값이면 **최근 한 달로 되돌린다** — L-3이 기간을 비울 수 없게 하므로
+ * 기간이 비었거나 쓸 수 없는 값이면 **기본 기간(오늘 앞뒤 14일)으로 되돌린다** — L-3이 기간을 비울 수 없게 하므로
  * 「조건 없는 조회」라는 상태를 만들지 않는다. `today`를 밖에서 받는 이유는 감지기가 실행하는
  * 날에 따라 결과가 달라지지 않게 하기 위해서다.
  */
@@ -112,7 +108,6 @@ export const readFilters = (params: URLSearchParams, today: Date): ProgressFilte
     ...period,
     productionLineId: identifierOf(params.get(KEYS.productionLineId)),
     statusCode: params.get(KEYS.statusCode)?.trim() ?? '',
-    productionOrderId: identifierOf(params.get(KEYS.productionOrderId)),
     processId: identifierOf(params.get(KEYS.processId)),
     keyword: params.get(KEYS.keyword)?.trim() ?? '',
   };
@@ -143,13 +138,10 @@ const optionalText = (raw: string): string | undefined => (raw === '' ? undefine
 /** 상태를 뺀 나머지 조건 — 목록 조회와 상태 칩 건수 조회가 함께 쓴다. */
 const scopeOf = (
   filters: ProgressFilters,
-): Pick<ProgressListQuery, 'productionLineId' | 'productionOrderId' | 'processId' | 'q'> => ({
+): Pick<ProgressListQuery, 'productionLineId' | 'processId' | 'q'> => ({
   ...(optionalNumber(filters.productionLineId) === undefined
     ? {}
     : { productionLineId: Number(filters.productionLineId) }),
-  ...(optionalNumber(filters.productionOrderId) === undefined
-    ? {}
-    : { productionOrderId: Number(filters.productionOrderId) }),
   ...(optionalNumber(filters.processId) === undefined
     ? {}
     : { processId: Number(filters.processId) }),
@@ -221,7 +213,6 @@ export const toAppliedSearchParams = (
   replace(next, KEYS.to, dateOf(filters.to));
   replace(next, KEYS.productionLineId, filters.productionLineId.trim());
   replace(next, KEYS.statusCode, filters.statusCode.trim());
-  replace(next, KEYS.productionOrderId, filters.productionOrderId.trim());
   replace(next, KEYS.processId, filters.processId.trim());
   replace(next, KEYS.keyword, filters.keyword.trim());
   replace(next, KEYS.page, page > 1 ? String(page) : '');

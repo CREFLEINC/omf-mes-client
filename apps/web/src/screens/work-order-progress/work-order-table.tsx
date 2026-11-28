@@ -26,6 +26,8 @@ export interface WorkOrderTableProps {
   isError: boolean;
   /** 식별자를 사람이 읽는 이름으로. 이름표를 만드는 일은 화면이 맡는다. */
   itemLabel: (itemIdText: string) => string;
+  /** 라인 번호를 「코드 · 이름」으로. 못 찾으면 「이름 확인 중」 — 숫자 번호를 보이지 않는다. */
+  lineLabel: (lineIdText: string) => string;
   /**
    * 상태 코드를 마스터의 표시명으로.
    *
@@ -73,6 +75,7 @@ export const WorkOrderTable = ({
   isLoading,
   isError,
   itemLabel,
+  lineLabel,
   statusLabel,
   onSort,
   onSelect,
@@ -105,6 +108,20 @@ export const WorkOrderTable = ({
           {row.workOrderNo}
         </Button>
       ),
+    },
+    /*
+     * 라인 — W/O 번호 바로 뒤(사용자 지시 2026-11-28). 응답은 라인 번호만 주어 조회 조건의 라인 이름표로 이름을 푼다.
+     * 칸에는 이름만 적는다. 라인이 정해지지 않은 지시는 「—」다.
+     */
+    {
+      key: 'productionLine',
+      header: t.columns.productionLine,
+      render: (row) => {
+        if (row.productionLineIdText === null) return t.blank;
+
+        const { code, name } = splitCodeName(lineLabel(row.productionLineIdText), '');
+        return name === '' ? code : name;
+      },
     },
     /* 품목코드 · 품목명은 두 열(사용자 지시 2026-11-24). */
     {

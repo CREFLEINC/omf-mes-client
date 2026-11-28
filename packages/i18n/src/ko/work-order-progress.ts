@@ -9,7 +9,9 @@
  * 같은 조회 결과를 표나 날짜 축 일정으로 본다.
  */
 export const workOrderProgress = {
-  title: 'W/O 진행현황',
+  /** 메뉴 이름과 같다 — 화면 위 탐색 경로의 끝 칸이다. 큰 제목은 세우지 않는다. */
+  title: 'W/O 진행현황 조회',
+  breadcrumbRoot: '생산 관리',
 
   /** 조회 조건. */
   filters: {
@@ -18,15 +20,13 @@ export const workOrderProgress = {
     from: '시작일',
     to: '종료일',
     productionLine: '라인',
-    productionOrder: 'P/O',
     keyword: 'W/O 번호',
-    keywordPlaceholder: 'W/O 번호의 일부',
+    keywordPlaceholder: 'W/O 번호를 입력하세요',
     search: '조회',
     reset: '초기화',
     /** 공정 조건 — 계약의 `processId`. 「조건 더보기」에 접힌다. */
     process: '공정',
     /** 「조건 더보기」에 접힌 칸에 걸린 조건의 칩(C-6). 상태는 표 위 조건 칩이 맡는다(C-17). */
-    chipProductionOrder: (value: string): string => `P/O: ${value}`,
     chipProcess: (value: string): string => `공정: ${value}`,
 
     /** 고르지 않은 상태. ⛔ 「선택 안 함」이 아니라 **무엇이 조회되는지**를 적는다. */
@@ -76,6 +76,7 @@ export const workOrderProgress = {
     title: '목록',
     columns: {
       workOrderNo: 'W/O 번호',
+      productionLine: '라인',
       itemId: '품목',
       itemCode: '품목코드',
       itemName: '품목명',

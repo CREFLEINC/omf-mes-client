@@ -168,6 +168,11 @@ describe('toWorkOrderRow', () => {
 });
 
 describe('표와 일정 보기가 함께 쓰는 값', () => {
+  it('라인 번호를 옮긴다 — 정해지지 않았으면 없음이다', () => {
+    expect(rowOf({ productionLineId: 7 }).productionLineIdText).toBe('7');
+    expect(rowOf().productionLineIdText).toBeNull();
+  });
+
   it('공정은 공정 마스터의 이름이 먼저고, 없으면 Routing 공정 이름이다', () => {
     expect(rowOf({ processName: '사출', routingOperationName: 'OP-10' }).processText).toBe('사출');
     expect(rowOf({ routingOperationName: 'OP-10' }).processText).toBe('OP-10');
