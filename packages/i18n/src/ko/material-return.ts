@@ -28,7 +28,7 @@ export const materialReturn = {
       returnable: '반납 가능',
       qty: '반납 수량',
       destination: '받는 곳',
-      remove: (lotNo: string) => `${lotNo} 줄 빼기`,
+      remove: (lotNo: string) => `${lotNo} 빼기`,
     },
     staging: '적치 대기',
     stagingOf: (warehouse: string) => `적치 대기 · ${warehouse}`,
@@ -38,10 +38,10 @@ export const materialReturn = {
     returnableHint: (qty: string) => `반납 가능 ${qty}`,
     qtyOver: (qty: string) => `반납 수량은 반납 가능 ${qty} 이하로 적으세요.`,
     qtyInteger: '이 단위는 소수로 적을 수 없습니다.',
-    noLine: '줄을 고르면 수량을 적습니다.',
+    noLine: '목록에서 LOT 을 고르면 수량을 적습니다.',
     emptyTitle: '반납할 자재 LOT 라벨을 스캔하세요',
     emptyHint: '라벨이 없는 자재는 「W/O 로 찾기」로 고릅니다.',
-    sum: (lines: number, totals: string) => `${lines}줄 · 합 ${totals}`,
+    sum: (lines: number, totals: string) => `${lines}건 · 합 ${totals}`,
     clear: '목록 비우기',
     submit: (lines: number) => `반납 입고 (${lines}건)`,
     submitting: '보내는 중…',
@@ -53,7 +53,7 @@ export const materialReturn = {
     rejected: (reason: string) => `대기열에서 보낸 반납 입고가 거절됐습니다 — ${reason}`,
     rejectedNoReason: '대기열에서 보낸 반납 입고가 거절됐습니다. 목록을 확인하고 다시 담으세요.',
     submitFailed: '반납 입고를 보내지 못했습니다. 연결을 확인하고 다시 누르세요.',
-    forbidden: '이 단말에는 반납 입고 권한이 없습니다. 관리자에게 알리세요.',
+    forbidden: '이 기기에는 반납 입고 권한이 없습니다. 관리자에게 알리세요.',
   },
 
   /** 「라벨이 없어요 · W/O 로 찾기」 — POP 창 · PDA 화면이 함께 쓴다. */
@@ -84,7 +84,7 @@ export const materialReturn = {
     pickedLot: '고른 LOT',
     qty: '수량',
     add: '목록에 담기',
-    addHint: '담으면 목록에 「W/O 로 찾음」 줄로 들어갑니다.',
+    addHint: '담으면 목록에 「W/O 로 찾음」 표시와 함께 들어갑니다.',
     close: '닫기',
     loading: '불러오는 중입니다.',
     loadFailed: '목록을 불러오지 못했습니다. 연결을 확인하고 다시 여세요.',
@@ -114,7 +114,7 @@ export const materialReturn = {
   /** PDA M-01-15 — LOT 하나씩: LOT → 수량 → 위치(건너뛸 수 있음). */
   pda: {
     title: '반납 입고',
-    menuDescription: '창고로 돌아온 자재를 받아 자리에 놓기',
+    menuDescription: '창고로 돌아온 자재를 받아 위치에 놓기',
     steps: { lot: 'LOT', qty: '수량', location: '위치' },
     scan: '자재 LOT 라벨 스캔',
     scanSub: '창고로 돌아온 자재 LOT 을 스캔하세요',
@@ -136,12 +136,17 @@ export const materialReturn = {
     sendFailedTitle: '보내지 못함',
     doneLocated: '반납 입고 · 적치 끝',
     doneStaged: '반납 입고 끝 · 적치 대기',
-    doneStagedHint: '나중에 「적치·입고 완료」에서 자리에 놓으세요.',
+    doneStagedHint: '나중에 「적치·입고 완료」에서 위치에 놓으세요.',
     stagingOf: (warehouse: string) => `${warehouse} 적치 대기`,
     staging: '적치 대기',
     nextLot: '다음 LOT',
     queued: '보낼 대기열에 넣었습니다',
     queuedHint: '연결되면 보냅니다. 다음 LOT 을 스캔하세요.',
     sending: '보내는 중…',
+    locationNotFound: (code: string) =>
+      `「${code}」 위치를 찾지 못했습니다. 위치 라벨을 확인하세요.`,
+    locationLookupFailed:
+      '위치를 읽지 못했습니다. 연결을 확인하거나 「적치 대기로 받기」를 누르세요.',
+    stepCard: (step: string) => `${step} 다시 하기`,
   },
 };

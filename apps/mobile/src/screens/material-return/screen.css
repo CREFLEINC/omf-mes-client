@@ -1,0 +1,185 @@
+/* M-01-15 반납 입고 — 시안 ⑤(화면 전용 `mreturn*`). */
+
+.mreturn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 100%;
+  padding: var(--space-4);
+  padding-bottom: 96px;
+}
+
+.mreturn > * {
+  flex: none;
+}
+
+.mreturn p {
+  margin: 0;
+}
+
+/* 단계 막대 세 칸 — 지금 칸 빨강, 지난 칸 진하게, 남은 칸 옅게. */
+.mreturn__bar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mreturn__bar-cell {
+  padding-top: var(--space-1);
+  border-top: 4px solid var(--outline-variant);
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+.mreturn__bar-cell.is-on {
+  border-top-color: var(--on-surface);
+  color: var(--on-surface);
+  font-weight: 700;
+}
+
+.mreturn__bar-cell.is-done {
+  border-top-color: var(--outline);
+  color: var(--on-surface-variant);
+}
+
+/* 지난 단계 카드 — 누르면 그 단계로. */
+.mreturn__card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  min-height: 48px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+  text-align: left;
+  font: inherit;
+}
+
+.mreturn__card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  align-items: baseline;
+}
+
+.mreturn__code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.mreturn__lotno {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  overflow-wrap: anywhere;
+}
+
+.mreturn__sub,
+.mreturn__note {
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+.mreturn__qty {
+  font: var(--type-title-sm);
+}
+
+.mreturn__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.mreturn__title,
+.mreturn__find-title {
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+.mreturn__link {
+  align-self: flex-start;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  text-align: left;
+  text-decoration: underline;
+}
+
+/* W/O 로 찾기 */
+.mreturn__find {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.mreturn__wo-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mreturn__wo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--on-surface);
+  text-align: left;
+  font: inherit;
+}
+
+.mreturn__wo.is-picked {
+  border-color: var(--on-surface);
+  box-shadow: inset 4px 0 0 var(--on-surface);
+}
+
+.mreturn__wo-head,
+.mreturn__wo-picked {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  align-items: center;
+}
+
+.mreturn__chip {
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  font: var(--type-label-sm);
+  background: var(--surface-container-high);
+}
+
+.mreturn__chip--info {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+}
+
+.mreturn__chip--warn {
+  background: var(--semantic-warning-container);
+  color: var(--on-semantic-warning-container);
+}
+
+.mreturn__chip--ok {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+}
+
+.mreturn__done-line {
+  display: block;
+  overflow-wrap: anywhere;
+}
