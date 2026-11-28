@@ -2,6 +2,7 @@ import { isTransientStatus, type ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import type { OutboxDraft } from '../../patterns/outbox';
+import { verdictTextOf } from '../putaway/direct';
 import { plantToday } from '../../patterns/plant-time';
 import {
   RETURN_PATH,
@@ -26,7 +27,11 @@ export interface ReturnLot {
   itemName: string;
   uomCode: string;
   returnableQty: number;
-  /** 위치 없이 받으면 들어갈 출고 생산창고(그 창고 적치 대기). */
+  /**
+   * 그 LOT 을 출고한 생산창고 — 위치 없이 받으면 그 창고 적치 대기로 들어가고, 스캔한 위치 코드도 이 창고에서 찾는다
+   * (단말의 위치 조회는 창고를 묶어야 한다 · 적치 · 제품 입고와 같다).
+   */
+  issueWarehouseId: number;
   issueWarehouseName: string;
   /** 「W/O 로 찾기」로 고른 W/O. LOT 스캔이면 null(서버가 자동 귀속). */
   pickedWorkOrderId: number | null;
@@ -42,6 +47,7 @@ export const lotOf = (
   itemName: lookup.item.itemName,
   uomCode: lookup.uom.uomCode,
   returnableQty: lookup.returnableQty,
+  issueWarehouseId: lookup.issueWarehouse.warehouseId,
   issueWarehouseName: lookup.issueWarehouse.warehouseName,
   pickedWorkOrderId,
 });
@@ -130,15 +136,23 @@ export type SendFailure =
   | { kind: 'queue' }
   /** 미지정 위치 — 확인 카드. */
   | { kind: 'confirm' }
-  /** 서버가 거절했다 — 서버 문구 그대로(없으면 null). */
+  /** 서버가 거절했다 — 아는 코드는 단말 언어 문구, 모르면 서버 문구(없으면 null). */
   | { kind: 'rejected'; message: string | null };
 
-const codesOf = (error: ApiError): string[] =>
+interface ErrorLine {
+  code: string;
+  field: string | undefined;
+  message: string;
+}
+
+const linesOf = (error: ApiError): ErrorLine[] =>
   error.kind === 'validation' || error.kind === 'stateLocked'
-    ? error.errors.map((item) => item.code)
+    ? error.errors.map((item) => ({ code: item.code, field: item.field, message: item.message }))
     : error.kind === 'network' || error.code === undefined
       ? []
-      : [error.code];
+      : [{ code: error.code, field: undefined, message: error.message ?? '' }];
+
+const codesOf = (error: ApiError): string[] => linesOf(error).map((line) => line.code);
 
 const messageOf = (error: ApiError): string | null => {
   const text =
@@ -154,18 +168,63 @@ const messageOf = (error: ApiError): string | null => {
   return text === '' ? null : text;
 };
 
-/** 보내기 실패를 가른다 — 기다리면 풀리는 것만 대기열, 미지정은 확인, 나머지는 서버 문구. */
-export const sendFailureOf = (error: ApiError): SendFailure => {
+/** 서버 넘음 문구 「… (반납 가능 100)」에서 그때의 반납 가능 양을 꺼낸다 — 단위는 화면이 붙인다. */
+const RETURNABLE_IN_MESSAGE = /\(\D*?([\d.,]+)\s*\)\s*$/u;
+
+/**
+ * 거절 한 줄의 문구를 오류 코드로 꺼낸다(서버 문구는 한국어 하나라 베트남어 화면에 그대로 쓰지 않는다 · 적치
+ * `verdictTextOf` 와 같은 방식 · 실제 앱 확인 F-03). 모르는 코드면 null.
+ */
+const reasonOfLine = (line: ErrorLine, uomCode: string): string | null => {
+  const r = messages.materialReturn.reason;
+
+  switch (line.code) {
+    case 'NOT_RETURNABLE':
+    case 'NOTHING_TO_RETURN':
+    case 'WORK_ORDER_MISMATCH':
+      return r[line.code];
+    case 'INVALID':
+      return line.field?.endsWith('.lotId') === true ? r.lotMissing : null;
+    case 'RANGE': {
+      const found = RETURNABLE_IN_MESSAGE.exec(line.message)?.[1];
+      if (line.field?.endsWith('.returnQty') !== true || found === undefined) return null;
+      const qty = Number(found.replace(/,/g, ''));
+
+      return r.overReturnable(Number.isFinite(qty) ? qtyText(qty, uomCode) : found);
+    }
+    default:
+      return verdictTextOf(line.code);
+  }
+};
+
+/**
+ * 거절 문구 — 아는 코드는 단말 언어 문구로, 모르는 코드만 서버 문구 그대로. 둘 다 없으면 null.
+ * `uomCode` 는 넘음 문구의 단위(그 LOT 의 단위).
+ */
+export const reasonOf = (error: ApiError, uomCode = ''): string | null => {
+  if (error.kind === 'network') return null;
+  const known = linesOf(error)
+    .map((line) => reasonOfLine(line, uomCode))
+    .filter((text): text is string => text !== null);
+
+  return known.length > 0 ? [...new Set(known)].join(' ') : messageOf(error);
+};
+
+/** 보내기 실패를 가른다 — 기다리면 풀리는 것만 대기열, 미지정은 확인, 나머지는 거절 문구. */
+export const sendFailureOf = (error: ApiError, uomCode = ''): SendFailure => {
   if (error.kind === 'network') return { kind: 'queue' };
   if (error.kind === 'http' && isTransientStatus(error.status)) return { kind: 'queue' };
   if (codesOf(error).includes(UNDESIGNATED_NEEDS_CONFIRM)) return { kind: 'confirm' };
 
-  return { kind: 'rejected', message: messageOf(error) };
+  return { kind: 'rejected', message: reasonOf(error, uomCode) };
 };
 
-/** 조회 실패 문구 — 서버 문구 그대로(반납 대상 아님 · 남은 양 없음), 없으면 null. */
+/**
+ * 조회 실패 문구 — 반납 대상 아님 · 남은 양 없음은 단말 언어 문구. 없는 LOT(404)과 연결 실패는 null — 화면이
+ * 스캔한 번호를 넣은 「이 공장에 없습니다」 · 연결 문구를 쓴다.
+ */
 export const lookupMessageOf = (error: ApiError): string | null =>
-  error.kind === 'network' ? null : messageOf(error);
+  error.kind === 'network' || error.status === 404 ? null : reasonOf(error);
 
 export type Done =
   | { kind: 'located'; lot: ReturnLot; qty: number; locationCode: string }

@@ -67,6 +67,23 @@
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-2);
   align-items: baseline;
+  min-width: 0;
+}
+
+/*
+ * 긴 품목명(베트남 공급사 품명 등)은 줄을 바꿔 카드 안에 다 보인다 — 자르지 않는다(PDA 카드 규칙 · 적치 카드와 같다).
+ * 단추 바탕은 글자를 한 줄로 두므로 카드에서 풀어 준다(실제 앱 확인 F-05).
+ */
+.mreturn__card,
+.mreturn__wo,
+.mreturn__card *,
+.mreturn__wo * {
+  white-space: normal;
+}
+
+.mreturn__card-head > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .mreturn__code {

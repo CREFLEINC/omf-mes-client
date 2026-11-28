@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 import { useBackStep } from '../../patterns/back-step';
 import { BottomActionBar } from '../../patterns/bottom-action-bar';
 import { DockedNumberPad } from '../../patterns/docked-number-pad';
+import { useLoadFailure } from '../../patterns/load-failure';
 import { createIdempotencyKey, useOutbox } from '../../patterns/outbox';
 import { toApiError } from '../../patterns/request';
 import { signal } from '../../patterns/scan-feedback';
@@ -41,6 +42,9 @@ type LocationState =
   | { kind: 'confirm'; target: ReturnTarget }
   | { kind: 'blocked'; code: string; message: string };
 
+/** 위치 스캔이 막힌 까닭 — 그 창고에 없는 코드, 또는 조회 실패(문구는 그릴 때 PDA 공통 규칙으로 고른다). */
+type LocationError = { kind: 'notFound'; code: string } | { kind: 'failed'; cause: unknown };
+
 /**
  * `M-01-15` 반납 입고 (PDA · 피처 019 · omf-all-around#367 · 시안 ④·⑤ 확정 2026-11-27).
  *
@@ -49,7 +53,8 @@ type LocationState =
  * 생긴다(「적치·입고 완료」에서 옮긴다 · 2026-11-28 사용자 결정).
  *
  * ⭐ 단계 막대 세 칸, 지난 단계는 카드로 접혀 남고 누르면 그 단계로 돌아간다.
- * ⭐ 귀속 W/O 는 그리지 않는다(FR-013). 오류는 서버 문구 그대로.
+ * ⭐ 귀속 W/O 는 그리지 않는다(FR-013). 거절 문구는 오류 코드로 단말 언어 문구를 꺼낸다(모르는 코드만 서버 문구).
+ * ⭐ 위치 코드는 그 LOT 을 출고한 생산창고에서 찾는다 — 단말의 위치 조회는 창고를 묶어야 한다(적치 · 제품 입고와 같다).
  * ⭐ 연결이 없거나 응답을 못 받으면 같은 멱등 키 · 본문으로 대기열에 담고 다음 LOT 으로 간다(다른 PDA 화면과 같다).
  */
 export const MaterialReturnScreen = () => {
@@ -60,6 +65,7 @@ export const MaterialReturnScreen = () => {
   const lookup = useReturnLookup();
   const locationLookup = useLocationLookup();
   const send = useSendReturn();
+  const failureText = useLoadFailure();
 
   const [step, setStep] = useState<Step>('lot');
   const [finding, setFinding] = useState(false);
@@ -68,7 +74,7 @@ export const MaterialReturnScreen = () => {
   const [qtyInput, setQtyInput] = useState('');
   const [padOpen, setPadOpen] = useState(false);
   const [location, setLocation] = useState<LocationState | null>(null);
-  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationError, setLocationError] = useState<LocationError | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [done, setDone] = useState<Done | null>(null);
   /* 같은 틱에 두 번 보내지 않는다 — 멱등 키가 다른 두 건이 나가면 서버가 흡수하지 못한다. */
@@ -177,7 +183,7 @@ export const MaterialReturnScreen = () => {
       setDone(doneOf(lot, qty, target, response));
       setStep('done');
     } catch (cause) {
-      const failure = sendFailureOf(toApiError(cause));
+      const failure = sendFailureOf(toApiError(cause), lot.uomCode);
 
       if (failure.kind === 'queue') {
         try {
@@ -217,26 +223,29 @@ export const MaterialReturnScreen = () => {
     setLocation({ kind: 'checking', code });
     setLocationError(null);
     setSendError(null);
-    locationLookup.mutate(code, {
-      onSuccess: (found) => {
-        if (found === null) {
+    locationLookup.mutate(
+      { warehouseId: lot.issueWarehouseId, locationCode: code },
+      {
+        onSuccess: (found) => {
+          if (found === null) {
+            signal('reject');
+            setLocation(null);
+            setLocationError({ kind: 'notFound', code });
+            return;
+          }
+          void submit({
+            locationId: found.locationId,
+            locationCode: found.locationCode,
+            confirmUndesignated: false,
+          });
+        },
+        onError: (cause) => {
           signal('reject');
           setLocation(null);
-          setLocationError(t.pda.locationNotFound(code));
-          return;
-        }
-        void submit({
-          locationId: found.locationId,
-          locationCode: found.locationCode,
-          confirmUndesignated: false,
-        });
+          setLocationError({ kind: 'failed', cause });
+        },
       },
-      onError: () => {
-        signal('reject');
-        setLocation(null);
-        setLocationError(t.pda.locationLookupFailed);
-      },
-    });
+    );
   };
 
   const lotField = useScanField({ onScan: scanLot });
@@ -269,6 +278,15 @@ export const MaterialReturnScreen = () => {
   }
 
   const qtyProblem = lot === null ? null : qtyProblemOf(qtyInput, lot);
+  /* 연결이 끊긴 때만 「연결을 확인」 — 서버가 답한 실패(단말 범위 밖 등)는 PDA 공통 문구다(#1187 · F-01). */
+  const locationErrorText =
+    locationError === null || lot === null
+      ? null
+      : locationError.kind === 'notFound'
+        ? t.pda.locationNotFound(locationError.code, lot.issueWarehouseName)
+        : failureText(locationError.cause, t.pda.locationLookupFailed, {
+            caution: t.pda.locationLookupCaution,
+          });
   const stepIndex = step === 'lot' ? 1 : step === 'qty' ? 2 : 3;
 
   return (
@@ -403,7 +421,7 @@ export const MaterialReturnScreen = () => {
                 field={locationField}
                 label={t.pda.location}
                 prompt={t.pda.locationSub}
-                error={locationError ?? undefined}
+                error={locationErrorText ?? undefined}
                 tools={manualButton(locationField, messages.putaway.location.manual)}
               />
               {location?.kind === 'checking' ? <p role="status">{t.pda.sending}</p> : null}

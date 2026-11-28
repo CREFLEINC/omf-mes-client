@@ -48,12 +48,28 @@ export const materialReturn = {
     barLabel: '반납 입고 작업',
     done: (lines: number) =>
       `반납 입고 ${lines}건을 받았습니다. 적치 대기에 들어갔습니다. PDA 로 적치하세요.`,
+    /** 받은 창고 이름을 붙인 보낸 뒤 문구(시안 「G 생산창고 적치 대기」) — 여러 창고면 쉼표로 잇는다. */
+    doneIn: (lines: number, warehouses: string) =>
+      `반납 입고 ${lines}건을 받았습니다. ${warehouses} 적치 대기에 들어갔습니다. PDA 로 적치하세요.`,
     queued: '보낼 대기열에 넣었습니다. 연결되면 보냅니다.',
     pending: (count: number) => `보낼 대기열 ${count}건`,
     rejected: (reason: string) => `대기열에서 보낸 반납 입고가 거절됐습니다 — ${reason}`,
     rejectedNoReason: '대기열에서 보낸 반납 입고가 거절됐습니다. 목록을 확인하고 다시 담으세요.',
     submitFailed: '반납 입고를 보내지 못했습니다. 연결을 확인하고 다시 누르세요.',
-    forbidden: '이 기기에는 반납 입고 권한이 없습니다. 관리자에게 알리세요.',
+    forbidden: '이 단말에는 반납 입고 권한이 없습니다. 관리자에게 알리세요.',
+  },
+
+  /**
+   * 서버 거절 문구 — 오류 코드로 꺼낸다. 서버 문구는 한국어 하나라 베트남어 화면에 그대로 쓰지 않는다
+   * (적치 판정 `putaway.direct.verdict` 와 같은 방식). 모르는 코드만 서버 문구 그대로 둔다.
+   */
+  reason: {
+    NOT_RETURNABLE: '반납할 수 있는 자재 LOT 이 아닙니다 — 이 LOT 은 W/O 로 출고된 적이 없습니다.',
+    NOTHING_TO_RETURN: '반납할 양이 남지 않았습니다 — 이 LOT 은 출고된 양을 모두 반납했습니다.',
+    overReturnable: (qty: string) => `출고된 양보다 많이 반납할 수 없습니다 (반납 가능 ${qty})`,
+    WORK_ORDER_MISMATCH:
+      '고른 W/O 가 이 LOT 의 가장 최근 출고 W/O 가 아닙니다. 다시 찾아 고르세요.',
+    lotMissing: '없는 LOT 입니다. 라벨을 확인하세요.',
   },
 
   /** 「라벨이 없어요 · W/O 로 찾기」 — POP 창 · PDA 화면이 함께 쓴다. */
@@ -143,10 +159,13 @@ export const materialReturn = {
     queued: '보낼 대기열에 넣었습니다',
     queuedHint: '연결되면 보냅니다. 다음 LOT 을 스캔하세요.',
     sending: '보내는 중…',
-    locationNotFound: (code: string) =>
-      `「${code}」 위치를 찾지 못했습니다. 위치 라벨을 확인하세요.`,
+    locationNotFound: (code: string, warehouse: string) =>
+      `「${code}」 위치가 ${warehouse} 에 없습니다. 위치 라벨을 확인하세요.`,
+    /** 연결이 끊겨 위치를 못 읽었을 때만 — 서버가 답한 실패는 PDA 공통 문구(`useLoadFailure`)를 쓴다. */
     locationLookupFailed:
       '위치를 읽지 못했습니다. 연결을 확인하거나 「적치 대기로 받기」를 누르세요.',
+    /** 서버에 닿았지만 위치를 읽지 못했을 때 붙이는 다음 할 일. */
+    locationLookupCaution: '「적치 대기로 받기」로 받을 수 있습니다.',
     stepCard: (step: string) => `${step} 다시 하기`,
   },
 };

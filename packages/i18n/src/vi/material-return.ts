@@ -37,19 +37,30 @@ export const materialReturn: Translated<typeof ko.materialReturn> = {
     emptyTitle: 'Hãy quét nhãn LOT vật tư cần trả',
     emptyHint: 'Vật tư không có nhãn thì chọn bằng «Tìm theo W/O».',
     sum: (lines: number, totals: string) => `${lines} LOT · Tổng ${totals}`,
-    clear: 'Xoá danh sách',
+    clear: 'Xóa danh sách',
     submit: (lines: number) => `Nhập trả vật tư (${lines})`,
     submitting: 'Đang gửi…',
     barLabel: 'Thao tác nhập trả vật tư',
     done: (lines: number) =>
       `Đã nhận nhập trả ${lines} LOT. Hàng đã vào khu chờ cất. Hãy cất hàng bằng PDA.`,
+    doneIn: (lines: number, warehouses: string) =>
+      `Đã nhận nhập trả ${lines} LOT. Hàng đã vào khu chờ cất của ${warehouses}. Hãy cất hàng bằng PDA.`,
     queued: 'Đã đưa vào hàng đợi gửi. Sẽ gửi khi có kết nối.',
     pending: (count: number) => `Hàng đợi gửi ${count}`,
     rejected: (reason: string) => `Lần nhập trả gửi từ hàng đợi bị từ chối — ${reason}`,
     rejectedNoReason:
       'Lần nhập trả gửi từ hàng đợi bị từ chối. Hãy kiểm tra danh sách rồi thêm lại.',
     submitFailed: 'Không gửi được nhập trả. Hãy kiểm tra kết nối rồi nhấn lại.',
-    forbidden: 'Thiết bị này không có quyền nhập trả vật tư. Hãy báo quản lý.',
+    forbidden: 'Máy trạm này không có quyền nhập trả vật tư. Hãy báo cho quản trị viên.',
+  },
+
+  reason: {
+    NOT_RETURNABLE: 'Đây không phải LOT vật tư có thể trả — LOT này chưa từng được xuất cho W/O.',
+    NOTHING_TO_RETURN: 'Không còn số lượng để trả — LOT này đã trả hết số lượng đã xuất.',
+    overReturnable: (qty: string) => `Không thể trả nhiều hơn số lượng đã xuất (có thể trả ${qty})`,
+    WORK_ORDER_MISMATCH:
+      'W/O đã chọn không phải W/O xuất gần nhất của LOT này. Hãy tìm và chọn lại.',
+    lotMissing: 'LOT không tồn tại. Hãy kiểm tra nhãn.',
   },
 
   findByWo: {
@@ -134,10 +145,11 @@ export const materialReturn: Translated<typeof ko.materialReturn> = {
     queued: 'Đã đưa vào hàng đợi gửi',
     queuedHint: 'Sẽ gửi khi có kết nối. Hãy quét LOT tiếp theo.',
     sending: 'Đang gửi…',
-    locationNotFound: (code: string) =>
-      `Không tìm thấy vị trí 「${code}」. Hãy kiểm tra nhãn vị trí.`,
+    locationNotFound: (code: string, warehouse: string) =>
+      `Không có vị trí 「${code}」 trong ${warehouse}. Hãy kiểm tra nhãn vị trí.`,
     locationLookupFailed:
       'Không đọc được vị trí. Hãy kiểm tra kết nối hoặc nhấn «Nhận vào khu chờ cất».',
+    locationLookupCaution: 'Có thể nhận bằng «Nhận vào khu chờ cất».',
     stepCard: (step: string) => `Làm lại bước ${step}`,
   },
 };

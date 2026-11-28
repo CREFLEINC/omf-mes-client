@@ -91,9 +91,12 @@ const mount = (
   options: {
     lookup?: (lotNo: string) => Response;
     receive?: (body: { lines: Record<string, unknown>[] }) => Response;
+    locations?: (query: URLSearchParams) => Response | undefined;
   } = {},
 ) => {
   const sent: Sent[] = [];
+  /* 위치 조회의 질의 — 창고를 싣는지 본다(서버 단말 읽기 정책 · 실제 앱 확인 F-01). */
+  const locationQueries: URLSearchParams[] = [];
   const pathIs = (path: string) => (request: Request) => new URL(request.url).pathname === path;
   const fetch = createStubFetch([
     {
@@ -106,8 +109,23 @@ const mount = (
     {
       match: pathIs('/mdm/locations'),
       respond: (request) => {
-        const code = new URL(request.url).searchParams.get('locationCode') ?? '';
-        const id = LOCATIONS[code];
+        const query = new URL(request.url).searchParams;
+        locationQueries.push(query);
+        const answered = options.locations?.(query);
+        if (answered !== undefined) return answered;
+        /* 서버와 같이 — 단말 요청에 창고가 없으면 401(`terminal-read-policy` GET /mdm/locations). */
+        if (query.get('warehouseId') === null) {
+          return jsonResponse(
+            {
+              errors: [
+                { scope: 'screen', code: 'PERMISSION_DENIED', message: '단말 인증 범위 밖입니다.' },
+              ],
+            },
+            { status: 401 },
+          );
+        }
+        const code = query.get('locationCode') ?? '';
+        const id = query.get('warehouseId') === '31' ? LOCATIONS[code] : undefined;
         return jsonResponse({
           items:
             id === undefined
@@ -163,7 +181,7 @@ const mount = (
     { fetch },
   );
 
-  return { sent };
+  return { sent, locationQueries };
 };
 
 type User = ReturnType<typeof userEvent.setup>;
@@ -202,7 +220,7 @@ afterEach(() => {
 describe('M-01-15 반납 입고', () => {
   it('US2-1 LOT → 수량 → 위치 스캔으로 바로 보내고 「반납 입고 · 적치 끝 → 위치」를 보인다. W/O 는 보이지 않는다', async () => {
     const user = userEvent.setup();
-    const { sent } = mount();
+    const { sent, locationQueries } = mount();
 
     await scanLot(user);
     /* 수량은 빈칸에서 시작하고, 반납 가능 양은 칸 아래에. */
@@ -220,6 +238,10 @@ describe('M-01-15 반납 입고', () => {
     await scanLocation(user, 'G-S-01-03');
 
     expect(await screen.findByText(t.pda.doneLocated)).toBeTruthy();
+    /* 위치 코드는 그 LOT 을 출고한 생산창고(31)에서 찾는다 — 창고 없이 물으면 단말 요청은 늘 401 이다. */
+    expect(locationQueries.map((query) => Object.fromEntries(query))).toEqual([
+      { warehouseId: '31', locationCode: 'G-S-01-03' },
+    ]);
     expect(screen.getByText(`SYN-A100 · ${LOT_NO} · 20 EA → G-S-01-03`)).toBeTruthy();
     expect(sent).toHaveLength(1);
     expect(sent[0]?.body).toMatchObject({
@@ -253,9 +275,9 @@ describe('M-01-15 반납 입고', () => {
     expect((sent[0]?.body as { lines: unknown[] }).lines).toEqual([{ lotId: 501, returnQty: 20 }]);
   });
 
-  it('US2-1 · US2-3 미지정 위치는 확인 카드 뒤 확인 표시를 싣고, 지정 품목 위치 거절은 서버 문구 그대로 보인다', async () => {
+  it('US2-1 · US2-3 미지정 위치는 확인 카드 뒤 확인 표시를 싣고, 지정 품목 위치 거절은 판정 코드의 문구로 보인다', async () => {
     const user = userEvent.setup();
-    const { sent } = mount({
+    const { sent, locationQueries } = mount({
       receive: (body) => {
         const line = body.lines[0] ?? {};
         if (line.destinationLocationId === 814) {
@@ -308,7 +330,7 @@ describe('M-01-15 반납 입고', () => {
 
     await scanLocation(user, 'G-S-02-01');
     expect(await screen.findByText(t.pda.blockedTitle('G-S-02-01'))).toBeTruthy();
-    expect(screen.getByText('이 위치는 지정 품목만 받습니다.')).toBeTruthy();
+    expect(screen.getByText(messages.putaway.direct.verdict.RESTRICTED_LOCATION)).toBeTruthy();
 
     await scanLocation(user, 'G-S-05-02');
     expect(await screen.findByText(t.pda.undesignatedTitle('G-S-05-02', 'SYN-A100'))).toBeTruthy();
@@ -318,9 +340,34 @@ describe('M-01-15 반납 입고', () => {
     expect(sent.at(-1)?.body).toMatchObject({
       lines: [{ destinationLocationId: 813, confirmUndesignated: true }],
     });
+    /* 두 번 스캔 모두 출고 생산창고를 실었다. */
+    expect(locationQueries.map((query) => query.get('warehouseId'))).toEqual(['31', '31']);
   });
 
-  it('US1-3 반납 가능 초과는 다음으로 가지 못하고, 반납 대상 아닌 LOT 은 서버 문구를 보인다', async () => {
+  it('US2-3 그 창고에 없는 위치 코드는 창고 이름과 함께 「없습니다」, 서버가 답한 조회 실패는 연결 문구가 아니다', async () => {
+    const user = userEvent.setup();
+    mount({
+      locations: (query) =>
+        query.get('locationCode') === 'G-BROKEN'
+          ? jsonResponse({ errors: [] }, { status: 500 })
+          : undefined,
+    });
+
+    await scanLot(user);
+    await typeQty(user, '20');
+    await user.click(screen.getByRole('button', { name: t.pda.next }));
+
+    await scanLocation(user, 'H-S-01-01');
+    expect(await screen.findByText(t.pda.locationNotFound('H-S-01-01', 'G 생산창고'))).toBeTruthy();
+
+    await scanLocation(user, 'G-BROKEN');
+    expect(
+      await screen.findByText(`${messages.httpError.loadServer} ${t.pda.locationLookupCaution}`),
+    ).toBeTruthy();
+    expect(screen.queryByText(t.pda.locationLookupFailed)).toBeNull();
+  });
+
+  it('US1-3 반납 가능 초과는 다음으로 가지 못하고, 반납 대상 아닌 LOT 은 오류 코드의 문구를 보인다', async () => {
     const user = userEvent.setup();
     mount({
       lookup: (lotNo) =>
@@ -342,7 +389,7 @@ describe('M-01-15 반납 입고', () => {
     });
 
     await scanLot(user, 'SYN-NOT');
-    expect(await screen.findByText('반납할 수 있는 자재 LOT 이 아닙니다')).toBeTruthy();
+    expect(await screen.findByText(t.reason.NOT_RETURNABLE)).toBeTruthy();
 
     await scanLot(user);
     await typeQty(user, '120');

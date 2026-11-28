@@ -10,7 +10,7 @@ import { runRequest } from '../../patterns/request';
  * | 무엇 | 경로 |
  * | --- | --- |
  * | LOT 스캔 조회 | `GET /production/material-returns/lot-lookup` |
- * | 위치 스캔 — 코드로 한 건 | `GET /mdm/locations?locationCode=` |
+ * | 위치 스캔 — 출고 생산창고에서 코드로 한 건 | `GET /mdm/locations?warehouseId=&locationCode=` |
  * | 반납 입고(LOT 하나) | `POST /production/material-returns` |
  * | W/O 로 찾기 — W/O 목록 · 그 W/O 의 LOT | `GET /production/material-returns/work-orders(/{id}/lots)` |
  *
@@ -38,16 +38,26 @@ export const useReturnLookup = () => {
 };
 
 /**
- * 위치 스캔 — 위치 코드는 모든 창고를 통틀어 유일해 코드만으로 한 건이 집힌다(계약 `locationCode`). 없으면 null.
+ * 위치 스캔 — 그 LOT 을 출고한 생산창고에서 코드로 한 건을 찾는다(정확 일치). 없으면 null.
+ *
+ * ⛔ 창고를 꼭 싣는다 — 단말의 위치 조회는 단말 공장의 창고로 묶여야 받아 준다(서버 단말 읽기 정책 ·
+ *    `GET /mdm/locations` 는 `warehouseId` 필수). 적치 · 제품 입고 · 재고 실사가 같은 방식이다
+ *    (`patterns/locations` `useLocationByCode`). 코드만 보내면 늘 401 이다(실제 앱 확인 F-01).
  * 놓을 수 있는가(지정 품목만 받기 · 미지정)는 반납을 보낼 때 서버가 판정한다(적치 009 와 같은 판정).
  */
 export const useLocationLookup = () => {
   const { client } = useApiClient();
 
   return useMutation({
-    mutationFn: async (locationCode: string): Promise<ScannedLocation | null> => {
+    mutationFn: async ({
+      warehouseId,
+      locationCode,
+    }: {
+      warehouseId: number;
+      locationCode: string;
+    }): Promise<ScannedLocation | null> => {
       const data = await runRequest(() =>
-        client.GET('/mdm/locations', { params: { query: { locationCode } } }),
+        client.GET('/mdm/locations', { params: { query: { warehouseId, locationCode } } }),
       );
 
       return data.items.find((location) => location.locationCode === locationCode) ?? null;

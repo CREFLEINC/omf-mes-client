@@ -1,7 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { messages, setLocale } from '@omf-mes/i18n';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   doneOf,
+  lookupMessageOf,
+  reasonOf,
   qtyProblemOf,
   qtyReady,
   sendFailureOf,
@@ -21,6 +24,7 @@ const LOT: ReturnLot = {
   itemName: '합성 볼트',
   uomCode: 'EA',
   returnableQty: 100,
+  issueWarehouseId: 31,
   issueWarehouseName: 'G 생산창고',
   pickedWorkOrderId: null,
 };
@@ -68,7 +72,7 @@ describe('M-01-15 반납 입고 판정', () => {
     expect(body.lines[0]).toMatchObject({ destinationLocationId: 813, confirmUndesignated: true });
   });
 
-  it('US2-3 「지정 품목만 받기」 위치 거절은 서버 문구 그대로', () => {
+  it('US2-3 「지정 품목만 받기」 위치 거절은 판정 코드의 문구(적치와 같은 문구)', () => {
     expect(
       sendFailureOf({
         kind: 'validation',
@@ -82,7 +86,45 @@ describe('M-01-15 반납 입고 판정', () => {
           },
         ],
       }),
-    ).toEqual({ kind: 'rejected', message: '이 위치는 지정 품목만 받습니다.' });
+    ).toEqual({ kind: 'rejected', message: messages.putaway.direct.verdict.RESTRICTED_LOCATION });
+  });
+
+  it('US1-3 반납 가능 넘음은 서버가 준 그때의 반납 가능 양에 LOT 단위를 붙여 보인다', () => {
+    expect(
+      reasonOf(
+        {
+          kind: 'validation',
+          status: 400,
+          errors: [
+            {
+              scope: 'field',
+              field: 'lines[0].returnQty',
+              code: 'RANGE',
+              message: '출고된 양보다 많이 반납할 수 없습니다 (반납 가능 36)',
+            },
+          ],
+        },
+        'EA',
+      ),
+    ).toBe(messages.materialReturn.reason.overReturnable('36 EA'));
+  });
+
+  it('모르는 코드는 서버 문구 그대로, 없는 LOT(404) · 연결 실패는 화면 문구에 맡긴다(null)', () => {
+    expect(
+      reasonOf({
+        kind: 'validation',
+        status: 400,
+        errors: [{ scope: 'field', field: 'x', code: 'SOMETHING_NEW', message: '새 거절' }],
+      }),
+    ).toBe('새 거절');
+    expect(
+      lookupMessageOf({
+        kind: 'validation',
+        status: 404,
+        errors: [{ scope: 'screen', code: 'NOT_FOUND', message: 'LOT 을 찾을 수 없습니다.' }],
+      }),
+    ).toBeNull();
+    expect(lookupMessageOf({ kind: 'network' })).toBeNull();
   });
 
   it('US2-2 「적치 대기로 받기」는 위치 없이 보내고, 끝은 출고 생산창고 적치 대기다', () => {
@@ -122,5 +164,28 @@ describe('M-01-15 반납 입고 판정', () => {
     expect(qtyProblemOf('2.5', LOT)).toBe('integer');
     expect(qtyReady('100', LOT)).toBe(true);
     expect(qtyProblemOf('2.5', { ...LOT, uomCode: 'KG' })).toBeNull();
+  });
+});
+
+describe('M-01-15 반납 입고 거절 문구 — 베트남어 단말(실제 앱 확인 F-03)', () => {
+  afterEach(() => {
+    setLocale('ko');
+  });
+
+  it('US1-3 반납 대상 아님 · 남은 양 없음은 서버 한국어 문구가 아니라 베트남어 문구다', () => {
+    setLocale('vi');
+    const reject = (code: string) =>
+      lookupMessageOf({
+        kind: 'validation',
+        status: 400,
+        errors: [
+          { scope: 'field', field: 'lotNo', code, message: '반납할 수 있는 자재 LOT 이 아닙니다' },
+        ],
+      });
+
+    expect(reject('NOT_RETURNABLE')).toBe(messages.materialReturn.reason.NOT_RETURNABLE);
+    expect(reject('NOTHING_TO_RETURN')).toBe(messages.materialReturn.reason.NOTHING_TO_RETURN);
+    expect(reject('NOT_RETURNABLE')).not.toMatch(/[가-힣]/u);
+    expect(reject('NOTHING_TO_RETURN')).not.toMatch(/[가-힣]/u);
   });
 });
