@@ -61,6 +61,7 @@ export const materialReturn: Translated<typeof ko.materialReturn> = {
     WORK_ORDER_MISMATCH:
       'W/O đã chọn không phải W/O xuất gần nhất của LOT này. Hãy tìm và chọn lại.',
     lotMissing: 'LOT không tồn tại. Hãy kiểm tra nhãn.',
+    NOT_PRODUCTION_WAREHOUSE: 'Chỉ nhận vị trí thuộc kho sản xuất.',
   },
 
   findByWo: {
@@ -145,8 +146,11 @@ export const materialReturn: Translated<typeof ko.materialReturn> = {
     queued: 'Đã đưa vào hàng đợi gửi',
     queuedHint: 'Sẽ gửi khi có kết nối. Hãy quét LOT tiếp theo.',
     sending: 'Đang gửi…',
-    locationNotFound: (code: string, warehouse: string) =>
-      `Không có vị trí 「${code}」 trong ${warehouse}. Hãy kiểm tra nhãn vị trí.`,
+    locationAt: (code: string, warehouse: string) => `${code} · ${warehouse}`,
+    locationNotFound: (code: string) =>
+      `Không tìm thấy vị trí 「${code}」. Hãy kiểm tra nhãn vị trí.`,
+    locationNotProduction: (code: string) =>
+      `「${code}」 không phải vị trí của kho sản xuất. Chỉ nhận vị trí thuộc kho sản xuất.`,
     locationLookupFailed:
       'Không đọc được vị trí. Hãy kiểm tra kết nối hoặc nhấn «Nhận vào khu chờ cất».',
     locationLookupCaution: 'Có thể nhận bằng «Nhận vào khu chờ cất».',

@@ -70,6 +70,7 @@ export const materialReturn = {
     WORK_ORDER_MISMATCH:
       '고른 W/O 가 이 LOT 의 가장 최근 출고 W/O 가 아닙니다. 다시 찾아 고르세요.',
     lotMissing: '없는 LOT 입니다. 라벨을 확인하세요.',
+    NOT_PRODUCTION_WAREHOUSE: '생산창고 위치만 받을 수 있습니다.',
   },
 
   /** 「라벨이 없어요 · W/O 로 찾기」 — POP 창 · PDA 화면이 함께 쓴다. */
@@ -160,8 +161,12 @@ export const materialReturn = {
     queued: '보낼 대기열에 넣었습니다',
     queuedHint: '연결되면 보냅니다. 다음 LOT 을 스캔하세요.',
     sending: '보내는 중…',
-    locationNotFound: (code: string, warehouse: string) =>
-      `「${code}」 위치가 ${warehouse} 에 없습니다. 위치 라벨을 확인하세요.`,
+    /** 스캔한 위치와 그 창고 — 출고 생산창고가 아닌 다른 생산창고 위치일 수 있어 창고를 함께 보인다. */
+    locationAt: (code: string, warehouse: string) => `${code} · ${warehouse}`,
+    locationNotFound: (code: string) =>
+      `「${code}」 위치를 찾을 수 없습니다. 위치 라벨을 확인하세요.`,
+    locationNotProduction: (code: string) =>
+      `「${code}」 은 생산창고 위치가 아닙니다. 생산창고 위치만 받을 수 있습니다.`,
     /** 연결이 끊겨 위치를 못 읽었을 때만 — 서버가 답한 실패는 PDA 공통 문구(`useLoadFailure`)를 쓴다. */
     locationLookupFailed:
       '위치를 읽지 못했습니다. 연결을 확인하거나 「적치 대기로 받기」를 누르세요.',

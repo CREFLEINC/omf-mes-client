@@ -28,8 +28,8 @@ export interface ReturnLot {
   uomCode: string;
   returnableQty: number;
   /**
-   * 그 LOT 을 출고한 생산창고 — 위치 없이 받으면 그 창고 적치 대기로 들어가고, 스캔한 위치 코드도 이 창고에서 찾는다
-   * (단말의 위치 조회는 창고를 묶어야 한다 · 적치 · 제품 입고와 같다).
+   * 그 LOT 을 출고한 생산창고 — 위치 없이 받으면 그 창고 적치 대기로 들어간다. 스캔한 위치는 이 창고로 묶지 않는다
+   * (같은 공장의 다른 생산창고 위치도 받는다 · 2026-11-28 사용자 결정).
    */
   issueWarehouseId: number;
   issueWarehouseName: string;
@@ -83,6 +83,8 @@ export const qtyReady = (text: string, lot: ReturnLot): boolean =>
 export interface ReturnTarget {
   locationId: number;
   locationCode: string;
+  /** 그 위치의 생산창고 — 출고 생산창고와 다를 수 있어 카드에 함께 보인다. */
+  warehouseName: string;
   confirmUndesignated: boolean;
 }
 
@@ -127,6 +129,9 @@ export const toReturnDraft = (
   occurredAt: body.occurredAt,
   confirmation: 'pending',
 });
+
+/** 받는 위치가 생산창고 위치가 아니다 — 위치 조회 400 · 반납 줄 오류(피처 019). */
+export const NOT_PRODUCTION_WAREHOUSE = 'NOT_PRODUCTION_WAREHOUSE';
 
 /** 미지정 위치인데 확인 표시가 없다 — 서버 409(적치 009 와 같은 코드). */
 export const UNDESIGNATED_NEEDS_CONFIRM = 'UNDESIGNATED_NEEDS_CONFIRM';
@@ -182,6 +187,7 @@ const reasonOfLine = (line: ErrorLine, uomCode: string): string | null => {
     case 'NOT_RETURNABLE':
     case 'NOTHING_TO_RETURN':
     case 'WORK_ORDER_MISMATCH':
+    case NOT_PRODUCTION_WAREHOUSE:
       return r[line.code];
     case 'INVALID':
       return line.field?.endsWith('.lotId') === true ? r.lotMissing : null;
@@ -226,8 +232,36 @@ export const sendFailureOf = (error: ApiError, uomCode = ''): SendFailure => {
 export const lookupMessageOf = (error: ApiError): string | null =>
   error.kind === 'network' || error.status === 404 ? null : reasonOf(error);
 
+/**
+ * 위치 스캔이 막힌 까닭 — 없는 위치(404) · 생산창고 위치 아님(400 `NOT_PRODUCTION_WAREHOUSE`) · 그 밖에 아는 판정
+ * 코드(적치 대기 자리 `STAGING` 등 · 적치와 같은 문구) · 그 밖의 실패. 앞의 둘은 화면이 스캔한 코드를 넣어 문구를
+ * 고르고, 그 밖의 실패는 PDA 공통 조회 실패 문구다.
+ */
+export type LocationLookupFailure =
+  | { kind: 'notFound' }
+  | { kind: 'notProduction' }
+  | { kind: 'rejected'; message: string }
+  | { kind: 'failed' };
+
+export const locationLookupFailureOf = (error: ApiError): LocationLookupFailure => {
+  if (error.kind === 'network') return { kind: 'failed' };
+  if (codesOf(error).includes(NOT_PRODUCTION_WAREHOUSE)) return { kind: 'notProduction' };
+  if (error.status === 404) return { kind: 'notFound' };
+  const known = linesOf(error)
+    .map((line) => reasonOfLine(line, ''))
+    .filter((text): text is string => text !== null);
+
+  return known.length > 0 ? { kind: 'rejected', message: known.join(' ') } : { kind: 'failed' };
+};
+
 export type Done =
-  | { kind: 'located'; lot: ReturnLot; qty: number; locationCode: string }
+  | {
+      kind: 'located';
+      lot: ReturnLot;
+      qty: number;
+      locationCode: string;
+      warehouseName: string;
+    }
   | { kind: 'staged'; lot: ReturnLot; qty: number }
   | { kind: 'queued'; lot: ReturnLot; qty: number };
 
@@ -241,5 +275,5 @@ export const doneOf = (
   if (target === null) return { kind: 'staged', lot, qty };
   const code = response?.lines?.[0]?.destinationLocationCode ?? target.locationCode;
 
-  return { kind: 'located', lot, qty, locationCode: code };
+  return { kind: 'located', lot, qty, locationCode: code, warehouseName: target.warehouseName };
 };

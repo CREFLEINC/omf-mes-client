@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   doneOf,
+  locationLookupFailureOf,
   lookupMessageOf,
   reasonOf,
   qtyProblemOf,
@@ -32,7 +33,12 @@ const NOW = new Date('2026-11-28T02:10:00Z');
 
 describe('M-01-15 반납 입고 판정', () => {
   it('US2-1 LOT → 수량 → 위치: 본문은 줄 하나에 위치를 싣고, W/O 는 싣지 않으며 끝은 그 위치다', () => {
-    const target = { locationId: 812, locationCode: 'G-S-01-03', confirmUndesignated: false };
+    const target = {
+      locationId: 812,
+      locationCode: 'G-S-01-03',
+      warehouseName: 'G 생산창고',
+      confirmUndesignated: false,
+    };
     const body = toReceiveBody(LOT, 20, target, NOW);
 
     expect(body).toEqual({
@@ -45,6 +51,7 @@ describe('M-01-15 반납 입고 판정', () => {
       lot: LOT,
       qty: 20,
       locationCode: 'G-S-01-03',
+      warehouseName: 'G 생산창고',
     });
   });
 
@@ -66,7 +73,12 @@ describe('M-01-15 반납 입고 판정', () => {
     const body = toReceiveBody(
       LOT,
       20,
-      { locationId: 813, locationCode: 'G-S-05-02', confirmUndesignated: true },
+      {
+        locationId: 813,
+        locationCode: 'G-S-05-02',
+        warehouseName: 'G 생산창고',
+        confirmUndesignated: true,
+      },
       NOW,
     );
     expect(body.lines[0]).toMatchObject({ destinationLocationId: 813, confirmUndesignated: true });
@@ -87,6 +99,67 @@ describe('M-01-15 반납 입고 판정', () => {
         ],
       }),
     ).toEqual({ kind: 'rejected', message: messages.putaway.direct.verdict.RESTRICTED_LOCATION });
+  });
+
+  it('US2-3 위치 스캔 실패는 없는 위치(404) · 생산창고 위치 아님(NOT_PRODUCTION_WAREHOUSE) · 그 밖으로 가른다(적치 대기 자리는 적치 판정 문구)', () => {
+    expect(
+      locationLookupFailureOf({
+        kind: 'validation',
+        status: 404,
+        errors: [{ scope: 'screen', code: 'NOT_FOUND', message: '위치를 찾을 수 없습니다.' }],
+      }),
+    ).toEqual({ kind: 'notFound' });
+    expect(
+      locationLookupFailureOf({
+        kind: 'validation',
+        status: 400,
+        errors: [
+          {
+            scope: 'field',
+            field: 'locationCode',
+            code: 'NOT_PRODUCTION_WAREHOUSE',
+            message: '생산창고 위치만 받을 수 있습니다.',
+          },
+        ],
+      }),
+    ).toEqual({ kind: 'notProduction' });
+    expect(locationLookupFailureOf({ kind: 'http', status: 404 })).toEqual({ kind: 'notFound' });
+    expect(
+      locationLookupFailureOf({
+        kind: 'validation',
+        status: 400,
+        errors: [
+          {
+            scope: 'field',
+            field: 'locationCode',
+            code: 'STAGING',
+            message: '적치 대기 자리에는 둘 수 없습니다.',
+          },
+        ],
+      }),
+    ).toEqual({ kind: 'rejected', message: messages.putaway.direct.verdict.STAGING });
+    expect(locationLookupFailureOf({ kind: 'http', status: 500 })).toEqual({ kind: 'failed' });
+    expect(locationLookupFailureOf({ kind: 'network' })).toEqual({ kind: 'failed' });
+  });
+
+  it('US2-3 반납 줄의 받는 위치가 생산창고가 아니면(NOT_PRODUCTION_WAREHOUSE) 단말 언어 문구로 거절한다', () => {
+    expect(
+      sendFailureOf({
+        kind: 'validation',
+        status: 400,
+        errors: [
+          {
+            scope: 'field',
+            field: 'lines[0].destinationLocationId',
+            code: 'NOT_PRODUCTION_WAREHOUSE',
+            message: '생산창고 위치만 받을 수 있습니다.',
+          },
+        ],
+      }),
+    ).toEqual({
+      kind: 'rejected',
+      message: messages.materialReturn.reason.NOT_PRODUCTION_WAREHOUSE,
+    });
   });
 
   it('US1-3 반납 가능 넘음은 서버가 준 그때의 반납 가능 양에 LOT 단위를 붙여 보인다', () => {
@@ -186,6 +259,10 @@ describe('M-01-15 반납 입고 거절 문구 — 베트남어 단말(실제 앱
     expect(reject('NOT_RETURNABLE')).toBe(messages.materialReturn.reason.NOT_RETURNABLE);
     expect(reject('NOTHING_TO_RETURN')).toBe(messages.materialReturn.reason.NOTHING_TO_RETURN);
     expect(reject('NOT_RETURNABLE')).not.toMatch(/[가-힣]/u);
+    expect(reject('NOT_PRODUCTION_WAREHOUSE')).toBe(
+      messages.materialReturn.reason.NOT_PRODUCTION_WAREHOUSE,
+    );
+    expect(reject('NOT_PRODUCTION_WAREHOUSE')).not.toMatch(/[가-힣]/u);
     expect(reject('NOTHING_TO_RETURN')).not.toMatch(/[가-힣]/u);
   });
 });

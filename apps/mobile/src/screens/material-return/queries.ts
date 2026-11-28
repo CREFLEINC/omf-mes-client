@@ -10,7 +10,7 @@ import { runRequest } from '../../patterns/request';
  * | 무엇 | 경로 |
  * | --- | --- |
  * | LOT 스캔 조회 | `GET /production/material-returns/lot-lookup` |
- * | 위치 스캔 — 출고 생산창고에서 코드로 한 건 | `GET /mdm/locations?warehouseId=&locationCode=` |
+ * | 위치 스캔 — 공장의 생산창고 위치 한 건 | `GET /production/material-returns/location-lookup` |
  * | 반납 입고(LOT 하나) | `POST /production/material-returns` |
  * | W/O 로 찾기 — W/O 목록 · 그 W/O 의 LOT | `GET /production/material-returns/work-orders(/{id}/lots)` |
  *
@@ -21,7 +21,7 @@ export type MaterialReturnReceive = components['schemas']['MaterialReturnReceive
 export type MaterialReturn = components['schemas']['MaterialReturn'];
 export type ReturnWorkOrder = components['schemas']['MaterialReturnWorkOrder'];
 export type ReturnWorkOrderLot = components['schemas']['MaterialReturnWorkOrderLot'];
-export type ScannedLocation = components['schemas']['Location'];
+export type ScannedLocation = components['schemas']['MaterialReturnLocationLookup'];
 
 export const RETURN_PATH = '/production/material-returns';
 
@@ -38,30 +38,23 @@ export const useReturnLookup = () => {
 };
 
 /**
- * 위치 스캔 — 그 LOT 을 출고한 생산창고에서 코드로 한 건을 찾는다(정확 일치). 없으면 null.
+ * 위치 스캔 — 코드로 위치 한 건과 그 창고를 찾는다(정확 일치). 출고 생산창고가 아니어도 같은 공장의 생산창고
+ * 위치면 받는다(명세 · 2026-11-28 사용자 결정). 없으면 404, 생산창고 위치가 아니면 400 `NOT_PRODUCTION_WAREHOUSE`.
  *
- * ⛔ 창고를 꼭 싣는다 — 단말의 위치 조회는 단말 공장의 창고로 묶여야 받아 준다(서버 단말 읽기 정책 ·
- *    `GET /mdm/locations` 는 `warehouseId` 필수). 적치 · 제품 입고 · 재고 실사가 같은 방식이다
- *    (`patterns/locations` `useLocationByCode`). 코드만 보내면 늘 401 이다(실제 앱 확인 F-01).
+ * ⭐ 창고를 싣지 않는다 — 반납 전용 조회라 서버가 단말 공장으로 묶는다(옛 `GET /mdm/locations` 는 `warehouseId`
+ *    필수라 출고 창고 밖 위치를 찾지 못했다).
  * 놓을 수 있는가(지정 품목만 받기 · 미지정)는 반납을 보낼 때 서버가 판정한다(적치 009 와 같은 판정).
  */
 export const useLocationLookup = () => {
   const { client } = useApiClient();
 
   return useMutation({
-    mutationFn: async ({
-      warehouseId,
-      locationCode,
-    }: {
-      warehouseId: number;
-      locationCode: string;
-    }): Promise<ScannedLocation | null> => {
-      const data = await runRequest(() =>
-        client.GET('/mdm/locations', { params: { query: { warehouseId, locationCode } } }),
-      );
-
-      return data.items.find((location) => location.locationCode === locationCode) ?? null;
-    },
+    mutationFn: (locationCode: string): Promise<ScannedLocation> =>
+      runRequest(() =>
+        client.GET('/production/material-returns/location-lookup', {
+          params: { query: { locationCode } },
+        }),
+      ),
   });
 };
 

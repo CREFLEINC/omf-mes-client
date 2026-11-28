@@ -17,6 +17,7 @@ import { FindByWorkOrder } from './find-by-wo';
 import { useLocationLookup, useReturnLookup, useSendReturn } from './queries';
 import {
   doneOf,
+  locationLookupFailureOf,
   lookupMessageOf,
   lotOf,
   parseQty,
@@ -42,8 +43,14 @@ type LocationState =
   | { kind: 'confirm'; target: ReturnTarget }
   | { kind: 'blocked'; code: string; message: string };
 
-/** 위치 스캔이 막힌 까닭 — 그 창고에 없는 코드, 또는 조회 실패(문구는 그릴 때 PDA 공통 규칙으로 고른다). */
-type LocationError = { kind: 'notFound'; code: string } | { kind: 'failed'; cause: unknown };
+/**
+ * 위치 스캔이 막힌 까닭 — 없는 코드 · 생산창고 위치 아님, 또는 조회 실패(문구는 그릴 때 PDA 공통 규칙으로 고른다).
+ */
+type LocationError =
+  | { kind: 'notFound'; code: string }
+  | { kind: 'notProduction'; code: string }
+  | { kind: 'rejected'; message: string }
+  | { kind: 'failed'; cause: unknown };
 
 /**
  * `M-01-15` 반납 입고 (PDA · 피처 019 · omf-all-around#367 · 시안 ④·⑤ 확정 2026-11-27).
@@ -54,7 +61,8 @@ type LocationError = { kind: 'notFound'; code: string } | { kind: 'failed'; caus
  *
  * ⭐ 단계 막대 세 칸, 지난 단계는 카드로 접혀 남고 누르면 그 단계로 돌아간다.
  * ⭐ 귀속 W/O 는 그리지 않는다(FR-013). 거절 문구는 오류 코드로 단말 언어 문구를 꺼낸다(모르는 코드만 서버 문구).
- * ⭐ 위치 코드는 그 LOT 을 출고한 생산창고에서 찾는다 — 단말의 위치 조회는 창고를 묶어야 한다(적치 · 제품 입고와 같다).
+ * ⭐ 위치 코드는 공장의 생산창고 어디서든 찾는다 — 출고 생산창고가 아니어도 받고, 그 창고 이름을 카드에 함께 보인다
+ *    (2026-11-28 사용자 결정 · 반납 전용 위치 조회). 생산창고 위치가 아니면 받지 않는다.
  * ⭐ 연결이 없거나 응답을 못 받으면 같은 멱등 키 · 본문으로 대기열에 담고 다음 LOT 으로 간다(다른 PDA 화면과 같다).
  */
 export const MaterialReturnScreen = () => {
@@ -223,29 +231,28 @@ export const MaterialReturnScreen = () => {
     setLocation({ kind: 'checking', code });
     setLocationError(null);
     setSendError(null);
-    locationLookup.mutate(
-      { warehouseId: lot.issueWarehouseId, locationCode: code },
-      {
-        onSuccess: (found) => {
-          if (found === null) {
-            signal('reject');
-            setLocation(null);
-            setLocationError({ kind: 'notFound', code });
-            return;
-          }
-          void submit({
-            locationId: found.locationId,
-            locationCode: found.locationCode,
-            confirmUndesignated: false,
-          });
-        },
-        onError: (cause) => {
-          signal('reject');
-          setLocation(null);
-          setLocationError({ kind: 'failed', cause });
-        },
+    locationLookup.mutate(code, {
+      onSuccess: (found) => {
+        void submit({
+          locationId: found.locationId,
+          locationCode: found.locationCode,
+          warehouseName: found.warehouse.warehouseName,
+          confirmUndesignated: false,
+        });
       },
-    );
+      onError: (cause) => {
+        signal('reject');
+        setLocation(null);
+        const failure = locationLookupFailureOf(toApiError(cause));
+        setLocationError(
+          failure.kind === 'failed'
+            ? { kind: 'failed', cause }
+            : failure.kind === 'rejected'
+              ? failure
+              : { kind: failure.kind, code },
+        );
+      },
+    });
   };
 
   const lotField = useScanField({ onScan: scanLot });
@@ -280,13 +287,17 @@ export const MaterialReturnScreen = () => {
   const qtyProblem = lot === null ? null : qtyProblemOf(qtyInput, lot);
   /* 연결이 끊긴 때만 「연결을 확인」 — 서버가 답한 실패(단말 범위 밖 등)는 PDA 공통 문구다(#1187 · F-01). */
   const locationErrorText =
-    locationError === null || lot === null
+    locationError === null
       ? null
       : locationError.kind === 'notFound'
-        ? t.pda.locationNotFound(locationError.code, lot.issueWarehouseName)
-        : failureText(locationError.cause, t.pda.locationLookupFailed, {
-            caution: t.pda.locationLookupCaution,
-          });
+        ? t.pda.locationNotFound(locationError.code)
+        : locationError.kind === 'notProduction'
+          ? t.pda.locationNotProduction(locationError.code)
+          : locationError.kind === 'rejected'
+            ? locationError.message
+            : failureText(locationError.cause, t.pda.locationLookupFailed, {
+                caution: t.pda.locationLookupCaution,
+              });
   const stepIndex = step === 'lot' ? 1 : step === 'qty' ? 2 : 3;
 
   return (
@@ -404,7 +415,10 @@ export const MaterialReturnScreen = () => {
           {location?.kind === 'confirm' ? (
             <AlertBanner
               variant="warning"
-              title={t.pda.undesignatedTitle(location.target.locationCode, lot.itemCode)}
+              title={t.pda.undesignatedTitle(
+                t.pda.locationAt(location.target.locationCode, location.target.warehouseName),
+                lot.itemCode,
+              )}
             >
               {t.pda.undesignatedBody(lot.itemCode)}
             </AlertBanner>
@@ -504,7 +518,7 @@ const DoneCard = ({ done }: { done: Done }) => {
     case 'located':
       return (
         <AlertBanner variant="success" title={t.pda.doneLocated}>
-          <span className="mreturn__done-line">{`${what} → ${done.locationCode}`}</span>
+          <span className="mreturn__done-line">{`${what} → ${t.pda.locationAt(done.locationCode, done.warehouseName)}`}</span>
         </AlertBanner>
       );
     case 'staged':
