@@ -35434,8 +35434,8 @@ export interface paths {
     };
     put?: never;
     /**
-     * 자재 반출 등록
-     * @description ⚠ 2026-08-26 — 근거였던 M-02-02(수리 왕복)가 이 경로를 쓰지 않는 것으로 정정됐다. 수리 반출은 자재 반납이 아니라서 전용 자원(/production/repair-executions:return)으로 갔다. 이 경로는 「W/O 잔여 자재를 창고로 반납」이라는 실재 업무이나 부르는 화면이 아직 매핑되지 않았다 — 소유 화면이 정해지면 근거를 다시 적는다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항).
+     * 반납 입고
+     * @description 현장에서 쓰지 않고 생산창고로 가져온 자재를 창고 재고로 되돌린다(FR-001~011). 줄마다 LOT 을 잠근 뒤 귀속 출고 라인과 반납 가능 양을 다시 센다 — 넘으면 400 RANGE 「출고된 양보다 많이 반납할 수 없습니다 (반납 가능 n)」. 귀속은 서버가 정한다: LOT 의 가장 최근 W/O 출고 W/O(AUTO_LATEST_ISSUE), W/O 로 찾기로 고른 줄은 workOrderId 가 그 W/O 와 같아야 한다(WORK_ORDER_PICKED · 다르면 400). 그 W/O 가 최종 마감이면 막지 않고 귀속 없음(NONE_FINALIZED · workOrderId null)이다 — 판정은 서버에 도착한 때. 받는 위치: destinationLocationId 가 없으면 그 출고 라인의 출고 생산창고 적치 대기(창고에 사람이 만든 위치가 없으면 창고 전체), 있으면 PDA 적치(피처 009)와 같은 위치 판정(400 판정 코드 · 미지정 위치는 confirmUndesignated=true 여야 하고 아니면 409 UNDESIGNATED_NEEDS_CONFIRM · 미지정 위치에 받으면 그 위치 보관 품목에 더한다). 원장 한 건(거래 유형·원천 MATERIAL_RETURN, 업무일·발생 시각은 단말 값 — C-8). 품질·재고 상태는 LOT 의 지금 상태 그대로(정상 NORMAL/AVAILABLE · 불량 DEFECTIVE/ON_HOLD). 귀속 출고 라인의 도착 위치(#362 전 출고분)에 그 LOT 재고가 남아 있으면 그 재고를 빼서 옮긴다. ERP 로 보내지 않고 취소하지 않는다. 옛 본문(workOrderId·sourceLocationId·destinationWarehouseId 머리)은 받지 않는다. 오프라인 대상 — Idempotency-Key 필수. 근거: 피처 019 반납 입고 · omf-all-around#367 · P-01-03 · M-01-15
      */
     post: {
       parameters: {
@@ -35443,8 +35443,6 @@ export interface paths {
         header: {
           /** @description 전 쓰기 API 필수. */
           'Idempotency-Key': components['parameters']['IdempotencyKey'];
-          /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
-          'If-Match'?: components['parameters']['IfMatchVersionOptional'];
           /**
            * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
            * @example 100027
@@ -35456,11 +35454,11 @@ export interface paths {
       };
       requestBody: {
         content: {
-          'application/json': components['schemas']['MaterialReturnCreate'];
+          'application/json': components['schemas']['MaterialReturnReceive'];
         };
       };
       responses: {
-        /** @description 기록됨 */
+        /** @description 반납 입고됨 */
         201: {
           headers: {
             [name: string]: unknown;
@@ -35469,7 +35467,7 @@ export interface paths {
             'application/json': components['schemas']['MaterialReturn'];
           };
         };
-        /** @description 검증 실패. 고쳐야 풀린다 */
+        /** @description 검증 실패 · 반납 대상 아님(NOT_RETURNABLE) · 남은 양 없음(NOTHING_TO_RETURN) · 반납 가능 초과(RANGE) · W/O 가 그 LOT 의 가장 최근 출고 W/O 가 아님(WORK_ORDER_MISMATCH) · 위치 판정 코드(PutawayLocationVerdict) */
         400: {
           headers: {
             [name: string]: unknown;
@@ -35478,7 +35476,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        /** @description 로그인이 필요하다 — 단말은 토큰·작업자 사번(쓰기)·멱등 키(쓰기)가 필요하다 */
         401: {
           headers: {
             [name: string]: unknown;
@@ -35487,7 +35485,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 단말·권한 게이팅에 막혔다 */
+        /** @description 권한 없음 — 계정은 P-01-03 · M-01-15 중 하나, POP 단말은 단말 공정 매핑 「반납 가능」(can_return_material) 이 필요하다 */
         403: {
           headers: {
             [name: string]: unknown;
@@ -35496,17 +35494,241 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 충돌 */
+        /** @description 미지정 위치인데 확인 표시 없음 — UNDESIGNATED_NEEDS_CONFIRM */
         409: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': components['schemas']['ProductionConflictResponse'];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
       };
     };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/production/material-returns/lot-lookup': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 반납 입고 LOT 조회(스캔)
+     * @description 자재 LOT 라벨을 스캔하면 그 LOT 의 품목·단위·반납 가능 양과 귀속될 W/O·출고 생산창고를 낸다. 귀속 = 그 LOT 의 가장 최근 W/O 출고 라인(출고 요청 유형 WORK_ORDER 경로 · 취소된 출고 제외 · 출고 시각, 같으면 라인 id 가 늦은 것). 반납 가능 양 = 그 출고 라인 수량 − 그 라인에 귀속된 반납 줄 합. 단말은 단말 공장 LOT 만 찾는다. 근거: 피처 019 반납 입고 · omf-all-around#367 · P-01-03 · M-01-15
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description LOT 번호(라벨 QR 값) */
+          lotNo: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 반납할 수 있는 LOT */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['MaterialReturnLotLookup'];
+          };
+        };
+        /** @description 반납 대상이 아니다 — code NOT_RETURNABLE 「반납할 수 있는 자재 LOT 이 아닙니다」(자재 LOT 이 아님 · W/O 출고 이력 없음 · 반납할 수 없는 상태) · NOTHING_TO_RETURN 「반납할 양이 남지 않았습니다」 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — 단말은 토큰·작업자 사번(쓰기)·멱등 키(쓰기)가 필요하다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 계정은 P-01-03 · M-01-15 중 하나, POP 단말은 단말 공정 매핑 「반납 가능」(can_return_material) 이 필요하다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 LOT(단말이면 단말 공장 밖 LOT 도) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/production/material-returns/work-orders': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 반납 입고 W/O 로 찾기 — W/O 목록
+     * @description 라벨 없는 자재를 고르는 보조 길(FR-014). 반납 가능 양 > 0 인 LOT 이 하나라도 있는 W/O(그 W/O 가 그 LOT 의 가장 최근 W/O 출고) 를 최근 출고 순으로 낸다. 최종 마감 W/O 도 finalized=true 로 보인다. 단말은 단말 공장, 계정은 plantId(없으면 모든 공장). 근거: 피처 019 반납 입고 · omf-all-around#367 · P-01-03 · M-01-15
+     */
+    get: {
+      parameters: {
+        query?: {
+          /** @description W/O 번호 일부(대소문자 무시) */
+          q?: string;
+          /** @description 계정 호출의 공장. 단말은 단말 공장으로 고정한다 */
+          plantId?: number;
+          page?: number;
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: components['schemas']['MaterialReturnWorkOrder'][];
+              page: components['schemas']['PageMeta'];
+            };
+          };
+        };
+        /** @description 검증 실패 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — 단말은 토큰·작업자 사번(쓰기)·멱등 키(쓰기)가 필요하다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 계정은 P-01-03 · M-01-15 중 하나, POP 단말은 단말 공정 매핑 「반납 가능」(can_return_material) 이 필요하다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/production/material-returns/work-orders/{workOrderId}/lots': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 반납 입고 W/O 로 찾기 — 그 W/O 의 자재 LOT
+     * @description 그 W/O 가 가장 최근 W/O 출고인 자재 LOT 중 반납 가능 양 > 0 인 것(FR-015). 라벨 미발행(분할 LOT 이고 자재 LOT 라벨 발행 기록이 없거나 마지막 인쇄가 실패 — GET /logistics/split-material-lots 와 같은 판정)을 먼저, 그 안에서 출고 시각 순. 근거: 피처 019 반납 입고 · omf-all-around#367 · P-01-03 · M-01-15
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          workOrderId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: components['schemas']['MaterialReturnWorkOrderLot'][];
+            };
+          };
+        };
+        /** @description 로그인이 필요하다 — 단말은 토큰·작업자 사번(쓰기)·멱등 키(쓰기)가 필요하다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 계정은 P-01-03 · M-01-15 중 하나, POP 단말은 단말 공정 매핑 「반납 가능」(can_return_material) 이 필요하다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 W/O(단말이면 단말 공장 밖 W/O 도) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -63977,31 +64199,39 @@ export interface components {
       /** @example 값 */
       remarks?: string;
     };
+    /** @description 반납 기록. 옛 「반출 요청」 행은 workOrderId·sourceLocationId 가 있고, 반납 입고(피처 019) 행은 둘이 없고 귀속은 줄에 있다. */
     MaterialReturn: {
-      /**
-       * Format: int64
-       * @example 1001
-       */
+      /** Format: int64 */
       materialReturnId: number;
-      /** @example 값 */
+      /** @description 반납 번호 */
       materialReturnNo: string;
       /**
        * Format: int64
-       * @example 1001
+       * @description 옛 「반출 요청」의 W/O. 반납 입고는 비운다 — 귀속 W/O 는 lines[].workOrderId
        */
-      workOrderId: number;
+      workOrderId?: number;
       /**
        * Format: int64
-       * @example 1001
+       * @description 옛 「반출 요청」의 출발 위치. 반납 입고는 비운다
        */
-      sourceLocationId: number;
+      sourceLocationId?: number;
       /**
        * Format: int64
-       * @example 1001
+       * @description 받은 창고 — 반납 입고는 첫 줄의 받은 위치의 창고
        */
       destinationWarehouseId: number;
-      /** @example 값 */
+      /** @example RECEIVED */
       statusCode: string;
+      /**
+       * @description 처리 단말 종류. 계정 세션 호출·옛 행이면 없다
+       * @enum {string}
+       */
+      terminalKindCode?: 'POP' | 'PDA';
+      /**
+       * Format: date
+       * @description 단말이 보낸 업무일(C-8)
+       */
+      businessDate?: string;
       /**
        * Format: date-time
        * @example 2026-08-11T09:12:00+09:00
@@ -64009,56 +64239,180 @@ export interface components {
       requestedAt: string;
       /**
        * Format: date-time
+       * @description 반납 입고 시각 — 단말이 보낸 occurredAt
        * @example 2026-08-11T09:12:00+09:00
        */
       receivedAt?: string;
       lines?: components['schemas']['MaterialReturnLine'][];
     };
-    /** @description 라인은 본문에 싣는다 — 독립 경로를 두지 않는다. 근거: 01 계약 규약 계승 */
-    MaterialReturnCreate: {
-      /**
-       * Format: int64
-       * @example 1001
-       */
-      workOrderId: number;
-      /**
-       * Format: int64
-       * @example 1001
-       */
-      sourceLocationId: number;
-      /**
-       * Format: int64
-       * @example 1001
-       */
-      destinationWarehouseId: number;
-      lines: components['schemas']['MaterialReturnLine'][];
-    };
     MaterialReturnLine: {
-      /**
-       * Format: int64
-       * @example 1001
-       */
+      /** Format: int64 */
       materialReturnLineId?: number;
-      /**
-       * Format: int64
-       * @example 1001
-       */
+      /** Format: int64 */
       itemId: number;
-      /**
-       * Format: int64
-       * @example 1001
-       */
+      /** Format: int64 */
       lotId: number;
+      lotNo?: string;
       /**
        * Format: double
-       * @example 120
+       * @example 20
        */
+      returnQty: number;
+      /** Format: int64 */
+      uomId: number;
+      /**
+       * Format: int64
+       * @description 귀속 W/O — null 이면 귀속 없음(그 W/O 최종 마감). 옛 줄이면 없다
+       */
+      workOrderId?: number | null;
+      /** @description 귀속 W/O 번호 — 귀속 없음이면 null */
+      workOrderNo?: string | null;
+      /**
+       * Format: int64
+       * @description 귀속 근거 — 반납 때 그 LOT 의 가장 최근 W/O 출고 라인
+       */
+      goodsIssueLineId?: number;
+      /**
+       * @description AUTO_LATEST_ISSUE(LOT 스캔 자동) · WORK_ORDER_PICKED(W/O 로 찾기) · NONE_FINALIZED(그 W/O 최종 마감 — 귀속 없음)
+       * @enum {string}
+       */
+      attributionCode?: 'AUTO_LATEST_ISSUE' | 'WORK_ORDER_PICKED' | 'NONE_FINALIZED';
+      /**
+       * Format: int64
+       * @description 받은 위치
+       */
+      destinationLocationId?: number;
+      destinationLocationCode?: string;
+      /**
+       * Format: int64
+       * @description 받은 위치의 창고
+       */
+      destinationWarehouseId?: number;
+      /** @description 등록 응답에만 — 자재 LOT 라벨 미발행 분할 LOT(POP 는 반납 직후 라벨 찍기를 띄운다 · FR-017) */
+      labelUnprinted?: boolean;
+      /**
+       * Format: int64
+       * @description 적치 대기로 받은 줄(POP 반납 · PDA 에서 위치를 건너뛴 줄)에만 — 반납 때 함께 만든 PENDING 적치 지시. PDA 「적치·입고 완료」에서 옮긴다. 위치를 스캔해 받은 줄에는 없다. 근거: 피처 019 · omf-all-around#367 · 사용자 결정 2026-11-28
+       */
+      putawayTaskId?: number;
+    };
+    MaterialReturnLotLookup: {
+      /** Format: int64 */
+      lotId: number;
+      lotNo: string;
+      item: {
+        /** Format: int64 */
+        itemId: number;
+        itemCode: string;
+        itemName: string;
+      };
+      uom: {
+        /** Format: int64 */
+        uomId: number;
+        uomCode: string;
+        decimalScale?: number;
+      };
+      /**
+       * Format: double
+       * @description 반납 가능 양(> 0)
+       */
+      returnableQty: number;
+      /** @description 귀속될 W/O(가장 최근 W/O 출고). 화면은 보이지 않는다(FR-013) */
+      workOrder: {
+        /** Format: int64 */
+        workOrderId: number;
+        workOrderNo: string;
+        /** @description 최종 마감(017) — 참이면 반납은 귀속 없음이 된다 */
+        finalized: boolean;
+      };
+      /** @description 그 출고의 출고 생산창고 — 위치 없이 반납하면 이 창고 적치 대기로 들어간다 */
+      issueWarehouse: {
+        /** Format: int64 */
+        warehouseId: number;
+        warehouseCode?: string;
+        warehouseName: string;
+      };
+      labelUnprinted: boolean;
+    };
+    /** @description 반납 입고 본문 — 사람이 주는 것은 LOT·수량(·W/O 로 찾기 W/O·PDA 위치)뿐이다(FR-001). */
+    MaterialReturnReceive: {
+      /**
+       * Format: date
+       * @description 단말 업무일(C-8)
+       */
+      businessDate: string;
+      /**
+       * Format: date-time
+       * @description 단말 발생 시각 — 오프라인 대기분도 그때 시각
+       */
+      occurredAt: string;
+      lines: components['schemas']['MaterialReturnReceiveLine'][];
+    };
+    MaterialReturnReceiveLine: {
+      /** Format: int64 */
+      lotId: number;
+      /** @description 반납 수량(LOT 단위) — 반납 가능 양 이하 */
       returnQty: number;
       /**
        * Format: int64
-       * @example 1001
+       * @description W/O 로 찾기로 고른 줄만 — 그 LOT 의 가장 최근 출고 W/O 여야 한다. LOT 스캔이면 비운다
        */
-      uomId: number;
+      workOrderId?: number | null;
+      /**
+       * Format: int64
+       * @description PDA 스캔 위치. 비우면 출고 생산창고 적치 대기
+       */
+      destinationLocationId?: number | null;
+      /** @description 미지정 위치에 그래도 둔다(피처 009 와 같다) */
+      confirmUndesignated?: boolean;
+    };
+    MaterialReturnWorkOrder: {
+      /** Format: int64 */
+      workOrderId: number;
+      workOrderNo: string;
+      item: {
+        /** Format: int64 */
+        itemId: number;
+        itemCode: string;
+        itemName: string;
+      };
+      processName?: string | null;
+      lineName?: string | null;
+      /**
+       * Format: date-time
+       * @description 반납 남은 LOT 의 최근 출고 시각
+       */
+      lastIssuedAt: string;
+      finalized: boolean;
+      returnableLotCount: number;
+      /** @description 라벨 미발행 LOT 수 */
+      unprintedLotCount: number;
+    };
+    MaterialReturnWorkOrderLot: {
+      /** Format: int64 */
+      lotId: number;
+      lotNo: string;
+      item: {
+        /** Format: int64 */
+        itemId: number;
+        itemCode: string;
+        itemName: string;
+      };
+      uom: {
+        /** Format: int64 */
+        uomId: number;
+        uomCode: string;
+        decimalScale?: number;
+      };
+      /** Format: int64 */
+      goodsIssueLineId: number;
+      /** Format: date-time */
+      issuedAt: string;
+      /** Format: double */
+      issueQty: number;
+      /** Format: double */
+      returnableQty: number;
+      labelUnprinted: boolean;
     };
     OperationHandover: {
       /**

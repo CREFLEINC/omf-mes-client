@@ -1,0 +1,247 @@
+/* P-01-03 반납 입고 — 시안 ②·③(화면 전용 `pmr-*`). 공통 모양은 `app/pop-uniform.css`. */
+
+.pmr-title {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  margin: 0;
+}
+
+/* ── 왼쪽: 스캔 + 줄 목록 — 넘치면 구획 안에서 구른다(1024×768) ── */
+.pmr-work-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.pmr-work-body > * {
+  flex: none;
+}
+
+/* 스캔 칸 옆 [W/O 로 찾기] — 베트남어처럼 길면 다음 줄로 내려간다(글자를 자르지 않는다). */
+.pmr-scan-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 10px;
+}
+
+.pmr-scan {
+  flex: 1 1 420px;
+  min-width: 0;
+}
+
+.pmr-find.pmr-find {
+  flex: none;
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+  line-height: 18px;
+}
+
+.pmr-dest,
+.pmr-sum {
+  margin: 0;
+  font-size: 13px;
+  color: var(--pu-text-2);
+}
+
+.pmr-sum {
+  font-weight: 600;
+  color: var(--pu-text);
+}
+
+/* 표 — 품목 두 줄(코드 · 이름), LOT 번호는 고정폭으로 줄바꿈 허용(잘리지 않는다). */
+.pmr-table .pu-table td.pmr-two,
+.pmr-table .pu-table td.pmr-lotcol,
+.pmr-wo-lots .pu-table td.pmr-lotcol {
+  white-space: normal;
+}
+
+.pmr-sub {
+  display: block;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--pu-text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pmr-lotno {
+  display: block;
+  font-weight: 700;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.pmr-lotcol .pu-chip {
+  margin-top: 2px;
+  margin-right: 4px;
+}
+
+/* 고른 줄 — 빨간 왼쪽 띠(시안 ②). */
+.pmr-table .pu-table tbody tr.is-selected td:first-child {
+  box-shadow: inset 4px 0 0 var(--pu-primary);
+}
+
+.pmr-qtycell b {
+  font-size: 15px;
+}
+
+/* ── 오른쪽: 수량 + 키패드 ── */
+.pmr-qty-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pmr-hint {
+  font-size: 13px;
+  color: var(--pu-text-2);
+}
+
+/* ── W/O 로 찾기 창 ── */
+.pmr-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--pu-text-3);
+}
+
+.pmr-steps li {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--pu-card-2);
+}
+
+.pmr-steps li.is-on {
+  background: var(--pu-primary-soft);
+  color: var(--pu-primary);
+  font-weight: 700;
+}
+
+.pmr-steps li.is-done {
+  color: var(--pu-text-2);
+}
+
+.pmr-wo-list,
+.pmr-wo-lots {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pmr-wo-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.pmr-wo-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 12px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+  background: var(--pu-field);
+  color: var(--pu-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pmr-wo-item:hover {
+  background: var(--pu-hover);
+}
+
+.pmr-wo-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.pmr-wo-sub {
+  grid-column: 1;
+  font-size: 13px;
+  color: var(--pu-text-2);
+  overflow-wrap: anywhere;
+}
+
+.pmr-wo-choose {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-weight: 700;
+  color: var(--pu-primary);
+}
+
+.pmr-wo-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.pmr-wo-head > span {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pmr-wo-lots .pu-table-wrap {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.pmr-row-pick {
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  padding: 0;
+  cursor: pointer;
+}
+
+.pmr-wo-qty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── 라벨 찍기 창 ── */
+.pmr-label-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pmr-label-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  padding: 8px 12px;
+  border: 1px solid var(--pu-line-2);
+  border-radius: var(--radius-md, 12px);
+}

@@ -6,6 +6,7 @@ import { ShippingUnitScreen } from '../screens/shipping-unit/screen';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { PopLocationLabelScreen } from '../screens/pop-location-label/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
+import { PopMaterialReturnScreen } from '../screens/pop-material-return/screen';
 import { PopMaterialDefectScreen } from '../screens/pop-material-defect/screen';
 import { PopOqcInspectionScreen } from '../screens/pop-oqc-inspection/screen';
 import { PopShipmentCompleteScreen } from '../screens/pop-shipment-complete/screen';
@@ -134,6 +135,14 @@ export const popRoutes: RouteObject[] = [
    * 범위 밖이고 집행은 서버의 403 이다.
    */
   { path: '/pop/goods-issue-qr', element: <GoodsIssueQrScreen /> },
+  /*
+   * P-01-03 반납 입고(피처 019 · omf-all-around#367) — 창고 묶음, 분할 LOT 라벨 바로 뒤. 현장에서 남은 자재를 생산창고로
+   * 가져오면 LOT 라벨을 스캔하고 수량을 적어 창고 재고로 되돌린다. W/O 는 묻지 않는다(서버가 귀속).
+   *
+   * ⚠ **단말 권한으로 이 주소를 막지 않는다.** 탭은 「반납 가능」(`can_return_material`) 단말에만 보이고(서버 화면
+   *   정책 · `pop-access`), 집행은 서버의 403 이다.
+   */
+  { path: '/pop/material-return', element: <PopMaterialReturnScreen /> },
   /*
    * P-04-08 생산 LOT 분리(피처 013 · omf-all-around#303) — 창고 묶음. 제품 창고 생산 LOT 을 수량으로 둘로 나누고
    * 라벨 두 장을 찍는다. 진입 컨텍스트 없이 LOT 스캔부터 시작한다. 집행은 서버(P-04-08 권한 · 라벨 출력 공정)다.

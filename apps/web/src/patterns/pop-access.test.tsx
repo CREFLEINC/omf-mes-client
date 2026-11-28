@@ -216,4 +216,44 @@ describe('useAccessiblePopScreens — [화면 이동] 후보', () => {
       expect(result.current.state).toBe('empty');
     });
   });
+  /* 피처 019 — 「반납 가능」(`can_return_material`)이 꺼진 단말은 서버가 P-01-03 을 주지 않는다 → 탭이 없다. */
+  it('US1-6 단말 화면 정책에 P-01-03 이 없으면 반납 입고가 후보에 없고, 있으면 든다', async () => {
+    const probe = (codes: string[], terminalId: number) => {
+      const box = { current: null as ReturnType<typeof useAccessiblePopScreens> | null };
+      const Probe = () => {
+        box.current = useAccessiblePopScreens();
+        return null;
+      };
+      renderWithProviders(
+        <PopIdentityProvider
+          value={{ terminalId, processes: [], equipment: null, workerNo: '900028' }}
+        >
+          <Probe />
+        </PopIdentityProvider>,
+        {
+          fetch: createStubFetch([
+            {
+              match: (request) =>
+                request.url.endsWith(`/mdm/terminals/${String(terminalId)}/accessible-screens`),
+              respond: () => jsonResponse({ screenCodes: codes }),
+            },
+          ]),
+          session: null,
+        },
+      );
+      return box;
+    };
+
+    const off = probe(['P-01-01', 'P-01-02'], 41);
+    await waitFor(() => expect(off.current?.state).toBe('ready'));
+    expect(off.current?.screens.map((screen) => screen.code)).toEqual(['P-01-01', 'P-01-02']);
+
+    const on = probe(['P-01-01', 'P-01-02', 'P-01-03'], 42);
+    await waitFor(() => expect(on.current?.state).toBe('ready'));
+    expect(on.current?.screens.map((screen) => screen.code)).toEqual([
+      'P-01-01',
+      'P-01-02',
+      'P-01-03',
+    ]);
+  });
 });

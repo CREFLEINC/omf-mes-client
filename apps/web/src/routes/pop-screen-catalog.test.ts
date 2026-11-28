@@ -113,4 +113,17 @@ describe('POP 화면 이름표', () => {
     expect(split?.countKey).toBeUndefined();
     expect(split?.name).toBe(messages.productLotSplit.title);
   });
+  /*
+   * 피처 019 — 반납 입고(P-01-03)는 창고 묶음, 분할 LOT 라벨(P-01-02) 바로 뒤. 「반납 가능」 단말에만 서버가 코드를 준다.
+   */
+  it('US1-6 반납 입고(P-01-03)는 창고 묶음 P-01-02 바로 뒤이고 이름이 머리줄 제목과 같다', () => {
+    const codes = POP_SCREENS.map((screen) => screen.code);
+    const returnScreen = POP_SCREENS.find((screen) => screen.code === 'P-01-03');
+
+    expect(returnScreen).toMatchObject({ path: '/pop/material-return', group: 'warehouse' });
+    expect(returnScreen?.countKey).toBeUndefined();
+    expect(codes.indexOf('P-01-03')).toBe(codes.indexOf('P-01-02') + 1);
+    expect(returnScreen?.name).toBe(messages.materialReturn.title);
+    expect(returnScreen?.name).toBe('반납 입고');
+  });
 });

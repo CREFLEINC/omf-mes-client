@@ -111,6 +111,18 @@ export const POP_SCREENS: readonly PopScreen[] = [
   },
   { path: '/pop/goods-issue-qr', code: 'P-01-02', group: 'warehouse', name: '분할 LOT 라벨' },
   /*
+   * 피처 019(omf-all-around#367) — 반납 입고. 분할 LOT 라벨 바로 뒤(반납 직후 라벨을 이어 찍는 일과 묶음 · plan 결정 2).
+   * 「반납 가능」(`can_return_material`) 단말에만 서버가 이 화면 코드를 준다. 이름은 단말 언어를 따른다.
+   */
+  {
+    path: '/pop/material-return',
+    code: 'P-01-03',
+    group: 'warehouse',
+    get name(): string {
+      return messages.materialReturn.title;
+    },
+  },
+  /*
    * ⭐ **설계보다 앞선 화면이다**(`docs/decisions.md` 결정 16) — 화면 코드도 클라이언트가
    *    부여했다. 도메인 06(기준정보연계)에 POP 화면이 없어 번호 체계를 그대로 이었다.
    */
