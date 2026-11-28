@@ -71,6 +71,7 @@ export const materialReturn = {
       '고른 W/O 가 이 LOT 의 가장 최근 출고 W/O 가 아닙니다. 다시 찾아 고르세요.',
     lotMissing: '없는 LOT 입니다. 라벨을 확인하세요.',
     NOT_PRODUCTION_WAREHOUSE: '생산창고 위치만 받을 수 있습니다.',
+    STAGING: '적치 대기 자리에는 둘 수 없습니다. 다른 위치를 스캔하세요.',
   },
 
   /** 「라벨이 없어요 · W/O 로 찾기」 — POP 창 · PDA 화면이 함께 쓴다. */

@@ -105,6 +105,7 @@ const LOCATIONS: Record<string, { locationId: number; warehouse: typeof G }> = {
   'G-S-02-01': { locationId: 814, warehouse: G },
   'H-S-01-01': { locationId: 821, warehouse: H },
   'R-A-01-01': { locationId: 701, warehouse: R },
+  'G-STAGE': { locationId: 899, warehouse: G },
 };
 
 const SignedIn = ({ children }: { children: ReactNode }) => {
@@ -151,6 +152,22 @@ const mount = (
               errors: [{ scope: 'screen', code: 'NOT_FOUND', message: '위치를 찾을 수 없습니다.' }],
             },
             { status: 404 },
+          );
+        }
+        /* 서버와 같이 — 적치 대기 자리는 400 STAGING. */
+        if (code === 'G-STAGE') {
+          return jsonResponse(
+            {
+              errors: [
+                {
+                  scope: 'field',
+                  field: 'locationCode',
+                  code: 'STAGING',
+                  message: '적치 대기 자리에는 둘 수 없습니다.',
+                },
+              ],
+            },
+            { status: 400 },
           );
         }
         /* 서버와 같이 — 생산창고 위치가 아니면 400 NOT_PRODUCTION_WAREHOUSE. */
@@ -459,7 +476,7 @@ describe('M-01-15 반납 입고', () => {
     });
   });
 
-  it('US2-3 없는 위치는 「찾을 수 없습니다」(창고 이름 없이), 자재창고 위치는 「생산창고 위치만」, 서버가 답한 조회 실패는 연결 문구가 아니다', async () => {
+  it('US2-3 없는 위치는 「찾을 수 없습니다」(창고 이름 없이), 자재창고 위치는 「생산창고 위치만」, 적치 대기 자리는 STAGING 문구, 서버가 답한 조회 실패는 연결 문구가 아니다', async () => {
     const user = userEvent.setup();
     const { sent } = mount({
       locations: (query) =>
@@ -478,6 +495,9 @@ describe('M-01-15 반납 입고', () => {
 
     await scanLocation(user, 'R-A-01-01');
     expect(await screen.findByText(t.pda.locationNotProduction('R-A-01-01'))).toBeTruthy();
+
+    await scanLocation(user, 'G-STAGE');
+    expect(await screen.findByText(t.reason.STAGING)).toBeTruthy();
 
     await scanLocation(user, 'G-BROKEN');
     expect(

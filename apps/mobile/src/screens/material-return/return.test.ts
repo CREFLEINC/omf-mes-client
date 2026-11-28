@@ -101,7 +101,7 @@ describe('M-01-15 반납 입고 판정', () => {
     ).toEqual({ kind: 'rejected', message: messages.putaway.direct.verdict.RESTRICTED_LOCATION });
   });
 
-  it('US2-3 위치 스캔 실패는 없는 위치(404) · 생산창고 위치 아님(NOT_PRODUCTION_WAREHOUSE) · 그 밖으로 가른다(적치 대기 자리는 적치 판정 문구)', () => {
+  it('US2-3 위치 스캔 실패는 없는 위치(404) · 생산창고 위치 아님(NOT_PRODUCTION_WAREHOUSE) · 그 밖으로 가른다(적치 대기 자리 STAGING 은 반납 문구)', () => {
     expect(
       locationLookupFailureOf({
         kind: 'validation',
@@ -137,7 +137,7 @@ describe('M-01-15 반납 입고 판정', () => {
           },
         ],
       }),
-    ).toEqual({ kind: 'rejected', message: messages.putaway.direct.verdict.STAGING });
+    ).toEqual({ kind: 'rejected', message: messages.materialReturn.reason.STAGING });
     expect(locationLookupFailureOf({ kind: 'http', status: 500 })).toEqual({ kind: 'failed' });
     expect(locationLookupFailureOf({ kind: 'network' })).toEqual({ kind: 'failed' });
   });
@@ -263,6 +263,21 @@ describe('M-01-15 반납 입고 거절 문구 — 베트남어 단말(실제 앱
       messages.materialReturn.reason.NOT_PRODUCTION_WAREHOUSE,
     );
     expect(reject('NOT_PRODUCTION_WAREHOUSE')).not.toMatch(/[가-힣]/u);
+    expect(
+      locationLookupFailureOf({
+        kind: 'validation',
+        status: 400,
+        errors: [
+          {
+            scope: 'field',
+            field: 'locationCode',
+            code: 'STAGING',
+            message: '적치 대기 자리에는 둘 수 없습니다.',
+          },
+        ],
+      }),
+    ).toEqual({ kind: 'rejected', message: messages.materialReturn.reason.STAGING });
+    expect(messages.materialReturn.reason.STAGING).not.toMatch(/[가-힣]/u);
     expect(reject('NOTHING_TO_RETURN')).not.toMatch(/[가-힣]/u);
   });
 });

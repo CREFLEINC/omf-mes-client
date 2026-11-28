@@ -188,6 +188,7 @@ const reasonOfLine = (line: ErrorLine, uomCode: string): string | null => {
     case 'NOTHING_TO_RETURN':
     case 'WORK_ORDER_MISMATCH':
     case NOT_PRODUCTION_WAREHOUSE:
+    case 'STAGING':
       return r[line.code];
     case 'INVALID':
       return line.field?.endsWith('.lotId') === true ? r.lotMissing : null;
@@ -233,8 +234,8 @@ export const lookupMessageOf = (error: ApiError): string | null =>
   error.kind === 'network' || error.status === 404 ? null : reasonOf(error);
 
 /**
- * 위치 스캔이 막힌 까닭 — 없는 위치(404) · 생산창고 위치 아님(400 `NOT_PRODUCTION_WAREHOUSE`) · 그 밖에 아는 판정
- * 코드(적치 대기 자리 `STAGING` 등 · 적치와 같은 문구) · 그 밖의 실패. 앞의 둘은 화면이 스캔한 코드를 넣어 문구를
+ * 위치 스캔이 막힌 까닭 — 없는 위치(404 · 사용 중지 · 단말 공장 밖) · 생산창고 위치 아님(400 `NOT_PRODUCTION_WAREHOUSE`)
+ * · 그 밖에 아는 판정 코드(적치 대기 자리 400 `STAGING` 은 반납 문구, 나머지는 적치 판정 문구) · 그 밖의 실패. 앞의 둘은 화면이 스캔한 코드를 넣어 문구를
  * 고르고, 그 밖의 실패는 PDA 공통 조회 실패 문구다.
  */
 export type LocationLookupFailure =

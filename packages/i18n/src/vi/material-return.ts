@@ -62,6 +62,7 @@ export const materialReturn: Translated<typeof ko.materialReturn> = {
       'W/O đã chọn không phải W/O xuất gần nhất của LOT này. Hãy tìm và chọn lại.',
     lotMissing: 'LOT không tồn tại. Hãy kiểm tra nhãn.',
     NOT_PRODUCTION_WAREHOUSE: 'Chỉ nhận vị trí thuộc kho sản xuất.',
+    STAGING: 'Không thể để ở khu chờ cất. Hãy quét vị trí khác.',
   },
 
   findByWo: {
