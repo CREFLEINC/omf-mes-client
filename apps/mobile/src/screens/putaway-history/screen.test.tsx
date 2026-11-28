@@ -416,7 +416,7 @@ describe('적치 기록 화면', () => {
     expect(screen.queryByTestId('where')).toBeNull();
   });
 
-  it('US3-1 방식 칩 5가지와 지시 적치의 출처를 가른다', async () => {
+  it('US3-1 · US2-4 방식 칩 5가지와 지시 적치의 출처(반납 입고 포함)를 가른다', async () => {
     const { fetch } = backend({
       rows: () => [
         record({ recordId: 1, documentNo: 'D-1', putawayModeCode: 'DESIGNATED' }),
@@ -444,6 +444,14 @@ describe('적치 기록 화면', () => {
           putawayModeCode: 'TASK_TEMPORARY',
           sourceCode: 'PURCHASE',
         }),
+        /* 피처 019 — 반납 입고를 적치 대기로 받은 줄의 지시 적치. */
+        record({
+          recordType: 'TASK',
+          recordId: 7,
+          documentNo: 'PT-7',
+          putawayModeCode: 'TASK',
+          sourceCode: 'MATERIAL_RETURN',
+        }),
       ],
     });
     render(fetch);
@@ -459,6 +467,9 @@ describe('적치 기록 화면', () => {
     await chipOf('PT-4', t.mode.TASK(t.source.REPLENISHMENT));
     await chipOf('PT-5', t.mode.TASK(t.source.PRODUCT));
     await chipOf('PT-6', t.mode.TASK_TEMPORARY(t.source.PURCHASE));
+    /* US2-4 반납 입고 적치 지시. */
+    await chipOf('PT-7', t.mode.TASK(t.source.MATERIAL_RETURN));
+    expect(t.mode.TASK(t.source.MATERIAL_RETURN)).toBe('지시 적치(반납)');
   });
 
   it('US3-2 · US3-3 입고 취소된 줄은 남아 흐리게 「입고 취소됨」, 취소 요청 중 · 불량은 칩으로 보인다', async () => {

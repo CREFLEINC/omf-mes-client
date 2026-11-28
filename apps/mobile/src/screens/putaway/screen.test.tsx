@@ -996,6 +996,31 @@ describe('적치 화면 — 원천 요청번호(004, 서버 S7e)', () => {
   });
 });
 
+/* 019 반납 입고(omf-all-around#367) — 적치 대기로 받은 반납 줄의 지시(T019 · 실제 앱 확인 F-02). */
+describe('적치 화면 — 반납 입고 지시(019)', () => {
+  it('US2-4·Q8 반납 입고로 생긴 지시는 원천 줄 「반납 입고(MR-…)」을 붙인다', async () => {
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/logistics/putaway-tasks',
+        respond: () =>
+          jsonResponse({
+            items: [
+              task({
+                goodsReceiptLineId: null,
+                originCode: 'MATERIAL_RETURN',
+                originDocumentNo: 'MR-20261128-0001',
+              }),
+            ],
+            page,
+          }),
+      },
+    ]);
+
+    const pick = await screen.findByRole('button', { name: /PT-2026-0007/ });
+    expect(pick.textContent).toContain('원천 반납 입고(MR-20261128-0001)');
+  });
+});
+
 /*
  * omf-all-around#272 — 목록에서 자재 LOT 라벨을 스캔하면 그 지시가 열리고, 맞는 위치를 스캔하면 단추
  * 없이 기록된다.

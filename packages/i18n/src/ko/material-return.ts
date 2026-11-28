@@ -28,7 +28,7 @@ export const materialReturn = {
       returnable: '반납 가능',
       qty: '반납 수량',
       destination: '받는 곳',
-      remove: (lotNo: string) => `${lotNo} 줄 빼기`,
+      remove: (lotNo: string) => `${lotNo} 빼기`,
     },
     staging: '적치 대기',
     stagingOf: (warehouse: string) => `적치 대기 · ${warehouse}`,
@@ -38,22 +38,46 @@ export const materialReturn = {
     returnableHint: (qty: string) => `반납 가능 ${qty}`,
     qtyOver: (qty: string) => `반납 수량은 반납 가능 ${qty} 이하로 적으세요.`,
     qtyInteger: '이 단위는 소수로 적을 수 없습니다.',
-    noLine: '줄을 고르면 수량을 적습니다.',
+    noLine: '목록에서 LOT 을 고르면 수량을 적습니다.',
     emptyTitle: '반납할 자재 LOT 라벨을 스캔하세요',
     emptyHint: '라벨이 없는 자재는 「W/O 로 찾기」로 고릅니다.',
-    sum: (lines: number, totals: string) => `${lines}줄 · 합 ${totals}`,
+    sum: (lines: number, totals: string) => `${lines}건 · 합 ${totals}`,
     clear: '목록 비우기',
     submit: (lines: number) => `반납 입고 (${lines}건)`,
     submitting: '보내는 중…',
     barLabel: '반납 입고 작업',
     done: (lines: number) =>
       `반납 입고 ${lines}건을 받았습니다. 적치 대기에 들어갔습니다. PDA 로 적치하세요.`,
+    /** 받은 창고 이름을 붙인 보낸 뒤 문구(시안 「G 생산창고 적치 대기」) — 여러 창고면 쉼표로 잇는다. */
+    doneIn: (lines: number, warehouses: string) =>
+      `반납 입고 ${lines}건을 받았습니다. ${warehouses} 적치 대기에 들어갔습니다. PDA 로 적치하세요.`,
+    /** 사람 위치 없는 생산창고(창고 전체)로 받아 적치 지시가 없을 때 — 적치 안내 없이 받은 창고만. */
+    doneWhole: (lines: number, warehouses: string) =>
+      `반납 입고 ${lines}건을 받았습니다. ${warehouses} 에 들어갔습니다.`,
+    /** 창고 전체로 받은 줄과 적치 대기로 받은 줄이 섞였을 때 — 적치 안내는 적치 대기 창고에만. */
+    doneMixed: (lines: number, whole: string, staged: string) =>
+      `반납 입고 ${lines}건을 받았습니다. ${whole} 에 들어갔고, ${staged} 적치 대기분은 PDA 로 적치하세요.`,
     queued: '보낼 대기열에 넣었습니다. 연결되면 보냅니다.',
     pending: (count: number) => `보낼 대기열 ${count}건`,
     rejected: (reason: string) => `대기열에서 보낸 반납 입고가 거절됐습니다 — ${reason}`,
     rejectedNoReason: '대기열에서 보낸 반납 입고가 거절됐습니다. 목록을 확인하고 다시 담으세요.',
     submitFailed: '반납 입고를 보내지 못했습니다. 연결을 확인하고 다시 누르세요.',
     forbidden: '이 단말에는 반납 입고 권한이 없습니다. 관리자에게 알리세요.',
+  },
+
+  /**
+   * 서버 거절 문구 — 오류 코드로 꺼낸다. 서버 문구는 한국어 하나라 베트남어 화면에 그대로 쓰지 않는다
+   * (적치 판정 `putaway.direct.verdict` 와 같은 방식). 모르는 코드만 서버 문구 그대로 둔다.
+   */
+  reason: {
+    NOT_RETURNABLE: '반납할 수 있는 자재 LOT 이 아닙니다 — 이 LOT 은 W/O 로 출고된 적이 없습니다.',
+    NOTHING_TO_RETURN: '반납할 양이 남지 않았습니다 — 이 LOT 은 출고된 양을 모두 반납했습니다.',
+    overReturnable: (qty: string) => `출고된 양보다 많이 반납할 수 없습니다 (반납 가능 ${qty})`,
+    WORK_ORDER_MISMATCH:
+      '고른 W/O 가 이 LOT 의 가장 최근 출고 W/O 가 아닙니다. 다시 찾아 고르세요.',
+    lotMissing: '없는 LOT 입니다. 라벨을 확인하세요.',
+    NOT_PRODUCTION_WAREHOUSE: '생산창고 위치만 받을 수 있습니다.',
+    STAGING: '적치 대기 자리에는 둘 수 없습니다. 다른 위치를 스캔하세요.',
   },
 
   /** 「라벨이 없어요 · W/O 로 찾기」 — POP 창 · PDA 화면이 함께 쓴다. */
@@ -69,7 +93,8 @@ export const materialReturn = {
       '이 W/O 는 최종 마감됐습니다. 반납하면 재고는 돌아오지만 이 W/O 에는 붙지 않습니다.',
     workOrderLine: (item: string, process: string, issuedAt: string) =>
       `${item} · ${process} · 출고 ${issuedAt}`,
-    moreItems: (item: string, more: number) => `${item} 외 ${more}`,
+    /** W/O 로 나간 자재 — 「B-220 하우징 커버(좌) 외 2」, 다른 품목이 없으면 품목만. */
+    withOthers: (item: string, others: number) => (others > 0 ? `${item} 외 ${others}` : item),
     choose: '선택',
     back: '‹ W/O 다시 고르기',
     lotTable: {
@@ -84,7 +109,7 @@ export const materialReturn = {
     pickedLot: '고른 LOT',
     qty: '수량',
     add: '목록에 담기',
-    addHint: '담으면 목록에 「W/O 로 찾음」 줄로 들어갑니다.',
+    addHint: '담으면 목록에 「W/O 로 찾음」 표시와 함께 들어갑니다.',
     close: '닫기',
     loading: '불러오는 중입니다.',
     loadFailed: '목록을 불러오지 못했습니다. 연결을 확인하고 다시 여세요.',
@@ -114,7 +139,7 @@ export const materialReturn = {
   /** PDA M-01-15 — LOT 하나씩: LOT → 수량 → 위치(건너뛸 수 있음). */
   pda: {
     title: '반납 입고',
-    menuDescription: '창고로 돌아온 자재를 받아 자리에 놓기',
+    menuDescription: '창고로 돌아온 자재를 받아 위치에 놓기',
     steps: { lot: 'LOT', qty: '수량', location: '위치' },
     scan: '자재 LOT 라벨 스캔',
     scanSub: '창고로 돌아온 자재 LOT 을 스캔하세요',
@@ -136,12 +161,26 @@ export const materialReturn = {
     sendFailedTitle: '보내지 못함',
     doneLocated: '반납 입고 · 적치 끝',
     doneStaged: '반납 입고 끝 · 적치 대기',
-    doneStagedHint: '나중에 「적치·입고 완료」에서 자리에 놓으세요.',
+    doneStagedHint: '나중에 「적치·입고 완료」에서 위치에 놓으세요.',
+    /** 사람 위치 없는 생산창고(창고 전체)로 받아 적치 지시가 없을 때 — 적치 안내 없이 받은 창고만. */
+    doneWhole: '반납 입고 끝',
     stagingOf: (warehouse: string) => `${warehouse} 적치 대기`,
     staging: '적치 대기',
     nextLot: '다음 LOT',
     queued: '보낼 대기열에 넣었습니다',
     queuedHint: '연결되면 보냅니다. 다음 LOT 을 스캔하세요.',
     sending: '보내는 중…',
+    /** 스캔한 위치와 그 창고 — 출고 생산창고가 아닌 다른 생산창고 위치일 수 있어 창고를 함께 보인다. */
+    locationAt: (code: string, warehouse: string) => `${code} · ${warehouse}`,
+    locationNotFound: (code: string) =>
+      `「${code}」 위치를 찾을 수 없습니다. 위치 라벨을 확인하세요.`,
+    locationNotProduction: (code: string) =>
+      `「${code}」 은 생산창고 위치가 아닙니다. 생산창고 위치만 받을 수 있습니다.`,
+    /** 연결이 끊겨 위치를 못 읽었을 때만 — 서버가 답한 실패는 PDA 공통 문구(`useLoadFailure`)를 쓴다. */
+    locationLookupFailed:
+      '위치를 읽지 못했습니다. 연결을 확인하거나 「적치 대기로 받기」를 누르세요.',
+    /** 서버에 닿았지만 위치를 읽지 못했을 때 붙이는 다음 할 일. */
+    locationLookupCaution: '「적치 대기로 받기」로 받을 수 있습니다.',
+    stepCard: (step: string) => `${step} 다시 하기`,
   },
 };

@@ -4,7 +4,16 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { jsonResponse } from '../../test/api-harness';
-import { TERMINAL_WAREHOUSE, WORKER, lookupOf, pressKeys, renderReturn, scanLot } from './test-kit';
+import { doneTextOf } from './screen';
+import {
+  TERMINAL_WAREHOUSE,
+  WORKER,
+  lookupOf,
+  pressKeys,
+  receivedOf,
+  renderReturn,
+  scanLot,
+} from './test-kit';
 
 /*
  * P-01-03 반납 입고(피처 019 · 시안 ②). 합성값만 쓴다.
@@ -95,7 +104,8 @@ describe('P-01-03 반납 입고', () => {
     expect(screen.getByText(t.pop.sum(3, '60 EA · 3.2 KG'))).toBeTruthy();
 
     await user.click(submitButton(3));
-    await screen.findByText(t.pop.done(3));
+    /* 받은 창고 이름을 붙인다 — 이 창고 G 둘 · 다른 창고 H 하나(시안 「G 생산창고 적치 대기」 · F-10). */
+    await screen.findByText(t.pop.doneIn(3, 'G 생산창고, H 생산창고'));
 
     const posts = sent.filter((each) => each.method === 'POST');
     expect(posts).toHaveLength(1);
@@ -120,6 +130,53 @@ describe('P-01-03 반납 입고', () => {
     expect(screen.getByText(t.pop.emptyHint)).toBeTruthy();
   });
 
+  it('US1-2 경계 — 창고 전체(사람 위치 없는 생산창고)로 받아 적치 지시가 없으면 「PDA 로 적치하세요」 없이 받은 창고만 보인다', async () => {
+    const user = userEvent.setup();
+    renderReturn({
+      lookup: (lotNo) =>
+        jsonResponse(
+          lookupOf({
+            lotId: 511,
+            lotNo,
+            issueWarehouse: { warehouseId: 33, warehouseName: 'K 생산창고' },
+          }),
+        ),
+      receive: (body) => jsonResponse(receivedOf(body, [], [511]), { status: 201 }),
+    });
+
+    await scanLot(user, LOT_A);
+    await pressKeys(user, '6');
+    await user.click(submitButton(1));
+
+    const notice = await screen.findByText(t.pop.doneWhole(1, 'K 생산창고'));
+    expect(notice.textContent).not.toContain('PDA');
+    expect(screen.queryByText(t.pop.doneIn(1, 'K 생산창고'))).toBeNull();
+  });
+
+  it('US1-2 경계 — 적치 대기 줄과 창고 전체 줄이 섞이면 적치 안내는 적치 대기 창고에만 붙인다', () => {
+    const line = (lotId: number, warehouseName: string) =>
+      ({ lotId, issueWarehouse: { warehouseId: lotId, warehouseName } }) as Parameters<
+        typeof doneTextOf
+      >[0][number];
+    const sent = [line(1, 'G 생산창고'), line(2, 'K 생산창고')];
+
+    expect(doneTextOf(sent, [{ lotId: 1, putawayTaskId: 901 }, { lotId: 2 }], 2)).toBe(
+      t.pop.doneMixed(2, 'K 생산창고', 'G 생산창고'),
+    );
+    expect(
+      doneTextOf(
+        sent,
+        [
+          { lotId: 1, putawayTaskId: 901 },
+          { lotId: 2, putawayTaskId: 902 },
+        ],
+        2,
+      ),
+    ).toBe(t.pop.doneIn(2, 'G 생산창고, K 생산창고'));
+    /* 응답 줄이 없으면(옛 응답) 예전대로 적치 대기로 본다. */
+    expect(doneTextOf(sent, [], 2)).toBe(t.pop.doneIn(2, 'G 생산창고, K 생산창고'));
+  });
+
   it('US1-5 같은 LOT 을 다시 스캔하면 새 줄을 만들지 않고 그 줄을 고른다', async () => {
     const user = userEvent.setup();
     renderReturn();
@@ -135,7 +192,7 @@ describe('P-01-03 반납 입고', () => {
     });
   });
 
-  it('US1-3 반납 가능 초과는 화면이 먼저 막고, 서버 400 문구는 그대로 보이며 그 줄을 고른다', async () => {
+  it('US1-3 반납 가능 초과는 화면이 먼저 막고, 서버 400 은 그때의 반납 가능 양(단위 붙여)으로 보이며 그 줄을 고른다', async () => {
     const user = userEvent.setup();
     const over = '출고된 양보다 많이 반납할 수 없습니다 (반납 가능 100)';
     renderReturn({
@@ -159,13 +216,13 @@ describe('P-01-03 반납 입고', () => {
     await pressKeys(user, '5');
     await user.click(submitButton(2));
 
-    await screen.findByText(over);
+    await screen.findByText(t.reason.overReturnable('100 EA'));
     const rows = within(table()).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(2);
     expect(rows[0]?.getAttribute('aria-selected')).toBe('true');
   });
 
-  it('US1-4 반납 대상이 아닌 LOT 은 서버 문구를 그대로 스캔 칸 아래 빨간 줄로 보인다', async () => {
+  it('US1-4 반납 대상이 아닌 LOT 은 오류 코드의 문구를 스캔 칸 아래 빨간 줄로 보인다', async () => {
     const user = userEvent.setup();
     renderReturn({
       lookup: () =>
@@ -190,7 +247,7 @@ describe('P-01-03 반납 입고', () => {
     );
 
     const alert = await screen.findByRole('alert');
-    expect(alert.textContent).toContain('반납할 수 있는 자재 LOT 이 아닙니다');
+    expect(alert.textContent).toBe(t.reason.NOT_RETURNABLE);
     expect(screen.queryByRole('group', { name: t.pop.table.label })).toBeNull();
   });
 
@@ -222,5 +279,35 @@ describe('P-01-03 반납 입고', () => {
     await waitFor(() => {
       expect(screen.queryByText(t.pop.pending(1))).toBeNull();
     });
+  });
+
+  it('F-09 「반납 가능」이 꺼진 단말(화면 정책에 P-01-03 없음)은 주소로 들어와도 화면을 세우지 않고 홈으로 보낸다', async () => {
+    renderReturn({ screenCodes: ['P-01-01', 'P-01-02'] });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('main', { name: t.title })).toBeNull();
+    });
+    expect(screen.queryByRole('textbox', { name: t.pop.scanLabel })).toBeNull();
+  });
+
+  it('F-09 화면 정책에 P-01-03 이 있으면 그대로 선다', async () => {
+    renderReturn({ screenCodes: ['P-01-02', 'P-01-03'] });
+
+    expect(await screen.findByRole('textbox', { name: t.pop.scanLabel })).toBeTruthy();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.getByRole('main', { name: t.title })).toBeTruthy();
+  });
+
+  it('F-09 정책을 모르는데 서버가 403 이면 스캔 · W/O 로 찾기 모두 「이 단말에는 … 권한이 없습니다」(연결 문구 아님)', async () => {
+    const user = userEvent.setup();
+    renderReturn({ forbidden: true });
+
+    await user.type(screen.getByRole('textbox', { name: t.pop.scanLabel }), 'SYN-ANY{Enter}');
+    expect((await screen.findByRole('alert')).textContent).toBe(t.pop.forbidden);
+
+    await user.click(screen.getByRole('button', { name: t.pop.byWorkOrder }));
+    const dialog = await screen.findByRole('dialog', { name: t.findByWo.title });
+    expect(await within(dialog).findByText(t.pop.forbidden)).toBeTruthy();
+    expect(within(dialog).queryByText(t.findByWo.loadFailed)).toBeNull();
   });
 });

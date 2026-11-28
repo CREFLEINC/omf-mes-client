@@ -22,22 +22,40 @@
   flex: none;
 }
 
-/* 스캔 칸 옆 [W/O 로 찾기] — 베트남어처럼 길면 다음 줄로 내려간다(글자를 자르지 않는다). */
+/*
+ * 스캔 줄 — [스캔 칸 · 직접 입력][W/O 로 찾기] 가 한 줄, 오류는 그 아래 전체 폭(시안 ②).
+ * 스캔 칸 묶음(`pu-field`)을 풀어(`display: contents`) 이름 · 칸 줄 · 오류 줄을 이 격자에 바로 놓는다 — 오류가
+ * 생겨도 [W/O 로 찾기] 자리가 그대로다(실제 앱 확인 F-06). 단추 글자가 길면(베트남어) 단추 안에서 줄을 바꾼다.
+ */
 .pmr-scan-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 8px 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px 10px;
 }
 
-.pmr-scan {
-  flex: 1 1 420px;
+.pmr-scan-row > .pmr-scan {
+  display: contents;
+}
+
+.pmr-scan-row > .pmr-scan > * {
+  grid-column: 1 / -1;
   min-width: 0;
 }
 
+.pmr-scan-row > .pmr-scan > .pu-label {
+  grid-row: 1;
+}
+
+.pmr-scan-row > .pmr-scan > .pu-row {
+  grid-column: 1;
+  grid-row: 2;
+}
+
 .pmr-find.pmr-find {
-  flex: none;
-  max-width: 100%;
+  grid-column: 2;
+  grid-row: 2;
+  max-width: 320px;
   white-space: normal;
   text-align: left;
   line-height: 18px;
@@ -62,14 +80,26 @@
   white-space: normal;
 }
 
+/* 품목 이름 — 코드 아래 둘째 줄, 길면 줄을 바꾼다(자르지 않는다 · 시안 ② · 실제 앱 확인 F-08). */
 .pmr-sub {
   display: block;
   font-size: 12px;
   line-height: 16px;
   color: var(--pu-text-3);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.pmr-table .pu-table td.pmr-two,
+.pmr-wo-lots .pu-table td.pmr-two {
+  min-width: 11em;
+  white-space: normal;
+}
+
+/* LOT 번호 칸 — 공장 LOT 번호(21자)가 한 줄에 들어갈 폭을 먼저 잡는다. 더 길면 줄을 바꾼다. */
+.pmr-table .pu-table td.pmr-lotcol,
+.pmr-wo-lots .pu-table td.pmr-lotcol {
+  min-width: 180px;
 }
 
 .pmr-lotno {
@@ -205,9 +235,21 @@
   min-width: 0;
 }
 
-.pmr-wo-lots .pu-table-wrap {
-  max-height: 260px;
-  overflow-y: auto;
+/*
+ * W/O 로 찾기 창 — 시안 크기(화면 양옆 60px 남김)로 넓고 높게. 숫자 키패드는 창 안 오른쪽 칸에 있어 아래 판이 없다
+ * (판을 두면 1280×800 에서 창이 판 위로 눌려 LOT 표가 두 줄 반만 보였다 · 실제 앱 확인 F-07).
+ */
+.pu-dialog.wide:has(> .pu-dialog-body > .pmr-steps) {
+  width: min(1160px, calc(100vw - 120px));
+  max-height: calc(100vh - 48px);
+}
+
+/* LOT 표 왼쪽 · 수량 오른쪽 — 수량 · 반납 가능 · 담기 안내가 표 아래로 밀려 판에 가리지 않는다. */
+.pmr-wo-pick.has-qty {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  align-items: start;
+  gap: 12px 16px;
 }
 
 .pmr-row-pick {

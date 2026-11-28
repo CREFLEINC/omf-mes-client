@@ -526,12 +526,16 @@ export const PutawayScreen = () => {
    * 사람만 읽는다. 한 줄에 하나씩 쌓던 것을 두 칸씩 접어 카드가 절반 높이가 된다(개편 제안 v2).
    */
   const taskFields = (each: PutawayTask, extra?: ReactNode) => (
-    <>
+    /*
+     * 원천 줄과 네 값을 한 칸(세로)에 묶는다 — 카드는 가로(값 · ›)라 원천 줄이 따로 서면 값 칸 옆으로 붙어 값이
+     * 한 글자 폭으로 눌렸다(019 실제 앱 확인 F-02 재확인 · 004 창고 보충 지시도 같았다).
+     */
+    <div className="putaway__task-main">
       {/*
        * 004 — 창고 보충 수령에서 생긴 지시는 원천 한 줄을 붙인다(screens/M-putaway.md). 구매 입고 지시는 지금과
-       * 똑같이 보인다(T053).
+       * 똑같이 보인다(T053). 019 — 적치 대기로 받은 반납 입고 지시도 「반납 입고(MR-…)」 한 줄을 붙인다(T019).
        */}
-      {each.originCode === 'REPLENISHMENT_RECEIPT' ? (
+      {each.originCode === 'REPLENISHMENT_RECEIPT' || each.originCode === 'MATERIAL_RETURN' ? (
         <p className="putaway__origin">{`${t.tasks.originLabel} ${originOf(each)}`}</p>
       ) : null}
       <dl className={`putaway__task-fields ${TASK_FACTS}`}>
@@ -551,7 +555,7 @@ export const PutawayScreen = () => {
         </div>
         {extra}
       </dl>
-    </>
+    </div>
   );
 
   /* 어디에 두는가 — 지시가 둬도 되는 위치를 코드로 싣는다. 비면 이 창고 어디든이다. */

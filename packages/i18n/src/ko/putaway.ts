@@ -36,7 +36,11 @@ export const putaway = {
     origin: {
       GOODS_RECEIPT: '구매 입고',
       REPLENISHMENT_RECEIPT: '창고 보충',
+      /** 019 — 반납 입고를 적치 대기로 받은 줄. */
+      MATERIAL_RETURN: '반납 입고',
     },
+    /** 019 반납 입고 원천 — 반납 번호를 붙인다(「반납 입고(MR-…)」 — 창고 보충과 같은 괄호 형식). */
+    originReturnWithNo: (no: string) => `반납 입고(${no})`,
     qtyLabel: '수량',
     /** 둬도 되는 위치. 서버는 품목의 보관 위치(위치 「보관 품목」)로 계산한다. */
     allowedLabel: '보관 위치',

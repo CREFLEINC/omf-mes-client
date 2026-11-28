@@ -255,8 +255,8 @@ describe('작업 목록', () => {
         .getAllByRole('link')
         .map((link) => link.getAttribute('href')),
     ).toEqual(['/screens/inbound', '/screens/warehouse', '/screens/shipping']);
-    /* 창고 7 — 피처 011 이 적치 기록(M-01-14)을 더했다. */
-    expect(screen.getByRole('link', { name: /^창고/ })).toHaveTextContent('작업 7개');
+    /* 창고 8 — 피처 011 이 적치 기록(M-01-14)을, 피처 019 가 반납 입고(M-01-15)를 더했다. */
+    expect(screen.getByRole('link', { name: /^창고/ })).toHaveTextContent('작업 8개');
   });
 
   it('업무를 누르면 그 업무의 작업들이 선다', async () => {
@@ -274,10 +274,11 @@ describe('작업 목록', () => {
       'href',
       '/putaway',
     );
-    expect(within(list).getAllByRole('link')).toHaveLength(7);
+    expect(within(list).getAllByRole('link')).toHaveLength(8);
   });
 
-  it('FR-003 · D-6 창고 업무에 「적치 기록」이 적치·입고 완료 바로 다음에 나타난다', async () => {
+  /* 피처 019 — 반납 입고(M-01-15)가 적치·입고 완료 바로 아래, 그 다음이 적치 기록이다(시안 ④). */
+  it('FR-003 · D-6 · US2-1 창고 업무에 「반납 입고」 · 「적치 기록」이 적치·입고 완료 다음에 차례로 나타난다', async () => {
     const user = userEvent.setup();
     render(
       <Shell>
@@ -290,7 +291,8 @@ describe('작업 목록', () => {
     const hrefs = within(screen.getByRole('navigation', { name: '창고' }))
       .getAllByRole('link')
       .map((link) => link.getAttribute('href'));
-    expect(hrefs.indexOf('/putaway-history')).toBe(hrefs.indexOf('/putaway') + 1);
+    expect(hrefs.indexOf('/material-return')).toBe(hrefs.indexOf('/putaway') + 1);
+    expect(hrefs.indexOf('/putaway-history')).toBe(hrefs.indexOf('/putaway') + 2);
   });
 
   /* 적치·입고 완료에서 LOT 을 들고만 들어온다 — 목록에서 열면 안내뿐이었다(사용자 지시 2026-11-23). */

@@ -33,23 +33,40 @@ export const materialReturn: Translated<typeof ko.materialReturn> = {
     returnableHint: (qty: string) => `Có thể trả ${qty}`,
     qtyOver: (qty: string) => `Số lượng trả phải không quá ${qty}.`,
     qtyInteger: 'Đơn vị này không nhập số lẻ.',
-    noLine: 'Chọn một dòng để nhập số lượng.',
+    noLine: 'Chọn một LOT trong danh sách để nhập số lượng.',
     emptyTitle: 'Hãy quét nhãn LOT vật tư cần trả',
     emptyHint: 'Vật tư không có nhãn thì chọn bằng «Tìm theo W/O».',
-    sum: (lines: number, totals: string) => `${lines} dòng · Tổng ${totals}`,
-    clear: 'Xoá danh sách',
-    submit: (lines: number) => `Nhập trả vật tư (${lines} dòng)`,
+    sum: (lines: number, totals: string) => `${lines} LOT · Tổng ${totals}`,
+    clear: 'Xóa danh sách',
+    submit: (lines: number) => `Nhập trả vật tư (${lines})`,
     submitting: 'Đang gửi…',
     barLabel: 'Thao tác nhập trả vật tư',
     done: (lines: number) =>
-      `Đã nhận ${lines} dòng nhập trả. Hàng đã vào khu chờ cất. Hãy cất hàng bằng PDA.`,
+      `Đã nhận nhập trả ${lines} LOT. Hàng đã vào khu chờ cất. Hãy cất hàng bằng PDA.`,
+    doneIn: (lines: number, warehouses: string) =>
+      `Đã nhận nhập trả ${lines} LOT. Hàng đã vào khu chờ cất của ${warehouses}. Hãy cất hàng bằng PDA.`,
+    doneWhole: (lines: number, warehouses: string) =>
+      `Đã nhận nhập trả ${lines} LOT. Hàng đã vào ${warehouses}.`,
+    doneMixed: (lines: number, whole: string, staged: string) =>
+      `Đã nhận nhập trả ${lines} LOT. Hàng đã vào ${whole}; phần ở khu chờ cất của ${staged} hãy cất bằng PDA.`,
     queued: 'Đã đưa vào hàng đợi gửi. Sẽ gửi khi có kết nối.',
     pending: (count: number) => `Hàng đợi gửi ${count}`,
     rejected: (reason: string) => `Lần nhập trả gửi từ hàng đợi bị từ chối — ${reason}`,
     rejectedNoReason:
       'Lần nhập trả gửi từ hàng đợi bị từ chối. Hãy kiểm tra danh sách rồi thêm lại.',
     submitFailed: 'Không gửi được nhập trả. Hãy kiểm tra kết nối rồi nhấn lại.',
-    forbidden: 'Thiết bị này không có quyền nhập trả vật tư. Hãy báo quản lý.',
+    forbidden: 'Máy trạm này không có quyền nhập trả vật tư. Hãy báo cho quản trị viên.',
+  },
+
+  reason: {
+    NOT_RETURNABLE: 'Đây không phải LOT vật tư có thể trả — LOT này chưa từng được xuất cho W/O.',
+    NOTHING_TO_RETURN: 'Không còn số lượng để trả — LOT này đã trả hết số lượng đã xuất.',
+    overReturnable: (qty: string) => `Không thể trả nhiều hơn số lượng đã xuất (có thể trả ${qty})`,
+    WORK_ORDER_MISMATCH:
+      'W/O đã chọn không phải W/O xuất gần nhất của LOT này. Hãy tìm và chọn lại.',
+    lotMissing: 'LOT không tồn tại. Hãy kiểm tra nhãn.',
+    NOT_PRODUCTION_WAREHOUSE: 'Chỉ nhận vị trí thuộc kho sản xuất.',
+    STAGING: 'Không thể để ở khu chờ cất. Hãy quét vị trí khác.',
   },
 
   findByWo: {
@@ -64,7 +81,7 @@ export const materialReturn: Translated<typeof ko.materialReturn> = {
       'W/O này đã chốt cuối. Nếu trả, tồn kho sẽ quay lại nhưng không gắn vào W/O này.',
     workOrderLine: (item: string, process: string, issuedAt: string) =>
       `${item} · ${process} · Xuất ${issuedAt}`,
-    moreItems: (item: string, more: number) => `${item} + ${more}`,
+    withOthers: (item: string, others: number) => (others > 0 ? `${item} và ${others} khác` : item),
     choose: 'Chọn',
     back: '‹ Chọn lại W/O',
     lotTable: {
@@ -79,7 +96,7 @@ export const materialReturn: Translated<typeof ko.materialReturn> = {
     pickedLot: 'LOT đã chọn',
     qty: 'Số lượng',
     add: 'Thêm vào danh sách',
-    addHint: 'Khi thêm, dòng vào danh sách với dấu «Tìm theo W/O».',
+    addHint: 'Khi thêm, LOT vào danh sách với dấu «Tìm theo W/O».',
     close: 'Đóng',
     loading: 'Đang tải.',
     loadFailed: 'Không tải được danh sách. Hãy kiểm tra kết nối rồi mở lại.',
@@ -128,11 +145,21 @@ export const materialReturn: Translated<typeof ko.materialReturn> = {
     doneLocated: 'Đã nhập trả · Đã cất',
     doneStaged: 'Đã nhập trả · Chờ cất',
     doneStagedHint: 'Sau đó hãy cất vào vị trí ở «Cất hàng và hoàn tất nhập kho».',
+    doneWhole: 'Đã nhập trả',
     stagingOf: (warehouse: string) => `Khu chờ cất ${warehouse}`,
     staging: 'Chờ cất hàng',
     nextLot: 'LOT tiếp theo',
     queued: 'Đã đưa vào hàng đợi gửi',
     queuedHint: 'Sẽ gửi khi có kết nối. Hãy quét LOT tiếp theo.',
     sending: 'Đang gửi…',
+    locationAt: (code: string, warehouse: string) => `${code} · ${warehouse}`,
+    locationNotFound: (code: string) =>
+      `Không tìm thấy vị trí 「${code}」. Hãy kiểm tra nhãn vị trí.`,
+    locationNotProduction: (code: string) =>
+      `「${code}」 không phải vị trí của kho sản xuất. Chỉ nhận vị trí thuộc kho sản xuất.`,
+    locationLookupFailed:
+      'Không đọc được vị trí. Hãy kiểm tra kết nối hoặc nhấn «Nhận vào khu chờ cất».',
+    locationLookupCaution: 'Có thể nhận bằng «Nhận vào khu chờ cất».',
+    stepCard: (step: string) => `Làm lại bước ${step}`,
   },
 };

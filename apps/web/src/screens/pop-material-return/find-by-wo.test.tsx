@@ -31,13 +31,15 @@ afterEach(() => {
   globalThis.localStorage.clear();
 });
 
-/** 셸 인쇄 — 찍은 라벨 이름을 모은다. */
+/** 셸 인쇄 — 찍은 라벨 이름을 모은다(`texts` 에는 라벨 명령 글자). */
 const shellPrints = () => {
-  const saved: string[] = [];
+  const saved: string[] & { texts?: string[] } = [];
+  saved.texts = [];
   window.pop = {
     rendition: {
-      save: (_bytes: Uint8Array, label: string) => {
+      save: (bytes: Uint8Array, label: string) => {
         saved.push(label);
+        saved.texts?.push(new TextDecoder().decode(bytes));
         return Promise.resolve('/tmp/x.tspl');
       },
     },
@@ -64,6 +66,10 @@ const WORK_ORDERS = [
     unprintedLotCount: 0,
     finalized: true,
     lastIssuedAt: '2026-11-25T01:10:00Z',
+    returnableMaterial: {
+      item: { itemId: 23, itemCode: 'SYN-A100', itemName: '합성 볼트 M4×10' },
+      otherItemCount: 0,
+    },
   }),
 ];
 
@@ -97,6 +103,11 @@ describe('P-01-03 W/O 로 찾기', () => {
     ]);
     expect(within(items[0] as HTMLElement).getByText(t.findByWo.unprinted(1))).toBeTruthy();
     expect(within(items[2] as HTMLElement).getByText(t.findByWo.finalized)).toBeTruthy();
+    /* 줄에는 W/O 생산 품목이 아니라 그 W/O 로 나간 자재 — 다른 품목이 있으면 「외 n」, 없으면 품목만(시안 ③-1). */
+    expect(items[0]?.textContent).toContain('SYN-B220 합성 하우징 커버 외 2 · 공정 20 조립 · L2');
+    expect(items[0]?.textContent).not.toContain('SYN-P900');
+    expect(items[2]?.textContent).toContain('SYN-A100 합성 볼트 M4×10 · 공정 20 조립 · L2');
+    expect(items[2]?.textContent).not.toContain('외');
 
     await user.click(within(dialog).getByRole('searchbox', { name: t.findByWo.search }));
     const search = await screen.findByRole('dialog', {
@@ -194,6 +205,9 @@ describe('P-01-03 W/O 로 찾기', () => {
     ]);
 
     await within(label).findByText(B_S1);
+    /* 라벨 수량은 이번 반납 수량 40 — 분할 LOT 목록의 처음 나간 양 300 이 아니다(시안 ③-3 · F-04). */
+    expect(within(label).getByText('40 EA')).toBeTruthy();
+    expect(within(label).queryByText('300 EA')).toBeNull();
     await user.click(within(label).getByRole('button', { name: t.label.print }));
     await screen.findByText(t.label.printed(1));
 
@@ -205,6 +219,8 @@ describe('P-01-03 W/O 로 찾기', () => {
       targets: [{ targetTypeCode: 'LOT', targetId: 541 }],
     });
     expect(saved).toHaveLength(1);
+    expect(saved.texts?.[0]).toContain('40');
+    expect(saved.texts?.[0]).not.toContain('300');
   });
 
   it('US4-5 라벨 찍기 창의 [나중에]는 찍지 않고 닫는다(분할 LOT 라벨 탭에 남는다)', async () => {

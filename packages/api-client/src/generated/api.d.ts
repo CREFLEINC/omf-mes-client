@@ -35435,7 +35435,7 @@ export interface paths {
     put?: never;
     /**
      * 반납 입고
-     * @description 현장에서 쓰지 않고 생산창고로 가져온 자재를 창고 재고로 되돌린다(FR-001~011). 줄마다 LOT 을 잠근 뒤 귀속 출고 라인과 반납 가능 양을 다시 센다 — 넘으면 400 RANGE 「출고된 양보다 많이 반납할 수 없습니다 (반납 가능 n)」. 귀속은 서버가 정한다: LOT 의 가장 최근 W/O 출고 W/O(AUTO_LATEST_ISSUE), W/O 로 찾기로 고른 줄은 workOrderId 가 그 W/O 와 같아야 한다(WORK_ORDER_PICKED · 다르면 400). 그 W/O 가 최종 마감이면 막지 않고 귀속 없음(NONE_FINALIZED · workOrderId null)이다 — 판정은 서버에 도착한 때. 받는 위치: destinationLocationId 가 없으면 그 출고 라인의 출고 생산창고 적치 대기(창고에 사람이 만든 위치가 없으면 창고 전체), 있으면 PDA 적치(피처 009)와 같은 위치 판정(400 판정 코드 · 미지정 위치는 confirmUndesignated=true 여야 하고 아니면 409 UNDESIGNATED_NEEDS_CONFIRM · 미지정 위치에 받으면 그 위치 보관 품목에 더한다). 원장 한 건(거래 유형·원천 MATERIAL_RETURN, 업무일·발생 시각은 단말 값 — C-8). 품질·재고 상태는 LOT 의 지금 상태 그대로(정상 NORMAL/AVAILABLE · 불량 DEFECTIVE/ON_HOLD). 귀속 출고 라인의 도착 위치(#362 전 출고분)에 그 LOT 재고가 남아 있으면 그 재고를 빼서 옮긴다. ERP 로 보내지 않고 취소하지 않는다. 옛 본문(workOrderId·sourceLocationId·destinationWarehouseId 머리)은 받지 않는다. 오프라인 대상 — Idempotency-Key 필수. 근거: 피처 019 반납 입고 · omf-all-around#367 · P-01-03 · M-01-15
+     * @description 현장에서 쓰지 않고 생산창고로 가져온 자재를 창고 재고로 되돌린다(FR-001~011). 줄마다 LOT 을 잠근 뒤 귀속 출고 라인과 반납 가능 양을 다시 센다 — 넘으면 400 RANGE 「출고된 양보다 많이 반납할 수 없습니다 (반납 가능 n)」. 귀속은 서버가 정한다: LOT 의 가장 최근 W/O 출고 W/O(AUTO_LATEST_ISSUE), W/O 로 찾기로 고른 줄은 workOrderId 가 그 W/O 와 같아야 한다(WORK_ORDER_PICKED · 다르면 400). 그 W/O 가 최종 마감이면 막지 않고 귀속 없음(NONE_FINALIZED · workOrderId null)이다 — 판정은 서버에 도착한 때. 받는 위치: destinationLocationId 가 없으면 그 출고 라인의 출고 생산창고 적치 대기(창고에 사람이 만든 위치가 없으면 창고 전체), 있으면 그 위치의 창고로 받는다 — 생산창고 위치만(출고 생산창고와 달라도 된다 · 아니면 400 NOT_PRODUCTION_WAREHOUSE), 그다음 PDA 적치(피처 009)와 같은 위치 판정(400 판정 코드 · 미지정 위치는 confirmUndesignated=true 여야 하고 아니면 409 UNDESIGNATED_NEEDS_CONFIRM · 미지정 위치에 받으면 그 위치 보관 품목에 더한다). 원장 한 건(거래 유형·원천 MATERIAL_RETURN, 업무일·발생 시각은 단말 값 — C-8). 품질·재고 상태는 LOT 의 지금 상태 그대로(정상 NORMAL/AVAILABLE · 불량 DEFECTIVE/ON_HOLD). 귀속 출고 라인의 도착 위치(#362 전 출고분)에 그 LOT 재고가 남아 있으면 그 재고를 빼서 옮긴다. ERP 로 보내지 않고 취소하지 않는다. 옛 본문(workOrderId·sourceLocationId·destinationWarehouseId 머리)은 받지 않는다. 오프라인 대상 — Idempotency-Key 필수. 근거: 피처 019 반납 입고 · omf-all-around#367 · P-01-03 · M-01-15
      */
     post: {
       parameters: {
@@ -35467,7 +35467,7 @@ export interface paths {
             'application/json': components['schemas']['MaterialReturn'];
           };
         };
-        /** @description 검증 실패 · 반납 대상 아님(NOT_RETURNABLE) · 남은 양 없음(NOTHING_TO_RETURN) · 반납 가능 초과(RANGE) · W/O 가 그 LOT 의 가장 최근 출고 W/O 가 아님(WORK_ORDER_MISMATCH) · 위치 판정 코드(PutawayLocationVerdict) */
+        /** @description 검증 실패 · 반납 대상 아님(NOT_RETURNABLE) · 남은 양 없음(NOTHING_TO_RETURN) · 반납 가능 초과(RANGE) · W/O 가 그 LOT 의 가장 최근 출고 W/O 가 아님(WORK_ORDER_MISMATCH) · 받는 위치가 생산창고 위치가 아님(NOT_PRODUCTION_WAREHOUSE · field lines[i].destinationLocationId) · 위치 판정 코드(PutawayLocationVerdict) */
         400: {
           headers: {
             [name: string]: unknown;
@@ -35505,6 +35505,84 @@ export interface paths {
         };
       };
     };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/production/material-returns/location-lookup': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 반납 입고 받는 위치 조회(스캔)
+     * @description PDA 가 받는 위치 라벨을 스캔하면 그 위치와 위치의 생산창고를 낸다. 위치 코드(전역 유일)로 찾으므로 출고 생산창고와 다른 생산창고 위치도 찾는다. 단말은 단말 공장 창고의 위치만, 계정 세션은 공장을 거르지 않는다. 사용 중인 위치·창고만 찾는다. 받는 창고는 생산창고(창고 유형 PRODUCTION)뿐이다 — 자재창고 등 다른 창고 위치는 400 NOT_PRODUCTION_WAREHOUSE. 적치 대기 자리는 PDA 적치 위치 판정과 같이 400 STAGING 이다(「창고 전체」는 받는다). LOT 에 매인 판정(불량창고·지정 품목만 받기·미지정 확인)은 등록(POST /production/material-returns)이 줄마다 한다. 근거: 피처 019 반납 입고 · omf-all-around#367 · M-01-15
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description 위치 코드(위치 라벨 QR 값) */
+          locationCode: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 반납을 받을 수 있는 생산창고 위치 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['MaterialReturnLocationLookup'];
+          };
+        };
+        /** @description 받을 수 없는 위치 — code NOT_PRODUCTION_WAREHOUSE 「생산창고 위치가 아닙니다. 반납은 생산창고 위치로만 받습니다」 · STAGING 「적치 대기 자리에는 둘 수 없습니다.」 (field locationCode) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — 단말은 토큰이 필요하다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 계정은 P-01-03 · M-01-15 중 하나, POP 단말은 단말 공정 매핑 「반납 가능」(can_return_material) 이 필요하다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 위치 · 사용하지 않는 위치(위치나 창고) · 단말이면 단말 공장 밖 위치 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -58804,11 +58882,11 @@ export interface components {
        */
       shopfloorReceiptLineId?: number | null;
       /**
-       * @description 지시 원천 — 구매 입고 · 창고 보충 수령. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+       * @description 지시 원천 — 구매 입고 · 창고 보충 수령 · 반납 입고(적치 대기로 받은 반납 줄 — goodsReceiptLineId·shopfloorReceiptLineId 둘 다 null). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 · 피처 019 반납 입고 · omf-all-around#367
        * @enum {string}
        */
-      originCode: 'GOODS_RECEIPT' | 'REPLENISHMENT_RECEIPT';
-      /** @description 원천 문서 번호 — 구매 입고 원천은 입고 번호, 창고 보충 수령 원천은 창고 보충 요청 번호(모바일 「창고 보충 · 요청번호」). 근거: 피처 004 생산 창고 보충 G2 보완 · omf-all-around#230 */
+      originCode: 'GOODS_RECEIPT' | 'REPLENISHMENT_RECEIPT' | 'MATERIAL_RETURN';
+      /** @description 원천 문서 번호 — 구매 입고 원천은 입고 번호, 창고 보충 수령 원천은 창고 보충 요청 번호(모바일 「창고 보충 · 요청번호」), 반납 입고 원천은 반납 번호. 근거: 피처 004 생산 창고 보충 G2 보완 · omf-all-around#230 · 피처 019 · omf-all-around#367 */
       originDocumentNo: string | null;
       /** @description :complete·:complete-temporary 응답에만 — 실제로 옮긴 양. 창고 보충 수령 원천은 적치 대기에 남은 그 LOT 가용과 지시 수량 중 작은 양을 옮기고 끝내며, 0 이면 원장 없이 완료한다. 구매 입고 원천은 지시 수량. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
       movedQty?: number;
@@ -61111,10 +61189,10 @@ export interface components {
        */
       putawayModeCode: 'DESIGNATED' | 'UNDESIGNATED' | 'TEMPORARY' | 'TASK' | 'TASK_TEMPORARY';
       /**
-       * @description 입고 종류 — 제품 입고 지시는 PRODUCT, 생산 창고 보충 수령 지시(피처 004)는 REPLENISHMENT, 그 밖은 PURCHASE
+       * @description 입고 종류 — 제품 입고 지시는 PRODUCT, 생산 창고 보충 수령 지시(피처 004)는 REPLENISHMENT, 반납 입고 지시(피처 019)는 MATERIAL_RETURN, 그 밖은 PURCHASE
        * @enum {string}
        */
-      sourceCode: 'PURCHASE' | 'PRODUCT' | 'REPLENISHMENT';
+      sourceCode: 'PURCHASE' | 'PRODUCT' | 'REPLENISHMENT' | 'MATERIAL_RETURN';
       /**
        * Format: date-time
        * @description DIRECT 는 입고 일시, TASK 는 완료 시각(단말이 보낸 occurredAt)
@@ -64292,9 +64370,23 @@ export interface components {
       labelUnprinted?: boolean;
       /**
        * Format: int64
-       * @description 적치 대기로 받은 줄(POP 반납 · PDA 에서 위치를 건너뛴 줄)에만 — 반납 때 함께 만든 PENDING 적치 지시. PDA 「적치·입고 완료」에서 옮긴다. 위치를 스캔해 받은 줄에는 없다. 근거: 피처 019 · omf-all-around#367 · 사용자 결정 2026-11-28
+       * @description 위치 없이(POP 반납 · PDA 에서 위치를 건너뛴 줄) 받아 그 위치가 적치 대기(PUTAWAY_STAGING · 사람이 만든 위치가 있는 생산창고)인 줄에만 — 반납 때 함께 만든 PENDING 적치 지시. PDA 「적치·입고 완료」에서 옮긴다. 창고 전체(WAREHOUSE_WHOLE · 사람 위치가 없는 생산창고)로 받은 줄과 위치를 스캔해 받은 줄에는 없다(생산창고 입고 M-01-09 와 같은 판정). 근거: 피처 019 · omf-all-around#367 · 사용자 결정 2026-11-28
        */
       putawayTaskId?: number;
+    };
+    /** @description 반납 입고 받는 위치(PDA 스캔)와 그 생산창고 */
+    MaterialReturnLocationLookup: {
+      /** Format: int64 */
+      locationId: number;
+      locationCode: string;
+      locationName: string;
+      /** @description 위치의 생산창고 — 반납은 이 창고 재고로 들어온다 */
+      warehouse: {
+        /** Format: int64 */
+        warehouseId: number;
+        warehouseCode: string;
+        warehouseName: string;
+      };
     };
     MaterialReturnLotLookup: {
       /** Format: int64 */
@@ -64360,7 +64452,7 @@ export interface components {
       workOrderId?: number | null;
       /**
        * Format: int64
-       * @description PDA 스캔 위치. 비우면 출고 생산창고 적치 대기
+       * @description PDA 스캔 위치(GET /production/material-returns/location-lookup 으로 찾은 위치). 생산창고 위치만 받는다 — 출고 생산창고와 달라도 된다(아니면 400 NOT_PRODUCTION_WAREHOUSE). 비우면 출고 생산창고 적치 대기
        */
       destinationLocationId?: number | null;
       /** @description 미지정 위치에 그래도 둔다(피처 009 와 같다) */
@@ -64387,6 +64479,18 @@ export interface components {
       returnableLotCount: number;
       /** @description 라벨 미발행 LOT 수 */
       unprintedLotCount: number;
+      /** @description 나간 자재 요약 — 이 W/O 의 반납 가능 LOT(반납 가능 양 > 0) 기준. item 은 그중 가장 최근 출고된 LOT 의 자재 품목(출고 시각이 같으면 품목 코드 오름차순 첫 품목), otherItemCount 는 그 LOT 들의 서로 다른 자재 품목 수 − 1(다 반납한 품목은 세지 않는다). item(W/O 생산 품목)과 다르다. 근거: 피처 019 · omf-all-around#367 · 2026-11-28 사용자 결정 */
+      returnableMaterial: {
+        /** @description 가장 최근 출고된 반납 가능 LOT 의 자재 품목 */
+        item: {
+          /** Format: int64 */
+          itemId: number;
+          itemCode: string;
+          itemName: string;
+        };
+        /** @description 그 밖의 자재 품목 수(서로 다른 자재 품목 수 − 1). 자재 1종이면 0 */
+        otherItemCount: number;
+      };
     };
     MaterialReturnWorkOrderLot: {
       /** Format: int64 */

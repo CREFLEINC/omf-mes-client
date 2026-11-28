@@ -35,13 +35,18 @@ export const lookupOf = (
 export const workOrderOf = (overrides: Partial<ReturnWorkOrder> = {}): ReturnWorkOrder => ({
   workOrderId: 635,
   workOrderNo: 'WO-SYN-0011',
-  item: { itemId: 21, itemCode: 'SYN-B220', itemName: '합성 하우징 커버' },
+  /* W/O 생산 품목 — 목록 줄에는 보이지 않는다. 줄에는 나간 자재(`returnableMaterial`)를 보인다. */
+  item: { itemId: 90, itemCode: 'SYN-P900', itemName: '합성 완제품' },
   processName: '공정 20 조립',
   lineName: 'L2',
   lastIssuedAt: '2026-11-27T02:40:00Z',
   finalized: false,
   returnableLotCount: 3,
   unprintedLotCount: 1,
+  returnableMaterial: {
+    item: { itemId: 21, itemCode: 'SYN-B220', itemName: '합성 하우징 커버' },
+    otherItemCount: 2,
+  },
   ...overrides,
 });
 
@@ -90,12 +95,26 @@ export interface KitOptions {
   workOrderLots?: (workOrderId: number) => ReturnWorkOrderLot[];
   splitLots?: SplitMaterialLot[];
   terminalWarehouseId?: number | null;
+  /** 단말 화면 정책(P-10)의 화면 코드. 주지 않으면 정책 조회가 실패해 「모른다」로 둔다(막지 않는다). */
+  screenCodes?: string[];
+  /** 「반납 가능」이 꺼진 단말 — 반납 API 가 403 이다. */
+  forbidden?: boolean;
 }
 
-/** 등록 응답 — 보낸 줄 그대로, 받은 곳은 적치 대기. */
+const FORBIDDEN = () =>
+  jsonResponse(
+    { errors: [{ scope: 'screen', code: 'FORBIDDEN', message: '권한이 없습니다.' }] },
+    { status: 403 },
+  );
+
+/**
+ * 등록 응답 — 보낸 줄 그대로, 받은 곳은 적치 대기(줄마다 적치 지시). `whole` 의 LOT 은 사람 위치 없는 생산창고의
+ * 창고 전체로 받은 줄이라 적치 지시(`putawayTaskId`)가 없다.
+ */
 export const receivedOf = (
   body: { lines: { lotId: number; returnQty: number }[] },
   unprinted: readonly number[] = [],
+  whole: readonly number[] = [],
 ): MaterialReturn => ({
   materialReturnId: 77,
   materialReturnNo: 'MR-SYN-0001',
@@ -109,6 +128,7 @@ export const receivedOf = (
     returnQty: line.returnQty,
     uomId: 1,
     labelUnprinted: unprinted.includes(line.lotId),
+    ...(whole.includes(line.lotId) ? {} : { putawayTaskId: 900 + index }),
   })),
 });
 
@@ -137,6 +157,23 @@ export const renderReturn = (options: KitOptions = {}) => {
   };
 
   const fetch = createStubFetch([
+    ...(options.screenCodes === undefined
+      ? []
+      : [
+          {
+            match: pathIs('/mdm/terminals/7/accessible-screens'),
+            respond: () => jsonResponse({ terminalId: 7, screenCodes: options.screenCodes }),
+          },
+        ]),
+    ...(options.forbidden === true
+      ? [
+          {
+            match: (request: Request) =>
+              new URL(request.url).pathname.startsWith('/production/material-returns'),
+            respond: FORBIDDEN,
+          },
+        ]
+      : []),
     {
       match: pathIs('/production/material-returns/lot-lookup'),
       respond: async (request) => {

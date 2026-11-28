@@ -1,10 +1,13 @@
 import { isForbidden, type ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Navigate } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { formatBaseQty, isCountUom } from '../../patterns/package-qty';
+import { useAccessiblePopScreens } from '../../patterns/pop-access';
 import { usePopIdentity } from '../../patterns/pop-identity';
+import { POP_HOME_PATH } from '../../patterns/pop-screen-catalog';
 import { PopTopPrinter } from '../../patterns/pop-top-status';
 import {
   PuActionBar,
@@ -24,7 +27,6 @@ import {
 } from '../../patterns/pop-uniform';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { toApiError } from '../../patterns/request';
-import { serverReasonOf } from '../../patterns/server-reason';
 import { PrinterChip } from '../pop-material-lot-label/printer-chip';
 import {
   choosePrinter,
@@ -48,6 +50,7 @@ import {
 import { useReceiveMaterialReturn } from './mutations';
 import { drainMaterialReturns, pendingMaterialReturnCount } from './outbox';
 import { useReturnLookup, useTerminalWarehouse } from './queries';
+import { returnReasonOf } from './reason';
 import './uniform.css';
 
 /* 부를 때 읽는다 — 단말 언어(`setLocale`)를 모듈이 실릴 때 붙잡지 않는다. */
@@ -58,15 +61,39 @@ interface Notice {
   text: string;
 }
 
-/** 조회 실패 문구 — 400(반납 대상 아님 · 남은 양 없음)은 서버 문구 그대로, 없는 LOT 은 404, 나머지는 연결. */
+/**
+ * 조회 실패 문구 — 400(반납 대상 아님 · 남은 양 없음)은 오류 코드의 단말 언어 문구(`returnReasonOf`), 없는 LOT 은
+ * 404, 나머지는 연결. 404 를 먼저 본다 — 서버 404 문구는 한국어 하나다(F-03).
+ */
 const lookupErrorOf = (error: ApiError, lotNo: string): string => {
   const t = words().pop;
   if (isForbidden(error)) return t.forbidden;
-  const reason = serverReasonOf(error);
-  if (reason !== null) return reason;
   if (error.kind !== 'network' && error.status === 404) return t.notFound(lotNo);
 
-  return t.lookupFailed;
+  return returnReasonOf(error) ?? t.lookupFailed;
+};
+
+/** 받은 창고 이름 — 보낸 줄의 출고 생산창고(대개 하나). 여러 곳이면 쉼표로 잇는다. */
+export const receivedWarehousesOf = (lines: readonly ReturnLine[]): string =>
+  [...new Set(lines.map((line) => line.issueWarehouse.warehouseName))].join(', ');
+
+/**
+ * 보낸 뒤 문구 — POP 는 모두 위치 없이 받는다. 응답 줄에 적치 지시(`putawayTaskId`)가 없으면 사람 위치 없는 생산창고
+ * (창고 전체)로 받은 줄이라 「PDA 로 적치하세요」를 빼고 받은 창고만 보인다. 응답 줄이 없으면 예전대로 적치 대기로 본다.
+ */
+export const doneTextOf = (
+  sent: readonly ReturnLine[],
+  resultLines: readonly { lotId: number; putawayTaskId?: number | null }[],
+  count: number,
+): string => {
+  const t = words().pop;
+  const whole = new Set(
+    resultLines.filter((line) => (line.putawayTaskId ?? null) === null).map((line) => line.lotId),
+  );
+  const staged = receivedWarehousesOf(sent.filter((line) => !whole.has(line.lotId)));
+  const wholeIn = receivedWarehousesOf(sent.filter((line) => whole.has(line.lotId)));
+  if (wholeIn === '') return staged === '' ? t.done(count) : t.doneIn(count, staged);
+  return staged === '' ? t.doneWhole(count, wholeIn) : t.doneMixed(count, wholeIn, staged);
 };
 
 /** 보내기 거절의 첫 줄 차례 — 그 줄을 골라 보인다. */
@@ -92,8 +119,23 @@ const rejectedLineOf = (error: ApiError): number | null =>
  *    담은 줄에만 「W/O 로 찾음」 칩이 붙는다.
  * ⭐ 수량 처음 값은 빈칸, 여러 줄을 한 건으로 보낸다(시안 확정). 오류는 서버 문구 그대로 스캔 칸 아래 빨간 줄.
  * ⭐ 「반납 가능」(`can_return_material`)이 꺼진 단말은 이 탭이 없다 — 서버 화면 정책이 거른다(`pop-access`).
+ *    주소로 들어와도 홈으로 보낸다(화면 설계 P-01-03 「권한 없음」 · 실제 앱 확인 F-09). 판정을 못 했으면(`loading` ·
+ *    `unknown`) 막지 않는다 — 집행은 서버 403 이고, 그때는 「이 단말에는 … 권한이 없습니다」를 보인다.
  */
 export const PopMaterialReturnScreen = () => {
+  const access = useAccessiblePopScreens();
+  const decided = access.state === 'ready' || access.state === 'empty';
+
+  if (decided && !access.screens.some((screen) => screen.code === RETURN_SCREEN_CODE)) {
+    return <Navigate to={POP_HOME_PATH} replace />;
+  }
+
+  return <ReturnWork />;
+};
+
+const RETURN_SCREEN_CODE = 'P-01-03';
+
+const ReturnWork = () => {
   const t = words().pop;
   const { client } = useApiClient();
   const { workerNo, terminalId, plantId = null } = usePopIdentity();
@@ -123,7 +165,8 @@ export const PopMaterialReturnScreen = () => {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [isFindOpen, setFindOpen] = useState(false);
-  const [labelLotIds, setLabelLotIds] = useState<number[] | null>(null);
+  /* 라벨을 찍을 LOT 과 그 LOT 의 반납 수량 — 라벨은 창고로 돌아온 실물에 붙는다(F-04). */
+  const [labelLots, setLabelLots] = useState<{ lotId: number; qty: number }[] | null>(null);
   const [pendingCount, setPendingCount] = useState(pendingMaterialReturnCount);
 
   const isBusy = lookup.isPending || receive.isPending;
@@ -132,7 +175,7 @@ export const PopMaterialReturnScreen = () => {
   const isSubmittable = canSubmit(lines) && workerNo !== null && !isBusy;
 
   /* 조회 · 보내기가 끝나 칸이 다시 켜지면 스캔 칸을 잡는다 — 실기 스캐너의 다음 스캔이 버려지지 않게(P-04-08 F1). */
-  const isDialogOpen = isFindOpen || labelLotIds !== null;
+  const isDialogOpen = isFindOpen || labelLots !== null;
   useEffect(() => {
     if (!isBusy && !isDialogOpen) scanRef.current?.focus();
   }, [isBusy, isDialogOpen]);
@@ -144,7 +187,7 @@ export const PopMaterialReturnScreen = () => {
       .then((result) => {
         setPendingCount(pendingMaterialReturnCount());
         if (result.lastRejection !== null) {
-          const reason = serverReasonOf(result.lastRejection);
+          const reason = returnReasonOf(result.lastRejection);
           setNotice({
             tone: 'bad',
             text: reason === null ? words().pop.rejectedNoReason : words().pop.rejected(reason),
@@ -217,11 +260,12 @@ export const PopMaterialReturnScreen = () => {
             return;
           }
           const resultLines = outcome.result.lines ?? [];
-          setNotice({ tone: 'ok', text: t.done(resultLines.length || sent.length) });
+          const count = resultLines.length || sent.length;
+          setNotice({ tone: 'ok', text: doneTextOf(sent, resultLines, count) });
           const unprinted = resultLines
             .filter((line) => line.labelUnprinted === true)
-            .map((line) => line.lotId);
-          if (unprinted.length > 0) setLabelLotIds(unprinted);
+            .map((line) => ({ lotId: line.lotId, qty: line.returnQty }));
+          if (unprinted.length > 0) setLabelLots(unprinted);
         },
         onError: (cause) => {
           const apiError = toApiError(cause);
@@ -231,7 +275,10 @@ export const PopMaterialReturnScreen = () => {
           }
           const index = rejectedLineOf(apiError);
           if (index !== null && index < lines.length) setSelected(index);
-          setError(serverReasonOf(apiError) ?? t.submitFailed);
+          setError(
+            returnReasonOf(apiError, (at) => (at === null ? '' : (sent[at]?.uomCode ?? ''))) ??
+              t.submitFailed,
+          );
         },
       },
     );
@@ -239,7 +286,7 @@ export const PopMaterialReturnScreen = () => {
 
   const finishLabels = (outcome: LabelOutcome): void => {
     const l = words().label;
-    setLabelLotIds(null);
+    setLabelLots(null);
     if (outcome.kind === 'printed') setNotice({ tone: 'ok', text: l.printed(outcome.count) });
     if (outcome.kind === 'failed') {
       setNotice({
@@ -420,9 +467,9 @@ export const PopMaterialReturnScreen = () => {
           }}
         />
       ) : null}
-      {labelLotIds === null ? null : (
+      {labelLots === null ? null : (
         <ReturnLabelDialog
-          lotIds={labelLotIds}
+          lots={labelLots}
           plantId={plantId}
           workerNo={workerNo}
           printer={{

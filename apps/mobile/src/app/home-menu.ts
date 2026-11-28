@@ -75,6 +75,16 @@ export const homeAreas: HomeArea[] = [
         icon: 'shelves',
         description: t.screens.putaway,
       },
+      /*
+       * M-01-15 반납 입고(019) — 「적치·입고 완료」 바로 아래. 반납도 입고·적치의 한 갈래라 같은 손 동선에 둔다. 기다리는
+       * 작업이 아니라 가져올 때 하는 일이라 배지를 두지 않는다(시안 ④). 권한 M-01-15 는 서버가 지킨다.
+       */
+      {
+        to: '/material-return',
+        label: messages.materialReturn.pda.title,
+        icon: 'assignment_return',
+        description: messages.materialReturn.pda.menuDescription,
+      },
       /* M-01-14 적치 기록(011) — 적치 다음. 남은 일이 아니라 지난 기록이라 배지를 두지 않는다. */
       {
         to: '/putaway-history',

@@ -10,6 +10,7 @@ import { InboundReceiptScreen } from '../screens/inbound-receipt/screen';
 import { InboundCloseScreen } from '../screens/inbound-close/screen';
 import { InboundVarianceScreen } from '../screens/inbound-variance/screen';
 import { MaterialLocationScreen } from '../screens/material-location/screen';
+import { MaterialReturnScreen } from '../screens/material-return/screen';
 import { MaterialPickingScreen } from '../screens/material-picking/screen';
 import { OutboxPendingScreen } from '../screens/outbox-pending/screen';
 import { OutboxRejectionsScreen } from '../screens/outbox-rejections/screen';
@@ -46,6 +47,8 @@ export const appRoutes: RouteObject[] = [
       { path: 'inbound-close', element: <InboundCloseScreen /> },
       { path: 'inbound-variance', element: <InboundVarianceScreen /> },
       { path: 'putaway', element: <PutawayScreen /> },
+      /* M-01-15 반납 입고(019 · omf-all-around#367) — 생산창고로 돌아온 자재 LOT 을 받아 위치에 놓는다. */
+      { path: 'material-return', element: <MaterialReturnScreen /> },
       { path: 'temporary-putaway', element: <TemporaryPutawayScreen /> },
       /* M-01-14 적치 기록(011 · omf-all-around#325) — 서버에 남은 적치를 내 기록 / 이 단말로. */
       { path: 'putaway-history', element: <PutawayHistoryScreen /> },

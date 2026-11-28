@@ -1,3 +1,4 @@
+import { isForbidden } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
@@ -15,7 +16,6 @@ import {
   applyKeypadKey,
 } from '../../patterns/pop-uniform';
 import { PuSearchBox } from '../../patterns/pop-uniform/search-box';
-import { serverReasonOf } from '../../patterns/server-reason';
 import { toApiError } from '../../patterns/request';
 import { lineOf, type ReturnLine } from './lines';
 import {
@@ -25,6 +25,7 @@ import {
   type ReturnWorkOrder,
   type ReturnWorkOrderLot,
 } from './queries';
+import { returnReasonOf } from './reason';
 
 /* 부를 때 읽는다 — 단말 언어(`setLocale`)를 모듈이 실릴 때 붙잡지 않는다. */
 const words = () => messages.materialReturn;
@@ -44,9 +45,15 @@ export const initialLotId = (lots: readonly ReturnWorkOrderLot[]): number | null
   return unprinted.length === 1 && items.size === 1 ? (unprinted[0]?.lotId ?? null) : null;
 };
 
-/** 「B-220 하우징 커버(좌)」 — W/O 줄의 품목. */
-const itemOf = (workOrder: ReturnWorkOrder): string =>
-  `${workOrder.item.itemCode} ${workOrder.item.itemName}`;
+/**
+ * 「B-220 하우징 커버(좌) 외 2」 — W/O 줄에는 그 W/O 로 나간 자재를 보인다(생산 품목이 아니다 · 시안 ③-1).
+ * 긴 품목명은 줄의 `overflow-wrap: anywhere` 로 줄바꿈한다(F-05).
+ */
+const materialOf = ({ returnableMaterial: material }: ReturnWorkOrder): string =>
+  words().findByWo.withOthers(
+    `${material.item.itemCode} ${material.item.itemName}`,
+    material.otherItemCount,
+  );
 
 const processOf = (workOrder: ReturnWorkOrder): string =>
   [workOrder.processName, workOrder.lineName]
@@ -129,7 +136,12 @@ export const FindByWorkOrderDialog = ({
         onAdd(lineOf(found, picked.workOrderId, qtyText));
       },
       onError: (cause) => {
-        setAddError(serverReasonOf(toApiError(cause)) ?? t.loadFailed);
+        const error = toApiError(cause);
+        setAddError(
+          isForbidden(error)
+            ? words().pop.forbidden
+            : (returnReasonOf(error, () => lot.uom.uomCode) ?? t.loadFailed),
+        );
       },
     });
   };
@@ -141,23 +153,6 @@ export const FindByWorkOrderDialog = ({
       wide
       title={t.title}
       onClose={onClose}
-      keyboard={
-        picked === null ? undefined : lot === null ? null : (
-          <PuKeypad
-            targetLabel={t.qty}
-            showTarget={false}
-            decimal={decimal}
-            disabled={lookup.isPending}
-            onKey={(key) => {
-              setQtyText((current) => applyKeypadKey(current, key, { decimal }));
-              setAddError(null);
-            }}
-            onClearAll={() => {
-              setQtyText('');
-            }}
-          />
-        )
-      }
       footer={
         <>
           <PuButton onClick={onClose}>{t.close}</PuButton>
@@ -183,6 +178,7 @@ export const FindByWorkOrderDialog = ({
           onQuery={setQuery}
           isLoading={workOrders.isPending}
           isError={workOrders.isError}
+          isForbidden={workOrders.isError && isForbidden(toApiError(workOrders.error))}
           items={workOrders.data?.items ?? []}
           onPick={pickWorkOrder}
         />
@@ -202,51 +198,76 @@ export const FindByWorkOrderDialog = ({
           {lots.isPending ? (
             <PuNote live>{t.loading}</PuNote>
           ) : lots.isError ? (
-            <PuNote tone="bad">{t.loadFailed}</PuNote>
+            <PuNote tone="bad">
+              {isForbidden(toApiError(lots.error)) ? words().pop.forbidden : t.loadFailed}
+            </PuNote>
           ) : lotList.length === 0 ? (
             <PuEmpty icon="box" title={t.emptyLots} />
           ) : (
-            <LotTable
-              lots={lotList}
-              selected={lotId}
-              autoLotId={autoLotId}
-              onPick={(next) => {
-                setLotId(next);
-                setQtyText('');
-                setAddError(null);
-              }}
-            />
-          )}
-          {lot === null ? null : (
-            <div className="pmr-wo-qty">
-              <PuField label={t.qty} required>
-                <div className="pu-row">
-                  <PuInput
-                    value={qtyText}
-                    aria-label={t.qty}
-                    numeric
-                    target
-                    need={qtyText === ''}
-                    inputMode="none"
-                    readOnly
-                  />
-                  <span className="pu-unit">{lot.uom.uomCode}</span>
+            /* 표 왼쪽 · 수량 오른쪽 — 아래 키패드 판이 수량 · 안내를 가리지 않게(시안 ③-2 · 실제 앱 확인 F-07). */
+            <div className={lot === null ? 'pmr-wo-pick' : 'pmr-wo-pick has-qty'}>
+              <LotTable
+                lots={lotList}
+                selected={lotId}
+                autoLotId={autoLotId}
+                onPick={(next) => {
+                  setLotId(next);
+                  setQtyText('');
+                  setAddError(null);
+                }}
+              />
+              {lot === null ? null : (
+                <div className="pmr-wo-qty">
+                  <PuField label={t.qty} required>
+                    <div className="pu-row">
+                      <PuInput
+                        value={qtyText}
+                        aria-label={t.qty}
+                        numeric
+                        target
+                        need={qtyText === ''}
+                        inputMode="none"
+                        readOnly
+                      />
+                      <span className="pu-unit">{lot.uom.uomCode}</span>
+                    </div>
+                  </PuField>
+                  <span className="pmr-hint">
+                    {words().pop.returnableHint(formatBaseQty(lot.returnableQty, lot.uom.uomCode))}
+                  </span>
+                  {qtyProblem === null ? null : (
+                    <PuNote tone="bad">
+                      {qtyProblem === 'integer'
+                        ? words().pop.qtyInteger
+                        : words().pop.qtyOver(formatBaseQty(lot.returnableQty, lot.uom.uomCode))}
+                    </PuNote>
+                  )}
+                  {addError === null ? <span className="pmr-hint">{t.addHint}</span> : null}
+                  {addError === null ? null : <PuNote tone="bad">{addError}</PuNote>}
+                  {/*
+                   * 숫자 키패드는 수량 칸 아래(창 오른쪽 칸)에 둔다 — 화면 아래 판(글자판 높이)에 두면 1280×800 에서
+                   * 창이 판 위로 눌려 LOT 표가 두 줄 반만 보였다(F-07). 숫자만 받는 창의 선례: 자재 LOT 라벨
+                   * 「수정」 · 「한꺼번에 발행」 창.
+                   */}
+                  <div className="pmr-wo-keypad">
+                    <PuKeypad
+                      targetLabel={t.qty}
+                      showTarget={false}
+                      decimal={decimal}
+                      disabled={lookup.isPending}
+                      onKey={(key) => {
+                        setQtyText((current) => applyKeypadKey(current, key, { decimal }));
+                        setAddError(null);
+                      }}
+                      onClearAll={() => {
+                        setQtyText('');
+                      }}
+                    />
+                  </div>
                 </div>
-              </PuField>
-              <span className="pmr-hint">
-                {words().pop.returnableHint(formatBaseQty(lot.returnableQty, lot.uom.uomCode))}
-              </span>
-              {qtyProblem === null ? null : (
-                <PuNote tone="bad">
-                  {qtyProblem === 'integer'
-                    ? words().pop.qtyInteger
-                    : words().pop.qtyOver(formatBaseQty(lot.returnableQty, lot.uom.uomCode))}
-                </PuNote>
               )}
-              {addError === null ? <span className="pmr-hint">{t.addHint}</span> : null}
             </div>
           )}
-          {addError === null ? null : <PuNote tone="bad">{addError}</PuNote>}
         </div>
       )}
     </PuDialog>
@@ -258,6 +279,7 @@ const WorkOrderStep = ({
   onQuery,
   isLoading,
   isError,
+  isForbidden: forbidden,
   items,
   onPick,
 }: {
@@ -265,6 +287,8 @@ const WorkOrderStep = ({
   onQuery: (value: string) => void;
   isLoading: boolean;
   isError: boolean;
+  /** 「반납 가능」이 꺼진 단말(서버 403) — 연결 문구가 아니라 권한 문구(F-09). */
+  isForbidden: boolean;
   items: readonly ReturnWorkOrder[];
   onPick: (workOrder: ReturnWorkOrder) => void;
 }) => {
@@ -277,7 +301,7 @@ const WorkOrderStep = ({
       {isLoading ? (
         <PuNote live>{t.loading}</PuNote>
       ) : isError ? (
-        <PuNote tone="bad">{t.loadFailed}</PuNote>
+        <PuNote tone="bad">{forbidden ? words().pop.forbidden : t.loadFailed}</PuNote>
       ) : items.length === 0 ? (
         <PuEmpty
           icon="search"
@@ -303,7 +327,7 @@ const WorkOrderStep = ({
                 </span>
                 <span className="pmr-wo-sub">
                   {t.workOrderLine(
-                    itemOf(workOrder),
+                    materialOf(workOrder),
                     processOf(workOrder) === '' ? '-' : processOf(workOrder),
                     shortAt(workOrder.lastIssuedAt),
                   )}
@@ -352,7 +376,7 @@ const LotTable = ({
                 onPick(lot.lotId);
               }}
             >
-              <td title={`${lot.item.itemCode} ${lot.item.itemName}`}>
+              <td className="pmr-two" title={`${lot.item.itemCode} ${lot.item.itemName}`}>
                 <b className="pu-mono">{lot.item.itemCode}</b>
                 <span className="pmr-sub">{lot.item.itemName}</span>
               </td>

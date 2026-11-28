@@ -22,7 +22,9 @@ export const putaway: Translated<typeof ko.putaway> = {
     origin: {
       GOODS_RECEIPT: 'Nhập kho mua hàng',
       REPLENISHMENT_RECEIPT: 'Bổ sung kho',
+      MATERIAL_RETURN: 'Nhập trả vật tư',
     },
+    originReturnWithNo: (no: string) => `Nhập trả vật tư (${no})`,
     qtyLabel: 'Số lượng',
     allowedLabel: 'Vị trí bảo quản',
     allowed: (codes: string) => `Vị trí bảo quản ${codes}`,
