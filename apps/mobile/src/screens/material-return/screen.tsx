@@ -530,6 +530,12 @@ const DoneCard = ({ done }: { done: Done }) => {
           <span className="mreturn__done-line">{t.pda.doneStagedHint}</span>
         </AlertBanner>
       );
+    case 'whole':
+      return (
+        <AlertBanner variant="success" title={t.pda.doneWhole}>
+          <span className="mreturn__done-line">{`${what} → ${done.warehouseName}`}</span>
+        </AlertBanner>
+      );
     case 'queued':
       return (
         <AlertBanner variant="warning" title={t.pda.queued}>

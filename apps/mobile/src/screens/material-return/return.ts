@@ -264,16 +264,26 @@ export type Done =
       warehouseName: string;
     }
   | { kind: 'staged'; lot: ReturnLot; qty: number }
+  /** 위치 없이 받았는데 적치 지시가 없다 — 사람 위치 없는 생산창고(창고 전체)로 받았다. */
+  | { kind: 'whole'; lot: ReturnLot; qty: number; warehouseName: string }
   | { kind: 'queued'; lot: ReturnLot; qty: number };
 
-/** 응답으로 본 끝 — 위치를 주고 받았으면 그 위치, 아니면 출고 생산창고 적치 대기(적치 지시가 생긴다). */
+/**
+ * 응답으로 본 끝 — 위치를 주고 받았으면 그 위치. 위치 없이 받았으면 출고 생산창고의 적치 대기(적치 지시가 생긴다)이고,
+ * 응답 줄에 적치 지시(`putawayTaskId`)가 없으면 그 창고 전체로 받은 것이다(사람 위치 없는 생산창고 · 적치 안내 없음).
+ */
 export const doneOf = (
   lot: ReturnLot,
   qty: number,
   target: ReturnTarget | null,
   response: MaterialReturn | null,
 ): Done => {
-  if (target === null) return { kind: 'staged', lot, qty };
+  if (target === null) {
+    const line = response?.lines?.[0];
+    return line !== undefined && (line.putawayTaskId ?? null) === null
+      ? { kind: 'whole', lot, qty, warehouseName: lot.issueWarehouseName }
+      : { kind: 'staged', lot, qty };
+  }
   const code = response?.lines?.[0]?.destinationLocationCode ?? target.locationCode;
 
   return { kind: 'located', lot, qty, locationCode: code, warehouseName: target.warehouseName };

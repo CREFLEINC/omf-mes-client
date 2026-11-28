@@ -205,6 +205,33 @@ describe('M-01-15 반납 입고 판정', () => {
 
     expect(body.lines).toEqual([{ lotId: 501, returnQty: 20 }]);
     expect(doneOf(LOT, 20, null, null)).toEqual({ kind: 'staged', lot: LOT, qty: 20 });
+    const response = (putawayTaskId?: number) => ({
+      materialReturnId: 77,
+      materialReturnNo: 'MR-SYN-0001',
+      statusCode: 'RECEIVED' as const,
+      requestedAt: '2026-11-28T02:10:00Z',
+      lines: [
+        {
+          itemId: 11,
+          lotId: 501,
+          returnQty: 20,
+          uomId: 1,
+          ...(putawayTaskId === undefined ? {} : { putawayTaskId }),
+        },
+      ],
+    });
+    expect(doneOf(LOT, 20, null, response(901) as never)).toEqual({
+      kind: 'staged',
+      lot: LOT,
+      qty: 20,
+    });
+    /* 적치 지시가 없는 줄 — 사람 위치 없는 생산창고(창고 전체)로 받았다. */
+    expect(doneOf(LOT, 20, null, response() as never)).toEqual({
+      kind: 'whole',
+      lot: LOT,
+      qty: 20,
+      warehouseName: 'G 생산창고',
+    });
   });
 
   it('US4-4 W/O 로 찾은 LOT 은 고른 W/O 를 싣는다', () => {

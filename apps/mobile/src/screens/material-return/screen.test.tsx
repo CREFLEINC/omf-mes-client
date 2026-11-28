@@ -342,6 +342,34 @@ describe('M-01-15 반납 입고', () => {
     expect((sent[0]?.body as { lines: unknown[] }).lines).toEqual([{ lotId: 501, returnQty: 20 }]);
   });
 
+  it('US2-2 경계 — 위치 없이 받았는데 적치 지시가 없으면(창고 전체) 적치 안내 없이 받은 창고만 보인다', async () => {
+    const user = userEvent.setup();
+    mount({
+      receive: () =>
+        jsonResponse(
+          {
+            materialReturnId: 78,
+            materialReturnNo: 'MR-SYN-0002',
+            destinationWarehouseId: 31,
+            statusCode: 'RECEIVED',
+            requestedAt: '2026-11-28T02:10:00Z',
+            lines: [{ itemId: 11, lotId: 501, returnQty: 20, uomId: 1 }],
+          },
+          { status: 201 },
+        ),
+    });
+
+    await scanLot(user);
+    await typeQty(user, '20');
+    await user.click(screen.getByRole('button', { name: t.pda.next }));
+    await user.click(await screen.findByRole('button', { name: t.pda.skip }));
+
+    expect(await screen.findByText(t.pda.doneWhole)).toBeTruthy();
+    expect(screen.getByText(`SYN-A100 · ${LOT_NO} · 20 EA → G 생산창고`)).toBeTruthy();
+    expect(screen.queryByText(t.pda.doneStaged)).toBeNull();
+    expect(screen.queryByText(t.pda.doneStagedHint)).toBeNull();
+  });
+
   it('US2-1 · US2-3 미지정 위치는 확인 카드 뒤 확인 표시를 싣고, 지정 품목 위치 거절은 판정 코드의 문구로 보인다', async () => {
     const user = userEvent.setup();
     const { sent, locationQueries } = mount({

@@ -77,6 +77,25 @@ const lookupErrorOf = (error: ApiError, lotNo: string): string => {
 export const receivedWarehousesOf = (lines: readonly ReturnLine[]): string =>
   [...new Set(lines.map((line) => line.issueWarehouse.warehouseName))].join(', ');
 
+/**
+ * 보낸 뒤 문구 — POP 는 모두 위치 없이 받는다. 응답 줄에 적치 지시(`putawayTaskId`)가 없으면 사람 위치 없는 생산창고
+ * (창고 전체)로 받은 줄이라 「PDA 로 적치하세요」를 빼고 받은 창고만 보인다. 응답 줄이 없으면 예전대로 적치 대기로 본다.
+ */
+export const doneTextOf = (
+  sent: readonly ReturnLine[],
+  resultLines: readonly { lotId: number; putawayTaskId?: number | null }[],
+  count: number,
+): string => {
+  const t = words().pop;
+  const whole = new Set(
+    resultLines.filter((line) => (line.putawayTaskId ?? null) === null).map((line) => line.lotId),
+  );
+  const staged = receivedWarehousesOf(sent.filter((line) => !whole.has(line.lotId)));
+  const wholeIn = receivedWarehousesOf(sent.filter((line) => whole.has(line.lotId)));
+  if (wholeIn === '') return staged === '' ? t.done(count) : t.doneIn(count, staged);
+  return staged === '' ? t.doneWhole(count, wholeIn) : t.doneMixed(count, wholeIn, staged);
+};
+
 /** 보내기 거절의 첫 줄 차례 — 그 줄을 골라 보인다. */
 const rejectedLineOf = (error: ApiError): number | null =>
   error.kind === 'validation' || error.kind === 'stateLocked'
@@ -242,11 +261,7 @@ const ReturnWork = () => {
           }
           const resultLines = outcome.result.lines ?? [];
           const count = resultLines.length || sent.length;
-          const warehouses = receivedWarehousesOf(sent);
-          setNotice({
-            tone: 'ok',
-            text: warehouses === '' ? t.done(count) : t.doneIn(count, warehouses),
-          });
+          setNotice({ tone: 'ok', text: doneTextOf(sent, resultLines, count) });
           const unprinted = resultLines
             .filter((line) => line.labelUnprinted === true)
             .map((line) => ({ lotId: line.lotId, qty: line.returnQty }));

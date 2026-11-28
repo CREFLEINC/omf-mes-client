@@ -51,6 +51,12 @@ export const materialReturn = {
     /** 받은 창고 이름을 붙인 보낸 뒤 문구(시안 「G 생산창고 적치 대기」) — 여러 창고면 쉼표로 잇는다. */
     doneIn: (lines: number, warehouses: string) =>
       `반납 입고 ${lines}건을 받았습니다. ${warehouses} 적치 대기에 들어갔습니다. PDA 로 적치하세요.`,
+    /** 사람 위치 없는 생산창고(창고 전체)로 받아 적치 지시가 없을 때 — 적치 안내 없이 받은 창고만. */
+    doneWhole: (lines: number, warehouses: string) =>
+      `반납 입고 ${lines}건을 받았습니다. ${warehouses} 에 들어갔습니다.`,
+    /** 창고 전체로 받은 줄과 적치 대기로 받은 줄이 섞였을 때 — 적치 안내는 적치 대기 창고에만. */
+    doneMixed: (lines: number, whole: string, staged: string) =>
+      `반납 입고 ${lines}건을 받았습니다. ${whole} 에 들어갔고, ${staged} 적치 대기분은 PDA 로 적치하세요.`,
     queued: '보낼 대기열에 넣었습니다. 연결되면 보냅니다.',
     pending: (count: number) => `보낼 대기열 ${count}건`,
     rejected: (reason: string) => `대기열에서 보낸 반납 입고가 거절됐습니다 — ${reason}`,
@@ -156,6 +162,8 @@ export const materialReturn = {
     doneLocated: '반납 입고 · 적치 끝',
     doneStaged: '반납 입고 끝 · 적치 대기',
     doneStagedHint: '나중에 「적치·입고 완료」에서 위치에 놓으세요.',
+    /** 사람 위치 없는 생산창고(창고 전체)로 받아 적치 지시가 없을 때 — 적치 안내 없이 받은 창고만. */
+    doneWhole: '반납 입고 끝',
     stagingOf: (warehouse: string) => `${warehouse} 적치 대기`,
     staging: '적치 대기',
     nextLot: '다음 LOT',

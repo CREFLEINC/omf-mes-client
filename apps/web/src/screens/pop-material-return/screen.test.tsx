@@ -4,7 +4,16 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { jsonResponse } from '../../test/api-harness';
-import { TERMINAL_WAREHOUSE, WORKER, lookupOf, pressKeys, renderReturn, scanLot } from './test-kit';
+import { doneTextOf } from './screen';
+import {
+  TERMINAL_WAREHOUSE,
+  WORKER,
+  lookupOf,
+  pressKeys,
+  receivedOf,
+  renderReturn,
+  scanLot,
+} from './test-kit';
 
 /*
  * P-01-03 반납 입고(피처 019 · 시안 ②). 합성값만 쓴다.
@@ -119,6 +128,53 @@ describe('P-01-03 반납 입고', () => {
     /* 보낸 뒤 목록을 비운다. */
     expect(screen.queryByRole('group', { name: t.pop.table.label })).toBeNull();
     expect(screen.getByText(t.pop.emptyHint)).toBeTruthy();
+  });
+
+  it('US1-2 경계 — 창고 전체(사람 위치 없는 생산창고)로 받아 적치 지시가 없으면 「PDA 로 적치하세요」 없이 받은 창고만 보인다', async () => {
+    const user = userEvent.setup();
+    renderReturn({
+      lookup: (lotNo) =>
+        jsonResponse(
+          lookupOf({
+            lotId: 511,
+            lotNo,
+            issueWarehouse: { warehouseId: 33, warehouseName: 'K 생산창고' },
+          }),
+        ),
+      receive: (body) => jsonResponse(receivedOf(body, [], [511]), { status: 201 }),
+    });
+
+    await scanLot(user, LOT_A);
+    await pressKeys(user, '6');
+    await user.click(submitButton(1));
+
+    const notice = await screen.findByText(t.pop.doneWhole(1, 'K 생산창고'));
+    expect(notice.textContent).not.toContain('PDA');
+    expect(screen.queryByText(t.pop.doneIn(1, 'K 생산창고'))).toBeNull();
+  });
+
+  it('US1-2 경계 — 적치 대기 줄과 창고 전체 줄이 섞이면 적치 안내는 적치 대기 창고에만 붙인다', () => {
+    const line = (lotId: number, warehouseName: string) =>
+      ({ lotId, issueWarehouse: { warehouseId: lotId, warehouseName } }) as Parameters<
+        typeof doneTextOf
+      >[0][number];
+    const sent = [line(1, 'G 생산창고'), line(2, 'K 생산창고')];
+
+    expect(doneTextOf(sent, [{ lotId: 1, putawayTaskId: 901 }, { lotId: 2 }], 2)).toBe(
+      t.pop.doneMixed(2, 'K 생산창고', 'G 생산창고'),
+    );
+    expect(
+      doneTextOf(
+        sent,
+        [
+          { lotId: 1, putawayTaskId: 901 },
+          { lotId: 2, putawayTaskId: 902 },
+        ],
+        2,
+      ),
+    ).toBe(t.pop.doneIn(2, 'G 생산창고, K 생산창고'));
+    /* 응답 줄이 없으면(옛 응답) 예전대로 적치 대기로 본다. */
+    expect(doneTextOf(sent, [], 2)).toBe(t.pop.doneIn(2, 'G 생산창고, K 생산창고'));
   });
 
   it('US1-5 같은 LOT 을 다시 스캔하면 새 줄을 만들지 않고 그 줄을 고른다', async () => {

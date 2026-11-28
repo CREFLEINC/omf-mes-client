@@ -64370,7 +64370,7 @@ export interface components {
       labelUnprinted?: boolean;
       /**
        * Format: int64
-       * @description 적치 대기로 받은 줄(POP 반납 · PDA 에서 위치를 건너뛴 줄)에만 — 반납 때 함께 만든 PENDING 적치 지시. PDA 「적치·입고 완료」에서 옮긴다. 위치를 스캔해 받은 줄에는 없다. 근거: 피처 019 · omf-all-around#367 · 사용자 결정 2026-11-28
+       * @description 위치 없이(POP 반납 · PDA 에서 위치를 건너뛴 줄) 받아 그 위치가 적치 대기(PUTAWAY_STAGING · 사람이 만든 위치가 있는 생산창고)인 줄에만 — 반납 때 함께 만든 PENDING 적치 지시. PDA 「적치·입고 완료」에서 옮긴다. 창고 전체(WAREHOUSE_WHOLE · 사람 위치가 없는 생산창고)로 받은 줄과 위치를 스캔해 받은 줄에는 없다(생산창고 입고 M-01-09 와 같은 판정). 근거: 피처 019 · omf-all-around#367 · 사용자 결정 2026-11-28
        */
       putawayTaskId?: number;
     };

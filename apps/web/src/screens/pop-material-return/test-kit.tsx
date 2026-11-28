@@ -107,10 +107,14 @@ const FORBIDDEN = () =>
     { status: 403 },
   );
 
-/** 등록 응답 — 보낸 줄 그대로, 받은 곳은 적치 대기. */
+/**
+ * 등록 응답 — 보낸 줄 그대로, 받은 곳은 적치 대기(줄마다 적치 지시). `whole` 의 LOT 은 사람 위치 없는 생산창고의
+ * 창고 전체로 받은 줄이라 적치 지시(`putawayTaskId`)가 없다.
+ */
 export const receivedOf = (
   body: { lines: { lotId: number; returnQty: number }[] },
   unprinted: readonly number[] = [],
+  whole: readonly number[] = [],
 ): MaterialReturn => ({
   materialReturnId: 77,
   materialReturnNo: 'MR-SYN-0001',
@@ -124,6 +128,7 @@ export const receivedOf = (
     returnQty: line.returnQty,
     uomId: 1,
     labelUnprinted: unprinted.includes(line.lotId),
+    ...(whole.includes(line.lotId) ? {} : { putawayTaskId: 900 + index }),
   })),
 });
 

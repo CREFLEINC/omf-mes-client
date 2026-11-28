@@ -45,6 +45,10 @@ export const materialReturn: Translated<typeof ko.materialReturn> = {
       `Đã nhận nhập trả ${lines} LOT. Hàng đã vào khu chờ cất. Hãy cất hàng bằng PDA.`,
     doneIn: (lines: number, warehouses: string) =>
       `Đã nhận nhập trả ${lines} LOT. Hàng đã vào khu chờ cất của ${warehouses}. Hãy cất hàng bằng PDA.`,
+    doneWhole: (lines: number, warehouses: string) =>
+      `Đã nhận nhập trả ${lines} LOT. Hàng đã vào ${warehouses}.`,
+    doneMixed: (lines: number, whole: string, staged: string) =>
+      `Đã nhận nhập trả ${lines} LOT. Hàng đã vào ${whole}; phần ở khu chờ cất của ${staged} hãy cất bằng PDA.`,
     queued: 'Đã đưa vào hàng đợi gửi. Sẽ gửi khi có kết nối.',
     pending: (count: number) => `Hàng đợi gửi ${count}`,
     rejected: (reason: string) => `Lần nhập trả gửi từ hàng đợi bị từ chối — ${reason}`,
@@ -141,6 +145,7 @@ export const materialReturn: Translated<typeof ko.materialReturn> = {
     doneLocated: 'Đã nhập trả · Đã cất',
     doneStaged: 'Đã nhập trả · Chờ cất',
     doneStagedHint: 'Sau đó hãy cất vào vị trí ở «Cất hàng và hoàn tất nhập kho».',
+    doneWhole: 'Đã nhập trả',
     stagingOf: (warehouse: string) => `Khu chờ cất ${warehouse}`,
     staging: 'Chờ cất hàng',
     nextLot: 'LOT tiếp theo',
